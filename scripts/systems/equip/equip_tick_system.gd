@@ -338,6 +338,7 @@ func _tick_gear(u: Dictionary, delta: float) -> void:   # 黄铜齿轮035(用户
 			if gs != null and gs.get("meta_deepsea_coins") != null:
 				gs.set("meta_deepsea_coins", int(gs.get("meta_deepsea_coins")) + coins)
 			battle._vfx._float_text(u["pos"], "+%d💠" % coins, Color("#5fd0e0"))   # 可见反馈(用户: 之前无反馈以为没生效)
+			battle._vfx.coin_pop(u, coins)   # 头顶旋转金币(用户2026-09-13: 「做一个头顶获得金币旋转的特效」)
 			stt["coins_made"] = int(stt.get("coins_made", 0)) + coins   # 头像装备格徽章显示本局累计产币(用户2026-07-19)
 		u["eq_state"]["p2eq_035"] = stt
 
@@ -626,6 +627,8 @@ func schedule(delay: float, fn: Callable) -> void:
 ##   一个队列一个入口, 谁排进来都一定会被结算。
 func tick_delayed(_dt: float) -> void:
 	_drain_bolts()
+	_tick_bear_waves(_dt)   # 034 大熊冲击波: 波前推进+命中结算(同一条游戏钟, 不再走 process delta)
+	_tick_pulls(_dt)        # 击飞态平滑拉回(同上, 原来也挂在 process delta 上)
 
 ## 大熊熊掌挥击接触那一瞬: 此刻才结算伤害 + 跳数字 + 金爪痕。
 ## ★★2026-09-13 从主文件搬过来, 同时把延时从 tween 换成共享原语 `schedule`:
@@ -641,3 +644,127 @@ func _tick_bear_paw_hit(u: Dictionary, tgt) -> void:
 	if u.get("melee", false):
 		battle._on_basic_hit(u, tgt)
 	battle._bear_claw_fx(tgt["pos"])                    # 金爪三痕+尘
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  034 大熊【冲击波】—— 波前推进 + 命中结算, 全程走【游戏钟】
+# ════════════════════════════════════════════════════════════════════════════
+## ★★2026-09-13 重做(用户:「这个大熊冲击波的特效不好, 你得重做」)。
+##   同时收掉一条早就登记在案的缺陷: 原来整条波(前摇/砸地/推进/**命中结算**)都挂在
+##   `await get_tree().process_frame` + `get_process_delta_time()` 上 —— 那是**未钳制的
+##   真实帧 delta**, 与战斗钟 `_t`(钳制到 0.1/帧)是两条钟。两条钟必然丢事件:
+##   慢机器/无头下波已经推完了而游戏时间才走了一点点, 命中窗口整个错位。
+##   ⇒ 推进与结算搬到本函数, 由 `tick_delayed` 每个 sim step 无条件调一次;
+##     大熊自己的起身/砸地姿势留在主场景(纯观感, 那条留 tween/process 是对的)。
+const BEAR_WAVE_SPEED := 500.0       # 波速(码/秒) —— 用户当初点名"慢点", 数值原样不动
+const BEAR_WAVE_HALF := 85.0         # 判定半宽(码), 也是破土铺开的半宽
+const BEAR_WAVE_SEG := 46.0          # 每推进多少码, 在波前那一线上点一排破土
+const BEAR_WAVE_PER_SEG := 3         # 每一排点几处(横跨 ±85 码)
+
+var _bear_waves: Array = []
+
+
+## 起一条波。`origin/dir` 由主场景砸地那一刻给出; 伤害也在那时算好(避免中途 ATK 变了)。
+func bear_wave_start(src: Dictionary, origin: Vector2, dir: Vector2, dmg: int) -> void:
+	_bear_waves.append({
+		"src": src, "origin": origin, "dir": dir, "perp": dir.orthogonal(), "dmg": dmg,
+		"traveled": 0.0, "seg": 0.0, "n_seg": 0, "hit": [],
+	})
+
+
+## 每个 sim step 推一格。★dt 是**钳制后**的战斗 delta, 与伤害判定用的是同一条钟。
+## ★★演出与判定是**同一个波前**: 破土点在 `origin + dir*traveled` 那一线上冒,
+##   伤害也判在 `proj <= traveled`。不是"演出一套、结算另一套"(那是 026 那条病)。
+func _tick_bear_waves(dt: float) -> void:
+	if _bear_waves.is_empty():
+		return
+	for i in range(_bear_waves.size() - 1, -1, -1):
+		var w: Dictionary = _bear_waves[i]
+		var origin: Vector2 = w["origin"]
+		var dir: Vector2 = w["dir"]
+		var perp: Vector2 = w["perp"]
+		var src: Dictionary = w["src"]
+		w["traveled"] = float(w["traveled"]) + BEAR_WAVE_SPEED * dt
+		var trav: float = float(w["traveled"])
+		## ① 演出: 波前每走过 BEAR_WAVE_SEG 码, 在那一线上点一排破土(一段一段地突起)
+		while float(w["seg"]) + BEAR_WAVE_SEG <= minf(trav, BEAR_WAVE_RANGE):
+			w["seg"] = float(w["seg"]) + BEAR_WAVE_SEG
+			var n: int = int(w["n_seg"]); w["n_seg"] = n + 1
+			## ★★演出的**外缘**要正好落在判定边上, 不能超出去(用户 2026-09-13 点名"尤其是宽度")。
+			##   探针实测过: 判定半宽 85 码(偏 84 挨打 / 偏 88 没事), 而破土中心原来铺到 ±103,
+			##   加上精灵自己半宽 39 码 ⇒ 视觉外缘 ±142 码 = **比判定宽 67%**。
+			##   ⇒ 中心只铺到 `半宽 − 精灵半宽`, 抖动也钳在里面; 纵向只往后抖不往前抖。
+			var inset: float = battle._vfx.QUAKE_ERUPT_YARDS * 0.5
+			var span: float = maxf(0.0, BEAR_WAVE_HALF - inset)
+			for k in range(BEAR_WAVE_PER_SEG):
+				var off: float = lerpf(-span, span, float(k) / float(BEAR_WAVE_PER_SEG - 1))
+				off = clampf(off + (6.0 if n % 2 else -6.0), -span, span)   # 两排错开半格, 但不许溢出
+				var lead: float = float((n + k) % 3) * -7.0                  # 只往后抖: 前缘不许越过判定
+				battle._vfx.bear_quake_erupt(origin + dir * (float(w["seg"]) + lead) + perp * off)
+		## ② 结算: 波前扫到谁就结算谁(每个敌人只一次)
+		for o in battle._targeting._enemies_of(src):
+			if battle._arr_has_unit(w["hit"], o) or not o.get("alive", false):
+				continue
+			var proj: float = ((o["pos"] as Vector2) - origin).dot(dir)
+			if proj < -40.0 or proj > trav + 30.0 or proj > BEAR_WAVE_RANGE + 30.0:
+				continue
+			if not battle._on_line(origin, dir, o["pos"], BEAR_WAVE_HALF):
+				continue
+			(w["hit"] as Array).append(o)
+			battle._damage._apply_damage_from(src, o, int(w["dmg"]), Color("#ffd27a"), 0.0, false, true)
+			battle._damage._knockback(src, o, 0.0, 1.5, 0.0)     # 击飞 ~0.8s(vy×1.5), 横推交给 pull_airborne
+			pull_airborne(o, origin, BEAR_WAVE_PULL, 0.45)
+			battle._vfx._hit_spark(o)
+			## ★命中点**不**再另炸一处破土: 挨打的人可能正站在判定边上, 而一处破土自带
+			##   ±39 码的精灵半宽 ⇒ 那一下会把视觉外缘推到 123 码, 又比判定宽了。
+			##   命中反馈交给 `_hit_spark` + 伤害飘字, 破土只用来画【波本身】。
+		## ③ 大熊从砸地的下沉姿势起身复位(0.3 秒) —— 也走游戏钟
+		if src.get("alive", false):
+			src["_bear_voff"] = Vector3(0.0, lerpf(-0.22, 0.0,
+				clampf(trav / (BEAR_WAVE_SPEED * 0.3), 0.0, 1.0)), 0.0)
+		if trav < BEAR_WAVE_RANGE:
+			continue
+		src["_slam_manual"] = false
+		src["no_move"] = false
+		src["_bear_voff"] = Vector3.ZERO
+		_bear_waves.remove_at(i)
+
+
+## 击飞态平滑拉向 `origin` —— 走【游戏钟】。
+## ★★2026-09-13 从主场景 `_pull_airborne` 搬过来。原来那份是
+##   `await get_tree().process_frame` + `get_process_delta_time()` 的协程, 而它的**退出条件**
+##   `o["airborne"]` 是**游戏钟**上过期的 ⇒ 又是两条钟: sim 推得快一点, airborne 先过期,
+##   协程醒过来时条件已经不成立 ⇒ **一格都没拉**(034 新补的第 ⑥ 节当场抓到: x 700 → 700)。
+##   唯一调用者就是大熊冲击波, 所以整只搬走而不是在原地补丁。
+var _pulls: Array = []
+
+
+func pull_airborne(o: Dictionary, origin: Vector2, dist: float, dur: float) -> void:
+	if not o.get("alive", false):
+		return
+	var to_o: Vector2 = origin - (o["pos"] as Vector2)
+	var d0: float = to_o.length()
+	if d0 < 1.0:
+		return
+	var pull: float = minf(dist, maxf(0.0, d0 - 24.0))   # 别拉进熊身(留 24px)
+	if pull <= 0.5:
+		return
+	var start: Vector2 = o["pos"]
+	_pulls.append({"u": o, "start": start, "target": start + (to_o / d0) * pull,
+				   "t": 0.0, "dur": maxf(0.01, dur)})
+
+
+func _tick_pulls(dt: float) -> void:
+	if _pulls.is_empty():
+		return
+	for i in range(_pulls.size() - 1, -1, -1):
+		var q: Dictionary = _pulls[i]
+		var o: Dictionary = q["u"]
+		q["t"] = float(q["t"]) + dt
+		var k: float = clampf(float(q["t"]) / float(q["dur"]), 0.0, 1.0)
+		if not o.get("alive", false) or not bool(o.get("airborne", false)) or k >= 1.0:
+			if o.get("alive", false) and bool(o.get("airborne", false)):
+				o["pos"] = q["target"]
+			_pulls.remove_at(i)
+			continue
+		o["pos"] = (q["start"] as Vector2).lerp(q["target"] as Vector2, 1.0 - (1.0 - k) * (1.0 - k))

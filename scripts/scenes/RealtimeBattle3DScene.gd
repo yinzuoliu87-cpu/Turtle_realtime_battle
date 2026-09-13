@@ -696,6 +696,7 @@ var _skill_ring_sheet: Texture2D = null   # 共享技能环的 10 帧扩散表(�
 ## 位置固定的帧动画(不跟单位走): [{spr,t0,fps,n}] —— 每帧按游戏时钟算到第几帧, 放完自销。
 ## ★与 `_follow_vfx` 分开是因为那张表的每一条都必须有 `unit`, 而环是打在场地坐标上的。
 var _anim_fx: Array = []
+var _coin_fx: Array = []   # 035 深海币: 头顶旋转金币(位置跟人+循环帧, 由 battle_render 推)
 var _follow_vfx: Array = []               # 跟随单位的特效sprite [{spr,unit,h}] — 每帧贴 _world_pos(unit.pos, unit.height+h); sprite被free则自动剔除
 var _pending_shots: Array = []            # 依次射出的子弹队列 [{delay, fn:Callable, src}] — 每帧减delay, 到点call(错峰射击: 手铳/加特林/狙击链); src=归属(时停只推进active携带者)
 # ═══ 沙漏059 JoJo时停 ═══ 冻结全局_t + 只tick active携带者; 其他单位/弹道/依次射击/tween/粒子 全定格
@@ -3483,31 +3484,17 @@ func _signal_pulse(pos2d: Vector2) -> void:
 	tw2.tween_property(rg, "modulate:a", 0.0, 0.5)
 	tw2.chain().tween_callback(rg.queue_free)
 
-func _ebb_tide_fx(u: Dictionary, rising: bool) -> void:   # 041: 涨潮=水纹上涌+青环扩; 退潮=水纹下沉+环收
-	var col := Color(0.36, 0.88, 0.82) if rising else Color(0.45, 0.62, 0.72)
-	_skill_ring(u["pos"], Color(col.r, col.g, col.b, 0.7), 66.0)
-	_splash_ring_bold(u["pos"], col, 120.0)      # 贴地潮环(no_depth_test·不被地板吞)
-	var gt := VfxTex._make_fire_glow_tex()
-	for k in range(11):
-		var m := Sprite3D.new()
-		m.texture = gt
-		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
-		m.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		m.shaded = false; m.transparent = true
-		m.no_depth_test = true; m.render_priority = 4
-		m.modulate = Color(col.r, col.g, col.b, 0.0)
-		m.pixel_size = (randf_range(20.0, 40.0) * WS) / float(maxi(1, gt.get_height()))
-		var ang: float = float(k) * TAU / 11.0 + randf_range(-0.25, 0.25)
-		var off: Vector2 = Vector2(cos(ang), sin(ang)) * randf_range(28.0, 62.0)
-		var h0: float = 0.08 if rising else 1.9
-		var h1: float = 1.9 if rising else 0.08
-		m.position = _world_pos(u["pos"] + off, h0)
-		_world.add_child(m)
-		var tw := _reg_tween(); tw.set_parallel(true)
-		tw.tween_property(m, "modulate:a", 0.95, 0.13).set_delay(float(k) * 0.025)
-		tw.tween_property(m, "position", _world_pos(u["pos"] + off, h1), 0.5).set_delay(float(k) * 0.03)
-		tw.chain().tween_property(m, "modulate:a", 0.0, 0.22)
-		tw.chain().tween_callback(m.queue_free)
+func _ebb_tide_fx(u: Dictionary, rising: bool) -> void:   # 041: 涨潮=一圈水柱窜起 / 退潮=水柱沉下去
+	## ★★2026-09-13 重做。原来是 `_skill_ring` + `_splash_ring_bold` 两圈程序圆环 +
+	##   11 颗 `_make_fire_glow_tex` 白球(还写着 LINEAR 过滤) —— 圆环与白球都在禁区里,
+	##   实拍是一团糊, 文案的「体积 +30%」在里面读不出来。
+	##   现在改成绕身一圈的水柱, 逐根错峰 ⇒ 画面上是"潮水从脚下涌上来/退下去"。
+	var n: int = 9
+	for k in range(n):
+		var ang: float = float(k) * TAU / float(n)
+		var off: Vector2 = Vector2(cos(ang), sin(ang) * 0.62) * 46.0   # 0.62 = 地面透视压扁
+		_vfx.tide_swell(u["pos"] + off, rising, float(k) * 0.035)
+	## ★飘字「涨潮/退潮」由 `_eq_ebb_surge` / `_eq_ebb_recede` 自己打, 这里不重复
 
 func _throw_dumbbell(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   # 钢灰哑铃飞向目标→砸中伤害+击退
 ## ★★2026-09-11 把飞行从 `_reg_tween` 改成 `_wait_sim` 逐格推。
@@ -3837,26 +3824,6 @@ func _weapon_slash(from2d: Vector2, to2d: Vector2, col: Color) -> void:   # 面�
 	_skill_ring(to2d, Color(col.r, col.g, col.b, 0.6), 42.0)
 
 var _flyslash_tex: ImageTexture = null
-func _pull_airborne(o: Dictionary, origin: Vector2, dist: float, dur: float) -> void:   # 击飞态平滑拉向origin(拉dist码, 留24px不重叠); vx/vz须为0(靠此改pos, 非物理横滑)
-	if not o.get("alive", false): return
-	var to_o: Vector2 = origin - o["pos"]
-	var d0: float = to_o.length()
-	if d0 < 1.0: return
-	var pull: float = minf(dist, maxf(0.0, d0 - 24.0))   # 别拉进熊身(留24px)
-	if pull <= 0.5: return
-	var start: Vector2 = o["pos"]
-	var target: Vector2 = start + (to_o / d0) * pull
-	var el := 0.0
-	while el < dur and o.get("alive", false) and bool(o.get("airborne", false)):
-		await get_tree().process_frame
-		el += get_process_delta_time()
-		var k: float = clampf(el / dur, 0.0, 1.0)
-		k = 1.0 - (1.0 - k) * (1.0 - k)   # ease-out(先快后缓)
-		o["pos"] = start.lerp(target, k)
-
-
-
-
 var _bladewall_tex: ImageTexture = null
 
 var _shellhalf_tex: ImageTexture = null
@@ -3864,34 +3831,31 @@ var _shellhalf_tex: ImageTexture = null
 
 var _coralspike_tex: Texture2D = null   # 008 珊瑚刺(真素材·CompressedTexture2D, 别写死 ImageTexture)
 
-func _bear_shockwave(u: Dictionary, tgt: Dictionary, _si: int) -> void:   # 大熊冲击波(小菊式): 蓄力→直线移动波, 1.5ATK物理+击飞0.8s+拉回70码
+func _bear_shockwave(u: Dictionary, tgt: Dictionary, _si: int) -> void:   # 大熊冲击波: 预兆破土→砸地→土浪推进(结算在游戏钟)
+	## ★★2026-09-13 重做(用户:「这个大熊冲击波的特效不好, 你得重做」)。
+	##   四条实拍毛病与对应改动写在 `battle_vfx.bear_quake_erupt` 的头注里;
+	##   推进与命中结算已搬到 `EquipTickSystem._tick_bear_waves`(游戏钟), 这里只剩**姿势**。
 	var dir: Vector2 = (tgt["pos"] - u["pos"]).normalized()
 	if dir.length() < 0.1:
 		dir = Vector2.RIGHT
 	var origin: Vector2 = u["pos"]
-	# 砸地位移全程手控(帧驱动voff关掉): 起身高举后仰 → 猛砸下 → 复位
 	u["bear_anim"] = "slam"; u["bear_anim_t"] = 0.0
 	u["_slam_manual"] = true
-	u["no_move"] = true                               # 冲击波全程大熊锁死原地(不再被AI往敌人走=修"漂移循环走")
-	var ldir: Vector3 = u.get("_bear_ldir", Vector3.ZERO)
+	u["no_move"] = true                               # 冲击波全程大熊锁死原地
 	_shake(JUICE_SHAKE_HEAVY)
-	var glow := Sprite3D.new()
-	glow.texture = VfxTex._make_fire_glow_tex()
-	glow.billboard = BaseMaterial3D.BILLBOARD_ENABLED; glow.shaded = false; glow.transparent = true
-	glow.modulate = Color(1.0, 0.82, 0.4, 0.0); glow.pixel_size = 0.012
-	glow.position = _world_pos(origin, 0.35)
-	_world.add_child(glow)
-	var gt := _reg_tween()
-	gt.tween_property(glow, "modulate:a", 0.5, 0.4)
-	gt.parallel().tween_property(glow, "scale", Vector3(1.4, 1.4, 1.4), 0.4)
-	# 前摇: 起身高高举起(加速t²)+后仰 (0.4s)
+	## 预兆: 波会经过的那条线上, 一节一节往外冒破土小喷 —— 位置与节数就是路径与射程。
+	## ★排在【游戏钟】上(schedule), 不是 tween: 预兆必须和后面那一下是同一条钟。
+	var steps: int = 7
+	for k in range(steps):
+		var at: Vector2 = origin + dir * (EquipTickSystem.BEAR_WAVE_RANGE * float(k + 1) / float(steps))
+		_equip_tick_sys.schedule(0.40 * float(k) / float(steps), _vfx.bear_quake_tell.bind(at))
+	# 前摇: 起身高高举起(加速t²)+后仰 (0.4s) —— 纯姿势, 留在 process
 	var rt := 0.0
 	while rt < 0.4 and u.get("alive", false):
 		await get_tree().process_frame
 		rt += get_process_delta_time()
 		var a: float = rt / 0.4
 		u["_bear_voff"] = Vector3(0.0, a * a * 0.95, 0.0)   # 起身: 直上举高(无横移=不左右滑)
-	if is_instance_valid(glow): glow.queue_free()
 	if not u.get("alive", false):
 		u["_slam_manual"] = false; u["no_move"] = false; u["_bear_voff"] = Vector3.ZERO; return
 	# 猛砸下: 从高处加速砸到地下 (0.12s)
@@ -3899,46 +3863,16 @@ func _bear_shockwave(u: Dictionary, tgt: Dictionary, _si: int) -> void:   # 大�
 	while st < 0.12 and u.get("alive", false):
 		await get_tree().process_frame
 		st += get_process_delta_time()
-		var b: float = st / 0.12
-		u["_bear_voff"] = Vector3(0.0, lerpf(0.95, -0.22, b), 0.0)   # 猛砸下: 直下(无横移=不左右滑)
-	# === 砸地瞬间: 落地压扁 + 大震屏 + 顿帧 + 尘环, 冲击波起 ===
+		u["_bear_voff"] = Vector3(0.0, lerpf(0.95, -0.22, st / 0.12), 0.0)   # 猛砸下: 直下(无横移)
+	# === 砸地瞬间: 落地压扁 + 大震屏 + 顿帧 + 尘, 冲击波起 ===
+	## ★这里**没有** `_skill_ring` 了 —— 原来那个又大又细的黄色椭圆环挂几秒不散,
+	##   正是"无含义圆环"那条禁区; 砸地的反馈由 `_impact_particles` + 震屏 + 顿帧给。
 	u["_bear_voff"] = Vector3(0.0, -0.22, 0.0)
 	u["land_t"] = JUICE_LAND_SEC
 	_shake(JUICE_SHAKE_BIG); _hitstop = maxf(_hitstop, 0.05)
 	_vfx._impact_particles(origin, 0.0)
-	_skill_ring(origin, Color(1.0, 0.85, 0.4, 0.7), 96.0)
-	# 释放: 冲击波沿 dir 前进, 沿途暖金块一簇簇破土冒起(小菊式地面喷涌), 波前首经过即命中; 熊起身复位
-	var dmg: int = _atk_dmg(u, EquipTickSystem.BEAR_WAVE_COEF, tgt)
-	var perp: Vector2 = dir.orthogonal()
-	var reach := EquipTickSystem.BEAR_WAVE_RANGE   # 射程边界 600码 (用户)
-	var traveled := 0.0
-	var last_chunk := -20.0
-	var hit_arr: Array = []
-	var rec := 0.0
-	while traveled < reach and is_instance_valid(self):
-		await get_tree().process_frame
-		var fdt: float = get_process_delta_time()
-		traveled += 500.0 * fdt   # 波速 500px/s (用户: 慢点)
-		rec += fdt
-		u["_bear_voff"] = Vector3(0.0, lerpf(-0.22, 0.0, clampf(rec / 0.3, 0.0, 1.0)), 0.0)   # 起身复位
-		while last_chunk < traveled:                    # 沿途金块依次冒起(每40码一簇+横向散)
-			last_chunk += 40.0
-			var cp: Vector2 = origin + dir * last_chunk
-			_gold_chunk_erupt(cp + perp * randf_range(-26.0, 26.0))
-			if randf() < 0.6:
-				_gold_chunk_erupt(cp + perp * randf_range(-55.0, 55.0))
-		for o in _targeting._enemies_of(u):
-			if _arr_has_unit(hit_arr, o) or not o.get("alive", false): continue
-			var proj: float = (o["pos"] - origin).dot(dir)
-			if proj >= -40.0 and proj <= traveled + 30.0 and _on_line(origin, dir, o["pos"], 85.0):
-				hit_arr.append(o)
-				_damage._apply_damage_from(u, o, dmg, Color("#ffd27a"), 0.0, false, true)
-				_damage._knockback(u, o, 0.0, 1.5, 0.0)          # 击飞 ~0.8s (vy×1.5), 无横推(vx/vz=0, 拉回交给_pull_airborne)
-				_pull_airborne(o, origin, EquipTickSystem.BEAR_WAVE_PULL, 0.45)    # 拉回70码: 滞空(击飞态)期平滑滑向大熊(留24px不重叠)
-				_gold_chunk_erupt(o["pos"])              # 命中点额外炸一簇
-	u["_bear_voff"] = Vector3.ZERO
-	u["_slam_manual"] = false
-	u["no_move"] = false                              # 冲击波结束解锁, 大熊恢复正常走位
+	_equip_tick_sys.bear_wave_start(u, origin, dir, _atk_dmg(u, EquipTickSystem.BEAR_WAVE_COEF, tgt))
+	## 起身复位也交给波(它知道波什么时候完), 这里不再自己等 —— 两条钟必然丢事件。
 
 # 金币飞向财神 (聚宝盆·单位阵亡时"金币哗啦涌向财神龟"). 纯视觉·无伤害.
 func _gold_fly_to(from2d: Vector2, tgt: Dictionary) -> void:
@@ -6554,27 +6488,13 @@ func _urchin_shield_fx(u: Dictionary) -> void:   # 海胆护盾(013满层): 放�
 		tw.chain().tween_property(sp, "modulate:a", 0.0, SPIKE_FADE)
 		tw.chain().tween_callback(sp.queue_free)
 
-func _egg_level_up_vfx(u: Dictionary, total_lvl: int) -> void:   # 温泉蛋升级: 金光柱升腾 + 脚下金块 + "LV UP LvN"
-	_skill_ring(u["pos"], Color(1.0, 0.85, 0.4, 0.65), 56.0)
+func _egg_level_up_vfx(u: Dictionary, total_lvl: int) -> void:   # 温泉蛋升级: 蛋壳裂开 + 温泉热气 + "LV UP LvN"
+	## ★★2026-09-13 重做(用户点名"复用素材"): 原来是 `_skill_ring` 圆环 +
+	##   `_make_fire_glow_tex` 光球 + **5 次 `_gold_chunk_erupt`(034 大熊的金块素材)**。
+	##   现在用 036 自己的 `egg-hatch-levelup.png`, 详见 `battle_vfx.egg_hatch_levelup` 头注。
+	_vfx.egg_hatch_levelup(u["pos"])
 	_vfx._float_text(u["pos"] + Vector2(0, -74), "LV UP  Lv%d" % total_lvl, Color("#ffe08a"))
 	_shake(0.05)
-	var glow := VfxTex._make_fire_glow_tex()
-	var col := Sprite3D.new()
-	col.texture = glow
-	col.modulate = Color(1.0, 0.86, 0.42, 0.9)
-	col.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	col.shaded = false; col.transparent = true
-	col.pixel_size = (50.0 * WS) / float(maxi(1, glow.get_width()))
-	col.position = _world_pos(u["pos"], 0.4)
-	_world.add_child(col)
-	var tw := _reg_tween()
-	tw.set_parallel(true)
-	tw.tween_property(col, "position", _world_pos(u["pos"], 1.7), 0.5)
-	tw.tween_property(col, "modulate:a", 0.0, 0.5)
-	tw.chain().tween_callback(col.queue_free)
-	for k in range(5):   # 脚下金块环绕冒起
-		var a: float = float(k) * TAU / 5.0
-		_gold_chunk_erupt(u["pos"] + Vector2(cos(a), sin(a)) * randf_range(34.0, 50.0))
 
 # 统领显示等级 = 基础等级 + 温泉蛋036临时孵化等级(egg_levels), 用于等级框实时跳字
 func _effective_level(u: Dictionary) -> int:
@@ -7552,24 +7472,6 @@ func _water_charge_windup(u: Dictionary, dur: float) -> void:
 	tw.chain().tween_callback(g.queue_free)
 
 # 浪打中单位的水花: 蓝水环 + 上溅几滴
-func _water_splash(pos2d: Vector2, ally: bool) -> void:
-	_skill_ring(pos2d, Color(0.5, 0.92, 1.0, 0.7) if ally else Color(0.4, 0.8, 1.0, 0.75), 48.0)
-	if _spark_tex == null: _spark_tex = VfxTex._make_glow_texture()
-	for k in range(4):
-		var dp := Sprite3D.new()
-		dp.texture = _spark_tex
-		dp.modulate = Color(0.6, 0.9, 1.0, 0.9)
-		dp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		dp.shaded = false; dp.transparent = true
-		dp.pixel_size = 0.006
-		dp.position = _world_pos(pos2d, 0.4)
-		_world.add_child(dp)
-		var off := Vector2(randf_range(-26.0, 26.0), 0.0)
-		var tw := _reg_tween(); tw.set_parallel(true)
-		tw.tween_property(dp, "position", _world_pos(pos2d + off, 1.3 + randf_range(0.0, 0.4)), 0.4)
-		tw.tween_property(dp, "modulate:a", 0.0, 0.4)
-		tw.chain().tween_callback(dp.queue_free)
-
 # 出招预备(缩)+挥出(伸): 主动技/普攻前摇后摇 (anticipation + follow-through)
 func _anticipate(u: Dictionary) -> void:
 	if u == null or not u.get("alive", false):
@@ -8495,9 +8397,15 @@ func _refresh_panel_equips(u: Dictionary) -> void:
 	var equips: Array = u.get("equips", [])
 	for _ei in range(mini(4, equips.size())):
 		row.add_child(_make_panel_equip_slot(u, str((equips[_ei] as Dictionary).get("id", ""))))
+	## ★古灵精怪枪(040 扔给敌人的)**不在 `u["equips"]` 里** —— 它是战斗内的标记不是真装备,
+	##   所以补一格虚拟的。用户 2026-09-13:「我没懂为什么对面装备栏什么都没显示」。
+	if int(u.get("gremlin_guns", 0)) > 0 and (row as Node).get_child_count() < 4:
+		row.add_child(_make_panel_equip_slot(u, "gremlin_gun"))
 
 func _make_panel_equip_slot(u: Dictionary, eid: String) -> Control:   # 头像下装备格: 图标(稀有度描边)+充能条/层数徽章
 	var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
+	if eid == "gremlin_gun":   # 虚拟格: 它不在 phase2-equipment.json 里(不是背包里的装备)
+		edef = {"img": "vfx/gremlin-gun.png", "cost": 1, "emoji": "🔫"}
 	var slot := VBoxContainer.new()
 	slot.add_theme_constant_override("separation", 1)
 	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE

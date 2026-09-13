@@ -561,7 +561,7 @@ func _impact(tgt: Dictionary, dmg: int, level: String = "auto", at_pos = null) -
 ## ★★「扔」一件东西给某个单位 —— 2026-09-01 补。
 ##
 ## ★由来: 需求原话是「技能或装备，会**扔**给目标一把古灵精怪枪」, 而 FPGA 板发枪的
-##   整条路径(`_eq_fpga_hand_out_guns`)**一个 vfx 调用都没有** —— 属性静悄悄加上去,
+##   整条路径(`GremlinGun.hand_out`)**一个 vfx 调用都没有** —— 属性静悄悄加上去,
 ##   玩家完全看不到发生过什么。逐句核对原话时抓到(第 2 句)。
 ##
 ## ★演出与结算**分开**(CLAUDE.md §3.5): `give()` 已经在调用方同步做完了,
@@ -1949,7 +1949,7 @@ func baton_zap_mark(u: Dictionary) -> void:
 		_zap_tex = load(ZAP_TEX)
 	if _zap_tex == null:
 		return
-	var sp := _baton_sprite(_zap_tex, ZAP_FRAMES, ZAP_YARDS)
+	var sp := _sheet_sprite(_zap_tex, ZAP_FRAMES, ZAP_YARDS)
 	sp.render_priority = 8
 	sp.position = battle._world_pos(u["pos"] as Vector2, float(u.get("height", 0.0)) + ZAP_H)
 	battle._world.add_child(sp)
@@ -1977,7 +1977,8 @@ var _baton_arc_tex: Texture2D = null
 var _baton_strike_tex: Texture2D = null
 
 
-func _baton_sprite(tex: Texture2D, frames: int, yards: float) -> Sprite3D:
+## 精灵表 → Sprite3D 的共享原语(027 电棍先用的, 034 大熊土浪也用它 ⇒ 名字从 `_baton_` 改成中性)。
+func _sheet_sprite(tex: Texture2D, frames: int, yards: float) -> Sprite3D:
 	var cell: int = maxi(1, int(tex.get_width()) / frames)
 	var sp := Sprite3D.new()
 	sp.texture = tex
@@ -2001,7 +2002,7 @@ func baton_spark(u: Dictionary) -> void:
 		_baton_arc_tex = load(BATON_ARC_TEX)
 	if _baton_arc_tex == null:
 		return
-	var sp := _baton_sprite(_baton_arc_tex, BATON_ARC_FRAMES, BATON_ARC_YARDS)
+	var sp := _sheet_sprite(_baton_arc_tex, BATON_ARC_FRAMES, BATON_ARC_YARDS)
 	## 抖在【身上】不是脚下 —— 原来 height 抽 0.45~1.1 且 y 也抖 ±12 码, 一半的火花落在地上,
 	## 读成「地上冒火星」而不是「他手里那根棍带电了」。
 	var h: float = 0.80 + randf_range(-0.12, 0.34)
@@ -2021,7 +2022,7 @@ func baton_strike(tgt: Dictionary) -> void:
 		_baton_strike_tex = load(BATON_STRIKE_TEX)
 	if _baton_strike_tex == null:
 		return
-	var sp := _baton_sprite(_baton_strike_tex, BATON_STRIKE_FRAMES, BATON_STRIKE_YARDS)
+	var sp := _sheet_sprite(_baton_strike_tex, BATON_STRIKE_FRAMES, BATON_STRIKE_YARDS)
 	sp.position = battle._world_pos(tgt["pos"], float(tgt.get("height", 0.0)) + BATON_STRIKE_H)
 	battle._world.add_child(sp)
 	battle._follow_vfx.append({
@@ -2099,3 +2100,288 @@ func bamboo_burst(pos2d: Vector2) -> void:
 	var tw = battle._reg_tween()   # battle 无类型 ⇒ := 推不出来
 	tw.tween_method(battle._bamboo_sys._bamboo_burst_step.bind(b, nframes), 0.0, 1.0, 0.35)
 	tw.tween_callback(b.queue_free)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  034 玩偶小熊 · 大熊【冲击波】—— 2026-09-13 用户:「这个大熊冲击波的特效不好, 你得重做」
+# ════════════════════════════════════════════════════════════════════════════
+## 重做前实拍(16 帧逐帧看过)读出来的四条毛病, 每条对应下面一处改动:
+##   ① **根本没有波前** —— 原来全场只有 `gold-chunk` 一簇簇随机冒、横向散 ±26/±55 码,
+##      拼不出一条线, 读成"地上插了一排蜡烛"。⇒ 改成一排**土浪**沿 perp 铺开同步推进。
+##   ② 脚下一个又大又细的黄色椭圆环(`_skill_ring`)挂几秒 = 无含义圆环(禁区)。⇒ 删。
+##   ③ 前摇那颗 `VfxTex._make_fire_glow_tex()` 程序光球 —— 同一类禁区。⇒ 换成破土预兆。
+##   ④ 金块一出生就淡出, 中段在黑场里读成深褐柱子(淡出病)。⇒ 碎石只在波前冒、短命、不早淡。
+##
+## ★方向不靠旋转(像素风不许自由旋转): 照 043 浪墙的老办法 —— 一排**直立 billboard**
+##   沿 perp 铺开、沿 dir 平移, 朝向只用 `flip_h`。
+const QUAKE_ERUPT_TEX := "res://assets/sprites/vfx/bear-quake-erupt.png"
+const QUAKE_ERUPT_FRAMES := 8
+const QUAKE_ERUPT_FPS := 17.0     # 8 帧 / 17fps = 0.47 秒一次"鼓起→崩解"
+const QUAKE_ERUPT_YARDS := 78.1   # 44 texel × 1.775 码/texel —— 1:1 不缩放
+const QUAKE_ERUPT_H := 0.72       # 土刺中心离地(米); 刺高 42 texel × 0.0426 = 1.79 m
+const QUAKE_TELL_TEX := "res://assets/sprites/vfx/bear-quake-tell.png"
+const QUAKE_TELL_FRAMES := 5
+const QUAKE_TELL_FPS := 16.0
+const QUAKE_TELL_YARDS := 49.8    # 14 texel × 1.775 × **2 倍整数缩放** —— 1× 时只有 13 屏幕像素,
+                                  #   实拍里几乎看不见; 整数倍是像素风允许的放大方式
+const QUAKE_TELL_H := 0.30
+var _quake_erupt_tex: Texture2D = null
+var _quake_tell_tex: Texture2D = null
+
+
+## 一处破土隆起 —— **原地**播一次"鼓起→顶到最高→崩解"。
+## ★★用户 2026-09-13 第二轮:「不如原版啊, 不是一个墙飞过去啊, 是一段段地突起啊动画」。
+##   我上一版做成了"一整面土墙平移" —— 那把**概念**也换掉了。原版的概念(沿途一段段破土)
+##   是对的, 坏的只是执行。⇒ 回到逐段隆起: 由 `EquipTickSystem` 按波前位置一段一段地点,
+##   方向感来自【点的顺序】, 不来自平移。
+## ★左右对称的刺 ⇒ 不 flip 不旋转, 像素风三条约束天然满足。
+func bear_quake_erupt(at2d: Vector2) -> void:
+	if battle._world == null:
+		return
+	if _quake_erupt_tex == null:
+		_quake_erupt_tex = load(QUAKE_ERUPT_TEX)
+	if _quake_erupt_tex == null:
+		return                            # 缺图就不画, 不拿别的图顶替(素材不复用铁律)
+	var sp := _sheet_sprite(_quake_erupt_tex, QUAKE_ERUPT_FRAMES, QUAKE_ERUPT_YARDS)
+	sp.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y   # 土刺是立在地上的, 不跟着俯仰翻
+	sp.render_priority = 6
+	sp.position = battle._world_pos(at2d, QUAKE_ERUPT_H)
+	battle._world.add_child(sp)
+	## 走 `_anim_fx`(游戏钟逐帧, 放完自销) —— 不挂 tween: tween 走未钳制真实 delta。
+	battle._anim_fx.append({
+		"spr": sp, "fps": QUAKE_ERUPT_FPS, "n": QUAKE_ERUPT_FRAMES, "t0": battle._t,
+	})
+
+
+## 破土预兆: 波会经过的那条线上, 一节一节往外冒的小土喷。
+## ★它带的信息量 = 波的**路径与射程**(摆到哪、摆几节), 不是"一个更漂亮的闪光"。
+func bear_quake_tell(at2d: Vector2) -> void:
+	if battle._world == null:
+		return
+	if _quake_tell_tex == null:
+		_quake_tell_tex = load(QUAKE_TELL_TEX)
+	if _quake_tell_tex == null:
+		return
+	var sp := _sheet_sprite(_quake_tell_tex, QUAKE_TELL_FRAMES, QUAKE_TELL_YARDS)
+	sp.render_priority = 5
+	sp.position = battle._world_pos(at2d, QUAKE_TELL_H)
+	battle._world.add_child(sp)
+	## 走 `_anim_fx`(游戏钟逐帧) —— 不挂 tween: tween 走未钳制真实 delta, 无头下推不动。
+	battle._anim_fx.append({
+		"spr": sp, "fps": QUAKE_TELL_FPS, "n": QUAKE_TELL_FRAMES, "t0": battle._t,
+	})
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  041 退潮浊液 · 涨潮 / 退潮
+# ════════════════════════════════════════════════════════════════════════════
+## 实拍(13 帧逐帧看过)读出来的原状: 两圈**程序生成的圆环**(`_skill_ring` +
+## `_splash_ring_bold`)罩在龟身上, 外加 11 颗 `VfxTex._make_fire_glow_tex()` **白球**
+## 四散上浮 —— 圆环与白球都在禁区里, 而且那 11 颗写的是 `TEXTURE_FILTER_LINEAR`,
+## **连像素风都不是**, 实拍就是一团糊。文案的「体积 +30%」在那团糊里根本读不出来。
+## ⇒ 换成一圈**从脚下窜起来的水柱**(涨潮) / **沉下去的水柱**(退潮)。
+const TIDE_TEX := "res://assets/sprites/vfx/tide-swell.png"
+const TIDE_FRAMES := 12           # 0~5 涨 / 6~11 退(同一件效果的两个方向)
+const TIDE_CLIP := 6
+const TIDE_FPS := 13.0
+const TIDE_YARDS := 35.5          # 20 texel × 1.775 码/texel —— 1:1 不缩放
+const TIDE_H := 0.60
+var _tide_tex: Texture2D = null
+
+
+func tide_swell(at2d: Vector2, rising: bool, t_delay: float) -> void:
+	if battle._world == null:
+		return
+	if _tide_tex == null:
+		_tide_tex = load(TIDE_TEX)
+	if _tide_tex == null:
+		return                            # 缺图就不画, 不拿别的图顶替(素材不复用铁律)
+	var sp := _sheet_sprite(_tide_tex, TIDE_FRAMES, TIDE_YARDS)
+	sp.frame = 0 if rising else TIDE_CLIP
+	sp.render_priority = 5
+	sp.position = battle._world_pos(at2d, TIDE_H)
+	battle._world.add_child(sp)
+	## 走 `_anim_fx`(游戏钟逐帧, 放完自销); `t0` 往后推 = 一根一根错峰窜起来。
+	battle._anim_fx.append({
+		"spr": sp, "fps": TIDE_FPS, "n": TIDE_CLIP, "t0": battle._t + t_delay,
+		"base": 0 if rising else TIDE_CLIP,
+	})
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  035 黄铜齿轮 · 进账深海币 —— 头顶旋转金币
+# ════════════════════════════════════════════════════════════════════════════
+## 用户 2026-09-13:「这最好做一个头顶获得金币旋转的特效吧, 我也说不清,
+##   你搜搜网上 blender 有没有例子, 照着做一板板」。
+## ★参考是真找了真量了(OpenGameArt CC0 "Spinning Coin Sprites", 16 帧 × 32×32, **只量不用**),
+##   逐帧量出宽度包络再重采样到 12 帧 —— 详见 `tools/bake_coin_spin.py` 的头注。
+##   两条细节是纯 cos 给不出的: 正面**多停 2 帧**、侧面最窄**不为 0**(那是币的厚度)。
+const COIN_TEX := "res://assets/sprites/vfx/deepsea-coin-spin.png"
+const COIN_FRAMES := 12
+const COIN_FPS := 16.0            # 12 帧 / 16fps = 0.75 秒转一圈
+const COIN_YARDS := 32.0          # 18 texel × 1.775 码/texel
+const COIN_H0 := 2.85             # 起始高度(米) —— 实拍第一版给 1.55, 金币压在龟壳中间
+                                  #   而需求原话是「**头顶**获得金币旋转」; 龟高 2.0 m + 血条那一行 ⇒ 抬到 2.85 才真的在头顶上方
+const COIN_RISE := 0.55           # 往上飘多少米
+const COIN_LIFE := 1.05           # 存活(秒) —— 转一圈半
+var _coin_tex: Texture2D = null
+
+
+## 在 `u` 头顶生出 `n` 枚旋转金币(横向排开, 逐枚错峰), 边转边往上飘。
+## ★不挂 tween: tween 走未钳制真实 delta。走 `_follow_vfx` 的**位置+循环帧**通道,
+##   由 `battle_render` 每帧按游戏钟推 —— 与 `coin_until` 一起过期自销。
+func coin_pop(u: Dictionary, n: int) -> void:
+	if battle._world == null or u == null or not u.get("alive", false):
+		return
+	if _coin_tex == null:
+		_coin_tex = load(COIN_TEX)
+	if _coin_tex == null:
+		return                            # 缺图就不画, 不拿别的图顶替(素材不复用铁律)
+	for k in range(maxi(1, n)):
+		var sp := _sheet_sprite(_coin_tex, COIN_FRAMES, COIN_YARDS)
+		sp.render_priority = 9
+		var xoff: float = (float(k) - float(maxi(1, n) - 1) / 2.0) * 26.0
+		sp.position = battle._world_pos((u["pos"] as Vector2) + Vector2(xoff, 0.0),
+										float(u.get("height", 0.0)) + COIN_H0)
+		battle._world.add_child(sp)
+		battle._coin_fx.append({
+			"spr": sp, "unit": u, "xoff": xoff, "t0": battle._t + float(k) * 0.09,
+			"h0": float(u.get("height", 0.0)) + COIN_H0,
+		})
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  043 海浪护符 · 浪墙扫到谁那一下的水花
+# ════════════════════════════════════════════════════════════════════════════
+## 原 `_water_splash`(主场景) = `_skill_ring` 一圈**程序生成的椭圆环** + 4 颗
+## `VfxTex._make_glow_texture()` 上飘光点 —— 圆环与光球都在禁区里, 实拍在每个被扫到的
+## 单位脚下留下两个蓝圈, 读不出"被浪打到"。⇒ 换成真水花: 王冠状水冠 + 往外崩的水滴。
+const SPLASH_TEX := "res://assets/sprites/vfx/wave-splash.png"
+const SPLASH_FRAMES := 6
+const SPLASH_FPS := 15.0
+const SPLASH_YARDS := 42.6        # 24 texel × 1.775 码/texel —— 1:1 不缩放
+const SPLASH_H := 0.34
+var _splash_tex: Texture2D = null
+
+
+func wave_splash(at2d: Vector2, ally: bool) -> void:
+	if battle._world == null:
+		return
+	if _splash_tex == null:
+		_splash_tex = load(SPLASH_TEX)
+	if _splash_tex == null:
+		return                            # 缺图就不画, 不拿别的图顶替(素材不复用铁律)
+	var sp := _sheet_sprite(_splash_tex, SPLASH_FRAMES, SPLASH_YARDS)
+	sp.render_priority = 5
+	## 友军偏亮、敌人偏冷 —— 同一张图两种染色是"同一件效果的两侧", 不是拿别的图顶替
+	sp.modulate = Color(1.0, 1.0, 1.0) if ally else Color(0.72, 0.86, 1.0)
+	sp.position = battle._world_pos(at2d, SPLASH_H)
+	battle._world.add_child(sp)
+	battle._anim_fx.append({
+		"spr": sp, "fps": SPLASH_FPS, "n": SPLASH_FRAMES, "t0": battle._t,
+	})
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  036 温泉蛋 · 孵化升一级
+# ════════════════════════════════════════════════════════════════════════════
+## ★★用户 2026-09-13:「你复用素材了, 你凭什么敢?」「你用素材的时候 036,
+##   有没有直接拿旧素材做」—— 说中了。原 `_egg_level_up_vfx` 是三样现成货拼的:
+##     ① `_skill_ring(...)`                        程序生成的圆环(禁区)
+##     ② `VfxTex._make_fire_glow_tex()` 当"金光柱"  程序光球(禁区)
+##     ③ `_gold_chunk_erupt(...)` × 5              **直接拿 gold-chunk.png**, 那是【034 大熊】的素材
+##   而我上一轮体检 036 时**根本没读这个函数** —— 录制里没拍到升级, 就登记成
+##   "台子窗口不够长", 把一条真缺陷当成拍摄问题放过了(「没看见」当成「没问题」)。
+## ⇒ 这一张是 036 自己的素材, 形状说的也是它自己的事:
+##   蛋壳从中间裂开 → 壳片往两侧翻 → 缝里透出金光 → 温泉的热气团涌上来散开。
+const EGG_TEX := "res://assets/sprites/vfx/egg-hatch-levelup.png"
+const EGG_FRAMES := 8
+const EGG_FPS := 12.0             # 8 帧 / 12fps = 0.67 秒
+const EGG_YARDS := 78.1           # 22 texel × 1.775 × **2 倍整数缩放** —— 1× 时只有 20 屏幕像素,
+                                  #   实拍缩在龟脚边读不出是"蛋壳裂开"; 整数倍是像素风允许的放大
+const EGG_H := 1.05
+var _egg_tex: Texture2D = null
+
+
+func egg_hatch_levelup(at2d: Vector2) -> void:
+	if battle._world == null:
+		return
+	if _egg_tex == null:
+		_egg_tex = load(EGG_TEX)
+	if _egg_tex == null:
+		return                            # 缺图就不画, 不拿别的图顶替(素材不复用铁律)
+	var sp := _sheet_sprite(_egg_tex, EGG_FRAMES, EGG_YARDS)
+	sp.render_priority = 7
+	sp.position = battle._world_pos(at2d, EGG_H)
+	battle._world.add_child(sp)
+	battle._anim_fx.append({
+		"spr": sp, "fps": EGG_FPS, "n": EGG_FRAMES, "t0": battle._t,
+	})
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  037 蛋糕蜡烛 · 燃烧阶段的火焰爆开
+# ════════════════════════════════════════════════════════════════════════════
+## 用户 2026-09-13:「燃烧阶段不合适, 应该是**有火炎从中间爆开**, 有命中特效,
+##   **像烟雾那种感觉但是火焰**, 明白吗」。
+## 原状: `_boom_wave(u.pos, 260)` + 每个被波及敌人 `_boom_wave(o.pos, 110)` —— 用的是通用的
+##   `boom-wave-anim.png`(一圈冲击波环), 读出来是"环"不是"火"; 而且那张图在**借用台账**里
+##   (主场景 + dual_lane_flow 都在用), 037 是第三家。
+## ⇒ 037 自己的 `candle-fire-burst.png`: 中心炸开 → 翻滚的火团撑到最大 → **裂成几坨飘散**。
+##   「像烟雾」体现在**轮廓由圆鼓的团拼成 + 消散时整团裂开**, 不是一圈环也不是一簇尖火苗。
+## ★整数倍缩放(像素风): 1× = 85 码(命中点小爆) / 3× = 255.6 码(携带者脚下大爆)。
+const CFIRE_TEX := "res://assets/sprites/vfx/candle-fire-burst.png"
+const CFIRE_FRAMES := 8
+const CFIRE_FPS := 22.0           # 8 帧 / 22fps = **0.36 秒** —— 用户 2026-09-13:
+                                  #   「为什么燃烧爆发的时间要这么久, 特效应该就是火焰从中间爆开一下子的事」
+                                  #   上一版把参考那条电影级 50 帧整条照搬(含「炸开→收缩→二次点火」), 0.93 秒, 拖沓。
+const CFIRE_CELL := 188           # 一格多少 texel
+## ★★演出范围 = 判定范围(用户 2026-09-13:「没符合实际爆炸范围?」):
+##   判定是 `EquipSystem.CANDLE_BURN_R` = 500 码**半径** ⇒ 画面直径 1000 码。
+##   188 texel × **3 倍整数缩放** × 1.775 码/texel = 1001 码 —— 正好盖住判定圆。
+##   (上一版画成 255.6 码宽 = 判定的四分之一, 被当场点名。)
+const CFIRE_YARDS := 1001.0
+const CFIRE_H := 1.10
+## 命中: 那个敌人**被点燃** —— 与爆炸**不是同一件事, 不共用同一张表**。
+## (用户:「爆炸和命中是一回事吗我问你, 为什么用相同特效?」上一版两处只换了缩放。)
+const CIGN_TEX := "res://assets/sprites/vfx/candle-ignite.png"
+const CIGN_FRAMES := 8
+const CIGN_FPS := 14.0
+const CIGN_YARDS := 85.2          # 48 texel × 1.775 —— 1:1 不缩放, 约一个龟高
+const CIGN_H := 0.92
+var _cfire_tex: Texture2D = null
+var _cign_tex: Texture2D = null
+
+
+## 蜡烛自己炸开 —— 球状, 从中心向外。
+func candle_fire_burst(at2d: Vector2) -> void:
+	if battle._world == null:
+		return
+	if _cfire_tex == null:
+		_cfire_tex = load(CFIRE_TEX)
+	if _cfire_tex == null:
+		return                            # 缺图就不画, 不拿别的图顶替(素材不复用铁律)
+	var sp := _sheet_sprite(_cfire_tex, CFIRE_FRAMES, CFIRE_YARDS)
+	sp.render_priority = 8
+	sp.position = battle._world_pos(at2d, CFIRE_H)
+	battle._world.add_child(sp)
+	battle._anim_fx.append({
+		"spr": sp, "fps": CFIRE_FPS, "n": CFIRE_FRAMES, "t0": battle._t,
+	})
+
+
+## 被波及的敌人**被点燃** —— 火贴着他往上舔, 不是又一次爆炸。
+func candle_ignite(at2d: Vector2) -> void:
+	if battle._world == null:
+		return
+	if _cign_tex == null:
+		_cign_tex = load(CIGN_TEX)
+	if _cign_tex == null:
+		return
+	var sp := _sheet_sprite(_cign_tex, CIGN_FRAMES, CIGN_YARDS)
+	sp.render_priority = 9
+	sp.position = battle._world_pos(at2d, CIGN_H)
+	battle._world.add_child(sp)
+	battle._anim_fx.append({
+		"spr": sp, "fps": CIGN_FPS, "n": CIGN_FRAMES, "t0": battle._t,
+	})

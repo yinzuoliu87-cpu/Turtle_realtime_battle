@@ -523,6 +523,7 @@ run_audit "tools/dead_preload_audit.py"  "ALL OK" "dead_preload (preload 了却�
 #   holo_aura_tick / ember_light_cast 全是零调用者), 而 64 条门禁全绿 —— 因为门禁直接调它们。
 #   存量 10 个记台账只减不增; 新增的当场红。
 run_audit "tools/zero_caller_audit.py"   "ALL OK" "zero_caller (写了却没有任何人调的函数)"
+run_audit "tools/asset_borrow_audit.py"  "ALL OK" "asset_borrow (拿别件的素材顶替 · 铁律「新内容一律新素材」)"
 ## ★数据侧的同一类:「写了没人读」——「读了没人写」在代码侧由 zero_caller 管,
 ##   json 字段与素材这一侧一直只有一份**只打印不判决**的报告(恒 exit 0, 从没进过门禁),
 ##   里面躺着 12 个无消费者字段 + 4 张永远加载不到的素材。2026-09-02 改成台账棘轮。

@@ -45,6 +45,14 @@ func give(u: Dictionary) -> int:
 	u["maxHp"] = float(u.get("maxHp", 0.0)) + HP_PER_GUN
 	u["hp"] = float(u.get("hp", 0.0)) + HP_PER_GUN
 	u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) + ASPD_PCT_PER_GUN
+	## ★★读数要有出口: 镜像一份到 `eq_state`, 头像下的装备格就能显
+	##   【枪图标 + 右下角枚数】—— 走的是既有的 `EquipReadouts.COUNT` 通道,
+	##   不自造头顶条(memory: 读数一律进装备图标框)。
+	if not (u.get("eq_state", null) is Dictionary):
+		u["eq_state"] = {}
+	u["eq_state"]["gremlin_gun"] = {"n": n}
+	if battle != null and battle.has_method("_refresh_panel_equips"):
+		battle._refresh_panel_equips(u)
 	return n
 
 
@@ -74,3 +82,34 @@ func on_hit(src: Dictionary, basic: bool) -> void:
 	##   ⚠ 我第一版把 `true` 传在第 4 位 —— 那一位是 `src`, 不是 bool。签名是
 	##   `_apply_damage(u, dmg, col, src, bucket, is_self, ...)`。
 	battle._damage._apply_damage(src, maxi(1, int(round(d))), Color("#a06cd5"), null, "tru", true)
+
+## ★★2026-09-13 从 `equip_system.gd` 搬过来 —— 「把枪发出去」本来就是
+## 这把枪自己的事, 放在装备系统的大文件里只是历史位置。
+## (直接因: `equip_system.gd` 撑到 3001 行 > 架构预算 3000 —— 不再靠删注释凑行数,
+##  上一次那么干在 CRLF/LF 混排下**吃掉了两行代码**。)
+## FPGA板【登场】: 给**对方**随机 1/2/3 个敌人各一把古灵精怪枪(用户 2026-08-31 新增)。
+## ★这是【新增】的一条效果, 原来那条"每 N 秒抽 2-bit 状态给自己上 buff"一条没动。
+## ★挑人是**不重复**的 —— 需求说"1/2/3 个敌人", 同一个人塞两把不算两个敌人。
+##   (敌人不够时有几个给几个; 返回真给出去的把数, 门禁拿它当分母。)
+## ★用 `battle._battle_rng` 而不是裸 randi —— 确定性门禁(rng_discipline)守着这条。
+func hand_out(u: Dictionary, si: int) -> int:
+	var want: int = EquipSystem.FPGA_GUNS[si]
+	var foes: Array = []
+	var my_side: String = str(u.get("side", ""))
+	for o in battle._units:
+		if o is Dictionary and o.get("alive", false) and str(o.get("side", "")) != my_side 				and not o.get("_isEgg", false):
+			foes.append(o)
+	if foes.is_empty():
+		return 0
+	var given: int = 0
+	while given < want and not foes.is_empty():
+		var k: int = battle._battle_rng.randi() % foes.size()
+		give(foes[k])
+		## ★★「**扔**给目标一把古灵精怪枪」—— 需求原话里的动作。
+		##   之前这条路径**一个 vfx 调用都没有**: 属性静悄悄加上去, 玩家看不到发生过什么
+		##   (2026-09-01 逐句核对原话时抓到, 第 2 句)。
+		##   ★演出在结算【之后】—— give() 已经同步做完, 这条 tween 推不动也不影响数值。
+		battle._vfx._throw_item(u, foes[k], "gremlin-gun.png", "古灵精怪枪", Color("#8ae06a"))
+		foes.remove_at(k)          # ★不重复: 挑过就拿掉
+		given += 1
+	return given

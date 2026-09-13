@@ -257,6 +257,50 @@ func _ready() -> void:
 	_ok("⑦ 共享延时队列已排空", _s._equip_tick_sys._bolt_q.is_empty(),
 		"剩 %d 项" % _s._equip_tick_sys._bolt_q.size())
 
+	# ── ⑧ ★★★037 燃烧: 演出范围 = 判定范围 / 爆炸与命中是两件事 ──────
+	## 用户 2026-09-13:「没符合实际爆炸范围?」「爆炸和命中是一回事吗我问你, 为什么用相同特效?」
+	## 判据落在**真实建出来的精灵**(世界尺寸 + 用的哪张图), 不是读常量算。
+	_s._units.clear()
+	var c8: Dictionary = _mk(500.0, 400.0, "left")
+	c8["equips"] = [{"id": "p2eq_037", "star": 3}]
+	c8["eq_state"] = {"p2eq_037": {"candle": 2}}
+	_s._units.append(c8)
+	var foe8: Dictionary = _mk(760.0, 400.0, "right")   # 260 码, 在 500 码判定圈内
+	foe8["no_basic"] = true; foe8["no_move"] = true
+	_s._units.append(foe8)
+	var n8: int = _s._anim_fx.size()
+	var h8: float = float(foe8["hp"])
+	_s._equip_sys._eq_candle_tick(c8, 2, c8["eq_state"]["p2eq_037"])
+	var burst = null
+	var ign = null
+	for e8 in _s._anim_fx:
+		var sp8 = e8["spr"]
+		if not is_instance_valid(sp8) or sp8.texture == null:
+			continue
+		var rp: String = str(sp8.texture.resource_path)
+		if rp.ends_with("candle-fire-burst.png"):
+			burst = sp8
+		elif rp.ends_with("candle-ignite.png"):
+			ign = sp8
+	_ok("⑧ ★分母: 燃烧那一下建出了 %d 个帧动画(之前 %d)" % [_s._anim_fx.size() - n8, n8],
+		_s._anim_fx.size() - n8 >= 2)
+	_ok("⑧ ★★爆炸与命中用的是**两张不同的图**(爆炸 %s / 点燃 %s)"
+		% ["有" if burst != null else "无", "有" if ign != null else "无"],
+		burst != null and ign != null,
+		"上一版两处用同一张表只换缩放 —— 爆炸是蜡烛炸开, 命中是那个敌人被点燃, 不是一回事")
+	if burst != null:
+		## 世界宽度 = cell texel × pixel_size ÷ WS = 码
+		var wy: float = float(_s._vfx.CFIRE_CELL) * float(burst.pixel_size) / _s.WS
+		_ok("⑧ ★★★爆炸演出半径 %.0f 码 = 判定半径 %.0f 码(CANDLE_BURN_R)"
+			% [wy * 0.5, ES.CANDLE_BURN_R],
+			absf(wy * 0.5 - ES.CANDLE_BURN_R) <= 6.0,
+			"上一版画成 255.6 码宽 = 判定的四分之一; 判据量的是真实精灵的世界尺寸")
+		_ok("⑧ ★整数倍缩放(像素风): pixel_size / 0.0426 = %.2f 应为整数"
+			% (float(burst.pixel_size) / 0.0426),
+			absf(float(burst.pixel_size) / 0.0426 - round(float(burst.pixel_size) / 0.0426)) < 0.02)
+	_ok("⑧ ★★圈内敌人确实挨了魔法伤(掉血 %.0f)" % (h8 - float(foe8["hp"])),
+		h8 - float(foe8["hp"]) > 0.0)
+
 	_done()
 
 
@@ -266,8 +310,8 @@ func _done() -> void:
 	await get_tree().process_frame
 	print("")
 	print("  分母: 共 %d 条断言" % _n)
-	if _n < 27:
-		print("  [FAIL] ★断言只有 %d 条(<27) —— 有用例中途中止了" % _n)
+	if _n < 32:
+		print("  [FAIL] ★断言只有 %d 条(<32) —— 有用例中途中止了" % _n)
 		_fail += 1
 	print("ALL PASS — 037/038/039" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)

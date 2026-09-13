@@ -357,7 +357,7 @@ func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
 	##   借它的车不用给上帝文件加行(架构预算只减不增, 我第一版加在那边当场红)。
 	if u.get("_gremlin_pending", false):
 		u["_gremlin_pending"] = false
-		_eq_fpga_hand_out_guns(u, int(u.get("_gremlin_si", 0)))
+		_gremlin.hand_out(u, int(u.get("_gremlin_si", 0)))
 	## 096 小木斧【登场】: 首帧召唤斧头(同 058/032/040 的 pending 模式)。
 	if u.get("_axe_pending", false):
 		u["_axe_pending"] = false
@@ -529,14 +529,15 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 			ct.tween_property(c, "modulate", Color(1.4, 1.15, 0.85, 1.0), 0.12)
 			ct.tween_property(c, "scale", Vector3.ONE * 1.3, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 			ct.chain().tween_property(c, "scale", Vector3.ONE, 0.25)
-		battle._boom_wave(u["pos"], 260.0)   # AI生成爆炸波动画(原地大爆炸)
+		## ★2026-09-13 用户要「火炎从中间爆开」; 原 `_boom_wave` 是通用冲击波环且在借用台账里。做法见 tools/bake_candle_fire.py。
+		battle._vfx.candle_fire_burst(u["pos"])   # 直径 1001 码 = 判定半径 500 码 × 2
 		battle._shake(0.06)
 		var dmg37: float = float([20, 30, 44][si]) + u["atk"] * [0.5, 0.7, 1.0][si]
 		for o in battle._targeting._enemies_of(u):
 			if o["pos"].distance_to(u["pos"]) <= CANDLE_BURN_R:   # 499→500(用户2026-07-19)
 				battle._damage._apply_damage_from(u, o, battle._resolve_dmg(u, dmg37, o, true), Color("#ffb066"), 0.0, false, true)   # 魔法伤(蓝字), 非真伤
 				battle._damage._apply_dot_stacks(o, "burn", [20, 30, 40][si], u)
-				battle._boom_wave(o["pos"], 110.0)   # 每个被波及敌小爆
+				battle._vfx.candle_ignite(o["pos"])   # 命中 = **被点燃**(另一张表), 不是又一次爆炸
 
 ## (已删 _eq_signal_tick —— 信号放大器 2026-07-31 效果重做后它是死代码:
 ##  原来是"每 6 秒随机一段 3.5 秒增伤", 现在改成"普攻叠层 + 每 5 层放弧形波"(SignalWaveSystem)。
@@ -712,34 +713,6 @@ const FPGA_BUFF_SEC := 3.5       # 10/11 的持续秒数
 const FPGA_10_AMP := 0.15        # 10: 增伤(放大自身造成的所有伤害)
 const FPGA_11_DR := 0.25         # 11: 受到伤害减免(真实伤害除外)
 
-## FPGA板【登场】: 给**对方**随机 1/2/3 个敌人各一把古灵精怪枪(用户 2026-08-31 新增)。
-## ★这是【新增】的一条效果, 原来那条"每 N 秒抽 2-bit 状态给自己上 buff"一条没动。
-## ★挑人是**不重复**的 —— 需求说"1/2/3 个敌人", 同一个人塞两把不算两个敌人。
-##   (敌人不够时有几个给几个; 返回真给出去的把数, 门禁拿它当分母。)
-## ★用 `battle._battle_rng` 而不是裸 randi —— 确定性门禁(rng_discipline)守着这条。
-func _eq_fpga_hand_out_guns(u: Dictionary, si: int) -> int:
-	var want: int = FPGA_GUNS[si]
-	var foes: Array = []
-	var my_side: String = str(u.get("side", ""))
-	for o in battle._units:
-		if o is Dictionary and o.get("alive", false) and str(o.get("side", "")) != my_side 				and not o.get("_isEgg", false):
-			foes.append(o)
-	if foes.is_empty():
-		return 0
-	var given: int = 0
-	while given < want and not foes.is_empty():
-		var k: int = battle._battle_rng.randi() % foes.size()
-		_gremlin.give(foes[k])
-		## ★★「**扔**给目标一把古灵精怪枪」—— 需求原话里的动作。
-		##   之前这条路径**一个 vfx 调用都没有**: 属性静悄悄加上去, 玩家看不到发生过什么
-		##   (2026-09-01 逐句核对原话时抓到, 第 2 句)。
-		##   ★演出在结算【之后】—— give() 已经同步做完, 这条 tween 推不动也不影响数值。
-		battle._vfx._throw_item(u, foes[k], "gremlin-gun.png", "古灵精怪枪", Color("#8ae06a"))
-		foes.remove_at(k)          # ★不重复: 挑过就拿掉
-		given += 1
-	return given
-
-
 func _eq_fpga_tick(u: Dictionary, si: int) -> void:
 	battle._skill_ring(u["pos"], Color(0.4, 0.9, 1.0, 0.42), 46.0)
 	var codes := ["00", "01", "10", "11"]
@@ -747,7 +720,8 @@ func _eq_fpga_tick(u: Dictionary, si: int) -> void:
 	var n: int = FPGA_PICKS[si]
 	for k in range(n):
 		var pick: int = battle._battle_rng.randi() % 4
-		var xoff: float = (float(k) - float(n - 1) / 2.0) * 34.0
+		## ★间距 34 → 80 码: 飘字是屏幕空间固定字号而偏移是世界码(34 码 ≈ 17 像素 < 两字宽) ⇒ ★３ 四码连成一串。
+		var xoff: float = (float(k) - float(n - 1) / 2.0) * 80.0
 		battle._vfx._float_text(u["pos"] + Vector2(xoff, -72.0), codes[pick], ccols[pick])   # 二进制码头顶跳
 		match pick:
 			0: battle._damage._heal(u, u["maxHp"] * FPGA_00_HEAL_PCT); u["base_def"] += FPGA_00_RESIST; u["base_mr"] += FPGA_00_RESIST; battle._recalc_stats(u)   # 用户2026-07-19: +2 → +12
@@ -1353,7 +1327,7 @@ func _eq_water_wave(u: Dictionary, si: int) -> void:
 			if not oo.get("alive", false): return
 			battle._damage._grant_shield(oo, [40.0, 95.0, 120.0][si])
 			oo["base_def"] += [2, 3, 5][si]; oo["base_mr"] += [2, 3, 5][si]; battle._recalc_stats(oo)
-			battle._water_splash(oo["pos"], true)
+			battle._vfx.wave_splash(oo["pos"], true)
 		battle._pending_shots.append({"delay": d, "fn": fn, "src": u})
 	for o in enemies:
 		var oo2: Dictionary = o
@@ -1363,7 +1337,7 @@ func _eq_water_wave(u: Dictionary, si: int) -> void:
 			if not oo2.get("alive", false): return
 			battle._damage._apply_damage_from(u, oo2, battle._resolve_dmg(u, float([60, 110, 200][si]), oo2, true), Color("#9be7ff"), 0.0, false, true)   # 魔法伤(蓝字)
 			oo2["base_def"] = maxf(0.0, oo2["base_def"] - [2, 3, 5][si]); oo2["base_mr"] = maxf(0.0, oo2["base_mr"] - [2, 3, 5][si]); battle._recalc_stats(oo2)
-			battle._water_splash(oo2["pos"], false)
+			battle._vfx.wave_splash(oo2["pos"], false)
 			battle._knock_up(oo2, oo2["pos"] - dir * 60.0, 6.5)   # 娜美式击飞: 顺浪方向往前推(非直上)
 			battle._vfx._hit_spark(oo2)
 		battle._pending_shots.append({"delay": d2, "fn": fn2, "src": u})
@@ -2594,7 +2568,6 @@ func _eq_check_hp_threshold(u: Dictionary) -> void:
 					if es.is_empty(): break
 					var o = es[battle._battle_rng.randi() % es.size()]
 					battle._spawn_fireball(u, o, int(o["maxHp"] * [0.08, 0.17, 0.30][si]), [30, 70, 150][si])
-					battle._skill_ring(o["pos"], Color(1.0, 0.45, 0.12, 0.6), 50.0)   # 火球爆裂环
 				fired = true
 	if fired:
 		u["hp50_fired"] = true

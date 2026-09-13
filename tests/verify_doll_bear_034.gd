@@ -213,6 +213,110 @@ func _ready() -> void:
 		_ok("⑤ ★★两击之后 %d 层(应 %d)" % [int(bear.get("bear_stacks", -1)), ET.BEAR_PAW_STACKS],
 			int(bear.get("bear_stacks", -1)) == ET.BEAR_PAW_STACKS)
 
+		# ── ⑥ ★★★冲击波本身(2026-09-13 重做后补的一整节) ─────────────────
+		## 重做之前**这一节根本不存在**: 波的推进与命中结算整个挂在
+		## `await process_frame` + `get_process_delta_time()` 上, 而 22 条断言一条都没碰它。
+		## 现在推进与结算走 `EquipTickSystem._tick_bear_waves`(游戏钟), 判据也落在那条钟上。
+		_s._units.clear()
+		_s._units.append(c4)
+		_s._units.append(bear)
+		bear["pos"] = Vector2(400.0, 400.0)
+		bear["bear_stacks"] = ET.BEAR_PAW_STACKS      # 下一击 = 冲击波
+		bear["atk_range"] = ET.BEAR_WAVE_RANGE
+		## 三个靶: ①线上近处 ②线上远处(仍在射程内) ③**偏出半宽**的旁观者(不该挨打)
+		var on1: Dictionary = _mk(700.0, 400.0, "right")       # 正前方 300 码
+		var on2: Dictionary = _mk(950.0, 400.0, "right")       # 正前方 550 码(<600 射程)
+		var offside: Dictionary = _mk(700.0, 700.0, "right")   # 正前方 300 码但侧偏 300 码
+		var beyond: Dictionary = _mk(1250.0, 400.0, "right")   # 正前方 850 码(>600 射程)
+		for x6 in [on1, on2, offside, beyond]:
+			x6["no_basic"] = true
+			x6["no_move"] = true
+			_s._units.append(x6)
+		var b6: Array = [float(on1["hp"]), float(on2["hp"]), float(offside["hp"]), float(beyond["hp"])]
+		var n_spr0: int = _s._world.get_child_count()
+		_s._big_bear_attack(bear, on1)
+		## 姿势(起身 0.4 + 砸下 0.12)留在 process 上 —— 让出真帧让那段协程跑完
+		var w6 := 0
+		while w6 < 240 and ets._bear_waves.is_empty():
+			await get_tree().process_frame
+			w6 += 1
+		_ok("⑥ ★分母: 冲击波起来了(在途 %d 条, 等了 %d 帧)" % [ets._bear_waves.size(), w6],
+			ets._bear_waves.size() == 1)
+		## ★演出是【一段一段地突起】(用户 2026-09-13 第二轮点名), 不是一面墙平移 ⇒
+		##   判据落在"波前每推进一段, 就多点出一排破土", 且这些破土**真的建进了 _world**。
+		var seg0: int = int((ets._bear_waves[0] as Dictionary).get("n_seg", -1)) if not ets._bear_waves.is_empty() else -1
+		var fx0: int = _s._anim_fx.size()
+		for _ks in range(int(0.25 / _s.SIM_DT)):
+			_s._sim_step(_s.SIM_DT, false, false)
+		var seg1: int = int((ets._bear_waves[0] as Dictionary).get("n_seg", -1)) if not ets._bear_waves.is_empty() else -1
+		_ok("⑥ ★★★破土是**逐段**点出来的(推 0.25 秒: 第 %d 段 → 第 %d 段, 在途帧动画 %d → %d)"
+			% [seg0, seg1, fx0, _s._anim_fx.size()],
+			seg1 > seg0 and _s._anim_fx.size() > fx0 and _s._world.get_child_count() > n_spr0,
+			"美术断言要验「真的建进 _world 并在游戏钟上逐帧播」, 不是只验函数被调过")
+		var want_seg: int = int(0.25 * ET.BEAR_WAVE_SPEED / ET.BEAR_WAVE_SEG)
+		_ok("⑥ ★★段数对得上波速(0.25 秒 × %.0f 码/秒 ÷ 每段 %.0f 码 = %d 段, 实测 %d 段)"
+			% [ET.BEAR_WAVE_SPEED, ET.BEAR_WAVE_SEG, want_seg, seg1 - seg0],
+			absi((seg1 - seg0) - want_seg) <= 1,
+			"演出的节拍必须就是波前的节拍 —— 对不上就是两套东西各走各的")
+		_ok("⑥ ★分母: 波刚起, 还一个都没打到(近靶掉血 %.0f)" % (b6[0] - float(on1["hp"])),
+			absf(b6[0] - float(on1["hp"])) < 0.01)
+		## ★★★只推 sim、**一帧都不让**(不 await process_frame): 推得动就证明它走的是游戏钟。
+		##   重做前这样推是纹丝不动的 —— 那正是「两条钟」这条病。
+		for _k6 in range(int((ET.BEAR_WAVE_RANGE / 500.0 + 0.5) / _s.SIM_DT)):
+			_s._sim_step(_s.SIM_DT, false, false)
+		_ok("⑥ ★★★只推 sim(一帧不让)波就走完并结算: 近靶 -%.0f / 远靶 -%.0f"
+			% [b6[0] - float(on1["hp"]), b6[1] - float(on2["hp"])],
+			b6[0] - float(on1["hp"]) > 0.0 and b6[1] - float(on2["hp"]) > 0.0,
+			"若为 0: 推进/结算又回到了 process delta(未钳制), 与战斗钟是两条钟")
+		_ok("⑥ ★★冲击波是 %.1f×攻击力物理(近靶实得 %.0f, 攻击力 %.0f)"
+			% [ET.BEAR_WAVE_COEF, b6[0] - float(on1["hp"]), float(bear["atk"])],
+			absf((b6[0] - float(on1["hp"])) - float(bear["atk"]) * ET.BEAR_WAVE_COEF) < 3.0)
+		_ok("⑥ ★★侧偏 300 码的旁观者**没挨打**(掉血 %.0f 应 0)" % (b6[2] - float(offside["hp"])),
+			absf(b6[2] - float(offside["hp"])) < 0.01,
+			"判定半宽 %.0f 码 —— 判据要卡住这个宽度, 宽一格就成了全场 AOE" % ET.BEAR_WAVE_HALF)
+		_ok("⑥ ★★射程外(850 > %.0f 码)的没挨打(掉血 %.0f 应 0)"
+			% [ET.BEAR_WAVE_RANGE, b6[3] - float(beyond["hp"])],
+			absf(b6[3] - float(beyond["hp"])) < 0.01)
+		## ★★★演出范围 = 判定范围(用户 2026-09-13 点名"尤其是宽度")。
+		## 探针实测过一次「画出来比判得到宽 67%」(中心铺到 ±103 + 精灵半宽 39 = ±142,
+		## 而判定半宽只有 85) ⇒ 这条焊进门禁, 免得下次改演出又漂出去。
+		## 判据落在**精灵的真实世界坐标**, 不是读常量算出来的(读常量 = 恒真式)。
+		var half_spr: float = _s._vfx.QUAKE_ERUPT_YARDS * 0.5
+		var max_perp := 0.0
+		var max_fwd := 0.0
+		var n_measured := 0
+		for e6 in _s._anim_fx:
+			var sp6 = e6["spr"]
+			if not is_instance_valid(sp6) or int(e6.get("n", 0)) != _s._vfx.QUAKE_ERUPT_FRAMES:
+				continue
+			n_measured += 1
+			var fld6: Vector2 = Vector2(sp6.position.x / _s.WS, sp6.position.z / _s.WS) + (_s._arena_center as Vector2)
+			var rel6: Vector2 = fld6 - Vector2(400.0, 400.0)
+			max_perp = maxf(max_perp, absf(rel6.y))
+			max_fwd = maxf(max_fwd, rel6.x)
+		_ok("⑥ ★分母: 量到了 %d 处破土的真实坐标" % n_measured, n_measured >= 6)
+		_ok("⑥ ★★★演出宽度不许超出判定: 视觉外缘 ±%.0f 码 ≤ 判定半宽 %.0f 码"
+			% [max_perp + half_spr, ET.BEAR_WAVE_HALF],
+			max_perp + half_spr <= ET.BEAR_WAVE_HALF + 2.0,
+			"破土中心最远 ±%.0f + 精灵半宽 %.0f" % [max_perp, half_spr])
+		_ok("⑥ ★★演出长度不许超出射程: 视觉前缘 %.0f 码 ≤ 射程 %.0f + 容差"
+			% [max_fwd + half_spr, ET.BEAR_WAVE_RANGE],
+			max_fwd + half_spr <= ET.BEAR_WAVE_RANGE + 45.0)
+		_ok("⑥ ★★被打到的会被拉回大熊身前(近靶 x %.0f → %.0f, 应更靠近 %.0f)"
+			% [700.0, float((on1["pos"] as Vector2).x), float((bear["pos"] as Vector2).x)],
+			float((on1["pos"] as Vector2).x) < 700.0)
+		## 波走完 + 淡尽 ⇒ 队列清空、土浪销毁、大熊解锁
+		for _k7 in range(int(1.2 / _s.SIM_DT)):
+			_s._sim_step(_s.SIM_DT, false, false)
+		await get_tree().process_frame          # queue_free 在帧末才真的摘掉
+		_ok("⑥ ★★波结束后自己收干净(在途 %d 条应 0)" % ets._bear_waves.size(),
+			ets._bear_waves.is_empty())
+		_ok("⑥ ★★大熊解锁复位(no_move=%s 应 false / _bear_voff=%s 应 0)"
+			% [str(bear.get("no_move", true)), str(bear.get("_bear_voff", Vector3.ONE))],
+			not bool(bear.get("no_move", true))
+				and (bear.get("_bear_voff", Vector3.ONE) as Vector3).length() < 0.001,
+			"原来解锁写在 process 那条循环的末尾 —— 循环没跑完就永远锁着")
+
 	_done()
 
 
@@ -222,8 +326,8 @@ func _done() -> void:
 	await get_tree().process_frame
 	print("")
 	print("  分母: 共 %d 条断言" % _n)
-	if _n < 22:
-		print("  [FAIL] ★断言只有 %d 条(<22) —— 有用例中途中止了" % _n)
+	if _n < 36:
+		print("  [FAIL] ★断言只有 %d 条(<36) —— 有用例中途中止了" % _n)
 		_fail += 1
 	print("ALL PASS — 034 玩偶小熊" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)

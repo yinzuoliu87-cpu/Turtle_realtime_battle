@@ -697,6 +697,15 @@ func _shot_loop() -> void:
 				print("[VFXLAB] mana_kick %.0f → 法器档=%d" % [kick, int(battle._staff_syn.tier_of(u))])
 				break
 
+	## ★`egg_kick`: 每 `egg_kick_iv` 秒给携带者灌一笔【孵化进度】(036 温泉蛋)。
+	## 由来(2026-09-13): ★3 的等级上限是 5, 要攒满 5×EGG_FULL(100)=500 点进度,
+	## 而按"每周期 +5 + 伤害×0.1"的自然速率, 十几秒的窗口**一次升级都拍不到** ——
+	## 上一轮因此把「没拍到」登记成了「台子窗口不够长」, 而真相是那段演出根本没人看过。
+	## ⇒ 给台子一个开关, 走**真实入口** `_egg_add_progress`(不是伪造演出)。
+	var ek: float = float(cfg.get("egg_kick", 0.0))
+	if ek > 0.0:
+		_egg_kick_loop(ek, float(cfg.get("egg_kick_iv", 2.0)))
+
 	var idx := 0
 	for t in _shots:
 		var want: float = float(t)
@@ -759,3 +768,18 @@ func _place_window_show() -> void:
 	var scr: Vector2i = DisplayServer.screen_get_usable_rect().size
 	DisplayServer.window_set_position(Vector2i(20, maxi(0, scr.y - win.y - 20)))
 	print("[VFXLAB] 只检测到 1 块屏 ⇒ 退回左下角")
+
+
+## 036 台子专用: 按固定间隔给携带者灌孵化进度, 让升级演出在窗口内反复发生。
+func _egg_kick_loop(amount: float, iv: float) -> void:
+	while is_instance_valid(battle) and _armed:
+		var t0: float = battle._t
+		var kw: int = Time.get_ticks_msec()
+		while battle._t - t0 < iv and Time.get_ticks_msec() - kw < int(STALL_WALL_SEC * 1000.0):
+			await get_tree().process_frame
+		if not is_instance_valid(battle):
+			return
+		for u in battle._units:
+			if u is Dictionary and u.get("_eqdemo_carrier", false) and u.get("alive", false):
+				battle._equip_tick_sys._egg_add_progress(u, amount)
+				break

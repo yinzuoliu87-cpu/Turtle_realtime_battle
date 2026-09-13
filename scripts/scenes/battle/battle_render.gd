@@ -225,6 +225,7 @@ func _render_step(rd: float, frozen: bool, in_ts: bool) -> void:
 	_tick_baton_zap_mark()         # 027 电击眩晕: 谁的 baton_zap_until 还没过就一直冒电弧
 	_tick_follow_vfx()             # 跟随特效(冰块等)贴目标最新世界坐标(含击飞height)
 	_tick_anim_fx()                # 位置固定的帧动画(技能环)按游戏时钟切帧·放完自销
+	_tick_coin_fx()                # 035 深海币: 头顶旋转金币(跟人 + 边转边上飘)
 	_update_ninja_marks()          # 忍者冲击标记(纯视觉·用户2026-07-12)
 	_tick_ink_links()              # 线条·连笔连接线跟随双方脚底(到期/死亡断链)
 	_update_overlay()
@@ -254,7 +255,9 @@ func _tick_anim_fx() -> void:
 			spr.queue_free()
 			battle._anim_fx.remove_at(i)
 			continue
-		spr.frame = maxi(0, fr)
+		## `base`: 同一张精灵表里放了不止一段动画时, 这一段从第几帧起(默认 0)。
+		## 041 的 `tide-swell.png` 就是 0~5 涨 / 6~11 退 —— 两段是同一件效果的两个方向。
+		spr.frame = int(f.get("base", 0)) + maxi(0, fr)
 
 
 
@@ -661,3 +664,32 @@ func _rum_glow(u: Dictionary, base: Color) -> Color:
 	## 轻微脉动 —— 酒气是"暖"不是"闪", 幅度压到 8%, 别做成告警灯。
 	var puls: float = 1.0 + RUM_GLOW_PULSE * sin(battle._t * 4.0)
 	return base.lerp(RUM_GLOW_COLOR, clampf(RUM_GLOW_AMT * k * puls, 0.0, 1.0))
+
+
+## 035 黄铜齿轮【进账深海币】的头顶金币: 跟着携带者走 + 循环切帧 + 往上飘, 到寿自销。
+## ★走游戏钟(`battle._t`), 不挂 tween —— tween 走未钳制真实 delta, 与战斗钟是两条钟。
+func _tick_coin_fx() -> void:
+	for i in range(battle._coin_fx.size() - 1, -1, -1):
+		var f: Dictionary = battle._coin_fx[i]
+		var spr = f["spr"]
+		if not is_instance_valid(spr):
+			battle._coin_fx.remove_at(i)
+			continue
+		var age: float = battle._t - float(f["t0"])
+		if age < 0.0:
+			spr.visible = false          # 错峰: 还没轮到这一枚
+			continue
+		spr.visible = true
+		var life: float = battle._vfx.COIN_LIFE
+		if age >= life:
+			spr.queue_free()
+			battle._coin_fx.remove_at(i)
+			continue
+		var u: Dictionary = f["unit"]
+		var at2d: Vector2 = (u["pos"] as Vector2) if u.get("alive", false) else Vector2.ZERO
+		if u.get("alive", false):
+			spr.position = battle._world_pos(at2d + Vector2(float(f["xoff"]), 0.0),
+				float(f["h0"]) + battle._vfx.COIN_RISE * (age / life))
+		spr.frame = int(age * battle._vfx.COIN_FPS) % battle._vfx.COIN_FRAMES
+		## ★只在最后 25% 才淡 —— 一出生就线性淡出是"淡出病"(实拍会读成一团土黄)
+		spr.modulate = Color(1, 1, 1, 1.0 if age < life * 0.75 else (1.0 - (age - life * 0.75) / (life * 0.25)))

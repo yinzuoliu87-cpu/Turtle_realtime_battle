@@ -155,7 +155,7 @@ func _ready() -> void:
 		var foes: Array = []
 		for k in range(4):
 			foes.append(_mk("right", Vector2(200.0, -60.0 + 40.0 * float(k))))
-		var given: int = _s._equip_sys._eq_fpga_hand_out_guns(carrier, si)
+		var given: int = _s._equip_sys._gremlin.hand_out(carrier, si)
 		var n_foe: int = 0
 		var n_dup: int = 0
 		for f in foes:
@@ -180,7 +180,7 @@ func _ready() -> void:
 	_s._units.clear()
 	var c2: Dictionary = _mk("left", Vector2(-200.0, 0.0))
 	var only1: Dictionary = _mk("right", Vector2(200.0, 0.0))
-	var g2: int = _s._equip_sys._eq_fpga_hand_out_guns(c2, 2)   # 3★ 想塞 3 把, 只有 1 个敌人
+	var g2: int = _s._equip_sys._gremlin.hand_out(c2, 2)   # 3★ 想塞 3 把, 只有 1 个敌人
 	_ok("★敌人不够时有几个给几个(3★ 只有 1 个敌人 → 给 1 把)",
 		g2 == 1 and int(only1.get("gremlin_guns", 0)) == 1, "给出 %d" % g2)
 
@@ -193,7 +193,7 @@ func _ready() -> void:
 
 	# ── ⑨ ★★「**扔**」这个动作真的演出来了 ──
 	## ★需求原话是「会**扔**给目标一把古灵精怪枪」。原来整条发枪路径
-	##   (`_eq_fpga_hand_out_guns`)**一个 vfx 调用都没有** —— 属性静悄悄加上去,
+	##   (`GremlinGun.hand_out`)**一个 vfx 调用都没有** —— 属性静悄悄加上去,
 	##   玩家看不到发生过什么。2026-09-01 逐句核对原话时抓到(第 2 句)。
 	## ★★判据落在**世界里真的多出了一个会飞的节点**, 不是"我插了个标记":
 	##   数 `battle._world` 的子节点增量 —— 那是产品自己的账。
@@ -218,16 +218,57 @@ func _ready() -> void:
 	_ok("★★古灵精怪枪有自己的新素材(不复用 eq-pistol-idle / conch-shotgun)",
 		ResourceLoader.exists("res://assets/sprites/vfx/gremlin-gun.png"))
 	## ★发枪的产品入口真的调了它 —— 不是只有门禁在调(零调用者那一整类)
-	var src40: String = FileAccess.get_file_as_string("res://scripts/systems/equip/equip_system.gd")
-	var seg: int = src40.find("func _eq_fpga_hand_out_guns")
+	## ★2026-09-13 `hand_out` 从 equip_system 搬进了 gremlin_gun(那本来就是这把枪自己的事)
+	var src40: String = FileAccess.get_file_as_string("res://scripts/systems/equip/gremlin_gun.gd")
+	var seg: int = src40.find("func hand_out")
 	var seg_end: int = src40.find("func ", seg + 10)
+	if seg_end < 0:
+		seg_end = src40.length()   # ★它是文件里最后一个函数 —— 找不到"下一个 func"不等于函数体是空的
 	_ok("★★★发枪的产品入口里真的调了 _throw_item(分母: 函数体 %d 字)"
 		% maxi(0, seg_end - seg),
 		seg >= 0 and seg_end > seg
 		and src40.substr(seg, seg_end - seg).contains("_throw_item("))
 
-	if _n < 24:
-		print("  [FAIL] ★分母: 断言只有 %d 条(<24)" % _n)
+	# ── ★★读数有没有出口: 枪要真的显进【头像下的装备格】 ──────────────
+	## 用户 2026-09-13:「我没懂为什么对面装备栏什么都没显示」—— 查实: `give()` 只加
+	## `gremlin_guns` 与四个属性字段, 而装备格是从 `u["equips"]` 取的 ⇒ 敌人那四格全空。
+	## 玩家看到一把枪飞过去、闪一下、**什么都没留下**: 看不出给了几把, 更看不出
+	## 那是个坑(持枪者每次普攻自伤 1% 最大生命真伤)。⇒ 补一格虚拟装备 + 右下角枚数。
+	## 判据落在**真实建出来的控件**(装备格子节点 + 计数标签登记), 不是"函数被调过"。
+	var pu: Dictionary = _s._spawn._make_unit("basic", "right", Vector2(700.0, 400.0))
+	pu["alive"] = true
+	_s._units.append(pu)
+	## 装备格行本体由队伍面板建(要整套 HUD), 门禁自己搭一个同类型的行再走**真函数**
+	## `_refresh_panel_equips` —— 测的是那个函数, 不是 HUD 的排版。
+	var row0 := HBoxContainer.new()
+	_s.add_child(row0)
+	pu["panel_eq_row"] = row0
+	pu["panel_count_labels"] = []
+	_s._refresh_panel_equips(pu)
+	_ok("★分母: 空装备的假人装备格是空的(%d 格)" % row0.get_child_count(),
+		row0.get_child_count() == 0,
+		"这就是用户看到的现象: 对面装备栏什么都没显示")
+	if true:
+		var nb0: int = row0.get_child_count()
+		_s._equip_sys._gremlin.give(pu)
+		_s._equip_sys._gremlin.give(pu)
+		_ok("★★★给了两把枪之后装备格多出来一格(%d → %d)"
+			% [nb0, row0.get_child_count()],
+			row0.get_child_count() == nb0 + 1,
+			"枪不在 u[\"equips\"] 里, 靠 _refresh_panel_equips 补的那一格虚拟槽")
+		var lbls: Array = pu.get("panel_count_labels", [])
+		var found := false
+		for cl in lbls:
+			if str(cl.get("iid", "")) == "gremlin_gun":
+				found = true
+		_ok("★★枚数徽章登记到了(共 %d 个计数标签)" % lbls.size(), found,
+			"走的是既有的 EquipReadouts.COUNT 通道, 不自造头顶条")
+		_ok("★★枚数读得到 2(eq_state 镜像 = %s)"
+			% str(pu.get("eq_state", {}).get("gremlin_gun", {})),
+			int(pu.get("eq_state", {}).get("gremlin_gun", {}).get("n", 0)) == 2)
+
+	if _n < 28:
+		print("  [FAIL] ★分母: 断言只有 %d 条(<28)" % _n)
 		_fail += 1
 	print("ALL PASS — 古灵精怪枪/FPGA" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)

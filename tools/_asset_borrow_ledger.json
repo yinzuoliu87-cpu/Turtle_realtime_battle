@@ -1,0 +1,54 @@
+{
+ "boom-wave-anim.png": [
+  "scripts/scenes/RealtimeBattle3DScene.gd",
+  "scripts/scenes/battle/dual_lane_flow.gd"
+ ],
+ "candy-burst.png": [
+  "scripts/scenes/RealtimeBattle3DScene.gd",
+  "scripts/systems/skills/candy_system.gd"
+ ],
+ "cannon-blast.png": [
+  "scripts/scenes/battle/battle_spawn.gd",
+  "scripts/systems/skills/pirate_system.gd",
+  "scripts/systems/trainer/trainer_system.gd"
+ ],
+ "chain-bolt.png": [
+  "scripts/scenes/RealtimeBattle3DScene.gd",
+  "scripts/systems/skills/pirate_system.gd"
+ ],
+ "dragon-flame.png": [
+  "scripts/systems/equip/dragon_system.gd",
+  "scripts/systems/skills/phoenix_system.gd",
+  "scripts/systems/skills/smolder_system.gd"
+ ],
+ "electric-zap.png": [
+  "scripts/scenes/RealtimeBattle3DScene.gd",
+  "scripts/systems/skills/lightning_system.gd"
+ ],
+ "fortune-coin-burst.png": [
+  "scripts/scenes/RealtimeBattle3DScene.gd",
+  "scripts/systems/skills/chest_system.gd",
+  "scripts/systems/skills/fortune_system.gd"
+ ],
+ "gambler-card.png": [
+  "scripts/scenes/battle/battle_ballistics.gd",
+  "scripts/systems/skills/gambler_system.gd"
+ ],
+ "ghost-wisp.png": [
+  "scripts/scenes/battle/battle_ballistics.gd",
+  "scripts/systems/skills/headless_system.gd"
+ ],
+ "gold-chunk.png": [
+  "scripts/scenes/RealtimeBattle3DScene.gd",
+  "scripts/systems/skills/chest_system.gd",
+  "scripts/systems/skills/stone_system.gd"
+ ],
+ "ink-splat.png": [
+  "scripts/scenes/RealtimeBattle3DScene.gd",
+  "scripts/systems/skills/line_system.gd"
+ ],
+ "lava-rock.png": [
+  "scripts/scenes/battle/battle_ballistics.gd",
+  "scripts/systems/skills/lava_system.gd"
+ ]
+}
