@@ -1,0 +1,323 @@
+{
+ "assets/sprites/equip/ancient-turret.png": [
+  "edge"
+ ],
+ "assets/sprites/equip/blood-amulet.png": [
+  "edge"
+ ],
+ "assets/sprites/equip/brass-gear.png": [
+  "edge"
+ ],
+ "assets/sprites/equip/brass-pistol.png": [
+  "edge"
+ ],
+ "assets/sprites/equip/chest-t-bloodblade.png": [
+  "edge"
+ ],
+ "assets/sprites/equip/chest-t-chain.png": [
+  "edge",
+  "hi"
+ ],
+ "assets/sprites/equip/chest-t-dagger.png": [
+  "colors",
+  "edge",
+  "hi"
+ ],
+ "assets/sprites/equip/chest-t-gem_armor.png": [
+  "edge"
+ ],
+ "assets/sprites/equip/chest-t-long_sword.png": [
+  "edge",
+  "hi"
+ ],
+ "assets/sprites/equip/chest-t-phoenix_statue.png": [
+  "edge"
+ ],
+ "assets/sprites/equip/chest-t-rum.png": [
+  "edge"
+ ],
+ "assets/sprites/equip/chest-t-stone.png": [
+  "edge"
+ ],
+ "assets/sprites/equip/chest-t-thunder.png": [
+  "edge"
+ ],
+ "assets/sprites/equip/conch-shotgun.png": [
+  "hi"
+ ],
+ "assets/sprites/equip/consumable-bomb.png": [
+  "size"
+ ],
+ "assets/sprites/equip/consumable-cleanse.png": [
+  "edge",
+  "hi",
+  "size"
+ ],
+ "assets/sprites/equip/consumable-firstaid.png": [
+  "edge",
+  "hi",
+  "size"
+ ],
+ "assets/sprites/equip/consumable-mark.png": [
+  "size"
+ ],
+ "assets/sprites/equip/consumable-rage.png": [
+  "size"
+ ],
+ "assets/sprites/equip/consumable-shield.png": [
+  "size"
+ ],
+ "assets/sprites/equip/deepsea-necklace.png": [
+  "hi"
+ ],
+ "assets/sprites/equip/dungeon-amplifier.png": [
+  "size"
+ ],
+ "assets/sprites/equip/dungeon-armor.png": [
+  "size"
+ ],
+ "assets/sprites/equip/dungeon-blade.png": [
+  "size"
+ ],
+ "assets/sprites/equip/dungeon-candle-off.png": [
+  "size"
+ ],
+ "assets/sprites/equip/dungeon-conch.png": [
+  "edge",
+  "hi",
+  "size"
+ ],
+ "assets/sprites/equip/dungeon-crystal.png": [
+  "size"
+ ],
+ "assets/sprites/equip/dungeon-dart.png": [
+  "size"
+ ],
+ "assets/sprites/equip/dungeon-doll.png": [
+  "size"
+ ],
+ "assets/sprites/equip/dungeon-dragon-egg.png": [
+  "edge"
+ ],
+ "assets/sprites/equip/dungeon-fire-coral.png": [
+  "edge",
+  "size"
+ ],
+ "assets/sprites/equip/dungeon-fpga.png": [
+  "size"
+ ],
+ "assets/sprites/equip/dungeon-ghost.png": [
+  "size"
+ ],
+ "assets/sprites/equip/dungeon-hammer.png": [
+  "size"
+ ],
+ "assets/sprites/equip/dungeon-hourglass.png": [
+  "size"
+ ],
+ "assets/sprites/equip/dungeon-jelly.png": [
+  "size"
+ ],
+ "assets/sprites/equip/dungeon-octo.png": [
+  "size"
+ ],
+ "assets/sprites/equip/dungeon-pearl.png": [
+  "size"
+ ],
+ "assets/sprites/equip/dungeon-revolver.png": [
+  "size"
+ ],
+ "assets/sprites/equip/dungeon-starfish.png": [
+  "edge",
+  "size"
+ ],
+ "assets/sprites/equip/dungeon-wave.png": [
+  "edge",
+  "size"
+ ],
+ "assets/sprites/equip/ebb-vial.png": [
+  "edge"
+ ],
+ "assets/sprites/equip/ember-flask.png": [
+  "edge"
+ ],
+ "assets/sprites/equip/eq010-icon.png": [
+  "colors"
+ ],
+ "assets/sprites/equip/eq011-icon.png": [
+  "colors",
+  "hi"
+ ],
+ "assets/sprites/equip/eq012-icon.png": [
+  "colors",
+  "hi"
+ ],
+ "assets/sprites/equip/eq014-icon.png": [
+  "colors",
+  "hi"
+ ],
+ "assets/sprites/equip/eq015-icon.png": [
+  "colors",
+  "edge",
+  "hi"
+ ],
+ "assets/sprites/equip/eq016-icon.png": [
+  "colors",
+  "hi"
+ ],
+ "assets/sprites/equip/eq017-icon.png": [
+  "colors"
+ ],
+ "assets/sprites/equip/eq019-icon.png": [
+  "colors",
+  "edge",
+  "hi"
+ ],
+ "assets/sprites/equip/eq020-icon.png": [
+  "colors"
+ ],
+ "assets/sprites/equip/equip-bamboo-leaf.png": [
+  "size"
+ ],
+ "assets/sprites/equip/equip-chain-icon.png": [
+  "size"
+ ],
+ "assets/sprites/equip/equip-crown-icon.png": [
+  "size"
+ ],
+ "assets/sprites/equip/equip-fire-icon.png": [
+  "edge",
+  "size"
+ ],
+ "assets/sprites/equip/equip-gem-icon.png": [
+  "size"
+ ],
+ "assets/sprites/equip/equip-incubator.png": [
+  "size"
+ ],
+ "assets/sprites/equip/equip-lightning-staff.png": [
+  "edge",
+  "size"
+ ],
+ "assets/sprites/equip/equip-phoenix-icon.png": [
+  "edge",
+  "size"
+ ],
+ "assets/sprites/equip/equip-poison-icon.png": [
+  "size"
+ ],
+ "assets/sprites/equip/equip-rock-icon.png": [
+  "edge",
+  "size"
+ ],
+ "assets/sprites/equip/equip-rum-icon.png": [
+  "size"
+ ],
+ "assets/sprites/equip/equip-star-icon.png": [
+  "edge",
+  "size"
+ ],
+ "assets/sprites/equip/equip-stun-baton.png": [
+  "size"
+ ],
+ "assets/sprites/equip/equip-sword-icon.png": [
+  "size"
+ ],
+ "assets/sprites/equip/equip-turtle-helmet.png": [
+  "size"
+ ],
+ "assets/sprites/equip/equip-turtle-shell.png": [
+  "size"
+ ],
+ "assets/sprites/equip/equip-turtle-sword.png": [
+  "size"
+ ],
+ "assets/sprites/equip/equip-vamp-icon.png": [
+  "edge",
+  "size"
+ ],
+ "assets/sprites/equip/laser-pistol.png": [
+  "edge"
+ ],
+ "assets/sprites/equip/p2eq_003.png": [
+  "hi"
+ ],
+ "assets/sprites/equip/p2eq_007.png": [
+  "colors"
+ ],
+ "assets/sprites/equip/p2eq_008.png": [
+  "colors"
+ ],
+ "assets/sprites/equip/p2eq_063.png": [
+  "edge",
+  "hi"
+ ],
+ "assets/sprites/equip/p2eq_064.png": [
+  "hi"
+ ],
+ "assets/sprites/equip/p2eq_065.png": [
+  "colors",
+  "hi"
+ ],
+ "assets/sprites/equip/p2eq_066.png": [
+  "edge"
+ ],
+ "assets/sprites/equip/p2eq_067.png": [
+  "hi"
+ ],
+ "assets/sprites/equip/p2eq_071.png": [
+  "hi"
+ ],
+ "assets/sprites/equip/p2eq_076.png": [
+  "hi"
+ ],
+ "assets/sprites/equip/p2eq_078.png": [
+  "edge"
+ ],
+ "assets/sprites/equip/p2eq_080.png": [
+  "hi"
+ ],
+ "assets/sprites/equip/p2eq_083.png": [
+  "hi"
+ ],
+ "assets/sprites/equip/p2eq_084.png": [
+  "hi"
+ ],
+ "assets/sprites/equip/p2eq_085.png": [
+  "edge"
+ ],
+ "assets/sprites/equip/p2eq_088.png": [
+  "edge"
+ ],
+ "assets/sprites/equip/p2eq_089.png": [
+  "hi"
+ ],
+ "assets/sprites/equip/p2eq_090.png": [
+  "hi"
+ ],
+ "assets/sprites/equip/p2eq_094.png": [
+  "hi"
+ ],
+ "assets/sprites/equip/pierce-shell.png": [
+  "edge"
+ ],
+ "assets/sprites/equip/repeat-crossbow.png": [
+  "edge"
+ ],
+ "assets/sprites/equip/scope.png": [
+  "edge"
+ ],
+ "assets/sprites/equip/sniper-barrel.png": [
+  "edge",
+  "hi"
+ ],
+ "assets/sprites/equip/turtle-whistle.png": [
+  "edge"
+ ],
+ "assets/sprites/equip/tyrant-fang.png": [
+  "edge"
+ ],
+ "assets/sprites/equip/virus-arrow.png": [
+  "edge"
+ ]
+}

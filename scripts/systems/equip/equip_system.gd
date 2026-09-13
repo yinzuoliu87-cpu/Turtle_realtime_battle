@@ -593,6 +593,21 @@ const VIAL_IV := 6.0              # 真值在 EQ_IV_BATCH1, 那里引用本常�
 const CORAL_MANA_PER_HIT := 10.0  # 每段攻击命中给自己多少法力
 const CORAL_ARC_DEG := 60.0       # 火焰波扇面全角(度)·判定用半角
 const CORAL_TRAVEL := 550.0       # 火焰波向前推进多远(码)
+const CORAL_WINDUP := 0.4         # 蓄力多久(秒·游戏钟)
+const CORAL_SPEED := 320.0        # 波前推进速度(码/秒·游戏钟) ⇒ 550 码走 1.72 秒
+const CORAL_BAND := 65.0          # 波前判定带半宽(码) —— 演出的火簇就摆在这条带上
+const CORAL_BURN := [40, 60, 90]  # 每星级施加的灼烧层数(用户2026-07-19: 原固定60不吃星级)
+## ── 火焰波的火簇素材(tools/blender_firecrest.py 烤, truefire 调色板) ──
+const CORAL_CREST_TEX := "res://assets/sprites/vfx/fire-crest.png"
+const CORAL_CREST_FRAMES := 8
+const CORAL_CREST_CELL := 28
+const CORAL_CREST_FPS := 12.0
+## ★格子从 40 缩到 28: 40 texel(1.70 m)的火簇沿弧排开读成**一堵火墙/一条火蛇**, 不是「一道波」。
+##   缩簇**只能重烤成小格**, 不能改 pixel_size —— pixel_size 必须钉死 0.0426(1 texel : 1 屏幕像素)。
+const CORAL_CREST_YARDS := 49.7   # 28 texel × 0.0426 m ÷ WS = 1.19 m(龟高 2.0 m)
+const CORAL_CREST_H := 0.596      # 贴图中心 = 半格(28/2 × 0.0426) ⇒ 火底齐地(022 那条教训)
+const CORAL_CREST_MAX := 20       # 最多摆几簇(护栏: 弧长随距离线性涨)
+var _firecrest_tex: Texture2D = null
 ## 【051 激光手枪】无限穿透的直线激光, 首个吃满、身后的减半。
 const PISTOL_LASER_BAND := 50.0   # 判定带半宽(码)
 const PISTOL_LASER_FALLOFF := 0.5 # 首个之后的敌人受到的比例
@@ -2087,7 +2102,22 @@ func _moon_sprite(tex_path: String, vframes: int, dirf: int, org: Vector2, dir: 
 	return sp
 # 灼热火珊瑚 023(主动满法力)
 # 灼热火珊瑚 023(主动满法力)
-func _eq_fire_coral_active(src: Dictionary, si: int) -> void:   # 灼热火珊瑚023主动: 蓄力→挥出60°扇形火焰波(缓移550码,边挥边扩)→接触敌施 40/60/90 层灼烧(用户2026-07-19: 原固定60不吃星级)
+func _eq_fire_coral_active(src: Dictionary, si: int) -> void:
+	## 023 灼热火珊瑚【主动】: 蓄力 → 朝敌方挥出一道火焰波, 在 CORAL_ARC_DEG 度扇形内
+	## 缓慢推进 CORAL_TRAVEL 码, 扫到的敌人各吃 40/60/90 层灼烧。
+	##
+	## ★★2026-09-13 重写。上一版实拍 + 探针确诊三条硬伤:
+	##   ① 波是 `VfxTex._make_qi_texture()` **程序生成的气波**染橙 —— 复用别件的原语
+	##      (素材不复用铁律), 也不是像素画;
+	##   ② **没设 texture_filter** ⇒ 探针实测 Sprite3D 默认 `LINEAR_WITH_MIPMAPS`(=3);
+	##      而且每帧 `wave.scale = ...` **连续缩放** —— 像素风三条硬约束破了两条;
+	##   ③ 推进与判定都挂在 `get_process_delta_time()` 上 = **第二条钟**
+	##      (CLAUDE.md §3.5 / memory [[fb-second-clock-drops-events]])。
+	##
+	## ★★现在: 波 = 沿弧摆的**一排直立火簇**(fire-crest.png, 8 帧循环)。
+	##   火焰永远朝上 ⇒ 贴片**一次都不用转**(像素风不许自由旋转),
+	##   波变长就**多摆几个(整数个)** ⇒ 不需要连续缩放。形状是被约束逼出来的。
+	##   推进走**游戏钟**(`_wait_sim`), 伤害抽成 `_fire_coral_wave_hit()` 供门禁直调。
 	if not src.get("alive", false): return
 	var es = battle._targeting._enemies_of(src)
 	var dir := Vector2.RIGHT
@@ -2096,36 +2126,76 @@ func _eq_fire_coral_active(src: Dictionary, si: int) -> void:   # 灼热火珊�
 		for o in es: cen += o["pos"]
 		dir = (cen / float(es.size()) - src["pos"]).normalized()
 	battle._anticipate(src); battle._shake(battle.JUICE_SHAKE_HEAVY)   # 蓄力
-	await battle._wait_sim(0.4)
-	if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
+	await battle._wait_sim(CORAL_WINDUP)
+	if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free)
 	if not is_instance_valid(self) or not src.get("alive", false): return
 	var origin: Vector2 = src["pos"]
-	var wave := Sprite3D.new()   # 橙火弯月波(躺平朝dir, 边挥边扩)
-	wave.texture = VfxTex._make_qi_texture(Color(1.0, 0.5, 0.15))
-	wave.billboard = BaseMaterial3D.BILLBOARD_DISABLED; wave.axis = Vector3.AXIS_Y; wave.shaded = false; wave.transparent = true
-	wave.pixel_size = 0.06; wave.rotation.y = -atan2(dir.y, dir.x); wave.modulate = Color(1.0, 0.58, 0.22)   # 橙火色
-	wave.position = battle._world_pos(origin, 0.4)
-	battle._world.add_child(wave)
+	var t0: float = battle._t
+	var pool: Array = []
 	var hit: Array = []
 	var traveled := 0.0
-	var half := deg_to_rad(CORAL_ARC_DEG * 0.5)   # 60°扇形半角
-	while is_instance_valid(battle) and traveled < CORAL_TRAVEL and is_instance_valid(wave) and is_instance_valid(self):
-		await battle.get_tree().process_frame
-		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
-		traveled += 320.0 * battle.get_process_delta_time()   # 缓慢外移
-		wave.position = battle._world_pos(origin + dir * traveled, 0.4)
-		wave.scale = Vector3(2.2 + traveled / CORAL_TRAVEL * 4.5, 3.2, 1.0)   # 边挥边扩
-		for o in battle._targeting._enemies_of(src):
-			if battle._arr_has_unit(hit, o): continue
-			var rel: Vector2 = o["pos"] - origin
-			if rel.dot(dir) <= 0.0: continue
-			if absf(rel.angle_to(dir)) > half: continue   # 60°扇形内
-			if absf(rel.length() - traveled) > 65.0: continue   # 波前带
-			hit.append(o)
-			battle._damage._apply_dot_stacks(o, "burn", [40, 60, 90][si], src)   # 用户2026-07-19: 原固定60不吃星级
-			battle._skill_ring(o["pos"], Color(1.0, 0.5, 0.2, 0.6), 46.0)
-	if is_instance_valid(wave):
-		var tw = battle._reg_tween(); tw.tween_property(wave, "modulate:a", 0.0, 0.2); tw.tween_callback(wave.queue_free)
+	while is_instance_valid(battle) and is_instance_valid(self) and traveled < CORAL_TRAVEL:
+		await battle._wait_sim(battle.SIM_DT)
+		if not is_instance_valid(battle) or not is_instance_valid(self): break
+		traveled += CORAL_SPEED * battle.SIM_DT      # ★走游戏钟, 不用未钳制的真实 delta
+		_fire_coral_place(pool, origin, dir, traveled, t0)
+		_fire_coral_wave_hit(src, origin, dir, traveled, hit, si)
+	for sp in pool:
+		if is_instance_valid(sp): sp.queue_free()
+
+
+## 把火簇摆到当前波前上 —— 摆几个是**算出来的整数**(弧长 / 簇间距), 不是缩放。
+func _fire_coral_place(pool: Array, origin: Vector2, dir: Vector2, traveled: float, t0: float) -> void:
+	if battle._world == null: return
+	var half := deg_to_rad(CORAL_ARC_DEG * 0.5)
+	## 弧长 = 半径 × 张角; 簇间距取簇宽的 0.62 倍 ⇒ 相邻互相盖住一截, 连成一道波
+	var arc: float = traveled * (2.0 * half)
+	var step: float = CORAL_CREST_YARDS * 0.80
+	var n: int = clampi(int(ceil(arc / maxf(1.0, step))) + 1, 2, CORAL_CREST_MAX)
+	while pool.size() < n:
+		var sp := Sprite3D.new()
+		if _firecrest_tex == null: _firecrest_tex = load(CORAL_CREST_TEX)
+		if _firecrest_tex == null: return        # 素材没 import 就静默跳过, 不崩战斗
+		sp.texture = _firecrest_tex
+		sp.hframes = CORAL_CREST_FRAMES
+		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		sp.shaded = false; sp.transparent = true
+		sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # ★不设就是 LINEAR_WITH_MIPMAPS(探针实测=3)
+		sp.no_depth_test = true
+		sp.render_priority = 5
+		sp.pixel_size = (CORAL_CREST_YARDS * battle.WS) / float(CORAL_CREST_CELL)
+		battle._world.add_child(sp)
+		pool.append(sp)
+	var fr: int = int((battle._t - t0) * CORAL_CREST_FPS) % CORAL_CREST_FRAMES
+	for i in range(pool.size()):
+		var sp2 = pool[i]
+		if not is_instance_valid(sp2): continue
+		if i >= n:
+			sp2.visible = false; continue
+		sp2.visible = true
+		## 沿弧均分: -half .. +half
+		var a: float = -half + (2.0 * half) * (float(i) / float(maxi(1, n - 1)))
+		var d2: Vector2 = dir.rotated(a)
+		sp2.position = battle._world_pos(origin + d2 * traveled, CORAL_CREST_H)
+		## 每簇错开相位 ⇒ 整道波在翻腾, 不是一排同步的复制品(被否过的「规则图案」)
+		sp2.frame = (fr + i * 3) % CORAL_CREST_FRAMES
+
+
+## 波前判定 —— **从演出里抽出来**: 门禁直调它验伤害, 不用等演出跑完(CLAUDE.md §3.5)。
+func _fire_coral_wave_hit(src: Dictionary, origin: Vector2, dir: Vector2,
+		traveled: float, hit: Array, si: int) -> int:
+	var half := deg_to_rad(CORAL_ARC_DEG * 0.5)
+	var n := 0
+	for o in battle._targeting._enemies_of(src):
+		if battle._arr_has_unit(hit, o): continue
+		var rel: Vector2 = o["pos"] - origin
+		if rel.dot(dir) <= 0.0: continue
+		if absf(rel.angle_to(dir)) > half: continue          # 扇形内
+		if absf(rel.length() - traveled) > CORAL_BAND: continue   # 波前带
+		hit.append(o)
+		battle._damage._apply_dot_stacks(o, "burn", CORAL_BURN[si], src)
+		n += 1
+	return n
 
 # ============================================================================
 #  on-target (受伤时, 防守者视角)
