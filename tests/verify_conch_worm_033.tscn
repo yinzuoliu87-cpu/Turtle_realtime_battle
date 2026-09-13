@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/verify_conch_worm_033.gd" id="1_bt"]
+
+[node name="VerifyConchWorm033" type="Node"]
+script = ExtResource("1_bt")

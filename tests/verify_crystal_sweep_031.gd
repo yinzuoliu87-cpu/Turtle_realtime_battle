@@ -93,14 +93,86 @@ func _ready() -> void:
 	_ok("★反面: 法力只到一半 ⇒ 不登记扫描", cry._sweeps.is_empty(),
 		"扫描 %d 条" % cry._sweeps.size())
 
+	# ══════════════════════════════════════════════════════════════════
+	#  2026-09-13 补: 上面四条只验到「登记了扫描 + 有伤害 + 清场」,
+	#  文案里的【半径 / 伤害吃星级 / 偷魔抗 / 叠层】一条都没验过。
+	# ══════════════════════════════════════════════════════════════════
+	_ok("★分母: 扫射 %.0f 度 · 半径 %.0f 码 · 耗时 %.1f 秒"
+		% [Crystal.SWEEP_ARC_DEG, Crystal.SWEEP_REACH, Crystal.SWEEP_SEC],
+		absf(Crystal.SWEEP_ARC_DEG - 360.0) < 0.01 and Crystal.SWEEP_REACH > 0.0)
+
+	# ── ★★★半径: 圈外的**不该**挨打(本轮修的就是这条) ────────────────
+	## 原来 `_crystal_sweep_step` **只判角度不判距离** ⇒ 文案写的「半径 1000 码」在代码里是死的:
+	## `reach` 只被画射线的几何读, 伤害这一侧一次都没读过。演出只画到 1000 码,
+	## 而战场对角线 1754 码 ⇒ 站在射线画不到的地方照样挨伤害 + 被偷魔抗。
+	var c3: Vector2 = Vector2(s.ARENA.position.x + 120.0, s.ARENA.position.y + s.ARENA.size.y * 0.5)
+	var u3: Dictionary = s._spawn._make_unit("basic", "left", c3)
+	u3["atk"] = 200.0
+	u3["no_basic"] = true
+	u3["no_move"] = true
+	u3["equips"] = [{"id": "p2eq_031", "star": 3}]
+	u3["eq_state"] = {"p2eq_031": {}}
+	## 圈内一个(300 码)、圈外一个(**写死的** 1300 码 > 1000) —— 取样点不拿被测常量算, 那是恒真式
+	var near3: Dictionary = s._spawn._make_unit("basic", "right", c3 + Vector2(300.0, 0.0))
+	var far3: Dictionary = s._spawn._make_unit("basic", "right", c3 + Vector2(1300.0, 0.0))
+	for x3 in [near3, far3]:
+		x3["maxHp"] = 1.0e7
+		x3["hp"] = 1.0e7
+		x3["no_basic"] = true
+		x3["no_move"] = true
+		x3["mr"] = 100.0
+		x3["base_mr"] = 100.0
+	s._units.clear()
+	s._units.append(u3)
+	s._units.append(near3)
+	s._units.append(far3)
+	s._equip_sys._stats._eq_apply_all_stats()
+	var hn0: float = float(near3["hp"])
+	var hf0: float = float(far3["hp"])
+	var mr_near0: float = float(near3["mr"])
+	var mr_far0: float = float(far3["mr"])
+	var mr_self0: float = float(u3["mr"])
+	s._staff_syn.add_mana(u3, s._staff_syn.mana_full_for(u3, "p2eq_031", 3) + 1.0)
+	for _f2 in range(int(Crystal.SWEEP_SEC * 60.0) + 12):
+		s._sim_step(1.0 / 60.0, false, false)
+	var dn3: float = hn0 - float(near3["hp"])
+	var df3: float = hf0 - float(far3["hp"])
+	_ok("★分母: 圈内(300 码)的挨打了 %.0f" % dn3, dn3 > 0.0)
+	_ok("★★★圈外(1300 码 > 半径 %.0f 码)的**没**挨打(%.0f) —— 挡多了也是错"
+		% [Crystal.SWEEP_REACH, df3], absf(df3) < 0.01,
+		"改之前这里只判角度不判距离, 圈外的照样挨打 —— 演出与判定对不上")
+	_ok("★★★圈外的魔抗也没被偷(%.0f → %.0f)" % [mr_far0, float(far3["mr"])],
+		absf(float(far3["mr"]) - mr_far0) < 0.01)
+
+	# ── ★★★偷魔抗是【真偷取】: 目标减少 + 携带者获得, 数量相等 ──────────
+	var stolen_from: float = mr_near0 - float(near3["mr"])
+	var gained: float = float(u3["mr"]) - mr_self0
+	_ok("★★目标魔抗被偷走 %.1f(原 %.0f → 现 %.1f)" % [stolen_from, mr_near0, float(near3["mr"])],
+		stolen_from > 0.01)
+	_ok("★★★是【真偷取】: 携带者拿到的 %.1f == 目标失去的 %.1f" % [gained, stolen_from],
+		absf(gained - stolen_from) < 0.01,
+		"文案明写「真偷取: 目标减少、携带者获得」—— 只减不加或只加不减都不算")
+	_ok("★★偷的是【当前魔抗的 %.0f%%】(%.1f ≈ %.0f × %.2f)"
+		% [Crystal.MINI_MR_STEAL * 100.0, stolen_from, mr_near0, Crystal.MINI_MR_STEAL],
+		absf(stolen_from - mr_near0 * Crystal.MINI_MR_STEAL) < 0.5)
+	_ok("★★扫到就叠 1 层迷你水晶(实测 %d 层)"
+		% int((near3["stacks"] as Dictionary).get("p2crystal", -1)),
+		int((near3["stacks"] as Dictionary).get("p2crystal", -1)) >= 1,
+		"层数从单位自己的 stacks 字典读, 不是门禁记的账")
+
 	s._units.clear()
 	s.set_process(false)
 	await get_tree().process_frame
 	s.queue_free()
 	print("")
-	print("  (共 %d 条断言)" % _n)
+	print("  分母: 共 %d 条断言" % _n)
+	if _n < 12:
+		print("  [FAIL] ★断言只有 %d 条(<12) —— 有用例中途中止了" % _n)
+		_fail += 1
 	if _fail == 0:
 		print("ALL PASS — 031 水晶球B 扫描")
 	else:
 		print("FAIL x%d" % _fail)
-	get_tree().quit()
+	## ★退出码: 原来是裸 `quit()`(恒 0), 判红全靠 run-tests 的 ALL PASS 关键字。
+	##   加上退出码, 两道判据都站得住。
+	get_tree().quit(1 if _fail > 0 else 0)

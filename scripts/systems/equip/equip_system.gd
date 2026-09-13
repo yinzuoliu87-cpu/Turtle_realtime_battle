@@ -184,15 +184,11 @@ func _eq_on_basic_attack(u: Dictionary, tgt = null) -> void:   # 每普攻(不�
 
 func _eq_ice_fissure(u: Dictionary, si: int) -> void:
 	if not u.get("alive", false): return
-	## ★2026-09-13 删掉这里原有的 `battle._shield_bubble(u)`:
-	##   它是 029 **自绘的一个护盾泡** —— 而 `_grant_shield` 里早就有【通用护盾罩】
-	##   `_vfx.shield_shell`(2026-09-11 用户否掉地上金圈之后做的, 罩在单位身上)。
-	##   两个叠着放 ⇒ 通用罩被自绘的球盖住。而那个球还同时违反两条硬约束:
-	##     · 贴图是 `VfxTex._make_fire_glow_tex()` **程序生成的光球**(实拍是一个把龟整个
-	##       吞掉的不透明米色实心球)
-	##     · 靠 `tween_property(spr, "pixel_size", …)` **连续缩放像素贴图**(被否过的那个糊)
-	##   memory [[fb-fix-the-shared-primitive-not-one-instance]] / [[fb-hand-rolled-copies-drift]]:
-	##   共享原语到位之后, 单件的手抄副本就是【永远落后一次】的那一份, 该删不该留。
+	## ★2026-09-13 删掉这里原有的 `battle._shield_bubble(u)`(029 自绘的护盾泡):
+	##   `_grant_shield` 里早就有【通用护盾罩】`_vfx.shield_shell`(2026-09-11 做的), 自绘球盖住了它;
+	##   那球还同时违反两条硬约束(程序生成光球 + `tween_property(pixel_size)` 连续缩放像素贴图),
+	##   实拍是一个把龟整个吞掉的不透明米色实心球。共享原语到位后单件的手抄副本该删不该留
+	##   (memory [[fb-hand-rolled-copies-drift]])。
 	battle._damage._grant_shield(u, [100.0, 160.0, 250.0][si])   # 释放即上盾一次(通用罩由 _grant_shield 自己画)
 	var t = battle._targeting._nearest_enemy(u)
 	if t == null:
@@ -838,9 +834,8 @@ func _eq_ice_throw(u: Dictionary, si: int) -> void:
 	if not u.get("alive", false): return
 	if battle._targeting._nearest_enemy(u) == null: return
 	battle._anticipate(u)
-	## ★前摇从 tween 挪到游戏钟(2026-09-13): tween 走**未钳制的真实 delta, 无头下推不动**
-	##   (§3.5) ⇒ 前摇永远走不完, **瓶子根本不出手**。与 024/025/026/029 同一条病,
-	##   走同一个共享原语(memory [[fb-fix-the-shared-primitive-not-one-instance]])。
+	## ★前摇挪到游戏钟(2026-09-13): tween 走未钳制 delta、无头下推不动(§3.5) ⇒ 瓶子根本不出手。
+	##   与 024/025/026/029 同一条病, 走同一个共享原语。
 	battle._equip_tick_sys.schedule(IceSystem.VIAL_WINDUP,
 		battle._ice_sys._ice_throw_go.bind(u, si))
 
@@ -2511,7 +2506,8 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 				var worm = battle._spawn._spawn_summon(u, "worm", [100.0, 1500.0, 10000.0][si], [50.0, 80.0, 200.0][si], {"label": "海螺虫", "spr_id": "conch-worm", "col_size": 30.0, "hp_w": 22.0})   # 小虫只有星级无等级(去_lvl_mult), 数值即实际
 				if worm != null:
 					worm["pos"] = u["pos"]
-					worm["atk_interval"] = 1.0 / 0.65
+					## ★读常量不写死: 文案用 {C:EquipSystem.WORM_ASPD}, 写死 0.65 就是同一个数存两份。
+					worm["atk_interval"] = 1.0 / WORM_ASPD
 					if is_instance_valid(worm["sprite"]):
 						worm["sprite"].position = battle._world_pos(u["pos"], battle.GROUND_LIFT)
 						var wsc: Vector3 = worm["sprite"].scale

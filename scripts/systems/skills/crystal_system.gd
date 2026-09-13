@@ -297,6 +297,15 @@ func _crystal_sweep_step(ang: float, u: Dictionary, si: int, reach: float, state
 		var prev: float = float(state["prev"])
 		for o in battle._targeting._enemies_of(u):
 			if not o.get("alive", false): continue
+			## ★★2026-09-13 补上【距离判定】。原来这里**只判角度不判距离** ⇒
+			##   文案写的「半径 SWEEP_REACH(1000) 码」在代码里是**死的**:
+			##   `reach` 只被上面那段画射线的几何读, 伤害这一侧一次都没读过
+			##   (memory [[fb-read-a-field-nobody-writes]] 的镜像: 写了没人读的常量)。
+			##   后果是**演出与判定对不上** —— 射线只画到 1000 码, 而战场对角线 1754 码,
+			##   站在射线画不到的地方的敌人照样挨伤害 + 被偷魔抗。
+			##   用户原话:「演出得贴合实际伤害范围和判定啊」。
+			if (o["pos"] as Vector2).distance_to(center) > reach:
+				continue
 			var ea: float = atan2(float(o["pos"].y) - center.y, float(o["pos"].x) - center.x)
 			if battle._ang_in(prev, ang, ea):
 				# 伤害 60/130/250 (用户2026-08-01: 3★由 700 削到 250 —— 一次扫过全场敌人, 700 是全表最粗的一根)
