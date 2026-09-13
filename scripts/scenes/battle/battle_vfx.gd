@@ -1855,6 +1855,91 @@ func _barnacle_rope(im: MeshInstance3D, u: Dictionary, target: Dictionary) -> vo
 ##   面积剖面下宽上尖 · 亮度最亮在中上部 · 橙白
 ##   ⇒ 素材 80×80 一格 = 3.41 m ≈ **1.7 个龟高**, pixel_size 0.0426 = 1 texel : 1 屏幕像素。
 ## ★★先看上传日期: 上一轮我拿了 2013 年的参考, 被用户当场抓。
+# ══════════════════════════════════════════════════════════════════════
+#  027 电棍 —— 就绪跳弧 + 命中落雷 (2026-09-13)
+# ══════════════════════════════════════════════════════════════════════
+## ★为什么新出两张素材, 而不是接着用 `electric-zap.png`(原来两处都用它):
+##   ① 那张图【不是电】—— 五帧都是对称放射星爆(中心一颗白球 + 均匀放射线),
+##      而 027 的文案从头到尾写的是「电棍 / 电击 / 眩晕」。
+##      memory [[fb-effect-text-is-the-spec]]: 演出必须就是效果本身。
+##   ② 它有【黑帧】—— 实测 frame4 均色 R18 G25 B34、近白像素 0 个, frame3 近白也只有 167 个,
+##      而就绪火花用的是 `randi() % 5` ⇒ **五帧里两帧是黑的, 40% 的火花在黑场里读成污渍**
+##      (我在 3.25s 那一帧亲眼看到那团灰)。
+##   ③ 它还被赛博侵入 / 雷电龟 / 026 共 5 处在用 ⇒ 改它会连坐
+##      (memory [[fb-no-asset-reuse-unless-told]]: 新内容一律新素材)。
+## ★尺寸按【整数倍】缩放(像素风硬约束): 1 texel = 0.0426 m, 两张都按 1× 摆。
+##   · 跳弧 24 texel = 1.02 m ≈ 0.51 个龟高 —— 就绪态本来就该是小火花, 不该盖住龟。
+##   · 落雷 56 texel = 2.39 m ≈ 1.2 个龟高 —— 单体判定, 演出就只罩住被打的那一个。
+## ★两个都挂 `_follow_vfx`(游戏钟自推进帧 + 跟着单位走), **不用 tween** ——
+##   tween 走未钳制真实 delta, 与游戏钟是两条钟(memory [[fb-second-clock-drops-events]])。
+const BATON_ARC_TEX := "res://assets/sprites/vfx/baton-arc.png"
+const BATON_ARC_FRAMES := 8
+const BATON_ARC_YARDS := 42.6     # 24 texel × 0.0426 m ÷ WS = 1.02 m ≈ 0.51 个龟高
+const BATON_ARC_FPS := 30.0       # 8 帧 / 30fps = 0.27 秒一次跳弧
+const BATON_STRIKE_TEX := "res://assets/sprites/vfx/baton-strike.png"
+const BATON_STRIKE_FRAMES := 8
+const BATON_STRIKE_YARDS := 99.4  # 56 texel × 0.0426 m ÷ WS
+const BATON_STRIKE_FPS := 24.0    # 8 帧 / 24fps = 0.33 秒一次放电
+## 落雷贴图里【触地点】在格子从上往下 0.62 处 ⇒ 想让触地点落在目标身上 0.90 m,
+## 精灵中心要抬到 0.90 + (0.62 − 0.5) × 2.386 = 1.19 m。
+const BATON_STRIKE_H := 1.19
+var _baton_arc_tex: Texture2D = null
+var _baton_strike_tex: Texture2D = null
+
+
+func _baton_sprite(tex: Texture2D, frames: int, yards: float) -> Sprite3D:
+	var cell: int = maxi(1, int(tex.get_width()) / frames)
+	var sp := Sprite3D.new()
+	sp.texture = tex
+	sp.hframes = frames
+	sp.frame = 0
+	sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sp.shaded = false
+	sp.transparent = true
+	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # ★Sprite3D 默认是 3=LINEAR_WITH_MIPMAPS, 不写就糊
+	sp.no_depth_test = true
+	sp.render_priority = 7
+	sp.pixel_size = (yards * battle.WS) / float(cell)
+	return sp
+
+
+## 就绪态: 棍身上噼啪跳的短弧(每 0.16 秒一次, 由 `EquipTickSystem._tick_baton` 排)
+func baton_spark(u: Dictionary) -> void:
+	if battle._world == null or u == null or not u.get("alive", false):
+		return
+	if _baton_arc_tex == null:
+		_baton_arc_tex = load(BATON_ARC_TEX)
+	if _baton_arc_tex == null:
+		return
+	var sp := _baton_sprite(_baton_arc_tex, BATON_ARC_FRAMES, BATON_ARC_YARDS)
+	## 抖在【身上】不是脚下 —— 原来 height 抽 0.45~1.1 且 y 也抖 ±12 码, 一半的火花落在地上,
+	## 读成「地上冒火星」而不是「他手里那根棍带电了」。
+	var h: float = 0.80 + randf_range(-0.12, 0.34)
+	sp.position = battle._world_pos(u["pos"] + Vector2(randf_range(-10.0, 10.0), randf_range(-6.0, 6.0)), h)
+	battle._world.add_child(sp)
+	battle._follow_vfx.append({
+		"spr": sp, "unit": u, "h": h,
+		"anim_fps": BATON_ARC_FPS, "anim_n": BATON_ARC_FRAMES, "anim_t0": battle._t,
+	})
+
+
+## 命中态: 一道落雷劈在**被打中的那一个**目标身上(027 是单体判定, 演出就只罩它)
+func baton_strike(tgt: Dictionary) -> void:
+	if battle._world == null or tgt == null or not tgt.get("alive", false):
+		return
+	if _baton_strike_tex == null:
+		_baton_strike_tex = load(BATON_STRIKE_TEX)
+	if _baton_strike_tex == null:
+		return
+	var sp := _baton_sprite(_baton_strike_tex, BATON_STRIKE_FRAMES, BATON_STRIKE_YARDS)
+	sp.position = battle._world_pos(tgt["pos"], float(tgt.get("height", 0.0)) + BATON_STRIKE_H)
+	battle._world.add_child(sp)
+	battle._follow_vfx.append({
+		"spr": sp, "unit": tgt, "h": BATON_STRIKE_H,
+		"anim_fps": BATON_STRIKE_FPS, "anim_n": BATON_STRIKE_FRAMES, "anim_t0": battle._t,
+	})
+
+
 const TRUEFIRE_TEX := "res://assets/sprites/vfx/true-fire.png"
 const TRUEFIRE_FRAMES := 8
 const TRUEFIRE_FPS := 12.0        # 8 帧 / 12fps = 0.67 秒一轮, 5 秒烧 7.5 轮

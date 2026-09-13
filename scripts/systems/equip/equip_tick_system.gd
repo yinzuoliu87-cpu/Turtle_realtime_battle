@@ -401,7 +401,7 @@ func _tick_baton(u: Dictionary, delta: float) -> void:
 			bst["baton_spark_t"] = float(bst.get("baton_spark_t", 0.0)) + delta
 			if float(bst["baton_spark_t"]) >= 0.16:
 				bst["baton_spark_t"] = 0.0
-				battle._baton_spark(u)
+				battle._vfx.baton_spark(u)
 		u["eq_state"]["p2eq_027"] = bst
 
 func _tick_barnacle(u: Dictionary, delta: float) -> void:   # 守护贝母p2eq_021: 持续绿色绑定线连全队最高攻友军; 每5秒重连并为自己+该友军 +10龟能+10%攻速(叠加/本场/每场重置); 每件独立

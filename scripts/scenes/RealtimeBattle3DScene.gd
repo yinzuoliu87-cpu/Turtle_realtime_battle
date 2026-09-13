@@ -3617,26 +3617,6 @@ func _fuel_splash_step(pf: float, m, from2d: Vector2, dest: Vector2) -> void:   
 	m.position = _world_pos(from2d.lerp(dest, pf), 0.22 + 0.85 * pf * (1.0 - pf))
 	m.modulate.a = lerpf(0.95, 0.0, pf)
 
-func _baton_spark(u: Dictionary) -> void:
-	var tex: Texture2D = load("res://assets/sprites/vfx/electric-zap.png")
-	if tex == null: return
-	var spr := Sprite3D.new()
-	spr.texture = tex
-	spr.hframes = 5
-	spr.frame = randi() % 5
-	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	spr.shaded = false
-	spr.transparent = true
-	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	spr.modulate = Color(0.6, 0.9, 1.0, 0.85)
-	var fw: float = float(maxi(1, int(tex.get_width()))) / 5.0
-	spr.pixel_size = (42.0 * WS) / fw
-	spr.position = _world_pos(u["pos"] + Vector2(randf_range(-14.0, 14.0), randf_range(-12.0, 12.0)), randf_range(0.45, 1.1))
-	_world.add_child(spr)
-	var t := _reg_tween()
-	t.tween_property(spr, "modulate:a", 0.0, 0.2)
-	t.tween_callback(spr.queue_free)
-
 func _frozen_encase(o: Dictionary, dur: float = 1.5) -> void:
 	var tex: Texture2D = load("res://assets/sprites/vfx/frozen-encase.png")
 	if tex == null: return

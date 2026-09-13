@@ -154,7 +154,7 @@ func _eq_on_basic_attack(u: Dictionary, tgt = null) -> void:   # 每普攻(不�
 				u["eq_state"]["p2eq_027"] = bst
 				battle._damage._apply_damage_from(u, tgt, battle._resolve_dmg(u, float([30, 40, 50][si27]), tgt, true), Color("#7ecbff"), 0.0, false, true)
 				battle._freeze(tgt, [2.5, 2.5, 3.0][si27])   # 眩晕 1.5s(CTRL_SEC默认) → 2.5/2.5/3 按星级(用户2026-07-19)
-				battle._chain_zap(tgt["pos"])
+				battle._vfx.baton_strike(tgt)   # 落雷劈在被打中的那一个身上(原来是一颗对称白色星爆, 读不出「电」)
 		# ── 批④(2026-08-06) 后 17 件: 统一路由到各自的批系统 ──────────────────
 		#    ★这里原来是 078「双管贝壳枪·普攻概率追加一发」。078 已被用户整条重做成
 		#      【电鳗双管铳】(左右管每 2 秒交替), 触发时机从"普攻"变成"自管计时" ⇒
