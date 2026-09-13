@@ -2244,6 +2244,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 		_shield_syn.tick(dt)  # 圣光护盾装备: 每 3 秒 55 点护盾
 		_bow_syn.tick(dt)     # 弓箭顶档【腐蚀叠层】: 每 2.5 秒给全场敌人 +1 层
 		_crystal_sys.tick(dt) # 031 水晶球B 扫描推进(结算走 sim 时钟, 不走 tween)
+		_dragon_sys.tick(dt)  # 024 喷火龙: 火柱扫到谁那一刻的结算(同上, 走 sim 时钟不走 tween)
 		_gun_syn.tick(dt)     # 枪羁绊: 第一座炮台轰击(每 2.5 秒·TICK) / 第二座能量循环(每 5 秒·T2_PERIOD)
 		_staff_syn.tick(dt)   # 法器: 法力自然增长 + 灵泉(2.5s) + 共鸣(7.5s)
 		_potion_syn.tick(dt)  # 药水: 每 2.5 秒重选猎物(敌方血量最高者)
@@ -8430,37 +8431,6 @@ func _spark_converge(t: float, spr: Sprite3D, from: Vector2, to: Vector2) -> voi
 		spr.position = _world_pos(from.lerp(to, t), 1.3)
 
 # 龙贴图(dragon-fire.png)低空沿线掠射 + burn-loop 真像素火燃烧带(龙飞到才点燃, 各烧一会再灭)
-func _spawn_fire_dragon(start2d: Vector2, end2d: Vector2, dur: float) -> void:
-	var dragon_tex: Texture2D = load("res://assets/sprites/vfx/dragon-fly.png")   # PixelLab 5帧振翅
-	if dragon_tex != null:
-		var d := Sprite3D.new()
-		d.texture = dragon_tex
-		d.hframes = 5
-		d.frame = 0
-		d.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		d.shaded = false
-		d.transparent = true
-		d.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-		d.flip_h = (end2d.x < start2d.x)               # 素材朝右; 往左飞则翻转
-		d.pixel_size = (215.0 * WS) / (float(maxi(1, int(dragon_tex.get_width()))) / 5.0)
-		d.position = _world_pos(start2d, 2.9)          # 龙在天上(高空)
-		_world.add_child(d)
-		d.modulate = Color(1, 1, 1, 0)                 # 从召唤火里淡入现身
-		var tfade := _reg_tween()
-		tfade.tween_property(d, "modulate:a", 1.0, 0.22)
-		var tw := _reg_tween()
-		tw.tween_method(_dragon_sys._dragon_fly_step.bind(d, start2d, end2d), 0.0, 1.0, dur)
-		tw.tween_callback(d.queue_free)
-		var tf := _reg_tween()                       # 振翅: 乒乓循环5帧(~4次/秒)
-		tf.tween_method(_dragon_sys._dragon_flap_frame.bind(d), 0.0, 32.0 * dur, dur)
-	var burn: Texture2D = load("res://assets/sprites/vfx/dragon-flame.png")
-	var perp: Vector2 = (end2d - start2d).orthogonal().normalized()
-	for i in range(1, 19):                           # 燃烧带: 沿线真像素火, 大小/横向随机=有机火带(非机械等距), 龙飞到才点燃
-		var f: float = float(i) / 19.0
-		var jit: Vector2 = perp * randf_range(-28.0, 28.0)
-		_delayed_ground_fire(start2d.lerp(end2d, f) + jit, burn, randf_range(74.0, 128.0), f * dur * 0.9)
-	_dragon_sys._dragon_mouth_jet(start2d, end2d, dur)           # 龙嘴喷火(从嘴喷向地面)
-
 func _spawn_fire_pillar(burn: Texture2D, pos2d: Vector2, top_h: float) -> void:
 	if burn == null:
 		return

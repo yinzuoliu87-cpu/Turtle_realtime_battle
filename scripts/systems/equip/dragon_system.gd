@@ -6,6 +6,10 @@ extends RefCounted
 ## 【024 龙蛋·喷火龙】火柱是一条直线, 两侧各多宽算命中。
 const BREATH_HALF_W := 88.0   # 半宽(码)
 
+## ★火柱扫到谁那一刻才对谁结算 —— 挂在**游戏钟**上的待结算队列(不是 tween)。
+##   每项: {at=结算时刻(battle._t), foe=是敌是友, u/o/si, expl/burn}
+var _pending: Array = []
+
 var battle
 
 func _init(b) -> void:
@@ -15,22 +19,26 @@ func _init(b) -> void:
 func _dragon_unleash(u: Dictionary, si: int, start: Vector2, end: Vector2, dir: Vector2, total: float, dur: float) -> void:
 	_dragon_summon_burst(start)
 	battle._shake(0.12)
-	battle._spawn_fire_dragon(start, end, dur)
+	_spawn_fire_dragon(start, end, dur)
 	var expl: Texture2D = load("res://assets/sprites/vfx/fx_explosion.png")
 	var burn_tex: Texture2D = load("res://assets/sprites/vfx/dragon-flame.png")
 	# 火柱扫到谁那一刻才对谁结算(非召唤即一次性算完): 延时=火柱沿线到达该单位的时间
+	## ★★2026-09-13: 这两段原来是 `tween_interval` + `tween_callback` 延时投递 ——
+	##   **tween 走未钳制的真实 delta, 无头下推不动**(CLAUDE.md §3.5)。
+	##   门禁 verify_dragon_breath ④「走真入口后敌人确实掉血」**实测 0 伤害**, 当场确诊。
+	##   改成挂进**游戏钟队列** `_pending`, 由 tick(dt) 按 battle._t 到点结算 ——
+	##   与 031 水晶球B 同一条路(「结算走 sim 时钟, 不走 tween」)。
 	for o in battle._targeting._enemies_of(u):
 		if battle._on_line(start, dir, o["pos"], BREATH_HALF_W):
 			var d_e: float = clampf((o["pos"] - start).dot(dir) / total, 0.0, 1.0) * dur
-			var twe = battle._reg_tween()
-			twe.tween_interval(d_e)
-			twe.tween_callback(_dragon_hit_enemy.bind(u, o, si, expl, burn_tex))
+			_pending.append({"at": battle._t + d_e, "foe": true,
+				"u": u, "o": o, "si": si,
+				"expl": expl, "burn": burn_tex})
 	for o in battle._targeting._allies_of(u):
 		if battle._on_line(start, dir, o["pos"], BREATH_HALF_W):
 			var d_a: float = clampf((o["pos"] - start).dot(dir) / total, 0.0, 1.0) * dur
-			var twa = battle._reg_tween()
-			twa.tween_interval(d_a)
-			twa.tween_callback(_dragon_heal_ally.bind(u, o, si))
+			_pending.append({"at": battle._t + d_a, "foe": false,
+				"u": u, "o": o, "si": si})
 
 # 火柱扫到敌人那一刻: 魔法伤害+灼烧+金爆+着火 (同步, 数字跟火柱一起)
 # 火柱扫到敌人那一刻: 魔法伤害+灼烧+金爆+着火 (同步, 数字跟火柱一起)
@@ -126,3 +134,72 @@ func _dragon_mouth_jet(start2d: Vector2, end2d: Vector2, dur: float) -> void:
 		tw.tween_callback(battle._spawn_fire_pillar.bind(burn, col_pos, top_h))
 
 # 一根竖直火柱: 从地面到龙嘴, 同一x竖向叠火焰(=直的), 底大顶小, 短暂显现再淡
+
+## 放龙(纯演出) —— 2026-09-13 从主文件搬来: CLAUDE.md §5「不在 _sim_step 调用链上的不进主文件」,
+##   顺带给下面那条【游戏钟队列】腾出主文件的一行接线(arch_budget 台账只减不增)。
+func _spawn_fire_dragon(start2d: Vector2, end2d: Vector2, dur: float) -> void:
+	var dragon_tex: Texture2D = load("res://assets/sprites/vfx/dragon-fly.png")   # PixelLab 5帧振翅
+	if dragon_tex != null:
+		var d := Sprite3D.new()
+		d.texture = dragon_tex
+		d.hframes = 5
+		d.frame = 0
+		d.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		d.shaded = false
+		d.transparent = true
+		d.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		d.flip_h = (end2d.x < start2d.x)               # 素材朝右; 往左飞则翻转
+		d.pixel_size = (215.0 * battle.WS) / (float(maxi(1, int(dragon_tex.get_width()))) / 5.0)
+		d.position = battle._world_pos(start2d, 2.9)          # 龙在天上(高空)
+		battle._world.add_child(d)
+		d.modulate = Color(1, 1, 1, 0)                 # 从召唤火里淡入现身
+		var tfade = battle._reg_tween()
+		tfade.tween_property(d, "modulate:a", 1.0, 0.22)
+		var tw = battle._reg_tween()
+		tw.tween_method(_dragon_fly_step.bind(d, start2d, end2d), 0.0, 1.0, dur)
+		tw.tween_callback(d.queue_free)
+		var tf = battle._reg_tween()                       # 振翅: 乒乓循环5帧(~4次/秒)
+		tf.tween_method(_dragon_flap_frame.bind(d), 0.0, 32.0 * dur, dur)
+	var burn: Texture2D = load("res://assets/sprites/vfx/dragon-flame.png")
+	var perp: Vector2 = (end2d - start2d).orthogonal().normalized()
+	for i in range(1, 19):                           # 燃烧带: 沿线真像素火, 大小/横向随机=有机火带(非机械等距), 龙飞到才点燃
+		var f: float = float(i) / 19.0
+		var jit: Vector2 = perp * randf_range(-28.0, 28.0)
+		battle._delayed_ground_fire(start2d.lerp(end2d, f) + jit, burn, randf_range(74.0, 128.0), f * dur * 0.9)
+	_dragon_mouth_jet(start2d, end2d, dur)           # 龙嘴喷火(从嘴喷向地面)
+
+
+## 每帧由主场景的 sim tick 调(与 _crystal_sys.tick 同一处)。
+## ★用 `battle._t`(钳制后的游戏钟), 不用 delta 累加 —— 单位在动, 到点就结算。
+func tick(_dt: float) -> void:
+	if _pending.is_empty():
+		return
+	var i: int = _pending.size() - 1
+	while i >= 0:
+		var it: Dictionary = _pending[i]
+		if battle._t < float(it["at"]):
+			i -= 1; continue
+		_pending.remove_at(i)
+		## kind=unleash 是【前摇到点放龙】; 其余是【火柱扫到某人那一刻的结算】
+		if str(it.get("kind", "")) == "unleash":
+			_dragon_unleash(it["u"], int(it["si"]), it["start"],
+				it["end"], it["dir"], float(it["total"]), float(it["dur"]))
+			i -= 1
+			continue
+		var o: Dictionary = it["o"]
+		if o.get("alive", false):
+			if bool(it["foe"]):
+				_dragon_hit_enemy(it["u"], o, int(it["si"]),
+					it.get("expl", null), it.get("burn", null))
+			else:
+				_dragon_heal_ally(it["u"], o, int(it["si"]))
+		i -= 1
+
+
+## 前摇到点才真的放龙 —— 由 tick 按游戏钟触发(不是 tween)。
+func schedule_unleash(u: Dictionary, si: int, start: Vector2, end: Vector2,
+		dir: Vector2, total: float, dur: float, windup: float) -> void:
+	_pending.append({"at": battle._t + windup, "kind": "unleash",
+		"u": u, "si": si, "start": start, "end": end,
+		"dir": dir, "total": total, "dur": dur})
+

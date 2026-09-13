@@ -594,6 +594,7 @@ const CORAL_MANA_PER_HIT := 10.0  # 每段攻击命中给自己多少法力
 const CORAL_ARC_DEG := 60.0       # 火焰波扇面全角(度)·判定用半角
 const CORAL_TRAVEL := 550.0       # 火焰波向前推进多远(码)
 const CORAL_WINDUP := 0.4         # 蓄力多久(秒·游戏钟)
+const DRAGON_WINDUP := 0.55       # 024 龙蛋前摇(秒·游戏钟)
 const CORAL_SPEED := 320.0        # 波前推进速度(码/秒·游戏钟) ⇒ 550 码走 1.72 秒
 const CORAL_BAND := 65.0          # 波前判定带半宽(码) —— 演出的火簇就摆在这条带上
 const CORAL_BURN := [40, 60, 90]  # 每星级施加的灼烧层数(用户2026-07-19: 原固定60不吃星级)
@@ -2730,11 +2731,15 @@ func _eq_dragon_breath(u: Dictionary, si: int) -> void:
 	var end: Vector2 = start + dir * reach
 	var total: float = maxf(1.0, start.distance_to(end))
 	var dur: float = clampf(reach / 480.0, 1.6, 2.6)  # 按距离定时长=恒定速度
+	## 前摇: 召唤点聚火蓄能再爆发出龙(修「一下冒出来」)
 	battle._anticipate(u)
 	battle._dragon_sys._dragon_windup(start)                            # 前摇: 召唤点聚火蓄能(~0.55s)再爆发出龙(修"一下冒出来")
-	var twd = battle._reg_tween()
-	twd.tween_interval(0.55)
-	twd.tween_callback(battle._dragon_sys._dragon_unleash.bind(u, si, start, end, dir, total, dur))
+	## ★★2026-09-13: 这里原来也是 `tween_interval` + `tween_callback` —— 和 `_dragon_unleash`
+	##   里那两段同病。tween 走**未钳制的真实 delta, 无头下推不动**(CLAUDE.md §3.5),
+	##   门禁 verify_dragon_breath ④ 实测「走真入口后敌人掉血 0」, 探针打出 `pending=0`
+	##   ⇒ 龙**压根没放出来**。改挂进 DragonSystem 的游戏钟队列。
+	##   ★教训: 我第一次只修了内层投递, 外层这一条还在 tween 上 —— **一条链要整条查**。
+	battle._dragon_sys.schedule_unleash(u, si, start, end, dir, total, dur, DRAGON_WINDUP)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
