@@ -629,6 +629,7 @@ func tick_delayed(_dt: float) -> void:
 	_drain_bolts()
 	_tick_bear_waves(_dt)   # 034 大熊冲击波: 波前推进+命中结算(同一条游戏钟, 不再走 process delta)
 	_tick_pulls(_dt)        # 击飞态平滑拉回(同上, 原来也挂在 process delta 上)
+	_tick_tide_walls(_dt)   # 043 浪墙: 蓄浪→推进→退去(3D 网格逐帧重建, 同一条游戏钟)
 
 ## 大熊熊掌挥击接触那一瞬: 此刻才结算伤害 + 跳数字 + 金爪痕。
 ## ★★2026-09-13 从主文件搬过来, 同时把延时从 tween 换成共享原语 `schedule`:
@@ -768,3 +769,50 @@ func _tick_pulls(dt: float) -> void:
 			_pulls.remove_at(i)
 			continue
 		o["pos"] = (q["start"] as Vector2).lerp(q["target"] as Vector2, 1.0 - (1.0 - k) * (1.0 - k))
+
+
+## ════════════════════════════════════════════════════════════════════════════
+##  043 海浪护符【浪墙】的推进 —— 走【游戏钟】
+## ════════════════════════════════════════════════════════════════════════════
+## ★旧版整条演出挂在 tween 上(`tween_property(p,"position",…)`), 而伤害走
+##   `_pending_shots`(sim 钟) ⇒ **两条钟**: 无头下浪一动不动, 伤害照样结算。
+##   memory [[fb-second-clock-drops-events]] 那一族。现在两边同一条钟。
+var _tide_walls: Array = []
+
+
+func tide_wall_start(start: Vector2, dir: Vector2, half: float, dist: float,
+					 windup: float, travel: float) -> void:
+	var w: Dictionary = battle._vfx.tide_wall_spawn(start, dir, half, dist, windup, travel)
+	if not w.is_empty():
+		_tide_walls.append(w)
+
+
+func _tick_tide_walls(dt: float) -> void:
+	if _tide_walls.is_empty():
+		return
+	for i in range(_tide_walls.size() - 1, -1, -1):
+		var w: Dictionary = _tide_walls[i]
+		var im = w.get("im", null)
+		if not is_instance_valid(im):
+			_tide_walls.remove_at(i)
+			continue
+		w["t"] = float(w["t"]) + dt
+		var t: float = float(w["t"])
+		var wind: float = float(w["windup"])
+		var trav_sec: float = float(w["travel"])
+		var fade: float = float(w["fade"])
+		var rise: float = 1.0
+		var trav: float = 0.0
+		if t < wind:
+			rise = t / maxf(0.001, wind)          # ① 蓄浪: 水位在涨, 还没走
+		elif t < wind + trav_sec:
+			var q: float = (t - wind) / maxf(0.001, trav_sec)
+			trav = q * q * (3.0 - 2.0 * q) * float(w["dist"])   # ② 推进(起步慢·中段快)
+		elif t < wind + trav_sec + fade:
+			trav = float(w["dist"])
+			rise = 1.0 - (t - wind - trav_sec) / maxf(0.001, fade)   # ⑤ 退去: 落高不是淡出
+		else:
+			im.queue_free()
+			_tide_walls.remove_at(i)
+			continue
+		battle._vfx.tide_wall_build(w, maxf(0.0, rise), trav)

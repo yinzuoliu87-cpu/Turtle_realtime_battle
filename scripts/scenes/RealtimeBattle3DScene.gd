@@ -7423,53 +7423,8 @@ func _spawn_bamboo_arrow(src: Dictionary, tgt: Dictionary, dmg: int, grow: float
 		"bamboo": true, "wisp_dir": true, "wisp_off": PI / 2.0, "bamboo_grow": grow,   # bamboo-arrow.png 是96x24横向贴图(+X朝前)
 	})
 
-func _spawn_tidal_wave(startc: Vector2, dir: Vector2, perp: Vector2, p0: float, p1: float, tdist: float, windup: float, travel: float) -> void:
-	var use_anim: bool = ResourceLoader.exists("res://assets/sprites/vfx/tidal-wave-anim.png")
-	var tex: Texture2D = load("res://assets/sprites/vfx/tidal-wave-anim.png") if use_anim else load("res://assets/sprites/vfx/tidal-wave.png")
-	var fh: int = maxi(1, tex.get_height())
-	var nf: int = maxi(1, int(tex.get_width() / fh)) if use_anim else 1
-	var flip: bool = dir.x > 0.0   # 浪头朝行进方向(水平分量)卷
-	var ncrest: int = clampi(int((p1 - p0) / 72.0) + 1, 4, 16)
-	for k in range(ncrest):
-		var pp: float = lerpf(p0, p1, float(k) / float(maxi(1, ncrest - 1)))
-		var cstart: Vector2 = startc + perp * pp        # 该crest沿perp铺开
-		var cend: Vector2 = cstart + dir * tdist        # 沿dir推进终点
-		var p := Sprite3D.new()
-		p.texture = tex
-		if use_anim: p.hframes = nf
-		p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-		p.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
-		p.shaded = false; p.transparent = true
-		p.pixel_size = 3.4 / float(fh)
-		p.flip_h = flip
-		p.modulate = Color(1, 1, 1, 0)
-		p.position = _world_pos(cstart, 1.45)
-		_world.add_child(p)
-		if use_anim and nf > 1:
-			var at := _reg_tween().bind_node(p).set_loops()  # ★bind_node: 目标被 queue_free 后 tween 随之销毁; 否则循环 tween 的 tweener 会瞬间完成 → 单圈时长=0 → 刷 ERROR: Infinite loop detected
-			at.tween_property(p, "frame", nf - 1, 0.45).from(0)
-		var tw := _reg_tween()
-		tw.tween_property(p, "modulate:a", 0.95, windup * 0.8)
-		tw.tween_property(p, "position", _world_pos(cend, 1.45), travel).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-		tw.tween_property(p, "modulate:a", 0.0, 0.25)
-		tw.tween_callback(p.queue_free)
 
 # 蓄浪前摇: 携带者身前蓝光汇聚膨胀(施法预备)
-func _water_charge_windup(u: Dictionary, dur: float) -> void:
-	var g := Sprite3D.new()
-	var tex := VfxTex._make_fire_glow_tex()
-	g.texture = tex
-	g.modulate = Color(0.4, 0.75, 1.0, 0.0)
-	g.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	g.shaded = false; g.transparent = true
-	g.pixel_size = (34.0 * WS) / float(maxi(1, tex.get_width()))
-	g.position = _world_pos(u["pos"], 1.0)
-	_world.add_child(g)
-	var tw := _reg_tween(); tw.set_parallel(true)
-	tw.tween_property(g, "modulate:a", 0.9, dur * 0.7)
-	tw.tween_property(g, "pixel_size", (78.0 * WS) / float(maxi(1, tex.get_width())), dur)
-	tw.chain().tween_property(g, "modulate:a", 0.0, 0.15)
-	tw.chain().tween_callback(g.queue_free)
 
 # 浪打中单位的水花: 蓝水环 + 上溅几滴
 # 出招预备(缩)+挥出(伸): 主动技/普攻前摇后摇 (anticipation + follow-through)

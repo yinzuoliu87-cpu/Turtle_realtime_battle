@@ -2385,3 +2385,330 @@ func candle_ignite(at2d: Vector2) -> void:
 	battle._anim_fx.append({
 		"spr": sp, "fps": CIGN_FPS, "n": CIGN_FRAMES, "t0": battle._t,
 	})
+
+
+## ════════════════════════════════════════════════════════════════════════════
+##  直线判定带的【地面可视化】—— 文案写明「中线两侧各 N 码」的那几件共用
+## ════════════════════════════════════════════════════════════════════════════
+## ★为什么要有这个 (2026-09-14): 扫了全部 96 件的 effectDesc, 文案里写明判定半宽的
+##   共 3 件 —— 029 冰封水母(90 码) / 030 迷你水晶球A(55 码) / 051 激光手枪(50 码)。
+##   三件演出画出来的**地面横向**宽度分别是 ±46 码 / ≈0 / **恒 0**。
+##   051 的 0 不是估的, 是几何事实: `_laser_beam` 的六个顶点只在 ±Y 上偏移,
+##   四个角在地面 (X,Z) 上完全重合成一条线 ⇒ 玩家看到一条细光线,
+##   实际被打到的是一条 100 码宽的带子。
+##   (memory [[fb-effect-text-is-the-spec]]: 文案写了而画面读不出来, 也是缺陷)
+##
+## ★`half_w` 一律由调用方把**判定自己用的那个常量**传进来, 这里一个数都不许写死 ——
+##   写死等于又抄了一份副本, 判定改了演出不会跟着改
+##   (memory [[fb-hand-rolled-copies-drift]])。
+##
+## ★为什么用顶点色而不是贴图: 带子要跟着 `dir` 转任意角度, 像素贴图铺上去必然被
+##   重采样成糊(像素风硬约束「不许自由旋转」)。顶点色三角带没这个问题, 而且
+##   `bolt_line` / `_laser_beam` 走的就是这条渲染路径 —— 是仓库既有语汇不是现造的。
+##   材质感由调用方另外撒的**不旋转的贴地精灵**提供, 两层分工。
+##
+## 横向剖面(7 个采样点, 归一化到 half_w): **边缘最亮** —— 判定边界就画在那儿;
+## 内侧压暗 ⇒ 读出来是「一条有边的带子」, 不是一块实心糊
+## (memory [[fb-telegraph-needs-a-cause-not-a-flash]] 的形状规则: 亮轮廓才读成一个东西)。
+const BAND_OFFS: Array[float] = [-1.00, -0.92, -0.55, 0.00, 0.55, 0.92, 1.00]
+const BAND_ALPHA: Array[float] = [1.00, 0.85, 0.18, 0.30, 0.18, 0.85, 1.00]
+const BAND_H := 0.035          # 贴地高度(米): 低于任何立绘, 又高于地板免得 z-fight
+
+func line_band_ground(a2d: Vector2, dir: Vector2, half_w: float, reach: float,
+					  col: Color, hold: float = 0.45, fade: float = 0.35) -> MeshInstance3D:
+	if battle._world == null or half_w <= 0.0 or reach <= 0.0:
+		return null
+	var d: Vector2 = dir.normalized()
+	if d.length_squared() < 0.5:
+		return null
+	var perp: Vector2 = d.orthogonal()
+	var b2d: Vector2 = a2d + d * reach
+	var im := MeshInstance3D.new()
+	var imesh := ImmediateMesh.new()
+	im.mesh = imesh
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color(1.0, 1.0, 1.0, 1.0)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.vertex_color_use_as_albedo = true
+	imesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, mat)
+	for i in range(BAND_OFFS.size() - 1):
+		var o0: float = BAND_OFFS[i] * half_w
+		var o1: float = BAND_OFFS[i + 1] * half_w
+		var c0 := Color(col.r, col.g, col.b, col.a * BAND_ALPHA[i])
+		var c1 := Color(col.r, col.g, col.b, col.a * BAND_ALPHA[i + 1])
+		var a0: Vector3 = battle._world_pos(a2d + perp * o0, BAND_H)
+		var a1: Vector3 = battle._world_pos(a2d + perp * o1, BAND_H)
+		var b0: Vector3 = battle._world_pos(b2d + perp * o0, BAND_H)
+		var b1: Vector3 = battle._world_pos(b2d + perp * o1, BAND_H)
+		imesh.surface_set_color(c0); imesh.surface_add_vertex(a0)
+		imesh.surface_set_color(c1); imesh.surface_add_vertex(a1)
+		imesh.surface_set_color(c1); imesh.surface_add_vertex(b1)
+		imesh.surface_set_color(c0); imesh.surface_add_vertex(a0)
+		imesh.surface_set_color(c1); imesh.surface_add_vertex(b1)
+		imesh.surface_set_color(c0); imesh.surface_add_vertex(b0)
+	imesh.surface_end()
+	im.sorting_offset = -1.0        # 排在立绘后面: 这是地上的印子, 不该盖住龟
+	battle._world.add_child(im)
+	## ★hold → fade, 不是一出生就线性淡出(memory [[fb-vfx-defect-families]] 淡出病):
+	##   一出生就淡出的短命特效, 实拍任何一刻都只有半亮, 读出来就是"土棕/灰"。
+	var tw = battle._reg_tween()
+	tw.tween_interval(hold)
+	tw.tween_property(mat, "albedo_color:a", 0.0, fade)
+	tw.tween_callback(im.queue_free)
+	return im
+
+
+## 051 激光手枪的整套演出。分段表见 docs/plans/20260914-046至051第五批与判定带三件.md §方案A。
+##   ① 枪口炸闪 ② 贯穿白核(立起的加法带) ③ 地面判定带(半宽 = 判定自己那个常量) ④ 沿线灼痕
+## ★⑤"每个命中者一朵火花"不在这里 —— 它要跟着**真的被结算到的那几个**走,
+##   放在演出里就成了"我自己插的标记"(memory [[fb-gate-must-measure-requirement-not-my-hook]])。
+const SCORCH_TEX := "res://assets/sprites/vfx/laser-scorch.png"
+const SCORCH_FRAMES := 4
+const SCORCH_YARDS := 34.0
+const SCORCH_FPS := 4.5        # 4 帧 ÷ 4.5 = 0.89 秒, 和地面带的 hold+fade 同寿
+const SCORCH_STEP := 70.0      # 沿线每多少码撒一枚
+var _scorch_tex: Texture2D = null
+
+func laser_pistol_fx(a2d: Vector2, dir: Vector2, half_w: float, reach: float) -> void:
+	if battle._world == null:
+		return
+	var d: Vector2 = dir.normalized()
+	var endp: Vector2 = a2d + d * reach
+	battle._muzzle_flash(a2d, d, Color("#ff5a72"))                                # ①
+	battle._laser_beam(a2d, endp, Color(1.0, 0.24, 0.36, 0.85), 0.22, 0.22)       # ② 红辉(宽)
+	battle._laser_beam(a2d, endp, Color(1.0, 0.92, 0.94, 0.95), 0.07, 0.14)       # ② 白核(细)
+	line_band_ground(a2d, d, half_w, reach, Color(1.0, 0.22, 0.30, 0.34))         # ③
+	if _scorch_tex == null:
+		_scorch_tex = load(SCORCH_TEX)
+	if _scorch_tex == null:
+		return                          # 缺图就不撒, 不拿别的图顶替(素材不复用铁律)
+	var perp: Vector2 = d.orthogonal()
+	var n: int = clampi(int(reach / SCORCH_STEP), 1, 26)
+	for i in range(n):
+		## ★横向必须撒满**整个判定带** —— 撒在中线上等于又画了一条线, 宽度还是 0。
+		var lat: float = randf_range(-half_w, half_w)
+		var at: Vector2 = a2d + d * (SCORCH_STEP * float(i + 1)) + perp * lat
+		var sp := _sheet_sprite(_scorch_tex, SCORCH_FRAMES, SCORCH_YARDS)
+		## ★贴地: `axis = AXIS_Y` **本身就是平铺**, 千万别再加 rotation.x = -90
+		##   (memory [[fb-axis-y-plus-rotation-cancels]]: 那两下会互相抵消成竖着的)。
+		sp.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+		sp.axis = Vector3.AXIS_Y
+		sp.no_depth_test = false        # 地上的印子: 该被龟挡住
+		sp.render_priority = 3
+		sp.sorting_offset = -0.5
+		sp.position = battle._world_pos(at, BAND_H + 0.012)
+		battle._world.add_child(sp)
+		battle._anim_fx.append({"spr": sp, "fps": SCORCH_FPS, "n": SCORCH_FRAMES, "t0": battle._t})
+
+
+## ════════════════════════════════════════════════════════════════════════════
+##  041 退潮浊液【涨潮持续态】—— 整只龟泡在浊液里, 水面一直在起伏
+## ════════════════════════════════════════════════════════════════════════════
+## 用户 2026-09-14 看 041 窗口时:「最好做一个 buff 持续期间的特效, **整个身体**怎么样」。
+## 原状: 涨潮只有 t=5 那一下水柱 + 体型 +30%, 之后 ★3 整整 15 秒身上一点标记都没有。
+##
+## ★做法照 022 真火 / 027 电弧 / 冰寒标记的先例 ——【演出是状态的函数】:
+##   创建点在 `battle_render._tick_ebb_coat()` 里逐帧扫 `_ebb_until`,
+##   **不**写在 `_eq_ebb_surge` 里。这样以后任何把 `_ebb_until` 写上去的路径
+##   都自动带这层水, 不用再接一次线(memory [[fb-zero-caller-is-a-whole-class]])。
+## ★到期也由 `_ebb_until` 一个字段说了算, 不另起第二条计时
+##   (memory [[fb-second-clock-drops-events]]: 两条钟必然丢事件)。
+## ★体型会 +30%(`size_mult`) ⇒ 水膜按同一个倍率放大, 否则涨潮后水裹不住身体。
+##   `size_mult` 在整个涨潮期内不变, 所以创建时读一次就够。
+const TCOAT_TEX := "res://assets/sprites/vfx/tide-coat.png"
+const TCOAT_FRAMES := 6
+const TCOAT_FPS := 8.0            # 6 帧 / 8fps = 0.75 秒一轮潮汐
+const TCOAT_YARDS := 85.0         # 48 texel × 1.775 码 ≈ 2.04 m, 略大于一只龟
+const TCOAT_H := 0.98             # 精灵中心对准身体中段(与 _body_glow 的 +1.0 同口径)
+var _tcoat_tex: Texture2D = null
+
+func ebb_tide_coat(u: Dictionary) -> void:
+	if battle._world == null or u == null or not u.get("alive", false):
+		return
+	if is_instance_valid(u.get("_ebb_coat_spr", null)):
+		return                              # 已经裹上了 ⇒ 续时间由 _ebb_until 自己管
+	if _tcoat_tex == null:
+		_tcoat_tex = load(TCOAT_TEX)
+	if _tcoat_tex == null:
+		return                              # 素材没 import 就静默跳过, 不崩战斗
+	var mult: float = maxf(0.2, float(u.get("size_mult", 1.0)))
+	var sp := _sheet_sprite(_tcoat_tex, TCOAT_FRAMES, TCOAT_YARDS * mult)
+	sp.no_depth_test = true          # 水要压在立绘上, 被挡住就读不出「它泡在水里」
+	sp.render_priority = 5
+	sp.position = battle._world_pos(u["pos"] as Vector2,
+									float(u.get("height", 0.0)) + TCOAT_H * mult)
+	battle._world.add_child(sp)
+	u["_ebb_coat_spr"] = sp
+	battle._follow_vfx.append({
+		"spr": sp, "unit": u, "h": TCOAT_H * mult,
+		"loop_fps": TCOAT_FPS, "loop_n": TCOAT_FRAMES,
+		"loop_t0": battle._t, "until_key": "_ebb_until",
+		"clear_key": "_ebb_coat_spr",
+	})
+
+
+## ════════════════════════════════════════════════════════════════════════════
+##  043 海浪护符【浪墙】—— 真 3D 海浪(生成网格), 宽度固定
+## ════════════════════════════════════════════════════════════════════════════
+## 用户 2026-09-14 看 043 台子:「这个得重做, **最好是做 3d 的海浪**」「而且**宽度应该固定**啊」。
+##
+## ── 旧版是什么样(实测, 不是推断) ────────────────────────────────────────────
+##  ① **根本不是 3D** —— 是 4~16 片 `Sprite3D`(BILLBOARD_FIXED_Y)拿 `tidal-wave-anim.png`
+##     沿 perp 排开、整排平移。是一排立牌, 不是一道有体积的水。
+##  ② **宽度每次都不一样** —— `ncrest = clampi((p1-p0)/72+1, 4, 16)`, 而 `p0/p1` 是
+##     **涌浪那一刻的单位跨度**。单位在走 ⇒ 这一次 4 片(约 300 码)下一次 16 片(约 1150 码)。
+##     而且 `pmin/pmax` 以 `u.pos` 为原点算, crest 却铺在 `startc + perp*pp` ——
+##     两个原点不同, 横向中心还是偏的。
+##  ③ **演出与判定根本不是一回事** —— 伤害循环 `for o in allies + enemies` **没有任何
+##     横向判定**: 全场每个人都吃。所以"宽度按单位跨度算"这件事从头到尾只是装饰,
+##     站在侧翼的单位会被一道**视觉上没碰到它**的浪打飞。
+##     ⇒ 宽度固定成**盖满全场**, 才是让演出等于判定(用户说的"固定"正好也是对的那个)。
+##  ④ **整条演出挂在 tween 上**(`tween_property(p,"position",…)`), 而伤害走
+##     `_pending_shots`(sim 钟)⇒ 两条钟。无头下浪一动不动而伤害照结算。
+##
+## ── 分段表(动手前先分段) ──────────────────────────────────────────────────
+##  | 段 | 这一段在说什么事 | 多长 | 形状 / 亮暗怎么变 | 用什么实现 |
+##  |---|---|---|---|---|
+##  | ① 蓄浪 | 身后 400 码水位在涨 | 0.5s | 水脊整体高度 0→1, 还没有前进 | 同一张网格, 高度整体缩放 |
+##  | ② 推进 | 一道浪墙推过全场 | 2.0s | 前坡陡(迎面)/顶上卷唇/背面拖长水体; 沿 perp 有相位差 ⇒ 浪脊不是直尺 | 每个 **sim step** 重建顶点 |
+##  | ③ 白沫 | 浪头在卷 | 与②同步 | 顶端一条亮白泡沫带, 随卷曲强度呼吸 | 顶点色 ramp 的最亮档 |
+##  | ④ 拍到 | 谁被扫到了 | 各自 | 现有 `wave_splash`(友/敌两种) | 不动 |
+##  | ⑤ 退去 | 浪过去了 | 0.35s | **整体高度落回 0**, 不是 alpha 淡出(淡出病) | 高度缩放 |
+##
+## ★为什么用生成网格而不是贴图: 用户要的就是"3D 的海浪" —— 要有体积、要被单位正确遮挡。
+##   而且网格没有"像素贴图跟着任意方向旋转 ⇒ 被重采样成糊"的问题(像素风硬约束)。
+##   像素感靠**按高度把颜色量化成 5 档**保住: 渲出来仍是平涂色块, 不是光滑渐变。
+const TIDE_NL := 33               # 沿浪墙方向(perp)取几列
+const TIDE_NC := 19               # 浪的横截面取几片(加密: 平涂色带才够细)
+const TIDE_CREST_H := 1.95        # 浪峰高度(世界单位·米)。一只龟约 1.4 ⇒ 浪比龟高一头
+const TIDE_BODY := 230.0          # 浪体往后拖多长(码)
+const TIDE_FACE := 74.0           # 迎面那一坡多长(码)
+## 高度 ramp(低→高), 5 档量化 —— 平涂, 不做光滑渐变
+## ★★★**必须不透明**。第一版给了 alpha 0.90~0.98 + `TRANSPARENCY_ALPHA`,
+##   实拍量出来 **92.7% 的浪是同一个色**(最暗那档) —— 而顶点色数组明明是均匀分布的
+##   (探针: 深水 26% / 白沫 28%)。根因: 透明物体**不写深度**, 整片浪只能按三角形
+##   提交顺序涂, 后提交的那一列的深水把前一列的浪尖直接盖掉。
+##   海浪本来就是实体 ⇒ 关掉透明, 交给深度缓冲正常排序。
+##   (memory [[fb-clean-vfx-stage-not-squint]]: 拿不准就量, 别眯眼看)
+## 分档阈值(归一化高度)。**不均匀** —— 最亮那档门槛抬到 0.93, 免得浪峰平台整片发白。
+const TIDE_STEPS: Array[float] = [0.0, 0.18, 0.42, 0.70, 0.93]
+const TIDE_RAMP: Array[Color] = [
+	Color(0.05, 0.18, 0.32, 1.0),   # 深水
+	Color(0.09, 0.32, 0.50, 1.0),   # 水体
+	Color(0.16, 0.52, 0.70, 1.0),   # 浪面
+	Color(0.36, 0.78, 0.88, 1.0),   # 浪唇
+	Color(0.92, 0.99, 1.00, 1.0),   # 白沫
+]
+
+
+## 浪的横截面: t ∈ [0,1] 从**背面最尾**到**迎面最前**, 返回归一化高度 [0,1]。
+## 形状是"后面拖很长的水体 → 抬到浪峰 → 前面一坡陡降" —— 海浪就是这个不对称。
+func _tide_profile(t: float) -> float:
+	if t <= 0.0 or t >= 1.0:
+		return 0.0
+	var crest: float = 0.78                       # 浪峰落在靠前 78% 处(不是正中)
+	if t < crest:
+		var a: float = t / crest
+		return a * a * (3.0 - 2.0 * a)            # 背面: 平滑抬起
+	var b: float = (t - crest) / (1.0 - crest)
+	return 1.0 - b * b * b                        # 迎面: 三次方 ⇒ 陡
+
+
+## 重建这道浪的网格。`rise` = 整体高度倍率(蓄浪/退去用), `trav` = 已推进多少码。
+func tide_wall_build(w: Dictionary, rise: float, trav: float) -> void:
+	var im = w.get("im", null)
+	if not is_instance_valid(im):
+		return
+	var mesh: ImmediateMesh = w["mesh"]
+	var mat: StandardMaterial3D = w["mat"]
+	var start: Vector2 = w["start"]
+	var dir: Vector2 = w["dir"]
+	var perp: Vector2 = w["perp"]
+	var half: float = float(w["half"])
+	mesh.clear_surfaces()
+	if rise <= 0.001:
+		return
+	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, mat)
+	for li in range(TIDE_NL - 1):
+		var u0: float = float(li) / float(TIDE_NL - 1)
+		var u1: float = float(li + 1) / float(TIDE_NL - 1)
+		for ci in range(TIDE_NC - 1):
+			var t0: float = float(ci) / float(TIDE_NC - 1)
+			var t1: float = float(ci + 1) / float(TIDE_NC - 1)
+			_tide_quad(mesh, start, dir, perp, half, rise, trav, u0, u1, t0, t1)
+	mesh.surface_end()
+
+
+func _tide_vert(start: Vector2, dir: Vector2, perp: Vector2, half: float,
+				rise: float, trav: float, u: float, t: float) -> Array:
+	## 沿浪墙方向的相位: 让浪脊起伏、峰位左右错开 ⇒ 不是一把直尺。
+	var lat: float = lerpf(-half, half, u)
+	var ph: float = lat * 0.014
+	var amp: float = 1.0 + 0.26 * sin(ph) + 0.13 * sin(ph * 2.37)
+	var shift: float = 32.0 * sin(ph * 1.6)          # 峰位前后错开(码): 浪脊不是一把直尺
+	## ★卷唇: 浪峰之后那一小段**往前探出去**, 悬在迎面坡的上方 ——
+	##   高度场里 `along` 不必随 t 单调, 这正是"浪在卷"与"一个斜坡"的区别。
+	var lip: float = 0.0
+	if t > 0.74:
+		var q: float = (t - 0.74) / 0.26
+		lip = 34.0 * sin(q * PI)
+	var along: float = trav + shift + lip - TIDE_BODY + t * (TIDE_BODY + TIDE_FACE)
+	var hn: float = _tide_profile(t) * amp
+	var p2: Vector2 = start + dir * along + perp * lat
+	return [p2, clampf(hn, 0.0, 1.35) * rise]
+
+
+func _tide_quad(mesh: ImmediateMesh, start: Vector2, dir: Vector2, perp: Vector2,
+				half: float, rise: float, trav: float,
+				u0: float, u1: float, t0: float, t1: float) -> void:
+	var a: Array = _tide_vert(start, dir, perp, half, rise, trav, u0, t0)
+	var b: Array = _tide_vert(start, dir, perp, half, rise, trav, u1, t0)
+	var c: Array = _tide_vert(start, dir, perp, half, rise, trav, u1, t1)
+	var d: Array = _tide_vert(start, dir, perp, half, rise, trav, u0, t1)
+	## ★★**平涂**: 一个面片一个色。第一版是逐顶点给色, 结果被 Gouraud 插值成光滑渐变 ——
+	##   实拍读成"一段 3D 渲染掉进了像素游戏里", 五档量化等于白做。
+	##   取四角的平均高度定档, 六个顶点同一个色 ⇒ 渲出来是一块一块的色带。
+	var hmean: float = (float(a[1]) + float(b[1]) + float(c[1]) + float(d[1])) * 0.25
+	## ★分档**不均匀**: 等分(idx = hmean/1.02*5)会让浪峰那一大片平台全进最亮档,
+	##   实拍白沫占了整条浪的一半, 读成"一条冰河"而不是海浪。白沫只留给真正的顶。
+	var idx: int = 0
+	for k in range(TIDE_STEPS.size()):
+		if hmean >= TIDE_STEPS[k]:
+			idx = k
+	## 浪唇那一小段无条件给白沫 —— 浪之所以读成浪, 靠的就是顶上那条**窄**白线。
+	if t0 >= 0.80 and t1 <= 0.90:
+		idx = TIDE_RAMP.size() - 1
+	var col: Color = TIDE_RAMP[idx]
+	for q in [[a, b, c], [a, c, d]]:
+		for e in q:
+			mesh.surface_set_color(col)
+			mesh.surface_add_vertex(battle._world_pos(e[0] as Vector2,
+								   float(e[1]) * TIDE_CREST_H))
+
+
+## 起一道浪 —— 建节点, 推进交给 `EquipTickSystem._tick_tide_walls`(sim 钟)。
+func tide_wall_spawn(start: Vector2, dir: Vector2, half: float, dist: float,
+					 windup: float, travel: float) -> Dictionary:
+	if battle._world == null:
+		return {}
+	var im := MeshInstance3D.new()
+	var mesh := ImmediateMesh.new()
+	im.mesh = mesh
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color(1.0, 1.0, 1.0, 1.0)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED   # ★见 TIDE_RAMP 上面那段
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.vertex_color_use_as_albedo = true
+	battle._world.add_child(im)
+	var w: Dictionary = {
+		"im": im, "mesh": mesh, "mat": mat,
+		"start": start, "dir": dir, "perp": dir.orthogonal(),
+		"half": half, "dist": dist,
+		"t": 0.0, "windup": windup, "travel": travel, "fade": 0.35,
+	}
+	tide_wall_build(w, 0.0, 0.0)
+	return w

@@ -44,25 +44,36 @@ func _ice_fissure_vfx(start: Vector2, dir: Vector2, reach: float, fdur: float) -
 	var perp: Vector2 = dir.orthogonal()
 	var field_life: float = 2.8
 	var field = load("res://assets/sprites/vfx/ice-field.png")
-	var n: int = 26                                          # 密排冰刺=连成冰墙(非稀疏一排)
+	## ★冰刺数跟着判定带宽走: 原来 26 根铺 ±46 码, 拉到 ±90 码后同样的根数密度腰斩,
+	##   冰墙会读成"稀疏一排"。26 × (90/46) ≈ 51。
+	var n: int = 51                                          # 密排冰刺=连成冰墙(非稀疏一排)
 	for i in range(1, n + 1):
 		var f: float = float(i) / float(n)
-		var lat: float = randf_range(-46.0, 46.0)
-		var hs: float = lerpf(1.4, 0.68, absf(lat) / 46.0) * randf_range(0.82, 1.15)   # 中脊高两侧矮
+		## ★★横向散布必须**读判定自己那个常量** —— 原来写死 ±46, 而文案与判定都是 ±90 码,
+		##   演出只盖住判定的 51%: 站在 ±46~±90 之间的敌人照样挨打, 画面上却什么都没有。
+		##   (2026-09-14 扫"文案写明判定半宽"那一类时抓到, 029/030/051 三件同病)
+		## ★★横向**确定性铺满**整条判定带, 只叠一点抖动 —— 不用纯随机。
+		##   纯 `randf_range(-90, 90)` 有两个毛病: ①边缘靠运气, 51 根全落在 ±81 内的
+		##   概率约 0.5% ⇒ 门禁会偶发红(memory [[fb-make-assertions-rng-insensitive]]);
+		##   ②画面上冰墙的边界每次都不一样宽。11 个档位循环铺过去, 每 11 根必定
+		##   踩满 ±FISSURE_HALF_W 两端, 而沿线位置在推进 ⇒ 看上去仍是散的。
+		var slot: float = float(i % 11) / 10.0
+		var lat: float = clampf(lerpf(-FISSURE_HALF_W, FISSURE_HALF_W, slot)
+								+ randf_range(-6.0, 6.0), -FISSURE_HALF_W, FISSURE_HALF_W)
+		var hs: float = lerpf(1.4, 0.68, absf(lat) / FISSURE_HALF_W) * randf_range(0.82, 1.15)   # 中脊高两侧矮
 		var pos: Vector2 = start + dir * (reach * f) + perp * lat
-		var tw = battle._reg_tween()
-		tw.tween_interval(f * fdur)
-		tw.tween_callback(battle._spawn_ice_spike.bind(pos, hs, field_life))
+		## ★★错峰窜起改走**游戏钟**(`_equip_tick_sys.schedule`), 不再挂 tween。
+		##   同一个函数里的**伤害**早在 2026-09-13 就搬过来了(tween 走未钳制 delta,
+		##   无头下推不动), 演出这半边当时漏了 ⇒ 无头下**一根冰刺都不会生成**,
+		##   于是"演出有没有盖住判定带"这条根本无法被门禁量到。
+		##   (CLAUDE.md §3.5 / memory [[fb-second-clock-drops-events]])
+		battle._equip_tick_sys.schedule(f * fdur, battle._spawn_ice_spike.bind(pos, hs, field_life))
 	var m: int = 13
 	for i in range(1, m + 1):
 		var f: float = float(i) / float(m)
 		var pos: Vector2 = start + dir * (reach * f)
-		var tf = battle._reg_tween()
-		tf.tween_interval(f * fdur)
-		tf.tween_callback(_ice_field_patch.bind(field, pos, dir, field_life))
-		var tm = battle._reg_tween()
-		tm.tween_interval(f * fdur)
-		tm.tween_callback(_frost_mist.bind(pos + perp * randf_range(-42.0, 42.0)))
+		battle._equip_tick_sys.schedule(f * fdur, _ice_field_patch.bind(field, pos, dir, field_life))
+		battle._equip_tick_sys.schedule(f * fdur, _frost_mist.bind(pos + perp * randf_range(-42.0, 42.0)))
 
 func _ice_field_patch(tex: Texture2D, pos2d: Vector2, dir: Vector2, life: float) -> void:
 	if tex == null:

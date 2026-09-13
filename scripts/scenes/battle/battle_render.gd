@@ -223,6 +223,7 @@ func _render_step(rd: float, frozen: bool, in_ts: bool) -> void:
 	_tick_true_fire()              # 022 真火: 谁把 true_fire_until 写上去, 身上就自动烧起来
 	_tick_chill_mark()             # 冰寒标记: 谁的 spd_dbf_until 还没过就挂霜(状态的函数)
 	_tick_baton_zap_mark()         # 027 电击眩晕: 谁的 baton_zap_until 还没过就一直冒电弧
+	_tick_ebb_coat()               # 041 涨潮期: 谁的 _ebb_until 还没过, 整只龟就泡在浊液里
 	_tick_follow_vfx()             # 跟随特效(冰块等)贴目标最新世界坐标(含击飞height)
 	_tick_anim_fx()                # 位置固定的帧动画(技能环)按游戏时钟切帧·放完自销
 	_tick_coin_fx()                # 035 深海币: 头顶旋转金币(跟人 + 边转边上飘)
@@ -290,6 +291,19 @@ func _tick_baton_zap_mark() -> void:
 		if is_instance_valid(u.get("_baton_zap_spr", null)):
 			continue
 		battle._vfx.baton_zap_mark(u)
+
+
+## 041 涨潮持续态 —— 同一条路子: 演出是**状态的函数**, 判据落在 `_ebb_until` 上。
+## 用户 2026-09-14:「最好做一个 buff 持续期间的特效, 整个身体怎么样」。
+func _tick_ebb_coat() -> void:
+	for u in battle._units:
+		if not u.get("alive", false):
+			continue
+		if battle._t >= float(u.get("_ebb_until", 0.0)):
+			continue
+		if is_instance_valid(u.get("_ebb_coat_spr", null)):
+			continue
+		battle._vfx.ebb_tide_coat(u)
 
 
 func _tick_chill_mark() -> void:

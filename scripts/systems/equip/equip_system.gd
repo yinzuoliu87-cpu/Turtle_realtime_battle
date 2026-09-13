@@ -422,10 +422,11 @@ func _eq_laser_pistol(u: Dictionary, si: int) -> void:   # 激光手枪051: 每8
 	var dir4: Vector2 = (battle._targeting._nearest_enemy(u)["pos"] - u["pos"]).normalized() if battle._targeting._nearest_enemy(u) != null else Vector2.RIGHT
 	var first = _eq_first_in_line(u, dir4, PISTOL_LASER_BAND)
 	if first != null:
-		var endp51: Vector2 = u["pos"] + dir4 * 2600.0   # 无限穿透: 光束画到场外(伤害判定 battle._on_line 本就无距离上限, 原340码只是视觉长度→表现短于实际打击范围·用户2026-07-19"改为无限穿透")
-		battle._muzzle_flash(u["pos"], dir4, Color("#ff5a72"))
-		battle._laser_beam(u["pos"], endp51, Color(1.0, 0.24, 0.36, 0.85), 0.22, 0.22)   # 红辉(宽)
-		battle._laser_beam(u["pos"], endp51, Color(1.0, 0.92, 0.94, 0.95), 0.07, 0.14)   # 白核(细)
+		## 演出整套搬进 battle_vfx.laser_pistol_fx(分段表见 docs/plans/20260914-046至051第五批与判定带三件.md)。
+		## ★判定半宽**原样传进去** —— 从此"演出宽度 = 判定宽度"由同一个常量保证,
+		##   不是两边各写一份(原来的 _laser_beam 是立起来的带子, 地面宽度恒为 0)。
+		## 2600 码 = 无限穿透: 光束画到场外(判定 battle._on_line 本就无距离上限·用户2026-07-19"改为无限穿透")
+		battle._vfx.laser_pistol_fx(u["pos"], dir4, PISTOL_LASER_BAND, 2600.0)
 		battle._damage._apply_damage_from(u, first, battle._atk_dmg(u, [1.5, 2.0, 2.8][si], first), Color("#ff8aa0"), 0.0, false, true)
 		battle._damage._apply_dot_stacks(first, "bleed", maxi(1, roundi(u["atk"] * [0.5, 0.5, 0.6][si])), u)
 		battle._vfx._hit_spark(first)
@@ -433,6 +434,7 @@ func _eq_laser_pistol(u: Dictionary, si: int) -> void:   # 激光手枪051: 每8
 			if not is_same(o, first) and battle._on_line(first["pos"], dir4, o["pos"], PISTOL_LASER_BAND):
 				battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, [1.5, 2.0, 2.8][si] * PISTOL_LASER_FALLOFF, o), Color("#ff8aa0"), 0.0, false, true)
 				battle._damage._apply_dot_stacks(o, "bleed", maxi(1, roundi(u["atk"] * [0.5, 0.5, 0.6][si] * PISTOL_LASER_FALLOFF)), u)   # 身后50%流血
+				battle._vfx._hit_spark(o)   # ★身后的也要有命中特效: 文案写「命中这条直线上的**所有**敌人」, 原来只有首敌有
 
 func _eq_shotgun_blast(u: Dictionary, si: int) -> void:   # 霰弹贝古053: 朝最近敌扇形散开, 每颗弹珠沿自己的直线飞, 撞到第一个敌人才结算伤害并消失; 被8发及以上命中→眩晕
 	if not u.get("alive", false): return
@@ -573,6 +575,16 @@ const BSW_CHOP_FROM_L := 1        # 敌在左: 镜像, 从右上 45° 抡到左�
 const BSW_CHOP_ARC := 4           # 抡过 4 格(半圈)
 ## 【043 海浪护符】浪墙从携带者【身后】多远处涌起(码)。
 const WAVE_BACK := 400.0
+## ★★浪墙宽度**固定**(用户 2026-09-14:「而且宽度应该固定啊」)。
+##   旧版是 `ncrest = clampi((p1-p0)/72+1, 4, 16)`, p0/p1 取**涌浪那一刻的单位跨度**
+##   ⇒ 这一次 4 片下一次 16 片; 而且横向中心还是偏的(跨度以 u.pos 为原点算, 浪却铺在 startc 上)。
+##   900 码 = 战场对角线的一半(ARENA 1596×728 ⇒ 对角 1754) ⇒ 任何行进角度下都盖满全场。
+##   ★这同时修掉一条更要命的: 伤害循环 `for o in allies + enemies` **没有任何横向判定**,
+##     全场每个人都吃 —— 旧版那道窄浪在画面上根本没碰到侧翼的单位, 却把它打飞了。
+const WAVE_HALF_W := 900.0
+## 行程也固定: 从身后 400 码起推 2200 码, 足够穿过整个战场。
+## ★它同时是伤害延时的分母(`fwd / tdist * travel`) —— 演出与判定必须共用同一个数。
+const WAVE_DIST := 2200.0
 const CANDLE_PHASES := 3       # 几个阶段
 const CANDLE_IV := 5.0         # 每几秒切一次(主场景 _EQ_CUSTOM_IV 引用本常量)·也是回血铺开的秒数
 const CANDLE_HEAL_R := 250.0   # 微弱阶段: 友军回血光圈半径(码)
@@ -737,6 +749,10 @@ func _eq_fpga_tick(u: Dictionary, si: int) -> void:
 func _eq_ebb_surge(u: Dictionary, hp_add: float, atk_add: float, dur: float) -> void:   # 退潮浊液041: 涨潮期开始
 	if not u.get("alive", false) or u.get("_ebb_on", false): return
 	u["_ebb_on"] = true
+	## ★涨潮**持续期**的演出靠这个字段(battle_render._tick_ebb_coat 逐帧扫):
+	##   用户 2026-09-14「最好做一个 buff 持续期间的特效, 整个身体怎么样」。
+	##   跟 `_pending_shots` 里那条还原走**同一条游戏钟**, 不另起计时。
+	u["_ebb_until"] = battle._t + dur
 	u["maxHp"] += hp_add; u["hp"] += hp_add
 	u["base_atk"] = float(u.get("base_atk", 0.0)) + atk_add
 	u["atk_range"] = float(u.get("atk_range", 70.0)) + TIDE_RANGE_UP
@@ -749,6 +765,7 @@ func _eq_ebb_surge(u: Dictionary, hp_add: float, atk_add: float, dur: float) -> 
 func _eq_ebb_recede(u: Dictionary, hp_add: float, atk_add: float) -> void:   # 退潮浊液041: 到期还原
 	if not u.get("_ebb_on", false): return
 	u["_ebb_on"] = false
+	u["_ebb_until"] = 0.0            # 提前退潮也要立刻把那层水收掉
 	u["maxHp"] = maxf(1.0, float(u["maxHp"]) - hp_add)
 	u["hp"] = minf(float(u["hp"]), float(u["maxHp"]))          # 退潮不致死, 只削到新上限
 	u["base_atk"] = maxf(0.0, float(u.get("base_atk", 0.0)) - atk_add)
@@ -1305,20 +1322,17 @@ func _eq_water_wave(u: Dictionary, si: int) -> void:
 		ec /= float(enemies.size())
 	var dvec: Vector2 = ec - u["pos"]
 	var dir: Vector2 = Vector2.RIGHT if dvec.length() < 1.0 else dvec.normalized()   # 浪行进方向=朝敌人(2D可对角)
-	var perp: Vector2 = Vector2(-dir.y, dir.x)          # 浪墙铺开方向(垂直于行进)
 	var startc: Vector2 = u["pos"] - dir * WAVE_BACK    # 敌人反方向(身后)涌起
-	var maxfwd: float = 0.0; var pmin: float = INF; var pmax: float = -INF
-	for o in allies + enemies:
-		maxfwd = maxf(maxfwd, (o["pos"] - startc).dot(dir))       # 沿行进方向最远单位
-		var pp: float = (o["pos"] - u["pos"]).dot(perp)           # 沿浪墙方向的跨度
-		pmin = minf(pmin, pp); pmax = maxf(pmax, pp)
-	if pmin > pmax: pmin = -150.0; pmax = 150.0
-	var tdist: float = maxfwd + 320.0                   # 推过最远单位再多320
+	var tdist: float = WAVE_DIST
 	var windup: float = 0.5
 	var travel: float = 2.0                             # 慢速(用户)
 	battle._anticipate(u)
-	battle._water_charge_windup(u, windup)
-	battle._spawn_tidal_wave(startc, dir, perp, pmin - 75.0, pmax + 75.0, tdist, windup, travel)
+	## ★演出换成**真 3D 海浪**(生成网格·逐帧在 sim 钟上重建顶点), 分段表见 battle_vfx 同名段。
+	##   旧版是 4~16 片 `Sprite3D` 立牌沿 perp 排开、整排 tween 平移 —— 既不是 3D、
+	##   宽度每次都不一样, 而且 tween 走未钳制 delta(与伤害的 sim 钟是两条钟)。
+	##   蓄浪那颗 `_water_charge_windup` 白球一并删掉: 它是 `VfxTex._make_fire_glow_tex()`
+	##   程序生成光球(禁区), 而且浪自己的①蓄浪段已经在说同一件事。
+	battle._equip_tick_sys.tide_wall_start(startc, dir, WAVE_HALF_W, tdist, windup, travel)
 	for o in allies:
 		var oo: Dictionary = o
 		var fwd: float = clampf((o["pos"] - startc).dot(dir), 0.0, tdist)

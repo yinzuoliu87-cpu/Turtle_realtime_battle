@@ -28,6 +28,8 @@
 """
 import argparse
 import ctypes
+import io
+import re
 import os
 import subprocess
 import sys
@@ -101,6 +103,31 @@ def grab(box):
     return ImageGrab.grab(bbox=box, all_screens=True)
 
 
+def _check_case(case_id):
+    """case 登记过没有? 没登记就给出最可能的正确键名。
+
+    判据落在**真的那张表**(scripts/gamedata/vfxlab_cases.gd)上, 不维护第二份名单 ——
+    维护第二份名单就是"手抄的副本必然落后"(memory [[fb-hand-rolled-copies-drift]])。
+    """
+    src = os.path.join(ROOT, "scripts", "gamedata", "vfxlab_cases.gd")
+    txt = io.open(src, encoding="utf-8", newline="").read()
+    keys = re.findall(r'^"([^"]+)":\s*\{', txt, re.M)
+    if case_id in keys:
+        return True, ""
+    ## 同一件装备常常登记在别的键下(法器组是 staff_xxx) —— 按 `"eq": "<id>"` 反查。
+    alt = []
+    blocks = re.split(r'^"([^"]+)":\s*\{', txt, flags=re.M)
+    for i in range(1, len(blocks) - 1, 2):
+        k = blocks[i]
+        body = blocks[i + 1]
+        m = re.search(r'"eq":\s*"([^"]+)"', body)
+        if m and m.group(1) == case_id:
+            alt.append(k)
+    if alt:
+        return False, " 这件装备登记在: %s —— 用那个键名。" % ", ".join(alt)
+    return False, " 已登记的键共 %d 个; `VFXLAB_CASE=list` 可以打印全部。" % len(keys)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("case")
@@ -109,6 +136,20 @@ def main():
     ap.add_argument("--gap", type=float, default=1.6)
     a = ap.parse_args()
     os.makedirs(OUT_DIR, exist_ok=True)
+
+    ## ★★开窗前先查这个 case **登记过没有** (2026-09-14 加)。
+    ##   由来: 用户看 043 的窗口 ——「你这个展示的什么」。我传的是 `p2eq_043`,
+    ##   而 043 是法器, 台子键名是 `staff_043`。`VfxLabCases.get_case()` 对
+    ##   **未登记的 id 是回落到 DEFAULT 的**(它自己注释就写着"只是配得不准"),
+    ##   于是建了个缺省场: 一只龟、镜头怼脸、法力没灌 ⇒ 浪墙根本不会发生。
+    ##   下面那两条机检(画面在动 / 是黑场)**全绿** —— 它们管的是"截没截对窗口",
+    ##   管不了"台子是不是那件"(memory [[fb-gate-subject-never-constructed]]:
+    ##   判据没错, 被测对象根本不在场)。
+    ok_id, hint = _check_case(a.case)
+    if not ok_id:
+        print("[FAIL] ★case `%s` **没有登记** —— 开出来会是回落的缺省场, 不是这件东西。%s"
+              % (a.case, hint))
+        return 1
 
     env = dict(os.environ)
     env.update({"VFXLAB": "1", "VFXLAB_CASE": a.case, "VFXLAB_HOLD": "1", "VFXLAB_GLOW": "1"})

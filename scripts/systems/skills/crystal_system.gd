@@ -99,9 +99,18 @@ func _crystal_shrapnel(pos2d: Vector2) -> void:
 func _crystal_beam(a2d: Vector2, b2d: Vector2, col: Color) -> void:
 	battle._bolt_line(a2d, b2d, Color(1.0, 0.95, 1.0, 0.95))
 	battle._bolt_line(a2d, b2d, col)
-	var n: int = clampi(int((b2d - a2d).length() / 60.0), 1, 20)
+	## ★地面判定带: 文案写明「中线两侧各 55 码」, 而上面两条 bolt_line 都是细线,
+	##   地面横向宽度≈0 —— 站在 ±55 码内的敌人全都挨打, 画面上却只有一条线。
+	##   半宽**读 LINE_HALF_W 本身**, 不在这里写第二份(判定改了演出要跟着改)。
+	var dirb: Vector2 = (b2d - a2d).normalized()
+	var perp: Vector2 = dirb.orthogonal()
+	battle._vfx.line_band_ground(a2d, dirb, LINE_HALF_W, (b2d - a2d).length(),
+								 Color(0.62, 0.44, 1.0, 0.30))
+	var n: int = clampi(int((b2d - a2d).length() / 60.0), 1, 30)
 	for i in range(1, n + 1):
-		_crystal_spark(a2d.lerp(b2d, float(i) / float(n + 1)))
+		## ★碎晶原来全撒在中线上(纯 lerp)= 又画了一条线; 现在撒满整个判定带。
+		_crystal_spark(a2d.lerp(b2d, float(i) / float(n + 1))
+					   + perp * randf_range(-LINE_HALF_W, LINE_HALF_W))
 
 # 可视水晶叠层: 敌身周围绕 n 颗水晶碎片 (n=当前层数, 0=清除)
 # 可视水晶叠层: 敌身周围绕 n 颗水晶碎片 (n=当前层数, 0=清除)
