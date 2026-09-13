@@ -3047,20 +3047,6 @@ func _bear_paw_hit(u: Dictionary, tgt) -> void:   # 熊掌挥击接触瞬间: �
 	if u.get("melee", false): _on_basic_hit(u, tgt)
 	_bear_claw_fx(tgt["pos"])                    # 金爪三痕+尘
 
-func _thunder_bolt(u: Dictionary) -> void:
-	if not u.get("alive", false): return
-	var es := _targeting._pick_enemies_of(u)
-	if es.is_empty(): return
-	var o = es[_battle_rng.randi() % es.size()]
-	_lightning_sys._lightning_strike(o["pos"], Color("#8fd4ff"), 4.6)   # 大雷(中心≈2.2=飘字高度)
-	var tw := _reg_tween()                             # 伤害在闪电动画中段(~0.25s)跳=落在雷中间
-	tw.tween_interval(0.25)
-	tw.tween_callback(_thunder_hit.bind(u, o))
-
-func _thunder_hit(u: Dictionary, o: Dictionary) -> void:
-	if not (u.get("alive", false) and o.get("alive", false)): return
-	_damage._apply_damage_from(u, o, int(u["atk"]), Color("#cfefff"), 0.0, true, true)   # 1×ATK真实伤害(白字,飘在2.2=雷中间)
-
 func _spawn_ice_spike(pos2d: Vector2, hscale: float, linger: float) -> void:
 	var tex: Texture2D = load("res://assets/sprites/vfx/ice-spike-vfx.png")
 	if tex == null:

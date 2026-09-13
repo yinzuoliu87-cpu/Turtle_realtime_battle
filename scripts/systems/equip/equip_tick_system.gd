@@ -174,6 +174,11 @@ const IRONWALL_IV := 5.0        # 016 铁壁盾: 每几秒产生一份由全队�
 const SHELL_IV := 8.0           # 018 守护贝壳: 每几秒自回一次
 const ANEMONE_IV := 7.0         # 019 海葵药膏: 每几秒治自己与最残友军
 const DUMBBELL_IV := 8.0        # 020 哑铃: 每几秒锻炼 + 投掷(用户 2026-07-19: 10 → 8)
+## 025 雷鸣贝壳的【游戏钟】延时队列(原来是两层 tween, 无头下推不动)
+const BOLT_GAP := 0.3             # 道间错峰(秒·游戏钟)
+const BOLT_HIT_DELAY := 0.25      # 伤害落在闪电动画中段(秒·游戏钟)
+var _bolt_q: Array = []
+
 const THUNDER_IV := 4.0         # 025 雷鸣贝壳: 每几秒降一次雷
 const GEAR_IV := 6.0            # 035 黄铜齿轮: 每几秒进一次深海币
 const BARNACLE_IV := 5.0        # 每几秒重连一次并给 buff
@@ -272,7 +277,8 @@ func _tick_targeter(u: Dictionary, _delta: float) -> void:
 		for o in tg:
 			battle._hookbomb_sys._hb_attach(u, o, si)
 
-func _tick_thunder(u: Dictionary, delta: float) -> void:   # 雷鸣贝壳p2eq_025: 每4秒降N道大雷(道间错峰0.3s), 各劈随机敌1×ATK真伤(伤害在闪电中段跳); 每件独立(用户2026-07-02: 原2.5s)
+func _tick_thunder(u: Dictionary, delta: float) -> void:
+	_drain_bolts()   # 雷鸣贝壳p2eq_025: 每4秒降N道大雷(道间错峰0.3s), 各劈随机敌1×ATK真伤(伤害在闪电中段跳); 每件独立(用户2026-07-02: 原2.5s)
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_025": continue
@@ -280,10 +286,12 @@ func _tick_thunder(u: Dictionary, delta: float) -> void:   # 雷鸣贝壳p2eq_02
 		if float(e["thunder_t"]) < THUNDER_IV: continue
 		e["thunder_t"] = 0.0
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
+		## ★★2026-09-13: 道间错峰原来是 `tween_interval` —— tween 走**未钳制的真实 delta**,
+		##   无头下推不动(CLAUDE.md §3.5) ⇒ ★2/★3 的第 2、3 道雷可能**根本不落**。
+		##   改挂进游戏钟队列 `_bolt_q`。
 		for d in range([1, 2, 3][si]):                # 道间错峰
-			var tw = battle._reg_tween()
-			tw.tween_interval(float(d) * 0.3)
-			tw.tween_callback(battle._thunder_bolt.bind(u))
+			_bolt_q.append({"at": battle._t + float(d) * BOLT_GAP, "u": u,
+				"kind": "bolt", "o": null})
 
 # 029 冰封水母(布隆大招式): 每12秒→自身上盾→砸地→朝最近敌生成冰道(500x90)→命中魔法伤+击飞0.6s+冰封2.5s
 ## ★029 冰封水母的「每 12 秒」驱动 `_tick_ice_fissure` 已整体删除(2026-08-12):
@@ -539,3 +547,37 @@ func _egg_add_progress(u: Dictionary, amt: float) -> void:   # 温泉蛋(036): �
 			battle._particle_burst(u["pos"])
 	if int(stt.get("egg_levels", 0)) >= cap: stt["incub"] = minf(float(stt["incub"]), 100.0)
 	u["eq_state"]["p2eq_036"] = stt
+
+## ── 025 雷鸣贝壳: 从主文件搬来(CLAUDE.md §5「装备效果去 scripts/systems/equip/」) ──
+## ★两层延时原来都是 tween; 现在都挂 `_bolt_q`, 由 `_drain_bolts()` 按 `battle._t` 结算。
+func _thunder_bolt(u: Dictionary) -> void:
+	if not u.get("alive", false): return
+	var es = battle._targeting._pick_enemies_of(u)   # battle 无类型 ⇒ := 推不出来
+	if es.is_empty(): return
+	var o = es[battle._battle_rng.randi() % es.size()]
+	battle._lightning_sys._lightning_strike(o["pos"], Color("#8fd4ff"), 4.6)   # 大雷(中心≈2.2=飘字高度)
+	## ★伤害落在闪电动画中段 —— 同样改游戏钟队列, 不用 tween。
+	_bolt_q.append({"at": battle._t + BOLT_HIT_DELAY, "u": u,
+		"kind": "hit", "o": o})
+
+func _thunder_hit(u: Dictionary, o: Dictionary) -> void:
+	if not (u.get("alive", false) and o.get("alive", false)): return
+	battle._damage._apply_damage_from(u, o, int(u["atk"]), Color("#cfefff"), 0.0, true, true)   # 1×ATK真实伤害(白字,飘在2.2=雷中间)
+
+
+## 排队到点的雷 —— 由 `_tick_thunder` 每帧调(它本来就每帧被调)。
+func _drain_bolts() -> void:
+	if _bolt_q.is_empty():
+		return
+	var i: int = _bolt_q.size() - 1
+	while i >= 0:
+		var it: Dictionary = _bolt_q[i]
+		if battle._t < float(it["at"]):
+			i -= 1; continue
+		_bolt_q.remove_at(i)
+		if str(it["kind"]) == "bolt":
+			_thunder_bolt(it["u"])
+		else:
+			_thunder_hit(it["u"], it["o"])
+		i -= 1
+
