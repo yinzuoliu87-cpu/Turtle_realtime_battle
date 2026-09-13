@@ -148,8 +148,9 @@ func _ready() -> void:
 			n_far += 1
 	_ok("③ ★★波越远摆得越多(80 码 %d 簇 → 520 码 %d 簇)" % [n_near, n_far], n_far > n_near,
 		"扇形的弧长随半径线性涨 ⇒ 用「多摆几个」代替「把一张图拉大」")
-	_ok("③ 护栏: 最远也不超过 CORAL_CREST_MAX=%d" % ES.CORAL_CREST_MAX,
-		n_far <= ES.CORAL_CREST_MAX, "实得 %d" % n_far)
+	_ok("③ 护栏: 最远也不超过 %d 簇(每排 %d × %d 排)"
+			% [ES.CORAL_CREST_MAX * ES.CORAL_CREST_ROWS, ES.CORAL_CREST_MAX, ES.CORAL_CREST_ROWS],
+		n_far <= ES.CORAL_CREST_MAX * ES.CORAL_CREST_ROWS, "实得 %d" % n_far)
 
 	# ── ④ ★★几何: 全在 ±ARC/2 内, 且都落在波前那一圈上 ────────────
 	var half: float = deg_to_rad(ES.CORAL_ARC_DEG * 0.5)
@@ -164,8 +165,48 @@ func _ready() -> void:
 		var flat := Vector2(rel.x, rel.z)
 		worst_r = maxf(worst_r, absf(flat.length() - r_want))
 		worst_a = maxf(worst_a, absf(flat.angle_to(Vector2(dir.x, dir.y))))
-	_ok("④ ★★全都落在波前那一圈上(半径最大偏差 %.3f m, 上限 0.30)" % worst_r, worst_r <= 0.30,
-		"应半径 %.2f m —— 「波在移动」不是「一排静态条依次点亮」" % r_want)
+	## ★★★用户 2026-09-13:「**演出得贴合实际伤害范围和判定啊**」
+	##   判定带是 traveled ± CORAL_BAND(±65 码 = ±1.56 m)。原来只摆一排(49.7 码宽)
+	##   ⇒ 只覆盖判定带的 38%: 站在波前前后的敌人**会被烧到但那儿没有火**。
+	##   现在沿径向摆 CORAL_CREST_ROWS 排铺满整条带 —— 这两条把它焊死:
+	##     a) 没有一簇跑到判定带**外面**去(演出不许比判定大)
+	##     b) 判定带的**内缘与外缘都要有火**(演出不许比判定小)
+	var band_m: float = ES.CORAL_BAND * _s.WS
+	var near_edge := false
+	var far_edge := false
+	for sp in far_pool:
+		if not (is_instance_valid(sp) and sp.visible):
+			continue
+		var rel2: Vector3 = sp.position - org3
+		var d: float = Vector2(rel2.x, rel2.z).length() - r_want
+		if d < -band_m * 0.5:
+			near_edge = true
+		if d > band_m * 0.5:
+			far_edge = true
+	_ok("④ ★★a) 没有一簇跑到判定带外(最大偏差 %.2f m / 判定带 ±%.2f m)" % [worst_r, band_m],
+		worst_r <= band_m + 0.30,
+		"演出不许比判定大")
+	_ok("④ ★★★b) 判定带的内缘与外缘都有火(内 %s / 外 %s)" % [str(near_edge), str(far_edge)],
+		near_edge and far_edge,
+		"只摆一排时这条当场红 —— 被烧到的地方没有火")
+	## ★★★用户 2026-09-13 一眼看出「**为什么你这是两段火焰呢**」——
+	##   间距原来按**格宽**(49.7 码)算, 而火簇**实际只画了 33.5 码**(格里有留白)
+	##   ⇒ 每两簇空 6 码, 弧上开洞、断成两截。这一条把「弧上不许留缝」焊死:
+	##   同一排里相邻两簇的间距, 必须 < 实际画幅宽(否则中间是空的)。
+	var art_m: float = ES.CORAL_CREST_ART_YARDS * _s.WS
+	var worst_gap := 0.0
+	var ncol_far: int = far_pool.size() / maxi(1, ES.CORAL_CREST_ROWS)
+	for k in range(far_pool.size() - 1):
+		if (k % maxi(1, ncol_far)) == ncol_far - 1:
+			continue                      # 跨排的相邻不算
+		var s1 = far_pool[k]
+		var s2 = far_pool[k + 1]
+		if not (is_instance_valid(s1) and is_instance_valid(s2) and s1.visible and s2.visible):
+			continue
+		worst_gap = maxf(worst_gap, s1.position.distance_to(s2.position))
+	_ok("④ ★★★弧上不许留缝: 相邻两簇最大间距 %.2f m < 实际画幅 %.2f m" % [worst_gap, art_m],
+		worst_gap < art_m,
+		"间距按格宽算就会留缝 —— 弧断成两截, 用户一眼就看出来了")
 	_ok("④ ★★张角全在 ±%.0f° 内(实测最大 %.1f°)" % [ES.CORAL_ARC_DEG * 0.5, rad_to_deg(worst_a)],
 		worst_a <= half + 0.02)
 
@@ -225,8 +266,8 @@ func _done() -> void:
 	await get_tree().process_frame
 	print("")
 	print("  分母: 共 %d 条断言" % _n)
-	if _n < 20:
-		print("  [FAIL] ★断言只有 %d 条(<20) —— 有用例中途中止了" % _n)
+	if _n < 22:
+		print("  [FAIL] ★断言只有 %d 条(<22) —— 有用例中途中止了" % _n)
 		_fail += 1
 	print("ALL PASS — 023 火焰波" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)

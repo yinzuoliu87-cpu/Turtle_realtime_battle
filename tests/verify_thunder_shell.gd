@@ -117,8 +117,8 @@ func _ready() -> void:
 	_s._units.append(squishy)
 	var ht: float = float(tanky["hp"])
 	var hq: float = float(squishy["hp"])
-	ets._thunder_hit(c2, tanky)
-	ets._thunder_hit(c2, squishy)
+	ets._tick_thunder_hit(c2, tanky)
+	ets._tick_thunder_hit(c2, squishy)
 	var dt_: float = ht - float(tanky["hp"])
 	var dq: float = hq - float(squishy["hp"])
 	_ok("② ★分母: 两边都真的掉血了(厚 %.0f / 脆 %.0f)" % [dt_, dq], dt_ > 0.0 and dq > 0.0)
@@ -133,7 +133,7 @@ func _ready() -> void:
 	sq2["mr"] = 0.0
 	_s._units.append(sq2)
 	var h2b: float = float(sq2["hp"])
-	ets._thunder_hit(c2b, sq2)
+	ets._tick_thunder_hit(c2b, sq2)
 	var d2b: float = h2b - float(sq2["hp"])
 	_ok("② ★★攻击力 100→200, 伤害 %.0f→%.0f(应翻倍) ⇒ 系数是 1×ATK" % [dq, d2b],
 		absf(d2b - dq * 2.0) < 2.0)

@@ -142,8 +142,8 @@ func _ready() -> void:
 	_ok("④ ★★★同一条路上友军**确实回血了**(实得 %.0f)" % (float(a2["hp"]) - ah2),
 		float(a2["hp"]) > ah2,
 		"友军那半条最容易漏 —— 它和伤害走同一条队列, 断了就一起断")
-	_ok("④ 队列已排空(没有漏结算的项)", _s._dragon_sys._pending.is_empty(),
-		"剩 %d 项" % _s._dragon_sys._pending.size())
+	_ok("④ 共享延时队列已排空(没有漏结算的项)", _s._equip_tick_sys._bolt_q.is_empty(),
+		"剩 %d 项" % _s._equip_tick_sys._bolt_q.size())
 
 	_done()
 

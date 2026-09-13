@@ -6,9 +6,8 @@ extends RefCounted
 ## 【024 龙蛋·喷火龙】火柱是一条直线, 两侧各多宽算命中。
 const BREATH_HALF_W := 88.0   # 半宽(码)
 
-## ★火柱扫到谁那一刻才对谁结算 —— 挂在**游戏钟**上的待结算队列(不是 tween)。
-##   每项: {at=结算时刻(battle._t), foe=是敌是友, u/o/si, expl/burn}
-var _pending: Array = []
+## ★延时结算一律走**共享队列** `battle._equip_tick_sys.schedule(delay, callable)`,
+##   本系统不再自建队列(024/025/026 连着三件同病 ⇒ 收成一个原语)。
 
 var battle
 
@@ -31,14 +30,12 @@ func _dragon_unleash(u: Dictionary, si: int, start: Vector2, end: Vector2, dir: 
 	for o in battle._targeting._enemies_of(u):
 		if battle._on_line(start, dir, o["pos"], BREATH_HALF_W):
 			var d_e: float = clampf((o["pos"] - start).dot(dir) / total, 0.0, 1.0) * dur
-			_pending.append({"at": battle._t + d_e, "foe": true,
-				"u": u, "o": o, "si": si,
-				"expl": expl, "burn": burn_tex})
+			battle._equip_tick_sys.schedule(d_e,
+				_dragon_hit_enemy.bind(u, o, si, expl, burn_tex))
 	for o in battle._targeting._allies_of(u):
 		if battle._on_line(start, dir, o["pos"], BREATH_HALF_W):
 			var d_a: float = clampf((o["pos"] - start).dot(dir) / total, 0.0, 1.0) * dur
-			_pending.append({"at": battle._t + d_a, "foe": false,
-				"u": u, "o": o, "si": si})
+			battle._equip_tick_sys.schedule(d_a, _dragon_heal_ally.bind(u, o, si))
 
 # 火柱扫到敌人那一刻: 魔法伤害+灼烧+金爆+着火 (同步, 数字跟火柱一起)
 # 火柱扫到敌人那一刻: 魔法伤害+灼烧+金爆+着火 (同步, 数字跟火柱一起)
@@ -171,35 +168,10 @@ func _spawn_fire_dragon(start2d: Vector2, end2d: Vector2, dur: float) -> void:
 
 ## 每帧由主场景的 sim tick 调(与 _crystal_sys.tick 同一处)。
 ## ★用 `battle._t`(钳制后的游戏钟), 不用 delta 累加 —— 单位在动, 到点就结算。
-func tick(_dt: float) -> void:
-	if _pending.is_empty():
-		return
-	var i: int = _pending.size() - 1
-	while i >= 0:
-		var it: Dictionary = _pending[i]
-		if battle._t < float(it["at"]):
-			i -= 1; continue
-		_pending.remove_at(i)
-		## kind=unleash 是【前摇到点放龙】; 其余是【火柱扫到某人那一刻的结算】
-		if str(it.get("kind", "")) == "unleash":
-			_dragon_unleash(it["u"], int(it["si"]), it["start"],
-				it["end"], it["dir"], float(it["total"]), float(it["dur"]))
-			i -= 1
-			continue
-		var o: Dictionary = it["o"]
-		if o.get("alive", false):
-			if bool(it["foe"]):
-				_dragon_hit_enemy(it["u"], o, int(it["si"]),
-					it.get("expl", null), it.get("burn", null))
-			else:
-				_dragon_heal_ally(it["u"], o, int(it["si"]))
-		i -= 1
-
 
 ## 前摇到点才真的放龙 —— 由 tick 按游戏钟触发(不是 tween)。
 func schedule_unleash(u: Dictionary, si: int, start: Vector2, end: Vector2,
 		dir: Vector2, total: float, dur: float, windup: float) -> void:
-	_pending.append({"at": battle._t + windup, "kind": "unleash",
-		"u": u, "si": si, "start": start, "end": end,
-		"dir": dir, "total": total, "dur": dur})
+	battle._equip_tick_sys.schedule(windup,
+		_dragon_unleash.bind(u, si, start, end, dir, total, dur))
 

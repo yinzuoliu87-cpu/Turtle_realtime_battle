@@ -595,6 +595,7 @@ const CORAL_ARC_DEG := 60.0       # 火焰波扇面全角(度)·判定用半角
 const CORAL_TRAVEL := 550.0       # 火焰波向前推进多远(码)
 const CORAL_WINDUP := 0.4         # 蓄力多久(秒·游戏钟)
 const DRAGON_WINDUP := 0.55       # 024 龙蛋前摇(秒·游戏钟)
+const CHAIN_HOP_GAP := 0.2        # 026 连锁闪电逐跳错峰(秒·游戏钟)
 const CORAL_SPEED := 320.0        # 波前推进速度(码/秒·游戏钟) ⇒ 550 码走 1.72 秒
 const CORAL_BAND := 65.0          # 波前判定带半宽(码) —— 演出的火簇就摆在这条带上
 const CORAL_BURN := [40, 60, 90]  # 每星级施加的灼烧层数(用户2026-07-19: 原固定60不吃星级)
@@ -606,7 +607,15 @@ const CORAL_CREST_FPS := 12.0
 ## ★格子从 40 缩到 28: 40 texel(1.70 m)的火簇沿弧排开读成**一堵火墙/一条火蛇**, 不是「一道波」。
 ##   缩簇**只能重烤成小格**, 不能改 pixel_size —— pixel_size 必须钉死 0.0426(1 texel : 1 屏幕像素)。
 const CORAL_CREST_YARDS := 49.7   # 28 texel × 0.0426 m ÷ WS = 1.19 m(龟高 2.0 m)
+## ★实际画幅(逐帧量的): 8 帧平均 18.9 texel 宽 ⇒ 33.5 码。摆间距用它, 不用格宽。
+const CORAL_CREST_ART_YARDS := 33.5
 const CORAL_CREST_H := 0.596      # 贴图中心 = 半格(28/2 × 0.0426) ⇒ 火底齐地(022 那条教训)
+## ★★径向排数: 判定带是 **±CORAL_BAND = ±65 码(共 130 码深)**, 而一簇只有 49.7 码宽
+##   ⇒ 只摆一排的话, 站在波前前后 25~65 码的敌人**会被烧到但那里没有火**(只覆盖 38%)。
+##   用户 2026-09-13:「**演出得贴合实际伤害范围和判定啊**」⇒ 沿径向铺满整条带。
+##   4 排 × 间距 32.5 码 ⇒ 覆盖 -65~+65 码, 正好是判定带; 间距 < 一簇宽(49.7)
+##   ⇒ 相邻排互相盖住一截, 读成**一条厚带**而不是三道并排的波(3 排时就是三道)。
+const CORAL_CREST_ROWS := 4
 const CORAL_CREST_MAX := 20       # 最多摆几簇(护栏: 弧长随距离线性涨)
 var _firecrest_tex: Texture2D = null
 ## 【051 激光手枪】无限穿透的直线激光, 首个吃满、身后的减半。
@@ -1677,9 +1686,10 @@ func _eq_chain_lightning(u: Dictionary, si: int) -> void:
 	var prev_pos: Vector2 = u["pos"]
 	for i in range(seq.size()):
 		var tgt = seq[i]
-		var tw = battle._reg_tween()
-		tw.tween_interval(float(i) * 0.2)
-		tw.tween_callback(battle._chain_segment.bind(u, prev_pos, tgt, dmg))
+		## ★★2026-09-13: 原来是 `tween_interval(i*0.2)` 逐跳错峰 —— tween 走未钳制真实 delta,
+		##   无头下推不动(§3.5) ⇒ **第 2 跳以后根本不落**。改用共享原语(游戏钟)。
+		battle._equip_tick_sys.schedule(float(i) * CHAIN_HOP_GAP,
+			battle._chain_segment.bind(u, prev_pos, tgt, dmg))
 		prev_pos = tgt["pos"]
 
 ## ═══════════════════════════════════════════════════════════════════════════
@@ -2151,8 +2161,13 @@ func _fire_coral_place(pool: Array, origin: Vector2, dir: Vector2, traveled: flo
 	var half := deg_to_rad(CORAL_ARC_DEG * 0.5)
 	## 弧长 = 半径 × 张角; 簇间距取簇宽的 0.62 倍 ⇒ 相邻互相盖住一截, 连成一道波
 	var arc: float = traveled * (2.0 * half)
-	var step: float = CORAL_CREST_YARDS * 0.80
-	var n: int = clampi(int(ceil(arc / maxf(1.0, step))) + 1, 2, CORAL_CREST_MAX)
+	## ★★间距要按【实际画幅】算, 不是按格宽: 格子 28 texel = 49.7 码, 但火簇**只画了
+	##   18.9 texel = 33.5 码**(格里有留白)。按格宽×0.80 = 39.8 码摆 ⇒ 每两簇空 6 码,
+	##   弧上出现断口 —— 用户 2026-09-13 一眼看出来:「**为什么你这是两段火焰呢**」。
+	##   现在按实际画幅 × 0.70 ⇒ 相邻互相盖住三成, 连成一条不断的弧。
+	var step: float = CORAL_CREST_ART_YARDS * 0.70
+	var ncol: int = clampi(int(ceil(arc / maxf(1.0, step))) + 1, 2, CORAL_CREST_MAX)
+	var n: int = ncol * CORAL_CREST_ROWS
 	while pool.size() < n:
 		var sp := Sprite3D.new()
 		if _firecrest_tex == null: _firecrest_tex = load(CORAL_CREST_TEX)
@@ -2175,11 +2190,16 @@ func _fire_coral_place(pool: Array, origin: Vector2, dir: Vector2, traveled: flo
 			sp2.visible = false; continue
 		sp2.visible = true
 		## 沿弧均分: -half .. +half
-		var a: float = -half + (2.0 * half) * (float(i) / float(maxi(1, n - 1)))
+		## i 拆成【角度位】与【径向排】: 角度铺满扇形, 径向铺满判定带
+		var ai: int = i % ncol
+		var ri: int = i / ncol
+		var a: float = -half + (2.0 * half) * (float(ai) / float(maxi(1, ncol - 1)))
 		var d2: Vector2 = dir.rotated(a)
-		sp2.position = battle._world_pos(origin + d2 * traveled, CORAL_CREST_H)
+		## 径向偏移: 3 排落在 -43.3 / 0 / +43.3 码, 覆盖 ±68 码 ⊇ 判定带 ±65
+		var roff: float = (float(ri) - float(CORAL_CREST_ROWS - 1) * 0.5) * (CORAL_BAND * 2.0 / float(CORAL_CREST_ROWS))
+		sp2.position = battle._world_pos(origin + d2 * maxf(0.0, traveled + roff), CORAL_CREST_H)
 		## 每簇错开相位 ⇒ 整道波在翻腾, 不是一排同步的复制品(被否过的「规则图案」)
-		sp2.frame = (fr + i * 3) % CORAL_CREST_FRAMES
+		sp2.frame = (fr + ai * 3 + ri * 5) % CORAL_CREST_FRAMES
 
 
 ## 波前判定 —— **从演出里抽出来**: 门禁直调它验伤害, 不用等演出跑完(CLAUDE.md §3.5)。
