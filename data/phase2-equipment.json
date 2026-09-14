@@ -690,7 +690,7 @@
     "baseStats1": "+攻17/29/41·+20龟能",
     "shopAvailable": 1,
     "emoji": "🔩",
-    "effectDesc1": "登场时召唤一座不可移动的炮台：500/1000/1800 最大生命值、20/30/45 攻击力、每秒 {C:EquipSystem.TURRET_ASPD} 次攻击速度、{C:EquipSystem.TURRET_RANGE} 码射程；\n普攻锁定目标（一条红色细线连向它），造成 1×攻击力物理伤害，并使炮台自身永久获得 2/2/3 护甲穿透与 2%暴击率（持续到本场战斗结束）。\n携带者存活时炮台获得 70/85/100 护甲与魔抗；携带者位于炮台 {C:EquipSystem.TURRET_BUFF_R} 码范围内时自身获得 20/30/40%攻击速度。",
+    "effectDesc1": "登场时召唤一座不可移动的炮台：500/1000/1800 最大生命值、20/30/45 攻击力、每秒 {C:EquipSystem.TURRET_ASPD} 次攻击速度、{C:EquipSystem.TURRET_RANGE} 码射程；\n普攻锁定目标（一条红色细线连向它），造成 1×攻击力物理伤害，并使炮台自身永久获得 2/2/3 护甲穿透与 2%暴击率（持续到本场战斗结束）。\n携带者存活时炮台获得 70/85/100 护甲与魔抗；携带者位于炮台 {C:EquipSystem.TURRET_BUFF_R} 码范围内时自身获得 {C:EquipSystem.TURRET_BUFF_ASPD%}%攻击速度。",
     "effectDesc3": "",
     "img": "equip/ancient-turret.png",
     "effectBrief": "登场时召唤一座炮台，普攻锁定目标并永久累积护甲穿透。"

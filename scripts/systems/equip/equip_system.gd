@@ -287,7 +287,8 @@ func _tick_eq_turret(u: Dictionary, delta: float) -> void:   # 058: 炮台双抗
 		tr["base_def"] = res; tr["base_mr"] = res
 		battle._recalc_stats(tr)
 	var near: bool = u.get("alive", false) and (u["pos"] - tr["pos"]).length() <= TURRET_BUFF_R
-	u["_turret_aspd_mult"] = (1.0 + [0.20, 0.30, 0.40][si]) if near else 1.0   # 直接赋值(不累加·不会泄漏)
+	## ★用户 2026-09-14 拍板加强: 20/30/40% → **三档统一 100%**(「携带者在自己附近时, 攻速加 100%」)。
+	u["_turret_aspd_mult"] = (1.0 + TURRET_BUFF_ASPD) if near else 1.0   # 直接赋值(不累加·不会泄漏)
 	battle._update_turret_line(tr)
 
 func _eq_summon_skeleton(u: Dictionary, si: int) -> void:
@@ -1408,6 +1409,7 @@ func _eq_charge(stt: Dictionary, key: String, amt: float, cap: float, on_full: C
 const TURRET_ASPD := 0.5          # 攻速(次/秒) ⇒ atk_interval = 1 / 它
 const TURRET_RANGE := 2000.0      # 射程(码)·全场
 const TURRET_BUFF_R := 400.0      # 携带者在此范围内 → 自身获得攻速加成(码)
+const TURRET_BUFF_ASPD := 1.00    # 在范围内时携带者自身攻速加成(用户 2026-09-14: 20/30/40% → 统一 100%)
 ## 【033 复活海螺】3★ 变虫之后的自我分裂(小虫自己的周期, 不走携带者的 eq_tick)。
 const WORM_SPLIT_IV := 2.5        # 每几秒在空位分裂一只
 const WORM_CAP := 4               # 场上小虫上限
@@ -1832,37 +1834,18 @@ func _laser_dir_of(k: int) -> Vector2:
 ## ★`rotation` 恒 0: 方向是烤进素材的第 dirf 格, 不是转贴图 —— 贴地精灵被任意角旋转会重采样,
 ##   像素网格当场碎(旧版 `rotation = Vector3(0, -base_ang, 0)` 就是这个毛病)。
 func _laser_sprite(tex_path: String, vframes: int, dirf: int, f: int, org: Vector2, rng: float, h: float) -> Sprite3D:
-	var sp := Sprite3D.new()
-	sp.texture = load(tex_path)
-	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # 像素画必须 NEAREST, 否则缩放糊成一团
-	sp.billboard = BaseMaterial3D.BILLBOARD_DISABLED
-	sp.axis = Vector3.AXIS_Y                                    # ★AXIS_Y 本身就是平铺, 不要再加 rotation.x
-	sp.shaded = false
-	sp.transparent = true
-	sp.pixel_size = rng * battle.WS / LASER_R_TEX               # 半径画多远就打多远
-	sp.hframes = LASER_DIRS
-	sp.vframes = vframes
-	sp.frame = f * LASER_DIRS + dirf
-	sp.position = battle._world_pos(org, h)
-	return sp
+	## 出厂口在 `battle_vfx.ground_sprite`(NEAREST / AXIS_Y / 不转贴图 三条硬约束都在那儿)。
+	## 这里只决定本装备自己的两件事: pixel_size = 半径画多远就打多远、frame = 第几帧的第几向。
+	return battle._vfx.ground_sprite(tex_path, LASER_DIRS, vframes, f * LASER_DIRS + dirf,
+			rng * battle.WS / LASER_R_TEX, org, h)
 
 
 ## 竖劈冲击波的波前: **世界尺寸固定**(与射程无关) ⇒ 像素密度恒定, 宽度就是判定宽度。
 ## 这是**一个会动的精灵**, 每一步把它挪到当前推进距离上 —— 文案原话「沿直线推进」。
 func _laser_wave_sprite(dirf: int, at: Vector2, h: float) -> Sprite3D:
-	var sp := Sprite3D.new()
-	sp.texture = load(LASER_WAVE_TEX)
-	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	sp.billboard = BaseMaterial3D.BILLBOARD_DISABLED
-	sp.axis = Vector3.AXIS_Y
-	sp.shaded = false
-	sp.transparent = true
-	sp.pixel_size = LASER_CHOP_HALF_W * battle.WS / LASER_WAVE_HW_TEX
-	sp.hframes = LASER_DIRS
-	sp.vframes = LASER_WAVE_FRAMES
-	sp.frame = dirf
-	sp.position = battle._world_pos(at, h)
-	return sp
+	## 宽度取**判定半宽** `LASER_CHOP_HALF_W`(不是射程) ⇒ 画多宽就打多宽, 与推进距离无关。
+	return battle._vfx.ground_sprite(LASER_WAVE_TEX, LASER_DIRS, LASER_WAVE_FRAMES, dirf,
+			LASER_CHOP_HALF_W * battle.WS / LASER_WAVE_HW_TEX, at, h)
 
 
 ## ═══ 演出编排(有 await, 走游戏时钟) ═══
@@ -2103,21 +2086,9 @@ func _moon_dir_of(k: int) -> Vector2:
 
 ## 009 的两张贴地素材共用这一份摆放(别各抄一份: 两处的口径必须完全一致, 否则预警和刃会错位)。
 func _moon_sprite(tex_path: String, vframes: int, dirf: int, org: Vector2, dir: Vector2, h: float) -> Sprite3D:
-	var sp := Sprite3D.new()
-	sp.texture = load(tex_path)
-	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # 像素画必须 NEAREST, 否则缩放糊成一团
-	sp.billboard = BaseMaterial3D.BILLBOARD_DISABLED
-	sp.axis = Vector3.AXIS_Y                                    # ★AXIS_Y 本身就是平铺, 不要再加 rotation.x
-	sp.shaded = false
-	sp.transparent = true
-	sp.pixel_size = MOON_PIXEL_SIZE
-	sp.hframes = MOON_DIRS
-	sp.vframes = vframes
-	sp.frame = dirf
-	## 画布中心 = 释放点 + 瞄准方向 × 带心半径(素材就是这么烤的, 见 tools/gen_moonslash.py)
-	sp.position = battle._world_pos(org + dir * MOON_ANCHOR, h)
-	return sp
-# 灼热火珊瑚 023(主动满法力)
+	## 画布中心 = 释放点 + 瞄准方向 × 带心半径(素材就是这么烤的, 见 tools/gen_moonslash.py)。
+	return battle._vfx.ground_sprite(tex_path, MOON_DIRS, vframes, dirf,
+			MOON_PIXEL_SIZE, org + dir * MOON_ANCHOR, h)
 # 灼热火珊瑚 023(主动满法力)
 func _eq_fire_coral_active(src: Dictionary, si: int) -> void:
 	## 023 灼热火珊瑚【主动】: 蓄力 → 朝敌方挥出一道火焰波, 在 CORAL_ARC_DEG 度扇形内

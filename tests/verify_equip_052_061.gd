@@ -35,6 +35,7 @@ const EXP_TURRET_HP := [500.0, 1000.0, 1800.0]
 const EXP_TURRET_ATK := [20.0, 30.0, 45.0]
 const EXP_TURRET_ASPD := 0.5
 const EXP_TURRET_RES := [70.0, 85.0, 100.0]
+const EXP_TURRET_BUFF_ASPD := 1.00   # 携带者在 400 码内的自身攻速加成(用户 2026-09-14 从 20/30/40% 统一到 100%)
 const EXP_TS_START := 10.0
 const EXP_TS_DUR := [4.0, 7.0, 20.0]
 const EXP_PARASOL_DR := [0.11, 0.22, 0.35]
@@ -272,9 +273,9 @@ func _ready() -> void:
 		c4["pos"] = (tr["pos"] as Vector2) + Vector2(3000.0, 0.0)
 		ES._tick_eq_turret(c4, 0.1)
 		var far_m: float = float(c4.get("_turret_aspd_mult", 0.0))
-		_ok("④ ★★★靠近炮台自身攻速倍率 %.2f, 走远回 %.2f" % [near_m, far_m],
-			near_m > 1.01 and absf(far_m - 1.0) < 0.01,
-			"文案: 携带者位于炮台 N 码内 → 自身获得攻速加成")
+		_ok("④ ★★★靠近炮台自身攻速倍率 %.2f(应 %.2f), 走远回 %.2f" % [near_m, 1.0 + EXP_TURRET_BUFF_ASPD, far_m],
+			absf(near_m - (1.0 + EXP_TURRET_BUFF_ASPD)) < 0.01 and absf(far_m - 1.0) < 0.01,
+			"用户 2026-09-14 拍板: 20/30/40%% → 三档统一 +100%%")
 
 	# ══════════════ 061 钻孔螺: 破损层 / 满层转真伤 ══════════════
 	for si in [0, 2]:

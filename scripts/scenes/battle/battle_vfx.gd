@@ -32,6 +32,30 @@ func cam_basis() -> Basis:
 	return battle._cam.global_transform.basis
 
 
+## 贴地精灵的**唯一出厂口**(2026-09-14 收口)。像素风的三条硬约束在这里各写一次:
+##   ① NEAREST —— 不设就在缩放时糊成一团;
+##   ② `axis = AXIS_Y` **本身就是躺平贴地** —— 再加 `rotation.x = -90` 会把它掰成竖环
+##      (memory [[fb-axis-y-plus-rotation-cancels]] 记的正是这个事故);
+##   ③ `rotation` 恒 0 —— 方向靠**烤进素材的第 dirf 格**, 不靠转贴图(任意角旋转会重采样, 像素网格当场碎)。
+## ★为什么搬到这里: 010 激光的两张、009 月刃的一张, 三处各抄了一份同样的八行,
+##   抄一次就永远落后一次(memory [[fb-hand-rolled-copies-drift]])。调用方只剩"哪张图/第几格/多大"。
+func ground_sprite(tex_path: String, hframes: int, vframes: int, frame: int,
+		pixel_size: float, at: Vector2, h: float) -> Sprite3D:
+	var sp := Sprite3D.new()
+	sp.texture = load(tex_path)
+	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	sp.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	sp.axis = Vector3.AXIS_Y
+	sp.shaded = false
+	sp.transparent = true
+	sp.pixel_size = pixel_size
+	sp.hframes = hframes
+	sp.vframes = vframes
+	sp.frame = frame
+	sp.position = battle._world_pos(at, h)
+	return sp
+
+
 func _play_action(u: Dictionary, kind: String) -> void:
 	if u == null or not is_instance_valid(u.get("sprite", null)):
 		return
