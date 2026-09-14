@@ -152,9 +152,31 @@ func _ready() -> void:
 	await _wait(30)
 	var other_path: String = "/" + str(other["sprite"].name) if other.get("sprite", null) != null else ""
 
+	## ★★把用户点名的那两样**真的摆到场上**: 触手(灵物羁绊) + 直升机(080)。
+	##   不摆就只能拿余额当代理量 —— 那是「量我顺手能量的, 不是量需求点名的」。
+	## ★★触手要**活得住**: `_spirit_syn.tick` 每帧按灵物羁绊档位 `ensure(side, n)` ——
+	##   档位 0 就当场把它收回去。第一版只 `ensure_forced` 一次, 采样时触手早没了,
+	##   判据⑧ 读到前后都是「不存在」⇒ 两边相等就"通过" = **恒真式**。
+	##   是分母⑥ 抓到的(它验的是"时停前那个钟会走")。
+	##   注入档位用台子那套既有做法(`synergy_system` 头注: VFXLAB 靠手写 `_by_side` 注入)。
+	(_s._synergy._by_side as Dictionary)["right"] = {"灵物": 1}
+	_s._tentacle_vfx.ensure_forced("right", 2)
+	var gun = _s._equip_sys._gun_sys
+	gun._spawn_heli(other, 2, 300.0)
+	await _wait(10)
+
 	## 给【非携带者】种一笔会线性衰减的余额(幽灵护盾/奶油护盾就是这么存的) —— 判据⑥ 的被测对象。
 	_s._spec.grant(other, "probe_decay", 1000.0, {"decay_sec": 40.0})
 	var sv0: float = float(_s._spec.val(other, "probe_decay"))
+
+	var tk: String = "right|0"
+	var tents: Dictionary = _s._tentacle_vfx._tents
+	var helis: Array = gun._helis
+	_ok("★分母⑤: 触手(%d 根)与直升机(%d 架)真的在场上" % [tents.size(), helis.size()],
+		tents.has(tk) and helis.size() >= 1,
+		"被测对象不在场 ⇒ 判据⑧⑨ 恒真, 什么都没验到")
+	var tts0: float = float((tents.get(tk, {}) as Dictionary).get("ts", -1.0))
+	var hp0: Vector2 = (helis[0] as Dictionary).get("pos", Vector2.ZERO) if helis.size() > 0 else Vector2.ZERO
 
 	# ── ① 分母: 时停【之前】世界在动 ──
 	var pre: Array = await _window(90, "")
@@ -174,6 +196,12 @@ func _ready() -> void:
 	_s._t = 999.0
 	ts._ts_update_trigger(0.016)
 	ts._ts_update_trigger(10.0)
+	var tts1: float = float((tents.get(tk, {}) as Dictionary).get("ts", -1.0))
+	var hp1: Vector2 = (helis[0] as Dictionary).get("pos", Vector2.ZERO) if helis.size() > 0 else Vector2.ZERO
+	_ok("★分母⑥: 触手的内部钟在时停【之前】是会走的(%.3f → %.3f)" % [tts0, tts1],
+		(tts1 - tts0) > 0.001, "它本来就不走 ⇒ 判据⑧ 是恒真式")
+	_ok("★分母⑦: 直升机在时停【之前】是会飞的(移了 %.2f 码)" % hp0.distance_to(hp1),
+		hp0.distance_to(hp1) > 0.5, "它本来就不飞 ⇒ 判据⑨ 是恒真式")
 	var sv1: float = float(_s._spec.val(other, "probe_decay"))
 	_ok("★分母④: 那笔余额在时停【之前】是会掉的(%.1f → %.1f)" % [sv0, sv1],
 		(sv0 - sv1) > 0.5,
@@ -209,6 +237,22 @@ func _ready() -> void:
 	_ok("⑥ 时停期间【非携带者的护盾余额】一点都不掉(%.2f → %.2f)" % [dv0, dv1],
 		absf(dv0 - dv1) < 0.01,
 		"掉了 %.2f —— `if _fight_on:` 那一整块(触手/直升机/羁绊/余额)没被时停门住" % (dv0 - dv1))
+
+	# ── ⑧⑨ 判据: **直接量用户点名的那两样**, 不拿余额当代理 ──
+	## 用户 2026-09-14:「确定所有东西都定住了吗, **像触手, 直升机等等**」。
+	## v0.19.382 我量的是护盾余额(同一块 tick, 共命运) —— 结构上说得通, 但那是**推断**。
+	## 需求点名了谁就拿谁验(memory [[fb-gate-must-measure-requirement-not-my-hook]])。
+	var tt_a: float = float((tents.get(tk, {}) as Dictionary).get("ts", -1.0))
+	var hpa: Vector2 = (helis[0] as Dictionary).get("pos", Vector2.ZERO) if helis.size() > 0 else Vector2.ZERO
+	await _wait(120)
+	var tt_b: float = float((tents.get(tk, {}) as Dictionary).get("ts", -1.0))
+	var hpb: Vector2 = (helis[0] as Dictionary).get("pos", Vector2.ZERO) if helis.size() > 0 else Vector2.ZERO
+	_ok("⑧ 时停期间【触手】的内部钟一动不动(%.3f → %.3f)" % [tt_a, tt_b],
+		absf(tt_b - tt_a) < 0.001,
+		"走了 %.3f 秒 —— 触手在定格的世界里照样甩" % (tt_b - tt_a))
+	_ok("⑨ 时停期间【直升机】一码都不飞(移了 %.2f 码)" % hpa.distance_to(hpb),
+		hpa.distance_to(hpb) < 0.01,
+		"它还在飞 —— `tick_global` 的注释写着「碑/直升机/炮台还要继续动」, 时停必须门住它")
 
 	# ── ⑦ 判据: 入停演出跑完之后, 世界里不许再有节点生灭 ──
 	## ★要先等入停那一下自己跑完(蓄力的 10 颗金沙 + 涟漪 + 金环共 11 个会在头 1 秒内收掉),

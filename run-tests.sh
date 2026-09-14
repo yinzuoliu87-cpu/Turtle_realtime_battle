@@ -66,6 +66,8 @@ frames_for () {
     #   判据本身就是"跨一段时间看它动没动", 帧数就是分母。默认 500 帧连第一个窗口都跑不完
     #   ⇒ 半路被掐断 = 没打 ALL PASS(rc=0 / 致命 0), 看着像断言失败(CLAUDE.md §2 那个坑)。
     verify_timestop_freeze)   echo 3000 ;;
+    # 059 全域差分: 要摆触手/直升机/余额再跑三段采样窗口, 500 帧连分母都跑不完。
+    verify_timestop_global_freeze) echo 3000 ;;
     # 结算屏上传正反馈: ②等轮询回执(0.4 秒一拍·墙钟 3 秒)、④真发一次到不可达地址等回调(最多 900 帧)。
     #   默认 500 帧会在半路被掐断 —— 表现是 rc=0/致命 0 但**没打 ALL PASS**, 极像断言失败。
     verify_upload_flash)      echo 4000 ;;
@@ -543,6 +545,7 @@ run_audit "tools/text_const_orphan_audit.py" "ALL OK" "text_const_orphan_audit (
 run_audit "tools/const_leftover_audit.py" "ALL OK" "const_leftover_audit (抽了常量却还有别处留着裸数字·跨文件判红)"
 run_audit "tools/codex_text_lint.py"     "ALL OK" "codex_text_lint (图鉴文案: 教学味/自夸/开发备注/别家黑话/数字贴字)"
 run_audit "tools/twin_const_audit.py"    "ALL OK" "twin_const (同功能的逻辑侧↔演出侧同名常量取值打架)"
+run_audit "tools/twin_radius_audit.py"   "ALL OK" "twin_radius (判定侧↔演出侧【不同名但同值】的范围常量·同一个数存两份)"
 run_audit "tools/type_tables_audit.py"   "ALL OK" "type_tables (装备类型四张平行表键集一致)"
 # ★★这条是"文案漂移"这个病的**总指标**(2026-08-20 用户连问两次「怎么根除」后建的):
 #   玩家看到的每个数字必须处在三态之一 —— 占位符(不可能错)/有审计器对代码验/没人验。
