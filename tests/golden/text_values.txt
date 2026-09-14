@@ -47,7 +47,7 @@ eq|毒药瓶|effectDesc1	6.0 400.0
 eq|毒蛾茧|effectDesc1	0.25 0.25 0.25 1.0 1.5 2.0 6.0 20.0
 eq|沙漏|effectBrief	10.0
 eq|沙漏|effectDesc1	1.0 10.0
-eq|海浪护符|effectDesc1	400.0
+eq|海浪护符|effectDesc1	1200.0
 eq|海葵药膏|effectBrief	7.0
 eq|海葵药膏|effectDesc1	7.0
 eq|海藻|effectBrief	4.0
@@ -60,8 +60,8 @@ eq|深海堡垒甲|effectBrief	8.0 25.0
 eq|深海堡垒甲|effectDesc1	5.0 8.0 25.0 25.0
 eq|深海气压罐|effectBrief	12.0
 eq|深海气压罐|effectDesc1	3.0 5.0 8.0 12.0 12.0 2000.0
-eq|深海项链|effectBrief	6.0 50.0
-eq|深海项链|effectDesc1	6.0 50.0
+eq|深海项链|effectBrief	16.0 50.0
+eq|深海项链|effectDesc1	16.0 50.0
 eq|温泉蛋|effectBrief	100.0
 eq|温泉蛋|effectDesc1	0.1 0.1 2.5 5.0 5.0 10.0 15.0 100.0
 eq|溺者的浮囊|effectBrief	35.0

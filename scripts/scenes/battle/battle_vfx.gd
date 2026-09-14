@@ -2712,3 +2712,61 @@ func tide_wall_spawn(start: Vector2, dir: Vector2, half: float, dist: float,
 	}
 	tide_wall_build(w, 0.0, 0.0)
 	return w
+
+
+## ════════════════════════════════════════════════════════════════════════════
+##  【持续回复】期间身上的治疗气泡 —— 挂在共享字段 `eq_hot_until` 上
+## ════════════════════════════════════════════════════════════════════════════
+## 用户 2026-09-14:「特效有做么, 就是这 6 秒的持续回复特效」。
+## 原状: 摊付的结算在主场景 `_tick_unit` 里就两行(`if _t < eq_hot_until: _heal(rate*delta)`),
+## **纯数字零演出**; `_heal_body_glow` 只是触发那一下的一次性脉动(约 0.8 秒),
+## 之后 5 秒多只有血条在悄悄涨。
+##
+## ★★接在 `eq_hot_until` 上而**不是**接在 044 上: 044 深海项链 / 045 珍珠耳环 /
+##   037 蜡烛都走这个字段 ⇒ 做成【演出是状态的函数】三件自动都有, 不用逐件接线
+##   (022 真火 / 027 电弧 / 冰寒标记同一条路; memory [[fb-zero-caller-is-a-whole-class]])。
+## ★到期由 `_follow_vfx` 的 `until_key` 分支自销, 不另起第二条计时。
+## ★★**按持有者换素材**(用户 2026-09-14:「045 也需要做个回复 buff 持续特效, 不要和之前上一个重复」)。
+##   机制仍是共享的那一条(`eq_hot_until`), 换的只是这一层的皮 ——
+##   memory [[fb-fix-the-shared-primitive-not-one-instance]]: 单件花样是第二层, 不是替代品。
+##   044 深海项链 = 水: 气泡**从下往上升**, 到顶破掉。
+##   045 地狱护盾 = 火: 余烬**从四周向内收**, 沉进身体。
+##   两者的位移方向正交, 门禁逐帧量得出来(不是"我说它们不一样")。
+##   其余走 eq_hot_until 的件(037 蜡烛等)默认用气泡。
+const HHOT_BY_OWNER := {
+	"p2eq_045": "res://assets/sprites/vfx/heal-hot-embers.png",
+}
+const HHOT_TEX := "res://assets/sprites/vfx/heal-hot-bubbles.png"
+const HHOT_FRAMES := 6
+const HHOT_FPS := 9.0             # 6 帧 / 9fps = 0.67 秒一轮气泡
+const HHOT_YARDS := 71.0          # 40 texel × 1.775 码 = 71 ⇒ 正好 1:1, 不糊
+const HHOT_H := 0.86              # 精灵中心略低于身体中段: 气泡是从脚下往上升的
+var _hhot_cache: Dictionary = {}
+
+func heal_hot_aura(u: Dictionary) -> void:
+	if battle._world == null or u == null or not u.get("alive", false):
+		return
+	var owner: String = str(u.get("_hhot_owner", ""))
+	var skey: String = "_heal_hot_spr_" + owner
+	if is_instance_valid(u.get(skey, null)):
+		return                              # 这一件已经在演 ⇒ 续时间由它自己那条 until 管
+	var path: String = str(HHOT_BY_OWNER.get(owner, HHOT_TEX))
+	if not _hhot_cache.has(path):
+		_hhot_cache[path] = load(path)
+	var tex = _hhot_cache[path]
+	if tex == null:
+		return                              # 素材没 import 就静默跳过, 不崩战斗
+	var mult: float = maxf(0.2, float(u.get("size_mult", 1.0)))
+	var sp := _sheet_sprite(tex, HHOT_FRAMES, HHOT_YARDS * mult)
+	sp.no_depth_test = true          # 气泡要压在立绘上, 被挡住就读不出「它在回血」
+	sp.render_priority = 5
+	sp.position = battle._world_pos(u["pos"] as Vector2,
+									float(u.get("height", 0.0)) + HHOT_H * mult)
+	battle._world.add_child(sp)
+	u[skey] = sp
+	battle._follow_vfx.append({
+		"spr": sp, "unit": u, "h": HHOT_H * mult,
+		"loop_fps": HHOT_FPS, "loop_n": HHOT_FRAMES,
+		"loop_t0": battle._t, "until_key": "eq_hot_until_" + owner,
+		"clear_key": skey,
+	})

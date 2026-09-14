@@ -806,8 +806,14 @@ func _tick_tide_walls(dt: float) -> void:
 		if t < wind:
 			rise = t / maxf(0.001, wind)          # ① 蓄浪: 水位在涨, 还没走
 		elif t < wind + trav_sec:
+			## ★★② 推进必须是**线性**的 —— 不许加缓动。
+			##   伤害那一侧的延时是 `windup + fwd / tdist * travel`(线性), 演出一旦加了
+			##   smoothstep 起步慢, 前段就会**伤害先落、浪后到**。探针实测(2026-09-14):
+			##     携带者脚下那个 t=0.87 挨打, 而那一刻浪体只推到 330 码, 人在 400 ⇒ 差 70 码;
+			##     前方 300 码那个差 19 码; 再往前才追上。
+			##   这是我自己加缓动引入的, 不是旧账。两边共用同一个线性口径才对得上。
 			var q: float = (t - wind) / maxf(0.001, trav_sec)
-			trav = q * q * (3.0 - 2.0 * q) * float(w["dist"])   # ② 推进(起步慢·中段快)
+			trav = q * float(w["dist"])
 		elif t < wind + trav_sec + fade:
 			trav = float(w["dist"])
 			rise = 1.0 - (t - wind - trav_sec) / maxf(0.001, fade)   # ⑤ 退去: 落高不是淡出
@@ -816,3 +822,69 @@ func _tick_tide_walls(dt: float) -> void:
 			_tide_walls.remove_at(i)
 			continue
 		battle._vfx.tide_wall_build(w, maxf(0.0, rise), trav)
+
+
+
+## ════════════════════════════════════════════════════════════════════════════
+##  【持续回复】引擎 —— **每件装备一条独立的摊付**, 不再共用一个槽
+## ════════════════════════════════════════════════════════════════════════════
+## 用户 2026-09-14:「044 再调整为 40/85/130% 在 16 秒内逐渐回复, **不要和地狱护盾共用了**」。
+##
+## ★共用的害处是**代码注释自己写着**的: 原来两件同时触发时「取总量更大的那一段」而不是相加。
+##   按新数值 044 = 1.30×maxHp / 045 = 1.00×maxHp ⇒ 同时带两件时
+##   **045 会被 044 整个吞掉, 一声不响**。现在每件一条, 各回各的、各有各的倒计时条与演出。
+##
+## 结构: `u["eq_hots"] = { 装备id: {rate, until, span} }`。
+## ★同一件**重复触发**时仍然保留"剩余总量更大"的那一段 —— 那条语义是对的(防止刷新把已摊付的清零),
+##   只是作用域从"全局一个槽"收窄到"这一件自己"。
+func start_hot(u: Dictionary, owner: String, total: float, secs: float) -> void:
+	if total <= 0.0 or secs <= 0.0 or owner == "":
+		return
+	if not (u.get("eq_hots", null) is Dictionary):
+		u["eq_hots"] = {}
+	var hots: Dictionary = u["eq_hots"]
+	var cur: Dictionary = hots.get(owner, {})
+	## ★速率**锁死**在触发这一刻: rate = 总量 ÷ 时长。之后 maxHp 涨了也不重算 ——
+	##   否则温泉蛋/临时升级顶高 maxHp 时, 实发总量会超过文案写的百分比。
+	var left: float = maxf(0.0, float(cur.get("until", 0.0)) - battle._t) * float(cur.get("rate", 0.0))
+	if total <= left:
+		return
+	hots[owner] = {"rate": total / secs, "until": battle._t + secs, "span": maxf(0.01, secs)}
+	u["eq_hots"] = hots
+	hot_bar_mirror(u)
+
+
+## 每帧: 把所有还在生效的摊付一次性喂进去, 并维护给演出/读数用的镜像。
+## ★由主场景 sim tick **无条件**调一次 —— 到期那一帧要把条子抹成 0、把镜像清掉。
+func tick_hots(u: Dictionary, dt: float) -> void:
+	if not (u.get("eq_hots", null) is Dictionary):
+		hot_bar_mirror(u)
+		return
+	var hots: Dictionary = u["eq_hots"]
+	var rate_sum: float = 0.0
+	for owner in hots.keys():
+		var h: Dictionary = hots[owner]
+		if battle._t < float(h.get("until", 0.0)):
+			rate_sum += float(h.get("rate", 0.0))
+	if rate_sum > 0.0:
+		battle._damage._heal(u, rate_sum * dt, true)
+	hot_bar_mirror(u)
+
+
+## 把每一件的剩余时间写成 0~100 的镜像, 挂到**它自己**那一格上;
+## 同时维护 `eq_hot_until_<id>` —— 演出那一层的 `until_key` 读它到点自销。
+## 规则见 `equip_readouts.gd` 表头(用户 2026-08-08 定): 读数一律进装备图标框的
+## CHARGE / COUNT, **不许在演出层自造头顶条**; 那张表的分母只能是常量 ⇒ 存归一化镜像。
+func hot_bar_mirror(u: Dictionary) -> void:
+	if not (u.get("eq_state", null) is Dictionary):
+		return
+	if not (u.get("eq_hots", null) is Dictionary):
+		return
+	for owner in (u["eq_hots"] as Dictionary).keys():
+		var h: Dictionary = u["eq_hots"][owner]
+		var left: float = maxf(0.0, float(h.get("until", 0.0)) - battle._t)
+		var pct: float = clampf(left / maxf(0.01, float(h.get("span", 1.0))) * 100.0, 0.0, 100.0)
+		var stt: Dictionary = u["eq_state"].get(owner, {})
+		stt["hot_pct"] = pct
+		u["eq_state"][owner] = stt
+		u["eq_hot_until_" + str(owner)] = float(h.get("until", 0.0))

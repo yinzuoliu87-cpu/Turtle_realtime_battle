@@ -324,6 +324,7 @@ func post_spawn() -> void:
 	_print_roster()
 	_armed = true
 	_apply_camera()
+	_start_kicks()          # ★两条分支都要灌(见 _start_kicks 的段头: 它原来只在截图模式下跑)
 	if _hold:
 		_place_window_show()
 		print("[VFXLAB] HOLD 模式: 不拍不退。Ctrl+C / 关窗口结束。")
@@ -542,6 +543,16 @@ func _tune_units() -> void:
 			#   攻速的正确入口是 **`aspd_perm`**(永久攻速乘子), 079 的 `carrier_aps` 就是按它算的。
 			u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) * aspd_k
 			battle._recalc_stats(u)
+		## ★`dodge` 覆盖携带者闪避率。由来(2026-09-14): 046 幽灵护符的盾是**闪避成功时**给的,
+		##   默认闪避率下一场 18 秒可能一次都不触发 ⇒ 实拍全程空白, 而效果其实是好的。
+		##   这正是台子注释里反复讲的那条: **触发条件没配对, 就会把「没看见」读成「没做」**
+		##   (090 的浪潮 / 079 的 allies=1 / 033 的 mortal 都栽过同一个坑)。
+		##   ★字段名是 **`dodge_bonus`** 不是 `dodge` —— `_apply_damage_from` 读的是前者
+		##     (battle_damage.gd:310)。我第一版写了 `dodge`, 那是个**全仓没人读**的键,
+		##     台子会静默地什么都不做(memory [[fb-read-a-field-nobody-writes]])。
+		var dg: float = float(cfg.get("dodge", -1.0))
+		if dg >= 0.0:
+			u["dodge_bonus"] = clampf(dg, 0.0, 1.0)
 		if hp_pct < 1.0:
 			u["hp"] = float(u["maxHp"]) * hp_pct
 			battle._equip_sys._eq_check_hp_threshold(u)   # 走真实阈值入口(044/045 这类救命件靠它)
@@ -684,7 +695,13 @@ func _first(pred: Callable):
 ##     (`create_timer` 走未钳制 delta, `Engine.time_scale` 一改就全错)
 ##   · 但 `_t` 在战斗判定结束后**直接冻结** ⇒ 光靠它会永远挂着。
 ##     所以另拿墙钟盯着: 游戏钟 STALL_WALL_SEC 秒没动 ⇒ 把剩下的拍完立刻退。
-func _shot_loop() -> void:
+## ★★★三个"灌注"旋钮(mana_kick / lowhp_kick / egg_kick)**必须两条分支都调**。
+## 由来(2026-09-14, 用户看 045 的 HOLD 窗口时抓到): 它们原来写在 `_shot_loop()` 里,
+## 而 `_shot_loop()` **只在非 HOLD 时调用** ⇒ 开给人看的那个窗口里, 这三个旋钮
+## **从来没生效过**。我给 044 加 lowhp_kick 时是用定时截图模式验的, 所以没发现 ——
+## **验证路径和交付路径不是同一条**(memory [[fb-verify-must-run-the-real-path]])。
+## 受影响的不止一件: 036 的 egg_kick、所有法器的 mana_kick 在 HOLD 窗口里同样是死的。
+func _start_kicks() -> void:
 	# 灌法力: 走真实入口, 满了就真的触发那件法器(不是伪造演出)
 	var kick: float = float(cfg.get("mana_kick", 0.0))
 	if kick > 0.0:
@@ -702,10 +719,22 @@ func _shot_loop() -> void:
 	## 而按"每周期 +5 + 伤害×0.1"的自然速率, 十几秒的窗口**一次升级都拍不到** ——
 	## 上一轮因此把「没拍到」登记成了「台子窗口不够长」, 而真相是那段演出根本没人看过。
 	## ⇒ 给台子一个开关, 走**真实入口** `_egg_add_progress`(不是伪造演出)。
+	## ★`lowhp_kick`: 每这么多秒把携带者打回 `carrier_hp` 那个血线并清掉「本场已触发」标记,
+	##   让【首次 <50% 才触发】那一族(044 深海项链 / 045 珍珠耳环)在 HOLD 窗口里**反复演**。
+	##   由来(2026-09-14): 044 的效果是一次性的, 台子把血压到 40% ⇒ 开场 0.2 秒就触发、
+	##   6 秒内涨满, 而 HOLD 窗口起来要 9 秒 —— 用户打开看到的是一只满血站着的龟,
+	##   跟 021 那次「盯着主菜单背景」是同一个形状。
+##   ⚠ 间隔是「**最多**这么多游戏秒」不是精确值 —— 内层等待带墙钟兜底(`STALL_WALL_SEC`),
+##     `_t` 走得慢时会提前跳出。实测配 9.0 时第一次踢在 t=5.95。要精确节拍别用它。
+	var lk: float = float(cfg.get("lowhp_kick", 0.0))
+	if lk > 0.0:
+		_lowhp_kick_loop(lk, clampf(float(cfg.get("carrier_hp", 0.4)), 0.05, 0.95))
 	var ek: float = float(cfg.get("egg_kick", 0.0))
 	if ek > 0.0:
 		_egg_kick_loop(ek, float(cfg.get("egg_kick_iv", 2.0)))
 
+
+func _shot_loop() -> void:
 	var idx := 0
 	for t in _shots:
 		var want: float = float(t)
@@ -771,6 +800,25 @@ func _place_window_show() -> void:
 
 
 ## 036 台子专用: 按固定间隔给携带者灌孵化进度, 让升级演出在窗口内反复发生。
+## 见 `lowhp_kick` 那段注释。★走**真实入口** `_eq_check_hp_threshold`, 不直接调那件装备的
+## 效果函数 —— 否则台子演的是"我自己按了一下", 不是"血掉到线下自己触发"。
+func _lowhp_kick_loop(iv: float, hp_pct: float) -> void:
+	while is_instance_valid(battle) and _armed:
+		var t0: float = battle._t
+		var kw: int = Time.get_ticks_msec()
+		while battle._t - t0 < iv and Time.get_ticks_msec() - kw < int(STALL_WALL_SEC * 1000.0):
+			await get_tree().process_frame
+		if not is_instance_valid(battle):
+			return
+		for u in battle._units:
+			if u is Dictionary and u.get("_eqdemo_carrier", false) and u.get("alive", false):
+				u["hp50_fired"] = false
+				u["eq_hots"] = {}                 # 上一轮的持续回复也一并停掉, 免得两轮叠加
+				u["hp"] = float(u["maxHp"]) * hp_pct
+				battle._equip_sys._eq_check_hp_threshold(u)
+				break
+
+
 func _egg_kick_loop(amount: float, iv: float) -> void:
 	while is_instance_valid(battle) and _armed:
 		var t0: float = battle._t

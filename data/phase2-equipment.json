@@ -522,10 +522,10 @@
     "baseStats1": "+生命40/60/90·护甲5/12/20",
     "shopAvailable": 1,
     "emoji": "🧿",
-    "effectDesc1": "生命值首次降至 {C:EquipSystem.LOWHP_GATE%}%以下时，在 {C:EquipSystem.NECKLACE_HOT_SEC} 秒内逐渐回复 20/40/80%最大生命值（每场战斗一次）。",
+    "effectDesc1": "生命值首次降至 {C:EquipSystem.LOWHP_GATE%}%以下时，在 {C:EquipSystem.NECKLACE_HOT_SEC} 秒内逐渐回复 40/85/130%最大生命值（每场战斗一次）。",
     "effectDesc3": "",
     "img": "equip/deepsea-necklace.png",
-    "effectBrief": "生命首次低于 {C:EquipSystem.LOWHP_GATE%}% 时，{C:EquipSystem.NECKLACE_HOT_SEC} 秒内回复 20/40/80% 最大生命值。"
+    "effectBrief": "生命首次低于 {C:EquipSystem.LOWHP_GATE%}% 时，{C:EquipSystem.NECKLACE_HOT_SEC} 秒内回复 40/85/130% 最大生命值。"
   },
   {
     "id": "p2eq_045",

@@ -574,7 +574,16 @@ const BSW_CHOP_FROM_R := 3        # 敌在右: 从左上 135° 抡到右下 315�
 const BSW_CHOP_FROM_L := 1        # 敌在左: 镜像, 从右上 45° 抡到左下 225°
 const BSW_CHOP_ARC := 4           # 抡过 4 格(半圈)
 ## 【043 海浪护符】浪墙从携带者【身后】多远处涌起(码)。
-const WAVE_BACK := 400.0
+## ★★2026-09-14 用户拍板(未决②取 b 案):「动演出不动原结算代码」。
+##   原来 400 码时, 站在**起浪点后方 270 码以外**(= 携带者身后 670 码以外)的单位,
+##   会被一道**从未碰到它的浪**打到 —— 伤害那边 `clampf(fwd, 0, tdist)` 把它按 fwd=0 结算,
+##   而浪是朝前走的、永远扫不到它。探针实测: 身后 700 码那个 t=0.52 挨打时浪体在 -268..135,
+##   人在 -300 ⇒ 在浪**后面**。
+##   ⇒ 起浪点挪到 1200 码, 再加浪体往后拖的 230 码 ⇒ 覆盖到携带者身后 **1430 码**;
+##     战场 ARENA 长 1596, 这已经盖住任何现实站位。
+##   **结算代码一行没动**: 谁挨打、挨多少完全不变, 变的只是每个人挨打的**时刻**
+##     (fwd 整体平移, 相对次序不变)。
+const WAVE_BACK := 1200.0
 ## ★★浪墙宽度**固定**(用户 2026-09-14:「而且宽度应该固定啊」)。
 ##   旧版是 `ncrest = clampi((p1-p0)/72+1, 4, 16)`, p0/p1 取**涌浪那一刻的单位跨度**
 ##   ⇒ 这一次 4 片下一次 16 片; 而且横向中心还是偏的(跨度以 u.pos 为原点算, 浪却铺在 startc 上)。
@@ -582,9 +591,9 @@ const WAVE_BACK := 400.0
 ##   ★这同时修掉一条更要命的: 伤害循环 `for o in allies + enemies` **没有任何横向判定**,
 ##     全场每个人都吃 —— 旧版那道窄浪在画面上根本没碰到侧翼的单位, 却把它打飞了。
 const WAVE_HALF_W := 900.0
-## 行程也固定: 从身后 400 码起推 2200 码, 足够穿过整个战场。
+## 行程也固定: 从身后 1200 码起推 3000 码, 足够穿过整个战场。
 ## ★它同时是伤害延时的分母(`fwd / tdist * travel`) —— 演出与判定必须共用同一个数。
-const WAVE_DIST := 2200.0
+const WAVE_DIST := 3000.0   # 起浪点后移到 1200 后, 行程要同步加长才够穿过整个战场
 const CANDLE_PHASES := 3       # 几个阶段
 const CANDLE_IV := 5.0         # 每几秒切一次(主场景 _EQ_CUSTOM_IV 引用本常量)·也是回血铺开的秒数
 const CANDLE_HEAL_R := 250.0   # 微弱阶段: 友军回血光圈半径(码)
@@ -2543,23 +2552,15 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 # ============================================================================
 ## 【半血救急】044 深海项链 / 045 珍珠耳环共用的触发线: 生命首次降到这个比例以下。
 const LOWHP_GATE := 0.5          # 首次 < 此比例 触发(两件共用同一条线)
-const NECKLACE_HOT_SEC := 6.0    # 深海项链 044: 回复摊在 6 秒内(用户2026-08-01)
+const NECKLACE_HOT_SEC := 16.0   # 深海项链 044: 回复摊在 16 秒内(2026-08-01 定 6 秒; 2026-09-14 先 8 后 16)
 const EARRING_HOT_SEC := 8.0     # 珍珠耳环 045: 回复摊在 8 秒内(用户2026-08-01)
 
-## 开一段【固定总量 / 固定时长】的持续回血。消费侧在 RealtimeBattle3DScene._tick_unit 的
-## `if _t < u["eq_hot_until"]` 那两行(与蜡烛 037 的 candle_hot 同一惯例)。
-## ★写这里的时候把速率【锁死】: rate = 总量 / 时长, 之后 maxHp 涨了也不重算 ——
-##   否则温泉蛋/临时升级顶高 maxHp 时, 实发总量会超过文案写的百分比。
-## ★两件同时触发时【取总量更大的那一段】而不是相加: 相加会让速率叠成一条巨额瞬回,
-##   把"改成持续回复"这次削弱整个抵消掉。
+## 起一段【持续回复】。★引擎搬到 `EquipTickSystem`(每件一条独立的摊付, 见那边的段头)。
+## 这里只剩一层转发 —— 归属取 `battle._cur_eq_item`(调用点在 `_eq_check_hp_threshold` 的
+## `match iid` 里, 那一行已经把它设好了)。
 func _eq_start_hot(u: Dictionary, total: float, secs: float) -> void:
-	if total <= 0.0 or secs <= 0.0: return
-	var rate: float = total / secs
-	var cur_left: float = maxf(0.0, float(u.get("eq_hot_until", 0.0)) - battle._t) * float(u.get("eq_hot_rate", 0.0))
-	if total <= cur_left:
-		return
-	u["eq_hot_rate"] = rate
-	u["eq_hot_until"] = battle._t + secs
+	battle._equip_tick_sys.start_hot(u, str(battle._cur_eq_item), total, secs)
+
 
 
 func _eq_check_hp_threshold(u: Dictionary) -> void:
@@ -2570,8 +2571,8 @@ func _eq_check_hp_threshold(u: Dictionary) -> void:
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
 		battle._cur_eq_item = iid   # 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
 		match iid:
-			"p2eq_044":   # 深海项链: 首次<50%触发, 【6秒内】回复 20/40/80% maxHp(用户2026-08-01, 原为瞬回12/27/40%)
-				_eq_start_hot(u, u["maxHp"] * [0.20, 0.40, 0.80][si], NECKLACE_HOT_SEC); fired = true
+			"p2eq_044":   # 深海项链: 首次<50%触发, 【16秒内】回复 40/85/130% maxHp(2026-08-01 定 6秒/20-40-80; 2026-09-14 用户两次上调)
+				_eq_start_hot(u, u["maxHp"] * [0.40, 0.85, 1.30][si], NECKLACE_HOT_SEC); fired = true   # 用户2026-09-14: 20/40/80 → 25/50/85 → 40/85/130
 				battle._heal_body_glow(u)
 			"p2eq_045":   # 珍珠耳环: 首次<50%触发, 【8秒内】回复 30/60/100% maxHp(用户2026-08-01, 原为瞬回15/29/65%) + 抛物线火球
 				_eq_start_hot(u, u["maxHp"] * [0.30, 0.60, 1.00][si], EARRING_HOT_SEC)

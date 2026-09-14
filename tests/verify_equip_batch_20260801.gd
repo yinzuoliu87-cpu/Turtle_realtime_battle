@@ -42,6 +42,13 @@ func _mk(id: String, side: String, off: Vector2, hp: float = 1000.0) -> Dictiona
 	return u
 
 
+
+## 读某一件的摊付槽(新结构: 每件一条独立的 eq_hots[id])。
+func _hot(u: Dictionary, iid: String, key: String) -> float:
+	if not (u.get("eq_hots", null) is Dictionary):
+		return 0.0
+	return float((u["eq_hots"] as Dictionary).get(iid, {}).get(key, 0.0))
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	await get_tree().process_frame
@@ -148,34 +155,36 @@ func _t1_skeleton() -> void:
 
 
 # ─────────────────────────────────────────────────────────────
-# ② 深海项链 044: 6 秒内回复 20/40/80% 最大生命
+# ② 深海项链 044: 16 秒内回复 40/85/130% 最大生命(用户 2026-09-14 两次上调; 原 6 秒/20-40-80)
 # ─────────────────────────────────────────────────────────────
 func _t2_necklace() -> void:
-	print("── ② 深海项链 · 6 秒持续回复 ──")
+	print("── ② 深海项链 · 16 秒持续回复 ──")
 	for si in range(3):
-		var pct: float = [0.20, 0.40, 0.80][si]
+		var EQ_ID := "p2eq_044"
+		var HOT_SEC := 16.0            # 044 摊付时长(写死在门禁里的期望值, 不读产品常量)
+		var pct: float = [0.40, 0.85, 1.30][si]
 		var u: Dictionary = _mk("basic", "left", Vector2(-80.0 + 20.0 * float(si), 140.0), 1000.0)
 		u["equips"] = [{"id": "p2eq_044", "star": si + 1}]
 		u["eq_state"] = {}
 		u["hp50_fired"] = false
 		u["hp"] = 400.0                       # <50% → 触发阈值
-		u["eq_hot_until"] = 0.0; u["eq_hot_rate"] = 0.0
+		u["eq_hots"] = {}
 		var t0: float = _s._t
 		var hp_before: float = float(u["hp"])
 		_s._equip_sys._eq_check_hp_threshold(u)
 		_ok("② si=%d 不再瞬回(触发瞬间血量不变)" % si,
 			absf(float(u["hp"]) - hp_before) < 0.01, "hp %.0f→%.0f" % [hp_before, float(u["hp"])])
-		_ok("② si=%d 回复窗口 = 6 秒(需求字面值)" % si,
-			absf(float(u.get("eq_hot_until", 0.0)) - (t0 + 6.0)) < 0.05,
-			"until-_t = %.2f" % (float(u.get("eq_hot_until", 0.0)) - t0))
-		var want_rate: float = 1000.0 * pct / 6.0
-		_ok("② si=%d 速率 = maxHp×%.0f%% / 6秒" % [si, pct * 100.0],
-			absf(float(u.get("eq_hot_rate", 0.0)) - want_rate) < 0.5,
-			"%.2f vs %.2f" % [float(u.get("eq_hot_rate", 0.0)), want_rate])
+		_ok("② si=%d 回复窗口 = %.0f 秒(需求字面值)" % [si, HOT_SEC],
+			absf(_hot(u, EQ_ID, "until") - (t0 + HOT_SEC)) < 0.05,
+			"until-_t = %.2f" % (_hot(u, EQ_ID, "until") - t0))
+		var want_rate: float = 1000.0 * pct / HOT_SEC
+		_ok("② si=%d 速率 = maxHp×%.0f%% / %.0f秒" % [si, pct * 100.0, HOT_SEC],
+			absf(_hot(u, EQ_ID, "rate") - want_rate) < 0.5,
+			"%.2f vs %.2f" % [_hot(u, EQ_ID, "rate"), want_rate])
 		# 总量 = 速率 × 时长 = 文案百分比
 		_ok("② si=%d 总量 = %.0f%% maxHp" % [si, pct * 100.0],
-			absf(float(u.get("eq_hot_rate", 0.0)) * 6.0 - 1000.0 * pct) < 1.0,
-			"总量 %.0f" % (float(u.get("eq_hot_rate", 0.0)) * 6.0))
+			absf(_hot(u, EQ_ID, "rate") * HOT_SEC - 1000.0 * pct) < 1.0,
+			"总量 %.0f" % (_hot(u, EQ_ID, "rate") * HOT_SEC))
 
 
 # ─────────────────────────────────────────────────────────────
@@ -232,21 +241,23 @@ func _t3_hotspring() -> void:
 func _t4_earring() -> void:
 	print("── ④ 珍珠耳环 · 8 秒持续回复 ──")
 	for si in range(3):
+		var EQ_ID := "p2eq_045"
+		var HOT_SEC := 8.0             # 045 摊付时长
 		var pct: float = [0.30, 0.60, 1.00][si]
 		var u: Dictionary = _mk("basic", "left", Vector2(-40.0 + 20.0 * float(si), 190.0), 1000.0)
 		u["equips"] = [{"id": "p2eq_045", "star": si + 1}]
 		u["eq_state"] = {}
 		u["hp50_fired"] = false
 		u["hp"] = 400.0
-		u["eq_hot_until"] = 0.0; u["eq_hot_rate"] = 0.0
+		u["eq_hots"] = {}
 		var t0: float = _s._t
 		_s._equip_sys._eq_check_hp_threshold(u)
-		_ok("④ si=%d 回复窗口 = 8 秒(需求字面值)" % si,
-			absf(float(u.get("eq_hot_until", 0.0)) - (t0 + 8.0)) < 0.05,
-			"until-_t = %.2f" % (float(u.get("eq_hot_until", 0.0)) - t0))
+		_ok("④ si=%d 回复窗口 = %.0f 秒(需求字面值)" % [si, HOT_SEC],
+			absf(_hot(u, EQ_ID, "until") - (t0 + HOT_SEC)) < 0.05,
+			"until-_t = %.2f" % (_hot(u, EQ_ID, "until") - t0))
 		_ok("④ si=%d 总量 = %.0f%% maxHp" % [si, pct * 100.0],
-			absf(float(u.get("eq_hot_rate", 0.0)) * 8.0 - 1000.0 * pct) < 1.0,
-			"总量 %.0f (期望 %.0f)" % [float(u.get("eq_hot_rate", 0.0)) * 8.0, 1000.0 * pct])
+			absf(_hot(u, EQ_ID, "rate") * HOT_SEC - 1000.0 * pct) < 1.0,
+			"总量 %.0f (期望 %.0f)" % [_hot(u, EQ_ID, "rate") * HOT_SEC, 1000.0 * pct])
 
 
 # ─────────────────────────────────────────────────────────────

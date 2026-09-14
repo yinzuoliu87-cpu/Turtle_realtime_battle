@@ -224,6 +224,7 @@ func _render_step(rd: float, frozen: bool, in_ts: bool) -> void:
 	_tick_chill_mark()             # 冰寒标记: 谁的 spd_dbf_until 还没过就挂霜(状态的函数)
 	_tick_baton_zap_mark()         # 027 电击眩晕: 谁的 baton_zap_until 还没过就一直冒电弧
 	_tick_ebb_coat()               # 041 涨潮期: 谁的 _ebb_until 还没过, 整只龟就泡在浊液里
+	_tick_heal_hot()               # 持续回复期: 逐件扫 eq_hots, 每件各演各的
 	_tick_follow_vfx()             # 跟随特效(冰块等)贴目标最新世界坐标(含击飞height)
 	_tick_anim_fx()                # 位置固定的帧动画(技能环)按游戏时钟切帧·放完自销
 	_tick_coin_fx()                # 035 深海币: 头顶旋转金币(跟人 + 边转边上飘)
@@ -291,6 +292,24 @@ func _tick_baton_zap_mark() -> void:
 		if is_instance_valid(u.get("_baton_zap_spr", null)):
 			continue
 		battle._vfx.baton_zap_mark(u)
+
+
+## 【持续回复】期 —— 同一条路子。判据落在 `eq_hots` 里**每一件自己**那条 until 上。
+## 2026-09-14 用户「不要和地狱护盾共用了」⇒ 从一个共享槽改成每件一条。
+func _tick_heal_hot() -> void:
+	for u in battle._units:
+		if not u.get("alive", false):
+			continue
+		if not (u.get("eq_hots", null) is Dictionary):
+			continue
+		## ★逐件扫: 一只龟同时带 044 与 045 时, 两条摊付各演各的(不再共用一个槽)。
+		for owner in (u["eq_hots"] as Dictionary).keys():
+			if battle._t >= float(u["eq_hots"][owner].get("until", 0.0)):
+				continue
+			if is_instance_valid(u.get("_heal_hot_spr_" + str(owner), null)):
+				continue
+			u["_hhot_owner"] = str(owner)
+			battle._vfx.heal_hot_aura(u)
 
 
 ## 041 涨潮持续态 —— 同一条路子: 演出是**状态的函数**, 判据落在 `_ebb_until` 上。

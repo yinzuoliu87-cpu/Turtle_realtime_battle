@@ -14,11 +14,13 @@ extends Node
 ##   到期**全部还原**(退潮**不致死**, 只把生命削到新上限)。
 ## 【042】每 `RIPPLE_IV`(8) 秒为全队(含自己)各回复其**已损失生命**的 3/6/10%;
 ##   ★3 时**生命百分比最低**的友军获得**双倍**回复。
-## 【043】法力满时从身后 `WAVE_BACK`(400) 码涌起浪墙横扫全场, **敌我双方都会被扫到**:
+## 【043】法力满时从身后 `WAVE_BACK`(1200) 码涌起浪墙横扫全场, **敌我双方都会被扫到**:
+##   ★2026-09-14 用户拍板从 400 挪到 1200(「动演出不动原结算代码」): 原来站在携带者身后
+##   670 码以外的单位会被一道**从未碰到它的浪**打到。结算代码一行没动, 只是起浪点后移。
 ##   友军 +40/95/120 护盾并**永久** +2/3/5 双抗; 敌人受 60/110/200 魔法伤害并**永久** -2/3/5 双抗。
 ##   负面被动: 该法器的法力条上限提升 50/25/0%。
 ## 【044】生命首次降至 `LOWHP_GATE`(50)% 以下时, 在 `NECKLACE_HOT_SEC`(6) 秒内
-##   逐渐回复 20/40/80% 最大生命(每场一次)。
+##   逐渐回复 40/85/130% 最大生命(每场一次)。★用户 2026-09-14 两次上调: 6秒/20-40-80 → 8秒/25-50-85 → 16秒/40-85-130。
 ## 【045】同样的触发线, `EARRING_HOT_SEC`(8) 秒内逐渐回复 30/60/100% 最大生命,
 ##   并向 1/1/2 名随机敌人发火球: 8/17/30% 目标最大生命的魔法伤害 + 30/70/150 层灼烧(每场一次)。
 ##
@@ -28,7 +30,7 @@ const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const ES := preload("res://scripts/systems/equip/equip_system.gd")
 
 const EXP_PICKS := [1, 2, 4]      # ★写死: 判据不许拿被测常量当期望值(那是恒真式)
-const EXP_NECK_SEC := 6.0
+const EXP_NECK_SEC := 16.0
 const EXP_EAR_SEC := 8.0
 const TIDE_HP := [250.0, 400.0, 650.0]
 const TIDE_ATK := [10.0, 16.0, 25.0]
@@ -37,7 +39,7 @@ const RIPPLE_PCT := [0.03, 0.06, 0.10]
 const WAVE_SHIELD := [40.0, 95.0, 120.0]
 const WAVE_DMG := [60.0, 110.0, 200.0]
 const WAVE_RESIST := [2, 3, 5]
-const NECK_PCT := [0.20, 0.40, 0.80]
+const NECK_PCT := [0.40, 0.85, 1.30]
 const EAR_PCT := [0.30, 0.60, 1.00]
 
 var _s = null
@@ -69,6 +71,13 @@ func _mk(px: float, py: float, side: String) -> Dictionary:
 	u["shield"] = 0.0
 	return u
 
+
+
+## 读某一件的摊付槽(新结构: 每件一条独立的 eq_hots[id])。
+func _hot(u: Dictionary, iid: String, key: String) -> float:
+	if not (u.get("eq_hots", null) is Dictionary):
+		return 0.0
+	return float((u["eq_hots"] as Dictionary).get(iid, {}).get(key, 0.0))
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -232,7 +241,7 @@ func _ready() -> void:
 	# ══════════════ 043 海浪护符 ══════════════
 	_ok("④ ★分母: 从身后 %.0f 码涌起 / 法力条上限提升 %s%%"
 		% [ES.WAVE_BACK, str(_s._staff_syn.MANA_FULL_PCT.get("p2eq_043", []))],
-		absf(ES.WAVE_BACK - 400.0) < 0.01)
+		absf(ES.WAVE_BACK - 1200.0) < 0.01)
 	for si in [0, 2]:
 		_s._units.clear()
 		_s._pending_shots.clear()
@@ -270,7 +279,7 @@ func _ready() -> void:
 	# ══════════════ 044 / 045 残血触发 ══════════════
 	_ok("⑤ ★分母: 触发线 %.0f%% / 044 摊 %.0f 秒 / 045 摊 %.0f 秒"
 		% [ES.LOWHP_GATE * 100.0, ES.NECKLACE_HOT_SEC, ES.EARRING_HOT_SEC],
-		absf(ES.LOWHP_GATE - 0.5) < 0.001 and absf(ES.NECKLACE_HOT_SEC - 6.0) < 0.01
+		absf(ES.LOWHP_GATE - 0.5) < 0.001 and absf(ES.NECKLACE_HOT_SEC - EXP_NECK_SEC) < 0.01
 			and absf(ES.EARRING_HOT_SEC - 8.0) < 0.01)
 	for item in ["p2eq_044", "p2eq_045"]:
 		var pct: Array = NECK_PCT if item == "p2eq_044" else EAR_PCT
@@ -287,7 +296,7 @@ func _ready() -> void:
 		c5["hp"] = float(c5["maxHp"]) * (ES.LOWHP_GATE + 0.02)
 		_s._equip_sys._eq_check_hp_threshold(c5)
 		_ok("⑤ ★★%s 血在 %.0f%% 时**不**触发" % [item, (ES.LOWHP_GATE + 0.02) * 100.0],
-			not bool(c5.get("hp50_fired", false)) and float(c5.get("eq_hot_rate", 0.0)) == 0.0,
+			not bool(c5.get("hp50_fired", false)) and _hot(c5, item, "rate") == 0.0,
 			"卡住 LOWHP_GATE = %.0f%% 这条线" % (ES.LOWHP_GATE * 100.0))
 		## 掉到线下 ⇒ 触发, 且是【摊在 N 秒里】不是瞬回
 		c5["hp"] = float(c5["maxHp"]) * (ES.LOWHP_GATE - 0.02)
@@ -295,17 +304,16 @@ func _ready() -> void:
 		_s._equip_sys._eq_check_hp_threshold(c5)
 		_ok("⑤ ★★★%s 掉到线下触发了" % item, bool(c5.get("hp50_fired", false)))
 		_ok("⑤ ★★★%s 是【摊在 %.0f 秒里】不是瞬回(当场只回了 %.0f, 速率 %.1f/秒)"
-			% [item, secs, float(c5["hp"]) - before, float(c5.get("eq_hot_rate", 0.0))],
+			% [item, secs, float(c5["hp"]) - before, _hot(c5, item, "rate")],
 			absf(float(c5["hp"]) - before) < 1.0
-				and absf(float(c5.get("eq_hot_rate", 0.0)) - float(c5["maxHp"]) * pct[2] / secs) < 1.0,
+				and absf(_hot(c5, item, "rate") - float(c5["maxHp"]) * pct[2] / secs) < 1.0,
 			"文案明写「在 N 秒内**逐渐**回复」")
 		## ★★每场只一次
 		c5["hp"] = float(c5["maxHp"]) * 0.1
-		c5["eq_hot_rate"] = 0.0
-		c5["eq_hot_until"] = 0.0
+		c5["eq_hots"] = {}
 		_s._equip_sys._eq_check_hp_threshold(c5)
 		_ok("⑤ ★★★%s **每场战斗只触发一次**(再掉到 10%% 也不再起)" % item,
-			float(c5.get("eq_hot_rate", 0.0)) == 0.0,
+			_hot(c5, item, "rate") == 0.0,
 			"靠 hp50_fired 拦着")
 		if item == "p2eq_045":
 			_ok("⑤ ★★★045 同时发了火球(在途投射物 %d 个, ★3 应 2 个)"

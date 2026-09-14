@@ -671,7 +671,7 @@ func _grant_shield(u: Dictionary, amt: float, dur: float = 0.0) -> void:
 		##   到期处用 minf(timed, shield) 兑齐, 不会扣超; 没把每个写点都钩上是故意的(改动面不值)。
 		u["shield_timed"] = minf(float(u.get("shield_timed", 0.0)) + amt, float(u["shield"]))
 	var got = int(u["shield"] - sb)
-	u["_st_shield"] = int(u.get("_st_shield", 0)) + got   # §STATS: 实际获盾
+	u["_st_shield"] = float(u.get("_st_shield", 0)) + got   # §STATS: 实际获盾(同 _st_heal: 累计用 float, 否则每次调用丢掉小数)
 	if got >= 8:                             # #1 护盾飘字 "+N 盾" (浅蓝); 门槛过滤每帧微盾被动防刷屏
 		battle._vfx._float_text(u["pos"] + Vector2(0, -52), "+%d 盾" % got, battle._VC.color_of("shield-num"), false, "shield")   # 走飘字色表, 不再手抄 #ffffff
 	## ★★两轮用户意见否的是同一个东西:
@@ -735,7 +735,12 @@ func _heal(u: Dictionary, amt: float, silent: bool = false) -> float:   # 返回
 		amt = minf(amt, _hcap)
 	var hb: float = u["hp"]
 	u["hp"] = minf(u["maxHp"], u["hp"] + amt)
-	u["_st_heal"] = int(u.get("_st_heal", 0)) + int(u["hp"] - hb)   # §STATS: 实际回复(超过满血不计)
+	## ★★**累计要用 float**。原来是 `int(...) + int(hp - hb)` —— 把**每一次的增量**截成整数,
+	##   而持续回复(044 深海项链 / 045 珍珠耳环 / 037 蜡烛, 以及任何按帧摊付的治疗)
+	##   每帧只回 1.77 点 ⇒ `int(1.77) = 1` ⇒ **结算面板的「治疗」列少算 43.5%**。
+	##   2026-09-14 实测: 8 秒真实回复 850 点, 账上记成 480。
+	##   读取侧(battle_hud / dmg_stats_panel / 主场景快照)本来就全都套了 `int()`, 所以只改累计。
+	u["_st_heal"] = float(u.get("_st_heal", 0)) + (u["hp"] - hb)   # §STATS: 实际回复(超过满血不计)
 	var _osc: float = float(u.get("overheal2shield_cap", 0.0))   # 饮血护符坠(011): 溢出治疗(超过满血部分)转血护盾, 累积上限
 	if _osc > 0.0:
 		var _ovf: float = amt - float(u["hp"] - hb)   # 请求治疗量 - 实际回复 = 溢出

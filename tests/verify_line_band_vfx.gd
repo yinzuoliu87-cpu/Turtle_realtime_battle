@@ -1,5 +1,6 @@
 extends Node
-## verify_line_band_vfx.gd — 「文案写明判定半宽」那一类的**演出必须盖住判定带** (2026-09-14)
+## verify_line_band_vfx.gd — 「演出必须盖住判定」那一类 (2026-09-14)
+##   ①②③ 三件「文案写明判定半宽」的横向覆盖 · ④ 043 浪墙的**纵向时间轴**对齐
 ##
 ## ════════════════════════════════════════════════════════════════════════
 ##  ★这条门禁守的是什么
@@ -227,7 +228,95 @@ func _ready() -> void:
 		float(r29[1]) >= EXP_ICE_HALF * COVER_MIN,
 		"原来写死 ±46 码 = 只盖住判定的 51%")
 
+	# ══════════════ 043 海浪护符: 伤害落地那一刻, 人必须在浪体里 ══════════════
+	## ★★守的是【演出与判定共用同一条时间轴】。伤害延时是 `windup + fwd/tdist*travel`
+	##   (线性), 所以浪的推进也必须线性 —— 我 2026-09-14 给推进加过 smoothstep 起步慢,
+	##   探针当场量出: 携带者脚下那个 t=0.87 挨打而浪只推到 330 码(人在 400) ⇒ 差 70 码,
+	##   前方 300 码那个差 19 码。**肉眼看不出来, 只有量才知道。**
+	## ★判据量的是**真实网格顶点**在行进方向上的覆盖区间, 不读任何常量。
+	_s._units.clear()
+	_s._pending_shots.clear()
+	## ★★上一节(029)只放了携带者、没有敌人 ⇒ `_check_end` 当场把战斗判成结束(`_over`),
+	##   而 `_pending_shots` 的排空是被 `_over` 门住的 ⇒ 这一节的伤害一条都不会落,
+	##   四个探针全是 0，下面那两条就成了空检查。
+	##   (memory [[fb-gate-subject-never-constructed]]: 判据没错, 被测对象不在场)
+	_s._over = false
+	var cw: Dictionary = _mk(500.0, 470.0, "left")
+	_s._units.append(cw)
+	var startc: Vector2 = cw["pos"] - dir * _s._equip_sys.WAVE_BACK
+	var probes: Array = []
+	## ★★把**身后**的位置也纳进来(2026-09-14 用户拍板把起浪点挪到 1200 码之后):
+	##   原来站在携带者身后 670 码以外的单位会被一道从未碰到它的浪打到。
+	##   −600 / −900 这两个点就是钉住那条修复的。
+	for fw in [-900.0, -600.0, 0.0, 300.0, 700.0, 1100.0]:
+		var e: Dictionary = _mk(maxf(90.0, 500.0 + fw), 470.0, "right")
+		_s._units.append(e)
+		probes.append({"u": e, "fwd": fw, "hp0": float(e["hp"]), "t": -1.0, "ok": false, "gap": 0.0})
+	## ★★只认**这一次**新建出来的网格。第一版是"顶点数 ≥500 的网格全算", 结果把
+	##   ②那一节留下的 `bolt_line` 也算了进来(它的点串顶点数也超 500, 而且 tween 在
+	##   无头下不推进 ⇒ 一直没被释放) ⇒ 浪的"前缘"被撑到 1704 码, 判据宽了一千多码,
+	##   条条都过但过得莫名其妙(实测越界读数 -1304 而真值该在 -80 上下)。
+	##   这已是本轮第三次"判据比要量的形状宽"(前两次: 朝相机的方块 / 停在原点的碎片)。
+	var wroster: Dictionary = _roster()
+	_s._equip_sys._eq_water_wave(cw, 2)
+	var tt: float = 0.0
+	for _k in range(180):
+		var t0w: float = _s._t
+		_s._sim_step(_s.SIM_DT, false, false)
+		if absf(_s._t - t0w) < 1e-6:
+			_s._t += _s.SIM_DT
+		tt += _s.SIM_DT
+		for pr in probes:
+			if float(pr["t"]) >= 0.0:
+				continue
+			if float(pr["u"]["hp"]) >= float(pr["hp0"]) - 0.5:
+				continue
+			pr["t"] = tt
+			var span: Array = _wave_span(wroster, startc, dir)
+			var mf: float = ((pr["u"]["pos"] as Vector2) - startc).dot(dir)
+			pr["ok"] = bool(span[0]) and mf >= float(span[1]) and mf <= float(span[2])
+			pr["gap"] = mf - float(span[2])
+	var hit_n: int = 0
+	for pr in probes:
+		if float(pr["t"]) >= 0.0:
+			hit_n += 1
+	_ok("④ ★分母: 043 的六个探针单位全都被结算到了(%d/6)" % hit_n, hit_n == 6,
+		"没被打到的话下面那条就是空检查")
+	for pr in probes:
+		_ok("④ ★★★纵深 %+.0f 码那个: t=%.2f 挨打时人在浪体内(越界 %+.0f 码)"
+			% [float(pr["fwd"]), float(pr["t"]), float(pr["gap"])],
+			bool(pr["ok"]),
+			"伤害延时是线性的 ⇒ 浪的推进也必须线性, 加缓动就会「伤害先落、浪后到」")
+
 	_finish()
+
+
+## 浪的网格在 dir 方向上的覆盖区间(码)。返回 [找到没有, 最后缘, 最前缘]。
+## ★只认顶点数 ≥500 的那张网格 —— 那是浪; 别的小网格(光束/点串)不是。
+func _wave_span(before: Dictionary, org: Vector2, dir: Vector2) -> Array:
+	var lo := 1e9
+	var hi := -1e9
+	var found := false
+	for ch in _s._world.get_children():
+		if before.has(ch.get_instance_id()):
+			continue
+		if not (ch is MeshInstance3D):
+			continue
+		var m = ch.mesh
+		if m == null or m.get_surface_count() == 0:
+			continue
+		var arr: Array = m.surface_get_arrays(0)
+		if arr.size() <= Mesh.ARRAY_VERTEX or arr[Mesh.ARRAY_VERTEX] == null:
+			continue
+		var vs = arr[Mesh.ARRAY_VERTEX]
+		if vs.size() < 500:
+			continue
+		found = true
+		for v in vs:
+			var f: float = (_to_yards(ch.position + v) - org).dot(dir)
+			lo = minf(lo, f)
+			hi = maxf(hi, f)
+	return [found, lo, hi]
 
 
 func _finish() -> void:

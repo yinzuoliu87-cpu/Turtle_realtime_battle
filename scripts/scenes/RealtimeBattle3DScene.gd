@@ -2322,7 +2322,6 @@ const _TS_TIMER_FIELDS := [
 	"dice_dash_pause_until",
 	"echarge_until",
 	"energy_lock_until",
-	"eq_hot_until",
 	"eq_marked_until",
 	"eq_target_until",
 	"frost_shield_until",
@@ -2427,8 +2426,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 	# ★用【固定速率×delta】而不是"每帧 maxHp×比例": 携带者在回复期间可能被温泉蛋/升级顶高 maxHp,
 	#   按当前 maxHp 现算会让总量随之膨胀 —— 触发瞬间锁死 rate, 总量才等于文案写的那个数。
 	# ★死亡即停(方案书 §4·F): 本函数只在 alive 单位上跑, 不需要额外判定。
-	if _t < float(u.get("eq_hot_until", 0.0)):
-		_damage._heal(u, float(u.get("eq_hot_rate", 0.0)) * delta, true)
+	_equip_tick_sys.tick_hots(u, delta)   # 每件一条独立摊付 + 图标框倒计时条(无条件调: 到期那一帧要抹成 0)
 	# 靶向器055 钩索炸弹: 挂在宿主身上, 每秒对宿主造成其 maxHp 的 2/4/4% 物理伤害, 直到宿主死亡
 	if float(u.get("hookbomb_pct", 0.0)) > 0.0:
 		_hookbomb_sys._hb_tick(u, delta)
