@@ -30,6 +30,16 @@ extends Node
 ## ③ **解除后必须恢复**：`_end_timestop()` 之后背景重新动起来。
 ##    ——冻死了也是 bug，只验"冻得住"会放过"再也不动了"。
 ##
+## ★★判据⑥/⑦ 的由来(用户 2026-09-14):「确定所有东西都定住了吗, **像触手, 直升机等等**」
+##   —— 他说中了, 而且比①②看到的严重。主场景里那一整块 `if _fight_on:` 的每帧 tick
+##   (羁绊周期效果 / `_tentacle_vfx.tick` 触手网格 / `_equip_sys.tick_global` 碑与直升机 /
+##   `_spec.tick` 所有人的护盾余额)跑在 `elif in_ts:` 分支【之前】⇒ 时停整块门不住它。
+##   探针实测: 非携带者的一笔 1000 余额, **时停前 60 帧掉 10.42、时停中 120 帧掉 20.42**
+##   —— 速率一模一样。这是**玩法**不是画面: 20 秒的定格里全场的盾在掉、羁绊计时在走。
+##   ★①②③ 全绿也抓不到它: 那三条量的是 `_world` 里**两次快照都在**的节点的 transform,
+##     而余额是单位字典里的数、新建/销毁的节点更是压根不在快照的交集里。
+##     ⇒ 补两条**量账不量画面**的判据。
+##
 ## ★为什么不判"变化节点数 == 0"：时停**自己的**演出（蓄力沙漏虚影 / 时之主金辉光 / 停摆钟）
 ##   和**携带者自己**本来就该继续动（它是唯一能动的人）。判据必须刚好卡住"别人不许动"
 ##   这个形状，宽一格会造假 bug、窄一格会放过真 bug
@@ -80,6 +90,20 @@ func _moved(a: Dictionary, b: Dictionary, pfx: String) -> Array:
 	return hit
 
 
+## `_world` 子树里**离携带者 far 米以外**的节点数 —— 判据⑦ 用。
+## ★快照差(`_moved`)只比两次都在的节点, **新建/销毁的它看不见** ⇒ 必须另外数一次总数。
+## ★★为什么要排除携带者周围: 时之主是**唯一能动的人**, 它施法/普攻**本来就该**造出新节点
+##   (第一版判据把这些也数进去, 红在 +3 上 —— 那不是缺陷, 是判据比要量的形状宽了一格)。
+##   判据要刚好卡住「**别人**的世界不许再生灭」这个形状(memory [[fb-judge-must-fit-the-shape]])。
+func _count_far(n: Node, cp: Vector3, far: float) -> int:
+	var c := 0
+	for ch in n.get_children():
+		if not (ch is Node3D) or (ch as Node3D).global_position.distance_to(cp) > far:
+			c += 1
+		c += _count_far(ch, cp, far)
+	return c
+
+
 func _wait(nf: int) -> void:
 	for _i in range(nf):
 		await get_tree().process_frame
@@ -128,6 +152,10 @@ func _ready() -> void:
 	await _wait(30)
 	var other_path: String = "/" + str(other["sprite"].name) if other.get("sprite", null) != null else ""
 
+	## 给【非携带者】种一笔会线性衰减的余额(幽灵护盾/奶油护盾就是这么存的) —— 判据⑥ 的被测对象。
+	_s._spec.grant(other, "probe_decay", 1000.0, {"decay_sec": 40.0})
+	var sv0: float = float(_s._spec.val(other, "probe_decay"))
+
 	# ── ① 分母: 时停【之前】世界在动 ──
 	var pre: Array = await _window(90, "")
 	var pre_bg: Array = pre.filter(func(k): return str(k).begins_with("/FarBackdrop"))
@@ -146,6 +174,10 @@ func _ready() -> void:
 	_s._t = 999.0
 	ts._ts_update_trigger(0.016)
 	ts._ts_update_trigger(10.0)
+	var sv1: float = float(_s._spec.val(other, "probe_decay"))
+	_ok("★分母④: 那笔余额在时停【之前】是会掉的(%.1f → %.1f)" % [sv0, sv1],
+		(sv0 - sv1) > 0.5,
+		"它本来就不掉 ⇒ 判据⑥「时停期间不掉」是恒真式")
 	_ok("★分母③: 时停真的进了(active=%d, 剩 %.1f 秒)"
 		% [(ts._ts_active as Array).size(), float(ts._ts_remaining)],
 		not (ts._ts_active as Array).is_empty() and float(ts._ts_remaining) > 5.0,
@@ -167,6 +199,27 @@ func _ready() -> void:
 
 	print("     [探针] 时停期间仍在动的全部节点(应当只剩时停自己的演出 + 携带者自己): %s"
 		% str(dur.slice(0, 8)))
+
+	# ── ⑥ 判据: 全场性的每帧 tick 必须被时停门住(量账, 不量画面) ──
+	## 拿 `_spec` 的线性衰减当尺子: 它是 `if _fight_on:` 那一块里最容易量的一条,
+	## 而那一块整块共命运 —— 它冻住了, 触手/直升机/羁绊计时就都冻住了。
+	var dv0: float = float(_s._spec.val(other, "probe_decay"))
+	await _wait(120)
+	var dv1: float = float(_s._spec.val(other, "probe_decay"))
+	_ok("⑥ 时停期间【非携带者的护盾余额】一点都不掉(%.2f → %.2f)" % [dv0, dv1],
+		absf(dv0 - dv1) < 0.01,
+		"掉了 %.2f —— `if _fight_on:` 那一整块(触手/直升机/羁绊/余额)没被时停门住" % (dv0 - dv1))
+
+	# ── ⑦ 判据: 入停演出跑完之后, 世界里不许再有节点生灭 ──
+	## ★要先等入停那一下自己跑完(蓄力的 10 颗金沙 + 涟漪 + 金环共 11 个会在头 1 秒内收掉),
+	##   它们是**时停自己的演出**, 本来就不该冻。不等就会把它们算成"世界还在动"。
+	var cp: Vector3 = _s._world_pos(carrier["pos"], 0.8)
+	var nc0: int = _count_far(_s._world, cp, 3.0)
+	await _wait(120)
+	var nc1: int = _count_far(_s._world, cp, 3.0)
+	_ok("⑦ 时停期间【携带者 3 米以外】的节点数不再生灭(%d → %d)" % [nc0, nc1],
+		absi(nc1 - nc0) <= 1,
+		"变了 %+d —— 还有东西在建/销毁(①②③ 的快照差看不见这一类)" % (nc1 - nc0))
 
 	# ── ④ 判据: 灰世界要**一直**灰到解除, 不能灰一下就没了 ──
 	## ★★量这条时我自己先栽了一次: VFXLAB 的拍点排在**游戏钟**上, 而时停期间游戏钟是**冻结**的

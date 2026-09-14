@@ -2239,7 +2239,19 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 	_sd_tick()   # §SUDDEN 战场决胜(40s起治疗-50% + 每5s +25%增伤)
 	## ★摆位/呈现期不推进战斗(第4条「召唤物没开打就攻击」): 单位tick早有这道闸, 而羁绊tick(炮台/触手)/tick_global(批④召唤物)/大师AI 都在闸外 ⇒ 同一个条件门住, 下方复用同一个变量
 	var _fight_on: bool = not _edit_mode and _dl_state != "place" and not _dl_sys._dl_is_present()   # ★不看 _over: 在途效果(猛砸倒计时/引爆)不该被"战斗已判定"掐断, 同本文件靶向器那段先例
-	if _fight_on:
+	## ★★★这一块【必须被时停门住】(2026-09-14 修)。
+	##   用户原话:「确定所有东西都定住了吗, 像**触手**, **直升机**等等」—— 他说中了, 而且比看上去严重。
+	##   这一块跑在下面 `if frozen: / elif in_ts:` 那个分支【之前】⇒ 时停期间它整块照跑:
+	##     · `_tentacle_vfx.tick` 每帧重算触手网格 ⇒ 触手在定格的世界里照样甩;
+	##     · `_equip_sys.tick_global` 的注释自己写着「碑/**直升机**/炮台还要继续动」;
+	##     · `_spec.tick` 让**所有人**的护盾余额继续线性衰减 —— 这是**玩法**不是画面。
+	##   探针实测(非携带者的一笔 1000 余额): 时停前 60 帧掉 10.42, 时停中 120 帧掉 20.42
+	##   —— **速率一模一样**, 时停对它完全没发生过。
+	##   ⇒ 这些全是**全场性**的东西(羁绊周期效果 / 场上造物 / 所有人的余额),
+	##     没有一条是「携带者自己的动作」——后者走 `elif in_ts:` 里的 `_tick_unit(u, dt)`。
+	##     所以整块冻住, 只把携带者真正需要的那条补进 `in_ts` 分支(见那里的注释)。
+	var _ts_on: bool = not _timestop._ts_active.is_empty()
+	if _fight_on and not _ts_on:
 		_synergy.tick(dt)   # ★类型羁绊的周期效果(批4-1: 法器潮涌 / 食物盛宴 / 盾圣光) —— 走 dt 不走墙钟
 		_swordsman.tick(dt)   # 剑士追打队列(以 5 倍攻速依次打出)
 		_shield_syn.tick(dt)  # 圣光护盾装备: 每 3 秒 55 点护盾
@@ -2280,6 +2292,11 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 					_tick_unit(u, dt)        # active携带者自由行动(移动/普攻/放技/命中即时结算)
 				_ballistics._step_projectiles(dt)        # 内部gate: 只推进active的弹道; 其余悬空
 				_ballistics._step_pending_shots(dt)      # 内部gate: 只active的依次射击
+				## ★上面那一整块 `if _fight_on:` 被时停门住了, 但**这一条要补回来**:
+				##   文案写的是「此期间只有…能自由攻击/施法/移动, **伤害即时结算**」,
+				##   而 024/025/026 这类装备的伤害走的正是这个共享延时队列 ——
+				##   不推它, 携带者在时停里打出的那几下要等解除后才落地。
+				_equip_tick_sys.tick_delayed(dt)
 				_gold_vfx.tick(dt)                       # 金弹演出自推进(不用 tween, §3.5)
 				_incense_vfx.tick(dt)                    # 093 香火石演出自推进(同上)
 				_check_end()
@@ -7833,6 +7850,13 @@ func _unhandled_input(event: InputEvent) -> void:
 				_hud._close_info_panel()   # 详情面板开着 → ESC 先关面板 (不退场)
 				return
 			DEBUG_EDIT = false   # 离场重置, 不影响下次正常战斗
+			## ★VFXLAB 台子里 ESC = **直接退进程**, 不掉回主菜单(2026-09-14)。
+			##   用户原话:「**不要给我看主菜单啊**」—— 他看完窗口按 ESC 想关掉,
+			##   结果掉进主菜单; 台子是开出来看某一件特效的, 主菜单在这里没有任何意义,
+			##   而且正是 021 那次「你对着主菜单背景在看什么」的同一个画面。
+			if OS.has_environment("VFXLAB"):
+				get_tree().quit()
+				return
 			get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 		return
 	# 双路场内放置阶段: 拖我方(left)非蛋单位到位 (clamp 我方半场+避障); 「开打」钮在 GUI 层.

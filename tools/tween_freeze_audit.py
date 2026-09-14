@@ -50,9 +50,10 @@ ALLOW = {
     "scripts/scenes/RealtimeBattle3DScene.gd": (
         1, "`_reg_tween()` 自己的实现（第 2359 行），就是那个注册口本身"),
     "scripts/systems/equip/timestop_system.gd": (
-        # 10 → 9 (v0.19.381): 时之主那颗白球换成时之砂后不再需要脉动 tween，
-        #   帧号由 `_ts_tick_visual` 按真实时间推。棘轮只减不增，所以这里跟着改小。
-        9, "时停【自己】的演出：反色闪 / 压暗扩散 / 停摆钟 / 蓄力沙漏。"
+        # 10 → 9 → 8 (v0.19.381/382): 白球换时之砂去掉一条脉动 tween；
+        #   释放瞬间那颗连续放大的白球换成切帧的能量场，又去掉一条。
+        #   两次都是**把 tween 换成按真实时间切帧**，棘轮只减不增。
+        8, "时停【自己】的演出：反色闪 / 压暗扩散 / 停摆钟 / 蓄力沙漏。"
             "冻了就等于时停没有画面"),
     "scripts/scenes/battle/battle_hud.gd": (
         4, "UI 层（HUD 面板动效），不在 `_world` 里"),

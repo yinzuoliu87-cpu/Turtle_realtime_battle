@@ -34,6 +34,9 @@ var _ts_flash_overlay: CanvasLayer = null # 反色闪叠加层(layer60=在UI上�
 var _ts_flash_rect: ColorRect = null
 var _ts_clock: TextureRect = null         # 时停停摆钟(叠加层顶, 不被褪色)
 var _ts_glow_sprs: Array = []             # 携带者身上的【时之砂】sprite(结束移除·名字沿用: dual_lane_flow 在读它)
+var _ts_total := 0.0                      # 本次定格的总时长(秒) —— 读数条的分母
+var _ts_vortex_sprs: Array = []           # 释放瞬间的能量场(放完自销)
+var _ts_vortex_t := 0.0                   # 能量场的**真实时间**累加器
 var _ts_sand_t := 0.0                     # 时之砂的**真实时间**累加器 —— 全局 `_t` 在时停里是冻的, 不能拿它推帧
 
 func _init(b) -> void:
@@ -109,7 +112,10 @@ func _ts_fire() -> void:
 			## ★飘字**不许写死数字** —— 原来这里是硬编码的 "+15龟能"，
 			##   常量改成三档后它会漂（同族 memory [[fb-system-coefficient-1-hides-missing-placeholder]]）。
 			battle._vfx._float_text(_c["pos"] + Vector2(0, -62), "+%d龟能" % int(_ie), Color("#8fd4ff"))
+	_ts_total = _ts_remaining
 	_ts_sand_t = 0.0
+	_ts_vortex_t = 0.0
+	_ts_vortex_sprs = []
 	_ts_begin_freeze()
 	_ts_visual_start()
 
@@ -118,6 +124,12 @@ func _end_timestop() -> void:
 		if _c is Dictionary: _c.erase("_ts_echarge")   # 时停结束: 撤掉+100%充能速度
 	_ts_resume_freeze()
 	_ts_visual_end()
+	## ★抹成 0 —— 不抹的话图标框那根条会停在最后一格(044 深海项链踩过的原话教训)。
+	for c in _ts_active:
+		if c is Dictionary:
+			var st: Dictionary = (c.get("eq_state", {}) as Dictionary).get("p2eq_059", {})
+			st["ts_pct"] = 0.0
+			(c["eq_state"] as Dictionary)["p2eq_059"] = st
 	_ts_active = []
 	_ts_remaining = 0.0
 
@@ -190,7 +202,7 @@ func _ts_ensure_overlay() -> void:
 	if battle._is_mobile():
 		fsh.code = "shader_type canvas_item;\nuniform float invert : hint_range(0.0,1.0) = 0.0;\nvoid fragment(){\n\tCOLOR = vec4(1.0, 1.0, 1.0, invert * 0.6);\n}"
 	else:
-		fsh.code = "shader_type canvas_item;\nuniform sampler2D screen_tex : hint_screen_texture, filter_linear;\nuniform float invert : hint_range(0.0,1.0) = 0.0;\nvoid fragment(){\n\tvec3 c = texture(screen_tex, SCREEN_UV).rgb;\n\tCOLOR = vec4(mix(c, vec3(1.0)-c, invert), 1.0);\n}"
+		fsh.code = "shader_type canvas_item;\nuniform sampler2D screen_tex : hint_screen_texture, filter_linear;\nuniform float invert : hint_range(0.0,1.0) = 0.0;\nvoid fragment(){\n\tvec3 c = texture(screen_tex, SCREEN_UV).rgb;\n\tfloat g = dot(c, vec3(0.299,0.587,0.114));\n\tvec3 flat_c = mix(c, vec3(g), 0.35);\n\tCOLOR = vec4(mix(flat_c, vec3(1.0), invert), 1.0);\n}"
 	var fmat := ShaderMaterial.new()
 	fmat.shader = fsh
 	fmat.set_shader_parameter("invert", 0.0)
@@ -243,10 +255,43 @@ func _ts_visual_end() -> void:   # 解除: 反色再闪 + 回色(时间恢复流
 	var tw = battle.create_tween()
 	tw.tween_method(func(v: float): mat.set_shader_parameter("amount", v), 1.0, 0.0, 0.35)
 
+## 【时停剩余时间】写进装备图标框的充能条(0~100 归一化镜像)。
+## ★★由来(用户 2026-09-14):「沙漏你是不是参考的 jojo 里 **dio 最终战斗释放的 9 秒时停**?
+##   而且…你这个参考的不到位啊」—— 他点的那一段, 戏剧性全在【还剩几秒】上(DIO 数着那 9 秒)。
+##   而我们的时停只有一口钟, **剩余时间一个读数都没有**: 玩家不知道它还剩多久。
+##   查过 `equip_readouts.gd` —— 059 在 COUNT / CHARGE 两张表里**一条都没有**。
+## ★为什么是图标框的条而不是头顶或钟面: 表头那条铁律(用户 2026-08-08)——
+##   「充能条和层数不要放头顶, 在装备图标框里」; 044/045 的持续回复也是这么做的。
+##   钟面不动是**刻意的**: 钟是像素贴图, 转指针 = 非整数角旋转 = 像素网格当场碎。
+## ★分母只能是常量 ⇒ 存 0~100 的归一化镜像, 不存【剩几秒】(时长随星级 4/7/20 变)。
+func _ts_bar_mirror() -> void:
+	for c in _ts_active:
+		if not (c is Dictionary):
+			continue
+		var st: Dictionary = (c.get("eq_state", {}) as Dictionary).get("p2eq_059", {})
+		st["ts_pct"] = clampf(_ts_remaining / maxf(0.001, _ts_total), 0.0, 1.0) * 100.0
+		(c["eq_state"] as Dictionary)["p2eq_059"] = st
+
+
 func _ts_tick_visual(_delta: float) -> void:   # 每帧喂携带者屏幕位置给灰shader → 彩色泡跟随移动的时之主
 	## ★时之砂按**真实时间**推帧: 全局 `battle._t` 在时停期间是冻结的, 拿它推帧沙会停在原地 ——
 	##   而沙正是用来说明"这里的时间还在流"的, 停下来就把意思说反了。
 	##   这不是"第二条钟"的那个坑: 时停自己的演出本来就全都活在真实时间上(反色闪/扩散/钟表脉动同理)。
+	_ts_bar_mirror()   # 每帧无条件写 —— 漏写一帧条子就会停在上一格(044 那次的教训)
+	## 能量场: 切帧扩张(不连续缩放), 放完自销。走真实时间 —— 全局 `_t` 这一刻是冻的。
+	_ts_vortex_t += _delta
+	var _vf: int = int(_ts_vortex_t * TS_VORTEX_FPS)
+	for i in range(_ts_vortex_sprs.size() - 1, -1, -1):
+		var vs = _ts_vortex_sprs[i]
+		if not is_instance_valid(vs):
+			_ts_vortex_sprs.remove_at(i)
+			continue
+		if _vf >= TS_VORTEX_FRAMES:
+			vs.queue_free()
+			_ts_vortex_sprs.remove_at(i)
+			continue
+		vs.frame = _vf
+		vs.modulate.a = 0.92 if _vf < TS_VORTEX_FRAMES - 2 else 0.45   # 末两帧收干净(不淡出病)
 	_ts_sand_t += _delta
 	var _sf: int = int(_ts_sand_t * TS_SAND_FPS) % TS_SAND_FRAMES
 	for g in _ts_glow_sprs:
@@ -267,22 +312,40 @@ func _ts_tick_visual(_delta: float) -> void:   # 每帧喂携带者屏幕位置�
 	mat.set_shader_parameter("casters", arr)
 	mat.set_shader_parameter("caster_n", arr.size())
 
-# 中心能量涟漪: 一圈青白波从pos扩散(时停释放冲击波)
+## 释放那一瞬的【能量场】: 螺旋涡环(tools/bake_ts_vortex.py · 8 帧)。
+##
+## ★★用户 2026-09-14 把重点说死了:「9 秒只是剧里面对技能夸张的说法, **真正要看的是
+##   喊出时间暂停时整个画面的变化, 整个能量场是怎么弄的, 这是关键啊**,
+##   画面变灰后就没什么好看的因为是全对话了」。
+##
+## ★改之前这里是**一颗白球连续放大**: `VfxTex._make_fire_glow_tex()` 从 60 码 tween 到 900 码。
+##   两条都踩了 —— ①「无含义圆环与白球」是本仓点名过的禁区形状;
+##   ②**连续缩放像素贴图**正是用户否过两次的那个糊(非整数倍 ⇒ 像素网格被打烂)。
+##
+## ★新版照参考量出来的三条做(逐帧研究 docs/studies/20260914g-059时停能量场逐帧.md):
+##   ①**是环不是球**(核亮→中暗→外回亮) ②**向外扩张+中心掏空**(峰值圈 0→6)
+##   ③**角向不均匀**(变异系数 0.21~0.23, 亮弧压在一侧) —— 均匀闭合环会接近 0。
+## ★扩张靠**切帧**(素材自己在长), `pixel_size` 恒定且是 **8 倍整数放大** ⇒ 像素网格不碎。
+## ★帧号走**真实时间**: 它是时停自己的演出, 而全局 `_t` 这一刻正好被冻住。
+const TS_VORTEX_TEX := "res://assets/sprites/vfx/ts-vortex.png"
+const TS_VORTEX_FRAMES := 8
+const TS_VORTEX_TEXELS := 64.0
+const TS_VORTEX_UPSCALE := 8.0    # 整数倍 ⇒ 64 × 8 = 512 texel ≈ 909 码(与旧版 900 同量级)
+const TS_VORTEX_FPS := 16.0       # 8 帧 ÷ 16 = 0.5 秒炸开
+
 func _ts_shock_ring(pos2d: Vector2) -> void:
 	var r := Sprite3D.new()
-	var tex := VfxTex._make_fire_glow_tex()
-	r.texture = tex
+	r.texture = load(TS_VORTEX_TEX)
+	r.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # 像素画必须 NEAREST
 	r.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	r.shaded = false; r.transparent = true
-	r.modulate = Color(0.7, 0.92, 1.0, 0.0)
-	r.pixel_size = (60.0 * battle.WS) / float(maxi(1, tex.get_width()))
+	r.hframes = TS_VORTEX_FRAMES
+	r.frame = 0
+	r.modulate = Color(1, 1, 1, 0.92)
+	r.pixel_size = battle.WS * 1.775 * TS_VORTEX_UPSCALE   # 1 texel = 1.775 码, 再整数放大 8 倍
 	r.position = battle._world_pos(pos2d, 1.0)
 	battle._world.add_child(r)
-	var tw = battle.create_tween(); tw.set_parallel(true)   # 视觉波不冻结
-	tw.tween_property(r, "modulate:a", 0.85, 0.12)
-	tw.tween_property(r, "pixel_size", (900.0 * battle.WS) / float(maxi(1, tex.get_width())), 0.55).set_ease(Tween.EASE_OUT)
-	tw.chain().tween_property(r, "modulate:a", 0.0, 0.2)
-	tw.chain().tween_callback(r.queue_free)
+	_ts_vortex_sprs.append(r)
 
 ## 【时之砂】时停期间绕着携带者走的金沙(tools/bake_ts_sand.py · 8 帧循环)。
 ## ★它是来【替换一颗白球】的: 原来这里贴的是 150 码的 `VfxTex._make_fire_glow_tex()` 金球,
@@ -344,6 +407,10 @@ func _ts_clear_visual_nodes() -> void:
 		if is_instance_valid(g):
 			g.queue_free()
 	_ts_glow_sprs = []
+	for v in _ts_vortex_sprs:
+		if is_instance_valid(v):
+			v.queue_free()
+	_ts_vortex_sprs = []
 	if _ts_clock != null and is_instance_valid(_ts_clock):
 		var clk := _ts_clock
 		var tw = battle.create_tween()

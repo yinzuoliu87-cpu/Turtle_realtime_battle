@@ -133,7 +133,11 @@ const FIELD_SPIN := 0.5
 ## 裱花波瓣的相对振幅(±3%, 外沿均值不动 —— 判定半径不许被观感改掉)
 const FIELD_WAVE_AMP := 0.03
 ## 溅射环半径(码), 与 070 的 250 码同一个数
-const SPLASH_RANGE_PX := 250.0
+## ★★不再自己写一份 250(2026-09-14): 判定用 `EqFoodBatch.BRICK_SPLASH_R`、演出用这个,
+##   两个名字、两个文件、同一个数 —— 改一个不改另一个就是环与判定错位, 而且**没有任何
+##   东西会红**(`twin_const` 只查同名常量; `const_leftover_audit` 的 SINK 白名单不认
+##   `range_m(`/环半径这类演出消费点)。收成单一事实源: 半径归判定侧, 演出来读。
+const SPLASH_RANGE_PX := EqFoodBatch.BRICK_SPLASH_R
 ## ★070 冲击环速度(码/秒) —— 视觉扩张与伤害调度共用的【同一个】常量(2026-08-11 用户:
 ##   「溅射范围不是250吗…主要是炸开一道环, 环碰到敌人才跳伤害」)。
 ##   环半径 r(t) = BRICK_WAVE_SPEED·t 恒速扩到 250 码; 圈内每个敌人的伤害延时
@@ -788,7 +792,7 @@ func cream_bar_update(u: Dictionary, val: float) -> void:
 
 
 ## 破壳: Taylor–Culick 洞缘恒速张开(r 线性), 边缘卷入质量 ∝ r²(所以越张越粗)。
-## 半径落在 300 码 = 071 的 AOE 半径本身。
+## 半径 = `EqFoodBatch.CREAM_BURST_R`(071 的 AOE 半径本身), 不是随手画的演出尺寸。
 ## ★洞缘同时甩出 12 颗奶油滴(2026-08-11 补验收): TC 回缩边缘的 Plateau–Rayleigh 失稳 ——
 ##   卷粗的边缘会碎成液滴甩出去, 这是"奶油壳炸开"区别于"又一个圈"的可读证据。
 ##   颗数/角度全确定性(等角), 高度走纯弹道 4x(1−x)(与 crown_height 同族闭式解),
@@ -796,7 +800,9 @@ func cream_bar_update(u: Dictionary, val: float) -> void:
 func cream_burst(pos2d: Vector2) -> Dictionary:
 	if not is_instance_valid(battle._world):
 		return {}
-	var rm: float = range_m(300.0)
+	## ★半径读【判定自己那个常量】, 不再硬写 300(2026-09-14) —— 上一行注释说的
+	##   「半径落在 300 码 = 071 的 AOE 半径本身」以前只是**一句话**, 现在是代码事实。
+	var rm: float = range_m(EqFoodBatch.CREAM_BURST_R)
 	var hole := _mk_node(_ring_mesh(), _mat(true, 12), battle._world_pos(pos2d, 0.0))
 	var drops: Array = []
 	for i in range(CREAM_DROP_N):

@@ -612,9 +612,10 @@ const TIDE_RANGE_UP := 50.0 # 涨潮期射程 +(码)
 const URCHIN_CAP := 20        # 硬化层上限(014 是 25, 见 EquipTickSystem.FORTRESS_CAP)
 const URCHIN_DECAY := 10.0    # 海胆护盾在几秒内线性衰减完
 ## 【071 炼乳罐】奶油盾破 → 范围魔法 + 给持有者一串永久加成。
-const CREAM_BURST_R := 300.0  # 盾破的伤害半径(码)
-const CREAM_RESIST := 10.0    # 之后 +双抗
-const CREAM_RANGE := 50.0     # 之后 +射程(码)
+## ★CREAM_BURST_R / CREAM_RESIST / CREAM_RANGE 已搬到 `eq_food_batch.gd`(2026-09-14) ——
+##   071 是食物件, 三个常量的**唯一消费者**就是那个文件。放在这里还有一个副作用:
+##   `const_leftover_audit` 的跨文件相关性按「主体」建立, 而 `equip_system` 的主体名
+##   在 VAGUE 名单里 ⇒ 它永远查不出演出侧那个硬写死的 300。搬过去两件事一起解决。
 ## 【023 灼热火珊瑚】命中攒法力, 法力满自动挥一道缓移的扇形火焰波。
 ## 【067 毒药瓶】每几秒朝敌人最密集处投一个瓶子(用户规格「每 6 秒」)。
 ## 【033 复活海螺】小虫诞生时随机带装备的**费用池**。

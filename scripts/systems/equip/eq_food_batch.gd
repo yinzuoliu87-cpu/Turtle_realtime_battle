@@ -231,6 +231,14 @@ const GREY_STORE := [0.30, 0.40, 0.50]
 ##      这与文案"受到的伤害"是一致的读法, 但和"掉了多少血"不是一回事, 记一笔免得以后当 bug 查。
 ## 灰条每秒转回生命的比例(固定 5%, 不随星级)
 const BRICK_SPLASH_R := 250.0   # 070 压舱咸鱼砖: 溅射半径(码)
+## ★★这是 070 溅射半径的**单一事实源** —— 演出侧 `FoodEqVfx.SPLASH_RANGE_PX` 读的就是它。
+##   (2026-09-14 之前两边各写一份 250, 改一个不改另一个 = 环与判定错位且没人会红。)
+
+## 【071 炼乳罐】盾破那一下。★从 `equip_system.gd` 搬来(2026-09-14): 唯一的消费者就是本文件,
+##   而放在 `equip_system` 会让 `const_leftover_audit` 的主体相关性失效(它的主体名在 VAGUE 里)。
+const CREAM_BURST_R := 300.0    # 盾破的伤害半径(码) —— 演出 `cream_burst()` 也读这一个
+const CREAM_RESIST := 10.0      # 盾破之后 +双抗
+const CREAM_RANGE := 50.0       # 盾破之后 +射程(码)
 const GREY_CONVERT := 0.05
 ## 额外攻速系数: 最大生命 × 0.01 得到的是【百分数】⇒ 转成倍率要再 /100
 const BRICK_ASPD_PER_HP := 0.0001
@@ -427,15 +435,15 @@ func _cream_on_break(holder: Dictionary, si: int, reason: String) -> void:
 	for o in battle._targeting._enemies_of(holder):
 		if not o.get("alive", false):
 			continue
-		if (o["pos"] - holder["pos"]).length() > EquipSystem.CREAM_BURST_R:
+		if (o["pos"] - holder["pos"]).length() > CREAM_BURST_R:
 			continue
 		battle._damage._apply_damage_from(holder, o,
 			battle._resolve_dmg(holder, dmg, o, true), Color("#fff0c8"), 0.0, false, true)
 	# 三样加成【持续整路】: 双抗写 base_(不是 buff, buff 会到期), 攻速走 aspd_perm, 射程走 range_add
-	holder["base_def"] = float(holder.get("base_def", 0.0)) + EquipSystem.CREAM_RESIST
-	holder["base_mr"] = float(holder.get("base_mr", 0.0)) + EquipSystem.CREAM_RESIST
+	holder["base_def"] = float(holder.get("base_def", 0.0)) + CREAM_RESIST
+	holder["base_mr"] = float(holder.get("base_mr", 0.0)) + CREAM_RESIST
 	holder["aspd_perm"] = float(holder.get("aspd_perm", 1.0)) + [0.20, 0.30, 0.40][si]
-	holder["range_add"] = float(holder.get("range_add", 0.0)) + EquipSystem.CREAM_RANGE
+	holder["range_add"] = float(holder.get("range_add", 0.0)) + CREAM_RANGE
 	battle._recalc_stats(holder)
 	_vfx.cream_burst(holder["pos"])
 

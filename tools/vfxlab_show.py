@@ -23,8 +23,21 @@
 
 ★截屏必须 DPI 感知(memory `fb-screenshot-must-be-dpi-aware`): 不加 SetProcessDPIAware
   只截得到左上 2/3, 右半屏全丢, 我曾因此把弹窗误判成"页面被挡住"。
-★窗口必须 Start-Process 起(memory `fb-vfxlab-window-must-be-muted`):
-  Bash 后台起的会跟着 shell 被收掉; 且必须 `--audio-driver Dummy` 静音。
+★★窗口要【留得住】只有一条路: 用 **PowerShell 工具**(独立宿主)起, 不能从 Bash 起。
+  2026-09-14 逐个实测过, 全部被收掉 —— agent 的 Bash 会话是一个 Windows **Job 对象**,
+  会话一结束整个 job 连子进程一起杀:
+    · `DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP`      → 收掉(旧代码的注释说它能留住, **假的**)
+    · 再加 `CREATE_BREAKAWAY_FROM_JOB`                    → **起得来, 照样收掉**
+    · 从 Bash 里 `subprocess` 调 powershell 的 Start-Process → 收掉(那个 powershell 自己也在 job 里)
+    · 用 **PowerShell 工具**直接 `Start-Process -PassThru`  → ✅ 活下来(实测跨多次调用)
+  ⇒ 本脚本的正确用法是**两步**:
+      ① 用 PowerShell 工具起窗口, 拿到 PID:
+         $env:VFXLAB='1'; $env:VFXLAB_CASE='<case>'; $env:VFXLAB_HOLD='1'; $env:VFXLAB_GLOW='1'
+         Start-Process -FilePath '<godot>' -ArgumentList '--path','<repo>','--audio-driver','Dummy' -PassThru
+      ② 再从 Bash 跑本脚本核实画面: `python tools/vfxlab_show.py <case> --attach <PID>`
+  不带 `--attach` 时脚本仍会自己起一个 —— 那只够**核实画面**(拍完就被收),
+  **不能拿去叫用户看**。脚本会当场把这句话打出来, 免得我又报"窗口开了"。
+★`--audio-driver Dummy` 是铁律(用户 2026-08-29): 开给用户看的窗口必须静音。
 """
 import argparse
 import ctypes
@@ -119,6 +132,38 @@ def _case_flag(case_id, flag):
     return False
 
 
+def _alive(pid):
+    """这个 PID 还在不在。★不能再用 `Popen.poll()` —— 进程不是我们直接生的了。"""
+    out = subprocess.run(["tasklist", "/FI", "PID eq %d" % pid, "/NH"],
+                         capture_output=True, text=True, errors="replace").stdout
+    return str(pid) in out
+
+
+def _spawn_detached(case_id):
+    """用 PowerShell 的 `Start-Process` 起窗口, 返回 PID。
+
+    ★为什么不用 `subprocess.Popen(..., creationflags=DETACHED_PROCESS)`:
+      那个标志**逃不出 Windows 的 Job 对象** —— agent 的 shell 一结束, 整个 job
+      连着子进程一起被杀。实测两次: 报完"窗口开了"之后窗口就没了, 而同一个场景
+      用 `timeout 70 godot ...` 直接起能活满 70 秒 ⇒ 不是产品会自己关。
+      `Start-Process` 由 PowerShell 自己 CreateProcess, 不进调用方的 job。
+    ★`--audio-driver Dummy` 是铁律(用户 2026-08-29): 开给用户看的窗口必须静音。
+    """
+    ps = (
+        "$env:VFXLAB='1'; $env:VFXLAB_CASE='%s'; $env:VFXLAB_HOLD='1'; "
+        "$env:VFXLAB_GLOW='1'; $env:TURTLE_BACKEND=' '; "
+        "$p = Start-Process -FilePath '%s' -ArgumentList "
+        "'--path','%s','--audio-driver','Dummy' -PassThru; $p.Id"
+    ) % (case_id, GODOT, ROOT)
+    out = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
+                         capture_output=True, text=True, errors="replace").stdout
+    for line in out.splitlines():
+        t = line.strip()
+        if t.isdigit():
+            return int(t)
+    return -1
+
+
 def _check_case(case_id):
     """case 登记过没有? 没登记就给出最可能的正确键名。
 
@@ -150,6 +195,9 @@ def main():
     ap.add_argument("--wait", type=float, default=9.0, help="开窗后等几秒再拍(等战斗跑起来)")
     ap.add_argument("--shots", type=int, default=3, help="连拍几张(用来证明画面在动)")
     ap.add_argument("--gap", type=float, default=1.6)
+    ap.add_argument("--attach", type=int, default=0,
+                    help="核实【已经开着】的那个窗口(PID)。窗口请用 PowerShell 工具起 —— "
+                         "从 Bash 起的留不住, 见文件头注的实测表")
     a = ap.parse_args()
     os.makedirs(OUT_DIR, exist_ok=True)
 
@@ -167,24 +215,38 @@ def main():
               % (a.case, hint))
         return 1
 
-    env = dict(os.environ)
-    env.update({"VFXLAB": "1", "VFXLAB_CASE": a.case, "VFXLAB_HOLD": "1", "VFXLAB_GLOW": "1"})
-    ## ★DETACHED: 不跟着这个 shell 被收掉
-    DETACHED = 0x00000008 | 0x00000200
-    p = subprocess.Popen([GODOT, "--path", ROOT, "--audio-driver", "Dummy",
-                          "res://scenes/RealtimeBattle3D.tscn"],
-                         cwd=ROOT, env=env, creationflags=DETACHED)
-    print("PID=%d  case=%s" % (p.pid, a.case))
-    time.sleep(a.wait)
-    if p.poll() is not None:
+    ## ★★用 PowerShell 的 `Start-Process` 起, **不用** subprocess + DETACHED_PROCESS。
+    ##   由来(2026-09-14, 第二次踩): 旧写法的注释写着「DETACHED: 不跟着这个 shell 被收掉」
+    ##   —— **那句是假的**。`DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP` 在 Windows 上
+    ##   **逃不出 Job 对象**: 调用方(agent 的 shell)一结束, 整个 job 连着子进程一起被杀。
+    ##   实测: 用这个函数开的窗口两次都在我报完"窗口开了"之后就没了; 而同一个场景用
+    ##   `timeout 70 godot ...` 直接起, **活满 70 秒没退** ⇒ 不是产品会自己关, 是它被收了。
+    ##   (memory [[fb-vfxlab-window-must-be-muted]] 记的就是这条, 我却没改工具。)
+    ##   `Start-Process` 由 PowerShell 自己 CreateProcess, 不进调用方的 job ⇒ 真的留得住。
+    if a.attach > 0:
+        pid = a.attach
+        if not _alive(pid):
+            print("[FAIL] ★PID %d 不在了 —— 窗口已经关了, 没东西可核实" % pid)
+            return 1
+        print("PID=%d  case=%s  (attach: 核实已经开着的那个窗口)" % (pid, a.case))
+    else:
+        pid = _spawn_detached(a.case)
+        if pid <= 0:
+            print("[FAIL] ★起不来 —— Start-Process 没返回 PID")
+            return 1
+        print("PID=%d  case=%s" % (pid, a.case))
+        print("  ⚠ 这个窗口是从 Bash 起的 ⇒ **本次调用结束就会被 job 收掉**,")
+        print("    只够核实画面, **不能拿去叫用户看**。要留得住请看文件头注的两步用法。")
+        time.sleep(a.wait)
+    if not _alive(pid):
         print("[FAIL] ★进程已退出 —— 窗口根本没起来")
         return 1
-    box = window_rect(p.pid)
+    box = window_rect(pid)
     if box is None:
         print("[FAIL] ★找不到这个进程的可见窗口")
         return 1
     print("窗口 %s  (%dx%d)" % (box, box[2] - box[0], box[3] - box[1]))
-    nraise = raise_window(p.pid)
+    nraise = raise_window(pid)
     print("  置顶了 %d 个窗口(不置顶会截到盖在上面的别的窗口)" % nraise)
     time.sleep(1.2)
 
