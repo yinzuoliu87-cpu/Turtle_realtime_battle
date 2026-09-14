@@ -238,15 +238,21 @@ func _t_riposte_real_entry() -> void:
 		_vfx.alive_count("beam") == 0 and _vfx.alive_count("smite") == 0,
 		"beam %d / smite %d" % [_vfx.alive_count("beam"), _vfx.alive_count("smite")])
 
-	# 反向对照: 有盾但没装 095 ⇒ 不打也不画
-	duo = _stage(1)
+	# 反向对照: 盾羁绊 0 档 ⇒ on_damaged 第一步就返回, 推满光弹飞行时间也不反击
+	## ★(第十批 E16 订正) 这条原来写「有盾但没装 095 ⇒ 不反击(反击来自这件装备)」, 两处都不对:
+	##   ① 代码语义里反击只看圣盾值、不看装没装 095(用户 2026-08-12, 见 ④ 第三行「没装 095 但圣盾值在 ⇒ 照样反击」);
+	##   ② 量掉血之前没推飞行时间 —— 反击是光弹飞到才出伤, 立刻量永远是 0, 这条是恒真式。
+	##   ⇒ 改成真正会拦住反击的那道闸: 盾羁绊档位 0, 并推满飞行时间再量。
+	duo = _stage(0)
 	me = duo[0]; foe = duo[1]
-	me["equips"] = []
 	me["shield"] = 100.0
-	me["_holyShieldVal"] = 100.0   # ★盾板/反击现在都看【圣盾值】(2026-08-12)
+	me["_holyShieldVal"] = 100.0
 	hp0 = float(foe["hp"])
 	_sys.on_damaged(me, foe, 10)
-	_ok("③ 对照: 有盾但【没装 095】⇒ 不反击(反击来自这件装备, 不是档位)",
+	var fly3: float = HSV.bolt_flight(Vector2(me["pos"]), Vector2(foe["pos"]))
+	for _k3 in range(int(ceil(fly3 / 0.02)) + 2):
+		_s._ballistics._step_pending_shots(0.02)
+	_ok("③ 对照: 盾羁绊 0 档 ⇒ 推满光弹飞行时间(%.2f 秒)也不反击(档位闸)" % fly3,
 		absf(hp0 - float(foe["hp"])) < 0.01, "敌掉 %.1f" % (hp0 - float(foe["hp"])))
 
 

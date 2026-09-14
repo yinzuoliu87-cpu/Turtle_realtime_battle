@@ -206,7 +206,7 @@ func _on_mark_scored(u: Dictionary, side: String, gained: int) -> void:
 # ══════════════════════════════════════════════════════════════════
 #  普攻: 消耗一次强化 —— 附带伤害 + 生命偷取
 # ══════════════════════════════════════════════════════════════════
-func on_basic(u: Dictionary, tgt, eid: String, si: int) -> void:
+func on_basic(u: Dictionary, tgt, eid: String, _si: int) -> void:
 	if eid != EID or tgt == null or not (tgt is Dictionary) or not tgt.get("alive", false):
 		return
 	var stt = u.get("eq_state", {}).get(EID, null)
@@ -215,6 +215,18 @@ func on_basic(u: Dictionary, tgt, eid: String, si: int) -> void:
 	stt["emp"] = int(stt["emp"]) - 1
 	if int(stt["emp"]) <= 0:
 		_set_emp_haste(u, false)   # D5: 4 次用完立刻撤, 不设时限
+	## ★★附带伤害挪到【普攻命中】时结算(第十批 E7): 原来在出手这一刻就打出去 ——
+	##   远程携带者出手当帧目标就掉血, 弹体 0.58 秒后才到。这里只记「下一次普攻命中要附带一次」,
+	##   由 `on_hit`(批④命中钩子 · 只认普攻)调 `_hit093` 兑现 —— 与 082 砗磲护心甲(第九批 D5)同一做法。
+	stt["hit_pending"] = int(stt.get("hit_pending", 0)) + 1
+
+
+## 普攻命中: 兑现一次附带伤害 + 生命偷取。多件同带时出手记了 n 次、命中钩子也连调 n 次, 一一对应。
+func _hit093(u: Dictionary, tgt: Dictionary, si: int) -> void:
+	var stt = u.get("eq_state", {}).get(EID, null)
+	if not (stt is Dictionary) or int(stt.get("hit_pending", 0)) <= 0 or not tgt.get("alive", false):
+		return
+	stt["hit_pending"] = int(stt["hit_pending"]) - 1
 	# 附带 30/50/80 + 目标最大生命 1/1.5/2% 的【物理】伤害(用户 2026-08-06「可以分星」后的定稿)
 	# ★这两行旁边必须有一个 "p2eq_093" 字面量: tooltip_number_audit 靠 id 字面量 ±2500 字符
 	#   判"这个数组是不是这件的"。文件顶部那个 `const EID` 离这里 4000+ 字符, 够不着
@@ -369,8 +381,10 @@ func tick(_delta: float) -> void:
 			_reapply(str(side))
 
 
-func on_hit(_src: Dictionary, _tgt: Dictionary, _dmg: float, _eid: String, _si: int) -> void:
-	pass
+## 批④命中钩子: 093 强化普攻的附带伤害只在【普攻】命中时兑现(第十批 E7; `_b4_basic` 由 EquipSystem 在调本钩子前挂上)。
+func on_hit(src: Dictionary, tgt: Dictionary, _dmg: float, eid: String, si: int) -> void:
+	if eid == EID and bool(src.get("_b4_basic", false)) and tgt is Dictionary:
+		_hit093(src, tgt, si)
 
 
 func on_damaged(_u: Dictionary, _src, _dmg: float, _eid: String, _si: int) -> void:

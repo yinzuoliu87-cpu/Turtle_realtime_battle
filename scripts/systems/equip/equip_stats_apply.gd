@@ -9,6 +9,18 @@ var battle
 func _init(b) -> void:
 	battle = b
 
+
+## 【移速永久通道的合成】move_perm = 基础 × 087 压载层倍率 × 092 剧毒缓速倍率(第十批 E6)。
+## 由来: 两件原来各自快照「没有我时的 move_perm」再整体改写, 谁后写谁赢 ——
+##   中毒期间压载层一变, 缓速被抹掉; 先中毒再首次同步压载层, 毒清后留下永久减速。
+## ⇒ 各件只写自己的倍率字段, 由这一处乘出来。`_mp_base` 在第一次合成时记下(那时还没有任何动态倍率)。
+## ★以后再有「战斗中改 move_perm」的效果, 加一个 `_mp_xxx` 字段并走这里, 别再整体改写。
+static func recompose_move_perm(u: Dictionary) -> void:
+	if not u.has("_mp_base"):
+		u["_mp_base"] = float(u.get("move_perm", 1.0))
+	u["move_perm"] = float(u["_mp_base"]) * float(u.get("_mp_dive", 1.0)) * float(u.get("_mp_vslow", 1.0))
+
+
 func _eq_apply_all_stats() -> void:
 	for u in battle._units:
 		for e in u.get("equips", []):

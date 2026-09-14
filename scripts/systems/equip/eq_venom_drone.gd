@@ -363,21 +363,19 @@ func add_vslow(u: Dictionary, n: int) -> void:
 
 
 ## 把层数写成真实属性变化。移速走 move_perm(乘法永久通道), 魔抗走 buffs 的百分比区。
-## ★`_vslow_mp0` 记的是"没有剧毒缓速时的 move_perm" —— 每次都从它重算, 不做增量,
-##   所以反复加减层数不会有浮点漂移(增量式那种写法叠 200 次就飘了)。
+## ★移速只写本效果自己的倍率 `_mp_vslow`, 由 `EquipStatsApply.recompose_move_perm` 统一乘出 move_perm(第十批 E6)。
+##   原来记一份「没有剧毒缓速时的 move_perm」再整体改写 —— 与 087 压载层互相覆盖;
+##   倍率每次按层数重算、不做增量, 反复加减层数仍不会浮点漂移。
 func _set_vslow(u: Dictionary, n: int) -> void:
 	var nn: int = clampi(n, 0, VSLOW_CAP)
-	if not u.has("_vslow_mp0"):
-		u["_vslow_mp0"] = float(u.get("move_perm", 1.0))
-	var base: float = float(u["_vslow_mp0"])
 	if nn <= 0:
 		u["_vslow_n"] = 0
-		u["move_perm"] = base
-		u.erase("_vslow_mp0")
+		u.erase("_mp_vslow")
 		u.erase("_vslow_idle")
 	else:
 		u["_vslow_n"] = nn
-		u["move_perm"] = base * vslow_move_mult(nn)
+		u["_mp_vslow"] = vslow_move_mult(nn)
+	EquipStatsApply.recompose_move_perm(u)
 	# 魔抗: 只留一条本效果自己的百分比 buff, 每次重写(不 append 第二条)
 	var kept: Array = []
 	for b in u.get("buffs", []):

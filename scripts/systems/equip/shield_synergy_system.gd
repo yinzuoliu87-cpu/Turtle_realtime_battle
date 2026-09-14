@@ -151,7 +151,8 @@ func _riposte(u: Dictionary, src) -> void:
 	##   (2026-08-12 用户:「反击也是只要有圣光护盾就反击, 不一定要装备啊」)。
 	##   规格原文是「**圣光护盾存在时**反击」—— 说的是这份护盾在不在, 不是这件装备在不在。
 	##   收殓/9 档转化拿到的圣盾值同样算数, 与持有球罩(holy_shield_vfx._should_hold)同源。
-	if float(u.get("_holyShieldVal", 0.0)) <= 0.0:
+	## ★(第十批 E12) 判「还在的圣盾值」= min(圣盾值, 护盾池): 盾被打穿后圣盾值只靠血条收敛, 不取 min 就照样反击。
+	if HolyShieldVfx.holy_live(u) <= 0.0:
 		return
 	## ★★2026-08-09 用户:「要光弹啊，弹命中了再出伤啊」——
 	##   反击改成**一枚光弹从罩面飞回攻击者, 飞到那一刻才结算伤害**。
@@ -163,7 +164,9 @@ func _riposte(u: Dictionary, src) -> void:
 	battle._queue_shots(1, 0.0, func() -> void:
 		if not (src is Dictionary) or not (src as Dictionary).get("alive", false):
 			return
-		battle._damage._apply_damage_from(u, src, int(RIPOSTE_FLAT), Color("#ffe9a8"), 0.0, true)
+		## ★from_equip=true(第十批 E1): 反击是装备自己打出的段, 不许再回钩对方的受伤钩子 ——
+		##   双方都有圣盾时原来会互弹成无限循环(探针: 3 秒内双方各挨 5 次), 还顺带让携带者的 089 法力涨。与通用反伤同一口径。
+		battle._damage._apply_damage_from(u, src, int(RIPOSTE_FLAT), Color("#ffe9a8"), 0.0, true, true)
 		if _holy_vfx != null:
 			_holy_vfx.riposte_hit(src), u, "", Callable(), _fly)
 	## 演出: 罩子涟漪 + 光弹起飞(下一行), 伤害在光弹到达时才出。
@@ -279,6 +282,8 @@ func on_enemy_died(victim: Dictionary) -> void:
 
 ## 换路 / 重开：怒气累计器归零（单位字典会被整个重建，但显式清一次更稳）。
 func clear() -> void:
+	## ★圣盾 3 秒计时是全局的(第十批 E14): 不归零的话上一路攒下的零头带进下一路, 换路清场后 0.2 秒就出首盾。
+	_t_holy = 0.0
 	for u in battle._units:
 		if u is Dictionary:
 			u["_shield_rage"] = 0.0

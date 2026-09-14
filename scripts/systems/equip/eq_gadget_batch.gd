@@ -528,11 +528,10 @@ func _tick_dive(u: Dictionary, delta: float, si: int) -> void:
 	_dive_sync_stacks(u, si)
 	var _w: float = dive_water(u)
 	var _cap: float = float(st.get("cap", 0.0))
-	vfx.dive_gauge(u, _w, _cap)
 	## ★★压载舱的【归一化镜像】(2026-08-17): 供装备图标框上的充能条读。
 	##   由来: 087 的舱是个"看不见的血池"—— 伤害先灌进舱、舱满才真掉血,
-	##   而玩家在局内【完全看不到攒到哪】。头顶那个 dive_gauge 是演出层的,
-	##   用户 2026-08-08 定过「充能条和层数不要放头顶, 在装备图标框里」。
+	##   而玩家在局内【完全看不到攒到哪】。用户 2026-08-08 定过「充能条和层数不要放头顶, 在装备图标框里」
+	##   ⇒ 第十批 E13 把头顶那个重复的水位条删了, 读数只在装备图标框。
 	##   ★为什么存百分比而不是直接挂 dive_water: PANEL_CHARGE 的分母【只能是常量】,
 	##     而舱容 = 最大生命 × 60/90/150%(随羁绊变) ⇒ 只能像 081 的 chg_pct 那样存 0~100。
 	st["ballast_pct"] = (clampf(_w / _cap, 0.0, 1.0) * 100.0) if _cap > 0.0 else 0.0
@@ -578,7 +577,8 @@ func dive_stacks(u: Dictionary) -> int:
 
 
 ## 层数 → 真实属性(移速走 move_perm 乘法永久通道, 护甲走 buffs 的 flat 区)。
-## ★`_dive_mp0` 记的是"没有压载加成时的 move_perm", 每次从它重算, 不做增量(不会浮点漂移)。
+## ★移速只写本件自己的倍率 `_mp_dive`, 由 `EquipStatsApply.recompose_move_perm` 统一乘出 move_perm(第十批 E6)。
+##   原来记一份「没有压载加成时的 move_perm」再整体改写 —— 与 092 剧毒缓速互相覆盖(谁后写谁赢)。
 func _dive_sync_stacks(u: Dictionary, si: int) -> void:
 	if si < 0:
 		return
@@ -586,9 +586,8 @@ func _dive_sync_stacks(u: Dictionary, si: int) -> void:
 	if int(u.get("_dive_stk", -1)) == n:
 		return
 	u["_dive_stk"] = n
-	if not u.has("_dive_mp0"):
-		u["_dive_mp0"] = float(u.get("move_perm", 1.0))
-	u["move_perm"] = float(u["_dive_mp0"]) * (1.0 + DIVE_MOVE_PER * float(n))
+	u["_mp_dive"] = 1.0 + DIVE_MOVE_PER * float(n)
+	EquipStatsApply.recompose_move_perm(u)
 	var bl: Array = u.get("buffs", [])
 	for i in range(bl.size() - 1, -1, -1):
 		var b = bl[i]

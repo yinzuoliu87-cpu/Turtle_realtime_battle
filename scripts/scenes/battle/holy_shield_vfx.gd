@@ -466,7 +466,14 @@ func _should_hold(u) -> bool:
 	##   `_holyShieldVal` 正是 hp_bar 画那条白黄段读的同一个字段(单一事实源)。
 	if not (u is Dictionary) or not (u as Dictionary).get("alive", false):
 		return false
-	return float((u as Dictionary).get("_holyShieldVal", 0.0)) > 0.0
+	return holy_live(u as Dictionary) > 0.0
+
+
+## 【还在的圣盾值】= min(圣盾值, 护盾池)。★盾板与反击共用这一个判据(第十批 E12)。
+## 由来: 圣盾值是护盾池上的一个标记, 而 `ShieldMath.absorb` 扣池子时不碰它 —— 只有血条每帧收敛一次。
+##   无头 / 血条没刷新时盾被打穿了圣盾值仍是 30 ⇒ 照样反击、盾板照样亮。取 min 就不依赖血条收敛。
+static func holy_live(u: Dictionary) -> float:
+	return minf(float(u.get("_holyShieldVal", 0.0)), float(u.get("shield", 0.0)))
 
 
 func _aegis_of(u) -> Dictionary:

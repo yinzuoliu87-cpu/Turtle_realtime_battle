@@ -972,7 +972,7 @@ func _t_teardown() -> void:
 		cn.size() == 1 and not is_instance_valid(cn[0]),
 		"还活着=%s 期望 false" % str(cn.size() == 1 and is_instance_valid(cn[0])))
 
-	# ── ④ clear_all(换路撤场): 浮游炮 + 水位计全收干净 ──
+	# ── ④ clear_all(换路撤场): 浮游炮 + 在途射线全收干净; 087 头顶不再有水位条(第十批 E13) ──
 	var d: Dictionary = _mk("fortune", "left", Vector2(-380, 0), 1000.0)
 	d["atk"] = 100.0
 	d["base_atk"] = 100.0
@@ -982,25 +982,26 @@ func _t_teardown() -> void:
 	_equip(e7, "p2eq_087", 3)
 	_step(e7, 0.05)
 	var dn: Array = (d.get("_sext_nodes", []) as Array).duplicate()
-	var g7 = e7.get("_dive_bg", null)
+	_ok("⑥ E13 087 携带者走过真 tick_unit(★分母: ballast_pct 镜像已写 = 那条路真的跑了)后头顶【没有】水位条节点",
+		((e7.get("eq_state", {}) as Dictionary).get("p2eq_087", {}) as Dictionary).has("ballast_pct")
+		and e7.get("_dive_bg", null) == null and e7.get("_dive_fg", null) == null,
+		"_dive_bg=%s" % str(e7.get("_dive_bg", null)))
 	# ★还要放一条【不挂在任何携带者身上】的在途演出(终极射线)。
 	#   只验"炮 + 水位计没了"是**假绿灯**: 那两样 `clear_all` 里的逐携带者 detach 循环
 	#   就收掉了, 把 `vfx.clear()` 整行删掉这条断言照样绿(反向验证 ⑳ 实测 0 红)。
 	#   在途射线不属于任何携带者 ⇒ **只有 `vfx.clear()` 收得掉**, 加上它才分得开。
 	var rays: Array = _g().vfx.sextant_ultimate(d, [[Vector2(d["pos"]), Vector2(foe["pos"])]])
-	_ok("⑥ ★分母: 换路前浮游炮 / 压载水位计 / 一条在途终极射线都在场上",
-		dn.size() == 1 and _in_world(dn[0]) and _in_world(g7)
-		and rays.size() == 1 and _in_world(rays[0]),
-		"炮 %d 个 / 水位计=%s / 在途射线 %d 条" % [dn.size(), str(_in_world(g7)), rays.size()])
+	_ok("⑥ ★分母: 换路前浮游炮 / 一条在途终极射线都在场上",
+		dn.size() == 1 and _in_world(dn[0]) and rays.size() == 1 and _in_world(rays[0]),
+		"炮 %d 个 / 在途射线 %d 条" % [dn.size(), rays.size()])
 	_g().clear_all()
 	await get_tree().process_frame
-	_ok("⑥ ★换路撤场 `clear_all`: 浮游炮 + 水位计 + 【在途终极射线】全都真的没了"
+	_ok("⑥ ★换路撤场 `clear_all`: 浮游炮 + 【在途终极射线】全都真的没了"
 		+ "(漏清就是把上一路的演出整个带进下一路, 而且不会报错)",
-		dn.size() == 1 and not is_instance_valid(dn[0]) and not is_instance_valid(g7)
+		dn.size() == 1 and not is_instance_valid(dn[0])
 		and rays.size() == 1 and not is_instance_valid(rays[0]),
-		"炮还活着=%s 水位计还活着=%s 在途射线还活着=%s (期望 三个 false)"
-		% [str(dn.size() == 1 and is_instance_valid(dn[0])), str(is_instance_valid(g7)),
-		str(rays.size() == 1 and is_instance_valid(rays[0]))])
+		"炮还活着=%s 在途射线还活着=%s (期望 两个 false)"
+		% [str(dn.size() == 1 and is_instance_valid(dn[0])), str(rays.size() == 1 and is_instance_valid(rays[0]))])
 	_s._units.clear()
 
 
@@ -1104,20 +1105,26 @@ func _t_vfx_physics() -> void:
 	_ok("⑤④ 087 水柱: 定长径比柱体 ⇒ 半径 ∝ ∛V, 8 倍水量恰好 2 倍粗(线性给 8, 面积律给 2.83)",
 		ok4 and jr.size() == 3, "三点比值 %s 期望 [2, 2, 2]" % str(jr))
 
-	# ⑤ 压载水位计: 填充宽度 / 底槽宽度 ≡ 水位比
-	var gu: Dictionary = _mk("fortune", "left", Vector2(0, 0), 1000.0)
-	var fg = vf.dive_gauge(gu, 375.0, 1500.0)
-	var bg = gu.get("_dive_bg", null)
-	_ok("⑤⑤ ★分母: 水位计的底槽与填充条【真的挂进 battle._world】",
-		_in_world(fg) and _in_world(bg),
-		"fg=%s bg=%s" % [str(_in_world(fg)), str(_in_world(bg))])
-	var ratio: float = (fg as MeshInstance3D).scale.x / maxf(1e-9, (bg as MeshInstance3D).scale.x)
-	_ok("⑤⑤ 087 水位计: 填充宽度 / 底槽宽度 ≡ 水位比(375/1500 = 0.25)",
-		absf(ratio - 0.25) < 1e-4, "实测 %.6f 期望 0.25" % ratio)
-	var fg2 = vf.dive_gauge(gu, 1500.0, 1500.0)
-	var ratio2: float = (fg2 as MeshInstance3D).scale.x / maxf(1e-9, (bg as MeshInstance3D).scale.x)
-	_ok("⑤⑤ ★分母: 满舱时填充 ≡ 底槽全宽(比例真的在动, 不是两个都写死)",
-		absf(ratio2 - 1.0) < 1e-4, "实测 %.6f 期望 1.0" % ratio2)
+	# ⑤⑥ 087 水柱: 从携带者一直连到目标(第十批 E8 —— 原来按长径比钳长度、放在两人中点, 成了悬空的一截)
+	var ju: Dictionary = _mk("fortune", "left", Vector2(-300, 0), 1000.0)
+	var jt: Dictionary = _mk("fortune", "right", Vector2(400, 60), 1000.0)
+	var wa6: Vector3 = _s._world_pos(ju["pos"], 0.75)
+	var wb6: Vector3 = _s._world_pos(jt["pos"], 0.75)
+	var jbad: Array = []
+	var jn_ok: int = 0
+	for vol in [30.0, 150.0, 1000.0]:
+		var jn = vf.dive_jet(ju, jt, vol)
+		if not (jn is MeshInstance3D) or not _in_world(jn):
+			jbad.append("水量 %.0f 没建出节点" % vol)
+			continue
+		jn_ok += 1
+		var len6: float = (jn as MeshInstance3D).scale.x
+		var mid6: Vector3 = (jn as MeshInstance3D).position
+		if absf(len6 - (wb6 - wa6).length()) > 1e-3 or mid6.distance_to((wa6 + wb6) * 0.5) > 1e-3:
+			jbad.append("水量 %.0f: 长 %.3f 期望 %.3f" % [vol, len6, (wb6 - wa6).length()])
+	_ok("⑤⑥ ★分母: 三个水量的水柱都真的建出来并挂进 _world", jn_ok == 3, "建出 %d 个" % jn_ok)
+	_ok("⑤⑥ 087 水柱(E8): 长度 ≡ 携带者到目标的真实距离、中心在两人正中 —— 两端正好接在两人身上, 与水量无关",
+		jbad.is_empty(), str(jbad))
 
 	# ── 撤场: detach / clear 真的 free 掉节点 ──
 	var du: Dictionary = _mk("fortune", "left", Vector2(80, 0), 1000.0)
@@ -1144,13 +1151,11 @@ func _t_vfx_physics() -> void:
 	_ok("⑥F ★淡入过半时约半亮(真的在渐变, 不是一步到位)",
 		absf(a_half - 0.5) < 0.08, "a=%.3f" % a_half)
 	_ok("⑥F ★淡入结束后满亮且不再变", absf(a_done - 1.0) < 1e-4, "a=%.3f" % a_done)
-	vf.dive_gauge(du, 100.0, 1000.0)
-	_ok("⑤ ★分母: 6 门炮体 + 水位计都建出来且挂进了 _world",
-		nodes.size() == 6 and _in_world(nodes[0]) and _in_world(du.get("_dive_bg", null)),
-		"炮体 %d 个" % nodes.size())
+	_ok("⑤ ★分母: 6 门炮体都建出来且挂进了 _world",
+		nodes.size() == 6 and _in_world(nodes[0]), "炮体 %d 个" % nodes.size())
 	var freed: int = vf.detach(du)
-	_ok("⑤ 撤场: detach 真的 free 掉 6 门炮 + 水位计底槽/填充 = 8 个节点", freed == 8,
-		"实测 free %d 个 期望 8" % freed)
+	_ok("⑤ 撤场: detach 真的 free 掉 6 门炮 = 6 个节点(087 头顶水位计第十批 E13 已删)", freed == 6,
+		"实测 free %d 个 期望 6" % freed)
 	await get_tree().process_frame
 	var still: int = 0
 	for nd in nodes:

@@ -912,7 +912,9 @@ func _dot_after_resist(u: Dictionary, dmg: float, magic: bool, src = null) -> in
 func aspd_mult(u: Dictionary) -> float:
 	var hf: float = maxf(1.0, float(u.get("haste_mult", 1.0))) if battle._t < float(u.get("haste_until", 0.0)) else 1.0
 	var dbf: float = float(u.get("spd_aspd_mult", 1.0)) if battle._t < float(u.get("spd_dbf_until", 0.0)) else 1.0
-	return maxf(0.1, hf * dbf * float(u.get("aspd_perm", 1.0)) * anchor_aspd(u) * float(u.get("_turret_aspd_mult", 1.0)))
+	## ★096 效率层: 每层 +4% 攻速, 到期整条失效(第十批 E4 —— 原来 `eff_aspd_mult` 只有门禁在调, 这里不读 ⇒ 攻速一直没生效)。
+	var eff: float = AxeEvolution.eff_aspd_mult(int(u.get("_axe_eff_n", 0))) if battle._t < float(u.get("_axe_eff_until", -1.0)) else 1.0
+	return maxf(0.1, hf * dbf * eff * float(u.get("aspd_perm", 1.0)) * anchor_aspd(u) * float(u.get("_turret_aspd_mult", 1.0)))
 
 
 func anchor_aspd(u: Dictionary) -> float:   # 不沉之锚017: 持有沉锚充能期间普攻+100%攻速(用户2026-07-19)

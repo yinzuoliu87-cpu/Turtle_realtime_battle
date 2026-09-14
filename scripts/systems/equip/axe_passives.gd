@@ -67,7 +67,9 @@ func smash_on_hit(ax: Dictionary, tgt: Dictionary) -> float:
 	ax["_axe_smash_ready"] = false
 	ax["_axe_smash_at"] = float(battle._t) + AE.SMASH_IV
 	var extra: float = float(ax.get("atk", 0.0)) * AE.SMASH_ATK
-	battle._damage._apply_damage_from(ax, tgt, maxi(1, int(round(extra))),
+	## ★「物理伤害」必须过护甲(第十批 E5): 原来直接把 攻击力×系数 塞进去, 0 护甲与 300 护甲掉得一样。
+	##   用不掷暴击的 `_phys_after_armor` —— 只补护甲这一步, 暴击口径不在这次修正里。
+	battle._damage._apply_damage_from(ax, tgt, battle._phys_after_armor(ax, extra, tgt),
 		Color(UIPalette.PHYS), 0.0, false, true)
 	## 击飞 + 短暂击退 —— 走既有的唯一入口, 不自己写位移
 	battle._damage._knockback(ax, tgt, 0.0, AE.SMASH_KNOCK_VY, AE.SMASH_KNOCK_PUSH)
@@ -269,7 +271,8 @@ func slam_settle(ax: Dictionary) -> int:
 	for o in battle._targeting._targetable_enemies(ax):
 		if not AE.in_trapezoid(org, dir, h, o.get("pos", Vector2.ZERO)):
 			continue
-		battle._damage._apply_damage_from(ax, o, dmg, Color(UIPalette.PHYS), 0.0, false, true)
+		## ★物理伤害过护甲(第十批 E5): 每个目标按自己的护甲算, 不掷暴击。
+		battle._damage._apply_damage_from(ax, o, battle._phys_after_armor(ax, float(dmg), o), Color(UIPalette.PHYS), 0.0, false, true)
 		if o.get("alive", false):
 			battle._damage._knockback(ax, o, 0.0, 1.6, 1.0)     # "高高击飞"
 			battle._damage._stun(o, AE.SLAM_STUN, "axe_slam")

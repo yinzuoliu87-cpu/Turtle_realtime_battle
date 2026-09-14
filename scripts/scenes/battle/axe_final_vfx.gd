@@ -231,6 +231,7 @@ func seraph_boomerang(from2d: Vector2, dir: Vector2, dist_px: float, fly_sec: fl
 	n.position = battle._world_pos(from2d, 0.55)
 	_adopt(n)
 	var to2d: Vector2 = from2d + d * dist_px
+	n.set_meta("boom_to2d", to2d)   # 画到哪 —— 门禁量「演出长度 ≥ 判定打中的最远处」(第十批 E10)
 	## ★显式标注类型: `battle` 是无类型的注入宿主, `:=` 推不出 Tween(Parse Error)。
 	var tw: Tween = battle._reg_tween()
 	tw.tween_method(func(x: float) -> void:

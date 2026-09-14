@@ -49,10 +49,7 @@ extends RefCounted
 ##   ★可验证性质(门禁): `jet_radius(8V) / jet_radius(V) ≡ 2`, 与 V 无关。
 ##     线性半径会给 8, 面积律(√)会给 2.83, 三者互相分得开。
 ##
-## ── ⑤ 087 压载水位计: 填充宽度 ≡ 底槽 × 水位比 ────────────────────
-##   玩家要一眼看出"舱快满了"(满舱 = 15 层 = +45% 移速 +45 护甲, 是这件的核心读数)。
-##   ★可验证性质(门禁): `fg.scale.x ≡ GAUGE_W_M × clamp(water/cap, 0, 1)`,
-##     且 `bg.scale.x ≡ GAUGE_W_M`(分母, 证明比例真的在动而不是两个都写死)。
+## ── ⑤ (087 头顶压载水位计已删 · 第十批 E13: 读数在装备图标框里, 头顶条与之重复) ──
 ##
 ## ── 技术路线 ────────────────────────────────────────────────────────
 ## Godot 内置图元(SphereMesh / BoxMesh / TorusMesh)+ `material_override`, **零素材**。
@@ -163,18 +160,12 @@ const RAY_MUZZLE_R := 0.26       ## 发射端炮口闪半径(米)
 const RAY_POP_R := 0.34          ## 命中端爆点半径(米)
 const RAY_COLOR := Color(0.72, 0.35, 1.0)   ## 紫色终极射线(规格明写"紫色")
 
-## 087 水柱: r = JET_K·V^(1/3) (米)。JET_ASPECT = 柱长/柱半径(定长径比 ⇒ V ∝ r³)。
+## 087 水柱: 粗细 r = JET_K·V^(1/3) (米); 长度 = 携带者到目标的真实距离(第十批 E8 起不再按长径比钳)。
 const JET_K := 0.055
-const JET_ASPECT := 14.0
 const JET_LIFE := 0.34
 const JET_COLOR := Color(0.35, 0.78, 1.0)
 
-## 087 压载水位计(头顶横条)
-const GAUGE_W_M := 1.44          ## 底槽全宽(米)
-const GAUGE_H_M := 0.16
-const GAUGE_LIFT := 2.05
-const GAUGE_BG := Color(0.10, 0.16, 0.24)
-const GAUGE_FG := Color(0.30, 0.72, 1.0)
+## (087 头顶压载水位计已删 —— 第十批 E13: 读数在装备图标框 `EquipReadouts` 的 ballast_pct, 头顶条与之重复)
 
 ## 087 偷技能瞬闪(青铜令环)
 const STEAL_R_M := 0.95
@@ -243,13 +234,6 @@ static func ray_alpha(t: float) -> float:
 ## ④ 定长径比柱体: 半径 ∝ V^(1/3)
 static func jet_radius(volume: float) -> float:
 	return JET_K * pow(maxf(0.0, volume), 1.0 / 3.0)
-
-
-## ⑤ 水位比(0~1)
-static func gauge_fill(water: float, cap: float) -> float:
-	if cap <= 0.0:
-		return 0.0
-	return clampf(water / cap, 0.0, 1.0)
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -630,40 +614,16 @@ func sextant_ultimate(_u: Dictionary, beams: Array) -> Array:
 #  §087 压载舱
 # ══════════════════════════════════════════════════════════════════
 
-## 头顶水位计: 底槽(常驻) + 填充条(常驻)。填充宽度 ≡ 底槽 × 水位比(性质 ⑤)。
-func dive_gauge(u: Dictionary, water: float, cap: float) -> MeshInstance3D:
-	if not _alive():
-		return null
-	var bg = u.get("_dive_bg", null)
-	if not is_instance_valid(bg):
-		bg = _mi(BoxMesh.new(), Color(GAUGE_BG.r, GAUGE_BG.g, GAUGE_BG.b, 0.8), "dive_bg", false)
-		((bg as MeshInstance3D).mesh as BoxMesh).size = Vector3.ONE
-		u["_dive_bg"] = bg
-	var fg = u.get("_dive_fg", null)
-	if not is_instance_valid(fg):
-		fg = _mi(BoxMesh.new(), Color(GAUGE_FG.r, GAUGE_FG.g, GAUGE_FG.b, 0.95), "dive_fg", false)
-		((fg as MeshInstance3D).mesh as BoxMesh).size = Vector3.ONE
-		u["_dive_fg"] = fg
-	var base: Vector3 = battle._world_pos(u["pos"], GAUGE_LIFT)
-	var fill: float = gauge_fill(water, cap)
-	(bg as MeshInstance3D).position = base
-	(bg as MeshInstance3D).scale = Vector3(GAUGE_W_M, GAUGE_H_M, 0.02)
-	## 填充从左端长出来 ⇒ 中心要往右挪半个"缺口"
-	(fg as MeshInstance3D).position = base + Vector3(-GAUGE_W_M * 0.5 * (1.0 - fill), 0.0, 0.01)
-	(fg as MeshInstance3D).scale = Vector3(maxf(0.0001, GAUGE_W_M * fill), GAUGE_H_M * 0.62, 0.02)
-	return fg
-
-
-## 朝最远的敌人喷一根水柱, 体积 = 抽出来的水量 ⇒ 半径 ∝ ∛V(性质 ④)。
-## ★柱长按定长径比走(JET_ASPECT × 半径), 但**不超过**到目标的真实距离 —— 水柱是
-##   "喷过去"不是"穿过去", 超长会画到目标背后。
+## 朝最远的敌人喷一根水柱, 体积 = 抽出来的水量 ⇒ 粗细 ∝ ∛V(性质 ④)。
+## ★★柱子从携带者一直连到目标(第十批 E8)。原来柱长按「定长径比 × 半径」钳住, 而 `_beam` 把柱体放在两人【中点】
+##   ⇒ 水量 30/150/1000 画长 2.39/4.09/7.70 米、真实距离 19.79 米: 一截悬在两人中间, 两端各离人 6~9 米,
+##   读不出「从我喷到你」。伤害是即时结算的, 柱子也瞬间连通, 两者同帧。
 func dive_jet(u: Dictionary, tgt: Dictionary, volume: float) -> MeshInstance3D:
 	if not _alive() or volume <= 0.0:
 		return null
 	var r: float = jet_radius(volume)
 	var n := _beam(u["pos"], tgt["pos"], 0.75, r * 2.0,
 		Color(JET_COLOR.r, JET_COLOR.g, JET_COLOR.b, 0.9), "dive_jet")
-	n.scale.x = minf(n.scale.x, r * JET_ASPECT)
 	_transient(n, JET_LIFE)
 	return n
 
@@ -779,7 +739,7 @@ func tick(delta: float) -> void:
 	_fx = keep
 
 
-## 撤掉挂在某个单位身上的**常驻件**(浮游炮体 + 水位计)。返回 free 了几个。
+## 撤掉挂在某个单位身上的**常驻件**(浮游炮体; 087 头顶水位计第十批 E13 已删)。返回 free 了几个。
 func detach(u: Dictionary) -> int:
 	var freed: int = 0
 	for n in u.get("_sext_nodes", []):
@@ -787,12 +747,6 @@ func detach(u: Dictionary) -> int:
 			(n as Node).queue_free()
 			freed += 1
 	u.erase("_sext_nodes")
-	for k in ["_dive_bg", "_dive_fg"]:
-		var nd = u.get(k, null)
-		if is_instance_valid(nd):
-			(nd as Node).queue_free()
-			freed += 1
-		u.erase(k)
 	return freed
 
 

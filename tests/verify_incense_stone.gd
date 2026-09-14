@@ -387,9 +387,12 @@ func _t_empower() -> void:
 			"aspd %.2f→%.2f" % [aspd0, float(u.get("aspd_perm", 1.0))])
 
 		# 一发强化普攻: 附带 30/50/80 + 目标最大生命 1/1.5/2%
+		## ★第十批 E7: 出手(on_basic)只记账, 附带伤害在普攻命中(on_hit · `_b4_basic`)才结算 ⇒ 这里两步都走。
 		var want: float = [30.0, 50.0, 80.0][si] + 5000.0 * [0.01, 0.015, 0.02][si]
 		var hp0: float = float(tgt["hp"])
+		u["_b4_basic"] = true
 		_s._equip_sys._incense.on_basic(u, tgt, "p2eq_093", si)
+		_s._equip_sys._incense.on_hit(u, tgt, 0.0, "p2eq_093", si)
 		var dealt: float = hp0 - float(tgt["hp"])
 		_ok("⑦ si=%d 附带伤害 ≈ %d(30/50/80 + 目标最大生命 1/1.5/2%%)" % [si, int(want)],
 			absf(dealt - want) <= maxf(2.0, want * 0.02), "实测 %.0f 期望 %.0f" % [dealt, want])
@@ -399,12 +402,14 @@ func _t_empower() -> void:
 		# 打满 4 次 → 攻速撤回
 		for _k in range(3):
 			_s._equip_sys._incense.on_basic(u, tgt, "p2eq_093", si)
+			_s._equip_sys._incense.on_hit(u, tgt, 0.0, "p2eq_093", si)
 		_ok("⑦ si=%d 4 次用完: 攻速撤回原值(不残留永久攻速)" % si,
 			is_equal_approx(float(u.get("aspd_perm", 1.0)), aspd0),
 			"aspd=%.2f 期望 %.2f" % [float(u.get("aspd_perm", 1.0)), aspd0])
 		_ok("⑦ si=%d 第 5 次普攻不再有附带伤害(计数用完了)" % si,
 			int(u.get("_incense_emp_n", 0)) == 4, "n=%d" % int(u.get("_incense_emp_n", 0)))
 		_s._equip_sys._incense.on_basic(u, tgt, "p2eq_093", si)
+		_s._equip_sys._incense.on_hit(u, tgt, 0.0, "p2eq_093", si)
 		_ok("⑦ si=%d ★分母: 第 5 次确实没加(仍是 4)" % si,
 			int(u.get("_incense_emp_n", 0)) == 4, "n=%d" % int(u.get("_incense_emp_n", 0)))
 	_s._units.clear()

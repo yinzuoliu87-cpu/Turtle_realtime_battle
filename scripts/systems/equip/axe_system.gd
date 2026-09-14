@@ -190,8 +190,15 @@ func play_action(ax: Dictionary, key: String, loop: bool = false) -> bool:
 ## ★放在装备层的 tick 里, 不进主场景(架构预算只减不增; 而且它不在 _sim_step 的必经链上)。
 func tick(u: Dictionary, _delta: float) -> void:
 	var ax = u.get("_axe_ref", null)
-	if not (ax is Dictionary) or not ax.get("alive", false):
+	if not (ax is Dictionary):
 		return
+	## ★★亡灵之斧的重生必须在「死了就 return」之【前】判(第十批 E3)。
+	##   原来重生检查排在下面, 斧头一死这里就 return ⇒ 排好了重生时刻却永远站不起来(探针: 4 秒后仍死着),
+	##   而门禁直接调 undead_tick_revive, 所以一直绿。
+	if not ax.get("alive", false):
+		_fin.undead_tick_revive(ax)
+		if not ax.get("alive", false):
+			return
 	## ★★龟能充能 —— 2026-09-01 补。之前这条**根本不存在**: 探针实测真跑 13.78 秒
 	##   energy 一直是 0, 于是「攒满 140 龟能」的主动、被动6的蓄力猛砸、
 	##   四个最终造物的主动**在真实对局里一个都放不出来**(而门禁全绿, 因为门禁自己喂 140)。
@@ -208,7 +215,7 @@ func tick(u: Dictionary, _delta: float) -> void:
 	_pas.tick_smash(ax, _delta)
 	_fin.ember_light_tick(ax)          # 余烬之光: 清过期的(多层只延长在线时间, 不叠强度)
 	_fin.tick_active(ax, _delta)       # 造物主动: 甩回旋镖 / 法阵脉冲 / 到期还原减伤
-	_fin.undead_tick_revive(ax)        # 亡灵: 到点站起来(不播死亡动画, 用户两次点名)
+	## (亡灵到点站起来的检查已挪到函数开头「死了就 return」之前 —— 第十批 E3; 不播死亡动画, 用户两次点名)
 	_tick_undead_ring(ax, _delta)
 	## ★蓄力中不再放主动 —— 否则 140 龟能一满就把蓄力重开, 永远砸不下去。
 	## ★★`tick_charge` 的返回值有三态, 演出**必须按三态分**(2026-09-03 接线):
@@ -284,7 +291,8 @@ func on_hit(src: Dictionary, tgt: Dictionary, basic: bool) -> void:
 	_pas.cleave_settle(src, tgt, sw)                       # 被动4: 偶数次 → 竖劈
 	for o in _pas.sweep_targets(src, tgt, sw):             # 被动5: 奇数次 → 180° 横扫
 		if not is_same(o, tgt) and o.get("alive", false):
-			battle._damage._apply_damage_from(src, o, maxi(1, int(round(float(src.get("atk", 0.0))))),
+			## ★物理伤害过护甲(第十批 E5), 不掷暴击 —— 原来 1×ATK 直接塞进去, 0 护甲与 300 护甲掉得一样。
+			battle._damage._apply_damage_from(src, o, battle._phys_after_armor(src, float(src.get("atk", 0.0)), o),
 				Color(UIPalette.PHYS), 0.0, false, true)   # ★横扫是【物理】⇒ 红; 原来的灰白会被读成真伤
 	var smashed: float = _pas.smash_on_hit(src, tgt)       # 被动3: 每 9 秒一次强化
 	_pas.add_eff(src)                                      # 被动5: 效率层 +1

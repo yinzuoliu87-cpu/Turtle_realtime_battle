@@ -122,6 +122,20 @@ func undead_tick_revive(ax: Dictionary) -> bool:
 	ax["hp"] = float(ax.get("maxHp", 0.0)) * AF.UNDEAD_REVIVE_HP_PCT
 	ax["shield"] = 0.0
 	ax["stun_until"] = 0.0
+	## ★★把 `_kill` 做过的事撤回来(第十批 E3) —— 只改 alive 会得到一把【看不见、打不死】的斧头:
+	##   · `_dead_done` 是 `_kill` 的防重入守卫, 不清掉的话再挨到 0 血 `_kill` 第一行就 return;
+	##   · `_kill` 把立绘淡到 0 再 hide, 影子 / 环 / 接触影 hide, 血条 visible = false。
+	##   影子透明度由渲染每帧按 SHADOW_BASE_A 重设, 环与接触影本来就是 0 透明 ⇒ 这里只负责重新显示。
+	ax.erase("_dead_done")
+	for _k in ["sprite", "shadow", "ring", "contact"]:
+		var _nd = ax.get(_k, null)
+		if is_instance_valid(_nd):
+			_nd.visible = true
+	var _spr = ax.get("sprite", null)
+	if is_instance_valid(_spr):
+		_spr.modulate.a = 1.0
+	if is_instance_valid(ax.get("bar_root", null)):
+		ax["bar_root"].visible = true
 	vfx.undead_revive(ax.get("pos", Vector2.ZERO), 0.9)   # 亡魂聚拢再立起(不是死亡动画)
 	return true
 
@@ -147,6 +161,9 @@ func seraph_boomerang_settle(ax: Dictionary, dir: Vector2) -> int:
 	var org: Vector2 = ax.get("pos", Vector2.ZERO)
 	var dmg: int = maxi(1, int(round(float(ax.get("atk", 0.0)) * AF.SERAPH_BOOM_ATK)))
 	var n := 0
+	## ★★演出长度补到被打中的最远那个(第十批 E10)。判定本来就没有射程上限(沿直线飞过、身前半宽内全吃),
+	##   而演出原来固定只画 SERAPH_BOOM_R×2.5 ⇒ 1300 码外的敌人挨打却看不到镖飞到。判定不改(不动数值), 只补演出长度。
+	var reach: float = AF.SERAPH_BOOM_R * 2.5
 	for o in battle._targeting._targetable_enemies(ax):
 		var rel: Vector2 = (o.get("pos", Vector2.ZERO) as Vector2) - org
 		if rel.dot(d) < 0.0:
@@ -162,7 +179,8 @@ func seraph_boomerang_settle(ax: Dictionary, dir: Vector2) -> int:
 		if o.get("alive", false):
 			battle._damage._apply_dot_stacks(o, "burn", AF.SERAPH_BOOM_BURN, ax)
 		n += 1
-	vfx.seraph_boomerang(org, d, AF.SERAPH_BOOM_R * 2.5, 0.45)   # 演出: 一把飞过去
+		reach = maxf(reach, rel.dot(d))
+	vfx.seraph_boomerang(org, d, reach, 0.45)   # 演出: 一把飞过去, 画到最远命中处
 	## ★斧头本体的【甩】动作帧 —— 每把一次(4 秒 10 把 ⇒ 每 0.4 秒), fps 就是按这个定的。
 	##   在此之前斧头是站着不动把 10 把镖变出来的(素材 eq-axe-throw.png 零调用者)。
 	_play(ax, "axe_throw")
@@ -178,7 +196,8 @@ func holo_on_hit(ax: Dictionary):
 		return null
 	var best = null
 	var best_r := 2.0
-	for a in battle._targeting._allies_of(ax, true):
+	## ★友军名单排除训龟大师与龟蛋(第十批 E11 —— 原来普攻护盾给了大师, 法阵奶了大师和龟蛋)
+	for a in battle._targeting._allies_share_pool(ax):
 		if not a.get("alive", false):
 			continue
 		var mh: float = float(a.get("maxHp", 1.0))
@@ -215,7 +234,8 @@ func holo_aura_tick(ax: Dictionary) -> int:
 		return 0
 	var org: Vector2 = ax.get("pos", Vector2.ZERO)
 	var n := 0
-	for a in battle._targeting._allies_of(ax, true):
+	## ★友军名单排除训龟大师与龟蛋(第十批 E11 —— 原来普攻护盾给了大师, 法阵奶了大师和龟蛋)
+	for a in battle._targeting._allies_share_pool(ax):
 		if not a.get("alive", false):
 			continue
 		if (a.get("pos", Vector2.ZERO) as Vector2).distance_to(org) > AF.HOLO_AURA_R:
@@ -297,10 +317,25 @@ func ember_light_tick(ax: Dictionary) -> void:
 ##   多层只延长在线时间，不加强数值。这条最容易做反，门禁专门验。
 func _ember_apply(ax: Dictionary) -> void:
 	var on: bool = ember_light_stacks(ax) > 0
-	ax["lifesteal"] = AF.EMBER_LIGHT_LIFESTEAL if on else 0.0
-	ax["damage_reduction"] = AF.EMBER_LIGHT_DR if on else 0.0
-	ax["haste_mult"] = (1.0 + AF.EMBER_LIGHT_ASPD) if on else 1.0
-	ax["haste_until"] = (float(battle._t) + 0.2) if on else 0.0
+	## ★★按差量加减, 到期还原施放前的值(第十批 E9)。原来在线写常量、到期直接写 0 ——
+	##   施放前就有的减伤 / 吸血 / 免控被抹掉(探针: 施放前 0.10 减伤 → 到期 0.00)。
+	##   口径与蓄力 / 插地一致: 在线期间取大(不叠加), 记下【实际抬了多少】, 到期只减这么多。
+	var was: bool = ax.has("_ember_dr_add")
+	if on and not was:
+		ax["_ember_dr_add"] = maxf(0.0, AF.EMBER_LIGHT_DR - float(ax.get("damage_reduction", 0.0)))
+		ax["_ember_ls_add"] = maxf(0.0, AF.EMBER_LIGHT_LIFESTEAL - float(ax.get("lifesteal", 0.0)))
+		ax["damage_reduction"] = float(ax.get("damage_reduction", 0.0)) + float(ax["_ember_dr_add"])
+		ax["lifesteal"] = float(ax.get("lifesteal", 0.0)) + float(ax["_ember_ls_add"])
+	elif was and not on:
+		ax["damage_reduction"] = maxf(0.0, float(ax.get("damage_reduction", 0.0)) - float(ax["_ember_dr_add"]))
+		ax["lifesteal"] = maxf(0.0, float(ax.get("lifesteal", 0.0)) - float(ax.get("_ember_ls_add", 0.0)))
+		ax.erase("_ember_dr_add")
+		ax.erase("_ember_ls_add")
+	## 攻速走单格的 haste 通道: 在线时取大并续 0.2 秒; 到期【不写】, 让它自己过期(原来写 1.0 / 0 会顺手抹掉别人给的加速)。
+	if on:
+		var _h_on: bool = float(battle._t) < float(ax.get("haste_until", 0.0))
+		ax["haste_mult"] = maxf(float(ax.get("haste_mult", 1.0)) if _h_on else 1.0, 1.0 + AF.EMBER_LIGHT_ASPD)
+		ax["haste_until"] = maxf(float(ax.get("haste_until", 0.0)), float(battle._t) + 0.2)
 	## ★★「免疫控制」的字段名**我原来写错了**: 我写的是 `cc_immune`(布尔), 而引擎读的是
 	##   `cc_immune_until`(时间戳, 见 battle_damage._is_cc_immune / _stun)。
 	##   `cc_immune` 全仓**没有任何代码读它** ⇒ 余烬之光的免控**根本不生效**。
@@ -309,7 +344,20 @@ func _ember_apply(ax: Dictionary) -> void:
 	var _last: float = 0.0
 	for _x in _lights:
 		_last = maxf(_last, float(_x))
-	ax["cc_immune_until"] = _last if on else 0.0
+	## 免控: 在线时取大(不缩短别人给的更长免控), 并记下施放前的值与本效果写入的值;
+	##   到期时若仍是本效果写的那个值 ⇒ 还原施放前的值(原来直接写 0 会抹掉施放前就有的免控),
+	##   若期间被别人改过 ⇒ 不动。★不能「到期不写」: 光效提前全部失效而时间戳还在未来时, 会留下一段假免控
+	##   (verify_axe_finals「全部过期后减伤/免控还原」当场抓到)。
+	if on:
+		if not ax.has("_ember_cc_bak"):
+			ax["_ember_cc_bak"] = float(ax.get("cc_immune_until", 0.0))
+		ax["cc_immune_until"] = maxf(float(ax.get("cc_immune_until", 0.0)), _last)
+		ax["_ember_cc_set"] = float(ax["cc_immune_until"])
+	elif ax.has("_ember_cc_bak"):
+		if is_equal_approx(float(ax.get("cc_immune_until", 0.0)), float(ax.get("_ember_cc_set", -1.0))):
+			ax["cc_immune_until"] = float(ax["_ember_cc_bak"])
+		ax.erase("_ember_cc_bak")
+		ax.erase("_ember_cc_set")
 	## ★★这里原来还写了一个 `ax["cc_immune"] = on`。**删掉** ——
 	##   引擎一处都不读它, 而门禁读了 5 次: 那 5 条断言量的是**我自己插的标记**,
 	##   不是"免控真的生效了"(memory: 门禁要量需求不是量我的钩子)。
