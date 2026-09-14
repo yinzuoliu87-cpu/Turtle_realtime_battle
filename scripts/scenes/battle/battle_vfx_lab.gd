@@ -552,7 +552,16 @@ func _tune_units() -> void:
 		##     台子会静默地什么都不做(memory [[fb-read-a-field-nobody-writes]])。
 		var dg: float = float(cfg.get("dodge", -1.0))
 		if dg >= 0.0:
-			u["dodge_bonus"] = clampf(dg, 0.0, 1.0)
+			## ★★走产品的真机制: 挂一条 `stat: "dodge"` 的 buff, 由 `_recalc_stats` 累加进
+			##   `dodge_bonus`(还带 DODGE_CAP 封顶)。
+			##   我第一版直接写 `u["dodge_bonus"]` —— 那是 `_recalc_stats` 的**输出**,
+			##   它每次重算都会用 buff 累加值把我写的覆盖掉。046 那次能用纯属运气
+			##   (recalc 没在关键时刻跑)。台子要模拟的是"它有闪避", 就得按游戏的方式给。
+			(u["buffs"] as Array).append({
+				"stat": "dodge", "amount": clampf(dg, 0.0, 1.0), "pct": false,
+				"until": battle._t + 1.0e9, "src_eq": "vfxlab",
+			})
+			battle._recalc_stats(u)
 		if hp_pct < 1.0:
 			u["hp"] = float(u["maxHp"]) * hp_pct
 			battle._equip_sys._eq_check_hp_threshold(u)   # 走真实阈值入口(044/045 这类救命件靠它)

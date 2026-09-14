@@ -2770,3 +2770,54 @@ func heal_hot_aura(u: Dictionary) -> void:
 		"loop_t0": battle._t, "until_key": "eq_hot_until_" + owner,
 		"clear_key": skey,
 	})
+
+
+## 057 狙击【瞄准线的一次刷新】—— 蓄力那 1 秒里目标还在走。
+## ★为什么要刷新: 原来 `_sniper_charge_fx` 在蓄力开始那一帧画一条 dur=1.0 的静态线,
+##   而目标在这 1 秒里会移动 ⇒ **线指着旧位置**。这是「链最容易断在位置上」那一族
+##   (memory [[fb-telegraph-needs-a-cause-not-a-flash]]: 演出跨几秒而携带者/目标在走,
+##   每一段必须**现读当前坐标**)。
+## ★只画线, 不重画枪口聚能球与锁定环 —— 那两样是"开始蓄力"这一件事的一次性演出。
+func sniper_aim_refresh(u: Dictionary, tgt) -> void:
+	if battle._world == null or u == null or not u.get("alive", false):
+		return
+	if tgt == null or not (tgt is Dictionary) or not tgt.get("alive", false):
+		return
+	var dir: Vector2 = ((tgt["pos"] as Vector2) - (u["pos"] as Vector2)).normalized()
+	if dir == Vector2.ZERO:
+		dir = Vector2.RIGHT
+	battle._laser_beam(u["pos"], (tgt["pos"] as Vector2) + dir * 90.0,
+					   Color(1.0, 0.22, 0.26, 0.34), 0.025, SNIPER_AIM_STEP * 1.35, 1.0)
+const SNIPER_AIM_STEP := 0.2      # 每这么多秒重画一次(1 秒蓄力 ⇒ 4 次刷新)
+
+
+## 057 狙击【开枪那一下的整套演出】—— 从 equip_system 搬过来(CLAUDE.md §5: 纯演出住这儿)。
+## 枪口闪 + 后坐震屏 + 枪口爆环 + 双层曳光(粗红外辉 + 白热细核) + 命中火花。
+func sniper_shot_fx(u: Dictionary, tgt: Dictionary, dir: Vector2) -> void:
+	if battle._world == null:
+		return
+	battle._muzzle_flash(u["pos"], dir, Color("#ff5a5a"))
+	battle._shake(battle.JUICE_SHAKE_HEAVY)                                        # 开枪后坐(用户2026-07-19)
+	battle._skill_ring(u["pos"] + dir * 28.0, Color(1.0, 0.42, 0.36, 0.8), 46.0)   # 枪口爆环
+	var snd: float = 1.5 if OS.has_environment("XDBG") else 0.28
+	var tip: Vector2 = (tgt["pos"] as Vector2) + dir * 150.0
+	battle._laser_beam(u["pos"], tip, Color(1.0, 0.24, 0.28, 0.82), 0.17, snd, 1.0)          # 粗红外辉
+	battle._laser_beam(u["pos"], tip, Color(1.0, 0.92, 0.86, 0.96), 0.06, snd * 0.85, 1.02)  # 白热细核
+	_hit_spark(tgt)
+
+
+## 蓄力那 1 秒里让瞄准线**跟着目标走** —— 每 SNIPER_AIM_STEP 秒重画一次, 每次现读当前坐标。
+## ★排在【游戏钟】上(`_equip_tick_sys.schedule`), 不用 tween: tween 走未钳制 delta = 第二条钟。
+func sniper_aim_track(u: Dictionary, tgt, windup: float) -> void:
+	var steps: int = int(windup / SNIPER_AIM_STEP)
+	for k in range(1, steps):
+		battle._equip_tick_sys.schedule(SNIPER_AIM_STEP * float(k),
+			sniper_aim_refresh.bind(u, tgt))
+
+
+## 053 霰弹【开火那一下的枪口演出】—— 从 equip_system 搬过来(CLAUDE.md §5)。
+func shotgun_muzzle_fx(u: Dictionary, dir53: Vector2) -> void:
+	if battle._world == null:
+		return
+	battle._muzzle_flash(u["pos"], dir53, Color("#ffe0a0"))
+	battle._skill_ring(u["pos"] + dir53 * 22.0, Color(1.0, 0.85, 0.4, 0.7), 26.0)

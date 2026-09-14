@@ -440,8 +440,7 @@ func _eq_shotgun_blast(u: Dictionary, si: int) -> void:   # 霰弹贝古053: 朝
 	if not u.get("alive", false): return
 	var t53 = battle._targeting._nearest_enemy(u)
 	var dir53: Vector2 = (t53["pos"] - u["pos"]).normalized() if t53 != null else Vector2.RIGHT
-	battle._muzzle_flash(u["pos"], dir53, Color("#ffe0a0"))
-	battle._skill_ring(u["pos"] + dir53 * 22.0, Color(1.0, 0.85, 0.4, 0.7), 26.0)
+	battle._vfx.shotgun_muzzle_fx(u, dir53)   # 枪口闪 + 爆环(纯演出, 住 battle_vfx)
 	var n53: int = [12, 14, 18][si]
 	var step53: float = deg_to_rad(battle.SHOTGUN_PELLET_DEG)
 	var touched: Array = []
@@ -2417,35 +2416,48 @@ func _eq_sniper_windup(u: Dictionary, si: int) -> void:   # 狙击长管057: 每
 ## 一枪 = 蓄力 SNIPER_WINDUP 秒 → 开火。★用户 2026-08-01「重新开枪需要蓄力」:
 ##   原来只有本轮【第一枪】蓄力, 击杀后递归追加的后续枪是【立即】开的 —— 一轮下来能瞬间连狙好几个,
 ##   看上去像"一枪扫掉半个队"。现在把蓄力包进这一层, 首枪与连狙走同一条路径, 不存在"某种枪不蓄力"。
+## 选最低血%的敌人。★**只此一处** —— 2026-09-14 之前蓄力那边用 `CombatMath.hp_frac`、
+## 开火那边用裸 `hp / maxHp`(连 maxHp=0 都不防), 同一个选靶写了两份
+## (memory [[fb-hand-rolled-copies-drift]]: 手抄的副本必然落后)。
+func _sniper_pick_lowest(u: Dictionary):
+	var low = null
+	var lv := INF
+	for o in battle._targeting._pick_enemies_of(u):
+		var p: float = CombatMath.hp_frac(o["hp"], o["maxHp"])
+		if p < lv:
+			lv = p
+			low = o
+	return low
+
+
 func _eq_sniper_charge_then_fire(u: Dictionary, si: int, depth: int) -> void:
 	if not u.get("alive", false): return
 	if depth >= SNIPER_MAX_CHAIN: return        # 与 _eq_sniper 同一上限, 防连狙无限递归
-	var low = null; var lv := INF
-	for o in battle._targeting._pick_enemies_of(u):
-		var p: float = CombatMath.hp_frac(o["hp"], o["maxHp"])
-		if p < lv: lv = p; low = o
+	var low = _sniper_pick_lowest(u)
 	if low == null: return
 	battle._sniper_charge_fx(u, low)
-	battle._pending_shots.append({"delay": SNIPER_WINDUP, "fn": func(): _eq_sniper(u, si, depth), "src": u})
+	## ★★★把**蓄力时锁定的那个目标**带到开火那一刻。
+	##   原来开火时会**重新选一遍**最低血 —— 这 1 秒里谁掉了血, 枪就打到别人身上,
+	##   而玩家看到的瞄准线一直指着原来那个。文案写的是「**锁定**生命百分比最低的敌人
+	##   并蓄力 1 秒, 随后开枪」—— 锁定就是锁定(memory [[fb-effect-text-is-the-spec]])。
+	##   ⇒ 只有锁定的目标**死了/不可选了**才允许重选(否则这一枪就废了)。
+	var locked: Dictionary = low
+	## ★瞄准线在这 1 秒里**每 0.2 秒重画一次**, 每次现读目标当前坐标 ——
+	##   原来是蓄力那一帧画一条静态线, 目标走了线还指着旧位置。
+	battle._vfx.sniper_aim_track(u, locked, SNIPER_WINDUP)
+	battle._pending_shots.append({"delay": SNIPER_WINDUP, "fn": func(): _eq_sniper(u, si, depth, locked), "src": u})
 
-func _eq_sniper(u: Dictionary, si: int, depth: int) -> void:
+func _eq_sniper(u: Dictionary, si: int, depth: int, locked = null) -> void:
 	if depth >= SNIPER_MAX_CHAIN:
 		return
-	var low = null; var lv := INF
-	for o in battle._targeting._pick_enemies_of(u):
-		var p: float = o["hp"] / o["maxHp"]
-		if p < lv: lv = p; low = o
+	## ★打**蓄力时锁定的那个**; 它死了/不可选了才重选(见 _eq_sniper_charge_then_fire 的段注)。
+	var low = locked
+	if low == null or not (low is Dictionary) or not low.get("alive", false) 			or battle._is_untargetable(low):
+		low = _sniper_pick_lowest(u)
 	if low == null:
 		return
 	var dir: Vector2 = (low["pos"] - u["pos"]).normalized()
-	battle._muzzle_flash(u["pos"], dir, Color("#ff5a5a"))
-	battle._shake(battle.JUICE_SHAKE_HEAVY)                                                  # 开枪后坐(用户2026-07-19)
-	battle._skill_ring(u["pos"] + dir * 28.0, Color(1.0, 0.42, 0.36, 0.8), 46.0)      # 枪口爆环
-	var _snd: float = 1.5 if OS.has_environment("XDBG") else 0.28
-	var _tip: Vector2 = low["pos"] + dir * 150.0
-	battle._laser_beam(u["pos"], _tip, Color(1.0, 0.24, 0.28, 0.82), 0.17, _snd, 1.0)          # 粗红外辉(醒目狙击曳光)
-	battle._laser_beam(u["pos"], _tip, Color(1.0, 0.92, 0.86, 0.96), 0.06, _snd * 0.85, 1.02)   # 白热细核(高速弹道感)
-	battle._vfx._hit_spark(low)
+	battle._vfx.sniper_shot_fx(u, low, dir)   # 开枪整套演出(枪口闪/后坐/爆环/双层曳光/命中火花)
 	var killed := false
 	for o in battle._targeting._enemies_of(u):
 		if battle._on_line(u["pos"], dir, o["pos"], 36.0):
