@@ -3632,7 +3632,7 @@ func _update_shield_barrier(u: Dictionary) -> void:
 		b.pixel_size = (150.0 * WS) / tw
 		b.position = _world_pos(u["pos"], float(u.get("height", 0.0)) + 0.75)
 		_world.add_child(b)
-		var pt := create_tween().bind_node(b).set_loops()           # 呼吸脉动(绑节点→节点free自停)
+		var pt := _reg_tween().bind_node(b).set_loops()             # 呼吸脉动(绑节点→节点free自停·走 _reg_tween ⇒ 时停冻结)
 		pt.tween_property(b, "modulate:a", 0.30, 0.55).set_trans(Tween.TRANS_SINE)
 		pt.tween_property(b, "modulate:a", 0.52, 0.55).set_trans(Tween.TRANS_SINE)
 		_follow_vfx.append({"spr": b, "unit": u, "h": 0.75})
@@ -3644,7 +3644,7 @@ func _update_shield_barrier(u: Dictionary) -> void:
 		if pulse != null and is_instance_valid(pulse): pulse.kill()
 		u["_barrier_pulse"] = null
 		var s2 = spr
-		var bt := create_tween(); bt.set_parallel(true)             # 盾没了→护罩碎裂放大淡出(你就"知道盾消失了")
+		var bt := _reg_tween(); bt.set_parallel(true)               # 盾没了→护罩碎裂放大淡出(你就"知道盾消失了")
 		bt.tween_property(s2, "modulate:a", 0.0, 0.2)
 		bt.tween_property(s2, "pixel_size", s2.pixel_size * 1.35, 0.2)
 		bt.chain().tween_callback(s2.queue_free)
@@ -3665,7 +3665,7 @@ func _update_diamond_barrier(u: Dictionary) -> void:
 		b.pixel_size = (150.0 * WS) / tw
 		b.position = _world_pos(u["pos"], float(u.get("height", 0.0)) + 0.75)
 		_world.add_child(b)
-		var pt := create_tween().bind_node(b).set_loops()           # 呼吸脉动(绑节点→节点free自停)
+		var pt := _reg_tween().bind_node(b).set_loops()             # 呼吸脉动(绑节点→节点free自停·走 _reg_tween ⇒ 时停冻结)
 		pt.tween_property(b, "modulate:a", 0.30, 0.55).set_trans(Tween.TRANS_SINE)
 		pt.tween_property(b, "modulate:a", 0.52, 0.55).set_trans(Tween.TRANS_SINE)
 		_follow_vfx.append({"spr": b, "unit": u, "h": 0.75})
@@ -3678,7 +3678,7 @@ func _update_diamond_barrier(u: Dictionary) -> void:
 		u["_dia_barrier_pulse"] = null
 		var s2 = spr
 		_burst_vfx("res://assets/sprites/vfx/diamond-impact.png", u["pos"], 92.0, float(u.get("height", 0.0)) + 0.5)   # 盾没了→水晶碎裂小爆
-		var bt := create_tween(); bt.set_parallel(true)             # 护罩碎裂放大淡出(你就"知道盾消失了/龟能恢复")
+		var bt := _reg_tween(); bt.set_parallel(true)               # 护罩碎裂放大淡出(你就"知道盾消失了/龟能恢复")
 		bt.tween_property(s2, "modulate:a", 0.0, 0.2)
 		bt.tween_property(s2, "pixel_size", s2.pixel_size * 1.35, 0.2)
 		bt.chain().tween_callback(s2.queue_free)
@@ -3699,7 +3699,7 @@ func _update_gold_barrier(u: Dictionary) -> void:
 		b.pixel_size = (150.0 * WS) / tw
 		b.position = _world_pos(u["pos"], float(u.get("height", 0.0)) + 0.75)
 		_world.add_child(b)
-		var pt := create_tween().bind_node(b).set_loops()
+		var pt := _reg_tween().bind_node(b).set_loops()
 		pt.tween_property(b, "modulate:a", 0.30, 0.55).set_trans(Tween.TRANS_SINE)
 		pt.tween_property(b, "modulate:a", 0.55, 0.55).set_trans(Tween.TRANS_SINE)
 		_follow_vfx.append({"spr": b, "unit": u, "h": 0.75})
@@ -3712,7 +3712,7 @@ func _update_gold_barrier(u: Dictionary) -> void:
 		u["_gold_barrier_pulse"] = null
 		var s2 = spr
 		_burst_vfx("res://assets/sprites/vfx/fortune-coin-burst.png", u["pos"], 88.0, float(u.get("height", 0.0)) + 0.5)   # 盾没了→金币爆(你就知道盾消失/龟能恢复)
-		var bt := create_tween(); bt.set_parallel(true)
+		var bt := _reg_tween(); bt.set_parallel(true)
 		bt.tween_property(s2, "modulate:a", 0.0, 0.2)
 		bt.tween_property(s2, "pixel_size", s2.pixel_size * 1.35, 0.2)
 		bt.chain().tween_callback(s2.queue_free)
@@ -4676,7 +4676,7 @@ func _spawn_bamboo_orb(from_pos: Vector2, to_pos: Vector2, on_land: Callable = C
 	_world.add_child(orb)
 	## ★抛物线是纯观感(留 tween), 但**落点结算不许挂它末尾**: tween 无头下推不动(§3.5)
 	##   ⇒ 039 文案那句「落到身上才结算(回血+永久 +50/70/90 最大生命)」一次都不会发生。
-	var tw := create_tween()
+	var tw := _reg_tween()
 	tw.tween_method(_bamboo_sys._bamboo_orb_step.bind(orb, from_pos, to_pos, nframes, [0]), 0.0, 1.0, BAMBOO_ORB_FLY)
 	tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tw.tween_callback(func() -> void:

@@ -12,7 +12,7 @@ func _ninja_mark_shatter(spr) -> void:
 	if not is_instance_valid(spr): return
 	var pos: Vector3 = spr.position
 	var sc0: Vector3 = spr.scale
-	var bt = battle.create_tween(); bt.set_parallel(true)
+	var bt = battle._reg_tween(); bt.set_parallel(true)
 	bt.tween_property(spr, "modulate:a", 0.0, 0.2)
 	bt.tween_property(spr, "scale", sc0 * 1.6, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	bt.chain().tween_callback(spr.queue_free)
@@ -27,7 +27,7 @@ func _ninja_mark_shatter(spr) -> void:
 		battle._world.add_child(sh)
 		var ang: float = float(k) * TAU / 4.0 + 0.4
 		var dst = pos + Vector3(cos(ang) * 0.2, 0.06, sin(ang) * 0.2)
-		var st = battle.create_tween().bind_node(sh); st.set_parallel(true)
+		var st = battle._reg_tween().bind_node(sh); st.set_parallel(true)
 		st.tween_property(sh, "position", dst, 0.24)
 		st.tween_property(sh, "modulate:a", 0.0, 0.24)
 		st.chain().tween_callback(sh.queue_free)

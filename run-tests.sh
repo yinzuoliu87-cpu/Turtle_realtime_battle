@@ -62,6 +62,10 @@ frames_for () {
     #   默认 500 帧只够跑十几个 ⇒ 半路被掐断 = 没打 ALL PASS(rc=0/致命 0), 看着像断言失败。
     #   ★这条门禁的价值就在"逐个"上 —— 帧不够 = 分母被悄悄砍掉, 比红了更危险。
     verify_copy_no_lock)      echo 6000 ;;
+    # 059 时停冻结: 要跑【五个采样窗口 × 90 帧】+ 灰世界持续性的 6 次采样 ——
+    #   判据本身就是"跨一段时间看它动没动", 帧数就是分母。默认 500 帧连第一个窗口都跑不完
+    #   ⇒ 半路被掐断 = 没打 ALL PASS(rc=0 / 致命 0), 看着像断言失败(CLAUDE.md §2 那个坑)。
+    verify_timestop_freeze)   echo 3000 ;;
     # 结算屏上传正反馈: ②等轮询回执(0.4 秒一拍·墙钟 3 秒)、④真发一次到不可达地址等回调(最多 900 帧)。
     #   默认 500 帧会在半路被掐断 —— 表现是 rc=0/致命 0 但**没打 ALL PASS**, 极像断言失败。
     verify_upload_flash)      echo 4000 ;;
@@ -589,6 +593,7 @@ run_audit "tools/shield_duration_audit.py" "ALL OK" "shield_duration (通用护�
 #   他当时那句:「**我问一句你才意识到一个漏洞？那我怎么敢开工**」
 #   ⇒ memory 靠我想起来, 门禁自己会红。三条全是只减不增的棘轮。
 run_audit "tools/vfx_discipline_audit.py" "ALL OK" "vfx_discipline (像素贴图不许连续缩放 / 不许新增手写生成器 / 新素材要有逐帧研究)"
+run_audit "tools/tween_freeze_audit.py" "ALL OK" "tween_freeze (战斗世界侧的演出 tween 必须走 _reg_tween·否则时停冻不住)"
 
 echo ""
 if [ "$FAIL" -eq 0 ]; then

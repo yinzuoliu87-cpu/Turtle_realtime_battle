@@ -17,6 +17,7 @@ const TS_DUR := [4.0, 7.0, 20.0]                  # 定格时长(秒) ★原 5/1
 const TS_ECHARGE_MULT := [1.5, 2.0, 3.0]          # 时停期间携带者的龟能充能倍率 ★原 2.0 全星同值
 const TS_INSTANT_ENERGY := [40.0, 150.0, 300.0]   # 定格瞬间立即给的龟能 ★原 15.0 全星同值
 
+
 var battle
 var _ts_active: Array = []                # 当前能自由行动的active携带者(空=无时停; 可多个=全场最高星沙漏者敌我并存)
 var _ts_remaining := 0.0                  # 时停剩余真实秒
@@ -32,7 +33,8 @@ var _ts_rect: ColorRect = null
 var _ts_flash_overlay: CanvasLayer = null # 反色闪叠加层(layer60=在UI上→含全屏UI一起反色)
 var _ts_flash_rect: ColorRect = null
 var _ts_clock: TextureRect = null         # 时停停摆钟(叠加层顶, 不被褪色)
-var _ts_glow_sprs: Array = []             # 携带者"时之主"金辉光sprite(结束移除)
+var _ts_glow_sprs: Array = []             # 携带者身上的【时之砂】sprite(结束移除·名字沿用: dual_lane_flow 在读它)
+var _ts_sand_t := 0.0                     # 时之砂的**真实时间**累加器 —— 全局 `_t` 在时停里是冻的, 不能拿它推帧
 
 func _init(b) -> void:
 	battle = b
@@ -107,6 +109,7 @@ func _ts_fire() -> void:
 			## ★飘字**不许写死数字** —— 原来这里是硬编码的 "+15龟能"，
 			##   常量改成三档后它会漂（同族 memory [[fb-system-coefficient-1-hides-missing-placeholder]]）。
 			battle._vfx._float_text(_c["pos"] + Vector2(0, -62), "+%d龟能" % int(_ie), Color("#8fd4ff"))
+	_ts_sand_t = 0.0
 	_ts_begin_freeze()
 	_ts_visual_start()
 
@@ -225,7 +228,7 @@ func _ts_visual_start() -> void:
 	sp.tween_method(func(v: float): mat.set_shader_parameter("amount", v), 0.0, 1.0, 0.5)
 	for c in _ts_active:
 		_ts_shock_ring(c["pos"])       # 中心能量涟漪波
-		_ts_caster_glow(c)             # ③携带者"时之主"金辉光
+		_ts_caster_sand(c)             # ③携带者身上的时之砂(替掉原来那颗白球)
 	_ts_spawn_clock()                  # 停摆钟浮现
 
 func _ts_visual_end() -> void:   # 解除: 反色再闪 + 回色(时间恢复流动)
@@ -241,6 +244,14 @@ func _ts_visual_end() -> void:   # 解除: 反色再闪 + 回色(时间恢复流
 	tw.tween_method(func(v: float): mat.set_shader_parameter("amount", v), 1.0, 0.0, 0.35)
 
 func _ts_tick_visual(_delta: float) -> void:   # 每帧喂携带者屏幕位置给灰shader → 彩色泡跟随移动的时之主
+	## ★时之砂按**真实时间**推帧: 全局 `battle._t` 在时停期间是冻结的, 拿它推帧沙会停在原地 ——
+	##   而沙正是用来说明"这里的时间还在流"的, 停下来就把意思说反了。
+	##   这不是"第二条钟"的那个坑: 时停自己的演出本来就全都活在真实时间上(反色闪/扩散/钟表脉动同理)。
+	_ts_sand_t += _delta
+	var _sf: int = int(_ts_sand_t * TS_SAND_FPS) % TS_SAND_FRAMES
+	for g in _ts_glow_sprs:
+		if is_instance_valid(g):
+			g.frame = _sf
 	if _ts_rect == null or not is_instance_valid(_ts_rect) or battle._cam == null:
 		return
 	var vp = battle.get_viewport().get_visible_rect().size
@@ -273,23 +284,39 @@ func _ts_shock_ring(pos2d: Vector2) -> void:
 	tw.chain().tween_property(r, "modulate:a", 0.0, 0.2)
 	tw.chain().tween_callback(r.queue_free)
 
-# 携带者金辉光: 身后金色发光球, 跟随+脉动 (时之主)
-func _ts_caster_glow(c: Dictionary) -> void:
+## 【时之砂】时停期间绕着携带者走的金沙(tools/bake_ts_sand.py · 8 帧循环)。
+## ★它是来【替换一颗白球】的: 原来这里贴的是 150 码的 `VfxTex._make_fire_glow_tex()` 金球,
+##   染色法核实过那团白就是它, 而它把携带者**整只盖没了**(并排图: 时停前看得见龟, 时停中只剩一颗球)。
+##   两条都踩了 —— ①「无含义白球」是本仓点名过的禁区形状;
+##   ②**方向和参考正好相反**: JoJo 那 149 帧里时之主是定格世界中**唯一清晰**的那个, 没有光球罩着。
+## ★为什么是沙: 059 就叫【沙漏】, 蓄力那 1 秒已经在放金沙螺旋汇入 ⇒ 同一条因果链的延续, 不是凭空发明。
+const TS_SAND_TEX := "res://assets/sprites/vfx/ts-sand.png"
+const TS_SAND_FRAMES := 8
+const TS_SAND_TEXELS := 36.0      # cell 36×36 texel
+const TS_SAND_YARDS := 64.0       # 36 × 1.775 = 63.9 ⇒ **正好 1:1**, 不糊
+const TS_SAND_FPS := 12.0         # 8 帧 ÷ 12 = 0.67 秒一圈
+## ★★它住在这儿而不是文件顶部: `tooltip_number_audit` 的判据是「文案里的数值必须在
+##   `p2eq_059` 字面量 ±2500 字符内」, 把这 9 行注释插在顶部会把 TS_DUR / TS_ECHARGE_MULT /
+##   TS_INSTANT_ENERGY 三个【真数值】挤出窗口 ⇒ 当场红。常量放它自己的消费者旁边, 本来也更对。
+
+# 携带者身上的【时之砂】: 一小把金沙绕着他走, 标出"这里的时间还在流"(时之主)。
+# ★不是光球 —— 覆盖只有 2.5%(白球那版是整只盖没), 龟必须看得见, 那正是参考里的样子。
+# ★不挂 tween: 帧号由 `_ts_tick_visual` 按**真实时间**推(`_ts_sand_t`), 因为全局 `_t` 在时停里是冻的。
+func _ts_caster_sand(c: Dictionary) -> void:
 	var g := Sprite3D.new()
-	var tex := VfxTex._make_fire_glow_tex()
-	g.texture = tex
+	g.texture = load(TS_SAND_TEX)
+	g.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # 像素画必须 NEAREST
 	g.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	g.shaded = false; g.transparent = true
-	g.render_priority = -1
-	g.modulate = Color(1.0, 0.82, 0.32, 0.0)
-	g.pixel_size = (150.0 * battle.WS) / float(maxi(1, tex.get_width()))
-	g.position = battle._world_pos(c["pos"], 1.0)
+	g.hframes = TS_SAND_FRAMES
+	g.frame = 0
+	g.modulate = Color(1, 1, 1, 1)
+	g.pixel_size = (TS_SAND_YARDS * battle.WS) / TS_SAND_TEXELS   # 1 texel = 1 屏幕像素
+	g.position = battle._world_pos(c["pos"], 0.7)
 	battle._world.add_child(g)
-	battle._follow_vfx.append({"spr": g, "unit": c, "h": 1.0})
+	## 只登记**跟随**(位置), 不登记 `loop_fps`/`anim_fps` —— 那两条都读 `battle._t`(时停时冻结)。
+	battle._follow_vfx.append({"spr": g, "unit": c, "h": 0.7})
 	_ts_glow_sprs.append(g)
-	var tw = battle.create_tween().bind_node(g).set_loops()   # 脉动(不冻结→时之主持续发光)  # ★bind_node: 目标被 queue_free 后 tween 随之销毁; 否则循环 tween 的 tweener 会瞬间完成 → 单圈时长=0 → 刷 ERROR: Infinite loop detected
-	tw.tween_property(g, "modulate:a", 0.7, 0.6).from(0.35)
-	tw.tween_property(g, "modulate:a", 0.35, 0.6)
 
 # 停摆钟: 叠加层顶(不被褪色), 半透明浮于屏幕中心, 缓慢脉动
 func _ts_spawn_clock() -> void:

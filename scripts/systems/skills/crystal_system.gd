@@ -483,7 +483,7 @@ func _crystal_orb_halo(orb: Dictionary) -> void:   # 水晶球常驻脉动光环
 	halo.modulate = Color(0.6, 0.9, 1.0, 0.32)
 	battle._world.add_child(halo)
 	battle._follow_vfx.append({"spr": halo, "unit": orb, "h": 0.8})
-	var tw = battle.create_tween().set_loops()
+	var tw = battle._reg_tween().set_loops()
 	tw.bind_node(halo)
 	tw.tween_property(halo, "modulate:a", 0.52, 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tw.tween_property(halo, "modulate:a", 0.28, 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)

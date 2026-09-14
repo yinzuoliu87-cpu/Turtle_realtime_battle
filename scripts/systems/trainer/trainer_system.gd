@@ -1265,7 +1265,7 @@ func _hunt_dramatize(trainer: Dictionary, tgt: Dictionary, arrive: float) -> voi
 	bolt.position = battle._world_pos(trainer["pos"], 1.1)
 	battle._world.add_child(bolt)
 	var kk: Dictionary = tgt
-	var tw = bolt.create_tween()
+	var tw = battle._reg_tween().bind_node(bolt)
 	tw.tween_method(func(f: float) -> void:
 		if is_instance_valid(bolt):
 			# ★每帧重新读目标位置 = 真"锁头": 目标跑开也追得到(用户: 像安妮的 Q)
@@ -1316,7 +1316,7 @@ func _hunt_sigil(tgt: Dictionary) -> void:
 	tgt["_hunt_sigil"] = s
 	var kk: Dictionary = tgt
 	# 跟随: 每帧把印记挪到目标脚下; 标记到期(或目标死)自毁
-	var tw = s.create_tween().set_loops()
+	var tw = battle._reg_tween().bind_node(s).set_loops()
 	tw.tween_callback(func() -> void:
 		if not is_instance_valid(s):
 			return
@@ -1473,7 +1473,7 @@ func _tame_dramatize(trainer: Dictionary, tgt: Dictionary, arrive: float) -> voi
 	bolt.position = battle._world_pos(trainer["pos"], 1.1)
 	battle._world.add_child(bolt)
 	var kk: Dictionary = tgt
-	var tw = bolt.create_tween()
+	var tw = battle._reg_tween().bind_node(bolt)
 	tw.tween_method(func(f: float) -> void:
 		if is_instance_valid(bolt):
 			bolt.position = bolt.position.lerp(battle._world_pos(kk["pos"], 1.0), minf(1.0, f)),
@@ -1525,7 +1525,7 @@ func _tame_rune(tgt: Dictionary) -> void:
 	tgt["_tame_rune"] = s
 	battle._world.add_child(s)
 	var kk: Dictionary = tgt
-	var tw = s.create_tween().set_loops()
+	var tw = battle._reg_tween().bind_node(s).set_loops()
 	tw.tween_callback(func() -> void:
 		if not is_instance_valid(s):
 			return

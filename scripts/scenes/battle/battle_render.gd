@@ -417,7 +417,7 @@ func _update_ninja_marks() -> void:
 			m.pixel_size = (30.0 * battle.WS) / mtw
 			m.position = battle._world_pos(o["pos"], float(o.get("height", 0.0)) + 1.9)
 			battle._world.add_child(m)
-			var pt = battle.create_tween().bind_node(m).set_loops()
+			var pt = battle._reg_tween().bind_node(m).set_loops()
 			pt.tween_property(m, "modulate:a", 0.5, 0.6).set_trans(Tween.TRANS_SINE)
 			pt.tween_property(m, "modulate:a", 0.92, 0.6).set_trans(Tween.TRANS_SINE)
 			battle._follow_vfx.append({"spr": m, "unit": o, "h": 1.9})

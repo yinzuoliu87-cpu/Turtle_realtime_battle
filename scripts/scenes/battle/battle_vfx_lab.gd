@@ -104,6 +104,11 @@ var _text_on := false
 var _keep_shake := false
 var _ui_snapshot: Array = []       # post_spawn 时 _ui_layer 已有的子节点(每帧压回 hidden)
 var _shots: Array = []
+## ★墙钟拍点(秒·从建场算起)。**给会冻结游戏钟的效果用** —— 059 时停一起, `battle._t`
+##   就不走了, 排在游戏钟上的拍点全部挤在同一个 t, 定格中段一张都拍不到
+##   (我量 059 时就栽在这儿: 拿到手的 5 张全在冻结后 0.3 秒内, 差点把入停涟漪当成
+##   「一颗常驻白球」去修)。有 `wshots` 时走墙钟, 没有才走游戏钟。
+var _wshots: Array = []
 var _out_prefix := ""
 var _hold := false
 var _armed := false                # post_spawn 跑过了没(没跑过 _process 什么都别做)
@@ -160,6 +165,13 @@ func pre_build() -> bool:
 		var parts: PackedStringArray = OS.get_environment("VFXLAB_FOCUS_XY").split(",")
 		if parts.size() >= 2:
 			cfg["focus_xy"] = Vector2(float(parts[0]), float(parts[1]))
+	for _w in (cfg.get("wshots", []) as Array):
+		_wshots.append(float(_w))
+	if OS.has_environment("VFXLAB_WSHOTS"):
+		_wshots = []
+		for w in OS.get_environment("VFXLAB_WSHOTS").split(","):
+			if w.strip_edges() != "":
+				_wshots.append(float(w))
 	if OS.has_environment("VFXLAB_SHOTS"):
 		var sl: Array = []
 		for s in OS.get_environment("VFXLAB_SHOTS").split(","):
@@ -174,7 +186,7 @@ func pre_build() -> bool:
 	_text_on = OS.has_environment("VFXLAB_TEXT")
 	_keep_shake = OS.has_environment("VFXLAB_SHAKE")
 	_shots = (cfg.get("shots", []) as Array).duplicate()
-	_hold = OS.has_environment("VFXLAB_HOLD") or _shots.is_empty()
+	_hold = OS.has_environment("VFXLAB_HOLD") or (_shots.is_empty() and _wshots.is_empty())
 	_out_prefix = OS.get_environment("VFXLAB_OUT") if OS.has_environment("VFXLAB_OUT") else ("res://_vfxlab_" + case_id)
 
 	# ── 翻译成 EQDEMO_*: 摆位这条路一行都不重写 ──
@@ -205,6 +217,10 @@ func pre_build() -> bool:
 	##   参考里区内亮度只有 103%(几乎不变), 靠的是纹理对比度 +46%;
 	##   而黑场地面亮度只有 ~10, 同样的叠加算下来是 **364%**, 读成"一块板"。
 	##   **黑场适合看"特效自己长什么样", 不适合看"特效与地面的关系"。**
+	## ★配置表也能声明(不必每次手敲 env): 有些件【要看的就是世界本身】(059 时停: 全场定格),
+	##   黑场里连世界都没有, 等于把要验的东西关掉了 —— 与上一批 061 配 `ui` 同一类错。
+	if bool(cfg.get("realmap", false)):
+		OS.set_environment("VFXLAB_REALMAP", "1")
 	if not OS.has_environment("VFXLAB_REALMAP"):
 		OS.set_environment("BLACKMAP", "1")     # 环境背景纯黑(复用已有 env)
 	OS.set_environment("NO_TRAINER", "1")   # 场外监视者是干扰项, 不要
@@ -329,7 +345,10 @@ func post_spawn() -> void:
 		_place_window_show()
 		print("[VFXLAB] HOLD 模式: 不拍不退。Ctrl+C / 关窗口结束。")
 	else:
-		_shot_loop()
+		if not _wshots.is_empty():
+			_wshot_loop()
+		else:
+			_shot_loop()
 
 
 # ── 暗地板: 给贴地特效一个参照面, 又不像正式地图那样有装饰/水域/礁石干扰 ──
@@ -741,6 +760,28 @@ func _start_kicks() -> void:
 	var ek: float = float(cfg.get("egg_kick", 0.0))
 	if ek > 0.0:
 		_egg_kick_loop(ek, float(cfg.get("egg_kick_iv", 2.0)))
+
+
+## 墙钟拍摄: 拍点是【从这里开始算的真实秒】, 与 `battle._t` 无关。
+## ★为什么必须有它: 时停(059)/顿帧(hit-stop)期间 `battle._t` 冻结, 游戏钟拍点排不进去。
+##   日志里同时打游戏钟与墙钟, 好一眼看出"这一张到底是冻结中的第几秒"。
+func _wshot_loop() -> void:
+	var idx := 0
+	var t0: int = Time.get_ticks_msec()
+	for w in _wshots:
+		var want_ms: int = int(float(w) * 1000.0)
+		while Time.get_ticks_msec() - t0 < want_ms:
+			await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		var img: Image = battle.get_viewport().get_texture().get_image()
+		var path: String = "%s_%d.png" % [_out_prefix, idx]
+		img.save_png(path)
+		print("[VFXLAB] wshot %d → %s   (墙钟 %.2fs / 游戏钟 %.2fs / 视口 %dx%d)" % [
+			idx, path, float(Time.get_ticks_msec() - t0) / 1000.0, battle._t,
+			img.get_width(), img.get_height()])
+		idx += 1
+	print("[VFXLAB] 完成 %d 张(墙钟), 退出。" % idx)
+	battle.get_tree().quit()
 
 
 func _shot_loop() -> void:

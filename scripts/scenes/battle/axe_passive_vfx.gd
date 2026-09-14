@@ -523,7 +523,7 @@ func _slam_core_flash(root: Node3D) -> void:
 	mi.position = Vector3(AE.TRAPEZOID_NEAR_W * 0.22, 0.05, 0.0)   # ★靠近斧头, 不是梯形中段
 	mi.material_override = _mat_solid(Color(0.88, 0.99, 1.0, 0.95), 7, true)
 	root.add_child(mi)
-	var tw := mi.create_tween()
+	var tw: Tween = battle._reg_tween().bind_node(mi)
 	tw.set_parallel(true)
 	## 0 → 满径 → 消失: 快涨(0.12s)慢散(0.26s)
 	tw.tween_method(func(v: float) -> void:
@@ -585,7 +585,7 @@ func hex_burst(root: Node3D, h: float) -> MeshInstance3D:
 	mi.material_override = _mat_vcol(Color(1.00, 0.78, 0.38, 0.88), 5)
 	root.add_child(mi)
 	## 橙 → 白灰渐隐(参考里就是这个走向)
-	var tw := mi.create_tween()
+	var tw: Tween = battle._reg_tween().bind_node(mi)
 	tw.tween_method(func(v: float) -> void:
 			if not is_instance_valid(mi):
 				return
@@ -752,7 +752,7 @@ func charge_clear(root, flash: bool = false) -> void:
 		## ★砸下瞬间网格提亮一档(参考 121.94s 边线变红、整片开始发亮), 但仍是网格不是实心板
 		(fill as MeshInstance3D).material_override = _mat_vcol(
 			Color(1.0, 0.62, 0.30, 0.30), 2)
-	var tw := n.create_tween()
+	var tw: Tween = battle._reg_tween().bind_node(n)
 	## ★hold 0.55: 前 55% 保持满亮 —— 闪光的意义就是"被看见", 一出生就淡等于没闪。
 	tw.tween_method(func(v: float) -> void:
 			if not is_instance_valid(n):
@@ -845,7 +845,7 @@ func _play_sheet(path: String, pos2d: Vector2, height_m: float, size_px: float,
 func _animate_sheet(s: Sprite3D, nf: int, dur: float, col: Color) -> void:
 	if not is_instance_valid(s):
 		return
-	var tw := s.create_tween()
+	var tw: Tween = battle._reg_tween().bind_node(s)
 	tw.set_parallel(true)
 	## 帧序: 0 → nf-1 线性。**不 drop 最后一帧** ——
 	## memory [[fb-weld-visual-lessons-into-gate]]: 「6 帧只播 5 帧」的真凶就是 drop_last。

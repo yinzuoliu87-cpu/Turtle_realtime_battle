@@ -801,7 +801,7 @@ func _build_far_fish(holder: Node3D) -> void:
 		var x0: float = -span * 0.5 * dir + rng.randf_range(-14.0, 14.0)
 		school.position = Vector3(x0, yy, zz)
 		var dur: float = span / rng.randf_range(1.4, 2.6)         # 远的慢 → 视差
-		var tw = school.create_tween().set_loops()
+		var tw = battle._reg_tween().bind_node(school).set_loops()
 		tw.tween_property(school, "position:x", x0 + span * dir, dur)
 		tw.tween_callback(func() -> void:
 			if is_instance_valid(school):
@@ -842,7 +842,7 @@ func _build_far_bubbles(holder: Node3D) -> void:
 			holder.add_child(bs)
 			var rise: float = rng.randf_range(2.0, 2.7)
 			var dur: float = rng.randf_range(3.2, 5.0)
-			var tw = bs.create_tween().set_loops()
+			var tw = battle._reg_tween().bind_node(bs).set_loops()
 			tw.tween_interval(float(i) * dur / 7.0)          # 同口内错峰 → 连成一串而不是齐射
 			tw.tween_property(bs, "position:y", rise, dur)
 			tw.parallel().tween_property(bs, "modulate:a", 0.0, dur).set_delay(dur * 0.55)

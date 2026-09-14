@@ -616,7 +616,7 @@ func _sk_headless_soul_charge(u: Dictionary) -> void:           # 无头·灵魂
 	battle._world.add_child(fl)
 	u["_soul_spr"] = fl
 	var uref: Dictionary = u
-	var lt = battle.create_tween().set_loops()
+	var lt = battle._reg_tween().set_loops()
 	lt.bind_node(fl)
 	lt.tween_method(func(q: float) -> void:
 		if not is_instance_valid(fl): return

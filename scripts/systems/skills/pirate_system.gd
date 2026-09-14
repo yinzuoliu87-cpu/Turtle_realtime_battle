@@ -151,7 +151,7 @@ func _pirate_get_ship(u: Dictionary) -> Sprite3D:   # 该海盗的持久演出�
 
 func _pirate_ship_bob(ship: Sprite3D) -> void:   # 驻场轻摇(海浪起伏)
 	var base_y: float = ship.position.y
-	var bob = ship.create_tween().set_loops()
+	var bob = battle._reg_tween().bind_node(ship).set_loops()
 	bob.tween_property(ship, "position:y", base_y + 0.22, 1.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	bob.tween_property(ship, "position:y", base_y, 1.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	ship.set_meta("bob_tw", bob)   # 存bob供冲锋时杀掉
