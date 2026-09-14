@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bd5eogu6f2kxh"
-path="res://.godot/imported/ts-vortex.png-ba1bce698e58827aa855537b12119af4.ctex"
+uid="uid://d085k07vbaml5"
+path="res://.godot/imported/ts-core.png-98894dece472abff62f58f30bc859207.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/vfx/ts-vortex.png"
-dest_files=["res://.godot/imported/ts-vortex.png-ba1bce698e58827aa855537b12119af4.ctex"]
+source_file="res://assets/sprites/vfx/ts-core.png"
+dest_files=["res://.godot/imported/ts-core.png-98894dece472abff62f58f30bc859207.ctex"]
 
 [params]
 

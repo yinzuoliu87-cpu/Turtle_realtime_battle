@@ -37,7 +37,7 @@ const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 
 ## 这三类在时停期间**允许**变化，各有理由（见段头）。
 const ALLOW := {
-	"_timestop": "时停系统自己：在倒计时(_ts_remaining)、在推自己的演出(_ts_sand_t/_ts_vortex_t)",
+	"_timestop": "时停系统自己：在倒计时(_ts_remaining)、在推自己的演出(_ts_sand_t/_ts_wave_t/_ts_core_t)",
 	"_ballistics": "携带者的弹道在途表：文案写着「伤害即时结算」，只推 active 的那批",
 	"_damage": "伤害统计累加器：携带者打出的伤害要记账",
 	"_render": "纯渲染侧（相机/抖动/帧计数），不是战斗状态",
@@ -48,6 +48,8 @@ const ALLOW := {
 
 var _s = null
 var _n := 0
+## 时停持有者的单位字典 —— 扫描时跳过【它本人】(见 `_is_carrier` 注释)
+var _carriers: Array = []
 var _fail := 0
 
 
@@ -58,6 +60,21 @@ func _ok(t: String, c: bool, ex: String = "") -> void:
 	else:
 		_fail += 1
 		print("  [FAIL] %s  %s" % [t, ex])
+
+
+## ★★时停持有者【本人】的单位字典不进指纹。
+##   由来(2026-09-15): 全域差分连红 3 次, 诊断拍平后是 `_spec._bal.sb1.probe_decay.u._sep_target` 新增了键 `_st_heal` ——
+##   石头龟(非携带者)的 `_sep_target` 引用着携带者的单位字典, 携带者在时停里第一次被治疗, 统计字段被创建,
+##   扫描顺着引用扫到了它。那是【携带者自己的动作】(白名单第二类), 不是冻结漏了。
+##   ★只跳持有者本人(is_same 比), 不跳所有单位 —— 宽一格就把「非携带者被改了」也放过去。
+##   反向验证: 撤掉主场景「时停期间门住全场每帧 tick」那道闸, 本条照样红。
+func _is_carrier(d: Dictionary) -> bool:
+	if not (d.has("id") and d.has("side")):
+		return false
+	for c in _carriers:
+		if is_same(c, d):
+			return true
+	return false
 
 
 ## 把任意值递归摘成一个数字指纹。★只摘**数**（float/int/bool/Vector/Color），
@@ -85,6 +102,8 @@ func _fp(v, depth: int) -> float:
 		return acc + float(a.size()) * 0.5
 	if t == TYPE_DICTIONARY:
 		var d: Dictionary = v
+		if _is_carrier(d):
+			return 0.0
 		var acc2 := 0.0
 		var ks: Array = d.keys()
 		## ★键排序: 字典遍历顺序在两次快照之间可能不同, 不排序会读出假变化
@@ -119,6 +138,63 @@ func _snap() -> Dictionary:
 					and qt != TYPE_VECTOR2 and qt != TYPE_VECTOR3:
 				continue
 			out[pn + "." + qn] = _fp((obj as Object).get(qn), 0)
+	return out
+
+
+## 同 `_snap` 的扫描范围与深度, 但把每个字段拍平成「路径 → 数」—— 只在判据红了之后用来看「到底哪个数变了」。
+## ★深度上限与 `_fp` 相同(4): 单位字典互相引用成环(CLAUDE.md §3.2), 不设上限会无限递归。
+func _flat(v, path: String, depth: int, out: Dictionary) -> void:
+	if depth > 4 or out.size() > 4000:
+		return
+	var t := typeof(v)
+	if t == TYPE_FLOAT or t == TYPE_INT:
+		out[path] = float(v)
+	elif t == TYPE_BOOL:
+		out[path] = 1.0 if v else 0.0
+	elif t == TYPE_VECTOR2 or t == TYPE_VECTOR3 or t == TYPE_COLOR:
+		out[path] = _fp(v, 0)
+	elif t == TYPE_ARRAY:
+		var a: Array = v
+		for i in range(mini(a.size(), 64)):
+			_flat(a[i], "%s[%d]" % [path, i], depth + 1, out)
+	elif t == TYPE_DICTIONARY:
+		var d: Dictionary = v
+		if _is_carrier(d):
+			return
+		var ks: Array = d.keys()
+		ks.sort_custom(func(x, y): return str(x) < str(y))
+		## ★键名清单也记下来: `_fp` 会把字典的【键数量】算进指纹, 而第 5 层的值一律算 0 ——
+		##   一个值是字符串/对象的键被加上或删掉, 指纹会变, 但拍平的数字一个都不会变
+		##   (2026-09-15 第二版诊断就是这样打出「变了 0 处」的)。
+		var names: PackedStringArray = []
+		for k in ks:
+			names.append(str(k))
+		out[path + "#keys"] = ",".join(names)
+		for i in range(mini(ks.size(), 64)):
+			_flat(d[ks[i]], "%s.%s" % [path, str(ks[i])], depth + 1, out)
+
+
+func _snap_raw() -> Dictionary:
+	var out: Dictionary = {}
+	for p in _s.get_property_list():
+		var pn: String = str(p.get("name", ""))
+		if not pn.begins_with("_") or ALLOW.has(pn):
+			continue
+		var obj = _s.get(pn)
+		if not (obj is RefCounted):
+			continue
+		for q in (obj as Object).get_property_list():
+			var qn: String = str(q.get("name", ""))
+			if qn == "battle" or qn == "script" or qn == "" or qn.begins_with("Ref"):
+				continue
+			var qt: int = int(q.get("type", 0))
+			if qt != TYPE_FLOAT and qt != TYPE_INT and qt != TYPE_BOOL \
+					and qt != TYPE_ARRAY and qt != TYPE_DICTIONARY \
+					and qt != TYPE_VECTOR2 and qt != TYPE_VECTOR3:
+				continue
+			var leaves: Dictionary = {}
+			_flat((obj as Object).get(qn), "", 0, leaves)
+			out[pn + "." + qn] = leaves
 	return out
 
 
@@ -164,7 +240,14 @@ func _ready() -> void:
 	await _wait(40)
 
 	_s._units.clear()
-	var carrier: Dictionary = _mk("fortune", "left", -200.0, 3)
+	## ★★沙漏**先不装**(star=0), 到手动触发那一刻才装上。
+	##   由来(2026-09-15): 这条门禁独立跑 3/3 全过, 却在并行门禁里红过一次。
+	##   独立跑每帧 ~0.016 秒, 时停前那 170 帧只走 2.7 秒; 并行负载下每帧被钳到 0.1 秒
+	##   ⇒ 170 帧 = 17 秒, **越过沙漏的天然触发点 10 秒**, 时停会自己先放出来,
+	##   污染「时停之前」的分母。钉 `_t=9.5` 探针确认天然触发确实会先放(手动前 _ts_fired=true)。
+	##   ⚠ 如实记: 那次钉钟的探针**并没有复现出红** —— 所以这是一个被证实的暴露,
+	##     但**不能说它就是那次红的原因**。堵它是因为它会让判据读错, 不是因为它已被定罪。
+	var carrier: Dictionary = _mk("fortune", "left", -200.0, 0)
 	var other: Dictionary = _mk("stone", "right", 260.0, 0)
 	## 把场上尽量摆满: 触手 / 直升机 / 一笔会衰减的余额 —— 让扫描有东西可扫
 	_s._tentacle_vfx.ensure_forced("right", 2)
@@ -189,6 +272,10 @@ func _ready() -> void:
 	print("     [探针] 时停前在变的(前 10): %s" % str(pre.slice(0, 10)))
 
 	var ts = _s._timestop
+	_ok("★分母④: 手动触发之前时停【没有】自己放过(_ts_fired=%s)" % str(ts._ts_fired),
+		not bool(ts._ts_fired) and (ts._ts_active as Array).is_empty(),
+		"天然触发先放了 ⇒ 「时停之前」那两次快照其实是在时停里取的, 分母② 读错了")
+	carrier["equips"] = [{"id": "p2eq_059", "star": 3}]   # 到这一刻才装上沙漏
 	_s._t = 999.0
 	ts._ts_update_trigger(0.016)
 	ts._ts_update_trigger(10.0)
@@ -196,12 +283,46 @@ func _ready() -> void:
 		% [(ts._ts_active as Array).size(), float(ts._ts_remaining)],
 		not (ts._ts_active as Array).is_empty() and float(ts._ts_remaining) > 5.0,
 		"没进时停 ⇒ 下面是空检查")
+	_carriers = (ts._ts_active as Array).duplicate()
+	_ok("★分母⑤: 跳过的只有时停持有者本人(%d 个), 非携带者那只【不在】里面" % _carriers.size(),
+		_carriers.size() == 1 and is_same(_carriers[0], carrier) and not _is_carrier(other),
+		"跳多了 ⇒ 非携带者被改也看不见")
 	await _wait(50)   # 让入停那一下的演出自己跑完
 
 	var b0: Dictionary = _snap()
+	var raw0: Dictionary = _snap_raw()
 	await _wait(120)
 	var b1: Dictionary = _snap()
+	var raw1: Dictionary = _snap_raw()
 	var dur: Array = _diff(b0, b1)
+	## ★红的时候把变了的字段前后原始值打出来 —— 指纹只说「变了」, 不说「谁、哪一笔、怎么变」。
+	##   由来(2026-09-15): `_spec._bal` 在时停期间连红 3 次, 指纹里看不出是哪个单位的哪笔余额。
+	##   ★第一版打原始字符串(截 600 字), 只看到余额条目里存着整个单位字典 —— 看不到是哪个数变了。
+	##     ⇒ 拍平成「路径 → 数」逐条比, 只打不同的那几条。
+	for dk in dur:
+		var diffs: Array = []
+		var f0: Dictionary = raw0.get(dk, {})
+		var f1: Dictionary = raw1.get(dk, {})
+		for pk in f1.keys():
+			if str(pk).ends_with("#keys") and f0.has(pk) and str(f0[pk]) != str(f1[pk]):
+				var s0: PackedStringArray = str(f0[pk]).split(",")
+				var s1: PackedStringArray = str(f1[pk]).split(",")
+				var added: Array = []
+				var removed: Array = []
+				for nm in s1:
+					if not s0.has(nm):
+						added.append(nm)
+				for nm in s0:
+					if not s1.has(nm):
+						removed.append(nm)
+				diffs.append("%s 新增键 %s · 少了键 %s" % [pk, str(added), str(removed)])
+			elif not f0.has(pk) or str(f0[pk]) != str(f1[pk]):
+				diffs.append("%s: %s → %s" % [pk, str(f0.get(pk, "无")), str(f1[pk])])
+		for pk in f0.keys():
+			if not f1.has(pk):
+				diffs.append("%s: %s → 无" % [pk, str(f0[pk])])
+		diffs.sort()
+		print("     [探针] %s 变了 %d 处: %s" % [dk, diffs.size(), str(diffs.slice(0, 12))])
 	_ok("★★ 时停期间【全部系统状态】一个字段都不变(实测 %d 个变了, 时停前是 %d 个)"
 		% [dur.size(), pre.size()],
 		dur.is_empty(),
