@@ -1530,6 +1530,8 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false,
 		#    (十个钩子 × 十七行), 那正是"手抄的副本必然落后"。这里查一次 B4_OWNER 表就够。
 		var _b4h = _b4(iid)
 		if _b4h != null:
+			## 批④钩子不带 basic(改签名要动六个系统) ⇒ 同 `_b4_dot` 的做法挂在攻击者身上(082 附带魔伤只认普攻命中·D5)
+			src["_b4_basic"] = basic
 			_b4h.on_hit(src, tgt, float(dmg), iid, si)
 		match iid:
 			"p2eq_004":   # 暴君之牙: 处决<斩杀线敌 (削弱·用户2026-07-23: 斩杀线 4/6/12% ×(1+暴击率), 原 5/7/10%+10/15/40%×暴击)

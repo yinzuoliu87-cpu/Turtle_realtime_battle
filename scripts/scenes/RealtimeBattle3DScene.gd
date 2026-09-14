@@ -2297,6 +2297,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 				##   而 024/025/026 这类装备的伤害走的正是这个共享延时队列 ——
 				##   不推它, 携带者在时停里打出的那几下要等解除后才落地。
 				_equip_tick_sys.tick_delayed(dt)
+				_equip_sys._blade_sys.tick_ts(dt, _timestop._ts_active)   # 084 持有者自己的十字斩(第九批 D4)
 				_gold_vfx.tick(dt)                       # 金弹演出自推进(不用 tween, §3.5)
 				_incense_vfx.tick(dt)                    # 093 香火石演出自推进(同上)
 				_check_end()
@@ -2327,6 +2328,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 ## Phase4: 纯演出(立绘帧动画/相机/overlay·每帧一次)。frozen/in_ts 与 _sim_step 用同一份(sim前捕获)。
 const _TS_TIMER_FIELDS := [
 	"_anim_lock_until",
+	"_b84_lock_until",
 	"_mark_until",
 	"_ninja_dash_until",
 	"bind_until",

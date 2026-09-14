@@ -692,14 +692,38 @@ func _spawn_tower(owner: Dictionary, si: int, hp: float, atk: float, res: float)
 ## ⇒ 每秒攻击次数 = 那个乘子 / atk_interval。
 ## ★没有把 `hunter` 的"残血追猎 ×1.5"抄进来: 那一条要**当前攻击目标**才判得出来,
 ##   而炮台跟随的是"携带者的攻速属性", 不是"携带者这一下打的是谁"。
+## ★★2026-09-15 第九批 D8: 原来这里把 `battle._damage.aspd_mult` 的五项(急速 × 减速 × 永久攻速 × 沉锚 ×
+##   058 炮台)逐项手抄了一遍 —— 今天值相等, 但以后给攻速加任何新乘数, 炮台都不会跟上
+##   (memory fb-hand-rolled-copies-drift)。⇒ 直接调标准合成函数。
 func carrier_aps(owner: Dictionary) -> float:
 	var iv: float = maxf(0.05, float(owner.get("atk_interval", 1.0)))
-	var m: float = float(owner.get("aspd_perm", 1.0)) * battle._anchor_aspd(owner) * float(owner.get("_turret_aspd_mult", 1.0))
-	if battle._t < float(owner.get("haste_until", 0.0)):
-		m *= maxf(1.0, float(owner.get("haste_mult", 1.0)))
-	if battle._t < float(owner.get("spd_dbf_until", 0.0)):
-		m *= float(owner.get("spd_aspd_mult", 1.0))
-	return maxf(0.1, m) / iv
+	return battle._damage.aspd_mult(owner) / iv
+
+
+## ★第九批 D7(2026-09-15): 把读数写一份镜像到【携带者】的 eq_state。
+##   装备图标框(EquipReadouts)只读携带者身上的字段, 而直升机龟能存在直升机字典里、
+##   炮台的金弹计数存在炮台单位身上 ⇒ 调查时这两件在图标框里零读数。
+func _owner_mirror(owner, eid: String, field: String, v: float) -> void:
+	if not (owner is Dictionary):
+		return
+	var es: Dictionary = (owner as Dictionary).get("eq_state", {})
+	var s: Dictionary = es.get(eid, {})
+	s[field] = v
+	es[eid] = s
+	(owner as Dictionary)["eq_state"] = es
+
+
+## 080 直升机的独立龟能(分母是常量 HELI_EN_MAX = 100, 直接挂)。
+func _heli_en_mirror(h: Dictionary) -> void:
+	_owner_mirror(h.get("owner", null), "p2eq_080", "heli_en", float(h.get("energy", 0.0)))
+
+
+## 079 炮台 → 它的携带者(出弹函数只拿得到炮台单位)。is_same 比, 不用 ==(单位字典互相引用)。
+func _tower_owner(t: Dictionary):
+	for e in _towers:
+		if is_same(e["u"], t):
+			return e["owner"]
+	return null
 
 
 func _tick_towers(delta: float) -> void:
@@ -772,6 +796,10 @@ func _tower_bullet(t: Dictionary, si: int) -> void:
 		vfx.heal_beam(Vector2(t["pos"]), Vector2(low["pos"]), COL_HEAL, golden,
 			GunEqVfx.sprite_h(t, TOWER_MUZZLE_FRAC), GunEqVfx.body_mid_h(low))
 	vfx.tower_charge(t, int((t.get("_gun_shot_ct", {}) as Dictionary).get("p2eq_079", 0)), per_gold)
+	## ★图标框读数(D7): 金弹进度 0~100。每几发一金弹随枪羁绊档位变(4/3/2) ⇒ 分母不是常量, 归一化(同 081 chg_pct)。
+	##   用上面已经算好的 per_gold, 不再抄一份档位表; 羁绊没激活时 `_queue_shots` 不计数 ⇒ 恒 0。
+	_owner_mirror(_tower_owner(t), "p2eq_079", "gold_pct",
+		float(int((t.get("_gun_shot_ct", {}) as Dictionary).get("p2eq_079", 0))) / float(maxi(1, per_gold)) * 100.0)
 
 
 ## 生命【百分比】最低的友军。★契约 §4 全表通用口径: **一律排除龟蛋与训龟大师**。
@@ -908,6 +936,7 @@ func _heli_bullet(h: Dictionary, scale: float) -> void:
 		battle._damage._apply_damage_from(owner, tgt, battle._atk_dmg(owner, scale, tgt), COL_PHYS, 0.0, false, true)
 		owner["_golden_pct"] = _sv
 		h["energy"] = minf(HELI_EN_MAX, float(h.get("energy", 0.0)) + HELI_EN_PER_HIT)
+		_heli_en_mirror(h)                           # 图标框读数(D7)
 		_heli_check_bomb(h)
 	, owner, "", Callable(), _fly)
 
@@ -1014,6 +1043,7 @@ func _heli_begin_bomb(h: Dictionary) -> void:
 	h["bomb_t"] = 0.0
 	h["bombs"] = 0
 	h["energy"] = 0.0
+	_heli_en_mirror(h)                               # 起飞轰炸清零, 图标框跟着归零(D7)
 	vfx.lane_marker(Vector2(h["lane_a"]), Vector2(h["lane_b"]), BOMB_LANE_W)
 
 

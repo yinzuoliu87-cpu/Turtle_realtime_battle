@@ -605,9 +605,16 @@ static func const_of(ref: String) -> String:
 	if as_pct and (v is float or v is int):
 		return _fmt_num(float(v) * 100.0)
 	if v is Array:
+		## ★结尾带 % 的数组也要逐项 ×100。原来只对标量乘、数组原样输出 ⇒
+		##   084 手半剑文案显示「0.03/0.06/0.1% 增伤」, 实际是 3/6/10%(宝箱龟治疗同病)。
+		##   2026-09-15 全仓扫过: 418 个带 % 的占位符里数组只有 3 个, 全部存的是小数比例,
+		##   没有「存整数百分比的数组」会被错乘。
 		var parts: PackedStringArray = []
 		for x in (v as Array):
-			parts.append(_fmt_num(x))
+			if as_pct and (x is float or x is int):
+				parts.append(_fmt_num(float(x) * 100.0))
+			else:
+				parts.append(_fmt_num(x))
 		return "/".join(parts)
 	return _fmt_num(v)
 

@@ -94,9 +94,17 @@ def expand(t, cmap):
         if v is None:
             return m.group(0)
         if m.group(3) == "%":
+            ## ★★数组(const_map 已拼成 a/b/c)也要逐项 ×100 —— 与游戏 `SkillText.const_of` 同一条规则。
+            ##   原来这里 `float("0.03/0.06/0.1")` 抛 ValueError ⇒ 被 except 接住**原样留下占位符** ⇒
+            ##   快照里存的是没展开的 `{C:EqBladeBatch.HH_MELEE_AMP%}`, 不是玩家看到的字。
+            ##   于是游戏里显示「0.03/0.06/0.1%」这条审计从来没看见(2026-09-15 第九批 D1)。
+            ##   round(…, 6): 0.03×100 = 3.0000000000000004, 不修整会渲成长尾小数(游戏侧用 is_equal_approx)。
             try:
-                f = float(v) * 100.0
-                return str(int(f)) if f == int(f) else str(f)
+                parts = []
+                for x in str(v).split('/'):
+                    f = round(float(x) * 100.0, 6)
+                    parts.append(str(int(f)) if f == int(f) else str(f))
+                return '/'.join(parts)
             except ValueError:
                 return m.group(0)
         return v

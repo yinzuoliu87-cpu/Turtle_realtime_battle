@@ -144,6 +144,20 @@ func _record_buckets(src, u: Dictionary, dmg: int, bkt: String, was_crit: bool) 
 	battle._st_add_type(u, "_st_taken_by_type", bkt, dmg)
 
 
+## 【额外真伤】记账: 墨迹 / 金弹·火控 / 腐蚀这类「在名义伤害之外另加进扣血」的真伤, 统一走这里。
+## ★由来(2026-09-15 第九批 D3): 墨迹早就这么记了(单独进账 + 真伤分桶), 金弹与腐蚀却只加进扣血、不进账 ⇒
+##   一段 100 带 60% 金弹, 目标掉血 160 而 `_st_taken`/`_st_dealt` 只 +100; 085 压电按账差分, 该转 30 实转 15。
+##   三处各抄一份记账就是第三次手抄(memory fb-hand-rolled-copies-drift) ⇒ 抽成这一个。
+func _record_extra_true(src, u: Dictionary, amt: int) -> void:
+	if amt <= 0:
+		return
+	u["_st_taken"] = int(u.get("_st_taken", 0)) + amt
+	battle._st_add_type(u, "_st_taken_by_type", "tru", amt)
+	if src is Dictionary and src.has("side") and not is_same(src, u):
+		src["_st_dealt"] = int(src.get("_st_dealt", 0)) + amt
+		battle._st_add_type(src, "_st_dealt_by_type", "tru", amt)
+
+
 ## ★`_col` 的下划线 = **它不生效**，2026-09-05 起。
 ##   飘字颜色只由 `bucket` 决定（见下方 `_fcol` 那段长注释）；这个参数留着只是为了
 ##   不动 27 个调用点。**同 `_apply_damage_from` 的 `_col`（227 处白传，v0.19.328）**——
@@ -171,8 +185,10 @@ func _apply_damage(u: Dictionary, dmg: int, _col: Color, src = null, bucket: Str
 	# ⚠ 两条伤害路径【都要加】—— _apply_damage(DoT/真伤) 与 _apply_damage_from(普攻/技能)
 	#   各自独立扣血(CLAUDE.md §3.3), 只改一条会产生"只在某类伤害下才转真伤"的诡异行为。
 	var _cor: float = BowSynergySystem.true_share(u)
+	var _cor_true_dot: float = 0.0
 	if _cor > 0.0 and bucket != "tru":   # ★这条路(_apply_damage)没有 raw 参数, 用 bucket 判真伤
 		d += float(dmg) * _cor                       # 名义伤害的 25% 直接加进扣血(不经护甲/护盾)
+		_cor_true_dot = float(dmg) * _cor
 	# ★新钩子【受到致命伤害时】(装备 063 幽影墨囊 · 用户拍板 U6-A): 减伤之后、扣血之前判。
 	# ⚠ 两条伤害路径【都要挂】(CLAUDE.md §3.3) —— 只挂一条 = "只有被普攻打死才救得回来"。
 	if u.get("_ink_sac", false) and d > 0.0 and float(u["hp"]) - d <= 0.0:
@@ -196,6 +212,7 @@ func _apply_damage(u: Dictionary, dmg: int, _col: Color, src = null, bucket: Str
 	##   ⇒ 改调共用函数, 与另一条路同源。was_crit 恒 false: 这条路是 DoT/真伤, 本就不暴击。
 	##   门禁 `verify_dmg_paths_agree` ① 守这条(修之前它是红的)。
 	_record_buckets(src, u, dmg, bucket, false)
+	_record_extra_true(src, u, int(round(_cor_true_dot)))   # 腐蚀转的真伤也进账(D3)
 	# ★DOT 累积模式(点1): 不跳小飘字, 累加进头顶【按伤害类型桶】的常驻数字(灼烧+中毒同 mag 桶)。
 	if dot_accum:
 		_dot_accumulate(u, bucket, dmg)
@@ -368,8 +385,10 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 	# ★与金弹【叠加】—— 一发金弹 + 火控 = 两段额外真伤, 这是原设计的意思(两条来源不同)。
 	if src is Dictionary:
 		_gold += float(src.get("_fire_ctrl", 0.0))
+	var _gold_true: float = 0.0
 	if _gold > 0.0 and not raw:
 		d += float(dmg) * _gold
+		_gold_true = float(dmg) * _gold
 	var shield_before: float = u["shield"]
 	# 护盾吸收【全类型】伤害(物理/法术/真实): 1:1 回合制 damage.gd「真伤(true)也走护盾」+ 用户2026-07-11「真伤/反伤真伤要被盾档」。
 	#   真伤只无视护甲/魔抗/减伤(见上方 not raw 分支), 但护盾照吸。唯一穿盾=墨迹(_ink_true·在护盾后单独加·由线条被动设计)。
@@ -380,8 +399,10 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 	# ⚠ 两条伤害路径【都要加】—— _apply_damage(DoT/真伤) 与 _apply_damage_from(普攻/技能)
 	#   各自独立扣血(CLAUDE.md §3.3), 只改一条会产生"只在某类伤害下才转真伤"的诡异行为。
 	var _cor: float = BowSynergySystem.true_share(u)
+	var _cor_true: float = 0.0
 	if _cor > 0.0 and not raw:
 		d += float(dmg) * _cor                       # 名义伤害的 25% 直接加进扣血(不经护甲/护盾)
+		_cor_true = float(dmg) * _cor
 	# ★新钩子【受到致命伤害时】(装备 063 幽影墨囊 · 用户拍板 U6-A) —— 与 _apply_damage 同一位置的另一半(§3.3)
 	if u.get("_ink_sac", false) and d > 0.0 and float(u["hp"]) - d <= 0.0:
 		d = battle._equip_sys._eq_ink_sac(u, d)
@@ -412,11 +433,9 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 	if _ink_true >= 0.5:   # ★墨迹(线条被动)真伤单独跳白字+计真伤桶(用户2026-07-18"墨迹真伤没生效"): 原折进d扣血但不跳字不计统计→看着像没生效; 现显式可见=真的在打
 		var _iv = int(round(_ink_true))
 		battle._vfx._float_text(u["pos"] + Vector2(0.0, -34.0), str(_iv), battle._VC.color_of(battle._VC.cls_for("damage", "true", false)), false, "damage", "true", -_jdir)
-		u["_st_taken"] = int(u.get("_st_taken", 0)) + _iv
-		battle._st_add_type(u, "_st_taken_by_type", "tru", _iv)
-		if src is Dictionary and src.has("side") and not is_same(src, u):
-			src["_st_dealt"] = int(src.get("_st_dealt", 0)) + _iv
-			battle._st_add_type(src, "_st_dealt_by_type", "tru", _iv)
+		_record_extra_true(src, u, _iv)
+	## ★金弹·火控与腐蚀的额外真伤进账(D3): 同 `dmg` 记名义值(金弹那份在盾前加、腐蚀在盾后加), 只补账不跳字。
+	_record_extra_true(src, u, int(round(_gold_true + _cor_true)))
 	# 泡泡束缚(bubbleBind): 束缚期间每受一段伤害 → 永久 -X 护甲/魔抗 (单次累计上限各30)
 	if battle._t < u.get("bind_until", 0.0):
 		var _sx: float = float(u.get("bind_shred", 0.0))

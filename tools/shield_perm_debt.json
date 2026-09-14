@@ -7,7 +7,6 @@
   "scripts/systems/equip/axe_system.gd::cast_heal",
   "scripts/systems/equip/axe_system.gd::steal_shield",
   "scripts/systems/equip/eq_arcane_batch.gd::_stele_settle",
-  "scripts/systems/equip/eq_blade_batch.gd::_b81_raise",
   "scripts/systems/equip/eq_bow_batch.gd::on_basic_074",
   "scripts/systems/equip/eq_food_batch.gd::_cake_eat",
   "scripts/systems/equip/equip_system.gd::_eq_broadsword",

@@ -369,9 +369,12 @@ func _tick_sextant(u: Dictionary, delta: float, si: int) -> void:
 				fired += 1
 	if fired > 0:
 		st["shots"] = int(st.get("shots", 0)) + fired
+		## ★图标框读数(第九批 D7): 离终极射线还差几次。阈值随星级 40/30/20 ⇒ 分母不是常量, 存 0~100 镜像
+		st["shots_pct"] = float(st["shots"]) / float(need) * 100.0
 		u["_sext_shots"] = int(st["shots"])               # 同步证据
 		if int(st["shots"]) >= need:
 			st["shots"] = 0
+			st["shots_pct"] = 0.0
 			u["_sext_shots"] = 0
 			sext_ultimate(u, si)
 	vfx.sextant_sync(u, drones, SEXT_ORBIT_R)

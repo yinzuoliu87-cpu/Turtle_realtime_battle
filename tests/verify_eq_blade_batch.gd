@@ -151,6 +151,8 @@ func _ready() -> void:
 	_t_stats()
 	_t081_charge()
 	_t081_guard()
+	_t081_shield_expiry()
+	_t084_timestop_holder()
 	_t081_dot_and_stars()
 	_t082_reflect()
 	_t082_dot_gate()
@@ -346,6 +348,91 @@ func _t081_guard() -> void:
 		absf(_charge081(u) - 700.0) < 0.51, "charge=%.1f" % _charge081(u))
 
 
+## ① 081 · 第九批 D2: 护盾随落盾到期、不跨次叠加
+## ★由来(2026-09-15 调查): `_grant_shield` 没传时长 ⇒ 永久盾。探针: 落盾 30 秒后盾仍 160, 第二次举盾叠到 320。
+##   文案写的是「举盾 … 秒, **期间**获得 60/100/160 护盾值」。
+## ★★不能接在 `_t081_guard` 后面判: 那一段举盾后立刻挨了 2000, 160 盾当场被打光 ⇒
+##   「落盾后盾为 0」在那里是恒真式。⇒ 单开一段: 举盾后不再挨打, 先确认 3.4 秒时盾还是满的(分母), 再推到到期。
+func _t081_shield_expiry() -> void:
+	print("── ① 081 · D2: 护盾随落盾到期 / 连续两次举盾不叠加 ──")
+	_s._units.clear()
+	var u: Dictionary = _mk("fortune", "left", Vector2(-200.0, 0.0), 10000.0)
+	var atk: Dictionary = _mk("fortune", "right", Vector2(200.0, 0.0))
+	_equip(u, "p2eq_081", 3)
+	_spawn_all()
+	u["shield"] = 0.0
+	_hit(atk, u, 3000)   # 3★ 阈值 = 30% × 10000 ⇒ 举盾
+	_ok("① D2 ★分母: 举盾拿到 160 盾(3★)(实测 %.1f)" % float(u["shield"]),
+		_blade().b81_guarding(u) and absf(float(u["shield"]) - 160.0) < 0.51, "")
+	_s._t += 3.4
+	_s._equip_sys._eq_tick(u, 0.016)
+	_s._tick_periodic_passive(u, 0.016)
+	_ok("① D2 ★分母: 3.4 秒还在举盾、盾还是满的 160(实测 %.1f · 盾没被别的原因先清掉)" % float(u["shield"]),
+		_blade().b81_guarding(u) and absf(float(u["shield"]) - 160.0) < 0.51, "")
+	_s._t += 0.2
+	_s._equip_sys._eq_tick(u, 0.016)
+	_s._tick_periodic_passive(u, 0.016)   # 真入口: 限时盾到期在主场景 `_tick_periodic_passive` 里扣
+	_ok("① D2 落盾时护盾跟着到期(剩 %.1f, 应为 0)" % float(u["shield"]),
+		not _blade().b81_guarding(u) and float(u["shield"]) < 0.51,
+		"永久盾 ⇒ 文案「期间获得」变成一直有")
+	_s._t += 30.0
+	_s._tick_periodic_passive(u, 0.016)
+	## ★★第二次举盾【不能用挨打触发】: 触发的那一下伤害会先把残留的旧盾打光再举盾 ⇒
+	##   就算是永久盾, 结果也是 0 + 160 = 160 —— 叠加被那一下伤害藏住了, 判据恒真。
+	##   (2026-09-15 反向验证 Z33 抓到: 去掉时长后这条照样绿。)
+	##   ⇒ 直接调举盾本体 `_b81_raise`(它本来就是给门禁的同步入口, 是效果本体不是标记)。
+	_blade()._b81_raise(u, 2)
+	_ok("① D2 第二次举盾盾值是 160 不是 320(实测 %.1f)" % float(u["shield"]),
+		_blade().b81_guarding(u) and absf(float(u["shield"]) - 160.0) < 0.51,
+		"上一次的盾没到期 ⇒ 叠加")
+
+
+## ④ 084 · 第九批 D4: 时停持有者自己放十字斩, 时停里就结算、人不被锁; 非持有者的招照样冻着。
+## ★由来(2026-09-15 调查): 十字斩的分段结算 / 剑波 / 后撤挂在全场每帧 tick 里, 时停时整块不跑,
+##   分段时刻与锁定又拿冻结的 `battle._t` 比 ⇒ 持有者在时停中推 2 秒伤害 +0、人一直被锁, 解除后才 +1482。
+##   与 059「只有携带者能自由攻击/施法/移动, 伤害即时结算」冲突。
+## ★走真入口 `_sim_step(dt, false, true)` 的时停分支, 不直接调推进函数。
+func _t084_timestop_holder() -> void:
+	print("── ④ 084 · D4: 时停持有者放十字斩(时停里结算) / 非持有者的招照样冻着 ──")
+	_s._units.clear()
+	var u: Dictionary = _mk("fortune", "left", Vector2(-40.0, 0.0), 100000.0)
+	var e: Dictionary = _mk("fortune", "right", Vector2(40.0, 0.0), 100000.0)
+	_equip(u, "p2eq_084", 3)
+	_equip(e, "p2eq_084", 3)
+	_spawn_all()
+	var ts = _s._timestop
+	ts._ts_active = [u]
+	ts._ts_remaining = 20.0
+	var t_before: float = float(_s._t)
+	var e_taken0: int = int(e.get("_st_taken", 0))
+	var u_taken0: int = int(u.get("_st_taken", 0))
+	_blade().cast_cross_slash(u, e)
+	_blade().cast_cross_slash(e, u)
+	_ok("④ D4 ★分母: 两人各排上 2 段待结算(共 %d 段)、都被锁住" % _blade().b84_pending(),
+		_blade().b84_pending() == 4 and u.has("_b84_lock_until") and e.has("_b84_lock_until"), "")
+	## ★★本门禁开头把 `_s._over = true`(冻住场景自己的 sim), 而时停分支里持有者的推进全在 `if not _over:` 里 ——
+	##   第一版没解开, 2 秒一行都没跑, 持有者的招「冻着」是测试环境造的, 不是产品。
+	##   ⇒ 推进期间临时解开、推完立刻恢复(循环是同步的, 场景自己的 _process 插不进来)。
+	_s._over = false
+	for _k in range(int(2.0 / float(_s.SIM_DT))):
+		_s._sim_step(float(_s.SIM_DT), false, true)
+	_s._over = true
+	_ok("④ D4 ★分母: 全局时钟全程冻结(%.3f → %.3f) · 时停没被提前解除(active=%d)"
+		% [t_before, float(_s._t), (ts._ts_active as Array).size()],
+		absf(float(_s._t) - t_before) < 1e-6 and (ts._ts_active as Array).size() == 1, "")
+	_ok("④ D4 持有者的两段斩击在时停里结算完(队列剩 %d 段, 应只剩对手那 2 段)" % _blade().b84_pending(),
+		_blade().b84_pending() == 2, "持有者的招冻住了 ⇒ 伤害要等时停解除才落地")
+	_ok("④ D4 目标在时停里就吃到持有者的伤害(承伤账 +%d)" % (int(e.get("_st_taken", 0)) - e_taken0),
+		int(e.get("_st_taken", 0)) - e_taken0 > 0, "")
+	_ok("④ D4 持有者整招演完就解锁(还锁着=%s)" % str(u.has("_b84_lock_until")),
+		not u.has("_b84_lock_until"), "锁定拿冻结的 _t 比 ⇒ 时停里永远解不开")
+	_ok("④ D4 反证: 非持有者的招照样冻着 —— 它仍被锁、持有者一点伤害没吃(承伤账 +%d)" % (int(u.get("_st_taken", 0)) - u_taken0),
+		e.has("_b84_lock_until") and int(u.get("_st_taken", 0)) - u_taken0 == 0, "时停把别人的招也放出来了")
+	ts._ts_active = []
+	ts._ts_remaining = 0.0
+	_blade().clear_all()
+
+
 func _t081_dot_and_stars() -> void:
 	print("── ① 081: ★DoT 也计入充能条(§3.3 两条路) + 逐星阈值/时长 + 多件取高星 ──")
 	## ★★这一条守的是 CLAUDE.md §3.3: on_damaged 只挂一条路的话, 灼烧/中毒/流血打的伤害
@@ -497,7 +584,15 @@ func _t082_charge_and_basic() -> void:
 		"charges=%d" % _blade().b82_charges(u))
 	_ok("② 3★ 回复 10% 最大生命 = 1000(5000 → 6000)", absf(float(u["hp"]) - 6000.0) < 1.01,
 		"hp=%.1f" % float(u["hp"]))
-	_ok("② ★附带「相当于自身 100% 魔抗」的魔法伤害 = 50",
+	## ★★第九批 D5(2026-09-15): 附带魔伤挪到【普攻命中】时结算。原来在出手这一刻就打出去 ——
+	##   远程携带者出手当帧目标就掉血, 弹体要过一会儿才到; 普攻被闪避 / 弹体打空也照样掉。
+	_ok("② ★D5 出手这一刻目标【不掉血】(附带魔伤要等命中)(目标掉血 %.1f)" % (thp - float(atk["hp"])),
+		absf(thp - float(atk["hp"])) < 0.01, "出手即结算 ⇒ 远程弹体还没到目标已经掉血")
+	_s._equip_sys._eq_on_hit(u, atk, 10, false, false)   # 技能命中: 不许兑现
+	_ok("② ★D5 反证: 【技能】命中不兑现附带魔伤(目标掉血 %.1f)" % (thp - float(atk["hp"])),
+		absf(thp - float(atk["hp"])) < 0.01, "技能命中也兑现 ⇒ 规格写的是普攻")
+	_s._equip_sys._eq_on_hit(u, atk, 10, true, false)    # 真入口: 普攻命中
+	_ok("② ★附带「相当于自身 100% 魔抗」的魔法伤害 = 50(普攻命中时兑现)",
 		absf(thp - float(atk["hp"]) - 50.0) < 0.51, "目标掉血 %.1f" % (thp - float(atk["hp"])))
 	## 没充能时普攻什么都不做(不白回血)
 	u["hp"] = 5000.0

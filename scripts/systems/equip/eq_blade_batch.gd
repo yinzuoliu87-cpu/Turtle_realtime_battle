@@ -68,11 +68,13 @@ extends RefCounted
 ## ══════════════════════════════════════════════════════════════════════
 ##  ★★规格没写死、由我(实装方)定的地方 —— 逐条写清选了哪侧、另一侧是什么
 ## ══════════════════════════════════════════════════════════════════════
-## ① **081 的护盾不设时限**(选: 永久盾 / 另一侧: 传 `dur = 举盾时长`)。
-##    规格写"期间获得 60/100/160 护盾值"。限时盾原语到期时执行的是
-##    `u["shield"] = 0`(RealtimeBattle3DScene:6781) —— 它清的是**整个护盾池**,
-##    会连带抹掉铁壁盾/羁绊/别的装备同时给的盾。为一件 1 费装备引入这种副作用不划算,
-##    ⇒ 选**永久盾**(打掉才没)。**代价诚实说**: 没被打掉的话会跨到下一次举盾, 比"期间"略强。
+## ① **081 的护盾随落盾到期**(选: 传 `dur = 举盾时长` / 另一侧: 永久盾)。
+##    规格写"期间获得 60/100/160 护盾值"。
+##    ★★2026-09-15 从「永久盾」改过来: 原来选永久, 理由是限时盾到期执行 `u["shield"] = 0`
+##      会清掉**整个护盾池**(连带铁壁盾/羁绊/别的装备给的盾)。但 `_grant_shield` 后来加了
+##      `shield_timed` —— 到期只扣限时的那一份, **这条理由已经不成立**。
+##      而永久盾的代价实测比注释写的「略强」重得多: 落盾 30 秒后盾仍 160, 第二次举盾叠到 320
+##      (第九批调查, docs/plans/20260915b D2)。
 ## ② **081 的充能条满了就清零**(选: 归零 / 另一侧: 减去阈值保留溢出)。
 ##    规格写"举盾结束后**重新**开始计数充能条" ⇒ 归零更贴字面。
 ## ③ **082 的反伤走 `_resolve_dmg(..., magic=true)`** ⇒ 吃目标魔抗、可暴击。
@@ -240,6 +242,25 @@ func tick(delta: float) -> void:
 	vfx.tick(delta)
 
 
+## ★时停里只推【时停持有者】自己的十字斩(第九批 D4)。
+## ★由来(2026-09-15 调查): 携带者自己是时停持有者时, 十字斩的两段结算、剑波、后撤全冻住、人被锁在原地 ——
+##   上面的 `tick` 挂在全场每帧 tick 里, 时停时整块不跑; 分段时刻表与锁定又都拿冻结的 `battle._t` 比。
+##   探针: 时停中推 2 秒伤害 +0, 解除后才 +1482。与 059「只有携带者能自由攻击/施法/移动, 伤害即时结算」冲突。
+## ★只动持有者: 锁定时刻由主场景 `_TS_TIMER_FIELDS` 顺延; 这里顺延持有者的分段时刻, 只推持有者的滑步与剑波。
+##   非持有者的条目一个都不碰(全域冻结门禁守着)。
+## ⚠ 已知缺口: 演出层 `vfx.tick` 不在这里推 —— 刀光在时停里是定格的, 结算与位移照常。
+func tick_ts(delta: float, holders: Array) -> void:
+	if holders.is_empty():
+		return
+	b84_locked()
+	_step_retreat(delta, holders)
+	for p in _pending:
+		if battle._arr_has_unit(holders, p["u"]) and float(p["t"]) > battle._t:
+			p["t"] = maxf(battle._t, float(p["t"]) - delta)
+	_step_pending()
+	_step_waves(delta, holders)
+
+
 ## 每帧逐单位推进(守卫是常驻字段 `_b4_eq`, 在 EQ_TICK 闸之前 ⇒ 每帧精度)
 func tick_unit(u: Dictionary, delta: float) -> void:
 	if u.has("_b81_si"):
@@ -269,6 +290,8 @@ func on_basic(u: Dictionary, tgt, eid: String, _si: int) -> void:
 func on_hit(src: Dictionary, tgt: Dictionary, _dmg: float, eid: String, _si: int) -> void:
 	if eid == "p2eq_083":
 		_hit083(src, tgt)
+	elif eid == "p2eq_082" and bool(src.get("_b4_basic", false)):
+		_hit082(src, tgt)
 
 
 ## 携带者受到伤害后(★两条伤害路径都会调, 用 u["_b4_dot"] 分辨是哪一条)
@@ -350,7 +373,8 @@ func _damaged081(u: Dictionary, dmg: float) -> void:
 ## 举盾。★同步入口, 门禁直接调 —— 不依赖任何演出 tween 跑完(CLAUDE.md §3.5)。
 func _b81_raise(u: Dictionary, sx: int) -> void:
 	var st: Dictionary = (u["eq_state"] as Dictionary).get("p2eq_081", {})
-	st["up_until"] = battle._t + [2.5, 3.0, 3.5][sx]
+	var up_sec: float = [2.5, 3.0, 3.5][sx]       # 举盾时长: 到期判定与护盾时限共用这一份
+	st["up_until"] = battle._t + up_sec
 	st["raised"] = int(st.get("raised", 0)) + 1   # 同步触发证据(门禁看它, 不看有没有建节点)
 	var res: float = [50.0, 80.0, 140.0][sx]      # 双抗(护甲与魔抗各 +res)
 	u["base_def"] = float(u.get("base_def", 0.0)) + res
@@ -361,7 +385,7 @@ func _b81_raise(u: Dictionary, sx: int) -> void:
 	# ★护盾要让盾羁绊 9 档【圣光·强化】认得出是"盾类装备给的" ⇒ 先标 _cur_eq_item(用完还原)
 	var prev = battle._cur_eq_item
 	battle._cur_eq_item = "p2eq_081"
-	battle._damage._grant_shield(u, [60.0, 100.0, 160.0][sx])
+	battle._damage._grant_shield(u, [60.0, 100.0, 160.0][sx], up_sec)   # 文案「举盾 … 秒, 期间获得 … 护盾」⇒ 随落盾到期
 	battle._cur_eq_item = prev
 	vfx.guard_raise(u)
 	# ★★这里【绝不加攻速惩罚】: 用户 2026-08-06 最终拍板"举盾不扣攻速"。
@@ -452,7 +476,7 @@ func _damaged082(u: Dictionary, src) -> void:
 
 
 ## 普攻消耗一层充能: 回复 5/7/10% 最大生命 + 附带 100% 魔抗的魔法伤害。
-func _basic082(u: Dictionary, tgt) -> void:
+func _basic082(u: Dictionary, _tgt) -> void:
 	var st: Dictionary = (u["eq_state"] as Dictionary).get("p2eq_082", {})
 	if not _nth_copy(u, "p2eq_082", st):
 		u["eq_state"]["p2eq_082"] = st
@@ -468,11 +492,24 @@ func _basic082(u: Dictionary, tgt) -> void:
 	battle._cur_eq_item = "p2eq_082"             # 盾类装备的治疗 → 盾羁绊 9 档转 20% 圣光盾
 	battle._damage._heal(u, float(u.get("maxHp", 0.0)) * [0.05, 0.07, 0.10][sx])
 	battle._cur_eq_item = prev
-	if tgt is Dictionary and (tgt as Dictionary).get("alive", false):
-		# ★「相当于自身 100% 魔抗」取【当前】魔抗(含举盾/硬化/羁绊给的) —— 决定④
-		var d: int = battle._resolve_dmg(u, float(u.get("mr", 0.0)), tgt, true)
-		battle._damage._apply_damage_from(u, tgt, d, Color("#7fe8ff"), 0.0, false, true)
-		vfx.clam_burst(u, tgt)
+	## ★★附带魔伤挪到【命中】时结算(第九批 D5): 原来在出手这一刻就打出去 ——
+	##   远程携带者出手当帧目标就掉血, 弹体要过一会儿才到, 普攻被闪避 / 弹体打空也照样掉。
+	##   ⇒ 这里只记「下一次普攻命中要附带一次」, 由 `_hit082`(on_hit · 普攻)兑现。
+	st["mag_pending"] = int(st.get("mag_pending", 0)) + 1
+	u["eq_state"]["p2eq_082"] = st
+
+
+## 普攻命中: 兑现一次附带魔伤。多件同带时命中钩子会连着调 n 次, 但出手只记了一次 ⇒ 第一次兑现、其余读到 0 直接返回。
+func _hit082(u: Dictionary, tgt: Dictionary) -> void:
+	var st: Dictionary = (u["eq_state"] as Dictionary).get("p2eq_082", {})
+	if int(st.get("mag_pending", 0)) <= 0 or not tgt.get("alive", false):
+		return
+	st["mag_pending"] = int(st["mag_pending"]) - 1
+	u["eq_state"]["p2eq_082"] = st
+	# ★「相当于自身 100% 魔抗」取【命中这一刻】的魔抗(含举盾/硬化/羁绊给的) —— 决定④
+	var d: int = battle._resolve_dmg(u, float(u.get("mr", 0.0)), tgt, true)
+	battle._damage._apply_damage_from(u, tgt, d, Color("#7fe8ff"), 0.0, false, true)
+	vfx.clam_burst(u, tgt)
 
 
 ## 当前充能层数 / 累计反伤次数。★纯查询, 门禁用。
@@ -790,10 +827,12 @@ func cross_retreat_dest(u: Dictionary, tgt: Dictionary) -> Vector2:
 ##   而无头 CI 下场景树 tween 推进不稳 —— 赌它跑完 = 赌伤害打在哪(CLAUDE.md §3.5)。
 ## ★走完【精确落到 dest】(不是停在 lerp 的最后一帧) —— 差几码就够让门禁的
 ##   "退了正好 150 码"红一次, 而那不是真问题。
-func _step_retreat(delta: float) -> void:
+func _step_retreat(delta: float, only: Array = []) -> void:
 	for u in battle._units:
 		if not (u is Dictionary) or not (u as Dictionary).has("_b84_retreat"):
 			continue
+		if not only.is_empty() and not battle._arr_has_unit(only, u):
+			continue                                 # 时停里只推持有者(见 tick_ts)
 		var r: Dictionary = (u as Dictionary)["_b84_retreat"]
 		if not (u as Dictionary).get("alive", false):
 			(u as Dictionary).erase("_b84_retreat")
@@ -880,12 +919,15 @@ func cross_slash_hit(u: Dictionary, dir: Vector2, sx: int, seg: int) -> int:
 
 ## ②横波 / ④竖波: 沿施法朝向直线推进、贯穿(每个敌人每道波只吃一次)。
 ## (装备 "p2eq_084" —— tooltip_number_audit 的就近锚点)
-func _step_waves(delta: float) -> void:
+func _step_waves(delta: float, only: Array = []) -> void:
 	if _waves.is_empty():
 		return
 	var keep: Array = []
 	for w in _waves:
 		var u: Dictionary = w["u"]
+		if not only.is_empty() and not battle._arr_has_unit(only, u):
+			keep.append(w)                           # 时停里只推持有者的波(见 tick_ts)
+			continue
 		var seg: int = int(w["seg"])
 		var sx: int = int(w["si"])
 		w["trav"] = float(w["trav"]) + WAVE_SPD * delta
