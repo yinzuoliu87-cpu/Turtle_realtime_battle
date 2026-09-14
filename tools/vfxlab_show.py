@@ -103,6 +103,22 @@ def grab(box):
     return ImageGrab.grab(bbox=box, all_screens=True)
 
 
+def _case_flag(case_id, flag):
+    """从**真的那张表**里读 case 的一个 bool 字段(不维护第二份名单)。
+
+    只给自检用: `realmap` 台子不是黑场, 拿黑场阈值判它会每次误红。
+    """
+    src = os.path.join(ROOT, "scripts", "gamedata", "vfxlab_cases.gd")
+    txt = io.open(src, encoding="utf-8", newline="").read()
+    blocks = re.split(r'^"([^"]+)":\s*\{', txt, flags=re.M)
+    for i in range(1, len(blocks) - 1, 2):
+        body = blocks[i + 1]
+        hit = blocks[i] == case_id or re.search(r'"eq":\s*"%s"' % re.escape(case_id), body)
+        if hit:
+            return re.search(r'"%s":\s*true' % re.escape(flag), body) is not None
+    return False
+
+
 def _check_case(case_id):
     """case 登记过没有? 没登记就给出最可能的正确键名。
 
@@ -212,12 +228,27 @@ def main():
     _lum = (frames[-1][..., 0] * 299 + frames[-1][..., 1] * 587
             + frames[-1][..., 2] * 114) // 1000
     black = int(np.count_nonzero(_lum <= 10))
-    print("  ② 近纯黑(亮度≤10)占比 %.1f%% (台子黑场 >90%%; VS Code 深色主题只有 ~19%%)"
-          % (100.0 * black / tot))
-    if black < tot * 0.70:
-        print("  [FAIL] ★不是黑场台子 —— 多半截到了**盖在游戏上面的别的窗口**,"
-              " 或者掉回了主菜单/结算屏")
-        ok = False
+    ## ★`realmap: true` 的台子**本来就不是黑场**(它要看的就是世界本身, 比如 059 时停:
+    ##   全场定格 —— 黑场里连世界都没有)。拿黑场阈值去判它 = 每次都喊狼来了,
+    ##   而"狼来了"喊多了就等于没有这条自检(memory [[fb-judge-must-fit-the-shape]]:
+    ##   判据要刚好卡住那个形状)。⇒ realmap 台子改判"别的窗口盖上来"这个真问题:
+    ##   游戏窗口是深色的, 而盖上来的编辑器/浏览器要亮得多。
+    _realmap = _case_flag(a.case, "realmap")
+    if _realmap:
+        _mean = float(_lum.mean())
+        print("  ② `realmap` 台子(真实地图·本来就不是黑场): 近纯黑 %.1f%% · 平均亮度 %.1f"
+              % (100.0 * black / tot, _mean))
+        if _mean > 110.0:
+            print("  [FAIL] ★画面太亮 —— 多半截到了**盖在游戏上面的别的窗口**"
+                  "(游戏是深色海底图, 平均亮度实测 40~70)")
+            ok = False
+    else:
+        print("  ② 近纯黑(亮度≤10)占比 %.1f%% (台子黑场 >90%%; VS Code 深色主题只有 ~19%%)"
+              % (100.0 * black / tot))
+        if black < tot * 0.70:
+            print("  [FAIL] ★不是黑场台子 —— 多半截到了**盖在游戏上面的别的窗口**,"
+                  " 或者掉回了主菜单/结算屏")
+            ok = False
     print("")
     print("窗口可看" if ok else "[FAIL] ★别报给用户 —— 先弄清楚窗口里在放什么")
     print("★机检只是兜底: 报给用户之前**必须自己打开那几张图看一眼**。")
