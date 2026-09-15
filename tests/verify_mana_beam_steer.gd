@@ -84,6 +84,7 @@ func _ready() -> void:
 	_t_lane_clear()
 	_t_mana_bar()
 	await _t_burst_tables()
+	await _t_tail_no_lit()
 
 	_s.queue_free()
 	await get_tree().process_frame
@@ -91,6 +92,78 @@ func _ready() -> void:
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 068 可转向射线" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
+
+
+## ⑫ 收尾时【没有】正在照的爆点(目标在束中途死掉): 枪口 + 飘带照样淡完并释放, 不留在开火点。
+##   ★尺子是 finale 之前自己抓住的节点引用 —— node_count / live_count 只数 _live 里的, 句柄被摘掉后恒为 0。
+##     修前正是「0 节点 / 0 句柄」而枪口 + 3 条飘带以 0.31 透明度一直可见, 换路也清不掉(探针 2026-09-15)。
+##   ★推进走真入口 EquipSystem.tick_global(演出层 advance 由它每步调一次)。
+func _t_tail_no_lit() -> void:
+	print("── ⑫ 收尾时没有爆点在照: 枪口与飘带照样淡完释放 ──")
+	_s._units.clear()
+	_s._spec.clear_all()
+	_ps.clear_all()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var c: Vector2 = _s.ARENA.position + _s.ARENA.size * 0.5
+	var carrier: Dictionary = _s._spawn._make_unit("fortune", "left", c + Vector2(-520.0, 0.0))
+	carrier["alive"] = true
+	carrier["pos"] = c + Vector2(-520.0, 0.0)
+	carrier["hp"] = 3000.0
+	carrier["maxHp"] = 3000.0
+	carrier["equips"] = [{"id": "p2eq_068", "star": 3}]
+	carrier["eq_state"] = {"p2eq_068": {"can_t0": 0.0, "can_charge": 3000.0, "can_fired": 0}}
+	_s._units.append(carrier)
+	var tgt: Dictionary = _mk("right", carrier["pos"] + Vector2(900.0, 0.0))
+	_ps._eq_pressure_release(carrier, 2, carrier["eq_state"]["p2eq_068"])
+	var st: Dictionary = carrier["eq_state"]["p2eq_068"]
+	var bh = st.get("beam_h", {})
+	var h: Dictionary = bh if bh is Dictionary else {}
+	_ok("⑫ ★分母: 放出了激光", not h.is_empty())
+	if h.is_empty():
+		return
+	var watch: Array = []
+	if is_instance_valid(h.get("muzzle", null)):
+		watch.append(h["muzzle"])
+	for rb in h.get("ribbons", []):
+		if is_instance_valid(rb):
+			watch.append(rb)
+	for _i in range(4):
+		_ps._eq_beam_step(carrier, 0.25)
+	var lit0 := 0
+	for m in h.get("marks", []):
+		if bool(m.get("on", false)):
+			lit0 += 1
+	_ok("⑫ ★分母: 目标活着时确实被照着(爆点在亮), 抓住了枪口 + 飘带共 %d 个节点" % watch.size(),
+		lit0 > 0 and watch.size() == 1 + Beam.RIBBON_N, "正在照 %d" % lit0)
+	tgt["alive"] = false
+	var steps := 0
+	while steps < 40 and not h.has("fade_t"):
+		_ps._eq_beam_step(carrier, 0.1)
+		steps += 1
+	var alive_at_fin := 0
+	for nd in watch:
+		if is_instance_valid(nd):
+			alive_at_fin += 1
+	_ok("⑫ ★分母: 束自然收尾了, 收尾时一个爆点都不在照",
+		h.has("fade_t") and (h.get("marks", []) as Array).is_empty(),
+		"推了 %d 步 · 爆点 %d" % [steps, (h.get("marks", []) as Array).size()])
+	_ok("⑫ 收尾那一刻枪口与飘带还在(是渐隐, 不是瞬间删掉)", alive_at_fin == watch.size(),
+		"还在 %d / %d" % [alive_at_fin, watch.size()])
+	for _i in range(8):
+		_s._equip_sys.tick_global(0.05)
+		await get_tree().process_frame
+	var left := 0
+	for nd in watch:
+		if is_instance_valid(nd):
+			left += 1
+	_ok("⑫ ★★0.4 秒后枪口 + 飘带全部释放、句柄也摘了(修前: 4 个节点以 0.31 透明度永久留在开火点)",
+		left == 0 and _ps._beam_vfx.live_count() == 0,
+		"还剩 %d 个节点 / %d 个句柄" % [left, _ps._beam_vfx.live_count()])
+	for nd in watch:
+		if is_instance_valid(nd):
+			nd.queue_free()
+	_s._units.clear()
 
 
 ## ① 扫掠求交的闭式解本身对不对(纯函数, 但它是整条链的地基)

@@ -910,7 +910,11 @@ func finale(h: Dictionary) -> void:
 				m["ring"] = _node(ring_mesh, _mat(39), p)
 		keep.append(m)
 	h["marks"] = keep
-	if keep.is_empty():
+	## ★有枪口/飘带要渐隐时不许当场摘句柄 —— 摘出 _live 之后 advance / clear_all / node_count 全都看不到它,
+	##   枪口 + 3 条飘带就以 0.31 的透明度永远留在开火点, 换路也清不掉(探针 2026-09-15: 收尾时没有爆点在照
+	##   ⇒ 句柄 0 / node_count 0, 抓住的 4 个节点 1 秒后与换路后仍然全部可见)。目标在束中途死掉就是这种情形。
+	##   留在 _live 里, 由 advance 淡完 0.2 秒再摘(它自己的结尾条件就是「爆点空 + 渐隐空」)。
+	if keep.is_empty() and fades.is_empty():
 		_drop(h)
 
 
