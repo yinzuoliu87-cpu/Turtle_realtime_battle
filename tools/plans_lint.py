@@ -156,15 +156,29 @@ def check_version_trace():
     since = '%s-%s-%s' % (newest[:4], newest[4:6], newest[6:8])
     cl = io.open('CHANGELOG.md', encoding='utf-8').read()
     vers = re.findall(r'^## (\d+\.\d+\.\d+[a-z]?) — (\d{4}-\d{2}-\d{2})', cl, re.M)
+    ## ★分母断言(2026-09-16 换形状, 不是放松): 原来是「锚点之后一个版本都没扫到 ⇒ 红」,
+    ##   用来抓「正则挂了 / CHANGELOG 改格式了」。但它把一种正当情形也判红了:
+    ##   **新写了一份方案书、当天还没发版本** ⇒ 锚点跳到今天, 锚点之后本来就没有版本
+    ##   (2026-09-16 写大轮赛制 v2 草稿时当场撞上)。⇒ 拆成三件事分别验:
+    ##     ① 格式漂移: 宽松地数「## x.y.z」标题, 必须与严格解析出的条数相等 —— 哪一条改了格式就红
+    ##     ② 解析为空: CHANGELOG 一个版本都解析不出 ⇒ 红
+    ##     ③ 锚点之后没有版本、且最新版本日期确实早于锚点 ⇒ 正当, 打印说明后通过
+    loose = re.findall(r'^## \d+\.\d+\.\d+', cl, re.M)
+    if len(loose) != len(vers):
+        fails.append('版本留痕: CHANGELOG 有 %d 个「## x.y.z」标题, 按「## x.y.z — YYYY-MM-DD」只解析出 %d 个'
+                     ' —— 有标题改了格式, 那几个版本会被静默漏掉' % (len(loose), len(vers)))
+        return
+    if not vers:
+        fails.append('版本留痕: CHANGELOG 一个版本行都没解析到 —— 空检查不是通过')
+        return
     want = [v for v, d in vers if d >= since]
     blob = ''.join(io.open(os.path.join(PLANS, f), encoding='utf-8').read() for f in files)
     miss = [v for v in want if v not in blob]
     print('  [版本留痕] 最新方案书 %s(%s 起); 待覆盖版本 %d 个, 缺 %d 个'
           % (newest, since, len(want), len(miss)))
-    ## ★分母断言: 一个版本都没扫到 = 正则挂了 / CHANGELOG 改格式了, 不是通过。
     if not want:
-        fails.append('版本留痕: %s 起一个版本都没扫到(CHANGELOG 共 %d 个版本行) —— 空检查不是通过'
-                     % (since, len(vers)))
+        print('  [版本留痕] 最新版本 %s 早于最新方案书日期 %s —— 这份方案书之后还没发过版本, 没有要覆盖的'
+              % (max(d for _v, d in vers), since))
         return
     for v in miss:
         fails.append('版本留痕: %s 发出去了, 但全部 %d 份方案书里一个字都没提 —— 方案书不是进度了'
