@@ -269,11 +269,12 @@ const BLADDER_LON := 20
 const BLADDER_LAT := 12
 ## 浮囊满余额时的半径(场地码)。★这是**演出尺寸**, 不是效果半径。
 const BLADDER_R_PX := 46.0
-## 浮囊挂在单位身上的高度(米, 世界 Y, 加在单位 height 之上)。
-## ★1:1 实拍量过(2026-09-15): 0.80 时浮囊套在脚上。立绘是正对镜头的 billboard(在屏幕平面里往上长),
-##   而这里加的是【世界竖直】高度, 相机俯角约 51° ⇒ 屏幕上只剩约 0.63 倍。要让圈落在肚子(屏幕上离地约 0.8 米)
-##   ⇒ 世界高度取 1.30。
-const BLADDER_H := 1.30
+## 浮囊挂在单位身上的高度(米, 沿【相机上方向】, 从单位脚底起算) —— 落在立绘 billboard 的平面上。
+## ★2026-09-15 改: 原来是加在【世界竖直 Y】上的高度 1.30。立绘是跟着相机俯仰的 billboard(平面过脚底、
+##   法线 = 相机 basis.z ≈ (0, 0.78, 0.63)), 世界抬高 1 米在视线轴上有 0.78 米朝相机的分量 ⇒ 探针实测
+##   后半圈在立绘平面【前面】0.61 米、前半圈 1.31 米 ⇒ 后半圈永远挡不住(用户看到的「后半圈没被身体挡住」)。
+##   沿相机上方向抬 0.80 米: 屏幕上仍落在立绘高度的 40%(与世界高度 1.30 同一个位置), 两半圈到平面约 −0.35 / +0.35 米。
+const BLADDER_UP := 0.80
 const BLADDER_TEX := "res://assets/sprites/vfx/eq064-bladder.png"
 const BLADDER_CELL := 48
 const BLADDER_COLS := 2          # 列: 0 后半圈 / 1 前半圈
@@ -282,8 +283,22 @@ const BLADDER_YARDS := 85.2      # 48 texel × 1.775 码 ⇒ 1:1 不糊
 ## 前后半圈沿视线各错开多少米(后半圈被龟身挡住、前半圈压在身前)
 const BLADDER_DEPTH := 0.35
 static var _bladder_tex: Texture2D = null
-## 诅咒云扩散到 300 码用多久(秒)
-const BURST_T := 0.75
+## ── 064 触发 / 破裂两段的烘焙帧表(tools/blender_bladder_fx.py) ──
+## ★2026-09-15 重做: 原来破裂是程序圆盘 + 圆环按 Fick 扩散 0.75 秒才到 300 码 —— 诅咒却在破裂那一步就给了,
+##   演出到边晚于结算; 触发那一刻没有任何演出(用户「不太行，得思考重做，思考怎么贴合装备效果」)。
+const RISE_TEX := "res://assets/sprites/vfx/eq064-bladder-rise.png"
+const POP_TEX := "res://assets/sprites/vfx/eq064-bladder-pop.png"
+const WAVE_TEX := "res://assets/sprites/vfx/eq064-curse-wave.png"
+const FX_FRAMES := 8            # 浮起 / 炸开: 72 格 × 8 帧, texel 与持有态相同(每格 1/24 单位)
+const RISE_T := 0.5             # 浮起 0.5 秒; 播完才露出持有态浮囊(浮起最后一帧就是持有态的样子)
+const POP_T := 0.5
+## 浮起 / 炸开的帧中心在脚底上方 1.05 单位(烘焙时相机上移), 1 单位 = 24 texel
+const FX_CENTER_UP_UNITS := 1.05
+const WAVE_CELL := 96
+const WAVE_FRAMES := 6
+const WAVE_T := 0.6
+## 泡沫外沿占格宽的比例(烘焙时外沿半径 0.96 / 半幅 1.0) ⇒ pixel_size 按「外沿直径 = 2 × 判定半径」反推
+const WAVE_RIM_FRAC := 0.96
 
 ## 等压放气: 体积 ∝ 剩余气体量 ⇒ r = r_max·f^(1/3)。
 ## ★可验证: (r/r_max)³ ≡ f 精确成立。
@@ -295,12 +310,6 @@ static func bladder_radius_frac(f: float) -> float:
 ##   f=0.5 时半径只小 21%, 但松弛度已到 0.37。
 static func bladder_slack(f: float) -> float:
 	return 1.0 - pow(clampf(f, 0.0, 1.0), 2.0 / 3.0)
-
-
-## Fick 扩散: 均方位移 = 2Dt ⇒ r ∝ √t。归一到 r(1)=1。
-## ★可验证: r² 对归一时间严格线性。
-static func diffusion_radius(u: float) -> float:
-	return sqrt(clampf(u, 0.0, 1.0))
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -1104,9 +1113,12 @@ func float_bladder(pos2d: Vector2, col: Color, u = null) -> Dictionary:
 	var h := {
 		"kind": "bladder", "back": _bladder_sprite(0), "front": _bladder_sprite(1),
 		"col": col, "u": u, "p2": pos2d, "frac": 1.0, "dur": -1.0, "t": 0.0,
+		## ★先让浮起那 8 帧播完再露出持有态(浮起最后一帧就是持有态的样子), 否则同一刻身上两只浮囊
+		"hidden_left": RISE_T,
 	}
 	_live.append(h)
 	apply_at(h, 0.0)
+	h["rise_h"] = bladder_rise(pos2d, u)
 	return h
 
 
@@ -1138,24 +1150,68 @@ static func bladder_level(f: float) -> int:
 	return 3
 
 
-## 064: 浮囊破裂 → 诅咒云扩散到 radius_px 码。
-func bladder_burst(pos2d: Vector2, col: Color, radius_px: float) -> Dictionary:
-	if not _has_world():
+## 064 ① 触发: 残血那一刻, 旧浮囊从脚下暗水里浮上来(8 帧 0.5 秒, 跟着持盾单位走, 压在身前)。
+func bladder_rise(pos2d: Vector2, u = null) -> Dictionary:
+	var sp: Sprite3D = _fx_sprite(RISE_TEX, FX_FRAMES, "bladder_rise", false)
+	if sp == null:
 		return {}
-	_ensure_meshes()
 	_ensure_room()
-	var org: Vector3 = battle._world_pos(pos2d, 0.0)
-	var cloud := _spawn_node(_m_disc, _mat(true, 10), org, "curse_cloud")
-	var edge := _spawn_node(_m_ring, _mat(true, 11), org, "curse_edge")
-	if cloud == null or edge == null:
-		return {}
-	var h := {
-		"kind": "burst", "cloud": cloud, "edge": edge, "col": col,
-		"r_m": radius_px * float(battle.WS), "dur": BURST_T, "t": 0.0,
-	}
+	var h := {"kind": "rise", "rise": sp, "u": u, "p2": pos2d, "dur": RISE_T, "t": 0.0}
 	_live.append(h)
 	apply_at(h, 0.0)
 	return h
+
+
+## 064 ③ 破裂: 浮囊炸开(8 帧 0.5 秒, 在持盾单位身上)。
+func bladder_pop(pos2d: Vector2, u = null) -> Dictionary:
+	var sp: Sprite3D = _fx_sprite(POP_TEX, FX_FRAMES, "bladder_pop", false)
+	if sp == null:
+		return {}
+	_ensure_room()
+	var h := {"kind": "pop", "pop": sp, "u": u, "p2": pos2d, "dur": POP_T, "t": 0.0}
+	_live.append(h)
+	apply_at(h, 0.0)
+	return h
+
+
+## 064 ③ 破裂: 诅咒水波贴地铺开。★第 0 帧泡沫外沿就在 radius_px 码(= 结算给诅咒的半径) ——
+##   诅咒在破裂那一步就给了, 演出到边那一帧必须就是这一步(原来按 Fick 扩散 0.75 秒才到边)。
+func curse_wave(pos2d: Vector2, radius_px: float) -> Dictionary:
+	var sp: Sprite3D = _fx_sprite(WAVE_TEX, WAVE_FRAMES, "curse_wave", true)
+	if sp == null:
+		return {}
+	_ensure_room()
+	sp.pixel_size = (2.0 * radius_px * float(battle.WS)) / (float(WAVE_CELL) * WAVE_RIM_FRAC)
+	sp.position = battle._world_pos(pos2d, GROUND_Y)
+	var h := {"kind": "wave", "wave": sp, "dur": WAVE_T, "t": 0.0}
+	_live.append(h)
+	apply_at(h, 0.0)
+	return h
+
+
+## 烘焙帧表精灵: NEAREST、横排 frames 帧。ground=true 贴地(axis Y, 测深度), 否则直立公告板(texel 与持有态相同)。
+func _fx_sprite(path: String, frames: int, meta: String, ground: bool) -> Sprite3D:
+	if not _has_world() or not ResourceLoader.exists(path):
+		return null
+	var tex: Texture2D = load(path)
+	if tex == null:
+		return null
+	var sp := Sprite3D.new()
+	sp.texture = tex
+	sp.hframes = frames
+	sp.frame = 0
+	sp.shaded = false
+	sp.transparent = true
+	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	if ground:
+		sp.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+		sp.axis = Vector3.AXIS_Y
+	else:
+		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		sp.pixel_size = (BLADDER_YARDS * float(battle.WS)) / float(BLADDER_CELL)
+	sp.set_meta(META_KEY, meta)
+	battle._world.add_child(sp)
+	return sp
 
 
 ## 浮囊的剩余余额比例(0~1)。★由效果侧每帧喂真值 —— 演出**不自己算衰减**,
@@ -1191,7 +1247,9 @@ func apply_at(h: Dictionary, u: float) -> void:
 		"strike": _apply_strike(h, u)
 		"ring": _apply_ring(h, u)
 		"bladder": _apply_bladder(h)
-		"burst": _apply_burst(h, u)
+		"rise": _apply_body_fx(h, "rise", u)
+		"pop": _apply_body_fx(h, "pop", u)
+		"wave": _apply_wave(h, u)
 
 
 static func _set_col(n, c: Color) -> void:
@@ -1581,11 +1639,14 @@ func _apply_bladder(h: Dictionary) -> void:
 	var p2: Vector2 = (uu as Dictionary).get("pos", h["p2"]) if uu is Dictionary else h["p2"]
 	var hgt: float = float((uu as Dictionary).get("height", 0.0)) if uu is Dictionary else 0.0
 	var mult: float = maxf(0.2, float((uu as Dictionary).get("size_mult", 1.0))) if uu is Dictionary else 1.0
-	var base: Vector3 = battle._world_pos(p2, hgt + BLADDER_H * mult)
-	## 视线方向: 相机 basis.z 指向观察者 ⇒ +z 往前(近), −z 往后(远)
+	## 视线方向: 相机 basis.z 指向观察者 ⇒ +z 往前(近), −z 往后(远); 相机 basis.y = 立绘平面里往上长的方向
 	var toward: Vector3 = Vector3(0.0, 0.78, 0.626)
+	var up: Vector3 = Vector3(0.0, 0.626, -0.78)
 	if battle._cam != null and is_instance_valid(battle._cam):
 		toward = battle._cam.global_transform.basis.z.normalized()
+		up = battle._cam.global_transform.basis.y.normalized()
+	## ★沿相机上方向抬(落在立绘平面上), 不沿世界 Y —— 见 BLADDER_UP 头注
+	var base: Vector3 = battle._world_pos(p2, hgt) + up * (BLADDER_UP * mult)
 	for half in range(BLADDER_COLS):
 		var sp = h.get("back" if half == 0 else "front", null)
 		if not is_instance_valid(sp):
@@ -1594,25 +1655,43 @@ func _apply_bladder(h: Dictionary) -> void:
 		(sp as Sprite3D).pixel_size = (BLADDER_YARDS * float(battle.WS) * mult) / float(BLADDER_CELL)
 		(sp as Sprite3D).position = base + toward * (BLADDER_DEPTH if half == 1 else -BLADDER_DEPTH)
 		## 幽灵半透: 余额越少越淡一点(瘪度已经由帧说了, 透明度只做辅助)
-		(sp as Sprite3D).modulate = Color(1.0, 1.0, 1.0, col.a * (0.70 + 0.30 * clampf(f, 0.0, 1.0)))
+		## 浮起那 0.5 秒里藏着(hidden_left > 0), 浮起播完才露出
+		var vis: float = 0.0 if float(h.get("hidden_left", 0.0)) > 0.0 else 1.0
+		(sp as Sprite3D).modulate = Color(1.0, 1.0, 1.0, col.a * (0.70 + 0.30 * clampf(f, 0.0, 1.0)) * vis)
 
 
-func _apply_burst(h: Dictionary, u: float) -> void:
-	var col: Color = h["col"]
-	var rm: float = float(h["r_m"])
-	var r: float = rm * diffusion_radius(u)
-	_set_scale(h["cloud"], Vector3(r, r, r))
-	_set_scale(h["edge"], Vector3(r, r, r))
-	var fade: float = clampf(1.0 - u * u, 0.0, 1.0)
-	_set_col(h["cloud"], Color(col.r, col.g, col.b, col.a * 0.30 * fade))
-	_set_col(h["edge"], Color(col.r, col.g, col.b, col.a * fade))
+## 浮起 / 炸开: 切帧 + 跟着持盾单位。帧中心在脚底沿相机上方向 FX_CENTER_UP_UNITS 单位(落在立绘平面上, 同 _apply_bladder),
+##   再沿视线往前 BLADDER_DEPTH(整只压在身前 —— 只播 0.5 秒, 不拆前后两半)。
+func _apply_body_fx(h: Dictionary, key: String, u: float) -> void:
+	var sp = h.get(key, null)
+	if not is_instance_valid(sp):
+		return
+	(sp as Sprite3D).frame = clampi(int(floor(clampf(u, 0.0, 1.0) * float(FX_FRAMES))), 0, FX_FRAMES - 1)
+	var uu = h.get("u", null)
+	var p2: Vector2 = (uu as Dictionary).get("pos", h["p2"]) if uu is Dictionary else h["p2"]
+	var hgt: float = float((uu as Dictionary).get("height", 0.0)) if uu is Dictionary else 0.0
+	var mult: float = maxf(0.2, float((uu as Dictionary).get("size_mult", 1.0))) if uu is Dictionary else 1.0
+	var toward: Vector3 = Vector3(0.0, 0.78, 0.626)
+	var up: Vector3 = Vector3(0.0, 0.626, -0.78)
+	if battle._cam != null and is_instance_valid(battle._cam):
+		toward = battle._cam.global_transform.basis.z.normalized()
+		up = battle._cam.global_transform.basis.y.normalized()
+	var texel: float = (BLADDER_YARDS * float(battle.WS)) / float(BLADDER_CELL)
+	(sp as Sprite3D).pixel_size = texel * mult
+	(sp as Sprite3D).position = battle._world_pos(p2, hgt) + up * (FX_CENTER_UP_UNITS * 24.0 * texel * mult) + toward * BLADDER_DEPTH
+
+
+func _apply_wave(h: Dictionary, u: float) -> void:
+	var sp = h.get("wave", null)
+	if is_instance_valid(sp):
+		(sp as Sprite3D).frame = clampi(int(floor(clampf(u, 0.0, 1.0) * float(WAVE_FRAMES))), 0, WAVE_FRAMES - 1)
 
 
 # ══════════════════════════════════════════════════════════════════
 #  §推进与撤场
 # ══════════════════════════════════════════════════════════════════
 
-const NODE_KEYS := ["bell", "ring", "disc", "flash", "torus", "sphere", "back", "front", "cloud", "edge", "plank", "upf", "mote", "gmote", "cracks", "chips", "claw", "bub", "torus2"]
+const NODE_KEYS := ["bell", "ring", "disc", "flash", "torus", "sphere", "back", "front", "cloud", "edge", "plank", "upf", "mote", "gmote", "cracks", "chips", "claw", "bub", "torus2", "rise", "pop", "wave"]
 
 
 func _free_handle(h: Dictionary) -> void:
@@ -1640,8 +1719,13 @@ func tick(delta: float) -> void:
 		var h: Dictionary = _live[i]
 		var dur: float = float(h.get("dur", -1.0))
 		if dur <= 0.0:
+			## 常驻类(浮囊): 由效果侧决定何时收; 浮起那 0.5 秒里先藏着(见 float_bladder)
+			var hl: float = float(h.get("hidden_left", 0.0))
+			if hl > 0.0:
+				h["hidden_left"] = maxf(0.0, hl - maxf(delta, 0.0))
+				apply_at(h, 0.0)
 			i += 1
-			continue          # 常驻类(浮囊): 由效果侧决定何时收
+			continue
 		var t: float = float(h["t"]) + maxf(delta, 0.0)
 		h["t"] = t
 		apply_at(h, t / dur)

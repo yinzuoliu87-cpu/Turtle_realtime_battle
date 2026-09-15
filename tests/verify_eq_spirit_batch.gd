@@ -847,15 +847,7 @@ func _t_phys_064() -> void:
 	_ok("⑤ ★皮面松弛度 + (r/r_max)² ≡ 1(21 点逐点比)", sb.is_empty(), str(sb.slice(0, 3)))
 	_ok("⑤ ★可读性: 掉到一半余额时松弛度已 >0.35(半径只小 21%, 光靠半径看不出在瘪)",
 		SVX.bladder_slack(0.5) > 0.35, "slack(0.5)=%.4f" % SVX.bladder_slack(0.5))
-	# ★Fick 扩散: r² 对归一时间严格线性
-	var db: Array = []
-	for i in range(0, 21):
-		var uu: float = float(i) / 20.0
-		var r: float = SVX.diffusion_radius(uu)
-		if absf(r * r - uu) > 1e-6:
-			db.append("u=%.2f r²=%.6f" % [uu, r * r])
-	_ok("⑤ ★★诅咒云 Fick 扩散: r² 对时间**严格线性**(均方位移 = 2Dt · 21 点逐点比)",
-		db.is_empty(), str(db.slice(0, 3)))
+	# (诅咒云的 Fick 扩散曲线 2026-09-15 随程序云一起删了: 破裂改成烘焙诅咒水波, 第 0 帧就到外沿, 见 064破裂)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -921,15 +913,9 @@ func _t_vfx_nodes() -> void:
 			r_zero < 1e-3 and r_peak > r_zero and r_end < r_peak * 0.05,
 			"起 %.5f 峰 %.5f 末 %.5f" % [r_zero, r_peak, r_end])
 		_ok("⑥ ★分母: 峰值半径确实是个正经尺寸(>0.5 m)", r_peak > 0.5, "%.4f m" % r_peak)
-	# 破裂云: 半径必须扩到 300 码
-	var hb: Dictionary = vfx.bladder_burst(c, Color(1, 1, 1, 1), 300.0)
-	var cloud = _pick_meta("curse_cloud")
-	_ok("⑥ ★分母: 取到了诅咒云节点", cloud != null)
-	if cloud != null:
-		vfx.apply_at(hb, 1.0)
-		var want300: float = 300.0 * float(_s.WS)
-		_ok("⑥ ★★诅咒云扩到底 = 300 码 × WS = %.4f m(与效果半径同一个数)" % want300,
-			absf(float(cloud.scale.x) - want300) < 1e-4, "实测 %.4f m" % float(cloud.scale.x))
+	# 破裂水波: 这里只为量「到期自销」(外沿 = 判定半径那条走真效果路径, 在 064破裂 里)
+	var hw: Dictionary = vfx.curse_wave(c, 300.0)
+	_ok("⑥ ★分母: 建出了诅咒水波节点", not hw.is_empty() and is_instance_valid(hw.get("wave", null)))
 	# 撤场: tick 到期后节点被 free
 	var live0: int = vfx.live_count()
 	vfx.tick(9.0)
@@ -1002,21 +988,53 @@ func _t064_bladder_follow() -> void:
 		and is_same((back as Node).get_parent(), _s._world) and is_same((front as Node).get_parent(), _s._world))
 	if not (back is Sprite3D and front is Sprite3D and is_instance_valid(back) and is_instance_valid(front)):
 		return
-	## ① 跟随: 前后两半的中点 = 持盾单位上方 1.30 米(世界高度; 两半沿视线等量错开, 中点抵消)
-	var mid0: Vector3 = ((back as Node3D).position + (front as Node3D).position) * 0.5
+	## ⓪ 触发: 开盾那一步就建出浮起帧表; 持有态先藏着(浮起最后一帧 = 持有态的样子), 播完才露出
+	var rh = (h as Dictionary).get("rise_h", {})
+	var rise = (rh as Dictionary).get("rise", null) if rh is Dictionary else null
+	_ok("064触发 ★★开盾同一步建出浮起演出(烘焙 8 帧, NEAREST, 挂进 _world)",
+		rise is Sprite3D and is_instance_valid(rise) and (rise as Sprite3D).hframes == SVX.FX_FRAMES
+		and (rise as Sprite3D).texture_filter == BaseMaterial3D.TEXTURE_FILTER_NEAREST and is_same((rise as Node).get_parent(), _s._world))
+	_ok("064触发 ★浮起期间持有态浮囊藏着(后 a=%.2f 前 a=%.2f)" % [(back as Sprite3D).modulate.a, (front as Sprite3D).modulate.a],
+		(back as Sprite3D).modulate.a == 0.0 and (front as Sprite3D).modulate.a == 0.0)
+	## 写死 0.55 秒: 浮起必须在这之内播完。拿 RISE_T + 0.05 当推进时长 = 常量改成多少就等多少, 永远绿(变异 N8 就是为这条)
+	_sp._vfx.tick(0.55)
+	_ok("064触发 ★★浮起播完收掉、持有态露出(后 a=%.2f)" % (back as Sprite3D).modulate.a,
+		rise is Sprite3D and (rise as Node).is_queued_for_deletion() and (back as Sprite3D).modulate.a > 0.0 and (front as Sprite3D).modulate.a > 0.0)
+	## ② 套在身上(先量: 这时立绘节点与单位同点)。立绘是跟着相机俯仰的 billboard, 平面过立绘节点原点、法线 = 相机 basis.z。
+	##   ★量【到立绘平面的有符号距离】, 不量「离相机远近」: 修前两半都在平面前面(探针: 后 +0.61 / 前 +1.31 米),
+	##     离相机远近照样差 0.7 米 ⇒ 旧判据「后比前远 0.6 米」一直是绿的, 而后半圈从来没被身体挡住过(用户 2026-09-15 看到的)。
+	var spr = u.get("sprite", null)
+	var cam: Camera3D = _s._cam
+	_ok("064跟随 ★分母: 立绘节点与战斗镜头都在(遮挡判据以立绘 billboard 平面为准)",
+		spr is Sprite3D and is_instance_valid(spr) and cam != null and is_instance_valid(cam))
+	if not (spr is Sprite3D and is_instance_valid(spr) and cam != null and is_instance_valid(cam)):
+		return
+	var nrm: Vector3 = cam.global_transform.basis.z.normalized()
+	var p0: Vector3 = (spr as Node3D).global_position
+	var sd_back: float = ((back as Node3D).global_position - p0).dot(nrm)
+	var sd_front: float = ((front as Node3D).global_position - p0).dot(nrm)
+	_ok("064跟随 ★★后半圈在立绘平面后面、前半圈在前面(后 %.2f / 前 %.2f 米, 正 = 朝镜头)" % [sd_back, sd_front],
+		sd_back < -0.2 and sd_front > 0.2)
+	## ②b 挂在身体中段: 浮囊中点投影落在立绘屏幕高度的 30%~50%(从脚往上)
+	var s3: Sprite3D = spr as Sprite3D
+	var cam_up: Vector3 = cam.global_transform.basis.y.normalized()
+	var fh: float = (float(s3.texture.get_height()) / float(maxi(1, s3.vframes))) if s3.texture != null else 0.0
+	var qh: float = fh * s3.pixel_size * s3.scale.y
+	var cy: float = s3.offset.y * s3.pixel_size * s3.scale.y
+	var sy_top: float = cam.unproject_position(p0 + cam_up * (cy + qh * 0.5)).y
+	var sy_bot: float = cam.unproject_position(p0 + cam_up * (cy - qh * 0.5)).y
+	var mid0: Vector3 = ((back as Node3D).global_position + (front as Node3D).global_position) * 0.5
+	var frac: float = (sy_bot - cam.unproject_position(mid0).y) / maxf(0.001, sy_bot - sy_top)
+	_ok("064跟随 ★浮囊中点在立绘高度的 %.0f%%(应 30%%~50%%, 从脚往上; 立绘帧高 %.0f 像素)" % [frac * 100.0, fh],
+		qh > 0.0 and frac >= 0.30 and frac <= 0.50)
+	## ① 跟随: 携带者挪 300 码后, 浮囊中点相对【单位逻辑位置】的偏移不变(修前留在开盾点)
+	var rel0: Vector3 = mid0 - _s._world_pos(u["pos"], float(u.get("height", 0.0)))
 	u["pos"] = Vector2(u["pos"]) + Vector2(300.0, 0.0)
 	_sp.tick_unit(u, 0.05)
-	var want: Vector3 = _s._world_pos(u["pos"], 0.0) + Vector3(0.0, 1.30, 0.0)
-	var mid1: Vector3 = ((back as Node3D).position + (front as Node3D).position) * 0.5
-	_ok("064跟随 ★分母: 携带者真的挪了(新位置离开盾点 %.2f 米)" % mid0.distance_to(want), mid0.distance_to(want) > 1.0)
-	_ok("064跟随 ★★浮囊跟到携带者新位置上方 1.30 米(修前留在开盾点)", mid1.distance_to(want) < 1e-3,
-		"偏 %.3f 米" % mid1.distance_to(want))
-	## ② 套在身上: 后半圈比前半圈离镜头远(龟立绘写深度 ⇒ 后半圈被身体挡住)
-	var cam_p: Vector3 = _s._cam.global_transform.origin
-	var d_back: float = (back as Node3D).global_transform.origin.distance_to(cam_p)
-	var d_front: float = (front as Node3D).global_transform.origin.distance_to(cam_p)
-	_ok("064跟随 ★★后半圈离镜头比前半圈远 0.6 米以上(拆两半才读得出「套在身上」)", d_back - d_front > 0.6,
-		"后 %.2f / 前 %.2f 米" % [d_back, d_front])
+	var mid1: Vector3 = ((back as Node3D).global_position + (front as Node3D).global_position) * 0.5
+	var rel1: Vector3 = mid1 - _s._world_pos(u["pos"], float(u.get("height", 0.0)))
+	_ok("064跟随 ★分母: 浮囊真的挪了(中点移动 %.2f 米)" % mid0.distance_to(mid1), mid0.distance_to(mid1) > 1.0)
+	_ok("064跟随 ★★浮囊跟到携带者新位置(相对单位的偏移前后差 %.4f 米)" % rel0.distance_to(rel1), rel0.distance_to(rel1) < 1e-3)
 	## ③ 瘪度按真实余额选帧: 满(>75%)行 0 · 60% 行 1 · 40% 行 2 · 10% 行 3; 列 0 后 / 1 前
 	var full: float = float((u["eq_state"]["p2eq_064"] as Dictionary).get("ghost_max", 0.0))
 	var bad: Array = []
@@ -1031,5 +1049,43 @@ func _t064_bladder_follow() -> void:
 			bad.append("余额 %.0f%% 期望行 %d, 实为后 %d 前 %d" % [float(pair[0]) * 100.0, int(pair[1]),
 				int((back as Sprite3D).frame), int((front as Sprite3D).frame)])
 	_ok("064跟随 ★★瘪度跟着真实余额走(4 档逐一核对 %d 个)" % n_lv, bad.is_empty() and n_lv == 4, str(bad))
+	## ③ 破裂: 余额打光 ⇒ 同一步炸开 + 诅咒水波; 水波第 0 帧外沿直径 = 2 × GHOST_BURST_R(素材真像素 × 节点像素尺寸)
+	## ★节点从演出层自己的在播句柄里取(不扫 _world: 前面几节留下的待删节点会被误拿)
+	var burst0: int = int(u.get("_ghost_burst_n", 0))
+	_s._spec.absorb(u, _s._spec.val(u, "p2eq_064_ghost") + 10.0)
+	_ok("064破裂 ★分母: 余额打光真的触发了破裂(次数 %d→%d)" % [burst0, int(u.get("_ghost_burst_n", 0))],
+		int(u.get("_ghost_burst_n", 0)) == burst0 + 1)
+	var pop = null
+	var wave = null
+	for lh in _sp._vfx._live:
+		if str((lh as Dictionary).get("kind", "")) == "pop":
+			pop = (lh as Dictionary).get("pop", null)
+		elif str((lh as Dictionary).get("kind", "")) == "wave":
+			wave = (lh as Dictionary).get("wave", null)
+	_ok("064破裂 ★★破裂同一步建出炸开(8 帧)与诅咒水波(6 帧)两个烘焙演出",
+		pop is Sprite3D and wave is Sprite3D and (pop as Sprite3D).hframes == SVX.FX_FRAMES and (wave as Sprite3D).hframes == SVX.WAVE_FRAMES)
+	if wave is Sprite3D:
+		var ws3: Sprite3D = wave as Sprite3D
+		var wim := Image.load_from_file(SVX.WAVE_TEX)
+		var wfw: int = (wim.get_width() / SVX.WAVE_FRAMES) if wim != null else 0
+		var lo: int = wfw
+		var hi: int = -1
+		for x in range(wfw):
+			for y in range(wim.get_height()):
+				if wim.get_pixel(x, y).a > 0.5:
+					lo = mini(lo, x)
+					hi = maxi(hi, x)
+					break
+		var diam_yd: float = float(hi - lo + 1) * ws3.pixel_size / float(_s.WS)
+		var want_yd: float = 2.0 * float(_sp.GHOST_BURST_R)
+		_ok("064破裂 ★★诅咒水波第 0 帧外沿直径 %.0f 码 = 2 × 判定半径 %.0f 码(±4%%, 素材真像素 %d × 节点像素尺寸)" % [diam_yd, want_yd * 0.5, hi - lo + 1],
+			hi > lo and absf(diam_yd - want_yd) <= 0.04 * want_yd)
+		_ok("064破裂 水波贴地(axis=Y · 不公告板 · NEAREST · 离地 %.2f 米)" % ws3.position.y,
+			ws3.axis == Vector3.AXIS_Y and ws3.billboard == BaseMaterial3D.BILLBOARD_DISABLED
+			and ws3.texture_filter == BaseMaterial3D.TEXTURE_FILTER_NEAREST and ws3.position.y < 0.1)
+	## 写死 1.0 秒: 炸开 / 水波是短命演出, 1 秒内必须收掉。第一版拿 WAVE_T + 0.05 推进, 把 WAVE_T 改成 9 秒照样绿(变异 N6 没红)
+	_sp._vfx.tick(1.0)
+	_ok("064破裂 播完收掉(炸开 / 水波)",
+		pop is Sprite3D and wave is Sprite3D and (pop as Node).is_queued_for_deletion() and (wave as Node).is_queued_for_deletion())
 	_s._units.clear()
 	_s._spec.clear_all()
