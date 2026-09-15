@@ -77,6 +77,14 @@ func tick_owner(u: Dictionary, delta: float) -> void:
 		tick(u, delta)
 
 
+## 【全局】每个模拟步推进(由 `EquipSystem.tick_global` 调, 与"谁带着小木斧、斧头死没死"无关):
+##   炽天使在途回旋镖 —— 飞出去 → 折返 → 飞回斧头, 经过敌人时结算(见 AxeFinalForms.tick_boomerangs)。
+## ★为什么不放进上面的 `tick`: 那条在斧头死后第一行就 return, 而镖要飞回出手点;
+##   也不按携带者调(两个携带者就推两遍)。时停期间 tick_global 整块不跑 ⇒ 在途镖天然冻住。
+func tick_global(delta: float) -> void:
+	_fin.tick_boomerangs(delta)
+
+
 ## 登场召唤斧头。照 058 炮台的 `_spawn_summon` 底座。
 func summon(u: Dictionary) -> Variant:
 	if not u.get("alive", false):

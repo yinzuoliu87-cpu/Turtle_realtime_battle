@@ -12,14 +12,20 @@ extends RefCounted
 ##   靠状态机 + 特效表现，不加 death 动作帧；`verify_summon_art` 焊死了这条。
 const AF := preload("res://scripts/gamedata/axe_final_stats.gd")
 const AFV := preload("res://scripts/scenes/battle/axe_final_vfx.gd")
+const ASV := preload("res://scripts/scenes/battle/axe_seraph_vfx.gd")
 
 var battle = null
 var vfx = null                            # 演出(axe_final_vfx.gd) —— **只画, 不结算**
+var seraph_vfx = null                     # 炽天使回旋镖演出(axe_seraph_vfx.gd) —— 同样只画
+## 在途回旋镖(炽天使主动)。每条是一个记录字典, 见 `seraph_boomerang_launch`。
+## ★记录里的 src / cands / hits 装的是单位字典: 只当【值】存, 比较一律 is_same / _arr_has_unit(CLAUDE.md §3.2)。
+var _booms: Array = []
 
 
 func _init(b) -> void:
 	battle = b
 	vfx = AFV.new(b)
+	seraph_vfx = ASV.new(b)
 
 
 ## 这只斧头的最终造物 key（""=还没选）。
@@ -150,40 +156,148 @@ func seraph_on_hit(ax: Dictionary, tgt: Dictionary) -> int:
 	return AF.SERAPH_BURN_ON_HIT
 
 
-## 一把回旋镖的**纯结算**：沿 `dir` 直线飞过，半宽 300 码内的敌人各吃 1×ATK 魔法 + 8 层灼烧。
-## 返回命中数。★门禁直接调它 —— 不等任何飞行 tween（§3.5 海盗钩索那条教训）。
-func seraph_boomerang_settle(ax: Dictionary, dir: Vector2) -> int:
+## ── 回旋镖(2026-09-15 重做: 飞出去 → 折返 → 飞回斧头, 经过时结算) ──────────────
+## 用户:「7/9的回旋镖同样是在敷衍我啊，回旋镖是什么？以及特效和实际伤害范围完全不一样啊，也没有命中特效」
+## ★原来的 `seraph_boomerang_settle` 在【出手当帧】把身前半宽 300 码、不限长的带里所有敌人一次打完,
+##   演出是一根小方块直线飞 0.45 秒不回来 —— 伤害与演出脱节。现在拆成两半:
+##   · `seraph_boomerang_launch`(出手): 只登记在途, 定下【命中名单】与【飞出距离】, **不结算**;
+##   · `tick_boomerangs`(每个模拟步, 挂 EquipSystem.tick_global): 推进路径, 用「上一步中心 → 这一步中心」
+##     这段折线扫, 敌人中心到线段 ≤ SERAPH_BOOM_R 就命中。
+## ★数值与目标集合一个不动:
+##   · 名单 = 出手时在【身前】那一侧的可选中敌人(rel·dir ≥ 0, 相对出手点) —— 镖是圆的,
+##     不许因此把身后 300 码内的也打了(保持原「单向」的目标集合);
+##   · 飞出距离 = max(SERAPH_BOOM_MIN_OUT, 身前判定带里最远那个的纵深) ⇒ 原来打得到的, 现在镖真的飞到
+##     (第十批 E10 那条「1300 码外挨打却看不到镖」在这里从根上没了: 不再有"演出长度"与"判定长度"两个数);
+##   · 每把每个敌人只吃一次(去程或回程先碰到的那次) —— 回程再打一遍 = 伤害翻倍 = 擅自改数值;
+##   · 伤害 = 出手时 1×ATK 魔法(先过魔抗再 `_apply_damage`, 同亡灵环) + 8 层灼烧, 与原来完全一样。
+## ★源头离场(换路 / 战斗结束, 斧头从 `battle._units` 里消失) ⇒ 整条作废并收掉节点(照 eq_bow_batch._alive_here);
+##   斧头只是死了不作废, 回程飞回出手点。
+
+## 出手: 登记一把在途回旋镖。返回在途记录(没甩出去 = 空字典)。
+## 记录字段: src 斧头 / org 出手点 / dir 方向 / out 飞出距离 / dmg 出手时的伤害 / cands 身前名单 / hits 已命中 /
+##   pos 当前中心 / flown 去程已飞 / back 在回程 / done 已飞回 / t 已飞秒数 / node 镖身节点。
+## ★不结算 —— 门禁专门量「出手当帧敌人不掉血」。
+func seraph_boomerang_launch(ax: Dictionary, dir: Vector2) -> Dictionary:
 	if _fk(ax) != "seraph":
-		return 0
+		return {}
 	var d: Vector2 = dir.normalized()
 	if d == Vector2.ZERO:
-		return 0
+		return {}
 	var org: Vector2 = ax.get("pos", Vector2.ZERO)
-	var dmg: int = maxi(1, int(round(float(ax.get("atk", 0.0)) * AF.SERAPH_BOOM_ATK)))
-	var n := 0
-	## ★★演出长度补到被打中的最远那个(第十批 E10)。判定本来就没有射程上限(沿直线飞过、身前半宽内全吃),
-	##   而演出原来固定只画 SERAPH_BOOM_R×2.5 ⇒ 1300 码外的敌人挨打却看不到镖飞到。判定不改(不动数值), 只补演出长度。
-	var reach: float = AF.SERAPH_BOOM_R * 2.5
+	var cands: Array = []
+	var out: float = AF.SERAPH_BOOM_MIN_OUT
 	for o in battle._targeting._targetable_enemies(ax):
 		var rel: Vector2 = (o.get("pos", Vector2.ZERO) as Vector2) - org
 		if rel.dot(d) < 0.0:
-			continue                       # 只打身前那一侧（"直直飞过"是单向的）
-		## 到飞行中线的横向距离 ——「半径大小为300码」当作这条线的作用半宽
-		if absf(rel.dot(Vector2(-d.y, d.x))) > AF.SERAPH_BOOM_R:
-			continue
-		## ★★「1ATK**魔法**伤害」必须吃魔抗(memory: 伤害类型是接线不是颜色, 没有例外)。
-		##   `_apply_damage` 这条路**不算抗性** —— 同一个文件上面亡灵环已经踩过并修了,
-		##   回旋镖这处漏了(全仓 4 个 "mag" 调用点里唯一没预削的那个)。2026-09-01 补。
-		var after: int = battle._damage._dot_after_resist(o, float(dmg), true, ax)
-		battle._damage._apply_damage(o, maxi(1, after), Color("#ffb347"), ax, "mag", false)
-		if o.get("alive", false):
-			battle._damage._apply_dot_stacks(o, "burn", AF.SERAPH_BOOM_BURN, ax)
-		n += 1
-		reach = maxf(reach, rel.dot(d))
-	vfx.seraph_boomerang(org, d, reach, 0.45)   # 演出: 一把飞过去, 画到最远命中处
+			continue                       # 只打身前那一侧(单向的目标集合)
+		cands.append(o)
+		## 到飞行中线的横向距离 ≤ 半宽 = 原判定带覆盖到的那个 ⇒ 镖至少要飞到它的纵深
+		if absf(rel.dot(Vector2(-d.y, d.x))) <= AF.SERAPH_BOOM_R:
+			out = maxf(out, rel.dot(d))
+	var rec := {
+		"src": ax, "org": org, "dir": d, "out": out,
+		"dmg": maxi(1, int(round(float(ax.get("atk", 0.0)) * AF.SERAPH_BOOM_ATK))),
+		"cands": cands, "hits": [],
+		"pos": org, "flown": 0.0, "back": false, "done": false, "t": 0.0,
+		"node": seraph_vfx.boom_spawn(org),
+	}
+	_booms.append(rec)
 	## ★斧头本体的【甩】动作帧 —— 每把一次(4 秒 10 把 ⇒ 每 0.4 秒), fps 就是按这个定的。
 	##   在此之前斧头是站着不动把 10 把镖变出来的(当时的人形素材 eq-axe-throw.png 零调用者; 2026-09-15 起换成悬空 3D 斧, 按形态取 eq096-axe-<形态>-throw.png, 见 AxeArt)。
 	_play(ax, "axe_throw")
+	return rec
+
+
+## 每个模拟步推进全部在途回旋镖(EquipSystem.tick_global → AxeSystem.tick_global → 这里)。
+## 返回这一步新命中的人次(门禁拿它当分母)。
+## ★挂 tick_global 而不是每携带者的 `AxeSystem.tick`: 后者在斧头死后第一行就 return, 而镖要飞回出手点;
+##   时停期间 tick_global 整块不跑 ⇒ 在途镖与火花天然冻住。
+func tick_boomerangs(delta: float) -> int:
+	seraph_vfx.tick(delta)
+	if _booms.is_empty():
+		return 0
+	var dt: float = maxf(0.0, delta)
+	var n := 0
+	var keep: Array = []
+	## ★先把表摘下来再遍历: 结算里可能打死人 → 死亡链上的钩子万一又甩出新镖, 不许改正在遍历的数组
+	var cur: Array = _booms
+	_booms = []
+	for rec in cur:
+		if not battle._arr_has_unit(battle._units, rec["src"]):
+			seraph_vfx.boom_free(rec.get("node", null))   # 源头离场: 整条作废, 不许打到新一路的单位
+			continue
+		var pts: Array = _boom_advance(rec, AF.SERAPH_BOOM_SPEED * dt)
+		n += _boom_sweep(rec, pts)
+		rec["t"] = float(rec["t"]) + dt
+		seraph_vfx.boom_step(rec.get("node", null), rec["pos"], float(rec["t"]))
+		if bool(rec["done"]):
+			seraph_vfx.boom_free(rec.get("node", null))   # 飞回斧头: 收掉
+			continue
+		keep.append(rec)
+	keep.append_array(_booms)
+	_booms = keep
+	return n
+
+
+## 沿「出手点 → 最远处 → 斧头」前进 `step` 码。返回这一步走过的折线顶点(第一个 = 上一步的中心)。
+## ★折返点落在这一步中间时, 顶点里带上折返点 —— 否则扫的是一条抄近路的弦, 最远处那个人会被漏掉。
+## ★回程终点每步现读: 斧头活着 = 它【当前】的位置(它在走), 死了 = 出手点。
+func _boom_advance(rec: Dictionary, step: float) -> Array:
+	var pts: Array = [rec["pos"]]
+	var left: float = step
+	if not bool(rec["back"]):
+		var remain: float = float(rec["out"]) - float(rec["flown"])
+		if left < remain:
+			rec["flown"] = float(rec["flown"]) + left
+			rec["pos"] = (rec["org"] as Vector2) + (rec["dir"] as Vector2) * float(rec["flown"])
+			pts.append(rec["pos"])
+			return pts
+		rec["flown"] = float(rec["out"])
+		rec["pos"] = (rec["org"] as Vector2) + (rec["dir"] as Vector2) * float(rec["out"])
+		rec["back"] = true
+		pts.append(rec["pos"])
+		left -= remain
+	var src: Dictionary = rec["src"]
+	var home: Vector2 = rec["org"]
+	if src.get("alive", false):
+		home = src.get("pos", home)
+	var to_home: Vector2 = home - (rec["pos"] as Vector2)
+	if to_home.length() <= left:
+		rec["pos"] = home
+		rec["done"] = true
+	else:
+		rec["pos"] = (rec["pos"] as Vector2) + to_home.normalized() * left
+	pts.append(rec["pos"])
+	return pts
+
+
+## 扫这一步走过的折线: 名单里还没吃过这把的敌人, 中心到任一段 ≤ 半宽 ⇒ 结算。返回命中数。
+func _boom_sweep(rec: Dictionary, pts: Array) -> int:
+	if pts.size() < 2:
+		return 0
+	var src: Dictionary = rec["src"]
+	var n := 0
+	for o in battle._targeting._targetable_enemies(src):
+		if not battle._arr_has_unit(rec["cands"], o) or battle._arr_has_unit(rec["hits"], o):
+			continue                       # 不在出手时的身前名单 / 这把已经打过它(每把每敌一次)
+		var p: Vector2 = o.get("pos", Vector2.ZERO)
+		var near := false
+		for i in range(pts.size() - 1):
+			if Geometry2D.get_closest_point_to_segment(p, pts[i], pts[i + 1]).distance_to(p) <= AF.SERAPH_BOOM_R:
+				near = true
+				break
+		if not near:
+			continue
+		(rec["hits"] as Array).append(o)
+		## ★★「1ATK**魔法**伤害」必须吃魔抗(memory: 伤害类型是接线不是颜色, 没有例外)。
+		##   `_apply_damage` 这条路**不算抗性** —— 先过 `_dot_after_resist(magic=true)` 再交给它(同亡灵环;
+		##   2026-09-01 回旋镖漏过一次: 全仓 4 个 "mag" 调用点里唯一没预削的那个)。
+		var after: int = battle._damage._dot_after_resist(o, float(rec["dmg"]), true, src)
+		battle._damage._apply_damage(o, maxi(1, after), Color("#ffb347"), src, "mag", false)
+		if o.get("alive", false):
+			battle._damage._apply_dot_stacks(o, "burn", AF.SERAPH_BOOM_BURN, src)
+		seraph_vfx.hit_spark(o)            # 命中火花: 接在结算之后(§3.5), 演出掉了不影响数值
+		n += 1
 	return n
 
 
@@ -451,7 +565,7 @@ func tick_active(ax: Dictionary, _delta: float) -> int:
 				var rel: Vector2 = (t2.get("pos", Vector2.ZERO) as Vector2) - (ax.get("pos", Vector2.ZERO) as Vector2)
 				if rel != Vector2.ZERO:
 					dir = rel.normalized()
-			seraph_boomerang_settle(ax, dir)
+			seraph_boomerang_launch(ax, dir)   # 只登记在途; 伤害在 tick_boomerangs 里镖经过时结算
 			ax["_seraph_left"] = int(ax.get("_seraph_left", 0)) - 1
 			## ★间隔 = 4 秒 / 10 把, 与 AxeFinalVfx.boomerang_launch_t 同一个口径
 			ax["_seraph_next"] = float(battle._t) + AF.SERAPH_CAST_TIME / float(AF.SERAPH_BOOMERANGS)

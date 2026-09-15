@@ -2624,6 +2624,7 @@ func tick_global(delta: float) -> void:
 	_spirit_sys.tick_global(delta)
 	_potion_sys.tick_global(delta)
 	_food_sys.tick_global(delta)
+	_axe.tick_global(delta)   # 096 炽天使在途回旋镖(飞出去再飞回来·经过时结算; 斧头死后也要飞完)
 
 
 ## 某个单位【真实落地】(airborne true→false)那一帧, 由主循环调。

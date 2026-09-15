@@ -218,36 +218,8 @@ func undead_revive(pos2d: Vector2, sec: float) -> void:
 	_fade_out(root, sec + 0.25)
 
 
-## A4 回旋镖：一把橙色斧刃沿 dir 匀速飞过。**只是演出** —— 伤害由调用方在出手时结算。
-func seraph_boomerang(from2d: Vector2, dir: Vector2, dist_px: float, fly_sec: float) -> void:
-	if not _has_world():
-		return
-	var d: Vector2 = dir.normalized()
-	if d == Vector2.ZERO:
-		return
-	var n := MeshInstance3D.new()
-	var bm := BoxMesh.new()
-	bm.size = Vector3(0.55, 0.10, 0.16)
-	n.mesh = bm
-	## 斧刃是**实心**的 ⇒ MIX，不用 ADD（088 那块被 ADD 爆成白的碑就是教训）
-	n.material_override = _mat(COL_SERAPH, true, 9)
-	n.position = battle._world_pos(from2d, 0.55)
-	_adopt(n)
-	var to2d: Vector2 = from2d + d * dist_px
-	n.set_meta("boom_to2d", to2d)   # 画到哪 —— 门禁量「演出长度 ≥ 判定打中的最远处」(第十批 E10)
-	## ★显式标注类型: `battle` 是无类型的注入宿主, `:=` 推不出 Tween(Parse Error)。
-	var tw: Tween = battle._reg_tween()
-	## ★捕获实例 id 不捕获节点(见 `_fade_out` 头注)
-	var nid: int = n.get_instance_id()
-	tw.tween_method(func(x: float) -> void:
-		var m = instance_from_id(nid)
-		if not is_instance_valid(m):
-			return
-		var f: float = boomerang_frac(x, 1.0)
-		(m as Node3D).position = battle._world_pos(from2d.lerp(to2d, f), 0.55)
-		(m as Node3D).rotation.y += 0.55                # 自旋，读得出是"甩出去的"
-	, 0.0, 1.0, fly_sec)
-	_fade_out(n, fly_sec)
+## A4 回旋镖 —— 2026-09-15 整个搬到 `axe_seraph_vfx.gd`(AxeSeraphVfx)。
+##   旧版是一根 0.55×0.10×0.16 米的橙色 BoxMesh 直线飞 0.45 秒不回来, 用户:「回旋镖是什么？」。
 
 
 ## A6+A7 全息法阵：插地的斧头 + 600 码青色地面阵。返回根节点。
