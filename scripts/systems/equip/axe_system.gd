@@ -145,6 +145,8 @@ func cast_heal(ax: Dictionary) -> bool:
 func _tick_undead_ring(ax: Dictionary, _delta: float) -> void:
 	if not ax.get("alive", false):
 		return
+	## ★领域演出每步保证在场(不是每跳才建): 第一跳在登场 1 秒后, 复活后也要立刻看得见。
+	_fin.undead_field_step(ax)
 	if not ax.has("_undead_ring_at"):
 		ax["_undead_ring_at"] = float(battle._t) + AFS.UNDEAD_RING_TICK
 		return
