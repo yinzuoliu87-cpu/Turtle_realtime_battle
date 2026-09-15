@@ -209,7 +209,11 @@ const HELI_ORBIT_SPD := 150.0
 ## 轰炸后的脱离: 沿原航向再飞这么远(码), 速度取进场速度的 0.8。
 const HELI_EGRESS_LEN := 260.0
 const HELI_EGRESS_SPD := 500.0
-const CRASH_SPD := 900.0
+## 坠机冲刺速度(码/秒)。★2026-09-15 用户:「最后冲刺坠向敌人的速度太快了，需要减半」⇒ 900 → 450。
+const CRASH_SPD := 450.0
+## 坠机爆炸立绘的每帧时长倍数。★同一天用户:「播放的坠机特效可以放慢一点，每帧长40%吧」⇒ ×1.4。
+##   只给坠机那一炸用 —— 地毯轰炸的爆炸同一张立绘, 用户明说「080其他的不要动」。
+const CRASH_BLAST_SLOW := 1.4
 
 const COL_PHYS := Color("#ffcf6b")
 const COL_MAGIC := Color("#9bdcff")
@@ -314,6 +318,13 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 	# ★自管累加器, 不读 battle._t(它跨路累加永不重置, CLAUDE.md §3.4)
 	u["_g078_t"] = float(u.get("_g078_t", 0.0)) + delta
 	if float(u["_g078_t"]) < EEL_IV:
+		return
+	## ★敌人进 EEL_FIRE_RANGE 码才开火(用户 2026-09-15:「敌人没有进范围为什么开枪，应该设定个范围的」)。
+	##   原来到点就朝最近的敌人开, 不管它在多远 ⇒ 霰弹在空地上炸、电击弹隔着半个战场打人。
+	##   计时攒满后【停在满格等着】, 有人进范围立刻开这一发 —— 不空放、也不白丢一拍。
+	var near = battle._targeting._nearest_enemy(u)
+	if near == null or Vector2(near["pos"]).distance_to(Vector2(u["pos"])) > EEL_FIRE_RANGE:
+		u["_g078_t"] = EEL_IV
 		return
 	u["_g078_t"] = float(u["_g078_t"]) - EEL_IV
 	_eel_fire(u, int(u.get("_g078_si", 0)))
@@ -591,6 +602,9 @@ func _eel_right(u: Dictionary, si: int) -> void:
 const EEL_IV := 2.0            # 交替节拍(秒)
 const EEL_CONE_RANGE := 400.0  # 左管锥形射程(码)
 const EEL_CONE_DEG := 60.0     # 左管锥角(全角; 代码里取半角 = ÷2)
+## 开火距离(码): 最近的敌人在这个距离内才开火。★取左管锥形射程同一个数 —— 霰弹画多远、就在多远内才开,
+##   不另立第二个数(用户 2026-09-15:「敌人没有进范围为什么开枪，应该设定个范围的」)。
+const EEL_FIRE_RANGE := EEL_CONE_RANGE
 const EEL_BOLT_ATK := 0.5      # 右管电击弹: 首目标 ×ATK 物理
 const EEL_HOP_GAP := 0.09
 const EEL_HOP_MAX := 64
@@ -1177,5 +1191,5 @@ func heli_crash_explode(h: Dictionary) -> int:
 		if o.get("alive", false) and burn > 0:
 			battle._damage._apply_dot_stacks(o, "burn", burn, owner)
 		n += 1
-	vfx.blast(at, CRASH_R, COL_BOMB)
+	vfx.blast(at, CRASH_R, COL_BOMB, GunEqVfx.BLAST_SEC * CRASH_BLAST_SLOW)
 	return n

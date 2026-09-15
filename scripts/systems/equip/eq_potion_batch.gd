@@ -505,6 +505,10 @@ func _eq_beam_step(u: Dictionary, delta: float) -> void:
 	var t0: float = float(stt.get("beam_t", 0.0))
 	var t1: float = minf(t0 + maxf(delta, 0.0), Vfx.BEAM_SEC)
 	stt["beam_t"] = t1
+	## ★发射点每步刷成携带者当前位置 —— 转向、照到谁、伤害扫掠三处都从它算(演出与判定同一个点)。
+	##   用户 2026-09-15:「角色移动的时候这个激光有问题啊，激光源得跟着角色走啊」。
+	##   原来 beam_org 只在开火那一刻写一次, 携带者走开后光束与伤害都还从原地射出。
+	stt["beam_org"] = u["pos"]
 
 	# ── 转向 ────────────────────────────────────────────────────
 	#   目标死了/失效了就改指最远的活敌; 方向按角速率上限逼近, **不瞬移**。
@@ -524,6 +528,7 @@ func _eq_beam_step(u: Dictionary, delta: float) -> void:
 	# ── 演出: 只转节点 + 更新包络 + 告知现在照到了谁 ────────────────
 	var h = stt.get("beam_h", null)
 	if h is Dictionary and not (h as Dictionary).is_empty():
+		_beam_vfx.set_origin(h, u["pos"])
 		_beam_vfx.aim(h, a0)
 		_beam_vfx.set_progress(h, t1 / maxf(Vfx.BEAM_SEC, 0.001))
 		_beam_vfx.set_hits(h, _beam_lit(u, stt), delta)

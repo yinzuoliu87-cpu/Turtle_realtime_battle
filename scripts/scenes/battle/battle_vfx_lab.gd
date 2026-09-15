@@ -596,11 +596,36 @@ func _tune_units() -> void:
 func _process(_delta: float) -> void:
 	if not _armed:
 		return
+	_apply_carrier_sway()
 	_apply_camera()
 	if not _keep_shake:
 		battle._shake_amp = 0.0     # 高倍数下震屏会把画面整个甩出去
 	if _text_on:
 		_repress_ui()
+
+
+## ★`carrier_sway: [振幅码, 周期秒, 起始秒]`: 起始秒之后让携带者沿纵向来回走。
+##   给「跟随携带者」类演出看的 —— 用户 2026-09-15 看 068:「角色移动的时候这个激光有问题啊，激光源得跟着角色走啊」,
+##   而台子默认携带者站桩, 跟没跟一眼看不出。只写坐标、不碰任何战斗数值; 位置按游戏钟 `battle._t` 算。
+func _apply_carrier_sway() -> void:
+	var sw = cfg.get("carrier_sway", null)
+	if not (sw is Array) or (sw as Array).size() < 2:
+		return
+	var t0: float = float(sw[2]) if (sw as Array).size() >= 3 else 0.0
+	var c = _first(func(u): return u.get("_eqdemo_carrier", false) and u.get("alive", false))
+	if c == null:
+		return
+	if float(battle._t) < t0:
+		return
+	if not (c as Dictionary).has("_sway_base"):
+		c["_sway_base"] = Vector2(c["pos"])
+	var base: Vector2 = c["_sway_base"]
+	var per: float = maxf(0.1, float(sw[1]))
+	var p: Vector2 = base + Vector2(0.0, float(sw[0]) * sin(TAU * (float(battle._t) - t0) / per))
+	c["pos"] = _clamp_arena(p)
+	## ★只在已有时同步 —— 凭空写 `_home_pos` 会打开评审假人的每帧归位(memory fb-home-pos-only-if-exists)
+	if (c as Dictionary).has("_home_pos"):
+		c["_home_pos"] = c["pos"]
 
 
 ## 藏光标。★`Input.MOUSE_MODE_HIDDEN` **不够** —— 本项目的光标不是系统光标,

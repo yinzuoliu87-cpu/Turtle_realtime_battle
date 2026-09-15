@@ -36,6 +36,8 @@ eq|幽灵加特林|effectBrief	8.0
 eq|幽灵加特林|effectDesc1	8.0
 eq|手半剑|effectDesc1	20.0 80.0 100.0 100.0 120.0 250.0 450.0
 eq|打捞旋翼机|effectDesc1	0.35 1.2 4.0 10.0 40.0 100.0 120.0 150.0 500.0 800.0
+eq|护心甲|effectBrief	15.0
+eq|护心甲|effectDesc1	15.0
 eq|暴君之牙|effectBrief	6.0
 eq|暴君之牙|effectDesc1	6.0 20.0 40.0 100.0
 eq|月之刃|effectBrief	100.0
@@ -79,13 +81,12 @@ eq|狙击长管|effectDesc1	8.0 12.0
 eq|玩偶小熊|effectBrief	4.0
 eq|玩偶小熊|effectDesc1	0.7 0.8 1.2 1.5 2.0 4.0 70.0 70.0 600.0
 eq|珊瑚急救塔|effectDesc1	150.0
-eq|电鳗双管铳|effectDesc1	0.5 2.0 60.0 400.0
+eq|电鳗双管铳|effectBrief	400.0
+eq|电鳗双管铳|effectDesc1	0.5 2.0 60.0 400.0 400.0
 eq|病毒箭头|effectBrief	400.0
 eq|病毒箭头|effectDesc1	1.0 1.1 10.0 400.0
 eq|白鲸气环|effectDesc1	0.03
 eq|盗令潜水钟|effectDesc1	2.0 3.0 3.0 10.0 10.0 15.0
-eq|砗磲护心甲|effectBrief	15.0
-eq|砗磲护心甲|effectDesc1	15.0
 eq|磷光水母伞|effectBrief	2.5 7.0 200.0
 eq|磷光水母伞|effectDesc1	2.5 7.0 7.0 15.0 200.0
 eq|竹制弓箭|effectDesc1	6.0 6.0

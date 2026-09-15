@@ -85,6 +85,7 @@ func _ready() -> void:
 	_t_mana_bar()
 	await _t_burst_tables()
 	await _t_tail_no_lit()
+	await _t_origin_follow()
 
 	_s.queue_free()
 	await get_tree().process_frame
@@ -551,3 +552,75 @@ func _t_burst_tables() -> void:
 	_ok("⑩ ★★爆发后自清(0.10s 爆发 + 0.07s 塌收, 之后节点必须归零)",
 		_ps._beam_vfx.node_count() == 0 and _ps._beam_vfx.live_count() == 0,
 		"还剩 %d 节点 / %d 句柄" % [_ps._beam_vfx.node_count(), _ps._beam_vfx.live_count()])
+
+
+## ⑬ 携带者移动时【激光源跟着走】—— 用户 2026-09-15:「角色移动的时候这个激光有问题啊，激光源得跟着角色走啊」。
+##   两件事分开量, 各有一条变异:
+##   · 画面: 束身 / 枪口 / 飘带节点的真实位置 == 携带者当前位置(不是开火那一刻的位置)
+##   · 判定: 伤害从新位置射出 —— 放一个【只在新射线上、离旧射线 300 码】的探测敌人, 它必须真的掉血。
+##     修前发射点钉在开火点: 探测敌人离旧射线垂距 300 码 > 半宽, 永远打不到。
+func _t_origin_follow() -> void:
+	print("── ⑫b 携带者移动: 激光源跟着走 ──")
+	_s._units.clear()
+	_s._spec.clear_all()
+	_ps.clear_all()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var c: Vector2 = _s.ARENA.position + _s.ARENA.size * 0.5
+	var p0: Vector2 = c + Vector2(-600.0, -150.0)
+	var carrier: Dictionary = _s._spawn._make_unit("fortune", "left", p0)
+	carrier["alive"] = true
+	carrier["pos"] = p0
+	carrier["hp"] = 3000.0
+	carrier["maxHp"] = 3000.0
+	carrier["equips"] = [{"id": "p2eq_068", "star": 3}]
+	carrier["eq_state"] = {"p2eq_068": {"can_t0": 0.0, "can_charge": 3000.0, "can_fired": 0}}
+	_s._units.append(carrier)
+	var far_t: Dictionary = _mk("right", p0 + Vector2(1500.0, 0.0))
+	_ps._eq_pressure_release(carrier, 2, carrier["eq_state"]["p2eq_068"])
+	var st: Dictionary = carrier["eq_state"]["p2eq_068"]
+	var bh = st.get("beam_h", {})
+	var h: Dictionary = bh if bh is Dictionary else {}
+	_ok("⑫b ★分母: 放出了激光, 枪口节点在", not h.is_empty() and is_instance_valid(h.get("muzzle", null)))
+	if h.is_empty() or not is_instance_valid(h.get("muzzle", null)):
+		return
+	_ps._eq_beam_step(carrier, 0.05)
+	var mz0: Vector3 = (h["muzzle"] as Node3D).position
+	## 携带者往下走 300 码(垂直于射线)
+	var p1: Vector2 = p0 + Vector2(0.0, 300.0)
+	carrier["pos"] = p1
+	_ps._eq_beam_step(carrier, 0.05)
+	var want: Vector3 = _s._world_pos(p1, 0.0)
+	var mz1: Vector3 = (h["muzzle"] as Node3D).position
+	var sh0 = (h.get("shells", []) as Array)[0] if not (h.get("shells", []) as Array).is_empty() else null
+	var rb0 = (h.get("ribbons", []) as Array)[0] if not (h.get("ribbons", []) as Array).is_empty() else null
+	_ok("⑫b ★分母: 携带者真的走了 300 码, 开火时的枪口位置与新位置不同",
+		mz0.distance_to(want) > 0.5, "开火点→新位置 %.2f m" % mz0.distance_to(want))
+	_ok("⑫b ★★画面: 枪口 / 束身 / 飘带都在携带者【当前】位置(修前钉在开火点)",
+		mz1.distance_to(want) < 1e-3
+		and sh0 != null and is_instance_valid(sh0) and (sh0 as Node3D).position.distance_to(want) < 1e-3
+		and rb0 != null and is_instance_valid(rb0) and (rb0 as Node3D).position.distance_to(want) < 1e-3,
+		"枪口偏 %.3f m" % mz1.distance_to(want))
+	## 等转向收敛(朝最远目标)再放探测敌人
+	var k := 0
+	while k < 40:
+		_ps._eq_beam_step(carrier, 0.05)
+		var want_ang: float = ((far_t["pos"] as Vector2) - p1).angle()
+		if absf(angle_difference(float(st.get("beam_ang", 0.0)), want_ang)) < deg_to_rad(0.5):
+			break
+		k += 1
+	var dir: Vector2 = Vector2(cos(float(st.get("beam_ang", 0.0))), sin(float(st.get("beam_ang", 0.0))))
+	var probe: Dictionary = _mk("right", p1 + dir * 500.0)
+	## 探测敌人离【旧射线】(开火点 p0 朝同一方向)的垂距
+	var rel_old: Vector2 = (probe["pos"] as Vector2) - p0
+	var perp_old: float = absf(rel_old.cross(dir))
+	_ok("⑫b ★分母: 转向收敛了; 探测敌人离旧射线垂距 %.0f 码 > 射线半宽 %.0f 码(修前打不到它)" % [perp_old, Vfx.BEAM_HALF_W],
+		k < 40 and perp_old > Vfx.BEAM_HALF_W * 2.0, "收敛用了 %d 步" % k)
+	var n0: int = int(probe.get("_mana_beam_n", 0))
+	for _i in range(8):
+		_ps._eq_beam_step(carrier, 0.1)
+	var n1: int = int(probe.get("_mana_beam_n", 0))
+	_ok("⑫b ★★判定: 伤害从新位置射出 —— 只在新射线上的探测敌人真的被打到了",
+		n1 > n0, "命中次数 %d → %d" % [n0, n1])
+	_s._units.clear()
+	_ps.clear_all()

@@ -877,7 +877,7 @@
   },
   {
     "id": "p2eq_074",
-    "name": "鲸骨胸甲",
+    "name": "魔法胸甲",
     "cost": 1,
     "baseStats1": "+生命50/120/260·+攻速6/11/18%",
     "shopAvailable": 1,
@@ -930,10 +930,10 @@
     "baseStats1": "+攻12/30/68·+破甲5/11/22",
     "shopAvailable": 1,
     "emoji": "⚡",
-    "effectDesc1": "左右管共享计数，每 {C:EqGunBatch.EEL_IV} 秒交替从一管射出子弹。\n左管打出 {C:EqGunBatch.EEL_CONE_RANGE} 码 {C:EqGunBatch.EEL_CONE_DEG} 度锥形霰弹，造成 15/25/40 + 0.3/0.6/1.0 倍攻击力物理伤害；\n右管打出电击弹，对首目标造成 {C:EqGunBatch.EEL_BOLT_ATK} 倍攻击力物理伤害+50/100/180 魔法伤害，该魔法伤害以电流按最近顺序连锁到场上所有未被击中的敌人，每跳后续伤害降低 20/15/10%。\n金弹从轮到的那一管打出并完整继承其效果，另加 60/80/100%真实伤害（电击的首目标与每一跳都吃）。",
+    "effectDesc1": "左右管共享计数，每 {C:EqGunBatch.EEL_IV} 秒交替从一管射出子弹（{C:EqGunBatch.EEL_FIRE_RANGE} 码内有敌人才开火）。\n左管打出 {C:EqGunBatch.EEL_CONE_RANGE} 码 {C:EqGunBatch.EEL_CONE_DEG} 度锥形霰弹，造成 15/25/40 + 0.3/0.6/1.0 倍攻击力物理伤害；\n右管打出电击弹，对首目标造成 {C:EqGunBatch.EEL_BOLT_ATK} 倍攻击力物理伤害+50/100/180 魔法伤害，该魔法伤害以电流按最近顺序连锁到场上所有未被击中的敌人，每跳后续伤害降低 20/15/10%。\n金弹从轮到的那一管打出并完整继承其效果，另加 60/80/100%真实伤害（电击的首目标与每一跳都吃）。",
     "effectDesc3": "",
     "img": "equip/p2eq_078.png",
-    "effectBrief": "每 2 秒左右管交替开火：左管锥形霰弹，右管电击弹连锁全场。"
+    "effectBrief": "敌人进 {C:EqGunBatch.EEL_FIRE_RANGE} 码后每 2 秒左右管交替开火：左管锥形霰弹，右管电击弹连锁全场。"
   },
   {
     "id": "p2eq_079",
@@ -973,7 +973,7 @@
   },
   {
     "id": "p2eq_082",
-    "name": "砗磲护心甲",
+    "name": "护心甲",
     "cost": 2,
     "baseStats1": "+生命70/170/380·+魔抗8/17/30",
     "shopAvailable": 1,

@@ -576,7 +576,9 @@ func _bullet_impact(at: Vector2, h_m: float, col: Color = Color(1.0, 1.0, 0.92, 
 ##   现在是真爆炸立绘(火球 → 碎块飞溅 → 烟尘消散, 11 帧)。
 ##   ⚠ 贴地环**保留**但降到配角(alpha 0.9 → 0.35): 它标的是**伤害半径**, 是信息不是装饰;
 ##     去掉它玩家就读不出这一炸波及多大。火球负责"好看", 环负责"讲清楚"。
-func blast(pos: Vector2, radius: float, col: Color) -> void:
+## `sec` = 11 帧播完的总时长; 默认 BLAST_SEC。★080 坠机那一炸传 ×1.4(每帧长 40%, 用户 2026-09-15),
+##   地毯轰炸与其他调用方不传 ⇒ 节奏不变。
+func blast(pos: Vector2, radius: float, col: Color, sec: float = BLAST_SEC) -> void:
 	if not _has_world():
 		return
 	# ★★2026-08-08 去掉这里原来那个贴地扩张环 —— 用户:「什么圈圈？」
@@ -595,7 +597,7 @@ func blast(pos: Vector2, radius: float, col: Color) -> void:
 		sp.hframes = nf
 		sp.frame = 0
 		sp.offset = Vector2(0.0, one_h * 0.5)
-		_adopt(sp, BLAST_SEC, "blastanim", {"nf": nf})
+		_adopt(sp, sec, "blastanim", {"nf": nf})
 		return
 	# 兜底(素材缺席): 老的圆辉光
 	var s := _sprite(VfxTex._make_fire_glow_tex(), battle._world_pos(pos, 0.5),

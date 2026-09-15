@@ -674,6 +674,26 @@ func fire(origin: Vector2, ang: float, length: float, half_w: float) -> Dictiona
 	return h
 
 
+## 移动发射点: 束身 / 细丝 / 地面反照 / 枪口 / 飘带整体平移到新发射点(只改位置, 不重建网格)。
+## ★用户 2026-09-15:「角色移动的时候这个激光有问题啊，激光源得跟着角色走啊」——
+##   原来这些节点在开火那一刻的坐标钉死, 携带者走开后光束还从原地射出。
+##   末端爆点(marks)本来就逐帧贴目标, 不在这里管。
+func set_origin(h: Dictionary, origin: Vector2) -> void:
+	if h.is_empty() or not _alive_world():
+		return
+	h["org"] = origin
+	var p: Vector3 = battle._world_pos(origin, 0.0)
+	for nd in h.get("shells", []):
+		if is_instance_valid(nd):
+			nd.position = p
+	var mz = h.get("muzzle", null)
+	if is_instance_valid(mz):
+		mz.position = p
+	for rb in h.get("ribbons", []):
+		if is_instance_valid(rb):
+			rb.position = p
+
+
 ## 转向: 只转节点, **不重建网格** ⇒ 热路径零分配。
 func aim(h: Dictionary, ang: float) -> void:
 	if h.is_empty():

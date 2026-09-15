@@ -198,13 +198,13 @@ func _draw() -> void:
 	_fill_band(x, hp_w, ftop, fbot, 1.0)
 	var cursor := hp_w
 	# 护盾段: 圣盾部分(白黄亮)先画, 普通盾部分(灰白)接其后 — 一看血条即区分圣盾 (圣甲) 与普通盾。
-	cursor += _seg(x, cursor, w, _holy, _HOLY_L, _HOLY_D, 0.6)
-	cursor += _seg(x, cursor, w, _hshell, _HSHELL_L, _HSHELL_D, 0.6)
-	cursor += _seg(x, cursor, w, _urchin, _URCHIN_L, _URCHIN_D, 0.6)
+	cursor += _seg_special(x, cursor, w, _holy, _HOLY_L, _HOLY_D)
+	cursor += _seg_special(x, cursor, w, _hshell, _HSHELL_L, _HSHELL_D)
+	cursor += _seg_special(x, cursor, w, _urchin, _URCHIN_L, _URCHIN_D)
 	cursor += _seg(x, cursor, w, maxf(0.0, _shield - _holy - _hshell - _urchin), _SHIELD_L, _SHIELD_D, 0.55)
-	cursor += _seg(x, cursor, w, _mana, _MANA_L, _MANA_D, 0.6)   # 法力盾接普通盾之后 = 实际吸收顺序(普通盾先扛)
+	cursor += _seg_special(x, cursor, w, _mana, _MANA_L, _MANA_D)   # 法力盾接普通盾之后 = 实际吸收顺序(普通盾先扛)
 	## 终极护盾(072 礼盒)排在最外: 它是"破了才出盒参战"的那层, 语义上最后被打穿。
-	cursor += _seg(x, cursor, w, _ult, _ULT_L, _ULT_D, 0.6)
+	cursor += _seg_special(x, cursor, w, _ult, _ULT_L, _ULT_D)
 	cursor += _seg(x, cursor, w, _aura, _AURA, _AURA, 0.6)
 	cursor += _seg(x, cursor, w, _bubble, _BUBBLE, _BUBBLE, 0.55)
 	cursor += _seg(x, cursor, w, _anem, _ANEM, _ANEM, 0.7)
@@ -252,6 +252,19 @@ func _fill_band(bx: float, bw: float, light: Color, dark: Color, alpha: float) -
 			c = light.lerp(dark, clampf(t, 0.0, 1.0))
 		c.a = alpha
 		draw_rect(Rect2(bx, float(r), bw, 1.0), c)
+
+
+## 特殊护盾段(圣盾 / 壳盾 / 海胆 / 法力 / 终极): 满不透明 + 上下各一道提亮的边, 压在黑边框上。
+## ★用户 2026-09-15 看 068:「特殊护盾条需要再明显一点」。原来与普通盾同样 alpha 0.6 平铺在 5 像素高的条里,
+##   叠在暗红槽上发灰, 一眼分不出是特殊盾。五种特殊盾共用这一个画法 —— 只改法力盾一种, 其余四种照样看不清。
+func _seg_special(x0: float, cursor: float, w: float, val: float, light: Color, dark: Color) -> float:
+	var sw: float = _seg(x0, cursor, w, val, light, dark, 1.0)
+	if sw <= 0.0:
+		return 0.0
+	var edge: Color = light.lerp(Color(1, 1, 1), 0.45)
+	draw_rect(Rect2(x0 + cursor, -1.0, sw, 1.0), edge)
+	draw_rect(Rect2(x0 + cursor, bar_h, sw, 1.0), edge)
+	return sw
 
 
 ## 护盾段: 接 cursor, 宽=val/barMax×w 裁到 bar 内. 返回实际宽.

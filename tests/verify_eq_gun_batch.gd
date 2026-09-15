@@ -193,6 +193,8 @@ func _ready() -> void:
 	_t080_lane()
 	_t080_bomb()
 	_t080_crash()
+	_t080_crash_tuning()
+	_t078_range()
 	_t_vfx_models()
 	_t_vfx_nodes()
 	_t_bullet_track()
@@ -430,7 +432,7 @@ func _t078_alternate() -> void:
 	# ★跨路不重置的陷阱: 计时器是自管累加器, 不读 battle._t
 	var body: String = _strip("res://scripts/systems/equip/eq_gun_batch.gd")
 	_ok("② ★口径③: tick_unit 用自管累加器, 没有拿 battle._t 直接和常数比",
-		not _fn_body(body, "func tick_unit").contains("battle._t"))
+		_no_battle_clock(_fn_body(body, "func tick_unit")))
 
 
 func _t078_left() -> void:
@@ -1293,3 +1295,80 @@ func _t_clear() -> void:
 	_ok("⑥ 直升机的节点被拔掉(它不是单位, 换路重建单位表清不掉它)",
 		heli_node == null or not is_instance_valid(heli_node) or (heli_node as Node).is_queued_for_deletion())
 	_ok("⑥ 演出层也清空了", _gun.vfx.alive_count() == 0, "还剩 %d 个" % _gun.vfx.alive_count())
+
+
+# ═════════════════════════════════════════════════════════════
+# ④b 080 两处调参(用户 2026-09-15「最后冲刺坠向敌人的速度太快了，需要减半，
+#     然后播放的坠机特效可以放慢一点，每帧长40%吧，只动这个，080其他的不要动」)
+# ═════════════════════════════════════════════════════════════
+## ★字面值写死在断言里(45 码 / 0.77 秒 / 0.55 秒), 不引用被测常量。
+## ★「只动这个」的证据: 地毯轰炸那一炸是同一张立绘, 必须还是 0.55 秒。
+func _t080_crash_tuning() -> void:
+	print("── ④b 080 坠机调参: 冲刺 450 码/秒 · 坠机爆炸 0.77 秒 · 轰炸爆炸仍 0.55 秒 ──")
+	_reset()
+	var u: Dictionary = _mk("fortune", "left", Vector2(-300.0, 0.0))
+	_equip(u, "p2eq_080", 1)
+	_spawn_all()
+	var p0: Vector2 = Vector2(u["pos"])
+	var h: Dictionary = {"owner": u, "si": 0, "pos": p0, "state": "crash",
+		"crash_to": p0 + Vector2(1000.0, 0.0), "crash_phys": 0.0, "crash_burn": 0}
+	_gun._heli_crash_fly(h, 0.1)
+	var moved: float = (Vector2(h["pos"]) - p0).length()
+	_ok("④b ★分母: 还在冲刺途中(没被当成已到达)", str(h.get("state", "")) == "crash",
+		"state=%s" % str(h.get("state", "")))
+	_ok("④b ★★坠机冲刺 0.1 秒飞 45 码(= 450 码/秒; 修前 90 码)", _near(moved, 45.0, 0.01),
+		"实飞 %.2f 码" % moved)
+	var vf = _gun.vfx
+	vf.clear()
+	_gun.heli_crash_explode({"owner": u, "si": 0, "pos": p0 + Vector2(400.0, 300.0),
+		"crash_phys": 0.0, "crash_burn": 0})
+	var crash_life := -1.0
+	var n_crash := 0
+	for f in vf._fx:
+		if f is Dictionary and str((f as Dictionary).get("kind", "")) == "blastanim":
+			crash_life = float((f as Dictionary).get("life", -1.0))
+			n_crash += 1
+	_ok("④b ★分母: 坠机爆炸真的建出了一个爆炸立绘", n_crash == 1, "blastanim %d 个" % n_crash)
+	_ok("④b ★★坠机爆炸立绘播 0.77 秒(0.55 × 1.4 = 每帧长 40%)", _near(crash_life, 0.77, 0.001),
+		"life=%.3f" % crash_life)
+	vf.clear()
+	_gun.heli_bomb_hit({"owner": u, "si": 0}, 0, p0 + Vector2(400.0, -300.0))
+	var bomb_life := -1.0
+	for f in vf._fx:
+		if f is Dictionary and str((f as Dictionary).get("kind", "")) == "blastanim":
+			bomb_life = float((f as Dictionary).get("life", -1.0))
+	_ok("④b ★★「080 其他的不要动」: 地毯轰炸的爆炸立绘仍播 0.55 秒", _near(bomb_life, 0.55, 0.001),
+		"life=%.3f" % bomb_life)
+	vf.clear()
+
+
+# ═════════════════════════════════════════════════════════════
+# ②R 078 开火距离(用户 2026-09-15「敌人没有进范围为什么开枪，应该设定个范围的」)
+# ═════════════════════════════════════════════════════════════
+## 最近的敌人在 400 码外: 节拍攒满也不开; 走进 400 码: 下一帧立刻开(攒着的那一拍不丢)。
+func _t078_range() -> void:
+	print("── ②R 078: 敌人进 400 码才开火 ──")
+	_reset()
+	var u: Dictionary = _mk("fortune", "left", Vector2(-500.0, 0.0))
+	_equip(u, "p2eq_078", 1)
+	_spawn_all()
+	_pin(u, 100.0)
+	var e: Dictionary = _mk("fortune", "right", Vector2(100.0, 0.0))
+	var d0: float = Vector2(e["pos"]).distance_to(Vector2(u["pos"]))
+	_ok("②R ★分母: 唯一的敌人确实在 400 码外(%.0f 码)" % d0, d0 > 420.0)
+	for _k in range(30):
+		_gun.tick_unit(u, 0.1)          # 3 秒, 超过 2 秒节拍
+	_ok("②R ★★敌人在 400 码外: 攒满 3 秒也一发不开(修前 2.0 秒就朝它开)",
+		int(u.get("_g078_n", -1)) == 0, "n=%d" % int(u.get("_g078_n", -1)))
+	e["pos"] = Vector2(u["pos"]) + Vector2(380.0, 0.0)
+	_gun.tick_unit(u, 0.02)
+	_ok("②R ★★敌人走进 380 码: 下一帧立刻开火(攒着的那一拍没丢)",
+		int(u.get("_g078_n", -1)) == 1, "n=%d" % int(u.get("_g078_n", -1)))
+
+
+## 源码里有没有读全局战斗钟 `battle._t`。★按整词匹配 —— 子串 `contains("battle._t")` 会把
+##   `battle._targeting` 也算进去(2026-09-15 078 加开火距离后当场误报)。
+func _no_battle_clock(src: String) -> bool:
+	var re := RegEx.new()
+	re.compile("battle\\._t\\b")
+	return re.search(src) == null
