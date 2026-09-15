@@ -809,6 +809,7 @@ var _juice_rng := RandomNumberGenerator.new()   # 震屏/粒子专用 rng (演�
 var _battle_rng := RandomNumberGenerator.new()  # ★sim 专用受控 PRNG (Phase1·大厂做法): 决定战斗结果的随机走它。默认 randomize()=手感与线上一致; TURTLE_SEED 设时确定→可复现/回放
 var _cast_tok: int = 0                          # 单调计数·多段技命中去重标记(替 randi() token: 确定性+无碰撞·§3.2 不拿字典做key)
 const SIM_DT := 1.0 / 60.0                       # 固定 sim 步长(交互累加器 + 确定性模式共用·≈60fps手感)
+var _sim_step_n: int = 0                         # sim 步号(每步 +1)。★「同一刻」类判定按它去重, 不按引擎帧号 —— 30fps 一帧跑两步 sim
 var _deterministic := false                      # ★Phase2b: TURTLE_SEED 设时=true → det模式每帧恰1个SIM_DT步(同种子同帧序→可复现回放/验证)
 var _sim_accum: float = 0.0                      # ★Phase4切片2: 交互游玩累加器·攒够 SIM_DT 就跑一步 sim(固定步长→帧率无关);余量给切片2b渲染插值
 var _render_alpha: float = 0.0                    # ★Phase4切片2b: 渲染插值分数 = _sim_accum/SIM_DT [0,1)。立绘在【上一步 pos↔当前 pos】间 lerp → 消固定步长在高帧率下的卡顿
@@ -2233,6 +2234,7 @@ func _advance_sim_accum(rd: float) -> void:
 
 ## Phase4: 纯模拟推进(决定战斗结果·可被累加器按固定步长跑 N 次/帧)。frozen/in_ts 由调用方在 sim 前捕获传入。
 func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
+	_sim_step_n += 1
 	_adf_ct = 0   # 每帧(每步)重置伤害调用计数(_damage._apply_damage_from 帧内爆炸=死亡链无限级联→自身截断防卡死)
 	_cur_eq_item = ""   # ★每帧重置"当前装备效果来源"(同 _adf_ct 的模式) —— 不清会让下一帧
 						#   非装备来源的护盾/治疗被误判成"盾装备给的"而白拿 20% 圣光护盾
@@ -2299,6 +2301,10 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 				_equip_tick_sys.tick_delayed(dt)
 				_equip_sys._blade_sys.tick_ts(dt, _timestop._ts_active)   # 084 持有者自己的十字斩(第九批 D4)
 				_gold_vfx.tick(dt)                       # 金弹演出自推进(不用 tween, §3.5)
+				## 灵物/药水/食物三层演出: 平时由 tick_global 每步推进; 时停里补推(修前由时停携带者自己的 tick 推, 保持原行为)
+				_equip_sys._spirit_sys.tick_global(dt)
+				_equip_sys._potion_sys.tick_global(dt)
+				_equip_sys._food_sys.tick_global(dt)
 				_incense_vfx.tick(dt)                    # 093 香火石演出自推进(同上)
 				_check_end()
 	else:

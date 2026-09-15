@@ -469,9 +469,8 @@ func _t_burst_tables() -> void:
 			has_core = true
 	_ok("⑩ ★★末端爆发: 白核节点真的建出来了(实测最后 0.1s 实心白核+白刺带)", has_core,
 		"marks=%d" % fmarks.size())
-	# 自清: 走真实驱动源 advance(帧去重 ⇒ 每次 await 一帧)。
-	# ★先把 carrier 撤出 sim —— 真实 _process 也会对它调 advance(真实 delta≈0.016),
-	#   帧去重会把门禁手动喂的 0.05 吃掉 ⇒ 0.16s < 0.17s 塌收永远走不完(踩过)。
+	# 自清: 走真实驱动源 advance。★2026-09-15 起 advance 不再按引擎帧号去重(改由 EqPotionBatch.tick_global 每步 sim 调一次),
+	#   手动喂的 0.05 不会再被吃掉; 仍每次 await 一帧, 让 queue_free 真的把节点放掉。
 	_s._units.clear()
 	for _i in range(10):
 		_ps._beam_vfx.advance(0.05)

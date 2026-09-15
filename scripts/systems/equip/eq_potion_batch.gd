@@ -45,10 +45,6 @@ var battle
 var _vfx
 var _beam_vfx
 
-## 演出推进的帧去重(同 EquipSystem 里 `_sig_tick_fr` 的做法):
-## `tick_unit` 是**每单位**调的, 不去重会一帧推进 N 次(N = 携带者数)。
-var _adv_fr: int = -1
-
 
 func _init(b) -> void:
 	battle = b
@@ -64,13 +60,19 @@ func vfx():
 #  §每帧 —— 由 EquipSystem._eq_tick 的前置守卫调(常驻字段 `_potion_tick`)
 # ══════════════════════════════════════════════════════════════════
 
+## 演出层推进 + 068 激光尾巴 + 067 瓶雾减益到期 —— 由 EquipSystem.tick_global 每步 sim 调一次(时停里由主循环补调)。
+## ★原来在 tick_unit 里按【引擎帧号】去重: 30fps 一帧两步 sim 只推一步 ⇒ 整层演出慢一倍(同 060 探针)。
+## ★顿帧期间演出不推(逐单位的效果计时在顿帧里也不走); 到期扫描读 `_t`, 顿帧里 `_t` 不走, 照跑无妨。
+func tick_global(delta: float) -> void:
+	_vial_expire_sweep()
+	if float(battle._hitstop) > 0.0:
+		return
+	_vfx.advance(delta)
+	_beam_vfx.advance(delta)
+
+
 ## ★守卫是【常驻字段】而不是遍历 equips ⇒ 不带这四件的单位在 `_eq_tick` 里只多一次 dict.get。
 func tick_unit(u: Dictionary, delta: float) -> void:
-	var fr: int = Engine.get_process_frames()
-	if fr != _adv_fr:
-		_adv_fr = fr
-		_vfx.advance(delta)
-		_vial_expire_sweep()
 	if not u.get("alive", false):
 		return
 	for e in u.get("equips", []):
@@ -479,8 +481,6 @@ func _tick_pressure_can(u: Dictionary, si: int, delta: float) -> void:
 	#   吸收/衰减/耗尽全走 SpecialBalance, 这里只抄读数 ⇒ 镜像永远收敛, 不会自己漂。
 	u["_manaShieldVal"] = battle._spec.val(u, CAN_MANA_KEY)
 	u["eq_state"]["p2eq_068"] = stt
-	# 束结束后的末端爆发/塌收没有别的驱动源(束活着时由 set_hits 驱动) —— 内部有帧去重
-	_beam_vfx.advance(delta)
 	_eq_beam_step(u, delta)
 	var due: float = float(stt["can_t0"]) + CAN_PERIOD * float(int(stt.get("can_fired", 0)) + 1)
 	if battle._t >= due:

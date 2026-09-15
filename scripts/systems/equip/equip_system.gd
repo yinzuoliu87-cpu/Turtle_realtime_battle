@@ -1519,8 +1519,8 @@ func _eq_bonus_hit(src: Dictionary, tgt: Dictionary, amount: float, col: Color) 
 func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false, crit = null) -> void:
 	if src.get("equips", []).is_empty():
 		return
-	# AoE 判定(启发式): 同帧内 src 命中≥2个不同目标 → 范围技能 (供 002 等"范围减半"用; 首个目标算单体)
-	var _fr: int = Engine.get_process_frames()
+	# AoE 判定(启发式): 同一步 sim 内 src 命中≥2个不同目标 → 范围技能(009 充能减半用; 首个目标算单体)。★按 sim 步号不按引擎帧号: 30fps 一帧两步, 帧号会把相邻两步的两次单体命中算成范围
+	var _fr: int = int(battle._sim_step_n)
 	if int(src.get("_onhit_fr", -1)) != _fr:
 		src["_onhit_fr"] = _fr; src["_onhit_tgts"] = []
 	var _otl: Array = src["_onhit_tgts"]
@@ -2620,6 +2620,10 @@ func tick_global(delta: float) -> void:
 	# 批④(2026-08-06) 六个系统: 小手枪/医疗炮台/直升机/浮游炮群/潮汐碑/符纸/祖龟碑 的自走与结算
 	for _b4s in _b4_all():
 		_b4s.tick(delta)
+	## 灵物/药水/食物三层演出(+068 激光尾巴 / 067 瓶雾到期): 原挂在每单位 tick 里按【引擎帧号】去重 ⇒ 30fps 一帧两步 sim 只推一步, 演出慢一倍
+	_spirit_sys.tick_global(delta)
+	_potion_sys.tick_global(delta)
+	_food_sys.tick_global(delta)
 
 
 ## 某个单位【真实落地】(airborne true→false)那一帧, 由主循环调。

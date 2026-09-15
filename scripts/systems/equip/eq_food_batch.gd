@@ -58,14 +58,16 @@ func _si(star: int) -> int:
 #      只多一次 dict.get(同 084 血牙巨剑 `_fang_pct` 的既有做法)。
 # ══════════════════════════════════════════════════════════════════
 
-var _vfx_fr: int = -1   ## 演出层是全局的, 而本函数是【每单位】调 → 按帧号去重(同 _sig_tick_fr)
+## 演出层推进 —— 由 EquipSystem.tick_global 每步 sim 调一次(时停里由主循环补调)。
+## ★原来在 tick_unit 里按【引擎帧号】去重: 30fps 一帧两步 sim 只推一步 ⇒ 整层演出慢一倍(同 060 探针)。
+## ★顿帧期间不推(逐单位的效果计时在顿帧里也不走)。
+func tick_global(delta: float) -> void:
+	if float(battle._hitstop) > 0.0:
+		return
+	_vfx.tick(delta)
 
 
 func tick_unit(u: Dictionary, delta: float) -> void:
-	var fr: int = Engine.get_process_frames()
-	if fr != _vfx_fr:
-		_vfx_fr = fr
-		_vfx.tick(delta)
 	if not u.get("alive", false):
 		return
 	for e in u.get("equips", []):

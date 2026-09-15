@@ -423,7 +423,7 @@ func _t073_random_and_nochain() -> void:
 	## ★不触发 on-hit 的探针 —— 2026-08-06 换掉了原来的做法。
 	##   原来拿【083 潮汐细剑每次 on-hit 必叠一层】当同步探针, 但 083 已被用户整条重做
 	##   (批④·EqBladeBatch), 旧的 `tide_layers` 字段随之消失 ⇒ 探针恒为 0, 那条分母直接红。
-	##   ★换成 `_eq_on_hit` 自己的入口标记 `_onhit_fr`: 函数一进来就无条件写当前帧号
+	##   ★换成 `_eq_on_hit` 自己的入口标记 `_onhit_fr`: 函数一进来就无条件写当前 sim 步号(2026-09-15 起不再是引擎帧号)
 	##   (见 EquipSystem._eq_on_hit 开头的 AoE 判定)。**它不依赖任何一件装备** ——
 	##   以后谁被重做都不会再把这个探针弄坏, 而且它量的正是"这个钩子到底进没进"。
 	_s._units.clear()
@@ -442,8 +442,8 @@ func _t073_random_and_nochain() -> void:
 	w["_onhit_fr"] = -999
 	_s._damage._apply_damage_from(w, wt, 100, Color("#ffffff"))
 	_ok("①c ★★分母: 同一对单位走正常伤害路 → _eq_on_hit 确实进了(探针有效)",
-		int(w.get("_onhit_fr", -999)) == Engine.get_process_frames(),
-		"_onhit_fr=%d 当前帧=%d" % [int(w.get("_onhit_fr", -999)), Engine.get_process_frames()])
+		int(w.get("_onhit_fr", -999)) == int(_s._sim_step_n),
+		"_onhit_fr=%d 当前 sim 步号=%d" % [int(w.get("_onhit_fr", -999)), int(_s._sim_step_n)])
 	_s._units.clear()
 
 

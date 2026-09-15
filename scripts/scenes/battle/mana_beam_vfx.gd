@@ -914,13 +914,9 @@ func finale(h: Dictionary) -> void:
 		_drop(h)
 
 
-## 每帧推进(束结束后的爆发/塌收没有别的驱动源)。多携带者会各调一次 ⇒ 帧去重。
-var _adv_fr: int = -1
+## 每步 sim 推进一次(束结束后的爆发/塌收没有别的驱动源), 由 EqPotionBatch.tick_global 全局调一次。
+## ★原来按【引擎帧号】去重(曾挂在每个携带者身上各调一次): 30fps 一帧两步 sim 只推一步 ⇒ 尾巴慢一倍。
 func advance(delta: float) -> void:
-	var fr: int = Engine.get_process_frames()
-	if fr == _adv_fr:
-		return
-	_adv_fr = fr
 	for h in _live.duplicate():
 		if not (h.get("shells", []) as Array).is_empty():
 			continue                      # 束还活着, 由 set_hits 驱动

@@ -658,14 +658,13 @@ func _t067_poison_vial() -> void:
 		absf(float(amp["shield"]) - 65.0) < 0.51, "实得 %.2f 期望 65" % float(amp["shield"]))
 
 	# ⑧ ★撤销: 毒清了 + 过了悬挂窗口 ⇒ 盾增幅回到 +30%(100 → 130)
-	#    ⚠ 到期扫描是【每帧一次】的全局操作(用 Engine.get_process_frames() 去重, 同 _sigwave),
-	#      所以这里必须真的跨一帧再 tick —— 同一帧内连调 tick_unit 只会扫一次。
+	#    ⚠ 到期扫描是【每步 sim 一次】的全局操作, 住在 EqPotionBatch.tick_global(由 EquipSystem.tick_global 调)。
+	#      ★2026-09-15 之前它挂在 tick_unit 里按引擎帧号去重(30fps 下演出慢一倍的同一处), 这里原来要跨一帧再调 tick_unit。
 	amp["dot_stacks"] = {}
 	var tk: float = _s._t
 	_s._t = tk + 1.0                      # 悬挂 0.30 秒, 1 秒后必然过期
-	await get_tree().process_frame
 	_s._t = tk + 1.0
-	_s._equip_sys._potion_sys.tick_unit(c3, 0.016)
+	_s._equip_sys.tick_global(0.016)
 	amp["shield"] = 0.0
 	_s._damage._grant_shield(amp, 100.0)
 	_ok("067 ★毒结束 → 减益自动撤销, 盾增幅回到 +30%(100 → 130)",
