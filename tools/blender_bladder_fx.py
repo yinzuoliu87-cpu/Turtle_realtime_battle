@@ -5,7 +5,7 @@
   "C:/Program Files/Blender Foundation/Blender 5.2/blender.exe" --background --python tools/blender_bladder_fx.py -- --out C:/tmp/bladder_fx
   python tools/pixelize_sheet.py C:/tmp/bladder_fx/rise --dirs 8 --frames 1 --cell 72 --art-h 72 --palette drown_curse -o assets/sprites/vfx/eq064-bladder-rise.png
   python tools/pixelize_sheet.py C:/tmp/bladder_fx/pop  --dirs 8 --frames 1 --cell 72 --art-h 72 --palette drown_curse -o assets/sprites/vfx/eq064-bladder-pop.png
-  python tools/pixelize_sheet.py C:/tmp/bladder_fx/wave --dirs 6 --frames 1 --cell 96 --art-h 96 --palette drown_curse -o assets/sprites/vfx/eq064-curse-wave.png
+  python tools/pixelize_sheet.py C:/tmp/bladder_fx/wave --dirs 6 --frames 1 --cell 192 --art-h 192 --palette drown_curse -o assets/sprites/vfx/eq064-curse-wave.png
 
 ════════════════════════════════════════════════════════════════════════
  ★由来 (2026-09-15)
@@ -27,7 +27,7 @@
   rise / pop: 相机正交 3.0、720 像素渲、72 格 ⇒ 每格 1/24 单位, texel 与持有态(2.0 / 480 / 48 格)相同。
     相机上移: 帧 y ∈ [FEET_Y − 0.45, FEET_Y + 2.55] ⇒ 脚底离帧底 0.45 单位, 帧中心在脚底上方 1.05 单位;
     浮囊中心在脚底上方 0.78(= 引擎 BLADDER_UP 0.80 米)。引擎按「帧中心 = 脚底沿相机上方向 +1.05 单位」摆。
-  wave: 正俯视贴地圈, 泡沫外沿到半径 0.96 ⇒ 96 格里外径约 92 像素, 引擎按外径 = 2 × 300 码设 pixel_size。
+  wave: 正俯视贴地圈, 泡沫外沿到半径 0.96 ⇒ 192 格里外径约 184 像素, 引擎按外径 = 2 × 300 码设 pixel_size。
 ★诅咒水波第 0 帧就画到外沿: 结算(`_ghost_break` 给 300 码内敌人上诅咒)发生在破裂那一步,
   演出到边那一帧必须就是这一步 —— 不做「0.75 秒扩散到边」(那是演出到达晚于结算, 缺陷家族之一)。
 """
@@ -295,31 +295,112 @@ def build_pop(j):
 
 
 # ─────────────────────────── wave: 诅咒水波(贴地, 正俯视) ───────────────────────────
-## 帧: 0 泡沫外沿已到 300 码 + 沿外沿一圈暗水 · 1 暗水往里涌 · 2 圈内满是暗水与诅咒紫流纹 · 3 外沿泡沫变暗
-##     4 暗水碎成水斑往外退 · 5 只剩外沿几段碎泡沫
+## ★第三版作废(实拍 064验收.mp4 18.5~19.0 秒逐帧): 从外沿到圆心一圈套一圈的平涂色带(泡沫白 / 紫 / 暗青)
+##   ⇒ 满屏靶心(正是头注里说要去掉的那一类); 96 格铺 300 码 ⇒ 一个 texel 15 厘米 = 龟身 texel 的 5 倍, 满屏大方块。
+## ⇒ 第四版: 192 格(texel 7.8 厘米); 盘面大部分透明, 只画
+##   外沿一道碎开的泡沫浪头(第 0 帧就在 300 码) + 中心一小团暗水花 + 甩出去的水滴 + 圈里冒出的诅咒紫卷须。
+## 帧: 0 浪头到边、中心水花、水滴甩出 · 1 浪头变细开始碎、卷须冒头 · 2 浪头碎成弧段转青紫、卷须长大
+##     3 弧段转暗紫、卷须最亮 · 4 残弧、卷须缩小 · 5 几段残泡
 WAVE_R = 0.96
-WAVE_STOPS = [
-    [(0.0, C_DARK, 0.0), (0.66, C_DARK, 0.0), (0.72, C_DARK, 1.0), (0.82, C_CURSE_DK, 1.0), (0.88, C_CURSE_HI, 1.0), (0.94, C_FOAM, 1.0), (1.0, C_FOAM, 0.0)],
-    [(0.0, C_DARK, 0.0), (0.36, C_DARK, 0.0), (0.44, C_DARK, 1.0), (0.62, C_CURSE_DK, 1.0), (0.76, C_DARK, 1.0), (0.87, C_CURSE_HI, 1.0), (0.94, C_FOAM, 1.0), (1.0, C_FOAM, 0.0)],
-    [(0.0, C_DARK, 1.0), (0.24, C_CURSE_DK, 1.0), (0.40, C_DARK, 1.0), (0.58, C_CURSE, 1.0), (0.70, C_DARK, 1.0), (0.86, C_CURSE_HI, 1.0), (0.93, C_FOAM, 1.0), (0.99, C_FOAM, 0.0)],
-    [(0.0, C_DARK, 1.0), (0.30, C_CURSE_DK, 1.0), (0.52, C_DARK, 1.0), (0.72, C_CURSE_DK, 1.0), (0.88, C_CURSE, 1.0), (0.96, C_CURSE_HI, 0.0)],
-    [(0.0, C_DARK, 0.0), (0.30, C_DARK, 0.0), (0.38, C_DARK, 1.0), (0.54, C_CURSE_DK, 1.0), (0.60, C_CURSE_DK, 0.0), (0.82, C_CURSE, 0.0), (0.88, C_CURSE, 1.0), (0.94, C_CURSE, 0.0)],
-    [(0.0, C_DARK, 0.0), (0.80, C_CURSE_DK, 0.0), (0.88, C_CURSE_DK, 1.0), (0.92, C_CURSE, 1.0), (0.95, C_CURSE, 0.0)],
-]
-WAVE_NOISE = [0.12, 0.18, 0.22, 0.24, 0.42, 0.50]
+## (浪头内沿, 碎开阈值: 0 = 整圈不碎)
+## ★第 5 帧阈值 0.72 时一段都不剩(整帧透明 = 最后 0.1 秒什么都没有) ⇒ 0.64
+CREST = [(0.86, 0.00), (0.89, 0.34), (0.91, 0.46), (0.92, 0.55), (0.93, 0.60), (0.94, 0.64)]
+WISP_SIZE = [0.0, 0.040, 0.058, 0.062, 0.044, 0.028]
+
+
+def _mask_alpha(s, mask):
+    """把颜色带的透明度再乘一张 0/1 遮罩(浪头碎成弧段用)。"""
+    nt = s.nt
+    mix = [n for n in nt.nodes if n.type == "MIX_SHADER"][0]
+    ramp = [n for n in nt.nodes if n.type == "VALTORGB"][0]
+    mul = nt.nodes.new("ShaderNodeMath")
+    mul.operation = "MULTIPLY"
+    nt.links.new(ramp.outputs["Alpha"], mul.inputs[0])
+    nt.links.new(mask, mul.inputs[1])
+    nt.links.new(mul.outputs[0], mix.inputs["Fac"])
+
+
+def crest_mat(name, j):
+    s = Shade(name)
+    r = s.radial()
+    n1 = s.noise((9.0, 9.0, 1.0), (j * 0.23, 0.0, 0.0), detail=2.0)
+    fac = s.math("ADD", r, s.math("MULTIPLY", s.math("SUBTRACT", n1, 0.5), 0.05))
+    a = CREST[j][0] / WAVE_R
+    mid = (a + 1.0) * 0.5
+    if j <= 1:
+        cols = (C_DARK, C_WATER_HI, C_FOAM)
+    elif j == 2:
+        cols = (C_DARK, C_CURSE, C_WATER_HI)
+    else:
+        cols = (C_CURSE_DK, C_CURSE, C_CURSE_HI)
+    stops = [(0.0, cols[0], 0.0), (max(0.0, a - 0.012), cols[0], 0.0), (a, cols[0], 1.0), ((a + mid) * 0.5, cols[1], 1.0),
+             (mid, cols[2], 1.0), (0.985, cols[2], 1.0), (0.999, cols[1], 0.0), (1.0, cols[1], 0.0)]
+    m = s.finish(fac, stops)
+    if CREST[j][1] > 0.0:
+        n2 = s.noise((6.0, 6.0, 1.0), (3.1 + j * 0.4, 1.7, 0.0), detail=1.0)
+        _mask_alpha(s, s.math("GREATER_THAN", n2, CREST[j][1]))
+    return m
+
+
+def splash_mat(name, j):
+    s = Shade(name)
+    r = s.radial()
+    nz = s.noise((5.0, 5.0, 1.0), (j * 0.5, 0.3, 0.0), detail=3.0)
+    fac = s.math("ADD", r, s.math("MULTIPLY", s.math("SUBTRACT", nz, 0.5), 0.34))
+    return s.finish(fac, [(0.0, C_CURSE, 1.0), (0.30, C_CURSE_DK, 1.0), (0.62, C_DARK, 1.0), (0.78, C_WATER_HI, 1.0),
+                          (0.88, C_FOAM, 1.0), (0.93, C_FOAM, 0.0), (1.0, C_FOAM, 0.0)])
+
+
+def wisp(k, cx, cy, a0, size, mats, z):
+    """诅咒卷须: 一串小圆点沿螺线收尾(头亮尾暗), 读成一缕打着卷的紫雾。"""
+    m_hi, m_mid, m_dk, m_ol = mats
+    for i in range(9):
+        t = i / 8.0
+        ang = a0 + t * 4.2
+        rad = size * (1.0 - 0.72 * t)
+        x, y = cx + math.cos(ang) * rad, cy + math.sin(ang) * rad
+        dr = size * 0.30 * (1.0 - 0.45 * t)
+        _flat_disc("wo%d_%d" % (k, i), x, y, dr * 1.35, m_ol, z)
+        _flat_disc("wc%d_%d" % (k, i), x, y, dr, m_hi if i < 2 else (m_mid if i < 6 else m_dk), z + 0.01)
+
+
+def _flat_disc(name, cx, cy, r, mat, z, segs=12):
+    verts = [(cx, cy, z)] + [(cx + math.cos(2 * math.pi * i / segs) * r, cy + math.sin(2 * math.pi * i / segs) * r, z) for i in range(segs)]
+    me = bpy.data.meshes.new(name)
+    me.from_pydata(verts, [], [(0, 1 + i, 1 + (i + 1) % segs) for i in range(segs)])
+    me.update()
+    ob = bpy.data.objects.new(name, me)
+    ob.data.materials.append(mat)
+    bpy.context.collection.objects.link(ob)
+    return ob
 
 
 def build_wave(j):
-    s = Shade("wave")
-    r = s.radial()
-    n1 = s.noise((5.0, 5.0, 1.0), (j * 0.21, j * 0.13, 0.0))
-    n2 = s.noise((16.0, 16.0, 1.0), (0.4, j * 0.31, 0.0), detail=2.0)
-    amp = WAVE_NOISE[j]
-    fac = s.math("ADD", r, s.math("ADD", s.math("MULTIPLY", s.math("SUBTRACT", n1, 0.5), amp),
-                                  s.math("MULTIPLY", s.math("SUBTRACT", n2, 0.5), amp * 0.45)))
-    ## ★外沿收边: 半径过 1.0 一律推到透明, 泡沫不会被方形面片切角(余烬地光那一版的教训)
-    fac = s.math("MAXIMUM", fac, s.math("MULTIPLY", s.math("SUBTRACT", r, 0.94), 20.0))
-    ellipse("wave", WAVE_R, 1.0, 0.0, s.finish(fac, WAVE_STOPS[j]), z=0.0, segs=96)
+    import random
+    ellipse("crest", WAVE_R, 1.0, 0.0, crest_mat("crest", j), z=0.0, segs=160)
+    if j <= 1:
+        ellipse("splash", 0.20 - 0.06 * j, 1.0, 0.0, splash_mat("splash", j), z=0.1, segs=48)
+    rng = random.Random(64)
+    if j <= 2:
+        m_ol = flat_emit("drop_ol", C_DARK)
+        m_d = flat_emit("drop", C_WATER_HI if j < 2 else C_CURSE)
+        m_h = flat_emit("drop_hi", C_FOAM)
+        for k in range(16 - 4 * j):
+            a = rng.uniform(0.0, 2.0 * math.pi)
+            rr = rng.uniform(0.30, 0.60) + 0.12 * j   # 水滴甩不出浪头(第四版 +0.20·j 在第 2 帧贴格边)
+            x, y = math.cos(a) * rr, math.sin(a) * rr
+            dr = 0.024 * (1.0 - 0.25 * j)
+            _flat_disc("do%d" % k, x, y, dr, m_ol, 0.2)
+            _flat_disc("dd%d" % k, x, y, dr * 0.68, m_d, 0.21)
+            _flat_disc("dh%d" % k, x - dr * 0.25, y + dr * 0.25, dr * 0.28, m_h, 0.22)
+    if WISP_SIZE[j] > 0.0:
+        mats = (flat_emit("w_hi", C_CURSE_HI if j != 3 else C_FOAM), flat_emit("w_mid", C_CURSE if j != 3 else C_CURSE_HI),
+                flat_emit("w_dk", C_CURSE_DK), flat_emit("w_ol", C_DARK))
+        wr = random.Random(640)
+        for k in range(11):
+            a = wr.uniform(0.0, 2.0 * math.pi)
+            rr = math.sqrt(wr.uniform(0.28 ** 2, 0.80 ** 2))
+            wisp(k, math.cos(a) * rr, math.sin(a) * rr, wr.uniform(0.0, 2.0 * math.pi) + j * 0.5, WISP_SIZE[j], mats, 0.3)
 
 
 def main():
@@ -339,7 +420,7 @@ def main():
         for j in range(count):
             bb.clear_scene()
             if sub == "wave":
-                bb.setup_render(a.px)
+                bb.setup_render(a.px * 2)   # 960 像素 → 192 格(第四版; 第三版 480 → 96 格太粗)
             else:
                 ## 72 格: 3.0 单位 / 720 像素 ⇒ texel 与持有态相同; 相机上移让脚底离帧底 0.45
                 bb.setup_render(int(a.px * 1.5))

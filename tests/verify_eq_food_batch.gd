@@ -1017,71 +1017,151 @@ func _t_vfx_art() -> void:
 	_ok("⑦-9b 072 盖子贴图是 64×64 礼盒立绘(不是 128×128 disc)",
 		is_instance_valid(lid_spr) and lid_spr.texture != null
 		and lid_spr.texture.get_width() == 64 and lid_spr.texture.get_height() == 64, "")
-	# ⑦-9c 072 蛋糕法阵: 环沿 8 颗粉霜奶糕真的在 _world, 且钉在 300 码半径上
+	# ⑦-9c 072 蛋糕法阵(2026-09-15 三轮重做 · 用户「072的粉色蛋糕法阵太敷衍了，需要重做」):
+	#   前两轮(素圈 / 程序波浪环 + 辐条 + 奶糕)整类换成烘焙帧表: 贴地蛋糕盘 + 8 根站着的生日蜡烛。走真入口 `_box_field`。
 	var fd_u: Dictionary = _mk("fortune", "left", Vector2(100.0, 100.0), 2000.0)
-	var fd_h: Dictionary = vfx.cake_field_fx(fd_u, 5.0)
-	var fdeco: Array = fd_h.get("deco", [])
-	var fd_in_w := 0
-	var fd_on_rim := true
-	## ★中心读【单位当前位置】—— `_mk` 收的是相对竞技场中心的偏移, 写死 (100,100) 会错位
-	##   (法阵改跟随后中心就是携带者本人, 硬编码的绝对坐标不再等价)。
-	var fd_center: Vector3 = _s._world_pos(fd_u["pos"], 0.0)
-	for dp in fdeco:
-		if is_instance_valid(dp) and dp.is_inside_tree() and is_same(dp.get_parent(), w):
-			fd_in_w += 1
-			var fd_r: float = Vector2(dp.position.x - fd_center.x, dp.position.z - fd_center.z).length()
-			if absf(fd_r - 300.0 * float(_s.WS)) > 1e-3:
-				fd_on_rim = false
-	_ok("⑦-9c 072 法阵奶糕 8/8 真的挂进 _world 且全部钉在 300 码环沿",
-		fd_in_w == 8 and fd_on_rim, "in_world=%d on_rim=%s" % [fd_in_w, str(fd_on_rim)])
-	# ⑦-9c2~9c4 法阵二轮(2026-08-11 用户: 素圈「很敷衍」): 波浪裱花外环 + 会转的辐条层 + 不许白
-	var fd_ring = fd_h.get("ring", null)
-	var fd_sp = fd_h.get("spokes", null)
-	_ok("⑦-9c2 072 法阵辐条层真的挂进 _world(素圈没有第二层)",
-		is_instance_valid(fd_sp) and fd_sp.is_inside_tree() and is_same(fd_sp.get_parent(), w), "")
-	var rot0: float = fd_sp.rotation.y if is_instance_valid(fd_sp) else -1.0
+	_food._box_field(fd_u, 2)
+	var fd_h: Dictionary = {}
+	for lh in _food._vfx._live:
+		if str(lh.get("kind", "")) == "cake" and is_same(lh.get("unit", null), fd_u):
+			fd_h = lh
+	var fd_pl = fd_h.get("plate", null)
+	var fd_cs: Array = fd_h.get("candles", [])
+	var fd_cin := 0
+	for cn in fd_cs:
+		if is_instance_valid(cn) and cn.is_inside_tree() and is_same(cn.get_parent(), w):
+			fd_cin += 1
+	_ok("⑦-9c 072 ★分母: 放技能真的建出法阵(盘挂进 _world + 蜡烛 %d/8 挂进 _world)" % fd_cin,
+		fd_pl is Sprite3D and (fd_pl as Node).is_inside_tree() and is_same((fd_pl as Node).get_parent(), w) and fd_cin == 8, "")
+	## 盘外沿: 常态帧(第 6 帧)真像素的不透明横向跨度 × 节点像素尺寸 = 2 × 300 码(写死 600, 不从常量推)
+	var pd_px := -1
+	var pd_yd := -1.0
+	var pim := Image.load_from_file(FoodEqVfx.CAKE_PLATE_TEX)
+	if fd_pl is Sprite3D and pim != null:
+		var pfw: int = pim.get_width() / FoodEqVfx.CAKE_PLATE_FRAMES
+		var plo: int = pfw
+		var phi: int = -1
+		for x in range(pfw):
+			for y in range(pim.get_height()):
+				if pim.get_pixel(6 * pfw + x, y).a > 0.5:
+					plo = mini(plo, x)
+					phi = maxi(phi, x)
+					break
+		pd_px = phi - plo + 1
+		pd_yd = float(pd_px) * (fd_pl as Sprite3D).pixel_size / float(_s.WS)
+	_ok("⑦-9c2 072 ★盘外沿直径 %.0f 码 = 2 × 判定半径 300 码(±4%%, 常态帧真像素 %d × 节点像素尺寸)" % [pd_yd, pd_px],
+		pd_px > 0 and absf(pd_yd - 600.0) <= 24.0, "")
+	var fd_c0: Vector3 = _s._world_pos(fd_u["pos"], 0.0)
+	var pl_off: float = Vector2((fd_pl as Sprite3D).position.x - fd_c0.x, (fd_pl as Sprite3D).position.z - fd_c0.z).length() if fd_pl is Sprite3D else 999.0
+	_ok("⑦-9c2b 072 盘贴地(axis=Y · 不公告板 · NEAREST · 离地 < 0.1 米) · 盘心在携带者脚下(偏差 %.4f 米)" % pl_off,
+		fd_pl is Sprite3D and (fd_pl as Sprite3D).axis == Vector3.AXIS_Y and (fd_pl as Sprite3D).billboard == BaseMaterial3D.BILLBOARD_DISABLED
+		and (fd_pl as Sprite3D).texture_filter == BaseMaterial3D.TEXTURE_FILTER_NEAREST and (fd_pl as Sprite3D).position.y < 0.1 and pl_off < 1e-3, "")
+	# ⑦-9c3 先铺盘再冒蜡烛: 放出那一刻盘在展开段(0~5)、蜡烛一根不露 → 0.45 秒盘铺完(常态 6)、8 根冒出 → 再 0.3 秒全在燃烧循环(4~7)
+	var f_pl0: int = (fd_pl as Sprite3D).frame if fd_pl is Sprite3D else -1
+	var c_vis0 := 0
+	for cn in fd_cs:
+		if is_instance_valid(cn) and (cn as Sprite3D).visible:
+			c_vis0 += 1
+	vfx.tick(0.45)
+	var f_pl1: int = (fd_pl as Sprite3D).frame if is_instance_valid(fd_pl) else -1
+	var c_vis1 := 0
+	for cn in fd_cs:
+		if is_instance_valid(cn) and (cn as Sprite3D).visible:
+			c_vis1 += 1
+	vfx.tick(0.3)
+	var c_burn := 0
+	for cn in fd_cs:
+		if is_instance_valid(cn) and (cn as Sprite3D).visible and (cn as Sprite3D).frame >= 4 and (cn as Sprite3D).frame <= 7:
+			c_burn += 1
+	_ok("⑦-9c3 072 ★先铺盘再冒蜡烛: 放出时盘第 %d 帧 / 蜡烛露 %d 根 → 0.45 秒盘第 %d 帧 / 露 %d 根 → 0.75 秒燃烧 %d 根" % [f_pl0, c_vis0, f_pl1, c_vis1, c_burn],
+		f_pl0 >= 0 and f_pl0 <= 5 and c_vis0 == 0 and f_pl1 == 6 and c_vis1 == 8 and c_burn == 8, "")
+	# ⑦-9c4 蜡烛站在地上、插在盘沿里面一圈: 从素材真像素找奶油底座最低一行, 算它的世界位置
+	var cim := Image.load_from_file(FoodEqVfx.CAKE_CANDLE_TEX)
+	var foot := -1
+	if cim != null:
+		var cfw: int = cim.get_width() / FoodEqVfx.CAKE_CANDLE_FRAMES
+		for y in range(cim.get_height()):
+			for x in range(cfw):
+				if cim.get_pixel(4 * cfw + x, y).a > 0.5:
+					foot = maxi(foot, y)
+	var up3 := Vector3.UP
+	if _s._cam != null and is_instance_valid(_s._cam):
+		up3 = _s._cam.global_transform.basis.y.normalized()
+	var foot_bad: Array = []
+	var foot_r: Array = []
+	for cn in fd_cs:
+		if not is_instance_valid(cn) or foot < 0:
+			foot_bad.append("无素材或节点")
+			continue
+		var cs3: Sprite3D = cn as Sprite3D
+		var hpx: float = float(cs3.texture.get_height())
+		var fw: Vector3 = cs3.position - up3 * (hpx * 0.5 * cs3.pixel_size) + up3 * ((hpx - float(foot) - 1.0) * cs3.pixel_size)
+		var ryd: float = Vector2(fw.x - fd_c0.x, fw.z - fd_c0.z).length() / float(_s.WS)
+		foot_r.append(snappedf(ryd, 0.1))
+		if absf(fw.y) > 0.04 or ryd < 150.0 or ryd > 300.0:
+			foot_bad.append("底座离地 %.3f 米 / 离盘心 %.0f 码" % [fw.y, ryd])
+	_ok("⑦-9c4 072 ★8 根蜡烛底座最低一行(素材第 %d 行)落在地上(±0.04 米)且插在盘沿里面一圈(150~300 码: %s)" % [foot, str(foot_r)],
+		foot >= 0 and foot_bad.is_empty() and fd_cs.size() == 8, str(foot_bad))
+	# ⑦-9c5 每秒结算那一步: 盘一亮(脉动 7~12) + 火苗窜高(8~11) —— 走真结算入口 box_field_pulse, 同一步不等帧; 0.5 秒后回常态
+	_food.box_field_pulse(fd_u, 2)
+	var f_pl2: int = (fd_pl as Sprite3D).frame if is_instance_valid(fd_pl) else -1
+	var c_fl := 0
+	for cn in fd_cs:
+		if is_instance_valid(cn) and (cn as Sprite3D).frame >= 8 and (cn as Sprite3D).frame <= 11:
+			c_fl += 1
 	vfx.tick(0.5)
-	var rot1: float = fd_sp.rotation.y if is_instance_valid(fd_sp) else -1.0
-	_ok("⑦-9c3 072 ★法阵是活的: 辐条层 0.5 秒转过 %.3f rad(= FIELD_SPIN×0.5, 素圈转不起来)" % absf(rot1 - rot0),
-		absf((rot1 - rot0) - FoodEqVfx.FIELD_SPIN * 0.5) < 1e-4, "rot %.4f→%.4f" % [rot0, rot1])
-	if is_instance_valid(fd_ring):
-		var fc: Color = (fd_ring.material_override as StandardMaterial3D).albedo_color
-		_ok("⑦-9c4 072 ★法阵环是蛋糕粉不是白圈(G 通道 %.2f ≤ 0.55, 旧版 0.80 被泛光洗白)" % fc.g,
-			fc.g <= 0.55 and fc.r > 0.9 and fc.b > fc.g, "r=%.2f g=%.2f b=%.2f" % [fc.r, fc.g, fc.b])
-	# 外沿波瓣的均值仍 = 判定半径: 采样网格外沿顶点半径, 均值必须回到 1.0(缩放前)
-	if is_instance_valid(fd_ring):
-		var faces2: PackedVector3Array = (fd_ring.mesh as ArrayMesh).get_faces()
-		var rsum := 0.0
-		var rn := 0
-		var rmax := 0.0
-		for vi in range(faces2.size()):
-			var rr: float = Vector2(faces2[vi].x, faces2[vi].z).length()
-			if rr > 0.94:   # 只统计外沿顶点(内沿 0.88)
-				rsum += rr
-				rn += 1
-				rmax = maxf(rmax, rr)
-		_ok("⑦-9c5 072 ★裱花波瓣是装饰不是改判定: 外沿均值 %.4f ≈ 1.000(±3%% 波动, 峰值 %.3f)" % [rsum / maxf(float(rn), 1.0), rmax],
-			rn > 0 and absf(rsum / maxf(float(rn), 1.0) - 1.0) < 0.01, "")
-	# ⑦-9c6 演出【真的跟着人走】(2026-08-11 用户: 「法阵没有随着礼盒移动吗」):
-	#   量的是真实节点的世界坐标, 不是"存了个 unit 引用"。三层(环/辐条/奶糕)一起跟。
+	var f_pl3: int = (fd_pl as Sprite3D).frame if is_instance_valid(fd_pl) else -1
+	var c_back := 0
+	for cn in fd_cs:
+		if is_instance_valid(cn) and (cn as Sprite3D).frame >= 4 and (cn as Sprite3D).frame <= 7:
+			c_back += 1
+	_ok("⑦-9c5 072 ★脉动与回血同一步: 结算那一步盘第 %d 帧(7~12)、窜高 %d/8 根 → 0.5 秒后盘第 %d 帧、燃烧 %d/8 根" % [f_pl2, c_fl, f_pl3, c_back],
+		f_pl2 >= 7 and f_pl2 <= 12 and c_fl == 8 and f_pl3 == 6 and c_back == 8, "")
+	# ⑦-9c6 演出【真的跟着人走】(2026-08-11 用户:「法阵没有随着礼盒移动吗」): 挪 400 码后盘心与 8 根蜡烛底座一起到新中心
 	fd_u["pos"] = fd_u["pos"] + Vector2(400.0, 0.0)
 	vfx.tick(0.016)
 	var want_c: Vector3 = _s._world_pos(fd_u["pos"], 0.0)
-	var fd_sp2 = fd_h.get("spokes", null)
-	var d_ring: float = Vector2(fd_ring.position.x - want_c.x, fd_ring.position.z - want_c.z).length() if is_instance_valid(fd_ring) else 999.0
-	var d_spk: float = Vector2(fd_sp2.position.x - want_c.x, fd_sp2.position.z - want_c.z).length() if is_instance_valid(fd_sp2) else 999.0
-	var deco_ok := true
-	var fdeco2: Array = fd_h.get("deco", [])
-	for di2 in range(fdeco2.size()):
-		var dp2 = fdeco2[di2]
-		if is_instance_valid(dp2):
-			var dr2: float = Vector2(dp2.position.x - want_c.x, dp2.position.z - want_c.z).length()
-			if absf(dr2 - 300.0 * float(_s.WS)) > 1e-3:
-				deco_ok = false
-	_ok("⑦-9c6 072 ★法阵跟人走(真实节点世界坐标): 携带者挪 400 码后环/辐条中心偏差 %.5f/%.5f m ≈ 0" % [d_ring, d_spk],
-		d_ring < 1e-3 and d_spk < 1e-3, "")
-	_ok("⑦-9c7 072 ★跟随后 8 颗奶糕仍钉在新中心的 300 码环沿(整块法阵一起搬, 不是只搬环)",
-		deco_ok and fdeco2.size() == 8, "deco=%d" % fdeco2.size())
+	var d_pl: float = Vector2((fd_pl as Sprite3D).position.x - want_c.x, (fd_pl as Sprite3D).position.z - want_c.z).length() if is_instance_valid(fd_pl) else 999.0
+	var r_new: Array = []
+	for cn in fd_cs:
+		if is_instance_valid(cn) and foot >= 0:
+			var cs4: Sprite3D = cn as Sprite3D
+			var hp4: float = float(cs4.texture.get_height())
+			var fw4: Vector3 = cs4.position - up3 * (hp4 * 0.5 * cs4.pixel_size) + up3 * ((hp4 - float(foot) - 1.0) * cs4.pixel_size)
+			r_new.append(Vector2(fw4.x - want_c.x, fw4.z - want_c.z).length() / float(_s.WS))
+	var r_spread := 999.0
+	var r_min := -1.0
+	if r_new.size() == 8:
+		r_spread = float(r_new.max()) - float(r_new.min())
+		r_min = float(r_new.min())
+	_ok("⑦-9c6 072 ★法阵跟人走(真实节点世界坐标): 挪 400 码后盘心偏差 %.5f 米, 8 根蜡烛到新中心距离 %.1f 码起、极差 %.3f 码" % [d_pl, r_min, r_spread],
+		d_pl < 1e-3 and r_new.size() == 8 and r_spread < 0.5 and r_min > 150.0, "")
+	# ⑦-9c7 收盘与结算同源: 走真 `_box_field_tick` 把剩余秒数跑完(不自己数 5 秒) ⇒ 下一帧吹蜡烛(12~17)、盘保持常态;
+	#   再 0.35 秒蜡烛沉完、盘在缩(13~18); 再 1 秒全部收掉(写死秒数, 不拿演出常量推进)
+	_food._box_field_tick(fd_u, 2, {}, 5.1)
+	var left_after: float = float(fd_u.get("_box_field_left", -1.0))
+	vfx.tick(0.016)
+	var f_pl4: int = (fd_pl as Sprite3D).frame if is_instance_valid(fd_pl) else -1
+	var c_blow := 0
+	for cn in fd_cs:
+		if is_instance_valid(cn) and (cn as Sprite3D).visible and (cn as Sprite3D).frame >= 12:
+			c_blow += 1
+	vfx.tick(0.35)
+	var f_pl5: int = (fd_pl as Sprite3D).frame if is_instance_valid(fd_pl) else -1
+	var c_hid := 0
+	for cn in fd_cs:
+		if is_instance_valid(cn) and not (cn as Sprite3D).visible:
+			c_hid += 1
+	vfx.tick(1.0)
+	var freed: bool = is_instance_valid(fd_pl) and (fd_pl as Node).is_queued_for_deletion()
+	for cn in fd_cs:
+		freed = freed and is_instance_valid(cn) and (cn as Node).is_queued_for_deletion()
+	var still := false
+	for lh in _food._vfx._live:
+		if is_same(lh, fd_h):
+			still = true
+	_ok("⑦-9c7 072 ★收盘读结算自己的剩余秒数(%.2f): 下一帧吹蜡烛 %d/8、盘第 %d 帧 → 0.35 秒蜡烛沉完 %d/8、盘第 %d 帧 → 1 秒后收掉 %s" % [left_after, c_blow, f_pl4, c_hid, f_pl5, str(freed and not still)],
+		left_after == 0.0 and c_blow == 8 and f_pl4 == 6 and c_hid == 8 and f_pl5 >= 13 and f_pl5 <= 18 and freed and not still, "")
 	# ⑦-9c8~9c12 出盒烟雾爆开(2026-08-11 用户点名): 真节点 + 减速扩散 + 卷吸膨胀 + 不许一出生就淡
 	var smu: Dictionary = _mk("fortune", "left", Vector2(-420.0, 320.0), 2000.0)
 	var smk: Array = vfx.unbox_smoke(smu)

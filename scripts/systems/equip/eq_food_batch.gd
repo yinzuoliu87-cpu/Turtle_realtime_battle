@@ -663,6 +663,8 @@ func box_field_pulse(u: Dictionary, si: int) -> void:
 		##   被治到的友军身上升一颗小奶糕 —— 谁在圈里、哪一秒跳了, 一眼可读。
 		_vfx.field_heal_fx(o)
 		n += 1
+	## ★盘一亮 + 蜡烛火苗窜高与这一次回血同一步(2026-09-15 蛋糕法阵重做)
+	_vfx.cake_field_pulse(u)
 	u["_box_field_hits"] = int(u.get("_box_field_hits", 0)) + n   # 同步证据
 
 

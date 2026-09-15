@@ -128,14 +128,37 @@ const SMOKE_D1 := 52.0
 ## 蛋糕法阵半径(码), 与 072 礼盒技能的 300 码同一个数
 ## ★同上: 判定用 `EqFoodBatch.BOX_FIELD_PX`(072 礼盒技能的蛋糕法阵半径)。
 const CAKE_FIELD_PX := EqFoodBatch.BOX_FIELD_PX
-## 法阵裱花外环的波瓣数 / 辐条数 / 辐条层自旋角速度(rad/s)
-## (2026-08-11 用户: 「如果是法阵你这个效果就很敷衍了」—— 素圈+8点不配叫法阵,
-##  重做成: 波浪裱花外环(外沿均值仍= 300 码判定半径) + 缓旋辐条内环层 + 奶糕点缀)
-const FIELD_SCALLOPS := 24
-const FIELD_SPOKES := 8
-const FIELD_SPIN := 0.5
-## 裱花波瓣的相对振幅(±3%, 外沿均值不动 —— 判定半径不许被观感改掉)
-const FIELD_WAVE_AMP := 0.03
+## ── 072 蛋糕法阵帧表(2026-09-15 三轮重做, tools/blender_cake_field.py) ──
+## 前两轮(素圈 / 程序波浪环 + 缓旋辐条 + 程序奶糕)用户都说敷衍 ⇒ 否的是「代码现算的图形」整类, 换烘焙帧表。
+const CAKE_PLATE_TEX := "res://assets/sprites/vfx/eq072-cake-plate.png"
+const CAKE_CANDLE_TEX := "res://assets/sprites/vfx/eq072-cake-candle.png"
+## 盘: 192 格 × 19 帧 —— 展开 0~5 / 常态 6 / 脉动 7~12 / 收盘 13~18
+const CAKE_PLATE_CELL := 192
+const CAKE_PLATE_FRAMES := 19
+const CAKE_OPEN_F := 0
+const CAKE_IDLE_F := 6
+const CAKE_PULSE_F := 7
+const CAKE_CLOSE_F := 13
+const CAKE_SEG_FRAMES := 6
+## 裱花边外沿半径占半格的比例(烘焙 RIM_R) ⇒ pixel_size 按「外沿直径 = 2 × 判定半径」反推
+const CAKE_RIM_FRAC := 0.942
+const CAKE_OPEN_T := 0.4
+const CAKE_PULSE_T := 0.3
+const CAKE_BLOW_T := 0.3
+const CAKE_CLOSE_T := 0.4
+## 蜡烛: 32×64 格 × 18 帧 —— 冒出 0~3 / 燃烧 4~7 / 窜高 8~11 / 吹灭 12~17; texel 3.125 厘米 ≈ 龟身 texel
+const CAKE_CANDLE_FRAMES := 18
+const CAKE_CANDLE_N := 8
+const CAKE_CANDLE_TEXEL := 0.03125
+const CAKE_CANDLE_H := 64.0
+## 奶油底座最低不透明行 —— 这一行立在地上(门禁从素材真像素量这一行, 改素材不改这里会红)
+const CAKE_CANDLE_FOOT_ROW := 57.0
+const CAKE_CANDLE_UP := (CAKE_CANDLE_FOOT_ROW + 1.0 - CAKE_CANDLE_H * 0.5) * CAKE_CANDLE_TEXEL
+## 蜡烛所在半径占盘外沿的比例: 与 8 颗草莓同一圈(烘焙 BERRY_R 0.64 / RIM_R 0.942), 插在两颗草莓中间
+const CAKE_CANDLE_R_FRAC := 0.64 / 0.942
+const CAKE_CANDLE_RISE_T := 0.2
+const CAKE_FLARE_T := 0.24
+const CAKE_BURN_FPS := 8.0
 ## 溅射环半径(码), 与 070 的 250 码同一个数
 ## ★★不再自己写一份 250(2026-09-14): 判定用 `EqFoodBatch.BRICK_SPLASH_R`、演出用这个,
 ##   两个名字、两个文件、同一个数 —— 改一个不改另一个就是环与判定错位, 而且**没有任何
@@ -154,8 +177,6 @@ var battle
 ## 网格缓存(同 shockwave_vfx: 网格可共享、材质不行 —— 材质带着这一发自己的亮度)
 var _cache_ring: ArrayMesh = null
 var _cache_crown: ArrayMesh = null
-var _cache_scallop: ArrayMesh = null
-var _cache_spoke: ArrayMesh = null
 
 ## 活动中的演出句柄(每帧 advance)
 var _live: Array = []
@@ -333,51 +354,6 @@ static func _build_crown_mesh() -> ArrayMesh:
 	return mesh
 
 
-## 072 法阵·裱花波浪外环: 外沿 r = 1 + AMP·sin(Nθ)(奶油挤花边), 内沿 0.88 渐隐。
-## ★外沿【均值】= 1.0 ⇒ 缩放到 rm 后就是 300 码判定半径本身, 波瓣只是 ±3% 的装饰起伏。
-static func _build_scallop_ring_mesh() -> ArrayMesh:
-	var mesh := ArrayMesh.new()
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var seg := 96
-	for j in range(seg):
-		var t0: float = float(j) / float(seg) * TAU
-		var t1: float = float(j + 1) / float(seg) * TAU
-		var o0: float = 1.0 + FIELD_WAVE_AMP * sin(FIELD_SCALLOPS * t0)
-		var o1: float = 1.0 + FIELD_WAVE_AMP * sin(FIELD_SCALLOPS * t1)
-		var a := [Vector3(0.88 * cos(t0), GROUND_Y, 0.88 * sin(t0)), Color(1, 1, 1, 0.0)]
-		var b := [Vector3(o0 * cos(t0), GROUND_Y, o0 * sin(t0)), Color(1, 1, 1, 1.0)]
-		var c := [Vector3(o1 * cos(t1), GROUND_Y, o1 * sin(t1)), Color(1, 1, 1, 1.0)]
-		var d := [Vector3(0.88 * cos(t1), GROUND_Y, 0.88 * sin(t1)), Color(1, 1, 1, 0.0)]
-		_tri(st, a, b, c)
-		_tri(st, a, c, d)
-	st.commit(mesh)
-	return mesh
-
-
-## 072 法阵·旋转辐条层: 0.55~0.60 内环带 + 8 根往外收细的辐条(0.60→0.94)。
-## 整个节点绕 y 缓旋(FIELD_SPIN) —— 法阵的"活"就在这一层, 素圈是转不起来的。
-static func _build_spoke_mesh() -> ArrayMesh:
-	var mesh := ArrayMesh.new()
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for j in range(RING_LON):
-		var t0: float = float(j) / float(RING_LON) * TAU
-		var t1: float = float(j + 1) / float(RING_LON) * TAU
-		_quad(st, 0.55, 0.30, 0.575, 0.85, t0, t1)
-		_quad(st, 0.575, 0.85, 0.60, 0.30, t0, t1)
-	for k in range(FIELD_SPOKES):
-		var th: float = float(k) * TAU / float(FIELD_SPOKES)
-		var a := _flat_vert(0.60, th - 0.050, 0.85)
-		var b := _flat_vert(0.94, th - 0.018, 0.25)
-		var c := _flat_vert(0.94, th + 0.018, 0.25)
-		var d := _flat_vert(0.60, th + 0.050, 0.85)
-		_tri(st, a, b, c)
-		_tri(st, a, c, d)
-	st.commit(mesh)
-	return mesh
-
-
 static func _quad(st: SurfaceTool, ri: float, ai: float, ro: float, ao: float, t0: float, t1: float) -> void:
 	var a := _flat_vert(ri, t0, ai)
 	var b := _flat_vert(ro, t0, ao)
@@ -425,18 +401,6 @@ func _crown_mesh() -> ArrayMesh:
 	if _cache_crown == null:
 		_cache_crown = _build_crown_mesh()
 	return _cache_crown
-
-
-func _scallop_mesh() -> ArrayMesh:
-	if _cache_scallop == null:
-		_cache_scallop = _build_scallop_ring_mesh()
-	return _cache_scallop
-
-
-func _spoke_mesh() -> ArrayMesh:
-	if _cache_spoke == null:
-		_cache_spoke = _build_spoke_mesh()
-	return _cache_spoke
 
 
 func _mk_node(mesh: ArrayMesh, mat: StandardMaterial3D, org: Vector3) -> MeshInstance3D:
@@ -1016,32 +980,145 @@ func taunt_ring_free(u: Dictionary) -> void:
 	u["_box_ring"] = null
 
 
-## 蛋糕法阵(2026-08-11 二轮: 用户「如果是法阵你这个效果就很敷衍了」——素圈不配叫法阵):
-##   ① 裱花波浪外环(外沿均值 = 300 码技能判定半径本身, ±3% 波瓣 = 奶油挤花边)
-##   ② 缓旋辐条内环层(法阵的"活"), ③ 环沿 8 颗粉霜奶糕。
-##   颜色改饱和蛋糕粉 —— 旧版淡粉+加色被泛光直接洗成白圈(fb-vfx-defect-families 无含义白圈)。
-## ★奶糕角度等分全确定性(无 randf); 0.20 的相位偏移只是别让第一颗压在正右方向的敌人身上。
-func cake_field_fx(u: Dictionary, dur: float) -> Dictionary:
-	if not is_instance_valid(battle._world):
+## 072 蛋糕法阵(2026-09-15 三轮重做 · 用户「072的粉色蛋糕法阵太敷衍了，需要重做」):
+##   前两轮(素圈 / 程序波浪环 + 缓旋辐条 + 程序奶糕)都是代码现算的图形 ⇒ 整类换成 Blender 烘焙帧表
+##   (tools/blender_cake_field.py): 贴地蛋糕盘(裱花边 + 草莓 + 糖霜) + 8 根站着的生日蜡烛公告板。
+## 段: 展开(裱花袋沿盘边挤一圈, CAKE_OPEN_T) → 蜡烛冒出点亮 → 燃烧循环;
+##     每秒结算那一步(box_field_pulse → cake_field_pulse)盘一亮 + 火苗窜高;
+##     法阵结束(携带者 `_box_field_left` 归零: 5 秒到了 / 破盾出盒)→ 吹灭冒烟(CAKE_BLOW_T) → 盘缩回礼盒(CAKE_CLOSE_T)。
+## ★跟随(2026-08-11 用户拍板「是要跟随的」): 每帧中心 = 携带者当前位置, 与 box_field_pulse 读的是同一个点。
+## ★`_dur` 不再用: 收盘读携带者自己的剩余秒数(与结算同源), 不另起一只 5 秒的钟 ——
+##   旧版按自己的 5 秒淡出, 破盾出盒时判定已经停了画面还挂着(两条时钟)。
+func cake_field_fx(u: Dictionary, _dur: float) -> Dictionary:
+	if not is_instance_valid(battle._world) or not ResourceLoader.exists(CAKE_PLATE_TEX) or not ResourceLoader.exists(CAKE_CANDLE_TEX):
 		return {}
-	var pos2d: Vector2 = u["pos"]
-	var rm: float = range_m(CAKE_FIELD_PX)
-	var ring := _mk_node(_scallop_mesh(), _mat(true, 9), battle._world_pos(pos2d, 0.0))
-	ring.scale = Vector3(rm, rm, rm)
-	(ring.material_override as StandardMaterial3D).albedo_color = Color(1.0, 0.45, 0.62, 0.62)
-	var spokes := _mk_node(_spoke_mesh(), _mat(true, 9), battle._world_pos(pos2d, 0.0))
-	spokes.scale = Vector3(rm, rm, rm)
-	(spokes.material_override as StandardMaterial3D).albedo_color = Color(1.0, 0.62, 0.74, 0.50)
-	var deco: Array = []
-	for i in range(8):
-		var th: float = float(i) * TAU / 8.0 + 0.20
-		deco.append(_mk_sprite(_cake_dollop_tex(),
-			pos2d + Vector2(cos(th), sin(th)) * CAKE_FIELD_PX, 0.12, 15.0, Color(1, 1, 1, 1)))
-	## "unit" 引用 = 跟随的事实源(2026-08-11 用户拍板「是要跟随的」): 每帧 tick 里
-	## 环/辐条/奶糕全部搬到携带者当前位置 —— 判定(box_field_pulse 读 u["pos"])同一个点。
-	var h := {"kind": "field", "unit": u, "ring": ring, "spokes": spokes, "deco": deco, "t": 0.0, "dur": maxf(dur, 0.1)}
+	var gen: int = int(u.get("_cake_field_gen", 0)) + 1
+	u["_cake_field_gen"] = gen
+	var plate := _cake_sprite(load(CAKE_PLATE_TEX), CAKE_PLATE_FRAMES, true)
+	plate.pixel_size = (2.0 * CAKE_FIELD_PX * float(battle.WS)) / (float(CAKE_PLATE_CELL) * CAKE_RIM_FRAC)
+	var ctex: Texture2D = load(CAKE_CANDLE_TEX)
+	var candles: Array = []
+	for i in range(CAKE_CANDLE_N):
+		var cn := _cake_sprite(ctex, CAKE_CANDLE_FRAMES, false)
+		cn.pixel_size = CAKE_CANDLE_TEXEL
+		candles.append(cn)
+	## "dur": INF ⇒ tick 的通用 x 恒 0、不按时长到期; 寿命由 cake_field_step 按剩余秒数决定
+	var h := {"kind": "cake", "unit": u, "gen": gen, "c": u["pos"], "plate": plate, "candles": candles,
+		"t": 0.0, "dur": INF, "pulse_t": -1.0, "close_t": -1.0}
 	_live.append(h)
+	cake_field_apply(h)
 	return h
+
+
+func _cake_sprite(tex: Texture2D, frames: int, ground: bool) -> Sprite3D:
+	var sp := Sprite3D.new()
+	sp.texture = tex
+	sp.hframes = frames
+	sp.shaded = false
+	sp.transparent = true
+	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	if ground:
+		sp.axis = Vector3.AXIS_Y
+		sp.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+		## 盘先画: 半透明按节点原点远近排序, 盘心在携带者脚下, 后半圈蜡烛比盘心远 ⇒ 不压优先级会被盘盖住
+		sp.render_priority = -1
+	else:
+		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	battle._world.add_child(sp)
+	return sp
+
+
+## 072 每秒结算那一步调(eq_food_batch.box_field_pulse): 盘一亮 + 火苗窜高都从第 0 帧起 —— 与回血同一步, 不另起计时。
+func cake_field_pulse(u: Dictionary) -> void:
+	for h in _live:
+		if str(h.get("kind", "")) == "cake" and is_same(h.get("unit", null), u) and float(h.get("close_t", -1.0)) < 0.0:
+			h["pulse_t"] = 0.0
+			cake_field_apply(h)
+
+
+## 072 法阵推进一帧(t 已由 tick 累加): 跟随 → 该不该收 → 摆位选帧。返回 false = 收完、节点已释放。
+func cake_field_step(h: Dictionary, delta: float) -> bool:
+	var un = h.get("unit", null)
+	var ud: Dictionary = un if un is Dictionary else {}
+	var alive_u: bool = bool(ud.get("alive", false))
+	if alive_u:
+		h["c"] = ud["pos"]
+	var dt: float = maxf(delta, 0.0)
+	if float(h["pulse_t"]) >= 0.0:
+		h["pulse_t"] = float(h["pulse_t"]) + dt
+	if float(h["close_t"]) >= 0.0:
+		h["close_t"] = float(h["close_t"]) + dt
+	elif not alive_u or float(ud.get("_box_field_left", 0.0)) <= 0.0 or int(ud.get("_cake_field_gen", 0)) != int(h["gen"]):
+		## ★与结算同源: 剩余秒数归零(5 秒到了 / _box_unbox 破盾出盒清零)那一帧开始收; 又放了新法阵也把旧的收掉
+		h["close_t"] = 0.0
+	if float(h["close_t"]) >= CAKE_BLOW_T + CAKE_CLOSE_T:
+		_free_keys(h, ["plate"])
+		_free_list(h, "candles")
+		return false
+	cake_field_apply(h)
+	return true
+
+
+## 句柄状态 → 节点(摆位 + 选帧)。
+func cake_field_apply(h: Dictionary) -> void:
+	var c: Vector2 = h["c"]
+	var t: float = float(h["t"])
+	var pt: float = float(h["pulse_t"])
+	var ct: float = float(h["close_t"])
+	var pl = h.get("plate", null)
+	if is_instance_valid(pl):
+		(pl as Sprite3D).position = battle._world_pos(c, GROUND_Y)
+		(pl as Sprite3D).frame = cake_plate_frame(t, pt, ct)
+	## 蜡烛是站着的公告板: 帧中心沿相机上方向抬高 CAKE_CANDLE_UP, 奶油底座最低一行正好落在地上(同 064 浮囊)
+	var up := Vector3.UP
+	if battle._cam != null and is_instance_valid(battle._cam):
+		up = battle._cam.global_transform.basis.y.normalized()
+	var cs: Array = h.get("candles", [])
+	for i in range(cs.size()):
+		var cn = cs[i]
+		if not is_instance_valid(cn):
+			continue
+		var cf: int = cake_candle_frame(i, t, pt, ct)
+		(cn as Sprite3D).visible = cf >= 0
+		(cn as Sprite3D).frame = maxi(cf, 0)
+		(cn as Sprite3D).position = battle._world_pos(c + cake_candle_offset(i), 0.0) + up * CAKE_CANDLE_UP
+
+
+## 072 盘该显示第几帧(纯函数)。close_t ≥ 0 = 已在收: 先吹蜡烛(盘保持常态), 再缩盘。
+static func cake_plate_frame(t: float, pulse_t: float, close_t: float) -> int:
+	if close_t >= 0.0:
+		if close_t < CAKE_BLOW_T:
+			return CAKE_IDLE_F
+		return CAKE_CLOSE_F + _cake_seg(close_t - CAKE_BLOW_T, CAKE_CLOSE_T, CAKE_SEG_FRAMES)
+	if t < CAKE_OPEN_T:
+		return CAKE_OPEN_F + _cake_seg(t, CAKE_OPEN_T, CAKE_SEG_FRAMES)
+	if pulse_t >= 0.0 and pulse_t < CAKE_PULSE_T:
+		return CAKE_PULSE_F + _cake_seg(pulse_t, CAKE_PULSE_T, CAKE_SEG_FRAMES)
+	return CAKE_IDLE_F
+
+
+## 072 第 i 根蜡烛该显示第几帧; −1 = 不显示(盘还没铺完 / 已经沉回去)。
+static func cake_candle_frame(i: int, t: float, pulse_t: float, close_t: float) -> int:
+	if close_t >= 0.0:
+		return (12 + _cake_seg(close_t, CAKE_BLOW_T, 6)) if close_t < CAKE_BLOW_T else -1
+	if t < CAKE_OPEN_T:
+		return -1
+	if t < CAKE_OPEN_T + CAKE_CANDLE_RISE_T:
+		return _cake_seg(t - CAKE_OPEN_T, CAKE_CANDLE_RISE_T, 4)
+	if pulse_t >= 0.0 and pulse_t < CAKE_FLARE_T:
+		return 8 + _cake_seg(pulse_t, CAKE_FLARE_T, 4)
+	## 燃烧循环: 每根错开一帧, 不齐刷刷一起闪
+	return 4 + (int(floor(t * CAKE_BURN_FPS)) + i) % 4
+
+
+static func _cake_seg(x: float, span: float, n: int) -> int:
+	return clampi(int(floor(x / maxf(span, 0.001) * float(n))), 0, n - 1)
+
+
+## 072 第 i 根蜡烛相对盘心的偏移(码): 与草莓同一圈、插在两颗草莓中间。
+static func cake_candle_offset(i: int) -> Vector2:
+	var th: float = (float(i) + 0.5) * TAU / float(CAKE_CANDLE_N)
+	return Vector2(cos(th), sin(th)) * CAKE_FIELD_PX * CAKE_CANDLE_R_FRAC
 
 
 ## 分裂弹出: 抛体 + 恢复系数 e 的多次弹跳, 落地按触地速度形变。
@@ -1080,37 +1157,8 @@ func tick(delta: float) -> void:
 				if not alive:
 					_free_keys(h, ["hole"])
 					_free_list(h, "drops")
-			"field":
-				var rg = h.get("ring", null)
-				var f_fade: float = 1.0 - clampf(x, 0.0, 1.0) * 0.6
-				# ★跟随携带者(2026-08-11 用户拍板): 中心 = unit 当前位置, 与治疗判定同点。
-				#   单位死了/没了就停在原地淡出(不追尸体也不闪没)。
-				var fun = h.get("unit", null)
-				var fc2: Vector2 = (fun as Dictionary)["pos"] if (fun is Dictionary and (fun as Dictionary).get("alive", false)) else Vector2.INF
-				if is_instance_valid(rg):
-					if fc2 != Vector2.INF:
-						rg.position = battle._world_pos(fc2, 0.0)
-					(rg.material_override as StandardMaterial3D).albedo_color = Color(
-						1.0, 0.45, 0.62, 0.62 * f_fade)
-				var fsp = h.get("spokes", null)
-				if is_instance_valid(fsp):
-					# 法阵的"活": 辐条层缓旋(素圈转不起来 —— 2026-08-11 用户打回的正是素圈)
-					if fc2 != Vector2.INF:
-						fsp.position = battle._world_pos(fc2, 0.0)
-					fsp.rotation.y = float(h["t"]) * FIELD_SPIN
-					(fsp.material_override as StandardMaterial3D).albedo_color = Color(
-						1.0, 0.62, 0.74, 0.50 * f_fade)
-				var fdk: Array = h.get("deco", [])
-				for di in range(fdk.size()):
-					var dp = fdk[di]
-					if is_instance_valid(dp):
-						if fc2 != Vector2.INF:
-							var dth: float = float(di) * TAU / 8.0 + 0.20
-							dp.position = battle._world_pos(fc2 + Vector2(cos(dth), sin(dth)) * CAKE_FIELD_PX, 0.12)
-						dp.modulate.a = f_fade
-				if not alive:
-					_free_keys(h, ["ring", "spokes"])
-					_free_list(h, "deco")
+			"cake":
+				alive = cake_field_step(h, delta)
 			"smoke":
 				# 出盒烟雾: 径向带阻力减速 + 浮升 + 卷吸膨胀; 前 70% 满亮(不许一出生就淡)
 				var sm = h.get("spr", null)
@@ -1218,9 +1266,9 @@ func _free_list(h: Dictionary, key: String) -> void:
 ##   要接的话在 `battle._spec.clear_all()` 旁边加一行 `_equip_sys._food_sys._vfx.clear_all()` 即可。
 func clear_all() -> void:
 	for h in _live:
-		_free_keys(h, ["crown", "ring", "hole", "spr", "spokes"])
-		_free_list(h, "drops")   # 071 奶油滴
-		_free_list(h, "deco")    # 072 法阵饰点
+		_free_keys(h, ["crown", "ring", "hole", "spr", "plate"])
+		_free_list(h, "drops")     # 071 奶油滴
+		_free_list(h, "candles")   # 072 法阵蜡烛
 	_live.clear()
 	for ob in _orbits:
 		cake_orbit_free(ob)

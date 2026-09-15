@@ -771,6 +771,9 @@ const CASES := {
 ## 触发: 要**真的掉到 35% 以下** ⇒ `enemy_attacks` + `carrier_hp` 压到刚好高于阈值一点,
 ##   让它在台上自然跌破(直接设到 35% 以下的话, 入场那一帧就触发, 拍不到"跌破的瞬间")。
 "p2eq_064": {
+	## ★假人血量 5000(同 p2eq_064_move): 诅咒每秒 5% 最大生命真伤, 90 万血的假人上一跳 45000,
+	##   2026-09-15 实拍浮字一路涨到 33750 盖住画面, 与实战量级差百倍。
+	"enemy_hp": 5000.0,
 	"enemy_no_passive": true,
 	"star": 3, "carrier": "basic", "enemies": 2, "enemy_attacks": true, "enemy_dist": 170.0,
 	"carrier_hp": 0.45, "ui": true,
