@@ -511,6 +511,22 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 				u["_tough_glint_t"] = battle._t
 				battle._skill_ring(u["pos"], Color(0.55, 0.75, 1.0, 0.5), 46.0)
 	# (反伤已合并到上方通用块, 删除重复的第二处石头反伤)
+	_post_hit_hooks(src, u, dmg, basic, was_crit, _bkt, from_equip)   # 装备事件钩子: on-hit / on-target / 宝箱战利品 / U3 装备伤害(见函数头注)
+	if u["alive"]:
+		battle._equip_sys._eq_check_hp_threshold(u)          # HP阈值: 首次<50% (深海项链/珍珠耳环)
+		battle._hpl.check(u)                                 # ★多条血线(069 三块糕 80/55/30% · 064 <35%); 与上面那条 50% 线并存
+		if str(u.get("id", "")) == "fortune" and not u.get("_lowhp_fired", false) and u["hp"] <= u["maxHp"] * FortuneSystem.LOWHP_PCT:
+			battle._fortune_sys._fortune_lowhp_burst(u)       # 财神【通用被动】(用户2026-07-28): 首次跌破20%血 → 立得70龟能(不论带哪个技能)
+	if u["hp"] <= 0.0 and u["alive"]:
+		battle._kill(u, src)
+
+
+## 【一段伤害落地之后的装备事件钩子】(2026-09-15 从 `_apply_damage_from` 原样抽出, 调用顺序不变)。
+## ★抽出来的直接原因: `_apply_damage_from` 顶到架构预算 250 行, 而 U3 要在这里加一个分支 ——
+##   往上帝函数里硬塞一行不对, 删别人的注释凑行数也不对(CLAUDE.md §5)。
+## ★U3(用户 2026-09-15「被装备打到应该算吧」): 敌方【装备】打出的一段伤害也算「受到攻击」,
+##   走 `EquipSystem._b4_on_damaged_equip` —— 只喂 081 充能 / 082 反伤, 不连带老装备的 on-target 钩子。
+func _post_hit_hooks(src: Dictionary, u: Dictionary, dmg: int, basic: bool, was_crit, _bkt, from_equip: bool) -> void:
 	# 装备事件钩子 (on-hit 攻击方 / on-target 防守方 / HP阈值) — 装备自身造的段不再回钩
 	if not from_equip:
 		if src["alive"] and u["alive"]:
@@ -547,13 +563,8 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 					battle._consume_stacks(u, "chest_thunder")
 					_apply_damage_from(src, u, maxi(1, int(float(src["atk"]))), Color("#ffe94d"), 0.0, true, true)
 					battle._skill_ring(u["pos"], Color(1.0, 0.92, 0.3, 0.6), 40.0)
-	if u["alive"]:
-		battle._equip_sys._eq_check_hp_threshold(u)          # HP阈值: 首次<50% (深海项链/珍珠耳环)
-		battle._hpl.check(u)                                 # ★多条血线(069 三块糕 80/55/30% · 064 <35%); 与上面那条 50% 线并存
-		if str(u.get("id", "")) == "fortune" and not u.get("_lowhp_fired", false) and u["hp"] <= u["maxHp"] * FortuneSystem.LOWHP_PCT:
-			battle._fortune_sys._fortune_lowhp_burst(u)       # 财神【通用被动】(用户2026-07-28): 首次跌破20%血 → 立得70龟能(不论带哪个技能)
-	if u["hp"] <= 0.0 and u["alive"]:
-		battle._kill(u, src)
+	elif u["alive"]:
+		battle._equip_sys._b4_on_damaged_equip(u, src, dmg)
 
 # DoT 落血 (穿护盾, 不弹字防刷屏; 血条体现)
 ## ⚠★第三个参数**从来不被读**(2026-08-20 核实)。击飞位移实际来自 `battle.KNOCK_PUSH * push_mult`,

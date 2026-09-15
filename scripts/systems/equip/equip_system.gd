@@ -117,6 +117,26 @@ func _b4_on_damaged_any(u: Dictionary, src, dmg: int) -> void:
 			sys.on_damaged(u, src, float(dmg), iid, _eq_si(int((e as Dictionary).get("star", 1))))
 	u["_b4_dot"] = false
 
+## ★U3(用户 2026-09-15「被装备打到应该算吧」): 敌方装备打出的一段伤害(`from_equip = true`)也算「受到攻击」。
+##   普攻/技能那条路的 `_eq_on_target` 挂在 `if not from_equip` 里, 装备段一直进不来 ⇒ 081 充能 +0、082 反伤 0 次
+##   (第九批调查: 082 挨 5 枪、承伤 165, 反伤 0 次)。
+## ★只路由到 081 / 082 —— 其余 on-target / 批④ 钩子(硬化层、荆棘反伤等)要不要也算没拍板, 静默放开会改掉它们的强度。
+##   `_b4_dot = false`: 这是一段攻击, 不是 DoT 跳伤(082 读它排除 DoT)。
+const B4_EQUIP_HIT_IDS := ["p2eq_081", "p2eq_082"]
+func _b4_on_damaged_equip(u: Dictionary, src, dmg: int) -> void:
+	if u.get("equips", []).is_empty():
+		return
+	u["_b4_dot"] = false
+	for e in u["equips"]:
+		if not (e is Dictionary):
+			continue
+		var iid: String = str((e as Dictionary).get("id", ""))
+		if not B4_EQUIP_HIT_IDS.has(iid):
+			continue
+		var sys = _b4(iid)
+		if sys != null:
+			sys.on_damaged(u, src, float(dmg), iid, _eq_si(int((e as Dictionary).get("star", 1))))
+
 func _eq_on_basic_attack(u: Dictionary, tgt = null) -> void:   # 每普攻(不算多段): 008珊瑚刺计数 / 017不沉之锚普攻消耗充能锚击
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:

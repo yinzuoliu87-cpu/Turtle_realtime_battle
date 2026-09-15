@@ -184,6 +184,8 @@ const WAVE_HALF_W := 300.0
 var _waves: Array = []
 ## 084 十字斩的分段时刻表 [{u, dir, si, t, seg}] —— 用 battle._t(顿帧/时停跟着停), 不用墙钟
 var _pending: Array = []
+## 082 反伤的重入深度 —— U3 防套娃: 反伤打出去的那一下不再触发任何人的 082 反伤。
+var _refl082_depth: int = 0
 
 
 func _init(b) -> void:
@@ -441,6 +443,10 @@ func _spawn082(u: Dictionary, si: int) -> void:
 func _damaged082(u: Dictionary, src) -> void:
 	if bool(u.get("_b4_dot", false)):
 		return                                   # ★DoT/真伤路: 灼烧/中毒/流血每跳都不喂充能
+	## ★U3 防套娃: 装备打出的伤害现在也会进这里(用户 2026-09-15「被装备打到应该算吧」),
+	##   而反伤本身就是装备伤害 ⇒ 两个都带 082 的单位会互相反伤成死循环。反伤打出去的那一下不再触发反伤。
+	if _refl082_depth > 0:
+		return
 	var st: Dictionary = (u["eq_state"] as Dictionary).get("p2eq_082", {})
 	var ev: int = int(u.get("_st_taken", 0))
 	if int(st.get("ev", -1)) == ev:
@@ -451,8 +457,10 @@ func _damaged082(u: Dictionary, src) -> void:
 		return                                   # is_same: 单位字典互引成环, == 会深比较→卡死
 	var sx: int = int(u.get("_b82_si", 0))
 	var d: int = battle._resolve_dmg(u, [3.0, 5.0, 8.0][sx], src, true)   # 魔法 ⇒ 吃对方魔抗
-	# ★from_equip = true: 不回钩 on-hit ⇒ **不触发对方的反伤**(用户拍板, 防无限套娃)
+	# ★from_equip = true: 不回钩 on-hit; 对方身上的 082 由 `_refl082_depth` 挡住(用户拍板: 反伤不触发反伤)
+	_refl082_depth += 1
 	battle._damage._apply_damage_from(u, src, d, Color("#9ff0d8"), 0.0, false, true)
+	_refl082_depth -= 1
 	st["refl_n"] = int(st.get("refl_n", 0)) + 1
 	if int(st["refl_n"]) >= CLAM_PER_CHARGE:
 		st["refl_n"] = int(st["refl_n"]) - CLAM_PER_CHARGE

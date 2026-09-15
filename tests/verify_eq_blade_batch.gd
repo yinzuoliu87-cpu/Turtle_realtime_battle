@@ -156,6 +156,7 @@ func _ready() -> void:
 	_t081_dot_and_stars()
 	_t082_reflect()
 	_t082_dot_gate()
+	_t08x_equip_hits()
 	_t082_charge_and_basic()
 	_t083_passive()
 	_t083_stacks()
@@ -513,7 +514,7 @@ func _t082_reflect() -> void:
 	_ok("② 3★ 每受一段攻击反伤 8 点魔法给攻击者(攻击者魔抗 0 ⇒ 实扣 8)",
 		absf(hp0 - float(atk["hp"]) - 8.0) < 0.51, "攻击者掉血 %.1f" % (hp0 - float(atk["hp"])))
 	_ok("② 携带者记 1 次反伤", _blade().b82_reflects(u) == 1, "n=%d" % _blade().b82_reflects(u))
-	_ok("② ★★反伤【不】触发对方的反伤(from_equip=true 防无限套娃): 攻击者反伤次数仍为 0",
+	_ok("② ★★反伤【不】触发对方的反伤(反伤打出去的那一下不再触发反伤 · U3 之后靠 _refl082_depth 挡): 攻击者反伤次数仍为 0",
 		_blade().b82_reflects(atk) == 0, "n=%d" % _blade().b82_reflects(atk))
 	## 逐星 1★=3 / 2★=5
 	for pair in [[1, 3.0], [2, 5.0]]:
@@ -556,6 +557,50 @@ func _t082_dot_gate() -> void:
 	_hit(atk, u, 100)
 	_ok("② ★★分母: 同一只龟走普攻路(_apply_damage_from)打 1 段 → 反伤次数涨到 1",
 		_blade().b82_reflects(u) == 1, "n=%d" % _blade().b82_reflects(u))
+
+
+## ══ U3 被敌方【装备】打到也算「受到攻击」(用户 2026-09-15「被装备打到应该算吧」) ══
+## ★由来(第九批调查 U3): 普攻/技能路的受伤钩子挂在 `if not from_equip` 里 ⇒ 081 挨装备伤害充能 +0、082 挨 5 枪反伤 0 次。
+## ★判据量产品自己的账: 081 充能条 / 082 反伤次数与攻击者真实掉血; 两个 082 互打时反伤只发生一次(不成环)。
+func _t08x_equip_hits() -> void:
+	print("── ①② U3: 被敌方装备打到也算受到攻击(081 充能 / 082 反伤) ──")
+	_s._units.clear()
+	var u: Dictionary = _mk("fortune", "left", Vector2(-200.0, 0.0), 10000.0)
+	var atk: Dictionary = _mk("fortune", "right", Vector2(200.0, 0.0))
+	_equip(u, "p2eq_081", 3)
+	_spawn_all()
+	_s._damage._apply_damage_from(atk, u, 300, Color.WHITE, 0.0, false, true)
+	_ok("U3 ★★081: 挨一段【装备】伤害 300 → 充能条涨到 300(修前是 0)", absf(_charge081(u) - 300.0) < 0.51,
+		"charge=%.1f" % _charge081(u))
+	_hit(atk, u, 200)
+	_ok("U3 ★分母: 同一只再挨一段普攻 200 → 500(两种来源加在同一根条上)", absf(_charge081(u) - 500.0) < 0.51,
+		"charge=%.1f" % _charge081(u))
+
+	_s._units.clear()
+	var c: Dictionary = _mk("fortune", "left", Vector2(-200.0, 0.0))
+	var a: Dictionary = _mk("fortune", "right", Vector2(200.0, 0.0))
+	_equip(c, "p2eq_082", 3)
+	_spawn_all()
+	var ha: float = float(a["hp"])
+	_s._damage._apply_damage_from(a, c, 50, Color.WHITE, 0.0, false, true)
+	_ok("U3 ★★082: 挨一段【装备】伤害 → 反伤 1 次(修前是 0)", _blade().b82_reflects(c) == 1,
+		"n=%d" % _blade().b82_reflects(c))
+	_ok("U3 082: 反伤真的打到攻击者身上(3★ 8 点魔法, 攻击者魔抗 0)", absf(ha - float(a["hp"]) - 8.0) < 0.51,
+		"攻击者掉血 %.1f" % (ha - float(a["hp"])))
+
+	_s._units.clear()
+	var p: Dictionary = _mk("fortune", "left", Vector2(-200.0, 0.0))
+	var q: Dictionary = _mk("fortune", "right", Vector2(200.0, 0.0))
+	_equip(p, "p2eq_082", 3)
+	_equip(q, "p2eq_082", 3)
+	_spawn_all()
+	var hq: float = float(q["hp"])
+	_s._damage._apply_damage_from(q, p, 50, Color.WHITE, 0.0, false, true)
+	_ok("U3 ★★两边都带 082: 装备打一段 → p 反伤 1 次、q 不再反回来(反伤不触发反伤, 不成环)",
+		_blade().b82_reflects(p) == 1 and _blade().b82_reflects(q) == 0,
+		"p=%d q=%d" % [_blade().b82_reflects(p), _blade().b82_reflects(q)])
+	_ok("U3 两边都带 082: q 只挨了那一下反伤 8 点", absf(hq - float(q["hp"]) - 8.0) < 0.51,
+		"q 掉血 %.1f" % (hq - float(q["hp"])))
 
 
 func _t082_charge_and_basic() -> void:
