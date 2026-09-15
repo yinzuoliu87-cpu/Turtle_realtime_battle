@@ -158,6 +158,7 @@ func _ready() -> void:
 	_t_phys_063()
 	_t_phys_064()
 	await _t_vfx_nodes()
+	_t064_bladder_follow()
 
 	_s.queue_free()
 	await get_tree().process_frame
@@ -980,3 +981,55 @@ func _updots(mi: MeshInstance3D, surf: int) -> Array:
 			cnt += 1
 		i += 3
 	return [cnt, (mn if cnt > 0 else 0.0), (sum / float(maxi(1, cnt)))]
+
+
+# ─────────────────────────────────────────────────────────────
+# 064 浮囊跟着持盾单位走 —— 用户 2026-09-15「特效有盾的为什么角色动了盾没动」
+#   ★量真实节点位置: 开盾后把携带者挪 300 码, 走真入口 tick_unit 推一步, 浮囊球必须在新位置头顶。
+# ─────────────────────────────────────────────────────────────
+func _t064_bladder_follow() -> void:
+	print("── 064 浮囊跟随持盾单位 ──")
+	_s._units.clear()
+	_s._spec.clear_all()
+	var u: Dictionary = _equip_flags(_mk("fortune", "left", Vector2(-300.0, 0.0), 1000.0), "p2eq_064", 3)
+	u["hp"] = 300.0
+	_sp.tick_unit(u, 0.05)
+	var h = (u["eq_state"].get("p2eq_064", {}) as Dictionary).get("ghost_vfx", null)
+	var back = (h as Dictionary).get("back", null) if h is Dictionary else null
+	var front = (h as Dictionary).get("front", null) if h is Dictionary else null
+	_ok("064跟随 ★分母: 开盾后前后两半浮囊精灵真的建出来并挂进 _world",
+		back is Sprite3D and front is Sprite3D and is_instance_valid(back) and is_instance_valid(front)
+		and is_same((back as Node).get_parent(), _s._world) and is_same((front as Node).get_parent(), _s._world))
+	if not (back is Sprite3D and front is Sprite3D and is_instance_valid(back) and is_instance_valid(front)):
+		return
+	## ① 跟随: 前后两半的中点 = 持盾单位上方 1.30 米(世界高度; 两半沿视线等量错开, 中点抵消)
+	var mid0: Vector3 = ((back as Node3D).position + (front as Node3D).position) * 0.5
+	u["pos"] = Vector2(u["pos"]) + Vector2(300.0, 0.0)
+	_sp.tick_unit(u, 0.05)
+	var want: Vector3 = _s._world_pos(u["pos"], 0.0) + Vector3(0.0, 1.30, 0.0)
+	var mid1: Vector3 = ((back as Node3D).position + (front as Node3D).position) * 0.5
+	_ok("064跟随 ★分母: 携带者真的挪了(新位置离开盾点 %.2f 米)" % mid0.distance_to(want), mid0.distance_to(want) > 1.0)
+	_ok("064跟随 ★★浮囊跟到携带者新位置上方 1.30 米(修前留在开盾点)", mid1.distance_to(want) < 1e-3,
+		"偏 %.3f 米" % mid1.distance_to(want))
+	## ② 套在身上: 后半圈比前半圈离镜头远(龟立绘写深度 ⇒ 后半圈被身体挡住)
+	var cam_p: Vector3 = _s._cam.global_transform.origin
+	var d_back: float = (back as Node3D).global_transform.origin.distance_to(cam_p)
+	var d_front: float = (front as Node3D).global_transform.origin.distance_to(cam_p)
+	_ok("064跟随 ★★后半圈离镜头比前半圈远 0.6 米以上(拆两半才读得出「套在身上」)", d_back - d_front > 0.6,
+		"后 %.2f / 前 %.2f 米" % [d_back, d_front])
+	## ③ 瘪度按真实余额选帧: 满(>75%)行 0 · 60% 行 1 · 40% 行 2 · 10% 行 3; 列 0 后 / 1 前
+	var full: float = float((u["eq_state"]["p2eq_064"] as Dictionary).get("ghost_max", 0.0))
+	var bad: Array = []
+	var n_lv := 0
+	for pair in [[1.0, 0], [0.6, 1], [0.4, 2], [0.1, 3]]:
+		## ★`absorb(u, d)` 从该单位所有特殊余额里扣(这里只有幽灵护盾一份); 档位按降序排, 每步只扣不补
+		var cur: float = _s._spec.val(u, "p2eq_064_ghost")
+		_s._spec.absorb(u, maxf(0.0, cur - full * float(pair[0])))
+		_sp.tick_unit(u, 0.01)
+		n_lv += 1
+		if int((back as Sprite3D).frame) != int(pair[1]) * 2 or int((front as Sprite3D).frame) != int(pair[1]) * 2 + 1:
+			bad.append("余额 %.0f%% 期望行 %d, 实为后 %d 前 %d" % [float(pair[0]) * 100.0, int(pair[1]),
+				int((back as Sprite3D).frame), int((front as Sprite3D).frame)])
+	_ok("064跟随 ★★瘪度跟着真实余额走(4 档逐一核对 %d 个)" % n_lv, bad.is_empty() and n_lv == 4, str(bad))
+	_s._units.clear()
+	_s._spec.clear_all()

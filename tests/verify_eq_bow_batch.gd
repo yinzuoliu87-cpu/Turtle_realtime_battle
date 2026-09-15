@@ -134,6 +134,7 @@ func _ready() -> void:
 	_t074_bone_cuirass()
 	_t075_amp()
 	_t075_rain()
+	_t075_twin()
 	_t076_passive()
 	_t076_volley()
 	_t076_steal()
@@ -1502,3 +1503,38 @@ func _count_kind(kind: String) -> int:
 		if c is Node and (c as Node).has_meta(BowEqVfx.META_KEY) 				and str((c as Node).get_meta(BowEqVfx.META_KEY)) == kind:
 			n += 1
 	return n
+
+# ═════════════════════════════════════════════════════════════
+# ③c 075 带两份: 各做各的 —— 每 6 秒【同时】放两轮箭雨, 不是每 3 秒放一轮
+#   用户 2026-09-15:「如果装备两个75，应该各做各的吧，也就是同时在某个时刻放两个箭雨」
+#   ★走真入口 EquipSystem._tick_eq_intervals(所有周期件的计时口), 逐 0.1 秒喂。
+# ═════════════════════════════════════════════════════════════
+func _t075_twin() -> void:
+	print("── ③c 075 带两份: 同一时刻各放一轮 ──")
+	var got: Dictionary = {}
+	for n_copy in [1, 2]:
+		_s._units.clear()
+		_s._equip_sys._bow_sys.clear()
+		var u: Dictionary = _mk("fortune", "left", Vector2(-600.0, 300.0))
+		u["equips"] = [{"id": "p2eq_075", "star": 3}] if n_copy == 1 			else [{"id": "p2eq_075", "star": 3}, {"id": "p2eq_075", "star": 1}]
+		u["eq_state"] = {}
+		var _t: Dictionary = _mk("basic", "right", Vector2(-100.0, 300.0))
+		var at3 := -1
+		for k in range(61):
+			_s._equip_sys._tick_eq_intervals(u, 0.1)
+			if k == 30:
+				at3 = int((u["eq_state"].get("p2eq_075", {}) as Dictionary).get("rain_n", 0))
+		var at6: int = int((u["eq_state"].get("p2eq_075", {}) as Dictionary).get("rain_n", 0))
+		var sis: Array = []
+		for r in _s._equip_sys._bow_sys._rains:
+			sis.append(int((r as Dictionary).get("si", -1)))
+		sis.sort()
+		got[n_copy] = [at3, at6, sis]
+	_ok("③c ★分母: 带一份时 6.1 秒正好放了 1 轮、3.1 秒一轮都没有", got[1][0] == 0 and got[1][1] == 1,
+		"3.1 秒 %d 轮 / 6.1 秒 %d 轮" % [got[1][0], got[1][1]])
+	_ok("③c ★★带两份: 3.1 秒一轮都没有(修前计时器双倍速, 3 秒就放)", got[2][0] == 0,
+		"3.1 秒 %d 轮" % got[2][0])
+	_ok("③c ★★带两份: 6.1 秒同时放 2 轮, 每份用自己的星级(3★ 与 1★)", got[2][1] == 2 and got[2][2] == [0, 2],
+		"6.1 秒 %d 轮 · 在途星级下标 %s" % [got[2][1], str(got[2][2])])
+	_s._units.clear()
+	_s._equip_sys._bow_sys.clear()

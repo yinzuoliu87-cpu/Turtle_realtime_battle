@@ -83,6 +83,16 @@ func on_hit(src: Dictionary, basic: bool) -> void:
 	##   `_apply_damage(u, dmg, col, src, bucket, is_self, ...)`。
 	battle._damage._apply_damage(src, maxi(1, int(round(d))), Color("#a06cd5"), null, "tru", true)
 
+## FPGA板【登场】的每帧入口: 首帧把枪塞给对方 1/2/3 个敌人(照 058/032 的 pending 模式)。
+## ★由 `EquipSystem._tick_eq_intervals` 每单位每帧调。2026-09-15 从那边搬过来 ——
+##   `equip_system.gd` 又撑到 3008 行 > 架构预算 3000; 登场发枪本来就是这把枪自己的事。
+## ★不放主场景的 `_tick_unit`(架构预算只减不增, 最早一版加在那边当场红)。
+func tick_owner(u: Dictionary) -> void:
+	if u.get("_gremlin_pending", false):
+		u["_gremlin_pending"] = false
+		hand_out(u, int(u.get("_gremlin_si", 0)))
+
+
 ## ★★2026-09-13 从 `equip_system.gd` 搬过来 —— 「把枪发出去」本来就是
 ## 这把枪自己的事, 放在装备系统的大文件里只是历史位置。
 ## (直接因: `equip_system.gd` 撑到 3001 行 > 架构预算 3000 —— 不再靠删注释凑行数,

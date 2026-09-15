@@ -269,6 +269,19 @@ const BLADDER_LON := 20
 const BLADDER_LAT := 12
 ## 浮囊满余额时的半径(场地码)。★这是**演出尺寸**, 不是效果半径。
 const BLADDER_R_PX := 46.0
+## 浮囊挂在单位身上的高度(米, 世界 Y, 加在单位 height 之上)。
+## ★1:1 实拍量过(2026-09-15): 0.80 时浮囊套在脚上。立绘是正对镜头的 billboard(在屏幕平面里往上长),
+##   而这里加的是【世界竖直】高度, 相机俯角约 51° ⇒ 屏幕上只剩约 0.63 倍。要让圈落在肚子(屏幕上离地约 0.8 米)
+##   ⇒ 世界高度取 1.30。
+const BLADDER_H := 1.30
+const BLADDER_TEX := "res://assets/sprites/vfx/eq064-bladder.png"
+const BLADDER_CELL := 48
+const BLADDER_COLS := 2          # 列: 0 后半圈 / 1 前半圈
+const BLADDER_LEVELS := 4        # 行: 满 / 75% / 50% / 25%
+const BLADDER_YARDS := 85.2      # 48 texel × 1.775 码 ⇒ 1:1 不糊
+## 前后半圈沿视线各错开多少米(后半圈被龟身挡住、前半圈压在身前)
+const BLADDER_DEPTH := 0.35
+static var _bladder_tex: Texture2D = null
 ## 诅咒云扩散到 300 码用多久(秒)
 const BURST_T := 0.75
 
@@ -1074,28 +1087,55 @@ func whale_haste(u: Dictionary, sec: float) -> void:
 
 
 ## 064: 浮囊。frac 由 `apply_at` 从外部余额喂进来(见 set_bladder_frac)。
-func float_bladder(pos2d: Vector2, col: Color) -> Dictionary:
+## 064【持有态】: 套在腰上的幽灵浮囊, 前后两半(tools/blender_bladder.py 烘焙 · 2 列 × 4 档瘪度)。
+## ★用户 2026-09-15:「不太行，得思考重做，思考怎么贴合装备效果」「特效有盾的为什么角色动了盾没动」。
+##   旧版是一颗程序加色球, 且只在开盾那一刻按坐标建 ⇒ 读不出「浮囊」、也不跟人。
+## ★拆前后两半: 龟立绘 shader 写深度(depth_prepass_alpha) ⇒ 后半圈沿视线往后错开 BLADDER_DEPTH,
+##   被身体挡住; 前半圈往前错开, 压在肚子上 —— 这样才读得出「套在身上」。
+## ★瘪度按真实余额选帧(bladder_level), **不缩放像素图**(vfx_discipline A 条)。
+## `u` = 持盾单位: 每次刷新都搬到它当前位置。
+func float_bladder(pos2d: Vector2, col: Color, u = null) -> Dictionary:
 	if not _has_world():
 		return {}
-	_ensure_meshes()
-	_ensure_room()
-	var org: Vector3 = battle._world_pos(pos2d, 0.0)
-	var _bm := _mat(false, 7)
-	## ★★实心球 + 加色混合 + CULL_DISABLED ⇒ 正面背面各加一层 ⇒ **球心被加爆成白**。
-	##   同族实测见 073 藤蕎小球(2026-08-11 A/B): 白芯占比 15% → 只画正面后 3%。
-	##   浮囊本身就是个"气囊", 背面看不见, 只画正面不掉任何信息。
-	##   ⚠ 只改浮囊自己这份 —— `_mat()` 是共用的, 环/带子需要 CULL_DISABLED。
-	_bm.cull_mode = BaseMaterial3D.CULL_BACK
-	var sph := _spawn_node(_m_sphere, _bm, org + Vector3(0.0, 1.55, 0.0), "bladder")
-	if sph == null:
-		return {}
+	if _bladder_tex == null and ResourceLoader.exists(BLADDER_TEX):
+		_bladder_tex = load(BLADDER_TEX)
+	if _bladder_tex == null:
+		return {}                 # 素材没 import 就静默跳过, 不崩战斗
 	var h := {
-		"kind": "bladder", "sphere": sph, "col": col,
-		"r_m": BLADDER_R_PX * float(battle.WS), "frac": 1.0, "dur": -1.0, "t": 0.0,
+		"kind": "bladder", "back": _bladder_sprite(0), "front": _bladder_sprite(1),
+		"col": col, "u": u, "p2": pos2d, "frac": 1.0, "dur": -1.0, "t": 0.0,
 	}
 	_live.append(h)
 	apply_at(h, 0.0)
 	return h
+
+
+func _bladder_sprite(half: int) -> Sprite3D:
+	var sp := Sprite3D.new()
+	sp.texture = _bladder_tex
+	sp.frame = 0
+	sp.hframes = BLADDER_COLS
+	sp.vframes = BLADDER_LEVELS
+	sp.frame = half
+	sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sp.shaded = false
+	sp.transparent = true
+	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	sp.pixel_size = (BLADDER_YARDS * float(battle.WS)) / float(BLADDER_CELL)
+	sp.set_meta(META_KEY, "bladder_back" if half == 0 else "bladder_front")
+	battle._world.add_child(sp)
+	return sp
+
+
+## 余额比例 → 瘪度档(0 满 … 3 最瘪)。★门禁直接调它对账。
+static func bladder_level(f: float) -> int:
+	if f > 0.75:
+		return 0
+	if f > 0.50:
+		return 1
+	if f > 0.25:
+		return 2
+	return 3
 
 
 ## 064: 浮囊破裂 → 诅咒云扩散到 radius_px 码。
@@ -1535,12 +1575,26 @@ func _apply_ring(h: Dictionary, u: float) -> void:
 
 func _apply_bladder(h: Dictionary) -> void:
 	var f: float = float(h["frac"])
+	var lvl: int = bladder_level(f)
 	var col: Color = h["col"]
-	## ★尺寸恒定(用户 2026-08-11:「没必要缩小」) —— 余量只走透明度微降,
-	##   等压放气 r∝f^(1/3) 的纯函数留给门禁(物理判据), 不再驱动节点。
-	var r: float = float(h["r_m"])
-	_set_scale(h["sphere"], Vector3(r, r, r))
-	_set_col(h["sphere"], Color(col.r, col.g, col.b, col.a * (0.45 + 0.4 * f)))
+	var uu = h.get("u", null)
+	var p2: Vector2 = (uu as Dictionary).get("pos", h["p2"]) if uu is Dictionary else h["p2"]
+	var hgt: float = float((uu as Dictionary).get("height", 0.0)) if uu is Dictionary else 0.0
+	var mult: float = maxf(0.2, float((uu as Dictionary).get("size_mult", 1.0))) if uu is Dictionary else 1.0
+	var base: Vector3 = battle._world_pos(p2, hgt + BLADDER_H * mult)
+	## 视线方向: 相机 basis.z 指向观察者 ⇒ +z 往前(近), −z 往后(远)
+	var toward: Vector3 = Vector3(0.0, 0.78, 0.626)
+	if battle._cam != null and is_instance_valid(battle._cam):
+		toward = battle._cam.global_transform.basis.z.normalized()
+	for half in range(BLADDER_COLS):
+		var sp = h.get("back" if half == 0 else "front", null)
+		if not is_instance_valid(sp):
+			continue
+		(sp as Sprite3D).frame = lvl * BLADDER_COLS + half
+		(sp as Sprite3D).pixel_size = (BLADDER_YARDS * float(battle.WS) * mult) / float(BLADDER_CELL)
+		(sp as Sprite3D).position = base + toward * (BLADDER_DEPTH if half == 1 else -BLADDER_DEPTH)
+		## 幽灵半透: 余额越少越淡一点(瘪度已经由帧说了, 透明度只做辅助)
+		(sp as Sprite3D).modulate = Color(1.0, 1.0, 1.0, col.a * (0.70 + 0.30 * clampf(f, 0.0, 1.0)))
 
 
 func _apply_burst(h: Dictionary, u: float) -> void:
@@ -1558,7 +1612,7 @@ func _apply_burst(h: Dictionary, u: float) -> void:
 #  §推进与撤场
 # ══════════════════════════════════════════════════════════════════
 
-const NODE_KEYS := ["bell", "ring", "disc", "flash", "torus", "sphere", "cloud", "edge", "plank", "upf", "mote", "gmote", "cracks", "chips", "claw", "bub", "torus2"]
+const NODE_KEYS := ["bell", "ring", "disc", "flash", "torus", "sphere", "back", "front", "cloud", "edge", "plank", "upf", "mote", "gmote", "cracks", "chips", "claw", "bub", "torus2"]
 
 
 func _free_handle(h: Dictionary) -> void:

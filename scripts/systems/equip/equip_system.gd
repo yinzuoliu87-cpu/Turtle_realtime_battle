@@ -373,36 +373,36 @@ const EQ_IV_BATCH1 := {
 # 亡灵爆: 绿冲击环 + 绿辉爆闪 + 骨渣四射 (骷髅自灭/被杀 + 海螺变形共用基元)
 func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
 	if u.get("equips", []).is_empty(): return
-	## 040 FPGA板【登场】: 首帧把枪塞给对方 1/2/3 个敌人(照 058/032 的 pending 模式)。
-	## ★放这儿而不是主场景的 `_tick_unit` —— 这个函数本来就是每单位每帧调的,
-	##   借它的车不用给上帝文件加行(架构预算只减不增, 我第一版加在那边当场红)。
-	if u.get("_gremlin_pending", false):
-		u["_gremlin_pending"] = false
-		_gremlin.hand_out(u, int(u.get("_gremlin_si", 0)))
-	## 096 小木斧【登场】: 首帧召唤斧头(同 058/032/040 的 pending 模式)。
-	if u.get("_axe_pending", false):
-		u["_axe_pending"] = false
-		_axe.summon(u)
-	## 096: 斧头攒满龟能就放主动(回血+护盾)。放这儿同理 —— 借每帧的车, 不给上帝文件加行。
-	if u.has("_axe_ref"):
-		_axe.tick(u, delta)
+	## 040 FPGA板登场发枪 / 096 小木斧召唤与每帧推进: 各自系统的每帧入口(借这个每单位每帧的车, 不进主场景)。
+	_gremlin.tick_owner(u)
+	_axe.tick_owner(u, delta)
+	## ★同一件带了几份: 计时器【每种只推一次】, 到点时【每一份各放一次】(同一时刻)。
+	##   用户 2026-09-15 看 075:「如果装备两个75，应该各做各的吧，也就是同时在某个时刻放两个箭雨」。
+	##   原来 eq_state 按装备 id 共用一份 iv_t, 循环里每一份都给它加一次 delta ⇒ 两份 = 计时器双倍速,
+	##   变成「每 3 秒放一轮」而不是「每 6 秒同时放两轮」。所有周期件都走这里, 一起改。
+	var _iv_seen: Dictionary = {}
 	for e in u["equips"]:
 		var iid: String = str(e["id"])
+		if _iv_seen.has(iid):
+			continue
+		_iv_seen[iid] = true
 		var iv: float = float(battle._EQ_CUSTOM_IV.get(iid, 0.0))
 		if iv <= 0.0:
 			iv = float(EQ_IV_BATCH1.get(iid, 0.0))
 		if iv <= 0.0: continue
-		var si: int = _eq_si(int(e.get("star", 1)))
 		if iid == "p2eq_037": battle._ensure_candle(u)   # 蜡烛从开局就悬在头顶(不等首次tick)
 		var stt: Dictionary = u["eq_state"].get(iid, {})
 		stt["iv_t"] = float(stt.get("iv_t", 0.0)) + delta
 		if float(stt["iv_t"]) >= iv:
 			stt["iv_t"] = float(stt["iv_t"]) - iv
-			# ★盾羁绊 9 档要认"这次护盾/治疗是哪件装备给的"(_holy_convert 读 _cur_eq_item,
-			#   且它自己只认【盾类】装备)。原来这条路没标 → 藤编圆盾 081 拿不到圣光转化。
-			battle._cur_eq_item = iid
-			fire_equip_effect(u, iid, int(e.get("star", 1)), stt)
-			battle._cur_eq_item = ""   # 用完立刻清: 不清会让紧随其后的护盾/治疗被误判成这件装备给的
+			for e2 in u["equips"]:
+				if str(e2["id"]) != iid:
+					continue
+				# ★盾羁绊 9 档要认"这次护盾/治疗是哪件装备给的"(_holy_convert 读 _cur_eq_item,
+				#   且它自己只认【盾类】装备)。原来这条路没标 → 藤编圆盾 081 拿不到圣光转化。
+				battle._cur_eq_item = iid
+				fire_equip_effect(u, iid, int(e2.get("star", 1)), stt)
+				battle._cur_eq_item = ""   # 用完立刻清: 不清会让紧随其后的护盾/治疗被误判成这件装备给的
 		u["eq_state"][iid] = stt
 
 # 涟漪回血特效(AI生成动画): 青绿涟漪水波躺平贴地, 帧播一次扩散淡出. 用于涟漪药剂042每个受益友军

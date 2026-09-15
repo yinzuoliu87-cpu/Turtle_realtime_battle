@@ -212,6 +212,10 @@ func pre_build() -> bool:
 		OS.set_environment("EQDEMO_ATTACKER", "1")
 	if str(cfg.get("eq2", "")) != "":
 		OS.set_environment("EQDEMO_EQUIP2", str(cfg["eq2"]))   # ★第二件【不同】装备: 凑羁绊档位
+	## ★`count` = 同一件塞几份(同名多件)。用户 2026-09-15 看 075:「如果装备两个75，应该各做各的吧」
+	##   ⇒ 要能在台上看「两份同一刻各放一次」。羁绊档位按 id 去重, 塞几份都只算 1 件, 这里只看同名多件自己的行为。
+	if int(cfg.get("count", 1)) > 1:
+		OS.set_environment("EQDEMO_COUNT", str(int(cfg["count"])))
 	## ★★`VFXLAB_REALMAP=1` = **在真实地图上看**(不黑场、不铺暗地板)。
 	##   2026-09-03 加。由来: 判断"预警区把地面**纹理化**"这类效果时, 黑场是错的场地 ——
 	##   参考里区内亮度只有 103%(几乎不变), 靠的是纹理对比度 +46%;

@@ -457,7 +457,7 @@ func _ghost_grant(u: Dictionary, si: int) -> void:
 	##   即使改成只画正面, 它自己画的像素里仍有 **42% 低饱和**。
 	##   095 那一轮的结论: **亮度要靠 alpha 给, 不能靠把颜色推淡** ——
 	##   半透明的近白在黑底上合成出来就是灰/白。
-	stt["ghost_vfx"] = _vfx.float_bladder(u["pos"], Color(0.30, 0.62, 1.00, 0.85))   # ★颜色推深: 见下
+	stt["ghost_vfx"] = _vfx.float_bladder(u["pos"], Color(0.30, 0.62, 1.00, 0.85), u)   # ★颜色推深: 见下
 	u["eq_state"]["p2eq_064"] = stt
 
 

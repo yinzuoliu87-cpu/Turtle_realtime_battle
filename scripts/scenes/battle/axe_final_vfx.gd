@@ -205,12 +205,15 @@ func undead_revive(pos2d: Vector2, sec: float) -> void:
 		root.add_child(wisp)
 		## ★显式标注类型: `battle` 是无类型的注入宿主, `:=` 推不出 Tween(Parse Error)。
 		var tw: Tween = battle._reg_tween()
+		## ★捕获实例 id 不捕获节点(见 `_fade_out` 头注)
+		var wid: int = wisp.get_instance_id()
 		tw.tween_method(func(x: float) -> void:
-			if not is_instance_valid(wisp):
+			var w = instance_from_id(wid)
+			if not is_instance_valid(w):
 				return
 			var g: float = revive_gather(x)
-			wisp.position = Vector3(cos(a) * r0 * (1.0 - g), 0.2 + g * 0.5, sin(a) * r0 * (1.0 - g))
-			wisp.scale = Vector3.ONE * (0.6 + g * 0.8)
+			(w as Node3D).position = Vector3(cos(a) * r0 * (1.0 - g), 0.2 + g * 0.5, sin(a) * r0 * (1.0 - g))
+			(w as Node3D).scale = Vector3.ONE * (0.6 + g * 0.8)
 		, 0.0, 1.0, sec)
 	_fade_out(root, sec + 0.25)
 
@@ -234,12 +237,15 @@ func seraph_boomerang(from2d: Vector2, dir: Vector2, dist_px: float, fly_sec: fl
 	n.set_meta("boom_to2d", to2d)   # 画到哪 —— 门禁量「演出长度 ≥ 判定打中的最远处」(第十批 E10)
 	## ★显式标注类型: `battle` 是无类型的注入宿主, `:=` 推不出 Tween(Parse Error)。
 	var tw: Tween = battle._reg_tween()
+	## ★捕获实例 id 不捕获节点(见 `_fade_out` 头注)
+	var nid: int = n.get_instance_id()
 	tw.tween_method(func(x: float) -> void:
-		if not is_instance_valid(n):
+		var m = instance_from_id(nid)
+		if not is_instance_valid(m):
 			return
 		var f: float = boomerang_frac(x, 1.0)
-		n.position = battle._world_pos(from2d.lerp(to2d, f), 0.55)
-		n.rotation.y += 0.55                # 自旋，读得出是"甩出去的"
+		(m as Node3D).position = battle._world_pos(from2d.lerp(to2d, f), 0.55)
+		(m as Node3D).rotation.y += 0.55                # 自旋，读得出是"甩出去的"
 	, 0.0, 1.0, fly_sec)
 	_fade_out(n, fly_sec)
 
@@ -278,11 +284,19 @@ func holo_pulse(root: Node3D) -> void:
 		return
 	## ★显式标注类型: `battle` 是无类型的注入宿主, `:=` 推不出 Tween(Parse Error)。
 	var tw: Tween = battle._reg_tween()
+	## ★★捕获实例 id, 不捕获 `root`(2026-09-15 录 096 九个形态时查到)。
+	##   法阵本体按 tween 时钟 `sec` 秒后释放, 脉冲却按战斗时钟每 0.5 秒排一次 ——
+	##   顿帧时战斗时钟停、tween 照走 ⇒ 最后一次脉冲的 0.45 秒 tween 跑过本体释放的时刻,
+	##   lambda 捕获的 `root` 已释放 ⇒ 引擎每帧报一条 `Lambda capture at index 0 was freed`
+	##   (全息斧整段 19 条; 函数体里的 is_instance_valid 拦不住, 报错发生在调用 lambda 那一刻)。
+	##   探针: 关掉本函数 ⇒ 同一 16 秒窗口 3 → 0 条。
+	var rid: int = root.get_instance_id()
 	tw.tween_method(func(x: float) -> void:
-		if not is_instance_valid(root):
+		var r = instance_from_id(rid)
+		if not is_instance_valid(r):
 			return
 		var a: float = aura_pulse(x)
-		for c in root.get_children():
+		for c in (r as Node).get_children():
 			if c is MeshInstance3D:
 				(c as MeshInstance3D).transparency = 1.0 - a
 	, 0.0, 1.0, 0.45)
@@ -343,14 +357,21 @@ func fade_and_free(n, sec: float) -> void:
 func _fade_out(n: Node3D, sec: float) -> void:
 	## ★显式标注类型: `battle` 是无类型的注入宿主, `:=` 推不出 Tween(Parse Error)。
 	var tw: Tween = battle._reg_tween()
+	## ★★本文件的 tween lambda 一律捕获实例 id、调用时再取节点, 不直接捕获节点。
+	##   捕获的节点若先被释放(别处释放 / 两条时钟错开), Godot 在【调用 lambda 那一刻】就报
+	##   `Lambda capture at index 0 was freed` —— 函数体里的 is_instance_valid 来不及拦。
+	##   实例 id 是整数, 释放后 instance_from_id 返回 null, 静默跳过。
+	var nid: int = n.get_instance_id()
 	tw.tween_method(func(x: float) -> void:
-		if not is_instance_valid(n):
+		var n2 = instance_from_id(nid)
+		if not is_instance_valid(n2):
 			return
 		var a: float = hold_fade(x)
-		for m in ([n] as Array) + n.get_children():
+		for m in ([n2] as Array) + (n2 as Node).get_children():
 			if m is MeshInstance3D:
 				(m as MeshInstance3D).transparency = 1.0 - a
 	, 0.0, 1.0, maxf(0.05, sec))
 	tw.tween_callback(func() -> void:
-		if is_instance_valid(n):
-			n.queue_free())
+		var n3 = instance_from_id(nid)
+		if is_instance_valid(n3):
+			(n3 as Node).queue_free())

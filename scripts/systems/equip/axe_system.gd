@@ -65,6 +65,18 @@ func _gs_int(prop: String, dflt: int) -> int:
 	return int(v)
 
 
+## 小木斧携带者的每帧入口(由 `EquipSystem._tick_eq_intervals` 每单位每帧调):
+##   ① 登场首帧召唤斧头(同 058/032/040 的 pending 模式) ② 之后每帧推进斧头(攒龟能放主动 / 被动 / 造物)。
+## ★2026-09-15 从 `equip_system.gd` 搬过来 —— 那个文件撑到 3008 行 > 架构预算 3000,
+##   召唤与推进本来就是斧头系统自己的事; 不进主场景(架构预算只减不增)。
+func tick_owner(u: Dictionary, delta: float) -> void:
+	if u.get("_axe_pending", false):
+		u["_axe_pending"] = false
+		summon(u)
+	if u.has("_axe_ref"):
+		tick(u, delta)
+
+
 ## 登场召唤斧头。照 058 炮台的 `_spawn_summon` 底座。
 func summon(u: Dictionary) -> Variant:
 	if not u.get("alive", false):

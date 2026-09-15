@@ -21,6 +21,23 @@ var _n := 0
 var _fail := 0
 
 
+## 数引擎报错的 Logger(Godot 4.5+)。★引擎报错不经过 GDScript, 只有挂 Logger 才在脚本里数得到。
+##   探针实测(2026-09-15): 故意调一个捕获物已释放的 lambda ⇒ 这里收到 1 条, code 就是报错原文。
+class ErrTap extends Logger:
+	var lam := 0
+	var probe := 0
+	var mx := Mutex.new()
+
+	func _log_error(_function: String, _file: String, _line: int, code: String, rationale: String,
+			_editor_notify: bool, _error_type: int, _script_backtraces: Array) -> void:
+		mx.lock()
+		if code.contains("Lambda capture") or rationale.contains("Lambda capture"):
+			lam += 1
+		if code.contains("ERRTAP_PROBE_096") or rationale.contains("ERRTAP_PROBE_096"):
+			probe += 1
+		mx.unlock()
+
+
 func _ok(t: String, c: bool, ex: String = "") -> void:
 	_n += 1
 	if not c:
@@ -99,6 +116,7 @@ func _ready() -> void:
 	_t_e9_ember_restore()
 	_t_e10_boomerang_reach()
 	_t_e11_holo_pool()
+	await _t_holo_pulse_capture()
 
 	if _n < 30:
 		print("  [FAIL] ★分母: 断言只有 %d 条(<30) —— 有整段被跳过了" % _n)
@@ -346,3 +364,38 @@ func _t_e11_holo_pool() -> void:
 	_ok("★★E11 法阵不奶训龟大师和龟蛋(修前各 +%.0f)" % AF.HOLO_AURA_HEAL,
 		is_equal_approx(float(trainer["hp"]), th) and is_equal_approx(float(egg["hp"]), eh),
 		"大师 %+.0f 蛋 %+.0f" % [float(trainer["hp"]) - th, float(egg["hp"]) - eh])
+
+
+# ══════════════════════════════════════════════════════════════
+#  全息法阵: 脉冲比本体活得久 ⇒ 引擎报「Lambda capture at index 0 was freed」
+# ══════════════════════════════════════════════════════════════
+## ★由来(2026-09-15): 用户要 096 九个形态分开看, 批量录像里全息斧那段日志 19 条
+##   `Lambda capture at index 0 was freed`, 其余八段 0 条。探针: 关掉 holo_pulse ⇒ 同一 16 秒窗口 3 → 0 条。
+##   根因: 法阵本体按 tween 时钟到点释放, 脉冲按战斗时钟排 ⇒ 顿帧时最后一次脉冲的 tween 跑过本体释放的时刻,
+##   lambda 捕获的根节点已释放, 引擎每帧报一条(lambda 体内的 is_instance_valid 拦不住)。
+## ★判据量【引擎真的报了几条】(Logger), 不数我插的标记。
+##   本体故意只活 0.10 秒 ⇒「脉冲还在跑、本体已释放」这个前置状态一定形成, 另用分母断言证明它真的形成了。
+func _t_holo_pulse_capture() -> void:
+	print("--- 全息法阵: 脉冲比本体活得久(引擎报错条数) ---")
+	var vfx = _s._equip_sys._axe._fin.vfx
+	var tap := ErrTap.new()
+	OS.add_logger(tap)
+	push_warning("ERRTAP_PROBE_096 门禁自检: 证明 Logger 接得到引擎输出(警告, 不是报错)")
+	var root = vfx.holo_field(_c(), AF.HOLO_AURA_R, 0.10)
+	_ok("★分母: 法阵本体真的建出来并挂进世界",
+		root is Node3D and is_instance_valid(root) and (root as Node3D).is_inside_tree())
+	vfx.holo_pulse(root)
+	var t0 := Time.get_ticks_msec()
+	while is_instance_valid(root) and Time.get_ticks_msec() - t0 < 3000:
+		await get_tree().process_frame
+	var freed_ms: int = Time.get_ticks_msec() - t0
+	_ok("★分母: 本体在脉冲(0.45 秒)播完之前就释放了 —— 「捕获物先释放」真的形成",
+		not is_instance_valid(root) and freed_ms < 450, "%d 毫秒" % freed_ms)
+	var t1 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t1 < 700:
+		await get_tree().process_frame
+	OS.remove_logger(tap)
+	_ok("★分母: Logger 真的接得到引擎输出(自检警告 %d 条)" % tap.probe, tap.probe >= 1)
+	## ★标签里不许出现报错原文的英文 —— run-tests 的致命正则按原文匹配, 会把这行 PASS 自己判成致命报错。
+	_ok("★★脉冲跑过本体释放的时刻, 引擎 0 条「lambda 捕获物已释放」报错(修前每帧一条)",
+		tap.lam == 0, "%d 条" % tap.lam)
