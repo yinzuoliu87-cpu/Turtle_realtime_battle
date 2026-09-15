@@ -12,6 +12,10 @@ extends RefCounted
 ##   靠状态机 + 特效表现，不加 death 动作帧；`verify_summon_art` 焊死了这条。
 const AF := preload("res://scripts/gamedata/axe_final_stats.gd")
 const AFV := preload("res://scripts/scenes/battle/axe_final_vfx.gd")
+## ★亡灵之斧 / 全息斧的演出各自一个文件(2026-09-15 方案书 20260915g「E」):
+##   用户「6/9亡灵斧你这是在敷衍我啊」「8/9也是，完全没达标」—— 原来那几个程序环 / 线 / 方块已删。
+const AUV := preload("res://scripts/scenes/battle/axe_undead_vfx.gd")
+const AHV := preload("res://scripts/scenes/battle/axe_holo_vfx.gd")
 const AEV := preload("res://scripts/scenes/battle/axe_ember_vfx.gd")
 const ASV := preload("res://scripts/scenes/battle/axe_seraph_vfx.gd")
 
@@ -19,6 +23,8 @@ var battle = null
 var vfx = null                            # 演出(axe_final_vfx.gd) —— **只画, 不结算**
 var ember_vfx = null                      # 余烬处决天降激光(axe_ember_vfx.gd) —— 只画
 var seraph_vfx = null                     # 炽天使回旋镖演出(axe_seraph_vfx.gd) —— 同样只画
+var vfx_undead = null                     # 亡灵之斧演出(axe_undead_vfx.gd)
+var vfx_holo = null                       # 全息斧演出(axe_holo_vfx.gd)
 ## 在途回旋镖(炽天使主动)。每条是一个记录字典, 见 `seraph_boomerang_launch`。
 ## ★记录里的 src / cands / hits 装的是单位字典: 只当【值】存, 比较一律 is_same / _arr_has_unit(CLAUDE.md §3.2)。
 var _booms: Array = []
@@ -29,6 +35,8 @@ func _init(b) -> void:
 	vfx = AFV.new(b)
 	ember_vfx = AEV.new(b)
 	seraph_vfx = ASV.new(b)
+	vfx_undead = AUV.new(b)
+	vfx_holo = AHV.new(b)
 
 
 ## 这只斧头的最终造物 key（""=还没选）。
@@ -93,19 +101,22 @@ func undead_ring_tick(ax: Dictionary) -> int:
 		##   这也是本作 DoT 的标准做法(灼烧/中毒吃魔抗、流血吃护甲)。
 		var after: int = battle._damage._dot_after_resist(o, d, true, ax)
 		battle._damage._apply_damage(o, maxi(1, after), Color("#7ee081"), ax, "mag", false)
-	## ★环的**视觉**要跟着斧头走。它是常驻场, 但斧头在移动 ⇒ 每跳重建一次最省事
-	##   (每秒一次, 开销可忽略), 比自己维护一个跟随节点少一整类"没跟上/没释放"的 bug。
-	##   ⚠ 之前 `undead_ring` 是**零调用者** —— 环写好了但场上根本看不见, 是
-	##   tools/zero_caller_audit.py 抓到的。
-	var _rn = vfx.undead_ring(ax, AF.UNDEAD_RING_R)
-	if _rn != null:
-		vfx.fade_and_free(_rn, AF.UNDEAD_RING_TICK)
 	if not hit.is_empty():
 		battle._damage._heal(ax, AF.undead_leech(float(ax.get("maxHp", 0.0)), hit.size()))
-		## ★演出**接在结算之后**(§3.5): 上面那行数值已经落定, 演出掉了也不影响正确性。
-		for o2 in hit:
-			vfx.undead_leech_line(o2.get("pos", Vector2.ZERO), ax.get("pos", Vector2.ZERO))
+	## ★演出**接在结算之后、同一个模拟步**(§3.5): 上面的伤害与回血已经落定, 演出掉了也不影响正确性。
+	##   原来这里是「每跳重建一圈程序细环 + 每个敌人一根 ImmediateMesh 绿线」——
+	##   用户「6/9亡灵斧你这是在敷衍我啊」点名否掉的就是它们(2026-09-15 换成烘焙帧表, 见 AxeUndeadVfx)。
+	##   传进去的就是上面结算用的同一个 `hit` 数组 ⇒ 一跳几个敌人挨扣, 就飞几缕魂。
+	vfx_undead.ring_tick(ax, hit)
 	return hit.size()
+
+
+## 亡灵领域在不在场: 每模拟步由 `AxeSystem._tick_undead_ring` 调(不是每跳才建 ——
+## 第一跳在登场 1 秒后, 复活后也要立刻看得见)。不是亡灵之斧 ⇒ 什么都不做。
+func undead_field_step(ax: Dictionary) -> void:
+	if _fk(ax) != "undead" or not ax.get("alive", false):
+		return
+	vfx_undead.ensure_field(ax)
 
 
 ## 召唤物倒下时调。返回是否安排了重生。
@@ -114,8 +125,12 @@ func undead_on_death(ax: Dictionary) -> bool:
 	if _fk(ax) != "undead":
 		return false
 	if bool(ax.get("_axe_revived", false)):
+		## 第二次倒下不再复活: 只崩散、不放倒计时(演出与结算同口径)
+		vfx_undead.on_death(ax, -1.0)
 		return false                      # 一次战斗只重生一次
 	ax["_axe_revive_at"] = float(battle._t) + AF.UNDEAD_REVIVE_DELAY
+	## ★演出同一步: 领域收掉 + 崩散成亡魂 + 倒计时(帧率按上面排好的复活时刻算, 不另写 2.5)
+	vfx_undead.on_death(ax, float(ax["_axe_revive_at"]))
 	return true
 
 
@@ -145,7 +160,9 @@ func undead_tick_revive(ax: Dictionary) -> bool:
 		_spr.modulate.a = 1.0
 	if is_instance_valid(ax.get("bar_root", null)):
 		ax["bar_root"].visible = true
-	vfx.undead_revive(ax.get("pos", Vector2.ZERO), 0.9)   # 亡魂聚拢再立起(不是死亡动画)
+	## ★演出同一步(不是死亡动画, 用户两次点名): 倒计时收掉 + 复活柱; 领域在这一步重建。
+	##   原来这里是 6 根 BoxMesh 小方块聚拢 0.9 秒 —— 与 2.5 秒的实际间隔也对不上。
+	vfx_undead.on_revive(ax)
 	return true
 
 
@@ -326,6 +343,9 @@ func holo_on_hit(ax: Dictionary):
 		return null
 	battle._damage._grant_shield(best, AF.HOLO_ONHIT_SHIELD)
 	_give_energy(best, AF.HOLO_ONHIT_ENERGY)
+	## ★演出同一步(原来这一半【零演出】): 斧头 → 这个友军一串全息数据块 + 友军身上护盾展开与头顶龟能箭头。
+	##   终点就是上面选出来的 `best`, 不另选一次 —— 演出与结算指向同一个人。
+	vfx_holo.on_hit(ax, best)
 	return best
 
 
@@ -351,6 +371,7 @@ func holo_aura_tick(ax: Dictionary) -> int:
 		return 0
 	var org: Vector2 = ax.get("pos", Vector2.ZERO)
 	var n := 0
+	var healed: Array = []
 	## ★友军名单排除训龟大师与龟蛋(第十批 E11 —— 原来普攻护盾给了大师, 法阵奶了大师和龟蛋)
 	for a in battle._targeting._allies_share_pool(ax):
 		if not a.get("alive", false):
@@ -362,7 +383,12 @@ func holo_aura_tick(ax: Dictionary) -> int:
 		## 攻速走既有的 haste 通道，到期自己失效（比自己再造一条通道稳）
 		a["haste_mult"] = 1.0 + AF.HOLO_AURA_ASPD
 		a["haste_until"] = float(battle._t) + AF.HOLO_AURA_TICK * 1.5
+		healed.append(a)
 		n += 1
+	## ★演出同一步(原来是「把程序环的透明度闪一下」): 法阵从圆心推一道波(第 0 帧起) + 名单里每个友军
+	##   冒治疗/龟能反馈 + 脚下加速圈。名单就是上面真的吃到结算的那一批 —— 范围外的一个都不建。
+	##   (数组里是单位字典: 只遍历, 不做键、不用 == 比较, CLAUDE.md §3.2)
+	vfx_holo.aura_tick(ax, healed)
 	return n
 
 
@@ -531,6 +557,31 @@ func _play(ax: Dictionary, key: String, loop: bool = false) -> bool:
 	return bool(axs.play_action(ax, key, loop))
 
 
+## 插地的 4 秒里斧头一直是插地帧(方案书 20260915g「E 的出入」)。
+## ★`play_action(loop=true)` 并不循环: `_advance_anim` 只要 `anim_action` 非空, 播到末帧就回待机
+##   (插地表 8 帧 10.67fps ⇒ 0.75 秒后斧头又悬空了)。⇒ 回到待机/走路(动作为空), 或插地帧播到最后一帧, 就续上;
+##   正在播普攻招式的不打断, 让它播完再回插地。
+func _keep_plant(ax: Dictionary) -> void:
+	var act: String = str(ax.get("anim_action", ""))
+	if act == "":
+		_play(ax, "axe_plant", true)
+		return
+	if act != "axe_plant":
+		return
+	var sd: Dictionary = ax.get("anim_sd", {})
+	var nfr: int = int(sd.get("frames", 1))
+	var fps: float = float(sd.get("fps", 0.0))
+	if fps > 0.0 and float(ax.get("anim_t", 0.0)) >= float(nfr - 1) / fps:
+		_play(ax, "axe_plant", true)
+
+
+## 插地到期: 拔出来回待机(待机表是 AxeArt.apply 装好的那张)。无头合成单位没有立绘就跳过。
+func _idle(ax: Dictionary) -> void:
+	var idle = ax.get("idle_sd", null)
+	if idle is Dictionary and not (idle as Dictionary).is_empty() and is_instance_valid(ax.get("sprite", null)):
+		battle._set_anim_sheet(ax, idle, "", true)
+
+
 func begin_active(ax: Dictionary) -> String:
 	var fk: String = _fk(ax)
 	match fk:
@@ -545,9 +596,15 @@ func begin_active(ax: Dictionary) -> String:
 			ax["_holo_next"] = float(battle._t)
 			ax["_holo_dr_bak"] = float(ax.get("damage_reduction", 0.0))
 			ax["damage_reduction"] = maxf(float(ax.get("damage_reduction", 0.0)), AF.HOLO_PLANT_DR)
-			ax["_holo_root"] = vfx.holo_field(ax.get("pos", Vector2.ZERO),
-				AF.HOLO_AURA_R, AF.HOLO_PLANT_TIME)
-			_play(ax, "axe_plant", true)   # 插地是【持续 4 秒的状态】⇒ 循环帧表
+			## ★★插在地里就不走(2026-09-15 方案书 20260915g「E 的出入」): 结算的圆心是 `ax.pos`,
+			##   斧头若在这 4 秒里走动, 「法阵钉在插地点」与「范围 = 判定」只能二选一。
+			##   走既有的 no_move 通道(主循环在读), 备份/还原同被动 6 蓄力; 普攻不禁(「每次普攻给盾」照常)。
+			ax["_holo_nm_bak"] = bool(ax.get("no_move", false))
+			ax["no_move"] = true
+			## 演出: 法阵(展开 → 循环 → 倒放收拢) + 减伤护罩; 切帧与到期释放在 tick_active 里。
+			##   原来这里是两圈程序细环 + 一根 BoxMesh 竖条(用户「8/9也是，完全没达标」)。
+			vfx_holo.begin_plant(ax)
+			_play(ax, "axe_plant", true)   # 插地是【持续 4 秒的状态】—— 播完回待机, 由 tick_active 续上
 			return "holo"
 		"ember":
 			ember_light_cast(ax)
@@ -585,12 +642,21 @@ func tick_active(ax: Dictionary, _delta: float) -> int:
 			if ax.has("_holo_dr_bak"):
 				ax["damage_reduction"] = float(ax["_holo_dr_bak"])
 				ax.erase("_holo_dr_bak")
-			ax.erase("_holo_root")
-		elif float(battle._t) >= float(ax.get("_holo_next", 0.0)):
-			holo_aura_tick(ax)
-			vfx.holo_pulse(ax.get("_holo_root", null))
-			ax["_holo_next"] = float(battle._t) + AF.HOLO_AURA_TICK
-			n += 1
+			## ★不许走也要还原(插地期间的 no_move, 同上)
+			if ax.has("_holo_nm_bak"):
+				ax["no_move"] = bool(ax["_holo_nm_bak"])
+				ax.erase("_holo_nm_bak")
+			## 演出: 法阵与护罩在到期这一步释放(收拢的最后一帧落在上一步), 斧头拔出来回待机
+			vfx_holo.end_plant(ax)
+			if str(ax.get("anim_action", "")) == "axe_plant":
+				_idle(ax)
+		else:
+			if float(battle._t) >= float(ax.get("_holo_next", 0.0)):
+				holo_aura_tick(ax)             # 结算 + 这一跳的演出(脉冲从第 0 帧起, 见函数末尾)
+				ax["_holo_next"] = float(battle._t) + AF.HOLO_AURA_TICK
+				n += 1
+			vfx_holo.plant_step(ax)
+			_keep_plant(ax)
 	return n
 
 

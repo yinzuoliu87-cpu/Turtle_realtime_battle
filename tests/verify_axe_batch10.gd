@@ -371,35 +371,61 @@ func _t_e11_holo_pool() -> void:
 
 
 # ══════════════════════════════════════════════════════════════
-#  全息法阵: 脉冲比本体活得久 ⇒ 引擎报「Lambda capture at index 0 was freed」
+#  全息 / 亡灵演出: 宿主比 tween 先释放 ⇒ 引擎报「Lambda capture at index 0 was freed」
 # ══════════════════════════════════════════════════════════════
 ## ★由来(2026-09-15): 用户要 096 九个形态分开看, 批量录像里全息斧那段日志 19 条
 ##   `Lambda capture at index 0 was freed`, 其余八段 0 条。探针: 关掉 holo_pulse ⇒ 同一 16 秒窗口 3 → 0 条。
 ##   根因: 法阵本体按 tween 时钟到点释放, 脉冲按战斗时钟排 ⇒ 顿帧时最后一次脉冲的 tween 跑过本体释放的时刻,
 ##   lambda 捕获的根节点已释放, 引擎每帧报一条(lambda 体内的 is_instance_valid 拦不住)。
-## ★判据量【引擎真的报了几条】(Logger), 不数我插的标记。
-##   本体故意只活 0.10 秒 ⇒「脉冲还在跑、本体已释放」这个前置状态一定形成, 另用分母断言证明它真的形成了。
+## ★同日下午: 程序法阵与 holo_pulse 已删(用户「8/9也是，完全没达标」, 换成 AxeHoloVfx / AxeUndeadVfx 烘焙帧表),
+##   法阵本体改由战斗时钟切帧、到期同步释放, 不再有脉冲 tween。**意图不变**: 演出里还剩的 tween ——
+##   数据块飞行 / 数据流根节点延时释放 / 亡灵之魂飞回 —— 宿主都可能先没(插地到期、斧头死亡、换路清场)。
+##   这里把宿主【故意在 tween 还在跑的时候释放】, 量引擎报了几条。
+## ★判据量【引擎真的报了几条】(Logger), 不数我插的标记; 另用分母断言证明「tween 还在跑、宿主已释放」真的形成了。
 func _t_holo_pulse_capture() -> void:
-	print("--- 全息法阵: 脉冲比本体活得久(引擎报错条数) ---")
-	var vfx = _s._equip_sys._axe._fin.vfx
+	print("--- 全息 / 亡灵演出: 宿主比 tween 先释放(引擎报错条数) ---")
+	_s._units.clear()
+	var fin = _s._equip_sys._axe._fin
 	var tap := ErrTap.new()
 	OS.add_logger(tap)
 	push_warning("ERRTAP_PROBE_096 门禁自检: 证明 Logger 接得到引擎输出(警告, 不是报错)")
-	var root = vfx.holo_field(_c(), AF.HOLO_AURA_R, 0.10)
-	_ok("★分母: 法阵本体真的建出来并挂进世界",
-		root is Node3D and is_instance_valid(root) and (root as Node3D).is_inside_tree())
-	vfx.holo_pulse(root)
-	var t0 := Time.get_ticks_msec()
-	while is_instance_valid(root) and Time.get_ticks_msec() - t0 < 3000:
-		await get_tree().process_frame
-	var freed_ms: int = Time.get_ticks_msec() - t0
-	_ok("★分母: 本体在脉冲(0.45 秒)播完之前就释放了 —— 「捕获物先释放」真的形成",
-		not is_instance_valid(root) and freed_ms < 450, "%d 毫秒" % freed_ms)
+	## 全息: 插地(法阵 + 护罩) → 一跳(脉冲 / 反馈 / 加速圈) → 普攻(数据流)
+	var hx: Dictionary = _mk_axe(4, "holo")
+	_mk_ally(Vector2(-260, 60), 0.3)
+	fin.begin_active(hx)
+	fin.holo_aura_tick(hx)
+	fin.holo_on_hit(hx)
+	var stream = null
+	for c in _s._world.get_children():
+		if str(c.name).begins_with("holo_stream") and not c.is_queued_for_deletion():
+			stream = c
+	_ok("★分母: 法阵与数据流真的建出来并挂进世界(数据块 %d 块)"
+		% ((stream as Node).get_child_count() if stream is Node else -1),
+		is_instance_valid(hx.get("_holo_field_spr", null)) and stream is Node3D and (stream as Node).get_child_count() >= 3)
+	## 亡灵: 一跳里被抽走的魂
+	var ux: Dictionary = _mk_axe(4, "undead")
+	var foe: Dictionary = _mk_foe(Vector2(120, 40))
+	var got: Dictionary = fin.vfx_undead.ring_tick(ux, [foe])
+	var souls: Array = got.get("souls", [])
+	_ok("★分母: 亡灵之魂真的建出来了(%d 缕)" % souls.size(), souls.size() == 1)
+	var running := 0
+	for tw in _s._sim_tweens:
+		if tw != null and tw.is_valid() and tw.is_running():
+			running += 1
+	## ★宿主【立刻】全部释放: 数据块要飞 0.3 秒、魂要飞 0.45 秒, 此刻 tween 都还在跑
+	fin.vfx_holo.end_plant(hx)
+	if stream is Node:
+		(stream as Node).free()
+	for sp in souls:
+		if is_instance_valid(sp):
+			(sp as Node).free()
+	_ok("★分母: 宿主释放的这一刻还有 %d 条 tween 在跑 —— 「捕获物先释放」真的形成" % running,
+		running >= 3 and not is_instance_valid(stream))
 	var t1 := Time.get_ticks_msec()
 	while Time.get_ticks_msec() - t1 < 700:
 		await get_tree().process_frame
 	OS.remove_logger(tap)
 	_ok("★分母: Logger 真的接得到引擎输出(自检警告 %d 条)" % tap.probe, tap.probe >= 1)
 	## ★标签里不许出现报错原文的英文 —— run-tests 的致命正则按原文匹配, 会把这行 PASS 自己判成致命报错。
-	_ok("★★脉冲跑过本体释放的时刻, 引擎 0 条「lambda 捕获物已释放」报错(修前每帧一条)",
+	_ok("★★tween 跑过宿主释放的时刻, 引擎 0 条「lambda 捕获物已释放」报错(修前每帧一条)",
 		tap.lam == 0, "%d 条" % tap.lam)
