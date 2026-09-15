@@ -90,9 +90,9 @@ extends RefCounted
 ## ⑦ **084 两道波: 横波半宽 125 码(= 横斩 250 码扫幅的一半)、竖波半宽 45 码**;
 ##    都沿施法朝向推进 700 码、速度 900 码/秒、波前带 ±60 码, 每个敌人每道波只吃一次。
 ##    规格只写"直线移动 / 竖方向一道波移动", 没给宽度与速度 ⇒ 这三个数是我定的。
-## ⑧ **084 的后撤是瞬移**(选: 瞬移 + 演出补 / 另一侧: 逐帧滑退)。
-##    CLAUDE.md §3.5:「一个测数值对不对的用例不该依赖任何动画 tween 跑完」——
-##    落点由纯函数 `cross_retreat_dest()` 给出、门禁验几何, 演出只负责好看。
+## ⑧ **084 十字斩不再后撤**(★用户 2026-09-15 拍板「84改为不再后撤」)。
+##    原来先背对目标滑退 150 码再出刀; 而近战携带者射程变 450、在 450 码处施放, 退完是 600 码,
+##    250 码的两刀永远够不着(第九批调查 U1: 真实对局四段命中 [0,0,0,0])。现在原地出刀, 两刀的圆心就是施放位置。
 ## ⑨ **084 远程侧"有效射程固定 100"的实现是【把射程通道搬进影子字段】**
 ##    (`range_add`/`range_perm` 清零、`atk_range` 写 100), 而不是"写一个负的 atk_range 去抵消"。
 ##    好处: `battle._eff_range(u)` 恰好等于 100, 信息面板显示的"射程 100"也不骗人。
@@ -133,7 +133,7 @@ extends RefCounted
 var battle
 var vfx
 
-## 084【后撤十字斩】的技能 type。
+## 084【十字斩】的技能 type。
 ## ★★现状(已核实): 主会话**已经把两行都接上了** —— `RealtimeBattle3DScene.gd:5373`
 ##   `"eqCrossSlash": true,` 进了 `_IMPL_SKILLS`, `:5541` 也在 `_do_skill` 里分派到
 ##   `_equip_sys._blade_sys.cast_cross_slash(u, tgt)`。⇒ 施放走的是**引擎真入口**,
@@ -147,9 +147,8 @@ var vfx
 ##   施放改由引擎的真入口走 —— **两边都调同一个 `cast_cross_slash`**, 不会有第二份实现。
 const HH_SKILL := "eqCrossSlash"
 const HH_ENERGY := 80.0
-## 084 近战侧: 获得的射程 / 后撤距离。远程侧: 有效射程 / 每转化多少码提升多少。
+## 084 近战侧: 获得的射程。远程侧: 有效射程 / 每转化多少码提升多少。
 const HH_MELEE_RANGE := 450.0     # 近战携带 → 射程变成
-const HH_BACKSTEP := 150.0        # 后撤十字斩的后撤距离(码)
 const HH_RANGED_RANGE := 100.0    # 远程携带 → 有效射程固定为
 const HH_CONV_PER := 100.0        # 每转化这么多码射程
 const HH_CONV_BONUS := 0.20       # 就让那几项属性提升
@@ -164,17 +163,9 @@ const HH_RANGED_DR := [0.03, 0.06, 0.10]    # 远程携带: 减伤 damage_reduct
 const HH_RANGED_HP := [300.0, 700.0, 3000.0]  # 远程携带给的生命值基数(★还要再乘 _b84_mult)
 
 ## 084 十字斩四段的节拍(秒): ①横斩+②横波 → ③竖斩+④竖波
-## 后撤【真的滑过去】用多久(秒)。
-## ★★2026-08-29 用户追问「你还是瞬移吗」—— 是。原来 `u["pos"] = dest` 一步到位,
-##   演出只是在旁边补影子。我当时的顾虑是"位置滑动会让斩击的圆心漂",
-##   **但那个顾虑是算错的**: 斩击在 CROSS_T1(0.40 秒)之后才结算, 只要后撤在那之前走完,
-##   圆心就还是落点, 几何一点不变。⇒ 取 0.18 < 0.25, 留 0.07 秒余量。
-## ★用【每帧驱动】不用 tween —— 无头 CI 下场景树 tween 推进不稳(CLAUDE.md §3.5 海盗钩索),
-##   而这是**会影响伤害几何**的位移, 不能赌它跑不跑得完。
 ## `cross_slash_hit` 每次填: 这一刀**真的打中了谁**(位置)。爆点靠它定位。
 ## ★不存单位字典 —— 单位之间互相引用成环, 存进别的容器会递归哈希卡死(CLAUDE.md §3.2)。
 var _last_hit_pos: Array = []
-const RETREAT_SEC := 0.18
 ## ★用户 2026-08-29: 两刀的拍子全部拉长一倍——
 ##   0.25 → 0.40(第一刀) · 0.60 → 1.00(第二刀), 斩击动画时长也翻倍。
 ##   原来整段只有 ~0.8 秒, 四段伤害挤在一块看不清。
@@ -236,7 +227,6 @@ func b84_locked() -> int:
 
 func tick(delta: float) -> void:
 	b84_locked()
-	_step_retreat(delta)
 	_step_pending()
 	_step_waves(delta)
 	vfx.tick(delta)
@@ -246,14 +236,13 @@ func tick(delta: float) -> void:
 ## ★由来(2026-09-15 调查): 携带者自己是时停持有者时, 十字斩的两段结算、剑波、后撤全冻住、人被锁在原地 ——
 ##   上面的 `tick` 挂在全场每帧 tick 里, 时停时整块不跑; 分段时刻表与锁定又都拿冻结的 `battle._t` 比。
 ##   探针: 时停中推 2 秒伤害 +0, 解除后才 +1482。与 059「只有携带者能自由攻击/施法/移动, 伤害即时结算」冲突。
-## ★只动持有者: 锁定时刻由主场景 `_TS_TIMER_FIELDS` 顺延; 这里顺延持有者的分段时刻, 只推持有者的滑步与剑波。
+## ★只动持有者: 锁定时刻由主场景 `_TS_TIMER_FIELDS` 顺延; 这里顺延持有者的分段时刻, 只推持有者的剑波。
 ##   非持有者的条目一个都不碰(全域冻结门禁守着)。
 ## ⚠ 已知缺口: 演出层 `vfx.tick` 不在这里推 —— 刀光在时停里是定格的, 结算与位移照常。
 func tick_ts(delta: float, holders: Array) -> void:
 	if holders.is_empty():
 		return
 	b84_locked()
-	_step_retreat(delta, holders)
 	for p in _pending:
 		if battle._arr_has_unit(holders, p["u"]) and float(p["t"]) > battle._t:
 			p["t"] = maxf(battle._t, float(p["t"]) - delta)
@@ -609,7 +598,7 @@ func b83_stacks(u: Dictionary) -> int:
 
 # ══════════════════════════════════════════════════════════════════════
 #  ★084 手半剑(4 费·剑) — 效果随携带者是近战还是远程而改变
-#    近战 → 获得 450 码射程 + 技能换成 80 龟能的【后撤十字斩】
+#    近战 → 获得 450 码射程 + 技能换成 80 龟能的【十字斩】(2026-09-15 起不再后撤)
 #    远程 → 射程固定 100 码 + 200/400/1000 最大生命 + 登场时攻击力的 10/15/20% + 10/12.5/15% 吸血,
 #           且每转化 100 码射程使这些属性 +20%(★实时)
 # ══════════════════════════════════════════════════════════════════════
@@ -756,8 +745,8 @@ func _hh_self_drive(u: Dictionary, _delta: float) -> void:
 	cast_cross_slash(u, tgt)
 
 
-## ★★【后撤十字斩】唯一入口 —— 自驱与(将来的)`_do_skill` 分支都调它, 只有这一份实现。
-## 后撤 150 码 → 0.25 秒后横斩 + 横波 → 0.60 秒后竖斩 + 竖波。
+## ★★【十字斩】唯一入口(下面的 `cast_cross_slash`)—— 自驱与 `_do_skill` 分支都调它, 只有这一份实现。
+## 原地出刀(★2026-09-15 起不再后撤) → CROSS_T1 横斩 + 横波 → CROSS_T3 竖斩 + 竖波。
 ## 手半剑 084 近战携带时的普攻 = **瞬发激光束**(云顶 S4 速射火炮那种)。
 ##
 ## ★整段放这里不放主文件: 它只跟这件装备有关, 不在 `_sim_step` 的通用链上
@@ -782,72 +771,22 @@ func cast_cross_slash(u: Dictionary, tgt) -> void:
 	if not (tgt is Dictionary) or not (tgt as Dictionary).get("alive", false):
 		return
 	var sx: int = int(u.get("_b84_si", 0))
-	var dest: Vector2 = cross_retreat_dest(u, tgt)
-	var from2d: Vector2 = u["pos"]                # ★起跳点
-	## ★★真的滑过去(不再瞬移) —— 见 RETREAT_SEC 头注。
-	##   `_slam` 是本仓"施法期锁住 AI 移动"的通用标记(精英站桩/赛博组装都用它),
-	##   不设的话移动系统会在滑行途中把它往目标那边拉回去。
-	u["_b84_retreat"] = {"from": from2d, "to": dest, "t": 0.0}
+	## ★★不再后撤(用户 2026-09-15「84改为不再后撤」): 原地出刀, 两刀的圆心与两道波的起点都是施放位置。
+	##   原来先背对目标滑退 150 码 —— 近战携带者在 450 码射程处施放, 退完 600 码, 250 码的刀永远够不着。
+	## ★定身照旧: `_slam` 是本仓"施法期锁住 AI 移动"的通用标记(精英站桩/赛博组装都用它)。
+	## ★★用户 2026-08-29:「角色应该在竖斩动画结束后才开始移动」—— 锁到最后一刀的动画放完:
+	##   CROSS_T3 + 刀光时长(从常量推, 不写死, 拍子改了自动跟上)。
 	u["_slam"] = true
-	## ★★用户 2026-08-29:「角色应该在竖斩动画结束后才开始移动」。
-	##   旧行为: `_slam` 在**后撤滑完那一刻**(0.18 秒)就解开了,
-	##   于是龟在蓄力/两刀演出还在放的时候就已经跑起来了 ——
-	##   刀光留在原地、人跑了, 两个对不上。
-	##   现在锁到**最后一刀的动画放完**: CROSS_T3 + 刀光时长。
-	## ★从常量推, 不写死 —— 拍子改了它自动跟上。
 	u["_b84_lock_until"] = battle._t + CROSS_T3 + BladeEqVfx.SLASH_LIFE
-	if u.has("_home_pos"):
-		u["_home_pos"] = dest                    # ★只在【本来就有】时才写, 绝不凭空创建(评审假人归位坑)
-	var dir: Vector2 = (tgt as Dictionary)["pos"] - dest
+	var dir: Vector2 = (tgt as Dictionary)["pos"] - u["pos"]
 	dir = dir.normalized() if dir.length() > 0.01 else Vector2.RIGHT
 	u["_b84_casts"] = int(u.get("_b84_casts", 0)) + 1   # 同步触发证据
 	u["face_right"] = dir.x > 0.0
-	vfx.cross_retreat(u, dest, dir, from2d)
 	## ★★2026-08-29 补【蓄力】(用户点名:「然后是蓄力, 你做了吗」—— 没有)。
-	##   后撤落地到第一刀之间的 CROSS_T1(0.40 秒)原来是**全空的**, 屏幕上什么都不发生,
-	##   于是整招读起来是"退了一下, 然后弧凭空出现"。这一拍补上剑气收拢 + 龟身预备形变。
+	##   出手到第一刀之间的 CROSS_T1 原来是**全空的**, 屏幕上什么都不发生 ⇒ 补剑气收拢 + 龟身预备形变。
 	vfx.cross_windup(u, dir, CROSS_T1)
 	_pending.append({"u": u, "dir": dir, "si": sx, "t": battle._t + CROSS_T1, "seg": 1})
 	_pending.append({"u": u, "dir": dir, "si": sx, "t": battle._t + CROSS_T3, "seg": 3})
-
-
-## 后撤落点(纯几何, 门禁验这个而不是等 tween 跑到)。背对目标退 150 码, 钳在场地内。
-func cross_retreat_dest(u: Dictionary, tgt: Dictionary) -> Vector2:
-	var away: Vector2 = u["pos"] - tgt["pos"]
-	away = away.normalized() if away.length() > 0.01 else Vector2.LEFT
-	var p: Vector2 = u["pos"] + away * HH_BACKSTEP
-	p.x = clampf(p.x, battle.ARENA.position.x, battle.ARENA.end.x)
-	p.y = clampf(p.y, battle.ARENA.position.y, battle.ARENA.end.y)
-	return p
-
-
-## 后撤滑行推进: 把 `u["pos"]` 从起跳点匀减速滑到落点, RETREAT_SEC 秒走完。
-##
-## ★为什么不是 tween: 这是**会影响伤害几何**的位移(斩击以 `u["pos"]` 为圆心),
-##   而无头 CI 下场景树 tween 推进不稳 —— 赌它跑完 = 赌伤害打在哪(CLAUDE.md §3.5)。
-## ★走完【精确落到 dest】(不是停在 lerp 的最后一帧) —— 差几码就够让门禁的
-##   "退了正好 150 码"红一次, 而那不是真问题。
-func _step_retreat(delta: float, only: Array = []) -> void:
-	for u in battle._units:
-		if not (u is Dictionary) or not (u as Dictionary).has("_b84_retreat"):
-			continue
-		if not only.is_empty() and not battle._arr_has_unit(only, u):
-			continue                                 # 时停里只推持有者(见 tick_ts)
-		var r: Dictionary = (u as Dictionary)["_b84_retreat"]
-		if not (u as Dictionary).get("alive", false):
-			(u as Dictionary).erase("_b84_retreat")
-			(u as Dictionary)["_slam"] = false
-			continue
-		r["t"] = float(r["t"]) + delta
-		var x: float = clampf(float(r["t"]) / RETREAT_SEC, 0.0, 1.0)
-		## 后跃是"蹬地出去、到位收住" ⇒ ease-out(1-(1-x)²), 不是匀速
-		var e: float = 1.0 - (1.0 - x) * (1.0 - x)
-		u["pos"] = (r["from"] as Vector2).lerp(r["to"] as Vector2, e)
-		if x >= 1.0:
-			u["pos"] = r["to"]                     # ★精确落位
-			(u as Dictionary).erase("_b84_retreat")
-			## ★滑完【不】解锁 —— 要等整招演完(见 _b84_lock_until)。
-			##   旧代码在这里 `_slam = false`, 人在蓄力阶段就跑了。
 
 
 ## 分段时刻表推进(用 battle._t —— 顿帧/时停时演出与结算一起停)。

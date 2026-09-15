@@ -408,7 +408,7 @@ func _g7_083_stacks() -> void:
 # ══════════════════════════════════════════════════════════════════
 func _g8_grow_curve() -> void:
 	print("")
-	print("  ⑨ ★grow 的两条曲线不能撞(082 clam_burst / 084 cross_retreat 吃这条):")
+	print("  ⑨ ★grow 的两条曲线不能撞(082 clam_burst 吃这条; 084 的后撤尘环已随后撤删掉):")
 	var k: float = BEV.GROW_KNEE
 	_ok("⑨ ★尺寸到顶那一刻 alpha 也在顶: size=%.3f alpha=%.3f" % [BEV.grow_size_frac(k), BEV.grow_alpha(k)],
 		is_equal_approx(BEV.grow_size_frac(k), 1.0) and is_equal_approx(BEV.grow_alpha(k), 1.0))

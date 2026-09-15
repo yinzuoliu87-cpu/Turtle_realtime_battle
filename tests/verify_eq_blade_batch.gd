@@ -739,7 +739,7 @@ func _t083_swordsman() -> void:
 # ④ 084 手半剑
 # ═════════════════════════════════════════════════════════════
 func _t084_melee_wiring() -> void:
-	print("── ④ 084 手半剑【近战携带】: 450 码射程 + 技能换成 80 龟能的后撤十字斩 ──")
+	print("── ④ 084 手半剑【近战携带】: 450 码射程 + 技能换成 80 龟能的十字斩(不后撤) ──")
 	_s._units.clear()
 	var u: Dictionary = _mk("fortune", "left", Vector2(-200.0, 0.0))
 	_mk("fortune", "right", Vector2(200.0, 0.0))
@@ -787,7 +787,7 @@ func _t084_melee_wiring() -> void:
 	##   `_pick_ready_skill` 里 `if not _IMPL_SKILLS.has(st): continue` —— 没那一行就永远返回 ""。
 	(u["skill_cd"] as Dictionary)[EqBladeBatch.HH_SKILL] = 0.0
 	u["skill_gcd_until"] = 0.0
-	_ok("④ ★★引擎 _pick_ready_skill 真的挑中【后撤十字斩】(= `_IMPL_SKILLS` 那一行被走到)",
+	_ok("④ ★★引擎 _pick_ready_skill 真的挑中【十字斩】(= `_IMPL_SKILLS` 那一行被走到)",
 		str(_s._pick_ready_skill(u)) == EqBladeBatch.HH_SKILL,
 		"挑中的是 '%s'" % str(_s._pick_ready_skill(u)))
 	## ★头顶龟能条: battle_render 对不在 _IMPL_SKILLS 的 type 直接 continue ⇒ 接表前恒为 0。
@@ -799,27 +799,16 @@ func _t084_melee_wiring() -> void:
 	_ok("④ ★★头顶龟能条真的跟着这个技走(充能 50% → 条宽 = 满宽的一半; 接表前它恒为 0)",
 		enf != null and absf(float(enf.size.x) - _s.BAR_W * 0.5) < 0.51,
 		"条宽 %.2f / 满宽 %.2f" % [float(enf.size.x) if enf != null else -1.0, _s.BAR_W])
-	## 后撤落点几何(纯函数, 不等 tween)
-	_s._units.clear()
-	var a: Dictionary = _mk("fortune", "left", Vector2(0.0, 0.0))
-	var b: Dictionary = _mk("fortune", "right", Vector2(300.0, 0.0))
-	var dest: Vector2 = _blade().cross_retreat_dest(a, b)
-	_ok("④ 后撤落点 = 背对目标 150 码(纯几何, 不依赖任何 tween)",
-		absf((dest - a["pos"]).length() - 150.0) < 0.01
-			and absf((dest - a["pos"]).normalized().angle_to(Vector2.LEFT)) < 1e-4,
-		"位移 %.2f 码, 方向 %s" % [(dest - a["pos"]).length(), str((dest - a["pos"]).normalized())])
-	a["pos"] = Vector2(_s.ARENA.position.x + 20.0, _s.ARENA.position.y + 200.0)
-	b["pos"] = a["pos"] + Vector2(300.0, 0.0)
-	var d2: Vector2 = _blade().cross_retreat_dest(a, b)
-	_ok("④ 后撤落点被钳在场地内(贴左边界时不会退出去)",
-		d2.x >= _s.ARENA.position.x - 0.01 and d2.x <= _s.ARENA.end.x + 0.01, "dest=%s" % str(d2))
 
 
 func _t084_cross_slash() -> void:
-	print("── ④ 084【后撤十字斩】四段伤害: 3★ 全中 = 475 + 5.1×ATK ──")
+	print("── ④ 084【十字斩】四段伤害: 3★ 全中 = 475 + 5.1×ATK ──")
 	_s._units.clear()
+	## ★目标摆 200 码而不是 80(2026-09-15 不再后撤之后): 80 码时剑波生成的【同一步】就撞上目标,
+	##   横斩与横波叠在一次读数里分不开 —— 改完第一次就是这么红的(横斩实得 490 = 297 + 193、横波 0)。
+	##   200 码 < 斩击 250 码(两刀照样够得着), 剑波要再飞约 0.16 秒才到, 四段各自分得开。
 	var u: Dictionary = _mk("fortune", "left", Vector2(-100.0, 0.0))
-	var tgt: Dictionary = _mk("fortune", "right", Vector2(-20.0, 0.0), 1000000.0)
+	var tgt: Dictionary = _mk("fortune", "right", Vector2(100.0, 0.0), 1000000.0)
 	_equip(u, "p2eq_084", 3)
 	_spawn_all()
 	u["base_atk"] = 100.0
@@ -846,15 +835,11 @@ func _t084_cross_slash() -> void:
 	_ok("④ ★★★引擎接管后自驱让位: 连喂 5 帧 _eq_tick(且冷却仍是 0)也没有第二次施放",
 		int(u.get("_b84_casts", 0)) == 1 and _blade().b84_pending() == 2,
 		"casts=%d pending=%d(双发会是 2 / 4)" % [int(u.get("_b84_casts", 0)), _blade().b84_pending()])
-	## ★★2026-08-29 后撤从【瞬移】改成【0.18 秒真滑行】(用户:「你还是瞬移吗」),
-	##   所以这条不能在放完技能的下一行就量 —— 那时候才滑了不到一半。
-	##   ★而且推进要走**全局** `tick()`: `_step_retreat` 挂在那里, 只喂 `_eq_tick`
-	##     (逐单位)的话后撤一步都不动(第一次改完就是这么红的, dist 停在 80)。
-	##   ★推进 0.20 秒: 大于 RETREAT_SEC(0.18) 才滑得完, 小于 CROSS_T1(0.25)
-	##     才不会提前触发第一刀 —— 下一条断言正是"此刻还没有伤害"。
+	## ★★2026-09-15 起不再后撤(用户「84改为不再后撤」)。推进 0.20 秒(小于 CROSS_T1 才不会提前出第一刀),
+	##   携带者与目标的距离必须仍是 200 码。推进走全局 `tick()` —— 重新加回后撤的话这里会变成 350。
 	_adv(10, 0.02)
-	_ok("④ 后撤已发生: 携带者与目标的距离变成 230 码(80 + 150)",
-		absf((tgt["pos"] - u["pos"]).length() - 230.0) < 0.51,
+	_ok("④ 不后撤: 放完 0.20 秒携带者与目标的距离仍是 200 码",
+		absf((tgt["pos"] - u["pos"]).length() - 200.0) < 0.51,
 		"dist=%.1f" % (tgt["pos"] - u["pos"]).length())
 	_ok("④ ★分母: 十字斩排了 2 段待结算(横组 / 竖组), 此刻还没有伤害",
 		_blade().b84_pending() == 2 and int(tgt.get("_st_taken", 0)) == 0,
@@ -879,7 +864,7 @@ func _t084_cross_slash() -> void:
 	var d1: int = int(tgt.get("_st_taken", 0))
 	_ok("④ ① 横斩(250 码 120° 扇形) = (130 + 1.4×ATK) × 增伤 = %d" % _e1,
 		absf(float(d1 - _e1)) <= 1.0, "实得 %d" % d1)
-	## 横波: 900 码/秒推进, 目标在 230 码处, 波前带 ±60 → 再过 0.19~0.32 秒命中
+	## 横波: 900 码/秒推进, 目标在 200 码处, 波前带 ±60 → 再过约 0.16~0.29 秒命中(下面 0.24 秒的窗口兜得住)
 	_adv(12, 0.02)
 	var d2: int = int(tgt.get("_st_taken", 0)) - d1
 	_ok("④ ② 横波(直线贯穿) = (85 + 0.9×ATK) × 增伤 = %d" % _e2,
@@ -1445,7 +1430,7 @@ func _last_slash(vfx, u: Dictionary, d: Vector2, seg: int):
 ## ★量的是产品自己的定身标记 `_slam` —— 全仓通用的"锁 AI/移动"闸,
 ##   `RealtimeBattle3DScene._tick_unit` 看到它就直接 return。不是我插的标记。
 ## ★四个时刻都要验, 少一个就守不住:
-##   后撤刚滑完(旧代码正是在这一刻解锁的) / 最后一刀刚落地 /
+##   出手后第一刀之前 / 最后一刀刚落地 /
 ##   刀光放完前一瞬 / 放完之后
 func _t084_move_lock() -> void:
 	print("── ④m 整招演完之前不允许移动 ──")
@@ -1460,9 +1445,9 @@ func _t084_move_lock() -> void:
 	u["skill_gcd_until"] = 0.0
 	var fired: bool = _s._cast_skill(u, tgt, EqBladeBatch.HH_SKILL)
 	_ok("④m ★分母: 真的施放了一次", fired)
-	_adv_to(t0 + EqBladeBatch.RETREAT_SEC + 0.02)
-	_ok("④m ① 后撤刚滑完(%.2f 秒)仍被定身 —— 旧代码正是在这一刻解锁的"
-		% EqBladeBatch.RETREAT_SEC, bool(u.get("_slam", false)))
+	_adv_to(t0 + EqBladeBatch.CROSS_T1 * 0.5)
+	_ok("④m ① 出手后、第一刀之前(%.2f 秒)已被定身" % (EqBladeBatch.CROSS_T1 * 0.5),
+		bool(u.get("_slam", false)))
 	_adv_to(t0 + EqBladeBatch.CROSS_T3 + 0.02)
 	_ok("④m ② 最后一刀刚落地(%.2f 秒)仍被定身(刀光还在放)"
 		% EqBladeBatch.CROSS_T3, bool(u.get("_slam", false)))

@@ -224,7 +224,7 @@ static func stack_diam(stacks: int) -> float:
 ## 旧写法是**同一个归一时间 x** 同时驱动尺寸与 alpha:
 ##     pixel_size = lerp(d0, d1, x)   ·   modulate.a = 1 − x
 ## ⇒ 环**长到最大的那一帧 alpha 恰好 = 0**, 肉眼只看得见中间那一段。
-##   受害的是 082 `clam_burst`(120→190 / 60→130) 与 084 `cross_retreat`(70→130)。
+##   受害的是 082 `clam_burst`(120→190 / 60→130) 与 084 当时的后撤落点尘环(70→130, 2026-09-15 随后撤一起删了)。
 ## ⇒ 拆成两段: `x ≤ GROW_KNEE` 只扩张(alpha 满), 之后才淡出。
 ## ★可验证性质(门禁): **`grow_alpha(GROW_KNEE) ≡ 1.0` 且 `grow_size_frac(GROW_KNEE) ≡ 1.0`**
 ##   —— "尺寸到顶那一刻 alpha 也在顶"。旧写法在这一点上是 0.0, 一测就分开。
@@ -766,48 +766,13 @@ func rapier_stack(u: Dictionary, stacks: int) -> void:
 			"d0": stack_diam(stacks), "d1": stack_diam(stacks) * 1.7})
 
 
-# ── 084 后撤十字斩 ──────────────────────────────────────────────────
+# ── 084 十字斩 ──────────────────────────────────────────────────
 
-## 后撤: 起点残影 + 沿路拖影 + 落点扬尘。
-##
-## ★★2026-08-29 用户点名核对:「释放技能首先是向后退对吧？**这个你怎么实现**」——
-##   查下来: 位置是 `u["pos"] = dest` **瞬移**, 演出只有落点一个尘环;
-##   而这段函数的头注写着「起点留一道残影」—— **代码里根本没有残影**。
-##   注释在替一个不存在的实现背书(memory [[fb-registered-todos-rot]] 同族)。
-##
-## ★为什么不改成"真的用位移动画退回去": `u["pos"]` 是**结算用的位置** ——
-##   横斩/竖斩的扇形都以它为圆心, 后撤 150 码正是这一招的射程设计。
-##   让它在 0.25 秒里滑动, 两刀的圆心就变成"退到一半的地方", 伤害几何跟着漂。
-##   ⇒ **结算位置照旧瞬移(几何确定), 视觉上补出后跃的过程** —— 起点一道残影、
-##     中途几道拖影, 眼睛看到的就是"往后一跃"。
-##
-## `from2d` = 起跳点(退之前站的地方)。
-func cross_retreat(u: Dictionary, dest: Vector2, _dir: Vector2, from2d = null) -> void:
-	if not _has_world():
-		return
-	## ① 起点残影 + 沿路拖影: 从起跳点到落点均匀铺几道, 越靠起点越淡、越先消失
-	##    ⇒ 读出来是"人往后拉出一串影子", 而不是凭空出现在后面。
-	var src: Vector2 = from2d if from2d is Vector2 else dest
-	if (src - dest).length() > 8.0:
-		for gi in range(RETREAT_GHOSTS):
-			var f: float = float(gi) / float(RETREAT_GHOSTS - 1)     # 0=起点 … 1=落点
-			var gp: Vector2 = src.lerp(dest, f)
-			var g := _board(VfxTex._make_fire_glow_tex(), gp, GunEqVfx.body_mid_h(u),
-				52.0, Color(0.80, 0.88, 1.0, 0.10 + 0.34 * f), 6)
-			_adopt(g, "retreat")
-			## 越靠起点活得越短 ⇒ 影子是"从后往前"依次消失的, 方向感来自这个时序
-			_fx.append({"node": g, "t": 0.0, "life": 0.12 + 0.16 * f, "kind": "fade"})
-	## ② 落点扬尘
-	var dust := _ground(VfxTex._make_thin_ring_tex(), dest, 70.0, Color(0.85, 0.88, 0.95, 0.8), 5)
-	_adopt(dust, "retreat")
-	_fx.append({"node": dust, "t": 0.0, "life": 0.26, "kind": "grow", "d0": 70.0, "d1": 130.0})
-
-
-## 蓄力: 后撤落地 → 第一刀之间那 0.25 秒。
+## 蓄力: 出手 → 第一刀之间那段空拍(CROSS_T1)。
 ##
 ## ★★2026-08-29 用户点名:「然后是蓄力, **你做了吗**」—— 没有。那 0.25 秒是**全空的**:
 ##   `cast_cross_slash` 排完两个待结算段就没别的了, 落地到出刀之间屏幕上什么都不发生。
-##   一招"后撤 → 蓄力 → 斩"少了中间那一拍, 读起来就是"退了一下, 然后弧凭空出现"。
+##   一招"蓄力 → 斩"少了前面那一拍, 读起来就是"弧凭空出现"。(2026-09-15 起不再后撤)
 ##
 ## 做法: 一圈剑气从外向内**收拢**到龟身前(收拢 = 蓄力的通用语言, 与"爆开"相反),
 ##   同时龟身做一次 `_anticipate` 预备形变(缩一下再挥出去, 引擎现成的)。
@@ -966,7 +931,6 @@ const SWORD_TRAIL_PX := 22.0   # 单颗拖尾的世界尺寸(码)
 ##   所以 roll **不能再减一遍素材角** —— 减了就是转两次。
 const CHOP_ASSET_RAD := 0.0
 const BURST_SIZE := 190.0     # 命中爆点的世界尺寸(码)
-const RETREAT_GHOSTS := 5     # 后撤沿路铺几道拖影(含起点那道)
 const WINDUP_MOTES := 7       # 蓄力收拢的剑气点数
 const WINDUP_R := 78.0        # 剑气从多远收进来(码)
 const WINDUP_MOTE_PX := 34.0  # 单颗剑气的世界尺寸(码)。★22 太小, 暗场里看不见(2026-08-29 实拍)

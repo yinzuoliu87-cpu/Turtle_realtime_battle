@@ -1,5 +1,5 @@
 extends Node
-## verify_cross_slash_seq.gd — 十字斩的【完整时序】：后撤 → 蓄力 → 横斩 → 竖斩 (2026-08-29)
+## verify_cross_slash_seq.gd — 十字斩的【完整时序】：原地不后撤 → 蓄力 → 横斩 → 竖斩 (2026-08-29; 2026-09-15 起不再后撤)
 ##
 ## ══════════════════════════════════════════════════════════════════════
 ##  由来
@@ -22,7 +22,7 @@ extends Node
 ## ══════════════════════════════════════════════════════════════════════
 ## ★判据落在**产品自己建出来的节点**（`blade_eq_vfx` 的 `_fx` 队列 / `_world` 的子节点），
 ##   不是"我插的标记被设过" (memory [[fb-gate-must-measure-requirement-not-my-hook]])。
-## ★**逐段分别断言**：后撤、蓄力、第一刀各自都要有东西 ——
+## ★**逐段分别断言**：不后撤、蓄力、第一刀各自都要验 ——
 ##   只断言"整招放出来了"守不住"中间少了一拍"，那正是用户问出来的病。
 ## ★每段配分母。
 ##
@@ -60,7 +60,7 @@ func _ready() -> void:
 	var gs = get_node_or_null("/root/GameState")
 	if gs != null:
 		gs.test_mode = true
-	print("=== 十字斩时序: 后撤 → 蓄力 → 横斩 → 竖斩 ===")
+	print("=== 十字斩时序: 原地不后撤 → 蓄力 → 横斩 → 竖斩 ===")
 
 	_s = RB.new()
 	add_child(_s)
@@ -68,12 +68,9 @@ func _ready() -> void:
 		await get_tree().process_frame
 
 	# ── 分母：时序常量还是那三个数 ──
-	_ok("★分母: 后撤 150 码 / 第一刀 0.40 秒 / 第二刀 1.00 秒",
-		absf(EqBladeBatch.HH_BACKSTEP - 150.0) < 0.001
-			and absf(EqBladeBatch.CROSS_T1 - 0.40) < 0.001
-			and absf(EqBladeBatch.CROSS_T3 - 1.00) < 0.001,
-		"退%.0f 码 / T1=%.2f / T3=%.2f"
-			% [EqBladeBatch.HH_BACKSTEP, EqBladeBatch.CROSS_T1, EqBladeBatch.CROSS_T3])
+	_ok("★分母: 第一刀 0.40 秒 / 第二刀 1.00 秒",
+		absf(EqBladeBatch.CROSS_T1 - 0.40) < 0.001 and absf(EqBladeBatch.CROSS_T3 - 1.00) < 0.001,
+		"T1=%.2f / T3=%.2f" % [EqBladeBatch.CROSS_T1, EqBladeBatch.CROSS_T3])
 
 	var c: Vector2 = _s.ARENA.position + _s.ARENA.size * 0.5
 	var u: Dictionary = _s._spawn._make_unit("basic", "left", c + Vector2(-200, 0))
@@ -82,10 +79,7 @@ func _ready() -> void:
 	## ★设 base_atk 再 _recalc_stats —— 直接写 u["atk"] 会被产品按 base_atk 重算回去
 	##   (探针假象, 已在 _probe_copy_residue 头注记过一次: atk 120→44)
 	u["base_atk"] = 100.0
-	## ★★摆位很讲究: 后撤是**远离目标** 150 码, 而斩击只有 250 码
-	##   ⇒ 起手距离必须 ≤ 100 码, 退完才还在斩击范围内。
-	##   我第一版摆 380 码(以为退完变 230), **方向想反了** —— 退完是 530 码,
-	##   实测只结算 2/4 段(只有两道剑波打中, 两刀全空)。取 80 码 ⇒ 退完 230 码。
+	## ★摆位: 斩击半径 250 码 ⇒ 起手 80 码, 两刀两波都够得着(2026-09-15 起不再后撤, 距离全程不变)。
 	var tgt: Dictionary = _s._spawn._make_unit("basic", "right", c + Vector2(-200 + 80, 0))
 	tgt["maxHp"] = 1.0e8
 	tgt["hp"] = 1.0e8
@@ -107,57 +101,13 @@ func _ready() -> void:
 	var p0: Vector2 = u["pos"]
 	var d0: float = (p0 - (tgt["pos"] as Vector2)).length()
 
-	# ══ ① 后撤 ══
+	# ══ ① 不后撤(用户 2026-09-15「84改为不再后撤」)══
 	_s._equip_sys._blade_sys.cast_cross_slash(u, tgt)
-	## ★★★核心: 后撤必须是【真的滑过去】, 不是瞬移。
-	##   用户 2026-08-29 追问「**你还是瞬移吗**」—— 原来是。
-	##   判据: 刚放完技能的那一刻, 龟**还在起跳点附近**(位移 < 全程的一半);
-	##   而全程走完之后才到落点。一步到位的话第一条当场红。
-	var d_now: float = ((u["pos"] as Vector2) - p0).length()
-	_ok("★★★① 后撤是【滑过去】不是瞬移: 刚放完时还没走完",
-		d_now < EqBladeBatch.HH_BACKSTEP * 0.5,
-		"刚放完已位移 %.1f 码 / 全程 %.0f 码(瞬移的话这里就是 150)"
-			% [d_now, EqBladeBatch.HH_BACKSTEP])
-	## 滑行途中: 必须真的处在【起跳点与落点之间】, 而且位移单调增加
-	var mid_seen := false
-	var last_d: float = d_now
-	var mono := true
-	var tr := Time.get_ticks_msec()
-	while Time.get_ticks_msec() - tr < 1500:
-		var dd: float = ((u["pos"] as Vector2) - p0).length()
-		if dd + 0.01 < last_d:
-			mono = false                      # 往回缩了 = 被别的系统拽着, 不是干净的后跃
-		last_d = dd
-		if dd > EqBladeBatch.HH_BACKSTEP * 0.25 and dd < EqBladeBatch.HH_BACKSTEP * 0.85:
-			mid_seen = true                   # 抓到过"在半路上"的那一帧
-		if dd >= EqBladeBatch.HH_BACKSTEP - 0.5:
-			break
-		await get_tree().process_frame
-	_ok("★★★① 滑行途中真的出现在【半路上】(瞬移抓不到这一帧)", mid_seen,
-		"整段没抓到 25%~85% 之间的位置")
-	_ok("★① 位移一路单调向后(没被移动系统拽回去)", mono, "中途出现过回缩")
+	_ok("★★① 放完技能位置不动(不后撤)", ((u["pos"] as Vector2) - p0).length() < 0.01,
+		"位移 %.2f 码" % ((u["pos"] as Vector2) - p0).length())
+	_ok("★① 放完即定身 —— 要等整招演完(CROSS_T3 + SLASH_LIFE)才能动", bool(u.get("_slam", false)))
 
-	var p1: Vector2 = u["pos"]
-	var d1: float = (p1 - (tgt["pos"] as Vector2)).length()
-	_ok("★★① 后撤: 最终正好退了 150 码(背对目标)",
-		absf((d1 - d0) - EqBladeBatch.HH_BACKSTEP) < 1.0,
-		"离目标 %.0f → %.0f 码" % [d0, d1])
-	## ★分母: 滑行必须在第一刀【之前】走完 —— 否则斩击的圆心会漂到半路上
-	_ok("★★① 分母: 滑行(%.2f 秒)早于第一刀(%.2f 秒) ⇒ 斩击圆心仍是落点"
-			% [EqBladeBatch.RETREAT_SEC, EqBladeBatch.CROSS_T1],
-		EqBladeBatch.RETREAT_SEC < EqBladeBatch.CROSS_T1)
-	## ★★这条原来写的是【旧行为】: "滑完就解锁"。
-	##   用户 2026-08-29:「角色应该在竖斩动画结束后才开始移动」——
-	##   旧行为让人在蓄力阶段就跑了, 刀光留在原地、人在别处。
-	##   现在反过来: 滑完之后**必须还锁着**。完整时序见 verify_eq_blade_batch ④m。
-	_ok("★① 滑完【仍然锁着】—— 要等整招演完(CROSS_T3 + SLASH_LIFE)才能动",
-		bool(u.get("_slam", false)))
-	## ★★后撤【演出】: 沿路的拖影。修前这里是 0(注释说有残影, 代码里没有)。
-	var ghosts: int = _fx_count("fade")
-	_ok("★★① 后撤演出: 沿路铺了拖影(修前是 0 —— 注释说有残影而代码里没有)",
-		ghosts >= 3, "fade 类特效 %d 个(期望 ≥3)" % ghosts)
-
-	# ══ ② 蓄力（后撤落地 → 第一刀之间那 0.25 秒）══
+	# ══ ② 蓄力（出手 → 第一刀之间那段空拍）══
 	var motes: int = _fx_count("suck")
 	_ok("★★② 蓄力: 剑气在收拢(修前那 0.25 秒是全空的)",
 		motes >= 4, "suck 类特效 %d 个(期望 ≥4)" % motes)
@@ -182,8 +132,10 @@ func _ready() -> void:
 	var saw_wave := false
 	var hits: Array = []                        # 每次掉血记一笔(这一下掉了多少)
 	var last_hp: float = hp0
+	var moved_max := 0.0                          # 整段期间离施放点最远多少(不后撤 ⇒ 应为 0)
 	var t0 := Time.get_ticks_msec()
 	while Time.get_ticks_msec() - t0 < 6000:
+		moved_max = maxf(moved_max, ((u["pos"] as Vector2) - p0).length())
 		if _fx_count("holdfade") > 0:
 			saw_slash = true
 		if _fx_count("wave") > 0:
@@ -196,6 +148,7 @@ func _ready() -> void:
 			break
 		await get_tree().process_frame
 	var total: float = hp0 - float(tgt["hp"])
+	_ok("★★① 四段依次落地的整段期间位置始终不动(最大位移 %.2f 码)" % moved_max, moved_max < 0.5)
 	_ok("★★③ 第一刀: 出了刀光", saw_slash, "整段没见到 holdfade(刀光)特效")
 	_ok("★★③ 第一刀: 真的打到了伤害", hits.size() >= 1 and float(hits[0]) > 1.0,
 		"第一次掉血 %.0f" % (float(hits[0]) if hits.size() >= 1 else 0.0))
@@ -214,8 +167,8 @@ func _done() -> void:
 		_s.queue_free()
 	print("")
 	print("  (共 %d 条断言)" % _n)
-	if _n < 17:
-		print("  [FAIL] ★分母: 断言只有 %d 条(<17) —— 有用例没跑到" % _n)
+	if _n < 13:
+		print("  [FAIL] ★分母: 断言只有 %d 条(<13) —— 有用例没跑到" % _n)
 		_fail += 1
 	print("ALL PASS — 十字斩时序" if _fail == 0 else "FAIL x%d — 十字斩时序" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)

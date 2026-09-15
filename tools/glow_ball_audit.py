@@ -51,7 +51,7 @@ LEDGER = {
     "scripts/systems/skills/elite_system.gd": 4,
     "scripts/systems/skills/phoenix_system.gd": 3,
     "scripts/systems/skills/smolder_system.gd": 3,
-    "scripts/scenes/battle/blade_eq_vfx.gd": 2,
+    "scripts/scenes/battle/blade_eq_vfx.gd": 1,
     "scripts/systems/equip/dragon_system.gd": 2,
     "scripts/systems/skills/chest_system.gd": 2,
     "scripts/systems/skills/ice_system.gd": 2,
