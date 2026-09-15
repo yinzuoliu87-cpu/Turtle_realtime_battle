@@ -107,9 +107,13 @@ func _t_consts() -> void:
 	_ok("★分母: 被动6 蓄 %.0f 秒 · 每 %.1f 秒 +%.0f 码 · 减伤 %.0f%% · %.0f×ATK · 眩晕 %.0f 秒"
 		% [AE.CHARGE_TIME, AE.CHARGE_STEP, AE.CHARGE_H_PER_STEP, AE.CHARGE_DR * 100.0,
 		   AE.SLAM_ATK, AE.SLAM_STUN],
-		is_equal_approx(AE.CHARGE_TIME, 4.0) and is_equal_approx(AE.CHARGE_STEP, 0.5)
-		and is_equal_approx(AE.CHARGE_H_PER_STEP, 100.0) and is_equal_approx(AE.CHARGE_DR, 0.70)
+		is_equal_approx(AE.CHARGE_TIME, 4.0) and is_equal_approx(AE.CHARGE_STEP, 0.25)
+		and is_equal_approx(AE.CHARGE_H_PER_STEP, 30.0) and is_equal_approx(AE.CHARGE_DR, 0.70)
 		and is_equal_approx(AE.SLAM_ATK, 4.0) and is_equal_approx(AE.SLAM_STUN, 3.0))
+	## ★用户 2026-09-15「现在改为每0.25加30码，并且梯形的宽度减少20%」: 宽度写死数值核对(不拿常量算阈值)
+	_ok("★分母: 被动6 梯形近边 %.0f / 远边 %.0f 码(= 原 300 / 900 × 0.8)"
+		% [AE.TRAPEZOID_NEAR_W, AE.TRAPEZOID_FAR_W],
+		is_equal_approx(AE.TRAPEZOID_NEAR_W, 240.0) and is_equal_approx(AE.TRAPEZOID_FAR_W, 720.0))
 	## 四条被动的属性可叠加 —— 拿 minion_hp/atk 的差值验, 不看常量本身
 	var h0: float = AE.minion_hp(0, 0)
 	var h4: float = AE.minion_hp(0, 4)
@@ -303,11 +307,11 @@ func _t_charge() -> void:
 		% [mv_until0, float(ax.get("move_buff_until", 0.0)), float(_s._t)])
 	## 阶梯高度
 	var bad: Array = []
-	for pair in [[0.0, 0.0], [0.4, 0.0], [0.5, 100.0], [0.9, 100.0], [2.0, 400.0], [4.0, 800.0], [9.0, 800.0]]:
+	for pair in [[0.0, 0.0], [0.2, 0.0], [0.25, 30.0], [0.49, 30.0], [2.0, 240.0], [4.0, 480.0], [9.0, 480.0]]:
 		var got: float = AE.charge_height(float(pair[0]))
 		if not is_equal_approx(got, float(pair[1])):
-			bad.append("%.1fs → %.0f(应 %.0f)" % [float(pair[0]), got, float(pair[1])])
-	_ok("★高度是【0.5 秒一格的阶梯】不是连续增长(0.4s 仍是 0 码; 满蓄 800 码)",
+			bad.append("%.2fs → %.0f(应 %.0f)" % [float(pair[0]), got, float(pair[1])])
+	_ok("★高度是【0.25 秒一格、每格 30 码的阶梯】不是连续增长(0.2s 仍是 0 码; 满蓄 480 码)",
 		bad.is_empty(), str(bad))
 	## 砸下去
 	ax["_axe_charge_t0"] = _s._t - AE.CHARGE_TIME       # 直接推到蓄满
@@ -335,21 +339,26 @@ func _t_trapezoid() -> void:
 	print("--- ⑦ 梯形几何 ---")
 	var o := Vector2.ZERO
 	var d := Vector2.RIGHT
-	_ok("★正前方 400 码、贴中轴 → 在里面", AE.in_trapezoid(o, d, 800.0, Vector2(400, 0)))
-	_ok("★★背后 400 码 → 不在里面(梯形是单向的)", not AE.in_trapezoid(o, d, 800.0, Vector2(-400, 0)))
-	_ok("★超出高(900 > 800) → 不在里面", not AE.in_trapezoid(o, d, 800.0, Vector2(900, 0)))
-	_ok("★高只蓄到 100 时, 400 码外的敌人打不到(高是会长的)",
-		not AE.in_trapezoid(o, d, 100.0, Vector2(400, 0)))
+	## ★满蓄高 480 码(2026-09-15 起每 0.25 秒 +30 码), 下面的坐标按它取
+	_ok("★正前方 400 码、贴中轴 → 在里面", AE.in_trapezoid(o, d, 480.0, Vector2(400, 0)))
+	_ok("★★背后 400 码 → 不在里面(梯形是单向的)", not AE.in_trapezoid(o, d, 480.0, Vector2(-400, 0)))
+	_ok("★超出高(600 > 480) → 不在里面", not AE.in_trapezoid(o, d, 480.0, Vector2(600, 0)))
+	_ok("★高只蓄到 120 时, 400 码外的敌人打不到(高是会长的)",
+		not AE.in_trapezoid(o, d, 120.0, Vector2(400, 0)))
 	## 近窄远宽: 同一个横向偏移, 近处出界、远处在内
 	var lat: float = AE.TRAPEZOID_NEAR_W * 0.5 + 30.0
-	_ok("★★近窄远宽: 横向 %.0f 码时【近处(50)出界】而【远处(760)在内】" % lat,
-		not AE.in_trapezoid(o, d, 800.0, Vector2(50, lat))
-		and AE.in_trapezoid(o, d, 800.0, Vector2(760, lat)))
+	_ok("★★近窄远宽: 横向 %.0f 码时【近处(50)出界】而【远处(460)在内】" % lat,
+		not AE.in_trapezoid(o, d, 480.0, Vector2(50, lat))
+		and AE.in_trapezoid(o, d, 480.0, Vector2(460, lat)))
+	## ★★宽度减 20% 真的进了判定(写死数值, 不拿常量算): 远端 460 码处半宽应为 (240+480×460/480)/2 = 350
+	##   ⇒ 横向 340 在内、360 在外; 旧宽度(300/900)下 360 还在内 —— 这条就是"特效改了伤害没改"会红的地方
+	_ok("★★宽度减 20% 进了判定: 纵深 460 码处横向 340 在内、360 在外(旧宽 900 时 360 仍在内)",
+		AE.in_trapezoid(o, d, 480.0, Vector2(460, 340)) and not AE.in_trapezoid(o, d, 480.0, Vector2(460, 360)))
 	_ok("★高为 0(还没开始蓄)时谁都打不到", not AE.in_trapezoid(o, d, 0.0, Vector2(10, 0)))
 	## 方向真的跟着 dir 转(写死朝右的实现在这条上红)
 	_ok("★★朝向跟着 dir 转: dir 朝上时, 正上方在内、正右方出界",
-		AE.in_trapezoid(o, Vector2.UP, 800.0, Vector2(0, -400))
-		and not AE.in_trapezoid(o, Vector2.UP, 800.0, Vector2(400, 0)))
+		AE.in_trapezoid(o, Vector2.UP, 480.0, Vector2(0, -400))
+		and not AE.in_trapezoid(o, Vector2.UP, 480.0, Vector2(400, 0)))
 
 
 # ══════════════════════════════════════════════════════════════
@@ -412,7 +421,11 @@ func _t_energy_real() -> void:
 	var fired := false
 	var fill_t := -1.0
 	var prev_e := 0.0
-	var sh_before := 0.0
+	## ★★量【实际获盾账】`_st_shield`(`_grant_shield` 里记的), 不量护盾池净变化 ——
+	##   2026-09-15 全套门禁(并行度 2)红过一次「实测 +0.0 / 应 25.0」, 循环后护盾也是 0.0,
+	##   单跑同一份代码 +25.0: 负载下一帧推两步, 主动给的 25 点盾在同一帧就被敌人打光了,
+	##   净变化量出来是"盾给了又没了", 与"给没给"无关。账只增不减, 不受挨打影响。
+	var st_before := 0.0
 	var sh_gain := -1.0
 	## ★上限要让【失败路径】也跑得完: 修坏了(龟能恒 0)时这个循环会跑满,
 	##   跑满还超预算就会被 --quit-after 掐断 ⇒ 反向验证时那条断言"没红"
@@ -427,6 +440,12 @@ func _t_energy_real() -> void:
 		ax["alive"] = true
 		owner_u["hp"] = float(owner_u.get("maxHp", 1.0))
 		owner_u["alive"] = true
+		## ★隔离被动2 偷盾(它也走 `_grant_shield`、也记这本账): 除斧头外场上一律清盾,
+		##   这一节里账的增量就只可能来自主动。只碰别人的盾, 斧头自己的一个字段都不碰。
+		for ou in _s._units:
+			if ou is Dictionary and not is_same(ou, ax):
+				ou["shield"] = 0.0
+				ou["_holyShieldVal"] = 0.0
 		## ★★判据不能是「护盾 > 0」—— **被动2 偷护盾也会让盾 >0**,
 		##   第一版就是这么写的, 结果 2.62 秒就"过了"(那是偷来的盾, 主动根本没放)。
 		##   ⇒ 量产品自己的账: 龟能【攒到满→归零】这个跃迁, 只有 cast_heal 会造成。
@@ -434,10 +453,10 @@ func _t_energy_real() -> void:
 		if prev_e >= AE.ACTIVE_ENERGY - 1.0 and e_now < 1.0:
 			fired = true
 			fill_t = float(_s._t) - t1
-			sh_gain = float(ax.get("shield", 0.0)) - sh_before
+			sh_gain = float(ax.get("_st_shield", 0.0)) - st_before
 			break
 		prev_e = e_now
-		sh_before = float(ax.get("shield", 0.0))
+		st_before = float(ax.get("_st_shield", 0.0))
 	var want_t: float = AE.ACTIVE_ENERGY * AE.SEC_PER_ENERGY
 	_ok("★★★龟能从 0 攒满并**真的放出了主动**(实测 %.2f 秒, 应 %.2f 秒 ±15%%)"
 		% [fill_t, want_t], fired and absf(fill_t - want_t) <= want_t * 0.15,

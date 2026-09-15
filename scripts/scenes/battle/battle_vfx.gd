@@ -75,7 +75,9 @@ func _play_action(u: Dictionary, kind: String) -> void:
 		"hurt":   table = battle.ACTION_HURT
 		"death":  table = battle.ACTION_DEATH
 		_:        return
-	if not table.has(id):
+	## ★单位自带帧表(096 九把斧按形态各用各的, 见 AxeArt): 先查单位身上的 `_act_rows`, 没有再查全局表
+	var own_rows: Dictionary = u.get("_act_rows", {})
+	if not own_rows.has(kind) and not table.has(id):
 		return
 	# hurt 不打断正在播的 attack (避免普攻动作被打断闪烁); attack 不打断 hurt 中
 	if kind != "death" and u.get("anim_action", "") in ["attack", "hurt"]:
@@ -83,7 +85,7 @@ func _play_action(u: Dictionary, kind: String) -> void:
 			pass   # 刷新 hurt
 		elif kind != u.get("anim_action", ""):
 			return
-	var entry: Array = table[id]
+	var entry: Array = own_rows[kind] if own_rows.has(kind) else table[id]
 	var asd = battle._resolve_action(str(entry[0]), float(entry[1]))
 	if asd.is_empty():
 		return
@@ -92,6 +94,12 @@ func _play_action(u: Dictionary, kind: String) -> void:
 		var _aiv: float = maxf(0.15, float(u.get("atk_interval", 0.85)))
 		asd["fps"] = clampf(_afr / (_aiv * 0.45), 10.0, 30.0)   # 斩击动作时长随攻速(LoL式·越快越短): 占攻击周期~45%
 	battle._set_anim_sheet(u, asd, kind, false)
+	## ★统一贴图尺寸的单位(096 斧头): 动作帧与待机同一个像素尺寸、同一条贴地行,
+	##   不走「身高 / 帧高」通用归一(那条默认本体填满整帧, 而斧头表为挥砍留了画布)
+	if u.has("_art_px"):
+		var art_spr = u["sprite"]
+		art_spr.pixel_size = float(u["_art_px"])
+		art_spr.offset = Vector2(0.0, float(u.get("_art_offy", 0.0)))
 	if battle.ANIM_NORM.has(id):
 		battle._elite_sys._elite_fix_norm(u, asd)   # 普攻(battle.ACTION_ATTACK)也是 96×96 的 PixelLab 图, 同样要修归一
 

@@ -130,6 +130,8 @@ const COL_FIELD_GRID := Color(0.62, 0.86, 0.88, 0.15)
 ## 蓄力梯形的地面标记高度(米) —— 略高于地面, 免得被地板 z-fight 吃掉。
 ## ★不是 0: memory [[fb-axis-y-plus-rotation-cancels]] 那次量过, 环 y=0.05 > 顶面 y=0 才稳。
 const FIELD_Y := 0.06
+## 蓄力梯形里六边形的外接圆半径(码)。16 → 32: 用户 2026-09-15「提醒内的6边形需要大小大一倍」。
+const HEX_R := 32.0
 
 var battle = null
 var _mesh_cache: Dictionary = {}      # h(取整到 CHARGE_H_PER_STEP) → ArrayMesh
@@ -243,7 +245,7 @@ func _field_mesh(h: float) -> ArrayMesh:
 	return mesh
 
 
-## 被动 6【蓄力梯形预警】—— 每 0.5 秒长一格, 一直画到砸下。
+## 被动 6【蓄力梯形预警】—— 每 `AE.CHARGE_STEP` 秒长一格(2026-09-15 起 0.25 秒 +30 码), 一直画到砸下。
 ##
 ## ★★这是本次特效里最不能敷衍的一个: 它**就是判定区**。
 ##   玩家看到的亮区边界 = `AE.in_trapezoid` 返回 true 的边界, 逐码对齐。
@@ -448,7 +450,9 @@ func _hex_mesh(h: float, full: bool = false) -> ArrayMesh:
 	##   塞恩 Q 的命中网格里, 一个六边形宽 ≈ 40px 而角色宽 ≈ 60px ⇒ **格子/角色 ≈ 0.67**。
 	##   我第一版给 R=46(直径 92 码), 而小龟碰撞宽约 46 码 ⇒ 比例 **2.0**, 格子比龟还大一倍,
 	##   实拍里整片蜂窝把单位全盖住。⇒ 按 0.67 反推: 直径 ≈ 46 × 0.67 ≈ 31 ⇒ R ≈ 16。
-	var R := 16.0                       # 六边形外接圆半径(码)
+	## ★★用户 2026-09-15:「提醒内的6边形需要大小大一倍，你自己看看怎么调」⇒ 16 → 32(`HEX_R`)。
+	##   同一轮梯形收窄 20%、满蓄 800 → 480 码, 格子总数本来就少了一截。
+	var R := HEX_R                      # 六边形外接圆半径(码)
 	var dx: float = R * 1.5             # 列距
 	var dz: float = R * sqrt(3.0)       # 行距
 	var n := 0
@@ -566,7 +570,10 @@ func _ring_disc_mesh() -> ArrayMesh:
 func hex_burst(root: Node3D, h: float) -> MeshInstance3D:
 	if not is_instance_valid(root) or h <= 0.0:
 		return null
-	var m: ArrayMesh = _hex_mesh(h)
+	## ★★用户 2026-09-15:「为什么只有中间一块发光了？」—— 原来传 full=false, 只铺砸击点周围
+	##   max(60, h×0.11) 码的格子(2026-09-03 照塞恩 Q「命中点局部闪现」做的)。
+	##   而砸下打的是**整个梯形** ⇒ 亮到哪打到哪: 改成满铺, 与判定区同一片。
+	var m: ArrayMesh = _hex_mesh(h, true)
 	if m == null:
 		return null
 	var mi := MeshInstance3D.new()
@@ -781,6 +788,8 @@ func charge_clear(root, flash: bool = false) -> void:
 ## ★用户 2026-08-03 铁律「素材不复用除非点名」: 这五张是为斧头新生成的,
 ##   没有拿剑(eq084)那套顶替。
 const TEX_CLEAVE := "res://assets/sprites/vfx/eq096-cleave.png"
+## 竖劈贴图边长 = 斧头攻击距离 × 这个系数。1.1 → 2.2: 用户 2026-09-15「3/9这个竖劈大小要大一倍」。
+const CLEAVE_SIZE_K := 2.2
 const TEX_SWEEP := "res://assets/sprites/vfx/eq096-sweep.png"
 const TEX_SMASH := "res://assets/sprites/vfx/eq096-smash.png"
 const TEX_SLAM := "res://assets/sprites/vfx/eq096-slam.png"
@@ -864,7 +873,7 @@ func _animate_sheet(s: Sprite3D, nf: int, dur: float, col: Color) -> void:
 
 
 ## 被动 4【竖劈】—— 一道竖直下劈的刀光, 落在目标身上。
-## ★尺寸 = 斧头攻击距离的 1.1 倍: 这一劈打的就是当前普攻目标, 视觉别比够得着的范围大太多。
+## ★尺寸 = 斧头攻击距离 × `CLEAVE_SIZE_K`(2.2)。原来 1.1 倍, 用户 2026-09-15 看形态 3/9 要「大一倍」。
 func cleave(ax: Dictionary, tgt: Dictionary) -> Sprite3D:
 	if not (tgt is Dictionary):
 		return null
@@ -877,7 +886,7 @@ func cleave(ax: Dictionary, tgt: Dictionary) -> Sprite3D:
 	##   ★这一维我又漏了: 第一版漏了"形状"(横弯月牙), 第二版漏了"上下朝向"。
 	##     选素材的判据至少要三条: 亮度 / 形状(长宽比) / 朝向(上下、左右)。
 	return _play_sheet(TEX_CLEAVE, tgt.get("pos", Vector2.ZERO),
-		float(tgt.get("height", 1.0)) * 0.5 + 0.6, rng * 1.1,
+		float(tgt.get("height", 1.0)) * 0.5 + 0.6, rng * CLEAVE_SIZE_K,
 		Color(COL_CLEAVE.r, COL_CLEAVE.g, COL_CLEAVE.b, 0.95), DUR_SLASH,
 		false, 0.0, 0.0, true)
 

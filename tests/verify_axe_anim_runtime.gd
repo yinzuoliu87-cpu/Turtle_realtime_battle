@@ -20,10 +20,11 @@ extends Node
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const AE := preload("res://scripts/gamedata/axe_evolution.gd")
 
-const IDLE := "eq-axe-idle.png"
-const WALK := "eq-axe-walk.png"
-const ATK := "eq-axe-attack.png"
-const CAST := "eq-axe-cast.png"
+## ★2026-09-15 换成悬空 3D 斧(AxeArt): 门禁默认档位 0 ⇒ 木斧那套; 按形态换表在 ⑥ 验。
+const IDLE := "eq096-axe-wood-idle.png"
+const WALK := "eq096-axe-wood-walk.png"
+const ATK := "eq096-axe-wood-attack.png"
+const CAST := "eq096-axe-wood-cast.png"
 
 var _s = null
 var _n := 0
@@ -155,6 +156,50 @@ func _ready() -> void:
 	_s._vfx._play_action(ax, "death")
 	_ok("★★⑤ 调 _play_action(death) 什么都不该发生(贴图仍是 %s)" % before,
 		_cur_tex(ax) == before, "实测 %s" % _cur_tex(ax))
+
+	# ── ⑥ 九把斧按形态各用各的帧表(2026-09-15) ──
+	## 用户 2026-09-15「应该要九把吧，因为9种形态」。判据仍是「引擎此刻拿哪张图画它」, 走真召唤。
+	## ★GameState 的档位 / 造物是真存档字段: 本门禁开头已置 test_mode(不落盘), 用完仍原样还原。
+	var gs2 = get_node_or_null("/root/GameState")
+	_ok("★分母: 拿到 GameState(换形态要靠它)", gs2 != null)
+	if gs2 != null:
+		var stage0 = gs2.get("axe_stage")
+		var final0 = gs2.get("axe_final")
+		gs2.set("axe_stage", 2)
+		gs2.set("axe_final", "")
+		var o2: Dictionary = _s._spawn._make_unit("basic", "left", c + Vector2(-260, 120))
+		_s._units.append(o2)
+		var ax_iron = _s._equip_sys._axe.summon(o2)
+		_ok("★★⑥ 铁斧档召唤出来画的是铁斧待机表",
+			ax_iron is Dictionary and _cur_tex(ax_iron) == "eq096-axe-iron-idle.png",
+			"实测 %s" % (_cur_tex(ax_iron) if ax_iron is Dictionary else "(没召唤出来)"))
+		if ax_iron is Dictionary and is_instance_valid(ax_iron.get("sprite", null)):
+			var px_idle: float = float((ax_iron["sprite"] as Sprite3D).pixel_size)
+			var played: bool = _s._equip_sys._axe.play_action(ax_iron, "axe_cleave")
+			_ok("★★⑥ 铁斧的竖劈招式帧也是铁斧那张(实测 %s)" % _cur_tex(ax_iron),
+				played and _cur_tex(ax_iron) == "eq096-axe-iron-cleave.png")
+			var px_act: float = float((ax_iron["sprite"] as Sprite3D).pixel_size)
+			_ok("★★⑥ 招式帧与待机同一个像素尺寸(按帧高归一的话招式一播斧头就缩)",
+				px_idle > 0.0 and absf(px_act - px_idle) < 1e-6, "待机 %.5f / 招式 %.5f" % [px_idle, px_act])
+		gs2.set("axe_final", "seraph")
+		var o3: Dictionary = _s._spawn._make_unit("basic", "left", c + Vector2(-260, -120))
+		_s._units.append(o3)
+		var ax_ser = _s._equip_sys._axe.summon(o3)
+		_ok("★★⑥ 选了炽天使造物, 画的是炽天使那把(不是档位那把)",
+			ax_ser is Dictionary and _cur_tex(ax_ser) == "eq096-axe-seraph-idle.png",
+			"实测 %s" % (_cur_tex(ax_ser) if ax_ser is Dictionary else "(没召唤出来)"))
+		if ax_ser is Dictionary and is_instance_valid(ax_ser.get("sprite", null)):
+			## ★普攻走 battle_vfx._play_action(不是斧头系统) —— 单位自带 `_act_rows` 与统一尺寸那两个口在那边, 单独量
+			var px_ser_idle: float = float((ax_ser["sprite"] as Sprite3D).pixel_size)
+			_s._vfx._play_action(ax_ser, "attack")
+			_ok("★★⑥ 炽天使普攻走的是它自己的普攻表(单位自带 _act_rows, 不是全局兜底的木斧)",
+				_cur_tex(ax_ser) == "eq096-axe-seraph-attack.png", "实测 %s" % _cur_tex(ax_ser))
+			var px_ser_atk: float = float((ax_ser["sprite"] as Sprite3D).pixel_size)
+			_ok("★★⑥ 普攻帧与待机同一个像素尺寸(battle_vfx 的统一尺寸口)",
+				px_ser_idle > 0.0 and absf(px_ser_atk - px_ser_idle) < 1e-6,
+				"待机 %.5f / 普攻 %.5f" % [px_ser_idle, px_ser_atk])
+		gs2.set("axe_stage", stage0)
+		gs2.set("axe_final", final0)
 
 	if _n < 12:
 		print("  [FAIL] ★分母: 断言只有 %d 条(<12) —— 有整段被跳过了" % _n)

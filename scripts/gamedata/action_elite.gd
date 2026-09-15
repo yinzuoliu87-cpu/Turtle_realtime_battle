@@ -14,7 +14,9 @@ extends RefCounted
 ##   fps **一律由代码里的真实节拍倒推**, 不是拍的 —— 见各行注释。
 
 const TABLE := {
-	"axe_cast": ["vfx/eq-axe-cast.png", 12.0],   # 096 斧头召唤物·技能释放(2026-09-01)
+	## ★★2026-09-15 九个斧头招式键改指木斧的悬空 3D 斧新表(8 帧, 时长照旧 → fps 按 8/6 放大)。
+	##   这里只是兜底 + committed 闸认键; 真正按形态取表在 AxeSystem.play_action(AxeArt.row)。
+	"axe_cast": ["vfx/eq096-axe-wood-cast.png", 16.0],   # 096 斧头召唤物·技能释放(2026-09-01)
 	## ★★096 斧头的八个招式帧 —— 素材 2026-09-01 就在盘上(全部 480x80 = 6 帧 x 80),
 	##   但**一张都没登记、零调用者**, 于是石斧/铁斧/金斧/钻石斧的四条被动和三个造物主动
 	##   在场上全是"站着不动就把伤害结算了"(用户 2026-09-03:「钻石以及4个最终造物什么特效
@@ -28,14 +30,14 @@ const TABLE := {
 	##     单圈仍取 0.75 秒 = 8.0 fps ⇒ 4 秒里循环 5.3 圈。
 	##     ⚠ 别把 4 秒摊成 6 帧(1.5 fps / 每帧 667ms) —— 远超本项目 62~208ms 的区间,
 	##       看上去是卡住而不是蓄力(hammer_big 那行注释记的就是同一个坑)。
-	"axe_smash":   ["vfx/eq-axe-smash.png", 8.0],    # 被动3 石斧·每 SMASH_IV=9 秒的强化猛砸
-	"axe_cleave":  ["vfx/eq-axe-cleave.png", 8.0],   # 被动4 铁斧·每第 2 次普攻竖劈
-	"axe_sweep":   ["vfx/eq-axe-sweep.png", 8.0],    # 被动5 金斧·每第 1 次普攻 180° 横扫
-	"axe_charge":  ["vfx/eq-axe-charge.png", 8.0],   # 被动6 钻石斧·4 秒蓄力(循环)
-	"axe_slam":    ["vfx/eq-axe-slam.png", 8.0],     # 被动6 钻石斧·蓄力完毕砸下
-	"axe_throw":   ["vfx/eq-axe-throw.png", 15.0],   # 炽天使·甩回旋镖(4 秒 10 把 ⇒ 每把 0.4 秒)
-	"axe_plant":   ["vfx/eq-axe-plant.png", 8.0],    # 全息·插地开法阵 4 秒(循环)
-	"axe_execute": ["vfx/eq-axe-execute.png", 8.0],  # 余烬·处决
+	"axe_smash":   ["vfx/eq096-axe-wood-smash.png", 10.67],    # 被动3 石斧·每 SMASH_IV=9 秒的强化猛砸
+	"axe_cleave":  ["vfx/eq096-axe-wood-cleave.png", 10.67],   # 被动4 铁斧·每第 2 次普攻竖劈
+	"axe_sweep":   ["vfx/eq096-axe-wood-sweep.png", 10.67],    # 被动5 金斧·每第 1 次普攻 180° 横扫
+	"axe_charge":  ["vfx/eq096-axe-wood-charge.png", 10.67],   # 被动6 钻石斧·4 秒蓄力(循环)
+	"axe_slam":    ["vfx/eq096-axe-wood-slam.png", 10.67],     # 被动6 钻石斧·蓄力完毕砸下
+	"axe_throw":   ["vfx/eq096-axe-wood-throw.png", 20.0],   # 炽天使·甩回旋镖(4 秒 10 把 ⇒ 每把 0.4 秒)
+	"axe_plant":   ["vfx/eq096-axe-wood-plant.png", 10.67],    # 全息·插地开法阵 4 秒(循环)
+	"axe_execute": ["vfx/eq096-axe-wood-execute.png", 10.67],  # 余烬·处决
 	"whirl":      ["pets/animations/elite/whirl.png", 9.52],      # 4帧 / 0.42s
 	"hammer":     ["pets/animations/elite/hammer.png", 9.30],     # 4帧 / 0.43s
 	"hammer_big": ["pets/animations/elite/hammer_big.png", 12.24],# 18帧 / 1.47s(含1s hold)

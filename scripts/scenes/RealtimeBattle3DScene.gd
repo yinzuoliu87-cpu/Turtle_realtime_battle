@@ -422,7 +422,7 @@ const ACTION_ATTACK := {
 	"__minion_front__": ["pets/animations/melee/attack.png", 12.0],
 	"__minion_back__": ["pets/animations/ranged/attack.png", 12.0],
 	"_summon_wraith": ["pets/animations/wraith/attack.png", 10.0],   # 亡魂(2026-08-21·灵物羁绊召唤)
-	"_summon_axe": ["vfx/eq-axe-attack.png", 12.0],   # 096 斧头召唤物(2026-09-01)
+	"_summon_axe": ["vfx/eq096-axe-wood-attack.png", 16.0],   # 096 斧头召唤物·兜底(按形态的真表见 AxeArt, 召唤时装到单位 _act_rows)
 }
 # 精英小将的 5 个非标准动作 (2026-07-21 PixelLab pro 生成, south-west 朝向 = 原图朝左口径)。不走 _vfx._play_action —— 那个只认 attack/hurt/death 三种; 这些照忍者 dash/backstab 的做法,
 #   在技能代码里直接 _elite_sys._elite_anim() 调。action 名会写进 u["anim_action"], 由 _vfx._play_action 顶部的
@@ -485,7 +485,7 @@ const ACTION_RUN := {
 	#   移动由玩家 _trainer_sys._trainer_move_by 驱动, 但立绘照样流经 _render._update_run_anim(在 for u in _units 里),
 	#   靠"帧间位移>0.8"自动切走路/停回 idle —— 不用另写触发。
 	"__trainer__": ["pets/animations/trainer/run.png", 8.0],
-	"_summon_axe": ["vfx/eq-axe-walk.png", 10.0],   # 096 斧头召唤物(2026-09-01: 素材早在盘上, 只是从没登记 ⇒ 它走路时一直是站姿)
+	"_summon_axe": ["vfx/eq096-axe-wood-walk.png", 13.33],   # 096 斧头召唤物·兜底(按形态的真表见 AxeArt, 召唤时预置 run_sd)
 }
 # GROUND_LIFT: 立绘落地基线 — 现在配合"底部 alpha 软渐隐 shader"故意略低(让软淡的脚部轻插进地面盖住交界), 不再靠抬高去躲硬切. 见 §GROUNDING.
 const GROUND_LIFT := 0.06                  # 略沉 → 软淡脚部融进地面 (原 0.35 是为躲硬切的权宜, 已被 shader 根治)
@@ -1917,7 +1917,7 @@ func _resolve_summon_sprite(spr_id: String) -> Dictionary:
 	const _EQ_BODY_SPR := {
 		"pistol": ["vfx/eq-pistol-idle.png", 40],       # 077 铜管手铳
 		"coraltower": ["vfx/eq-coraltower-idle.png", 64],  # 079 珊瑚急救塔
-		"axe": ["vfx/eq-axe-idle.png", 80],           # 096 小木斧的斧头召唤物(2026-08-31; 角色64px→画布80px)
+		"axe": ["vfx/eq096-axe-wood-idle.png", 112],  # 096 斧头召唤物·兜底(2026-09-15 换成悬空 3D 斧; 按形态换表 + 统一尺寸见 AxeArt.apply)
 	}
 	if _EQ_BODY_SPR.has(spr_id):
 		var _row: Array = _EQ_BODY_SPR[spr_id]

@@ -69,12 +69,12 @@ func _ready() -> void:
 				_ok("h=%.0f 角(%.0f,%.0f) 往外 2 码应在判定外" % [h, p.x, p.y], false)
 	_ok("★分母: 逐格验了 %d 种蓄力高度(应 = %d 格)" % [tested, int(AE.CHARGE_TIME / AE.CHARGE_STEP)],
 		tested == int(AE.CHARGE_TIME / AE.CHARGE_STEP), "为 0 = 空检查")
-	_ok("① 八格梯形的角点全部恰好卡在判定边界上(往里在内/往外在外)", _fail == 0,
+	_ok("① 每一格梯形的角点全部恰好卡在判定边界上(往里在内/往外在外)", _fail == 0,
 		"已 FAIL %d 条" % _fail)
 
 	## ★半宽必须按【满蓄高】插值而不是当前高 —— 这是判定那边注释点名的坑。
-	## 反向说法: 若演出按当前高插值, 那么 h=100 时远边半宽会等于 900/2=450(满宽),
-	## 而判定只给 lerp(300,900,100/800)/2 = 187.5。拿这两个数直接比。
+	## 反向说法: 若演出按当前高插值, 那么 h=100 时远边半宽会等于 720/2=360(满宽),
+	## 而判定只给 lerp(240,720,100/480)/2 = 170。拿这两个数直接比。(2026-09-15 起宽 240/720、满蓄 480)
 	var w_far_at_100: float = APV.half_w_at(100.0)
 	var wrong_if_by_h: float = AE.TRAPEZOID_FAR_W * 0.5
 	_ok("② 半宽按满蓄高插值(h=100 时半宽 %.1f, 不是按当前高的 %.1f)"
@@ -183,6 +183,43 @@ func _ready() -> void:
 		var want: float = float(ax.get("atk_range", 120.0)) * 2.0
 		_ok("⑤b 横扫直径 %.0f 码 = 判定直径 %.0f 码(atk_range×2)" % [real_px, want],
 			absf(real_px - want) < 1.0, "差 %.1f 码 = 演出与判定不等" % absf(real_px - want))
+
+	## ★★⑤x 用户 2026-09-15「3/9这个竖劈大小要大一倍」: 竖劈贴图边长 = atk_range × 2.2(原 × 1.1)。
+	##   量真实节点的 pixel_size × 单帧高反推码数; 系数写死 2.2, 不拿产品常量算阈值(那是恒真式)。
+	var cl_node = made["cleave"]
+	if cl_node != null and is_instance_valid(cl_node):
+		var cs3 := cl_node as Sprite3D
+		var cl_yd: float = cs3.pixel_size * maxf(1.0, float(cs3.texture.get_height())) / _s.WS
+		var cl_want: float = float(ax.get("atk_range", 120.0)) * 2.2
+		_ok("⑤x 竖劈贴图 %.0f 码 = atk_range×2.2 = %.0f 码(原 ×1.1 的一倍)" % [cl_yd, cl_want],
+			absf(cl_yd - cl_want) < 1.0, "差 %.1f 码" % absf(cl_yd - cl_want))
+	else:
+		_ok("⑤x ★分母: 竖劈节点真的建出来了", false, "made[cleave] 为空")
+	## ★★⑤y 用户「提醒内的6边形需要大小大一倍」: 从真网格反推外接圆半径。
+	##   `_hex_mesh` 每个六边形 = 6 个三角形, 第一个三角形 = (中心, 角 0, 角 1), 角到中心 = R × 0.86(留缝)。
+	var full_h: float = AE.CHARGE_TIME / AE.CHARGE_STEP * AE.CHARGE_H_PER_STEP
+	var fm: ArrayMesh = pvfx._hex_mesh(full_h, true)
+	var hex_r := -1.0
+	var fill_tris := 0
+	if fm != null:
+		var fvs: PackedVector3Array = fm.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+		fill_tris = int(fvs.size() / 3)
+		if fvs.size() >= 3:
+			hex_r = Vector2(fvs[1].x - fvs[0].x, fvs[1].z - fvs[0].z).length() / 0.86
+	_ok("⑤y 六边形外接圆半径 %.1f 码 = 32(原 16 的一倍)" % hex_r, absf(hex_r - 32.0) < 0.5,
+		"分母: 满蓄梯形满铺 %d 个三角形" % fill_tris)
+	## ★★⑤z 用户「为什么只有中间一块发光了？」: 砸下亮起的蜂窝要铺满整个梯形(与判定区同一片)。
+	##   走真函数 `hex_burst`, 量它挂上去的网格三角形数 = 满铺梯形的三角形数
+	##   (修前只铺砸击点周围 max(60, h×0.11) 码, 少一大截)。
+	var burst_root := Node3D.new()
+	_s._world.add_child(burst_root)
+	var hb = pvfx.hex_burst(burst_root, full_h)
+	var burst_tris := -1
+	if hb is MeshInstance3D and (hb as MeshInstance3D).mesh != null:
+		burst_tris = int(((hb as MeshInstance3D).mesh as ArrayMesh).surface_get_arrays(0)[Mesh.ARRAY_VERTEX].size() / 3)
+	_ok("⑤z 砸下亮起的六边形铺满整个梯形(亮 %d / 满铺 %d 个三角形)" % [burst_tris, fill_tris],
+		fill_tris > 0 and burst_tris == fill_tris)
+	burst_root.queue_free()
 
 	# ══════════════════════════════════════════════════════════════
 	#  ③ 梯形在所有退出路径上都收掉

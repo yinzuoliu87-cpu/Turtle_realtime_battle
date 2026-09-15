@@ -106,6 +106,8 @@ func summon(u: Dictionary) -> Variant:
 	## ★最终造物的属性要在 `_recalc_stats` **之前**折进去(它改的是 base_*)。
 	##   ★钉在召唤物身上: 一路打到一半玩家在别处选了造物, 场上这只不该中途变身。
 	_fin.apply_stats(ax, _gs_str("axe_final", ""))
+	## ★九把悬空 3D 斧(2026-09-15): 按形态(造物优先, 否则进化档位)换帧表 + 统一贴图尺寸, 见 AxeArt 头注
+	AxeArt.apply(battle, ax, AxeArt.form_of(_gs_str("axe_final", ""), str(AE.stage(si)["key"])))
 	battle._recalc_stats(ax)
 	ax["hp"] = float(ax["maxHp"])
 	u["_axe_ref"] = ax                       # ★只用 is_same 比较, 绝不当 Dictionary 的键(CLAUDE.md §3.2)
@@ -186,10 +188,23 @@ func play_action(ax: Dictionary, key: String, loop: bool = false) -> bool:
 	var e = battle.ACTION_ELITE.get(key, null)
 	if e == null:
 		return false
-	var asd: Dictionary = battle._resolve_action(str(e[0]), float(e[1]))
+	## ★九把斧按形态各用各的招式帧(AxeArt); 没装形态的(门禁合成单位)才退回总表那张兜底
+	var path: String = str(e[0])
+	var fps: float = float(e[1])
+	var form: String = str(ax.get("_axe_form", ""))
+	if form != "" and AxeArt.ELITE_KEYS.has(key):
+		var r: Array = AxeArt.row(form, str(AxeArt.ELITE_KEYS[key]))
+		path = str(r[0])
+		fps = float(r[1])
+	var asd: Dictionary = battle._resolve_action(path, fps)
 	if asd.is_empty():
 		return false
 	battle._set_anim_sheet(ax, asd, key, loop)
+	if ax.has("_art_px"):
+		## 与待机同一个像素尺寸、同一条贴地行(见 AxeArt 头注「尺寸」)
+		var spr = ax["sprite"]
+		spr.pixel_size = float(ax["_art_px"])
+		spr.offset = Vector2(0.0, float(ax.get("_art_offy", 0.0)))
 	## ★记一个同步标记, 门禁拿它当【真的播了哪一招】的账 ——
 	##   不是数"我插的触发标记"(memory [[fb-gate-must-measure-requirement-not-my-hook]]),
 	##   而是这个函数**成功换帧表**之后才写, 与屏幕上真正在放的那一招是同一件事。

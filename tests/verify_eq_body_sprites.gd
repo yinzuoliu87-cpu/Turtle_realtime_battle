@@ -34,15 +34,8 @@ extends Node
 const PISTOL := "res://assets/sprites/vfx/eq-pistol-idle.png"
 const HELI := "res://assets/sprites/vfx/eq-heli-idle.png"
 const CORAL := "res://assets/sprites/vfx/eq-coraltower-idle.png"
-## 096 小木斧的斧头召唤物(2026-08-31)。★它是全表第一个有【四套动作】的装备召唤物,
-##   而不是只有一套 idle ⇒ 四张都要过 ①②③(尺寸/首尾闭合/朝向)。
-## ★帧数是 **6** 不是 16 —— pro 模式在 80px 画布固定出 4 帧, 纯乒乓 0,1,2,3,2,1 就是 6 帧。
-##   我第一版照抄手枪/直升机填了 16(它们素材本来 9 帧 ⇒ 乒乓正好 16), 凑出来的表首尾接不上,
-##   门禁当场红。**帧数由素材决定, 不是照抄一个数。**
-const AXE_IDLE := "res://assets/sprites/vfx/eq-axe-idle.png"
-const AXE_WALK := "res://assets/sprites/vfx/eq-axe-walk.png"
-const AXE_ATK := "res://assets/sprites/vfx/eq-axe-attack.png"
-const AXE_CAST := "res://assets/sprites/vfx/eq-axe-cast.png"
+## 096 小木斧的斧头召唤物: 2026-09-15 起换成九把悬空 3D 斧(9 形态 × 12 动作), 见 `_check_axe_family`。
+##   (旧的人形 PixelLab 四张表已删; 那一版"帧数由素材决定, 不是照抄一个数"的教训仍适用 —— 新表 8 帧是渲染脚本定的。)
 const DRONE := "res://assets/sprites/vfx/eq-orbdrone-idle.png"
 
 var _n := 0
@@ -59,14 +52,8 @@ func _ready() -> void:
 	# 086 浮游炮绕着龟转, **没有朝向**这回事; 这条纯粹守"表没被人镜像/换掉"。
 	_check_strip("086 六分仪浮游炮", DRONE, 40, 16, -1)
 
-	## 096 小木斧的斧头召唤物 —— 全表第一个有【四套动作】的装备召唤物。
-	## ★bias 填 -1(重心偏左)是**量出来的**不是猜的: 四张第 0 帧重心 x=38.6/33.8, 中线 40.0。
-	##   与仓库约定一致(battle_render.gd:373「立绘默认朝左, 靠 flip_h 镜像」)。
-	##   ⚠ 这条守的是"谁把表镜像回去了", 守不住"一张全新的、朝向本来就错的表"(见文件头 ③)。
-	_check_strip("096 斧头·待机", AXE_IDLE, 80, 6, -1)
-	_check_strip("096 斧头·走路", AXE_WALK, 80, 6, -1)
-	_check_strip("096 斧头·攻击", AXE_ATK, 80, 6, -1)
-	_check_strip("096 斧头·技能", AXE_CAST, 80, 6, -1)
+	## 096 小木斧的九把悬空 3D 斧(2026-09-15): 108 张帧表
+	_check_axe_family()
 
 	# ── 089 蚀月符纸: 单帧立绘(不是帧表), 判据是**它不是一张空白板**。
 	#    由来: v0.19.37 之前它是 `talisman_tex_image()` 拼的几个矩形, 干净台一拍是
@@ -146,6 +133,58 @@ func _check_talisman() -> void:
 	# ★阈值 8%: 一张纯白板是 0%, 现在这张实测远高于它。写字面量不引用被测数据。
 	_ok("089 符纸 ⑤ 纸上真的有笔画(暗于底色的像素 ≥ 8%)", frac >= 0.08,
 		"底色亮度 %.2f / 笔画占比 %.1f%%" % [hi, frac * 100.0])
+
+
+## ── 096 小木斧九把悬空 3D 斧(2026-09-15 换掉人形立绘): 9 形态 × 12 动作 = 108 张帧表 ──
+## ★判据都量素材本身, 期望值写字面量(不引用 AxeArt 常量, 否则是拿代码跟它自己比):
+##   ① 规格: 帧高 112、横排 8 帧
+##   ② 每一帧都有内容且【不贴格子边】—— 80 格那一版砸/劈/插地挥到最低点刃被底边切掉, 只有这条抓得到
+##   ③ 九张待机表乒乓排帧 + 朝右(刃在柄右侧 ⇒ 重心偏右): 走 _check_strip
+##      (量出来九把第 0 帧重心 x = 58.6~64.0, 中线 56)
+##   ④ 单次动作末帧回到起手姿势(播完接回待机不跳): 首末帧差 ≤ 20 px
+##      (量出来除施法外全是 0; 施法末帧原来留 0.2 发光, 差 30~93 px —— 已把末帧发光归零重渲)
+func _check_axe_family() -> void:
+	var forms := ["wood", "stone", "iron", "gold", "diamond", "undead", "seraph", "holo", "ember"]
+	var actions := ["idle", "walk", "attack", "cast", "smash", "cleave", "sweep", "charge", "slam", "throw", "plant", "execute"]
+	var oneshot := ["attack", "cast", "smash", "cleave", "sweep", "throw", "execute"]
+	var n_sheets := 0
+	var n_frames := 0
+	var bad_spec: Array = []
+	var edge_hits: Array = []
+	var empty_frames: Array = []
+	var not_back: Array = []
+	for f in forms:
+		for a in actions:
+			var path: String = "res://assets/sprites/vfx/eq096-axe-%s-%s.png" % [f, a]
+			if not ResourceLoader.exists(path):
+				bad_spec.append("%s-%s 缺图" % [f, a])
+				continue
+			var img: Image = (load(path) as Texture2D).get_image()
+			if img.get_height() != 112 or img.get_width() != 112 * 8:
+				bad_spec.append("%s-%s %dx%d" % [f, a, img.get_width(), img.get_height()])
+				continue
+			n_sheets += 1
+			for i in range(8):
+				var ur: Rect2i = img.get_region(Rect2i(i * 112, 0, 112, 112)).get_used_rect()
+				n_frames += 1
+				if ur.size.x <= 0 or ur.size.y <= 0:
+					empty_frames.append("%s-%s#%d" % [f, a, i])
+				elif ur.position.x <= 0 or ur.position.y <= 0 or ur.end.x >= 112 or ur.end.y >= 112:
+					edge_hits.append("%s-%s#%d %s" % [f, a, i, str(ur)])
+			if a in oneshot:
+				var d: int = _frame_diff(img, 112, 0, 7)
+				if d > 20:
+					not_back.append("%s-%s 首末差 %d px" % [f, a, d])
+	_ok("096 悬空斧 ① 108 张帧表都在且是 112×8 帧(实测 %d 张 / %d 帧)" % [n_sheets, n_frames],
+		n_sheets == 108 and n_frames == 864 and bad_spec.is_empty(), str(bad_spec.slice(0, 6)))
+	_ok("096 悬空斧 ② 每一帧都有内容(空帧 = 播到那一帧斧头消失)",
+		n_frames > 0 and empty_frames.is_empty(), str(empty_frames.slice(0, 6)))
+	_ok("096 悬空斧 ② 没有一帧贴到格子边(贴边 = 挥到最低点刃被切掉, 80 格那一版的毛病)",
+		n_frames > 0 and edge_hits.is_empty(), str(edge_hits.slice(0, 6)))
+	_ok("096 悬空斧 ④ 单次动作末帧回到起手姿势(首末帧差 ≤ 20 px, 播完接回待机不跳)",
+		n_sheets > 0 and not_back.is_empty(), str(not_back.slice(0, 6)))
+	for f in forms:
+		_check_strip("096 悬空斧·%s·待机" % f, "res://assets/sprites/vfx/eq096-axe-%s-idle.png" % f, 112, 8, 1)
 
 
 ## `bias`: 1 = 重心该偏右 · -1 = 该偏左 · **0 = 左右对称**(塔这种没有朝向的东西)

@@ -182,7 +182,7 @@ func seraph_boomerang_settle(ax: Dictionary, dir: Vector2) -> int:
 		reach = maxf(reach, rel.dot(d))
 	vfx.seraph_boomerang(org, d, reach, 0.45)   # 演出: 一把飞过去, 画到最远命中处
 	## ★斧头本体的【甩】动作帧 —— 每把一次(4 秒 10 把 ⇒ 每 0.4 秒), fps 就是按这个定的。
-	##   在此之前斧头是站着不动把 10 把镖变出来的(素材 eq-axe-throw.png 零调用者)。
+	##   在此之前斧头是站着不动把 10 把镖变出来的(当时的人形素材 eq-axe-throw.png 零调用者; 2026-09-15 起换成悬空 3D 斧, 按形态取 eq096-axe-<形态>-throw.png, 见 AxeArt)。
 	_play(ax, "axe_throw")
 	return n
 

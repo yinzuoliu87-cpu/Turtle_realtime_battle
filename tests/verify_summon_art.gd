@@ -35,11 +35,12 @@ const SPAWNSRC := "res://scripts/scenes/battle/battle_spawn.gd"
 const SHEETS := [
 	["pistol", "vfx/eq-pistol-idle.png", 40],
 	["coraltower", "vfx/eq-coraltower-idle.png", 64],
-	["axe", "vfx/eq-axe-idle.png", 80],
+	["axe", "vfx/eq096-axe-wood-idle.png", 112],
 ]
 ## 斧头的四套动作 —— 朝向必须**四套一致**(一部分朝左一部分朝右是用户 2026-08-31 抓过的)
-const AXE_ANIMS := ["vfx/eq-axe-idle.png", "vfx/eq-axe-walk.png",
-	"vfx/eq-axe-attack.png", "vfx/eq-axe-cast.png"]
+## ★2026-09-15 换成悬空 3D 斧: 朝向拿【铁斧】的待机与走路量(灰刃 / 棕柄颜色分得开; 九把同一套几何)。
+##   普攻 / 施法会把斧头转过去(施法绕竖轴转一整圈), 不代表朝向, 不投票。
+const AXE_ANIMS := ["vfx/eq096-axe-iron-idle.png", "vfx/eq096-axe-iron-walk.png"]
 
 var _n := 0
 var _fail := 0
@@ -74,25 +75,29 @@ func _ready() -> void:
 ## ★为什么用护目镜而不是"像素重心": 重心量的是身体胖瘦, 对朝向根本不敏感 ——
 ##   实测斧头四套的重心全部偏左(因为它左手垂着), 而脸其实朝右。**尺子要匹配被测概念。**
 func _visor_off(img: Image, x0: int, fw: int) -> Array:
-	var body: Array = []
-	var vs: Array = []
+	## ★2026-09-15 起斧头不再是人形(没有护目镜) ⇒ 量【刃(灰)相对柄(棕)的横向偏移】。
+	##   函数名沿用, 返回同一个形状 [可见像素数, 偏移]: 偏移 > 0 = 刃在柄右侧 = 朝右。
+	var blade: Array = []
+	var handle: Array = []
 	for y in range(img.get_height()):
 		for x in range(fw):
 			var c: Color = img.get_pixel(x0 + x, y)
-			if c.a < 0.04:
+			if c.a < 0.5:
 				continue
-			body.append(x)
-			if c.g > 0.55 and c.b > 0.55 and c.r < c.g - 0.12:
-				vs.append(x)
-	if body.is_empty() or vs.is_empty():
-		return [vs.size(), 0.0]
-	var bmin: int = body.min()
-	var bmax: int = body.max()
-	var bc: float = float(bmin + bmax) * 0.5
-	var vsum := 0.0
-	for v in vs:
-		vsum += float(v)
-	return [vs.size(), vsum / float(vs.size()) - bc]
+			var lum: float = c.r * 0.30 + c.g * 0.59 + c.b * 0.11
+			if absf(c.r - c.g) < 0.05 and absf(c.g - c.b) < 0.06 and lum > 0.30:
+				blade.append(x)
+			elif c.r > c.b + 0.15 and c.r > c.g + 0.05:
+				handle.append(x)
+	if blade.is_empty() or handle.is_empty():
+		return [mini(blade.size(), handle.size()), 0.0]
+	var bs := 0.0
+	for v in blade:
+		bs += float(v)
+	var hs := 0.0
+	for v in handle:
+		hs += float(v)
+	return [mini(blade.size(), handle.size()), bs / float(blade.size()) - hs / float(handle.size())]
 
 
 func _t_facing() -> void:
@@ -111,14 +116,14 @@ func _t_facing() -> void:
 		for i in range(img.get_width() / fw):
 			var r: Array = _visor_off(img, i * fw, fw)
 			if int(r[0]) < 8:
-				continue        # 这一帧看不见护目镜, 不投票
+				continue        # 这一帧刃或柄量不到, 不投票
 			measured += 1
 			if float(r[1]) > 0.0:
 				right += 1
 			else:
 				left += 1
 		per_sheet.append([rel.get_file(), left, right])
-	_ok("★分母: 真的量到了帧(护目镜可见的帧数 = %d, 0 就是空检查)" % measured, measured >= 16,
+	_ok("★分母: 真的量到了帧(刃与柄都量得到的帧数 = %d, 0 就是空检查)" % measured, measured >= 16,
 		str(per_sheet))
 	## 四套必须**朝同一边** —— 一部分朝左一部分朝右是用户 2026-08-31 亲自抓过的形态
 	var all_right := true
@@ -128,7 +133,7 @@ func _t_facing() -> void:
 			all_right = false
 		if int(row[2]) > 0:
 			all_left = false
-	_ok("★斧头四套动作朝向【一致】(不许一部分朝左一部分朝右)", all_right or all_left,
+	_ok("★斧头待机与走路朝向【一致】(不许一部分朝左一部分朝右)", all_right or all_left,
 		str(per_sheet))
 	## 素材朝右 ⇒ 必须登记进 ART_FACES_RIGHT; 朝左 ⇒ 必须**不**登记。两个方向都卡。
 	var src: String = FileAccess.get_file_as_string(RBSRC)
@@ -219,7 +224,7 @@ func _t_size() -> void:
 	_ok("★分母: battle_spawn 里的 pixel_size 公式仍是 (TARGET_BODY_H × col/56) / 帧高",
 		spawn.contains("(battle.TARGET_BODY_H * (col_size / 56.0)) / float(maxi(1, fh))"))
 	var target_h := 2.0
-	var p: String = "res://assets/sprites/vfx/eq-axe-idle.png"
+	var p: String = "res://assets/sprites/vfx/eq096-axe-iron-idle.png"
 	var img: Image = (load(p) as Texture2D).get_image()
 	var fh: int = img.get_height()
 	var y0 := 99999
@@ -230,7 +235,9 @@ func _t_size() -> void:
 				y0 = mini(y0, y)
 				y1 = maxi(y1, y)
 	var content: int = y1 - y0 + 1
-	var px: float = (target_h * (AE.MINION_COL_SIZE / 56.0)) / float(fh)
+	## ★2026-09-15 起斧头所有动作统一用 AxeArt.TEXEL_M(召唤时由 AxeArt.apply 设到立绘上, verify_axe_anim_runtime ⑥ 量真节点),
+	##   不再走 col_size 公式 —— 悬空斧的帧为挥砍留了画布, 套公式只剩 0.7 m。内容高度仍从贴图里量, 不读常量。
+	var px: float = AxeArt.TEXEL_M
 	var body_m: float = float(content) * px
 	## 龟的真实身高分布 —— 判据落在**它**上面, 不是我拍的一个数
 	var hs: Array = []
@@ -277,10 +284,10 @@ func _t_channels() -> void:
 	var src: String = FileAccess.get_file_as_string(RBSRC)
 	## 四条各自的落点(表名 → 这张表里该出现的素材)
 	var want := [
-		["待机", "_EQ_BODY_SPR", "eq-axe-idle.png"],
-		["走路", "ACTION_RUN", "eq-axe-walk.png"],
-		["攻击", "ACTION_ATTACK", "eq-axe-attack.png"],
-		["技能释放", "ACTION_ELITE", "eq-axe-cast.png"],
+		["待机", "_EQ_BODY_SPR", "eq096-axe-wood-idle.png"],
+		["走路", "ACTION_RUN", "eq096-axe-wood-walk.png"],
+		["攻击", "ACTION_ATTACK", "eq096-axe-wood-attack.png"],
+		["技能释放", "ACTION_ELITE", "eq096-axe-wood-cast.png"],
 	]
 	## ★★2026-09-03 改判法: 原来是**从主文件源码里 grep `const XXX := {`**,
 	##   于是 `ACTION_ELITE` 一搬到 `scripts/gamedata/action_elite.gd`(主文件超预算,
