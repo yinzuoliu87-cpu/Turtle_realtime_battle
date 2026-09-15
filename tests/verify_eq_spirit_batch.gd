@@ -159,6 +159,7 @@ func _ready() -> void:
 	_t_phys_064()
 	await _t_vfx_nodes()
 	_t064_bladder_follow()
+	_t064_ghost_bar()
 
 	_s.queue_free()
 	await get_tree().process_frame
@@ -967,6 +968,60 @@ func _updots(mi: MeshInstance3D, surf: int) -> Array:
 			cnt += 1
 		i += 3
 	return [cnt, (mn if cnt > 0 else 0.0), (sum / float(maxi(1, cnt)))]
+
+
+# ─────────────────────────────────────────────────────────────
+# 064 浮囊护盾进血条(救生圈珊瑚段) —— 用户 2026-09-15「那64这个不是获得护盾吗，没有特殊护盾条？」
+#   链条同 068 法力盾: SpecialBalance 余额 → _tick_bladder 每帧镜像 _ghostShieldVal → HpBar 读字段画段。
+#   判据落在真实单位字段 + 真实 HpBar 对象; 镜像走真入口 tick_unit, 不由门禁手写。
+# ─────────────────────────────────────────────────────────────
+func _t064_ghost_bar() -> void:
+	print("── 064 浮囊护盾进血条 ──")
+	_s._units.clear()
+	_s._spec.clear_all()
+	var u: Dictionary = _equip_flags(_mk("fortune", "left", Vector2(-300.0, 60.0), 1000.0), "p2eq_064", 3)
+	u["hp"] = 300.0
+	_sp.tick_unit(u, 0.05)
+	var granted: float = _s._spec.val(u, "p2eq_064_ghost")
+	_ok("064血条 ★分母: 跌破 35%% 那一步 SpecialBalance 里真有浮囊护盾(%.0f)" % granted, granted > 0.0)
+	_ok("064血条 ★★开盾同一步镜像进单位字段 _ghostShieldVal(%.0f ≈ %.0f; 血条只认单位字段)" % [float(u.get("_ghostShieldVal", -1.0)), granted],
+		granted > 0.0 and absf(float(u.get("_ghostShieldVal", -1.0)) - granted) < 1.0)
+	var hb = u.get("hp_bar", null)
+	_ok("064血条 ★分母: 单位真有 HpBar 组件", hb != null and is_instance_valid(hb))
+	if hb == null or not is_instance_valid(hb):
+		return
+	hb.update_state(u)
+	_ok("064血条 ★★HpBar 把浮囊护盾读成段值(hb._ghost %.0f)" % float(hb._ghost), absf(float(hb._ghost) - granted) < 1.0)
+	_ok("064血条 ★★浮囊护盾计入条总量 _bm(%.0f ≥ 血 %.0f + 盾 %.0f; 不计入 ⇒ 段宽恒 0 画不出来)" % [float(hb._bm), float(u["hp"]), granted],
+		float(hb._bm) >= float(u["hp"]) + granted - 1.0)
+	## 段色要与血条上其它每一种颜色都分得开: RGB 距离 ≥ 60(写死; 幽灵青离壳青绿只有 46, 就是被这条挡下的)
+	var others := {"我方血": hb._ALLY_L, "敌方血": hb._ENEMY_L, "失血拖尾": hb._DELAY_L, "普通盾": hb._SHIELD_L, "圣盾": hb._HOLY_L,
+		"壳盾": hb._HSHELL_L, "海胆": hb._URCHIN_L, "法力": hb._MANA_L, "终极": hb._ULT_L, "光环": hb._AURA, "泡泡": hb._BUBBLE, "海葵": hb._ANEM}
+	var gc: Color = hb._GHOST_L
+	var near_name := ""
+	var near_d := 9999.0
+	for k in others:
+		var oc: Color = others[k]
+		var d: float = Vector3(float(gc.r8 - oc.r8), float(gc.g8 - oc.g8), float(gc.b8 - oc.b8)).length()
+		if d < near_d:
+			near_d = d
+			near_name = str(k)
+	_ok("064血条 段色 #%02x%02x%02x 与血条上其它颜色都分得开(最近是%s, RGB 距离 %.0f ≥ 60)" % [gc.r8, gc.g8, gc.b8, near_name, near_d],
+		others.size() == 12 and near_d >= 60.0)
+	## 20 秒线性衰减在条上看得出: 衰减走真实 SpecialBalance.tick, 镜像跟着缩(写死 10 秒)
+	_s._spec.tick(10.0)
+	_sp.tick_unit(u, 0.05)
+	var half: float = float(u.get("_ghostShieldVal", -1.0))
+	_ok("064血条 衰减跟得上(10 秒后镜像 %.0f, 初始 %.0f 的 30%%~70%%)" % [half, granted], half > granted * 0.3 and half < granted * 0.7)
+	## 破盾: 打光余额 ⇒ 同一步段值归零(中间不推 tick_unit), 血条重读也是 0
+	var burst0: int = int(u.get("_ghost_burst_n", 0))
+	_s._spec.absorb(u, _s._spec.val(u, "p2eq_064_ghost") + 10.0)
+	_ok("064血条 ★★破盾同一步镜像归零(%.2f; 不等 tick, 否则条上挂着一段已经不存在的盾)" % float(u.get("_ghostShieldVal", -1.0)),
+		int(u.get("_ghost_burst_n", 0)) == burst0 + 1 and float(u.get("_ghostShieldVal", -1.0)) == 0.0)
+	hb.update_state(u)
+	_ok("064血条 破盾后血条段值 0(hb._ghost %.2f)" % float(hb._ghost), float(hb._ghost) == 0.0)
+	_s._units.clear()
+	_s._spec.clear_all()
 
 
 # ─────────────────────────────────────────────────────────────

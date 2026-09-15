@@ -422,8 +422,11 @@ func _tick_bladder(u: Dictionary, _delta: float) -> void:
 			stt["ghost_fired"] = true
 			u["eq_state"]["p2eq_064"] = stt
 			_ghost_grant(u, int(u["_bladder_si"]))
-			return
+			stt = u["eq_state"].get("p2eq_064", {})
 	u["eq_state"]["p2eq_064"] = stt
+	## ★血条浮囊珊瑚段: 余额每帧镜像进单位字段(HpBar 只认 f 的字段, 拿不到 battle._spec)。
+	##   吸收 / 衰减 / 破盾全走 SpecialBalance, 这里只抄读数; 开盾那一步就有值(上面不 return)。
+	u["_ghostShieldVal"] = battle._spec.val(u, GHOST_KEY)
 	## 浮囊演出跟着真实余额瘪下去 —— 演出不自己算衰减(两套真相会打架)
 	var h = stt.get("ghost_vfx", null)
 	if h is Dictionary and not (h as Dictionary).is_empty():
@@ -479,6 +482,7 @@ func _ghost_break(u: Dictionary, _star_i: int) -> void:
 		_vfx.drop(h)
 	stt["ghost_vfx"] = null
 	stt["ghost_res"] = 0.0
+	u["_ghostShieldVal"] = 0.0   # 破盾同一步血条段归零(不等下一帧镜像)
 	u["eq_state"]["p2eq_064"] = stt
 	var n := 0
 	for o in battle._targeting._enemies_of(u):
