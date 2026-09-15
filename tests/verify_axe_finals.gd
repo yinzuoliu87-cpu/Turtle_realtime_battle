@@ -20,6 +20,9 @@ const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const AF := preload("res://scripts/gamedata/axe_final_stats.gd")
 const AE := preload("res://scripts/gamedata/axe_evolution.gd")
 const AV := preload("res://scripts/scenes/battle/axe_final_vfx.gd")
+const ASV := preload("res://scripts/scenes/battle/axe_seraph_vfx.gd")
+## 推回旋镖用的模拟步长(= 60 帧/秒一步)。★门禁推战斗步, 不等任何 tween(CLAUDE.md §3.5)。
+const DT := 1.0 / 60.0
 
 var _s = null
 var _n := 0
@@ -235,44 +238,264 @@ func _t_seraph() -> void:
 	_ok("★★普攻附带 %d 层灼烧(实测 %d)" % [AF.SERAPH_BURN_ON_HIT, burn],
 		burn >= AF.SERAPH_BURN_ON_HIT)
 
-	## 回旋镖: 直线上的吃到、身后的不吃
-	var front: Dictionary = _mk_foe(Vector2(400, 60))
-	var behind: Dictionary = _mk_foe(Vector2(-400, 0))
-	var far_side: Dictionary = _mk_foe(Vector2(400, AF.SERAPH_BOOM_R + 200.0))
-	var f0: float = float(front["hp"])
-	var b0: float = float(behind["hp"])
-	var s0: float = float(far_side["hp"])
-	var hit: int = fin.seraph_boomerang_settle(ax, Vector2.RIGHT)
-	_ok("★分母: 回旋镖命中 %d 个" % hit, hit >= 1)
-	_ok("★★正前方那个掉血了(%.0f → %.0f)" % [f0, float(front["hp"])], float(front["hp"]) < f0)
-	_ok("★★★身后那个【一点没掉】(「直直飞过」是单向的)",
-		is_equal_approx(float(behind["hp"]), b0))
-	_ok("★★★横向超出半宽 %.0f 的那个也没掉" % AF.SERAPH_BOOM_R,
-		is_equal_approx(float(far_side["hp"]), s0))
-	## ★★★「1ATK**魔法**伤害」必须吃魔抗(memory: 伤害类型是接线不是颜色)。
-	##   同一个文件里亡灵环踩过这坑并修了, 回旋镖漏了 —— 而**当时没有任何一条断言问过它**,
-	##   因为上面几条只问"掉没掉血/身后掉没掉", 对"削了多少"完全不敏感。
-	var mr_foe: Dictionary = _mk_foe(Vector2(300, 0))
-	mr_foe["mr"] = 200.0
+	## ── 回旋镖(2026-09-15 重做: 飞出去 → 折返 → 飞回斧头, 经过时结算) ──
+	## 用户:「7/9的回旋镖同样是在敷衍我啊，回旋镖是什么？以及特效和实际伤害范围完全不一样啊，也没有命中特效」
+	## ★旧断言直接调 `seraph_boomerang_settle`(出手当帧全部结算) —— 那个函数已经没了。
+	##   新断言一律【推模拟步】(直接调 tick_boomerangs, 真链另在 ⑦ 节走 EquipSystem.tick_global), 不等 tween,
+	##   量产品自己的账: 敌人真实血量 / 灼烧层 / 在途记录的中心 / 世界里真的镖身与火花节点。
+	## ★每个用例在【干净的单位表】里跑: 场景刷出来的队伍与前面各节的探针会改变「身前最远那个」,
+	##   飞出距离就量不准(memory: 拿随机单位测精确数值 ⇒ CI 偶发红)。结束时原样放回。
+	var bak: Array = _s._units.duplicate()
+	fin._booms.clear()
+	_t_boom_pass(fin)
+	_t_boom_filters(fin)
+	_t_boom_return(fin)
+	_t_boom_leave(fin)
+	_s._units.clear()
+	_s._units.append_array(bak)
+	fin._booms.clear()
+
+
+## 一个敌人正前方 700 码: 出手当帧不掉血 / 镖到了才掉 / 飞出去再回来 / 每把只吃一次 / 节点外径与位置 / 飞回收节点。
+func _t_boom_pass(fin) -> void:
+	_s._units.clear()
+	var ax: Dictionary = _mk_axe("seraph")
+	var org: Vector2 = ax["pos"]
+	var foe: Dictionary = _mk_foe(Vector2(700, 0))
+	var h0: float = float(foe["hp"])
+	var rec: Dictionary = fin.seraph_boomerang_launch(ax, Vector2.RIGHT)
+	_ok("★分母: 出手登记了一把在途回旋镖(在途 %d 把)" % fin._booms.size(),
+		not rec.is_empty() and fin._booms.size() == 1)
+	_ok("★★★出手当帧敌人【一点没掉】(原来出手当帧就全部结算 = 伤害与演出脱节)",
+		absf(float(foe["hp"]) - h0) < 0.5, "%.0f → %.0f" % [h0, float(foe["hp"])])
+	_ok("★飞出距离取最小值 %.0f 码(身前最远的敌人才 700 码)" % AF.SERAPH_BOOM_MIN_OUT,
+		is_equal_approx(float(rec.get("out", -1.0)), AF.SERAPH_BOOM_MIN_OUT), "out=%.1f" % float(rec.get("out", -1.0)))
+	var node = rec.get("node", null)
+	_ok("★分母: 镖身节点真的建进了世界(Sprite3D)",
+		node is Sprite3D and is_instance_valid(node) and (node as Node).is_inside_tree())
+	if node is Sprite3D:
+		var sp := node as Sprite3D
+		var fw: float = (float(sp.texture.get_width()) / float(maxi(1, sp.hframes))) if sp.texture != null else 0.0
+		var diam: float = sp.pixel_size * fw / float(_s.WS)
+		_ok("★★★镖身外径 = 2 × 判定半宽 = %.0f 码(pixel_size × 帧宽 ÷ WS 实测 %.1f 码)" % [2.0 * AF.SERAPH_BOOM_R, diam],
+			fw > 0.0 and absf(diam - 2.0 * AF.SERAPH_BOOM_R) < 0.5, "帧宽 %.0f 像素 × %d 帧" % [fw, sp.hframes])
+		_ok("★镖身贴地(板面法线朝上 · 不是公告板)",
+			sp.billboard == BaseMaterial3D.BILLBOARD_DISABLED and absf(sp.basis.z.normalized().dot(Vector3.UP)) > 0.99)
+		_ok("★镖身 NEAREST(像素贴图不许被线性插值糊掉)", sp.texture_filter == BaseMaterial3D.TEXTURE_FILTER_NEAREST)
+	var art: Array = _boom_art_radius()
+	_ok("★★画出来的外径也对得上: %d 帧里不透明像素离帧心最远 = 半格的 %.0f%%~%.0f%%(要 90%%~100%%)"
+		% [int(art[2]), float(art[0]) * 100.0, float(art[1]) * 100.0],
+		int(art[2]) == ASV.BOOM_FRAMES and float(art[0]) >= 0.90 and float(art[1]) <= 1.0)
+	## 推模拟步: 记每一步的中心离出手点多远、哪一步掉的血、节点有没有跟着中心走
+	var dists: Array = []
+	var hit_d := -1.0
+	var hp_after_hit := -1.0
+	var node_ok := true
+	var node_checked := 0
+	var steps := 0
+	while steps < 600 and not fin._booms.is_empty():
+		var hp_prev: float = float(foe["hp"])
+		fin.tick_boomerangs(DT)
+		steps += 1
+		var p: Vector2 = rec["pos"]
+		dists.append(p.distance_to(org))
+		if hit_d < 0.0 and float(foe["hp"]) < hp_prev:
+			hit_d = p.distance_to(org)
+			hp_after_hit = float(foe["hp"])
+		if not bool(rec["done"]) and is_instance_valid(node):
+			node_checked += 1
+			if (node as Node3D).position.distance_to(_s._world_pos(p, ASV.BOOM_Y)) > 0.001:
+				node_ok = false
+	var step_px: float = AF.SERAPH_BOOM_SPEED * DT
+	var want_hit: float = 700.0 - AF.SERAPH_BOOM_R
+	_ok("★★★镖飞到了才掉血: 掉血那一步镖中心离出手点 %.1f 码(敌人 700 − 半宽 %.0f = %.0f, 容差一步 %.1f)"
+		% [hit_d, AF.SERAPH_BOOM_R, want_hit, step_px],
+		hit_d >= want_hit - 0.01 and hit_d <= want_hit + step_px + 0.01)
+	var imax := 0
+	for i in range(dists.size()):
+		if float(dists[i]) > float(dists[imax]):
+			imax = i
+	var up_ok := true
+	for i in range(1, imax + 1):
+		if float(dists[i]) < float(dists[i - 1]) - 0.001:
+			up_ok = false
+	var down_ok := true
+	for i in range(imax + 1, dists.size()):
+		if float(dists[i]) > float(dists[i - 1]) + 0.001:
+			down_ok = false
+	var dmax: float = float(dists[imax]) if not dists.is_empty() else -1.0
+	var out: float = float(rec.get("out", -1.0))
+	_ok("★★★飞出去再回来: 中心先一路远离(%d 步) → 最远 %.1f 码(飞出距离 %.0f, 差不到一步) → 一路回来(%d 步)"
+		% [imax, dmax, out, dists.size() - 1 - imax],
+		up_ok and down_ok and imax >= 10 and dists.size() - 1 - imax >= 10
+		and dmax <= out + 0.01 and dmax >= out - step_px - 0.01)
+	var end_gap: float = (rec["pos"] as Vector2).distance_to(ax["pos"])
+	_ok("★★回到了斧头身上(终点离斧头 %.3f 码)且在途表清空" % end_gap,
+		end_gap < 0.01 and bool(rec["done"]) and fin._booms.is_empty())
+	_ok("★分母: 一去一回 %d 步 = %.2f 秒(%.0f 码 × 2 ÷ %.0f 码/秒 = %.2f 秒)"
+		% [steps, steps * DT, out, AF.SERAPH_BOOM_SPEED, 2.0 * out / AF.SERAPH_BOOM_SPEED],
+		absf(steps * DT - 2.0 * out / AF.SERAPH_BOOM_SPEED) < 2.0 * DT)
+	_ok("★★镖身节点每一步都搬到了当前中心(量了 %d 步)" % node_checked, node_ok and node_checked >= 40)
+	_ok("★★飞回后镖身节点收掉了(queue_free)",
+		node is Object and (not is_instance_valid(node) or (node as Node).is_queued_for_deletion()))
+	_ok("★★★每把每个敌人只吃一次: 去程命中后回程再经过它, 血量不再动(%.0f → 命中后 %.0f → 飞完 %.0f)"
+		% [h0, hp_after_hit, float(foe["hp"])],
+		hp_after_hit > 0.0 and hp_after_hit < h0 - 0.5 and absf(float(foe["hp"]) - hp_after_hit) < 0.5)
+	var burn: int = int((foe.get("dot_stacks", {}) as Dictionary).get("burn", 0))
+	_ok("★★命中加 %d 层灼烧, 且只加一份(实测 %d)" % [AF.SERAPH_BOOM_BURN, burn], burn == AF.SERAPH_BOOM_BURN)
+
+
+## 1300 码外 / 横向超出半宽 / 身后(但在镖的圆里) / 魔抗 / 命中火花。
+func _t_boom_filters(fin) -> void:
+	_s._units.clear()
+	var ax: Dictionary = _mk_axe("seraph")
+	var org: Vector2 = ax["pos"]
+	var far: Dictionary = _mk_foe(Vector2(1300, 0))
+	var side: Dictionary = _mk_foe(Vector2(500, AF.SERAPH_BOOM_R + 60.0))
+	var behind: Dictionary = _mk_foe(Vector2(-200, 0))
+	var mr_foe: Dictionary = _mk_foe(Vector2(600, 40), 100000.0, 200.0)
 	mr_foe["base_mr"] = 200.0
-	var raw_foe: Dictionary = _mk_foe(Vector2(300, 30))
-	raw_foe["mr"] = 0.0
+	var raw_foe: Dictionary = _mk_foe(Vector2(600, -40), 100000.0, 0.0)
 	raw_foe["base_mr"] = 0.0
+	var f0: float = float(far["hp"])
+	var s0: float = float(side["hp"])
+	var b0: float = float(behind["hp"])
 	var m0: float = float(mr_foe["hp"])
 	var r0: float = float(raw_foe["hp"])
-	fin.seraph_boomerang_settle(ax, Vector2.RIGHT)
+	## ★出手前世界里已有的火花(上一个用例的最后一个火花 queue_free 了, 但同步代码里要到帧末才真正离树)
+	##   先记下来排除 —— 第一版没排除, 数出「命中 3 · 火花 4」, 多的那个就是上一把留下的。
+	var old_sparks: Dictionary = {}
+	for ch0 in _s._world.get_children():
+		if ch0 is Sprite3D and (ch0 as Sprite3D).texture != null \
+				and (ch0 as Sprite3D).texture.resource_path == ASV.TEX_HIT:
+			old_sparks[(ch0 as Object).get_instance_id()] = true
+	var rec: Dictionary = fin.seraph_boomerang_launch(ax, Vector2.RIGHT)
+	_ok("★★飞出距离 = 身前判定带里最远那个的纵深(实测 %.0f, 应 1300)" % float(rec.get("out", -1.0)),
+		is_equal_approx(float(rec.get("out", -1.0)), 1300.0))
+	var sparks: Dictionary = {}                  # 火花节点实例 id(整数) → 节点(不含出手前就在的)
+	var hits := 0
+	var reach := 0.0
+	var steps := 0
+	while steps < 900 and not fin._booms.is_empty():
+		hits += int(fin.tick_boomerangs(DT))
+		steps += 1
+		reach = maxf(reach, (rec["pos"] as Vector2).distance_to(org))
+		for ch in _s._world.get_children():
+			if ch is Sprite3D and (ch as Sprite3D).texture != null \
+					and (ch as Sprite3D).texture.resource_path == ASV.TEX_HIT \
+					and not old_sparks.has((ch as Object).get_instance_id()):
+				sparks[(ch as Object).get_instance_id()] = ch
+	_ok("★★★1300 码外的敌人也打到了(镖真的飞过去: 中心最远 %.0f 码)" % reach,
+		float(far["hp"]) < f0 and reach >= 1300.0 - AF.SERAPH_BOOM_SPEED * DT - 0.01,
+		"%.0f → %.0f" % [f0, float(far["hp"])])
+	_ok("★★★横向超出半宽的那个【一点没掉】(离中线 %.0f 码 > 半宽 %.0f)" % [AF.SERAPH_BOOM_R + 60.0, AF.SERAPH_BOOM_R],
+		absf(float(side["hp"]) - s0) < 0.5, "%.0f → %.0f" % [s0, float(side["hp"])])
+	_ok("★★★身后那个【一点没掉】—— 它离出手点只有 %.0f 码, 在镖的圆里(< 半宽 %.0f), 不判身前就会被打"
+		% [(behind["pos"] as Vector2).distance_to(org), AF.SERAPH_BOOM_R],
+		absf(float(behind["hp"]) - b0) < 0.5, "%.0f → %.0f" % [b0, float(behind["hp"])])
+	## ★★★「1ATK**魔法**伤害」必须吃魔抗(memory: 伤害类型是接线不是颜色)。
+	##   亡灵环踩过这坑并修了, 回旋镖漏过一次 —— 当时没有任何一条断言问"削了多少"。
 	var d_mr: float = m0 - float(mr_foe["hp"])
 	var d_raw: float = r0 - float(raw_foe["hp"])
 	_ok("★★★回旋镖是【魔法伤害】: 200 魔抗那个掉得更少(%.0f vs %.0f)" % [d_mr, d_raw],
 		d_raw > 0.0 and d_mr < d_raw, "分母: 零魔抗那个掉了 %.0f(为 0 就是压根没打到)" % d_raw)
-	var fb: int = int((front.get("dot_stacks", {}) as Dictionary).get("burn", 0))
-	_ok("★回旋镖命中也加 %d 层灼烧(实测 %d)" % [AF.SERAPH_BOOM_BURN, fb], fb >= AF.SERAPH_BOOM_BURN)
-	## ★分母: 换成别的造物, 同一个调用什么都不该发生
+	var fb: int = int((far.get("dot_stacks", {}) as Dictionary).get("burn", 0))
+	_ok("★远处命中也加 %d 层灼烧(实测 %d)" % [AF.SERAPH_BOOM_BURN, fb], fb == AF.SERAPH_BOOM_BURN)
+	_ok("★分母: 这一把命中 %d 人次(远 / 魔抗 / 零魔抗 = 3)" % hits,
+		hits == 3 and (rec["hits"] as Array).size() == 3)
+	_ok("★★★每次命中真的建出了火花节点(命中 %d 人次 · 世界里新出现的火花 %d 个)" % [hits, sparks.size()],
+		hits >= 1 and sparks.size() == hits)
+	var sp_done := true
+	for k in sparks:
+		var nd = sparks[k]
+		if is_instance_valid(nd) and not (nd as Node).is_queued_for_deletion():
+			sp_done = false
+	_ok("★火花是一次性的: 飞完时 %d 个全部收掉" % sparks.size(), sp_done and sparks.size() >= 1)
+	## ★分母: 换成别的造物, 同一个出手什么都不该登记
 	var other: Dictionary = _mk_axe("holo")
-	var f1: float = float(front["hp"])
-	_ok("★★分母: 换成全息斧, 同一个 seraph_boomerang_settle 一个都打不到",
-		fin.seraph_boomerang_settle(other, Vector2.RIGHT) == 0
-		and is_equal_approx(float(front["hp"]), f1))
+	var nb: int = fin._booms.size()
+	_ok("★★分母: 换成全息斧, seraph_boomerang_launch 什么都不登记",
+		(fin.seraph_boomerang_launch(other, Vector2.RIGHT) as Dictionary).is_empty() and fin._booms.size() == nb)
+
+
+## 回程终点: 斧头活着 = 它【当前】的位置(它在走); 斧头死了不作废, 飞回出手点。
+func _t_boom_return(fin) -> void:
+	for dead in [false, true]:
+		_s._units.clear()
+		var ax: Dictionary = _mk_axe("seraph")
+		var org: Vector2 = ax["pos"]
+		_mk_foe(Vector2(400, 0))
+		var rec: Dictionary = fin.seraph_boomerang_launch(ax, Vector2.RIGHT)
+		var steps := 0
+		while steps < 600 and not bool(rec.get("back", false)):
+			fin.tick_boomerangs(DT)
+			steps += 1
+		var turned: bool = bool(rec.get("back", false))
+		var moved: Vector2 = org + Vector2(0, 250)
+		ax["pos"] = moved
+		if dead:
+			ax["alive"] = false
+		while steps < 1200 and not fin._booms.is_empty():
+			fin.tick_boomerangs(DT)
+			steps += 1
+		var want: Vector2 = org if dead else moved
+		var gap: float = (rec["pos"] as Vector2).distance_to(want)
+		if dead:
+			_ok("★★斧头死了不作废, 回程飞回【出手点】(终点离出手点 %.3f 码; 斧头尸体在 250 码外)" % gap,
+				turned and gap < 0.01 and fin._booms.is_empty())
+		else:
+			_ok("★★回程飞回斧头【当前】位置(折返后斧头挪了 250 码; 终点离它 %.3f 码)" % gap,
+				turned and gap < 0.01 and fin._booms.is_empty())
+
+
+## 源单位离场(换路 / 战斗结束) ⇒ 在途作废、节点收掉、不再打人。
+func _t_boom_leave(fin) -> void:
+	_s._units.clear()
+	var ax: Dictionary = _mk_axe("seraph")
+	var foe: Dictionary = _mk_foe(Vector2(900, 0))
+	var rec: Dictionary = fin.seraph_boomerang_launch(ax, Vector2.RIGHT)
+	var node = rec.get("node", null)
+	for _i in range(5):
+		fin.tick_boomerangs(DT)
+	var h0: float = float(foe["hp"])
+	_ok("★分母: 离场前镖还在途、节点还在、敌人还没挨打(它在 900 码, 镖中心要到 600 码才碰得到)",
+		fin._booms.size() == 1 and node is Sprite3D and is_instance_valid(node)
+		and not (node as Node).is_queued_for_deletion() and absf(h0 - 100000.0) < 0.5)
+	_s._arr_erase_unit(_s._units, ax)
+	for _i in range(120):
+		fin.tick_boomerangs(DT)
+	_ok("★★★斧头离场 ⇒ 在途表清空", fin._booms.is_empty(), "在途 %d 把" % fin._booms.size())
+	_ok("★★★斧头离场 ⇒ 镖身节点收掉",
+		not is_instance_valid(node) or (node as Node).is_queued_for_deletion())
+	_ok("★★斧头离场后镖不再打人(900 码的敌人 %.0f → %.0f; 不作废的话 120 步 = 2 秒早就飞到了)"
+		% [h0, float(foe["hp"])], absf(float(foe["hp"]) - h0) < 0.5)
+
+
+## 回旋镖素材每一帧【不透明像素离帧心最远】占半格的比例 —— 量的是**画出来的**外径, 不是节点配置。
+## 返回 [8 帧里最小的比例, 最大的比例, 量到的帧数]。
+func _boom_art_radius() -> Array:
+	## ★读 png 原始字节再解码, 不用 `Image.load_from_file` —— 后者对 res:// 里已导入的图会报
+	##   「Loaded resource as image file」警告(第一版就是这样, 日志里多一段回溯)。
+	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(ASV.TEX_BOOM)
+	var img := Image.new()
+	if bytes.is_empty() or img.load_png_from_buffer(bytes) != OK or img.is_empty():
+		return [0.0, 0.0, 0]
+	var nf: int = ASV.BOOM_FRAMES
+	var cw: int = img.get_width() / nf
+	var ch: int = img.get_height()
+	var mn := 9.0
+	var mx := 0.0
+	var cnt := 0
+	for f in range(nf):
+		var best := 0.0
+		for y in range(ch):
+			for x in range(cw):
+				if img.get_pixel(f * cw + x, y).a > 0.5:
+					best = maxf(best, Vector2(float(x) + 0.5 - cw * 0.5, float(y) + 0.5 - ch * 0.5).length())
+		mn = minf(mn, best / (cw * 0.5))
+		mx = maxf(mx, best / (cw * 0.5))
+		cnt += 1
+	return [mn, mx, cnt]
 
 
 # ══════════════════════════════════════════════════════════════
@@ -455,8 +678,12 @@ func _t_vfx_curves() -> void:
 		inc and is_equal_approx(float(ts[0]), 0.0))
 	_ok("★★最后一把也在 %.1f 秒之内出手(实测 %.2f) —— 出手时刻超出总时长 = 有几把永远不出"
 		% [AF.SERAPH_CAST_TIME, float(ts[-1])], float(ts[-1]) < AF.SERAPH_CAST_TIME)
-	_ok("★「直直飞过」是匀速: frac(半程)=0.5 而不是加速/减速",
+	_ok("★去程匀速: frac(半程)=0.5 而不是加速/减速(2026-09-15 起在途路径按 SERAPH_BOOM_SPEED 恒速走)",
 		is_equal_approx(AV.boomerang_frac(0.5, 1.0), 0.5))
+	## 镖身切帧: 按飞行时间循环, 20 帧/秒 × 8 帧 = 0.4 秒一圈
+	_ok("★镖身切帧按飞行时间循环(0 秒第 0 帧 · 0.05 秒第 1 帧 · 0.4 秒转满一圈回第 0 帧)",
+		ASV.boom_frame(0.0) == 0 and ASV.boom_frame(0.051) == 1 and ASV.boom_frame(0.401) == 0
+		and ASV.boom_frame(0.351) == ASV.BOOM_FRAMES - 1)
 
 	## aura_pulse: 跳的那一刻最亮, 让"每 0.5 秒一跳"看得出节拍
 	_ok("★法阵脉冲: 跳的那一刻最亮(1.0), 拍尾落到底(0.35)",
@@ -542,7 +769,15 @@ func _t_real_path() -> void:
 	axs.tick(no, 0.016)
 	_ok("★★★分母: 没有造物时仍走被动6的梯形蓄力(原路径没被造物挤掉)",
 		_s._equip_sys._axe._pas.is_charging(nx), "在蓄力=%s" % str(_s._equip_sys._axe._pas.is_charging(nx)))
-	## ★炽天使真的会**一把一把甩** —— 推时间, 数它甩了几把
+	## ★炽天使真的会**一把一把甩** —— 推时间(战斗时钟 + 装备全局步), 数它甩了几把、目标什么时候掉血。
+	## ★2026-09-15 回旋镖改成「经过时结算」后, 原来那种"把下一把的时刻拨到过去、只调 AxeSystem.tick"的推法
+	##   量不到伤害了(伤害在 EquipSystem.tick_global 那条链上)。现在按真实节奏推: 每 0.05 秒
+	##   `_t` 前进 → AxeSystem.tick(到点就甩) → EquipSystem.tick_global(在途镖飞、经过就结算)。
+	## ★干净单位表(同 ③ 节): 前面各节留下的探针会改变"最近的敌人" = 甩的方向。结束时原样放回。
+	var bak: Array = _s._units.duplicate()
+	_s._units.clear()
+	var fin = axs._fin
+	fin._booms.clear()
 	var sx: Dictionary = _mk_axe("seraph")
 	sx["maxEnergy"] = AE.ACTIVE_ENERGY
 	sx["energy"] = AE.ACTIVE_ENERGY
@@ -550,21 +785,31 @@ func _t_real_path() -> void:
 	var so: Dictionary = _mk_axe("")
 	so["_axe_ref"] = sx
 	var tgt: Dictionary = _mk_foe(Vector2(260, 0), 1.0e9)
-	axs.tick(so, 0.016)
+	axs.tick(so, 0.016)                          # 龟能满 ⇒ 放主动(登记 4 秒 10 把)
 	var hp0: float = float(tgt["hp"])
 	var thrown := 0
-	for i in range(60):
-		sx["_seraph_next"] = _s._t - 0.001       # 把"下一把"的时刻拨到过去 = 该甩了
+	var hp_at_first_throw := -1.0
+	var stp := 0.05
+	for _i in range(int(8.0 / stp)):
+		_s._t = float(_s._t) + stp
 		var before: int = int(sx.get("_seraph_left", 0))
-		axs.tick(so, 0.016)
+		axs.tick(so, stp)                        # ★真入口: 到点就甩
 		if int(sx.get("_seraph_left", 0)) < before:
 			thrown += 1
-		if not sx.has("_seraph_until"):
-			break
-	_ok("★★炽天使从真入口一共甩了 %d 把(需求是 %d 把, 甩完自己收工)"
-		% [thrown, AF.SERAPH_BOOMERANGS], thrown == AF.SERAPH_BOOMERANGS)
-	_ok("★★这 %d 把真的打到人了(目标掉血 %.0f)" % [thrown, hp0 - float(tgt["hp"])],
+			if thrown == 1:
+				hp_at_first_throw = float(tgt["hp"])
+		_s._equip_sys.tick_global(stp)           # ★真链: EquipSystem.tick_global → AxeSystem.tick_global → 在途镖
+	_ok("★★炽天使从真入口一共甩了 %d 把(需求是 %d 把, 4 秒内甩完自己收工)"
+		% [thrown, AF.SERAPH_BOOMERANGS], thrown == AF.SERAPH_BOOMERANGS and not sx.has("_seraph_until"))
+	## ★下一条不用 is_equal_approx: 它按相对误差比, 1e9 血时容差约 1 万 —— 变异 M1(出手当帧结算)掉 100 血照样绿
+	_ok("★★★真入口甩出第一把的那一刻目标【没掉血】(镖还没飞到; 原来出手当帧就结算)",
+		hp_at_first_throw >= 0.0 and absf(hp_at_first_throw - hp0) < 0.5,
+		"%.0f → %.0f" % [hp0, hp_at_first_throw])
+	_ok("★★推战斗步之后这 %d 把真的打到人了(目标掉血 %.0f)" % [thrown, hp0 - float(tgt["hp"])],
 		float(tgt["hp"]) < hp0)
+	_ok("★8 秒后在途表清空(每把都飞回来了, 在途 %d 把)" % fin._booms.size(), fin._booms.is_empty())
+	_s._units.clear()
+	_s._units.append_array(bak)
 	## ★全息斧: 插地期间有 30% 减伤, **到期必须还原**
 	var hx: Dictionary = _mk_axe("holo")
 	hx["maxEnergy"] = AE.ACTIVE_ENERGY
@@ -589,8 +834,10 @@ func _t_real_path() -> void:
 		and sys_src.contains("_fin.active_busy("))
 	_ok("★★亡灵重生挂在 on-death 上(之前 undead_on_death 零调用者 = 死了根本不会重生)",
 		eq_src.contains("undead_on_death("))
+	_ok("★★在途回旋镖挂在装备全局步上(EquipSystem.tick_global → AxeSystem.tick_global → tick_boomerangs)",
+		eq_src.contains("_axe.tick_global(") and sys_src.contains("_fin.tick_boomerangs("))
 	var dead: Array = []
-	for fn in ["seraph_boomerang_settle", "holo_aura_tick", "ember_light_cast"]:
+	for fn in ["seraph_boomerang_launch", "holo_aura_tick", "ember_light_cast"]:
 		if src.count(fn) < 2:                     # 定义 1 次 + 至少被调 1 次
 			dead.append(fn)
 	_ok("★★这三个曾经零调用者的函数现在**在文件内被分派器调到**(分母: 每个至少出现 2 次)",

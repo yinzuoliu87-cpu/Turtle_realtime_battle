@@ -10,6 +10,7 @@ extends Node
 ##   E9 余烬之光用常量覆写共享字段, 到期直接写 0(施放前已有的减伤 / 吸血 / 免控被抹掉)。
 ##   E10 回旋镖判定没有射程上限, 演出只画 750 码 ⇒ 远处的敌人挨打却看不到镖飞到。
 ##      (判定不改 —— 改的是演出画到被打中的最远那个, 数值一个不动)
+##      ★2026-09-15 回旋镖重做成往返、经过时结算后, 这条改量「镖身节点真的飞到了最远命中者」。
 ##   E11 全息斧的「友军」包含训龟大师和龟蛋。
 ## ★判据量产品自己的账(血量 / aspd_mult / 字段 / 世界里真的节点), 不数我插的标记。
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
@@ -293,49 +294,52 @@ func _t_e9_ember_restore() -> void:
 # ══════════════════════════════════════════════════════════════
 #  E10 回旋镖: 演出画到被打中的最远那个
 # ══════════════════════════════════════════════════════════════
-func _nodes_with_meta(root: Node, key: String, out: Array) -> void:
-	if root.has_meta(key):
-		out.append(root)
-	for ch in root.get_children():
-		_nodes_with_meta(ch, key, out)
-
-
-func _new_boom_reach(ax: Dictionary, before: Array) -> float:
-	var after: Array = []
-	_nodes_with_meta(_s, "boom_to2d", after)
+## 推一把在途回旋镖直到飞完, 返回【镖身节点真实位置】离出手点最远多少码(从世界坐标反推回场地坐标)。
+## ★量的是世界里那个节点, 不是在途记录里的数 —— 演出要真的飞到, 不是"记录说飞到了"。
+func _fly_node_reach(fin, rec: Dictionary, org: Vector2) -> float:
+	var node = rec.get("node", null)
 	var reach := -1.0
-	for nd in after:
-		if before.has(nd):
-			continue
-		reach = maxf(reach, ((nd as Node).get_meta("boom_to2d") as Vector2).distance_to(ax["pos"]))
+	var steps := 0
+	while steps < 900 and not fin._booms.is_empty():
+		fin.tick_boomerangs(1.0 / 60.0)
+		steps += 1
+		if is_instance_valid(node) and not (node as Node).is_queued_for_deletion():
+			var p3: Vector3 = (node as Node3D).position
+			var f2 := Vector2(p3.x / float(_s.WS) + _s._arena_center.x, p3.z / float(_s.WS) + _s._arena_center.y)
+			reach = maxf(reach, f2.distance_to(org))
 	return reach
 
 
+## ★2026-09-15 回旋镖改成「飞出去 → 折返 → 飞回斧头、经过时结算」(AxeFinalForms.tick_boomerangs)。
+##   E10 原来量的是旧演出节点上的 `boom_to2d` 元数据(演出画到哪); 现在没有"演出长度"与"判定长度"两个数了 ——
+##   飞出距离 = max(SERAPH_BOOM_MIN_OUT, 身前判定带里最远那个的纵深), 镖身节点每步搬到当前中心。
+##   判据改成量【镖身节点的真实位置】飞到了多远。
 func _t_e10_boomerang_reach() -> void:
-	print("--- E10 回旋镖演出射程 ---")
+	print("--- E10 回旋镖真的飞到最远命中者 ---")
 	_s._units.clear()
 	var fin = _s._equip_sys._axe._fin
+	fin._booms.clear()
 	var ax: Dictionary = _mk_axe(4, "seraph")
 	var far: Dictionary = _mk_foe(Vector2(1300, 0))
-	var before: Array = []
-	_nodes_with_meta(_s, "boom_to2d", before)
 	var hp0: float = float(far["hp"])
-	var hit: int = fin.seraph_boomerang_settle(ax, Vector2.RIGHT)
-	_ok("★分母: 1300 码外的敌人照样挨打(判定没改 · 命中 %d)" % hit, hit == 1 and float(far["hp"]) < hp0)
-	var reach: float = _new_boom_reach(ax, before)
-	_ok("★分母: 世界里真的多出一把回旋镖节点", reach >= 0.0, "reach=%.0f" % reach)
-	_ok("★★E10 镖画到了被打中的最远那个敌人(画到 %.0f 码, 应 ≥ 1300; 修前固定 %.0f)"
-		% [reach, AF.SERAPH_BOOM_R * 2.5], reach >= 1300.0)
+	var rec: Dictionary = fin.seraph_boomerang_launch(ax, Vector2.RIGHT)
+	_ok("★分母: 真的出手了一把, 世界里有镖身节点", not rec.is_empty() and is_instance_valid(rec.get("node", null)))
+	var step_px: float = AF.SERAPH_BOOM_SPEED / 60.0
+	var reach: float = _fly_node_reach(fin, rec, ax["pos"])
+	_ok("★分母: 1300 码外的敌人照样挨打(命中名单没改)", float(far["hp"]) < hp0, "%.0f → %.0f" % [hp0, float(far["hp"])])
+	_ok("★★E10 镖身节点真的飞到了被打中的最远那个(节点最远 %.0f 码, 应 ≥ 1300 − 一步 %.0f)" % [reach, step_px],
+		reach >= 1300.0 - step_px - 0.01)
 
 	_s._units.clear()
 	_s._units.append(ax)
 	var near: Dictionary = _mk_foe(Vector2(200, 0))
-	var before2: Array = []
-	_nodes_with_meta(_s, "boom_to2d", before2)
-	fin.seraph_boomerang_settle(ax, Vector2.RIGHT)
-	var reach2: float = _new_boom_reach(ax, before2)
-	_ok("E10 敌人都在近处时仍按原来的 %.0f 码画(演出长度只往远处补, 不缩)" % (AF.SERAPH_BOOM_R * 2.5),
-		absf(reach2 - AF.SERAPH_BOOM_R * 2.5) < 1.0, "reach=%.0f near_hp=%.0f" % [reach2, float(near["hp"])])
+	var rec2: Dictionary = fin.seraph_boomerang_launch(ax, Vector2.RIGHT)
+	var reach2: float = _fly_node_reach(fin, rec2, ax["pos"])
+	_ok("E10 敌人都在近处时镖仍飞满 %.0f 码(SERAPH_BOOM_MIN_OUT = 原演出默认射程; 节点最远 %.0f)"
+		% [AF.SERAPH_BOOM_MIN_OUT, reach2],
+		reach2 <= AF.SERAPH_BOOM_MIN_OUT + 0.01 and reach2 >= AF.SERAPH_BOOM_MIN_OUT - step_px - 0.01,
+		"near_hp=%.0f" % float(near["hp"]))
+	fin._booms.clear()
 
 
 # ══════════════════════════════════════════════════════════════

@@ -19,7 +19,6 @@ extends RefCounted
 ##   · **短命特效一出生就线性淡出会被读成土棕/灰**（memory [[fb-vfx-defect-families]]，一天踩四次）
 ##     ⇒ 前 70% 保持满亮，最后 30% 才淡（`hold_fade`）。
 const COL_UNDEAD := Color(0.49, 0.88, 0.51)     # 亡灵绿
-const COL_SERAPH := Color(1.00, 0.70, 0.28)     # 炽天使橙
 const COL_HOLO := Color(0.37, 0.85, 1.00)       # 全息青
 const COL_EMBER := Color(1.00, 0.44, 0.26)      # 余烬红
 
@@ -63,8 +62,8 @@ static func ring_breath(t: float, period: float = 2.0, amp: float = 0.06) -> flo
 
 
 ## 回旋镖的飞行进度 → 位置系数（0=出手，1=飞到最远）。
-## ★需求写的是「**直直飞过**」⇒ 匀速直线，不是抛物线也不是回旋。
-##   （名字叫回旋镖，但需求明确是"沿着目标所在的一条直线直直飞过"。）
+## ⚠ 2026-09-15 起回旋镖改成「飞出去再飞回来」、由 `AxeFinalForms.tick_boomerangs` 按战斗时钟逐步走，
+##   产品里已不调这条匀速曲线；只剩 `verify_axe_finals` 的曲线性质断言在读它。
 static func boomerang_frac(t: float, fly_sec: float) -> float:
 	if fly_sec <= 0.0:
 		return 1.0
@@ -218,36 +217,8 @@ func undead_revive(pos2d: Vector2, sec: float) -> void:
 	_fade_out(root, sec + 0.25)
 
 
-## A4 回旋镖：一把橙色斧刃沿 dir 匀速飞过。**只是演出** —— 伤害由调用方在出手时结算。
-func seraph_boomerang(from2d: Vector2, dir: Vector2, dist_px: float, fly_sec: float) -> void:
-	if not _has_world():
-		return
-	var d: Vector2 = dir.normalized()
-	if d == Vector2.ZERO:
-		return
-	var n := MeshInstance3D.new()
-	var bm := BoxMesh.new()
-	bm.size = Vector3(0.55, 0.10, 0.16)
-	n.mesh = bm
-	## 斧刃是**实心**的 ⇒ MIX，不用 ADD（088 那块被 ADD 爆成白的碑就是教训）
-	n.material_override = _mat(COL_SERAPH, true, 9)
-	n.position = battle._world_pos(from2d, 0.55)
-	_adopt(n)
-	var to2d: Vector2 = from2d + d * dist_px
-	n.set_meta("boom_to2d", to2d)   # 画到哪 —— 门禁量「演出长度 ≥ 判定打中的最远处」(第十批 E10)
-	## ★显式标注类型: `battle` 是无类型的注入宿主, `:=` 推不出 Tween(Parse Error)。
-	var tw: Tween = battle._reg_tween()
-	## ★捕获实例 id 不捕获节点(见 `_fade_out` 头注)
-	var nid: int = n.get_instance_id()
-	tw.tween_method(func(x: float) -> void:
-		var m = instance_from_id(nid)
-		if not is_instance_valid(m):
-			return
-		var f: float = boomerang_frac(x, 1.0)
-		(m as Node3D).position = battle._world_pos(from2d.lerp(to2d, f), 0.55)
-		(m as Node3D).rotation.y += 0.55                # 自旋，读得出是"甩出去的"
-	, 0.0, 1.0, fly_sec)
-	_fade_out(n, fly_sec)
+## A4 回旋镖 —— 2026-09-15 整个搬到 `axe_seraph_vfx.gd`(AxeSeraphVfx)。
+##   旧版是一根 0.55×0.10×0.16 米的橙色 BoxMesh 直线飞 0.45 秒不回来, 用户:「回旋镖是什么？」。
 
 
 ## A6+A7 全息法阵：插地的斧头 + 600 码青色地面阵。返回根节点。
