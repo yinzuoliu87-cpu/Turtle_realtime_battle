@@ -101,6 +101,8 @@ frames_for () {
     verify_skills_not_dead)   echo 40000 ;;
     verify_axe_passives)      echo 16000 ;;
     verify_axe_finals)        echo 12000 ;;
+    # 余烬处决激光: 要按墙钟等 1.6 秒演出 tween 播完并收掉节点(上限 6 秒), 帧给足防半路掐断
+    verify_axe_ember_laser)   echo 30000 ;;
     verify_axe_evolution)     echo 8000 ;;
     verify_axe_shop_codex)    echo 12000 ;;
     verify_copy_perform)      echo 6000 ;;

@@ -12,14 +12,17 @@ extends RefCounted
 ##   靠状态机 + 特效表现，不加 death 动作帧；`verify_summon_art` 焊死了这条。
 const AF := preload("res://scripts/gamedata/axe_final_stats.gd")
 const AFV := preload("res://scripts/scenes/battle/axe_final_vfx.gd")
+const AEV := preload("res://scripts/scenes/battle/axe_ember_vfx.gd")
 
 var battle = null
 var vfx = null                            # 演出(axe_final_vfx.gd) —— **只画, 不结算**
+var ember_vfx = null                      # 余烬处决天降激光(axe_ember_vfx.gd) —— 只画
 
 
 func _init(b) -> void:
 	battle = b
 	vfx = AFV.new(b)
+	ember_vfx = AEV.new(b)
 
 
 ## 这只斧头的最终造物 key（""=还没选）。
@@ -265,9 +268,12 @@ func ember_on_hit(ax: Dictionary, tgt: Dictionary) -> Dictionary:
 		battle._damage._apply_damage(tgt, maxi(1, int(ceil(float(tgt.get("hp", 1.0))))),
 			Color("#ff7043"), ax, "tru", false)
 		done = true
-		vfx.ember_execute(tgt.get("pos", Vector2.ZERO))
 		_play(ax, "axe_execute")       # 斧头本体的处决动作(素材早在盘上, 之前零调用者)
 		if not tgt.get("alive", true):
+			## 演出: 天降轨道激光(用户 2026-09-15 点名参考 LoL 无限火力)。
+			## ★只在【真的处决掉】时放: 处决伤害走 `_apply_damage(tru)`, 护盾照吸、免死锁血照挡 ⇒ 目标可能没死,
+			##   这时放激光是假账, 而且下一拳还会再判一次 ⇒ 台子里锁血假人每一拳都劈一道(2026-09-15 录像)。
+			ember_vfx.execute(tgt.get("pos", Vector2.ZERO))
 			## 「处决一个单位会使召唤物获得150点龟能」
 			_give_energy(ax, AF.EMBER_EXEC_ENERGY)
 	return {"stacks": n, "executed": done}

@@ -317,18 +317,7 @@ func ember_seed(tgt: Dictionary, stacks: int) -> void:
 	_fade_out(n, 0.5)
 
 
-## A9 处决：目标位置一道竖直红光柱，短促。
-func ember_execute(pos2d: Vector2) -> void:
-	if not _has_world():
-		return
-	var n := MeshInstance3D.new()
-	var bm := BoxMesh.new()
-	bm.size = Vector3(0.34, 2.6, 0.34)
-	n.mesh = bm
-	n.material_override = _mat(COL_EMBER, false, 12)
-	n.position = battle._world_pos(pos2d, 1.3)
-	_adopt(n)
-	_fade_out(n, 0.35)
+## A9 处决: 2026-09-15 移到 `axe_ember_vfx.gd`(天降轨道激光)。原来这里是一根红色 BoxMesh, 用户否掉。
 
 
 ## A10 余烬之光：斧头身上一圈红环（有就有，多层不叠强度 —— 与结算口径一致）。

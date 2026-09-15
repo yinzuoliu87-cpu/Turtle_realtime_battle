@@ -384,6 +384,26 @@ PALETTES = {
         ( 40,  26,  12),   # 亮度  29
         (  9,   7,   7),   # 亮度   8
     ],
+    ## 096 余烬【处决】天降轨道激光(tools/blender_ember_laser.py): 颜色取自 LoL 无限火力「轨道激光」逐帧取样
+    "orbital": [
+        (255, 254, 240),   # 亮度 253  白芯
+        (253, 248, 211),   # 亮度 245  奶黄芯
+        (253, 249, 140),   # 亮度 238  脉冲高光
+        (250, 214, 214),   # 亮度 225  粉白细芯
+        (251, 233,  93),   # 亮度 222  黄色脉冲
+        (251, 207, 135),   # 亮度 212  亮带
+        (138, 240, 233),   # 亮度 209  上行信号高光
+        (251, 193,  68),   # 亮度 196  地面亮橙
+        (248, 158,  60),   # 亮度 174  地面橙
+        (239, 143,  90),   # 亮度 166  光柱主体
+        ( 98, 181, 214),   # 亮度 160  上行信号青
+        (216, 135, 107),   # 亮度 156  鲑色带
+        (220,  90,  50),   # 亮度 124  橙红过渡
+        (185,  47,  25),   # 亮度  86  红边
+        (150,  40,  25),   # 亮度  71  暗红过渡
+        (120,  30,  20),   # 亮度  56  暗红
+        ( 40,  32,  30),   # 亮度  34  碎石
+    ],
 }
 
 
@@ -414,13 +434,18 @@ def main():
     ap.add_argument("--dirs", type=int, default=4)
     ap.add_argument("--frames", type=int, default=3)
     ap.add_argument("--cell", type=int, default=64, help="方格边长(为 90° 旋转必须是方的)")
+    ## ★格宽(2026-09-15 余烬天降激光加): 竖长条公告板(光柱 200 高只有 80 宽)用方格会让
+    ##   帧表宽出 2.5 倍全是空白。不给就等于 --cell, 现有调用逐字节不变。
+    ##   ⚠ 非方格不能拿去做 90° 旋转的方向帧, 只给不旋转的公告板用。
+    ap.add_argument("--cell-w", type=int, default=0, help="格宽(默认 = --cell)")
     ap.add_argument("--art-h", type=int, default=24, help="本体缩到多高(不是格高)")
     ap.add_argument("--palette", default="gold")
     ap.add_argument("-o", "--out", required=True)
     a = ap.parse_args()
 
     pal = PALETTES[a.palette]
-    sheet = Image.new("RGBA", (a.cell * a.dirs, a.cell * a.frames), (0, 0, 0, 0))
+    cw = a.cell_w if a.cell_w > 0 else a.cell
+    sheet = Image.new("RGBA", (cw * a.dirs, a.cell * a.frames), (0, 0, 0, 0))
     n = 0
     for d in range(a.dirs):
         for f in range(a.frames):
@@ -435,9 +460,12 @@ def main():
             ## ② 重索引到锁定调色板 + 硬边
             small = quantize_to(small, pal)
             ## ③ 垫进方格(90° 旋转要方的)
-            cell = Image.new("RGBA", (a.cell, a.cell), (0, 0, 0, 0))
-            cell.paste(small, ((a.cell - small.width) // 2, (a.cell - small.height) // 2))
-            sheet.paste(cell, (d * a.cell, f * a.cell))
+            if a.cell_w > 0 and small.width > cw:
+                print("[FAIL] 本体宽 %d > 格宽 %d(会被裁掉): %s" % (small.width, cw, p))
+                return 1
+            cell = Image.new("RGBA", (cw, a.cell), (0, 0, 0, 0))
+            cell.paste(small, ((cw - small.width) // 2, (a.cell - small.height) // 2))
+            sheet.paste(cell, (d * cw, f * a.cell))
             n += 1
     if n == 0:
         print("[FAIL] 一帧都没处理 —— 空表不是通过")

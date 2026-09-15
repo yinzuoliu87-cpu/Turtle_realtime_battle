@@ -200,7 +200,10 @@ func pre_build() -> bool:
 	##   且只有 2 个敌人, 携带者把它们杀光就战斗结束, 场景掉回主菜单, 而我叫他看的正是那个。
 	##   ★只在 HOLD 生效: 拍片(VFXLAB_SHOTS)那条路**不能**锁 —— 有些台子需要敌人真的死
 	##   (019 的收割羁绊台 `syn_potion` 就靠敌人阵亡触发)。
-	if _hold:
+	## ★`mortal_enemies`: HOLD(录像 rec_case 也走 HOLD)时仍让假人会死。由来 2026-09-15 余烬处决激光:
+	##   HOLD 锁血 ⇒ 处决打不死 ⇒ 每一拳都再判一次处决, 录下来读成「处决不生效 + 激光乱劈」。
+	##   ⚠ 敌人全死战斗就结束: 配这个的台子要保证录像时长内打不完(录完看最后几张印相有没有掉回主菜单)。
+	if _hold and not bool(cfg.get("mortal_enemies", false)):
 		OS.set_environment("EQDEMO_IMMORTAL", "1")
 	OS.set_environment("EQDEMO_ENEMY1", str(float(cfg["enemy_dist"])))
 	OS.set_environment("EQDEMO_GAP", str(float(cfg["enemy_gap"])))
