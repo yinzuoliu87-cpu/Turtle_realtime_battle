@@ -24,7 +24,7 @@ var _ts_remaining := 0.0                  # 时停剩余真实秒
 var _ts_charging := false                 # 蓄力中(1s, 世界仍正常)
 var _ts_charge_t := 0.0
 var _ts_charge_casters: Array = []
-var _ts_fired := false                    # 一场一次
+var _ts_fired := false                    # 本战场一次(2026-09-16 用户拍板: 上路/下路/终极各一次) —— 换路由 reset_for_lane() 清
 var _ts_maxstar := 0                      # 生效沙漏星级(定时长 5/10/30 秒·用户2026-07-19: 1★ 4→5)
 var _ts_frozen_tweens: Array = []         # 时停期间被暂停的tween(结束resume)
 var _ts_frozen_particles: Array = []      # 时停期间被暂停的GPUParticles3D(speed_scale归零, 结束还原)
@@ -43,6 +43,20 @@ var _ts_sand_t := 0.0                     # 时之砂的**真实时间**累加�
 
 func _init(b) -> void:
 	battle = b
+
+## 【换路重置】每进一个新战场(上路→下路→终极)调一次, 由 `dual_lane_flow._dl_clear_units()` 负责调。
+##
+## ★为什么是一个函数而不是在 dual_lane_flow 里逐个字段手改: 换路清场原本就手改了
+##   `_ts_active` / `_ts_remaining` / `_ts_charge_casters`, 却**漏了 `_ts_charging` 与 `_ts_charge_t`**
+##   —— 于是"蓄力中换路"会让下一路白蓄 1 秒、再被 `_ts_fire()` 当成空 casters 吞掉(实测定格 0 帧)。
+##   字段散在两个文件里手动对齐, 加一个字段就漏一次。所以重置的责任收回本类。
+## ★"本路第几秒"的基准不在这里存 —— 用现成的 `battle._sd_t0`(见 `_ts_update_trigger` 的说明)。
+func reset_for_lane() -> void:
+	_ts_fired = false
+	_ts_charging = false
+	_ts_charge_t = 0.0
+	_ts_charge_casters = []
+	_ts_maxstar = 0
 
 func _ts_advance_unit_timers(u: Dictionary, delta: float) -> void:
 	# 时停期间全局 battle._t 冻结, 但 active 携带者仍在行动 —— 它身上所有"时间戳型"状态
@@ -75,7 +89,14 @@ func _ts_update_trigger(delta: float) -> void:   # (仅正常态调)第10秒触�
 			_ts_charging = false
 			_ts_fire()
 		return
-	if _ts_fired or not _ts_active.is_empty() or battle._t < TS_START_T:
+	## ★★2026-09-16 用户拍板:「每个战场各一次」(上路/下路/终极各可触发一次)。
+	##   原来这里比的是【全局 `battle._t`】—— 而 `_t` 是跨路累加、永不重置的(CLAUDE.md §3.4),
+	##   所以一旦把 `_ts_fired` 按路清掉, 下路一开场 `_t` 已经 40 秒 > TS_START_T ⇒ **第一帧就放**,
+	##   「登场 10 秒后」这句文案当场作废。
+	## ★基准用现成的 `battle._sd_t0`(=本战场开打时刻, `_dl_start_fight` 每路重置), **不自己另存一份** ——
+	##   同一个概念存两份必然漂(memory fb-hand-rolled-copies-drift); `star_system.gd:659` 用的也是它。
+	##   非双路场景(评审台/VFXLAB/闯关)没人动 `_sd_t0`, 留 0.0 ⇒ 判据与改动前逐字相同。
+	if _ts_fired or not _ts_active.is_empty() or battle._t - battle._sd_t0 < TS_START_T:
 		return
 	var maxstar := 0
 	for u in battle._units:
@@ -103,6 +124,10 @@ func _ts_fire() -> void:
 	_ts_free_auras()   # 金火气只活在蓄力段: 释放那一刻交给胸口光点爆开(没人能放也要收掉)
 	if casters.is_empty():
 		_ts_free_cores()
+		## ★没放出来就不该记账成"这一路已经用掉了"(2026-09-16)。
+		##   原来这里静默 return 而 `_ts_fired` 留在 true —— 携带者在蓄力那 1 秒里死掉、
+		##   或蓄力中途换路把 casters 清空, 都会让这一路(旧语义下是这一整局)的沙漏凭空蒸发。
+		_ts_fired = false
 		return
 	_ts_active = casters
 	## ★三档下标：只有最高星的沙漏携带者才进 `casters`，所以 `_ts_maxstar` 就是他们自己的星。
@@ -178,12 +203,25 @@ func _ts_ensure_overlay() -> void:
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sh := Shader.new()   # 压暗褪色从center按radius扩散→昏暗冷灰; 但携带者(casters)周围留彩色泡(时之主保持彩色)
 	# ★2026-07-11 黑屏排查 A1: hint_screen_texture(读屏幕纹理) 在 gl_compatibility 移动端会导致【整屏黑】。
-	#   → 移动端用【不读屏】的等效 shader(半透明冷灰覆盖+径向扩散+携带者彩色泡), 桌面保留原读屏版(带真灰度)。
+	#   → 当时的办法是**按平台分叉**: 移动端用【不读屏】的等效 shader, 桌面保留读屏版。
+	#   ⚠ 2026-09-16 起这条已被下面的做法取代 —— 分叉的代价就是 D 那条缺陷(移动端悄悄少了扭曲和径向模糊),
+	#     现在两端同一份 shader, 分叉判据也从"是不是移动端"换成了"拿不拿得到世界纹理"。
 	#   两版 uniform 完全相同(amount/radius/aspect/casters/caster_n) → _ts_tick_visual 的 set 逻辑不用改。
-	if battle._is_mobile():
+	## ★★2026-09-16 用户(iPhone 实测):「空间扭曲特效不见了」。
+	##   查实: 上面这版【移动端分支】里 warp / warp_r / zoom_blur 三个 uniform **声明了但 fragment 一次都没用**
+	##   (量过: 桌面版各用 1 次, 移动版各 0 次) —— 2026-07-11 修「整屏黑」时砍掉读屏, 扭曲和径向模糊跟着没了。
+	## ★修法不是给移动端补一版假扭曲, 而是**把输入源从「读屏」换成「本项目自己的 3D SubViewport 纹理」**:
+	##   `hint_screen_texture` 走 back buffer(gl_compatibility 移动端会整屏黑), 而 `battle._sub` 是我们自己的
+	##   离屏 viewport(battle_world_builder.gd:139 `_build_viewport`), 采样它不碰 back buffer ⇒ 移动端安全。
+	## ★桌面端观感等价, 不是妥协: 这一层是 layer 5, 而全仓 layer<5 的 CanvasLayer **只有 layer 0 的 3D 世界容器**
+	##   ⇒ 原来读屏在这一刻拿到的本来就只有 3D 世界, 与 SubViewport 纹理是同一张画面。
+	## ★两版合一: 之前是两份要手动同步的 shader, D 这条缺陷正是分支漂移的产物 —— 少一份就少一次漂。
+	##   只有拿不到 SubViewport(理论兜底)才回落到不读图的那版。
+	var _wt: Texture = battle._sub.get_texture() if is_instance_valid(battle._sub) else null
+	if _wt == null:
 		sh.code = "shader_type canvas_item;\nuniform float amount : hint_range(0.0,1.0) = 0.0;\nuniform vec2 center = vec2(0.5,0.5);\nuniform float radius = 0.0;\nuniform float aspect = 1.778;\nuniform vec2 casters[4];\nuniform int caster_n = 0;\nuniform float caster_r = 0.115;\nuniform float warp = 0.0;\nuniform float warp_r = 0.0;\nuniform float wave_r = 0.0;\nuniform float wave_dir = -1.0;\nuniform float wave_a = 0.0;\nuniform float grey_front = 0.0;\nuniform float violet = 0.0;\nuniform float hue_flip = 0.0;\nuniform float zoom_blur = 0.0;\nuniform float core_flash = 0.0;\nvoid fragment(){\n\tvec2 d = SCREEN_UV - center; d.x *= aspect;\n\tfloat dist = length(d);\n\tfloat ang = atan(d.y, d.x);\n\tfloat dr = dist - wave_r;\n\tfloat lop = 0.78 + 0.22 * sin(ang * 3.0 + wave_r * 5.0);\n\tfloat core = exp(-pow(dr / 0.030, 2.0));\n\tfloat halo = exp(-pow(dr / 0.11, 2.0)) * 0.55;\n\tfloat ring = clamp(max(core, halo) * lop * wave_a, 0.0, 1.0);\n\tfloat inside = 1.0 - smoothstep(wave_r - 0.02, wave_r + 0.04, dist);\n\tfloat keep = 0.0;\n\tfor(int i=0;i<4;i++){\n\t\tif(i>=caster_n){break;}\n\t\tvec2 cd = SCREEN_UV - casters[i]; cd.x *= aspect;\n\t\tkeep = max(keep, 1.0 - smoothstep(caster_r*0.55, caster_r, length(cd)));\n\t}\n\tfloat grey_a = amount * ((grey_front > 0.5) ? (1.0 - inside) : 1.0) * (1.0 - keep);\n\tfloat passed = (wave_dir < 0.0) ? inside : 1.0;\n\tfloat va = violet * passed * (1.0 - grey_a);\n\tfloat fa = hue_flip * (1.0 - grey_a);\n\tfloat cf = clamp(core_flash * (0.30 + 0.70 * exp(-pow(dist / 0.45, 2.0))), 0.0, 1.0);\n\tvec3 ring_col = mix(vec3(0.62, 0.48, 0.95), vec3(1.0, 0.97, 0.92), core);\n\tvec3 rgb = vec3(0.0);\n\tfloat al = 0.0;\n\tif(va > 0.001){ rgb = vec3(0.55, 0.40, 0.92); al = 0.30 * va; }\n\tif(fa > 0.001){ rgb = mix(rgb, vec3(0.86, 0.84, 0.36), fa); al = max(al, 0.30 * fa); }\n\tif(grey_a > 0.001){ rgb = mix(rgb, vec3(0.03, 0.05, 0.07), grey_a); al = mix(al, 0.82, grey_a); }\n\trgb = mix(rgb, vec3(0.82, 1.0, 0.98), cf);\n\tal = max(al, 0.85 * cf);\n\tCOLOR = vec4(mix(rgb, ring_col, ring), max(al, ring));\n}"
 	else:
-		sh.code = "shader_type canvas_item;\nuniform sampler2D screen_tex : hint_screen_texture, filter_linear;\nuniform float amount : hint_range(0.0,1.0) = 0.0;\nuniform vec2 center = vec2(0.5,0.5);\nuniform float radius = 0.0;\nuniform float aspect = 1.778;\nuniform vec2 casters[4];\nuniform int caster_n = 0;\nuniform float caster_r = 0.115;\nuniform float warp = 0.0;\nuniform float warp_r = 0.0;\nuniform float wave_r = 0.0;\nuniform float wave_dir = -1.0;\nuniform float wave_a = 0.0;\nuniform float grey_front = 0.0;\nuniform float violet = 0.0;\nuniform float hue_flip = 0.0;\nuniform float zoom_blur = 0.0;\nuniform float core_flash = 0.0;\nvoid fragment(){\n\tvec2 d = SCREEN_UV - center; d.x *= aspect;\n\tfloat dist = length(d);\n\tfloat ang = atan(d.y, d.x);\n\tfloat dr = dist - wave_r;\n\tfloat lop = 0.78 + 0.22 * sin(ang * 3.0 + wave_r * 5.0);\n\tfloat core = exp(-pow(dr / 0.030, 2.0));\n\tfloat halo = exp(-pow(dr / 0.11, 2.0)) * 0.55;\n\tfloat ring = clamp(max(core, halo) * lop * wave_a, 0.0, 1.0);\n\tfloat inside = 1.0 - smoothstep(wave_r - 0.02, wave_r + 0.04, dist);\n\tfloat keep = 0.0;\n\tfor(int i=0;i<4;i++){\n\t\tif(i>=caster_n){break;}\n\t\tvec2 cd = SCREEN_UV - casters[i]; cd.x *= aspect;\n\t\tkeep = max(keep, 1.0 - smoothstep(caster_r*0.55, caster_r, length(cd)));\n\t}\n\tfloat grey_a = amount * ((grey_front > 0.5) ? (1.0 - inside) : 1.0) * (1.0 - keep);\n\tfloat passed = (wave_dir < 0.0) ? inside : 1.0;\n\tfloat va = violet * passed * (1.0 - grey_a);\n\tfloat fa = hue_flip * (1.0 - grey_a);\n\tfloat cf = clamp(core_flash * (0.30 + 0.70 * exp(-pow(dist / 0.45, 2.0))), 0.0, 1.0);\n\tvec3 ring_col = mix(vec3(0.62, 0.48, 0.95), vec3(1.0, 0.97, 0.92), core);\n\tfloat band = exp(-pow((dist - warp_r) / 0.14, 2.0));\n\tvec2 wdir = dist > 0.0001 ? d / dist : vec2(0.0);\n\twdir.x /= aspect;\n\tvec2 wuv = SCREEN_UV + wdir * warp * band * 0.055;\n\tfloat zb = zoom_blur * passed * clamp(dist, 0.0, 1.2);\n\tvec3 c = vec3(0.0);\n\tfor(int k=0;k<6;k++){\n\t\tfloat s = 1.0 - zb * 0.08 * float(k) / 5.0;\n\t\tc += texture(screen_tex, center + (wuv - center) * s).rgb;\n\t}\n\tc /= 6.0;\n\tfloat y = dot(c, vec3(0.299, 0.587, 0.114));\n\tvec3 vio = clamp(vec3(y) * vec3(0.94, 0.82, 1.16) + vec3(0.05, 0.02, 0.09), 0.0, 1.0);\n\tvec3 flp = clamp(vec3(2.0 * y) - c, 0.0, 1.0);\n\tvec3 col = mix(c, vio, va);\n\tcol = mix(col, flp, fa);\n\tcol = mix(col, vec3(y * 0.47, y * 0.63, y * 0.68), grey_a);\n\tcol = mix(col, vec3(0.82, 1.0, 0.98), cf);\n\tCOLOR = vec4(mix(col, ring_col, ring), 1.0);\n}"
+		sh.code = "shader_type canvas_item;\nuniform sampler2D world_tex : filter_linear;\nuniform float amount : hint_range(0.0,1.0) = 0.0;\nuniform vec2 center = vec2(0.5,0.5);\nuniform float radius = 0.0;\nuniform float aspect = 1.778;\nuniform vec2 casters[4];\nuniform int caster_n = 0;\nuniform float caster_r = 0.115;\nuniform float warp = 0.0;\nuniform float warp_r = 0.0;\nuniform float wave_r = 0.0;\nuniform float wave_dir = -1.0;\nuniform float wave_a = 0.0;\nuniform float grey_front = 0.0;\nuniform float violet = 0.0;\nuniform float hue_flip = 0.0;\nuniform float zoom_blur = 0.0;\nuniform float core_flash = 0.0;\nvoid fragment(){\n\tvec2 d = SCREEN_UV - center; d.x *= aspect;\n\tfloat dist = length(d);\n\tfloat ang = atan(d.y, d.x);\n\tfloat dr = dist - wave_r;\n\tfloat lop = 0.78 + 0.22 * sin(ang * 3.0 + wave_r * 5.0);\n\tfloat core = exp(-pow(dr / 0.030, 2.0));\n\tfloat halo = exp(-pow(dr / 0.11, 2.0)) * 0.55;\n\tfloat ring = clamp(max(core, halo) * lop * wave_a, 0.0, 1.0);\n\tfloat inside = 1.0 - smoothstep(wave_r - 0.02, wave_r + 0.04, dist);\n\tfloat keep = 0.0;\n\tfor(int i=0;i<4;i++){\n\t\tif(i>=caster_n){break;}\n\t\tvec2 cd = SCREEN_UV - casters[i]; cd.x *= aspect;\n\t\tkeep = max(keep, 1.0 - smoothstep(caster_r*0.55, caster_r, length(cd)));\n\t}\n\tfloat grey_a = amount * ((grey_front > 0.5) ? (1.0 - inside) : 1.0) * (1.0 - keep);\n\tfloat passed = (wave_dir < 0.0) ? inside : 1.0;\n\tfloat va = violet * passed * (1.0 - grey_a);\n\tfloat fa = hue_flip * (1.0 - grey_a);\n\tfloat cf = clamp(core_flash * (0.30 + 0.70 * exp(-pow(dist / 0.45, 2.0))), 0.0, 1.0);\n\tvec3 ring_col = mix(vec3(0.62, 0.48, 0.95), vec3(1.0, 0.97, 0.92), core);\n\tfloat band = exp(-pow((dist - warp_r) / 0.14, 2.0));\n\tvec2 wdir = dist > 0.0001 ? d / dist : vec2(0.0);\n\twdir.x /= aspect;\n\tvec2 wuv = SCREEN_UV + wdir * warp * band * 0.055;\n\tfloat zb = zoom_blur * passed * clamp(dist, 0.0, 1.2);\n\tvec3 c = vec3(0.0);\n\tfor(int k=0;k<6;k++){\n\t\tfloat s = 1.0 - zb * 0.08 * float(k) / 5.0;\n\t\tc += texture(world_tex, center + (wuv - center) * s).rgb;\n\t}\n\tc /= 6.0;\n\tfloat y = dot(c, vec3(0.299, 0.587, 0.114));\n\tvec3 vio = clamp(vec3(y) * vec3(0.94, 0.82, 1.16) + vec3(0.05, 0.02, 0.09), 0.0, 1.0);\n\tvec3 flp = clamp(vec3(2.0 * y) - c, 0.0, 1.0);\n\tvec3 col = mix(c, vio, va);\n\tcol = mix(col, flp, fa);\n\tcol = mix(col, vec3(y * 0.47, y * 0.63, y * 0.68), grey_a);\n\tcol = mix(col, vec3(0.82, 1.0, 0.98), cf);\n\tCOLOR = vec4(mix(col, ring_col, ring), 1.0);\n}"
 	var mat := ShaderMaterial.new()
 	mat.shader = sh
 	mat.set_shader_parameter("amount", 0.0)
@@ -191,6 +229,8 @@ func _ts_ensure_overlay() -> void:
 	mat.set_shader_parameter("aspect", vp.x / maxf(1.0, vp.y))
 	mat.set_shader_parameter("casters", PackedVector2Array())
 	mat.set_shader_parameter("caster_n", 0)
+	if _wt != null:
+		mat.set_shader_parameter("world_tex", _wt)
 	mat.set_shader_parameter("warp", 0.0)
 	mat.set_shader_parameter("warp_r", 0.0)
 	rect.material = mat
@@ -232,6 +272,15 @@ func _ts_casters_screen_uv() -> Vector2:   # active携带者质心的屏幕UV(�
 # 释放: 环出去 → 染紫 → 色相翻转 → 收回(扫过的变暗灰) → 中心白光, 全部由 `_ts_wave_step` 逐帧驱动
 func _ts_visual_start() -> void:
 	_ts_ensure_overlay()
+	## ★★2026-09-16: 换路清场把这两层 `visible = false` 了(dual_lane_flow._dl_clear_units),
+	##   而全仓【没有任何一处】把它写回 true, `_ts_ensure_overlay()` 又是"对象还在就直接 return"
+	##   ⇒ 下路/终极战场就算真定格了也一个画面都没有(灰世界/能量波/空间扭曲/停摆钟全挂在这两层里)。
+	## ★打开的责任放在【要演出的人】身上, 不放在清场那边: 清场只管隐藏,
+	##   这样将来任何新加的隐藏点都不会再制造同一个 bug。
+	if is_instance_valid(_ts_overlay):
+		_ts_overlay.visible = true
+	if is_instance_valid(_ts_flash_overlay):
+		_ts_flash_overlay.visible = true
 	var mat: ShaderMaterial = _ts_rect.material
 	var fmat: ShaderMaterial = _ts_flash_rect.material
 	mat.set_shader_parameter("center", _ts_casters_screen_uv())

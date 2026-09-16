@@ -937,7 +937,12 @@ func _dl_clear_units() -> void:
 	if not battle._timestop._ts_active.is_empty() or battle._timestop._ts_remaining > 0.0:
 		battle._timestop._ts_resume_freeze()                   # 时停未结束→先恢复被暂停的tween/粒子(否则卡死进下一路)
 	battle._timestop._ts_active.clear(); battle._timestop._ts_remaining = 0.0
-	battle._timestop._ts_charge_casters.clear(); battle._timestop._ts_frozen_tweens.clear(); battle._timestop._ts_frozen_particles.clear()
+	battle._timestop._ts_frozen_tweens.clear(); battle._timestop._ts_frozen_particles.clear()
+	## ★★2026-09-16 用户拍板「每个战场各一次」⇒ 触发闸门按路重置, 由时停系统自己负责(reset_for_lane)。
+	##   原来这里是【逐个字段手改】: 清了 `_ts_charge_casters` 却漏了 `_ts_charging` / `_ts_charge_t`,
+	##   于是蓄力中换路 = 下一路白蓄 1 秒再被 `_ts_fire()` 当空 casters 吞掉(实测定格 0 帧)。
+	##   字段散在两个文件里手动对齐, 加一个字段就漏一次 —— 所以重置的责任收回 timestop_system。
+	battle._timestop.reset_for_lane()
 	if is_instance_valid(battle._timestop._ts_overlay): battle._timestop._ts_overlay.visible = false
 	if is_instance_valid(battle._timestop._ts_flash_overlay): battle._timestop._ts_flash_overlay.visible = false
 	for g in battle._timestop._ts_glow_sprs:

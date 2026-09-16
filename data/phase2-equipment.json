@@ -702,10 +702,10 @@
     "baseStats1": "+生命100/210/1000·龟能充能+10%",
     "shopAvailable": 1,
     "emoji": "⏳",
-    "effectDesc1": "登场第 {C:TimestopSystem.TS_START_T} 秒蓄力 {C:TimestopSystem.TS_CHARGE} 秒后释放「时间停止」：全场其他单位/弹道/特效全部定格，持续 4/7/20 秒；\n此期间只有【全场最高星级】沙漏的携带者（敌我皆可，同星并存）能自由攻击/施法/移动，伤害即时结算，并额外获得 1.5/2/3 倍龟能充能速度、且在时停开始瞬间立即获得 40/150/300 点龟能；\n若场上存在更高星的沙漏，低星那件本场不会生效。\n一场战斗一次。",
+    "effectDesc1": "登场第 {C:TimestopSystem.TS_START_T} 秒蓄力 {C:TimestopSystem.TS_CHARGE} 秒后释放「时间停止」：全场其他单位/弹道/特效全部定格，持续 4/7/20 秒；\n此期间只有【全场最高星级】沙漏的携带者（敌我皆可，同星并存）能自由攻击/施法/移动，伤害即时结算，并额外获得 1.5/2/3 倍龟能充能速度、且在时停开始瞬间立即获得 40/150/300 点龟能；\n若场上存在更高星的沙漏，低星那件本场不会生效。\n每个战场各一次（上路 / 下路 / 终极战场各可触发一次）。",
     "effectDesc3": "",
     "img": "equip/dungeon-hourglass.png",
-    "effectBrief": "登场第 {C:TimestopSystem.TS_START_T} 秒发动时间停止，全场定格 4/7/20 秒，一场一次。"
+    "effectBrief": "登场第 {C:TimestopSystem.TS_START_T} 秒发动时间停止，全场定格 4/7/20 秒，每个战场各一次。"
   },
   {
     "id": "p2eq_060",

@@ -94,6 +94,12 @@ VERIFIED_FAR = {
     #   `_eq_chain_lightning` 的 [40,60,90] 与 [4,5,6] 一个没动 —— 人工核过, 纯锚距漂移。
     ('p2eq_026', '40/60/90'): '_eq_chain_lightning 连锁闪电伤害 [40,60,90](锚距被插行推过窗口边缘)',
     ('p2eq_026', '4/5/6'):    '_eq_chain_lightning 连锁跳数 [4,5,6](同上)',
+    # ── 2026-09-16 059 沙漏: 三个数组住在 scripts/systems/equip/timestop_system.gd(独立文件·离 id 分派锚点极远)。
+    #   这三条【从 2026-09-06 改成三档那次起就一直在报】, 不是本次改文案造成的(拿 HEAD 版 json 跑同样报 3 条)。
+    #   逐条核过代码常量, 与文案一字不差:
+    ('p2eq_059', '4/7/20'):      'TimestopSystem.TS_DUR [4.0,7.0,20.0] 定格时长',
+    ('p2eq_059', '1.5/2/3'):     'TimestopSystem.TS_ECHARGE_MULT [1.5,2.0,3.0] 时停内龟能充能倍率',
+    ('p2eq_059', '40/150/300'):  'TimestopSystem.TS_INSTANT_ENERGY [40.0,150.0,300.0] 定格瞬间立即给的龟能',
 }
 WIN = 2500
 
