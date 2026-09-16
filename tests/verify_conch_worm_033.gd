@@ -179,6 +179,24 @@ func _ready() -> void:
 	_ok("④ ★分母: 小虫在场", not w4a.is_empty())
 	if not w4a.is_empty():
 		var w4: Dictionary = w4a[0]
+		## ★★2026-09-17 修一条偶发红: 这一段只验【伤害类型】(物理吃护甲、不吃魔抗),
+		##   但 033 **本来就给小虫发 3 件随机 3★ 装备**(③ 段验的就是这件事), 其中带命中触发的
+		##   (057 狙击长管 / 010 激光 …) 会把某一次命中放大 ⇒ 下面「软 ≈ 厚魔抗」的判据偶发不成立。
+		##   实测证据: 并行门禁里红过「软 405 / 厚甲 60 / 厚魔抗 810」(整 2 倍),
+		##   而**清掉装备后**同一只小虫连打八次逐次一致(探针 tests/_probe_worm_atk.gd)。
+		## ★清的是【随机源】不是被测对象 —— 伤害类型由 `_resolve_dmg(..., magic=false)` 决定,
+		##   与小虫带不带装备无关; 静态属性加成对三个靶子一视同仁、本来就会抵消,
+		##   真正会坏事的是**触发类**效果。判据要对随机不敏感(memory fb-make-assertions-rng-insensitive)。
+		w4["equips"] = []
+		w4["eq_state"] = {}
+		w4["buffs"] = []
+		## ★只清 equips **不够**: 装备的属性加成在生成时就已经写进单位字典了, 清列表只挡住【触发】,
+		##   挡不住已经加上去的**暴击率**。而 `_resolve_dmg` 里唯一的随机源正是
+		##   `_battle_rng.randf() < u["crit"]`(RealtimeBattle3DScene.gd:4202) ——
+		##   实测第一版只清 equips 仍然 10 次红 1 次, 且那次是「软 390 vs 厚魔抗 585」= 整 1.5 倍
+		##   (恰好等于 `crit_dmg`)。把暴击按死, 这条判据才真的只量伤害类型。
+		w4["crit"] = 0.0
+		w4["crit_dmg"] = 1.0
 		var hs: float = float(soft["hp"])
 		_s._damage._apply_damage_from(w4, soft, _s._resolve_dmg(w4, float(w4["atk"]), soft, false), Color.WHITE, 0.0, false, true)
 		var ds: float = hs - float(soft["hp"])

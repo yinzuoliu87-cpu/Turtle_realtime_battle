@@ -216,17 +216,27 @@ func _avatar(pid: String) -> Control:
 	return pc
 
 
+## 战绩条目的「多久之前」。
+##
+## ★★2026-09-17 修一个一直没人发现的单位错配: 写入侧存的是【秒】
+##   (`RealtimeBattle3DScene.gd:7582` 的 `int(Time.get_unix_time_from_system())`),
+##   而这里原来拿【毫秒】去减它(`* 1000.0`) ⇒ 差值恒等于"当前毫秒数"本身,
+##   **刚打完的一局会显示「20691 天前」**。玩家存档里 50 条战绩的 ts 全是秒, 实测确认。
+## ★所以修的是【读取侧】不是写入侧 —— 改写入侧会让已存的记录全部作废。
+## ★阈值也跟着从毫秒改回秒(60 / 3600 / 86400), 只改分子不改分母同样是错的。
+## ⚠ 设备时钟往回调会让 d 为负 ⇒ 落到「刚刚」。这是有意的兜底(总比显示负数好);
+##   真正的时钟问题在方案书 §8 E1(赛程周界必须由服务端定)。
 func _rel_time(ts: int) -> String:
 	if ts <= 0:
 		return ""
-	var d := int(Time.get_unix_time_from_system() * 1000.0) - ts
-	if d < 60000:
+	var d := int(Time.get_unix_time_from_system()) - ts
+	if d < 60:
 		return "刚刚"
-	if d < 3600000:
-		return "%d 分钟前" % int(d / 60000.0)
-	if d < 86400000:
-		return "%d 小时前" % int(d / 3600000.0)
-	return "%d 天前" % int(d / 86400000.0)
+	if d < 3600:
+		return "%d 分钟前" % int(d / 60.0)
+	if d < 86400:
+		return "%d 小时前" % int(d / 3600.0)
+	return "%d 天前" % int(d / 86400.0)
 
 
 ## 圆形按钮的自绘登记表(见下面 `_paint_round_btn` 的病历)。
