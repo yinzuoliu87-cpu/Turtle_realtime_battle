@@ -112,7 +112,12 @@ def check_boxes(path, name):
     ##   ② **草稿**方案书里写的是"将要新增 verify_x.gd" —— 文件本来就还不该存在。
     ##   判据: ①看引用所在行有没有"删"字; ②看方案书状态是不是「草稿」。
     ##   ⚠ 这不是放水的口子 —— 两条都很窄, 且下面会打印被放过的条数, 涨了看得见。
-    draft = (st == '草稿')
+    ## ★2026-09-16 补一个我自己漏掉的状态: **「已拍板」和「草稿」一样都是【还没开工】**,
+    ##   它写的同样是"将要新增 verify_x.gd"。原来只豁免草稿 ⇒ 一份刚拍板的方案书
+    ##   没法写出它将要建的门禁文件名, 必然误红(大轮赛制 v2 转「已拍板」当场撞上)。
+    ##   ⚠ 只放这两个状态。**「实施中」「已完成」照样严查** —— 那两个状态下
+    ##   引用不存在的测试就是真烂账(测试被删/改名却没回填), 正是这条规则要抓的东西。
+    draft = (st in ('草稿', '已拍板'))
     for ln in s.split(chr(10)):
         for ref in set(re.findall(r'(tests/verify_[A-Za-z0-9_]+\.gd|verify_[A-Za-z0-9_]+\.gd|tools/[A-Za-z0-9_]+\.py)', ln)):
             cands = [ref, os.path.join('tests', ref)] if not ref.startswith(('tests/', 'tools/')) else [ref]
