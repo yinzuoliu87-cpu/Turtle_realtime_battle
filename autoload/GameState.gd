@@ -583,6 +583,18 @@ var hearts: int = 8                                   # 命数 (8起, 输-1, 0=�
 var season_total_battles: int = 0                     # 本赛季总战斗数 → 决定装备槽 0/1/2/3/4
 var season_eggs_killed: int = 0                       # 本赛季击杀龟蛋数 (排行榜口径)
 var season_wins: int = 0                              # 本赛季胜场数 (实时战斗赢一场+1; 排行指标候选)
+
+## ─── 大轮赛制 v2 · 周赛制 (A2, 2026-09-17) ───────────────────────────
+## ★每个字段都要走【五处】: 声明 / 保存 / 载入 / reset_save / start_new_season。
+##   漏任何一处都**不会报错**, 只会在切轮或重启后悄悄漂 —— 门禁 verify_week_season 就是守这个。
+var ranked_used: int = 0            # 积分赛已用场次 (配额 RANKED_QUOTA; 闯关/决赛日的场次不吃它)
+var season_sweeps: int = 0          # 横扫(2-0)数 —— 终榜排序第三键「胜场 > 余命 > 横扫」
+var backfill_paid: int = 0          # 补发【已发】场次 (幂等: 只补差额, 重复调用不再给)
+var week_phase: String = ""         # 赛程阶段: "" 未定 / rest / ranked / gauntlet / finals
+var week_anchor_ts: int = 0         # 本自然周的锚点 (UTC 周一 00:00 的 unix 秒)
+var gauntlet_wins: int = 0          # 闯关赛战绩: 胜
+var gauntlet_losses: int = 0        # 闯关赛战绩: 负
+var promoted: bool = false          # 是否已晋级(积分赛 → 周六)
 ## 093 香火石【香火刻痕】的刻痕池 —— 队伍级 + 赛季级(用户 2026-08-06「一大轮重置」,
 ## 而代码里「一大轮」就是赛季, 见上面 season_id 的注释「5天一轮, 切轮全重置」)。
 ## ★为什么刻痕存这里、而充能条存在装备实例上(见 mk_eq / eq_chg):
@@ -1083,6 +1095,14 @@ func save() -> void:
 		"season_total_battles": season_total_battles,
 		"season_eggs_killed": season_eggs_killed,
 		"season_wins": season_wins,
+		"ranked_used": ranked_used,
+		"season_sweeps": season_sweeps,
+		"backfill_paid": backfill_paid,
+		"week_phase": week_phase,
+		"week_anchor_ts": week_anchor_ts,
+		"gauntlet_wins": gauntlet_wins,
+		"gauntlet_losses": gauntlet_losses,
+		"promoted": promoted,
 		"incense_marks": incense_marks,   # 093 香火石: 赛季级刻痕池
 		"incense_charge": incense_charge, # 093 香火石: 赛季级充能池(与刻痕同一条线)
 		"season_level": season_level,
@@ -1152,6 +1172,14 @@ func _load() -> void:
 	season_total_battles = int(data.get("season_total_battles", 0))
 	season_eggs_killed = int(data.get("season_eggs_killed", 0))
 	season_wins = int(data.get("season_wins", 0))
+	ranked_used = int(data.get("ranked_used", 0))
+	season_sweeps = int(data.get("season_sweeps", 0))
+	backfill_paid = int(data.get("backfill_paid", 0))
+	week_anchor_ts = int(data.get("week_anchor_ts", 0))
+	gauntlet_wins = int(data.get("gauntlet_wins", 0))
+	gauntlet_losses = int(data.get("gauntlet_losses", 0))
+	week_phase = str(data.get("week_phase", ""))
+	promoted = bool(data.get("promoted", false))
 	incense_marks = int(data.get("incense_marks", 0))   # 093 香火石: 赛季级刻痕池
 	incense_charge = int(data.get("incense_charge", 0))
 	season_level = int(data.get("season_level", 1))
@@ -1303,6 +1331,14 @@ func reset_save() -> void:
 	season_total_battles = 0
 	season_eggs_killed = 0
 	season_wins = 0
+	ranked_used = 0  # A2(v2 周赛制): 与上面同一条线, 漏一个就会在切轮后悄悄漂
+	season_sweeps = 0
+	backfill_paid = 0
+	week_phase = ""
+	week_anchor_ts = 0
+	gauntlet_wins = 0
+	gauntlet_losses = 0
+	promoted = false
 	incense_marks = 0                 # 093 香火石: 刻痕随大轮(赛季)清零 —— 用户「一大轮重置」
 	incense_charge = 0                # 同上: 充能与刻痕同一条线, 一起重置
 	season_level = 1
@@ -1647,6 +1683,14 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	season_total_battles = 0
 	season_eggs_killed = 0
 	season_wins = 0
+	ranked_used = 0  # A2(v2 周赛制): 与上面同一条线, 漏一个就会在切轮后悄悄漂
+	season_sweeps = 0
+	backfill_paid = 0
+	week_phase = ""
+	week_anchor_ts = 0
+	gauntlet_wins = 0
+	gauntlet_losses = 0
+	promoted = false
 	incense_marks = 0                 # 093 香火石: 刻痕随大轮(赛季)清零 —— 用户「一大轮重置」
 	incense_charge = 0                # 同上: 充能与刻痕同一条线, 一起重置
 	season_level = 1
