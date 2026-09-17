@@ -444,12 +444,22 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 	var lane_assign: Dictionary = GameState.lane_assign.duplicate(true) if GameState.lane_assign is Dictionary else {}
 	var equipped := {}
 	var levels := {}
+	## ★★2026-09-17 补上一直是空的技能选择(U10)。
+	##   消费侧一直活着: `RealtimeBattle3DScene.gd:5192` 读 `GameState.foe_loadouts[id]` 决定
+	##   **敌方龟用哪个技能**, 注释写着「敌侧: ghost快照的技能选择(用户 2026-07-15 ghost带技能)」;
+	##   而生产侧这里原本写死 `"loadouts": {}`, 全仓 0 处补写 ⇒ **打到的鬼影永远用 idx=1 签名技**
+	##   (`:5183` `var idx := 1`), 一个用户要过的功能静默失效了两个月。
+	## ★只收这份快照里真有的那几只 —— 不把玩家对别的龟的选择一起传上云(同 `levels` 的口径)。
+	var lo_out := {}
 	for pid in leaders:
 		var p := str(pid)
 		var eqs: Array = GameState.equipped_p2.get(p, [])   # left 侧裸 pet_id (无 right:: 前缀)
 		if not eqs.is_empty():
 			equipped[p] = eqs.duplicate(true)
 		levels[p] = GameState.get_pet_level(p)
+		var _lo = GameState.loadouts.get(p, null) if GameState.loadouts is Dictionary else null
+		if _lo is int or _lo is float:
+			lo_out[p] = int(_lo)
 	# 小将(dual_lineup)配置+装备也存进快照(用户2026-07-18"快照里小将也应该有装备")→对手小将不再裸装
 	var minions := {}
 	if GameState.dual_lineup is Dictionary:
@@ -476,7 +486,7 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 		"leaders": leaders,
 		"lane_assign": lane_assign,
 		"minions": minions,
-		"loadouts": {},
+		"loadouts": lo_out,
 		"equipped": equipped,
 		"pet_levels": levels,
 		"season_total_battles": int(GameState.season_total_battles),
