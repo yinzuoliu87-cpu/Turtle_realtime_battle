@@ -25,6 +25,8 @@ extends Node
 ## ★② 塞的值**全部非零且各不相同**，否则「切轮后 == 0」在字段本来就是 0 时是恒真式。
 ## ★①**确实会写一次盘**（否则 `save()`→`_load()` 走不通），靠「备份→还原」兜底；②③ 纯内存。
 
+const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
+
 const FIELDS_INT := ["ranked_used", "season_sweeps", "backfill_paid",
 	"week_anchor_ts", "gauntlet_wins", "gauntlet_losses"]
 
@@ -55,6 +57,7 @@ func _ready() -> void:
 	_t_roundtrip()
 	_t_new_season_resets()
 	_t_reset_save_clears()
+	await _t_quota_and_sweep()
 
 	print("")
 	print("  (共 %d 条断言)" % _n)
@@ -158,3 +161,79 @@ func _t_reset_save_clears() -> void:
 		_ok("③ 清档归零: %s" % f, int(_gs.get(f)) == 0, "实得 %s" % str(_gs.get(f)))
 	_ok("③ 清档归零: week_phase", str(_gs.week_phase) == "", "实得「%s」" % str(_gs.week_phase))
 	_ok("③ 清档归零: promoted", bool(_gs.promoted) == false, "实得 %s" % str(_gs.promoted))
+
+
+# ─────────────────────────────────────────────────────────────
+# ④⑤ A3 结算接线: 配额消耗 + 横扫计数
+#     走**真入口** `_settle_season(true/false)`(照 verify_combat_sanity.gd:61-65 的调法),
+#     不是直接改字段 —— 直接改就只验了我自己会加法。
+# ─────────────────────────────────────────────────────────────
+func _t_quota_and_sweep() -> void:
+	print("── ④ 配额消耗(走真结算入口) ──")
+	var scene = RB.new()
+	add_child(scene)
+	for _i in range(30):
+		await get_tree().process_frame
+
+	## 摆一个「有赛季、没淘汰」的干净局面
+	_gs.season_start_ts = int(Time.get_unix_time_from_system())   # 防赛季过期滚动
+	_gs.season_leaders = ["basic", "stone", "ice"]                # _had_season=true
+	_gs.hearts = 8
+	_gs.ranked_used = 0
+	_gs.season_sweeps = 0
+	_gs.week_phase = "ranked"
+	_gs.lane_results = {}
+
+	scene._settle_season(false)
+	_ok("④ 积分赛阶段: 打一场 → 配额 +1", int(_gs.ranked_used) == 1,
+		"ranked_used=%d" % int(_gs.ranked_used))
+	scene._settle_season(false)
+	_ok("④ 再打一场 → 配额 +1(累计 2)", int(_gs.ranked_used) == 2,
+		"ranked_used=%d" % int(_gs.ranked_used))
+
+	## ★闯关赛/决赛日的场次**不吃**积分赛配额
+	_gs.week_phase = "gauntlet"
+	var before: int = int(_gs.ranked_used)
+	scene._settle_season(false)
+	_ok("④ ★闯关赛阶段: 打一场 → 积分赛配额【不动】", int(_gs.ranked_used) == before,
+		"打之前 %d, 打之后 %d" % [before, int(_gs.ranked_used)])
+	_gs.week_phase = "finals"
+	scene._settle_season(false)
+	_ok("④ ★决赛日阶段: 同样不动", int(_gs.ranked_used) == before,
+		"ranked_used=%d" % int(_gs.ranked_used))
+
+	print("── ⑤ 横扫(2-0)计数 ──")
+	_gs.week_phase = "ranked"
+	_gs.hearts = 8
+	_gs.season_sweeps = 0
+
+	## 2-0 横扫: 两路都是我方赢、没打终极
+	_gs.lane_results = {"top": "left", "bottom": "left"}
+	_ok("⑤ ★分母: 这是一局真 2-0(两路都有结果且同为 left)",
+		_gs.dual_lane_was_sweep(), "lane_results=%s" % str(_gs.lane_results))
+	scene._settle_season(true)
+	_ok("⑤ 2-0 赢 → 横扫 +1", int(_gs.season_sweeps) == 1,
+		"season_sweeps=%d" % int(_gs.season_sweeps))
+
+	## 1-1 打到终极才赢: **不算**横扫
+	_gs.lane_results = {"top": "left", "bottom": "right", "final": "left"}
+	scene._settle_season(true)
+	_ok("⑤ ★打到终极战场才赢 → 不算横扫", int(_gs.season_sweeps) == 1,
+		"season_sweeps=%d(应仍为 1)" % int(_gs.season_sweeps))
+
+	## 投降局: lane_results 是空的 —— 实测过(tests/_probe_draw_surrender.gd)
+	_gs.lane_results = {}
+	_ok("⑤ ★分母: 投降局的 lane_results 确实是空字典",
+		(_gs.lane_results as Dictionary).is_empty())
+	_ok("⑤ ★空 lane_results 不算横扫(不崩也不误记)", not _gs.dual_lane_was_sweep())
+	scene._settle_season(true)
+	_ok("⑤ 投降后赢的那局不记横扫", int(_gs.season_sweeps) == 1,
+		"season_sweeps=%d(应仍为 1)" % int(_gs.season_sweeps))
+
+	## 2-0 但**输**的那方是我 ⇒ 不算我的横扫
+	_gs.lane_results = {"top": "right", "bottom": "right"}
+	_ok("⑤ ★对方 2-0 → 不是我的横扫", not _gs.dual_lane_was_sweep(),
+		"lane_results=%s" % str(_gs.lane_results))
+
+	scene.queue_free()
+	await get_tree().process_frame

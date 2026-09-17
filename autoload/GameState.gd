@@ -545,6 +545,23 @@ func dual_lane_needs_final() -> bool:
 func dual_lane_winner() -> String:
 	return _DualLane.overall_winner(lane_results)
 
+## 本局我方是不是【横扫】(2-0, 没打终极战场)? —— 终榜排序第三键「胜场 > 余命 > 横扫」。
+##
+## ★★A3(大轮赛制 v2·2026-09-17)。判据要同时满足两条, 少一条就会误记:
+##   ① 两路都有结果 —— **投降局的 `lane_results` 是空字典**(2026-09-17 探针
+##      tests/_probe_draw_surrender.gd 实测: 投降后 `{}`、`dual_lane_winner()` 返回 "")。
+##      不挡住就会把投降也当成一种"没打终极", 而它压根没打完。
+##   ② 两路是【同一方】赢 ⇒ `match_winner` 非空 = 不需要终极战场。
+## ★放在这一层而不是主场景: 这里才是持有 `lane_results` 与 `_DualLane` 的地方,
+##   在主场景另 preload 一份壳 = 同一判据存两份, 必然落后
+##   (memory fb-hand-rolled-copies-drift; 059 沙漏「换路重置该由拥有它的系统负责」同族)。
+func dual_lane_was_sweep() -> bool:
+	if not (lane_results is Dictionary) or (lane_results as Dictionary).is_empty():
+		return false
+	if not _DualLane.lanes_done(lane_results):
+		return false
+	return str(_DualLane.match_winner(lane_results)) == "left"
+
 # ─── 闯关进度 (单次冒险, 不持久化, 失败重置) ───────────────────
 var dungeon_stage: int = 1                           # 当前第几关 (1-5)
 var dungeon_carry_hp: Dictionary = {}                 # {pet_id → remaining_hp}, 跨关继承

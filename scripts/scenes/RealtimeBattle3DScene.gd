@@ -7549,12 +7549,26 @@ func _settle_season(won: bool) -> void:
 		var lost_hearts: int = maxi(0, 8 - int(gs.hearts))
 		_last_reward = 8 + int(gs.hearts) + 2 * lost_hearts + (6 if won else 0)   # ★深海币砍到约1/3(用户2026-07-18"太多要减"): 原25+2命+5失命+15胜≈胜60/负45→一场买20件毫无取舍; 新≈满命胜22/负17·残命胜29·一场买5-7件(逆风补偿保留·糖果罐大奖不动)
 		gs.season_total_battles += 1
+		## ★★A3(大轮赛制 v2·2026-09-17): 积分赛【配额】消耗。
+		##   `season_total_battles` 是终身累计(跨大轮才归零), 而配额是**本周期**的额度 ——
+		##   两个不是一回事, 所以另记一个字段而不是拿前者算。
+		## ★**闯关赛 / 决赛日的场次不吃积分赛配额**(方案书 A3) ⇒ 按赛程阶段分流。
+		##   `week_phase` 为空 = 赛程还没接线(A 阶段后续步骤才写它) ⇒ 当前一律按积分赛计,
+		##   这样 A3 单独上线时行为与现状一致, 不会凭空少算。
+		if str(gs.week_phase) == "" or str(gs.week_phase) == "ranked":
+			gs.ranked_used += 1
 		gs.add_season_xp(2)                          # 每场 +2 大轮经验
 		gs.axe_on_match_end()                        # 096 小木斧: 打完一整场 +10 砍伐经验 + 羁绊局数
 		gs.candy_jar_add(1 if won else 4)            # 糖果罐(选糖果龟当统领才有): 赢+1输+4封顶30(封板L392·逆风快攒)
 		if won:
 			gs.season_wins += 1
 			gs.season_eggs_killed += 1
+			## ★★A3: 横扫(2-0)计数 —— 终榜排序的第三键「胜场 > 余命 > 横扫」。
+			## 判据写在 `GameState.dual_lane_was_sweep()` 里(那一层才持有 lane_results 与
+			## 双路逻辑壳), 这里只调它 —— 在主场景另 preload 一份壳 = 同一判据存两份。
+			## ⚠ 它内部已经挡住了**投降局的空 lane_results**, 别在这里重复判。
+			if gs.dual_lane_was_sweep():
+				gs.season_sweeps += 1
 			if gs.get("left_team") is Array and (gs.left_team as Array).is_empty():
 				var _ldr: Array = gs.get("season_leaders")
 				gs.left_team.assign(_ldr.slice(0, 3))
