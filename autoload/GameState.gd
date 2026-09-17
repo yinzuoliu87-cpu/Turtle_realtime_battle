@@ -555,6 +555,19 @@ func dual_lane_winner() -> String:
 ## ★放在这一层而不是主场景: 这里才是持有 `lane_results` 与 `_DualLane` 的地方,
 ##   在主场景另 preload 一份壳 = 同一判据存两份, 必然落后
 ##   (memory fb-hand-rolled-copies-drift; 059 沙漏「换路重置该由拥有它的系统负责」同族)。
+## 本周期的积分赛配额是不是已经打满? ★★A4(大轮赛制 v2·2026-09-17)。
+##
+## ★判据放在这一层(数据的主人)而不是主菜单 —— 开局闸与商店锁**两处都要用**,
+##   各写一份必然有一处落后(memory fb-hand-rolled-copies-drift)。
+## ★用户 2026-09-17 拍板: 配额打满 = **锁开局, 且商店一起锁**
+##   (「打满就彻底停下来」; 不做"不计分的练手局" —— U9 已经否掉表演赛, 别换个名字装回来)。
+## ⚠ `week_phase` 为空 = 赛程还没接线 ⇒ 当前按积分赛算, 与 A3 的计数口径一致。
+func ranked_quota_full() -> bool:
+	if week_phase != "" and week_phase != "ranked":
+		return false                      # 闯关赛/决赛日不吃积分赛配额, 自然谈不上打满
+	return int(ranked_used) >= int(_P2.RANKED_QUOTA)
+
+
 func dual_lane_was_sweep() -> bool:
 	if not (lane_results is Dictionary) or (lane_results as Dictionary).is_empty():
 		return false

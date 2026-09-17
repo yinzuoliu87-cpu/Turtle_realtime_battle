@@ -232,7 +232,14 @@ func _build_page_buttons() -> void:
 		["图鉴", func(): _go("Codex"), mic + "ic-codex.png"],
 		["排行榜", func(): _go("Leaderboard"), mic + "ic-trophy.png"],
 	]
-	var shop_locked := int(GameState.season_total_battles) <= 0 or eliminated   # 商店锁: 大轮未打第一场(2026-07-18) OR 已淘汰(2026-07-24) → 灰显+🔒
+	## A4(2026-09-17 user decision): quota full also locks the shop.
+	## WARNING: this line affects FIVE gates that rely on setting season_total_battles=3
+	##   (verify_shop_layout / shop_merge_pips / shop_persist / ui_consistency / ui_layout).
+	##   None of them sets ranked_used => on a fresh CI save ranked_used=0 < quota,
+	##   so they happen NOT to be locked. That is luck, not design: if someone sets the
+	##   quota to 0 or feeds those gates a ranked_used, all five go red at once -
+	##   do not chase it as a product regression then.
+	var shop_locked := int(GameState.season_total_battles) <= 0 or eliminated or GameState.ranked_quota_full()   # 商店锁: 大轮未打第一场(2026-07-18) OR 已淘汰(2026-07-24) → 灰显+🔒
 	for i in range(subs.size()):
 		var s: Array = subs[i]
 		var r := i / 2                                       # 行 0,0,1,1
@@ -713,8 +720,14 @@ func _go(scene: String) -> void:
 
 ## 商店入口: 大轮未打第一场 → 上锁不进(用户2026-07-18); 打完第一场解锁
 func _open_shop() -> void:
+	## A4(2026-09-17): three reasons, each with its own message - same wording as
+	##   _start_battle_flow so the player never sees two different names for one state.
+	##   Quota-full also locks the shop (user decision: stop completely when the quota is used up).
 	if GameState.is_eliminated():
-		_toast("💀 赛季已淘汰 · 设置→重置存档 重开赛季")
+		_toast("💀 本大轮已出局 · 等周六闯关赛开赛观战")
+		return
+	if GameState.ranked_quota_full():
+		_toast("📋 本周积分赛配额已打满 · 等周六闯关赛")
 		return
 	if int(GameState.season_total_battles) <= 0:
 		_toast("🔒 本大轮打完第一场才开店")
@@ -743,9 +756,18 @@ func _toast(msg: String) -> void:
 
 ## 开始战斗 → 选龟流程 (实时版): 选龟(TeamSelect) → 匹配(Matchmaking) → 2.5D 战斗(RealtimeBattle3D).
 ##   非教程的常规入口. mode 置 single (含经济, 非教程标记). 进选龟前清掉上局对手快照, 让 Matchmaking 重抽.
+## 开局拦截。★★A4(大轮赛制 v2·2026-09-17): 从【一个闸】拆成【三种原因各自一条提示】——
+##   原来不管为什么打不了, 玩家只看到「赛季已淘汰」, 而配额打满和不在开赛时段都不是"淘汰"。
+## ★三条的**先后顺序有意义**: 命尽是最终态(重置存档才解)、配额是本周期上限(等下一阶段)、
+##   阶段不对只是"现在不行"。按"多严重"排, 玩家看到的是最根本的那条原因。
 func _start_battle_flow() -> void:
 	if GameState.is_eliminated():   # 大轮淘汰锁(用户2026-07-24): 0命封匹配, 只重置存档解锁
-		_toast("💀 赛季已淘汰 · 设置→重置存档 重开赛季")
+		## ★U9 拍板(2026-09-16):「0 命的话就只能等到周 6 周日观赛了, 不再打表演赛」
+		##   ⇒ 文案从「设置→重置存档」改成指向观赛。观赛入口在 F 阶段, 先把话说对。
+		_toast("💀 本大轮已出局 · 等周六闯关赛开赛观战")
+		return
+	if GameState.ranked_quota_full():
+		_toast("📋 本周积分赛配额已打满 · 等周六闯关赛")
 		return
 	GameState.mode = "single"
 	GameState.tutorial = false

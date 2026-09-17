@@ -40,14 +40,44 @@ func _ready() -> void:
 	await get_tree().process_frame
 
 	GameState.dual_active = false
-	var t0 := _count_toasts(scene, "淘汰")
+	var t0 := _count_toasts(scene, "出局")
 	scene._start_battle_flow()
 	_ok("★淘汰→开始战斗被拦(dual_active 未被置 true·没进选龟)", not GameState.dual_active)
-	_ok("★开始战斗拦截时弹淘汰 toast", _count_toasts(scene, "淘汰") == t0 + 1)
+	_ok("★开始战斗拦截时弹出局 toast", _count_toasts(scene, "出局") == t0 + 1)
 
-	var t1 := _count_toasts(scene, "淘汰")
+	var t1 := _count_toasts(scene, "出局")
 	scene._open_shop()
-	_ok("★淘汰→开店被拦(独立新增淘汰 toast·没导航去Shop)", _count_toasts(scene, "淘汰") == t1 + 1)
+	_ok("★淘汰→开店被拦(独立新增出局 toast·没导航去Shop)", _count_toasts(scene, "出局") == t1 + 1)
+
+	# A4(2026-09-17): quota-full is a SECOND lock reason, separate from 0-heart.
+	#   The toast keyword moved from the old one to a new one, so the counter above
+	#   follows the product wording. Counting by wording is fragile by nature - that is
+	#   exactly why this block also asserts dual_active stays false: wording can drift,
+	#   but "the player must not get into a match" cannot.
+	GameState.hearts = 8                 # not eliminated - isolate the quota reason
+	GameState.season_total_battles = 5
+	GameState.week_phase = "ranked"
+	GameState.ranked_used = 0
+	_ok("A4 denominator: quota not full yet", not GameState.ranked_quota_full())
+	## The POSITIVE case cannot go through _start_battle_flow(): when the guard passes it
+	## calls _go("TeamSelect") and CHANGES THE SCENE, which tears down this test tree
+	## (first version of this block did exactly that - the file still printed ALL PASS but
+	## left one SCRIPT ERROR "Cannot call method quit on a null value" at the very end).
+	## So: assert the predicate for the allowed case, and reserve the real entry for the
+	## BLOCKED cases below - those return early and never navigate, which is the half
+	## that actually matters (a blocked player must not reach a match).
+	_ok("A4 denominator: quota not full => guard says allowed", not GameState.ranked_quota_full())
+	GameState.ranked_used = 999          # full
+	_ok("A4 quota full is detected", GameState.ranked_quota_full())
+	GameState.dual_active = false
+	var q1 := _count_toasts(scene, "配额")
+	scene._start_battle_flow()
+	_ok("A4 quota full => battle blocked (dual_active stays false)", not GameState.dual_active)
+	_ok("A4 quota full => quota toast shown", _count_toasts(scene, "配额") == q1 + 1)
+	var q2 := _count_toasts(scene, "配额")
+	scene._open_shop()
+	_ok("A4 quota full => shop blocked too (user decision)", _count_toasts(scene, "配额") == q2 + 1)
+	GameState.ranked_used = 0            # restore for the rest of this file
 
 	# ⑤ 视觉: 淘汰时主菜单英雄键/商店键建出 🔒 锁角标
 	var lock_badges := 0
