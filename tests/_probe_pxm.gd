@@ -97,6 +97,73 @@ func _ready() -> void:
 	else:
 		print("   (分母: _units 共 %d 个, 取到 Sprite3D 的 %d 个)" % [n_units, shown])
 
+	# ── ⑤ ★边界格到底在不在画面里(做 P1-5 之前必须先问的问题) ──
+	#   参考给的做法是「在场地边界另立一圈挡土墙」。但如果那圈边界大半落在屏外、
+	#   或被左右各 185px 的 UI 栏挡住, 那就是造一堵没人看得见的墙 ——
+	#   ★这正是本项目「写了没人读」的另一个形状, 动手前先量。
+	var f := FileAccess.open("res://data/maps/arena.json", FileAccess.READ)
+	if f == null:
+		print("[FAIL] ★分母: arena.json 打不开")
+	else:
+		var data = JSON.parse_string(f.get_as_text()); f.close()
+		var grid: Array = data.get("grid", [])
+		var tile: float = float(data.get("tile", 48.0))
+		var ox: float = float(data.get("origin_x", 0.0))
+		var oy: float = float(data.get("origin_y", 0.0))
+		var rows_n: int = grid.size()
+		var cols_n: int = (grid[0] as Array).size() if rows_n > 0 else 0
+		var VOID := 4
+		var n_nonvoid := 0
+		var n_edge := 0
+		var n_on := 0          # 投影落在 1280×720 画面内
+		var n_clear := 0       # 且不在左右 185px 的 UI 栏里
+		var ui := 185.0
+		## ★★★必须带窗口按真实分辨率跑, 不能 headless。
+		##   无头视口是 **1280×1280 正方**(本项目老坑, 见 memory「判据没错但被测对象不在场」),
+		##   `--resolution` 在 headless 下**改不动它**(实测无效)。
+		##   ★我第一版试图手推「1280×1280 → 1280×720」的换算, 写成了中心裁切 ——
+		##     错的: Godot 的 fov 是【竖直】FOV(KEEP_HEIGHT), 换宽高比时横竖两个方向的
+		##     换算并不一样。那一版报「139 格里只有 1 格在屏内」, 差点让我判定
+		##     「P1-5 造出来也没人看得见」而放弃整件事。真值是 75 格(54%)。
+		##   ⇒ 不换算了, 直接用真实视口; 视口不对就报废而不是给个假数。
+		for r in range(rows_n):
+			var row: Array = grid[r]
+			for c in range(cols_n):
+				var ti2: int = int(row[c])
+				if ti2 == VOID:
+					continue
+				n_nonvoid += 1
+				var is_edge := false
+				for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					var rr: int = r + d.y
+					var cc: int = c + d.x
+					if rr < 0 or rr >= rows_n or cc < 0 or cc >= cols_n:
+						is_edge = true; break          # 越界当 void
+					if int((grid[rr] as Array)[cc]) == VOID:
+						is_edge = true; break
+				if not is_edge:
+					continue
+				n_edge += 1
+				var px2: float = ox + (float(c) + 0.5) * tile
+				var py2: float = oy + (float(r) + 0.5) * tile
+				var wp: Vector3 = inst._world_pos(Vector2(px2, py2), 0.0)
+				var s2: Vector2 = cam.unproject_position(wp)
+				var X: float = s2.x
+				var Y: float = s2.y
+				if X >= 0.0 and X <= vp.x and Y >= 0.0 and Y <= vp.y:
+					n_on += 1
+					if X >= ui and X <= vp.x - ui:
+						n_clear += 1
+		print("")
+		if absf(vp.x - vp.y) < 1.0:
+			print("[FAIL] ★视口是 %.0f×%.0f 正方(无头默认) —— ⑤ 的可见性数字【不作数】。" % [vp.x, vp.y])
+			print("       要量可见性必须带窗口: --position 5000,5000 --resolution 1280x720 (不加 --headless)")
+		print("⑤ 地图 %d×%d · 非void %d 格 · 边界格 %d 格" % [cols_n, rows_n, n_nonvoid, n_edge])
+		print("   其中投影落在 %.0f×%.0f 画面内: %d 格 (%.0f%%)" % [vp.x, vp.y, n_on, 100.0 * float(n_on) / maxf(1.0, float(n_edge))])
+		print("   且不被左右 185px UI 栏遮挡:   %d 格 (%.0f%%)" % [n_clear, 100.0 * float(n_clear) / maxf(1.0, float(n_edge))])
+		if n_edge == 0:
+			print("   [FAIL] ★分母: 一个边界格都没找到 —— 判据无效")
+
 	print("")
 	print("★结论怎么用: 参考给的是【屏幕比例】0.81。")
 	print("   若龟是公告板(不吃俯角压缩), 龟屏幕高 = 世界高 × 横向px/米;")
