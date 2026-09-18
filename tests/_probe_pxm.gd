@@ -117,6 +117,7 @@ func _ready() -> void:
 		var n_edge := 0
 		var n_on := 0          # 投影落在 1280×720 画面内
 		var n_clear := 0       # 且不在左右 185px 的 UI 栏里
+		var edge_scr: Array = []   # 可见边界格的屏幕坐标(给下面的分布统计用)
 		var ui := 185.0
 		## ★★★必须带窗口按真实分辨率跑, 不能 headless。
 		##   无头视口是 **1280×1280 正方**(本项目老坑, 见 memory「判据没错但被测对象不在场」),
@@ -152,6 +153,7 @@ func _ready() -> void:
 				var Y: float = s2.y
 				if X >= 0.0 and X <= vp.x and Y >= 0.0 and Y <= vp.y:
 					n_on += 1
+					edge_scr.append(Vector2(X, Y))
 					if X >= ui and X <= vp.x - ui:
 						n_clear += 1
 		print("")
@@ -161,6 +163,25 @@ func _ready() -> void:
 		print("⑤ 地图 %d×%d · 非void %d 格 · 边界格 %d 格" % [cols_n, rows_n, n_nonvoid, n_edge])
 		print("   其中投影落在 %.0f×%.0f 画面内: %d 格 (%.0f%%)" % [vp.x, vp.y, n_on, 100.0 * float(n_on) / maxf(1.0, float(n_edge))])
 		print("   且不被左右 185px UI 栏遮挡:   %d 格 (%.0f%%)" % [n_clear, 100.0 * float(n_clear) / maxf(1.0, float(n_edge))])
+		## ★可见的那些格【在画面哪一边】—— 决定墙会不会挡住单位:
+		##   远端(屏幕上方)的墙在所有单位背后, 纯赚; 近端(屏幕下方)的墙会挡住它后面的龟。
+		##   不问这一条就设计, 等于赌。
+		var band := [0, 0, 0]   # 上 1/3 · 中 1/3 · 下 1/3
+		var y_lo := 9999.0
+		var y_hi := -9999.0
+		for e in edge_scr:
+			var v: Vector2 = e
+			if v.x < ui or v.x > vp.x - ui:
+				continue
+			y_lo = minf(y_lo, v.y)
+			y_hi = maxf(y_hi, v.y)
+			if v.y < vp.y / 3.0: band[0] += 1
+			elif v.y < vp.y * 2.0 / 3.0: band[1] += 1
+			else: band[2] += 1
+		print("   可见边界格分布(屏幕纵向三等分): 上 %d · 中 %d · 下 %d   (y 范围 %.0f..%.0f)" % [
+			band[0], band[1], band[2], y_lo, y_hi])
+		if band[2] > 0:
+			print("   ⚠ 下 1/3 有 %d 格 —— 那里的墙会挡住它【后面】的单位, 设计时要么压低要么只画近端的内侧" % band[2])
 		if n_edge == 0:
 			print("   [FAIL] ★分母: 一个边界格都没找到 —— 判据无效")
 

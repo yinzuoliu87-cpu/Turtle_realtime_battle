@@ -1008,6 +1008,13 @@ func _tilemap_from_data(meta: Dictionary, grid: Array, height: Array) -> void:  
 			buckets[ti].append(Transform3D(Basis(), _world_pos(Vector2(px, py), hh - TILE_SINK)))
 	for ti in buckets:
 		_tilemap_add(buckets[ti], Vector3(maxf(0.02, tw_m - BattleWorldBuilder.TILE_GAP_M), TILE_THICK, maxf(0.02, tw_m - BattleWorldBuilder.TILE_GAP_M)), BattleWorldBuilder.TILE_COLS.get(ti, Color(0.2, 0.2, 0.2)), BattleWorldBuilder.tile_material(ti, WS, _arena_center.x, _arena_center.y))
+	# ★场地边界的体积(P1-5·2026-09-18): 在「非void 且 四邻有void」的格子外沿立一圈朝相机的墙卡。
+	#   生成逻辑与实测依据全在 `_world_builder.build_edge_wall` 的长注里。
+	#   ★放这里不放 `_build_tilemap_ground`: grid 只活在本函数里, 而且 MAPEDIT 刷格是重调本函数 ⇒
+	#     刷完格子边界墙会跟着重算; 挂进 `_tile_nodes` ⇒ 重绘时和地砖一起被释放, 不会越堆越多。
+	if _world_builder != null:
+		for n in _world_builder.build_edge_wall(grid, w, h, tile, ox, oy):
+			_tile_nodes.append(n)
 
 # ═══ 局内地图刷子编辑器 (MAPEDIT=1 开 · 开发工具不进正式对局 · 纯视觉不改玩法) ═══
 ## 地砖厚度(米)。★BoxMesh 以 transform 为【几何中心】, 所以砖体占 y∈[-厚/2, +厚/2]。

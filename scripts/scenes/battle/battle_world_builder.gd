@@ -207,6 +207,114 @@ func _build_tilemap_ground() -> void:
 	battle._tilemap_add(xf_stone, Vector3(maxf(0.02, tw_m - TILE_GAP_M), battle.TILE_THICK, maxf(0.02, tw_m - TILE_GAP_M)), Color(0.24, 0.26, 0.38))   # 石台(凸)
 
 # 阶段4: 边框密植发光水草/珊瑚(确定性种子·只非战斗区=ARENA外) + 氛围辉光粒子
+## ═══ 场地边界的体积(P1-5) ═════════════════════════════════════════════
+## 用户 2026-09-18 说战斗场景很烂; 对标 30 款同类型好游戏后, 边界是差距最明确的一条:
+## 好游戏的场地边界从来不是「颜色换一下」, 而是一个**能看见侧面的构件**。
+## 本项目现在 tile 板厚只有 `TILE_THICK = 0.15 米` ⇒ 投到屏上 **2.63 px**(实测, 见
+## `tests/_probe_pxm.gd`), 等于一张贴纸直接切进黑色虚空。
+##
+## ★数值全部来自实测标定, 不是拍脑袋(方案书 R15):
+##   · 参考(TFT 实测·做过透视校正): 竖面 ÷ 角色屏幕高 = 0.81
+##   · 本项目: 龟屏幕高中位 38 px ⇒ 目标竖面 ≈ 31 px
+##   · 龟与本构件都是**朝相机的 billboard**(不吃 cos50.8° 俯角压缩)
+##     ⇒ 世界高 = 31 ÷ 27.78 = **1.11 米**
+##     ⚠ 若哪天改成真实竖直几何, 同样 31 px 要 **1.75 米** —— 差 1.58 倍, 别混用。
+##   · 贴图 64×32(由 128×64 整数降半), 渲染高 31 px ≈ 1:1, 不打烂像素网格。
+##   · 结构照实测: 亮竖面被**上下两条暗缝**夹住(顶沿投影 + 落地接触影) ——
+##     实测里竖面是全场【最亮】的, 不是我原先以为的「一段暗侧面」。
+##
+## ★只做南北向(屏幕上的水平边)的连续条带 —— 实测 49 个可见边界格里 **42 个在画面上 1/3**,
+##   全是远端的南北向边; 东西向边基本落在左右 185px 的 UI 栏后面, 按格单发即可。
+const WALL_TEX := "res://assets/sprites/map/wall-edge.png"
+const WALL_H_M := 1.11          # 世界高(米) —— billboard 口径, 见上
+const WALL_TEX_H := 32.0        # 贴图原生高(texel)
+const WALL_COL := Color(0.227, 0.247, 0.361)   # = TILE_COLS[2] 石台色, **不新增颜色**(调色板硬锁·只在下面调明度)
+## ★光照补偿。墙卡是 UNSHADED(明暗由贴图给), 而地面是**吃光的**(主光 1.15 + 补光 0.45 + 环境光 0.85)
+##   ⇒ 同一个调色板色, 墙比地面暗一大截。第一版实拍就是这么栽的: 标定要求墙比场内地面
+##   **亮 23%~40%**, 实测反而更暗。
+##   ★★这个数只能【实拍量】不能算。我手算过一版: 贴图竖面均值 171/255 ⇒ 预测 ×2.34 落在 +30%,
+##     实拍复量却是 **+97%**(墙像素中位 152 vs 地面 77) —— 整整过头一倍。
+##     原因是"贴图均值"不等于"渲染出来的墙像素中位"(亮砖块占多数, 暗缝把均值拉低了)。
+##     ⇒ 按实拍反解 ×1.55。★同族教训见 memory「我拍的阈值会把好素材改坏」。
+##   ★只乘明度不动色相 —— 三通道同比例缩放, 调色板的 hue 一个度都没转。
+##   ⚠ 这个数依赖【地面有多亮】。若哪天动了灯光(见 R13), 必须重量一次, 不能照抄。
+##   ⚠ 复量方法: 拿"加墙前/后同种子两张实拍"做差分分割出墙像素(别用我拍的亮度阈值),
+##     取中位与场内地面中位比 —— 用方框平均会被段间空隙稀释(第一次就读成 +2%)。
+const WALL_GAIN := 1.55         # 实拍反解(+30%); 改完必须实拍复量, 不许凭感觉调
+
+func build_edge_wall(grid: Array, w: int, h: int, tile: float, ox: float, oy: float) -> Array:
+	var made: Array = []
+	var tex: Texture2D = load(WALL_TEX) if ResourceLoader.exists(WALL_TEX) else null
+	if tex == null:
+		push_warning("[edge_wall] 贴图缺失: %s —— 不画边界墙(不做静默兜底)" % WALL_TEX)
+		return made
+	var root := Node3D.new()
+	root.name = "EdgeWall"
+	battle._world.add_child(root)
+	made.append(root)
+	var tw_m: float = tile * battle.WS                 # 一格的世界宽(米)
+	var tex_w_m: float = WALL_H_M * (float(tex.get_width()) / WALL_TEX_H)   # 贴图一次铺多宽(米)
+
+	# 取格子类型; 越界当 void(4)
+	var at := func(r: int, c: int) -> int:
+		if r < 0 or r >= h or c < 0 or c >= w:
+			return 4
+		var row: Array = grid[r]
+		if c >= row.size():
+			return 4
+		return int(row[c])
+
+	## ── 只画【朝北】(远端)的边界段 ────────────────────────────────────
+	## ★★2026-09-18 第一版四个方向全画, 实拍当场否掉:
+	##   岛的边界在 tile 分辨率下本身就是**锯齿**的, 斜边上每格都发卡 ⇒
+	##   南北 + 东西四向叠加, 画面上读成「一层层错开互相重叠的砖带」, 不是一面墙。
+	##   ⇒ 只留朝北那一圈: 实测 49 个可见边界格里 **42 个就在这一圈**(见 `_probe_pxm` ⑤),
+	##   南向的 7 格在画面最下沿、东西向的基本被左右 185px 的 UI 栏挡住 —— 画了只添乱。
+	##   ⚠ 这不等于「阶梯问题解决了」, 只是把它从四层叠成一层(仍是未决点, 见方案书 R17)。
+	for r in range(h):
+		for dr in [-1]:                                     # -1=北邻是void(远端)
+			var c := 0
+			while c < w:
+				if at.call(r, c) == 4 or at.call(r + dr, c) != 4:
+					c += 1
+					continue
+				var c0 := c
+				while c < w and at.call(r, c) != 4 and at.call(r + dr, c) == 4:
+					c += 1
+				var n := c - c0
+				var run_m: float = float(n) * tw_m
+				var px: float = ox + (float(c0) + float(n) * 0.5) * tile      # 段中点
+				var py: float = oy + (float(r) + (0.5 + 0.5 * float(dr))) * tile   # 贴在朝 void 的那条边上
+				made.append(_edge_wall_card(root, tex, Vector2(px, py), run_m, run_m / tex_w_m))
+	## ── 东西向: **不画**(第一版画了, 实拍否掉) ────────────────────────
+	## 它们几乎全落在左右各 185px 的 UI 栏后面, 唯一的效果是在斜边上和南北向卡叠成一团。
+	## ★留这段注释而不是删掉痕迹: 下次有人想"补全一圈"之前, 先看实拍 `wall1.png`。
+	return made
+
+## 一张朝相机的墙卡。用 QuadMesh + uv1_scale 平铺 —— Sprite3D 不会平铺贴图,
+## 按格单发又会让 64 texel 的图被挤进 26 texel 宽的格子里(横向压缩 2.4 倍)。
+func _edge_wall_card(root: Node3D, tex: Texture2D, pos2d: Vector2, width_m: float, uv_repeat: float) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var q := QuadMesh.new()
+	q.size = Vector2(width_m, WALL_H_M)
+	mi.mesh = q
+	var m := StandardMaterial3D.new()
+	m.albedo_texture = tex
+	m.albedo_color = Color(clampf(WALL_COL.r * WALL_GAIN, 0.0, 1.0), clampf(WALL_COL.g * WALL_GAIN, 0.0, 1.0), clampf(WALL_COL.b * WALL_GAIN, 0.0, 1.0))
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST     # 像素画不许插值成糊
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED        # 和水面同口径: 明暗由贴图给, 不再吃光二次变暗
+	m.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED          # 朝相机 ⇒ 不吃俯角压缩(世界高按 1.11 口径)
+	m.billboard_keep_scale = true
+	m.uv1_scale = Vector3(maxf(0.05, uv_repeat), 1.0, 1.0)       # 沿段连续铺
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# 卡底贴地: QuadMesh 以中心为原点 ⇒ 抬半个高
+	mi.position = battle._world_pos(pos2d, WALL_H_M * 0.5)
+	root.add_child(mi)
+	return mi
+
+
 func _build_tilemap_decor() -> void:
 	var root = Node3D.new(); root.name = "TileDecor"; battle._world.add_child(root)
 	var rng = RandomNumberGenerator.new(); rng.seed = 20260714
