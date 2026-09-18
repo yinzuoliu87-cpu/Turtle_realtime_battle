@@ -95,7 +95,10 @@ func _ready() -> void:
 
 	print("=== 7. perf_lite 不再是死按钮 (源码级) ===")
 	_ok("战斗视口读 perf_lite", _src_has("res://scripts/scenes/battle/battle_world_builder.gd", "perf_lite"))   # 视口构建已抽到 BattleWorldBuilder(2026-07-26)
-	_ok("主菜单背景漂移读 perf_lite", _src_has("res://scripts/scenes/MainMenuScene.gd", "perf_lite"))
+	## ★2026-09-18 改了措辞不是放宽: 主菜单背景已从「平铺+25s 漂移」换成静态龟群像,
+	##   没有漂移可关了。perf_lite 在主菜单的消费者改成【跳过入场动画】(_slide_in/_slide_in_left),
+	##   所以这条仍然在守"低画质开关在主菜单真的有作用", 只是作用换了一个。
+	_ok("主菜单读 perf_lite(低画质跳过入场动画)", _src_has("res://scripts/scenes/MainMenuScene.gd", "perf_lite"))
 	_ok("图鉴背景漂移读 perf_lite", _src_has("res://scripts/scenes/CodexScene.gd", "perf_lite"))
 	_ok("战斗视口低画质关 MSAA", _src_has("res://scripts/scenes/battle/battle_world_builder.gd", "MSAA_DISABLED"))
 	_ok("战斗视口低画质降 3D 分辨率", _src_has("res://scripts/scenes/battle/battle_world_builder.gd", "scaling_3d_scale"))

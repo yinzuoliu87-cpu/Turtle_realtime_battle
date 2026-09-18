@@ -26,6 +26,7 @@ extends Node
 ## ★①**确实会写一次盘**（否则 `save()`→`_load()` 走不通），靠「备份→还原」兜底；②③ 纯内存。
 
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
+const _P2 := preload("res://scripts/gamedata/phase2_config.gd")
 
 const FIELDS_INT := ["ranked_used", "season_sweeps", "backfill_paid",
 	"week_anchor_ts", "gauntlet_wins", "gauntlet_losses"]
@@ -58,6 +59,7 @@ func _ready() -> void:
 	_t_new_season_resets()
 	_t_reset_save_clears()
 	await _t_quota_and_sweep()
+	_t_schedule()
 
 	print("")
 	print("  (共 %d 条断言)" % _n)
@@ -237,3 +239,45 @@ func _t_quota_and_sweep() -> void:
 
 	scene.queue_free()
 	await get_tree().process_frame
+
+
+# ─────────────────────────────────────────────────────────────
+# ⑥ 赛程判定(A5 的纯函数) —— 全部按 UTC, 拿【已知日期】当样本
+#    ★不自己算星期几再跟产品比 —— 那是拿同一份推导验它自己。
+#      用真实日历上已知的四天(2026-09-14 周一 / 17 周四 / 19 周六 / 20 周日),
+#      探针 tests/_probe_weekday.gd 已核实 Godot 的 weekday 是 0=周日。
+# ─────────────────────────────────────────────────────────────
+func _t_schedule() -> void:
+	print("── ⑥ 赛程判定(UTC) ──")
+	var MON := 1789344000    # 2026-09-14 00:00 UTC 周一
+	var THU := 1789603200    # 2026-09-17 周四
+	var SAT := 1789776000    # 2026-09-19 周六
+	var SUN := 1789862400    # 2026-09-20 周日
+	_ok("⑥ ★分母: 这四个时间戳落在我说的那几天",
+		_P2.iso_weekday_utc(MON) == 1 and _P2.iso_weekday_utc(THU) == 4
+		and _P2.iso_weekday_utc(SAT) == 6 and _P2.iso_weekday_utc(SUN) == 7,
+		"ISO 星期 = %d/%d/%d/%d" % [_P2.iso_weekday_utc(MON), _P2.iso_weekday_utc(THU),
+		_P2.iso_weekday_utc(SAT), _P2.iso_weekday_utc(SUN)])
+	_ok("⑥ 周一 = 休赛", _P2.phase_at_utc(MON) == _P2.PHASE_REST, _P2.phase_at_utc(MON))
+	_ok("⑥ 周四 = 积分赛", _P2.phase_at_utc(THU) == _P2.PHASE_RANKED, _P2.phase_at_utc(THU))
+	_ok("⑥ 周六 = 闯关赛", _P2.phase_at_utc(SAT) == _P2.PHASE_GAUNTLET, _P2.phase_at_utc(SAT))
+	_ok("⑥ 周日 = 决赛日", _P2.phase_at_utc(SUN) == _P2.PHASE_FINALS, _P2.phase_at_utc(SUN))
+
+	## 收盘: 积分赛看周五 23:00, 闯关赛看周六 23:00
+	var thu_left := _P2.close_left_sec(THU)
+	_ok("⑥ 周四 00:00 → 距周五 23:00 收盘 = 47 小时",
+		thu_left == 47 * 3600, "实得 %d 秒(%.1f 小时)" % [thu_left, float(thu_left) / 3600.0])
+	var sat_left := _P2.close_left_sec(SAT)
+	_ok("⑥ 周六 00:00 → 距周六 23:00 收盘 = 23 小时",
+		sat_left == 23 * 3600, "实得 %d 秒" % sat_left)
+	_ok("⑥ 周一(休赛)没有收盘概念 → -1", _P2.close_left_sec(MON) == -1)
+	_ok("⑥ 周日(决赛日)同样 -1", _P2.close_left_sec(SUN) == -1)
+
+	## ★★E3 封盘: 闸在收盘前 10 分钟内合上
+	##   判据写死 600/601/599, **不引 CLOSE_LOCKOUT_SEC** —— 拿被测常量当尺子等于没量。
+	var close_at := SAT + 23 * 3600                 # 周六 23:00 整
+	_ok("⑥ 收盘前 11 分钟: 还能开", _P2.can_start_match_utc(close_at - 660))
+	_ok("⑥ ★收盘前 9 分钟: 封盘", not _P2.can_start_match_utc(close_at - 540))
+	_ok("⑥ 收盘前 601 秒: 还能开(边界外一秒)", _P2.can_start_match_utc(close_at - 601))
+	_ok("⑥ ★收盘前 599 秒: 封盘(边界内一秒)", not _P2.can_start_match_utc(close_at - 599))
+	_ok("⑥ 休赛日不封盘(没有收盘概念)", _P2.can_start_match_utc(MON))

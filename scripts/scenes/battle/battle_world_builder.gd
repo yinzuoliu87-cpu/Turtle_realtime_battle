@@ -240,7 +240,15 @@ func _build_tilemap_decor() -> void:
 					var s = rng.randf_range(0.82, 1.28) * (1.15 if do > 0.7 else 1.0)   # 越靠边框越大(框边压)
 					spr.scale = Vector3(s * (-1.0 if rng.randf() < 0.5 else 1.0), s, s)   # ★随机水平镜像破"一模一样"(点2)
 					var _b: float = rng.randf_range(0.82, 1.08)   # ★明暗/色相抖动(点2: 原modulate死值Color(0.5,0.68,0.92)→全同)
-					spr.modulate = Color(clampf(0.50 * _b + rng.randf_range(-0.05, 0.05), 0.0, 1.0), clampf(0.68 * _b, 0.0, 1.0), clampf(0.92 * _b + rng.randf_range(-0.04, 0.04), 0.0, 1.0))
+					## ★★2026-09-18 环境色偏从 (0.50,0.68,0.92) 放松到 (0.88,0.94,1.00)。
+					## 原值把【红通道砍掉一半】, 11 种颜色各异的装饰全被拉进同一个暗蓝紫区间(实测):
+					##   deco_coral_orange #f0d060 亮金黄 → #788d58 暗橄榄
+					##   deco_starfish     #e07000 亮橙   → #704c00 暗棕
+					##   deco_scallop      #f0d0f0 亮粉白 → #788ddc 灰蓝紫
+					## 这不是在遵守硬锁调色板 —— 调色板(场景地图方案.md §4)明确写着
+					## 「发光点缀(珊瑚/水草) 粉#ff6ba3 / 紫#7c5cff / 青#3be0c0」, 装饰【本来就该是彩色的】。
+					## 同一文件的 _build_decorations 用的也是 (0.92,0.96,1.0), 0.50 那个是异常值。
+					spr.modulate = Color(clampf(0.88 * _b + rng.randf_range(-0.05, 0.05), 0.0, 1.0), clampf(0.94 * _b, 0.0, 1.0), clampf(1.00 * _b + rng.randf_range(-0.04, 0.04), 0.0, 1.0))
 					root.add_child(spr)
 			px += step
 		py += step

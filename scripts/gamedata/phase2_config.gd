@@ -62,6 +62,73 @@ const BUCKET_SHOP_SEC := 180           # 桶内购物 3 分钟(原稿)
 const BUCKET_REPLAY_SEC := 240
 const FINALS_START_HOUR_UTC := 20      # 冠军签表开赛 20:00(同样是 UTC, 见 E2)
 
+## ─── 赛程判定(纯函数, 全部按 UTC) ────────────────────────────
+## ★★E2 拍板: **赛程逻辑一律用 UTC, 时区换算只发生在显示层**。
+##   两边都换算必然有一边忘 —— 那种 bug 一年只在夏令时切换那两天出现, 最难查。
+## ★放在 phase2_config(纯数据/计算层)而不是主场景: 主菜单要用、A3 的配额分流要用、
+##   将来服务端也要用同一套判定。抄两份必然漂(memory fb-hand-rolled-copies-drift)。
+
+## 阶段名。★用短标识不用中文 —— 它会存进存档(GameState.week_phase)。
+const PHASE_REST := "rest"          # 周一: 休赛 + 版本维护窗口
+const PHASE_RANKED := "ranked"      # 周二~周五: 积分赛
+const PHASE_GAUNTLET := "gauntlet"  # 周六: 闯关赛
+const PHASE_FINALS := "finals"      # 周日: 决赛日
+
+## unix 秒 → 星期几(1=周一 … 7=周日, ISO 口径)。
+## ★Godot 的 `get_datetime_dict_from_unix_time` 返回的 `weekday` 是 0=周日,
+##   与原稿的「周一~周日」口径差一位 —— 转成 ISO 免得每个调用点各转一次。
+static func iso_weekday_utc(ts: int) -> int:
+	var d: Dictionary = Time.get_datetime_dict_from_unix_time(ts)
+	var w: int = int(d.get("weekday", 0))     # 0=Sunday
+	return 7 if w == 0 else w
+
+## 这一刻属于哪个阶段(UTC)。
+## ⚠ 只看星期几, **不看收盘时刻** —— 收盘那一刻之后到午夜之间算不算下一阶段,
+##   是 E3「封盘」管的事(见 `can_start_match_utc`), 不在这里混着判。
+static func phase_at_utc(ts: int) -> String:
+	return phase_of_weekday(iso_weekday_utc(ts))
+
+## 星期几(ISO 1~7) → 阶段。主菜单的「本周赛程条」要按天铺开, 不能只问"现在是哪个阶段";
+## ★抽成一个函数是为了让**赛程表与实时判定共用同一份映射** —— 两份必然会漂。
+static func phase_of_weekday(wd: int) -> String:
+	match wd:
+		1: return PHASE_REST
+		6: return PHASE_GAUNTLET
+		7: return PHASE_FINALS
+		_: return PHASE_RANKED
+
+## 阶段 → 玩家看到的名字。放这里(而不是各 UI 自己写一份)理由同上。
+const PHASE_LABEL := {
+	PHASE_REST: "休赛",
+	PHASE_RANKED: "积分赛",
+	PHASE_GAUNTLET: "闯关赛",
+	PHASE_FINALS: "决赛日",
+}
+
+## 距本阶段收盘还有几秒(UTC)。没有收盘概念的阶段返回 -1。
+## 积分赛在**周五** 23:00 收盘、闯关赛在**周六** 23:00 —— 所以要先算"还有几天到收盘日"。
+static func close_left_sec(ts: int) -> int:
+	var ph := phase_at_utc(ts)
+	var close_wd := 0
+	if ph == PHASE_RANKED:
+		close_wd = 5        # 周五
+	elif ph == PHASE_GAUNTLET:
+		close_wd = 6        # 周六
+	else:
+		return -1           # 周一休赛 / 周日决赛日没有"收盘"
+	var d: Dictionary = Time.get_datetime_dict_from_unix_time(ts)
+	var days: int = close_wd - iso_weekday_utc(ts)
+	var secs_today: int = int(d.get("hour", 0)) * 3600 + int(d.get("minute", 0)) * 60 + int(d.get("second", 0))
+	return days * 86400 + WEEK_CLOSE_HOUR_UTC * 3600 - secs_today
+
+## 现在还能不能开新局? ★★E3: 收盘前 CLOSE_LOCKOUT_SEC 内封盘。
+## ⚠ 调用点必须是**点「开打」那一刻**, 不是点匹配 —— 摆位不限时, 设在匹配就盖不住。
+static func can_start_match_utc(ts: int) -> bool:
+	var left := close_left_sec(ts)
+	if left < 0:
+		return true                      # 没有收盘概念的阶段不封盘
+	return left > CLOSE_LOCKOUT_SEC
+
 # ─── 商店 ───────────────────────────────────────────────────
 const SMALL_SHOP_SLOTS := 10      # 小商店格数 (V2 §五: 一次展示10个, 用户 2026-06-25)
 const SMALL_SHOP_EVERY_ROUNDS := 4  # 每 4 大回合开一次小商店

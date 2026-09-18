@@ -125,8 +125,10 @@ func _ready() -> void:
 		print("       ★压住: " + cl)
 
 	# ── ③ ★触摸目标短边 ≥ 81 视口像素 (=44pt) ──
-	#    调试场是开发工具(OS.is_debug_build() 之后才建, 正式包玩家看不到), 显式豁免并打印,
-	#    不是"忘了量"。豁免名单只有这一个, 多了就说明我在拿豁免掩盖问题。
+	#    ★2026-09-17: 豁免名单【清零了】。原来唯一的豁免是 46px 高的「🛠 调试场」——
+	#    它已按用户要求搬进设置页(「调试场可以塞到设置里, 正式上线的不会要调试场」),
+	#    腾出来的空档给了「本周赛程条」。所以这里改成【断言豁免数 == 0】:
+	#    豁免是会烂的东西(写下时有理由, 半年后没人记得), 让它自己报出来比留着注释可靠。
 	var small: Array = []
 	var exempt := 0
 	for c in taps:
@@ -136,96 +138,126 @@ func _ready() -> void:
 			continue
 		if _tag(c).find("调试场") >= 0:
 			exempt += 1
-			print("       (豁免·开发工具) 调试场 %.0f×%.0f — 正式包不出现" % [r.size.x, r.size.y])
+			print("       ★主菜单上又出现了调试场 %.0f×%.0f — 它应该只在设置页" % [r.size.x, r.size.y])
 			continue
 		if short < MIN_TAP:
 			small.append("%s %.0f×%.0f = 短边 %.0fpt" % [_tag(c), r.size.x, r.size.y, short / 1.846])
 	_ok("③ ★玩家可点元素短边 ≥ %.0fpx (=44pt)" % MIN_TAP, small.is_empty(), "不达标 %d 个 / 豁免 %d 个" % [small.size(), exempt])
+	_ok("③b ★触摸线豁免名单已清零(调试场已搬进设置)", exempt == 0, "还有 %d 个豁免" % exempt)
 	for sm in small.slice(0, 8):
 		print("       ★太小: " + sm)
 
-	# ── ④ ★左右两栏必须是同一条竖直带 (右下角那 560×161 空洞就是这条不成立的后果) ──
+	# ── ④ ★赛程条贴底、横跨左栏、七格齐全 (2026-09-18 版式重做后换的判据) ──
+	#    原来这里量的是「右信息板与左栏栈首尾对齐」—— 那块 560×398 的表格卡【已经删掉了】,
+	#    判据留着只会量到别的 PanelContainer(实测量到了赛程条, 报「右沿 932 ≠ 1264」)。
+	#    ★换形状不是放宽: 新版式要守的是"周赛制信息贴底成条、不再占一整栏"。
 	var st := INF
 	var sb := -INF
 	for c in stack:
 		var r: Rect2 = (c as Control).get_global_rect()
 		st = minf(st, r.position.y)
 		sb = maxf(sb, r.end.y)
-	var panel: Control = _find_panel(content)
-	if panel == null:
-		print("  [FAIL] ④ ★分母: 找不到右信息板(PanelContainer)"); _fail += 1
+	var strip: Control = _find_strip(content)
+	if strip == null:
+		print("  [FAIL] ④ ★分母: 找不到贴底赛程条(最宽的 PanelContainer)"); _fail += 1
 	else:
-		var pr: Rect2 = panel.get_global_rect()
-		print("  ④ 左栏按钮栈 y %.0f..%.0f  /  右信息板 y %.0f..%.0f  (板宽 %.0f, 右沿 %.0f)" % [
-			st, sb, pr.position.y, pr.end.y, pr.size.x, pr.end.x])
-		_ok("④ ★信息板顶沿 = 左栏栈顶沿 (差 ≤2px)", absf(pr.position.y - st) <= 2.0, "差 %.1f" % (pr.position.y - st))
-		_ok("④ ★信息板底沿 = 左栏栈底沿 (差 ≤2px)", absf(pr.end.y - sb) <= 2.0, "差 %.1f" % (pr.end.y - sb))
-		_ok("④ 信息板右沿贴右墙 (%.0f)" % (W - 16.0), absf(pr.end.x - (W - 16.0)) <= 1.0, "右沿 %.0f" % pr.end.x)
+		var sr: Rect2 = strip.get_global_rect()
+		print("  ④ 赛程条 @(%.0f,%.0f) %.0f×%.0f  (左栏栈 y %.0f..%.0f)" % [
+			sr.position.x, sr.position.y, sr.size.x, sr.size.y, st, sb])
+		_ok("④ ★赛程条贴底 (底沿距屏底 ≤ 24px)", H - sr.end.y <= 24.0, "距底 %.0f" % (H - sr.end.y))
+		_ok("④ ★赛程条左沿与左栏对齐 (差 ≤2px)", absf(sr.position.x - 48.0) <= 2.0, "左沿 %.0f" % sr.position.x)
+		_ok("④ ★赛程条是【条】不是【块】(高 ≤ 96px)", sr.size.y <= 96.0, "高 %.0f" % sr.size.y)
+		_ok("④ ★赛程条不压住左栏入口 (顶沿在栈底之下)", sr.position.y >= sb - 2.0,
+			"条顶 %.0f vs 栈底 %.0f" % [sr.position.y, sb])
 
-	# ── ⑤ ★训龟大师要【归队】: 与 2×2 网格的间距不许大于网格自己的行距 ──
-	#    改之前是 71px vs 行距 14px —— 那不是"独立键", 那是掉队。
+	# ── ⑤ ★训龟大师与主 CTA 同轴 (2026-09-18 换的判据) ──
+	#    原来量的是「训龟大师紧贴 2×2 网格」—— 那个网格已经不存在了(次级入口改成无框文字列),
+	#    训龟大师也按方案挪到了右栏、贴在主 CTA 正上方。现在要守的是那组关系。
 	var trainer: Control = _find_button_holder(stack, "训龟大师")
-	var rows: Array = []
-	for c in stack:
-		if c == trainer:
-			continue
-		rows.append((c as Control).get_global_rect())
-	if trainer == null or rows.size() != 5:
-		print("  [FAIL] ⑤ ★分母: 找不到训龟大师键 或 其余键数不对(%d)" % rows.size()); _fail += 1
+	var hero: Control = _find_button_holder(stack, "开始战斗")
+	if trainer == null or hero == null:
+		print("  [FAIL] ⑤ ★分母: 找不到训龟大师 或 开始战斗"); _fail += 1
 	else:
-		var grid_bottom := -INF
-		for r in rows:
-			grid_bottom = maxf(grid_bottom, (r as Rect2).end.y)
 		var tr: Rect2 = trainer.get_global_rect()
-		var gap: float = tr.position.y - grid_bottom
-		print("  ⑤ 网格下沿 %.0f → 训龟大师顶 %.0f, 间距 %.0f px" % [grid_bottom, tr.position.y, gap])
-		_ok("⑤ ★训龟大师紧贴网格 (间距 0..20px, 不是孤零零掉在下面)", gap >= 0.0 and gap <= 20.0, "间距 %.0f" % gap)
-		_ok("⑤ ★训龟大师不再又扁又长 (宽高比 ≤ 4.0)", tr.size.x / maxf(1.0, tr.size.y) <= 4.0,
-			"%.0f×%.0f = %.2f:1" % [tr.size.x, tr.size.y, tr.size.x / maxf(1.0, tr.size.y)])
+		var hr: Rect2 = hero.get_global_rect()
+		print("  ⑤ 训龟大师 %.0f×%.0f @(%.0f,%.0f) / 主CTA %.0f×%.0f @(%.0f,%.0f)" % [
+			tr.size.x, tr.size.y, tr.position.x, tr.position.y,
+			hr.size.x, hr.size.y, hr.position.x, hr.position.y])
+		_ok("⑤ ★训龟大师与主 CTA 右沿同轴 (差 ≤2px)", absf(tr.end.x - hr.end.x) <= 2.0,
+			"差 %.1f" % (tr.end.x - hr.end.x))
+		_ok("⑤ ★训龟大师在主 CTA 正上方且不粘连 (间距 16..64px)",
+			hr.position.y - tr.end.y >= 16.0 and hr.position.y - tr.end.y <= 64.0,
+			"间距 %.0f" % (hr.position.y - tr.end.y))
+		_ok("⑤ ★主 CTA 面积明显大于训龟大师 (≥ 1.8 倍)",
+			(hr.size.x * hr.size.y) >= (tr.size.x * tr.size.y) * 1.8,
+			"%.2f 倍" % ((hr.size.x * hr.size.y) / maxf(1.0, tr.size.x * tr.size.y)))
 
-	# ── ⑥ ★所有按钮都不许太扁 (用户刚骂过商店「按钮这么扁」) ──
-	var flat: Array = []
+	# ── ⑥ ★左栏四个入口等高等距 (2026-09-18 换的判据) ──
+	#    原来量的是「按钮宽高比 ≤ 4.0」—— 那是给【木框按钮】定的, 而次级入口现在是
+	#    382×82 的无框文字行(4.66:1), 拿旧尺子量会把"按文案设计的行"判成"太扁的按钮"。
+	#    ★新版式要守的是"四行等高、间距一致" —— 参差不齐才是真毛病。
+	var entries: Array = []
 	for c in stack:
-		var r: Rect2 = (c as Control).get_global_rect()
-		var ratio: float = r.size.x / maxf(1.0, r.size.y)
-		if ratio > 4.0:
-			flat.append("%s %.0f×%.0f = %.2f:1" % [_tag(c), r.size.x, r.size.y, ratio])
-	_ok("⑥ ★左栏按钮宽高比都 ≤ 4.0", flat.is_empty(), "太扁 %d 个" % flat.size())
-	for f in flat:
-		print("       ★太扁: " + f)
+		if c == trainer or c == hero:
+			continue
+		entries.append((c as Control).get_global_rect())
+	entries.sort_custom(func(a, b): return (a as Rect2).position.y < (b as Rect2).position.y)
+	_ok("⑥ ★分母: 左栏入口 = 4 个", entries.size() == 4, "%d 个" % entries.size())
+	if entries.size() == 4:
+		var hs: Array = []
+		var gaps: Array = []
+		for i in range(entries.size()):
+			hs.append((entries[i] as Rect2).size.y)
+			if i > 0:
+				gaps.append((entries[i] as Rect2).position.y - (entries[i - 1] as Rect2).position.y)
+		var h_lo: float = hs.min()
+		var h_hi: float = hs.max()
+		var g_lo: float = gaps.min()
+		var g_hi: float = gaps.max()
+		print("  ⑥ 入口高 %.0f..%.0f  行距 %.0f..%.0f" % [h_lo, h_hi, g_lo, g_hi])
+		_ok("⑥ ★四个入口等高 (极差 ≤1px)", h_hi - h_lo <= 1.0, "极差 %.1f" % (h_hi - h_lo))
+		_ok("⑥ ★行距一致 (极差 ≤1px)", g_hi - g_lo <= 1.0, "极差 %.1f" % (g_hi - g_lo))
+		_ok("⑥ ★行距 = 行高 (贴着排, 不留缝也不重叠)", absf(g_lo - h_lo) <= 1.0,
+			"行距 %.0f vs 行高 %.0f" % [g_lo, h_lo])
 
-	# ── ⑦ ★信息板每行的【值】右沿要严格对齐 (含战绩行) ──
-	#    定位方式是结构性的: _panel_row 建的 HBox 里, 值 = 倒数第二个孩子(最后一个是尾列)。
-	#    不靠名字/标记, 断言落在真实 global_rect 上。
-	if panel != null:
-		var vals: Array = []
-		for h in _find_rows(panel):
-			var n := (h as Control).get_child_count()
-			if n < 4:
-				continue
-			var v = (h as Control).get_child(n - 2)
-			if v is Control:
-				vals.append((v as Control).get_global_rect().end.x)
-		print("  ⑦ 值列右沿 %s (★分母: 应为 4 行 = 大轮/命数/深海币/战绩)" % str(vals))
-		_ok("⑦ ★分母: 收到 4 行", vals.size() == 4, "%d 行" % vals.size())
-		if vals.size() >= 2:
-			var lo := INF
-			var hi := -INF
-			for v2 in vals:
-				lo = minf(lo, float(v2)); hi = maxf(hi, float(v2))
-			_ok("⑦ ★各行值右沿对齐 (极差 ≤2px)", hi - lo <= 2.0, "极差 %.1f px" % (hi - lo))
+	# ── ⑦ ★赛季状态压成一行, 而且是可点的(→战绩) (2026-09-18 换的判据) ──
+	#    原来量的是「信息板四行的值右沿对齐」—— 那张 560×398 的表格卡已删。
+	#    新版式要守的是"玩家数据不占一整栏, 但该说的仍说全了"。
+	var status_txt := ""
+	for c in all:
+		if c is Label:
+			var t := str((c as Label).text)
+			if t.find("大轮") >= 0 and t.find("Lv") >= 0:
+				status_txt = t
+				break
+	_ok("⑦ ★屏幕上有一行写着「第 N 大轮 · Lv」的状态", status_txt != "", status_txt)
+	var miss_s: Array = []
+	for k in ["大轮", "Lv", "本周"]:
+		if status_txt.find(k) < 0:
+			miss_s.append(k)
+	_ok("⑦ ★状态行把赛季/等级/本周场次都说了", miss_s.is_empty(), "缺 %s" % str(miss_s))
+	## ★不能用 _tag(): 它只取【第一个】子孙 Label, 而状态行的第一个是「第 N 大轮 · Lv」,
+	##   "战绩"在第二个 Label 里 —— 拿 _tag 找会漏判成"战绩入口没了"(实测红过)。
+	var rec_hit := false
+	for c in taps:
+		var q2: Array = [c]
+		while not q2.is_empty() and not rec_hit:
+			var nd2 = q2.pop_back()
+			for ch2 in nd2.get_children():
+				q2.append(ch2)
+				if ch2 is Label and str((ch2 as Label).text).find("战绩") >= 0:
+					rec_hit = true
+					break
+		if rec_hit:
+			break
+	_ok("⑦ ★战绩仍然可点(没因为删信息板而丢掉入口)", rec_hit)
 
-	# ── ⑧ ★字号层级要拉得开 (原来 hero27 / 面板标题25 / 次级22 —— 主次只差 5 号) ──
-	var f_hero := _font_of(_menu, "开始战斗")
-	var f_title := _font_of(_menu, "赛季进度")
-	var f_sub := _font_of(_menu, "背包")
-	var f_row := _font_of(_menu, "剩余命数")
-	print("  ⑧ 字号: 主CTA %d / 面板标题 %d / 次级键 %d / 行文字 %d" % [f_hero, f_title, f_sub, f_row])
-	_ok("★分母: 四个字号都量到了(0 = 没找到那个 Label, 下面是空比较)",
-		f_hero > 0 and f_title > 0 and f_sub > 0 and f_row > 0)
-	_ok("⑧ ★主CTA 明显大于次级键 (≥ +6)", f_hero - f_sub >= 6, "%d vs %d" % [f_hero, f_sub])
-	_ok("⑧ ★面板标题夹在主CTA与次级键之间", f_hero > f_title and f_title > f_sub,
-		"%d > %d > %d" % [f_hero, f_title, f_sub])
+	# ── ⑧ ★主 CTA 的字号仍要压过次级入口 ──
+	var f_hero := _font_of(content, "开始战斗")
+	var f_sub := _font_of(content, "图鉴")
+	_ok("★分母: 两个字号都量到了(0 = 没找到那个 Label)", f_hero > 0 and f_sub > 0,
+		"hero %d / sub %d" % [f_hero, f_sub])
+	_ok("⑧ ★主CTA 字号明显大于次级入口 (≥ +4)", f_hero - f_sub >= 4, "%d vs %d" % [f_hero, f_sub])
 
 	# ── ⑨ ★版本号仍在右下角且看得见 (verify_version 管四处一致, 这里只管"在不在屏上") ──
 	var vstr := str(ProjectSettings.get_setting("application/config/version", ""))
@@ -257,6 +289,41 @@ func _ready() -> void:
 	for f2 in fillers.slice(0, 3):
 		print("       " + f2)
 	_ok("⑩ ★右下角不再是空洞(至少 1 个控件盖住它)", not fillers.is_empty(), "%d 个" % fillers.size())
+
+	# ── ⑬ ★赛程条的内容: 七天齐全 + 四个阶段名 + 恰好一天标「今天」──
+	#    2026-09-18 改口径: 原来这条量的是「左右两栏【中间】那条空档里有没有赛程条」,
+	#    而赛程条已按方案挪到【贴底】(中间那块还给了背景的龟群像)。
+	#    ★位置的判据已经在 ④ 里了; 这里只管【内容对不对】, 两件事分开量。
+	#    这三条与"今天是星期几"无关, 任何一天跑都该绿; 日期/时区的判定在 verify_week_season ⑥。
+	var strip_txt: Array = []
+	if strip != null:
+		var q: Array = [strip]
+		while not q.is_empty():
+			var nd = q.pop_back()
+			for ch in nd.get_children():
+				q.append(ch)
+				if ch is Label and str((ch as Label).text).strip_edges() != "":
+					strip_txt.append(str((ch as Label).text).strip_edges())
+	print("  ⑬ 赛程条里有 %d 条文字: %s" % [strip_txt.size(), str(strip_txt)])
+	_ok("⑬ ★分母: 赛程条里量到文字 (0 条 = 条子是空的, 下面全是空检查)",
+		strip_txt.size() >= 10, "%d 条" % strip_txt.size())
+	var miss_d: Array = []
+	for d3 in ["一", "二", "三", "四", "五", "六", "日"]:
+		if not strip_txt.has(d3):
+			miss_d.append(d3)
+	_ok("⑬ ★七天一天不少", miss_d.is_empty(), "缺 %s" % str(miss_d))
+	var joined := "
+".join(PackedStringArray(strip_txt))
+	var miss_p: Array = []
+	for p3 in ["休赛", "积分赛", "闯关赛", "决赛日"]:
+		if joined.find(p3) < 0:
+			miss_p.append(p3)
+	_ok("⑬ ★四个阶段名都在(缺一个就说明赛程表漏了一段)", miss_p.is_empty(), "缺 %s" % str(miss_p))
+	var todays := 0
+	for t3 in strip_txt:
+		if str(t3).ends_with(" 今"):     # 横条上今天那格的阶段名后缀「今」(格子只有 92px, 光靠金边读不出)
+			todays += 1
+	_ok("⑬ ★恰好一天被标成今天(0=看不出今天 · >1=算错了)", todays == 1, "%d 个" % todays)
 
 	# ── ⑪ ★没有花名 / 感叹号推销话术 (用户 2026-08-15 点名要去掉的那类"ai 味") ──
 	#    ★只扫【字符串字面量】—— 扫整段代码会被 `!=` 运算符命中(第一版就是这么假红的),
@@ -351,12 +418,16 @@ func _tag(c: Node) -> String:
 	return c.get_class()
 
 
-## 那个 560 宽的金边信息板
-func _find_panel(content: Control) -> Control:
+## 贴底的赛程条 = content_root 下【最宽的】PanelContainer。
+## ★2026-09-18: 原名 `_find_panel`, 找的是那张 560 宽的右信息板 —— 它已经删了。
+##   拿"第一个 PanelContainer"会钉死在 add_child 顺序上, 所以按【最宽】找。
+func _find_strip(content: Control) -> Control:
+	var best: Control = null
 	for c in content.get_children():
 		if c is PanelContainer and (c as Control).visible:
-			return c
-	return null
+			if best == null or (c as Control).size.x > best.size.x:
+				best = c as Control
+	return best
 
 
 ## 信息板里 _panel_row 建的那些行 (HBox, ≥4 个孩子: 图标/名/值/尾列)

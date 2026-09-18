@@ -41,10 +41,23 @@ func _ready() -> void:
 		_ok("%s 有返回主菜单" % s, _src_has("res://scripts/scenes/%s.gd" % s, "MainMenu.tscn"))
 
 	print("=== 3. ★调试场入口被 gate (正式包玩家看不到) ===")
+	## 2026-09-17 入口从主菜单搬到设置(用户:「调试场可以塞到设置里, 正式上线的不会要调试场」)。
+	## ★这几条验的是【调试入口不泄漏给玩家】这个需求, 不是"哪个文件里有这行代码" ——
+	##   所以判据跟着入口走; 同时补一条"主菜单真的不再建它", 否则搬家搬成了两处都有也看不出来。
 	var menu_src := _src("res://scripts/scenes/MainMenuScene.gd")
-	_ok("调试场入口有 gate", menu_src.find("OS.is_debug_build() or OS.has_environment(\"DEVTOOLS\")") >= 0)
-	_ok("gate 出现在 _debug_arena_entry() 调用之前",
-		menu_src.find("OS.is_debug_build()") < menu_src.find("\t\t_debug_arena_entry()"))
+	var set_src := _src("res://scripts/scenes/SettingsScene.gd")
+	_ok("★分母: 两份源码都读到了(0 字符 = 下面全是空检查)",
+		menu_src.length() > 1000 and set_src.length() > 1000,
+		"menu %d / settings %d 字符" % [menu_src.length(), set_src.length()])
+	_ok("调试场入口有 gate(在设置页)", set_src.find("OS.is_debug_build() or OS.has_environment(\"DEVTOOLS\")") >= 0)
+	_ok("gate 出现在建按钮之前",
+		set_src.find("OS.is_debug_build()") < set_src.find("_open_debug_arena"))
+	_ok("★调试场按钮真的挂在 gate 的 true 分支里(不是建完再判)",
+		set_src.find("\t\t_text_button(W / 2.0, 560.0, \"🛠 调试场\", _open_debug_arena)") >= 0)
+	_ok("★主菜单已不再建调试场入口(搬家不是复制)",
+		menu_src.find("_debug_arena_entry") < 0 and menu_src.find("_open_debug_arena") < 0)
+	_ok("★DEBUG_EDIT 全项目只有设置页这一个玩家可达的入口在写",
+		set_src.find("DEBUG_EDIT = true") >= 0 and menu_src.find("DEBUG_EDIT") < 0)
 	_ok("_go() 有场景存在性守卫", menu_src.find("ResourceLoader.exists(path)") >= 0)
 
 	print("=== 4. ★REVIEW_DEMO 可就地关 (SHIP=1) ===")

@@ -247,27 +247,46 @@ func _ready() -> void:
 	for sn in MENU_SCENES:
 		await _check_scene_buttons(sn, vp_real)
 
-	# ── B. 主菜单调试场按钮存在 + 入口开 DEBUG_EDIT ──
+	# ── B. 调试场入口存在 + 接线到 DEBUG_EDIT ──
+	## ★2026-09-18 入口从主菜单搬到了【设置页】(用户:「调试场可以塞到设置里, 正式上线的不会要调试场」)。
+	##   这一节验的是「打包前调试场还点得到」这个需求, 不是「它在哪个屏」—— 判据跟着入口走;
+	##   同时补一条「主菜单不许再有它」, 免得搬家搬成两处都有还看不出来。
+	var st_scene = load("res://scenes/Settings.tscn").instantiate()
+	add_child(st_scene)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	## 设置页的键是 Label+TextureRect 拼的(_text_button), 文字不在 Button.text 上 ——
+	## 所以扫 Label, 别拿 Button.text 找不到就判成"入口没了"。
+	var dbg_hit := false
+	var q: Array = [st_scene]
+	while not q.is_empty() and not dbg_hit:
+		var nd = q.pop_back()
+		for ch in nd.get_children():
+			q.append(ch)
+			if ch is Label and str((ch as Label).text).contains("调试场"):
+				dbg_hit = true
+				break
+	_ok("设置页有🛠调试场入口(debug构建)", dbg_hit)
+	var _sf := FileAccess.open("res://scripts/scenes/SettingsScene.gd", FileAccess.READ)
+	var _stxt := _sf.get_as_text() if _sf != null else ""
+	if _sf != null: _sf.close()
+	_ok("设置页接线到 _open_debug_arena", _stxt.find("_open_debug_arena") >= 0)
+	_ok("设置页入口有 debug 构建 gate", _stxt.find("OS.is_debug_build() or OS.has_environment(\"DEVTOOLS\")") >= 0)
+	st_scene.queue_free()
+	await get_tree().process_frame
+	await get_tree().process_frame
 	var mm = load("res://scenes/MainMenu.tscn").instantiate()
 	add_child(mm)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	var dbg_btn: Button = null
-	var all_b: Array = []
-	_visible_buttons(mm, all_b)
-	for b in all_b:
+	var mm_dbg := false
+	var mm_b: Array = []
+	_visible_buttons(mm, mm_b)
+	for b in mm_b:
 		if b is Button and str((b as Button).text).contains("调试场"):
-			dbg_btn = b
+			mm_dbg = true
 			break
-	_ok("主菜单有🛠调试场按钮(debug构建)", dbg_btn != null)
-	if dbg_btn != null:
-		var r := dbg_btn.get_global_rect()
-		_ok("调试场按钮在屏内可点", Rect2(Vector2.ZERO, vp_real).encloses(r), str(r))
-		var wired := false
-		for c in dbg_btn.pressed.get_connections():   # ⛔不真按: _open_debug_arena 会 change_scene 把本测试杀掉
-			if str(c["callable"].get_method()) == "_open_debug_arena":
-				wired = true
-		_ok("按钮接线到_open_debug_arena(点了就进调试场)", wired)
+	_ok("★主菜单不再有调试场入口(搬家不是复制)", not mm_dbg)
 	mm.queue_free()
 	await get_tree().process_frame
 	await get_tree().process_frame

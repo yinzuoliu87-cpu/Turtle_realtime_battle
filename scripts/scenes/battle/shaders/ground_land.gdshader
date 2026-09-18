@@ -21,7 +21,13 @@ uniform vec4 shore_water_col : source_color = vec4(0.30, 0.93, 0.90, 1.0);
 void fragment() {
 	vec2 wp = world_xz(INV_VIEW_MATRIX, VERTEX);
 	float det = texture(detail_tex, wp * tex_scale).r;
-	vec3 c = base_col.rgb * det;
+	// ★★2026-09-18: 原来是 `c = base_col.rgb * det` —— 纹理【单向压暗】而不是在基色上下调制。
+	//   实测 det 均值: silt 0.541 / stone 0.643 / sand 0.949, 于是占地面 37% 的主地面 grass
+	//   被从明度 36 压到 19(近黑), stone 65→42。四种地块里只有 water(105) 落在中间调区间 60~130,
+	//   而它只占 21% —— 精确对上了实测"中间调占比 11%"(参考组最低 24%, 见 tools/battle_scene_audit.py)。
+	//   改成【绕基色调制】: det=0.5 时约 ×1.06 不再砍半, det 的明暗对比反而更强(0.80~1.30)。
+	//   ★不动 base_col —— 调色板是用户 2026-07-13 拍板的硬锁(场景地图方案.md §4)。
+	vec3 c = base_col.rgb * mix(0.80, 1.30, det);
 
 	// ── 大尺度沉积起伏: 让大片平地有"地形"而不是一块底色 ────────────
 	// 同样过抖动分级(6 级) —— 平滑的明暗起伏在像素风里会显得像 3D 渲染的脏。

@@ -35,21 +35,48 @@ func _ready() -> void:
 	# 低画质模式 @ (W/2, 490) — 现在是【真开关】: 关 MSAA + 3D 渲染分辨率 ×0.75 + 停菜单背景漂移; 持久化到存档.
 	_perf_btn = _text_button(W / 2.0, 490.0, _perf_label(), _toggle_perf)
 
+	# 🛠 调试场 @ (W/2, 560) — 用户 2026-09-17:「调试场可以塞到设置里, 正式上线的不会要调试场」。
+	#   原来它钉在主菜单中间那条空档上, 而那块地现在给了「本周赛程条」。
+	#   ★gate 原样搬过来: OS.is_debug_build() 在导出 release 模板下为 false ⇒ 正式包玩家看不到。
+	#   门禁 verify_menu 也跟着搬(它验的是"调试入口不泄漏给玩家", 不是"这行代码在哪个文件")。
+	var dev := OS.is_debug_build() or OS.has_environment("DEVTOOLS")
+	var reset_y := 580.0
+	if dev:
+		_text_button(W / 2.0, 560.0, "🛠 调试场", _open_debug_arena)
+		reset_y = 640.0     # 让开调试场; 正式包里没这个键, 重置就回到原来的 580(不留空洞)
 
-	# 重置存档 @ (W/2, 580) — ⚠ 破坏性 → 二次确认
-	_text_button(W / 2.0, 580.0, "⚠ 重置所有存档", _ask_reset)
+	# 重置存档 @ (W/2, 580 / 开发构建 640) — ⚠ 破坏性 → 二次确认
+	_text_button(W / 2.0, reset_y, "⚠ 重置所有存档", _ask_reset)
 
 	# 底部提示 @ (W/2, H-40), 11px #888
 	var hint := _stroked_label("设置自动保存", 11, "#888888", "", 0)   # PoC 字面是"到 localStorage"(浏览器术语), Godot 存 user:// → 去掉误导后缀
 	_place_center(hint, W / 2.0, H - 40.0)
 
 
-## ESC 返回主菜单 (原来只能点左上角箭头)
 	# ★UI 双端适配(用户2026-08-01「有些画面都没有居中」): 把内容装进 1280×720 设计框并居中于真实视口。
 	#   本屏原先直接按设计坐标画在视口(0,0) → 21:9 上内容整体坐在左边 200px(审计器实测)。
 	#   ★必须放在 _ready 最后 —— UIFrame 收编的是【已经建出来的】子节点。
 	#   (异步晚建的节点由 UIFrame._process 的孤儿收编兜住。)
+	## ★★2026-09-18 这行差点丢了: 上面那句「## ESC 返回主菜单」本是 `_unhandled_input` 的文档注释,
+	##   却写在了 _ready 体内的这行【之前】。我把调试场的 const+func 插在那条注释前面, 于是
+	##   `const` 把 _ready 从中间截断, 这行落进了 _open_debug_arena 的函数体 ——
+	##   设置页的居中适配变成"只有点调试场时才执行"。verify_ui_layout ② 当场红(偏离 185px)。
+	##   ⇒ 往函数之间插代码前, 先确认插入点【不在某个函数体内】(CLAUDE.md §3.7 同族)。
 	UIFrame.attach(self)
+
+
+# ─── 🛠 调试场 (自由摆位测试场; 开发工具, 正式包不出现) ───
+## 2026-09-17 从 MainMenuScene 整体搬来 —— 行为一字未改, 只换了入口所在的屏。
+const _RB_DEBUG := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
+
+func _open_debug_arena() -> void:
+	_RB_DEBUG.DEBUG_EDIT = true    # 调试场=自由摆位编辑器(左键摆龟/拖拽/右键删/装备笔刷/开始暂停·用户2026-07-12恢复)
+	var gs = get_node_or_null("/root/GameState")
+	if gs != null: gs.set("dual_active", false)   # 清双路态
+	get_tree().change_scene_to_file("res://scenes/RealtimeBattle3D.tscn")
+
+
+## ESC 返回主菜单 (原来只能点左上角箭头)
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		if _confirm_layer != null and is_instance_valid(_confirm_layer):

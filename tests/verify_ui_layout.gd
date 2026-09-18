@@ -219,10 +219,26 @@ func _measure(path: String, w: int, h: int) -> Dictionary:
 	add_child(sv)
 	var inst = (load(path) as PackedScene).instantiate()
 	sv.add_child(inst)
-	# 等界面建完 + 入场 tween 落定。★90 帧不够: 主菜单左栏键从 x=-560 滑入, 延迟 0.5+0.08i 秒,
-	#   抓早了会把"滑到一半"当成"按钮跑到屏外"(2026-08-01 我就这样误判过一次)。
-	for _i in range(150):
+	# 等界面建完 + 入场 tween 落定。
+	# ★★2026-09-18: 原来是"等 150 帧", 仍然不够 —— tween 走的是【真实 delta】, 而无头帧率极高、
+	#   每帧只推进约 1ms, 150 帧 ≈ 0.15 秒, 而左栏键的入场延迟就有 0.5+0.08i 秒。
+	#   于是量到的是【滑到一半】的位置(探针实测 ◆ 标记停在 x=-561), 报成"溢出视口 36 个"。
+	#   这正是 CLAUDE.md §3.5 那条: **等游戏内效果用墙钟, 别用帧数**。
+	#   改成 time_scale 加速 + 墙钟上限 + 【落位判据】(所有可见控件 modulate.a 回到 1)。
+	Engine.time_scale = 12.0
+	var _t0 := Time.get_ticks_msec()
+	var _settled := false
+	while Time.get_ticks_msec() - _t0 < 8000:
 		await get_tree().process_frame
+		if _entrance_settled(inst, w, h):
+			_settled = true
+			break
+	Engine.time_scale = 1.0
+	for _i in range(4):
+		await get_tree().process_frame
+	## ★没落位就显式报出来, 不静默拿半空中的坐标往下量
+	if not _settled:
+		print("  [WARN] %s 入场未落位(墙钟 %d ms) —— 下面的几何数字不算数" % [path, Time.get_ticks_msec() - _t0])
 
 	var vp := Vector2(float(w), float(h))
 	var area: float = vp.x * vp.y
@@ -504,3 +520,35 @@ func _frame_of(inst: Node):
 			return (ch as Control).position
 	return null
 
+
+## 入场是否落位 = 【所有可见 Control 的全局位置连续两次采样都没变】。
+## ★第一版判的是 modulate.a 回到 1 —— 恒不成立: 左栏入口的 ◆ 选中标记
+##   设计上就是 modulate.a=0(hover 才淡入), 于是 8 秒墙钟跑满也判不出落位。
+##   位置稳定这个判据不受"设计上就半透明/隐藏"的元素影响, 才是真正在问"动画停了没"。
+var _settle_prev: Dictionary = {}
+
+func _entrance_settled(root: Node, vw: int, vh: int) -> bool:
+	var cur: Dictionary = {}
+	var q: Array = [root]
+	while not q.is_empty():
+		var nd = q.pop_back()
+		for ch in nd.get_children():
+			q.append(ch)
+			if ch is Control and (ch as Control).visible:
+				var _r: Rect2 = (ch as Control).get_global_rect()
+				## ★跳过铺满视口的背景层: 图鉴/主菜单的背景是【常驻漂移】的, 位置永远在变,
+				##   算进来就永远判不出落位(Codex 实测 8 秒墙钟跑满)。它们也本来就不参与越界判定。
+				if _r.size.x >= float(vw) - 1.0 and _r.size.y >= float(vh) - 1.0:
+					continue
+				cur[(ch as Control).get_instance_id()] = _r.position
+	if cur.size() < 3:              # 分母: 一个控件都没有时不算"落位"
+		_settle_prev = cur
+		return false
+	var same := _settle_prev.size() == cur.size()
+	if same:
+		for k in cur:
+			if not _settle_prev.has(k) or (_settle_prev[k] as Vector2).distance_to(cur[k]) > 0.5:
+				same = false
+				break
+	_settle_prev = cur
+	return same
