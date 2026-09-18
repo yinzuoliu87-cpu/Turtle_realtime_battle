@@ -398,7 +398,22 @@ func _build_environment() -> void:
 	fill.light_energy = 0.45
 	fill.light_color = Color(0.42, 0.66, 0.85)
 	battle._world.add_child(fill)
-	if OS.has_environment("TILEMAP"):    # 暗深海夜: 压暗主/补光, 让技能特效跳出
+	## ★★★2026-09-18 实测警告 —— 【不要】把这个分支改成常开。
+	##   这半边(灯光/天空)和地面那半边(MAP_V2)本是 2026-07-13 同一套「暗深海夜」设计,
+	##   但地面靠 `const MAP_V2 := true` 常开了, 灯光却留在 `TILEMAP` env 后面 ⇒
+	##   **正式对局两个月来跑的一直是「暗地面 + 亮灯光」的混搭**。
+	##   看上去是个该修的漏接, 实测结论**相反**(同种子 A/B, 噪声底已量):
+	##     TILEMAP 未设(现状)  中间调 29.3% / 有效色数 96  ⇒ tools/battle_scene_audit.py 2/2 过
+	##     TILEMAP=1(配套设计) 中间调 13.1% / 有效色数 76  ⇒ **0/2 全红**
+	##     两版差异 |Δ明度|>8 占 64.1%, 而同码重跑的噪声底只有 26.4% ⇒ 真效应不是抖动。
+	##   根因: 陆地 shader 吃光(`ground_land` 没写 unshaded), 而水是 `unshaded` 不吃 ⇒
+	##   一压灯只压暗陆地、青水不动 ⇒ 构图被反转成「发光轮廓框着一个黑洞」——
+	##   正是 `ground_water.gdshader:9-10` 自己警告过的那个失败模式。
+	##   ★13.1%/76 几乎就是 v0.19.403 提亮之前的那组数(11.1%/73) ⇒
+	##     **这套灯光本身就是「战斗背景很烂」的成因之一**, 它关着是走运不是缺陷。
+	##   ★留着不删: 这是用户 2026-07-13 那天的设计意图, 未拍板不擅自删。
+	##     但谁想"把漏接补上"之前, 先跑一遍上面那个 A/B。
+	if OS.has_environment("TILEMAP"):    # 暗深海夜: 压暗主/补光(★见上, 实测更差, 别常开)
 		light.light_energy = 0.62
 		fill.light_energy = 0.30
 
@@ -418,7 +433,7 @@ func _build_environment() -> void:
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	env.ambient_light_color = Color(0.40, 0.58, 0.70)
 	env.ambient_light_energy = 0.85
-	if OS.has_environment("TILEMAP"):    # 暗深海夜: 天空/环境光压暗成深夜(#0a0e1a深底), 特效才跳
+	if OS.has_environment("TILEMAP"):    # 暗深海夜: 天空/环境光压暗成深夜(#0a0e1a深底) ★与上面那处同一套, 实测更差(见 _build_environment 开头的长注), 别常开
 		sky_mat.sky_top_color = Color(0.020, 0.050, 0.110)
 		sky_mat.sky_horizon_color = Color(0.030, 0.070, 0.140)
 		sky_mat.ground_bottom_color = Color(0.010, 0.030, 0.080)
@@ -489,48 +504,16 @@ func _build_ground() -> void:
 	# ★远景背景层("天空")在所有模式都建 —— 不像障碍物那样只在双路(用户 2026-07-21)
 	if not OS.has_environment("MAPEDIT"):
 		_build_far_backdrop(battle._world)
-	if battle.MAP_V2 or OS.has_environment("TILEMAP") or OS.has_environment("MAPEDIT"):    # ★新地图: MultiMesh方块tile地面(暗深海夜色·数据驱动·用户2026-07-13定案·纯视觉不改玩法)
-		_build_tilemap_ground(); return
-	var mi = MeshInstance3D.new()
-	mi.name = "Ground"
-	var plane = PlaneMesh.new()
-	# 地面铺很大 (远超竞技场+视野) → 填满下半屏, 远处自然沉黑融进背景, 没有硬地平线边/亮角.
-	var gw: float = battle.ARENA.size.x * battle.WS * 2.4 + 200.0   # 地面大幅外扩→海床往远处continue填满画面, 不再硬切黑(用户: 四周漆黑像浮虚空)
-	var gh: float = battle.ARENA.size.y * battle.WS * 2.4 + 200.0
-	plane.size = Vector2(gw, gh)
-	plane.subdivide_width = 32
-	plane.subdivide_depth = 32
-	mi.mesh = plane
-	if OS.has_environment("BLACKMAP"):   # 黑地图: 地面纯黑
-		var _bm = StandardMaterial3D.new(); _bm.albedo_color = Color(0, 0, 0); _bm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		mi.material_override = _bm; battle._world.add_child(mi); return
-	# 半竞技场尺寸 (米) — shader 据此算"中心→边缘"景深暗角 + 竞技场软环.
-	var half_arena = Vector2(battle.ARENA.size.x * battle.WS * 0.5, battle.ARENA.size.y * battle.WS * 0.5)
-	mi.material_override = battle._make_ground_material(half_arena)
-	battle._world.add_child(mi)
-	# 竞技场边界软环 (地面上躺平一圈柔光) — 给围合感, 弱化"空旷无边"
-	_build_arena_ring(half_arena)
-
-# 深海地面 ShaderMaterial (纯程序, 无外部图):
-#  · 景深渐变: 世界 XZ 离场地中心越远 → 由 GROUND_NEAR 暗蓝过渡到 GROUND_FAR (远处变暗变蓝).
-#  · 程序焦散: 两层流动 sin 噪声叠加 → 深海水面投影光纹 (随 TIME 漂动).
-#  · 受光: 吃 DirectionalLight (法线朝上) → 主光暖/补光冷, 出立体微差.
-# 竞技场边界软环: 一张躺平的环形渐变贴图 (中空, 边亮) 盖在地面上, 标出竞技场范围.
-func _build_arena_ring(half_arena: Vector2) -> void:
-	var ring = Sprite3D.new()
-	ring.name = "ArenaRing"
-	ring.texture = VfxTex._make_arena_ring_texture()
-	ring.billboard = BaseMaterial3D.BILLBOARD_DISABLED
-	ring.axis = Vector3.AXIS_Y
-	ring.shaded = false
-	ring.transparent = true
-	ring.alpha_cut = SpriteBase3D.ALPHA_CUT_DISABLED
-	ring.modulate = Color(battle.ARENA_RING_COLOR.r, battle.ARENA_RING_COLOR.g, battle.ARENA_RING_COLOR.b, battle.ARENA_RING_A)
-	ring.position = Vector3(0.0, 0.012, 0.0)
-	# 贴图 256px → pixel_size 让环外径 ≈ 竞技场对角略大
-	var span: float = maxf(half_arena.x, half_arena.y) * 2.2
-	ring.pixel_size = span / 256.0
-	battle._world.add_child(ring)
+	# ★新地图: MultiMesh方块tile地面(暗深海夜色·数据驱动·用户2026-07-13定案·纯视觉不改玩法)
+	## ★★2026-09-18 这里原来是 `if battle.MAP_V2 or TILEMAP or MAPEDIT: _build_tilemap_ground(); return`,
+	##   后面还跟着 40 行旧 PlaneMesh 地面。而 `MAP_V2` 是 **const := true** ⇒ 条件恒真 ⇒
+	##   那 40 行(连同 `_make_ground_material` 71 行、`_build_arena_ring`、`_make_arena_ring_texture`、
+	##   `ARENA_RING_*`/`GROUND_NEAR`/`GROUND_FAR`/`CAUSTIC_SPEED`) **一行都跑不到**, 共 135 行已删。
+	##   ★`tools/zero_caller_audit.py` 抓不到这个形状 —— 它们**每一个都有调用者**,
+	##     链条是在顶上被一个恒真常量剪断的。为此加了第三道网 `const_branch`(见该文件)。
+	##   ★别把 `if` 加回来: `MAP_V2=false 回退旧地面` 在旧地面删掉之后是**假话**,
+	##     `TILEMAP` 对地面也早就是 no-op(它现在只剩 `_build_environment` 里的灯光/天空两处还在读)。
+	_build_tilemap_ground()
 
 
 # 屏幕暗角材质 (canvas_item shader): 按屏幕 UV 半径平滑压暗四角. 用 shader 算 → alpha/RGB 精确,

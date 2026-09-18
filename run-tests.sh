@@ -539,6 +539,11 @@ run_audit "tools/dead_preload_audit.py"  "ALL OK" "dead_preload (preload 了却�
 #   holo_aura_tick / ember_light_cast 全是零调用者), 而 64 条门禁全绿 —— 因为门禁直接调它们。
 #   存量 10 个记台账只减不增; 新增的当场红。
 run_audit "tools/zero_caller_audit.py"   "ALL OK" "zero_caller (写了却没有任何人调的函数)"
+## ★zero_caller 的**第三种形状**, 单独成器(2026-09-18): 函数们【每一个都有调用者】,
+##   但整条链在顶上被一个 `const X := true` 的恒真分支 + return 剪断 ⇒ zero_caller 全绿而代码跑不到。
+##   实例: `_build_ground()` 里 `if MAP_V2 or ...: _build_tilemap_ground(); return` 之后的 135 行
+##   (含主文件 71 行的 `_make_ground_material`)死了两个月, 64 条门禁没一条说过话。
+run_audit "tools/const_branch_audit.py"  "ALL OK" "const_branch (恒真常量分支 + return 吞掉同函数后续代码)"
 run_audit "tools/asset_borrow_audit.py"  "ALL OK" "asset_borrow (拿别件的素材顶替 · 铁律「新内容一律新素材」)"
 ## ★数据侧的同一类:「写了没人读」——「读了没人写」在代码侧由 zero_caller 管,
 ##   json 字段与素材这一侧一直只有一份**只打印不判决**的报告(恒 exit 0, 从没进过门禁),

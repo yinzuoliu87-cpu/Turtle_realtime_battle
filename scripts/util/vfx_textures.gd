@@ -52,22 +52,6 @@ static func _make_egg_icon_texture() -> ImageTexture:
 	_egg_icon_cache = ImageTexture.create_from_image(img)
 	return _egg_icon_cache
 
-# 环贴图: 中空软环 (radial: 内透明→环带亮→外淡出)
-static func _make_arena_ring_texture() -> GradientTexture2D:
-	var grad := Gradient.new()
-	grad.set_color(0, Color(1, 1, 1, 0.0))
-	grad.add_point(0.74, Color(1, 1, 1, 0.0))
-	grad.add_point(0.86, Color(1, 1, 1, 1.0))
-	grad.add_point(0.93, Color(1, 1, 1, 0.55))
-	grad.set_color(1, Color(1, 1, 1, 0.0))
-	var gt := GradientTexture2D.new()
-	gt.gradient = grad
-	gt.fill = GradientTexture2D.FILL_RADIAL
-	gt.fill_from = Vector2(0.5, 0.5)
-	gt.fill_to = Vector2(1.0, 0.5)
-	gt.width = 256; gt.height = 256
-	return gt
-
 static func _make_lightshaft_texture() -> ImageTexture:
 	var w := 40; var h := 200
 	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)

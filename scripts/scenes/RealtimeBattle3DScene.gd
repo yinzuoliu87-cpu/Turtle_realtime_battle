@@ -512,13 +512,6 @@ const GROUND_FADE_FRAC := 0.16            # 从底起算渐隐区占图高比例
 const GROUND_FADE_FLOOR := 0.04           # 接地处残留 alpha 下限 (0=完全透明, 略>0 防"悬空感")
 # ② 接触软影 — 紧贴脚下的深核影 (盖住立绘/地面交界, 加强"踩在地上"判定)
 const CONTACT_BASE := Vector3(1.15, 1.0, 1.0)   # 接触核影基准缩放 (比外圈 blob 小且更实)
-# ③ 深海地面 (ground shader): 中心亮→边缘暗蓝的景深渐变 + 焦散 + 边界环
-const GROUND_NEAR := Color(0.42, 0.62, 0.55)    # 场地中心地色 (亮暖沙青; 卡通像素鲜活风, 大猫贤者方向)
-const GROUND_FAR := Color(0.13, 0.42, 0.48)   # 远/边缘地色 (亮青水; 远处是明亮浅海不是黑洞)
-const CAUSTIC_SPEED := 0.35               # 焦散流动速度
-# ④ 竞技场边界软环 (地面上一圈柔光 → 给围合感, 替代硬地平线)
-const ARENA_RING_COLOR := Color(0.35, 0.62, 0.78)
-const ARENA_RING_A := 0.16
 # ⑤ 屏幕暗角 (vignette overlay, CanvasLayer 上一张 radial 渐变铺满 → 四角压暗聚焦中心)
 const VIGNETTE_A := 0.5
 
@@ -1091,77 +1084,6 @@ func _tilemap_add(xforms: Array, box_size: Vector3, col: Color, mat: Material = 
 	_tile_nodes.append(mmi)
 
 const MAP_V2 := true   # ★新tile地图转常开(用户2026-07-14"调给我看看"): true=正式对局默认用新暗深海夜色tile地图; false回退旧地面; env(TILEMAP/MAPEDIT)仍可强制
-func _make_ground_material(half_arena: Vector2) -> ShaderMaterial:
-	var sh := Shader.new()
-	sh.code = """
-shader_type spatial;
-render_mode cull_back, diffuse_lambert;
-uniform vec3 near_col : source_color;
-uniform vec3 far_col : source_color;
-uniform sampler2D seabed_tex : source_color, filter_linear, repeat_disable;  // 深海礁盘海床贴图(整块拉伸: 亮心贴合竞技场, 边缘礁石融进暗场)
-uniform float seabed_amt = 0.85; // 海床贴图占比 (剩余为程序近色底)
-uniform vec2 half_arena;          // 竞技场半尺寸 (米)
-uniform float vignette = 0.62;    // 边界暗角强度
-uniform float caustic_strength = 0.10;
-uniform float caustic_speed = 0.35;
-uniform float roughness_v = 0.92;
-
-varying vec3 world_pos;           // 顶点世界坐标 (给 fragment 算景深/焦散)
-
-float caustic(vec2 p, float t) {
-	// 两层错相流动光纹 (深海焦散近似)
-	float a = sin(p.x * 1.7 + t) + sin(p.y * 1.9 - t * 0.8);
-	float b = sin((p.x + p.y) * 1.3 + t * 1.3) + sin((p.x - p.y) * 1.1 - t);
-	float v = (a + b) * 0.25 + 0.5;            // ~0..1
-	v = pow(clamp(v, 0.0, 1.0), 3.0);          // 收窄成亮纹
-	return v;
-}
-
-void vertex() {
-	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-}
-
-void fragment() {
-	vec2 wp = world_pos.xz;
-	// 离场地中心的归一化距离 (椭圆: 按竞技场宽高各自归一)
-	vec2 n = wp / max(half_arena, vec2(0.001));
-	float d = length(n);                        // 0=中心, 1=竞技场边
-	float depth_t = smoothstep(0.35, 1.85, d);  // 场内保持亮(能看清海床), 出场才渐沉暗
-	// 海床贴图整块拉伸(竞技场归一坐标 n∈[-1,1] → uv[0,1]); 边缘 clamp, 场外靠 sink 沉黑
-	vec2 uv = clamp(n * 0.5 + 0.5, 0.0, 1.0);
-	vec3 seabed = texture(seabed_tex, uv).rgb * 1.05;   // 亮沙珊瑚地板(本身已亮, 不再×1.75爆)
-	vec3 near_base = mix(near_col, seabed, seabed_amt);
-	vec3 base = mix(near_base, far_col, depth_t);
-	// 焦散 (仅场内明显, 远处随景深淡出) — 加强水面光纹
-	float c = caustic(wp * 0.5, TIME * caustic_speed);
-	base += c * caustic_strength * (1.0 - smoothstep(0.4, 1.3, d));
-	// 边界暗角: 越靠边/越远 → 压暗 (柔和无硬线)
-	float vig = 1.0 - vignette * smoothstep(0.62, 1.4, d);
-	// 远场强沉黑: 竞技场外 (d>1) 二次压暗到近黑, 防远地/边角被光/雾刷亮成灰带
-	float sink = 1.0 - 0.32 * smoothstep(1.1, 3.8, d);   // 卡通亮场: 远处只轻微渐暗成亮青水, 不沉黑
-	ALBEDO = base * vig * sink;
-	// 远处提高 roughness 并削弱镜面/受光感 (grazing 角不反白)
-	ROUGHNESS = roughness_v;
-	SPECULAR = 0.0;
-	METALLIC = 0.0;
-}
-"""
-	var mat := ShaderMaterial.new()
-	mat.shader = sh
-	mat.set_shader_parameter("near_col", GROUND_NEAR)
-	mat.set_shader_parameter("far_col", GROUND_FAR)
-	var _seabed: Texture2D = load("res://assets/sprites/map/floor_bright.png") if ResourceLoader.exists("res://assets/sprites/map/floor_bright.png") else null
-	if _seabed != null:
-		mat.set_shader_parameter("seabed_tex", _seabed)
-		mat.set_shader_parameter("seabed_amt", 0.85)
-	else:
-		mat.set_shader_parameter("seabed_amt", 0.0)
-	mat.set_shader_parameter("half_arena", half_arena)
-	mat.set_shader_parameter("vignette", 0.22)          # 卡通亮场: 暗角很轻(不压黑)
-	mat.set_shader_parameter("caustic_strength", 0.17)  # 加强水面焦散光纹(原CAUSTIC_STRENGTH)
-	mat.set_shader_parameter("caustic_speed", CAUSTIC_SPEED)
-	return mat
-
 func _make_vignette_material() -> ShaderMaterial:
 	var sh := Shader.new()
 	sh.code = """
