@@ -76,7 +76,12 @@ float dither_steps(float v, float steps, vec2 frag) {
 // ★真要关就必须用【uniform 分支】, 不能靠"幅度乘 0" —— 乘 0 的话正弦照算, 一点不省。
 //   uniform 在整个 draw 里是常量, GPU 的分支是 coherent 的, 会真的跳过。
 uniform bool rich_fx = true;
-uniform float caustic_amt = 0.17;
+// ★★2026-09-18 0.17 → 0.40: 让【光】去当画面最亮的东西。
+//   焦散色 (0.62,0.95,1.0) 饱和度只有 **0.38** —— 正是参考组里那种"低饱和的光"
+//   (判据③: 参考亮部饱和度中位 0.394, 本项目改前 0.696)。
+//   改前它只有 0.17, 而水体自己带 26% 自发光 ⇒ 最亮的是水不是光, 正好反了。
+//   ⚠ 与 ground_water 的 EMISSION(0.26→0.09) 是一对, 必须一起看: 压水 + 提光。
+uniform float caustic_amt = 0.40;
 uniform float caustic_speed = 0.35;
 uniform vec4 caustic_col : source_color = vec4(0.62, 0.95, 1.0, 1.0);
 
