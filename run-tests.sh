@@ -532,6 +532,11 @@ run_audit "tools/copy_chain_audit.py"     "ALL OK" "copy_chain_audit (龟壳复�
 run_audit "tools/text_formula_audit.py"  "ALL OK" "text_formula_audit (文案文字↔它自己的占位符公式)"
 run_audit "tools/text_claim_audit.py"    "ALL OK" "text_claim_audit (文案声称↔代码实际·触发周期/选靶/作用范围)"
 run_audit "tools/plans_lint.py"          "ALL OK" "plans_lint (方案书生命周期·状态/骨架/实施回填)"
+## ★方案书的「❌/⏳ 标记过期」—— plans_lint 只验标记【存不存在】, 不验它【是不是真的】。
+##   用户 2026-09-18:「你这方案书有问题吧, 很多都做过了你标记未做？」
+##   本器把不可靠的"证明做完了"反过来做成可靠的"证明标记过期了": 条目自己点名一个
+##   「做完就会存在的东西」, 那东西一旦存在就当场红。
+run_audit "tools/plan_stale_audit.py"   "ALL OK" "plan_stale (方案书 ❌/⏳ 标记过期·做完了就得红)"
 run_audit "tools/dead_preload_audit.py"  "ALL OK" "dead_preload (preload 了却没人用的常量)"
 # ★★「写进去了没人读」的通用探测器(2026-09-01)。dead_preload 只管 preload 的常量,
 #   deadcode_audit 只管 _do_skill 的 match 分支 —— 都管不到"新写的类里有没有人调它的方法"。
