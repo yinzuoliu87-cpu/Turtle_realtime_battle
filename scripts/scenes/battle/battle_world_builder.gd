@@ -743,6 +743,7 @@ func _build_far_backdrop(root: Node3D) -> void:
 	#   因为远景海床只铺到 z=-30 而最坏机位要看到 z=-42.2(差 12.2 米)。
 	#   现在改成【一张真地形网格】: 有真实高低与透视, 平移缩放都不穿帮。
 	_build_far_terrain(holder)
+	_build_backdrop_thicket(holder)     # ★②a 密集竖直剪影带(2026-09-18, 见该函数长注)
 
 	# ── ②b 远景发光群(珊瑚/海葵/海带) ──────────────────────────
 	# 剪影只有轮廓没有"生气"。加一层加性发光的小点缀, 让远处天际线有光斑闪烁感,
@@ -837,6 +838,72 @@ func _build_far_backdrop(root: Node3D) -> void:
 #    地形一旦在那里起伏就会穿模。所以起伏量按到战场中心的距离做 smoothstep 淡入,
 #    近处恒为 0。
 # ----------------------------------------------------------------------------
+
+## ═══ 远景【密集竖直剪影带】(2026-09-18 · 用户「咩咩启示录是个很好的场景参考」) ═══
+##
+## ★由来: 用户看过 v0.19.407 后说「还是不能细看」, 并问「岛以外的部分怎么搞, 背景怎么做」。
+##   去把咩咩启示录的官方发售预告抽了 **167 帧**逐帧看(docs/studies/20260918-咩咩启示录场景与特效逐帧.md),
+##   量出来的结论只有一条最关键:
+##     **全片 167 帧里没有任何一帧是「场地 + 纯黑虚空」。**
+##     外面要么是密集竖直剪影(帧 153-158)、要么是建筑(帧 16)、要么地形直接铺满出画(帧 1-5/43-44/73-82)。
+##
+## ★照着量出来的做(帧 155 做过 1:1 逐像素测量):
+##   · 背景是**密集的竖直元素一层层往后叠**(石柱/树干), 不是稀疏几个剪影
+##   · 参差**交给素材**不交给几何 —— 本素材实测逐列顶端参差 **59 px**
+##   · 高饱和色极少: 参考里红烛只占全画面 **0.99%**(14 个离散块)
+##
+## ★为什么是"加一层"而不是改 `_build_far_terrain`: 那条路已经被用户否过三次
+##   (「太弱了」/「你直接这样贴一个图也不太行」/「感觉你还是在贴一个墙就完事？」),
+##   它现在是一张真地形网格、负责**天际线轮廓**。本层负责的是**中近景的密度**, 两件事。
+##
+## ★三层由近及远, 越远越矮越淡 —— 可见高度上限是算得出来的(见上方 _build_far_backdrop 的注):
+##   y_top = 28 - 0.606×(22-z) ⇒ z=-16 → 4.97m / z=-19 → 3.15m / z=-22 → 1.33m。
+##   每层只占各自上限的一半左右, 才叠得出纵深(顶满就是一整块色斑, 后层全被挡住)。
+const BACKDROP_THICKET := "res://assets/sprites/map/backdrop-kelpband.png"
+
+func _build_backdrop_thicket(holder: Node3D) -> void:
+	var tex: Texture2D = load(BACKDROP_THICKET) if ResourceLoader.exists(BACKDROP_THICKET) else null
+	if tex == null:
+		push_warning("[backdrop] 剪影带贴图缺失: %s —— 不画(不做静默兜底)" % BACKDROP_THICKET)
+		return
+	var th: int = maxi(1, tex.get_height())
+	## z / 世界高(米) / 颜色 —— 越远越淡越贴雾色(★不是"越远越暗": 水下远景是雾里的亮轮廓,
+	##   做成暗剪影会被 filmic tonemap 再吃一半、糊成一条纯黑带, 这是本文件上方记过的老坑)。
+	## ★铺多宽是【算出来的】不是估的: 相机在 (0,28,22)、fov 40(竖直)、16:9。
+	##   到 z 层的距离 d = hypot(28, 22-z); 可见竖向 = 2·d·tan(20°); 可见横向 = 竖向 × 16/9。
+	##     z=-16 → d=47.2 → 竖 34.4m → **横 61.1m**
+	##     z=-19 → d=50.0 → 竖 36.4m → **横 64.7m**
+	##     z=-22 → d=52.8 → 竖 38.4m → **横 68.3m**
+	##   ★第一版每层只铺 5~7 张(约 31m), 实拍只盖住画面上方中间一小段、两侧仍是空的。
+	##   现在按上面的横向可见宽 + 20% 余量算张数(镜头还能缩放/平移)。
+	var layers := [
+		{"z": -16.0, "h": 2.5, "col": Color(0.20, 0.30, 0.44), "span": 73.0},
+		{"z": -19.0, "h": 1.7, "col": Color(0.24, 0.35, 0.48), "span": 78.0},
+		{"z": -22.0, "h": 0.9, "col": Color(0.28, 0.40, 0.52), "span": 82.0},
+	]
+	for L in layers:
+		var zz: float = float(L["z"])
+		var hh: float = float(L["h"])
+		var w_m: float = hh * (float(tex.get_width()) / float(th))   # 按图比例定宽
+		var cnt: int = maxi(3, int(ceil(float(L["span"]) / maxf(0.01, w_m * 0.92))))
+		for i in range(cnt):
+			var s := Sprite3D.new()
+			s.name = "Thicket_%d_%d" % [int(-zz), i]
+			s.texture = tex
+			s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+			s.billboard = BaseMaterial3D.BILLBOARD_DISABLED   # 远景是背景板, 不该跟着镜头转
+			s.shaded = false
+			s.transparent = true
+			s.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD      # 剪影边缘不要半透拖尾
+			s.pixel_size = hh / float(th)
+			s.modulate = L["col"]
+			## 相邻两张各偏半张宽, 拼成通宽的一条; 左右各多铺一张防镜头缩放时露边
+			var x: float = (float(i) - float(cnt - 1) * 0.5) * w_m * 0.92
+			s.position = Vector3(x, hh * 0.5 - 0.15, zz)
+			if i % 2 == 1:
+				s.scale = Vector3(-1.0, 1.0, 1.0)              # 隔一张镜像, 破"同一个印章"
+			holder.add_child(s)
+
 func _build_far_terrain(holder: Node3D) -> void:
 	var st = SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
