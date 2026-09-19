@@ -78,20 +78,38 @@ func _ready() -> void:
 	_chk("① 带高 WALL_H_M_GEO == 1.75 米(真几何口径·不是 billboard 的 1.11)",
 		absf(BWB.WALL_H_M_GEO - 1.75) < 0.001, "%.3f" % BWB.WALL_H_M_GEO)
 
-	## ── ② 水面(v0.19.406·34 张参考标定) ──
 	const W := "res://scripts/scenes/battle/shaders/ground_water.gdshader"
+	## ── ①b 水体压暗系数(v0.19.413·153 帧真实游戏内画面标定) ──
+	## ★★**调色板原值一个像素不动** —— 「水是什么色」由硬锁表说了算(#1fb8c4),
+	##   「它被照得多亮」由着色说了算。我第一版直接改了 `shallow_col`,
+	##   `verify_water_palette` **当场红**(实测 #3d8094 ≠ #1fb8c4) —— 红得对。
+	## 理由: 参考里水比地面暗(帧 29), 而改前本项目水比石台还亮 +10;
+	##   改后实拍 水−石台 **−45** · 中心−外围 **+20.6**(参考 +22) · 亮部饱和 **0.35**(参考 0.394)。
+	var dim = _num(W, "uniform float body_dim =")
+	_chk("★分母: 读得到水体压暗系数 body_dim", dim != null)
+	if dim != null:
+		_chk("①b 水体压暗 body_dim == 0.62(153 帧标定·动它就要重拍重量)",
+			absf(float(dim) - 0.62) < 0.001, "%.3f" % float(dim))
+
+	## ── ② 水面(v0.19.406·34 张参考标定) ──
 	var emis = _num(W, "EMISSION = c_pre_foam *")
 	_chk("★分母: 读得到水面 EMISSION 系数", emis != null)
 	if emis != null:
 		## 0.09: 改前 0.26 的自发光是「整条水带明度 176」的一大来源, 而水体色明度才 140。
-		_chk("② 水自发光 == 0.09(改前 0.26 ⇒ 水成了全屏最亮)", absf(float(emis) - 0.09) < 0.001, "%.3f" % float(emis))
+		## ★★改账(2026-09-20): 0.09→0 —— 自发光让水**拿不到「比地面暗」**。
+		##   旧值 0.09 是 v0.19.406 对着**亮水体**标定的; 水压暗后它变成一层抬底。
+		_chk("② 水自发光 == 0(压暗后不再自发光·让它吃光)",
+			emis != null and absf(float(emis) - 0.0) < 0.001, "%.3f" % float(emis) if emis != null else "null")
 	var foam = _num(W, "foam_col.rgb, foam *")
 	_chk("★分母: 读得到泡沫强度", foam != null)
 	if foam != null:
 		## 0.46: 岸线那条亮边原本是饱和水色(判据③ 卡在这), 换成白泡沫。
 		## ★宽度**没动**(仍 0.34) —— 当年被否的是「宽 0.62 + 强 0.55」那个组合(整座岛套发光环)。
-		_chk("② 泡沫强度 == 0.46(只动强度不动宽度)", absf(float(foam) - 0.46) < 0.001, "%.3f" % float(foam))
-
+		## ★★改账(2026-09-20): 0.46→0.18 —— 泡沫/浪尖强度是当初对着**亮水体**标定的,
+		##   水体压暗后同样强度的对比度翻倍 ⇒ 岸线变成一条**发光描边环**(实拍看见的)。
+		##   ★仍然**只动强度不动宽度** —— 当年被否的是「宽 0.62 + 强 0.55」那个组合。
+		_chk("② 泡沫强度 == 0.18(水压暗后重标定·只动强度不动宽度)",
+			foam != null and absf(float(foam) - 0.18) < 0.001, "%.3f" % float(foam) if foam != null else "null")
 	## ── ③ 焦散(v0.19.406) ──
 	const C := "res://scripts/scenes/battle/shaders/ground_common.gdshaderinc"
 	var ca = _num(C, "caustic_amt =")
