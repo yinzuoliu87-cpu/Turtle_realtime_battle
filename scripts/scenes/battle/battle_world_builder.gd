@@ -240,7 +240,8 @@ const WALL_COL := Color(0.227, 0.247, 0.361)   # = TILE_COLS[2] 石台色, **不
 ##   ⚠ 这个数依赖【地面有多亮】。若哪天动了灯光(见 R13), 必须重量一次, 不能照抄。
 ##   ⚠ 复量方法: 拿"加墙前/后同种子两张实拍"做差分分割出墙像素(别用我拍的亮度阈值),
 ##     取中位与场内地面中位比 —— 用方框平均会被段间空隙稀释(第一次就读成 +2%)。
-const WALL_GAIN := 2.05         # 实拍反解; 改完必须实拍复量, 不许凭感觉调
+const WALL_H_M_GEO := 1.75    # 真实竖直几何口径(同样读出 31px 要 1.75 米, billboard 只要 1.11)
+const WALL_COL_LIT := Color(0.62, 0.66, 0.86)   # 吃光后的基色(不再乘 WALL_GAIN)
 ## ★★★这个常量已经连着【三轮】需要重标定, 记一笔: 1.55(v0.19.405) → 1.70(水面重做) → 2.05(灯光重做)。
 ##   每次都是因为"地面变亮了、墙没跟着变" —— 根因是**墙卡是 UNSHADED 而地面吃光**,
 ##   两者之间只靠这一个手工标定的数连着。⇒ **它是脆的**, 已登记成方案书 20260918b 的 W8。
@@ -256,14 +257,8 @@ func build_edge_wall(grid: Array, w: int, h: int, tile: float, ox: float, oy: fl
 	if tex == null:
 		push_warning("[edge_wall] 贴图缺失: %s —— 不画边界墙(不做静默兜底)" % WALL_TEX)
 		return made
-	var root := Node3D.new()
-	root.name = "EdgeWall"
-	battle._world.add_child(root)
-	made.append(root)
-	var tw_m: float = tile * battle.WS                 # 一格的世界宽(米)
-	var tex_w_m: float = WALL_H_M * (float(tex.get_width()) / WALL_TEX_H)   # 贴图一次铺多宽(米)
 
-	# 取格子类型; 越界当 void(4)
+	## 取格子类型; 越界当 void(4)
 	var at := func(r: int, c: int) -> int:
 		if r < 0 or r >= h or c < 0 or c >= w:
 			return 4
@@ -272,54 +267,143 @@ func build_edge_wall(grid: Array, w: int, h: int, tile: float, ox: float, oy: fl
 			return 4
 		return int(row[c])
 
-	## ── 只画【朝北】(远端)的边界段 ────────────────────────────────────
-	## ★★2026-09-18 第一版四个方向全画, 实拍当场否掉:
-	##   岛的边界在 tile 分辨率下本身就是**锯齿**的, 斜边上每格都发卡 ⇒
-	##   南北 + 东西四向叠加, 画面上读成「一层层错开互相重叠的砖带」, 不是一面墙。
-	##   ⇒ 只留朝北那一圈: 实测 49 个可见边界格里 **42 个就在这一圈**(见 `_probe_pxm` ⑤),
-	##   南向的 7 格在画面最下沿、东西向的基本被左右 185px 的 UI 栏挡住 —— 画了只添乱。
-	##   ⚠ 这不等于「阶梯问题解决了」, 只是把它从四层叠成一层(仍是未决点, 见方案书 R17)。
+	## ── 把「岛↔void」的每条格边收成线段, 再串成连续折线 ───────────────
+	## ★★2026-09-19 换实现。原来是【逐格墙卡】(每段 run 一张 QuadMesh billboard),
+	##   2026-09-18 实拍四向全画当场否掉 ——「一层层错开互相重叠的砖带」, 只好退到只画朝北一圈。
+	##   ★根因不是"岛的轮廓是阶梯", 是**卡片各自独立**: 斜边上相邻 run 分属不同行,
+	##     每张卡各自发卡、各自朝相机, 于是读成一堆错开的砖。
+	##   ★参考里 15 张边界裁图(shapecal/edge/)**没有一张是逐格卡**:
+	##     Arknights_4/BrawlStars_3 是台地挤出侧面; BrawlStars_2/4 绿篱; ClashOfClans_2 城墙件排成一条;
+	##     CultOfTheLamb_1 白石 curb; HadesII_1/Hades_1 栏杆女儿墙; Hades_0 骨柱环; TFT_1 植被带。
+	##     **共同点是「边界上有一条连续构件」, 不是「轮廓必须是直边」** ——
+	##     C 类(格子化阶梯)在参考里有 8 张, 格子阶梯本身不是病, **裸着的阶梯边**才是。
+	##   ⇒ 现在: 整圈边界抽成折线, 生成**一个 ArrayMesh 的连续竖直带**(连续 UV、不断开)。
+	var segs: Array = []                                  # [[Vector2 a, Vector2 b], ...] 像素口径
 	for r in range(h):
-		for dr in [-1]:                                     # -1=北邻是void(远端)
-			var c := 0
-			while c < w:
-				if at.call(r, c) == 4 or at.call(r + dr, c) != 4:
-					c += 1
-					continue
-				var c0 := c
-				while c < w and at.call(r, c) != 4 and at.call(r + dr, c) == 4:
-					c += 1
-				var n := c - c0
-				var run_m: float = float(n) * tw_m
-				var px: float = ox + (float(c0) + float(n) * 0.5) * tile      # 段中点
-				var py: float = oy + (float(r) + (0.5 + 0.5 * float(dr))) * tile   # 贴在朝 void 的那条边上
-				made.append(_edge_wall_card(root, tex, Vector2(px, py), run_m, run_m / tex_w_m))
-	## ── 东西向: **不画**(第一版画了, 实拍否掉) ────────────────────────
-	## 它们几乎全落在左右各 185px 的 UI 栏后面, 唯一的效果是在斜边上和南北向卡叠成一团。
-	## ★留这段注释而不是删掉痕迹: 下次有人想"补全一圈"之前, 先看实拍 `wall1.png`。
+		for c in range(w):
+			if at.call(r, c) == 4:
+				continue
+			var x0 := ox + float(c) * tile
+			var y0 := oy + float(r) * tile
+			var x1 := x0 + tile
+			var y1 := y0 + tile
+			if at.call(r - 1, c) == 4:
+				segs.append([Vector2(x0, y0), Vector2(x1, y0)])
+			if at.call(r + 1, c) == 4:
+				segs.append([Vector2(x1, y1), Vector2(x0, y1)])
+			if at.call(r, c - 1) == 4:
+				segs.append([Vector2(x0, y1), Vector2(x0, y0)])
+			if at.call(r, c + 1) == 4:
+				segs.append([Vector2(x1, y0), Vector2(x1, y1)])
+	if segs.is_empty():
+		push_warning("[edge_wall] 一条边界段都没收到 —— 地图全是 void? 不画(不做静默兜底)")
+		return made
+
+	var loops := _chain_loops(segs)
+	var root := Node3D.new()
+	root.name = "EdgeWall"
+	battle._world.add_child(root)
+	made.append(root)
+	var mi := _edge_band_mesh(loops, tex)
+	if mi != null:
+		root.add_child(mi)
+		made.append(mi)
 	return made
 
-## 一张朝相机的墙卡。用 QuadMesh + uv1_scale 平铺 —— Sprite3D 不会平铺贴图,
-## 按格单发又会让 64 texel 的图被挤进 26 texel 宽的格子里(横向压缩 2.4 倍)。
-func _edge_wall_card(root: Node3D, tex: Texture2D, pos2d: Vector2, width_m: float, uv_repeat: float) -> MeshInstance3D:
+
+## 把零散线段串成首尾相接的折线环。返回 [[Vector2...], ...]。
+## ★串不起来的(孤立段)单独成一条开口折线 —— **不静默丢掉**, 丢了就是边界缺口。
+func _chain_loops(segs: Array) -> Array:
+	var start_map: Dictionary = {}                        # key(起点) -> [段下标...]
+	var key := func(p: Vector2) -> String:
+		return "%.1f_%.1f" % [p.x, p.y]
+	for i in range(segs.size()):
+		var k: String = key.call((segs[i] as Array)[0])
+		if not start_map.has(k):
+			start_map[k] = []
+		(start_map[k] as Array).append(i)
+	var used := {}
+	var loops: Array = []
+	for i in range(segs.size()):
+		if used.has(i):
+			continue
+		var poly: Array = [(segs[i] as Array)[0], (segs[i] as Array)[1]]
+		used[i] = true
+		var guard := 0
+		while guard < segs.size() + 4:
+			guard += 1
+			var k: String = key.call(poly[poly.size() - 1])
+			if not start_map.has(k):
+				break
+			var nxt := -1
+			for j in start_map[k]:
+				if not used.has(int(j)):
+					nxt = int(j)
+					break
+			if nxt < 0:
+				break
+			used[nxt] = true
+			poly.append((segs[nxt] as Array)[1])
+			if poly[poly.size() - 1].is_equal_approx(poly[0]):
+				break
+		if poly.size() >= 3:
+			loops.append(poly)
+	return loops
+
+
+## 沿折线生成一条连续竖直带(单个 ArrayMesh)。
+## ★高度用 WALL_H_M_GEO 不是 WALL_H_M: 前者是**真实竖直几何**口径, 后者是 billboard 口径 ——
+##   同样要在屏幕上读出 31px, 真几何要 1.75 米、billboard 只要 1.11 米(差 1.58 倍, 见上一篇标定)。
+## ★双面不剔除: 远端(北)那一圈的外表面背对相机, 不关剔除就看不见 ——
+##   而 42/49 个可见边界格恰恰都在那一圈。绿篱/栏杆类构件本来也都是双面片。
+func _edge_band_mesh(loops: Array, tex: Texture2D) -> MeshInstance3D:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var tex_w_m: float = WALL_H_M_GEO * (float(tex.get_width()) / WALL_TEX_H)
+	var quads := 0
+	for poly in loops:
+		var pts: Array = poly
+		var run := 0.0
+		for i in range(pts.size() - 1):
+			var a: Vector2 = pts[i]
+			var b: Vector2 = pts[i + 1]
+			var seg_m: float = a.distance_to(b) * battle.WS
+			if seg_m <= 0.0001:
+				continue
+			var u0: float = run / tex_w_m
+			var u1: float = (run + seg_m) / tex_w_m
+			run += seg_m
+			var a_lo: Vector3 = battle._world_pos(a, 0.0)
+			var b_lo: Vector3 = battle._world_pos(b, 0.0)
+			var a_hi: Vector3 = a_lo + Vector3(0.0, WALL_H_M_GEO, 0.0)
+			var b_hi: Vector3 = b_lo + Vector3(0.0, WALL_H_M_GEO, 0.0)
+			st.set_uv(Vector2(u0, 1.0)); st.add_vertex(a_lo)
+			st.set_uv(Vector2(u1, 1.0)); st.add_vertex(b_lo)
+			st.set_uv(Vector2(u1, 0.0)); st.add_vertex(b_hi)
+			st.set_uv(Vector2(u0, 1.0)); st.add_vertex(a_lo)
+			st.set_uv(Vector2(u1, 0.0)); st.add_vertex(b_hi)
+			st.set_uv(Vector2(u0, 0.0)); st.add_vertex(a_hi)
+			quads += 1
+	if quads == 0:
+		push_warning("[edge_wall] 折线串起来了但一个四边形都没生成 —— 不画")
+		return null
+	st.generate_normals()
 	var mi := MeshInstance3D.new()
-	var q := QuadMesh.new()
-	q.size = Vector2(width_m, WALL_H_M)
-	mi.mesh = q
+	mi.name = "EdgeBand"
+	mi.mesh = st.commit()
 	var m := StandardMaterial3D.new()
 	m.albedo_texture = tex
-	m.albedo_color = Color(clampf(WALL_COL.r * WALL_GAIN, 0.0, 1.0), clampf(WALL_COL.g * WALL_GAIN, 0.0, 1.0), clampf(WALL_COL.b * WALL_GAIN, 0.0, 1.0))
+	m.albedo_color = WALL_COL_LIT
 	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST     # 像素画不许插值成糊
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED        # 和水面同口径: 明暗由贴图给, 不再吃光二次变暗
+	m.texture_repeat = true
+	## ★★吃光(W8): 原来是 UNSHADED + 手工标定的 `WALL_GAIN` —— 那个数被地面亮度牵着走,
+	##   2026-09-18 一天内重标定了三次(1.55→1.70→2.05)。真实几何吃光之后, 亮度跟着灯光走,
+	##   不再需要那个常量。**W8 关闭。**
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	m.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
-	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED          # 朝相机 ⇒ 不吃俯角压缩(世界高按 1.11 口径)
-	m.billboard_keep_scale = true
-	m.uv1_scale = Vector3(maxf(0.05, uv_repeat), 1.0, 1.0)       # 沿段连续铺
 	mi.material_override = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	# 卡底贴地: QuadMesh 以中心为原点 ⇒ 抬半个高
-	mi.position = battle._world_pos(pos2d, WALL_H_M * 0.5)
-	root.add_child(mi)
 	return mi
 
 

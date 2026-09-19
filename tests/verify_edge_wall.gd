@@ -1,146 +1,170 @@
 extends Node
-## verify_edge_wall.gd — 场地边界墙(P1-5·v0.19.405)真的建出来了、且建对了
+## verify_edge_wall — 场地边界必须被**一条连续的竖直带**盖住（整圈一段不漏）。
 ##
-## ★为什么需要这条: `docs/plans/.../20260918` 的 P1-5 打勾时被 `plans_lint` 拦下 ——
-##   「新打的勾必须写清哪条门禁证明了它」。此前边界墙只有实拍佐证,
-##   而 `tools/battle_scene_audit.py` 进不了无头门禁(需要渲染, 见方案书 R10)。
+## ★★2026-09-20 改账（不是加白名单）：实现从【逐格 billboard 墙卡】换成
+##   【沿整圈边界的一个连续 ArrayMesh】，原来那套判据（卡片数 / 卡片高 / billboard 开没开 /
+##   段总宽）测的全是旧实现的形状，一条都不再适用。
 ##
-## ★判据不许是恒真式。本项目栽过太多次「断言我自己插的标记」——
-##   所以这里**独立地从 arena.json 重算一遍**「朝北的连续边界段有几段」,
-##   再和产品真建出来的墙卡数对账。两边任一改坏都会红:
-##     · 产品侧漏建/多建 ⇒ 数量对不上
-##     · 产品侧改了「只画朝北」的规则 ⇒ 数量对不上
-##     · 我这份重算写错 ⇒ 数量对不上(不会悄悄放过)
+## ★为什么换实现（证据在 `scratchpad/shapecal/edge/` 的 15 张参考边界裁图）：
+##   2026-09-18 第一版四向全画被实拍当场否掉 ——「一层层错开互相重叠的砖带」，只好退到只画朝北一圈。
+##   ★根因**不是**「岛的轮廓是阶梯」，是**卡片各自独立**：斜边上相邻 run 分属不同行，
+##     每张卡各自发卡、各自朝相机，于是读成一堆错开的砖。
+##   ★参考里 15 张边界裁图**没有一张是逐格卡**：Arknights_4 / BrawlStars_3 是台地挤出侧面；
+##     BrawlStars_2/4 绿篱；ClashOfClans_2 城墙件排成一条；CultOfTheLamb_1 白石 curb；
+##     HadesII_1 / Hades_1 栏杆女儿墙；Hades_0 骨柱环；TFT_1 植被带；TFT_2/4 石挡墙。
+##   ★★跨 A/B/C 三类共 26 张，共同点是**「边界上有一条连续构件」**，不是「轮廓必须是直边」——
+##     C 类（格子化阶梯，本项目就是这类）在参考里有 8 张，**格子阶梯本身不是病，裸着的阶梯边才是**。
+##     ⇒ 方案书原定目标「轮廓角点 52 → ≤8」据此作废，换成本文件这条。
 ##
-## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_edge_wall.tscn --quit-after 1200
+## ★旧实现只画朝北 = **整圈 174 段里只盖了 58 段**，三分之二裸着。本门禁的主判据就是这个。
 
-const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const BWB := preload("res://scripts/scenes/battle/battle_world_builder.gd")
 
-var _ok_n := 0
+## ★标定字面值，**不读产品常量** —— 读产品常量就成了恒真式：
+##   2026-09-18 第一版写的是 `size.y == BWB.WALL_H_M`，测试与产品读同一个数，
+##   反向验证把常量改成 0.55 时**一条都没红**。
+const WALL_H_EXPECT := 1.75          # 真实竖直几何口径（billboard 口径是 1.11，差 1.58 倍，别混用）
+const WS_EXPECT := 0.024             # 像素 → 米
+
+var _pass := 0
 var _fail := 0
+
 
 func _chk(name: String, cond: bool, extra: String = "") -> void:
 	if cond:
-		_ok_n += 1
-		print("  [PASS] %s%s" % [name, ("  " + extra) if extra != "" else ""])
+		_pass += 1
+		print("  [PASS] %s  %s" % [name, extra])
 	else:
 		_fail += 1
-		print("  [FAIL] %s%s" % [name, ("  " + extra) if extra != "" else ""])
+		print("  [FAIL] %s  %s" % [name, extra])
+
 
 func _ready() -> void:
 	await get_tree().process_frame
-	print("── 场地边界墙(P1-5) ──")
 
-	# ── ① 独立重算: 从 arena.json 数「朝北的连续边界段」有几段 ──
+	# ── ① 独立重算：从 arena.json 自己数一遍整圈边界 ──────────────────
 	var f := FileAccess.open(BWB.MAP_PATH, FileAccess.READ)
 	_chk("① ★分母: arena.json 打得开", f != null, BWB.MAP_PATH)
 	if f == null:
-		_done(); return
-	var data = JSON.parse_string(f.get_as_text()); f.close()
-	var grid: Array = data.get("grid", [])
-	var w: int = int(data.get("w", 0))
-	var h: int = int(data.get("h", 0))
-	_chk("① ★分母: grid 非空且 w/h 有值", grid.size() > 0 and w > 0 and h > 0, "%d×%d, grid %d 行" % [w, h, grid.size()])
-	var VOID := 4
-	var at := func(r: int, c: int) -> int:
-		if r < 0 or r >= h or c < 0 or c >= w: return VOID
-		var row: Array = grid[r]
-		if c >= row.size(): return VOID
-		return int(row[c])
-	var want_runs := 0
-	var n_edge_north := 0
-	for r in range(h):
-		var c := 0
-		while c < w:
-			if at.call(r, c) == VOID or at.call(r - 1, c) != VOID:
-				c += 1; continue
-			want_runs += 1
-			while c < w and at.call(r, c) != VOID and at.call(r - 1, c) == VOID:
-				n_edge_north += 1
-				c += 1
-	_chk("① ★分母: 朝北边界格 > 0(否则这条门禁什么都没测)", n_edge_north > 0, "%d 格 / %d 段" % [n_edge_north, want_runs])
+		_done()
+		return
+	var data = JSON.parse_string(f.get_as_text())
+	f.close()
+	_chk("① ★分母: arena.json 解析出字典", data is Dictionary)
+	if not (data is Dictionary):
+		_done()
+		return
+	var grid: Array = (data as Dictionary).get("grid", [])
+	var w: int = int((data as Dictionary).get("w", 0))
+	var h: int = int((data as Dictionary).get("h", 0))
+	var tile: float = float((data as Dictionary).get("tile", 0.0))
+	var types: Array = (data as Dictionary).get("types", [])
+	var void_i: int = types.find("void")
+	_chk("① ★分母: grid/w/h/tile 都有值 且 types 里有 void",
+		grid.size() > 0 and w > 0 and h > 0 and tile > 0.0 and void_i >= 0,
+		"%d×%d tile=%.1f void=%d" % [w, h, tile, void_i])
+	if void_i < 0:
+		_done()
+		return
 
-	# ── ② 产品侧: 走真入口建整个战场, 不自己调 build_edge_wall ──
-	var inst = RB.new()
+	var at := func(r: int, c: int) -> int:
+		if r < 0 or r >= h or c < 0 or c >= w:
+			return void_i
+		var row: Array = grid[r]
+		if c >= row.size():
+			return void_i
+		return int(row[c])
+
+	var want_segs := 0
+	var want_north := 0
+	for r in range(h):
+		for c in range(w):
+			if at.call(r, c) == void_i:
+				continue
+			for d in [[-1, 0], [1, 0], [0, -1], [0, 1]]:
+				if at.call(r + int(d[0]), c + int(d[1])) == void_i:
+					want_segs += 1
+			if at.call(r - 1, c) == void_i:
+				want_north += 1
+	_chk("① ★分母: 整圈边界段 > 0(否则这条门禁什么都没测)", want_segs > 0,
+		"整圈 %d 段 · 其中朝北 %d 段" % [want_segs, want_north])
+	var want_perim_m: float = float(want_segs) * tile * WS_EXPECT
+
+	# ── ② 真的建出来了（不是写了函数没人调）──────────────────────────
+	var scn: PackedScene = load("res://scenes/RealtimeBattle3D.tscn")
+	var inst = scn.instantiate()
 	add_child(inst)
-	var wcnt := 0
-	while wcnt < 900 and inst._world == null:
-		await get_tree().process_frame
-		wcnt += 1
-	for _i in range(20):
+	for _i in range(6):
 		await get_tree().process_frame
 	_chk("② ★分母: 战场 _world 建出来了", inst._world != null)
-	if inst._world == null:
-		_done(); return
-	var root: Node = inst._world.get_node_or_null("EdgeWall")
-	_chk("② ★边界墙节点 EdgeWall 真的进了场景树(不是只写了函数没人调)", root != null)
-	if root == null:
-		_done(); return
+	var root: Node = inst._world.get_node_or_null("EdgeWall") if inst._world != null else null
+	_chk("② ★EdgeWall 节点真的进了场景树", root != null)
+	var band: MeshInstance3D = null
+	if root != null:
+		band = root.get_node_or_null("EdgeBand") as MeshInstance3D
+	_chk("② ★EdgeBand 是**一个** mesh(不是一堆逐格卡)", band != null and band.mesh != null,
+		"子节点 %d 个" % (root.get_child_count() if root != null else -1))
+	if band == null or band.mesh == null:
+		inst.queue_free()
+		_done()
+		return
 
-	var cards: Array = []
-	for ch in root.get_children():
-		if ch is MeshInstance3D:
-			cards.append(ch)
-	_chk("② ★墙卡数 == 独立重算的朝北段数", cards.size() == want_runs,
-		"实建 %d · 独立算 %d" % [cards.size(), want_runs])
+	# ── ③ ★主判据：整圈一段不漏 ──────────────────────────────────────
+	var arrays: Array = band.mesh.surface_get_arrays(0)
+	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var quads: int = verts.size() / 6
+	_chk("③ ★★四边形数 == 独立重算的整圈边界段数(旧实现只画朝北 %d 段, 会在这里红)" % want_north,
+		quads == want_segs, "mesh %d 个 / 期望 %d 个" % [quads, want_segs])
 
-	# ── ③ 每张卡的几何/材质对不对 ──
-	## ★★判据必须钉在【标定出来的字面值】上, 不能读产品的 WALL_H_M ——
-	##   第一版我写的是 `size.y == BWB.WALL_H_M`, 反向验证时把常量改成 0.55,
-	##   **门禁一条都没红**: 等号两边一起变了。这就是「门禁自己喂那个字段再去测它」的恒真式
-	##   (memory: fb-gate-must-measure-requirement-not-my-hook / fb-verify-check-can-fail)。
-	##   1.11 的来历: 参考实测 竖面÷角色屏幕高 = 0.81, 龟屏幕高中位 38px ⇒ 目标 31px,
-	##   billboard 不吃俯角压缩 ⇒ 31 ÷ 27.78 px/米 = 1.11。见 docs/design/20260918-场地边界墙标定.md。
-	##   ⇒ 改这个数就是改产品行为, 必须连这行判据一起改, 并重跑实拍复量。
-	const WALL_H_EXPECT := 1.11
-	_chk("③ ★分母: 产品常量 WALL_H_M 与标定值一致(改了要重新标定, 不许偷偷改)",
-		absf(BWB.WALL_H_M - WALL_H_EXPECT) < 0.001, "产品 %.3f · 标定 %.3f" % [BWB.WALL_H_M, WALL_H_EXPECT])
-	var bad_h := 0
-	var bad_mat := 0
-	var bad_filter := 0
-	var bad_bb := 0
-	var total_w := 0.0
-	for mi in cards:
-		var q = (mi as MeshInstance3D).mesh
-		if not (q is QuadMesh) or absf((q as QuadMesh).size.y - WALL_H_EXPECT) > 0.001:
-			bad_h += 1
-		else:
-			total_w += (q as QuadMesh).size.x
-		var m = (mi as MeshInstance3D).material_override
-		if not (m is StandardMaterial3D):
-			bad_mat += 1; continue
-		var sm: StandardMaterial3D = m
-		if sm.albedo_texture == null or not str(sm.albedo_texture.resource_path).ends_with("wall-edge.png"):
-			bad_mat += 1
-		if sm.texture_filter != BaseMaterial3D.TEXTURE_FILTER_NEAREST:
-			bad_filter += 1
-		if sm.billboard_mode != BaseMaterial3D.BILLBOARD_ENABLED:
-			bad_bb += 1
-	_chk("③ ★每张卡高度 = %.2f 米(标定字面值·不读产品常量)" % WALL_H_EXPECT, bad_h == 0, "不合 %d/%d" % [bad_h, cards.size()])
-	_chk("③ ★每张卡都用 wall-edge.png(不是退回默认白材质)", bad_mat == 0, "不合 %d/%d" % [bad_mat, cards.size()])
-	_chk("③ ★NEAREST 过滤(像素画不许插值成糊)", bad_filter == 0, "不合 %d/%d" % [bad_filter, cards.size()])
-	_chk("③ ★billboard 朝相机(世界高按 1.11 口径, 关掉就会矮一半)", bad_bb == 0, "不合 %d/%d" % [bad_bb, cards.size()])
+	# ── ④ 高度：底贴地、顶到标定高度 ────────────────────────────────
+	var y_lo := 0.0
+	var y_hi := 0.0
+	for v in verts:
+		y_lo = minf(y_lo, v.y)
+		y_hi = maxf(y_hi, v.y)
+	_chk("④ ★带底贴在 y=0(不是浮空/陷地)", absf(y_lo) < 0.01, "最低 y = %.4f" % y_lo)
+	_chk("④ ★带顶 = %.2f 米(标定字面值·不读产品常量)" % WALL_H_EXPECT,
+		absf(y_hi - WALL_H_EXPECT) < 0.01, "最高 y = %.4f" % y_hi)
+	_chk("④ ★分母: 产品常量与标定值一致(改了要重新标定, 不许偷偷改)",
+		absf(BWB.WALL_H_M_GEO - WALL_H_EXPECT) < 0.001,
+		"产品 %.3f · 标定 %.3f" % [BWB.WALL_H_M_GEO, WALL_H_EXPECT])
 
-	# ── ④ 总宽 == 朝北边界格数 × 一格宽: 段没有漏格也没有重复覆盖 ──
-	var tile: float = float(data.get("tile", 48.0))
-	var want_w: float = float(n_edge_north) * tile * inst.WS
-	_chk("④ ★所有段的总宽 == 朝北边界格数 × 格宽(漏一格或叠一格都会红)",
-		absf(total_w - want_w) < 0.05, "实测 %.2f 米 · 应为 %.2f 米" % [total_w, want_w])
+	# ── ⑤ 总长对账：横向总长 == 整圈周长 ────────────────────────────
+	var total_m := 0.0
+	for q in range(quads):
+		var a: Vector3 = verts[q * 6 + 0]
+		var b: Vector3 = verts[q * 6 + 1]
+		total_m += Vector2(a.x, a.z).distance_to(Vector2(b.x, b.z))
+	_chk("⑤ ★带的总长 == 整圈周长 %.2f 米(漏一段或叠一段都会红)" % want_perim_m,
+		absf(total_m - want_perim_m) < 0.05, "实测 %.2f 米" % total_m)
 
-	# ── ⑤ 墙底贴地: 卡中心 y == 半个墙高(QuadMesh 以中心为原点) ──
-	var bad_y := 0
-	for mi in cards:
-		if absf((mi as MeshInstance3D).position.y - WALL_H_EXPECT * 0.5) > 0.001:
-			bad_y += 1
-	_chk("⑤ ★墙底贴在 y=0(不是浮在空中/陷进地里)", bad_y == 0, "不合 %d/%d" % [bad_y, cards.size()])
+	# ── ⑥ 材质：像素画不糊 / 双面 / 吃光 ────────────────────────────
+	var m := band.material_override as StandardMaterial3D
+	_chk("⑥ ★分母: 材质是 StandardMaterial3D", m != null)
+	if m != null:
+		_chk("⑥ 用的是 wall-edge.png(不是退回默认白材质)",
+			m.albedo_texture != null and str(m.albedo_texture.resource_path).ends_with("wall-edge.png"),
+			str(m.albedo_texture.resource_path) if m.albedo_texture != null else "null")
+		_chk("⑥ NEAREST 过滤(像素画不许插值成糊)",
+			m.texture_filter == BaseMaterial3D.TEXTURE_FILTER_NEAREST)
+		## ★双面：远端(北)那一圈的外表面**背对相机**，不关剔除就看不见 ——
+		##   而实测 49 个可见边界格里 42 个恰恰都在那一圈。
+		_chk("⑥ ★双面不剔除(远端那圈背对相机, 剔了就白画)",
+			m.cull_mode == BaseMaterial3D.CULL_DISABLED)
+		## ★吃光（W8 关闭）：原来是 UNSHADED + 手工标定的 `WALL_GAIN`，那个数被地面亮度牵着走，
+		##   2026-09-18 一天内重标定三次（1.55→1.70→2.05）。真几何吃光后不再需要它。
+		_chk("⑥ ★吃光而不是 UNSHADED(W8: 干掉手工标定的 WALL_GAIN)",
+			m.shading_mode == BaseMaterial3D.SHADING_MODE_PER_PIXEL,
+			"shading_mode=%d" % int(m.shading_mode))
 
+	inst.queue_free()
 	_done()
 
+
 func _done() -> void:
-	print("")
+	var total := _pass + _fail
 	if _fail == 0:
-		print("ALL PASS — 场地边界墙 (%d/%d)" % [_ok_n, _ok_n])
+		print("ALL PASS — 边界连续带 (%d/%d)" % [_pass, total])
 	else:
-		print("FAILED %d 条 (通过 %d)" % [_fail, _ok_n])
+		print("FAILED — 边界连续带 (%d/%d)" % [_pass, total])
 	get_tree().quit(1 if _fail > 0 else 0)
