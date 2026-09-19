@@ -121,8 +121,12 @@ func _ready() -> void:
 	_ok("★★★⑥ 同三龟【换上场顺序】⇒ 同一个 id(不该算两套)", id_a == id_c, "%s vs %s" % [id_a, id_c])
 	_ok("★★⑥ 换赛季 ⇒ 另一个 id(大轮之间不串)", id_a != id_d, "%s vs %s" % [id_a, id_d])
 	var src_rb := FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd")
-	_ok("★★⑥ 战斗场真的调它(不是写了函数没人用)",
-		src_rb.find("Backend.player_ghost_id(int(gs.season_id), gs.season_leaders)") >= 0
+	## ★★改账(2026-09-19·A6): 调用点加了【场次】这一维, 原来写死的那串文本对不上了。
+	##   **改账不是加白名单** —— 判据仍然是"战斗场真的调它", 只是把要找的串更新到现状,
+	##   并且**顺手把新那一维也钉进来**: 少传 `season_total_battles` 就红。
+	##   (A6 的全部意义就是那一维; 判据不钉它, 将来有人把它删掉这条照样绿。)
+	_ok("★★⑥ 战斗场真的调它, 且带上了场次维(A6)",
+		src_rb.find("Backend.player_ghost_id(int(gs.season_id), gs.season_leaders, int(gs.season_total_battles))") >= 0
 		and src_rb.find('var _gid := "g_%d" % int(gs.season_id)') < 0)
 	## ★真的会去重/不去重 —— 量 pool_add 自己的账, 不是数源码。
 	var pool_id := {"brackets": {}}

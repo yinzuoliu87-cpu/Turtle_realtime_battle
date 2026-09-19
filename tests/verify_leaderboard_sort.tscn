@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/verify_leaderboard_sort.gd" id="1"]
+
+[node name="VerifyLeaderboardSort" type="Node"]
+script = ExtResource("1")

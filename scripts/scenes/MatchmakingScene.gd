@@ -66,7 +66,11 @@ func _ready() -> void:
 	##    2026-08-15 `player_ghost_id` 改了格式, 这边没跟着改。同一个病换了个形状。)
 	##   ⇒ 现在真正挡"自己"的是 `Backend._is_self_ghost`(按 uid 前缀判, 见那里的长注释);
 	##     这里保留精确 id 只是【第二道锁】, 且必须用同一个生成函数算, 不许手拼字符串。
-	var exclude: Array = [Backend.player_ghost_id(int(GameState.season_id), GameState.season_leaders)]
+	## ★A6(2026-09-19): 排除自己那份也要带场次维, 否则算出来的 id 和池里存的对不上,
+	##   "排除自己"就静默失效了 —— 这正是本文件上方注释记过的那个病的**同一个形状**
+	##   (「2026-08-15 `player_ghost_id` 改了格式, 这边没跟着改」)。
+	var exclude: Array = [Backend.player_ghost_id(int(GameState.season_id), GameState.season_leaders,
+		int(GameState.season_total_battles))]
 	exclude.append_array(GameState.recent_ghost_ids)   # 排除最近3场对手(防连续同一快照·用户2026-07-15)
 	GameState.dual_ghost = Backend.find_opponent(Backend.bracket_for_battles(int(GameState.season_total_battles)), exclude, _rng)
 	var _gid := str((GameState.dual_ghost as Dictionary).get("ghost_id", "")) if GameState.dual_ghost is Dictionary else ""

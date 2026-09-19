@@ -16,7 +16,10 @@
 export const SCHEMA_VER = 2      // ← Backend.SCHEMA_VER
 export const MAX_LEVEL = 10      // ← P2Config.MAX_LEVEL
 export const UNIT_EQUIP_CAP = 3  // ← P2Config.UNIT_EQUIP_CAP
-export const BUCKET_CAP = 50     // ← Backend.BUCKET_CAP (每档保留多少份)
+// ★A6(2026-09-19) 50→300: `ghost_id` 现在带场次维 ⇒ 同一个玩家**每个场次各占一格**,
+//   池子会按最宽档的场次数成倍变瘦。★这一行是被门禁 `server_rule_sync` 拓出来的 ——
+//   我只改了客户端那份, 这边漏了, 正是“同一个数存两份”那个病。
+export const BUCKET_CAP = 300    // ← Backend.BUCKET_CAP (每档保留多少份)
 
 // 一份快照实测 1~3 KB; 16 KB 已是宽松上限, 超了必是垃圾。
 export const MAX_BODY = 16 * 1024

@@ -1,7 +1,9 @@
 extends Control
 
-## LeaderboardScene — V2 排行榜 (阶段5 MVP, 设计§五/§十三). 按本赛季击杀龟蛋数降序.
-## MVP: 本地 ghost 池各阵容的 season_eggs_killed + 自己, 排序展示. 真后端复算防作弊=上线版.
+## LeaderboardScene — V2 排行榜 (阶段5 MVP, 设计§五/§十三).
+## ★★A8(2026-09-19) 排序键换成**字典序「胜场 → 余命 → 横扫」**(原来只按击杀龟蛋数降序)。
+##   文案与表头一起改 —— 判据/文案/代码三者必须同时改, 否则榜上排的和标题写的不是一回事。
+## MVP: 本地 ghost 池各阵容的 season_wins/hearts/season_sweeps + 自己, 排序展示. 真后端复算防作弊=上线版.
 ##
 ## ═══ 2026-08-19 实拍复看(1560×720 真渲染截图)修掉的四件事 ═══
 ## ① 整屏还是「深色圆角矩形 + 2px 细边」—— 背包/图鉴/选龟早就换成金属九宫格了, 只剩这屏没跟上。
@@ -33,7 +35,7 @@ const Backend = preload("res://scripts/net/backend.gd")
 func _ready() -> void:
 	_bg()
 
-	var title := Label.new(); title.text = "🏆 排行榜 · 本赛季击杀龟蛋数"
+	var title := Label.new(); title.text = "🏆 排行榜 · 胜场 → 余命 → 横扫"
 	title.add_theme_font_size_override("font_size", 30); title.add_theme_color_override("font_color", Color("#ffd93d"))
 	title.position = Vector2(W / 2.0 - 300, 22); title.size = Vector2(600, 44)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; add_child(title)
@@ -55,7 +57,8 @@ func _ready() -> void:
 	##   开局大家蛋数并列 0 时自己经常落在第 30 名开外, **在本屏拿到 rows 之前就已经被切没了**,
 	##   于是下面的"钉住自己"根本无从谈起(第一版实拍复看: 榜上仍旧一个「◀ 你」都没有)。
 	##   拿全量在这里自己切, 名次 = 全量下标 + 1, 才是真名次。
-	var rows := Backend.leaderboard(pool, "我 (玩家)", int(GameState.season_eggs_killed), 1 << 30)
+	var rows := Backend.leaderboard(pool, "我 (玩家)", int(GameState.season_wins),
+		int(GameState.hearts), int(GameState.season_sweeps), 1 << 30)
 
 	# 表面板 —— 金属九宫格(和背包/图鉴/战绩同一张 panel-frame)。冷蓝调走 modulate,
 	# ★ modulate 别超 1.3: 过了会把框芯冲亮、金属细节糊平(实拍确认过)。
@@ -118,17 +121,17 @@ func _ready() -> void:
 			panel.add_child(zebra)
 		_row_labels(panel, y, "#ffd93d" if is_self else "#dfe9f2",
 			"#%d" % (idx + 1), str(r.get("name", "?")) + ("  ◀ 你" if is_self else ""),
-			str(int(r.get("eggs", 0))), false)
+			"%d胜 · ♥%d · %d横扫" % [int(r.get("wins", 0)), int(r.get("hearts", 0)), int(r.get("sweeps", 0))], false)
 		y += ROW_H
 
 	# 底部提示行 —— 三种态各说各的话(原来只有"池子只有我一个"那一种才出提示)。
 	var hint := Label.new()
 	if rows.size() <= 1:
 		hint.text = "（打几局上传阵容后, 这里会出现更多对手排名）"
-	elif self_idx >= 0 and int((rows[self_idx] as Dictionary).get("eggs", 0)) <= 0:
-		hint.text = "（打碎对面的龟蛋就能上分 —— 你本赛季还是 0 颗）"
+	elif self_idx >= 0 and int((rows[self_idx] as Dictionary).get("wins", 0)) <= 0:
+		hint.text = "（赢下第一场就能上分 —— 你本赛季还是 0 胜）"
 	else:
-		hint.text = "（每场结算后上传, 榜单按本赛季击杀龟蛋数排）"
+		hint.text = "（每场结算后上传, 榜单按 胜场 → 余命 → 横扫 排）"
 	hint.add_theme_font_size_override("font_size", 15)
 	hint.add_theme_color_override("font_color", Color("#6b7b8c"))
 	hint.position = Vector2(PAD, PANEL_H - PAD - FOOT_H + 4.0)

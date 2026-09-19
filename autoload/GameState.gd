@@ -1428,6 +1428,37 @@ func add_season_xp(amt: int) -> void:
 		season_xp -= _P2.xp_to_next(season_level)
 		season_level += 1
 
+## ══════ A7 配额补发(大轮赛制 v2·2026-09-19) ══════════════════════════
+## 触发: 积分赛阶段结束且该玩家**晋级**; 补发场数 = 配额 − 实打场数; 每场补币与经验。
+##
+## ★★U6 拍板: **只补币与经验, 不补 096 砍伐经验、不补糖果罐**。
+##   ⇒ 本函数一个字都不许碰 `axe_exp_bar` / `axe_exp_total` / 糖果罐字段。
+##   门禁 `verify_backfill` 有一条专门盯这个 —— 否则将来有人"顺手补上"没人拦。
+##
+## ★幂等靠 `backfill_paid`(已发场次): **只补差额, 重复调用不再给**。
+##   ⇒ 判据不是"调过没有"而是"发出去多少场" —— 这样即使中途崩了重跑也不会双发。
+##
+## ★地板值在 `phase2_config`(A1 已落地), 这里不抄数:
+##   `RANKED_BACKFILL_COINS` / `RANKED_BACKFILL_XP`。
+##   注释写着原稿是「固定数 + 满命×A」= 8 + 8×1、**不含胜利奖** —— 是固定地板不是按余命算。
+##
+## 返回实际补发的场数(0 = 没资格 / 已补满)。★不自存, 调用方负责 save(与本文件其它 API 同口径)。
+func backfill_ranked_quota() -> int:
+	if not promoted:
+		return 0                              # 只补晋级者
+	var quota: int = int(_P2.RANKED_QUOTA)
+	var owed: int = quota - int(ranked_used)  # 该补几场 = 配额 − 实打
+	if owed <= 0:
+		return 0
+	var pay: int = owed - int(backfill_paid)  # ★只补差额
+	if pay <= 0:
+		return 0
+	coins += pay * int(_P2.RANKED_BACKFILL_COINS)
+	add_season_xp(pay * int(_P2.RANKED_BACKFILL_XP))   # ★走现成的升级路径, 不另写一套
+	backfill_paid = int(backfill_paid) + pay
+	return pay
+
+
 # ══════ 糖果罐 局外赛季被动 API (封板L390-403·糖果龟当统领才有·打碎按当前计数领档奖) ══════
 ## 档位奖励规格(封板表): coins=深海币[lo,hi] / cost=装备费档 / star=装备星 / leveler=临时等级器概率
 ## 临时等级器(糖果罐奖励): 消耗品条目, 用在龟/小将身上→该大轮等级永久+1. kind="item" 使其绕开装备逻辑。

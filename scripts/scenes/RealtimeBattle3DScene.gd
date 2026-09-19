@@ -7502,7 +7502,7 @@ func _settle_season(won: bool) -> void:
 				var _ldr: Array = gs.get("season_leaders")
 				gs.left_team.assign(_ldr.slice(0, 3))
 			## ★上传时机=【打赢才传】(用户 2026-08-27 拍板·别改成每局都传, 我提过被否)。见 20260820 方案书 §未决点3
-			var _gid := Backend.player_ghost_id(int(gs.season_id), gs.season_leaders)
+			var _gid := Backend.player_ghost_id(int(gs.season_id), gs.season_leaders, int(gs.season_total_battles))
 			var _av := str(gs.season_leaders[0]) if (gs.season_leaders as Array).size() > 0 else "basic"
 			Backend.upload_ghost(Backend.build_ghost_snapshot(_gid, {"name": "玩家阵容", "avatar": _av, "id": _gid}))
 	# 奇械羁绊【铸币】: 本场累积的深海币(有硬上限, 见 gadget_synergy_system.gd)一次性进账。

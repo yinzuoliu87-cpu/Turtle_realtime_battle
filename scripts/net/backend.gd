@@ -17,7 +17,24 @@ extends RefCounted
 const SCHEMA_VER := 2
 const POOL_PATH := "user://ghost_pool.json"
 const SEED_PATH := "res://data/ghost_seed.json"   # 内置 10 支策划队(按档分桶), 冷启动/老档无种子时并入
-const BUCKET_CAP := 50          # 每档桶封顶 (防无限增长, 旧的挤出)
+## 每档桶封顶 (防无限增长, 旧的挤出)。
+## ★★A6(2026-09-19) 50 → 300。50 是按【一个玩家在一个档里只占一格】设计的 ——
+##   那时 `ghost_id` 不带场次, `pool_add` 按 id 去重, 所以 50 格 ≈ 50 个不同的对手。
+##   加了场次这一维之后, 同一个玩家在同一档里**每个场次各占一格**:
+##   档宽见下面的「进度档」表, 最宽的档跨 6 场 ⇒ 50 ÷ 6 ≈ 8 个对手,
+##   池子瘦成原来的 1/6, 而"必须同场次"本来就把候选切得更细 —— 两头一挤只剩 bot。
+##   ⇒ 按【最宽的档 × 原来的人数】重定。
+## ⚠ **这个数必须和「ghost_id 带场次」同时改, 不许提前**:
+##   2026-09-18 有过一次单独提前改它的改动, 当时 ghost_id 还不带场次 ⇒
+##   只是把桶撑大而无收益, 而且注释在描述一个不存在的状态。已撤回, 这次一起改。
+const BUCKET_CAP := 300
+
+## 匹配来源记账(A6·D10「每一场都记账」)。★让「有多少场是真·同场次」变成**可量的数** ——
+##   A-R3 那条未决点(「精确同场次命中率多低算太低」)没有这个数就永远答不了。
+## ★静态计数器, 进程内累计; 门禁与探针直接读它。不进存档(它是观测量不是玩法状态)。
+static var match_src_counts: Dictionary = {"exact": 0, "bucket": 0, "bot": 0}
+static func _tally(src: String) -> void:
+	match_src_counts[src] = int(match_src_counts.get(src, 0)) + 1
 const _P2 = preload("res://scripts/gamedata/phase2_config.gd")
 
 # ─── 进度档 (设计§十三): 总战斗数 → 匹配档 0-8. 低档窄(对齐槽断点)/高档宽(保池子有人) ───
@@ -66,7 +83,15 @@ static func pool_add(pool: Dictionary, snapshot: Dictionary) -> void:
 	if not pool["brackets"].has(b):
 		pool["brackets"][b] = []
 	var bucket: Array = pool["brackets"][b]
-	var new_id := str(snapshot.get("ghost_id", ""))   # ★去重(用户2026-07-18): 同ghost_id(同一玩家阵容跨场重传)先删旧再入→池里一个逻辑对手=一条, 排除最近3场才真挡得住
+	## ★去重: 同 ghost_id 先删旧再入。
+	## ★★A6(2026-09-19) 这条注释的【含义变了】, 原文是
+	##   「同ghost_id(同一玩家阵容跨场重传)先删旧再入→池里一个逻辑对手=一条」——
+	##   那是**按档匹配**时代的说法, 在新规则下**是错的**:
+	##   `ghost_id` 现在带场次维 ⇒ 同一玩家不同场次是**不同的 id**, 会并存在桶里,
+	##   这正是「场次比你低的人也能匹配到你」所必需的。
+	##   去重现在只挡【同一玩家同一场次重传】(例: 同一场重打/重传), 不再是"一个玩家一条"。
+	##   ⇒ 不改这条注释, 下一个人会照着它把"一个玩家只留一条"的去重加回来, 把 A6 拆掉。
+	var new_id := str(snapshot.get("ghost_id", ""))
 	if new_id != "":
 		for i in range(bucket.size() - 1, -1, -1):
 			if str((bucket[i] as Dictionary).get("ghost_id", "")) == new_id:
@@ -120,7 +145,16 @@ static func _is_self_ghost(g) -> bool:
 	return str((d.get("profile", {}) as Dictionary).get("name", "")) == "玩家阵容"
 
 ## 从池抽一个同档对手 (排除 exclude_ids). 桶空/全排除 → null (调用方 make_bot 兜底).
-static func pool_find(pool: Dictionary, bracket: int, exclude_ids: Array, rng: RandomNumberGenerator):
+## ★A6 新参数 `exact_battles`: >=0 时只要【场数完全相同】的那些, 一个都没有就返回 null
+##   (回落交给调用方 `find_opponent`, 那里要按 精确→同桶→bot 逐级记账)。
+## ★**必须带默认值** —— 本函数有 10 处调用(产品 1 / 门禁 5 / 探针 4), 不带默认值会一起炸。
+##   ⚠ 但带了默认值就意味着**老门禁全绿却一条新行为都没验到** ⇒ A6 自带新门禁
+##   `tests/verify_exact_match.gd`, 不靠"现有门禁没红"当作没问题。
+## ★★「倒序取最新」不需要时间戳字段: `pool_add` 用的是 `bucket.push_front(snapshot)`,
+##   **桶本身就是上传倒序(新的在前)** ⇒ 按桶序取第一个命中的, 就是最新那份。
+##   (我差点去给快照加一个 upload_ts 字段 —— 读了 pool_add 才发现现成的。)
+static func pool_find(pool: Dictionary, bracket: int, exclude_ids: Array, rng: RandomNumberGenerator,
+		exact_battles: int = -1):
 	var brackets: Dictionary = pool.get("brackets", {})
 	var b := str(bracket)
 	if not brackets.has(b):
@@ -129,8 +163,13 @@ static func pool_find(pool: Dictionary, bracket: int, exclude_ids: Array, rng: R
 	for g in brackets[b]:
 		if _is_self_ghost(g): continue
 		if not exclude_ids.has(str((g as Dictionary).get("ghost_id", ""))):
-			candidates.append(g)
+			candidates.append(g)      # ★保持桶序 = 上传倒序
 	if candidates.is_empty():
+		return null
+	if exact_battles >= 0:
+		for g in candidates:
+			if int((g as Dictionary).get("season_total_battles", -1)) == exact_battles:
+				return g               # 桶序里第一个命中 = 同场次里最新的那份(D10)
 		return null
 	return candidates[rng.randi() % candidates.size()]
 
@@ -206,14 +245,33 @@ static func _shuffle(arr: Array, rng: RandomNumberGenerator) -> void:
 
 # ─── 排行榜 (MVP: 信任本地 season_eggs_killed, 不复算; 防作弊=上线后端的事, 设计§十五#3) ───
 ## 池里所有 ghost 按击杀蛋数降序 + 插入自己; 返回前 limit 行 [{name,eggs,is_self}].
-static func leaderboard(pool: Dictionary, self_name: String, self_eggs: int, limit: int) -> Array:
-	var rows: Array = [{"name": self_name, "eggs": self_eggs, "is_self": true}]
+## ★★A8(2026-09-19): 排序键从【只比碎蛋数】换成**字典序「胜场 → 余命 → 横扫」**。
+##   · 胜场 = 打赢多少场(主指标)
+##   · 余命 = 还剩几颗心(同胜场时, 命多的排前面 —— 赢得更干净)
+##   · 横扫 = 2-0 拿下的场数(再同, 比谁赢得更利落)
+## ★旧快照没有这三个字段 ⇒ 一律 `get(..., 0)` 兜底, **不作废旧池**(用户拍板不重开档)。
+## ★`self_*` 参数从"只传蛋数"扩成三个键。调用点 `LeaderboardScene.gd:58` 同步。
+static func leaderboard(pool: Dictionary, self_name: String, self_wins: int, self_hearts: int,
+		self_sweeps: int, limit: int) -> Array:
+	var rows: Array = [{"name": self_name, "wins": self_wins, "hearts": self_hearts,
+		"sweeps": self_sweeps, "is_self": true}]
 	var brackets: Dictionary = pool.get("brackets", {})
 	for b in brackets.keys():
 		for g in brackets[b]:
 			var gd := g as Dictionary
-			rows.append({"name": str(gd.get("profile", {}).get("name", "?")), "eggs": int(gd.get("season_eggs_killed", 0)), "is_self": false})
-	rows.sort_custom(func(a, c): return int(a["eggs"]) > int(c["eggs"]))
+			rows.append({
+				"name": str(gd.get("profile", {}).get("name", "?")),
+				"wins": int(gd.get("season_wins", 0)),
+				"hearts": int(gd.get("hearts", 0)),
+				"sweeps": int(gd.get("season_sweeps", 0)),
+				"is_self": false})
+	## ★字典序: 前一键相等才看后一键。写成「先比胜场, 相等再比余命, 再相等才比横扫」。
+	rows.sort_custom(func(a, c):
+		if int(a["wins"]) != int(c["wins"]):
+			return int(a["wins"]) > int(c["wins"])
+		if int(a["hearts"]) != int(c["hearts"]):
+			return int(a["hearts"]) > int(c["hearts"])
+		return int(a["sweeps"]) > int(c["sweeps"]))
 	return rows.slice(0, limit) if rows.size() > limit else rows
 
 # ─── 文件 I/O (薄包装, user://ghost_pool.json) ───
@@ -372,9 +430,25 @@ static func find_opponent(bracket: int, exclude_ids: Array, rng: RandomNumberGen
 	var RP = load("res://scripts/net/remote_pool.gd")
 	if RP != null:
 		RP.pull_async(bracket)
-	for b in range(bracket, -1, -1):                # 本档优先; 本档空/全排除 → 就近【低】档回落, 全空才 bot
+	## ★★A6 回落顺序(D10): 精确同场次 → 同桶其它人 → 机器人, **每一级都记账**。
+	##   记账不是为了好看 —— A-R3「精确同场次命中率多低算太低」这条未决点,
+	##   没有这个数就永远答不了。
+	var my_battles := int(GameState.season_total_battles) if GameState != null else -1
+	## ① 精确同场次(本档优先, 再就近低档)
+	if my_battles >= 0:
+		for b in range(bracket, -1, -1):
+			var ge = pool_find(pool, b, exclude_ids, rng, my_battles)
+			if ge != null:
+				_tally("exact")
+				return ge
+	## ② 同桶其它人(老行为)
+	for b in range(bracket, -1, -1):
 		var g = pool_find(pool, b, exclude_ids, rng)
-		if g != null: return g
+		if g != null:
+			_tally("bucket")
+			return g
+	## ③ 机器人(永久安全网)
+	_tally("bot")
 	return make_bot(bracket, rng)
 
 ## 玩家自己那份快照的 ghost_id = 大轮 + 【三龟组合】。
@@ -394,10 +468,17 @@ static func find_opponent(bracket: int, exclude_ids: Array, rng: RandomNumberGen
 ##     · 两个玩家用同样三只龟 ⇒ **同一个 id** ⇒ 服务端互相覆盖, 后传的抹掉先传的
 ##     · 自己那份从服务器绕回来会顶掉本地那份(pool_add 按 id 去重) ⇒ **打到自己**
 ##   (28 只选 3 = 3276 种组合, 人少时不常撞, 但**热门组合会天天撞**, 而且是静默的。)
-static func player_ghost_id(season_id: int, leaders) -> String:
+## ★★A6(2026-09-19) 加了【场次】这一维, 第三个参数。
+##   由来(母方案书 §10.35 C7): 旧 id 不含场次, 而 `pool_add` 按 id 去重 ⇒
+##   **同一玩家在池里只有最新一份快照** ⇒ **场次比你低的人永远匹配不到你**。
+##   新规则要求"只和同场次的人打", 那就必须让同一个人的不同场次在池里【并存】。
+## ★`battles < 0` = 不带这一维(老格式)。留这个默认值是为了让"只验 id 互不相同"的
+##   老门禁继续有意义, **不是**为了让产品侧偷懒 —— 产品两处调用都必须传真实场次。
+static func player_ghost_id(season_id: int, leaders, battles: int = -1) -> String:
 	var arr: Array = (leaders as Array).slice(0, 3) if leaders is Array else []
 	arr.sort()
-	return "%s%d_%s" % [self_prefix(season_id), season_id, "-".join(PackedStringArray(arr))]
+	var base := "%s%d_%s" % [self_prefix(season_id), season_id, "-".join(PackedStringArray(arr))]
+	return base if battles < 0 else "%s_b%d" % [base, battles]
 
 
 ## 本机在【某个赛季】产出的所有 ghost_id 的公共前缀 —— `g_<uid>_`。
@@ -491,6 +572,12 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 		"pet_levels": levels,
 		"season_total_battles": int(GameState.season_total_battles),
 		"season_eggs_killed": int(GameState.season_eggs_killed),
+		## ★★A8(2026-09-19) 终榜三键。排序换成字典序「胜场 → 余命 → 横扫」,
+		##   原来只比 `season_eggs_killed`(碎蛋数)。三个都要带, 否则榜上排不出先后。
+		##   ⚠ 旧快照没有这三个字段 ⇒ 读的时候一律 `get(..., 0)` 兜底, **不作废旧池**。
+		"season_wins": int(GameState.season_wins),
+		"hearts": int(GameState.hearts),
+		"season_sweeps": int(GameState.season_sweeps),
 		## ★宝箱进度(用户 2026-08-14 查清后拍板 A)。
 		##   查清楚的事实: 敌方 = 真人玩家的 ghost 快照, 带了龟/装备/等级, **唯独宝箱战利品一件不带**,
 		##   代码却用「单场 590 伤害开满 5 件」去补偿 —— 对面那只宝箱龟凭空多出五件传说。
