@@ -409,7 +409,9 @@ func _build_card(prof: Dictionary, pos: Vector2, accent: Color, slide_from_dx: f
 	var fsb := StyleBoxFlat.new()
 	fsb.bg_color = Color(0.04, 0.09, 0.14, 0.75); fsb.set_corner_radius_all(10)
 	fsb.set_border_width_all(2); fsb.border_color = Color(accent.r, accent.g, accent.b, 0.55)
-	var ftex := UISkin.nine("portrait-frame.png", 16, fsb)
+	## ★中段平铺(2026-09-19 实拍巡检): 64×64 的框套在 200×200 上,
+	##   STRETCH 会把边上的蓝宝石铆钉拉扁 5.25 倍⇒只剩四个孤立金角块。
+	var ftex := UISkin.nine("portrait-frame.png", 16, fsb, true)
 	if ftex is StyleBoxTexture:
 		(ftex as StyleBoxTexture).modulate_color = UISkin.tint_of(accent)
 	frame.add_theme_stylebox_override("panel", ftex)

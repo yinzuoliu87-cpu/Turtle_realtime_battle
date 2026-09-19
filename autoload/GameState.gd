@@ -997,8 +997,14 @@ func _resolve_leader_slots(dl: Dictionary) -> void:
 
 
 func _ready() -> void:
-	if DisplayServer.get_name() == "headless":
-		test_mode = true   # headless(测试/仿真/导出) → 绝不写盘, 保护玩家存档
+	## ★这一句必须在 `_load()` / `ensure_season()` 之前 —— 2026-09-19 探针实证:
+	##   全新空 user:// 下, **场景脚本拿到控制权时 `savegame.json` 已经写出来了**
+	##   (`ensure_season()` 滚赛季会 `save()`), 所以任何台子在自己 `_ready` 里置
+	##   `test_mode` 都**来不及**, 开机那一刻存档就被改写了。
+	apply_save_guard(DisplayServer.get_name() == "headless",
+		OS.has_environment(NO_SAVE_ENV),
+		cmdline_scene_override(OS.get_cmdline_args(),
+			str(ProjectSettings.get_setting("application/run/main_scene", ""))))
 	_load()
 	if fullscreen and DisplayServer.get_name() != "headless":
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)   # 开机恢复全屏(设置持久化)
@@ -1099,6 +1105,53 @@ func set_pet_level(pet_id: String, level: int) -> void:
 ## 曾把玩家的 user://savegame.json 整个覆盖(2026-07-10 实际发生过: 币/背包/统领/糖果罐全被测试值写入)。
 ## 真实玩家永远不会以 headless 跑游戏, 所以这个判定是安全的; tests/ 也会显式再设一次。
 var test_mode: bool = false
+
+## ★★【第二道闸】`NO_SAVE=1`(2026-09-19) —— headless 那道闸**盖不住要渲染的台子**。
+##   VFXLAB / 评审台 / 调试场 / 截图台都必须真渲染 ⇒ 都不是 headless ⇒ 上面那句不触发。
+##   而 `_ready()` 里 `ensure_season()` 会 `save()`, **开机那一刻就把玩家存档改写了**,
+##   台子自己再怎么置 `test_mode` 也晚了(探针 `tests/_probe_save_pollution.gd` 实证:
+##   全新空 user:// 下, 场景 `_ready` 时刻 `savegame.json` 已存在 · test_mode=false)。
+##   存档目录里那两个 `savegame.json.bak-*-被测试污染` / `-被演示污染` 就是历史账。
+##   ⇒ 凡是「要渲染但不是玩家在玩」的进程, 一律带 `NO_SAVE=1`。
+const NO_SAVE_ENV := "NO_SAVE"
+
+## 该不该开存档保护。返回 "" = 不开; 返回非空 = 开, 内容是**原因**(给测试与日志看)。
+## ★写成【纯函数 + 参数注入】不是直接读环境: 这样门禁能把四种组合逐个喂进来验,
+##   而不是"门禁自己喂那个字段再去测它"(恒真式)。真入口在 `_ready()` 里注入真值。
+## ★★【第三道闸】命令行给了一个**不是主场景**的场景路径 ⇒ 这是台子/测试, 不是玩家在玩。
+##   为什么这个信号可靠: 导出版**禁用了 `disable_path_overrides`**(CLAUDE.md §6) ——
+##   打包后给场景路径会直接 Abort ⇒ **真玩家的进程里不可能出现这个参数**。
+##   为什么要它而不只靠 `NO_SAVE=1`: 第二道闸得靠我每次记得敲, 而「靠记性」这条防线
+##   在本项目已经塌过两次(存档目录里那两个 `.bak-*-被污染`)。这一道**不用任何人记得**。
+##   ⚠ 主场景本身不算(编辑器 F5 跑主场景 = 正常试玩, 锁了等于存档永远不落盘)。
+static func cmdline_scene_override(args: PackedStringArray, main_scene: String) -> String:
+	for a in args:
+		var s := str(a)
+		if (s.ends_with(".tscn") or s.ends_with(".scn")) and s != main_scene:
+			return s
+	return ""
+
+
+static func save_guard_reason(is_headless: bool, has_no_save_env: bool,
+		scene_override: String = "") -> String:
+	if is_headless:
+		return "headless"
+	if has_no_save_env:
+		return NO_SAVE_ENV
+	if scene_override != "":
+		return "scene:" + scene_override
+	return ""
+
+## 真正置位的那一步。返回原因("" = 没开闸)。
+## ★为什么把「判」与「置」分开写成两个可注入的函数: 门禁得能**真走到置值那一步**。
+##   只验纯函数的话, 把 `_ready` 里的调用整条删掉门禁照样绿
+##   —— 就是本项目记过的「写了没人读」/「判据没错但被测对象不在场」。
+func apply_save_guard(is_headless: bool, has_no_save_env: bool,
+		scene_override: String = "") -> String:
+	var reason := save_guard_reason(is_headless, has_no_save_env, scene_override)
+	if reason != "":
+		test_mode = true
+	return reason
 
 func save() -> void:
 	if test_mode:

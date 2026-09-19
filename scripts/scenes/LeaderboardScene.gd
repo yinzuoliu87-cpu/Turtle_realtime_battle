@@ -54,7 +54,7 @@ func _ready() -> void:
 
 	var pool := Backend.load_pool()
 	## ★limit 必须给【全量】(原来是 30) —— `Backend.leaderboard()` 是**排完序再切**的,
-	##   开局大家蛋数并列 0 时自己经常落在第 30 名开外, **在本屏拿到 rows 之前就已经被切没了**,
+	##   开局大家**胜场**并列 0 时自己经常落在第 30 名开外, **在本屏拿到 rows 之前就已经被切没了**,
 	##   于是下面的"钉住自己"根本无从谈起(第一版实拍复看: 榜上仍旧一个「◀ 你」都没有)。
 	##   拿全量在这里自己切, 名次 = 全量下标 + 1, 才是真名次。
 	var rows := Backend.leaderboard(pool, "我 (玩家)", int(GameState.season_wins),
@@ -74,7 +74,11 @@ func _ready() -> void:
 	add_child(panel)
 
 	# 表头 + 一条分隔线(原来表头和第一行只隔 38px 且没有任何分界, 整块读起来是一堵字墙)
-	_row_labels(panel, PAD, "#58d3ff", "排名", "玩家", "击杀蛋数", true)
+	## ★表头说的量必须就是行里画的那三个量 —— A8 改排序那轮改了标题、改了行文案、
+	##   改了比较器, **漏了这一行**, 于是表头写着「击杀蛋数」而数据是「x胜 · ♥y · z横扫」。
+	##   实拍巡检(2026-09-19)当场看见的, 而排序那条门禁一条都没红 —— 它只测函数不测 UI。
+	##   已补 `tests/verify_leaderboard_header.gd`: 表头↔行文案逐项对账。
+	_row_labels(panel, PAD, "#58d3ff", "排名", "玩家", "胜 · 余命 · 横扫", true)
 	var sep := ColorRect.new()
 	sep.color = Color(0.35, 0.55, 0.70, 0.55)
 	sep.position = Vector2(PAD, ROW_TOP - 12.0); sep.size = Vector2(PANEL_W - PAD * 2.0, 2)
@@ -197,7 +201,7 @@ func _self_index(rows: Array) -> int:
 ## 挑出要画的行下标; `-1` 表示"这里插一个省略号"。
 ##
 ## ★为什么要这一步: 榜单能取 30 条, 面板只画得下 12 行左右。原来是"画到装不下就 break",
-##   于是**自己排在第 13 名开外时整屏看不到自己** —— 而蛋数并列 0 的开局,
+##   于是**自己排在第 13 名开外时整屏看不到自己** —— 而**胜场**并列 0 的开局,
 ##   自己排第几完全看排序稳定性(实拍那张就一个「◀ 你」都没有)。
 ##   ⇒ 自己不在可见段里就把**末行让给自己**, 中间用 ⋯ 断开(通用榜单做法)。
 func _pick_rows(rows: Array, cap: int, self_idx: int) -> Array:
@@ -226,7 +230,7 @@ func _row_labels(parent: Control, y: float, color: String, c1: String, c2: Strin
 		l.position = Vector2(float(xs[i]), y); l.size = Vector2(float(ws[i]), ROW_H - 12.0)
 		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		if i == 1:
-			## ghost 名来自玩家自定义 profile, 长度不受控 —— 截断加省略号, 别让它糊到蛋数列上。
+			## ghost 名来自玩家自定义 profile, 长度不受控 —— 截断加省略号, 别让它糊到成绩列上。
 			l.clip_text = true
 			l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		if i == 2:

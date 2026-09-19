@@ -1,11 +1,11 @@
 extends Control
 
-## 训龟大师 配置界面 (用户2026-07-26: 主菜单独立入口, 选形象 + 配【全部技能五选一·单个】)。
+## 训龟大师 配置界面 (用户2026-07-26: 主菜单独立入口, 选形象 + 配【全部技能 N 选 1·单个】)。
 ## ★设计: 被动+主动放一起, 只能选 1 个。选被动=没有主动Q; 选主动=没有被动。
 ## 技能用【图标卡片】展示(图标+名+被动/主动标签), 居中排版, 说明卡带底板。
 ## 选择写 GameState.trainer_appearance/trainer_skill + save(), 战斗时读取。
 
-## 全部技能池(被动 + 主动·五选一)。icon 供卡片显示; kind 显示"被动/主动"。
+## 全部技能池(被动 + 主动·**N 选 1**, N 就是本数组长度)。icon 供卡片显示; kind 显示"被动/主动"。
 const SKILLS := [
 	{"id": "magic_stone", "kind": "被动", "name": "魔法石", "icon": "res://assets/sprites/vfx/magic-stone-icon.png", "desc": "普攻附带 2% 目标最大生命 魔法伤害；每次攻击自身 +3% 攻速(可叠·不封顶·整局不清零)。攒到 10/25/50 层时身上会亮起共鸣特效。"},
 	{"id": "hook", "kind": "主动", "name": "钩锁", "icon": "res://assets/sprites/vfx/hook-skill-icon.png", "desc": "朝方向甩钩(射程 600)勾住第一个敌人：眩晕 4 秒、一段段拽向大师、受伤+25%。CD 20，空放返还。"},
@@ -134,7 +134,11 @@ func _build_ui() -> void:
 	# 右栏: 技能 + 说明
 	var col_r := VBoxContainer.new()
 	col_r.add_theme_constant_override("separation", 8)
-	col_r.add_child(_heading("技能  （五选一 · 被动或主动只能带一样）"))
+	## ★★数字**现算**不手写(2026-09-19 实拍巡检): 屏上长期写着「五选一」
+	##   而 `SKILLS` 已经是 **7 条** —— 同一个文件里 `:20` 的注释自己都写着
+	##   「技能行 7×124」, `battle_render.gd:26` 也写着「【七选一】」。
+	##   手写的数字迟早会漂; 从数组算就永远不会。
+	col_r.add_child(_heading("技能  （%d 选 1 · 被动或主动只能带一样）" % SKILLS.size()))
 	col_r.add_child(_skill_row())
 	var desc_panel := PanelContainer.new()
 	desc_panel.add_theme_stylebox_override("panel", _nine("panel-frame.png", 20,

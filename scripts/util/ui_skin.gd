@@ -51,7 +51,15 @@ static func nine_if_big(w: float, h: float, tex_name: String, margin: int, fallb
 
 
 ## 九宫格 StyleBox。贴图不在就原样返回 `fallback`(调用方给的 StyleBoxFlat)。
-static func nine(tex_name: String, margin: int, fallback: StyleBox) -> StyleBox:
+## ★★`tile`(2026-09-19): 中段**平铺**而不是拉伸。
+##   九宫格默认是 STRETCH —— 控件比素材大不多时无害,
+##   但匹配屏把 **64×64 的 `portrait-frame` 用在 200×200 控件上** ⇒
+##   中段 32px 被拉到 168px = **5.25 倍**, 边上那排蓝宝石铆钉被拉扁成细线,
+##   实拍出来只剩四个孤立的金角块 —— 我当时差点把它当成「占位符/调试辅助线」。
+##   用 TILE_FIT 不用 TILE: TILE 会在末端留半个图案(左右不对称),
+##   TILE_FIT 把平铺数取整后微调尺寸(168/5=33.6 ⇒ **1.05 倍**), 铆钉形状基本不变。
+##   ★素材不动、尺寸不动, 只改“中段怎么填”。
+static func nine(tex_name: String, margin: int, fallback: StyleBox, tile: bool = false) -> StyleBox:
 	# 名字里带 "/" 就当成 assets/sprites/ 下的相对路径(战斗 HUD 那套冷色框不适合所有屏,
 	# 木桌世界的几屏要用自己的暖色框 —— 见 teamselect/card-frame.png 的由来)。
 	var p := ("res://assets/sprites/" + tex_name) if "/" in tex_name else (TEX_DIR + tex_name)
@@ -60,6 +68,9 @@ static func nine(tex_name: String, margin: int, fallback: StyleBox) -> StyleBox:
 	var st := StyleBoxTexture.new()
 	st.texture = load(p)
 	st.set_texture_margin_all(margin)
+	if tile:
+		st.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_TILE_FIT
+		st.axis_stretch_vertical = StyleBoxTexture.AXIS_STRETCH_MODE_TILE_FIT
 	return st
 
 

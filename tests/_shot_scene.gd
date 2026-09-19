@@ -9,6 +9,14 @@ extends Node
 
 
 func _ready() -> void:
+	## ★★台子里最前面统一置 test_mode —— 截图台**要渲染所以不是 headless**,
+	##   而 `GameState.test_mode` 只在无头下自动置位 ⇒ 不手动置, 截图时页面自己的写入
+	##   (商店选中/背包选中/阵容改动)会**直接落盘污染玩家真存档**。
+	##   (2026-09-13 同一形状栓过: VFXLAB 把 axe_stage 改成 4, verify_axe 当场红。)
+	##   ★旧实现只靠部分 SHOT_SETUP 脚本自己置 ⇒ **没带 setup 的页全部裸奔**。
+	var _gs = get_node_or_null("/root/GameState")
+	if _gs != null:
+		_gs.test_mode = true
 	var path := OS.get_environment("SHOT_SCENE")
 	if path == "":
 		push_error("SHOT_SCENE 没给")
