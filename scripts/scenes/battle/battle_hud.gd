@@ -10,6 +10,7 @@ const UPLOAD_FLASH_POLL := 0.4
 const UPLOAD_FLASH_TRIES := 20
 
 const _P2T_HUD := preload("res://scripts/gamedata/phase2_types.gd")   # 羁绊 chips 的 emoji
+const _P2C_HUD := preload("res://scripts/gamedata/phase2_config.gd")   # A5: 结算屏配额读数取 RANKED_QUOTA
 ## 战斗HUD/面板构建与显示: UI层/暂停/日志/统计/编辑笔刷/队伍头像框/胜负横幅/点龟详情面板/触控盘·纯UI
 ## 类内名不变;外部名加 battle.
 
@@ -1407,6 +1408,18 @@ func _build_reward_chips(gs) -> Control:
 	if not battle._last_was_exhibition:
 		items.append(["剩余生命", "%d / 8" % int(gs.hearts), Color("#ff8a8a") if int(gs.hearts) <= 2 else Color("#e8f0f6")])
 	items.append(["赛季胜场", "%d" % int(gs.season_wins), Color("#e8f0f6")])
+	## ★★A5 的另一半(2026-09-19): 结算屏的本周配额读数。
+	##   由来: 方案书 A5 写的是「主菜单**与结算屏**读数」, 而落地时只做了主菜单
+	##   (`MainMenuScene.gd` 的状态行)。2026-09-18 查实 `grep ranked_used scripts/scenes/battle/`
+	##   **零命中** —— 结算屏这半从来没做。★更糟的是我回填方案书时把「与结算屏」那半句
+	##   一起改没了, 等于用回填动作把未完成的那一半**从账上抹掉**。
+	## ★只在积分赛阶段显示: 闯关赛/决赛日的场次不吃这个配额(见 GameState.ranked_used 的注释),
+	##   在那些阶段显示"本周 N/24"会误导。
+	if not battle._last_was_exhibition and str(gs.get("week_phase")) == "ranked":
+		var used: int = int(gs.get("ranked_used")) if gs.get("ranked_used") != null else 0
+		var quota: int = int(_P2C_HUD.RANKED_QUOTA)
+		items.append(["本周场次", "%d / %d" % [used, quota],
+			Color("#ff8a8a") if used >= quota else Color("#e8f0f6")])
 	items.append(["赛季等级", "Lv.%d" % lv, Color("#e8f0f6")])
 	## ★阵容同步坏了要**看得见**(2026-09-01)。
 	##   由来: 用户问「我刚刚打了1把赢的上传了吗」, 一查后端整个不在了

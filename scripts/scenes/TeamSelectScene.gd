@@ -70,6 +70,21 @@ const RARITY_ORDER := ["SSS", "SS", "S", "A", "B", "C"]
 const SLOT_KEYS := ["pos-0", "pos-1", "pos-2"]   # 实时 3v3：3 格阵容(去前/后排)
 const TEAM_DRAFT_PATH := "user://team_draft.json"   # 1:1 PoC localStorage[LS_KEY] — 未确认阵容草稿持久化
 const REQUIRED_PETS := 3
+## ★★A4 第三闸(2026-09-19): 封盘判定。**闸必须设在这里而不是主菜单** ——
+##   `phase2_config.can_start_match_utc` 自带一条警告:
+##   「⚠ 调用点必须是**点「开打」那一刻**, 不是点匹配 —— 摆位不限时, 设在匹配就盖不住」。
+##   本项目的流程是 主菜单「开始战斗」→ TeamSelect 摆位 → `_on_start()` → Matchmaking → 战斗,
+##   所以「开打那一刻」= `_on_start()`。设在主菜单那边只会拦住"进摆位",
+##   玩家仍可以在摆位界面耗到收盘之后才点开始。
+const _P2C := preload("res://scripts/gamedata/phase2_config.gd")
+
+## 封盘判定用的"现在"。**0 = 用系统时间**(正式对局永远走这条)。
+## ★为什么要这个注入点: 封盘闸读的是系统时钟, 门禁没法把机器时间拨到收盘前 5 分钟。
+##   ⇒ 留一个**只有测试会写**的覆盖值, 否则这条闸就只能靠"断言函数被调用过"来验,
+##   而那是本项目明令不算数的假判据(「断言自己插的触发标记=插一行数一行必绿」)。
+## ★开关形状要小心: 本项目栽过「开关若是『某个键存不存在』, 则任何写这个键的代码
+##   都会在生产打开它」。这里的开关是 **> 0**, 产品代码一处都不写它(可 grep 证)。
+var lockout_now_override: int = 0
 const SkillTipButton := preload("res://scripts/scenes/SkillTipButton.gd")
 const TutorialGuide := preload("res://scripts/scenes/TutorialGuide.gd")   # 技能图标 styled tooltip
 const SkillEnergy := preload("res://scripts/systems/skill_energy.gd")        # 龟能花费 单一事实源 (无"CD")
@@ -1274,6 +1289,18 @@ func _on_start() -> void:
 	if picked.size() != REQUIRED_PETS:
 		return
 
+	## ★★A4 的第三种拦截原因(封盘) —— 前两种(淘汰 / 配额打满)在 `MainMenuScene._start_battle_flow()`。
+	##   ★2026-09-18 查实这一条**一直不存在**: `can_start_match_utc` 在产品代码里的唯一调用点
+	##   是 `MainMenuScene.gd:850`, 那里**只渲染文案**(「已封盘 / 收盘前 N 分钟起不开新局」),
+	##   没有任何地方拿它拦住开局。而方案书把 A4 记成"三种原因各自一条提示"、本文件上方
+	##   `_start_battle_flow` 的注释也这么写 —— **代码只做了 2/3**。
+	##   ⚠ 当时的门禁 `verify_week_season` ⑥ 测的是**那个纯函数本身**(喂时间戳看返回值),
+	##     不是"开打那一刻被拦住" —— 典型的「判据没错但被测对象不在场」。
+	var _now: int = lockout_now_override if lockout_now_override > 0 else int(Time.get_unix_time_from_system())
+	if not _P2C.can_start_match_utc(_now):
+		_lockout_toast()
+		return
+
 	# 实时版: 选龟只定【我方】3 统领 + 技能 loadout. 对手由下一步「匹配」(Matchmaking) 抽 ghost/bot,
 	#   战斗端 RealtimeBattle3DScene 读 season_leaders(左队) + dual_ghost.leaders(右队). 这里不再现场抽对手,
 	#   也不走回合制的规则之日/DualLaneMap/Battle.
@@ -1301,6 +1328,28 @@ func _on_start() -> void:
 		return
 	# → 匹配动画 (Matchmaking): 抽对手 ghost 写 dual_ghost → 进 2.5D 战斗.
 	get_tree().change_scene_to_file("res://scenes/Matchmaking.tscn")
+
+
+## 封盘提示。★照 `MainMenuScene._toast` 同一形状写(黄字+黑描边+1.4s 后淡出),
+## 免得同一个游戏里两种提示长得不一样。
+func _lockout_toast() -> void:
+	var lab := Label.new()
+	lab.name = "LockoutToast"
+	lab.text = "⏳ 已封盘 · 收盘前 %d 分钟起不开新局" % int(_P2C.CLOSE_LOCKOUT_SEC / 60)
+	lab.add_theme_font_size_override("font_size", 24)
+	lab.add_theme_color_override("font_color", Color("#ffd93d"))
+	lab.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
+	lab.add_theme_constant_override("outline_size", 5)
+	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var vw: float = get_viewport_rect().size.x
+	lab.position = Vector2(vw / 2.0 - 320.0, 120.0)
+	lab.size = Vector2(640, 40)
+	lab.z_index = 200
+	add_child(lab)
+	var tw := create_tween()
+	tw.tween_interval(1.4)
+	tw.tween_property(lab, "modulate:a", 0.0, 0.5)
+	tw.tween_callback(lab.queue_free)
 
 
 func _on_back() -> void:
