@@ -40,21 +40,40 @@ func _chk(name: String, cond: bool, extra: String = "") -> void:
 		_fail += 1
 		print("  [FAIL] %s%s" % [name, ("  " + extra) if extra != "" else ""])
 
-## 找一个【确定落在封盘窗内】的 UTC 时间戳: 收盘前 (LOCKOUT/2) 秒。
-## ★不写死一个日期 —— 收盘是"每周某天某点", 写死的日期几年后就不在那一周了。
-func _ts_inside_lockout() -> int:
+## 找一个【确定有收盘】的基准时刻。
+## ★★**2026-09-20 修一条潜伏 bug**: 原实现直接拿 `now` 去算 `close_left_sec`,
+##   而它在**周一休赛 / 周日决赛日返回 -1**(没有"收盘"这回事) ⇒
+##   这条门禁**每周有两天必红**, 与代码对不对无关。
+##   2026-09-20(周日)全套门禁就红在这里: `in=-1 out=-1`。
+##   ★分母断言把它拦住了(没有静默通过) —— 这正是分母断言的价值。
+## ⇒ 现在**往后逐天找**, 找到第一个有收盘的日子再造样本(最多找 8 天, 一周内必有)。
+## ★仍然**不写死日期** —— 收盘是"每周某天某点", 写死的几年后就不在那一周了。
+func _base_ts_with_close() -> int:
 	var now := int(Time.get_unix_time_from_system())
-	var left := int(P2C.close_left_sec(now))
+	for d in range(9):
+		var ts := now + d * 86400
+		if int(P2C.close_left_sec(ts)) >= 0:
+			return ts
+	return -1
+
+## 【确定落在封盘窗内】的 UTC 时间戳: 收盘前 (LOCKOUT/2) 秒。
+func _ts_inside_lockout() -> int:
+	var base := _base_ts_with_close()
+	if base < 0:
+		return -1
+	var left := int(P2C.close_left_sec(base))
 	if left < 0:
 		return -1
-	return now + left - int(P2C.CLOSE_LOCKOUT_SEC / 2)
+	return base + left - int(P2C.CLOSE_LOCKOUT_SEC / 2)
 
 func _ts_outside_lockout() -> int:
-	var now := int(Time.get_unix_time_from_system())
-	var left := int(P2C.close_left_sec(now))
+	var base := _base_ts_with_close()
+	if base < 0:
+		return -1
+	var left := int(P2C.close_left_sec(base))
 	if left < 0:
 		return -1
-	return now + left - int(P2C.CLOSE_LOCKOUT_SEC) - 600   # 封盘线之外再退 10 分钟
+	return base + left - int(P2C.CLOSE_LOCKOUT_SEC) - 600   # 封盘线之外再退 10 分钟
 
 func _ready() -> void:
 	_tree = get_tree()

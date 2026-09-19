@@ -21,7 +21,15 @@ const TILE_GAP_M := 0.0
 ## ★2026-07-31 从 RealtimeBattle3DScene 搬来: 主场景被 arch_budget 冻结在 8600 行,
 ##   而这三样(调色板/贴图表/材质)本来就属于【建地面】这一层。搬完主场景 8549 行。
 ##   做成 static —— 主场景侧 BattleWorldBuilder.tile_material(ti) 直接调, 不用拿实例。
-const TILE_COLS := {0: Color(0.102, 0.137, 0.251), 1: Color(0.122, 0.722, 0.769), 2: Color(0.227, 0.247, 0.361), 3: Color(0.149, 0.188, 0.337)}   # 暗深海夜调色板(锁死·场景地图方案.md§4): grass#1a2340/water#1fb8c4/stone#3a3f5c/sand=shore#263056
+const TILE_COLS := {0: Color(0.169, 0.184, 0.118), 1: Color(0.122, 0.722, 0.769), 2: Color(0.361, 0.318, 0.259), 3: Color(0.290, 0.251, 0.188)}
+## ★★**暖石台调色板**(2026-09-20 用户「别被深海局限住了」→「你自己定」)。
+##   grass `#2b2f1e` / water `#1fb8c4`(**不动**) / stone `#5c5142` / sand `#4a4030`。
+##   依据: 153 帧真实游戏内画面实测 —— 参考主色里**洋红-紫-暖橙占 54.0%,
+##   青 180–210 只占 3.2%**, 而本项目整个压在那 3.2% 上(暖色只有 2.3%)。
+##   三套候选实拍量过: **A 暖石台 23.3%** / B 洋红紫 4.1% / C 橄榄绿 6.6% ⇒ 取 A。
+##   ★水色不动: 参考自己也画水, 只是**水比地面暗**(v0.19.413 已压暗)。
+##   青水 + 暖石台 = **冷暖对比**而不是同色堆叠 —— 这才是改暖的理由。
+##   ★四项全被 `tests/verify_ground_palette.gd` 钉着; 此前只有水有钉子。
 
 ## 每 tile type 的地砖细节贴图(P1·用户 2026-07-30「地图再度需要提升」)。
 ##
@@ -242,6 +250,37 @@ const WALL_COL := Color(0.227, 0.247, 0.361)   # = TILE_COLS[2] 石台色, **不
 ##     取中位与场内地面中位比 —— 用方框平均会被段间空隙稀释(第一次就读成 +2%)。
 const WALL_H_M_GEO := 1.75    # 真实竖直几何口径(同样读出 31px 要 1.75 米, billboard 只要 1.11)
 const WALL_COL_LIT := Color(0.62, 0.66, 0.86)   # 吃光后的基色(不再乘 WALL_GAIN)
+
+## ═══ 场内暖色点光源（2026-09-20）═══════════════════════════════════
+## ★★为什么有它：全仓 `OmniLight3D`/`SpotLight3D` **一个都没有**。
+##   实测本项目场内亮核 2.33%，但色相全是 **183~204°（青）**——那是岸线高光和光柱，
+##   **不是光源**。而参考里每屏有 0~4 个**暖色**光源。
+##
+## ★规格是量出来的不是拍的（`docs/design/20260920-场内道具规格调研.md` §⑤，
+##   6 张参考图逐个人工定位 + 程序测量 13 个光源）：
+##     个数   每屏 **2.2 个**（区间 0~4）
+##     发光核 合计 **0.299%** 场地面积；单个 0.004%~0.587%
+##     色相   **中位 57°**，9/13 落在 15~60°（暖黄橙）
+##   代表值：TFT_2 火盆 `#FDF77B`(57°) / HadesII_1 神龛 `#F6EE53`(57°) / CotL 纸灯笼 `#FDDA68`(46°)
+##
+## ★为什么是**点光源**而不是再画一块亮贴图：贴图只会再多一块"高饱和色块"，
+##   而 153 帧实测说本项目的病正是**一整块**（最大连通块 15.65% vs 参考 p50 0.43%）。
+##   点光源给的是**衰减的光晕**——它自带明度过渡，正是判据④「亮坡比」要的东西。
+const LAMP_COL := Color(0.992, 0.969, 0.482)   # #FDF77B · 色相 57°(参考中位)
+const LAMP_N := 3                              # 参考每屏 2.2 个(0~4) ⇒ 取 3
+const LAMP_ENERGY := 2.2
+const LAMP_RANGE_M := 7.5
+## 位置（ARENA 归一化 0~1）。★避开正中心的接战区，放在参考里"外圈但不贴边"的位置——
+##   实测本项目中心半区只有 5% 有东西（参考 15%），而纯装饰在内圈是 **0 件**。
+const LAMP_AT := [Vector2(0.22, 0.30), Vector2(0.78, 0.30), Vector2(0.50, 0.78)]
+## ★★**光要有来源物** —— 用户 2026-09-07「你不能凭空没有逻辑出现」。
+##   只放 `OmniLight3D` 而不画灯具, 地上就是三团凭空出现的暖斑 ——
+##   参考里每个暖光都有实体(火盆/灯笼/火把), 实测 13 个光源无一例外。
+## ★素材**全新生成**(PixelLab, 铁律「新内容一律新素材」), 实测:
+##   64×64 · 发光核色相中位 **42°**(规格区间 15~60°) · **零半透明像素**(硬边像素画)。
+const LAMP_TEX := "res://assets/sprites/map/brazier.png"
+const LAMP_H_M := 1.28          # 火盆世界高(米)。按 ~50 texels/m 口径: 64 texel ÷ 50 = 1.28
+
 ## ★★★这个常量已经连着【三轮】需要重标定, 记一笔: 1.55(v0.19.405) → 1.70(水面重做) → 2.05(灯光重做)。
 ##   每次都是因为"地面变亮了、墙没跟着变" —— 根因是**墙卡是 UNSHADED 而地面吃光**,
 ##   两者之间只靠这一个手工标定的数连着。⇒ **它是脆的**, 已登记成方案书 20260918b 的 W8。
@@ -405,6 +444,44 @@ func _edge_band_mesh(loops: Array, tex: Texture2D) -> MeshInstance3D:
 	mi.material_override = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return mi
+
+
+## 场内暖色点光源。返回建出来的节点（调用方登记/清场用）。
+func build_field_lamps() -> Array:
+	var made: Array = []
+	var root := Node3D.new()
+	root.name = "FieldLamps"
+	battle._world.add_child(root)
+	made.append(root)
+	var A: Rect2 = battle.ARENA
+	var tex: Texture2D = load(LAMP_TEX) if ResourceLoader.exists(LAMP_TEX) else null
+	if tex == null:
+		push_warning("[field_lamps] 火盆贴图缺失: %s —— 光会没有来源物(不做静默兜底)" % LAMP_TEX)
+	for uv in LAMP_AT:
+		var px := A.position + Vector2(A.size.x * uv.x, A.size.y * uv.y)
+		var lamp := OmniLight3D.new()
+		lamp.light_color = LAMP_COL
+		lamp.light_energy = LAMP_ENERGY
+		lamp.omni_range = LAMP_RANGE_M
+		## ★不投影：这是氛围光不是主光，投影会让 28 只龟各拖一条影子、且吃性能。
+		lamp.shadow_enabled = false
+		## 抬离地面一点，光晕才铺得开（贴地会被地面自己挡掉一半）。
+		## 光源抬到火盆碗口高度(不是贴地), 光晕才铺得开且看着像是火发出来的。
+		lamp.position = battle._world_pos(px, LAMP_H_M * 0.85)
+		root.add_child(lamp)
+		made.append(lamp)
+		## ★灯具本体: billboard 立绘(不吃俯角压缩), 底部贴地。
+		if tex != null:
+			var s := Sprite3D.new()
+			s.texture = tex
+			s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # 像素画不许插值成糊
+			s.shaded = false
+			s.pixel_size = LAMP_H_M / float(tex.get_height())
+			s.position = battle._world_pos(px, LAMP_H_M * 0.5)
+			root.add_child(s)
+			made.append(s)
+	return made
 
 
 func _build_tilemap_decor() -> void:

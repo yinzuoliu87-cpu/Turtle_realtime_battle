@@ -1015,6 +1015,13 @@ func _tilemap_from_data(meta: Dictionary, grid: Array, height: Array) -> void:  
 	if _world_builder != null:
 		for n in _world_builder.build_edge_wall(grid, w, h, tile, ox, oy):
 			_tile_nodes.append(n)
+		# ★场内暖色点光源(2026-09-20): 全仓此前 **0 个** `OmniLight3D`/`SpotLight3D`。
+		#   规格是 6 张参考图逐个人工定位 + 程序测量 13 个光源量出来的
+		#   (每屏 2.2 个 · 发光核合计 0.299% · 色相中位 57°)，
+		#   见 `docs/design/20260920-场内道具规格调研.md` §⑤ 与 `build_field_lamps` 的长注。
+		#   ★同样挂进 `_tile_nodes`: MAPEDIT 刷格重调本函数时跟地砖一起释放，不会越堆越多。
+		for n in _world_builder.build_field_lamps():
+			_tile_nodes.append(n)
 
 # ═══ 局内地图刷子编辑器 (MAPEDIT=1 开 · 开发工具不进正式对局 · 纯视觉不改玩法) ═══
 ## 地砖厚度(米)。★BoxMesh 以 transform 为【几何中心】, 所以砖体占 y∈[-厚/2, +厚/2]。
