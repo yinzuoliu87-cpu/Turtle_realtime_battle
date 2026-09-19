@@ -1,5 +1,8 @@
 extends Control
 
+const TopBar = preload("res://scripts/util/top_bar.gd")
+var _top_bar = null
+
 ## LeaderboardScene — V2 排行榜 (阶段5 MVP, 设计§五/§十三).
 ## ★★A8(2026-09-19) 排序键换成**字典序「胜场 → 余命 → 横扫」**(原来只按击杀龟蛋数降序)。
 ##   文案与表头一起改 —— 判据/文案/代码三者必须同时改, 否则榜上排的和标题写的不是一回事。
@@ -35,22 +38,17 @@ const Backend = preload("res://scripts/net/backend.gd")
 func _ready() -> void:
 	_bg()
 
-	var title := Label.new(); title.text = "🏆 排行榜 · 胜场 → 余命 → 横扫"
-	title.add_theme_font_size_override("font_size", 30); title.add_theme_color_override("font_color", Color("#ffd93d"))
-	title.position = Vector2(W / 2.0 - 300, 22); title.size = Vector2(600, 44)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; add_child(title)
-
-	var back := Button.new(); back.text = "← 返回"; back.add_theme_font_size_override("font_size", 20)
-	## ★44pt 触控下限 = 81px(视口恒 720 高 ↔ iPhone 横屏 390pt ⇒ 1pt = 1.846px)。
-	##   原来写 120×44 是把「44pt」当成了 44 像素 —— 实际只有 24pt。
-	var _m: Vector4 = SafeArea.margins(Vector2(get_viewport().get_visible_rect().size), 18.0)
-	back.position = Vector2(maxf(20.0, _m.x), maxf(18.0, _m.y))
-	back.custom_minimum_size = Vector2(150.0, 81.0)
-	back.size = Vector2(150.0, 81.0)
-	back.focus_mode = Control.FOCUS_NONE
-	back.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
-	UISkin.button(back, Color("#9fb6c9"))   # 金属签牌皮(原来是 Godot 默认圆角纯色)
-	add_child(back)
+	## ★顶栏走全项目同一个原语 `TopBar`(2026-09-19·用户「做」)。
+	##   规则来自 599 张/146 个触屏游戏枢纽页的逐张实测, 见 top_bar.gd 头注。
+	var _sm: Vector4 = SafeArea.margins(Vector2(get_viewport().get_visible_rect().size), 18.0)
+	_top_bar = TopBar.new(self, {
+		"title": "🏆 排行榜 · 胜场 → 余命 → 横扫",
+		"palette": TopBar.DEEP,
+		"width": W,
+		"safe_left": _sm.x,
+		"safe_right": _sm.z,
+		"on_back": func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"),
+	})
 
 	var pool := Backend.load_pool()
 	## ★limit 必须给【全量】(原来是 30) —— `Backend.leaderboard()` 是**排完序再切**的,

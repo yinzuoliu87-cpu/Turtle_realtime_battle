@@ -1,5 +1,8 @@
 extends Control
 
+const TopBar = preload("res://scripts/util/top_bar.gd")
+var _top_bar = null
+
 ## MatchmakingScene — 匹配动画: 选龟后进入, 匹配几秒 → 显示「我 vs 对手」(头像+ID) → 进 2.5D 战斗.
 ## 实时版流程: MainMenu → TeamSelect(选龟) → Matchmaking(本场景, 抽对手) → RealtimeBattle3D(战斗).
 ## 对手 = 后端 ghost 池抽同档快照 (池空 → bot 兜底); 抽到的写 GameState.dual_ghost, 战斗右队读其 leaders.
@@ -179,20 +182,16 @@ func _center() -> void:
 
 ## 取消匹配键 (左上角): 加到 self 而非 content_root → 不被 _build_searching/_build_vs 的清屏移除.
 func _build_cancel_btn() -> void:
-	var btn := Button.new()
-	btn.text = "← 取消"
-	btn.add_theme_font_override("font", _bold_font())
-	btn.add_theme_font_size_override("font_size", 20)
-	btn.add_theme_color_override("font_color", Color("#cfe0ee"))
-	btn.add_theme_color_override("font_hover_color", Color("#ffffff"))
-	## ★原来是「#16283a 底 + 圆角 10 + 2px 描边」= 网页盒, 且高只有 44px(=24pt)。
-	##   44pt 触控下限 = 81px(视口恒 720 高 ↔ iPhone 横屏 390pt ⇒ 1pt = 1.846px)。
-	btn.custom_minimum_size = Vector2(140.0, 81.0)
-	btn.size = Vector2(140.0, 81.0)
-	btn.focus_mode = Control.FOCUS_NONE
-	UISkin.button(btn, Color("#9fb6c9"))   # 金属签牌皮(和图鉴/背包/排行榜的返回键同一套)
-	btn.pressed.connect(_on_cancel)
-	add_child(btn)
+	## ★顶栏走全项目同一个原语 `TopBar`(2026-09-19·用户「做」)。
+	##   146 款触屏游戏里返回一律是**扁平薄片**, 没有一款用厚装饰框。
+	##   ★匹配屏没有页名 —— 它不是枢纽页而是一个过场, 只留返回。
+	_top_bar = TopBar.new(self, {
+		"palette": TopBar.DEEP,
+		"width": W,
+		"back_text": "←",   # ★取消 = 回上一层, 不是关面板 ⇒ 箭头不是 ✕
+		"on_back": _on_cancel,
+	})
+	var btn: Button = _top_bar.back_btn
 	_cancel_btn = btn
 	_center()
 

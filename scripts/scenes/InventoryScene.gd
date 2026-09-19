@@ -1,5 +1,8 @@
 extends Control
 
+const TopBar = preload("res://scripts/util/top_bar.gd")
+var _top_bar = null
+
 const RichTooltip = preload("res://scripts/scenes/rich_tooltip.gd")
 ## 深海币图标 —— 与商店同一张(ShopScene.COIN_TEX)。同一种货币在两屏必须长得一样,
 ## 拿 `◆`/`💠` 之类的字符凑就等于让玩家自己去猜"这两个数是不是同一种钱"。
@@ -164,33 +167,27 @@ func _rebuild() -> void:
 	##   它占着 440×46 只为复述玩家刚点过的按钮; 腾出来的整条顶栏给右侧羁绊列上提。
 	##   ⚠ 别再加回来 —— 也别改成小字放别处, 那还是同一块牌子。
 
-	# 返回
-	var back := Button.new()
-	back.text = "← 返回"
-	back.add_theme_font_size_override("font_size", 22)
-	back.position = Vector2(28, 6); back.size = Vector2(120, 81)   # 81px = 44pt
-	back.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
-	## ★2026-08-18 换金属签牌皮(用户问「所有可以点击和交互的地方都考虑了吗」——
-	##   实测这两个顶部标签还是 Godot 默认皮)。
-	UISkin.button(back, Color("#9fb6c9"))
-	add_child(back)
-
-	# 🛒 商店 —— 商店有「→🎒背包」(ShopScene.gd:139), 反向却一直没有:
-	#   背包空了想买装备, 得先退回主菜单再点商店(用户需求1「背包里加条路径去前往商店」)。
-	# ★锁着时不隐藏而是【灰显 + 说明为什么】: 直接不画按钮会让人以为没这条路,
-	#   而"打完第一场解锁"这条规则本身也需要被告知(ShopScene.gd:18 是同一条门槛)。
-	var shop := Button.new()
+	## ★顶栏走全项目同一个原语 `TopBar`(2026-09-19·用户「做」)。
+	##   原来是两枚金属签牌皮的厚按钮(返回/商店) + 右边一枚手写的深底小方框(?)
+	##   —— **同一条横线上两套语言**。146 款参考里返回一律是扁平薄片,
+	##   而「去另一个枢纽页」的入口紧跟在页名后面(Botworld 的 Loadout/Inventory/Robopedia)。
+	##   右侧的深海币/装备容量那条资源条**不动** —— 它本来就是参考里的结构。
 	var shop_locked: bool = int(GameState.season_total_battles) <= 0
-	shop.text = "🛒 商店" if not shop_locked else "🔒 商店"
-	shop.add_theme_font_size_override("font_size", 22)
-	shop.position = Vector2(160, 6); shop.size = Vector2(120, 81)   # 81px = 44pt
-	shop.disabled = shop_locked
-	shop.tooltip_text = "打完本大轮第一场后解锁" if shop_locked else "去商店买装备"
-	shop.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Shop.tscn"))
-	## ★2026-08-18 换金属签牌皮(用户问「所有可以点击和交互的地方都考虑了吗」——
-	##   实测这两个顶部标签还是 Godot 默认皮)。
-	UISkin.button(shop, Color("#9fb6c9"))
-	add_child(shop)
+	var _sm: Vector4 = SafeArea.margins(Vector2(get_viewport().get_visible_rect().size), 18.0)
+	_top_bar = TopBar.new(self, {
+		"title": "🧳 背包",
+		"palette": TopBar.DEEP,
+		"width": W,
+		"safe_left": _sm.x,
+		"safe_right": _sm.z,
+		"on_back": func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"),
+		"left_actions": [[
+			"🛒 商店" if not shop_locked else "🔒 商店",
+			func(): get_tree().change_scene_to_file("res://scenes/Shop.tscn"),
+			{"disabled": shop_locked,
+				"tooltip": "打完本大轮第一场后解锁" if shop_locked else "去商店买装备"},
+		]],
+	})
 
 	## ── 右上角这一组: 深海币 / 全队装备容量 / 「?」 **排成横着一条**(用户 2026-08-15)──
 	##   原来是"币在上、装备上限在下"竖着堆在最右 232px 里, 而「?」还单独浮在它们左边 ——
@@ -261,21 +258,12 @@ const UBOX_GAP := 16.0
 func _build_lineup(_leaders: Array) -> void:
 	var lineup := GameState.get_dual_lineup()
 	var box_span := 3.0 * UBOX_W + 2.0 * UBOX_GAP
-	# "?"帮助放顶栏右侧(不占阵容区·不压返回键→修「出战阵容」压返回的重叠·用户2026-07-19)。
-	# 操作引导靠单位框变色: 选了装备→框绿边"装这里" / 选中单位→框金边; 不再铺常驻文字。
-	var help := Button.new()
-	help.text = "?"; help.tooltip_text = "怎么配阵容"
-	help.add_theme_font_size_override("font_size", 20)
-	var hsb := StyleBoxFlat.new(); hsb.bg_color = Color("#1a2634"); hsb.border_color = Color("#4a6a8a")
-	hsb.set_border_width_all(1); hsb.set_corner_radius_all(14)
-	help.add_theme_stylebox_override("normal", hsb); help.add_theme_stylebox_override("hover", hsb); help.add_theme_stylebox_override("pressed", hsb)
-	help.add_theme_color_override("font_color", Color("#9fc0dd"))
-	# ★手机板触控热区(2026-08-01): 28×28 = 手机上 15pt, 点不中 → 48×48(26pt)。
-	# ★2026-08-15 归队: 原来它单独浮在 (966,20), 和右上角那组各占一块谁也不挨着谁
-	#   (用户「这么多空的地方把问号排好版啊」)。现在排进同一条横线的最右端。
-	help.position = Vector2(SYN_X + SYN_W - 81.0, 6.0); help.size = Vector2(81, 81)   # 81px = 44pt
-	help.pressed.connect(func(): _show_lineup_help())
-	add_child(help)
+	## ★「?」搬进顶栏原语(2026-09-19): 原来它是手写的 StyleBoxFlat(深底+1px边+圆角),
+	##   而同屏的返回/商店是金属签牌皮 —— 同一条横线上两套语言。
+	##   现在三枚都走 `TopBar._chip()`, 同款同高同热区。
+	if _top_bar != null:
+		var _hb = _top_bar.add_right_action("?", func(): _show_lineup_help(), {"tooltip": "怎么配阵容"})
+		_hb.position = Vector2(SYN_X + SYN_W - 81.0, (TopBar.BAR_H - TopBar.TOUCH_MIN) / 2.0)
 	# 两条"战场带"(染色圆角底 + 战场名 + 编成计数) → 一眼看出上/下是两个各自开打的战场
 	for lane_info in [["上战场", "top", LANE_TOP, Color("#ffd93d"), Color(0.24, 0.19, 0.06)], ["下战场", "bottom", LANE_TOP + LANE_GAP, Color("#7fd0ff"), Color(0.05, 0.14, 0.24)]]:
 		var bf := str(lane_info[0]); var lkey := str(lane_info[1]); var by := float(lane_info[2])

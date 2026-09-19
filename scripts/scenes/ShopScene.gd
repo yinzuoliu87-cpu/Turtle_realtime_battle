@@ -1,5 +1,8 @@
 extends Control
 
+const TopBar = preload("res://scripts/util/top_bar.gd")
+var _top_bar = null
+
 ## ShopScene — V2 局外商店 (阶段2, 设计§五/§十一). 10 卡货架, 用 meta_deepsea_coins 买装备入持久背包.
 ## 刷新固定 2 币; 买价 = 装备 cost (几费卖几深海币, 1:1, 用户 2026-07-01); 出货档随赛季总战斗数. 复用 Phase2Equip.roll_shop 出货算法.
 
@@ -165,12 +168,14 @@ func _build_locked() -> void:
 	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	lbl.position = Vector2(vw / 2.0 - 320.0, 250.0); lbl.size = Vector2(640, 180)
 	add_child(lbl)
-	var back := Button.new()
-	back.text = "← 返回"
-	back.add_theme_font_size_override("font_size", 20)
-	back.position = Vector2(28, 26); back.size = Vector2(120, 44)
-	back.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
-	_skin_button(back); add_child(back)
+	## ★上锁屏也要换薄片(2026-09-19) —— 本文件自己的注释就写过
+	##   「有 early return 的地方就要各自收口」, 我第一遍又只改了正常态那条分支,
+	##   门禁当场拓出来(还是 120×44 = 24pt, 低于触控下限)。
+	_top_bar = TopBar.new(self, {
+		"palette": TopBar.DEEP,
+		"width": W,
+		"on_back": func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"),
+	})
 	# ★上锁屏也要套设计框 —— _ready 在这条分支上是 `_build_locked(); return`,
 	#   末尾那句 UIFrame.attach 【根本走不到】。我第一版就漏了这条路径, 于是量出来
 	#   "商店完全没居中", 实际量的是这一屏。有 early return 的地方就要各自收口。
@@ -278,13 +283,21 @@ func _rebuild() -> void:
 	## ★标题「🛒 深海商店」删掉(用户 2026-08-15)。玩家是自己点进来的, 不需要一块牌子告诉他站在哪;
 	##   这 200px 让给右上角三组去排版 —— 它们原来因为标题框占着中间, 被挤在 756..1252 的窄带里。
 
-	var back := Button.new(); back.text = "← 返回"; back.add_theme_font_size_override("font_size", 20)
-	back.position = Vector2(28, 18); back.size = Vector2(132, 81)   # ★加高填满头部带(原 52 高, 96px 的带子里空着一截)
-	back.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")); _skin_button(back); add_child(back)
-
-	var inv := Button.new(); inv.text = "🎒 背包"; inv.add_theme_font_size_override("font_size", 20)
-	inv.position = Vector2(172, 18); inv.size = Vector2(132, 81)
-	inv.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Inventory.tscn")); _skin_button(inv); add_child(inv)
+	## ★顶栏走全项目同一个原语 `TopBar`(2026-09-19·用户「做」)。
+	##   146 款触屏游戏里返回一律是**扁平薄片**, 没有一款用厚装饰框。
+	var _sm: Vector4 = SafeArea.margins(Vector2(get_viewport().get_visible_rect().size), 18.0)
+	_top_bar = TopBar.new(self, {
+		## ★**不给页名** —— 用户 2026-08-15 明确删过「🛒 深海商店」这块牌子
+		##   (「玩家是自己点进来的, 不需要一块牌子告诉他站在哪」, 见本文件上方注释)。
+		##   我换顶栏时把它加回来了, 实拍一看还把右边的金币条压住了 —— 两错并一错。
+		"palette": TopBar.DEEP,
+		"width": W,
+		"safe_left": _sm.x,
+		"safe_right": _sm.z,
+		"on_back": func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"),
+		"left_actions": [["🎒 背包",
+			func(): get_tree().change_scene_to_file("res://scenes/Inventory.tscn")]],
+	})
 
 	## ── 头部三组重排(用户 2026-08-15「右上角咋做的, 中间给你这么空位你在干啥啊」)──
 	##

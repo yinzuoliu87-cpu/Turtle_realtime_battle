@@ -1,5 +1,7 @@
 extends Node2D
 
+const TopBar = preload("res://scripts/util/top_bar.gd")
+
 ## TeamSelectScene — 1:1 移植 PoC src/scenes/TeamSelectScene.ts
 ##
 ## PoC 是 1647×955 整图皮 (select-bg.png) + DOM 绝对定位浮层。Godot 视口 1280×720,
@@ -670,8 +672,10 @@ func _build_ui() -> void:
 	# 返回 (PoC .ts-overlay-btn: 半透深底 + 金边 + #ffd86b 文字)
 	var back := Button.new()
 	back.text = "‹ 返回"
-	back.add_theme_font_size_override("font_size", _sf(13))
-	_style_overlay_btn(back)
+	## ★薄片皮走全项目同一个函数(2026-09-19)。
+	##   原来这三个是 `_sf(13)` 的小字被 `_grow_to_touch` 撑到 81px 的框里 ——
+	##   实拍出来就是「78×85 的框里字只占中间一条」, 踩中 146 款参考里的第 ④ 条。
+	TopBar.apply_chip_skin(back, TopBar.WOOD)
 	root.add_child(back)
 	_place_clamped(back, "back")
 	_grow_to_touch(back)
@@ -680,8 +684,7 @@ func _build_ui() -> void:
 	# 清空 (PoC .ts-frame-btn: 透明底无边, 白字阴影, 坐在画好的框上)
 	var clear := Button.new()
 	clear.text = "⊘ 清空"
-	clear.add_theme_font_size_override("font_size", _sf(12))
-	_style_frame_btn(clear)
+	TopBar.apply_chip_skin(clear, TopBar.WOOD)
 	root.add_child(clear)
 	_place_clamped(clear, "clear")
 	_grow_to_touch(clear)
@@ -690,8 +693,7 @@ func _build_ui() -> void:
 	# 上次阵容 (PoC .ts-frame-btn)
 	_last_btn = Button.new()
 	_last_btn.text = "🔄 上次阵容"   # ↺(U+21BA) 打包字体链无字形(web/linux豆腐块) → 换 🔄(U+1F504, Noto Emoji 有)
-	_last_btn.add_theme_font_size_override("font_size", _sf(12))
-	_style_frame_btn(_last_btn)
+	TopBar.apply_chip_skin(_last_btn, TopBar.WOOD)
 	root.add_child(_last_btn)
 	_place_clamped(_last_btn, "last")
 	_grow_to_touch(_last_btn)

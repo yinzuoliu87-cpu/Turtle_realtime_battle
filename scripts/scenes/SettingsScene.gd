@@ -1,5 +1,8 @@
 extends Control
 
+const TopBar = preload("res://scripts/util/top_bar.gd")
+var _top_bar = null
+
 ## SettingsScene — 设置 (1:1 PoC SettingsScene.ts): BGM/SFX 音量 + 全屏 + 重置存档.
 ## Phaser 绝对坐标 (中心原点) → Godot 左上 (position = 中心 - size/2). 视口 1280×720.
 
@@ -13,12 +16,17 @@ var _full_btn: Label = null   # 全屏按钮文字 (切换后要同步, 原来�
 func _ready() -> void:
 	_bg()
 
-	# 标题 @ (W/2, 80), 40px #ffd93d stroke #1a1a2e 厚5
-	var title := _stroked_label("设置", 40, "#ffd93d", "#1a1a2e", 5)
-	_place_center(title, W / 2.0, 80.0)
-
-	# 返回 icon 按钮 @ (40,40)
-	_icon_button(40.0, 40.0, "←", func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
+	## ★顶栏走全项目同一个原语 `TopBar`(2026-09-19·用户「做」)。
+	##   规则来自 599 张/146 个触屏游戏枢纽页的逐张实测, 见 top_bar.gd 头注。
+	var _sm: Vector4 = SafeArea.margins(Vector2(get_viewport().get_visible_rect().size), 18.0)
+	_top_bar = TopBar.new(self, {
+		"title": "⚙ 设置",
+		"palette": TopBar.DEEP,
+		"width": W,
+		"safe_left": _sm.x,
+		"safe_right": _sm.z,
+		"on_back": func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"),
+	})
 
 	# BGM 滑条 @ (W/2, 220) — 拖动实时生效; 写盘只在松手时一次 (原来每帧 save() = 拖一下写几十次盘)
 	_slider(W / 2.0, 220.0, "🎵 BGM 音量", GameState.bgm_volume,
@@ -328,56 +336,6 @@ func _text_button(cx: float, cy: float, label: String, cb: Callable) -> Label:
 	return txt
 
 
-# ── icon 圆按钮 (PoC makeIconButton: r18, 黑0.55, 边#58d3ff→hover#ffd93d) ──
-## ★手机板触控热区(2026-08-01): 半径 18(=36×36 视口像素=20pt) → 24(=48×48=26pt)。
-##   视觉圆环仍按原比例画, 只是可点范围变大 —— 图标按钮加内边距不影响构图。
-func _icon_button(cx: float, cy: float, icon: String, cb: Callable) -> void:
-	var r := 24.0
-	## ★2026-08-19 命中区与视觉解耦: 原来 btn.size 就是圆环的外接方(48x48=26pt), 够不着 44pt。
-	##   圆环半径 r 一个字不改(构图不能动), 只把**控件本身**撑到 81x81(=44pt), 圆画在正中间。
-	##   —— 图标按钮周围本来就是空白, 扩命中区不影响任何相邻元素。
-	const HIT := 81.0
-	var c0 := HIT * 0.5          # 圆心在控件里的坐标
-	var btn := Control.new()
-	btn.size = Vector2(HIT, HIT)
-	btn.pivot_offset = Vector2(c0, c0)
-	btn.position = Vector2(cx - c0, cy - c0)
-	btn.mouse_filter = Control.MOUSE_FILTER_STOP
-	add_child(btn)
-	var stroke := {"c": Color("#58d3ff")}
-	var draw := func():
-		btn.draw_circle(Vector2(c0, c0), r, Color(0, 0, 0, 0.55))
-		btn.draw_arc(Vector2(c0, c0), r - 1.0, 0, TAU, 32, stroke["c"], 2.0)
-	btn.draw.connect(draw)
-	var txt := Label.new()
-	txt.text = icon
-	txt.add_theme_font_size_override("font_size", 18)
-	txt.add_theme_color_override("font_color", Color("#ffffff"))
-	txt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	txt.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	txt.size = Vector2(HIT, HIT)
-	txt.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	btn.add_child(txt)
-	btn.mouse_entered.connect(func(): stroke["c"] = Color("#ffd93d"); btn.queue_redraw())
-	btn.mouse_exited.connect(func(): stroke["c"] = Color("#58d3ff"); btn.queue_redraw())
-	btn.gui_input.connect(func(ev: InputEvent):
-		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			var tw := create_tween()
-			tw.tween_property(btn, "scale", Vector2(0.85, 0.85), 0.06)
-			tw.tween_property(btn, "scale", Vector2(1, 1), 0.06)
-			## ★2026-08-21: 原来接的是 `get_tree().create_timer()` —— 树级计时器**活过场景释放**,
-			##   而 cb 捕获了本场景/场景里的节点 ⇒ 场景被释放后它照响, 报
-			##   `Lambda capture at index 0 was freed`(报错在【绑定捕获】那一刻, 函数体没执行,
-			##   所以在 cb 里加任何 is_instance_valid 都救不了)。改成挂自己身上的 Timer 子节点。
-			var _dt := Timer.new()
-			_dt.one_shot = true
-			_dt.wait_time = 0.08
-			add_child(_dt)
-			_dt.start()
-			_dt.timeout.connect(cb))
-
-
-# ── helpers ──
 func _stroked_label(t: String, size: int, color: String, stroke: String, thick: int) -> Label:
 	var l := Label.new()
 	l.text = t

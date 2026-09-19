@@ -1,5 +1,8 @@
 extends Control
 
+const TopBar = preload("res://scripts/util/top_bar.gd")
+var _top_bar = null
+
 ## RecordScene — 战绩 (1:1 PoC RecordScene.ts): 总览(总场/胜/负/胜率) + 最近20场.
 
 const MODE_LABEL := {"single": "野生", "pve": "野生", "dungeon": "深海闯关", "custom": "自定义",
@@ -17,14 +20,16 @@ func _ready() -> void:
 	_bg()
 
 	# 标题 @ (W/2, 50), 36px #ffd93d stroke #1a1a2e 厚5
-	var title := _stroked_label("📊 战绩", 36, "#ffd93d", "#1a1a2e", 5)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.size = Vector2(400, 52)
-	title.position = Vector2(W / 2.0 - 200.0, 50.0 - 26.0)
-	add_child(title)
-
-	# 返回 icon @ (40,40)
-	_icon_button(40.0, 40.0, "←", func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
+	## ★顶栏走全项目同一个原语 `TopBar`(2026-09-19)。
+	##   原来是「居中大标题 + 左上一个孤零零的圆圈 ←」——
+	##   而 146 款触屏游戏的枢纽页里, 返回和页名是**同一条栏里的两个邻居**
+	##   (见 `scripts/util/top_bar.gd` 头注的六款实例)。
+	_top_bar = TopBar.new(self, {
+		"title": "📊 战绩",
+		"palette": TopBar.DEEP,
+		"width": W,
+		"on_back": func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"),
+	})
 
 	# 总览数据
 	var total: int = GameState.battles_total
@@ -276,57 +281,6 @@ func _stroked_label(t: String, size: int, color: String, stroke: String, thick: 
 	return l
 
 
-## ★手机板触控热区(2026-08-01): 半径 18(36×36=20pt) → 24(48×48=26pt), 同 SettingsScene。
-func _icon_button(cx: float, cy: float, icon: String, cb: Callable) -> void:
-	var r := 24.0
-	## ★2026-08-19 命中区与视觉解耦: 原来 btn.size 就是圆环的外接方(48x48=26pt), 够不着 44pt。
-	##   圆环半径 r 一个字不改(构图不能动), 只把**控件本身**撑到 81x81(=44pt), 圆画在正中间。
-	##   —— 图标按钮周围本来就是空白, 扩命中区不影响任何相邻元素。
-	const HIT := 81.0
-	var c0 := HIT * 0.5          # 圆心在控件里的坐标
-	var btn := Control.new()
-	btn.size = Vector2(HIT, HIT)
-	btn.pivot_offset = Vector2(c0, c0)
-	btn.position = Vector2(cx - c0, cy - c0)
-	btn.mouse_filter = Control.MOUSE_FILTER_STOP
-	add_child(btn)
-	var stroke := {"c": Color("#58d3ff")}
-	## ★★2026-08-21 修野捕获: 原来是 `btn.draw.connect(func(): btn.draw_circle(...))` ——
-	##   闭包**捕获了 `btn` 这个节点**, 而 `draw` 信号是**每次重绘就发、不需要任何输入**。
-	##   场景被立即释放(冒烟的 `inst.free()`)时若正好有一次重绘排队, 引擎去绑那个已释放的
-	##   捕获就报 `Lambda capture at index 0 was freed`。★报错在【绑定捕获】那一刻发生,
-	##   函数体没执行 ⇒ 在闭包里加 is_instance_valid 救不了。
-	##   ⇒ 节点存进成员数组, 闭包只捕获 `self` 与一个**整数下标**(值类型, 不会变野)。
-	var _bi: int = _draw_btns.size()
-	_draw_btns.append({"n": btn, "stroke": stroke, "r": r, "c0": c0})
-	btn.draw.connect(func(): _paint_round_btn(_bi))
-	var txt := Label.new()
-	txt.text = icon
-	txt.add_theme_font_size_override("font_size", 18)
-	txt.add_theme_font_override("font", _mono_font())   # PoC RecordScene.ts:105 fontFamily:'monospace'
-	txt.add_theme_color_override("font_color", Color("#ffffff"))
-	txt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	txt.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	txt.size = Vector2(HIT, HIT)
-	txt.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	btn.add_child(txt)
-	btn.mouse_entered.connect(func(): stroke["c"] = Color("#ffd93d"); btn.queue_redraw())
-	btn.mouse_exited.connect(func(): stroke["c"] = Color("#58d3ff"); btn.queue_redraw())
-	btn.gui_input.connect(func(ev: InputEvent):
-		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			var tw := create_tween()
-			tw.tween_property(btn, "scale", Vector2(0.85, 0.85), 0.06)
-			tw.tween_property(btn, "scale", Vector2(1, 1), 0.06)
-			## ★2026-08-21: 原来接的是 `get_tree().create_timer()` —— 树级计时器**活过场景释放**,
-			##   而 cb 捕获了本场景/场景里的节点 ⇒ 场景被释放后它照响, 报
-			##   `Lambda capture at index 0 was freed`(报错在【绑定捕获】那一刻, 函数体没执行,
-			##   所以在 cb 里加任何 is_instance_valid 都救不了)。改成挂自己身上的 Timer 子节点。
-			var _dt := Timer.new()
-			_dt.one_shot = true
-			_dt.wait_time = 0.08
-			add_child(_dt)
-			_dt.start()
-			_dt.timeout.connect(cb))
 
 
 func _bg() -> void:

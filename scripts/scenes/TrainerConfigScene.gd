@@ -1,5 +1,7 @@
 extends Control
 
+const TopBar = preload("res://scripts/util/top_bar.gd")
+
 ## 训龟大师 配置界面 (用户2026-07-26: 主菜单独立入口, 选形象 + 配【全部技能 N 选 1·单个】)。
 ## ★设计: 被动+主动放一起, 只能选 1 个。选被动=没有主动Q; 选主动=没有被动。
 ## 技能用【图标卡片】展示(图标+名+被动/主动标签), 居中排版, 说明卡带底板。
@@ -182,10 +184,11 @@ func _build_ui() -> void:
 	row.add_child(save_btn)
 	var back_btn := Button.new()
 	back_btn.text = "返回(不保存)"
-	back_btn.add_theme_font_size_override("font_size", 19)
 	back_btn.custom_minimum_size = Vector2(210, 81)
 	back_btn.focus_mode = Control.FOCUS_NONE
-	UISkin.button(back_btn, Color("#9fb6c9"))          # 次操作: 冷灰签牌
+	## ★次操作走薄片皮; **主 CTA「保存并返回」保留厚金属签牌** ——
+	##   146 款参考里厚框正是只给主 CTA 的, 不是“全换掉”。
+	TopBar.apply_chip_skin(back_btn, TopBar.WOOD)
 	back_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
 	row.add_child(back_btn)
 

@@ -1,5 +1,8 @@
 extends Node2D
 
+const TopBar = preload("res://scripts/util/top_bar.gd")
+var _top_bar = null
+
 ## CodexScene — 图鉴 (5 Tab: 龟/装备/羁绊/状态/规则). 1:1 PoC CodexScene.ts 像素布局移植.
 ## 详情容器 (UI/Detail) 左上 = (340,158) — PoC 原为 (340,150), 2026-08-19 为页签让出 8px → PoC 详情局部坐标直接对应.
 
@@ -107,20 +110,17 @@ var _sel_idx: int = -1   # 当前选中条目 idx (调试面板改等级后刷�
 
 ## ← 返回主菜单 (1:1 PoC CodexScene.ts:68 makeIconButton 40,40 → MainMenuScene). 原 Godot 无 → 图鉴死胡同。
 func _add_back_button() -> void:
-	var back := Button.new()
-	back.text = "←"
-	back.add_theme_font_size_override("font_size", 26)
+	## ★顶栏走全项目同一个原语 `TopBar`(2026-09-19·用户「做」)。
+	##   146 款触屏游戏里返回一律是**扁平薄片**, 没有一款用厚装饰框。
 	var _m := SafeArea.margins(Vector2(get_viewport().get_visible_rect().size), 18.0)
-	back.position = Vector2(maxf(20.0, _m.x), _m.y)   # 手机刘海/圆角: 左上角留安全区(桌面仍是 20/18)
-	## ★这里原来写 44 —— 是把 iOS 的「44pt」当成了 44【像素】。
-	##   视口 720 高 ↔ 手机 390pt ⇒ 1pt = 1.846px ⇒ 44pt = **81px**, 44px 只有 24pt。
-	##   角落有余量, 直接做大(不搞隐形点击层 —— 那会在 PC 上变成"点空白也触发")。
-	back.custom_minimum_size = Vector2(81.0, 81.0)
-	back.focus_mode = Control.FOCUS_NONE
-	back.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
-	## ★2026-08-18 换金属签牌皮(实测它还是 Godot 默认皮)。
-	UISkin.button(back, Color("#9fb6c9"))
-	$UI.add_child(back)
+	_top_bar = TopBar.new($UI, {
+		"title": "📖 图鉴",
+		"palette": TopBar.DEEP,
+		"width": 1280.0,
+		"safe_left": _m.x,
+		"safe_right": _m.z,
+		"on_back": func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"),
+	})
 	# 🛠 调试面板 (右上角, 仅 debug 构建显示 — 1:1 PoC DEV_VISIBLE; 设等级/加币/重置/快速对战)
 	if OS.is_debug_build():
 		var dbg := Button.new()

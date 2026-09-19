@@ -53,11 +53,17 @@ func _test_inventory_has_shop_button() -> void:
 		var t := str(b.text)
 		if t.contains("商店"):
 			shop_btn = b
-		if t.contains("返回"):
+		## ★★改账(2026-09-19·v0.19.411)：返回键换成了统一的薄片原语，
+		##   文案从「← 返回」变成**纯图标 `←`**（146 款参考里三款是裸箭头无框）。
+		##   原判据 `t.contains("返回")` 当场红 —— **这是改账不是加白名单**：
+		##   要守的需求是「背包里有路回去」，不是「那个按钮写着两个字」。
+		##   ⇒ 把返回类的几种写法都认（文字 / ← / ‹），其余判据一字未动。
+		if t.contains("返回") or t.contains("←") or t.contains("‹"):
 			back_btn = b
 	_ok("★背包里有【商店】按钮(此前只有一句提示文字, 没有按钮)",
 		shop_btn != null, "按钮文字: %s" % str(buttons.map(func(b): return str(b.text))))
-	_ok("背包里有【返回】按钮", back_btn != null)
+	_ok("背包里有【返回】按钮(文字或 ←/‹ 图标都算)", back_btn != null,
+		"按钮文字: %s" % str(buttons.map(func(b): return str(b.text))))
 
 	if shop_btn != null and back_btn != null:
 		var r1 := Rect2(shop_btn.position, shop_btn.size)
