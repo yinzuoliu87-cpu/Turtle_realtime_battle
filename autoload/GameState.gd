@@ -626,7 +626,7 @@ var gauntlet_wins: int = 0          # 闯关赛战绩: 胜
 var gauntlet_losses: int = 0        # 闯关赛战绩: 负
 var promoted: bool = false          # 是否已晋级(积分赛 → 周六)
 ## 093 香火石【香火刻痕】的刻痕池 —— 队伍级 + 赛季级(用户 2026-08-06「一大轮重置」,
-## 而代码里「一大轮」就是赛季, 见上面 season_id 的注释「5天一轮, 切轮全重置」)。
+## 而代码里「一大轮」就是赛季, 见上面 season_id 的注释「一个自然周一轮, 切轮全重置」)。
 ## ★为什么刻痕存这里、而充能条存在装备实例上(见 mk_eq / eq_chg):
 ##   用户原话「如果卖掉了就丢失这 20」——**只有那 20 点充能会丢**, 已经投进羁绊的刻痕不退。
 ##   ⇒ 刻痕是全队共用的一个池(多件香火石各自攒充能、共投这一个池), 与某一件的存亡无关。
@@ -1481,6 +1481,16 @@ func ensure_season() -> void:
 	if is_season_expired():
 		start_new_season()
 		save()
+		return
+	## ④ 同一周内 + 积分赛已收盘 → 惰性补算(晋级判定 + 配额补发), 见 `settle_ranked_close()`。
+	##   ★放在这里而不是另起一个入口: `ensure_season()` 已经是"每次打开游戏/每场结算都会走一遍"
+	##     的那条路, 补算需要的正是这个时机。另起入口就要自己再找一遍调用点, 必然漏。
+	##   ★分开判 `promoted` 有没有变: 有资格但已补满时 `paid == 0`, 这时 `promoted` 可能刚
+	##     从 false 翻成 true —— 只看 `paid > 0` 会把这次翻转丢掉不存盘。
+	var was_promoted: bool = promoted
+	var paid: int = settle_ranked_close()
+	if paid > 0 or promoted != was_promoted:
+		save()
 
 ## 本赛季是否已跨进下一个自然周 (UTC 周一 00:00 换周). 未初始化(锚点=0)算未过期.
 ## ★★判据是**锚点变了没有**, 不是"过了多少秒" —— 后者(旧的 5 天 `SEASON_DURATION_SEC`)
@@ -1531,10 +1541,50 @@ func backfill_ranked_quota() -> int:
 	var pay: int = owed - int(backfill_paid)  # ★只补差额
 	if pay <= 0:
 		return 0
-	coins += pay * int(_P2.RANKED_BACKFILL_COINS)
+	## ★★2026-09-20 修: 钱包原来是 `coins`, **错的** ——
+	##   打一场真实对局给的是 `gs.meta_deepsea_coins += _last_reward`
+	##   (`RealtimeBattle3DScene._settle_season`), 商店 `ShopScene.gd:895` 花的也是它;
+	##   `coins`(龟币累计) 在全仓**没有任何消费入口**(只在图鉴调试与主菜单显示) ⇒ 补进去等于没发。
+	##   方案书写的是「补发 = 打满配额的最低供给」, 那就必须落在**打一场会给的那个钱包**里。
+	## ⚠ 为什么门禁没拦住: `verify_backfill` 当时读的也是 `coins` —— **两边同错所以一直全绿**
+	##   (同族 memory `fb-gate-must-measure-requirement-not-my-hook`: 判据要落在产品自己的账上,
+	##    而"产品自己的账"指的是**玩家真花得出去的那本**, 不是我随手挑的那个字段)。
+	meta_deepsea_coins += pay * int(_P2.RANKED_BACKFILL_COINS)
 	add_season_xp(pay * int(_P2.RANKED_BACKFILL_XP))   # ★走现成的升级路径, 不另写一套
 	backfill_paid = int(backfill_paid) + pay
 	return pay
+
+
+## 积分赛收盘之后的【惰性补算】: 晋级判定 + 配额补发。返回实际补发的场数。
+##
+## ★★为什么是「下次打开游戏时补算」而不是「到点触发」(2026-09-20 拍板):
+##   离线版**根本没有「收盘」这个事件** —— 没有服务器、没有人在周五 23:00 那一刻被叫醒,
+##   任何定时触发都要求游戏当时正开着。而「下次打开时补算」这个形态本文件已经有了
+##   (`ensure_season()` 的换轮), 挂上去是**零新增机制**。
+##
+## ★★有效窗口 = 周五 23:00 ~ 周日 23:59(**同一个自然周内**), 不做跨周补发。
+##   理由是硬的: `start_new_season()` 会清 `meta_deepsea_coins`,
+##   周一换轮之后再补上一周的币**当场作废** —— 发了等于没发, 还让账对不上。
+##   ⇒ 代价写在明处: **整个周末一次没开游戏 = 拿不到补发。这是有意的取舍, 不是漏。**
+##   补发的用途本来就是让打不满配额的人在**周六闯关赛**有装备可买, 那正好是这个窗口。
+##
+## ★`promoted` 离线版**只用硬线**「≥ `PROMOTE_WINS_FLOOR` 胜保送」。
+##   原稿的「前 30%」需要一份收盘时刻的**全服终榜**, 离线版没有 ——
+##   等真后端上了再把比例线加回来(母方案书 D 阶段)。
+## ★`now_override` 只给门禁用(照 `TeamSelectScene.lockout_now_override` 的先例):
+##   本函数的行为**整条都挂在"现在几点"上**, 而真实时钟一周只有两天多落在窗口里 ——
+##   不给注入口的话, 「收盘前不补」与「收盘后补」这两侧永远只能验到一侧,
+##   另一侧是盲区(`verify_close_lockout` 就因为没处理这个每周必红两天)。
+##   ⚠ 注入口不能代替真入口: 门禁另有一条**不注入**、走 `ensure_season()` 的判据。
+func settle_ranked_close(now_override: int = 0) -> int:
+	if week_anchor_ts == 0:
+		return 0                                   # 锚点还没初始化, 谈不上收盘
+	var now: int = now_override if now_override > 0 else int(Time.get_unix_time_from_system())
+	if now < _P2.ranked_close_ts(week_anchor_ts):
+		return 0                                   # 本周积分赛还没收盘
+	if not promoted:
+		promoted = int(season_wins) >= int(_P2.PROMOTE_WINS_FLOOR)
+	return backfill_ranked_quota()
 
 
 # ══════ 糖果罐 局外赛季被动 API (封板L390-403·糖果龟当统领才有·打碎按当前计数领档奖) ══════

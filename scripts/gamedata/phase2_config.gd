@@ -125,15 +125,28 @@ const PHASE_LABEL := {
 	PHASE_FINALS: "决赛日",
 }
 
+## 收盘日(ISO 星期几)。★抽成常量是因为**有两个地方要用同一个答案**:
+##   `close_left_sec()`(从"现在"往前看还剩几秒) 与 `ranked_close_ts()`(从周锚点算出绝对时刻)。
+##   就地各写一个 5, 就是"同一个数存两份"(memory `fb-hand-rolled-copies-drift`)。
+const RANKED_CLOSE_WD := 5             # 积分赛: 周五 23:00 收盘
+const GAUNTLET_CLOSE_WD := 6           # 闯关赛: 周六 23:00 收盘
+
+## 本周【积分赛收盘】的绝对 unix 时刻(UTC 周五 23:00)。入参是**该周的锚点**(周一 00:00)。
+## ★为什么要这个而不是复用 `close_left_sec`: 那个问的是"从现在还剩几秒"，
+##   收盘之后它就变成负数、而且在周日会返回 -1(决赛日没有收盘概念) ——
+##   拿它判"收盘过了没有"会在周六周日给出错的答案。这里要的是**一个固定的时间点**。
+static func ranked_close_ts(week_anchor: int) -> int:
+	return week_anchor + (RANKED_CLOSE_WD - 1) * 86400 + WEEK_CLOSE_HOUR_UTC * 3600
+
 ## 距本阶段收盘还有几秒(UTC)。没有收盘概念的阶段返回 -1。
 ## 积分赛在**周五** 23:00 收盘、闯关赛在**周六** 23:00 —— 所以要先算"还有几天到收盘日"。
 static func close_left_sec(ts: int) -> int:
 	var ph := phase_at_utc(ts)
 	var close_wd := 0
 	if ph == PHASE_RANKED:
-		close_wd = 5        # 周五
+		close_wd = RANKED_CLOSE_WD
 	elif ph == PHASE_GAUNTLET:
-		close_wd = 6        # 周六
+		close_wd = GAUNTLET_CLOSE_WD
 	else:
 		return -1           # 周一休赛 / 周日决赛日没有"收盘"
 	var d: Dictionary = Time.get_datetime_dict_from_unix_time(ts)
