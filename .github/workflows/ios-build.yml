@@ -6,14 +6,23 @@
 name: iOS unsigned IPA
 
 on:
-  # 手动触发 + push main(用户2026-07-24 复要出包)。构建现已恢复 success(早前那个 Swift 链接失败
-  #   是本地误判, 实际近期 iOS run 全绿), 所以恢复 push 触发不会再刷失败邮件。
+  # ★★2026-09-20 改成【只在打 tag 时出包】, 不再每次 push main 都跑(用户点头:「对, 可以这样改」)。
+  #
+  # 为什么改 —— 是为了**仓库转 private 之后还用得起 CI**。算过的账(实测, 不是估的):
+  #   · 公开仓库: Actions 标准 runner **免费无限**(所以现在 billable 全是 0)。
+  #   · 私有仓库 Free 档: **2000 分钟/月**, 而 **macOS 的分钟按约 10× 计**
+  #     (GitHub 官方价: Linux 2-core $0.006/min vs macOS $0.062/min)。
+  #   · 本仓实测单次 push: 提交门禁(ubuntu) **18.5 分** + iOS(macOS) **3.3 分**
+  #     ⇒ 私有计费 18.5 + 3.3×10 = **约 51.5 分钟/次 push** ⇒ 2000 分钟只够 **约 38 次 push/月**。
+  #   · 把 iOS 挪到 tag 上之后, 平时 push 只花 ~18.5 分 ⇒ **约 108 次 push/月**, 才够日常用。
+  #
+  # ⚠ 代价写在明处: **平时 push 不再自动出 IPA**。要装机包就打 tag ——
+  #   本项目本来每升一次版本号就要打 tag(CLAUDE.md §2.5), 所以这两件事天然重合, 不是额外负担。
+  #   临时想出一个包又不想升版本: 用 workflow_dispatch 手动跑。
   workflow_dispatch:
   push:
-    branches: [main]
-    paths-ignore:   # 纯文档/说明改动不出包(免得每次写文档都跑 ~20min iOS 构建)
-      - 'docs/**'
-      - '**.md'
+    tags:
+      - 'v*'
 
 permissions:
   contents: write   # 失败时把构建日志推到ci-logs分支(本地无token读不了Actions日志API·git拉分支即可看)
