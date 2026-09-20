@@ -13,6 +13,8 @@ const SHOP_LABEL := "商店"
 
 ## A5: 配额上限从常量取, 不写死 —— 写死就是把参数抄两份。
 const _P2C := preload("res://scripts/gamedata/phase2_config.gd")
+## D-1: 服务状态三态(没配 / 正常 / 维护中 / 连不上)。维护态要盖掉赛程显示, 见 `_week_close_block`。
+const _SB := preload("res://scripts/net/supabase.gd")
 
 const W := 1280
 const H := 720
@@ -92,6 +94,17 @@ func _ready() -> void:
 	_title()
 	_right_column()
 	_week_strip()               # 左右两栏之间那条空档 → 本周赛程条
+	## ★D-1: 去问一次服务状态(没配后端时这一句什么都不做, 连节点都不建)。
+	##   答复是异步回来的 ⇒ 配一个**挂在自己身上的 Timer 子节点**轮询状态变没变,
+	##   变了就重建赛程条。★不能用 `get_tree().create_timer` 接闭包 ——
+	##   那种计时器活过场景释放, 响的时候去绑已释放的捕获就报错
+	##   (`tools/tree_timer_audit.py` 守这条, 它推荐的修法就是 Timer 子节点)。
+	_SB.fetch_status_async()
+	var sb_t := Timer.new()
+	sb_t.wait_time = 1.0
+	sb_t.autostart = true
+	sb_t.timeout.connect(_sb_poll)     # 方法引用, 不是闭包
+	add_child(sb_t)
 	page_box = Control.new()
 	content_root.add_child(page_box)
 	_build_page_buttons()
@@ -756,9 +769,27 @@ func _tile_press(holder: Control, cb: Callable) -> void:
 ##   门禁 verify_week_season ⑥ 焊死了这条: 判定层源码里不许出现本地时间 API。
 const _WD_CN := ["一", "二", "三", "四", "五", "六", "日"]
 
+## 赛程条的外框。★留引用是为了服务状态变化时能把它换掉(见 `_sb_poll`)。
+var _week_box: Control = null
+## 建这条赛程条时的服务状态。★存下来才知道"变没变" —— 只看当前值没法判断要不要重建。
+var _sb_state_shown: String = ""
+
+
+## D-1: 服务状态变了就重建赛程条(维护态要盖掉收盘倒计时)。
+## ★判据是**状态变了**而不是"每秒都重建" —— 后者会让主菜单每秒扔一堆节点。
+func _sb_poll() -> void:
+	var s: String = _SB.service_state()
+	if s == _sb_state_shown:
+		return
+	if is_instance_valid(_week_box):
+		_week_box.queue_free()
+	_week_strip()
+
+
 func _week_strip() -> void:
 	var now := int(Time.get_unix_time_from_system())     # ★UTC 纪元秒, 与本地时区无关
 	var today: int = _P2C.iso_weekday_utc(now)
+	_sb_state_shown = _SB.service_state()
 	var box := PanelContainer.new()
 	box.position = Vector2(STRIP_X, STRIP_Y)
 	box.custom_minimum_size = Vector2(STRIP_W, STRIP_H)
@@ -776,6 +807,7 @@ func _week_strip() -> void:
 	sb.content_margin_top = 7; sb.content_margin_bottom = 7
 	box.add_theme_stylebox_override("panel", sb)
 	content_root.add_child(box)
+	_week_box = box          # D-1: 服务状态变了要能把它换掉
 	var h := HBoxContainer.new(); h.add_theme_constant_override("separation", 6)
 	box.add_child(h)
 	for wd in range(1, 8):
@@ -840,6 +872,17 @@ func _week_close_block(now: int) -> Control:
 	var left: int = _P2C.close_left_sec(now)
 	var head := ""
 	var sub := ""
+	## ★★D-1(2026-09-20): 后端**主动说自己在维护**时, 这一块盖掉赛程显示。
+	##   方案书 U7/§4.7 拍板「版本维护期放在周一休赛, 停服 → 发版本 → 开服」,
+	##   而在此之前玩家只会看到「连不上」⇒ 以为游戏坏了。
+	##   ⚠ 只有 **MAINTENANCE** 这一态才盖: 「没配后端」(当前状态)与「连不上」都不盖 ——
+	##     没配是有意关掉, 连不上是网络问题, 两者都不该在主菜单上喊话
+	##     (网络层第一原则: 永远不能把游戏搞坏; 这里也不能把没事说成有事)。
+	if _SB.service_state() == _SB.ST_MAINTENANCE:
+		head = "维护中"
+		var n := _SB.notice_text()
+		sub = n if n != "" else "版本维护, 稍后回来"
+		return _close_block_labels(head, sub)
 	if left < 0:
 		if ph == _P2C.PHASE_FINALS:
 			head = "决赛日"
@@ -853,6 +896,12 @@ func _week_close_block(now: int) -> Control:
 	else:
 		head = "距收盘 %s" % _left_text(left)
 		sub = "本地 %s" % _local_stamp(now + left)
+	return _close_block_labels(head, sub)
+
+
+## 收盘块的两行标签。★抽出来是因为上面维护态那条要提前 return, 而**两条路必须长得一样** ——
+##   就地再写一份 Label 就是「手抄的副本必然落后」(本项目记过)。
+func _close_block_labels(head: String, sub: String) -> Control:
 	var v := VBoxContainer.new(); v.add_theme_constant_override("separation", 0)
 	var a := Label.new(); a.text = head
 	a.add_theme_font_size_override("font_size", 16)

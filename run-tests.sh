@@ -329,7 +329,12 @@ run_one () {  # $1 = 测试名
   #   ★做法: Windows 上 Godot 的 `user://` 解析到 `%APPDATA%`, 换掉它就完全隔离。
   #     实测: 测试全绿 / 只在隔离目录生成文件 / 真存档逐字节没动。
   #     **这同时堵死了"测试污染真存档"的反向路径。**
-  TURTLE_BACKEND=" " APPDATA="$GATE_APPDATA" "$GODOT" --headless --path "$DIR" "res://tests/$t.tscn" \
+  # ★★`TURTLE_SUPABASE=" "` 与上面那条同理(2026-09-20 加): D 阶段接了真 Supabase 之后,
+  #   `project.godot` 里填着真地址 ⇒ 任何调 `SupabaseNet.fetch_status_async()` 的测试都会
+  #   **真的打一次网络**。300 个测试各打一次既慢又不确定, 还会把别人的服务端当压测靶子。
+  #   空白串 = 整层停用(`SupabaseNet.enabled()` 判 URL 与 key 都非空)。
+  #   ★专门验这一层的门禁自己 `OS.set_environment` 打开它, 所以"配了就能用"那条照样验得到。
+  TURTLE_BACKEND=" " TURTLE_SUPABASE=" " APPDATA="$GATE_APPDATA" "$GODOT" --headless --path "$DIR" "res://tests/$t.tscn" \
       --quit-after "$(frames_for "$t")" > "$RAW/$t.log" 2>&1
   echo $? > "$RAW/$t.rc"
 }
