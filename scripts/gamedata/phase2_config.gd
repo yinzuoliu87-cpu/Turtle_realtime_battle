@@ -11,7 +11,16 @@ extends RefCounted
 # ─── 经济: 单一深海币, 每局重置 (沿用现有 GameState.battle_coins 容器) ───
 
 # ─── V2 赛季 (阶段4) ─────────────────────────────────────────
-const SEASON_DURATION_SEC := 432000   # 赛季时长 = 5 天 (设计§一; 占位, 调试可快进)
+## ★★2026-09-20 删掉了 `SEASON_DURATION_SEC := 432000`(5 天)。
+##   它和下面整套周赛制**在同一份代码里互相打架**, 而两边各自都"对":
+##     · 赛季靠它滚 —— `ensure_season()` 拿「距上次开赛满 5 天」判过期;
+##     · 阶段靠星期几判 —— `phase_at_utc()` 周一休赛/周二~周五积分赛/周六闯关/周日决赛。
+##   5 天与 7 天**永远不同步**: 第一轮周一开, 第二轮就从周六开、第三轮周四开……
+##   于是「本赛季第几天」跟「今天星期几」越走越开, 而**积分赛配额 `ranked_used`
+##   只在 `start_new_season()` 里清零** ⇒ 配额跟着 5 天滚、赛程跟着 7 天滚,
+##   玩家会在周三被清配额、或者整整一周只领到一次配额。
+##   ⇒ 赛季时长不再是一个"常量", 而是**自然周本身**(见 `week_anchor_utc`)。
+##   钉住它的门禁: `tests/verify_week_roll.gd`。
 
 # ─── 大轮赛制 v2 · 周赛制 (A 阶段, 2026-09-17) ───────────────────
 ## 方案书 docs/plans/20260916-大轮赛制v2周赛制.md + 20260916b-A阶段离线周赛骨架.md。
@@ -81,6 +90,17 @@ static func iso_weekday_utc(ts: int) -> int:
 	var d: Dictionary = Time.get_datetime_dict_from_unix_time(ts)
 	var w: int = int(d.get("weekday", 0))     # 0=Sunday
 	return 7 if w == 0 else w
+
+## unix 秒 → 它所在**自然周的锚点**(该周 UTC 周一 00:00:00 的 unix 秒)。
+## ★★这是「一大轮」的定义本身 —— 赛季不再按"开赛后满 N 秒"滚, 而是
+##   **锚点一变就是新的一周**。好处是它与 `phase_at_utc()` 的星期几判定天生同步:
+##   同一个 `Time.get_unix_time_from_system()` 算出来的锚点和星期几不可能对不上。
+## ★一周整 7×86400 秒 —— UTC 没有夏令时(E2 拍板时区写死 UTC 的另一个红利:
+##   跟着英国时间走的话, 3 月底那一周只有 6×24+23 小时, 这个函数就得处理特例)。
+static func week_anchor_utc(ts: int) -> int:
+	var d: Dictionary = Time.get_datetime_dict_from_unix_time(ts)
+	var secs_today: int = int(d.get("hour", 0)) * 3600 + int(d.get("minute", 0)) * 60 + int(d.get("second", 0))
+	return ts - secs_today - (iso_weekday_utc(ts) - 1) * 86400
 
 ## 这一刻属于哪个阶段(UTC)。
 ## ⚠ 只看星期几, **不看收盘时刻** —— 收盘那一刻之后到午夜之间算不算下一阶段,

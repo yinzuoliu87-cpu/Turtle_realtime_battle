@@ -182,7 +182,7 @@ func _sk_dice_allin(u: Dictionary) -> void:                      # 骰子龟·�
 func _sk_dice_flash_strike(u: Dictionary) -> void:   # 稳定骰子(刀妹Irelia Q·破空斩式·用户2026-07-13): 掷 7~11 段, 每段真冲刺穿到随机敌+挥剑斩·递减10%
 	# 用户2026-07-28: 4+d6(5~10段) → 7~11段。直接掷段数而不是"6+d5" —— 后者会让飘字显示 1~5 点,
 	# 与"骰子"的六面设定矛盾; 现在飘字直接报段数, 不再假装是点数。
-	var count: int = randi_range(FLASH_SEG_MIN, FLASH_SEG_MAX)
+	var count: int = battle._battle_rng.randi_range(FLASH_SEG_MIN, FLASH_SEG_MAX)   # B 阶段: 掷几段=打几下, 对局结果走受控 PRNG
 	battle._vfx._float_text(u["pos"] + Vector2(0, -64), "稳定骰子! %d刺" % count, Color("#ffd93d"))
 	var t0 = _dice_pick_strike_target(u)
 	if t0 == null: return
@@ -195,7 +195,7 @@ func _sk_dice_fate(u: Dictionary) -> void:
 	if u.get("crit_fate_until", 0.0) > battle._t:           # 撤销未到期旧增益, 防叠加
 		u["crit"] -= u.get("crit_fate_amt", 0.0)
 		u["crit_dmg"] -= u.get("crit_dmg_fate_amt", 0.0)
-	var roll: float = randf_range(FATE_CRIT_MIN, FATE_CRIT_MAX)
+	var roll: float = battle._battle_rng.randf_range(FATE_CRIT_MIN, FATE_CRIT_MAX)   # B 阶段: 命运暴击的点数是对局结果(方案书 20260916c §2.3 点名的那一处)
 	var over: float = maxf(0.0, (u["crit"] + roll) - 1.0)   # 暴击封顶100%, 超出转暴伤
 	var add_crit: float = roll - over
 	var add_cd: float = over * 1.5

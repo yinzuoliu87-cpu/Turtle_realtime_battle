@@ -1303,6 +1303,22 @@ func _on_start() -> void:
 		_lockout_toast()
 		return
 
+	## ★★把【这一局是在哪个阶段开打的】钉进存档(2026-09-20)。
+	##   `week_phase` 从 A2 起就是**三处读、零处写**的字段 ——
+	##     · `battle_hud.gd` 结算屏的「本周场次 N/配额」只在 `=="ranked"` 时显示
+	##     · `RealtimeBattle3DScene._settle_season` 拿它决定这一局吃不吃积分赛配额
+	##     · `GameState.ranked_quota_full()` 拿它决定闯关/决赛日要不要放行
+	##   而**没有任何代码写过它** ⇒ 永远读到 "", 三处一律走「按积分赛算」的兜底分支,
+	##   于是「闯关赛/决赛日的场次不吃配额」这条设计在真实游戏里从来没生效过。
+	##   （门禁看不见: 那几条判据都是测试自己先喂一个 `week_phase` 再去测它。
+	##     同族 memory `fb-read-a-field-nobody-writes`。）
+	## ★为什么写在**开打这一刻**、而不是结算时现查 `phase_at_utc(now)`:
+	##   一局 22:55 开打、23:02 结算的比赛, 现查会把它算进下一个阶段 ——
+	##   而它明明是在收盘前开的。**阶段属于开局那一刻**, 与上面 E3 的封盘闸是同一个时刻,
+	##   所以两件事贴在一起写。(也正因为这样, 这个字段不是 `phase_at_utc()` 的冗余副本。)
+	GameState.week_phase = _P2C.phase_at_utc(_now)
+	GameState.save()
+
 	# 实时版: 选龟只定【我方】3 统领 + 技能 loadout. 对手由下一步「匹配」(Matchmaking) 抽 ghost/bot,
 	#   战斗端 RealtimeBattle3DScene 读 season_leaders(左队) + dual_ghost.leaders(右队). 这里不再现场抽对手,
 	#   也不走回合制的规则之日/DualLaneMap/Battle.

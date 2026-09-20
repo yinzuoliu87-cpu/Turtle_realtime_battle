@@ -281,6 +281,36 @@ const LAMP_AT := [Vector2(0.22, 0.30), Vector2(0.78, 0.30), Vector2(0.50, 0.78)]
 const LAMP_TEX := "res://assets/sprites/map/brazier.png"
 const LAMP_H_M := 1.28          # 火盆世界高(米)。按 ~50 texels/m 口径: 64 texel ÷ 50 = 1.28
 
+## ═══ 地面碎料层（2026-09-20）═══════════════════════════════════════
+## ★★为什么有它：`docs/design/20260920-场内道具规格调研.md` 实测 ——
+##   参考里 Brotato_3 的地面碎料 **296 件/Mpx@1080p**、覆盖 **2.20%**、中位高 **0.12×角色高**，
+##   而本项目 **0 件**（结构性：`_build_tilemap_decor` 的装饰带全在 ARENA 外扩 200px 上）。
+## ★同类型游戏（TFT / Underlords / Brotato）**盘内立体道具都是 0 件** ——
+##   它们靠「盘外岸边 + 满地小碎料」撑画面。本项目属于这一类，
+##   **不该照 Hades 往盘内堆桶和瓮**（那会挡走位、也不是同构参考的做法）。
+## ⇒ 盘内只铺**碎料**：贴地、极矮、无碰撞、不挡视线。
+##
+## ★走 MultiMesh 不是 N 个 Sprite3D：280 个独立节点每帧都要被引擎遍历，
+##   而它们是**完全静态**的 —— 一次性烘进一个 MultiMesh，引擎按一次 draw call 画完。
+const DETRITUS := [
+	"res://assets/sprites/map/deco_rubble.png",
+	"res://assets/sprites/map/deco_grasstuft.png",
+]
+## ★★**这两个数是实拍反解出来的, 而且量坐标换过一次**。
+##   第一版按「参考 296 件/Mpx × 本场地 Mpx」算出 280 件/0.34m。
+## ★★然后我拿**活战斗的两张实拍做差分**去量, 得出「723 件/Mpx·覆盖 7.16%」说超了2.4倍,
+##   回头调小两版——**全是错的**。拿已知答案标定才发现:
+##   **N=0(零碎料)量出 391 件/4.31%**, 比 N=290 还多 ——
+##   战斗是活的, 单位在动、飘字在跳, 差分量的是**战斗位移**不是碎料。
+##   ⇒ 换成 `MAPEDIT=1` 的**静态场**(不生成单位)量, 两张只差碎料。
+## 静态场真值(N=0 为基准):
+##   290 件/0.185m ⇒  56 件/Mpx · 覆盖 0.12%   ← **其实铺得太少**(与活战斗量的结论相反)
+##   1540 件/0.34m  ⇒ 574 件/Mpx · 覆盖 2.97%
+##   **820 件/0.38m  ⇒ 349 件/Mpx · 覆盖 2.05%**  ← 取这档(参考 296 / 2.20%)
+const DETRITUS_N := 820
+const DETRITUS_SIZE_M := 0.38
+const DETRITUS_SEED := 20260920
+
 ## ★★★这个常量已经连着【三轮】需要重标定, 记一笔: 1.55(v0.19.405) → 1.70(水面重做) → 2.05(灯光重做)。
 ##   每次都是因为"地面变亮了、墙没跟着变" —— 根因是**墙卡是 UNSHADED 而地面吃光**,
 ##   两者之间只靠这一个手工标定的数连着。⇒ **它是脆的**, 已登记成方案书 20260918b 的 W8。
@@ -481,6 +511,84 @@ func build_field_lamps() -> Array:
 			s.position = battle._world_pos(px, LAMP_H_M * 0.5)
 			root.add_child(s)
 			made.append(s)
+	return made
+
+
+## 地面碎料层。返回建出来的节点。
+## ★★位置规则（实测出来的，不是拍的）：
+##   本项目中心半区只有 **5%** 有东西（1 件，还是碰撞礁石），参考是 **15%**，
+##   而**纯装饰在内圈 0 件**。碎料正好补这一块 —— 它贴地、不挡走位。
+## ★不落在水里：只铺在非 void 且非 water 的格子上（地图 `types` 里 water=1）。
+func build_detritus(grid: Array, w: int, h: int, tile: float, ox: float, oy: float) -> Array:
+	var made: Array = []
+	var texes: Array = []
+	for path in DETRITUS:
+		if ResourceLoader.exists(path):
+			texes.append(load(path))
+	## ★分母：贴图一张都没有就别画，也别静默兜底 —— 兜底会让"素材没导入"看起来像"设计如此"。
+	if texes.is_empty():
+		push_warning("[detritus] 碎料贴图一张都没有 —— 不铺(不做静默兜底)")
+		return made
+
+	var root := Node3D.new()
+	root.name = "Detritus"
+	battle._world.add_child(root)
+	made.append(root)
+
+	var rng := RandomNumberGenerator.new()
+	rng.seed = DETRITUS_SEED          # ★固定种子: 同一张图每次开局碎料位置一致(确定性)
+	## 可落点 = 非 void(4) 且 非 water(1) 的格子
+	var cells: Array = []
+	for r in range(h):
+		var row: Array = grid[r]
+		for c in range(w):
+			if c >= row.size():
+				continue
+			var ti := int(row[c])
+			if ti == 4 or ti == 1:
+				continue
+			cells.append(Vector2i(c, r))
+	if cells.is_empty():
+		push_warning("[detritus] 一个可落点都没有 —— 不铺")
+		return made
+
+	## 每种贴图一个 MultiMesh
+	var per: int = int(ceil(float(DETRITUS_N) / float(texes.size())))
+	for tex in texes:
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		var q := QuadMesh.new()
+		q.size = Vector2(DETRITUS_SIZE_M, DETRITUS_SIZE_M)
+		## ★贴地: QuadMesh 默认立在 XY 面, 掰平成 XZ。
+		##   ⚠ 这里**不能**照抄 `axis = AXIS_Y` 那套 —— 那是 Sprite3D 的属性,
+		##     QuadMesh 得靠实例 transform 转。(本项目记过「AXIS_Y 加 -90 旋转会抵消」。)
+		mm.mesh = q
+		mm.instance_count = per
+		var placed := 0
+		for k in range(per):
+			var cell: Vector2i = cells[rng.randi_range(0, cells.size() - 1)]
+			var px := ox + (float(cell.x) + rng.randf()) * tile
+			var py := oy + (float(cell.y) + rng.randf()) * tile
+			var b := Basis()
+			b = b.rotated(Vector3(1, 0, 0), -PI * 0.5)                  # 掰平贴地
+			b = b.rotated(Vector3(0, 1, 0), rng.randf() * TAU)          # 随机朝向, 免得一眼看出是同一张图
+			var s: float = rng.randf_range(0.72, 1.25)                  # 大小抖动
+			mm.set_instance_transform(k, Transform3D(b.scaled(Vector3(s, s, s)),
+				battle._world_pos(Vector2(px, py), 0.055)))             # 略高于砖顶(TILE 顶面 y≈0.05)
+			placed += 1
+		var mi := MultiMeshInstance3D.new()
+		mi.multimesh = mm
+		var m := StandardMaterial3D.new()
+		m.albedo_texture = tex
+		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST        # 像素画不许插值成糊
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR      # 硬边像素画: 裁剪不混合
+		m.alpha_scissor_threshold = 0.5
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL          # 吃光, 跟地面一起亮/暗
+		m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		mi.material_override = m
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		root.add_child(mi)
+		made.append(mi)
 	return made
 
 

@@ -804,6 +804,13 @@ var _cast_tok: int = 0                          # 单调计数·多段技命中�
 const SIM_DT := 1.0 / 60.0                       # 固定 sim 步长(交互累加器 + 确定性模式共用·≈60fps手感)
 var _sim_step_n: int = 0                         # sim 步号(每步 +1)。★「同一刻」类判定按它去重, 不按引擎帧号 —— 30fps 一帧跑两步 sim
 var _deterministic := false                      # ★Phase2b: TURTLE_SEED 设时=true → det模式每帧恰1个SIM_DT步(同种子同帧序→可复现回放/验证)
+## ★B 阶段(确定性): 这一【引擎帧】里 sim 推进了多少秒 = 本帧跑的 sim 步数 × SIM_DT。
+##   协程(await process_frame)里推位移/计时一律读它, **不要读 `get_process_delta_time()`** ——
+##   后者是未钳制的真实帧 delta(CLAUDE.md §3.5), 拿它推进会让结算落在随机的 sim 步上:
+##   探针实测忍者冲刺(ninja_system.gd:131)同种子两遍, x 落点 638.98 vs 639.01, 之后整局分叉。
+##   det 模式恒等于 SIM_DT; 交互模式随本帧步数 0/1/2… 变化, 但**总量 = Σ钳制delta**(速度不变)。
+##   ⚠ 它永不为"战斗结束就冻住": `_sim_step` 照跑 ⇒ 靠它推进的协程不会卡死(拿 `_t` 差值做会卡)。
+var _frame_sim_dt: float = 0.0
 var _sim_accum: float = 0.0                      # ★Phase4切片2: 交互游玩累加器·攒够 SIM_DT 就跑一步 sim(固定步长→帧率无关);余量给切片2b渲染插值
 var _render_alpha: float = 0.0                    # ★Phase4切片2b: 渲染插值分数 = _sim_accum/SIM_DT [0,1)。立绘在【上一步 pos↔当前 pos】间 lerp → 消固定步长在高帧率下的卡顿
 
@@ -1021,6 +1028,11 @@ func _tilemap_from_data(meta: Dictionary, grid: Array, height: Array) -> void:  
 		#   见 `docs/design/20260920-场内道具规格调研.md` §⑤ 与 `build_field_lamps` 的长注。
 		#   ★同样挂进 `_tile_nodes`: MAPEDIT 刷格重调本函数时跟地砖一起释放，不会越堆越多。
 		for n in _world_builder.build_field_lamps():
+			_tile_nodes.append(n)
+		# ★地面碎料层(2026-09-20): 本项目盘内碎料 **0 件**, 参考 Brotato_3 是 **296 件/Mpx**。
+		#   同类型游戏(TFT/Underlords/Brotato)盘内**立体道具都是 0 件**,
+		#   靠的就是「盘外岸边 + 满地小碎料」—— 我们属于这一类。
+		for n in _world_builder.build_detritus(grid, w, h, tile, ox, oy):
 			_tile_nodes.append(n)
 
 # ═══ 局内地图刷子编辑器 (MAPEDIT=1 开 · 开发工具不进正式对局 · 纯视觉不改玩法) ═══
@@ -2144,6 +2156,7 @@ func _process(delta: float) -> void:
 		var frozen: bool = _hitstop > 0.0
 		var in_ts: bool = not _timestop._ts_active.is_empty()
 		_sim_step(SIM_DT, frozen, in_ts)
+		_frame_sim_dt = SIM_DT   # B 阶段: det 模式恒 1 步/帧
 		_render_alpha = 0.0   # det/headless: 无渲染·不插值
 	else:
 		_advance_sim_accum(rd)   # ★切片2: 交互累加器抽成可测种子(verify_interactive_determinism 直接驱动·证帧率无关)
@@ -2166,11 +2179,17 @@ func _advance_sim_accum(rd: float) -> void:
 		_sim_step(SIM_DT, frozen, in_ts)
 		_sim_accum -= SIM_DT
 		steps += 1
+	_frame_sim_dt = float(steps) * SIM_DT   # B 阶段: 本帧 sim 推进量(协程用它代替 get_process_delta_time)
 	_render_alpha = _sim_accum / SIM_DT   # 余量分数 [0,1) → 立绘在 prev↔当前 间 lerp(高帧率零步/帧时 alpha 渐长→平滑推进)
 
 ## Phase4: 纯模拟推进(决定战斗结果·可被累加器按固定步长跑 N 次/帧)。frozen/in_ts 由调用方在 sim 前捕获传入。
 func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 	_sim_step_n += 1
+	## ★B 阶段: 这里也要发布一次 —— 调试台/门禁有**直接调 `_sim_step()` 推 sim** 的(不经 `_process`),
+	##   只在 `_process` 里发布的话它们那条路上 `_frame_sim_dt` 恒为 0 ⇒ 靠它推进的协程永远不动。
+	##   实测代价: `verify_doll_bear_034` 走到第 22 条就卡住不再往下(没打 ALL PASS, rc=0/致命 0,
+	##   看着像断言失败, 其实是协程被冻住)。`_advance_sim_accum` 末尾会再覆盖成【本帧总量】。
+	_frame_sim_dt = dt
 	_adf_ct = 0   # 每帧(每步)重置伤害调用计数(_damage._apply_damage_from 帧内爆炸=死亡链无限级联→自身截断防卡死)
 	_cur_eq_item = ""   # ★每帧重置"当前装备效果来源"(同 _adf_ct 的模式) —— 不清会让下一帧
 						#   非装备来源的护盾/治疗被误判成"盾装备给的"而白拿 20% 圣光护盾
@@ -2266,6 +2285,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 			_gold_vfx.tick(dt)                       # 金弹演出自推进(不用 tween, §3.5)
 			_incense_vfx.tick(dt)                    # 093 香火石演出自推进(同上)
 			_check_end()
+	_step_sim_tweens(dt)   # B 阶段: det 模式把演出 tween 从真实帧 delta 搬到 sim 固定步长(见函数头注)
 
 ## Phase4: 纯演出(立绘帧动画/相机/overlay·每帧一次)。frozen/in_ts 与 _sim_step 用同一份(sim前捕获)。
 const _TS_TIMER_FIELDS := [
@@ -2315,9 +2335,32 @@ const _TS_TIMER_FIELDS := [
 	"volcano_until",
 ]
 
+## ═══ B 阶段(战斗确定性): det 模式下演出 tween 改吃【sim 固定步长】而不是真实帧 delta ═══
+## 根因是探针打出来的, 不是推的(同种子 3v3 跑两遍, 逐步指纹):
+##   海盗登场轰击的伤害挂在 `_pirate_cannonball` 的 `tween_callback` 末尾(pirate_system.gd:208
+##   → battle_spawn.gd:658), 而 tween 由 SceneTree 按【未钳制真实 delta】推进 ⇒
+##   同一发炮弹 A 跑落在 sim 步 93、B 跑落在 92, 之后整局分叉(600 步里 376 步指纹不同)。
+##   同族站点全仓 48 处(方案书 20260916c 附录 B), 逐个搬是一整轮的工作量;
+##   这里收口的是它们【共同的时钟来源】—— 一处改, 整类闭。
+## ⚠ 只在 `_deterministic` 为真时生效: 交互游玩仍走真实 delta, 演出平滑度与手感一字不动(B-R2 零风险)。
+##   代价写在明处: 玩家【实际打的那一局】仍不是逐字节可复现的, 可复现的是 det 模式下的重算/重放
+##   —— 那正是 D7 第二步(服务端复算)要的口径。
+## ★时停期间不喂: 非 det 模式下 `_ts_begin_freeze` 会把在跑的 tween 全 `pause()`,
+##   det 模式下它们本来就是 paused, 那条收不到 ⇒ 在这里对齐(时停里整体不推进)。
+func _step_sim_tweens(dt: float) -> void:
+	if not _deterministic:
+		return
+	if not _timestop._ts_active.is_empty():
+		return
+	for tw in _sim_tweens.duplicate():   # duplicate: 回调里可能再建 tween 并 append, 边遍历边改会漏/错
+		if tw != null and tw.is_valid():
+			tw.custom_step(dt)
+
 # VFX tween 注册(时停暂停非active产生的用). 见 create_tween→_reg_tween 替换.
 func _reg_tween() -> Tween:
 	var t := create_tween()
+	if _deterministic:
+		t.pause()   # B 阶段: det 模式不让 SceneTree 按真实 delta 推它, 改由 _step_sim_tweens 按 sim 步喂
 	_sim_tweens.append(t)
 	if _sim_tweens.size() > 512:
 		_sim_tweens = _sim_tweens.filter(func(x): return x != null and x.is_valid())
@@ -3812,7 +3855,7 @@ func _bear_shockwave(u: Dictionary, tgt: Dictionary, _si: int) -> void:   # 大�
 	var rt := 0.0
 	while rt < 0.4 and u.get("alive", false):
 		await get_tree().process_frame
-		rt += get_process_delta_time()
+		rt += _frame_sim_dt
 		var a: float = rt / 0.4
 		u["_bear_voff"] = Vector3(0.0, a * a * 0.95, 0.0)   # 起身: 直上举高(无横移=不左右滑)
 	if not u.get("alive", false):
@@ -3821,7 +3864,7 @@ func _bear_shockwave(u: Dictionary, tgt: Dictionary, _si: int) -> void:   # 大�
 	var st := 0.0
 	while st < 0.12 and u.get("alive", false):
 		await get_tree().process_frame
-		st += get_process_delta_time()
+		st += _frame_sim_dt
 		u["_bear_voff"] = Vector3(0.0, lerpf(0.95, -0.22, st / 0.12), 0.0)   # 猛砸下: 直下(无横移)
 	# === 砸地瞬间: 落地压扁 + 大震屏 + 顿帧 + 尘, 冲击波起 ===
 	## ★这里**没有** `_skill_ring` 了 —— 原来那个又大又细的黄色椭圆环挂几秒不散,
@@ -4107,7 +4150,7 @@ func _barrage_bolt(u: Dictionary, cloud_h: float) -> void:   # 雷暴单道(用�
 	var es := _targeting._pick_enemies_of(u)
 	if es.is_empty():
 		return
-	var e = es[_juice_rng.randi() % es.size()]
+	var e = es[_battle_rng.randi() % es.size()]   # B 阶段: 挑【谁挨这道雷】是对局逻辑, 必须走受控 PRNG
 	if not e.get("alive", false):
 		return
 	_barrage_strike(e["pos"])   # 闪电龟自有lightning-0落雷(非被动的common-lightning-strike)
@@ -4215,7 +4258,7 @@ func _summon_walking_bear(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   #
 	var wt := 0.0
 	while is_instance_valid(bear) and tgt != null and tgt.get("alive", false):
 		await get_tree().process_frame
-		var dt := get_process_delta_time()
+		var dt := _frame_sim_dt
 		guard += dt; wt += dt
 		bear.frame = int(wt * 10.0) % 7             # 走路循环 10fps
 		bear.flip_h = float(tgt["pos"].x) > pos.x   # 面向目标(默认朝左→敌在右则flip朝右)
@@ -4237,7 +4280,7 @@ func _summon_walking_bear(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   #
 		var hit := false
 		while kt < 0.34 and is_instance_valid(bear):
 			await get_tree().process_frame
-			kt += get_process_delta_time()
+			kt += _frame_sim_dt
 			bear.frame = mini(4, int(kt / 0.06))
 			if not hit and bear.frame >= 3:
 				hit = true
@@ -5539,7 +5582,7 @@ func _sk_basic_chiwave(u: Dictionary, tgt) -> void:            # 小龟·龟派�
 		var _del: float = 0.0
 		while _del < _ddur and u.get("alive", false) and is_inside_tree():
 			await get_tree().process_frame
-			_del += get_process_delta_time()
+			_del += _frame_sim_dt
 			u["pos"] = _ds.lerp(_bp, clampf(_del / _ddur, 0.0, 1.0))
 		u["pos"] = _bp
 		u["no_move"] = false; u["no_basic"] = false
@@ -5676,7 +5719,7 @@ func _basic_slam_run(u: Dictionary, tgt: Dictionary, dir: Vector2, u_start: Vect
 	var p := 0.0
 	while el < total and u.get("alive", false) and tgt.get("alive", false) and is_inside_tree():
 		await get_tree().process_frame
-		el += get_process_delta_time()
+		el += _frame_sim_dt
 		if el < T_GRAB:                                     # ① 擒住: 敌拉到龟身前
 			p = el / T_GRAB
 			tgt["pos"] = e_start.lerp(u_start, p)
@@ -6311,7 +6354,7 @@ func _sk_dmg_wave(u: Dictionary, opts: Dictionary, vh: int, col: Color, random_a
 		var es := _targeting._pick_enemies_of(u)
 		if es.is_empty():
 			return
-		ws = [es[_juice_rng.randi() % es.size()]]
+		ws = [es[_battle_rng.randi() % es.size()]]   # B 阶段: random_aoe 挑【谁挨这一段】是对局逻辑
 	else:
 		ws = fixed
 	var phys: float = float(opts.get("phys", 0.0))
@@ -6857,7 +6900,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 	if u["id"] == "fortune":
 		u["_goldtimer"] = u.get("_goldtimer", 0.0) + delta
 		if u["_goldtimer"] >= FortuneSystem.COIN_IV:
-			u["_goldtimer"] = 0.0; u["gold"] += _juice_rng.randi_range(FortuneSystem.COIN_MIN, FortuneSystem.COIN_MAX)
+			u["_goldtimer"] = 0.0; u["gold"] += _battle_rng.randi_range(FortuneSystem.COIN_MIN, FortuneSystem.COIN_MAX)   # B 阶段: 出多少金币是对局结果
 			for _gk in range(2):   # 聚宝盆冒金币: 脚下叮当迸2金块(设计"每隔几秒叮当冒金币")
 				_gold_chunk_erupt(u["pos"] + Vector2(randf_range(-24.0, 24.0), randf_range(6.0, 18.0)))
 	# --- 线条墨迹(用户2026-07-28): 自身实时获得 =(0.5×攻击力)% 攻速 ---
@@ -7010,7 +7053,9 @@ func _tick_cyber_drones(u: Dictionary, delta: float) -> void:   # 浮游炮纯�
 		s.position = _world_pos(u["pos"], 1.5)
 		_world.add_child(s)
 		var ft := _reg_tween(); ft.tween_property(s, "modulate:a", 1.0, 0.3)
-		arr.append({"spr": s, "fire_t": CyberSystem.DRONE_FIRE_SEC * randf(), "ph": randf() * TAU})
+		## ★B 阶段: `fire_t` 决定这门炮【第一发在哪一步打出去】= 对局结果 ⇒ 走 _battle_rng;
+		##   `ph`(环绕相位)是纯演出, 留在原处不动。
+		arr.append({"spr": s, "fire_t": CyberSystem.DRONE_FIRE_SEC * _battle_rng.randf(), "ph": randf() * TAU})
 	while arr.size() > want:
 		var od: Dictionary = arr.pop_back()
 		if is_instance_valid(od.get("spr")): (od["spr"] as Sprite3D).queue_free()
@@ -7031,10 +7076,10 @@ func _tick_cyber_drones(u: Dictionary, delta: float) -> void:   # 浮游炮纯�
 		spr.flip_h = off.x < 0.0
 		d["fire_t"] = float(d["fire_t"]) - delta                  # 各自1.6秒射击(错峰)
 		if d["fire_t"] <= 0.0:
-			d["fire_t"] = CyberSystem.DRONE_FIRE_SEC + randf() * 0.2
+			d["fire_t"] = CyberSystem.DRONE_FIRE_SEC + _battle_rng.randf() * 0.2   # B 阶段: 开火间隔决定伤害落在哪一步
 			var es := _targeting._pick_enemies_of(u)
 			var tgt = null
-			if not es.is_empty(): tgt = es[_juice_rng.randi() % es.size()]
+			if not es.is_empty(): tgt = es[_battle_rng.randi() % es.size()]   # B 阶段: 无人机打谁是对局逻辑
 			if tgt != null and tgt.get("alive", false):
 				var mz := Sprite3D.new()                          # 攻击动作: 炮口青闪+后坐脉冲
 				mz.texture = VfxTex._make_fire_glow_tex()

@@ -128,7 +128,7 @@ func _ninja_glide(u: Dictionary, start: Vector2, endp: Vector2, dir: Vector2, ta
 	while is_instance_valid(battle) and traveled < total and u.get("alive", false) and battle.is_inside_tree():
 		await battle.get_tree().process_frame
 		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
-		traveled = minf(total, traveled + 600.0 * battle.get_process_delta_time())   # 恒速 600 码/秒
+		traveled = minf(total, traveled + 600.0 * battle._frame_sim_dt)   # 恒速 600 码/秒
 		u["pos"] = start + dir * traveled
 		if is_instance_valid(lead): lead.position = battle._world_pos(u["pos"] + dir * 60.0, 1.0)   # 拖影跟在身前
 		# ★★2026-08-07 修: 这里原来写死 `4 + (…% 4)` = 取第 4~7 帧, 落地那段写死 range(8, 11) = 第 8~10 帧,

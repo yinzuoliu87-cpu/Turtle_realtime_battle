@@ -249,6 +249,22 @@ func _ready() -> void:
 	##     但**不能说它就是那次红的原因**。堵它是因为它会让判据读错, 不是因为它已被定罪。
 	var carrier: Dictionary = _mk("fortune", "left", -200.0, 0)
 	var other: Dictionary = _mk("stone", "right", 260.0, 0)
+	## ★★2026-09-20(B 阶段·战斗确定性)——【为什么要把携带者的 active 摘掉】
+	##   时停的文案写死了「active 携带者照常施法/伤害即时结算」, 而**施法本身要掷骰**:
+	##   本用例的携带者是财神龟, 它会在下面那段测量窗口里放一次骰子(`_sk_fortune_dice`)。
+	##   那一掷【原来走的是裸全局 randi_range】—— 引擎的全局状态, 本用例根本扫不到;
+	##   B 阶段把它路由到 `_battle_rng`(受控 PRNG·可种子化) 之后才落进扫描面,
+	##   `_battle_rng.state` 当场变 ⇒ 判据红。红的不是"时停漏了什么", 是"原来有一处漏在扫描面之外"。
+	## ★不把 `_battle_rng` 塞进 ALLOW: 那是**放松判据**(以后真有"时停里偷偷掷骰"的 bug 也不会红)。
+	##   改成【让携带者在窗口内本就不该掷骰】—— `_battle_rng` 留在禁止集里, 判据保持满齿。
+	## ⚠ 代价: 本用例不再覆盖"携带者边施法边冻结"那一路。那需要"变几次 == 施法几次"的判据, 另案。
+	var _gold_ctl: float = float(carrier.get("gold", 0.0))
+	_s._fortune_sys._sk_fortune_dice(carrier)   # 控制组: 真放一次, 证明【金币涨了】确实等价于【施过法】
+	_ok("★分母⑥: 金币增量能当施法计数(控制组真放一次骰子 → +%.0f 金)"
+		% (float(carrier.get("gold", 0.0)) - _gold_ctl),
+		float(carrier.get("gold", 0.0)) > _gold_ctl,
+		"控制组放了也不涨 ⇒ 下面那条「窗口内 0 次施法」是恒真式(拿一个永远为 0 的量去断言 0)")
+	carrier["active_skills"] = []   # 从这里起, 携带者在窗口内不会再自己放技
 	## 把场上尽量摆满: 触手 / 直升机 / 一笔会衰减的余额 —— 让扫描有东西可扫
 	_s._tentacle_vfx.ensure_forced("right", 2)
 	_s._equip_sys._gun_sys._spawn_heli(other, 2, 300.0)
@@ -289,12 +305,17 @@ func _ready() -> void:
 		"跳多了 ⇒ 非携带者被改也看不见")
 	await _wait(50)   # 让入停那一下的演出自己跑完
 
+	var _gold_win: float = float(carrier.get("gold", 0.0))   # 窗口内"施法次数"的观测量(见上面 ⑥)
 	var b0: Dictionary = _snap()
 	var raw0: Dictionary = _snap_raw()
 	await _wait(120)
 	var b1: Dictionary = _snap()
 	var raw1: Dictionary = _snap_raw()
 	var dur: Array = _diff(b0, b1)
+	_ok("★分母⑦: 时停窗口内携带者【一次都没施法】(金币增量 %.0f, 须为 0)"
+		% (float(carrier.get("gold", 0.0)) - _gold_win),
+		absf(float(carrier.get("gold", 0.0)) - _gold_win) < 0.001,
+		"它要是真放了技, 掷骰会让 `_battle_rng` 动 —— 那时下面那条红的是【文案写死的合法行为】而不是 bug")
 	## ★红的时候把变了的字段前后原始值打出来 —— 指纹只说「变了」, 不说「谁、哪一笔、怎么变」。
 	##   由来(2026-09-15): `_spec._bal` 在时停期间连红 3 次, 指纹里看不出是哪个单位的哪笔余额。
 	##   ★第一版打原始字符串(截 600 字), 只看到余额条目里存着整个单位字典 —— 看不到是哪个数变了。

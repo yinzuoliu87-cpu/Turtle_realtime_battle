@@ -104,7 +104,7 @@ func _minion_rocket_fly(u: Dictionary, tref: Dictionary, from: Vector2) -> void:
 		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
 		if battle._over: break
 		if battle._hitstop > 0.0 or (not battle._timestop._ts_active.is_empty() and not battle._arr_has_unit(battle._timestop._ts_active, u)): continue   # 时停: 只冻非active单位; 携带沙漏的自己要照常落地(否则_slam永不解锁=卡空中·用户2026-07-19)   # 顿帧/时停期悬停
-		var dt: float = battle.get_process_delta_time()
+		var dt: float = battle._frame_sim_dt
 		var target_pos: Vector2 = (tref["pos"] as Vector2) if tref.get("alive", false) else pos
 		var to: Vector2 = target_pos - pos
 		var dir: Vector2 = to.normalized() if to.length() > 1.0 else lastdir
@@ -342,7 +342,7 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己�
 		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
 		if battle._over: break
 		if battle._hitstop > 0.0 or (not battle._timestop._ts_active.is_empty() and not battle._arr_has_unit(battle._timestop._ts_active, u)): continue   # 时停: 只冻非active单位; 携带沙漏的自己要照常落地(否则_slam永不解锁=卡空中·用户2026-07-19)
-		d += battle.get_process_delta_time()
+		d += battle._frame_sim_dt
 		var kk: float = clampf(d / 0.3, 0.0, 1.0)
 		if u.get("alive", false):
 			u["pos"] = from.lerp((tref["pos"] as Vector2), kk)   # 水平接近目标
@@ -373,7 +373,7 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己�
 			## 用户 2026-08-20:「途中目标免疫则中断伤害并跳回地面」
 			_minion_abort_fall(u)
 			return
-		var dt = battle.get_process_delta_time()
+		var dt = battle._frame_sim_dt
 		sd += dt
 		var _sq: float = clampf(sd / slide_dur, 0.0, 1.0)
 		_sq = 1.0 - (1.0 - _sq) * (1.0 - _sq)             # ease-out减速: 俯冲惯性大→摩擦逐渐减速停下(非匀速·用户2026-07-18)

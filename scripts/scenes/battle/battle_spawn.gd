@@ -606,7 +606,8 @@ func _apply_spawn_passives() -> void:
 func _apply_spawn_passive_one(u: Dictionary) -> void:
 	match u["id"]:
 		"rainbow":
-			u["prism_color"] = battle._juice_rng.randi() % 3   # 开局即给棱镜色(修: 原-1致前6秒普攻无附色)
+			u["prism_color"] = battle._battle_rng.randi() % 3   # 开局即给棱镜色(修: 原-1致前6秒普攻无附色)
+			## ★B 阶段: 棱镜色决定普攻附什么效果 = 对局结果, 必须走受控 PRNG(原走 _juice_rng, 而它每局 randomize)
 		"stone":
 			if "rockShockwave" in battle._chosen_skill_types(u["id"], u["side"] == "left") or (battle._review_demo() and u["id"] == battle._review_turtle()):
 				u["stone_rockbody"] = true   # 岩石之躯(实战: 选rockShockwave技2才有·打包被动); 特效验收时给受审石头强制开→单独看被动体型增长

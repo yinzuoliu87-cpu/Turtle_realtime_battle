@@ -31,6 +31,11 @@ const _P2 := preload("res://scripts/gamedata/phase2_config.gd")
 const FIELDS_INT := ["ranked_used", "season_sweeps", "backfill_paid",
 	"week_anchor_ts", "gauntlet_wins", "gauntlet_losses"]
 
+## ★②(切轮归零)要把 `week_anchor_ts` **排除**在"归零"之外 —— 见 `_t_new_season_resets` 里的长注释。
+##   ①(存档往返)和 ③(清档)仍然逐个验它, 一条都没少。
+const FIELDS_ZERO_ON_NEW_SEASON := ["ranked_used", "season_sweeps", "backfill_paid",
+	"gauntlet_wins", "gauntlet_losses"]
+
 var _n := 0
 var _fail := 0
 var _gs = null
@@ -144,10 +149,28 @@ func _t_new_season_resets() -> void:
 	_ok("② ★分母: 切轮之前它们确实是非零的", int(_gs.ranked_used) > 0 and bool(_gs.promoted),
 		"ranked_used=%d promoted=%s" % [int(_gs.ranked_used), str(_gs.promoted)])
 	_gs.start_new_season()
-	for f in FIELDS_INT:
+	for f in FIELDS_ZERO_ON_NEW_SEASON:
 		_ok("② 切轮归零: %s" % f, int(_gs.get(f)) == 0, "实得 %s" % str(_gs.get(f)))
 	_ok("② 切轮归零: week_phase", str(_gs.week_phase) == "", "实得「%s」" % str(_gs.week_phase))
 	_ok("② 切轮归零: promoted", bool(_gs.promoted) == false, "实得 %s" % str(_gs.promoted))
+
+	## ★★`week_anchor_ts` 是这一组里**唯一不归零**的 —— 它不是"本轮攒了多少",
+	##   而是"本轮是哪一周"。切轮之后它必须**换成新那一周的锚点**。
+	##   2026-09-20 之前这里写的是「== 0」, 于是产品侧只能配合着写 `week_anchor_ts = 0`,
+	##   而 `ensure_season()` 把 0 当"老存档待迁移" ⇒ **再也不滚轮**。
+	##   门禁把死字段的死法给钉住了 —— 这条判据本身就是那个 bug 的一部分。
+	## ★分母写在判据里: 既要**非 0**、又要**正好等于当前这一周的锚点**。
+	##   只判非 0 的话, 随便写个 `week_anchor_ts = 1` 也能绿。
+	var now_anchor: int = _P2.week_anchor_utc(int(Time.get_unix_time_from_system()))
+	_ok("② ★分母: 切轮前塞的那个值不等于真锚点, 所以下面那条不是恒真式",
+		int(want["week_anchor_ts"]) != now_anchor,
+		"塞的 %d / 真锚点 %d" % [int(want["week_anchor_ts"]), now_anchor])
+	_ok("② ★week_anchor_ts 不归零, 而是换成【本周锚点】",
+		int(_gs.week_anchor_ts) == now_anchor,
+		"实得 %d / 应为 %d" % [int(_gs.week_anchor_ts), now_anchor])
+	_ok("② ★切轮后 season_start_ts 也落在本周一 00:00(不是'开游戏那一刻')",
+		int(_gs.season_start_ts) == now_anchor,
+		"实得 %d / 应为 %d" % [int(_gs.season_start_ts), now_anchor])
 
 
 # ─────────────────────────────────────────────────────────────

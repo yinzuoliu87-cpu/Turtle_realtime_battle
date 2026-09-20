@@ -607,8 +607,8 @@ var meta_deepsea_coins: int = 0                       # 局外深海币 (独立�
 var meta_shop_offer: Array = []
 ## 掷这批货时的 season_total_battles。打完新的一场(该值变化)才自动换新货架, 否则一直保留。
 var meta_shop_battles: int = -1
-var season_id: int = 1                                # 第几大轮赛季 (5天一轮, 切轮全重置)
-var season_start_ts: int = 0                          # 本赛季开始 unix 时间戳 (0=未初始化; 满 SEASON_DURATION_SEC 后过期滚下一赛季)
+var season_id: int = 1                                # 第几大轮赛季 (★一个自然周一轮, 切轮全重置)
+var season_start_ts: int = 0                          # 本赛季开始 unix 时间戳 = 本周一 00:00 UTC (0=未初始化)
 var hearts: int = 8                                   # 命数 (8起, 输-1, 0=淘汰; 玩法在阶段4)
 var season_total_battles: int = 0                     # 本赛季总战斗数 → 决定装备槽 0/1/2/3/4
 var season_eggs_killed: int = 0                       # 本赛季击杀龟蛋数 (排行榜口径)
@@ -621,7 +621,7 @@ var ranked_used: int = 0            # 积分赛已用场次 (配额 RANKED_QUOTA
 var season_sweeps: int = 0          # 横扫(2-0)数 —— 终榜排序第三键「胜场 > 余命 > 横扫」
 var backfill_paid: int = 0          # 补发【已发】场次 (幂等: 只补差额, 重复调用不再给)
 var week_phase: String = ""         # 赛程阶段: "" 未定 / rest / ranked / gauntlet / finals
-var week_anchor_ts: int = 0         # 本自然周的锚点 (UTC 周一 00:00 的 unix 秒)
+var week_anchor_ts: int = 0         # 本自然周的锚点 (UTC 周一 00:00 的 unix 秒) —— ★赛季换不换轮**只看它**
 var gauntlet_wins: int = 0          # 闯关赛战绩: 胜
 var gauntlet_losses: int = 0        # 闯关赛战绩: 负
 var promoted: bool = false          # 是否已晋级(积分赛 → 周六)
@@ -1445,25 +1445,50 @@ func reset_save() -> void:
 	dual_lineup = {}
 	trainer_appearance = "default"   # 训龟大师装配回默认(形象/钩锁)
 	trainer_skill = "hook"
+	## ★这一行【必须在 save() 之前】。它原来在文件下方 —— 被两行注释和空行隔开、
+	##   一直"挂"在 `# ─── V2 赛季 ───` 分节线与 `func ensure_season()` 的文档注释中间。
+	##   GDScript 不拿注释和空行断缩进, 所以它**语法上仍属于本函数**、也确实能跑;
+	##   但只要有人在那两行注释之间插一个函数, 它就会**静默变成别人的函数体**。
+	##   (今天它恰好是恒等赋值 —— 本函数从头到尾没清过 `install_uid`, 所以行为无变化;
+	##    移它纯粹是把这颗雷挪走。上面那句「清档不清 install_uid」的防御仍然在。)
+	install_uid = _keep_uid
 	save()
 
 
 # ─── V2 赛季 / 命 逻辑 (阶段4核心) ───────────────────────────
-## 启动时确保赛季已初始化: season_start_ts=0 → 设当前; 已过 5 天 → 滚下一赛季.
-	install_uid = _keep_uid
+## 启动时确保赛季已初始化 / 已跨周则滚下一大轮。**一大轮 = 一个自然周**(UTC 周一 00:00 换周)。
+## 三条分支各自有理由, 都写在函数里了 —— 尤其分支②(老存档迁移)不许简化成"当过期处理"。
 func ensure_season() -> void:
+	var now: int = int(Time.get_unix_time_from_system())
+	var anchor: int = _P2.week_anchor_utc(now)
+	## ① 全新存档: 落在当前这一周, 不算"滚了一轮"
 	if season_start_ts == 0:
-		season_start_ts = int(Time.get_unix_time_from_system())
+		season_start_ts = anchor
+		week_anchor_ts = anchor
 		save()
-	elif is_season_expired():
+		return
+	## ② 老存档迁移(5 天档 → 周档): `week_anchor_ts` 是 0 只说明这份档存的时候还没有周锚点,
+	##    **不代表该滚轮**。只把锚点补上, 命/币/配额一律不动 ——
+	##    真按"已过期"处理的话, 所有老玩家升级到这一版的那一刻会被平白清一次档。
+	if week_anchor_ts == 0:
+		week_anchor_ts = anchor
+		save()
+		return
+	## ③ 跨周 → 滚下一大轮
+	## ★走 `is_season_expired()` 而不是就地再写一遍 `anchor != week_anchor_ts` ——
+	##   手抄的副本必然落后(memory `fb-hand-rolled-copies-drift`), 而且就地写的话
+	##   `is_season_expired()` 会变成**零调用者的死函数**(`tools/zero_caller_audit.py` 管这个)。
+	if is_season_expired():
 		start_new_season()
 		save()
 
-## 本赛季是否已过 SEASON_DURATION_SEC (倒计时归0). 未初始化(0)算未过期.
+## 本赛季是否已跨进下一个自然周 (UTC 周一 00:00 换周). 未初始化(锚点=0)算未过期.
+## ★★判据是**锚点变了没有**, 不是"过了多少秒" —— 后者(旧的 5 天 `SEASON_DURATION_SEC`)
+##   与 `phase_at_utc()` 的星期几判定永远合不上, 见 `phase2_config.gd` 顶部那段长注释。
 func is_season_expired() -> bool:
-	if season_start_ts == 0:
+	if week_anchor_ts == 0:
 		return false
-	return int(Time.get_unix_time_from_system()) - season_start_ts >= _P2.SEASON_DURATION_SEC
+	return _P2.week_anchor_utc(int(Time.get_unix_time_from_system())) != week_anchor_ts
 
 ## 0 命 = 淘汰出局 (开放无限表演赛, 玩法在后续).
 func is_eliminated() -> bool:
@@ -1790,7 +1815,10 @@ func pool_left(eid: String) -> int:
 ## 开新一大轮赛季: 命/币/局内等级/总战斗数/蛋数/背包build 全重置 (设计§五). pet_levels(养龟站)不动.
 func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试快进)负责 save
 	season_id += 1
-	season_start_ts = int(Time.get_unix_time_from_system())
+	## ★新赛季从**本周一 00:00** 起算, 不是从"玩家开游戏那一刻"起算 ——
+	##   一大轮 = 一个自然周(见 `_P2.week_anchor_utc`)。写成"当前时刻"的话,
+	##   周三才开一次游戏就把赛季起点定在周三, 赛程条与倒计时立刻和星期几错位。
+	season_start_ts = _P2.week_anchor_utc(int(Time.get_unix_time_from_system()))
 	hearts = 8
 	meta_shop_offer = []      # 新赛季货架作废(否则会带着上赛季的货开局)
 	meta_shop_battles = -1
@@ -1801,7 +1829,11 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	season_sweeps = 0
 	backfill_paid = 0
 	week_phase = ""
-	week_anchor_ts = 0
+	## ★★不是 0 —— 这个字段就是「本大轮是哪一周」本身。写 0 的话下一次 `ensure_season()`
+	##   会把它当成"老存档待迁移"(见那边分支②)而**再也滚不了轮**: 补个锚点就返回,
+	##   下周一也不会换。这正是它从 A2 落地起一直是**死字段**的原因 ——
+	##   写进存档、读出存档, 但没有任何判定读它。
+	week_anchor_ts = _P2.week_anchor_utc(int(Time.get_unix_time_from_system()))
 	gauntlet_wins = 0
 	gauntlet_losses = 0
 	promoted = false

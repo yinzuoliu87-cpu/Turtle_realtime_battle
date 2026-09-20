@@ -86,7 +86,7 @@ func _sk_fortune_buyequip(u: Dictionary) -> void:              # 财神龟·招�
 	battle._refresh_panel_equips(u)   # ★抽到/升星的临时装备图标即时显进左右信息框(用户2026-07-12)
 
 func _sk_fortune_dice(u: Dictionary) -> void:                    # 财神龟·骰子(用户2026-07-12补特效): 掷骰5~8金币+回15%maxHP
-	var g: int = randi_range(DICE_MIN, DICE_MAX)   # 2~6→3~8→5~8 (用户2026-07-29 第五轮)
+	var g: int = battle._battle_rng.randi_range(DICE_MIN, DICE_MAX)   # B 阶段: 掷出几个金币是对局结果, 走受控 PRNG(原为裸全局 RNG)   # 2~6→3~8→5~8 (用户2026-07-29 第五轮)
 	u["gold"] += g
 	battle._damage._heal(u, u["maxHp"] * DICE_HEAL_PCT)   # 骰子回血 8%→10%→15% 最大生命(用户2026-07-29 第五轮·财神实测33秒就死, 回血=活久点)
 	battle._burst_vfx("res://assets/sprites/vfx/fortune-coin-burst.png", u["pos"], 120.0, 0.75)   # 金币爆
