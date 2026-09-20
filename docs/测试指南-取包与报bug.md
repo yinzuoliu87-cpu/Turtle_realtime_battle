@@ -8,7 +8,7 @@
 
 **永远从这一个地方拿**:
 👉 **Release「ios-latest」** — https://github.com/yinzuoliu87-cpu/Turtle_realtime_battle/releases/tag/ios-latest
-下载里面的 `turtle-ios-unsigned.ipa`。
+下载里面的 `turtle-v<版本>.ipa`（2026-09-20 起**文件名带版本号** ——以前所有包都叫同一个名字，手机上装了几个就分不清哪个是哪个了）。
 
 - **它是自动更新的**:开发每次 push 到 main,几分钟后这个包就换成最新的(同一个链接,不用找)。
 - 想确认拿到的是不是最新:进游戏看**主菜单右下角的版本号**,和 Release 页最近更新时间对一下。
@@ -19,7 +19,7 @@
 
 1. 电脑(Windows/Mac)装 **Sideloadly**(sideloadly.io)。
 2. iPhone **USB 连电脑**,信任这台电脑。
-3. Sideloadly 里**拖入** `turtle-ios-unsigned.ipa`,填你的 **Apple ID**(用免费个人 ID 就行)。
+3. Sideloadly 里**拖入** `turtle-v<版本>.ipa`,填你的 **Apple ID**(用免费个人 ID 就行)。
 4. 点 Start,签名 + 安装。
 5. 手机上:**设置 → 通用 → VPN与设备管理 → 信任你的 Apple ID 证书**,才能打开。
 

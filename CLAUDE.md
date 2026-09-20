@@ -243,7 +243,7 @@ while _w < 600 and float(u["hp"]) >= hp0:   # 上限防死循环
 
 | 目标 | 怎么做 | 产物 |
 |---|---|---|
-| **iOS 装机包** | push 到 `main`（或手动 dispatch）→ **`.github/workflows/ios-build.yml`** | Actions artifact `turtle-ios-unsigned`（unsigned .ipa，留 14 天） |
+| **iOS 装机包** | **打 tag**（或手动 dispatch）→ **`.github/workflows/ios-build.yml`** | Actions artifact `turtle-ios-v<版本>` ＋ Release「ios-latest」的 `turtle-v<版本>.ipa`（unsigned，artifact 留 14 天） |
 | 提交门禁 | push 自动跑 `.github/workflows/tests.yml` | 123 项，ubuntu |
 | Web（手机浏览器直接玩） | `SHIP=1 bash build-web.sh` | `build/turtle-realtime-web.zip` |
 | Android APK | 见 [实时版APK打包.md](docs/实时版APK打包.md) | `build/android/*.apk` |

@@ -1,6 +1,6 @@
 # iOS未签名IPA云端构建(2026-07-17 用户"iOS包用线连手机·你开始吧")
 # 路线: macOS runner → Godot headless导出Xcode工程(export_project_only) → xcodebuild免签编译 → 打包unsigned IPA artifact
-# 用户侧: Actions页下载 turtle-ios-unsigned → Windows装Sideloadly → iPhone USB连电脑 → 拖入IPA用AppleID签名安装
+# 用户侧: Actions页下载 turtle-ios-v<版本> (或 Release「ios-latest」里的 turtle-v<版本>.ipa) → Windows装Sideloadly → iPhone USB连电脑 → 拖入IPA用AppleID签名安装
 #         → 手机 设置→通用→VPN与设备管理→信任自己的AppleID证书。免费证书7天过期, 重签即可(存档不丢)。
 # 构建=debug模板: OS.is_debug_build()=true → 调试场按钮出现; REVIEW_DEMO_DEFAULT=false → 正常匹配不被劫持。
 name: iOS unsigned IPA
@@ -93,19 +93,50 @@ jobs:
           git -c user.name=ci -c user.email=ci@ci commit -qm "ci logs run#${GITHUB_RUN_NUMBER}"
           git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ci-logs
 
+      # ★★2026-09-20 用户:「ipa命名你又不会了吗」——
+      #   此前文件名与 artifact 名**两处都写死** `turtle-ios-unsigned`, 一个版本号都没有。
+      #   这直接违背 CLAUDE.md §2.5 自己写的那句:
+      #   「版本号的全部价值在于**测试者报 bug 时能说清是哪个版本**」——
+      #   手机上装了三个包全叫同一个名字, 那句话就落空了。
+      # ★版本号从 `project.godot` 取(**单一事实源**), 不从 tag 取:
+      #   tag 只在 tag 触发时有; `workflow_dispatch` 手动跑时 ref_name 是分支名, 会得到 "main"。
+      - name: Read version (单一事实源 = project.godot)
+        id: ver
+        run: |
+          V=$(grep -m1 '^config/version=' project.godot | cut -d'"' -f2)
+          # ★分母: 取不到就当场红。没有这条的话会静默产出一个 `turtle-v.ipa`,
+          #   而那种包装到手机上比没有版本号更糟 —— 它看起来像是有版本号的。
+          if [ -z "$V" ]; then
+            echo "[FAIL] 从 project.godot 读不到 config/version"; exit 1
+          fi
+          case "$V" in
+            [0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "[FAIL] 版本号形状不对: '$V'"; exit 1 ;;
+          esac
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "读到版本号 $V"
+
       - name: Pack unsigned IPA
+        env:
+          VER: ${{ steps.ver.outputs.version }}
         run: |
           cd build/ios
           APP=$(ls -d out/*.app | head -1)
           mkdir -p Payload
           cp -R "$APP" Payload/
-          zip -qry turtle-ios-unsigned.ipa Payload
-          ls -la turtle-ios-unsigned.ipa
+          zip -qry "turtle-v${VER}.ipa" Payload
+          ls -la "turtle-v${VER}.ipa"
+          # ★分母: 包真的建出来且不是空壳(免签 .app 打包失败时 zip 也会产出一个几 KB 的文件)
+          SZ=$(stat -f%z "turtle-v${VER}.ipa" 2>/dev/null || stat -c%s "turtle-v${VER}.ipa")
+          echo "包大小 $SZ 字节"
+          if [ "$SZ" -lt 10000000 ]; then
+            echo "[FAIL] IPA 只有 $SZ 字节 —— 太小了, 多半是 .app 没打进去"; exit 1
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
-          name: turtle-ios-unsigned
-          path: build/ios/turtle-ios-unsigned.ipa
+          name: turtle-ios-v${{ steps.ver.outputs.version }}
+          path: build/ios/turtle-v${{ steps.ver.outputs.version }}.ipa
           retention-days: 14
 
       # ★发布到 Release「ios-latest」(用户2026-07-24: 要能自动下到桌面)。
@@ -115,17 +146,28 @@ jobs:
         if: success()
         env:
           GH_TOKEN: ${{ github.token }}
+          VER: ${{ steps.ver.outputs.version }}
         run: |
           gh release create ios-latest --title "iOS unsigned (latest)" \
-            --notes "自动构建 unsigned IPA · Sideloadly 装机(免费证书7天)。每次 push main 覆盖更新。" \
+            --notes "自动构建 unsigned IPA · Sideloadly 装机(免费证书7天)。打 tag 时出包, 文件名带版本号。" \
             2>/dev/null || true
+          # ★★文件名带版本号之后, 老资产不会被 --clobber 顶掉(名字不一样了) ⇒ 会越堆越多。
+          #   ⇒ 传新的之前先把 release 里其它 .ipa 删掉, 只留当前这一个。
+          #   这样既能一眼看出版本, 又不会让一个 release 堆几十个 132MB 的包。
+          for OLD in $(gh release view ios-latest --json assets \
+                        --jq '.assets[].name' 2>/dev/null | grep '\.ipa$' || true); do
+            if [ "$OLD" != "turtle-v${VER}.ipa" ]; then
+              echo "删掉旧资产 $OLD"
+              gh release delete-asset ios-latest "$OLD" -y 2>/dev/null || true
+            fi
+          done
           # ★2026-08-20 加重试: 连着 push 几个提交时会有**两次构建并发抢同一个 ios-latest**,
           #   后到的那次 `--clobber` 撞上前一次正在写 ⇒ 整个 run 红, 而产物其实是对的。
           #   (那次实测: 失败的是先到的, 后到的传成功, release 上是最新包。)
           #   ⇒ 重试三次, 每次间隔 15 秒; 三次都不行才真的红。
           for i in 1 2 3; do
-            if gh release upload ios-latest build/ios/turtle-ios-unsigned.ipa --clobber; then
-              echo "上传成功(第 $i 次)"; break
+            if gh release upload ios-latest "build/ios/turtle-v${VER}.ipa" --clobber; then
+              echo "上传成功(第 $i 次): turtle-v${VER}.ipa"; break
             fi
             echo "第 $i 次上传失败(多半是并发抢同一个 release), 15 秒后重试"; sleep 15
             if [ "$i" = "3" ]; then exit 1; fi

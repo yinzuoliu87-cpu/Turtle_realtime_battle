@@ -65,7 +65,7 @@
 
 | 目标 | 入口 |
 |---|---|
-| **iOS 装机包** | `.github/workflows/ios-build.yml`（push main 自动跑）→ artifact `turtle-ios-unsigned` |
+| **iOS 装机包** | `.github/workflows/ios-build.yml`（**打 tag 时跑**，2026-09-20 起不再每次 push；手动 dispatch 也行）→ artifact `turtle-ios-v<版本>` ＋ Release「ios-latest」的 `turtle-v<版本>.ipa`（**文件名带版本号**，旧名 `turtle-ios-unsigned` 已弃用） |
 | 提交门禁 | `.github/workflows/tests.yml` |
 | Web | `SHIP=1 bash build-web.sh` |
 | Android | [实时版APK打包.md](实时版APK打包.md) |
