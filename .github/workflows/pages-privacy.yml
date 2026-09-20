@@ -1,0 +1,93 @@
+name: Publish privacy policy only
+
+# ★★为什么不用「Pages from branch main /docs」那种常规做法:
+#   那会把 docs/ 下 **280 份内部方案书**整个渲染成可浏览网站, 还会被搜索引擎收录。
+#   用户 2026-09-20:「尽量不要把我们项目泄露出去」。
+#   ⇒ 本工作流**只生成一页** —— 隐私政策 —— 其余一个字都不上线。
+#
+# ★为什么不手抄一份到 gh-pages 分支: 那就是「同一份东西存两份」, 必然漂
+#   (本项目记过太多次)。这里从 docs/隐私政策.md **现场生成**, 单一事实源。
+#
+# 产出 URL: https://yinzuoliu87-cpu.github.io/Turtle_realtime_battle/
+# 用途: App Store Connect 与 Google Play 都强制要求隐私政策链接, 没有它无法提审。
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/隐私政策.md'
+      - '.github/workflows/pages-privacy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 生成站点(只有隐私政策这一页)
+        run: |
+          python -m pip install --quiet markdown
+          mkdir -p _site
+          python - <<'PY'
+          import io, markdown
+          src = io.open('docs/隐私政策.md', encoding='utf-8').read()
+          body = markdown.markdown(src, extensions=['tables', 'sane_lists'])
+          html = """<!DOCTYPE html>
+          <html lang="zh-CN">
+          <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>隐私政策 / Privacy Policy — 斗龟场</title>
+          <style>
+            body{max-width:46rem;margin:2rem auto;padding:0 1rem;line-height:1.7;
+                 font-family:system-ui,-apple-system,"Segoe UI","Noto Sans SC",sans-serif;
+                 color:#222;background:#fff}
+            table{border-collapse:collapse;width:100%;margin:1rem 0;display:block;overflow-x:auto}
+            th,td{border:1px solid #ddd;padding:.4rem .6rem;text-align:left}
+            th{background:#f6f6f6}
+            code{background:#f4f4f4;padding:.1rem .3rem;border-radius:3px}
+            blockquote{border-left:3px solid #ddd;margin:1rem 0;padding:.2rem 1rem;color:#555}
+            @media (prefers-color-scheme:dark){
+              body{color:#e6e6e6;background:#16181c}
+              th{background:#23262c} th,td{border-color:#3a3f47}
+              code{background:#23262c} blockquote{border-color:#3a3f47;color:#aaa}
+            }
+          </style>
+          </head>
+          <body>
+          """ + body + """
+          </body></html>"""
+          io.open('_site/index.html', 'w', encoding='utf-8').write(html)
+          print('生成 _site/index.html, %d 字节' % len(html))
+          PY
+
+      - name: ★分母 —— 确认生成的页面里真的有政策正文, 不是空壳
+        run: |
+          test -s _site/index.html || { echo "[FAIL] _site/index.html 不存在或为空"; exit 1; }
+          grep -q "turtlesupport32@gmail.com" _site/index.html || { echo "[FAIL] 页面里没有联系邮箱 —— 审核会直接打回"; exit 1; }
+          grep -q "GDPR" _site/index.html || { echo "[FAIL] 页面里没有 GDPR 那一节"; exit 1; }
+          echo "OK: 页面 $(wc -c < _site/index.html) 字节, 联系邮箱与 GDPR 节都在"
+          # ★★只应该有这一个文件 —— 多一个就是把别的东西也发出去了
+          n=$(find _site -type f | wc -l)
+          echo "_site 里文件数 = $n"
+          test "$n" -eq 1 || { echo "[FAIL] 站点里不止一个文件, 可能把内部文档也发出去了"; find _site -type f; exit 1; }
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
