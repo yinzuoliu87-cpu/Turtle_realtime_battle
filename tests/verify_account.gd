@@ -160,11 +160,20 @@ func _t_no_duplicate_signup() -> void:
 	## 开启这一层, 且已经有 account_id ⇒ 仍然不许建节点
 	OS.set_environment("TURTLE_SUPABASE", "https://example.invalid")
 	ProjectSettings.set_setting("turtle/supabase_anon_key", "sb_publishable_forgate")
+	## ★★D-3c(2026-09-21)之后「不重复建号」的前提是【会话还有效】, 不再只是「有 account_id」。
+	##   原来这里只设了 account_id —— 那正是 bug 的形状: 有号但没 token 时**就该**去续,
+	##   而旧代码直接返回, 于是重开 App 后再也没有 token。
+	##   旧写法在 D-3c 之后还能碰巧绿(② 留下了邮箱 ⇒ 判成「等重登」不建节点),
+	##   碰巧绿不算数 ⇒ 这里先把一个【有效会话】落地, 再断言不建节点。
+	SB._reset_auth_for_test()
+	SB.apply_auth_response(true, 200, BODY_OK)     # expires_in 3600 ⇒ 远没到续期线
 	GameState.account_id = UID_OK
+	_chk("③ ★分母: 会话确实有效(有 token 且没到续期线)", SB.access_token() != ""
+		and SB.token_expires_at() - int(Time.get_unix_time_from_system()) > SB.REFRESH_MARGIN_SEC)
 	_chk("③ ★分母: 这一层现在是启用的(否则下面是空检查)", SB.enabled())
 	var b2: int = _tree.root.get_child_count()
 	SB.ensure_signed_in_async()
-	_chk("③ ★★已有 account_id ⇒ 不重复建号(每次开游戏建一个会把服务端刷爆)",
+	_chk("③ ★★会话有效 ⇒ 不重复建号(每次开游戏建一个会把服务端刷爆)",
 		_tree.root.get_child_count() == b2,
 		"%d → %d" % [b2, _tree.root.get_child_count()])
 	OS.set_environment("TURTLE_SUPABASE", " ")

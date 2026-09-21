@@ -99,6 +99,11 @@ func _account_row() -> void:
 		## 配了后端但还没拿到身份(刚开机还在登, 或登不上)。不说"失败" —— 说不准。
 		head = "账号：连接中…"
 		sub = ""
+	elif _SB_ACC.session_lost():
+		## D-3c: 绑了邮箱的号登录失效了。**不会**自动换成新匿名号(那是静默换身份),
+		##   只能用邮箱把同一个号取回来 —— 所以这里要明说该点哪个按钮。
+		head = "账号：%s" % mail
+		sub = "⚠ 登录已失效 —— 点「用邮箱取回」重新登录"
 	elif mail != "":
 		head = "账号：%s" % mail
 		sub = "已绑定 · 换设备可用这个邮箱取回【账号】"
@@ -122,10 +127,15 @@ func _account_row() -> void:
 	##   照原文案写等于承诺一件架构上做不到的事。存档同步是另一件事(未决)。
 	var note := _stroked_label("（龟和装备存在这台手机上，换设备都会丢）", 11, "#7e8fa0", "", 0)
 	_place_center(note, W / 2.0, 166.0)
+	## ★D-3c 补上 v0.19.423 漏掉的入口: 那一版只有「绑定邮箱」,
+	##   **取回流程写了但点不到** —— 新手机上根本没法用邮箱把号拿回来。
+	##   `verify_session_refresh` 没有覆盖到 UI, 这条由 `verify_account` ④ 走真入口验。
 	if aid != "":
-		_small_button(W / 2.0, 192.0,
+		_small_button(W / 2.0 - 80.0, 192.0,
 			("换个邮箱" if mail != "" else "绑定邮箱"),
 			func(): _open_email_dialog(_SB_ACC.FLOW_BIND))
+	_small_button((W / 2.0 + 80.0) if aid != "" else W / 2.0, 192.0, "用邮箱取回",
+		func(): _open_email_dialog(_SB_ACC.FLOW_RECOVER))
 
 
 ## 紧凑按钮 —— 账号行下面那一个。`_text_button` 是 260×50 的木框大按钮,
@@ -183,8 +193,14 @@ func _open_email_dialog(flow: String) -> void:
 
 	var why := Label.new()
 	## ★说清楚它**到底**能做什么、不能做什么 —— 见 `_account_row` 里那段长注释。
-	why.text = ("绑定之后，换手机能用这个邮箱把【账号】取回来（排名、战绩、你的阵容）。\n"
-		+ "⚠ 龟和装备是存在这台手机上的，换设备仍然会丢。")
+	if flow == _SB_ACC.FLOW_BIND:
+		why.text = ("绑定之后，换手机能用这个邮箱把【账号】取回来（排名、战绩、你的阵容）。\n"
+			+ "⚠ 龟和装备是存在这台手机上的，换设备仍然会丢。")
+	else:
+		## ★取回只换【账号】, 这台设备上的龟和装备原样不动 —— 照实说, 不许说成「取回存档」
+		##   (服务端现在没有存档, `verify_account` ④ 有一条专门禁这句话)。
+		why.text = ("用你绑过的邮箱收一个验证码，把那个【账号】取回到这台设备上。\n"
+			+ "⚠ 只换账号：这台设备上的龟和装备原样保留。")
 	why.add_theme_font_size_override("font_size", 13)
 	why.add_theme_color_override("font_color", Color("#9fb4c8"))
 	why.position = Vector2(30, 56); why.size = Vector2(460, 54)

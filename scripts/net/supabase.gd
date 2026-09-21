@@ -113,6 +113,13 @@ static func auth_try_count() -> int:
 static func _reset_auth_for_test() -> void:
 	_token = ""
 	_auth_tries = 0
+	_expires_at = 0
+	_auth_inflight = false
+	_session_lost = false
+
+
+## 只给门禁用。空 Callable = 走真网络。
+static var _transport_for_test: Callable = Callable()
 
 
 ## 纯函数: 一次 `/auth/v1/signup` 的回包 → 账号信息。**这才是要被逐条验的东西**。
@@ -122,7 +129,8 @@ static func _reset_auth_for_test() -> void:
 ##   那样会让「没登录成功」看起来像「登录成功了」, 而后果要等到上传快照
 ##   在服务端被 RLS 拒掉时才显形(那时已经隔了好几层)。
 static func account_from_auth_response(ok: bool, code: int, body: String) -> Dictionary:
-	var bad := {"ok": false, "account_id": "", "token": "", "is_anonymous": false, "email": ""}
+	var bad := {"ok": false, "account_id": "", "token": "", "is_anonymous": false, "email": "",
+		"refresh": "", "expires_at": 0}
 	if not ok or code < 200 or code >= 300:
 		return bad
 	## ★同 `state_from_response`: 用 `JSON.new().parse()` 而不是 `JSON.parse_string()`,
@@ -140,12 +148,20 @@ static func account_from_auth_response(ok: bool, code: int, body: String) -> Dic
 	var uid := str((user as Dictionary).get("id", ""))
 	if uid == "":
 		return bad
+	## ★★`refresh_token` 与 `expires_at` 原来都被**扔掉**了 —— 于是 token 只活在内存里,
+	##   重开 App 就没了(D-3c, 2026-09-21 查实)。`expires_at` 用服务端给的**绝对时刻**;
+	##   老回包没有它时按 `expires_in` 从现在推算。
+	var exp_at := int(dd.get("expires_at", 0))
+	if exp_at <= 0 and int(dd.get("expires_in", 0)) > 0:
+		exp_at = int(Time.get_unix_time_from_system()) + int(dd.get("expires_in", 0))
 	return {
 		"ok": true,
 		"account_id": uid,
 		"token": str(dd.get("access_token", "")),
 		"is_anonymous": bool((user as Dictionary).get("is_anonymous", false)),
 		"email": str((user as Dictionary).get("email", "")),
+		"refresh": str(dd.get("refresh_token", "")),
+		"expires_at": exp_at,
 	}
 
 
@@ -155,26 +171,174 @@ static func apply_auth_response(ok: bool, code: int, body: String) -> bool:
 	_auth_tries += 1
 	if not bool(r["ok"]):
 		return false
-	_token = str(r["token"])
+	_store_session(r)
+	return true
+
+
+## ★★三条路(注册 / 验码 / 刷新)拿到会话后**都走这一个函数**落地。
+##   原来注册与验码各写一份, 两份都漏了 refresh_token —— 手抄的副本必然一起漏。
+##   ⚠ `auth_refresh` **紧跟着写盘**: refresh_token 每次刷新都会轮换,
+##   拿到新的还没写盘就崩了 ⇒ 下次开机拿旧的去刷 ⇒ 过了服务端约 10 秒的
+##   重用宽限就被拒 ⇒ 匿名号失效。写盘离拿到令牌越近, 这个窗口越小。
+static func _store_session(r: Dictionary) -> void:
+	_token = str(r.get("token", ""))
+	_expires_at = int(r.get("expires_at", 0))
+	_session_lost = false
 	var gs = (Engine.get_main_loop() as SceneTree).root.get_node_or_null("/root/GameState") if Engine.get_main_loop() != null else null
 	if gs != null:
-		gs.account_id = str(r["account_id"])
-		gs.account_email = str(r["email"])
+		gs.account_id = str(r.get("account_id", ""))
+		gs.account_email = str(r.get("email", ""))
+		if str(r.get("refresh", "")) != "":
+			gs.auth_refresh = str(r["refresh"])
 		gs.save()
-	return true
 
 
 ## 需要的话去匿名登录一次。**已经有 account_id 就什么都不做** ——
 ## 每次开游戏都新建一个匿名账号的话, 服务端会被刷出一堆一次性账号(Supabase 自己也警告过这点)。
 static func ensure_signed_in_async() -> void:
-	if not enabled():
+	if not enabled() or _auth_inflight:
 		return
 	var gs = (Engine.get_main_loop() as SceneTree).root.get_node_or_null("/root/GameState") if Engine.get_main_loop() != null else null
-	if gs != null and str(gs.account_id) != "":
-		return                                  # 已有身份, 不重复建号
-	var n = _spawn()
-	if n != null:
-		n.sign_in_anonymous()
+	if gs == null:
+		return
+	var a := session_action(str(gs.account_id), str(gs.account_email), _token, _expires_at,
+		str(gs.auth_refresh), int(Time.get_unix_time_from_system()))
+	match a:
+		ACT_NONE:
+			return
+		ACT_LOST:
+			_session_lost = true
+			return
+		ACT_REFRESH:
+			var n = _spawn()
+			if n != null:
+				_auth_inflight = true
+				n.refresh_session(str(gs.auth_refresh))
+		ACT_SIGNUP:
+			var n2 = _spawn()
+			if n2 != null:
+				_auth_inflight = true
+				n2.sign_in_anonymous()
+
+
+# ════════════════════════════════════════════════════════════
+# D-3c 登录态续期(2026-09-21 查实的 bug)
+# ════════════════════════════════════════════════════════════
+## ★★原来的写法是「已经有 `account_id` 就什么都不做」, 而 access_token 只活在内存里 ⇒
+##   **重开 App 之后再也没有 token** ⇒ 请求头退回 anon key ⇒ 写 `ghosts` 被 401 RLS 拒、
+##   读 `ghosts` 拿到空列表; 不重开也会在 3600 秒后过期。
+##   ⇒ v0.19.420~423 的后端接线**只在装机后第一个小时里真正工作**。
+##   所有探针与门禁都没抓到, 因为它们全是「一个进程里从注册跑到底」, 从没模拟过重启。
+##
+## ★判定抽成纯函数 `session_action` —— 门禁逐条喂, 不需要网络。
+
+const ACT_NONE := "none"          # token 还够用
+const ACT_REFRESH := "refresh"    # 拿 refresh_token 续
+const ACT_SIGNUP := "signup"      # 新建匿名号(从没登录过 / 匿名号的会话真的死了)
+const ACT_LOST := "lost"          # 绑了邮箱的号会话死了 ⇒ 等玩家用邮箱重新登录
+
+const REFRESH_MARGIN_SEC := 300   # 剩不到 5 分钟就续
+
+static var _expires_at: int = 0
+static var _auth_inflight: bool = false
+static var _session_lost: bool = false
+
+
+static func session_lost() -> bool:
+	return _session_lost
+
+
+static func token_expires_at() -> int:
+	return _expires_at
+
+
+## 纯函数: 现在该对会话做什么。
+## ★★**绑了邮箱的号永远不会得到 ACT_SIGNUP** —— 那是静默换身份
+##   (新号拿不到旧号的排名/战绩/云存档)。只能等玩家用邮箱把同一个号取回来。
+static func session_action(account_id: String, email: String, token: String,
+		expires_at: int, refresh: String, now: int) -> String:
+	if account_id == "":
+		return ACT_SIGNUP
+	if token != "" and expires_at - now > REFRESH_MARGIN_SEC:
+		return ACT_NONE
+	if refresh != "":
+		return ACT_REFRESH
+	## 有号、没 token、也没 refresh_token:
+	##   · v0.19.420~423 装过的老用户(那几版根本没存 refresh_token)
+	##   · 或者刷新被服务端判死之后
+	return ACT_SIGNUP if email == "" else ACT_LOST
+
+
+## 服务端明确说「这个 refresh_token 死了」的那几种 error_code。
+## ★**只认这几个**: 认不出来的一律当网络问题 —— 网络抖一下就把人登出,
+##   比「多等一会儿再试」糟糕得多。
+const DEAD_REFRESH_CODES := ["refresh_token_not_found", "refresh_token_already_used",
+	"session_not_found", "session_expired", "user_not_found", "invalid_grant"]
+
+const RK_OK := "ok"
+const RK_NET := "net"     # 连不上 / 5xx / 限流 / 看不懂 ⇒ 什么都不动, 下次再试
+const RK_DEAD := "dead"   # 服务端明确判死 ⇒ 这份登录真的失效了
+
+
+## 纯函数: 一次刷新回包 → 三类之一。
+## ★实测(2026-09-21): 乱码 refresh_token → 400 `refresh_token_not_found`。
+static func refresh_kind(ok: bool, code: int, body: String) -> String:
+	if ok and code >= 200 and code < 300:
+		## 200 但解不出账号 ⇒ **当网络问题**, 不当成功也不当死 —— 看不懂的回包不许改身份。
+		return RK_OK if bool(account_from_auth_response(ok, code, body)["ok"]) else RK_NET
+	var j := JSON.new()
+	if j.parse(body) == OK and j.data is Dictionary:
+		var d: Dictionary = j.data
+		var ec := str(d.get("error_code", d.get("error", "")))
+		if DEAD_REFRESH_CODES.has(ec):
+			return RK_DEAD
+	return RK_NET
+
+
+## 把一次刷新回包落地。返回三类之一。
+static func apply_refresh_response(ok: bool, code: int, body: String) -> String:
+	_auth_inflight = false
+	var kind := refresh_kind(ok, code, body)
+	var gs = (Engine.get_main_loop() as SceneTree).root.get_node_or_null("/root/GameState") if Engine.get_main_loop() != null else null
+	match kind:
+		RK_OK:
+			var r := account_from_auth_response(ok, code, body)
+			## ★刷新拿回来的必须是【同一个号】。不是 ⇒ 当网络问题, 什么都不动。
+			if gs != null and str(gs.account_id) != "" and str(r["account_id"]) != str(gs.account_id):
+				print("[SupabaseNet] 刷新回来的账号对不上(%s ≠ %s), 忽略" % [
+					str(r["account_id"]).substr(0, 8), str(gs.account_id).substr(0, 8)])
+				return RK_NET
+			_store_session(r)
+		RK_NET:
+			print("[SupabaseNet] 续登录没成功(code=%d), 保留令牌下次再试" % code)
+		RK_DEAD:
+			_token = ""
+			_expires_at = 0
+			if gs != null:
+				gs.auth_refresh = ""
+				if str(gs.account_email) == "":
+					## 匿名号: 这份身份救不回来了 ⇒ 下一拍重新匿名注册(本机存档不受影响)
+					gs.account_id = ""
+				else:
+					## 绑了邮箱: **不许**自动建新号 —— 等玩家用邮箱把同一个号取回来
+					_session_lost = true
+				gs.save()
+			print("[SupabaseNet] 登录已失效(code=%d)" % code)
+	return kind
+
+
+func refresh_session(refresh: String) -> void:
+	if not enabled() or refresh == "":
+		_auth_inflight = false
+		_bye()
+		return
+	var url := base_url().rstrip("/") + "/auth/v1/token?grant_type=refresh_token"
+	_http("POST", url, JSON.stringify({"refresh_token": refresh}),
+		func(res):
+			apply_refresh_response(bool(res.get("ok", false)), int(res.get("code", 0)),
+				str(res.get("body", "")))
+			_bye(),
+		"Content-Type: application/json")
 
 
 # ═════════════════════════════════════════════════════════════
@@ -658,11 +822,10 @@ static func _apply_verify(ok: bool, code: int, body: String, flow: String) -> bo
 		_email_state = EM_ERR
 		_email_msg = str(v["reason"])
 		return false
-	_token = str(res.get("token", ""))
-	if gs != null:
-		gs.account_id = str(res["account_id"])
-		gs.account_email = str(res.get("email", _email_pending))
-		gs.save()
+	var acc := account_from_auth_response(ok, code, body)
+	if str(acc.get("email", "")) == "":
+		acc["email"] = _email_pending
+	_store_session(acc)
 	_email_state = EM_OK
 	_email_msg = ("邮箱绑好了" if flow == FLOW_BIND else "账号取回来了")
 	return true
@@ -674,6 +837,7 @@ func sign_in_anonymous() -> void:
 		return
 	var url := base_url().rstrip("/") + "/auth/v1/signup"
 	_http("POST", url, "{}", func(res):
+		_auth_inflight = false
 		apply_auth_response(
 			bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", "")))
 		_bye())
@@ -742,6 +906,10 @@ static func _spawn():
 		return null
 	var n = new()
 	n._autofree = true
+	## ★只给门禁用: 让真入口(`ensure_signed_in_async` 等)自己 spawn 的节点也走注入的传输,
+	##   这样门禁量的是**真实发出去的请求**(方法/地址/请求头/正文), 不是我插的计数器。
+	if _transport_for_test.is_valid():
+		n._transport = _transport_for_test
 	tree.root.add_child(n)
 	return n
 

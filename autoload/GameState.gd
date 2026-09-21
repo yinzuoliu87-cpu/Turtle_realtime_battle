@@ -49,6 +49,10 @@ var install_uid: String = ""
 ##   两个人会在服务端静默互相覆盖(memory `fb-id-without-owner-dimension`)。
 var account_id: String = ""        # Supabase 账号 uuid ("" = 还没登录过 / 后端没配)
 var account_email: String = ""     # 补绑的邮箱 ("" = 匿名账号, 换设备会丢档)
+## D-3c 登录续期用的 refresh_token。★**设备本地**: 不上云、清档保留、切轮不动。
+##   原来这个值被整个扔掉 ⇒ 重开 App 之后再也拿不到 token(2026-09-21 查实)。
+##   服务端每次刷新都会**轮换**它 ⇒ 拿到新的必须立刻写盘(见 SupabaseNet._store_session)。
+var auth_refresh: String = ""
 
 
 ## 取本机安装标识, 没有就现生成一个并落盘。
@@ -1024,10 +1028,40 @@ func _ready() -> void:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)   # 开机恢复全屏(设置持久化)
 	_pc_window_setup()
 	ensure_season()   # V2: 初始化/滚动赛季 (阶段4)
+	_start_net_keepalive()
 	# 把存档音量同步给 Audio autoload
 	if Engine.has_singleton("Audio") or get_node_or_null("/root/Audio"):
 		Audio.bgm_volume = bgm_volume
 		Audio.sfx_volume = sfx_volume
+
+
+## D-3c 登录保活: 每 60 秒问一次「会话还够不够用」, 剩不到 5 分钟就续。
+## ★为什么挂在这里: 玩家大部分时间在战斗场里, 不在主菜单 —— 挂在哪个场景上
+##   都会在离开那个场景时断掉。GameState 是唯一全程活着的节点。
+## ★test_mode 下**不跑**: 门禁要自己决定什么时候调 `ensure_signed_in_async`,
+##   后台一拍冷不丁 spawn 一个节点会让「数子节点」的判据偶发红。
+const _SB_NET := preload("res://scripts/net/supabase.gd")
+
+func _start_net_keepalive() -> void:
+	var t := Timer.new()
+	t.name = "NetKeepalive"
+	t.wait_time = 60.0
+	t.autostart = true
+	t.timeout.connect(_net_tick)
+	add_child(t)
+
+
+func _net_tick() -> void:
+	if test_mode:
+		return
+	_SB_NET.ensure_signed_in_async()
+
+
+## 手机切回前台时立刻续一次 —— 在后台放了一小时回来, token 早过期了,
+## 等下一拍(最多 60 秒)才续的话, 这段时间里的上传全会被拒。
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_RESUMED and not test_mode:
+		_SB_NET.ensure_signed_in_async()
 
 
 ## PC 板窗口行为(用户 2026-08-01:「pc端要随便拉，支持全屏」)。
@@ -1188,6 +1222,7 @@ func save() -> void:
 		"install_uid": install_uid,      # 本机随机安装标识(见 get_install_uid 的长注释)
 		"account_id": account_id,        # D-3 服务端账号(身份, 不随赛季变)
 		"account_email": account_email,  # 补绑的邮箱("" = 匿名, 换设备丢档)
+		"auth_refresh": auth_refresh,    # D-3c 登录续期令牌(设备本地, 不上云)
 		"season_id": season_id,
 		"season_start_ts": season_start_ts,
 		"hearts": hearts,
@@ -1267,6 +1302,7 @@ func _load() -> void:
 	install_uid = str(data.get("install_uid", ""))
 	account_id = str(data.get("account_id", ""))
 	account_email = str(data.get("account_email", ""))
+	auth_refresh = str(data.get("auth_refresh", ""))
 	season_id = int(data.get("season_id", 1))
 	season_start_ts = int(data.get("season_start_ts", 0))
 	hearts = int(data.get("hearts", 8))
@@ -1421,6 +1457,7 @@ func reset_save() -> void:
 	##   就再也认不回来了(而且旧账号还留在那儿占着 MAU)。
 	var _keep_acc := account_id
 	var _keep_mail := account_email
+	var _keep_refresh := auth_refresh   # D-3c: 清档清的是「这局游戏」不是「这台设备的登录」
 	best_dungeon_stage = 0
 	coins = 0
 	battles_won = 0
@@ -1477,6 +1514,7 @@ func reset_save() -> void:
 	install_uid = _keep_uid
 	account_id = _keep_acc
 	account_email = _keep_mail
+	auth_refresh = _keep_refresh
 	save()
 
 
