@@ -202,7 +202,19 @@ func _open_settings() -> Node:
 	return s
 
 
-const WARN := "换设备会丢失存档"
+## ★★2026-09-21 换判据。原来这里写死 `"换设备会丢失存档"`，
+##   而那句话**是不准确的**：核实过服务端五张表
+##   (`accounts` / `ghosts` / `matches` / `standings` / `service_status`)，
+##   **没有一张存玩家存档** —— 龟等级/装备/深海币全在本机。
+##   绑邮箱找回的是【账号(赛季身份)】，不是【存档】。
+##   ⇒ 旧判据把一句**架构上做不到**的承诺【钉】在产品里了
+##     (memory `fb-gate-can-pin-the-bug-in-place` 那一类)。
+## ★改判据不是放松，是**更紧**：
+##   ① 匿名态必须说清楚账号找不回来（`WARN`）
+##   ② 绑定态不许再有那句（反向分母，证明 ① 不是恒真式）
+##   ③ **任何状态下都不许**出现「丢失存档 / 取回存档」这种假承诺（`FALSE_PROMISE`）
+const WARN := "找不回来"
+const FALSE_PROMISE := ["丢失存档", "取回存档", "找回存档"]
 
 
 func _t_real_settings() -> void:
@@ -217,7 +229,13 @@ func _t_real_settings() -> void:
 	var s1 = await _open_settings()
 	var n_lab: int = _n_labels(s1)
 	_chk("④ ★分母: 设置页真的建出了 Label(N=0 的话下面是空检查)", n_lab > 0, "%d 个" % n_lab)
-	_chk("④ ★★匿名态: 屏幕上出现了「换设备会丢失存档」", _find_text(s1, WARN))
+	_chk("④ ★★匿名态: 屏幕上说清楚了【账号】找不回来", _find_text(s1, WARN))
+	var lied1 := []
+	for p in FALSE_PROMISE:
+		if _find_text(s1, str(p)):
+			lied1.append(str(p))
+	_chk("④ ★★匿名态不许承诺「存档」能找回(服务端根本没存存档)",
+		lied1.is_empty(), str(lied1))
 	_chk("④ 匿名态: 也显示了账号前 8 位(报问题时能对上号)",
 		_find_text(s1, UID_OK.substr(0, 8)), UID_OK.substr(0, 8))
 	s1.queue_free()
@@ -228,6 +246,12 @@ func _t_real_settings() -> void:
 	var s2 = await _open_settings()
 	_chk("④ ★★绑了邮箱之后【没有】那行警告(证明上面那条不是恒真式)",
 		not _find_text(s2, WARN))
+	var lied2 := []
+	for p in FALSE_PROMISE:
+		if _find_text(s2, str(p)):
+			lied2.append(str(p))
+	_chk("④ ★★绑定态也不许承诺「存档」能找回(原文案就是栽在这句上)",
+		lied2.is_empty(), str(lied2))
 	_chk("④ 绑了邮箱: 屏幕上显示的是邮箱", _find_text(s2, "someone@example.com"))
 	s2.queue_free()
 	await get_tree().process_frame

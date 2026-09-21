@@ -101,18 +101,178 @@ func _account_row() -> void:
 		sub = ""
 	elif mail != "":
 		head = "账号：%s" % mail
-		sub = "已绑定邮箱 · 换设备可用邮箱取回存档"
+		sub = "已绑定 · 换设备可用这个邮箱取回【账号】"
 	else:
 		## ★只显前 8 位: 完整 uuid 36 个字符, 在 1280 宽里既放不下也没用 ——
 		##   它的用途是「报问题时能对上号」, 前 8 位足够。
 		head = "账号：匿名 · %s" % aid.substr(0, 8)
-		sub = "⚠ 未绑定邮箱 —— 换设备会丢失存档"
+		sub = "⚠ 未绑定邮箱 —— 换设备后这个账号就找不回来了"
 	var a := _stroked_label(head, 15, "#cfe3ff", "", 0)
-	_place_center(a, W / 2.0, 146.0)
+	_place_center(a, W / 2.0, 128.0)
 	if sub != "":
 		var col := "#ffb454" if mail == "" else "#8fa6bd"    # 未绑定用警示橙, 已绑定用灰
 		var b := _stroked_label(sub, 12, col, "", 0)
-		_place_center(b, W / 2.0, 168.0)
+		_place_center(b, W / 2.0, 148.0)
+	## ★★2026-09-21 把「存档」两个字全部换掉 —— 原文案是**不准确的**。
+	##   核实过服务端五张表(`accounts` / `ghosts` / `matches` / `standings` /
+	##   `service_status`)：**没有一张存玩家存档**(`accounts` 只有
+	##   display_name / created_at / last_seen)。龟等级、装备、深海币
+	##   全在本机 `user://savegame.json`。
+	##   ⇒ 绑邮箱找回的是【账号(赛季身份：排名/战绩/鬼影)】，**不是存档**。
+	##   照原文案写等于承诺一件架构上做不到的事。存档同步是另一件事(未决)。
+	var note := _stroked_label("（龟和装备存在这台手机上，换设备都会丢）", 11, "#7e8fa0", "", 0)
+	_place_center(note, W / 2.0, 166.0)
+	if aid != "":
+		_small_button(W / 2.0, 192.0,
+			("换个邮箱" if mail != "" else "绑定邮箱"),
+			func(): _open_email_dialog(_SB_ACC.FLOW_BIND))
+
+
+## 紧凑按钮 —— 账号行下面那一个。`_text_button` 是 260×50 的木框大按钮,
+## 塞进 128~192 这段窄地里会压到下面的 BGM 滑条。
+func _small_button(cx: float, cy: float, label: String, cb: Callable) -> Button:
+	var b := Button.new()
+	b.text = label
+	b.add_theme_font_size_override("font_size", 14)
+	b.size = Vector2(150, 30)
+	b.position = Vector2(cx - 75.0, cy - 15.0)
+	b.pressed.connect(cb)
+	add_child(b)
+	return b
+
+
+# ─── D-3b 补绑邮箱 / 换设备取回 (2026-09-21) ──────────────────────
+## ★两条流程共用这一个弹窗, 只有标题和第二步的判据不同(见 supabase.gd 那节)。
+## ★★**邮件里要有 6 位数字码**。Supabase 的默认邮件模板只放一条链接,
+##   模板里得有 `{{ .Token }}` 才会带码 —— 那是后台面板上的一次性设置。
+##   所以提示语写死「邮件里那串 6 位数字」: 万一收到的邮件没有码,
+##   测试者一眼就知道是哪儿的问题, 而不是对着输入框发呆。
+var _email_layer: Control = null
+var _email_edit: LineEdit = null
+var _code_edit: LineEdit = null
+var _email_status: Label = null
+var _email_send_btn: Button = null
+var _email_ok_btn: Button = null
+
+func _open_email_dialog(flow: String) -> void:
+	if _email_layer != null and is_instance_valid(_email_layer):
+		return
+	_SB_ACC.reset_email_flow()
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.65)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(dim)
+	_email_layer = dim
+
+	var box := Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color("#1c2836"); sb.border_color = Color("#5aa0ff")
+	sb.set_border_width_all(3); sb.set_corner_radius_all(12)
+	box.add_theme_stylebox_override("panel", sb)
+	box.position = Vector2(W / 2.0 - 260, H / 2.0 - 170); box.size = Vector2(520, 340)
+	dim.add_child(box)
+
+	var ttl := Label.new()
+	ttl.text = "绑定邮箱" if flow == _SB_ACC.FLOW_BIND else "用邮箱取回账号"
+	ttl.add_theme_font_size_override("font_size", 24)
+	ttl.add_theme_color_override("font_color", Color("#cfe3ff"))
+	ttl.position = Vector2(0, 18); ttl.size = Vector2(520, 32)
+	ttl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(ttl)
+
+	var why := Label.new()
+	## ★说清楚它**到底**能做什么、不能做什么 —— 见 `_account_row` 里那段长注释。
+	why.text = ("绑定之后，换手机能用这个邮箱把【账号】取回来（排名、战绩、你的阵容）。\n"
+		+ "⚠ 龟和装备是存在这台手机上的，换设备仍然会丢。")
+	why.add_theme_font_size_override("font_size", 13)
+	why.add_theme_color_override("font_color", Color("#9fb4c8"))
+	why.position = Vector2(30, 56); why.size = Vector2(460, 54)
+	why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	why.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(why)
+
+	_email_edit = LineEdit.new()
+	_email_edit.placeholder_text = "你的邮箱"
+	_email_edit.text = str(GameState.account_email)
+	_email_edit.add_theme_font_size_override("font_size", 16)
+	_email_edit.position = Vector2(40, 120); _email_edit.size = Vector2(300, 40)
+	box.add_child(_email_edit)
+
+	_email_send_btn = Button.new()
+	_email_send_btn.text = "发验证码"
+	_email_send_btn.add_theme_font_size_override("font_size", 15)
+	_email_send_btn.position = Vector2(352, 120); _email_send_btn.size = Vector2(128, 40)
+	_email_send_btn.pressed.connect(func():
+		_SB_ACC.send_code_async(_email_edit.text, flow))
+	box.add_child(_email_send_btn)
+
+	_code_edit = LineEdit.new()
+	_code_edit.placeholder_text = "邮件里那串 6 位数字"
+	_code_edit.add_theme_font_size_override("font_size", 16)
+	_code_edit.position = Vector2(40, 172); _code_edit.size = Vector2(300, 40)
+	box.add_child(_code_edit)
+
+	_email_ok_btn = Button.new()
+	_email_ok_btn.text = "确认"
+	_email_ok_btn.add_theme_font_size_override("font_size", 15)
+	_email_ok_btn.position = Vector2(352, 172); _email_ok_btn.size = Vector2(128, 40)
+	_email_ok_btn.pressed.connect(func(): _SB_ACC.verify_code_async(_code_edit.text))
+	box.add_child(_email_ok_btn)
+
+	_email_status = Label.new()
+	_email_status.add_theme_font_size_override("font_size", 13)
+	_email_status.position = Vector2(30, 222); _email_status.size = Vector2(460, 48)
+	_email_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_email_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(_email_status)
+
+	var close := Button.new()
+	close.text = "关闭"
+	close.add_theme_font_size_override("font_size", 16)
+	close.position = Vector2(180, 282); close.size = Vector2(160, 40)
+	close.pressed.connect(func():
+		_SB_ACC.reset_email_flow()
+		dim.queue_free(); _email_layer = null)
+	box.add_child(close)
+
+	## ★用 Timer 子节点轮询, **不用 `create_timer` 闭包** ——
+	##   树级计时器接闭包会活过场景释放(本仓有一条门禁专门守这个)。
+	var t := Timer.new()
+	t.wait_time = 0.25
+	t.autostart = true
+	t.timeout.connect(_email_poll)
+	dim.add_child(t)
+	_email_poll()
+
+
+## 把网络层那个小状态机画出来。**每一步都要有话说** ——
+## 点完「发验证码」什么都不变的话, 玩家只会反复点(还把限流撞满)。
+func _email_poll() -> void:
+	if _email_status == null or not is_instance_valid(_email_status):
+		return
+	var st := str(_SB_ACC.email_state())
+	var msg := str(_SB_ACC.email_msg())
+	var col := "#9fb4c8"
+	match st:
+		_SB_ACC.EM_SENDING:
+			msg = "正在发送…"
+		_SB_ACC.EM_VERIFYING:
+			msg = "正在验证…"
+		_SB_ACC.EM_ERR:
+			col = "#ff8a94"
+		_SB_ACC.EM_OK:
+			col = "#7fe07f"
+		_:
+			if msg == "":
+				msg = "填邮箱 → 发验证码 → 把邮件里的数字填到下面"
+	_email_status.text = msg
+	_email_status.add_theme_color_override("font_color", Color(col))
+	if _email_send_btn != null and is_instance_valid(_email_send_btn):
+		_email_send_btn.disabled = (st == _SB_ACC.EM_SENDING or st == _SB_ACC.EM_VERIFYING)
+	if _email_ok_btn != null and is_instance_valid(_email_ok_btn):
+		## 还没发码就点「确认」是无意义的 —— 直接禁掉比让他点了再报错好。
+		_email_ok_btn.disabled = not (st == _SB_ACC.EM_SENT or st == _SB_ACC.EM_ERR)
 
 
 # ─── 🛠 调试场 (自由摆位测试场; 开发工具, 正式包不出现) ───

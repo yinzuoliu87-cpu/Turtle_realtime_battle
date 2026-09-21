@@ -414,6 +414,260 @@ func pull_opponents(query: String) -> void:
 			_bye())
 
 
+
+# ═════════════════════════════════════════════════════════════
+# D-3b 补绑邮箱 + 换设备取回
+# ═════════════════════════════════════════════════════════════
+## 两条流程共用「发码 → 验码」两步，但**第二步的判据正好相反**，别写成一个：
+##
+##   · 补绑(bind)    `PUT /auth/v1/user {email}` → 验码 →
+##     ★★返回的 id **必须等于**当前 `account_id`。不等 = 服务端新建了号 ⇒
+##       接受它就等于把玩家的赛季身份换掉了（排名/战绩/鬼影全断），而且是静默的。
+##
+##   · 换设备(recover) `POST /auth/v1/otp {email}` → 验码 →
+##     返回的 id **本来就和本机当前的不同** —— 那正是要换过去的那个。
+##
+## ⚠⚠ **「绑邮箱」不等于「存档不丢」**（2026-09-21 核实）：
+##   服务端五张表 `accounts / ghosts / matches / standings / service_status`
+##   **没有一张存玩家存档**（`accounts` 只有 display_name/created_at/last_seen）。
+##   龟等级、装备、深海币全在本机 `user://savegame.json`。
+##   ⇒ 绑邮箱找回的是**赛季身份**，不是**存档**。UI 文案必须照这个说，
+##     否则是在承诺一件架构上做不到的事。存档同步要不要做是另一件事（未决）。
+##
+## ★客户端先挡一道邮箱格式，是为了省**发信配额** ——
+##   Supabase 内置 SMTP 限流很严，一个手滑的错别字就浪费一封、还要等。
+
+const EM_IDLE := "idle"
+const EM_SENDING := "sending"      # 正在请求发码
+const EM_SENT := "sent"            # 码已发出, 等玩家输入
+const EM_VERIFYING := "verifying"  # 正在验码
+const EM_OK := "ok"
+const EM_ERR := "err"
+
+const FLOW_BIND := "bind"
+const FLOW_RECOVER := "recover"
+
+static var _email_state: String = EM_IDLE
+static var _email_msg: String = ""
+static var _email_pending: String = ""     # 正在绑/正在登录的那个邮箱
+static var _email_flow: String = ""
+
+
+static func email_state() -> String:
+	return _email_state
+
+
+static func email_msg() -> String:
+	return _email_msg
+
+
+static func email_pending() -> String:
+	return _email_pending
+
+
+static func email_flow() -> String:
+	return _email_flow
+
+
+static func reset_email_flow() -> void:
+	_email_state = EM_IDLE
+	_email_msg = ""
+	_email_pending = ""
+	_email_flow = ""
+
+
+## 纯函数: 邮箱看起来合法吗。**不追求完全符合 RFC** —— 那既做不到也没必要;
+## 这一道的唯一目的是**挡住手滑**，省下那封发不起的信。真正的判定在服务端。
+static func email_looks_valid(s: String) -> bool:
+	var e := s.strip_edges()
+	if e.length() < 6 or e.length() > 254:
+		return false
+	if e.contains(" ") or e.contains(",") or e.contains("\t"):
+		return false
+	var at := e.find("@")
+	if at <= 0 or at != e.rfind("@"):       # 必须有且只有一个 @, 且前面有东西
+		return false
+	var domain := e.substr(at + 1)
+	if not domain.contains("."):
+		return false
+	if domain.begins_with(".") or domain.ends_with("."):
+		return false
+	if domain.contains(".."):
+		return false
+	return domain.substr(domain.rfind(".") + 1).length() >= 2
+
+
+## 纯函数: 一次「发码」回包 → 给玩家看的结果。
+## ★**每一种失败都要有一句玩家看得懂的话** —— 「发送失败」等于什么都没说,
+##   而这几种的处理方式完全不同（改邮箱 / 换个邮箱 / 等一会儿 / 联系支持）。
+## ★实测回包形状（2026-09-21 真打的）:
+##   · 邮箱格式不对 → 400 `{"error_code":"validation_failed"}`
+##   · 太频繁       → 429 `{"error_code":"over_email_send_rate_limit"}`
+static func send_code_result(ok: bool, code: int, body: String) -> Dictionary:
+	if ok and code >= 200 and code < 300:
+		return {"ok": true, "reason": ""}
+	var ec := ""
+	var j := JSON.new()
+	if j.parse(body) == OK and j.data is Dictionary:
+		ec = str((j.data as Dictionary).get("error_code", ""))
+	if code == 0:
+		return {"ok": false, "reason": "连不上服务器，检查一下网络"}
+	if ec == "validation_failed":
+		return {"ok": false, "reason": "邮箱格式不对，再看一眼"}
+	if ec == "email_exists" or ec == "user_already_exists":
+		return {"ok": false, "reason": "这个邮箱已经绑过别的账号了"}
+	if code == 429 or ec == "over_email_send_rate_limit":
+		return {"ok": false, "reason": "发得太频繁了，等几分钟再试"}
+	return {"ok": false, "reason": "发送失败（%d），稍后再试" % code}
+
+
+## 纯函数: 一次「验码」回包 → 结果。
+## ★实测: 码错或过期 → 403 `{"error_code":"otp_expired"}`（**两种情况同一个码**，
+##   所以话得把两种都说到，不能只说「验证码错误」让人以为是打错了）。
+static func verify_code_result(ok: bool, code: int, body: String) -> Dictionary:
+	var acc := account_from_auth_response(ok, code, body)
+	if bool(acc["ok"]):
+		return {"ok": true, "reason": "", "account_id": str(acc["account_id"]),
+			"token": str(acc["token"]), "email": str(acc["email"])}
+	var ec := ""
+	var j := JSON.new()
+	if j.parse(body) == OK and j.data is Dictionary:
+		ec = str((j.data as Dictionary).get("error_code", ""))
+	if code == 0:
+		return {"ok": false, "reason": "连不上服务器，检查一下网络", "account_id": ""}
+	if ec == "otp_expired" or code == 403:
+		return {"ok": false, "reason": "验证码不对，或者已经过期了（重新发一次）", "account_id": ""}
+	return {"ok": false, "reason": "验证失败（%d）" % code, "account_id": ""}
+
+
+## ★★补绑专用: 验码成功之后，**还要问一句「这是不是同一个号」**。
+##   不等 ⇒ 服务端新建了账号 ⇒ 接受它就是把玩家的赛季身份换掉（排名/战绩/鬼影全断）。
+##   宁可报失败让人重来，也不能静默换号。
+static func bind_accepts(res: Dictionary, current_account: String) -> Dictionary:
+	if not bool(res.get("ok", false)):
+		return {"ok": false, "reason": str(res.get("reason", "验证失败"))}
+	var got := str(res.get("account_id", ""))
+	if current_account == "":
+		return {"ok": false, "reason": "本机还没有账号，先联网开一局再绑"}
+	if got != current_account:
+		return {"ok": false,
+			"reason": "服务器返回的是另一个账号，没有绑成功（没动你的进度）"}
+	return {"ok": true, "reason": ""}
+
+
+## 换设备取回: 返回的 id **本来就和本机当前的不同** —— 那正是要换过去的那个。
+## ⚠ 这里**只换身份**，不动本机存档 —— 服务端压根没存存档（见本节顶部长注释）。
+static func recover_accepts(res: Dictionary) -> Dictionary:
+	if not bool(res.get("ok", false)):
+		return {"ok": false, "reason": str(res.get("reason", "验证失败"))}
+	if str(res.get("account_id", "")) == "":
+		return {"ok": false, "reason": "服务器没给账号，取回失败"}
+	return {"ok": true, "reason": ""}
+
+
+# ── 异步入口 ────────────────────────────────────────────────
+
+## 第一步: 发码。`flow` = FLOW_BIND(补绑) 或 FLOW_RECOVER(换设备)。
+static func send_code_async(email: String, flow: String) -> void:
+	if not enabled():
+		_email_state = EM_ERR
+		_email_msg = "还没接后端"
+		return
+	var e := email.strip_edges()
+	if not email_looks_valid(e):
+		_email_state = EM_ERR
+		_email_msg = "邮箱格式不对，再看一眼"
+		return
+	if flow == FLOW_BIND and _token == "":
+		_email_state = EM_ERR
+		_email_msg = "还没登录，先联网开一局再绑"
+		return
+	_email_state = EM_SENDING
+	_email_msg = ""
+	_email_pending = e
+	_email_flow = flow
+	var n = _spawn()
+	if n != null:
+		n.send_code(e, flow)
+
+
+## 第二步: 验码。
+static func verify_code_async(code_text: String) -> void:
+	if not enabled() or _email_pending == "":
+		return
+	var c := code_text.strip_edges()
+	if c == "":
+		_email_state = EM_ERR
+		_email_msg = "把邮件里那串数字填进来"
+		return
+	_email_state = EM_VERIFYING
+	_email_msg = ""
+	var n = _spawn()
+	if n != null:
+		n.verify_code(_email_pending, c, _email_flow)
+
+
+func send_code(email: String, flow: String) -> void:
+	if not enabled():
+		_bye()
+		return
+	## 补绑走 `PUT /auth/v1/user`（**升级**现有匿名号，同一个 id）；
+	## 换设备走 `POST /auth/v1/otp`（拿邮箱换一次登录）。**两条路不能互换**：
+	## 拿 `/otp` 去"绑定"会新开一个号，玩家的赛季身份当场断掉。
+	var bind: bool = (flow == FLOW_BIND)
+	var url := base_url().rstrip("/") + ("/auth/v1/user" if bind else "/auth/v1/otp")
+	_http(("PUT" if bind else "POST"), url, JSON.stringify({"email": email}),
+		func(res):
+			var r := send_code_result(bool(res.get("ok", false)),
+				int(res.get("code", 0)), str(res.get("body", "")))
+			if bool(r["ok"]):
+				_email_state = EM_SENT
+				_email_msg = "验证码发到 %s 了，查收一下（也看看垃圾邮件）" % email
+			else:
+				_email_state = EM_ERR
+				_email_msg = str(r["reason"])
+			_bye(),
+		"Content-Type: application/json")
+
+
+func verify_code(email: String, code_text: String, flow: String) -> void:
+	if not enabled():
+		_bye()
+		return
+	var bind: bool = (flow == FLOW_BIND)
+	## `type`: 补绑是**改邮箱**(`email_change`)，换设备是**用邮箱登录**(`email`)。
+	## 填错的话服务端会以 `otp_expired` 拒掉 —— 看起来像"码不对"，极难查。
+	var payload := {"email": email, "token": code_text,
+		"type": ("email_change" if bind else "email")}
+	var url := base_url().rstrip("/") + "/auth/v1/verify"
+	_http("POST", url, JSON.stringify(payload),
+		func(res):
+			_apply_verify(bool(res.get("ok", false)), int(res.get("code", 0)),
+				str(res.get("body", "")), flow)
+			_bye(),
+		"Content-Type: application/json")
+
+
+## 验码回包 → 落地。抽成静态是为了**门禁能不碰网络就把两条流程各喂一遍**。
+static func _apply_verify(ok: bool, code: int, body: String, flow: String) -> bool:
+	var res := verify_code_result(ok, code, body)
+	var gs = (Engine.get_main_loop() as SceneTree).root.get_node_or_null("/root/GameState") if Engine.get_main_loop() != null else null
+	var cur := str(gs.account_id) if gs != null else ""
+	var v := bind_accepts(res, cur) if flow == FLOW_BIND else recover_accepts(res)
+	if not bool(v["ok"]):
+		_email_state = EM_ERR
+		_email_msg = str(v["reason"])
+		return false
+	_token = str(res.get("token", ""))
+	if gs != null:
+		gs.account_id = str(res["account_id"])
+		gs.account_email = str(res.get("email", _email_pending))
+		gs.save()
+	_email_state = EM_OK
+	_email_msg = ("邮箱绑好了" if flow == FLOW_BIND else "账号取回来了")
+	return true
+
+
 func sign_in_anonymous() -> void:
 	if not enabled():
 		_bye()
