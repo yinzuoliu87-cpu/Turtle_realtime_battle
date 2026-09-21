@@ -434,6 +434,16 @@ static func find_opponent(bracket: int, exclude_ids: Array, rng: RandomNumberGen
 	##   记账不是为了好看 —— A-R3「精确同场次命中率多低算太低」这条未决点,
 	##   没有这个数就永远答不了。
 	var my_battles := int(GameState.season_total_battles) if GameState != null else -1
+	## ★★D-4b(2026-09-21): 同一时刻也向 Supabase 拉一次【同周 + 同场次】的对手。
+	##   两条路**暂时并存**: 旧层走旧后端协议(`backend_url` 是空的 ⇒ 它是 no-op),
+	##   新层走 Supabase REST。同样是【填下一局】的池子, 一步不等网络。
+	## ★场次直接用下面选靶用的 `my_battles` **同一个变量** —— 不是两处各读一次。
+	##   这是「传上去的和拉回来的对不上」那类静默 bug 唯一可靠的防法:
+	##   只要有一维取的不是同一个量, 池子就永远是空的而没任何报错。
+	var SB = load("res://scripts/net/supabase.gd")
+	if SB != null and GameState != null:
+		SB.pull_opponents_async(int(GameState.week_anchor_ts), my_battles,
+			str(GameState.account_id))
 	## ① 精确同场次(本档优先, 再就近低档)
 	if my_battles >= 0:
 		for b in range(bracket, -1, -1):

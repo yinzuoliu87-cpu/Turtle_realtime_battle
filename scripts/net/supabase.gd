@@ -265,6 +265,155 @@ func upload_ghost(row: Dictionary) -> void:
 		"Prefer: resolution=merge-duplicates,return=minimal")
 
 
+
+# ═════════════════════════════════════════════════════════════
+# D-4b 匹配: 从 `ghosts` 拉【同一周 + 同场次】的对手快照并入本地池
+# ═════════════════════════════════════════════════════════════
+## ★★**匹配路径一行网络代码都不许有**。这次拉取填的是【下一局】的池子 ——
+##   本局的对手已经在 `Backend.find_opponent()` 里用现有本地池算出来了, 一步都不等网络。
+##   这是「离线不退化」那条硬指标的落点: 断网时这整层是 no-op, 匹配照常跑。
+##
+## ★为什么拉 `battles in (N, N+1)` 而不是只拉 N:
+##   · **N+1** 是主要目标 —— 我现在是 N 场, 打完这局就是 N+1 场,
+##     下一次匹配要找的就是 N+1 场的人。拉回来的正好那时能用。
+##   · **N 也要拉**, 因为场次并不总是涨的: `_settle_season` 里
+##     `season_total_battles += 1` 在【非表演赛】分支里 ⇒
+##     **0 命玩家打表演赛时场次不涨**, 会卡在同一个数反复打。
+##     只拉 N+1 的话这类玩家的池子永远是空的, 一直打 bot。
+##
+## ★排除自己有两层, 且两层作用不同:
+##   ① 服务端 `account_id=neq.<我>` —— 省带宽, 也是 D 方案书点名的口径。
+##   ② 本地 `Backend._is_self_ghost()` —— 它的**第一判据就是 ghost_id 前缀**
+##     (2026-08-27 就是踩了这个坑才加的): 自己那份从服务器绕一圈回来时
+##     `origin` 会被盖成 `remote`, 只看 origin 就会**打到自己**。
+##     id 是确定性的、绕多少圈都不变 —— 所以服务端那层挂了也不会穿帮。
+##
+## ⚠ 拉回来的快照**必须过 `RemotePool.snapshot_valid()`**(走 `ingest_remote` 就自带了)。
+##   理由不是假想: `ghosts` 表**故意没给 delete 策略**(防「打不过就把自己撤下来」),
+##   所以 2026-09-21 验 upsert 时写进去的探针行删不掉、还在库里。
+##   池子里混进结构不全的行是**常态**，不是意外。
+
+const PULL_LIMIT := 40
+
+static var _pulls_ok: int = 0
+static var _pulls_try: int = 0
+## 最后一次拉取的账 —— **必须被打印**。静默丢弃 = 假装「同步成功了」
+## 而池子其实一条没进(同 `RemotePool.ingest_remote` 那段注释)。
+static var _last_pull: Dictionary = {"total": 0, "added": 0, "rejected": 0, "reasons": []}
+## 最后一次发出去的查询串。★**拉取失败时必须打出来** ——
+##   「拉回 0 份」有两种完全不同的原因(问错了 / 真没人)，
+##   不把问题本身打出来就分不开，而这两种的修法南辕北辙。
+static var _last_query: String = ""
+
+
+static func pull_ok_count() -> int:
+	return _pulls_ok
+
+
+static func pull_try_count() -> int:
+	return _pulls_try
+
+
+static func last_pull_stats() -> Dictionary:
+	return _last_pull.duplicate(true)
+
+
+static func last_query() -> String:
+	return _last_query
+
+
+static func _reset_pull_for_test() -> void:
+	_pulls_ok = 0
+	_pulls_try = 0
+	_last_pull = {"total": 0, "added": 0, "rejected": 0, "reasons": []}
+	_last_query = ""
+
+
+## 纯函数: 拼匹配查询串。返回 "" 表示**不该拉**(缺身份 / 缺周 / 场次为负)。
+## ★与 `ghost_row_from_snapshot` 同一条原则: 缺前提就什么都不做,
+##   不拿 0 / 空串凑一个查询发出去 —— `account_id=neq.` 后面空着的话
+##   PostgREST 会拿它当一个合法过滤器算, 结果是**把自己也拉回来**。
+static func opponents_query(season_week: int, battles: int, account_id: String) -> String:
+	if season_week <= 0 or battles < 0 or account_id == "":
+		return ""
+	## `select=snapshot` 只要快照那一列 —— 其余列(排序三键/版本号)客户端用不着,
+	## 而快照本身已经带着它们。`order=uploaded_at.desc` 走的是 D-2 建好的
+	## 索引 `(season_week, battles, uploaded_at desc)`。
+	return ("season_week=eq.%d&battles=in.(%d,%d)&account_id=neq.%s" \
+		+ "&select=snapshot&order=uploaded_at.desc&limit=%d") % [
+		season_week, battles, battles + 1, account_id, PULL_LIMIT]
+
+
+## 纯函数: 从 REST 回包正文里把【快照】抽出来。
+## ★回包是 `[{"snapshot": {...}}, ...]` —— 外层是**行**不是快照。
+##   直接把行喂给 `ingest_remote` 的话每一条都会被 `snapshot_valid` 以
+##   「缺 ghost_id」拒掉 —— 而那看起来像「服务端没数据」。
+static func snapshots_from_body(body: String) -> Array:
+	var parsed = JSON.parse_string(body)
+	if not (parsed is Array):
+		return []
+	var out: Array = []
+	for row in (parsed as Array):
+		if not (row is Dictionary):
+			continue
+		var snap = (row as Dictionary).get("snapshot", null)
+		if snap is Dictionary and not (snap as Dictionary).is_empty():
+			out.append(snap)
+	return out
+
+
+## 把一次拉取回包并进本地池。返回统计(也存进 `_last_pull`)。
+## ★拉取失败**什么都不做**: 不重试、不回滚、不碰存档、不弹窗。
+##   池子空的后果只是打 bot(永久安全网), 不是把游戏搞坏。
+static func apply_pull_response(ok: bool, code: int, body: String) -> Dictionary:
+	_pulls_try += 1
+	var st: Dictionary = {"total": 0, "added": 0, "rejected": 0, "reasons": []}
+	if not (ok and code >= 200 and code < 300):
+		print("[SupabaseNet] 拉对手失败(code=%d), 忽略 —— 照旧打本地池/bot\n              刚才问的是: %s" % [code, _last_query])
+		_last_pull = st
+		return st
+	_pulls_ok += 1
+	var RP = load("res://scripts/net/remote_pool.gd")
+	var BE = load("res://scripts/net/backend.gd")
+	if RP == null or BE == null:
+		_last_pull = st
+		return st
+	var snaps: Array = snapshots_from_body(body)
+	var pool: Dictionary = BE.load_pool()
+	st = RP.ingest_remote(pool, snaps)
+	if int(st["added"]) > 0:
+		BE.save_pool(pool)
+	print("[SupabaseNet] 拉回 %d 份, 入池 %d, 拒 %d %s"
+		% [int(st["total"]), int(st["added"]), int(st["rejected"]), str(st["reasons"])])
+	_last_pull = st
+	return st
+
+
+## 去拉一次对手。**发完就忘**; 没配后端 / 没身份 / 缺周 = 什么都不做(连节点都不建)。
+static func pull_opponents_async(season_week: int, battles: int, account_id: String) -> void:
+	if not enabled():
+		return
+	var q := opponents_query(season_week, battles, account_id)
+	if q == "":
+		return
+	_last_query = q
+	var n = _spawn()
+	if n != null:
+		n.pull_opponents(q)
+
+
+func pull_opponents(query: String) -> void:
+	if not enabled() or query == "":
+		_bye()
+		return
+	var url := base_url().rstrip("/") + "/rest/v1/ghosts?" + query
+	_http("GET", url, "",
+		func(res):
+			apply_pull_response(bool(res.get("ok", false)), int(res.get("code", 0)),
+				str(res.get("body", "")))
+			_bye())
+
+
 func sign_in_anonymous() -> void:
 	if not enabled():
 		_bye()
