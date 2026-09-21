@@ -82,6 +82,112 @@ static func ask_count() -> int:
 	return _asked
 
 
+# ═════════════════════════════════════════════════════════════
+# D-3 账号: 匿名起步 + 补绑邮箱
+# ═════════════════════════════════════════════════════════════
+## ★★为什么必须有服务端账号, 而不是继续用 `GameState.install_uid`:
+##   `install_uid` 是**这台机器**不是**这个人** —— 换设备即丢档, 而且它从不离开本机,
+##   服务端没法拿它认人。D3 拍板的「匿名起步 + 补绑邮箱」要的是一个服务端身份。
+##   ⇒ `install_uid` 保留, 但只当「首次匿名登录的本地凭据」, **不做主键**。
+##
+## ★★`account_id` 会进 `ghosts` 的主键 `(account_id, season_week, battles)`。
+##   少了「谁」这一维, 两个人会在服务端**静默互相覆盖** ——
+##   memory `fb-id-without-owner-dimension` 记的就是这个形状(A6/U11 补的是「第几场」)。
+
+## 本进程的访问令牌(内存态, 不落盘)。★不存盘是有意的:
+##   它有有效期, 存下来的多半是过期的, 而"拿着一个过期 token 以为自己登录着"
+##   比每次重新匿名登录更难查。account_id 才是要持久化的东西(存在 GameState)。
+static var _token: String = ""
+static var _auth_tries: int = 0
+
+
+static func access_token() -> String:
+	return _token
+
+
+## ★分母用: 本进程试过几次登录。0 = 压根没发过, 别把它读成"登录失败"。
+static func auth_try_count() -> int:
+	return _auth_tries
+
+
+static func _reset_auth_for_test() -> void:
+	_token = ""
+	_auth_tries = 0
+
+
+## 纯函数: 一次 `/auth/v1/signup` 的回包 → 账号信息。**这才是要被逐条验的东西**。
+## 返回 {"ok": bool, "account_id": String, "token": String, "is_anonymous": bool, "email": String}。
+##
+## ★失败一律返回 `ok=false` 且 `account_id=""` —— **不许编一个本地 id 顶上**。
+##   那样会让「没登录成功」看起来像「登录成功了」, 而后果要等到上传快照
+##   在服务端被 RLS 拒掉时才显形(那时已经隔了好几层)。
+static func account_from_auth_response(ok: bool, code: int, body: String) -> Dictionary:
+	var bad := {"ok": false, "account_id": "", "token": "", "is_anonymous": false, "email": ""}
+	if not ok or code < 200 or code >= 300:
+		return bad
+	## ★同 `state_from_response`: 用 `JSON.new().parse()` 而不是 `JSON.parse_string()`,
+	##   后者遇到非 JSON 会往日志喷 ERROR, 而"网关返回一坨 HTML"是预期内的分支。
+	var j := JSON.new()
+	if j.parse(body) != OK:
+		return bad
+	var d = j.data
+	if not (d is Dictionary):
+		return bad
+	var dd: Dictionary = d
+	var user = dd.get("user", null)
+	if not (user is Dictionary):
+		return bad
+	var uid := str((user as Dictionary).get("id", ""))
+	if uid == "":
+		return bad
+	return {
+		"ok": true,
+		"account_id": uid,
+		"token": str(dd.get("access_token", "")),
+		"is_anonymous": bool((user as Dictionary).get("is_anonymous", false)),
+		"email": str((user as Dictionary).get("email", "")),
+	}
+
+
+## 把一次登录回包应用到全局 + 存档。返回是否成功。
+static func apply_auth_response(ok: bool, code: int, body: String) -> bool:
+	var r := account_from_auth_response(ok, code, body)
+	_auth_tries += 1
+	if not bool(r["ok"]):
+		return false
+	_token = str(r["token"])
+	var gs = (Engine.get_main_loop() as SceneTree).root.get_node_or_null("/root/GameState") if Engine.get_main_loop() != null else null
+	if gs != null:
+		gs.account_id = str(r["account_id"])
+		gs.account_email = str(r["email"])
+		gs.save()
+	return true
+
+
+## 需要的话去匿名登录一次。**已经有 account_id 就什么都不做** ——
+## 每次开游戏都新建一个匿名账号的话, 服务端会被刷出一堆一次性账号(Supabase 自己也警告过这点)。
+static func ensure_signed_in_async() -> void:
+	if not enabled():
+		return
+	var gs = (Engine.get_main_loop() as SceneTree).root.get_node_or_null("/root/GameState") if Engine.get_main_loop() != null else null
+	if gs != null and str(gs.account_id) != "":
+		return                                  # 已有身份, 不重复建号
+	var n = _spawn()
+	if n != null:
+		n.sign_in_anonymous()
+
+
+func sign_in_anonymous() -> void:
+	if not enabled():
+		_bye()
+		return
+	var url := base_url().rstrip("/") + "/auth/v1/signup"
+	_http("POST", url, "{}", func(res):
+		apply_auth_response(
+			bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", "")))
+		_bye())
+
+
 ## 只给门禁用: 把状态清回初始。★产品代码不许调 —— 状态应当只由 `apply_status_response` 改。
 static func _reset_for_test() -> void:
 	_state = ST_UNKNOWN

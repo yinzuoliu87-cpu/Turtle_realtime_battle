@@ -100,6 +100,11 @@ func _ready() -> void:
 	##   那种计时器活过场景释放, 响的时候去绑已释放的捕获就报错
 	##   (`tools/tree_timer_audit.py` 守这条, 它推荐的修法就是 Timer 子节点)。
 	_SB.fetch_status_async()
+	## ★D-3: 顺手确保有服务端身份。**已经有 account_id 就什么都不做** ——
+	##   每次开游戏都新建一个匿名账号的话, 服务端会被刷出一堆一次性账号
+	##   (Supabase 建项目时自己就警告过匿名登录被刷会撑爆 MAU)。
+	##   没配后端时这一句同样什么都不做, 连节点都不建。
+	_SB.ensure_signed_in_async()
 	var sb_t := Timer.new()
 	sb_t.wait_time = 1.0
 	sb_t.autostart = true

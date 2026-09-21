@@ -36,6 +36,20 @@ var recent_ghost_ids: Array = []
 ##   但方案书原来写"上传内容零个人信息"—— 准确说法现在是"零个人信息 + 一个随机不透明标识"。
 var install_uid: String = ""
 
+## ─── D-3 服务端账号(2026-09-21) ─────────────────────────────────────
+## ★★这两个字段是**身份**, 不是本轮进度 —— 所以它们走 `install_uid` 那条线:
+##   保存 ✓ / 载入 ✓ / **清档保留** / **切大轮不动**。
+##   ⚠ 别把它们塞进 `start_new_season()` 里那串归零 —— 那串是「本轮攒了多少」,
+##     而账号是「你是谁」。换一轮赛季不换人。
+##     (同族教训: `week_anchor_ts` 曾被门禁钉成「切轮后必须 == 0」,
+##      而它本该换成新一周的锚点 ⇒ 赛季再也滚不动。见 memory
+##      `fb-gate-can-pin-the-bug-in-place` —— 「恒等于零值」的断言要先问这字段本来该干什么。)
+## ★`install_uid` 保留但降级: 它是**这台机器**, 只当首次匿名登录的本地凭据, **不做主键**。
+##   服务端 `ghosts` 的主键是 `(account_id, season_week, battles)` —— 少了「谁」这一维,
+##   两个人会在服务端静默互相覆盖(memory `fb-id-without-owner-dimension`)。
+var account_id: String = ""        # Supabase 账号 uuid ("" = 还没登录过 / 后端没配)
+var account_email: String = ""     # 补绑的邮箱 ("" = 匿名账号, 换设备会丢档)
+
 
 ## 取本机安装标识, 没有就现生成一个并落盘。
 ## ★用 crypto 随机而不是 randi(): 后者受 `TURTLE_SEED` 之类的播种影响,
@@ -1172,6 +1186,8 @@ func save() -> void:
 		"meta_shop_offer": meta_shop_offer,
 		"meta_shop_battles": meta_shop_battles,
 		"install_uid": install_uid,      # 本机随机安装标识(见 get_install_uid 的长注释)
+		"account_id": account_id,        # D-3 服务端账号(身份, 不随赛季变)
+		"account_email": account_email,  # 补绑的邮箱("" = 匿名, 换设备丢档)
 		"season_id": season_id,
 		"season_start_ts": season_start_ts,
 		"hearts": hearts,
@@ -1249,6 +1265,8 @@ func _load() -> void:
 	meta_shop_offer = data.get("meta_shop_offer", [])
 	meta_shop_battles = int(data.get("meta_shop_battles", -1))
 	install_uid = str(data.get("install_uid", ""))
+	account_id = str(data.get("account_id", ""))
+	account_email = str(data.get("account_email", ""))
 	season_id = int(data.get("season_id", 1))
 	season_start_ts = int(data.get("season_start_ts", 0))
 	hearts = int(data.get("hearts", 8))
@@ -1398,6 +1416,11 @@ func reset_save() -> void:
 	## ★清档【不清 install_uid】—— 它是"这台机器"不是"这局游戏"。
 	##   清掉的话, 服务器上你之前传的快照就再也认不出是自己的了 ⇒ 打到自己。
 	var _keep_uid := install_uid
+	## ★同理保留服务端账号: 清的是「这局游戏」, 不是「你是谁」。
+	##   清掉的话玩家下次开游戏会新建一个匿名账号, 而服务器上他原来那份数据
+	##   就再也认不回来了(而且旧账号还留在那儿占着 MAU)。
+	var _keep_acc := account_id
+	var _keep_mail := account_email
 	best_dungeon_stage = 0
 	coins = 0
 	battles_won = 0
@@ -1452,6 +1475,8 @@ func reset_save() -> void:
 	##   (今天它恰好是恒等赋值 —— 本函数从头到尾没清过 `install_uid`, 所以行为无变化;
 	##    移它纯粹是把这颗雷挪走。上面那句「清档不清 install_uid」的防御仍然在。)
 	install_uid = _keep_uid
+	account_id = _keep_acc
+	account_email = _keep_mail
 	save()
 
 

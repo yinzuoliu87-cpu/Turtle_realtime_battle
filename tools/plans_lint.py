@@ -276,7 +276,20 @@ def check_number_source():
 #    ★★**没在台账里的文件按 0 算** —— 否则新开一份方案书就能无限打空勾,
 #      而"新方案书"恰恰是最需要管的地方(今天这次就是)。
 # ════════════════════════════════════════════════════════════════════════
-GATE_TOKEN = re.compile(r'verify_[A-Za-z0-9_]+|tools/[A-Za-z0-9_]+\.py|run-tests')
+# ★★2026-09-21 多认一个宿主: `.github/workflows/*.yml`。
+#   由来: D-6「隐私政策上线」确实有门禁 —— `pages-privacy.yml` 里四条构建期断言
+#   (页面非空 / 含联系邮箱 / 含 GDPR 节 / `_site` 里文件数必须恰好 1), 但它**不可能**写成
+#   `tests/verify_*.gd`: 它要守的是**发布出去的那一页**, 而那一页只在 CI 里生成时才存在。
+#   原正则表达不了这种门禁, 于是逼着我把一条真有人守的验收项写成"未勾" —— 那是**假账**。
+# ⚠ 这是**换形状不是放松**: 仍然必须点名一个【含断言的具体文件】,
+#   只是承认门禁可以住在 CI 里。想蒙混还是得先真写一个工作流。
+#   (memory `fb-my-invented-rules-become-the-wall`: 被自己写的硬规矩挡住时,
+#    先 grep 出处 —— tools/ 里我自己写的可改, 用户原话/spec 不许改。)
+GATE_TOKEN = re.compile(
+    r'verify_[A-Za-z0-9_]+'
+    r'|tools/[A-Za-z0-9_]+\.py'
+    r'|run-tests'
+    r'|\.github/workflows/[A-Za-z0-9_.-]+\.yml')
 DEBT_FILE = os.path.join('tools', 'plans_gate_debt.json')
 
 

@@ -28,6 +28,9 @@ func _ready() -> void:
 		"on_back": func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"),
 	})
 
+	# 账号行 @ (W/2, 150) — 标题栏与第一个滑条之间那块空地
+	_account_row()
+
 	# BGM 滑条 @ (W/2, 220) — 拖动实时生效; 写盘只在松手时一次 (原来每帧 save() = 拖一下写几十次盘)
 	_slider(W / 2.0, 220.0, "🎵 BGM 音量", GameState.bgm_volume,
 		func(v): GameState.bgm_volume = v; Audio.bgm_volume = v; Audio.apply_bgm_volume(),   # ★补: 原来只设变量没调 apply → 拖动对正在播的BGM无效(用户2026-07-19"音量键根本没效果")
@@ -71,6 +74,45 @@ func _ready() -> void:
 	##   设置页的居中适配变成"只有点调试场时才执行"。verify_ui_layout ② 当场红(偏离 185px)。
 	##   ⇒ 往函数之间插代码前, 先确认插入点【不在某个函数体内】(CLAUDE.md §3.7 同族)。
 	UIFrame.attach(self)
+
+
+# ─── D-3 账号行 (2026-09-21) ───────────────────────────────────────
+## ★★这一行存在的真正理由不是"显示个 id", 是方案书 D-3 里那句：
+##   **「没绑邮箱换设备就是丢档，这一点要在 UI 上说清楚」**。
+##   匿名账号是默认态(不强制注册就能玩), 代价就是换手机拿不回来 ——
+##   不说清楚的话, 玩家是在**不知情**的前提下承担这个代价。
+##
+## ★没配后端时**整行不显示**(不是显示"离线"):
+##   与 D-1 的三态同一条原则 —— 没配是**有意关掉**, 不该在设置页喊话。
+##   做成常驻的"在线/离线"角标是反的: 它等于告诉玩家"你是残缺状态, 去修",
+##   而玩家多半修不了 ⇒ 制造焦虑但给不出行动(`remote_pool.gd` 头注记过同样的取舍)。
+const _SB_ACC := preload("res://scripts/net/supabase.gd")
+
+func _account_row() -> void:
+	if not _SB_ACC.enabled():
+		return                                   # 没配后端 = 有意关掉, 什么都不显示
+	var aid := str(GameState.account_id)
+	var mail := str(GameState.account_email)
+	var head := ""
+	var sub := ""
+	if aid == "":
+		## 配了后端但还没拿到身份(刚开机还在登, 或登不上)。不说"失败" —— 说不准。
+		head = "账号：连接中…"
+		sub = ""
+	elif mail != "":
+		head = "账号：%s" % mail
+		sub = "已绑定邮箱 · 换设备可用邮箱取回存档"
+	else:
+		## ★只显前 8 位: 完整 uuid 36 个字符, 在 1280 宽里既放不下也没用 ——
+		##   它的用途是「报问题时能对上号」, 前 8 位足够。
+		head = "账号：匿名 · %s" % aid.substr(0, 8)
+		sub = "⚠ 未绑定邮箱 —— 换设备会丢失存档"
+	var a := _stroked_label(head, 15, "#cfe3ff", "", 0)
+	_place_center(a, W / 2.0, 146.0)
+	if sub != "":
+		var col := "#ffb454" if mail == "" else "#8fa6bd"    # 未绑定用警示橙, 已绑定用灰
+		var b := _stroked_label(sub, 12, col, "", 0)
+		_place_center(b, W / 2.0, 168.0)
 
 
 # ─── 🛠 调试场 (自由摆位测试场; 开发工具, 正式包不出现) ───
