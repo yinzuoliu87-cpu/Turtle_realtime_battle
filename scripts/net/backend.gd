@@ -519,6 +519,23 @@ static func upload_ghost(snapshot: Dictionary) -> void:
 	var RP = load("res://scripts/net/remote_pool.gd")
 	if RP != null:
 		RP.push_async(snapshot)
+	## ★★D-4a(2026-09-21): 同一份快照也发一份到 Supabase 的 `ghosts`。
+	##   两条路**暂时并存**: 旧层走旧后端协议(现在 `backend_url` 是空的 ⇒ 它是 no-op),
+	##   新层走 Supabase REST。等 D-4b 把匹配也搬过去之后, 旧层整个退役。
+	## ★主键要的三维在这里凑齐:
+	##   · `account_id`   谁 —— 没登录就**不传**(见 `ghost_row_from_snapshot` 的前提判断)
+	##   · `season_week`  哪一周 —— 用 `GameState.week_anchor_ts`(周锚点, 与赛程判定同一口径)
+	##   · `battles`      第几场 —— 快照里的 `season_total_battles`
+	##   ⚠ 少任何一维都会让两个人在服务端**静默互相覆盖**(memory `fb-id-without-owner-dimension`)。
+	var SB = load("res://scripts/net/supabase.gd")
+	if SB != null:
+		var row: Dictionary = SB.ghost_row_from_snapshot(
+			snapshot,
+			str(GameState.account_id),
+			int(GameState.week_anchor_ts),
+			int(snapshot.get("season_total_battles", -1)),
+			str(ProjectSettings.get_setting("application/config/version", "")))
+		SB.upload_ghost_async(row)      # row 为空(缺身份/缺场次) 时它自己 return
 
 ## 从玩家刚打的这局 (left 侧) 序列化成 ghost 快照 (上传自己用). ghost_id/profile 调用方给.
 static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dictionary:

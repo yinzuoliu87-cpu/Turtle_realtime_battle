@@ -183,6 +183,16 @@ var _autofree := false
 static var _upload_flash := false
 
 
+## 升起"上传成功"这面小旗。★给 `SupabaseNet` 用 —— D-4 之后上传走的是 Supabase,
+##   但结算屏那条正反馈的**消费方只有一个**(`battle_hud` 轮询 `consume_upload_flash`)。
+##   与其让新层再搞一面自己的旗、消费侧判两个来源, 不如让两层升同一面 ——
+##   「同一件事存两份」必然漂(本项目记过太多次)。
+## ⚠ 只在**成功**时调。这条反馈的全部设计就是"成功了才吱一声,
+##   失败时玩家的体验与这个功能不存在完全一样"(见上面那段长注释)。
+static func mark_upload_ok() -> void:
+	_upload_flash = true
+
+
 ## 取走"上传成功"这面小旗(取一次就没了, 所以不会重复弹)。
 static func consume_upload_flash() -> bool:
 	if not _upload_flash:

@@ -7553,7 +7553,25 @@ func _settle_season(won: bool) -> void:
 			if gs.get("left_team") is Array and (gs.left_team as Array).is_empty():
 				var _ldr: Array = gs.get("season_leaders")
 				gs.left_team.assign(_ldr.slice(0, 3))
-			## ★上传时机=【打赢才传】(用户 2026-08-27 拍板·别改成每局都传, 我提过被否)。见 20260820 方案书 §未决点3
+		## ═══ 阵容快照上传 ═══════════════════════════════════════════
+		## ★★上传时机 = 【每场都传】(E18 已定 2026-09-17, **正式推翻 2026-08-27 的「打赢才传」**)。
+		##
+		## ⚠ 这几行原来在 `if won:` 里面, 上面压着一句
+		##   「★上传时机=【打赢才传】(用户 2026-08-27 拍板·**别改成每局都传, 我提过被否**)」。
+		##   那句话**当时是对的** —— 是用户 2026-09-16 的 v2 原稿把口径改了:
+		##   「上传的话就是每场都传」。E18 明写「实现时**必须连代码里那行挡箭注释一起改**,
+		##   不改掉它, 将来有人照着老注释又改回去」⇒ 这段字是 E18 点名要求留下的, 别删。
+		##
+		## ★为什么要改: 只传赢的 ⇒ **同场次的池子里只有赢家, 越往后越偏强**。
+		##   而 D5 的匹配硬条件是「双方总场次相同」, 池子偏了就配不到势均力敌的对手。
+		##
+		## ★**投降局不传**(E18 第②条)。判据 = `lane_results` 是空字典 ——
+		##   实测过(`tests/_probe_draw_surrender.gd`): 投降不会写任何一路的结果。
+		##   代价 E18 也记了, 不是没想到: 等于给了「不想让别人打到我的阵容就投降」的口子,
+		##   但投降要付**一条命 + 一个配额**, 成本是真的。真发现有人这么玩再回头看那一行。
+		var _surrendered: bool = not (gs.lane_results is Dictionary) \
+			or (gs.lane_results as Dictionary).is_empty()
+		if not _surrendered:
 			var _gid := Backend.player_ghost_id(int(gs.season_id), gs.season_leaders, int(gs.season_total_battles))
 			var _av := str(gs.season_leaders[0]) if (gs.season_leaders as Array).size() > 0 else "basic"
 			Backend.upload_ghost(Backend.build_ghost_snapshot(_gid, {"name": "玩家阵容", "avatar": _av, "id": _gid}))

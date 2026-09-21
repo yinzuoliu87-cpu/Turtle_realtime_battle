@@ -177,6 +177,94 @@ static func ensure_signed_in_async() -> void:
 		n.sign_in_anonymous()
 
 
+# ═════════════════════════════════════════════════════════════
+# D-4a 上传: 每场都传一份阵容快照到 `ghosts`
+# ═════════════════════════════════════════════════════════════
+## ★★主键 `(account_id, season_week, battles)` —— 三维缺一不可:
+##   · `account_id` 「谁」 —— 少了它两个人在服务端**静默互相覆盖**
+##     (memory `fb-id-without-owner-dimension`)
+##   · `season_week` 「哪一周」—— 周锚点, 与客户端 `_P2.week_anchor_utc()` 同一口径
+##   · `battles` 「第几场」—— D5 拍板的匹配硬条件是**双方总场次相同**
+##   同键再传 = **覆盖**(upsert), 所以「每场都传」不会把池子撑爆: 一个人一周最多 N 行(N=他打的场数)。
+##
+## ★上传失败**什么都不做**: 不重试、不回滚、不碰存档、不弹窗。
+##   网络层第一原则 —— 永远不能把游戏搞坏。本地池那步在这之前**已经**做完且一定成功。
+static var _uploads_ok: int = 0
+static var _uploads_try: int = 0
+
+
+static func upload_ok_count() -> int:
+	return _uploads_ok
+
+
+static func upload_try_count() -> int:
+	return _uploads_try
+
+
+static func _reset_upload_for_test() -> void:
+	_uploads_ok = 0
+	_uploads_try = 0
+
+
+## 纯函数: 阵容快照 + 身份 → 要写进 `ghosts` 的那一行。**这才是要被逐条验的东西**。
+## 返回 {} 表示**不该传**(缺身份 / 缺场次), 调用方据此跳过 —— 不许凑一行残的上去。
+static func ghost_row_from_snapshot(snapshot: Dictionary, account_id: String,
+		season_week: int, battles: int, client_version: String) -> Dictionary:
+	## ★三条缺一不可的前提, 缺了就**不传**而不是填个默认值:
+	##   填 0 / 填空串会在服务端造出一行"看起来是合法数据"的垃圾, 而且会把别人的行覆盖掉
+	##   (主键撞上 `("", 0, 0)`)。宁可这一场不传。
+	if account_id == "" or season_week <= 0 or battles < 0:
+		return {}
+	if snapshot == null or snapshot.is_empty():
+		return {}
+	return {
+		"account_id": account_id,
+		"season_week": season_week,
+		"battles": battles,
+		"snapshot": snapshot,
+		"season_wins": int(snapshot.get("season_wins", 0)),
+		"hearts": int(snapshot.get("hearts", 8)),
+		"season_sweeps": int(snapshot.get("season_sweeps", 0)),
+		"client_version": client_version,
+	}
+
+
+## 把一次上传回包记账。返回是否成功。
+static func apply_upload_response(ok: bool, code: int) -> bool:
+	_uploads_try += 1
+	var good: bool = ok and code >= 200 and code < 300
+	if good:
+		_uploads_ok += 1
+		## ★升的是 `RemotePool` 那面旗 —— 结算屏的消费方只有一个, 别再搞一面自己的。
+		var RP = load("res://scripts/net/remote_pool.gd")
+		if RP != null:
+			RP.mark_upload_ok()
+	return good
+
+
+## 发一份快照。**发完就忘**; 没配后端 / 没身份 / 缺场次 = 什么都不做(连节点都不建)。
+static func upload_ghost_async(row: Dictionary) -> void:
+	if not enabled() or row.is_empty():
+		return
+	var n = _spawn()
+	if n != null:
+		n.upload_ghost(row)
+
+
+func upload_ghost(row: Dictionary) -> void:
+	if not enabled() or row.is_empty():
+		_bye()
+		return
+	## ★`Prefer: resolution=merge-duplicates` = upsert。同键(同一个人·同一周·同一场次)
+	##   再传就覆盖 —— D5「每场都传」靠的就是这个, 否则第二次传会撞主键报 409。
+	var url := base_url().rstrip("/") + "/rest/v1/ghosts"
+	_http("POST", url, JSON.stringify(row),
+		func(res):
+			apply_upload_response(bool(res.get("ok", false)), int(res.get("code", 0)))
+			_bye(),
+		"Prefer: resolution=merge-duplicates,return=minimal")
+
+
 func sign_in_anonymous() -> void:
 	if not enabled():
 		_bye()
@@ -275,18 +363,31 @@ func fetch_status() -> void:
 		_bye())
 
 
-func _headers() -> PackedStringArray:
+## ★★`Authorization` 用的是【登录后的 access_token】, 不是 anon key ——
+##   这一条错了会静默要命: 写 `ghosts` 的 RLS 策略是 `account_id = auth.uid()`,
+##   而拿 anon key 当 Bearer 时 `auth.uid()` 是 **null** ⇒ 每一次上传都 403,
+##   而上传是"发完就忘"的 ⇒ **玩家侧完全无感, 池子里永远一行都没有**。
+##   (2026-09-20 实测过这条策略: 冒充别人的 account_id 写 ghosts 返回 403 RLS violation。)
+## ★没登录时回落到 anon key: `/auth/v1/signup` 与 `service_status` 这两条**本来就该**用它
+##   (前者还没有身份, 后者的读策略是 `using (true)`)。
+func _headers(extra: String = "") -> PackedStringArray:
 	var k := anon_key()
-	return PackedStringArray([
+	var bearer := _token if _token != "" else k
+	var h := PackedStringArray([
 		"apikey: " + k,
-		"Authorization: Bearer " + k,
+		"Authorization: Bearer " + bearer,
 		"Accept: application/json",
 	])
+	if extra != "":
+		h.append(extra)
+	if extra != "" and extra.begins_with("Prefer"):
+		h.append("Content-Type: application/json")
+	return h
 
 
-func _http(method: String, url: String, body: String, cb: Callable) -> void:
+func _http(method: String, url: String, body: String, cb: Callable, extra: String = "") -> void:
 	if _transport.is_valid():
-		_transport.call(method, url, _headers(), body, cb)
+		_transport.call(method, url, _headers(extra), body, cb)
 		return
 	## ★`is_inside_tree()` 必须判: HTTPRequest 不在树上时 `request()` 直接报错
 	##   (旧后端那层踩过, 见 remote_pool 的同位置注释)。
@@ -300,7 +401,7 @@ func _http(method: String, url: String, body: String, cb: Callable) -> void:
 		var okk: bool = (result == HTTPRequest.RESULT_SUCCESS)
 		cb.call({"ok": okk, "code": code, "body": data.get_string_from_utf8()})
 		req.queue_free())
-	var err := req.request(url, _headers(), _method_of(method), body)
+	var err := req.request(url, _headers(extra), _method_of(method), body)
 	if err != OK:
 		cb.call({"ok": false, "code": 0, "body": ""})
 		req.queue_free()
