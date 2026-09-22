@@ -83,6 +83,37 @@ const PHASE_RANKED := "ranked"      # 周二~周五: 积分赛
 const PHASE_GAUNTLET := "gauntlet"  # 周六: 闯关赛
 const PHASE_FINALS := "finals"      # 周日: 决赛日
 
+## ★★闯关赛(周六) / 决赛日(周日) / 休赛(周一) 的**玩法**上线了没有。
+##
+## 现在是 `false` —— 那三天只有常量和赛程条上的名字, **一行玩法都没有**。
+## 而 `phase_at_utc()` 从 v0.19.417 起是真的会返回 gauntlet/finals/rest 的,
+## 于是出现了一个洞(2026-09-22 查实, 见下面 `phase_uses_ranked_quota`):
+##   那三天照常能开局、照常发奖、照常 `season_wins += 1`, 却**不吃积分赛配额** ——
+##   一周七天里有三天是"无限场次的积分赛", 谁周末刷得多谁就上榜, 配额 24 场形同虚设。
+##
+## ⇒ 在玩法上线之前, 这三天**按积分赛规则走**(吃配额、赛程条上直说"玩法开发中")。
+##   把开关做成常量而不是就地写死, 是为了让"上线那天要改回去的地方"只有这一个字:
+##   改成 `true`, 下面两个函数立刻恢复方案书 A3 设计的分流行为。
+const WEEKEND_MODES_LIVE := false
+
+## 这个阶段的场次, 要不要吃积分赛配额?
+## ★★唯一事实源: `_settle_season()` 记账与 `GameState.ranked_quota_full()` 开闸
+##   **必须是同一个答案** —— 两处各写一份 `if week_phase == "ranked"`, 就是同一判据存两份,
+##   必然有一处落后(memory fb-hand-rolled-copies-drift; 这个洞第一次出现正是因为这样)。
+## ⚠ 空串 = 赛程还没写进存档(老档/第一次开局) ⇒ 按积分赛计, 与 A3 的口径一致。
+static func phase_uses_ranked_quota(phase: String) -> bool:
+	if not WEEKEND_MODES_LIVE:
+		return true               # 玩法没上线 ⇒ 七天都是积分赛, 都吃配额
+	return phase == "" or phase == PHASE_RANKED
+
+## 这个阶段要不要在赛程条上挂一句"还没上线"? 返回空串 = 照常, 不用额外说明。
+## ★做成纯函数(而不是在主菜单里就地 if)是为了能**七天全量测**:
+##   只在主菜单里写, 门禁就只能量"今天"那一格, 一周里有四天是空检查。
+static func phase_pending_note(phase: String) -> String:
+	if WEEKEND_MODES_LIVE or phase == PHASE_RANKED:
+		return ""
+	return "玩法开发中 · 暂按积分赛规则"
+
 ## unix 秒 → 星期几(1=周一 … 7=周日, ISO 口径)。
 ## ★Godot 的 `get_datetime_dict_from_unix_time` 返回的 `weekday` 是 0=周日,
 ##   与原稿的「周一~周日」口径差一位 —— 转成 ISO 免得每个调用点各转一次。

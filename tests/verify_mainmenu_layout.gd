@@ -325,6 +325,79 @@ func _ready() -> void:
 			todays += 1
 	_ok("⑬ ★恰好一天被标成今天(0=看不出今天 · >1=算错了)", todays == 1, "%d 个" % todays)
 
+	# ── ⑬b ★收盘块说的话必须是**今天真能做到的事** (2026-09-22) ──
+	#    闯关赛/决赛日/休赛的玩法还没上线, 那三天实际走的是积分赛规则(照常开局、吃配额)。
+	#    在此之前周日写「决赛日 本地 X 点开打」、周一写「本日维护」—— 两句都做不到。
+	#    ★判据**跟着纯函数走**, 不在这里另写一份"今天该说什么":
+	#      `phase_pending_note()` 是 UI 与门禁共用的那一个答案(七天全量在 verify_week_season ⑦)。
+	#    ★任何一天跑都成立: 周二~周五 → 要有倒计时/封盘; 周一六日 → 要有那句「开发中」。
+	var _P2M := preload("res://scripts/gamedata/phase2_config.gd")
+	var now_ts: int = int(Time.get_unix_time_from_system())
+	var today_ph: String = _P2M.phase_at_utc(now_ts)
+	var note_today: String = _P2M.phase_pending_note(today_ph)
+	if note_today != "":
+		_ok("⑬b ★今天是「%s」(玩法还没上线) → 收盘块必须直说" % today_ph,
+			joined.find(note_today) >= 0, "条子里没有「%s」: %s" % [note_today, str(strip_txt)])
+		_ok("⑬b ★分母: 那句话确实是产品的纯函数给的, 不是我在门禁里硬写的",
+			note_today.find("开发中") >= 0, note_today)
+	else:
+		## 积分赛那几天照旧: 要么在倒计时, 要么已进封盘窗口(收盘前 10 分钟)
+		_ok("⑬b ★今天是积分赛 → 收盘块给的是倒计时或封盘提示",
+			joined.find("距收盘") >= 0 or joined.find("已封盘") >= 0
+			or joined.find("维护") >= 0, str(strip_txt))
+
+	# ── ⑬c ★**四个阶段各喂一个已知日期**, 别只量"今天"那一格 ──
+	#    上面 ⑬b 量的是今天 —— 一周里有四天走不到周末那半, 等于那几天它是空检查
+	#    (跑门禁的日子决定判据强弱 = 判据本身不可靠)。
+	#    `_week_close_block(now)` 本来就收时间戳 ⇒ 直接喂四个已知日期, **调产品那个真函数**。
+	#    ★★判据**不问 `phase_pending_note()` 这一天要不要挂提示** —— 那是拿被测函数当尺子:
+	#      它若退化成"永远返回空串", 判据会跟着走进 else 分支、然后全绿
+	#      (实测: 变异 M3 第一版没红, 就是栽在这里; 同一份文件 ⑥ 的注释早写过这条)。
+	#      「哪几天要挂」由**星期几 + 开关**决定, 写死在下面这张表里。
+	var DAYS := {                      # 显示名: [时间戳, 玩法还没上线的那三天?]
+		"周一休赛": [1789344000, true],
+		"周四积分赛": [1789603200, false],
+		"周六闯关赛": [1789776000, true],
+		"周日决赛日": [1789862400, true],
+	}
+	for dn in DAYS.keys():
+		var ts_d: int = int((DAYS[dn] as Array)[0])
+		var needs_note: bool = bool((DAYS[dn] as Array)[1]) and not _P2M.WEEKEND_MODES_LIVE
+		var blk = _menu._week_close_block(ts_d)
+		var btxt: Array = []
+		var bq: Array = [blk]
+		while not bq.is_empty():
+			var bn = bq.pop_back()
+			for bc in bn.get_children():
+				bq.append(bc)
+				if bc is Label:
+					btxt.append(str((bc as Label).text).strip_edges())
+		var bj := " / ".join(PackedStringArray(btxt))
+		var want_note: String = _P2M.phase_pending_note(_P2M.phase_at_utc(ts_d))
+		_ok("⑬c ★分母(%s): 收盘块真建出了文字" % dn, btxt.size() >= 2, bj)
+		if needs_note:
+			## ① 屏幕上必须出现「开发中」这个意思 —— 判据写死, 不引被测函数
+			_ok("⑬c ★%s: 玩法没上线 → 条子上要说「开发中」" % dn, bj.find("开发中") >= 0, bj)
+			## ② 而且必须**就是产品那个纯函数给的那一句**(否则 UI 自己抄了一份, 必然漂)
+			_ok("⑬c ★%s: 条子上那句 == phase_pending_note() 给的那句" % dn,
+				want_note != "" and bj.find(want_note) >= 0,
+				"函数给「%s」· 条子上是「%s」" % [want_note, bj])
+			## ★同时**不许**再出现那两句做不到的话 —— 只查"有没有加新句子"是半条判据
+			_ok("⑬c ★%s: 不再说「本日维护」/「开打」这类做不到的话" % dn,
+				bj.find("维护") < 0 and bj.find("开打") < 0, bj)
+		else:
+			## 玩法上线之后(WEEKEND_MODES_LIVE=true)三种阶段各说各的话, 逐个卡死 ——
+			## 写成"倒计时【或】维护【或】开打"就成了一条永远绿的或门。
+			var ph_d: String = _P2M.phase_at_utc(ts_d)
+			if ph_d == _P2M.PHASE_REST:
+				_ok("⑬c ★%s: 休赛日说维护" % dn, bj.find("维护") >= 0, bj)
+			elif ph_d == _P2M.PHASE_FINALS:
+				_ok("⑬c ★%s: 决赛日说几点开打" % dn, bj.find("开打") >= 0, bj)
+			else:
+				_ok("⑬c ★%s: 照常给倒计时" % dn,
+					bj.find("距收盘") >= 0 or bj.find("已封盘") >= 0, bj)
+		blk.queue_free()
+
 	# ── ⑪ ★没有花名 / 感叹号推销话术 (用户 2026-08-15 点名要去掉的那类"ai 味") ──
 	#    ★只扫【字符串字面量】—— 扫整段代码会被 `!=` 运算符命中(第一版就是这么假红的),
 	#      而要管的本来就是"屏幕上出现的字", 不是运算符。

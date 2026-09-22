@@ -7534,10 +7534,16 @@ func _settle_season(won: bool) -> void:
 		##   `season_total_battles` 是终身累计(跨大轮才归零), 而配额是**本周期**的额度 ——
 		##   两个不是一回事, 所以另记一个字段而不是拿前者算。
 		## ★**闯关赛 / 决赛日的场次不吃积分赛配额**(方案书 A3) ⇒ 按赛程阶段分流。
-		##   `week_phase` 为空 = 赛程还没接线(A 阶段后续步骤才写它) ⇒ 当前一律按积分赛计,
-		##   这样 A3 单独上线时行为与现状一致, 不会凭空少算。
-		if str(gs.week_phase) == "" or str(gs.week_phase) == "ranked":
-			gs.ranked_used += 1
+		##   `week_phase` 为空 = 赛程还没接线(老档/第一次开局) ⇒ 一律按积分赛计, 不会凭空少算。
+		## ★★2026-09-22: 判据搬进 `phase_uses_ranked_quota()` —— 原来这里就地写一份
+		##   `== "ranked"`, 与 `GameState.ranked_quota_full()` 里那份是同一判据的两个副本。
+		##   而闯关赛/决赛日的**玩法根本没上线**, 于是周六周日周一照常开局照常发奖、
+		##   `season_wins` 照加, 却一场都不记配额 ⇒ 一周三天无限刷、24 场配额形同虚设。
+		##   现在两处共用一个函数, 玩法上线时改那边一个常量即可(WEEKEND_MODES_LIVE)。
+		## ★判据写在 `GameState.consume_ranked_quota()` 里(数据的主人那一层), 这里只调它 ——
+		##   理由同下面的 `dual_lane_was_sweep()`: 在主场景就地再写一份 `== "ranked"`,
+		##   就是同一判据存两份, 必然有一处落后。这个洞第一次出现正是因为这样。
+		gs.consume_ranked_quota()
 		gs.add_season_xp(2)                          # 每场 +2 大轮经验
 		gs.axe_on_match_end()                        # 096 小木斧: 打完一整场 +10 砍伐经验 + 羁绊局数
 		gs.candy_jar_add(1 if won else 4)            # 糖果罐(选糖果龟当统领才有): 赢+1输+4封顶30(封板L392·逆风快攒)

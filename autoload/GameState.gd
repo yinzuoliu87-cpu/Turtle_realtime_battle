@@ -583,9 +583,26 @@ func dual_lane_winner() -> String:
 ##   各写一份必然有一处落后(memory fb-hand-rolled-copies-drift)。
 ## ★用户 2026-09-17 拍板: 配额打满 = **锁开局, 且商店一起锁**
 ##   (「打满就彻底停下来」; 不做"不计分的练手局" —— U9 已经否掉表演赛, 别换个名字装回来)。
-## ⚠ `week_phase` 为空 = 赛程还没接线 ⇒ 当前按积分赛算, 与 A3 的计数口径一致。
-func ranked_quota_full() -> bool:
-	if week_phase != "" and week_phase != "ranked":
+## ⚠ 吃不吃配额的判据在 `_P2.phase_uses_ranked_quota()` —— 与结算记账同一个函数。
+##   （闯关赛/决赛日玩法还没上线时它对七天都返回 true, 见那边的长注释。）
+##
+## ⚠⚠ 这里问的是「**现在**能不能开局 / 开商店」, 而存档里的 `week_phase` 回答的是
+##   「**上一场**属于哪个阶段」—— 它写在 TeamSelect 点「开打」那一刻, 之后一直留在存档里。
+##   两个不是同一个问题。2026-09-22 查实: 拿存档那个字段当"现在"用, 上周六打过的人
+##   在周二开局时会被当成还在闯关赛 ⇒ 配额打满了也放行, 白漏一场。所以这一层**问时钟**。
+##   (`now` 只为门禁能喂已知日期; 产品调用一律不传。)
+## 打完一场 → 该不该吃掉一格积分赛配额。★与开闸的 `ranked_quota_full()` 共用
+##   `_P2.phase_uses_ranked_quota()` 这一个判据。
+## ⚠ 入参是【这一场】的阶段(存档里的 `week_phase`, 点「开打」那一刻写的),
+##   而 `ranked_quota_full()` 问的是【现在】—— 两者问的本来就是两个问题, 不是抄漏了。
+func consume_ranked_quota() -> void:
+	if _P2.phase_uses_ranked_quota(str(week_phase)):
+		ranked_used += 1
+
+
+func ranked_quota_full(now: int = 0) -> bool:
+	var ts: int = now if now > 0 else int(Time.get_unix_time_from_system())
+	if not _P2.phase_uses_ranked_quota(_P2.phase_at_utc(ts)):
 		return false                      # 闯关赛/决赛日不吃积分赛配额, 自然谈不上打满
 	return int(ranked_used) >= int(_P2.RANKED_QUOTA)
 

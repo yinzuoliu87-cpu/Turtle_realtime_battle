@@ -888,6 +888,15 @@ func _week_close_block(now: int) -> Control:
 		var n := _SB.notice_text()
 		sub = n if n != "" else "版本维护, 稍后回来"
 		return _close_block_labels(head, sub)
+	## ★★2026-09-22: 闯关赛/决赛日/休赛的**玩法还没上线**(WEEKEND_MODES_LIVE=false) ⇒
+	##   那三天实际走的是积分赛规则(照常开局、吃配额)。这一块必须**直说** ——
+	##   在此之前周日写「决赛日 本地 X 点开打」、周一写「本日维护」, 而两天都能照常开局:
+	##   玩家按字面读会以为自己错过了决赛、或者以为维护日不能玩。**说了做不到的事就是缺陷**。
+	var note: String = _P2C.phase_pending_note(ph)
+	if note != "":
+		head = str(_P2C.PHASE_LABEL.get(ph, ph))
+		sub = note
+		return _close_block_labels(head, sub)
 	if left < 0:
 		if ph == _P2C.PHASE_FINALS:
 			head = "决赛日"

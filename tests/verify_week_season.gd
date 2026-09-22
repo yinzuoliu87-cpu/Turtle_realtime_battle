@@ -65,6 +65,7 @@ func _ready() -> void:
 	_t_reset_save_clears()
 	await _t_quota_and_sweep()
 	_t_schedule()
+	_t_weekend_interim()
 
 	print("")
 	print("  (共 %d 条断言)" % _n)
@@ -216,16 +217,29 @@ func _t_quota_and_sweep() -> void:
 	_ok("④ 再打一场 → 配额 +1(累计 2)", int(_gs.ranked_used) == 2,
 		"ranked_used=%d" % int(_gs.ranked_used))
 
-	## ★闯关赛/决赛日的场次**不吃**积分赛配额
-	_gs.week_phase = "gauntlet"
-	var before: int = int(_gs.ranked_used)
-	scene._settle_season(false)
-	_ok("④ ★闯关赛阶段: 打一场 → 积分赛配额【不动】", int(_gs.ranked_used) == before,
-		"打之前 %d, 打之后 %d" % [before, int(_gs.ranked_used)])
-	_gs.week_phase = "finals"
-	scene._settle_season(false)
-	_ok("④ ★决赛日阶段: 同样不动", int(_gs.ranked_used) == before,
-		"ranked_used=%d" % int(_gs.ranked_used))
+	## ★★2026-09-22 换判据。原来这两条断言的是
+	##   「闯关赛/决赛日打一场 → 积分赛配额【不动】」——
+	##   **那正是把 bug 钉在原地的判据**(memory `fb-gate-can-pin-the-bug-in-place`):
+	##   闯关赛/决赛日的玩法一行都没有, 那三天却照常开局、照常发奖、`season_wins` 照加,
+	##   只是不吃配额 ⇒ 一周七天里三天无限刷, 24 场配额形同虚设。
+	##   判据没错、代码也"照设计写了", 错的是**这两件事没有同时上线**。
+	## ⇒ 现在判据跟着 `WEEKEND_MODES_LIVE` 走, 两种取值各断言各的;
+	##   而且卡的是【加了几】(0 或 1), 不是"变了没有" —— 后者在连打两场时也会蒙对。
+	_gs.hearts = 8                                    # 重置: 上面输掉的两场别把命耗到 0
+	var live: bool = _P2.WEEKEND_MODES_LIVE
+	for ph in ["gauntlet", "finals", "rest"]:
+		_gs.week_phase = ph
+		var before: int = int(_gs.ranked_used)
+		## ★分母: 表演赛(0 命进场)不掉命也不记配额 —— 不排掉它, 下面 delta==0 会为了
+		##   完全错误的理由变绿(memory `fb-gate-subject-never-constructed`)。
+		_ok("④ ★分母(%s): 这一场是真赛不是表演赛" % ph, not _gs.is_eliminated(),
+			"hearts=%d" % int(_gs.hearts))
+		scene._settle_season(false)
+		var delta: int = int(_gs.ranked_used) - before
+		var want: int = 0 if live else 1
+		_ok("④ ★%s 阶段(周末玩法%s): 打一场 → 配额 +%d" % [
+				ph, "已上线" if live else "还没上线", want],
+			delta == want, "实得 +%d (打之前 %d, 打之后 %d)" % [delta, before, int(_gs.ranked_used)])
 
 	print("── ⑤ 横扫(2-0)计数 ──")
 	_gs.week_phase = "ranked"
@@ -304,3 +318,77 @@ func _t_schedule() -> void:
 	_ok("⑥ 收盘前 601 秒: 还能开(边界外一秒)", _P2.can_start_match_utc(close_at - 601))
 	_ok("⑥ ★收盘前 599 秒: 封盘(边界内一秒)", not _P2.can_start_match_utc(close_at - 599))
 	_ok("⑥ 休赛日不封盘(没有收盘概念)", _P2.can_start_match_utc(MON))
+
+
+# ─────────────────────────────────────────────────────────────
+# ⑦ 周末玩法没上线时的过渡规则 (2026-09-22)
+#    守的缺口: `phase_at_utc()` 从 v0.19.417 起真的会返回 gauntlet/finals/rest,
+#    但那三天的**玩法一行都没写** —— 于是"按阶段分流"把周六日一变成了
+#    无配额的积分赛(照常发奖、season_wins 照加)。
+#    ★七天**全量**验, 不抽查: 缺口的形状就是"某一天漏了", 抽查三天说明不了第四天。
+# ─────────────────────────────────────────────────────────────
+func _t_weekend_interim() -> void:
+	print("── ⑦ 周末玩法没上线时的过渡规则 ──")
+	var live: bool = _P2.WEEKEND_MODES_LIVE
+	var quota_days: Array = []      # 哪几天的场次吃积分赛配额
+	var note_days: Array = []       # 哪几天要在赛程条上挂「开发中」
+	for wd in range(1, 8):
+		var ph: String = _P2.phase_of_weekday(wd)
+		if _P2.phase_uses_ranked_quota(ph):
+			quota_days.append(wd)
+		if _P2.phase_pending_note(ph) != "":
+			note_days.append(wd)
+	print("  ⑦ 吃配额的天 = %s ; 要挂「开发中」的天 = %s ; 玩法上线 = %s" % [
+		str(quota_days), str(note_days), str(live)])
+	if live:
+		_ok("⑦ 周末玩法已上线: 只有周二~周五吃积分赛配额",
+			quota_days == [2, 3, 4, 5], str(quota_days))
+		_ok("⑦ 周末玩法已上线: 七天都不用挂「开发中」",
+			note_days.is_empty(), str(note_days))
+	else:
+		_ok("⑦ ★周末玩法没上线: 七天【都】吃配额(漏一天 = 那天可以无限刷)",
+			quota_days == [1, 2, 3, 4, 5, 6, 7], str(quota_days))
+		_ok("⑦ ★周末玩法没上线: 周一/周六/周日三天要直说「开发中」",
+			note_days == [1, 6, 7], str(note_days))
+	_ok("⑦ ★分母: 老档没写过赛程(空串)一律按积分赛算", _P2.phase_uses_ranked_quota(""))
+
+	## ★★开闸问的是【现在】, 不是存档里那个"上一场的阶段"。
+	##   存档里的 `week_phase` 写在点「开打」那一刻, 之后一直留着 ——
+	##   拿它当"现在"用, 上周六打过的人在周二开局时会被当成还在闯关赛而白放一场进来。
+	var THU := 1789603200    # 2026-09-17 周四 (与 ⑥ 同一组已知日期)
+	var SAT := 1789776000    # 2026-09-19 周六
+	var keep_phase = _gs.week_phase
+	var keep_used: int = int(_gs.ranked_used)
+	var keep_hearts: int = int(_gs.hearts)
+	_gs.hearts = 8                                   # 淘汰态下另有一条闸, 排掉它
+	_gs.week_phase = "gauntlet"                      # 上一场是上周六打的
+	_gs.ranked_used = int(_P2.RANKED_QUOTA)
+	_ok("⑦ ★存档里写着 gauntlet + 本周四配额已满 → 仍然拦住(不看存档里的旧阶段)",
+		_gs.ranked_quota_full(THU),
+		"week_phase=%s ranked_used=%d/%d" % [str(_gs.week_phase),
+		int(_gs.ranked_used), int(_P2.RANKED_QUOTA)])
+	_gs.ranked_used = int(_P2.RANKED_QUOTA) - 1
+	_ok("⑦ ★分母: 差一场没打满 → 放行(证明上一条不是恒真式)",
+		not _gs.ranked_quota_full(THU), "ranked_used=%d" % int(_gs.ranked_used))
+
+	_gs.ranked_used = int(_P2.RANKED_QUOTA)
+	var sat_full: bool = _gs.ranked_quota_full(SAT)
+	if live:
+		_ok("⑦ 周末玩法已上线: 周六不吃积分赛配额 → 打满也放行", not sat_full)
+	else:
+		_ok("⑦ ★周末玩法没上线: 周六配额打满 → 一样拦住(否则周六无限开局)", sat_full)
+
+	## `consume_ranked_quota()` 与 `ranked_quota_full()` 必须是同一个答案 ——
+	## 这两个函数是这次唯一的两个消费端, 它们各写一份判据正是这个洞的成因。
+	for ph2 in ["", "ranked", "gauntlet", "finals", "rest"]:
+		_gs.week_phase = ph2
+		_gs.ranked_used = 0
+		_gs.consume_ranked_quota()
+		_ok("⑦ consume(%s) 与 phase_uses_ranked_quota 一致" % ("空串" if ph2 == "" else ph2),
+			(int(_gs.ranked_used) == 1) == _P2.phase_uses_ranked_quota(ph2),
+			"ranked_used=%d, 规则说 %s" % [int(_gs.ranked_used),
+			str(_P2.phase_uses_ranked_quota(ph2))])
+
+	_gs.week_phase = keep_phase
+	_gs.ranked_used = keep_used
+	_gs.hearts = keep_hearts
