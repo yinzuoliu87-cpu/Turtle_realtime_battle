@@ -681,6 +681,12 @@ static func send_code_result(ok: bool, code: int, body: String) -> Dictionary:
 		return {"ok": false, "reason": "连不上服务器，检查一下网络"}
 	if ec == "validation_failed":
 		return {"ok": false, "reason": "邮箱格式不对，再看一眼"}
+	## ★发信服务还没接上时服务端回这个(官方错误码表原文: 默认发信服务只能发给组织成员)。
+	##   原来这里没映射, 走兜底「发送失败, 稍后再试」——「稍后再试」是**错的**, 再试多少次都不会成功。
+	if ec == "email_address_not_authorized":
+		return {"ok": false, "reason": "邮件服务还没开通，暂时绑定不了（正在接入）"}
+	if ec == "email_address_invalid":
+		return {"ok": false, "reason": "这个邮箱用不了（示例/测试域名不支持），换一个试试"}
 	if ec == "otp_disabled":
 		## 取回时填了一个没绑定过的邮箱(实测 422, 见 send_code 里 create_user:false 那段)
 		return {"ok": false, "reason": "这个邮箱没有绑定过账号，检查一下拼写"}

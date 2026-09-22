@@ -108,6 +108,10 @@ func _t_send_result() -> void:
 		["发太频繁", false, 429, '{"error_code":"over_email_send_rate_limit"}'],
 		["取回时邮箱没注册过(实测 422)", false, 422,
 			'{"code":422,"error_code":"otp_disabled","msg":"Signups not allowed for otp"}'],
+		["发信服务没接上(官方错误码)", false, 400,
+			'{"code":400,"error_code":"email_address_not_authorized","msg":"Email sending is not allowed for this address"}'],
+		["测试域名(实测 400)", false, 400,
+			'{"code":400,"error_code":"email_address_invalid","msg":"Email address is invalid"}'],
 		["连不上", false, 0, ""],
 		["网关吐了一坨 HTML", false, 502, "<html>502 Bad Gateway</html>"],
 	]
@@ -131,6 +135,9 @@ func _t_send_result() -> void:
 		["发太频繁", "频繁"],
 		["连不上", "网络"],
 		["取回时邮箱没注册过(实测 422)", "没有绑定过"],
+		## ★这条挡的是「稍后再试」: 发信服务没接上时再试多少次都不会成功, 那句话是在误导玩家
+		["发信服务没接上(官方错误码)", "还没开通"],
+		["测试域名(实测 400)", "换一个"],
 	]
 	var miss := 0
 	for m in must:
@@ -139,7 +146,7 @@ func _t_send_result() -> void:
 			miss += 1
 		_chk("② 「%s」的话里要有【%s】(告诉玩家该干嘛)" % [str(m[0]), str(m[1])],
 			said.contains(str(m[1])), said)
-	_chk("② ★★五类可排查的失败全都给了可操作的话(全走兜底当场红)",
+	_chk("② ★★各类可排查的失败全都给了可操作的话(全走兜底当场红)",
 		miss == 0, "缺 %d/%d" % [miss, must.size()])
 
 
