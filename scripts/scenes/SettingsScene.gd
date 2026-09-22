@@ -236,9 +236,11 @@ func _small_button(cx: float, cy: float, label: String, cb: Callable) -> Button:
 
 # ─── D-3b 补绑邮箱 / 换设备取回 (2026-09-21) ──────────────────────
 ## ★两条流程共用这一个弹窗, 只有标题和第二步的判据不同(见 supabase.gd 那节)。
-## ★★**邮件里要有 6 位数字码**。Supabase 的默认邮件模板只放一条链接,
+## ★★**邮件里要有验证码**。Supabase 的默认邮件模板只放一条链接,
 ##   模板里得有 `{{ .Token }}` 才会带码 —— 那是后台面板上的一次性设置。
-##   所以提示语写死「邮件里那串 6 位数字」: 万一收到的邮件没有码,
+##   ★位数**不写死**: 2026-09-22 读后台配置实测 `mailer_otp_length = 8`,
+##     原来这里写的「6 位」是我凭印象写的, 错了。位数是后台的一个设置, 写死就会漂。
+##   提示语写「邮件里的验证码」: 万一收到的邮件没有码,
 ##   测试者一眼就知道是哪儿的问题, 而不是对着输入框发呆。
 var _email_layer: Control = null
 var _email_edit: LineEdit = null
@@ -309,7 +311,7 @@ func _open_email_dialog(flow: String) -> void:
 	box.add_child(_email_send_btn)
 
 	_code_edit = LineEdit.new()
-	_code_edit.placeholder_text = "邮件里那串 6 位数字"
+	_code_edit.placeholder_text = "邮件里的验证码"
 	_code_edit.add_theme_font_size_override("font_size", 16)
 	_code_edit.position = Vector2(40, 172); _code_edit.size = Vector2(300, 40)
 	box.add_child(_code_edit)

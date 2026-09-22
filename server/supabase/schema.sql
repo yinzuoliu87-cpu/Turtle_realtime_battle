@@ -252,4 +252,9 @@ $$;
 
 -- 只有登录用户能调(匿名登录也算登录; 客户端自己只在绑了邮箱之后才调)
 revoke all on function public.push_save(jsonb, bigint, text) from public;
+-- ★★2026-09-22 执行后回读才发现: 上一行**收不掉 anon 的执行权** ——
+--   Supabase 在 public schema 上有默认授权, 会单独给 anon / authenticated / service_role 各一份,
+--   `revoke from public` 管不到它们。实际危害很小(anon 调进来 auth.uid() 为空, 第一行就返回),
+--   但意图是「只有登录用户能调」, 实测结果与意图不符就得改。
+revoke execute on function public.push_save(jsonb, bigint, text) from anon;
 grant execute on function public.push_save(jsonb, bigint, text) to authenticated;

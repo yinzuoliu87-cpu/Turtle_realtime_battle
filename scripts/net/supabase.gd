@@ -681,6 +681,9 @@ static func send_code_result(ok: bool, code: int, body: String) -> Dictionary:
 		return {"ok": false, "reason": "连不上服务器，检查一下网络"}
 	if ec == "validation_failed":
 		return {"ok": false, "reason": "邮箱格式不对，再看一眼"}
+	if ec == "otp_disabled":
+		## 取回时填了一个没绑定过的邮箱(实测 422, 见 send_code 里 create_user:false 那段)
+		return {"ok": false, "reason": "这个邮箱没有绑定过账号，检查一下拼写"}
 	if ec == "email_exists" or ec == "user_already_exists":
 		return {"ok": false, "reason": "这个邮箱已经绑过别的账号了"}
 	if code == 429 or ec == "over_email_send_rate_limit":
@@ -783,7 +786,12 @@ func send_code(email: String, flow: String) -> void:
 	## 拿 `/otp` 去"绑定"会新开一个号，玩家的赛季身份当场断掉。
 	var bind: bool = (flow == FLOW_BIND)
 	var url := base_url().rstrip("/") + ("/auth/v1/user" if bind else "/auth/v1/otp")
-	_http(("PUT" if bind else "POST"), url, JSON.stringify({"email": email}),
+	## ★★取回时带 `create_user: false`: 不带的话, 打错一个字母的邮箱会被服务端当成
+	##   **新用户注册**, 验码之后玩家以为取回了, 实际换成了一个空号。
+	##   实测(2026-09-22): 没注册过的邮箱 + create_user:false → 422 `otp_disabled`,
+	##   服务端直接拒、**不发信**(不耗那每小时 2 封的配额)。
+	var body: Dictionary = {"email": email} if bind else {"email": email, "create_user": false}
+	_http(("PUT" if bind else "POST"), url, JSON.stringify(body),
 		func(res):
 			var r := send_code_result(bool(res.get("ok", false)),
 				int(res.get("code", 0)), str(res.get("body", "")))

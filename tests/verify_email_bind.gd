@@ -106,6 +106,8 @@ func _t_send_result() -> void:
 			'{"code":400,"error_code":"validation_failed","msg":"Unable to validate email address: invalid format"}'],
 		["邮箱已被占用", false, 422, '{"error_code":"email_exists"}'],
 		["发太频繁", false, 429, '{"error_code":"over_email_send_rate_limit"}'],
+		["取回时邮箱没注册过(实测 422)", false, 422,
+			'{"code":422,"error_code":"otp_disabled","msg":"Signups not allowed for otp"}'],
 		["连不上", false, 0, ""],
 		["网关吐了一坨 HTML", false, 502, "<html>502 Bad Gateway</html>"],
 	]
@@ -128,6 +130,7 @@ func _t_send_result() -> void:
 		["邮箱已被占用", "别的账号"],
 		["发太频繁", "频繁"],
 		["连不上", "网络"],
+		["取回时邮箱没注册过(实测 422)", "没有绑定过"],
 	]
 	var miss := 0
 	for m in must:
@@ -136,8 +139,8 @@ func _t_send_result() -> void:
 			miss += 1
 		_chk("② 「%s」的话里要有【%s】(告诉玩家该干嘛)" % [str(m[0]), str(m[1])],
 			said.contains(str(m[1])), said)
-	_chk("② ★★四类可排查的失败全都给了可操作的话(全走兜底当场红)",
-		miss == 0, "缺 %d/4" % miss)
+	_chk("② ★★五类可排查的失败全都给了可操作的话(全走兜底当场红)",
+		miss == 0, "缺 %d/%d" % [miss, must.size()])
 
 
 # ─────────────────────────────────────────────────────────────
@@ -257,6 +260,8 @@ func _t_wire() -> void:
 	_chk("⑦ ★★补绑打的是 PUT /auth/v1/user(【升级】现有号)",
 		str(seen["method"]) == "PUT" and str(seen["url"]).ends_with("/auth/v1/user"),
 		"%s %s" % [seen["method"], seen["url"]])
+	_chk("⑦ 补绑的正文里没有 create_user(那是 /otp 的参数, PUT /user 不认)",
+		not str(seen["body"]).contains("create_user"), str(seen["body"]))
 	n1.free()
 
 	var n2 = SB.new()
@@ -265,6 +270,8 @@ func _t_wire() -> void:
 	_chk("⑦ ★★换设备打的是 POST /auth/v1/otp(拿邮箱换一次登录)",
 		str(seen["method"]) == "POST" and str(seen["url"]).ends_with("/auth/v1/otp"),
 		"%s %s" % [seen["method"], seen["url"]])
+	_chk("⑦ ★★换设备带了 create_user:false(不带 = 打错字的邮箱被注册成新空号)",
+		str(seen["body"]).contains('"create_user":false'), str(seen["body"]))
 	n2.free()
 
 	var n3 = SB.new()

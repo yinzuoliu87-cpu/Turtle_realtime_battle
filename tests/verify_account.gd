@@ -269,6 +269,12 @@ func _t_real_settings() -> void:
 	_chk("④ ★分母: 设置页真的建出了按钮(N=0 的话下面两条是空检查)", _n_buttons(s1) > 0,
 		"%d 个" % _n_buttons(s1))
 	_chk("④ 匿名态: 有「绑定邮箱」按钮", _find_button(s1, "绑定邮箱"))
+	## ★验证码位数是后台设置(实测 mailer_otp_length=8), 界面里写死位数就会漂 ——
+	##   v0.19.423 就写成了「6 位」。扫整个设置页源码里有没有「N 位」这种字样。
+	var src := FileAccess.get_file_as_string("res://scripts/scenes/SettingsScene.gd")
+	var rx := RegEx.create_from_string("[0-9]+ ?位(数字|验证码)")
+	_chk("④ ★界面文案里不写死验证码位数(后台是 8 位, 我曾写成 6 位)", rx.search(src) == null,
+		rx.search(src).get_string() if rx.search(src) != null else "")
 	_chk("④ ★★匿名态: 有「用邮箱取回」按钮(新手机上拿回旧号的唯一入口; v0.19.423 就漏了它)",
 		_find_button(s1, "用邮箱取回"))
 	s1.queue_free()
