@@ -7535,6 +7535,12 @@ func _settle_season(won: bool) -> void:
 		##   ★整块记账写在 `GameState.gauntlet_settle()` 里(数据的主人那一层), 这里只调它并拿回币数 ——
 		##     理由同下面的 `dual_lane_was_sweep()` / `consume_ranked_quota()`。
 		_last_reward = gs.gauntlet_settle(won)
+		## ★★E-A4 快照上传: **记完战绩之后**才传, 标签取的是打完这一场的新战绩 ——
+		##   下一场要找的是"跟我现在同样几胜几负"的人。传打之前那个标签等于把自己
+		##   挂在上一格上, 别人永远找不到我, 而且**一声不吭**(表现成"周六老是打机器人")。
+		## ★投降局不传(与积分赛 E18 同一条): 判据是 `lane_results` 为空。
+		if gs.lane_results is Dictionary and not (gs.lane_results as Dictionary).is_empty():
+			Backend.upload_gauntlet_ghost(int(gs.gauntlet_wins), int(gs.gauntlet_losses))
 	else:
 		if not won:
 			gs.lose_heart()                          # 输 → 失一颗心 (0命=淘汰)

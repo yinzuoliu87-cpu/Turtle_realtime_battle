@@ -432,6 +432,95 @@ func upload_ghost(row: Dictionary) -> void:
 		"Prefer: resolution=merge-duplicates,return=minimal")
 
 
+# ═════════════════════════════════════════════════════════════
+# E-A4 周六闯关赛: 另一张池子, 按【战绩标签】撮合
+#
+# ★★为什么不复用 ghosts 那一套: 两者的**匹配维度不是一回事** ——
+#   ghosts 按「总场次」(D5 积分赛硬条件), 闯关赛按「战绩标签」(3-1 只碰 3-1, 永不跨标签)。
+#   同一张表里放两个维度, 按场次查会捞到周六的行、反之亦然, 而且**静默**。
+# ═════════════════════════════════════════════════════════════
+
+## 纯函数: 快照 + 战绩 → 要 POST 的那一行。
+## ★三条缺一不可的前提, 缺了就**不传**而不是填默认值 —— 填 0/空串会在服务端造出
+##   一行"看起来合法"的垃圾, 还可能撞主键覆盖别人(与 `ghost_row_from_snapshot` 同一个理由)。
+static func gauntlet_row_from_snapshot(snapshot: Dictionary, account_id: String,
+		season_week: int, gw: int, gl: int, client_version: String) -> Dictionary:
+	if account_id == "" or season_week <= 0 or gw < 0 or gl < 0:
+		return {}
+	if snapshot == null or snapshot.is_empty():
+		return {}
+	return {
+		"account_id": account_id,
+		"season_week": season_week,
+		"gw": gw,
+		"gl": gl,
+		"snapshot": snapshot,
+		"client_version": client_version,
+	}
+
+
+static func upload_gauntlet_async(row: Dictionary) -> void:
+	if not enabled() or row.is_empty():
+		return
+	var n = _spawn()
+	if n != null:
+		n.upload_gauntlet(row)
+
+
+func upload_gauntlet(row: Dictionary) -> void:
+	if not enabled() or row.is_empty():
+		_bye()
+		return
+	var url := base_url().rstrip("/") + "/rest/v1/gauntlet_ghosts"
+	_http("POST", url, JSON.stringify(row),
+		func(res):
+			apply_upload_response(bool(res.get("ok", false)), int(res.get("code", 0)))
+			_bye(),
+		"Prefer: resolution=merge-duplicates,return=minimal")
+
+
+## 纯函数: 拉同标签对手的查询串。
+## ★★与积分赛那条 `opponents_query` 的**关键差别**: 那边是 `battles=in.(N, N+1)`
+##   —— 允许差一场(池子薄时的让步); 这边是 `gw=eq.X&gl=eq.Y` **完全相等**,
+##   原稿写死「永不跨标签」。放宽一格就等于让 3-1 打 3-2, 而那两个人的
+##   经济供给差了一整场 —— 闯关赛的全部意义就是"同战绩的人互相淘汰"。
+static func gauntlet_query(season_week: int, gw: int, gl: int, account_id: String) -> String:
+	if season_week <= 0 or gw < 0 or gl < 0 or account_id == "":
+		return ""
+	return ("season_week=eq.%d&gw=eq.%d&gl=eq.%d&account_id=neq.%s" \
+		+ "&select=snapshot,uploaded_at&order=uploaded_at.desc&limit=%d") % [
+		season_week, gw, gl, account_id, PULL_LIMIT]
+
+
+static func pull_gauntlet_async(season_week: int, gw: int, gl: int,
+		account_id: String) -> void:
+	if not enabled():
+		return
+	var q := gauntlet_query(season_week, gw, gl, account_id)
+	if q == "":
+		return
+	_last_query = q                      ## 拉失败时日志要能打出【刚才问的那条】
+	var n = _spawn()
+	if n != null:
+		n.pull_gauntlet(q)
+
+
+func pull_gauntlet(q: String) -> void:
+	if not enabled() or q == "":
+		_bye()
+		return
+	## ★入池走的是与积分赛**同一个** `apply_pull_response()` ——
+	##   那里已经把「解包 → 验快照 → 入池 → 存盘 → 记账」整条路封好了。
+	##   手写第二份就是「手抄的副本必然落后」(我第一版就这么写的,
+	##   而且调了两个不存在/签名不符的函数 —— GDScript 鸭子类型, 编译期不报)。
+	var url := base_url().rstrip("/") + "/rest/v1/gauntlet_ghosts?" + q
+	_http("GET", url, "",
+		func(res):
+			apply_pull_response(bool(res.get("ok", false)), int(res.get("code", 0)),
+				str(res.get("body", "")))
+			_bye())
+
+
 
 # ═════════════════════════════════════════════════════════════
 # D-4b 匹配: 从 `ghosts` 拉【同一周 + 同场次】的对手快照并入本地池

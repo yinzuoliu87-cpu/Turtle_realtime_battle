@@ -79,6 +79,54 @@ create policy ghosts_update_own on public.ghosts
   for update using (account_id = auth.uid()) with check (account_id = auth.uid());
 
 -- ─────────────────────────────────────────────────────────────
+-- 2b. gauntlet_ghosts —— 周六闯关赛的快照池（E-A4, 2026-09-22）
+--
+--    ★★为什么**另起一张表**而不是给 ghosts 加两列：
+--      · ghosts 的主键是 (account_id, season_week, battles)，里面已经有真数据 —— 换主键要迁移；
+--      · 两张表的**匹配维度本来就不是一回事**：
+--          ghosts          按【总场次】撮合（D5：积分赛硬条件「双方总场次相同」）
+--          gauntlet_ghosts 按【战绩标签】撮合（原稿：3-1 只碰 3-1，**永不跨标签**）
+--      硬塞进一张表，两个维度就会互相污染（按场次查会捞到周六的行，反之亦然）。
+--
+--    ★主键含 (gw, gl)：同一个人周六会**连续产出多条**（0-0 → 1-0 → 2-0 …），
+--      每条都得留着 —— 后来者要按自己那一格找对手，不能只剩最新一份
+--      （这正是 A6 给 ghosts 加 battles 那一维的同一个理由）。
+--
+--    ★保留期：与重放同一条线（U7：只活到周一），由 §5 的定时任务按 season_week 清。
+-- ─────────────────────────────────────────────────────────────
+create table if not exists public.gauntlet_ghosts (
+  account_id   uuid        not null references auth.users(id) on delete cascade,
+  season_week  bigint      not null,
+  gw           int         not null,        -- 闯关赛胜场（战绩标签的前半）
+  gl           int         not null,        -- 闯关赛负场（战绩标签的后半）
+  snapshot     jsonb       not null,        -- 与 ghosts 同一个 build_ghost_snapshot() 产物
+  client_version text      not null,
+  uploaded_at  timestamptz not null default now(),
+  primary key (account_id, season_week, gw, gl)
+);
+
+-- 匹配查询：同一周 + **完全相同的标签**，按上传时刻倒序（新鲜度在客户端按 30 分钟窗口过滤，
+-- 见 phase2_config.FRESH_SNAPSHOT_SEC —— 周六的窗口是**过滤**不是排序，与积分赛 D10 相反）。
+create index if not exists gauntlet_match_idx
+  on public.gauntlet_ghosts (season_week, gw, gl, uploaded_at desc);
+
+alter table public.gauntlet_ghosts enable row level security;
+
+-- 读：所有登录用户都能读（匹配要在别人的快照里挑对手）
+drop policy if exists gauntlet_read_all on public.gauntlet_ghosts;
+create policy gauntlet_read_all on public.gauntlet_ghosts
+  for select using (auth.uid() is not null);
+
+-- 写：只能写自己的那一行
+drop policy if exists gauntlet_write_own on public.gauntlet_ghosts;
+create policy gauntlet_write_own on public.gauntlet_ghosts
+  for insert with check (account_id = auth.uid());
+
+drop policy if exists gauntlet_update_own on public.gauntlet_ghosts;
+create policy gauntlet_update_own on public.gauntlet_ghosts
+  for update using (account_id = auth.uid()) with check (account_id = auth.uid());
+
+-- ─────────────────────────────────────────────────────────────
 -- 3. matches —— 对局记录（观战与重放用）
 --    ★保留期：最多到下一个周一，由 §5 的定时任务自动删（U7 拍板：不靠手动）。
 --    ★带 client_version：播放前比对，不一致直接不给播（4.7 实现要求①）。

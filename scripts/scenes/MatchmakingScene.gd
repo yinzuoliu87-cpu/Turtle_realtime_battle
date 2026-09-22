@@ -1,4 +1,5 @@
 extends Control
+const _P2C_MM := preload("res://scripts/gamedata/phase2_config.gd")
 
 const TopBar = preload("res://scripts/util/top_bar.gd")
 var _top_bar = null
@@ -75,7 +76,16 @@ func _ready() -> void:
 	var exclude: Array = [Backend.player_ghost_id(int(GameState.season_id), GameState.season_leaders,
 		int(GameState.season_total_battles))]
 	exclude.append_array(GameState.recent_ghost_ids)   # 排除最近3场对手(防连续同一快照·用户2026-07-15)
-	GameState.dual_ghost = Backend.find_opponent(Backend.bracket_for_battles(int(GameState.season_total_battles)), exclude, _rng)
+	## ★★E-A4: 周六走**闯关赛的匹配**(按战绩标签, 永不跨标签), 不是按总场次那条。
+	##   判据与开局闸/结算共用 `phase_mode_live()` —— 就地再写一份 `== "gauntlet"`
+	##   就是同一判据存四份(memory `fb-hand-rolled-copies-drift`)。
+	var _now_mm: int = int(Time.get_unix_time_from_system())
+	if _P2C_MM.phase_at_utc(_now_mm) == _P2C_MM.PHASE_GAUNTLET \
+			and _P2C_MM.phase_mode_live(_P2C_MM.PHASE_GAUNTLET):
+		GameState.dual_ghost = Backend.find_gauntlet_opponent(
+			int(GameState.gauntlet_wins), int(GameState.gauntlet_losses), exclude, _rng)
+	else:
+		GameState.dual_ghost = Backend.find_opponent(Backend.bracket_for_battles(int(GameState.season_total_battles)), exclude, _rng)
 	var _gid := str((GameState.dual_ghost as Dictionary).get("ghost_id", "")) if GameState.dual_ghost is Dictionary else ""
 	if _gid != "":
 		GameState.recent_ghost_ids.append(_gid)

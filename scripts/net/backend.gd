@@ -461,6 +461,105 @@ static func find_opponent(bracket: int, exclude_ids: Array, rng: RandomNumberGen
 	_tally("bot")
 	return make_bot(bracket, rng)
 
+
+## ★★E-A4(2026-09-22) 周六闯关赛的匹配 —— 与上面那条**是两套**, 不是加个参数。
+##
+## 原稿逐字:「只有战绩标签完全相同者互配(3-1 只碰 3-1)。同标签 ⟹ 同场数 ⟹
+##   周六内供给完全一致; 兜底链: 同标签真人排队 → 同标签新鲜快照(30 分钟内)→ 机器人。
+##   **永不跨标签**」。
+##
+## ★与积分赛那条的三处**有意不同**, 每处都有理由:
+##   ① 积分赛允许 `battles=in.(N, N+1)` 差一场(池子薄时的让步);
+##      闯关赛**完全相等** —— 放宽一格就是让 3-1 打 3-2, 两人经济供给差一整场,
+##      而"同战绩的人互相淘汰"正是这个赛制的全部意义。
+##   ② 积分赛的新鲜度是**排序**(D10: 池子薄, 卡时间窗会经常凑不出人);
+##      闯关赛的 30 分钟是**过滤**(U3b: 淘汰赛宁可等、宁可打机器人, 也不要打一份隔夜快照)。
+##   ③ 回落**不降标签**, 只降到机器人 —— 上面那条会 `for b in range(bracket, -1, -1)`
+##      往低档找, 这里一格都不许降。
+##
+## ⚠ 本函数**一行网络代码都没有**(与 `find_opponent` 同一条纪律): 顺手发一次拉取填
+##   【下一局】的池子, 本局就用现在这个本地池算。断网时那一行是 no-op, 下面照常跑。
+static func find_gauntlet_opponent(gw: int, gl: int, exclude_ids: Array,
+		rng: RandomNumberGenerator) -> Dictionary:
+	var pool := load_pool()
+	if GameState != null:
+		var SB2 = load("res://scripts/net/supabase.gd")
+		if SB2 != null:
+			SB2.pull_gauntlet_async(int(GameState.week_anchor_ts), gw, gl,
+				str(GameState.account_id))
+	## ① 同标签的新鲜快照。**一格都不降**。
+	var ge = gauntlet_pool_find(pool, gw, gl, exclude_ids, rng)
+	if ge != null:
+		_tally("gauntlet_label")
+		return ge
+	## ② 机器人(永久安全网)。★记成**另一个**计数, 不与积分赛的 bot 混在一起 ——
+	##    「周六有多少场是打机器人的」是 R2 那条风险唯一能回答的数字。
+	_tally("gauntlet_bot")
+	return make_bot(bracket_for_battles(gw + gl), rng)
+
+
+## 周六打完一场 → 产出一份**带战绩标签**的快照, 入本地池并传云端。
+##
+## ★★标签取的是**打完之后**的战绩: 下一场要找的是"跟我现在同样几胜几负"的人。
+##   传打之前那个标签, 等于把自己挂在**上一格**上 —— 别人按新标签找永远找不到我,
+##   而这件事**不会报任何错**, 只会表现成"周六老是匹配到机器人"。
+## ★三个 `gl_*` 字段是匹配层唯一的依据(`gauntlet_pool_find` 读它们)。
+##   ghost_id 也要带标签, 否则 `pool_add` 按 id 去重会让同一个人只剩最新一格
+##   —— 那正是 A6 给积分赛 id 加"场次"那一维的同一个理由。
+static func upload_gauntlet_ghost(gw: int, gl: int) -> void:
+	if GameState == null:
+		return
+	var leaders = GameState.season_leaders
+	var base := player_ghost_id(int(GameState.season_id), leaders, -1)
+	var gid := "%s_g%d-%d" % [base, gw, gl]
+	var av := str(leaders[0]) if (leaders is Array and (leaders as Array).size() > 0) else "basic"
+	var snap := build_ghost_snapshot(gid, {"name": "玩家阵容", "avatar": av, "id": gid})
+	if snap.is_empty():
+		return
+	snap["gl_w"] = gw
+	snap["gl_l"] = gl
+	snap["gl_ts"] = int(Time.get_unix_time_from_system())
+	upload_ghost(snap)                 ## 老通道: 进本地池(+ 旧后端, 现在是 no-op)
+	var SB3 = load("res://scripts/net/supabase.gd")
+	if SB3 != null:
+		var row: Dictionary = SB3.gauntlet_row_from_snapshot(
+			snap, str(GameState.account_id), int(GameState.week_anchor_ts),
+			gw, gl, str(ProjectSettings.get_setting("application/config/version", "")))
+		SB3.upload_gauntlet_async(row)
+
+
+## 在本地池里找【同标签且新鲜】的一份快照。找不到返回 null(回落交给上面那个函数)。
+## ★新鲜度用快照自带的 `gl_ts`(上传时刻), 缺这个字段的一律当**不新鲜**排除 ——
+##   老快照没有这一维, 把它当新鲜就等于"永不过期", 那条 30 分钟规则会静默失效。
+static func gauntlet_pool_find(pool: Dictionary, gw: int, gl: int,
+		exclude_ids: Array, rng: RandomNumberGenerator):
+	var now: int = int(Time.get_unix_time_from_system())
+	var cands: Array = []
+	for gid in pool.keys():
+		var g = pool[gid]
+		if not (g is Dictionary):
+			continue
+		if str(gid).begins_with(self_prefix(int(GameState.season_id) if GameState != null else 0)):
+			continue                      # 自己(含同赛季换过龟的旧阵容)
+		if exclude_ids.has(gid):
+			continue
+		if int(g.get("gl_w", -1)) != gw or int(g.get("gl_l", -1)) != gl:
+			continue                      # ★标签必须完全相同
+		var ts: int = int(g.get("gl_ts", 0))
+		## ★30 分钟窗口是【过滤】不是排序(与积分赛 D10 相反)。
+		## ★★缺字段的不用单独判: 缺了就是 0, 而 `now - 0` 本来就远超窗口。
+		##   我第一版写了 `ts <= 0 or ...`, **反向验证打不红** ——
+		##   那一半是装饰。真正没人守的是**未来时间戳**:
+		##   `now - ts` 为负 ⇒ 比任何阀值都小 ⇒ 当成新鲜的永不过期。
+		##   (设备时钟走快、或者有人改过那一行, 都会造出这种行。)
+		if ts > now or now - ts > int(_P2.FRESH_SNAPSHOT_SEC):
+			continue
+		cands.append(gid)
+	if cands.is_empty():
+		return null
+	cands.sort()                          # 先定序, 再按种子抽 —— 不然同种子两次结果不同
+	return pool[cands[rng.randi() % cands.size()]]
+
 ## 玩家自己那份快照的 ghost_id = 大轮 + 【三龟组合】。
 ##
 ## ★放这里而不是放战斗场: 这条 id 规则的唯一消费者是下面的 `pool_add`(它按 id 去重),
