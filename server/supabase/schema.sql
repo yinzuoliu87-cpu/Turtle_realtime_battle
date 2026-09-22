@@ -178,3 +178,78 @@ $$;
 -- 在 Dashboard 里执行一次（本文件不自动建任务，免得重复执行时报错）：
 --   select cron.schedule('purge-matches', '0 1 * * 1', 'select public.purge_old_matches()');
 -- 周一 01:00 UTC 跑 —— 在换轮（周一 00:00 UTC）之后。
+
+-- ═════════════════════════════════════════════════════════════════════
+-- D-7 存档同步（2026-09-21 用户拍板「需要存档同步的」）
+-- ═════════════════════════════════════════════════════════════════════
+-- 为什么要有这张表: 原来五张表没有一张存玩家存档 ⇒ 绑邮箱只能找回账号,
+--   找不回龟和装备。玩家说「绑定邮箱」时期待的是后者。
+--
+-- ★判新旧**只看版本号 save_rev，不看时间戳**: 设备时钟不可信。
+-- ★写入**只能**经 push_save() —— 没有 insert/update 策略给客户端直接写,
+--   否则客户端可以绕过「比较并交换」直接覆盖别的设备的进度。
+-- ★没有 delete 策略: 删号走 auth.users 的 on delete cascade。
+create table if not exists public.saves (
+  account_id     uuid        primary key references auth.users(id) on delete cascade,
+  payload        jsonb       not null,
+  save_rev       bigint      not null default 0,
+  client_version text        not null,
+  updated_at     timestamptz not null default now()
+);
+
+alter table public.saves enable row level security;
+
+-- 读: 只能读自己的
+drop policy if exists saves_self_select on public.saves;
+create policy saves_self_select on public.saves
+  for select using (account_id = auth.uid());
+
+-- 写: 故意不给 insert / update 策略 —— 只能走下面那个函数
+
+-- 比较并交换。返回 {"ok": bool, "rev": 当前版本, "reason": "..."}。
+--   · 云端还没有这一行 ⇒ 仅当 expected_rev = 0 时建行(rev=1)
+--   · 云端版本 = expected_rev ⇒ 覆盖, rev+1
+--   · 否则 ⇒ 拒绝, 返回 conflict + 云端当前版本(客户端据此让玩家二选一)
+-- ★security definer + 函数体内自己用 auth.uid() 定位行 —— 调用方**只能**改自己的那一行,
+--   传不进别人的 account_id(参数里根本没有这一项)。
+-- ★payload 大小上限 256 KB: 真实存档 ~10 KB(2026-09-21 实测), 留 25 倍余量;
+--   挡的是有人拿这个接口当网盘。
+create or replace function public.push_save(p_payload jsonb, p_expected_rev bigint, p_client_version text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  uid uuid := auth.uid();
+  cur bigint;
+begin
+  if uid is null then
+    return jsonb_build_object('ok', false, 'reason', 'not_signed_in', 'rev', 0);
+  end if;
+  if pg_column_size(p_payload) > 262144 then
+    return jsonb_build_object('ok', false, 'reason', 'too_large', 'rev', 0);
+  end if;
+  select save_rev into cur from public.saves where account_id = uid for update;
+  if cur is null then
+    if p_expected_rev <> 0 then
+      return jsonb_build_object('ok', false, 'reason', 'conflict', 'rev', 0);
+    end if;
+    insert into public.saves(account_id, payload, save_rev, client_version)
+      values (uid, p_payload, 1, p_client_version);
+    return jsonb_build_object('ok', true, 'rev', 1);
+  end if;
+  if cur <> p_expected_rev then
+    return jsonb_build_object('ok', false, 'reason', 'conflict', 'rev', cur);
+  end if;
+  update public.saves
+     set payload = p_payload, save_rev = cur + 1,
+         client_version = p_client_version, updated_at = now()
+   where account_id = uid;
+  return jsonb_build_object('ok', true, 'rev', cur + 1);
+end
+$$;
+
+-- 只有登录用户能调(匿名登录也算登录; 客户端自己只在绑了邮箱之后才调)
+revoke all on function public.push_save(jsonb, bigint, text) from public;
+grant execute on function public.push_save(jsonb, bigint, text) to authenticated;

@@ -79,6 +79,8 @@ jobs:
           test -s _site/index.html || { echo "[FAIL] _site/index.html 不存在或为空"; exit 1; }
           grep -q "turtlesupport32@gmail.com" _site/index.html || { echo "[FAIL] 页面里没有联系邮箱 —— 审核会直接打回"; exit 1; }
           grep -q "GDPR" _site/index.html || { echo "[FAIL] 页面里没有 GDPR 那一节"; exit 1; }
+          # ★D-8(v0.19.425): 云存档是新的数据类别, GDPR 要求写明存什么/为什么/存多久/怎么删
+          grep -q "云存档" _site/index.html || { echo "[FAIL] 页面里没有云存档那一节 —— 存档上云了却没告诉玩家"; exit 1; }
           echo "OK: 页面 $(wc -c < _site/index.html) 字节, 联系邮箱与 GDPR 节都在"
           # ★★只应该有这一个文件 —— 多一个就是把别的东西也发出去了
           n=$(find _site -type f | wc -l)

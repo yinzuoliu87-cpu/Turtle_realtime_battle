@@ -53,6 +53,10 @@ var account_email: String = ""     # 补绑的邮箱 ("" = 匿名账号, 换设�
 ##   原来这个值被整个扔掉 ⇒ 重开 App 之后再也拿不到 token(2026-09-21 查实)。
 ##   服务端每次刷新都会**轮换**它 ⇒ 拿到新的必须立刻写盘(见 SupabaseNet._store_session)。
 var auth_refresh: String = ""
+## D-8 云存档版本号: 我上次和云端对上的是第几版。★设备本地(不上云), 清档保留。
+##   推送时带着它去做「比较并交换」—— 云端版本 ≠ 它 ⇒ 另一台设备动过 ⇒ 冲突, 不覆盖。
+##   ★判新旧只看这个号, 不看时间戳: 设备时钟不可信。
+var cloud_rev: int = 0
 
 
 ## 取本机安装标识, 没有就现生成一个并落盘。
@@ -1035,7 +1039,56 @@ func _ready() -> void:
 		Audio.sfx_volume = sfx_volume
 
 
-## D-3c 登录保活: 每 60 秒问一次「会话还够不够用」, 剩不到 5 分钟就续。
+# ════════════════════════════════════════════════════════════════════════
+#  D-8 云存档 (2026-09-21 用户「需要存档同步的」)
+# ════════════════════════════════════════════════════════════════════════
+## ★★设备本地、**永不进云**的键。
+##   · 音量 / 全屏 / 画质 —— 这台设备的偏好, 换到另一台不该跟过去
+##   · install_uid —— 这台设备的标识
+##   · account_id / account_email / auth_refresh —— **身份只来自登录, 永远不许从存档里读**
+##     (否则改一份云存档就能让别的设备「变成」另一个号)
+##   · cloud_rev —— 同步元数据, 由服务端回包决定
+const DEVICE_LOCAL_KEYS := ["bgm_volume", "sfx_volume", "fullscreen", "perf_lite",
+	"install_uid", "account_id", "account_email", "auth_refresh", "cloud_rev"]
+
+
+## 要上云的那一份: 全部字段减去设备本地键。
+func cloud_payload() -> Dictionary:
+	var d := _save_dict()
+	for k in DEVICE_LOCAL_KEYS:
+		d.erase(k)
+	return d
+
+
+## 把云存档应用到本机。★设备本地键**一律用本机现值**, 云端那份里就算带了也不认。
+func apply_cloud_payload(p: Dictionary, rev: int) -> void:
+	var merged: Dictionary = p.duplicate(true)
+	var here := _save_dict()
+	for k in DEVICE_LOCAL_KEYS:
+		merged[k] = here[k]
+	_apply_save_dict(merged)
+	cloud_rev = rev
+	ensure_season()          # 云端那份可能是上一周的 ⇒ 让赛季逻辑自己滚
+	save()
+
+
+## 把【当前内存里】的存档另存一份, 返回路径("" = 没写)。取回 / 冲突时用云端覆盖之前先调它。
+## ★写的是内存里的 `_save_dict()` 而不是复制磁盘文件 —— 两者在大多数时候相同,
+##   但「内存里刚改、还没落盘」那一刻只有前者是对的。
+## ★test_mode 下不写(门禁 / 调试台不许往 user:// 乱丢文件), 门禁自己临时开闸再量。
+func backup_save(tag: String) -> String:
+	if test_mode:
+		return ""
+	var path := "user://savegame.before-%s-%d.json" % [tag, int(Time.get_unix_time_from_system())]
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f == null:
+		return ""
+	f.store_string(JSON.stringify(_save_dict(), "  "))
+	f.close()
+	return path
+
+
+## D-3c 登录保活 + D-8 存档同步: 每 20 秒一拍。会话剩不到 5 分钟就续; 存档脏了就推。
 ## ★为什么挂在这里: 玩家大部分时间在战斗场里, 不在主菜单 —— 挂在哪个场景上
 ##   都会在离开那个场景时断掉。GameState 是唯一全程活着的节点。
 ## ★test_mode 下**不跑**: 门禁要自己决定什么时候调 `ensure_signed_in_async`,
@@ -1045,7 +1098,7 @@ const _SB_NET := preload("res://scripts/net/supabase.gd")
 func _start_net_keepalive() -> void:
 	var t := Timer.new()
 	t.name = "NetKeepalive"
-	t.wait_time = 60.0
+	t.wait_time = 20.0          # D-8: 存档最多晚 20 秒上云
 	t.autostart = true
 	t.timeout.connect(_net_tick)
 	add_child(t)
@@ -1055,6 +1108,7 @@ func _net_tick() -> void:
 	if test_mode:
 		return
 	_SB_NET.ensure_signed_in_async()
+	_SB_NET.maybe_push_save()
 
 
 ## 手机切回前台时立刻续一次 —— 在后台放了一小时回来, token 早过期了,
@@ -1062,6 +1116,11 @@ func _net_tick() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_RESUMED and not test_mode:
 		_SB_NET.ensure_signed_in_async()
+	## D-8: 切后台 / 关窗口时立刻推一次 —— 手机上切到后台之后进程随时会被系统杀掉,
+	##   等下一拍(最多 20 秒)可能就没有下一拍了。
+	if (what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST) \
+			and not test_mode:
+		_SB_NET.maybe_push_save(true)
 
 
 ## PC 板窗口行为(用户 2026-08-01:「pc端要随便拉，支持全屏」)。
@@ -1201,10 +1260,11 @@ func apply_save_guard(is_headless: bool, has_no_save_env: bool,
 		test_mode = true
 	return reason
 
-func save() -> void:
-	if test_mode:
-		return
-	var data := {
+## ★D-8(2026-09-21): 存档的【全部字段】只在这一处列出 ——
+##   本机文件(`save()`)与云存档(`cloud_payload()`)都从这里取。
+##   各写一份的话, 下一个加字段的人只会加一边, 换设备取回时那个字段就静默丢了。
+func _save_dict() -> Dictionary:
+	return {
 		"best_dungeon_stage": best_dungeon_stage,
 		"coins": coins,
 		"battles_won": battles_won,
@@ -1260,13 +1320,21 @@ func save() -> void:
 		"onboarded": onboarded,   # 走完首次教学 → 不再触发
 		"trainer_appearance": trainer_appearance,   # 训龟大师装配(局外持久)
 		"trainer_skill": trainer_skill,
+		"cloud_rev": cloud_rev,          # D-8 云存档版本号(设备本地, 不上云)
 	}
+
+
+func save() -> void:
+	if test_mode:
+		return
+	var data := _save_dict()
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f == null:
 		push_warning("[GameState] save 失败: cannot open " + SAVE_PATH)
 		return
 	f.store_string(JSON.stringify(data, "  "))
 	f.close()
+	_SB_NET.note_save_dirty()          # D-8: 只标脏, 推不推由同步层判断
 
 
 func _load() -> void:
@@ -1280,7 +1348,11 @@ func _load() -> void:
 	var parsed = JSON.parse_string(text)
 	if not (parsed is Dictionary):
 		return
-	var data: Dictionary = parsed
+	_apply_save_dict(parsed)
+
+
+## ★D-8: 把一份存档字典应用到内存。本机开机读档与【云存档取回】共用这一个函数。
+func _apply_save_dict(data: Dictionary) -> void:
 	onboarded = data.get("onboarded", false)
 	trainer_appearance = str(data.get("trainer_appearance", "default"))   # 训龟大师装配(缺键=旧档默认)
 	# 迁移: 新键 trainer_skill 优先; 旧档只有 trainer_active → 用它(旧的两槽合成一个·取旧主动)。
@@ -1303,6 +1375,7 @@ func _load() -> void:
 	account_id = str(data.get("account_id", ""))
 	account_email = str(data.get("account_email", ""))
 	auth_refresh = str(data.get("auth_refresh", ""))
+	cloud_rev = int(data.get("cloud_rev", 0))
 	season_id = int(data.get("season_id", 1))
 	season_start_ts = int(data.get("season_start_ts", 0))
 	hearts = int(data.get("hearts", 8))
@@ -1458,6 +1531,7 @@ func reset_save() -> void:
 	var _keep_acc := account_id
 	var _keep_mail := account_email
 	var _keep_refresh := auth_refresh   # D-3c: 清档清的是「这局游戏」不是「这台设备的登录」
+	var _keep_rev := cloud_rev
 	best_dungeon_stage = 0
 	coins = 0
 	battles_won = 0
@@ -1515,6 +1589,7 @@ func reset_save() -> void:
 	account_id = _keep_acc
 	account_email = _keep_mail
 	auth_refresh = _keep_refresh
+	cloud_rev = _keep_rev
 	save()
 
 

@@ -192,6 +192,25 @@ func _find_text(n: Node, needle: String) -> bool:
 	return false
 
 
+## ★按钮是 `Button` 节点, `_find_text` 只找 Label —— v0.19.424 方案书里
+##   「设置页有『用邮箱取回』入口, 由 ④ 走真入口验」那个勾打的时候,
+##   ④ **一个按钮都没查过**(按我干了多少打勾, 不按有什么证据打勾)。
+func _find_button(n: Node, needle: String) -> bool:
+	if n is Button and str((n as Button).text).contains(needle):
+		return true
+	for c in n.get_children():
+		if _find_button(c, needle):
+			return true
+	return false
+
+
+func _n_buttons(n: Node) -> int:
+	var k := 1 if n is Button else 0
+	for c in n.get_children():
+		k += _n_buttons(c)
+	return k
+
+
 func _n_labels(n: Node) -> int:
 	var k := 1 if n is Label else 0
 	for c in n.get_children():
@@ -247,6 +266,11 @@ func _t_real_settings() -> void:
 		lied1.is_empty(), str(lied1))
 	_chk("④ 匿名态: 也显示了账号前 8 位(报问题时能对上号)",
 		_find_text(s1, UID_OK.substr(0, 8)), UID_OK.substr(0, 8))
+	_chk("④ ★分母: 设置页真的建出了按钮(N=0 的话下面两条是空检查)", _n_buttons(s1) > 0,
+		"%d 个" % _n_buttons(s1))
+	_chk("④ 匿名态: 有「绑定邮箱」按钮", _find_button(s1, "绑定邮箱"))
+	_chk("④ ★★匿名态: 有「用邮箱取回」按钮(新手机上拿回旧号的唯一入口; v0.19.423 就漏了它)",
+		_find_button(s1, "用邮箱取回"))
 	s1.queue_free()
 	await get_tree().process_frame
 
@@ -255,14 +279,29 @@ func _t_real_settings() -> void:
 	var s2 = await _open_settings()
 	_chk("④ ★★绑了邮箱之后【没有】那行警告(证明上面那条不是恒真式)",
 		not _find_text(s2, WARN))
-	var lied2 := []
-	for p in FALSE_PROMISE:
-		if _find_text(s2, str(p)):
-			lied2.append(str(p))
-	_chk("④ ★★绑定态也不许承诺「存档」能找回(原文案就是栽在这句上)",
-		lied2.is_empty(), str(lied2))
+	## ★★D-8(2026-09-21)之后这条的事实变了: 绑了邮箱的号**会**同步进度
+	##   (verify_save_sync ⑦ 用真请求证明了「绑定号推、匿名号不推」)⇒ 绑定态**该**说能取回进度。
+	##   原来这里断言「绑定态不许承诺存档」—— 事实变了还留着它, 就是门禁把旧事实钉在产品里
+	##   (memory `fb-gate-can-pin-the-bug-in-place`)。**匿名态那条禁令不动**: 匿名号仍然不同步。
+	_chk("④ ★★绑定态说了能取回【进度】(D-8 之后这是真的, 由 verify_save_sync ⑦ 守着)",
+		_find_text(s2, "取回账号和进度"))
 	_chk("④ 绑了邮箱: 屏幕上显示的是邮箱", _find_text(s2, "someone@example.com"))
+	_chk("④ 绑了邮箱: 按钮变成「换个邮箱」", _find_button(s2, "换个邮箱"))
+	_chk("④ ★反向分母: 没有冲突时【不】出现「处理存档冲突」", not _find_button(s2, "处理存档冲突"))
 	s2.queue_free()
+	await get_tree().process_frame
+
+	# ── D-8 存档冲突 ⇒ 提示 + 二选一入口 ──
+	SB._reset_save_sync_for_test()
+	SB.apply_push_response(true, 200, '{"ok": false, "reason": "conflict", "rev": 7}', "")
+	_chk("④ ★分母: 冲突状态确实立起来了", SB.save_conflict())
+	var s4 = await _open_settings()
+	_chk("④ ★★存档冲突: 屏幕上说了「云端存档和这台设备的不一样」",
+		_find_text(s4, "云端存档和这台设备的不一样"))
+	_chk("④ ★★存档冲突: 有「处理存档冲突」按钮(不然玩家永远卡在停推状态)",
+		_find_button(s4, "处理存档冲突"))
+	s4.queue_free()
+	SB._reset_save_sync_for_test()
 	await get_tree().process_frame
 
 	# ── ⑤ 没配后端 ⇒ 整行不显示 ──

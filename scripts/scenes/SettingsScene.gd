@@ -104,14 +104,19 @@ func _account_row() -> void:
 		##   只能用邮箱把同一个号取回来 —— 所以这里要明说该点哪个按钮。
 		head = "账号：%s" % mail
 		sub = "⚠ 登录已失效 —— 点「用邮箱取回」重新登录"
-	elif mail != "":
+	elif _SB_ACC.save_conflict():
+		## D-8: 两台设备交替玩 ⇒ 云端版本和这台对不上。**不自动选**, 等玩家二选一。
 		head = "账号：%s" % mail
-		sub = "已绑定 · 换设备可用这个邮箱取回【账号】"
+		sub = "⚠ 云端存档和这台设备的不一样（可能在别的设备上玩过）"
+	elif mail != "":
+		## ★D-8 之后这句才是真的: 绑了邮箱的号, 进度会同步到云端(verify_save_sync ⑦ 守着)。
+		head = "账号：%s" % mail
+		sub = "已绑定 · 换设备可用这个邮箱取回账号和进度"
 	else:
 		## ★只显前 8 位: 完整 uuid 36 个字符, 在 1280 宽里既放不下也没用 ——
 		##   它的用途是「报问题时能对上号」, 前 8 位足够。
 		head = "账号：匿名 · %s" % aid.substr(0, 8)
-		sub = "⚠ 未绑定邮箱 —— 换设备后这个账号就找不回来了"
+		sub = "⚠ 未绑定邮箱 —— 换设备后账号和进度都找不回来"
 	var a := _stroked_label(head, 15, "#cfe3ff", "", 0)
 	_place_center(a, W / 2.0, 128.0)
 	if sub != "":
@@ -125,17 +130,95 @@ func _account_row() -> void:
 	##   全在本机 `user://savegame.json`。
 	##   ⇒ 绑邮箱找回的是【账号(赛季身份：排名/战绩/鬼影)】，**不是存档**。
 	##   照原文案写等于承诺一件架构上做不到的事。存档同步是另一件事(未决)。
-	var note := _stroked_label("（龟和装备存在这台手机上，换设备都会丢）", 11, "#7e8fa0", "", 0)
+	## ★D-8: 匿名号**不**同步(隐私政策承诺过只有绑定者才上传) ⇒ 两种状态说的话不一样。
+	var note := _stroked_label(("（绑定邮箱后，进度会同步到云端）" if mail == ""
+		else "（进度会自动同步到云端）"), 11, "#7e8fa0", "", 0)
 	_place_center(note, W / 2.0, 166.0)
 	## ★D-3c 补上 v0.19.423 漏掉的入口: 那一版只有「绑定邮箱」,
 	##   **取回流程写了但点不到** —— 新手机上根本没法用邮箱把号拿回来。
 	##   `verify_session_refresh` 没有覆盖到 UI, 这条由 `verify_account` ④ 走真入口验。
-	if aid != "":
+	if aid != "" and _SB_ACC.save_conflict():
+		_small_button(W / 2.0 - 80.0, 192.0, "处理存档冲突", _open_conflict_dialog)
+	elif aid != "":
 		_small_button(W / 2.0 - 80.0, 192.0,
 			("换个邮箱" if mail != "" else "绑定邮箱"),
 			func(): _open_email_dialog(_SB_ACC.FLOW_BIND))
 	_small_button((W / 2.0 + 80.0) if aid != "" else W / 2.0, 192.0, "用邮箱取回",
 		func(): _open_email_dialog(_SB_ACC.FLOW_RECOVER))
+
+
+# ─── D-8 存档冲突: 二选一 ──────────────────────────────────────
+## ★两个选项**各自写清会丢什么** —— 玩家不知道代价就选, 等于我们替他选了。
+## ★不做合并: 合并游戏状态没有安全做法(同一只龟两边各升了一级, 该取哪边?)。
+func _open_conflict_dialog() -> void:
+	if _confirm_layer != null and is_instance_valid(_confirm_layer):
+		return
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.65)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(dim)
+	_confirm_layer = dim
+
+	var box := Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color("#1c2836"); sb.border_color = Color("#ffb454")
+	sb.set_border_width_all(3); sb.set_corner_radius_all(12)
+	box.add_theme_stylebox_override("panel", sb)
+	box.position = Vector2(W / 2.0 - 280, H / 2.0 - 160); box.size = Vector2(560, 320)
+	dim.add_child(box)
+
+	var ttl := Label.new()
+	ttl.text = "存档冲突"
+	ttl.add_theme_font_size_override("font_size", 24)
+	ttl.add_theme_color_override("font_color", Color("#ffb454"))
+	ttl.position = Vector2(0, 18); ttl.size = Vector2(560, 32)
+	ttl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(ttl)
+
+	var msg := Label.new()
+	msg.text = "云端的存档被另一台设备更新过，和这台设备上的不一样。选一份留下："
+	msg.add_theme_font_size_override("font_size", 14)
+	msg.add_theme_color_override("font_color", Color("#c9d6e2"))
+	msg.position = Vector2(30, 60); msg.size = Vector2(500, 40)
+	msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(msg)
+
+	var opts := [
+		["用云端的", "这台设备上次同步之后的进度会被换掉\n（换之前先在本机备份一份）",
+			func(): _SB_ACC.resolve_conflict_use_cloud()],
+		["用这台的", "另一台设备上的进度会被这台覆盖",
+			func(): _SB_ACC.resolve_conflict_use_local()],
+	]
+	for i in range(opts.size()):
+		var o: Array = opts[i]
+		var x := 40.0 + float(i) * 250.0
+		var b := Button.new()
+		b.text = str(o[0])
+		b.add_theme_font_size_override("font_size", 17)
+		b.position = Vector2(x, 112); b.size = Vector2(230, 44)
+		var cb: Callable = o[2]
+		b.pressed.connect(func():
+			cb.call()
+			dim.queue_free(); _confirm_layer = null
+			get_tree().reload_current_scene())
+		box.add_child(b)
+		var cost := Label.new()
+		cost.text = str(o[1])
+		cost.add_theme_font_size_override("font_size", 12)
+		cost.add_theme_color_override("font_color", Color("#ff8a94"))
+		cost.position = Vector2(x, 162); cost.size = Vector2(230, 60)
+		cost.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		box.add_child(cost)
+
+	var close := Button.new()
+	close.text = "先不选"
+	close.add_theme_font_size_override("font_size", 15)
+	close.position = Vector2(200, 256); close.size = Vector2(160, 40)
+	close.pressed.connect(func(): dim.queue_free(); _confirm_layer = null)
+	box.add_child(close)
 
 
 ## 紧凑按钮 —— 账号行下面那一个。`_text_button` 是 260×50 的木框大按钮,
@@ -199,8 +282,10 @@ func _open_email_dialog(flow: String) -> void:
 	else:
 		## ★取回只换【账号】, 这台设备上的龟和装备原样不动 —— 照实说, 不许说成「取回存档」
 		##   (服务端现在没有存档, `verify_account` ④ 有一条专门禁这句话)。
-		why.text = ("用你绑过的邮箱收一个验证码，把那个【账号】取回到这台设备上。\n"
-			+ "⚠ 只换账号：这台设备上的龟和装备原样保留。")
+		## ★D-8: 取回会把那个号的云存档拉下来**整体替换**本机进度 —— 照实说,
+		##   并说清替换之前会先备份(GameState.backup_save)。
+		why.text = ("用你绑过的邮箱收一个验证码，把那个账号和它的进度取回到这台设备上。\n"
+			+ "⚠ 这台设备现在的进度会被换掉（换之前会先在本机备份一份）。")
 	why.add_theme_font_size_override("font_size", 13)
 	why.add_theme_color_override("font_color", Color("#9fb4c8"))
 	why.position = Vector2(30, 56); why.size = Vector2(460, 54)

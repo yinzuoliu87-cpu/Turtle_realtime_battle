@@ -186,6 +186,9 @@ static func _store_session(r: Dictionary) -> void:
 	_session_lost = false
 	var gs = (Engine.get_main_loop() as SceneTree).root.get_node_or_null("/root/GameState") if Engine.get_main_loop() != null else null
 	if gs != null:
+		## D-8: 换了号 ⇒ 云存档版本号归零(那是旧号的; 不归零的话新号第一次推就撞冲突)
+		if str(gs.account_id) != str(r.get("account_id", "")):
+			gs.cloud_rev = 0
 		gs.account_id = str(r.get("account_id", ""))
 		gs.account_email = str(r.get("email", ""))
 		if str(r.get("refresh", "")) != "":
@@ -828,7 +831,248 @@ static func _apply_verify(ok: bool, code: int, body: String, flow: String) -> bo
 	_store_session(acc)
 	_email_state = EM_OK
 	_email_msg = ("邮箱绑好了" if flow == FLOW_BIND else "账号取回来了")
+	## D-8: 补绑那一刻立刻推一次(云端还没有这个号的存档);
+	##   取回则把那个号的云存档拉下来整体替换(替换前先备份)。
+	if flow == FLOW_BIND:
+		_save_dirty = true
+		maybe_push_save(true)
+	else:
+		pull_save_async("recover")
 	return true
+
+
+
+# ═════════════════════════════════════════════════════════════
+# D-8 存档同步 (2026-09-21 用户「需要存档同步的」)
+# ═════════════════════════════════════════════════════════════
+## ★为什么要做: D-3b 核实出服务端五张表没有一张存玩家存档 ⇒ 绑邮箱只能找回账号,
+##   找不回龟和装备。玩家说「绑定邮箱」时期待的是后者。
+##
+## ★★判新旧**只看版本号**(`cloud_rev` ↔ 服务端 `save_rev`), 不看时间戳 —— 设备时钟不可信。
+##   推送走服务端函数 `push_save`: 云端版本 ≠ 我上次见到的 ⇒ **拒绝并返回冲突**,
+##   不覆盖。这一步在服务端原子完成, 客户端绕不过去(表上没给直接写的策略)。
+##
+## ★**只有绑了邮箱的号才同步**。匿名 = 本机, 也不存一堆永远取不回的数据。
+## ★推送挂在 `GameState.save()` 上(标脏)+ 20 秒节拍, 而不是逐个挂「打完一局 / 买东西 /
+##   换装备」—— 逐个挂必然漏一个(memory「手抄的副本必然落后」)。
+## ★内容没变(哈希相同)不推: `save()` 被调得很勤(滑条松手也调), 不能每次都打服务器。
+
+static var _save_dirty: bool = false
+static var _save_inflight: bool = false
+static var _last_pushed_hash: String = ""
+## -1 = 没冲突; >= 0 = 冲突时云端的当前版本号(二选一要用)
+static var _save_conflict_rev: int = -1
+static var _saves_pushed: int = 0
+## 最近一次拉取的结果: "" 没拉过 / "pulling" / "applied" / "empty" / "err"
+static var _pull_state: String = ""
+
+
+static func note_save_dirty() -> void:
+	_save_dirty = true
+
+
+static func save_conflict() -> bool:
+	return _save_conflict_rev >= 0
+
+
+static func saves_pushed() -> int:
+	return _saves_pushed
+
+
+static func pull_state() -> String:
+	return _pull_state
+
+
+static func _reset_save_sync_for_test() -> void:
+	_save_dirty = false
+	_save_inflight = false
+	_last_pushed_hash = ""
+	_save_conflict_rev = -1
+	_saves_pushed = 0
+	_pull_state = ""
+
+
+## 这个号现在该不该同步存档。★四个条件缺一不可, 缺了就**什么都不发**。
+static func sync_allowed(account_id: String, email: String, token: String) -> bool:
+	return enabled() and account_id != "" and email != "" and token != ""
+
+
+static func payload_hash(p: Dictionary) -> String:
+	## ★`JSON.stringify(p, "", true)` 第三个参数 = 按键排序 —— 同一份内容键序不同也得同一个哈希,
+	##   否则「没变却每 20 秒推一次」。
+	return JSON.stringify(p, "", true).sha256_text()
+
+
+## 纯函数: `push_save` 回包 → {kind, rev}。kind ∈ ok / conflict / net。
+## ★服务端函数返回的是 `{"ok": bool, "rev": N, "reason": "..."}`(schema.sql 里写死的形状)。
+##   **只有 reason == "conflict" 才算冲突**; 其余失败(没登录 / 太大 / 连不上 / 5xx /
+##   看不懂)一律当网络问题 —— 冲突会让玩家二选一, 误判成冲突比多等一拍糟糕得多。
+static func push_result(ok: bool, code: int, body: String) -> Dictionary:
+	if not (ok and code >= 200 and code < 300):
+		return {"kind": "net", "rev": -1}
+	var j := JSON.new()
+	if j.parse(body) != OK or not (j.data is Dictionary):
+		return {"kind": "net", "rev": -1}
+	var d: Dictionary = j.data
+	if bool(d.get("ok", false)):
+		return {"kind": "ok", "rev": int(d.get("rev", -1))}
+	if str(d.get("reason", "")) == "conflict":
+		return {"kind": "conflict", "rev": int(d.get("rev", 0))}
+	return {"kind": "net", "rev": -1}
+
+
+## 纯函数: `GET /saves` 回包 → {kind, payload, rev}。kind ∈ found / empty / net。
+## ★`empty` 与 `net` 要分开: 「云端没有这个号的存档」是一个**确定的答案**(该把本机的推上去),
+##   「没拿到回包」不是 —— 把 net 当 empty 的话, 断网那一下会用本机的**覆盖**云端。
+static func pull_result(ok: bool, code: int, body: String) -> Dictionary:
+	if not (ok and code >= 200 and code < 300):
+		return {"kind": "net", "payload": {}, "rev": -1}
+	var j := JSON.new()
+	if j.parse(body) != OK or not (j.data is Array):
+		return {"kind": "net", "payload": {}, "rev": -1}
+	var rows: Array = j.data
+	if rows.is_empty():
+		return {"kind": "empty", "payload": {}, "rev": 0}
+	var row = rows[0]
+	if not (row is Dictionary) or not ((row as Dictionary).get("payload", null) is Dictionary):
+		return {"kind": "net", "payload": {}, "rev": -1}
+	return {"kind": "found", "payload": (row as Dictionary)["payload"],
+		"rev": int((row as Dictionary).get("save_rev", 0))}
+
+
+static func _gs():
+	return (Engine.get_main_loop() as SceneTree).root.get_node_or_null("/root/GameState") if Engine.get_main_loop() != null else null
+
+
+## 节拍器每 20 秒调一次; 切后台 / 关窗口时 `force = true` 立刻调。
+static func maybe_push_save(force: bool = false) -> void:
+	var gs = _gs()
+	if gs == null or _save_inflight or save_conflict() or _pull_state == "pulling":
+		return
+	if not (_save_dirty or force):
+		return
+	if not sync_allowed(str(gs.account_id), str(gs.account_email), _token):
+		return
+	var p: Dictionary = gs.cloud_payload()
+	var h := payload_hash(p)
+	if h == _last_pushed_hash:
+		_save_dirty = false
+		return
+	var n = _spawn()
+	if n != null:
+		_save_inflight = true
+		n.push_save(p, int(gs.cloud_rev), h)
+
+
+func push_save(p: Dictionary, expected_rev: int, h: String) -> void:
+	if not enabled():
+		_save_inflight = false
+		_bye()
+		return
+	var url := base_url().rstrip("/") + "/rest/v1/rpc/push_save"
+	var body := JSON.stringify({"p_payload": p, "p_expected_rev": expected_rev,
+		"p_client_version": str(ProjectSettings.get_setting("application/config/version", ""))})
+	_http("POST", url, body,
+		func(res):
+			apply_push_response(bool(res.get("ok", false)), int(res.get("code", 0)),
+				str(res.get("body", "")), h)
+			_bye(),
+		"Content-Type: application/json")
+
+
+static func apply_push_response(ok: bool, code: int, body: String, h: String) -> String:
+	_save_inflight = false
+	var r := push_result(ok, code, body)
+	var gs = _gs()
+	match str(r["kind"]):
+		"ok":
+			_saves_pushed += 1
+			_last_pushed_hash = h
+			_save_dirty = false
+			if gs != null:
+				gs.cloud_rev = int(r["rev"])
+				gs.save()           # 只为把 cloud_rev 落盘; 它不在云存档里, 所以下一拍哈希不变、不会再推
+		"conflict":
+			## ★停推, 等玩家二选一。**不自动选** —— 两边都可能是玩家想要的那份进度。
+			_save_conflict_rev = int(r["rev"])
+			print("[SupabaseNet] 存档冲突: 云端是第 %d 版, 本机上次对上的是第 %d 版" % [
+				int(r["rev"]), int(gs.cloud_rev) if gs != null else -1])
+		_:
+			print("[SupabaseNet] 存档没推上去(code=%d), 下一拍再试" % code)
+	return str(r["kind"])
+
+
+## 去拉云端存档。`tag` 写进备份文件名(recover / conflict)。
+static func pull_save_async(tag: String) -> void:
+	var gs = _gs()
+	if gs == null or not sync_allowed(str(gs.account_id), str(gs.account_email), _token):
+		return
+	var n = _spawn()
+	if n != null:
+		_pull_state = "pulling"
+		n.pull_save(str(gs.account_id), tag)
+
+
+func pull_save(account_id: String, tag: String) -> void:
+	if not enabled():
+		_pull_state = "err"
+		_bye()
+		return
+	var url := base_url().rstrip("/") + "/rest/v1/saves?select=payload,save_rev&account_id=eq." \
+		+ account_id.uri_encode()
+	_http("GET", url, "",
+		func(res):
+			apply_pull_save(bool(res.get("ok", false)), int(res.get("code", 0)),
+				str(res.get("body", "")), tag)
+			_bye())
+
+
+## 拉回来之后落地。返回 kind。
+##   · found ⇒ **先备份本机**, 再整体替换; 冲突解除
+##   · empty ⇒ 云端还没有这个号的存档 ⇒ 版本号归 0, 把本机的推上去
+##   · net   ⇒ 什么都不动(**绝不**当成 empty —— 那会用本机的覆盖云端)
+static func apply_pull_save(ok: bool, code: int, body: String, tag: String) -> String:
+	var r := pull_result(ok, code, body)
+	var gs = _gs()
+	var kind := str(r["kind"])
+	match kind:
+		"found":
+			if gs != null:
+				gs.backup_save(tag)
+				gs.apply_cloud_payload(r["payload"], int(r["rev"]))
+				_last_pushed_hash = payload_hash(gs.cloud_payload())
+			_save_conflict_rev = -1
+			_save_dirty = false
+			_pull_state = "applied"
+		"empty":
+			if gs != null:
+				gs.cloud_rev = 0
+			_save_conflict_rev = -1
+			_save_dirty = true
+			_pull_state = "empty"
+		_:
+			_pull_state = "err"
+			print("[SupabaseNet] 云存档没拉下来(code=%d), 本机存档没动" % code)
+	return kind
+
+
+## 冲突二选一 ①: 用云端的(本机上次同步之后的进度会被换掉, 换之前先备份)。
+static func resolve_conflict_use_cloud() -> void:
+	pull_save_async("conflict")
+
+
+## 冲突二选一 ②: 用这台的覆盖云端(另一台设备上的进度会被覆盖)。
+## ★拿冲突时服务端告诉我们的那个版本号当 expected —— 等于明确说「我知道云端是第 N 版, 就要覆盖它」。
+##   这之间要是**又**有别的设备推了, 服务端会再报一次冲突, 不会误覆盖。
+static func resolve_conflict_use_local() -> void:
+	var gs = _gs()
+	if gs == null or not save_conflict():
+		return
+	gs.cloud_rev = _save_conflict_rev
+	_save_conflict_rev = -1
+	_last_pushed_hash = ""
+	_save_dirty = true
+	maybe_push_save(true)
 
 
 func sign_in_anonymous() -> void:

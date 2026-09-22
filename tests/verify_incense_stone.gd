@@ -173,34 +173,30 @@ func _t_save_load() -> void:
 	_ok("③ (a) JSON 往返后充能还在(1234)", back == 1234, "实测 %d" % back)
 	_ok("③ (a) JSON 往返后刻痕还在(77)", back_marks == 77, "实测 %d" % back_marks)
 
-	# (b) 源码级: 存/读两头都要在。少一头就是"存了没人读"或"读了没人存",
+	# (b) ★★走真函数: 存/读两头都要在。少一头就是"存了没人读"或"读了没人存",
 	#     两种都不报错、只是玩家的进度悄悄归零。
-	var raw: String = FileAccess.get_file_as_string("res://autoload/GameState.gd")
-	var code := ""
-	for ln in raw.split("\n"):
-		var hi: int = ln.find("#")
-		code += (ln if hi < 0 else ln.substr(0, hi)) + "\n"   # ★剥注释, 否则会命中说明文字
-	var save_body: String = _fn_body(code, "func save()")
-	var load_body: String = _fn_body(code, "func _load()")
-	_ok("③ (b) ★★save() 的存档 dict 里有 incense_marks",
-		save_body.contains("\"incense_marks\""), "save 体 %d 字符" % save_body.length())
-	_ok("③ (b) ★★_load() 真的把它读回来",
-		load_body.contains("incense_marks = int(data.get(\"incense_marks\""),
-		"load 体 %d 字符" % load_body.length())
-	_ok("③ (b) ★分母: 扫描方式有效(已知在存档里的 season_wins 两头都能扫到)",
-		save_body.contains("\"season_wins\"") and load_body.contains("season_wins = int(data.get("), "")
-	_ok("③ (b) ★分母: 两个函数体都非空(空串会让上面三条恒真)",
-		save_body.length() > 500 and load_body.length() > 500,
-		"save=%d load=%d" % [save_body.length(), load_body.length()])
-
-
-## 取某个函数的函数体(到下一个顶格 func 为止)。
-func _fn_body(code: String, header: String) -> String:
-	var i: int = code.find(header)
-	if i < 0:
-		return ""
-	var e: int = code.find("\nfunc ", i + 1)
-	return code.substr(i, (e - i) if e > i else -1)
+	#   ★2026-09-21 从「扫源码」改成「调真函数」: D-8 把存档字段表抽成了
+	#     `_save_dict()` / `_apply_save_dict()`, `save()` 只剩几行 ⇒ 扫 `func save()` 的函数体
+	#     找不到任何字段了(本条自带的分母「season_wins 两头都扫不到」当场报了, 没让它恒真)。
+	#     而那两个新函数**不碰磁盘**, 在 test_mode 下也能直接调 —— 原来只能扫源码的理由没了,
+	#     走真函数比子串匹配严(子串匹配是假判据, memory `fb-weld-visual-lessons-into-gate`)。
+	var d: Dictionary = _gs._save_dict()
+	_ok("③ (b) ★★存档字段表里有刻痕(77)", int(d.get("incense_marks", -1)) == 77,
+		"实测 %s" % str(d.get("incense_marks", "缺")))
+	## 读档: 先把内存里的值打掉, 再用那份字典读回来(真实读档也是先过 JSON)
+	var d_json = JSON.parse_string(JSON.stringify(d))
+	_gs.incense_marks = 0
+	_gs.persistent_equipped = {}
+	_ok("③ (b) ★分母: 读档前内存里确实清零了(否则「读回来」是恒真式)",
+		int(_gs.incense_marks) == 0 and (_gs.persistent_equipped as Dictionary).is_empty())
+	_gs._apply_save_dict(d_json)
+	var chg_back: int = -1
+	for it in (_gs.persistent_equipped as Dictionary).get("basic", []):
+		if it is Dictionary and str(it.get("id", "")) == "p2eq_093":
+			chg_back = int(it.get("chg", -1))
+	_ok("③ (b) ★★读档函数真把刻痕读回来(77)", int(_gs.incense_marks) == 77,
+		"实测 %d" % int(_gs.incense_marks))
+	_ok("③ (b) ★★读档函数真把充能读回来(1234)", chg_back == 1234, "实测 %d" % chg_back)
 
 
 # ─────────────────────────────────────────────────────────────
