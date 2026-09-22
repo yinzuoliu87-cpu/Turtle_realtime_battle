@@ -87,7 +87,6 @@ func _ready() -> void:
 	##   (memory `fb-gate-can-pin-the-bug-in-place`, 这是同一条判据的第四份副本)。
 	## ★「没有这一条, 无条件永远显示也能让①绿」这个用意**保住了**:
 	##   下面的表里 `ranked·表演赛` 那一行就是 must-not-show 的对照组。
-	var live: bool = bool(P2C.WEEKEND_MODES_LIVE)
 	for case2 in [["gauntlet", false], ["finals", false], ["rest", false], ["ranked", true]]:
 		gs.week_phase = str(case2[0])
 		(hud.battle as FakeBattle)._last_was_exhibition = bool(case2[1])
@@ -97,8 +96,7 @@ func _ready() -> void:
 		var want2: bool = (not bool(case2[1])) and P2C.phase_uses_ranked_quota(str(case2[0]))
 		var tag2: String = str(case2[0]) + (" · 表演赛" if bool(case2[1]) else "")
 		_chk("② ★分母(%s): chip 真建出来了(不是 null/空)" % tag2, t2 != "", t2.substr(0, 60))
-		_chk("② %s → 「本周场次」%s%s" % [tag2, "显示" if want2 else "不显示",
-				"" if live else "  (周末玩法没上线 ⇒ 那几天照样吃配额, 就得显示)"],
+		_chk("② %s → 「本周场次」%s" % [tag2, "显示" if want2 else "不显示"],
 			t2.contains("本周场次") == want2, t2.substr(0, 90))
 	(hud.battle as FakeBattle)._last_was_exhibition = false
 

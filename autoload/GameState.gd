@@ -591,6 +591,86 @@ func dual_lane_winner() -> String:
 ##   两个不是同一个问题。2026-09-22 查实: 拿存档那个字段当"现在"用, 上周六打过的人
 ##   在周二开局时会被当成还在闯关赛 ⇒ 配额打满了也放行, 白漏一场。所以这一层**问时钟**。
 ##   (`now` 只为门禁能喂已知日期; 产品调用一律不传。)
+## ─── 闯关赛(周六) ────────────────────────────────────────────
+## ⚠ 与 `dungeon_*`(深海闯关, 5 关 PvE 冒险)**毫无关系** —— 同名不同物, 别在这两组字段之间抄代码。
+##
+## 这一周有没有拿到周六的入场资格。★`promoted` 由 `settle_ranked_close()` 在积分赛收盘后写,
+##   判据是硬线 `season_wins >= PROMOTE_WINS_FLOOR`(原稿的「前 30%」要服务端终榜, 还没做)。
+func gauntlet_eligible() -> bool:
+	return bool(promoted)
+
+## 现在能不能开一局闯关赛。三个条件缺一不可, 每条都有自己的话要对玩家说(见主菜单)。
+func gauntlet_can_play(now: int = 0) -> bool:
+	var ts: int = now if now > 0 else int(Time.get_unix_time_from_system())
+	if _P2.phase_at_utc(ts) != _P2.PHASE_GAUNTLET:
+		return false                      # 今天不是周六
+	if not gauntlet_eligible():
+		return false                      # 这一周没晋级
+	return _P2.gauntlet_can_play(int(gauntlet_wins), int(gauntlet_losses))
+
+## 当前战绩状态: running / in / out。★UI 与补发共用这一个答案。
+func gauntlet_state() -> String:
+	return _P2.gauntlet_state(int(gauntlet_wins), int(gauntlet_losses))
+
+## 打完一场闯关赛 → 记战绩。★只在**周六那一场**调(由结算按阶段分流), 不是每场都调。
+func gauntlet_record(won: bool) -> void:
+	if won:
+		gauntlet_wins = int(gauntlet_wins) + 1
+	else:
+		gauntlet_losses = int(gauntlet_losses) + 1
+
+
+## 周六打完一场的**整块记账**, 返回这一场给多少深海币。
+## ★★为什么整块在这里而不是在战斗主场景: 积分赛那条公式 `8 + 余命 + 2×已失命 + 胜6`
+##   整条都吃 `hearts`, 而周六**没有命这个维度**(原稿: 无命, 公式退化为固定数 8)。
+##   两套口径必须**各自成段**, 不能在那条公式里塞 if —— 塞了迟早被人当成同一条一起改坏
+##   (同族: CLAUDE.md §3.3「两条独立的伤害路径」)。
+## ⚠ **不掉命**、**不吃积分赛配额**、**不记横扫**(横扫只用于积分赛种子排序)。
+##   `season_total_battles` 照加 —— 它的含义就是"本大轮打了几场", 周六也是真打了。
+func gauntlet_settle(won: bool) -> int:
+	season_total_battles += 1
+	gauntlet_record(won)
+	add_season_xp(int(_P2.GAUNTLET_XP_PER_MATCH))
+	axe_on_match_end()                   # 096 小木斧: 打完一整场照常给砍伐经验
+	candy_jar_add(1 if won else 4)
+	if won:
+		season_wins += 1
+		season_eggs_killed += 1
+	return int(_P2.GAUNTLET_COINS_PER_MATCH)
+
+
+## 闯关配额补发(只补晋级者)。与积分赛的 `backfill_ranked_quota()` 同构, 返回实际补了几场。
+## ★用**另一个**已补计数 `gauntlet_backfill_paid`, 不复用积分赛那个 —— 两笔账混在一个字段里,
+##   补过积分赛的人会把闯关的额度吃掉(而且静默)。
+func backfill_gauntlet_quota() -> int:
+	var owed: int = _P2.gauntlet_backfill_owed(int(gauntlet_wins), int(gauntlet_losses))
+	var pay: int = owed - int(gauntlet_backfill_paid)
+	if pay <= 0:
+		return 0
+	## ★钱包是 `meta_deepsea_coins` —— 打一场真给的就是它, 商店花的也是它。
+	##   (`coins` 在全仓没有任何消费入口, 补进去等于没发; A7 栽过一次, 别再栽。)
+	meta_deepsea_coins += pay * int(_P2.GAUNTLET_BACKFILL_COINS)
+	add_season_xp(pay * int(_P2.GAUNTLET_BACKFILL_XP))
+	gauntlet_backfill_paid = int(gauntlet_backfill_paid) + pay
+	return pay
+
+
+## 闯关赛收盘(周六 23:00 UTC)之后的惰性补算。返回实际补发场数。
+## ★形态与 `settle_ranked_close()` 完全一样(下次打开游戏时补算) —— 离线版没有"收盘"这个事件。
+## ★★有效窗口 = 周六 23:00 ~ 周日 23:59(**同一个自然周内**)。理由同积分赛那条:
+##   周一换轮会清 `meta_deepsea_coins`, 跨周再补当场作废, 发了等于没发还让账对不上。
+##   ⇒ 代价写在明处: **周日一次没开游戏 = 拿不到闯关补发。有意的取舍, 不是漏。**
+## ★`now_override` 只给门禁用(同 `settle_ranked_close`): 真实时钟一周只有一天多落在窗口里,
+##   不给注入口的话"收盘前不补"与"收盘后补"这两侧永远只能验到一侧。
+func settle_gauntlet_close(now_override: int = 0) -> int:
+	if week_anchor_ts == 0:
+		return 0                                   # 锚点还没初始化, 谈不上收盘
+	var now: int = now_override if now_override > 0 else int(Time.get_unix_time_from_system())
+	if now < _P2.gauntlet_close_ts(int(week_anchor_ts)):
+		return 0                                   # 本周闯关赛还没收盘
+	return backfill_gauntlet_quota()
+
+
 ## 打完一场 → 该不该吃掉一格积分赛配额。★与开闸的 `ranked_quota_full()` 共用
 ##   `_P2.phase_uses_ranked_quota()` 这一个判据。
 ## ⚠ 入参是【这一场】的阶段(存档里的 `week_phase`, 点「开打」那一刻写的),
@@ -659,6 +739,8 @@ var season_wins: int = 0                              # 本赛季胜场数 (实�
 var ranked_used: int = 0            # 积分赛已用场次 (配额 RANKED_QUOTA; 闯关/决赛日的场次不吃它)
 var season_sweeps: int = 0          # 横扫(2-0)数 —— 终榜排序第三键「胜场 > 余命 > 横扫」
 var backfill_paid: int = 0          # 补发【已发】场次 (幂等: 只补差额, 重复调用不再给)
+## ★闯关赛的补发【另记一笔】—— 与积分赛混在一个字段里, 补过积分赛的人会把闯关额度吃掉(而且静默)。
+var gauntlet_backfill_paid: int = 0 # 闯关补发【已发】场次 (同样幂等)
 var week_phase: String = ""         # 赛程阶段: "" 未定 / rest / ranked / gauntlet / finals
 var week_anchor_ts: int = 0         # 本自然周的锚点 (UTC 周一 00:00 的 unix 秒) —— ★赛季换不换轮**只看它**
 var gauntlet_wins: int = 0          # 闯关赛战绩: 胜
@@ -1309,6 +1391,7 @@ func _save_dict() -> Dictionary:
 		"ranked_used": ranked_used,
 		"season_sweeps": season_sweeps,
 		"backfill_paid": backfill_paid,
+		"gauntlet_backfill_paid": gauntlet_backfill_paid,
 		"week_phase": week_phase,
 		"week_anchor_ts": week_anchor_ts,
 		"gauntlet_wins": gauntlet_wins,
@@ -1402,6 +1485,7 @@ func _apply_save_dict(data: Dictionary) -> void:
 	ranked_used = int(data.get("ranked_used", 0))
 	season_sweeps = int(data.get("season_sweeps", 0))
 	backfill_paid = int(data.get("backfill_paid", 0))
+	gauntlet_backfill_paid = int(data.get("gauntlet_backfill_paid", 0))
 	week_anchor_ts = int(data.get("week_anchor_ts", 0))
 	gauntlet_wins = int(data.get("gauntlet_wins", 0))
 	gauntlet_losses = int(data.get("gauntlet_losses", 0))
@@ -1568,6 +1652,7 @@ func reset_save() -> void:
 	ranked_used = 0  # A2(v2 周赛制): 与上面同一条线, 漏一个就会在切轮后悄悄漂
 	season_sweeps = 0
 	backfill_paid = 0
+	gauntlet_backfill_paid = 0
 	week_phase = ""
 	week_anchor_ts = 0
 	gauntlet_wins = 0
@@ -1644,6 +1729,9 @@ func ensure_season() -> void:
 	##     从 false 翻成 true —— 只看 `paid > 0` 会把这次翻转丢掉不存盘。
 	var was_promoted: bool = promoted
 	var paid: int = settle_ranked_close()
+	## ⑤ 同一周内 + 闯关赛已收盘 → 闯关配额补发(E-A6)。★挂在同一条惰性路径上,
+	##   理由同④; 两笔账各有自己的已补计数, 不会互相吃额度。
+	paid += settle_gauntlet_close()
 	if paid > 0 or promoted != was_promoted:
 		save()
 
@@ -2033,6 +2121,7 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	ranked_used = 0  # A2(v2 周赛制): 与上面同一条线, 漏一个就会在切轮后悄悄漂
 	season_sweeps = 0
 	backfill_paid = 0
+	gauntlet_backfill_paid = 0
 	week_phase = ""
 	## ★★不是 0 —— 这个字段就是「本大轮是哪一周」本身。写 0 的话下一次 `ensure_season()`
 	##   会把它当成"老存档待迁移"(见那边分支②)而**再也滚不了轮**: 补个锚点就返回,

@@ -111,7 +111,7 @@ func _ready() -> void:
 	##     「闯关赛阶段 + 同样的 ranked_used → `ranked_quota_full()` 判为没打满(放行)」
 	##   **那是同一条被钉死的判据的第三份副本**(另两份在 `verify_week_season ④`),
 	##   而它钉住的洞是: 闯关赛/决赛日玩法没上线, 那几天却照常开局发奖、不吃配额。
-	##   见 `phase2_config.WEEKEND_MODES_LIVE` 的长注释与 memory
+	##   见 `phase2_config.PHASE_MODE_LIVE` 的长注释与 memory
 	##   `fb-gate-can-pin-the-bug-in-place` / `fb-branch-to-an-unbuilt-mode-is-a-backdoor`。
 	##
 	## ★`ranked_quota_full()` 现在**不读这个字段**了 —— 它问的是「**现在**是什么阶段」(时钟),
@@ -132,7 +132,10 @@ func _ready() -> void:
 		not bool(GameState.ranked_quota_full(1789603200)))
 
 	## ⑤b 真消费者 `consume_ranked_quota()` 确实读它 —— 答案跟着规则走
-	var live: bool = bool(P2C.WEEKEND_MODES_LIVE)
+	## ★★2026-09-22 E-A: 周六闯关赛上线之后这条判据**又硬起来了** ——
+	##   积分赛吃 24 场配额、闯关赛吃它自己的 6 场配额 ⇒ 只改 `week_phase` 这一个字段,
+	##   记账结果就不同。上一版那条「显式登记的有意缺口」因此删掉: 缺口已经填上了。
+	## ★期望**写死**(+1 / +0), 不问 `phase_mode_live()` —— 问被测函数等于拿它当尺子。
 	var delta := {}
 	for ph5 in [P2C.PHASE_RANKED, P2C.PHASE_GAUNTLET]:
 		GameState.week_phase = ph5
@@ -141,17 +144,8 @@ func _ready() -> void:
 		delta[ph5] = int(GameState.ranked_used)
 	GameState.ranked_used = keep_used
 	GameState.week_phase = keep_phase
-	if live:
-		_chk("⑤b ★只改 week_phase 一个字段, 记账就不同 —— 它是活的",
-			delta[P2C.PHASE_RANKED] != delta[P2C.PHASE_GAUNTLET], str(delta))
-	else:
-		## ★★显式登记的缺口(不许静默跳过): 周末玩法没上线期间, 这个字段对配额**没有影响**,
-		##   这是有意的(七天都吃配额)。它的"活性"这期间由
-		##   `verify_week_season ⑦` 的 consume↔规则一致性判据守着。
-		##   玩法上线把 `WEEKEND_MODES_LIVE` 改成 true 的那天, 上面 live 分支自动接管。
-		_chk("⑤b ★周末玩法没上线 ⇒ 两个阶段记账相同(登记在案的有意缺口, 非漏)",
-			delta[P2C.PHASE_RANKED] == delta[P2C.PHASE_GAUNTLET]
-			and delta[P2C.PHASE_RANKED] == 1, str(delta))
+	_chk("⑤b ★积分赛记一场配额 / 闯关赛一场都不记 —— 只改这一个字段答案就不同",
+		delta[P2C.PHASE_RANKED] == 1 and delta[P2C.PHASE_GAUNTLET] == 0, str(delta))
 
 	## ── 建真场景 ──
 	var inst = TS_SCENE.instantiate()

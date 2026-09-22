@@ -49,7 +49,14 @@ const RANKED_QUOTA := 24               # 场次配额(原稿: 与 8 命咬合, 1
 const RANKED_BACKFILL_COINS := 16      # 补发地板/场: 原稿「固定数 + 满命×A」= 8 + 8×1, **不含胜利奖**
 const RANKED_BACKFILL_XP := 2          # 补发经验/场(与实打每场 +2 同额)
 const PROMOTE_TOP_PCT := 0.30          # 晋级线: 前 30%
-const PROMOTE_WINS_FLOOR := 13         # 硬线兜底: ≥13 胜保送(比例自伸缩 + 硬线)
+## ★★硬线兜底: ≥N 胜保送。**原稿的正式值是 13**(`PROMOTE_WINS_FLOOR_SHIPPING`)。
+## 现在取 5, 理由是算过的、不是随手改小:
+##   一周 24 场配额 + 8 命 ⇒ 要拿 13 胜至少打 13 场且输不超过 8 场 ⇒ 胜率 >62%、场数 ≥21。
+##   当前是 sideload 测试包、测试者个位数, **一个都到不了 13 胜 ⇒ 周六池空 ⇒ 闯关赛做了等于没做**。
+## ⚠ 离线版**只有这条硬线**; 原稿的「前 30%」要一份收盘时刻的全服终榜(服务端排名),
+##   那部分还没做 —— 做完之后把这里改回 `PROMOTE_WINS_FLOOR_SHIPPING`。
+const PROMOTE_WINS_FLOOR := 5
+const PROMOTE_WINS_FLOOR_SHIPPING := 13   # 原稿正式值(留在这里, 免得"临时值"变成永久值没人记得)
 
 ## 闯关赛(周六)
 const GAUNTLET_WINS_IN := 4            # 4 胜晋级
@@ -57,6 +64,47 @@ const GAUNTLET_LOSSES_OUT := 3         # 3 负出局
 const GAUNTLET_QUOTA := 6              # 配额 6 场(原稿: 晋级率 ≈34%)
 const GAUNTLET_BACKFILL_COINS := 8     # 补发地板/场(只补晋级者)
 const GAUNTLET_BACKFILL_XP := 2
+## ★周六**不掉命**(原稿:「每场照常结算深海币(无命, 公式退化为固定数 8)」) ——
+##   积分赛那条公式 `8 + 余命 + 2×已失命 + 胜6` 整条都吃 `hearts`, 周六直接复用会算错。
+const GAUNTLET_COINS_PER_MATCH := 8    # 周六每场固定深海币(不含胜负差, 原稿就是固定数)
+const GAUNTLET_XP_PER_MATCH := 2       # 周六每场经验(与积分赛每场 +2 同额)
+
+## ─── 闯关赛规则(纯函数) ──────────────────────────────────────
+## ★★放这里而不是 `GameState`: 匹配层(选同标签对手)、结算层(记战绩)、UI 层(显示还差几场)
+##   **三处都要同一个答案**。就地各写一份 `if w >= 4` 就是同一判据存三份, 必然有一处落后
+##   (memory `fb-hand-rolled-copies-drift`; 「周末三天无限刷」那个洞的成因之一正是这个)。
+
+const GAUNTLET_RUNNING := "running"    # 还能打
+const GAUNTLET_IN := "in"              # 晋级(≥4 胜)
+const GAUNTLET_OUT := "out"            # 出局(≥3 负, 或打满配额仍未晋级)
+
+## 战绩标签。★匹配的**唯一**维度: 只有标签完全相同者互配(3-1 只碰 3-1), 永不跨标签。
+static func gauntlet_label(w: int, l: int) -> String:
+	return "%d-%d" % [maxi(0, w), maxi(0, l)]
+
+## 这个战绩现在是什么状态。
+## ★「6 场封顶」不是独立规则, 是**推论**: 胜<4 且 负<3 最多只能是 3-2(5 场),
+##   第 6 场必定落进 4-2(晋级) 或 3-3(出局)。所以下面那条 `w+l >= QUOTA`
+##   在正常对局里**到不了** —— 它是存档被改坏时的兜底, 不是主判据。
+static func gauntlet_state(w: int, l: int) -> String:
+	if w >= GAUNTLET_WINS_IN:
+		return GAUNTLET_IN
+	if l >= GAUNTLET_LOSSES_OUT:
+		return GAUNTLET_OUT
+	if w + l >= GAUNTLET_QUOTA:
+		return GAUNTLET_OUT            # 兜底: 存档异常时也不许无限打
+	return GAUNTLET_RUNNING
+
+## 还能不能再开一局(周六的开局闸)。
+static func gauntlet_can_play(w: int, l: int) -> bool:
+	return gauntlet_state(w, l) == GAUNTLET_RUNNING
+
+## 闯关配额补发几场。**只补晋级者**(原稿: 4-0 补 2 / 4-1 补 1 / 4-2 不补; x-3 出局者不补)。
+## ⚠ 没打满就到收盘(比如 2-1 那一刻周六结束) ⇒ 状态不是 `IN` ⇒ 不补(U-E4, 我 2026-09-22 定)。
+static func gauntlet_backfill_owed(w: int, l: int) -> int:
+	if gauntlet_state(w, l) != GAUNTLET_IN:
+		return 0
+	return maxi(0, GAUNTLET_QUOTA - (maxi(0, w) + maxi(0, l)))
 
 ## 匹配
 const QUEUE_DEGRADE_SEC := 20          # 排队降级阈值: 真人 → 快照 → 机器人
@@ -91,32 +139,55 @@ const PHASE_FINALS := "finals"      # 周日: 决赛日
 ##   那三天照常能开局、照常发奖、照常 `season_wins += 1`, 却**不吃积分赛配额** ——
 ##   一周七天里有三天是"无限场次的积分赛", 谁周末刷得多谁就上榜, 配额 24 场形同虚设。
 ##
-## ⇒ 在玩法上线之前, 这三天**按积分赛规则走**(吃配额、赛程条上直说"玩法开发中")。
-##   把开关做成常量而不是就地写死, 是为了让"上线那天要改回去的地方"只有这一个字:
-##   改成 `true`, 下面两个函数立刻恢复方案书 A3 设计的分流行为。
-const WEEKEND_MODES_LIVE := false
+## ⇒ 在玩法上线之前, 那几天**按积分赛规则走**(吃配额、赛程条上直说还没上线)。
+##
+## ★★2026-09-22 第二次改: 从**一个全局开关**拆成**一张按阶段的表**。
+##   原来一个常量管三天。周六闯关赛(E-A)做完要翻 true, 而周日决赛日没做 ——
+##   一起翻就会让**周日周一重新变成「限制全免而奖励照发」**, 那正是 v0.19.428 刚修的洞
+##   (memory `fb-branch-to-an-unbuilt-mode-is-a-backdoor`)。
+##   ⇒ 「上线了没有」是**每个阶段各自的事实**, 就得每个阶段各自记一格。
+const PHASE_MODE_LIVE := {
+	PHASE_REST: false,        # 周一休赛: 没有"休赛日玩法", 也不打算做
+	PHASE_RANKED: true,       # 周二~周五积分赛: 本来就在跑
+	PHASE_GAUNTLET: true,     # 周六闯关赛: E-A 已落地(2026-09-22)
+	PHASE_FINALS: false,      # 周日决赛日: 要服务端赛程推进器, 没做
+}
+
+## 阶段还没上线时, 赛程条上挂哪句话。★各说各的:
+##   周一是**设计上就没有玩法**(休赛), 说"开发中"是另一种谎; 周日是**真的在等开发**。
+const PHASE_PENDING_NOTE := {
+	PHASE_REST: "休赛日 · 暂按积分赛规则",
+	PHASE_FINALS: "玩法开发中 · 暂按积分赛规则",
+}
+
+## 这个阶段的玩法上线了没有。
+## ⚠ 不认识的阶段一律按 **true**(照常走积分赛规则) —— 默认值选错方向的代价不对称:
+##   选 false 等于给未知阶段开后门。
+static func phase_mode_live(phase: String) -> bool:
+	return bool(PHASE_MODE_LIVE.get(phase, true))
 
 ## 这个阶段的场次, 要不要吃积分赛配额?
 ## ★★唯一事实源: `_settle_season()` 记账与 `GameState.ranked_quota_full()` 开闸
 ##   **必须是同一个答案** —— 两处各写一份 `if week_phase == "ranked"`, 就是同一判据存两份,
 ##   必然有一处落后(memory fb-hand-rolled-copies-drift; 这个洞第一次出现正是因为这样)。
 ## ⚠ 空串 = 赛程还没写进存档(老档/第一次开局) ⇒ 按积分赛计, 与 A3 的口径一致。
-## ★写成「恒假分支在上、兜底在下」而不是 `if not WEEKEND_MODES_LIVE: return true`:
-##   后者是**恒真常量分支 + return**, 会把下面那行吞成死代码 ——
-##   `tools/const_branch_audit.py` 当场判红(实测红过一次), 而它是对的。
-##   这个形状与仓里其余 5 个 A/B 开关一致: 暗着的是**还没上线的那一支**。
+## ★判据走上面那张表 —— 不再是一个全局开关。
+## ★也不再有「常量分支 + return」的形状(`tools/const_branch_audit.py` 判过一次红, 它是对的):
+##   这里的 `if` 条件带运行期入参, 不是编译期恒定的。
 static func phase_uses_ranked_quota(phase: String) -> bool:
-	if WEEKEND_MODES_LIVE:
-		return phase == "" or phase == PHASE_RANKED
-	return true                   # 玩法没上线 ⇒ 七天都是积分赛, 都吃配额
+	## 玩法**已上线**且不是积分赛 ⇒ 它有自己的配额(闯关赛 6 场), 不吃积分赛那 24 场。
+	## 其余一律吃 —— 含空串(老档)、积分赛本身、以及**玩法还没上线**的那几天。
+	if phase != "" and phase != PHASE_RANKED and phase_mode_live(phase):
+		return false
+	return true
 
 ## 这个阶段要不要在赛程条上挂一句"还没上线"? 返回空串 = 照常, 不用额外说明。
 ## ★做成纯函数(而不是在主菜单里就地 if)是为了能**七天全量测**:
 ##   只在主菜单里写, 门禁就只能量"今天"那一格, 一周里有四天是空检查。
 static func phase_pending_note(phase: String) -> String:
-	if WEEKEND_MODES_LIVE or phase == PHASE_RANKED:
+	if phase_mode_live(phase):
 		return ""
-	return "玩法开发中 · 暂按积分赛规则"
+	return str(PHASE_PENDING_NOTE.get(phase, "玩法开发中 · 暂按积分赛规则"))
 
 ## unix 秒 → 星期几(1=周一 … 7=周日, ISO 口径)。
 ## ★Godot 的 `get_datetime_dict_from_unix_time` 返回的 `weekday` 是 0=周日,
@@ -172,6 +243,12 @@ const GAUNTLET_CLOSE_WD := 6           # 闯关赛: 周六 23:00 收盘
 ##   拿它判"收盘过了没有"会在周六周日给出错的答案。这里要的是**一个固定的时间点**。
 static func ranked_close_ts(week_anchor: int) -> int:
 	return week_anchor + (RANKED_CLOSE_WD - 1) * 86400 + WEEK_CLOSE_HOUR_UTC * 3600
+
+## 本周【闯关赛收盘】的绝对 unix 时刻(UTC 周六 23:00)。理由同上一个函数。
+## ★两个函数只差一个星期几常量, 但**不能合并成"传星期几进来"** —— 调用点写 `close_ts(6)`
+##   就等于把 `GAUNTLET_CLOSE_WD` 这个名字丢了, 下一个人得自己数星期几。
+static func gauntlet_close_ts(week_anchor: int) -> int:
+	return week_anchor + (GAUNTLET_CLOSE_WD - 1) * 86400 + WEEK_CLOSE_HOUR_UTC * 3600
 
 ## 距本阶段收盘还有几秒(UTC)。没有收盘概念的阶段返回 -1。
 ## 积分赛在**周五** 23:00 收盘、闯关赛在**周六** 23:00 —— 所以要先算"还有几天到收盘日"。

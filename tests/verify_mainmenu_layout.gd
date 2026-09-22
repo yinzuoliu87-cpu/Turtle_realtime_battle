@@ -354,15 +354,18 @@ func _ready() -> void:
 	#      它若退化成"永远返回空串", 判据会跟着走进 else 分支、然后全绿
 	#      (实测: 变异 M3 第一版没红, 就是栽在这里; 同一份文件 ⑥ 的注释早写过这条)。
 	#      「哪几天要挂」由**星期几 + 开关**决定, 写死在下面这张表里。
-	var DAYS := {                      # 显示名: [时间戳, 玩法还没上线的那三天?]
+	#    ★★2026-09-22 E-A: 周六闯关赛**已上线** ⇒ 它那格不再挂「还没上线」, 改成照常倒计时。
+	#      表里第二列就是期望值本身, 跟着 `PHASE_MODE_LIVE` 手动同步 ——
+	#      **故意不写成 `not phase_mode_live(...)`**: 那是拿被测函数当尺子(今天栽过一次)。
+	var DAYS := {                      # 显示名: [时间戳, 这天要不要挂「还没上线」提示]
 		"周一休赛": [1789344000, true],
 		"周四积分赛": [1789603200, false],
-		"周六闯关赛": [1789776000, true],
+		"周六闯关赛": [1789776000, false],
 		"周日决赛日": [1789862400, true],
 	}
 	for dn in DAYS.keys():
 		var ts_d: int = int((DAYS[dn] as Array)[0])
-		var needs_note: bool = bool((DAYS[dn] as Array)[1]) and not _P2M.WEEKEND_MODES_LIVE
+		var needs_note: bool = bool((DAYS[dn] as Array)[1])
 		var blk = _menu._week_close_block(ts_d)
 		var btxt: Array = []
 		var bq: Array = [blk]
@@ -376,8 +379,11 @@ func _ready() -> void:
 		var want_note: String = _P2M.phase_pending_note(_P2M.phase_at_utc(ts_d))
 		_ok("⑬c ★分母(%s): 收盘块真建出了文字" % dn, btxt.size() >= 2, bj)
 		if needs_note:
-			## ① 屏幕上必须出现「开发中」这个意思 —— 判据写死, 不引被测函数
-			_ok("⑬c ★%s: 玩法没上线 → 条子上要说「开发中」" % dn, bj.find("开发中") >= 0, bj)
+			## ① 屏幕上必须说清**实际会发生什么** —— 判据写死, 不引被测函数。
+			##   ★needle 取「暂按积分赛规则」而不是「开发中」: 周一是设计上就没有玩法(休赛),
+			##     说开发中是另一种谎, 所以两天的前半句不同、**后半句才是共同的信息**。
+			_ok("⑬c ★%s: 玩法没上线 → 条子上要说清暂按什么规则" % dn,
+				bj.find("暂按积分赛规则") >= 0, bj)
 			## ② 而且必须**就是产品那个纯函数给的那一句**(否则 UI 自己抄了一份, 必然漂)
 			_ok("⑬c ★%s: 条子上那句 == phase_pending_note() 给的那句" % dn,
 				want_note != "" and bj.find(want_note) >= 0,
@@ -386,16 +392,10 @@ func _ready() -> void:
 			_ok("⑬c ★%s: 不再说「本日维护」/「开打」这类做不到的话" % dn,
 				bj.find("维护") < 0 and bj.find("开打") < 0, bj)
 		else:
-			## 玩法上线之后(WEEKEND_MODES_LIVE=true)三种阶段各说各的话, 逐个卡死 ——
-			## 写成"倒计时【或】维护【或】开打"就成了一条永远绿的或门。
-			var ph_d: String = _P2M.phase_at_utc(ts_d)
-			if ph_d == _P2M.PHASE_REST:
-				_ok("⑬c ★%s: 休赛日说维护" % dn, bj.find("维护") >= 0, bj)
-			elif ph_d == _P2M.PHASE_FINALS:
-				_ok("⑬c ★%s: 决赛日说几点开打" % dn, bj.find("开打") >= 0, bj)
-			else:
-				_ok("⑬c ★%s: 照常给倒计时" % dn,
-					bj.find("距收盘") >= 0 or bj.find("已封盘") >= 0, bj)
+			## 玩法已上线的阶段: 积分赛(周五 23:00 收盘)与闯关赛(周六 23:00 收盘)
+			## 都有收盘概念 ⇒ 必须给倒计时或封盘提示, 不许是别的话。
+			_ok("⑬c ★%s: 照常给倒计时" % dn,
+				bj.find("距收盘") >= 0 or bj.find("已封盘") >= 0, bj)
 		blk.queue_free()
 
 	# ── ⑬d ★两条拦截提示说的也得是**今天真会发生的事** (2026-09-22) ──
@@ -411,6 +411,16 @@ func _ready() -> void:
 	else:
 		var kp_h: int = int(gs_m.hearts)
 		var kp_u: int = int(gs_m.ranked_used)
+		var kp_pr = gs_m.promoted
+		var kp_gw: int = int(gs_m.gauntlet_wins)
+		var kp_gl: int = int(gs_m.gauntlet_losses)
+		## ★★提示语现在跟**玩家真实状态**走(晋级了就说"周六闯关赛见"), 不再跟开关走。
+		##   所以这一组要先把状态钉死成「没晋级」, 否则下面那条判据在晋级时会假红。
+		gs_m.promoted = false
+		gs_m.gauntlet_wins = 0
+		gs_m.gauntlet_losses = 0
+		_ok("⑬d ★分母: 已钉成「没晋级」(否则「不许说闯关赛」那条会假红)",
+			not gs_m.gauntlet_eligible(), "promoted=%s" % str(gs_m.promoted))
 		for case_name in ["出局", "配额打满"]:
 			if case_name == "出局":
 				gs_m.hearts = 0
@@ -444,14 +454,33 @@ func _ready() -> void:
 				else _menu._msg_quota_full()
 			_ok("⑬d ★%s: 飘的就是 _msg_*() 那一句(两个入口不许各写一份)" % case_name,
 				toast_txt == want_msg, "飘出「%s」· 函数给「%s」" % [toast_txt, want_msg])
-			if not _P2M.WEEKEND_MODES_LIVE:
-				## ★判据写死, 不问被测函数 —— 玩法没上线就不许把玩家指向闯关赛/观战
-				_ok("⑬d ★%s: 玩法没上线 → 不许说「闯关赛」「观战」" % case_name,
-					toast_txt.find("闯关赛") < 0 and toast_txt.find("观战") < 0, toast_txt)
+			## ★★没晋级的人**不许**被指向闯关赛(他周六根本打不了), 也不许提「观战」
+			##   (观赛入口是 F 阶段, 一行都没有)。这条判据写死, 不问被测函数。
+			##   ⚠ 前提: 上面把 `promoted` 置成了 false, 见那一行的分母断言。
+			_ok("⑬d ★%s: 没晋级 → 不许说「闯关赛」「观战」" % case_name,
+				toast_txt.find("闯关赛") < 0 and toast_txt.find("观战") < 0, toast_txt)
 			for ch_c in new_kids:
 				ch_c.queue_free()
+		## ★★晋级了的人**应该**被指向周六 —— 反过来也验一遍, 否则
+		##   「永远不说闯关赛」也能让上面那条绿(一条判据只卡住一个方向 = 半条判据)。
+		gs_m.promoted = true
+		gs_m.hearts = 0
+		var promo_txt := ""
+		var kids0: Array = _menu.get_children()
+		_menu._start_battle_flow()
+		for ch_p in _menu.get_children():
+			if not kids0.has(ch_p) and ch_p is Label:
+				promo_txt = str((ch_p as Label).text)
+				ch_p.queue_free()
+		_ok("⑬d ★分母: 晋级态下真飘出了提示", promo_txt != "", promo_txt)
+		_ok("⑬d ★★0 命但已晋级 → 要说周六闯关赛(不是「下周一」)",
+			promo_txt.find("闯关赛") >= 0 and promo_txt.find("下周一") < 0, promo_txt)
+
 		gs_m.hearts = kp_h
 		gs_m.ranked_used = kp_u
+		gs_m.promoted = kp_pr
+		gs_m.gauntlet_wins = kp_gw
+		gs_m.gauntlet_losses = kp_gl
 
 	# ── ⑪ ★没有花名 / 感叹号推销话术 (用户 2026-08-15 点名要去掉的那类"ai 味") ──
 	#    ★只扫【字符串字面量】—— 扫整段代码会被 `!=` 运算符命中(第一版就是这么假红的),

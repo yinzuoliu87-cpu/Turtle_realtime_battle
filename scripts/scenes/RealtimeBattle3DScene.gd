@@ -7524,6 +7524,17 @@ func _settle_season(won: bool) -> void:
 	_last_was_exhibition = gs.is_eliminated()        # 进场前已0命 = 表演赛 (无 stake)
 	if _last_was_exhibition:
 		_last_reward = 5                             # 表演赛: 少量练手币, 不掉命/不计战/不上榜
+	elif str(gs.week_phase) == "gauntlet":
+		## ★★E-A5 闯关赛(周六): **不掉命**, 每场固定 8 币 + 2 经验。
+		##   原稿逐字:「每场照常结算深海币(**无命**, 公式退化为固定数 8)+ 经验 2 + 货架刷新」。
+		##   ⚠ 下面积分赛那条公式 `8 + 余命 + 2×已失命 + 胜6` **整条都吃 `hearts`**,
+		##     直接复用会按"命"算钱, 而周六根本没有命这个维度 —— 所以必须单独一条路,
+		##     不是在那条公式里加个 if(那样迟早被人当成同一条改坏)。
+		##   ★战绩(4 胜晋级/3 负出局)记在 `GameState.gauntlet_record()` 里 ——
+		##     判据在 `phase2_config.gauntlet_state()`, 匹配层与 UI 层用的是同一个。
+		##   ★整块记账写在 `GameState.gauntlet_settle()` 里(数据的主人那一层), 这里只调它并拿回币数 ——
+		##     理由同下面的 `dual_lane_was_sweep()` / `consume_ranked_quota()`。
+		_last_reward = gs.gauntlet_settle(won)
 	else:
 		if not won:
 			gs.lose_heart()                          # 输 → 失一颗心 (0命=淘汰)
@@ -7539,7 +7550,7 @@ func _settle_season(won: bool) -> void:
 		##   `== "ranked"`, 与 `GameState.ranked_quota_full()` 里那份是同一判据的两个副本。
 		##   而闯关赛/决赛日的**玩法根本没上线**, 于是周六周日周一照常开局照常发奖、
 		##   `season_wins` 照加, 却一场都不记配额 ⇒ 一周三天无限刷、24 场配额形同虚设。
-		##   现在两处共用一个函数, 玩法上线时改那边一个常量即可(WEEKEND_MODES_LIVE)。
+		##   现在两处共用一个函数, 某个阶段的玩法上线时改那边一张表即可(PHASE_MODE_LIVE)。
 		## ★判据写在 `GameState.consume_ranked_quota()` 里(数据的主人那一层), 这里只调它 ——
 		##   理由同下面的 `dual_lane_was_sweep()`: 在主场景就地再写一份 `== "ranked"`,
 		##   就是同一判据存两份, 必然有一处落后。这个洞第一次出现正是因为这样。

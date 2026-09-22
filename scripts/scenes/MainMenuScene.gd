@@ -888,7 +888,7 @@ func _week_close_block(now: int) -> Control:
 		var n := _SB.notice_text()
 		sub = n if n != "" else "版本维护, 稍后回来"
 		return _close_block_labels(head, sub)
-	## ★★2026-09-22: 闯关赛/决赛日/休赛的**玩法还没上线**(WEEKEND_MODES_LIVE=false) ⇒
+	## ★★2026-09-22: 有些阶段的**玩法还没上线**(见 `phase2_config.PHASE_MODE_LIVE`) ⇒
 	##   那三天实际走的是积分赛规则(照常开局、吃配额)。这一块必须**直说** ——
 	##   在此之前周日写「决赛日 本地 X 点开打」、周一写「本日维护」, 而两天都能照常开局:
 	##   玩家按字面读会以为自己错过了决赛、或者以为维护日不能玩。**说了做不到的事就是缺陷**。
@@ -996,20 +996,50 @@ func _open_shop() -> void:
 ## ★★拦截提示的文案放这两个函数里 —— 商店入口与开打入口原来**各写了一份同样的字符串**,
 ##   改一处漏一处就是「同一个状态两个名字」(memory fb-hand-rolled-copies-drift)。
 ## ★★2026-09-22: 原文案「等周六闯关赛(开赛观战)」**说的是做不到的事** ——
-##   闯关赛玩法一行没写(WEEKEND_MODES_LIVE=false), 观赛入口更是 F 阶段的事;
+##   当时闯关赛玩法一行没写(现在 E-A 已落地), 观赛入口更是 F 阶段的事;
 ##   玩家按字面读会周六打开游戏找闯关赛, 然后发现还是原来那个积分赛。
 ##   ⇒ 没上线时说**真的会发生的那件事**: 下周一换新的一轮(自然周锚点, UTC 周一 00:00)。
 ##   玩法上线后自动换回原文案, 不用再记得改这里。
+## 这一周后面**还有闯关赛可打吗**? 三个条件缺一不可。
+## ★★提示语问的是这个, 不是"开关翻了没有" —— 同样打满配额的两个人,
+##   晋级了的那个周六真有东西打, 没晋级的那个要等下周一。跟开关走就会对其中一个说谎。
+func _gauntlet_ahead() -> bool:
+	if not _P2C.phase_mode_live(_P2C.PHASE_GAUNTLET):
+		return false                      # 闯关赛玩法还没上线
+	if not GameState.gauntlet_eligible():
+		return false                      # 这一周没拿到资格
+	return _P2C.gauntlet_can_play(int(GameState.gauntlet_wins), int(GameState.gauntlet_losses))
+
+
 func _msg_eliminated() -> String:
-	if _P2C.WEEKEND_MODES_LIVE:
-		return "💀 本大轮已出局 · 等周六闯关赛开赛观战"
+	## ⚠ 0 命**不等于**没资格: 5 胜 + 8 负 = 13 场, 完全可能既淘汰又晋级。
+	##   原稿的终榜排序是「胜场 > 余命 > 横扫」, 余命只是第二键, 不是门槛。
+	if _gauntlet_ahead():
+		return "💀 本大轮已出局 · 但你已晋级, 周六闯关赛见"
 	return "💀 本大轮已出局 · 下周一开新的一轮"
 
 
 func _msg_quota_full() -> String:
-	if _P2C.WEEKEND_MODES_LIVE:
-		return "📋 本周积分赛配额已打满 · 等周六闯关赛"
-	return "📋 本周配额 %d 场已打满 · 下周一开新的一轮" % int(_P2C.RANKED_QUOTA)
+	var q: int = int(_P2C.RANKED_QUOTA)
+	if _gauntlet_ahead():
+		return "📋 本周配额 %d 场已打满 · 周六闯关赛见" % q
+	return "📋 本周配额 %d 场已打满 · 下周一开新的一轮" % q
+
+
+## 周六点「开打」被拦住时说什么。返回空串 = 没拦, 可以开。
+## ★与 `GameState.gauntlet_can_play()` **共用同一组判据**(`phase2_config.gauntlet_state`),
+##   这里只负责把状态翻译成人话 —— 就地再写一遍 `if wins >= 4` 就是同一判据存两份。
+func _msg_gauntlet_block() -> String:
+	if not GameState.gauntlet_eligible():
+		return "🔒 本周没晋级 · 闯关赛要积分赛拿到资格才能打"
+	var st: String = GameState.gauntlet_state()
+	if st == _P2C.GAUNTLET_IN:
+		return "✅ 已晋级决赛日 · 闯关赛到此为止(%s)" % _P2C.gauntlet_label(
+			int(GameState.gauntlet_wins), int(GameState.gauntlet_losses))
+	if st == _P2C.GAUNTLET_OUT:
+		return "💀 闯关赛已出局(%s) · 下周一开新的一轮" % _P2C.gauntlet_label(
+			int(GameState.gauntlet_wins), int(GameState.gauntlet_losses))
+	return ""
 
 
 ## 轻提示: 顶部飘一行金字, 1.4s 后淡出
@@ -1037,14 +1067,37 @@ func _toast(msg: String) -> void:
 ##   原来不管为什么打不了, 玩家只看到「赛季已淘汰」, 而配额打满和不在开赛时段都不是"淘汰"。
 ## ★三条的**先后顺序有意义**: 命尽是最终态(重置存档才解)、配额是本周期上限(等下一阶段)、
 ##   阶段不对只是"现在不行"。按"多严重"排, 玩家看到的是最根本的那条原因。
-func _start_battle_flow() -> void:
+## 现在能不能开局? 返回**要飘给玩家的那句话**; 空串 = 放行。
+##
+## ★★E-A(2026-09-22): **周六走闯关赛自己的闸**, 不走积分赛那两条。
+##   两套闸的差别不是"多一条少一条", 是**判据完全不同**:
+##     · 积分赛: 0 命锁死 + 24 场配额
+##     · 闯关赛: 有没有资格 / 4 胜晋级 / 3 负出局, **而且 0 命不锁**
+##       (5 胜 + 8 负 = 13 场 ⇒ 完全可能既淘汰又晋级; 余命在终榜里只是第二排序键)
+##   把它们塞进同一串 if 迟早会把"淘汰"这条错误地盖到周六头上。
+##
+## ★★为什么要 `now` 这个入参: 不给的话, 周六那条分支**只有周六跑门禁才会被执行**
+##   —— 实测变异(把周六分支整个关掉)一条门禁都没红, 因为那天是周二
+##   (memory `fb-gate-subject-never-constructed`)。产品调用一律不传, 只有门禁传。
+##   先例: `GameState.ranked_quota_full(now)`、`TeamSelectScene.lockout_now_override`。
+func _battle_block_msg(now: int = 0) -> String:
+	var ts: int = now if now > 0 else int(Time.get_unix_time_from_system())
+	if _P2C.phase_at_utc(ts) == _P2C.PHASE_GAUNTLET \
+			and _P2C.phase_mode_live(_P2C.PHASE_GAUNTLET):
+		return _msg_gauntlet_block()
 	if GameState.is_eliminated():   # 大轮淘汰锁(用户2026-07-24): 0命封匹配, 只重置存档解锁
 		## ★U9 拍板(2026-09-16):「0 命的话就只能等到周 6 周日观赛了, 不再打表演赛」
 		##   ⇒ 文案从「设置→重置存档」改成指向观赛。观赛入口在 F 阶段, 先把话说对。
-		_toast(_msg_eliminated())
-		return
-	if GameState.ranked_quota_full():
-		_toast(_msg_quota_full())
+		return _msg_eliminated()
+	if GameState.ranked_quota_full(ts):
+		return _msg_quota_full()
+	return ""
+
+
+func _start_battle_flow() -> void:
+	var block: String = _battle_block_msg()
+	if block != "":
+		_toast(block)
 		return
 	GameState.mode = "single"
 	GameState.tutorial = false

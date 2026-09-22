@@ -29,12 +29,13 @@ const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const _P2 := preload("res://scripts/gamedata/phase2_config.gd")
 
 const FIELDS_INT := ["ranked_used", "season_sweeps", "backfill_paid",
-	"week_anchor_ts", "gauntlet_wins", "gauntlet_losses"]
+	"week_anchor_ts", "gauntlet_wins", "gauntlet_losses",
+	"gauntlet_backfill_paid"]                 # E-A(2026-09-22) 新增, 闯关补发的已补计数
 
 ## ★②(切轮归零)要把 `week_anchor_ts` **排除**在"归零"之外 —— 见 `_t_new_season_resets` 里的长注释。
 ##   ①(存档往返)和 ③(清档)仍然逐个验它, 一条都没少。
 const FIELDS_ZERO_ON_NEW_SEASON := ["ranked_used", "season_sweeps", "backfill_paid",
-	"gauntlet_wins", "gauntlet_losses"]
+	"gauntlet_wins", "gauntlet_losses", "gauntlet_backfill_paid"]
 
 var _n := 0
 var _fail := 0
@@ -223,11 +224,15 @@ func _t_quota_and_sweep() -> void:
 	##   闯关赛/决赛日的玩法一行都没有, 那三天却照常开局、照常发奖、`season_wins` 照加,
 	##   只是不吃配额 ⇒ 一周七天里三天无限刷, 24 场配额形同虚设。
 	##   判据没错、代码也"照设计写了", 错的是**这两件事没有同时上线**。
-	## ⇒ 现在判据跟着 `WEEKEND_MODES_LIVE` 走, 两种取值各断言各的;
+	## ⇒ 现在判据跟着 `PHASE_MODE_LIVE` 那张表走, 每个阶段各断言各的;
 	##   而且卡的是【加了几】(0 或 1), 不是"变了没有" —— 后者在连打两场时也会蒙对。
 	_gs.hearts = 8                                    # 重置: 上面输掉的两场别把命耗到 0
-	var live: bool = _P2.WEEKEND_MODES_LIVE
-	for ph in ["gauntlet", "finals", "rest"]:
+	## ★期望**写死**在这张表里, 不问 `phase_mode_live()` ——
+	##   问被测函数等于拿它当尺子(今天栽过一次: 它退化成空串时判据跟着全绿)。
+	##   周六闯关赛 E-A 已上线 ⇒ 它吃自己的 6 场配额, **不吃**积分赛的 24 场;
+	##   周日决赛日 / 周一休赛没有玩法 ⇒ 照走积分赛规则, **吃**配额。
+	var quota_case := {"gauntlet": 0, "finals": 1, "rest": 1}
+	for ph in quota_case.keys():
 		_gs.week_phase = ph
 		var before: int = int(_gs.ranked_used)
 		## ★分母: 表演赛(0 命进场)不掉命也不记配额 —— 不排掉它, 下面 delta==0 会为了
@@ -236,9 +241,8 @@ func _t_quota_and_sweep() -> void:
 			"hearts=%d" % int(_gs.hearts))
 		scene._settle_season(false)
 		var delta: int = int(_gs.ranked_used) - before
-		var want: int = 0 if live else 1
-		_ok("④ ★%s 阶段(周末玩法%s): 打一场 → 配额 +%d" % [
-				ph, "已上线" if live else "还没上线", want],
+		var want: int = int(quota_case[ph])
+		_ok("④ ★%s 阶段: 打一场 → 积分赛配额 +%d" % [ph, want],
 			delta == want, "实得 +%d (打之前 %d, 打之后 %d)" % [delta, before, int(_gs.ranked_used)])
 
 	print("── ⑤ 横扫(2-0)计数 ──")
@@ -334,7 +338,6 @@ func _t_schedule() -> void:
 # ─────────────────────────────────────────────────────────────
 func _t_weekend_interim() -> void:
 	print("── ⑦ 周末玩法没上线时的过渡规则 ──")
-	var live: bool = _P2.WEEKEND_MODES_LIVE
 	var quota_days: Array = []      # 哪几天的场次吃积分赛配额
 	var note_days: Array = []       # 哪几天要在赛程条上挂「开发中」
 	for wd in range(1, 8):
@@ -343,18 +346,14 @@ func _t_weekend_interim() -> void:
 			quota_days.append(wd)
 		if _P2.phase_pending_note(ph) != "":
 			note_days.append(wd)
-	print("  ⑦ 吃配额的天 = %s ; 要挂「开发中」的天 = %s ; 玩法上线 = %s" % [
-		str(quota_days), str(note_days), str(live)])
-	if live:
-		_ok("⑦ 周末玩法已上线: 只有周二~周五吃积分赛配额",
-			quota_days == [2, 3, 4, 5], str(quota_days))
-		_ok("⑦ 周末玩法已上线: 七天都不用挂「开发中」",
-			note_days.is_empty(), str(note_days))
-	else:
-		_ok("⑦ ★周末玩法没上线: 七天【都】吃配额(漏一天 = 那天可以无限刷)",
-			quota_days == [1, 2, 3, 4, 5, 6, 7], str(quota_days))
-		_ok("⑦ ★周末玩法没上线: 周一/周六/周日三天要直说「开发中」",
-			note_days == [1, 6, 7], str(note_days))
+	print("  ⑦ 吃积分赛配额的天 = %s ; 要挂「还没上线」的天 = %s" % [
+		str(quota_days), str(note_days)])
+	## ★两条期望都**写死**: 周六(6)闯关赛已上线 ⇒ 不吃积分赛配额、也不用挂提示;
+	##   周一(1)休赛、周日(7)决赛日没玩法 ⇒ 照吃配额、且要挂提示。
+	_ok("⑦ ★吃积分赛配额的是周一~周五 + 周日(周六有自己的 6 场配额)",
+		quota_days == [1, 2, 3, 4, 5, 7], str(quota_days))
+	_ok("⑦ ★要挂「还没上线」提示的只有周一与周日(周六已上线)",
+		note_days == [1, 7], str(note_days))
 	_ok("⑦ ★分母: 老档没写过赛程(空串)一律按积分赛算", _P2.phase_uses_ranked_quota(""))
 
 	## ★★开闸问的是【现在】, 不是存档里那个"上一场的阶段"。
@@ -377,11 +376,9 @@ func _t_weekend_interim() -> void:
 		not _gs.ranked_quota_full(THU), "ranked_used=%d" % int(_gs.ranked_used))
 
 	_gs.ranked_used = int(_P2.RANKED_QUOTA)
-	var sat_full: bool = _gs.ranked_quota_full(SAT)
-	if live:
-		_ok("⑦ 周末玩法已上线: 周六不吃积分赛配额 → 打满也放行", not sat_full)
-	else:
-		_ok("⑦ ★周末玩法没上线: 周六配额打满 → 一样拦住(否则周六无限开局)", sat_full)
+	## ★周六闯关赛已上线 ⇒ 积分赛配额打满**不该**拦住周六(周六有自己的闸)
+	_ok("⑦ ★周六: 积分赛配额打满也放行(闯关赛吃自己的 6 场配额)",
+		not _gs.ranked_quota_full(SAT), "ranked_used=%d" % int(_gs.ranked_used))
 
 	## `consume_ranked_quota()` 与 `ranked_quota_full()` 必须是同一个答案 ——
 	## 这两个函数是这次唯一的两个消费端, 它们各写一份判据正是这个洞的成因。
