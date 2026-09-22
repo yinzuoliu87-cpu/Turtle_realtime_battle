@@ -104,21 +104,54 @@ func _ready() -> void:
 	_chk("★分母: 选中日的阶段确实 ≠ 今天的阶段(下面那条才排除得掉「写死」)",
 		pick_phase != ph_now, "选中 %s vs 今天 %s" % [pick_phase, ph_now])
 
-	## ── ⑤ 先跑纯内存那一段: 只改 week_phase 一个字段, 真消费者改不改答案 ──
+	## ── ⑤ 先跑纯内存那一段: 这个字段到底有没有真消费者 ──
 	##    ★必须放在 `_on_start()` **之前** —— 之后场景树就被拆了。
-	print("── ⑤ 真消费者 ranked_quota_full() 读不读它 ──")
+	##
+	## ★★2026-09-22 换判据。原来这一段是:
+	##     「闯关赛阶段 + 同样的 ranked_used → `ranked_quota_full()` 判为没打满(放行)」
+	##   **那是同一条被钉死的判据的第三份副本**(另两份在 `verify_week_season ④`),
+	##   而它钉住的洞是: 闯关赛/决赛日玩法没上线, 那几天却照常开局发奖、不吃配额。
+	##   见 `phase2_config.WEEKEND_MODES_LIVE` 的长注释与 memory
+	##   `fb-gate-can-pin-the-bug-in-place` / `fb-branch-to-an-unbuilt-mode-is-a-backdoor`。
+	##
+	## ★`ranked_quota_full()` 现在**不读这个字段**了 —— 它问的是「**现在**是什么阶段」(时钟),
+	##   而存档里的 `week_phase` 回答的是「**上一场**属于哪个阶段」。所以拿它证明本字段活着
+	##   本来就是错的消费者。真消费者是 `consume_ranked_quota()`(结算记账)。
+	print("── ⑤ 这个字段的真消费者 ──")
 	var keep_used: int = int(GameState.ranked_used)
+	var keep_phase = GameState.week_phase
+
+	## ⑤a 开局闸**不许**再读存档里那个阶段: 写着 gauntlet 也要按"现在"判
 	GameState.ranked_used = int(P2C.RANKED_QUOTA)      # 配额打满
-	GameState.week_phase = P2C.PHASE_RANKED
-	var full_ranked: bool = bool(GameState.ranked_quota_full())
-	GameState.week_phase = P2C.PHASE_GAUNTLET
-	var full_gauntlet: bool = bool(GameState.ranked_quota_full())
+	GameState.week_phase = P2C.PHASE_GAUNTLET          # 上一场是周六打的
+	_chk("⑤a ★存档写着 gauntlet + 配额打满 → 仍然拦住(开局闸问时钟不问存档)",
+		bool(GameState.ranked_quota_full(1789603200)),   # 2026-09-17 周四
+		"week_phase=%s" % str(GameState.week_phase))
+	GameState.ranked_used = int(P2C.RANKED_QUOTA) - 1
+	_chk("⑤a ★分母: 差一场没打满 → 放行(证明上一条不是恒真式)",
+		not bool(GameState.ranked_quota_full(1789603200)))
+
+	## ⑤b 真消费者 `consume_ranked_quota()` 确实读它 —— 答案跟着规则走
+	var live: bool = bool(P2C.WEEKEND_MODES_LIVE)
+	var delta := {}
+	for ph5 in [P2C.PHASE_RANKED, P2C.PHASE_GAUNTLET]:
+		GameState.week_phase = ph5
+		GameState.ranked_used = 0
+		GameState.consume_ranked_quota()
+		delta[ph5] = int(GameState.ranked_used)
 	GameState.ranked_used = keep_used
-	_chk("⑤ 积分赛阶段 + 配额打满 → 判为打满(拦开局)", full_ranked)
-	_chk("⑤ ★闯关赛阶段 + 同样的 ranked_used → 判为没打满(放行)", not full_gauntlet)
-	_chk("⑤ ★★分母: 只改了 week_phase 一个字段, 答案就不同 —— 它是活的",
-		full_ranked != full_gauntlet,
-		"ranked=%s gauntlet=%s" % [str(full_ranked), str(full_gauntlet)])
+	GameState.week_phase = keep_phase
+	if live:
+		_chk("⑤b ★只改 week_phase 一个字段, 记账就不同 —— 它是活的",
+			delta[P2C.PHASE_RANKED] != delta[P2C.PHASE_GAUNTLET], str(delta))
+	else:
+		## ★★显式登记的缺口(不许静默跳过): 周末玩法没上线期间, 这个字段对配额**没有影响**,
+		##   这是有意的(七天都吃配额)。它的"活性"这期间由
+		##   `verify_week_season ⑦` 的 consume↔规则一致性判据守着。
+		##   玩法上线把 `WEEKEND_MODES_LIVE` 改成 true 的那天, 上面 live 分支自动接管。
+		_chk("⑤b ★周末玩法没上线 ⇒ 两个阶段记账相同(登记在案的有意缺口, 非漏)",
+			delta[P2C.PHASE_RANKED] == delta[P2C.PHASE_GAUNTLET]
+			and delta[P2C.PHASE_RANKED] == 1, str(delta))
 
 	## ── 建真场景 ──
 	var inst = TS_SCENE.instantiate()

@@ -1413,9 +1413,12 @@ func _build_reward_chips(gs) -> Control:
 	##   (`MainMenuScene.gd` 的状态行)。2026-09-18 查实 `grep ranked_used scripts/scenes/battle/`
 	##   **零命中** —— 结算屏这半从来没做。★更糟的是我回填方案书时把「与结算屏」那半句
 	##   一起改没了, 等于用回填动作把未完成的那一半**从账上抹掉**。
-	## ★只在积分赛阶段显示: 闯关赛/决赛日的场次不吃这个配额(见 GameState.ranked_used 的注释),
-	##   在那些阶段显示"本周 N/24"会误导。
-	if not battle._last_was_exhibition and str(gs.get("week_phase")) == "ranked":
+	## ★只在**这一场真吃了配额**时显示 —— 判据与记账/开闸共用 `phase_uses_ranked_quota()`。
+	##   在不吃配额的阶段显示"本周 N/24"会误导; 反过来, 2026-09-22 之前这里写死
+	##   `== "ranked"`, 而闯关赛/决赛日的玩法根本没上线、那几天配额照扣 ⇒
+	##   **扣了却不显示**, 玩家看不出自己的额度在掉。同一判据第三处副本, 已并回去。
+	if not battle._last_was_exhibition \
+			and _P2C_HUD.phase_uses_ranked_quota(str(gs.get("week_phase"))):
 		var used: int = int(gs.get("ranked_used")) if gs.get("ranked_used") != null else 0
 		var quota: int = int(_P2C_HUD.RANKED_QUOTA)
 		items.append(["本周场次", "%d / %d" % [used, quota],

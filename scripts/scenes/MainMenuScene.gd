@@ -982,15 +982,34 @@ func _open_shop() -> void:
 	##   _start_battle_flow so the player never sees two different names for one state.
 	##   Quota-full also locks the shop (user decision: stop completely when the quota is used up).
 	if GameState.is_eliminated():
-		_toast("💀 本大轮已出局 · 等周六闯关赛开赛观战")
+		_toast(_msg_eliminated())
 		return
 	if GameState.ranked_quota_full():
-		_toast("📋 本周积分赛配额已打满 · 等周六闯关赛")
+		_toast(_msg_quota_full())
 		return
 	if int(GameState.season_total_battles) <= 0:
 		_toast("🔒 本大轮打完第一场才开店")
 		return
 	_go("Shop")
+
+
+## ★★拦截提示的文案放这两个函数里 —— 商店入口与开打入口原来**各写了一份同样的字符串**,
+##   改一处漏一处就是「同一个状态两个名字」(memory fb-hand-rolled-copies-drift)。
+## ★★2026-09-22: 原文案「等周六闯关赛(开赛观战)」**说的是做不到的事** ——
+##   闯关赛玩法一行没写(WEEKEND_MODES_LIVE=false), 观赛入口更是 F 阶段的事;
+##   玩家按字面读会周六打开游戏找闯关赛, 然后发现还是原来那个积分赛。
+##   ⇒ 没上线时说**真的会发生的那件事**: 下周一换新的一轮(自然周锚点, UTC 周一 00:00)。
+##   玩法上线后自动换回原文案, 不用再记得改这里。
+func _msg_eliminated() -> String:
+	if _P2C.WEEKEND_MODES_LIVE:
+		return "💀 本大轮已出局 · 等周六闯关赛开赛观战"
+	return "💀 本大轮已出局 · 下周一开新的一轮"
+
+
+func _msg_quota_full() -> String:
+	if _P2C.WEEKEND_MODES_LIVE:
+		return "📋 本周积分赛配额已打满 · 等周六闯关赛"
+	return "📋 本周配额 %d 场已打满 · 下周一开新的一轮" % int(_P2C.RANKED_QUOTA)
 
 
 ## 轻提示: 顶部飘一行金字, 1.4s 后淡出
@@ -1022,10 +1041,10 @@ func _start_battle_flow() -> void:
 	if GameState.is_eliminated():   # 大轮淘汰锁(用户2026-07-24): 0命封匹配, 只重置存档解锁
 		## ★U9 拍板(2026-09-16):「0 命的话就只能等到周 6 周日观赛了, 不再打表演赛」
 		##   ⇒ 文案从「设置→重置存档」改成指向观赛。观赛入口在 F 阶段, 先把话说对。
-		_toast("💀 本大轮已出局 · 等周六闯关赛开赛观战")
+		_toast(_msg_eliminated())
 		return
 	if GameState.ranked_quota_full():
-		_toast("📋 本周积分赛配额已打满 · 等周六闯关赛")
+		_toast(_msg_quota_full())
 		return
 	GameState.mode = "single"
 	GameState.tutorial = false

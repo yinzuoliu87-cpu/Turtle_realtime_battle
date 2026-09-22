@@ -79,12 +79,28 @@ func _ready() -> void:
 	var t1b := _all_text(c1b) if c1b != null else ""
 	_chk("①b ★改成 19 之后读数跟着变(挡住写死)", t1b.contains("19 / %d" % quota))
 
-	## ② 闯关赛阶段 ⇒ 这块必须消失(否则会误导: 那时的场次不吃这个配额)
-	gs.week_phase = "gauntlet"
-	var c2 = hud._build_reward_chips(gs)
-	var t2 := _all_text(c2) if c2 != null else ""
-	_chk("② ★闯关赛阶段不显示这块(没有这条, 「无条件永远显示」也能让①绿)",
-		not t2.contains("本周场次"), t2.substr(0, 90))
+	## ② 「显示不显示」跟着**这一场吃不吃配额**走 —— 与结算记账同一个判据。
+	##
+	## ★★2026-09-22 换判据。原来这一条是「闯关赛阶段**不显示**这块」,
+	##   忠实于方案书 A3(闯关赛不吃积分赛配额) —— 但闯关赛/决赛日的**玩法一行都没写**,
+	##   那几天配额照扣 ⇒ 原判据把「**扣了却不显示**」钉在了原地
+	##   (memory `fb-gate-can-pin-the-bug-in-place`, 这是同一条判据的第四份副本)。
+	## ★「没有这一条, 无条件永远显示也能让①绿」这个用意**保住了**:
+	##   下面的表里 `ranked·表演赛` 那一行就是 must-not-show 的对照组。
+	var live: bool = bool(P2C.WEEKEND_MODES_LIVE)
+	for case2 in [["gauntlet", false], ["finals", false], ["rest", false], ["ranked", true]]:
+		gs.week_phase = str(case2[0])
+		(hud.battle as FakeBattle)._last_was_exhibition = bool(case2[1])
+		var c2 = hud._build_reward_chips(gs)
+		var t2 := _all_text(c2) if c2 != null else ""
+		## 表演赛没有 stake, 一律不显示; 其余看这一场吃不吃配额
+		var want2: bool = (not bool(case2[1])) and P2C.phase_uses_ranked_quota(str(case2[0]))
+		var tag2: String = str(case2[0]) + (" · 表演赛" if bool(case2[1]) else "")
+		_chk("② ★分母(%s): chip 真建出来了(不是 null/空)" % tag2, t2 != "", t2.substr(0, 60))
+		_chk("② %s → 「本周场次」%s%s" % [tag2, "显示" if want2 else "不显示",
+				"" if live else "  (周末玩法没上线 ⇒ 那几天照样吃配额, 就得显示)"],
+			t2.contains("本周场次") == want2, t2.substr(0, 90))
+	(hud.battle as FakeBattle)._last_was_exhibition = false
 
 	_restore()
 	_chk("★收尾: GameState 已还原成跑之前的样子",

@@ -101,10 +101,14 @@ const WEEKEND_MODES_LIVE := false
 ##   **必须是同一个答案** —— 两处各写一份 `if week_phase == "ranked"`, 就是同一判据存两份,
 ##   必然有一处落后(memory fb-hand-rolled-copies-drift; 这个洞第一次出现正是因为这样)。
 ## ⚠ 空串 = 赛程还没写进存档(老档/第一次开局) ⇒ 按积分赛计, 与 A3 的口径一致。
+## ★写成「恒假分支在上、兜底在下」而不是 `if not WEEKEND_MODES_LIVE: return true`:
+##   后者是**恒真常量分支 + return**, 会把下面那行吞成死代码 ——
+##   `tools/const_branch_audit.py` 当场判红(实测红过一次), 而它是对的。
+##   这个形状与仓里其余 5 个 A/B 开关一致: 暗着的是**还没上线的那一支**。
 static func phase_uses_ranked_quota(phase: String) -> bool:
-	if not WEEKEND_MODES_LIVE:
-		return true               # 玩法没上线 ⇒ 七天都是积分赛, 都吃配额
-	return phase == "" or phase == PHASE_RANKED
+	if WEEKEND_MODES_LIVE:
+		return phase == "" or phase == PHASE_RANKED
+	return true                   # 玩法没上线 ⇒ 七天都是积分赛, 都吃配额
 
 ## 这个阶段要不要在赛程条上挂一句"还没上线"? 返回空串 = 照常, 不用额外说明。
 ## ★做成纯函数(而不是在主菜单里就地 if)是为了能**七天全量测**:

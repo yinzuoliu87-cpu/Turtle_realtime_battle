@@ -70,13 +70,21 @@ func _ready() -> void:
 	GameState.ranked_used = 999          # full
 	_ok("A4 quota full is detected", GameState.ranked_quota_full())
 	GameState.dual_active = false
-	var q1 := _count_toasts(scene, "配额")
+	## ★ the needle comes from the product's own message builder, not a hardcoded
+	##   substring: the wording already changed once (2026-09-22 - the toast used to
+	##   promise "wait for Saturday's gauntlet", a mode that does not exist yet).
+	##   A copy of the string kept here would have to be edited in lockstep forever
+	##   (memory `fb-hand-rolled-copies-drift`).
+	var needle: String = str(scene._msg_quota_full()).substr(2, 6)
+	_ok("A4 denominator: needle from _msg_quota_full() is non-empty",
+		needle.strip_edges() != "", "needle=[%s]" % needle)
+	var q1 := _count_toasts(scene, needle)
 	scene._start_battle_flow()
 	_ok("A4 quota full => battle blocked (dual_active stays false)", not GameState.dual_active)
-	_ok("A4 quota full => quota toast shown", _count_toasts(scene, "配额") == q1 + 1)
-	var q2 := _count_toasts(scene, "配额")
+	_ok("A4 quota full => quota toast shown", _count_toasts(scene, needle) == q1 + 1)
+	var q2 := _count_toasts(scene, needle)
 	scene._open_shop()
-	_ok("A4 quota full => shop blocked too (user decision)", _count_toasts(scene, "配额") == q2 + 1)
+	_ok("A4 quota full => shop blocked too (user decision)", _count_toasts(scene, needle) == q2 + 1)
 	GameState.ranked_used = 0            # restore for the rest of this file
 
 	# ⑤ 视觉: 淘汰时主菜单英雄键/商店键建出 🔒 锁角标

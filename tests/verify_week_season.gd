@@ -274,6 +274,11 @@ func _t_quota_and_sweep() -> void:
 	_ok("⑤ ★对方 2-0 → 不是我的横扫", not _gs.dual_lane_was_sweep(),
 		"lane_results=%s" % str(_gs.lane_results))
 
+	## ⑥b(结算屏「本周场次」读数) 原本写在这里, 2026-09-22 撤掉了 ——
+	##   `tests/verify_settle_quota.gd` 就是这件事的**专职门禁**(比这里早、而且更全),
+	##   我当初搜「有没有门禁管它」时 `head -5` 把答案截掉了, 于是写了第二份。
+	##   同一判据两份必然有一份落后(memory `fb-hand-rolled-copies-drift`)。
+
 	scene.queue_free()
 	await get_tree().process_frame
 

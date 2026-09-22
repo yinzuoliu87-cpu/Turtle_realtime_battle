@@ -398,6 +398,61 @@ func _ready() -> void:
 					bj.find("距收盘") >= 0 or bj.find("已封盘") >= 0, bj)
 		blk.queue_free()
 
+	# ── ⑬d ★两条拦截提示说的也得是**今天真会发生的事** (2026-09-22) ──
+	#    原文案「等周六闯关赛(开赛观战)」在闯关赛玩法没上线时是做不到的事。
+	#    ★走**真入口**(`_start_battle_flow()` / `_open_shop()`), 量真的飘出来的那行字 ——
+	#      只调 `_msg_*()` 等于测我自己新写的函数, 证明不了产品那两处真在用它
+	#      (memory `fb-verify-must-run-the-real-path`)。
+	#    ⚠ 这两个入口**没被拦住时会 change_scene** ⇒ 当场拆掉门禁自己。
+	#      所以每次调用前先断言「确实处在被拦的状态」(这条同时就是分母)。
+	var gs_m = get_node_or_null("/root/GameState")
+	if gs_m == null:
+		print("  [FAIL] ⑬d ★分母: 拿不到 GameState"); _fail += 1
+	else:
+		var kp_h: int = int(gs_m.hearts)
+		var kp_u: int = int(gs_m.ranked_used)
+		for case_name in ["出局", "配额打满"]:
+			if case_name == "出局":
+				gs_m.hearts = 0
+			else:
+				gs_m.hearts = 8
+				gs_m.ranked_used = int(_P2M.RANKED_QUOTA)
+			var blocked: bool = gs_m.is_eliminated() if case_name == "出局" \
+				else gs_m.ranked_quota_full()
+			_ok("⑬d ★分母(%s): 确实处在被拦的状态(否则下面会切场景拆掉门禁)" % case_name,
+				blocked, "hearts=%d ranked_used=%d" % [int(gs_m.hearts), int(gs_m.ranked_used)])
+			if not blocked:
+				continue
+			## ★只看【这次调用新增的】子节点 —— 主菜单本来就有直属 Label,
+			##   "取最后一个 Label" 会撞到它们(判据要刚好卡住那个形状)。
+			var before_kids: Array = _menu.get_children()
+			if case_name == "出局":
+				_menu._start_battle_flow()
+			else:
+				_menu._open_shop()
+			var toast_txt := ""
+			var new_kids: Array = []
+			for ch_t in _menu.get_children():
+				if not before_kids.has(ch_t):
+					new_kids.append(ch_t)
+					if ch_t is Label:
+						toast_txt = str((ch_t as Label).text)
+			_ok("⑬d ★分母(%s): 真多出了一个子节点且是一行字" % case_name,
+				new_kids.size() == 1 and toast_txt != "",
+				"新增 %d 个子节点, 文字「%s」" % [new_kids.size(), toast_txt])
+			var want_msg: String = _menu._msg_eliminated() if case_name == "出局" \
+				else _menu._msg_quota_full()
+			_ok("⑬d ★%s: 飘的就是 _msg_*() 那一句(两个入口不许各写一份)" % case_name,
+				toast_txt == want_msg, "飘出「%s」· 函数给「%s」" % [toast_txt, want_msg])
+			if not _P2M.WEEKEND_MODES_LIVE:
+				## ★判据写死, 不问被测函数 —— 玩法没上线就不许把玩家指向闯关赛/观战
+				_ok("⑬d ★%s: 玩法没上线 → 不许说「闯关赛」「观战」" % case_name,
+					toast_txt.find("闯关赛") < 0 and toast_txt.find("观战") < 0, toast_txt)
+			for ch_c in new_kids:
+				ch_c.queue_free()
+		gs_m.hearts = kp_h
+		gs_m.ranked_used = kp_u
+
 	# ── ⑪ ★没有花名 / 感叹号推销话术 (用户 2026-08-15 点名要去掉的那类"ai 味") ──
 	#    ★只扫【字符串字面量】—— 扫整段代码会被 `!=` 运算符命中(第一版就是这么假红的),
 	#      而要管的本来就是"屏幕上出现的字", 不是运算符。
