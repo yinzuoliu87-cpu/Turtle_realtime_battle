@@ -190,6 +190,21 @@ func _t_settle() -> void:
 	_ok("② ★分母: 积分赛阶段【会】吃配额", int(_gs.ranked_used) == 1,
 		"ranked_used=%d" % int(_gs.ranked_used))
 
+	## ★★原稿写的是「每场结算深海币 + 经验 2 + **货架刷新**」。
+	##   刷新的真实机制是: 商店开场比 `meta_shop_battles` 与 `season_total_battles`,
+	##   不相等就重掷(`ShopScene._restore_offer()`)。所以判据落在**那两个数对不对得上**,
+	##   不落在"我推理它会刷" —— 我之前把这条登记成 ❓ 未验就是因为没量过。
+	print("── ②b 周六打完一场 → 货架会不会换 ──")
+	_gs.week_phase = "gauntlet"
+	_gs.meta_shop_battles = int(_gs.season_total_battles)   # 假装货架是刚掉的
+	_ok("②b ★分母: 打之前两个数相等(货架不该换)",
+		int(_gs.meta_shop_battles) == int(_gs.season_total_battles),
+		"shop=%d total=%d" % [int(_gs.meta_shop_battles), int(_gs.season_total_battles)])
+	scene._settle_season(true)
+	_ok("②b ★周六打完一场 → 两个数对不上了(商店下次开场会重掷货架)",
+		int(_gs.meta_shop_battles) != int(_gs.season_total_battles),
+		"shop=%d total=%d" % [int(_gs.meta_shop_battles), int(_gs.season_total_battles)])
+
 	scene.queue_free()
 	await get_tree().process_frame
 
@@ -340,5 +355,33 @@ func _t_menu_gate() -> void:
 		m_out != "" and m_out.find("1-3") >= 0, "「%s」" % m_out)
 	_ok("⑥ ★三种拦法说的不是同一句话",
 		m_noelig != m_in and m_in != m_out and m_noelig != m_out)
+
+	## ── ⑦ 周六常驻读数(E-A7) —— 同样喂已知日期 ──
+	print("── ⑦ 主菜单周六读数 ──")
+	_gs.promoted = true
+	_gs.gauntlet_wins = 2
+	_gs.gauntlet_losses = 1
+	var l_sat: String = str(menu._gauntlet_status_line(SAT + 3600))
+	var l_thu: String = str(menu._gauntlet_status_line(THU + 3600))
+	_ok("⑦ ★分母: 周四返回空串(读数只在周六接管)", l_thu == "", "「%s」" % l_thu)
+	_ok("⑦ 周六 2-1 → 带战绩标签", l_sat.find("2-1") >= 0, "「%s」" % l_sat)
+	_ok("⑦ ★★带**还差几场**(再赢 2 / 再输 2) —— 光有「2-1」不告诉玩家还剩多少机会",
+		l_sat.find("再赢 2") >= 0 and l_sat.find("再输 2") >= 0, "「%s」" % l_sat)
+	_gs.gauntlet_wins = 4
+	_gs.gauntlet_losses = 1
+	var l_in: String = str(menu._gauntlet_status_line(SAT + 3600))
+	_gs.gauntlet_wins = 1
+	_gs.gauntlet_losses = 3
+	var l_out: String = str(menu._gauntlet_status_line(SAT + 3600))
+	_gs.promoted = false
+	var l_no: String = str(menu._gauntlet_status_line(SAT + 3600))
+	_ok("⑦ 已晋级 → 说晋级", l_in.find("已晋级") >= 0, "「%s」" % l_in)
+	_ok("⑦ 已出局 → 说出局", l_out.find("已出局") >= 0, "「%s」" % l_out)
+	_ok("⑦ 没资格 → 说没晋级", l_no.find("没晋级") >= 0, "「%s」" % l_no)
+	_ok("⑦ ★四种状态说的不是同一句话",
+		l_sat != l_in and l_in != l_out and l_out != l_no and l_sat != l_no)
+	## ★★周六不该再摆「本周 N/24」—— 那个配额周六根本不动
+	_ok("⑦ ★★周六的读数里没有积分赛配额那个数(它周六不动, 摆着只会误导)",
+		l_sat.find("/%d" % int(P2.RANKED_QUOTA)) < 0, "「%s」" % l_sat)
 
 	menu.queue_free()

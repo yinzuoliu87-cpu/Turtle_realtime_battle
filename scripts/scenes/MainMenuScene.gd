@@ -649,10 +649,44 @@ func _coin_frame(value: int = -1, icon_path: String = "", tint: Color = Color(0.
 ##
 ## 整行可点 → 战绩(Record), 所以行高吃 ROW_H(81) 过 44pt 触摸线;
 ## 视觉上只是一行字, 但手指目标不小 —— 跟 _text_entry 同一个思路。
+## 周六那一行读数。返回**空串 = 今天不是闯关赛日**(调用方照旧显示积分赛那一行)。
+##
+## ★★为什么单列一个函数而不是在 `_status_row()` 里插个 if:
+##   周六显示「本周 N/24」是**错的读数** —— 周六的场次根本不吃那个配额,
+##   玩家会盯着一个整天不动的数字, 还以为自己打的场次没记上。
+## ★三种状态各说各的, 而且**带上还差几场** —— 「2-1」本身不告诉玩家还剩多少机会,
+##   而"再输两场就出局"正是闯关赛每一场的分量所在。
+## ★`now` 只给门禁喂已知日期(同 `_battle_block_msg`)。产品调用一律不传 ——
+##   不给注入口的话, 这一行**只有周六跑门禁才会被执行到**(今天已经栽过一次)。
+func _gauntlet_status_line(now: int = 0) -> String:
+	var ts: int = now if now > 0 else int(Time.get_unix_time_from_system())
+	if _P2C.phase_at_utc(ts) != _P2C.PHASE_GAUNTLET:
+		return ""
+	if not _P2C.phase_mode_live(_P2C.PHASE_GAUNTLET):
+		return ""
+	if not GameState.gauntlet_eligible():
+		return "闯关赛 · 本周没晋级"
+	var w: int = int(GameState.gauntlet_wins)
+	var l: int = int(GameState.gauntlet_losses)
+	var lab: String = _P2C.gauntlet_label(w, l)
+	var st: String = GameState.gauntlet_state()
+	if st == _P2C.GAUNTLET_IN:
+		return "闯关赛 %s · 已晋级决赛日" % lab
+	if st == _P2C.GAUNTLET_OUT:
+		return "闯关赛 %s · 已出局" % lab
+	return "闯关赛 %s · 再赢 %d 场晋级 / 再输 %d 场出局" % [
+		lab, maxi(0, int(_P2C.GAUNTLET_WINS_IN) - w), maxi(0, int(_P2C.GAUNTLET_LOSSES_OUT) - l)]
+
+
 func _status_row() -> void:
 	var txt := "第 %d 大轮 · Lv %d   ♥ %d/8   本周 %d/%d" % [
 		int(GameState.season_id), int(GameState.season_level), int(GameState.hearts),
 		int(GameState.ranked_used), int(_P2C.RANKED_QUOTA)]
+	## ★周六换成闯关赛读数 —— 命与积分赛配额那两个数周六都不动, 摆在那儿只会误导。
+	var gl_line: String = _gauntlet_status_line()
+	if gl_line != "":
+		txt = "第 %d 大轮 · Lv %d   %s" % [
+			int(GameState.season_id), int(GameState.season_level), gl_line]
 	var wN: int = GameState.battles_won
 	var tN: int = GameState.battles_total
 	var rec := "%d 胜 %d 负" % [wN, maxi(0, tN - wN)] if tN > 0 else "暂无战绩"
