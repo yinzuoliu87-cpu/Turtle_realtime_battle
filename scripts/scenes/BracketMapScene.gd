@@ -132,7 +132,11 @@ func _ready() -> void:
 	add_child(_home_btn)
 
 	if not _bucket.is_empty() or not _finals.is_empty():
+		_injected = true
 		_rebuild()
+	else:
+		## ★没人喂 ⇒ 这是玩家自己从主菜单点进来的, 自己去服务端取
+		_start_feed()
 
 
 ## 只喂一张（老调用点/门禁用）。
@@ -142,6 +146,9 @@ func set_bucket(d: Dictionary) -> void:
 
 ## 喂两张。★`finals` 为空 = 签表还没形成（上午就是这样），不是"出错了"。
 func set_data(bucket: Dictionary, finals: Dictionary, now: int = 0) -> void:
+	_injected = true
+	if _poll != null:
+		_poll.stop()          # ★有人喂了就别再联网覆盖
 	_bucket = bucket.duplicate(true)
 	_finals = finals.duplicate(true)
 	_now_override = now
@@ -297,6 +304,10 @@ func _rebuild() -> void:
 ## 当前那张还没形成时，屏幕中间说什么。
 ## ★★用词仍然是「开播」，而且**带倒计时** —— 「20:00 开播」比「敬请期待」有用得多。
 func _empty_text() -> String:
+	## ★自己联网取数时: **还没问到回音**跟**问到了但我没桶**要分开说。
+	##   混成一句的话, 网络慢的人会以为自己没进决赛日。
+	if not _injected and not _SB.finals_tried():
+		return "正在连线 · 取本周的桶"
 	if _view == _L.VIEW_FINALS:
 		var left: int = int(_L.finals_start_ts(_clock())) - _clock()
 		if left > 0:
@@ -543,3 +554,78 @@ func _gui_input(ev: InputEvent) -> void:
 	elif ev is InputEventMouseMotion and _dragging:
 		_pan += (ev as InputEventMouseMotion).relative
 		_apply_pan()
+
+
+## ─────────────────────────────────────────────────────────────
+## 自己去服务端取数据。★门禁与调试台会先 `set_data()` 注入,
+##   那时**不许**再去联网覆盖(否则门禁量的是网络回包不是喂进去的样本)。
+## ─────────────────────────────────────────────────────────────
+const _SB := preload("res://scripts/net/supabase.gd")
+const _P2C := preload("res://scripts/gamedata/phase2_config.gd")
+
+var _poll: Timer = null
+var _injected := false          # ★有人喂过数据 ⇒ 这一屏不联网
+var _fetch_left := 0.0          # 距下次重新拉(服务端每过一轮, 图上就该翻一面)
+var _tip: Label = null
+var _last_sig := ""
+
+## 每 30 秒重拉一次 —— 服务端一轮 8 分钟, 30 秒的粒度足够让"翻面"看着是自动的。
+const REFRESH_SEC := 30.0
+
+
+func _start_feed() -> void:
+	_tip = Label.new()
+	_tip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_tip.add_theme_font_size_override("font_size", 15)
+	_tip.add_theme_color_override("font_color", ACCENT)
+	_tip.visible = false
+	add_child(_tip)
+	_poll = Timer.new()
+	_poll.wait_time = 0.5
+	_poll.timeout.connect(_on_poll)
+	add_child(_poll)
+	_poll.start()
+	## ★★先画一次 —— 「还没有数据」也是一种状态, 得说话。
+	##   不画的话: 空白屏 + 「回到我」停在默认的 (0,0) 压住返回箭头 + 页签后缀没同步。
+	_rebuild()
+	_pull()
+
+
+func _pull() -> void:
+	_fetch_left = REFRESH_SEC
+	_SB.fetch_finals_async(_P2C.week_anchor_utc(_clock()), -1)
+
+
+## ★轮询缓存而不是接回调: 回调在网络那一侧, 接过来就得处理"场景已经被切掉了"的情况。
+##   轮询这边只读一个静态字典, 场景没了定时器也就没了。
+func _on_poll() -> void:
+	_fetch_left -= 0.5
+	if _fetch_left <= 0.0:
+		_pull()
+	var v: Dictionary = _SB.finals_cached()
+	## ★比一个「指纹」而不是逐字段比: 只比 size 会漏掉翻面, 只比 round 会漏掉
+	##   **同一轮里陆续出结果**(一个桶里那几场不是同时结束的) ⇒ 半张图要等到下一轮才亮。
+	var sig := "%d/%d/%d" % [int(v.get("size", 0)), int(v.get("round", 0)),
+		(v.get("done", {}) as Dictionary).size()]
+	## ★空了也要重画(比如服务端说「你没报名」) —— 只在"有数据且变了"时重画,
+	##   就会把开屏那句「正在连线」永远留在屏幕上。
+	if sig != _last_sig:
+		_last_sig = sig
+		_bucket = v.duplicate(true)
+		_rebuild()
+	_sync_tip()
+
+
+## 顶上那行「下一轮 X 分 Y 秒后开」。★秒数来自**服务端的时间差**, 不看本机时钟绝对值。
+func _sync_tip() -> void:
+	if _tip == null:
+		return
+	var left: int = _SB.finals_left(_clock())
+	if left < 0 or bool(_bucket.get("closed", false)):
+		_tip.visible = false
+		return
+	_tip.visible = true
+	_tip.text = "下一轮 %d:%02d 后开播" % [left / 60, left % 60]
+	var vp: Vector2 = get_viewport().get_visible_rect().size
+	_tip.size.x = vp.x
+	_tip.position = Vector2(0.0, 150.0)

@@ -1336,3 +1336,126 @@ static func _method_of(m: String) -> int:
 func _bye() -> void:
 	if _autofree:
 		queue_free()
+
+
+## ─────────────────────────────────────────────────────────────
+## 周日决赛日: 去服务端问「我那个桶现在什么样」
+##
+## ★★**对阵规则不在服务端。** 它只给三件事: 桶里几个人 / 现在第几轮 / 哪几场谁赢了。
+##   「谁打谁 / 谁轮空 / 打几轮」全部由本机 `bracket.gd` 算 —— 同一判据存两份必然漂。
+## ★★**不剧透靠"拿不到"**: 服务端的 `finals_view` 只下发 round < 当前轮 的结果,
+##   当前轮的胜负**根本不在回包里**。客户端这边没有任何"拿到了但不显示"的逻辑 ——
+##   那种写法一个渲染 bug 就漏, 而且没人会发现漏了。
+## ─────────────────────────────────────────────────────────────
+static var _finals_view: Dictionary = {}
+static var _finals_inflight := false
+## ★「问过一次了没有」。没有它, 屏幕分不清**还没回来**和**回来了但我没桶** ——
+##   两种情况该说的话完全不同(「正在连线」vs「本周没有你的桶」)。
+static var _finals_tried := false
+
+
+static func finals_cached() -> Dictionary:
+	return _finals_view
+
+
+static func finals_tried() -> bool:
+	return _finals_tried
+
+
+static func finals_clear() -> void:
+	_finals_view = {}
+	_finals_inflight = false
+	_finals_tried = false
+
+
+static func fetch_finals_async(week: int, bucket: int) -> void:
+	var gs = _gs()
+	if gs == null or _finals_inflight:
+		return
+	## 要登录才看得到(服务端也拦, 这里只是省一次白跑)
+	if not sync_allowed(str(gs.account_id), str(gs.account_email), _token):
+		## ★标成「问过了」: 这一屏不会有数据了, 屏幕该说「本周没有你的桶」
+		##   而不是永远转着「正在连线」(实拍抓到的)。
+		_finals_tried = true
+		return
+	var n = _spawn()
+	if n != null:
+		_finals_inflight = true
+		n.fetch_finals(week, bucket)
+
+
+func fetch_finals(week: int, bucket: int) -> void:
+	if not enabled():
+		_finals_inflight = false
+		## ★**防御性, 不是承重**(2026-09-23 反向验证查实): `sync_allowed()` 自己就含
+		##   `enabled()`, 所以后端没配时 `fetch_finals_async` 那道闸**先拦住了**,
+		##   这一行正常跑不到(把它改坏, 一条断言都不红)。
+		##   留着是为两次调用之间环境变了的竞态; 不要拿它当“有人守”。
+		_finals_tried = true
+		_bye()
+		return
+	var gs = _gs()
+	var mine := str(gs.account_id) if gs != null else ""
+	var url := base_url().rstrip("/") + "/rest/v1/rpc/finals_view"
+	var body := JSON.stringify({"p_week": week, "p_bucket": bucket})
+	_http("POST", url, body,
+		func(res):
+			_finals_inflight = false
+			_finals_tried = true
+			_finals_view = parse_finals(bool(res.get("ok", false)), int(res.get("code", 0)),
+				str(res.get("body", "")), mine, int(Time.get_unix_time_from_system()))
+			_bye(),
+		"Content-Type: application/json")
+
+
+## ★把回包翻译成桶地图要的形状。**纯函数** —— 门禁直接喂一段回包字符串就能验,
+##   不用网络、不用登录(memory `fb-verify-must-run-the-real-path` 的另一半:
+##   网络那半由 `_transport_for_test` 量真请求, 翻译这半在这里量)。
+##
+## 回包(服务端): {n, round, closed, round_at, next_at, now, entrants:[{seed,name,account_id}], done:{"r-m":side}}
+## 屏幕要的:     {size, round, done, names(按种子排), me(我的种子), closed, left, recv_at}
+static func parse_finals(ok: bool, code: int, body: String, my_account: String,
+		recv_at: int) -> Dictionary:
+	if not ok or code < 200 or code >= 300:
+		return {}
+	var j = JSON.parse_string(body)
+	if not (j is Dictionary) or not bool((j as Dictionary).get("ok", false)):
+		return {}
+	var d: Dictionary = j
+	var n := int(d.get("n", 0))
+	if n <= 0:
+		return {}
+	## 名字按**种子**落位(不靠回包的顺序 —— 顺序是服务端的实现细节, 种子才是约定)
+	var names: Array = []
+	names.resize(n)
+	for i in range(n):
+		names[i] = "?"
+	var me := -1
+	for e in (d.get("entrants", []) as Array):
+		var ed: Dictionary = e if e is Dictionary else {}
+		var sd := int(ed.get("seed", -1))
+		if sd < 0 or sd >= n:
+			continue
+		names[sd] = str(ed.get("name", "?"))
+		if my_account != "" and str(ed.get("account_id", "")) == my_account:
+			me = sd
+	## `done` 的值过一遍 int() —— JSON 解出来是浮点, 直接当 side 用会在比较时出错
+	var done: Dictionary = {}
+	for k in (d.get("done", {}) as Dictionary):
+		done[str(k)] = int((d.get("done", {}) as Dictionary)[k])
+	## ★倒计时用**服务端的时间差**, 不用本机绝对时钟 —— 设备时钟不对时倒计时照样准
+	var srv_now := int(d.get("now", 0))
+	var nxt := int(d.get("next_at", 0))
+	var left: int = maxi(0, nxt - srv_now) if (srv_now > 0 and nxt > 0) else -1
+	return {"size": n, "round": maxi(1, int(d.get("round", 1))), "done": done,
+		"names": names, "me": me, "closed": bool(d.get("closed", false)),
+		"left": left, "recv_at": recv_at}
+
+
+## 收到回包时还剩几秒 → 现在还剩几秒。★用的是「收包时剩多少」减「本机过了多久」,
+##   两个都是**时间差**, 所以本机时钟偏了也不影响(只要它走得不快不慢)。
+static func finals_left(now_local: int) -> int:
+	var v := _finals_view
+	if v.is_empty() or int(v.get("left", -1)) < 0:
+		return -1
+	return maxi(0, int(v["left"]) - (now_local - int(v.get("recv_at", now_local))))

@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://c8mqpv2rnx4te"]
+
+[ext_resource type="Script" path="res://tests/shot_menu_to_bracket.gd" id="1"]
+
+[node name="ShotMenuToBracket" type="Node"]
+script = ExtResource("1")

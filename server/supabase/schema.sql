@@ -306,3 +306,168 @@ revoke all on function public.push_save(jsonb, bigint, text) from public;
 --   但意图是「只有登录用户能调」, 实测结果与意图不符就得改。
 revoke execute on function public.push_save(jsonb, bigint, text) from anon;
 grant execute on function public.push_save(jsonb, bigint, text) to authenticated;
+
+-- ─────────────────────────────────────────────────────────────
+-- 周日决赛日 (E-B3, 2026-09-23)
+--
+-- ★★**对阵规则不在这里写第二遍。**
+--   「谁打谁 / 谁轮空 / 打几轮」的事实源是 `scripts/gamedata/bracket.gd`，
+--   客户端拿「这个桶几个人」就能自己算出整张图。服务端只存三件事：
+--     ① 桶里有谁（按种子）  ② 现在第几轮  ③ 哪一场谁赢了
+--   —— 在 SQL 里再实现一遍座次表，就是同一判据存两份，必然漂
+--   （本仓刚因为「同一判据五份副本」付过代价）。
+--
+-- ★★**不剧透靠"客户端拿不到"，不靠"拿到了不显示"**：
+--   读接口 `finals_view()` **只返回 round < 当前轮 的结果**。
+--   后者一个渲染 bug 就漏，而且没人会发现漏了。
+-- ─────────────────────────────────────────────────────────────
+
+-- 一个桶
+create table if not exists public.finals_buckets (
+  season_week  bigint      not null,
+  bucket_no    int         not null,
+  n            int         not null,          -- 桶里几个人（客户端据此算出整张图）
+  round        int         not null default 1,-- 现在进行到第几轮（1 起）
+  round_at     timestamptz not null default now(),  -- 本轮开始时刻
+  closed       boolean     not null default false,
+  primary key (season_week, bucket_no)
+);
+
+-- 桶里的人（按种子号）
+create table if not exists public.finals_entrants (
+  season_week  bigint      not null,
+  bucket_no    int         not null,
+  seed         int         not null,          -- 0 起，0 = 最高种子
+  account_id   uuid        not null references auth.users(id) on delete cascade,
+  name         text        not null,
+  snapshot     jsonb       not null,          -- 快照代打用的阵容（D8）
+  primary key (season_week, bucket_no, seed)
+);
+
+-- 每一场的结果
+create table if not exists public.finals_results (
+  season_week  bigint      not null,
+  bucket_no    int         not null,
+  round        int         not null,
+  match_no     int         not null,
+  winner_side  int         not null,          -- 0 = 上侧, 1 = 下侧
+  seed_used    bigint      not null,          -- 确定性重算用的种子（B 阶段）
+  decided_at   timestamptz not null default now(),
+  primary key (season_week, bucket_no, round, match_no)
+);
+
+create index if not exists finals_ent_idx on public.finals_entrants (season_week, bucket_no);
+create index if not exists finals_res_idx on public.finals_results (season_week, bucket_no, round);
+
+alter table public.finals_buckets  enable row level security;
+alter table public.finals_entrants enable row level security;
+alter table public.finals_results  enable row level security;
+
+-- 读：登录用户都能读桶与参赛者（观赛是公开的，原稿：重放全公开）
+drop policy if exists finals_b_read on public.finals_buckets;
+create policy finals_b_read on public.finals_buckets for select using (auth.uid() is not null);
+drop policy if exists finals_e_read on public.finals_entrants;
+create policy finals_e_read on public.finals_entrants for select using (auth.uid() is not null);
+
+-- ★★结果表**客户端一律不给直接读**（只有 select 策略缺席 = 读不到）——
+--   要读只能走 `finals_view()`，那里会把当前轮挡掉。
+--   给了直接读的口子，"不剧透"就只剩一层渲染侧的自觉。
+-- ★三张表都**不给客户端写**：只有下面的 security definer 函数能动它们。
+
+-- ─────────────────────────────────────────────────────────────
+-- ★「一轮多长」= 3 分钟购物 + 结算 + 4 分钟重放 ≈ 8 分钟。
+--   **这个数只在这里有一份**：读接口把 `next_at`（下一轮开始时刻）算好一起下发，
+--   客户端不存副本 —— 它要显示「下一轮 3:42 后开始」，拿 `next_at` 减一下就行。
+--   （同一个数存两份必然漂；**消掉重复比再写一条同步门禁好**。）
+-- ─────────────────────────────────────────────────────────────
+create or replace function public.finals_round_sec()
+returns int language sql immutable as $$ select 480 $$;
+grant execute on function public.finals_round_sec() to authenticated, anon;
+
+-- ─────────────────────────────────────────────────────────────
+-- 读接口：只给**已翻面**的结果
+-- ─────────────────────────────────────────────────────────────
+create or replace function public.finals_view(p_week bigint, p_bucket int)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare b record; ents jsonb; res jsonb;
+begin
+  if auth.uid() is null then
+    return jsonb_build_object('ok', false, 'reason', 'not_signed_in');
+  end if;
+  -- ★p_bucket < 0 = 「我那个桶」。客户端并不知道自己被分到哪个桶(分桶是服务端做的),
+  --   分成两次往返去问会出现「查到桶号、桶却没了」的中间态, 所以并到这一次里。
+  if p_bucket < 0 then
+    select e.bucket_no into p_bucket from public.finals_entrants e
+     where e.season_week = p_week and e.account_id = auth.uid()
+     limit 1;
+    if p_bucket is null then
+      return jsonb_build_object('ok', false, 'reason', 'not_entered');
+    end if;
+  end if;
+  select * into b from public.finals_buckets
+   where season_week = p_week and bucket_no = p_bucket;
+  if not found then
+    return jsonb_build_object('ok', false, 'reason', 'no_bucket');
+  end if;
+  select coalesce(jsonb_agg(jsonb_build_object('seed', seed, 'name', name,
+           'account_id', account_id) order by seed), '[]'::jsonb)
+    into ents from public.finals_entrants
+   where season_week = p_week and bucket_no = p_bucket;
+  -- ★★只取 round < 当前轮 —— 当前轮的结果**根本不下发**。
+  -- ★但桶**收盘之后就没有「当前轮」了**: round 停在最后一轮, 于是 `r.round < b.round`
+  --   会把决赛结果自己永久挡掉 ⇒ **冠军永远不公布**。收盘了就全给。
+  select coalesce(jsonb_object_agg(r.round || '-' || r.match_no, r.winner_side), '{}'::jsonb)
+    into res from public.finals_results r
+   where r.season_week = p_week and r.bucket_no = p_bucket
+     and (b.closed or r.round < b.round);
+  return jsonb_build_object('ok', true, 'bucket', p_bucket, 'n', b.n, 'round', b.round,
+    'round_at', extract(epoch from b.round_at)::bigint,
+    -- ★下一轮开始时刻: 客户端拿这个倒计时, 不必知道「一轮多长」
+    'next_at', extract(epoch from b.round_at)::bigint + public.finals_round_sec(),
+    'now', extract(epoch from now())::bigint,
+    'closed', b.closed, 'entrants', ents, 'done', res);
+end $$;
+
+revoke all on function public.finals_view(bigint, int) from public;
+revoke execute on function public.finals_view(bigint, int) from anon;
+grant execute on function public.finals_view(bigint, int) to authenticated;
+
+-- ─────────────────────────────────────────────────────────────
+-- 赛程推进器：本轮时间到了 **且** 本轮该打的都打完了 → 进下一轮
+-- ★由 pg_cron 每分钟叫一次。离线版没有"收盘"这个事件，
+--   而 pg_cron 就是把"到点了"这件事做成真事件的最便宜办法。
+-- ─────────────────────────────────────────────────────────────
+create or replace function public.finals_advance(p_week bigint)
+returns int language plpgsql security definer set search_path = public as $$
+declare b record; moved int := 0; want int; got int; slots int; total int;
+begin
+  for b in select * from public.finals_buckets
+            where season_week = p_week and not closed loop
+    -- 本轮时间还没到就跳过（3 分钟购物 + 结算 + 4 分钟重放 ≈ 8 分钟）
+    if now() < b.round_at + make_interval(secs => public.finals_round_sec()) then
+      continue;
+    end if;
+    -- 补到 2 的幂 → 总轮数 / 本轮该有几场
+    slots := 1; total := 0;
+    while slots < b.n loop slots := slots * 2; total := total + 1; end loop;
+    want := slots / (2 ^ b.round)::int;
+    select count(*) into got from public.finals_results
+     where season_week = p_week and bucket_no = b.bucket_no and round = b.round;
+    -- ★没打完就不推 —— 宁可晚一分钟, 也不能把没结果的一轮翻面
+    if got < want then
+      continue;
+    end if;
+    if b.round >= total then
+      update public.finals_buckets set closed = true
+       where season_week = p_week and bucket_no = b.bucket_no;
+    else
+      update public.finals_buckets set round = b.round + 1, round_at = now()
+       where season_week = p_week and bucket_no = b.bucket_no;
+    end if;
+    moved := moved + 1;
+  end loop;
+  return moved;
+end $$;
+
+revoke all on function public.finals_advance(bigint) from public;
+revoke execute on function public.finals_advance(bigint) from anon, authenticated;

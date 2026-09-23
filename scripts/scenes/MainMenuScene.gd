@@ -820,13 +820,35 @@ func _sb_poll() -> void:
 	var s: String = _SB.service_state()
 	if s == _sb_state_shown:
 		return
+	rebuild_week_strip()
+
+
+## 重建赛程条。★抽出来是因为实拍要在换过时钟之后再建一次 ——
+##   就地再抄一遍那两行就是「手抄的副本必然落后」。
+func rebuild_week_strip() -> void:
 	if is_instance_valid(_week_box):
 		_week_box.queue_free()
 	_week_strip()
 
 
+## ★只给门禁与实拍喂已知时刻; **产品一律不传**。
+##   先例: `TeamSelectScene.lockout_now_override` / `GameState.ranked_quota_full(now)`。
+##   ⚠ 为什么非要这个口子: 赛程条是**按星期分支**的东西 ⇒ 不给口子的话,
+##     「周日那一格变成对阵图的门」只有周日才会被执行, 变异改坏了也没人红
+##     (memory `fb-gate-subject-never-constructed`)。
+var strip_now_override: int = 0
+
+## ★同上, 只给门禁与实拍: 强制把「决赛日玩法上线了没有」当成 是/否。
+##   **-1 = 问规则, 产品永远是这个**(`verify_finals_feed` 有一条断言守住默认值)。
+##   为什么要这个口子: `PHASE_MODE_LIVE` 是 **const 字典**, Godot 4 里改不了内容 ⇒
+##   实拍没法"临时把决赛日打开"再去真按一下那扇门。
+var strip_finals_live_override: int = -1
+
+
 func _week_strip() -> void:
-	var now := int(Time.get_unix_time_from_system())     # ★UTC 纪元秒, 与本地时区无关
+	## ★UTC 纪元秒, 与本地时区无关
+	var now: int = strip_now_override if strip_now_override > 0 \
+		else int(Time.get_unix_time_from_system())
 	var today: int = _P2C.iso_weekday_utc(now)
 	_sb_state_shown = _SB.service_state()
 	var box := PanelContainer.new()
@@ -906,18 +928,47 @@ func _week_day_cell(wd: int, today: int) -> Control:
 ##   · 有收盘的阶段 → 倒计时 + 本地几点收盘
 ##   · 已进封盘窗口 → 直说"不开新局了", 因为这时点开始战斗会被拦下
 ##   · 休赛/决赛日 → 没有收盘概念(close_left_sec 返回 -1), 说各自该说的事
+## 那一格属于哪一类。★**纯静态函数**, 门禁能把四个入参穷举着喂 ——
+##   尤其「玩法上线了没有」这一维: `PHASE_MODE_LIVE` 是 const 字典, 改不动,
+##   不抽出来门禁就只能等到真上线那天才验得了「门会出现」。
+## ★顺序就是原来那串 if 的顺序, 一个都没挪: 维护 → 决赛日的门 → 玩法没上线 → 收盘。
+const BK_MAINTENANCE := "maintenance"
+const BK_BRACKET_DOOR := "bracket_door"      # ★决赛日玩法上线后: 进对阵图的门
+const BK_PENDING := "pending"                # 玩法还没上线, 直说
+const BK_NO_CLOSE := "no_close"              # 这个阶段没有收盘概念
+const BK_LOCKED := "locked"                  # 已进封盘窗口
+const BK_COUNTDOWN := "countdown"            # 距收盘还有多久
+static func close_block_kind(phase: String, finals_live: bool, maintenance: bool,
+		close_left: int, can_start: bool) -> String:
+	if maintenance:
+		return BK_MAINTENANCE
+	if phase == _P2C.PHASE_FINALS and finals_live:
+		return BK_BRACKET_DOOR
+	if _P2C.phase_pending_note(phase) != "":
+		return BK_PENDING
+	if close_left < 0:
+		return BK_NO_CLOSE
+	if not can_start:
+		return BK_LOCKED
+	return BK_COUNTDOWN
+
+
 func _week_close_block(now: int) -> Control:
 	var ph: String = _P2C.phase_at_utc(now)
 	var left: int = _P2C.close_left_sec(now)
 	var head := ""
 	var sub := ""
+	var live: bool = (_P2C.phase_mode_live(_P2C.PHASE_FINALS)
+		if strip_finals_live_override < 0 else strip_finals_live_override == 1)
+	var kind := close_block_kind(ph, live,
+		_SB.service_state() == _SB.ST_MAINTENANCE, left, _P2C.can_start_match_utc(now))
 	## ★★D-1(2026-09-20): 后端**主动说自己在维护**时, 这一块盖掉赛程显示。
 	##   方案书 U7/§4.7 拍板「版本维护期放在周一休赛, 停服 → 发版本 → 开服」,
 	##   而在此之前玩家只会看到「连不上」⇒ 以为游戏坏了。
 	##   ⚠ 只有 **MAINTENANCE** 这一态才盖: 「没配后端」(当前状态)与「连不上」都不盖 ——
 	##     没配是有意关掉, 连不上是网络问题, 两者都不该在主菜单上喊话
 	##     (网络层第一原则: 永远不能把游戏搞坏; 这里也不能把没事说成有事)。
-	if _SB.service_state() == _SB.ST_MAINTENANCE:
+	if kind == BK_MAINTENANCE:
 		head = "维护中"
 		var n := _SB.notice_text()
 		sub = n if n != "" else "版本维护, 稍后回来"
@@ -926,25 +977,54 @@ func _week_close_block(now: int) -> Control:
 	##   那三天实际走的是积分赛规则(照常开局、吃配额)。这一块必须**直说** ——
 	##   在此之前周日写「决赛日 本地 X 点开打」、周一写「本日维护」, 而两天都能照常开局:
 	##   玩家按字面读会以为自己错过了决赛、或者以为维护日不能玩。**说了做不到的事就是缺陷**。
-	var note: String = _P2C.phase_pending_note(ph)
-	if note != "":
+	## ★★周日决赛日**玩法上线之后**, 这一格变成进对阵图的门。
+	##   在此之前 `phase_mode_live(PHASE_FINALS)` 是 false ⇒ 走下面那条「玩法开发中」,
+	##   **门根本不存在** —— 而不是摆一个点了没反应的按钮
+	##   (memory `fb-branch-to-an-unbuilt-mode-is-a-backdoor`: 没做出来的那一支
+	##    要让「没上线」是个可读状态)。
+	if kind == BK_BRACKET_DOOR:
+		return _finals_entry()
+	if kind == BK_PENDING:
 		head = str(_P2C.PHASE_LABEL.get(ph, ph))
-		sub = note
+		sub = _P2C.phase_pending_note(ph)
 		return _close_block_labels(head, sub)
-	if left < 0:
+	if kind == BK_NO_CLOSE:
 		if ph == _P2C.PHASE_FINALS:
 			head = "决赛日"
 			sub = "本地 %s 开打" % _local_hhmm(_utc_today_at(now, int(_P2C.FINALS_START_HOUR_UTC)))
 		else:
 			head = "休赛日"
 			sub = "周二开赛 · 本日维护"
-	elif not _P2C.can_start_match_utc(now):
+	elif kind == BK_LOCKED:
 		head = "已封盘"
 		sub = "收盘前 %d 分钟起不开新局" % int(_P2C.CLOSE_LOCKOUT_SEC / 60)
 	else:
 		head = "距收盘 %s" % _left_text(left)
 		sub = "本地 %s" % _local_stamp(now + left)
 	return _close_block_labels(head, sub)
+
+
+## 周日决赛日那扇门通到哪。★具名常量 —— 门禁拿它去验"目标场景真的存在",
+##   写死成字符串的话门禁就只能自己再抄一遍(抄一次永远落后一次)。
+const BRACKET_SCENE := "BracketMap"
+
+
+## 周日决赛日的门。★一整块都能按 —— 那一格本来就只有两行字, 做成"字旁边一个小按钮"
+##   反而更难点中(触控下限 81px 是全项目同一条线)。
+func _finals_entry() -> Control:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(150, 81)
+	b.text = "决赛日\n看对阵图 →"
+	b.add_theme_font_size_override("font_size", 15)
+	b.add_theme_color_override("font_color", Color("#4ff0d0"))
+	b.pressed.connect(_open_bracket_map)
+	return b
+
+
+## ★具名方法(不是匿名闭包): 门禁量 `pressed.get_connections()` 时能看到方法名,
+##   匿名闭包只能看到"有一个连接" —— 那就只能写出假判据。
+func _open_bracket_map() -> void:
+	_go(BRACKET_SCENE)
 
 
 ## 收盘块的两行标签。★抽出来是因为上面维护态那条要提前 return, 而**两条路必须长得一样** ——

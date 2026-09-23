@@ -76,7 +76,9 @@ func _do_wait(s, secs: float, fin: Array) -> void:
 func _measure_wait(s, secs: float) -> float:
 	var t0: float = s._t
 	var fin: Array = [false]
-	_do_wait(s, secs, fin)          # 不 await: 让它作为协程在旁边跑
+	## nowait —— 故意不 await: 要让它在旁边跑, 这边逐帧喂步并等 fin[0]。
+	## ★下面 while 里有 guard 封顶, 协程没跑完不会被悄悄跳过(不是静默截断)。
+	_do_wait(s, secs, fin)          # nowait
 	var guard := 0
 	while not fin[0] and guard < 4000:
 		s._advance_sim_accum(1.0 / 60.0)   # 每帧恰 1 步 → "等了多久"= _t 走了多远

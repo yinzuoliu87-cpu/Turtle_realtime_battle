@@ -661,6 +661,12 @@ run_audit "tools/zero_caller_audit.py"   "ALL OK" "zero_caller (写了却没有�
 ##   实例: `_build_ground()` 里 `if MAP_V2 or ...: _build_tilemap_ground(); return` 之后的 135 行
 ##   (含主文件 71 行的 `_make_ground_material`)死了两个月, 64 条门禁没一条说过话。
 run_audit "tools/const_branch_audit.py"  "ALL OK" "const_branch (恒真常量分支 + return 吞掉同函数后续代码)"
+## ★zero_caller / const_branch 的**第四种形状**(2026-09-23): 函数有人调、代码也跑得到,
+##   但调用者把**协程当普通函数**调 ⇒ GDScript 不报错, 它只是启动一下就往下走,
+##   `quit()` 可能在尾巴还没跑完就开了 ⇒ **后面的断言一条都不跑**。
+##   实例: verify_finals_feed 三条断言从来没执行过, 而总数稳定在 47、还打着 ALL PASS;
+##   一条变异因此**没红**, 我差点判成「这条判据是恒真式」。改成 await 后 47 → 50。
+run_audit "tools/coroutine_await_audit.py" "ALL OK" "coroutine_await (门禁里把协程当普通函数调 ⇒ 静默截断断言)"
 run_audit "tools/asset_borrow_audit.py"  "ALL OK" "asset_borrow (拿别件的素材顶替 · 铁律「新内容一律新素材」)"
 ## ★数据侧的同一类:「写了没人读」——「读了没人写」在代码侧由 zero_caller 管,
 ##   json 字段与素材这一侧一直只有一份**只打印不判决**的报告(恒 exit 0, 从没进过门禁),

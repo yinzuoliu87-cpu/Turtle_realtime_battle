@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://bkf3n2vqx8w1a"]
+
+[ext_resource type="Script" path="res://tests/verify_finals_feed.gd" id="1"]
+
+[node name="VerifyFinalsFeed" type="Node"]
+script = ExtResource("1")
