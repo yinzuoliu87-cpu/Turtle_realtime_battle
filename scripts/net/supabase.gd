@@ -1459,3 +1459,44 @@ static func finals_left(now_local: int) -> int:
 	if v.is_empty() or int(v.get("left", -1)) < 0:
 		return -1
 	return maxi(0, int(v["left"]) - (now_local - int(v.get("recv_at", now_local))))
+
+
+## ─────────────────────────────────────────────────────────────
+## 周日决赛日: 报到(周六晋级的人把自己 + 阵容快照交给服务端)
+## ★服务端 `finals_enter` 是 **upsert**: 每场都报没坏处, 还顺带让阵容与战绩保持最新。
+## ★晋级线在**服务端**判 —— 客户端说"我晋级了"这句话本身不作数。
+## ─────────────────────────────────────────────────────────────
+static var _enter_inflight := false
+
+
+## 组包。★纯函数 ⇒ 门禁直接比对字段, 不用网络。
+static func finals_enter_body(week: int, name: String, snapshot: Dictionary,
+		gw: int, gl: int) -> Dictionary:
+	return {"p_week": week, "p_name": name, "p_snapshot": snapshot,
+		"p_gw": gw, "p_gl": gl}
+
+
+static func enter_finals_async(week: int, name: String, snapshot: Dictionary,
+		gw: int, gl: int) -> void:
+	var gs = _gs()
+	if gs == null or _enter_inflight:
+		return
+	if not sync_allowed(str(gs.account_id), str(gs.account_email), _token):
+		return
+	var n = _spawn()
+	if n != null:
+		_enter_inflight = true
+		n.enter_finals(finals_enter_body(week, name, snapshot, gw, gl))
+
+
+func enter_finals(body: Dictionary) -> void:
+	if not enabled():
+		_enter_inflight = false
+		_bye()
+		return
+	_http("POST", base_url().rstrip("/") + "/rest/v1/rpc/finals_enter",
+		JSON.stringify(body),
+		func(_res):
+			_enter_inflight = false
+			_bye(),
+		"Content-Type: application/json")

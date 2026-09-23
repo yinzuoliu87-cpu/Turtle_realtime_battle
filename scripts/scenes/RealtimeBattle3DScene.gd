@@ -7541,6 +7541,9 @@ func _settle_season(won: bool) -> void:
 		## ★投降局不传(与积分赛 E18 同一条): 判据是 `lane_results` 为空。
 		if gs.lane_results is Dictionary and not (gs.lane_results as Dictionary).is_empty():
 			Backend.upload_gauntlet_ghost(int(gs.gauntlet_wins), int(gs.gauntlet_losses))
+			## ★E-B3 决赛日报到: 这一场把我打成「晋级」时, 把阵容快照交给服务端。
+			##   判据与上传一样在 Backend 那一层, 这里只调 —— 「该不该报」不是战斗的事。
+			Backend.report_finals_entry()
 	else:
 		if not won:
 			gs.lose_heart()                          # 输 → 失一颗心 (0命=淘汰)

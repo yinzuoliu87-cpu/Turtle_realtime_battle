@@ -528,6 +528,45 @@ static func upload_gauntlet_ghost(gw: int, gl: int) -> void:
 		SB3.upload_gauntlet_async(row)
 
 
+## 周日决赛日报到。★只有**这一场把我打成「晋级」**时才报 ——
+##   判据走 `GameState.gauntlet_state()`(与 UI、补发同一个答案), 不在这里另写一份。
+## ★快照与 `upload_gauntlet_ghost` 取的是同一份(同一场、同一套阵容)。
+static func report_finals_entry() -> void:
+	if GameState == null:
+		return
+	if str(GameState.gauntlet_state()) != "in":
+		return                        # 还在打 / 已出局 —— 都不该报到
+	var leaders = GameState.season_leaders
+	var gid := player_ghost_id(int(GameState.season_id), leaders, -1)
+	var av := str(leaders[0]) if (leaders is Array and (leaders as Array).size() > 0) else "basic"
+	var snap := build_ghost_snapshot(gid, {"name": "玩家阵容", "avatar": av, "id": gid})
+	if snap.is_empty():
+		return
+	var SB4 = load("res://scripts/net/supabase.gd")
+	if SB4 == null:
+		return
+	SB4.enter_finals_async(int(GameState.week_anchor_ts), finals_display_name(),
+		snap, int(GameState.gauntlet_wins), int(GameState.gauntlet_losses))
+
+
+## 对阵图上显示的名字。
+## ★★**已知缺口, 显式登记**: 这个项目**还没有「玩家昵称」这个东西** ——
+##   排行榜写死「我 (玩家)」, 快照里写死「玩家阵容」。
+##   一桶 32 个「玩家」的对阵图没法看 ⇒ 先拿账号短码凑一个能区分的,
+##   真昵称是得单独做的一件事(要拍板: 怎么输入/改不改得了/要不要审核)。
+##   **不假装它不存在**: 不写这段就会有人(包括我自己)把它当成做完了。
+static func finals_display_name() -> String:
+	if GameState == null:
+		return "?"
+	var uid := str(GameState.account_id)
+	if uid == "":
+		return "龟主-0000"
+	## ★取**哈希**不取前缀: 门禁当场拓出来的 —— id 有公共前缀时
+	##   `substr(0,4)` 会让所有人重名(对阵图上一桶全是同一个名字)。
+	##   哈希对前缀/后缀都不敏感, 而且同一个号每次算出来都一样。
+	return "龟主-" + uid.sha256_text().substr(0, 5)
+
+
 ## 在本地池里找【同标签且新鲜】的一份快照。找不到返回 null(回落交给上面那个函数)。
 ## ★新鲜度用快照自带的 `gl_ts`(上传时刻), 缺这个字段的一律当**不新鲜**排除 ——
 ##   老快照没有这一维, 把它当新鲜就等于"永不过期", 那条 30 分钟规则会静默失效。

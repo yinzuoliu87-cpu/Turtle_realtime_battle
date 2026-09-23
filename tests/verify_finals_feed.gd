@@ -31,6 +31,8 @@ const SB := preload("res://scripts/net/supabase.gd")
 const P2C := preload("res://scripts/gamedata/phase2_config.gd")
 const MAP := preload("res://scripts/scenes/BracketMapScene.gd")
 const MENU := preload("res://scripts/scenes/MainMenuScene.gd")
+## ★Backend 不是 autoload(产品侧是全局 class_name), 门禁里 preload 取它
+const BK := preload("res://scripts/net/backend.gd")
 const DEAD_URL := "http://127.0.0.1:9"
 
 var _n := 0
@@ -85,6 +87,7 @@ func _ready() -> void:
 	await _t_real_request()
 	await _t_door()
 	await _t_empty()
+	await _t_enter()
 	SB._transport_for_test = Callable()
 	SB.finals_clear()
 	OS.set_environment("TURTLE_SUPABASE", " ")
@@ -286,6 +289,93 @@ func _t_empty() -> void:
 		"%s | %s" % [txt_wait, txt_done])
 	m.queue_free()
 	SB.finals_clear()
+
+
+# ─────────────────────────────────────────────────────────────
+# ⑦ ★★报到: 只在【这一场把我打成晋级】时报, 而且报的是真请求
+# ─────────────────────────────────────────────────────────────
+func _t_enter() -> void:
+	print("── ⑦ 决赛日报到 ──")
+	## 组包那半是纯函数
+	var body: Dictionary = SB.finals_enter_body(123, "龟主-ab12", {"pets": [1, 2]}, 6, 1)
+	_ok("⑦ 组包: 五个参数都在且键名与服务端对得上",
+		body.get("p_week") == 123 and str(body.get("p_name")) == "龟主-ab12"
+			and int(body.get("p_gw", -1)) == 6 and int(body.get("p_gl", -1)) == 1
+			and (body.get("p_snapshot", {}) as Dictionary).has("pets"), str(body).substr(0, 140))
+
+	## ★★走真入口, 量真实发出去的请求
+	OS.set_environment("TURTLE_SUPABASE", DEAD_URL)
+	SB._transport_for_test = _spy
+	SB._reset_auth_for_test()
+	SB.apply_auth_response(true, 200,
+		'{"access_token":"at-1","expires_in":3600,"refresh_token":"rt-1",'
+		+ '"user":{"id":"uid-me","email":"me@x.co"}}')
+	GameState.account_email = "me@x.co"
+	GameState.account_id = "uid-me-1234"
+	GameState.season_leaders = ["basic", "fortune", "ninja"]
+	_next = {"ok": true, "code": 200, "body": '{"ok":true}'}
+
+	## 还在打(1 胜 0 负) ⇒ 不该报
+	GameState.gauntlet_wins = 1
+	GameState.gauntlet_losses = 0
+	_reqs.clear()
+	SB._enter_inflight = false
+	BK.report_finals_entry()
+	await get_tree().process_frame
+	_ok("⑦ ★还在打(1胜0负) ⇒ 一个请求都不发", _reqs.is_empty(), str(_reqs.size()))
+
+	## 出局(0 胜 3 负) ⇒ 不该报
+	GameState.gauntlet_wins = 0
+	GameState.gauntlet_losses = 3
+	_reqs.clear()
+	SB._enter_inflight = false
+	BK.report_finals_entry()
+	await get_tree().process_frame
+	_ok("⑦ ★出局(0胜3负) ⇒ 一个请求都不发", _reqs.is_empty(), str(_reqs.size()))
+
+	## 晋级 ⇒ 该报
+	GameState.gauntlet_wins = 4
+	GameState.gauntlet_losses = 1
+	GameState.week_anchor_ts = 1789344000
+	_reqs.clear()
+	SB._enter_inflight = false
+	BK.report_finals_entry()
+	await get_tree().process_frame
+	_ok("⑦ ★★分母: 晋级(4胜1负) ⇒ 真的发出去了(证明上面两条是「状态」挡的)",
+		_reqs.size() == 1, str(_reqs.size()))
+	var r: Dictionary = _reqs[0] if _reqs.size() > 0 else {}
+	_ok("⑦ ★★打的是服务端函数 finals_enter(不是直接写表 —— 表上没给写的策略)",
+		str(r.get("url", "")).ends_with("/rest/v1/rpc/finals_enter"), str(r.get("url")))
+	_ok("⑦ ★带的战绩是**这一场之后**的(4胜1负) —— 服务端按它定种子",
+		str(r.get("body", "")).find('"p_gw":4') >= 0
+			and str(r.get("body", "")).find('"p_gl":1') >= 0, str(r.get("body")).substr(0, 160))
+	_ok("⑦ ★周号是本周的周一锚点", str(r.get("body", "")).find("1789344000") >= 0,
+		str(r.get("body")).substr(0, 160))
+	_ok("⑦ ★阵容快照带上了(周日代打要用)",
+		str(r.get("body", "")).find("p_snapshot") >= 0
+			and str(r.get("body", "")).length() > 120, "%d 字节" % str(r.get("body", "")).length())
+
+	## 名字: 两个号必须不一样 —— 一桶 32 个同名的对阵图没法看
+	var n1 := str(BK.finals_display_name())
+	GameState.account_id = "uid-other-9999"
+	var n2 := str(BK.finals_display_name())
+	GameState.account_id = "uid-me-1234"
+	_ok("⑦ ★★两个号的显示名不一样(否则对阵图上全是同一个名字)", n1 != n2, "%s vs %s" % [n1, n2])
+	_ok("⑦ ★分母: 名字不是空的", n1.length() >= 3 and n2.length() >= 3, "%s / %s" % [n1, n2])
+	## ★★登记缺口: 这**不是**真昵称, 是账号短码凑的
+	_ok("⑦ ★登记缺口: 项目还没有「玩家昵称」⇒ 现在用的是账号短码(见 backend.finals_display_name)",
+		n1.begins_with("龟主-"), n1)
+
+	## 匿名号不发(与存档同步同一条承诺)
+	GameState.account_email = ""
+	_reqs.clear()
+	SB._enter_inflight = false
+	BK.report_finals_entry()
+	await get_tree().process_frame
+	_ok("⑦ ★匿名号(没绑邮箱)一个请求都不发", _reqs.is_empty(), str(_reqs.size()))
+	GameState.account_email = "me@x.co"
+	SB._transport_for_test = Callable()
+	OS.set_environment("TURTLE_SUPABASE", " ")
 
 
 # ─────────────────────────────────────────────────────────────
