@@ -38,6 +38,15 @@ func _count(s, kind: String) -> int:
 func _ready() -> void:
 	await get_tree().process_frame
 	print("=== 处决演出 ===")
+	## ★★自己摆队伍(2026-09-23)。原来这里什么都不设, 靠 `GameState.season_leaders`
+	##   **空时回退 `user://lastLineup.json`** 那条路捡队伍 —— 而那个文件是
+	##   `verify_close_lockout` / `verify_week_phase_write` 写进**共享 APPDATA** 的。
+	##   ⇒ 这一条一直是**竞态绿**: 并行池里谁先跑完不定。
+	##   门禁给每个测试独立 APPDATA 之后当场红, 才把这条隐患照出来。
+	var _gs = get_node_or_null("/root/GameState")
+	if _gs != null:
+		_gs.test_mode = true
+		_gs.season_leaders = ["basic", "stone", "ice"]
 	RB.DEBUG_EDIT = true
 	var s = RB.new()
 	add_child(s)
@@ -46,6 +55,13 @@ func _ready() -> void:
 	var c: Vector2 = s.ARENA.position + s.ARENA.size * 0.5
 	s._edit_mode = false
 	s._over = false
+	## ★自己造单位 —— 见上面那段。真凶是 `user://debug_setup.json`:
+	##   调试场开场会**恢复上次保存的布置**, 而那个文件是别的测试写进共享 APPDATA 的。
+	if s._units.is_empty():
+		s._units.append_array([
+			s._spawn._make_unit("basic", "left", c + Vector2(-150, 0)),
+			s._spawn._make_unit("basic", "right", c + Vector2(150, 0)),
+		])
 
 	# ── ① 原语本身: 落刀 → 切割线 + 碎片 ────────────────────────────────────
 	_ok("★分母: 开场世界里没有任何处决节点",

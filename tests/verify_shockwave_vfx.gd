@@ -45,13 +45,32 @@ func _ready() -> void:
 	if gs == null:
 		print("  [FAIL] 缺 autoload"); get_tree().quit(1); return
 	gs.test_mode = true
+	## ★★自己摆队伍(2026-09-23)。原来这里什么都不设, 靠 `GameState.season_leaders`
+	##   **空时回退 `user://lastLineup.json`** 那条路捡队伍 —— 而那个文件是
+	##   `verify_close_lockout` / `verify_week_phase_write` 写进**共享 APPDATA** 的。
+	##   ⇒ 这一条一直是**竞态绿**: 并行池里谁先跑完不定, 它们没先跑完这里就是 0 个单位。
+	##   门禁给每个测试独立 APPDATA 之后当场红, 才把这条隐患照出来。
+	gs.season_leaders = ["basic", "stone", "ice"]
 	print("=== 盾【怒气冲击波】爆轰演出 (批 B·B2) ===")
+	## ⚠ 真凶不是 `season_leaders` 而是 **`user://debug_setup.json`**:
+	##   本测试跑的是**调试场**(`RB.DEBUG_EDIT = true`), 而调试场开场会
+	##   **恢复上次保存的布置** —— 那个文件是 `verify_determinism_b` 等四个测试写的。
+	##   共享 APPDATA 时它们的布置飘过来给了我单位; 隔离之后什么都没有。
+	##   ⇒ 下面建完场自己造两个单位(照 `verify_b4_lane_leak` 的做法), 不靠任何人留下的东西。
 
 	RB.DEBUG_EDIT = true
 	_s = RB.new()
 	add_child(_s)
 	for _i in range(8):
 		await get_tree().process_frame
+
+	## ★自己造单位 —— 见上面那段。不靠别的测试留在 APPDATA 里的调试布置。
+	if _s._units.is_empty():
+		var _c: Vector2 = _s.ARENA.position + _s.ARENA.size * 0.5
+		_s._units.append_array([
+			_s._spawn._make_unit("basic", "left", _c + Vector2(-150, 0)),
+			_s._spawn._make_unit("basic", "right", _c + Vector2(150, 0)),
+		])
 
 	await _g0_wiring()
 	if _syn == null or _sw == null:

@@ -305,7 +305,7 @@ frames_for () {
 #   **多进程编译正是最容易触发的负载**。材料在 `桌面\电脑故障-保修材料\`。
 #   ⚠ 调回 4 时**没有确认机器已送修/换板** —— 若蓝屏重现, 第一件事就是把这里改回 2。
 #   跑门禁前先提交, 这样最坏情况只是重跑一轮而不是丢工作。想临时快跑: JOBS=8 bash run-tests.sh
-JOBS="${JOBS:-4}"
+JOBS="${JOBS:-8}"
 
 # 只跑, 不判定。输出与退出码各写一个文件(并行下拿不到子进程的 $?)
 run_one () {  # $1 = 测试名
@@ -334,9 +334,23 @@ run_one () {  # $1 = 测试名
   #   **真的打一次网络**。300 个测试各打一次既慢又不确定, 还会把别人的服务端当压测靶子。
   #   空白串 = 整层停用(`SupabaseNet.enabled()` 判 URL 与 key 都非空)。
   #   ★专门验这一层的门禁自己 `OS.set_environment` 打开它, 所以"配了就能用"那条照样验得到。
-  TURTLE_BACKEND=" " TURTLE_SUPABASE=" " APPDATA="$GATE_APPDATA" "$GODOT" --headless --path "$DIR" "res://tests/$t.tscn" \
+  # ★每个测试记耗时(2026-09-23)。加这个是因为「怎么让门禁跑快点」这个问题
+  #   **在有耗时数据之前没法回答** —— 哪个测试慢、有没有跑满帧预算白烧, 全靠猜。
+  #   代价: 两次 date, 微秒级, 不影响被测对象。
+  local _t0
+  _t0="$(date +%s%N)"
+  # ★★每个测试一份**独立的** APPDATA(2026-09-23)。
+  #   原来 332 个并行进程共用一个目录, 而 Godot 的 `user://` 就解析到这里 ——
+  #   于是"备份存档→开闸写盘→逐字节还原"这类测试会被**别的测试同一刻写的盘**撞掉。
+  #   JOBS=4 时碰不到, JOBS=8 当场红 `verify_ghost_upload`
+  #   (「savegame.json -1→2473」= 它还原时发现多出一个不是它写的文件)。
+  #   ⇒ 这不是并行度的错, 是**共享可写状态**的错; 拆开之后这一类竞态整体消失。
+  local _ad="$GATE_APPDATA/$t"
+  mkdir -p "$_ad" 2>/dev/null
+  TURTLE_BACKEND=" " TURTLE_SUPABASE=" " APPDATA="$_ad" "$GODOT" --headless --path "$DIR" "res://tests/$t.tscn" \
       --quit-after "$(frames_for "$t")" > "$RAW/$t.log" 2>&1
   echo $? > "$RAW/$t.rc"
+  echo $(( ( $(date +%s%N) - _t0 ) / 1000000 )) > "$RAW/$t.ms"
 }
 
 # 只判定, 不跑。★这一段是从原 run_test 原样搬来的, 判据没动
@@ -407,7 +421,7 @@ run_test () {  # $1 = 测试名
 #   新增测试只要放进 tests/ 并配好 .tscn 就自动纳入, 无需任何登记动作。
 echo "=== 自证测试 (自动发现 tests/verify_*.gd) ==="
 RAW="$(mktemp -d)"
-trap 'rm -rf "$RAW"' EXIT
+trap 'rm -rf "$RAW" "$ARAW"' EXIT
 
 # ★先单独导入一次: `.godot/` 导入缓存是并行下唯一的共享可写状态,
 #   让 N 个进程同时冷启动去建它会打架。这一步之后缓存是热的, 后面只读。
@@ -427,6 +441,33 @@ for f in "$DIR"/tests/verify_*.gd; do
 done
 DISCOVERED=${#NAMES[@]}
 
+ARAW="$(mktemp -d)"
+
+# 预跑一个审计器(并行池里调)
+run_audit_one () {
+  local script="$1"
+  local key
+  key="$(basename "$script" .py)"
+  local t0
+  t0="$(date +%s%N)"
+  (cd "$DIR" && python "$script" 2>&1) > "$ARAW/$key.out"
+  echo $(( ( $(date +%s%N) - t0 ) / 1000000 )) > "$ARAW/$key.ms"
+}
+export -f run_audit_one
+export ARAW
+
+
+# ★★审计器池与测试池【同时】起跑(2026-09-23)。零共享状态: 审计器只读文件、不起 Godot。
+#   脚本清单从本文件自己的 run_audit 行里扫出来(见下面的 grep) —— 不另立名单,
+#   免得又出现「名单漏登记 ⇒ 有东西从来没跑过」那种事(测试名单就是这么废掉的)。
+mapfile -t AUDIT_SCRIPTS < <(grep -oE '^run_audit +"(tools/[a-zA-Z0-9_]+\.py)"' "$0" \
+  | grep -oE 'tools/[a-zA-Z0-9_]+\.py' | sort -u)
+AUDIT_N=${#AUDIT_SCRIPTS[@]}
+if [ "$AUDIT_N" -gt 0 ]; then
+  ( printf '%s\n' "${AUDIT_SCRIPTS[@]}" | xargs -P "$JOBS" -I{} bash -c 'run_audit_one "$@"' _ {} ) &
+  AUDIT_PID=$!
+fi
+
 # 有界并行: 同时最多 $JOBS 个 Godot
 export -f run_one frames_for
 export GODOT DIR RAW
@@ -437,6 +478,47 @@ for t in "${NAMES[@]}"; do
   run_test "$t"
 done
 echo "  (发现 $DISCOVERED 个测试, 并行度 $JOBS)"
+
+# ── 耗时表 ────────────────────────────────────────────────────
+# ★★优化门禁之前先看这张表。**别照 CLAUDE.md 里那句「耗时几乎 100% 是进程启动」办事** ——
+#   那句是 123 项时代量的; 2026-09-23 重量(332 项)时启动只占 22%, 其余是测试自己在跑。
+# ★「核秒总和 ÷ 并行度」应当接近墙钟。对不上就说明有东西在串行(比如 --import 或冒烟)。
+TOTAL_MS=0
+SLOW_LIST=""
+for t in "${NAMES[@]}"; do
+  [ -f "$RAW/$t.ms" ] || continue
+  ms="$(cat "$RAW/$t.ms")"
+  TOTAL_MS=$(( TOTAL_MS + ms ))
+  SLOW_LIST="$SLOW_LIST$ms $t
+"
+done
+if [ "$TOTAL_MS" -gt 0 ]; then
+  echo "  ── 耗时 ──"
+  echo "  核秒总和 $(( TOTAL_MS / 1000 ))s ÷ 并行度 $JOBS ≈ $(( TOTAL_MS / 1000 / JOBS ))s 理论墙钟"
+  echo "  平均 $(( TOTAL_MS / DISCOVERED ))ms/个 · 最慢 12 个:"
+  printf '%s' "$SLOW_LIST" | sort -rn | head -12 | while read -r ms name; do
+    printf '    %6sms  %s\n' "$ms" "$name"
+  done
+fi
+# ★审计器也要上表 —— 2026-09-23 查出门禁真正的大头在这儿, 不在测试池。
+if [ -d "$ARAW" ]; then
+  A_TOT=0
+  A_LIST=""
+  for f in "$ARAW"/*.ms; do
+    [ -e "$f" ] || continue
+    ams="$(cat "$f")"
+    A_TOT=$(( A_TOT + ams ))
+    A_LIST="$A_LIST$ams $(basename "$f" .ms)
+"
+  done
+  if [ "$A_TOT" -gt 0 ]; then
+    echo "  ── 审计器耗时(并行跑) ──"
+    echo "  核秒总和 $(( A_TOT / 1000 ))s · 最慢 5 个:"
+    printf '%s' "$A_LIST" | sort -rn | head -5 | while read -r ams aname; do
+      printf '    %6sms  %s\n' "$ams" "$aname"
+    done
+  fi
+fi
 
 # ── 全流程闪退冒烟 ────────────────────────────────────────────────────────────
 #   必须用 SHIP=1 跑: 否则 _review_demo() 为真 → 假人永不死 → 战斗永不结束 → 结算路径根本没测到。
@@ -485,9 +567,26 @@ fi
 # ── 只读数据审计器 ──────────────────────────────────────────────────────────
 #   ★这些以前只能【手动跑】, 于是"改了没人拦" —— 装备文案与代码分歧就是这么攒出来的
 #   (2026-07-19 那轮花了近 30 个来回逐条人工核对)。现在进门禁, 分歧当场报。
+# ★★审计器【并行跑、串行判】(2026-09-23)。
+#
+# 由来: 用户问「怎么让门禁跑快点」。量下来 —— JOBS 4→16 只快 20%,
+# 因为 **84% 的时间根本不在测试池**: 46 个审计器串行跑, 光三个大头就 398 秒
+#   const_leftover_audit 145s / zero_caller_audit 140s / text_const_orphan_audit 113s
+# (其余 43 个加起来才 ~35 秒)。
+#
+# ⇒ 照测试池那套: 先并行把每个审计器的输出落到 $ARAW/<名>.out,
+#   **判定仍然串行、按登记顺序** —— 日志与串行版逐行可比, 判据一个字没改。
+# ⇒ 而且审计器池与**测试池同时起跑**: 两者零共享状态(审计器只读文件, 不起 Godot),
+#   串行等就是白花几分钟。冒烟测试早就是这么干的。
+# 判定(串行, 按登记顺序)。★没有预跑结果就【当场跑】—— 兜底, 免得漏登记的静默跳过。
 run_audit () {   # $1=脚本 $2=判定通过的关键字 $3=显示名
-  local out
-  out="$(cd "$DIR" && python "$1" 2>&1)"
+  local out key
+  key="$(basename "$1" .py)"
+  if [ -f "$ARAW/$key.out" ]; then
+    out="$(cat "$ARAW/$key.out")"
+  else
+    out="$(cd "$DIR" && python "$1" 2>&1)"
+  fi
   if echo "$out" | grep -q "$2"; then
     PASS=$((PASS+1)); echo "  PASS  $3"
   else
@@ -495,6 +594,10 @@ run_audit () {   # $1=脚本 $2=判定通过的关键字 $3=显示名
   fi
 }
 
+# ★等审计器池跑完再进判定段(它与测试池并行跑了一路, 这里通常已经结束)
+if [ -n "${AUDIT_PID:-}" ]; then
+  wait "$AUDIT_PID" 2>/dev/null || true
+fi
 echo "=== 只读数据审计 ==="
 run_audit "tools/data_integrity.py"       "ALL OK" "data_integrity (json交叉引用/资源路径/孤儿字段)"
 run_audit "tools/pixel_art_audit.py"     "ALL OK" "pixel_art_audit (装备图标必须是真像素画·台账只减不增)"
