@@ -230,14 +230,18 @@ func _stack_badge(s, tr: Dictionary) -> void:
 	for n in [0, 3, 17, 142]:
 		tr["_ms_stacks"] = n
 		s._render._update_spell_disc()            # 走真实每帧链路
-		await get_tree().process_frame
+		## ★★**不许 await**(2026-09-24 CI 偶发红的根因): `_update_spell_disc()` 是
+		##   **同步**的, 喂完当场就写好了角标。而 await 一帧之后, `_process` 会
+		##   **再调一次**它, 期间训龟大师可能正好打中一下、`_ms_stacks` +1
+		##   (`trainer_system.gd:962`) ⇒ 读到 n+1。机器越慢、一帧推进的 sim 越多,
+		##   撞上的概率越大(CI 上 n=17 那一格就是这么红的)。
+		##   同步的事就同步量(memory `fb-gate-tautological-when-it-spans-a-frame`)。
 		var got: int = int(s._spell_disc._stacks)
 		print("     _ms_stacks=%3d → 角标 %3d  (攻速 ×%.2f)" % [n, got, 1.0 + 0.05 * float(n)])
 		_chk("⑥ 层数 %d 传到圆盘" % n, got == n)
 	# 反向: 不是魔法石被动就必须撤回 0
 	tr["_tr_passive"] = ""
 	s._render._update_spell_disc()
-	await get_tree().process_frame
 	_chk("⑥ ★换掉魔法石被动后角标撤回 0(不许留旧数字)", int(s._spell_disc._stacks) == 0)
 	tr["_tr_passive"] = save_p
 	# 0 层不画 —— 开局别给圆盘加噪点

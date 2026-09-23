@@ -331,6 +331,10 @@ func _ready() -> void:
 	var fly_frames: Array = []
 	var fly_h: Array = []
 	var sweep_frames: Array = []
+	## ★连采样时的 x 一起记 —— 分母要量的是「采样铺没铺满这段冲刺」,
+	##   不是「采了几条」(条数跟机器快慢挂钩, CI 上实测 47 而本地 51)。
+	var sweep_x: Array = []
+	var fly_hx: Array = []          # 采高度那一刻的 x, 同样只为量跨度
 	var fly_x0 := 999.0
 	## ★墙钟兜底 + 帧上限: 不拿游戏时钟当尺子(结算结束后 `_t` 会冻结, CLAUDE.md §3.5)
 	var t0: int = Time.get_ticks_msec()
@@ -364,6 +368,7 @@ func _ready() -> void:
 			for x3 in fl:
 				lo = minf(lo, (x3 as Node3D).position.y)
 			fly_h.append(lo)
+			fly_hx.append((fl[0] as Node3D).global_position.x)
 			## ★只在【真的飞起来之后】记朝向: 换装后还有一段"转平 + 等这一拍走完",
 			##   那段剑还停在原地, 朝向本来就该停在起手那一格。
 			##   拿"是否已经推进 >0.3 米"当闸门, 而不是拿帧序号硬切。
@@ -372,6 +377,7 @@ func _ready() -> void:
 				fly_x0 = x_now
 			if absf(x_now - fly_x0) > 0.3:
 				sweep_frames.append((fl[0] as Sprite3D).frame)
+				sweep_x.append(x_now)
 		max_slit = maxi(max_slit, sl.size())
 		max_sword = maxi(max_sword, sw.size())
 		max_fly = maxi(max_fly, fl.size())
@@ -435,18 +441,41 @@ func _ready() -> void:
 	for ff in sweep_frames:
 		if int(ff) != want_f:
 			bad_f += 1
-	_ok("★分母: 冲刺途中采到 %d 个朝向样本" % sweep_frames.size(), sweep_frames.size() >= 50,
-		"样本太少 = 下面那条是空检查")
+	## ★★分母换了形状(2026-09-24): 原来判「≥50 条」, 而条数 = 冲刺跑了多少帧,
+	##   **跟机器快慢挂钩** —— CI 上实测 47 条当场红, 本地 51 条绿。
+	##   它想证明的是「下面那条不是空检查」, 那就该量**采样铺没铺满这段冲刺**:
+	##   50 条全挤在一个位置照样是空检查, 47 条铺满整段完全够用。
+	var sx_lo := 1.0e9
+	var sx_hi := -1.0e9
+	for sx in sweep_x:
+		sx_lo = minf(sx_lo, float(sx))
+		sx_hi = maxf(sx_hi, float(sx))
+	var sx_span: float = (sx_hi - sx_lo) if sweep_x.size() > 0 else 0.0
+	_ok("★分母: 采样铺满了冲刺(%d 条, x 跨度 %.2f 米 >= 1.0)"
+			% [sweep_frames.size(), sx_span],
+		sweep_frames.size() > 0 and sx_span >= 1.0,
+		"采样没铺开 = 下面那条是空检查(条数多少无所谓, 跨度不够才是问题)")
 	_ok("7 冲刺途中刃始终朝敌人(帧%d, 不合 %d 个)" % [want_f, bad_f],
 		sweep_frames.size() > 0 and bad_f == 0, "选帧没跟行进方向走")
 	## 冲刺途中的高度: 取最后一半采样(前一半覆盖"抬升中"), 全都必须已在空中
 	var lo_late := 999.0
 	var n_late := 0
+	var hx_lo := 1.0e9
+	var hx_hi := -1.0e9
 	for i2 in range(fly_h.size() / 2, fly_h.size()):
 		lo_late = minf(lo_late, float(fly_h[i2]))
 		n_late += 1
-	_ok("★分母: 冲刺途中采到 %d 个高度样本(后半 %d 个入判)" % [fly_h.size(), n_late],
-		n_late >= 50, "样本太少 = 下面那条是空检查")
+		if i2 < fly_hx.size():
+			hx_lo = minf(hx_lo, float(fly_hx[i2]))
+			hx_hi = maxf(hx_hi, float(fly_hx[i2]))
+	var hx_span: float = (hx_hi - hx_lo) if n_late > 0 else 0.0
+	## ★★同上(2026-09-24): 「后半 ≥50 条」同样是跟机器快慢挂钩的尺子 ——
+	##   CI 实测「51 条 / 后半 26 条」当场红, 本地一百多条绿。
+	##   改成量**后半段铺没铺开**: 挤在一个位置的 50 条不如铺满半段的 26 条。
+	_ok("★分母: 后半段采样铺开了(%d 条 / 后半 %d 条, x 跨度 %.2f 米 >= 0.5)"
+			% [fly_h.size(), n_late, hx_span],
+		n_late > 0 and hx_span >= 0.5,
+		"后半段没铺开 = 下面那条是空检查")
 	_ok("7 剑在空中飞(冲刺途中最低 y=%.2f 米 > 0.3, 不再贴地)" % lo_late,
 		n_late > 0 and lo_late > 0.3, "还贴在地上 = 只换了贴图没抬起来")
 
