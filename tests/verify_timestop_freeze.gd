@@ -177,6 +177,10 @@ func _ready() -> void:
 		tents.has(tk) and helis.size() >= 1,
 		"被测对象不在场 ⇒ 判据⑧⑨ 恒真, 什么都没验到")
 	var tts0: float = float((tents.get(tk, {}) as Dictionary).get("ts", -1.0))
+	## ★连**状态**一起记: `ts` 是每段动作的计时器, 每次状态切换都归零
+	##   (`tentacle_vfx.gd`: IDLE→REAR→SLAM→RECOVER 各 `t["ts"] = 0.0`) ⇒
+	##   「在走」不能用「变大」量(CI 上实测 0.683 → 0.150 当场红)。
+	var tst0: String = str((tents.get(tk, {}) as Dictionary).get("state", "?"))
 	var hp0: Vector2 = (helis[0] as Dictionary).get("pos", Vector2.ZERO) if helis.size() > 0 else Vector2.ZERO
 
 	# ── ① 分母: 时停【之前】世界在动 ──
@@ -238,9 +242,17 @@ func _ready() -> void:
 		auras_gone and (ts._ts_aura_sprs as Array).is_empty() and (ts._ts_core_sprs as Array).size() == 1,
 		"火没收 ⇒ 20 秒定格里一团火冻在龟身上; 光点不在 ⇒ 「从人物中间爆开」没有起点")
 	var tts1: float = float((tents.get(tk, {}) as Dictionary).get("ts", -1.0))
+	var tst1: String = str((tents.get(tk, {}) as Dictionary).get("state", "?"))
 	var hp1: Vector2 = (helis[0] as Dictionary).get("pos", Vector2.ZERO) if helis.size() > 0 else Vector2.ZERO
-	_ok("★分母⑥: 触手的内部钟在时停【之前】是会走的(%.3f → %.3f)" % [tts0, tts1],
-		(tts1 - tts0) > 0.001, "它本来就不走 ⇒ 判据⑧ 是恒真式")
+	## ★★判据形状改了(2026-09-24): 原来判 `tts1 > tts0`, 而这个钟**每次状态切换都归零** ⇒
+	##   机器慢一点、两次读之间换了状态就会变小, CI 上当场红(0.683 → 0.150)。
+	##   它要证明的是「这个钟平时是动的」(判据⑧「时停期间不走」的分母) ⇒
+	##   对会归零的分段钟, 「动了」= **ts 变了 或 状态变了**。
+	##   **换形状不是放松**: 原判据连「状态换了但 ts 恰好相同」都放过, 这条抓得到。
+	_ok("★分母⑥: 触手的内部钟在时停【之前】是会走的(%s %.3f → %s %.3f)"
+			% [tst0, tts0, tst1, tts1],
+		absf(tts1 - tts0) > 0.001 or tst1 != tst0,
+		"它本来就不走 ⇒ 判据⑧ 是恒真式")
 	_ok("★分母⑦: 直升机在时停【之前】是会飞的(移了 %.2f 码)" % hp0.distance_to(hp1),
 		hp0.distance_to(hp1) > 0.5, "它本来就不飞 ⇒ 判据⑨ 是恒真式")
 	var sv1: float = float(_s._spec.val(other, "probe_decay"))
