@@ -34,6 +34,7 @@
 import io
 import json
 import os
+import subprocess
 import sys
 import time
 import urllib.error
@@ -48,6 +49,9 @@ TOKEN_FILE = os.path.join(os.path.expanduser("~"), ".supabase", "access-token")
 OP = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 WEEK = 2                     # ★假周号: cron 传的是真周一时间戳(~1.79e9), 永远碰不到这里
 BUCKET = 0
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+GODOT_BIN = os.environ.get("GODOT",
+    r"C:\Users\Louis\Desktop\Godot_v4.6.3-stable_win64.exe")
 OK = [0]
 BAD = [0]
 
@@ -275,12 +279,162 @@ chk("⑬ ★★登录用户调不动 finals_advance —— 只有 pg_cron 能推
     st != 200, "HTTP %s %s" % (st, str(d)[:140]))
 
 # ─────────────────────────────────────────────────────────────
+
+
+print("── ⑮ 切桶规则: 规格(bracket.gd) ↔ 实现(SQL) 逐个对 ──")
+## ★切桶是**服务端一次性**的事, 客户端只从回包里拿「这个桶几个人」⇒
+##   `bracket.gd` 的 bucket_size_for / bucket_count / bucket_of_seed 在产品代码里
+##   **零个调用者**: 它们是**规格**(41 条门禁守着), SQL 里那一份才是**实现**。
+##   两份必须给同一个答案 —— 而「必须」要有人真的去量(memory `fb-hand-rolled-copies-drift`)。
+spec = None
+dump_dir = os.path.join(os.environ.get("TEMP", "."), "probe_br")
+p = subprocess.run([GODOT_BIN, "--headless", "--path", REPO,
+                    "res://tests/_dump_bracket_rules.tscn", "--quit-after", "120"],
+                   capture_output=True, cwd=REPO,
+                   env=dict(os.environ, APPDATA=dump_dir))
+for line in p.stdout.decode("utf-8", "replace").splitlines():
+    if line.startswith("DUMPED "):
+        spec = json.load(io.open(line[7:].strip(), encoding="utf-8"))
+chk("⑮ ★分母: 规格那一份真的导出来了(导不出来下面全是空检查)",
+    spec is not None and len(spec.get("size", {})) > 300,
+    "%d 个人数" % (len(spec.get("size", {})) if spec else 0))
+if spec is not None:
+    ns = list(range(0, 201))
+    st, rows = sql("select n, public.finals_bucket_size(n) as sz, "
+                   "public.finals_bucket_count(n) as cnt "
+                   "from generate_series(0, 200) as n order by n")
+    bad = []
+    for r in (rows if isinstance(rows, list) else []):
+        n = int(r["n"])
+        if int(r["sz"]) != int(spec["size"][str(n)]):
+            bad.append("n=%d 容量 SQL %s / 规格 %s" % (n, r["sz"], spec["size"][str(n)]))
+        if int(r["cnt"]) != int(spec["count"][str(n)]):
+            bad.append("n=%d 桶数 SQL %s / 规格 %s" % (n, r["cnt"], spec["count"][str(n)]))
+    chk("⑮ ★分母: 真比了 %d 个人数 × 2 个量" % len(rows if isinstance(rows, list) else []),
+        isinstance(rows, list) and len(rows) == 201, str(len(rows) if isinstance(rows, list) else -1))
+    chk("⑮ ★★桶容量与桶数: 两份逐个一致(0~200 人)", not bad, str(bad[:4]))
+
+    badof = []
+    cnt_of = 0
+    for nb_s, row in spec["of"].items():
+        nb = int(nb_s)
+        st, rows = sql("select i, public.finals_bucket_of(i, %d) as b "
+                       "from generate_series(0, 39) as i order by i" % nb)
+        for r in (rows if isinstance(rows, list) else []):
+            cnt_of += 1
+            if int(r["b"]) != int(row[int(r["i"])]):
+                badof.append("nb=%d i=%s SQL %s / 规格 %s" % (nb, r["i"], r["b"], row[int(r["i"])]))
+    chk("⑮ ★分母: 蛇形比了 %d 个点" % cnt_of, cnt_of >= 300, str(cnt_of))
+    chk("⑮ ★★蛇形切桶: 两份逐个一致", not badof, str(badof[:4]))
+
+print("── ⑯ 报到 finals_enter ──")
+## ★★结果表也要清 —— 前面 ② 段用管理员 SQL 直插过几行(seed_used=111),
+##   不清的话下面那条「重复报不覆盖」量到的是**旧行**, 不是我刚报的那一行
+##   (实拍一样的毛病: 判据没错, 被测对象不对)。
+sql("delete from public.finals_results  where season_week = %d" % WEEK)
+sql("delete from public.finals_pending where season_week = %d" % WEEK)
+sql("delete from public.finals_entrants where season_week = %d" % WEEK)
+sql("delete from public.finals_buckets  where season_week = %d" % WEEK)
+st, d = req("POST", "/rest/v1/rpc/finals_enter",
+            {"p_week": WEEK, "p_name": "甲", "p_snapshot": {"pets": [1]}, "p_gw": 2, "p_gl": 1}, TA)
+chk("⑯ ★★没到晋级线 ⇒ 收不了(晋级线在**服务端**判)",
+    isinstance(d, dict) and d.get("reason") == "not_qualified", str(d)[:140])
+st, d = req("POST", "/rest/v1/rpc/finals_enter",
+            {"p_week": WEEK, "p_name": "甲", "p_snapshot": {"pets": [1]}, "p_gw": 7, "p_gl": 1}, TA)
+chk("⑯ ★分母: 到线了就收(证明上面那条是「线」挡的, 不是函数坏了)",
+    isinstance(d, dict) and d.get("ok") is True, str(d)[:140])
+st, d = req("POST", "/rest/v1/rpc/finals_enter",
+            {"p_week": WEEK, "p_name": "乙", "p_snapshot": {"pets": [2]}, "p_gw": 6, "p_gl": 2}, TB)
+chk("⑯ 另一个号也收了", isinstance(d, dict) and d.get("ok") is True, str(d)[:140])
+st, rows = req("GET", "/rest/v1/finals_pending?season_week=eq.%d&select=*" % WEEK, None, TA)
+chk("⑯ ★★只看得见**自己**那一行(「谁报名了」本身就是情报)",
+    isinstance(rows, list) and len(rows) == 1 and str(rows[0].get("name")) == "甲",
+    str(rows)[:160])
+st, c = sql("select count(*)::int as c from public.finals_pending where season_week = %d" % WEEK)
+chk("⑯ ★分母: 库里其实有 2 行(证明上面那条是策略挡的, 不是只写进去 1 行)",
+    isinstance(c, list) and int(c[0]["c"]) == 2, str(c)[:80])
+st, d = req("POST", "/rest/v1/rpc/finals_enter",
+            {"p_week": WEEK, "p_name": "甲改名", "p_snapshot": {"pets": [9]}, "p_gw": 9, "p_gl": 0}, TA)
+st, rows = req("GET", "/rest/v1/finals_pending?season_week=eq.%d&select=name,gw" % WEEK, None, TA)
+chk("⑯ ★再报一次 = 覆盖(不是撞主键报错) —— 阵容会改, 战绩也会变",
+    isinstance(rows, list) and len(rows) == 1 and int(rows[0].get("gw", 0)) == 9, str(rows)[:120])
+
+print("── ⑰ 坐下 finals_seat + 报结果 finals_report ──")
+st, d = sql("select public.finals_seat(%d) as nb" % WEEK)
+nb = int(d[0]["nb"]) if isinstance(d, list) and d else -1
+chk("⑰ ★2 个人 ⇒ 切出 1 个桶", nb == 1, "nb=%d" % nb)
+st, rows = sql("""select bucket_no, n from public.finals_buckets
+                  where season_week = %d order by bucket_no""" % WEEK)
+chk("⑰ 桶建出来了, n=2", isinstance(rows, list) and len(rows) == 1 and int(rows[0]["n"]) == 2,
+    str(rows)[:120])
+st, rows = sql("""select seed, name from public.finals_entrants
+                  where season_week = %d order by seed""" % WEEK)
+chk("⑰ ★★种子顺序 = 胜场降序(甲 9 胜在前, 乙 6 胜在后)",
+    isinstance(rows, list) and [r["name"] for r in rows] == ["甲改名", "乙"], str(rows)[:140])
+st, d = sql("select public.finals_seat(%d) as nb" % WEEK)
+chk("⑰ ★幂等: 再坐一次返回 0, 不重复插",
+    isinstance(d, list) and int(d[0]["nb"]) == 0, str(d)[:80])
+st, d = req("POST", "/rest/v1/rpc/finals_enter",
+            {"p_week": WEEK, "p_name": "丙", "p_snapshot": {}, "p_gw": 9, "p_gl": 0}, TB)
+chk("⑰ ★★已经坐定之后不再收报名(这时塞人会让别人的对阵图当场变形)",
+    isinstance(d, dict) and d.get("reason") == "already_seated", str(d)[:140])
+
+## 报结果
+st, d = req("POST", "/rest/v1/rpc/finals_report",
+            {"p_week": WEEK, "p_bucket": 0, "p_round": 2, "p_match": 0,
+             "p_winner_side": 0, "p_seed": 42}, TA)
+chk("⑰ ★★只收**当前轮**(报第 2 轮被拒 —— 收未来轮等于提前定胜负)",
+    isinstance(d, dict) and d.get("reason") == "wrong_round", str(d)[:140])
+st, d = req("POST", "/rest/v1/rpc/finals_report",
+            {"p_week": WEEK, "p_bucket": 0, "p_round": 1, "p_match": 0,
+             "p_winner_side": 3, "p_seed": 42}, TA)
+chk("⑰ winner_side 只能是 0/1", isinstance(d, dict) and d.get("reason") == "bad_side",
+    str(d)[:140])
+st, d = req("POST", "/rest/v1/rpc/finals_report",
+            {"p_week": WEEK, "p_bucket": 0, "p_round": 1, "p_match": 0,
+             "p_winner_side": 0, "p_seed": 42}, TA)
+chk("⑰ ★分母: 当前轮 + 合法侧 ⇒ 收了", isinstance(d, dict) and d.get("ok") is True, str(d)[:140])
+st, d = req("POST", "/rest/v1/rpc/finals_report",
+            {"p_week": WEEK, "p_bucket": 0, "p_round": 1, "p_match": 0,
+             "p_winner_side": 1, "p_seed": 99}, TB)
+st, rows = sql("""select winner_side, seed_used from public.finals_results
+                  where season_week = %d and round = 1 and match_no = 0""" % WEEK)
+chk("⑰ ★★同一场重复报**不覆盖**(先到先得: 两边都会报, 谁先到都一样)",
+    isinstance(rows, list) and len(rows) == 1 and int(rows[0]["winner_side"]) == 0
+    and int(rows[0]["seed_used"]) == 42, str(rows)[:140])
+
+## 桶外的人不许报
+st, a3 = req("POST", "/auth/v1/signup", {})
+T3 = a3["access_token"] if isinstance(a3, dict) and a3.get("access_token") else None
+if T3:
+    sql("""delete from public.finals_results
+           where season_week = %d and round = 1 and match_no = 1""" % WEEK)
+    st, d = req("POST", "/rest/v1/rpc/finals_report",
+                {"p_week": WEEK, "p_bucket": 0, "p_round": 1, "p_match": 1,
+                 "p_winner_side": 0, "p_seed": 1}, T3)
+    chk("⑰ ★★不在这个桶里的人报不了", isinstance(d, dict) and d.get("reason") == "not_in_bucket",
+        str(d)[:140])
+st, d = req("POST", "/rest/v1/rpc/finals_seat", {"p_week": WEEK}, TA)
+chk("⑰ ★登录用户调不动 finals_seat(切桶只有 pg_cron 干得了)", st != 200,
+    "HTTP %s %s" % (st, str(d)[:120]))
+
+## ★★已知缺口, 显式登记(不静默截断):
+##   `finals_report` 只挡到**桶级** —— 同桶的旁观者能替别人报一场。
+##   精确到"这一场"要服务端自己推对阵树, 那就是把对阵规则在 SQL 里写第二遍。
+##   与排行榜/快照池同一个信任模型; 服务端复算是 B 阶段第二步的事。
+print("  [GAP ] ⑰ ★已知缺口: finals_report 只挡到桶级, 同桶旁观者能替别人报一场")
+print("         (要挡到「这一场」得在 SQL 里把对阵规则写第二遍; 服务端复算是 B 阶段第二步)")
+
+sql("delete from public.finals_pending where season_week = %d" % WEEK)
+
 ## ★反向验证时跳过这一段(它要真等 pg_cron 醒, 一轮 30~90 秒)
 if os.environ.get("SKIP_CRON") == "1":
     print("── ⑭ (SKIP_CRON=1, 跳过) ──")
     print("")
     print("══ %d 通过 / %d 失败 ══" % (OK[0], BAD[0]))
     sys.exit(1 if BAD[0] else 0)
+
+
 print("── ⑭ pg_cron 真的会响 ──")
 st, j = sql("select jobname, schedule, active from cron.job where jobname = 'finals_advance'")
 row = j[0] if isinstance(j, list) and j else {}

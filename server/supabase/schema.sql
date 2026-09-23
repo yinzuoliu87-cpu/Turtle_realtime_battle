@@ -471,3 +471,186 @@ end $$;
 
 revoke all on function public.finals_advance(bigint) from public;
 revoke execute on function public.finals_advance(bigint) from anon, authenticated;
+
+-- ─────────────────────────────────────────────────────────────
+-- 周日决赛日的【写入】(E-B3 下半, 2026-09-23)
+--
+-- ★★切桶的规则**只有这一份在执行**。客户端的 `bracket.gd` 里那三个同名函数
+--   (`bucket_size_for` / `bucket_count` / `bucket_of_seed`)在产品代码里零个调用者 ——
+--   它们是**规格**, 有 41 条门禁守着; 这里是**实现**。
+--   两边由 `tools/probe_finals_server.py` 的 ⑮ 段逐个人数比对钉在一起。
+--   （客户端从回包里只拿「这个桶几个人」, 整张图按它自己算 ⇒ 不需要知道怎么切的。）
+-- ─────────────────────────────────────────────────────────────
+
+-- 报名台: 周六闯关赛晋级的人自己报到
+create table if not exists public.finals_pending (
+  season_week  bigint      not null,
+  account_id   uuid        not null references auth.users(id) on delete cascade,
+  name         text        not null,
+  snapshot     jsonb       not null,       -- 快照代打用的阵容（D8）
+  gw           int         not null,       -- 闯关赛战绩（种子排序用）
+  gl           int         not null,
+  entered_at   timestamptz not null default now(),
+  primary key (season_week, account_id)
+);
+alter table public.finals_pending enable row level security;
+-- ★只能看见自己那一行: 「谁报名了」本身就是情报(能数出今晚有多少人、谁在)
+drop policy if exists finals_p_self on public.finals_pending;
+create policy finals_p_self on public.finals_pending for select
+  using (auth.uid() = account_id);
+-- 写一律走下面的函数（表上不给 insert/update 策略）
+
+-- ─────────────────────────────────────────────────────────────
+-- ① 报到
+-- ★晋级线在服务端判(`p_gw >= 线`), 不信客户端说的"我晋级了"这句话本身;
+--   但 gw/gl 这两个数现在仍是客户端报的 —— 与排行榜、快照池同一个信任模型,
+--   服务端复算是 B 阶段第二步的事。**这一点是已知缺口, 不假装它不存在。**
+-- ─────────────────────────────────────────────────────────────
+create or replace function public.finals_enter(p_week bigint, p_name text,
+    p_snapshot jsonb, p_gw int, p_gl int)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare floor_wins int := 5;   -- ★与 phase2_config.PROMOTE_WINS_FLOOR 同值(测试期 5 / 正式 13)
+begin
+  if auth.uid() is null then
+    return jsonb_build_object('ok', false, 'reason', 'not_signed_in');
+  end if;
+  if coalesce(p_gw, 0) < floor_wins then
+    return jsonb_build_object('ok', false, 'reason', 'not_qualified', 'need', floor_wins);
+  end if;
+  -- ★已经开赛就不收了: 桶已经坐定, 这时塞人会让别人的对阵图当场变形
+  if exists (select 1 from public.finals_buckets where season_week = p_week) then
+    return jsonb_build_object('ok', false, 'reason', 'already_seated');
+  end if;
+  insert into public.finals_pending (season_week, account_id, name, snapshot, gw, gl)
+    values (p_week, auth.uid(), coalesce(p_name, '?'), coalesce(p_snapshot, '{}'::jsonb),
+            p_gw, coalesce(p_gl, 0))
+    on conflict (season_week, account_id) do update
+      set name = excluded.name, snapshot = excluded.snapshot,
+          gw = excluded.gw, gl = excluded.gl;
+  return jsonb_build_object('ok', true);
+end $$;
+
+revoke all on function public.finals_enter(bigint, text, jsonb, int, int) from public;
+revoke execute on function public.finals_enter(bigint, text, jsonb, int, int) from anon;
+grant execute on function public.finals_enter(bigint, text, jsonb, int, int) to authenticated;
+
+-- ─────────────────────────────────────────────────────────────
+-- 切桶规则（规格在 scripts/gamedata/bracket.gd，探针逐个人数比对）
+-- ─────────────────────────────────────────────────────────────
+-- 一个桶装多少: >16 → 32；≤16 → 16；依次减半到 4。
+-- ⚠ 人数比 4 还少时**不再减半**，直接返回人数本身 ——
+--   2 个人分成两个「1 人桶」会造出一个没有对手的冠军，那不是比赛。
+create or replace function public.finals_bucket_size(n int)
+returns int language sql immutable as $$
+  select case
+    when n <= 0 then 0
+    when n < 4  then n
+    when n > 16 then 32
+    when n > 8  then 16
+    when n > 4  then 8
+    else 4
+  end
+$$;
+
+-- 分几个桶：向上取整（剩下的人不能没地方去）
+create or replace function public.finals_bucket_count(n int)
+returns int language sql immutable as $$
+  select case when public.finals_bucket_size(n) <= 0 then 0
+              else ceil(n::numeric / public.finals_bucket_size(n))::int end
+$$;
+
+-- 蛇形切桶：第 i 号种子（0 = 最高）进哪个桶。1,2,3,4 / 4,3,2,1 / 1,2,3,4 …… 来回走。
+-- ★目的是强度均匀 —— 顺序切（前 32 名全进 1 号桶）会造出一个死亡之桶。
+create or replace function public.finals_bucket_of(seed_idx int, n_buckets int)
+returns int language sql immutable as $$
+  select case
+    when n_buckets <= 1 or seed_idx < 0 then 0
+    when (seed_idx / n_buckets) % 2 = 0 then seed_idx % n_buckets
+    else n_buckets - 1 - (seed_idx % n_buckets)
+  end
+$$;
+
+-- ─────────────────────────────────────────────────────────────
+-- ② 坐下: 周日开赛前一次性切桶。★幂等 —— 已经坐过就不动
+-- ─────────────────────────────────────────────────────────────
+create or replace function public.finals_seat(p_week bigint)
+returns int language plpgsql security definer set search_path = public as $$
+declare total int; nb int; r record; i int := 0; seats int[] := '{}'; b int;
+begin
+  if exists (select 1 from public.finals_buckets where season_week = p_week) then
+    return 0;                      -- 已经坐定了, 再叫一次什么都不做
+  end if;
+  select count(*) into total from public.finals_pending where season_week = p_week;
+  if total < 2 then
+    return 0;                      -- 一个人不成比赛
+  end if;
+  nb := public.finals_bucket_count(total);
+  -- 每个桶下一个空位的序号
+  for i in 1..nb loop seats := array_append(seats, 0); end loop;
+  i := 0;
+  -- ★排序 = 种子顺序: 胜场多的在前, 同胜场负场少的在前, 再同就按 account_id 定死
+  --   (**必须有一个确定性的最后一项**, 否则同分的人每次查出来的顺序都不同)
+  for r in select * from public.finals_pending
+            where season_week = p_week
+            order by gw desc, gl asc, account_id loop
+    b := public.finals_bucket_of(i, nb);
+    insert into public.finals_entrants
+      (season_week, bucket_no, seed, account_id, name, snapshot)
+      values (p_week, b, seats[b + 1], r.account_id, r.name, r.snapshot);
+    seats[b + 1] := seats[b + 1] + 1;
+    i := i + 1;
+  end loop;
+  -- 桶本身（n = 这个桶真实坐了几个人，可能比容量少）
+  insert into public.finals_buckets (season_week, bucket_no, n, round, round_at, closed)
+    select p_week, bucket_no, count(*)::int, 1, now(), false
+      from public.finals_entrants where season_week = p_week group by bucket_no;
+  return nb;
+end $$;
+
+revoke all on function public.finals_seat(bigint) from public;
+revoke execute on function public.finals_seat(bigint) from anon, authenticated;
+
+-- ─────────────────────────────────────────────────────────────
+-- ③ 报结果。★只有**这一场的参赛者**报得了, 而且只能报**当前轮**
+-- ★幂等: 同一场重复报不覆盖(先到先得) —— 两边都会报, 谁先到都一样
+-- ─────────────────────────────────────────────────────────────
+create or replace function public.finals_report(p_week bigint, p_bucket int,
+    p_round int, p_match int, p_winner_side int, p_seed bigint)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare b record; mine int;
+begin
+  if auth.uid() is null then
+    return jsonb_build_object('ok', false, 'reason', 'not_signed_in');
+  end if;
+  select * into b from public.finals_buckets
+   where season_week = p_week and bucket_no = p_bucket;
+  if not found or b.closed then
+    return jsonb_build_object('ok', false, 'reason', 'no_bucket');
+  end if;
+  -- ★只收当前轮: 收旧轮的等于允许改已经翻过面的结果; 收未来轮等于提前定胜负
+  if p_round <> b.round then
+    return jsonb_build_object('ok', false, 'reason', 'wrong_round', 'round', b.round);
+  end if;
+  -- ★报的人必须是这个桶里的人。**"是不是这一场的人"客户端说了不算**, 但
+  --   "在不在这个桶里"服务端查得到; 精确到"这一场"需要服务端自己推对阵树,
+  --   那就是把对阵规则在 SQL 里写第二遍了 ⇒ 这里只挡到桶级, 差额记在下面的注释里。
+  -- ⚠ 已知缺口: 同桶的旁观者能替别人报一场。与排行榜/快照池同一个信任模型,
+  --   服务端复算是 B 阶段第二步的事 —— 不假装它不存在。
+  select seed into mine from public.finals_entrants
+   where season_week = p_week and bucket_no = p_bucket and account_id = auth.uid();
+  if mine is null then
+    return jsonb_build_object('ok', false, 'reason', 'not_in_bucket');
+  end if;
+  if p_winner_side not in (0, 1) then
+    return jsonb_build_object('ok', false, 'reason', 'bad_side');
+  end if;
+  insert into public.finals_results
+    (season_week, bucket_no, round, match_no, winner_side, seed_used)
+    values (p_week, p_bucket, p_round, p_match, p_winner_side, coalesce(p_seed, 0))
+    on conflict (season_week, bucket_no, round, match_no) do nothing;
+  return jsonb_build_object('ok', true);
+end $$;
+
+revoke all on function public.finals_report(bigint, int, int, int, int, bigint) from public;
+revoke execute on function public.finals_report(bigint, int, int, int, int, bigint) from anon;
+grant execute on function public.finals_report(bigint, int, int, int, int, bigint) to authenticated;

@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://dn7k3xqw9v2bm"]
+
+[ext_resource type="Script" path="res://tests/_dump_bracket_rules.gd" id="1"]
+
+[node name="DumpBracketRules" type="Node"]
+script = ExtResource("1")
