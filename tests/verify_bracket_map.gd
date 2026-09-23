@@ -50,6 +50,7 @@ func _ready() -> void:
 	await _t_center_on_me()
 	await _t_clickable()
 	await _t_pan_by_size()
+	await _t_two_views()
 	print("")
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 桶地图" if _fail == 0 else "FAIL x%d" % _fail)
@@ -200,3 +201,67 @@ func _t_pan_by_size() -> void:
 		_map._home_btn != null and not _map._home_btn.visible)
 	## ★分母: 这一屏确实建出来了, 不是因为空的才"放得下"
 	_ok("④ ★分母: 4 人桶真画了 3 场", _texts().size() >= 3, "%d 条字" % _texts().size())
+
+
+# ─────────────────────────────────────────────────────────────
+# ⑤ ★★周日是【两场】不是一场（用户 2026-09-23 指出）
+#    上午·分桶赛（我是选手）/ 晚上·冠军签表（我多半是观众）
+# ─────────────────────────────────────────────────────────────
+const SUN_AM := 1789862400 + 10 * 3600   # 2026-09-20 周日 10:00 UTC
+const SUN_PM := 1789862400 + 21 * 3600   # 同日 21:00 UTC（冠军赛 20:00 开）
+
+func _t_two_views() -> void:
+	print("── ⑤ 两张图 ──")
+	## 纯函数: 默认看哪张跟着时刻走
+	_ok("⑤ ★上午默认看【我的桶】", L.default_view(SUN_AM) == L.VIEW_BUCKET,
+		L.default_view(SUN_AM))
+	_ok("⑤ ★20:00 之后默认看【冠军赛】", L.default_view(SUN_PM) == L.VIEW_FINALS,
+		L.default_view(SUN_PM))
+	_ok("⑤ ★分母: 两个时刻给的答案确实不同(否则上面两条有一条是蒙的)",
+		L.default_view(SUN_AM) != L.default_view(SUN_PM))
+
+	## 上午: 桶有数据、签表还没形成
+	if _map != null:
+		_map.queue_free()
+		await get_tree().process_frame
+	_map = SCENE.new()
+	get_tree().root.add_child(_map)
+	await get_tree().process_frame
+	_map.set_data({"size": 8, "round": 1, "me": 2, "names": NAMES, "done": {}}, {}, SUN_AM)
+	await get_tree().process_frame
+	_ok("⑤ 上午打开: 停在【我的桶】", str(_map._view) == L.VIEW_BUCKET, str(_map._view))
+	_ok("⑤ ★上午确实画了桶(8 人 7 场)", _texts().size() >= 7, "%d 条字" % _texts().size())
+
+	## 切到冠军赛: **不是空图**, 要说清在等什么 + 倒计时
+	_map.set_view(L.VIEW_FINALS)
+	await get_tree().process_frame
+	var et: String = str(_map._empty_lb.text)
+	print("  ⑤ 切到冠军赛(上午)显示: 「%s」" % et)
+	_ok("⑤ ★★签表还没形成 → 说人话而不是画空图", _map._empty_lb.visible, et)
+	_ok("⑤ ★而且带倒计时(「敬请期待」没用)", et.find("后开播") >= 0, et)
+	_ok("⑤ ★用词还是「开播」, 不出现「直播」「回放」",
+		et.find("直播") < 0 and et.find("回放") < 0, et)
+
+	## ★★默认那张要是还没形成, 开屏就该退回另一张 —— 别让人一进来看到空图
+	_map.set_data({"size": 8, "round": 1, "me": 2, "names": NAMES, "done": {}}, {}, SUN_PM)
+	await get_tree().process_frame
+	_ok("⑤ ★★晚上但签表还没建好 → 退回【我的桶】, 不让人开屏就看到空图",
+		str(_map._view) == L.VIEW_BUCKET, str(_map._view))
+
+	## 晚上 + 签表已形成: 默认就看签表, 而且**我不在里面**(只有桶冠军进得去)
+	_map.set_data(
+		{"size": 8, "round": 5, "me": 2, "names": NAMES, "done": {}},
+		{"size": 4, "round": 1, "me": -1, "names": ["甲龟", "乙龟", "丙龟", "丁龟"], "done": {}},
+		SUN_PM)
+	await get_tree().process_frame
+	_ok("⑤ 晚上 + 签表已建好 → 默认看【冠军赛】", str(_map._view) == L.VIEW_FINALS, str(_map._view))
+	_ok("⑤ ★★切图之后读的是【另一份】数据(4 人签表不是 8 人桶)",
+		int(_map.cur().get("size", 0)) == 4, "size=%d" % int(_map.cur().get("size", 0)))
+	_ok("⑤ ★我不在签表里 → 对焦到当前轮(不崩、不乱指)",
+		_map.my_focus().x >= 1, str(_map.my_focus()))
+
+	## 切回我的桶: 数据必须换回去
+	_map.set_view(L.VIEW_BUCKET)
+	await get_tree().process_frame
+	_ok("⑤ ★切回来读的又是桶那份(8 人)",
+		int(_map.cur().get("size", 0)) == 8, "size=%d" % int(_map.cur().get("size", 0)))

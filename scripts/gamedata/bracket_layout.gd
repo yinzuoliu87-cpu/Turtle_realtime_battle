@@ -26,6 +26,8 @@ extends RefCounted
 ## 列间距不照 LoL 那个 26%：镜像布局列数翻倍（2R−1 列），得按屏宽反算。
 
 const _B := preload("res://scripts/gamedata/bracket.gd")
+## ★决赛时刻的事实源是 phase2_config —— 这里只引, 不再拄一份(同一个数存两份必然漂)。
+const _P2 := preload("res://scripts/gamedata/phase2_config.gd")
 
 const DESIGN := Vector2(1280.0, 720.0)
 const ROW_H_RATIO := 0.054         # 节点条高 / 屏高（量自 Worlds）
@@ -198,3 +200,31 @@ static func center_offset_on(n: int, r: int, m: int, viewport: Vector2, sc: floa
 	if rect.size == Vector2.ZERO:
 		return Vector2.ZERO
 	return viewport * 0.5 - (rect.position + rect.size * 0.5) * sc
+
+
+## ─── 周日是【两场】不是一场 ────────────────────────────────────
+## 原稿 §四 分得很清楚：
+##   · **上午·分桶赛**：你自己那个 32 人桶，5 轮，约 40 分钟 → 产生**桶冠军**
+##   · **晚上·冠军签表**：20:00 开赛，**全部桶冠军**补轮空进最近的 2 的幂签表
+##
+## ★两者对同一个玩家的意义完全不同：上午你是**选手**，晚上你多半是**观众**
+##   （只有桶冠军进得去）。所以不能糊成一张图 —— 得能切，而且默认看哪张要跟着时刻走。
+## ★结构上两者都是单败图 ⇒ 同一套 `bracket.gd` / 本文件 / 桶地图场景通吃，
+##   差的只是**喂哪份数据**。签表的人数不是 2 的幂（226 个桶冠军 → 256 签）也没关系：
+##   `slots_for()` 本来就补轮空，而且轮空只给高种子。
+const VIEW_BUCKET := "bucket"
+const VIEW_FINALS := "finals"
+
+## 这一刻默认该看哪一张。★只看**小时**，与 `phase_at_utc` 同一条纪律（逻辑一律 UTC）。
+static func default_view(now: int) -> String:
+	var d: Dictionary = Time.get_datetime_dict_from_unix_time(now)
+	var hour: int = int(d.get("hour", 0))
+	return VIEW_FINALS if hour >= int(_P2.FINALS_START_HOUR_UTC) else VIEW_BUCKET
+
+
+## 冠军签表开赛的绝对时刻（当天 20:00 UTC）。
+static func finals_start_ts(now: int) -> int:
+	var d: Dictionary = Time.get_datetime_dict_from_unix_time(now)
+	var secs: int = int(d.get("hour", 0)) * 3600 + int(d.get("minute", 0)) * 60 \
+		+ int(d.get("second", 0))
+	return now - secs + int(_P2.FINALS_START_HOUR_UTC) * 3600

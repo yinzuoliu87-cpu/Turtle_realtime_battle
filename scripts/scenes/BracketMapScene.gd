@@ -34,6 +34,19 @@ extends Control
 ##     "done":  {"1-0": 0, "1-1": 1},    # 【已翻面】的场次 → 赢家在这一场的哪一侧(0/1)
 ##   }
 ## ⚠ `done` 里**只有已经翻面的轮次**。当前轮不在里面 —— 见 ★②。
+##
+## ══════════════════════════════════════════════════════════════════════
+##  ★★周日是【两场】不是一场（用户 2026-09-23 指出，我原来糊成了一张图）
+## ══════════════════════════════════════════════════════════════════════
+##   · **上午·分桶赛**：你自己那个桶，5 轮 → 产生**桶冠军**
+##   · **晚上·冠军签表**：20:00 开赛，**全部桶冠军**进一张新图，单败打到决赛
+##
+## 两者对同一个玩家的意义完全不同：**上午你是选手，晚上你多半是观众**
+## （只有桶冠军进得去）。所以：
+##   ★顶上两个 Tab，随时能切 —— 桶里输了就想看别人的，晚上也想回看自己桶里的路；
+##   ★**默认看哪张跟着时刻走**（20:00 之后默认冠军赛），不让人每次自己找；
+##   ★签表**上午还没形成** ⇒ 那时候切过去要说人话（等各桶决出冠军 + 倒计时），
+##     不是画一张空图。
 
 const TopBar := preload("res://scripts/util/top_bar.gd")
 const _B := preload("res://scripts/gamedata/bracket.gd")
@@ -46,7 +59,12 @@ const ACCENT := Color("#4ff0d0")       # ★全屏**唯一**的强调色(Worlds 
 const DIM := Color("#5a6a80")          # 轮空/空位
 const MINE := Color("#ffd93d")         # 只有"我"用金色 —— 找自己是这屏的头等大事
 
-var _bucket: Dictionary = {}
+var _bucket: Dictionary = {}           # 上午: 我自己那个桶
+var _finals: Dictionary = {}           # 晚上: 桶冠军的签表(上午是空的)
+var _view: String = _L.VIEW_BUCKET     # 现在看的是哪一张
+var _now_override := 0                 # ★只给门禁喂已知时刻; 产品不传
+var _tabs: HBoxContainer = null
+var _empty_lb: Label = null
 var _canvas: Control = null            # 拖动的是它, 不是整屏
 var _scale := 1.0
 var _pan := Vector2.ZERO
@@ -78,6 +96,28 @@ func _ready() -> void:
 		"on_back": func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"),
 	})
 
+	## ★两个 Tab: 上午看自己那个桶, 晚上看桶冠军的签表。
+	##   钉在顶栏下方, **不跟着画布走** —— 切图是全屏动作, 不该拖没了。
+	_tabs = HBoxContainer.new()
+	_tabs.position = Vector2(24, 96)
+	_tabs.add_theme_constant_override("separation", 10)
+	add_child(_tabs)
+	for pair in [[_L.VIEW_BUCKET, "我的桶"], [_L.VIEW_FINALS, "冠军赛"]]:
+		var b := Button.new()
+		b.text = str(pair[1])
+		b.custom_minimum_size = Vector2(132, 81)    # 触控下限 81px(=44pt)
+		var v: String = str(pair[0])
+		b.pressed.connect(func(): set_view(v))
+		_tabs.add_child(b)
+
+	## 签表还没形成时说人话的那一行(不是画一张空图)
+	_empty_lb = Label.new()
+	_empty_lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_empty_lb.add_theme_font_size_override("font_size", 19)
+	_empty_lb.add_theme_color_override("font_color", DIM)
+	_empty_lb.visible = false
+	add_child(_empty_lb)
+
 	## ★「回到我」钉在右下角, **不跟着画布走** —— 拖多远它都在。
 	##   触控下限 81px(= 44pt), 与全项目同一条线。
 	_home_btn = Button.new()
@@ -86,14 +126,42 @@ func _ready() -> void:
 	_home_btn.pressed.connect(func(): _center_on_me())
 	add_child(_home_btn)
 
-	if not _bucket.is_empty():
+	if not _bucket.is_empty() or not _finals.is_empty():
 		_rebuild()
 
 
+## 只喂一张（老调用点/门禁用）。
 func set_bucket(d: Dictionary) -> void:
-	_bucket = d.duplicate(true)
+	set_data(d, {})
+
+
+## 喂两张。★`finals` 为空 = 签表还没形成（上午就是这样），不是"出错了"。
+func set_data(bucket: Dictionary, finals: Dictionary, now: int = 0) -> void:
+	_bucket = bucket.duplicate(true)
+	_finals = finals.duplicate(true)
+	_now_override = now
+	_view = _L.default_view(_clock())
+	## ★默认那张要是还没形成, 就退回另一张 —— 别让人开屏就看到一张空图
+	if _view == _L.VIEW_FINALS and int(_finals.get("size", 0)) <= 1:
+		_view = _L.VIEW_BUCKET
 	if is_inside_tree():
 		_rebuild()
+
+
+func _clock() -> int:
+	return _now_override if _now_override > 0 else int(Time.get_unix_time_from_system())
+
+
+## 现在这一张的数据。★全屏所有判据都从这里取 —— 切 Tab 只换它, 其余一行不动。
+func cur() -> Dictionary:
+	return _finals if _view == _L.VIEW_FINALS else _bucket
+
+
+func set_view(v: String) -> void:
+	if v == _view:
+		return
+	_view = v
+	_rebuild()
 
 
 ## ─────────────────────────────────────────────────────────────
@@ -105,17 +173,17 @@ const ST_LOCKED := "locked"    # 还轮不到(上一轮没打完)
 const ST_LIVE := "live"        # ★当前轮: 可以点开看, 但**不显示结果**
 const ST_DONE := "done"        # 已翻面: 显示胜者
 func match_state(r: int, m: int) -> String:
-	var n := int(_bucket.get("size", 0))
-	var cur := int(_bucket.get("round", 1))
+	var n := int(cur().get("size", 0))
+	var cur_r := int(cur().get("round", 1))
 	var key := "%d-%d" % [r, m]
-	if (_bucket.get("done", {}) as Dictionary).has(key):
+	if (cur().get("done", {}) as Dictionary).has(key):
 		return ST_DONE
 	if r == 1:
 		var sa: int = m * 2
 		var sb: int = m * 2 + 1
 		if _B.is_bye_slot(sa, n) or _B.is_bye_slot(sb, n):
 			return ST_BYE
-	if r > cur:
+	if r > cur_r:
 		return ST_LOCKED
 	return ST_LIVE
 
@@ -129,8 +197,8 @@ func can_open(r: int, m: int) -> bool:
 
 ## 这一场是不是**我的**。
 func is_my_match(r: int, m: int) -> bool:
-	var me := int(_bucket.get("me", -1))
-	var n := int(_bucket.get("size", 0))
+	var me := int(cur().get("me", -1))
+	var n := int(cur().get("size", 0))
 	if me < 0 or n <= 0:
 		return false
 	var seat := _B.seat_of_seed(me, n)
@@ -144,11 +212,11 @@ func is_my_match(r: int, m: int) -> bool:
 ## 我现在应该看哪一场（开图居中用）：**我还活着的那一场**；
 ## 出局了就定位到**淘汰我的那一场**（原稿那条"我止步在这"）。
 func my_focus() -> Vector2i:
-	var n := int(_bucket.get("size", 0))
-	var cur := int(_bucket.get("round", 1))
+	var n := int(cur().get("size", 0))
+	var cur_r := int(cur().get("round", 1))
 	var total := _B.rounds_for(n)
-	if int(_bucket.get("me", -1)) < 0:
-		return Vector2i(mini(cur, maxi(1, total)), 0)      # 纯观众: 看当前轮第一场
+	if int(cur().get("me", -1)) < 0:
+		return Vector2i(mini(cur_r, maxi(1, total)), 0)      # 纯观众: 看当前轮第一场
 	for r in range(1, total + 1):
 		var cnt := _B.matches_in_round(n, r)
 		for m in range(cnt):
@@ -164,11 +232,11 @@ func my_focus() -> Vector2i:
 
 func _i_won(r: int, m: int) -> bool:
 	var key := "%d-%d" % [r, m]
-	var w = (_bucket.get("done", {}) as Dictionary).get(key, -1)
+	var w = (cur().get("done", {}) as Dictionary).get(key, -1)
 	if int(w) < 0:
 		return false
-	var n := int(_bucket.get("size", 0))
-	var seat := _B.seat_of_seed(int(_bucket.get("me", -1)), n)
+	var n := int(cur().get("size", 0))
+	var seat := _B.seat_of_seed(int(cur().get("me", -1)), n)
 	var span: int = int(pow(2, r))
 	## 赢家在这一场的哪一侧(0=上半 1=下半)
 	var my_side: int = (seat % span) / (span / 2)
@@ -181,10 +249,23 @@ func _i_won(r: int, m: int) -> bool:
 func _rebuild() -> void:
 	for c in _canvas.get_children():
 		c.queue_free()
-	var n := int(_bucket.get("size", 0))
+	var vp0 := get_viewport().get_visible_rect().size
+	_sync_tabs()
+	var n := int(cur().get("size", 0))
 	if n <= 1:
+		## ★★不是画一张空图 —— 说清楚在等什么, 还剩多久。
+		##   上午切到「冠军赛」是常态(它本来就还没形成), 这不是出错。
+		if _empty_lb != null:
+			_empty_lb.text = _empty_text()
+			_empty_lb.position = Vector2(0, vp0.y * 0.5 - 20.0)
+			_empty_lb.size = Vector2(vp0.x, 40.0)
+			_empty_lb.visible = true
+		if _home_btn != null:
+			_home_btn.visible = false
 		return
-	var vp := get_viewport().get_visible_rect().size
+	if _empty_lb != null:
+		_empty_lb.visible = false
+	var vp := vp0
 	_scale = _L.fit_scale(n, vp)
 	_can_pan = _L.needs_pan(n, vp)
 	_canvas.scale = Vector2(_scale, _scale)
@@ -205,6 +286,37 @@ func _rebuild() -> void:
 ## ★参考图（用户给的世界杯晋级图）顶部就是这一条，而且**是对称的** ——
 ##   它一眼告诉你"现在看的是哪一轮"，在 9 列的 32 人桶里是必需品。
 ## ★跟着画布一起拖（不是钉在屏上）—— 标签必须停在它那一列的正上方，飘走就没意义了。
+## 当前那张还没形成时，屏幕中间说什么。
+## ★★用词仍然是「开播」，而且**带倒计时** —— 「20:00 开播」比「敬请期待」有用得多。
+func _empty_text() -> String:
+	if _view == _L.VIEW_FINALS:
+		var left: int = int(_L.finals_start_ts(_clock())) - _clock()
+		if left > 0:
+			return "冠军赛 %d 小时 %d 分后开播 · 先等各桶决出冠军" % [left / 3600, (left % 3600) / 60]
+		return "冠军赛正在集结 · 等各桶决出冠军"
+	return "本周没有你的桶 · 周六闯关赛晋级才进得来"
+
+
+## 两个 Tab 的样子：当前那张高亮；**还没形成的那张不禁用**（要让人点进去看倒计时），
+## 但名字后面缀一个「·未开」，免得点进去才发现是空的。
+func _sync_tabs() -> void:
+	if _tabs == null:
+		return
+	var kids := _tabs.get_children()
+	if kids.size() < 2:
+		return
+	var names := [
+		"我的桶" + ("" if int(_bucket.get("size", 0)) > 1 else " ·无"),
+		"冠军赛" + ("" if int(_finals.get("size", 0)) > 1 else " ·未开"),
+	]
+	var views := [_L.VIEW_BUCKET, _L.VIEW_FINALS]
+	for i in range(2):
+		var b := kids[i] as Button
+		b.text = str(names[i])
+		b.add_theme_color_override("font_color",
+			ACCENT if str(views[i]) == _view else DIM)
+
+
 func _make_round_labels(n: int, total: int) -> void:
 	for r in range(1, total + 1):
 		var txt := _L.round_label(n, r)
@@ -225,13 +337,13 @@ func _make_round_labels(n: int, total: int) -> void:
 			lb.add_theme_font_size_override("font_size", 13)
 			## 当前轮用强调色 —— 其余淡下去, 免得九个标签一样抢眼
 			lb.add_theme_color_override("font_color",
-				ACCENT if r == int(_bucket.get("round", 1)) else DIM)
+				ACCENT if r == int(cur().get("round", 1)) else DIM)
 			lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			_canvas.add_child(lb)
 
 
 func _make_node(r: int, m: int) -> Control:
-	var n := int(_bucket.get("size", 0))
+	var n := int(cur().get("size", 0))
 	var rect: Rect2 = _L.node_rect(n, r, m)
 	var st := match_state(r, m)
 	var mine := is_my_match(r, m)
@@ -278,8 +390,8 @@ func _make_node(r: int, m: int) -> Control:
 
 ## 节点上写什么字。★★**当前轮不写胜者** —— 客户端压根没有那个数据(见 ★②)。
 func _node_text(r: int, m: int) -> String:
-	var n := int(_bucket.get("size", 0))
-	var names: Array = _bucket.get("names", [])
+	var n := int(cur().get("size", 0))
+	var names: Array = cur().get("names", [])
 	var st := match_state(r, m)
 	if st == ST_BYE:
 		return "轮空"
@@ -289,7 +401,7 @@ func _node_text(r: int, m: int) -> String:
 		return "▶ 你的这一场" if is_my_match(r, m) else "▶ 待开播"
 	## 已翻面: 报胜者
 	var key := "%d-%d" % [r, m]
-	var w := int((_bucket.get("done", {}) as Dictionary).get(key, 0))
+	var w := int((cur().get("done", {}) as Dictionary).get(key, 0))
 	var span: int = int(pow(2, r))
 	var seat: int = m * span + w * (span / 2)
 	var sd := _B.seed_at_seat(seat, n)
@@ -298,7 +410,7 @@ func _node_text(r: int, m: int) -> String:
 
 
 func _center_on_me() -> void:
-	var n := int(_bucket.get("size", 0))
+	var n := int(cur().get("size", 0))
 	if n <= 1:
 		return
 	var f := my_focus()
