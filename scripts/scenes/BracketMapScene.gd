@@ -65,6 +65,7 @@ var _view: String = _L.VIEW_BUCKET     # 现在看的是哪一张
 var _now_override := 0                 # ★只给门禁喂已知时刻; 产品不传
 var _tabs: HBoxContainer = null
 var _empty_lb: Label = null
+var _bg: ColorRect = null
 var _canvas: Control = null            # 拖动的是它, 不是整屏
 var _scale := 1.0
 var _pan := Vector2.ZERO
@@ -78,11 +79,15 @@ signal match_opened(r: int, m: int)
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
-	var bg := ColorRect.new()
-	bg.color = BG
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(bg)
+	## ★必须**真盖住**全局 `PersistentBg`(layer -100 的深绿瓷砖) —— 那一层是给
+	##   场景切换空隙用的, 各屏都得自己铺不透明底。只设 anchors 拿不到尺寸(实拍抓到:
+	##   整屏透出绿瓷砖), ⇒ 显式给 size, 并在 `_rebuild()` 里跟着视口更新。
+	_bg = ColorRect.new()
+	_bg.color = BG
+	_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_bg.size = get_viewport().get_visible_rect().size
+	_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_bg)
 
 	_canvas = Control.new()
 	_canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -195,18 +200,12 @@ func can_open(r: int, m: int) -> bool:
 	return st == ST_LIVE or st == ST_DONE
 
 
-## 这一场是不是**我的**。
+## 这一场是不是**我的** —— 判据是「我是这一场的某一侧」。
+## ★★不能用「坑位区间包含我」那种算法(第一版就是): 决赛覆盖**所有**坑位,
+##   于是**每个人的决赛格都会被标成自己的**; 而我在半决赛已经输了的那一场也照标。
+##   实拍当场看出来的 —— 几何对、语义错。
 func is_my_match(r: int, m: int) -> bool:
-	var me := int(cur().get("me", -1))
-	var n := int(cur().get("size", 0))
-	if me < 0 or n <= 0:
-		return false
-	var seat := _B.seat_of_seed(me, n)
-	if seat < 0:
-		return false
-	## 第 r 轮第 m 场覆盖的坑位区间
-	var span: int = int(pow(2, r))
-	return seat / span == m
+	return _is_me_side(r, m, 0) or _is_me_side(r, m, 1)
 
 
 ## 我现在应该看哪一场（开图居中用）：**我还活着的那一场**；
@@ -217,17 +216,16 @@ func my_focus() -> Vector2i:
 	var total := _B.rounds_for(n)
 	if int(cur().get("me", -1)) < 0:
 		return Vector2i(mini(cur_r, maxi(1, total)), 0)      # 纯观众: 看当前轮第一场
+	## ★我**真正在的最深那一场** —— 赢一轮就往里走一格, 输了就停在输掉的那一场
+	##   (原稿那条"我止步在这")。用 `competitor()` 判, 它会顺着 `done` 一路递归上来。
+	var best := Vector2i(1, 0)
+	var found := false
 	for r in range(1, total + 1):
-		var cnt := _B.matches_in_round(n, r)
-		for m in range(cnt):
-			if not is_my_match(r, m):
-				continue
-			var st := match_state(r, m)
-			if st == ST_LIVE or st == ST_LOCKED:
-				return Vector2i(r, m)                      # 还在打: 就是这一场
-			if st == ST_DONE and not _i_won(r, m):
-				return Vector2i(r, m)                      # 输在这里
-	return Vector2i(maxi(1, total), 0)
+		for m in range(_B.matches_in_round(n, r)):
+			if is_my_match(r, m):
+				best = Vector2i(r, m)
+				found = true
+	return best if found else Vector2i(maxi(1, mini(cur_r, total)), 0)
 
 
 func _i_won(r: int, m: int) -> bool:
@@ -250,6 +248,8 @@ func _rebuild() -> void:
 	for c in _canvas.get_children():
 		c.queue_free()
 	var vp0 := get_viewport().get_visible_rect().size
+	if _bg != null:
+		_bg.size = vp0                 # ★视口变了要跟上, 否则又露出瓷砖底
 	_sync_tabs()
 	var n := int(cur().get("size", 0))
 	if n <= 1:
@@ -265,15 +265,23 @@ func _rebuild() -> void:
 		return
 	if _empty_lb != null:
 		_empty_lb.visible = false
+	## ★★按**可用区**算, 不是整个视口 —— 顶栏 + 页签占掉 TOP_RESERVED。
+	##   实拍抓到: 32 人桶内容 599 高, 视口 720 说"放得下", 而可用只有 530 ⇒ 其实放不下,
+	##   左边两列的轮次标签被页签压在了底下。
 	var vp := vp0
-	_scale = _L.fit_scale(n, vp)
-	_can_pan = _L.needs_pan(n, vp)
+	var usable := Vector2(vp0.x, maxf(120.0, vp0.y - TOP_RESERVED))
+	_can_pan = _L.needs_pan(n, usable)
+	## ★★**要拖就不缩** —— 缩到放得下了就不需要拖, 两件事只能选一件。
+	##   实拍拓到: 32 人桶同时缩到 0.80 **又**能拖, 于是字被压成 12px 还要拖——
+	##   两头都不讨好。而且这是像素风项目, 缩放文字直接糊。
+	_scale = 1.0 if _can_pan else _L.fit_scale(n, usable)
 	_canvas.scale = Vector2(_scale, _scale)
 
 	var total := _B.rounds_for(n)
 	for r in range(1, total + 1):
 		for m in range(_B.matches_in_round(n, r)):
 			_canvas.add_child(_make_node(r, m))
+	_make_links(n, total)
 	_make_round_labels(n, total)
 	_center_on_me()
 	if _home_btn != null:
@@ -342,41 +350,116 @@ func _make_round_labels(n: int, total: int) -> void:
 			_canvas.add_child(lb)
 
 
+## 这一场某一侧（0=上 1=下）坐的是谁。
+## 返回 {"name": 名字/"待定"/"轮空", "seed": 种子号(-1=未定), "bye": 是不是空位}
+## ★★递归: 第 r 轮上面那一侧 = 第 r−1 轮第 2m 场的**赢家**。
+##   —— 这正是"对阵图"这件事本身, 写成查表就会跟晋级规则脱钩。
+func competitor(r: int, m: int, side: int) -> Dictionary:
+	var n := int(cur().get("size", 0))
+	var names: Array = cur().get("names", [])
+	if r <= 1:
+		var seat: int = m * 2 + side
+		var sd := _B.seed_at_seat(seat, n)
+		if sd < 0 or sd >= n:
+			return {"name": "轮空", "seed": -1, "bye": true}
+		return {"name": str(names[sd]) if sd < names.size() else "?", "seed": sd, "bye": false}
+	var src_m: int = m * 2 + side
+	var d: Dictionary = cur().get("done", {})
+	var key := "%d-%d" % [r - 1, src_m]
+	if d.has(key):
+		return competitor(r - 1, src_m, int(d[key]))
+	## ★轮空: 上一轮那一场有一侧是空位 ⇒ 另一侧**自动晋级**, 不必等 `done` 里有记录。
+	##   漏了这条的话, 有轮空的桶在第二轮会显示成"待定 vs 待定"。
+	if r - 1 == 1:
+		var a0: Dictionary = competitor(1, src_m, 0)
+		var b0: Dictionary = competitor(1, src_m, 1)
+		if bool(a0.get("bye", false)) != bool(b0.get("bye", false)):
+			return b0 if bool(a0.get("bye", false)) else a0
+	return {"name": "待定", "seed": -1, "bye": false}
+
+
+## 这一侧是不是我。
+func _is_me_side(r: int, m: int, side: int) -> bool:
+	var me := int(cur().get("me", -1))
+	if me < 0:
+		return false
+	return int(competitor(r, m, side).get("seed", -1)) == me
+
+
+## 这一场的赢家在哪一侧；-1 = 还不知道（**当前轮就是 -1，靠这个不剧透**）。
+func winner_side(r: int, m: int) -> int:
+	var d: Dictionary = cur().get("done", {})
+	var key := "%d-%d" % [r, m]
+	return int(d[key]) if d.has(key) else -1
+
+
 func _make_node(r: int, m: int) -> Control:
 	var n := int(cur().get("size", 0))
 	var rect: Rect2 = _L.node_rect(n, r, m)
 	var st := match_state(r, m)
 	var mine := is_my_match(r, m)
+	var ws := winner_side(r, m)
+	var sh: float = _L.slot_h()
 
 	var holder := Control.new()
 	holder.position = rect.position
 	holder.custom_minimum_size = rect.size
 	holder.size = rect.size
 
-	var bar := ColorRect.new()
-	bar.size = rect.size
-	bar.color = Color(1, 1, 1, 0.06) if st != ST_BYE else Color(1, 1, 1, 0.02)
-	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.add_child(bar)
+	## ★边框 + 实心底 —— 参考图的格子是圆角描边卡片, 没有边框就没有"格子感"。
+	var frame := Panel.new()
+	frame.size = rect.size
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color("#141b28") if st != ST_BYE else Color("#0e1219")
+	sb.border_color = MINE if mine else Color("#2c3950")
+	sb.set_border_width_all(2 if mine else 1)
+	sb.set_corner_radius_all(3)
+	frame.add_theme_stylebox_override("panel", sb)
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(frame)
 
-	## ★只有"我"那一场给金色左条 —— 找自己是这屏的头等大事
-	if mine:
-		var mark := ColorRect.new()
-		mark.color = MINE
-		mark.size = Vector2(5, rect.size.y)
-		mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		holder.add_child(mark)
+	## 两行: 上侧 / 下侧
+	for side in range(2):
+		var c: Dictionary = competitor(r, m, side)
+		var nm := str(c.get("name", "?"))
+		var is_bye := bool(c.get("bye", false))
+		var lb := Label.new()
+		lb.position = Vector2(9, float(side) * sh)
+		lb.size = Vector2(rect.size.x - 14, sh)
+		lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		lb.add_theme_font_size_override("font_size", 13)
+		## ★★谁赢**只在已翻面时**标出来 —— 当前轮 `ws == -1`, 两侧一样亮 ⇒ 不剧透。
+		##   而双方**名字照常显示**(参考里 SF1「法国 VS 西班牙」就是还没打的那一场),
+		##   剧透的是"谁赢"不是"谁打"。
+		var col := TXT
+		if is_bye:
+			col = DIM
+		elif ws >= 0:
+			col = ACCENT if side == ws else DIM
+		if _is_me_side(r, m, side):
+			col = MINE
+		lb.add_theme_color_override("font_color", col)
+		lb.text = ("✓ " if (ws >= 0 and side == ws) else "") + nm
+		lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(lb)
 
-	var lb := Label.new()
-	lb.text = _node_text(r, m)
-	lb.position = Vector2(12, 0)
-	lb.size = Vector2(rect.size.x - 16, rect.size.y)
-	lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	lb.add_theme_font_size_override("font_size", 15)
-	lb.add_theme_color_override("font_color",
-		MINE if mine else (DIM if st == ST_BYE else TXT))
-	lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.add_child(lb)
+	## 中间那道分隔线 —— 参考图两行之间有 VS，这里用一条细线 + 右侧状态标
+	var sep := ColorRect.new()
+	sep.color = Color("#2c3950")
+	sep.position = Vector2(6, sh - 1)
+	sep.size = Vector2(rect.size.x - 12, 1)
+	sep.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(sep)
+
+	if st == ST_LIVE:
+		var play := Label.new()
+		play.text = "▶"
+		play.position = Vector2(rect.size.x - 22, sh - 10)
+		play.size = Vector2(20, 20)
+		play.add_theme_font_size_override("font_size", 14)
+		play.add_theme_color_override("font_color", MINE if mine else ACCENT)
+		play.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(play)
 
 	if can_open(r, m):
 		var btn := Button.new()
@@ -388,34 +471,61 @@ func _make_node(r: int, m: int) -> Control:
 	return holder
 
 
-## 节点上写什么字。★★**当前轮不写胜者** —— 客户端压根没有那个数据(见 ★②)。
-func _node_text(r: int, m: int) -> String:
-	var n := int(cur().get("size", 0))
-	var names: Array = cur().get("names", [])
-	var st := match_state(r, m)
-	if st == ST_BYE:
-		return "轮空"
-	if st == ST_LOCKED:
-		return "- VS -"                   # 还没决出谁进来(Worlds 那张也是这么留位的)
-	if st == ST_LIVE:
-		return "▶ 你的这一场" if is_my_match(r, m) else "▶ 待开播"
-	## 已翻面: 报胜者
-	var key := "%d-%d" % [r, m]
-	var w := int((cur().get("done", {}) as Dictionary).get(key, 0))
-	var span: int = int(pow(2, r))
-	var seat: int = m * span + w * (span / 2)
-	var sd := _B.seed_at_seat(seat, n)
-	var who: String = str(names[sd]) if sd >= 0 and sd < names.size() else "?"
-	return "%s 晋级" % who
+## ★★连接线 —— 参考图里那些直角线。没有它，整张图就是一堆飘着的条。
+##   每一场画三段: 两个来源各自伸出一小截 → 一条竖线把它们并起来 → 一截进本场。
+##   镜像布局里右半区方向相反, 所以 `dir` 决定往左还是往右伸。
+func _make_links(n: int, total: int) -> void:
+	for r in range(2, total + 1):
+		for m in range(_B.matches_in_round(n, r)):
+			var me_rect: Rect2 = _L.node_rect(n, r, m)
+			var a: Rect2 = _L.node_rect(n, r - 1, m * 2)
+			var b: Rect2 = _L.node_rect(n, r - 1, m * 2 + 1)
+			if me_rect.size == Vector2.ZERO or a.size == Vector2.ZERO:
+				continue
+			## 来源在本场的左边还是右边 —— 镜像布局两侧相反
+			var from_left: bool = a.position.x < me_rect.position.x
+			var src_x: float = a.end.x if from_left else a.position.x
+			var dst_x: float = me_rect.position.x if from_left else me_rect.end.x
+			var mid_x: float = (src_x + dst_x) * 0.5
+			var ay: float = a.position.y + a.size.y * 0.5
+			var by: float = b.position.y + b.size.y * 0.5
+			var my: float = me_rect.position.y + me_rect.size.y * 0.5
+			_line(minf(src_x, mid_x), ay, absf(mid_x - src_x), 2.0)
+			_line(minf(src_x, mid_x), by, absf(mid_x - src_x), 2.0)
+			_line(mid_x - 1.0, minf(ay, by), 2.0, absf(by - ay))
+			_line(minf(mid_x, dst_x), my, absf(dst_x - mid_x), 2.0)
+
+
+func _line(x: float, y: float, w: float, h: float) -> void:
+	var seg := ColorRect.new()
+	seg.color = LINE
+	seg.position = Vector2(x, y - h * 0.5 if h <= 2.0 else y)
+	seg.size = Vector2(maxf(w, 2.0), maxf(h, 2.0))
+	seg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_canvas.add_child(seg)
+
+
+## 顶栏 + 页签占掉的高度 —— 图要摆在它们下面, 不然被压住。
+const TOP_RESERVED := 190.0
 
 
 func _center_on_me() -> void:
 	var n := int(cur().get("size", 0))
 	if n <= 1:
 		return
-	var f := my_focus()
 	var vp := get_viewport().get_visible_rect().size
-	_pan = _L.center_offset_on(n, f.x, f.y, vp, _scale)
+	var usable := Vector2(vp.x, maxf(120.0, vp.y - TOP_RESERVED))
+	if not _can_pan:
+		## ★★放得下 ⇒ 把**整张图**摆正中, **不要去追"我"那一场**。
+		##   追了会把另外半边推出屏幕 —— 实拍当场抓到: 32 人桶右半区整个不见,
+		##   而门禁 30 条全绿(它量的是"我那一场在视口正中", 那条本身没错, 错在前提)。
+		var cs: Vector2 = _L.content_size(n)
+		_pan = Vector2(
+			(usable.x - cs.x * _scale) * 0.5 - _L.SIDE_PAD * _scale,
+			TOP_RESERVED + (usable.y - cs.y * _scale) * 0.5)
+	else:
+		var f := my_focus()
+		_pan = _L.center_offset_on(n, f.x, f.y, usable, _scale) + Vector2(0.0, TOP_RESERVED)
 	_apply_pan()
 
 

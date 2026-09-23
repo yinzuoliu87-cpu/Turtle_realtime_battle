@@ -30,15 +30,24 @@ const _B := preload("res://scripts/gamedata/bracket.gd")
 const _P2 := preload("res://scripts/gamedata/phase2_config.gd")
 
 const DESIGN := Vector2(1280.0, 720.0)
-const ROW_H_RATIO := 0.054         # 节点条高 / 屏高（量自 Worlds）
+## ★★节点是**两行**(对阵双方各一行), 不是一行 —— 照参考图(德国 / VS / 巴拉圭)。
+##   量自 Worlds 的 5.4% 是**一行**的高度, 所以整格 = 它的两倍。
+const SLOT_H_RATIO := 0.054        # 单侧一行的高 / 屏高（量自 Worlds）
+const ROW_H_RATIO := 0.108         # 整格 = 两行
 const GAP_IN_HALF := 32.0          # 同半区两场之间
 const GAP_HALF_MULT := 3.0         # ★半区之间 = 同半区的 3 倍
 const SIDE_PAD := 28.0             # 左右边距
 const NODE_MIN_W := 104.0          # 节点条最窄到这里（再窄写不下名字）
+const NODE_MAX_W := 268.0          # 节点条最宽到这里（4 人桶则则则会被撑成 351）
 
 
 static func row_h() -> float:
 	return DESIGN.y * ROW_H_RATIO
+
+
+## 单侧那一行的高（节点内部上下各一行）。
+static func slot_h() -> float:
+	return DESIGN.y * SLOT_H_RATIO
 
 
 ## 镜像布局的列数：两侧各 R−1 轮 + 中间决赛 = 2R−1。
@@ -56,8 +65,11 @@ static func col_gap(n: int) -> float:
 	return (DESIGN.x - SIDE_PAD * 2.0) / float(c)
 
 
+## ★上下限都要: 太窄写不下名字, **太宽也不行** ——
+##   4 人桶只有 3 列, 列距除下来 408 ⇒ 条子被撑到 351px(实拍拓到),
+##   而参考图里的条子始终是紧凑的。
 static func node_w(n: int) -> float:
-	return maxf(NODE_MIN_W, col_gap(n) * 0.86)
+	return clampf(col_gap(n) * 0.86, NODE_MIN_W, NODE_MAX_W)
 
 
 ## ─────────────────────────────────────────────────────────────

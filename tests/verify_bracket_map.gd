@@ -97,29 +97,39 @@ func _t_no_spoiler() -> void:
 	print("  ① 屏上文字: %s" % joined)
 	_ok("① ★分母: 这一屏真建出了字(0 条的话下面全是空检查)", t.size() >= 8, "%d 条" % t.size())
 
-	## 已翻面的第一轮 ⇒ 名字**应该**出现
-	var first_round_names := 0
+	## ★★「剧透」的定义(2026-09-23 改): 节点改成**对阵双方两行 + ✓ 标胜者**之后,
+	##   显示**双方名字不算剧透**(参考图里 SF1「法国 VS 西班牙」就是还没打的那一场),
+	##   剧透的是**谁赢** ⇒ 判据落在「当前轮不许出现 ✓」。
+	##   这不是放松: 旧判据("当前轮一个名字都不许有")既拦住了剧透,
+	##   **也拦住了本该给玩家的信息**(你要跟谁打)。
+	var ticks := 0
 	for x in t:
-		if str(x).find("晋级") >= 0:
-			first_round_names += 1
-	_ok("① ★分母: 已翻面的那一轮**看得到**胜者(否则下面的「看不到」是恒真)",
-		first_round_names == 4, "%d 条「晋级」" % first_round_names)
+		if str(x).begins_with("✓"):
+			ticks += 1
+	_ok("① ★分母: 已翻面的那一轮**标出了胜者**(4 场各一个 ✓; 0 的话下面是恒真)",
+		ticks == 4, "%d 个 ✓" % ticks)
 
-	## 当前轮(第 2 轮)的两场 ⇒ 必须是「待开播」, 名字一个都不许有
-	var live_txt: Array = []
+	## 当前轮(第 2 轮)的两场: 双方名字**要有**, 而 ✓ **一个都不许有**
+	var live_ok := true
+	var live_names := 0
 	for m in range(B.matches_in_round(8, 2)):
-		live_txt.append(str(_map._node_text(2, m)))
-	print("  ① 当前轮节点文字: %s" % str(live_txt))
-	var leaked := false
-	for x in live_txt:
-		for nm in NAMES:
-			if str(x).find(nm) >= 0:
-				leaked = true
-	_ok("① ★★当前轮的节点里**一个名字都没有**(体感上是直播, 全靠这条)",
-		not leaked, str(live_txt))
-	_ok("① ★当前轮写的是「待开播」/「你的这一场」",
-		str(live_txt[0]).find("待开播") >= 0 or str(live_txt[0]).find("你的这一场") >= 0,
-		str(live_txt))
+		for side in range(2):
+			var c: Dictionary = _map.competitor(2, m, side)
+			if str(c.get("name", "")) in NAMES:
+				live_names += 1
+		if _map.winner_side(2, m) >= 0:
+			live_ok = false
+	_ok("① ★分母: 当前轮**看得到跟谁打**(4 个名字; 这是本该给的信息)",
+		live_names == 4, "%d 个" % live_names)
+	_ok("① ★★当前轮**不知道谁赢**(winner_side 必须是 -1) —— 体感上是直播, 全靠这条",
+		live_ok)
+	## 屏幕上那一行也要验: 当前轮那两格里不许出现 ✓
+	var live_tick := 0
+	for m in range(B.matches_in_round(8, 2)):
+		for side in range(2):
+			if _map.winner_side(2, m) == side:
+				live_tick += 1
+	_ok("① ★★渲染侧同口径: 当前轮 0 个 ✓", live_tick == 0, "%d 个" % live_tick)
 	_ok("① ★屏上不出现「直播」「回放」这两个词(一个是假话, 一个会剧透)",
 		joined.find("直播") < 0 and joined.find("回放") < 0, joined.substr(0, 90))
 
@@ -138,10 +148,14 @@ func _t_center_on_me() -> void:
 	var rect: Rect2 = L.node_rect(32, f.x, f.y)
 	var sc: float = _map._scale
 	var c: Vector2 = (rect.position + rect.size * 0.5) * sc + _map._canvas.position
+	## ★★量的是**可用区**的正中, 不是整个视口 —— 顶栏 + 页签占掉上面 TOP_RESERVED。
+	##   原来这条量整屏正中, 它自己没错, 错在前提: 实拍抓到左边两列被页签压住了。
 	var vp := Vector2(1280.0, 720.0)
-	print("  ② 我那一场落在 (%.0f, %.0f), 视口中心 (%.0f, %.0f)" % [c.x, c.y, vp.x / 2, vp.y / 2])
-	_ok("② ★★开图时我那一场就在视口正中(差 ≤ 2px)",
-		(c - vp * 0.5).length() <= 2.0, "偏 %.1f px" % (c - vp * 0.5).length())
+	var top: float = float(_map.TOP_RESERVED)
+	var want := Vector2(vp.x * 0.5, top + (vp.y - top) * 0.5)
+	print("  ② 我那一场落在 (%.0f, %.0f), 可用区中心 (%.0f, %.0f)" % [c.x, c.y, want.x, want.y])
+	_ok("② ★★开图时我那一场就在【可用区】正中(差 ≤ 2px)",
+		(c - want).length() <= 2.0, "偏 %.1f px" % (c - want).length())
 
 	## ★分母: 换一个人, 偏移必须跟着变 —— 否则"永远偏 0"也能过上面那条
 	var pan_a: Vector2 = _map._canvas.position
