@@ -109,9 +109,17 @@ func _ready() -> void:
 	u["rum_glow_until"] = 0.0
 	await _settle()
 	var c_after: Color = _spr(u).modulate
-	_ok("★★⑤ 到点后回到本色, 零残留",
-		absf(c_after.r - c_off.r) < 0.02 and absf(c_after.b - c_off.b) < 0.02,
-		"r=%.3f b=%.3f (对照 r=%.3f b=%.3f)" % [c_after.r, c_after.b, c_off.r, c_off.b])
+	## ★★判据换了尺子(2026-09-24): 原来量**绝对** r/b, 而干扰来自**受击闪白** ——
+	##   探针实证 15fps 下 `flash_t = 0.0433`(闪白进行中)而 `_body_tint = (1,1,1,1)`,
+	##   **朗姆本身已经清干净了**。渲染层是 `modulate = _base_tint.lerp(flash_col, fl)`:
+	##   闪白**均匀**(r == b), 朗姆**暖色**(r > b)。15fps 下那 4 帧 settle 多走 4 倍
+	##   游戏时间, 正好撞上一次挨打 ⇒ 绝对值判据当场红, 而它要守的东西没出问题。
+	## ★改成量**暖度 r−b**(与本文件 ③④ 同一把尺子)。**不是放松**: 朗姆残留一定是暖色,
+	##   r−b 照样抓得到; 而均匀闪白本来就不归这条判据管。
+	_ok("★★⑤ 到点后回到本色, 零残留(暖度 r−b 归零)",
+		absf((c_after.r - c_after.b) - (c_off.r - c_off.b)) < 0.02,
+		"暖度 r−b=%.3f (对照 %.3f; 绝对 r=%.3f b=%.3f —— 均匀偏亮是受击闪白, 不是朗姆)"
+			% [c_after.r - c_after.b, c_off.r - c_off.b, c_after.r, c_after.b])
 
 	## ── ⑥ 技能真的会写这个旗子(端到端) ────────────────────────
 	## ★上面五条量的都是"旗子 → 画面"。这条量"技能 → 旗子", 两截接起来才是完整的账。
