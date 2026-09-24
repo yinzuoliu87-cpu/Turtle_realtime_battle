@@ -133,8 +133,13 @@ func _ready() -> void:
 	var hits: Array = []                        # 每次掉血记一笔(这一下掉了多少)
 	var last_hp: float = hp0
 	var moved_max := 0.0                          # 整段期间离施放点最远多少(不后撤 ⇒ 应为 0)
-	var t0 := Time.get_ticks_msec()
-	while Time.get_ticks_msec() - t0 < 6000:
+	var step := 0
+	## ★★**一次喂一步 sim、一步采一次**(2026-09-24 改)。原来是每帧采一次血量:
+	##   本地一帧≈1 步 sim ⇒ 四刀各落一帧, 数得清; 15fps 一帧 **4 步** ⇒
+	##   两刀可能落在同一帧, 那一帧只看到**一次更大的掉血** ⇒ 数成 2 段(CI 会这么红)。
+	##   **采样分辨率比事件还粗**(与斧头「攒满→归零」那条同族)。
+	## ★循环内一步 `await` 都不要: 让出一帧 `_process` 就会自己再推几步, 那几步采不到。
+	while step < 360:            # 6 秒 = 360 步 SIM_DT
 		moved_max = maxf(moved_max, ((u["pos"] as Vector2) - p0).length())
 		if _fx_count("holdfade") > 0:
 			saw_slash = true
@@ -146,7 +151,8 @@ func _ready() -> void:
 			last_hp = now
 		if hits.size() >= 4 and saw_slash and saw_wave:
 			break
-		await get_tree().process_frame
+		_s._advance_sim_accum(_s.SIM_DT)
+		step += 1
 	var total: float = hp0 - float(tgt["hp"])
 	_ok("★★① 四段依次落地的整段期间位置始终不动(最大位移 %.2f 码)" % moved_max, moved_max < 0.5)
 	_ok("★★③ 第一刀: 出了刀光", saw_slash, "整段没见到 holdfade(刀光)特效")

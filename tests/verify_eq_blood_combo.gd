@@ -94,6 +94,14 @@ func _ready() -> void:
 		gs.test_mode = true   # 台子绝不写玩家存档(memory fb-debug-stage-writes-real-save)
 	_s = RB.new()
 	add_child(_s)
+	## ★★开**确定性模式**(2026-09-24): 每帧恰跑**一步** SIM_DT。
+	##   ⑥ 量的是斩痕换帧的间隔(步长 2/60 = 0.033 秒), 而采样在**引擎帧**循环里:
+	##   15fps 一帧 0.066 秒 = 4 步 ⇒ 一帧就跨过两次换帧, 量出来恒等于
+	##   “一个引擎帧”(0.067)而不是步长。
+	## ★不能改成“不 await 帧、自己喂步”(试过, 两种帧率都坏):
+	##   演出走的是 `battle._wait_sim()` 协程, **它要靠帧才能恢复** ⇒ 不让出帧就只出 1 刀。
+	##   确定性模式恰好两边都要: 帧照旧让, 而每帧只推一步。
+	_s._deterministic = true
 	await get_tree().process_frame
 	await get_tree().process_frame
 
