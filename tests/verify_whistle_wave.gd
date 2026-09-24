@@ -80,6 +80,10 @@ func _ready() -> void:
 
 	# ── ★核心: 出手那一帧【一点血都不该掉】 ──
 	var hp_before: Array = [4000.0, 4000.0, 4000.0]
+	## ★★记下**施放那一刻**的游戏钟: 下面那句 await 在慢机器上会吃掉
+	##   0.066 秒游戏时间(4 步 sim), 蓄力先走掉一截 ——
+	##   从 await 之后的 t0 量蓄力, 15fps 下必然量短(CI 会这么红, 而产品没问题)。
+	var t_cast: float = s._t
 	_chk("② ★分母: 施放返回成功", ts._whistle_spirit_wave(tr) == 1)
 	await get_tree().process_frame
 	var moved := 0
@@ -93,13 +97,15 @@ func _ready() -> void:
 
 	# ── ③ 逐帧推进: 各敌被击中的时刻 + 扣血量 ──
 	var t0: float = s._t
+	## 那一次 await 吃掉的游戏时间 —— 量蓄力要把它加回去
+	var pre_elapsed: float = maxf(0.0, t0 - t_cast)
 	var seen: Array = []
 	var fired_at: float = -1.0
 	for step in range(400):
 		s._t = t0 + float(step + 1) * (1.0 / 60.0)
 		ts._tick_wave_flights(1.0 / 60.0)
 		if fired_at < 0.0 and _has(s, "spirit-wave.png"):
-			fired_at = s._t - t0
+			fired_at = (s._t - t0) + pre_elapsed     # ★从**施放那一刻**起算
 		for k in range(3):
 			if int(foes[k].get("_wave_hit_n", 0)) > 0 and not seen.has(k):
 				seen.append(k)

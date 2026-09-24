@@ -232,8 +232,16 @@ func _t_smooth_escape(c0: Vector2) -> void:
 			pushing = true
 		if pushing and not freed:
 			## ★每帧只挪一点点 —— 这就是平滑位移技的真实形态
-			e["pos"] = (e["pos"] as Vector2) + Vector2(0.0, SMOOTH_STEP)
-			pushed += SMOOTH_STEP
+			## ★★**按这一帧真实跑了几步**来推(2026-09-24)。
+			##   虫洞在捕获期每**步**把坐标写回轨道, 而这里原来每**帧**只推一次 ⇒
+			##   本地一帧≈1 步刚好对上; 15fps 一帧 4 步 ⇒ 推一次被抹四次, 永远累不够。
+			##   `_frame_sim_dt` 的注释自己写着「这一【引擎帧】里 sim 推进了多少秒」。
+			##   ★另两条路都走不通(试过并还原): `_deterministic` 会让 15fps 下 6 墙秒
+			##     只跑 1.5 游戏秒(虫洞没跑起来); 不 await 帧自己喂步则**两种帧率都拖 0 码**
+			##     —— 虫洞自己要靠帧推进。
+			var _n_steps: float = maxf(1.0, float(_s._frame_sim_dt) / float(_s.SIM_DT))
+			e["pos"] = (e["pos"] as Vector2) + Vector2(0.0, SMOOTH_STEP * _n_steps)
+			pushed += SMOOTH_STEP * _n_steps
 			## ★判据 = 【净位移留下来了多少】。
 			##   捕获期虫洞每帧把坐标写回轨道 ⇒ 我推的那 1.7 码当帧就被抹掉, 净位移 ≈ 0。
 			##   只有**真被放走**的那些帧, 推的位移才留得下来。
