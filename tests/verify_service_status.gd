@@ -161,6 +161,10 @@ func _t_real_menu() -> void:
 	_chk("④ ★分母: 状态确实已是维护态", SB.service_state() == SB.ST_MAINTENANCE,
 		SB.service_state())
 
+	## ★登录墙(v0.19.440): 本用例测的是**维护公告**不是登录 ——
+	##   不给一个已绑定的账号的话, 主菜单一建出来就被墙跳走, 下面全是空检查。
+	##   (墙本身由 `verify_login_wall` 守。)
+	GameState.account_email = "svc@local"
 	var m1 = MENU.instantiate()
 	add_child(m1)
 	var w := 0

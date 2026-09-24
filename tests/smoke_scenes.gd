@@ -31,6 +31,13 @@ const RTScene := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 
 
 func _ready() -> void:
+	## ★★登录墙(v0.19.440): 冒烟**不设** `TURTLE_SUPABASE`(run-tests.sh 与别的测试不同),
+	##   所以它跑在真后端配置下 —— 没绑邮箱就会在第一个场景被墙跳走, 整个冒烟死在开头。
+	##   冒烟测的是「九个场景进得去出得来」这件**稳态**的事, 不是首次注册 ⇒
+	##   给它一个"已绑定"的账号, 与真实玩家(绑完之后)一致。墙本身由 `verify_login_wall` 守。
+	var _gs_w = get_node_or_null("/root/GameState")
+	if _gs_w != null and str(_gs_w.account_email) == "":
+		_gs_w.account_email = "smoke@local"
 	await get_tree().process_frame
 	var gs = get_node_or_null("/root/GameState")
 	if gs != null:

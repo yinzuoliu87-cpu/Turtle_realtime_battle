@@ -93,6 +93,17 @@ func _ready() -> void:
 	_center_content()
 	_title()
 	_right_column()
+	## ★★登录墙: 没绑邮箱就把人送到账号那一屏(用户 2026-09-24「直接改为必须绑定账号吧」)。
+	##   ★主菜单**不自己判**要不要挡 —— 判据只有 `phase2_config.login_wall_on` 一处,
+	##     设置页也读同一个(两处各判一份必然漂)。这里只负责把人送过去。
+	##   ★「后端没配置」不挡: 那是 dev/门禁状态, 玩家永远遇不到(见那个纯函数的注释)。
+	##   ★★只在**自己就是 current_scene** 时才跳 —— 门禁/实拍常把主菜单当子节点挂起来
+	##     量东西, 那不是玩家流程; 在那种情况下 `change_scene_to_file` 会把**宿主的**
+	##     场景树换掉(本仓踩过这个)。
+	if _P2C.login_wall_on(_SB.enabled(), str(GameState.account_email)) \
+			and get_tree() != null and get_tree().current_scene == self:
+		call_deferred("_go", "Settings")
+		return
 	_week_strip()               # 左右两栏之间那条空档 → 本周赛程条
 	## ★D-1: 去问一次服务状态(没配后端时这一句什么都不做, 连节点都不建)。
 	##   答复是异步回来的 ⇒ 配一个**挂在自己身上的 Timer 子节点**轮询状态变没变,

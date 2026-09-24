@@ -539,3 +539,36 @@ static func display_name(nick: String, account_id: String) -> String:
 	if s.length() >= NICK_MIN:
 		return s
 	return nickname_fallback(account_id)
+
+
+# ═══════════════════════════════════════════════════════════════
+#  登录墙 (2026-09-24 · 用户「直接改为必须绑定账号吧」)
+#
+#  ★用户在三个选项里选的是**开局就必须绑, 没有 guest** ——
+#    明确接受「没网 / 后端挂了就打不开」与「新玩家第一屏就是填邮箱」。
+#  ★★**「后端没配置」不挡**: 那是 dev / 门禁状态, 不是玩家状态。
+#    挡住它的话 384 条门禁当场全红、开发机上游戏根本打不开。
+#    「没配」≠「没网」—— 出包时后端一定是配着的, 玩家永远遇不到「没配」;
+#    而「配了但连不上」**照挡**(那正是用户选的代价)。
+#  ★绑定走 `PUT /auth/v1/user`(**升级**现有匿名号, 同一个 id) ⇒
+#    匿名号仍然是**技术引导步骤**(玩家看不见), 墙只是挡在它前面, 不重写认证。
+# ═══════════════════════════════════════════════════════════════
+
+## 现在该不该挡? ★纯函数, 门禁穷举用。
+##   backend_on = `SupabaseNet.enabled()`(后端**配了没有**, 与连不连得上无关)
+##   email      = `GameState.account_email`
+static func login_wall_on(backend_on: bool, email: String) -> bool:
+	if not backend_on:
+		return false                      # ★后端没配 = dev/门禁, 不挡
+	return email.strip_edges() == ""
+
+
+## 墙上第一屏说什么。★老玩家升级过来会被挡一次 —— **第一句就得让他别慌**:
+##   绑定是「升级同一个号」, 进度一个字节都不会变。
+static func login_wall_head() -> String:
+	return "绑定邮箱才能开始"
+
+
+static func login_wall_body() -> String:
+	return ("你的进度还在这台手机上 —— 绑定只是把它锁到这个邮箱上，"
+		+ "换手机时能拿回来。\n收不到验证码？看看垃圾邮件，或者换一个邮箱重发。")

@@ -25,7 +25,10 @@ func _ready() -> void:
 		"width": W,
 		"safe_left": _sm.x,
 		"safe_right": _sm.z,
-		"on_back": func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"),
+		## ★★墙上**返回键失效** —— 返回得去的墙不是墙。
+		##   ★用**具名方法**不用匿名闭包: 字典字面里放不下多行闭包(语法错),
+		##   而且具名之后门禁量得到它接的是谁。
+		"on_back": _on_back,
 	})
 
 	# 账号行 @ (W/2, 150) — 标题栏与第一个滑条之间那块空地
@@ -74,6 +77,11 @@ func _ready() -> void:
 	##   设置页的居中适配变成"只有点调试场时才执行"。verify_ui_layout ② 当场红(偏离 185px)。
 	##   ⇒ 往函数之间插代码前, 先确认插入点【不在某个函数体内】(CLAUDE.md §3.7 同族)。
 	UIFrame.attach(self)
+
+	## ★★登录墙(2026-09-24 用户「直接改为必须绑定账号吧」): 页面建完再盖上去。
+	##   放 `_ready` 末尾而不是开头 —— 开头盖的话底下的控件还没建,
+	##   玩家会看到墙先出现、页面在后面一块块长出来。
+	_maybe_login_wall()
 
 
 # ─── D-3 账号行 (2026-09-21) ───────────────────────────────────────
@@ -251,7 +259,31 @@ var _email_status: Label = null
 var _email_send_btn: Button = null
 var _email_ok_btn: Button = null
 
-func _open_email_dialog(flow: String) -> void:
+## `dismissible = false` ⇒ **登录墙**: 没有「关闭」, 关不掉也返回不了。
+## ★墙与「设置里主动绑定」共用这一个对话框 —— 另做一份就要把昵称那一行
+##   和验证码状态机抄第二遍, 而抄一次永远落后一次。
+## 该不该开登录墙。★判据只有 `phase2_config.login_wall_on` 一处 ——
+##   主菜单只负责把人送过来, 不自己判(两处各判一份必然漂)。
+## 返回主菜单。★★**墙上失效** —— 判据与开墙同一处, 不另写一份。
+func _on_back() -> void:
+	if _P2C.login_wall_on(_SB_ACC.enabled(), str(GameState.account_email)):
+		return
+	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+
+
+func _maybe_login_wall() -> void:
+	if not _P2C.login_wall_on(_SB_ACC.enabled(), str(GameState.account_email)):
+		return
+	## ★★把返回箭头**藏掉** —— 实拍拓出来的: 顶栏在更高的 CanvasLayer 上,
+	##   遮罩盖不住它 ⇒ 它看着能按、按下去却没反应。
+	##   本仓原则: **「点了没反应」比「按钮是灰的」糟得多**。
+	##   (`_on_back` 里那道判据留着作防御 —— 万一哪天须栏改成同层。)
+	if _top_bar != null and _top_bar.back_btn != null:
+		_top_bar.back_btn.visible = false
+	_open_email_dialog(_SB_ACC.FLOW_BIND, false)
+
+
+func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 	if _email_layer != null and is_instance_valid(_email_layer):
 		return
 	_SB_ACC.reset_email_flow()
@@ -273,7 +305,8 @@ func _open_email_dialog(flow: String) -> void:
 	dim.add_child(box)
 
 	var ttl := Label.new()
-	ttl.text = "绑定邮箱" if flow == _SB_ACC.FLOW_BIND else "用邮箱取回账号"
+	ttl.text = (_P2C.login_wall_head() if not dismissible
+		else ("绑定邮箱" if flow == _SB_ACC.FLOW_BIND else "用邮箱取回账号"))
 	ttl.add_theme_font_size_override("font_size", 24)
 	ttl.add_theme_color_override("font_color", Color("#cfe3ff"))
 	ttl.position = Vector2(0, 18); ttl.size = Vector2(520, 32)
@@ -283,8 +316,10 @@ func _open_email_dialog(flow: String) -> void:
 	var why := Label.new()
 	## ★说清楚它**到底**能做什么、不能做什么 —— 见 `_account_row` 里那段长注释。
 	if flow == _SB_ACC.FLOW_BIND:
-		why.text = ("绑定之后，换手机能用这个邮箱把【账号】取回来（排名、战绩、你的阵容）。\n"
-			+ "⚠ 龟和装备是存在这台手机上的，换设备仍然会丢。")
+		## ★墙上第一句先让**老玩家别慌**: 绑定是升级同一个号, 进度一个字节都不会变。
+		why.text = (_P2C.login_wall_body() if not dismissible
+			else ("绑定之后，换手机能用这个邮箱把【账号】取回来（排名、战绩、你的阵容）。\n"
+				+ "⚠ 龟和装备是存在这台手机上的，换设备仍然会丢。"))
 	else:
 		## ★取回只换【账号】, 这台设备上的龟和装备原样不动 —— 照实说, 不许说成「取回存档」
 		##   (服务端现在没有存档, `verify_account` ④ 有一条专门禁这句话)。
@@ -366,14 +401,17 @@ func _open_email_dialog(flow: String) -> void:
 	_email_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_email_status)
 
-	var close := Button.new()
-	close.text = "关闭"
-	close.add_theme_font_size_override("font_size", 16)
-	close.position = Vector2(180, 282 + _dy); close.size = Vector2(160, 40)
-	close.pressed.connect(func():
-		_SB_ACC.reset_email_flow()
-		dim.queue_free(); _email_layer = null)
-	box.add_child(close)
+	## ★★登录墙**不给关闭** —— 关得掉的墙不是墙。
+	##   (这一条被 `verify_login_wall` 守着: 墙上不许有可点的关闭。)
+	if dismissible:
+		var close := Button.new()
+		close.text = "关闭"
+		close.add_theme_font_size_override("font_size", 16)
+		close.position = Vector2(180, 282 + _dy); close.size = Vector2(160, 40)
+		close.pressed.connect(func():
+			_SB_ACC.reset_email_flow()
+			dim.queue_free(); _email_layer = null)
+		box.add_child(close)
 
 	## ★用 Timer 子节点轮询, **不用 `create_timer` 闭包** ——
 	##   树级计时器接闭包会活过场景释放(本仓有一条门禁专门守这个)。

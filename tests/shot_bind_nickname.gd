@@ -50,6 +50,15 @@ func _ready() -> void:
 	_shot("2-recover")
 	print("  取回屏: 昵称输入框 %s(应为不在 —— 那个号已经有昵称了)"
 		% ("★在" if st._nick_edit != null else "不在"))
+	## ★★第三屏: **登录墙**(dismissible=false) —— 门禁数按钮数不出它长什么样
+	if st._email_layer != null:
+		st._email_layer.queue_free()
+		st._email_layer = null
+	await _settle(30)
+	GameState.account_email = ""
+	st._open_email_dialog(SB.FLOW_BIND, false)
+	await _settle(150)
+	_shot("3-wall")
 	print("  图: %s" % str(_shots))
 	get_tree().quit(0)
 
