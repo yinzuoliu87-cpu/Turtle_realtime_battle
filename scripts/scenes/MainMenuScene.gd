@@ -93,6 +93,17 @@ func _ready() -> void:
 	_center_content()
 	_title()
 	_right_column()
+	## ★★D-3: 建服务端身份。**必须在登录墙之前** —— v0.19.440 上墙之后这一句原本在
+	##   下面第 118 行, 而墙会在这之前 `return`, 于是**全新安装的玩家永远拿不到 token**:
+	##   绑定流程(`send_code_async` 的 FLOW_BIND 分支)要求 `_token != ""`, 拿不到就回
+	##   「还没登录，先联网开一局再绑」—— 而墙正好不让他开局。
+	##   唯一兜底是 GameState 那个 `wait_time=20 autostart` 的保活 tick(**第一次在 t=20s**)
+	##   ⇒ 装完头 20 秒游戏打不开, 且提示在教玩家做一件不可能的事。
+	##   探针: `tests/_probe_wall_deadlock.gd`(墙触发 ⇒ `_auth_inflight=false`; 不触发 ⇒ true)。
+	##   门禁: `verify_login_wall` ③。
+	## ★这一句本身是幂等的: 已经有 account_id 且 token 没过期就什么都不做, 连节点都不建
+	##   (每次开游戏都新建匿名号会把服务端刷出一堆一次性账号, Supabase 自己警告过)。
+	_SB.ensure_signed_in_async()
 	## ★★登录墙: 没绑邮箱就把人送到账号那一屏(用户 2026-09-24「直接改为必须绑定账号吧」)。
 	##   ★主菜单**不自己判**要不要挡 —— 判据只有 `phase2_config.login_wall_on` 一处,
 	##     设置页也读同一个(两处各判一份必然漂)。这里只负责把人送过去。
@@ -111,11 +122,8 @@ func _ready() -> void:
 	##   那种计时器活过场景释放, 响的时候去绑已释放的捕获就报错
 	##   (`tools/tree_timer_audit.py` 守这条, 它推荐的修法就是 Timer 子节点)。
 	_SB.fetch_status_async()
-	## ★D-3: 顺手确保有服务端身份。**已经有 account_id 就什么都不做** ——
-	##   每次开游戏都新建一个匿名账号的话, 服务端会被刷出一堆一次性账号
-	##   (Supabase 建项目时自己就警告过匿名登录被刷会撑爆 MAU)。
-	##   没配后端时这一句同样什么都不做, 连节点都不建。
-	_SB.ensure_signed_in_async()
+	## (D-3 建身份已经**挪到登录墙之前**了, 见上面那段长注释 —— 放这儿的话墙一 return
+	##  就永远跑不到。这里不要再调一次: 两处各调一份, 改动时必然漂掉一处。)
 	var sb_t := Timer.new()
 	sb_t.wait_time = 1.0
 	sb_t.autostart = true

@@ -813,7 +813,8 @@ static func bind_accepts(res: Dictionary, current_account: String) -> Dictionary
 		return {"ok": false, "reason": str(res.get("reason", "验证失败"))}
 	var got := str(res.get("account_id", ""))
 	if current_account == "":
-		return {"ok": false, "reason": "本机还没有账号，先联网开一局再绑"}
+		## ★同上: 登录墙之后「先开一局」是做不到的事, 不许再这么写(verify_login_wall ③ 守)。
+		return {"ok": false, "reason": "本机还没有账号（正在连服务器），过两秒重新发一次验证码"}
 	if got != current_account:
 		return {"ok": false,
 			"reason": "服务器返回的是另一个账号，没有绑成功（没动你的进度）"}
@@ -844,8 +845,15 @@ static func send_code_async(email: String, flow: String) -> void:
 		_email_msg = "邮箱格式不对，再看一眼"
 		return
 	if flow == FLOW_BIND and _token == "":
+		## ★★别教玩家「先联网开一局」—— v0.19.440 的登录墙就是**开局前**那一屏,
+		##   他根本没法先开一局(实测: 全新安装点「发验证码」就撞这句,
+		##   `tests/_probe_wall_deadlock.gd`)。
+		##   这一步真实的情况只有一种: 身份还在路上(建匿名会话是一次 HTTP 往返)。
+		## ⇒ ①自己踢一脚把它建起来(幂等, 已经在飞就什么都不做)
+		##   ②照实说「在连」并让他重试 —— 连不上也照实说, 因为那时确实打不开游戏。
+		ensure_signed_in_async()
 		_email_state = EM_ERR
-		_email_msg = "还没登录，先联网开一局再绑"
+		_email_msg = "正在连服务器，过两秒再点一次（一直这样就是连不上，检查下网络）"
 		return
 	_email_state = EM_SENDING
 	_email_msg = ""

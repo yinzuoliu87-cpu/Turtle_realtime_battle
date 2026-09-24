@@ -50,6 +50,7 @@ func _ready() -> void:
 	print("=== 登录墙 ===")
 	_t_rule()
 	await _t_wall_ui()
+	await _t_identity_under_wall()
 	for k in KEYS:
 		GameState.set(k, _bak[k])
 	OS.set_environment("TURTLE_SUPABASE", " ")
@@ -140,6 +141,64 @@ func _t_wall_ui() -> void:
 		str(st2._top_bar.back_btn.visible) if st2._top_bar != null else "<no bar>")
 	st2.queue_free()
 	await get_tree().process_frame
+
+
+# ─────────────────────────────────────────────────────────────
+# ③ ★★被墙挡住的人, 还拿不拿得到服务端身份
+#
+#    v0.19.440 上墙之后出的真 bug(2026-09-24 实测): 主菜单 `_ready` 里
+#    `ensure_signed_in_async()` 排在墙的 `return` **后面** ⇒ 全新安装永远没有 token
+#    ⇒ 点「发验证码」撞上 FLOW_BIND 的 `_token != ""` 前置条件 ⇒ 回「先联网开一局再绑」
+#    ⇒ **而墙正好不让他开局**。唯一兜底是 GameState 那个第一次要等 20 秒的保活 tick。
+#
+#    这一节守两件事, 缺一不可:
+#      ①「墙触发了, 身份照样在建」—— 真走主菜单入口量, 不看源码顺序
+#         (源码顺序是我改的东西, 拿它当判据等于自己数自己)
+#      ②「提示不许教玩家去做墙不让他做的事」—— 量**函数真的吐出来的那句话**
+# ─────────────────────────────────────────────────────────────
+func _t_identity_under_wall() -> void:
+	print("── ③ 被墙挡住时, 身份还建不建 ──")
+	OS.set_environment("TURTLE_SUPABASE", DEAD_URL)
+	SB._reset_auth_for_test()
+	GameState.account_email = ""
+	GameState.account_id = ""
+
+	## ── ②先验文案: 没有 token 时点「发验证码」, 玩家看到什么 ──
+	_ok("③ ★分母: 复位之后确实没有 token(否则下面走不到那一支)", SB._token == "")
+	SB.send_code_async("newplayer@example.com", SB.FLOW_BIND)
+	var msg := str(SB._email_msg)
+	print("     玩家看到: 「%s」" % msg)
+	_ok("③ ★分母: 确实走到了「没有 token」那一支(state=err 且有话说)",
+		SB._email_state == SB.EM_ERR and msg != "", "%s / %s" % [SB._email_state, msg])
+	_ok("③ ★★★提示不许教玩家「先开一局」—— 墙就是开局前那一屏, 他做不到",
+		msg.find("开一局") < 0, msg)
+	_ok("③ ★提示要说清现在在干嘛 + 怎么办(不然玩家只知道失败了)",
+		msg.find("再点") >= 0 or msg.find("重试") >= 0 or msg.find("再试") >= 0, msg)
+	## 验码那一侧同一句话的另一份拷贝(`bind_accepts`), 一起守 —— 两处各写一份必然漂
+	var br: Dictionary = SB.bind_accepts({"ok": true, "account_id": "a"}, "")
+	_ok("③ ★分母: `bind_accepts` 确实走到「本机没账号」那一支",
+		not bool(br.get("ok", true)) and str(br.get("reason", "")) != "", str(br))
+	_ok("③ ★★`bind_accepts` 的同一句话也不许说「开一局」",
+		str(br.get("reason", "")).find("开一局") < 0, str(br.get("reason", "")))
+
+	## ── ①再验真入口: 走一次真实开机, 看墙触发之后身份有没有在建 ──
+	SB._reset_auth_for_test()
+	_ok("③ ★★分母: 进主菜单之前 `_auth_inflight` 是 false —— 否则下面那条是恒真式",
+		not SB._auth_inflight)
+	## ★不能直接 `change_scene_to_file`: 门禁自己就是 `current_scene`, 那一句当场把
+	##   门禁拆掉(本仓踩过)。先把 current_scene 置空 —— 引擎只 `memdelete(current_scene)`,
+	##   置空之后它谁也不删, 门禁作为 root 的普通子节点活下来继续量。
+	## ★必须走真 `change_scene_to_file`: 墙的条件里有 `current_scene == self`,
+	##   手动 `add_child` 的话墙根本不会触发(第一版探针就是这么骗过自己的)。
+	get_tree().current_scene = null
+	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+	for _i in 16:
+		await get_tree().process_frame
+	var cur := get_tree().current_scene
+	_ok("③ ★★分母: 墙**真的触发了**(被送到 Settings) —— 否则下面量的是没墙的路径",
+		cur != null and cur.name == "Settings", cur.name if cur != null else "<null>")
+	_ok("③ ★★★墙触发之后, 建身份**仍然跑了** —— 不跑的话玩家永远发不出验证码",
+		SB._auth_inflight, str(SB._auth_inflight))
 
 
 ## 递归收集某棵子树里的 Button。
