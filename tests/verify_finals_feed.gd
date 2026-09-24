@@ -236,7 +236,29 @@ func _t_real_request() -> void:
 	_reqs.clear()
 	SB.fetch_finals_async(1789344000, -1)
 	await get_tree().process_frame
-	_ok("④ ★匿名号(没绑邮箱)一个请求都不发", _reqs.is_empty(), str(_reqs.size()))
+	## ★★判据翻了向(2026-09-24): 原来钉的是「匿名号一个请求都不发」——
+	##   那条行为本身是错的(用户拍板「guest 应该也能打周六周日」),
+	##   **不改判据这个修复根本上不去**(memory `fb-gate-can-pin-the-bug-in-place`)。
+	## ★翻的时候更紧不更松: **一对**判据 ——
+	##   访客(有服务端身份、没绑邮箱) ⇒ 发; 完全没身份 ⇒ 不发。
+	##   只写前一条的话「什么身份都往外发」也会绿。
+	_ok("④ ★★访客(没绑邮箱但有服务端身份) ⇒ **照样读桶**", _reqs.size() == 1,
+		str(_reqs.size()))
+	## 完全没身份: 连匿名号都还没建出来
+	SB._reset_auth_for_test()
+	GameState.account_id = ""
+	_reqs.clear()
+	SB.finals_clear()
+	SB._enter_inflight = false
+	SB.fetch_finals_async(1789344000, -1)
+	await get_tree().process_frame
+	_ok("④ ★分母: 完全没身份(没 account_id / 没 token) ⇒ 一个请求都不发",
+		_reqs.is_empty(), str(_reqs.size()))
+	## ★量完就把登录装回去 —— 后面还有判据要用它
+	SB.apply_auth_response(true, 200,
+		'{"access_token":"at-1","expires_in":3600,"refresh_token":"rt-1",'
+		+ '"user":{"id":"uid-me","email":"me@x.co"}}')
+	GameState.account_id = "uid-me"
 	GameState.account_email = "me@x.co"
 
 	## 服务端说没报名 ⇒ 缓存留空, 不画半张图
@@ -372,7 +394,29 @@ func _t_enter() -> void:
 	SB._enter_inflight = false
 	BK.report_finals_entry()
 	await get_tree().process_frame
-	_ok("⑦ ★匿名号(没绑邮箱)一个请求都不发", _reqs.is_empty(), str(_reqs.size()))
+	## ★★判据翻了向(2026-09-24): 原来钉的是「匿名号一个请求都不发」——
+	##   那条行为本身是错的(用户拍板「guest 应该也能打周六周日」),
+	##   **不改判据这个修复根本上不去**(memory `fb-gate-can-pin-the-bug-in-place`)。
+	## ★翻的时候更紧不更松: **一对**判据 ——
+	##   访客(有服务端身份、没绑邮箱) ⇒ 发; 完全没身份 ⇒ 不发。
+	##   只写前一条的话「什么身份都往外发」也会绿。
+	_ok("⑦ ★★访客(没绑邮箱但有服务端身份) ⇒ **照样报名**", _reqs.size() == 1,
+		str(_reqs.size()))
+	## 完全没身份: 连匿名号都还没建出来
+	SB._reset_auth_for_test()
+	GameState.account_id = ""
+	_reqs.clear()
+	SB.finals_clear()
+	SB._enter_inflight = false
+	BK.report_finals_entry()
+	await get_tree().process_frame
+	_ok("⑦ ★分母: 完全没身份(没 account_id / 没 token) ⇒ 一个请求都不发",
+		_reqs.is_empty(), str(_reqs.size()))
+	## ★量完就把登录装回去 —— 后面还有判据要用它
+	SB.apply_auth_response(true, 200,
+		'{"access_token":"at-1","expires_in":3600,"refresh_token":"rt-1",'
+		+ '"user":{"id":"uid-me","email":"me@x.co"}}')
+	GameState.account_id = "uid-me"
 	GameState.account_email = "me@x.co"
 	SB._transport_for_test = Callable()
 	OS.set_environment("TURTLE_SUPABASE", " ")

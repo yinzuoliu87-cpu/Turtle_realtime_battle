@@ -1372,8 +1372,11 @@ static func fetch_finals_async(week: int, bucket: int) -> void:
 	var gs = _gs()
 	if gs == null or _finals_inflight:
 		return
-	## 要登录才看得到(服务端也拦, 这里只是省一次白跑)
-	if not sync_allowed(str(gs.account_id), str(gs.account_email), _token):
+	## ★★**访客(guest)也看得到自己的桶** —— 与报名那道闸同时改(用户 2026-09-24 拍板)。
+	##   只改一道就是「能进不能看」或「能看进不去」, 都是半截。
+	##   判据是「服务端认得出你是谁」: 服务端 `finals_view` 里 `auth.uid() is null` 也拦,
+	##   这里只是省一次白跑。**不是** `sync_allowed`(那是存档同步的闸, 要绑邮箱)。
+	if str(gs.account_id) == "" or _token == "":
 		## ★标成「问过了」: 这一屏不会有数据了, 屏幕该说「本周没有你的桶」
 		##   而不是永远转着「正在连线」(实拍抓到的)。
 		_finals_tried = true
@@ -1481,7 +1484,17 @@ static func enter_finals_async(week: int, name: String, snapshot: Dictionary,
 	var gs = _gs()
 	if gs == null or _enter_inflight:
 		return
-	if not sync_allowed(str(gs.account_id), str(gs.account_email), _token):
+	## ★★**访客(guest)也能报名** —— 用户 2026-09-24 拍板「guest 应该也能打周六周日」。
+	##   ⚠ 这里**不能**用 `sync_allowed()`: 那是**存档同步**的闸(要绑邮箱 ——
+	##     「匿名号一个字节都不往云上推」是隐私承诺)。我接线时用错了闸,
+	##     后果是**匿名号周六赢了、周日静默进不去**: 人打赢了, 什么提示都没有。
+	##   ★决赛日真正需要的只有「服务端认得出你是谁」: 匿名号在 Supabase 里有
+	##     **真的 auth.users 行 + token**, `finals_enter` 里的 `auth.uid()` 照样成立。
+	##   ★名字: 访客没昵称 ⇒ 对阵图上显示确定性兜底短码(见 `player_display_name`)。
+	##   ★参考 Super Auto Pets(2026-09-24 查): 它**不靠权限分层**, 靠**可靠性分层** ——
+	##     guest 什么都能玩, 但官方明说 unverified; 有真实事故: 崩溃后 guest 被换成新号,
+	##     原进度再也拿不回来。⇒ 该防的不是"让不让 guest 打", 是"guest 的身份会不会丢"。
+	if str(gs.account_id) == "" or _token == "":
 		return
 	var n = _spawn()
 	if n != null:
