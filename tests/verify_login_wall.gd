@@ -31,6 +31,15 @@ var _n := 0
 var _fail := 0
 const KEYS := ["account_email", "account_id", "nickname"]
 var _bak := {}
+## ★注入传输用: 记下**真实发出去的请求**(方法/地址/正文)。
+## 照抄 `verify_session_refresh.gd` 的形状 —— 那是本仓验"发没发、发给谁"的标准写法。
+var _reqs: Array = []
+
+
+func _spy(method, url, headers, body, cb) -> void:
+	_reqs.append({"method": str(method), "url": str(url), "body": str(body)})
+	## 回一个"连不上", 让产品侧照常走它的失败分支(我们只关心它发没发)
+	cb.call({"ok": false, "code": 0, "body": ""})
 
 
 func _ok(name: String, cond: bool, detail: String = "") -> void:
@@ -53,6 +62,7 @@ func _ready() -> void:
 	await _t_identity_under_wall()
 	for k in KEYS:
 		GameState.set(k, _bak[k])
+	SB._transport_for_test = Callable()
 	OS.set_environment("TURTLE_SUPABASE", " ")
 	SB._reset_auth_for_test()
 	print("")
@@ -182,9 +192,17 @@ func _t_identity_under_wall() -> void:
 		str(br.get("reason", "")).find("开一局") < 0, str(br.get("reason", "")))
 
 	## ── ①再验真入口: 走一次真实开机, 看墙触发之后身份有没有在建 ──
+	## ★★★判据换过一次(2026-09-24 CI 当场红): 原来量的是 `_auth_inflight`,
+	##   那是个**瞬时量** —— 只在请求在飞的那几帧为真, 回包一到就被清回 false。
+	##   同一份代码, 本地跑到 412 帧它还是 true, CI 上 16 帧就已经是 false 了
+	##   ⇒ 这条判据的答案**跟机器快慢走**, 本地必绿、CI 必红(本仓「尺子跟机器速度走」那一族)。
+	## ⇒ 改成注入传输, 量**真实发出去的那个请求**: 发没发、发去哪儿。
+	##   它是记录下来的, 不会被时间清掉; 而且量的是产品自己拼的 URL, 不是我插的计数器。
 	SB._reset_auth_for_test()
-	_ok("③ ★★分母: 进主菜单之前 `_auth_inflight` 是 false —— 否则下面那条是恒真式",
-		not SB._auth_inflight)
+	_reqs.clear()
+	SB._transport_for_test = _spy
+	_ok("③ ★★分母: 进主菜单之前一个请求都没发 —— 否则下面那条是恒真式",
+		_reqs.size() == 0, str(_reqs.size()))
 	## ★不能直接 `change_scene_to_file`: 门禁自己就是 `current_scene`, 那一句当场把
 	##   门禁拆掉(本仓踩过)。先把 current_scene 置空 —— 引擎只 `memdelete(current_scene)`,
 	##   置空之后它谁也不删, 门禁作为 root 的普通子节点活下来继续量。
@@ -197,8 +215,14 @@ func _t_identity_under_wall() -> void:
 	var cur := get_tree().current_scene
 	_ok("③ ★★分母: 墙**真的触发了**(被送到 Settings) —— 否则下面量的是没墙的路径",
 		cur != null and cur.name == "Settings", cur.name if cur != null else "<null>")
+	var urls: Array = []
+	for r in _reqs:
+		urls.append(str(r.get("url", "")).replace(DEAD_URL, ""))
+	print("     墙触发之后, 真实发出去的请求: %s" % str(urls))
 	_ok("③ ★★★墙触发之后, 建身份**仍然跑了** —— 不跑的话玩家永远发不出验证码",
-		SB._auth_inflight, str(SB._auth_inflight))
+		urls.has("/auth/v1/signup"), str(urls))
+	SB._transport_for_test = Callable()
+	_reqs.clear()
 
 
 ## 递归收集某棵子树里的 Button。

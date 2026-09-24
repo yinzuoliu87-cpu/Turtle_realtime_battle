@@ -46,6 +46,19 @@ func _ready() -> void:
 		await get_tree().process_frame
 	var cur := get_tree().current_scene
 	print("  主菜单 _ready 之后, 当前场景 = %s" % (cur.name if cur != null else "<null>"))
+	## ★★复现 CI 那条红: `_auth_inflight` 是**瞬时量** —— 请求在飞时才为真。
+	##   死地址 127.0.0.1:9 在 Linux 上**秒拒** ⇒ 回包早回来了 ⇒ 它已被清回 false,
+	##   而 `_auth_tries` 变 1。本地 Windows 慢一点, 16 帧时还在飞 ⇒ 反过来。
+	##   ⇒ 单看哪一个都不稳; 「发起过」= inflight **或** tries>0。
+	print("  ── 两个时刻各量一次(证明它是瞬时量) ──")
+	print("     第 12 帧: _auth_inflight=%s  auth_try_count=%d  ⇒ 发起过=%s" % [
+		SB._auth_inflight, SB.auth_try_count(),
+		SB._auth_inflight or SB.auth_try_count() > 0])
+	for _j in 400:
+		await get_tree().process_frame
+	print("     第 412 帧: _auth_inflight=%s  auth_try_count=%d  ⇒ 发起过=%s" % [
+		SB._auth_inflight, SB.auth_try_count(),
+		SB._auth_inflight or SB.auth_try_count() > 0])
 	print("  _token = 「%s」" % SB._token)
 	print("  ★分母: 主菜单 118 行的 `ensure_signed_in_async` 跑到了吗 ——")
 	print("     它跑到的话会 spawn 一个请求节点并置 _auth_inflight; 现在 _auth_inflight = %s"
