@@ -79,6 +79,12 @@ func _ready() -> void:
 		gs.test_mode = true   # 台子绝不写玩家存档(memory fb-debug-stage-writes-real-save)
 	_s = RB.new()
 	add_child(_s)
+	## ★★开**确定性模式**(2026-09-24): 每帧恰跑**一步** SIM_DT。
+	##   ⑪ 拿「三个敌人各自掉血的时刻」反推推进速度, 而采样在**引擎帧**循环里:
+	##   本地一帧≈1 步 ⇒ 量得准; 15fps 一帧 **4 步** ⇒ 两个命中可能落在同一帧、
+	##   拿到同一个时刻, 首尾时间差塔缩 ⇒ 超出 3 步的容差。
+	##   (与饱血连斩 ⑪ 同一个形状: **采样分辨率比被测的节拍还粗**。)
+	_s._deterministic = true
 	await get_tree().process_frame
 	await get_tree().process_frame
 
