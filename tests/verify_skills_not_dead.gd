@@ -69,6 +69,11 @@ func _ready() -> void:
 	get_node_or_null("/root/GameState").test_mode = true
 	_s = RB.new()
 	add_child(_s)
+	## ★★开**确定性模式**(2026-09-24): 每帧恰跑**一步** SIM_DT ⇒
+	##   下面那个「等 150 帧」变成确切的 **2.5 游戏秒**, 与机器快慢无关。
+	## ★这一条的毛病是**反过来**的: 15fps 下 150 帧 ≈ 10 游戏秒(满帧率只有零点几秒),
+	##   效果**来了又过期了** ⇒ 量到的是“什么都没发生”, 把活技能判成空转。
+	_s._deterministic = true
 	for _i in range(30):
 		await get_tree().process_frame
 	_s._sd_stacks = 0

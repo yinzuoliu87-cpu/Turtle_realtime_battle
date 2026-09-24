@@ -265,6 +265,15 @@ func _ready() -> void:
 		float(carrier.get("gold", 0.0)) > _gold_ctl,
 		"控制组放了也不涨 ⇒ 下面那条「窗口内 0 次施法」是恒真式(拿一个永远为 0 的量去断言 0)")
 	carrier["active_skills"] = []   # 从这里起, 携带者在窗口内不会再自己放技
+	## ★★**被动也要停**(2026-09-24 补)。上面那一行摘掉了携带者的**主动技**,
+	##   而财神龟还有一条**被动**: 每 3 秒 `_battle_rng.randi_range` 掎一次金币
+	##   (`RealtimeBattle3DScene` 那行 `if u["id"] == "fortune"`)。
+	##   满帧率下测量窗口里几乎没有游戏时间流逝, 它等不到三秒 ⇒ 一直看不见;
+	##   15fps 下窗口多走 4 倍游戏时间, 它掎了 ⇒ `_battle_rng.state` 动 ⇒ 主判据红。
+	##   探针实证(--max-fps 15): 携带者 `_goldtimer: 2.683 → 1.633`(过了一轮)。
+	## ★做法与上面那一行**同一个思路**: 不把 `_battle_rng` 塞进 ALLOW(那是放松判据),
+	##   而是让携带者**本就不该掎骰** —— 把被动的计时器按到永远到不了点。
+	carrier["_goldtimer"] = -1.0e9
 	## 把场上尽量摆满: 触手 / 直升机 / 一笔会衰减的余额 —— 让扫描有东西可扫
 	_s._tentacle_vfx.ensure_forced("right", 2)
 	_s._equip_sys._gun_sys._spawn_heli(other, 2, 300.0)
