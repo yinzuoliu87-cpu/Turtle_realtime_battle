@@ -133,6 +133,18 @@ jobs:
           tail -n 120 /tmp/gate.log > /tmp/cilog/gate.tail.log 2>/dev/null || true
           grep -nE "FAIL|错误|Error|ERROR|Parse|Max recursion" /tmp/gate.log | head -80 > /tmp/cilog/gate.errors.log 2>/dev/null || true
           cp -f tri_audit_report.txt /tmp/cilog/ 2>/dev/null || true
+          # ★把【失败那个测试自己的完整日志】也带上。run-tests.sh 早就留了现场
+          #   (.gate-fail-<测试名>.log, 见它 411 行的注释"追不动的偶发, 至少要让它
+          #   下次红的时候留下现场"), 但这里一直没拷 —— 于是注解里那句
+          #   "完整日志已留在 .gate-fail-xxx.log" 指的文件**从没上来过**。
+          #   2026-09-24 当场吃了这个亏: verify_equip_batch_20260801 在 CI 冒了两条
+          #   "Lambda capture at index 0 was freed", 本地满速/15fps/8路并发共 22 次
+          #   全复现不出来, 而我连"报错出现在测试的哪一步"都看不到。
+          #   每份只留尾部 400 行, 免得把 ci-logs 分支撑大。
+          for f in .gate-fail-*.log; do
+            [ -e "$f" ] || continue
+            tail -n 400 "$f" > "/tmp/cilog/$(basename "$f")" 2>/dev/null || true
+          done
           git config user.name "ci"; git config user.email "ci@local"
           git checkout --orphan ci-logs-tmp
           git rm -rf --cached . >/dev/null 2>&1 || true

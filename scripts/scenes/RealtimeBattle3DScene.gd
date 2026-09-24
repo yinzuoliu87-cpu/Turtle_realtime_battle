@@ -944,11 +944,20 @@ func _ready() -> void:
 		else:
 			_tutorial = TutorialGuide.attach(self, "battle")
 	if OS.has_environment("INFO_DEMO"):   # DEV: 自动弹第一只友军的详情面板(截图核对侧边信息面板用·env门控·正常包无)
-		var _t2 := get_tree().create_timer(1.6)
-		_t2.timeout.connect(func() -> void:
-			for _u in _units:
-				if _u.get("alive", false) and str(_u.get("side", "")) == "left" and not _u.get("_isEgg", false) and not _u.get("is_summon", false):
-					_hud._show_unit_info_panel(_u); break)
+		## ★★别用 `get_tree().create_timer()` —— 那造的是**树级**计时器,
+		##   本场景释放了它照样会响, 响的时候引擎去绑已释放的捕获, 就喷
+		##   "Lambda capture at index 0 was freed"(闭包里写 is_instance_valid 也挡不住,
+		##   报错发生在【绑定捕获】那一刻, 函数体根本没执行)。
+		##   `tools/tree_timer_audit.py` 守这条, 但它原来只认**一行写完**的形状 ——
+		##   这里拆成了两行, 于是一直没被看见(2026-09-24 补上那种形状后当场抓出来)。
+		## ⇒ 改成挂在自己身上的 Timer 子节点: 场景没了它跟着没, 根本不会响。
+		##   回调用**具名方法**而不是闭包, 从源头上没有捕获可言。
+		var _t2 := Timer.new()
+		_t2.wait_time = 1.6
+		_t2.one_shot = true
+		_t2.autostart = true
+		_t2.timeout.connect(_info_demo_open_panel)
+		add_child(_t2)
 	_audit = OS.has_environment("AUDIT")
 	if OS.has_environment("STRESS"):   # 卡死猎手: 高速无头循环对局 + 看门狗线程(主循环冻结→打最后操作)
 		_stress_start()
@@ -966,6 +975,16 @@ func _ready() -> void:
 		_vfx._vfx_preview_start()
 	if OS.has_environment("SELFSHOT"):
 		_self_screenshot()
+
+## DEV(`INFO_DEMO=1`): 开场自动弹第一只友军的详情面板 —— 截图核对侧边信息面板用。
+## ★做成具名方法是为了**不产生闭包捕获**(见上面 `_t2` 那段注释)。
+func _info_demo_open_panel() -> void:
+	for _u in _units:
+		if _u.get("alive", false) and str(_u.get("side", "")) == "left" \
+				and not _u.get("_isEgg", false) and not _u.get("is_summon", false):
+			_hud._show_unit_info_panel(_u)
+			return
+
 
 func _load_pets() -> void:
 	var f := FileAccess.open("res://data/pets.json", FileAccess.READ)
