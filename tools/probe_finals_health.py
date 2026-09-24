@@ -95,7 +95,10 @@ def main():
         print("  ✗ 跑不了 SQL: HTTP %s  %s" % (st, str(rows)[:200]))
         print("")
         print("  ⇒ 这不是「赛事健康」的结论，是**查不了** —— 别当成通过。")
-        print("     令牌在 %s(记录的到期日 2026-09-29)。" % TOKEN_FILE)
+        ## ★到期日写死在这儿会烂。2026-09-25 换过一次令牌
+        ##   (turtle-realtime-backend-claude → -0925, 7 天 → 30 天), 这个数字跟着改了一次。
+        ##   换令牌的时候记得连它一起改 —— 不然下次照着一个过期的日期行动。
+        print("     令牌在 %s(记录的到期日 2026-10-25)。" % TOKEN_FILE)
         return 2
     now_s = str(rows[0].get("t"))
     dow = int(float(rows[0].get("dow")))
