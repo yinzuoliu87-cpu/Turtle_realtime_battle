@@ -169,6 +169,19 @@ func _t_real_menu() -> void:
 		w += 1
 	for _i in range(40):
 		await get_tree().process_frame
+	## ★★量之前把**前提重新钉住**(2026-09-24)。探针实证: 等完那 40 帧之后
+	##   `service_state` 已经变成 `unreachable` —— 主菜单自己的 `_sb_poll` 又问了一次,
+	##   而门禁里后端没配 ⇒ 问回来就不是维护态了。
+	##   满帧率下文字还在屏幕上**只是因为赛程条还没来得及重建**(侥幸, 不是判据成立);
+	##   15fps 下真实时间够它重建, 那两行字就被抹掉了。
+	## ⇒ 重新喂一次维护态回包 + 显式重建赛程条, 让判据量的是
+	##   「维护态 ⇒ 屏幕上有那两行字」本身, 与轮询时机无关。
+	SB.apply_status_response(true, 200,
+		'[{"id":1,"maintenance":true,"notice":"%s"}]' % NOTICE)
+	_chk("④ ★分母: 量之前状态确实还是维护态(前提没被轮询冲掉)",
+		SB.service_state() == SB.ST_MAINTENANCE, SB.service_state())
+	m1.rebuild_week_strip()
+	await get_tree().process_frame
 	var n_lab: int = _n_labels(m1)
 	_chk("④ ★分母: 主菜单真的建出了 Label(N=0 的话下面是空检查)", n_lab > 0, "%d 个" % n_lab)
 	var seen_head: bool = _find_text(m1, "维护中")
