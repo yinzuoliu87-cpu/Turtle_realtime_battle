@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://cn4t7wqk2pv8d"]
+
+[ext_resource type="Script" path="res://tests/shot_titles_row.gd" id="1"]
+
+[node name="ShotTitlesRow" type="Node"]
+script = ExtResource("1")

@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://b2q8xkrmv7nd3"]
+
+[ext_resource type="Script" path="res://tests/verify_titles.gd" id="1"]
+
+[node name="VerifyTitles" type="Node"]
+script = ExtResource("1")

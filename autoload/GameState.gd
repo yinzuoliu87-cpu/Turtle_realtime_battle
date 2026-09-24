@@ -671,6 +671,37 @@ func settle_gauntlet_close(now_override: int = 0) -> int:
 	return backfill_gauntlet_quota()
 
 
+## 发一个头衔。返回 true = **真的加了一条**(已经有了就返回 false, 不重复加)。
+## ★去重按 `{id, week}`: 同一周把配额打满两次不该变成两个头衔。
+## ★还没上线的档(四强/冠军)在这里就拦掉 —— 与门那一套同一条闸,
+##   免得哪天有人先接了调用点、玩法却还没上, 悄悄发出不该有的头衔。
+func award_title(tid: String, week: int = 0) -> bool:
+	if not _P2.title_earnable(tid):
+		return false
+	var wk: int = week if week > 0 else int(week_anchor_ts)
+	if wk <= 0:
+		return false                      # 赛程还没初始化, 这时发了记不清是哪一周
+	if _P2.title_has(titles, tid, wk):
+		return false
+	titles.append(_P2.title_row(tid, wk))
+	return true
+
+
+## 本周该拿的头衔一次性补齐(惰性: 每次结算后调一下就行)。返回新加了几条。
+## ★★为什么是"补齐"而不是"在那一刻发": 离线版没有"那一刻"这个事件 ——
+##   与补发(`settle_ranked_close`)同一个理由。配额是打满的那一场结束时满的,
+##   而晋级是周五收盘后算出来的, 两件事发生在不同时刻, 统一在这里对一次账。
+func sync_titles() -> int:
+	var got := 0
+	if int(ranked_used) >= int(_P2.RANKED_QUOTA):
+		if award_title(_P2.TITLE_FULL_QUOTA):
+			got += 1
+	if bool(promoted):
+		if award_title(_P2.TITLE_FINALS_DAY):
+			got += 1
+	return got
+
+
 ## 打完一场 → 该不该吃掉一格积分赛配额。★与开闸的 `ranked_quota_full()` 共用
 ##   `_P2.phase_uses_ranked_quota()` 这一个判据。
 ## ⚠ 入参是【这一场】的阶段(存档里的 `week_phase`, 点「开打」那一刻写的),
@@ -745,6 +776,12 @@ var week_phase: String = ""         # 赛程阶段: "" 未定 / rest / ranked / 
 var week_anchor_ts: int = 0         # 本自然周的锚点 (UTC 周一 00:00 的 unix 秒) —— ★赛季换不换轮**只看它**
 var gauntlet_wins: int = 0          # 闯关赛战绩: 胜
 var gauntlet_losses: int = 0        # 闯关赛战绩: 负
+## ★★头衔(E-B5 · D12 四档): 一条 `{id, week}`。
+##   **跨大轮保留、清档也不清** —— 这是玩家唯一的永久资产
+##   (先例: `install_uid` / `account_id` 也是"清的是这局游戏, 不是你是谁")。
+##   ⚠ 它**不在** `start_new_season()` 与 `reset_save()` 的清除名单里, 这是有意的;
+##     `verify_titles` 两条分别守着, 加进任何一处清除名单都会当场红。
+var titles: Array = []
 var promoted: bool = false          # 是否已晋级(积分赛 → 周六)
 ## 093 香火石【香火刻痕】的刻痕池 —— 队伍级 + 赛季级(用户 2026-08-06「一大轮重置」,
 ## 而代码里「一大轮」就是赛季, 见上面 season_id 的注释「一个自然周一轮, 切轮全重置」)。
@@ -1397,6 +1434,7 @@ func _save_dict() -> Dictionary:
 		"gauntlet_wins": gauntlet_wins,
 		"gauntlet_losses": gauntlet_losses,
 		"promoted": promoted,
+		"titles": titles,
 		"incense_marks": incense_marks,   # 093 香火石: 赛季级刻痕池
 		"incense_charge": incense_charge, # 093 香火石: 赛季级充能池(与刻痕同一条线)
 		"season_level": season_level,
@@ -1491,6 +1529,7 @@ func _apply_save_dict(data: Dictionary) -> void:
 	gauntlet_losses = int(data.get("gauntlet_losses", 0))
 	week_phase = str(data.get("week_phase", ""))
 	promoted = bool(data.get("promoted", false))
+	titles = (data.get("titles", []) as Array).duplicate(true)
 	incense_marks = int(data.get("incense_marks", 0))   # 093 香火石: 赛季级刻痕池
 	incense_charge = int(data.get("incense_charge", 0))
 	season_level = int(data.get("season_level", 1))
@@ -1732,7 +1771,11 @@ func ensure_season() -> void:
 	## ⑤ 同一周内 + 闯关赛已收盘 → 闯关配额补发(E-A6)。★挂在同一条惰性路径上,
 	##   理由同④; 两笔账各有自己的已补计数, 不会互相吃额度。
 	paid += settle_gauntlet_close()
-	if paid > 0 or promoted != was_promoted:
+	## ⑥ 头衔补齐(E-B5)。★挂在同一条惰性路径上, 理由同④ ——
+	##   配额是打满那一场结束时满的, 而晋级是周五收盘后算出来的,
+	##   两件事发生在不同时刻 ⇒ 统一在这里对一次账。
+	var new_titles: int = sync_titles()
+	if paid > 0 or promoted != was_promoted or new_titles > 0:
 		save()
 
 ## 本赛季是否已跨进下一个自然周 (UTC 周一 00:00 换周). 未初始化(锚点=0)算未过期.

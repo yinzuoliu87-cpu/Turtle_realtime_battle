@@ -382,3 +382,96 @@ static func stage_for_shop_visit(visit_index: int) -> int:
 
 # ─── 终极战场 + 永恒 buff (G) ────────────────────────────────
 const NO_DRAW := true                    # 无平局 (回合交替→总有先后)
+
+
+# ═══════════════════════════════════════════════════════════════
+#  头衔 (E-B5 · D12 四档 · 2026-09-24)
+#
+#  ★★头衔是**跨大轮唯一保留的资产** —— 大轮切换(`start_new_season`)与
+#    清档(`reset_save`)都不许清。漏一处就是静默丢掉玩家唯一的永久东西。
+#  ★存法定死: 一条 `{id, week}` —— **同一档同一周只记一条**。
+#    存了 week 就意味着"带届数还是带计数"**只是渲染问题**, 随时能改。
+#  ★后两档(四强/冠军)现在**拿不到**: 周日玩法没上线。规则照样写在这里,
+#    判据也照样有门禁守 —— 让「没上线」是个可读状态, 而不是一段悄悄不执行的代码。
+# ═══════════════════════════════════════════════════════════════
+const TITLE_CHAMPION := "champion"        # 冠军: 周日夺冠
+const TITLE_SEMIFINAL := "semifinal"      # 四强: 周日打进四强
+const TITLE_FINALS_DAY := "finals_day"    # 进决赛日: 周六闯关赛晋级
+const TITLE_FULL_QUOTA := "full_quota"    # 积分赛满配额: 本周 24 场打满
+
+## 显示名。★一个来源 —— 主菜单/排行榜/结算都从这儿取。
+const TITLE_LABEL := {
+	TITLE_CHAMPION: "冠军",
+	TITLE_SEMIFINAL: "四强",
+	TITLE_FINALS_DAY: "进决赛日",
+	TITLE_FULL_QUOTA: "满配额",
+}
+
+## 展示顺序(含金量从高到低)。★不靠字典键序 —— Godot 字典有序但那是**插入序**,
+##   谁手滑调一下常量位置显示就跟着变, 而这是**产品决定**不是实现细节。
+const TITLE_ORDER := [TITLE_CHAMPION, TITLE_SEMIFINAL, TITLE_FINALS_DAY, TITLE_FULL_QUOTA]
+
+## 这一档现在拿得到吗。★冠军/四强要周日玩法上线 —— 与门那一套同一条闸。
+static func title_earnable(tid: String) -> bool:
+	if tid == TITLE_CHAMPION or tid == TITLE_SEMIFINAL:
+		return phase_mode_live(PHASE_FINALS)
+	return tid == TITLE_FINALS_DAY or tid == TITLE_FULL_QUOTA
+
+
+## 把一条头衔记录规范化成 `{id, week}`。★week 是**周一锚点**, 与赛程同口径。
+static func title_row(tid: String, week: int) -> Dictionary:
+	return {"id": str(tid), "week": int(week)}
+
+
+## 这条记录已经在列表里了吗(同档同周算同一条)。
+## ★去重判据只看 id + week —— 同一周把配额打满两次不该变成两个头衔。
+static func title_has(list: Array, tid: String, week: int) -> bool:
+	for r in list:
+		if not (r is Dictionary):
+			continue
+		if str((r as Dictionary).get("id", "")) == str(tid) \
+				and int((r as Dictionary).get("week", -1)) == int(week):
+			return true
+	return false
+
+
+## 每一档各拿了几次 → `{id: 次数}`。主菜单那一行的「冠军 ×3」就是它。
+static func title_counts(list: Array) -> Dictionary:
+	var out: Dictionary = {}
+	for r in list:
+		if not (r is Dictionary):
+			continue
+		var tid := str((r as Dictionary).get("id", ""))
+		if tid == "":
+			continue
+		out[tid] = int(out.get(tid, 0)) + 1
+	return out
+
+
+## 最高的那一档(含计数)。空列表 → 空串。
+## ★主菜单只放这一个: 那一行宽 382px, 完整串接在战绩后面会溢出;
+##   而玩家要一眼看到的本来就是**最硬的那个**, 列全反而谁都看不清。
+##   完整列表走 `title_line()`(战绩屏/排行榜)。
+static func title_top(list: Array) -> String:
+	var cnt := title_counts(list)
+	for tid in TITLE_ORDER:
+		var n: int = int(cnt.get(tid, 0))
+		if n > 0:
+			var nm := str(TITLE_LABEL.get(tid, tid))
+			return nm if n == 1 else "%s ×%d" % [nm, n]
+	return ""
+
+
+## 主菜单/排行榜那一行的文字。★空列表返回空串 —— 由调用方决定"没头衔时显示什么",
+##   在这里塞一句「暂无头衔」就等于把文案决定焊死在规则层。
+## 例: `冠军 ×2 · 四强 · 满配额 ×5`(只拿过一次的不写 ×1 —— ×1 是噪声)。
+static func title_line(list: Array) -> String:
+	var cnt := title_counts(list)
+	var parts: Array = []
+	for tid in TITLE_ORDER:
+		var n: int = int(cnt.get(tid, 0))
+		if n <= 0:
+			continue
+		var nm := str(TITLE_LABEL.get(tid, tid))
+		parts.append(nm if n == 1 else "%s ×%d" % [nm, n])
+	return " · ".join(parts)

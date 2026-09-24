@@ -690,6 +690,13 @@ func _status_row() -> void:
 	var wN: int = GameState.battles_won
 	var tN: int = GameState.battles_total
 	var rec := "%d 胜 %d 负" % [wN, maxi(0, tN - wN)] if tN > 0 else "暂无战绩"
+	## ★E-B5 头衔: 只挂**最高一档**。这一行宽 382px, 完整串会溢出 ——
+	##   而玩家要一眼看到的本来就是最硬的那个, 完整列表在战绩屏。
+	##   ★没有头衔时**一个字都不加**(不写「暂无头衔」): 那一行已经有"暂无战绩"了,
+	##     再来一句"暂无"就是拿空状态占屏幕。
+	var top_title: String = _P2C.title_top(GameState.titles)
+	if top_title != "":
+		rec = "%s · 🏅 %s" % [rec, top_title]
 
 	var holder := Control.new()
 	holder.position = Vector2(LEFT_X, STATUS_Y)
