@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://dk8v3qm7xr2wp"]
+
+[ext_resource type="Script" path="res://tests/verify_nickname.gd" id="1"]
+
+[node name="VerifyNickname" type="Node"]
+script = ExtResource("1")

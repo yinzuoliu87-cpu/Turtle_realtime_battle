@@ -356,14 +356,14 @@ func _t_enter() -> void:
 			and str(r.get("body", "")).length() > 120, "%d 字节" % str(r.get("body", "")).length())
 
 	## 名字: 两个号必须不一样 —— 一桶 32 个同名的对阵图没法看
-	var n1 := str(BK.finals_display_name())
+	var n1 := str(BK.player_display_name())
 	GameState.account_id = "uid-other-9999"
-	var n2 := str(BK.finals_display_name())
+	var n2 := str(BK.player_display_name())
 	GameState.account_id = "uid-me-1234"
 	_ok("⑦ ★★两个号的显示名不一样(否则对阵图上全是同一个名字)", n1 != n2, "%s vs %s" % [n1, n2])
 	_ok("⑦ ★分母: 名字不是空的", n1.length() >= 3 and n2.length() >= 3, "%s / %s" % [n1, n2])
 	## ★★登记缺口: 这**不是**真昵称, 是账号短码凑的
-	_ok("⑦ ★登记缺口: 项目还没有「玩家昵称」⇒ 现在用的是账号短码(见 backend.finals_display_name)",
+	_ok("⑦ ★登记缺口: 项目还没有「玩家昵称」⇒ 现在用的是账号短码(见 backend.player_display_name)",
 		n1.begins_with("龟主-"), n1)
 
 	## 匿名号不发(与存档同步同一条承诺)

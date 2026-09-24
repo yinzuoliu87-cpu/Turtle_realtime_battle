@@ -48,6 +48,12 @@ var install_uid: String = ""
 ##   服务端 `ghosts` 的主键是 `(account_id, season_week, battles)` —— 少了「谁」这一维,
 ##   两个人会在服务端静默互相覆盖(memory `fb-id-without-owner-dimension`)。
 var account_id: String = ""        # Supabase 账号 uuid ("" = 还没登录过 / 后端没配)
+## ★★玩家昵称(2026-09-24 · 用户「这个在创建账号应该一起吧」)。
+##   在**绑定邮箱**那一屏与邮箱同时填 —— 那是玩家唯一感知得到的「创建账号」时刻。
+##   ⚠ 它属于**账号**不属于「这局游戏」: 与 `account_id` / `account_email` 同一条线,
+##     大轮切换不清、**清档也不清**。清了的话玩家清一次档就变回兜底短码,
+##     而服务器上还是同一个账号 —— 名字对不上。`verify_nickname` 两条分别守着。
+var nickname: String = ""
 var account_email: String = ""     # 补绑的邮箱 ("" = 匿名账号, 换设备会丢档)
 ## D-3c 登录续期用的 refresh_token。★**设备本地**: 不上云、清档保留、切轮不动。
 ##   原来这个值被整个扔掉 ⇒ 重开 App 之后再也拿不到 token(2026-09-21 查实)。
@@ -1417,7 +1423,8 @@ func _save_dict() -> Dictionary:
 		"meta_shop_battles": meta_shop_battles,
 		"install_uid": install_uid,      # 本机随机安装标识(见 get_install_uid 的长注释)
 		"account_id": account_id,        # D-3 服务端账号(身份, 不随赛季变)
-		"account_email": account_email,  # 补绑的邮箱("" = 匿名, 换设备丢档)
+		"account_email": account_email,
+		"nickname": nickname,  # 补绑的邮箱("" = 匿名, 换设备丢档)
 		"auth_refresh": auth_refresh,    # D-3c 登录续期令牌(设备本地, 不上云)
 		"season_id": season_id,
 		"season_start_ts": season_start_ts,
@@ -1512,6 +1519,7 @@ func _apply_save_dict(data: Dictionary) -> void:
 	install_uid = str(data.get("install_uid", ""))
 	account_id = str(data.get("account_id", ""))
 	account_email = str(data.get("account_email", ""))
+	nickname = str(data.get("nickname", ""))
 	auth_refresh = str(data.get("auth_refresh", ""))
 	cloud_rev = int(data.get("cloud_rev", 0))
 	season_id = int(data.get("season_id", 1))
@@ -1670,6 +1678,8 @@ func reset_save() -> void:
 	##   就再也认不回来了(而且旧账号还留在那儿占着 MAU)。
 	var _keep_acc := account_id
 	var _keep_mail := account_email
+	## ★昵称同理: 清的是「这局游戏」, 不是「你是谁」
+	var _keep_nick := nickname
 	var _keep_refresh := auth_refresh   # D-3c: 清档清的是「这局游戏」不是「这台设备的登录」
 	var _keep_rev := cloud_rev
 	best_dungeon_stage = 0
@@ -1729,6 +1739,7 @@ func reset_save() -> void:
 	install_uid = _keep_uid
 	account_id = _keep_acc
 	account_email = _keep_mail
+	nickname = _keep_nick
 	auth_refresh = _keep_refresh
 	cloud_rev = _keep_rev
 	save()

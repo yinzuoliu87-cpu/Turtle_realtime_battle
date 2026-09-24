@@ -87,6 +87,7 @@ func _ready() -> void:
 ##   做成常驻的"在线/离线"角标是反的: 它等于告诉玩家"你是残缺状态, 去修",
 ##   而玩家多半修不了 ⇒ 制造焦虑但给不出行动(`remote_pool.gd` 头注记过同样的取舍)。
 const _SB_ACC := preload("res://scripts/net/supabase.gd")
+const _P2C := preload("res://scripts/gamedata/phase2_config.gd")
 
 func _account_row() -> void:
 	if not _SB_ACC.enabled():
@@ -245,6 +246,7 @@ func _small_button(cx: float, cy: float, label: String, cb: Callable) -> Button:
 var _email_layer: Control = null
 var _email_edit: LineEdit = null
 var _code_edit: LineEdit = null
+var _nick_edit: LineEdit = null
 var _email_status: Label = null
 var _email_send_btn: Button = null
 var _email_ok_btn: Button = null
@@ -265,7 +267,9 @@ func _open_email_dialog(flow: String) -> void:
 	sb.bg_color = Color("#1c2836"); sb.border_color = Color("#5aa0ff")
 	sb.set_border_width_all(3); sb.set_corner_radius_all(12)
 	box.add_theme_stylebox_override("panel", sb)
-	box.position = Vector2(W / 2.0 - 260, H / 2.0 - 170); box.size = Vector2(520, 340)
+	## ★绑定流程多一行「昵称」⇒ 高 340 → 400(取回流程不填, 见下面那个 if)
+	var _bh: float = 400.0 if flow == _SB_ACC.FLOW_BIND else 340.0
+	box.position = Vector2(W / 2.0 - 260, H / 2.0 - _bh / 2.0); box.size = Vector2(520, _bh)
 	dim.add_child(box)
 
 	var ttl := Label.new()
@@ -295,17 +299,38 @@ func _open_email_dialog(flow: String) -> void:
 	why.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(why)
 
+	## ★★昵称(只有绑定流程要填)。用户 2026-09-24:「这个在创建账号应该一起吧」——
+	##   这个项目里玩家感知得到的「创建账号」只有这一处(首启建匿名号是**静默**的)。
+	##   取回流程不填: 那个号已经有昵称了, 跟着账号一起回来; 在那儿再问等于让玩家改名。
+	var _dy: float = 0.0
+	if flow == _SB_ACC.FLOW_BIND:
+		var nlab := Label.new()
+		nlab.text = "起个名字(%d~%d 个字) —— 排行榜和对阵图上别人看到的就是它" % [
+			_P2C.NICK_MIN, _P2C.NICK_MAX]
+		nlab.add_theme_font_size_override("font_size", 12)
+		nlab.add_theme_color_override("font_color", Color("#9fb4c8"))
+		nlab.position = Vector2(40, 116); nlab.size = Vector2(440, 18)
+		box.add_child(nlab)
+		_nick_edit = LineEdit.new()
+		_nick_edit.placeholder_text = "你的名字"
+		_nick_edit.text = str(GameState.nickname)
+		_nick_edit.max_length = _P2C.NICK_MAX * 2   # ★按**规范化后**判长度, 这里只防手滑贴一长串
+		_nick_edit.add_theme_font_size_override("font_size", 16)
+		_nick_edit.position = Vector2(40, 136); _nick_edit.size = Vector2(440, 40)
+		box.add_child(_nick_edit)
+		_dy = 60.0
+
 	_email_edit = LineEdit.new()
 	_email_edit.placeholder_text = "你的邮箱"
 	_email_edit.text = str(GameState.account_email)
 	_email_edit.add_theme_font_size_override("font_size", 16)
-	_email_edit.position = Vector2(40, 120); _email_edit.size = Vector2(300, 40)
+	_email_edit.position = Vector2(40, 120 + _dy); _email_edit.size = Vector2(300, 40)
 	box.add_child(_email_edit)
 
 	_email_send_btn = Button.new()
 	_email_send_btn.text = "发验证码"
 	_email_send_btn.add_theme_font_size_override("font_size", 15)
-	_email_send_btn.position = Vector2(352, 120); _email_send_btn.size = Vector2(128, 40)
+	_email_send_btn.position = Vector2(352, 120 + _dy); _email_send_btn.size = Vector2(128, 40)
 	_email_send_btn.pressed.connect(func():
 		_SB_ACC.send_code_async(_email_edit.text, flow))
 	box.add_child(_email_send_btn)
@@ -313,19 +338,30 @@ func _open_email_dialog(flow: String) -> void:
 	_code_edit = LineEdit.new()
 	_code_edit.placeholder_text = "邮件里的验证码"
 	_code_edit.add_theme_font_size_override("font_size", 16)
-	_code_edit.position = Vector2(40, 172); _code_edit.size = Vector2(300, 40)
+	_code_edit.position = Vector2(40, 172 + _dy); _code_edit.size = Vector2(300, 40)
 	box.add_child(_code_edit)
 
 	_email_ok_btn = Button.new()
 	_email_ok_btn.text = "确认"
 	_email_ok_btn.add_theme_font_size_override("font_size", 15)
-	_email_ok_btn.position = Vector2(352, 172); _email_ok_btn.size = Vector2(128, 40)
-	_email_ok_btn.pressed.connect(func(): _SB_ACC.verify_code_async(_code_edit.text))
+	_email_ok_btn.position = Vector2(352, 172 + _dy); _email_ok_btn.size = Vector2(128, 40)
+	_email_ok_btn.pressed.connect(func():
+		## ★★昵称先过一遍规则再验码 —— 验码成功之后才存就晚了:
+		##   那一刻对话框已经关了, 玩家没机会改。规则只有 `phase2_config` 一份。
+		if flow == _SB_ACC.FLOW_BIND:
+			var err: String = _P2C.nickname_error(_nick_edit.text)
+			if err != "":
+				_email_status.text = err
+				_email_status.add_theme_color_override("font_color", Color("#ff9a9a"))
+				return
+			GameState.nickname = _P2C.nickname_clean(_nick_edit.text)
+			GameState.save()
+		_SB_ACC.verify_code_async(_code_edit.text))
 	box.add_child(_email_ok_btn)
 
 	_email_status = Label.new()
 	_email_status.add_theme_font_size_override("font_size", 13)
-	_email_status.position = Vector2(30, 222); _email_status.size = Vector2(460, 48)
+	_email_status.position = Vector2(30, 222 + _dy); _email_status.size = Vector2(460, 48)
 	_email_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_email_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_email_status)
@@ -333,7 +369,7 @@ func _open_email_dialog(flow: String) -> void:
 	var close := Button.new()
 	close.text = "关闭"
 	close.add_theme_font_size_override("font_size", 16)
-	close.position = Vector2(180, 282); close.size = Vector2(160, 40)
+	close.position = Vector2(180, 282 + _dy); close.size = Vector2(160, 40)
 	close.pressed.connect(func():
 		_SB_ACC.reset_email_flow()
 		dim.queue_free(); _email_layer = null)

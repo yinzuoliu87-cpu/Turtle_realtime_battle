@@ -513,7 +513,8 @@ static func upload_gauntlet_ghost(gw: int, gl: int) -> void:
 	var base := player_ghost_id(int(GameState.season_id), leaders, -1)
 	var gid := "%s_g%d-%d" % [base, gw, gl]
 	var av := str(leaders[0]) if (leaders is Array and (leaders as Array).size() > 0) else "basic"
-	var snap := build_ghost_snapshot(gid, {"name": "玩家阵容", "avatar": av, "id": gid})
+	## ★名字用玩家昵称(没设就是兜底短码) —— 排行榜显示的就是这个字段。
+	var snap := build_ghost_snapshot(gid, {"name": player_display_name(), "avatar": av, "id": gid})
 	if snap.is_empty():
 		return
 	snap["gl_w"] = gw
@@ -539,32 +540,24 @@ static func report_finals_entry() -> void:
 	var leaders = GameState.season_leaders
 	var gid := player_ghost_id(int(GameState.season_id), leaders, -1)
 	var av := str(leaders[0]) if (leaders is Array and (leaders as Array).size() > 0) else "basic"
-	var snap := build_ghost_snapshot(gid, {"name": "玩家阵容", "avatar": av, "id": gid})
+	var snap := build_ghost_snapshot(gid, {"name": player_display_name(), "avatar": av, "id": gid})
 	if snap.is_empty():
 		return
 	var SB4 = load("res://scripts/net/supabase.gd")
 	if SB4 == null:
 		return
-	SB4.enter_finals_async(int(GameState.week_anchor_ts), finals_display_name(),
+	SB4.enter_finals_async(int(GameState.week_anchor_ts), player_display_name(),
 		snap, int(GameState.gauntlet_wins), int(GameState.gauntlet_losses))
 
 
-## 对阵图上显示的名字。
-## ★★**已知缺口, 显式登记**: 这个项目**还没有「玩家昵称」这个东西** ——
-##   排行榜写死「我 (玩家)」, 快照里写死「玩家阵容」。
-##   一桶 32 个「玩家」的对阵图没法看 ⇒ 先拿账号短码凑一个能区分的,
-##   真昵称是得单独做的一件事(要拍板: 怎么输入/改不改得了/要不要审核)。
-##   **不假装它不存在**: 不写这段就会有人(包括我自己)把它当成做完了。
-static func finals_display_name() -> String:
+## 玩家显示名 —— **全仓唯一出处**。有昵称用昵称, 没有用确定性兜底短码。
+## ★昵称在**绑定邮箱**那一屏与邮箱同时填(用户 2026-09-24「这个在创建账号应该一起吧」)——
+##   那是玩家唯一感知得到的「创建账号」时刻: 首启建匿名号是**静默**的, 没有任何界面。
+## ★没绑邮箱的匿名号用兜底短码, 不强制 —— 规则与文案都在 `phase2_config` 那一节。
+static func player_display_name() -> String:
 	if GameState == null:
 		return "?"
-	var uid := str(GameState.account_id)
-	if uid == "":
-		return "龟主-0000"
-	## ★取**哈希**不取前缀: 门禁当场拓出来的 —— id 有公共前缀时
-	##   `substr(0,4)` 会让所有人重名(对阵图上一桶全是同一个名字)。
-	##   哈希对前缀/后缀都不敏感, 而且同一个号每次算出来都一样。
-	return "龟主-" + uid.sha256_text().substr(0, 5)
+	return _P2.display_name(str(GameState.nickname), str(GameState.account_id))
 
 
 ## 在本地池里找【同标签且新鲜】的一份快照。找不到返回 null(回落交给上面那个函数)。

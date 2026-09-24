@@ -7600,7 +7600,8 @@ func _settle_season(won: bool) -> void:
 		if not _surrendered:
 			var _gid := Backend.player_ghost_id(int(gs.season_id), gs.season_leaders, int(gs.season_total_battles))
 			var _av := str(gs.season_leaders[0]) if (gs.season_leaders as Array).size() > 0 else "basic"
-			Backend.upload_ghost(Backend.build_ghost_snapshot(_gid, {"name": "玩家阵容", "avatar": _av, "id": _gid}))
+			Backend.upload_ghost(Backend.build_ghost_snapshot(_gid,
+				{"name": Backend.player_display_name(), "avatar": _av, "id": _gid}))
 	# 奇械羁绊【铸币】: 本场累积的深海币(有硬上限, 见 gadget_synergy_system.gd)一次性进账。
 	# ★加在 `_last_reward` 上而不是直接加 meta —— 结算屏显示的就是 _last_reward,
 	#   直接加 meta 会出现"钱多了但结算屏没说是哪来的", 玩家看不到因果。

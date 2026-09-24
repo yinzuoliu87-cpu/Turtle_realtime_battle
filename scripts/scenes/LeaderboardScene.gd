@@ -55,7 +55,8 @@ func _ready() -> void:
 	##   开局大家**胜场**并列 0 时自己经常落在第 30 名开外, **在本屏拿到 rows 之前就已经被切没了**,
 	##   于是下面的"钉住自己"根本无从谈起(第一版实拍复看: 榜上仍旧一个「◀ 你」都没有)。
 	##   拿全量在这里自己切, 名次 = 全量下标 + 1, 才是真名次。
-	var rows := Backend.leaderboard(pool, "我 (玩家)", int(GameState.season_wins),
+	## ★"我"那一行用玩家昵称(没设就是兜底短码) —— 与别人那几行同一个来源。
+	var rows := Backend.leaderboard(pool, Backend.player_display_name(), int(GameState.season_wins),
 		int(GameState.hearts), int(GameState.season_sweeps), 1 << 30)
 
 	# 表面板 —— 金属九宫格(和背包/图鉴/战绩同一张 panel-frame)。冷蓝调走 modulate,

@@ -475,3 +475,67 @@ static func title_line(list: Array) -> String:
 		var nm := str(TITLE_LABEL.get(tid, tid))
 		parts.append(nm if n == 1 else "%s ×%d" % [nm, n])
 	return " · ".join(parts)
+
+
+# ═══════════════════════════════════════════════════════════════
+#  玩家昵称 (2026-09-24 · 用户「这个在创建账号应该一起吧」)
+#
+#  ★挂在**绑定邮箱**那一屏 —— 那是玩家唯一感知得到的「创建账号」时刻:
+#    首启建匿名号是**静默**的, 全程没有任何账号界面。
+#  ★没绑邮箱的匿名号**不强制** —— 它本来也不进决赛日, 用兜底短码就够。
+#  ★规则只在这里写一份: 输入框校验 / 存档 / 上传 / 对阵图四处都调它。
+# ═══════════════════════════════════════════════════════════════
+const NICK_MIN := 2                # 一个字也能认人吗? 不能 —— 至少两个
+const NICK_MAX := 8                # 对阵图那一格放得下的上限(8 个汉字 ≈ 96px)
+
+## 规范化: 去首尾空白 + 把内部连续空白压成一个 + 丢掉控制字符。
+## ★**先规范化再判长度** —— 否则「  a  」这种能靠空白凑够长度。
+static func nickname_clean(raw: String) -> String:
+	var out := ""
+	var prev_sp := false
+	for ch in raw.strip_edges():
+		var c := int(ch.unicode_at(0))
+		if c < 32 or c == 127:
+			continue                      # 控制字符: 换行/制表/退格 —— 一律丢掉
+		if ch == " " or ch == "\u3000":
+			if prev_sp:
+				continue                  # 连续空白压成一个
+			prev_sp = true
+			out += " "
+			continue
+		prev_sp = false
+		out += ch
+	return out.strip_edges()
+
+
+## 规范化之后合不合法。★判的是**规范化后的**串, 与 `nickname_clean` 成对使用。
+static func nickname_valid(raw: String) -> bool:
+	var s := nickname_clean(raw)
+	return s.length() >= NICK_MIN and s.length() <= NICK_MAX
+
+
+## 不合法时该对玩家说什么。★空串 = 合法(调用方据此判断要不要报错)。
+static func nickname_error(raw: String) -> String:
+	var s := nickname_clean(raw)
+	if s.length() < NICK_MIN:
+		return "名字太短了 —— 至少 %d 个字" % NICK_MIN
+	if s.length() > NICK_MAX:
+		return "名字太长了 —— 最多 %d 个字(现在 %d 个)" % [NICK_MAX, s.length()]
+	return ""
+
+
+## 没设昵称时显示什么。★确定性: 同一个账号每次算出来都一样。
+##   取**哈希**不取前缀 —— id 有公共前缀时取前缀会让所有人重名
+##   (2026-09-24 门禁当场拓出来的)。
+static func nickname_fallback(account_id: String) -> String:
+	if account_id == "":
+		return "龟主-0000"
+	return "龟主-" + account_id.sha256_text().substr(0, 5)
+
+
+## 最终显示名: 有昵称用昵称, 没有用兜底。**所有要显示玩家名字的地方都调它。**
+static func display_name(nick: String, account_id: String) -> String:
+	var s := nickname_clean(nick)
+	if s.length() >= NICK_MIN:
+		return s
+	return nickname_fallback(account_id)
