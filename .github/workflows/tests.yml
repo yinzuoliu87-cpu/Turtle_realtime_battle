@@ -141,10 +141,16 @@ jobs:
           #   "Lambda capture at index 0 was freed", 本地满速/15fps/8路并发共 22 次
           #   全复现不出来, 而我连"报错出现在测试的哪一步"都看不到。
           #   每份只留尾部 400 行, 免得把 ci-logs 分支撑大。
+          # ★★改名再拷: 源文件名是 `.gate-fail-<名>.log`, 而它**在 .gitignore 里** ——
+          #   叫这个名字拷进孤儿分支, 最后那句 `git add -A` 很可能把它忽略掉。
+          #   2026-09-25 第一版就是这么丢的: 代码在、循环也跑了, 分支里就是没有这个文件。
+          #   ⇒ 拷成 `gatefail-<名>.log`(没有前导点、不匹配那条忽略规则)。
           for f in .gate-fail-*.log; do
             [ -e "$f" ] || continue
-            tail -n 400 "$f" > "/tmp/cilog/$(basename "$f")" 2>/dev/null || true
+            tail -n 400 "$f" > "/tmp/cilog/gatefail-${f#.gate-fail-}" 2>/dev/null || true
           done
+          # ★诊断: 把真的拷进去了什么打出来 —— 上一版"看着跑了其实没拷到"就是因为没有这一行
+          echo "::notice::cilog 内容: $(ls -A /tmp/cilog 2>/dev/null | tr '\n' ' ')"
           git config user.name "ci"; git config user.email "ci@local"
           git checkout --orphan ci-logs-tmp
           git rm -rf --cached . >/dev/null 2>&1 || true
