@@ -23,6 +23,10 @@ extends Node
 ## ★publishable key 是**公开值**：它设计上就要嵌进客户端，安全边界不在"藏住它"而在
 ##   服务端的 RLS（`server/supabase/schema.sql` 逐表开了，并且实测过冒充写入返回 403）。
 
+## 赛程规则（E-B7 备战购物窗的判据住在那边，这一层只凑时刻不重写规则）。
+## ★方向是单向的：`phase2_config` 里**零处**引用本文件，不会循环。
+const _P2S := preload("res://scripts/gamedata/phase2_config.gd")
+
 const SETTING_URL := "turtle/supabase_url"
 const SETTING_KEY := "turtle/supabase_anon_key"
 const ENV_URL := "TURTLE_SUPABASE"
@@ -1639,7 +1643,12 @@ static func parse_finals(ok: bool, code: int, body: String, my_account: String,
 	##   (服务端当初把这两件事并进一次往返, 正是为了避开它)。
 	return {"size": n, "round": maxi(1, int(d.get("round", 1))), "done": done,
 		"names": names, "me": me, "closed": bool(d.get("closed", false)),
-		"left": left, "recv_at": recv_at, "bucket": int(d.get("bucket", -1))}
+		"left": left, "recv_at": recv_at, "bucket": int(d.get("bucket", -1)),
+		## ★E-B7 备战购物窗要的两个数。**都用服务端的** ——
+		##   `round_at` 是本轮开始时刻，`srv_now` 是收包那一刻服务端的钟。
+		##   有了这两个，本机只需要算**过了多久**（时间差），不必相信本机的绝对时钟
+		##   （与上面 `left` 同一条纪律：本机时钟偏了也不影响，只要它走得不快不慢）。
+		"round_at": int(d.get("round_at", 0)), "srv_now": int(d.get("now", 0))}
 
 
 ## 收到回包时还剩几秒 → 现在还剩几秒。★用的是「收包时剩多少」减「本机过了多久」,
@@ -1649,6 +1658,33 @@ static func finals_left(now_local: int) -> int:
 	if v.is_empty() or int(v.get("left", -1)) < 0:
 		return -1
 	return maxi(0, int(v["left"]) - (now_local - int(v.get("recv_at", now_local))))
+
+
+## 现在**服务端**的钟大概是几点。= 收包时服务端说的时刻 + 本机从那时起过了多久。
+## ★★为什么不直接用本机时钟: 备战购物窗是**全桶同步**的事，
+##   本机时钟偏 10 分钟的人会比别人早关窗或晚关窗，而他自己一点都察觉不到。
+##   这里只用**时间差**（本机走得不快不慢就够），绝对时刻一律听服务端的。
+static func finals_srv_now(now_local: int) -> int:
+	var v := _finals_view
+	if v.is_empty() or int(v.get("srv_now", 0)) <= 0:
+		return 0
+	return int(v["srv_now"]) + (now_local - int(v.get("recv_at", now_local)))
+
+
+## 备战购物窗现在开着吗 / 还剩几秒。★判据本身在 `phase2_config.finals_shop_open()`
+##   （纯函数、门禁穷举过），这一层只负责**把两个时刻凑齐**，不重写规则。
+static func finals_shop_open_now(now_local: int) -> bool:
+	var v := _finals_view
+	if v.is_empty():
+		return false
+	return _P2S.finals_shop_open(int(v.get("round_at", 0)), finals_srv_now(now_local))
+
+
+static func finals_shop_left_now(now_local: int) -> int:
+	var v := _finals_view
+	if v.is_empty():
+		return 0
+	return _P2S.finals_shop_left(int(v.get("round_at", 0)), finals_srv_now(now_local))
 
 
 ## ─────────────────────────────────────────────────────────────

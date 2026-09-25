@@ -48,6 +48,7 @@ func _ready() -> void:
 	print("=== 决赛日结算口径与购物窗 (E-B7) ===")
 	_t_settle_kind()
 	_t_shop_window()
+	_t_shop_wiring()
 	await _t_real_settle()
 	print("")
 	print("  (共 %d 条断言)" % _n)
@@ -112,6 +113,63 @@ func _t_shop_window() -> void:
 	_ok("② ★关了之后剩余 = 0(不是负数 —— 屏幕会把负数画成一串怪字)",
 		P2C.finals_shop_left(r0, r0 + w + 500) == 0,
 		str(P2C.finals_shop_left(r0, r0 + w + 500)))
+
+
+# ─────────────────────────────────────────────────────────────
+# ②' 购物窗接线: 客户端拿服务端的钟去判, 不看本机时钟
+#
+# ★★★这一节守的是「**同一组服务端时刻, 本机时钟偏多少都不影响**」——
+#   备战购物窗是**全桶同步**的事, 本机时钟偏 10 分钟的人会比别人早关窗或晚关窗,
+#   而他自己一点都察觉不到。
+# ★判据落在 `SupabaseNet` 真的缓存下来的那份回包上, 不是我另喂一份。
+# ─────────────────────────────────────────────────────────────
+const SB := preload("res://scripts/net/supabase.gd")
+
+func _t_shop_wiring() -> void:
+	print("── ②' 购物窗接线(拿服务端的钟判, 不看本机钟) ──")
+	## 造一段像真的回包: 本轮 round_at=1000 开始, 服务端现在 1060(开窗 60 秒了)
+	var body := JSON.stringify({
+		"ok": true, "bucket": 3, "n": 4, "round": 1, "closed": false,
+		"round_at": 1000, "next_at": 1480, "now": 1060,
+		"entrants": [{"seed": 0, "name": "甲", "account_id": "uid-me"},
+			{"seed": 1, "name": "乙", "account_id": "uid-b"}],
+		"done": {}})
+	## ★两次翻译**只差本机时刻**(一个 5000、一个 90000) —— 服务端那三个数一模一样
+	SB._finals_view = SB.parse_finals(true, 200, body, "uid-me", 5000)
+	_ok("②' ★分母: round_at / srv_now 真的带出来了(否则下面全是空检查)",
+		int(SB._finals_view.get("round_at", -1)) == 1000
+			and int(SB._finals_view.get("srv_now", -1)) == 1060,
+		str(SB._finals_view).substr(0, 120))
+	_ok("②' 开窗 60 秒时: 还开着", SB.finals_shop_open_now(5000))
+	_ok("②' 剩余 = 180 - 60 = 120 秒", SB.finals_shop_left_now(5000) == 120,
+		str(SB.finals_shop_left_now(5000)))
+	## 本机再走 60 秒 ⇒ 服务端也走了 60 秒 ⇒ 还剩 60
+	_ok("②' 本机再走 60 秒 ⇒ 剩 60(用的是**时间差**)",
+		SB.finals_shop_left_now(5060) == 60, str(SB.finals_shop_left_now(5060)))
+	_ok("②' 本机走过 180 秒 ⇒ 窗关了", not SB.finals_shop_open_now(5000 + 180))
+
+	## ★★★同一份回包, 换一个**差了一天**的本机时刻重新收包 ⇒ 答案必须一模一样
+	SB._finals_view = SB.parse_finals(true, 200, body, "uid-me", 90000)
+	_ok("②' ★★★本机时钟差了一天, 同一刻的答案**完全一样** —— 全桶同步的事不能看本机钟",
+		SB.finals_shop_open_now(90000) and SB.finals_shop_left_now(90000) == 120,
+		"开=%s 剩=%d" % [SB.finals_shop_open_now(90000), SB.finals_shop_left_now(90000)])
+
+	## 没有桶(空缓存) ⇒ 一律关, 不是开
+	SB.finals_clear()
+	_ok("②' ★没拿到桶 ⇒ 关(默认值选错方向的代价不对称)", not SB.finals_shop_open_now(5000))
+	_ok("②' ★没拿到桶 ⇒ 剩 0 不是负数", SB.finals_shop_left_now(5000) == 0)
+
+	## ── 屏幕那一行说什么(纯函数, 三种状态各不相同) ──
+	var MAP := preload("res://scripts/scenes/BracketMapScene.gd")
+	var t_open := MAP.shop_tip(true, 125, true)
+	_ok("②' 开着 ⇒ 说**还剩多久**(没有倒计时这一行就没价值)",
+		t_open.find("2:05") >= 0, t_open)
+	var t_shut := MAP.shop_tip(false, 0, true)
+	_ok("②' 关了 ⇒ 说清在等什么(不是干巴巴一句「不能买」)",
+		t_shut.find("等开打") >= 0, t_shut)
+	_ok("②' ★★没桶 ⇒ 这一行**根本不出现**(空串), 不是显示一句废话",
+		MAP.shop_tip(true, 100, false) == "", MAP.shop_tip(true, 100, false))
+	_ok("②' ★三种状态说的不是同一句话", t_open != t_shut)
 
 
 # ─────────────────────────────────────────────────────────────

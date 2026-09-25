@@ -649,6 +649,9 @@ var _poll: Timer = null
 var _injected := false          # ★有人喂过数据 ⇒ 这一屏不联网
 var _fetch_left := 0.0          # 距下次重新拉(服务端每过一轮, 图上就该翻一面)
 var _tip: Label = null
+## E-B7 备战购物窗那一行。★与 `_tip` 分成**两个**标签：一个说「还能买多久」、
+##   一个说「对手阵容拿没拿到」；挤进同一行会互相盖掉，而那两件事同时成立。
+var _shop_row: Label = null
 var _last_sig := ""
 
 ## 每 30 秒重拉一次 —— 服务端一轮 8 分钟, 30 秒的粒度足够让"翻面"看着是自动的。
@@ -662,6 +665,12 @@ func _start_feed() -> void:
 	_tip.add_theme_color_override("font_color", ACCENT)
 	_tip.visible = false
 	add_child(_tip)
+	_shop_row = Label.new()
+	_shop_row.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_shop_row.add_theme_font_size_override("font_size", 15)
+	_shop_row.add_theme_color_override("font_color", MINE)
+	_shop_row.visible = false
+	add_child(_shop_row)
 	_poll = Timer.new()
 	_poll.wait_time = 0.5
 	_poll.timeout.connect(_on_poll)
@@ -743,6 +752,21 @@ func _try_start_match() -> bool:
 	return true
 
 
+## 备战购物窗那一行该说什么。`""` = 这一行根本不出现。
+## ★★**纯函数**（喂两个数就能验），理由同 `finals_shop_open` 本身：
+##   只写在屏幕里的话，门禁只量得到"此刻"那一格，窗外那一大段全是空检查。
+## ★三种状态说的话完全不同 —— 混成一句「购物」等于没说：
+##   · 开着：还剩多久（**倒计时是这一行的全部价值**，没有它玩家不知道该不该现在去）
+##   · 关了：说清在等什么（不是"不能买"，而是"这一轮的备战结束了"）
+##   · 没上线 / 没桶：不出现
+static func shop_tip(shop_open: bool, left_sec: int, has_bucket: bool) -> String:
+	if not has_bucket:
+		return ""
+	if shop_open:
+		return "备战购物 · 还剩 %d:%02d" % [left_sec / 60, left_sec % 60]
+	return "本轮备战已结束 · 等开打"
+
+
 ## 对手快照这一步该跟玩家说什么。★**纯函数**：喂一份 `opponent_cached()` 的产物
 ## 就能验，不用起网络。★每种 `reason` 说的话都不一样 —— 「这一轮你已经看过 3 号了」
 ## 和「你不在这个桶里」是两件完全不同的事，混成一句「取不到」等于没说。
@@ -773,6 +797,19 @@ func _on_poll() -> void:
 	##   `_try_start_match()` 自己会判"到底能不能开"; 开了就换场景, 这一拍不用再往下走。
 	if _try_start_match():
 		return
+	## ★★E-B7 备战购物窗那一行。放在对手提示**之前**算 ——
+	##   两者共用 `_tip`，而"拿不到对手阵容"是**当下要处理的事**，
+	##   优先级高于"还能买多久"，所以下面那句有内容时会盖掉这一句。
+	if _shop_row != null:
+		var now_l := _clock()
+		var st := shop_tip(_SB.finals_shop_open_now(now_l), _SB.finals_shop_left_now(now_l),
+			int(cur().get("size", 0)) > 1)
+		_shop_row.text = st
+		_shop_row.visible = st != ""
+		if st != "":
+			var vs := get_viewport().get_visible_rect().size
+			_shop_row.position = Vector2(0, vs.y - 156)
+			_shop_row.size = Vector2(vs.x, 26)
 	## 对手那边的结果(拿不到/被拒/连不上)要说人话 —— 每种 reason 说的不一样。
 	if _tip != null:
 		var tip := opponent_tip(_SB.opponent_cached(), _SB.opponent_tried())
