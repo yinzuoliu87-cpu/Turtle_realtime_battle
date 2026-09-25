@@ -108,6 +108,7 @@ func _gambler_throw_hit(u: Dictionary, tgt: Dictionary, dmg: int, roll_multi: bo
 	var arc = randf_range(0.7, 1.5)                 # 抛物线拱高(每张不同)
 	var lat = randf_range(-1.0, 1.0)                # 侧向弧偏(每张不同→扇形散开)
 	var ctw = battle._reg_tween()
+	ctw.bind_node(card)
 	ctw.tween_method(func(f: float) -> void:
 		if not is_instance_valid(card): return
 		var pos = from3.lerp(to3, f)
@@ -142,6 +143,7 @@ func _gambler_wheel_vfx(u: Dictionary, suit: int) -> void:
 	battle._world.add_child(lbl)
 	var target = 12.0 + float(suit)           # 3整圈+落在suit(12%4=0→末位=suit)
 	var tw = battle._reg_tween()
+	tw.bind_node(lbl)
 	tw.tween_method(func(v: float) -> void:
 		if is_instance_valid(lbl):
 			var idx = int(round(v)) % 4
@@ -209,6 +211,7 @@ func _gambler_wild_vfx(u: Dictionary, tgt: Dictionary) -> void:
 		var tp: Vector2 = tgt["pos"]
 		var th: float = float(tgt.get("height", 0.0))
 		var ctw = battle._reg_tween()
+		ctw.bind_node(card)
 		ctw.tween_method(func(f: float) -> void:
 			if not is_instance_valid(card): return
 			card.position = from3.lerp(to3, f)

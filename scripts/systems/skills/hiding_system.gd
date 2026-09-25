@@ -447,6 +447,7 @@ func _hiding_summon_vfx(pos: Vector2) -> void:                 # 喊龟·召唤�
 	ring.position = battle._world_pos(pos, 0.065)
 	battle._world.add_child(ring)
 	var rt = battle._reg_tween()
+	rt.bind_node(ring)
 	rt.tween_method(func(q: float) -> void:
 		if is_instance_valid(ring): ring.pixel_size = (maxf(20.0, 300.0 * q) * battle.WS) / 256.0
 	, 0.0, 1.0, 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
@@ -455,6 +456,7 @@ func _hiding_summon_vfx(pos: Vector2) -> void:                 # 喊龟·召唤�
 	rt.tween_callback(ring.queue_free)
 	var inner = battle._px_ground_sprite(VfxTex._make_pixel_ring_tex(), pos, 260.0, Color(0.85, 0.7, 0.4, 0.7), 0.06)   # 内环倒收(聚拢感)
 	var it = battle._reg_tween()
+	it.bind_node(inner)
 	it.tween_method(func(q: float) -> void:
 		if is_instance_valid(inner): inner.pixel_size = (maxf(50.0, 260.0 * (1.0 - q)) * battle.WS) / 48.0
 	, 0.0, 1.0, 0.45)
@@ -501,6 +503,7 @@ func _hiding_legacy_vfx(from_pos: Vector2, owner: Dictionary) -> void:   # 遗�
 		dot.position = battle._world_pos(start, randf_range(0.3, 0.9))
 		battle._world.add_child(dot)
 		var dt = battle._reg_tween()
+		dt.bind_node(dot)
 		dt.tween_interval(0.06 * float(i))
 		dt.tween_method(func(q: float) -> void:                 # 活追踪主人(主人在走也能飞进身体)
 			if is_instance_valid(dot) and oref.get("alive", false):
@@ -540,6 +543,7 @@ func _hiding_legacy_heal_vfx(u: Dictionary) -> void:            # 防御盾到�
 		dot.position = battle._world_pos(start, 0.4)
 		battle._world.add_child(dot)
 		var dt = battle._reg_tween()
+		dt.bind_node(dot)
 		dt.tween_method(func(q: float) -> void:
 			if is_instance_valid(dot) and oref.get("alive", false):
 				dot.position = battle._world_pos(start.lerp(oref["pos"], q), lerpf(0.4, 0.8, q))
@@ -624,6 +628,7 @@ func _sk_hiding_buff(u: Dictionary) -> void:                    # 强化随从(�
 		battle._world.add_child(sp)
 		var a0: float = TAU * float(si) / 3.0
 		var st = battle._reg_tween()
+		st.bind_node(sp)
 		st.tween_interval(0.3)
 		st.tween_method(func(q: float) -> void:
 			if not is_instance_valid(sp): return

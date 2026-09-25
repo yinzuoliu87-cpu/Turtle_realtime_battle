@@ -154,6 +154,7 @@ func _candy_shell_drop(land2d: Vector2, on_land: Callable) -> void:   # 糖衣�
 	s.position = battle._world_pos(land2d, from_h)
 	battle._world.add_child(s)
 	var tw = battle._reg_tween()
+	tw.bind_node(s)
 	tw.tween_method(func(p: float) -> void:
 		if not is_instance_valid(s): return
 		s.position = battle._world_pos(land2d, maxf(0.2, from_h * (1.0 - p * p)))   # 重力加速下落

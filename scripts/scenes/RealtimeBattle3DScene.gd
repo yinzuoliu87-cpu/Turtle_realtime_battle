@@ -4703,6 +4703,7 @@ func _spawn_bamboo_orb(from_pos: Vector2, to_pos: Vector2, on_land: Callable = C
 	## ★抛物线是纯观感(留 tween), 但**落点结算不许挂它末尾**: tween 无头下推不动(§3.5)
 	##   ⇒ 039 文案那句「落到身上才结算(回血+永久 +50/70/90 最大生命)」一次都不会发生。
 	var tw := _reg_tween()
+	tw.bind_node(orb)
 	tw.tween_method(_bamboo_sys._bamboo_orb_step.bind(orb, from_pos, to_pos, nframes, [0]), 0.0, 1.0, BAMBOO_ORB_FLY)
 	tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tw.tween_callback(func() -> void:
@@ -4816,6 +4817,7 @@ func _splash_ring_bold(pos2d: Vector2, col: Color, radius: float) -> void:
 		var dur: float = 0.4 + 0.12 * float(k)
 		var rr := r
 		var tw := _reg_tween(); tw.set_parallel(true)
+		tw.bind_node(rr)
 		tw.tween_method(func(f: float) -> void:
 			if not is_instance_valid(rr):
 				return
@@ -4874,6 +4876,7 @@ func _surf_chain_shoot(from2d: Vector2, fromh: float, to2d: Vector2, col: Color)
 	var a := _world_pos(from2d, fromh)
 	var b := _world_pos(to2d, 0.8)
 	var tw := _reg_tween()
+	tw.bind_node(im)
 	tw.tween_method(func(q: float) -> void:              # 伸长: 端点从小将→目标(射出)
 		if not is_instance_valid(im): return
 		imesh.clear_surfaces()
@@ -4924,6 +4927,7 @@ func _burst_vfx(path: String, pos2d: Vector2, size_px: float, height: float = 0.
 	b.position = _world_pos(pos2d, height)
 	_world.add_child(b)
 	var tw := _reg_tween()
+	tw.bind_node(b)
 	tw.tween_property(b, "scale", Vector3.ONE, 0.12).from(Vector3.ONE * 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	if nf > 1:
 		# 帧在"起势+停留"这 0.26 秒里播完(与原来的节奏一致, 只是现在真的在播)
@@ -6137,6 +6141,7 @@ func _tick_bulwark(u: Dictionary) -> void:   # 壁垒监视: 盾到期或被打�
 	if is_instance_valid(dome):                                  # 罩提前碎(盾破时)
 		_unfollow_vfx(dome)
 		var bt := _reg_tween()
+		bt.bind_node(dome)
 		bt.tween_property(dome, "modulate:a", 0.0, 0.15)
 		bt.tween_callback(func() -> void:
 			if is_instance_valid(dome): dome.queue_free())

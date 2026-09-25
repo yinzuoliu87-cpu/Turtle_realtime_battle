@@ -44,6 +44,7 @@ func _headless_fear_mark(o: Dictionary) -> void:               # 恐惧标记: �
 	var oref: Dictionary = o
 	battle._follow_vfx.append({"spr": mk, "unit": o, "h": 2.1})        # 跟随单位(死亡自动清)
 	var t = battle._reg_tween()
+	t.bind_node(mk)
 	t.tween_property(mk, "modulate:a", 0.85, 0.15)              # 现身
 	t.tween_method(func(q: float) -> void:                      # 雾团轻缓浮动(控制期一直挂)
 		if is_instance_valid(mk):
@@ -94,6 +95,7 @@ func _headless_tendril_shoot(center: Vector2, dir: Vector2, elev: float, length:
 		rg.position = start_w
 		battle._world.add_child(rg)
 		var rt = battle._reg_tween()
+		rt.bind_node(spk)
 		rt.tween_property(rg, "modulate:a", 0.0, 0.4)
 		rt.tween_callback(rg.queue_free))
 	st.tween_method(func(q: float) -> void:                            # 从球心沿三维方向伸出(scale.y生长·根不动)
@@ -122,6 +124,7 @@ func _headless_reap_soul(from_pos: Vector2, u: Dictionary) -> void:   # 镰刀�
 	var uref: Dictionary = u
 	var start: Vector2 = from_pos
 	var st = battle._reg_tween()
+	st.bind_node(soul)
 	st.tween_property(soul, "modulate:a", 0.95, 0.1)           # 从敌身升起
 	st.parallel().tween_property(soul, "position", battle._world_pos(from_pos, 1.3), 0.15)
 	st.chain().tween_method(func(q: float) -> void:            # 飞回无头龟(活追踪)
@@ -142,6 +145,7 @@ func _headless_drain_dot(from_pos: Vector2, u: Dictionary) -> void:   # 触须�
 	battle._world.add_child(dot)
 	var uref: Dictionary = u
 	var dt = battle._reg_tween()
+	dt.bind_node(dot)
 	dt.tween_method(func(q: float) -> void:
 		if is_instance_valid(dot) and uref.get("alive", false):
 			dot.position = battle._world_pos(start.lerp(uref["pos"], q), 0.6)
@@ -446,6 +450,7 @@ func _sk_headless_fear(u: Dictionary, _tgt = null) -> void:      # 无头·恐�
 		wv.position = battle._world_pos(cx, 0.065)
 		battle._world.add_child(wv)
 		var wt = battle._reg_tween()
+		wt.bind_node(wv)
 		wt.tween_interval(0.09 * float(wi))
 		wt.tween_method(func(q: float) -> void:
 			if is_instance_valid(wv):
@@ -535,6 +540,7 @@ func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万�
 	vgt.tween_property(virus, "modulate:a", 0.95, 0.15)         # 涌出
 	vgt.parallel().tween_property(virus, "scale", Vector3.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	var vpt = battle._reg_tween()                                     # 脉动(变大变小·病毒感)3s
+	vpt.bind_node(virus)
 	vpt.tween_method(func(q: float) -> void:
 		if is_instance_valid(virus):
 			var puls: float = 1.0 + sin(q * TAU * 5.0) * 0.28   # 5次脉动
@@ -560,6 +566,7 @@ func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万�
 	battle._add_hitstop(battle.JUICE_HITSTOP_KNOCK)
 	var crack = battle._px_ground_sprite(VfxTex._make_pixel_ring_tex(), center, 60.0, Color(0.6, 0.2, 0.75, 0.8), 0.06)
 	var ct = battle._reg_tween()
+	ct.bind_node(crack)
 	ct.tween_method(func(q: float) -> void:
 		if is_instance_valid(crack): crack.pixel_size = (maxf(60.0, 500.0 * q) * battle.WS) / 48.0
 	, 0.0, 1.0, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)

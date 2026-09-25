@@ -347,7 +347,11 @@ run_one () {  # $1 = 测试名
   #   ⇒ 这不是并行度的错, 是**共享可写状态**的错; 拆开之后这一类竞态整体消失。
   local _ad="$GATE_APPDATA/$t"
   mkdir -p "$_ad" 2>/dev/null
-  TURTLE_BACKEND=" " TURTLE_SUPABASE=" " APPDATA="$_ad" "$GODOT" --headless --path "$DIR" "res://tests/$t.tscn" \
+  # ★★`--audio-driver Dummy`: 用户 2026-09-25「静音，不要有游戏声音」。
+  #   `--headless` **不包含静音** —— 它只关渲染, 音频驱动照旧初始化并出声,
+  #   而门禁并行 8~16 个进程 ⇒ 扬声器里是十几局游戏同时在响。
+  #   (旧注释只记了它「不影响耗时」就没加, 那是只看了一个维度。)
+  TURTLE_BACKEND=" " TURTLE_SUPABASE=" " APPDATA="$_ad" "$GODOT" --headless --audio-driver Dummy --path "$DIR" "res://tests/$t.tscn" \
       --quit-after "$(frames_for "$t")" > "$RAW/$t.log" 2>&1
   echo $? > "$RAW/$t.rc"
   echo $(( ( $(date +%s%N) - _t0 ) / 1000000 )) > "$RAW/$t.ms"
@@ -425,12 +429,12 @@ trap 'rm -rf "$RAW" "$ARAW"' EXIT
 
 # ★先单独导入一次: `.godot/` 导入缓存是并行下唯一的共享可写状态,
 #   让 N 个进程同时冷启动去建它会打架。这一步之后缓存是热的, 后面只读。
-APPDATA="$GATE_APPDATA" "$GODOT" --headless --path "$DIR" --import > /dev/null 2>&1
+APPDATA="$GATE_APPDATA" "$GODOT" --headless --audio-driver Dummy --path "$DIR" --import > /dev/null 2>&1
 
 # ★冒烟(80 秒)与测试池【同时】跑 —— 它是完全独立的进程, 与自证测试零共享状态,
 #   排在后面串行等 = 白白多花 80 秒。判定逻辑在下面的冒烟段, 一个字没改。
 #   必须用 SHIP=1: 否则 _review_demo() 为真 → 假人永不死 → 战斗永不结束 → 结算路径根本没测到。
-( SHIP=1 APPDATA="$GATE_APPDATA" "$GODOT" --headless --path "$DIR" res://tests/smoke_scenes.tscn \
+( SHIP=1 APPDATA="$GATE_APPDATA" "$GODOT" --headless --audio-driver Dummy --path "$DIR" res://tests/smoke_scenes.tscn \
     --quit-after 40000 > "$RAW/smoke.log" 2>&1; echo $? > "$RAW/smoke.rc" ) &
 SMOKE_PID=$!
 
@@ -736,6 +740,7 @@ run_audit "tools/shield_duration_audit.py" "ALL OK" "shield_duration (通用护�
 #   ⇒ memory 靠我想起来, 门禁自己会红。三条全是只减不增的棘轮。
 run_audit "tools/vfx_discipline_audit.py" "ALL OK" "vfx_discipline (像素贴图不许连续缩放 / 不许新增手写生成器 / 新素材要有逐帧研究)"
 run_audit "tools/tween_freeze_audit.py" "ALL OK" "tween_freeze (战斗世界侧的演出 tween 必须走 _reg_tween·否则时停冻不住)"
+run_audit "tools/tween_capture_audit.py" "ALL OK" "tween_capture (演出 tween 的 lambda 捕获了可能被释放的节点·台账只减不增)"
 
 echo ""
 if [ "$FAIL" -eq 0 ]; then

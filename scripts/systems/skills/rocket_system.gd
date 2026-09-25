@@ -38,6 +38,7 @@ func _rocket_charge_vfx(u: Dictionary, aim: Vector2) -> void:
 			gl.position = battle._world_pos(from2, 0.95)
 			battle._world.add_child(gl)
 			var gt = battle._reg_tween()
+			gt.bind_node(gl)
 			gt.tween_method(func(t: float) -> void:
 				if is_instance_valid(gl): gl.position = battle._world_pos(from2.lerp(muzzle, t), 0.95)
 			, 0.0, 1.0, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
@@ -79,6 +80,7 @@ func _rocket_muzzle_flash(u: Dictionary, muzzle: Vector2, aim: Vector2) -> void:
 		battle._world.add_child(sp)
 		var dest: Vector2 = muzzle + a2 * reach
 		var spt = battle._reg_tween(); spt.set_parallel(true)
+		spt.bind_node(sp)
 		spt.tween_method(func(t: float) -> void:
 			if is_instance_valid(sp): sp.position = battle._world_pos(muzzle.lerp(dest, t), 0.95 + 0.25 * sin(t * PI))
 		, 0.0, 1.0, 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)

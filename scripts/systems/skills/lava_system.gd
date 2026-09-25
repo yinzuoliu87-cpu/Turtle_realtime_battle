@@ -632,6 +632,7 @@ func _lava_slam_impact(u: Dictionary, center: Vector2) -> void:   # 落地: 击�
 		var hpk: float = battle._juice_rng.randf_range(0.8, 1.5)
 		var life: float = battle._juice_rng.randf_range(0.32, 0.5)
 		var rw = battle._reg_tween()
+		rw.bind_node(rp)
 		rw.tween_method(func(p: float) -> void:
 			if is_instance_valid(rp): rp.position = battle._world_pos(center.lerp(endp, p), 0.5 + hpk * 4.0 * p * (1.0 - p) - 0.4 * p)   # 抛物(峰在中段·落回地)
 		, 0.0, 1.0, life)

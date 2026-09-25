@@ -136,6 +136,7 @@ func _ink_bomb_throw(from2d: Vector2, to2d: Vector2, on_land: Callable) -> void:
 	battle._world.add_child(ball)
 	var dur: float = clampf(from2d.distance_to(to2d) / 900.0, 0.32, 0.6)
 	var tw = battle._reg_tween()
+	tw.bind_node(ball)
 	tw.tween_method(func(p: float) -> void:
 		if not is_instance_valid(ball): return
 		ball.position = battle._world_pos(from2d.lerp(to2d, p), 1.0 * (1.0 - p) + 3.0 * sin(PI * p))   # 抛物

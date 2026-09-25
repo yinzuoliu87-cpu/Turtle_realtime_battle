@@ -368,6 +368,7 @@ func _crystal_spike_line(u: Dictionary) -> void:   # 照小菊R第三击(2026-07
 	head.position = battle._world_pos(origin + dirv * 30.0, 0.12)
 	battle._world.add_child(head)
 	var hw = battle._reg_tween()
+	hw.bind_node(head)
 	hw.tween_property(head, "pixel_size", (52.0 * battle.WS) / float(maxi(1, glow0.get_width())), 0.12)   # 从砸点由小鼓大(小菊z07→z09·非凭空满大)
 	hw.parallel().tween_property(head, "position", battle._world_pos(origin + dirv * 30.0, 0.3), 0.12)
 	hw.chain().tween_property(head, "position", battle._world_pos(wend, 0.3), battle.SPIKE_WAVE_TIME)
@@ -500,6 +501,7 @@ func _crystal_ray_vfx(src: Dictionary, tgt: Dictionary, seg_dmg_fn: Callable) ->
 	ch.position = battle._world_pos(src["pos"], 1.0)
 	battle._world.add_child(ch)
 	var ct = battle._reg_tween()
+	ct.bind_node(ch)
 	ct.tween_property(ch, "pixel_size", (34.0 * battle.WS) / float(maxi(1, glow.get_width())), 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	ct.tween_callback(func() -> void:
 		if is_instance_valid(ch): ch.queue_free())
@@ -542,6 +544,7 @@ func _sk_crystal_bulwark(u: Dictionary) -> void:                 # 水晶龟·�
 		battle._follow_vfx.append({"spr": dome, "unit": u, "h": 0.9})
 		u["_bulwark_dome"] = dome
 		var dw = battle._reg_tween()
+		dw.bind_node(dome)
 		dw.tween_property(dome, "modulate:a", 0.55, 0.2)
 		dw.tween_interval(3.4)
 		dw.tween_property(dome, "modulate:a", 0.0, 0.4)
@@ -575,6 +578,7 @@ func _sk_crystal_burst(u: Dictionary, tgt) -> void:   # 碎晶爆破: 目标周�
 				sh.position = battle._world_pos(op2, 2.4)
 				battle._world.add_child(sh)
 				var dt = battle._reg_tween()
+				dt.bind_node(sh)
 				dt.tween_property(sh, "position", battle._world_pos(op2, 0.55), 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)   # 坠落
 				dt.tween_callback(func() -> void:
 					if is_instance_valid(sh): sh.queue_free()

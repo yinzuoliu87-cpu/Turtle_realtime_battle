@@ -404,6 +404,7 @@ func _frost_icicle_drop(at: Vector2) -> void:
 	spr.position = ground + Vector3(0.0, 3.5, 0.0)              # ③ 起点抬高(旧版 2.2)
 	battle._world.add_child(spr)
 	var tw = battle._reg_tween()
+	tw.bind_node(spr)
 	tw.tween_interval(0.15)                                     # 等预警圈
 	# ★重力感: TRANS_QUAD + EASE_IN, 0.22 秒(旧版线性 0.35 秒)
 	tw.tween_property(spr, "position", ground, 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)

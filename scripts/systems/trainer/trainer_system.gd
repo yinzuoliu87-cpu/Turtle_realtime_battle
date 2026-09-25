@@ -395,6 +395,7 @@ func _fury_dramatize(trainer: Dictionary, point: Vector2) -> void:
 			ct[0] = 0.0
 			var tg = battle._glow_bb(cp, ph, 28.0, Color(1.0, 0.5, 0.2, 0.6))   # 拖尾一粒橙火淡出
 			var trt = battle._reg_tween()
+			trt.bind_node(pot)
 			trt.tween_property(tg.material_override, "albedo_color", Color(1.0, 0.5, 0.2, 0.0), 0.3)
 			trt.tween_callback(tg.queue_free)
 	, 0.0, 1.0, maxf(0.15, from2d.distance_to(point) / 800.0))

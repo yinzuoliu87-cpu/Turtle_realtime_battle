@@ -204,6 +204,7 @@ func _egg_shards_burst(pos2d: Vector2) -> void:
 			var spin: float = (1.0 if (idx % 2) == 0 else -1.0) * (7.0 + float(idx))
 			var s2 := sh
 			var t2 = battle._reg_tween()
+			t2.bind_node(s2)
 			t2.tween_method(func(q: float) -> void:
 				if not is_instance_valid(s2):
 					return
@@ -626,6 +627,7 @@ func _throw_item(src: Dictionary, tgt: Dictionary, img: String, label: String, c
 	var dur: float = clampf(dist / 700.0, 0.22, 0.62)
 	var arc: float = clampf(dist * 0.004, 0.5, 2.2)   # 远则拱高
 	var tw: Tween = battle._reg_tween()
+	tw.bind_node(p)
 	tw.tween_method(func(s: float) -> void:
 		if not is_instance_valid(p):
 			return
@@ -1146,6 +1148,7 @@ func flyslash_muzzle(at2d: Vector2, col: Color) -> void:
 	s.position = battle._world_pos(at2d, 1.1)
 	battle._world.add_child(s)
 	var tw: Tween = battle._reg_tween()   # ★不能用 `:=` —— `battle` 无类型, 推不出返回类型 ⇒ Parse Error ⇒ 整个脚本编译失败
+	tw.bind_node(s)
 	tw.tween_method(func(f: float) -> void:
 		## ★闭包里必须先判存活: 节点可能先被 queue_free / 换路清场,
 		##   否则每帧刷 "Lambda capture at index 0 was freed"(实测一轮 23 条,
@@ -1176,6 +1179,7 @@ func flyslash_impact(at2d: Vector2, col: Color) -> void:
 	s.position = battle._world_pos(at2d, 1.0)
 	battle._world.add_child(s)
 	var tw: Tween = battle._reg_tween()   # ★不能用 `:=` —— `battle` 无类型, 推不出返回类型 ⇒ Parse Error ⇒ 整个脚本编译失败
+	tw.bind_node(s)
 	tw.tween_method(func(f: float) -> void:
 		## ★闭包里必须先判存活: 节点可能先被 queue_free / 换路清场,
 		##   否则每帧刷 "Lambda capture at index 0 was freed"(实测一轮 23 条,
@@ -1230,6 +1234,7 @@ func spawn_bleed_drop(u: Dictionary) -> void:
 	s.position = battle._world_pos(pos2d, h0)
 	battle._world.add_child(s)
 	var tw: Tween = battle._reg_tween()   # ★不能用 `:=` —— `battle` 无类型, 推不出返回类型
+	tw.bind_node(s)
 	tw.set_parallel(true)
 	tw.tween_property(s, "position", battle._world_pos(pos2d, 0.06), BLEED_DROP_SEC)   # 下坠
 	tw.tween_property(s, "scale", Vector3(0.62, 0.62, 0.62), BLEED_DROP_SEC)
@@ -1266,6 +1271,7 @@ func twin_strike(at2d: Vector2) -> void:
 	battle._world.add_child(s)
 	var sr := s
 	var tw: Tween = battle._reg_tween()   # ★不能用 `:=`: battle 无类型, 推不出返回类型 ⇒ Parse Error
+	tw.bind_node(sr)
 	tw.set_parallel(true)
 	## ★先满亮再收 —— 短命特效一出生就淡, 实拍读出来是灰的(memory fb-vfx-defect-families "淡出病")。
 	tw.tween_property(s, "modulate:a", 1.0, 0.06)

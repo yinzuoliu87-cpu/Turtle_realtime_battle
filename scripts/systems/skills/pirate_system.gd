@@ -86,6 +86,7 @@ func _pirate_rum_bottle(from2d: Vector2, from_h: float, to2d: Vector2, on_land: 
 	battle._world.add_child(b)
 	var dur: float = clampf(from2d.distance_to(to2d) / 900.0, 0.4, 0.7)
 	var tw = battle._reg_tween()
+	tw.bind_node(b)
 	tw.tween_method(func(p: float) -> void:
 		if not is_instance_valid(b): return
 		var flat: Vector2 = from2d.lerp(to2d, p)
@@ -202,6 +203,7 @@ func _pirate_cannonball(from2d: Vector2, from_h: float, to2d: Vector2, on_land: 
 		if int(p * 20.0) % 3 == 0:   # 烟尾
 			var sm = battle._glow_bb(flat, maxf(0.2, hh), 16.0, Color(0.4, 0.38, 0.36, 0.5))
 			var st = battle._reg_tween(); st.tween_property(sm, "material_override:albedo_color", Color(0.4, 0.38, 0.36, 0.0), 0.3); st.tween_callback(sm.queue_free)
+			st.bind_node(ball)
 	, 0.0, 1.0, dur).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tw.tween_callback(func() -> void:
 		if is_instance_valid(ball): ball.queue_free()
@@ -286,6 +288,7 @@ func _pirate_death_grapple(pirate: Dictionary, killer: Dictionary) -> void:
 	var ct = [0.0]
 	var pk: Dictionary = pirate; var kk: Dictionary = killer
 	var tw = battle._reg_tween()
+	tw.bind_node(hook)
 	tw.tween_method(func(p: float) -> void:   # ① 甩钩爪飞向击杀者(带链条拖尾)
 		if not is_instance_valid(hook): return
 		var hp2: Vector2 = from2d.lerp(kpos, p)
@@ -306,6 +309,7 @@ func _pirate_death_grapple(pirate: Dictionary, killer: Dictionary) -> void:
 		var kstart: Vector2 = kk["pos"]
 		var ct2 = [0.0]
 		var pull = battle._reg_tween()
+		pull.bind_node(hook)
 		pull.tween_method(func(q: float) -> void:
 			if not kk.get("alive", false): return
 			kk["pos"] = kstart.lerp(dest, q)
@@ -375,6 +379,7 @@ func _pirate_ship_splash(pos2d: Vector2) -> void:   # 撞击大水花爆(青白�
 		var dest2d: Vector2 = pos2d + Vector2(cos(ang), sin(ang)) * randf_range(70.0, 180.0)
 		var peak: float = randf_range(1.6, 3.2)
 		var dtw = battle._reg_tween()
+		dtw.bind_node(drop)
 		dtw.tween_method(func(p: float) -> void:
 			if not is_instance_valid(drop): return
 			drop.position = battle._world_pos(pos2d.lerp(dest2d, p), 0.4 + peak * sin(PI * p))

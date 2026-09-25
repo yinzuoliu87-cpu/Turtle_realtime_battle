@@ -200,6 +200,7 @@ func _phoenix_flame_puff(u: Dictionary, tgt: Dictionary) -> void:   # 飞散火�
 	var life: float = battle._juice_rng.randf_range(0.26, 0.4)
 	var hend: float = 0.95 + battle._juice_rng.randf_range(0.05, 0.5)   # 火星往上飘散
 	var tw = battle._reg_tween()
+	tw.bind_node(spr)
 	tw.set_parallel(true)
 	tw.tween_property(spr, "position", battle._world_pos(endp, hend), life).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)   # 喷出去(先快后慢)
 	tw.tween_property(spr, "scale", Vector3(1.1, 1.1, 1.1), life)      # 边喷边胀

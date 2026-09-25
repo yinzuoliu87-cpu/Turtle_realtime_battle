@@ -166,6 +166,7 @@ func _elite_whirl(u: Dictionary) -> void:                        # 被动3·旋�
 					gh.modulate = Color(0.7, 0.15, 0.18, 0.55)
 					battle._world.add_child(gh)
 					var gt = battle._reg_tween()
+					gt.bind_node(gh)
 					gt.tween_property(gh, "modulate:a", 0.0, 0.22)
 					gt.tween_callback(gh.queue_free)
 		, 0.0, 1.0, 0.42)

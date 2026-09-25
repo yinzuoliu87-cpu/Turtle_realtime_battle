@@ -111,6 +111,7 @@ func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭�
 	ring.position = battle._world_pos(center, 0.065)
 	battle._world.add_child(ring)
 	var rt = battle._reg_tween()
+	rt.bind_node(ring)
 	rt.tween_method(func(q: float) -> void:
 		if is_instance_valid(ring): ring.pixel_size = (maxf(20.0, 1000.0 * q) * battle.WS) / 256.0
 	, 0.0, 1.0, 0.21).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
@@ -121,6 +122,7 @@ func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭�
 		var vtex: Texture2D = load("res://assets/sprites/vfx/fx-vortex.png")
 		var disk = battle._px_ground_sprite(vtex, center, 170.0, Color(0.55, 0.35, 0.95, 0.8), 0.07)
 		var dkt = battle._reg_tween(); dkt.set_parallel(true)
+		dkt.bind_node(disk)
 		dkt.tween_method(func(q: float) -> void:
 			if is_instance_valid(disk): disk.rotation.y = q * TAU * 2.4
 		, 0.0, 1.0, 1.86)
@@ -221,6 +223,7 @@ func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭�
 		var ltex: Texture2D = load("res://assets/sprites/vfx/fx-shock-ring.png")
 		var lens = battle._px_ground_sprite(ltex, center, 40.0, Color(0.85, 0.75, 1.0, 0.85), 0.068)   # 透镜波纹: 空间"拧了一下"
 		var lt = battle._reg_tween()
+		lt.bind_node(lens)
 		lt.tween_method(func(q: float) -> void:
 			if is_instance_valid(lens):
 				lens.pixel_size = (maxf(40.0, 1000.0 * q) * battle.WS) / float(maxi(1, ltex.get_height()))

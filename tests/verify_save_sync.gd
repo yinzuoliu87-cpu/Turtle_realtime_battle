@@ -175,6 +175,26 @@ func _t_roundtrip() -> void:
 	GameState.axe_exp_total = 33
 	GameState.pet_levels = {"basic": 4, "stone": 2}
 	GameState.inventory.assign(["p2eq_001", "p2eq_002"])
+	## ★★★先让赛季逻辑结算一遍, 再取 p1(2026-09-26 修)。
+	##
+	## `apply_cloud_payload()` 里带一句 `ensure_season()` —— 云端那份可能是上一周的,
+	## 所以应用之后必须让赛季逻辑自己滚。它会跑 `settle_ranked_close()` /
+	## `settle_gauntlet_close()` / `sync_titles()`。
+	##
+	## ⇒ 不先结算就取 p1 的话, 这条往返判据量的是【往返 + 过了一天的结算】两件事:
+	##   在**周六**(积分赛周五刚收盘)跑, `meta_deepsea_coins` / `backfill_paid` /
+	##   `promoted` / `titles` / `season_level` / `season_xp` 六个字段会被合法地改掉
+	##   ⇒ 判据红, 而产品**没有任何问题**。
+	##
+	## ★这条红是**闯关赛上线(v0.19.429~431, 2026-09-22)之后的第一个周六**才出现的 ——
+	##   上个周六(09-19)那套还不存在。⇒ 「门禁在周一到周五是绿的」不等于它对:
+	##   判据挂在星期几上, 一周里有两天必红而平时看不见(同族 memory:
+	##   尺子跟时钟挂钩 / 门禁跨帧就恒真)。
+	##
+	## ★修法是**让两边口径一致**, 不是把那六个字段从判据里排除(那是放松):
+	##   `settle_*` 都是幂等的(`backfill_paid` 记了已补的数, 第二次补 0),
+	##   所以先结算一次之后, 应用回来再结算不会再动它们 ⇒ 判据只剩"序列化往返"。
+	GameState.ensure_season()
 	var p1: Dictionary = GameState.cloud_payload()
 	GameState.reset_save()
 	var pm: Dictionary = GameState.cloud_payload()
@@ -195,6 +215,25 @@ func _t_roundtrip() -> void:
 			diff.append("+" + str(k))
 	_chk("③ ★★拉回来应用之后, payload 与推上去的逐字段相等", diff.is_empty(), str(diff))
 	_chk("③ 哈希也相等(没变就不会再推)", SB.payload_hash(p2) == SB.payload_hash(p1))
+
+	## ★★★上面那条判据成立**靠的是 `ensure_season()` 幂等** —— 直接把那条性质验出来。
+	##
+	## 为什么要单独验: `ensure_season()` 读的是**真实时钟**, 门禁没法把星期几钉住
+	## ⇒ 上面那条在"今天"绿, 不等于它在别的星期几也绿。而它成立的**机制**是
+	## 「结算函数第二次跑不会再动任何字段」(`backfill_paid` 记了已补的数、
+	## `sync_titles` 第二次返回 0、`promoted` 稳定) —— 这条性质与星期几无关,
+	## 每天都能验。⇒ 验机制, 而不是"今天碰巧对"。
+	##
+	## ★2026-09-26 的由来: 闯关赛上线(v0.19.429~431)后的**第一个周六**, 上面那条当场红 ——
+	##   六个字段被周五收盘的结算合法改掉。判据挂在星期几上, 一周里两天必红而平时看不见。
+	GameState.ensure_season()
+	var p3: Dictionary = GameState.cloud_payload()
+	var diff2: Array = []
+	for k in p2.keys():
+		if JSON.stringify(p2[k]) != JSON.stringify(p3.get(k)):
+			diff2.append(k)
+	_chk("③ ★★★`ensure_season()` 幂等: 再跑一次, 一个字段都不该变(这是上面两条的前提)",
+		diff2.is_empty(), str(diff2))
 
 
 # ─────────────────────────────────────────────────────────────
