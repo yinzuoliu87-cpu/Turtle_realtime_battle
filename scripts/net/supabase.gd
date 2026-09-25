@@ -1562,9 +1562,13 @@ static func parse_finals(ok: bool, code: int, body: String, my_account: String,
 	var srv_now := int(d.get("now", 0))
 	var nxt := int(d.get("next_at", 0))
 	var left: int = maxi(0, nxt - srv_now) if (srv_now > 0 and nxt > 0) else -1
+	## ★`bucket` 一定要带出来(E-B4): 客户端查桶时传的是 `-1`(「我那个桶」),
+	##   **真正的桶号只有回包里有**。而 `finals_opponent` 必须传准确的桶号 ——
+	##   没有它就只能再往返一次去问, 那会出现「查到桶号、桶却没了」的中间态
+	##   (服务端当初把这两件事并进一次往返, 正是为了避开它)。
 	return {"size": n, "round": maxi(1, int(d.get("round", 1))), "done": done,
 		"names": names, "me": me, "closed": bool(d.get("closed", false)),
-		"left": left, "recv_at": recv_at}
+		"left": left, "recv_at": recv_at, "bucket": int(d.get("bucket", -1))}
 
 
 ## 收到回包时还剩几秒 → 现在还剩几秒。★用的是「收包时剩多少」减「本机过了多久」,

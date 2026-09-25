@@ -389,6 +389,51 @@ func competitor(r: int, m: int, side: int) -> Dictionary:
 	return {"name": "待定", "seed": -1, "bye": false}
 
 
+## 本轮这一场里，**我的对手**是几号种子。`-1` = 拿不到。
+## ★★这个函数存在的唯一理由是 E-B4：`finals_opponent` **每人每轮只能问一个种子**
+##   （服务端 `finals_scout` 先到先得），所以「我的对手是谁」必须在**问之前**算准 ——
+##   算错了就浪费掉这一轮唯一的机会。
+## 四种拿不到，各自的含义完全不同，所以都返回 -1 但由调用方按场景说话：
+##   · 我不在这一场里（点的是别人的格子）
+##   · 我轮空（没有对手）
+##   · 对手那一侧还没产生（上一轮没打完 ⇒ "待定"）
+##   · 我压根不在这个桶里（纯观众）
+func my_opponent_seed(r: int, m: int) -> int:
+	var me := int(cur().get("me", -1))
+	if me < 0:
+		return -1
+	var a: Dictionary = competitor(r, m, 0)
+	var b: Dictionary = competitor(r, m, 1)
+	var foe: Dictionary = {}
+	if int(a.get("seed", -1)) == me:
+		foe = b
+	elif int(b.get("seed", -1)) == me:
+		foe = a
+	else:
+		return -1                     # 不是我的场
+	## ★**防御性，不承重**（2026-09-25 反向验证查实）：`competitor()` 给轮空返回的
+	##   dict 里 `seed` 本来就是 -1，所以把这一行改坏**一条断言都不红** ——
+	##   它在任何输入下都不改变结果。留着是为了把「轮空 = 没有对手」这个意思写在明面上，
+	##   以及万一以后 `competitor()` 改成给轮空也带个真种子号。
+	##   ⚠ 不要因为它在这儿就以为「轮空」这件事有判据在守 ——
+	##   守它的是下面 `should_fetch_opponent()` 里的 `match_state != ST_LIVE`。
+	if bool(foe.get("bye", false)):
+		return -1                     # 轮空: 没有对手可问
+	return int(foe.get("seed", -1))   # 「待定」时它本来就是 -1
+
+
+## 点开一场时要不要去问服务端要对手快照。
+## ★★★**只有「我自己的、当前轮的、对手已定的」那一场才问** ——
+##   每人每轮只有一次机会，替别人点一下就把它烧掉了。
+##   这一条是纯判定，与网络无关 ⇒ 门禁能穷举，不用起网络。
+func should_fetch_opponent(r: int, m: int) -> bool:
+	if match_state(r, m) != ST_LIVE:
+		return false                  # 已翻面的场次不用问，轮空/未开打也问不出东西
+	if r != int(cur().get("round", 1)):
+		return false                  # 服务端只认当前轮，问了也是 wrong_round
+	return my_opponent_seed(r, m) >= 0
+
+
 ## 这一侧是不是我。
 func _is_me_side(r: int, m: int, side: int) -> bool:
 	var me := int(cur().get("me", -1))
@@ -587,6 +632,9 @@ func _start_feed() -> void:
 	_poll.start()
 	## ★★先画一次 —— 「还没有数据」也是一种状态, 得说话。
 	##   不画的话: 空白屏 + 「回到我」停在默认的 (0,0) 压住返回箭头 + 页签后缀没同步。
+	## ★★把 `match_opened` 接上 —— 在这之前它发了**没有任何人听**。
+	##   只在自己联网这条路上接: 门禁喂数据那条路不该去打网络。
+	match_opened.connect(_on_match_opened)
 	_rebuild()
 	_pull()
 
@@ -594,6 +642,49 @@ func _start_feed() -> void:
 func _pull() -> void:
 	_fetch_left = REFRESH_SEC
 	_SB.fetch_finals_async(_P2C.week_anchor_utc(_clock()), -1)
+
+
+# ─────────────────────────────────────────────────────────────
+# E-B4 点开我的那一场 → 去要对手快照（2026-09-25）
+#
+# ★★在这之前 `match_opened` 这个信号**一个人都没听**，而 `fetch_opponent_async`
+#   **一个调用者都没有** —— 两个「写了没人读」。接上才算做完。
+#   (⚠ `tools/zero_caller_audit.py` **不扫 `scripts/net/`**，所以它不会替我发现。)
+#
+# ★★★只给「我自己的、当前轮的、对手已定的」那一场问：
+#   服务端 `finals_scout` 是**每人每轮只给一次**，替别人点一下就把机会烧掉了。
+#   判定抽成 `should_fetch_opponent()`（纯判定，门禁能穷举，不用起网络）。
+# ─────────────────────────────────────────────────────────────
+func _on_match_opened(r: int, m: int) -> void:
+	if not should_fetch_opponent(r, m):
+		return
+	var bk := int(cur().get("bucket", -1))
+	if bk < 0:
+		return                        # 桶号还没回来，问了服务端也认不出
+	_SB.opponent_clear()
+	_SB.fetch_opponent_async(_P2C.week_anchor_utc(_clock()), bk, r, my_opponent_seed(r, m))
+
+
+## 对手快照这一步该跟玩家说什么。★**纯函数**：喂一份 `opponent_cached()` 的产物
+## 就能验，不用起网络。★每种 `reason` 说的话都不一样 —— 「这一轮你已经看过 3 号了」
+## 和「你不在这个桶里」是两件完全不同的事，混成一句「取不到」等于没说。
+static func opponent_tip(res: Dictionary, tried: bool) -> String:
+	if not tried:
+		return ""
+	if bool(res.get("ok", false)):
+		return "对手阵容已就位 · %s" % str(res.get("name", "对手"))
+	match str(res.get("reason", "")):
+		"already_asked":
+			return "这一轮你已经看过 %d 号了 · 一轮只能看一个对手" % int(res.get("asked", -1))
+		"wrong_round":
+			return "这一轮已经翻篇了 · 刷新一下看看新的对阵"
+		"not_in_bucket":
+			return "你不在这个桶里 · 只能观战"
+		"empty_snapshot", "no_such_seed":
+			return "对手没留下阵容 · 这一场按无人应战处理"
+		"net", "bad_body":
+			return "连不上服务器 · 过两秒再点一次"
+	return "暂时取不到对手阵容 · 过两秒再点一次"
 
 
 ## ★轮询缓存而不是接回调: 回调在网络那一侧, 接过来就得处理"场景已经被切掉了"的情况。

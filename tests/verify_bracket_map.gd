@@ -51,10 +51,75 @@ func _ready() -> void:
 	await _t_clickable()
 	await _t_pan_by_size()
 	await _t_two_views()
+	await _t_opponent_gate()
 	print("")
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 桶地图" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
+
+
+# ─────────────────────────────────────────────────────────────
+# ⑥ 点开哪一场才去要对手快照 (E-B4, 2026-09-25)
+#
+# ★★服务端 `finals_scout` **每人每轮只给一次**机会。所以这一屏必须挡住
+#   「替别人点一下也去问」—— 点一次别人的格子, 玩家这一轮就再也拿不到
+#   自己对手的阵容了, 而且**什么提示都不会有**。
+# ★判定抽成纯函数 ⇒ 这里穷举各种场次形状, 不用起网络。
+# ─────────────────────────────────────────────────────────────
+func _t_opponent_gate() -> void:
+	print("── ⑥ 只给我自己那一场问对手 ──")
+	## 4 人桶: 坑位 [0,3,1,2] ⇒ 第1轮 m0 = 种子0 vs 种子3, m1 = 种子1 vs 种子2
+	## 我是种子 1 ⇒ 我在 m1, 对手是种子 2
+	await _mk({"size": 4, "round": 1, "me": 1, "names": NAMES.slice(0, 4),
+		"done": {}, "bucket": 7})
+	_ok("⑥ ★分母: 我那一场确实被认成我的(否则下面全是空检查)", _map.is_my_match(1, 1))
+	_ok("⑥ ★★我那一场算得出对手是几号种子", _map.my_opponent_seed(1, 1) == 2,
+		str(_map.my_opponent_seed(1, 1)))
+	_ok("⑥ ★★★别人那一场**算不出对手**(-1) —— 不是我的场就没有「我的对手」",
+		_map.my_opponent_seed(1, 0) == -1, str(_map.my_opponent_seed(1, 0)))
+	_ok("⑥ ★★★只给我自己那一场去问服务端", _map.should_fetch_opponent(1, 1))
+	_ok("⑥ ★★★**替别人点不许去问** —— 每人每轮只有一次机会, 烧掉就没了",
+		not _map.should_fetch_opponent(1, 0))
+
+	## 已翻面的场次不该问(服务端也只认当前轮)
+	await _mk({"size": 4, "round": 2, "me": 1, "names": NAMES.slice(0, 4),
+		"done": {"1-0": 0, "1-1": 0}, "bucket": 7})
+	_ok("⑥ ★已经翻面的那一场不问(服务端只认当前轮)", not _map.should_fetch_opponent(1, 1))
+
+	## 轮空: 没有对手可问
+	## 3 人桶 ⇒ 4 坑有一个空位。种子 0 在 m0 与空位配 ⇒ 轮空
+	await _mk({"size": 3, "round": 1, "me": 0, "names": NAMES.slice(0, 3),
+		"done": {}, "bucket": 7})
+	_ok("⑥ ★分母: 这一场确实是轮空", _map.match_state(1, 0) == SCENE.ST_BYE,
+		_map.match_state(1, 0))
+	_ok("⑥ ★★轮空 ⇒ 不问(没有对手, 问了白烧机会)", not _map.should_fetch_opponent(1, 0))
+	## ★★单独量 `my_opponent_seed` 本身: 上面那条是被 `match_state != ST_LIVE`
+	##   先挡住的, 挡不到 `my_opponent_seed` 里的 bye 判断(反向验证当场发现:
+	##   把那一行改坏, 一条都不红 ⇒ 它没有判据在守)。两道闸各守各的。
+	_ok("⑥ ★★轮空时 `my_opponent_seed` 自己也必须返回 -1(没有对手这回事)",
+		_map.my_opponent_seed(1, 0) == -1, str(_map.my_opponent_seed(1, 0)))
+
+	## 纯观众(me = -1): 一场都不该问
+	await _mk({"size": 4, "round": 1, "me": -1, "names": NAMES.slice(0, 4),
+		"done": {}, "bucket": 7})
+	_ok("⑥ ★★纯观众一场都不问", not _map.should_fetch_opponent(1, 0)
+		and not _map.should_fetch_opponent(1, 1))
+
+	## ── 提示文案: 每种 reason 说的话都不一样 ──
+	_ok("⑥ 还没问过 ⇒ 不说话(别让屏幕凭空冒一行)",
+		SCENE.opponent_tip({}, false) == "")
+	var t_ok := SCENE.opponent_tip({"ok": true, "name": "乙龟"}, true)
+	_ok("⑥ 拿到了 ⇒ 说出对手是谁", t_ok.find("乙龟") >= 0, t_ok)
+	var t_used := SCENE.opponent_tip({"ok": false, "reason": "already_asked", "asked": 3}, true)
+	_ok("⑥ ★★用掉了 ⇒ 说清**已经看过几号**(不然玩家不知道自己为什么拿不到)",
+		t_used.find("3") >= 0 and t_used.find("一轮只能看一个") >= 0, t_used)
+	var t_net := SCENE.opponent_tip({"ok": false, "reason": "net"}, true)
+	_ok("⑥ 连不上 ⇒ 让他再点一次(可恢复的要说得出怎么恢复)",
+		t_net.find("再点") >= 0, t_net)
+	var t_out := SCENE.opponent_tip({"ok": false, "reason": "not_in_bucket"}, true)
+	_ok("⑥ ★四种 reason 说的不是同一句话(混成「取不到」等于没说)",
+		t_used != t_net and t_net != t_out and t_used != t_out,
+		"%s / %s / %s" % [t_used, t_net, t_out])
 
 
 func _mk(d: Dictionary) -> Control:
