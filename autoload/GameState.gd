@@ -653,6 +653,27 @@ func gauntlet_settle(won: bool) -> int:
 	return int(_P2.GAUNTLET_COINS_PER_MATCH)
 
 
+## 周日决赛日一轮打完（E-B7, 2026-09-25）。返回这一轮该发多少深海币。
+## ★★与 `gauntlet_settle` 同构、**单独一条路**，不是在积分赛那条公式里加 if ——
+##   那条公式 `8 + 余命 + 2×已失命 + 胜6` **整条都吃 hearts**，
+##   而决赛日没有"命"这个维度（周六那个坑一模一样，这里不再踩第二次）。
+## ★★**不掉命**：单败淘汰里「输」= 出局，不该再扣赛季的命。
+## ★★**对称轮次币**（原稿逐字）：赢家输家**一样多**。
+##   按输赢给差价就不叫对称，而且输的人下一轮根本不存在，差价毫无意义。
+## ⚠ 这里只管「**打完一场**」这一半。原稿还要求「不在线/轮空的人轮次币照发」——
+##   那一半是**补发**，与积分赛/闯关赛共用幂等记账挂在 `ensure_season` 上，
+##   **本期没做**（方案书 R-B7-2 明确记着，不是忘了）。
+func finals_settle(won: bool) -> int:
+	season_total_battles += 1
+	add_season_xp(int(_P2.FINALS_XP_PER_ROUND))
+	axe_on_match_end()                   # 096 小木斧: 打完一整场照常给砍伐经验
+	candy_jar_add(1 if won else 4)
+	if won:
+		season_wins += 1
+		season_eggs_killed += 1
+	return int(_P2.FINALS_COINS_PER_ROUND)
+
+
 ## 闯关配额补发(只补晋级者)。与积分赛的 `backfill_ranked_quota()` 同构, 返回实际补了几场。
 ## ★用**另一个**已补计数 `gauntlet_backfill_paid`, 不复用积分赛那个 —— 两笔账混在一个字段里,
 ##   补过积分赛的人会把闯关的额度吃掉(而且静默)。

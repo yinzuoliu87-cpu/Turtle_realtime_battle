@@ -69,6 +69,63 @@ const GAUNTLET_BACKFILL_XP := 2
 const GAUNTLET_COINS_PER_MATCH := 8    # 周六每场固定深海币(不含胜负差, 原稿就是固定数)
 const GAUNTLET_XP_PER_MATCH := 2       # 周六每场经验(与积分赛每场 +2 同额)
 
+## ─── 周日决赛日(E-B7, 2026-09-25) ────────────────────────────
+## ★★「**对称**轮次币」是原稿逐字（§四「桶内逐轮发放对称轮次币 ⚙ 并刷新货架」）——
+##   同桶同轮**人人一样，不看输赢**。按输赢给差价就不叫对称了，
+##   而且**输的人下一轮根本不存在**，给差价毫无意义。
+## ★取 8：与周六同值。两者都是**无命模式**，周六那个 8 正是原稿说的
+##   「公式退化为固定数」；决赛日没有理由比它高或低。原稿**没给这个数**，是我定的。
+## ★积分赛那条公式 `8 + 余命 + 2×已失命 + 胜6` **整条都吃 hearts** ——
+##   决赛日没有"命"这个维度，直接复用会按命算钱（与周六同一个坑）。
+const FINALS_COINS_PER_ROUND := 8
+const FINALS_XP_PER_ROUND := 2
+## 备战购物窗（原稿：「3 分钟备战购物」）。从**本轮开始那一刻**算起。
+const FINALS_SHOP_SEC := 180
+
+
+## ─── 这一局该用哪套结算口径（E-B7, 2026-09-25）────────────────
+## ★★抽成纯函数、把 `live` 做成**参数**，理由与 `MainMenuScene.close_block_kind()` 一样：
+##   `PHASE_MODE_LIVE` 是 **const 字典，Godot 里改不动** ⇒ 门禁没法"临时把决赛日打开
+##   再看一眼" ⇒ 不抽的话，「上线那天只改一个常量」这句话**只有到了那天才验证得了**。
+## ★★★`live == false` ⇒ **一律按积分赛**。这一条是 v0.19.428 那个洞的疫苗：
+##   玩法没做就分流过去，那一支不是"什么都不发生"，是**限制全免而奖励照发**
+##   （memory `fb-branch-to-an-unbuilt-mode-is-a-backdoor`）。
+## ★顺带把周六也收进来：原来结算那边是拿字面量 `== "gauntlet"` 比的，**没带这道闸** ——
+##   周六现在是 live 所以没出事，但那是运气不是设计。
+const SETTLE_RANKED := "ranked"
+const SETTLE_GAUNTLET := "gauntlet"
+const SETTLE_FINALS := "finals"
+
+static func settle_kind(phase: String, live: bool) -> String:
+	if not live:
+		return SETTLE_RANKED
+	if phase == PHASE_GAUNTLET:
+		return SETTLE_GAUNTLET
+	if phase == PHASE_FINALS:
+		return SETTLE_FINALS
+	return SETTLE_RANKED
+
+
+## 现在还能不能买东西（周日决赛日的备战窗）。
+## ★★两个时刻都用**服务端**给的（`finals_view` 的 `round_at` 与 `now`）——
+##   本机时钟偏了不该影响能不能买东西（与倒计时同一条纪律：
+##   `parse_finals` 那里算剩余秒数用的也是服务端的时间差，不是本机绝对时刻）。
+## ★做成纯函数而不是在屏幕里就地 if：只写在屏幕里的话，门禁只量得到"此刻"那一格，
+##   窗外那一大段全是空检查（同 `phase_pending_note` 的理由）。
+static func finals_shop_open(round_at: int, srv_now: int) -> bool:
+	if round_at <= 0:
+		return false                  # 还没拿到桶 ⇒ 谈不上开窗
+	if srv_now < round_at:
+		return false                  # 本轮还没开始
+	return srv_now < round_at + FINALS_SHOP_SEC
+
+
+## 距离购物窗关闭还有几秒；`<= 0` = 已经关了。★屏幕上要倒计时，用它。
+static func finals_shop_left(round_at: int, srv_now: int) -> int:
+	if not finals_shop_open(round_at, srv_now):
+		return 0
+	return maxi(0, round_at + FINALS_SHOP_SEC - srv_now)
+
 ## ─── 闯关赛规则(纯函数) ──────────────────────────────────────
 ## ★★放这里而不是 `GameState`: 匹配层(选同标签对手)、结算层(记战绩)、UI 层(显示还差几场)
 ##   **三处都要同一个答案**。就地各写一份 `if w >= 4` 就是同一判据存三份, 必然有一处落后

@@ -696,6 +696,9 @@ var _pending_shots: Array = []            # 依次射出的子弹队列 [{delay,
 var _timestop := TimestopSystem.new(self)   # 沙漏时停系统(2026-07-25 从本文件抽出)
 var _equip_sys := EquipSystem.new(self)   # 装备效果系统(2026-07-25 抽出·与技能分开)
 const Phase2Types := preload("res://scripts/gamedata/phase2_types.gd")   # 类型羁绊: 阈值/逐档文案/type_of
+## 赛程阶段与**上线开关**。E-B7 决赛日结算口径要判 `phase_mode_live()` ——
+## 这个文件原来一处都没引它(周六那条分支是拿字面量 "gauntlet" 比的)。
+const Phase2Cfg := preload("res://scripts/gamedata/phase2_config.gd")
 var _synergy := SynergySystem.new(self)   # ★类型羁绊【战斗侧实装】(2026-08-03 批4-1) —— 在此之前羁绊零效果
 var _swordsman := SwordsmanSystem.new(self)   # 剑羁绊【剑士】追打(2026-08-03·取代原设计的"回响")
 var _shield_syn := ShieldSynergySystem.new(self)   # 盾羁绊【怒气冲击波/反击/收殓】(2026-08-03)
@@ -7528,26 +7531,6 @@ func _check_end() -> void:
 		_hud._show_banner(won)
 
 # 赛季结算 (1:1 搬自 2D RealtimeBattleScene._settle_season): 闭环把胜负喂回 GameState 养成
-## E-B6: 这一局如果是决赛日对阵图里的某一场，把结果报上去。
-## ★**纯接线**，一行判据都不在这儿：哪一侧是我由 `winner_side_for()` 在开局时算好，
-##   同一场报不报第二次由 `SupabaseNet.report_finals_async()` 自己挡。
-## ★不是决赛场 ⇒ 一个字都不做（`finals_match` 空就是空）。
-func _report_finals_if_any(gs, won: bool) -> void:
-	if gs == null:
-		return
-	var fm = gs.get("finals_match")
-	if not (fm is Dictionary) or (fm as Dictionary).is_empty():
-		return
-	var d: Dictionary = fm
-	var side := int(d.get("side", -1))
-	if side == 0 or side == 1:
-		Backend.report_finals_result(int(d.get("bucket", -1)), int(d.get("round", -1)),
-			int(d.get("match", -1)), side if won else (1 - side))
-	## ★★无论报没报成功都清空 —— 留着它的唯一后果是
-	##   **下一场普通对局被当成决赛再报一次**（而且报的是另一场的场号）。
-	gs.finals_match = {}
-
-
 func _settle_season(won: bool) -> void:
 	var gs = get_node_or_null("/root/GameState")
 	# ★新手教程沙盒(用户2026-07-23「不获得任何奖励」): 不喂赛季。放最前面 —— 下方 season_total_battles++/coins+= 全在这行之后, 一个都到不了。
@@ -7574,11 +7557,21 @@ func _settle_season(won: bool) -> void:
 	##     存成 `finals_match.side`, 这里只做 `side if won else 1-side` ——
 	##     **不在这儿重算一遍**(同一判据存两份必然漂)。
 	##   ★报完立刻清空: 不清的话下一场普通对局会被当成决赛再报一次。
-	_report_finals_if_any(gs, won)
+	## E-B6 决赛日那一场: 把结果报给服务端。整块逻辑在 `Backend.report_finals_if_any()`
+	##   ——它一行每帧逻辑都没有(CLAUDE.md §5: 不在 `_sim_step` 调用链上的不进主文件)。
+	##   位置在下面那几条发奖分支**之前**、上面两条 early return **之后**;
+	##   漏报的代价不可逆(那一场落进 E-B4 的补判判给 side 0, 屏幕上什么都不说)。
+	Backend.report_finals_if_any(won)
+	## ★★这一局用哪套结算口径，抽成纯函数 `settle_kind(phase, live)` ——
+	##   `live` 做成参数是为了**门禁能穷举「没上线 / 上线了」两种**
+	##   （`PHASE_MODE_LIVE` 是 const 字典，改不动；见那个函数的长注释）。
+	##   原来这里是拿字面量 `== "gauntlet"` 比的、**没带上线闸**。
+	var _sk := Phase2Cfg.settle_kind(str(gs.week_phase),
+		Phase2Cfg.phase_mode_live(str(gs.week_phase)))
 	_last_was_exhibition = gs.is_eliminated()        # 进场前已0命 = 表演赛 (无 stake)
 	if _last_was_exhibition:
 		_last_reward = 5                             # 表演赛: 少量练手币, 不掉命/不计战/不上榜
-	elif str(gs.week_phase) == "gauntlet":
+	elif _sk == Phase2Cfg.SETTLE_GAUNTLET:
 		## ★★E-A5 闯关赛(周六): **不掉命**, 每场固定 8 币 + 2 经验。
 		##   原稿逐字:「每场照常结算深海币(**无命**, 公式退化为固定数 8)+ 经验 2 + 货架刷新」。
 		##   ⚠ 下面积分赛那条公式 `8 + 余命 + 2×已失命 + 胜6` **整条都吃 `hearts`**,
@@ -7589,6 +7582,18 @@ func _settle_season(won: bool) -> void:
 		##   ★整块记账写在 `GameState.gauntlet_settle()` 里(数据的主人那一层), 这里只调它并拿回币数 ——
 		##     理由同下面的 `dual_lane_was_sweep()` / `consume_ranked_quota()`。
 		_last_reward = gs.gauntlet_settle(won)
+	elif _sk == Phase2Cfg.SETTLE_FINALS:
+		## ★★E-B7 决赛日(周日): **不掉命** + **对称轮次币**(赢输一样多, 原稿逐字)。
+		##   整块记账写在 `GameState.finals_settle()` 里(数据的主人那一层), 这里只调它 ——
+		##   理由同上面的 `gauntlet_settle()`。
+		## ★★★**必须自己带 `phase_mode_live` 这道闸**:
+		##   `week_phase` 存的是**原始阶段**(周日就是 "finals", 与上没上线无关)。
+		##   不带这道闸的话, 这条分支**现在就会生效** —— 而决赛日玩法还没上线,
+		##   那就等于「限制免了、奖励照发」的那个洞又开一次
+		##   (memory `fb-branch-to-an-unbuilt-mode-is-a-backdoor`, v0.19.428 刚修过)。
+		## ★这道闸与 `phase_uses_ranked_quota()` 读的是**同一张表**(`PHASE_MODE_LIVE`)
+		##   ⇒ 上线那天改那一格, 结算口径与配额豁免**同时翻**, 不会一半新一半旧。
+		_last_reward = gs.finals_settle(won)
 		## ★★E-A4 快照上传: **记完战绩之后**才传, 标签取的是打完这一场的新战绩 ——
 		##   下一场要找的是"跟我现在同样几胜几负"的人。传打之前那个标签等于把自己
 		##   挂在上一格上, 别人永远找不到我, 而且**一声不吭**(表现成"周六老是打机器人")。

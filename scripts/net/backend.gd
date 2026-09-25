@@ -573,6 +573,31 @@ static func report_finals_result(bucket: int, round_no: int,
 		match_no, winner_side, sd)
 
 
+## E-B6: 这一局如果是决赛日对阵图里的某一场，把结果报上去；不是就什么都不做。
+## ★★**住在这一层而不是主战斗文件里**：它一行每帧逻辑都没有，属于「结算期接线」——
+##   CLAUDE.md §5 的判据只有一条「不在 `_sim_step` 调用链上的，不进主文件」。
+##   第一版写在 `RealtimeBattle3DScene` 里，`arch_budget` 当场红（8770 → 8778 行）；
+##   凑行数的正确动作是**把函数搬到该在的文件**，不是删注释
+##   （[[fb-line-filter-eats-code-on-mixed-eol]]）。
+## ★**纯接线**，一行判据都不在这儿：哪一侧是我由 `BracketMapScene.winner_side_for()`
+##   在开局时算好、存进 `finals_match.side`；同一场报不报第二次由
+##   `SupabaseNet.report_finals_async()` 自己挡。这里只做 `side if won else 1-side`。
+## ★★**无论报没报成功都清空**：留着它的唯一后果是
+##   下一场普通对局被当成决赛再报一次（而且报的是另一场的场号）。
+static func report_finals_if_any(won: bool) -> void:
+	if GameState == null:
+		return
+	var fm = GameState.get("finals_match")
+	if not (fm is Dictionary) or (fm as Dictionary).is_empty():
+		return
+	var d: Dictionary = fm
+	var side := int(d.get("side", -1))
+	if side == 0 or side == 1:
+		report_finals_result(int(d.get("bucket", -1)), int(d.get("round", -1)),
+			int(d.get("match", -1)), side if won else (1 - side))
+	GameState.finals_match = {}
+
+
 ## 玩家显示名 —— **全仓唯一出处**。有昵称用昵称, 没有用确定性兜底短码。
 ## ★昵称在**绑定邮箱**那一屏与邮箱同时填(用户 2026-09-24「这个在创建账号应该一起吧」)——
 ##   那是玩家唯一感知得到的「创建账号」时刻: 首启建匿名号是**静默**的, 没有任何界面。
