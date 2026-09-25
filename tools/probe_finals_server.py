@@ -601,6 +601,112 @@ for _b in (B2, B3):
 
 sql("delete from public.finals_pending where season_week = %d" % WEEK)
 
+# ═════════════════════════════════════════════════════════════
+# ㉑ 【整轮端到端】报名 → 切桶 → 看图 → 要对手 → 打完报结果 → 翻面 → 再看图
+#
+# ★★为什么单独来一段: 上面每一段验的是**一个 RPC**。而今天两次「写了没人读」
+#   都是**各块单看都对、串起来断掉**(快照写了读不回来 / 结果报不上去)。
+#   ⇒ 这一段**只按玩家真实顺序走一遍**, 一个 RPC 都不跳。
+# ★用户侧全走 `req(..., tok)`(真 REST + 真 token); 只有 `finals_seat` /
+#   `finals_advance` 用 `sql()` —— 它们本来就只有 pg_cron 叫得动。
+# ═════════════════════════════════════════════════════════════
+print("")
+print("── ㉑ 整轮端到端(按玩家真实顺序, 一个 RPC 都不跳) ──")
+EW = 3                                  # 又一个假周号, 不碰上面几段
+for _t in ("finals_scout", "finals_results", "finals_entrants",
+           "finals_buckets", "finals_pending"):
+    sql("delete from public.%s where season_week = %d" % (_t, EW))
+
+# ① 两个人报名(客户端 RPC, 带真快照)
+e_ok = True
+for tok, nm, snap, gw in ((TA, "端到端甲", '{"leaders":["basic"],"tag":"AAA"}', 6),
+                          (TB, "端到端乙", '{"leaders":["ninja"],"tag":"BBB"}', 5)):
+    st, d = req("POST", "/rest/v1/rpc/finals_enter",
+                {"p_week": EW, "p_name": nm, "p_snapshot": json.loads(snap),
+                 "p_gw": gw, "p_gl": 1}, tok)
+    e_ok = e_ok and isinstance(d, dict) and bool(d.get("ok"))
+chk("㉑ ① 两个人都报上名了(客户端 RPC + 真 token)", e_ok)
+
+# ② 切桶(只有 pg_cron 干得动)
+st, d = sql("select public.finals_seat(%d) as nb" % EW)
+nb = int(d[0]["nb"]) if isinstance(d, list) and d else -1
+chk("㉑ ② 切出 1 个桶", nb == 1, str(nb))
+
+# ③ 甲看图: 拿得到自己的桶 + 名字按种子落位
+st, v = req("POST", "/rest/v1/rpc/finals_view", {"p_week": EW, "p_bucket": -1}, TA)
+chk("㉑ ③ 甲查到了自己那个桶(p_bucket=-1 那条路)",
+    isinstance(v, dict) and bool(v.get("ok")) and int(v.get("n", 0)) == 2, str(v)[:170])
+bno = int(v.get("bucket", -1)) if isinstance(v, dict) else -1
+ents = v.get("entrants", []) if isinstance(v, dict) else []
+chk("㉑ ③ ★回包里带着桶号(客户端要拿它去问对手)", bno >= 0, str(bno))
+chk("㉑ ③ ★★回包里**没有 snapshot**(全桶阵容不许下发)",
+    all("snapshot" not in e for e in ents), str(ents)[:170])
+# 甲的种子
+my_seed = -1
+foe_seed = -1
+for e in ents:
+    if str(e.get("account_id")) == IA:
+        my_seed = int(e.get("seed", -1))
+    else:
+        foe_seed = int(e.get("seed", -1))
+chk("㉑ ③ ★分母: 甲和乙的种子都认出来了", my_seed >= 0 and foe_seed >= 0,
+    "我=%d 对手=%d" % (my_seed, foe_seed))
+
+# ④ 甲要对手快照 —— 这一步在 2026-09-25 之前**根本做不到**
+st, o = req("POST", "/rest/v1/rpc/finals_opponent",
+            {"p_week": EW, "p_bucket": bno, "p_round": 1, "p_seed": foe_seed}, TA)
+chk("㉑ ④ ★★★甲拿到了对手的快照 —— 这一步在 E-B4 之前根本做不到",
+    isinstance(o, dict) and bool(o.get("ok"))
+    and isinstance(o.get("snapshot"), dict), str(o)[:170])
+chk("㉑ ④ ★拿到的是**对手那一份**(不是自己的)",
+    isinstance(o, dict) and str(o.get("snapshot", {}).get("tag", "")) == "BBB",
+    str(o.get("snapshot", {}))[:90] if isinstance(o, dict) else "?")
+
+# ⑤ 打完 → 甲报结果(甲赢: winner_side = 甲所在那一侧)
+#   4 人以下的桶里第 1 轮第 0 场就是这两个人; 甲的坑位 = 种子序(0/1)
+side_a = 0 if my_seed == 0 else 1
+st, r = req("POST", "/rest/v1/rpc/finals_report",
+            {"p_week": EW, "p_bucket": bno, "p_round": 1, "p_match": 0,
+             "p_winner_side": side_a, "p_seed": 4242}, TA)
+chk("㉑ ⑤ ★★结果报上去了(这一步在 E-B6 之前客户端一个调用者都没有)",
+    isinstance(r, dict) and bool(r.get("ok")), str(r)[:140])
+
+# ⑥ 还没到点 ⇒ 不许翻面(打完就翻的话, 全桶同步就没了)
+sql("select public.finals_advance(%d)" % EW)
+st, b = sql("select round, closed from public.finals_buckets "
+            "where season_week=%d and bucket_no=%d" % (EW, bno))
+chk("㉑ ⑥ ★★本轮时间没到 ⇒ **不翻面**(全桶同步靠这条)",
+    isinstance(b, list) and b and int(b[0]["round"]) == 1 and not b[0]["closed"],
+    str(b)[:120])
+
+# ⑦ 把本轮开始时刻推早 ⇒ 到点 ⇒ 翻面。2 人桶只有 1 轮 ⇒ 直接收盘
+sql("update public.finals_buckets set round_at = now() - interval '20 minutes' "
+    "where season_week=%d and bucket_no=%d" % (EW, bno))
+sql("select public.finals_advance(%d)" % EW)
+st, b = sql("select round, closed from public.finals_buckets "
+            "where season_week=%d and bucket_no=%d" % (EW, bno))
+chk("㉑ ⑦ ★★★到点了 ⇒ 桶收盘(2 人桶只有 1 轮) —— 对阵图**真的走完了**",
+    isinstance(b, list) and b and bool(b[0]["closed"]), str(b)[:120])
+
+# ⑧ 甲再看图: 现在该看得到结果了(收盘之后全给)
+st, v2 = req("POST", "/rest/v1/rpc/finals_view", {"p_week": EW, "p_bucket": bno}, TA)
+done = v2.get("done", {}) if isinstance(v2, dict) else {}
+chk("㉑ ⑧ ★★★收盘后甲看得到这一场的结果 —— 冠军公布了",
+    isinstance(done, dict) and "1-0" in done, str(done)[:140])
+chk("㉑ ⑧ ★而且赢的是甲那一侧(报什么就是什么, 没被改过)",
+    int(done.get("1-0", -1)) == side_a, "done=%s 甲那侧=%d" % (str(done)[:60], side_a))
+
+# 收尾
+for _t in ("finals_scout", "finals_results", "finals_entrants",
+           "finals_buckets", "finals_pending"):
+    sql("delete from public.%s where season_week = %d" % (_t, EW))
+st, c = sql("select (select count(*) from public.finals_buckets where season_week=%d)"
+            " + (select count(*) from public.finals_entrants where season_week=%d)"
+            " as leftover" % (EW, EW))
+chk("㉑ 收尾: 端到端那一周的数据清干净了",
+    isinstance(c, list) and c and int(c[0]["leftover"]) == 0, str(c)[:110])
+
+
 ## ★反向验证时跳过这一段(它要真等 pg_cron 醒, 一轮 30~90 秒)
 if os.environ.get("SKIP_CRON") == "1":
     print("── ⑭ (SKIP_CRON=1, 跳过) ──")
