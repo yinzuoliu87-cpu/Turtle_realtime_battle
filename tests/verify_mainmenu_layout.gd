@@ -358,14 +358,24 @@ func _ready() -> void:
 	#      表里第二列就是期望值本身, 跟着 `PHASE_MODE_LIVE` 手动同步 ——
 	#      **故意不写成 `not phase_mode_live(...)`**: 那是拿被测函数当尺子(今天栽过一次)。
 	var DAYS := {                      # 显示名: [时间戳, 这天要不要挂「还没上线」提示]
-		"周一休赛": [1789344000, true],
-		"周四积分赛": [1789603200, false],
-		"周六闯关赛": [1789776000, false],
-		"周日决赛日": [1789862400, true],
+		## 第二列 = 这天那一格**应该长什么样**, 三档:
+		##   "note"      —— 玩法没上线, 要说清暂按什么规则
+		##   "countdown" —— 有收盘概念, 给倒计时/封盘提示
+		##   "door"      —— ★★2026-09-25 新增: 周日决赛日上线后这一格是
+		##                 **进对阵图的门**(一个 Button, 不是两行字)。
+		##                 原来只有前两档 ⇒ 翻开关那天「建不出文字」+「没倒计时」两条假红。
+		"周一休赛": [1789344000, "note"],
+		"周四积分赛": [1789603200, "countdown"],
+		"周六闯关赛": [1789776000, "countdown"],
+		## ★★2026-09-25 用户「周日要打开」 ⇒ PHASE_MODE_LIVE[FINALS] 翻成 true,
+		##   周日那格不再挂「还没上线」, 改成照常倒计时(与周六同)。
+		##   下一个阶段上线时还是手动同步这一列 —— 故意不写成
+		##   `not phase_mode_live(...)`(拿被测函数当尺子, 见上方长注释)。
+		"周日决赛日": [1789862400, "door"],
 	}
 	for dn in DAYS.keys():
 		var ts_d: int = int((DAYS[dn] as Array)[0])
-		var needs_note: bool = bool((DAYS[dn] as Array)[1])
+		var want_kind: String = str((DAYS[dn] as Array)[1])
 		var blk = _menu._week_close_block(ts_d)
 		var btxt: Array = []
 		var bq: Array = [blk]
@@ -377,8 +387,36 @@ func _ready() -> void:
 					btxt.append(str((bc as Label).text).strip_edges())
 		var bj := " / ".join(PackedStringArray(btxt))
 		var want_note: String = _P2M.phase_pending_note(_P2M.phase_at_utc(ts_d))
+		if want_kind == "door":
+			## ★★★周日决赛日上线之后这一格是**门**不是字。判据卡三件:
+			##   ① 真的建出了一个能按的 Button(不是摆一行字冒充)
+			##   ② 上面写着通到哪(玩家得看得懂按下去会发生什么)
+			##   ③ **接了处理函数** —— 「点了没反应比按钮是灰的糟得多」是本仓原则,
+			##      而「有按钮」不证明「按了有用」(zero_caller 那一族)。
+			## ★根节点自己也可能就是那个 Button ⇒ 从 blk 起遍历、**只数一次**。
+			##   (第一版在循环外又 append 了一次 blk, 分母打成「Button 2 个」
+			##    而其实只有 1 个 —— 分母算错的判据看着更"强"其实在骗人。)
+			var btns: Array = []
+			var q2: Array = [blk]
+			while not q2.is_empty():
+				var n2 = q2.pop_back()
+				if n2 is Button:
+					btns.append(n2)
+				for c2 in n2.get_children():
+					q2.append(c2)
+			_ok("⑬c ★★分母(%s): 真建出了一个能按的门" % dn, btns.size() >= 1,
+				"Button %d 个 / 文字 %s" % [btns.size(), bj])
+			if btns.size() >= 1:
+				var bt: Button = btns[0]
+				_ok("⑬c ★%s: 门上写着通到哪(玩家看得懂)" % dn,
+					str(bt.text).find("对阵图") >= 0, str(bt.text).replace("\n", "⏎"))
+				_ok("⑬c ★★%s: 门**接了处理函数**(有按钮 ≠ 按了有用)" % dn,
+					bt.pressed.get_connections().size() >= 1,
+					"连了 %d 个" % bt.pressed.get_connections().size())
+			blk.queue_free()
+			continue
 		_ok("⑬c ★分母(%s): 收盘块真建出了文字" % dn, btxt.size() >= 2, bj)
-		if needs_note:
+		if want_kind == "note":
 			## ① 屏幕上必须说清**实际会发生什么** —— 判据写死, 不引被测函数。
 			##   ★needle 取「暂按积分赛规则」而不是「开发中」: 周一是设计上就没有玩法(休赛),
 			##     说开发中是另一种谎, 所以两天的前半句不同、**后半句才是共同的信息**。

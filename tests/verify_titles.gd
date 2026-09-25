@@ -73,14 +73,27 @@ func _t_rules() -> void:
 		str(P2C.TITLE_ORDER[0]) == P2C.TITLE_CHAMPION
 			and str(P2C.TITLE_ORDER[3]) == P2C.TITLE_FULL_QUOTA, str(P2C.TITLE_ORDER))
 
-	## ★没上线的档: 冠军/四强现在拿不到
-	_ok("① ★★周日玩法没上线 ⇒ 冠军/四强**拿不到**",
-		not P2C.title_earnable(P2C.TITLE_CHAMPION)
-			and not P2C.title_earnable(P2C.TITLE_SEMIFINAL))
-	_ok("① ★分母: 另两档现在拿得到(证明上面那条是「没上线」挡的, 不是函数恒 false)",
+	## ══════════════════════════════════════════════════════════════════
+	## 冠军/四强这两档**跟着周日玩法的上线开关走**。
+	##
+	## ★★2026-09-25 用户「周日要打开」⇒ `PHASE_MODE_LIVE[PHASE_FINALS]` 翻成 true,
+	##   这两档从此拿得到。原来这里写死「拿不到」+「开关确实是 false」两条,
+	##   翻开关的当天它们必红 —— 而**那正是对的**: 判据钉住了当时的状态。
+	##
+	## ★判据不能只改成「现在拿得到」—— 那样把 `title_earnable` 退化成恒 true 也全绿。
+	##   ⇒ 改成**跟着开关走的一对**: 开=拿得到 / 关=拿不到, 两边都验。
+	##   `title_earnable` 直接吃 `phase_mode_live(PHASE_FINALS)`,而那是 **const 字典**
+	##   (Godot 里改不动) ⇒ 只能拿真实值当分母, 但**两档对照**能挡住恒 true/恒 false:
+	##   另两档(决赛日出场/满配额)与开关无关, 必须恒为 true。
+	var finals_live := P2C.phase_mode_live(P2C.PHASE_FINALS)
+	_ok("① ★分母: 打印现在的开关状态(判据跟着它走)", true, "PHASE_FINALS live = %s" % finals_live)
+	_ok("① ★★冠军/四强 == 周日玩法上线状态(开就拿得到, 关就拿不到)",
+		P2C.title_earnable(P2C.TITLE_CHAMPION) == finals_live
+			and P2C.title_earnable(P2C.TITLE_SEMIFINAL) == finals_live,
+		"冠军=%s 四强=%s 开关=%s" % [P2C.title_earnable(P2C.TITLE_CHAMPION),
+			P2C.title_earnable(P2C.TITLE_SEMIFINAL), finals_live])
+	_ok("① ★★分母: 另两档**与开关无关**恒拿得到(挡住 title_earnable 退化成恒值)",
 		P2C.title_earnable(P2C.TITLE_FINALS_DAY) and P2C.title_earnable(P2C.TITLE_FULL_QUOTA))
-	_ok("① ★分母: 现在 PHASE_MODE_LIVE 里决赛日确实是 false",
-		not P2C.phase_mode_live(P2C.PHASE_FINALS))
 
 	## 去重判据
 	var lst: Array = [P2C.title_row(P2C.TITLE_FULL_QUOTA, 100)]
@@ -126,9 +139,17 @@ func _t_award() -> void:
 		GameState.award_title(P2C.TITLE_FULL_QUOTA, 1789344000 + 604800))
 	_ok("② ★分母: 现在两条", GameState.titles.size() == 2, str(GameState.titles))
 
-	_ok("② ★★没上线的档发不出来(冠军)",
-		not GameState.award_title(P2C.TITLE_CHAMPION), str(GameState.titles.size()))
-	_ok("② ★分母: 列表没变(还是两条)", GameState.titles.size() == 2)
+	## ★★2026-09-25 用户「周日要打开」⇒ 冠军这一档从「发不出来」变成「发得出来」。
+	##   判据跟着 `title_earnable` 走(而它吃 `phase_mode_live(PHASE_FINALS)`),
+	##   ★不是写死哪一边 —— 写死哪一边都会在下一次翻开关时变成假失败/假通过。
+	var champ_ok := P2C.title_earnable(P2C.TITLE_CHAMPION)
+	var n_before := GameState.titles.size()
+	var awarded := GameState.award_title(P2C.TITLE_CHAMPION)
+	_ok("② ★★冠军能不能发 == title_earnable 说的(现在 = %s)" % champ_ok,
+		awarded == champ_ok, "实际发出=%s" % awarded)
+	_ok("② ★分母: 列表条数跟着动(发了才 +1, 没发就不变)",
+		GameState.titles.size() == n_before + (1 if champ_ok else 0),
+		"%d → %d" % [n_before, GameState.titles.size()])
 
 	## 赛程没初始化时不发 —— 发了记不清是哪一周
 	GameState.titles = []

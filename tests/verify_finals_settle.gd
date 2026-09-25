@@ -84,8 +84,12 @@ func _t_settle_kind() -> void:
 	## ★★分母: 现在**实际**是什么状态 —— 把它打出来, 免得有人以为门禁在测线上行为
 	var live_now := P2C.phase_mode_live(P2C.PHASE_FINALS)
 	print("     现在 PHASE_MODE_LIVE[finals] = %s (上线那天改这一格)" % live_now)
-	_ok("① ★★★现在决赛日**还没上线** —— 这条一旦变红, 说明有人翻了开关, "
-		+ "该同时确认玩法真做完了", not live_now, str(live_now))
+	## ★★2026-09-25 用户「周日要打开」 ⇒ 开关已翻成 true。
+	##   原来这里写的是「现在还没上线」—— 它的职责本来就是「翻开关的那天当场红」, 它做到了。
+	##   现在改成【两侧都验】: 关 ⇒ 积分赛口径 / 开 ⇒ 决赛日口径。
+	##   ★这两条是纯函数入参, 与常量现在的值无关 ⇒ 以后不论开关怎么翻都不会变成恒真式。
+	## ↑ 那一对(关⇒积分赛 / 开⇒决赛日)上面第 65~70 行已经验过了, 这里不再拄一遍。
+	## 真正跟着开关走的【真入口】行为在③ 段(掍命/配额)。
 
 
 # ─────────────────────────────────────────────────────────────
@@ -187,17 +191,33 @@ func _t_real_settle() -> void:
 	GameState.season_leaders = ["basic", "fortune", "ninja"]
 	GameState.week_anchor_ts = P2C.week_anchor_utc(int(Time.get_unix_time_from_system()))
 
-	## ★★★决赛日**现在没上线** ⇒ 结算必须**照旧按积分赛**。
-	##   少了这一条, 那条新分支提前生效也没人发现。
+	## ★★★2026-09-25 用户「周日要打开」。这两条原来钉的是「没上线时照旧掉命/吃配额」
+	##   —— 翻开关的当天它们就该红,而它们真的红了(这是它们的职责,不是坏了)。
+	##
+	## ★不能只把期望值翻过来:那样「任何阶段都不掉命」也会绿。
+	##   ⇒ 判据同时卡住两组:决赛日不掉命不吃配额 / 积分赛照旧掉命且吃配额。
+	##   后者就是分母 —— 没它的话「结算整个坏掉」也全绿。
 	GameState.week_phase = P2C.PHASE_FINALS
 	GameState.hearts = 8
 	var q0 := int(GameState.ranked_used)
 	scene._settle_season(false)
-	_ok("③ ★★★没上线时: 输了**照旧掉命**(证明新分支没有提前生效)",
-		int(GameState.hearts) == 7, str(GameState.hearts))
-	_ok("③ ★★没上线时: 照旧**吃积分赛配额**",
-		int(GameState.ranked_used) == q0 + 1,
+	_ok("③ ★★★决赛日(已上线): 输了**不掉命**",
+		int(GameState.hearts) == 8, str(GameState.hearts))
+	_ok("③ ★★决赛日: **不吃积分赛配额**",
+		int(GameState.ranked_used) == q0,
 		"%d → %d" % [q0, int(GameState.ranked_used)])
+
+	## ★★★分母: 积分赛照旧掉命且吃配额 —— 证明上面两条是【决赛日那条分支】挡的,
+	##   不是结算整体坏掉了。
+	GameState.week_phase = P2C.PHASE_RANKED
+	GameState.hearts = 8
+	var qr := int(GameState.ranked_used)
+	scene._settle_season(false)
+	_ok("③ ★★★分母: 积分赛输了**照旧掉命**",
+		int(GameState.hearts) == 7, str(GameState.hearts))
+	_ok("③ ★★分母: 积分赛**照旧吃配额**",
+		int(GameState.ranked_used) == qr + 1,
+		"%d → %d" % [qr, int(GameState.ranked_used)])
 
 	## ★分母: 换成闯关赛(它**已经上线**) ⇒ 不掉命、不吃配额 ——
 	##   证明上面两条是"没上线"挡的, 不是"这套闸根本不工作"

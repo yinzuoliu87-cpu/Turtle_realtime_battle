@@ -228,6 +228,9 @@ func _t_ingest() -> void:
 # ─────────────────────────────────────────────────────────────
 func _t_real_entry() -> void:
 	print("── ④ 走真入口 Backend.find_opponent() ──")
+	## ★★2026-09-25: 入参是**场次**不是粗格子。原来这里写的是
+	##   `find_opponent(bracket_for_battles(11), …)` ⇒ 传进去的是 **4**(格子号),
+	##   于是窗口中心变成 4 而不是 11。不要再把 `bracket_for_battles` 加回来。
 	var env_bak := OS.get_environment(ENV_URL)
 	OS.set_environment(ENV_URL, DEAD_URL)
 	_chk("④ ★分母: 这一段里后端是【启用】的(停用的话下面全是空检查)", SB.enabled(),
@@ -241,7 +244,7 @@ func _t_real_entry() -> void:
 	GameState.season_total_battles = 11
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1234
-	var g = BE.find_opponent(BE.bracket_for_battles(11), [], rng)
+	var g = BE.find_opponent(11, [], rng)
 
 	## ★★判据落在「它拿哪三维去问的」，不是「它调没调」——
 	##   后者是插一行数一行必绿(memory `fb-gate-must-measure-requirement-not-my-hook`)。
@@ -263,7 +266,7 @@ func _t_real_entry() -> void:
 	## ★没登录就不该问。这条挡的是「`account_id=neq.` 后面空着 ⇒ 把自己也拉回来」。
 	SB._reset_pull_for_test()
 	GameState.account_id = ""
-	BE.find_opponent(BE.bracket_for_battles(11), [], rng)
+	BE.find_opponent(11, [], rng)
 	_chk("④ ★★没登录时【一个字都不问】(空 account_id 会让服务端把自己也返回来)",
 		SB.last_query() == "", SB.last_query())
 

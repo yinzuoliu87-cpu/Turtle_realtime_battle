@@ -970,6 +970,15 @@ static func close_block_kind(phase: String, finals_live: bool, maintenance: bool
 		return BK_MAINTENANCE
 	if phase == _P2C.PHASE_FINALS and finals_live:
 		return BK_BRACKET_DOOR
+	## ★★到这里如果 phase 是 FINALS, 就说明 `finals_live == false` ⇒ 直接是「还没上线」那一档。
+	##   **不许再去问 `phase_pending_note()`** —— 它读的是**全局常量** `PHASE_MODE_LIVE`
+	##   而不是入参, 于是 2026-09-25 把开关翻成 true 之后, 连喂 `finals_live=false`
+	##   的那一支也拿到 ""、掉进下面的 `BK_NO_CLOSE`。
+	##   ⇒ 这个函数原本对 `finals_live` **只有一半是纯的**: 抽出入参的全部意义就是
+	##     「门禁能在不改常量的前提下把两侧都验一遍」, 半纯等于白抽。
+	##   (`verify_finals_feed` ⑤ 那条「没上线 ⇒ 是话不是门」当场红, 就是它抓到的。)
+	if phase == _P2C.PHASE_FINALS:
+		return BK_PENDING
 	if _P2C.phase_pending_note(phase) != "":
 		return BK_PENDING
 	if close_left < 0:
@@ -1013,6 +1022,11 @@ func _week_close_block(now: int) -> Control:
 	if kind == BK_PENDING:
 		head = str(_P2C.PHASE_LABEL.get(ph, ph))
 		sub = _P2C.phase_pending_note(ph)
+		## ★兜底: 走到 BK_PENDING 而 `phase_pending_note()` 给空串, 只有一种情况 ——
+		##   用 `strip_finals_live_override` 把决赛日**手动**按成"没上线"(截图台/调试用),
+		##   而那张表里它其实已经上线了。不兜的话这一格会渲出一行空 Label。
+		if sub == "":
+			sub = "玩法开发中, 暂按积分赛规则"
 		return _close_block_labels(head, sub)
 	if kind == BK_NO_CLOSE:
 		if ph == _P2C.PHASE_FINALS:
