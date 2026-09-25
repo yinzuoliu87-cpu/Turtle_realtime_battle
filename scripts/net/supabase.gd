@@ -1370,6 +1370,105 @@ static func finals_tried() -> bool:
 	return _finals_tried
 
 
+# ─────────────────────────────────────────────────────────────
+# E-B4 对手快照(2026-09-25)
+#
+# ★为什么要有这条路: 快照一直写在 `finals_entrants.snapshot` 里, 但**没有任何人读得回来**
+#   (`finals_view` 不下发它) ⇒ 不在线的对手没法被代打 ⇒ 那一场没人报结果
+#   ⇒ `finals_advance` 永远不翻面 ⇒ **整个桶永久卡死**。
+#
+# ★★这条路**每人每轮只能用一次**(服务端 `finals_scout` 记账, 先到先得)。
+#   所以客户端要在**确定对手是谁之后**才问 —— 问错了就浪费掉这一轮唯一的机会。
+#   对手由本机 `bracket.gd` 算(对阵规则只有客户端这一份在算)。
+# ─────────────────────────────────────────────────────────────
+static var _opp: Dictionary = {}
+static var _opp_inflight := false
+## ★与 `_finals_tried` 同一个道理: 分得清「还没回来」和「回来了但拿不到」。
+static var _opp_tried := false
+
+
+static func opponent_cached() -> Dictionary:
+	return _opp
+
+
+static func opponent_tried() -> bool:
+	return _opp_tried
+
+
+static func opponent_clear() -> void:
+	_opp = {}
+	_opp_tried = false
+
+
+## 把 `finals_opponent` 的回包翻译成「能不能打、拿谁打」。**纯函数** ——
+## 门禁直接喂一段回包字符串就能验, 不用网络(与 `parse_finals` 同一套做法)。
+##
+## 回包: {ok:true, seed, name, snapshot} / {ok:false, reason, [seed]}
+## 产出: {ok, seed, name, snapshot, reason, asked}
+##   · `reason` 原样带出来 —— 屏幕要按它说不同的话(「这一轮你已经看过 3 号了」
+##     和「你不在这个桶里」是两回事)
+##   · `asked` = 服务端说我这一轮**实际**问过的那个号(只有 already_asked 时才有)。
+##     ★它存在的意义: 客户端能拿它和「我算出来的对手」对一下 —— 对不上就说明
+##     两边的对阵图算出了不同答案, 那是个该被看见的事故, 不该静默。
+static func parse_opponent(ok: bool, code: int, body: String) -> Dictionary:
+	if not ok or code < 200 or code >= 300:
+		return {"ok": false, "reason": "net"}
+	## ★用 `JSON.new().parse()` 而不是 `JSON.parse_string()`: 后者解析失败会往
+	##   stderr 喷一条 `ERROR: Parse JSON failed`。这里**本来就要能处理坏正文**
+	##   (服务端 5xx 时回的可能是 HTML), 每次都喷一条错等于给日志灌噪声 ——
+	##   而门禁是靠扫日志里的错误形态判红的, 噪声多了真错就藏得住。
+	var _p := JSON.new()
+	if _p.parse(body) != OK or not (_p.data is Dictionary):
+		return {"ok": false, "reason": "bad_body"}
+	var d: Dictionary = _p.data
+	if not bool(d.get("ok", false)):
+		var out := {"ok": false, "reason": str(d.get("reason", "?"))}
+		if d.has("seed"):
+			out["asked"] = int(d.get("seed", -1))
+		return out
+	## ★空快照要当成**拿不到**, 不是「拿到了一个空阵容」——
+	##   后者会让代打打一场 0 人对局, 而且看起来像"对手太弱"。
+	var snap = d.get("snapshot", {})
+	if not (snap is Dictionary) or (snap as Dictionary).is_empty():
+		return {"ok": false, "reason": "empty_snapshot", "seed": int(d.get("seed", -1))}
+	return {"ok": true, "seed": int(d.get("seed", -1)),
+		"name": str(d.get("name", "")), "snapshot": snap}
+
+
+static func fetch_opponent_async(week: int, bucket: int, round_no: int, seed: int) -> void:
+	var gs = _gs()
+	if gs == null or _opp_inflight:
+		return
+	## ★与报名/看桶同一道闸: 只要「服务端认得出你是谁」。**不是** `sync_allowed`
+	##   (那是存档同步的闸, 要绑邮箱 —— 用错会让访客静默打不了, 这个洞犯过一次)。
+	if str(gs.account_id) == "" or _token == "":
+		_opp_tried = true
+		return
+	var n = _spawn()
+	if n != null:
+		_opp_inflight = true
+		n.fetch_opponent(week, bucket, round_no, seed)
+
+
+func fetch_opponent(week: int, bucket: int, round_no: int, seed: int) -> void:
+	if not enabled():
+		_opp_inflight = false
+		_opp_tried = true
+		_bye()
+		return
+	var url := base_url().rstrip("/") + "/rest/v1/rpc/finals_opponent"
+	var body := JSON.stringify({"p_week": week, "p_bucket": bucket,
+		"p_round": round_no, "p_seed": seed})
+	_http("POST", url, body,
+		func(res):
+			_opp_inflight = false
+			_opp_tried = true
+			_opp = parse_opponent(bool(res.get("ok", false)), int(res.get("code", 0)),
+				str(res.get("body", "")))
+			_bye(),
+		"Content-Type: application/json")
+
+
 static func finals_clear() -> void:
 	_finals_view = {}
 	_finals_inflight = false
@@ -1429,10 +1528,15 @@ static func parse_finals(ok: bool, code: int, body: String, my_account: String,
 		recv_at: int) -> Dictionary:
 	if not ok or code < 200 or code >= 300:
 		return {}
-	var j = JSON.parse_string(body)
-	if not (j is Dictionary) or not bool((j as Dictionary).get("ok", false)):
+	## ★同 `parse_opponent`: 用 `JSON.new().parse()` 而不是 `JSON.parse_string()` ——
+	##   后者解析失败会往 stderr 喷一条 `ERROR: Parse JSON failed`, 而这里**本来就要
+	##   能处理坏正文**(5xx 时服务端回的可能是 HTML)。门禁靠扫日志里的错误形态判红,
+	##   每次都喷一条等于给日志灌噪声, 真错就藏得住了。
+	var _p := JSON.new()
+	if _p.parse(body) != OK or not (_p.data is Dictionary) \
+			or not bool((_p.data as Dictionary).get("ok", false)):
 		return {}
-	var d: Dictionary = j
+	var d: Dictionary = _p.data
 	var n := int(d.get("n", 0))
 	if n <= 0:
 		return {}

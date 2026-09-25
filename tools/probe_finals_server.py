@@ -425,6 +425,180 @@ chk("⑰ ★登录用户调不动 finals_seat(切桶只有 pg_cron 干得了)", 
 print("  [GAP ] ⑰ ★已知缺口: finals_report 只挡到桶级, 同桶旁观者能替别人报一场")
 print("         (要挡到「这一场」得在 SQL 里把对阵规则写第二遍; 服务端复算是 B 阶段第二步)")
 
+# ═════════════════════════════════════════════════════════════
+# ⑱ 对手快照 finals_opponent (E-B4, 2026-09-25)
+#
+# 这一段守的是 2026-09-25 查出来的那条死锁的上半截:
+#   快照写进去了, 但 `finals_view` 不下发 ⇒ 客户端**永远读不回来**
+#   ⇒ 没法替不在线的人打 ⇒ 那一场没人报 ⇒ 桶永久卡死。
+#
+# ★判据的重点不是「拿得到」, 是**「只拿得到一个」** —— 那一条才是它不泄露
+#   全桶阵容的全部依据。所以下面每条「拿不到」都配一条「换个条件就拿得到」的分母。
+# ═════════════════════════════════════════════════════════════
+print("")
+print("── ⑱ 对手快照 finals_opponent ──")
+B2 = 1                                   # 另起一个桶, 不碰 ⑰ 用的那个
+sql("delete from public.finals_scout    where season_week = %d and bucket_no = %d" % (WEEK, B2))
+sql("delete from public.finals_entrants where season_week = %d and bucket_no = %d" % (WEEK, B2))
+sql("delete from public.finals_buckets  where season_week = %d and bucket_no = %d" % (WEEK, B2))
+st, _ = sql("""
+insert into public.finals_buckets (season_week, bucket_no, n, round, round_at, closed)
+  values (%d, %d, 4, 1, now(), false);
+insert into public.finals_entrants (season_week, bucket_no, seed, account_id, name, snapshot)
+  values (%d,%d,0,'%s','甲','{"tag":"AAA"}'::jsonb),
+         (%d,%d,1,'%s','乙','{"tag":"BBB"}'::jsonb),
+         (%d,%d,2,'%s','丙','{"tag":"CCC"}'::jsonb),
+         (%d,%d,3,'%s','丁','{"tag":"DDD"}'::jsonb);
+""" % (WEEK, B2, WEEK, B2, IA, WEEK, B2, IB, WEEK, B2, IB, WEEK, B2, IB))
+chk("⑱ ★分母: 造场子成功(否则下面全是空检查)", st in (200, 201), "HTTP %s" % st)
+
+
+def opp(tok, seed, week=WEEK, bucket=B2, rnd=1):
+    s, d = req("POST", "/rest/v1/rpc/finals_opponent",
+               {"p_week": week, "p_bucket": bucket, "p_round": rnd, "p_seed": seed}, tok)
+    return d if isinstance(d, dict) else {"_http": s, "_raw": str(d)[:80]}
+
+
+## ★★正路: 甲(seed 0)问乙(seed 1) —— 这是整条链的第一次「读得回来」
+d = opp(TA, 1)
+chk("⑱ ★★★拿得到对手的 snapshot —— 在此之前客户端永远读不回来",
+    bool(d.get("ok")) and isinstance(d.get("snapshot"), dict)
+    and d["snapshot"].get("tag") == "BBB", str(d)[:160])
+chk("⑱ ★连名字一起给(对阵图上要显示)", str(d.get("name", "")) == "乙", str(d)[:120])
+
+## 同一个种子再问一次 ⇒ 照给(幂等; 掉线重连不该被自己的记账挡住)
+d = opp(TA, 1)
+chk("⑱ 同一个种子再问一次照给(幂等)", bool(d.get("ok")), str(d)[:140])
+
+## ★★★核心: 同一轮换一个种子 ⇒ 拒, 并告诉它第一次问的是谁
+d = opp(TA, 2)
+chk("⑱ ★★★同一轮问第二个种子**被拒** —— 这一条是它不泄露全桶阵容的全部依据",
+    (not d.get("ok")) and d.get("reason") == "already_asked", str(d)[:160])
+chk("⑱ ★拒的时候把第一次问的号告诉它(否则客户端只知道拿不到, 不知道为什么)",
+    int(d.get("seed", -1)) == 1, str(d)[:140])
+chk("⑱ ★★被拒时**一个字节的快照都不给**(不然拒了也白拒)",
+    "snapshot" not in d, str(d)[:140])
+
+## 问自己 ⇒ 拒
+d = opp(TB, 1)      # 乙 = seed 1
+chk("⑱ 问自己 ⇒ 拒", (not d.get("ok")) and d.get("reason") == "thats_you", str(d)[:140])
+
+## 轮次不对 ⇒ 拒(问未来轮 = 提前侦察)
+d = opp(TB, 0, rnd=2)
+chk("⑱ ★轮次不对 ⇒ 拒(问未来轮等于提前侦察)",
+    (not d.get("ok")) and d.get("reason") == "wrong_round", str(d)[:140])
+
+## 不在这个桶里的人 ⇒ 拒
+if T3:
+    d = opp(T3, 0)
+    chk("⑱ ★★不在这个桶里的人问不到", (not d.get("ok")) and d.get("reason") == "not_in_bucket",
+        str(d)[:140])
+
+## ★★问一个不存在的号**不许烧掉自己的机会** —— 先查存在再记账, 顺序反了就坑人
+##   用乙来验(它上面只做过被拒的调用, 还没成功记过账)
+sql("delete from public.finals_scout where season_week = %d and bucket_no = %d and account_id = '%s'"
+    % (WEEK, B2, IB))
+d = opp(TB, 9)
+chk("⑱ 不存在的种子 ⇒ no_such_seed",
+    (not d.get("ok")) and d.get("reason") == "no_such_seed", str(d)[:140])
+d = opp(TB, 0)
+chk("⑱ ★★★问了一个不存在的号之后, **还能正常问真正的对手** —— 先查存在再记账",
+    bool(d.get("ok")) and d.get("snapshot", {}).get("tag") == "AAA", str(d)[:160])
+
+## ★分母: scout 表真的记了账(否则上面的「被拒」可能是别的原因)
+st, rows = sql("select account_id, seed from public.finals_scout "
+               "where season_week = %d and bucket_no = %d and round = 1 order by seed" % (WEEK, B2))
+chk("⑱ ★分母: scout 表真的有记账(证明限流是它做的)",
+    isinstance(rows, list) and len(rows) == 2, str(rows)[:200])
+
+## ★客户端直接读 finals_scout / finals_entrants ⇒ 都该读不到(表上没给策略)
+st, d = req("GET", "/rest/v1/finals_scout?select=*&season_week=eq.%d" % WEEK, None, TA)
+chk("⑱ ★★客户端**直连读不到 scout 表**(谁问过谁本身就是情报)",
+    not (isinstance(d, list) and len(d) > 0), "HTTP %s %s" % (st, str(d)[:110]))
+st, d = req("GET", "/rest/v1/finals_entrants?select=snapshot&season_week=eq.%d" % WEEK, None, TA)
+chk("⑱ ★★客户端**直连读不到 entrants 的 snapshot**(否则上面那套限流全白做)",
+    not (isinstance(d, list) and len(d) > 0), "HTTP %s %s" % (st, str(d)[:110]))
+
+# ═════════════════════════════════════════════════════════════
+# ⑲ 补判: 没人打的那一场 (E-B4 下半)
+#
+# 原来 `finals_advance` 是 `if got < want then continue` —— **无上限**。
+# 注释写的是「宁可晚一分钟」, 实际是**永远不推**。
+# ★判据必须分开两件事: 宽限期内**不许**补(会把正在打的判掉) / 过了才补。
+# ═════════════════════════════════════════════════════════════
+print("")
+print("── ⑲ 没人打的那一场: 补判 ──")
+st, d = sql("select public.finals_round_sec() as s")
+RSEC = int(d[0]["s"]) if isinstance(d, list) and d else 0
+chk("⑲ ★分母: 拿到轮时长(否则下面的时间都是瞎设的)", RSEC > 0, str(RSEC))
+B3 = 2
+
+
+def setup_b3(age_sec, results_sql=""):
+    sql("delete from public.finals_results  where season_week = %d and bucket_no = %d" % (WEEK, B3))
+    sql("delete from public.finals_entrants where season_week = %d and bucket_no = %d" % (WEEK, B3))
+    sql("delete from public.finals_buckets  where season_week = %d and bucket_no = %d" % (WEEK, B3))
+    sql("""insert into public.finals_buckets (season_week, bucket_no, n, round, round_at, closed)
+             values (%d, %d, 4, 1, now() - make_interval(secs => %d), false);
+           insert into public.finals_entrants (season_week,bucket_no,seed,account_id,name,snapshot)
+             values (%d,%d,0,'%s','甲','{}'::jsonb),(%d,%d,1,'%s','乙','{}'::jsonb),
+                    (%d,%d,2,'%s','丙','{}'::jsonb),(%d,%d,3,'%s','丁','{}'::jsonb);
+           %s"""
+        % (WEEK, B3, age_sec, WEEK, B3, IA, WEEK, B3, IB, WEEK, B3, IA, WEEK, B3, IB,
+           results_sql))
+
+
+def b3_state():
+    st2, r = sql("""select b.round, b.closed,
+                      (select count(*) from public.finals_results x
+                        where x.season_week=%d and x.bucket_no=%d and x.round=1) as res1
+                    from public.finals_buckets b
+                   where b.season_week=%d and b.bucket_no=%d"""
+                 % (WEEK, B3, WEEK, B3))
+    return r[0] if isinstance(r, list) and r else {}
+
+
+## ① 宽限期**内**, 一条结果都没有 ⇒ 不许补, 也不许翻面
+setup_b3(int(RSEC * 1.2))          # 过了 1 倍, 没过 2 倍
+sql("select public.finals_advance(%d)" % WEEK)
+s1 = b3_state()
+chk("⑲ ★★宽限期内(1.2×)**不补判也不翻面** —— 补早了会把正在打的比赛判掉",
+    int(s1.get("round", -1)) == 1 and int(s1.get("res1", -1)) == 0, str(s1))
+
+## ② 过了宽限期 ⇒ 补成 side 0 并翻面
+setup_b3(int(RSEC * 3))
+sql("select public.finals_advance(%d)" % WEEK)
+s2 = b3_state()
+chk("⑲ ★★★过了宽限期(3×) ⇒ 把缺的两场补上", int(s2.get("res1", -1)) == 2, str(s2))
+chk("⑲ ★★★补完照常翻面(这正是原来永远不会发生的那一步)",
+    int(s2.get("round", -1)) == 2, str(s2))
+st, rows = sql("select match_no, winner_side from public.finals_results "
+               "where season_week=%d and bucket_no=%d and round=1 order by match_no"
+               % (WEEK, B3))
+chk("⑲ 补判一律 side 0(上半区晋级)",
+    isinstance(rows, list) and len(rows) == 2
+    and all(int(x["winner_side"]) == 0 for x in rows), str(rows)[:180])
+
+## ③ ★★已经打完的那几场**一个字都不许被覆盖**
+setup_b3(int(RSEC * 3), """
+  insert into public.finals_results (season_week,bucket_no,round,match_no,winner_side,seed_used)
+    values (%d,%d,1,0,1,777);""" % (WEEK, B3))
+sql("select public.finals_advance(%d)" % WEEK)
+st, rows = sql("select match_no, winner_side, seed_used from public.finals_results "
+               "where season_week=%d and bucket_no=%d and round=1 order by match_no"
+               % (WEEK, B3))
+m0 = next((x for x in rows if int(x["match_no"]) == 0), {}) if isinstance(rows, list) else {}
+m1 = next((x for x in rows if int(x["match_no"]) == 1), {}) if isinstance(rows, list) else {}
+chk("⑲ ★★★真打过的那一场没被覆盖(side 仍是 1, 种子仍是 777)",
+    int(m0.get("winner_side", -1)) == 1 and int(m0.get("seed_used", -1)) == 777, str(m0))
+chk("⑲ ★只把**缺的**那一场补成 side 0", int(m1.get("winner_side", -1)) == 0, str(m1))
+
+sql("delete from public.finals_scout    where season_week = %d" % WEEK)
+for _b in (B2, B3):
+    sql("delete from public.finals_results  where season_week = %d and bucket_no = %d" % (WEEK, _b))
+    sql("delete from public.finals_entrants where season_week = %d and bucket_no = %d" % (WEEK, _b))
+    sql("delete from public.finals_buckets  where season_week = %d and bucket_no = %d" % (WEEK, _b))
+
 sql("delete from public.finals_pending where season_week = %d" % WEEK)
 
 ## ★反向验证时跳过这一段(它要真等 pg_cron 醒, 一轮 30~90 秒)

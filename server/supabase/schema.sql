@@ -366,8 +366,17 @@ alter table public.finals_results  enable row level security;
 -- 读：登录用户都能读桶与参赛者（观赛是公开的，原稿：重放全公开）
 drop policy if exists finals_b_read on public.finals_buckets;
 create policy finals_b_read on public.finals_buckets for select using (auth.uid() is not null);
+-- ★★2026-09-25 收掉了 `finals_e_read`(原来是 `select using (auth.uid() is not null)`):
+--   它把 **snapshot 列一起放出去了** ⇒ 任何登录用户直连 `/rest/v1/finals_entrants`
+--   就能拿到全桶所有人的阵容 ⇒ E-B4 那套「每人每轮只能问一个对手」当场作废
+--   (绕开 `finals_opponent` 直接读表就行), 连带 E-B2 定的「不剧透做在数据层」也破了。
+-- ★这不是「收紧」, 是本来就不该开: 客户端**零个地方**直连读这张表 ——
+--   全走 `finals_view`(security definer, 绕 RLS, 只下发 seed/name/account_id)。
+-- ★抓到它的是 `probe_finals_server.py` ⑱ 的最后一条判据(我为这套限流专门配的
+--   「绕不绕得过去」那一条), 它当场红了。判据要刚好卡住那个形状, 这就是一例。
+-- ⚠ RLS 是**行**级的, 挡不住「只想藏一列」—— 所以只能整条收掉, 或者改成列级 grant。
+--   这里选整条收掉: 没有任何消费者, 列级 grant 反而多一份要维护的名单。
 drop policy if exists finals_e_read on public.finals_entrants;
-create policy finals_e_read on public.finals_entrants for select using (auth.uid() is not null);
 
 -- ★★结果表**客户端一律不给直接读**（只有 select 策略缺席 = 读不到）——
 --   要读只能走 `finals_view()`，那里会把当前轮挡掉。
@@ -454,8 +463,27 @@ begin
     select count(*) into got from public.finals_results
      where season_week = p_week and bucket_no = b.bucket_no and round = b.round;
     -- ★没打完就不推 —— 宁可晚一分钟, 也不能把没结果的一轮翻面
+    -- ★★但「不推」不能没有上限(2026-09-25 查出来的死锁): 原来这里是无条件 continue,
+    --   于是**只要有一场没人报结果, 那个桶就永远不动**。注释当时写的是「宁可晚一分钟」,
+    --   实际是永远。而测试期人数个位数, 周日晚上「双方都不在线」几乎是常态。
     if got < want then
-      continue;
+      -- 宽限期内: 真的等一等。★取 2 倍而不是 1 倍 —— 本函数每分钟才叫一次,
+      --   且真有人在打时最后一场可能压着点报上来; 1 倍会把**正在打的比赛**判掉。
+      if now() < b.round_at + make_interval(secs => public.finals_round_sec() * 2) then
+        continue;
+      end if;
+      -- ★过了宽限期还缺 ⇒ 补判: 缺哪场补哪场, 一律 **side 0(上半区)晋级**。
+      -- ★为什么是「上半区」不是「高种子」: 服务端**算不出**第 N 轮某一场里是谁 ——
+      --   算得出就等于在 SQL 里写了第二遍对阵规则(E-B3 定的那条)。
+      --   而 side 0 不需要知道任何对阵规则: 缺哪个 match_no 就补哪个。
+      --   第一轮里上半区恰好就是高种子(座次表 [0,7,3,4,1,6,2,5] ⇒ 0vs7/3vs4/1vs6/2vs5),
+      --   后续轮它是上半区那条路径, **不保证**是当时的高种子 —— 照实说, 不吹成「高种子晋级」。
+      -- ★`do nothing` 保证**已经打完的那几场一个字都不动**。
+      insert into public.finals_results
+        (season_week, bucket_no, round, match_no, winner_side, seed_used)
+        select p_week, b.bucket_no, b.round, g.m, 0, 0
+          from generate_series(0, want - 1) as g(m)
+        on conflict (season_week, bucket_no, round, match_no) do nothing;
     end if;
     if b.round >= total then
       update public.finals_buckets set closed = true
@@ -654,3 +682,83 @@ end $$;
 revoke all on function public.finals_report(bigint, int, int, int, int, bigint) from public;
 revoke execute on function public.finals_report(bigint, int, int, int, int, bigint) from anon;
 grant execute on function public.finals_report(bigint, int, int, int, int, bigint) to authenticated;
+
+-- ─────────────────────────────────────────────────────────────
+-- ④ 对手快照（E-B4 快照代打, 2026-09-25）
+--
+-- ★★为什么不是把 snapshot 塞进 `finals_view`:
+--   那等于把**全桶所有人的阵容**发给所有人 —— 既是剧透, 也是侦察优势,
+--   与 E-B2 定的「不剧透做在数据层」直接冲突。
+--
+-- ★★为什么服务端不自己算「你的对手是谁」:
+--   算得出就等于把对阵规则在 SQL 里写第二遍(E-B3 定死的那条)。
+--   ⇒ 改成客户端说「我认为本轮对手是几号种子」, 服务端只校验**它查得到的部分**。
+--
+-- ★★那怎么防「把全桶挨个问一遍」:
+--   **每人每轮只能问一个种子**(下面这张表, 主键到 account_id, 先到先得)。
+--   问错了只是浪费掉自己这一轮唯一一次机会 —— **骗人只坑自己**。
+--   这样既不泄露别人的阵容, 又不需要服务端知道谁打谁。
+-- ─────────────────────────────────────────────────────────────
+create table if not exists public.finals_scout (
+  season_week  bigint      not null,
+  bucket_no    int         not null,
+  round        int         not null,
+  account_id   uuid        not null references auth.users(id) on delete cascade,
+  seed         int         not null,          -- 这一轮问过的那一个种子
+  asked_at     timestamptz not null default now(),
+  primary key (season_week, bucket_no, round, account_id)
+);
+alter table public.finals_scout enable row level security;
+-- ★一条客户端策略都不给: 只有下面这个 security definer 函数碰得到它。
+--   「谁问过谁」本身就是情报(能看出别人算出的对手是谁)。
+
+create or replace function public.finals_opponent(p_week bigint, p_bucket int,
+    p_round int, p_seed int)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare b record; mine int; asked int; snap jsonb; nm text;
+begin
+  if auth.uid() is null then
+    return jsonb_build_object('ok', false, 'reason', 'not_signed_in');
+  end if;
+  select * into b from public.finals_buckets
+   where season_week = p_week and bucket_no = p_bucket;
+  if not found or b.closed then
+    return jsonb_build_object('ok', false, 'reason', 'no_bucket');
+  end if;
+  -- ★只给当前轮: 问旧轮没意义(打完了), 问未来轮等于提前侦察
+  if p_round <> b.round then
+    return jsonb_build_object('ok', false, 'reason', 'wrong_round', 'round', b.round);
+  end if;
+  select seed into mine from public.finals_entrants
+   where season_week = p_week and bucket_no = p_bucket and account_id = auth.uid();
+  if mine is null then
+    return jsonb_build_object('ok', false, 'reason', 'not_in_bucket');
+  end if;
+  if p_seed = mine then
+    return jsonb_build_object('ok', false, 'reason', 'thats_you');
+  end if;
+  -- ★先确认这个种子真的存在, **再**记账 —— 反过来的话, 问一个不存在的号
+  --   会白白烧掉自己这一轮唯一的机会。存不存在不算情报(桶里几个人 finals_view 本来就给)。
+  select snapshot, name into snap, nm from public.finals_entrants
+   where season_week = p_week and bucket_no = p_bucket and seed = p_seed;
+  if snap is null then
+    return jsonb_build_object('ok', false, 'reason', 'no_such_seed');
+  end if;
+  -- ★每人每轮只能问一个: 先到先得
+  insert into public.finals_scout (season_week, bucket_no, round, account_id, seed)
+    values (p_week, p_bucket, p_round, auth.uid(), p_seed)
+    on conflict (season_week, bucket_no, round, account_id) do nothing;
+  select seed into asked from public.finals_scout
+   where season_week = p_week and bucket_no = p_bucket
+     and round = p_round and account_id = auth.uid();
+  if asked <> p_seed then
+    -- ★把第一次问的那个号告诉它 —— 不然客户端只知道"拿不到", 不知道为什么,
+    --   也没法把"我算出来的对手"和"我实际问过的"对上
+    return jsonb_build_object('ok', false, 'reason', 'already_asked', 'seed', asked);
+  end if;
+  return jsonb_build_object('ok', true, 'seed', p_seed, 'name', nm, 'snapshot', snap);
+end $$;
+
+revoke all on function public.finals_opponent(bigint, int, int, int) from public;
+revoke execute on function public.finals_opponent(bigint, int, int, int) from anon;
+grant execute on function public.finals_opponent(bigint, int, int, int) to authenticated;

@@ -88,6 +88,7 @@ func _ready() -> void:
 	await _t_door()
 	await _t_empty()
 	await _t_enter()
+	await _t_opponent()
 	SB._transport_for_test = Callable()
 	SB.finals_clear()
 	OS.set_environment("TURTLE_SUPABASE", " ")
@@ -425,6 +426,94 @@ func _t_enter() -> void:
 # ─────────────────────────────────────────────────────────────
 # ⑤ ★★门: 两个方向都验
 # ─────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────
+# ⑧ 对手快照 (E-B4, 2026-09-25)
+#
+# 背景: 快照一直写在 `finals_entrants.snapshot`, 但**没有任何人读得回来**
+#   (`finals_view` 不下发) ⇒ 不在线的对手没法代打 ⇒ 那场没人报 ⇒ 桶永久卡死。
+#
+# ★这一节守两半, 缺一不可:
+#   ①【翻译】纯函数喂回包 —— 不用网络就能穷举各种 reason
+#   ②【发信】走真入口, 量**真实发出去的请求**(地址/正文), 不是我插的计数器
+# ─────────────────────────────────────────────────────────────
+func _t_opponent() -> void:
+	print("── ⑧ 对手快照 ──")
+	## ── ① 翻译那半 ──
+	var good := SB.parse_opponent(true, 200,
+		'{"ok":true,"seed":3,"name":"阿海","snapshot":{"pets":[1,2,3]}}')
+	_ok("⑧ 正路: 快照/种子/名字都翻出来了",
+		bool(good.get("ok")) and int(good.get("seed", -1)) == 3
+			and str(good.get("name")) == "阿海"
+			and (good.get("snapshot", {}) as Dictionary).has("pets"), str(good).substr(0, 140))
+
+	## ★★空快照当成**拿不到**, 不是「拿到一个空阵容」——
+	##   后者会让代打打一场 0 人对局, 而且看起来像"对手太弱"
+	var empty := SB.parse_opponent(true, 200, '{"ok":true,"seed":3,"name":"x","snapshot":{}}')
+	_ok("⑧ ★★空快照算**拿不到**(不然会打一场 0 人对局, 还看着像对手太弱)",
+		not bool(empty.get("ok")) and str(empty.get("reason")) == "empty_snapshot",
+		str(empty).substr(0, 120))
+
+	## 被拒: reason 要原样带出来 —— 屏幕按它说不同的话
+	var used := SB.parse_opponent(true, 200, '{"ok":false,"reason":"already_asked","seed":5}')
+	_ok("⑧ 被拒时把 reason 带出来(屏幕要按它说不同的话)",
+		not bool(used.get("ok")) and str(used.get("reason")) == "already_asked", str(used))
+	_ok("⑧ ★★还要带出「我这一轮实际问过谁」—— 能和本机算出的对手对一下, 对不上就是两边对阵图不一致",
+		int(used.get("asked", -1)) == 5, str(used))
+	_ok("⑧ ★★被拒时**一个字节的快照都没有**", not used.has("snapshot"), str(used))
+
+	var oob := SB.parse_opponent(true, 200, '{"ok":false,"reason":"not_in_bucket"}')
+	_ok("⑧ not_in_bucket 照样翻得出", str(oob.get("reason")) == "not_in_bucket", str(oob))
+	_ok("⑧ ★分母: 没有 seed 字段时不许凭空造一个 asked", not oob.has("asked"), str(oob))
+
+	_ok("⑧ 网络层就失败 ⇒ reason=net", str(SB.parse_opponent(false, 0, "").get("reason")) == "net")
+	_ok("⑧ HTTP 500 ⇒ 也算 net(不是把 500 的正文当结果解)",
+		str(SB.parse_opponent(true, 500, '{"ok":true,"snapshot":{"pets":[1]}}').get("reason")) == "net")
+	_ok("⑧ 正文不是 JSON ⇒ bad_body",
+		str(SB.parse_opponent(true, 200, "不是json").get("reason")) == "bad_body")
+
+	## ── ② 发信那半: 走真入口, 量真实请求 ──
+	OS.set_environment("TURTLE_SUPABASE", DEAD_URL)
+	SB._transport_for_test = _spy
+	SB._reset_auth_for_test()
+	SB.apply_auth_response(true, 200,
+		'{"access_token":"at-1","expires_in":3600,"refresh_token":"rt-1",'
+		+ '"user":{"id":"uid-me","email":"me@x.co"}}')
+	GameState.account_id = "uid-me-1234"
+	SB.opponent_clear()
+	_next = {"ok": true, "code": 200,
+		"body": '{"ok":true,"seed":7,"name":"乙","snapshot":{"pets":[9]}}'}
+	_reqs.clear()
+	SB._opp_inflight = false
+	SB.fetch_opponent_async(777, 2, 3, 7)
+	await get_tree().process_frame
+	_ok("⑧ ★分母: 真入口确实发出了请求", _reqs.size() >= 1, str(_reqs.size()))
+	var r0: Dictionary = _reqs[0] if _reqs.size() > 0 else {}
+	_ok("⑧ ★★发去的是 `/rest/v1/rpc/finals_opponent`",
+		str(r0.get("url", "")).ends_with("/rest/v1/rpc/finals_opponent"), str(r0.get("url", "")))
+	var sent = JSON.parse_string(str(r0.get("body", "{}")))
+	_ok("⑧ ★★四个参数原样带上(week/bucket/round/seed) —— 少一个服务端就没法校验",
+		sent is Dictionary and int(sent.get("p_week", -1)) == 777
+			and int(sent.get("p_bucket", -1)) == 2 and int(sent.get("p_round", -1)) == 3
+			and int(sent.get("p_seed", -1)) == 7, str(sent).substr(0, 140))
+	_ok("⑧ 回包落进缓存, 屏幕拿得到",
+		bool(SB.opponent_cached().get("ok")) and SB.opponent_tried(),
+		str(SB.opponent_cached()).substr(0, 120))
+
+	## ★★没登录就别白跑一趟, 但**要标成「问过了」**——
+	##   否则屏幕永远转着「正在连线」(这个形状实拍抓到过一次)
+	SB.opponent_clear()
+	SB._reset_auth_for_test()          # token 没了
+	GameState.account_id = "uid-me-1234"
+	_reqs.clear()
+	SB._opp_inflight = false
+	SB.fetch_opponent_async(777, 2, 3, 7)
+	await get_tree().process_frame
+	_ok("⑧ ★没 token 时不发请求", _reqs.size() == 0, str(_reqs.size()))
+	_ok("⑧ ★★但要标成「问过了」—— 不然屏幕永远转着「正在连线」", SB.opponent_tried())
+	SB._transport_for_test = Callable()
+	SB.opponent_clear()
+
+
 func _t_door() -> void:
 	print("── ⑤ 门(桶地图在这之前零个产品调用点) ──")
 	_ok("⑤ ★场景文件在(没有它 change_scene_to_file 没东西可切)",
