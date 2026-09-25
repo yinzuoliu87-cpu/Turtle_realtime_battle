@@ -52,6 +52,7 @@ func _ready() -> void:
 	await _t_pan_by_size()
 	await _t_two_views()
 	await _t_opponent_gate()
+	await _t_winner_side()
 	print("")
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 桶地图" if _fail == 0 else "FAIL x%d" % _fail)
@@ -120,6 +121,69 @@ func _t_opponent_gate() -> void:
 	_ok("⑥ ★四种 reason 说的不是同一句话(混成「取不到」等于没说)",
 		t_used != t_net and t_net != t_out and t_used != t_out,
 		"%s / %s / %s" % [t_used, t_net, t_out])
+
+
+# ─────────────────────────────────────────────────────────────
+# ⑦ 报结果时那个 `winner_side` (E-B6, 2026-09-25)
+#
+# ★★★这是整条链里**最容易静默出错**的一处: `finals_report` 收的是
+#   「哪一侧赢」(0/1), 不是「谁赢」。映射反了**不会有任何报错** ——
+#   它只会把对手静静送进下一轮, 而屏幕上一切正常。
+# ★所以判据卡的是「**我输了的时候报的是对手那一侧**」, 不是「报了就行」;
+#   而且**上半区/下半区都要验**(只验一种的话, 整体反了也能绿),
+#   **第 2 轮也要验**(span 随轮次翻倍, 只验第 1 轮抓不到)。
+# ─────────────────────────────────────────────────────────────
+func _t_winner_side() -> void:
+	print("── ⑦ 报结果报的是【哪一侧】 ──")
+	## 4 人桶坑位 = [0,3,1,2] ⇒ 第1轮 m0: 坑0(种子0) vs 坑1(种子3)
+	##                          第1轮 m1: 坑2(种子1) vs 坑3(种子2)
+	## 种子 0 坐坑 0 ⇒ 上半(side 0); 种子 2 坐坑 3 ⇒ 下半(side 1)
+	await _mk({"size": 4, "round": 1, "me": 0, "names": NAMES.slice(0, 4),
+		"done": {}, "bucket": 7})
+	_ok("⑦ ★分母: 种子 0 在第1轮 m0 的**上半**(side 0)", _map.my_side(1, 0) == 0,
+		str(_map.my_side(1, 0)))
+	_ok("⑦ 上半区的我**赢了** ⇒ 报 0", _map.winner_side_for(1, 0, true) == 0,
+		str(_map.winner_side_for(1, 0, true)))
+	_ok("⑦ ★★★上半区的我**输了** ⇒ 报 1(对手那一侧) —— 反了不会报错, 只会静静送错人",
+		_map.winner_side_for(1, 0, false) == 1, str(_map.winner_side_for(1, 0, false)))
+
+	await _mk({"size": 4, "round": 1, "me": 2, "names": NAMES.slice(0, 4),
+		"done": {}, "bucket": 7})
+	_ok("⑦ ★★分母: 种子 2 在第1轮 m1 的**下半**(side 1) —— 只验上半的话整体反了也能绿",
+		_map.my_side(1, 1) == 1, str(_map.my_side(1, 1)))
+	_ok("⑦ 下半区的我赢了 ⇒ 报 1", _map.winner_side_for(1, 1, true) == 1,
+		str(_map.winner_side_for(1, 1, true)))
+	_ok("⑦ ★★下半区的我输了 ⇒ 报 0", _map.winner_side_for(1, 1, false) == 0,
+		str(_map.winner_side_for(1, 1, false)))
+
+	## ★第 2 轮: span 从 2 变 4。种子 0 坐坑 0 ⇒ 0%4/2 = 0(上半);
+	##   种子 2 坐坑 3 ⇒ 3%4/2 = 1(下半)。只验第 1 轮的话这一层抓不到。
+	await _mk({"size": 4, "round": 2, "me": 2, "names": NAMES.slice(0, 4),
+		"done": {"1-0": 0, "1-1": 1}, "bucket": 7})
+	_ok("⑦ ★★第 2 轮也对(span 随轮次翻倍, 只验第1轮抓不到这层)",
+		_map.my_side(2, 0) == 1, str(_map.my_side(2, 0)))
+	_ok("⑦ 第 2 轮我输了 ⇒ 报 0", _map.winner_side_for(2, 0, false) == 0,
+		str(_map.winner_side_for(2, 0, false)))
+
+	## 不是我的场 / 纯观众 ⇒ 一个字都不报
+	await _mk({"size": 4, "round": 1, "me": 0, "names": NAMES.slice(0, 4),
+		"done": {}, "bucket": 7})
+	_ok("⑦ ★★不是我的场 ⇒ -1(我没资格说谁赢)", _map.winner_side_for(1, 1, true) == -1,
+		str(_map.winner_side_for(1, 1, true)))
+	## ★★★直接量 `my_side` 本身: 上面那条量的是 `winner_side_for`。
+	##   这个 bug 出在 `my_side` 里 —— 它原来**不问「我在不在这一场」**,
+	##   于是我没参加的那一场也算得出一个侧, 而 `_i_won()` 拿它跟 done 里的赢家比,
+	##   就会把**别人赢的那一场**算成我赢了。
+	##   (是 `verify_dead_params` 报「参数 m 从来没被用过」才拓出来的 ——
+	##    死参数有时是缺陷的影子, 不是噪声。)
+	_ok("⑦ ★★★`my_side` 对**不是我的那一场**必须返回 -1(否则别人赢的场会被算成我赢)",
+		_map.my_side(1, 1) == -1, str(_map.my_side(1, 1)))
+	_ok("⑦ ★分母: 我自己那一场照样算得出侧(否则上面那条是恒真)",
+		_map.my_side(1, 0) == 0, str(_map.my_side(1, 0)))
+	await _mk({"size": 4, "round": 1, "me": -1, "names": NAMES.slice(0, 4),
+		"done": {}, "bucket": 7})
+	_ok("⑦ ★纯观众 ⇒ 一场都报不了", _map.winner_side_for(1, 0, true) == -1
+		and _map.my_side(1, 0) == -1)
 
 
 func _mk(d: Dictionary) -> Control:

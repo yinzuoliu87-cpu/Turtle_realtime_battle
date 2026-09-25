@@ -235,17 +235,54 @@ func my_focus() -> Vector2i:
 	return best if found else Vector2i(maxi(1, mini(cur_r, total)), 0)
 
 
+## 我在第 r 轮第 m 场的**哪一侧**（0 = 上半，1 = 下半）。`-1` = 我不在这个桶里。
+## ★★抽出来共用（原来 `_i_won()` 里有一份、E-B6 报结果时又要一份）——
+##   抄第二份就是「抄一次永远落后一次」（[[fb-hand-rolled-copies-drift]]）。
+##   而这个量报错了**不会有任何报错**：它只会把对手静静送进下一轮。
+## ★算法：坑位号对「本轮的跨度」取模，落在上半还是下半。
+##   第 1 轮 span=2（相邻两坑一场），第 2 轮 span=4，逐轮翻倍。
+func my_side(r: int, m: int) -> int:
+	var me := int(cur().get("me", -1))
+	if me < 0:
+		return -1
+	## ★★★**必须先问「我在不在这一场」**。侧别只由「坐次 + 轮次」决定，
+	##   所以不判这一条的话，**我没参加的那一场也会算出一个侧来** ——
+	##   而 `_i_won()` 拿它跟 `done` 里的赢家比，就会把**别人赢的那一场**算成我赢了。
+	##   （这条是 `verify_dead_params` 逼出来的：它报「参数 `m` 从来没被用过」，
+	##    查下去才发现不是"参数多余"，是**少了一道判断** ——
+	##    死参数有时是缺陷的影子，不是噪声。）
+	if not is_my_match(r, m):
+		return -1
+	var n := int(cur().get("size", 0))
+	var seat := _B.seat_of_seed(me, n)
+	if seat < 0:
+		return -1
+	var span: int = int(pow(2, r))
+	if span < 2:
+		return -1
+	return (seat % span) / (span / 2)
+
+
+## 这一场我打赢了要报给服务端的 `winner_side`；`-1` = 不该报。
+## ★★★`finals_report` 收的是「**哪一侧**赢」，不是「谁赢」。
+##   反了也不会报错 —— 它会静静地把对手送进下一轮，而屏幕上一切正常。
+##   所以判据要卡的是「**我输了的时候报的是对手那一侧**」，不是「报了就行」。
+func winner_side_for(r: int, m: int, i_won: bool) -> int:
+	## ★「不是我的场 ⇒ -1」这条现在由 `my_side()` 自己管了（它里面先问 `is_my_match`），
+	##   这里**不再重复判一遍** —— 同一判据存两份必然有一处落后。
+	var s := my_side(r, m)
+	if s < 0:
+		return -1                     # 不是我的场 / 我不在这个桶 ⇒ 我没资格说谁赢
+	return s if i_won else (1 - s)
+
+
 func _i_won(r: int, m: int) -> bool:
 	var key := "%d-%d" % [r, m]
 	var w = (cur().get("done", {}) as Dictionary).get(key, -1)
 	if int(w) < 0:
 		return false
-	var n := int(cur().get("size", 0))
-	var seat := _B.seat_of_seed(int(cur().get("me", -1)), n)
-	var span: int = int(pow(2, r))
-	## 赢家在这一场的哪一侧(0=上半 1=下半)
-	var my_side: int = (seat % span) / (span / 2)
-	return my_side == int(w)
+	var s := my_side(r, m)
+	return s >= 0 and s == int(w)
 
 
 ## ─────────────────────────────────────────────────────────────
@@ -655,6 +692,10 @@ func _pull() -> void:
 #   服务端 `finals_scout` 是**每人每轮只给一次**，替别人点一下就把机会烧掉了。
 #   判定抽成 `should_fetch_opponent()`（纯判定，门禁能穷举，不用起网络）。
 # ─────────────────────────────────────────────────────────────
+## 正在等哪一场的对手快照。`Vector2i(-1, -1)` = 没在等。
+var _await_match := Vector2i(-1, -1)
+
+
 func _on_match_opened(r: int, m: int) -> void:
 	if not should_fetch_opponent(r, m):
 		return
@@ -662,7 +703,44 @@ func _on_match_opened(r: int, m: int) -> void:
 	if bk < 0:
 		return                        # 桶号还没回来，问了服务端也认不出
 	_SB.opponent_clear()
+	_await_match = Vector2i(r, m)
 	_SB.fetch_opponent_async(_P2C.week_anchor_utc(_clock()), bk, r, my_opponent_seed(r, m))
+
+
+## 对手快照到了 ⇒ 开打。
+## ★★这是 E-B6 的落点：在这之前，拿到快照也**没有任何人用它** ——
+##   E-B4 把「读得回来」做通了，但「拿它打一场」还是空的。
+## ★★★把这一局标成决赛场（`GameState.finals_match`），打完 `_settle_season()`
+##   才知道要报给谁 —— 没有它，结果会按普通对局结算、**一个字都不会报上去**，
+##   于是对阵图永远停在这一轮。
+func _try_start_match() -> bool:
+	if _await_match.x < 0 or not _SB.opponent_tried():
+		return false
+	var res: Dictionary = _SB.opponent_cached()
+	if not bool(res.get("ok", false)):
+		return false                  # 拿不到 ⇒ `_tip` 那边照 reason 说话，不开打
+	var r := _await_match.x
+	var m := _await_match.y
+	var side := my_side(r, m)
+	if side < 0:
+		_await_match = Vector2i(-1, -1)
+		return false
+	var snap: Dictionary = res.get("snapshot", {})
+	if snap.is_empty():
+		_await_match = Vector2i(-1, -1)
+		return false
+	_await_match = Vector2i(-1, -1)
+	## 与匹配屏同一套交接口径：对手快照 + 对手资料 → 战斗场自己读
+	GameState.dual_ghost = snap.duplicate(true)
+	GameState.dual_opponent = {
+		"name": str(res.get("name", "对手")),
+		"avatar": str((snap.get("leaders", []) as Array)[0]) if not (snap.get("leaders", []) as Array).is_empty() else "basic",
+		"id": "#%d" % int(res.get("seed", -1)),
+	}
+	GameState.finals_match = {"bucket": int(cur().get("bucket", -1)),
+		"round": r, "match": m, "side": side}
+	get_tree().change_scene_to_file("res://scenes/RealtimeBattle3D.tscn")
+	return true
 
 
 ## 对手快照这一步该跟玩家说什么。★**纯函数**：喂一份 `opponent_cached()` 的产物
@@ -690,6 +768,19 @@ static func opponent_tip(res: Dictionary, tried: bool) -> String:
 ## ★轮询缓存而不是接回调: 回调在网络那一侧, 接过来就得处理"场景已经被切掉了"的情况。
 ##   轮询这边只读一个静态字典, 场景没了定时器也就没了。
 func _on_poll() -> void:
+	## ★★E-B6: 对手快照回来了就开打。放在轮询里而不是接回调 —— 理由同下面那段:
+	##   回调在网络那一侧, 接过来就得自己处理"场景已经被切掉了"。
+	##   `_try_start_match()` 自己会判"到底能不能开"; 开了就换场景, 这一拍不用再往下走。
+	if _try_start_match():
+		return
+	## 对手那边的结果(拿不到/被拒/连不上)要说人话 —— 每种 reason 说的不一样。
+	if _tip != null:
+		var tip := opponent_tip(_SB.opponent_cached(), _SB.opponent_tried())
+		_tip.text = tip
+		_tip.visible = tip != ""
+		if tip != "":
+			_tip.position = Vector2(0, get_viewport().get_visible_rect().size.y - 120)
+			_tip.size = Vector2(get_viewport().get_visible_rect().size.x, 28)
 	_fetch_left -= 0.5
 	if _fetch_left <= 0.0:
 		_pull()

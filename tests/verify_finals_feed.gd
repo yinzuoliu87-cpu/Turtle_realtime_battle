@@ -34,6 +34,7 @@ const MENU := preload("res://scripts/scenes/MainMenuScene.gd")
 ## ★Backend 不是 autoload(产品侧是全局 class_name), 门禁里 preload 取它
 const BK := preload("res://scripts/net/backend.gd")
 const DEAD_URL := "http://127.0.0.1:9"
+const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 
 var _n := 0
 var _fail := 0
@@ -89,6 +90,8 @@ func _ready() -> void:
 	await _t_empty()
 	await _t_enter()
 	await _t_opponent()
+	await _t_report()
+	await _t_settle_reports()
 	SB._transport_for_test = Callable()
 	SB.finals_clear()
 	OS.set_environment("TURTLE_SUPABASE", " ")
@@ -512,6 +515,199 @@ func _t_opponent() -> void:
 	_ok("⑧ ★★但要标成「问过了」—— 不然屏幕永远转着「正在连线」", SB.opponent_tried())
 	SB._transport_for_test = Callable()
 	SB.opponent_clear()
+
+
+# ─────────────────────────────────────────────────────────────
+# ⑨ 报结果 (E-B6, 2026-09-25)
+#
+# ★`finals_report` 这个 RPC 从 2026-09-23 就在服务端, 而**客户端一个调用者都没有**
+#   ⇒ 没有任何一场的结果能被报上去 ⇒ 对阵图永远停在第 1 轮。
+# ★这一节守三件: 组包键名对不对 / 无效 side 不许发出去 / 同一场只报一次。
+# ─────────────────────────────────────────────────────────────
+func _t_report() -> void:
+	print("── ⑨ 报结果 ──")
+	var b: Dictionary = SB.finals_report_body(123, 2, 3, 1, 0, 42)
+	_ok("⑨ 组包: 六个键名与服务端对得上",
+		int(b.get("p_week", -1)) == 123 and int(b.get("p_bucket", -9)) == 2
+			and int(b.get("p_round", -1)) == 3 and int(b.get("p_match", -1)) == 1
+			and int(b.get("p_winner_side", -1)) == 0 and int(b.get("p_seed", -1)) == 42,
+		str(b).substr(0, 150))
+
+	OS.set_environment("TURTLE_SUPABASE", DEAD_URL)
+	SB._transport_for_test = _spy
+	SB._reset_auth_for_test()
+	SB.apply_auth_response(true, 200,
+		'{"access_token":"at-1","expires_in":3600,"refresh_token":"rt-1",'
+		+ '"user":{"id":"uid-me","email":"me@x.co"}}')
+	GameState.account_id = "uid-me-1234"
+	SB.finals_report_clear()
+	_next = {"ok": true, "code": 200, "body": '{"ok":true}'}
+
+	## ★★`winner_side = -1` 是 `winner_side_for()` 说的「我没资格报」——
+	##   这一步就该拦住。能发出去就意味着"不是我的场"也能报。
+	_reqs.clear()
+	SB._report_inflight = false
+	SB.report_finals_async(777, 2, 3, 1, -1, 5)
+	await get_tree().process_frame
+	_ok("⑨ ★★★winner_side = -1(不是我的场) ⇒ **一个请求都不发**",
+		_reqs.size() == 0, str(_reqs.size()))
+	_ok("⑨ ★分母: 拦住了也不许把它记成「报过了」(否则真要报时会被自己挡住)",
+		not SB.finals_reported(3, 1))
+
+	## 正路
+	_reqs.clear()
+	SB._report_inflight = false
+	SB.report_finals_async(777, 2, 3, 1, 0, 42)
+	await get_tree().process_frame
+	_ok("⑨ ★分母: 正路确实发出了请求", _reqs.size() == 1, str(_reqs.size()))
+	var r0: Dictionary = _reqs[0] if _reqs.size() > 0 else {}
+	_ok("⑨ ★发去的是 `/rest/v1/rpc/finals_report`",
+		str(r0.get("url", "")).ends_with("/rest/v1/rpc/finals_report"), str(r0.get("url", "")))
+	var sent = JSON.parse_string(str(r0.get("body", "{}")))
+	_ok("⑨ ★★报的 winner_side 原样送到(这个数反了不会报错, 只会静静送错人)",
+		sent is Dictionary and int(sent.get("p_winner_side", -9)) == 0, str(sent).substr(0, 140))
+
+	## ★★同一场只报一次 —— 结算路径会被重入(投降/重开结算屏)
+	_reqs.clear()
+	SB._report_inflight = false
+	SB.report_finals_async(777, 2, 3, 1, 0, 42)
+	await get_tree().process_frame
+	_ok("⑨ ★★★同一场再报一次 ⇒ 不发(结算路径会被重入, 没这道闸一场会报好几次)",
+		_reqs.size() == 0, str(_reqs.size()))
+	_ok("⑨ ★分母: **另一场**照样发得出去(上一条不是把所有请求都挡了)",
+		true)
+	_reqs.clear()
+	SB._report_inflight = false
+	SB.report_finals_async(777, 2, 3, 2, 1, 42)
+	await get_tree().process_frame
+	_ok("⑨ ★★分母(续): 换一场 m=2 确实发出去了", _reqs.size() == 1, str(_reqs.size()))
+
+	SB._transport_for_test = Callable()
+	SB.finals_report_clear()
+
+
+# ─────────────────────────────────────────────────────────────
+# ⑩ 打完真的把结果报上去 (E-B6, 走真入口 `_settle_season()`)
+#
+# ★★★这一节守的是整条链的**最后一环**: 前面全做完了, 这一环不通的话
+#   对阵图**永远停在第 1 轮**, E-B4 的补判会把每一场都判给 side 0 ——
+#   冠军是一个从没打过的人。
+# ★判据落在**真实发出去的请求**(注入传输), 不是我插的计数器。
+# ★★最要紧那条: **我输了要报对手那一侧**。这个数反了不会有任何报错,
+#   它只会静静把对手送进下一轮。
+# ─────────────────────────────────────────────────────────────
+func _t_settle_reports() -> void:
+	print("── ⑩ 打完把结果报上去(真入口 _settle_season) ──")
+	OS.set_environment("TURTLE_SUPABASE", DEAD_URL)
+	SB._transport_for_test = _spy
+	SB._reset_auth_for_test()
+	SB.apply_auth_response(true, 200,
+		'{"access_token":"at-1","expires_in":3600,"refresh_token":"rt-1",'
+		+ '"user":{"id":"uid-me","email":"me@x.co"}}')
+	GameState.test_mode = true
+	GameState.account_id = "uid-me-1234"
+	GameState.account_email = "me@x.co"
+	GameState.season_leaders = ["basic", "fortune", "ninja"]
+	## ★★★周锚点必须用**当前这一周**的: 原来写死 1700000000(2023 年) ⇒
+	##   `ensure_season()` 看成「换轮了」⇒ 开新赛季 ⇒ **把 season_leaders 清掉** ⇒
+	##   `_had_season=false` ⇒ `_settle_season` 在第二条 early return 就走了。
+	##   症状是七条断言全红而**一条报错都没有** —— 探针打出 leaders=[] 才看清。
+	GameState.week_anchor_ts = P2C.week_anchor_utc(int(Time.get_unix_time_from_system()))
+	_next = {"ok": true, "code": 200, "body": '{"ok":true}'}
+
+	var scene = RB.new()
+	add_child(scene)
+	for _i in range(30):
+		await get_tree().process_frame
+	## ★★`season_leaders` 必须在**场景建好之后**再设: 战斗场那 30 帧的初始化里
+	##   会把它清掉(探针打出来的: leaders=[] ⇒ `_had_season=false` ⇒
+	##   `_settle_season` 在第二条 early return 就走了, 我那一行根本跑不到)。
+	##   设在前面看着更顺, 但那是**被测对象还没到场**的另一种形状。
+	GameState.season_leaders = ["basic", "fortune", "ninja"]
+	## ★★★周锚点必须用**当前这一周**的: 原来写死 1700000000(2023 年) ⇒
+	##   `ensure_season()` 看成「换轮了」⇒ 开新赛季 ⇒ **把 season_leaders 清掉** ⇒
+	##   `_had_season=false` ⇒ `_settle_season` 在第二条 early return 就走了。
+	##   症状是七条断言全红而**一条报错都没有** —— 探针打出 leaders=[] 才看清。
+	GameState.week_anchor_ts = P2C.week_anchor_utc(int(Time.get_unix_time_from_system()))
+
+	## ① 不是决赛场 ⇒ 一个字都不报
+	GameState.finals_match = {}
+	SB.finals_report_clear()
+	_reqs.clear()
+	scene._settle_season(true)
+	await get_tree().process_frame
+	var rep := _reports()
+	_ok("⑩ ★★不是决赛场 ⇒ **一个 finals_report 都不发**", rep.size() == 0, str(rep.size()))
+
+	## ② 决赛场 + 我在 side 0 + 赢了 ⇒ 报 0
+	GameState.finals_match = {"bucket": 2, "round": 3, "match": 1, "side": 0}
+	SB.finals_report_clear()
+	SB._report_inflight = false
+	_reqs.clear()
+	scene._settle_season(true)
+	await get_tree().process_frame
+	rep = _reports()
+	_ok("⑩ ★分母: 决赛场确实发出了 finals_report(否则下面全是空检查)",
+		rep.size() == 1, str(rep.size()))
+	var b0 = JSON.parse_string(str(rep[0].get("body", "{}"))) if rep.size() > 0 else {}
+	_ok("⑩ side 0 的我赢了 ⇒ 报 0",
+		b0 is Dictionary and int(b0.get("p_winner_side", -9)) == 0, str(b0).substr(0, 140))
+	_ok("⑩ ★桶号/轮/场号原样送到(送错场等于替别人定胜负)",
+		b0 is Dictionary and int(b0.get("p_bucket", -9)) == 2
+			and int(b0.get("p_round", -9)) == 3 and int(b0.get("p_match", -9)) == 1,
+		str(b0).substr(0, 140))
+	_ok("⑩ ★★★报完**立刻清空** —— 不清的话下一场普通对局会被当成决赛再报一次",
+		(GameState.finals_match as Dictionary).is_empty(), str(GameState.finals_match))
+
+	## ③ ★★★决赛场 + 我在 side 0 + **输了** ⇒ 报 1(对手那一侧)
+	GameState.finals_match = {"bucket": 2, "round": 3, "match": 5, "side": 0}
+	SB.finals_report_clear()
+	SB._report_inflight = false
+	_reqs.clear()
+	scene._settle_season(false)
+	await get_tree().process_frame
+	rep = _reports()
+	var b1 = JSON.parse_string(str(rep[0].get("body", "{}"))) if rep.size() > 0 else {}
+	_ok("⑩ ★★★side 0 的我**输了** ⇒ 报 1(对手那一侧) —— 反了不会报错, 只会静静送错人",
+		b1 is Dictionary and int(b1.get("p_winner_side", -9)) == 1, str(b1).substr(0, 140))
+
+	## ④ ★下半区也验: side 1 输了 ⇒ 报 0(只验一种的话整体反了也能绿)
+	GameState.finals_match = {"bucket": 2, "round": 3, "match": 6, "side": 1}
+	SB.finals_report_clear()
+	SB._report_inflight = false
+	_reqs.clear()
+	scene._settle_season(false)
+	await get_tree().process_frame
+	rep = _reports()
+	var b2 = JSON.parse_string(str(rep[0].get("body", "{}"))) if rep.size() > 0 else {}
+	_ok("⑩ ★★下半区(side 1)输了 ⇒ 报 0 —— 只验上半的话整体反了也能绿",
+		b2 is Dictionary and int(b2.get("p_winner_side", -9)) == 0, str(b2).substr(0, 140))
+
+	## ⑤ side 非法(-1: 不是我的场) ⇒ 不报, 但照样清空
+	GameState.finals_match = {"bucket": 2, "round": 3, "match": 7, "side": -1}
+	SB.finals_report_clear()
+	SB._report_inflight = false
+	_reqs.clear()
+	scene._settle_season(true)
+	await get_tree().process_frame
+	_ok("⑩ ★side = -1(不是我的场) ⇒ 不报", _reports().size() == 0, str(_reports().size()))
+	_ok("⑩ ★★但**照样清空** —— 留着它下一场会被当成决赛",
+		(GameState.finals_match as Dictionary).is_empty(), str(GameState.finals_match))
+
+	scene.queue_free()
+	await get_tree().process_frame
+	SB._transport_for_test = Callable()
+	SB.finals_report_clear()
+	GameState.finals_match = {}
+
+
+## 只挑 finals_report 那几条 —— 结算路径上还会发别的请求(上传快照等)。
+func _reports() -> Array:
+	var out: Array = []
+	for r in _reqs:
+		if str((r as Dictionary).get("url", "")).ends_with("/rest/v1/rpc/finals_report"):
+			out.append(r)
+	return out
 
 
 func _t_door() -> void:

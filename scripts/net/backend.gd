@@ -550,6 +550,29 @@ static func report_finals_entry() -> void:
 		snap, int(GameState.gauntlet_wins), int(GameState.gauntlet_losses))
 
 
+## E-B6: 把决赛日某一场的结果报上去。
+## ★与 `report_finals_entry` 同一层、同一形状：**周号从 GameState 取**，
+##   战斗场那边只负责说「哪个桶、第几轮、第几场、哪一侧赢」——
+##   在主场景里再拼一次 `week_anchor_ts` 就是同一判据存两份。
+## ★`winner_side` 已经由 `BracketMapScene.winner_side_for()` 算好，这里不重算。
+static func report_finals_result(bucket: int, round_no: int,
+		match_no: int, winner_side: int) -> void:
+	if GameState == null or bucket < 0 or round_no < 1 or match_no < 0:
+		return
+	var SB5 = load("res://scripts/net/supabase.gd")
+	if SB5 == null:
+		return
+	## `p_seed` = 确定性重算用的种子（B 阶段第二步服务端复算要用）。
+	## ★用 `GameState.battle_seed` —— 它是**真实存在**的那个字段。
+	##   我第一版写了 `last_battle_seed`，全仓**只有我那两行**在用（凭空编的字段名，
+	##   本仓踩过三次，见 [[fb-gate-subject-never-constructed]]）。
+	## ★0 的含义是「这一场没留下可复算的种子」（没设 TURTLE_SEED 时就是 0），
+	##   不是出错 —— 服务端那边 `coalesce(p_seed, 0)` 本来就收 0。
+	var sd := int(GameState.battle_seed)
+	SB5.report_finals_async(int(GameState.week_anchor_ts), bucket, round_no,
+		match_no, winner_side, sd)
+
+
 ## 玩家显示名 —— **全仓唯一出处**。有昵称用昵称, 没有用确定性兜底短码。
 ## ★昵称在**绑定邮箱**那一屏与邮箱同时填(用户 2026-09-24「这个在创建账号应该一起吧」)——
 ##   那是玩家唯一感知得到的「创建账号」时刻: 首启建匿名号是**静默**的, 没有任何界面。

@@ -183,6 +183,14 @@ var _dual_shop_rng := RandomNumberGenerator.new()
 ## 双路状态重置 (开新局调).
 var dual_ghost: Dictionary = {}   # 本局对手快照 (后端 find_opponent 给; 局内临时, reset_dual_lane 清). 空 = 现场随机老路 (兜底)
 var dual_active: bool = false   # 双路对局激活: 开始战斗置true → 战斗场走双路spawn(分路/小将/蛋/半场流程), 非教程/调试
+## ★★E-B6(2026-09-25) 这一局是不是**周日决赛日对阵图里的某一场**。
+##   空 = 不是。非空 = {"bucket":桶号, "round":轮, "match":场号, "side":我在哪一侧}
+##   打完由 `_settle_season()` 拿它去 `finals_report`，报完立刻清空。
+## ★★**只放内存，绝不落盘**（方案书 R-B6-1）：落盘会造出
+##   「重开 App 之后拿着一个过期的决赛状态去报一场早就翻过面的比赛」——
+##   那比「关掉 App 丢一场」糟得多（丢一场有 E-B4 的补判兜着）。
+##   ⇒ 它**不在** `_save_dict()` 里，跟 `dual_ghost` 同一档（局内临时）。
+var finals_match: Dictionary = {}
 func reset_dual_lane() -> void:
 	lane_assign = {"top": [], "bottom": []}
 	enemy_lane_assign = {"top": [], "bottom": []}

@@ -7528,6 +7528,26 @@ func _check_end() -> void:
 		_hud._show_banner(won)
 
 # 赛季结算 (1:1 搬自 2D RealtimeBattleScene._settle_season): 闭环把胜负喂回 GameState 养成
+## E-B6: 这一局如果是决赛日对阵图里的某一场，把结果报上去。
+## ★**纯接线**，一行判据都不在这儿：哪一侧是我由 `winner_side_for()` 在开局时算好，
+##   同一场报不报第二次由 `SupabaseNet.report_finals_async()` 自己挡。
+## ★不是决赛场 ⇒ 一个字都不做（`finals_match` 空就是空）。
+func _report_finals_if_any(gs, won: bool) -> void:
+	if gs == null:
+		return
+	var fm = gs.get("finals_match")
+	if not (fm is Dictionary) or (fm as Dictionary).is_empty():
+		return
+	var d: Dictionary = fm
+	var side := int(d.get("side", -1))
+	if side == 0 or side == 1:
+		Backend.report_finals_result(int(d.get("bucket", -1)), int(d.get("round", -1)),
+			int(d.get("match", -1)), side if won else (1 - side))
+	## ★★无论报没报成功都清空 —— 留着它的唯一后果是
+	##   **下一场普通对局被当成决赛再报一次**（而且报的是另一场的场号）。
+	gs.finals_match = {}
+
+
 func _settle_season(won: bool) -> void:
 	var gs = get_node_or_null("/root/GameState")
 	# ★新手教程沙盒(用户2026-07-23「不获得任何奖励」): 不喂赛季。放最前面 —— 下方 season_total_battles++/coins+= 全在这行之后, 一个都到不了。
@@ -7540,6 +7560,21 @@ func _settle_season(won: bool) -> void:
 		return
 	if gs.has_method("ensure_season"):
 		gs.ensure_season()
+	## ★★★E-B6(2026-09-25) 决赛日那一场: 把结果报给服务端。
+	##   位置: **在下面那几条发奖分支之前**, 但在上面两条 early return
+	##   (教程沙盒 / 无赛季态)**之后** —— 别把它读成"最前面"。
+	##   ① 报不报结果跟"发多少币"是两件事, 缠在一起早晚被人当成同一条改坏
+	##      ⇒ 所以独立于下面那几条 if/elif, 不挂在任何一条里面;
+	##   ② **漏报的代价不可逆**: 那一场会落进 E-B4 的补判(side 0 晋级),
+	##      而屏幕上什么都不会说。
+	##   ⚠ 已知的小缺口: 万一"决赛场 + 没有 season_leaders"同时成立, 上面第二条
+	##      early return 会把它带走、一个字不报。现实里进不了决赛日就没有这种组合
+	##      (报名要周六晋级, 而周六要有阵容), 所以不为它单开一条路 —— **但记在这里**。
+	##   ★`winner_side` 由 `BracketMapScene.winner_side_for()` 在开局时算好、
+	##     存成 `finals_match.side`, 这里只做 `side if won else 1-side` ——
+	##     **不在这儿重算一遍**(同一判据存两份必然漂)。
+	##   ★报完立刻清空: 不清的话下一场普通对局会被当成决赛再报一次。
+	_report_finals_if_any(gs, won)
 	_last_was_exhibition = gs.is_eliminated()        # 进场前已0命 = 表演赛 (无 stake)
 	if _last_was_exhibition:
 		_last_reward = 5                             # 表演赛: 少量练手币, 不掉命/不计战/不上榜

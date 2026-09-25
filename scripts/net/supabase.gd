@@ -1450,6 +1450,77 @@ static func fetch_opponent_async(week: int, bucket: int, round_no: int, seed: in
 		n.fetch_opponent(week, bucket, round_no, seed)
 
 
+# ─────────────────────────────────────────────────────────────
+# E-B6 报结果（2026-09-25）
+#
+# ★`finals_report` 这个 RPC 从 2026-09-23 就在服务端，而**客户端一个调用者都没有**
+#   ⇒ 没有任何一场比赛的结果能被报上去 ⇒ 对阵图永远停在第 1 轮，
+#   E-B4 的补判会把每一场都判给 side 0 —— 冠军是一个从没打过的人。
+#
+# ★★`p_winner_side` 收的是「**哪一侧**赢」(0/1)，不是「谁赢」。
+#   算它的是 `BracketMapScene.winner_side_for()`（那里有上半/下半/跨轮的判据）——
+#   这一层**不重新算一遍**，只负责发出去。
+# ─────────────────────────────────────────────────────────────
+static var _report_inflight := false
+static var _report_done: Dictionary = {}     # "r-m" → true，本进程报过的场次
+
+
+## 组包。**纯函数** —— 键名与服务端对不上是这类接口最常见的死法，门禁直接验它。
+static func finals_report_body(week: int, bucket: int, round_no: int,
+		match_no: int, winner_side: int, seed_used: int) -> Dictionary:
+	return {"p_week": week, "p_bucket": bucket, "p_round": round_no,
+		"p_match": match_no, "p_winner_side": winner_side, "p_seed": seed_used}
+
+
+static func finals_reported(round_no: int, match_no: int) -> bool:
+	return bool(_report_done.get("%d-%d" % [round_no, match_no], false))
+
+
+static func finals_report_clear() -> void:
+	_report_done.clear()
+	_report_inflight = false
+
+
+static func report_finals_async(week: int, bucket: int, round_no: int,
+		match_no: int, winner_side: int, seed_used: int) -> void:
+	var gs = _gs()
+	if gs == null or _report_inflight:
+		return
+	## ★`winner_side` 只能是 0/1。`-1` 是 `winner_side_for()` 说的「我没资格报」——
+	##   把它发出去服务端会回 `bad_side`，但更要紧的是**这一步就该拦住**：
+	##   能发出去就意味着"不是我的场"也能报，那是把老缺口(桶级校验)又放大一格。
+	if winner_side != 0 and winner_side != 1:
+		return
+	## ★与报名/看桶同一道闸：只要「服务端认得出你是谁」。**不是** `sync_allowed`。
+	if str(gs.account_id) == "" or _token == "":
+		return
+	## ★同一场只报一次：服务端是 `on conflict do nothing`（先到先得），
+	##   客户端这边再挡一层是为了**不把重复请求当成正常流量**——
+	##   结算路径会被重入（投降/重开结算屏），没这道闸就会一场报好几次。
+	if finals_reported(round_no, match_no):
+		return
+	var n = _spawn()
+	if n != null:
+		_report_inflight = true
+		_report_done["%d-%d" % [round_no, match_no]] = true
+		n.report_finals(week, bucket, round_no, match_no, winner_side, seed_used)
+
+
+func report_finals(week: int, bucket: int, round_no: int,
+		match_no: int, winner_side: int, seed_used: int) -> void:
+	if not enabled():
+		_report_inflight = false
+		_bye()
+		return
+	_http("POST", base_url().rstrip("/") + "/rest/v1/rpc/finals_report",
+		JSON.stringify(finals_report_body(week, bucket, round_no, match_no,
+			winner_side, seed_used)),
+		func(_res):
+			_report_inflight = false
+			_bye(),
+		"Content-Type: application/json")
+
+
 func fetch_opponent(week: int, bucket: int, round_no: int, seed: int) -> void:
 	if not enabled():
 		_opp_inflight = false
