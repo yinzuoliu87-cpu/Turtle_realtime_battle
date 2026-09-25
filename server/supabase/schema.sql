@@ -537,7 +537,13 @@ create policy finals_p_self on public.finals_pending for select
 create or replace function public.finals_enter(p_week bigint, p_name text,
     p_snapshot jsonb, p_gw int, p_gl int)
 returns jsonb language plpgsql security definer set search_path = public as $$
-declare floor_wins int := 5;   -- ★与 phase2_config.PROMOTE_WINS_FLOOR 同值(测试期 5 / 正式 13)
+declare floor_wins int := 4;   -- = phase2_config.GAUNTLET_WINS_IN(周六 4 胜晋级)
+  -- ★★2026-09-25 修: 原来写的是 5, 注释说「与 PROMOTE_WINS_FLOOR 同值」——
+  --   但 `p_gw` 传进来的是 **gauntlet_wins(周六胜场)**, 而 PROMOTE_WINS_FLOOR 是
+  --   **积分赛→周六**那条线(比的是 season_wins)。**两个不同的量被当成了同一个。**
+  --   后果: 周六 4 胜晋级的人 gauntlet_wins=4 < 5 ⇒ 被拒;
+  --   而 4 胜之后 `gauntlet_state()` 就返回「晋级」、开局闸不让再打 ⇒ 永远到不了 5
+  --   ⇒ **没有任何人进得了周日**。正确的线就是周六那条: 4 胜。
 begin
   if auth.uid() is null then
     return jsonb_build_object('ok', false, 'reason', 'not_signed_in');

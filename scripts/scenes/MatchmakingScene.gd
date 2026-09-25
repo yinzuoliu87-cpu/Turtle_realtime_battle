@@ -85,7 +85,11 @@ func _ready() -> void:
 		GameState.dual_ghost = Backend.find_gauntlet_opponent(
 			int(GameState.gauntlet_wins), int(GameState.gauntlet_losses), exclude, _rng)
 	else:
-		GameState.dual_ghost = Backend.find_opponent(Backend.bracket_for_battles(int(GameState.season_total_battles)), exclude, _rng)
+		## ★★2026-09-25: 直接把**场次**传进去。原来这里 `bracket_for_battles(...)`
+		##   把细的那一维扔了、只留粗格子, 而 `find_opponent` 里又自己读一遍真场次
+		##   ⇒ 一个函数两把尺子。粗格子现在只是池子的索引, 由 `find_opponent` 自己算。
+		GameState.dual_ghost = Backend.find_opponent(
+			int(GameState.season_total_battles), exclude, _rng)
 	var _gid := str((GameState.dual_ghost as Dictionary).get("ghost_id", "")) if GameState.dual_ghost is Dictionary else ""
 	if _gid != "":
 		GameState.recent_ghost_ids.append(_gid)

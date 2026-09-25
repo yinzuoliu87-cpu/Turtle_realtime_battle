@@ -34,6 +34,7 @@
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -343,6 +344,46 @@ st, d = req("POST", "/rest/v1/rpc/finals_enter",
             {"p_week": WEEK, "p_name": "甲", "p_snapshot": {"pets": [1]}, "p_gw": 7, "p_gl": 1}, TA)
 chk("⑯ ★分母: 到线了就收(证明上面那条是「线」挡的, 不是函数坏了)",
     isinstance(d, dict) and d.get("ok") is True, str(d)[:140])
+
+## ══════════════════════════════════════════════════════════════════
+## ★★★晋级线必须**踩在边界上**验, 而且要和客户端那个常量对账。
+##
+## 2026-09-25 的真 bug: 服务端写的是 `floor_wins := 5`, 注释说「与
+## PROMOTE_WINS_FLOOR 同值」—— 但 `p_gw` 传进来的是 **gauntlet_wins(周六胜场)**,
+## 而 `PROMOTE_WINS_FLOOR` 是**积分赛→周六**那条线(比的是 season_wins)。
+## 两个不同的量被当成了同一个 ⇒ 周六 4 胜晋级的人 `gauntlet_wins=4 < 5` 被拒,
+## 而 4 胜之后 `gauntlet_state()` 已经返回「晋级」、开局闸不让再打 ⇒ 永远到不了 5
+## ⇒ **没有任何人进得了周日**。
+##
+## ⚠ 上面那两条(2 胜拒 / 7 胜收)对 4 和 5 **两条线都成立** —— 它们从没碰过边界,
+##   所以这个 bug 在 89 条全绿里活了两天。判据要卡边界, 还要卡住**那个数本身**。
+## ══════════════════════════════════════════════════════════════════
+_p2c = io.open(os.path.join(REPO, "scripts", "gamedata", "phase2_config.gd"),
+               encoding="utf-8", newline="").read()
+_m = re.search(r"const\s+GAUNTLET_WINS_IN\s*:=\s*(\d+)", _p2c)
+chk("⑯ ★分母: 从 phase2_config.gd 读到了客户端那条线(读不到下面全是空检查)",
+    _m is not None, str(_m.group(1)) if _m else "没读到")
+LINE = int(_m.group(1)) if _m else -1
+for gw, want_ok in ((LINE - 1, False), (LINE, True)):
+    sql("delete from public.finals_pending where season_week = %d" % WEEK)
+    st, d = req("POST", "/rest/v1/rpc/finals_enter",
+                {"p_week": WEEK, "p_name": "边界", "p_snapshot": {"pets": [1]},
+                 "p_gw": gw, "p_gl": 1}, TA)
+    got_ok = isinstance(d, dict) and d.get("ok") is True
+    chk("⑯ ★★★边界 gw=%d(客户端线 %d) → 该%s, 实际%s"
+        % (gw, LINE, "收" if want_ok else "拒", "收" if got_ok else "拒"),
+        got_ok is want_ok, str(d)[:140])
+st, d = req("POST", "/rest/v1/rpc/finals_enter",
+            {"p_week": WEEK, "p_name": "对账", "p_snapshot": {"pets": [1]},
+             "p_gw": 0, "p_gl": 0}, TA)
+chk("⑯ ★★★服务端回的 need == 客户端 GAUNTLET_WINS_IN(%d) —— 两边各写一份必然漂"
+    % LINE, isinstance(d, dict) and int(d.get("need", -1)) == LINE, str(d)[:140])
+## 把 ⑯ 恢复到「甲已报到」那个状态, 后面几段都按它继续
+sql("delete from public.finals_pending where season_week = %d" % WEEK)
+st, d = req("POST", "/rest/v1/rpc/finals_enter",
+            {"p_week": WEEK, "p_name": "甲", "p_snapshot": {"pets": [1]}, "p_gw": 7, "p_gl": 1}, TA)
+chk("⑯ ★收尾: 甲重新报到(下面几段的前提)", isinstance(d, dict) and d.get("ok") is True,
+    str(d)[:140])
 st, d = req("POST", "/rest/v1/rpc/finals_enter",
             {"p_week": WEEK, "p_name": "乙", "p_snapshot": {"pets": [2]}, "p_gw": 6, "p_gl": 2}, TB)
 chk("⑯ 另一个号也收了", isinstance(d, dict) and d.get("ok") is True, str(d)[:140])

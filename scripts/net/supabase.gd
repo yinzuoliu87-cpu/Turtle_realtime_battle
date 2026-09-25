@@ -599,9 +599,27 @@ static func opponents_query(season_week: int, battles: int, account_id: String) 
 	## `select=snapshot` 只要快照那一列 —— 其余列(排序三键/版本号)客户端用不着,
 	## 而快照本身已经带着它们。`order=uploaded_at.desc` 走的是 D-2 建好的
 	## 索引 `(season_week, battles, uploaded_at desc)`。
-	return ("season_week=eq.%d&battles=in.(%d,%d)&account_id=neq.%s" \
+	##
+	## ★★窗口必须**对称**(2026-09-25 用户:「我的档是 5 场次的, 我要和 6 场次的人打?
+	##   这不合理啊」)。原来是 `in.(N, N+1)` —— 往上开一格、往下不开, 于是**每个人
+	##   都只可能碰到和自己一样多或比自己多打过一场的**对手。多打一场 = 多一轮升级/
+	##   多一次装备, 所以那一格是**系统性地偏向对手**: 每个人一辈子都在打上风局的
+	##   对面, 没有一次是自己占那一格便宜。
+	##   ⇒ 改成上下各开 `MATCH_BATTLES_SPAN` 格: 池子还是够宽(人少时只查等场次会查不到人),
+	##   但期望差为 0。`maxi(0, ...)` 防 N 小时查出负场次 —— PostgREST 会把它当合法值算,
+	##   那一格恒查不到, 于是**第一场的池子被白占一格**。
+	##
+	## ★★窗口宽度取的是 `phase2_config.MATCH_BATTLES_SPAN` —— 与 `Backend.find_opponent()`
+	##   选靶那一侧**同一个常量**。两边各写一份必然漂(周日那条晋级线刚因为这个塌过:
+	##   客户端 4 / 服务端 5, 而 89 条全绿)。
+	var span: int = int(_P2S.MATCH_BATTLES_SPAN)
+	var vals: Array = []
+	for n in range(maxi(0, battles - span), battles + span + 1):
+		if not vals.has(n):
+			vals.append(n)
+	return ("season_week=eq.%d&battles=in.(%s)&account_id=neq.%s" \
 		+ "&select=snapshot&order=uploaded_at.desc&limit=%d") % [
-		season_week, battles, battles + 1, account_id, PULL_LIMIT]
+		season_week, ",".join(vals.map(func(x): return str(x))), account_id, PULL_LIMIT]
 
 
 ## 纯函数: 从 REST 回包正文里把【快照】抽出来。

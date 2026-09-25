@@ -1,5 +1,6 @@
 class_name SkillPicker
 extends RefCounted
+const SkillChoice := preload("res://scripts/gamedata/skill_choice.gd")
 ## 选龟页·技能3选1选择器(dev注: 单选)
 ## 类内名不变;外部名加 battle.
 
@@ -67,7 +68,7 @@ func _make_skill_icon(pet: Dictionary, sk: Dictionary, idx: int, is_fixed: bool,
 	var pid: String = pet["id"]
 	var unlocked: Array = _available_skill_indices(pet)
 	var is_locked: bool = not (idx in unlocked)   # 恒 false: _available_skill_indices 现在返回全部索引(等级解锁已移除)
-	var dev_locked: bool = (not is_fixed) and idx != 1 and not sk.get("impl", false)   # 非默认候选: 未标impl:true(未实装)才"开发中"锁; 实装好的技解锁3选1
+	var dev_locked: bool = (not is_fixed) and SkillChoice.dev_locked(pet, idx)
 
 	var btn: Button = host.SkillTipButton.new()   # styled tooltip (PoC .dp-skill-tip 悬浮显名+CD+描述)
 	## ★写 81.0 而不是 _sp(81): _sp() 会再乘一次 0.777 —— 原来这里写的 _sp(64) 实测只渲染出 50px。
@@ -327,7 +328,7 @@ func _toggle_skill(pid: String, idx: int) -> void:
 	if idx < 0 or idx >= pool.size():
 		return
 	var sk: Dictionary = pool[idx]
-	if idx != 1 and not bool(sk.get("impl", false)):
+	if SkillChoice.dev_locked(pet, idx):
 		host._flash_status("该候选技开发中, 暂锁默认签名技")
 		return
 	GameState.loadouts[pid] = idx                       # 3选1: 单选, 点哪个就替换成哪个

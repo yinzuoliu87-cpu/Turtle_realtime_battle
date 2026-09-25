@@ -45,7 +45,25 @@ SNAP_PATH = os.path.join(ROOT, "tools", "autoplay", "cohort-snapshots.json")
 SEED_PATH = os.path.join(ROOT, "data", "ghost_seed.json")
 EQUIP_PATH = os.path.join(ROOT, "data", "phase2-equipment.json")
 
-PER_BRACKET = 20        # 每档留多少条(现役种子池每档 12~20)
+PER_BRACKET = 20        # (遗留) 覆盖补选的每档上限仍按它算; 主挑选已改成按场次
+## ★★★ 2026-09-25 主挑选从『每【档】N 条』改成『每【场次】N 条』。
+##
+## 用户原话:「不应该有这些东西啊粗格子: 0 / 1-2 / 3-4 / 5-7 / 8-11 / 12-16 /
+##   17-21 / 22-27 / 28+。你 5 场次在「5-7」」、「要么你这快照旧从新做」。
+##
+## 为什么非改不可(量出来的分母):
+##   现役种子池 184 条只落在 **9 个场次**上(0/1/3/5/8/12/17/22/28) ——
+##   每档正好一个点。而原料覆盖的是 **0~35 每一个场次**(12718 条)。
+##   → 压成九个点完全是这里「每档挑 20 条」造成的。
+##   后果: 匹配尺子一细(±1 场)池子就全是洞 ⇒ 第③级「往下找」承担大部分,
+##   实测往上 63 次 / 往下 177 次 —— 对称的尺子被不对称的池子拘回去了。
+##
+## 输出仍然按【档】建键 —— 那是 `Backend.pool_add` 的**索引**。
+## 改的是「每个键里装哪几条」: 以前一档一个场次, 现在一档装齐它跨的所有场次。
+PER_BATTLES = 12        # 每一个场次留多少条(场次 0~35 → 池子约 300~370 条)
+MIN_PER_BATTLES = 4     # 低于这个数的场次要警告(高场次本来就人少, 不拒写)
+COVER_BATTLES_TO = 24   # 至少这么多场次内**每一格都得有人**, 否则拒写
+                        # (= phase2_config.RANKED_QUOTA, 一周配额; 超过它的场次是长尾)
 SAME_BOT_CAP = 2        # 同一只机器人在同一档最多留几条
 MIN_PER_BRACKET = 6     # 低于这个数就警告(候选不足 = 多样性不够)
 MIN_EQ_COVERAGE = 0.95  # 池里必须出现【95% 以上】的可购买装备, 达不到拒写(2026-08-15)
@@ -175,7 +193,7 @@ def make_namer():
     return name_for
 
 
-def select(cands):
+def select(cands, cap=None):
     """每档挑一批。两层轮转:
 
     ① **按流派(`_strategy`)轮转** —— 2026-09-02 加(方案书 20260902 的前置 P-B)。
@@ -200,7 +218,8 @@ def select(cands):
         arch_bots[arch] = by_bot
     picked = []
     # 轮转: 第 rnd 轮里, 每个流派各出一条(该流派内部也换一只机器人)
-    for rnd in range(SAME_BOT_CAP * 8):          # 上限给够, 由 PER_BRACKET 收口
+    cap = PER_BRACKET if cap is None else cap
+    for rnd in range(SAME_BOT_CAP * 8):          # 上限给够, 由 cap 收口
         progressed = False
         for _arch, by_bot in arch_bots.items():
             bots = list(by_bot.keys())
@@ -209,10 +228,10 @@ def select(cands):
             bi = rnd % len(bots)
             lst = by_bot[bots[bi]]
             k = rnd // len(bots)
-            if k < min(len(lst), SAME_BOT_CAP) and len(picked) < PER_BRACKET:
+            if k < min(len(lst), SAME_BOT_CAP) and len(picked) < cap:
                 picked.append(lst[k])
                 progressed = True
-        if len(picked) >= PER_BRACKET or not progressed:
+        if len(picked) >= cap or not progressed:
             break
     return picked
 
@@ -367,8 +386,24 @@ def main():
     namer = make_namer()
     schema_ver = backend_schema_ver()
     new_brackets = {}
+    # ★★★ 按【场次】挑, 不再按【档】挑(见文件头 PER_BATTLES 的长注释)。
+    #   分组用真场次 `season_total_battles`; 输出仍归到它所属的档键里。
+    by_n = collections.defaultdict(list)
+    for bk in rebucket:
+        for sn in rebucket[bk]:
+            by_n[int(sn.get("season_total_battles", -1))].append(sn)
+    print("  ★按场次分组: 共 %d 个不同场次 (%s … %s)"
+          % (len(by_n), min(by_n) if by_n else "-", max(by_n) if by_n else "-"))
+    pick_hist = {}
+    for n in sorted(by_n):
+        if n < 0:
+            continue
+        picked_n = select(by_n[n], cap=PER_BATTLES)
+        pick_hist[n] = len(picked_n)
+        new_brackets.setdefault(str(bracket_for_battles(n)), []).extend(picked_n)
+    print("  ★每场次选中数: %s" % pick_hist)
     for bk in sorted(rebucket, key=int):
-        picked = select(rebucket[bk])
+        picked = new_brackets.get(bk, [])
         for sn in picked:
             sn.setdefault("profile", {})["name"] = namer(sn, int(bk))   # 机器人07 → 像真人的网名
             sn["profile"]["avatar"] = str((sn.get("leaders") or ["basic"])[0])
@@ -380,7 +415,6 @@ def main():
             sn["schema_ver"] = schema_ver
             sn.setdefault("chest_treasures_won", [])
             sn.setdefault("chest_treasure_value", 0.0)
-        new_brackets[bk] = picked
 
     n_add, cov_after = topup(new_brackets, rebucket)
     print("  ★覆盖补选: 追加 %d 支队 ⇒ 装备覆盖 %d / %d 件" % (n_add, cov_after, len(buyable_)))
@@ -492,6 +526,28 @@ def main():
         print("     绝不用推测数据填充(那就退回旧池那种「造出来的假快照」了)。")
     if thin:
         print("  ⚠ 档 %s 候选不足 %d 条 —— 池子里会总撞同几支, 建议加机器人数或轮数再跑。" % (thin, MIN_PER_BRACKET))
+
+    # ── ⑥ ★★★【场次覆盖】—— 这条自检要是一开始就在, 九格压缩根本不会发生。
+    #
+    # 旧池 184 条只落在 9 个场次上(每档一个点), 而自检只问过「每【档】几条」
+    # ⇒ 每档 20 条、全绿。「每档够不够」与「每场次够不够」是两个量,
+    # 而匹配用的是后者 —— 判据没卡在被测的那个量上。
+    #
+    # ★不按“有多少条”收口, 按【前 COVER_BATTLES_TO 格有没有空格】收口:
+    #   空一格 = 那个场次的玩家必定落到第③级「往下找」或 bot。
+    holes = [n for n in range(0, COVER_BATTLES_TO + 1) if pick_hist.get(n, 0) == 0]
+    thin_n = [n for n in range(0, COVER_BATTLES_TO + 1)
+              if 0 < pick_hist.get(n, 0) < MIN_PER_BATTLES]
+    print()
+    print("  ⑥场次覆盖(匹配真正用的那把尺子):")
+    print("     0~%d 格里空的: %s" % (COVER_BATTLES_TO, holes if holes else "无 ✓"))
+    print("     不足 %d 条的:  %s" % (MIN_PER_BATTLES, thin_n if thin_n else "无 ✓"))
+    if holes:
+        fail += 1
+        print("  ★★⑥前 %d 场里有 %d 格一条快照都没有 —— 拒写。"
+              % (COVER_BATTLES_TO, len(holes)))
+        print("     那几个场次的玩家一定碰不到同/近场次的真人快照。")
+        print("     修法: 加机器人数/轮数重跑(不是放宽这条判据)。")
 
     # ⑤ 排行榜字段: 用户 2026-07-27「排行榜先不管」→ 保持 0, 但【明写出来】不静默降级
     eggs = [int(t.get("season_eggs_killed", 0)) for teams in new_brackets.values() for t in teams]

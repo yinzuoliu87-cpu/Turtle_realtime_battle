@@ -122,23 +122,51 @@ func _ready() -> void:
 			last = a
 	_ok("★强度阶梯单调递增(档越高对手越强)", mono, ramp_txt)
 
-	# ★匹配绝不越档 (用户 2026-07-27「±1 这东西去掉」)
-	#   起因: 自动玩家 30 把实测 ±1 窗口(backend.gd 旧 find_opponent)的代价 ——
+	# ══════════════════════════════════════════════════════════════════════
+	#  ★★★「绝不撞到明显更强的对手」——【尺子换了, 意图没变】
+	# ══════════════════════════════════════════════════════════════════════
+	# 用户 2026-07-27「±1 这东西去掉」的实测代价(那时废掉的是 ±1 **格子**窗口):
 	#   第2把 档0(自己0件装备) 撞档1带3件; 第7把 我方强度43.0 撞99.0; 第10把 45.8 撞118.6(2.6倍)。
-	#   现在 find_opponent 只抽本档、空了只往【低】档回落。这条断言守住"绝不往上"。
+	# 那条约束当年只能用"格子"表达 —— 因为当时没有更细的尺子。
+	#
+	# ★2026-09-25 用户:「不应该有这些东西啊粗格子: 0/1-2/3-4/5-7/… 你 5 场次在『5-7』」
+	#   ⇒ `find_opponent` 的入参从**格子**改成**场次**, 判据跟着换成场次。
+	#   严格更紧: "同档"在档7 最多能让人往上碰 +5 场(22 碰 27), 新规则最多 +1 场。
+	#
+	# ⚠⚠ 这条判据 2026-09-25 一度**静默变成恒真式**: 入参含义改了而循环变量还叫 `b`、
+	#    还在 0..8 上跑、还拿返回快照的**格子**去比 —— 于是"档"和"场次"两个量互相比,
+	#    0 例越档、全绿、而什么都没验。改参数含义的那一刻, 拿它当参数的判据全都要重读一遍。
 	var rng2 := RandomNumberGenerator.new()
 	rng2.seed = 20260727
+	var SPAN: int = int(P2.MATCH_BATTLES_SPAN)
 	var over: Array = []
 	var draws := 0
-	for b in range(0, 9):
-		for _i in range(40):
-			var g: Dictionary = Backend.find_opponent(b, [], rng2)
+	var real_snaps := 0          # ★分母: 有多少抽真的抽到了池里的快照(不是 bot)
+	var above := 0               # 对手场次比我多(合法范围内)的次数 —— 用来证明窗口真的往上开着
+	var below := 0               # 比我少的次数 —— 证明它也真的往下开着(对称的证据)
+	for n in range(0, 31):
+		for _i in range(12):
+			var g: Dictionary = Backend.find_opponent(n, [], rng2)
 			draws += 1
-			if int(g.get("bracket", 0)) > b:
-				over.append("档%d 抽到档%d(%s)" % [b, int(g.get("bracket", 0)), str(g.get("ghost_id", "?"))])
-	_ok("★匹配绝不越档(档N 玩家只遇 ≤N 档对手)", over.is_empty(),
-		"分母 %d 抽; 越档 %d 例: %s" % [draws, over.size(), "; ".join(PackedStringArray(over.slice(0, 3)))])
-	_ok("★分母非空(抽够了才算数)", draws == 360, "实抽 %d" % draws)
+			if not bool(g.get("is_bot", false)):
+				real_snaps += 1
+			var gb := int(g.get("season_total_battles", -1))
+			if gb > n + SPAN:
+				over.append("我 %d 场 → 抽到 %d 场(%s)" % [n, gb, str(g.get("ghost_id", "?"))])
+			elif gb > n:
+				above += 1
+			elif gb < n:
+				below += 1
+	_ok("★★★对手场次绝不比我多超过 %d(粗格子不再当尺子)" % SPAN, over.is_empty(),
+		"分母 %d 抽 / 其中真快照 %d; 越线 %d 例: %s"
+		% [draws, real_snaps, over.size(), "; ".join(PackedStringArray(over.slice(0, 3)))])
+	_ok("★分母: 抽够了(%d 次)" % draws, draws == 31 * 12, "实抽 %d" % draws)
+	_ok("★★分母: 真的抽到过池里的快照(全是 bot 的话上面那条是空检查)",
+		real_snaps >= 100, "真快照 %d / %d 抽" % [real_snaps, draws])
+	## ★★这两条是"窗口真的对称"的证据。少了它们, 把窗口收成"只许往下"也会全绿 ——
+	##   而那正是用户投诉的反面(他要的是公平, 不是"永远打更弱的")。
+	_ok("★★窗口**往上**真的开着(碰到过场次比我多的)", above > 0, "往上 %d 次" % above)
+	_ok("★★窗口**往下**真的开着(碰到过场次比我少的)", below > 0, "往下 %d 次" % below)
 
 	print("ALL PASS — 快照档位装备配置" if _fail == 0 else "FAILED: %d" % _fail)
 	get_tree().quit(0 if _fail == 0 else 1)

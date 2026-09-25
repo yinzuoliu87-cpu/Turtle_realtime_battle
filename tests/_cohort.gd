@@ -23,6 +23,8 @@ const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const Backend := preload("res://scripts/net/backend.gd")
 const P2 := preload("res://scripts/gamedata/phase2_config.gd")
 const P2EQ := preload("res://scripts/gamedata/phase2_equip.gd")
+## ★显式 preload 不靠 class_name 注册 —— 无头跑没 --import 时 class_name 可能取不到
+const SkillChoice := preload("res://scripts/gamedata/skill_choice.gd")
 
 const SKILLS := ["magic_stone", "hook", "fury_potion", "whistle", "glacier"]
 ## ★"synergy"(羁绊流) 2026-08-12 加入: 原三种买法**一件都不看羁绊** ——
@@ -303,10 +305,19 @@ func _make_bot(i: int, all_ids: Array) -> Dictionary:
 			var lt := str(tys[_rng.randi() % tys.size()])
 			if not lines.has(lt):
 				lines.append(lt)
+	## ★★2026-09-25 用户「每次机器人选的龟都只选了默认技能」「得修」。
+	##   这一批快照就是种子池的原料, 而原料里 **0 / 12718** 条带 `loadouts`
+	##   ⇒ 玩家打到的每个对手的每只龟都走默认签名技(消费侧 `var idx := 1`)。
+	## ★选一次就定下来、存进机器人自己身上 —— 不在每次存快照时重roll:
+	##   真玩家是"进赛季时挑好, 一路用同一套", 每场换一套是另一种假。
+	##   判据用共享的 `SkillChoice`(挑在已实装的集合里), 不在这里手写 randi()%3+1
+	##   —— diamond/rainbow/chest 的 idx=1 没实装, 手写会挑到它然后静默回落。
 	return {
 		"id": i,
 		"name": "机器人%02d" % i,
 		"team": team,
+		"loadouts": SkillChoice.pick_loadouts(team,
+			func(pid: String) -> Dictionary: return DataRegistry.pet_by_id.get(pid, {}), _rng),
 		"skill": SKILLS[_rng.randi() % SKILLS.size()],
 		"strategy": arch,                 # 锚点名(进快照的 _strategy, 便于按流派对账)
 		"w": w,                           # 策略向量(锚点 + 扰动)
@@ -462,6 +473,12 @@ func _load(gs, bot: Dictionary) -> void:
 	gs.candy_jar_broken = bool(bot["candy_broken"])
 	gs.candy_temp_levels = (bot["candy_levels"] as Dictionary).duplicate(true)
 	gs.trainer_skill = str(bot["skill"])
+	## ★★2026-09-25: 左侧(正在被模拟的那只)也要用它自己挑的技能。
+	##   右侧是自动的 —— `gs.dual_ghost = snap_b` 之后战斗场景会把快照里的
+	##   `loadouts` 填进 `foe_loadouts`(`RealtimeBattle3DScene.gd:1536`)。
+	##   左侧不填的话**这一批胜负数据全是默认技打出来的**, 而快照上写着别的技能
+	##   ⇒ 「记的账」和「打的仗」两回事(memory [[fb-gate-must-measure-requirement-not-my-hook]] 同族)。
+	gs.loadouts = (bot["loadouts"] as Dictionary).duplicate() if bot.get("loadouts") is Dictionary else {}
 
 
 func _save(gs, bot: Dictionary) -> void:
@@ -512,7 +529,8 @@ func _snapshot_of(bot: Dictionary, label: String) -> Dictionary:
 		"leaders": (bot["team"] as Array).duplicate(),
 		"lane_assign": lane_assign,
 		"minions": minions,
-		"loadouts": {},
+		## ★进赛季时挑好的那一套, 原样搬(见 `_make_bot` 里的长注释)
+		"loadouts": (bot["loadouts"] as Dictionary).duplicate() if bot.get("loadouts") is Dictionary else {},
 		"equipped": (bot["equipped"] as Dictionary).duplicate(true),
 		"pet_levels": levels,
 		"trainer_skill": str(bot["skill"]),     # ★2026-07-27 新增: 敌方大师读它(battle_spawn.gd)

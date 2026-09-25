@@ -17,9 +17,16 @@ extends Node
 ## ★① 查询串是**纯函数**拼出来的 ⇒ 每一维都能逐条喂。三维缺一律返回 ""（不拉），
 ##    不拿 0 / 空串凑一个发出去：`account_id=neq.` 后面空着的话 PostgREST
 ##    会拿它当合法过滤器算，结果是**把自己也拉回来**。
-## ★★① `battles` 必须同时含 **N 和 N+1**。只拉 N+1 会让一类玩家的池子永远是空的：
-##    `_settle_season` 里 `season_total_battles += 1` 在【非表演赛】分支里 ⇒
-##    **0 命玩家打表演赛时场次不涨**，卡在同一个数反复打。
+## ★★① `battles` 窗口是 **(N-1, N, N+1)**，而且判据量的是「**以 N 为中心**」不是字面串。
+##    · 为什么要开三格：只拉 N 会让一类玩家的池子永远空 ——
+##      `_settle_season` 里 `season_total_battles += 1` 在【非表演赛】分支里 ⇒
+##      **0 命玩家打表演赛时场次不涨**，卡在同一个数反复打。
+##    · 为什么必须**对称**（2026-09-25 用户原话：「我的档是 5 场次的，我要和 6 场次的
+##      人打？这不合理啊」）：原来是 `(N, N+1)`，往上开一格往下不开 ⇒ 每个人都只可能
+##      碰到和自己一样多、或比自己多打过一场的对手。多打一场 = 多一轮升级 + 多一次装备，
+##      所以那一格是**系统性偏向对手**，没有一个人一辈子占过它的便宜。
+##    · 为什么不能只断言字面 `"(4,5,6)"`：把窗口写成 `(5,6,7)` 也是三格宽、也含 N，
+##      正是上面那种偏心错。⇒ 判据量【各格相对 N 的偏移之和】，对称 ⟺ 和为 0。
 ## ★② 回包外层是**行** `[{"snapshot": {...}}]` 不是快照。直接把行喂给 `ingest_remote`
 ##    的话每条都会被 `snapshot_valid` 以「缺 ghost_id」拒掉 —— 那看起来像「服务端没数据」。
 ## ★★③ 脏数据必须被拒且**记进账**。这不是假想：`ghosts` 表**故意没给 delete 策略**
@@ -79,6 +86,23 @@ func _ready() -> void:
 		_tree.quit(1 if _fail > 0 else 0)
 
 
+## 从查询串里把 `battles=in.(a,b,c)` 那几个数抠出来(升序)。
+## ★存在的理由: 拿**字面串**比守不住「窗口偏心」那个形状(见 ① 里的长注释)。
+##   判据要落在「这几个数相对 N 摆在哪」, 所以得先把数拿出来。
+func _battles_window(q: String) -> Array:
+	var out: Array = []
+	var i := q.find("battles=in.(")
+	if i < 0:
+		return out
+	var j := q.find(")", i)
+	if j < 0:
+		return out
+	for s in q.substr(i + 12, j - i - 12).split(","):
+		out.append(int(s))
+	out.sort()
+	return out
+
+
 # ─────────────────────────────────────────────────────────────
 # ① 查询串: 三维齐才拼, 缺一就不拉
 # ─────────────────────────────────────────────────────────────
@@ -87,8 +111,27 @@ func _t_query() -> void:
 	var q := SB.opponents_query(1789948800, 5, "uid-me")
 	_chk("① ★分母: 三维齐全时确实拼出了查询串(否则下面全是空检查)", q != "", q)
 	_chk("① 周锚点进去了", q.contains("season_week=eq.1789948800"))
-	_chk("① ★★场次【同时含 N 和 N+1】(只拉 N+1 会让 0 命表演赛玩家池子永远空)",
-		q.contains("battles=in.(5,6)"), q)
+	_chk("① ★★场次窗口是区间(只拉 N 会让人少的时候池子永远空)",
+		q.contains("battles=in.(4,5,6)"), q)
+
+	## ★★★这一条才是用户 2026-09-25 那句「我的档是 5 场次的, 我要和 6 场次的人打?
+	##   这不合理啊」的判据。窗口必须**以 N 为中心**。
+	##   ⚠ 只断言字面 "(4,5,6)" 守不住这个形状 —— 把窗口写成 (5,6,7) 也是三格宽、
+	##     也含 N, 而那正是原来那种「每个人都只碰到和自己一样多或比自己多打一场的」
+	##     偏心错(多打一场 = 多一轮升级 + 多一次装备 ⇒ 系统性偏向对手)。
+	##   ⇒ 量【窗口各格相对 N 的偏移之和】: 对称 ⟺ 和为 0。
+	for nn in [3, 5, 9, 40]:
+		var ws := _battles_window(SB.opponents_query(1789948800, nn, "uid-me"))
+		var skew := 0
+		for w in ws:
+			skew += int(w) - nn
+		_chk("① ★★★N=%d 窗口上下对称(偏移和必须为 0, 实测 %d, 窗口 %s)" % [nn, skew, str(ws)],
+			ws.size() == 3 and skew == 0 and int(ws.min()) == nn - 1 and int(ws.max()) == nn + 1)
+	## N=0(赛季第一场): 往下钳到 0。不许拼出 `battles=-1` —— PostgREST 会把它
+	## 当一个合法值算, 于是那一格恒查不到, 而**第一场是人人都要打的**。
+	var w0 := _battles_window(SB.opponents_query(1789948800, 0, "uid-me"))
+	_chk("① ★N=0 时窗口不含负数(否则第一场的池子被白占一格)",
+		w0.size() >= 2 and int(w0.min()) >= 0, str(w0))
 	_chk("① ★排除自己是按 account_id(不是按 ghost_id 前缀)",
 		q.contains("account_id=neq.uid-me"))
 	_chk("① 按上传时刻倒序(D10: 新鲜度是排序不是过滤)", q.contains("order=uploaded_at.desc"))
@@ -204,8 +247,11 @@ func _t_real_entry() -> void:
 	##   后者是插一行数一行必绿(memory `fb-gate-must-measure-requirement-not-my-hook`)。
 	var q := SB.last_query()
 	_chk("④ ★★匹配真的发起了拉取(查询串非空)", q != "", q)
-	_chk("④ ★★场次那一维 = 【选靶自己用的那个数】(11, 不是我另算一遍喂进去的)",
-		q.contains("battles=in.(11,12)"), q)
+	## ★判据落在窗口的**中心**, 不是「11 出现在窗口里」—— 后者挡不住差一格:
+	##   要是它拿 12 去问, 窗口就是 (11,12,13), 照样"含 11"而实际问错了人。
+	var w4 := _battles_window(q)
+	_chk("④ ★★场次那一维 = 【选靶自己用的那个数】(窗口中心必须是 11, 实测 %s)" % str(w4),
+		w4.size() == 3 and int(w4[1]) == 11 and int(w4[0]) == 10 and int(w4[2]) == 12, q)
 	_chk("④ 周锚点那一维取的是 week_anchor_ts(与上传同一口径)",
 		q.contains("season_week=eq.1789948800"), q)
 	_chk("④ 身份那一维取的是 account_id", q.contains("account_id=neq.uid-me-4"), q)

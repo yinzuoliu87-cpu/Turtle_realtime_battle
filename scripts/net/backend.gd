@@ -32,10 +32,14 @@ const BUCKET_CAP := 300
 ## 匹配来源记账(A6·D10「每一场都记账」)。★让「有多少场是真·同场次」变成**可量的数** ——
 ##   A-R3 那条未决点(「精确同场次命中率多低算太低」)没有这个数就永远答不了。
 ## ★静态计数器, 进程内累计; 门禁与探针直接读它。不进存档(它是观测量不是玩法状态)。
-static var match_src_counts: Dictionary = {"exact": 0, "bucket": 0, "bot": 0}
+## ★★2026-09-25 档位名跟着回落链改了: 原来是 exact/bucket/bot, 中间那级是「同【格子】里
+##   随便一个」。现在中间拆成两级、判据都是**场次**: near = ±MATCH_BATTLES_SPAN(对称),
+##   below = 往下逐格找最近的(绝不往上)。留着旧的 bucket 键只会让报表继续恒为 0。
+static var match_src_counts: Dictionary = {"exact": 0, "near": 0, "below": 0, "bot": 0}
 static func _tally(src: String) -> void:
 	match_src_counts[src] = int(match_src_counts.get(src, 0)) + 1
 const _P2 = preload("res://scripts/gamedata/phase2_config.gd")
+const _SkillChoice = preload("res://scripts/gamedata/skill_choice.gd")
 
 # ─── 进度档 (设计§十三): 总战斗数 → 匹配档 0-8. 低档窄(对齐槽断点)/高档宽(保池子有人) ───
 ## ★2026-07-27 用户拍板: 档0 严格 = 【人生第一把】(total==0), 后面各档整体顺延一格。
@@ -173,10 +177,52 @@ static func pool_find(pool: Dictionary, bracket: int, exclude_ids: Array, rng: R
 		return null
 	return candidates[rng.randi() % candidates.size()]
 
+## 从池里按【真实场次区间 [lo, hi]】抽一个对手(排除 exclude_ids)。没有就 null。
+##
+## ★★为什么不能只看"我那一档"(2026-09-25): 区间两端会落在**不同的档**里
+##   —— 5 在档3, 4 在档2 ⇒ 只看档3 会把 N-1 整个漏掉, 而那正好是唯一能让窗口
+##   对称的那一格。所以先算出区间**涉及哪几个档**, 再按每条快照的真实
+##   `season_total_battles` 过滤。档在这里的角色只是"去哪几个桶里翻", 不是判据。
+##
+## ★桶序 = 上传倒序(`pool_add` 用 `push_front`) ⇒ 同一格里先遇到的就是最新那份(D10)。
+##   多格合并时用 rng 随机取一个, 不偏向任何一格。
+static func pool_find_near(pool: Dictionary, lo: int, hi: int, exclude_ids: Array,
+		rng: RandomNumberGenerator):
+	if lo < 0 or hi < lo:
+		return null
+	var brackets: Dictionary = pool.get("brackets", {})
+	var seen := {}
+	var cands: Array = []
+	for n in range(lo, hi + 1):
+		var b := str(bracket_for_battles(n))
+		if seen.has(b):
+			continue
+		seen[b] = true
+		if not brackets.has(b):
+			continue
+		for g in brackets[b]:
+			if _is_self_ghost(g):
+				continue
+			var gb := int((g as Dictionary).get("season_total_battles", -1))
+			if gb < lo or gb > hi:
+				continue
+			if exclude_ids.has(str((g as Dictionary).get("ghost_id", ""))):
+				continue
+			cands.append(g)
+	if cands.is_empty():
+		return null
+	return cands[rng.randi() % cands.size()]
+
+
 # ─── bot 生成 (池空/冷启动兜底 = 永久安全网, 设计§十三) ───
 ## 按档配资源(槽位/等级)随机一支队. rng 决定随机 → 确定可测. is_bot=true.
-static func make_bot(bracket: int, rng: RandomNumberGenerator) -> Dictionary:
-	var battles := battles_for_bracket(bracket)
+static func make_bot(bracket: int, rng: RandomNumberGenerator, real_battles: int = -1) -> Dictionary:
+	## ★★2026-09-25 `real_battles`: bot 快照里的 `season_total_battles` 原本一律取
+	##   `battles_for_bracket(bracket)` = 那一格的**上界** ⇒ 5 场次的玩家会看到一个
+	##   自称"7 场次"的对手。这个字段**不参与任何强度计算**(强度只看 bot_lv ＝ 2+格),
+	##   它纯粹是个标签 ⇒ 报上界只是个谎, 还让「对手场次绝不超我 +1」那条不变式量不了。
+	##   传 -1 = 老行为(给只有格子在手的探针留的)。
+	var battles := battles_for_bracket(bracket) if real_battles < 0 else real_battles
 	var bot_lv := clampi(2 + bracket, 1, 10)   # 档越高 bot 等级越高
 	# ★装备容量统一规则(2026-07-27): 与玩家同一套 —— 全队合计 team_equip_cap(等级), 单只 ≤ UNIT_EQUIP_CAP。
 	#   原来这里走 equip_slots_for_battles(每只固定N件) = 敌我两把尺子, 已废。
@@ -230,7 +276,13 @@ static func make_bot(bracket: int, rng: RandomNumberGenerator) -> Dictionary:
 		"leaders": leaders,
 		"lane_assign": lane_assign,
 		"minions": minions,
-		"loadouts": {},
+		## ★★2026-09-25 用户「每次机器人选的龟都只选了默认技能」「得修」。
+		##   这里原本写死 `{}` ⇒ 消费侧(`RealtimeBattle3DScene.gd:5184` `var idx := 1`)
+		##   永远走默认签名技, 而 28 只龟全部有 2~3 个已实装替代技 ⇒ 对手身上只体现
+		##   三分之一的技能多样性。判据不在这里手写 —— 见 `SkillChoice` 的头注:
+		##   同一个形状原本有三个生产者, 09-17 那次只补了"玩家上传"那一个。
+		"loadouts": _SkillChoice.pick_loadouts(leaders,
+			func(pid: String) -> Dictionary: return DataRegistry.pet_by_id.get(pid, {}), rng),
 		"equipped": equipped,
 		"pet_levels": levels,
 		"season_total_battles": battles,
@@ -411,18 +463,34 @@ static func make_match_rng() -> RandomNumberGenerator:
 		r.randomize()
 	return r
 
-## 抽对手: 同档 ghost, 没有就 bot. 永远返回一个可打的对手 (永久安全网).
+## 抽对手: 按【场次】就近找 ghost, 没有就 bot. 永远返回一个可打的对手 (永久安全网).
 ##
-## ★2026-07-27 用户「±1 这东西去掉」: 改回【只抽本档, 空了只往【低】档回落, 绝不往上】。
-##   废掉的是 2026-07-18 的 [档-1, 档+1] 窗口 —— 它当初是为了治"匹配多了总撞同一阵容"
-##   (那时单档只~7 支种子)。但自动玩家 30 把实测它的代价远大于收益:
-##     · 第 2 把(档0·自己 0 件装备) 撞到档1 带 3 件的队
-##     · 第 7 把 我方强度 43.0 撞到 99.0 (2.3 倍)
-##     · 第 10 把 45.8 撞到 118.6 (2.6 倍)
-##   而多样性问题现在已不成立: 种子池 146 支, 单档 12~20 支, 再排除最近 3 个 → 9~17 个候选够用。
-##   ★不许往上回落是硬约束: "档N 的玩家绝不该遇到 >N 档的对手"(verify_bracket_gear 新增断言守这条)。
-static func find_opponent(bracket: int, exclude_ids: Array, rng: RandomNumberGenerator) -> Dictionary:
+## ★★★2026-09-25 入参从**粗格子**改成**场次**。用户原话:「不应该有这些东西啊粗格子:
+##   0 / 1-2 / 3-4 / 5-7 / 8-11 / 12-16 / 17-21 / 22-27 / 28+。你 5 场次在『5-7』」。
+##
+##   改之前这里有**两把尺子**, 而且是漂的:
+##     · 入参 `bracket` —— 唯一的产品调用点 `MatchmakingScene` 拿着场次
+##       `bracket_for_battles(season_total_battles)` 转手换成格子传进来, **把细的那维扔了**;
+##     · 函数体内又自己 `GameState.season_total_battles` 读一遍真场次给 ① 用。
+##   于是 ② 那一级拿粗格子选靶: 档3 里 5 场次的人会碰到 7 场次的, 档7 更宽(22~27, 六格)。
+##   ⇒ 现在只收场次这一个量, 格子退回它本来的身份: **池子的索引**(见 `pool_add`)。
+##
+## ★回落顺序(每级都记账 —— A-R3「精确同场次命中率多低算太低」没这个数就永远答不了):
+##     ① 场次完全相同
+##     ② ±MATCH_BATTLES_SPAN(**对称**, 与 `supabase.opponents_query` 同一个常量)
+##     ③ 往【下】逐格找最近的(N-2, N-3, … 0) —— **绝不往上**
+##     ④ 机器人
+##
+## ★★③ 为什么只往下: 用户 2026-07-27「±1 这东西去掉」那条硬约束的**意图**是
+##   「绝不撞到明显更强的对手」——当时给的实测是 档0(自己 0 件装备) 撞档1 带 3 件、
+##   我方强度 43.0 撞 99.0(2.3 倍)、45.8 撞 118.6(2.6 倍)。
+##   那条约束当年只能用"格子"表达, 因为当时没有更细的尺子。
+##   现在用场次表达**同一个意图**, 而且严格更紧: 档7 里"同档"最多能让人往上碰 +5 场,
+##   新规则最多 +1 场。保护变强了, 不是放松了。
+static func find_opponent(battles: int, exclude_ids: Array, rng: RandomNumberGenerator) -> Dictionary:
 	var pool := load_pool()
+	## 格子只用来当**池子索引**和喂 bot, 不参与"该碰谁"的判断
+	var bracket := bracket_for_battles(battles)
 	## ★远端同步(方案书 §落地步骤 3): 顺手发一次拉取, 但**它给的是【下一局】的池子** ——
 	##   本局的对手就在下面几行用现在这个 pool 算出来, 一步都不等网络。
 	##   这是"离线不退化"这条硬指标的落点: 断网时这一行是 no-op, 下面照常跑。
@@ -433,7 +501,13 @@ static func find_opponent(bracket: int, exclude_ids: Array, rng: RandomNumberGen
 	## ★★A6 回落顺序(D10): 精确同场次 → 同桶其它人 → 机器人, **每一级都记账**。
 	##   记账不是为了好看 —— A-R3「精确同场次命中率多低算太低」这条未决点,
 	##   没有这个数就永远答不了。
-	var my_battles := int(GameState.season_total_battles) if GameState != null else -1
+	## ★★★入参就是唯一的尺子。**不许在这里再读一遍 GameState** ——
+	##   2026-09-25 我把签名从 `bracket` 改成 `battles` 却忘了改这一行,
+	##   于是参数进来被无声无息地丢掉、照旧读全局 ⇒ 正是我声称刚消灭的"两把尺子"。
+	##   `verify_bracket_gear` 那条「窗口往上真的开着吗」当场抓到(往上 0 次 / 往下 360 次):
+	##   门禁里 GameState.season_total_battles 恒为 0 ⇒ 每一抽都从 0 往下找。
+	##   ⇒ 判据里那条「上下都要真的开着」不是装饰, 它是**唯一**能发现这个的东西。
+	var my_battles := battles
 	## ★★D-4b(2026-09-21): 同一时刻也向 Supabase 拉一次【同周 + 同场次】的对手。
 	##   两条路**暂时并存**: 旧层走旧后端协议(`backend_url` 是空的 ⇒ 它是 no-op),
 	##   新层走 Supabase REST。同样是【填下一局】的池子, 一步不等网络。
@@ -444,22 +518,28 @@ static func find_opponent(bracket: int, exclude_ids: Array, rng: RandomNumberGen
 	if SB != null and GameState != null:
 		SB.pull_opponents_async(int(GameState.week_anchor_ts), my_battles,
 			str(GameState.account_id))
-	## ① 精确同场次(本档优先, 再就近低档)
+	## ① 场次完全相同
 	if my_battles >= 0:
-		for b in range(bracket, -1, -1):
-			var ge = pool_find(pool, b, exclude_ids, rng, my_battles)
-			if ge != null:
-				_tally("exact")
-				return ge
-	## ② 同桶其它人(老行为)
-	for b in range(bracket, -1, -1):
-		var g = pool_find(pool, b, exclude_ids, rng)
-		if g != null:
-			_tally("bucket")
-			return g
-	## ③ 机器人(永久安全网)
+		var ge = pool_find_near(pool, my_battles, my_battles, exclude_ids, rng)
+		if ge != null:
+			_tally("exact")
+			return ge
+		## ② ±MATCH_BATTLES_SPAN, **对称** —— 与拉取那一侧同一个常量
+		var span: int = int(_P2.MATCH_BATTLES_SPAN)
+		var gn = pool_find_near(pool, maxi(0, my_battles - span), my_battles + span,
+			exclude_ids, rng)
+		if gn != null:
+			_tally("near")
+			return gn
+		## ③ 往【下】逐格找最近的一个 —— 绝不往上(见函数头注释)
+		for n in range(my_battles - span - 1, -1, -1):
+			var gd = pool_find_near(pool, n, n, exclude_ids, rng)
+			if gd != null:
+				_tally("below")
+				return gd
+	## ④ 机器人(永久安全网)
 	_tally("bot")
-	return make_bot(bracket, rng)
+	return make_bot(bracket, rng, maxi(0, my_battles))
 
 
 ## ★★E-A4(2026-09-22) 周六闯关赛的匹配 —— 与上面那条**是两套**, 不是加个参数。
@@ -469,7 +549,7 @@ static func find_opponent(bracket: int, exclude_ids: Array, rng: RandomNumberGen
 ##   **永不跨标签**」。
 ##
 ## ★与积分赛那条的三处**有意不同**, 每处都有理由:
-##   ① 积分赛允许 `battles=in.(N, N+1)` 差一场(池子薄时的让步);
+##   ① 积分赛允许 `battles=in.(N-1, N, N+1)` 差一场(池子薄时的让步, **上下对称**);
 ##      闯关赛**完全相等** —— 放宽一格就是让 3-1 打 3-2, 两人经济供给差一整场,
 ##      而"同战绩的人互相淘汰"正是这个赛制的全部意义。
 ##   ② 积分赛的新鲜度是**排序**(D10: 池子薄, 卡时间窗会经常凑不出人);
