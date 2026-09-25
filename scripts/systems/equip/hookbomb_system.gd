@@ -355,39 +355,51 @@ func _convulse(o: Dictionary) -> void:
 		return
 	var base_pos: Vector3 = (spr as Node3D).position
 	var base_sc: Vector3 = (spr as Node3D).scale
+	## ★★★捕获 **weakref** 而不是节点本身(2026-09-25)。
+	##   lambda 里写 `is_instance_valid(spr)` **挡不住** `Lambda capture at index 0 was freed`:
+	##   Godot 在**调用之前**就发现捕获的 Object 没了, 先打那条错再把 null 传进来
+	##   ⇒ 守卫只能防住崩溃, 防不住日志里那条错。
+	##   而 `run-tests.sh` 的致命正则包含 `Lambda capture` ⇒ **它会把门禁弄红**
+	##   (2026-09-25 CI 就是这么红的: `verify_equip_batch_20260801` rc=0、125 条断言全过,
+	##    却因为 3 条这种错被判 FAIL; 本地高帧率复现不出来, `--max-fps 15` 两跑其一出现)。
+	##   ⇒ WeakRef 是 RefCounted, **永远不会"被释放"** ⇒ 这条错从根上不再产生,
+	##     而 `get_ref()` 返回 null 仍然是安全的空检。
+	var wspr: WeakRef = weakref(spr)
 	var tw = battle._reg_tween()
 	tw.tween_method(func(t: float) -> void:
-		if not is_instance_valid(spr):
+		var spr2 = wspr.get_ref()
+		if spr2 == null:
 			return
 		# 抖动频率与幅度都随 t 升高: 前半段是"痉挛", 后半段是"绷不住了"
 		var amp: float = lerpf(1.2, 7.0, t * t) * battle.WS
 		var freq: float = lerpf(26.0, 64.0, t)
 		var ph: float = battle._t * freq
-		(spr as Node3D).position = base_pos + Vector3(sin(ph) * amp, absf(cos(ph * 1.7)) * amp * 0.6, 0.0)
+		(spr2 as Node3D).position = base_pos + Vector3(sin(ph) * amp, absf(cos(ph * 1.7)) * amp * 0.6, 0.0)
 		# 越来越胀、越来越红(生物质在里面涨)
 		var g: float = lerpf(1.0, 1.34, t * t)
-		(spr as Node3D).scale = Vector3(base_sc.x * g, base_sc.y * g, base_sc.z)
-		if spr is GeometryInstance3D:
-			(spr as Sprite3D).modulate = Color(1.0, 1.0, 1.0).lerp(Color(1.0, 0.30, 0.26), t)
+		(spr2 as Node3D).scale = Vector3(base_sc.x * g, base_sc.y * g, base_sc.z)
+		if spr2 is GeometryInstance3D:
+			(spr2 as Sprite3D).modulate = Color(1.0, 1.0, 1.0).lerp(Color(1.0, 0.30, 0.26), t)
 		# ★★压住 _kill 的死亡淡出(用户 2026-08-02:「尸体应该在那里啊」)。
 		#   _kill 里有一条【独立】的 tween: sprite.modulate:a → 0 (0.4 秒) 然后 hide()。
 		#   我原来每帧只写 modulate 的 RGB, 压不住那个 hide() ⇒ 抽搐没演完尸体就没了。
 		#   (之前截图里根部那团紫是【病毒巢】不是尸体, 我把它当成尸体在场了。)
 		#   每帧强制 visible=true + alpha=1 是确定性的: 后写的赢, 与两条 tween 的先后无关。
-		(spr as Node3D).visible = true
+		(spr2 as Node3D).visible = true
 	, 0.0, 1.0, CONVULSE_SEC)
 	tw.tween_callback(func() -> void:
 		# ★★② 撑爆 —— 但【尸体不消失】(用户 2026-08-01 截图:「压根和人物中心没配合」)。
 		#   我第一版在这里 visible=false, 于是触手是从【地面一个空点】长出来的, 没有来源物, 像贴图。
 		#   人体炸弹的来源就是【那具尸体】: 现在留下一具深紫色的瘪壳, 触手从它身上抽出去,
 		#   它一路抽动到爆炸才和它一起没。
-		if is_instance_valid(spr):
+		if wspr.get_ref() != null:
+			var spr2 = wspr.get_ref()
 			# ★★别染成【和触手同色】的紫黑 —— 实拍上尸体整个糊进那蓬触手里, 看不出还有具尸体
 			#   (用户要的是"尸体在那", 不是"那儿有团紫"）。改成【失血褪色】: 明度压下去、
 			#   往灰紫偏一点, 但仍读得出是只龟, 和近黑的触手拉开对比。
-			(spr as Sprite3D).modulate = Color(0.66, 0.46, 0.56)
-			(spr as Node3D).scale = Vector3(base_sc.x * 1.16, base_sc.y * 0.60, base_sc.z)  # 泄了气的壳
-			(spr as Node3D).position = base_pos)
+			(spr2 as Sprite3D).modulate = Color(0.66, 0.46, 0.56)
+			(spr2 as Node3D).scale = Vector3(base_sc.x * 1.16, base_sc.y * 0.60, base_sc.z)  # 泄了气的壳
+			(spr2 as Node3D).position = base_pos)
 
 
 ## ★★炸开时甩出去的【生物质肉刺】(2026-08-02 用户:「这是病毒的拉在一起, 这个爆炸颜色和样式合适吗」)。
@@ -462,6 +474,10 @@ func _fireball(epi: Vector2, r_yards: float, life: float) -> void:
 	battle._world.add_child(im)
 	var R: float = r_yards * battle.WS
 	var tw = battle._reg_tween()
+	## ★★`bind_node`: 绑定的节点被释放时 tween **自动 kill** ⇒ 回调不再被调
+	##   ⇒ `Lambda capture at index N was freed` 从根上不再产生(见 `_convulse` 的长注释:
+	##   lambda 里的 `is_instance_valid` 只能防崩, 防不住那条错, 而那条错会把门禁弄红)。
+	tw.bind_node(im)
 	tw.tween_method(func(q: float) -> void:
 		if not is_instance_valid(im):
 			return
@@ -547,6 +563,10 @@ func _husk_writhe(spr, life: float) -> void:
 		return
 	var base_sc: Vector3 = (spr as Node3D).scale
 	var tw = battle._reg_tween()
+	## ★★`bind_node`: 绑定的节点被释放时 tween **自动 kill** ⇒ 回调不再被调
+	##   ⇒ `Lambda capture at index N was freed` 从根上不再产生(见 `_convulse` 的长注释:
+	##   lambda 里的 `is_instance_valid` 只能防崩, 防不住那条错, 而那条错会把门禁弄红)。
+	tw.bind_node(spr)
 	tw.tween_method(func(q: float) -> void:
 		if not is_instance_valid(spr):
 			return
@@ -660,6 +680,10 @@ func _tendril_shoot(from2d: Vector2, tgt: Dictionary, idx: int, hold: float) -> 
 	var dur: float = clampf(dist / 2600.0, 0.10, 0.22)
 	var acc = [0.0]
 	var tw = battle._reg_tween()
+	## ★★`bind_node`: 绑定的节点被释放时 tween **自动 kill** ⇒ 回调不再被调
+	##   ⇒ `Lambda capture at index N was freed` 从根上不再产生(见 `_convulse` 的长注释:
+	##   lambda 里的 `is_instance_valid` 只能防崩, 防不住那条错, 而那条错会把门禁弄红)。
+	tw.bind_node(hook)
 	tw.tween_interval(0.02 * float(idx))          # 逐条错峰 = 一蓬触须炸开, 不是齐刷刷一条
 	tw.tween_method(func(p: float) -> void:
 		var cur: Vector2 = from2d.lerp(to2d, p)
@@ -876,6 +900,10 @@ func _virus_nest(epi: Vector2, life: float) -> void:
 	im.material_override = mat
 	battle._world.add_child(im)
 	var tw = battle._reg_tween()
+	## ★★`bind_node`: 绑定的节点被释放时 tween **自动 kill** ⇒ 回调不再被调
+	##   ⇒ `Lambda capture at index N was freed` 从根上不再产生(见 `_convulse` 的长注释:
+	##   lambda 里的 `is_instance_valid` 只能防崩, 防不住那条错, 而那条错会把门禁弄红)。
+	tw.bind_node(im)
 	tw.tween_method(func(q: float) -> void:
 		if not is_instance_valid(im):
 			return
@@ -987,6 +1015,10 @@ func _hb_counter_refresh(o: Dictionary) -> void:
 		return
 	var uu: Dictionary = o
 	var tw = battle._reg_tween()
+	## ★★`bind_node`: 绑定的节点被释放时 tween **自动 kill** ⇒ 回调不再被调
+	##   ⇒ `Lambda capture at index N was freed` 从根上不再产生(见 `_convulse` 的长注释:
+	##   lambda 里的 `is_instance_valid` 只能防崩, 防不住那条错, 而那条错会把门禁弄红)。
+	tw.bind_node(lbl)
 	tw.tween_method(func(v: float) -> void:
 		if not is_instance_valid(lbl):
 			return
