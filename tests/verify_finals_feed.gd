@@ -276,6 +276,44 @@ func _t_real_request() -> void:
 		SB.finals_cached().is_empty(), str(SB.finals_cached()).substr(0, 120))
 	SB.finals_clear()
 
+	## ══════════════════════════════════════════════════════════════════
+	## ④b ★★★「有资格但人不够」不许和「没资格」说同一句话
+	##
+	## `finals_seat` 对 1 个人**故意不建桶**(一人一桶 = 没有对手的冠军, 那不是比赛),
+	## 于是那个**确实周六 4 胜晋级**的人在 `finals_pending` 里有行、`finals_entrants`
+	## 里没有 ⇒ 服务端原来一律回 `not_entered` ⇒ 屏幕照它说
+	## 「周六闯关赛晋级才进得来」——**在告诉他一件假事**, 他会以为胜场没算。
+	##
+	## ★10 个人规模下这不是边角: 周六晋级率约 34%(6 场配额 / 4 胜进 / 3 负出)
+	##   ⇒ 只有 0~1 人晋级的概率约 **10%**。
+	##
+	## ★判据配一条**分母**: 同一条路上「没资格」仍必须回空字典 ——
+	##   不然把两种情况又合成一种(反方向的同一个 bug)也会绿。
+	## ══════════════════════════════════════════════════════════════════
+	_next = {"ok": true, "code": 200,
+		"body": '{"ok":false,"reason":"too_few","entered":1}'}
+	_reqs.clear()
+	SB.fetch_finals_async(1789344000, -1)
+	await get_tree().process_frame
+	var vf: Dictionary = SB.finals_cached()
+	_ok("④b ★分母: 这一次也真发了请求", _reqs.size() == 1, str(_reqs.size()))
+	_ok("④b ★★人不够那条**带出来了**(不是和「没资格」一样吞成空字典)",
+		str(vf.get("reason", "")) == "too_few" and int(vf.get("entered", -1)) == 1,
+		str(vf).substr(0, 120))
+	_ok("④b ★不带 size 键 ⇒ 画图那侧读到的仍是 0(不许因此画半张图)",
+		int(vf.get("size", 0)) == 0, str(vf.get("size", "缺")))
+	## ★★走真场景的那个函数, 量**屏幕上真会出现的那句话**
+	var m2 = MAP.new()
+	add_child(m2)
+	await get_tree().process_frame
+	var txt := str(m2._empty_text())
+	_ok("④b ★★★屏幕上说的是人话: 要承认他晋级了, 且**不许**再说「晋级才进得来」",
+		txt.contains("晋级算数") and not txt.contains("晋级才进得来"), txt)
+	_ok("④b ★而且把人数说出来(「只有 1 人」比「人太少」有用)", txt.contains("1 人"), txt)
+	m2.queue_free()
+	await get_tree().process_frame
+	SB.finals_clear()
+
 
 # ─────────────────────────────────────────────────────────────
 # ⑥ ★★没数据的时候这一屏说什么(实拍抓出来的一整类)

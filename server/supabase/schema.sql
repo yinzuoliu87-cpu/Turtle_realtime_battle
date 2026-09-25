@@ -410,6 +410,18 @@ begin
      where e.season_week = p_week and e.account_id = auth.uid()
      limit 1;
     if p_bucket is null then
+      -- ★★2026-09-25: 「没资格」与「有资格但人不够、赛没开起来」**必须分开说**。
+      --   `finals_seat` 对 1 个人会**故意不建桶**(一人一桶 = 没有对手的冠军, 那不是比赛),
+      --   于是那个人在 `finals_pending` 里有行、在 `finals_entrants` 里没有 ⇒ 原来一律
+      --   返回 `not_entered`, 客户端照它说「周六闯关赛晋级才进得来」——
+      --   **而他明明晋级了**(周六 4 胜), 屏幕在告诉他一件假事, 他会以为胜场没算。
+      --   10 个人规模下这不是假想: 晋级率约 34% ⇒ 只有 0~1 人晋级的概率约 10%。
+      --   ⇒ 报过名就回 `too_few` 并带上**本周报名人数**, 让客户端能说人话。
+      if exists (select 1 from public.finals_pending
+                  where season_week = p_week and account_id = auth.uid()) then
+        return jsonb_build_object('ok', false, 'reason', 'too_few',
+          'entered', (select count(*) from public.finals_pending where season_week = p_week));
+      end if;
       return jsonb_build_object('ok', false, 'reason', 'not_entered');
     end if;
   end if;

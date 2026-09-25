@@ -1626,8 +1626,19 @@ static func parse_finals(ok: bool, code: int, body: String, my_account: String,
 	##   能处理坏正文**(5xx 时服务端回的可能是 HTML)。门禁靠扫日志里的错误形态判红,
 	##   每次都喷一条等于给日志灌噪声, 真错就藏得住了。
 	var _p := JSON.new()
-	if _p.parse(body) != OK or not (_p.data is Dictionary) \
-			or not bool((_p.data as Dictionary).get("ok", false)):
+	if _p.parse(body) != OK or not (_p.data is Dictionary):
+		return {}
+	if not bool((_p.data as Dictionary).get("ok", false)):
+		## ★★2026-09-25「有资格但人不够」要单独带出来, 不能和「没资格」混成一个空字典。
+		##   `finals_seat` 对 1 个人**故意不建桶**(一人一桶 = 没有对手的冠军), 于是那个
+		##   **确实周六 4 胜晋级了**的人拿到的是「没有你的桶」, 屏幕照它说
+		##   「周六闯关赛晋级才进得来」—— 在告诉他一件假事。
+		##   ⇒ 只有这一个理由要带出来; 其余(没报名 / 没登录 / 坏正文)照旧回 `{}`,
+		##     「屏幕上说人话、不画半张图」那条老判据一字不动。
+		##   ★不带 `size` 键 ⇒ `int(v.get("size", 0))` 仍是 0, 画图那侧的判断不受影响。
+		if str((_p.data as Dictionary).get("reason", "")) == "too_few":
+			return {"reason": "too_few",
+				"entered": int((_p.data as Dictionary).get("entered", 0))}
 		return {}
 	var d: Dictionary = _p.data
 	var n := int(d.get("n", 0))

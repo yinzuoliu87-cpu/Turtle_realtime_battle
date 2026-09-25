@@ -345,6 +345,15 @@ func _empty_text() -> String:
 	##   混成一句的话, 网络慢的人会以为自己没进决赛日。
 	if not _injected and not _SB.finals_tried():
 		return "正在连线 · 取本周的桶"
+	## ★★「有资格但人不够」与「没资格」说的必须是两句话(2026-09-25)。
+	##   `finals_seat` 对 1 个人故意不建桶(一人一桶 = 没有对手的冠军, 那不是比赛),
+	##   而那个人**确实周六 4 胜晋级了** —— 底下那句「晋级才进得来」对他是假话,
+	##   他会以为自己的胜场没算。10 个人规模下晋级率约 34% ⇒ 只 0~1 人晋级约 10%,
+	##   这不是假想的边角。
+	var _fv: Dictionary = _SB.finals_cached() if not _injected else _bucket
+	if str(_fv.get("reason", "")) == "too_few":
+		var ent := int(_fv.get("entered", 0))
+		return "本周只有 %d 人晋级 · 人太少没开起来, 你的晋级算数, 下周再来" % ent
 	if _view == _L.VIEW_FINALS:
 		var left: int = int(_L.finals_start_ts(_clock())) - _clock()
 		if left > 0:
