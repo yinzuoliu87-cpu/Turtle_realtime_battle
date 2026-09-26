@@ -1,0 +1,120 @@
+  PASS  verify_trainer_skill_count
+  PASS  verify_trainer_skills
+  PASS  verify_trainer_target
+  PASS  verify_true_dmg_shield
+  PASS  verify_true_dmg_white
+  PASS  verify_true_fire
+  PASS  verify_turtle_balance_r4
+  PASS  verify_turtle_balance_r5
+  PASS  verify_turtle_balance_r6
+  PASS  verify_turtle_roles
+  PASS  verify_tutorial
+  PASS  verify_tutorial_anchors
+  PASS  verify_tutorial_director
+  PASS  verify_tutorial_highlight
+  PASS  verify_two_head_enhanced
+  PASS  verify_two_head_fusion
+  PASS  verify_two_head_strike
+  PASS  verify_two_level_desc
+  PASS  verify_ui_consistency
+  PASS  verify_ui_layout
+  PASS  verify_uncovered_equips
+  PASS  verify_unit_scaling
+  PASS  verify_untargetable
+  PASS  verify_upload_flash
+  PASS  verify_version
+  PASS  verify_vfx_frames
+  PASS  verify_vfx_readability
+  PASS  verify_vfxlab_case_config
+  PASS  verify_water_palette
+  PASS  verify_week_phase_write
+  PASS  verify_week_roll
+  PASS  verify_week_season
+  PASS  verify_whistle_no_aim
+  PASS  verify_whistle_wave
+  PASS  verify_wormhole_escape
+  (发现 338 个测试, 并行度 8)
+  ── 耗时 ──
+  核秒总和 5112s ÷ 并行度 8 ≈ 639s 理论墙钟
+  平均 15126ms/个 · 最慢 12 个:
+    178375ms  verify_determinism_b
+    109993ms  verify_skills_not_dead
+     97838ms  verify_determinism_cross
+     59244ms  verify_spirit_slap_range
+     56385ms  verify_dmg_type_sentinel
+     54888ms  verify_exact_match
+     53352ms  verify_ui_consistency
+     45728ms  verify_codex_layout
+     42600ms  verify_axe_passives
+     41638ms  verify_equip_batch_20260801
+     39792ms  verify_seed_battles_gear
+     39391ms  verify_ios_ui
+  ── 审计器耗时(并行跑) ──
+  核秒总和 312s · 最慢 5 个:
+    141220ms  text_claim_audit
+     31009ms  passive_number_audit
+     23459ms  pixel_art_audit
+     21688ms  asset_orphan_audit
+     19819ms  nine_bracket_audit
+=== 全流程闪退冒烟 (SHIP=1 真实对局) ===
+  PASS  smoke_scenes (9场景进出×4 + 战斗中途硬释放×3 + 60秒完整战斗)
+=== 三方一致性对账 ===
+  PASS  tri_audit (差异 0 处)
+=== 只读数据审计 ===
+  PASS  data_integrity (json交叉引用/资源路径/孤儿字段)
+  PASS  pixel_art_audit (装备图标必须是真像素画·台账只减不增)
+  PASS  tooltip_number_audit (装备文案数值 ↔ 代码)
+  PASS  pet_number_audit (龟技能文案数值 ↔ 代码)
+  PASS  brief_detail_audit (龟技能 brief ↔ detail 数值)
+  PASS  passive_number_audit (龟被动文案数值 ↔ 代码)
+  PASS  map_composition_audit (地图构图·战场无void/站位不在水/接战区不亮/与生成器一致)
+  PASS  vfx_ref_match (084 三张特效 ↔ 用户参考图的形态指标 + 像素风)
+  PASS  vfx_ingame_check (084 十字斩实拍: 斩击是主角/两者都画得出来)
+  PASS  workflow_lint (CI 工作流 YAML 语法)
+  PASS  ci_deps_audit (门禁审计器的第三方依赖 ↔ CI 安装清单)
+  PASS  arch_budget (架构预算·不许上帝对象·欠债只减不增)
+  PASS  style_lint (代码风格·全tab/snake_case/PascalCase 焊死)
+  PASS  rng_discipline (裸随机冻结·护确定性不回退)
+  PASS  docs_authority_lint (单一事实源纪律·三权威在位/消费链活/README无漂移/无冒名)
+  PASS  server_rule_sync (服务端规则↔客户端事实源·常量/白名单)
+  PASS  server_logic_gate (云函数逻辑·V2往返/V3六类伪造/去重)
+  PASS  copy_chain_audit (龟壳复制链路四方一致·可抄数棘轮)
+  PASS  text_formula_audit (文案文字↔它自己的占位符公式)
+  PASS  text_claim_audit (文案声称↔代码实际·触发周期/选靶/作用范围)
+  FAIL  plans_lint (方案书生命周期·状态/骨架/实施回填)
+          [分母] ⑦ 打勾的验收项共 610 条, 其中没点名门禁的 199 条(台账 20 份文件)
+          [分母] 骨架检查 58 份 · 复选框纪律检查 99 份 (放过的引用: 已删/草稿 4 处)
+          [FAIL] 20260926-A跨设备确定性.md: 状态「A1 已完成 · 根因已定位」不在允许值里 草稿/已拍板/实施中/已完成/已作废
+          [FAIL] 20260926-A跨设备确定性.md: 缺骨架小节 ['决策记录']
+        
+        FAILED: 2 处
+  PASS  plan_stale (方案书 ❌/⏳ 标记过期·做完了就得红)
+  PASS  dead_preload (preload 了却没人用的常量)
+  PASS  zero_caller (写了却没有任何人调的函数)
+  PASS  const_branch (恒真常量分支 + return 吞掉同函数后续代码)
+  PASS  coroutine_await (门禁里把协程当普通函数调 ⇒ 静默截断断言)
+  PASS  asset_borrow (拿别件的素材顶替 · 铁律「新内容一律新素材」)
+  PASS  asset_orphan (孤儿素材/无消费者json字段·只减不增)
+  PASS  frame_study (逐帧研究的行数/帧号必须对得上声明的帧数)
+  PASS  text_const_orphan_audit (文案指的常量有没有产品代码在读)
+  PASS  const_leftover_audit (抽了常量却还有别处留着裸数字·跨文件判红)
+  PASS  codex_text_lint (图鉴文案: 教学味/自夸/开发备注/别家黑话/数字贴字)
+  PASS  twin_const (同功能的逻辑侧↔演出侧同名常量取值打架)
+  PASS  twin_radius (判定侧↔演出侧【不同名但同值】的范围常量·同一个数存两份)
+  PASS  glow_ball (无含义白球 _make_fire_glow_tex 存量台账·只减不增)
+  PASS  type_tables (装备类型四张平行表键集一致)
+  PASS  number_coverage (玩家文案里没人验的数字·只降不升)
+  PASS  text_golden (玩家文案快照对账·483 段)
+  PASS  text_value_golden (占位符算出来的数·旧值不许消失)
+  PASS  text_const_owner (文案引用的常量必须属于这个主体)
+  PASS  text_prose_guard (文案的文字部分逐字未动)
+  PASS  basestats (装备属性展示串 ↔ EquipStats.STATS·597 个数)
+  PASS  await_guard (协程 await 回来先确认 battle 还活着)
+  PASS  tree_timer (树级计时器不许接闭包·会活过场景释放)
+  PASS  shield_duration (通用护盾=4秒·永久给盾点台账只减不增)
+  PASS  vfx_discipline (像素贴图不许连续缩放 / 不许新增手写生成器 / 新素材要有逐帧研究)
+  PASS  tween_freeze (战斗世界侧的演出 tween 必须走 _reg_tween·否则时停冻不住)
+  PASS  tween_capture (演出 tween 的 lambda 捕获了可能被释放的节点·台账只减不增)
+  PASS  nine_bracket (9 档进度档已彻底删除·匹配只认同场次·同名的周日对阵图不许误伤)
+
+FAIL x2  (PASS 387)

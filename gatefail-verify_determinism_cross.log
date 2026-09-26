@@ -1,0 +1,44 @@
+Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org
+
+[DataRegistry] Loading PoC data → res://data/*.json
+[DataRegistry] ✓ loaded: 28 pets, 8 equipment, 13 status, 7 rules
+  [PASS] ★分母: 场景表读到 9 个场景(与 verify_determinism_b 同一份表)   9 个
+  [PASS] 分母 · ① 2 单位裸装 · 真的在推进(不同指纹 13 个 > 1, 累计承伤 228 > 0)
+  [PASS] ★★★① 2 单位裸装 · 摘要 == 金标   c58797f03baa100b
+  [PASS] 分母 · ② 3v3 裸装(海盗/忍者/骰子/闪电) · 真的在推进(不同指纹 486 个 > 1, 累计承伤 1896 > 0)
+  [PASS] ★★★② 3v3 裸装(海盗/忍者/骰子/闪电) · 摘要 == 金标   07d36cda8f215a1c
+[087 盗令潜水钟] 海盗龟 偷【whistle】→ 施放成功
+  [PASS] 分母 · ③ 3v3 满装备(每只 3 件 3★) · 真的在推进(不同指纹 294 个 > 1, 累计承伤 20864 > 0)
+  [FAIL] ★★★③ 3v3 满装备(每只 3 件 3★) · 摘要 == 金标   实得 4d3cb4c2376b18ac / 金标 e2e0a124d2326863  (要逐步对比: TURTLE_DET_DUMP=1 再跑, 会把逐步指纹写到 user://det_dump_*.txt)
+  [PASS] 分母 · ④ 双头/藏身/宽刃(协程位移同族) · 真的在推进(不同指纹 629 个 > 1, 累计承伤 29094 > 0)
+  [PASS] ★★★④ 双头/藏身/宽刃(协程位移同族) · 摘要 == 金标   c7b3318bd0eafb37
+  [PASS] 分母 · ⑤ 007阔剑+006千刃(协程扫描同族) · 真的在推进(不同指纹 190 个 > 1, 累计承伤 14555 > 0)
+  [PASS] ★★★⑤ 007阔剑+006千刃(协程扫描同族) · 摘要 == 金标   c128f10a8670a4a3
+  [PASS] 分母 · ⑥ 小将浪板/追踪火箭(协程位移) · 真的在推进(不同指纹 153 个 > 1, 累计承伤 124986 > 0)
+  [PASS] ★★★⑥ 小将浪板/追踪火箭(协程位移) · 摘要 == 金标   769b7b3ca617db4a
+  [PASS] 分母 · ⑦ 双头灵能炮弹(协程位移) · 真的在推进(不同指纹 138 个 > 1, 累计承伤 8507 > 0)
+  [PASS] ★★★⑦ 双头灵能炮弹(协程位移) · 摘要 == 金标   b16ac379f65b6526
+  [PASS] 分母 · ⑧ 雷暴/random_aoe/聚宝盆/无人机/棱镜(受控 PRNG 落点) · 真的在推进(不同指纹 624 个 > 1, 累计承伤 3387 > 0)
+  [PASS] ★★★⑧ 雷暴/random_aoe/聚宝盆/无人机/棱镜(受控 PRNG 落点) · 摘要 == 金标   e8b016f6066ad2ae
+  [PASS] 分母 · ⑨ 骰子龟稳定骰子(掷段数) · 真的在推进(不同指纹 772 个 > 1, 累计承伤 2114 > 0)
+  [PASS] ★★★⑨ 骰子龟稳定骰子(掷段数) · 摘要 == 金标   8c4111e3fc880752
+  [PASS] ★★① 同一台机器、同一进程内再跑一遍 ⇒ 摘要逐字相同(金标成立的前提)   c58797f03baa100b vs c58797f03baa100b
+  [PASS] ★★② 9 个场景出了 9 个**不同**摘要(相同 = 摘要函数根本没读到战斗状态)   9
+  [PASS] ★★③ 反证 · 换种子(424242→77) ⇒ 摘要必须不同(相同 = 结果不吃 _battle_rng)   613a59eb8d9c85db vs 16f34c49d3135c1d
+
+FAILED 1 条 (通过 21)
+ERROR: Pages in use exist at exit in PagedAllocator: N20RasterizerSceneDummy21GeometryInstanceDummyE
+   at: ~PagedAllocator (./core/templates/paged_allocator.h:169)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+   at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+   at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+   at: cleanup (core/object/object.cpp:2663)
+ERROR: 62 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:810)
+ERROR: 26 RID allocations of type 'PN13RendererDummy14TextureStorage12DummyTextureE' were leaked at exit.
+ERROR: 22 RID allocations of type 'N13RendererDummy9DummyMeshE' were leaked at exit.
+ERROR: 39 RID allocations of type 'N13RendererDummy15MaterialStorage13DummyMaterialE' were leaked at exit.
+ERROR: 12 RID allocations of type 'N13RendererDummy15MaterialStorage11DummyShaderE' were leaked at exit.
+ERROR: 2 RID allocations of type 'N17RendererSceneCull8InstanceE' were leaked at exit.

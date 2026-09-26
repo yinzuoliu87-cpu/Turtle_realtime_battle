@@ -1,0 +1,7 @@
+76:  FAIL  verify_determinism_cross  (rc=1, 致命报错=0)
+77:          [FAIL] ★★★③ 3v3 满装备(每只 3 件 3★) · 摘要 == 金标   实得 4d3cb4c2376b18ac / 金标 e2e0a124d2326863  (要逐步对比: TURTLE_DET_DUMP=1 再跑, 会把逐步指纹写到 user://det_dump_*.txt)
+390:  FAIL  plans_lint (方案书生命周期·状态/骨架/实施回填)
+393:          [FAIL] 20260926-A跨设备确定性.md: 状态「A1 已完成 · 根因已定位」不在允许值里 草稿/已拍板/实施中/已完成/已作废
+394:          [FAIL] 20260926-A跨设备确定性.md: 缺骨架小节 ['决策记录']
+396:        FAILED: 2 处
+426:FAIL x2  (PASS 387)
