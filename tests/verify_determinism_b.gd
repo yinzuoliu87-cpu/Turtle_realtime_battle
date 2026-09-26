@@ -24,6 +24,7 @@ extends Node
 ##   否则 tween 时钟这条修不修都不会被量到。
 
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
+const SC := preload("res://tests/_det_scenarios.gd")
 
 var _fail := 0
 var _n := 0
@@ -168,97 +169,37 @@ func _ready() -> void:
 	## ★钉住周锚点, 防止跑到一半换大轮(2026-09-20 主会话把赛季从「5 天滚」改成「自然周」,
 	##   换轮判据只看 `week_anchor_ts`)。滚一次轮会清等级/装备/统领 ⇒ 两遍跑的根本不是同一局,
 	##   指纹当然对不上。实测代价: 场景 ⑧ 从 0/1000 变成 493/1000 分叉, 而产品代码一个字没动。
+	## ★★★2026-09-26 从「今天那一周」改成**钉死的绝对值**(`SC.PIN_WEEK_ANCHOR`)。
+	##   原来用当周锚点对"同进程两遍"够用(两遍在同一周内), 但它让本门禁的输入
+	##   **跟着星期几变** —— 而那是本仓栽过的一整类(memory: 判据挂在星期几上)。
+	##   共用表那一侧(金标摘要)更是非钉死不可: 不钉的话下周一金标集体失效,
+	##   而失效的理由跟确定性一点关系都没有。⇒ 两个门禁钉同一个常量。
 	if gs != null:
-		var _P2 = load("res://scripts/gamedata/phase2_config.gd")
-		if _P2 != null and _P2.has_method("week_anchor_utc"):
-			gs.week_anchor_ts = int(_P2.week_anchor_utc(int(Time.get_unix_time_from_system())))
+		gs.week_anchor_ts = int(SC.PIN_WEEK_ANCHOR)
 
-	# ① 基线: 两只裸装(与 verify_battle_determinism 同场景, 只是改成逐步比)
-	await _scenario("① 2 单位裸装", [
-		["basic", "left", 320.0, 300.0, []],
-		["basic", "right", 400.0, 300.0, []]], 200, "424242")
-
-	# ② ★抓到 bug 的那一局: 海盗(登场轰击挂 tween 末尾) + 忍者(冲刺吃真实 delta) + 骰子(吃 _battle_rng)
-	var bare3: Array = [
-		["stone", "left", 320.0, 220.0, []], ["basic", "left", 320.0, 320.0, []], ["ninja", "left", 320.0, 420.0, []],
-		["lightning", "right", 900.0, 220.0, []], ["dice", "right", 900.0, 320.0, []], ["pirate", "right", 900.0, 420.0, []]]
-	await _scenario("② 3v3 裸装(海盗/忍者/骰子/闪电)", bare3, 600, "424242")
-
-	# ③ 满装备: 每只 3 件 3★, 覆盖召唤/弹道/周期/羁绊多条路径
-	var full3: Array = [
-		["stone", "left", 320.0, 220.0, ["p2eq_001", "p2eq_010", "p2eq_022"]],
-		["basic", "left", 320.0, 320.0, ["p2eq_032", "p2eq_058", "p2eq_073"]],
-		["ninja", "left", 320.0, 420.0, ["p2eq_061", "p2eq_084", "p2eq_091"]],
-		["lightning", "right", 900.0, 220.0, ["p2eq_006", "p2eq_009", "p2eq_026"]],
-		["dice", "right", 900.0, 320.0, ["p2eq_065", "p2eq_070", "p2eq_077"]],
-		["pirate", "right", 900.0, 420.0, ["p2eq_080", "p2eq_087", "p2eq_094"]]]
-	await _scenario("③ 3v3 满装备(每只 3 件 3★)", full3, 600, "424242")
-
-	# ④ 双头/藏身(小将踩背)/宽刃扫描 —— 都是"协程按真实 delta 推进"的同族站点
-	var co3: Array = [
-		["two_head", "left", 320.0, 240.0, ["p2eq_009"]],
-		["hiding", "left", 320.0, 380.0, []],
-		["gambler", "right", 900.0, 240.0, []],
-		["basic", "right", 900.0, 380.0, []]]
-	await _scenario("④ 双头/藏身/宽刃(协程位移同族)", co3, 1000, "424242")
-
-	# ⑤ 剑线装备: 007 锈蚀阔剑(每 6 秒)与 006 千刃风暴(每 7 秒) —— 推进都写在
-	#    `await process_frame` 协程里(equip_system.gd:948 / :1303), 原来按真实 delta 走。
-	#    1400 步 = 23.3 游戏秒 ⇒ 两件都至少触发一次(6s / 7s), 不然这一条就是空跑。
-	## ★携带者用【远程】猎人: 近战龟会贴到脸上, 剑气墙一出生就命中 ⇒ 到达时刻没有可观测差异,
-	##   把"推进用哪条钟"整条藏起来(改坏了门禁也不红)。拉开距离才量得到"走了多久才打到"。
-	await _scenario("⑤ 007阔剑+006千刃(协程扫描同族)", [
-		["hunter", "left", 320.0, 300.0, ["p2eq_007", "p2eq_006"]],
-		["basic", "right", 900.0, 300.0, []],
-		["basic", "right", 980.0, 380.0, []]], 1400, "424242")
-
-	# ⑥ 小将: 近战浪板的"踩背滑行 0.833 秒"与远程火箭的"慢速追踪导弹"都是协程位移
-	#    (hiding_system.gd:107 / :345 / :376) —— 它们改的是**攻守双方**的 pos, 分叉会立刻进指纹。
-	await _scenario("⑥ 小将浪板/追踪火箭(协程位移)", [
-		["__minion__:front", "left", 320.0, 260.0, []],
-		["__minion__:back", "left", 320.0, 400.0, []],
-		["basic", "right", 820.0, 260.0, []],
-		["basic", "right", 820.0, 400.0, []]], 800, "424242")
-
-	# ⑦ 双头【灵能冲击炮弹】(two_head_system.gd:104): 同样是"协程按 delta 推位移"。
-	#    ★摆在它射程内(200 码)才量得到 —— ④ 里两只隔 580 码, 改坏了炮弹在窗口内根本飞不到,
-	#      "什么都没发生"在两遍之间是一样的 ⇒ 判据看不见(实测 ④ 单独变异它不红)。
-	await _scenario("⑦ 双头灵能炮弹(协程位移)", [
-		["two_head", "left", 320.0, 300.0, []],
-		["basic", "right", 520.0, 300.0, []]], 700, "424242")
-
-	# ⑧ ★`_juice_rng` 的四个【对局】落点 —— 它在 battle_world_builder.gd:762 每局无条件 `randomize()`,
-	#    连 TURTLE_SEED 设了也照样随机 ⇒ 这四处天生不可复现, 与 tween/协程那两族无关:
-	#      · 闪电龟雷暴挑谁挨雷(RealtimeBattle3DScene.gd `_barrage_bolt`)
-	#      · `_sk_dmg_wave` 的 random_aoe 挑谁挨这一段(多技能共用通道)
-	#      · 财神聚宝盆每 3 秒 +4~7 金(数额本身就是随机)
-	#      · 赛博无人机打谁 + 开火间隔抖动(后者原来还是**裸 randf()**)
-	#    再加彩虹龟开局的棱镜色(battle_spawn.gd:609)。
-	## ★闪电龟默认选中的是 skillPool[1](涌动), **雷暴是 [2]** —— 不点名就根本放不出来,
-	##   这一条会变成"摆了个闪电龟但从没打雷"的空跑(分母断言看不出这种空跑, 所以写在这里)。
-	##   骰子龟同理: 命运骰(_sk_dice_fate, 掷暴击点数)是 [2], 默认 [1] 是梭哈。
-	await _scenario("⑧ 雷暴/random_aoe/聚宝盆/无人机/棱镜(受控 PRNG 落点)", [
-		["lightning", "left", 320.0, 220.0, []],
-		["fortune", "left", 320.0, 320.0, []],
-		["cyber", "left", 320.0, 420.0, []],
-		["rainbow", "left", 320.0, 520.0, []],
-		["dice", "left", 320.0, 620.0, []],
-		["basic", "right", 820.0, 260.0, []],
-		["basic", "right", 820.0, 380.0, []],
-		["basic", "right", 820.0, 500.0, []]], 1000, "424242", {"lightning": 2, "dice": 2})
-
-	# ⑨ 骰子龟【稳定骰子】: 掷出几段 = 打几下(dice_system.gd:185, 原来是裸全局 randi_range),
-	#    它是 skillPool[3], 默认选不到 ⇒ 必须点名, 否则这一条又是空跑。
-	#    ★窗口要 1800 步(30 秒): 7~11 段每段都要冲刺 + 顿 0.2 秒, 600 步里两遍都还在冲到一半,
-	#      "掷了几段"根本还没兑现完 ⇒ 判据看不见(实测 600 步时单独变异它不红)。
-	await _scenario("⑨ 骰子龟稳定骰子(掷段数)", [
-		["dice", "left", 320.0, 300.0, []],
-		["basic", "right", 560.0, 300.0, []],
-		["basic", "right", 640.0, 380.0, []]], 1800, "424242", {"dice": 3})
+	## ══════════════════════════════════════════════════════════════════
+	## ★★★2026-09-26 场景表搬到 `tests/_det_scenarios.gd`, **两个门禁共用一份**:
+	##   · 本门禁            —— 同种子**同进程**两遍, 逐步指纹必须逐字相同
+	##   · verify_determinism_cross —— 逐步指纹压成摘要, 与钉住的金标比
+	##     (⇒ 换进程 / 换 OS / 换 libm 都得一样, 那是周日「服务端结算一次 + 双方看
+	##      同一份重放」的前提, 原稿 §五.1 写着「排期在赛制上线之前」)
+	## ★抄第二份的代价很实在: 场景里「为什么摆这个距离/为什么点这个技能」的理由一旦分家,
+	##   改了其中一份, 另一份就静静地变成空跑(memory fb-hand-rolled-copies-drift)。
+	##   ⇒ 表和它的理由都在那个文件里, 这里只负责跑。
+	## ★分母: 表里必须正好 9 个场景 —— 少一个就是有人把场景删了而没人发现。
+	var scs: Array = SC.all()
+	_ok("分母 · 场景表读到 %d 个场景(与 verify_determinism_cross 同一份表)" % scs.size(),
+		scs.size() == 9, "%d 个" % scs.size())
+	for sc in scs:
+		var scd: Dictionary = sc
+		await _scenario(str(scd["tag"]), scd["pairs"] as Array, int(scd["frames"]),
+			str(scd["seed"]), scd.get("loadouts", {}) as Dictionary)
 
 	# ⑩ 反证(非恒真式): 换种子 → 逐步指纹序列必须不同; 否则说明结果根本不吃 _battle_rng
-	var r1: Array = await _two_runs(bare3, 240, "424242")
-	var r2: Array = await _two_runs(bare3, 240, "77")
+	## ★与场景 ② 同一套摆位(共用表里取) —— 唯一的变量只能是种子
+	var cp_pairs: Array = SC.counter_proof_pairs()
+	var r1: Array = await _two_runs(cp_pairs, 240, "424242")
+	var r2: Array = await _two_runs(cp_pairs, 240, "77")
 	var diff_seed := 0
 	var nn: int = mini((r1[3] as Array).size(), (r2[3] as Array).size())
 	for i in range(nn):
