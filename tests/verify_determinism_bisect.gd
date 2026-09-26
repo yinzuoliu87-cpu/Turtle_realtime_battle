@@ -168,8 +168,13 @@ func _ready() -> void:
 	for r0 in raw0:
 		print(str(r0))
 	print("")
-	print("── 第 0~2 步的完整指纹, 逐段一行 ──")
-	for i2 in range(mini(3, lines.size())):
+	## ★★★第 4 轮(按【步号】重新对齐后)实测: **首个分叉步 = 271**, 前 270 步逐位相同。
+	##   ⚠ 第 3 轮我报的"第 0 步就分叉"是**我比错了**: CI 的失败日志从后面截断
+	##   (600 行只回来 389 行, 步号 211..599), 而我按**行号**对齐 ⇒ 拿本地第 0 步
+	##   比了 CI 的第 211 步。判据没错, 对齐错了。⇒ 改成按步号取交集再比。
+	## 271 步 ÷ 60 ≈ 4.5 游戏秒。本轮打第 269~272 步的完整指纹, 指到具体单位与字段。
+	print("── 第 269~272 步的完整指纹, 逐段一行 ──")
+	for i2 in range(269, mini(273, lines.size())):
 		var segs: PackedStringArray = str(lines[i2]).split("|")
 		for k in range(segs.size()):
 			print("SEG %d %02d %s" % [i2, k, segs[k]])
