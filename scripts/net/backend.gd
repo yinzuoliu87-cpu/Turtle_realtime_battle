@@ -323,15 +323,22 @@ static func leaderboard(pool: Dictionary, self_name: String, self_wins: int, sel
 			if _is_self_ghost(gd):
 				continue
 			## ② **陪练不上榜**。种子池(队列模拟造的 396 条)原来一律按 0/0/0 参与排序
-			##    并且**占掉名次** ⇒ 10 个人测试会看到「#57 你」这种数字
-			##    (名次的分母是 ~400 不是 10)。
-			## ★判据用 `is_bot` 而**不是**「缺 season_wins」——
-			##   我第一版写的是后者, `verify_leaderboard_sort` ④ 当场红:
-			##   那一段**明确要求**真人的老格式快照(缺字段)**仍要上榜、当 0 排在后面**
-			##   (「旧池不作废」)。⇒ 缺字段分不开「陪练」和「老格式的真人」,
-			##   而 `is_bot` 分得开: `make_bot` 写 true、`build_ghost_snapshot` 写 false。
-			##   (memory fb-gate-can-pin-the-bug-in-place 的反面: 这次是**门禁对、我错**。)
-			if bool(gd.get("is_bot", false)):
+			##    并且**占掉名次** ⇒ 10 个人测试会看到「#57 你」这种数字。
+			##
+			## ★★★判据是 `ghost_id` 的 **`seed_` 前缀** —— 这是**产品自己已经在用**的那条
+			##   (`_ensure_seeded` 靠它认种子、升版时清旧种子), 不另立一套。
+			##
+			## ⚠ 我在这里连错两版, 都是**判据选错维度**:
+			##   · 第一版筛「缺 `season_wins`」⇒ `verify_leaderboard_sort` ④ 当场红:
+			##     那一段明确要求**真人的老格式快照**(缺字段)仍要上榜、当 0 排在后面。
+			##   · 第二版改筛 `is_bot` ⇒ 门禁全绿, **而真机上一条都没滤掉** ——
+			##     种子池 396 条的 `is_bot` 实测全是 **false**(它们是队列模拟跑出来的
+			##     "真玩家"数据, 不是 `make_bot` 合成的)。
+			##     ★我当时只量了「带不带这个字段」(396/396 带), **没量它的值**。
+			##     而门禁 ⑦b 绿是因为我在那里**手动把 `is_bot` 置成 true** 造了个陪练
+			##     ⇒ 判据在测我自己喂进去的东西, 不是真池子。
+			##   ⇒ 是**真机上点开排行榜**看见 11 行里 10 行是陪练才发现的。
+			if str(gd.get("ghost_id", "")).begins_with("seed_"):
 				continue
 			rows.append({
 				"name": str(gd.get("profile", {}).get("name", "?")),

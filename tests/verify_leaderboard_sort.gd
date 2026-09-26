@@ -112,8 +112,12 @@ func _ready() -> void:
 		g7["origin"] = Backend.ORIGIN_LOCAL          # ★本机产的 = 自己那份
 		mine.append(g7)
 	var bot7 := _g("陪练", 0, 0, 0)
-	bot7["is_bot"] = true
-	bot7["ghost_id"] = "seed_x"
+	## ★★陪练那一份要**长得和真种子池一模一样**。我第一版写 `is_bot = true`
+	##   ⇒ 门禁绿, **而真机上一条都没滤掉**: 种子池 396 条的 `is_bot` 实测全是 **false**
+	##   (队列模拟跑出来的"真玩家"数据)。⇒ 判据在测我自己喂进去的那个字段。
+	## ★现在按**产品自己认种子的那条**(`seed_` 前缀)造, 并**刻意把 `is_bot` 留成 false**。
+	bot7["is_bot"] = false
+	bot7["ghost_id"] = "seed_autoplay_coh_s0_41_b24"
 	var p7 := {"brackets": {"3": mine + [bot7, _g("别人", 6, 4, 0)]}}
 	var r7: Array = Backend.leaderboard(p7, "我", 3, 8, 0, 99)
 	var n7 := _names(r7)
@@ -128,6 +132,18 @@ func _ready() -> void:
 	_chk("⑦ ★★分母: 「我」那一行还在(它是注入的, 不该被这两道筛带走)",
 		n7.has("我"), str(n7))
 	_chk("⑦ ★★名次的分母就是真人数: 2 行(别人 + 我)", r7.size() == 2, "%d 行" % r7.size())
+
+	## ★★★最后拿**真种子池**量一遍 —— 上面全是合成快照, 而这个 bug 正是
+	##   「合成的能滤掉、真的滤不掉」。不读真文件就永远发现不了
+	##   (是真机上点开排行榜看见 11 行里 10 行是陪练才拓出来的)。
+	var seedp: Dictionary = Backend.load_pool()
+	var seed_rows: Array = Backend.leaderboard(seedp, "我", 0, 0, 0, 9999)
+	var seed_n := 0
+	for b8 in (seedp.get("brackets", {}) as Dictionary):
+		seed_n += ((seedp["brackets"] as Dictionary)[b8] as Array).size()
+	_chk("⑦ ★分母: 真池子里确实有一堆种子(否则下面是空检查)", seed_n >= 100, "%d 条" % seed_n)
+	_chk("⑦ ★★★**真种子池**上榜的行数 = 1(只有我自己那行) —— 合成的滤得掉不等于真的滤得掉",
+		seed_rows.size() == 1, "%d 行 / 池里 %d 条" % [seed_rows.size(), seed_n])
 
 	_done()
 
