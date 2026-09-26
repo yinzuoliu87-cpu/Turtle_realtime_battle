@@ -127,6 +127,7 @@ func _ready() -> void:
 	var lines: Array = []
 	var uniq := {}
 	var n_units_at := {}
+	var raw0: Array = []
 	for i in range(FRAMES):
 		await get_tree().process_frame
 		var f := _fp(s)
@@ -135,6 +136,16 @@ func _ready() -> void:
 		##   在循环里算会变成 O(n²) 次拼接, 而结果一模一样。
 		lines.append(f)
 		n_units_at[i] = s._units.size()
+		## ★第 0 步再多打几个**不在指纹里**的原始属性 —— 指纹只有 9 个字段,
+		##   而分叉可能在 maxHp/攻/攻速/护甲 上(它们会通过伤害间接进指纹)。
+		if i == 0:
+			for u3 in s._units:
+				raw0.append("RAW %-14s %-6s maxHp=%.4f atk=%.4f aspd=%.4f armor=%.4f mr=%.4f rng=%.4f crit=%.4f hp=%.4f" % [
+					str(u3.get("id", "?")), str(u3.get("side", "?")),
+					float(u3.get("maxHp", 0.0)), float(u3.get("atk", 0.0)),
+					float(u3.get("atk_interval", 0.0)), float(u3.get("armor", 0.0)),
+					float(u3.get("mr", 0.0)), float(u3.get("range", 0.0)),
+					float(u3.get("crit", 0.0)), float(u3.get("hp", 0.0))])
 
 	var taken := 0.0
 	for u2 in s._units:
@@ -148,17 +159,20 @@ func _ready() -> void:
 		% [uniq.size(), taken], uniq.size() > 1 and taken > 0.0)
 	_ok("★分母: 场上确实多出了召唤物(末态 %d 只 > 6)" % n_units, n_units > 6, "%d 只" % n_units)
 
-	## 逐步前缀摘要一次算完(上面循环里只存指纹, 这里连着算, 省掉 O(n²) 的重复拼接)
+	## ★★★第 4 轮: 第 3 轮实测**首个分叉步 = 0** —— 第一步就不一样, 所以不是浮点累积漂移,
+	##   而是**初始状态**就不同(两边都是 8 只单位, 召唤物都在场)。
+	##   ⇒ 本轮只打第 0~2 步的**完整指纹**逐段, 一眼看出是哪只单位的哪个字段。
+	## ⚠ CI 的失败日志会被**截断**(第 3 轮 600 行只回来 389 行) ⇒ 本轮**只打少量行**。
 	print("")
-	print("── 逐步前缀摘要(第 i 行 = sha256(第 0..i 步)) ──")
-	var run := PackedByteArray()
-	for i2 in range(lines.size()):
-		run.append_array(str(lines[i2]).to_utf8_buffer())
-		var c3 := HashingContext.new()
-		c3.start(HashingContext.HASH_SHA256)
-		c3.update(run)
-		print("PFX %04d %s  units=%d" % [i2, (c3.finish() as PackedByteArray).hex_encode().substr(0, 24),
-			int(n_units_at.get(i2, -1))])
+	print("── 第 0 步的原始属性(不在指纹里的那些) ──")
+	for r0 in raw0:
+		print(str(r0))
+	print("")
+	print("── 第 0~2 步的完整指纹, 逐段一行 ──")
+	for i2 in range(mini(3, lines.size())):
+		var segs: PackedStringArray = str(lines[i2]).split("|")
+		for k in range(segs.size()):
+			print("SEG %d %02d %s" % [i2, k, segs[k]])
 
 	## ★故意判红: 红才会把日志推到 ci-logs, 那是拿 Linux 侧数据的唯一通路。
 	_ok("★★★(测量用·故意红) 上面那 %d 行 PFX 就是本轮要的数据" % lines.size(), false,
