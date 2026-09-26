@@ -27,7 +27,7 @@ func _chk(name: String, cond: bool, extra: String = "") -> void:
 
 func _g(name: String, wins: int, hearts: int, sweeps: int) -> Dictionary:
 	return {"schema_ver": Backend.SCHEMA_VER, "ghost_id": "r_" + name, "is_bot": false,
-		"bracket": 3, "origin": Backend.ORIGIN_REMOTE, "profile": {"name": name},
+		"origin": Backend.ORIGIN_REMOTE, "profile": {"name": name},
 		"season_wins": wins, "hearts": hearts, "season_sweeps": sweeps}
 
 func _names(rows: Array) -> Array:
@@ -41,7 +41,7 @@ func _ready() -> void:
 	print("── A8: 终榜字典序 胜场 → 余命 → 横扫 ──")
 
 	## ① 第一层: 胜场不同 ⇒ 胜场多的在前(其余两键故意反着给, 挡住"只看后面那两键")
-	var p1 := {"brackets": {"3": [_g("低胜高命", 2, 8, 9), _g("高胜低命", 7, 1, 0)]}}
+	var p1 := {Backend.POOL_KEY: {"3": [_g("低胜高命", 2, 8, 9), _g("高胜低命", 7, 1, 0)]}}
 	var r1 := Backend.leaderboard(p1, "我", 0, 0, 0, 99)
 	var n1 := _names(r1)
 	_chk("① ★分母: 三行都在(自己 + 两份快照)", r1.size() == 3, str(n1))
@@ -49,28 +49,28 @@ func _ready() -> void:
 		n1.find("高胜低命") < n1.find("低胜高命"), str(n1))
 
 	## ② 第二层: 胜场相同 ⇒ 比余命(横扫故意反着给)
-	var p2 := {"brackets": {"3": [_g("同胜低命", 5, 2, 9), _g("同胜高命", 5, 7, 0)]}}
+	var p2 := {Backend.POOL_KEY: {"3": [_g("同胜低命", 5, 2, 9), _g("同胜高命", 5, 7, 0)]}}
 	var n2 := _names(Backend.leaderboard(p2, "我", 0, 0, 0, 99))
 	_chk("② ★胜场相同 ⇒ 余命多的在前(哪怕它横扫少)",
 		n2.find("同胜高命") < n2.find("同胜低命"), str(n2))
 
 	## ③ 第三层(方案书点名的那组): 同胜同命、横扫不同
-	var p3 := {"brackets": {"3": [_g("横扫少", 5, 5, 1), _g("横扫多", 5, 5, 6), _g("横扫中", 5, 5, 3)]}}
+	var p3 := {Backend.POOL_KEY: {"3": [_g("横扫少", 5, 5, 1), _g("横扫多", 5, 5, 6), _g("横扫中", 5, 5, 3)]}}
 	var n3 := _names(Backend.leaderboard(p3, "我", 0, 0, 0, 99))
 	_chk("③ ★同胜同命 ⇒ 横扫多的在前(多→中→少)",
 		n3.find("横扫多") < n3.find("横扫中") and n3.find("横扫中") < n3.find("横扫少"), str(n3))
 
 	## ④ 旧快照缺字段 ⇒ 当 0, 不崩也不作废
 	var old := {"schema_ver": Backend.SCHEMA_VER, "ghost_id": "r_old", "is_bot": false,
-		"bracket": 3, "origin": Backend.ORIGIN_REMOTE, "profile": {"name": "老快照"}}
-	var p4 := {"brackets": {"3": [old, _g("新快照", 3, 3, 3)]}}
+		"origin": Backend.ORIGIN_REMOTE, "profile": {"name": "老快照"}}
+	var p4 := {Backend.POOL_KEY: {"3": [old, _g("新快照", 3, 3, 3)]}}
 	var r4 := Backend.leaderboard(p4, "我", 0, 0, 0, 99)
 	var n4 := _names(r4)
 	_chk("④ ★分母: 老快照没被丢掉(旧池不作废)", n4.has("老快照"), str(n4))
 	_chk("④ ★缺字段当 0 ⇒ 排在有成绩的后面", n4.find("新快照") < n4.find("老快照"), str(n4))
 
 	## ⑤ 自己也参与排序(不是永远置顶)
-	var p5 := {"brackets": {"3": [_g("比我强", 9, 9, 9)]}}
+	var p5 := {Backend.POOL_KEY: {"3": [_g("比我强", 9, 9, 9)]}}
 	var n5 := _names(Backend.leaderboard(p5, "我", 1, 1, 1, 99))
 	_chk("⑤ ★自己按真实成绩排, 不置顶", n5.find("比我强") < n5.find("我"), str(n5))
 
@@ -118,11 +118,11 @@ func _ready() -> void:
 	## ★现在按**产品自己认种子的那条**(`seed_` 前缀)造, 并**刻意把 `is_bot` 留成 false**。
 	bot7["is_bot"] = false
 	bot7["ghost_id"] = "seed_autoplay_coh_s0_41_b24"
-	var p7 := {"brackets": {"3": mine + [bot7, _g("别人", 6, 4, 0)]}}
+	var p7 := {Backend.POOL_KEY: {"3": mine + [bot7, _g("别人", 6, 4, 0)]}}
 	var r7: Array = Backend.leaderboard(p7, "我", 3, 8, 0, 99)
 	var n7 := _names(r7)
 	_chk("⑦ ★分母: 池子里确实放了 4 条自己的 + 1 条陪练 + 1 个别人",
-		(p7["brackets"]["3"] as Array).size() == 6)
+		(p7[Backend.POOL_KEY]["3"] as Array).size() == 6)
 	_chk("⑦a ★★★自己的历史快照一条都不上榜(否则榜上 N 行同一个名字)",
 		not n7.has("我自己"), str(n7))
 	_chk("⑦b ★★★陪练不上榜(否则名次分母是 ~400 不是 10)",
@@ -139,8 +139,8 @@ func _ready() -> void:
 	var seedp: Dictionary = Backend.load_pool()
 	var seed_rows: Array = Backend.leaderboard(seedp, "我", 0, 0, 0, 9999)
 	var seed_n := 0
-	for b8 in (seedp.get("brackets", {}) as Dictionary):
-		seed_n += ((seedp["brackets"] as Dictionary)[b8] as Array).size()
+	for b8 in (seedp.get(Backend.POOL_KEY, {}) as Dictionary):
+		seed_n += ((seedp[Backend.POOL_KEY] as Dictionary)[b8] as Array).size()
 	_chk("⑦ ★分母: 真池子里确实有一堆种子(否则下面是空检查)", seed_n >= 100, "%d 条" % seed_n)
 	_chk("⑦ ★★★**真种子池**上榜的行数 = 1(只有我自己那行) —— 合成的滤得掉不等于真的滤得掉",
 		seed_rows.size() == 1, "%d 行 / 池里 %d 条" % [seed_rows.size(), seed_n])

@@ -74,12 +74,14 @@ def launch(i, bots_per_shard, max_rounds, seed):
 def merge(shards):
     """合并各片快照。
 
-    ★产物**不是数组**, 是 `{"_note": str, "brackets": {"<档>": [快照…]}}` ——
+    ★产物**不是数组**, 是 `{"_note": str, "by_battles": {"<场次>": [快照…]}}` ——
+    (2026-09-26: 分桶键从【9 档】换成【总场次】, 见 docs/plans/20260926-删掉9档进度档.md;
+     读端结构无关 —— 老分片的 `brackets` 照样吃得下, 不必重跑那 60 多个分片)
       我第一版按数组写, 小批实测当场发现(合出来 2 条: 那是在数 dict 的两个键)。
       这种"我以为的格式"和"真实格式"的差, 只有真跑一遍才看得见。
     ★逐条查 ghost_id 唯一 —— 撞 id 是这套并行最可能的失败形态, 必须**验**不是信。
     """
-    brackets = {}
+    by_battles = {}
     seen = {}
     dup = []
     missing = []
@@ -94,12 +96,13 @@ def merge(shards):
         except Exception as e:
             print("  [FAIL] 片 %d 的产物读不出来: %s" % (i, e))
             return None, missing, dup
-        if not isinstance(d, dict) or "brackets" not in d:
-            print("  [FAIL] 片 %d 的产物结构不对(应是 {_note, brackets})" % i)
+        _key = "by_battles" if isinstance(d, dict) and "by_battles" in d else "brackets"
+        if not isinstance(d, dict) or _key not in d:
+            print("  [FAIL] 片 %d 的产物结构不对(应是 {_note, by_battles})" % i)
             return None, missing, dup
         note = note or str(d.get("_note", ""))
         n = 0
-        for bk, arr in (d["brackets"] or {}).items():
+        for bk, arr in (d[_key] or {}).items():
             for s in (arr or []):
                 gid = str(s.get("ghost_id", ""))
                 if gid == "":
@@ -108,10 +111,14 @@ def merge(shards):
                 if gid in seen:
                     dup.append((gid, seen[gid], i))
                 seen[gid] = i
-                brackets.setdefault(str(bk), []).append(s)
+                # ★键一律以**快照自己报的场次**为准, 不信分片里的键
+                # (老分片的键是【档】, 直接沿用会把 9 个档号当成 9 个场次)
+                by_battles.setdefault(str(int(s.get("season_total_battles", 0))), []).append(s)
                 n += 1
-        print("  片 %-2d → %5d 条 (%d 档)" % (i, n, len(d["brackets"] or {})))
-    return {"_note": note, "brackets": brackets}, missing, dup
+        print("  片 %-2d → %5d 条 (%d 桶)" % (i, n, len(d[_key] or {})))
+    return ({"_note": note,
+             "by_battles": dict(sorted(by_battles.items(), key=lambda kv: int(kv[0])))},
+            missing, dup)
 
 def main():
     ap = argparse.ArgumentParser()
@@ -171,8 +178,8 @@ def main():
         return 1
     out = os.path.join(OUT_DIR, "cohort-snapshots.json")
     io.open(out, "w", encoding="utf-8").write(json.dumps(snaps, ensure_ascii=False, indent=1))
-    tot = sum(len(v) for v in snaps["brackets"].values())
-    print("  合计 %d 条 · %d 档 · id 全唯一 → %s" % (tot, len(snaps["brackets"]), out))
+    tot = sum(len(v) for v in snaps["by_battles"].values())
+    print("  合计 %d 条 · %d 个场次 · id 全唯一 → %s" % (tot, len(snaps["by_battles"]), out))
     print("")
     print("  下一步: python tools/cohort_to_seed.py        # 先 dry-run 看自检")
     print("          python tools/cohort_to_seed.py --write")

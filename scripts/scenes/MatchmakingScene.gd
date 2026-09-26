@@ -87,7 +87,10 @@ func _ready() -> void:
 	else:
 		## ★★2026-09-25: 直接把**场次**传进去。原来这里 `bracket_for_battles(...)`
 		##   把细的那一维扔了、只留粗格子, 而 `find_opponent` 里又自己读一遍真场次
-		##   ⇒ 一个函数两把尺子。粗格子现在只是池子的索引, 由 `find_opponent` 自己算。
+		##   ⇒ 一个函数两把尺子。
+		## ★★★2026-09-26: 9 档已**彻底删除**, 池子也按场次分桶了 —— 从这里到选靶
+		##   全程只有【场次】这一个量在走, 没有任何一处再做"粗细转换"。
+		##   (方案书 `docs/plans/20260926-删掉9档进度档.md`)
 		GameState.dual_ghost = Backend.find_opponent(
 			int(GameState.season_total_battles), exclude, _rng)
 	var _gid := str((GameState.dual_ghost as Dictionary).get("ghost_id", "")) if GameState.dual_ghost is Dictionary else ""

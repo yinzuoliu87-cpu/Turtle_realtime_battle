@@ -35,7 +35,7 @@ func _ok(name: String, cond: bool, detail: String = "") -> void:
 
 func _snap(gid: String) -> Dictionary:
 	return {
-		"schema_ver": Backend.SCHEMA_VER, "ghost_id": gid, "is_bot": false, "bracket": 3,
+		"schema_ver": Backend.SCHEMA_VER, "ghost_id": gid, "is_bot": false,
 		"profile": {"name": "玩家阵容", "avatar": "angel", "id": gid},
 		"leaders": ["angel"], "pet_levels": {"angel": 5}, "equipped": {},
 		"minions": {}, "loadouts": {}, "lane_assign": {},
@@ -44,15 +44,17 @@ func _snap(gid: String) -> Dictionary:
 	}
 
 
-## 把一份快照放进一个干净的池, 再问 pool_find 抽不抽得到它。
+## 把一份快照放进一个干净的池, 再问 pool_find_battles 抽不抽得到它。
+## ★2026-09-26: 查的是【场次 12】—— 与快照自报的 season_total_battles 一致。
+##   原来查的是「档 3」, 而档已删; 池子现在按场次分桶。
 ## 抽到 = 会打到它; null = 被跳过。
 func _matchable(snap: Dictionary, origin: String) -> bool:
-	var pool := {"brackets": {}}
+	var pool := {Backend.POOL_KEY: {}}
 	var s2 := snap.duplicate(true)
 	if origin != "":
 		s2[Backend.ORIGIN_KEY] = origin
 	Backend.pool_add(pool, s2)
-	return Backend.pool_find(pool, 3, [], RandomNumberGenerator.new()) != null
+	return Backend.pool_find_battles(pool, 12, [], RandomNumberGenerator.new()) != null
 
 
 func _ready() -> void:

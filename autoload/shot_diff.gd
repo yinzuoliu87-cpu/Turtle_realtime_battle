@@ -54,10 +54,10 @@ func _ready() -> void:
 			# V2 排行榜截图: 种 5 个样例 ghost 进池 (写盘; 用户 ghost 池本由对局生成, 此为 dev 截图)
 			GameState.season_eggs_killed = 12
 			var _rng2 := RandomNumberGenerator.new(); _rng2.seed = 7
-			var _pool := {"brackets": {}}
+			var _pool := {Backend.POOL_KEY: {}}
 			var _names := ["深海霸主", "龟界传说", "咸鱼翻身", "退役龟皇", "萌新龟龟"]
 			for _i in range(5):
-				var _b := Backend.make_bot(2, _rng2)
+				var _b := Backend.make_bot(4, _rng2)   # 4 = 总场次(原来是档2, 对应 3~4 场)
 				_b["profile"]["name"] = _names[_i]
 				_b["season_eggs_killed"] = 22 - _i * 4
 				Backend.pool_add(_pool, _b)

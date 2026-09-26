@@ -40,6 +40,7 @@ extends Node
 ##    ③ 单独看是恒真式（「挡住了」和「库里没东西」都返回空）—— 是 ④ 让它成立。
 
 const SB := preload("res://scripts/net/supabase.gd")
+const _P2P := preload("res://scripts/gamedata/phase2_config.gd")
 const BE := preload("res://scripts/net/backend.gd")
 const RP := preload("res://scripts/net/remote_pool.gd")
 
@@ -111,22 +112,36 @@ func _t_query() -> void:
 	var q := SB.opponents_query(1789948800, 5, "uid-me")
 	_chk("① ★分母: 三维齐全时确实拼出了查询串(否则下面全是空检查)", q != "", q)
 	_chk("① 周锚点进去了", q.contains("season_week=eq.1789948800"))
-	_chk("① ★★场次窗口是区间(只拉 N 会让人少的时候池子永远空)",
-		q.contains("battles=in.(4,5,6)"), q)
+	## ★★★2026-09-26 这一段整段翻正。上一版断言的是「窗口各格相对 N 的偏移之和 = 0」
+	##   (即上下对称 `(N-1, N, N+1)`), 而那条判据**是错的**:
+	##
+	##   D5(`docs/plans/20260916-大轮赛制v2周赛制.md:349`, 2026-09-16 拍板) 说的是
+	##   「硬条件是**双方总场次相同**(不再按 9 档)」, 用户 2026-09-26 复述:
+	##   「从始至终应该都是同场次的人开打…**不应该有什么正负一**」。
+	##   我 09-25 把用户那句「我的档是 5 场次的, 我要和 6 场次的人打? 这不合理啊」
+	##   读成了「窗口不对称」(于是去补下面那一格), 而他说的是「**不该有差**」。
+	##   ⇒ 那条对称判据**保证了**「5 场次打 6 场次」这件事不会被发现。
+	##
+	## ★★现在这个窗口的身份变了: 它是**纯预取**, 不再是任何匹配判据
+	##   (选靶那一侧只认完全相同, 见 `Backend.pool_find_battles`;
+	##    `tools/nine_bracket_audit.py` 专门守「find_opponent 里不许出现 span」)。
+	##   ⇒ 预取该往哪开就一目了然了: **我现在 N 场, 打完这局就是 N+1 场**
+	##     ⇒ 往前开是给下一局暖池子; 而 N-1 我**永远回不去**, 拉回来一条都匹配不上
+	##     ⇒ 往下开纯粹白占 PULL_LIMIT 的名额, 把真正有用的那一格挤掉。
+	_chk("① ★★场次窗口 = [N, N+AHEAD](只往前开; 往下开的那一格永远匹配不上)",
+		q.contains("battles=in.(5,6)"), q)
 
-	## ★★★这一条才是用户 2026-09-25 那句「我的档是 5 场次的, 我要和 6 场次的人打?
-	##   这不合理啊」的判据。窗口必须**以 N 为中心**。
-	##   ⚠ 只断言字面 "(4,5,6)" 守不住这个形状 —— 把窗口写成 (5,6,7) 也是三格宽、
-	##     也含 N, 而那正是原来那种「每个人都只碰到和自己一样多或比自己多打一场的」
-	##     偏心错(多打一场 = 多一轮升级 + 多一次装备 ⇒ 系统性偏向对手)。
-	##   ⇒ 量【窗口各格相对 N 的偏移之和】: 对称 ⟺ 和为 0。
+	## ★判据量【窗口相对 N 的两端】, 不是字面串 —— 只断言 "(5,6)" 挡不住把它
+	##   写成 (4,5) 这种同样两格宽、同样含 N 的形状。
+	var AHEAD: int = int(_P2P.PULL_BATTLES_AHEAD)
 	for nn in [3, 5, 9, 40]:
 		var ws := _battles_window(SB.opponents_query(1789948800, nn, "uid-me"))
-		var skew := 0
-		for w in ws:
-			skew += int(w) - nn
-		_chk("① ★★★N=%d 窗口上下对称(偏移和必须为 0, 实测 %d, 窗口 %s)" % [nn, skew, str(ws)],
-			ws.size() == 3 and skew == 0 and int(ws.min()) == nn - 1 and int(ws.max()) == nn + 1)
+		var lo_off: int = (int(ws[0]) - nn) if not ws.is_empty() else 999
+		var hi_off: int = (int(ws[ws.size() - 1]) - nn) if not ws.is_empty() else 999
+		_chk("① ★★★N=%d 窗口下界 == N(一格都不往下开; 实测偏移 %d, 窗口 %s)"
+			% [nn, lo_off, str(ws)], lo_off == 0, str(ws))
+		_chk("① ★★N=%d 窗口上界 == N+%d(预取下一局那一格; 实测偏移 %d)"
+			% [nn, AHEAD, hi_off], hi_off == AHEAD, str(ws))
 	## N=0(赛季第一场): 往下钳到 0。不许拼出 `battles=-1` —— PostgREST 会把它
 	## 当一个合法值算, 于是那一格恒查不到, 而**第一场是人人都要打的**。
 	var w0 := _battles_window(SB.opponents_query(1789948800, 0, "uid-me"))
@@ -253,8 +268,11 @@ func _t_real_entry() -> void:
 	## ★判据落在窗口的**中心**, 不是「11 出现在窗口里」—— 后者挡不住差一格:
 	##   要是它拿 12 去问, 窗口就是 (11,12,13), 照样"含 11"而实际问错了人。
 	var w4 := _battles_window(q)
-	_chk("④ ★★场次那一维 = 【选靶自己用的那个数】(窗口中心必须是 11, 实测 %s)" % str(w4),
-		w4.size() == 3 and int(w4[1]) == 11 and int(w4[0]) == 10 and int(w4[2]) == 12, q)
+	## ★★判据落在窗口的**下界**: 下界就是选靶自己用的那个数。
+	##   要是它拿 12 去问, 窗口变成 (12,13) ⇒ 下界 12 ≠ 11, 当场红。
+	##   (2026-09-26: 窗口从三格对称改成两格只往前, 所以这里量的是下界而不是中心。)
+	_chk("④ ★★场次那一维 = 【选靶自己用的那个数】(窗口下界必须是 11, 实测 %s)" % str(w4),
+		w4.size() == int(_P2P.PULL_BATTLES_AHEAD) + 1 and int(w4[0]) == 11, q)
 	_chk("④ 周锚点那一维取的是 week_anchor_ts(与上传同一口径)",
 		q.contains("season_week=eq.1789948800"), q)
 	_chk("④ 身份那一维取的是 account_id", q.contains("account_id=neq.uid-me-4"), q)

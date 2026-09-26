@@ -56,34 +56,34 @@ func _ready() -> void:
 	# ── ② schema 升版 + 老快照被丢掉 ────────────────────────────────────
 	_ok("★★② schema_ver 已升到 2", int(snap.get("schema_ver", 0)) == 2,
 		"实得 %d" % int(snap.get("schema_ver", 0)))
-	var pool := {"brackets": {"1": [
+	var pool := {Backend.POOL_KEY: {"1": [
 		{"ghost_id": "old_a", "schema_ver": 1},                    # 老的 → 该丢
 		{"ghost_id": "old_b"},                                     # 连字段都没有 → 该丢
 		{"ghost_id": "new_a", "schema_ver": Backend.SCHEMA_VER},   # 新的 → 该留
 	]}}
 	var dropped: int = Backend._drop_stale_schema(pool)
-	var left: Array = (pool["brackets"] as Dictionary)["1"]
+	var left: Array = (pool[Backend.POOL_KEY] as Dictionary)["1"]
 	_ok("★★★② 老版本快照【整批丢掉】(不做向后兼容)", dropped == 2 and left.size() == 1,
 		"丢 %d 条, 剩 %d 条" % [dropped, left.size()])
 	_ok("★★② 留下来的正是新版那条",
 		left.size() == 1 and str((left[0] as Dictionary).get("ghost_id", "")) == "new_a")
 	## ★反面分母: 全是新版时一条都不许丢(否则上一条可能只是"无差别清空")
-	var pool2 := {"brackets": {"1": [
+	var pool2 := {Backend.POOL_KEY: {"1": [
 		{"ghost_id": "n1", "schema_ver": Backend.SCHEMA_VER},
 		{"ghost_id": "n2", "schema_ver": Backend.SCHEMA_VER},
 	]}}
 	_ok("★★② 反面分母: 全新版 ⇒ 一条不丢(证明不是无差别清空)",
 		Backend._drop_stale_schema(pool2) == 0
-		and ((pool2["brackets"] as Dictionary)["1"] as Array).size() == 2)
+		and ((pool2[Backend.POOL_KEY] as Dictionary)["1"] as Array).size() == 2)
 
 	# ── ③ 内置种子队也升了版(否则一载入就被自己丢光) ──────────────────────
 	var seed_txt := FileAccess.get_file_as_string("res://data/ghost_seed.json")
 	var seed = JSON.parse_string(seed_txt)
 	var seed_n := 0
 	var seed_ok := 0
-	if seed is Dictionary and (seed as Dictionary).has("brackets"):
-		for b in ((seed as Dictionary)["brackets"] as Dictionary).keys():
-			for g in ((seed as Dictionary)["brackets"] as Dictionary)[b]:
+	if seed is Dictionary and (seed as Dictionary).has(Backend.POOL_KEY):
+		for b in ((seed as Dictionary)[Backend.POOL_KEY] as Dictionary).keys():
+			for g in ((seed as Dictionary)[Backend.POOL_KEY] as Dictionary)[b]:
 				seed_n += 1
 				if int((g as Dictionary).get("schema_ver", 0)) >= Backend.SCHEMA_VER:
 					seed_ok += 1
@@ -129,16 +129,17 @@ func _ready() -> void:
 		src_rb.find("Backend.player_ghost_id(int(gs.season_id), gs.season_leaders, int(gs.season_total_battles))") >= 0
 		and src_rb.find('var _gid := "g_%d" % int(gs.season_id)') < 0)
 	## ★真的会去重/不去重 —— 量 pool_add 自己的账, 不是数源码。
-	var pool_id := {"brackets": {}}
+	var pool_id := {Backend.POOL_KEY: {}}
 	var mk := func(gid: String) -> Dictionary:
-		return {"ghost_id": gid, "bracket": 3, "schema_ver": Backend.SCHEMA_VER,
+		## ★2026-09-26 分桶键从 `bracket` 换成 `season_total_battles`(档已删)
+		return {"ghost_id": gid, "season_total_battles": 3, "schema_ver": Backend.SCHEMA_VER,
 			"profile": {"name": "玩家阵容"}}
 	Backend.pool_add(pool_id, mk.call(id_a))
 	Backend.pool_add(pool_id, mk.call(id_b))
-	var n_two: int = ((pool_id["brackets"] as Dictionary).get("3", []) as Array).size()
+	var n_two: int = ((pool_id[Backend.POOL_KEY] as Dictionary).get("3", []) as Array).size()
 	_ok("★★★⑥ 两套【不同】阵容并存(录第二套不会顶掉第一套)", n_two == 2, "池里 %d 条" % n_two)
 	Backend.pool_add(pool_id, mk.call(id_c))   # 同一套(换了上场顺序)重打
-	var n_again: int = ((pool_id["brackets"] as Dictionary).get("3", []) as Array).size()
+	var n_again: int = ((pool_id[Backend.POOL_KEY] as Dictionary).get("3", []) as Array).size()
 	_ok("★★★⑥ 同一套重打仍是【一条】(更新不堆积, 守住 2026-07-18 那条修复)",
 		n_again == 2, "池里 %d 条" % n_again)
 

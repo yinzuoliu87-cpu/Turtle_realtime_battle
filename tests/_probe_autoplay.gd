@@ -69,8 +69,8 @@ func _ready() -> void:
 
 	var seed_pool: Dictionary = Backend._load_seed()   # 只读 res://, 不写盘
 	var seed_n := 0
-	for b in seed_pool.get("brackets", {}).keys():
-		seed_n += (seed_pool["brackets"][b] as Array).size()
+	for b in seed_pool.get(Backend.POOL_KEY, {}).keys():
+		seed_n += (seed_pool[Backend.POOL_KEY][b] as Array).size()
 	print("  种子池(只读 res://): %d 支队" % seed_n)
 	if seed_n == 0:
 		print("  [FAIL] 种子池空 —— 分母为 0, 后面全是空跑")
@@ -97,8 +97,9 @@ func _ready() -> void:
 
 ## 打一场, 返回是否真的跑到 done.
 func _one_match(gs, seed_pool: Dictionary, idx: int) -> bool:
-	var b: int = Backend.bracket_for_battles(int(gs.season_total_battles))
-	var ghost = Backend.pool_find_window(seed_pool, b - 1, b + 1, [], _rng)
+	## ★2026-09-26 同场次 → bot(与 `find_opponent` 同逻辑; 档与 ±1 窗口都已删)
+	var b: int = int(gs.season_total_battles)
+	var ghost = Backend.pool_find_battles(seed_pool, b, [], _rng)
 	var from_bot := false
 	if ghost == null:
 		ghost = Backend.make_bot(b, _rng)

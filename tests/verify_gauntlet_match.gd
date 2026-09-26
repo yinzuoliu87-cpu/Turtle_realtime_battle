@@ -77,11 +77,19 @@ func _t_query() -> void:
 	_ok("① 排除自己", q.find("account_id=neq.abc") >= 0, q)
 	_ok("① 限定本周", q.find("season_week=eq.1789344000") >= 0, q)
 
-	## ★★与积分赛那条**对照**: 那边是 in.(N-1, N, N+1) 允许差一场, 这边一格都不让。
-	##   这条对照就是「永不跨标签」的形状本身 —— 两条查询串长得一样才是出了问题。
+	## ★★与积分赛那条**对照**: 那边的查询串是 `battles=in.(N, N+1)`, 这边是 `gw/gl=eq.`。
+	##   ★★★2026-09-26 这条对照的**含义变了, 判据跟着变**:
+	##     以前 `in.(…)` 意味着「积分赛允许差一场」—— 那是 D5 之前的行为。
+	##     现在积分赛的**匹配**也是完全相同(D5), `in.(N, N+1)` 只剩
+	##     【预取下一局】这一个身份(见 `phase2_config.PULL_BATTLES_AHEAD` 头注)。
+	##   ⇒ 所以这里对照的不再是「两套匹配口径不同」, 而是
+	##     「**闯关赛连预取都不多拉**」—— 30 分钟新鲜度是过滤而不是排序,
+	##     多拉回来的隔夜快照一条都用不上。
 	var rq: String = SB.opponents_query(1789344000, 7, "abc")
-	_ok("① ★★分母: 积分赛那条**确实**是区间(证明两套口径真的不同)",
-		rq.find("battles=in.(6,7,8)") >= 0, rq)
+	_ok("① ★★分母: 积分赛那条的**预取**确实多拉一格(证明两条查询串真的不同)",
+		rq.find("battles=in.(7,8)") >= 0, rq)
+	_ok("① ★★积分赛预取**一格都不往下开**(往下那格永远匹配不上, 白占名额)",
+		rq.find("battles=in.(6,") < 0, rq)
 
 	## 入参不合法一律返回空串 —— 宁可不查, 也不要查出一池子别人的行
 	_ok("① 负数标签 → 空串", SB.gauntlet_query(1789344000, -1, 0, "abc") == "")
@@ -109,7 +117,7 @@ func _t_pool_pick(gs) -> void:
 	## ★★★2026-09-26: 池子改成**产品真正生产的那个形状**。
 	##
 	## 原来这里手写的是**扁平** `{ghost_id: snapshot}`, 而 `load_pool()` / `pool_add()`
-	## 生产的是 `{"_seed_ver": int, "brackets": {"档": [snapshot…]}}` ——
+	## 生产的是 `{"_seed_ver": int, "by_battles": {"场次": [snapshot…]}}` ——
 	## **那个扁平形状全仓没有任何地方会产生**。
 	## 后果: `gauntlet_pool_find` 里写的是 `for gid in pool.keys()`(读错了一层),
 	## 真实池子下 `cands` **恒为空** ⇒ 周六**每一场都是机器人**, 而这份门禁
@@ -138,8 +146,8 @@ func _t_pool_pick(gs) -> void:
 	## ★分母: 池子里确实同时有"同标签"和"别的格", 否则下面全是空检查
 	var same := 0
 	var other := 0
-	for b in (pool.get("brackets", {}) as Dictionary):
-		for g in ((pool["brackets"] as Dictionary)[b] as Array):
+	for b in (pool.get(BE.POOL_KEY, {}) as Dictionary):
+		for g in ((pool[BE.POOL_KEY] as Dictionary)[b] as Array):
 			if int((g as Dictionary).get("gl_w", -1)) == 3 and int((g as Dictionary).get("gl_l", -1)) == 1:
 				same += 1
 			else:
@@ -175,8 +183,8 @@ func _t_pool_pick(gs) -> void:
 	##   只验"超窗不选"是半条判据, 那样"永远不选任何东西"也能绿。
 	## ★按**真实结构**找到那一份再改 —— 扁平写法 `pool["x_old"]` 在真结构下是 null,
 	##   而 `null["gl_ts"] = …` 会直接炸(或者更糟: 改了个空气, 下面那条变恒假)。
-	for b2 in (pool.get("brackets", {}) as Dictionary):
-		for g4 in ((pool["brackets"] as Dictionary)[b2] as Array):
+	for b2 in (pool.get(BE.POOL_KEY, {}) as Dictionary):
+		for g4 in ((pool[BE.POOL_KEY] as Dictionary)[b2] as Array):
 			if str((g4 as Dictionary).get("ghost_id", "")) == "x_old":
 				(g4 as Dictionary)["gl_ts"] = int(Time.get_unix_time_from_system()) - 30
 	var seen_old := false

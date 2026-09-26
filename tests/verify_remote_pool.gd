@@ -42,7 +42,6 @@ func _good() -> Dictionary:
 		"schema_ver": Backend.SCHEMA_VER,
 		"ghost_id": "g_1_" + pid,
 		"is_bot": false,
-		"bracket": 3,
 		"profile": {"name": "玩家阵容", "avatar": pid, "id": "g_1_" + pid},
 		"leaders": [pid],
 		"pet_levels": {pid: 5},
@@ -97,10 +96,32 @@ func _ready() -> void:
 	_ok("★V3-c边界 等级 == 上限 %d 必须放行(挡住 off-by-one)" % P2.MAX_LEVEL,
 		bool(RemotePool.snapshot_valid(b3)["ok"]), str(RemotePool.snapshot_valid(b3)["reason"]))
 
+	## ★★★V3-d 新增(2026-09-26): `season_total_battles` 必须在册且非负。
+	##   这一维原来校验的是 `bracket` 在 0..8, 而**那道校验从来没有一条门禁**。
+	##   现在它比以前要紧: `Backend.pool_add` 按这个字段分桶, 缺了会被 `maxi(0, …)`
+	##   静默归到 "0" 桶 ⇒ 一条 20 场次的脏快照会变成【人生第一把玩家】的对手。
+	var f4a := _good()
+	f4a.erase("season_total_battles")
+	_ok("★V3-d 缺 season_total_battles → 拒(否则脏快照会落进场次0 桶)",
+		not bool(RemotePool.snapshot_valid(f4a)["ok"]),
+		str(RemotePool.snapshot_valid(f4a)["reason"]))
+	var f4b := _good()
+	f4b["season_total_battles"] = -1
+	_ok("★V3-d 负场次 → 拒", not bool(RemotePool.snapshot_valid(f4b)["ok"]),
+		str(RemotePool.snapshot_valid(f4b)["reason"]))
+	## ★边界: 0 场次必须【放行】—— 那是人生第一把, 是合法的最小值。
+	##   只验"负的拒"会把 `> 0` 写成 `>= 0` 的 off-by-one 放过, 而那会让
+	##   **所有新手的快照全被拒**(场次0 那一格从此永远没人)。
+	var f4c := _good()
+	f4c["season_total_battles"] = 0
+	_ok("★V3-d边界 场次 == 0 必须放行(人生第一把; 挡住 off-by-one)",
+		bool(RemotePool.snapshot_valid(f4c)["ok"]),
+		str(RemotePool.snapshot_valid(f4c)["reason"]))
+
 	# ────────── V4: schema_ver 不匹配丢弃 ──────────
 	var old_snap := _good()
 	old_snap["schema_ver"] = Backend.SCHEMA_VER - 1
-	var pool4 := {"brackets": {}}
+	var pool4 := {Backend.POOL_KEY: {}}
 	var st4 := RemotePool.ingest_remote(pool4, [old_snap, _good()])
 	_ok("★★V4 老 schema 的快照【不进本地池】(收 2 拒 1 入 1)",
 		int(st4["total"]) == 2 and int(st4["rejected"]) == 1 and int(st4["added"]) == 1,
@@ -108,7 +129,7 @@ func _ready() -> void:
 
 	# ────────── V2: A 传 → B 拉 → B 能匹配到 ──────────
 	## B 手机的池: 全新空池, 只有从"服务端"拉回来的那份。
-	var poolB := {"brackets": {}}
+	var poolB := {Backend.POOL_KEY: {}}
 	var from_a := _good()
 	from_a["ghost_id"] = "g_1_来自A手机"
 	## ★A 那份在 A 自己机器上是 origin=local(upload_ghost 盖的)。这里刻意带上它,
@@ -116,7 +137,8 @@ func _ready() -> void:
 	from_a[Backend.ORIGIN_KEY] = Backend.ORIGIN_LOCAL
 	var stB := RemotePool.ingest_remote(poolB, [from_a])
 	_ok("★分母: A 的快照进了 B 的池", int(stB["added"]) == 1, str(stB["reasons"]))
-	var got = Backend.pool_find(poolB, 3, [], RandomNumberGenerator.new())
+	## ★2026-09-26 查【场次 12】(= `_good()` 里 season_total_battles), 原来查的是「档 3」
+	var got = Backend.pool_find_battles(poolB, 12, [], RandomNumberGenerator.new())
 	_ok("★★②-b V2 B 能【匹配到】A 的阵容(需求原话)",
 		got != null and str((got as Dictionary).get("ghost_id", "")) == "g_1_来自A手机",
 		"实得 %s" % ("null —— 被 _is_self_ghost 当成自己跳过了" if got == null else str((got as Dictionary).get("ghost_id", ""))))
@@ -125,21 +147,21 @@ func _ready() -> void:
 		"origin=%s" % ("-" if got == null else str((got as Dictionary).get(Backend.ORIGIN_KEY, "缺"))))
 
 	## ★反面: 我【自己】传的那份仍然要被跳过(否则修好 V2 的代价是"能打到自己")。
-	var poolS := {"brackets": {}}
+	var poolS := {Backend.POOL_KEY: {}}
 	var mine := _good()
 	mine["ghost_id"] = "g_1_我自己"
 	mine[Backend.ORIGIN_KEY] = Backend.ORIGIN_LOCAL
 	Backend.pool_add(poolS, mine)
 	_ok("★★②-b反面: origin=local 的仍然被跳过(不会打到自己)",
-		Backend.pool_find(poolS, 3, [], RandomNumberGenerator.new()) == null)
+		Backend.pool_find_battles(poolS, 12, [], RandomNumberGenerator.new()) == null)
 	## ★老池子兼容: 2026-08-26 前存的没有 origin 字段, 靠名字仍判自己。
-	var poolO := {"brackets": {}}
+	var poolO := {Backend.POOL_KEY: {}}
 	var legacy := _good()
 	legacy["ghost_id"] = "g_1_老条目"
 	legacy.erase(Backend.ORIGIN_KEY)
 	Backend.pool_add(poolO, legacy)
 	_ok("★②-b兼容: 老条目(无 origin + 名为玩家阵容)仍判自己",
-		Backend.pool_find(poolO, 3, [], RandomNumberGenerator.new()) == null)
+		Backend.pool_find_battles(poolO, 12, [], RandomNumberGenerator.new()) == null)
 
 	# ────────── V1 / V5: 断网 ──────────
 	## ★★2026-08-27 起 `project.godot` 里【真的填了地址】(Deno Deploy 已部署),
@@ -198,7 +220,7 @@ func _ready() -> void:
 	var save_before := _read("user://save.json")
 	var pool_before := _read(Backend.POOL_PATH)
 	var fetched := {"done": false, "st": {}}
-	rp.fetch_bracket(3, func(st: Dictionary) -> void:
+	rp.fetch_ghosts(3, func(st: Dictionary) -> void:
 		fetched["done"] = true
 		fetched["st"] = st
 	)
@@ -247,7 +269,7 @@ func _done() -> void:
 # V6 ★★后端【连得上但返 5xx】也必须静默降级
 #
 #   ★由来(2026-08-30): 我去实测现用后端, 发现它**整个挂了** ——
-#     GET / 、/health 、/ghost?bracket=3 **全部 503**,
+#     GET / 、/health 、/ghost?battles=3 **全部 503**,
 #     正文是 "Deno Deploy encountered an error while processing this request."
 #     而上面 V1/V5 验的是【连不上】(指向不可达地址), **没有一条验过"连得上但 5xx"**。
 #     这两条是不同的代码路径: 连不上走 `RESULT_SUCCESS != result`,
@@ -275,7 +297,7 @@ func _t_v6_5xx(rp) -> void:
 	var pool_before := _read(Backend.POOL_PATH)
 	rp._upload_flash = false
 	var got := {"done": false, "st": {}}
-	rp.fetch_bracket(3, func(st: Dictionary) -> void:
+	rp.fetch_ghosts(3, func(st: Dictionary) -> void:
 		got["done"] = true
 		got["st"] = st
 	)

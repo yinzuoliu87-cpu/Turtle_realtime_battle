@@ -741,6 +741,7 @@ run_audit "tools/shield_duration_audit.py" "ALL OK" "shield_duration (通用护�
 run_audit "tools/vfx_discipline_audit.py" "ALL OK" "vfx_discipline (像素贴图不许连续缩放 / 不许新增手写生成器 / 新素材要有逐帧研究)"
 run_audit "tools/tween_freeze_audit.py" "ALL OK" "tween_freeze (战斗世界侧的演出 tween 必须走 _reg_tween·否则时停冻不住)"
 run_audit "tools/tween_capture_audit.py" "ALL OK" "tween_capture (演出 tween 的 lambda 捕获了可能被释放的节点·台账只减不增)"
+run_audit "tools/nine_bracket_audit.py" "ALL PASS" "nine_bracket (9 档进度档已彻底删除·匹配只认同场次·同名的周日对阵图不许误伤)"
 
 echo ""
 if [ "$FAIL" -eq 0 ]; then

@@ -368,13 +368,42 @@ def assets_only_via_dead_fields(dead_keys):
 
 
 # ══ ② data/*.json 字段消费者 ═══════════════════════════════════════════════════
+## ★★★2026-09-26: 跳过「键就是值」的字典 —— 它们不是 schema。
+##
+## 起因: `data/ghost_seed.json` 的对手池分桶键从【9 档】换成【总场次】
+## (`brackets` → `by_battles`, 见 docs/plans/20260926-删掉9档进度档.md) ⇒
+## 桶键从 "0".."8" 变成 "0".."35"。而本审计器**把每个 dict 键都当字段名**,
+## 再去代码里 grep 有没有人读它 ⇒ "13".."34" 这些数字在代码里当然搜不到
+## ⇒ **报出 20 个假孤儿**。
+##
+## ★这是模型问题不是数据问题: 分桶键是**数据的值**(场次 13 的那一格),
+##   不是字段名。以前没爆只是因为 "0".."8" 这些一位数在代码里到处都是,
+##   grep 恰好命中 —— 也就是说这条判据在旧结构下**一直是靠运气绿的**。
+## ★判据: dict 至少 3 个键、且**全是纯数字串** ⇒ 认定它是值索引表,
+##   键不登记为字段名, 但**照样递归进值里**(值里的字段该查还是要查)。
+## ★跳了多少要**打印出来**(CLAUDE.md: 无声跳过 = 假装覆盖全了)。
+VALUE_KEYED_MIN = 3
+_value_keyed_skipped = []
+
+
+def _is_value_keyed(d):
+    ks = list(d.keys())
+    if len(ks) < VALUE_KEYED_MIN:
+        return False
+    return all(str(k).lstrip("-").isdigit() for k in ks)
+
+
 def json_keys():
     """收集 data/*.json 的所有键名 + 它的路径签名(pets[].skills[].icon 这种)。"""
     keys = collections.defaultdict(set)     # leafname -> set(签名)
     def rec(o, sig, f):
         if isinstance(o, dict):
+            value_keyed = _is_value_keyed(o)
+            if value_keyed:
+                _value_keyed_skipped.append("%s:%s (%d 个数字键)" % (f, sig or "<root>", len(o)))
             for k, v in o.items():
-                keys[str(k)].add("%s:%s.%s" % (f, sig, k) if sig else "%s:%s" % (f, k))
+                if not value_keyed:
+                    keys[str(k)].add("%s:%s.%s" % (f, sig, k) if sig else "%s:%s" % (f, k))
                 rec(v, (sig + "." + str(k)) if sig else str(k), f)
         elif isinstance(o, list):
             for v in o[:200]:
@@ -552,6 +581,10 @@ def main():
             L.append("  %-34s  出现 %3d 处, 例: %s" % (k, nsig, "; ".join(sigs)))
         summary.append("json keys: N=%d  read-in-code=%d  lookup-id=%d  no-consumer=%d"
                        % (len(keys), len(read), len(lookup), len(unread)))
+        ## ★分母: 跳过的「值索引表」要报出来 —— 无声跳过就等于给自己开了个后门
+        summary.append("value-keyed maps skipped=%d  %s"
+                       % (len(_value_keyed_skipped),
+                          "; ".join(sorted(set(_value_keyed_skipped))[:6])))
 
         cross = assets_only_via_dead_fields({k for k, _, _ in unread})
         L.append("")

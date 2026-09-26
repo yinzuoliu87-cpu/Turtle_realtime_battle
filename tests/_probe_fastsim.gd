@@ -86,7 +86,8 @@ func _ready() -> void:
 	gs.get_dual_lineup()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20260728
-	var ghost = Backend.pool_find(Backend._load_seed(), 4, [], rng)
+	## ★2026-09-26: 参数从「档 4」变成「场次 4」(档已删, 种子池按场次分桶)
+	var ghost = Backend.pool_find_battles(Backend._load_seed(), 4, [], rng)
 	if ghost == null:
 		ghost = Backend.make_bot(4, rng)
 

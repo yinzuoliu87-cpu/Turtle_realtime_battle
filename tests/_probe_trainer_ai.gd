@@ -39,7 +39,7 @@ func _run(gs, ai_left: bool) -> Dictionary:
 	var seed_pool: Dictionary = Backend._load_seed()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 4242
-	var ghost = Backend.pool_find(seed_pool, 3, [], rng)
+	var ghost = Backend.pool_find_battles(seed_pool, 3, [], rng)   # ★场次 3(原来是档 3)
 	if ghost == null:
 		ghost = Backend.make_bot(3, rng)
 	gs.dual_ghost = ghost

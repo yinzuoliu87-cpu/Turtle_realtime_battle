@@ -32,61 +32,55 @@ const BUCKET_CAP := 300
 ## 匹配来源记账(A6·D10「每一场都记账」)。★让「有多少场是真·同场次」变成**可量的数** ——
 ##   A-R3 那条未决点(「精确同场次命中率多低算太低」)没有这个数就永远答不了。
 ## ★静态计数器, 进程内累计; 门禁与探针直接读它。不进存档(它是观测量不是玩法状态)。
-## ★★2026-09-25 档位名跟着回落链改了: 原来是 exact/bucket/bot, 中间那级是「同【格子】里
-##   随便一个」。现在中间拆成两级、判据都是**场次**: near = ±MATCH_BATTLES_SPAN(对称),
-##   below = 往下逐格找最近的(绝不往上)。留着旧的 bucket 键只会让报表继续恒为 0。
-static var match_src_counts: Dictionary = {"exact": 0, "near": 0, "below": 0, "bot": 0}
+## ★★2026-09-26 键跟着回落链收到两个(D5: 同场次 → bot)。沿革:
+##   · 原来 exact/bucket/bot —— bucket = 「同【格子】里随便一个」
+##   · 2026-09-25 拆成 exact/near/below/bot —— near = ±1、below = 往下逐格
+##   · 现在只有 exact/bot ——「正负一」和「往下找」都被 D5 删了
+##   ⇒ **留着已经不可能发生的键只会让报表恒为 0**, 而恒为 0 的格子看起来像"这条路没人走",
+##     跟"这条路不存在"是两回事。删掉才是诚实的。
+static var match_src_counts: Dictionary = {"exact": 0, "bot": 0,
+	## 周六闯关赛那条链单独记(见 `find_gauntlet_opponent`), 不与积分赛混在一起
+	"gauntlet_label": 0, "gauntlet_bot": 0}
 static func _tally(src: String) -> void:
 	match_src_counts[src] = int(match_src_counts.get(src, 0)) + 1
 const _P2 = preload("res://scripts/gamedata/phase2_config.gd")
 const _SkillChoice = preload("res://scripts/gamedata/skill_choice.gd")
 
-# ─── 进度档 (设计§十三): 总战斗数 → 匹配档 0-8. 低档窄(对齐槽断点)/高档宽(保池子有人) ───
-## ★2026-07-27 用户拍板: 档0 严格 = 【人生第一把】(total==0), 后面各档整体顺延一格。
-##   起因: 原来 total<=1 让档0 同时装下两种人 —— 打过 0 场的(一分钱没有·全裸) 和
-##   打过 1 场的(已逛过一次商店·约 6 件)。于是「档0 无装备」这条锚点与档0 的真实人口自相矛盾
-##   (队列模拟直接暴露: 档0 快照平均 7.5 件装备)。
-##   现在档0 只有真·第一把的人, 双方全裸 = 纯阵容/技能对决。各档宽度不变, 只是断点 -1。
-## ★2026-07-27 二次调整(用户选「微调B」): 把高档间距拉近, 让档7/8 变成【真有人到得了】的档位。
-##   起因(概率+实测双证): 8 条命 + 50% 胜率下, 打满 N 场的概率 = P(前 N-1 场里输 ≤7 次)。
-##   旧断点(档7=30场 / 档8=40场) 下 1000 个玩家里只有 4 人到档7、0 人到档8 ——
-##   档8 要约 28000 个玩家才期望出现 1 个, 而每档池子能装 50 支队。
-##   首轮 32 只队列实测印证: 最远只打到第 29 场, 档7/8 产出快照 0 条。
-##   新断点(档7=22场 / 档8=28场) → 1000 人里档7 有 95 人、档8 有 9.6 人, 池子填得起来。
-##   (备选: 轻=24/31 档8仅2.6人; 再近些=20/25 档8 32人。用户取中档。)
-static func bracket_for_battles(total: int) -> int:
-	if total <= 0: return 0
-	if total <= 2: return 1
-	if total <= 4: return 2
-	if total <= 7: return 3
-	if total <= 11: return 4
-	if total <= 16: return 5
-	if total <= 21: return 6
-	if total <= 27: return 7
-	return 8
+# ─── 进度档(9 格): **已彻底删除** (2026-09-26) ───
+## 删掉的是 `bracket_for_battles(total) -> 0..8` 与它的反函数 `battles_for_bracket`。
+## 上游 D5(`docs/plans/20260916-大轮赛制v2周赛制.md:349`) + 用户 2026-09-26
+## 「别再按9档, 给我彻底删掉」。方案书: `docs/plans/20260926-删掉9档进度档.md`。
+##
+## ★它同时是**两个东西**, 两个都没了:
+##   ① 匹配的尺子 —— 换成【总场次完全相同】(见 `find_opponent`)
+##   ② 池子的分桶索引 —— 换成直接按【场次】分桶(见 `pool_add`, 键 `by_battles`)
+## ★bot 强度原来靠 `2 + 档`, 换成量出来的 `_P2.bot_level_for_battles`。
+##
+## ⚠ **别把它加回来**, 哪怕只是当"池子的索引"。2026-09-25 就是这么留的:
+##   留着索引 ⇒ 选靶那一侧顺手拿它当尺子 ⇒ 5 场次的人打 7 场次的。
+##   同名但**无关**的 `scripts/gamedata/bracket.gd`(周日单败对阵图)不在此列, 一个字没动。
 
-## 某档"代表总战斗数"(给 bot 配槽位/等级; 取档上界). 大致反 bracket_for_battles.
-static func battles_for_bracket(bracket: int) -> int:
-	match bracket:      # 与 bracket_for_battles 互逆(取档上界); 2026-07-27 随「微调B」同步
-		0: return 0
-		1: return 2
-		2: return 4
-		3: return 7
-		4: return 11
-		5: return 16
-		6: return 21
-		7: return 27
-		_: return 33
+# ─── ghost 池 (内存 Dictionary, 结构 {by_battles:{"<场次>":[snapshot...]}}) ───
+## 池子的分桶字典在哪个键下。★写成常量而不是到处写字面量: 2026-09-26 换键名时,
+##   全仓有 18 处字面量 `"brackets"`, 其中闯关赛那一处**抄错了一层**整整三天没人发现
+##   (`for gid in pool.keys()` ⇒ 周六每场都是机器人)。一个常量 = 换名字时编译器帮着数。
+const POOL_KEY := "by_battles"
 
-# ─── ghost 池 (内存 Dictionary, 结构 {brackets:{"档":[snapshot...]}}) ───
-## 把 snapshot 加进对应档桶 (新的在前, 封顶挤旧).
+## 把 snapshot 加进它**自己那个场次**的桶 (新的在前, 封顶挤旧).
+##
+## ★★★2026-09-26 分桶键从「档 0..8」换成【场次】, 键名 `brackets` → `by_battles`。
+##   为什么连键名一起换: 旧名字是**谎**——桶里装的从来是"进度档", 而匹配要的是场次。
+##   名字不换, 下一个人(包括我自己)读到 `pool["brackets"]["3"]` 会以为 3 是档。
+## ★分桶键必须取 `season_total_battles`, **不许**再存一个 `bracket`/`battles` 镜像字段:
+##   同一个量存两份必然漂(这次就是漂的: 快照里的 `bracket` 与它的真场次是两回事)。
+## ★桶 = 场次 ⇒ `pool_find_battles` 直接 `by_battles[str(N)]` 一步命中, 不用遍历。
 static func pool_add(pool: Dictionary, snapshot: Dictionary) -> void:
-	if not pool.has("brackets"):
-		pool["brackets"] = {}
-	var b := str(int(snapshot.get("bracket", 0)))
-	if not pool["brackets"].has(b):
-		pool["brackets"][b] = []
-	var bucket: Array = pool["brackets"][b]
+	if not pool.has(POOL_KEY):
+		pool[POOL_KEY] = {}
+	var b := str(maxi(0, int(snapshot.get("season_total_battles", 0))))
+	if not pool[POOL_KEY].has(b):
+		pool[POOL_KEY][b] = []
+	var bucket: Array = pool[POOL_KEY][b]
 	## ★去重: 同 ghost_id 先删旧再入。
 	## ★★A6(2026-09-19) 这条注释的【含义变了】, 原文是
 	##   「同ghost_id(同一玩家阵容跨场重传)先删旧再入→池里一个逻辑对手=一条」——
@@ -148,82 +142,60 @@ static func _is_self_ghost(g) -> bool:
 	## 第三判据(老池子兼容): 2026-08-26 前存的没有 origin 字段, 而它们确实全是本机产的。
 	return str((d.get("profile", {}) as Dictionary).get("name", "")) == "玩家阵容"
 
-## 从池抽一个同档对手 (排除 exclude_ids). 桶空/全排除 → null (调用方 make_bot 兜底).
-## ★A6 新参数 `exact_battles`: >=0 时只要【场数完全相同】的那些, 一个都没有就返回 null
-##   (回落交给调用方 `find_opponent`, 那里要按 精确→同桶→bot 逐级记账)。
-## ★**必须带默认值** —— 本函数有 10 处调用(产品 1 / 门禁 5 / 探针 4), 不带默认值会一起炸。
-##   ⚠ 但带了默认值就意味着**老门禁全绿却一条新行为都没验到** ⇒ A6 自带新门禁
-##   `tests/verify_exact_match.gd`, 不靠"现有门禁没红"当作没问题。
-## ★★「倒序取最新」不需要时间戳字段: `pool_add` 用的是 `bucket.push_front(snapshot)`,
-##   **桶本身就是上传倒序(新的在前)** ⇒ 按桶序取第一个命中的, 就是最新那份。
-##   (我差点去给快照加一个 upload_ts 字段 —— 读了 pool_add 才发现现成的。)
-static func pool_find(pool: Dictionary, bracket: int, exclude_ids: Array, rng: RandomNumberGenerator,
-		exact_battles: int = -1):
-	var brackets: Dictionary = pool.get("brackets", {})
-	var b := str(bracket)
-	if not brackets.has(b):
-		return null
-	var candidates: Array = []
-	for g in brackets[b]:
-		if _is_self_ghost(g): continue
-		if not exclude_ids.has(str((g as Dictionary).get("ghost_id", ""))):
-			candidates.append(g)      # ★保持桶序 = 上传倒序
-	if candidates.is_empty():
-		return null
-	if exact_battles >= 0:
-		for g in candidates:
-			if int((g as Dictionary).get("season_total_battles", -1)) == exact_battles:
-				return g               # 桶序里第一个命中 = 同场次里最新的那份(D10)
-		return null
-	return candidates[rng.randi() % candidates.size()]
-
-## 从池里按【真实场次区间 [lo, hi]】抽一个对手(排除 exclude_ids)。没有就 null。
+## 从池里抽一个【总场次完全相同】的对手 (排除 exclude_ids). 没有 → null (调用方兜底 bot).
 ##
-## ★★为什么不能只看"我那一档"(2026-09-25): 区间两端会落在**不同的档**里
-##   —— 5 在档3, 4 在档2 ⇒ 只看档3 会把 N-1 整个漏掉, 而那正好是唯一能让窗口
-##   对称的那一格。所以先算出区间**涉及哪几个档**, 再按每条快照的真实
-##   `season_total_battles` 过滤。档在这里的角色只是"去哪几个桶里翻", 不是判据。
+## ★★★2026-09-26 这是选靶的**唯一**原语。它替掉了三个:
+##   · `pool_find(pool, bracket, …, exact_battles)` —— 入参是【档】, 场次只是个可选过滤
+##   · `pool_find_near(pool, lo, hi, …)`            —— 区间 = ±N 窗口, D5 不允许
+##   · `pool_find_window(pool, lo, hi, …)`          —— 同上, 而且是【档】区间
+##   三个并存的后果就是 2026-09-25 那次: 尺子有三把, 谁都能挑一把顺手的。
 ##
-## ★桶序 = 上传倒序(`pool_add` 用 `push_front`) ⇒ 同一格里先遇到的就是最新那份(D10)。
-##   多格合并时用 rng 随机取一个, 不偏向任何一格。
-static func pool_find_near(pool: Dictionary, lo: int, hi: int, exclude_ids: Array,
-		rng: RandomNumberGenerator):
-	if lo < 0 or hi < lo:
+## ★判据量的是**快照自己报的 `season_total_battles`**, 不是桶的键名。
+##   桶的键只用来一步定位(`pool_add` 保证两者一致), 但手造的池子/远端并入的脏数据
+##   可能把一条 7 场次的快照塞进 "5" 桶 ⇒ 那时必须以快照自己的账为准。
+##   (memory fb-gate-must-measure-requirement-not-my-hook: 量产品自己的账, 不量我的钩子。)
+##
+## ★★「取最新那份」不需要时间戳字段: `pool_add` 用 `bucket.push_front(snapshot)`,
+##   **桶本身就是上传倒序** ⇒ 桶序里第一个命中的就是最新那份(D10: 新鲜度是排序不是过滤)。
+##   ⇒ 所以这里**不随机**, 直接取第一个。`_rng` 留在签名里是给"同场次多人时要不要打散"
+##   这条未决点用的; 现在按 D10 取最新, 一个字都不随机。
+static func pool_find_battles(pool: Dictionary, battles: int, exclude_ids: Array,
+		_rng: RandomNumberGenerator):
+	if battles < 0:
 		return null
-	var brackets: Dictionary = pool.get("brackets", {})
-	var seen := {}
-	var cands: Array = []
-	for n in range(lo, hi + 1):
-		var b := str(bracket_for_battles(n))
-		if seen.has(b):
-			continue
-		seen[b] = true
-		if not brackets.has(b):
-			continue
-		for g in brackets[b]:
-			if _is_self_ghost(g):
-				continue
-			var gb := int((g as Dictionary).get("season_total_battles", -1))
-			if gb < lo or gb > hi:
-				continue
-			if exclude_ids.has(str((g as Dictionary).get("ghost_id", ""))):
-				continue
-			cands.append(g)
-	if cands.is_empty():
+	var buckets: Dictionary = pool.get(POOL_KEY, {})
+	var b := str(battles)
+	if not buckets.has(b):
 		return null
-	return cands[rng.randi() % cands.size()]
+	for g in buckets[b]:
+		if not (g is Dictionary):
+			continue
+		if _is_self_ghost(g):
+			continue
+		if int((g as Dictionary).get("season_total_battles", -1)) != battles:
+			continue                  # ★以快照自己的账为准, 不信桶的键名
+		if exclude_ids.has(str((g as Dictionary).get("ghost_id", ""))):
+			continue
+		return g                      # 桶序 = 上传倒序 ⇒ 第一个命中 = 最新(D10)
+	return null
 
 
 # ─── bot 生成 (池空/冷启动兜底 = 永久安全网, 设计§十三) ───
-## 按档配资源(槽位/等级)随机一支队. rng 决定随机 → 确定可测. is_bot=true.
-static func make_bot(bracket: int, rng: RandomNumberGenerator, real_battles: int = -1) -> Dictionary:
-	## ★★2026-09-25 `real_battles`: bot 快照里的 `season_total_battles` 原本一律取
-	##   `battles_for_bracket(bracket)` = 那一格的**上界** ⇒ 5 场次的玩家会看到一个
-	##   自称"7 场次"的对手。这个字段**不参与任何强度计算**(强度只看 bot_lv ＝ 2+格),
-	##   它纯粹是个标签 ⇒ 报上界只是个谎, 还让「对手场次绝不超我 +1」那条不变式量不了。
-	##   传 -1 = 老行为(给只有格子在手的探针留的)。
-	var battles := battles_for_bracket(bracket) if real_battles < 0 else real_battles
-	var bot_lv := clampi(2 + bracket, 1, 10)   # 档越高 bot 等级越高
+## 按【总场次】配资源(装备预算)随机一支队. rng 决定随机 → 确定可测. is_bot=true.
+##
+## ★★★2026-09-26 入参从**档**换成**场次**, 两处跟着变:
+##   ① `season_total_battles` 如实报入参 —— 原来报的是 `battles_for_bracket(档)` =
+##      **那一格的上界**, 于是 5 场次的玩家会看到一个自称"7 场次"的对手。
+##      匹配现在要求场次完全相同 ⇒ 这个字段**从标签变成了判据**, 报谎就等于跨场次匹配。
+##   ② 强度从 `2 + 档` 换成 `_P2.bot_level_for_battles(场次)`(量出来的, 见那边头注)。
+##      旧算法在**场次 0** 那格是错的: 给 bot 2 件装备, 而真人人生第一把是 0 件。
+##
+## ★bot 等级**唯一**的去处是装备预算。快照里的 `pet_levels` 虽然也写它, 但
+##   战斗侧读的是 `leaders / equipped / lane_assign / minions / loadouts` ——
+##   **没有一处读 ghost 的 `pet_levels`**(2026-09-26 grep 全仓确认, 只有
+##   `remote_pool.snapshot_valid` 检查它存在)。所以"bot 多强"= "bot 有几件装备"。
+static func make_bot(battles: int, rng: RandomNumberGenerator) -> Dictionary:
+	var bot_lv := _P2.bot_level_for_battles(battles)
 	# ★装备容量统一规则(2026-07-27): 与玩家同一套 —— 全队合计 team_equip_cap(等级), 单只 ≤ UNIT_EQUIP_CAP。
 	#   原来这里走 equip_slots_for_battles(每只固定N件) = 敌我两把尺子, 已废。
 	var budget := _P2.team_equip_cap(bot_lv)
@@ -269,9 +241,8 @@ static func make_bot(bracket: int, rng: RandomNumberGenerator, real_battles: int
 			(minions[lk] as Array).append(m)
 	return {
 		"schema_ver": SCHEMA_VER,
-		"ghost_id": "bot_%d_%d" % [bracket, rng.randi() % 1000000],
+		"ghost_id": "bot_%d_%d" % [battles, rng.randi() % 1000000],
 		"is_bot": true,
-		"bracket": bracket,
 		"profile": {"name": "海域守卫", "avatar": str(leaders[0]) if leaders.size() > 0 else "basic", "id": "BOT"},
 		"leaders": leaders,
 		"lane_assign": lane_assign,
@@ -307,9 +278,9 @@ static func leaderboard(pool: Dictionary, self_name: String, self_wins: int, sel
 		self_sweeps: int, limit: int) -> Array:
 	var rows: Array = [{"name": self_name, "wins": self_wins, "hearts": self_hearts,
 		"sweeps": self_sweeps, "is_self": true}]
-	var brackets: Dictionary = pool.get("brackets", {})
-	for b in brackets.keys():
-		for g in brackets[b]:
+	var buckets: Dictionary = pool.get(POOL_KEY, {})
+	for b in buckets.keys():
+		for g in buckets[b]:
 			var gd := g as Dictionary
 			## ★★★2026-09-26 两道筛, 都是拿真数据量出来要加的:
 			##
@@ -357,7 +328,7 @@ static func leaderboard(pool: Dictionary, self_name: String, self_wins: int, sel
 
 # ─── 文件 I/O (薄包装, user://ghost_pool.json) ───
 static func load_pool(path: String = POOL_PATH) -> Dictionary:
-	var pool: Dictionary = {"brackets": {}}
+	var pool: Dictionary = {POOL_KEY: {}}
 	if FileAccess.file_exists(path):
 		var f := FileAccess.open(path, FileAccess.READ)
 		if f != null:
@@ -365,11 +336,46 @@ static func load_pool(path: String = POOL_PATH) -> Dictionary:
 			var parsed = JSON.parse_string(txt)
 			if parsed is Dictionary:
 				pool = parsed
-	if not pool.has("brackets"):
-		pool["brackets"] = {}
+	_migrate_brackets_to_battles(pool)   # ★老存档是按【档】分桶的, 就地重分到【场次】
+	if not pool.has(POOL_KEY):
+		pool[POOL_KEY] = {}
 	_drop_stale_schema(pool)   # ★老版本快照整批丢掉(用户 2026-08-14 拍板 A: 不做向后兼容)
 	_ensure_seeded(pool)   # 冷启动/老档无种子 → 并入内置策划队(幂等, 已并过不重复); 下次 upload_ghost 落盘
 	return pool
+
+
+## 老存档迁移: `{"brackets": {"<档>": [...]}}` → `{"by_battles": {"<场次>": [...]}}`。
+##
+## ★★为什么做迁移而不是像 `_drop_stale_schema` 那样整批丢: 丢的理由一向是
+##   「缺字段 ⇒ 兼容就等于编一个假对手」。这次**一个字段都不缺** ——
+##   每条快照自己就带着 `season_total_battles`, 重分桶是**无损**的纯搬家。
+##   丢掉的话会连带丢掉玩家从 Supabase 拉回来的真人快照(要重新攒)。
+## ★幂等: 搬完删掉旧键 ⇒ 下次进来 `has("brackets")` 就是 false, 整个函数是 no-op。
+## ★搬多少要**打印**(CLAUDE.md: 无声上限 = 假装覆盖全了)。
+static func _migrate_brackets_to_battles(pool: Dictionary) -> int:
+	if not pool.has("brackets"):
+		return 0
+	var old = pool["brackets"]
+	pool.erase("brackets")
+	if not (old is Dictionary):
+		return 0
+	if not pool.has(POOL_KEY):
+		pool[POOL_KEY] = {}
+	var moved := 0
+	for b in (old as Dictionary).keys():
+		var arr = (old as Dictionary)[b]
+		if not (arr is Array):
+			continue
+		## ★倒着灌: `pool_add` 是 `push_front`, 顺着灌会把桶序(上传倒序)反过来,
+		##   而"取第一个 = 最新那份"整条 D10 都靠那个顺序。
+		var a: Array = arr as Array
+		for i in range(a.size() - 1, -1, -1):
+			if a[i] is Dictionary:
+				pool_add(pool, a[i] as Dictionary)
+				moved += 1
+	if moved > 0:
+		print("[Backend] 池子迁移: %d 条快照从【档】重分到【场次】桶(无损)" % moved)
+	return moved
 
 
 ## 丢掉 schema_ver < SCHEMA_VER 的快照。
@@ -379,17 +385,17 @@ static func load_pool(path: String = POOL_PATH) -> Dictionary:
 ##   那还是在编一个假的对手, 只是换了个假法。宁可池子空一阵。
 ## ★丢多少要【打印出来】, 不许静默(CLAUDE.md: 无声上限 = 假装覆盖全了)。
 static func _drop_stale_schema(pool: Dictionary) -> int:
-	var brackets: Dictionary = pool.get("brackets", {})
+	var buckets: Dictionary = pool.get(POOL_KEY, {})
 	var dropped := 0
-	for b in brackets.keys():
-		var arr: Array = brackets[b]
+	for b in buckets.keys():
+		var arr: Array = buckets[b]
 		var keep: Array = []
 		for g in arr:
 			if g is Dictionary and int((g as Dictionary).get("schema_ver", 0)) >= SCHEMA_VER:
 				keep.append(g)
 			else:
 				dropped += 1
-		brackets[b] = keep
+		buckets[b] = keep
 	if dropped > 0:
 		print("[Backend] 丢弃 %d 条老版本快照(schema < %d) —— 池子会先空一阵, 遇到的都是 bot" % [dropped, SCHEMA_VER])
 	return dropped
@@ -397,16 +403,21 @@ static func _drop_stale_schema(pool: Dictionary) -> int:
 ## 内置种子池 (res:// 只读, 导出包里也在). 解析失败=空.
 static func _load_seed() -> Dictionary:
 	if not FileAccess.file_exists(SEED_PATH):
-		return {"brackets": {}}
+		return {POOL_KEY: {}}
 	var f := FileAccess.open(SEED_PATH, FileAccess.READ)
 	if f == null:
-		return {"brackets": {}}
+		return {POOL_KEY: {}}
 	var parsed = JSON.parse_string(f.get_as_text()); f.close()
-	if parsed is Dictionary and (parsed as Dictionary).has("brackets"):
+	if parsed is Dictionary and (parsed as Dictionary).has(POOL_KEY):
 		return parsed
-	return {"brackets": {}}
+	return {POOL_KEY: {}}
 
-const SEED_VER := 12  # ★★2026-09-25 v12: 800 只全量重跑(12744 条候选→396 支), 两件事一起改:
+const SEED_VER := 13  # ★★2026-09-26 v13: **快照内容一条没变**(还是 v12 那 396 支),
+                      #   升版只为一件事: 种子文件的**分桶键**从「档」换成「场次」
+                      #   (`brackets` → `by_battles`, 见 `POOL_KEY` / 方案书
+                      #   `docs/plans/20260926-删掉9档进度档.md`)。
+                      #   老池里的 seed_ 是按档分的桶, 不升版就会与新键**并存两套**。
+                      # ★★2026-09-25 v12: 800 只全量重跑(12744 条候选→396 支), 两件事一起改:
                       #   ① **按【场次】挑, 不再按【档】挑**。v11 的 184 支只落在 **9 个场次**上
                       #      (0/1/3/5/8/12/17/22/28, 每档正好一个点) —— 那是 `cohort_to_seed`
                       #      「每档挑 20 条」的产物。而匹配的尺子 2026-09-25 换成了【场次 ±1】
@@ -438,25 +449,25 @@ const SEED_VER := 12  # ★★2026-09-25 v12: 800 只全量重跑(12744 条候�
 ## (玩家上传的真 ghost 保留)。
 ## 种子并入(版本化): 无seed_ 或 池版本<SEED_VER → 清旧seed_+并入新种子+落盘. 修真机bug"老池挡住新种子永不升级"(用户2026-07-15).
 static func _ensure_seeded(pool: Dictionary) -> void:
-	var brackets: Dictionary = pool.get("brackets", {})
+	var buckets: Dictionary = pool.get(POOL_KEY, {})
 	var have_seed := false
-	for b in brackets.keys():
-		for g in brackets[b]:
+	for b in buckets.keys():
+		for g in buckets[b]:
 			if str((g as Dictionary).get("ghost_id", "")).begins_with("seed_"):
 				have_seed = true
 				break
 		if have_seed: break
 	if have_seed and int(pool.get("_seed_ver", 0)) >= SEED_VER:
 		return
-	for b in brackets.keys():                       # 清旧版seed_(玩家真ghost保留)
+	for b in buckets.keys():                       # 清旧版seed_(玩家真ghost保留)
 		var keep: Array = []
-		for g in brackets[b]:
+		for g in buckets[b]:
 			if not str((g as Dictionary).get("ghost_id", "")).begins_with("seed_"):
 				keep.append(g)
-		brackets[b] = keep
+		buckets[b] = keep
 	var seed := _load_seed()
-	for b in seed.get("brackets", {}).keys():
-		for g in seed["brackets"][b]:
+	for b in seed.get(POOL_KEY, {}).keys():
+		for g in seed[POOL_KEY][b]:
 			pool_add(pool, g)
 	pool["_seed_ver"] = SEED_VER
 	save_pool(pool)                                 # 升级立即落盘(否则要等下次upload才存)
@@ -475,22 +486,6 @@ static func save_pool(pool: Dictionary, path: String = POOL_PATH) -> void:
 	f.store_string(JSON.stringify(pool, "  ")); f.close()
 
 # ─── 高层 orchestration (gameplay 调这俩) ───
-## 在 [lo,hi] 档窗口内汇总所有候选(排除exclude)随机抽一个. 空→null.
-static func pool_find_window(pool: Dictionary, lo: int, hi: int, exclude_ids: Array, rng: RandomNumberGenerator):
-	var brackets: Dictionary = pool.get("brackets", {})
-	var candidates: Array = []
-	for bi in range(maxi(0, lo), hi + 1):
-		var b := str(bi)
-		if not brackets.has(b):
-			continue
-		for g in brackets[b]:
-			if _is_self_ghost(g): continue   # 跳过自己上传的快照(防撞自己·新旧id一网打尽)
-			if not exclude_ids.has(str((g as Dictionary).get("ghost_id", ""))):
-				candidates.append(g)
-	if candidates.is_empty():
-		return null
-	return candidates[rng.randi() % candidates.size()]
-
 ## 匹配用的【单一受控 PRNG】(Riot 确定性做法: 一个隔离的、可种子化的随机源)。
 ## 默认 randomize() —— 与线上行为字节一致, 玩家侧永远随机。
 ## 仅当环境变量 TURTLE_SEED=<整数> 时改用固定种子 → 同种子必得同对手 → 测试/复现可确定。
@@ -504,83 +499,51 @@ static func make_match_rng() -> RandomNumberGenerator:
 		r.randomize()
 	return r
 
-## 抽对手: 按【场次】就近找 ghost, 没有就 bot. 永远返回一个可打的对手 (永久安全网).
+## 抽对手: 找一个【总场次完全相同】的 ghost, 没有就 bot. 永远返回一个可打的对手.
 ##
-## ★★★2026-09-25 入参从**粗格子**改成**场次**。用户原话:「不应该有这些东西啊粗格子:
-##   0 / 1-2 / 3-4 / 5-7 / 8-11 / 12-16 / 17-21 / 22-27 / 28+。你 5 场次在『5-7』」。
-##
-##   改之前这里有**两把尺子**, 而且是漂的:
-##     · 入参 `bracket` —— 唯一的产品调用点 `MatchmakingScene` 拿着场次
-##       `bracket_for_battles(season_total_battles)` 转手换成格子传进来, **把细的那维扔了**;
-##     · 函数体内又自己 `GameState.season_total_battles` 读一遍真场次给 ① 用。
-##   于是 ② 那一级拿粗格子选靶: 档3 里 5 场次的人会碰到 7 场次的, 档7 更宽(22~27, 六格)。
-##   ⇒ 现在只收场次这一个量, 格子退回它本来的身份: **池子的索引**(见 `pool_add`)。
-##
-## ★回落顺序(每级都记账 —— A-R3「精确同场次命中率多低算太低」没这个数就永远答不了):
+## ★★★回落只有两级 —— 这是 D5(`docs/plans/20260916-大轮赛制v2周赛制.md:349`)
+##   「硬条件是**双方总场次相同**(不再按 9 档)」+ 用户 2026-09-26「不应该有什么正负一」:
 ##     ① 场次完全相同
-##     ② ±MATCH_BATTLES_SPAN(**对称**, 与 `supabase.opponents_query` 同一个常量)
-##     ③ 往【下】逐格找最近的(N-2, N-3, … 0) —— **绝不往上**
-##     ④ 机器人
+##     ② 机器人
 ##
-## ★★③ 为什么只往下: 用户 2026-07-27「±1 这东西去掉」那条硬约束的**意图**是
-##   「绝不撞到明显更强的对手」——当时给的实测是 档0(自己 0 件装备) 撞档1 带 3 件、
-##   我方强度 43.0 撞 99.0(2.3 倍)、45.8 撞 118.6(2.6 倍)。
-##   那条约束当年只能用"格子"表达, 因为当时没有更细的尺子。
-##   现在用场次表达**同一个意图**, 而且严格更紧: 档7 里"同档"最多能让人往上碰 +5 场,
-##   新规则最多 +1 场。保护变强了, 不是放松了。
+## ★★★被删掉的两级, 连同它们当时的理由, 留在这里当路标:
+##   · ~~±MATCH_BATTLES_SPAN(对称)~~ —— 理由是「池子薄时只查等场次会查不到人」。
+##     那是**拉取**那一侧的理由, 我 2026-09-25 把它套到了选靶上。
+##   · ~~往【下】逐格找最近的(绝不往上)~~ —— 理由是 2026-07-27「绝不撞到明显更强的对手」。
+##     那条约束当年只能用"格子"表达, 因为没有更细的尺子; 现在尺子就是场次本身,
+##     「完全相同」比「只往下」更紧 ⇒ 那一级的意图**已经被 ① 完全覆盖**, 不是被放弃。
+##   ⇒ 供给不够的正解是**把池子做厚**(SEED_VER v12 按每个场次各 12 支重做), 不是放宽尺子。
+##     `match_src_counts` 里 exact 与 bot 的比例就是这条决定的账, 拿真数据说话。
+##
+## ★★★入参就是唯一的尺子。**不许在这里再读一遍 GameState** ——
+##   2026-09-25 我把签名从 `bracket` 改成 `battles` 却忘了改函数体里那一行,
+##   于是参数进来被无声无息地丢掉、照旧读全局 ⇒ 正是我声称刚消灭的"两把尺子"。
+##   抓到它的是 `verify_bracket_gear` 那条「窗口往上真的开着吗」(往上 0 次 / 往下 360 次),
+##   不是任何硬边界判据 —— 类型相同、名字没变、编译器不拦。
 static func find_opponent(battles: int, exclude_ids: Array, rng: RandomNumberGenerator) -> Dictionary:
 	var pool := load_pool()
-	## 格子只用来当**池子索引**和喂 bot, 不参与"该碰谁"的判断
-	var bracket := bracket_for_battles(battles)
-	## ★远端同步(方案书 §落地步骤 3): 顺手发一次拉取, 但**它给的是【下一局】的池子** ——
-	##   本局的对手就在下面几行用现在这个 pool 算出来, 一步都不等网络。
-	##   这是"离线不退化"这条硬指标的落点: 断网时这一行是 no-op, 下面照常跑。
+	## ★远端同步: 顺手发一次拉取, 但**它给的是【下一局】的池子** —— 本局的对手就在
+	##   下面几行用现在这个 pool 算出来, 一步都不等网络。这是"离线不退化"的落点:
+	##   断网时这两行是 no-op, 下面照常跑。
 	##   (verify_remote_pool 用真 HTTPRequest 打不可达地址量过: 匹配耗时 8ms ≪ 超时 6000ms。)
 	var RP = load("res://scripts/net/remote_pool.gd")
 	if RP != null:
-		RP.pull_async(bracket)
-	## ★★A6 回落顺序(D10): 精确同场次 → 同桶其它人 → 机器人, **每一级都记账**。
-	##   记账不是为了好看 —— A-R3「精确同场次命中率多低算太低」这条未决点,
-	##   没有这个数就永远答不了。
-	## ★★★入参就是唯一的尺子。**不许在这里再读一遍 GameState** ——
-	##   2026-09-25 我把签名从 `bracket` 改成 `battles` 却忘了改这一行,
-	##   于是参数进来被无声无息地丢掉、照旧读全局 ⇒ 正是我声称刚消灭的"两把尺子"。
-	##   `verify_bracket_gear` 那条「窗口往上真的开着吗」当场抓到(往上 0 次 / 往下 360 次):
-	##   门禁里 GameState.season_total_battles 恒为 0 ⇒ 每一抽都从 0 往下找。
-	##   ⇒ 判据里那条「上下都要真的开着」不是装饰, 它是**唯一**能发现这个的东西。
-	var my_battles := battles
-	## ★★D-4b(2026-09-21): 同一时刻也向 Supabase 拉一次【同周 + 同场次】的对手。
-	##   两条路**暂时并存**: 旧层走旧后端协议(`backend_url` 是空的 ⇒ 它是 no-op),
-	##   新层走 Supabase REST。同样是【填下一局】的池子, 一步不等网络。
-	## ★场次直接用下面选靶用的 `my_battles` **同一个变量** —— 不是两处各读一次。
+		RP.pull_async(battles)
+	## ★场次直接用选靶用的**同一个入参** —— 不是两处各读一次。
 	##   这是「传上去的和拉回来的对不上」那类静默 bug 唯一可靠的防法:
 	##   只要有一维取的不是同一个量, 池子就永远是空的而没任何报错。
 	var SB = load("res://scripts/net/supabase.gd")
 	if SB != null and GameState != null:
-		SB.pull_opponents_async(int(GameState.week_anchor_ts), my_battles,
+		SB.pull_opponents_async(int(GameState.week_anchor_ts), battles,
 			str(GameState.account_id))
 	## ① 场次完全相同
-	if my_battles >= 0:
-		var ge = pool_find_near(pool, my_battles, my_battles, exclude_ids, rng)
-		if ge != null:
-			_tally("exact")
-			return ge
-		## ② ±MATCH_BATTLES_SPAN, **对称** —— 与拉取那一侧同一个常量
-		var span: int = int(_P2.MATCH_BATTLES_SPAN)
-		var gn = pool_find_near(pool, maxi(0, my_battles - span), my_battles + span,
-			exclude_ids, rng)
-		if gn != null:
-			_tally("near")
-			return gn
-		## ③ 往【下】逐格找最近的一个 —— 绝不往上(见函数头注释)
-		for n in range(my_battles - span - 1, -1, -1):
-			var gd = pool_find_near(pool, n, n, exclude_ids, rng)
-			if gd != null:
-				_tally("below")
-				return gd
-	## ④ 机器人(永久安全网)
+	var ge = pool_find_battles(pool, battles, exclude_ids, rng)
+	if ge != null:
+		_tally("exact")
+		return ge
+	## ② 机器人(永久安全网)
 	_tally("bot")
-	return make_bot(bracket, rng, maxi(0, my_battles))
+	return make_bot(maxi(0, battles), rng)
 
 
 ## ★★E-A4(2026-09-22) 周六闯关赛的匹配 —— 与上面那条**是两套**, 不是加个参数。
@@ -616,7 +579,8 @@ static func find_gauntlet_opponent(gw: int, gl: int, exclude_ids: Array,
 	## ② 机器人(永久安全网)。★记成**另一个**计数, 不与积分赛的 bot 混在一起 ——
 	##    「周六有多少场是打机器人的」是 R2 那条风险唯一能回答的数字。
 	_tally("gauntlet_bot")
-	return make_bot(bracket_for_battles(gw + gl), rng)
+	## ★场次 = 胜 + 负 —— 周六每场只增一个, 所以标签本身就把场次算出来了, 不用另取。
+	return make_bot(gw + gl, rng)
 
 
 ## 周六打完一场 → 产出一份**带战绩标签**的快照, 入本地池并传云端。
@@ -769,17 +733,17 @@ static func gauntlet_pool_find(pool: Dictionary, gw: int, gl: int,
 	##     `brackets`(Dictionary) ⇒ **过了**类型检查, 但它没有 `gl_w` ⇒ 被标签检查跳过
 	##   ⇒ `cands` **恒为空** ⇒ 恒返回 null ⇒ 周六**每一场都是机器人**, 而且一声不吭。
 	##   同文件另外三处(`pool_find` / `pool_find_near` / `pool_find_window`)读的都是
-	##   `pool.get("brackets", {})` 再进数组 —— 只有闯关赛这一个抄错了形状。
+	##   `pool.get(POOL_KEY, {})` 再进数组 —— 只有闯关赛这一个抄错了形状。
 	## ★★门禁当时全绿, 因为 `verify_gauntlet_match` 手造的池子是**扁平** `{id: snap}` ——
 	##   那个形状 `load_pool()` / `pool_add()` **从来不生产**
 	##   (memory fb-gate-subject-never-constructed: 判据没错但被测对象不在场)。
 	## ★id 从快照自己的 `ghost_id` 取(池子里是数组, 没有外层键当 id 用了)。
 	var now: int = int(Time.get_unix_time_from_system())
-	var brackets: Dictionary = pool.get("brackets", {})
+	var buckets: Dictionary = pool.get(POOL_KEY, {})
 	var cands: Array = []
 	var by_id := {}
-	for b in brackets.keys():
-		for g in (brackets[b] as Array):
+	for b in buckets.keys():
+		for g in (buckets[b] as Array):
 			if not (g is Dictionary):
 				continue
 			var gid := str((g as Dictionary).get("ghost_id", ""))
@@ -936,7 +900,9 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 		"schema_ver": SCHEMA_VER,
 		"ghost_id": ghost_id,
 		"is_bot": false,
-		"bracket": bracket_for_battles(int(GameState.season_total_battles)),
+		## ★★★2026-09-26 原来这里有个 `"bracket": bracket_for_battles(…)` 字段, 已删。
+		##   它是 `season_total_battles`(就在下面几行)的**有损镜像** —— 同一个量存两份,
+		##   而分桶用镜像、匹配用原件 ⇒ 必然漂。现在只留原件, 分桶也读原件。
 		"profile": profile,
 		"leaders": leaders,
 		"lane_assign": lane_assign,

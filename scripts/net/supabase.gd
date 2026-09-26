@@ -600,22 +600,22 @@ static func opponents_query(season_week: int, battles: int, account_id: String) 
 	## 而快照本身已经带着它们。`order=uploaded_at.desc` 走的是 D-2 建好的
 	## 索引 `(season_week, battles, uploaded_at desc)`。
 	##
-	## ★★窗口必须**对称**(2026-09-25 用户:「我的档是 5 场次的, 我要和 6 场次的人打?
-	##   这不合理啊」)。原来是 `in.(N, N+1)` —— 往上开一格、往下不开, 于是**每个人
-	##   都只可能碰到和自己一样多或比自己多打过一场的**对手。多打一场 = 多一轮升级/
-	##   多一次装备, 所以那一格是**系统性地偏向对手**: 每个人一辈子都在打上风局的
-	##   对面, 没有一次是自己占那一格便宜。
-	##   ⇒ 改成上下各开 `MATCH_BATTLES_SPAN` 格: 池子还是够宽(人少时只查等场次会查不到人),
-	##   但期望差为 0。`maxi(0, ...)` 防 N 小时查出负场次 —— PostgREST 会把它当合法值算,
-	##   那一格恒查不到, 于是**第一场的池子被白占一格**。
+	## ★★★这个窗口是【预取】, **不是匹配判据**。区别是 2026-09-25 我栽的那个坑的全部:
+	##   那次我把窗口改成上下对称 ±1, 理由写的是「池子薄时只查等场次会查不到人」——
+	##   理由本身对(这是**拉取**这一侧的事), 但我顺手把同一个常量拿去给
+	##   `Backend.find_opponent()` **选靶**用了 ⇒ 5 场次的人照旧打 6 场次的,
+	##   而且我还把「窗口必须对称」焊成门禁, 等于**给错误上了锁**。
+	##   现在匹配只认【完全相同】(D5), 选靶那一侧**一个字都不读这里**。
 	##
-	## ★★窗口宽度取的是 `phase2_config.MATCH_BATTLES_SPAN` —— 与 `Backend.find_opponent()`
-	##   选靶那一侧**同一个常量**。两边各写一份必然漂(周日那条晋级线刚因为这个塌过:
-	##   客户端 4 / 服务端 5, 而 89 条全绿)。
-	var span: int = int(_P2S.MATCH_BATTLES_SPAN)
+	## ★★为什么只往前开(`battles .. battles + AHEAD`), 不往后开:
+	##   我现在 N 场, 打完这局就是 **N+1** 场 ⇒ 预取 N+1 是给下一局暖池子。
+	##   而 N-1 我**永远不会再回去**(场次只增不减), 拉回来的快照一条都匹配不上 ⇒
+	##   往下开纯粹白占 `PULL_LIMIT` 的名额, 把真正有用的那一格挤掉。
+	##   ⇒ 原来的 `in.(N, N+1)` 其实是对的; 我 09-25 改错的是它的**用途**, 不是它的形状。
+	var ahead: int = int(_P2S.PULL_BATTLES_AHEAD)
 	var vals: Array = []
-	for n in range(maxi(0, battles - span), battles + span + 1):
-		if not vals.has(n):
+	for n in range(battles, battles + ahead + 1):
+		if n >= 0 and not vals.has(n):
 			vals.append(n)
 	return ("season_week=eq.%d&battles=in.(%s)&account_id=neq.%s" \
 		+ "&select=snapshot&order=uploaded_at.desc&limit=%d") % [

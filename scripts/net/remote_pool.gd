@@ -90,9 +90,14 @@ static func snapshot_valid(snap) -> Dictionary:
 	##   放在客户端而不是服务端: 服务端一旦拒收, V2「传上去能拉回来」就没法验了。
 	if gid.begins_with(SMOKE_PREFIX):
 		return {"ok": false, "reason": "冒烟测试数据(%s…), 不入池" % SMOKE_PREFIX}
-	var br := int(d.get("bracket", -1))
-	if br < 0 or br > 8:
-		return {"ok": false, "reason": "bracket=%d 越界" % br}
+	## ★★★2026-09-26 这道校验原来查的是 `bracket` 在 0..8 之间。9 档已彻底删除
+	##   (方案书 `docs/plans/20260926-删掉9档进度档.md`), 而这一维**不能不校验** ——
+	##   `Backend.pool_add` 现在**按 `season_total_battles` 分桶**, 缺了/是负数的话
+	##   会被 `maxi(0, …)` 静默归到 "0" 桶, 于是一条 20 场次的脏快照会变成
+	##   **人生第一把玩家的对手**。校验放在入池前这一道, 比事后查桶靠谱。
+	var bn := int(d.get("season_total_battles", -1))
+	if bn < 0:
+		return {"ok": false, "reason": "season_total_battles=%s 缺失或为负" % str(d.get("season_total_battles", "缺"))}
 
 	var leaders = d.get("leaders", null)
 	if not (leaders is Array) or (leaders as Array).is_empty() or (leaders as Array).size() > 3:
@@ -225,13 +230,13 @@ static func push_async(snapshot: Dictionary) -> void:
 		rp.upload(snapshot)
 
 
-## 拉一档对手并池。**给【下一局】用** —— 本局的匹配早就用本地池算完了, 谁都不等它。
-static func pull_async(bracket: int) -> void:
+## 拉【同场次】对手并池。**给【下一局】用** —— 本局的匹配早就用本地池算完了, 谁都不等它。
+static func pull_async(battles: int) -> void:
 	if not enabled():
 		return
 	var rp = _spawn()
 	if rp != null:
-		rp.fetch_bracket(bracket)
+		rp.fetch_ghosts(battles)
 
 
 func _bye() -> void:
@@ -295,15 +300,18 @@ func upload(snapshot: Dictionary) -> void:
 	)
 
 
-## 拉一档对手并入本地池。**没有人 await 它**; 完成后自己存盘。
+## 拉【同场次】对手并入本地池。**没有人 await 它**; 完成后自己存盘。
 ## done 回调可选(门禁用), 参数是 ingest_remote 的统计。
-func fetch_bracket(bracket: int, done: Callable = Callable()) -> void:
+## ★★2026-09-26 查询参数从 `?bracket=` 改成 `?battles=`(9 档已删)。这一层走的是
+##   **旧后端协议**且 `backend_url` 是空的 ⇒ 现网无人应答, 改名零风险;
+##   留着 `bracket=` 的代价反而实在: 下一个接后端的人会照着它再造一套档。
+func fetch_ghosts(battles: int, done: Callable = Callable()) -> void:
 	if not enabled():
 		if done.is_valid():
 			done.call({"total": 0, "added": 0, "rejected": 0, "reasons": ["未配置后端"]})
 		_bye()
 		return
-	var url := "%s/ghosts?bracket=%d&limit=%d" % [base_url().rstrip("/"), bracket, FETCH_LIMIT]
+	var url := "%s/ghosts?battles=%d&limit=%d" % [base_url().rstrip("/"), battles, FETCH_LIMIT]
 	_http("GET", url, "", func(r: Dictionary) -> void:
 		var st := {"total": 0, "added": 0, "rejected": 0, "reasons": []}
 		if bool(r.get("ok", false)):

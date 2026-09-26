@@ -49,18 +49,18 @@ func _ready() -> void:
 
 	# ── A: 默认路径必须不写 ──
 	var snap := {"schema_ver": 1, "ghost_id": "probe_guard_should_never_land", "is_bot": true,
-		"bracket": 3, "profile": {"name": "守卫探针", "avatar": "basic", "id": "PRB"},
+		"profile": {"name": "守卫探针", "avatar": "basic", "id": "PRB"},
 		"leaders": ["basic"], "lane_assign": {"top": ["basic"], "bottom": []},
 		"minions": {}, "loadouts": {}, "equipped": {}, "pet_levels": {"basic": 1},
 		"season_total_battles": 8, "season_eggs_killed": 0}
 	# 直接调 save_pool(默认路径) —— 绕开 upload_ghost 里的 load_pool, 只测守卫本身
-	Backend.save_pool({"brackets": {"3": [snap]}})
+	Backend.save_pool({Backend.POOL_KEY: {"8": [snap]}})   # ★键 = 场次(snap 自报 8)
 	var after := _md5(REAL)
 	_ok("★A 默认路径 + test_mode → 玩家真实池【没被写】", after == before,
 		"before=%s after=%s" % [before.substr(0, 12), after.substr(0, 12)])
 
 	# ── B: 显式路径必须照写(证明守卫不是"什么都不写"的恒真) ──
-	Backend.save_pool({"brackets": {"3": [snap]}}, TMP)
+	Backend.save_pool({Backend.POOL_KEY: {"8": [snap]}}, TMP)
 	var tmp_exists := FileAccess.file_exists(TMP)
 	_ok("★B 显式路径 + test_mode → 照写不误(守卫非恒真·自举仿真能产池)", tmp_exists,
 		"写出=%s" % str(tmp_exists))

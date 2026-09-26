@@ -1,10 +1,9 @@
 {
- "_note": "ghost 种子池 v6 (2026-07-27) —— 【队列模拟产出的真实玩家快照】, 非人工配平。83 只机器人从 0 场 8 命起步互相打, 输光即淘汰; 每场开打前存下双方当时的真实家当。装备的费用/星级混搭是背包历史的自然结果(早期便宜货合成★3, 后期贵货还是★1), 不是按目标强度反推的。档0 = 人生第一把(双方全裸)。生成: tools/cohort_to_seed.py; 原料: tools/autoplay/cohort-snapshots.json。",
- "brackets": {
+ "_note": "ghost 种子池 v13 (2026-09-26) —— 分桶键从【9 档】换成【总场次】(brackets → by_battles), 快照内容与 v12 逐条相同。匹配硬条件 = 双方总场次完全相同(D5), 见 docs/plans/20260926-删掉9档进度档.md。每条快照的 bracket 字段已删(它是 season_total_battles 的有损镜像)。原 v12 说明: ",
+ "by_battles": {
   "0": [
    {
     "_strategy": "mix",
-    "bracket": 0,
     "equipped": {},
     "ghost_id": "seed_autoplay_coh_s0_3_b0",
     "is_bot": false,
@@ -66,7 +65,6 @@
    },
    {
     "_strategy": "dual_mid",
-    "bracket": 0,
     "equipped": {},
     "ghost_id": "seed_autoplay_coh_s0_10_b0",
     "is_bot": false,
@@ -130,7 +128,6 @@
    },
    {
     "_strategy": "line_top",
-    "bracket": 0,
     "equipped": {},
     "ghost_id": "seed_autoplay_coh_s0_41_b0",
     "is_bot": false,
@@ -192,7 +189,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 0,
     "equipped": {},
     "ghost_id": "seed_autoplay_coh_s0_26_b0",
     "is_bot": false,
@@ -254,7 +250,6 @@
    },
    {
     "_strategy": "snowball",
-    "bracket": 0,
     "equipped": {},
     "ghost_id": "seed_autoplay_coh_s0_23_b0",
     "is_bot": false,
@@ -316,7 +311,6 @@
    },
    {
     "_strategy": "minion_up",
-    "bracket": 0,
     "equipped": {},
     "ghost_id": "seed_autoplay_coh_s0_21_b0",
     "is_bot": false,
@@ -378,7 +372,6 @@
    },
    {
     "_strategy": "random",
-    "bracket": 0,
     "equipped": {},
     "ghost_id": "seed_autoplay_coh_s0_13_b0",
     "is_bot": false,
@@ -442,7 +435,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 0,
     "equipped": {},
     "ghost_id": "seed_autoplay_coh_s0_48_b0",
     "is_bot": false,
@@ -506,7 +498,6 @@
    },
    {
     "_strategy": "wide_syn",
-    "bracket": 0,
     "equipped": {},
     "ghost_id": "seed_autoplay_coh_s0_8_b0",
     "is_bot": false,
@@ -568,7 +559,6 @@
    },
    {
     "_strategy": "star_rush",
-    "bracket": 0,
     "equipped": {},
     "ghost_id": "seed_autoplay_coh_s0_20_b0",
     "is_bot": false,
@@ -632,7 +622,6 @@
    },
    {
     "_strategy": "fast_level",
-    "bracket": 0,
     "equipped": {},
     "ghost_id": "seed_autoplay_coh_s0_11_b0",
     "is_bot": false,
@@ -694,7 +683,6 @@
    },
    {
     "_strategy": "leader_all",
-    "bracket": 0,
     "equipped": {},
     "ghost_id": "seed_autoplay_coh_s0_44_b0",
     "is_bot": false,
@@ -760,7 +748,6 @@
   "1": [
    {
     "_strategy": "minion_up",
-    "bracket": 1,
     "equipped": {
      "hiding": [],
      "ninja": [],
@@ -844,7 +831,6 @@
    },
    {
     "_strategy": "dual_mid",
-    "bracket": 1,
     "equipped": {
      "hiding": [
       {
@@ -930,7 +916,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 1,
     "equipped": {
      "bubble": [],
      "diamond": [
@@ -1005,7 +990,6 @@
    },
    {
     "_strategy": "low_flood",
-    "bracket": 1,
     "equipped": {
      "angel": [],
      "crystal": [
@@ -1091,7 +1075,6 @@
    },
    {
     "_strategy": "wide_syn",
-    "bracket": 1,
     "equipped": {
      "bamboo": [
       {
@@ -1175,7 +1158,6 @@
    },
    {
     "_strategy": "fast_level",
-    "bracket": 1,
     "equipped": {
      "angel": [
       {
@@ -1252,7 +1234,6 @@
    },
    {
     "_strategy": "leader_all",
-    "bracket": 1,
     "equipped": {
      "diamond": [],
      "gambler": [
@@ -1329,7 +1310,6 @@
    },
    {
     "_strategy": "star_rush",
-    "bracket": 1,
     "equipped": {
      "chest": [
       {
@@ -1415,7 +1395,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 1,
     "equipped": {
      "basic": [
       {
@@ -1490,7 +1469,6 @@
    },
    {
     "_strategy": "snowball",
-    "bracket": 1,
     "equipped": {
      "diamond": [
       {
@@ -1574,7 +1552,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 1,
     "equipped": {
      "crystal": [],
      "cyber": [
@@ -1651,7 +1628,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 1,
     "equipped": {
      "dice": [
       {
@@ -1727,8 +1703,343 @@
     "chest_treasure_value": 0.0
    },
    {
+    "_strategy": "minion_up",
+    "equipped": {
+     "bubble": [],
+     "line": [],
+     "rainbow": []
+    },
+    "ghost_id": "seed_autoplay_coh_s2_24_b1",
+    "is_bot": false,
+    "lane_assign": {
+     "bottom": [],
+     "top": [
+      "bubble",
+      "rainbow",
+      "line"
+     ]
+    },
+    "leaders": [
+     "bubble",
+     "rainbow",
+     "line"
+    ],
+    "loadouts": {
+     "bubble": 1,
+     "line": 1,
+     "rainbow": 2
+    },
+    "minions": {
+     "bottom": [
+      {
+       "elite": true,
+       "equips": [
+        {
+         "id": "p2eq_058",
+         "star": 1
+        },
+        {
+         "id": "p2eq_088",
+         "star": 1
+        },
+        {
+         "id": "p2eq_028",
+         "star": 1
+        }
+       ],
+       "role": "back"
+      },
+      {
+       "elite": false,
+       "equips": [
+        {
+         "id": "p2eq_044",
+         "star": 1
+        }
+       ],
+       "role": "back"
+      },
+      {
+       "elite": false,
+       "equips": [],
+       "role": "back"
+      }
+     ],
+     "top": []
+    },
+    "pet_levels": {
+     "bubble": 1,
+     "line": 1,
+     "rainbow": 1
+    },
+    "profile": {
+     "avatar": "bubble",
+     "id": "COH2-24",
+     "name": "机器人24"
+    },
+    "schema_ver": 2,
+    "season_eggs_killed": 0,
+    "season_level": 3,
+    "season_total_battles": 1,
+    "trainer_skill": "hook",
+    "chest_treasures_won": [],
+    "chest_treasure_value": 0.0
+   },
+   {
+    "_strategy": "low_flood",
+    "equipped": {
+     "basic": [],
+     "bubble": [
+      {
+       "id": "p2eq_007",
+       "star": 1
+      }
+     ],
+     "lightning": [
+      {
+       "id": "p2eq_008",
+       "star": 1
+      },
+      {
+       "id": "p2eq_041",
+       "star": 1
+      },
+      {
+       "id": "p2eq_060",
+       "star": 1
+      }
+     ]
+    },
+    "ghost_id": "seed_autoplay_coh_s6_21_b1",
+    "is_bot": false,
+    "lane_assign": {
+     "bottom": [],
+     "top": [
+      "lightning",
+      "bubble",
+      "basic"
+     ]
+    },
+    "leaders": [
+     "lightning",
+     "bubble",
+     "basic"
+    ],
+    "loadouts": {
+     "basic": 1,
+     "bubble": 2,
+     "lightning": 1
+    },
+    "minions": {
+     "bottom": [
+      {
+       "elite": true,
+       "equips": [],
+       "role": "front"
+      },
+      {
+       "elite": false,
+       "equips": [],
+       "role": "back"
+      },
+      {
+       "elite": false,
+       "equips": [],
+       "role": "front"
+      }
+     ],
+     "top": []
+    },
+    "pet_levels": {
+     "basic": 1,
+     "bubble": 1,
+     "lightning": 1
+    },
+    "profile": {
+     "avatar": "lightning",
+     "id": "COH6-21",
+     "name": "机器人21"
+    },
+    "schema_ver": 2,
+    "season_eggs_killed": 0,
+    "season_level": 3,
+    "season_total_battles": 1,
+    "trainer_skill": "fury_potion",
+    "chest_treasures_won": [],
+    "chest_treasure_value": 0.0
+   },
+   {
     "_strategy": "star_rush",
-    "bracket": 1,
+    "equipped": {
+     "gambler": [
+      {
+       "id": "p2eq_002",
+       "star": 1
+      }
+     ],
+     "pirate": [],
+     "rainbow": [
+      {
+       "id": "p2eq_042",
+       "star": 1
+      },
+      {
+       "id": "p2eq_049",
+       "star": 1
+      },
+      {
+       "id": "p2eq_022",
+       "star": 1
+      }
+     ]
+    },
+    "ghost_id": "seed_autoplay_coh_s5_11_b1",
+    "is_bot": false,
+    "lane_assign": {
+     "bottom": [
+      "rainbow",
+      "gambler",
+      "pirate"
+     ],
+     "top": []
+    },
+    "leaders": [
+     "rainbow",
+     "gambler",
+     "pirate"
+    ],
+    "loadouts": {
+     "gambler": 3,
+     "pirate": 3,
+     "rainbow": 2
+    },
+    "minions": {
+     "bottom": [],
+     "top": [
+      {
+       "elite": true,
+       "equips": [],
+       "role": "back"
+      },
+      {
+       "elite": false,
+       "equips": [],
+       "role": "back"
+      },
+      {
+       "elite": false,
+       "equips": [],
+       "role": "front"
+      }
+     ]
+    },
+    "pet_levels": {
+     "gambler": 1,
+     "pirate": 1,
+     "rainbow": 1
+    },
+    "profile": {
+     "avatar": "rainbow",
+     "id": "COH5-11",
+     "name": "机器人11"
+    },
+    "schema_ver": 2,
+    "season_eggs_killed": 0,
+    "season_level": 3,
+    "season_total_battles": 1,
+    "trainer_skill": "glacier",
+    "chest_treasures_won": [],
+    "chest_treasure_value": 0.0
+   },
+   {
+    "_strategy": "dual_mid",
+    "equipped": {
+     "ghost": [],
+     "lightning": [
+      {
+       "id": "p2eq_001",
+       "star": 1
+      }
+     ],
+     "shell": [
+      {
+       "id": "p2eq_029",
+       "star": 1
+      },
+      {
+       "id": "p2eq_024",
+       "star": 1
+      },
+      {
+       "id": "p2eq_062",
+       "star": 1
+      }
+     ]
+    },
+    "ghost_id": "seed_autoplay_coh_s0_10_b1",
+    "is_bot": false,
+    "lane_assign": {
+     "bottom": [
+      "lightning",
+      "ghost"
+     ],
+     "top": [
+      "shell"
+     ]
+    },
+    "leaders": [
+     "shell",
+     "lightning",
+     "ghost"
+    ],
+    "loadouts": {
+     "ghost": 1,
+     "lightning": 1,
+     "shell": 2
+    },
+    "minions": {
+     "bottom": [
+      {
+       "elite": false,
+       "equips": [],
+       "role": "back"
+      }
+     ],
+     "top": [
+      {
+       "elite": false,
+       "equips": [],
+       "role": "front"
+      },
+      {
+       "elite": false,
+       "equips": [],
+       "role": "front"
+      }
+     ]
+    },
+    "pet_levels": {
+     "ghost": 1,
+     "lightning": 1,
+     "shell": 1
+    },
+    "profile": {
+     "avatar": "shell",
+     "id": "COH0-10",
+     "name": "机器人10"
+    },
+    "schema_ver": 2,
+    "season_eggs_killed": 0,
+    "season_level": 3,
+    "season_total_battles": 1,
+    "trainer_skill": "magic_stone",
+    "chest_treasures_won": [],
+    "chest_treasure_value": 0.0
+   }
+  ],
+  "2": [
+   {
+    "_strategy": "star_rush",
     "equipped": {
      "basic": [],
      "crystal": [
@@ -1814,7 +2125,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 1,
     "equipped": {
      "basic": [
       {
@@ -1898,7 +2208,6 @@
    },
    {
     "_strategy": "wide_syn",
-    "bracket": 1,
     "equipped": {
      "bubble": [],
      "lava": [
@@ -1982,7 +2291,6 @@
    },
    {
     "_strategy": "fast_level",
-    "bracket": 1,
     "equipped": {
      "ice": [
       {
@@ -2059,7 +2367,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 1,
     "equipped": {
      "dice": [
       {
@@ -2145,7 +2452,6 @@
    },
    {
     "_strategy": "minion_up",
-    "bracket": 1,
     "equipped": {
      "angel": [],
      "crystal": [],
@@ -2239,7 +2545,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 1,
     "equipped": {
      "dice": [
       {
@@ -2325,7 +2630,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 1,
     "equipped": {
      "diamond": [],
      "fortune": [
@@ -2419,7 +2723,6 @@
    },
    {
     "_strategy": "snowball",
-    "bracket": 1,
     "equipped": {
      "fortune": [
       {
@@ -2503,7 +2806,6 @@
    },
    {
     "_strategy": "low_flood",
-    "bracket": 1,
     "equipped": {
      "angel": [],
      "crystal": [
@@ -2597,7 +2899,6 @@
    },
    {
     "_strategy": "dual_mid",
-    "bracket": 1,
     "equipped": {
      "hiding": [
       {
@@ -2691,7 +2992,6 @@
    },
    {
     "_strategy": "line_top",
-    "bracket": 1,
     "equipped": {
      "hunter": [],
      "phoenix": [
@@ -2783,7 +3083,6 @@
    },
    {
     "_strategy": "random",
-    "bracket": 1,
     "equipped": {
      "ghost": [
       {
@@ -2872,350 +3171,11 @@
     "trainer_skill": "glacier",
     "chest_treasures_won": [],
     "chest_treasure_value": 0.0
-   },
-   {
-    "_strategy": "minion_up",
-    "bracket": 1,
-    "equipped": {
-     "bubble": [],
-     "line": [],
-     "rainbow": []
-    },
-    "ghost_id": "seed_autoplay_coh_s2_24_b1",
-    "is_bot": false,
-    "lane_assign": {
-     "bottom": [],
-     "top": [
-      "bubble",
-      "rainbow",
-      "line"
-     ]
-    },
-    "leaders": [
-     "bubble",
-     "rainbow",
-     "line"
-    ],
-    "loadouts": {
-     "bubble": 1,
-     "line": 1,
-     "rainbow": 2
-    },
-    "minions": {
-     "bottom": [
-      {
-       "elite": true,
-       "equips": [
-        {
-         "id": "p2eq_058",
-         "star": 1
-        },
-        {
-         "id": "p2eq_088",
-         "star": 1
-        },
-        {
-         "id": "p2eq_028",
-         "star": 1
-        }
-       ],
-       "role": "back"
-      },
-      {
-       "elite": false,
-       "equips": [
-        {
-         "id": "p2eq_044",
-         "star": 1
-        }
-       ],
-       "role": "back"
-      },
-      {
-       "elite": false,
-       "equips": [],
-       "role": "back"
-      }
-     ],
-     "top": []
-    },
-    "pet_levels": {
-     "bubble": 1,
-     "line": 1,
-     "rainbow": 1
-    },
-    "profile": {
-     "avatar": "bubble",
-     "id": "COH2-24",
-     "name": "机器人24"
-    },
-    "schema_ver": 2,
-    "season_eggs_killed": 0,
-    "season_level": 3,
-    "season_total_battles": 1,
-    "trainer_skill": "hook",
-    "chest_treasures_won": [],
-    "chest_treasure_value": 0.0
-   },
-   {
-    "_strategy": "low_flood",
-    "bracket": 1,
-    "equipped": {
-     "basic": [],
-     "bubble": [
-      {
-       "id": "p2eq_007",
-       "star": 1
-      }
-     ],
-     "lightning": [
-      {
-       "id": "p2eq_008",
-       "star": 1
-      },
-      {
-       "id": "p2eq_041",
-       "star": 1
-      },
-      {
-       "id": "p2eq_060",
-       "star": 1
-      }
-     ]
-    },
-    "ghost_id": "seed_autoplay_coh_s6_21_b1",
-    "is_bot": false,
-    "lane_assign": {
-     "bottom": [],
-     "top": [
-      "lightning",
-      "bubble",
-      "basic"
-     ]
-    },
-    "leaders": [
-     "lightning",
-     "bubble",
-     "basic"
-    ],
-    "loadouts": {
-     "basic": 1,
-     "bubble": 2,
-     "lightning": 1
-    },
-    "minions": {
-     "bottom": [
-      {
-       "elite": true,
-       "equips": [],
-       "role": "front"
-      },
-      {
-       "elite": false,
-       "equips": [],
-       "role": "back"
-      },
-      {
-       "elite": false,
-       "equips": [],
-       "role": "front"
-      }
-     ],
-     "top": []
-    },
-    "pet_levels": {
-     "basic": 1,
-     "bubble": 1,
-     "lightning": 1
-    },
-    "profile": {
-     "avatar": "lightning",
-     "id": "COH6-21",
-     "name": "机器人21"
-    },
-    "schema_ver": 2,
-    "season_eggs_killed": 0,
-    "season_level": 3,
-    "season_total_battles": 1,
-    "trainer_skill": "fury_potion",
-    "chest_treasures_won": [],
-    "chest_treasure_value": 0.0
-   },
-   {
-    "_strategy": "star_rush",
-    "bracket": 1,
-    "equipped": {
-     "gambler": [
-      {
-       "id": "p2eq_002",
-       "star": 1
-      }
-     ],
-     "pirate": [],
-     "rainbow": [
-      {
-       "id": "p2eq_042",
-       "star": 1
-      },
-      {
-       "id": "p2eq_049",
-       "star": 1
-      },
-      {
-       "id": "p2eq_022",
-       "star": 1
-      }
-     ]
-    },
-    "ghost_id": "seed_autoplay_coh_s5_11_b1",
-    "is_bot": false,
-    "lane_assign": {
-     "bottom": [
-      "rainbow",
-      "gambler",
-      "pirate"
-     ],
-     "top": []
-    },
-    "leaders": [
-     "rainbow",
-     "gambler",
-     "pirate"
-    ],
-    "loadouts": {
-     "gambler": 3,
-     "pirate": 3,
-     "rainbow": 2
-    },
-    "minions": {
-     "bottom": [],
-     "top": [
-      {
-       "elite": true,
-       "equips": [],
-       "role": "back"
-      },
-      {
-       "elite": false,
-       "equips": [],
-       "role": "back"
-      },
-      {
-       "elite": false,
-       "equips": [],
-       "role": "front"
-      }
-     ]
-    },
-    "pet_levels": {
-     "gambler": 1,
-     "pirate": 1,
-     "rainbow": 1
-    },
-    "profile": {
-     "avatar": "rainbow",
-     "id": "COH5-11",
-     "name": "机器人11"
-    },
-    "schema_ver": 2,
-    "season_eggs_killed": 0,
-    "season_level": 3,
-    "season_total_battles": 1,
-    "trainer_skill": "glacier",
-    "chest_treasures_won": [],
-    "chest_treasure_value": 0.0
-   },
-   {
-    "_strategy": "dual_mid",
-    "bracket": 1,
-    "equipped": {
-     "ghost": [],
-     "lightning": [
-      {
-       "id": "p2eq_001",
-       "star": 1
-      }
-     ],
-     "shell": [
-      {
-       "id": "p2eq_029",
-       "star": 1
-      },
-      {
-       "id": "p2eq_024",
-       "star": 1
-      },
-      {
-       "id": "p2eq_062",
-       "star": 1
-      }
-     ]
-    },
-    "ghost_id": "seed_autoplay_coh_s0_10_b1",
-    "is_bot": false,
-    "lane_assign": {
-     "bottom": [
-      "lightning",
-      "ghost"
-     ],
-     "top": [
-      "shell"
-     ]
-    },
-    "leaders": [
-     "shell",
-     "lightning",
-     "ghost"
-    ],
-    "loadouts": {
-     "ghost": 1,
-     "lightning": 1,
-     "shell": 2
-    },
-    "minions": {
-     "bottom": [
-      {
-       "elite": false,
-       "equips": [],
-       "role": "back"
-      }
-     ],
-     "top": [
-      {
-       "elite": false,
-       "equips": [],
-       "role": "front"
-      },
-      {
-       "elite": false,
-       "equips": [],
-       "role": "front"
-      }
-     ]
-    },
-    "pet_levels": {
-     "ghost": 1,
-     "lightning": 1,
-     "shell": 1
-    },
-    "profile": {
-     "avatar": "shell",
-     "id": "COH0-10",
-     "name": "机器人10"
-    },
-    "schema_ver": 2,
-    "season_eggs_killed": 0,
-    "season_level": 3,
-    "season_total_battles": 1,
-    "trainer_skill": "magic_stone",
-    "chest_treasures_won": [],
-    "chest_treasure_value": 0.0
    }
   ],
-  "2": [
+  "3": [
    {
     "_strategy": "line_top",
-    "bracket": 2,
     "equipped": {
      "hunter": [
       {
@@ -3316,7 +3276,6 @@
    },
    {
     "_strategy": "fast_level",
-    "bracket": 2,
     "equipped": {
      "ice": [
       {
@@ -3393,7 +3352,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 2,
     "equipped": {
      "diamond": [],
      "fortune": [
@@ -3487,7 +3445,6 @@
    },
    {
     "_strategy": "star_rush",
-    "bracket": 2,
     "equipped": {
      "angel": [
       {
@@ -3581,7 +3538,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 2,
     "equipped": {
      "bubble": [],
      "chest": [
@@ -3673,7 +3629,6 @@
    },
    {
     "_strategy": "minion_up",
-    "bracket": 2,
     "equipped": {
      "hiding": [],
      "ninja": [],
@@ -3765,7 +3720,6 @@
    },
    {
     "_strategy": "wide_syn",
-    "bracket": 2,
     "equipped": {
      "bamboo": [
       {
@@ -3859,7 +3813,6 @@
    },
    {
     "_strategy": "dual_mid",
-    "bracket": 2,
     "equipped": {
      "ghost": [
       {
@@ -3962,7 +3915,6 @@
    },
    {
     "_strategy": "low_flood",
-    "bracket": 2,
     "equipped": {
      "angel": [],
      "lava": [
@@ -4056,7 +4008,6 @@
    },
    {
     "_strategy": "snowball",
-    "bracket": 2,
     "equipped": {
      "fortune": [
       {
@@ -4148,7 +4099,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 2,
     "equipped": {
      "dice": [
       {
@@ -4242,7 +4192,6 @@
    },
    {
     "_strategy": "leader_all",
-    "bracket": 2,
     "equipped": {
      "cyber": [
       {
@@ -4333,10 +4282,11 @@
     "trainer_skill": "magic_stone",
     "chest_treasures_won": [],
     "chest_treasure_value": 0.0
-   },
+   }
+  ],
+  "4": [
    {
     "_strategy": "no_reroll",
-    "bracket": 2,
     "equipped": {
      "chest": [
       {
@@ -4430,7 +4380,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 2,
     "equipped": {
      "dice": [
       {
@@ -4524,7 +4473,6 @@
    },
    {
     "_strategy": "snowball",
-    "bracket": 2,
     "equipped": {
      "ghost": [
       {
@@ -4625,7 +4573,6 @@
    },
    {
     "_strategy": "dual_mid",
-    "bracket": 2,
     "equipped": {
      "basic": [
       {
@@ -4717,7 +4664,6 @@
    },
    {
     "_strategy": "minion_up",
-    "bracket": 2,
     "equipped": {
      "bamboo": [],
      "cyber": [],
@@ -4818,7 +4764,6 @@
    },
    {
     "_strategy": "star_rush",
-    "bracket": 2,
     "equipped": {
      "headless": [
       {
@@ -4919,7 +4864,6 @@
    },
    {
     "_strategy": "fast_level",
-    "bracket": 2,
     "equipped": {
      "angel": [
       {
@@ -5005,7 +4949,6 @@
    },
    {
     "_strategy": "random",
-    "bracket": 2,
     "equipped": {
      "bamboo": [
       {
@@ -5108,7 +5051,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 2,
     "equipped": {
      "dice": [
       {
@@ -5202,7 +5144,6 @@
    },
    {
     "_strategy": "leader_all",
-    "bracket": 2,
     "equipped": {
      "cyber": [
       {
@@ -5296,7 +5237,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 2,
     "equipped": {
      "diamond": [
       {
@@ -5399,7 +5339,6 @@
    },
    {
     "_strategy": "wide_syn",
-    "bracket": 2,
     "equipped": {
      "fortune": [
       {
@@ -5501,10 +5440,9 @@
     "chest_treasure_value": 0.0
    }
   ],
-  "3": [
+  "5": [
    {
     "_strategy": "hi_cost",
-    "bracket": 3,
     "equipped": {
      "basic": [
       {
@@ -5605,7 +5543,6 @@
    },
    {
     "_strategy": "fast_level",
-    "bracket": 3,
     "equipped": {
      "ice": [
       {
@@ -5691,7 +5628,6 @@
    },
    {
     "_strategy": "wide_syn",
-    "bracket": 3,
     "equipped": {
      "lava": [
       {
@@ -5794,7 +5730,6 @@
    },
    {
     "_strategy": "low_flood",
-    "bracket": 3,
     "equipped": {
      "angel": [
       {
@@ -5897,7 +5832,6 @@
    },
    {
     "_strategy": "snowball",
-    "bracket": 3,
     "equipped": {
      "diamond": [
       {
@@ -5998,7 +5932,6 @@
    },
    {
     "_strategy": "dual_mid",
-    "bracket": 3,
     "equipped": {
      "ghost": [
       {
@@ -6101,7 +6034,6 @@
    },
    {
     "_strategy": "random",
-    "bracket": 3,
     "equipped": {
      "bamboo": [
       {
@@ -6204,7 +6136,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 3,
     "equipped": {
      "crystal": [
       {
@@ -6298,7 +6229,6 @@
    },
    {
     "_strategy": "leader_all",
-    "bracket": 3,
     "equipped": {
      "cyber": [
       {
@@ -6401,7 +6331,6 @@
    },
    {
     "_strategy": "line_top",
-    "bracket": 3,
     "equipped": {
      "hunter": [
       {
@@ -6502,7 +6431,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 3,
     "equipped": {
      "chest": [
       {
@@ -6603,7 +6531,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 3,
     "equipped": {
      "basic": [
       {
@@ -6701,10 +6628,11 @@
     "trainer_skill": "fury_potion",
     "chest_treasures_won": [],
     "chest_treasure_value": 0.0
-   },
+   }
+  ],
+  "6": [
    {
     "_strategy": "snowball",
-    "bracket": 3,
     "equipped": {
      "ghost": [
       {
@@ -6805,7 +6733,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 3,
     "equipped": {
      "bubble": [
       {
@@ -6906,7 +6833,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 3,
     "equipped": {
      "basic": [
       {
@@ -7007,7 +6933,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 3,
     "equipped": {
      "dice": [
       {
@@ -7110,7 +7035,6 @@
    },
    {
     "_strategy": "wide_syn",
-    "bracket": 3,
     "equipped": {
      "fortune": [
       {
@@ -7222,7 +7146,6 @@
    },
    {
     "_strategy": "dual_mid",
-    "bracket": 3,
     "equipped": {
      "dice": [
       {
@@ -7316,7 +7239,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 3,
     "equipped": {
      "diamond": [
       {
@@ -7419,7 +7341,6 @@
    },
    {
     "_strategy": "star_rush",
-    "bracket": 3,
     "equipped": {
      "chest": [
       {
@@ -7531,7 +7452,6 @@
    },
    {
     "_strategy": "random",
-    "bracket": 3,
     "equipped": {
      "bamboo": [
       {
@@ -7634,7 +7554,6 @@
    },
    {
     "_strategy": "leader_all",
-    "bracket": 3,
     "equipped": {
      "cyber": [
       {
@@ -7737,7 +7656,6 @@
    },
    {
     "_strategy": "minion_up",
-    "bracket": 3,
     "equipped": {
      "angel": [],
      "fortune": [],
@@ -7840,7 +7758,6 @@
    },
    {
     "_strategy": "fast_level",
-    "bracket": 3,
     "equipped": {
      "angel": [
       {
@@ -7940,10 +7857,11 @@
     "trainer_skill": "fury_potion",
     "chest_treasures_won": [],
     "chest_treasure_value": 0.0
-   },
+   }
+  ],
+  "7": [
    {
     "_strategy": "minion_up",
-    "bracket": 3,
     "equipped": {
      "angel": [
       {
@@ -8055,7 +7973,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 3,
     "equipped": {
      "dice": [
       {
@@ -8158,7 +8075,6 @@
    },
    {
     "_strategy": "snowball",
-    "bracket": 3,
     "equipped": {
      "fortune": [
       {
@@ -8259,7 +8175,6 @@
    },
    {
     "_strategy": "star_rush",
-    "bracket": 3,
     "equipped": {
      "headless": [
       {
@@ -8369,7 +8284,6 @@
    },
    {
     "_strategy": "wide_syn",
-    "bracket": 3,
     "equipped": {
      "bubble": [
       {
@@ -8470,7 +8384,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 3,
     "equipped": {
      "chest": [
       {
@@ -8573,7 +8486,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 3,
     "equipped": {
      "dice": [
       {
@@ -8676,7 +8588,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 3,
     "equipped": {
      "fortune": [
       {
@@ -8779,7 +8690,6 @@
    },
    {
     "_strategy": "leader_all",
-    "bracket": 3,
     "equipped": {
      "basic": [
       {
@@ -8880,7 +8790,6 @@
    },
    {
     "_strategy": "fast_level",
-    "bracket": 3,
     "equipped": {
      "diamond": [
       {
@@ -8983,7 +8892,6 @@
    },
    {
     "_strategy": "low_flood",
-    "bracket": 3,
     "equipped": {
      "angel": [
       {
@@ -9086,7 +8994,6 @@
    },
    {
     "_strategy": "dual_mid",
-    "bracket": 3,
     "equipped": {
      "hiding": [
       {
@@ -9188,10 +9095,9 @@
     "chest_treasure_value": 0.0
    }
   ],
-  "4": [
+  "8": [
    {
     "_strategy": "fast_level",
-    "bracket": 4,
     "equipped": {
      "angel": [
       {
@@ -9292,7 +9198,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 4,
     "equipped": {
      "ice": [
       {
@@ -9393,7 +9298,6 @@
    },
    {
     "_strategy": "wide_syn",
-    "bracket": 4,
     "equipped": {
      "bubble": [
       {
@@ -9494,7 +9398,6 @@
    },
    {
     "_strategy": "snowball",
-    "bracket": 4,
     "equipped": {
      "diamond": [
       {
@@ -9604,7 +9507,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 4,
     "equipped": {
      "ice": [
       {
@@ -9716,7 +9618,6 @@
    },
    {
     "_strategy": "dual_mid",
-    "bracket": 4,
     "equipped": {
      "dice": [
       {
@@ -9819,7 +9720,6 @@
    },
    {
     "_strategy": "leader_all",
-    "bracket": 4,
     "equipped": {
      "diamond": [
       {
@@ -9922,7 +9822,6 @@
    },
    {
     "_strategy": "random",
-    "bracket": 4,
     "equipped": {
      "bamboo": [
       {
@@ -10034,7 +9933,6 @@
    },
    {
     "_strategy": "low_flood",
-    "bracket": 4,
     "equipped": {
      "angel": [
       {
@@ -10146,7 +10044,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 4,
     "equipped": {
      "bubble": [
       {
@@ -10247,7 +10144,6 @@
    },
    {
     "_strategy": "line_top",
-    "bracket": 4,
     "equipped": {
      "hunter": [
       {
@@ -10357,7 +10253,6 @@
    },
    {
     "_strategy": "minion_up",
-    "bracket": 4,
     "equipped": {
      "hiding": [],
      "ninja": [],
@@ -10455,10 +10350,11 @@
     "trainer_skill": "fury_potion",
     "chest_treasures_won": [],
     "chest_treasure_value": 0.0
-   },
+   }
+  ],
+  "9": [
    {
     "_strategy": "wide_syn",
-    "bracket": 4,
     "equipped": {
      "bubble": [
       {
@@ -10559,7 +10455,6 @@
    },
    {
     "_strategy": "snowball",
-    "bracket": 4,
     "equipped": {
      "basic": [
       {
@@ -10677,7 +10572,6 @@
    },
    {
     "_strategy": "fast_level",
-    "bracket": 4,
     "equipped": {
      "diamond": [
       {
@@ -10789,7 +10683,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 4,
     "equipped": {
      "basic": [
       {
@@ -10899,7 +10792,6 @@
    },
    {
     "_strategy": "leader_all",
-    "bracket": 4,
     "equipped": {
      "cyber": [
       {
@@ -11011,7 +10903,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 4,
     "equipped": {
      "basic": [
       {
@@ -11121,7 +11012,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 4,
     "equipped": {
      "dice": [
       {
@@ -11233,7 +11123,6 @@
    },
    {
     "_strategy": "dual_mid",
-    "bracket": 4,
     "equipped": {
      "ghost": [
       {
@@ -11345,7 +11234,6 @@
    },
    {
     "_strategy": "star_rush",
-    "bracket": 4,
     "equipped": {
      "chest": [
       {
@@ -11465,7 +11353,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 4,
     "equipped": {
      "diamond": [
       {
@@ -11577,7 +11464,6 @@
    },
    {
     "_strategy": "low_flood",
-    "bracket": 4,
     "equipped": {
      "angel": [
       {
@@ -11680,7 +11566,6 @@
    },
    {
     "_strategy": "line_top",
-    "bracket": 4,
     "equipped": {
      "hunter": [
       {
@@ -11795,10 +11680,11 @@
     "trainer_skill": "hook",
     "chest_treasures_won": [],
     "chest_treasure_value": 0.0
-   },
+   }
+  ],
+  "10": [
    {
     "_strategy": "dual_mid",
-    "bracket": 4,
     "equipped": {
      "basic": [
       {
@@ -11908,7 +11794,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 4,
     "equipped": {
      "dice": [
       {
@@ -12020,7 +11905,6 @@
    },
    {
     "_strategy": "snowball",
-    "bracket": 4,
     "equipped": {
      "ghost": [
       {
@@ -12130,7 +12014,6 @@
    },
    {
     "_strategy": "leader_all",
-    "bracket": 4,
     "equipped": {
      "basic": [
       {
@@ -12240,7 +12123,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 4,
     "equipped": {
      "basic": [
       {
@@ -12350,7 +12232,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 4,
     "equipped": {
      "chest": [
       {
@@ -12460,7 +12341,6 @@
    },
    {
     "_strategy": "fast_level",
-    "bracket": 4,
     "equipped": {
      "angel": [
       {
@@ -12572,7 +12452,6 @@
    },
    {
     "_strategy": "random",
-    "bracket": 4,
     "equipped": {
      "bamboo": [
       {
@@ -12684,7 +12563,6 @@
    },
    {
     "_strategy": "minion_up",
-    "bracket": 4,
     "equipped": {
      "bamboo": [],
      "cyber": [],
@@ -12794,7 +12672,6 @@
    },
    {
     "_strategy": "wide_syn",
-    "bracket": 4,
     "equipped": {
      "lava": [
       {
@@ -12914,7 +12791,6 @@
    },
    {
     "_strategy": "star_rush",
-    "bracket": 4,
     "equipped": {
      "bamboo": [
       {
@@ -13034,7 +12910,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 4,
     "equipped": {
      "fortune": [
       {
@@ -13143,10 +13018,11 @@
     "trainer_skill": "glacier",
     "chest_treasures_won": [],
     "chest_treasure_value": 0.0
-   },
+   }
+  ],
+  "11": [
    {
     "_strategy": "reroll_mad",
-    "bracket": 4,
     "equipped": {
      "crystal": [
       {
@@ -13249,7 +13125,6 @@
    },
    {
     "_strategy": "snowball",
-    "bracket": 4,
     "equipped": {
      "basic": [
       {
@@ -13367,7 +13242,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 4,
     "equipped": {
      "basic": [
       {
@@ -13477,7 +13351,6 @@
    },
    {
     "_strategy": "low_flood",
-    "bracket": 4,
     "equipped": {
      "cyber": [
       {
@@ -13578,7 +13451,6 @@
    },
    {
     "_strategy": "minion_up",
-    "bracket": 4,
     "equipped": {
      "bamboo": [],
      "cyber": [],
@@ -13688,7 +13560,6 @@
    },
    {
     "_strategy": "leader_all",
-    "bracket": 4,
     "equipped": {
      "basic": [
       {
@@ -13798,7 +13669,6 @@
    },
    {
     "_strategy": "wide_syn",
-    "bracket": 4,
     "equipped": {
      "fortune": [
       {
@@ -13918,7 +13788,6 @@
    },
    {
     "_strategy": "dual_mid",
-    "bracket": 4,
     "equipped": {
      "ghost": [
       {
@@ -14038,7 +13907,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 4,
     "equipped": {
      "chest": [
       {
@@ -14156,7 +14024,6 @@
    },
    {
     "_strategy": "fast_level",
-    "bracket": 4,
     "equipped": {
      "angel": [
       {
@@ -14268,7 +14135,6 @@
    },
    {
     "_strategy": "star_rush",
-    "bracket": 4,
     "equipped": {
      "angel": [
       {
@@ -14388,7 +14254,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 4,
     "equipped": {
      "basic": [
       {
@@ -14497,10 +14362,9 @@
     "chest_treasure_value": 0.0
    }
   ],
-  "5": [
+  "12": [
    {
     "_strategy": "hi_cost",
-    "bracket": 5,
     "equipped": {
      "ice": [
       {
@@ -14610,7 +14474,6 @@
    },
    {
     "_strategy": "dual_mid",
-    "bracket": 5,
     "equipped": {
      "dice": [
       {
@@ -14713,7 +14576,6 @@
    },
    {
     "_strategy": "star_rush",
-    "bracket": 5,
     "equipped": {
      "chest": [
       {
@@ -14833,7 +14695,6 @@
    },
    {
     "_strategy": "snowball",
-    "bracket": 5,
     "equipped": {
      "diamond": [
       {
@@ -14943,7 +14804,6 @@
    },
    {
     "_strategy": "fast_level",
-    "bracket": 5,
     "equipped": {
      "diamond": [
       {
@@ -15055,7 +14915,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 5,
     "equipped": {
      "chest": [
       {
@@ -15173,7 +15032,6 @@
    },
    {
     "_strategy": "low_flood",
-    "bracket": 5,
     "equipped": {
      "cyber": [
       {
@@ -15274,7 +15132,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 5,
     "equipped": {
      "diamond": [
       {
@@ -15386,7 +15243,6 @@
    },
    {
     "_strategy": "wide_syn",
-    "bracket": 5,
     "equipped": {
      "bubble": [
       {
@@ -15487,7 +15343,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 5,
     "equipped": {
      "basic": [
       {
@@ -15597,7 +15452,6 @@
    },
    {
     "_strategy": "minion_up",
-    "bracket": 5,
     "equipped": {
      "bamboo": [],
      "cyber": [],
@@ -15707,7 +15561,6 @@
    },
    {
     "_strategy": "line_top",
-    "bracket": 5,
     "equipped": {
      "hunter": [
       {
@@ -15822,10 +15675,11 @@
     "trainer_skill": "hook",
     "chest_treasures_won": [],
     "chest_treasure_value": 0.0
-   },
+   }
+  ],
+  "13": [
    {
     "_strategy": "snowball",
-    "bracket": 5,
     "equipped": {
      "diamond": [
       {
@@ -15943,7 +15797,6 @@
    },
    {
     "_strategy": "dual_mid",
-    "bracket": 5,
     "equipped": {
      "dice": [
       {
@@ -16055,7 +15908,6 @@
    },
    {
     "_strategy": "star_rush",
-    "bracket": 5,
     "equipped": {
      "angel": [
       {
@@ -16175,7 +16027,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 5,
     "equipped": {
      "basic": [
       {
@@ -16285,7 +16136,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 5,
     "equipped": {
      "ice": [
       {
@@ -16395,7 +16245,6 @@
    },
    {
     "_strategy": "wide_syn",
-    "bracket": 5,
     "equipped": {
      "bubble": [
       {
@@ -16505,7 +16354,6 @@
    },
    {
     "_strategy": "line_top",
-    "bracket": 5,
     "equipped": {
      "hunter": [
       {
@@ -16623,7 +16471,6 @@
    },
    {
     "_strategy": "leader_all",
-    "bracket": 5,
     "equipped": {
      "basic": [
       {
@@ -16741,7 +16588,6 @@
    },
    {
     "_strategy": "fast_level",
-    "bracket": 5,
     "equipped": {
      "diamond": [
       {
@@ -16861,7 +16707,6 @@
    },
    {
     "_strategy": "low_flood",
-    "bracket": 5,
     "equipped": {
      "cyber": [
       {
@@ -16971,7 +16816,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 5,
     "equipped": {
      "diamond": [
       {
@@ -17091,7 +16935,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 5,
     "equipped": {
      "chest": [
       {
@@ -17206,10 +17049,11 @@
     "trainer_skill": "glacier",
     "chest_treasures_won": [],
     "chest_treasure_value": 0.0
-   },
+   }
+  ],
+  "14": [
    {
     "_strategy": "star_rush",
-    "bracket": 5,
     "equipped": {
      "chest": [
       {
@@ -17329,7 +17173,6 @@
    },
    {
     "_strategy": "fast_level",
-    "bracket": 5,
     "equipped": {
      "diamond": [
       {
@@ -17449,7 +17292,6 @@
    },
    {
     "_strategy": "leader_all",
-    "bracket": 5,
     "equipped": {
      "cyber": [
       {
@@ -17569,7 +17411,6 @@
    },
    {
     "_strategy": "dual_mid",
-    "bracket": 5,
     "equipped": {
      "dice": [
       {
@@ -17681,7 +17522,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 5,
     "equipped": {
      "dice": [
       {
@@ -17801,7 +17641,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 5,
     "equipped": {
      "basic": [
       {
@@ -17919,7 +17758,6 @@
    },
    {
     "_strategy": "snowball",
-    "bracket": 5,
     "equipped": {
      "diamond": [
       {
@@ -18037,7 +17875,6 @@
    },
    {
     "_strategy": "wide_syn",
-    "bracket": 5,
     "equipped": {
      "bubble": [
       {
@@ -18147,7 +17984,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 5,
     "equipped": {
      "chest": [
       {
@@ -18265,7 +18101,6 @@
    },
    {
     "_strategy": "low_flood",
-    "bracket": 5,
     "equipped": {
      "cyber": [
       {
@@ -18375,7 +18210,6 @@
    },
    {
     "_strategy": "line_top",
-    "bracket": 5,
     "equipped": {
      "hunter": [
       {
@@ -18493,7 +18327,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 5,
     "equipped": {
      "crystal": [
       {
@@ -18602,10 +18435,11 @@
     "trainer_skill": "fury_potion",
     "chest_treasures_won": [],
     "chest_treasure_value": 0.0
-   },
+   }
+  ],
+  "15": [
    {
     "_strategy": "hi_cost",
-    "bracket": 5,
     "equipped": {
      "basic": [
       {
@@ -18723,7 +18557,6 @@
    },
    {
     "_strategy": "star_rush",
-    "bracket": 5,
     "equipped": {
      "headless": [
       {
@@ -18841,7 +18674,6 @@
    },
    {
     "_strategy": "line_top",
-    "bracket": 5,
     "equipped": {
      "hunter": [
       {
@@ -18968,7 +18800,6 @@
    },
    {
     "_strategy": "fast_level",
-    "bracket": 5,
     "equipped": {
      "angel": [
       {
@@ -19088,7 +18919,6 @@
    },
    {
     "_strategy": "snowball",
-    "bracket": 5,
     "equipped": {
      "basic": [
       {
@@ -19215,7 +19045,6 @@
    },
    {
     "_strategy": "leader_all",
-    "bracket": 5,
     "equipped": {
      "basic": [
       {
@@ -19333,7 +19162,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 5,
     "equipped": {
      "basic": [
       {
@@ -19451,7 +19279,6 @@
    },
    {
     "_strategy": "low_flood",
-    "bracket": 5,
     "equipped": {
      "cyber": [
       {
@@ -19561,7 +19388,6 @@
    },
    {
     "_strategy": "wide_syn",
-    "bracket": 5,
     "equipped": {
      "lava": [
       {
@@ -19690,7 +19516,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 5,
     "equipped": {
      "chest": [
       {
@@ -19808,7 +19633,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 5,
     "equipped": {
      "diamond": [
       {
@@ -19928,7 +19752,6 @@
    },
    {
     "_strategy": "random",
-    "bracket": 5,
     "equipped": {
      "angel": [
       {
@@ -20043,10 +19866,11 @@
     "trainer_skill": "hook",
     "chest_treasures_won": [],
     "chest_treasure_value": 0.0
-   },
+   }
+  ],
+  "16": [
    {
     "_strategy": "snowball",
-    "bracket": 5,
     "equipped": {
      "diamond": [
       {
@@ -20164,7 +19988,6 @@
    },
    {
     "_strategy": "wide_syn",
-    "bracket": 5,
     "equipped": {
      "lava": [
       {
@@ -20293,7 +20116,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 5,
     "equipped": {
      "basic": [
       {
@@ -20411,7 +20233,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 5,
     "equipped": {
      "ice": [
       {
@@ -20529,7 +20350,6 @@
    },
    {
     "_strategy": "star_rush",
-    "bracket": 5,
     "equipped": {
      "angel": [
       {
@@ -20658,7 +20478,6 @@
    },
    {
     "_strategy": "line_top",
-    "bracket": 5,
     "equipped": {
      "hunter": [
       {
@@ -20785,7 +20604,6 @@
    },
    {
     "_strategy": "leader_all",
-    "bracket": 5,
     "equipped": {
      "basic": [
       {
@@ -20903,7 +20721,6 @@
    },
    {
     "_strategy": "fast_level",
-    "bracket": 5,
     "equipped": {
      "diamond": [
       {
@@ -21023,7 +20840,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 5,
     "equipped": {
      "chest": [
       {
@@ -21150,7 +20966,6 @@
    },
    {
     "_strategy": "low_flood",
-    "bracket": 5,
     "equipped": {
      "cyber": [
       {
@@ -21260,7 +21075,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 5,
     "equipped": {
      "bubble": [
       {
@@ -21380,7 +21194,6 @@
    },
    {
     "_strategy": "random",
-    "bracket": 5,
     "equipped": {
      "angel": [
       {
@@ -21499,10 +21312,9 @@
     "chest_treasure_value": 0.0
    }
   ],
-  "6": [
+  "17": [
    {
     "_strategy": "star_rush",
-    "bracket": 6,
     "equipped": {
      "headless": [
       {
@@ -21629,7 +21441,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 6,
     "equipped": {
      "basic": [
       {
@@ -21747,7 +21558,6 @@
    },
    {
     "_strategy": "fast_level",
-    "bracket": 6,
     "equipped": {
      "angel": [
       {
@@ -21867,7 +21677,6 @@
    },
    {
     "_strategy": "leader_all",
-    "bracket": 6,
     "equipped": {
      "cyber": [
       {
@@ -21987,7 +21796,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 6,
     "equipped": {
      "bubble": [
       {
@@ -22105,7 +21913,6 @@
    },
    {
     "_strategy": "wide_syn",
-    "bracket": 6,
     "equipped": {
      "lava": [
       {
@@ -22234,7 +22041,6 @@
    },
    {
     "_strategy": "snowball",
-    "bracket": 6,
     "equipped": {
      "ghost": [
       {
@@ -22352,7 +22158,6 @@
    },
    {
     "_strategy": "line_top",
-    "bracket": 6,
     "equipped": {
      "hunter": [
       {
@@ -22479,7 +22284,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 6,
     "equipped": {
      "chest": [
       {
@@ -22606,7 +22410,6 @@
    },
    {
     "_strategy": "low_flood",
-    "bracket": 6,
     "equipped": {
      "cyber": [
       {
@@ -22716,7 +22519,6 @@
    },
    {
     "_strategy": "random",
-    "bracket": 6,
     "equipped": {
      "angel": [
       {
@@ -22843,7 +22645,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 6,
     "equipped": {
      "line": [
       {
@@ -22967,10 +22768,11 @@
     "trainer_skill": "glacier",
     "chest_treasures_won": [],
     "chest_treasure_value": 0.0
-   },
+   }
+  ],
+  "18": [
    {
     "_strategy": "star_rush",
-    "bracket": 6,
     "equipped": {
      "chest": [
       {
@@ -23099,7 +22901,6 @@
    },
    {
     "_strategy": "line_top",
-    "bracket": 6,
     "equipped": {
      "hunter": [
       {
@@ -23226,7 +23027,6 @@
    },
    {
     "_strategy": "leader_all",
-    "bracket": 6,
     "equipped": {
      "cyber": [
       {
@@ -23355,7 +23155,6 @@
    },
    {
     "_strategy": "fast_level",
-    "bracket": 6,
     "equipped": {
      "angel": [
       {
@@ -23475,7 +23274,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 6,
     "equipped": {
      "basic": [
       {
@@ -23593,7 +23391,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 6,
     "equipped": {
      "chest": [
       {
@@ -23720,7 +23517,6 @@
    },
    {
     "_strategy": "snowball",
-    "bracket": 6,
     "equipped": {
      "ghost": [
       {
@@ -23838,7 +23634,6 @@
    },
    {
     "_strategy": "wide_syn",
-    "bracket": 6,
     "equipped": {
      "lava": [
       {
@@ -23967,7 +23762,6 @@
    },
    {
     "_strategy": "low_flood",
-    "bracket": 6,
     "equipped": {
      "cyber": [
       {
@@ -24077,7 +23871,6 @@
    },
    {
     "_strategy": "random",
-    "bracket": 6,
     "equipped": {
      "angel": [
       {
@@ -24206,7 +23999,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 6,
     "equipped": {
      "bubble": [
       {
@@ -24326,7 +24118,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 6,
     "equipped": {
      "bubble": [
       {
@@ -24450,10 +24241,11 @@
     "trainer_skill": "glacier",
     "chest_treasures_won": [],
     "chest_treasure_value": 0.0
-   },
+   }
+  ],
+  "19": [
    {
     "_strategy": "hi_cost",
-    "bracket": 6,
     "equipped": {
      "ice": [
       {
@@ -24580,7 +24372,6 @@
    },
    {
     "_strategy": "star_rush",
-    "bracket": 6,
     "equipped": {
      "headless": [
       {
@@ -24707,7 +24498,6 @@
    },
    {
     "_strategy": "fast_level",
-    "bracket": 6,
     "equipped": {
      "angel": [
       {
@@ -24836,7 +24626,6 @@
    },
    {
     "_strategy": "snowball",
-    "bracket": 6,
     "equipped": {
      "diamond": [
       {
@@ -24954,7 +24743,6 @@
    },
    {
     "_strategy": "line_top",
-    "bracket": 6,
     "equipped": {
      "hunter": [
       {
@@ -25081,7 +24869,6 @@
    },
    {
     "_strategy": "wide_syn",
-    "bracket": 6,
     "equipped": {
      "lava": [
       {
@@ -25210,7 +24997,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 6,
     "equipped": {
      "chest": [
       {
@@ -25337,7 +25123,6 @@
    },
    {
     "_strategy": "leader_all",
-    "bracket": 6,
     "equipped": {
      "cyber": [
       {
@@ -25466,7 +25251,6 @@
    },
    {
     "_strategy": "low_flood",
-    "bracket": 6,
     "equipped": {
      "cyber": [
       {
@@ -25576,7 +25360,6 @@
    },
    {
     "_strategy": "random",
-    "bracket": 6,
     "equipped": {
      "angel": [
       {
@@ -25705,7 +25488,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 6,
     "equipped": {
      "line": [
       {
@@ -25832,7 +25614,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 6,
     "equipped": {
      "bubble": [
       {
@@ -25956,10 +25737,11 @@
     "trainer_skill": "glacier",
     "chest_treasures_won": [],
     "chest_treasure_value": 0.0
-   },
+   }
+  ],
+  "20": [
    {
     "_strategy": "star_rush",
-    "bracket": 6,
     "equipped": {
      "angel": [
       {
@@ -26097,7 +25879,6 @@
    },
    {
     "_strategy": "leader_all",
-    "bracket": 6,
     "equipped": {
      "cyber": [
       {
@@ -26226,7 +26007,6 @@
    },
    {
     "_strategy": "line_top",
-    "bracket": 6,
     "equipped": {
      "hunter": [
       {
@@ -26353,7 +26133,6 @@
    },
    {
     "_strategy": "snowball",
-    "bracket": 6,
     "equipped": {
      "diamond": [
       {
@@ -26480,7 +26259,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 6,
     "equipped": {
      "chest": [
       {
@@ -26607,7 +26385,6 @@
    },
    {
     "_strategy": "fast_level",
-    "bracket": 6,
     "equipped": {
      "angel": [
       {
@@ -26736,7 +26513,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 6,
     "equipped": {
      "ice": [
       {
@@ -26863,7 +26639,6 @@
    },
    {
     "_strategy": "random",
-    "bracket": 6,
     "equipped": {
      "angel": [
       {
@@ -26990,7 +26765,6 @@
    },
    {
     "_strategy": "low_flood",
-    "bracket": 6,
     "equipped": {
      "bubble": [
       {
@@ -27117,7 +26891,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 6,
     "equipped": {
      "line": [
       {
@@ -27244,7 +27017,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 6,
     "equipped": {
      "bubble": [
       {
@@ -27371,7 +27143,6 @@
    },
    {
     "_strategy": "minion_up",
-    "bracket": 6,
     "equipped": {
      "angel": [],
      "hunter": [
@@ -27497,10 +27268,11 @@
     "trainer_skill": "whistle",
     "chest_treasures_won": [],
     "chest_treasure_value": 0.0
-   },
+   }
+  ],
+  "21": [
    {
     "_strategy": "leader_all",
-    "bracket": 6,
     "equipped": {
      "cyber": [
       {
@@ -27629,7 +27401,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 6,
     "equipped": {
      "ice": [
       {
@@ -27756,7 +27527,6 @@
    },
    {
     "_strategy": "line_top",
-    "bracket": 6,
     "equipped": {
      "hunter": [
       {
@@ -27892,7 +27662,6 @@
    },
    {
     "_strategy": "snowball",
-    "bracket": 6,
     "equipped": {
      "diamond": [
       {
@@ -28019,7 +27788,6 @@
    },
    {
     "_strategy": "star_rush",
-    "bracket": 6,
     "equipped": {
      "angel": [
       {
@@ -28157,7 +27925,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 6,
     "equipped": {
      "chest": [
       {
@@ -28284,7 +28051,6 @@
    },
    {
     "_strategy": "low_flood",
-    "bracket": 6,
     "equipped": {
      "bubble": [
       {
@@ -28420,7 +28186,6 @@
    },
    {
     "_strategy": "random",
-    "bracket": 6,
     "equipped": {
      "angel": [
       {
@@ -28549,7 +28314,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 6,
     "equipped": {
      "line": [
       {
@@ -28685,7 +28449,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 6,
     "equipped": {
      "bubble": [
       {
@@ -28821,7 +28584,6 @@
    },
    {
     "_strategy": "minion_up",
-    "bracket": 6,
     "equipped": {
      "angel": [
       {
@@ -28959,7 +28721,6 @@
    },
    {
     "_strategy": "dual_mid",
-    "bracket": 6,
     "equipped": {
      "candy": [
       {
@@ -29087,10 +28848,9 @@
     "chest_treasure_value": 0.0
    }
   ],
-  "7": [
+  "22": [
    {
     "_strategy": "leader_all",
-    "bracket": 7,
     "equipped": {
      "cyber": [
       {
@@ -29219,7 +28979,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 7,
     "equipped": {
      "chest": [
       {
@@ -29355,7 +29114,6 @@
    },
    {
     "_strategy": "snowball",
-    "bracket": 7,
     "equipped": {
      "diamond": [
       {
@@ -29482,7 +29240,6 @@
    },
    {
     "_strategy": "line_top",
-    "bracket": 7,
     "equipped": {
      "hunter": [
       {
@@ -29618,7 +29375,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 7,
     "equipped": {
      "ice": [
       {
@@ -29745,7 +29501,6 @@
    },
    {
     "_strategy": "star_rush",
-    "bracket": 7,
     "equipped": {
      "headless": [
       {
@@ -29881,7 +29636,6 @@
    },
    {
     "_strategy": "low_flood",
-    "bracket": 7,
     "equipped": {
      "bubble": [
       {
@@ -30017,7 +29771,6 @@
    },
    {
     "_strategy": "random",
-    "bracket": 7,
     "equipped": {
      "angel": [
       {
@@ -30144,7 +29897,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 7,
     "equipped": {
      "line": [
       {
@@ -30280,7 +30032,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 7,
     "equipped": {
      "bubble": [
       {
@@ -30416,7 +30167,6 @@
    },
    {
     "_strategy": "minion_up",
-    "bracket": 7,
     "equipped": {
      "angel": [
       {
@@ -30554,7 +30304,6 @@
    },
    {
     "_strategy": "dual_mid",
-    "bracket": 7,
     "equipped": {
      "candy": [
       {
@@ -30680,10 +30429,11 @@
     "trainer_skill": "magic_stone",
     "chest_treasures_won": [],
     "chest_treasure_value": 0.0
-   },
+   }
+  ],
+  "23": [
    {
     "_strategy": "line_top",
-    "bracket": 7,
     "equipped": {
      "hunter": [
       {
@@ -30819,7 +30569,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 7,
     "equipped": {
      "ice": [
       {
@@ -30946,7 +30695,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 7,
     "equipped": {
      "chest": [
       {
@@ -31082,7 +30830,6 @@
    },
    {
     "_strategy": "star_rush",
-    "bracket": 7,
     "equipped": {
      "headless": [
       {
@@ -31218,7 +30965,6 @@
    },
    {
     "_strategy": "low_flood",
-    "bracket": 7,
     "equipped": {
      "bubble": [
       {
@@ -31354,7 +31100,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 7,
     "equipped": {
      "line": [
       {
@@ -31490,7 +31235,6 @@
    },
    {
     "_strategy": "random",
-    "bracket": 7,
     "equipped": {
      "angel": [
       {
@@ -31626,7 +31370,6 @@
    },
    {
     "_strategy": "snowball",
-    "bracket": 7,
     "equipped": {
      "ghost": [
       {
@@ -31753,7 +31496,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 7,
     "equipped": {
      "bubble": [
       {
@@ -31889,7 +31631,6 @@
    },
    {
     "_strategy": "minion_up",
-    "bracket": 7,
     "equipped": {
      "angel": [
       {
@@ -32027,7 +31768,6 @@
    },
    {
     "_strategy": "leader_all",
-    "bracket": 7,
     "equipped": {
      "line": [
       {
@@ -32154,7 +31894,6 @@
    },
    {
     "_strategy": "dual_mid",
-    "bracket": 7,
     "equipped": {
      "candy": [
       {
@@ -32280,10 +32019,11 @@
     "trainer_skill": "magic_stone",
     "chest_treasures_won": [],
     "chest_treasure_value": 0.0
-   },
+   }
+  ],
+  "24": [
    {
     "_strategy": "line_top",
-    "bracket": 7,
     "equipped": {
      "hunter": [
       {
@@ -32419,7 +32159,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 7,
     "equipped": {
      "ice": [
       {
@@ -32546,7 +32285,6 @@
    },
    {
     "_strategy": "random",
-    "bracket": 7,
     "equipped": {
      "angel": [
       {
@@ -32682,7 +32420,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 7,
     "equipped": {
      "line": [
       {
@@ -32818,7 +32555,6 @@
    },
    {
     "_strategy": "low_flood",
-    "bracket": 7,
     "equipped": {
      "bubble": [
       {
@@ -32954,7 +32690,6 @@
    },
    {
     "_strategy": "snowball",
-    "bracket": 7,
     "equipped": {
      "ghost": [
       {
@@ -33081,7 +32816,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 7,
     "equipped": {
      "bubble": [
       {
@@ -33217,7 +32951,6 @@
    },
    {
     "_strategy": "minion_up",
-    "bracket": 7,
     "equipped": {
      "angel": [
       {
@@ -33355,7 +33088,6 @@
    },
    {
     "_strategy": "leader_all",
-    "bracket": 7,
     "equipped": {
      "line": [
       {
@@ -33482,7 +33214,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 7,
     "equipped": {
      "bubble": [
       {
@@ -33626,7 +33357,6 @@
    },
    {
     "_strategy": "dual_mid",
-    "bracket": 7,
     "equipped": {
      "candy": [
       {
@@ -33755,7 +33485,6 @@
    },
    {
     "_strategy": "wide_syn",
-    "bracket": 7,
     "equipped": {
      "candy": [
       {
@@ -33888,10 +33617,11 @@
     "trainer_skill": "fury_potion",
     "chest_treasures_won": [],
     "chest_treasure_value": 0.0
-   },
+   }
+  ],
+  "25": [
    {
     "_strategy": "line_top",
-    "bracket": 7,
     "equipped": {
      "hunter": [
       {
@@ -34027,7 +33757,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 7,
     "equipped": {
      "ice": [
       {
@@ -34163,7 +33892,6 @@
    },
    {
     "_strategy": "low_flood",
-    "bracket": 7,
     "equipped": {
      "bubble": [
       {
@@ -34299,7 +34027,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 7,
     "equipped": {
      "line": [
       {
@@ -34435,7 +34162,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 7,
     "equipped": {
      "bubble": [
       {
@@ -34571,7 +34297,6 @@
    },
    {
     "_strategy": "snowball",
-    "bracket": 7,
     "equipped": {
      "ghost": [
       {
@@ -34698,7 +34423,6 @@
    },
    {
     "_strategy": "random",
-    "bracket": 7,
     "equipped": {
      "ninja": [
       {
@@ -34834,7 +34558,6 @@
    },
    {
     "_strategy": "minion_up",
-    "bracket": 7,
     "equipped": {
      "angel": [
       {
@@ -34972,7 +34695,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 7,
     "equipped": {
      "bubble": [
       {
@@ -35116,7 +34838,6 @@
    },
    {
     "_strategy": "leader_all",
-    "bracket": 7,
     "equipped": {
      "diamond": [
       {
@@ -35243,7 +34964,6 @@
    },
    {
     "_strategy": "dual_mid",
-    "bracket": 7,
     "equipped": {
      "candy": [
       {
@@ -35372,7 +35092,6 @@
    },
    {
     "_strategy": "wide_syn",
-    "bracket": 7,
     "equipped": {
      "candy": [
       {
@@ -35505,10 +35224,11 @@
     "trainer_skill": "fury_potion",
     "chest_treasures_won": [],
     "chest_treasure_value": 0.0
-   },
+   }
+  ],
+  "26": [
    {
     "_strategy": "line_top",
-    "bracket": 7,
     "equipped": {
      "hunter": [
       {
@@ -35644,7 +35364,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 7,
     "equipped": {
      "ice": [
       {
@@ -35780,7 +35499,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 7,
     "equipped": {
      "line": [
       {
@@ -35916,7 +35634,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 7,
     "equipped": {
      "bubble": [
       {
@@ -36052,7 +35769,6 @@
    },
    {
     "_strategy": "random",
-    "bracket": 7,
     "equipped": {
      "ninja": [
       {
@@ -36188,7 +35904,6 @@
    },
    {
     "_strategy": "minion_up",
-    "bracket": 7,
     "equipped": {
      "angel": [
       {
@@ -36326,7 +36041,6 @@
    },
    {
     "_strategy": "leader_all",
-    "bracket": 7,
     "equipped": {
      "diamond": [
       {
@@ -36453,7 +36167,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 7,
     "equipped": {
      "bubble": [
       {
@@ -36597,7 +36310,6 @@
    },
    {
     "_strategy": "dual_mid",
-    "bracket": 7,
     "equipped": {
      "candy": [
       {
@@ -36726,7 +36438,6 @@
    },
    {
     "_strategy": "snowball",
-    "bracket": 7,
     "equipped": {
      "ghost": [
       {
@@ -36853,7 +36564,6 @@
    },
    {
     "_strategy": "wide_syn",
-    "bracket": 7,
     "equipped": {
      "candy": [
       {
@@ -36989,7 +36699,6 @@
    },
    {
     "_strategy": "low_flood",
-    "bracket": 7,
     "equipped": {
      "gambler": [
       {
@@ -37113,10 +36822,11 @@
     "trainer_skill": "magic_stone",
     "chest_treasures_won": [],
     "chest_treasure_value": 0.0
-   },
+   }
+  ],
+  "27": [
    {
     "_strategy": "line_top",
-    "bracket": 7,
     "equipped": {
      "hunter": [
       {
@@ -37252,7 +36962,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 7,
     "equipped": {
      "ice": [
       {
@@ -37388,7 +37097,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 7,
     "equipped": {
      "line": [
       {
@@ -37524,7 +37232,6 @@
    },
    {
     "_strategy": "random",
-    "bracket": 7,
     "equipped": {
      "ninja": [
       {
@@ -37660,7 +37367,6 @@
    },
    {
     "_strategy": "leader_all",
-    "bracket": 7,
     "equipped": {
      "diamond": [
       {
@@ -37787,7 +37493,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 7,
     "equipped": {
      "bubble": [
       {
@@ -37931,7 +37636,6 @@
    },
    {
     "_strategy": "snowball",
-    "bracket": 7,
     "equipped": {
      "ghost": [
       {
@@ -38058,7 +37762,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 7,
     "equipped": {
      "angel": [
       {
@@ -38194,7 +37897,6 @@
    },
    {
     "_strategy": "wide_syn",
-    "bracket": 7,
     "equipped": {
      "candy": [
       {
@@ -38330,7 +38032,6 @@
    },
    {
     "_strategy": "low_flood",
-    "bracket": 7,
     "equipped": {
      "gambler": [
       {
@@ -38457,7 +38158,6 @@
    },
    {
     "_strategy": "star_rush",
-    "bracket": 7,
     "equipped": {
      "crystal": [
       {
@@ -38601,7 +38301,6 @@
    },
    {
     "_strategy": "fast_level",
-    "bracket": 7,
     "equipped": {
      "basic": [
       {
@@ -38744,10 +38443,9 @@
     "chest_treasure_value": 0.0
    }
   ],
-  "8": [
+  "28": [
    {
     "_strategy": "line_top",
-    "bracket": 8,
     "equipped": {
      "hunter": [
       {
@@ -38891,7 +38589,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 8,
     "equipped": {
      "line": [
       {
@@ -39035,7 +38732,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 8,
     "equipped": {
      "line": [
       {
@@ -39179,7 +38875,6 @@
    },
    {
     "_strategy": "random",
-    "bracket": 8,
     "equipped": {
      "ninja": [
       {
@@ -39315,7 +39010,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 8,
     "equipped": {
      "bubble": [
       {
@@ -39459,7 +39153,6 @@
    },
    {
     "_strategy": "leader_all",
-    "bracket": 8,
     "equipped": {
      "diamond": [
       {
@@ -39586,7 +39279,6 @@
    },
    {
     "_strategy": "snowball",
-    "bracket": 8,
     "equipped": {
      "ghost": [
       {
@@ -39713,7 +39405,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 8,
     "equipped": {
      "angel": [
       {
@@ -39857,7 +39548,6 @@
    },
    {
     "_strategy": "wide_syn",
-    "bracket": 8,
     "equipped": {
      "candy": [
       {
@@ -40001,7 +39691,6 @@
    },
    {
     "_strategy": "low_flood",
-    "bracket": 8,
     "equipped": {
      "gambler": [
       {
@@ -40128,7 +39817,6 @@
    },
    {
     "_strategy": "star_rush",
-    "bracket": 8,
     "equipped": {
      "crystal": [
       {
@@ -40272,7 +39960,6 @@
    },
    {
     "_strategy": "fast_level",
-    "bracket": 8,
     "equipped": {
      "basic": [
       {
@@ -40413,10 +40100,11 @@
     "trainer_skill": "magic_stone",
     "chest_treasures_won": [],
     "chest_treasure_value": 0.0
-   },
+   }
+  ],
+  "29": [
    {
     "_strategy": "line_top",
-    "bracket": 8,
     "equipped": {
      "hunter": [
       {
@@ -40560,7 +40248,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 8,
     "equipped": {
      "line": [
       {
@@ -40704,7 +40391,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 8,
     "equipped": {
      "line": [
       {
@@ -40848,7 +40534,6 @@
    },
    {
     "_strategy": "random",
-    "bracket": 8,
     "equipped": {
      "ninja": [
       {
@@ -40992,7 +40677,6 @@
    },
    {
     "_strategy": "snowball",
-    "bracket": 8,
     "equipped": {
      "ghost": [
       {
@@ -41128,7 +40812,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 8,
     "equipped": {
      "bubble": [
       {
@@ -41272,7 +40955,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 8,
     "equipped": {
      "angel": [
       {
@@ -41416,7 +41098,6 @@
    },
    {
     "_strategy": "wide_syn",
-    "bracket": 8,
     "equipped": {
      "candy": [
       {
@@ -41554,7 +41235,6 @@
    },
    {
     "_strategy": "leader_all",
-    "bracket": 8,
     "equipped": {
      "diamond": [
       {
@@ -41681,7 +41361,6 @@
    },
    {
     "_strategy": "star_rush",
-    "bracket": 8,
     "equipped": {
      "crystal": [
       {
@@ -41825,7 +41504,6 @@
    },
    {
     "_strategy": "line_top",
-    "bracket": 8,
     "equipped": {
      "chest": [
       {
@@ -41969,7 +41647,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 8,
     "equipped": {
      "basic": [
       {
@@ -42110,10 +41787,11 @@
     "trainer_skill": "magic_stone",
     "chest_treasures_won": [],
     "chest_treasure_value": 0.0
-   },
+   }
+  ],
+  "30": [
    {
     "_strategy": "reroll_mad",
-    "bracket": 8,
     "equipped": {
      "line": [
       {
@@ -42257,7 +41935,6 @@
    },
    {
     "_strategy": "random",
-    "bracket": 8,
     "equipped": {
      "ninja": [
       {
@@ -42401,7 +42078,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 8,
     "equipped": {
      "bubble": [
       {
@@ -42545,7 +42221,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 8,
     "equipped": {
      "angel": [
       {
@@ -42689,7 +42364,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 8,
     "equipped": {
      "phoenix": [
       {
@@ -42833,7 +42507,6 @@
    },
    {
     "_strategy": "star_rush",
-    "bracket": 8,
     "equipped": {
      "crystal": [
       {
@@ -42977,7 +42650,6 @@
    },
    {
     "_strategy": "line_top",
-    "bracket": 8,
     "equipped": {
      "chest": [
       {
@@ -43121,7 +42793,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 8,
     "equipped": {
      "basic": [
       {
@@ -43265,7 +42936,6 @@
    },
    {
     "_strategy": "random",
-    "bracket": 8,
     "equipped": {
      "diamond": [
       {
@@ -43411,7 +43081,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 8,
     "equipped": {
      "gambler": [
       {
@@ -43555,7 +43224,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 8,
     "equipped": {
      "angel": [
       {
@@ -43699,7 +43367,6 @@
    },
    {
     "_strategy": "line_top",
-    "bracket": 8,
     "equipped": {
      "angel": [
       {
@@ -43840,10 +43507,11 @@
     "trainer_skill": "glacier",
     "chest_treasures_won": [],
     "chest_treasure_value": 0.0
-   },
+   }
+  ],
+  "31": [
    {
     "_strategy": "reroll_mad",
-    "bracket": 8,
     "equipped": {
      "basic": [
       {
@@ -43987,7 +43655,6 @@
    },
    {
     "_strategy": "random",
-    "bracket": 8,
     "equipped": {
      "ninja": [
       {
@@ -44131,7 +43798,6 @@
    },
    {
     "_strategy": "mix",
-    "bracket": 8,
     "equipped": {
      "gambler": [
       {
@@ -44275,7 +43941,6 @@
    },
    {
     "_strategy": "no_reroll",
-    "bracket": 8,
     "equipped": {
      "angel": [
       {
@@ -44419,7 +44084,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 8,
     "equipped": {
      "phoenix": [
       {
@@ -44563,7 +44227,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 8,
     "equipped": {
      "lava": [
       {
@@ -44699,7 +44362,6 @@
    },
    {
     "_strategy": "random",
-    "bracket": 8,
     "equipped": {
      "diamond": [
       {
@@ -44845,7 +44507,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 8,
     "equipped": {
      "angel": [
       {
@@ -44986,10 +44647,11 @@
     "trainer_skill": "magic_stone",
     "chest_treasures_won": [],
     "chest_treasure_value": 0.0
-   },
+   }
+  ],
+  "32": [
    {
     "_strategy": "random",
-    "bracket": 8,
     "equipped": {
      "ninja": [
       {
@@ -45133,7 +44795,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 8,
     "equipped": {
      "basic": [
       {
@@ -45277,7 +44938,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 8,
     "equipped": {
      "angel": [
       {
@@ -45421,7 +45081,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 8,
     "equipped": {
      "lava": [
       {
@@ -45554,10 +45213,11 @@
     "trainer_skill": "fury_potion",
     "chest_treasures_won": [],
     "chest_treasure_value": 0.0
-   },
+   }
+  ],
+  "33": [
    {
     "_strategy": "random",
-    "bracket": 8,
     "equipped": {
      "ninja": [
       {
@@ -45701,7 +45361,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 8,
     "equipped": {
      "basic": [
       {
@@ -45845,7 +45504,6 @@
    },
    {
     "_strategy": "hi_cost",
-    "bracket": 8,
     "equipped": {
      "angel": [
       {
@@ -45989,7 +45647,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 8,
     "equipped": {
      "lava": [
       {
@@ -46122,10 +45779,11 @@
     "trainer_skill": "fury_potion",
     "chest_treasures_won": [],
     "chest_treasure_value": 0.0
-   },
+   }
+  ],
+  "34": [
    {
     "_strategy": "random",
-    "bracket": 8,
     "equipped": {
      "ninja": [
       {
@@ -46269,7 +45927,6 @@
    },
    {
     "_strategy": "reroll_mad",
-    "bracket": 8,
     "equipped": {
      "basic": [
       {
@@ -46410,10 +46067,11 @@
     "trainer_skill": "magic_stone",
     "chest_treasures_won": [],
     "chest_treasure_value": 0.0
-   },
+   }
+  ],
+  "35": [
    {
     "_strategy": "reroll_mad",
-    "bracket": 8,
     "equipped": {
      "basic": [
       {

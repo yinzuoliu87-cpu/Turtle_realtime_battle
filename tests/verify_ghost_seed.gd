@@ -13,6 +13,7 @@ extends Node
 ##   4. pool_find 在档 0-8 都能抽到种子对手(seed_ 开头)。
 
 const Backend = preload("res://scripts/net/backend.gd")
+const _P2S := preload("res://scripts/gamedata/phase2_config.gd")
 const RTScene := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 
 var _fail := 0
@@ -26,8 +27,8 @@ func _ok(name: String, cond: bool, detail: String = "") -> void:
 
 func _count(pool: Dictionary) -> int:
 	var n := 0
-	for b in pool.get("brackets", {}).keys():
-		n += (pool["brackets"][b] as Array).size()
+	for b in pool.get(Backend.POOL_KEY, {}).keys():
+		n += (pool[Backend.POOL_KEY][b] as Array).size()
 	return n
 
 
@@ -35,14 +36,25 @@ func _ready() -> void:
 	await get_tree().process_frame
 	var dr = get_node_or_null("/root/DataRegistry")
 
-	# 1. 种子解析 + 数量 + 档覆盖
+	# 1. 种子解析 + 数量 + 【场次】覆盖 (★2026-09-26: 9 档已删, 分桶键 = 总场次)
 	var seed: Dictionary = Backend._load_seed()
-	var brackets: Dictionary = seed.get("brackets", {})
+	var brackets: Dictionary = seed.get(Backend.POOL_KEY, {})
 	var total := 0
 	for b in brackets.keys():
 		total += (brackets[b] as Array).size()
 	_ok("种子池 ≥ 150 支队", total >= 150, "实际 %d" % total)
-	_ok("覆盖档 0-8", brackets.has("0") and brackets.has("8"))
+	## ★★★判据从「覆盖档 0-8」换成「覆盖场次 0~RANKED_QUOTA 每一格」。
+	##   旧判据在**旧池**上是绿的, 而旧池 184 条只落在 9 个场次上(每档一个点) ——
+	##   「9 个档都有人」与「每个场次都有人」是两个量, 匹配用的是后者(D5)。
+	##   判据没卡在被测的那个量上, 所以它一直绿着而池子全是洞。
+	var seed_holes: Array = []
+	for _n in range(0, int(_P2S.RANKED_QUOTA) + 1):
+		if not brackets.has(str(_n)) or (brackets[str(_n)] as Array).is_empty():
+			seed_holes.append(_n)
+	_ok("★★★覆盖场次 0~%d 每一格都有人(空一格 = 那个场次必打 bot)"
+		% int(_P2S.RANKED_QUOTA), seed_holes.is_empty(), "空的: %s" % str(seed_holes))
+	_ok("★分桶键是【场次】不是【档】(9 档只会有 9 个键)", brackets.size() >= 25,
+		"%d 个桶" % brackets.size())
 
 	## ── ★【遇到率】—— 不是覆盖率(2026-08-15 血泪)────────────────────────────
 	##   我曾用"池里出现多少【种】装备"当验收, 它显示 94/94 全覆盖 ⇒ 自检全绿 ⇒ 我报了完成。
@@ -86,12 +98,12 @@ func _ready() -> void:
 			worst_p = pct
 			worst_b = str(b)
 	var overall: float = 100.0 * float(t_hit) / float(maxi(1, t_all))
-	print("     遇到率: %d/%d 支队(%.0f%%)带新批次装备; 最差的档%s 只有 %.0f%%" % [
+	print("     遇到率: %d/%d 支队(%.0f%%)带新批次装备; 最差的场次%s 只有 %.0f%%" % [
 		t_hit, t_all, overall, worst_b, worst_p])
-	_ok("★★★遇到率 ≥ 50%(档0 除外) —— 打几把就该见到新装备, 光「池里有」不算数",
+	_ok("★★★遇到率 ≥ 50%(场次0 除外) —— 打几把就该见到新装备, 光「池里有」不算数",
 		overall >= 50.0, "实测 %.0f%%" % overall)
-	_ok("★★除档0 外没有【一支都不带新装备】的档(那个档等于回到了旧版本)",
-		worst_p > 0.0, "最差 档%s = %.0f%%" % [worst_b, worst_p])
+	_ok("★★除场次0 外没有【一支都不带新装备】的场次(那等于回到了旧版本)",
+		worst_p > 0.0, "最差 场次%s = %.0f%%" % [worst_b, worst_p])
 
 	# 2. 每支队合法
 	var bad: Array = []
@@ -105,18 +117,18 @@ func _ready() -> void:
 			for pid in ldr:
 				if dr != null and not dr.pet_by_id.has(str(pid)):
 					bad.append("%s 未知龟 %s" % [gid, pid])
-			if int(gd.get("bracket", -1)) != int(str(b)):
-				bad.append("%s bracket≠桶键" % gid)
+			if int(gd.get("season_total_battles", -1)) != int(str(b)):
+				bad.append("%s season_total_battles≠桶键" % gid)
 			var la: Dictionary = gd.get("lane_assign", {})
 			var lc: int = (la.get("top", []) as Array).size() + (la.get("bottom", []) as Array).size()
 			if lc != 3:
 				bad.append("%s 分路≠3" % gid)
 			if bool(gd.get("is_bot", true)):
 				bad.append("%s is_bot应false" % gid)
-	_ok("★每支队合法(3已知龟/bracket对/分路3/非bot)", bad.is_empty(), ", ".join(bad))
+	_ok("★每支队合法(3已知龟/场次==桶键/分路3/非bot)", bad.is_empty(), ", ".join(bad))
 
 	# 3. _ensure_seeded 幂等
-	var pool: Dictionary = {"brackets": {}}
+	var pool: Dictionary = {Backend.POOL_KEY: {}}
 	Backend._ensure_seeded(pool)
 	var c1 := _count(pool)
 	Backend._ensure_seeded(pool)
@@ -125,14 +137,17 @@ func _ready() -> void:
 	_ok("_ensure_seeded 空池并入 %d" % total, c1 == total, "%d" % c1)
 	_ok("_ensure_seeded 幂等(重并不重复)", c2 == total, "%d" % c2)
 
-	# 4. pool_find 各档能抽到种子对手
+	# 4. pool_find_battles 各【场次】能抽到种子对手
 	var rng := RandomNumberGenerator.new()
 	var miss: Array = []
-	for bi in range(9):
-		var g = Backend.pool_find(pool, bi, [], rng)
+	## ★2026-09-26: 从「9 个档各抽一次」换成「0~RANKED_QUOTA 每个场次各抽一次」。
+	##   这才是匹配真正会查的那些键 —— 查 9 个档号在新结构下只是查场次 0~8。
+	for bi in range(0, int(_P2S.RANKED_QUOTA) + 1):
+		var g = Backend.pool_find_battles(pool, bi, [], rng)
 		if g == null or not str((g as Dictionary).get("ghost_id", "")).begins_with("seed_"):
 			miss.append(str(bi))
-	_ok("★档 0-8 都能抽到种子对手", miss.is_empty(), ("缺档: " + ", ".join(miss)) if not miss.is_empty() else "")
+	_ok("★★★场次 0~%d 每一格都抽得到种子对手" % int(_P2S.RANKED_QUOTA), miss.is_empty(),
+		("缺场次: " + ", ".join(miss)) if not miss.is_empty() else "")
 
 	# 5. ★对手装备接线: _dual_foe_lane 从 ghost lane_assign 取 leaders 且挂上 equipped
 	var gs = get_node_or_null("/root/GameState")

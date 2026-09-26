@@ -44,7 +44,7 @@ var _strip_foe := false
 var _keep_hearts := false
 
 
-# ── 强度口径: 与门禁 verify_bracket_gear._strength 完全同一条公式(改一处必须改两处) ──
+# ── 强度口径: 与门禁 verify_seed_battles_gear._strength 完全同一条公式(改一处必须改两处) ──
 func _item_strength(item) -> float:
 	if not (item is Dictionary):
 		return 0.0
@@ -118,8 +118,8 @@ func _ready() -> void:
 
 	var seed_pool: Dictionary = Backend._load_seed()
 	var seed_n := 0
-	for b in seed_pool.get("brackets", {}).keys():
-		seed_n += (seed_pool["brackets"][b] as Array).size()
+	for b in seed_pool.get(Backend.POOL_KEY, {}).keys():
+		seed_n += (seed_pool[Backend.POOL_KEY][b] as Array).size()
 	print("  种子池(只读 res://): %d 支队" % seed_n)
 	if seed_n == 0:
 		print("  [FAIL] 种子池空 → 分母 0, 整份数据无意义"); get_tree().quit(1); return
@@ -137,14 +137,14 @@ func _ready() -> void:
 # ══════════════════ 一把 ══════════════════
 func _one_match(gs, seed_pool: Dictionary, idx: int) -> void:
 	var rec := {}
-	var b: int = Backend.bracket_for_battles(int(gs.season_total_battles))
+	var b: int = int(gs.season_total_battles)
 
-	# ── 匹配 (与 find_opponent 同逻辑: 本档优先 → 只往【低】档回落 → bot 兜底; ±1 窗口已于 2026-07-27 废除) ──
-	var ghost = null
+	# ── 匹配 (与 `find_opponent` **同逻辑**: 同场次 → bot, 没有中间级) ──
+	## ★★★2026-09-26 原来这里是「本档优先 → 往【低】档逐格回落 → bot」, 跟着 D5 改。
+	##   为什么这份自动巡检必须跟着改: 它产出的经济/胜率报表是拿来做平衡判断的,
+	##   而回落链不一样就等于**在另一个赛制里量数据** —— 报表看着正常, 结论全错。
+	var ghost = Backend.pool_find_battles(seed_pool, b, _recent, _rng)
 	var from_bot := false
-	for bb in range(b, -1, -1):
-		ghost = Backend.pool_find(seed_pool, bb, _recent, _rng)
-		if ghost != null: break
 	if ghost == null:
 		ghost = Backend.make_bot(b, _rng)
 		from_bot = true

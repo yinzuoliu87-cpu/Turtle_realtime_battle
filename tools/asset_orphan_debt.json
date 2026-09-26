@@ -11,8 +11,7 @@
   "hurtAnim",
   "pctMaxHp",
   "runAnim",
-  "selfCast",
-  "types"
+  "selfCast"
  ],
  "cross_dead_assets": []
 }

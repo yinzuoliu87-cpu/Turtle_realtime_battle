@@ -207,10 +207,13 @@ def main():
         print("  [FAIL] 池子不存在: %s" % a.pool)
         return 1
     d = json.load(io.open(a.pool, encoding="utf-8"))
-    if not isinstance(d, dict) or "brackets" not in d:
-        print("  [FAIL] 结构不对(应是 {_note, brackets}): %s" % a.pool)
+    # ★结构无关: 新池是 by_battles(按场次), 老池/老分片是 brackets(按档)。
+    #   本报表只做流派统计, 分桶方式与它无关 —— 摊平就行。
+    _key = "by_battles" if isinstance(d, dict) and "by_battles" in d else "brackets"
+    if not isinstance(d, dict) or _key not in d:
+        print("  [FAIL] 结构不对(应是 {_note, by_battles}): %s" % a.pool)
         return 1
-    snaps = [s for k in d["brackets"] for s in d["brackets"][k]]
+    snaps = [s for k in d[_key] for s in d[_key][k]]
     tiers = read_tiers()
     tmap = load_types_map()
     eqs = load_equip()
@@ -218,8 +221,8 @@ def main():
 
     print("=== 快照池流派与构筑报告 ===")
     print("  池子: %s" % a.pool)
-    print("  [分母] %d 条快照 · %d 档 · 装备件数均值 %.2f(为 0 = 没解析到, 下面全是空数)"
-          % (r["n"], len(d["brackets"]), r["items_avg"]))
+    print("  [分母] %d 条快照 · %d 桶 · 装备件数均值 %.2f(为 0 = 没解析到, 下面全是空数)"
+          % (r["n"], len(d[_key]), r["items_avg"]))
     if r["n"] == 0 or r["items_avg"] == 0:
         print("  [FAIL] 分母为 0 —— 这是空检查不是通过")
         return 1

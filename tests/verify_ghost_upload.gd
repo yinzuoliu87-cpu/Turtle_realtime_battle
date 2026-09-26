@@ -189,13 +189,13 @@ func _t_flash() -> void:
 # ─────────────────────────────────────────────────────────────
 # ①② ★★走真入口: 赢 +1 / 输也 +1 / 投降 +0
 # ─────────────────────────────────────────────────────────────
-## 池子是两层: `pool["brackets"][档位]` 才是数组。
+## 池子是两层: `pool[BE.POOL_KEY][场次]` 才是数组(★2026-09-26 键从 brackets 换成 by_battles)。
 ## ★只数 `origin == local` 的 —— 内置策划队的种子(`_ensure_seeded`)也在同一个池里,
 ##   数总数会把它们算进来。“我传上去的”在产品里就是靠这个章认的(`_is_self_ghost`)。
 func _pool_size() -> int:
 	var p = BE.load_pool()
 	var n := 0
-	var br = p.get("brackets", null)
+	var br = p.get(BE.POOL_KEY, null)
 	if br is Dictionary:
 		for k in (br as Dictionary).keys():
 			var v = (br as Dictionary)[k]

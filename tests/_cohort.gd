@@ -338,50 +338,60 @@ func _alive() -> Array:
 	return a
 
 
-# ════════════════════ 一轮: 按档配对互打 ════════════════════
+# ════════════════════ 一轮: 按【总场次】配对互打 ════════════════════
+## ★★★2026-09-26 配对规则跟着产品改: 原来是「同【档】才配, 同档落单 → 往低档并」,
+##   现在是「**总场次完全相同**才配, 落单的这一轮不打、等下一轮」。
+##
+##   为什么必须跟着改: 这份模拟的产物就是**种子池**, 而种子池是匹配的供给。
+##   模拟按档配 ⇒ 池子里真实出现过的对局是「5 场 vs 7 场」这种;
+##   而产品现在只让同场次互打(D5) ⇒ 两边规则不一致的话, 种子池代表的是一个
+##   **根本不存在的赛制**下的家当分布。
+##
+## ★落单的为什么是「等」而不是「打 bot」: 打 bot 会把合成队伍塞进快照池,
+##   而这份池子的全部价值在于「每一条都是真机器人打出来的真家当」。
+##   等一轮的代价只是它场次涨得慢一点, 下一轮大概率就有同场次的伙伴。
+##   ⇒ 等了多少个要**打印出来**(无声跳过 = 假装每轮人人都打了)。
 func _run_round(gs) -> void:
-	# 按档分组 (同档才配对; 同档落单 → 往【低】档找, 绝不往上 —— 与 find_opponent 去±1 后同规则)
 	var by_b := {}
 	for b in _alive():
-		var k: int = Backend.bracket_for_battles(int(b["battles"]))
+		var k: int = int(b["battles"])
 		if not by_b.has(k):
 			by_b[k] = []
 		(by_b[k] as Array).append(b)
 	var keys: Array = by_b.keys()
 	keys.sort()
-	keys.reverse()      # 从高档往低档配, 落单的往低档并
 
-	var carry: Array = []      # 上一(更高)档落单的
 	var pairs: Array = []
+	var waited := 0
 	for k in keys:
 		var grp: Array = (by_b[k] as Array)
-		grp.append_array(carry)
-		carry = []
 		for i in range(grp.size() - 1, 0, -1):
 			var j: int = _rng.randi() % (i + 1)
 			var t = grp[i]; grp[i] = grp[j]; grp[j] = t
 		while grp.size() >= 2:
 			pairs.append([grp.pop_back(), grp.pop_back()])
-		if grp.size() == 1:
-			carry.append(grp[0])
+		waited += grp.size()      # 0 或 1: 该场次人数是奇数时剩的那一个
 
 	var fought := 0
 	for pr in pairs:
 		await _fight(gs, pr[0], pr[1])
 		fought += 1
 	var al := _alive().size()
-	print("  第%2d轮: %d 场 | 存活 %d/%d | 场次分布 %s" % [_round, fought, al, _bots.size(), _battles_hist()])
+	print("  第%2d轮: %d 场 | 同场次落单等待 %d | 存活 %d/%d | 场次分布 %s"
+		% [_round, fought, waited, al, _bots.size(), _battles_hist()])
 
 
+## 存活机器人的【场次】分布。★2026-09-26 从「档:人数」改成「场次:人数」——
+##   档已删, 而且按档打印会把「同场次能不能配到人」这个真正要看的东西糊掉。
 func _battles_hist() -> String:
 	var h := {}
 	for b in _alive():
-		var k: int = Backend.bracket_for_battles(int(b["battles"]))
+		var k: int = int(b["battles"])
 		h[k] = int(h.get(k, 0)) + 1
 	var keys: Array = h.keys(); keys.sort()
 	var parts: Array = []
 	for k in keys:
-		parts.append("档%d:%d" % [k, h[k]])
+		parts.append("%d:%d" % [k, h[k]])
 	return " ".join(PackedStringArray(parts))
 
 
@@ -423,7 +433,7 @@ func _fight(gs, a: Dictionary, b: Dictionary) -> void:
 		"round": _round, "a": a["id"], "b": b["id"], "a_won": a_won,
 		"a_battles": int(a["battles"]), "b_battles": int(b["battles"]),
 		"a_hearts": int(a["hearts"]), "b_hearts": int(b["hearts"]),
-		"bracket": Backend.bracket_for_battles(int(a["battles"])), "done": reached, "frames": fr,
+		"done": reached, "frames": fr,      # ★2026-09-26 删掉 bracket 字段(a_battles 就是它的原件)
 	})
 
 	for who in [a, b]:
@@ -523,7 +533,8 @@ func _snapshot_of(bot: Dictionary, label: String) -> Dictionary:
 		"ghost_id": ("coh_%d_b%d" % [int(bot["id"]), int(bot["battles"])]) if _shard < 0
 			else ("coh_s%d_%d_b%d" % [_shard, int(bot["id"]), int(bot["battles"])]),
 		"is_bot": false,
-		"bracket": Backend.bracket_for_battles(int(bot["battles"])),
+		## ★2026-09-26 原来这里有 `"bracket": bracket_for_battles(...)`, 已删 ——
+		##   它是下面 `season_total_battles` 的有损镜像, 而池子曾按镜像分桶。
 		"profile": {"name": label, "avatar": str((bot["team"] as Array)[0]),
 			"id": ("COH%02d" % int(bot["id"])) if _shard < 0 else ("COH%d-%02d" % [_shard, int(bot["id"])])},
 		"leaders": (bot["team"] as Array).duplicate(),
@@ -858,12 +869,12 @@ func _report(elapsed: float) -> void:
 	if not outs.is_empty():
 		print("    中位出局场次: %d  最多打到: %d" % [outs[outs.size() / 2], outs[outs.size() - 1]])
 
-	# 各档产出了多少快照 + 强度
+	# 各【场次】产出了多少快照 + 强度 (★2026-09-26: 档已删, 按场次统计)
 	print("")
-	print("  档  快照数  队均强度  平均件数   ← 这就是新池的真实原料")
+	print("  场次  快照数  队均强度  平均件数   ← 这就是新池的真实原料")
 	var by_b := {}
 	for sn in _snapshots:
-		var b: int = int(sn["bracket"])
+		var b: int = int(sn["season_total_battles"])
 		if not by_b.has(b):
 			by_b[b] = {"n": 0, "s": 0.0, "items": 0}
 		by_b[b]["n"] += 1
@@ -908,13 +919,16 @@ func _report(elapsed: float) -> void:
 			(str(o[o.size() / 2]) if not o.is_empty() else "-")])
 
 	# 落盘: 快照池 + 逐场 CSV
-	var pool := {"_note": "队列模拟产出的真实玩家快照 (tests/_cohort.gd · %d只机器人从0开始互打·8命淘汰)" % _bots.size(),
-		"brackets": {}}
+	## ★2026-09-26 分桶键 `brackets`(档) → `by_battles`(场次), 与 `Backend.POOL_KEY` 同名。
+	##   下游 `tools/cohort_shard.py` / `cohort_to_seed.py` 读端是**结构无关**的,
+	##   所以已经生成的 60 多个老分片不用重跑。
+	var pool := {"_note": "队列模拟产出的真实玩家快照 (tests/_cohort.gd · %d只机器人从0开始互打·8命淘汰·同场次配对)" % _bots.size(),
+		"by_battles": {}}
 	for sn in _snapshots:
-		var bk := str(int(sn["bracket"]))
-		if not (pool["brackets"] as Dictionary).has(bk):
-			(pool["brackets"] as Dictionary)[bk] = []
-		((pool["brackets"] as Dictionary)[bk] as Array).append(sn)
+		var bk := str(int(sn["season_total_battles"]))
+		if not (pool["by_battles"] as Dictionary).has(bk):
+			(pool["by_battles"] as Dictionary)[bk] = []
+		((pool["by_battles"] as Dictionary)[bk] as Array).append(sn)
 	var suffix := "" if _shard < 0 else ("-s%d" % _shard)
 	var pf := FileAccess.open("%s/cohort-snapshots%s.json" % [dir, suffix], FileAccess.WRITE)
 	if pf != null:
@@ -922,9 +936,9 @@ func _report(elapsed: float) -> void:
 		print("")
 		print("  快照池: %s/cohort-snapshots%s.json" % [dir, suffix])
 
-	var csv := "轮,档,A,B,A胜,A场次,B场次,A命,B命,帧\n"
+	var csv := "轮,A,B,A胜,A场次,B场次,A命,B命,帧\n"
 	for r in _battle_log:
-		csv += "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n" % [r["round"], r["bracket"], r["a"], r["b"],
+		csv += "%d,%d,%d,%d,%d,%d,%d,%d,%d\n" % [r["round"], r["a"], r["b"],
 			(1 if r["a_won"] else 0), r["a_battles"], r["b_battles"], r["a_hearts"], r["b_hearts"], r["frames"]]
 	var cf := FileAccess.open("%s/cohort-battles%s.csv" % [dir, suffix], FileAccess.WRITE)
 	if cf != null:

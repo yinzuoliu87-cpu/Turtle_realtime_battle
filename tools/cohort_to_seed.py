@@ -13,17 +13,18 @@
 早期买的便宜货攒够 9 件合成了 ★3, 后期买的贵货还是 ★1 → 必然出现"便宜的星高、贵的星低"。
 这正是旧池造不出来的东西(旧池每档只有 3-4 种固定 (费,星) 组合)。
 
-选取规则:
-  · 每档最多 PER_BRACKET 条; 优先挑【来自不同机器人】的, 保证龟阵容/技能/策略都散开
-  · 同一只机器人在同一档最多留 SAME_BOT_CAP 条(它在一档里会打好几场, 家当差别不大)
-  · 档0 必须全裸(用户锚点) —— 不是靠过滤, 而是核对: 档0 现在严格 = 人生第一把, 本来就该是裸的;
-    真出现带装备的就报错退出, 说明上游 bracket_for_battles 或快照时机又错了
+选取规则(★2026-09-26: 全程只按【总场次】, 9 档已删):
+  · 每个场次最多 PER_BATTLES 条; 优先挑【来自不同机器人】的, 保证龟阵容/技能/策略都散开
+  · 同一只机器人在同一个场次最多留 SAME_BOT_CAP 条
+  · 场次0 必须全裸(用户锚点) —— 不是靠过滤, 而是核对: 场次0 严格 = 人生第一把;
+    真出现带装备的就报错退出, 说明上游快照时机又错了
 
-自检(与门禁 tests/verify_bracket_gear.gd 同口径, 不过关就不写):
-  ① 档0 队长+小将都 0 件
-  ② 每龟件数 ≤ equip_slots_for_battles(battles_for_bracket(档))
-  ③ 单件均强度逐档单调递增
-  ④ 每档条数 ≥ MIN_PER_BRACKET (太少 = 池子里总撞同几支)
+自检(不过关就不写):
+  ① 场次0 队长+小将都 0 件
+  ② 单只 ≤ UNIT_EQUIP_CAP 且 全队合计 ≤ team_equip_cap(赛季等级)
+  ③ 单件均强度随场次上升(五格滑动均值)
+  ⑤ 装备覆盖率 ≥ MIN_EQ_COVERAGE
+  ⑥ 前 COVER_BATTLES_TO 个场次【每一格都得有人】(匹配真正用的那把尺子)
 
 跑法:
     python tools/cohort_to_seed.py                 # dry-run, 只打对照表
@@ -45,7 +46,6 @@ SNAP_PATH = os.path.join(ROOT, "tools", "autoplay", "cohort-snapshots.json")
 SEED_PATH = os.path.join(ROOT, "data", "ghost_seed.json")
 EQUIP_PATH = os.path.join(ROOT, "data", "phase2-equipment.json")
 
-PER_BRACKET = 20        # (遗留) 覆盖补选的每档上限仍按它算; 主挑选已改成按场次
 ## ★★★ 2026-09-25 主挑选从『每【档】N 条』改成『每【场次】N 条』。
 ##
 ## 用户原话:「不应该有这些东西啊粗格子: 0 / 1-2 / 3-4 / 5-7 / 8-11 / 12-16 /
@@ -58,14 +58,15 @@ PER_BRACKET = 20        # (遗留) 覆盖补选的每档上限仍按它算; 主�
 ##   后果: 匹配尺子一细(±1 场)池子就全是洞 ⇒ 第③级「往下找」承担大部分,
 ##   实测往上 63 次 / 往下 177 次 —— 对称的尺子被不对称的池子拘回去了。
 ##
-## 输出仍然按【档】建键 —— 那是 `Backend.pool_add` 的**索引**。
-## 改的是「每个键里装哪几条」: 以前一档一个场次, 现在一档装齐它跨的所有场次。
+## ★★★ 2026-09-26: 输出的键也换成【场次】(`brackets` → `by_battles`) ——
+##   9 档已彻底删除, `Backend.pool_add` 现在直接按 `season_total_battles` 分桶。
+##   方案书 `docs/plans/20260926-删掉9档进度档.md`。
 PER_BATTLES = 12        # 每一个场次留多少条(场次 0~35 → 池子约 300~370 条)
 MIN_PER_BATTLES = 4     # 低于这个数的场次要警告(高场次本来就人少, 不拒写)
 COVER_BATTLES_TO = 24   # 至少这么多场次内**每一格都得有人**, 否则拒写
                         # (= phase2_config.RANKED_QUOTA, 一周配额; 超过它的场次是长尾)
-SAME_BOT_CAP = 2        # 同一只机器人在同一档最多留几条
-MIN_PER_BRACKET = 6     # 低于这个数就警告(候选不足 = 多样性不够)
+SAME_BOT_CAP = 2        # 同一只机器人在同一个场次最多留几条
+TOPUP_CAP = 25          # 覆盖补选时每个场次最多多带几条(防无限膨胀)
 MIN_EQ_COVERAGE = 0.95  # 池里必须出现【95% 以上】的可购买装备, 达不到拒写(2026-08-15)
 
 K = {1: 0.85, 2: 0.90, 3: 1.00, 4: 1.15, 5: 1.30}
@@ -75,17 +76,20 @@ def strength(cost, star):
     return cost * (1.8 ** (star - 1)) * K.get(cost, 1.0)
 
 
-def battles_for_bracket(b):
-    """backend.gd:battles_for_bracket 的镜像 (2026-07-27 断点 -1 后)。"""
-    return {0: 0, 1: 2, 2: 4, 3: 7, 4: 11, 5: 16, 6: 21, 7: 27}.get(b, 33)
+## ★★★2026-09-26 这里原来有 `battles_for_bracket` / `bracket_for_battles` 两个
+##   9 档镜像函数, 随 `backend.gd` 一起删净。留下这段是当路标: 镜像函数天生会落后
+##   (memory fb-hand-rolled-copies-drift), 所以下面这个新镜像配了门禁
+##   `tools/bot_level_fit_audit.py` 逐格比对 GDScript 那份。
+BOT_LV_MIN_BATTLES = [0, 1, 1, 3, 5, 9, 13, 18, 22, 28]
 
 
-def bracket_for_battles(n):
-    """backend.gd:bracket_for_battles 的镜像 (2026-07-27「微调B」后: 档7=22场 / 档8=28场)。"""
-    for lim, b in ((0, 0), (2, 1), (4, 2), (7, 3), (11, 4), (16, 5), (21, 6), (27, 7)):
-        if n <= lim:
-            return b
-    return 8
+def bot_level_for_battles(n):
+    """phase2_config.gd:bot_level_for_battles 的镜像。场次 → 赛季等级(1..10)。"""
+    lv = 1
+    for i, need in enumerate(BOT_LV_MIN_BATTLES):
+        if n >= need:
+            lv = i + 1
+    return max(1, min(lv, 10))
 
 
 UNIT_EQUIP_CAP = 3      # phase2_config.gd 镜像: 单只(统领/小将)装备上限
@@ -96,10 +100,9 @@ def team_equip_cap(level):
     return max(0, (min(max(level, 1), 10) - 1) * 2)
 
 
-def bracket_of(sn):
-    """★按【新断点】从 season_total_battles 重算档位 —— 快照里的 bracket 字段可能是旧断点下写的。
-    队列跑到一半改断点时不必重跑: 档位只是从场次派生的标签, 原始数据没变。"""
-    return bracket_for_battles(int(sn.get("season_total_battles", 0)))
+def battles_of(sn):
+    """快照的总场次 —— **唯一**的分桶键与匹配尺子(D5)。"""
+    return int(sn.get("season_total_battles", 0))
 
 
 def items_of(sn):
@@ -218,7 +221,7 @@ def select(cands, cap=None):
         arch_bots[arch] = by_bot
     picked = []
     # 轮转: 第 rnd 轮里, 每个流派各出一条(该流派内部也换一只机器人)
-    cap = PER_BRACKET if cap is None else cap
+    cap = PER_BATTLES if cap is None else cap   # ★2026-09-26: 原来是 PER_BRACKET(已删)
     for rnd in range(SAME_BOT_CAP * 8):          # 上限给够, 由 cap 收口
         progressed = False
         for _arch, by_bot in arch_bots.items():
@@ -282,7 +285,10 @@ def main():
     print("原料(%d 份):" % len(paths))
     for _p in paths:
         print("   " + os.path.relpath(_p, ROOT))
-    raw = {"brackets": {}}
+    # ★2026-09-26 合并容器的键从【档】换成【场次】。它只是个内部中转结构,
+    #   但名字撒谎的代价是实在的: 下游 `battles_of()` 才是真判据, 键名留着
+    #   「档」会让人以为 bk 是档号而去拿它做算术。
+    raw = {"by_battles": {}}
     seen_ids = set()
     for pth in paths:
         if not os.path.exists(pth):
@@ -293,7 +299,14 @@ def main():
         # ghost_id 形如 coh_<botid>_b<场次>, 跨队列会重名 → 用【来源目录】做前缀隔离,
         # 否则 5 份合并后 pool_add 的去重会把不同队列的同名快照互相顶掉。
         tag = os.path.basename(os.path.dirname(pth))
-        for bk, lst in (one.get("brackets") or {}).items():
+        ## ★结构无关: 老分片顶层是 `brackets`(按档), 新分片是 `by_battles`(按场次)。
+        ##   两种都摊平 —— 分片的键只是它当时的分组方式, 下面一律按
+        ##   **快照自报的场次**重新归桶, 所以 60 多个已生成的老分片不用重跑。
+        _src = {}
+        for _k in ("by_battles", "brackets"):
+            for _bk, _lst in (one.get(_k) or {}).items():
+                _src.setdefault(_bk, []).extend(_lst)
+        for bk, lst in _src.items():
             for sn in lst:
                 # ★必须以 seed_ 开头: Backend._ensure_seeded 靠这个前缀识别种子 ——
                 #   ①判断池里有没有种子 ②升 SEED_VER 时清旧种子(玩家真 ghost 保留)。
@@ -307,7 +320,9 @@ def main():
                 #   select() 的"每只机器人先各出一条"轮转按它分组; 若拿逐条唯一的 id 分组,
                 #   轮转就退化成"顺序取前20条", 同一只机器人会霸占一整档。
                 sn["_bot_key"] = "%s/%s" % (tag, (sn.get("profile") or {}).get("id", "?"))
-                raw["brackets"].setdefault(bk, []).append(sn)
+                ## ★键取**快照自己报的场次**, 不沿用分片的 bk ——
+                ##   老分片的 bk 是档号(0..8), 直接沿用会把 9 个档号当成 9 个场次。
+                raw["by_battles"].setdefault(str(battles_of(sn)), []).append(sn)
                 cnt += 1
         print("  载入 %-52s %5d 条" % (os.path.relpath(pth, ROOT), cnt))
     eqs = json.load(open(EQUIP_PATH, encoding="utf-8"))
@@ -315,36 +330,40 @@ def main():
     old = json.load(open(SEED_PATH, encoding="utf-8"))
 
     print("=== 候选快照(队列产出) ===")
-    total = 0
-    for bk in sorted(raw.get("brackets", {}), key=int):
-        total += len(raw["brackets"][bk])
-    print("  共 %d 条, 覆盖档 %s" % (total, ",".join(sorted(raw.get("brackets", {}), key=int))))
+    # ★★读原料时【结构无关】: 老分片的顶层是 `brackets`(按档), 新分片是 `by_battles`(按场次)。
+    #   这里把两种一律摊平 —— 分桶键只是原料的分组方式, 本工具无论如何都要自己重分。
+    #   不做这一步就得连 60 多个已生成的分片一起重跑, 而那要 40 分钟且一条数据都不会变。
+    raw_rows = []
+    for _k in ("by_battles", "brackets"):
+        for bk in (raw.get(_k) or {}):
+            raw_rows.extend(raw[_k][bk])
+    total = len(raw_rows)
+    print("  共 %d 条 (原料分桶键: %s)"
+          % (total, ",".join(k for k in ("by_battles", "brackets") if raw.get(k))))
     if total == 0:
         print("★分母为 0 —— 队列没产出任何快照, 停。")
         return 1
 
-    # ★按【当前】断点重新分桶 —— 快照文件里的 bracket 键是跑的时候那套断点写的。
-    #   2026-07-27 队列跑到一半用户改了断点(微调B: 档7=22场/档8=28场), 不必重跑:
-    #   档位只是从 season_total_battles 派生的标签, 原始数据没变。
+    # ★按【场次】分桶。同时**删掉**快照里的 `bracket` 字段 —— 它是 season_total_battles
+    #   的有损镜像, 而 2026-09-26 前 `Backend.pool_add` 正是按那个镜像分桶的 ⇒ 必然漂。
     rebucket = collections.defaultdict(list)
-    for bk in raw["brackets"]:
-        for sn in raw["brackets"][bk]:
-            nb = bracket_of(sn)
-            # ★同时改写 bracket【字段】—— 不只是换桶键。Backend.pool_add 是按这个字段分桶的,
-            #   字段留着旧断点的值会让快照在运行时落进错档(实测重分桶后有 80 条字段与桶键不符)。
-            sn["bracket"] = nb
-            rebucket[str(nb)].append(sn)
-    moved = sum(1 for bk in raw["brackets"] for sn in raw["brackets"][bk] if str(bracket_of(sn)) != str(bk))
-    print("  按当前断点重新分桶: %d/%d 条改了档位" % (moved, total))
-    print("  重分桶后各档候选: %s" % {k: len(v) for k, v in sorted(rebucket.items(), key=lambda x: int(x[0]))})
+    dropped_field = 0
+    for sn in raw_rows:
+        if "bracket" in sn:
+            sn.pop("bracket", None)
+            dropped_field += 1
+        rebucket[str(battles_of(sn))].append(sn)
+    print("  删掉 bracket 镜像字段: %d/%d 条" % (dropped_field, total))
+    print("  按场次分桶: %d 个场次 (%s … %s)"
+          % (len(rebucket), min(rebucket, key=int) if rebucket else "-",
+             max(rebucket, key=int) if rebucket else "-"))
 
     # ── ★装备覆盖补选(2026-08-15)──────────────────────────────────────────
-    #   实测: 全量 3396 条快照【覆盖 94/94 件, 一件不缺】, 但按 PER_BRACKET=20 挑完
+    #   实测: 全量 3396 条快照【覆盖 94/94 件, 一件不缺】, 但按每桶 N 条挑完
     #   只剩 57 件 —— 缺的 37 件是在【挑选】这一步丢的, 不是机器人没买到。
     #   (我一开始判断成"机器人数量不够", 差点又去加机器人 —— 先量全量再下结论。)
     #   ⇒ 正常挑完之后, 从剩余候选里【贪心补进能带来新装备的队伍】。
-    #   只补到够为止, 不无限膨胀池子(每档最多多带 TOPUP_CAP 条)。
-    TOPUP_CAP = 25
+    #   只补到够为止, 不无限膨胀池子(每个**场次**最多多带 TOPUP_CAP 条)。
     eq_all_ = json.load(io.open(os.path.join(os.path.dirname(os.path.dirname(
         os.path.abspath(__file__))), "data", "phase2-equipment.json"), encoding="utf-8"))
     buyable_ = set(e["id"] for e in eq_all_ if int(e.get("shopAvailable", 0)) == 1)
@@ -366,7 +385,7 @@ def main():
         while len(seen & buyable_) < len(buyable_):
             best = None
             for bk_ in sorted(rebucket_, key=int):
-                if len(new_brackets_.get(bk_, [])) >= PER_BRACKET + TOPUP_CAP:
+                if len(new_brackets_.get(bk_, [])) >= PER_BATTLES + TOPUP_CAP:
                     continue
                 chosen_ids = set(id(x) for x in new_brackets_.get(bk_, []))
                 for sn_ in rebucket_[bk_]:
@@ -385,22 +404,15 @@ def main():
 
     namer = make_namer()
     schema_ver = backend_schema_ver()
-    new_brackets = {}
-    # ★★★ 按【场次】挑, 不再按【档】挑(见文件头 PER_BATTLES 的长注释)。
-    #   分组用真场次 `season_total_battles`; 输出仍归到它所属的档键里。
-    by_n = collections.defaultdict(list)
-    for bk in rebucket:
-        for sn in rebucket[bk]:
-            by_n[int(sn.get("season_total_battles", -1))].append(sn)
-    print("  ★按场次分组: 共 %d 个不同场次 (%s … %s)"
-          % (len(by_n), min(by_n) if by_n else "-", max(by_n) if by_n else "-"))
+    # ★★★ 按【场次】挑、也按【场次】建键 —— 从原料到产物全程只有这一个量。
+    new_brackets = {}          # 变量名留着不改(下面上百处引用), 键的含义已是【场次】
     pick_hist = {}
-    for n in sorted(by_n):
+    for n in sorted((int(k) for k in rebucket), key=int):
         if n < 0:
             continue
-        picked_n = select(by_n[n], cap=PER_BATTLES)
+        picked_n = select(rebucket[str(n)], cap=PER_BATTLES)
         pick_hist[n] = len(picked_n)
-        new_brackets.setdefault(str(bracket_for_battles(n)), []).extend(picked_n)
+        new_brackets.setdefault(str(n), []).extend(picked_n)
     print("  ★每场次选中数: %s" % pick_hist)
     for bk in sorted(rebucket, key=int):
         picked = new_brackets.get(bk, [])
@@ -430,19 +442,26 @@ def main():
 
     # ── 对照表 ──
     print()
-    print("档  旧池                                          新池(队列真实快照)")
-    print("    队数 队均强度 单件均 组合数 费用分布            队数 队均强度 单件均 组合数 费用分布")
-    for b in range(0, 9):
+    # ★旧池也可能是老结构(brackets/按档) ⇒ 一律按【每条快照自己的场次】重分再比,
+    #   否则换结构那一次对照表会整列变 0, 看着像"新池什么都没挑到"。
+    old_by_n = collections.defaultdict(list)
+    for _k in ("by_battles", "brackets"):
+        for _bk in (old.get(_k) or {}):
+            for _sn in old[_k][_bk]:
+                old_by_n[str(battles_of(_sn))].append(_sn)
+    print("场次  旧池                                          新池(队列真实快照)")
+    print("      队数 队均强度 单件均 组合数 费用分布            队数 队均强度 单件均 组合数 费用分布")
+    for b in sorted((int(k) for k in new_brackets)):
         bk = str(b)
-        o = profile(old.get("brackets", {}).get(bk, []), by_cost)
+        o = profile(old_by_n.get(bk, []), by_cost)
         n = profile(new_brackets.get(bk, []), by_cost)
-        print("%2d  %4d %8.1f %6.2f %6d %-18s  %4d %8.1f %6.2f %6d %-18s" % (
+        print("%4d  %4d %8.1f %6.2f %6d %-18s  %4d %8.1f %6.2f %6d %-18s" % (
             b, o["teams"], o["team_strength"], o["per_item"], o["combos"], str(o["costs"]),
             n["teams"], n["team_strength"], n["per_item"], n["combos"], str(n["costs"])))
 
     # ── 自检 ──
     print()
-    print("=== 自检 (与 verify_bracket_gear 同口径; 不过关拒写) ===")
+    print("=== 自检 (与 verify_seed_battles_gear 同口径; 不过关拒写) ===")
     fail = 0
 
     # ── ⑤ ★装备覆盖率(2026-08-15 用户:「改好能买新装备啊」)──────────────────
@@ -475,57 +494,61 @@ def main():
     t0 = new_brackets.get("0", [])
     t0_items = sum(len(items_of(t)) for t in t0)
     ok = (t0_items == 0)
-    print("  %s ①档0 完全无装备: %d 支队 / %d 件 (必须 0)" % ("✔" if ok else "★", len(t0), t0_items))
+    print("  %s ①场次0 完全无装备: %d 支队 / %d 件 (必须 0)" % ("✔" if ok else "★", len(t0), t0_items))
     if not ok:
         fail += 1
-        print("     → 档0 出现装备说明上游错了(bracket_for_battles 或快照时机), 不要在这里过滤掩盖")
+        print("     → 场次0 出现装备说明上游快照时机错了, 不要在这里过滤掩盖")
 
     # ② 装备容量统一规则(2026-07-27): 单只≤UNIT_EQUIP_CAP 且 全队合计≤team_equip_cap(该快照赛季等级)
     bad_cap = []
     for bk, teams in new_brackets.items():
         for t in teams:
-            lv = int(t.get("season_level", 0)) or (2 + int(bk))
+            lv = int(t.get("season_level", 0)) or bot_level_for_battles(int(bk))
             tcap = team_equip_cap(lv)
             used = 0
             for pid, arr in (t.get("equipped") or {}).items():
                 used += len(arr)
                 if len(arr) > UNIT_EQUIP_CAP:
-                    bad_cap.append("档%s %s %d件>单只上限%d" % (bk, pid, len(arr), UNIT_EQUIP_CAP))
+                    bad_cap.append("场次%s %s %d件>单只上限%d" % (bk, pid, len(arr), UNIT_EQUIP_CAP))
             for _lk, marr in (t.get("minions") or {}).items():
                 for m in marr:
                     e = m.get("equips") or []
                     used += len(e)
                     if len(e) > UNIT_EQUIP_CAP:
-                        bad_cap.append("档%s 小将 %d件>单只上限%d" % (bk, len(e), UNIT_EQUIP_CAP))
+                        bad_cap.append("场次%s 小将 %d件>单只上限%d" % (bk, len(e), UNIT_EQUIP_CAP))
             if used > tcap:
-                bad_cap.append("档%s 全队 %d件>上限%d (Lv%d)" % (bk, used, tcap, lv))
+                bad_cap.append("场次%s 全队 %d件>上限%d (Lv%d)" % (bk, used, tcap, lv))
     print("  %s ②装备容量(单只≤%d 且 全队≤team_equip_cap): %d 处违规" % (
         "✔" if not bad_cap else "★", UNIT_EQUIP_CAP, len(bad_cap)))
     if bad_cap:
         fail += 1
         print("     " + "; ".join(bad_cap[:4]))
 
-    prev = 0.0
-    mono_bad = []
-    for b in range(0, 9):
-        p = profile(new_brackets.get(str(b), []), by_cost)
-        if p["per_item"] > 0:
-            if p["per_item"] <= prev:
-                mono_bad.append(b)
-            prev = p["per_item"]
-    print("  %s ③单件均强度逐档单调递增: %s" % ("✔" if not mono_bad else "★",
-                                        "通过" if not mono_bad else "档 %s 未高于上一档" % mono_bad))
-    if mono_bad:
+    # ── ③ 单件均强度随进度上升 ────────────────────────────────────────
+    # ★★2026-09-26 判据从「逐【档】严格递增」改成「逐【场次】平滑后上升」。
+    #   不是放宽, 是**换到被测的那个量上**: 9 档时每档 20 条、一档一个点, 严格递增本来
+    #   就成立; 换成 36 个场次后每格 12 条, 相邻两格差半件装备, 单点噪声必然造出逆序 ——
+    #   拿严格递增去卡它等于**判据窄一格放过真 bug 的同时造出假 bug**
+    #   (memory fb-judge-must-fit-the-shape: 先打剖面再定阈值)。
+    #   ⇒ 量两件真正要保的事: ① 五格滑动均值绝大多数步不下降 ② 尾段明显高于头段。
+    ns_sorted = sorted(int(k) for k in new_brackets)
+    per_item_seq = [profile(new_brackets[str(b)], by_cost)["per_item"] for b in ns_sorted]
+    W = 5
+    ma = [sum(per_item_seq[i:i + W]) / float(len(per_item_seq[i:i + W]))
+          for i in range(max(1, len(per_item_seq) - W + 1))]
+    steps = max(1, len(ma) - 1)
+    down = sum(1 for i in range(len(ma) - 1) if ma[i + 1] < ma[i] - 1e-9)
+    head = sum(per_item_seq[:W]) / float(max(1, len(per_item_seq[:W])))
+    tail = sum(per_item_seq[-W:]) / float(max(1, len(per_item_seq[-W:])))
+    ok3a = (steps - down) >= steps * 0.80
+    ok3b = tail > head
+    print("  %s ③单件均强度随场次上升: 滑动均值不降 %d/%d 步 (下限 80%%), "
+          "头段 %.2f → 尾段 %.2f" % ("✔" if (ok3a and ok3b) else "★",
+                                  steps - down, steps, head, tail))
+    if not (ok3a and ok3b):
         fail += 1
-
-    thin = [b for b in range(0, 9) if 0 < len(new_brackets.get(str(b), [])) < MIN_PER_BRACKET]
-    empty = [b for b in range(0, 9) if not new_brackets.get(str(b))]
-    if empty:
-        print("  ★④档 %s 一条快照都没有 —— 没有机器人活到那么远。" % empty)
-        print("     这不是工具的问题, 是【现行规则下那几档没有人】。要么砍档位, 要么改命数/淘汰规则。")
-        print("     绝不用推测数据填充(那就退回旧池那种「造出来的假快照」了)。")
-    if thin:
-        print("  ⚠ 档 %s 候选不足 %d 条 —— 池子里会总撞同几支, 建议加机器人数或轮数再跑。" % (thin, MIN_PER_BRACKET))
+        print("     ⇒ 分母: %d 个场次 / %d 步滑动均值。序列 = %s"
+              % (len(ns_sorted), steps, [round(x, 2) for x in per_item_seq]))
 
     # ── ⑥ ★★★【场次覆盖】—— 这条自检要是一开始就在, 九格压缩根本不会发生。
     #
@@ -558,10 +581,10 @@ def main():
     # 队名抽样(玩家真会看到的字)
     print()
     print("  队名抽样:")
-    for b in range(0, 9):
+    for b in sorted((int(k) for k in new_brackets))[::6]:      # 每 6 个场次抽一行, 别刷 36 行
         ns = [t.get("profile", {}).get("name", "?") for t in new_brackets.get(str(b), [])][:5]
         if ns:
-            print("    档%d: %s" % (b, " / ".join(ns)))
+            print("    场次%d: %s" % (b, " / ".join(ns)))
 
     if fail:
         print()
@@ -576,23 +599,24 @@ def main():
     for teams in new_brackets.values():          # 清掉只在转化期用的内部字段, 别写进正式数据
         for t in teams:
             t.pop("_bot_key", None)
-    # 保留旧池里【玩家真 ghost 以外】的结构约定: 直接整体替换 brackets
     out = {
         "_note": (
-            "ghost 种子池 v6 (2026-07-27) —— 【队列模拟产出的真实玩家快照】, 非人工配平。"
+            "ghost 种子池 —— 【队列模拟产出的真实玩家快照】, 非人工配平。"
             "%d 只机器人从 0 场 8 命起步互相打, 输光即淘汰; 每场开打前存下双方当时的真实家当。"
             "装备的费用/星级混搭是背包历史的自然结果(早期便宜货合成★3, 后期贵货还是★1), "
-            "不是按目标强度反推的。档0 = 人生第一把(双方全裸)。"
+            "不是按目标强度反推的。场次0 = 人生第一把(双方全裸)。"
+            "分桶键 = 总场次(by_battles); 匹配硬条件 = 双方总场次完全相同(D5), "
+            "9 档已于 2026-09-26 彻底删除。"
             "生成: tools/cohort_to_seed.py; 原料: tools/autoplay/cohort-snapshots.json。"
         ) % len(set(t.get("profile", {}).get("id", "") for teams in new_brackets.values() for t in teams)),
-        "brackets": new_brackets,
+        "by_battles": dict(sorted(new_brackets.items(), key=lambda kv: int(kv[0]))),
     }
     json.dump(out, open(SEED_PATH, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     print()
     print("已写入 %s" % SEED_PATH)
     print("★下一步必做:")
     print("   1) scripts/net/backend.gd 的 SEED_VER +1 (否则老存档不并入新种子)")
-    print("   2) tests/verify_ghost_seed.gd 里硬编码的 146 支队期望值要改成 %d"
+    print("   2) tests/verify_ghost_seed.gd 里硬编码的支队期望值要改成 %d"
           % sum(len(v) for v in new_brackets.values()))
     print("   3) bash run-tests.sh 全套")
     return 0

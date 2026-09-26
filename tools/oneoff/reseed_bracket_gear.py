@@ -1,5 +1,21 @@
 # -*- coding: utf-8 -*-
-"""按用户 2026-07-21 的云顶式强度梯队, 重排 ghost_seed.json 各档的装备配置。
+"""⛔ 已作废 (2026-09-26) —— **跑它会把 data/ghost_seed.json 写坏**, 开头有硬拦。
+
+作废原因两条, 都是结构性的:
+  ① 它的整个前提「按档手配装备梯队」已被【队列模拟真实快照】取代
+     (tools/cohort_to_seed.py, 2026-07-27 起)。手配的那套正是用户当时说
+     「其实是很假的」要换掉的东西。
+  ② 2026-09-26「9 档」彻底删除: 它读的 data['brackets'] 键、依赖的
+     backend.battles_for_bracket / equip_slots_for_battles 全都没了。
+     种子池现在的结构是 {"by_battles": {"<场次>": [...]}}。
+     ⇒ 照原样跑 = 读到空 dict、写出一个空池子, 而且**一声不吭**。
+
+留着不删的唯一理由: docs/实时版-路线图与待办.md 与 tools/README.md 还引着它,
+删了那两处引用就变成死链。要的是路标, 不是可执行的脚本。
+
+── 以下是作废前的原始说明, 仅作历史 ──
+
+按用户 2026-07-21 的云顶式强度梯队, 重排 ghost_seed.json 各档的装备配置。
 
 【为什么要重排】
   ①档0 应该是"所有玩家第一大轮第一把"→ 不该有装备; 而且代码
@@ -16,6 +32,17 @@ import io
 import json
 import random
 import shutil
+
+import sys
+
+## ★★★硬拦: 本脚本已作废(见文件头)。它会读一个不存在的键然后写出空池子。
+##   拦在这里而不是只写注释 —— 注释挡不住「照着 README 复制一行就跑」。
+sys.exit(
+    u'⛔ reseed_bracket_gear.py 已作废(2026-09-26): 9 档已彻底删除, '
+    u'ghost_seed.json 现在按【场次】分桶(键 by_battles)。\n'
+    u'   要重做种子池请走: python tools/cohort_to_seed.py [--write]\n'
+    u'   理由见本文件头注与 docs/plans/20260926-删掉9档进度档.md'
+)
 
 SRC = 'data/ghost_seed.json'
 BAK = 'data/ghost_seed.json.bak-gear'
