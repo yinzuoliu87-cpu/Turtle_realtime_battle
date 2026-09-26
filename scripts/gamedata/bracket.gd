@@ -165,3 +165,90 @@ static func has_first_round_bye(slot: int, n: int) -> bool:
 ## 赢家从第 r 轮的第 m 场，晋级到下一轮的第几场。
 static func winner_goes_to(m: int) -> int:
 	return m / 2
+
+## ══════════════════════════════════════════════════════════════════════
+## 「那个坑位上坐着谁」与「我走到了第几轮」—— 纯函数, 只吃 (n, done)
+## ══════════════════════════════════════════════════════════════════════
+## ★★★2026-09-26 这段递归**原来只住在 `BracketMapScene.competitor()` 里**。
+##   搬下来是因为发头衔也要它, 而那是第二个消费者 ——
+##   抄第二份就是「抄一次永远落后一次」(memory fb-hand-rolled-copies-drift)。
+##   `BracketMapScene.competitor()` 现在**调这里**, 自己只负责把种子号换成名字。
+##
+## ★为什么服务端不算: 算得出就等于把对阵规则在 SQL 里写第二遍(E-B3 定死的)。
+##   服务端只存 `done`(哪一场哪一侧赢), 谁打谁一律客户端推。
+
+
+const OCC_TBD := -1     # 待定: 上一轮还没翻面
+const OCC_BYE := -2     # 轮空: 这个坑位本来就没人
+
+
+## 第 r 轮(1 起)第 m 场的 `side` 侧坐着几号种子。OCC_TBD / OCC_BYE 见上。
+## ★轮空要单独有个值: 「待定」会等出人来, 「轮空」永远不会 —— 两者混成一个
+##   的后果是有轮空的桶在第二轮显示「待定 vs 待定」(2026-09-25 修过一次)。
+static func occupant_seed(r: int, m: int, side: int, n: int, done: Dictionary) -> int:
+	if r <= 1:
+		var seat: int = m * 2 + side
+		var sd := seed_at_seat(seat, n)
+		if sd < 0 or sd >= n:
+			return OCC_BYE
+		return sd
+	var src_m: int = m * 2 + side
+	var key := "%d-%d" % [r - 1, src_m]
+	if done.has(key):
+		return occupant_seed(r - 1, src_m, int(done[key]), n, done)
+	## ★轮空自动晋级: 上一轮那一场有一侧是空位 ⇒ 另一侧不必等 `done` 里有记录。
+	if r - 1 == 1:
+		var a0 := occupant_seed(1, src_m, 0, n, done)
+		var b0 := occupant_seed(1, src_m, 1, n, done)
+		if (a0 == OCC_BYE) != (b0 == OCC_BYE):
+			return b0 if a0 == OCC_BYE else a0
+	return OCC_TBD
+
+
+## 我在这一场的哪一侧(0 / 1); -1 = 我不在这一场。
+static func my_side_in(me: int, r: int, m: int, n: int, done: Dictionary) -> int:
+	if me < 0:
+		return -1
+	for side in [0, 1]:
+		if occupant_seed(r, m, side, n, done) == me:
+			return side
+	return -1
+
+
+## 「我这一周在决赛日走到哪儿了」—— 发冠军/四强头衔的**唯一依据**。
+##
+## 返回 `{"total": 共几轮, "deepest": 我被排进的最深那一轮(0 = 没进), "champion": 赢下决赛没有}`
+##
+## ★★`deepest` 取的是「**被排进**」不是「打过」—— 原稿「四强 = 打进四强」问的是名次,
+##   而被排进倒数第二轮就已经是前 4 名了(那一轮正好 4 个人)。
+## ★★`champion` **必须看 `done`**, 不能用「被排进决赛」——
+##   周日现在是双方各自在本地打对方快照、两边都可能算出自己赢
+##   (服务端 `on conflict do nothing` 先报的算), 所以**本地结果不是权威**。
+##   `done["<总轮数>-0"]` 一个桶里只有一个值, 那才是权威。
+static func my_progress(me: int, n: int, done: Dictionary) -> Dictionary:
+	var total := rounds_for(n)
+	var out := {"total": total, "deepest": 0, "champion": false}
+	## ★`me < 0` 这一半是**防御性, 不承重**(2026-09-26 反向验证查实): 把它拿掉
+	##   一条断言都不红 —— `my_side_in()` 自己第一行就挡 `me < 0`, 于是循环里
+	##   一次都不会命中, `deepest` 照旧是 0。留着是把「纯观众没有名次」写在明面上。
+	##   ⚠ 不要因为它在这儿就以为「纯观众」这件事有判据在守 —— 守它的是
+	##   `verify_titles` ⑤a 那条「纯观众(me < 0) ⇒ 最深 0、不夺冠」, 它量的是**结果**,
+	##   所以无论哪一层挡住的都算。(memory fb-mutation-not-reddening-can-mean-dead-code)
+	## ★`n <= 1 or total <= 0` 这一半**是承重的**: 一人一桶时 `rounds_for` 没有意义。
+	if me < 0 or n <= 1 or total <= 0:
+		return out
+	for r in range(1, total + 1):
+		for m in range(matches_in_round(n, r)):
+			if my_side_in(me, r, m, n, done) >= 0:
+				out["deepest"] = r
+	var fs := my_side_in(me, total, 0, n, done)
+	if fs >= 0:
+		var w = done.get("%d-0" % total, -1)
+		out["champion"] = int(w) == fs
+	return out
+
+
+## 这一周该不该发「四强」。★2 人桶(只有决赛那一轮)**不发** —— 那一轮就是冠军赛。
+static func semifinal_reached(deepest: int, total: int) -> bool:
+	return total >= 2 and deepest >= total - 1
+

@@ -156,8 +156,38 @@ func set_data(bucket: Dictionary, finals: Dictionary, now: int = 0) -> void:
 	## ★默认那张要是还没形成, 就退回另一张 —— 别让人开屏就看到一张空图
 	if _view == _L.VIEW_FINALS and int(_finals.get("size", 0)) <= 1:
 		_view = _L.VIEW_BUCKET
+	_record_progress()
 	if is_inside_tree():
 		_rebuild()
+
+
+## ★★★把「我在决赛日走到第几轮 / 有没有夺冠」记进存档, 并对一次头衔账。
+##   方案书 `docs/plans/20260926-冠军四强头衔发放.md`。
+##
+## ★为什么在这里: 这是**权威结果到手**的那一刻。冠军/四强不能从本地
+##   `finals_settle(won)` 数出来 —— 周日是双方各自在本地打对方的快照, 两边都可能
+##   算出自己赢(服务端 `finals_report` 用 `on conflict do nothing`, 先报的算),
+##   拿本地结果发头衔 = 一个桶里出两个冠军。权威只有 feed 里的 `done`。
+##
+## ★依据取 `_bucket`(**我那个桶**那一张), 不是 `cur()` —— `cur()` 跟着页签变,
+##   切到「冠军赛」那张就会拿另一张图的 `done` 去算我的名次。
+## ★两条路都调它: 联网那条(`_on_poll` 指纹变了)与喂数据那条(`set_data`)。
+##   只挂一条的话, 门禁验的就不是玩家真走的那条(memory fb-verify-must-run-the-real-path)。
+func _record_progress() -> void:
+	if GameState == null:
+		return
+	var n := int(_bucket.get("size", 0))
+	var me := int(_bucket.get("me", -1))
+	if n <= 1 or me < 0:
+		return                        # 没有桶 / 我不在桶里(纯观众) ⇒ 一个字都不记
+	var pr: Dictionary = _B.my_progress(me, n, _bucket.get("done", {}) as Dictionary)
+	var changed: bool = GameState.record_finals_progress(
+		int(pr.get("deepest", 0)), int(pr.get("total", 0)), bool(pr.get("champion", false)))
+	## ★头衔在 `sync_titles()` 里发(与满配额/进决赛日同一个入口) —— 这里不自己发。
+	##   `sync_titles` 自带按 `{id, week}` 去重, 每次 feed 都调一遍是幂等的。
+	var got: int = GameState.sync_titles()
+	if changed or got > 0:
+		GameState.save()
 
 
 func _clock() -> int:
@@ -452,28 +482,22 @@ func _make_round_labels(n: int, total: int) -> void:
 ## 返回 {"name": 名字/"待定"/"轮空", "seed": 种子号(-1=未定), "bye": 是不是空位}
 ## ★★递归: 第 r 轮上面那一侧 = 第 r−1 轮第 2m 场的**赢家**。
 ##   —— 这正是"对阵图"这件事本身, 写成查表就会跟晋级规则脱钩。
+## ★★★2026-09-26 这里原来有一整份递归(顺着 `done` 一路往前推谁坐这个坑)。
+##   已下沉到 `bracket.gd` 的 `occupant_seed()` —— 因为**多了第二个消费者**:
+##   发冠军/四强头衔也要「我走到第几轮」, 而那必须用同一份推导
+##   (memory fb-hand-rolled-copies-drift: 抄一次永远落后一次)。
+## ⇒ 本函数现在只做一件事: **把种子号换成显示名**。轮空/待定两种空态各自保留,
+##   它们在界面上是两句不同的话("轮空" vs "待定"), 混成一个会让有轮空的桶
+##   在第二轮显示成"待定 vs 待定"(2026-09-25 修过一次的那个)。
 func competitor(r: int, m: int, side: int) -> Dictionary:
 	var n := int(cur().get("size", 0))
 	var names: Array = cur().get("names", [])
-	if r <= 1:
-		var seat: int = m * 2 + side
-		var sd := _B.seed_at_seat(seat, n)
-		if sd < 0 or sd >= n:
-			return {"name": "轮空", "seed": -1, "bye": true}
-		return {"name": str(names[sd]) if sd < names.size() else "?", "seed": sd, "bye": false}
-	var src_m: int = m * 2 + side
-	var d: Dictionary = cur().get("done", {})
-	var key := "%d-%d" % [r - 1, src_m]
-	if d.has(key):
-		return competitor(r - 1, src_m, int(d[key]))
-	## ★轮空: 上一轮那一场有一侧是空位 ⇒ 另一侧**自动晋级**, 不必等 `done` 里有记录。
-	##   漏了这条的话, 有轮空的桶在第二轮会显示成"待定 vs 待定"。
-	if r - 1 == 1:
-		var a0: Dictionary = competitor(1, src_m, 0)
-		var b0: Dictionary = competitor(1, src_m, 1)
-		if bool(a0.get("bye", false)) != bool(b0.get("bye", false)):
-			return b0 if bool(a0.get("bye", false)) else a0
-	return {"name": "待定", "seed": -1, "bye": false}
+	var sd := _B.occupant_seed(r, m, side, n, cur().get("done", {}) as Dictionary)
+	if sd == _B.OCC_BYE:
+		return {"name": "轮空", "seed": -1, "bye": true}
+	if sd < 0:
+		return {"name": "待定", "seed": -1, "bye": false}
+	return {"name": str(names[sd]) if sd < names.size() else "?", "seed": sd, "bye": false}
 
 
 ## 本轮这一场里，**我的对手**是几号种子。`-1` = 拿不到。
@@ -881,6 +905,7 @@ func _on_poll() -> void:
 	if sig != _last_sig:
 		_last_sig = sig
 		_bucket = v.duplicate(true)
+		_record_progress()             # ★权威结果到手 ⇒ 记进度 + 对头衔账(见那个函数的头注)
 		_rebuild()
 	_sync_tip()
 

@@ -49,6 +49,7 @@ func _ready() -> void:
 	_t_meet_late()
 	_t_byes()
 	_t_small()
+	_t_occupant()
 	print("")
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 单败对阵图" if _fail == 0 else "FAIL x%d" % _fail)
@@ -310,3 +311,62 @@ func _t_small() -> void:
 		B.winner_goes_to(0) == 0 and B.winner_goes_to(1) == 0)
 	_ok("⑥ 第 2/3 场的赢家进下一轮第 1 场",
 		B.winner_goes_to(2) == 1 and B.winner_goes_to(3) == 1)
+
+# ─────────────────────────────────────────────────────────────
+# ★★★坑位上坐着谁: 「轮空」与「待定」**必须是两种东西**
+# ─────────────────────────────────────────────────────────────
+## 2026-09-26 加。起因是**反向验证打不红**: 我把 `occupant_seed()` 第一轮的空位
+## 从 `OCC_BYE` 改成 `OCC_TBD`, 四份门禁(bracket / bracket_map / bracket_layout /
+## finals_feed 共 243 条断言)**一条都没红** —— 而那正是 2026-09-25 修过的那个 bug:
+##
+##   · 界面上第一轮的空位会从「轮空」变成「待定」(说的是两件不同的事)
+##   · 更糟: 第二轮的自动晋级判据是 `a0 == OCC_BYE`, 混了之后**永远不成立**
+##     ⇒ 有轮空的桶在第二轮显示成「待定 vs 待定」, 而那个人明明已经进去了
+##
+## ⇒ 判据必须**同时**卡住三件事: 空位是 BYE、未定是 TBD、轮空的人不等 `done` 就晋级。
+##   (memory fb-judge-must-fit-the-shape: 判据要刚好卡住那个形状。)
+func _t_occupant() -> void:
+	print("── 坑位占用: 轮空 ≠ 待定 ──")
+	## 5 人桶 ⇒ 8 个坑 ⇒ 3 个空位。
+	var n := 5
+	_ok("★分母: 5 人桶有 8 个坑 / 3 个空位", B.slots_for(n) == 8, "%d 坑" % B.slots_for(n))
+	var byes := 0
+	var reals := 0
+	for m in range(B.matches_in_round(n, 1)):
+		for side in [0, 1]:
+			var sd: int = B.occupant_seed(1, m, side, n, {})
+			if sd == B.OCC_BYE:
+				byes += 1
+			elif sd >= 0:
+				reals += 1
+	_ok("★★★第一轮的空位是【轮空】(OCC_BYE), 不是【待定】", byes == 3, "轮空 %d 个(期望 3)" % byes)
+	_ok("★分母: 另外 5 个坑坐的是真人", reals == 5, "真人 %d 个" % reals)
+	_ok("★★两个常量不许相等(相等的话上面那条永远成立)", B.OCC_BYE != B.OCC_TBD,
+		"BYE=%d TBD=%d" % [B.OCC_BYE, B.OCC_TBD])
+
+	## ★★轮空的人**不等 `done`** 就该出现在第二轮。
+	##   `done` 传空字典 —— 一场都没打过, 这时第二轮里出现的人只能是靠轮空进去的。
+	var auto: Array = []
+	for m2 in range(B.matches_in_round(n, 2)):
+		for side2 in [0, 1]:
+			var sd2: int = B.occupant_seed(2, m2, side2, n, {})
+			if sd2 >= 0:
+				auto.append(sd2)
+	_ok("★★★一场没打时, 第二轮里已经有靠【轮空】进去的人(否则界面会显示「待定 vs 待定」)",
+		auto.size() >= 1, "第二轮已定 %d 人: %s" % [auto.size(), str(auto)])
+	## ★原稿:「人数不整则**高种子轮空**」⇒ 自动晋级的必须是**小种子号**(0 起 = 最高)
+	var worst := -1
+	for a in auto:
+		worst = maxi(worst, int(a))
+	_ok("★★轮空进去的是高种子(种子号 ≤ 空位数)", worst >= 0 and worst < (8 - n),
+		"最大种子号 %d, 空位 %d 个" % [worst, 8 - n])
+
+	## ★★「待定」这一侧: 8 人满桶、一场没打 ⇒ 第二轮**两侧都该是待定**(没有轮空可用)
+	var tbd := 0
+	for m3 in range(B.matches_in_round(8, 2)):
+		for side3 in [0, 1]:
+			if B.occupant_seed(2, m3, side3, 8, {}) == B.OCC_TBD:
+				tbd += 1
+	_ok("★★★满桶(8 人)一场没打 ⇒ 第二轮全是【待定】(证明 TBD 这一支真的会走到)",
+		tbd == 2 * B.matches_in_round(8, 2), "待定 %d / %d" % [tbd, 2 * B.matches_in_round(8, 2)])
+

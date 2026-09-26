@@ -21,6 +21,10 @@ extends Node
 ##      把开关打开（纯函数层面）就必须发得出来，否则"发不出来"可能只是函数坏了。
 ## ★④ **同一周不重复发**：打满两次配额不该变成两个头衔。
 ## ★⑤ 每条"拿不到/没变化"都配分母。
+## ★⑥ **冠军/四强的依据必须是服务端的 `done`，不是本地 `won`**（2026-09-26 新增第 ⑤ 段）。
+##      周日是双方各自在本地打对方的快照、两边都可能算出自己赢（服务端
+##      `finals_report` 用 `on conflict do nothing`，先报的算）⇒ 拿本地结果发冠军
+##      头衔就是一个桶里出两个冠军。⇒ 判据全部从 `done` 造。
 ##
 ## 跑法: <godot> --headless --path . res://tests/verify_titles.tscn --quit-after 600
 
@@ -31,7 +35,9 @@ var _fail := 0
 ## ★收尾要还原的存档字段（门禁不许污染玩家存档）
 const KEYS := ["titles", "ranked_used", "promoted", "week_anchor_ts", "season_id",
 	"season_start_ts", "hearts", "season_wins", "season_total_battles", "week_phase",
-	"gauntlet_wins", "gauntlet_losses", "install_uid", "account_id", "account_email"]
+	"gauntlet_wins", "gauntlet_losses", "install_uid", "account_id", "account_email",
+	## ★2026-09-26 冠军/四强的发放依据(见第 ⑤ 段)。漏登记 = 门禁把玩家存档改了不还原。
+	"finals_deepest_round", "finals_rounds_total", "finals_champion"]
 var _bak := {}
 
 
@@ -54,6 +60,7 @@ func _ready() -> void:
 	_t_award()
 	await _t_real_entry()
 	_t_survive_resets()
+	await _t_finals_titles()
 	for k in KEYS:
 		GameState.set(k, _bak[k])
 	print("")
@@ -227,3 +234,128 @@ func _t_survive_resets() -> void:
 	var payload: Dictionary = GameState.cloud_payload()
 	_ok("④ ★头衔进了存档载荷(不然重开游戏就没了)",
 		(payload.get("titles", []) as Array).size() == before, str(payload.get("titles")))
+
+# ─────────────────────────────────────────────────────────────
+# ⑤ ★★★冠军 / 四强: 依据是服务端 feed 里的 `done`
+# ─────────────────────────────────────────────────────────────
+## 方案书 `docs/plans/20260926-冠军四强头衔发放.md`。
+##
+## 在这一段之前，`TITLE_CHAMPION` / `TITLE_SEMIFINAL` **没有任何发放路径** ——
+## 常量、中文标签、显示顺序、`title_earnable` 全齐，而 `award_title()` 全仓
+## 只有两个调用点（满配额 / 已晋级）。周日夺冠的人拿到的头衔和周六晋级的一模一样。
+##
+## ★判据分两层，各管一件事：
+##   (a) 纯函数 `Bracket.my_progress(me, n, done)` —— 走到第几轮 / 有没有夺冠
+##   (b) 真入口 `ensure_season() → sync_titles()` —— 从存档里那三个字段发头衔
+## ★「四强」= **被排进**倒数第二轮（那一轮正好 4 人）⇒ 原稿「打进四强」问的是名次，
+##   不要求赢。所以 (a) 里「排进决赛但输了」必须**有四强、没有冠军**。
+const _BR := preload("res://scripts/gamedata/bracket.gd")
+
+func _t_finals_titles() -> void:
+	print("── ⑤ 冠军/四强(依据 = 服务端 done) ──")
+
+	## ── (a) 纯函数 ──────────────────────────────────────────────
+	## 4 人桶: 2 轮。第 1 轮两场(0/1) = 四强, 第 2 轮一场 = 决赛。
+	var n4 := 4
+	_ok("⑤a ★分母: 4 人桶共 2 轮", _BR.rounds_for(n4) == 2, "%d 轮" % _BR.rounds_for(n4))
+	## 我是 0 号种子。先看「一场都还没打」
+	var p0: Dictionary = _BR.my_progress(0, n4, {})
+	_ok("⑤a 一场没打 ⇒ 最深 1 轮、没夺冠",
+		int(p0.get("deepest", -1)) == 1 and not bool(p0.get("champion", true)), str(p0))
+	_ok("⑤a ★分母: 这时还不算四强(total=2 ⇒ 要走到第 1 轮才算… 第 1 轮就是四强)",
+		_BR.semifinal_reached(int(p0.get("deepest", 0)), 2))
+
+	## 我赢了第 1 轮 ⇒ 被排进决赛
+	var my_side_r1: int = _BR.my_side_in(0, 1, 0, n4, {})
+	_ok("⑤a ★分母: 我(0 号种子)在第 1 轮第 0 场里有一侧", my_side_r1 >= 0, "side=%d" % my_side_r1)
+	var done_semi := {"1-%d" % 0: my_side_r1}
+	var p1: Dictionary = _BR.my_progress(0, n4, done_semi)
+	_ok("⑤a 赢下第 1 轮 ⇒ 最深变成 2(被排进决赛)", int(p1.get("deepest", -1)) == 2, str(p1))
+	_ok("⑤a ★★被排进决赛但决赛还没结果 ⇒ **不算夺冠**",
+		not bool(p1.get("champion", true)), str(p1))
+
+	## 决赛我赢 ⇒ 冠军; 决赛我输 ⇒ 只有四强
+	var my_side_f: int = _BR.my_side_in(0, 2, 0, n4, done_semi)
+	_ok("⑤a ★分母: 我在决赛里有一侧", my_side_f >= 0, "side=%d" % my_side_f)
+	var done_win := done_semi.duplicate()
+	done_win["2-0"] = my_side_f
+	var done_lose := done_semi.duplicate()
+	done_lose["2-0"] = 1 - my_side_f
+	_ok("⑤a ★★★决赛 done 说我那一侧赢 ⇒ 夺冠",
+		bool(_BR.my_progress(0, n4, done_win).get("champion", false)))
+	_ok("⑤a ★★★决赛 done 说**对手那一侧**赢 ⇒ 不夺冠(这一条挡住「两边都赢」)",
+		not bool(_BR.my_progress(0, n4, done_lose).get("champion", true)))
+
+	## 纯观众 / 2 人桶
+	var pv: Dictionary = _BR.my_progress(-1, n4, done_win)
+	_ok("⑤a ★★纯观众(me < 0) ⇒ 最深 0、不夺冠", int(pv.get("deepest", -1)) == 0
+		and not bool(pv.get("champion", true)), str(pv))
+	_ok("⑤a ★★2 人桶只有决赛那一轮 ⇒ **不发四强**(那一轮就是冠军赛)",
+		_BR.rounds_for(2) == 1 and not _BR.semifinal_reached(1, 1),
+		"2 人 %d 轮" % _BR.rounds_for(2))
+	_ok("⑤a ★分母: 4 人桶走到第 1 轮就算四强(证明上一条不是恒 false)",
+		_BR.semifinal_reached(1, 2))
+
+	## ── (b) 真入口: ensure_season → sync_titles ─────────────────
+	GameState.titles = []
+	GameState.season_id = 1
+	GameState.season_start_ts = int(Time.get_unix_time_from_system())
+	GameState.week_anchor_ts = P2C.week_anchor_utc(int(Time.get_unix_time_from_system()))
+	GameState.ranked_used = 0
+	GameState.promoted = false
+	GameState.finals_deepest_round = 0
+	GameState.finals_rounds_total = 0
+	GameState.finals_champion = false
+	GameState.ensure_season()
+	await get_tree().process_frame
+	_ok("⑤b ★分母: 什么都没达成 ⇒ 一个头衔都不发", GameState.titles.is_empty(),
+		str(GameState.titles))
+
+	## 走到四强(4 人桶第 1 轮)但没夺冠
+	GameState.record_finals_progress(1, 2, false)
+	GameState.ensure_season()
+	await get_tree().process_frame
+	var has_semi: bool = P2C.title_has(GameState.titles, P2C.TITLE_SEMIFINAL,
+		int(GameState.week_anchor_ts))
+	var has_champ: bool = P2C.title_has(GameState.titles, P2C.TITLE_CHAMPION,
+		int(GameState.week_anchor_ts))
+	_ok("⑤b ★★★走到四强 ⇒ 真入口把【四强】发了", has_semi, str(GameState.titles))
+	_ok("⑤b ★★★没夺冠 ⇒ **冠军一条都不许有**", not has_champ, str(GameState.titles))
+
+	## 夺冠
+	GameState.record_finals_progress(2, 2, true)
+	GameState.ensure_season()
+	await get_tree().process_frame
+	_ok("⑤b ★★★夺冠 ⇒ 真入口把【冠军】发了",
+		P2C.title_has(GameState.titles, P2C.TITLE_CHAMPION, int(GameState.week_anchor_ts)),
+		str(GameState.titles))
+	_ok("⑤b ★分母: 四强还在(夺冠不该顶掉四强)",
+		P2C.title_has(GameState.titles, P2C.TITLE_SEMIFINAL, int(GameState.week_anchor_ts)))
+	var n_before := GameState.titles.size()
+	GameState.ensure_season()
+	await get_tree().process_frame
+	_ok("⑤b ★★再对一次账 ⇒ 不重复发", GameState.titles.size() == n_before,
+		"%d → %d" % [n_before, GameState.titles.size()])
+
+	## ── (c) 只增不减 ───────────────────────────────────────────
+	## feed 故意不下发当前轮 ⇒ 这几个值只会往上走。喂一个更小的进来不许把依据抹掉。
+	_ok("⑤c ★★喂更小的值 ⇒ 不变(返回 false)",
+		not GameState.record_finals_progress(1, 1, false))
+	_ok("⑤c ★分母: 大的值确实还在",
+		int(GameState.finals_deepest_round) == 2 and int(GameState.finals_rounds_total) == 2
+		and bool(GameState.finals_champion),
+		"%d/%d/%s" % [GameState.finals_deepest_round, GameState.finals_rounds_total,
+			str(GameState.finals_champion)])
+
+	## ── (d) 周换轮把依据清掉(头衔本身不清) ─────────────────────
+	var titles_before := GameState.titles.size()
+	GameState.start_new_season()
+	_ok("⑤d ★★★切轮 ⇒ 三个依据字段都清零(上周的冠军不许顺延成本周的头衔)",
+		int(GameState.finals_deepest_round) == 0 and int(GameState.finals_rounds_total) == 0
+		and not bool(GameState.finals_champion),
+		"%d/%d/%s" % [GameState.finals_deepest_round, GameState.finals_rounds_total,
+			str(GameState.finals_champion)])
+	_ok("⑤d ★分母: 头衔本身一条都没少(清的是依据不是荣誉)",
+		GameState.titles.size() == titles_before,
+		"%d → %d" % [titles_before, GameState.titles.size()])
+

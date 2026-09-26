@@ -171,6 +171,7 @@ var battle_seed: int = 0
 
 const _DualLane := preload("res://scripts/gamedata/phase2_duallane.gd")
 const _P2 := preload("res://scripts/gamedata/phase2_config.gd")
+const _Bracket = preload("res://scripts/gamedata/bracket.gd")
 const _Equip := preload("res://scripts/gamedata/phase2_equip.gd")
 ## 匹配到的对手资料 (野生=模拟真人 / 在线=真人) {name, avatar(pet_id), id}. 匹配动画写, 双路读显.
 var dual_opponent: Dictionary = {}
@@ -734,7 +735,39 @@ func sync_titles() -> int:
 	if bool(promoted):
 		if award_title(_P2.TITLE_FINALS_DAY):
 			got += 1
+	## ★★★2026-09-26 冠军/四强也走这一个入口(原来它们**没有任何发放路径** ——
+	##   常量/标签/显示顺序/`title_earnable` 全齐, 而 `award_title` 全仓只有上面两个调用点)。
+	## ★依据是从服务端 feed 派生的三个字段(见它们的声明处), 不是本地 `won`。
+	## ★「四强」= 被排进倒数第二轮(那一轮正好 4 个人)⇒ 原稿「打进四强」问的是**名次**,
+	##   不要求赢。2 人桶只有决赛那一轮, `semifinal_reached` 里不发。
+	if _Bracket.semifinal_reached(int(finals_deepest_round), int(finals_rounds_total)):
+		if award_title(_P2.TITLE_SEMIFINAL):
+			got += 1
+	if bool(finals_champion):
+		if award_title(_P2.TITLE_CHAMPION):
+			got += 1
 	return got
+
+
+## 把服务端 feed 算出来的决赛日进度记下来(**只增不减**)。返回有没有变。
+## ★★调用点只有 `BracketMapScene.set_data()` —— 也就是「拿到了一份新 feed」那一刻。
+##   头衔本身不在这里发, 由 `sync_titles()` 统一对账(与另两档同一个入口;
+##   理由见 `award_title` 头注: 离线版没有"那一刻"这个事件)。
+## ★为什么只增: feed **故意不下发当前轮**的结果 ⇒ 同一个桶越到后面 `done` 越全,
+##   `deepest` 只会往上走。真拿到一个更小的值, 那是「这次拉到的 feed 更旧」
+##   (比如切桶视图、或者请求乱序), 不是「我退赛了」。
+func record_finals_progress(deepest: int, total: int, champion: bool) -> bool:
+	var changed := false
+	if deepest > int(finals_deepest_round):
+		finals_deepest_round = deepest
+		changed = true
+	if total > int(finals_rounds_total):
+		finals_rounds_total = total
+		changed = true
+	if champion and not bool(finals_champion):
+		finals_champion = true
+		changed = true
+	return changed
 
 
 ## 打完一场 → 该不该吃掉一格积分赛配额。★与开闸的 `ranked_quota_full()` 共用
@@ -824,6 +857,21 @@ var gauntlet_losses: int = 0        # 闯关赛战绩: 负
 ## ★只存本地存档(`_save_dict`), **不进 `cloud_payload`**: 它是「这台机器报过了吗」的
 ##   本地事实, 不是玩家进度; 换机器重报一次反而是对的(幂等)。
 var finals_entered_week: int = 0
+## ★★★决赛日进度(2026-09-26, 方案书 20260926-冠军四强头衔发放.md)。
+##   这三个字段**只用来发冠军/四强头衔**, 是从服务端 feed 派生出来的事实。
+##
+## ★★为什么不在 `finals_settle()` 里数轮次: 周日现在是双方各自在本地打对方的快照,
+##   两边都可能算出自己赢(服务端 `finals_report` 用 `on conflict do nothing` ⇒
+##   先报的那个说了算, 后报的那个客户端**早就按自己的结果发过奖了**)。
+##   ⇒ **本地 `won` 不是权威**。拿它发冠军头衔 = 一个桶里出两个冠军。
+##   权威是 `finals_view` 下发的 `done`(哪一场哪一侧赢), 一个桶里只有一个值。
+##
+## ★写入点: `BracketMapScene.set_data()` 拿到 feed 之后, 走 `record_finals_progress()`。
+## ★**只增不减**: feed 故意不下发当前轮的结果, 所以这几个值只会往上走; 回退一定是
+##   「这一次拉到的 feed 更旧」, 不是「我退赛了」。
+var finals_deepest_round: int = 0   # 我被排进的最深那一轮(1 起; 0 = 没进决赛日)
+var finals_rounds_total: int = 0    # 我那个桶一共几轮(0 = 还不知道)
+var finals_champion: bool = false   # 服务端说我赢下了决赛
 ## ★★头衔(E-B5 · D12 四档): 一条 `{id, week}`。
 ##   **跨大轮保留、清档也不清** —— 这是玩家唯一的永久资产
 ##   (先例: `install_uid` / `account_id` 也是"清的是这局游戏, 不是你是谁")。
@@ -1483,6 +1531,9 @@ func _save_dict() -> Dictionary:
 		"gauntlet_wins": gauntlet_wins,
 		"gauntlet_losses": gauntlet_losses,
 		"finals_entered_week": finals_entered_week,
+		"finals_deepest_round": finals_deepest_round,
+		"finals_rounds_total": finals_rounds_total,
+		"finals_champion": finals_champion,
 		"promoted": promoted,
 		"titles": titles,
 		"incense_marks": incense_marks,   # 093 香火石: 赛季级刻痕池
@@ -1579,6 +1630,9 @@ func _apply_save_dict(data: Dictionary) -> void:
 	gauntlet_wins = int(data.get("gauntlet_wins", 0))
 	gauntlet_losses = int(data.get("gauntlet_losses", 0))
 	finals_entered_week = int(data.get("finals_entered_week", 0))
+	finals_deepest_round = int(data.get("finals_deepest_round", 0))
+	finals_rounds_total = int(data.get("finals_rounds_total", 0))
+	finals_champion = bool(data.get("finals_champion", false))
 	week_phase = str(data.get("week_phase", ""))
 	promoted = bool(data.get("promoted", false))
 	titles = (data.get("titles", []) as Array).duplicate(true)
@@ -1751,6 +1805,11 @@ func reset_save() -> void:
 	gauntlet_wins = 0
 	gauntlet_losses = 0
 	promoted = false
+	## ★决赛日进度随周清 —— 上周的冠军不许顺延成本周的头衔。
+	##   (头衔本身 `titles` **不清**, 那是永久荣誉; 清的只是"本周走到第几轮"。)
+	finals_deepest_round = 0
+	finals_rounds_total = 0
+	finals_champion = false
 	incense_marks = 0                 # 093 香火石: 刻痕随大轮(赛季)清零 —— 用户「一大轮重置」
 	incense_charge = 0                # 同上: 充能与刻痕同一条线, 一起重置
 	season_level = 1
@@ -2229,6 +2288,11 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	gauntlet_wins = 0
 	gauntlet_losses = 0
 	promoted = false
+	## ★决赛日进度随周清 —— 上周的冠军不许顺延成本周的头衔。
+	##   (头衔本身 `titles` **不清**, 那是永久荣誉; 清的只是"本周走到第几轮"。)
+	finals_deepest_round = 0
+	finals_rounds_total = 0
+	finals_champion = false
 	incense_marks = 0                 # 093 香火石: 刻痕随大轮(赛季)清零 —— 用户「一大轮重置」
 	incense_charge = 0                # 同上: 充能与刻痕同一条线, 一起重置
 	season_level = 1
