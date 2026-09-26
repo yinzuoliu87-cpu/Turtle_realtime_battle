@@ -314,7 +314,18 @@ func _t_clickable() -> void:
 	await _mk({"size": 8, "round": 2, "me": 0, "names": NAMES,
 		"done": {"1-0": 0, "1-1": 0, "1-2": 0, "1-3": 0}})
 	_ok("③ ★当前轮可点(这就是「开播」按钮本体)", _map.can_open(2, 0))
-	_ok("③ ★已翻面的也可点(重放全公开)", _map.can_open(1, 0))
+	## ★★★2026-09-26: 原来这一条断言「已翻面的也可点(重放全公开)」——
+	##   而**重放一行都没做**(`matches` 表建好了, 客户端零个写入者), 唯一的监听者
+	##   `_on_match_opened` 第一行就 `if not should_fetch_opponent(): return`
+	##   ⇒ 屏幕上有个覆盖整格、tooltip 写「开播」的按钮, **点了一个字都不变**。
+	##   `can_open` 自己的注释写着「点了没反应比按钮是灰的糟得多」, 那条判据
+	##   钉住的正是它自己反对的行为(memory fb-gate-can-pin-the-bug-in-place)。
+	## ⇒ 改成**跟着 `REPLAY_LIVE` 开关走的一对**: 没上线就不可点(不摆死按钮),
+	##   上线了就可点。判据不写死哪一边 —— 那样翻开关的那天又会变成假失败。
+	_ok("③ ★★已翻面的那一场: 可点与否 == 重放上线开关(现在 %s)" % _map.REPLAY_LIVE,
+		_map.can_open(1, 0) == _map.REPLAY_LIVE, str(_map.can_open(1, 0)))
+	_ok("③ ★★分母: 当前轮**照旧**可点(证明上面那条不是把所有格子都关了)",
+		_map.can_open(2, 0))
 	## 真按钮数 = 可点的场数
 	var btns := 0
 	var q: Array = [_map._canvas]
@@ -381,7 +392,18 @@ func _t_two_views() -> void:
 	var et: String = str(_map._empty_lb.text)
 	print("  ⑤ 切到冠军赛(上午)显示: 「%s」" % et)
 	_ok("⑤ ★★签表还没形成 → 说人话而不是画空图", _map._empty_lb.visible, et)
-	_ok("⑤ ★而且带倒计时(「敬请期待」没用)", et.find("后开播") >= 0, et)
+	## ★★★2026-09-26: 原来断言「带倒计时」—— 而**跨桶冠军赛是 F 阶段, 一行都没做**
+	##   (服务端没有桶冠军汇总; 客户端 `_finals` 只有门禁用的 `set_data()` 会写,
+	##    联网那条路 `_on_poll` 只写 `_bucket`) ⇒ 那个倒计时在一小时一小时地数一个
+	##   **永远不会来**的东西, 而 10 人规模下全周只有一个桶、「等各桶决出冠军」
+	##   连概念都不存在。判据钉住了一句假话。
+	## ⇒ 改成**跟着 `CROSS_BUCKET_LIVE` 走的一对**: 没上线要照实说、
+	##   **不许**出现倒计时那句; 上线了才要求倒计时。
+	if _map.CROSS_BUCKET_LIVE:
+		_ok("⑤ ★上线了 ⇒ 带倒计时(「敬请期待」没用)", et.find("后开播") >= 0, et)
+	else:
+		_ok("⑤ ★★没上线 ⇒ 照实说「还没做」, 且**不许**数一个永远不来的倒计时",
+			et.find("还没做") >= 0 and et.find("后开播") < 0, et)
 	_ok("⑤ ★用词还是「开播」, 不出现「直播」「回放」",
 		et.find("直播") < 0 and et.find("回放") < 0, et)
 

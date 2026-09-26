@@ -314,6 +314,85 @@ func _t_real_request() -> void:
 	await get_tree().process_frame
 	SB.finals_clear()
 
+	## ══════════════════════════════════════════════════════════════════
+	## ④c ★★★周六晋级了但那一刻**没报上去** ⇒ 下次开主菜单要补报
+	##
+	## `report_finals_entry()` 在**第 4 胜那一刻**调, 而 `enter_finals` 原来是
+	## **发了就不管**(回调空): 那一刻没网 / token 刚过期 / 玩家顺手杀了 App,
+	## 就静默漏报 ⇒ 周日进不去, 而屏幕说他「晋级才进得来」——他明明打到了 4 胜,
+	## 而且**没有任何自救办法**。10 个人测一周撞上一个很正常。
+	##
+	## ★判据落在 `Backend.ensure_finals_entry()` 这个**产品自己的入口**上,
+	##   量的是「它到底发不发那条请求」(注入传输能看见真实发出的 URL),
+	##   不是「我插的标记有没有被置位」。
+	## ★三条分母都配上: 少任何一条, 这条判据就会变成"每次开主菜单都往服务端捶一下"
+	##   也全绿 —— 那是另一种 bug(白流量 + 服务端被刷)。
+	## ══════════════════════════════════════════════════════════════════
+	print("── ④c 周六晋级但漏报 ⇒ 补报 ──")
+	var kp_gw: int = int(GameState.gauntlet_wins)
+	var kp_gl: int = int(GameState.gauntlet_losses)
+	var kp_ew: int = int(GameState.finals_entered_week)
+	var kp_wk: int = int(GameState.week_anchor_ts)
+	var WK4: int = 1789948800
+
+	GameState.week_anchor_ts = WK4
+	GameState.gauntlet_wins = P2C.GAUNTLET_WINS_IN      # 4 胜 = 晋级
+	GameState.gauntlet_losses = 0
+	GameState.finals_entered_week = 0                   # 还没报上
+	_ok("④c ★分母: 本地战绩确实是「晋级」(否则下面全是空检查)",
+		str(GameState.gauntlet_state()) == "in", str(GameState.gauntlet_state()))
+	_ok("④c ★分母: 这一周确实还没确认报成", not SB.finals_entered(WK4))
+	_reqs.clear()
+	SB._enter_inflight = false
+	BK.ensure_finals_entry()
+	await get_tree().process_frame
+	var ent := _rpc_calls("finals_enter")
+	_ok("④c ★★★漏报了 ⇒ 真的补发了一条 finals_enter", ent.size() == 1,
+		"发了 %d 条: %s" % [ent.size(), str(ent).substr(0, 110)])
+
+	## ★分母一: 已经确认报成了 ⇒ **一个字都不许再发**(不然每次开主菜单都捶一下服务端)
+	GameState.finals_entered_week = WK4
+	_reqs.clear()
+	SB._enter_inflight = false
+	BK.ensure_finals_entry()
+	await get_tree().process_frame
+	_ok("④c ★★已经报成过 ⇒ 不再发(否则每次开主菜单都白捶一次服务端)",
+		_rpc_calls("finals_enter").is_empty(), str(_rpc_calls("finals_enter").size()))
+
+	## ★分母二: 还在打(没晋级) ⇒ 不许报
+	GameState.finals_entered_week = 0
+	GameState.gauntlet_wins = 1
+	_reqs.clear()
+	SB._enter_inflight = false
+	BK.ensure_finals_entry()
+	await get_tree().process_frame
+	_ok("④c ★★还在打(1 胜) ⇒ 不许报(报了就是把没晋级的人塞进决赛日)",
+		_rpc_calls("finals_enter").is_empty(), str(_rpc_calls("finals_enter").size()))
+
+	## ★分母三: 赛季没初始化(周锚点 0) ⇒ 不许报
+	GameState.gauntlet_wins = P2C.GAUNTLET_WINS_IN
+	GameState.week_anchor_ts = 0
+	_reqs.clear()
+	SB._enter_inflight = false
+	BK.ensure_finals_entry()
+	await get_tree().process_frame
+	_ok("④c ★赛季没初始化(周锚点=0) ⇒ 不许报(报了记不清是哪一周)",
+		_rpc_calls("finals_enter").is_empty(), str(_rpc_calls("finals_enter").size()))
+
+	## ★★回包解析: 只有 `{"ok":true}` 算报成。`already_seated` 是「桶已经切了而我不在里面」
+	##   ⇒ 补报也进不去了, **不许**把标记写成成功(否则下次连重试都不会有)。
+	_ok("④c ★★ok:true ⇒ 算报成", SB.finals_enter_ok(true, 200, '{"ok":true}'))
+	_ok("④c ★★already_seated ⇒ **不算**报成(还留着重试的机会)",
+		not SB.finals_enter_ok(true, 200, '{"ok":false,"reason":"already_seated"}'))
+	_ok("④c ★网络失败(code 0) ⇒ 不算报成", not SB.finals_enter_ok(false, 0, ""))
+	_ok("④c ★坏正文(5xx 回 HTML) ⇒ 不算报成", not SB.finals_enter_ok(true, 200, "<html>502</html>"))
+
+	GameState.gauntlet_wins = kp_gw
+	GameState.gauntlet_losses = kp_gl
+	GameState.finals_entered_week = kp_ew
+	GameState.week_anchor_ts = kp_wk
+	SB.finals_clear()
+
 
 # ─────────────────────────────────────────────────────────────
 # ⑥ ★★没数据的时候这一屏说什么(实拍抓出来的一整类)
@@ -740,6 +819,16 @@ func _t_settle_reports() -> void:
 
 
 ## 只挑 finals_report 那几条 —— 结算路径上还会发别的请求(上传快照等)。
+## 发出去的请求里, 打到某个 RPC 的那几条。★照 `_reports()` 的形状 ——
+## 判据量的是**真实发出的 URL**, 不是我插的计数器。
+func _rpc_calls(rpc: String) -> Array:
+	var out: Array = []
+	for r in _reqs:
+		if str((r as Dictionary).get("url", "")).ends_with("/rest/v1/rpc/" + rpc):
+			out.append(r)
+	return out
+
+
 func _reports() -> Array:
 	var out: Array = []
 	for r in _reqs:

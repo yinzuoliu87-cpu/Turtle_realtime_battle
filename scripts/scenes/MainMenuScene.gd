@@ -15,6 +15,7 @@ const SHOP_LABEL := "商店"
 const _P2C := preload("res://scripts/gamedata/phase2_config.gd")
 ## D-1: 服务状态三态(没配 / 正常 / 维护中 / 连不上)。维护态要盖掉赛程显示, 见 `_week_close_block`。
 const _SB := preload("res://scripts/net/supabase.gd")
+const _BE := preload("res://scripts/net/backend.gd")
 
 const W := 1280
 const H := 720
@@ -104,6 +105,13 @@ func _ready() -> void:
 	## ★这一句本身是幂等的: 已经有 account_id 且 token 没过期就什么都不做, 连节点都不建
 	##   (每次开游戏都新建匿名号会把服务端刷出一堆一次性账号, Supabase 自己警告过)。
 	_SB.ensure_signed_in_async()
+	## ★★★补报周日决赛日: 周六晋级了但那一刻没报上去(没网 / token 刚过期 / 杀了 App)
+	##   ⇒ 在这里补一次。**必须在登录墙之前** —— 与上面那句同一个理由:
+	##   墙会在下面 `return`, 排在墙后面的代码对被挡住的人永远跑不到。
+	##   (`ensure_signed_in_async` 就是因为排在墙后面, 让全新安装的头 20 秒打不开游戏。)
+	## ★三条判据都在 `Backend.ensure_finals_entry()` 里, 主菜单不自己判 ——
+	##   「该不该补报」不是主菜单的事(同 `login_wall_on` 那条纪律: 判据只留一处)。
+	_BE.ensure_finals_entry()
 	## ★★登录墙: 没绑邮箱就把人送到账号那一屏(用户 2026-09-24「直接改为必须绑定账号吧」)。
 	##   ★主菜单**不自己判**要不要挡 —— 判据只有 `phase2_config.login_wall_on` 一处,
 	##     设置页也读同一个(两处各判一份必然漂)。这里只负责把人送过去。
@@ -1138,7 +1146,13 @@ func _open_shop() -> void:
 	if GameState.is_eliminated():
 		_toast(_msg_eliminated())
 		return
-	if GameState.ranked_quota_full():
+	## ★★把「现在是哪一刻」传下去 —— 与 `_start_battle_flow()` 同一个注入口。
+	##   不传的话这个入口也跟着今天星期几变: `ranked_quota_full()` 内部先问
+	##   `phase_uses_ranked_quota(phase_at_utc(ts))`, UTC 周六/周日不吃积分赛配额
+	##   ⇒ 恒返回 false ⇒ **配额打满的人在周末照样进得了商店**。
+	##   (这是真行为差异, 不只是门禁的事: 周末该不该锁店是玩法问题, 而原来它是
+	##    "跟着星期几悄悄变"—— 现在至少变成一个可注入、可验的量。)
+	if GameState.ranked_quota_full(_now_ts()):
 		_toast(_msg_quota_full())
 		return
 	if int(GameState.season_total_battles) <= 0:
@@ -1248,8 +1262,24 @@ func _battle_block_msg(now: int = 0) -> String:
 	return ""
 
 
+## ★★★门禁用的「现在是哪一刻」注入口。**0 = 用真实时钟**(玩家路径一字不动)。
+##
+## 为什么非有它不可(2026-09-26): `_battle_block_msg(now)` 早就收 `now` 了,
+## 但 `_start_battle_flow()` 调它时**不传** ⇒ 这个入口的行为**跟着今天星期几变**。
+## 后果不是"判据偶发红", 而是: UTC 周六时**已晋级的 0 命玩家可以打闯关赛**
+## ⇒ 这个函数一路走到 `change_scene_to_file` ⇒ **当场把门禁自己拆掉**
+## (`get_tree()` 变 null), 后面所有断言连跑都没跑,
+## 而且**没打 ALL PASS**、rc 还是 0 —— 单跑时看着像"5 条断言红了", 实际是整份没跑完。
+## ⇒ 与 `strip_finals_live_override` 同一条路子: 把"那一刻"做成可注入,
+##   门禁钉住一个确定的日子, 玩家路径完全不变。
+var clock_override_ts: int = 0
+
+func _now_ts() -> int:
+	return clock_override_ts if clock_override_ts > 0 else int(Time.get_unix_time_from_system())
+
+
 func _start_battle_flow() -> void:
-	var block: String = _battle_block_msg()
+	var block: String = _battle_block_msg(_now_ts())
 	if block != "":
 		_toast(block)
 		return

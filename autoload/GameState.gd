@@ -811,6 +811,19 @@ var week_phase: String = ""         # 赛程阶段: "" 未定 / rest / ranked / 
 var week_anchor_ts: int = 0         # 本自然周的锚点 (UTC 周一 00:00 的 unix 秒) —— ★赛季换不换轮**只看它**
 var gauntlet_wins: int = 0          # 闯关赛战绩: 胜
 var gauntlet_losses: int = 0        # 闯关赛战绩: 负
+## ★★★周日决赛日**报名成功**的那一周(周一锚点)。0 = 本周还没报上。
+##
+## 为什么非要这个字段: `enter_finals` 原来是**发了就不管** —— 回调里什么都不做,
+## 没有成功标记、没有重试。而报名发生在**周六第 4 胜那一刻**(`report_finals_entry`),
+## 那一刻要是网络抖一下 / token 刚好过期 / 玩家顺手杀了 App, 就**静默漏报**:
+## 周日他进不去, 而屏幕还会说他「晋级才进得来」——**他明明打到了 4 胜**。
+## 10 个人测一周, 撞上一个很正常, 而且他没有任何自救办法。
+##
+## ⇒ 记下「哪一周报成了」, 没报成就在打开主菜单时补报。
+## ★服务端那条 RPC 是 `on conflict do update` ⇒ **重复报是安全的**, 补报不会出错。
+## ★只存本地存档(`_save_dict`), **不进 `cloud_payload`**: 它是「这台机器报过了吗」的
+##   本地事实, 不是玩家进度; 换机器重报一次反而是对的(幂等)。
+var finals_entered_week: int = 0
 ## ★★头衔(E-B5 · D12 四档): 一条 `{id, week}`。
 ##   **跨大轮保留、清档也不清** —— 这是玩家唯一的永久资产
 ##   (先例: `install_uid` / `account_id` 也是"清的是这局游戏, 不是你是谁")。
@@ -1469,6 +1482,7 @@ func _save_dict() -> Dictionary:
 		"week_anchor_ts": week_anchor_ts,
 		"gauntlet_wins": gauntlet_wins,
 		"gauntlet_losses": gauntlet_losses,
+		"finals_entered_week": finals_entered_week,
 		"promoted": promoted,
 		"titles": titles,
 		"incense_marks": incense_marks,   # 093 香火石: 赛季级刻痕池
@@ -1564,6 +1578,7 @@ func _apply_save_dict(data: Dictionary) -> void:
 	week_anchor_ts = int(data.get("week_anchor_ts", 0))
 	gauntlet_wins = int(data.get("gauntlet_wins", 0))
 	gauntlet_losses = int(data.get("gauntlet_losses", 0))
+	finals_entered_week = int(data.get("finals_entered_week", 0))
 	week_phase = str(data.get("week_phase", ""))
 	promoted = bool(data.get("promoted", false))
 	titles = (data.get("titles", []) as Array).duplicate(true)

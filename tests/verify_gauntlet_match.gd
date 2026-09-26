@@ -106,33 +106,46 @@ func _t_pool_pick(gs) -> void:
 	print("── ② 选靶(本地池) ──")
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 12345
-	var pool := {
-		"x_a": _mk("x_a", 3, 1, 60),        # 同标签, 新鲜
-		"x_b": _mk("x_b", 3, 1, 120),       # 同标签, 新鲜
-		"x_c": _mk("x_c", 3, 2, 60),        # ★差一格 —— 绝不能选中
-		"x_d": _mk("x_d", 2, 1, 60),        # ★差一格
-		"x_e": _mk("x_e", 4, 0, 60),        # ★已晋级的人
-	}
+	## ★★★2026-09-26: 池子改成**产品真正生产的那个形状**。
+	##
+	## 原来这里手写的是**扁平** `{ghost_id: snapshot}`, 而 `load_pool()` / `pool_add()`
+	## 生产的是 `{"_seed_ver": int, "brackets": {"档": [snapshot…]}}` ——
+	## **那个扁平形状全仓没有任何地方会产生**。
+	## 后果: `gauntlet_pool_find` 里写的是 `for gid in pool.keys()`(读错了一层),
+	## 真实池子下 `cands` **恒为空** ⇒ 周六**每一场都是机器人**, 而这份门禁
+	## 一直是绿的(memory fb-gate-subject-never-constructed: 判据没错但被测对象不在场)。
+	##
+	## ⇒ 现在一律走 `BE.pool_add()` 灌池 —— 形状由**产品自己**决定, 我不再手写一份。
+	var pool := {}
+	for sn in [_mk("x_a", 3, 1, 60),        # 同标签, 新鲜
+			_mk("x_b", 3, 1, 120),          # 同标签, 新鲜
+			_mk("x_c", 3, 2, 60),           # ★差一格 —— 绝不能选中
+			_mk("x_d", 2, 1, 60),           # ★差一格
+			_mk("x_e", 4, 0, 60)]:          # ★已晋级的人
+		BE.pool_add(pool, sn)
 	var fresh: int = int(P2.FRESH_SNAPSHOT_SEC)
-	pool["x_old"] = _mk("x_old", 3, 1, fresh + 600)   # 同标签但**超窗**
+	BE.pool_add(pool, _mk("x_old", 3, 1, fresh + 600))   # 同标签但**超窗**
 	## ★★有标签、**没时间戳**的快照(老格式/写一半的行)。
 	##   不放这一份的话, 产品里那句 `ts <= 0` 的防御分支**一次都没被执行过**
 	##   —— 实测变异(把那一半拿掉)没红, 因为池里压根没这种形状
 	##   (memory `fb-gate-subject-never-constructed`)。
-	pool["x_nots"] = {"ghost_id": "x_nots", "name": "无时间戳", "avatar": "basic",
-		"gl_w": 3, "gl_l": 1}
+	BE.pool_add(pool, {"ghost_id": "x_nots", "name": "无时间戳", "avatar": "basic",
+		"gl_w": 3, "gl_l": 1})
 	## ★★**未来时间戳**(设备时钟走快 / 伪造的行): `now - ts` 为负
 	##   ⇒ 比任何阀值都小 ⇒ 不守的话它就是一份**永不过期**的快照。
-	pool["x_future"] = _mk("x_future", 3, 1, -86400)
+	BE.pool_add(pool, _mk("x_future", 3, 1, -86400))
 
 	## ★分母: 池子里确实同时有"同标签"和"别的格", 否则下面全是空检查
 	var same := 0
 	var other := 0
-	for k in pool:
-		if int(pool[k]["gl_w"]) == 3 and int(pool[k]["gl_l"]) == 1:
-			same += 1
-		else:
-			other += 1
+	for b in (pool.get("brackets", {}) as Dictionary):
+		for g in ((pool["brackets"] as Dictionary)[b] as Array):
+			if int((g as Dictionary).get("gl_w", -1)) == 3 and int((g as Dictionary).get("gl_l", -1)) == 1:
+				same += 1
+			else:
+				other += 1
+	## ★★这一条同时是「池子形状对不对」的分母: 手写扁平池时它也是 5/3,
+	##   所以它守不住形状 —— 形状由下面那条「真实结构下也选得中」守。
 	_ok("② ★分母: 池里同标签 5 份(超窗/没时间戳/未来时间戳 各一) + 别的格 3 份",
 		same == 5 and other == 3, "同标签 %d / 其它 %d" % [same, other])
 
@@ -160,7 +173,12 @@ func _t_pool_pick(gs) -> void:
 
 	## ★★另一侧: 把那份超窗的改成新鲜, 它就**必须**能被选中 ——
 	##   只验"超窗不选"是半条判据, 那样"永远不选任何东西"也能绿。
-	pool["x_old"]["gl_ts"] = int(Time.get_unix_time_from_system()) - 30
+	## ★按**真实结构**找到那一份再改 —— 扁平写法 `pool["x_old"]` 在真结构下是 null,
+	##   而 `null["gl_ts"] = …` 会直接炸(或者更糟: 改了个空气, 下面那条变恒假)。
+	for b2 in (pool.get("brackets", {}) as Dictionary):
+		for g4 in ((pool["brackets"] as Dictionary)[b2] as Array):
+			if str((g4 as Dictionary).get("ghost_id", "")) == "x_old":
+				(g4 as Dictionary)["gl_ts"] = int(Time.get_unix_time_from_system()) - 30
 	var seen_old := false
 	for _i in range(60):
 		var g2 = BE.gauntlet_pool_find(pool, 3, 1, [], rng)

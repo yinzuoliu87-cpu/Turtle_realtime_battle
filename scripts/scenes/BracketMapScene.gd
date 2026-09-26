@@ -200,11 +200,33 @@ func match_state(r: int, m: int) -> String:
 	return ST_LIVE
 
 
+## ★★★重放做出来了没有。**没有** —— `matches` 表建好了、索引和清理任务都有,
+##   但客户端**一行都没往里写过**(全仓 `rest/v1/matches` 零命中)。
+## ⇒ 拿一个命名常量把「没上线」变成可读状态, 而不是让 `can_open` 悄悄放行
+##   (memory fb-branch-to-an-unbuilt-mode-is-a-backdoor: 分流给没做的模式 = 开后门)。
+##   重放真上线那天改这一格, 并把 `verify_bracket_map` ③ 那条判据一起翻回来。
+const REPLAY_LIVE := false
+
+## ★★跨桶「冠军赛」做出来了没有。**没有**(F 阶段)—— 服务端没有桶冠军汇总,
+##   客户端联网那条路只写 `_bucket`。上线那天改这一格。
+const CROSS_BUCKET_LIVE := false
+
 ## 这一场能不能点开看。★轮空与未开打**不可点** —— 点了没东西放，
 ##   而"点了没反应"比"按钮是灰的"糟得多。
+##
+## ★★★2026-09-26 收紧: 原来 `ST_LIVE or ST_DONE` 都放行, 而唯一的监听者
+##   `_on_match_opened` 第一行就是 `if not should_fetch_opponent(r, m): return` ——
+##   于是这几种情况**点了一个字都不变**, 而屏幕上有个覆盖整格、tooltip 写着「开播」的按钮:
+##     · 已翻面的场次(想看重放)—— 而重放数据一行都没有
+##     · 不是我的那一场(想观战)—— 观战没做
+##   3 人桶里第一轮就输掉的人, 整个周日唯一能点的就是决赛那一格, 点了什么都不会发生。
+##   **这正是本函数注释自己写的那句**「点了没反应比按钮是灰的糟得多」。
+## ⇒ 判据改成「点下去真有事发生」= `should_fetch_opponent`(它同时管住了
+##   「当前轮」「是我的场」「问得出对手」三条), 外加重放那条**显式的**没上线开关。
 func can_open(r: int, m: int) -> bool:
-	var st := match_state(r, m)
-	return st == ST_LIVE or st == ST_DONE
+	if REPLAY_LIVE and match_state(r, m) == ST_DONE:
+		return true
+	return should_fetch_opponent(r, m)
 
 
 ## 这一场是不是**我的** —— 判据是「我是这一场的某一侧」。
@@ -355,10 +377,29 @@ func _empty_text() -> String:
 		var ent := int(_fv.get("entered", 0))
 		return "本周只有 %d 人晋级 · 人太少没开起来, 你的晋级算数, 下周再来" % ent
 	if _view == _L.VIEW_FINALS:
-		var left: int = int(_L.finals_start_ts(_clock())) - _clock()
-		if left > 0:
-			return "冠军赛 %d 小时 %d 分后开播 · 先等各桶决出冠军" % [left / 3600, (left % 3600) / 60]
-		return "冠军赛正在集结 · 等各桶决出冠军"
+		## ★★★2026-09-26: 跨桶冠军赛是 **F 阶段**, 一行都没做 ——
+		##   服务端只有 `finals_buckets/entrants/results/scout/pending`, 没有任何
+		##   「桶冠军汇总」; 客户端 `_finals` 只有老调用点 `set_data()`(门禁用)会写,
+		##   联网那条路 `_on_poll` **只写 `_bucket`**。
+		##   ⇒ 原来这里一小时一小时地倒计时, 而那个东西永远不会来。
+		##   ★★而且 10 人规模下全周只有**一个桶**(`finals_bucket_count(10) = 1`),
+		##     「等各桶决出冠军」连概念都不存在 —— 那句话本身就是假的。
+		##   ⚠ 客户端**算不出**全周有几个桶(`_bucket` 只装我自己那个桶的人数),
+		##     所以不去猜"是不是只有一个桶", 只说**确定为真**的那一句。
+		##   ⇒ 上线那天把 `CROSS_BUCKET_LIVE` 翻成 true, 倒计时那两句就回来
+		##     (memory fb-branch-to-an-unbuilt-mode-is-a-backdoor: 让「没上线」是可读状态)。
+		## ★写成 if/else 而**不是** `if not CROSS_BUCKET_LIVE: return …` ——
+		##   后者会让下面的倒计时变成死代码, `tools/const_branch_audit.py` 当场判红
+		##   (恒真常量分支 + return 吞掉同函数后续代码), 而那条审计器是对的:
+		##   那几行在开关翻开之前一次都跑不到。审计器自己给的三条修法里,
+		##   「刻意留的对照就不该以 return 收尾, 改成 if/else」正是这一处该走的。
+		if CROSS_BUCKET_LIVE:
+			var left: int = int(_L.finals_start_ts(_clock())) - _clock()
+			if left > 0:
+				return "冠军赛 %d 小时 %d 分后开播 · 先等各桶决出冠军" % [left / 3600, (left % 3600) / 60]
+			return "冠军赛正在集结 · 等各桶决出冠军"
+		else:
+			return "跨桶冠军赛还没做 · 你那个桶的冠军就是本周冠军"
 	return "本周没有你的桶 · 周六闯关赛晋级才进得来"
 
 

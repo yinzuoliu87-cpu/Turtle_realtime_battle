@@ -311,6 +311,28 @@ static func leaderboard(pool: Dictionary, self_name: String, self_wins: int, sel
 	for b in brackets.keys():
 		for g in brackets[b]:
 			var gd := g as Dictionary
+			## ★★★2026-09-26 两道筛, 都是拿真数据量出来要加的:
+			##
+			## ① **自己的历史快照不上榜**。`ghost_id` 带**场次**这一维(A6), 而
+			##    `pool_add` 只按精确 id 去重 ⇒ 同一个玩家**每个场次各占一条**,
+			##    而快照里的 `profile.name` 就是他自己的昵称
+			##    ⇒ 一周打 N 场, 榜上就有 **N 行他自己的名字**, 而面板只画 11 行。
+			##    跨周还会叠(`start_new_season` 一个字都不碰 ghost 池) ⇒ 周一打开榜,
+			##    榜首是**上周的自己**, 而「◀ 你」被钉在末行显示 0 胜。
+			##    ★同文件三处匹配路径都有 `_is_self_ghost`, 只有这里漏了。
+			if _is_self_ghost(gd):
+				continue
+			## ② **陪练不上榜**。种子池(队列模拟造的 396 条)原来一律按 0/0/0 参与排序
+			##    并且**占掉名次** ⇒ 10 个人测试会看到「#57 你」这种数字
+			##    (名次的分母是 ~400 不是 10)。
+			## ★判据用 `is_bot` 而**不是**「缺 season_wins」——
+			##   我第一版写的是后者, `verify_leaderboard_sort` ④ 当场红:
+			##   那一段**明确要求**真人的老格式快照(缺字段)**仍要上榜、当 0 排在后面**
+			##   (「旧池不作废」)。⇒ 缺字段分不开「陪练」和「老格式的真人」,
+			##   而 `is_bot` 分得开: `make_bot` 写 true、`build_ghost_snapshot` 写 false。
+			##   (memory fb-gate-can-pin-the-bug-in-place 的反面: 这次是**门禁对、我错**。)
+			if bool(gd.get("is_bot", false)):
+				continue
 			rows.append({
 				"name": str(gd.get("profile", {}).get("name", "?")),
 				"wins": int(gd.get("season_wins", 0)),
@@ -642,6 +664,35 @@ static func report_finals_entry() -> void:
 		snap, int(GameState.gauntlet_wins), int(GameState.gauntlet_losses))
 
 
+## ★★★补报: 周六晋级了但那一刻没报上去 ⇒ 下次打开主菜单时补一次。
+##
+## `report_finals_entry()` 在**第 4 胜那一刻**调, 而那一刻可能: 没网 / token 刚过期 /
+## 玩家顺手杀了 App。原来那条路是**发了就不管**(回调空), 漏了就永远漏了 ——
+## 周日他进不去, 而屏幕说他「晋级才进得来」, 他明明打到了 4 胜、也没有自救办法。
+##
+## ★这里**只判补报特有的那两条**, 「该不该报」本身不重判:
+##   ① 周锚点是个正数(赛季没初始化时别乱报, 报了也记不清是哪一周)
+##   ② 这一周**还没确认报成**(`finals_entered` 读 `finals_entered_week`)——
+##      少了它就变成"每次开主菜单都往服务端捶一下"。
+## ★★「战绩是不是晋级」由 `report_finals_entry()` 自己判, 这里**不抄第二遍**。
+##   我第一版在这里也写了一道 `gauntlet_state() != "in"` ⇒ 反向验证时**拿掉它没红**,
+##   因为内层那道照样挡着 ⇒ 它是死代码, 而我的注释还声称"少一条就会出问题"
+##   (memory fb-mutation-not-reddening-can-mean-dead-code: 打不红要问"这行在任何
+##    输入下都会改变结果吗"; 同 `login_wall_on` 那条纪律: 判据只留一处)。
+## ★服务端 RPC 是 `on conflict do update` ⇒ 重复报安全; 真的补不上(桶已切)时
+##   它回 `already_seated`, `finals_enter_ok` 判 false ⇒ 不会把标记写成"成功"。
+static func ensure_finals_entry() -> void:
+	if GameState == null:
+		return
+	var wk: int = int(GameState.week_anchor_ts)
+	if wk <= 0:
+		return
+	var SB5 = load("res://scripts/net/supabase.gd")
+	if SB5 == null or SB5.finals_entered(wk):
+		return
+	report_finals_entry()
+
+
 ## E-B6: 把决赛日某一场的结果报上去。
 ## ★与 `report_finals_entry` 同一层、同一形状：**周号从 GameState 取**，
 ##   战斗场那边只负责说「哪个桶、第几轮、第几场、哪一侧赢」——
@@ -705,32 +756,49 @@ static func player_display_name() -> String:
 ##   老快照没有这一维, 把它当新鲜就等于"永不过期", 那条 30 分钟规则会静默失效。
 static func gauntlet_pool_find(pool: Dictionary, gw: int, gl: int,
 		exclude_ids: Array, rng: RandomNumberGenerator):
+	## ★★★2026-09-26 修: 原来这里写的是 `for gid in pool.keys()` —— **读错了一层**。
+	##   真实池子的顶层只有两个键(实测玩家存档 `ghost_pool.json`):
+	##     `_seed_ver`(int) ⇒ 被下面的 `is Dictionary` 跳过
+	##     `brackets`(Dictionary) ⇒ **过了**类型检查, 但它没有 `gl_w` ⇒ 被标签检查跳过
+	##   ⇒ `cands` **恒为空** ⇒ 恒返回 null ⇒ 周六**每一场都是机器人**, 而且一声不吭。
+	##   同文件另外三处(`pool_find` / `pool_find_near` / `pool_find_window`)读的都是
+	##   `pool.get("brackets", {})` 再进数组 —— 只有闯关赛这一个抄错了形状。
+	## ★★门禁当时全绿, 因为 `verify_gauntlet_match` 手造的池子是**扁平** `{id: snap}` ——
+	##   那个形状 `load_pool()` / `pool_add()` **从来不生产**
+	##   (memory fb-gate-subject-never-constructed: 判据没错但被测对象不在场)。
+	## ★id 从快照自己的 `ghost_id` 取(池子里是数组, 没有外层键当 id 用了)。
 	var now: int = int(Time.get_unix_time_from_system())
+	var brackets: Dictionary = pool.get("brackets", {})
 	var cands: Array = []
-	for gid in pool.keys():
-		var g = pool[gid]
-		if not (g is Dictionary):
-			continue
-		if str(gid).begins_with(self_prefix(int(GameState.season_id) if GameState != null else 0)):
-			continue                      # 自己(含同赛季换过龟的旧阵容)
-		if exclude_ids.has(gid):
-			continue
-		if int(g.get("gl_w", -1)) != gw or int(g.get("gl_l", -1)) != gl:
-			continue                      # ★标签必须完全相同
-		var ts: int = int(g.get("gl_ts", 0))
-		## ★30 分钟窗口是【过滤】不是排序(与积分赛 D10 相反)。
-		## ★★缺字段的不用单独判: 缺了就是 0, 而 `now - 0` 本来就远超窗口。
-		##   我第一版写了 `ts <= 0 or ...`, **反向验证打不红** ——
-		##   那一半是装饰。真正没人守的是**未来时间戳**:
-		##   `now - ts` 为负 ⇒ 比任何阀值都小 ⇒ 当成新鲜的永不过期。
-		##   (设备时钟走快、或者有人改过那一行, 都会造出这种行。)
-		if ts > now or now - ts > int(_P2.FRESH_SNAPSHOT_SEC):
-			continue
-		cands.append(gid)
+	var by_id := {}
+	for b in brackets.keys():
+		for g in (brackets[b] as Array):
+			if not (g is Dictionary):
+				continue
+			var gid := str((g as Dictionary).get("ghost_id", ""))
+			if gid == "":
+				continue
+			if gid.begins_with(self_prefix(int(GameState.season_id) if GameState != null else 0)):
+				continue                  # 自己(含同赛季换过龟的旧阵容)
+			if exclude_ids.has(gid):
+				continue
+			if int(g.get("gl_w", -1)) != gw or int(g.get("gl_l", -1)) != gl:
+				continue                  # ★标签必须完全相同
+			var ts: int = int(g.get("gl_ts", 0))
+			## ★30 分钟窗口是【过滤】不是排序(与积分赛 D10 相反)。
+			## ★★缺字段的不用单独判: 缺了就是 0, 而 `now - 0` 本来就远超窗口。
+			##   我第一版写了 `ts <= 0 or ...`, **反向验证打不红** ——
+			##   那一半是装饰。真正没人守的是**未来时间戳**:
+			##   `now - ts` 为负 ⇒ 比任何阀值都小 ⇒ 当成新鲜的永不过期。
+			##   (设备时钟走快、或者有人改过那一行, 都会造出这种行。)
+			if ts > now or now - ts > int(_P2.FRESH_SNAPSHOT_SEC):
+				continue
+			cands.append(gid)
+			by_id[gid] = g
 	if cands.is_empty():
 		return null
 	cands.sort()                          # 先定序, 再按种子抽 —— 不然同种子两次结果不同
-	return pool[cands[rng.randi() % cands.size()]]
+	return by_id[cands[rng.randi() % cands.size()]]
 
 ## 玩家自己那份快照的 ghost_id = 大轮 + 【三龟组合】。
 ##

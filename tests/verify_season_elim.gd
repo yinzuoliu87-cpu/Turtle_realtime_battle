@@ -6,6 +6,8 @@ extends Node
 ## 反向证据: ① 满命 is_eliminated=false + 扣到1命仍非淘汰 → 证明 guard 条件非恒真
 
 const MENU := preload("res://scripts/scenes/MainMenuScene.gd")
+## ★钉死的那一刻: 2026-09-24 周四 00:00 UTC(积分赛日) —— 否则周末跟着星期几变
+const PIN_TS := 1789603200
 
 var _fail := 0
 func _ok(n: String, c: bool, d: String = "") -> void:
@@ -39,6 +41,13 @@ func _ready() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 
+	## ★★★2026-09-26 把「现在是哪一刻」钉死成**周四(积分赛)**。
+	##   不钉的话这整份跟着今天星期几变: `ranked_quota_full()` 内部先问
+	##   `phase_uses_ranked_quota(phase_at_utc(ts))` —— UTC 周六/周日不吃积分赛配额
+	##   ⇒ 恒返回 false ⇒ 「配额打满被拦」那几条在周末必红, 而与被测行为无关。
+	##   ★同时把那一刻传给场景: `_start_battle_flow()` / `_open_shop()` 读
+	##   `clock_override_ts`(0 = 真实时铟 ⇒ 玩家路径一字不动)。
+	scene.clock_override_ts = PIN_TS
 	GameState.dual_active = false
 	var t0 := _count_toasts(scene, "出局")
 	scene._start_battle_flow()
@@ -58,7 +67,7 @@ func _ready() -> void:
 	GameState.season_total_battles = 5
 	GameState.week_phase = "ranked"
 	GameState.ranked_used = 0
-	_ok("A4 denominator: quota not full yet", not GameState.ranked_quota_full())
+	_ok("A4 denominator: quota not full yet", not GameState.ranked_quota_full(PIN_TS))
 	## The POSITIVE case cannot go through _start_battle_flow(): when the guard passes it
 	## calls _go("TeamSelect") and CHANGES THE SCENE, which tears down this test tree
 	## (first version of this block did exactly that - the file still printed ALL PASS but
@@ -66,9 +75,9 @@ func _ready() -> void:
 	## So: assert the predicate for the allowed case, and reserve the real entry for the
 	## BLOCKED cases below - those return early and never navigate, which is the half
 	## that actually matters (a blocked player must not reach a match).
-	_ok("A4 denominator: quota not full => guard says allowed", not GameState.ranked_quota_full())
+	_ok("A4 denominator: quota not full => guard says allowed", not GameState.ranked_quota_full(PIN_TS))
 	GameState.ranked_used = 999          # full
-	_ok("A4 quota full is detected", GameState.ranked_quota_full())
+	_ok("A4 quota full is detected", GameState.ranked_quota_full(PIN_TS))
 	GameState.dual_active = false
 	## ★ the needle comes from the product's own message builder, not a hardcoded
 	##   substring: the wording already changed once (2026-09-22 - the toast used to

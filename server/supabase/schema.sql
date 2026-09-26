@@ -461,6 +461,7 @@ grant execute on function public.finals_view(bigint, int) to authenticated;
 create or replace function public.finals_advance(p_week bigint)
 returns int language plpgsql security definer set search_path = public as $$
 declare b record; moved int := 0; want int; got int; slots int; total int;
+        real_want int;
 begin
   for b in select * from public.finals_buckets
             where season_week = p_week and not closed loop
@@ -478,7 +479,22 @@ begin
     -- ★★但「不推」不能没有上限(2026-09-25 查出来的死锁): 原来这里是无条件 continue,
     --   于是**只要有一场没人报结果, 那个桶就永远不动**。注释当时写的是「宁可晚一分钟」,
     --   实际是永远。而测试期人数个位数, 周日晚上「双方都不在线」几乎是常态。
-    if got < want then
+    -- ★★★2026-09-26: 只等【真的有人打的那几场】, 不等轮空。
+    --   轮空那几场**没有任何客户端会报结果** —— 客户端只在打完一局后报, 轮空没有局。
+    --   原来把它们也算进 `want` ⇒ 只要本轮有轮空, `got < want` 恒成立 ⇒ **必等满
+    --   960 秒宽限**, 而客户端倒计时是 `round_at + finals_round_sec()`(480)
+    --   ⇒ 第 8 分钟起屏幕显示「下一轮 0:00 后开播」并冻住整整 8 分钟, 然后突然跳轮。
+    --   10 人规模实测形状: slots=16、第 1 轮 8 场里**只有 2 场是真的**
+    --   ⇒ 10 个人里 6 个人第一轮什么都不打, 干等 16 分钟。
+    -- ★算轮空场数**不需要**知道座次表(那是 E-B3 定在客户端的规则, SQL 里不写第二遍):
+    --   第 1 轮有 `slots - n` 个空位, 每个空位让它那一场变成轮空
+    --   ⇒ 真实场次 = `n - slots/2`。(n=10,slots=16 ⇒ 2; n=3,slots=4 ⇒ 1, 与手算一致。)
+    --   第 2 轮起所有席位都被上一轮的晋级者填满(轮空者也晋级) ⇒ 全是真实场次。
+    real_want := want;
+    if b.round = 1 then
+      real_want := greatest(0, b.n - slots / 2);
+    end if;
+    if got < real_want then
       -- 宽限期内: 真的等一等。★取 2 倍而不是 1 倍 —— 本函数每分钟才叫一次,
       --   且真有人在打时最后一场可能压着点报上来; 1 倍会把**正在打的比赛**判掉。
       if now() < b.round_at + make_interval(secs => public.finals_round_sec() * 2) then
@@ -491,12 +507,17 @@ begin
       --   第一轮里上半区恰好就是高种子(座次表 [0,7,3,4,1,6,2,5] ⇒ 0vs7/3vs4/1vs6/2vs5),
       --   后续轮它是上半区那条路径, **不保证**是当时的高种子 —— 照实说, 不吹成「高种子晋级」。
       -- ★`do nothing` 保证**已经打完的那几场一个字都不动**。
-      insert into public.finals_results
-        (season_week, bucket_no, round, match_no, winner_side, seed_used)
-        select p_week, b.bucket_no, b.round, g.m, 0, 0
-          from generate_series(0, want - 1) as g(m)
-        on conflict (season_week, bucket_no, round, match_no) do nothing;
+      null;   -- 补判由下面那条无条件的 insert 做(见它的注释)
     end if;
+    -- ★★这条 insert **无条件**跑, 而不是只在"过了宽限期"时跑:
+    --   它要补的有两类, 而 `do nothing` 保证**已经打完的一场都不动**:
+    --     ① 轮空 —— 本来就没人会报, 真实场次一打完就该补上, 不该拖到宽限期
+    --     ② 过了宽限期还没人报的真实场次 —— 原来的用途
+    insert into public.finals_results
+      (season_week, bucket_no, round, match_no, winner_side, seed_used)
+      select p_week, b.bucket_no, b.round, g.m, 0, 0
+        from generate_series(0, want - 1) as g(m)
+      on conflict (season_week, bucket_no, round, match_no) do nothing;
     if b.round >= total then
       update public.finals_buckets set closed = true
        where season_week = p_week and bucket_no = b.bucket_no;

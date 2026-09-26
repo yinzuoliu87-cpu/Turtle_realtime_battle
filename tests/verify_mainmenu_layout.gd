@@ -454,6 +454,13 @@ func _ready() -> void:
 		var kp_gl: int = int(gs_m.gauntlet_losses)
 		## ★★提示语现在跟**玩家真实状态**走(晋级了就说"周六闯关赛见"), 不再跟开关走。
 		##   所以这一组要先把状态钉死成「没晋级」, 否则下面那条判据在晋级时会假红。
+		## ★★★2026-09-26 把「现在是哪一刻」钉死成**周四(积分赛)**。
+		##   不钉的话这一整段跟着今天星期几变: UTC 周六时已晋级的 0 命玩家**可以**打闯关赛
+		##   ⇒ `_start_battle_flow()` 一路走到 `change_scene_to_file` ⇒ **当场把门禁拆掉**
+		##   (`get_tree()` 变 null), 后面所有断言连跑都没跑, 而且**没打 ALL PASS**、rc 还是 0。
+		##   ⇒ 这份门禁一周里有两天(周六/周日)是**整份不算数**的, 而平时看不见。
+		## ★1789603200 = 2026-09-24 周四 00:00 UTC(与 ⑬c 那张表同一个时间戳)。
+		_menu.clock_override_ts = 1789603200
 		gs_m.promoted = false
 		gs_m.gauntlet_wins = 0
 		gs_m.gauntlet_losses = 0
@@ -466,7 +473,11 @@ func _ready() -> void:
 				gs_m.hearts = 8
 				gs_m.ranked_used = int(_P2M.RANKED_QUOTA)
 			var blocked: bool = gs_m.is_eliminated() if case_name == "出局" \
-				else gs_m.ranked_quota_full()
+				## ★把钉死的那一刻也传给 `ranked_quota_full()` —— 它同样默认走真实时铟,
+				##   而它内部先问 `phase_uses_ranked_quota(phase_at_utc(ts))`:
+				##   UTC 周六/周日不吃积分赛配额 ⇒ 恒返回 false ⇒ 这条分母在周末必红,
+				##   而红的原因与被测行为无关(判据挂在星期几上)。
+				else gs_m.ranked_quota_full(_menu.clock_override_ts)
 			_ok("⑬d ★分母(%s): 确实处在被拦的状态(否则下面会切场景拆掉门禁)" % case_name,
 				blocked, "hearts=%d ranked_used=%d" % [int(gs_m.hearts), int(gs_m.ranked_used)])
 			if not blocked:
@@ -519,6 +530,7 @@ func _ready() -> void:
 		gs_m.promoted = kp_pr
 		gs_m.gauntlet_wins = kp_gw
 		gs_m.gauntlet_losses = kp_gl
+		_menu.clock_override_ts = 0            # ★还原: 不还原会波及同文件后面的用例
 
 	# ── ⑪ ★没有花名 / 感叹号推销话术 (用户 2026-08-15 点名要去掉的那类"ai 味") ──
 	#    ★只扫【字符串字面量】—— 扫整段代码会被 `!=` 运算符命中(第一版就是这么假红的),

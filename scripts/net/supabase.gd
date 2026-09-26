@@ -1754,14 +1754,42 @@ static func enter_finals_async(week: int, name: String, snapshot: Dictionary,
 		n.enter_finals(finals_enter_body(week, name, snapshot, gw, gl))
 
 
+## 纯函数: 一次「报名」回包 → 这一周算不算报上了。
+## ★`already_seated` 也算**没报上**(桶已经切了而我不在里面 ⇒ 补报也进不去了),
+##   它与「网络失败」要分开: 前者不该再重试, 后者该。
+static func finals_enter_ok(ok: bool, code: int, body: String) -> bool:
+	if not ok or code < 200 or code >= 300:
+		return false
+	var j := JSON.new()
+	if j.parse(body) != OK or not (j.data is Dictionary):
+		return false
+	return bool((j.data as Dictionary).get("ok", false))
+
+
+## 这一周报名已经**确认成功**了吗。
+static func finals_entered(week: int) -> bool:
+	var gs = _gs()
+	return gs != null and week > 0 and int(gs.finals_entered_week) == week
+
+
 func enter_finals(body: Dictionary) -> void:
 	if not enabled():
 		_enter_inflight = false
 		_bye()
 		return
+	var wk: int = int(body.get("p_week", 0))
 	_http("POST", base_url().rstrip("/") + "/rest/v1/rpc/finals_enter",
 		JSON.stringify(body),
-		func(_res):
+		func(res):
 			_enter_inflight = false
+			## ★★把结果记下来 —— 原来这里什么都不做(发了就不管), 于是
+			##   「周六第 4 胜那一刻网络抖一下」= 周日静默进不去、且无从自救。
+			##   见 `GameState.finals_entered_week` 的长注释。
+			if finals_enter_ok(bool(res.get("ok", false)), int(res.get("code", 0)),
+					str(res.get("body", ""))):
+				var gs2 = _gs()
+				if gs2 != null and wk > 0:
+					gs2.finals_entered_week = wk
+					gs2.save()
 			_bye(),
 		"Content-Type: application/json")
