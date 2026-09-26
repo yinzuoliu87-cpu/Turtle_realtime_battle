@@ -740,7 +740,8 @@ static func gauntlet_pool_find(pool: Dictionary, gw: int, gl: int,
 	## ★id 从快照自己的 `ghost_id` 取(池子里是数组, 没有外层键当 id 用了)。
 	var now: int = int(Time.get_unix_time_from_system())
 	var buckets: Dictionary = pool.get(POOL_KEY, {})
-	var cands: Array = []
+	var cands: Array = []      # 同标签 + 新鲜(30 分钟内)
+	var stale: Array = []      # 同标签 + 隔夜 —— 新鲜的一个都没有时才用它(见下面那段长注释)
 	var by_id := {}
 	for b in buckets.keys():
 		for g in (buckets[b] as Array):
@@ -756,20 +757,40 @@ static func gauntlet_pool_find(pool: Dictionary, gw: int, gl: int,
 			if int(g.get("gl_w", -1)) != gw or int(g.get("gl_l", -1)) != gl:
 				continue                  # ★标签必须完全相同
 			var ts: int = int(g.get("gl_ts", 0))
-			## ★30 分钟窗口是【过滤】不是排序(与积分赛 D10 相反)。
-			## ★★缺字段的不用单独判: 缺了就是 0, 而 `now - 0` 本来就远超窗口。
-			##   我第一版写了 `ts <= 0 or ...`, **反向验证打不红** ——
-			##   那一半是装饰。真正没人守的是**未来时间戳**:
-			##   `now - ts` 为负 ⇒ 比任何阀值都小 ⇒ 当成新鲜的永不过期。
-			##   (设备时钟走快、或者有人改过那一行, 都会造出这种行。)
-			if ts > now or now - ts > int(_P2.FRESH_SNAPSHOT_SEC):
-				continue
-			cands.append(gid)
+			## ★★★2026-09-26 30 分钟从【过滤】改成【排序偏好】。
+			##
+			## 原稿的兜底链是三级:「同标签真人排队 → 同标签新鲜快照(30 分钟内) → 机器人」,
+			## 而 U3b 那次我把 30 分钟做成了**硬过滤**(「淘汰赛宁可打机器人也不要打隔夜快照」)。
+			## 算出来的代价(方案书 `docs/plans/20260926-周末赛制在各规模下会怎样.md` §2.2):
+			##
+			##   人数 |  10  | 100 | 1000
+			##   机器人| 93% | 49% | 0.1%
+			##
+			## ⇒ **10 个人测一周, 周六 93% 的对局是机器人**, 而周六的全部意义是
+			##   「同战绩的人互相淘汰」。而第①级(同标签真人排队)一行没做, 它本来是主力。
+			##
+			## ★这不是把 U3b 推翻, 是**按原稿链的优先级排**: 原稿把**任何真人路径**都排在
+			##   机器人前面。一份隔夜快照仍然是真人的阵容(而且周六同战绩 ⇒ 经济供给一致);
+			##   机器人是合成的。⇒ 真人(新) → 真人(旧) → 机器人。
+			## ★供给够的时候行为**逐字不变**: 有新鲜的就一定挑新鲜的(下面先看 fresh 那一桶)。
+			##
+			## ★**未来时间戳仍然一律当不新鲜**: `now - ts` 为负比任何阈值都小 ⇒
+			##   不挡的话那份快照永不过期。(设备时钟走快、或者有人改过那一行都会造出这种行。)
+			##   ⚠ 缺字段那一半是装饰(缺了就是 0, `now - 0` 本来就超窗) —— 2026-09-22
+			##   反向验证查实过, 别再以为它在守什么。
+			var fresh: bool = ts <= now and now - ts <= int(_P2.FRESH_SNAPSHOT_SEC)
+			if fresh:
+				cands.append(gid)
+			else:
+				stale.append(gid)
 			by_id[gid] = g
-	if cands.is_empty():
+	## ① 同标签 + 新鲜 ② 同标签 + 隔夜 ③ 都没有 → null(调用方兜 bot)
+	## ★★跨标签一格都不许 —— 两个桶装的都是**同标签**的人, 区别只在快照新旧。
+	var pick: Array = cands if not cands.is_empty() else stale
+	if pick.is_empty():
 		return null
-	cands.sort()                          # 先定序, 再按种子抽 —— 不然同种子两次结果不同
-	return by_id[cands[rng.randi() % cands.size()]]
+	pick.sort()                           # 先定序, 再按种子抽 —— 不然同种子两次结果不同
+	return by_id[pick[rng.randi() % pick.size()]]
 
 ## 玩家自己那份快照的 ghost_id = 大轮 + 【三龟组合】。
 ##
