@@ -1,42 +1,43 @@
 extends Node
-## verify_determinism_bisect.gd — ★**一次性测量用的门禁**，把「场景 ③ 跨平台分叉」二分到具体装备
+## verify_determinism_bisect.gd — ★**一次性测量门禁**：把跨平台分叉定位到【第几步·哪只单位·哪个字段】
 ##
 ## ══════════════════════════════════════════════════════════════════════
-##  它是临时的，测完就删
+##  测到哪一步了（每一轮都是实测，不是推测）
 ## ══════════════════════════════════════════════════════════════════════
-## 2026-09-26：`verify_determinism_cross` 在 CI（ubuntu/glibc）上的实测结果是
-## **9 个场景里 8 个与本地（Windows/MSVC libm）逐位相同**，只有
-## 「③ 3v3 满装备（每只 3 件 3★）」的摘要不同：
-##   实得 4d3cb4c2376b18ac / 金标 e2e0a124d2326863
+## 【第 1 轮】`verify_determinism_cross` 在 CI(ubuntu/glibc) 对本地(Windows/MSVC libm) 的金标：
+##   **9 个场景里 8 个逐位相同**，只有「③ 3v3 满装备(每只 3 件 3★)」不同
+##   （实得 4d3cb4c2376b18ac / 金标 e2e0a124d2326863）。
 ##
-## ⇒ 不一致被圈在那 18 件装备里。**为什么要一次性门禁而不是探针**：
-##   探针（`tests/_probe_*.gd`）不会被 `run-tests.sh` 自动发现 ⇒ **CI 不会跑它**，
-##   而我需要的恰恰是 Linux 那一侧的数。所以只能做成 `verify_*`，
-##   靠「金标对不上就红 ⇒ 失败日志推到 `ci-logs` 分支」把 Linux 侧的摘要取回来。
-##   ⚠ 这意味着**这一次提交的 CI 是故意红的**，它就是测量本身。测完连同金标一起删。
+## 【第 2 轮】把 ③ 二分成 L1(一次只给一只龟她那 3 件) + L2(18 件逐件)，24 条：
+##   **23 条全一致**，只有 `L1·只给 basic 带 p2eq_032,p2eq_058,p2eq_073` 分叉
+##   （实得 89745f823dedc96b / 金标 cfe984967d6995d2）。
+##   ⇒ **单件都不飘，三件同时在场才飘 ⇒ 组合效应。**
+##   那三件是: 032 唤灵骨符(开战召一只骷髅)、058 远古炮台(登场召一座炮台)、
+##            073 藤蔓弓弦(每次普攻向**随机敌人**射一箭，箭单独判暴击)。
+##   两件**往场上加单位**，一件每次普攻**抽随机目标** —— 组合起来单位更多、随机抽取更频繁。
 ##
-## ══════════════════════════════════════════════════════════════════════
-##  为什么分两层而不是直接单件
-## ══════════════════════════════════════════════════════════════════════
-## 单件场景（一只龟带一件 vs 一个假人）有个致命问题：**那件装备可能一次都没触发**
-## （很多装备靠命中/充能/周期，节奏和满场时完全不同）⇒ 它没跑过，当然不分叉，
-## 于是 PASS **洗不清它**（memory `fb-gate-subject-never-constructed`）。
-## ⇒ 第一层保持 ③ **原样的 6 只龟、原样的站位**，只是**一次只给一只龟她那 3 件**，
-##   战斗节奏与 ③ 接近 ⇒ 装备照原样触发。第二层再把命中的那只拆成单件。
-## ★两层的结论必须互相印证：第一层指出的那只龟，第二层里必定有她的某一件在分叉。
-##   对不上就说明分叉不在装备上，而在「几件装备同时在场」这种组合效应里。
+## 【第 3 轮 = 本轮】不再猜机制。只跑那一个分叉场景，**逐步打前缀摘要**：
+##   第 i 步的摘要 = sha256(第 0..i 步的指纹拼起来)。
+##   ⇒ 本地日志与 CI 日志逐行比，**第一处不同的那一行就是首个分叉步**。
+##   （memory `fb-probe-before-claiming-rootcause`：推理出的根因不算根因。）
+##   下一轮再把那一步附近的**完整指纹**打出来，就能指到具体单位与字段。
+##
+## ★这一轮 CI **照样是故意红的**（金标只有一条、且刻意填一个不可能相等的值），
+##   红是为了让失败日志推到 `ci-logs` 分支 —— 那是拿到 Linux 侧数据的唯一通路
+##   （探针 `_probe_*.gd` 不会被 run-tests.sh 自动发现，CI 不跑它）。
+##   测完连金标一起删。
 ##
 ## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_determinism_bisect.tscn --quit-after 40000
 
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const SC := preload("res://tests/_det_scenarios.gd")
 
-const GOLDEN_PATH := "res://tests/golden/determinism_bisect.json"
 const FRAMES := 600
+## ★只跑分叉的那一只(basic 带三件)，其余五只全裸 —— 与第 2 轮 L1 那一条**逐字相同**的摆位。
+const WHO := "basic"
 
 var _fail := 0
 var _n := 0
-var _digests := {}
 
 
 func _ok(name: String, cond: bool, detail: String = "") -> void:
@@ -48,7 +49,7 @@ func _ok(name: String, cond: bool, detail: String = "") -> void:
 		print("  [FAIL] ", name, "   ", detail)
 
 
-## ★与 `verify_determinism_cross._fp()` 逐字同一个口径 —— 换一个字这份二分就白做了。
+## ★与 `verify_determinism_cross._fp()` 逐字同一个口径。
 func _fp(scene) -> String:
 	var parts: Array = []
 	var i := 0
@@ -68,51 +69,6 @@ func _fp(scene) -> String:
 	return "|".join(parts)
 
 
-func _run(pairs: Array) -> Array:
-	RB.DEBUG_EDIT = true
-	var s = RB.new()
-	add_child(s)
-	await get_tree().process_frame
-	await get_tree().process_frame
-	s._debug._edit_clear()
-	s._edit_dummy_killable = true
-	s._edit_dummy_hp = 40000.0
-	s._edit_full_energy = true
-	for p in pairs:
-		var u: Dictionary = s._debug._edit_place_unit(str(p[0]), str(p[1]),
-			Vector2(float(p[2]), float(p[3])))
-		if (p[4] as Array).size() > 0:
-			var el: Array = []
-			for e in (p[4] as Array):
-				el.append({"id": str(e), "star": 3})
-			u["_edit_equips"] = el
-	s._debug._edit_start_battle()
-	var ctx := HashingContext.new()
-	ctx.start(HashingContext.HASH_SHA256)
-	var uniq := {}
-	for _i in range(FRAMES):
-		await get_tree().process_frame
-		var f := _fp(s)
-		uniq[f] = true
-		ctx.update(f.to_utf8_buffer())
-	var taken := 0.0
-	for u2 in s._units:
-		taken += float(u2.get("_st_taken", 0.0))
-	s.queue_free()
-	await get_tree().process_frame
-	await get_tree().process_frame
-	return [(ctx.finish() as PackedByteArray).hex_encode(), uniq.size(), taken]
-
-
-## 场景 ③ 的原始摆位 —— **从共用表里取**，不许在这里手抄一份
-## （抄了就可能量的不是同一局，而那会让整份二分的结论失效）。
-func _sc3() -> Array:
-	for sc in SC.all():
-		if str((sc as Dictionary)["tag"]).begins_with("③"):
-			return (sc as Dictionary)["pairs"] as Array
-	return []
-
-
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	await get_tree().process_frame
@@ -121,79 +77,93 @@ func _ready() -> void:
 		gs.test_mode = true
 		gs.week_anchor_ts = int(SC.PIN_WEEK_ANCHOR)
 
-	var base: Array = _sc3()
-	_ok("★分母: 从共用表里取到场景 ③ 的 %d 只单位" % base.size(), base.size() == 6,
-		"%d 只" % base.size())
+	## 摆位从共用表里取 —— 不手抄(抄了就可能量的不是同一局)
+	var base: Array = []
+	for sc in SC.all():
+		if str((sc as Dictionary)["tag"]).begins_with("③"):
+			base = (sc as Dictionary)["pairs"] as Array
+			break
+	_ok("★分母: 从共用表取到场景 ③ 的 6 只单位", base.size() == 6, "%d 只" % base.size())
 	if base.size() != 6:
 		get_tree().quit(1)
 		return
 
-	var golden: Dictionary = _load_golden()
-	var missing: Array = []
+	var pairs: Array = []
+	var eqs_of_who: Array = []
+	for p0 in base:
+		var p: Array = (p0 as Array).duplicate(true)
+		if str(p[0]) == WHO:
+			eqs_of_who = (p[4] as Array).duplicate()
+		else:
+			p[4] = []
+		pairs.append(p)
+	_ok("★分母: %s 身上确实还带着那 3 件(%s)" % [WHO, ",".join(PackedStringArray(eqs_of_who))],
+		eqs_of_who.size() == 3, str(eqs_of_who))
 
-	## ── 第一层: 一次只给一只龟她那 3 件, 其余全裸 ──
-	for k in range(base.size()):
-		var pairs: Array = []
-		for j in range(base.size()):
-			var p: Array = (base[j] as Array).duplicate(true)
-			if j != k:
-				p[4] = []
-			pairs.append(p)
-		var who: String = str((base[k] as Array)[0])
-		var eqs: Array = (base[k] as Array)[4]
-		var tag := "L1·只给 %s 带 %s" % [who, ",".join(PackedStringArray(eqs))]
-		await _one(tag, pairs, golden, missing)
+	RB.DEBUG_EDIT = true
+	OS.set_environment("TURTLE_SEED", "424242")
+	var s = RB.new()
+	add_child(s)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	s._debug._edit_clear()
+	s._edit_dummy_killable = true
+	s._edit_dummy_hp = 40000.0
+	s._edit_full_energy = true
+	for p2 in pairs:
+		var u: Dictionary = s._debug._edit_place_unit(str(p2[0]), str(p2[1]),
+			Vector2(float(p2[2]), float(p2[3])))
+		if (p2[4] as Array).size() > 0:
+			var el: Array = []
+			for e in (p2[4] as Array):
+				el.append({"id": str(e), "star": 3})
+			u["_edit_equips"] = el
+	s._debug._edit_start_battle()
 
-	## ── 第二层: 18 件逐件(携带者保持原位, 其余全裸) ──
-	for k2 in range(base.size()):
-		var who2: String = str((base[k2] as Array)[0])
-		for e in ((base[k2] as Array)[4] as Array):
-			var pairs2: Array = []
-			for j2 in range(base.size()):
-				var p2: Array = (base[j2] as Array).duplicate(true)
-				p2[4] = [str(e)] if j2 == k2 else []
-				pairs2.append(p2)
-			await _one("L2·%s 只带 %s" % [who2, str(e)], pairs2, golden, missing)
+	## ★逐步前缀摘要: 第 i 行 = sha256(第 0..i 步的指纹)。
+	##   本地日志与 CI 日志**逐行比**, 第一处不同的那一行就是首个分叉步。
+	##   为什么是前缀而不是每步单独摘要: 单步摘要在分叉之后每一步都不同, 噪声一大片;
+	##   前缀摘要在分叉之前逐行相同、分叉之后全部不同 ⇒ 分界线只有一条, 一眼看得出。
+	var lines: Array = []
+	var uniq := {}
+	var n_units_at := {}
+	for i in range(FRAMES):
+		await get_tree().process_frame
+		var f := _fp(s)
+		uniq[f] = true
+		## ★指纹先存下来, 前缀摘要在循环外连着算一遍(见下面) ——
+		##   在循环里算会变成 O(n²) 次拼接, 而结果一模一样。
+		lines.append(f)
+		n_units_at[i] = s._units.size()
 
-	if not missing.is_empty():
-		print("")
-		print("  ★金标缺 %d 条。整段存成 %s:" % [missing.size(), GOLDEN_PATH])
-		print(JSON.stringify(_digests, "  "))
-		_ok("★金标覆盖全部 %d 条(缺的那些这一轮没被量到)" % _digests.size(), false,
-			"%d 条缺" % missing.size())
+	var taken := 0.0
+	for u2 in s._units:
+		taken += float(u2.get("_st_taken", 0.0))
+	var n_units: int = s._units.size()
+	s.queue_free()
+	await get_tree().process_frame
+	OS.set_environment("TURTLE_SEED", "")
+
+	_ok("★分母: 这一局真的在推进(不同指纹 %d 个 > 1, 累计承伤 %.0f > 0)"
+		% [uniq.size(), taken], uniq.size() > 1 and taken > 0.0)
+	_ok("★分母: 场上确实多出了召唤物(末态 %d 只 > 6)" % n_units, n_units > 6, "%d 只" % n_units)
+
+	## 逐步前缀摘要一次算完(上面循环里只存指纹, 这里连着算, 省掉 O(n²) 的重复拼接)
+	print("")
+	print("── 逐步前缀摘要(第 i 行 = sha256(第 0..i 步)) ──")
+	var run := PackedByteArray()
+	for i2 in range(lines.size()):
+		run.append_array(str(lines[i2]).to_utf8_buffer())
+		var c3 := HashingContext.new()
+		c3.start(HashingContext.HASH_SHA256)
+		c3.update(run)
+		print("PFX %04d %s  units=%d" % [i2, (c3.finish() as PackedByteArray).hex_encode().substr(0, 24),
+			int(n_units_at.get(i2, -1))])
+
+	## ★故意判红: 红才会把日志推到 ci-logs, 那是拿 Linux 侧数据的唯一通路。
+	_ok("★★★(测量用·故意红) 上面那 %d 行 PFX 就是本轮要的数据" % lines.size(), false,
+		"本地与 CI 的 PFX 逐行比, 第一处不同的那一行 = 首个分叉步")
 
 	print("")
-	if _fail == 0:
-		print("ALL PASS — 跨平台分叉二分 (%d/%d)" % [_n, _n])
-	else:
-		print("FAILED %d 条 (通过 %d)" % [_fail, _n - _fail])
-	get_tree().quit(1 if _fail > 0 else 0)
-
-
-func _one(tag: String, pairs: Array, golden: Dictionary, missing: Array) -> void:
-	OS.set_environment("TURTLE_SEED", "424242")
-	var r: Array = await _run(pairs)
-	OS.set_environment("TURTLE_SEED", "")
-	var dig: String = str(r[0])
-	_digests[tag] = dig
-	## 分母: 这一局真的在推进 —— 不然摘要是"静止画面"的摘要, 相同得毫无意义
-	_ok("分母 · %s · 真的在推进(不同指纹 %d, 承伤 %.0f)" % [tag, int(r[1]), float(r[2])],
-		int(r[1]) > 1 and float(r[2]) > 0.0)
-	if golden.has(tag):
-		_ok("★%s" % tag, dig == str(golden[tag]),
-			"实得 %s / 金标 %s" % [dig.substr(0, 16), str(golden[tag]).substr(0, 16)])
-	else:
-		missing.append(tag)
-		print("  [MISS] %s ⇒ %s" % [tag, dig])
-
-
-func _load_golden() -> Dictionary:
-	if not FileAccess.file_exists(GOLDEN_PATH):
-		print("  [MISS] 金标文件不存在: %s" % GOLDEN_PATH)
-		return {}
-	var f := FileAccess.open(GOLDEN_PATH, FileAccess.READ)
-	if f == null:
-		return {}
-	var p = JSON.parse_string(f.get_as_text())
-	f.close()
-	return p if p is Dictionary else {}
+	print("FAILED %d 条 (通过 %d)" % [_fail, _n - _fail])
+	get_tree().quit(1)
