@@ -894,6 +894,11 @@ func _week_strip() -> void:
 	var today: int = _P2C.iso_weekday_utc(now)
 	_sb_state_shown = _SB.service_state()
 	var box := PanelContainer.new()
+	## ★给它一个名字当**地址** —— 门禁要只量条内那 7 格。
+	##   2026-09-27 探针扫全屏时把右侧「今天是什么日子」指示块的标签也数了进来,
+	##   凭空多出一格(x=812 vs 条内 x=126)。**判据宽一格就会造出假 bug。**
+	## ★名字只用来定位, **判据仍是相位序列**(与 `phase_of_weekday` 比), 不是名字本身。
+	box.name = "WeekStrip"
 	box.position = Vector2(STRIP_X, STRIP_Y)
 	box.custom_minimum_size = Vector2(STRIP_W, STRIP_H)
 	box.size = Vector2(STRIP_W, STRIP_H)
