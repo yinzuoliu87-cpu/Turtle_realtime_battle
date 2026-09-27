@@ -1524,7 +1524,13 @@ static func report_finals_async(week: int, bucket: int, round_no: int,
 	var n = _spawn()
 	if n != null:
 		_report_inflight = true
-		_report_done["%d-%d" % [round_no, match_no]] = true
+		## ★★★**不在这里标「报过了」**。2026-09-27 查实: 原来这一行在请求**发出去之前**
+		##   就标上了, 而回调又把回包丢掉(`func(_res)`) ⇒ 网络失败 / 服务端拒绝时
+		##   客户端照样认为报过了, 而 `report_finals_if_any` 只在结算时调一次、没有重试
+		##   ⇒ 那一场的结果**永远到不了服务端**, 晋级只能靠 960 秒宽限兜,
+		##   **可能把错的人送进下一轮**。
+		##   —— 与 v0.19.446 修掉的**报名漏报**同一个形状(「发了就不管」)。
+		## ⇒ 标记移进**成功**那一支(见 `report_finals` 的回调)。
 		n.report_finals(week, bucket, round_no, match_no, winner_side, seed_used)
 
 
@@ -1537,8 +1543,14 @@ func report_finals(week: int, bucket: int, round_no: int,
 	_http("POST", base_url().rstrip("/") + "/rest/v1/rpc/finals_report",
 		JSON.stringify(finals_report_body(week, bucket, round_no, match_no,
 			winner_side, seed_used)),
-		func(_res):
+		func(res):
 			_report_inflight = false
+			## ★★只有**真报成了**才记账。服务端是 `on conflict do nothing`(先到先得),
+			##   所以重复报一次无害, 而**漏报**是会把错的人送进下一轮的。
+			##   ⇒ 宁可多报一次, 不可漏一次。
+			var code := int(res.get("code", 0))
+			if bool(res.get("ok", false)) and code >= 200 and code < 300:
+				_report_done["%d-%d" % [round_no, match_no]] = true
 			_bye(),
 		"Content-Type: application/json")
 

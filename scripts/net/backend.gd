@@ -735,8 +735,47 @@ static func report_finals_if_any(won: bool) -> void:
 		GameState.finals_pending_reveal = {"round": r, "match": m}
 	var side := int(d.get("side", -1))
 	if side == 0 or side == 1:
-		report_finals_result(int(d.get("bucket", -1)), r, m, side if won else (1 - side))
+		var ws: int = side if won else (1 - side)
+		## ★★★**先把补报单写进存档, 再发**。上面那句「无论报没报成功都清空
+		##   `finals_match`」对它自己是对的(它是「我现在在哪一场」), 但那也意味着
+		##   **一旦发失败就再也没有重试所需的身份了**。
+		##   ⇒ 另存一份能过夜的补报单, 与 v0.19.446 的 `finals_entered_week` 同一个样板。
+		GameState.finals_report_pending = {
+			"bucket": int(d.get("bucket", -1)), "round": r, "match": m,
+			"side": ws, "seed": int(GameState.battle_seed),
+		}
+		report_finals_result(int(d.get("bucket", -1)), r, m, ws)
 	GameState.finals_match = {}
+
+
+## E-B6b: 上次那一场的结果报上去了吗? 没有就补一次(2026-09-27)。
+##
+## ★★与 `ensure_finals_entry`(报名补报)同一层、同一形状 —— 主菜单每次打开各调一次。
+##   两者都是「那一刻可能没网, 而那一刻只有一次」。
+## ★判据是 `SupabaseNet.finals_reported()`(**只在真报成之后才为真**), 不是「发过了」。
+## ★报重了无害: 服务端 `finals_report` 是 `on conflict do nothing`(先到先得);
+##   而漏报会让那一场只能靠 960 秒宽限兜, **可能把错的人送进下一轮**。
+##   ⇒ 宁可多报一次, 不可漏一次。
+static func retry_finals_report() -> void:
+	if GameState == null:
+		return
+	var p = GameState.get("finals_report_pending")
+	if not (p is Dictionary) or (p as Dictionary).is_empty():
+		return
+	var d2: Dictionary = p
+	var r2 := int(d2.get("round", -1))
+	var m2 := int(d2.get("match", -1))
+	if r2 < 1 or m2 < 0:
+		GameState.finals_report_pending = {}
+		return
+	var SB6 = load("res://scripts/net/supabase.gd")
+	if SB6 == null:
+		return
+	if SB6.finals_reported(r2, m2):
+		GameState.finals_report_pending = {}       # 已经报成了, 销单
+		GameState.save()
+		return
+	report_finals_result(int(d2.get("bucket", -1)), r2, m2, int(d2.get("side", -1)))
 
 
 ## 玩家显示名 —— **全仓唯一出处**。有昵称用昵称, 没有用确定性兜底短码。

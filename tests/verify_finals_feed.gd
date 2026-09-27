@@ -28,6 +28,7 @@ extends Node
 ## 跑法: <godot> --headless --path . res://tests/verify_finals_feed.tscn --quit-after 900
 
 const SB := preload("res://scripts/net/supabase.gd")
+const BE := preload("res://scripts/net/backend.gd")
 const P2C := preload("res://scripts/gamedata/phase2_config.gd")
 const MAP := preload("res://scripts/scenes/BracketMapScene.gd")
 const MENU := preload("res://scripts/scenes/MainMenuScene.gd")
@@ -184,6 +185,132 @@ func _ready() -> void:
 	OS.set_environment(SB.ENV_URL, _env0)
 	ProjectSettings.set_setting(SB.SETTING_KEY, _envk)
 	_ok("⑩ ★收尾: 后端已关回去(留着会把后面每个测试都喂上假后端)", not SB.enabled())
+
+
+	## ══════════════════════════════════════════════════════════════════════
+	##  ⑪ ★★★报结果: 失败不许记成「报过了」, 而且要补得回来 (2026-09-27)
+	## ══════════════════════════════════════════════════════════════════════
+	## 与 v0.19.446 修掉的**报名漏报**同一个形状(「发了就不管: 回调空、无成功标记、无重试」),
+	## 而**结果上报**这一半当时没跟着改:
+	##     _report_done["r-m"] = true   ← 请求**发出去之前**就标「报过了」
+	##     func(_res):                  ← 回包**完全不看**
+	## ⇒ 网络失败时客户端照样认为报过了, 而 `report_finals_if_any` **只在结算时调一次**
+	##   ⇒ 那一场的结果**永远到不了服务端**, 晋级只能靠 960 秒宽限兜,
+	##   **可能把错的人送进下一轮**。
+	## ★服务端是 `on conflict do nothing` ⇒ **宁可多报一次, 不可漏一次**。
+	print("── ⑪ 报结果: 失败不许记账, 而且补得回来 ──")
+	var _e0: String = OS.get_environment(SB.ENV_URL)
+	var _k0 = ProjectSettings.get_setting(SB.SETTING_KEY, "")
+	OS.set_environment(SB.ENV_URL, "http://gate.local")
+	ProjectSettings.set_setting(SB.SETTING_KEY, "gate-anon-key")
+	var _g11 = get_node_or_null("/root/GameState")
+	_ok("⑪ ★分母: 后端真的打开了", SB.enabled())
+	_ok("⑪ ★分母: 拿到 GameState", _g11 != null)
+	var _acc11 := str(_g11.account_id) if _g11 != null else ""
+	if _g11 != null:
+		_g11.test_mode = true
+		_g11.account_id = "uid-me"
+	SB._token = "gate-token"
+	SB.finals_report_clear()
+	SB._report_inflight = false
+
+	## ── 第一次: **报失败** ──
+	var _rep: Array = [{"ok": false, "code": 0, "body": ""}]
+	var _sent: Array = [0]
+	SB._transport_for_test = func(_m, _u, _h, _b, cb):
+		_sent[0] += 1
+		cb.call(_rep[0])
+	SB.report_finals_async(777, 2, 3, 1, 0, 42)
+	for _i in range(4):
+		await get_tree().process_frame
+	_ok("⑪ ★分母: 请求确实发出去了", _sent[0] == 1, "发了 %d 次" % _sent[0])
+	_ok("⑪ ★★★报失败 ⇒ **不许**记成「报过了」(原来发出去之前就记了)",
+		not SB.finals_reported(3, 1))
+
+	## ── 第二次: 还能再报(没被自己挡住) ──
+	SB._report_inflight = false
+	SB.report_finals_async(777, 2, 3, 1, 0, 42)
+	for _i2 in range(4):
+		await get_tree().process_frame
+	_ok("⑪ ★★失败之后**补得回来**(被自己挡住 = 那一场永远报不上去)",
+		_sent[0] == 2, "共发了 %d 次" % _sent[0])
+
+	## ── 第三次: 报成功 ⇒ 记账, 之后不再重复发 ──
+	_rep[0] = {"ok": true, "code": 200, "body": "{}"}
+	SB._report_inflight = false
+	SB.report_finals_async(777, 2, 3, 1, 0, 42)
+	for _i3 in range(4):
+		await get_tree().process_frame
+	_ok("⑪ ★★★报成功 ⇒ 记成「报过了」", SB.finals_reported(3, 1))
+	SB._report_inflight = false
+	SB.report_finals_async(777, 2, 3, 1, 0, 42)
+	for _i4 in range(4):
+		await get_tree().process_frame
+	_ok("⑪ ★报成功之后不再重复发(结算路径会被重入, 没这道闸一场会报好几次)",
+		_sent[0] == 3, "共发了 %d 次" % _sent[0])
+
+	## ── ★★★补报单是**产品自己写**的吗 ──
+	##   2026-09-27 反向验证照出来的洞: 这一节原来**自己喂** `finals_report_pending`
+	##   再去测补报 ⇒ 把「写单」那一步整个跳过了。变异「写完当场清掉」**一条都没红**
+	##   —— 判据在测我自己插进去的东西(memory `fb-gate-must-measure-requirement-not-my-hook`)。
+	##   ⇒ 先走**真入口** `report_finals_if_any()`, 看产品写不写。
+	if _g11 != null:
+		SB.finals_report_clear()
+		SB._report_inflight = false
+		_rep[0] = {"ok": false, "code": 0, "body": ""}          ## 报不成 ⇒ 单子该留着
+		_g11.finals_report_pending = {}
+		_g11.finals_match = {"bucket": 2, "round": 5, "match": 1, "side": 0}
+		BE.report_finals_if_any(true)
+		for _i6 in range(4):
+			await get_tree().process_frame
+		var _pd: Dictionary = _g11.finals_report_pending
+		_ok("⑪ ★★★打完那一场, 产品**自己写下补报单**(没写 = 报失败就再也补不回来)",
+			not _pd.is_empty(), str(_pd))
+		_ok("⑪ ★★单子上记的就是那一场(记错场号等于给别人报结果)",
+			int(_pd.get("round", -1)) == 5 and int(_pd.get("match", -1)) == 1
+				and int(_pd.get("side", -1)) == 0, str(_pd))
+		_ok("⑪ ★分母: `finals_match` 照旧清掉了(它是「我现在在哪一场」, 留着下一局会被当成决赛)",
+			(_g11.finals_match as Dictionary).is_empty())
+
+	## ── 补报单: 报成了要销单 ──
+	## ★「那一场报成了」这个前提要**走产品自己的路**建立(上面那段把 `_report_done`
+	##   清过、还把 transport 设成失败) —— 直接去写 `_report_done` 就是测我自己插的东西。
+	if _g11 != null:
+		_rep[0] = {"ok": true, "code": 200, "body": "{}"}
+		SB._report_inflight = false
+		SB.report_finals_async(777, 2, 3, 1, 0, 42)
+		for _i7 in range(4):
+			await get_tree().process_frame
+		_ok("⑪ ★分母: 前提成立 —— 那一场确实报成了", SB.finals_reported(3, 1))
+		_g11.finals_report_pending = {"bucket": 2, "round": 3, "match": 1, "side": 0, "seed": 42}
+		BE.retry_finals_report()
+		_ok("⑪ ★★报成了 ⇒ 补报单销掉(留着会每次开主菜单都白报一次)",
+			(_g11.finals_report_pending as Dictionary).is_empty(),
+			str(_g11.finals_report_pending))
+		## 没报成的那一场: 补报单要留着, 而且真的会再发
+		SB.finals_report_clear()
+		SB._report_inflight = false
+		_rep[0] = {"ok": false, "code": 0, "body": ""}
+		_g11.finals_report_pending = {"bucket": 2, "round": 4, "match": 0, "side": 1, "seed": 7}
+		var _before := int(_sent[0])
+		BE.retry_finals_report()
+		for _i5 in range(4):
+			await get_tree().process_frame
+		_ok("⑪ ★★★没报成 ⇒ 补报单**留着**(丢了就再也补不了)",
+			not (_g11.finals_report_pending as Dictionary).is_empty())
+		_ok("⑪ ★★★而且补报**真的又发了一次**(只留单不发 = 写了没人读)",
+			_sent[0] == _before + 1, "发了 %d → %d" % [_before, _sent[0]])
+		_g11.finals_report_pending = {}
+		_g11.account_id = _acc11
+
+	## 收尾: static 全部还原
+	SB._transport_for_test = Callable()
+	SB.finals_report_clear()
+	SB._report_inflight = false
+	SB._token = ""
+	OS.set_environment(SB.ENV_URL, _e0)
+	ProjectSettings.set_setting(SB.SETTING_KEY, _k0)
+	_ok("⑪ ★收尾: 后端已关回去", not SB.enabled())
 
 	print("ALL PASS — 决赛日取数与门" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)

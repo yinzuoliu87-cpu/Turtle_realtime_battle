@@ -907,6 +907,13 @@ var finals_entered_week: int = 0
 ## ★进存档: 打完就关 App 的人, 下次打开对阵图时才揭晓得了。
 ## ★跨周作废: 随周清(与闯关赛补发同一条取舍 —— 上周没揭晓的不许顺延)。
 var finals_pending_reveal: Dictionary = {}
+## 决赛日那一场的结果**报上去了吗**。没报成就留着, 开主菜单时补报
+## (`Backend.retry_finals_report()`)。与 `finals_entered_week`(报名补报)同一个样板。
+## ★★为什么要能过夜: `report_finals_if_any` **只在结算时调一次** —— 那一刻没网 /
+##   token 刚过期 / 杀了 App, 结果就**永远到不了服务端**, 那一场只能靠 960 秒宽限兜,
+##   **可能把错的人送进下一轮**(2026-09-27 查实)。
+## ★随周清: 跨周还没报成的作废(与闯关赛补发同一条取舍)。
+var finals_report_pending: Dictionary = {}
 var finals_deepest_round: int = 0   # 我被排进的最深那一轮(1 起; 0 = 没进决赛日)
 var finals_rounds_total: int = 0    # 我那个桶一共几轮(0 = 还不知道)
 var finals_champion: bool = false   # 服务端说我赢下了决赛
@@ -1570,6 +1577,7 @@ func _save_dict() -> Dictionary:
 		"gauntlet_losses": gauntlet_losses,
 		"finals_entered_week": finals_entered_week,
 		"finals_pending_reveal": finals_pending_reveal,
+		"finals_report_pending": finals_report_pending,
 		"finals_deepest_round": finals_deepest_round,
 		"finals_rounds_total": finals_rounds_total,
 		"finals_champion": finals_champion,
@@ -1670,6 +1678,7 @@ func _apply_save_dict(data: Dictionary) -> void:
 	gauntlet_losses = int(data.get("gauntlet_losses", 0))
 	finals_entered_week = int(data.get("finals_entered_week", 0))
 	finals_pending_reveal = (data.get("finals_pending_reveal", {}) as Dictionary).duplicate(true)
+	finals_report_pending = (data.get("finals_report_pending", {}) as Dictionary).duplicate(true)
 	finals_deepest_round = int(data.get("finals_deepest_round", 0))
 	finals_rounds_total = int(data.get("finals_rounds_total", 0))
 	finals_champion = bool(data.get("finals_champion", false))
@@ -1848,6 +1857,7 @@ func reset_save() -> void:
 	## ★决赛日进度随周清 —— 上周的冠军不许顺延成本周的头衔。
 	##   (头衔本身 `titles` **不清**, 那是永久荣誉; 清的只是"本周走到第几轮"。)
 	finals_pending_reveal = {}
+	finals_report_pending = {}
 	finals_deepest_round = 0
 	finals_rounds_total = 0
 	finals_champion = false
@@ -2340,6 +2350,7 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	## ★决赛日进度随周清 —— 上周的冠军不许顺延成本周的头衔。
 	##   (头衔本身 `titles` **不清**, 那是永久荣誉; 清的只是"本周走到第几轮"。)
 	finals_pending_reveal = {}
+	finals_report_pending = {}
 	finals_deepest_round = 0
 	finals_rounds_total = 0
 	finals_champion = false
