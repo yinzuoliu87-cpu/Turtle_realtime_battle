@@ -1610,31 +1610,73 @@ func _save_dict() -> Dictionary:
 	}
 
 
+## 存档落盘。★★★**原子写**: 写 `.tmp` → 旧档改名 `.bak` → `.tmp` 改名正式档。
+##
+## 为什么非这样不可(2026-09-27 探针 `tests/_probe_save_torn.gd` 实测):
+##   原来是**直接覆写**(`FileAccess.WRITE` 先把文件截断为 0, 再写, 再 close)。
+##   手机上进程随时被系统杀掉 —— 杀在这中间, 盘上就是一份残档;
+##   而 `_load()` 遇到坏 JSON 直接 return ⇒ **下次启动是全新档**。
+##   实测把存档截到 60%(1628 → 976 字节)再读: 场次/胜场/深海币**一个都没回来**,
+##   而且**一声不吭**, 也没有任何备份可用。对测试者来说就是一周进度凭空消失。
+## ★改名是原子操作 ⇒ **任何时刻被杀, 盘上至少有一份完整的**(正式档或 .bak)。
+## ★`.bak` 是双保险: 万一「旧档改名」与「新档改名」之间被杀, 正式档暂时不存在,
+##   读档那边会回落到 `.bak`(见 `_load`)。
 func save() -> void:
 	if test_mode:
 		return
 	var data := _save_dict()
-	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	var tmp := SAVE_PATH + ".tmp"
+	var f := FileAccess.open(tmp, FileAccess.WRITE)
 	if f == null:
-		push_warning("[GameState] save 失败: cannot open " + SAVE_PATH)
+		push_warning("[GameState] save 失败: cannot open " + tmp)
 		return
 	f.store_string(JSON.stringify(data, "  "))
 	f.close()
+	var da := DirAccess.open("user://")
+	if da != null:
+		if FileAccess.file_exists(SAVE_PATH):
+			da.remove(SAVE_PATH + ".bak")        # 只能有一份旧备份
+			da.rename(SAVE_PATH, SAVE_PATH + ".bak")
+		da.rename(tmp, SAVE_PATH)
 	_SB_NET.note_save_dirty()          # D-8: 只标脏, 推不推由同步层判断
 
 
+## 读档。★正式档坏了 / 不见了 ⇒ **回落 `.bak`**, 并且**说出来**。
+##
+## ★原来是「坏了就 return」—— 表现成**静默当新档开局**: 玩家一周的进度凭空消失,
+##   屏幕上没有任何一句话告诉他发生了什么(探针实测, 见 `save()` 头注)。
+## ★★判据: 「读到了一份能解析的字典」才算读到档。**不许**把残档当成"没有存档"。
 func _load() -> void:
-	if not FileAccess.file_exists(SAVE_PATH):
-		return
-	var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
-	if f == null:
-		return
-	var text := f.get_as_text()
-	f.close()
-	var parsed = JSON.parse_string(text)
+	var parsed = _read_save_file(SAVE_PATH)
+	if not (parsed is Dictionary):
+		var bak = _read_save_file(SAVE_PATH + ".bak")
+		if bak is Dictionary:
+			## ★不许静默: 这是玩家该知道的事(他上一场的结果可能不在这份里)。
+			push_warning("[GameState] 正式存档读不出来, 已回落到上一份备份(.bak)")
+			print("[GameState] ⚠ 正式存档损坏, 用备份 .bak 开局")
+			parsed = bak
 	if not (parsed is Dictionary):
 		return
 	_apply_save_dict(parsed)
+
+
+## 读一份存档文件 → 字典; 读不到 / 解析不出来一律返回 null。
+## ★用 `JSON.new().parse()` 而不是 `JSON.parse_string()`: 后者解析失败会往 stderr
+##   喷 `ERROR: Parse JSON failed`, 而这里**本来就要能处理坏正文**(残档就是坏的),
+##   每次都喷一条等于给日志灌噪声 —— 门禁靠扫错误形态判红, 噪声多了真错就藏得住
+##   (与 `supabase.parse_finals` 同一条理由)。
+func _read_save_file(path: String):
+	if not FileAccess.file_exists(path):
+		return null
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null:
+		return null
+	var text := f.get_as_text()
+	f.close()
+	var j := JSON.new()
+	if j.parse(text) != OK or not (j.data is Dictionary):
+		return null
+	return j.data
 
 
 ## ★D-8: 把一份存档字典应用到内存。本机开机读档与【云存档取回】共用这一个函数。

@@ -117,6 +117,50 @@ func _ready() -> void:
 	print("         %s" % E2E_NOTE)
 	print("  [缺口] 未覆盖: `_ready` 里喂给 apply_save_guard 的两个实参表达式本身")
 
+
+	## ══════════════════════════════════════════════════════════════════════
+	##  ⑥ ★★★存档写到一半被杀进程 (2026-09-27)
+	## ══════════════════════════════════════════════════════════════════════
+	## 探针(`tests/_probe_save_torn.gd`)实测原来的行为: 把存档截到 60%(1628→976 字节)
+	## 再读 —— 场次/胜场/深海币**一个都没回来**, 而且**一声不吭**, 也没有任何备份。
+	## 对测试者就是**一周进度凭空消失**。
+	## 根因两条: `save()` 直接覆写(不是原子写); `_load()` 遇到坏 JSON 直接 return。
+	## ⇒ 写 `.tmp` → 旧档改名 `.bak` → `.tmp` 改名正式档(改名是原子的);
+	##   读档时正式档坏了就回落 `.bak` 并**说出来**。
+	print("  ── ⑥ 存档写到一半被杀进程 ──")
+	var _tm0: bool = bool(gs.test_mode)
+	gs.test_mode = false           ## 本节必须真写盘(跑在独立 APPDATA 里, 碰不到真存档)
+	var SP := "user://savegame.json"
+	## 存两次: `.bak` 是第二次存档时由旧档改名而来的(真实玩家一周要存几百次)
+	gs.season_total_battles = 16
+	gs.save()
+	gs.season_total_battles = 17
+	gs.save()
+	_ok("⑥ ★★存完之后 `.tmp` 不许留在盘上(留着 = 下次可能读到半份)",
+		not FileAccess.file_exists(SP + ".tmp"))
+	_ok("⑥ ★分母: 第二次存档之后 `.bak` 在(不在 = 下面那条是空检查)",
+		FileAccess.file_exists(SP + ".bak"))
+	var _rf := FileAccess.open(SP, FileAccess.READ)
+	var _whole := _rf.get_as_text() if _rf != null else ""
+	if _rf != null:
+		_rf.close()
+	_ok("⑥ ★分母: 正式档本来是完整的", _whole.length() > 200, "%d 字节" % _whole.length())
+	var _wf := FileAccess.open(SP, FileAccess.WRITE)
+	_wf.store_string(_whole.substr(0, int(_whole.length() * 0.6)))
+	_wf.close()
+	gs.season_total_battles = -1
+	gs._load()
+	_ok("⑥ ★★★残档 ⇒ **回落到上一份完整档**(原来是静默当新档开局, 一周进度全丢)",
+		int(gs.season_total_battles) == 16, "读回场次 %d" % int(gs.season_total_battles))
+	var _da := DirAccess.open("user://")
+	if _da != null:
+		_da.remove(SP + ".bak")
+	gs.season_total_battles = -1
+	gs._load()
+	_ok("⑥ ★对照: 连备份都没有时**不许**假装读到(那样会把 -1 当成真进度)",
+		int(gs.season_total_battles) == -1, "读回场次 %d" % int(gs.season_total_battles))
+	gs.test_mode = _tm0
+
 	_done()
 
 
