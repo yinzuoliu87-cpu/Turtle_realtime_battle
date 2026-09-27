@@ -1632,12 +1632,32 @@ func save() -> void:
 		return
 	f.store_string(JSON.stringify(data, "  "))
 	f.close()
+	## ★★★改名不成就**回落成直接写** —— 2026-09-27 自查时发现的:
+	##   我第一版写成 `if da != null: ...renames...`, 于是 `DirAccess.open()` 返回 null
+	##   (或 `rename()` 失败)时, `.tmp` 写了但**永远不会变成正式档** ⇒ **存档静默丢失**。
+	##   那比改之前**更糟** —— 改之前至少还能直接写进去。
+	## ⇒ 原子写是"更好", 不是"唯一"; 它不成的时候必须退回"至少存下来"。
+	var ok_atomic := false
 	var da := DirAccess.open("user://")
 	if da != null:
 		if FileAccess.file_exists(SAVE_PATH):
 			da.remove(SAVE_PATH + ".bak")        # 只能有一份旧备份
 			da.rename(SAVE_PATH, SAVE_PATH + ".bak")
-		da.rename(tmp, SAVE_PATH)
+		ok_atomic = da.rename(tmp, SAVE_PATH) == OK
+	## ⚠★**防御性, 不承重**(2026-09-27 反向验证查实): 本平台造不出「rename 失败」——
+	##   正式档设只读、`.bak` 位置放目录, 两种前提下 `DirAccess.rename` 都照样成功,
+	##   两次变异(把这一整段关掉)**都不红**。⇒ 门禁里**没有**断言守它(那边已写在明面上)。
+	##   留着是为「两次调用之间环境变了」的竞态; 别拿它当有人守。
+	if not ok_atomic:
+		## 退回直接写。★**必须自己再写一遍**: 上面那两次改名可能已经把正式档挪成 .bak 了,
+		##   什么都不做的话盘上就只剩 .bak, 这一场的进度丢了。
+		push_warning("[GameState] 原子存档不可用, 退回直接写")
+		var f2 := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+		if f2 != null:
+			f2.store_string(JSON.stringify(data, "  "))
+			f2.close()
+		if da != null:
+			da.remove(tmp)                       # 别把半路的 .tmp 留在盘上
 	_SB_NET.note_save_dirty()          # D-8: 只标脏, 推不推由同步层判断
 
 
