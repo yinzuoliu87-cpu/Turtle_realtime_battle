@@ -19,6 +19,8 @@ extends Node
 ## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_result_reachable.tscn --quit-after 1800
 
 const SCENE := "res://scenes/RealtimeBattle3D.tscn"
+## 副标题那句话的**唯一出处** —— 测试不许自己拼那几个字(拼一遍就是抄第二份)。
+const P2C := preload("res://scripts/gamedata/phase2_config.gd")
 
 var _n := 0
 var _fail := 0
@@ -164,6 +166,80 @@ func _ready() -> void:
 	_ok("★★每个按钮中心点真的能命中它自己(引擎命中测试, 不是我手算的)",
 		unclickable.is_empty(), str(unclickable))
 
+
+	## ══════════════════════════════════════════════════════════════════════
+	##  ★★★封存那一屏: 玩家屏幕上真的出现了那几行字 (S3 · 2026-09-27)
+	## ══════════════════════════════════════════════════════════════════════
+	## `verify_finals_settle` ⑤g 量的是**纯函数说了什么**; 这一段量的是**它真的被画出来了**。
+	## 两条缺任何一条都能假绿: 只有前者 ⇒ 文案对但没人画;
+	## 只有后者 ⇒ 画了但内容能被悄悄改空(而「有个 Label」照样成立)。
+	##
+	## ★★上面那张卡是**未封存**的(`_show_banner(true)`) ⇒ 它天然就是本判据的**对照组**:
+	##   先证明「没封存时屏幕上写的是胜利、没有封存字样」, 再喂封存态重建一张。
+	##   没有这个对照, 「屏幕上有『结果已封存』」可能只是因为它**恒真**。
+	print("  ── ⑩ 封存那一屏真的说清了在等什么 ──")
+	var _before: Array = _all_label_texts(sc)
+	var _has_win: bool = false
+	var _has_seal0: bool = false
+	for _t in _before:
+		if str(_t) == "胜利":
+			_has_win = true
+		if str(_t).find("结果已封存") >= 0:
+			_has_seal0 = true
+	_ok("⑩ ★对照组: 未封存时屏幕上写着「胜利」", _has_win, "共 %d 个 Label" % _before.size())
+	_ok("⑩ ★对照组: 未封存时屏幕上**没有**封存字样", not _has_seal0)
+
+	## 喂封存态再建一张。`_show_banner` 有 `if battle._settled: return` 闸 ⇒ 要复位。
+	## ★只动这个表现层的 bool, **不碰赛季结算** —— 三件套里 `_settle_season` 是另一步,
+	##   `_show_banner` 本身纯表现(见 RealtimeBattle3DScene.gd:1217 的注释)。
+	var _gs = get_node_or_null("/root/GameState")
+	_ok("⑩ ★分母: 拿到 GameState", _gs != null)
+	if _gs != null:
+		var _had0: bool = (_gs.finals_pending_reveal as Dictionary).is_empty()
+		_gs.test_mode = true                      ## 不许写真存档
+		_gs.finals_pending_reveal = {"round": 1, "match": 0}
+		sc._settled = false
+		sc._hud._show_banner(false)               ## won=false: 封存时这个参数**不该被采信**
+		for _i in range(8):
+			await get_tree().process_frame
+		## 只看**新增**的 Label —— 上一张卡还在树上, 整树扫会把它的「胜利」也算进来。
+		var _after: Array = _all_label_texts(sc)
+		var _seen: Dictionary = {}
+		for _t in _before:
+			_seen[str(_t)] = int(_seen.get(str(_t), 0)) + 1
+		var _new: Array = []
+		for _t in _after:
+			var _k: String = str(_t)
+			if int(_seen.get(_k, 0)) > 0:
+				_seen[_k] = int(_seen[_k]) - 1
+			else:
+				_new.append(_k)
+		_ok("⑩ ★分母: 封存那张卡真的建出来了(新增 %d 个 Label)" % _new.size(), _new.size() >= 2,
+			str(_new).substr(0, 180))
+		var _blob: String = ""
+		## ★★`_why` 是**给红行看的**: 新增的 Label 绝大多数是统计表里的数字,
+		##   拿 `_blob` 前 120 字当 detail 印出来就是一串「57」—— 红了也不知道红在哪。
+		##   ⇒ detail 只印**像句子的那几条**(长度 ≥3 且不是纯数字)。
+		var _why: String = ""
+		for _t in _new:
+			_blob += str(_t) + "\n"
+			var _k2: String = str(_t).strip_edges()
+			if _k2.length() >= 3 and not _k2.is_valid_float():
+				_why += "「" + _k2.replace("\n", "⏎") + "」 "
+		_ok("⑩ ★★★屏幕上写着「结果已封存」", _blob.find("结果已封存") >= 0, _why.substr(0, 200))
+		_ok("⑩ ★★★封存时屏幕上**不许**出现胜利/失败(这就是「两边都赢」的出处)",
+			_blob.find("胜利") < 0 and _blob.find("失败") < 0, _why.substr(0, 200))
+		## 副标题 —— 与 `verify_finals_settle` ⑤g 同一份纯函数, 这里验它**上了屏**。
+		## ★不在测试里自己拼那几个字: 拼一遍就是抄第二份, 抄本必然落后。
+		var _sub: String = P2C.finals_sealed_sub()
+		_ok("⑩ ★分母: 纯函数的副标题非空", _sub.strip_edges() != "", _sub)
+		var _l0: String = _sub.split("\n")[0]
+		_ok("⑩ ★★★副标题**逐字**上了屏", _blob.find(_l0) >= 0, "要的: 「%s」 / 屏上: %s" % [_l0, _why.substr(0, 200)])
+		## 收尾: 还原, 不留痕(铁律④ 测试不许污染真存档)
+		_gs.finals_pending_reveal = {}
+		_ok("⑩ ★收尾: `finals_pending_reveal` 已还原",
+			(_gs.finals_pending_reveal as Dictionary).is_empty() and _had0)
+
 	sc.queue_free()
 	await get_tree().process_frame
 	print("")
@@ -190,3 +266,17 @@ func _find_shell(n: Node) -> Control:
 		if r != null:
 			return r
 	return null
+
+## 把整棵树上所有 Label 的文字收成一张平表。
+## ★为什么不按节点名/路径找: 名字是我起的, 拿它当判据等于「我说是就是」;
+##   而「玩家看得见的字」就是**所有 Label 的 text**, 与结构怎么搭无关。
+func _all_label_texts(root: Node) -> Array:
+	var out: Array = []
+	var st: Array = [root]
+	while not st.is_empty():
+		var n = st.pop_back()
+		if n is Label and str((n as Label).text).strip_edges() != "":
+			out.append(str((n as Label).text))
+		for ch in n.get_children():
+			st.append(ch)
+	return out
