@@ -80,6 +80,71 @@ func _ready() -> void:
 
 	print("")
 	print("  (共 %d 条断言)" % _n)
+
+	## ══════════════════════════════════════════════════════════════════════
+	##  ⑧ ★★★开局闸【七天全量】—— 不许有哪一天漏成「无限打」(2026-09-27)
+	## ══════════════════════════════════════════════════════════════════════
+	## §⑤ 那一节写的是「四天 × 各种状态」, 而**漏掉的恰好是周日**。
+	## 探针(`tests/_probe_week_playable.gd`)七天 × 配额打满量出来:
+	##     周日   phase=finals    吃配额=false → 【可打】   ← 唯一一天
+	##     周一~五 rest/ranked     吃配额=true  → 挡住
+	##     周六   phase=gauntlet  吃配额=false → 挡住(有专门分支)
+	## 根因: `_battle_block_msg` 里只有周六那一支; 而 `phase_uses_ranked_quota(FINALS)`
+	## 因为「玩法已上线就不吃积分赛配额」返回 false ⇒ 周日**不吃配额 + 没有拦截**。
+	##
+	## ★后果不是假想: 匹配是**严格同场次**的(v0.19.447「硬条件=双方总场次完全相同」)
+	##   ⇒ 周日刷完的人场次停在别人都没有的数字上, **下周开局只能配到机器人**。
+	##
+	## ★★所以这一节的判据不是「周日要挡住」那一格, 而是**七天各有确定答案**:
+	##   一天一天列会再漏第二次 —— 这次漏的就是四天名单里没有的那一天。
+	print("  ── ⑧ 开局闸七天全量 ──")
+	var _pk8 = load("res://scenes/MainMenu.tscn")
+	_ok("⑧ ★分母: 载得到 MainMenu.tscn", _pk8 != null)
+	var _mm8 = _pk8.instantiate()
+	get_tree().root.add_child(_mm8)
+	await get_tree().process_frame
+	var _g8 = get_node_or_null("/root/GameState")
+	_ok("⑧ ★分母: 拿到 GameState", _g8 != null)
+	if _g8 != null:
+		_g8.test_mode = true
+		## 配额打满 + 没晋级 = **最该被挡住的那个人**
+		_g8.ranked_used = 9999
+		_g8.season_total_battles = 24
+		_g8.season_wins = 0
+		_g8.hearts = 3
+		_g8.gauntlet_wins = 0
+		_g8.gauntlet_losses = 0
+		var _open: Array = []
+		for _d in range(7):
+			var _ts: int = SUN + _d * 86400 + 12 * 3600
+			var _m: String = str(_mm8._battle_block_msg(_ts))
+			var _ph: String = str(P2.phase_at_utc(_ts))
+			print("     %-9s %s" % [_ph, ("【可打】★" if _m == "" else _m.substr(0, 30))])
+			if _m == "":
+				_open.append(_ph)
+		_ok("⑧ ★★★配额打满 + 没晋级 ⇒ **七天一天都不许放行**(漏一天就是无限刷)",
+			_open.is_empty(), "放行的: %s" % str(_open))
+
+		## ★分母: 判据不是恒真 —— 同一个人配额没打满时, 工作日必须放行
+		_g8.ranked_used = 0
+		var _weekday_open := 0
+		for _d2 in range(7):
+			var _ts2: int = SUN + _d2 * 86400 + 12 * 3600
+			if str(_mm8._battle_block_msg(_ts2)) == "":
+				_weekday_open += 1
+		_ok("⑧ ★分母: 配额没打满时**确实有天能打**(恒挡的判据 = 假绿)",
+			_weekday_open >= 4, "能打 %d 天" % _weekday_open)
+
+		## ★周日那句话要**指路**, 不是干挡 —— 已晋级的人今天有比赛, 只是不在这个按钮后面
+		var _sun_in: String = P2.finals_block_msg(true)
+		var _sun_out: String = P2.finals_block_msg(false)
+		_ok("⑧ ★已晋级: 那句话要**指到决赛日那一屏**", _sun_in.find("决赛日") >= 0, _sun_in)
+		_ok("⑧ ★没晋级: 那句话要说清**下一次机会在哪**",
+			_sun_out.find("下周") >= 0, _sun_out)
+		_ok("⑧ ★两句话不许一样(一样 = 分不分晋级没意义)", _sun_in != _sun_out)
+	_mm8.queue_free()
+	await get_tree().process_frame
+
 	print("ALL PASS — 周六闯关赛" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
 

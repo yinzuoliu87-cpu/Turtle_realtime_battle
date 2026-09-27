@@ -1292,6 +1292,16 @@ func _battle_block_msg(now: int = 0) -> String:
 	if _P2C.phase_at_utc(ts) == _P2C.PHASE_GAUNTLET \
 			and _P2C.phase_mode_live(_P2C.PHASE_GAUNTLET):
 		return _msg_gauntlet_block()
+	## ★★★周日也要有一支(2026-09-27)。原来只有周六, 而周日**不吃积分赛配额**
+	##   (`phase_uses_ranked_quota(FINALS)` = false, 因为玩法已上线) ⇒ 周日是唯一
+	##   「不吃配额 + 没有拦截」的一天 = **可以无限刷积分赛**, 七天实测只有它是【可打】。
+	##   而匹配是严格同场次的 ⇒ 周日刷完的人下周只配得到机器人。
+	## ★与周六同一个形状: 挂 `phase_mode_live` 闸(没上线就别分流过去 ——
+	##   memory `fb-branch-to-an-unbuilt-mode-is-a-backdoor`)。
+	## ★「已晋级」取 `gauntlet_state()`, 与赛程条/闯关赛那支同一处判据。
+	if _P2C.phase_at_utc(ts) == _P2C.PHASE_FINALS \
+			and _P2C.phase_mode_live(_P2C.PHASE_FINALS):
+		return _P2C.finals_block_msg(GameState.gauntlet_state() == _P2C.GAUNTLET_IN)
 	if GameState.is_eliminated():   # 大轮淘汰锁(用户2026-07-24): 0命封匹配, 只重置存档解锁
 		## ★U9 拍板(2026-09-16):「0 命的话就只能等到周 6 周日观赛了, 不再打表演赛」
 		##   ⇒ 文案从「设置→重置存档」改成指向观赛。观赛入口在 F 阶段, 先把话说对。
