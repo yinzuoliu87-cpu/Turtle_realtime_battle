@@ -59,7 +59,15 @@ const HERO_POS := Vector2(732.0, 462.0)
 ## 而参考里主 CTA 永远是压倒性的(Zookeeper World 的绿 PLAY / Fuga 的橙高亮条)。
 const TRAINER_SIZE := Vector2(340.0, 82.0)   # ★82 不是 78: 触摸线 81 视口像素(=44pt), 78 差 3px 门禁当场红
 const TRAINER_POS := Vector2(900.0, 344.0)  # 900+340 = 1240 = 732+508, 右沿同轴; 与主 CTA 留 36px
-const STRIP_Y := 636.0                      # 贴底赛程条
+## ★★★赛程条是**贴底对齐**的, 不是写死顶沿(2026-09-27 修)。
+##   起因: 周日那一格放的是「决赛日 看对阵图」按钮, 它高 **81**(触控下限 44pt = 81 视口像素,
+##   比 STRIP_H 的 68 还高) ⇒ 整条被撑到 95, 而写死 `y = 636` 让底边落在 **731 > 720**,
+##   `verify_mainmenu_layout ①` 与 `verify_ios_ui` 双双判红(越界 18 个)。
+##   ⚠ 这个 bug **一周只有周日看得见** —— 又一条「判据挂在星期几上」: 门禁一直在守,
+##   只是它和这个形状一周才碰一次面。(同族已修四条, 见 v0.19.446。)
+## ⇒ 顶沿 = `STRIP_BOTTOM - 实际高`, 条子多高都贴着底, 不会掉出屏幕。
+const STRIP_BOTTOM := 719.0                 # 被撑高时的底沿上限(见 `_week_strip` 里那段)
+const STRIP_Y := 636.0                      # = STRIP_BOTTOM - STRIP_H, 常规高度下的顶沿
 const STRIP_H := 68.0
 const STRIP_X := 48.0
 const STRIP_W := 884.0
@@ -889,6 +897,15 @@ func _week_strip() -> void:
 	box.position = Vector2(STRIP_X, STRIP_Y)
 	box.custom_minimum_size = Vector2(STRIP_W, STRIP_H)
 	box.size = Vector2(STRIP_W, STRIP_H)
+	## ★**只有被撑高时才往上挪**, 常规日一个像素都不动(STRIP_Y = 636 是拍过板的版式)。
+	##   周日那一格是 81 高的按钮(触控下限), 把条子撑到 95 ⇒ 顶沿必须落在一个窄窗口里:
+	##     · 底边 ≤ 720(不出屏) 且 底沿距屏底 ≤ 24 ⇒ 顶沿 ∈ [601, 625]
+	##     · 顶沿 ≥ 左栏栈底 - 2 = 621(不压住入口)
+	##   ⇒ 取 `STRIP_BOTTOM - 高`, `STRIP_BOTTOM = 719` 时周日顶沿 = 624, 正在窗口中间。
+	##   `resized` 而不是建的时候算 —— 高度由子控件决定, 那会儿还不知道。
+	box.resized.connect(func() -> void:
+		if is_instance_valid(box):
+			box.position.y = minf(STRIP_Y, STRIP_BOTTOM - box.size.y))
 	var sb := StyleBoxFlat.new()
 	## ★不描边 + 底色更实: verify_ui_consistency 的「网页盒」= 四边有边框 + 底半透明
 	##   = CSS border+rgba 的长相(用户 2026-08-15「去掉 ai 味」时建的判据)。
@@ -1065,6 +1082,28 @@ func _finals_entry() -> Control:
 	b.text = "决赛日\n看对阵图 →"
 	b.add_theme_font_size_override("font_size", 15)
 	b.add_theme_color_override("font_color", Color("#4ff0d0"))
+	## ★★2026-09-27 上皮。原来它用的是 **Godot 默认皮**(圆角纯灰), 与全屏其它按钮完全两个味。
+	##   `verify_ui_consistency` 的第 3 条判据一直在守这个, 但它**一周只在周日露面**
+	##   —— 今天(UTC 周日)才第一次被抓到。又一条「判据挂在星期几上」:
+	##   门禁没错、按钮也一直是错的, 只是两者一周才碰面一次。
+	## ★★**零圆角、零边框** —— 这是本屏(以至全项目)的口径, 不是我随手定的:
+	##   `verify_ui_consistency` 的第 1/2 条(网页盒 / 圆角盒)是**只降不升的棘轮**,
+	##   而主菜单那一格记的是 **0**。我第一版加了 2px 边框 + 8px 圆角, 当场把这两条顶红
+	##   —— 判据是对的: 圆角 + 半透边框是"网页味"，像素风里立不住。
+	##   ⇒ 照旁边那几块面板的做法(`sb.set_border_width_all(0)` / `set_corner_radius_all(0)`)。
+	var fsb := StyleBoxFlat.new()
+	fsb.bg_color = Color(0.05, 0.16, 0.15, 0.94)
+	fsb.set_border_width_all(0)
+	fsb.set_corner_radius_all(0)
+	## ★**不设 content_margin**: 第一版加了 10/6, 把按钮撑宽 ⇒ `verify_ios_ui`「全在屏内」
+	##   与 `verify_mainmenu_layout`「都在 1280×720 内」双双判红(越界 18 个)。
+	##   这一格的尺寸由 `custom_minimum_size` 定死(150×81, 触控下限), 皮只管颜色。
+	b.add_theme_stylebox_override("normal", fsb)
+	var fsh := fsb.duplicate()
+	fsh.bg_color = Color(0.09, 0.26, 0.24, 0.98)
+	b.add_theme_stylebox_override("hover", fsh)
+	b.add_theme_stylebox_override("pressed", fsh)
+	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	b.pressed.connect(_open_bracket_map)
 	return b
 

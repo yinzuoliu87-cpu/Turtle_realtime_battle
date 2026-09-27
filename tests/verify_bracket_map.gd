@@ -53,6 +53,7 @@ func _ready() -> void:
 	await _t_two_views()
 	await _t_opponent_gate()
 	await _t_winner_side()
+	await _t_reveal_sealed()
 	print("")
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 桶地图" if _fail == 0 else "FAIL x%d" % _fail)
@@ -430,3 +431,96 @@ func _t_two_views() -> void:
 	await get_tree().process_frame
 	_ok("⑤ ★切回来读的又是桶那份(8 人)",
 		int(_map.cur().get("size", 0)) == 8, "size=%d" % int(_map.cur().get("size", 0)))
+
+# ─────────────────────────────────────────────────────────────
+# ⑧ ★★★揭晓被封存的那一场（方案书 20260927-周日结果封存.md）
+# ─────────────────────────────────────────────────────────────
+## 用户 2026-09-26:「两边都赢是什么意思？」
+## 周日是双方各自在本机打对方的快照 —— 两场不同的战斗，两边都可能算出自己赢。
+## ⇒ 打完**只结算与胜负无关的那部分**，吃胜负的封存；唯一权威是 feed 里的 `done`。
+##
+## ★这一段必须走**真入口**（`set_data()` 喂一份 feed），不是直接调 `_reveal_sealed()`
+##   —— 后者证明不了「feed 到手时真的会去揭晓」（memory `fb-verify-must-run-the-real-path`）。
+## ★判据两侧都要：`done` 里还没有那一场 ⇒ **不许**揭晓（封存本身）；有了 ⇒ 必须揭晓。
+func _t_reveal_sealed() -> void:
+	print("── ⑧ 揭晓被封存的那一场（走真入口 set_data） ──")
+	var gs = get_node_or_null("/root/GameState")
+	if gs == null:
+		_ok("⑧ 拿得到 GameState", false)
+		return
+	gs.test_mode = true
+	var w_bak := int(gs.season_wins)
+	var e_bak := int(gs.season_eggs_killed)
+	var p_bak = gs.finals_pending_reveal
+
+	## 8 人桶、我是 2 号种子。第 1 轮我在第 1 场（seat 表决定），先确认这一点。
+	var me := 2
+	var n := 8
+	var my_m := -1
+	var my_side := -1
+	for m in range(B.matches_in_round(n, 1)):
+		var sd := B.my_side_in(me, 1, m, n, {})
+		if sd >= 0:
+			my_m = m
+			my_side = sd
+			break
+	_ok("⑧ ★分母: 2 号种子在第 1 轮确实有一场(第 %d 场, 第 %d 侧)" % [my_m, my_side],
+		my_m >= 0 and my_side >= 0)
+	if my_m < 0:
+		return
+
+	## ── (a) `done` 里没有那一场 ⇒ **不许**揭晓（这就是「封存」） ──
+	gs.season_wins = 0
+	gs.season_eggs_killed = 0
+	gs.finals_pending_reveal = {"round": 1, "match": my_m}
+	_map.set_data({"size": n, "round": 1, "me": me, "names": NAMES, "done": {}}, {}, SUN_AM)
+	await get_tree().process_frame
+	_ok("⑧a ★★★当前轮还没翻面 ⇒ **不揭晓**（封存本身）",
+		not (gs.finals_pending_reveal as Dictionary).is_empty()
+		and int(gs.season_wins) == 0,
+		"pending=%s 胜场=%d" % [str(gs.finals_pending_reveal), int(gs.season_wins)])
+
+	## ── (b) `done` 说**我赢了** ⇒ 揭晓并清掉 pending ──
+	_map.set_data({"size": n, "round": 2, "me": me, "names": NAMES,
+		"done": {"1-%d" % my_m: my_side}}, {}, SUN_AM)
+	await get_tree().process_frame
+	_ok("⑧b ★★★feed 说我赢 ⇒ 胜场 +1", int(gs.season_wins) == 1,
+		"胜场=%d" % int(gs.season_wins))
+	_ok("⑧b ★★★揭晓完 pending 清掉（幂等的靠它）",
+		(gs.finals_pending_reveal as Dictionary).is_empty(),
+		str(gs.finals_pending_reveal))
+
+	## ── (c) 幂等：同一份 feed 再来一次，不许补第二回 ──
+	_map.set_data({"size": n, "round": 2, "me": me, "names": NAMES,
+		"done": {"1-%d" % my_m: my_side}}, {}, SUN_AM)
+	await get_tree().process_frame
+	_ok("⑧c ★★★同一份 feed 再来 ⇒ 胜场**不再加**（幂等）", int(gs.season_wins) == 1,
+		"胜场=%d" % int(gs.season_wins))
+
+	## ── (d) `done` 说**对手赢了** ⇒ 揭晓但胜场不动 ──
+	gs.season_wins = 0
+	gs.finals_pending_reveal = {"round": 1, "match": my_m}
+	_map.set_data({"size": n, "round": 2, "me": me, "names": NAMES,
+		"done": {"1-%d" % my_m: 1 - my_side}}, {}, SUN_AM)
+	await get_tree().process_frame
+	_ok("⑧d ★★★feed 说**对手**赢 ⇒ 胜场**不动**（这一条挡住「两边都赢」）",
+		int(gs.season_wins) == 0, "胜场=%d" % int(gs.season_wins))
+	_ok("⑧d ★分母: 但 pending 照样清掉了（揭晓发生过，不是卡在那儿）",
+		(gs.finals_pending_reveal as Dictionary).is_empty(),
+		str(gs.finals_pending_reveal))
+
+	## ── (e) 我不在桶里（纯观众）⇒ 一个字都不改 ──
+	gs.season_wins = 5
+	gs.finals_pending_reveal = {"round": 1, "match": my_m}
+	_map.set_data({"size": n, "round": 2, "me": -1, "names": NAMES,
+		"done": {"1-%d" % my_m: my_side}}, {}, SUN_AM)
+	await get_tree().process_frame
+	_ok("⑧e ★★纯观众(me<0) ⇒ 胜场不动、pending 也不清（等我真进了桶再说）",
+		int(gs.season_wins) == 5 and not (gs.finals_pending_reveal as Dictionary).is_empty(),
+		"胜场=%d pending=%s" % [int(gs.season_wins), str(gs.finals_pending_reveal)])
+
+	## 收尾还原（门禁不许污染存档）
+	gs.season_wins = w_bak
+	gs.season_eggs_killed = e_bak
+	gs.finals_pending_reveal = p_bak
+

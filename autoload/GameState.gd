@@ -665,14 +665,47 @@ func gauntlet_settle(won: bool) -> int:
 ##   那一半是**补发**，与积分赛/闯关赛共用幂等记账挂在 `ensure_season` 上，
 ##   **本期没做**（方案书 R-B7-2 明确记着，不是忘了）。
 func finals_settle(won: bool) -> int:
+	var c := finals_settle_sealed()
+	finals_reveal(won)
+	return c
+
+
+## ══════════════════════════════════════════════════════════════════════
+##  ★★★结果封存(2026-09-27) —— 原稿 §五.5 逐字:
+##    「结算结果**不随撮合下发**; 选手点开重放时解锁; 决赛签表统一至**开播时刻**全服解锁」
+## ══════════════════════════════════════════════════════════════════════
+## 为什么必须拆成两半:
+##   周日是**双方各自在本机打对方的快照** —— 那是**两场不同的战斗**, 两边都可能算出自己赢
+##   (服务端 `finals_report` 用 `on conflict do nothing`, 先报的算, 后报的静默丢掉
+##    且照样返回 ok)。当场按本机结果发奖 + 播「胜利」横幅 = 用户 2026-09-26 看到的
+##   **「两边都赢」**。
+##
+## ★权威只有一个: `finals_view` 下发的 `done`(哪一场哪一侧赢), 一个桶里只有一个值。
+##   而它**只返回 round < 当前轮** —— 当前轮的结果根本不下发(不剧透)。
+##   ⇒「打完要等轮次推进才知道胜负」**不是缺陷, 正是原稿要的封存**。
+##
+## ★哪些能当场给、哪些要封存, 判据是「**吃不吃胜负**」:
+##   · 场次 +1 / 赛季经验 / 斧经验 / 轮次币  —— **对称**(原稿逐字:「赢家输家一样多」)⇒ 当场给
+##   · 糖罐 / season_wins / season_eggs_killed —— 吃胜负 ⇒ 封存, 等 feed 揭晓
+##
+## 方案书 `docs/plans/20260927-周日结果封存.md`。
+
+
+## 封存部分: 与胜负**无关**的那些, 打完立刻给。返回这一轮的轮次币。
+func finals_settle_sealed() -> int:
 	season_total_battles += 1
 	add_season_xp(int(_P2.FINALS_XP_PER_ROUND))
 	axe_on_match_end()                   # 096 小木斧: 打完一整场照常给砍伐经验
+	return int(_P2.FINALS_COINS_PER_ROUND)
+
+
+## 揭晓部分: 吃胜负的那些。★由**对阵图的 feed** 在轮次推进后调, 不由战斗结束调。
+## ★幂等靠调用方(`finals_pending_reveal` 清掉之后就不会再来第二次)。
+func finals_reveal(won: bool) -> void:
 	candy_jar_add(1 if won else 4)
 	if won:
 		season_wins += 1
 		season_eggs_killed += 1
-	return int(_P2.FINALS_COINS_PER_ROUND)
 
 
 ## 闯关配额补发(只补晋级者)。与积分赛的 `backfill_ranked_quota()` 同构, 返回实际补了几场。
@@ -869,6 +902,11 @@ var finals_entered_week: int = 0
 ## ★写入点: `BracketMapScene.set_data()` 拿到 feed 之后, 走 `record_finals_progress()`。
 ## ★**只增不减**: feed 故意不下发当前轮的结果, 所以这几个值只会往上走; 回退一定是
 ##   「这一次拉到的 feed 更旧」, 不是「我退赛了」。
+## ★★封存中、还没揭晓的那一场。`{}` = 没有待揭晓的。
+##   形状 `{"round": r, "match": m}` —— 与 `finals_match` 同一套坐标。
+## ★进存档: 打完就关 App 的人, 下次打开对阵图时才揭晓得了。
+## ★跨周作废: 随周清(与闯关赛补发同一条取舍 —— 上周没揭晓的不许顺延)。
+var finals_pending_reveal: Dictionary = {}
 var finals_deepest_round: int = 0   # 我被排进的最深那一轮(1 起; 0 = 没进决赛日)
 var finals_rounds_total: int = 0    # 我那个桶一共几轮(0 = 还不知道)
 var finals_champion: bool = false   # 服务端说我赢下了决赛
@@ -1531,6 +1569,7 @@ func _save_dict() -> Dictionary:
 		"gauntlet_wins": gauntlet_wins,
 		"gauntlet_losses": gauntlet_losses,
 		"finals_entered_week": finals_entered_week,
+		"finals_pending_reveal": finals_pending_reveal,
 		"finals_deepest_round": finals_deepest_round,
 		"finals_rounds_total": finals_rounds_total,
 		"finals_champion": finals_champion,
@@ -1630,6 +1669,7 @@ func _apply_save_dict(data: Dictionary) -> void:
 	gauntlet_wins = int(data.get("gauntlet_wins", 0))
 	gauntlet_losses = int(data.get("gauntlet_losses", 0))
 	finals_entered_week = int(data.get("finals_entered_week", 0))
+	finals_pending_reveal = (data.get("finals_pending_reveal", {}) as Dictionary).duplicate(true)
 	finals_deepest_round = int(data.get("finals_deepest_round", 0))
 	finals_rounds_total = int(data.get("finals_rounds_total", 0))
 	finals_champion = bool(data.get("finals_champion", false))
@@ -1807,6 +1847,7 @@ func reset_save() -> void:
 	promoted = false
 	## ★决赛日进度随周清 —— 上周的冠军不许顺延成本周的头衔。
 	##   (头衔本身 `titles` **不清**, 那是永久荣誉; 清的只是"本周走到第几轮"。)
+	finals_pending_reveal = {}
 	finals_deepest_round = 0
 	finals_rounds_total = 0
 	finals_champion = false
@@ -2290,6 +2331,7 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	promoted = false
 	## ★决赛日进度随周清 —— 上周的冠军不许顺延成本周的头衔。
 	##   (头衔本身 `titles` **不清**, 那是永久荣誉; 清的只是"本周走到第几轮"。)
+	finals_pending_reveal = {}
 	finals_deepest_round = 0
 	finals_rounds_total = 0
 	finals_champion = false

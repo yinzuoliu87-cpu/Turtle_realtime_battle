@@ -7566,6 +7566,7 @@ func _settle_season(won: bool) -> void:
 	##   ——它一行每帧逻辑都没有(CLAUDE.md §5: 不在 `_sim_step` 调用链上的不进主文件)。
 	##   位置在下面那几条发奖分支**之前**、上面两条 early return **之后**;
 	##   漏报的代价不可逆(那一场落进 E-B4 的补判判给 side 0, 屏幕上什么都不说)。
+	## ★报结果 + 记「待揭晓」是同一件事的两半, 整块在 `Backend.report_finals_if_any()` 里。
 	Backend.report_finals_if_any(won)
 	## ★★这一局用哪套结算口径，抽成纯函数 `settle_kind(phase, live)` ——
 	##   `live` 做成参数是为了**门禁能穷举「没上线 / 上线了」两种**
@@ -7598,7 +7599,8 @@ func _settle_season(won: bool) -> void:
 		##   (memory `fb-branch-to-an-unbuilt-mode-is-a-backdoor`, v0.19.428 刚修过)。
 		## ★这道闸与 `phase_uses_ranked_quota()` 读的是**同一张表**(`PHASE_MODE_LIVE`)
 		##   ⇒ 上线那天改那一格, 结算口径与配额豁免**同时翻**, 不会一半新一半旧。
-		_last_reward = gs.finals_settle(won)
+		## ★结果封存: 只结算与胜负无关的那部分; 理由见 `GameState.finals_settle_sealed()` 头注。
+		_last_reward = gs.finals_settle_sealed()
 		## ★★E-A4 快照上传: **记完战绩之后**才传, 标签取的是打完这一场的新战绩 ——
 		##   下一场要找的是"跟我现在同样几胜几负"的人。传打之前那个标签等于把自己
 		##   挂在上一格上, 别人永远找不到我, 而且**一声不吭**(表现成"周六老是打机器人")。

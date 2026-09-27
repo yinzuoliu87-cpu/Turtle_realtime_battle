@@ -340,6 +340,32 @@ func _ready() -> void:
 			joined.find(note_today) >= 0, "条子里没有「%s」: %s" % [note_today, str(strip_txt)])
 		_ok("⑬b ★分母: 那句话确实是产品的纯函数给的, 不是我在门禁里硬写的",
 			note_today.find("开发中") >= 0, note_today)
+	elif today_ph == _P2M.PHASE_FINALS:
+		## ★★★2026-09-27 补上这一支。原来 else 那一支写着「今天是积分赛」, 而
+		##   `phase_pending_note()` 为空的条件是**玩法已上线** —— 周六闯关赛(2026-09-22 上线)
+		##   与周日决赛日(2026-09-25 上线)从那以后也会落进来, 而它们的收盘块根本不是倒计时。
+		##   ⇒ 判据一直是错的, 只是**一周里只有周六周日碰得到**, 今天(周日)才第一次红。
+		##   又一条「判据挂在星期几上」(同族已修四条, 见 v0.19.446)。
+		## ★周日收盘块 = **进对阵图的门**(`close_block_kind` 返回 BK_BRACKET_DOOR)。
+		## ★★判据要量**按钮**, 不是文字: 上面那个 `strip_txt` 只收 Label,
+		##   而决赛日那扇门 `_finals_entry()` 返回的是 Button ⇒ 它的字根本不在 strip_txt 里。
+		##   (我第一版就是拿 strip_txt 找「对阵图」, 当场红 —— 判据没卡在被测的那个量上。)
+		var door_ok := false
+		if strip != null:
+			var q2: Array = [strip]
+			while not q2.is_empty():
+				var nd2 = q2.pop_back()
+				for ch2 in nd2.get_children():
+					q2.append(ch2)
+					if ch2 is Button and str((ch2 as Button).text).find("对阵图") >= 0:
+						door_ok = true
+		_ok("⑬b ★今天是决赛日(已上线) → 收盘块里有一个【进对阵图】的按钮",
+			door_ok, "条里的文字: %s" % str(strip_txt))
+	elif today_ph == _P2M.PHASE_GAUNTLET:
+		## 周六闯关赛(已上线): 与积分赛一样有收盘(WEEK_CLOSE_HOUR_UTC), 所以照旧是倒计时/封盘
+		_ok("⑬b ★今天是闯关赛(已上线) → 收盘块给的是倒计时或封盘提示",
+			joined.find("距收盘") >= 0 or joined.find("已封盘") >= 0
+			or joined.find("维护") >= 0, str(strip_txt))
 	else:
 		## 积分赛那几天照旧: 要么在倒计时, 要么已进封盘窗口(收盘前 10 分钟)
 		_ok("⑬b ★今天是积分赛 → 收盘块给的是倒计时或封盘提示",

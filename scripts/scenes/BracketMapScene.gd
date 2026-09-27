@@ -183,11 +183,62 @@ func _record_progress() -> void:
 	var pr: Dictionary = _B.my_progress(me, n, _bucket.get("done", {}) as Dictionary)
 	var changed: bool = GameState.record_finals_progress(
 		int(pr.get("deepest", 0)), int(pr.get("total", 0)), bool(pr.get("champion", false)))
+	if _reveal_sealed():
+		changed = true
 	## ★头衔在 `sync_titles()` 里发(与满配额/进决赛日同一个入口) —— 这里不自己发。
 	##   `sync_titles` 自带按 `{id, week}` 去重, 每次 feed 都调一遍是幂等的。
 	var got: int = GameState.sync_titles()
 	if changed or got > 0:
 		GameState.save()
+
+
+## ══════════════════════════════════════════════════════════════════════
+##  ★★★揭晓被封存的那一场(2026-09-27) —— 原稿 §五.5「统一至开播时刻全服解锁」
+## ══════════════════════════════════════════════════════════════════════
+## 战斗结束时**只结算了与胜负无关的那部分**(场次/经验/轮次币, 原稿逐字「赢家输家一样多」),
+## 吃胜负的那几项(糖罐 / season_wins / season_eggs_killed)封存着等这里。
+##
+## ★为什么权威在这儿: `finals_view` 下发的 `done`(哪一场哪一侧赢)**一个桶里只有一个值**,
+##   而它只返回**已翻面的轮次** ⇒ 拿得到就说明那一轮已经推进、结果已解锁。
+##   周日是双方各自在本机打对方的快照(两场不同的战斗, 都可能算出自己赢), 本机结果不是权威。
+##
+## ★**幂等**: 揭晓完把 `finals_pending_reveal` 清掉 ⇒ 同一场 feed 来多少次都只补一次。
+## ★只看 `_bucket`(我那个桶)那一张, 不看 `cur()` —— `cur()` 跟着页签变,
+##   切到「冠军赛」那张会拿另一张图的 `done` 去判我的场。
+## 返回值: 真的揭晓了吗(调用方据此决定要不要存档)。
+func _reveal_sealed() -> bool:
+	if GameState == null:
+		return false
+	var p = GameState.get("finals_pending_reveal")
+	if not (p is Dictionary) or (p as Dictionary).is_empty():
+		return false
+	var pd: Dictionary = p
+	var r := int(pd.get("round", -1))
+	var m := int(pd.get("match", -1))
+	if r < 1 or m < 0:
+		GameState.finals_pending_reveal = {}    # 坏坐标: 清掉, 别永远挂着
+		return true
+	var n := int(_bucket.get("size", 0))
+	var me := int(_bucket.get("me", -1))
+	## ★`me < 0` 这一半是**防御性, 不承重**(2026-09-27 反向验证查实): 唯一的调用方
+	##   `_record_progress()` 第一行就挡了 `me < 0`, 所以拿掉它一条断言都不红。
+	##   留着是把「纯观众没有待揭晓的场」写在明面上。
+	##   ⚠ 别因为它在这儿就以为「纯观众」有判据在守 —— 守它的是
+	##   `verify_bracket_map` ⑧e 那条「纯观众 ⇒ 胜场不动、pending 也不清」, 它量的是**结果**,
+	##   所以无论哪一层挡住的都算。(memory fb-mutation-not-reddening-can-mean-dead-code)
+	## ★`n <= 1` 那一半**是承重的**: feed 还没到时 `_bucket` 是空的。
+	if n <= 1 or me < 0:
+		return false                            # 还没桶 / 我不在桶里 ⇒ 等下一次 feed
+	var w = (_bucket.get("done", {}) as Dictionary).get("%d-%d" % [r, m], -1)
+	if int(w) < 0:
+		return false                            # 那一轮还没翻面 —— 这正是「封存」本身
+	var side := _B.my_side_in(me, r, m, n, _bucket.get("done", {}) as Dictionary)
+	if side < 0:
+		GameState.finals_pending_reveal = {}    # 我根本不在那一场里(坐标错了) ⇒ 清掉
+		return true
+	GameState.finals_reveal(int(w) == side)
+	GameState.finals_pending_reveal = {}
+	return true
 
 
 func _clock() -> int:

@@ -1165,7 +1165,20 @@ func _build_passive_ring(disc: Control) -> void:
 ## 训龟大师立绘。用户要「像素风的冒险家」, 形象未定 —— 真图放到 battle.TRAINER_SPRITE 即自动生效。
 ## ★没真图时【退回占位并 push_warning】而不是静默兜底: 占位是小龟, 和冒险家长得完全不一样,
 ##   悄悄用会让人(包括我自己)以为形象已经做完了。门禁 verify_trainer 也断言这条 warning 存在。
-func _show_banner(won: bool) -> void:
+## 这一局的结果**封存了吗** —— 封存 = 存档里记着一场「待揭晓」的决赛场。
+## ★★三个调用点(双路 `_dl_finish` / 投降 / 单路结束)都**不传**这个判据, 由本函数自己问:
+##   各判一次必然有一处落后, 而落后的后果就是屏幕说的和账上记的对不上。
+## ★判据是**存档里真的有待揭晓**, 不是"今天星期几": 后者会让横幅与结算各判一次,
+##   而那两处一旦漂开, 屏幕说的和账上记的就对不上了。
+func _banner_sealed() -> bool:
+	var gs = battle.get_node_or_null("/root/GameState")
+	if gs == null:
+		return false
+	var p = gs.get("finals_pending_reveal")
+	return p is Dictionary and not (p as Dictionary).is_empty()
+
+
+func _show_banner(won: bool, _sealed_hint: bool = false) -> void:
 	if battle._settled:
 		return
 	battle._settled = true
@@ -1300,7 +1313,13 @@ func _show_banner(won: bool) -> void:
 
 	# ── ① 结果标题
 	var big = Label.new()
-	big.text = ("胜利" if won else "失败")
+	## ★★★2026-09-27 结果封存(原稿 §五.5「结算结果不随撮合下发…统一至开播时刻全服解锁」)。
+	##   周日是**双方各自在本机打对方的快照** —— 那是两场不同的战斗, 两边都可能算出自己赢。
+	##   这一行 `胜利/失败` 就是用户 2026-09-26 看到的**「两边都赢」**的出处。
+	## ⇒ 封存时不宣布胜负, 由对阵图在轮次推进后揭晓(那是唯一权威: `finals_view` 的 `done`)。
+	## ★判据放在**这里一处**(`_banner_sealed()`), 三个调用点(双路 _dl_finish / 投降 /
+	##   单路结束)自动吃到 —— 各判一次必然有一处落后。
+	big.text = ("结果已封存" if _banner_sealed() else ("胜利" if won else "失败"))
 	big.add_theme_font_size_override("font_size", 54)
 	big.add_theme_color_override("font_color", accent)
 	big.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

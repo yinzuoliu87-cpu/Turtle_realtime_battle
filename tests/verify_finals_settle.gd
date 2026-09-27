@@ -50,6 +50,7 @@ func _ready() -> void:
 	_t_shop_window()
 	_t_shop_wiring()
 	await _t_real_settle()
+	_t_seal_and_reveal()
 	print("")
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 决赛日结算" if _fail == 0 else "FAIL x%d" % _fail)
@@ -253,3 +254,93 @@ func _t_real_settle() -> void:
 		str(coin_win))
 	scene.queue_free()
 	await get_tree().process_frame
+
+# ─────────────────────────────────────────────────────────────
+# ⑤ ★★★结果封存与揭晓（原稿 §五.5 / 方案书 20260927-周日结果封存.md）
+# ─────────────────────────────────────────────────────────────
+## 用户 2026-09-26:「**两边都赢是什么意思？**」
+##
+## 机制（已查实）：周日是**双方各自在本机打对方的快照** —— 那是**两场不同的战斗**，
+## 两边都可能算出自己赢；服务端 `finals_report` 是 `on conflict do nothing`（先报的算），
+## 后报的那份静默丢掉且照样返回 ok，而那个客户端**已经发过奖、播过「胜利」横幅**。
+##
+## ⇒ 修法不是"谁先报谁赢"，是**打完不宣布**：
+##   · 与胜负**无关**的当场给（场次 / 经验 / 斧经验 / 轮次币 —— 原稿逐字「赢家输家一样多」）
+##   · 吃胜负的（糖罐 / season_wins / season_eggs_killed）**封存**，等对阵图 feed 揭晓
+##   唯一权威是 `finals_view` 的 `done` —— 一个桶里只有一个值。
+##
+## ★判据必须同时卡住两侧：封存时**不加**胜场（正题）+ 揭晓后**真的加**（分母）。
+##   只验前者的话，「揭晓那一半整个没接上」也会全绿。
+func _t_seal_and_reveal() -> void:
+	print("── ⑤ 结果封存与揭晓 ──")
+	var w0 := int(GameState.season_wins)
+	var e0 := int(GameState.season_eggs_killed)
+	var b0 := int(GameState.season_total_battles)
+	var x0 := int(GameState.season_xp)
+
+	## ── (a) 封存：只给对称那部分 ──
+	var coin := int(GameState.finals_settle_sealed())
+	_ok("⑤a ★★★封存时**不加**胜场（这一条就是「两边都赢」的正面判据）",
+		int(GameState.season_wins) == w0, "%d → %d" % [w0, int(GameState.season_wins)])
+	_ok("⑤a ★★★封存时**不加**碎蛋", int(GameState.season_eggs_killed) == e0,
+		"%d → %d" % [e0, int(GameState.season_eggs_killed)])
+	_ok("⑤a ★分母：场次照样 +1（不是整个结算都没跑）",
+		int(GameState.season_total_battles) == b0 + 1,
+		"%d → %d" % [b0, int(GameState.season_total_battles)])
+	_ok("⑤a ★分母：赛季经验照样给", int(GameState.season_xp) != x0 or int(GameState.season_level) > 1,
+		"%d → %d" % [x0, int(GameState.season_xp)])
+	_ok("⑤a ★分母：轮次币照样发且 == %d" % int(P2C.FINALS_COINS_PER_ROUND),
+		coin == int(P2C.FINALS_COINS_PER_ROUND), str(coin))
+
+	## ── (b) 揭晓：赢 ──
+	var w1 := int(GameState.season_wins)
+	var e1 := int(GameState.season_eggs_killed)
+	GameState.finals_reveal(true)
+	_ok("⑤b ★★★揭晓「我赢了」⇒ 胜场 +1", int(GameState.season_wins) == w1 + 1,
+		"%d → %d" % [w1, int(GameState.season_wins)])
+	_ok("⑤b ★★揭晓「我赢了」⇒ 碎蛋 +1", int(GameState.season_eggs_killed) == e1 + 1,
+		"%d → %d" % [e1, int(GameState.season_eggs_killed)])
+
+	## ── (c) 揭晓：输 ──
+	var w2 := int(GameState.season_wins)
+	var e2 := int(GameState.season_eggs_killed)
+	GameState.finals_reveal(false)
+	_ok("⑤c ★★★揭晓「我输了」⇒ 胜场**不动**", int(GameState.season_wins) == w2,
+		"%d → %d" % [w2, int(GameState.season_wins)])
+	_ok("⑤c ★★揭晓「我输了」⇒ 碎蛋**不动**", int(GameState.season_eggs_killed) == e2,
+		"%d → %d" % [e2, int(GameState.season_eggs_killed)])
+
+	## ── (d) 拆开之后，老口径 `finals_settle(won)` 必须与拆之前**逐项相同** ──
+	## ★为什么要这条：拆函数最容易掉的就是"某一项搬漏了"，而那不会有任何报错。
+	var w3 := int(GameState.season_wins)
+	var e3 := int(GameState.season_eggs_killed)
+	var b3 := int(GameState.season_total_battles)
+	var c3 := int(GameState.finals_settle(true))
+	_ok("⑤d ★★合起来调 finals_settle(true) ⇒ 场次+1 且 胜场+1 且 碎蛋+1 且 币不变",
+		int(GameState.season_total_battles) == b3 + 1
+		and int(GameState.season_wins) == w3 + 1
+		and int(GameState.season_eggs_killed) == e3 + 1
+		and c3 == int(P2C.FINALS_COINS_PER_ROUND),
+		"场次%d→%d 胜%d→%d 蛋%d→%d 币%d" % [b3, int(GameState.season_total_battles),
+			w3, int(GameState.season_wins), e3, int(GameState.season_eggs_killed), c3])
+
+	## ── (e) pending 字段：随周清，不许上周的挂到这周 ──
+	GameState.finals_pending_reveal = {"round": 2, "match": 0}
+	_ok("⑤e ★分母：pending 真的写进去了",
+		not (GameState.finals_pending_reveal as Dictionary).is_empty())
+	var t0 := int(GameState.titles.size())
+	GameState.start_new_season()
+	_ok("⑤e ★★★切轮 ⇒ pending 清掉（上周没揭晓的不许顺延）",
+		(GameState.finals_pending_reveal as Dictionary).is_empty(),
+		str(GameState.finals_pending_reveal))
+	_ok("⑤e ★分母：切轮里头衔一条没少（证明清的是 pending 不是一把全清）",
+		int(GameState.titles.size()) == t0, "%d → %d" % [t0, int(GameState.titles.size())])
+
+	## ── (f) 存档往返：打完就关 App 的人，下次打开还得揭晓得了 ──
+	GameState.finals_pending_reveal = {"round": 3, "match": 1}
+	var payload: Dictionary = GameState._save_dict()
+	_ok("⑤f ★★pending 进了存档（不然关掉 App 就永远揭晓不了）",
+		(payload.get("finals_pending_reveal", {}) as Dictionary).get("round", -1) == 3,
+		str(payload.get("finals_pending_reveal")))
+	GameState.finals_pending_reveal = {}
+

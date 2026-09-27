@@ -705,10 +705,19 @@ static func report_finals_if_any(won: bool) -> void:
 	if not (fm is Dictionary) or (fm as Dictionary).is_empty():
 		return
 	var d: Dictionary = fm
+	## ★★★2026-09-27 结果封存(原稿 §五.5)。记 pending 必须在**清空 `finals_match` 之前** ——
+	##   它就是这一局的身份, 清掉就没了。
+	##   周日是双方各自在本机打对方的快照(两场不同的战斗, 都可能算出自己赢),
+	##   所以打完**不宣布胜负**: 吃胜负的那几项封存, 等对阵图的 feed 揭晓
+	##   (唯一权威 = `finals_view` 的 `done`, 一个桶里只有一个值)。
+	##   方案书 `docs/plans/20260927-周日结果封存.md`。
+	var r := int(d.get("round", -1))
+	var m := int(d.get("match", -1))
+	if r >= 1 and m >= 0:
+		GameState.finals_pending_reveal = {"round": r, "match": m}
 	var side := int(d.get("side", -1))
 	if side == 0 or side == 1:
-		report_finals_result(int(d.get("bucket", -1)), int(d.get("round", -1)),
-			int(d.get("match", -1)), side if won else (1 - side))
+		report_finals_result(int(d.get("bucket", -1)), r, m, side if won else (1 - side))
 	GameState.finals_match = {}
 
 
