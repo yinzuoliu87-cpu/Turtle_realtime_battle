@@ -67,6 +67,55 @@ func _ready() -> void:
 	SB._reset_auth_for_test()
 	print("")
 	print("  (共 %d 条断言)" % _n)
+
+	## ══════════════════════════════════════════════════════════════════════
+	##  ④ ★★★绑成功之后, 被挡住的人走得掉吗 (2026-09-27)
+	## ══════════════════════════════════════════════════════════════════════
+	## memory `fb-a-wall-must-let-the-unblocking-action-through`:
+	## 加了拦截就要验「被拦住的人**能不能完成解锁动作**」。上面三节全在验「挡得住」,
+	## 一条都没验「解锁之后放不放人」—— 而探针实测(`tests/_probe_wall_escape.gd`)
+	## 原来**走不掉**: 遮罩不消、返回箭头还藏着, 屏幕写着「邮箱绑好了」,
+	## 唯一出路是杀进程重开(重开能进, 因为邮箱已经写盘 ⇒ memory `fb-restart-is-a-separate-scenario`)。
+	## 下周 10 人测试**第一个动作**就会撞上它。
+	##
+	## ★量的是产品自己的决策 `_post_bind_dest()`(纯函数), 不是我插的标记。
+	##   为什么不直接调 `_email_poll` 走到底: 它会 `change_scene_to_file`,
+	##   **当场把门禁自己拆掉** —— 本仓 `verify_mainmenu_layout` 2026-09-26 正是
+	##   这样一周有两天整份不算数。⇒ 门禁量决策, 端到端交给探针。
+	print("  ── ④ 绑成功之后走得掉吗 ──")
+	GameState.account_email = ""
+	var st4 = SET.new()
+	st4.acct_override = 1                        ## 强制「后端开着 + 未绑定」= 墙的条件
+	add_child(st4)
+	for _i4 in range(4):
+		await get_tree().process_frame
+	_ok("④ ★分母: 墙真的立起来了(没立起来 ⇒ 下面全是空检查)",
+		st4._email_layer != null and is_instance_valid(st4._email_layer))
+	_ok("④ ★分母: 这一刻**还不能**放人走(还没绑)",
+		st4._post_bind_dest() == "", st4._post_bind_dest())
+
+	## 绑成功: 邮箱落地 ⇒ `login_wall_on` 变假。**不碰 `_post_bind_dest` 自己的任何字段**。
+	GameState.account_email = "tester@x.co"
+	st4.acct_override = 0                        ## 回到真实取值
+	_ok("④ ★★★绑成功之后**放人进主菜单**(原来这里只把字染成绿色, 人一步也走不了)",
+		st4._post_bind_dest() == "res://scenes/MainMenu.tscn", st4._post_bind_dest())
+	st4.queue_free()
+	await get_tree().process_frame
+
+	## ★对照组: **自己点开的**对话框(可关闭)绑成功后不该跳走 —— 他在设置里,
+	##   跳走等于把他从正在看的页面上扯开。⇒ 判据必须分得清「墙」和「自己点开的」。
+	GameState.account_email = "tester@x.co"
+	var st5 = SET.new()
+	add_child(st5)
+	await get_tree().process_frame
+	st5._open_email_dialog(SB.FLOW_BIND)          ## 可关闭那一档
+	await get_tree().process_frame
+	_ok("④ ★分母: 自己点开的对话框真的开着", st5._email_layer != null)
+	_ok("④ ★★对照组: **自己点开的**对话框绑成功后留在原地(不跳走)",
+		st5._post_bind_dest() == "", st5._post_bind_dest())
+	st5.queue_free()
+	await get_tree().process_frame
+
 	print("ALL PASS — 登录墙" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
 

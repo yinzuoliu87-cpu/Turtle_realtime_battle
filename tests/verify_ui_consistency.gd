@@ -36,7 +36,19 @@ extends Node
 ## ③ **量真实字块, 不量控件矩形**: 列表行的 Label 占满 52px 行高但字是垂直居中的,
 ##    拿控件矩形量会把"稳稳在行中间"的字报成压边带 13px。**尺子要匹配被测概念。**
 
+## 墙那句话的唯一出处 —— 测试不许自己拼。
+const _P2CX := preload("res://scripts/gamedata/phase2_config.gd")
+
 const TOUCH_MIN := 81.0
+
+## ★明细开关。**默认关**, 门禁行为一字不变(判据、基线、分母全不动);
+## `UICONS_DUMP=1` 时额外打一份「命中的是谁」—— 整改前要的是清单, 不是个数。
+##
+## ★★为什么必须有这一步: 这张表只**数个数**(背包 10 个网页盒 / 选龟 61 个圆角盒)。
+##   拿个数当整改清单, 一定会改到**已拍板要保留的**那批上 —— 本文件 :68 和
+##   `InventoryScene.gd:467` 都写着那批 26px 迷你格 2026-08-18 实拍后故意退回过
+##   (换金属槽框会让费用色从整块实心退化成一圈细边, 而那块实心色本身就是信息)。
+var _DUMP: bool = OS.get_environment("UICONS_DUMP") != ""
 
 ## 每屏基线(上界)。**只许改小, 不许改大** —— 要放大必须在 CHANGELOG 里写清为什么。
 ## 商店库存是随机的(实测 0~2 网页盒 / 11~13 圆角盒), 所以它那两格取上沿。
@@ -83,10 +95,24 @@ const BASE: Dictionary = {
 	##   ⇒ 这 18 个是**一直存在、却因为量错了屏而从没被这条门禁看见**的换皮欠债,
 	##     不是新增的回归。按真实数字登记, 从此只降不升。
 	"Record": {"web": 0, "round": 18, "frame": 0, "tap": 0},
+	## ★★★【登录墙】= Settings + 强制「后端开着且邮箱为空」(`acct_override = 1`)。
+	##   这一屏是**每个新玩家开游戏看到的第一屏**(关不掉、返回键都藏了), 而门禁
+	##   **至今一次都没量过它** —— 门禁给每个测试 `TURTLE_BACKEND=" "`(有意关后端),
+	##   于是墙与账号 UI 从不建出来(memory `fb-gate-subject-never-constructed`)。
+	##   2026-09-27 拿真后端一跑, 当场 4 条: 默认皮按钮 ×4 / 热区不足 ×4 / 文字相撞 / 圆角盒 ×1。
+	##   ⇒ 基线**先按实测如实登记**, 修完再往下拧(棘轮只许降)。
+	"登录墙": {"web": 0, "round": 1, "frame": 0, "tap": 2},
 }
 
 ## 分母下限: 这一屏至少该扫到这么多可见控件。少于它 = 场景没建起来, 下面的"0 问题"全是假的。
 const MIN_CTRL: Dictionary = {
+	## 登录墙: 设置页本体 + 墙(遮罩/框/标题/正文/昵称/两输入/两钮/状态) —— 少于这个数 = 墙没弹出来。
+	## ★★登录墙立起来后**背后的设置页是藏掉的**(墙关不掉, 背后没有可用的东西),
+	##   所以这一屏就只剩墙本身 ≈ 12 个控件。
+	## ⚠ 而「控件下限」对这一屏**挡不住真正的回归**: 墙要是哪天不弹了,
+	##   控件会变**多**(整个设置页 ~35 个)而不是变少, round/tap 又都是 ≤ 判据
+	##   ⇒ 整行会一路绿, 量的却是另一块屏。⇒ 真分母是下面那条「墙那句话在不在」。
+	"登录墙": 10,
 	"MainMenu": 20, "Inventory": 120, "Codex": 120,
 	## ★Record 下限从 10 提到 80: 10 是占位屏也能过的数, 等于分母没起作用。
 	"TeamSelect": 150, "Shop": 60, "Settings": 10, "Record": 80,
@@ -335,7 +361,8 @@ func _art_rect(t: TextureRect) -> Rect2:
 
 
 func _audit(root: Node) -> Dictionary:
-	var d := {"web": 0, "round": 0, "ctrl": 0, "btn": 0, "lbl": 0,
+	## ★★`hits` 与下面的计数走【同一次遍历、同一个 if】 —— 分两段扫必然漂。
+	var d := {"hits": [], "web": 0, "round": 0, "ctrl": 0, "btn": 0, "lbl": 0,
 		"stock": [], "dead": [], "small": [], "clip": [], "squash": [],
 		"flat9": [], "spill": [], "overlap": [], "frame": [], "tap": []}
 	var _vp_area: float = maxf(1.0, float(get_viewport().get_visible_rect().size.x)
@@ -449,12 +476,24 @@ func _audit(root: Node) -> Dictionary:
 					framed.append([c.get_global_rect(), _bb, _bb])
 				elif sb is StyleBoxFlat:
 					var f2 := sb as StyleBoxFlat
-					if f2.corner_radius_top_left > 0:
+					var _r0: bool = f2.corner_radius_top_left > 0
+					if _r0:
 						d["round"] = int(d["round"]) + 1
 					if f2.border_width_top > 0 and f2.border_width_bottom > 0 \
 							and f2.border_width_left > 0 and f2.border_width_right > 0 \
 							and f2.bg_color.a < 0.95:
 						d["web"] = int(d["web"]) + 1
+					## ★明细: 命中时把【是谁】记下来, 分堆之后再谈改哪些。
+					if _DUMP and (_r0 or f2.bg_color.a < 0.95):
+						var _rc: Rect2 = c.get_global_rect()
+						var _wb: bool = f2.border_width_top > 0 and f2.border_width_bottom > 0 \
+							and f2.border_width_left > 0 and f2.border_width_right > 0 \
+							and f2.bg_color.a < 0.95
+						if _r0 or _wb:
+							(d["hits"] as Array).append("%s%s %-16s %-22s %.0fx%.0f  r=%d b=%d a=%.2f" % [
+								"[web]" if _wb else "     ", "[round]" if _r0 else "       ",
+								c.get_class(), str(c.name).substr(0, 22), _rc.size.x, _rc.size.y,
+								f2.corner_radius_top_left, f2.border_width_top, f2.bg_color.a])
 			var is_btn: bool = c is BaseButton
 			var wired: bool = c.gui_input.get_connections().size() > 0
 			if c is Button and not (c as Button).flat:
@@ -543,7 +582,9 @@ func _ready() -> void:
 	var all_spill: Array = []
 	var all_overlap: Array = []
 	for scn in BASE.keys():
-		var path := "res://scenes/%s.tscn" % str(scn)
+		## ★屏名不一定等于场景名: 「登录墙」量的是 Settings 的**另一个状态**。
+		var scene_name: String = "Settings" if str(scn) == "登录墙" else str(scn)
+		var path := "res://scenes/%s.tscn" % scene_name
 		if not ResourceLoader.exists(path):
 			_ok("场景在位: %s" % str(scn), false, "找不到 %s" % path)
 			continue
@@ -574,6 +615,10 @@ func _ready() -> void:
 		#   之前试 `seed(20260818)` 没用是因为**那是全局 RNG, 而商店有自己的 RandomNumberGenerator** ——
 		#   钉错了对象, 不是"钉不住"。现三次连跑都是 0/11。
 		var inst = (load(path) as PackedScene).instantiate()
+		## ★★必须在 `add_child` **之前**注入 —— `_ready` 是 add_child 那一刻跑的,
+		##   之后再设就晚了(墙已经按真实配置决定过建不建)。
+		if str(scn) == "登录墙":
+			inst.acct_override = 1
 		add_child(inst)
 		## ★等够 MIN_WAIT 墙钟秒再量(见 _settle 的长注释)。返回值只打印不当判据 ——
 		##   带常驻动效的屏永远"稳不住", 拿它当失败就是判据不匹配被测对象。
@@ -586,6 +631,26 @@ func _ready() -> void:
 		tot_lbl += int(d["lbl"])
 		_ok("★分母 %s: 真的建起来了" % str(scn), int(d["ctrl"]) >= int(MIN_CTRL.get(scn, 10)),
 			"可见控件 %d (下限 %d)" % [int(d["ctrl"]), int(MIN_CTRL.get(scn, 10))])
+		if _DUMP:
+			var _h: Array = d.get("hits", []) as Array
+			print("  ── %s 明细 %d 条(web/round 命中) ──" % [str(scn), _h.size()])
+			for _line in _h:
+				print("     %s" % str(_line))
+		## ★★★登录墙的**真分母**: 墙自己那句话必须在屏幕上。
+		##   控件下限挡不住这一屏(见 MIN_CTRL 那段注释) —— 墙不弹了控件反而更多。
+		##   字取 `login_wall_head()`(产品自己那一处), 不在测试里拼。
+		if str(scn) == "登录墙":
+			var _head: String = _P2CX.login_wall_head()
+			var _found: bool = false
+			var _stk: Array = [inst]
+			while not _stk.is_empty():
+				var _n = _stk.pop_back()
+				if _n is Label and str((_n as Label).text).find(_head) >= 0:
+					_found = true
+				for _c in _n.get_children():
+					_stk.append(_c)
+			_ok("★★分母 登录墙: 墙那句话「%s」真的在屏幕上" % _head, _found,
+				"找不到 = 量的是另一块屏(控件数挡不住这一类)")
 		_ok("%s 网页盒 ≤ %d" % [str(scn), int(b["web"])], int(d["web"]) <= int(b["web"]),
 			"实测 %d" % int(d["web"]))
 		_ok("%s 圆角盒 ≤ %d" % [str(scn), int(b["round"])], int(d["round"]) <= int(b["round"]),

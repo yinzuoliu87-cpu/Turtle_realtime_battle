@@ -97,11 +97,33 @@ func _ready() -> void:
 const _SB_ACC := preload("res://scripts/net/supabase.gd")
 const _P2C := preload("res://scripts/gamedata/phase2_config.gd")
 
+## 【门禁注入点】0 = 真实(读后端配置与存档) / 1 = 强制当作「后端开着且邮箱为空」。
+##
+## ★为什么要它: 门禁给每个测试 `TURTLE_BACKEND=" "`(有意关后端) ⇒ `_SB_ACC.enabled()`
+##   恒假 ⇒ 整块账号 UI 与**登录墙**一次都没建出来 ⇒ 那一屏的毛病任何门禁都没看见过。
+##   2026-09-27 拿真后端一跑当场 4 条红(默认皮按钮 ×4 / 热区不足 ×4 / 文字相撞 / 圆角盒),
+##   而那是**每个新玩家开游戏看到的第一屏**(关不掉的墙)。
+##   —— memory `fb-gate-subject-never-constructed`: 判据没错, 被测对象不在场。
+##
+## ★默认 0 ⇒ **玩家路径一字不动**(与 v0.19.446 的 `clock_override_ts` 同一个模式)。
+var acct_override: int = 0
+
+
+## 账号功能开着吗。**判据只从这一处取** —— 两处各判一份必然漂。
+func _acct_on() -> bool:
+	return true if acct_override == 1 else _SB_ACC.enabled()
+
+
+## 当前绑的邮箱。注入态下恒空 = 「还没绑」, 那才是墙会弹出来的条件。
+func _acct_mail() -> String:
+	return "" if acct_override == 1 else str(GameState.account_email)
+
+
 func _account_row() -> void:
-	if not _SB_ACC.enabled():
+	if not _acct_on():
 		return                                   # 没配后端 = 有意关掉, 什么都不显示
 	var aid := str(GameState.account_id)
-	var mail := str(GameState.account_email)
+	var mail := _acct_mail()
 	var head := ""
 	var sub := ""
 	if aid == "":
@@ -238,6 +260,12 @@ func _small_button(cx: float, cy: float, label: String, cb: Callable) -> Button:
 	b.add_theme_font_size_override("font_size", 14)
 	b.size = Vector2(150, 30)
 	b.position = Vector2(cx - 75.0, cy - 15.0)
+	## ★★换皮走共享层 `UISkin`, 不在这里手写 StyleBox —— 抄一份就永远落后
+	##   (memory `fb-hand-rolled-copies-drift`)。`UISkin.button` 自己按真实尺寸挑框:
+	##   短边 ≥56 且面积 ≥5000 用 `frame-rect`(源图 666x161), 否则 `chip-frame`。
+	## ★2026-09-27 之前这几个按钮是**裸 `Button.new()`** ⇒ Godot 默认皮(圆角灰板),
+	##   而它们正长在**每个新玩家看到的第一屏**(关不掉的登录墙)上。
+	UISkin.button(b)
 	b.pressed.connect(cb)
 	add_child(b)
 	return b
@@ -252,6 +280,9 @@ func _small_button(cx: float, cy: float, label: String, cb: Callable) -> Button:
 ##   提示语写「邮件里的验证码」: 万一收到的邮件没有码,
 ##   测试者一眼就知道是哪儿的问题, 而不是对着输入框发呆。
 var _email_layer: Control = null
+## 这一次弹出来的是**关不掉的墙**还是玩家自己点开的对话框。
+## ★两者在成功之后该做的事不一样: 墙要**放人进游戏**, 自己点开的只要染绿等他关。
+var _email_wall: bool = false
 var _email_edit: LineEdit = null
 var _code_edit: LineEdit = null
 var _nick_edit: LineEdit = null
@@ -266,13 +297,13 @@ var _email_ok_btn: Button = null
 ##   主菜单只负责把人送过来, 不自己判(两处各判一份必然漂)。
 ## 返回主菜单。★★**墙上失效** —— 判据与开墙同一处, 不另写一份。
 func _on_back() -> void:
-	if _P2C.login_wall_on(_SB_ACC.enabled(), str(GameState.account_email)):
+	if _P2C.login_wall_on(_acct_on(), _acct_mail()):
 		return
 	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 
 
 func _maybe_login_wall() -> void:
-	if not _P2C.login_wall_on(_SB_ACC.enabled(), str(GameState.account_email)):
+	if not _P2C.login_wall_on(_acct_on(), _acct_mail()):
 		return
 	## ★★把返回箭头**藏掉** —— 实拍拓出来的: 顶栏在更高的 CanvasLayer 上,
 	##   遮罩盖不住它 ⇒ 它看着能按、按下去却没反应。
@@ -280,12 +311,23 @@ func _maybe_login_wall() -> void:
 	##   (`_on_back` 里那道判据留着作防御 —— 万一哪天须栏改成同层。)
 	if _top_bar != null and _top_bar.back_btn != null:
 		_top_bar.back_btn.visible = false
+	## ★★把墙**背后**的设置页藏掉。遮罩只有 0.65 ⇒ 底下的音量百分比「45%」
+	##   从半透里浮上来, 正好压在墙的正文「你的进度还…」上
+	##   (`verify_ui_consistency` 的「两段文字压在一起」当场抓到)。
+	## ★这不是把判据绕过去: 墙是**关不掉的**、返回箭头都藏了 ⇒ 背后没有任何
+	##   可用的东西, 让它半透着只制造视觉噪声。
+	## ★只藏 `self` 下的 Control(顶栏在更高的 CanvasLayer 上, 上面单独藏了它的返回键);
+	##   遮罩与对话框是**这一行之后**才建的 ⇒ 不会被一起藏掉。
+	for ch in get_children():
+		if ch is Control:
+			(ch as Control).visible = false
 	_open_email_dialog(_SB_ACC.FLOW_BIND, false)
 
 
 func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 	if _email_layer != null and is_instance_valid(_email_layer):
 		return
+	_email_wall = not dismissible
 	_SB_ACC.reset_email_flow()
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.65)
@@ -368,6 +410,7 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 	_email_send_btn.position = Vector2(352, 120 + _dy); _email_send_btn.size = Vector2(128, 40)
 	_email_send_btn.pressed.connect(func():
 		_SB_ACC.send_code_async(_email_edit.text, flow))
+	UISkin.button(_email_send_btn)
 	box.add_child(_email_send_btn)
 
 	_code_edit = LineEdit.new()
@@ -392,6 +435,7 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 			GameState.nickname = _P2C.nickname_clean(_nick_edit.text)
 			GameState.save()
 		_SB_ACC.verify_code_async(_code_edit.text))
+	UISkin.button(_email_ok_btn)
 	box.add_child(_email_ok_btn)
 
 	_email_status = Label.new()
@@ -411,6 +455,7 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 		close.pressed.connect(func():
 			_SB_ACC.reset_email_flow()
 			dim.queue_free(); _email_layer = null)
+		UISkin.button(close)
 		box.add_child(close)
 
 	## ★用 Timer 子节点轮询, **不用 `create_timer` 闭包** ——
@@ -425,6 +470,18 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 
 ## 把网络层那个小状态机画出来。**每一步都要有话说** ——
 ## 点完「发验证码」什么都不变的话, 玩家只会反复点(还把限流撞满)。
+## 绑定成功之后该把人送去哪。`""` = 留在原地。
+##
+## ★抽成**纯函数**是为了让门禁量得到这个决策 —— 直接写在 `_email_poll` 里的话,
+##   门禁一调它就 `change_scene_to_file`, **当场把自己拆掉**(本仓 `verify_mainmenu_layout`
+##   2026-09-26 正是这样一周有两天整份不算数)。现在门禁量决策、探针量端到端。
+## ★判据不是「我自认是墙」而是 `login_wall_on` **已经变假** —— 与开墙同一处判据。
+func _post_bind_dest() -> String:
+	if _email_wall and not _P2C.login_wall_on(_acct_on(), _acct_mail()):
+		return "res://scenes/MainMenu.tscn"
+	return ""
+
+
 func _email_poll() -> void:
 	if _email_status == null or not is_instance_valid(_email_status):
 		return
@@ -440,6 +497,22 @@ func _email_poll() -> void:
 			col = "#ff8a94"
 		_SB_ACC.EM_OK:
 			col = "#7fe07f"
+			## ★★★绑成功之后必须**放人过去**。2026-09-27 探针实测(`_probe_wall_escape`):
+			##   原来这里只把字染成绿色 —— 遮罩不消、返回箭头还藏着 ⇒ 玩家看着
+			##   「邮箱绑好了」**一步也走不了**, 唯一出路是杀进程重开(重开能进,
+			##   因为邮箱已经写盘)。下周 10 人测试**第一个动作**就会撞上它。
+			##   —— memory `fb-a-wall-must-let-the-unblocking-action-through`:
+			##      加了拦截就要验「被拦住的人能不能完成解锁动作」。
+			##
+			## ★判据不是「我自认是墙」, 而是 `login_wall_on` **已经变假** —— 与开墙
+			##   同一处判据(两处各判一份必然漂)。`_email_wall` 只用来分「墙 / 自己点开的」。
+			## ★去主菜单而不是只关遮罩: 他在墙上绑定, 想要的就是**进游戏**;
+			##   而设置页本体在墙立起来时就没什么可看的了。
+			var _dest: String = _post_bind_dest()
+			if _dest != "":
+				_email_status.text = msg if msg != "" else "邮箱绑好了"
+				get_tree().change_scene_to_file(_dest)
+				return
 		_:
 			if msg == "":
 				msg = "填邮箱 → 发验证码 → 把邮件里的数字填到下面"
