@@ -44,6 +44,21 @@ func _ready() -> void:
 	var entries := _changelog_versions()
 	print("  [分母] CHANGELOG 里解析到 %d 个版本条目" % entries.size())
 	_ok("CHANGELOG 至少有一个版本条目(N=0 是空检查不是通过)", entries.size() >= 1)
+	## ★★★同一个版本号不许在 CHANGELOG 里出现两次(2026-09-27 真踩)。
+	##   起因: 我的升版本号脚本因为一个格式化报错崩过一次, 重跑时把 CHANGELOG 条目
+	##   与路线图那一行**各插了两遍** —— 而本门禁只比「**首条**与 project.godot 一致」,
+	##   重复一份首条, 首条照样一致 ⇒ **一路绿, 还推上去了**。
+	## ★这不是洁癖: CHANGELOG 是玩家/测试者读的 patch notes, 同一版写两遍会让人
+	##   以为发了两次、或者两段内容不一样(而重跑脚本时内容确实可能不一样)。
+	var _seen_v: Dictionary = {}
+	var _dupv: Array = []
+	for _v in entries:
+		if _seen_v.has(str(_v)):
+			if not _dupv.has(str(_v)):
+				_dupv.append(str(_v))
+		_seen_v[str(_v)] = true
+	_ok("★★CHANGELOG 里没有重复的版本条目", _dupv.is_empty(),
+		"重复: %s" % str(_dupv) if not _dupv.is_empty() else "%d 条各一次" % entries.size())
 	if entries.size() >= 1:
 		var top: String = entries[0]
 		_ok("★project.godot 与 CHANGELOG 最新条目一致",

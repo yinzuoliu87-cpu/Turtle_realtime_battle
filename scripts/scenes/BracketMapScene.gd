@@ -113,6 +113,8 @@ func _ready() -> void:
 		b.custom_minimum_size = Vector2(132, 81)    # 触控下限 81px(=44pt)
 		var v: String = str(pair[0])
 		b.pressed.connect(func(): set_view(v))
+		## ★页签同上 —— 换皮走共享层, 不在这里手写 StyleBox。
+		UISkin.button(b)
 		_tabs.add_child(b)
 
 	## 签表还没形成时说人话的那一行(不是画一张空图)
@@ -129,6 +131,10 @@ func _ready() -> void:
 	_home_btn.text = "回到我"
 	_home_btn.custom_minimum_size = Vector2(140, 81)
 	_home_btn.pressed.connect(func(): _center_on_me())
+	## ★2026-09-27 换皮: 原来是裸 `Button.new()` = Godot 默认皮(圆角灰板)。
+	##   周日对阵图**整天都在看**, 而这一屏至今一条 UI 判据都没量过
+	##   (`verify_ui_consistency` 原来只有 7 屏, 没有它)。
+	UISkin.button(_home_btn)
 	add_child(_home_btn)
 
 	if not _bucket.is_empty() or not _finals.is_empty():

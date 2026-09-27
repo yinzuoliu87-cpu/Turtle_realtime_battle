@@ -151,6 +151,50 @@ else:
 	if not vers:
 		fail('路线图里一个版本号都没解析到 —— 空检查不是通过')
 	else:
+		## ★★★条目标题不许重复(2026-09-27 真踩)。
+		##   起因: 升版本号的脚本因为一个格式化报错崩过一次, 重跑时把路线图那一行
+		##   **插了两遍**, CHANGELOG 同样。而这里的判据取「全文最大值 == project.godot」
+		##   ⇒ 重复一份最新条目, 最大值照样相等 ⇒ **一路绿, 还推上去了**。
+		## ★只对**条目标题行**去重, 不对全文 —— 路线图正文会故意引用旧版本号
+		##   (倒序记账里说「v0.19.446 报告里登记的 P3」那种), 那不是重复条目。
+		head_re = re.compile(r'^\*\*\*v([0-9]+\.[0-9]+\.[0-9]+)\*\*\(')
+		## ★★一个版本**分几段记账**是合法写法(v0.19.417 就带着【三之一/之二/之三】,
+		##   那一版一次发了三件互不相干的事)。⇒ 判据不能简单地"同版本出现两次就红",
+		##   那会把一条正当写法判成烂账(memory `fb-judge-must-fit-the-shape`:
+		##   判据宽一格造假 bug、窄一格放过真 bug)。
+		## ⇒ 规矩定成: **同一个版本出现多次时, 每一条都要带互不相同的【N之M】标记**。
+		##   真正的重复(脚本重跑插两遍)两条一模一样、都没标记 ⇒ 当场红。
+		## ★★标记只认**紧跟标题**那个位置: `***vX.Y.Z**(日期)【三之一】— …`。
+		##   第一版写的是 `seg_re.search(line)`(整行搜) ⇒ 它会抓到**正文里**提到别的版本时
+		##   写的那个标记(本条目正文就引用了 v0.19.417 的【三之一/之二/之三】)。
+		##   反向验证当场照出来: 两份重复报的标记是正文那个 —— 只因两份正文一样才红,
+		##   换成两条正文不同的重复就会**放过**。⇒ 位置也是判据的一部分。
+		head_seg_re = re.compile(
+			r'^\*\*\*v[0-9]+\.[0-9]+\.[0-9]+\*\*\([^)]*\)\s*(【[^】]*之[^】]*】)')
+		heads = []
+		for line in txt.split(chr(10)):
+			mh = head_re.match(line)
+			if mh is not None:
+				ms = head_seg_re.match(line)
+				heads.append((mh.group(1), ms.group(1) if ms else ''))
+		print('  [分母] 路线图条目标题 %d 条' % len(heads))
+		if not heads:
+			fail('路线图里一条 `***vX.Y.Z**(` 标题都没解析到 —— 空检查不是通过')
+		byver = {}
+		for v, seg in heads:
+			byver.setdefault(v, []).append(seg)
+		dup_bad = []
+		for v in sorted(byver):
+			segs = byver[v]
+			if len(segs) == 1:
+				continue
+			if '' in segs or len(set(segs)) != len(segs):
+				dup_bad.append('v%s x%d 标记=%s' % (v, len(segs), segs))
+		if dup_bad:
+			fail('路线图有重复的版本条目: %s —— 同一版写两遍, 读的人会以为发了两次, '
+				'而重跑脚本时两段内容还可能不一样。'
+				'(一版分几段记账要给每条带互不相同的【N之M】标记)' % '; '.join(dup_bad))
+
 		top = max(vers)
 		if top != cur:
 			fail('路线图最新版本 v%d.%d.%d ≠ project.godot 的 v%d.%d.%d —— '
