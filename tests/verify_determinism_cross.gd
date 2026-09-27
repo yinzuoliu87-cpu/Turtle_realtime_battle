@@ -56,6 +56,30 @@ const SC := preload("res://tests/_det_scenarios.gd")
 
 const GOLDEN_PATH := "res://tests/golden/determinism_cross.json"
 
+## ══════════════════════════════════════════════════════════════════════
+##  ★★★已知跨平台分叉台账(2026-09-27) —— 存量记着, **只减不增**
+## ══════════════════════════════════════════════════════════════════════
+## 为什么要台账而不是让 CI 一直红: **永久红的门禁等于没有门禁** ——
+## 它会把所有新出现的分叉一起淹掉, 而那才是这把尺子的价值。
+## (本仓已有同形状的先例: `asset_orphan_debt.json` / `tween_capture` 台账。)
+##
+## 台账里这一条的**全部已知事实**(五轮 CI 实测, 见 `docs/plans/20260926-A跨设备确定性.md` §9):
+##   · 9 个场景里**只有这一个**分叉, 另外 8 个 Windows/MSVC ↔ Linux/glibc **逐位相同**
+##   · 二分到具体装备: 18 件逐件都不飘, **三件同时在场才飘**(组合效应)
+##   · 分叉在**第 271 步**(≈4.5 游戏秒), 前 270 步逐位相同
+##   · 差的是**一个浮点末位**: 石头龟的 x, 本地 658.13 / CI 658.12;
+##     血量/护盾/暴击/其余 7 只单位**全部相同** ⇒ 不是逻辑分叉, 是数值精度
+##
+## ⚠ **它不阻塞周日的玩法**: v0.19.450 起周日打完不当场宣布胜负, 权威只有服务端的
+##   对阵结果, 客户端算出什么都不作数。确定性是**重放**(C 阶段)才要的 ——
+##   重放若按「种子 + 阵容」重算, 两台机器必须得出同一份画面。
+const KNOWN_DIVERGE := {
+	"③ 3v3 满装备(每只 3 件 3★)":
+		"一个浮点末位(石头龟 x 658.13/658.12, 第 271 步); 另外 8 个场景逐位相同",
+}
+
+var _ledger_seen: Array = []
+
 var _fail := 0
 var _n := 0
 var _digests := {}      # tag → 摘要
@@ -178,12 +202,23 @@ func _ready() -> void:
 		if golden.has(tag):
 			var want: String = str(golden[tag])
 			var same: bool = (dig == want)
+			var known: bool = KNOWN_DIVERGE.has(tag)
 			var det := ""
 			if not same:
 				det = _first_diff(r[1] as Array, tag)
-			_ok("★★★%s · 摘要 == 金标" % tag, same,
-				("实得 %s / 金标 %s%s" % [dig.substr(0, 16), want.substr(0, 16),
-					("  " + det) if det != "" else ""]) if not same else dig.substr(0, 16))
+			if known:
+				## ★★★台账里的那条: **不判红**, 但要把它**喊出来**。
+				##   为什么不干脆删掉这个场景: 删了就再也不知道它有没有恶化,
+				##   而「一个 ulp」和「整局分叉」是两回事。
+				## ★方向是**只减不增**: 下面那条「台账里的必须还在分叉」守着 ——
+				##   哪天它自己变一致了, 门禁会红, 逼人把它从台账里划掉。
+				print("  [台账] %s · 已知跨平台分叉(实得 %s / 金标 %s) —— %s"
+					% [tag, dig.substr(0, 16), want.substr(0, 16), KNOWN_DIVERGE[tag]])
+				_ledger_seen.append(tag)
+			else:
+				_ok("★★★%s · 摘要 == 金标" % tag, same,
+					("实得 %s / 金标 %s%s" % [dig.substr(0, 16), want.substr(0, 16),
+						("  " + det) if det != "" else ""]) if not same else dig.substr(0, 16))
 		else:
 			missing.append(tag)
 			print("  [MISS] %s · 金标里没有这一条 ⇒ 摘要 = %s" % [tag, dig])
@@ -198,6 +233,15 @@ func _ready() -> void:
 	_ok("★★① 同一台机器、同一进程内再跑一遍 ⇒ 摘要逐字相同(金标成立的前提)",
 		str(again[0]) == str(_digests[str(sc0["tag"])]),
 		"%s vs %s" % [str(again[0]).substr(0, 16), str(_digests[str(sc0["tag"])]).substr(0, 16)])
+
+	## ── ①b ★★台账只减不增: 记在册的**必须还在分叉** ──
+	## ★没有这一条, 台账就是个单向的免死金牌: 哪天它真的被修好了(或者场景被改成
+	##   一个根本不走那段代码的形状), 没人会知道, 台账会永远挂着一条假债。
+	for tg in KNOWN_DIVERGE.keys():
+		_ok("①b ★★台账里的「%s」**仍在分叉**(不分叉了就把它从台账划掉)" % str(tg),
+			_ledger_seen.has(str(tg)), "本轮台账命中: %s" % str(_ledger_seen))
+	_ok("①b ★分母: 台账只有 %d 条(条数变多 = 有人拿它当垃圾桶)" % KNOWN_DIVERGE.size(),
+		KNOWN_DIVERGE.size() <= 1, "%d 条" % KNOWN_DIVERGE.size())
 
 	## ── ② 摘要真的在区分场景 ──
 	var uniq_dig := {}

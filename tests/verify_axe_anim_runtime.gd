@@ -28,6 +28,9 @@ const CAST := "eq096-axe-wood-cast.png"
 
 var _s = null
 var _n := 0
+## 等一条动作播完最多等多少帧。★动画按帧推进(每帧 ≤ 0.1 秒), 所以尺子是帧不是墙钟。
+const WAIT_FRAMES := 900
+
 var _fail := 0
 
 
@@ -110,13 +113,17 @@ func _ready() -> void:
 	_ok("★★② 走路: 真的跑起来之后, 引擎换成了 %s" % WALK, seen_walk,
 		"实测 %s（跑了 %d 毫秒墙钟）" % [_cur_tex(ax), Time.get_ticks_msec() - t0])
 	## ★分母: 停下来必须换回 idle —— 只验"切到走路"会漏掉"再也回不去"
-	## ★等窗放到 9 秒: `_update_run_anim` 是按【0.1 秒时间窗累计位移】测速的,
-	##   而 run-tests.sh 并行跑时这个进程被饿着 —— 2.5 秒墙钟里可能只推进十几帧,
-	##   凑不够几个完整的测速窗 ⇒ 单跑绿、全套红(2026-09-01 实测)。
-	##   等条件成立的循环, 上限给宽一点不花钱(成立就立刻 break)。
-	var t1 := Time.get_ticks_msec()
+	## ★★★2026-09-27 尺子从【墙钟】换成【帧数】。根因:
+	##   立绘动画由 `_render_step(rd, …)` 推进, 而 `rd = minf(delta, 0.1)` ——
+	##   **每帧最多推进 0.1 秒动画**。run-tests.sh 并行跑时这个进程被饿着,
+	##   3~9 秒墙钟里可能只有几帧 ⇒ 动画只走了零点几秒, 根本播不完。
+	##   ⇒ 拿墙钟等一件**按帧推进**的事, 尺子和被测的钟对不上(CLAUDE.md §3.5 同族)。
+	##   2026-09-01 那次把墙钟从 2.5 秒拉到 9 秒是治标 —— 机器再忙一点照样红,
+	##   而 2026-09-27 CI 上第 ④ 段(3 秒那个)就真的红了。
+	## ★帧数上限给宽: 每帧至少推进一个渲染步, WAIT_FRAMES 帧足够任何一条动作播完;
+	##   成立就立刻 break, 宽上限不花钱。
 	var back_idle := false
-	while Time.get_ticks_msec() - t1 < 9000:
+	for _i in range(WAIT_FRAMES):
 		await get_tree().process_frame
 		if _cur_tex(ax) == IDLE:
 			back_idle = true
@@ -138,8 +145,10 @@ func _ready() -> void:
 
 	# ── ④ 攻击 ──
 	## 先让施法播完回 idle, 再打一次普攻
-	var t2 := Time.get_ticks_msec()
-	while Time.get_ticks_msec() - t2 < 3000 and _cur_tex(ax) != IDLE:
+	## ★同上: 按帧等, 不按墙钟(2026-09-27 CI 就是在这一处红的 —— 3 秒墙钟里帧数不够)
+	for _i2 in range(WAIT_FRAMES):
+		if _cur_tex(ax) == IDLE:
+			break
 		await get_tree().process_frame
 	_ok("★分母: 施法播完自己回了 %s(回不去的话下一条量不到攻击)" % IDLE, _cur_tex(ax) == IDLE,
 		"实测 %s" % _cur_tex(ax))
