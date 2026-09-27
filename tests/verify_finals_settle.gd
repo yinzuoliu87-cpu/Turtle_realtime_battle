@@ -344,3 +344,22 @@ func _t_seal_and_reveal() -> void:
 		str(payload.get("finals_pending_reveal")))
 	GameState.finals_pending_reveal = {}
 
+	## ── (g) 封存那一屏说的话: 三个问题各答一个 ──
+	## ★玩家在这一屏只会问三件事, 少答一个就等于没说:
+	##   ① 为什么不告诉我输赢 ② 什么时候知道 ③ 去哪看
+	## ★判据量的是**纯函数**(`finals_sealed_sub`), 屏幕读的是同一个答案 ——
+	##   这句话一周只在周日出现, 只验"屏幕上有"的话一周有六天是空检查
+	##   (同族: 判据挂在星期几上, 本仓已栽过五次)。
+	var sub := P2C.finals_sealed_sub()
+	_ok("⑤g ★分母: 这句话不是空的", sub.strip_edges() != "", sub)
+	_ok("⑤g ★★①答了「为什么不告诉我输赢」(说清是双方同时打)",
+		sub.find("双方") >= 0 or sub.find("同时") >= 0, sub)
+	_ok("⑤g ★★②答了「什么时候知道」(开播时揭晓)",
+		sub.find("揭晓") >= 0 or sub.find("开播") >= 0, sub)
+	_ok("⑤g ★★③答了「去哪看」(指向对阵图)",
+		sub.find("对阵图") >= 0, sub)
+	## ★不许承诺具体秒数: 揭晓时刻由服务端的轮次推进决定(`finals_round_sec`),
+	##   客户端说死一个数就是「说了做不到的事」。
+	_ok("⑤g ★★★不许承诺具体时长(分/秒都不行 —— 时刻由服务端定)",
+		sub.find("分钟") < 0 and sub.find("秒") < 0, sub)
+

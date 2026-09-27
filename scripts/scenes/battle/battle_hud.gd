@@ -1324,6 +1324,17 @@ func _show_banner(won: bool, _sealed_hint: bool = false) -> void:
 	big.add_theme_color_override("font_color", accent)
 	big.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	card.add_child(big)
+	## ★★封存时补一行副标题 —— 只写「结果已封存」四个字, 玩家不知道在等什么、去哪看。
+	##   文案在 `phase2_config.finals_sealed_sub()`(纯函数, 门禁能穷举),
+	##   这里只负责画; 屏幕与门禁读的是同一个答案。
+	if _banner_sealed():
+		var sub := Label.new()
+		sub.text = battle.Phase2Cfg.finals_sealed_sub()
+		sub.add_theme_font_size_override("font_size", 16)
+		sub.add_theme_color_override("font_color", Color("#9fb3c8"))
+		sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		card.add_child(sub)
 	big.pivot_offset = Vector2(big.size.x * 0.5, 30.0)
 	big.scale = Vector2(1.7, 1.7)
 	big.modulate.a = 0.0
