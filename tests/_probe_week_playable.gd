@@ -49,4 +49,19 @@ func _ready() -> void:
 		var m2: String = str(mm._battle_block_msg(mm._now_ts()))
 		l2 += "phase=%-9s 吃配额=%-5s → %s" % [ph, str(uses), ("【可打】" if m2 == "" else m2.substr(0, 24))]
 		print("  " + l2)
+	## ── 0 命(大轮淘汰)的人, 周六周日能不能打? ──
+	## ★U9(2026-09-16)用户原话:「0 命的话就只能等到周 6 周日观赛了, 不再打表演赛」
+	## ★而 `_battle_block_msg` 把**周六那支排在 `is_eliminated()` 之前** ⇒ 顺序决定答案。
+	print("")
+	print("=== 0 命 + 已晋级 × 七天 ===")
+	if gs != null:
+		gs.hearts = 0
+		gs.promoted = true
+		gs.ranked_used = 0
+		gs.gauntlet_wins = 1
+		gs.gauntlet_losses = 1
+	for d3 in range(7):
+		mm.clock_override_ts = SUN0 + d3 * 86400 + 12 * 3600
+		var m3: String = str(mm._battle_block_msg(mm._now_ts()))
+		print("  %s  %s" % [DAYNAME[d3], ("【可打】★ 0命还能打" if m3 == "" else m3.substr(0, 30))])
 	get_tree().quit(0)

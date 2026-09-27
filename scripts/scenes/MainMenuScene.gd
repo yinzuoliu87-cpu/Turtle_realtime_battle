@@ -1301,7 +1301,12 @@ func _battle_block_msg(now: int = 0) -> String:
 	## ★「已晋级」取 `gauntlet_state()`, 与赛程条/闯关赛那支同一处判据。
 	if _P2C.phase_at_utc(ts) == _P2C.PHASE_FINALS \
 			and _P2C.phase_mode_live(_P2C.PHASE_FINALS):
-		return _P2C.finals_block_msg(GameState.gauntlet_state() == _P2C.GAUNTLET_IN)
+		## ★两个维度分开传: 「进没进决赛日」与「有没有拿到闯关赛资格」不是一回事,
+		##   混成一个 bool 就会说出「你已晋级」和「本周没晋级」这种自相矛盾的话。
+		##   `_gauntlet_ahead()` 是周一~五那句用的同一处判据 —— 口径必须一致。
+		return _P2C.finals_block_msg(
+			GameState.gauntlet_state() == _P2C.GAUNTLET_IN,
+			GameState.gauntlet_eligible())
 	if GameState.is_eliminated():   # 大轮淘汰锁(用户2026-07-24): 0命封匹配, 只重置存档解锁
 		## ★U9 拍板(2026-09-16):「0 命的话就只能等到周 6 周日观赛了, 不再打表演赛」
 		##   ⇒ 文案从「设置→重置存档」改成指向观赛。观赛入口在 F 阶段, 先把话说对。

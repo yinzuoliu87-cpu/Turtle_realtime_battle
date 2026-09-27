@@ -136,12 +136,24 @@ func _ready() -> void:
 			_weekday_open >= 4, "能打 %d 天" % _weekday_open)
 
 		## ★周日那句话要**指路**, 不是干挡 —— 已晋级的人今天有比赛, 只是不在这个按钮后面
-		var _sun_in: String = P2.finals_block_msg(true)
-		var _sun_out: String = P2.finals_block_msg(false)
-		_ok("⑧ ★已晋级: 那句话要**指到决赛日那一屏**", _sun_in.find("决赛日") >= 0, _sun_in)
-		_ok("⑧ ★没晋级: 那句话要说清**下一次机会在哪**",
-			_sun_out.find("下周") >= 0, _sun_out)
-		_ok("⑧ ★两句话不许一样(一样 = 分不分晋级没意义)", _sun_in != _sun_out)
+		## ★★★三种人各说各的。2026-09-27 探针照出**同一个玩家前后矛盾**:
+		##     周一~五  💀 本大轮已出局 · **但你已晋级**, 周六闯关赛见
+		##     周日     🏆 今天是决赛日 · **本周没晋级** · 下周一开新的一轮
+		##   两处「晋级」不是一回事(①拿到闯关赛资格 ②进了决赛日), 玩家读到的就是打架。
+		##   ⇒ 判据钉住「**打过闯关赛但没打进的人, 不许被说成『没晋级』**」。
+		var _sun_in: String = P2.finals_block_msg(true, true)
+		var _sun_try: String = P2.finals_block_msg(false, true)
+		var _sun_no: String = P2.finals_block_msg(false, false)
+		_ok("⑧ ★进了决赛日: 那句话要**指到决赛日那一屏**", _sun_in.find("决赛日") >= 0, _sun_in)
+		_ok("⑧ ★★★打过闯关赛没打进的人: **不许说他「没晋级」**(周一~五刚夸过他已晋级)",
+			_sun_try.find("没晋级") < 0, _sun_try)
+		_ok("⑧ ★他那句要说清**卡在哪一关**(闯关赛)", _sun_try.find("闯关赛") >= 0, _sun_try)
+		_ok("⑧ ★连资格都没有的人: 说「本周没晋级」是对的", _sun_no.find("没晋级") >= 0, _sun_no)
+		_ok("⑧ ★三句话两两不同(有一对一样 = 那一维白分了)",
+			_sun_in != _sun_try and _sun_try != _sun_no and _sun_in != _sun_no,
+			"%s / %s / %s" % [_sun_in.substr(0, 18), _sun_try.substr(0, 18), _sun_no.substr(0, 18)])
+		_ok("⑧ ★三句话都要说清下一步(指路或说下周)",
+			(_sun_in.find("决赛日") >= 0) and (_sun_try.find("下周") >= 0) and (_sun_no.find("下周") >= 0))
 	_mm8.queue_free()
 	await get_tree().process_frame
 
