@@ -256,6 +256,17 @@ func _t_identity_under_wall() -> void:
 	GameState.account_id = "uid-wall"
 	SB._token = "tok-wall"
 	SB.finals_report_clear()
+	## ★★同样给**报名**那条的前置, 否则它那一条也恒绿:
+	##   已晋级(闯关赛 4 胜 = state "in") + 本周还没报到 + 有阵容。
+	GameState.promoted = true
+	GameState.gauntlet_wins = 4
+	GameState.gauntlet_losses = 0
+	GameState.week_anchor_ts = 1789862400
+	if (GameState.season_leaders as Array).is_empty():
+		GameState.season_leaders = ["basic", "fire", "shell"]
+	## 「本周还没报到」= `finals_entered_week != 本周` —— 判据在 `SB.finals_entered()`,
+	## 这里只要把那个字段清掉就行(它就是产品自己的记账)。
+	GameState.finals_entered_week = 0
 	_ok("③ ★★分母: 进主菜单之前一个请求都没发 —— 否则下面那条是恒真式",
 		_reqs.size() == 0, str(_reqs.size()))
 	## ★不能直接 `change_scene_to_file`: 门禁自己就是 `current_scene`, 那一句当场把
@@ -283,6 +294,11 @@ func _t_identity_under_wall() -> void:
 	## ★量的是**真实发出去的那个请求**, 不是「函数被调用了」这种我自己插的标记。
 	_ok("③ ★★★墙触发之后, 决赛日**结果补报**仍然跑了(排在墙后面 = 被挡住的人永远补不了报)",
 		urls.has("/rest/v1/rpc/finals_report"), str(urls))
+	## ★★★第三条(2026-09-27 补齐): **报名**也挂在这儿, 而它正是 v0.19.446 修的那条
+	##   (「那一刻没网 / token 刚过期 / 杀了 App 就静默漏报, 而报名在周六第 4 胜那一刻」)。
+	##   三条「必须在墙之前跑」的调用, 原来只有两条有门禁守着。
+	_ok("③ ★★★墙触发之后, 决赛日**报名补报**也仍然跑了(v0.19.446 修的那条, 位置没人守)",
+		urls.has("/rest/v1/rpc/finals_enter"), str(urls))
 	SB._transport_for_test = Callable()
 	GameState.finals_report_pending = {}
 	SB.finals_report_clear()
