@@ -250,6 +250,12 @@ func _t_identity_under_wall() -> void:
 	SB._reset_auth_for_test()
 	_reqs.clear()
 	SB._transport_for_test = _spy
+	## ★★给一张**待补报的单子**, 否则「补报跑没跑」那条恒绿(没单子本来就不该发)。
+	##   token/account 也要给 —— 补报那条与看桶/报名同一道闸:「服务端认得出你是谁」。
+	GameState.finals_report_pending = {"bucket": 1, "round": 2, "match": 0, "side": 0, "seed": 9}
+	GameState.account_id = "uid-wall"
+	SB._token = "tok-wall"
+	SB.finals_report_clear()
 	_ok("③ ★★分母: 进主菜单之前一个请求都没发 —— 否则下面那条是恒真式",
 		_reqs.size() == 0, str(_reqs.size()))
 	## ★不能直接 `change_scene_to_file`: 门禁自己就是 `current_scene`, 那一句当场把
@@ -270,7 +276,16 @@ func _t_identity_under_wall() -> void:
 	print("     墙触发之后, 真实发出去的请求: %s" % str(urls))
 	_ok("③ ★★★墙触发之后, 建身份**仍然跑了** —— 不跑的话玩家永远发不出验证码",
 		urls.has("/auth/v1/signup"), str(urls))
+	## ★★★同一条纪律的第二例(2026-09-27): 决赛日那一场的**结果补报**也挂在主菜单
+	##   `_ready` 上, 和建身份并排。挂在墙的 `return` **后面**的话, 被墙挡住的人
+	##   (=没绑邮箱的)永远补不了报 —— 而本仓正是这样把 `ensure_signed_in_async`
+	##   排丢过一次(「全新安装的头 20 秒打不开游戏」)。
+	## ★量的是**真实发出去的那个请求**, 不是「函数被调用了」这种我自己插的标记。
+	_ok("③ ★★★墙触发之后, 决赛日**结果补报**仍然跑了(排在墙后面 = 被挡住的人永远补不了报)",
+		urls.has("/rest/v1/rpc/finals_report"), str(urls))
 	SB._transport_for_test = Callable()
+	GameState.finals_report_pending = {}
+	SB.finals_report_clear()
 	_reqs.clear()
 
 
