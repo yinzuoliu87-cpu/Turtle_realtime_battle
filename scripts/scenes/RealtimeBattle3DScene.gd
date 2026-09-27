@@ -7574,10 +7574,9 @@ func _settle_season(won: bool) -> void:
 	##   原来这里是拿字面量 `== "gauntlet"` 比的、**没带上线闸**。
 	var _sk := Phase2Cfg.settle_kind(str(gs.week_phase),
 		Phase2Cfg.phase_mode_live(str(gs.week_phase)))
-	_last_was_exhibition = gs.is_eliminated()        # 进场前已0命 = 表演赛 (无 stake)
-	if _last_was_exhibition:
-		_last_reward = 5                             # 表演赛: 少量练手币, 不掉命/不计战/不上榜
-	elif _sk == Phase2Cfg.SETTLE_GAUNTLET:
+	## ★判据与「为什么这几支是这个顺序」都在 `Phase2Cfg.is_exhibition()` 头注里。
+	_last_was_exhibition = Phase2Cfg.is_exhibition(gs.is_eliminated(), _sk)
+	if _sk == Phase2Cfg.SETTLE_GAUNTLET:
 		## ★★E-A5 闯关赛(周六): **不掉命**, 每场固定 8 币 + 2 经验。
 		##   原稿逐字:「每场照常结算深海币(**无命**, 公式退化为固定数 8)+ 经验 2 + 货架刷新」。
 		##   ⚠ 下面积分赛那条公式 `8 + 余命 + 2×已失命 + 胜6` **整条都吃 `hearts`**,
@@ -7610,6 +7609,8 @@ func _settle_season(won: bool) -> void:
 			## ★E-B3 决赛日报到: 这一场把我打成「晋级」时, 把阵容快照交给服务端。
 			##   判据与上传一样在 Backend 那一层, 这里只调 —— 「该不该报」不是战斗的事。
 			Backend.report_finals_entry()
+	elif _last_was_exhibition:
+		_last_reward = 5                             # 表演赛: 少量练手币, 不掉命/不计战/不上榜
 	else:
 		if not won:
 			gs.lose_heart()                          # 输 → 失一颗心 (0命=淘汰)

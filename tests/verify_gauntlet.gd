@@ -157,6 +157,63 @@ func _ready() -> void:
 	_mm8.queue_free()
 	await get_tree().process_frame
 
+
+	## ══════════════════════════════════════════════════════════════════════
+	##  ⑨ ★★★0 命的人在周六/周日, 结算走哪一支 (2026-09-27)
+	## ══════════════════════════════════════════════════════════════════════
+	## 结算里 `if _last_was_exhibition:`(= `is_eliminated()`)原来**排在**
+	## `elif _sk == SETTLE_GAUNTLET:` 前面 ⇒ **0 命的人一律走表演赛**,
+	## 闯关赛/决赛日的记账全被跳过。探针实测(`_probe_zero_heart_gauntlet`):
+	##     3 命 → 走闯关赛, 打赢 0胜→1胜
+	##     0 命 → 走表演赛, 打赢 0胜→**0胜**(战绩根本没记)
+	##
+	## ★这不是边角: 命数矩阵量出来 0 命的人**只有一格能打** —— 周六 + 已晋级 +
+	##   闯关赛没打完, 而周一~五的屏幕刚答应过他「**但你已晋级, 周六闯关赛见**」。
+	##   他去了, 打赢也不记 ⇒ **永远到不了 4 胜, 进不了决赛日**。
+	##
+	## ★判据量的是**产品自己的那条判据**(`is_eliminated() and _sk == SETTLE_RANKED`),
+	##   而且**七天全量** —— 只验周六那一格, 周日那一半会再漏一次(v0.19.458 的教训)。
+	print("  ── ⑨ 0 命的人结算走哪一支(七天全量) ──")
+	var _g9 = get_node_or_null("/root/GameState")
+	_ok("⑨ ★分母: 拿到 GameState", _g9 != null)
+	if _g9 != null:
+		_g9.test_mode = true
+		var _bad: Array = []
+		var _ranked_exh := 0
+		for _d in range(7):
+			var _ts9: int = SUN + _d * 86400 + 12 * 3600
+			var _ph: String = str(P2.phase_at_utc(_ts9))
+			var _sk: String = str(P2.settle_kind(_ph, P2.phase_mode_live(_ph)))
+			## 产品的判据: 表演赛只在积分赛那一档成立
+			## ★读**产品自己的判据**, 不自己重算一遍(第一版就是重算的, 于是变异不红)
+			var _exh: bool = P2.is_exhibition(true, _sk)          # true = 这个人 0 命
+			if _sk == P2.SETTLE_GAUNTLET or _sk == P2.SETTLE_FINALS:
+				if _exh:
+					_bad.append("%s(%s)" % [_ph, _sk])
+			elif _exh:
+				_ranked_exh += 1
+		_ok("⑨ ★★★0 命的人在**闯关赛/决赛日**不许被判成表演赛(判成了 = 战绩/封存全不记)",
+			_bad.is_empty(), "被判成表演赛的: %s" % str(_bad))
+		_ok("⑨ ★分母: 而在**积分赛**那几天他确实算表演赛(一律不算 = 那一维白分了)",
+			_ranked_exh >= 4, "%d 天" % _ranked_exh)
+
+		## ★★端到端: 0 命 + 周六 + 已晋级, 打赢一场**战绩必须 +1**
+		_g9.hearts = 0
+		_g9.promoted = true
+		_g9.gauntlet_wins = 0
+		_g9.gauntlet_losses = 0
+		_g9.week_phase = P2.PHASE_GAUNTLET
+		var _sk2: String = str(P2.settle_kind(str(_g9.week_phase),
+			P2.phase_mode_live(str(_g9.week_phase))))
+		var _exh2: bool = P2.is_exhibition(_g9.is_eliminated(), _sk2)
+		_ok("⑨ ★分母: 这个人确实 0 命且今天是闯关赛", _g9.is_eliminated() and _sk2 == P2.SETTLE_GAUNTLET)
+		if not _exh2 and _sk2 == P2.SETTLE_GAUNTLET:
+			_g9.gauntlet_settle(true)
+		_ok("⑨ ★★★0 命 + 已晋级, 周六打赢一场 ⇒ **战绩记上了**(不记 = 他永远到不了 4 胜)",
+			int(_g9.gauntlet_wins) == 1, "%d 胜" % int(_g9.gauntlet_wins))
+		_g9.hearts = 3
+		_g9.gauntlet_wins = 0
+
 	print("ALL PASS — 周六闯关赛" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
 

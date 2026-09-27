@@ -125,6 +125,27 @@ const SETTLE_RANKED := "ranked"
 const SETTLE_GAUNTLET := "gauntlet"
 const SETTLE_FINALS := "finals"
 
+## 这一局算不算【表演赛】(无 stake: 不掉命/不计战/不上榜)。
+##
+## ★★★2026-09-27 抽成纯函数, 因为**顺序错过一次**: 结算里
+##   `if _last_was_exhibition:` 原来排在 `elif _sk == SETTLE_GAUNTLET:` 前面,
+##   而它只看 `is_eliminated()` ⇒ **0 命的人一律走表演赛**, 闯关赛/决赛日的记账全跳过。
+##   探针实测(`tests/_probe_zero_heart_gauntlet.gd`): 0 命 + 已晋级 + 周六打赢一场,
+##   战绩 **0胜→0胜**(根本没记) ⇒ 他永远到不了 4 胜, 进不了决赛日,
+##   而周一~五的屏幕刚答应过他「💀 本大轮已出局 · **但你已晋级, 周六闯关赛见**」。
+##
+## ★★结算里的**顺序**也由这条判据定死: 闯关赛/决赛日那两支必须排在表演赛**前面**。
+##   原来是 `if _last_was_exhibition: ... elif _sk == SETTLE_GAUNTLET:`,
+##   闯关赛那一支对 0 命的人**永远轮不到**。
+## ★判据: 表演赛只在**积分赛**那一档成立。原稿逐字, 闯关赛与决赛日都是「**不掉命**」——
+##   命数这一维在它们身上不成立,「没命可押 = 表演赛」自然也不适用。
+## ★★做成纯函数而不是就地 if: 门禁要能**读产品自己的答案**。第一版门禁自己
+##   重算了一遍这条判据, 于是把判据退回成只看 `is_eliminated()` 也**不红**
+##   —— 判据在测我自己写的副本(memory `fb-hand-rolled-copies-drift`)。
+static func is_exhibition(eliminated: bool, sk: String) -> bool:
+	return eliminated and sk == SETTLE_RANKED
+
+
 static func settle_kind(phase: String, live: bool) -> String:
 	if not live:
 		return SETTLE_RANKED
