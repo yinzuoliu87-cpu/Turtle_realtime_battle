@@ -38,6 +38,8 @@ extends Node
 
 ## 墙那句话的唯一出处 —— 测试不许自己拼。
 const _P2CX := preload("res://scripts/gamedata/phase2_config.gd")
+## 池注入那个 static 字段的**唯一出处** —— 判据要量产品自己的账。
+const _BE := preload("res://scripts/net/backend.gd")
 
 const TOUCH_MIN := 81.0
 
@@ -108,17 +110,20 @@ const BASE: Dictionary = {
 	##   **Matchmaking(每一局对局之间都过)** / TrainerConfig。
 	##   ⇒ 「把 UI 做得更商业」在没人量的屏上做不完。
 	"BracketMap": {"web": 0, "round": 7, "frame": 0, "tap": 0},
-	## ⚠★★★**Leaderboard / Matchmaking 故意没进表** —— 不是忘了。
-	##   2026-09-27 量过一遍: 两屏 web/round/frame/tap **全 0**, 看着干净。
-	##   而排行榜自带的那句分母打出来是 `[LB] rows=1` —— **榜上只有我自己一行**,
-	##   量的是占位屏。登记这个 0 等于让棘轮去守一块空屏(本仓 Record 2026-08-21
-	##   正是这样, 基线 0 守了一整个空档屏, 真屏 18 个圆角盒从没被看见)。
-	##   ⇒ **已知量错状态的基线, 一个都不登记。**
-	##
-	## 灌行这条路走不通的原因(查清了): `Backend.save_pool()` 在 `test_mode` 下
-	##   **直接 return**(保护真存档), 而 `LeaderboardScene._ready()` 读的是文件
-	##   ⇒ 门禁灌进内存的 14 条真人快照一个字节都没落盘。
-	##   ⇒ 要量真榜得给这两屏一条**注入缝**(与 `acct_override` 同一个模式), 单独做。
+	## ★★★排行榜/撮合 —— 这两屏 2026-09-27 差点被登记成**占位屏的基线**:
+	##   量出来 web/round/frame/tap 全 0, 看着干净, 而排行榜自带的分母打出来是
+	##   `[LB] rows=1`(**榜上只有我自己一行**)。登记那个 0 等于让棘轮去守一块空屏
+	##   —— 本仓 Record 2026-08-21 正是这样, 基线 0 守了一整个空档屏,
+	##   真屏 18 个圆角盒从没被看见。⇒ **已知量错状态的基线, 一个都不登记。**
+	##   现在走 `Backend.pool_override` 灌 14 条真人快照, 量的是**真榜**。
+	"Leaderboard": {"web": 0, "round": 0, "frame": 0, "tap": 0},
+	## ⚠★★★**Matchmaking 故意没进表** —— 它会**自己走掉**。
+	##   `_ready` 里两个计时器(2.2s + 2.6s)之后 `change_scene_to_file` 进战斗,
+	##   而本门禁的 `_settle()` 最长等 8 秒 ⇒ 正好会撞上「**当场把门禁自己拆掉**」
+	##   那个形状(`verify_mainmenu_layout` 2026-09-26 因此一周有两天整份不算数:
+	##   `get_tree()` 变 null, 后面断言连跑都没跑, 而且**没打 ALL PASS**、rc 还是 0)。
+	##   ★而且对手卡是 1.5~2 秒后才建的 ⇒ 早量到的那 13 个控件是「正在找对手」那一屏,
+	##     又是占位屏。两个理由都指向同一件事: **它要一条冻住时序的缝**, 单独做。
 	"TrainerConfig": {"web": 0, "round": 1, "frame": 7, "tap": 0},
 }
 
@@ -132,11 +137,15 @@ const MIN_CTRL: Dictionary = {
 	##   ⇒ 整行会一路绿, 量的却是另一块屏。⇒ 真分母是下面那条「墙那句话在不在」。
 	"登录墙": 10,
 	"BracketMap": 40, "TrainerConfig": 50,
+	## ★排行榜: 面板 + 表头 + 11 行 ⇒ 灌了池就该有这么多。19 = 只有我自己那一行(占位屏)。
+	"Leaderboard": 30,
 	"MainMenu": 20, "Inventory": 120, "Codex": 120,
 	## ★Record 下限从 10 提到 80: 10 是占位屏也能过的数, 等于分母没起作用。
 	"TeamSelect": 150, "Shop": 60, "Settings": 10, "Record": 80,
 }
 
+## 本屏用的池种子脚本(用完要 `clear()` —— `pool_override` 是 static)。
+var _lb_seed = null
 var _pass := 0
 var _fail := 0
 var _band_cache: Dictionary = {}
@@ -601,12 +610,35 @@ func _ready() -> void:
 	var all_spill: Array = []
 	var all_overlap: Array = []
 	for scn in BASE.keys():
+		## ★★★每一屏开头先验「上一屏没把池注入留下来」。
+		##   `Backend.pool_override` 是 **static**, 活过场景切换 —— 漏清一次,
+		##   后面每一屏量的都是那份假池, 而**没有任何判据会发现**。
+		##   2026-09-27 反向验证当场证实: 把 `clear()` 换成 `pass` ⇒ 整份 **ALL PASS**。
+		##   ⇒ 这一条就是补那个洞的(同族: 状态活过它该活的范围)。
+		_ok("★分母 %s: 进这一屏时池注入是干净的(上一屏漏清 = 后面全在量假池)" % str(scn),
+			(_BE.pool_override as Dictionary).is_empty(),
+			"残留 %d 桶" % (_BE.pool_override as Dictionary).size())
 		## ★屏名不一定等于场景名: 「登录墙」量的是 Settings 的**另一个状态**。
 		var scene_name: String = "Settings" if str(scn) == "登录墙" else str(scn)
 		var path := "res://scenes/%s.tscn" % scene_name
 		if not ResourceLoader.exists(path):
 			_ok("场景在位: %s" % str(scn), false, "找不到 %s" % path)
 			continue
+		## ★★排行榜/撮合要**真人行**才是真屏。不灌的话排行榜自带的分母打出来是
+		##   `[LB] rows=1`(榜上只有我自己) —— 那是占位屏, 与 Record 2026-08-21 同族。
+		## ★不是 bug 是产品行为: v0.19.446 修掉「种子池 396 条占名次」之后,
+		##   全新档的榜本来就只有自己 ⇒ 要量真榜就得自己灌。
+		## ★走 `Backend.pool_override` 而不是写盘 —— `save_pool()` 在 test_mode 下
+		##   直接 return(保护真存档), 写盘那条路根本不通(查了才知道)。
+		if str(scn) == "Leaderboard" and ResourceLoader.exists("res://tests/_setup_lb_rows.gd"):
+			_lb_seed = load("res://tests/_setup_lb_rows.gd")
+			## ★★★不许静默跳过: 这个种子脚本第一版有 Parse Error(漏了 `Backend` 的 preload),
+			##   `has_method("run")` 直接为 false ⇒ 一声不响地不执行, 而屏幕照样建得起来
+			##   ⇒ 量占位屏、门禁报全绿。⇒ 跑不起来**当场判红**。
+			_ok("★分母 %s: 种子脚本 `_setup_lb_rows` 跑得起来(跑不起来 = 量占位屏)" % str(scn),
+				_lb_seed != null and _lb_seed.has_method("run") and _lb_seed.has_method("clear"))
+			if _lb_seed != null and _lb_seed.has_method("run"):
+				_lb_seed.run()
 		if str(scn) == "Inventory" and ResourceLoader.exists("res://tests/_setup_inv_demo.gd"):
 			var sc = load("res://tests/_setup_inv_demo.gd")
 			if sc != null and sc.has_method("run"):
@@ -647,6 +679,11 @@ func _ready() -> void:
 				"names": ["甲龟", "乙龟", "丙龟", "丁龟", "戊龟", "己龟", "庚龟", "辛龟"],
 				"done": {"1:0": 0, "1:1": 1, "1:2": 0, "1:3": 1}}, {}, 1789862400 + 10 * 3600)
 		add_child(inst)
+		## ★用完立刻清掉池注入 —— `Backend.pool_override` 是 static, 活过场景切换,
+		##   留着会把后面每一屏都喂上这份假池。
+		if _lb_seed != null:
+			_lb_seed.clear()
+			_lb_seed = null
 		## ★等够 MIN_WAIT 墙钟秒再量(见 _settle 的长注释)。返回值只打印不当判据 ——
 		##   带常驻动效的屏永远"稳不住", 拿它当失败就是判据不匹配被测对象。
 		var _stable: bool = await _settle(inst)

@@ -327,7 +327,25 @@ static func leaderboard(pool: Dictionary, self_name: String, self_wins: int, sel
 	return rows.slice(0, limit) if rows.size() > limit else rows
 
 # ─── 文件 I/O (薄包装, user://ghost_pool.json) ───
+## 【门禁注入点】非空时 `load_pool()` 直接返回它, 不读文件。
+##
+## ★为什么必须有它(2026-09-27): 门禁想量**真排行榜**(11 行别人), 而
+##   `save_pool()` 在 `test_mode` 下**直接 return**(保护真存档) ⇒ 门禁灌进内存的
+##   快照一个字节都落不了盘, 场景读文件读到空池 ⇒ 榜上只有自己一行
+##   (`[LB] rows=1`), 量的是**占位屏**。本仓 Record 2026-08-21 正是这么假绿过一整晚。
+##
+## ★开在 `load_pool` 而不是逐个场景: 它有 7 个消费者(本文件 3 处 +
+##   remote_pool / supabase / LeaderboardScene / MatchmakingScene),
+##   逐个开缝就是抄 7 遍(memory `fb-hand-rolled-copies-drift`)。
+## ★默认空 ⇒ **玩家路径一字不动**。与 `SettingsScene.acct_override` /
+##   `clock_override_ts` 同一个模式。
+## ⚠ 用完必须清空 —— 它是 static, 活过场景切换。
+static var pool_override: Dictionary = {}
+
+
 static func load_pool(path: String = POOL_PATH) -> Dictionary:
+	if not pool_override.is_empty():
+		return pool_override
 	var pool: Dictionary = {POOL_KEY: {}}
 	if FileAccess.file_exists(path):
 		var f := FileAccess.open(path, FileAccess.READ)
