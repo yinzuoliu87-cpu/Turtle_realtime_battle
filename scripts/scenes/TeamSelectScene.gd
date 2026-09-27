@@ -1085,7 +1085,14 @@ func _make_rarity_badge(rarity: String, rcolor: Color, font_px: int = 11) -> Con
 	pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = rcolor
-	sb.set_corner_radius_all(_sp(6))
+	## ★★★2026-09-27 改**直角**。原来是 `_sp(6)` 圆角 —— 那是从网页 PoC 逐条抄过来的
+	##   (`# PoC .pet-rarity-badge` 就写在下面), 而圆角 + border 正是用户点名的
+	##   「很 ai 味和网页味」。主菜单 v0.19.403 就是靠【不描边 + 直角】做到全 0 的。
+	## ★这一处**掉 29 个** —— 门禁明细量出来: 选龟屏 61 个圆角盒里 28 个是这枚小签
+	##   (S/A/B/C/SS/SSS, 16x18)、1 个是详情面板那枚。改一个函数掉一半。
+	## ⚠ 剩下 28 个是**被动图标的正圆底**(`pet_grid.gd:154`, 26x26 半径 13)——
+	##   正圆不是「圆角矩形」, 不是用户说的那味, **刻意留着**。判据一个字没放宽。
+	sb.set_corner_radius_all(0)
 	sb.content_margin_left = _sp(8); sb.content_margin_right = _sp(8)   # PoC padding 2px 8px
 	sb.content_margin_top = _sp(2); sb.content_margin_bottom = _sp(2)
 	pc.add_theme_stylebox_override("panel", sb)

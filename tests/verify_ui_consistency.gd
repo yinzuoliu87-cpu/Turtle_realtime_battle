@@ -87,7 +87,12 @@ const BASE: Dictionary = {
 	"MainMenu": {"web": 0, "round": 0, "frame": 2, "tap": 0},
 	"Inventory": {"web": 10, "round": 19, "frame": 0, "tap": 11},
 	"Codex": {"web": 0, "round": 0, "frame": 0, "tap": 0},
-	"TeamSelect": {"web": 0, "round": 61, "frame": 0, "tap": 1},
+	## ★★2026-09-27 61 → 32: 稀有度小签(S/A/B/C/SS/SSS)改**直角**, 一个函数掉 29 个
+	##   (`_make_rarity_badge` —— 28 张龟卡各一枚 + 详情面板 1 枚)。
+	## ⚠ 剩下的 32 里 **28 个是被动图标的正圆底**(`pet_grid.gd:154`, 26x26 半径 13)。
+	##   正圆**不是**用户说的那味(他点名的是 border-radius 的圆角**矩形**), 刻意留着。
+	##   ⇒ 判据一个字没放宽 —— 宁可让它数着, 也不为了数字好看去改判据。
+	"TeamSelect": {"web": 0, "round": 32, "frame": 0, "tap": 1},
 	# 商店货架随机 ⇒ 它这两格是**容差基线**(实测跨多次运行 0~3 网页盒 / 11~14 圆角盒)。
 	# 卡到实测上沿会偶发红; 而真回归是数量级的(31 vs 0), 容差 +1 挡不住的场面不存在。
 	"Shop": {"web": 0, "round": 11, "frame": 0, "tap": 0},
@@ -388,6 +393,23 @@ func _art_rect(t: TextureRect) -> Rect2:
 	return _crop_alpha(r, t.texture)
 
 
+## 一个控件里**第一段可见文字**(含 Button 自己的 text) —— 明细用它认是谁。
+func _first_text(c: Node) -> String:
+	if c is Button and str((c as Button).text).strip_edges() != "":
+		return str((c as Button).text).substr(0, 12)
+	var st: Array = [c]
+	while not st.is_empty():
+		var n = st.pop_front()
+		if n is Label and str((n as Label).text).strip_edges() != "":
+			return str((n as Label).text).replace("
+", "/").substr(0, 12)
+		if n is Button and str((n as Button).text).strip_edges() != "":
+			return str((n as Button).text).substr(0, 12)
+		for ch in n.get_children():
+			st.append(ch)
+	return "(无字)"
+
+
 func _audit(root: Node) -> Dictionary:
 	## ★★`hits` 与下面的计数走【同一次遍历、同一个 if】 —— 分两段扫必然漂。
 	var d := {"hits": [], "web": 0, "round": 0, "ctrl": 0, "btn": 0, "lbl": 0,
@@ -518,10 +540,15 @@ func _audit(root: Node) -> Dictionary:
 							and f2.border_width_left > 0 and f2.border_width_right > 0 \
 							and f2.bg_color.a < 0.95
 						if _r0 or _wb:
-							(d["hits"] as Array).append("%s%s %-16s %-22s %.0fx%.0f  r=%d b=%d a=%.2f" % [
+							## ★★名字是 `@PanelContainer@1103` 这种自动名, **认不出是什么控件**。
+							##   加上它里头第一段文字 —— 那才是能对上源码的那一维。
+							##   (2026-09-27: 选龟屏 61 个里 28 个是 `26x26 r=13` 的**正圆**,
+							##    光看尺寸还以为是稀有度小签, 加了文字才认出是被动图标的圆底。)
+							var _txt := _first_text(c)
+							(d["hits"] as Array).append("%s%s %-16s %-14s %.0fx%.0f  r=%d b=%d a=%.2f  「%s」" % [
 								"[web]" if _wb else "     ", "[round]" if _r0 else "       ",
-								c.get_class(), str(c.name).substr(0, 22), _rc.size.x, _rc.size.y,
-								f2.corner_radius_top_left, f2.border_width_top, f2.bg_color.a])
+								c.get_class(), str(c.name).substr(0, 14), _rc.size.x, _rc.size.y,
+								f2.corner_radius_top_left, f2.border_width_top, f2.bg_color.a, _txt])
 			var is_btn: bool = c is BaseButton
 			var wired: bool = c.gui_input.get_connections().size() > 0
 			if c is Button and not (c as Button).flat:
