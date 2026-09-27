@@ -338,11 +338,28 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 
 	var box := Panel.new()
 	var sb := StyleBoxFlat.new()
+	## ★★2026-09-27 换**金属九宫格框**(和背包/图鉴/战绩/排行榜同一张 panel-frame)。
+	##   这块 520x堆高, 远超 `UISkin.MIN_FRAME_PX`(40) ⇒ 装得下框。
+	##   原来是 `border 3 + 圆角 12` 的 StyleBoxFlat —— **全游戏唯一一个还长着 CSS
+	##   长相的对话框**, 而它正是每个新玩家开游戏看到的第一屏(关不掉的墙)。
+	## ★`sb` 降级成 fallback(贴图缺失时才用), 并且**也改成直角**:
+	##   `UISkin` 铁律① 说贴图缺失要优雅退回, 但退回的那份不该把 ai 味带回来。
 	sb.bg_color = Color("#1c2836"); sb.border_color = Color("#5aa0ff")
-	sb.set_border_width_all(3); sb.set_corner_radius_all(12)
-	box.add_theme_stylebox_override("panel", sb)
-	## ★绑定流程多一行「昵称」⇒ 高 340 → 400(取回流程不填, 见下面那个 if)
-	var _bh: float = 400.0 if flow == _SB_ACC.FLOW_BIND else 340.0
+	sb.set_border_width_all(3); sb.set_corner_radius_all(0)
+	var btex := UISkin.nine("panel-frame.png", 20, sb)
+	if btex is StyleBoxTexture:
+		(btex as StyleBoxTexture).modulate_color = UISkin.tint_of(Color("#5aa0ff"))
+	box.add_theme_stylebox_override("panel", btex)
+	## ★绑定流程多一行「昵称」⇒ 再高 60。
+	## ★★2026-09-27 整体加高 112: 「发验证码」「确认」从**输入框右边的小方块**
+	##   (128x40, 短边 40 < 81 触摸线)改成**各占一整行**(宽 440 ≥ 200)。
+	##   热区那条判据自己写着「不含整行整列」—— 一条长条本来就好点;
+	##   而硬把高撑到 81 会撞上输入框(原来上下只隔 52px)。
+	var _bh: float = 528.0 if flow == _SB_ACC.FLOW_BIND else 468.0
+	## ★★登录墙**没有「关闭」键**(关得掉的墙不是墙) ⇒ 那一行的 46+18 = 64px
+	##   不该还留着。实拍看就是对话框底下空出一大块。
+	if not dismissible:
+		_bh -= 64.0
 	box.position = Vector2(W / 2.0 - 260, H / 2.0 - _bh / 2.0); box.size = Vector2(520, _bh)
 	dim.add_child(box)
 
@@ -372,9 +389,24 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 	why.add_theme_font_size_override("font_size", 13)
 	why.add_theme_color_override("font_color", Color("#9fb4c8"))
 	why.position = Vector2(30, 56); why.size = Vector2(460, 54)
-	why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	## ★★★2026-09-27 `WORD_SMART` → `ARBITRARY`。探针量出来: 这一段中文里
+	##   `WORD_SMART` **找不到断点**, 于是 Label 的最小宽被撑成 **586** ——
+	##   而对话框只有 520 宽 ⇒ 正文**实实在在戳出框外左右各 33px**(实拍确认, 不是无头假象)。
+	##   `.size.x = 460` 压不住它: 最小尺寸赢过 size。
+	## ★中文本来就按字断行, `ARBITRARY` 才是对的那一档。
+	## ★这是**旧缺陷**: 旧对话框是 StyleBoxFlat(门禁不当它是「框」)⇒ 那条
+	##   「文字压边带」判据从来没量过这里; 换成金属框之后当场红 +109。
+	why.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
 	why.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(why)
+	## ★★★**入树之后再设一次尺寸** —— 这一行不是多余的。
+	##   上面那句 `why.size = Vector2(460, 54)` 写在 `add_child` **之前**,
+	##   控件入树时尺寸被重算掉, 实测变成 **586 宽**, 而对话框只有 520
+	##   ⇒ 正文左右各戳出 33px(实拍确认, 不是无头假象)。
+	##   探针同时排除了「自动换行算不出断点」那个猜想:
+	##   `get_combined_minimum_size()` 量出来是 **(1, 43)** —— 最小宽根本不是瓶颈。
+	## ⇒ **`ctrl.size = X` 写在 `add_child` 前可能不生效**, 这是一类坑不止这一处。
+	why.size = Vector2(460, 70)
 
 	## ★★昵称(只有绑定流程要填)。用户 2026-09-24:「这个在创建账号应该一起吧」——
 	##   这个项目里玩家感知得到的「创建账号」只有这一处(首启建匿名号是**静默**的)。
@@ -386,14 +418,14 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 			_P2C.NICK_MIN, _P2C.NICK_MAX]
 		nlab.add_theme_font_size_override("font_size", 12)
 		nlab.add_theme_color_override("font_color", Color("#9fb4c8"))
-		nlab.position = Vector2(40, 116); nlab.size = Vector2(440, 18)
+		nlab.position = Vector2(40, 132); nlab.size = Vector2(440, 18)
 		box.add_child(nlab)
 		_nick_edit = LineEdit.new()
 		_nick_edit.placeholder_text = "你的名字"
 		_nick_edit.text = str(GameState.nickname)
 		_nick_edit.max_length = _P2C.NICK_MAX * 2   # ★按**规范化后**判长度, 这里只防手滑贴一长串
 		_nick_edit.add_theme_font_size_override("font_size", 16)
-		_nick_edit.position = Vector2(40, 136); _nick_edit.size = Vector2(440, 40)
+		_nick_edit.position = Vector2(40, 152); _nick_edit.size = Vector2(440, 40)
 		box.add_child(_nick_edit)
 		_dy = 60.0
 
@@ -401,13 +433,14 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 	_email_edit.placeholder_text = "你的邮箱"
 	_email_edit.text = str(GameState.account_email)
 	_email_edit.add_theme_font_size_override("font_size", 16)
-	_email_edit.position = Vector2(40, 120 + _dy); _email_edit.size = Vector2(300, 40)
+	_email_edit.position = Vector2(40, 136 + _dy); _email_edit.size = Vector2(440, 44)
 	box.add_child(_email_edit)
 
 	_email_send_btn = Button.new()
 	_email_send_btn.text = "发验证码"
 	_email_send_btn.add_theme_font_size_override("font_size", 15)
-	_email_send_btn.position = Vector2(352, 120 + _dy); _email_send_btn.size = Vector2(128, 40)
+	## ★整行 —— 见上面 `_bh` 那段注释。宽 440 让它过热区判据, 也真的好点。
+	_email_send_btn.position = Vector2(40, 186 + _dy); _email_send_btn.size = Vector2(440, 46)
 	_email_send_btn.pressed.connect(func():
 		_SB_ACC.send_code_async(_email_edit.text, flow))
 	UISkin.button(_email_send_btn)
@@ -416,13 +449,13 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 	_code_edit = LineEdit.new()
 	_code_edit.placeholder_text = "邮件里的验证码"
 	_code_edit.add_theme_font_size_override("font_size", 16)
-	_code_edit.position = Vector2(40, 172 + _dy); _code_edit.size = Vector2(300, 40)
+	_code_edit.position = Vector2(40, 244 + _dy); _code_edit.size = Vector2(440, 44)
 	box.add_child(_code_edit)
 
 	_email_ok_btn = Button.new()
 	_email_ok_btn.text = "确认"
 	_email_ok_btn.add_theme_font_size_override("font_size", 15)
-	_email_ok_btn.position = Vector2(352, 172 + _dy); _email_ok_btn.size = Vector2(128, 40)
+	_email_ok_btn.position = Vector2(40, 294 + _dy); _email_ok_btn.size = Vector2(440, 46)
 	_email_ok_btn.pressed.connect(func():
 		## ★★昵称先过一遍规则再验码 —— 验码成功之后才存就晚了:
 		##   那一刻对话框已经关了, 玩家没机会改。规则只有 `phase2_config` 一份。
@@ -440,7 +473,7 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 
 	_email_status = Label.new()
 	_email_status.add_theme_font_size_override("font_size", 13)
-	_email_status.position = Vector2(30, 222 + _dy); _email_status.size = Vector2(460, 48)
+	_email_status.position = Vector2(30, 348 + _dy); _email_status.size = Vector2(460, 48)
 	_email_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_email_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_email_status)
@@ -451,7 +484,8 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 		var close := Button.new()
 		close.text = "关闭"
 		close.add_theme_font_size_override("font_size", 16)
-		close.position = Vector2(180, 282 + _dy); close.size = Vector2(160, 40)
+		## ★也改整行: 它和上面两个钮同一条规矩(而且原来 160x40 同样在触摸线下)。
+		close.position = Vector2(40, 404 + _dy); close.size = Vector2(440, 46)
 		close.pressed.connect(func():
 			_SB_ACC.reset_email_flow()
 			dim.queue_free(); _email_layer = null)
