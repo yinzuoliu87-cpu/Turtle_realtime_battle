@@ -611,7 +611,10 @@ func _card(idx: int, pos: Vector2) -> Control:
 	sb.bg_color = Color("#11202e") if not bought else Color("#0c141c")
 	if sel:
 		sb.bg_color = Color("#1c3348")
-	sb.set_corner_radius_all(8)
+	## ★★2026-09-27 改**直角**。这块只是**底板** —— 看得见的边是上面那张
+	##   `card-frame-t*.png`(不透明像素框)画的, 圆角本来就被它盖住 ⇒ 视觉零变化,
+	##   而门禁明细量出来商店 11 个圆角盒里 **10 个就是这里**(132x136, 每张货架卡一个)。
+	sb.set_corner_radius_all(0)
 	box.add_theme_stylebox_override("panel", sb)
 	box.position = pos; box.size = Vector2(SLOT_W, SLOT_H)
 	if not bought:
@@ -852,7 +855,8 @@ func _build_detail_panel() -> void:
 	var sb := StyleBoxFlat.new()
 	# 底板只负责填色; 外框改用新生成的 panel-frame.png(海带/贝壳纹 + 金角托 + 青内框)
 	sb.bg_color = Color("#0e1a26")
-	sb.set_corner_radius_all(10)
+	## ★同上: 底板而已, 边由 `panel-frame.png` 画(下面那行 `_nine(...)`)。掉剩下那 1 个。
+	sb.set_corner_radius_all(0)
 	box.add_theme_stylebox_override("panel", sb)
 	box.position = Vector2(PANEL_X, PANEL_Y); box.size = Vector2(PANEL_W, PANEL_H)
 	add_child(box)

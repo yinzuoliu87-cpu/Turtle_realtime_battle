@@ -138,7 +138,12 @@ func _match_row(m: Dictionary) -> Control:
 	var pc := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(20.0 / 255.0, 32.0 / 255.0, 40.0 / 255.0, 0.7)
-	sb.set_corner_radius_all(6)
+	## ★★2026-09-27 改**直角**。圆角 + 半透底正是用户点名的「很 ai 味和网页味」,
+	##   主菜单 v0.19.403 就是靠【不描边 + 直角】做到全 0 的。
+	## ★**左边那条 4px 的胜负色留着** —— 它不是装饰, 是一眼分胜负的那一维。
+	##   门禁明细量出来战绩屏 18 个圆角盒 = 12 个头像 + **6 行对局行**(760x52),
+	##   这一处掉 6 个。
+	sb.set_corner_radius_all(0)
 	sb.border_width_left = 4
 	sb.border_color = col
 	sb.content_margin_left = 12; sb.content_margin_right = 12
@@ -205,7 +210,10 @@ func _avatar(pid: String) -> Control:
 	var pc := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color("#0a1422")
-	sb.set_corner_radius_all(6)
+	## ★同上改直角。34x34 低于 `UISkin.MIN_FRAME_PX`(40) ⇒ **不该套九宫格金属框**
+	##   (套了四角铆钉会吃掉大半格, 背包那批 26px 迷你格 2026-08-18 实拍后就是这么退回的)
+	##   ⇒ 保持纯色块, 只把圆角去掉。这一处掉 12 个(6 场 × 2 个头像)。
+	sb.set_corner_radius_all(0)
 	sb.set_border_width_all(1)
 	sb.border_color = Color("#2e4a5e")
 	pc.add_theme_stylebox_override("panel", sb)
