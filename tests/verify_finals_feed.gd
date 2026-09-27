@@ -97,6 +97,94 @@ func _ready() -> void:
 	OS.set_environment("TURTLE_SUPABASE", " ")
 	print("")
 	print("  (共 %d 条断言)" % _n)
+
+	## ══════════════════════════════════════════════════════════════════════
+	##  ⑨ ★★★问不到, 就别抹掉上一份好数据 (2026-09-27) —— 走**真回调**
+	## ══════════════════════════════════════════════════════════════════════
+	## 上面那几条是**纯函数**判据: 只看 `parse_finals` 返回什么, 看不到回调把它**怎么用**。
+	## 而签表会从屏幕上消失的直接原因在回调里: 原来一律 `_finals_view = parse_finals(...)`
+	## ⇒ 周日打到一半网络抖一下, **整张签表被 `{}` 覆盖**, 屏幕换成
+	## 「本周没有你的桶 · 周六闯关赛晋级才进得来」, 30 秒(REFRESH_SEC)后才回来。
+	##
+	## ★★这一节顺带做了一件全仓 389 个测试都没做过的事: **把后端打开着跑**。
+	##   门禁给每个测试 `TURTLE_SUPABASE=" "`(有意关后端) ⇒ `enabled()` 恒假,
+	##   `fetch_finals` 第一行就 return —— 这条回调**从来没被执行过**
+	##   (memory `fb-gate-subject-never-constructed`; v0.19.452 那条阻断级 bug 同族)。
+	##   ⇒ 用 `OS.set_environment` 临时打开 + `_transport_for_test` 塞假回包, **不碰网络**。
+	print("── ⑩ 问不到就别抹掉上一份好数据(真回调) ──")
+	var _env0: String = OS.get_environment(SB.ENV_URL)
+	## ★`anon_key()` 只读 ProjectSettings(没有环境变量那一路) —— 两者取法不同, 别抄错。
+	var _envk = ProjectSettings.get_setting(SB.SETTING_KEY, "")
+	OS.set_environment(SB.ENV_URL, "http://gate.local")
+	ProjectSettings.set_setting(SB.SETTING_KEY, "gate-anon-key")
+	_ok("⑩ ★分母: 后端**真的打开了**(关着的话下面全是空检查)", SB.enabled(),
+		"base=%s" % SB.base_url())
+
+	var _gs9 = get_node_or_null("/root/GameState")
+	_ok("⑩ ★分母: 拿到 GameState", _gs9 != null)
+	var _acc0 := str(_gs9.account_id) if _gs9 != null else ""
+	if _gs9 != null:
+		_gs9.test_mode = true
+		_gs9.account_id = "uid-me"
+	SB._token = "gate-token"
+
+	## 假回包: 第一次给好数据, 第二次给失败, 第三次给另一份好数据
+	var _reply: Array = [{"ok": true, "code": 200, "body": _body(2, {"1-0": 0})}]
+	SB._transport_for_test = func(_m, _u, _h, _b, cb):
+		cb.call(_reply[0])
+
+	SB._finals_view = {}
+	SB._finals_inflight = false
+	SB.fetch_finals_async(1789862400, -1)
+	for _i in range(4):
+		await get_tree().process_frame
+	var v1: Dictionary = SB.finals_cached()
+	_ok("⑩ ★分母: 第一次拿到了真数据(拿不到 = 下面全是空检查)",
+		int(v1.get("size", 0)) > 0, "size=%d" % int(v1.get("size", 0)))
+
+	## ── 第二次: **问不到** ──
+	_reply[0] = {"ok": false, "code": 0, "body": ""}
+	SB._finals_inflight = false
+	SB.fetch_finals_async(1789862400, -1)
+	for _i2 in range(4):
+		await get_tree().process_frame
+	var v2: Dictionary = SB.finals_cached()
+	_ok("⑩ ★★★问不到之后, **上一份好数据还在**(原来会被 {} 覆盖 ⇒ 签表从屏幕上消失)",
+		int(v2.get("size", 0)) == int(v1.get("size", 0)) and int(v2.get("size", 0)) > 0,
+		"size %d → %d" % [int(v1.get("size", 0)), int(v2.get("size", 0))])
+
+	## ── 第三次: 问到了, 而且换了内容 ⇒ **必须**更新(否则上面那条是"永不更新"的假绿) ──
+	_reply[0] = {"ok": true, "code": 200, "body": _body(3, {"1-0": 0, "1-1": 1})}
+	SB._finals_inflight = false
+	SB.fetch_finals_async(1789862400, -1)
+	for _i3 in range(4):
+		await get_tree().process_frame
+	var v3: Dictionary = SB.finals_cached()
+	_ok("⑩ ★★分母: 问到了就**真的会更新**(不更新的话上一条是假绿)",
+		int(v3.get("round", 0)) == 3, "round=%d" % int(v3.get("round", 0)))
+
+	## ── 没有上一份数据时, 问不到要**如实说**, 不许退回空字典 ──
+	SB._finals_view = {}
+	_reply[0] = {"ok": false, "code": 0, "body": ""}
+	SB._finals_inflight = false
+	SB.fetch_finals_async(1789862400, -1)
+	for _i4 in range(4):
+		await get_tree().process_frame
+	_ok("⑩ ★★一份数据都没有时, 问不到要标成「问不到」(屏幕才说得出「连不上」)",
+		str(SB.finals_cached().get("reason", "")) == SB.UNREACHABLE,
+		str(SB.finals_cached()))
+
+	## 收尾: 环境与静态全部还原 —— 它们是 static, 活过本测试
+	SB._transport_for_test = Callable()
+	SB._finals_view = {}
+	SB._finals_inflight = false
+	SB._token = ""
+	if _gs9 != null:
+		_gs9.account_id = _acc0
+	OS.set_environment(SB.ENV_URL, _env0)
+	ProjectSettings.set_setting(SB.SETTING_KEY, _envk)
+	_ok("⑩ ★收尾: 后端已关回去(留着会把后面每个测试都喂上假后端)", not SB.enabled())
+
 	print("ALL PASS — 决赛日取数与门" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
 
@@ -126,11 +214,28 @@ func _t_parse() -> void:
 	_ok("① 值本身对", int(done["1-0"]) == 0 and int(done["1-1"]) == 1, str(done))
 
 	## 失败路径: 一律给空字典, 不给半张图
-	_ok("① 网络失败 ⇒ 空", SB.parse_finals(false, 0, "", "uid-me", 1).is_empty())
-	_ok("① HTTP 403 ⇒ 空", SB.parse_finals(true, 403, "{}", "uid-me", 1).is_empty())
+	## ★★★2026-09-27 这三条原来写的是「⇒ 空」, 而那**把一个 bug 钉住了**
+	##   (memory `fb-gate-can-pin-the-bug-in-place`): 裸 `{}` 会让屏幕走到
+	##   「本周没有你的桶 · 周六闯关赛晋级才进得来」—— **对一个已晋级的人说谎**;
+	##   而且失败的 `{}` 还会**覆盖上一份好数据** ⇒ 周日网络抖一下签表就从屏幕上消失。
+	## ⇒ 判据换成量**真正该守的那条线**:
+	##     「**问不到**」(网络失败 / 403 / 回的是 HTML) —— 带 `UNREACHABLE`
+	##     「**问到了, 答案是没有**」(服务端明说没报名 / 空桶) —— 空字典
+	##   两者不许混, 混了屏幕就只能说同一句话。
+	_ok("① ★★网络失败 ⇒ 标成「问不到」, **不是**空",
+		str(SB.parse_finals(false, 0, "", "uid-me", 1).get("reason", "")) == SB.UNREACHABLE)
+	_ok("① ★★HTTP 403 ⇒ 标成「问不到」",
+		str(SB.parse_finals(true, 403, "{}", "uid-me", 1).get("reason", "")) == SB.UNREACHABLE)
 	_ok("① 回包 ok=false ⇒ 空",
 		SB.parse_finals(true, 200, '{"ok":false,"reason":"not_entered"}', "uid-me", 1).is_empty())
-	_ok("① 不是 JSON ⇒ 空", SB.parse_finals(true, 200, "<html>", "uid-me", 1).is_empty())
+	## ★★对照组: 这一条**必须**还是空 —— 服务端明说「你没报名」是**问到了**,
+	##   和「问不到」混掉的话, 真没晋级的人会看到「连不上服务器」, 一样是假话。
+	_ok("① ★★★对照: 服务端明说没报名 ⇒ **不许**被标成「问不到」",
+		str(SB.parse_finals(true, 200, '{"ok":false,"reason":"not_entered"}', "uid-me", 1)
+			.get("reason", "")) != SB.UNREACHABLE)
+	## 5xx 时服务端回的可能是 HTML —— 那也是「问不到」, 不是「你没桶」。
+	_ok("① ★★回的是 HTML(5xx) ⇒ 也算「问不到」",
+		str(SB.parse_finals(true, 200, "<html>", "uid-me", 1).get("reason", "")) == SB.UNREACHABLE)
 	_ok("① n = 0 ⇒ 空(画不出图就别给半张)",
 		SB.parse_finals(true, 200, '{"ok":true,"n":0}', "uid-me", 1).is_empty())
 
@@ -635,16 +740,16 @@ func _t_opponent() -> void:
 
 
 # ─────────────────────────────────────────────────────────────
-# ⑨ 报结果 (E-B6, 2026-09-25)
+# ⑩ 报结果 (E-B6, 2026-09-25)
 #
 # ★`finals_report` 这个 RPC 从 2026-09-23 就在服务端, 而**客户端一个调用者都没有**
 #   ⇒ 没有任何一场的结果能被报上去 ⇒ 对阵图永远停在第 1 轮。
 # ★这一节守三件: 组包键名对不对 / 无效 side 不许发出去 / 同一场只报一次。
 # ─────────────────────────────────────────────────────────────
 func _t_report() -> void:
-	print("── ⑨ 报结果 ──")
+	print("── ⑩ 报结果 ──")
 	var b: Dictionary = SB.finals_report_body(123, 2, 3, 1, 0, 42)
-	_ok("⑨ 组包: 六个键名与服务端对得上",
+	_ok("⑩ 组包: 六个键名与服务端对得上",
 		int(b.get("p_week", -1)) == 123 and int(b.get("p_bucket", -9)) == 2
 			and int(b.get("p_round", -1)) == 3 and int(b.get("p_match", -1)) == 1
 			and int(b.get("p_winner_side", -1)) == 0 and int(b.get("p_seed", -1)) == 42,
@@ -666,9 +771,9 @@ func _t_report() -> void:
 	SB._report_inflight = false
 	SB.report_finals_async(777, 2, 3, 1, -1, 5)
 	await get_tree().process_frame
-	_ok("⑨ ★★★winner_side = -1(不是我的场) ⇒ **一个请求都不发**",
+	_ok("⑩ ★★★winner_side = -1(不是我的场) ⇒ **一个请求都不发**",
 		_reqs.size() == 0, str(_reqs.size()))
-	_ok("⑨ ★分母: 拦住了也不许把它记成「报过了」(否则真要报时会被自己挡住)",
+	_ok("⑩ ★分母: 拦住了也不许把它记成「报过了」(否则真要报时会被自己挡住)",
 		not SB.finals_reported(3, 1))
 
 	## 正路
@@ -676,12 +781,12 @@ func _t_report() -> void:
 	SB._report_inflight = false
 	SB.report_finals_async(777, 2, 3, 1, 0, 42)
 	await get_tree().process_frame
-	_ok("⑨ ★分母: 正路确实发出了请求", _reqs.size() == 1, str(_reqs.size()))
+	_ok("⑩ ★分母: 正路确实发出了请求", _reqs.size() == 1, str(_reqs.size()))
 	var r0: Dictionary = _reqs[0] if _reqs.size() > 0 else {}
-	_ok("⑨ ★发去的是 `/rest/v1/rpc/finals_report`",
+	_ok("⑩ ★发去的是 `/rest/v1/rpc/finals_report`",
 		str(r0.get("url", "")).ends_with("/rest/v1/rpc/finals_report"), str(r0.get("url", "")))
 	var sent = JSON.parse_string(str(r0.get("body", "{}")))
-	_ok("⑨ ★★报的 winner_side 原样送到(这个数反了不会报错, 只会静静送错人)",
+	_ok("⑩ ★★报的 winner_side 原样送到(这个数反了不会报错, 只会静静送错人)",
 		sent is Dictionary and int(sent.get("p_winner_side", -9)) == 0, str(sent).substr(0, 140))
 
 	## ★★同一场只报一次 —— 结算路径会被重入(投降/重开结算屏)
@@ -689,15 +794,15 @@ func _t_report() -> void:
 	SB._report_inflight = false
 	SB.report_finals_async(777, 2, 3, 1, 0, 42)
 	await get_tree().process_frame
-	_ok("⑨ ★★★同一场再报一次 ⇒ 不发(结算路径会被重入, 没这道闸一场会报好几次)",
+	_ok("⑩ ★★★同一场再报一次 ⇒ 不发(结算路径会被重入, 没这道闸一场会报好几次)",
 		_reqs.size() == 0, str(_reqs.size()))
-	_ok("⑨ ★分母: **另一场**照样发得出去(上一条不是把所有请求都挡了)",
+	_ok("⑩ ★分母: **另一场**照样发得出去(上一条不是把所有请求都挡了)",
 		true)
 	_reqs.clear()
 	SB._report_inflight = false
 	SB.report_finals_async(777, 2, 3, 2, 1, 42)
 	await get_tree().process_frame
-	_ok("⑨ ★★分母(续): 换一场 m=2 确实发出去了", _reqs.size() == 1, str(_reqs.size()))
+	_ok("⑩ ★★分母(续): 换一场 m=2 确实发出去了", _reqs.size() == 1, str(_reqs.size()))
 
 	SB._transport_for_test = Callable()
 	SB.finals_report_clear()

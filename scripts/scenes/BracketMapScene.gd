@@ -460,6 +460,10 @@ func _empty_text() -> String:
 	##   他会以为自己的胜场没算。10 个人规模下晋级率约 34% ⇒ 只 0~1 人晋级约 10%,
 	##   这不是假想的边角。
 	var _fv: Dictionary = _SB.finals_cached() if not _injected else _bucket
+	## ★★「问不到」要说「连不上」, **不能**掉到最后那句「本周没有你的桶」——
+	##   那对一个已晋级的人是假话(2026-09-27 查实)。每 30 秒自己重试, 所以要说清在重试。
+	if str(_fv.get("reason", "")) == _SB.UNREACHABLE:
+		return "连不上服务器 · 拉不到本周的桶(每 30 秒重试)"
 	if str(_fv.get("reason", "")) == "too_few":
 		var ent := int(_fv.get("entered", 0))
 		return "本周只有 %d 人晋级 · 人太少没开起来, 你的晋级算数, 下周再来" % ent

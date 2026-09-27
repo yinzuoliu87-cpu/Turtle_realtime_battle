@@ -1605,8 +1605,15 @@ func fetch_finals(week: int, bucket: int) -> void:
 		func(res):
 			_finals_inflight = false
 			_finals_tried = true
-			_finals_view = parse_finals(bool(res.get("ok", false)), int(res.get("code", 0)),
+			var _pv: Dictionary = parse_finals(bool(res.get("ok", false)), int(res.get("code", 0)),
 				str(res.get("body", "")), mine, int(Time.get_unix_time_from_system()))
+			## ★★★**问不到就别动上一份好数据**。原来一律覆盖 ⇒ 周日打到一半网络抖一下,
+			##   签表**从屏幕上消失**, 换成「本周没有你的桶」, 30 秒后才回来。
+			##   ⇒ 只有「问到了」才换; 问不到时留着旧的继续画(下一拍会重试)。
+			if str(_pv.get("reason", "")) == UNREACHABLE and not _finals_view.is_empty():
+				pass
+			else:
+				_finals_view = _pv
 			_bye(),
 		"Content-Type: application/json")
 
@@ -1617,17 +1624,26 @@ func fetch_finals(week: int, bucket: int) -> void:
 ##
 ## 回包(服务端): {n, round, closed, round_at, next_at, now, entrants:[{seed,name,account_id}], done:{"r-m":side}}
 ## 屏幕要的:     {size, round, done, names(按种子排), me(我的种子), closed, left, recv_at}
+## 「问不到」的统一标记。★做成常量而不是到处写字面量: 产品与门禁读同一处。
+const UNREACHABLE := "unreachable"
+
+
 static func parse_finals(ok: bool, code: int, body: String, my_account: String,
 		recv_at: int) -> Dictionary:
+	## ★★★「**问不到**」≠「**问到了, 答案是没有**」。
+	##   返回裸 `{}` 的话, 屏幕会走到「本周没有你的桶 · 周六闯关赛晋级才进得来」——
+	##   **对一个已晋级的人说谎**(2026-09-27 查实)。
+	##   本仓 2026-09-25 已经为「有资格但人不够」拆过一次(`too_few`), 这是同一条规矩。
 	if not ok or code < 200 or code >= 300:
-		return {}
+		return {"reason": UNREACHABLE}
 	## ★同 `parse_opponent`: 用 `JSON.new().parse()` 而不是 `JSON.parse_string()` ——
 	##   后者解析失败会往 stderr 喷一条 `ERROR: Parse JSON failed`, 而这里**本来就要
 	##   能处理坏正文**(5xx 时服务端回的可能是 HTML)。门禁靠扫日志里的错误形态判红,
 	##   每次都喷一条等于给日志灌噪声, 真错就藏得住了。
 	var _p := JSON.new()
 	if _p.parse(body) != OK or not (_p.data is Dictionary):
-		return {}
+		## 5xx 时服务端回的可能是 HTML —— 那也是「问不到」, 不是「你没桶」。
+		return {"reason": UNREACHABLE}
 	if not bool((_p.data as Dictionary).get("ok", false)):
 		## ★★2026-09-25「有资格但人不够」要单独带出来, 不能和「没资格」混成一个空字典。
 		##   `finals_seat` 对 1 个人**故意不建桶**(一人一桶 = 没有对手的冠军), 于是那个
