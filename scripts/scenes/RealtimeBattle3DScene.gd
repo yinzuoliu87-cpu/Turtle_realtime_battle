@@ -915,7 +915,7 @@ func _ready() -> void:
 			set_process(false)
 			return
 	_world_builder._build_viewport()
-	_world_builder._build_camera()
+	_world_builder._build_camera(); _battle_rng.seed = GameState.note_battle_seed(_battle_rng.seed)   # ★sim 种子就是在 _build_camera 末尾播的(TURTLE_SEED 设了用它·否则 randomize) ⇒ 紧跟着登记, 并把规范化后的值回写(理由/诚实边界全在 GameState.note_battle_seed 头注)。★写在同一行是为了不顶破 arch_budget 对本文件的 8770 行冻结
 	_world_builder._build_environment()
 	_world_builder._build_ground()
 	_snapshot_world_permanent()   # 建场完成→记下常驻节点, 供换路兜底清场
@@ -1221,7 +1221,7 @@ func _do_surrender() -> void:
 	if _settled or _over:
 		return
 	_hide_surrender_confirm()
-	_log("[color=#ff6b6b]🏳 投降认输 —— 本场判负[/color]")
+	_log("[color=#ff6b6b]🏳 认输 —— 本场判负[/color]")
 	if _is_dual_lane_mode():
 		_dl_sys._dl_finish(false)      # 双路: 内部会置 _over/_dl_state/喂赛季/显横幅
 	else:
@@ -5393,7 +5393,7 @@ func _cast_skill(u: Dictionary, tgt: Dictionary, stype: String) -> bool:
 	# 施法技能不用飘空图标 (用户定): 技能视觉靠各自 _skill_ring/投射物/形变, 不浮贴图 billboard
 	# (原通用 _vfx._play_skill_vfx 飘空贴图已禁用 — 一张图标浮半空不贴 2.5D)
 	_do_skill(u, tgt, stype)
-	_log("[color=%s]✦ %s[/color] 施放 [color=#ffe08a]%s[/color]" % [_log_side_hex(u), _unit_name(u), _skill_disp(stype)])
+	_log("[color=%s]◆ %s[/color] 施放 [color=#ffe08a]%s[/color]" % [_log_side_hex(u), _unit_name(u), _skill_disp(stype)])
 	return true
 
 

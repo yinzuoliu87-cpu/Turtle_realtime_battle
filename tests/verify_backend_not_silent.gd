@@ -74,8 +74,28 @@ func _ready() -> void:
 
 	# ── ⑤ 结算屏真的读它 ──
 	var hud: String = FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_hud.gd")
-	_ok("★★结算屏真的读 looks_broken() 并显示「阵容同步」(写了没人读 = 白写)",
-		hud.contains("looks_broken()") and hud.contains("阵容同步"))
+	## ★★2026-09-28 判据从【抄屏幕上那个词】改成【量接线】。
+	##   原来这里是 `hud.contains("looks_broken()") and hud.contains("阵容同步")` ——
+	##   后半句抄的是结算屏那块 chip 的**标签文案**。今天那个标签按"去后台词"改成
+	##   「阵容上传」(「同步」是网络内部词), 这条断言当场红, 而它红的**不是缺陷**。
+	##   ⇒ 本文件只管一件事:「失败不许静默」= 读数真的接到了一块**会被画出来的** chip。
+	##     所以判据改成: `looks_broken()` 的读数之后紧跟一次 `items.append(` ——
+	##     `items` 就是下面那个 for 循环逐项建 Label 的数组(没有它就等于读了不画)。
+	##   ★屏幕上到底印什么词, 由 `tests/verify_hud_gamefeel.gd` ① 守着
+	##     (它把 chip 真建出来再读文本), 不在这里抄第二遍。
+	##   ⚠ 先把注释行剔掉再找 —— 不剔的话**我上面这段注释自己**就含 `looks_broken()`,
+	##     判据会被自己的说明文字喂绿(memory `fb-gate-must-measure-requirement-not-my-hook`)。
+	var code := ""
+	for ln in hud.split("\n"):
+		if str(ln).strip_edges().begins_with("#"):
+			continue
+		code += str(ln) + "\n"
+	var _lb: int = code.find("looks_broken()")
+	var _ap: int = code.find("items.append(", _lb) if _lb >= 0 else -1
+	_ok("★分母: 剔掉注释后源码里仍然找得到 looks_broken() 的调用", _lb >= 0, "位置 %d" % _lb)
+	_ok("★★结算屏真的读 looks_broken(), 且读数后面紧跟一次 items.append(写了没人读 = 白写)",
+		_lb >= 0 and _ap >= 0 and _ap - _lb < 200,
+		"looks_broken() 在 %d · 之后最近的 items.append 在 %d" % [_lb, _ap])
 
 	if _n < 10:
 		print("  [FAIL] ★分母: 断言只有 %d 条(<10)" % _n)

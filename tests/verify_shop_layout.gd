@@ -447,7 +447,96 @@ func _ready() -> void:
 	## ★分母: 羁绊总览条还在(它才是这一页说羁绊的地方)
 	_chk("⑫ ★分母: 页面底部的羁绊总览条还在", src_shop.find("func _build_synergy_bar") >= 0)
 
+	# ── ⑭ ★「没有属性只有效果」这句, 商店和背包必须逐字相同 ──
+	#   由来: 同一件装备在两页看是同一句话。2026-09-28 之前商店是「（本件不提供属性加成，
+	#   只有效果）」、背包定稿成「这件不加属性，只有效果」—— 同一句话两个版本, 玩家会
+	#   以为两页讲的不是一回事, 比两边都留着原文更糟。
+	#   ★量的是【两个文件里都出现了同一个字面量】, 不是"商店里有某句话" ——
+	#     后者只要我在商店改个新词就恒真, 守不住"两边一致"这件事。
+	## ★必须先剥注释再找 —— 两个文件的注释里都【引着旧句原文】("原文「…」是公文体")。
+	##   拿生源码 grep 的话, 这条会被那两行历史说明钉成永远红, 而它本该管的是
+	##   "还有没有代码真的把旧句显示给玩家"。(第一版就是这么红的, 红得不对。)
+	var src_inv := FileAccess.get_file_as_string("res://scripts/scenes/InventoryScene.gd")
+	_chk("⑭ ★分母: 读得到 InventoryScene.gd", src_inv.length() > 1000)
+	var code_shop := _strip_comments(src_shop)
+	var code_inv := _strip_comments(src_inv)
+	_chk("⑭ ★分母: 剥注释没把代码剥没(两边都还剩大半)",
+		code_shop.length() > src_shop.length() / 3 and code_inv.length() > src_inv.length() / 3)
+	_chk("⑭ ★★商店与背包共用同一句「这件不加属性，只有效果」",
+		code_shop.find("这件不加属性，只有效果") >= 0 and code_inv.find("这件不加属性，只有效果") >= 0)
+	_chk("⑭ ★旧的公文体版本在【代码里】两边都已绝迹(留一处 = 又是两个版本)",
+		code_shop.find("本件不提供属性加成") < 0 and code_inv.find("本件不提供属性加成") < 0)
+
+	# ── ⑮ ★没有【吊着的分隔符】: 「上·」这种点号后面空着一片的标签 ──
+	#   由来(2026-09-28 实拍, 而且是点开弹层才看见): 出战阵容那六列在【还没选龟】时
+	#   写的是「上·」「下·」—— 点号后面什么都没有, 一眼就是"这里没做完"。
+	#   根因是兜底永远轮不到(`u.get("id", "龟")` 里 id 是**空串而不是缺键**), 不是忘了写。
+	#   ★这一类只有"把两半拼起来"的文案才会犯, 而那种拼接满屏都是 ⇒ 按形状扫全屏 Label,
+	#     不是去断言某一句话长什么样(断言字面量的话, 换个拼法它又能溜回来)。
+	#   ★`data_integrity.py` 早就对 json 文案做同一件事(`_is_dangle`), 这里补上屏幕这一侧。
+	#   ★★必须【连弹层一起扫】—— 出错的那两块(备战席 / 出战阵容)自 2026-07-29 起
+	#     `_rebuild()` 根本不画, 只在底部两颗按钮点开的弹层里画。
+	#     只扫静止页的话这条**恒绿**: 第一版就是这样, 把 bug 放回去也没红(反向验证救的)。
+	var dangle: Array = []
+	var scanned := 0
+	scanned += _scan_dangle(all, dangle)
+	var pop_lines := 0
+	for kind in ["bench", "lineup"]:
+		sc.call("_open_bottom_popup", kind)
+		await get_tree().process_frame
+		var pop = sc.get("_popup")
+		if pop == null or not is_instance_valid(pop):
+			print("  [FAIL] ⑮ ★分母: 弹层 %s 没建起来" % kind); _fail += 1
+			continue
+		var plist: Array = []
+		_collect(pop, plist)
+		pop_lines += _scan_dangle(plist, dangle)
+		pop.queue_free()
+		await get_tree().process_frame
+	scanned += pop_lines
+	print("     ⑮ ★分母: 静止页 %d 行 + 弹层 %d 行 = %d 行 Label 文字" % [
+		scanned - pop_lines, pop_lines, scanned])
+	_chk("⑮ ★分母: 扫到的文字行 > 10(太少 = 下面那条是空检查)", scanned > 10)
+	_chk("⑮ ★分母: 弹层里也真的扫到字了(0 行 = 「点了才出现」那半边没被覆盖)", pop_lines > 5)
+	if not dangle.is_empty():
+		print("       ★吊着分隔符的: " + str(dangle.slice(0, 8)))
+	_chk("⑮ ★★没有吊着的分隔符(「上·」那种点号后面空着的拼接文案)", dangle.is_empty())
+
 	_done(sc)
+
+
+## 一批控件里所有 Label 的文字, 逐行查【吊着的分隔符】。返回扫了多少行(★分母)。
+func _scan_dangle(ctrls: Array, out: Array) -> int:
+	var seps := ["·", "・", "、", "，", ",", "：", ":", "/", "|", "—", "-"]
+	var n := 0
+	for c in ctrls:
+		if not (c is Label):
+			continue
+		for raw in str((c as Label).text).split("
+"):
+			var t := str(raw).strip_edges()
+			if t == "":
+				continue
+			n += 1
+			for sp in seps:
+				if t.ends_with(sp) or t.begins_with(sp) or t.find(sp + sp) >= 0:
+					out.append("「%s」" % t)
+					break
+	return n
+
+
+## 把整行注释剥掉, 只留可执行的代码。
+## ★本仓的硬规矩是"行内注释绝不插进行中间"(CLAUDE.md §3.7), 所以按行剥是安全的 ——
+##   一个 `#` 出现在行首(去掉前导 tab 之后)就是整行注释。
+func _strip_comments(src: String) -> String:
+	var out := ""
+	for ln in src.split("
+"):
+		if str(ln).strip_edges().begins_with("#"):
+			continue
+		out += str(ln) + "
+"
+	return out
 
 
 ## Label 里【文字真正占的那块矩形】(不是控件框)。
@@ -504,6 +593,106 @@ func _check_owned_shine(sc) -> void:
 	var i_cond: int = src.find("if owned > 0:")
 	var i_glow: int = src.find("var glow := Panel.new()")
 	_chk("★反面: 镀层在条件【之内】(不是每张卡都镀)", i_cond > 0 and i_glow > i_cond and i_glow - i_cond < 900)
+	await _check_no_diagonal_spill(sc)
+
+
+## ★★★斜向元素不许画到卡外 —— 2026-09-28 实拍抓到的真 bug 焊成门禁。
+##
+## 那一版的掠光是 26×245 的 ColorRect, 绕左上角转 -0.5 rad 再横扫 -40 → SLOT_W+40,
+## 而 Godot 的 Control **默认不裁子节点** ⇒ 一条灰白斜带扫出卡外 180px, 正好盖到隔壁那张卡上。
+## 实拍空隙里量到 RGB(57,64,62), 裁住之后是背景色 RGB(10,22,34)。
+##
+## ★上面那四条 `_chk` 全是【读源码找字符串】—— 掠光溢出的那些天它们**一条都没红**,
+##   因为源码里 `shine.rotation = -0.5` 一直都在。字符串在不在, 和画出来的东西在哪, 是两件事。
+##   ⇒ 这一条量【裁剪之后真正画出来的那块】: 四角走全局变换(含 rotation), 再逐级与每个
+##     `clip_contents` 祖先求交, 然后和卡片矩形比。
+## ★掠光的 x 由循环 tween 在扫 ⇒ 随便一帧抓到的位置不定, 靠运气抓不住最坏的一帧。
+##   这里把扫描路径上的采样点逐个钉死再量。
+## ★分母: 先把货架上每一件塞进背包(否则新档背包空 ⇒ 一道掠光都不建 ⇒ 这条是空检查)。
+func _check_no_diagonal_spill(sc) -> void:
+	var gs = get_node_or_null("/root/GameState")
+	var off: Array = sc.get("_offer")
+	var bench: Array = []
+	for e in off:
+		if e is Dictionary:
+			bench.append({"id": str((e as Dictionary).get("id", "")), "star": 1})
+	gs.persistent_bench = bench
+	if sc.has_method("_rebuild"):
+		sc.call("_rebuild")
+	for _i in range(3):
+		await get_tree().process_frame
+
+	var cards: Array = []
+	_collect_cards(sc, cards)
+	var rots: Array = []
+	for card in cards:
+		var r: Array = []
+		_collect_rotated(card, r)
+		for cr in r:
+			rots.append([card, cr])
+	print("     ⑬ ★分母: 货架卡 %d 张, 其中斜向元素 %d 个" % [cards.size(), rots.size()])
+	_chk("⑬ ★分母: 至少找到 1 个斜向元素(0 个 = 下面那条是空检查)", rots.size() > 0)
+
+	var worst := 0.0
+	var worst_desc := ""
+	for pair in rots:
+		var card: Control = pair[0]
+		var cr: Control = pair[1]
+		var card_rect := Rect2(card.global_position, card.size)
+		var base_y: float = cr.position.y
+		var base_x: float = cr.position.x
+		for sx in [-40.0, -10.0, 20.0, 66.0, 110.0, 132.0, 152.0, 172.0]:
+			cr.position = Vector2(sx, base_y)
+			var vis := _visible_aabb(cr)
+			var out: float = _outside_amount(vis, card_rect)
+			if out > worst:
+				worst = out
+				worst_desc = "%s 在 x=%.0f 时画到 %.0f..%.0f (卡 %.0f..%.0f)" % [
+					str(cr.name), sx, vis.position.x, vis.end.x, card_rect.position.x, card_rect.end.x]
+		cr.position = Vector2(base_x, base_y)
+	print("     ⑬ 最大出界 %.1f px%s" % [worst, ("  ← " + worst_desc) if worst > 0.5 else ""])
+	_chk("⑬ ★★斜向元素(掠光/斜纹)不许画出卡片轮廓 —— 必须套 `_clip_box` 的剪刀", worst <= 0.5)
+
+
+## 货架卡 = 尺寸恰为 132×136 的 Panel。★必须递归: `UIFrame.attach()` 会把所有
+## 子节点收编进居中框, 卡片不再是场景根的直接子节点(只看直接子节点 ⇒ 扫到 0 张 ⇒ 空检查)。
+func _collect_cards(n: Node, out: Array) -> void:
+	for c in n.get_children():
+		if c is Panel and absf((c as Panel).size.x - 132.0) < 1.0 and absf((c as Panel).size.y - 136.0) < 1.0:
+			out.append(c)
+		else:
+			_collect_cards(c, out)
+
+
+func _collect_rotated(n: Node, out: Array) -> void:
+	for c in n.get_children():
+		if c is ColorRect and absf((c as ColorRect).rotation) > 0.01:
+			out.append(c)
+		_collect_rotated(c, out)
+
+
+## 这个控件在屏幕上【真正画出来的那块】: 四角走全局变换(含旋转), 再与每个
+## `clip_contents` 祖先求交。没有裁剪祖先时 = 旋转后的整块外接矩形。
+func _visible_aabb(ct: Control) -> Rect2:
+	var xf: Transform2D = ct.get_global_transform()
+	var sz: Vector2 = ct.size
+	var r := Rect2(xf * Vector2.ZERO, Vector2.ZERO)
+	for v in [Vector2(sz.x, 0.0), Vector2(0.0, sz.y), sz]:
+		r = r.expand(xf * v)
+	var a: Node = ct.get_parent()
+	while a != null:
+		if a is Control and (a as Control).clip_contents:
+			r = r.intersection(Rect2((a as Control).global_position, (a as Control).size))
+		a = a.get_parent()
+	return r
+
+
+## 出界量 = 可见块超出卡片矩形最多的那一边(px)。被裁成空 ⇒ 什么都没画 ⇒ 0。
+func _outside_amount(vis: Rect2, card: Rect2) -> float:
+	if vis.size.x <= 0.0 or vis.size.y <= 0.0:
+		return 0.0
+	return maxf(maxf(card.position.x - vis.position.x, vis.end.x - card.end.x),
+		maxf(card.position.y - vis.position.y, vis.end.y - card.end.y))
 
 
 func _done(sc) -> void:

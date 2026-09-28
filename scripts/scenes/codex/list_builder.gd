@@ -186,11 +186,13 @@ func _add_equip_rows() -> void:
 		for eq in items:
 			host._items.append(eq)
 			var stroke: String = ccol
-			var emoji: String = str(eq.get("emoji", "📦"))
 			var img: String = str(eq.get("img", ""))
 			var ipath: String = "res://assets/sprites/%s" % img if img.ends_with(".png") else ""
-			# 有 PNG 图标(新版 img·2026-07-18装备图标)→图标格+纯名; 无→emoji 前缀兜底(旧行为)
-			var rname: String = str(eq.get("name", "?")) if ipath != "" else "%s %s" % [emoji, str(eq.get("name", "?"))]
+			## ★★2026-09-28 兜底从「emoji 前缀」改成「只写名字」。
+			##   ① 这一支实际上**走不到**: 96 件装备逐件查过, `img` 全部指向盘上真实存在的 PNG。
+			##   ② 但它是**下一个 emoji 的种子**: 哪天新装备忘了配图, 屏幕上就凭空长出
+			##     一个 NotoEmoji 的彩色字符 —— 而行里本来就有名字, 不写 emoji 不会开天窗。
+			var rname: String = str(eq.get("name", "?"))
 			_add_simple_row(rname, "#ffffff", Color(stroke), ipath, host._items.size() - 1)
 	# 消耗品分组 (取自 all_equipment category=consumable, 8 件; 有 PNG icon)
 	var consumables = []

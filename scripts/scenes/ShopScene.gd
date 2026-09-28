@@ -534,7 +534,18 @@ func _build_lineup_equips(host: Node = null, ox: float = 0.0, oy: float = 0.0) -
 			var is_leader := str(u.get("kind", "")) == "leader"
 			var nm := ""
 			if is_leader:
-				nm = str(DataRegistry.pet_by_id.get(str(u.get("id", "")), {}).get("name", u.get("id", "龟")))
+				## ★★实拍(2026-09-28·弹层里才看见)抓到的真 bug: 还没选龟时这一列写的是
+				##   **「上·」** —— 点号后面空着一片, 一眼就是"这里没做完"。
+				##   ★根因不是"没写兜底", 是兜底【永远轮不到】: 原句写的是
+				##     `.get("name", u.get("id", "龟"))`, 而没选龟时 `u["id"]` 是
+				##     **空串而不是缺键** ⇒ `u.get("id", "龟")` 返回 ""(不是 "龟")
+				##     ⇒ 默认值 "龟" 一次也没生效过。探针实测: 六列里【三列】长这样,
+				##        而那正是新玩家第一次进商店的默认样子。
+				##   ⇒ 拿到空名就明说"还没选龟" —— 既补掉吊着的点号, 又告诉玩家下一步该干嘛
+				##     (与本页别处「还没点兵, 先去选龟那边排一路人马」同一口气)。
+				nm = str(DataRegistry.pet_by_id.get(str(u.get("id", "")), {}).get("name", ""))
+				if nm.strip_edges() == "":
+					nm = "还没选龟"
 			elif bool(u.get("elite", false)):
 				nm = "精英小将"
 			else:
@@ -1234,12 +1245,12 @@ func _build_stat_rows(box: Control, eid: String, star: int = 1) -> Array:
 	var rows: Array = EquipStats.stat_lines(eid, star)
 	if rows.is_empty():
 		var none := Label.new()
-		## ⚠★★这一句【故意没改】(2026-09-28)。
-		##   「（本件不提供属性加成，只有效果）」确实是公文体, 但 `InventoryScene.gd:1068`
-		##   **有一句一模一样的** —— 同一句话出现两个版本, 比两边都留着原文更糟
-		##   (玩家会以为商店和背包说的不是一回事)。
-		##   ⇒ 由背包那边定稿, 两处同时改。这里保持原文等它。
-		none.text = "（本件不提供属性加成，只有效果）"
+		## ★★与背包共用的定稿句(2026-09-28)。原文「（本件不提供属性加成，只有效果）」是
+		##   公文体: 全角括号把整句降级成批注、「本件」「提供」「加成」三个词都是说明书口气。
+		## ★★★这一句**必须与 `InventoryScene.gd` 逐字相同**(那边三处: 渲染文/量高平文/`_stat_block`)。
+		##   同一句话出现两个版本, 比两边都留着原文更糟 —— 玩家会以为商店和背包讲的不是一回事。
+		##   改这句就得两个文件一起改; `verify_shop_layout` 第⑭条把两个文件对着量, 只改一边直接红。
+		none.text = "这件不加属性，只有效果"
 		none.add_theme_font_size_override("font_size", 15)
 		none.add_theme_color_override("font_color", Color("#5b7a92"))
 		none.position = Vector2(34, STAT_ROW_Y[0]); none.size = Vector2(PANEL_W - 68, 22)

@@ -1,0 +1,1303 @@
+autoload/GameState.gd|lit| ｜ 临时等级器 %d%%
+autoload/GameState.gd|lit|%d费
+autoload/GameState.gd|lit|斧头
+autoload/GameState.gd|lit|深海币 %d~%d ｜ %s装备×1 (%d★)
+autoload/GameState.gd|lit|盾
+autoload/shot_diff.gd|lit|咸鱼翻身
+autoload/shot_diff.gd|lit|小龟
+autoload/shot_diff.gd|lit|深海霸主
+autoload/shot_diff.gd|lit|石头龟
+autoload/shot_diff.gd|lit|竹叶龟
+autoload/shot_diff.gd|lit|萌新龟龟
+autoload/shot_diff.gd|lit|退役龟皇
+autoload/shot_diff.gd|lit|龟界传说
+autoload/tutorial_director.gd|lit|看完了 → 打第二把 ▶
+autoload/tutorial_director.gd|lit|练习木桩
+autoload/tutorial_director.gd|lit|继续 ▶
+autoload/tutorial_director.gd|lit|装备买好了 → 去背包
+autoload/tutorial_director.gd|lit|装好了 → 看看图鉴
+scripts/gamedata/axe_evolution.gd|lit|亡灵之斧
+scripts/gamedata/axe_evolution.gd|lit|余烬
+scripts/gamedata/axe_evolution.gd|lit|全息斧
+scripts/gamedata/axe_evolution.gd|lit|小木斧
+scripts/gamedata/axe_evolution.gd|lit|炽天使
+scripts/gamedata/axe_evolution.gd|lit|石斧
+scripts/gamedata/axe_evolution.gd|lit|金斧
+scripts/gamedata/axe_evolution.gd|lit|钻石斧
+scripts/gamedata/axe_evolution.gd|lit|铁斧
+scripts/gamedata/bracket_layout.gd|lit|%d强
+scripts/gamedata/bracket_layout.gd|lit|8强
+scripts/gamedata/bracket_layout.gd|lit|决赛
+scripts/gamedata/bracket_layout.gd|lit|半决赛
+scripts/gamedata/copy_rules.gd|lit|变形态: cyber_ai_charge=1 6 秒后仍为真(赛博龟的充能形态)
+scripts/gamedata/copy_rules.gd|lit|变形态: hunter_roll_buff=true + state=move(猎人的翻滚形态)
+scripts/gamedata/copy_rules.gd|lit|变形态: shell_stealth=true + untargetable_until 长时间不可选中
+scripts/gamedata/copy_rules.gd|lit|永久改属性: aspd_perm=1.2 · atk_range 100→125 · move_spd 95→99.75(6 秒后仍在)
+scripts/gamedata/copy_rules.gd|lit|永久改属性: crit_fate_until=+999s(暴击 +75% / 暴伤 +34%), 撤销只发生在【再放一次 diceFate】时 ⇒ 龟壳身上等于一整场白嫖(同 angelAscend 那一类)
+scripts/gamedata/copy_rules.gd|lit|永久获得一件真装备: equips 多一件 · base_atk 44→54 · maxHp 6000→6200 · lifesteal +0.05 · echarge_perm 1.08
+scripts/gamedata/copy_rules.gd|lit|自我调用: 抄到【复制】会无限递归 → Stack overflow(实测 2026-08-30)
+scripts/gamedata/copy_rules.gd|lit|锁死龟壳: energy_lock_until=+999s 且 atk_range +60 —— 解锁在镰刀横扫里, 而镰刀要等 headless_soul_stacks 减到 0, 减层数的代码在 `u[\"id\"] == \"headless\"` 分支里, 龟壳永远减不掉 ⇒ 整场再也放不出任何技能(实测)
+scripts/gamedata/equip_stats.gd|lit|初始龟能
+scripts/gamedata/equip_stats.gd|lit|反伤
+scripts/gamedata/equip_stats.gd|lit|射程
+scripts/gamedata/equip_stats.gd|lit|护甲
+scripts/gamedata/equip_stats.gd|lit|护甲穿透
+scripts/gamedata/equip_stats.gd|lit|护盾增幅
+scripts/gamedata/equip_stats.gd|lit|攻击力
+scripts/gamedata/equip_stats.gd|lit|攻击射程
+scripts/gamedata/equip_stats.gd|lit|攻击速度
+scripts/gamedata/equip_stats.gd|lit|无属性加成
+scripts/gamedata/equip_stats.gd|lit|暴击伤害
+scripts/gamedata/equip_stats.gd|lit|暴击率
+scripts/gamedata/equip_stats.gd|lit|最大生命值
+scripts/gamedata/equip_stats.gd|lit|治疗与护盾增幅
+scripts/gamedata/equip_stats.gd|lit|治疗增幅
+scripts/gamedata/equip_stats.gd|lit|生命偷取
+scripts/gamedata/equip_stats.gd|lit|移动速度
+scripts/gamedata/equip_stats.gd|lit|闪避
+scripts/gamedata/equip_stats.gd|lit|魔抗
+scripts/gamedata/equip_stats.gd|lit|魔法穿透
+scripts/gamedata/equip_stats.gd|lit|龟能充能速率
+scripts/gamedata/minion_codex.gd|lit|人体浪板
+scripts/gamedata/minion_codex.gd|lit|冷却 5 秒。锁定 150~350 码之间的敌人，链射命中后使其眩晕 0.4 秒、拉到自己身后，并造成 1×攻击力 魔法伤害。
+scripts/gamedata/minion_codex.gd|lit|前排 · 近战
+scripts/gamedata/minion_codex.gd|lit|后排 · 远程
+scripts/gamedata/minion_codex.gd|lit|吞噬
+scripts/gamedata/minion_codex.gd|lit|射程 2000。蓄力 1.5 秒后发射一枚慢速追踪导弹，命中处核爆：400 码范围内造成 [color=#ff9f43]4×攻击力[/color] 物理伤害，并使命中的敌人受到的治疗降低 50%，持续 4 秒。
+scripts/gamedata/minion_codex.gd|lit|射程 2000。高高跃起并回复 2×攻击力 生命(离目标太近则先后跳拉开)，射出铁链将目标眩晕并把自己拉过去；接触瞬间造成 [color=#ff9f43]目标 10% 最大生命[/color] 物理伤害，随后踩着目标滑行——对被踩者持续造成 2×攻击力 物理伤害，沿途敌人受到 1.5×攻击力 物理伤害并被击退，最后跳下。
+scripts/gamedata/minion_codex.gd|lit|射程 500。举拳蓄力 0.35 秒后砸地，对身前 60° 锥形 500 码内造成 [color=#ff9f43]4×攻击力[/color] 魔法伤害；每第 3 次改为高高跃起、空中蓄力 1 秒后下锤，覆盖 700 码全域并造成 [color=#ff9f43]6×攻击力[/color] 魔法伤害。
+scripts/gamedata/minion_codex.gd|lit|普攻造成 1×攻击力 物理伤害，每第 5 击附带旋刃。
+scripts/gamedata/minion_codex.gd|lit|目标生命低于 15% 时发动，1.5 秒演出期间自身获得 [color=#ff9f43]95% 伤害减免[/color]，完成后回复 [color=#ff9f43]目标剩余生命的 2 倍[/color]，并获得持续 5 秒的 50% 攻速提升，同时窃取目标的主动技能。普攻、铁锁、铁拳与强化普攻都能触发。
+scripts/gamedata/minion_codex.gd|lit|精英小将
+scripts/gamedata/minion_codex.gd|lit|统领位补位 · 近战
+scripts/gamedata/minion_codex.gd|lit|近战小将
+scripts/gamedata/minion_codex.gd|lit|远程小将
+scripts/gamedata/minion_codex.gd|lit|追踪火箭筒
+scripts/gamedata/minion_codex.gd|lit|铁锁
+scripts/gamedata/minion_codex.gd|lit|铁锤
+scripts/gamedata/minion_codex.gd|lit|长手刃 (普攻)
+scripts/gamedata/phase2_config.gd|lit|休赛
+scripts/gamedata/phase2_config.gd|lit|休赛日 · 按积分赛的规矩打 · 这天打的算本周场次
+scripts/gamedata/phase2_config.gd|lit|你的进度还在这台手机上 —— 绑定只是把它锁到这个邮箱上，
+scripts/gamedata/phase2_config.gd|lit|冠军
+scripts/gamedata/phase2_config.gd|lit|决赛日
+scripts/gamedata/phase2_config.gd|lit|双方同时开打 · 结果统一在本轮开播时揭晓\n去【决赛日 → 看对阵图】等翻面
+scripts/gamedata/phase2_config.gd|lit|名字太短了 —— 至少 %d 个字
+scripts/gamedata/phase2_config.gd|lit|名字太长了 —— 最多 %d 个字(现在 %d 个)
+scripts/gamedata/phase2_config.gd|lit|四强
+scripts/gamedata/phase2_config.gd|lit|换手机时能拿回来。\n收不到验证码？看看垃圾邮件，或者换一个邮箱重发。
+scripts/gamedata/phase2_config.gd|lit|满配额
+scripts/gamedata/phase2_config.gd|lit|积分赛
+scripts/gamedata/phase2_config.gd|lit|绑定邮箱才能开始
+scripts/gamedata/phase2_config.gd|lit|这天按积分赛的规矩打
+scripts/gamedata/phase2_config.gd|lit|进决赛日
+scripts/gamedata/phase2_config.gd|lit|闯关赛
+scripts/gamedata/phase2_config.gd|lit|龟主-
+scripts/gamedata/phase2_config.gd|lit|龟主-0000
+scripts/gamedata/phase2_config.gd|lit|🏆 今天是决赛日 · 去【决赛日 → 看对阵图】打你那一场
+scripts/gamedata/phase2_config.gd|lit|🏆 今天是决赛日 · 本周没晋级 · 下周一开新的一轮
+scripts/gamedata/phase2_config.gd|lit|🏆 今天是决赛日 · 闯关赛没打进决赛日 · 下周一开新的一轮
+scripts/gamedata/phase2_equip.gd|lit|双穿
+scripts/gamedata/phase2_equip.gd|lit|反伤
+scripts/gamedata/phase2_equip.gd|lit|护甲
+scripts/gamedata/phase2_equip.gd|lit|护甲魔抗
+scripts/gamedata/phase2_equip.gd|lit|攻
+scripts/gamedata/phase2_equip.gd|lit|暴
+scripts/gamedata/phase2_equip.gd|lit|暴击
+scripts/gamedata/phase2_equip.gd|lit|生命
+scripts/gamedata/phase2_equip.gd|lit|盾疗
+scripts/gamedata/phase2_equip.gd|lit|穿
+scripts/gamedata/phase2_equip.gd|lit|魔抗
+scripts/gamedata/phase2_equip.gd|lit|魔穿
+scripts/gamedata/phase2_minion.gd|lit|射击
+scripts/gamedata/phase2_minion.gd|lit|挥砍
+scripts/gamedata/phase2_minion.gd|lit|整排挥砍
+scripts/gamedata/phase2_minion.gd|lit|深海小将
+scripts/gamedata/phase2_minion.gd|lit|深海小将精英
+scripts/gamedata/phase2_types.gd|lit|剑
+scripts/gamedata/phase2_types.gd|lit|剑系
+scripts/gamedata/phase2_types.gd|lit|奇械
+scripts/gamedata/phase2_types.gd|lit|奇械·魔抗
+scripts/gamedata/phase2_types.gd|lit|弓箭
+scripts/gamedata/phase2_types.gd|lit|弓箭·神射手
+scripts/gamedata/phase2_types.gd|lit|斧头
+scripts/gamedata/phase2_types.gd|lit|斧头·砍伐
+scripts/gamedata/phase2_types.gd|lit|枪
+scripts/gamedata/phase2_types.gd|lit|枪·神枪手
+scripts/gamedata/phase2_types.gd|lit|每件剑额外提供 +15 攻击力 · 【剑士】追打 1 次, 伤害 25%×身上剑件数 · 【血祭】本体每损失 1% 生命 → +0.3% 攻击力
+scripts/gamedata/phase2_types.gd|lit|每件剑额外提供 +25 攻击力 · 【剑士】追打 2 次, 每次伤害 40%×身上剑件数 · 【血祭】本体每损失 1% 生命 → +0.5% 攻击力
+scripts/gamedata/phase2_types.gd|lit|每件剑额外提供 +8 攻击力 · 【剑士】携带剑者每次普攻后, 以 18%×身上剑件数 的伤害追打 1 次(5倍攻速节奏, 触发命中效果) · 【血祭】全队每个单位: 本体每损失 1% 生命 → +0.1% 攻击力
+scripts/gamedata/phase2_types.gd|lit|每件奇械额外提供 +10 魔法抗性 · 【铸币】每 2.5 秒铸 2 枚(本场最多 9 枚) · 【冰封】全队攻击 15% 概率冻结目标 1.5 秒(同一目标每 2.5 秒最多被冻 1 次, 解冻后 1.5 秒免疫冻结)
+scripts/gamedata/phase2_types.gd|lit|每件奇械额外提供 +16 魔法抗性 · 【铸币】每 2.5 秒铸 3 枚(本场最多 14 枚) · 【冰封】25% 概率 · 【僵硬】全队每段攻击为目标叠 1 层僵硬(持续 5 秒, 叠加刷新时长; 每层 -2% 攻击力, 最多 20 层)
+scripts/gamedata/phase2_types.gd|lit|每件奇械额外提供 +23 魔法抗性 · 【铸币】每 2.5 秒铸 3 枚(本场最多 20 枚) · 【冰封】40% 概率 · 【僵硬】同上 · 【易碎】被冻结或眩晕的敌人, 受到的伤害 +25%
+scripts/gamedata/phase2_types.gd|lit|每件奇械额外提供 +4 魔法抗性 · 【铸币】每 2.5 秒全队铸造 1 枚深海币(本场最多 5 枚, 战斗结算时进账)
+scripts/gamedata/phase2_types.gd|lit|每件弓箭额外提供 +16% 暴击率 · 【处决】斩杀线 = 7% + 该单位暴击率 × 0.1 · 【腐蚀·穿透】全队攻击无视目标 10% 护甲与魔法抗性 · 【腐蚀叠层】每 2.5 秒, 所有敌方单位 +1 层腐蚀(每层使其受到的伤害 +3%, 最多 5 层); 腐蚀满 5 层的敌人, 其受到伤害的 20% 转化为真实伤害
+scripts/gamedata/phase2_types.gd|lit|每件弓箭额外提供 +22% 暴击率 · 【处决】斩杀线 = 10% + 该单位暴击率 × 0.1 · 【腐蚀·穿透】全队攻击无视目标 22% 护甲与魔法抗性 · 【腐蚀叠层】每 2.5 秒, 所有敌方单位 +1 层腐蚀(每层使其受到的伤害 +4%, 最多 5 层); 腐蚀满 5 层的敌人, 其受到伤害的 35% 转化为真实伤害
+scripts/gamedata/phase2_types.gd|lit|每件弓箭额外提供 +9% 暴击率 · 【处决】全队单位攻击时, 目标生命百分比低于斩杀线则直接处决(斩杀线 = 4% + 该单位暴击率 × 0.1) · 【腐蚀·穿透】全队攻击无视目标 4% 护甲与魔法抗性 · 【腐蚀叠层】每 2.5 秒, 所有敌方单位 +1 层腐蚀(每层使其受到的伤害 +2%, 最多 5 层); 腐蚀满 5 层的敌人, 其受到伤害的 10% 转化为真实伤害
+scripts/gamedata/phase2_types.gd|lit|每件枪额外提供 +20% 攻击速度 · 【金弹】每把枪射满 4 发额外射出 1 发金弹(继承该枪全部子弹效果, 另加 60% 真实伤害; 金弹不计入计数) · 【炮台一】我方前方生成第一座炮台: 每 2.5 秒朝最近的敌人轰击, 对炮台与该敌直线上所有敌人各造成 80 物理伤害, 并为我方最低血友军回复 30% × 造成伤害的生命
+scripts/gamedata/phase2_types.gd|lit|每件枪额外提供 +40% 攻击速度 · 【金弹】射满 3 发 → 金弹(+80% 真伤) · 【炮台二】中心生成第二座炮台: 每 5 秒产出 (100 + 20 × 全队枪件数) 能量, 交替使用 —— 一次转化为护盾均摊全队, 下一次化为弹幕由敌方全体均摊该能量值的魔法伤害
+scripts/gamedata/phase2_types.gd|lit|每件枪额外提供 +66% 攻击速度 · 【金弹】射满 2 发 → 金弹(+100% 真伤) · 【炮台三·火控】后方生成第三座炮台, 为携带枪者接通火控: 额外造成 (10 + 携带者身上枪件数 × 10)% 真实伤害
+scripts/gamedata/phase2_types.gd|lit|每件法器额外提供 +11 法术穿透 与 +8 最大龟能 · 法力条满 120 · 【灵泉】8% · 【余韵】友军受到治疗时, 额外获得等于治疗量 30% 的护盾
+scripts/gamedata/phase2_types.gd|lit|每件法器额外提供 +14 法术穿透 与 +10 最大龟能 · 法力条满 80 · 【灵泉】12% · 【余韵】50% · 【共鸣】每 7.5 秒引动一次共鸣: 全队每个友军回复 15% 最大生命值, 并净化 2 种减益(眩晕/减速/灼烧/中毒/诅咒, 按此顺序)
+scripts/gamedata/phase2_types.gd|lit|每件法器额外提供 +4 法术穿透 与 +4 最大龟能 · 每件法器拥有独立法力条, 满 180 触发其效果(未激活羁绊时满值 200)(每 2.5 秒 +15 法力, 另按造成的技能伤害 ×0.1 与受到的伤害 ×0.1 累积)
+scripts/gamedata/phase2_types.gd|lit|每件法器额外提供 +7 法术穿透 与 +6 最大龟能 · 法力条满 150 · 【灵泉】每 2.5 秒, 全队回复已损失生命的 5%
+scripts/gamedata/phase2_types.gd|lit|每件灵物额外提供 +13% 闪避率 · 2 个触手, 拍击伤害 +50% · 闪避蓄能同上 · 【亡灵】继承 65% 攻击力与生命 · 亡魂阵亡后再循环 2 次
+scripts/gamedata/phase2_types.gd|lit|每件灵物额外提供 +18% 闪避率 · 2 个触手, 拍击伤害 +100% · 闪避蓄能同上 · 【亡灵】继承 100% 攻击力与生命 · 亡魂阵亡后再循环 3 次
+scripts/gamedata/phase2_types.gd|lit|每件灵物额外提供 +5% 闪避率 · 1 个无敌触手登场 · 【拍击蓄能】触手每 {C:SpiritSynergySystem.SLAP_PERIOD} 秒获得 1 层拍击层数(无上限); 空闲且射程内有敌人时消耗 1 层, 朝最近的一名敌人拍下, 对沿途敌人造成 ({C:SpiritSynergySystem.HIT_HP_PCT%}% 目标最大生命 + {C:SpiritSynergySystem.HIT_FLAT}) 物理伤害 · 【亡灵】友方单位阵亡时原地召唤 1 只亡魂, 继承其 20% 攻击力与生命, 自动攻击最近敌人; 亡魂阵亡后不再循环
+scripts/gamedata/phase2_types.gd|lit|每件灵物额外提供 +9% 闪避率 · 2 个触手 · 【闪避蓄能】己方任一单位闪避成功 → 每根触手各获得 1 层拍击层数(不设上限) · 【亡灵】继承 38% 攻击力与生命 · 亡魂阵亡后再循环 1 次(每次属性 ×0.9)
+scripts/gamedata/phase2_types.gd|lit|每件盾额外提供 +13 护甲 · 【怒气】冲击波 6% · 【圣光护盾】获得第 2 件「圣光护盾」装备 · 【收殓】敌方单位阵亡时, 为最近的携带盾者提供该单位 30% 最大生命值的护盾
+scripts/gamedata/phase2_types.gd|lit|每件盾额外提供 +22 护甲 · 【怒气】冲击波 8% · 【收殓】同上 · 【圣光·强化】盾类装备为携带者提供护盾或治疗时, 额外提供其 20% 的圣光护盾值; 且圣光护盾装备生成的所有圣盾值 +20%
+scripts/gamedata/phase2_types.gd|lit|每件盾额外提供 +5 护甲 · 【怒气】全队每个单位每累计受到 400 点伤害, 就对最近的敌人释放一次冲击波, 造成 4% 自身最大生命值的真实伤害, 并为自己获得该伤害 20% 的护盾值 · 【圣光护盾】获得 1 件「圣光护盾」装备(可在背包自由装配, 不占装备位与单只上限; 掉档即消失): +250 最大生命, 每 3 秒为携带者生成 55 点圣光护盾值, 圣光护盾存在时反击敌人的每段伤害造成 2 点真实伤害
+scripts/gamedata/phase2_types.gd|lit|每件药水额外提供 +12% 治疗强度 与 +12% 护盾强度 与 +4 最大龟能 · 【猎物】+25% · 【战利品】每击杀 1 名猎物 → 全队攻击力永久 +5(本场累积·跨上下路与决胜保留)
+scripts/gamedata/phase2_types.gd|lit|每件药水额外提供 +20% 治疗强度 与 +20% 护盾强度 与 +6 最大龟能 · 【猎物】+40% · 【战利品】每击杀 1 名猎物 → 全队攻击力永久 +8 · 【斩首】攻击猎物时, 若其生命低于 20% → 直接处决
+scripts/gamedata/phase2_types.gd|lit|每件药水额外提供 +6% 治疗强度 与 +6% 护盾强度 与 +2 最大龟能 · 【猎物】每 2.5 秒自动将敌方当前生命值最高的 1 名单位标记为猎物(龟蛋除外; 猎物死亡后下个周期重选); 全队对猎物造成的伤害 +15%
+scripts/gamedata/phase2_types.gd|lit|每件遗物额外提供 +10% 生命偷取 · 【生死界】>50% 时 +12% 攻击力(<50% 吸血翻倍) · 【远古之力】每 2.5 秒全队永久 +2% 增伤(上限 +35%) · 【龟蛋加固】本方龟蛋 +3600 最大生命值, 还击 140 攻击力 · 【觉醒】本路战斗开打满 20 秒后, 已累积的远古之力 +50%
+scripts/gamedata/phase2_types.gd|lit|每件遗物额外提供 +3% 生命偷取 · 【生死界】携带遗物者生命 >50% 时额外 +3% 攻击力; 生命 <50% 时其生命偷取【翻倍】
+scripts/gamedata/phase2_types.gd|lit|每件遗物额外提供 +5% 生命偷取 · 【生死界】>50% 时 +5% 攻击力(<50% 吸血翻倍) · 【远古之力】每 2.5 秒全队永久 +1% 增伤(本场累积·跨路保留, 上限 +15%) · 【龟蛋加固】本方龟蛋 +1200 最大生命值, 且龟蛋开始还击(40 攻击力, 射程 420)
+scripts/gamedata/phase2_types.gd|lit|每件遗物额外提供 +8% 生命偷取 · 【生死界】>50% 时 +8% 攻击力(<50% 吸血翻倍) · 【远古之力】每 2.5 秒全队永久 +1.5% 增伤(上限 +25%) · 【龟蛋加固】本方龟蛋 +2200 最大生命值, 还击 80 攻击力
+scripts/gamedata/phase2_types.gd|lit|法器
+scripts/gamedata/phase2_types.gd|lit|法器·法师
+scripts/gamedata/phase2_types.gd|lit|灵物
+scripts/gamedata/phase2_types.gd|lit|灵物·召唤
+scripts/gamedata/phase2_types.gd|lit|盾
+scripts/gamedata/phase2_types.gd|lit|盾·守护
+scripts/gamedata/phase2_types.gd|lit|药水
+scripts/gamedata/phase2_types.gd|lit|药水·龟能
+scripts/gamedata/phase2_types.gd|lit|装备小木斧即激活 · 商店里更容易再遇到它(概率随本大轮的局数增长, 有上限) · 重复购买会化作砍伐经验
+scripts/gamedata/phase2_types.gd|lit|遗物
+scripts/gamedata/phase2_types.gd|lit|遗物·古物
+scripts/gamedata/phase2_types.gd|lit|队伍每件装备 +130 最大生命值(食物双倍 +260) · 【成长】每 2.5 秒每件食物为其携带者永久 +30 · 【学院】队伍全体额外 +220 最大生命值 · 【盛宴】每 2.5 秒, 全队回复已损失生命的 3%
+scripts/gamedata/phase2_types.gd|lit|队伍每件装备 +70 最大生命值(食物双倍 +140) · 【成长】每 2.5 秒每件食物为其携带者永久 +16 · 【学院】队伍全体额外 +100 最大生命值
+scripts/gamedata/phase2_types.gd|lit|队伍每件装备为其携带者额外提供 +30 最大生命值(食物类装备双倍 +60) · 【成长】每 2.5 秒, 每件食物为其携带者永久 +8 最大生命值(无上限, 本场累积·跨上下路与决胜保留)
+scripts/gamedata/phase2_types.gd|lit|食物
+scripts/gamedata/phase2_types.gd|lit|食物·增益
+scripts/gamedata/phase2_types.gd|lit|香火
+scripts/gamedata/phase2_types.gd|lit|香火·刻痕
+scripts/gamedata/phase2_types.gd|lit|香火石的携带者每造成 4000 点伤害, 刻下一道香火刻痕(最多 300 道, 跨对局保留, 赛季重置) · 每道刻痕使香火石额外提供 0.2% 增伤与 0.1% 减伤给它的携带者, 并使全队获得 0.1% 增伤与 0.05% 减伤 · 多件香火石【共用同一条充能条与刻痕池】, 羁绊只激活 1 档
+scripts/gamedata/skill_forms.gd|lit|u[\"_hammer_n\"] % 3 == 2 → 下一发是第3次 → 形态1(强化); 否则形态0(普通)
+scripts/gamedata/skill_forms.gd|lit|u[\"ship_summoned\"] 为假 → 形态0(冲锋召船); 为真 → 形态1(霰弹)
+scripts/gamedata/skill_forms.gd|lit|举拳蓄力后砸地, 对身前锥形范围造成魔法伤害
+scripts/gamedata/skill_forms.gd|lit|召出实体船并冲锋撞击, 撞到的第一个敌人受魔法伤害并被击飞; 船留在场上
+scripts/gamedata/skill_forms.gd|lit|朝目标喷出扇面弹丸, 每颗对命中的第一个敌人造成物理伤害并击退
+scripts/gamedata/skill_forms.gd|lit|海盗船·冲锋
+scripts/gamedata/skill_forms.gd|lit|铁锤
+scripts/gamedata/skill_forms.gd|lit|铁锤·跃击
+scripts/gamedata/skill_forms.gd|lit|霰弹
+scripts/gamedata/skill_forms.gd|lit|高高跃起、空中蓄力后下锤, 覆盖更大范围并造成更高魔法伤害
+scripts/gamedata/turtle_stats.gd|lit|近战刺客
+scripts/gamedata/turtle_stats.gd|lit|近战坦克
+scripts/gamedata/turtle_stats.gd|lit|近战斗士
+scripts/gamedata/turtle_stats.gd|lit|近战法师
+scripts/gamedata/turtle_stats.gd|lit|近战辅助
+scripts/gamedata/turtle_stats.gd|lit|远程刺客
+scripts/gamedata/turtle_stats.gd|lit|远程坦克
+scripts/gamedata/turtle_stats.gd|lit|远程射手
+scripts/gamedata/turtle_stats.gd|lit|远程法师
+scripts/gamedata/turtle_stats.gd|lit|远程辅助
+scripts/gamedata/vfxlab_cases.gd|lit|(未登记·跑的是缺省配置)
+scripts/gamedata/vfxlab_cases.gd|lit|12 秒起携带者上下各走 220 码(2.4 秒一个来回), 激光源、枪口飘带与伤害判定都要跟着走; 血条上法力盾段满不透明 + 上下亮边。
+scripts/gamedata/vfxlab_cases.gd|lit|8 秒起携带者上下各走 220 码(2.4 秒一个来回), 浮囊前后两半都要跟着走; 余额越少浮囊越瘪(四档)。
+scripts/gamedata/vfxlab_cases.gd|lit|A/B 基线: 与 p2eq_082 逐字同参数、只换装备(attacker 与 enemy_attacks 都开)。
+scripts/gamedata/vfxlab_cases.gd|lit|A/B 基线: 与 p2eq_085 / p2eq_081 同参数、只换装备。这里出现的一切都是【通用挨打演出】。
+scripts/gamedata/vfxlab_cases.gd|lit|A/B 基线: 与 p2eq_093 逐字同参数、只换装备。这里出现的一切都是【通用普攻演出】, 不能记到任何一件装备头上。
+scripts/gamedata/vfxlab_cases.gd|lit|allies=1 是必须的 —— 没有友军, 治疗那半条效果一次都不会发生。0.2 秒一档密排是因为治疗光束只亮 ~0.2 秒。
+scripts/gamedata/vfxlab_cases.gd|lit|attacker + enemy_attacks 同时开。3 敌围殴约 7 秒一层, 26 秒够看 2~3 次强化普攻。
+scripts/gamedata/vfxlab_cases.gd|lit|eq2=089 凑法器 1 档(2 件不同 id)。碑钉在地上 ⇒ focus_h 压到 0.4。allies=1 才看得到友军护盾。★zoom 3.4 时 250 码半径的碑环正好顶满宽度、友军被切在左上角 ⇒ 降到 3.0。
+scripts/gamedata/vfxlab_cases.gd|lit|★2.95/3.10 两张应当【没有】箭雨(修前 3 秒就放了); 6.10 起两轮同时落下。
+scripts/gamedata/vfxlab_cases.gd|lit|★2026-08-08 改机位: 横斩本身就是 250 码 120 度、波再往外推 —— focus 锁 carrier(当时它还要后撤 150 码)会把整段斩击甩出画面, zoom 2.2 也装不下。改锁场地正中 + zoom 1.6。fast_energy 让 80 龟能的十字斩几秒就放; 0.1 秒一档密排才抓得到横斩→横波→竖斩→竖波四段(整段只有 ~0.8 秒)。
+scripts/gamedata/vfxlab_cases.gd|lit|★2026-08-08 重做后拍点全改: 左管弹丸真的要飞(200 码 ≈ 0.22 秒)、右管电链一格一格跳(每格 0.09 秒) ⇒ 演出从 ~0.15 秒拉长到 ~0.45 秒。左管(偶数发)取 +0.05/+0.15/+0.30 看弹丸出膛→在途→落人; 右管取 +0.03/+0.11/+0.20/+0.32 正好各压在第 1/2/3 跳上。
+scripts/gamedata/vfxlab_cases.gd|lit|★2026-08-09 两处更正。①旧说法【浪潮只活 0.42 秒】已过期: 3★ 八跳现在活约 1.9 秒。②【浪潮一次都不触发】的根因是 carrier_silent 那一条: 携带者是 basic 龟, 它自己的 _sk_basic_strike 第一行就是 _stun(u, 1.65) 全程定身自己 —— 能量一满就把自己钉 1.65 秒, 14 秒只普攻 2 次, 凑不齐每第三下。这是产品的正确行为, 错在台子选了会自缚的龟。加 carrier_silent 后浪潮 t=1.80 触发 8 跳。★拍点必须压在触发时刻之后(1.82 起)。
+scripts/gamedata/vfxlab_cases.gd|lit|★2026-08-09 半径 1000→500(用户拍板): 战场 ARENA=1596×728, 直径 2000 比长边还长 ⇒ 预警圈整个在画面外; 500 ⇒ 直径 1000 横向放得下、纵向(728)仍超 ⇒ 上下被战场边界切平。★zoom 定在 1.0 = 真实对局的镜头。教训: 先后试过 3.2/2.2, 电弧要么出画要么在顶上排成一排, 我一度以为特效坏了; 探针证明 22 段电弧全在、可见、alpha 0.46、坐标正确 —— 纯粹是台子比实战镜头近太多。评审特效的台子默认就该用实战镜头, 拉近只为看细节, 不能拿它下【读不读得出】的结论。
+scripts/gamedata/vfxlab_cases.gd|lit|★2026-08-09 拍点重排: 起手 15% 血确实进 ×6 档, 但**它回血很快**——1 秒左右就爬出 25%, 而旧拍点从 1.0 秒才开始 ⇒ ×6 档一张都没拍到, 看到的全是平时态的暗甲片(我因此差点判成\"看不出在回血\")。现在前五档压在 0.12~0.75 秒看爆发(全甲亮 + 环波), 后三档看平时态(每 0.25 秒点亮一片甲, 轮着转)。
+scripts/gamedata/vfxlab_cases.gd|lit|★2026-09-06 重做完(素材全换): 五段=②发射闪光(4帧·锚出手点不跟飞) ③弹体(4方向×4帧·**按角度选帧不旋转**) ④拖尾(45ms 一个残影·不画进贴图) ⑤命中星爆(3帧+拉alpha收尾)。拍点压在 3s 触发前后。zoom 1.0 = 实战镜头(拉近只用来看细节, 别拿拉近的取景下结论)。
+scripts/gamedata/vfxlab_cases.gd|lit|★60 发每发间隔 0.03 秒 ⇒ 整轮 1.8 秒, 拍点铺满它。 ★看点: 第一轮把护甲削到封顶(★3 是 40), **第二轮之后就不再掉** —— 上限是对单一目标累计的, 不是每轮重置。
+scripts/gamedata/vfxlab_cases.gd|lit|★ANCHOR_IV=0.25 很密, 看的是攒满之后那一次击飞普攻; 要有残血友军当回血目标。 ★两个已踩过的坑: `shots: []` 会让台子进 HOLD 永不退出; `enemy_attacks` 是「假人还不还手」, 没人先动手它们就不还手。
+scripts/gamedata/vfxlab_cases.gd|lit|★FORTRESS_CAP=25 层, 三个假人才叠得够快; carrier_hp 拉满防死在满层之前。 ★两个已踩过的坑: `shots: []` 会让台子进 HOLD 永不退出; `enemy_attacks` 是「假人还不还手」, 没人先动手它们就不还手。
+scripts/gamedata/vfxlab_cases.gd|lit|★`carrier_hp` 压到 35%: 「每秒回血」这件事只有血不满才看得出来。 ★enemy_attacks + attacker 都开: 孵化进度靠【造成伤害×0.1 + 承受伤害×0.1 + 每周期 +5】喂, 不打架就攒得极慢(★3 要 500 点)。 ★allies 2: 孵满那一下是**全队均摊**护盾, 没有队友就看不出「均摊」。 ★★ 2026-09-13 重配: 原来 34 秒窗口 + 自然速率 ⇒ ★３ 要 500 点进度, **一次升级都没拍到**, 而我上一轮把这个写成了「台子窗口不够长」—— 真相是那段演出根本没人看过(里面藏着 3 样禁区与一次借素材)。 ★新开关 `egg_kick`: 每 3 秒走**真实入口** `_egg_add_progress` 灌 100 点 ⇒ t≈3 / 6 / 9 各升一级, 拍点就压在这三处。 ★配 `bars` 不是 `ui`: 「LV UP LvＮ」是飘字, `ui: true` 会把飘字连同整层 UI 关掉。
+scripts/gamedata/vfxlab_cases.gd|lit|★`mortal: true` + carrier_hp 压到 2% 且 enemy_attacks 开着: **携带者必须真的死掉**, 否则这一件一个字都不会触发(它是 on-death)。 ★拍点每 1 秒一张覆盖【被打死 → 原位变虫 → 小虫开打 → ★3 每 WORM_SPLIT_IV=2.5 秒分裂一只(上限 WORM_CAP=4)】整条。 ★小虫 ★3 有 1 万血, 不会被秒。
+scripts/gamedata/vfxlab_cases.gd|lit|★attacker 关掉: 这一件靠**周期**触发, 不靠命中 —— 开着普攻只会把瓶子的抛物线盖住。 ★假人 5 万血且不还手: 要看清冰瓶砸中之后的击退与冰寒, 打死了就没得看。 ★拍点 5.60~7.80: 覆盖【蓄力前 → 抛出 → 空中抛物线 → 砸中 → 击退落地】整条。首发在 t≈6.0(VIAL_IV), 落点 t≈6.92。
+scripts/gamedata/vfxlab_cases.gd|lit|★attacker 必开: 层数靠**普攻**攒, 不开就永远放不出波。 ★三个敌人散开: 弧形波是**张角**的(第一次 90°, 每放一次 +90° 到 360°), 一个敌人看不出张角在变宽。 ★假人 20 万血: ★3 每道波 500 魔法伤, 打死了就看不到后面几次张角变化。 ★拍点前密(3.2~4.5 覆盖第一次放波)后疏(看张角逐次变宽)。
+scripts/gamedata/vfxlab_cases.gd|lit|★carrier_hp 压到 0.45: 满血看不出回血。ANEMONE_IV=7 ⇒ 拍点压在 7/14/21 秒。 ★两个已踩过的坑: `shots: []` 会让台子进 HOLD 永不退出; `enemy_attacks` 是「假人还不还手」, 没人先动手它们就不还手。
+scripts/gamedata/vfxlab_cases.gd|lit|★carrier_hp 取 0.45 而不是 0.3: 要拍到【跌破 35% 那一刻】的护盾套上过程。设到阈值以下的话入场即触发, 只能拍到结果拍不到过程。后段拍点铺到 25 秒是看 20 秒线性衰减到底看不看得出。
+scripts/gamedata/vfxlab_cases.gd|lit|★enemies=3 且 gap 收到 150 码 —— 要挤在一起才有'最密集处'。投掷物有飞行时间, 6.05/6.15/6.30 三连拍分别落在出手/在途/落地。镜头锁场地中心(投掷起点与落点分处两端, 锁携带者会把落点切出画面)。
+scripts/gamedata/vfxlab_cases.gd|lit|★enemy_attacks 开着: 要看的正是「挨打也只掉 1 点」—— 假人不还手就验不到那条。 ★拍点前密后疏再密: 0.6~2.0 看召唤那一下的破土, 4~20 看它在场上打, 22.0~24.0 密排是因为 ★3 的存活是 **23 秒**, 到期爆炸就在那一刻。 ★假人 5 万血: 骷髅攻击力只有 8, 打不死才看得完整段。
+scripts/gamedata/vfxlab_cases.gd|lit|★enemy_dist 拉到 320: 哑铃是飞行物, 敌人贴脸的话飞行段只有几帧看不出它长什么样。 ★两个已踩过的坑: `shots: []` 会让台子进 HOLD 永不退出; `enemy_attacks` 是「假人还不还手」, 没人先动手它们就不还手。
+scripts/gamedata/vfxlab_cases.gd|lit|★gap 收到 110 码 —— 溅射半径 250 码, 敌人散开就打不到第二个, 会读成'没有溅射'。这是把判据焊在几何上: 三个敌人挤进一个溅射圈里, 怎么随机都不影响结论(memory [[fb-make-assertions-rng-insensitive]])。
+scripts/gamedata/vfxlab_cases.gd|lit|★mana_kick 灌满法力走真实入口触发共鸣 —— 不灌的话台上法力永远攒不满, 会误判成'没做'。
+scripts/gamedata/vfxlab_cases.gd|lit|★★2026-08-09 实拍重配, 旧配置有四处错、每一处都会让人把结论写反。①【zoom 5.0 不是实战镜头】: 拉近了当然看得见, 而玩家看到的是 zoom 1.0 下一只 40px 高的龟 —— 判据必须落在实战取景, 拉近只用来看细节(临场加 VFXLAB_ZOOM=6)。②【note 说的\"开局强化窗 0~4 秒\"是假的】: 探针实测首次强化在 t=12.00(emp_t 从 0 累到 EMP_IV=12), 旧 shots 前六档 1.0~3.5 秒**一张都不可能拍到 093**, 全是空场/通用演出。③【enemy_dist 60】两只龟直接叠在一起, 分不清谁是谁。④【缺 carrier_silent】: 携带者是 basic 龟, 它自带的巨大金色斩击 + 蓝白能量球把香火演出整个盖掉 —— A/B 基线 ab_attacker 逐张对照证明那两样都是通用演出, 不是这件的。aspd 1.6 让 4 次强化普攻真的挤在一起(否则 4 拳摊在 5.3 秒里, 看不出\"+100% 攻速\")。★ui=true 开着是为了**把这一件的缺口拍出来**: 头像下的装备格里【什么读数都没有】—— (★2026-09-15 订正: 这条缺口已补 —— `EquipReadouts` 里 093 已登记刻痕计数与充能条, 装备格里看得到读数)。
+scripts/gamedata/vfxlab_cases.gd|lit|★★tier_syn=弓箭 是【必须】的: 被动写着'仅在弓箭羁绊激活时', 台子默认零羁绊 ⇒ 不给档位则被动永远不触发, 会被误判成'没做'。fast_energy 用来看主动的连发段。2026-08-11 起: 光迹末端有弩矢镖、每个命中点有 X 爆点(数得出穿几人); 装备格 = 待射发数徽章(volley_left 倒数) + 被动每第三下的进度条(cross_step)。
+scripts/gamedata/vfxlab_cases.gd|lit|★★★3 的层数上限是 **1** ⇒ 第一只小熊(t≈4.0)就满层, 蓄力 DOLL_CHARGE_SEC=1.2 秒后召大熊(t≈5.2)。拍点在 3.6~5.6 密排就是为了看【小熊走过去踢 → 携带者蓄力金光 → 大熊破土】这一段。 ★假人 20 万血且不还手: 大熊 ★3 攻击力 2000, 打死了就看不到熊掌攒层→冲击波(每 2 层一次)。 ★attacker 关掉: 这一件靠周期不靠命中。 ★★2026-09-13 冲击波重做之后拍点重排: 原来 16 个拍点铺满 3.6~14.0, 而**冲击波整段只有 1.2 秒**(t≈11.9 起, 600 码 ÷ 500 码/秒) ⇒ 波这一段只落到 1 张。现在分两簇: 4.00~6.20 看【小熊→蓄力→大熊破土】, 11.55~12.85 每 0.1 秒一张盖住【破土预兆 → 砸地 → 土浪推过去 → 淡尽】。
+scripts/gamedata/vfxlab_cases.gd|lit|★★一整轮是 **3 × CANDLE_IV(5 秒) = 15 秒**, 所以拍点压在 5 / 10 / 15 秒三个切换时刻的前后 —— 那才是相位切换的那一帧。 ★`carrier_hp` 压到 50% + allies 1: 微弱阶段是「携带者与 250 码内友军持续回血」, 血满或没队友都看不出来。 ★假人不还手且 5 万血: 燃烧阶段要看清 500 码内每个敌人身上的魔法伤 + 灼烧层。 ★★2026-09-13 拍点重排: 火焰爆开整段只有 **0.63 秒**(10 帧/16fps), 而原来拍点最密也隔 0.3 秒 ⇒ 整个爆开只能落到两张。现在 14.95~15.65 每 0.07 秒一张, 把【爆心白热 → 火团撑开 → 裂成几堶飘散】盖满。 ★配 `bars` 不是 `ui`: 伤害数字与灼烧层都是飘字。
+scripts/gamedata/vfxlab_cases.gd|lit|★★台子必须用 ★3: THORN_THRESHOLD=[300,270,230] 且 THORN_REFLECT=[0.12,0.25,0.40] ⇒ ★1 既最难攒又反得最少, 20 秒只攒到 282.7/300(探针实测), 一次都不触发。★3 实测 953.6 点 ⇒ 触发 4 次、强化普攻命中 3 次。 ★盾是 4 秒限时(v0.19.356)。 ★两个已踩过的坑: `shots: []` 会让台子进 HOLD 永不退出; `enemy_attacks` 是「假人还不还手」, 没人先动手它们就不还手。
+scripts/gamedata/vfxlab_cases.gd|lit|★★整套演出只有 0.9 秒(白核 0.21 / 地面判定带 0.10 冲亮 + 0.45 保持 + 0.35 淡出), 拍点必须压在 8.0 前后 0.1 秒内起。 ★看点: 地上那条**有亮边的红带**就是判定范围(中线两侧各 50 码), 带子里撒着灼痕; 被打到的**每一个**敌人都有命中火花(以前只有首敌有)。 ★实拍读数对得上文案: 首敌 184 / 身后两个各 92 = 正好 50%。
+scripts/gamedata/vfxlab_cases.gd|lit|★★有效观察窗口是 1.0~4.5 秒: 6.5 秒之后小龟自己的技能 basicBarrage(台子给满龟能)会放出两颗大白球, 把电弧整个盖住 —— 别把那两颗白球当成 027 的演出(我第一轮就差点当它是 bug 去查)。 ★attacker 必须开 —— 它靠**普攻命中**才消耗充能(EQDEMO 默认不攻击, 不开就永远不触发)。 ★假人 5 万血且不还手: 要看满 5 层用完(★3 起手 5 层 × 每 3 秒一次 ⇒ 约 15 秒), 打死了就看不到层数归零那一刻。 ★拍点铺 1.0~7.75 每 0.25s: 覆盖前三次触发与之间的电火花。
+scripts/gamedata/vfxlab_cases.gd|lit|★★看点是那条**两段**的链: 竹箭飞出去命中 → 绿球从敌人身上飞**回**携带者 → **落到身上才结算**(回血 + 最大生命永久 +90)。所以拍点要把绿球的整段回程铺满(2.7~4.2 每 0.2 秒), 只拍命中那一刻会漏掉后半条。 ★`carrier_hp` 压到 45%: 回血看得见。 ★attacker 必开 + 只放一个敌人: 每第 3 段普攻才消耗一次充能, 敌人多了普攻会分散。 ★★拍点第一版押在 1.0~4.6 秒, 实拍**整段什么都没有** —— 第 3 段普攻要等到 t≈5.4 才到。现在铺 4.90~6.50 每 0.15 秒覆盖【竹箭出手 → 命中绿爆 → 绿球回程 → 落到身上吸收】。 ★注意小龟自己的 basicBarrage(台子给满龟能)会放两颗大白球, 别把那两颗当成 039 的绿球。
+scripts/gamedata/vfxlab_cases.gd|lit|★三个敌人: ★3 只发 2 颗火球 —— 三个靶子才看得出它是**挑了两个**而不是「全场都挨」。 ★前 8 张密排 0.15~1.80: 火球是抛物线, 出手→飞行→炸开总共不到 1.5 秒, 疏了就只剩爆炸。后面按秒铺到 8.20 = 摊付窗口(EARRING_HOT_SEC=8)的全程。 ★zoom 0.95: 镜头要同时装下携带者(绿光上浮)和两个挨火球的敌人。
+scripts/gamedata/vfxlab_cases.gd|lit|★三条件链: 假人还手 → 闪避(随机) → 下一次普攻强化。enemy_attacks + attacker 缺一不可, 且闪避是概率事件 ⇒ dur 给到 24 秒、拍点铺满, 否则可能整场一次都没触发而被误判成'没效果'。
+scripts/gamedata/vfxlab_cases.gd|lit|★三次触发(80/55/30%)要靠自然掉血走完 ⇒ 满血起手 + 三个敌人一起打 + dur 30 秒。拍点均匀铺满, 因为掉血速度不可预测, 密排也未必压在阈值上 —— 这件更适合看'吃了几块'的读数而不是抓单帧。
+scripts/gamedata/vfxlab_cases.gd|lit|★三道雷各劈【随机】敌人 ⇒ 三个假人排开才看得出它是随机选靶而不是固定打一个。 ★attacker 关掉: 这一件不靠命中触发, 普攻只会把雷盖住。 ★假人 5 万血: 真伤 1×ATK 打不死, 整段都能看。
+scripts/gamedata/vfxlab_cases.gd|lit|★两个时刻: ①开局套盾(0.3~1.2 秒 —— 它在战斗第一帧就发生, 拍晚了只剩结果) ②破盾爆发。★破盾时刻有 RNG 抖动(探针实测两跑 7.85/9.05), 而 TC 爆发只活 0.4 秒 ⇒ 7.45~9.25 按 0.2 秒铺网格保证网住; 第二次破盾(累计损失 50% 触发的补盾被打破)两跑都在 19.53 ⇒ 19.60/19.75 两张。allies=2 + enemy_attacks 缺一只剩一半。enemy_no_passive: 小龟泡泡盾罩是污染源(063 教训)。
+scripts/gamedata/vfxlab_cases.gd|lit|★两次 tick: t=8.0 与 t=16.0(`_EQ_CUSTOM_IV` 里 RIPPLE_IV=8.0)。每簇都从触发前 0.2 秒起铺, 因为 `ripple-heal-anim` 是一次性帧动画, 慢一拍就只剩尾巴。 ★carrier_hp 0.35: 携带者自己损了 65%, 回血量最大最好读。 ★zoom 0.8(比默认远): 看点是**全队同时**起涟漪 —— 镜头必须装得下 3 只友军, 拉近就变成「某一只身上有个圈」。
+scripts/gamedata/vfxlab_cases.gd|lit|★两段: 前 12 秒【存】(ui 里看充能条涨)、12 秒后【放】。enemy_attacks 不开的话充能条一辈子不动 —— 这正是 081 踩过的坑。11.9/12.1 夹住释放开始的那一刻。
+scripts/gamedata/vfxlab_cases.gd|lit|★两簇拍点各卡一个转折: 4.60~7.00 = 涨潮(体积 ×1.30 + 青色潮汐特效 + 头顶飘「涨潮」), 19.60~22.00 = 退潮(体积还原 + 飘「退潮」)。 ★zoom 1.1 而不是拉近: **体积 +30% 是要和退潮后并排比才读得出来的**, 拉太近两版都顶满画面就比不了了。 ★只放 1 个敌人且不还手: 体积变化要干净的背景。
+scripts/gamedata/vfxlab_cases.gd|lit|★六发每发间隔 0.08 秒 ⇒ 整轮只有 0.4 秒, 拍点必须密。 ★★`enemy_gap` 是沿**射击方向**分开的(battle_spawn:142 `_cx - 150 + _d1 + i * _gap`), 不是横向 —— 我第一版写 0 想让它们「串在一条线上」, 结果两个敌人**叠在同一个点**上, 「被前排挡住」完全看不出来。130 码 = 前后错开一个身位, 两个都在同一条直线上。
+scripts/gamedata/vfxlab_cases.gd|lit|★冰冻由攻击触发 ⇒ attacker 必开; 三个敌人才看得出冻的是谁。
+scripts/gamedata/vfxlab_cases.gd|lit|★变形件: 看的是【携带者变成蛋糕礼盒】这个形态在不在 + 终极护盾(血条礼盒粉段)掉多快 + 破盾变回。★star=1 + enemy_skills + 3 敌是【必须】的(2026-08-11 探针): 3★ 终极盾 2814 + 锁定双抗越围越硬, 2~3 个假人开不开技能 60 秒都打不破 —— 这正是设计, 但台上永远看不到\"破盾出盒\"那一半; 1★(盾 573·每锁 +20)才能在一场里走完【变身→盾耗→破盾→出盒】整条闭环。要看 3★ 观感临场加 VFXLAB_STAR=3。enemy_no_passive: 泡泡盾罩污染源(063 教训)。
+scripts/gamedata/vfxlab_cases.gd|lit|★台子的验收件。旧结论: 10×9 像素 + 纯白空白 + 2.33 秒自转消失; 2026-08-07 三样已修 ⇒ zoom 22→8。2026-08-09: ①撤掉 eq2(088 的碑糊住画面) ②★补 tier=3 —— 当时 `add_mana` 开头有一道 `if tier_of(u) <= 0: return`, 没有法器羁绊档时 mana_kick 灌多少都不触发(★2026-08-12 那道闸已拆, tier 现在只决定满值高低), 我一度以为是符纸没做出来, 其实门禁 ②-V 证明节点/尺寸/素材全对。
+scripts/gamedata/vfxlab_cases.gd|lit|★圣光 5 秒一跳 ⇒ 拍点压在 5 的整数倍及其后 0.25 秒(看跳出来那一下与残留)。allies=2 才有'发给谁'可看。
+scripts/gamedata/vfxlab_cases.gd|lit|★审查用: 002 只在【携带者普攻命中】时施加流血层。★假人 50 万血 / 600 秒是**用户 2026-09-06 点名要的**(「不用还原，50万才看得久，900血太少了」)—— 打不死才看得清持续流血视觉, 别改回小血量。
+scripts/gamedata/vfxlab_cases.gd|lit|★审查用: 012 是**周期自盾**件 —— 不靠命中也不靠挨打, 所以 attacker / enemy_attacks 都**不开**(开了反而把普攻演出混进来)。只摆 1 个敵人且 enemy_dist 拉到 520 码: 只是为了让战斗不结束, 同时别让近战携带者在第一次给盾前就走到敵人脸上。★拍点压在 **t=4.0**(JELLY_IV=4.0 的第一次触发)前后: 六棱护罩 8 帧/20fps = 0.40 秒, 海藻 6 帧/14fps 再加四丛错开 0.135 秒 ⇒ 整套约 0.57 秒, 所以 3.950~4.825 每 25ms 一张正好覆盖【没发生前一张对照 + 整套演出 + 收场后一段】。★zoom 2.0 + focus carrier: 要看的是**罩在龟身上**那一层, 镜头拉远了就变成两个像素。★ui 开着看装备格里的护盾读数 —— v0.19.356 起这份盾 **4 秒就没**, 能不能看见它消失也是验收项。假人 50 万血/600 秒(用户点名)。
+scripts/gamedata/vfxlab_cases.gd|lit|★审查用: ★3 概率 100% ⇒ 每次普攻必追加一刀, 拍点铺满前 2.5 秒覆盖多次。假人 50 万血/600 秒(用户点名)。
+scripts/gamedata/vfxlab_cases.gd|lit|★审查用: ★3 每段普攻攒 25 点刃能, 满 BLADE_FULL(100) 才斩 ⇒ 必须 attacker。释放点自选成【带心 650 码落在敌群质心】, 所以敌人摆 620 码正好进 500~800 的带里(摆太近会被 R_IN 剔掉, 看着像没伤害)。整套 = 预警扇区脉动 0.56s → 月牙 5 帧 ×0.11s。zoom 1.6 才框得下 800 码的扇形带。★拍点是探针量出来的不是猜的: 首次开斩 t=5.65(之后 6.23 / 7.50 又各一次 ⇒ 会叠), 所以铺 5.60~6.775 每 25ms 一张正好覆盖【预警全程 + 月牙 5 帧】。假人 50 万血/600 秒(用户点名)。
+scripts/gamedata/vfxlab_cases.gd|lit|★审查用: 只摆 **1 个**敌人 —— 010 只有『仅命中 1 名敌人』时才追加竖劈冲击波, 摆多个就永远看不到那一半演出。carrier 用 basic ⇒ 探针实测 atk_range=**100**(不是 70), 3★ 半径 = 100×2 + LASER_MELEE_BONUS(250) = **450 码**, 竖劈 reach = **与扇形半径同一个数**(v0.19.354 用户拍板「让竖劈跟上扇形」) = **450 码**。★敌人摆 300 码只是起始位, 近战携带者会走上来: 探针实测首次开斩 t=1.250 时距离已是 164 码、第二次 t=2.500 时 98 码。zoom 1.2 框得下 450 码半径的 120° 扇形。★拍点是探针量出来的不是猜的: 开斩 t=1.250/2.500/3.750/5.000(_tick_laser 按 atk_interval=1.25 计时), 所以铺 1.150~3.625 每 25ms 一张正好覆盖【两轮完整循环 + 打完伤害后 1.9 秒】。假人 50 万血/600 秒(用户点名)。
+scripts/gamedata/vfxlab_cases.gd|lit|★审查用: 只摆携带者 + 3 个假人(allies 0), 不给 fast_energy —— 那是 011 还挂在 _eq_on_cast 那个年代留下的, 改成法力满触发之后它只会让携带者狂放龟能技把连斩盖住。★探针实测: 未激活法器羁绊时法力满值是 MANA_FULL_BY_TIER[0] = **200**(旧 note 写 100 是错的), mana_kick 给 200 ⇒ 一进场就灌满, 开斩 t≈1.000。8 刀间隔 **0.3 游戏秒**(BLOOD_BEAT, 恰 18×SIM_DT), 整套 1.000→3.100 加末刀 5 帧拖尾 ⇒ 铺 0.900~3.375 每 25ms 一张正好覆盖【触发前 + 八刀全程 + 打完后余韵】。zoom 1.5 才看得清斩痕在**一刀比一刀小**(宽度 = BLOOD_SLASH_W × 0.85^k)。假人 50 万血/600 秒(用户点名)。
+scripts/gamedata/vfxlab_cases.gd|lit|★审查用: 整套演出约 1.2 秒(蓄力0.45 → 生成0.42 → 转向0.34 → 推进), 拍点每 60ms 一张覆盖全程。zoom 0.85 拉远才框得下 1050 码的推进。3 个敌人排开看穿透。假人 50 万血/600 秒(用户点名)。
+scripts/gamedata/vfxlab_cases.gd|lit|★审查用: 每 6 秒一次(BROADSWORD_IV), 整套 = 高举 0.6s → 下劈 0.2s → 剑气墙以 820 码/秒扫 2000 码(约 2.4 秒)。拍点每 60ms 覆盖前 2.9 秒。zoom 0.85 才框得下 2000 码。3 个敌人排开看一线穿透 + 每命中给盾。假人 50 万血/600 秒(用户点名)。
+scripts/gamedata/vfxlab_cases.gd|lit|★审查用: 每 9 秒射一根珊瑚刺(CORAL_IV)打【最远】的敌人 ⇒ 三个敌人排开才看得出选的是最远那个。飞行时长 = 距离/900 钳在 0.22~0.8 秒, 所以拍点每 50ms 铺满 2.4 秒够覆盖飞行 + 命中碎裂。假人 50 万血/600 秒(用户点名)。
+scripts/gamedata/vfxlab_cases.gd|lit|★审查用: 毒牙每 FANG_IV(6s) 一发 ⇒ 拍点压在第一发前后。enemy_dist 拉到 480 才看得清飞行段。假人 50 万血/600 秒(用户点名)。处决要低血才触发, 那部分靠 verify 不靠台子。
+scripts/gamedata/vfxlab_cases.gd|lit|★审查用: 溅射要看得见就得有【多个】敌人挤在 200 码内 ⇒ enemies=4 且 gap=95(远小于半径)。假人 50 万血 / 600 秒(用户 2026-09-06:「50万才看得久」)。
+scripts/gamedata/vfxlab_cases.gd|lit|★常驻小球先拍(1.0 秒那张, 还没开打就该看得见 —— 2026-08-11 起走 EqBowBatch 自扫, 开场 0.5 秒内到位); 之后按普攻节拍三连拍抓藤蔓箭在途(2026-08-11 起箭有头有倒刺·寿命 0.26/0.34 秒)。enemies=3 才看得出它每次挑的目标不一样。ui=攻速 buff 剩余的充能条(vine_buff_pct, 要暴击后才看得到)。
+scripts/gamedata/vfxlab_cases.gd|lit|★必须有友军(它连的是友军); 绑定光束是**持续**的, 所以每一刻都该看得到线。 ★两个已踩过的坑: `shots: []` 会让台子进 HOLD 永不退出; `enemy_attacks` 是「假人还不还手」, 没人先动手它们就不还手。
+scripts/gamedata/vfxlab_cases.gd|lit|★必须有友军: 它是全队分摊盾, 独龟看不出分摊; focus=mid 才框得住三只。 ★两个已踩过的坑: `shots: []` 会让台子进 HOLD 永不退出; `enemy_attacks` 是「假人还不还手」, 没人先动手它们就不还手。
+scripts/gamedata/vfxlab_cases.gd|lit|★挨打类 + 羁绊闸类。tier=1 盾是【必须】的(没有它 on_damaged 直接 return ⇒ 反击一次都不触发); tier 取 1 不取 3 是为了避开 9 档的圣盾 +20%(55→66), 评审装备本体就该量 55。zoom 1.0 = 实战镜头。同场的琥珀色大爆环是盾羁绊【怒气冲击波】, 不是这件的。★前 7 拍**密排在 3.00 的补盾上**: 合拢只有 BUILD_SEC 0.46 + 退场 0.30 = 0.76 秒, 拍点疏了会整个错过装配过程, 只拍到装完的罩子。
+scripts/gamedata/vfxlab_cases.gd|lit|★收割要【敌人真的死】才触发 ⇒ enemy_hp 压到 60 让它们很快被打死; attacker 必开。
+scripts/gamedata/vfxlab_cases.gd|lit|★整件只有【第 11 秒喝药】这一个时刻有演出 ⇒ 拍点在 11.0 前后 0.5 秒内密排。10.8 那张是对照(该还没发生)。喝完之后是纯属性, 后段拍点只验'有没有留下持续标识'。
+scripts/gamedata/vfxlab_cases.gd|lit|★死亡触发类。mortal + 3% 血 + 敌人还手 = 几秒内倒下; allies=1 保证战斗继续、碑能被看到。★★2026-08-09 逐件重做后三处改配: ①zoom 4.2→**1.0 = 真实对局的镜头**。评审特效的台子默认就该用实战镜头, 拉近(VFXLAB_ZOOM=4)只为看细节, 不能拿拉近的取景下【读不读得出】的结论 —— 4.2 倍下【三道刻纹】看着清清楚楚, 1.0 倍下量出来是一坨 20×30 px 的黄斑。②拍点密排到 5.35~5.86: 石雷落时恰好 0.5 秒, 旧的 1 秒一档**一次都没拍到在途的石块**。③分星改成【碑顶横向排开 si+1 颗琥珀符石】(旧的【两面各 si+1 道横纹】在屏幕上数出来是 si+2 —— 背面那组被抬高了约一个刻纹间距), 配 VFXLAB_STAR=1/2/3 分别拍就能数出 1/2/3 颗。
+scripts/gamedata/vfxlab_cases.gd|lit|★炮位在场地 12%/18% 宽处(队伍后方) ⇒ zoom 拉远到 0.72 + focus=mid 才框得进来; 拍点压在 2.5 秒的整数倍(第一座)与 5 秒的整数倍(第二座)。
+scripts/gamedata/vfxlab_cases.gd|lit|★盛宴 2.5 秒一跳 ⇒ 拍点压在 2.5 的整数倍。要挨打掉血才看得出回复。
+scripts/gamedata/vfxlab_cases.gd|lit|★看点: ①每 4 秒一发**重弹**(比普通子弹大一号)飞向**随机**一个敌人 ②图标右下角的弹数从 6 一发一发往下掉 ③打空后停火(装备还在)。 ★敌人不还手、20 万血: 纯看弹匣与选靶, 不掺别的。
+scripts/gamedata/vfxlab_cases.gd|lit|★看点: ①登场就立起一座炮台(不动) ②炮台每 2 秒开一炮, 一条**红色细线**连向它锁定的目标 ③携带者在 400 码内时自己攻速 +40%。 ★炮台血条独立, 携带者阵亡后它的双抗会归零(门禁里有这条)。
+scripts/gamedata/vfxlab_cases.gd|lit|★看点: 一扇面铅丸同时飞出、各走各的直线; 被 8 颗及以上打中的敌人**眩晕**(头顶转圈)。 ★★整轮不到 0.5 秒, 拍点必须密。
+scripts/gamedata/vfxlab_cases.gd|lit|★看点: 每被打一下就跳「闪避」+ 身上护盾罩(通用 shield_shell)一层层加厚, 而且**推到最后也不掉** —— 它是永久盾不是 4 秒盾。 ★dodge 写的是 `dodge_bonus`(产品真读的那个键, battle_damage.gd:310), 不是 `dodge`。 ★**只放一个敌人**: 第一版配了两个, 两边同时打 + 闪避率 100% ⇒ 「闪避」与「+120 盾」四五串飘字叠在同一个点上, 糊成一坨读不出来(台子配的问题, 不是特效问题)。
+scripts/gamedata/vfxlab_cases.gd|lit|★看点三处: ①蓄力那 1 秒的**细红瞄准线 + 枪口聚能球 + 目标身上三道收缩锁定环** ②开枪时那条穿透曳光, 直线上的敌人**各自**掉血 ③若打死了就**重新蓄力 1 秒**再来一枪(连狙)。 ★★2026-09-14 修了三条: 瞄准线原来指着蓄力那一帧选中的目标, 而开火时会**重新选一遍**最低血 —— 这 1 秒里谁掉了血枪就打到别人身上; 瞄准线的终点也是那一帧算死的, 目标走了线还指着旧位置; 选靶还写了两份(一处 hp_frac 一处裸除)。现在锁定目标、每 0.2 秒重画瞄准线、选靶收口到 `_sniper_pick_lowest` 一处。
+scripts/gamedata/vfxlab_cases.gd|lit|★看点三段: ①t=10 起蓄力 1 秒(携带者身上冒金火气, 最后 0.17 秒胸口亮白金光点) ②t=11 释放: 光点爆开 → **一道**白紫环冲出屏 → 画面染紫 → 色相翻转 → 环收回携带者、环外变暗青灰 → 中心白青光一闪, 之后全场定格, **只有携带者在动** ③解除, 所有人恢复。 ★释放那段 1.9 秒走真实时间, 逐帧对照 docs/studies/20260915a-059时停第五版参考逐帧.md。 ★★`realmap: true` 是必须的 —— 这件要看的【就是世界本身】(背景鱼群/气泡/其他单位全部定格), 黑场里连世界都没有, 等于把要验的东西关掉了(与上一批 061 配 `ui` 同一类错)。 ★★时停期间【游戏钟是冻结的】, 按游戏钟排的拍点在定格段会全部落在同一个 t 上 ⇒ 想看定格中段请用墙钟(vfxlab_show 的 --gap)或直接读状态, 别指望 shots 排得进去。
+scripts/gamedata/vfxlab_cases.gd|lit|★看点两处: ①开场那三把枪**飞出去**(_throw_item 的抛物线 + 落到敌人身上) ②t=6/12 头顶跳出 4 个二进制码(00/01/10/11 各一个颜色)+ 脚下青环。 ★★2-bit 状态是**随机**的, 同一拍点两次录出来的码可以不一样 —— 判「有没有跳码/跳了几个」而不是「跳的是哪个」。 ★enemy_hp 20 万: 携带者不打人, 敌人也不还手, 纯看自己身上的状态演出。 ★★`bars` 而不是 `ui`: 二进制码走的是 `_float_text`(飘字), 而 `ui: true` 只留队伍面板、**把飘字连同整层 UI 一起关掉** —— 第一版就是这么配的, 实拍出来只剩脚下一个淡圈, 差点读成「这件装备除了圈什么都没有」。飘字/血条是读数的, 一律配 `bars`。
+scripts/gamedata/vfxlab_cases.gd|lit|★看点两处: ①选靶是**最远**那个不是最近那个(弩跟别的枪械相反) ②同一个目标掉血之后再打, 伤害数字要更大。 ★enemy_hp 只给 4000: 20 万的话一轮下来血条纹丝不动, 「按已损失生命加伤」就读不出来。
+scripts/gamedata/vfxlab_cases.gd|lit|★看点两段: ①攒够 400 伤害后**两颗炸弹**附到敌人身上, 之后它们每秒掉一截血(6% 最大生命) ②带弹的敌人一死, 朝**所有**敌方单位甩钩索、眩晕 1.1 秒拉向携带者, 聚拢后炸一次。 ★attacker 必开, 否则累计伤害永远到不了 400。
+scripts/gamedata/vfxlab_cases.gd|lit|★看点全在头像下的装备格: 023 该有【两条】条子 —— 上=火法力(橙, 每段命中+10, 满100), 下=法器法力(紫, 满60)。attacker 必须开(火法力靠命中涨); mana_kick 30 让紫条停半满而不是一灌就清零。
+scripts/gamedata/vfxlab_cases.gd|lit|★看点在装备格那条紫条: 没激活羁绊也该照涨(每 2.5 秒 +15, 满 200 触发贴符)。不配 tier 是故意的 —— 配了就验不到没羁绊这个情形。
+scripts/gamedata/vfxlab_cases.gd|lit|★看点是「**逐渐**」这两个字: 血条要一格一格涨满 6 秒, 不是一下跳满 —— 拍点按 0.2→6.6 递进铺, 正好把摊付窗口切成 11 段; 6.60 之后两张是「停了没有」的反向证据。 ★`_heal_body_glow` 是 044 专属的全身绿光(045 用的是 `_heal_ascend` 上浮光环, 两件**不共用**)。 ★敌人不还手: 摊付期间再掉血会把「逐渐回满」读成「没回够」。
+scripts/gamedata/vfxlab_cases.gd|lit|★看点的因果链: 每 5 下普攻**强化一击 → 把敌人击飞 → 它身上挂上靶子锁定框 → 下个周期一枚飞镖射过去 → 命中后靶子消失**。 ★镖还会上流血层。
+scripts/gamedata/vfxlab_cases.gd|lit|★真火是【状态】不是爆点: 命中后目标身上持续烧 EMBER_TRUEFIRE_SEC=5 秒。 ★enemy_attacks 关掉: 这一件看的是火瓶与真火, 敌人还手只会加噪声。 ★两个已踩过的坑: `shots: []` 会让台子进 HOLD 永不退出; `enemy_attacks` 是「假人还不还手」。
+scripts/gamedata/vfxlab_cases.gd|lit|★箭雨持续 1.5 秒、每 0.25 秒一跳 ⇒ 6.10~7.55 之间铺六张才看得到【起、中、收】。只拍一张会把'一轮箭雨'读成'一次落点闪光'。ui=箭雨 6 秒充能条(直接读 iv_t); 5.95 那张应当接近满格、6.10 那张应当刚清零。
+scripts/gamedata/vfxlab_cases.gd|lit|★腐蚀是攒层的, 满层才有一次表现 ⇒ 时间要给够(20 秒)且 attacker 必开。
+scripts/gamedata/vfxlab_cases.gd|lit|★要挨打才看得出'越残越猛'⇒ enemy_attacks; 拍点铺满整段看有没有随血量变化的表现。
+scripts/gamedata/vfxlab_cases.gd|lit|★觉醒在开局前后, 传送门在中段 ⇒ 前密后疏。
+scripts/gamedata/vfxlab_cases.gd|lit|★触发靠**挨打**不靠出手: 硬化层是 `_eq_on_target` 里叠的, 所以 enemy_attacks=true 而 attacker=false。 三个敌人才攻得够快(满 URCHIN_CAP=20 层); carrier_hp 拉满防死在满层之前。 刺是贴地放射的 ⇒ zoom 1.0 实战镜头(拉近看不算, 真实尺寸下才知道会不会把龟埋了)。
+scripts/gamedata/vfxlab_cases.gd|lit|★触手拍击 5 秒一次 ⇒ 拍点压在 5 的整数倍前后(预警区→拍下→余波)。
+scripts/gamedata/vfxlab_cases.gd|lit|★贝壳是 **billboard 罩在龟身上**的, 不是贴地 ⇒ zoom 1.0 实战镜头看它会不会把龟遮死。
+scripts/gamedata/vfxlab_cases.gd|lit|★这一件**没有任何战斗演出** —— 全部可见性就是每 6 秒一次的「+3💠」飘字和装备格里的累计徽章。拍点就压在 t≈6.0 与 t≈12.0 两次到账的前后, 看飘字升起与徽章数字跳。 ★拍点密铺 5.95~7.30 每 0.09 秒: 金币 12 帧/16fps = 0.75 秒转一圈、存活 1.05 秒、三枚还错峰 0.09 秒 —— 用2 帧采样根本看不出它在转。 ★★配 `bars` 而不是 `ui`: 飘字跟着**整层 UI** 走, 而 `ui: true` 只留队伍面板、把飘字连同整层一起关掉 —— 这件的读数就是飘字 + 装备格徽章。
+scripts/gamedata/vfxlab_cases.gd|lit|★金弹专用台。0.2 秒一档密排铺满两个金弹周期(小手枪 0.5 秒一发 × 每 4 发一金) ⇒ 同一批图里既有普通弹也有金弹。
+scripts/gamedata/vfxlab_cases.gd|lit|★龙从携带者位置朝敌方质心拉一条直线飞到最远敌人身后, 线两侧各 DragonSystem.BREATH_HALF_W=88 码内: 敌吃魔伤+灼烧, 友回血。 ★摆 1 个友军正是要验「友军回血」那半条。 ★enemy_attacks 关掉: 这一件看的是龙与火柱, 敌人还手只加噪声。
+scripts/gamedata/vfxlab_cases.gd|lit|【p2eq_023 灼热火珊瑚】原生=它【自己的火法力】(每段命中 +10, 满 100)挥出 60 度扇形火焰波; 法力满=再挥一次。看点: 装备格【两条】条子 —— 上橙=火法力(靠命中涨), 下紫=法器法力。 ★不配 tier = 没有法器羁绊, 正是要验的情形(2026-08-12 拆闸后法力条每件自带, 满值 100)。
+scripts/gamedata/vfxlab_cases.gd|lit|【p2eq_026 雷电法杖】原生=它【自己的雷电充能】(每段伤害 +25, 满 100)朝随机目标发连锁闪电(最多命中 4/5/6 个); 法力满=再发一次。看点: 装备格两条(上黄=雷电充能, 下紫=法力) + 闪电在敌人之间跳。 ★★2026-09-13 订正: 未激活羁绊时满值是 **MANA_FULL_BY_TIER[0] = 200** 不是 100 —— 原来 mana_kick 给 100 只灌半条, 实拍 1.0~4.0 秒**一道闪电都没有**(和 023 同一个坑)。现在给 200 ⇒ 一进场就满, 拍点铺 1.0~3.55 每 0.15s 覆盖六跳(逐跳错峰 CHAIN_HOP_GAP=0.2s)。
+scripts/gamedata/vfxlab_cases.gd|lit|【p2eq_029 冰封水母】原生=每 12 秒自身上盾 100/160/250 并砸地推出一条冰道(长 500 码); 法力满=再来一次。看点: 上盾那一下 + 冰道推进到谁才结算谁(击飞+冰封)。 ★★2026-09-13 订正两处: ①`mana_kick` 原来给 100 而**未激活羁绊时满值是 MANA_FULL_BY_TIER[0] = 200** ⇒ 只灌半条, 整段拍下来什么都不会发生(023/026 同一个坑, 这是第三次)。②原来 7 个拍点跨 15 秒, 而整套演出是【前摇 0.3 秒 + 冰道推进 0.9 秒】共 1.2 秒 —— 采样比效果本身还粗, 冰道推进的过程一帧都拍不到。现在铺 1.00~2.60 每 0.1 秒。
+scripts/gamedata/vfxlab_cases.gd|lit|【p2eq_030 迷你水晶球A】原生=每 7 秒朝最近敌方向连发 2/2/3 段贯穿光束(间隔 LINE_SEG_GAP=0.2 秒); 法力满=再来一轮。看点: 一条直线上的贯穿 + 敌人身上叠迷你水晶层, 满 3 层引爆。 ★★2026-09-13 订正两处: ①`mana_kick` 原来给 100 而**未激活羁绊时满值是 200**(MANA_FULL_BY_TIER[0]) ⇒ 只灌半条。②原来 7 个拍点跨 15 秒, 而三段光束总共只占 0.4 秒 —— **采样间隔比效果的节拍还大, 整段会被跳过**(026 逐跳错峰那次栽过同一个)。现在铺 1.00~1.96 每 0.08 秒, 一段都不漏。
+scripts/gamedata/vfxlab_cases.gd|lit|【p2eq_031 迷你水晶球B】原生=每 8 秒以自身为中心 360 度扫射一圈(半径 1000 码, 耗时 1.5 秒, 射线跟着龟走); 法力满=再扫一圈。看点: 扫射那一圈 + 偷魔抗。 ★不配 tier = 没有法器羁绊, 正是要验的情形(2026-08-12 拆闸后法力条每件自带, 满值 100)。 ★★2026-09-13 订正两处: ①`mana_kick` 原来给 100 而**未激活羁绊时满值是 200**(`MANA_FULL_BY_TIER[0]`) ⇒ 只灌半条(023/026/029/030 之后**这是第四次**)。②原来 7 个拍点跨 15 秒, 而扫射一圈只用 `SWEEP_SEC`=1.5 秒 —— 采样比效果本身还粗。现在铺 1.00~2.40 每 0.1 秒, 看得见射线一圈一圈转过去。
+scripts/gamedata/vfxlab_cases.gd|lit|【p2eq_043 海浪护符】原生=每 2.5 秒 +1 巨浪层, 满 3/2/2 层清零并从身后 400 码涌起浪墙横扫全场(敌我都扫: 友军上盾+永久护甲魔抗, 敌人吃伤害+永久减)。★法力满 = +1 层, 不是直接涌浪 —— 它的效果就是那个周期分支本身。 ★不配 tier = 没有法器羁绊, 正是要验的情形(2026-08-12 拆闸后法力条每件自带, 满值 100)。
+scripts/gamedata/vfxlab_cases.gd|lit|【p2eq_088 涨潮碑】★只有法力条这一条触发路径。法力满=脚下立一块潮汐碑(钉地不跟随, 5 秒, 半径 250 码): 碑内敌人每秒掉血、友军每秒上盾+攻速。碑在的时候法力条锁住不涨。 ★不配 tier = 没有法器羁绊, 正是要验的情形(2026-08-12 拆闸后法力条每件自带, 满值 100)。
+scripts/gamedata/vfxlab_cases.gd|lit|【p2eq_089 蚀月符纸】★只有法力条这一条触发路径。法力满=给一个敌人贴符纸: 15 秒内共造成 400/700/1000 魔法伤害并每秒削 1 点魔抗; 被贴的敌人死了, 符纸带剩余时长转移到最近的敌人。 ★不配 tier = 没有法器羁绊, 正是要验的情形(2026-08-12 拆闸后法力条每件自带, 满值 100)。
+scripts/gamedata/vfxlab_cases.gd|lit|【p2eq_090 镇海杵】★主动只有法力条这一条: 法力满=跳到空中猛砸(500 码内 3 倍攻击力+魔法伤害, 眩晕+击飞)。另有被动: 每第三次普攻发一片浪潮, 在敌我之间连跳(打敌伤害/打友治疗)。 ★不配 tier = 没有法器羁绊, 正是要验的情形(2026-08-12 拆闸后法力条每件自带, 满值 100)。
+scripts/gamedata/vfxlab_cases.gd|lit|【亡灵之斧】(2026-09-15 重做 · 方案书 20260915g「E」, 用户「6/9亡灵斧你这是在敷衍我啊」) 看三样: ①常驻亡灵领域 `eq096-undead-field.png`(贴地跟斧头走, 外缘冥火亮边 = 300 码判定圆, 不用等龟能) ②每秒一跳: 领域内收一次 `eq096-undead-pulse.png` + 每个环内挨扣的敌人抽一缕魂飞回斧头 `eq096-undead-soul.png`(0.45 秒, 紧跟跳点的拍点才拍得到) + 斧头「吸到了」`eq096-undead-drink.png` ③主动: 亡灵没有替换, 仍是被动 6 的梯形蓄力。★这个台子**看不到死亡复活**: 敌人不还手、斧头死不了 —— 崩散 / 倒计时 / 复活柱由门禁 verify_axe_undead_holo_vfx ③ 走真入口逐模拟步验(倒计时结束 = 复活结算那一步), 重生本身由 verify_axe_batch10 E3 验。
+scripts/gamedata/vfxlab_cases.gd|lit|【余烬之斧】处决一个单位 ⇒ 召唤物 +150 龟能; 主动 4 秒猛砸被替换为余烬之光。★enemies=3 是为了有得处决(单敌人打死就没目标了)。
+scripts/gamedata/vfxlab_cases.gd|lit|【全息斧】(2026-09-15 重做 · 方案书 20260915g「E」, 用户「8/9也是，完全没达标」) 看四样: ①普攻: 斧头 → 血量最低友军一串全息数据块 `eq096-holo-bit.png` + 友军身上六角护盾展开、头顶两枚龟能箭头 `eq096-holo-shield.png` ②主动(龟能满): 斧头插地 4 秒(`axe_plant` 帧一直在播、no_move) + 600 码法阵 展开 `eq096-holo-deploy.png` → 循环 `eq096-holo-field.png` → 倒放收拢 + 减伤六角护罩 `eq096-holo-guard.png` ③法阵每 0.5 秒一道波 `eq096-holo-pulse.png` + 每个被治疗友军冒绿十字 / 青箭头 `eq096-holo-boost.png` ④吃到治疗的友军脚下青色加速圈 `eq096-holo-haste.png`。★allies=2 且要有人掉血才看得到 on-hit 那一半; 法阵外径 1200 码几乎铺满半个战场, 看范围用 zoom 1.0。
+scripts/gamedata/vfxlab_cases.gd|lit|【木斧·0 档】只有主动治疗(攒满 140 龟能), 没有被动 3~6。它是**基线** —— 石斧以上看到的多出来的东西, 才是那一档新解锁的。
+scripts/gamedata/vfxlab_cases.gd|lit|【炽天使之斧】看两样: ①普攻附带灼烧层(`SERAPH_BURN_ON_HIT`) ②主动改为 4 秒连甩 10 把回旋镖(`SERAPH_BOOMERANGS`): 贴地旋转的羽翼 V 形镖, 外径 = 2×半宽 `SERAPH_BOOM_R`(演出 = 判定), 沿直线飞出去(至少 `SERAPH_BOOM_MIN_OUT` 码, 身前有更远的敌人就飞到它)→ 折返 → 飞回斧头; 镖经过敌人时才结算, 每把每敌一次, 命中时敌人身上一个白金火花。★(2026-09-15 订正: 旧说明「沿直线飞过, 演出画到被打中的最远那个」是旧版不回来的镖; 更早的「给友方单位加护盾/龟能」写的是全息斧; allies=2 对炽天使不是必须的, 留着不影响)。
+scripts/gamedata/vfxlab_cases.gd|lit|【石斧·1 档】新增被动3: 每 SMASH_IV=9 秒下一次普攻强化(+0.5×ATK 物理 + 短暂击退击飞)。★拍点压在 9 秒与 18 秒两个整数倍前后 —— 强化是**攒够 9 秒的下一拳**, 不是准点发生, 所以每个时刻要连拍几张兜住普攻落点。
+scripts/gamedata/vfxlab_cases.gd|lit|【金斧·3 档】★拍点从 1.2s 起改成 4.6s 起(2026-09-03 实拍): 斧头要先【走到】敌人跟前才打得着, 前 4 秒全是在走路, 拍出来一片空白, 极易误判成'横扫没做'。新增被动5: 每第 1 次普攻 180° 横扫 + 效率层(每层 +4% 攻速/+2% 移速, 5 秒刷新)。★与被动4 共用同一个普攻计数器 ⇒ 奇数横扫、偶数竖劈, **交替**。enemies=3 且 gap 收窄到 130, 否则 180° 扇形只扫得到一个人, 看不出它是范围。
+scripts/gamedata/vfxlab_cases.gd|lit|【钻石斧·4 档】新增被动6: 主动治疗后进入 4 秒蓄力(70% 减伤, 梯形每 0.25 秒 +30 码高, 满蓄 480 —— 2026-09-15 用户改, 原 0.5 秒 +100 码 / 满蓄 800), 完毕猛砸(4×ATK 物理 + 3 秒眩晕 + 高高击飞)。★拍点 10.4~14.0 看梯形一格格长出来, 14.4~16.2 看砸下 —— **dur 必须 ≥24**: 治疗要 10.5 秒攒满, 再蓄 4 秒, 16 秒的台子会在蓄力中途截断, 看成'猛砸没做'。zoom 放到 2.0 是因为满蓄梯形原来 800 码长(2026-09-15 起 480 码), 拉太近装不下。
+scripts/gamedata/vfxlab_cases.gd|lit|【铁斧·2 档】新增被动4: 每第 2 次普攻竖劈(额外 5% 目标最大生命【真伤】+ 10 层流血)。★普攻间隔 1/MINION_ASPD ⇒ 拍点用 0.4 秒一档密排, 才能兜住'第 2/4/6 次'那几拳。
+scripts/gamedata/vfxlab_cases.gd|lit|光环类。ally_dist=150 把友军放进 200 码圈(默认摆位 227 码在圈外)。9.45/9.62 夹住收伞回血, 10.20 是收伞后对照(该没有了), 16.55 验第二轮。
+scripts/gamedata/vfxlab_cases.gd|lit|剑
+scripts/gamedata/vfxlab_cases.gd|lit|叠护盾件。看的是护盾条随普攻一格格涨 ⇒ ui 必开, 拍点按普攻节拍铺开看增量。★这件与 095 一样会走 `_grant_shield` 的通用护盾演出 —— v0.19.356 起那是**罩在龟身上的六棱护罩**(原先是脚下一个金圈), 要留意罩子会不会把它自己的演出盖住。
+scripts/gamedata/vfxlab_cases.gd|lit|召唤物 + 持续场类。飞行物每 0.25 秒留一团毒雾、每团活 `FOG_LIFE` 秒(★2026-08-13 起加长, 旧说明写的 4 秒已过期) ⇒ 要等一整个 FOG_LIFE 才满载, 拍点必须铺满 0.6~12 秒才看得到【铺开→满载】。enemies=3 让航线织成网(单敌人时它只在一条线上摆); carrier_silent 关掉 basic 龟自己的金色斩击(那是通用演出, 会盖住毒雾)。看飞行物本体细节另跑 VFXLAB_ZOOM=8 VFXLAB_FOCUS=carrier。
+scripts/gamedata/vfxlab_cases.gd|lit|召唤物 + 自带龟能条。★拍点必须围着 10.5 秒(第一次攒满)和 21 秒(第二次)排 —— 140 点 × 0.075 秒/点是硬算出来的, 不是估的。bars=true 是本件的核心(用户 2026-09-03「为什么我没看到龟能条」): 充能读数就在斧头头顶那条蓝条上。
+scripts/gamedata/vfxlab_cases.gd|lit|召唤物类: 枪 + 弹道 + 假人三样同框。敌距 260 码 < 700 射程 ⇒ 一定开火; 前四档 0.04 秒密排才拍得到飞行中的弹。
+scripts/gamedata/vfxlab_cases.gd|lit|奇械
+scripts/gamedata/vfxlab_cases.gd|lit|弓箭
+scripts/gamedata/vfxlab_cases.gd|lit|成型慢是这件的设计核心 ⇒ 拍点铺满 4→42 秒。★必须把敌人一起框进来, 否则看不到浮游炮开火。
+scripts/gamedata/vfxlab_cases.gd|lit|拍点压在每 4 秒偷取节拍刚过 0.5 秒。★zoom 2.4 实拍时偷来的【冰川】斜穿出右上角出框 ⇒ 降到 1.9 才装得下整条冰路。
+scripts/gamedata/vfxlab_cases.gd|lit|挨打类。2 个敌人围殴让充能快一倍; 携带者默认血锁不死(mortal=false)。
+scripts/gamedata/vfxlab_cases.gd|lit|挨打类。转化本身是数字不是形状 ⇒ 这一件建议配 VFXLAB_TEXT=1 看飘字。
+scripts/gamedata/vfxlab_cases.gd|lit|枪
+scripts/gamedata/vfxlab_cases.gd|lit|枪第一发的时刻 = 携带者走到最近敌人 400 码内的时刻; 之前 2 秒节拍攒满也不开。
+scripts/gamedata/vfxlab_cases.gd|lit|法器
+scripts/gamedata/vfxlab_cases.gd|lit|灵物
+scripts/gamedata/vfxlab_cases.gd|lit|盾
+scripts/gamedata/vfxlab_cases.gd|lit|空中单位 + 800 码航线 ⇒ 必须俯瞰全场(zoom<2)。focus_h 2.4 兼顾直升机(空中)与炸点(地面)。 ★★2026-09-15 第九批 D6: 原来没配 `mortal`, 台子默认保留携带者的 deathfloor_until ⇒ 携带者永远死不了, 文案里「携带者阵亡后继续飞 10 秒再坠向敌人」这一整段【永远拍不到】。 现在 mortal + 3% 血 + 敌人还手 ⇒ 探针读真实时间线(游戏钟): 携带者约 3.9 秒阵亡, 直升机约 10.1 秒进入坠机 ⇒ 拍点补在 9.8~10.8。 ★★拍点排在游戏钟上, 而顿帧期间游戏钟停、直升机倒计时(tick_global)照走 ⇒ 按游戏钟阵亡后约 6.3 秒就坠机(顿帧帧里涨了 3.7 秒, 见方案书 20260915b U9); 录屏里看到的是约 10 秒墙钟。 allies 2: 携带者死了我方还有人, 战斗不会判定结束(否则整组 tick 停摆, 直升机也跟着停)。
+scripts/gamedata/vfxlab_cases.gd|lit|纯数值叠加件。ui 必开 —— 这件唯一能看见的东西就是装备格里的叠层/龟能条; 如果那里也没有, 那它在局内就是完全不可见的(要记成缺口, 不是'效果不明显')。
+scripts/gamedata/vfxlab_cases.gd|lit|药水
+scripts/gamedata/vfxlab_cases.gd|lit|要看技能后的攻速 buff ⇒ fast_energy 必开(不开要干等龟能)。attacker 开着才看得出攻速真的变快了 —— 这件的效果是【节奏】, 单帧截图看不出来, 靠连续拍点比普攻间隔。
+scripts/gamedata/vfxlab_cases.gd|lit|近战携带者 ⇒ 敌 1 放 60 码(射程 70 内)省掉走位时间。单敌人 = 层数只涨不清。
+scripts/gamedata/vfxlab_cases.gd|lit|近距离对照: 目标 200 码 < 斩击 250 码 ⇒ 横斩 / 横波 / 竖斩 / 竖波四段全中(探针 2026-09-15)。实战站位见 p2eq_084_melee。
+scripts/gamedata/vfxlab_cases.gd|lit|远程→近战: 视觉上主要是'贴脸打'和属性面板, 特效很少。这一行是为了确认它没做出画面来。★拍点从 5 张加到 8 张 —— 旧配置张张空场, 分不清是'没特效'还是'没打到攻击间隔'。
+scripts/gamedata/vfxlab_cases.gd|lit|遗物
+scripts/gamedata/vfxlab_cases.gd|lit|靠命中触发 ⇒ attacker 必开。★★2026-09-14 订正三处: ①`ui` → `bars` —— `ui: true` 会把**飘字连同整层 UI 一起关掉**, 而这件「满 20 层转真实伤害」的读法**正是飘字变色**(蓝→白), 配 ui 等于把要看的东西关了(第四批栽过同一个坑)。②`dur` 12 → 24 + `aspd` 2.0: 每击叠 2 层, 12 秒攒不到 20 层, **满层转真伤那一下一帧都拍不到**。③敌人 40 万血, 不然它先被打死。
+scripts/gamedata/vfxlab_cases.gd|lit|食物
+scripts/net/backend.gd|lit|海域守卫
+scripts/net/backend.gd|lit|玩家阵容
+scripts/net/remote_pool.gd|lit|%s 带了 %d 件装备(上限 %d)
+scripts/net/remote_pool.gd|lit|%s 的 equipped 不是 Array
+scripts/net/remote_pool.gd|lit|%s 等级 %d 越界(1~%d)
+scripts/net/remote_pool.gd|lit|leaders 不是 1~3 只
+scripts/net/remote_pool.gd|lit|season_total_battles=%s 缺失或为负
+scripts/net/remote_pool.gd|lit|不是 Dictionary
+scripts/net/remote_pool.gd|lit|冒烟测试数据(%s…), 不入池
+scripts/net/remote_pool.gd|lit|服务端无响应
+scripts/net/remote_pool.gd|lit|服务端返回 %d%s
+scripts/net/remote_pool.gd|lit|未配置后端
+scripts/net/remote_pool.gd|lit|缺
+scripts/net/remote_pool.gd|lit|缺 ghost_id
+scripts/net/remote_pool.gd|lit|装备 id `%s` 不在白名单
+scripts/net/remote_pool.gd|lit|龟 id `%s` 不在白名单
+scripts/net/remote_pool.gd|lit|（部署不存在）
+scripts/net/supabase.gd|lit|发得太频繁了，等几分钟再试
+scripts/net/supabase.gd|lit|发送失败（%d），稍后再试
+scripts/net/supabase.gd|lit|把邮件里那串数字填进来
+scripts/net/supabase.gd|lit|服务器没给账号，取回失败
+scripts/net/supabase.gd|lit|服务器返回的是另一个账号，没有绑成功（没动你的进度）
+scripts/net/supabase.gd|lit|本机还没有账号（正在连服务器），过两秒重新发一次验证码
+scripts/net/supabase.gd|lit|正在连服务器，过两秒再点一次（一直这样就是连不上，检查下网络）
+scripts/net/supabase.gd|lit|账号取回来了
+scripts/net/supabase.gd|lit|还没接后端
+scripts/net/supabase.gd|lit|这个邮箱已经绑过别的账号了
+scripts/net/supabase.gd|lit|这个邮箱没有绑定过账号，检查一下拼写
+scripts/net/supabase.gd|lit|这个邮箱用不了（示例/测试域名不支持），换一个试试
+scripts/net/supabase.gd|lit|连不上服务器，检查一下网络
+scripts/net/supabase.gd|lit|邮件服务还没开通，暂时绑定不了（正在接入）
+scripts/net/supabase.gd|lit|邮箱格式不对，再看一眼
+scripts/net/supabase.gd|lit|邮箱绑好了
+scripts/net/supabase.gd|lit|验证失败
+scripts/net/supabase.gd|lit|验证失败（%d）
+scripts/net/supabase.gd|lit|验证码不对，或者已经过期了（重新发一次）
+scripts/net/supabase.gd|lit|验证码发到 %s 了，查收一下（也看看垃圾邮件）
+scripts/scenes/BracketMapScene.gd|lit| · 未开赛
+scripts/scenes/BracketMapScene.gd|lit| · 还没分
+scripts/scenes/BracketMapScene.gd|lit|你
+scripts/scenes/BracketMapScene.gd|lit|你不在这一组里 · 只能看别人打
+scripts/scenes/BracketMapScene.gd|lit|冠
+scripts/scenes/BracketMapScene.gd|lit|冠军赛
+scripts/scenes/BracketMapScene.gd|lit|冠军赛 %d 小时 %d 分后开播 · 先等各组决出自己的冠军
+scripts/scenes/BracketMapScene.gd|lit|冠军赛正在集结 · 等各组决出自己的冠军
+scripts/scenes/BracketMapScene.gd|lit|周日 · 决赛日
+scripts/scenes/BracketMapScene.gd|lit|备战购物 · 还剩 %d:%02d
+scripts/scenes/BracketMapScene.gd|lit|对手
+scripts/scenes/BracketMapScene.gd|lit|对手没留下阵容 · 这一场算他弃权
+scripts/scenes/BracketMapScene.gd|lit|对手阵容已就位 · %s
+scripts/scenes/BracketMapScene.gd|lit|待定
+scripts/scenes/BracketMapScene.gd|lit|我这一组
+scripts/scenes/BracketMapScene.gd|lit|暂时看不到对手阵容 · 过两秒再点一次
+scripts/scenes/BracketMapScene.gd|lit|本周只有 %d 人晋级 · 人太少, 决赛日没开起来; 你的晋级算数, 下周再来
+scripts/scenes/BracketMapScene.gd|lit|本周按各组自己算冠军 · 你这一组的冠军就是本周冠军
+scripts/scenes/BracketMapScene.gd|lit|本周没有你这一组 · 周六闯关赛晋级才进得来
+scripts/scenes/BracketMapScene.gd|lit|本轮备战已结束 · 等开打
+scripts/scenes/BracketMapScene.gd|lit|正在翻本周的名册 · 看看你分在哪一组
+scripts/scenes/BracketMapScene.gd|lit|神秘龟
+scripts/scenes/BracketMapScene.gd|lit|轮空
+scripts/scenes/BracketMapScene.gd|lit|这一轮你已经看过 %d 号了 · 一轮只能看一个对手
+scripts/scenes/BracketMapScene.gd|lit|这一轮已经翻篇了 · 刷新一下看看新的对阵
+scripts/scenes/BracketMapScene.gd|lit|连不上服务器 · 你这一组还没看到, 每 30 秒自己再看一次
+scripts/scenes/BracketMapScene.gd|lit|连不上服务器 · 过两秒再点一次
+scripts/scenes/BracketMapScene.gd|text|下一轮 %d:%02d 后开播
+scripts/scenes/BracketMapScene.gd|text|回到我
+scripts/scenes/BracketMapScene.gd|tooltip_text|上场开打
+scripts/scenes/BracketMapScene.gd|tooltip_text|开播
+scripts/scenes/CodexScene.gd|lit|+%d 龟币
+scripts/scenes/CodexScene.gd|lit|× 关闭
+scripts/scenes/CodexScene.gd|lit|全体等级 (战斗内强制两队同档)
+scripts/scenes/CodexScene.gd|lit|全员 Lv.%d
+scripts/scenes/CodexScene.gd|lit|剑
+scripts/scenes/CodexScene.gd|lit|图鉴
+scripts/scenes/CodexScene.gd|lit|奇械
+scripts/scenes/CodexScene.gd|lit|弓箭
+scripts/scenes/CodexScene.gd|lit|强制全体 Lv.%d (含对手)
+scripts/scenes/CodexScene.gd|lit|强制等级: 关
+scripts/scenes/CodexScene.gd|lit|斧头
+scripts/scenes/CodexScene.gd|lit|枪
+scripts/scenes/CodexScene.gd|lit|法器
+scripts/scenes/CodexScene.gd|lit|深海小将
+scripts/scenes/CodexScene.gd|lit|灵物
+scripts/scenes/CodexScene.gd|lit|状态
+scripts/scenes/CodexScene.gd|lit|盾
+scripts/scenes/CodexScene.gd|lit|羁绊
+scripts/scenes/CodexScene.gd|lit|药水
+scripts/scenes/CodexScene.gd|lit|装备
+scripts/scenes/CodexScene.gd|lit|规则
+scripts/scenes/CodexScene.gd|lit|遗物
+scripts/scenes/CodexScene.gd|lit|重置 (等级+龟币)
+scripts/scenes/CodexScene.gd|lit|食物
+scripts/scenes/CodexScene.gd|lit|香火
+scripts/scenes/CodexScene.gd|lit|龟
+scripts/scenes/CodexScene.gd|lit|龟币
+scripts/scenes/CodexScene.gd|text|✓ %d 龟 / %d 装备 / %d 羁绊 / %d 状态 / %d 规则
+scripts/scenes/CodexScene.gd|text|❌ DataRegistry 未加载
+scripts/scenes/CodexScene.gd|text|龟币: %d   龟种: %d\n等级分布: %s\n战斗: %s
+scripts/scenes/CodexScene.gd|text|🛠 调试面板
+scripts/scenes/InventoryScene.gd|lit|  这件不加属性，只有效果
+scripts/scenes/InventoryScene.gd|lit|[color=#8fa6bb]这件不加属性，只有效果[/color]
+scripts/scenes/InventoryScene.gd|lit|[color=#8fa6bb]这件没有额外效果，属性直接生效。[/color]
+scripts/scenes/InventoryScene.gd|lit|[color=#9fb6c9][b]带来的属性[/b][/color]\n%s\n\n[color=#9fb6c9][b]效果[/b][/color]\n[color=#cfe0ef]%s[/color]
+scripts/scenes/InventoryScene.gd|lit|\n升到 Lv%d 就能装 %d 件
+scripts/scenes/InventoryScene.gd|lit|\n已经满级, 不会再多了
+scripts/scenes/InventoryScene.gd|lit|　　小将 ×%d
+scripts/scenes/InventoryScene.gd|lit|上战场
+scripts/scenes/InventoryScene.gd|lit|下战场
+scripts/scenes/InventoryScene.gd|lit|去商店买装备
+scripts/scenes/InventoryScene.gd|lit|商店
+scripts/scenes/InventoryScene.gd|lit|小将 ×%d
+scripts/scenes/InventoryScene.gd|lit|带来的属性\n%s\n\n效果\n%s
+scripts/scenes/InventoryScene.gd|lit|怎么配阵容
+scripts/scenes/InventoryScene.gd|lit|打完本大轮第一场后解锁
+scripts/scenes/InventoryScene.gd|lit|盾
+scripts/scenes/InventoryScene.gd|lit|空槽 · 先点背包里的装备, 再点这只单位
+scripts/scenes/InventoryScene.gd|lit|系
+scripts/scenes/InventoryScene.gd|lit|统领 ×%d
+scripts/scenes/InventoryScene.gd|lit|背包
+scripts/scenes/InventoryScene.gd|lit|这件不加属性，只有效果
+scripts/scenes/InventoryScene.gd|lit|（无主动效果）
+scripts/scenes/InventoryScene.gd|text|[b][color=#ffffff]%s[/color][/b]   [color=#ffd93d]%s[/color]   [color=#8fa6bb]%d费%s[/color]
+scripts/scenes/InventoryScene.gd|text|· 上下两个战场各打各的, 兵力自己分\n· 点两个单位, 它们就互换战场和位置\n· 点小将的【前排 / 后排】, 近战挥砍和远程射击之间切\n· 先点下面背包里的装备, 再点一只龟或小将, 就装上了\n· 点单位身上的装备格, 那件就回背包\n· 三件同款同星的装备会自己合成, 升一颗星
+scripts/scenes/InventoryScene.gd|text|上下滑动看更多
+scripts/scenes/InventoryScene.gd|text|临时等级器
+scripts/scenes/InventoryScene.gd|text|前排
+scripts/scenes/InventoryScene.gd|text|卖出 +%d
+scripts/scenes/InventoryScene.gd|text|卸下 %s
+scripts/scenes/InventoryScene.gd|text|取消
+scripts/scenes/InventoryScene.gd|text|后排
+scripts/scenes/InventoryScene.gd|text|小将
+scripts/scenes/InventoryScene.gd|text|怎么配出战阵容
+scripts/scenes/InventoryScene.gd|text|打碎
+scripts/scenes/InventoryScene.gd|text|点「卸下」把装备收回背包
+scripts/scenes/InventoryScene.gd|text|点一只龟或小将, 这一大轮就给它多一级
+scripts/scenes/InventoryScene.gd|text|知道了
+scripts/scenes/InventoryScene.gd|text|精英小将
+scripts/scenes/InventoryScene.gd|text|糖果罐 %d档
+scripts/scenes/InventoryScene.gd|text|糖果罐 · 第 %d 档 —— 现在打碎能开出 %s。本大轮只碎这一次。
+scripts/scenes/InventoryScene.gd|text|统领%d
+scripts/scenes/InventoryScene.gd|text|背包是空的 —— 去商店买几件装备
+scripts/scenes/InventoryScene.gd|text|装备 %d / %d
+scripts/scenes/InventoryScene.gd|text|装备背包
+scripts/scenes/InventoryScene.gd|text|详情
+scripts/scenes/InventoryScene.gd|text|还有 %d 行没说完 · 点【详情】
+scripts/scenes/InventoryScene.gd|text|这个位子还空着
+scripts/scenes/InventoryScene.gd|tooltip_text|%s · 盾羁绊白送的, 不占装备位 · 盾羁绊掉下去就收回
+scripts/scenes/InventoryScene.gd|tooltip_text|[b]%s[/b]  ★%d  %d费\n\n带来的属性\n%s\n\n效果\n%s
+scripts/scenes/InventoryScene.gd|tooltip_text|一只身上最多 %d 件；全队六只一起能装几件, 看你的赛季等级。\n现在 Lv%d, 全队能装 %d 件%s
+scripts/scenes/InventoryScene.gd|tooltip_text|从糖果罐里开出来的临时等级器\n点它, 再点一只龟统领或小将 —— 这一大轮它就多一级, 换了大轮还原
+scripts/scenes/InventoryScene.gd|tooltip_text|全队装备已满 %d / %d · 升赛季等级可再装
+scripts/scenes/InventoryScene.gd|tooltip_text|点一下, 这件就回背包
+scripts/scenes/InventoryScene.gd|tooltip_text|点一下换站位 —— 前排贴上去挥砍, 后排站远了射击
+scripts/scenes/InventoryScene.gd|tooltip_text|看这件的完整属性和效果
+scripts/scenes/LeaderboardScene.gd|lit|（对手还没读到 —— 下一场开打时去取一次）
+scripts/scenes/LeaderboardScene.gd|lit|（榜上暂时只有你 —— 打完一场, 对手就会上来）
+scripts/scenes/LeaderboardScene.gd|lit|（榜上暂时只有你）
+scripts/scenes/LeaderboardScene.gd|lit|（每场打完自动上榜）
+scripts/scenes/LeaderboardScene.gd|lit|（赢下第一场就能上分 —— 你本赛季还是 0 胜）
+scripts/scenes/LeaderboardScene.gd|lit|（连不上服务器 · 对手还没读到 —— 下一场开打时会自己再试）
+scripts/scenes/LeaderboardScene.gd|lit|🏆 本周排行
+scripts/scenes/LeaderboardScene.gd|text|你
+scripts/scenes/LeaderboardScene.gd|text|本周共 %d 人上榜
+scripts/scenes/MainMenuScene.gd|lit|%d 分 %02d 秒
+scripts/scenes/MainMenuScene.gd|lit|%d 天 %d 小时
+scripts/scenes/MainMenuScene.gd|lit|%d 小时 %d 分
+scripts/scenes/MainMenuScene.gd|lit|%d 胜 %d 负
+scripts/scenes/MainMenuScene.gd|lit|✅ 已晋级决赛日 · 闯关赛到此为止(%s) · 明天周日来打决赛日
+scripts/scenes/MainMenuScene.gd|lit|一
+scripts/scenes/MainMenuScene.gd|lit|三
+scripts/scenes/MainMenuScene.gd|lit|二
+scripts/scenes/MainMenuScene.gd|lit|五
+scripts/scenes/MainMenuScene.gd|lit|休赛日
+scripts/scenes/MainMenuScene.gd|lit|但你已晋级, 周六闯关赛见
+scripts/scenes/MainMenuScene.gd|lit|但你已过晋级线, 周六闯关赛见
+scripts/scenes/MainMenuScene.gd|lit|六
+scripts/scenes/MainMenuScene.gd|lit|决赛日
+scripts/scenes/MainMenuScene.gd|lit|决赛日 · 去看对阵图
+scripts/scenes/MainMenuScene.gd|lit|决赛日 · 本周没晋级
+scripts/scenes/MainMenuScene.gd|lit|决赛日 · 闯关赛止步 %s
+scripts/scenes/MainMenuScene.gd|lit|周%s %02d:%02d 收盘
+scripts/scenes/MainMenuScene.gd|lit|周二开赛 · 本日维护
+scripts/scenes/MainMenuScene.gd|lit|商店
+scripts/scenes/MainMenuScene.gd|lit|四
+scripts/scenes/MainMenuScene.gd|lit|图鉴
+scripts/scenes/MainMenuScene.gd|lit|已封盘
+scripts/scenes/MainMenuScene.gd|lit|开始战斗
+scripts/scenes/MainMenuScene.gd|lit|战绩  %s
+scripts/scenes/MainMenuScene.gd|lit|排行榜
+scripts/scenes/MainMenuScene.gd|lit|收盘前 %d 分钟起不开新局
+scripts/scenes/MainMenuScene.gd|lit|日
+scripts/scenes/MainMenuScene.gd|lit|本地 %s
+scripts/scenes/MainMenuScene.gd|lit|本地 %s 开打
+scripts/scenes/MainMenuScene.gd|lit|版本维护, 稍后回来
+scripts/scenes/MainMenuScene.gd|lit|玩法开发中, 暂按积分赛规则
+scripts/scenes/MainMenuScene.gd|lit|第 %d 大轮 · Lv %d   %s
+scripts/scenes/MainMenuScene.gd|lit|第 %d 大轮 · Lv %d   ♥ %d/8   本周 %d/%d
+scripts/scenes/MainMenuScene.gd|lit|维护中
+scripts/scenes/MainMenuScene.gd|lit|背包
+scripts/scenes/MainMenuScene.gd|lit|训龟大师
+scripts/scenes/MainMenuScene.gd|lit|距收盘 %s
+scripts/scenes/MainMenuScene.gd|lit|还没上过场
+scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 再赢 %d 场晋级 / 再输 %d 场出局
+scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 已出局
+scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 已晋级决赛日
+scripts/scenes/MainMenuScene.gd|lit|闯关赛 · 本周没晋级
+scripts/scenes/MainMenuScene.gd|lit|💀 本大轮已出局 · %s
+scripts/scenes/MainMenuScene.gd|lit|💀 本大轮已出局 · 下周一开新的一轮
+scripts/scenes/MainMenuScene.gd|lit|💀 闯关赛已出局(%s) · 下周一开新的一轮
+scripts/scenes/MainMenuScene.gd|lit|📋 本周配额 %d 场已打满 · %s
+scripts/scenes/MainMenuScene.gd|lit|📋 本周配额 %d 场已打满 · 下周一开新的一轮
+scripts/scenes/MainMenuScene.gd|lit|🔒 本周没晋级 · 下周一开新的一轮, 积分赛打够 %d 胜就能来
+scripts/scenes/MainMenuScene.gd|lit|🔒 本大轮打完第一场才开店
+scripts/scenes/MainMenuScene.gd|text| 今
+scripts/scenes/MainMenuScene.gd|text|先下场练练
+scripts/scenes/MainMenuScene.gd|text|决赛日\n看对阵图
+scripts/scenes/MainMenuScene.gd|text|开打
+scripts/scenes/MainMenuScene.gd|text|斗龟场
+scripts/scenes/MainMenuScene.gd|text|来一场热身局, 我教你挑龟、摆阵
+scripts/scenes/MainMenuScene.gd|text|等会儿
+scripts/scenes/MatchmakingScene.gd|lit|一击三连
+scripts/scenes/MatchmakingScene.gd|lit|乌龟跑得快
+scripts/scenes/MatchmakingScene.gd|lit|佛系养龟
+scripts/scenes/MatchmakingScene.gd|lit|你
+scripts/scenes/MatchmakingScene.gd|lit|南极来的
+scripts/scenes/MatchmakingScene.gd|lit|咸鱼翻身
+scripts/scenes/MatchmakingScene.gd|lit|头号玩家
+scripts/scenes/MatchmakingScene.gd|lit|水深危险
+scripts/scenes/MatchmakingScene.gd|lit|海底捞月
+scripts/scenes/MatchmakingScene.gd|lit|深海霸主
+scripts/scenes/MatchmakingScene.gd|lit|稳健型选手
+scripts/scenes/MatchmakingScene.gd|lit|老司机带带我
+scripts/scenes/MatchmakingScene.gd|lit|萌新龟龟
+scripts/scenes/MatchmakingScene.gd|lit|退役龟皇
+scripts/scenes/MatchmakingScene.gd|lit|龟界传说
+scripts/scenes/MatchmakingScene.gd|lit|龟速前进
+scripts/scenes/MatchmakingScene.gd|lit|龟龟不下班
+scripts/scenes/MatchmakingScene.gd|text|匹配中
+scripts/scenes/MatchmakingScene.gd|text|已匹配到对手!
+scripts/scenes/MatchmakingScene.gd|text|正在为你寻找势均力敌的对手...
+scripts/scenes/RealtimeBattle3DScene.gd|lit|%s %.0f/%.0f (治疗/加血没夹上限)
+scripts/scenes/RealtimeBattle3DScene.gd|lit|%s 护盾 %.0f = %.1f× 最大生命
+scripts/scenes/RealtimeBattle3DScene.gd|lit|%s 攻击 %.0f → %.0f (%.1f×)
+scripts/scenes/RealtimeBattle3DScene.gd|lit|%s 最大生命 %.0f → %.0f (%.1f×)
+scripts/scenes/RealtimeBattle3DScene.gd|lit|%s 被控锁 %.0fs(采样) 期间共被上控 %d 次  剩余=%.1f 最后来源=%s 全场来源=%s
+scripts/scenes/RealtimeBattle3DScene.gd|lit|%s 连续浮空 %.0fs
+scripts/scenes/RealtimeBattle3DScene.gd|lit|[color=#ff6b6b]🏳 认输 —— 本场判负[/color]
+scripts/scenes/RealtimeBattle3DScene.gd|lit|[color=#ff9a5a]☠ %s[/color] 被击败
+scripts/scenes/RealtimeBattle3DScene.gd|lit|[color=%s]◆ %s[/color] 施放 [color=#ffe08a]%s[/color]
+scripts/scenes/RealtimeBattle3DScene.gd|lit|_world 子节点=%d (特效没清)
+scripts/scenes/RealtimeBattle3DScene.gd|lit|⚔ 决胜阶段: 治疗效果 -50%, 每 5 秒全场 +25% 增伤
+scripts/scenes/RealtimeBattle3DScene.gd|lit|上路
+scripts/scenes/RealtimeBattle3DScene.gd|lit|下路
+scripts/scenes/RealtimeBattle3DScene.gd|lit|冰川
+scripts/scenes/RealtimeBattle3DScene.gd|lit|决胜!
+scripts/scenes/RealtimeBattle3DScene.gd|lit|凤凰雕像
+scripts/scenes/RealtimeBattle3DScene.gd|lit|口哨
+scripts/scenes/RealtimeBattle3DScene.gd|lit|吸血 +25%
+scripts/scenes/RealtimeBattle3DScene.gd|lit|命中叠金色闪电, 满 5 层引爆 1.0×ATK 真实伤害
+scripts/scenes/RealtimeBattle3DScene.gd|lit|命运吸血!
+scripts/scenes/RealtimeBattle3DScene.gd|lit|嗜血之刃
+scripts/scenes/RealtimeBattle3DScene.gd|lit|复活!
+scripts/scenes/RealtimeBattle3DScene.gd|lit|大熊
+scripts/scenes/RealtimeBattle3DScene.gd|lit|大熊蓄力...
+scripts/scenes/RealtimeBattle3DScene.gd|lit|宝石甲
+scripts/scenes/RealtimeBattle3DScene.gd|lit|实时
+scripts/scenes/RealtimeBattle3DScene.gd|lit|弹道数=%d (可能没回收)
+scripts/scenes/RealtimeBattle3DScene.gd|lit|归队
+scripts/scenes/RealtimeBattle3DScene.gd|lit|怒火药水
+scripts/scenes/RealtimeBattle3DScene.gd|lit|战利品 %d/5
+scripts/scenes/RealtimeBattle3DScene.gd|lit|护甲与魔抗 +20%
+scripts/scenes/RealtimeBattle3DScene.gd|lit|护甲与魔抗 +25%, 最大生命 +500
+scripts/scenes/RealtimeBattle3DScene.gd|lit|攻击力 +25%
+scripts/scenes/RealtimeBattle3DScene.gd|lit|攻击力 +40%, 暴击 +40%, 暴击伤害 +25%, 吸血提升
+scripts/scenes/RealtimeBattle3DScene.gd|lit|攻击力 +45%
+scripts/scenes/RealtimeBattle3DScene.gd|lit|无装备
+scripts/scenes/RealtimeBattle3DScene.gd|lit|星辉
+scripts/scenes/RealtimeBattle3DScene.gd|lit|普攻命中使目标受到的治疗 -50%, 持续 5 秒
+scripts/scenes/RealtimeBattle3DScene.gd|lit|普攻命中施加灼烧
+scripts/scenes/RealtimeBattle3DScene.gd|lit|暴击率 +35%
+scripts/scenes/RealtimeBattle3DScene.gd|lit|朗姆酒
+scripts/scenes/RealtimeBattle3DScene.gd|lit|木盾
+scripts/scenes/RealtimeBattle3DScene.gd|lit|未知龟
+scripts/scenes/RealtimeBattle3DScene.gd|lit|枪
+scripts/scenes/RealtimeBattle3DScene.gd|lit|每秒回复 0.5% 最大生命
+scripts/scenes/RealtimeBattle3DScene.gd|lit|毒箭
+scripts/scenes/RealtimeBattle3DScene.gd|lit|海胆盾
+scripts/scenes/RealtimeBattle3DScene.gd|lit|海螺虫
+scripts/scenes/RealtimeBattle3DScene.gd|lit|火石
+scripts/scenes/RealtimeBattle3DScene.gd|lit|猎龟令
+scripts/scenes/RealtimeBattle3DScene.gd|lit|王冠
+scripts/scenes/RealtimeBattle3DScene.gd|lit|短刃
+scripts/scenes/RealtimeBattle3DScene.gd|lit|石头
+scripts/scenes/RealtimeBattle3DScene.gd|lit|砸击的范围与射程 ×2
+scripts/scenes/RealtimeBattle3DScene.gd|lit|砸击额外 +100% 护甲与 +100% 魔抗
+scripts/scenes/RealtimeBattle3DScene.gd|lit|终极
+scripts/scenes/RealtimeBattle3DScene.gd|lit|自身造成的所有伤害转为真实伤害
+scripts/scenes/RealtimeBattle3DScene.gd|lit|血筛子
+scripts/scenes/RealtimeBattle3DScene.gd|lit|装备 (%d)
+scripts/scenes/RealtimeBattle3DScene.gd|lit|观测:stun_chain
+scripts/scenes/RealtimeBattle3DScene.gd|lit|钩锁
+scripts/scenes/RealtimeBattle3DScene.gd|lit|锁链
+scripts/scenes/RealtimeBattle3DScene.gd|lit|长剑
+scripts/scenes/RealtimeBattle3DScene.gd|lit|雷刃
+scripts/scenes/RealtimeBattle3DScene.gd|lit|首次死亡以 25% 最大生命复活
+scripts/scenes/RealtimeBattle3DScene.gd|lit|驯服
+scripts/scenes/RecordScene.gd|lit|%d 分钟前
+scripts/scenes/RecordScene.gd|lit|%d 天前
+scripts/scenes/RecordScene.gd|lit|%d 小时前
+scripts/scenes/RecordScene.gd|lit|%d 秒拿下
+scripts/scenes/RecordScene.gd|lit|%s · 打了 %d 回合
+scripts/scenes/RecordScene.gd|lit|一照面就拿下
+scripts/scenes/RecordScene.gd|lit|出战
+scripts/scenes/RecordScene.gd|lit|切磋
+scripts/scenes/RecordScene.gd|lit|刚刚
+scripts/scenes/RecordScene.gd|lit|前天
+scripts/scenes/RecordScene.gd|lit|实时
+scripts/scenes/RecordScene.gd|lit|战绩
+scripts/scenes/RecordScene.gd|lit|指定首领
+scripts/scenes/RecordScene.gd|lit|撑了 %d 秒
+scripts/scenes/RecordScene.gd|lit|昨天
+scripts/scenes/RecordScene.gd|lit|测试
+scripts/scenes/RecordScene.gd|lit|深海闯关
+scripts/scenes/RecordScene.gd|lit|胜率
+scripts/scenes/RecordScene.gd|lit|赢
+scripts/scenes/RecordScene.gd|lit|输
+scripts/scenes/RecordScene.gd|lit|还没站稳就倒了
+scripts/scenes/RecordScene.gd|lit|野生
+scripts/scenes/RecordScene.gd|lit|首领
+scripts/scenes/RecordScene.gd|text|下去斗一场，看台自会替你记上第一笔
+scripts/scenes/RecordScene.gd|text|战报牌上还空着
+scripts/scenes/RecordScene.gd|text|最近对局
+scripts/scenes/RecordScene.gd|text|赢
+scripts/scenes/RecordScene.gd|text|输
+scripts/scenes/SettingsScene.gd|lit|⚠ 云端存档和这台设备的不一样（可能在别的设备上玩过）
+scripts/scenes/SettingsScene.gd|lit|⚠ 未绑定邮箱 —— 换设备后账号和进度都找不回来
+scripts/scenes/SettingsScene.gd|lit|⚠ 清掉就拿不回来了。音量、全屏、画质这些不动。
+scripts/scenes/SettingsScene.gd|lit|⚠ 登录已失效 —— 点「用邮箱取回」重新登录
+scripts/scenes/SettingsScene.gd|lit|⚠ 这台设备现在的进度会被换掉（换之前会先在本机备份一份）。
+scripts/scenes/SettingsScene.gd|lit|⚠ 重置所有存档
+scripts/scenes/SettingsScene.gd|lit|⚠ 龟和装备是存在这台手机上的，换设备仍然会丢。
+scripts/scenes/SettingsScene.gd|lit|低
+scripts/scenes/SettingsScene.gd|lit|另一台设备上的进度会被这台覆盖
+scripts/scenes/SettingsScene.gd|lit|填邮箱 → 发验证码 → 把邮件里的数字填到下面
+scripts/scenes/SettingsScene.gd|lit|处理存档冲突
+scripts/scenes/SettingsScene.gd|lit|存档清空了 · 从头再来
+scripts/scenes/SettingsScene.gd|lit|已绑定 · 换设备可用这个邮箱取回账号和进度
+scripts/scenes/SettingsScene.gd|lit|换个邮箱
+scripts/scenes/SettingsScene.gd|lit|正在发送…
+scripts/scenes/SettingsScene.gd|lit|正在验证…
+scripts/scenes/SettingsScene.gd|lit|用云端那份
+scripts/scenes/SettingsScene.gd|lit|用这台的
+scripts/scenes/SettingsScene.gd|lit|用邮箱取回
+scripts/scenes/SettingsScene.gd|lit|用邮箱取回账号
+scripts/scenes/SettingsScene.gd|lit|画质「低」
+scripts/scenes/SettingsScene.gd|lit|画质「高」
+scripts/scenes/SettingsScene.gd|lit|画质换成「%s」了%s · 下一场开打时生效
+scripts/scenes/SettingsScene.gd|lit|画面「全屏」
+scripts/scenes/SettingsScene.gd|lit|画面「窗口」
+scripts/scenes/SettingsScene.gd|lit|绑定之后，换手机能用这个邮箱把【账号】取回来（排名、战绩、你的阵容）。\n
+scripts/scenes/SettingsScene.gd|lit|绑定邮箱
+scripts/scenes/SettingsScene.gd|lit|设置
+scripts/scenes/SettingsScene.gd|lit|调完就记住了，下次进来还是这样
+scripts/scenes/SettingsScene.gd|lit|账号 · %s
+scripts/scenes/SettingsScene.gd|lit|账号 · 匿名 %s
+scripts/scenes/SettingsScene.gd|lit|账号 · 连接中…
+scripts/scenes/SettingsScene.gd|lit|这台设备上次同步之后的进度会被换掉\n（换之前先在本机备份一份）
+scripts/scenes/SettingsScene.gd|lit|音乐
+scripts/scenes/SettingsScene.gd|lit|音效
+scripts/scenes/SettingsScene.gd|lit|高
+scripts/scenes/SettingsScene.gd|lit|（绑定邮箱后，进度会同步到云端）
+scripts/scenes/SettingsScene.gd|lit|（进度会自动同步到云端）
+scripts/scenes/SettingsScene.gd|lit|，手机会跑得更顺
+scripts/scenes/SettingsScene.gd|lit|🛠 调试场
+scripts/scenes/SettingsScene.gd|placeholder_text|你的名字
+scripts/scenes/SettingsScene.gd|placeholder_text|你的邮箱
+scripts/scenes/SettingsScene.gd|placeholder_text|邮件里的验证码
+scripts/scenes/SettingsScene.gd|text|⚠ 重置所有存档？
+scripts/scenes/SettingsScene.gd|text|两边的存档对不上
+scripts/scenes/SettingsScene.gd|text|云端的存档被另一台设备更新过，和这台设备上的不一样。留哪一份？
+scripts/scenes/SettingsScene.gd|text|会清空：深海币 · 背包装备 · 出战统领 · 赛季进度（命/等级/胜场）· 糖果罐 · 布阵。\n
+scripts/scenes/SettingsScene.gd|text|先不清
+scripts/scenes/SettingsScene.gd|text|先不选
+scripts/scenes/SettingsScene.gd|text|关闭
+scripts/scenes/SettingsScene.gd|text|发验证码
+scripts/scenes/SettingsScene.gd|text|清空，我确定
+scripts/scenes/SettingsScene.gd|text|用你绑过的邮箱收一个验证码，把那个账号和它的进度取回到这台设备上。\n
+scripts/scenes/SettingsScene.gd|text|确认
+scripts/scenes/SettingsScene.gd|text|起个名字(%d~%d 个字) —— 排行榜和对阵图上别人看到的就是它
+scripts/scenes/SettingsScene.gd|text|邮箱绑好了
+scripts/scenes/ShopScene.gd|lit|  能进化了
+scripts/scenes/ShopScene.gd|lit|[color=#5b7a92]这件的门道, 摊主自己也讲不明白[/color]
+scripts/scenes/ShopScene.gd|lit|斧头
+scripts/scenes/ShopScene.gd|lit|精英小将
+scripts/scenes/ShopScene.gd|lit|近战小将
+scripts/scenes/ShopScene.gd|lit|还没选龟
+scripts/scenes/ShopScene.gd|lit|远程小将
+scripts/scenes/ShopScene.gd|lit|🎒 背包
+scripts/scenes/ShopScene.gd|text|%d 深海币%s
+scripts/scenes/ShopScene.gd|text|%d 费 %d%%
+scripts/scenes/ShopScene.gd|text|← 摊上的货, 点一件看看\n手里那些也能点开
+scripts/scenes/ShopScene.gd|text|▼ 下面还有
+scripts/scenes/ShopScene.gd|text|上
+scripts/scenes/ShopScene.gd|text|下
+scripts/scenes/ShopScene.gd|text|买下  %d
+scripts/scenes/ShopScene.gd|text|买经验 +%d
+scripts/scenes/ShopScene.gd|text|今日货源
+scripts/scenes/ShopScene.gd|text|另外还有 %d 项
+scripts/scenes/ShopScene.gd|text|同类装备凑够 3 件, 羁绊才会亮
+scripts/scenes/ShopScene.gd|text|回 🎒 背包装上或卖掉
+scripts/scenes/ShopScene.gd|text|属性
+scripts/scenes/ShopScene.gd|text|已入袋
+scripts/scenes/ShopScene.gd|text|换一批  %d
+scripts/scenes/ShopScene.gd|text|收起
+scripts/scenes/ShopScene.gd|text|空的, 上面挑几件带走
+scripts/scenes/ShopScene.gd|text|经验 %d/%d
+scripts/scenes/ShopScene.gd|text|羁绊
+scripts/scenes/ShopScene.gd|text|背包里有 %d 件, 点一下看看
+scripts/scenes/ShopScene.gd|text|背包里空着
+scripts/scenes/ShopScene.gd|text|还差 %d 枚深海币
+scripts/scenes/ShopScene.gd|text|还没点兵, 先去选龟那边排一路人马
+scripts/scenes/ShopScene.gd|text|这件不加属性，只有效果
+scripts/scenes/ShopScene.gd|text|🎒 我的背包  %d 件
+scripts/scenes/ShopScene.gd|text|🐢 出战阵容  已装 %d/%d
+scripts/scenes/ShopScene.gd|text|🐢 出战阵容 · 身上带着的
+scripts/scenes/ShopScene.gd|text|🔒 摊子还没摆开\n\n打完这一大轮的头一场, 老板才出摊
+scripts/scenes/TeamSelectScene.gd|lit|%s 不能被替换
+scripts/scenes/TeamSelectScene.gd|lit|%s 只能拖到空格
+scripts/scenes/TeamSelectScene.gd|lit|三只满了 · 先撤下一只
+scripts/scenes/TeamSelectScene.gd|lit|三只满了 · 点格子把龟撤下来
+scripts/scenes/TeamSelectScene.gd|lit|受到致命伤害时一次不死, 保留 1 点生命(每场 1 次)。这段较长描述用于测试自动换行与屏内夹取是否正常, 多写几个字确保会换到第二三行。
+scripts/scenes/TeamSelectScene.gd|lit|水晶球位
+scripts/scenes/TeamSelectScene.gd|lit|测试被动·不屈
+scripts/scenes/TeamSelectScene.gd|lit|糖果炸弹位
+scripts/scenes/TeamSelectScene.gd|lit|这一轮的三只龟定了 · 还能换招, 换不了龟
+scripts/scenes/TeamSelectScene.gd|lit|这一轮的龟定了 · 下个赛季才能重挑
+scripts/scenes/TeamSelectScene.gd|lit|随从位
+scripts/scenes/TeamSelectScene.gd|text|上阵的龟还没戴同类装备
+scripts/scenes/TeamSelectScene.gd|text|全部
+scripts/scenes/TeamSelectScene.gd|text|就这三只 · 出战
+scripts/scenes/TeamSelectScene.gd|text|已封盘 · 收盘前 %d 分钟不再开新局
+scripts/scenes/TeamSelectScene.gd|text|带它们出战
+scripts/scenes/TeamSelectScene.gd|text|挑 3 只龟上阵
+scripts/scenes/TeamSelectScene.gd|text|撤下
+scripts/scenes/TeamSelectScene.gd|text|沿用上次
+scripts/scenes/TeamSelectScene.gd|text|类型羁绊
+scripts/scenes/TeamSelectScene.gd|text|返回
+scripts/scenes/TeamSelectScene.gd|text|还差 %d 只
+scripts/scenes/TeamSelectScene.gd|text|选择你的统领
+scripts/scenes/TeamSelectScene.gd|text|龟谱没读出来 · 请重开一次
+scripts/scenes/TrainerConfigScene.gd|lit|主动
+scripts/scenes/TrainerConfigScene.gd|lit|冰川
+scripts/scenes/TrainerConfigScene.gd|lit|口哨
+scripts/scenes/TrainerConfigScene.gd|lit|少女
+scripts/scenes/TrainerConfigScene.gd|lit|怒火药水
+scripts/scenes/TrainerConfigScene.gd|lit|技能　%d 门里只选 1 门 · 被动与主动不可兼得
+scripts/scenes/TrainerConfigScene.gd|lit|挑个模样
+scripts/scenes/TrainerConfigScene.gd|lit|普攻附带 2% 目标最大生命 魔法伤害；每次攻击自身 +3% 攻速(可叠·不封顶·整局不清零)。攒到 10/25/50 层时身上会亮起共鸣特效。
+scripts/scenes/TrainerConfigScene.gd|lit|朝 700 码内一点丢药水：落点 300 码内友军 5 秒 +30%攻速 / +25%龟能充能 / +25%移速。CD 16。
+scripts/scenes/TrainerConfigScene.gd|lit|朝方向甩钩(射程 600)勾住第一个敌人：眩晕 4 秒、一段段拽向大师、受伤+25%。CD 20，空放返还。
+scripts/scenes/TrainerConfigScene.gd|lit|村民
+scripts/scenes/TrainerConfigScene.gd|lit|标记 600 码内一个敌人：它死亡时不真死，以 30%最大生命重生并归顺我方(重生 2.5 秒无敌)，此后每秒损失 2%最大生命。可跨入终极战场。CD 60(空放返还一半)。
+scripts/scenes/TrainerConfigScene.gd|lit|沿方向生成 500 码冰川(6 秒)：站上的敌 -40%移速 + 受伤+20%。CD 17。
+scripts/scenes/TrainerConfigScene.gd|lit|猎龟令
+scripts/scenes/TrainerConfigScene.gd|lit|被动
+scripts/scenes/TrainerConfigScene.gd|lit|钩锁
+scripts/scenes/TrainerConfigScene.gd|lit|锁定 600 码内一个敌人 15 秒：它受到伤害+15%，且以它为圆心 400 码内的我方友军优先攻击它(圈随它移动)。CD 30(空放返还一半)。
+scripts/scenes/TrainerConfigScene.gd|lit|随机 1 个：给友军 700 临时生命(5 秒·到期按比例削) / 召灵体小龟蓄力放气波(2000 码贯穿·命中扣 100+15%目标最大生命真实伤害+击飞+削甲 30%持续 5 秒) / 友军狂暴 4 秒(+20%攻击力·+20 点吸血·免疫死亡)。CD 14。
+scripts/scenes/TrainerConfigScene.gd|lit|驯服
+scripts/scenes/TrainerConfigScene.gd|lit|魔法师
+scripts/scenes/TrainerConfigScene.gd|lit|魔法石
+scripts/scenes/TrainerConfigScene.gd|text|就这么定了
+scripts/scenes/TrainerConfigScene.gd|text|算了不改了
+scripts/scenes/TrainerConfigScene.gd|text|训龟大师
+scripts/scenes/TutorialGuide.gd|text|下一步 ▶
+scripts/scenes/TutorialGuide.gd|text|完成 ✓
+scripts/scenes/TutorialGuide.gd|text|知道了
+scripts/scenes/TutorialGuide.gd|text|跳过教程
+scripts/scenes/battle/battle_damage.gd|lit|%s 单次承伤 %d (%s)
+scripts/scenes/battle/battle_damage.gd|lit|+%d 盾
+scripts/scenes/battle/battle_damage.gd|lit|亡灵!
+scripts/scenes/battle/battle_damage.gd|lit|盾
+scripts/scenes/battle/battle_damage.gd|lit|闪避
+scripts/scenes/battle/battle_debug_arena.gd|lit|× 关闭
+scripts/scenes/battle/battle_debug_arena.gd|lit|➕ 加装备
+scripts/scenes/battle/battle_debug_arena.gd|lit|不死
+scripts/scenes/battle/battle_debug_arena.gd|lit|主动技
+scripts/scenes/battle/battle_debug_arena.gd|lit|会死
+scripts/scenes/battle/battle_debug_arena.gd|lit|假人
+scripts/scenes/battle/battle_debug_arena.gd|lit|先点一个单位选中, 再加装备
+scripts/scenes/battle/battle_debug_arena.gd|lit|关
+scripts/scenes/battle/battle_debug_arena.gd|lit|关(正常攒龟能)
+scripts/scenes/battle/battle_debug_arena.gd|lit|删除了 1 个单位 (剩 %d)
+scripts/scenes/battle/battle_debug_arena.gd|lit|删除单位 (剩 %d)
+scripts/scenes/battle/battle_debug_arena.gd|lit|加装备到 %s · 点选(可连点多件)
+scripts/scenes/battle/battle_debug_arena.gd|lit|友军
+scripts/scenes/battle/battle_debug_arena.gd|lit|取消
+scripts/scenes/battle/battle_debug_arena.gd|lit|场上没有单位, 先摆几个再开始
+scripts/scenes/battle/battle_debug_arena.gd|lit|大师主动 → %s
+scripts/scenes/battle/battle_debug_arena.gd|lit|小将
+scripts/scenes/battle/battle_debug_arena.gd|lit|已回编辑模式 (按摆位重新生成)
+scripts/scenes/battle/battle_debug_arena.gd|lit|已恢复上次摆位 (%d 单位)
+scripts/scenes/battle/battle_debug_arena.gd|lit|已清空
+scripts/scenes/battle/battle_debug_arena.gd|lit|开
+scripts/scenes/battle/battle_debug_arena.gd|lit|开(可反复看放技)
+scripts/scenes/battle/battle_debug_arena.gd|lit|战斗中 ... (点 ⏸编辑 暂停回摆位)
+scripts/scenes/battle/battle_debug_arena.gd|lit|技%d
+scripts/scenes/battle/battle_debug_arena.gd|lit|技能
+scripts/scenes/battle/battle_debug_arena.gd|lit|技能 → %s
+scripts/scenes/battle/battle_debug_arena.gd|lit|摆放 %s (%s) · 共 %d 单位
+scripts/scenes/battle/battle_debug_arena.gd|lit|摆放 训龟大师·%s (%s) · 我方按 Q 放/敌方自动放 · 共 %d 单位
+scripts/scenes/battle/battle_debug_arena.gd|lit|敌方
+scripts/scenes/battle/battle_debug_arena.gd|lit|无敌:%s
+scripts/scenes/battle/battle_debug_arena.gd|lit|满龟能 %s · 友军技能开局即就绪+快速回充
+scripts/scenes/battle/battle_debug_arena.gd|lit|满龟能:%s
+scripts/scenes/battle/battle_debug_arena.gd|lit|笔刷: %s · 点空地摆放(可连点)
+scripts/scenes/battle/battle_debug_arena.gd|lit|精英小将
+scripts/scenes/battle/battle_debug_arena.gd|lit|血量
+scripts/scenes/battle/battle_debug_arena.gd|lit|训龟大师
+scripts/scenes/battle/battle_debug_arena.gd|lit|近战小将·浪板
+scripts/scenes/battle/battle_debug_arena.gd|lit|还没开始过 · 先摆几个点▶开始
+scripts/scenes/battle/battle_debug_arena.gd|lit|远程小将·火箭
+scripts/scenes/battle/battle_debug_arena.gd|lit|选中 %s · 加装备/删除
+scripts/scenes/battle/battle_debug_arena.gd|lit|选龟 · 点选要摆的龟
+scripts/scenes/battle/battle_debug_arena.gd|lit|选龟: %s · 点空地摆放
+scripts/scenes/battle/battle_debug_arena.gd|lit|🗑 删除
+scripts/scenes/battle/battle_debug_arena.gd|text|⊟ 折叠
+scripts/scenes/battle/battle_debug_arena.gd|text|▶ 展开
+scripts/scenes/battle/battle_debug_arena.gd|text|右队(假人)
+scripts/scenes/battle/battle_debug_arena.gd|text|左队(友军)
+scripts/scenes/battle/battle_debug_arena.gd|text|当前笔刷: %s
+scripts/scenes/battle/battle_debug_arena.gd|text|满龟能:关
+scripts/scenes/battle/battle_debug_arena.gd|text|满龟能:开
+scripts/scenes/battle/battle_debug_arena.gd|text|近战小将·浪板
+scripts/scenes/battle/battle_debug_arena.gd|text|远程小将·火箭
+scripts/scenes/battle/battle_debug_arena.gd|text|选中: %s(%s)
+scripts/scenes/battle/battle_debug_arena.gd|text|选龟: %s
+scripts/scenes/battle/battle_hud.gd|lit|⊟ 折叠
+scripts/scenes/battle/battle_hud.gd|lit|⏸ 编辑
+scripts/scenes/battle/battle_hud.gd|lit|▶ 开始
+scripts/scenes/battle/battle_hud.gd|lit|倍速
+scripts/scenes/battle/battle_hud.gd|lit|假人HP
+scripts/scenes/battle/battle_hud.gd|lit|再打
+scripts/scenes/battle/battle_hud.gd|lit|击杀
+scripts/scenes/battle/battle_hud.gd|lit|前往商店
+scripts/scenes/battle/battle_hud.gd|lit|剩余生命
+scripts/scenes/battle/battle_hud.gd|lit|合计
+scripts/scenes/battle/battle_hud.gd|lit|大师
+scripts/scenes/battle/battle_hud.gd|lit|完成新手教学
+scripts/scenes/battle/battle_hud.gd|lit|左队(友军)
+scripts/scenes/battle/battle_hud.gd|lit|我方
+scripts/scenes/battle/battle_hud.gd|lit|战报
+scripts/scenes/battle/battle_hud.gd|lit|打出
+scripts/scenes/battle/battle_hud.gd|lit|扛住
+scripts/scenes/battle/battle_hud.gd|lit|掉血/不死
+scripts/scenes/battle/battle_hud.gd|lit|敌方
+scripts/scenes/battle/battle_hud.gd|lit|更多属性 · %d 个
+scripts/scenes/battle/battle_hud.gd|lit|本周场次
+scripts/scenes/battle/battle_hud.gd|lit|本场
+scripts/scenes/battle/battle_hud.gd|lit|没传上去
+scripts/scenes/battle/battle_hud.gd|lit|治疗
+scripts/scenes/battle/battle_hud.gd|lit|浪板
+scripts/scenes/battle/battle_hud.gd|lit|消耗 1 点生命
+scripts/scenes/battle/battle_hud.gd|lit|深海币
+scripts/scenes/battle/battle_hud.gd|lit|清空
+scripts/scenes/battle/battle_hud.gd|lit|满龟能默认:关
+scripts/scenes/battle/battle_hud.gd|lit|火箭
+scripts/scenes/battle/battle_hud.gd|lit|生命  %d / %d
+scripts/scenes/battle/battle_hud.gd|lit|生命已耗尽 · 本赛季结束
+scripts/scenes/battle/battle_hud.gd|lit|精英
+scripts/scenes/battle/battle_hud.gd|lit|练习赛 · 不计入赛季进度
+scripts/scenes/battle/battle_hud.gd|lit|继续
+scripts/scenes/battle/battle_hud.gd|lit|表演赛 · 不消耗生命
+scripts/scenes/battle/battle_hud.gd|lit|装备星级
+scripts/scenes/battle/battle_hud.gd|lit|认输
+scripts/scenes/battle/battle_hud.gd|lit|赛季等级
+scripts/scenes/battle/battle_hud.gd|lit|赛季胜场
+scripts/scenes/battle/battle_hud.gd|lit|赛季胜场 +1
+scripts/scenes/battle/battle_hud.gd|lit|返回主菜单
+scripts/scenes/battle/battle_hud.gd|lit|返回菜单
+scripts/scenes/battle/battle_hud.gd|lit|阵容上传
+scripts/scenes/battle/battle_hud.gd|lit|🏆 战斗胜利!
+scripts/scenes/battle/battle_hud.gd|lit|💀 战斗失败!
+scripts/scenes/battle/battle_hud.gd|lit|🔁 再来一把
+scripts/scenes/battle/battle_hud.gd|text|  阵亡
+scripts/scenes/battle/battle_hud.gd|text|← 手指横滑挑龟(共28只+小将+大师) →   点一格选笔刷 → 点战场连点连摆 · 点已摆的龟→出配置面板
+scripts/scenes/battle/battle_hud.gd|text|举白旗 · 这一场就算输了, 按下去收不回来
+scripts/scenes/battle/battle_hud.gd|text|友军
+scripts/scenes/battle/battle_hud.gd|text|失败
+scripts/scenes/battle/battle_hud.gd|text|战报
+scripts/scenes/battle/battle_hud.gd|text|战斗日志
+scripts/scenes/battle/battle_hud.gd|text|打到这里的战报和奖励照算, 不会白打
+scripts/scenes/battle/battle_hud.gd|text|敌方
+scripts/scenes/battle/battle_hud.gd|text|日志
+scripts/scenes/battle/battle_hud.gd|text|点空地=摆(龟/小将) · 点单位=选中配装 · 拖拽=挪位 · 满龟能开→秒放技看效果
+scripts/scenes/battle/battle_hud.gd|text|真要认输?
+scripts/scenes/battle/battle_hud.gd|text|结果已封存
+scripts/scenes/battle/battle_hud.gd|text|胜利
+scripts/scenes/battle/battle_hud.gd|text|阵容已上传 · 别人可能会打到你
+scripts/scenes/battle/battle_hud.gd|text|🛠 调试场
+scripts/scenes/battle/battle_hud.gd|tooltip_text|%s · %d 档
+scripts/scenes/battle/battle_hud.gd|tooltip_text|%s · 点开细看
+scripts/scenes/battle/battle_spawn.gd|lit|命运之轮 -30%HP
+scripts/scenes/battle/battle_spawn.gd|lit|小将
+scripts/scenes/battle/battle_spawn.gd|lit|水晶球
+scripts/scenes/battle/battle_spawn.gd|lit|海盗船
+scripts/scenes/battle/battle_spawn.gd|lit|精英小将
+scripts/scenes/battle/battle_spawn.gd|lit|糖果炸弹
+scripts/scenes/battle/battle_spawn.gd|lit|编辑模式: 点空地摆兵 · 拖拽挪位 · 右键删
+scripts/scenes/battle/battle_spawn.gd|lit|训龟大师
+scripts/scenes/battle/battle_spawn.gd|lit|随从
+scripts/scenes/battle/battle_spawn.gd|lit|龟蛋
+scripts/scenes/battle/battle_vfx.gd|lit|冰川
+scripts/scenes/battle/battle_vfx.gd|lit|口哨·灵体气波
+scripts/scenes/battle/battle_vfx.gd|lit|怒火药水
+scripts/scenes/battle/battle_vfx.gd|lit|猎龟令
+scripts/scenes/battle/battle_vfx.gd|lit|钩锁
+scripts/scenes/battle/battle_vfx.gd|lit|驯服
+scripts/scenes/battle/battle_vfx.gd|lit|魔法石·投石
+scripts/scenes/battle/battle_vfx_lab.gd|lit|(未登记·缺省配置)
+scripts/scenes/battle/battle_vfx_lab.gd|lit|✗ 无立绘(渲染成队色发光球)
+scripts/scenes/battle/battle_vfx_lab.gd|lit|假人
+scripts/scenes/battle/battle_vfx_lab.gd|lit|友军
+scripts/scenes/battle/battle_vfx_lab.gd|lit|召唤物:
+scripts/scenes/battle/battle_vfx_lab.gd|lit|携带者
+scripts/scenes/battle/battle_vfx_lab.gd|lit|枪
+scripts/scenes/battle/battle_vfx_lab.gd|lit|盾
+scripts/scenes/battle/dmg_stats_panel.gd|lit|我方
+scripts/scenes/battle/dmg_stats_panel.gd|lit|战报
+scripts/scenes/battle/dmg_stats_panel.gd|lit|打出
+scripts/scenes/battle/dmg_stats_panel.gd|lit|扛住
+scripts/scenes/battle/dmg_stats_panel.gd|lit|护盾
+scripts/scenes/battle/dmg_stats_panel.gd|lit|敌方
+scripts/scenes/battle/dmg_stats_panel.gd|lit|治疗
+scripts/scenes/battle/dual_lane_flow.gd|lit|  ·  ⚔决胜 +%d%%增伤 · 治疗-50%%
+scripts/scenes/battle/dual_lane_flow.gd|lit|  ·  破蛋(决胜)
+scripts/scenes/battle/dual_lane_flow.gd|lit|  ·  破蛋还剩 %.0fs
+scripts/scenes/battle/dual_lane_flow.gd|lit|上半场
+scripts/scenes/battle/dual_lane_flow.gd|lit|上路
+scripts/scenes/battle/dual_lane_flow.gd|lit|下半场
+scripts/scenes/battle/dual_lane_flow.gd|lit|下路
+scripts/scenes/battle/dual_lane_flow.gd|lit|全军覆没
+scripts/scenes/battle/dual_lane_flow.gd|lit|击碎敌蛋
+scripts/scenes/battle/dual_lane_flow.gd|lit|各路战果    我方 %d : %d 对方
+scripts/scenes/battle/dual_lane_flow.gd|lit|对方
+scripts/scenes/battle/dual_lane_flow.gd|lit|小将
+scripts/scenes/battle/dual_lane_flow.gd|lit|开 战
+scripts/scenes/battle/dual_lane_flow.gd|lit|我方
+scripts/scenes/battle/dual_lane_flow.gd|lit|敌军覆没
+scripts/scenes/battle/dual_lane_flow.gd|lit|精英小将
+scripts/scenes/battle/dual_lane_flow.gd|lit|终极
+scripts/scenes/battle/dual_lane_flow.gd|lit|终极战场
+scripts/scenes/battle/dual_lane_flow.gd|lit|结算
+scripts/scenes/battle/dual_lane_flow.gd|lit|龟蛋破碎
+scripts/scenes/battle/dual_lane_flow.gd|text|▶  开  打
+scripts/scenes/battle/dual_lane_flow.gd|text|⚔  三个战场都要打
+scripts/scenes/battle/dual_lane_flow.gd|text|【%s战场】 结算
+scripts/scenes/battle/dual_lane_flow.gd|text|【%s战场】 马上开打
+scripts/scenes/battle/dual_lane_flow.gd|text|上下路幸存者对决
+scripts/scenes/battle/dual_lane_flow.gd|text|拖我方的龟在自己半场摆好站位 → 点「开打」
+scripts/scenes/battle/dual_lane_flow.gd|text|蛋血  我方 %d  ·  对方 %d
+scripts/scenes/battle/dual_lane_flow.gd|text|（无装备）
+scripts/scenes/battle/dual_lane_flow.gd|text|（点一下接着来 · 不点也一样）
+scripts/scenes/battle/dual_lane_flow.gd|text|🏆 我方拿下本路！
+scripts/scenes/battle/dual_lane_flow.gd|text|💀 本路失守
+scripts/scenes/battle/incense_vfx.gd|lit|香火 +%d
+scripts/scenes/battle/incense_vfx.gd|lit|香火 满
+scripts/scenes/battle/info_panel.gd|lit|  ·  攒满了, 可以放「%s」
+scripts/scenes/battle/info_panel.gd|lit|  ·  攒满了, 随时能放\n
+scripts/scenes/battle/info_panel.gd|lit|  ·  还差 %.1f 秒
+scripts/scenes/battle/info_panel.gd|lit|  ·  还差 %.1f 秒\n
+scripts/scenes/battle/info_panel.gd|lit|  ·  龟能被锁住 %.1f 秒
+scripts/scenes/battle/info_panel.gd|lit|  ·  龟能被锁住 %.1f 秒\n
+scripts/scenes/battle/info_panel.gd|lit| (普攻)
+scripts/scenes/battle/info_panel.gd|lit|%.1f 秒后炸开 · 回血 %d · 伤害 %d
+scripts/scenes/battle/info_panel.gd|lit|%d层 · %d%%
+scripts/scenes/battle/info_panel.gd|lit|%d层 · %s/%s
+scripts/scenes/battle/info_panel.gd|lit|%s %d 层
+scripts/scenes/battle/info_panel.gd|lit|(普攻)
+scripts/scenes/battle/info_panel.gd|lit|不可选中
+scripts/scenes/battle/info_panel.gd|lit|中毒
+scripts/scenes/battle/info_panel.gd|lit|储能
+scripts/scenes/battle/info_panel.gd|lit|充能 %d%%
+scripts/scenes/battle/info_panel.gd|lit|充能 %s / %s
+scripts/scenes/battle/info_panel.gd|lit|再攒开第 %d 箱
+scripts/scenes/battle/info_panel.gd|lit|减伤 
+scripts/scenes/battle/info_panel.gd|lit|减速
+scripts/scenes/battle/info_panel.gd|lit|反伤 
+scripts/scenes/battle/info_panel.gd|lit|吸血 
+scripts/scenes/battle/info_panel.gd|lit|嘲讽
+scripts/scenes/battle/info_panel.gd|lit|增伤 
+scripts/scenes/battle/info_panel.gd|lit|射程 %d
+scripts/scenes/battle/info_panel.gd|lit|层数 %d
+scripts/scenes/battle/info_panel.gd|lit|怒气
+scripts/scenes/battle/info_panel.gd|lit|技能
+scripts/scenes/battle/info_panel.gd|lit|护甲 %d
+scripts/scenes/battle/info_panel.gd|lit|护甲穿透 %d
+scripts/scenes/battle/info_panel.gd|lit|护盾 %d
+scripts/scenes/battle/info_panel.gd|lit|护盾强度 
+scripts/scenes/battle/info_panel.gd|lit|攻击 %d
+scripts/scenes/battle/info_panel.gd|lit|攻速 每秒 %s 下
+scripts/scenes/battle/info_panel.gd|lit|星能
+scripts/scenes/battle/info_panel.gd|lit|普攻
+scripts/scenes/battle/info_panel.gd|lit|暴伤 
+scripts/scenes/battle/info_panel.gd|lit|暴击 
+scripts/scenes/battle/info_panel.gd|lit|每点 +2% 攻击
+scripts/scenes/battle/info_panel.gd|lit|治疗削减
+scripts/scenes/battle/info_panel.gd|lit|治疗强度 
+scripts/scenes/battle/info_panel.gd|lit|泡泡
+scripts/scenes/battle/info_panel.gd|lit|流血
+scripts/scenes/battle/info_panel.gd|lit|潜伏中 · 不会被选为目标
+scripts/scenes/battle/info_panel.gd|lit|火山形态 · 还剩 %.1f 秒
+scripts/scenes/battle/info_panel.gd|lit|灼烧
+scripts/scenes/battle/info_panel.gd|lit|熔岩形态
+scripts/scenes/battle/info_panel.gd|lit|真火
+scripts/scenes/battle/info_panel.gd|lit|眩晕
+scripts/scenes/battle/info_panel.gd|lit|移速 %d
+scripts/scenes/battle/info_panel.gd|lit|被动
+scripts/scenes/battle/info_panel.gd|lit|被动 · 
+scripts/scenes/battle/info_panel.gd|lit|财宝
+scripts/scenes/battle/info_panel.gd|lit|近战形态 · 锤击
+scripts/scenes/battle/info_panel.gd|lit|远程形态 · 灵能弹
+scripts/scenes/battle/info_panel.gd|lit|释放 · 冲击波 %d + 护盾 %d
+scripts/scenes/battle/info_panel.gd|lit|金币
+scripts/scenes/battle/info_panel.gd|lit|闪避 
+scripts/scenes/battle/info_panel.gd|lit|韧性 
+scripts/scenes/battle/info_panel.gd|lit|魔抗 %d
+scripts/scenes/battle/info_panel.gd|lit|魔法穿透 %d
+scripts/scenes/battle/info_panel.gd|lit|龟能
+scripts/scenes/battle/info_panel.gd|lit|龟能  %d / %d
+scripts/scenes/battle/info_panel.gd|lit|龟能  这只龟没有主动技
+scripts/scenes/battle/info_panel.gd|lit|龟能 %d / %d
+scripts/scenes/battle/info_panel.gd|lit|龟能充能 
+scripts/scenes/battle/info_panel.gd|lit|龟能锁
+scripts/scenes/battle/info_panel.gd|text| (普攻)
+scripts/scenes/battle/info_panel.gd|text|收起
+scripts/scenes/battle/info_panel.gd|text|生命  %d / %d
+scripts/scenes/battle/info_panel.gd|text|被动 · 
+scripts/scenes/battle/info_panel.gd|text|装备：
+scripts/scenes/battle/info_panel.gd|text|详细
+scripts/scenes/battle/review_console.gd|lit|◀装
+scripts/scenes/battle/review_console.gd|lit|◀龟
+scripts/scenes/battle/review_console.gd|lit|关
+scripts/scenes/battle/review_console.gd|lit|技%d%s
+scripts/scenes/codex/detail_views.gd|lit|%s 秒
+scripts/scenes/codex/detail_views.gd|lit|3选1候选 · 龟能%d
+scripts/scenes/codex/detail_views.gd|lit|[color=%s][b]%d 件[/b][/color]  %s
+scripts/scenes/codex/detail_views.gd|lit|← 返回
+scripts/scenes/codex/detail_views.gd|lit|　[color=#06d6a0][font_size=20]龟能%d[/font_size][/color]
+scripts/scenes/codex/detail_views.gd|lit|不能编进阵容, 开战时自己登场
+scripts/scenes/codex/detail_views.gd|lit|作用于友方
+scripts/scenes/codex/detail_views.gd|lit|作用于敌方
+scripts/scenes/codex/detail_views.gd|lit|减益
+scripts/scenes/codex/detail_views.gd|lit|同类装备
+scripts/scenes/codex/detail_views.gd|lit|基础 · 普攻
+scripts/scenes/codex/detail_views.gd|lit|增益
+scripts/scenes/codex/detail_views.gd|lit|射程
+scripts/scenes/codex/detail_views.gd|lit|属性
+scripts/scenes/codex/detail_views.gd|lit|开局三选一
+scripts/scenes/codex/detail_views.gd|lit|战斗规则
+scripts/scenes/codex/detail_views.gd|lit|技能 · %s  (%d 龟能)
+scripts/scenes/codex/detail_views.gd|lit|护甲
+scripts/scenes/codex/detail_views.gd|lit|持续伤害
+scripts/scenes/codex/detail_views.gd|lit|换成 普通形态
+scripts/scenes/codex/detail_views.gd|lit|换成 火山形态
+scripts/scenes/codex/detail_views.gd|lit|换成 近战形态
+scripts/scenes/codex/detail_views.gd|lit|换成 远程形态
+scripts/scenes/codex/detail_views.gd|lit|控制
+scripts/scenes/codex/detail_views.gd|lit|收起
+scripts/scenes/codex/detail_views.gd|lit|攻击
+scripts/scenes/codex/detail_views.gd|lit|效果
+scripts/scenes/codex/detail_views.gd|lit|普攻 · %s
+scripts/scenes/codex/detail_views.gd|lit|每升一级, 生命与攻击 ×1.05; 双抗不变
+scripts/scenes/codex/detail_views.gd|lit|每秒攻击
+scripts/scenes/codex/detail_views.gd|lit|消耗品
+scripts/scenes/codex/detail_views.gd|lit|深海小将
+scripts/scenes/codex/detail_views.gd|lit|激活 %s 件   ·   现有装备 %d 件
+scripts/scenes/codex/detail_views.gd|lit|生命
+scripts/scenes/codex/detail_views.gd|lit|生效公式
+scripts/scenes/codex/detail_views.gd|lit|看全部
+scripts/scenes/codex/detail_views.gd|lit|移速
+scripts/scenes/codex/detail_views.gd|lit|羁绊
+scripts/scenes/codex/detail_views.gd|lit|羁绊效果
+scripts/scenes/codex/detail_views.gd|lit|羁绊赠送
+scripts/scenes/codex/detail_views.gd|lit|被动
+scripts/scenes/codex/detail_views.gd|lit|被动 · %s
+scripts/scenes/codex/detail_views.gd|lit|装备羁绊
+scripts/scenes/codex/detail_views.gd|lit|费用 %d
+scripts/scenes/codex/detail_views.gd|lit|还没解锁
+scripts/scenes/codex/detail_views.gd|lit|间隔
+scripts/scenes/codex/detail_views.gd|lit|队伍里装满 %s 件同类型装备, 依次激活各档位效果
+scripts/scenes/codex/detail_views.gd|lit|队伍里装满 %s 件同类型装备即激活
+scripts/scenes/codex/detail_views.gd|lit|魔抗
+scripts/scenes/codex/detail_views.gd|text|数值分档: 
+scripts/scenes/codex/detail_views.gd|text|点开看全部
+scripts/scenes/codex/list_builder.gd|lit|%d 费
+scripts/scenes/codex/list_builder.gd|lit|减益
+scripts/scenes/codex/list_builder.gd|lit|增益
+scripts/scenes/codex/list_builder.gd|lit|持续伤害
+scripts/scenes/codex/list_builder.gd|lit|控制
+scripts/scenes/codex/list_builder.gd|lit|消耗品
+scripts/scenes/codex/list_builder.gd|lit|羁绊赠送
+scripts/scenes/inventory/candy_jar.gd|lit|%s %s 收进了背包
+scripts/scenes/inventory/candy_jar.gd|lit|临时等级器 ×1 收进背包 · 点它再点一只龟或小将, 这一大轮就多一级
+scripts/scenes/inventory/candy_jar.gd|lit|深海币 +%d
+scripts/scenes/inventory/candy_jar.gd|text|收下
+scripts/scenes/inventory/candy_jar.gd|text|糖果罐碎了！第 %d 档的东西全掉出来了
+scripts/scenes/inventory/equip_ops.gd|lit|临时等级器 → %s 本大轮 +1 级 (现 +%d)
+scripts/scenes/inventory/equip_ops.gd|lit|临时等级器 → 小将(%s路第%d格) 本大轮 +1 级
+scripts/scenes/inventory/equip_ops.gd|lit|全队装备已满 %d/%d · 升赛季等级可再装
+scripts/scenes/inventory/equip_ops.gd|lit|圣光护盾是羁绊赠送的，不能卖（盾羁绊掉档时会自动收回）
+scripts/scenes/inventory/equip_ops.gd|lit|这个小将已装满 %d 件（单只上限）
+scripts/scenes/inventory/equip_ops.gd|lit|这只已装满 %d 件（单只上限）
+scripts/scenes/inventory/synergy_panel.gd|lit|   还没开启
+scripts/scenes/inventory/synergy_panel.gd|lit|  ◀ 现在这档
+scripts/scenes/inventory/synergy_panel.gd|lit|%d 件升级
+scripts/scenes/inventory/synergy_panel.gd|lit|已满
+scripts/scenes/inventory/synergy_panel.gd|text|%d 件
+scripts/scenes/inventory/synergy_panel.gd|text|同一只多装几件同类型, 羁绊就开了
+scripts/scenes/inventory/synergy_panel.gd|text|已满
+scripts/scenes/inventory/synergy_panel.gd|text|知道了
+scripts/scenes/inventory/synergy_panel.gd|text|羁绊
+scripts/scenes/inventory/synergy_panel.gd|text|还没凑上羁绊。\n把同类型的装备堆到同一只身上, 它自己就开了。
+scripts/scenes/inventory/synergy_panel.gd|tooltip_text|点开看这个羁绊一路能给到什么
+scripts/scenes/map_editor.gd|text|↻重载
+scripts/scenes/map_editor.gd|text|当前: %s (%d)
+scripts/scenes/map_editor.gd|text|当前: grass (0)
+scripts/scenes/map_editor.gd|text|撤销
+scripts/scenes/map_editor.gd|text|清空
+scripts/scenes/map_editor.gd|text|💾保存
+scripts/scenes/map_editor.gd|text|🖌 地图编辑器 (左键刷格 · MAPEDIT)
+scripts/scenes/shop/axe_panel.gd|lit|砍伐经验 %d/%d
+scripts/scenes/shop/axe_panel.gd|text|挑一个最终造物 · 这一大轮定了就不能改
+scripts/scenes/shop/axe_panel.gd|text|砍伐经验 %d/%d · 可以做最终进化了
+scripts/scenes/shop/axe_panel.gd|text|累计 %d
+scripts/scenes/team_select/detail_panel.gd|lit|攻击力
+scripts/scenes/team_select/detail_panel.gd|lit|生命值
+scripts/scenes/team_select/detail_panel.gd|lit|防御力
+scripts/scenes/team_select/detail_panel.gd|lit|魔抗
+scripts/scenes/team_select/detail_panel.gd|text|被动
+scripts/scenes/team_select/detail_panel.gd|tooltip_text|被动
+scripts/scenes/team_select/layout_editor.gd|lit|\n===== 复制以下 RL (含你拖动后的坐标) =====\nconst RL := {\n
+scripts/scenes/team_select/layout_editor.gd|lit|}\n===== 结束 =====\n
+scripts/scenes/team_select/layout_editor.gd|lit|❌ 保存失败 (FileAccess null)
+scripts/scenes/team_select/layout_editor.gd|lit|布局编辑关
+scripts/scenes/team_select/layout_editor.gd|lit|💾 已保存 → user://rl_layout.txt (告诉我一声我就读)
+scripts/scenes/team_select/layout_editor.gd|lit|📋 已导出 RL 坐标到控制台 (终端复制给我)
+scripts/scenes/team_select/layout_editor.gd|lit|🔧 布局编辑开: 拖=移动 · 右下角=缩放 · F10导出坐标 · 再按F9关
+scripts/scenes/team_select/layout_editor.gd|text|布局编辑 · 拖绿框=移动 · 拖右下角黄块=缩放 · 拖完点右上「保存坐标」→
+scripts/scenes/team_select/layout_editor.gd|text|💾 保存坐标
+scripts/scenes/team_select/roster_slots.gd|lit|%s 不能被替换
+scripts/scenes/team_select/roster_slots.gd|lit|水晶球
+scripts/scenes/team_select/roster_slots.gd|lit|糖果炸弹
+scripts/scenes/team_select/roster_slots.gd|lit|随从
+scripts/scenes/team_select/roster_slots.gd|text|放这里
+scripts/scenes/team_select/roster_slots.gd|text|空位
+scripts/scenes/team_select/skill_picker.gd|lit| (龟能%d)
+scripts/scenes/team_select/skill_picker.gd|lit|\n火山：%s — %s
+scripts/scenes/team_select/skill_picker.gd|lit|\n近战：%s — %s
+scripts/scenes/team_select/skill_picker.gd|lit|上场
+scripts/scenes/team_select/skill_picker.gd|lit|天生
+scripts/scenes/team_select/skill_picker.gd|lit|普攻自己会打, 不用选
+scripts/scenes/team_select/skill_picker.gd|lit|未解锁
+scripts/scenes/team_select/skill_picker.gd|lit|这招还没解锁
+scripts/scenes/team_select/skill_picker.gd|lit|这招还没解锁, 先带它的看家本领
+scripts/scenes/team_select/skill_picker.gd|lit|这是它天生就会的, 换不掉
+scripts/scenes/team_select/skill_picker.gd|text|带上场 · %s
+scripts/scenes/team_select/skill_picker.gd|text|技能
+scripts/scenes/team_select/skill_picker.gd|text|挑 1 个带上场 · 共 %d 招
+scripts/scenes/team_select/skill_picker.gd|tooltip_text|这招还没解锁
+scripts/scenes/team_select/skill_picker.gd|tooltip_text|这招还没解锁 · 先带它的看家本领
+scripts/systems/equip/bow_synergy_system.gd|lit|弓箭
+scripts/systems/equip/eq_blood_combo.gd|lit|护盾+
+scripts/systems/equip/eq_bow_batch.gd|lit|弓箭
+scripts/systems/equip/eq_food_batch.gd|lit|蛋糕礼盒
+scripts/systems/equip/eq_gadget_batch.gd|lit|  (本携带者日志到此为止)
+scripts/systems/equip/eq_gadget_batch.gd|lit|★被拒(未施放)
+scripts/systems/equip/eq_gadget_batch.gd|lit|施放成功
+scripts/systems/equip/eq_gun_batch.gd|lit|小手枪
+scripts/systems/equip/eq_gun_batch.gd|lit|急救塔
+scripts/systems/equip/eq_gun_batch.gd|lit|枪
+scripts/systems/equip/eq_potion_batch.gd|lit|浓浆!
+scripts/systems/equip/equip_system.gd|lit|亡灵骷髅
+scripts/systems/equip/equip_system.gd|lit|墨遁
+scripts/systems/equip/equip_system.gd|lit|海螺虫
+scripts/systems/equip/equip_system.gd|lit|涨潮
+scripts/systems/equip/equip_system.gd|lit|炮台
+scripts/systems/equip/equip_system.gd|lit|退潮
+scripts/systems/equip/food_synergy_system.gd|lit|食物
+scripts/systems/equip/gadget_synergy_system.gd|lit|奇械
+scripts/systems/equip/gremlin_gun.gd|lit|古灵精怪枪
+scripts/systems/equip/gun_synergy_system.gd|lit|枪
+scripts/systems/equip/potion_synergy_system.gd|lit|猎物
+scripts/systems/equip/potion_synergy_system.gd|lit|药水
+scripts/systems/equip/relic_synergy_system.gd|lit|遗物
+scripts/systems/equip/shield_synergy_system.gd|lit|盾
+scripts/systems/equip/signal_wave_system.gd|lit|电磁波 %d°
+scripts/systems/equip/spirit_synergy_system.gd|lit|灵物
+scripts/systems/equip/staff_synergy_system.gd|lit|中毒
+scripts/systems/equip/staff_synergy_system.gd|lit|减速
+scripts/systems/equip/staff_synergy_system.gd|lit|法器
+scripts/systems/equip/staff_synergy_system.gd|lit|灼烧
+scripts/systems/equip/staff_synergy_system.gd|lit|眩晕
+scripts/systems/equip/staff_synergy_system.gd|lit|诅咒
+scripts/systems/equip/swordsman_system.gd|lit|剑
+scripts/systems/equip/synergy_system.gd|lit|剑
+scripts/systems/equip/synergy_system.gd|lit|食物
+scripts/systems/equip/timestop_system.gd|lit|+%d龟能
+scripts/systems/skills/candy_system.gd|lit|喂!
+scripts/systems/skills/candy_system.gd|lit|甜蜜掠夺 -
+scripts/systems/skills/candy_system.gd|lit|糖果炸弹
+scripts/systems/skills/chest_system.gd|lit|开箱! 
+scripts/systems/skills/crystal_system.gd|lit|魔抗-%d
+scripts/systems/skills/cyber_system.gd|lit|侵入!
+scripts/systems/skills/cyber_system.gd|lit|机甲
+scripts/systems/skills/dice_system.gd|lit|命运骰子! +%d%%暴击
+scripts/systems/skills/dice_system.gd|lit|稳定骰子! %d刺
+scripts/systems/skills/elite_system.gd|lit|吞噬! +50%攻速
+scripts/systems/skills/fortune_system.gd|lit|招财! 
+scripts/systems/skills/fortune_system.gd|lit|招财·升星 %d★
+scripts/systems/skills/fortune_system.gd|lit|招财·满! 回血
+scripts/systems/skills/fortune_system.gd|lit|掷骰 +%d金币
+scripts/systems/skills/fortune_system.gd|lit|金盾 +%d
+scripts/systems/skills/fortune_system.gd|lit|龟能 +%d
+scripts/systems/skills/gambler_system.gd|lit|♠ 攻+3 血+10
+scripts/systems/skills/gambler_system.gd|lit|♣ 吸血+0.5% 攻速+2%
+scripts/systems/skills/gambler_system.gd|lit|♥ 护甲+1 魔抗+1
+scripts/systems/skills/gambler_system.gd|lit|♦ 暴击+2% 护穿+1
+scripts/systems/skills/ghost_system.gd|lit|幻影!
+scripts/systems/skills/hunter_system.gd|lit|处决!
+scripts/systems/skills/hunter_system.gd|lit|掠夺!
+scripts/systems/skills/phoenix_system.gd|lit|涅槃!
+scripts/systems/skills/rainbow_system.gd|lit|橙·全体吸血
+scripts/systems/skills/shell_system.gd|lit|破隐!
+scripts/systems/skills/shell_system.gd|lit|觉醒
+scripts/systems/trainer/trainer_system.gd|lit|归顺!
+scripts/systems/trainer/trainer_system.gd|lit|魔法石·共鸣 %s
+scripts/util/skill_text.gd|lit|(?<!\">)中毒(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)冰寒(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)反伤(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)射程(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)护甲(?!穿透|<)
+scripts/util/skill_text.gd|lit|(?<!\">)护甲穿透(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)护盾(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)攻击力(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)攻击速度(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)暴击伤害(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)暴击率(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)最大HP(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)最大生命值?(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)治疗削减(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)流血(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)灼烧(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)物理(?!伤害|<)
+scripts/util/skill_text.gd|lit|(?<!\">)生命偷取(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)真实(?!伤害|<)
+scripts/util/skill_text.gd|lit|(?<!\">)眩晕(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)移动速度(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)诅咒(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)闪避(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)额外伤害(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)魔抗(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)魔法(?!伤害|<)
+scripts/util/skill_text.gd|lit|物理伤害
+scripts/util/skill_text.gd|lit|真实伤害
+scripts/util/skill_text.gd|lit|防御力加成
+scripts/util/skill_text.gd|lit|魔法伤害

@@ -44,7 +44,9 @@ func _show_jar_reward(r: Dictionary) -> void:
 	## ★不写「(档3)」这种括号计数 —— 括号里塞个数字是策划表口气。
 	##   而且 `verify_inventory_layout` ㉖ 明令界面文本里不许出现「档1/档2/档3/档4」,
 	##   它只是因为这个弹框不在静止态的屏上才没被数到。改成「第 N 档」两不相犯。
-	ttl.text = "🍬 糖果罐碎了！第 %d 档的东西全掉出来了" % int(r.get("tier", 1))
+	## ★2026-09-28 去掉句首的 🍬 —— 纯装饰(「糖果罐」三个字就在后面),
+	##   而 emoji 的字形来自 NotoEmoji, 与这一屏的像素笔触是两套画法。
+	ttl.text = "糖果罐碎了！第 %d 档的东西全掉出来了" % int(r.get("tier", 1))
 	ttl.add_theme_font_size_override("font_size", 22)
 	ttl.add_theme_color_override("font_color", Color("#ffd93d"))
 	ttl.position = Vector2(0, 20); ttl.size = Vector2(520, 36)
@@ -77,7 +79,11 @@ func _show_jar_reward(r: Dictionary) -> void:
 		## ★第一行让出 32px 给深海币图标; 其余行顶到 40。
 		var lx: float = 72.0 if i == 0 else 40.0
 		l.position = Vector2(lx, y); l.size = Vector2(480.0 - lx, 48)
-		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		## ★★2026-09-28 WORD_SMART → ARBITRARY。中文长句**没有空格可断**, WORD_SMART
+		##   在这一行上等于不换行 ⇒ 「临时等级器 ×1 收进背包 · 点它再点一只龟或小将,」
+		##   那句 **越出弹框内容区 23px**(门禁实测: 框 520×300·边带 13, 该行 size=(440,48))。
+		##   同一处理在设置屏的中文段落上已经做过一次 —— 中文一律 ARBITRARY。
+		l.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
 		box.add_child(l)
 		y += 50.0
 

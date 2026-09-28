@@ -1524,12 +1524,18 @@ func _build_reward_chips(gs) -> Control:
 	##     ① **"失败"这两个字在结算屏上有别的意思** —— 同一屏最大那行字就是胜/负,
 	##        一个写着"失败"的小块摆在奖励里, 第一眼读成"这局输了"。
 	##     ② 它没说发生了什么。"没传上去"直接说清: 东西没送出去。
-	## ⚠ 标签「阵容同步」**没改**, 尽管"同步"是网络内部词 ——
-	##   `tests/verify_backend_not_silent.gd:78` 断言 `hud.contains("阵容同步")`,
-	##   那是**抄源码字面量**的判据, 而 `tests/` 不在本轮地盘。
-	##   改了标签那条当场红, 而我没有合法途径同步它 ⇒ 登记在案交主会话, 不自己放宽判据。
+	## ★★2026-09-28(第二轮) 标签「阵容同步」→「阵容上传」。
+	##   ① "同步"是网络内部词 —— 玩家不知道同步的是什么、和谁同步。
+	##   ② 为什么是"上传"而不是另造一个词(比如"留档"): **成功那一行已经在用"上传"** ——
+	##      `_attach_upload_flash` 印的是「阵容已上传 · 别人可能会打到你」。
+	##      成功说"上传"、失败说"留档"就是同一件事两个名字, 正是这一轮在清的毛病。
+	##      ("上传"也不是后台词: 它是每个用手机的人都在用的词, 与"同步/数据/统计"不同档。)
+	##   ⚠ `tests/verify_backend_not_silent.gd` ⑤ 原来断言 `hud.contains("阵容同步")` ——
+	##     那是**抄源码字面量**, 改文案就红。同日把它改成量**接线**
+	##     (`looks_broken()` 的读数后面真的跟着一次 `items.append`), 屏幕上那个词
+	##     由 `verify_hud_gamefeel` ① 接手守(它渲染真 chip 再读文本)。
 	if RemotePoolRef.looks_broken():
-		items.append(["阵容同步", "没传上去", Color("#ff8a8a")])
+		items.append(["阵容上传", "没传上去", Color("#ff8a8a")])
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 30)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -2421,9 +2427,14 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	##   传字符串等于把开面板那一刻的数钉死。见 info_panel._info_more_row 的注释。
 	## ★2026-09-28 去掉全角括号计数:「更多属性（11 项）」→「更多属性 · 11 项」。`（N 项）`
 	##   是文档列条目数的写法, 全角括号在这个游戏的 UI 里还是独一份(别处一律半角 + `·`)。
+	## ★★同日第二轮: 量词「项」→「个」。"项"是表单/报表里数条目的词(「共 11 项」),
+	##   而这一条要说的是"还有 11 个属性没铺出来" —— "个"是嘴里真会说的那个量词。
+	##   ⚠ **数字本身不许删**: 这条入口把 11 项次要属性收进了浮层, 而用户 2026-07-21
+	##     定过「属性全都要显示啊」; 当时能收起来的前提就是**条数写在标题上**
+	##     (见本函数上面那条 ⚠)。去掉计数等于把那个前提抽走。
 	## ⚠ 前缀「更多属性」**必须留着** —— `verify_panel_stats_onscreen.gd:260` 的
 	##   `_find_label_node(n, "更多属性")` 靠它找到这条入口(分母断言, 丢了后面整组变空检查)。
-	battle._info_sys._info_more_row(vb, "更多属性 · %d 项" % minor.size(),
+	battle._info_sys._info_more_row(vb, "更多属性 · %d 个" % minor.size(),
 		battle._info_sys._more_stats_text(u), "more_stats", u,
 		func() -> String: return battle._info_sys._more_stats_text(u))
 	battle._info_stat_grid = gmain

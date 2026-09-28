@@ -38,9 +38,21 @@ const COST_COLOR := {
 }
 # 稀有度倍率取 DataRegistry.rarity_mult (=rarity-mult.json {S:1.09…}, 同战斗引擎 fighter.gd:127 + PoC pets.ts RARITY_MULT)。
 # 原硬编 {S:1.5/SS:1.75/SSS:2.0} 是自创错值 → 图鉴数值全部虚高且与实战/PoC不符 (用户报"数值不太对")。
+## 页签 = [id, 页名, 像素图标]。
+## ★★2026-09-28 emoji → 像素图标。原来是「🐢 龟 / ⚔ 装备 / 🔗 羁绊 / 💫 状态 / 📜 规则」——
+##   那五个字形来自 **NotoEmoji**(回退链第三级), 是**另一套画法**: 抗锯齿矢量描边,
+##   而这一屏其余全部是 3~4px 笔触的像素画 ⇒ 同屏两种画法, 正是用户点名的「网页味」。
+##   (量法不是我眼睛看的: `tests/verify_no_emoji_icons.gd` 直接问三张字体文件
+##    谁有这个码点 —— 只有 NotoEmoji 有 = 它是 emoji 图标。★ ✓ ⚠ 在 NotoSansSC 里,
+##    与正文同一套字, 不算。)
+## ★图标一律 **32×32 源图按 1x 画**(`icon_max_width = ICON_PX`) —— 不缩放, 不插值。
+const ICON_PX := 32
 const TABS := [
-	["pets", "🐢 龟"], ["equips", "⚔ 装备"], ["synergies", "🔗 羁绊"],
-	["status", "💫 状态"], ["rules", "📜 规则"],
+	["pets", "龟", "res://assets/sprites/ui/icon-turtle.png"],
+	["equips", "装备", "res://assets/sprites/ui/icon-equip.png"],
+	["synergies", "羁绊", "res://assets/sprites/ui/icon-synergy.png"],
+	["status", "状态", "res://assets/sprites/ui/icon-status.png"],
+	["rules", "规则", "res://assets/sprites/ui/icon-rules.png"],
 ]
 # PoC 详情内部排版宽 (CodexScene.ts: pets/synergy/status/rule detailW=900, equip=920)
 const DETAIL_W := 900.0
@@ -90,6 +102,12 @@ const TYPE_STYLE := {
 	##   拿到的默认值是【🗡️ 剑】—— 一件香火装备顶着把剑的图标。两处默认值还不一样。
 	"香火": {"color": "#f59e0b", "emoji": "🕯️"},
 	"遗物": {"color": "#a3e635", "emoji": "🏺"},
+	## ★★2026-09-28 补上「斧头」—— **上面那条香火的教训原样重演了一遍**。
+	##   斧头 2026-08-31 进了 Phase2Types(第 12 个类型), 这张表又没跟着加,
+	##   于是羁绊页又拿默认值画成 🔗。上一次补完没做的那件事是: 让门禁盯住这张表。
+	## ⇒ `tools/type_tables_audit.py` 的 SRC 写死 `phase2_types.gd`, 而这是**第五张**
+	##   平行表、住在**另一个文件**里 —— 它根本不在审计器视野里。已一并纳入。
+	"斧头": {"color": "#94a3b8", "emoji": "🪓"},
 }
 
 
@@ -114,7 +132,12 @@ func _add_back_button() -> void:
 	##   146 款触屏游戏里返回一律是**扁平薄片**, 没有一款用厚装饰框。
 	var _m := SafeArea.margins(Vector2(get_viewport().get_visible_rect().size), 18.0)
 	_top_bar = TopBar.new($UI, {
-		"title": "📖 图鉴",
+		## ★★2026-09-28 去掉页名前的 📖。**不是"没图标可用所以删了"**:
+		##   `top_bar.gd` 头注那 146 款触屏游戏的枢纽页里, 顶栏就是「返回箭头 + 紧跟页名」,
+		##   **没有一款在页名前挂图标**(规则③ 那六款实例全是裸文字)。
+		##   而 📖 来自 NotoEmoji, 与这一屏的像素笔触是两套画法。⇒ 按参考走: 只留字。
+		##   四个枢纽页(图鉴/背包/设置/战绩)**一起**改, 不留"两个有图标两个没有"的半拉子。
+		"title": "图鉴",
 		"palette": TopBar.DEEP,
 		"width": 1280.0,
 		"safe_left": _m.x,
@@ -407,6 +430,13 @@ func _build_tab_bar() -> void:
 		##   (用户 2026-09-27:「一点也看不出来游戏的味道, 全是 ai 味和网页味」)。
 		##   数量不是玩家在这一屏要的信息 —— 他要的是「有哪些龟」, 不是「一共几条记录」。
 		b.text = str(t[1])
+		## ★图标走 Button 自带的 icon 槽(按钮里塞不进 TextureRect)。
+		##   `icon_max_width = 32` = 源图原尺寸 ⇒ **1x, 不缩放**; NEAREST 保住像素笔触。
+		if t.size() > 2 and ResourceLoader.exists(str(t[2])):
+			b.icon = load(str(t[2]))
+			b.expand_icon = true
+			b.add_theme_constant_override("icon_max_width", ICON_PX)
+			b.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		b.position = Vector2(start_x + i * (tab_w + tab_gap), 0)
 		b.custom_minimum_size = Vector2(tab_w, tab_h)
 		b.size = Vector2(tab_w, tab_h)

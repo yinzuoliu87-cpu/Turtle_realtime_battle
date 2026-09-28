@@ -518,4 +518,27 @@ func _t_menu_gate() -> void:
 	_ok("⑦ ★★周六的读数里没有积分赛配额那个数(它周六不动, 摆着只会误导)",
 		l_sat.find("/%d" % int(P2.RANKED_QUOTA)) < 0, "「%s」" % l_sat)
 
+	## ── ⑦b ★★★周日那一半(2026-09-28) ──
+	## 上面那一条 2026-09-22 只为周六焊上了, 而**周日一模一样**:
+	##   `phase_uses_ranked_quota(FINALS)=false` ⇒ `ranked_used` 周日一整天不动;
+	##   `finals_settle_sealed()` / `finals_reveal()` 一个字都不碰 `hearts`。
+	## 真实 UTC 周日实拍到的就是「第 1 大轮 · Lv 1   ♥ 3/8   本周 7/24」——**两个数全冻着**。
+	## ★这一对判据**必须挨着放**: 周六那一条独自躺了六天, 漏的正是它旁边那一格
+	##   (同族: 本文件 ⑧ 的七天全量、⑨ 的七天全量都是这么补出来的)。
+	## ★完整的周日覆盖(三态 / 指路 / 真渲染 / 字宽)在 `tests/verify_gauntlet_ahead.gd` ③④,
+	##   这里只留与上面严格对称的那一条, 免得同一组判据在两个文件里各写一份。
+	_gs.promoted = true
+	_gs.gauntlet_wins = 2
+	_gs.gauntlet_losses = 1
+	var l_sun: String = str(menu._phase_status_line(SUN + 3600))
+	_ok("⑦b ★分母: 周日真有自己的读数(空串 = 回落到积分赛那一行, 缺陷照旧)",
+		l_sun != "", "「%s」" % l_sun)
+	_ok("⑦b ★★★周日的读数里没有积分赛配额那个数(它周日不动, 摆着只会误导)",
+		l_sun.find("/%d" % int(P2.RANKED_QUOTA)) < 0, "「%s」" % l_sun)
+	_ok("⑦b ★★★周日的读数里也没有命那个数(finals 结算一个字都不碰 hearts)",
+		l_sun.find("♥") < 0, "「%s」" % l_sun)
+	_ok("⑦b ★周六与周日说的不是同一句话", l_sat != l_sun,
+		"周六「%s」/ 周日「%s」" % [l_sat, l_sun])
+	_gs.promoted = false
+
 	menu.queue_free()

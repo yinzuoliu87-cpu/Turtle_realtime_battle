@@ -166,7 +166,13 @@ func _ready() -> void:
 		if c is TextureRect and (c as TextureRect).texture != null \
 			and str((c as TextureRect).texture.resource_path).find("ic-deepsea") >= 0:
 			coin_r = r
-		elif c is Label and str((c as Label).text).begins_with("⚙ 装备"):
+		## ★★2026-09-28 从 `begins_with("⚙ 装备")` 改成**按节点名找**。
+		##   原来那一版是**拿字面量当尺子**: 「⚙」2026-09-28 被换成了像素图标
+		##   (`ui/icon-equip.png`, 理由见 `InventoryScene.CAP_ROW_NAME` 处注释) ⇒
+		##   同一刻这条断言就找不到它了, 而 cap_r 全零会让 ⑤/⑤b 报成
+		##   「三块没排成一条线 / 字号不够」—— 假 bug, 真原因是尺子没了。
+		##   名字由产品自己出常量, 测试不拼字面量。
+		elif c is Label and str(c.name) == str(InvScene.CAP_ROW_NAME):
 			cap_r = r
 		elif c is Button and str((c as Button).text) == "?":
 			help_r = r

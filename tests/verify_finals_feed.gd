@@ -642,12 +642,45 @@ func _t_empty() -> void:
 	##   「回到我」停在默认的 (0,0) 压住返回箭头, 页签后缀也没同步。
 	_ok("⑥ ★★没数据也画了空状态那行字(不是一片空白)",
 		m._empty_lb != null and m._empty_lb.visible, str(m._empty_lb != null))
+	## ★★★空态那一屏对**没晋级的人**就是整个周日的全部内容 ⇒ 图标必须真画出来。
+	##   (2026-09-28 加的那枚像素图标, 没有这一条就是"写了没人看" ——
+	##    贴图路径打错 / 素材被删 都会静默退回成一句裸字, 而屏幕照样"有字"。)
+	_ok("⑥ ★★★空态那枚像素图标真的画出来了(贴图在位 + 可见)",
+		m._empty_icon != null and m._empty_icon.visible and m._empty_icon.texture != null,
+		"icon=%s visible=%s tex=%s" % [str(m._empty_icon != null),
+			str(m._empty_icon != null and m._empty_icon.visible),
+			str(m._empty_icon.texture if m._empty_icon != null else null)])
 	_ok("⑥ ★★「回到我」在没数据时不可见(否则它停在 (0,0) 压住返回箭头)",
 		m._home_btn != null and not m._home_btn.visible,
 		"visible=%s pos=%s" % [m._home_btn.visible, str(m._home_btn.position)])
-	_ok("⑥ ★页签后缀同步了(「我的桶 ·无」而不是光秃秃的「我的桶」)",
+	_ok("⑥ ★页签后缀同步了(「我这一组 · 还没分」而不是光秃秃的「我这一组」)",
 		str((m._tabs.get_child(0) as Button).text).find("·") >= 0,
 		str((m._tabs.get_child(0) as Button).text))
+	## ★★★页签的字**不许压在木边带上**(2026-09-28 实拍抓到, 一直没人看见)。
+	##   `UISkin.button` 给大按钮套的是 `menu/frame-rect.png`, 左右各 27px 是**木框**;
+	##   页签的字随数据变长(「我这一组」→「我这一组 · 还没分」), 写死的 132 装不下,
+	##   首尾两个字就骑在木框上。
+	## ⚠ 为什么不能指望 `verify_ui_consistency`: 它那条「文字压边带」只量
+	##   Label / TextureRect 图标, **量不到 Button 自己画的字** ⇒ 这一处得在这儿守。
+	## ★边带宽度从 StyleBox 上读, 不抄字面量; 按钮宽取 `size` 与 `custom_minimum_size`
+	##   的大者 —— 容器排版要等下一帧, 拿 `size` 会量到排版前的旧值(判据跨帧就恒真)。
+	## ★空态正是**最长**的那一版文案(带「· 还没分」后缀), 所以这一条卡在最窄的地方。
+	for _ti in range(2):
+		var _tb := m._tabs.get_child(_ti) as Button
+		var _sbx = _tb.get_theme_stylebox("normal")
+		var _band: float = 0.0
+		if _sbx is StyleBoxTexture:
+			_band = maxf(float((_sbx as StyleBoxTexture).texture_margin_left),
+				float((_sbx as StyleBoxTexture).texture_margin_right))
+		var _fnt := _tb.get_theme_font("font")
+		var _tw: float = 0.0
+		if _fnt != null:
+			_tw = _fnt.get_string_size(_tb.text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+				_tb.get_theme_font_size("font_size")).x
+		var _bw: float = maxf(_tb.size.x, _tb.custom_minimum_size.x)
+		_ok("⑥ ★★★页签「%s」的字没压在木边带上" % _tb.text,
+			_band > 0.0 and _tw > 0.0 and _tw + _band * 2.0 <= _bw,
+			"字宽 %.0f + 边带 %.0f×2 = %.0f ≤ 按钮宽 %.0f" % [_tw, _band, _tw + _band * 2.0, _bw])
 
 	## ★★「还没问到回音」与「问到了但我没桶」要说不同的话 ——
 	##   混成一句的话, 网络慢的人会以为自己没进决赛日。
@@ -656,12 +689,37 @@ func _t_empty() -> void:
 	var txt_done := str(m._empty_text())
 	_ok("⑥ ★分母: 后端没配 ⇒ 已经「问过了」(早退路径也得标, 否则永远转圈)",
 		SB.finals_tried())
-	_ok("⑥ ★问过了 ⇒ 说「本周没有你的桶」", txt_done.find("没有你的桶") >= 0, txt_done)
+	## ★★★2026-09-28 这两条从**抄屏幕字面量**改成**量空态分类**。
+	##   原来是 `find("没有你的桶")` / `find("正在连线")` —— 于是「桶」(bucket 的
+	##   中文直译, 玩家根本不知道那是什么)和「连线」(接口词)这两个词**被门禁钉在了
+	##   玩家眼前**: 产品换个说法就红。判据本来要量的是「这两种情况**分得开**、
+	##   而且**各自分对了**」, 那件事现在由产品自己那份判断 `_empty_kind()` 回答
+	##   (memory fb-gate-can-pin-the-bug-in-place / fb-hand-rolled-copies-drift)。
+	_ok("⑥ ★问过了 ⇒ 判成【没有我这一组】(不是【还在找】)",
+		str(m._empty_kind()) == str(MAP.EK_NO_GROUP),
+		"kind=%s 「%s」" % [str(m._empty_kind()), txt_done])
 	SB.finals_clear()
 	var txt_wait := str(m._empty_text())
-	_ok("⑥ ★还没问过 ⇒ 说「正在连线」", txt_wait.find("正在连线") >= 0, txt_wait)
+	_ok("⑥ ★还没问过 ⇒ 判成【还在找】", str(m._empty_kind()) == str(MAP.EK_WAIT),
+		"kind=%s 「%s」" % [str(m._empty_kind()), txt_wait])
 	_ok("⑥ ★★两句**真的不一样**(否则上面两条里必有一条恒真)", txt_wait != txt_done,
 		"%s | %s" % [txt_wait, txt_done])
+	## ★★★屏幕上**不许**出现内部词/接口词/开发状态(2026-09-28)。
+	##   「桶」= bucket 的直译, 玩家不知道那是什么; 「取/拉/重试/连线」是接口词;
+	##   「还没做」是开发状态。⇒ 这一条是上面那两条的**反向版**:
+	##   以前门禁要求某个词必须在, 现在要求它不许在。
+	var _banned: Array = ["桶", "正在连线", "拉不到", "重试", "还没做", "开发中",
+		"未实现", "占位", "TODO"]
+	for _t in [txt_wait, txt_done]:
+		var _hit: Array = []
+		for _w in _banned:
+			if str(_t).find(str(_w)) >= 0:
+				_hit.append(_w)
+		_ok("⑥ ★★★空态不许把内部词/开发状态说给玩家听", _hit.is_empty(),
+			"命中: %s ← 「%s」" % [str(_hit), str(_t)])
+	## ★分母: 这张禁词表不是空检查 —— 拿旧稿那句现场试一下(不碰产品)。
+	_ok("⑥ ★分母: 禁词表真的会命中(否则上面两条是空检查)",
+		"本周没有你的桶 · 周六闯关赛晋级才进得来".find(str(_banned[0])) >= 0)
 	m.queue_free()
 	SB.finals_clear()
 

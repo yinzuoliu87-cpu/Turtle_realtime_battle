@@ -47,6 +47,16 @@ def keys_of(src, name):
         k += 1
     return keys
 
+## ★★★2026-09-28 平行表**不止住在一个文件里**。
+##   `CodexScene.TYPE_STYLE` 是第五张(羁绊页的颜色+图标)，而本审计器的 SRC 写死
+##   `phase2_types.gd` ⇒ **那张表从来不在视野里**。
+## ★后果不是假想: 斧头 2026-08-31 进了 TYPES，TYPE_STYLE 没跟着加 ⇒ 羁绊页把斧头
+##   画成默认的 🔗。而**同一张表同一个病 2026-08-15 在「香火」上刚犯过一次** ——
+##   那次补完了数据，却没做「让门禁盯住它」这一步，于是原样重演。
+## ⇒ 扫描范围改成「一张表 = (文件, 表名)」。以后再有第六张，加一行即可。
+EXTRA_TABLES = [('scripts/scenes/CodexScene.gd', 'TYPE_STYLE')]
+
+
 def main():
     src = io.open(SRC, encoding='utf-8').read()
     ks = {}
@@ -56,6 +66,13 @@ def main():
         except ValueError:
             print('[FAIL] 找不到 const %s —— 表被改名或删了, 这是空检查不是通过' % t)
             return 1
+    for path, t in EXTRA_TABLES:
+        label = '%s::%s' % (path.split('/')[-1], t)
+        try:
+            ks[label] = keys_of(io.open(path, encoding='utf-8').read(), t)
+        except (ValueError, IOError, OSError):
+            print('[FAIL] 找不到 %s —— 表被改名/搬家了, 这是空检查不是通过' % label)
+            return 1
 
     base = ks['TYPES']
     print('[分母] %s: %d 个类型 (%s)' % ('TYPES', len(base), ' '.join(sorted(base))))
@@ -64,7 +81,7 @@ def main():
         return 1
 
     bad = []
-    for t in TABLES[1:]:
+    for t in TABLES[1:] + ['%s::%s' % (p.split('/')[-1], n) for p, n in EXTRA_TABLES]:
         miss = sorted(base - ks[t])
         extra = sorted(ks[t] - base)
         print('  %-12s %2d 个%s%s' % (

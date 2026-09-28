@@ -142,6 +142,13 @@ func _tag_chip(x: float, cy: float, txt: String, col: String) -> float:
 	return w
 
 ## 属性牌的排布。2 列 × 3 行, 右缘正好落在 DETAIL_W - 20。
+## 同类装备网格: 图标边长与行高。
+## ★图标 32: 装备 PNG 尺寸不统一(51 张 64 / 27 张 32 / 十几张大图),
+##   跟左栏列表(36×36)同一党: 等比内缩到固定框。项目默认 texture_filter 已是 NEAREST
+##   (`project.godot` 第 54 行 `default_texture_filter=0`), 所以不会被插值糊掉。
+## ★行高 36 = 32 + 4 的行间缝; 原来是 26(那时行里只有一个 emoji 字符)。
+const MEMBER_ICON := 32.0
+const MEMBER_ROW := 36.0
 const STAT_COL_X := 500.0
 const STAT_CARD_W := 186.0
 const STAT_CARD_H := 48.0
@@ -211,16 +218,27 @@ func _show_pet(pet: Dictionary) -> void:
 	var _ts: Array = host.TurtleStats.STATS.get(_tid, [])
 	var _mspd: int = int(round(float(_ts[1]))) if _ts.size() > 1 else 0
 	var _aspd: float = (1.0 / float(_ts[2])) * (1.0 + 0.02 * float(lv - 1)) if _ts.size() > 2 and float(_ts[2]) > 0.0 else 0.0
-	## `label` 是牌子底下那行**小字说明**(11px 暗灰), 不再是"字段名: 值"里的字段名;
-	## `unit` 单独一列, 这样大字永远只是那个数(原来「0.77 次/秒」整串都是 21px 大字)。
-	## ★「移速」「攻击速度」两个字面量被 verify_codex_stats 用源码 grep 守着, 别改字。
+	## `label` 是牌子底下那行**小字说明**(13px 暗灰), 不再是"字段名: 值"里的字段名。
+	## ★★★2026-09-28 两件事一起收:
+	##  ① **`unit` 这个字段没人读** —— `_stat_plaque` 只读 `key/disp/label/color`
+	##    (2026-09-27 那版重写把它丢了、字段留在这里)。于是「次/秒」这三个字
+	##    **一直没上过屏**, 而它看着像在屏上 ⇒ 正是 memory `fb-write-without-reader`
+	##    那一类。直接删掉, 不再留一个只能骗人的字段。
+	##  ② 战斗信息面板那边已经改成「攻速 每秒 N 下」(`info_panel.gd`),
+	##    而这里只写一个光秃的 0.77 + 「攻击速度」—— **连是速率还是间隔都读不出来**
+	##    (2026-08-10 就因为这两者分岔出过事)。改成「每秒攻击」, 与面板同一种说法。
+	## ⚠ 宽度是算过的, 不是拍的: 牌 186 宽, 图标吃到 48, 大字 "0.77" 约 48,
+	##   小字从 48+4×14+12=116 起, 4 个全角 13px 约 52 ⇒ 收在 168 < 186。
+	##   (再长一个字就超 186 ⇒ `verify_ui_consistency` 的「文字压边带」会红, Codex 基线是 0。)
+	## ★「移速」字面量被 verify_codex_stats 用源码 grep 守着, 别改字。
+	##   攻速那一条已改成按 `"key": "aspd"` 找(量结构, 不量文案)。
 	var stats = [
-		{"key": "hp", "label": "生命", "disp": str(roundi(pet.get("hp", 0) * m)), "unit": "", "color": "#06d6a0"},
-		{"key": "atk", "label": "攻击", "disp": str(roundi(pet.get("atk", 0) * m)), "unit": "", "color": "#ff9f43"},
-		{"key": "def", "label": "护甲", "disp": str(roundi(pet.get("def", 0) * m)), "unit": "", "color": "#ffd93d"},
-		{"key": "mr", "label": "魔抗", "disp": str(roundi(pet.get("mr", pet.get("def", 0)) * m)), "unit": "", "color": "#4dabf7"},
-		{"key": "move", "label": "移速", "disp": str(_mspd), "unit": "", "color": "#8fd4ff"},
-		{"key": "aspd", "label": "攻击速度", "disp": "%.2f" % _aspd, "unit": "次/秒", "color": "#ff9ecb"},
+		{"key": "hp", "label": "生命", "disp": str(roundi(pet.get("hp", 0) * m)), "color": "#06d6a0"},
+		{"key": "atk", "label": "攻击", "disp": str(roundi(pet.get("atk", 0) * m)), "color": "#ff9f43"},
+		{"key": "def", "label": "护甲", "disp": str(roundi(pet.get("def", 0) * m)), "color": "#ffd93d"},
+		{"key": "mr", "label": "魔抗", "disp": str(roundi(pet.get("mr", pet.get("def", 0)) * m)), "color": "#4dabf7"},
+		{"key": "move", "label": "移速", "disp": str(_mspd), "color": "#8fd4ff"},
+		{"key": "aspd", "label": "每秒攻击", "disp": "%.2f" % _aspd, "color": "#ff9ecb"},
 	]
 	for i in stats.size():
 		var st: Dictionary = stats[i]
@@ -504,7 +522,14 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 		var chip_text = ""
 		var chip_color = "#58d3ff"
 		if is_locked:
-			chip_text = "🔒"; chip_color = "#ff8888"
+			## ★★2026-09-28 🔒 → 文字。两个理由:
+			##  ① 🔒 的字形来自 NotoEmoji, 与整屏像素笔触是两套画法;
+			##  ② 它旁边三个兄弟分支写的都是字(「被动」「基础 · 普攻」
+			##    「3选1候选 · 龟能 N」) —— 同一个位置四种状态, 三个写字一个画图标本身就是不一致。
+			## ⚠ 这一支是**死分支**: 上面 `var is_locked: bool = false` 是写死的,
+			##   `tests/verify_codex.gd` 第 77 条正是盯这一句的 ⇒ 改不改都上不了屏,
+			##   改是为了别在源码里留下“下一个人把它接回去就又多一个 emoji”的种子。
+			chip_text = "还没解锁"; chip_color = "#ff8888"
 		else:
 			# 龟能口径 (无"冷却/CD"): 普攻=不花龟能 / 主动=显龟能花费(与战斗同源) / 被动
 			match host._skill_role(str(pet.get("id", "")), sk, (int(_orig_idx[i]) if i < _orig_idx.size() else i)):
@@ -553,43 +578,63 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 		host.detail.add_child(hit)
 		parts.append({"panel": card_panel, "rt": rt, "hit": hit})
 	_fit_skill_cards(parts, start_y, card_max_h)
-	# E1 形态切换钮 (1:1 PoC CodexScene.ts:417-431) — 仅双形态龟显示, 切普通↔形态技能
+	## E1 形态切换钮 —— 整块在 `_form_switch_button()`(2026-09-28 拆出去的)。
 	if has_form:
-		## ★钮的尺寸/位置都改了(2026-08-15):
-		##   · 220×30 = 7.3:1 的又扁又宽片(用户刚为商店的扁按钮发过火) → 196×34。
-		##   · 原来写死 btn_y=262, 而被动条占 213~263 ⇒ 【钮压在被动条上】, 双形态那两只
-		##     (双头龟/熔岩龟)一直是这么画的。现在钉在卡片上沿那条空带里(_show_pet 为它留了 42px)。
-		var btn_w = 196.0
-		var btn_h = 34.0
-		var btn_x = host.DETAIL_W - 20.0 - btn_w / 2.0
-		var btn_y = start_y - 22.0
-		var label: String
-		if is_melee_form:
-			label = "🏹 换成 远程形态" if host._codex_form_view else "⚔️ 换成 近战形态"
-		else:
-			label = "🐢 换成 普通形态" if host._codex_form_view else "🌋 换成 火山形态"
-		var bg_hex = "#3a1810" if host._codex_form_view else "#2a1430"
-		var border_hex = "#58d3ff" if host._codex_form_view else "#ff7043"
-		var txt_hex = "#9fd8ff" if host._codex_form_view else "#ffae80"
-		## ★★2026-09-27 这颗钮原来走 `host._add_rect(..., stroke=2.0)`, 而它内部是
-		##   `UISkin.nine_if_big(196, 34, "panel-frame.png", …)` —— **34 < MIN_FRAME_PX(40)**
-		##   ⇒ 静默退回 StyleBoxFlat(四边框 2px + 底 a=0.92)= 门禁定义的**网页盒**。
-		##   而它只在双形态龟(双头/熔岩)那两只身上画, `verify_ui_consistency` 只量列表
-		##   第一条 ⇒ **这个网页盒从来没被数到过**(棘轮基线 Codex web≤0 一直绿着)。
-		##   改挂边带只有 4px 的 chip-frame(与牌子/普攻条同一张), 34 高装得下。
-		_plaque(btn_x - btn_w / 2.0, btn_y - btn_h / 2.0, btn_w, btn_h, border_hex, bg_hex)
-		host._add_text(btn_x, btn_y, label, 14, txt_hex, 0.5, 0.5, true)
-		var hitb = Control.new()
-		hitb.position = Vector2(btn_x - btn_w / 2.0, btn_y - btn_h / 2.0)
-		hitb.size = Vector2(btn_w, btn_h)
-		hitb.mouse_filter = Control.MOUSE_FILTER_STOP
-		hitb.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		var pet_ref: Dictionary = pet
-		hitb.gui_input.connect(func(ev: InputEvent) -> void:
-			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-				host._codex_form_view = not host._codex_form_view
-				_show_pet(pet_ref))
-		host.detail.add_child(hitb)
+		_form_switch_button(pet, start_y, is_melee_form)
+
+
+## E1 双形态龟的「换形态」钮 (1:1 PoC CodexScene.ts:417-431)。
+## ★仅双形态龟(双头/熔岩)身上画; 切普通↔形态技能。
+##
+## ★★2026-09-28 从 `_render_skill_cards` 里**整块搬出来**的, 行为一字未改。
+##   缘由: 那个函数原本 244 行(离上限只剩 6 行), 本轮给它加了两段
+##   「为什么去掉 emoji」的注释 ⇒ 256 行, 越过 `tools/arch_budget.py` 的 250 行上限。
+##   ★**不靠删注释凑绿灯** —— 那是把解释删掉换绿灯。按职责拆:
+##     这一块自成一事(一颗钮的版式 + 文案 + 点击), 与技能卡排版没有共享状态,
+##     入参只有 `pet / start_y / is_melee_form` 三个。
+##   ★留在 `scripts/scenes/codex/` —— 它不在 `_sim_step` 调用链上, 图鉴的东西就放图鉴这里。
+func _form_switch_button(pet: Dictionary, start_y: float, is_melee_form: bool) -> void:
+	## ★钮的尺寸/位置都改了(2026-08-15):
+	##   · 220×30 = 7.3:1 的又扁又宽片(用户刚为商店的扁按钮发过火) → 196×34。
+	##   · 原来写死 btn_y=262, 而被动条占 213~263 ⇒ 【钮压在被动条上】, 双形态那两只
+	##     (双头龟/熔岩龟)一直是这么画的。现在钉在卡片上沿那条空带里(_show_pet 为它留了 42px)。
+	var btn_w = 196.0
+	var btn_h = 34.0
+	var btn_x = host.DETAIL_W - 20.0 - btn_w / 2.0
+	var btn_y = start_y - 22.0
+	var label: String
+	if is_melee_form:
+		## ★★2026-09-28 去掉四个 emoji(🏹/⚔/🐢/🌋)。它们是**纯装饰** ——
+		##   「换成 远程形态」自己把话说完了; 而四个字形全来自 NotoEmoji,
+		##   钉在一颗 14px 的像素签牌上就是两套画法。
+		## ⚠ 不拿现成的 `icon-turtle`/`icon-equip` 顶替: 这里说的是「近战/远程/火山形态」,
+		##   不是「龟」也不是「装备」 —— 语义不符的图不往上放(素材铁律)。已登进缺口表。
+		label = "换成 远程形态" if host._codex_form_view else "换成 近战形态"
+	else:
+		label = "换成 普通形态" if host._codex_form_view else "换成 火山形态"
+	var bg_hex = "#3a1810" if host._codex_form_view else "#2a1430"
+	var border_hex = "#58d3ff" if host._codex_form_view else "#ff7043"
+	var txt_hex = "#9fd8ff" if host._codex_form_view else "#ffae80"
+	## ★★2026-09-27 这颗钮原来走 `host._add_rect(..., stroke=2.0)`, 而它内部是
+	##   `UISkin.nine_if_big(196, 34, "panel-frame.png", …)` —— **34 < MIN_FRAME_PX(40)**
+	##   ⇒ 静默退回 StyleBoxFlat(四边框 2px + 底 a=0.92)= 门禁定义的**网页盒**。
+	##   而它只在双形态龟(双头/熔岩)那两只身上画, `verify_ui_consistency` 只量列表
+	##   第一条 ⇒ **这个网页盒从来没被数到过**(棘轮基线 Codex web≤0 一直绿着)。
+	##   改挂边带只有 4px 的 chip-frame(与牌子/普攻条同一张), 34 高装得下。
+	_plaque(btn_x - btn_w / 2.0, btn_y - btn_h / 2.0, btn_w, btn_h, border_hex, bg_hex)
+	host._add_text(btn_x, btn_y, label, 14, txt_hex, 0.5, 0.5, true)
+	var hitb = Control.new()
+	hitb.position = Vector2(btn_x - btn_w / 2.0, btn_y - btn_h / 2.0)
+	hitb.size = Vector2(btn_w, btn_h)
+	hitb.mouse_filter = Control.MOUSE_FILTER_STOP
+	hitb.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var pet_ref: Dictionary = pet
+	hitb.gui_input.connect(func(ev: InputEvent) -> void:
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			host._codex_form_view = not host._codex_form_view
+			_show_pet(pet_ref))
+	host.detail.add_child(hitb)
+
 
 
 ## ★每张卡收到【自己那段正文】的高度(2026-08-15, 用户点名"短的留大片空白、长的被切")。
@@ -978,8 +1023,27 @@ func _show_type(item: Dictionary) -> void:
 		var col: int = i % cols
 		var row: int = int(i / cols)
 		var mx: float = 24.0 + col * col_w
-		var my: float = list_y + 30.0 + row * 26.0
-		host._add_text(mx, my, "%s %s" % [str(m.get("emoji", "📦")), str(m.get("name", "?"))], 15, "#cdd6e0", 0.0, 0.0)
+		## ★行高 26 → `MEMBER_ROW`(36): 图标要 1x = 32 画, 26 的行距会让上下两行的图重叠 6px。
+		var my: float = list_y + 30.0 + row * MEMBER_ROW
+		## ★★2026-09-28 行前缀从 emoji 换成**装备自己的 PNG 图标**。
+		##   这一处是整屏最密的 emoji: 羽维页一张表就能列出十几件, 每件一个
+		##   🗡/⚙/🍖…—— 而左栏列表早就画的是真图标。**同一件装备在两个地方两种长相。**
+		## ★图从 `m["img"]` 来(96 件**全部**有 PNG 且图都在盘上, 已逐件查过),
+		##   所以这条路不会退化成空白; 真的缺图才走后面那支只写名字。
+		## ★尺寸的实情(量过, 不是拍的): 96 件装备的 PNG **尺寸不统一** ——
+		##   51 张 64×64 / 27 张 32×32 / 剩下十几张是几百到 1024 的大图。
+		##   所以装备图标本来就**做不到统一整数倍** ⇒ 跟着全项目既有的写法走:
+		##   等比内缩到一个固定框(左栏列表 36×36 / 背包大格 44×36 / 详情头图 78×78)。
+		##   这里取 32 —— 与左栏列表那一类尺寸相当, 且行高装得下。
+		##   (本轮那批**新 UI 图标**是另一回事: 它们全是 32×32, 一律按整数倍画。)
+		## ★画法走 `keep_aspect=true`: 源图里有非正方(489×510 等), 拉满会变形。
+		var _mimg: String = str(m.get("img", ""))
+		var _mpath: String = ("res://assets/sprites/" + _mimg) if _mimg.ends_with(".png") else ""
+		if _mpath != "" and ResourceLoader.exists(_mpath):
+			host._add_image(mx + MEMBER_ICON / 2.0, my + MEMBER_ICON / 2.0, _mpath, MEMBER_ICON, MEMBER_ICON, true)
+			host._add_text(mx + MEMBER_ICON + 6.0, my + MEMBER_ICON / 2.0, str(m.get("name", "?")), 15, "#cdd6e0", 0.0, 0.5)
+		else:
+			host._add_text(mx, my + MEMBER_ICON / 2.0, str(m.get("name", "?")), 15, "#cdd6e0", 0.0, 0.5)
 
 
 ## 某类型的成员装备 [{id,name,emoji}], 反查 p2eq-types.json(经 host.Phase2Types.type_of)。
@@ -994,7 +1058,7 @@ func _type_members(tname: String) -> Array:
 		##   而 p2eq_093 香火石登记的是两个(遗物 + 香火, 用户 2026-08-13 拍板)
 		##   ⇒ 香火那一页实拍是「该类型装备 (0)」, 一件都列不出来, 看着像功能没做完。
 		if host.Phase2Types.types_of(eid).has(tname):
-			out.append({"id": eid, "name": str(eq.get("name", eid)), "emoji": str(eq.get("emoji", "📦"))})
+			out.append({"id": eid, "name": str(eq.get("name", eid)), "img": str(eq.get("img", ""))})
 	return out
 
 

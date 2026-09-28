@@ -215,6 +215,11 @@ frames_for () {
     verify_ui_layout) echo 20000 ;;
     # 图鉴逐条浏览: 129 条 × 每条至少 1 帧 + 五次建列表 → 3000 帧足量
     verify_codex_browse) echo 3000 ;;
+    # emoji 图标门禁: 7 个屏逐个实例化 + **主动把弹框/二级页签催出来**
+    #   (图鉴要走 5 个页签 + 双形态两支 + 羁绊 12 条逐条选) → 实测 260 帧不够、500 帧刚够。
+    #   ★默认 500 只剩几十帧余量, 而帧不够的表现是「没打 ALL PASS」而 rc=0(CLAUDE.md §2 那个坑,
+    #     长得像断言失败) ⇒ 给 3000 兜 CI。
+    verify_no_emoji_icons) echo 3000 ;;
     # 装备批次13条: 建一次战斗场景 + 100+ 条同步断言, 不等游戏内时间, 但建场本身要几百帧
     verify_equip_batch_20260801) echo 3000 ;;
     # ★2026-08-06: verify_equip_periodic_batch1(批①周期类) 与 verify_equip_misc_batch3(批③)
@@ -665,6 +670,11 @@ run_audit "tools/dead_preload_audit.py"  "ALL OK" "dead_preload (preload 了却�
 #   holo_aura_tick / ember_light_cast 全是零调用者), 而 64 条门禁全绿 —— 因为门禁直接调它们。
 #   存量 10 个记台账只减不增; 新增的当场红。
 run_audit "tools/zero_caller_audit.py"   "ALL OK" "zero_caller (写了却没有任何人调的函数)"
+## ★ zero_caller 的【反面】: 有读者却没有任何人写真值的字段(2026-09-28)。
+##   实例 `GameState.battle_seed` —— 零写入点 ⇒ 那条 `if battle_seed != 0` 恒假,
+##   且决赛结果的 `p_seed` 恒为 0、服务端复算不出任何一场。人工 grep 才发现的,
+##   现存审计器一个都看不见它(zero_caller 管反面; const_branch 只扫 const)。
+run_audit "tools/write_orphan_audit.py" "ALL OK" "write_orphan (有读者却没人写真值的字段·battle_seed 那个形状)"
 ## ★zero_caller 的**第三种形状**, 单独成器(2026-09-18): 函数们【每一个都有调用者】,
 ##   但整条链在顶上被一个 `const X := true` 的恒真分支 + return 剪断 ⇒ zero_caller 全绿而代码跑不到。
 ##   实例: `_build_ground()` 里 `if MAP_V2 or ...: _build_tilemap_ground(); return` 之后的 135 行

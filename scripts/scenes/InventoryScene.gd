@@ -8,6 +8,24 @@ const RichTooltip = preload("res://scripts/scenes/rich_tooltip.gd")
 ## 拿 `◆`/`💠` 之类的字符凑就等于让玩家自己去猜"这两个数是不是同一种钱"。
 const COIN_TEX = preload("res://assets/sprites/menu/ic-deepsea.png")
 
+## ── 像素图标(2026-09-28 · 把 emoji 当图标的地方换掉)──
+## ★为什么非换不可: emoji 的字形来自回退链第三级 `NotoEmoji-Regular.ttf` ——
+##   抗锯齿的矢量描边, 而这一屏其余全部是 3~4px 笔触的像素画 ⇒ **同屏两种画法**,
+##   正是用户 2026-09-27 点名的「ai 味/网页味」最刺眼的那一处。
+##   (判据不是眼睛: `tests/verify_no_emoji_icons.gd` 问三张字体文件谁有这个码点 ——
+##    只有 NotoEmoji 有 = emoji 图标; ★ ✓ ⚠ 在 NotoSansSC 里, 与正文同一套字, 不算。)
+## ★尺寸: 两张源图都是 **32×32**, 一律按 **1x** 画(`icon_max_width = ICON_PX` /
+##   `TextureRect.size = 32`) —— 像素贴图缩放就糊, 这里连 0.5x 都不许(源图是
+##   1px 网格画的, 折半会**丢掉一半像素**, 已逐像素量过)。
+const ICON_PX := 32
+const LOCK_ICON := "res://assets/sprites/ui/icon-lock.png"
+const EQUIP_ICON := "res://assets/sprites/ui/icon-equip.png"
+## 全队装备容量那一行的节点名 —— 门禁靠**名字**找它, 不靠文案(见 `capl.name` 处的注释)。
+const CAP_ROW_NAME := "EquipCapRow"
+## 糖果罐在背包格子里的像素图。★这张图一直躺在 `assets/sprites/equip/` 里没人接线
+##   (全仓 grep 零引用), 而它的文件名就是给糖果罐画的 —— 接上它不是"拿别的图顶替"。
+const CANDY_JAR_ICON := "res://assets/sprites/equip/equip-candy-jar.png"
+
 ## InventoryScene — V2 局外背包 / 出战配置 (阶段2 UI 首版, 设计§十).
 ## 上部: 出战阵容 (上路/下路, 龟统领 + 小将占位); 下部: 装备管理 (背包 bench).
 ## 首版 = 布局 + 显示 (实时挤位/防吞/装备拖拽/3合1 后续迭代). 截图验证布局用.
@@ -175,19 +193,33 @@ func _rebuild() -> void:
 	var shop_locked: bool = int(GameState.season_total_battles) <= 0
 	var _sm: Vector4 = SafeArea.margins(Vector2(get_viewport().get_visible_rect().size), 18.0)
 	_top_bar = TopBar.new(self, {
-		"title": "🧳 背包",
+		## ★★2026-09-28 去掉页名前的 🧳(理由与图鉴/设置/战绩同, 见 CodexScene 那条长注释):
+		##   146 款参考的枢纽页顶栏一律是「返回箭头 + 裸页名」, 没有一款给页名挂图标;
+		##   而 🧳 的字形来自 NotoEmoji, 与这一屏的像素笔触是两套画法。
+		"title": "背包",
 		"palette": TopBar.DEEP,
 		"width": W,
 		"safe_left": _sm.x,
 		"safe_right": _sm.z,
 		"on_back": func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"),
 		"left_actions": [[
-			"🛒 商店" if not shop_locked else "🔒 商店",
+			"商店",
 			func(): get_tree().change_scene_to_file("res://scenes/Shop.tscn"),
 			{"disabled": shop_locked,
 				"tooltip": "打完本大轮第一场后解锁" if shop_locked else "去商店买装备"},
 		]],
 	})
+	## ★★2026-09-28「🔒 商店」的锁**不许只是删掉** —— 它是这枚键的【状态】(没开店),
+	##   删了就只剩一个灰键, 玩家看不出为什么点不动。⇒ 换成像素挂锁图标。
+	##   (🛒 是纯装饰, 「商店」两个字已经说完了它是什么 ⇒ 直接去掉, 不拿别的图顶替。)
+	## ★1x: 源图 32×32, `icon_max_width = ICON_PX` ⇒ 不缩放; NEAREST 保住 3px 笔触。
+	if shop_locked and not _top_bar.action_btns.is_empty():
+		var _shop_btn: Button = _top_bar.action_btns[0] as Button
+		if _shop_btn != null and ResourceLoader.exists(LOCK_ICON):
+			_shop_btn.icon = load(LOCK_ICON)
+			_shop_btn.expand_icon = true
+			_shop_btn.add_theme_constant_override("icon_max_width", ICON_PX)
+			_shop_btn.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 
 	## ── 右上角这一组: 深海币 / 全队装备容量 / 「?」 **排成横着一条**(用户 2026-08-15)──
 	##   原来是"币在上、装备上限在下"竖着堆在最右 232px 里, 而「?」还单独浮在它们左边 ——
@@ -216,11 +248,30 @@ func _rebuild() -> void:
 	#   没有这个计数器, 玩家点不上装备时只会觉得"点了没反应" —— 容量是全队共享的, 光看单只格子看不出来。
 	var used := int(GameState.team_equipped_count())
 	var cap := int(GameState.team_equip_cap())
+	## ★★2026-09-28「⚙」→ 像素图标 `ui/icon-equip.png`(交叉双剑)。
+	##   ⚙ 是**齿轮**, 而这一行说的是**装备件数** —— 齿轮在通用 UI 里代表"设置",
+	##   本来就跟这行的意思对不上(同一个 ⚙ 在设置页顶栏也用着)。换成"装备"自己那张图。
+	##   摆法照上面深海币那一组: 图标在字前面, 各自一个控件, 图标 1x 不缩放。
+	var eqi := TextureRect.new()
+	eqi.texture = load(EQUIP_ICON)
+	eqi.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	eqi.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	eqi.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	eqi.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	eqi.position = Vector2(SYN_X + 176, 26); eqi.size = Vector2(ICON_PX, ICON_PX)
+	add_child(eqi)
 	var capl := Label.new()
-	capl.text = "⚙ 装备 %d / %d" % [used, cap]
+	## ★★这一族**必须有名字**(`CAP_ROW_NAME`)。由来与 `SettingsScene.ACCT_ROW_PREFIX` 同:
+	##   `verify_inventory_layout` ⑤ 原来靠 `begins_with("⚙ 装备")` 找它 —— **拿字面量当尺子**。
+	##   而我这一刻正是把「⚙」换成图标 ⇒ 那条断言会**恒真地找不到**(cap_r 全零),
+	##   看着像"三块没排成一条线", 实际是尺子被我自己改没了
+	##   (memory `fb-tests-pin-screen-words` / `fb-gate-tautological-when-it-spans-a-frame`)。
+	##   ⇒ 判据平移到【这一族节点在不在、在哪】, 文案以后怎么改都不影响它。
+	capl.name = CAP_ROW_NAME
+	capl.text = "装备 %d / %d" % [used, cap]
 	capl.add_theme_font_size_override("font_size", 24)
 	capl.add_theme_color_override("font_color", Color("#ffb454") if used >= cap else Color("#b9cbdc"))
-	capl.position = Vector2(SYN_X + 176, 22); capl.size = Vector2(190, 40)
+	capl.position = Vector2(SYN_X + 176 + ICON_PX + 6, 22); capl.size = Vector2(190 - ICON_PX - 6, 40)
 	capl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	var _nxt := int(GameState.season_level) + 1
 	## ★原文"全队 6 只合计上限随赛季等级提升。当前 Lv3 → 5 件"是规则书的写法("上限""提升"
@@ -767,7 +818,9 @@ func _build_op_bar() -> void:
 		if str(sit.get("kind", "")) == "item":
 			## ★原文「🔼 临时等级器已选 → 点一只 龟 / 小将,本大轮永久 +1 级」: "已选"+双箭头
 			##   是状态机说明书的口气。换成直接跟玩家说下一步做什么。
-			var l := Label.new(); l.text = "🔼 点一只龟或小将, 这一大轮就给它多一级"
+			## ★2026-09-28 去掉句首的 🔼 —— 纯装饰(这条提示自己把话说全了),
+			##   而它左边那张卡上就画着临时等级器。
+			var l := Label.new(); l.text = "点一只龟或小将, 这一大轮就给它多一级"
 			l.add_theme_font_size_override("font_size", 16); l.add_theme_color_override("font_color", Color("#e6d8ff"))
 			l.position = Vector2(16, 24); l.size = Vector2(bw - 320, 28); l.mouse_filter = Control.MOUSE_FILTER_IGNORE; bar.add_child(l)
 		else:
@@ -844,7 +897,19 @@ func _build_op_bar() -> void:
 			UISkin.button(det, Color("#9fb6c9"))
 			det.pressed.connect(func(): _show_equip_detail(sit)); bar.add_child(det)
 			var sv := _inv_ops._sell_value(sit)
-			var sell := Button.new(); sell.text = "💰 卖出 +%d💠" % sv
+			## ★★2026-09-28「💰 卖出 +N💠」两个 emoji 都拆掉:
+			##   · 💰(钱袋)是**装饰** —— 「卖出」两个字已经说完了。直接去掉, 不拿别的图顶替。
+			##   · 💠 是**深海币本身**, 不能只删 —— 删了就只剩一个光秃秃的数字, 玩家看不出
+			##     卖的是哪种钱。换成商店/顶栏用的同一张 `ic-deepsea.png`(这屏顶栏就挂着它),
+			##     靠右放 ⇒ 读作「卖出 +3 ◎」, 与 `ShopScene._coin_button_icon` 同一个摆法。
+			##   ⚠ 币图是 64×64, 按钮只有 38 高 ⇒ 这里是**本轮唯一一处非 1x**(2:1 折半)。
+			##     真正干净的做法是要一张 32×32 的深海币 —— 已登记进缺口表。
+			var sell := Button.new(); sell.text = "卖出 +%d" % sv
+			sell.icon = COIN_TEX
+			sell.expand_icon = true
+			sell.add_theme_constant_override("icon_max_width", ICON_PX)
+			sell.icon_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+			sell.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 			sell.add_theme_font_size_override("font_size", 16)
 			sell.position = Vector2(bw - 290, 14); sell.size = Vector2(170, 38)
 			UISkin.button(sell, Color("#ffd93d"))
@@ -1009,7 +1074,9 @@ func _build_jar_op_bar() -> void:
 	##   这条栏不在静止态的屏上才没被数到)。
 	## ⚠ 但「第 %d 档」和 `candy_jar_tier_preview` 的原文**必须留在这句里**:
 	##   ㉑ 逐区间拿它们对账 off-by-one(7 组 count→tier), 少一个当场红。
-	l.text = "🍬 糖果罐 · 第 %d 档 —— 现在打碎能开出 %s。本大轮只碎这一次。" % [
+	## ★2026-09-28 去掉句首的 🍬 —— 它是**纯装饰**(「糖果罐」三个字就在后面),
+	##   而这一格里已经有糖果罐的像素图了。emoji 走 NotoEmoji, 与全屏像素笔触两套画法。
+	l.text = "糖果罐 · 第 %d 档 —— 现在打碎能开出 %s。本大轮只碎这一次。" % [
 		tier, GameState.candy_jar_tier_preview(tier)]
 	l.add_theme_font_size_override("font_size", 15)
 	l.add_theme_color_override("font_color", Color("#f0d6ff"))
@@ -1017,7 +1084,10 @@ func _build_jar_op_bar() -> void:
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bar.add_child(l)
-	var smash := Button.new(); smash.text = "🔨 打碎"
+	## ★2026-09-28 去掉 🔨 —— 纯装饰, 「打碎」两个字已经说完了这枚键干什么。
+	##   ⚠ 这一行的**源码字面**被 `tests/verify_candy_jar.gd` 钉着(它 grep 本文件源码),
+	##     那条断言已同步改成按行为找这枚键。
+	var smash := Button.new(); smash.text = "打碎"
 	smash.add_theme_font_size_override("font_size", 16)
 	smash.position = Vector2(bw - 290, 14); smash.size = Vector2(170, 38)   # ★与"卖出"同一位置同一尺寸
 	UISkin.button(smash, Color("#e79bd6"))
@@ -1136,6 +1206,12 @@ func _item_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	var sel := idx == _sel_bench
 	var box := _slot_panel(pos, Color("#2a3a1c") if sel else Color("#26203a"), Color("#ffd93d") if sel else Color("#a98bd8"))
 	var ic := Label.new()
+	## ⚠★★2026-09-28 **这一个 emoji 是有意留下的**, 登记在
+	##   `tests/verify_no_emoji_icons.gd` 的存量台账里(带理由), 不是漏改:
+	##   它是【临时等级器】这件东西在背包里的**唯一视觉** —— 删掉就是一张空卡,
+	##   而仓库里没有任何一张"升级/等级"的像素图标(已 grep: level/upgrade/arrow 全无)。
+	##   素材铁律是"新内容一律新素材", 所以**不拿语义不符的图顶替**。
+	##   ⇒ 等新图标画好再换; 在那之前台账钉着它, 不许再多一个。
 	ic.text = "🔼"
 	ic.add_theme_font_size_override("font_size", 30)
 	ic.position = Vector2(0, 16); ic.size = Vector2(SLOT, 36)
@@ -1197,11 +1273,20 @@ func _candy_jar_cell(it: Dictionary, pos: Vector2) -> Control:
 一大轮只能碎一次, 碎完就没了
 现在打碎能开出 %s" % [
 		int(it.get("count", 0)), tier, GameState.candy_jar_tier_preview(tier)]
-	var jic := Label.new()
-	jic.text = "🍬"
-	jic.add_theme_font_size_override("font_size", 30)
-	jic.position = Vector2(0, 16); jic.size = Vector2(SLOT, 36)
-	jic.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	## ★★2026-09-28「🍬」→ 真像素图 `equip/equip-candy-jar.png`。
+	##   **不是拿别的图顶替**: 这张图的文件名就叫 `equip-candy-jar`, 是给糖果罐画的,
+	##   而且全仓 grep 下来**一处都没接线**(画完就躺着) —— 接上它正是它的用途。
+	##   这一格是糖果罐在背包里的**唯一视觉**, 所以不能像别处那样"把 emoji 删掉了事"。
+	## ⚠ 源图 64×64, 这一格的图标带只有 36 高 ⇒ 按 **0.5x(32×32)** 画。
+	##   这是本屏唯一的非 1x, 而 0.5 是**整比折半**(一个输出像素 = 一个源像素, NEAREST
+	##   不插值), 放大看仍是干净的像素画 —— 已逐像素比过 64/32 两版。
+	##   想要真 1x 需要一张原生 32×32 的糖果罐, 已登记进缺口表。
+	var jic := TextureRect.new()
+	jic.texture = load(CANDY_JAR_ICON)
+	jic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	jic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	jic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	jic.position = Vector2(SLOT / 2.0 - 16, 14); jic.size = Vector2(ICON_PX, ICON_PX)
 	jic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	jbox.add_child(jic)
 	var jnm := Label.new()

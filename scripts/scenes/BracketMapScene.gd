@@ -88,6 +88,8 @@ var _empty_lb: Label = null
 ## 空态那句话的**框**。★没桶的人整个周日看到的就只有这一屏, 一句裸字飘在黑底上
 ##   正是"网页味"最重的地方 ⇒ 套共享皮的金属框(UISkin.nine, 不手写圆角矩形)。
 var _empty_box: Panel = null
+## 空态那一枚像素图标(跟着 `_empty_kind()` 换)。★由来见 `_empty_icon_path()`。
+var _empty_icon: TextureRect = null
 var _bg: ColorRect = null
 var _canvas: Control = null            # 拖动的是它, 不是整屏
 var _scale := 1.0
@@ -130,7 +132,7 @@ func _ready() -> void:
 	_tabs.position = Vector2(24, 96)
 	_tabs.add_theme_constant_override("separation", 10)
 	add_child(_tabs)
-	for pair in [[_L.VIEW_BUCKET, "我的分组"], [_L.VIEW_FINALS, "冠军赛"]]:
+	for pair in [[_L.VIEW_BUCKET, "我这一组"], [_L.VIEW_FINALS, "冠军赛"]]:
 		var b := Button.new()
 		b.text = str(pair[1])
 		b.custom_minimum_size = Vector2(132, 81)    # 触控下限 81px(=44pt)
@@ -161,6 +163,15 @@ func _ready() -> void:
 	_empty_box.add_theme_stylebox_override("panel", UISkin.nine("panel-frame.png", 20, ebfb))
 	_empty_box.visible = false
 	add_child(_empty_box)
+	## ★★这一屏对**没晋级的人**就是整个周日的全部内容 —— 一句裸字孤零零躺在框里
+	##   正是"网页味"最重的形状。⇒ 左边压一枚像素图标, 32px 素材按**整 2 倍**放到 64
+	##   (最近邻整数倍才不糊; 1.5 倍会掉像素 —— `pk-vs-emblem` 那条教训的同族)。
+	##   图标**跟着空态的种类换** ⇒ 它也是"这是哪一种情况"的一维形态信息。
+	_empty_icon = TextureRect.new()
+	_empty_icon.stretch_mode = TextureRect.STRETCH_SCALE
+	_empty_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_empty_icon.visible = false
+	add_child(_empty_icon)
 	_empty_lb = Label.new()
 	_empty_lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_empty_lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -462,8 +473,22 @@ func _rebuild() -> void:
 				_empty_box.position = bp
 				_empty_box.size = Vector2(bw, bh)
 				_empty_box.visible = true
-			_empty_lb.position = bp + Vector2(30.0, 18.0)
-			_empty_lb.size = Vector2(bw - 60.0, bh - 36.0)
+			## ★图标与文字**并排**: 图标占左边 64, 文字从 108 起(留 18 的呼吸)。
+			##   贴图不在就原样退回"只有字"的版式 —— 不许因为少一张图就空出一块
+			##   (UISkin 铁律①「贴图缺失必须优雅退回」同族)。
+			var tx_x := 30.0
+			if _empty_icon != null:
+				var ip := _empty_icon_path(_empty_kind())
+				if ResourceLoader.exists(ip):
+					_empty_icon.texture = load(ip)
+					_empty_icon.position = bp + Vector2(26.0, (bh - 64.0) * 0.5)
+					_empty_icon.size = Vector2(64.0, 64.0)
+					_empty_icon.visible = true
+					tx_x = 108.0
+				else:
+					_empty_icon.visible = false
+			_empty_lb.position = bp + Vector2(tx_x, 18.0)
+			_empty_lb.size = Vector2(bw - tx_x - 30.0, bh - 36.0)
 			_empty_lb.visible = true
 		if _home_btn != null:
 			_home_btn.visible = false
@@ -472,6 +497,8 @@ func _rebuild() -> void:
 		_empty_lb.visible = false
 	if _empty_box != null:
 		_empty_box.visible = false
+	if _empty_icon != null:
+		_empty_icon.visible = false
 	## ★★按**可用区**算, 不是整个视口 —— 顶栏 + 页签占掉 TOP_RESERVED。
 	##   实拍抓到: 32 人桶内容 599 高, 视口 720 说"放得下", 而可用只有 530 ⇒ 其实放不下,
 	##   左边两列的轮次标签被页签压在了底下。
@@ -505,59 +532,112 @@ func _rebuild() -> void:
 ##   它一眼告诉你"现在看的是哪一轮"，在 9 列的 32 人桶里是必需品。
 ## ★跟着画布一起拖（不是钉在屏上）—— 标签必须停在它那一列的正上方，飘走就没意义了。
 ## 当前那张还没形成时，屏幕中间说什么。
-## ★★用词仍然是「开播」，而且**带倒计时** —— 「20:00 开播」比「敬请期待」有用得多。
-func _empty_text() -> String:
-	## ★自己联网取数时: **还没问到回音**跟**问到了但我没桶**要分开说。
+##
+## ══════════════════════════════════════════════════════════════════════
+##  ★★★空态【先分类, 再翻成人话】(2026-09-28)
+## ══════════════════════════════════════════════════════════════════════
+## 原来 `_empty_text()` 一个函数既判断又措辞, 于是三条门禁判据**各自抄了一份屏幕字面量**:
+##   · `verify_finals_feed` ⑥ 抄「没有你的桶」「正在连线」
+##   · `verify_bracket_map` ⑤ 抄「还没做」
+## 后果有两层, 第二层才是真的坏:
+##   ① 换一个词就红 —— 而这一轮要换掉的正是「桶」(bucket 的直译, 玩家不知道那是什么);
+##   ② **判据把缺陷钉在了原地**: 「还没做」是一句**开发状态**, 而那条判据要求它
+##      必须出现在玩家眼前(memory fb-gate-can-pin-the-bug-in-place)。玩家不需要知道
+##      我们做完没做完, 只需要知道**现在按什么算**。
+## ⇒ 拆成两层: `_empty_kind()` 是**唯一那份判断**(返回下面几个命名常量),
+##   `_empty_text()` 只负责把它翻成人话, 自己一个条件都不判。
+##   门禁改成量**分类**, 文案随便改都不影响; 而「两种情况说的必须是两句不同的话」
+##   由 `txt_wait != txt_done` 那条断言守着 —— 它量的本来就是行为。
+## ⚠ 判断只有这一份, 所以两层不会漂(memory fb-hand-rolled-copies-drift)。
+const EK_WAIT := "wait"                  # 还没问到回音(正在找名册)
+const EK_UNREACHABLE := "unreachable"    # 问不到 —— 每 30 秒自己再看一次
+const EK_TOO_FEW := "too_few"            # 我晋级了, 但全周人太少, 决赛日没开起来
+const EK_FINALS_SOON := "finals_soon"    # 冠军赛还没集结(CROSS_BUCKET_LIVE 之后才走到)
+const EK_FINALS_LOCAL := "finals_local"  # 跨组总决赛没上线 ⇒ 各组自己评冠军
+const EK_NO_GROUP := "no_group"          # 确实没有我这一组(没晋级)
+
+
+## 空态判断与措辞共用的那一份数据: 自己联网时取缓存, 被喂过就用喂进来的那张。
+func _feed_view() -> Dictionary:
+	return _bucket if _injected else (_SB.finals_cached() as Dictionary)
+
+
+## 现在是哪一种空态。★★门禁量这个, **不量屏幕字面量**(见上面那段的由来)。
+func _empty_kind() -> String:
+	## ★自己联网取数时: **还没问到回音**跟**问到了但没有我这一组**要分开说。
 	##   混成一句的话, 网络慢的人会以为自己没进决赛日。
 	if not _injected and not _SB.finals_tried():
-		return "正在连线 · 正在找你本周的分组"
+		return EK_WAIT
+	var fv: Dictionary = _feed_view()
+	## ★★「问不到」要说「这会儿连不上」, **不能**掉到最后那句「本周没有你这一组」——
+	##   那对一个已晋级的人是假话(2026-09-27 查实)。每 30 秒自己再看, 所以要说清这件事。
+	if str(fv.get("reason", "")) == _SB.UNREACHABLE:
+		return EK_UNREACHABLE
 	## ★★「有资格但人不够」与「没资格」说的必须是两句话(2026-09-25)。
-	##   `finals_seat` 对 1 个人故意不建桶(一人一桶 = 没有对手的冠军, 那不是比赛),
-	##   而那个人**确实周六 4 胜晋级了** —— 底下那句「晋级才进得来」对他是假话,
+	##   `finals_seat` 对 1 个人故意不开组(一个人一组 = 没有对手的冠军, 那不是比赛),
+	##   而那个人**确实周六 4 胜晋级了** —— 「晋级才进得来」对他是假话,
 	##   他会以为自己的胜场没算。10 个人规模下晋级率约 34% ⇒ 只 0~1 人晋级约 10%,
 	##   这不是假想的边角。
-	var _fv: Dictionary = _SB.finals_cached() if not _injected else _bucket
-	## ★★「问不到」要说「连不上」, **不能**掉到最后那句「本周没有你的桶」——
-	##   那对一个已晋级的人是假话(2026-09-27 查实)。每 30 秒自己重试, 所以要说清在重试。
-	if str(_fv.get("reason", "")) == _SB.UNREACHABLE:
-		return "连不上服务器 · 你的分组还没读到, 每 30 秒会自己再看一次"
-	if str(_fv.get("reason", "")) == "too_few":
-		var ent := int(_fv.get("entered", 0))
-		return "本周只有 %d 人晋级 · 人太少, 决赛日没开起来; 你的晋级算数, 下周再来" % ent
+	if str(fv.get("reason", "")) == "too_few":
+		return EK_TOO_FEW
 	if _view == _L.VIEW_FINALS:
-		## ★★★2026-09-26: 跨桶冠军赛是 **F 阶段**, 一行都没做 ——
+		## ★★★2026-09-26: 跨组总决赛是 **F 阶段**, 一行都没做 ——
 		##   服务端只有 `finals_buckets/entrants/results/scout/pending`, 没有任何
-		##   「桶冠军汇总」; 客户端 `_finals` 只有老调用点 `set_data()`(门禁用)会写,
+		##   「各组冠军汇总」; 客户端 `_finals` 只有老调用点 `set_data()`(门禁用)会写,
 		##   联网那条路 `_on_poll` **只写 `_bucket`**。
 		##   ⇒ 原来这里一小时一小时地倒计时, 而那个东西永远不会来。
-		##   ★★而且 10 人规模下全周只有**一个桶**(`finals_bucket_count(10) = 1`),
-		##     「等各桶决出冠军」连概念都不存在 —— 那句话本身就是假的。
-		##   ⚠ 客户端**算不出**全周有几个桶(`_bucket` 只装我自己那个桶的人数),
-		##     所以不去猜"是不是只有一个桶", 只说**确定为真**的那一句。
 		##   ⇒ 上线那天把 `CROSS_BUCKET_LIVE` 翻成 true, 倒计时那两句就回来
 		##     (memory fb-branch-to-an-unbuilt-mode-is-a-backdoor: 让「没上线」是可读状态)。
 		## ★写成 if/else 而**不是** `if not CROSS_BUCKET_LIVE: return …` ——
-		##   后者会让下面的倒计时变成死代码, `tools/const_branch_audit.py` 当场判红
-		##   (恒真常量分支 + return 吞掉同函数后续代码), 而那条审计器是对的:
-		##   那几行在开关翻开之前一次都跑不到。审计器自己给的三条修法里,
-		##   「刻意留的对照就不该以 return 收尾, 改成 if/else」正是这一处该走的。
+		##   后者会让上线那一支变成死代码, `tools/const_branch_audit.py` 当场判红
+		##   (恒真常量分支 + return 吞掉同函数后续代码), 而那条审计器是对的。
 		if CROSS_BUCKET_LIVE:
+			return EK_FINALS_SOON
+		else:
+			return EK_FINALS_LOCAL
+	return EK_NO_GROUP
+
+
+## 空态图标 —— 分类 → `assets/sprites/ui/` 里**现成**的像素图标。
+## ★CLAUDE.md「素材库先搜再造」: 这几张是已有的, 一张都没新生成。
+## ★三种「还在读名册」的情况共用夹板(quota) —— 它们讲的本来就是同一件事;
+##   冠军那两档用奖杯; 「没有我这一组」用锁(你进不来, 不是出错了)。
+func _empty_icon_path(kind: String) -> String:
+	match kind:
+		EK_FINALS_SOON, EK_FINALS_LOCAL:
+			return "res://assets/sprites/ui/icon-trophy.png"
+		EK_NO_GROUP:
+			return "res://assets/sprites/ui/icon-lock.png"
+	return "res://assets/sprites/ui/icon-quota.png"
+
+
+## 把分类翻成人话。★★这里**一个条件都不判** —— 判断全在 `_empty_kind()`。
+##
+## ★★★用词(2026-09-28): 屏幕上不许出现「桶」「拉」「取」「重试」「连线」这些
+##   **内部词 / 接口词**, 也不许出现「还没做」这类**开发状态**。
+##   「桶」是 bucket 的中文直译, 玩家根本不知道那是什么 ⇒ 全屏统一成「组」,
+##   自称一律「我这一组」。
+## ★用词仍然是「开播」，不写「直播」(它就是回放)也不写「回放」(会泄露已经打完了)。
+func _empty_text() -> String:
+	match _empty_kind():
+		EK_WAIT:
+			return "正在翻本周的名册 · 看看你分在哪一组"
+		EK_UNREACHABLE:
+			return "连不上服务器 · 你这一组还没看到, 每 30 秒自己再看一次"
+		EK_TOO_FEW:
+			return "本周只有 %d 人晋级 · 人太少, 决赛日没开起来; 你的晋级算数, 下周再来" % int(_feed_view().get("entered", 0))
+		EK_FINALS_SOON:
 			var left: int = int(_L.finals_start_ts(_clock())) - _clock()
 			if left > 0:
 				return "冠军赛 %d 小时 %d 分后开播 · 先等各组决出自己的冠军" % [left / 3600, (left % 3600) / 60]
 			return "冠军赛正在集结 · 等各组决出自己的冠军"
-		else:
-			## ★★语序反过来了(2026-09-27): 原来开头就是「跨桶冠军赛还没做」——
-			##   **一句内部进度**顶在玩家脸上, 而他真正想知道的是「那我这周冠军算不算」。
-			##   ⇒ 先说对他为真的那句, 内部事实缀在后面。
-			##   「还没做」三个字**不能删** —— `verify_bracket_map` ⑤ 用它当
-			##   「没上线时不许数一个永远不来的倒计时」的判据(开关翻开那天两边一起改)。
-			return "现在你这一组的冠军就是本周冠军 · 跨组总决赛还没做出来"
-	## ⚠⚠**这一句里的「桶」改不掉, 不是漏了**: `verify_finals_feed.gd:659` 断言
-	##   `_empty_text()` 里有子串「没有你的桶」。全屏别处已统一成「分组」,
-	##   只剩这一处 —— 要改必须**同一次提交**改那条断言(它在别人的地盘上)。
-	##   同族: 上面那句的「还没做」被 `verify_bracket_map.gd:407` 钉着。
-	return "本周没有你的桶 · 周六闯关赛晋级才进得来"
+		EK_FINALS_LOCAL:
+			## ★★★只说**现在按什么算**, 不把内部进度顶在玩家脸上(2026-09-28)。
+			##   原来这句话缀着「跨组总决赛还没做出来」—— 一句**开发状态**,
+			##   而且是被 `verify_bracket_map` ⑤ 的判据**要求**必须在的
+			##   (那条判据已同一次改成量分类, 见上)。
+			return "本周按各组自己算冠军 · 你这一组的冠军就是本周冠军"
+	return "本周没有你这一组 · 周六闯关赛晋级才进得来"
 
 
 ## 两个 Tab 的样子：当前那张高亮；**还没形成的那张不禁用**（要让人点进去看倒计时），
@@ -569,19 +649,48 @@ func _sync_tabs() -> void:
 	if kids.size() < 2:
 		return
 	var names := [
-		"我的分组" + ("" if int(_bucket.get("size", 0)) > 1 else " · 还没分"),
+		"我这一组" + ("" if int(_bucket.get("size", 0)) > 1 else " · 还没分"),
 		"冠军赛" + ("" if int(_finals.get("size", 0)) > 1 else " · 未开赛"),
 	]
 	var views := [_L.VIEW_BUCKET, _L.VIEW_FINALS]
 	for i in range(2):
 		var b := kids[i] as Button
 		b.text = str(names[i])
+		_fit_tab(b)
 		var on: bool = str(views[i]) == _view
 		b.add_theme_color_override("font_color", ACCENT if on else DIM)
 		## ★形态: 选中那一页底下压一条实心杠; 没选中的只留一道暗底槽。
 		var ul := b.get_node_or_null("Underline") as ColorRect
 		if ul != null:
+			ul.size.x = b.custom_minimum_size.x - 12.0
 			ul.color = ACCENT if on else Color("#222c3e")
+
+
+## 页签宽度**按字量**, 不拍脑袋。
+##
+## ★★★2026-09-28 实拍抓到: 页签的字**压在木边带上** —— 「我这一组 · 还没分」
+##   9 个字比写死的 132 宽, 首尾两个字骑在木框上, 一眼就是没做完的样子。
+##   而这个坑**一直没人看见**: `verify_ui_consistency` 的「文字压边带」那条
+##   只量 Label 和 TextureRect 图标, **量不到 Button 自己画的字**
+##   (memory fb-gate-subject-never-constructed 的同族: 判据没错, 被测的那个量不在它眼里)。
+##   ⇒ 判据补在 `verify_finals_feed` ⑥, 宽度在这里算。
+##
+## ★边带宽度**从 StyleBox 上读**, 不在这里抄一份 27
+##   (`UISkin.button` 给大按钮套的是 `menu/frame-rect.png`, 九宫格边距 27) ——
+##   抄一次就永远落后(memory fb-hand-rolled-copies-drift)。换皮/换图都不用动这里。
+func _fit_tab(b: Button) -> void:
+	var band := 0.0
+	var sbx = b.get_theme_stylebox("normal")
+	if sbx is StyleBoxTexture:
+		band = maxf(float((sbx as StyleBoxTexture).texture_margin_left),
+			float((sbx as StyleBoxTexture).texture_margin_right))
+	var need := 132.0
+	var fnt := b.get_theme_font("font")
+	if fnt != null:
+		## +16 = 两侧各 8 的呼吸。贴着边带排也算"没压上", 但看着像挤的。
+		need = fnt.get_string_size(b.text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+			b.get_theme_font_size("font_size")).x + band * 2.0 + 16.0
+	b.custom_minimum_size.x = maxf(132.0, ceilf(need))
 
 
 ## ══════════════════════════════════════════════════════════════════════
@@ -1235,7 +1344,7 @@ static func opponent_tip(res: Dictionary, tried: bool) -> String:
 		"wrong_round":
 			return "这一轮已经翻篇了 · 刷新一下看看新的对阵"
 		"not_in_bucket":
-			return "你不在这个分组里 · 只能看别人打"
+			return "你不在这一组里 · 只能看别人打"
 		"empty_snapshot", "no_such_seed":
 			return "对手没留下阵容 · 这一场算他弃权"
 		"net", "bad_body":

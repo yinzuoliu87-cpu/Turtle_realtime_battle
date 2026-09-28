@@ -708,7 +708,7 @@ func _coin_frame(value: int = -1, icon_path: String = "", tint: Color = Color(0.
 ## ★`now` 只给门禁喂已知日期(同 `_battle_block_msg`)。产品调用一律不传 ——
 ##   不给注入口的话, 这一行**只有周六跑门禁才会被执行到**(今天已经栽过一次)。
 func _gauntlet_status_line(now: int = 0) -> String:
-	var ts: int = now if now > 0 else int(Time.get_unix_time_from_system())
+	var ts: int = now if now > 0 else _now_ts()
 	if _P2C.phase_at_utc(ts) != _P2C.PHASE_GAUNTLET:
 		return ""
 	if not _P2C.phase_mode_live(_P2C.PHASE_GAUNTLET):
@@ -727,12 +727,69 @@ func _gauntlet_status_line(now: int = 0) -> String:
 		lab, maxi(0, int(_P2C.GAUNTLET_WINS_IN) - w), maxi(0, int(_P2C.GAUNTLET_LOSSES_OUT) - l)]
 
 
+## 周日那一行读数。返回**空串 = 今天不是决赛日**。
+##
+## ★★★2026-09-28 补。周六那一行 2026-09-22 就修过(理由见上面那段: 配额周六不动,
+##   摆着只会误导), 而**周日一模一样却漏了**:
+##     `phase_uses_ranked_quota(FINALS)` = false ⇒ `ranked_used` 周日一整天不动;
+##     `finals_settle_sealed()` / `finals_reveal()` **一个字都不碰 `hearts`**
+##     (单败淘汰里"输"= 出局, 不该再扣命 —— 见 GameState 那两个函数的头注)
+##   ⇒ 真实 UTC 周日实拍到的就是「第 1 大轮 · Lv 1   ♥ 3/8   本周 7/24」,
+##     **两个数周日全程冻结**。玩家打完一轮回来看, 会以为自己那一轮没记上。
+## ⇒ 与周六同一个形状: 周日把那两个数**整段换掉**, 换成今天真在动的那件事。
+##
+## ★三态各说各的, 判据与别处同一处: 「进没进决赛日」= `gauntlet_state() == GAUNTLET_IN`,
+##   「有没有拿到闯关赛资格」= `gauntlet_eligible()` —— 与 `_battle_block_msg` 周日那一支
+##   传给 `_P2C.finals_block_msg()` 的**就是这两个**, 两处不许各问一套。
+## ★进了决赛日的人要**指路**(那一场不在「开始战斗」后面, 在赛程条周日那一格的
+##   「决赛日 看对阵图」门后面) —— 与 `finals_block_msg` 同一个去处。
+## ★`now` 只给门禁喂已知日期; 产品走 `_status_row()` → `_now_ts()`。
+func _finals_status_line(now: int = 0) -> String:
+	var ts: int = now if now > 0 else _now_ts()
+	if _P2C.phase_at_utc(ts) != _P2C.PHASE_FINALS:
+		return ""
+	if not _P2C.phase_mode_live(_P2C.PHASE_FINALS):
+		return ""
+	if GameState.gauntlet_state() == _P2C.GAUNTLET_IN:
+		return "决赛日 · 去看对阵图"
+	var lab: String = _P2C.gauntlet_label(
+		int(GameState.gauntlet_wins), int(GameState.gauntlet_losses))
+	if GameState.gauntlet_eligible():
+		## ★打过闯关赛但没打进 —— **不许说他「没晋级」**(周一~五刚夸过他已过晋级线),
+		##   与 `finals_block_msg(false, true)` 同一个口径。
+		return "决赛日 · 闯关赛止步 %s" % lab
+	return "决赛日 · 本周没晋级"
+
+
+## 今天这一天该在状态行里显示哪一段。空串 = 照旧显示积分赛那一行(命 + 本周配额)。
+##
+## ★★★2026-09-28: 这一层原来不存在, `_status_row()` 直接 `_gauntlet_status_line()`
+##   **不传参** ⇒ 那一行走的是 `Time.get_unix_time_from_system()`,
+##   而同文件的 `_battle_block_msg` / `_open_shop` / `_start_battle_flow` 早就走
+##   `_now_ts()`(`clock_override_ts` 可注入)。后果是**门禁盲区**:
+##   钉死时钟之后, 不传参那个调用仍然读真实时钟 ⇒ 那一行**一周只有一天会被执行到**,
+##   周六/周日两支改坏了也没人红(实测: 设 `clock_override_ts=周六` 后
+##   `_gauntlet_status_line()` 不传参照旧返回空串)。
+## ⇒ 分派做成一个函数 + 走 `_now_ts()`, 门禁就能注入七天逐天验那一行说的话。
+func _phase_status_line(now: int = 0) -> String:
+	var ts: int = now if now > 0 else _now_ts()
+	var ph: String = _P2C.phase_at_utc(ts)
+	if ph == _P2C.PHASE_GAUNTLET:
+		return _gauntlet_status_line(ts)
+	if ph == _P2C.PHASE_FINALS:
+		return _finals_status_line(ts)
+	return ""
+
+
 func _status_row() -> void:
 	var txt := "第 %d 大轮 · Lv %d   ♥ %d/8   本周 %d/%d" % [
 		int(GameState.season_id), int(GameState.season_level), int(GameState.hearts),
 		int(GameState.ranked_used), int(_P2C.RANKED_QUOTA)]
-	## ★周六换成闯关赛读数 —— 命与积分赛配额那两个数周六都不动, 摆在那儿只会误导。
-	var gl_line: String = _gauntlet_status_line()
+	## ★周六换闯关赛读数 / **周日换决赛日读数** —— 命与积分赛配额那两个数
+	##   周六周日**都不动**, 摆在那儿只会误导(周日那一半 2026-09-28 才补上)。
+	## ★★走 `_now_ts()`: 不传参的话这一行读的是真实时钟, 于是**一周只有一天**
+	##   会被门禁执行到(见 `_phase_status_line` 头注)。
+	var gl_line: String = _phase_status_line(_now_ts())
 	if gl_line != "":
 		txt = "第 %d 大轮 · Lv %d   %s" % [
 			int(GameState.season_id), int(GameState.season_level), gl_line]
@@ -1286,38 +1343,76 @@ func _open_shop() -> void:
 ## 这一周后面**还有闯关赛可打吗**? 三个条件缺一不可。
 ## ★★提示语问的是这个, 不是"开关翻了没有" —— 同样打满配额的两个人,
 ##   晋级了的那个周六真有东西打, 没晋级的那个要等下周一。跟开关走就会对其中一个说谎。
+##
+## ★★★2026-09-28 修: 原来第二条问的是 `gauntlet_eligible()`(= `promoted`), 而
+##   `promoted` 全仓**只有 `settle_ranked_close()` 一个写入点**, 那个函数开头就
+##   「周五 23:00 UTC 之前直接 return」⇒ **周一~周五这一支结构上恒假**。
+##   于是 `season_wins=20`(线=5)、配额打满的人, 周一~周五被告知「下周一开新的一轮」——
+##   而他周六铁定有 6 场可打。**这个函数自己的头注(上面那两行)写的就是要防这件事,
+##   而那件事正发生在它自己身上。**(探针 `tests/_probe_promote_ahead.gd`:
+##   「周六闯关赛见」在 `promoted=false` 时七天 0 次出现。)
+## ⇒ 收盘前该问的是「**胜场过没过晋级线**」(`GameState.gauntlet_line_reached()`),
+##   收盘后 `promoted` 已经是事实 ⇒ 两个**取并集**, 缺一不可:
+##     · 只问线 —— 收盘后被清过场次的边角状态会漏(线是 `season_wins`, 不是存档标记);
+##     · 只问 `promoted` —— 就是上面那个 bug。
 func _gauntlet_ahead() -> bool:
 	if not _P2C.phase_mode_live(_P2C.PHASE_GAUNTLET):
 		return false                      # 闯关赛玩法还没上线
-	if not GameState.gauntlet_eligible():
-		return false                      # 这一周没拿到资格
+	if not (GameState.gauntlet_eligible() or GameState.gauntlet_line_reached()):
+		return false                      # 收盘算过了没晋级, 而且胜场也没到线
 	return _P2C.gauntlet_can_play(int(GameState.gauntlet_wins), int(GameState.gauntlet_losses))
+
+
+## 「周六还有东西打」这半句话怎么说。空串 = 这一周到此为止。
+## ★★收盘前后**不是同一句话**, 这一条是诚实度的分界:
+##     收盘后 `promoted` 已经算出来了 ⇒ 「你已晋级」是既成事实;
+##     收盘前谁也没算过 ⇒ 只能说**已知的那件事**:「胜场过了晋级线」。
+##   查实(见 `GameState.gauntlet_line_reached()` 头注三条): 晋级判据里只有胜场、
+##   没有名额上限也没有排名截断、`season_wins` 只增不减 ⇒ 过了线就一定会晋级,
+##   所以这里敢接「周六闯关赛见」。**将来加了名额/排名线, 要改的是那个函数的头注与这一句。**
+func _gauntlet_ahead_tail() -> String:
+	if not _gauntlet_ahead():
+		return ""
+	if GameState.gauntlet_eligible():
+		return "但你已晋级, 周六闯关赛见"
+	return "但你已过晋级线, 周六闯关赛见"
 
 
 func _msg_eliminated() -> String:
 	## ⚠ 0 命**不等于**没资格: 5 胜 + 8 负 = 13 场, 完全可能既淘汰又晋级。
 	##   原稿的终榜排序是「胜场 > 余命 > 横扫」, 余命只是第二键, 不是门槛。
-	if _gauntlet_ahead():
-		return "💀 本大轮已出局 · 但你已晋级, 周六闯关赛见"
+	var tail: String = _gauntlet_ahead_tail()
+	if tail != "":
+		return "💀 本大轮已出局 · %s" % tail
 	return "💀 本大轮已出局 · 下周一开新的一轮"
 
 
 func _msg_quota_full() -> String:
 	var q: int = int(_P2C.RANKED_QUOTA)
-	if _gauntlet_ahead():
-		return "📋 本周配额 %d 场已打满 · 周六闯关赛见" % q
+	var tail: String = _gauntlet_ahead_tail()
+	if tail != "":
+		return "📋 本周配额 %d 场已打满 · %s" % [q, tail]
 	return "📋 本周配额 %d 场已打满 · 下周一开新的一轮" % q
 
 
 ## 周六点「开打」被拦住时说什么。返回空串 = 没拦, 可以开。
 ## ★与 `GameState.gauntlet_can_play()` **共用同一组判据**(`phase2_config.gauntlet_state`),
 ##   这里只负责把状态翻译成人话 —— 就地再写一遍 `if wins >= 4` 就是同一判据存两份。
+##
+## ★★★2026-09-28: 这两把锁原来**都不指下一步**, 而同族的每一句都带
+##   (「下周一开新的一轮」/「周六闯关赛见」)。周六是这两句唯一的出场日,
+##   玩家当天读完就该知道"接下来去哪"：
+##     · 没晋级那句里的「积分赛」指周二~周五, **本周已经过去了** ⇒ 必须写清是下周一,
+##       而且把门槛写出来(线在 `PROMOTE_WINS_FLOOR`, 不抄数字);
+##     · 刚晋级那句只说了"到此为止", **没告诉他明天有决赛日** ⇒ 他周日不来,
+##       座位空着、桶还可能卡住。
 func _msg_gauntlet_block() -> String:
 	if not GameState.gauntlet_eligible():
-		return "🔒 本周没晋级 · 闯关赛要积分赛拿到资格才能打"
+		return "🔒 本周没晋级 · 下周一开新的一轮, 积分赛打够 %d 胜就能来" % int(
+			_P2C.PROMOTE_WINS_FLOOR)
 	var st: String = GameState.gauntlet_state()
 	if st == _P2C.GAUNTLET_IN:
-		return "✅ 已晋级决赛日 · 闯关赛到此为止(%s)" % _P2C.gauntlet_label(
+		return "✅ 已晋级决赛日 · 闯关赛到此为止(%s) · 明天周日来打决赛日" % _P2C.gauntlet_label(
 			int(GameState.gauntlet_wins), int(GameState.gauntlet_losses))
 	if st == _P2C.GAUNTLET_OUT:
 		return "💀 闯关赛已出局(%s) · 下周一开新的一轮" % _P2C.gauntlet_label(
@@ -1404,8 +1499,13 @@ func _battle_block_msg(now: int = 0) -> String:
 ##   门禁钉住一个确定的日子, 玩家路径完全不变。
 var clock_override_ts: int = 0
 
+## ★兜底走 `_P2C.now_utc()` 而不是就地读系统时钟(2026-09-28): 那条是**全局**时间缝
+##   (`phase2_config.now_override_ts`, 默认 0 = 真实时钟)。本函数的默认行为
+##   **逐字节不变**(两个 override 都是 0 时 `now_utc()` 就是 `Time.get_unix_time_from_system()`),
+##   但端到端门禁从此能用一处缝把整屏(主菜单 + 匹配 + 赛程判定)钉在同一刻 ——
+##   两条互不相通的时钟正是 memory `fb-second-clock-drops-events` 那一族。
 func _now_ts() -> int:
-	return clock_override_ts if clock_override_ts > 0 else int(Time.get_unix_time_from_system())
+	return clock_override_ts if clock_override_ts > 0 else int(_P2C.now_utc())
 
 
 func _start_battle_flow() -> void:

@@ -183,9 +183,16 @@ func _ready() -> void:
 		and src_inv.find("_sel_bench = -1                              # 选糖果罐") >= 0)
 	_ok("★★滑列表不误触: 位移 ≥16px 不算点击(与装备卡同一套)",
 		src_inv.find("if ev.position.distance_to(_press_pos) >= 16.0:") >= 0)
+	## ★★2026-09-28 后半句从 `smash.text = "🔨 打碎"` 改成**量接线**。
+	##   原来那一版是**拿文案当尺子**: 同一刻我把 🔨 去掉了(它是纯装饰 ——
+	##   「打碎」两个字已经说完了这枚键干什么; 而 🔨 的字形来自 NotoEmoji,
+	##   与整屏像素笔触是两套画法, 见 `tests/verify_no_emoji_icons.gd`)。
+	##   ⇒ 那条断言会当场红, 而它想守的事(这枚键在同一条操作栏里、不另起弹窗)一点没变。
+	##   现在量的是【这枚键接的是谁】: 它必须直连 `_inv_jar._on_break_jar()` ——
+	##   换文案/换图标都不影响, 而"又去另起一个确认弹窗"会立刻红(下面还有一条专门禁它)。
 	_ok("★★底部【同一条操作栏】把卖出换成打碎(不另起弹窗/面板)",
 		src_inv.find("func _build_jar_op_bar") >= 0
-		and src_inv.find('smash.text = "🔨 打碎"') >= 0)
+		and src_inv.find("_inv_jar._on_break_jar()") >= 0)
 	_ok("★打碎按钮与\"卖出\"同一位置同一尺寸(bw-290, 170×38)",
 		src_inv.find("smash.position = Vector2(bw - 290, 14); smash.size = Vector2(170, 38)") >= 0)
 	_ok("★★选装备与选糖果罐【互斥】(底部只有一条操作栏)",

@@ -35,6 +35,14 @@ func _count_btn_text(n: Node, txt: String) -> int:
 	return c
 
 
+## 把子树里所有 Button 收起来(量"哪个按钮能关掉面板"用)。
+func _all_buttons(n: Node, out: Array) -> void:
+	for ch in n.get_children():
+		if ch is Button:
+			out.append(ch)
+		_all_buttons(ch, out)
+
+
 func _count_buttons(n: Node) -> int:
 	var c := 0
 	for ch in n.get_children():
@@ -156,8 +164,24 @@ func _ready() -> void:
 	_ok("D2 ★★自刷把面板顶回最上层(面板开着换路也能自愈)",
 		lay.get_child(lay.get_child_count() - 1) == dsp.panel,
 		"面板 index=%d / 共 %d" % [dsp.panel.get_index(), lay.get_child_count()])
-	_ok("D2 面板自带 ✕ 关闭键(不用跑到屏幕另一头再点统计键)",
-		FileAccess.get_file_as_string("res://scripts/scenes/battle/dmg_stats_panel.gd").contains('"✕"'))
+	## ★原来这一条是 `源码.contains('"✕"')` —— 钉着一个**字面量**, 于是
+	##   ①那个字符一换它就红（而 `✕` U+2715 三张打包字体**一张都没有**, 已换成 `×`）
+	##   ②它其实没验"关得掉", 只验"源码里有那个字"。
+	## ⇒ 改成**量行为**: 面板子树里逐个按钮按一下, 必须有一个能把面板关掉。
+	var cbtns: Array = []
+	_all_buttons(dsp.panel, cbtns)
+	_ok("★分母: 面板子树里真扫到了按钮(4 个页签 + 关闭键)", cbtns.size() >= 5, "%d 个" % cbtns.size())
+	var closer := ""
+	for b in cbtns:
+		var bb: Button = b
+		dsp.panel.visible = true
+		bb.emit_signal("pressed")
+		if not dsp.panel.visible:
+			closer = bb.text
+			break
+	dsp.panel.visible = true
+	_ok("D2 面板自带就近的关闭键(按一下就关, 不用跑到屏幕另一头再点统计键)",
+		closer != "", "扫了 %d 个按钮, 关闭键文本「%s」" % [cbtns.size(), closer])
 	scene._on_dmg_stats_toggle()   # 关
 
 	# ── C. 结算按钮化 (此时 _units 已有 3 单位 → 7 列结算表真渲染) ──

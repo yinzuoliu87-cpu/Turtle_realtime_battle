@@ -28,6 +28,15 @@ const CARD_H := 316.0
 ## 而 panel-frame 实测边带 13px ⇒ 内容底 296 < 316-13 = 303。**这条账要算, 不是眼估**。
 ## (第一版 168: 370 宽的卡里左右各空 101px, 实拍看就是"一张小图钉在大板子中间"。)
 const AV_BOX := 200.0
+## ── 像素图标(2026-09-28 · 把 emoji 当图标的地方换掉)────────────────
+## ★为什么非换不可: emoji 的字形来自回退链第三级 `NotoEmoji-Regular.ttf`(见 `_bold_font`),
+##   是抗锯齿的矢量描边; 而这一屏其余(雷达/卡框/立绘)全是像素画 ⇒ **同屏两种画法**。
+##   判据不是眼睛: `tests/verify_no_emoji_icons.gd` 直接问三张字体文件谁有这个码点 ——
+##   只有 NotoEmoji 有 = 它是 emoji 图标。★ ✓ ⚠ 在 NotoSansSC 里(与正文同一套字), 不算。
+## ★源图一律 32×32, 只按**整数倍**画: 文字旁 1x, 头像框里 4x。
+const ICON_PX := 32
+const CHECK_ICON := "res://assets/sprites/ui/icon-check.png"
+const TURTLE_ICON := "res://assets/sprites/ui/icon-turtle.png"
 const RADAR_C := Vector2(640.0, 350.0)
 ## 雷达环最大半径: 圆心 y=350, 取 330 ⇒ 上沿 y=20 / 下沿 680, 不贴屏幕边。
 ## (原来是圆心 340 + 半径 340 = 上沿正好 y=0, 环压在屏幕顶边上。)
@@ -328,7 +337,13 @@ func _build_searching() -> void:
 	for c in content_root.get_children():
 		c.queue_free()
 	var title := _font(40, Color("#ffd93d"))
-	title.text = "🔍 匹配中"
+	## ★★2026-09-28 去掉 🔍 —— 纯装饰(「匹配中」加后面那三个跳动的点已经
+	##   把「正在找」说完了), 而它的字形来自 NotoEmoji ⇒ 这一屏就成了
+	##   「矢量放大镜 + 像素雷达」两套画法。仓库里没有搜索/雷达的像素图标,
+	##   不拿语义不符的图顶替 ⇒ 先只留字, 图标已登进缺口表。
+	## ★下面那句 `get_string_size(title.text)` 是**量真实字宽**再贴点点,
+	##   改文案不会错位 —— 它就是为了这一刻写的。
+	title.text = "匹配中"
 	title.size = Vector2(W, 56); title.position = Vector2(0, 300); title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content_root.add_child(title)
 	_dots_lbl = _font(40, Color("#ffd93d"))
@@ -373,9 +388,25 @@ func _build_vs(opp: Dictionary) -> void:
 	_shake(7.0, 0.20)
 	_shockwave(RADAR_C, Color("#7fd98a"), 520.0, 0.45)
 	var found := _font(26, Color("#7fd98a"))
-	found.text = "✓ 已匹配到对手!"
+	found.text = "已匹配到对手!"
 	found.size = Vector2(W, 34); found.position = Vector2(0, FOUND_Y); found.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content_root.add_child(found)
+	## ★★2026-09-28「✓」→ 像素勾 `ui/icon-check.png`(32×32, 1x)。
+	##   这个勾是**状态**(找到了), 不是装饰 ⇒ 不能只删。
+	##   ⚠ 挂成 `found` 的**子节点**: 下面那段 BACK 回弹 tween 缩放的是 `found`,
+	##     子节点跟着一起弹 —— 做成兄弟节点的话勾会站着不动, 弹的只有字。
+	##   位置按**真实字宽**算(`get_string_size`), 不用猜的偏移: 换字体/改文案都不会错位。
+	if ResourceLoader.exists(CHECK_ICON):
+		var ck := TextureRect.new()
+		ck.texture = load(CHECK_ICON)
+		ck.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		ck.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		ck.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		ck.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var _fw: float = _bold_font().get_string_size(found.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 26).x
+		ck.size = Vector2(ICON_PX, ICON_PX)
+		ck.position = Vector2(W / 2.0 - _fw / 2.0 - ICON_PX - 6.0, 1.0)
+		found.add_child(ck)
 	found.pivot_offset = Vector2(W / 2.0, 17)
 	found.scale = Vector2(1.8, 1.8); found.modulate.a = 0.0
 	var ftw := found.create_tween()
@@ -443,9 +474,19 @@ func _build_card(prof: Dictionary, pos: Vector2, accent: Color, slide_from_dx: f
 		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		frame.add_child(tr)
 	else:
-		var emo := _font(80, Color.WHITE); emo.text = "🐢"
-		emo.size = Vector2(AV_BOX, AV_BOX - 20.0); emo.position = Vector2(0, 14)
-		emo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; frame.add_child(emo)
+		## ★★2026-09-28 头像缺图时的兜底: 原来是一个 80 号字的 🐢(NotoEmoji 的矢量龟),
+		##   摆在一张像素立绘框里。换成像素龟图标 `ui/icon-turtle.png`。
+		##   ★源图 32×32, 这里按 **4x = 128** 画(整数倍) —— 200 的框里居中, 四周留 36。
+		##     4x 的像素块正好是本项目 3~4px 笔触的放大版, 与旁边真立绘同一种语言。
+		var emo := TextureRect.new()
+		emo.texture = load(TURTLE_ICON)
+		emo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		emo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		emo.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		emo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		emo.size = Vector2(ICON_PX * 4, ICON_PX * 4)
+		emo.position = Vector2((AV_BOX - ICON_PX * 4) / 2.0, (AV_BOX - ICON_PX * 4) / 2.0)
+		frame.add_child(emo)
 	var name_l := _font(28, accent)
 	name_l.text = str(prof.get("name", "?")); name_l.size = Vector2(CARD_W, 36)
 	name_l.position = Vector2(0, 18 + AV_BOX + 12.0)

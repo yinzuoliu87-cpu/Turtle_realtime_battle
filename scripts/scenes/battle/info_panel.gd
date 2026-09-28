@@ -415,6 +415,13 @@ func _info_resource_row(parent: Control, r: Dictionary) -> Dictionary:
 	if str(r.get("hint", "")) == "":
 		return {"bar": pb, "val": vl, "hint": null, "name": str(r.get("name", ""))}
 	var hl = Label.new(); hl.text = str(r.get("hint", ""))
+	## ★★给它一个固定节点名 `ResHint`(2026-09-28)。
+	##   由来: `verify_info_panel_fits` 那条「结论句不许被挤成 1px」的判据原来是
+	##   **抄这四句话的字面量**找它们(`find("释放:")` / `find("秒后结算")` / …) ——
+	##   于是今天改文案时那条判据当场变成空检查(0 条命中也算绿, 它没有分母)。
+	##   有了节点名, 判据改成"所有结论句都得有宽度", 既不随文案漂, 覆盖面还从 4 句变成全部。
+	##   ⚠ 同父下不会重名(每条资源各有自己的 `top`), 所以 Godot 不会把它改成 `ResHint2`。
+	hl.name = "ResHint"
 	hl.add_theme_font_size_override("font_size", UIPalette.F_SUB)
 	hl.add_theme_color_override("font_color", Color("#8fa2b5"))
 	hl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -499,7 +506,20 @@ func _info_stat_rows_main(u: Dictionary) -> Array:
 	var dr: float = float(u.get("damage_reduction", 0.0))
 	return [
 		[sic + "atk-icon.png",   "攻击 %d" % int(u.get("atk", 0)),                 Color("#ff9d8a")],
-		[sic + "aspd-icon.png",  "攻速 %s 次/秒" % battle._fmt_num(battle.aspd_mult(u) / maxf(0.001, float(u.get("atk_interval", 1.0)))), W],
+		## ★★2026-09-28「次/秒」→「每秒 N 下」(用户点名的工程单位)。
+		##   `X/Y` 是规格表里写单位的写法(m/s、次/秒), 玩家嘴里说的是"每秒打几下"。
+		##   ★前缀「攻速」**不许动**: `verify_aspd_panel_live.gd:44` / `verify_info_panel_stats.gd:40`
+		##     都靠 `begins_with("攻速")` 把这一行从属性表里挑出来(分母断言)。
+		##   ★数字部分仍走 `_fmt_num(aspd_mult / atk_interval)` 一字未动 ——
+		##     `verify_aspd_panel_live` ③ 那条「面板的次/秒 × 战斗真实冷却 = 1」验的是这个表达式。
+		## ⚠★★登记在案的缺口: **图鉴那边还写着「次/秒」**
+		##   (`scripts/scenes/codex/detail_views.gd:223` 的 `"unit": "次/秒"`)。
+		##   那个文件不在本轮地盘, 而且它的文案进了 `tests/golden/gd_text_snapshot.txt` 快照
+		##   (改词要连快照一起过) ⇒ 交主会话一并改, **别当成"已经统一了"**。
+		##   两处印的**数和含义完全一致**(都是每秒攻击次数), 差的只是单位那几个字 ——
+		##   与 2026-08-10 那次「面板印间隔 / 图鉴印速率」的语义分叉不是一回事, 但仍是
+		##   "同一件事两种写法", 该收。
+		[sic + "aspd-icon.png",  "攻速 每秒 %s 下" % battle._fmt_num(battle.aspd_mult(u) / maxf(0.001, float(u.get("atk_interval", 1.0)))), W],
 		[sic + "crit-icon.png",  "暴击 " + _pct(minf(float(u.get("crit", 0.0)), 1.0)), W],
 		[sic + "dmg-amp-icon.png", "增伤 " + _pct(amp), Color("#ff7a7a") if amp > 0.0005 else Color("#7a8694")],
 		[sic + "def-icon.png",   def_txt,                                          W],
@@ -655,7 +675,9 @@ func _resource_bars(u: Dictionary) -> Array:
 		var se: float = float(u.get("store_energy", 0.0))
 		out.append({
 			"name": "储能", "cur": se, "cap": mhp * 0.50,
-			"hint": "释放: 冲击波 %d + 护盾 %d" % [int(se * 0.40), int(se * 0.80)],
+			## ★半角冒号换 `·` —— 同一块面板里两条资源的结论句必须一个写法(泡泡那条同日改),
+			##   一条带冒号一条不带, 就是"同一件事两种写法"那类不一致。
+			"hint": "释放 · 冲击波 %d + 护盾 %d" % [int(se * 0.40), int(se * 0.80)],
 			"color": Color("#ffd93d"),
 		})
 
@@ -665,7 +687,11 @@ func _resource_bars(u: Dictionary) -> Array:
 		var nxt: float = maxf(0.0, 5.0 - float(u.get("_bbtimer", 0.0)))
 		out.append({
 			"name": "泡泡", "cur": bs, "cap": mhp,
-			"hint": "%.1f 秒后结算: 回血 %d · 伤害 %d" % [nxt, int(bs * 0.10), int(bs * 0.10)],
+			## ★★2026-09-28「秒后结算:」→「秒后炸开 ·」。两处毛病:
+			##   ①「结算」是后台词(它在这个项目里还专指战斗结束那一屏 ⇒ 一个词两个意思);
+			##     泡泡到点做的事就是**炸开**(回血 + 溅最近的敌人), 说它在干什么比说"结算"准。
+			##   ② 半角冒号换 `·`, 与上面储能那条同一个写法。
+			"hint": "%.1f 秒后炸开 · 回血 %d · 伤害 %d" % [nxt, int(bs * 0.10), int(bs * 0.10)],
 			"color": Color("#aef1ff"),
 		})
 
@@ -1484,7 +1510,7 @@ static func _bar_frame(holder: Control) -> NinePatchRect:
 ## 每个面板只有一个浮层, 内容按需替换 —— 天然就是"一次只开一个"。
 ## 给按钮套上面板自己的金属皮(2026-08-17)。
 ##
-## ★由来: 描述浮层里的「✕」和「详细 ▾」是 **Godot 默认主题的按钮** —— 圆角 3、纯色、无框,
+## ★由来: 描述浮层里的「×」和「详细 ▾」是 **Godot 默认主题的按钮** —— 圆角 3、纯色、无框,
 ##   是整个面板里最"没游戏味"的两个元素。实拍 3 倍放大才看清。
 ## ★★它们**逃过了那条网页盒门禁**: 判据先查 `has_theme_stylebox_override`,
 ##   而默认主题不是 override ⇒ 根本没被扫到。**判据看不见的地方就是它的盲区** ——
@@ -1566,7 +1592,7 @@ func _show_detail(host_panel: Control, key: String, title: String, body: String,
 	ttl.add_theme_color_override("font_color", Color("#ffd93d"))
 	ttl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hb.add_child(ttl)
-	var cb = Button.new(); cb.text = "✕"
+	var cb = Button.new(); cb.text = "×"
 	cb.add_theme_font_size_override("font_size", UIPalette.F_BODY)
 	_btn_skin(cb, Color("#8fa4bb"))
 	cb.focus_mode = Control.FOCUS_NONE

@@ -1,0 +1,30 @@
+{
+ "_why": "本文件由 `python tools/codex_text_lint.py --update` 生成, 不要手改。键 = 相对路径|原文(不含行号: 行号天天漂)。只减不增。",
+ "known": {
+  "scripts/scenes/BracketMapScene.gd|待定": {
+   "line": 843,
+   "sink": "lit",
+   "word": "待定"
+  },
+  "scripts/scenes/MainMenuScene.gd|玩法开发中, 暂按积分赛规则": {
+   "line": 1174,
+   "sink": "lit",
+   "word": "开发中"
+  },
+  "scripts/scenes/battle/battle_debug_arena.gd|右队(假人)": {
+   "line": 619,
+   "sink": "text",
+   "word": "右队"
+  },
+  "scripts/scenes/battle/battle_debug_arena.gd|左队(友军)": {
+   "line": 619,
+   "sink": "text",
+   "word": "左队"
+  },
+  "scripts/scenes/battle/battle_hud.gd|左队(友军)": {
+   "line": 1941,
+   "sink": "lit",
+   "word": "左队"
+  }
+ }
+}

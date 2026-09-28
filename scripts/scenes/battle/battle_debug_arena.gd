@@ -345,10 +345,10 @@ func _edit_make_popup(title_text: String) -> GridContainer:
 	var t = Label.new(); t.text = title_text; t.add_theme_font_size_override("font_size", 21); t.add_theme_color_override("font_color", Color("#ffd93d"))
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hdr.add_child(t)
-	hdr.add_child(_edit_mk_btn("✕ 关闭", func(): _edit_close_popup(), 96))
+	hdr.add_child(_edit_mk_btn("× 关闭", func(): _edit_close_popup(), 96))
 	var sc = ScrollContainer.new()
 	# ★"加装备够不到"修(用户2026-07-26): 原写死 700×460 放在 CenterContainer 里 → 小屏/横屏手机上面板比安全区还高,
-	#   居中后顶(✕关闭)和底部卡片溢出到屏幕外够不到。改成【跟随可视区安全区自适应】: 面板永远在屏内, 59件全靠内部滚动够得到。
+	#   居中后顶(×关闭)和底部卡片溢出到屏幕外够不到。改成【跟随可视区安全区自适应】: 面板永远在屏内, 59件全靠内部滚动够得到。
 	var _vp: Vector2 = Vector2(battle.get_viewport().get_visible_rect().size)
 	var _m: Vector4 = SafeArea.margins(_vp, 18.0)
 	var _availw: float = _vp.x - _m.x - _m.z
@@ -485,7 +485,7 @@ func _edit_refresh_equip_panel() -> void:
 		var eid = str(e.get("id", ""))
 		var enm = str(DataRegistry.phase2_equipment_by_id.get(eid, {}).get("name", eid))
 		var stv = int(e.get("star", 1))
-		wrap.add_child(_edit_mk_btn("%s★%d ✕" % [enm, stv], func(): _edit_remove_equip(eid), 0))
+		wrap.add_child(_edit_mk_btn("%s★%d ×" % [enm, stv], func(): _edit_remove_equip(eid), 0))
 	wrap.add_child(_edit_mk_btn("➕ 加装备", func(): _edit_open_equip_grid(), 120))
 
 func _edit_set_unit_skill(idx: int) -> void:

@@ -20,7 +20,10 @@ func _ready() -> void:
 	##   规则来自 599 张/146 个触屏游戏枢纽页的逐张实测, 见 top_bar.gd 头注。
 	var _sm: Vector4 = SafeArea.margins(Vector2(get_viewport().get_visible_rect().size), 18.0)
 	_top_bar = TopBar.new(self, {
-		"title": "⚙ 设置",
+		## ★★2026-09-28 去掉页名前的 ⚙(理由与图鉴/背包/战绩同, 见 `CodexScene` 那条长注释):
+		##   146 款参考的枢纽页顶栏一律是「返回箭头 + 裸页名」, 没有一款给页名挂图标;
+		##   而 ⚙ 的字形来自 NotoEmoji, 与这一屏的像素笔触是两套画法。
+		"title": "设置",
 		"palette": TopBar.DEEP,
 		"width": W,
 		"safe_left": _sm.x,
@@ -40,11 +43,17 @@ func _ready() -> void:
 	##     (「深海币」「出战统领」「糖果罐」), 只有这一处漏了。
 	##   ② 「音量」两个字是多余的: 右边就写着 45%, 而它前面是一根音量条 ——
 	##     「标签: 值」那套是网页表单的读法, 条自己就说清了它是什么。
-	_slider(W / 2.0, 220.0, "🎵 音乐", GameState.bgm_volume,
+	## ★★2026-09-28 去掉 🎵/🔊 两个 emoji —— 它们是**纯装饰**:
+	##   每条滑条前面写着「音乐」「音效」、右边就写着百分比, 信息一点不少。
+	##   而它们的字形来自回退链第三级 NotoEmoji(矢量描边), 与整屏 3~4px 像素笔触
+	##   **同屏两套画法** —— 用户 2026-09-27 点名的「ai 味/网页味」就是这一类。
+	##   仓库里没有音乐/音效的像素图标(已 grep: music/sound/audio 全无),
+	##   而素材铁律是「不拿语义不符的图顶替」 ⇒ 先只留字, 图标已登进缺口表。
+	_slider(W / 2.0, 220.0, "音乐", GameState.bgm_volume,
 		func(v): GameState.bgm_volume = v; Audio.bgm_volume = v; Audio.apply_bgm_volume(),   # ★补: 原来只设变量没调 apply → 拖动对正在播的BGM无效(用户2026-07-19"音量键根本没效果")
 		func(): GameState.save())
 	# SFX 滑条 @ (W/2, 330) — 松手才试听 + 写盘 (原来拖动中每帧都播音效)
-	_slider(W / 2.0, 330.0, "🔊 音效", GameState.sfx_volume,
+	_slider(W / 2.0, 330.0, "音效", GameState.sfx_volume,
 		func(v): GameState.sfx_volume = v; Audio.sfx_volume = v,
 		func(): Audio.play_sfx("hit-physical", 1.0); GameState.save())
 
@@ -694,10 +703,13 @@ func _fullscreen_label() -> String:
 ## ★★2026-09-28 去掉那个**半角冒号**。「画质: 高」= `label: value`,
 ##   是网页表单/设置页最典型的一行; 换成「」之后它读起来是一块写着当前状态的牌子。
 ##   宽度没变大(冒号+空格 2 个半角 ≈ 「」1 个全角), 仍远小于木牌 202px 的内部净宽。
+## ★★2026-09-28 去掉 🪶(羽毛)。它既不是「画质」也不是「高/低」的图形,
+##   是当时随手挖的一个装饰字符; 而它的字形来自 NotoEmoji ⇒ 这块木牌上
+##   一个矢量羽毛 + 一排像素字。信息全在后面那四个字里, 直接去掉。
 func _perf_label() -> String:
 	if GameState.perf_lite:
-		return "🪶 画质「低」"
-	return "🪶 画质「高」"
+		return "画质「低」"
+	return "画质「高」"
 
 
 ## 低画质模式 = 真开关 (原来只改自己的 label, grep 全库无第二处引用 = 死按钮)

@@ -65,14 +65,44 @@ import os
 import re
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import gd_text_scan as _G          # noqa: E402  共享的"去行尾注释"实现(会跳过字符串里的 #)
+
+
+def _decomment(src):
+    """去掉行尾注释后的源码。
+
+    ★★为什么必须去: 主判据数的是"名字在全仓出现过", 它不区分代码和注释 ⇒
+      **一句追忆往事的注释就能让一个死函数永远活着**。
+      实证: `RealtimeBattle3DScene.gd:8604 _fill_equip_section()` 零调用点,
+      而 `info_panel.gd:226` 有一行注释提到它的名字 ⇒ 扩了 ROOTS 之后**依然报绿**。
+      实测去注释后受检全域的死函数 16 → 30, 多出来的 14 个全是真死代码。
+    ★不能用 `line.split("#")[0]` —— 本仓文案里到处是 `#ffd93d` 颜色码,
+      一刀切会把半句话当注释切掉。`gd_text_scan.strip_comment` 已经处理过字符串。
+    """
+    return NL.join(_G.strip_comment(l) for l in src.split(NL))
+
+NL = chr(10)
+
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 except Exception:
     pass
 
-## 受检目录：**行为代码**。纯数据表（gamedata）与场景脚本另论 ——
-## 数据表里的常量本来就可能只被文案引用，误报会把这条门禁变成噪音。
-ROOTS = ["scripts/systems", "scripts/scenes/battle"]
+## ══════════════════════════════════════════════════════════════════════
+##  ★★★洞③(2026-09-28)：ROOTS 原来只有两个目录 —— **那是盲区，不是许可**
+## ══════════════════════════════════════════════════════════════════════
+## 原来写的是 `["scripts/systems", "scripts/scenes/battle"]`，理由栏写着
+## 「纯数据表（gamedata）与场景脚本另论」。**场景脚本正是屏幕代码住的地方**，
+## 于是这两类死代码一直没人看得见：
+##   · `scripts/scenes/RealtimeBattle3DScene.gd:8606` `_fill_equip_section()`
+##     （文案「装备 (%d)」，正是用户点名的括号计数形状）—— **零调用点**
+##   · `scripts/gamedata/phase2_config.gd` `now_utc()` 这条新开的时间缝
+##     —— 零个**产品**调用者
+## 两个都因为「ROOTS 不含那些目录」而报绿。
+## ⇒ 扩到 `scripts/` 全部。误报的代价用存量台账 + `# zero-caller-ok:` 吸收，
+##   **不靠缩小扫描范围换绿灯**。
+ROOTS = ["scripts"]
 ## 引擎回调 / 生命周期：Godot 自己调，永远看不到调用点。
 ENGINE = {
     "_init", "_ready", "_process", "_physics_process", "_input", "_unhandled_input",
@@ -82,6 +112,12 @@ ENGINE = {
 EXEMPT_RE = re.compile(r"#\s*zero-caller-ok:\s*(.+)")
 ## 存量欠债台账 —— 见 main() 里那段注释
 LEDGER = os.path.join("tools", "zero_caller_debt.json")
+## 第二道网的台账。原来它**没有台账**(注释写着"实测存量为 0, 零误报 ⇒ 直接当红灯用"),
+## 而那个 0 是在 `systems + scenes/battle` 那个范围内量的。2026-09-28 扩到 `scripts/`
+## 全域之后有了 1 条**真**存量(`RecordScene._stroked_label`, 与设置屏同名同签名的
+## 复制粘贴残留) ⇒ 照本仓老规矩: 存量记台账只减不增, 新增当场红。
+## **不许**为了让它绿回去而缩小范围或放宽判据。
+LEDGER2 = os.path.join("tools", "zero_caller_samename_debt.json")
 
 
 def gd_files(roots):
@@ -121,6 +157,31 @@ def main():
                 p = "tests/" + f
                 testsrc[p] = io.open(p, encoding="utf-8", errors="replace").read()
 
+    ## ══════════════════════════════════════════════════════════════
+    ##  预分词(见下面主判据里的等价性说明)
+    ## ══════════════════════════════════════════════════════════════
+    WORD = re.compile(r"\w+")
+    FUNCLINE = re.compile(r"(?m)^func\s+([A-Za-z_][A-Za-z0-9_]*)\b.*$")
+    ## ★分词表一律用**去掉注释**的源码(见 `_decomment` 的长注释)
+    nocmt = {k: _decomment(v) for k, v in allsrc.items()}
+    nocmt_t = {k: _decomment(v) for k, v in testsrc.items()}
+    tok_total = {}
+    for _s in nocmt.values():
+        for t in WORD.findall(_s):
+            tok_total[t] = tok_total.get(t, 0) + 1
+    tok_tests = {}
+    for _s in nocmt_t.values():
+        for t in WORD.findall(_s):
+            tok_tests[t] = tok_tests.get(t, 0) + 1
+    ## 每个文件里, 它自己的 `^func <名字> …` 行上**那个名字**出现了几次
+    own_defline = {}
+    for _p, _s in nocmt.items():
+        d0 = {}
+        for m0 in FUNCLINE.finditer(_s):
+            nm0 = m0.group(1)
+            d0[nm0] = d0.get(nm0, 0) + len([t for t in WORD.findall(m0.group(0)) if t == nm0])
+        own_defline[_p] = d0
+
     n_fun = 0
     dead = []
     exempt = []
@@ -146,17 +207,19 @@ def main():
             ## ★数**名字的出现**而不是 `name(` —— 见头注「判据」那一段:
             ##   `.bind()` 引用式调用(tween_callback(_xxx.bind(...))) 名字后面没有括号,
             ##   只数 `name(` 会把 17 个活函数判成死的(2026-09-01 实测)。
-            pat = re.compile(r"\b" + re.escape(fn) + r"\b")
-            defpat = re.compile(r"^func\s+" + re.escape(fn) + r"\b.*$", re.M)
-            hits = 0
-            for p2, s2 in allsrc.items():
-                body = defpat.sub("", s2) if p2 == path else s2
-                hits += len(pat.findall(body))
+            ##
+            ## ★★2026-09-28(洞③ 扩 ROOTS 时)把这里从「每个函数 × 每个文件各跑一次
+            ##   `\bfn\b` 正则」换成**预先分词后查计数表**。判定**逐字等价**:
+            ##   `re.findall(r"\w+", src)` 切出的是**极大字符串**, 而 `\bfn\b`
+            ##   命中一次 ⟺ 有一个切片恰好等于 fn(两边的"词"是同一个定义, `\w`
+            ##   连中文也算词字符 ⇒ 「汉字foo」两边都不算命中, 一致)。
+            ##   `defpat.sub` 那一步 = 只从**本文件**里减掉 `^func fn…` 那些行上
+            ##   fn 自己出现的次数 ⇒ 等价于 `tok_total[fn] - own_defline[path][fn]`。
+            ##   ⇒ O(函数数 × 文件数) 降到 O(源码总量)。扩了 ROOTS 还更快。
+            hits = tok_total.get(fn, 0) - own_defline.get(path, {}).get(fn, 0)
             if hits == 0:
                 ## 产品里没人调 —— 再看门禁里有没有
-                thits = 0
-                for _p3, s3 in testsrc.items():
-                    thits += len(pat.findall(s3))
+                thits = tok_tests.get(fn, 0)
                 if thits > 0:
                     probes.append("%s:%s" % (os.path.basename(path), fn))
                 else:
@@ -180,19 +243,42 @@ def main():
                 continue
             defs_by_name.setdefault(m.group(1), []).append((path, i + 1))
     multi = {k: v for k, v in defs_by_name.items() if len(v) >= 2}
-    whole = "\n".join(allsrc.values())
-    wtests = "\n".join(testsrc.values())
+    ## ★同样预扫一遍(判定等价, 只是把「每个定义处重跑一次 re.sub + search」
+    ##   换成查表): `QUAL` 收全仓/tests 里所有 `X.fn(` 的名字;
+    ##   `BARE` 收每个文件里所有裸调 `fn(` 的名字, 再减掉它自己 `func fn(` 那几行贡献的。
+    QUAL = re.compile(r"[A-Za-z_0-9\]\"]\.([A-Za-z_][A-Za-z0-9_]*)\s*\(")
+    BARE = re.compile(r"(?<![\w\.])([A-Za-z_][A-Za-z0-9_]*)\s*\(")
+    SFUNCLINE = re.compile(r"(?m)^(?:static\s+)?func\s+([A-Za-z_][A-Za-z0-9_]*)\b.*$")
+    qual_names = set()
+    ## ★字符串派发: `has_method("fn")` / `Callable(host, "fn")` / `call("fn")`。
+    ##   不收这一支, 5 个屏的 `_tutorial_anchor` 会全被判死 —— 它们是被
+    ##   `TutorialGuide.gd:256` 用字符串调到的。
+    STRLIT = re.compile(r'"([A-Za-z_][A-Za-z0-9_]*)"')
+    str_names = set()
+    for _s in list(nocmt.values()) + list(nocmt_t.values()):
+        qual_names.update(QUAL.findall(_s))
+        str_names.update(STRLIT.findall(_s))
+    ## ★同文件里这个名字**作为一个词**出现过就算活(不要求后面跟括号)。
+    ##   场景脚本的主力写法是**裸引用**: `back.pressed.connect(_on_back)`、
+    ##   `{"on_back": _on_back}`、`_xxx.bind(...)` —— 名字后面都没有括号。
+    ##   只数 `fn(` 在 `scenes/` 里会连报 `_on_back` / `_on_resize` 一类, 全是误报。
+    bare_in = {}
+    for _p, _s in nocmt.items():
+        c0 = {}
+        for nm0 in WORD.findall(_s):
+            c0[nm0] = c0.get(nm0, 0) + 1
+        for m0 in SFUNCLINE.finditer(_s):
+            for nm1 in WORD.findall(m0.group(0)):
+                if nm1 == m0.group(1):
+                    c0[nm1] = c0.get(nm1, 0) - 1
+        bare_in[_p] = c0
     same_name_dead = []
     n_multi_sites = 0
     for fn, sites in multi.items():
-        qual = re.compile(r"[A-Za-z_0-9\]\"]\." + re.escape(fn) + r"\s*\(")
-        bare = re.compile(r"(?<![\w\.])" + re.escape(fn) + r"\s*\(")
-        has_qual = bool(qual.search(whole)) or bool(qual.search(wtests))
+        has_qual = fn in qual_names or fn in str_names
         for p, ln in sites:
             n_multi_sites += 1
-            body = re.sub(r"^(?:static\s+)?func\s+" + re.escape(fn) + r"\b.*$", "",
-                          allsrc[p], flags=re.M)
-            if not bare.search(body) and not has_qual:
+            if bare_in.get(p, {}).get(fn, 0) <= 0 and not has_qual:
                 same_name_dead.append("%s:%d  %s" % (p, ln, fn))
 
     print("  [分母] 扫描 %d 个文件 · %d 个函数 (受检目录: %s)"
@@ -226,15 +312,39 @@ def main():
             ledger = {}
     known = set(ledger.get("known", []))
     fresh = [d for d in dead if d.split("  ")[-1] not in known]
-    if os.environ.get("ZERO_CALLER_UPDATE") == "1":
-        io.open(LEDGER, "w", encoding="utf-8").write(json.dumps(
-            {"known": sorted(d.split("  ")[-1] for d in dead)},
+    ## 第二道网的存量台账(键 = 函数名, 同主台账的理由: 行号天天漂)
+    ledger2 = {}
+    if os.path.exists(LEDGER2):
+        try:
+            ledger2 = json.load(io.open(LEDGER2, encoding="utf-8"))
+        except Exception:
+            ledger2 = {}
+    known2 = set(ledger2.get("known", []))
+    fresh2 = [d for d in same_name_dead if d.split("  ")[-1] not in known2]
+    if os.environ.get("ZERO_CALLER_UPDATE") == "1" or "--update" in sys.argv:
+        io.open(LEDGER2, "w", encoding="utf-8", newline=NL).write(json.dumps(
+            {"_why": "由 `python tools/zero_caller_audit.py --update` 生成, 不要手改。"
+                     "第二道网(同名掩护)的存量, 只减不增。",
+             "known": sorted(d.split("  ")[-1] for d in same_name_dead),
+             "where": {d.split("  ")[-1]: d.split("  ")[0] for d in sorted(same_name_dead)}},
+            ensure_ascii=False, indent=1) + chr(10))
+        print("  [台账已重写] %s (%d 个存量·第二道网)" % (LEDGER2, len(same_name_dead)))
+        ## ★台账的**匹配键仍然是函数名**(不是 file:line): 7 个 agent 同时在改
+        ##   scripts/, 按行号记明天就全过期, 而"函数挪了两行"不是这条判据要抓的事。
+        ##   `where` 只是**给人看的出处**, 每次 --update 重新生成, 不参与判定。
+        io.open(LEDGER, "w", encoding="utf-8", newline=NL).write(json.dumps(
+            {"_why": "本文件由 `python tools/zero_caller_audit.py --update` 生成, 不要手改。"
+                     "`known` 是匹配键(函数名); `where` 只是出处, 不参与判定。只减不增。",
+             "known": sorted(d.split("  ")[-1] for d in dead),
+             "where": {d.split("  ")[-1]: d.split("  ")[0] for d in sorted(dead)}},
             ensure_ascii=False, indent=1) + chr(10))
         print("  [台账已重写] %s (%d 个存量)" % (LEDGER, len(dead)))
         return 0
     if dead and not fresh:
         print("")
-        print("  [存量] %d 个在台账里(只减不增; 新增的会当场红)" % len(dead))
+        print("  [存量] %d 个在台账里(只减不增; 新增的会当场红):" % len(dead))
+        for d in sorted(dead):
+            print("     " + d)
     dead = fresh
     if dead:
         print("")
@@ -245,7 +355,13 @@ def main():
         print("  （四个最终造物的主动就是这么漏掉的：函数写好、门禁全绿、游戏里放不出来。")
         print("    确实不该有调用者的，加注释 `# zero-caller-ok: 原因`，原因会被打印出来。）")
         return 1
-    ## 第二道网**不留台账**（实测存量为 0，零误报）—— 新增当场红。
+    ## 第二道网的存量走 LEDGER2（见它的注释）—— 新增当场红。
+    if same_name_dead and not fresh2:
+        print("")
+        print("  [存量·第二道网] %d 个在台账里(只减不增):" % len(same_name_dead))
+        for d in sorted(same_name_dead):
+            print("     " + d)
+    same_name_dead = fresh2
     if same_name_dead:
         print("")
         print("[FAIL] **同名掩护**下的死函数 %d 个（主判据按名字数，抓不到这一类）:"

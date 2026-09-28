@@ -84,13 +84,17 @@ const STAT_NUM_W := 44.0
 ##   胜场 `menu/ic-trophy.png`  —— 主菜单「排行榜」入口用的就是这张(MainMenuScene.gd:319),
 ##                                 同一个概念在同一个游戏里用同一张图, 正是该做的事
 ##   余命 `stats/hp-icon.png`   —— 选龟详情「生命值」那一格用的就是它(detail_panel.gd:125)
-##   横扫 `stats/aspd-icon.png` —— 交叉双刀。⚠ 它在战斗信息面板里是"攻速"(info_panel.gd:498),
-##                                 这是一次**明知的借用**: 排行榜上没有攻速这个量, 而交叉双刀
-##                                 = 完胜是通行读法。要是哪天有专门的"横扫"图标, 换这一行即可。
+##   横扫 `ui/icon-sweep.png`   —— **它自己那一张**(2026-09-28 接上)。
+##
+## ★★「横扫」这一格的欠账已还。原来借的是 `stats/aspd-icon.png` ——
+##   那张在战斗信息面板里是**攻速**(info_panel.gd:498), 当时的原话是
+##   「这是一次明知的借用……要是哪天有专门的"横扫"图标, 换这一行即可」。
+##   图标已经画好(`assets/sprites/ui/icon-sweep.png`, 32×32), 这一行就是那个「换」。
+##   ⚠ 留着"明知的借用"这种自我批准的欠账, 下一个人读到的是"借用是被允许的"。
 const STAT_ICONS := [
 	"res://assets/sprites/menu/ic-trophy.png",
 	"res://assets/sprites/stats/hp-icon.png",
-	"res://assets/sprites/stats/aspd-icon.png",
+	"res://assets/sprites/ui/icon-sweep.png",
 ]
 
 ## 金/银/铜。`modulate_color` 是**乘**在 chip-frame 上的(它是一块暗底 + 一圈银边:
@@ -115,6 +119,28 @@ const COL_SELF := "#ffe9a8"
 const COL_ROW := "#dfe9f2"
 const COL_DIM := "#5d6e7e"
 const COL_RANK := "#7f93a6"
+
+## ═══ 底部那一行提示 (2026-09-28: 「连不上」不许说成「你打得少」) ═══
+##
+## ★★★原来只有一句: 「（榜上暂时只有你 —— 打完一场, 对手就会上来）」。
+##   探针 `tests/_probe_lb_reach.gd` 实测: 池子 396 条 / 榜上 rows = **1**,
+##   而池子里唯一能带来别人的两条路(`apply_pull_response` / `ingest_remote`)
+##   **纯网络**。⇒ **断网时打一万场也不会有对手上来**, 那句话把网络失败
+##   归因到了玩家的场次上。这是说谎级, 不是措辞问题。
+##
+## ★四句各对一档(档的定义与理由见 `Backend.REACH_*`), **互斥**:
+##   · OK      问到过 ⇒ 原话一个字不改, 这时它是真的
+##   · FAIL    问过没问到 ⇒ 照 `BracketMapScene.gd:523` 的样式说「连不上服务器 · …」
+##   · UNKNOWN 还没问 ⇒ 不许说"连不上"(那是把没发生的故障说成发生了), 只说还没读到
+##   · OFF     没配后端 ⇒ **一句承诺都不给, 也不挂"离线"角标**
+##     (`SettingsScene.gd:103` / `remote_pool.gd:182`: 常驻的"离线"标记是反的 ——
+##      它等于告诉玩家"你是残缺状态, 去修"。所以这一档只陈述事实, 不解释原因。)
+const HINT_ONLY_YOU_OK := "（榜上暂时只有你 —— 打完一场, 对手就会上来）"
+const HINT_ONLY_YOU_FAIL := "（连不上服务器 · 对手还没读到 —— 下一场开打时会自己再试）"
+const HINT_ONLY_YOU_UNKNOWN := "（对手还没读到 —— 下一场开打时去取一次）"
+const HINT_ONLY_YOU_OFF := "（榜上暂时只有你）"
+const HINT_FIRST_WIN := "（赢下第一场就能上分 —— 你本赛季还是 0 胜）"
+const HINT_AUTO := "（每场打完自动上榜）"
 
 func _ready() -> void:
 	_bg()
@@ -221,12 +247,9 @@ func _ready() -> void:
 	##   (改这句之前 grep 过 `tests/` `tools/`: 没有任何判据钉这句文案;
 	##    `tests/_probe_newuser.gd:100` 里有一份手抄的同串, 那是探针的自印, 不是断言。)
 	var hint := Label.new()
-	if rows.size() <= 1:
-		hint.text = "（榜上暂时只有你 —— 打完一场, 对手就会上来）"
-	elif self_idx >= 0 and int((rows[self_idx] as Dictionary).get("wins", 0)) <= 0:
-		hint.text = "（赢下第一场就能上分 —— 你本赛季还是 0 胜）"
-	else:
-		hint.text = "（每场打完自动上榜）"
+	hint.text = hint_text(rows.size(), self_idx >= 0,
+		int((rows[self_idx] as Dictionary).get("wins", 0)) if self_idx >= 0 else 0,
+		Backend.pool_reach())
 	hint.add_theme_font_size_override("font_size", 15)
 	hint.add_theme_color_override("font_color", Color("#6b7b8c"))
 	hint.position = Vector2(PAD, PANEL_H - PAD - FOOT_H + 4.0)
@@ -281,6 +304,26 @@ func _bg() -> void:
 	add_child(ov)
 
 
+## 底部提示行说哪一句 —— 纯函数, 四档全可穷举。
+##
+## ★做成 `static` + 纯函数而不是埋在 `_ready` 里的 if/elif: 门禁要能**逐档**验它。
+##   埋在 `_ready` 里的话只验得到"这次真实环境落到的那一档"(而门禁环境恒是 OFF),
+##   另外三句从来没被任何判据看过 —— 那正是上一版那句假话活下来的方式。
+##   真屏幕上画的就是它的返回值(`_ready` 里只有这一处给 hint 赋值), 所以验它 = 验屏幕。
+static func hint_text(rows_n: int, self_found: bool, self_wins: int, reach: String) -> String:
+	## 榜上不止你一个 ⇒ 与"问没问到"无关, 照旧按自己的战绩说。
+	if rows_n > 1:
+		return HINT_FIRST_WIN if (self_found and self_wins <= 0) else HINT_AUTO
+	match reach:
+		Backend.REACH_OK:
+			return HINT_ONLY_YOU_OK
+		Backend.REACH_FAIL:
+			return HINT_ONLY_YOU_FAIL
+		Backend.REACH_UNKNOWN:
+			return HINT_ONLY_YOU_UNKNOWN
+	return HINT_ONLY_YOU_OFF
+
+
 ## 自己在 rows 里的下标(没有 = -1)。
 func _self_index(rows: Array) -> int:
 	for i in range(rows.size()):
@@ -313,9 +356,19 @@ func _pick_rows(rows: Array, cap: int, self_idx: int) -> Array:
 func _draw_row(parent: Control, y: float, idx: int, r: Dictionary) -> void:
 	var rank: int = idx + 1
 	var is_self: bool = bool(r.get("is_self", false))
+	var wins: int = int(r.get("wins", 0))
+	## ★★★领奖台只发给**有战绩的人**(2026-09-28)。
+	##   实拍全新档那张: `#1 龟主-0000 ◀ 你 0胜 · ♥8 · 0横扫` —— 一个字都没打过的人
+	##   被画成**金牌第一名**。名次数字本身没说谎(排序下他确实是第 1 行, 因为就他一个),
+	##   说谎的是**金/银/铜那块牌**: 牌位的含义是"这人赢到了这个位置"。
+	##   ⇒ 判据是「这一行有没有战绩」= `wins > 0`, 不是"排第几"。
+	##   0 胜的那行仍然画得见(自己那行的整行金底 + 「你」签一个都没动 ——
+	##   「榜上必须找得到自己」是 2026-08-19 钉死的另一条需求), 只是**不上领奖台**。
+	##   ⚠ 空席的暗牌位不在此列: 那是"台阶空着", 本来就已经压到 0.42。
+	var podium: bool = rank <= 3 and wins > 0
 	if is_self:
 		_row_band(parent, y, SELF_BAND)
-	elif rank <= 3:
+	elif podium:
 		_row_band(parent, y, MEDAL_BAND[rank - 1])
 	elif idx % 2 == 1:
 		var zebra := ColorRect.new()   # 斑马纹: 纯色块, 不带边 ⇒ 不是"网页盒"
@@ -323,7 +376,7 @@ func _draw_row(parent: Control, y: float, idx: int, r: Dictionary) -> void:
 		zebra.position = Vector2(PAD - 6.0, y - 5.0)
 		zebra.size = Vector2(PANEL_W - (PAD - 6.0) * 2.0, ROW_H - 4.0)
 		parent.add_child(zebra)
-	_rank_badge(parent, y, rank, 1.0)
+	_rank_badge(parent, y, rank, 1.0, podium)
 	## 自己那行要先给「你」签牌让出位置 —— 名字字块和签牌叠在一起会踩全局的"两段文字压在一起"。
 	var nw: float = (NAME_W - YOU_W - YOU_GAP) if is_self else NAME_W
 	var nm := _cell(parent, str(r.get("name", "?")), NAME_X, y, nw, 18,
@@ -343,7 +396,8 @@ func _draw_row(parent: Control, y: float, idx: int, r: Dictionary) -> void:
 ##   既守住列的节奏(不然整块榜右半边是空的), 又明说"这里没有人"。
 ## ★也**不画图标**: 图标是"这个量有多少"的标记, 空席上没有量。
 func _draw_vacant(parent: Control, y: float, rank: int) -> void:
-	_rank_badge(parent, y, rank, 0.42)
+	## ★空席照旧给牌位(压到 0.42) —— 空席画的是"台阶空着", 没有"谁赢到了这里"的主张。
+	_rank_badge(parent, y, rank, 0.42, true)
 	var l := _cell(parent, "—", NAME_X, y, NAME_W, 18, Color(COL_DIM), HORIZONTAL_ALIGNMENT_LEFT)
 	l.modulate.a = 0.75
 	for i in range(3):
@@ -370,8 +424,10 @@ func _row_band(parent: Control, y: float, tint: Color) -> void:
 
 ## 名次: 前三名是金/银/铜签牌, 第 4 名起只剩一个暗号码(领奖台与看台的差别)。
 ## `k` = 亮度系数, 空席用 0.42 压暗。
-func _rank_badge(parent: Control, y: float, rank: int, k: float) -> void:
-	if rank > 3:
+## `podium` = 这一行**配得上牌位**吗(见 `_draw_row` 里 `podium` 那段: 0 胜不上领奖台)。
+##   前三名而不配牌位时走的就是第 4 名起那条路 —— 一个暗号码, 不是"没有名次"。
+func _rank_badge(parent: Control, y: float, rank: int, k: float, podium: bool) -> void:
+	if rank > 3 or not podium:
 		var n := _cell(parent, str(rank), RANK_X, y, RANK_W, 16,
 			Color(COL_RANK), HORIZONTAL_ALIGNMENT_CENTER)
 		n.modulate.a = k

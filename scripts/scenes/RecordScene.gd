@@ -57,7 +57,10 @@ func _ready() -> void:
 	##   而 146 款触屏游戏的枢纽页里, 返回和页名是**同一条栏里的两个邻居**
 	##   (见 `scripts/util/top_bar.gd` 头注的六款实例)。
 	_top_bar = TopBar.new(self, {
-		"title": "📊 战绩",
+		## ★★2026-09-28 去掉页名前的 📊(理由与图鉴/背包/设置同, 见 `CodexScene` 那条长注释):
+		##   顶栏就是「返回箭头 + 裸页名」, 146 款参考里没有一款给页名挂图标;
+		##   而 📊 的字形来自 NotoEmoji, 与这一屏的像素笔触是两套画法。
+		"title": "战绩",
 		"palette": TopBar.DEEP,
 		"width": W,
 		"on_back": func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"),

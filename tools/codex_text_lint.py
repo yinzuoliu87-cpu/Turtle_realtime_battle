@@ -41,6 +41,8 @@ import re
 import collections
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+import os as _os
+sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))   # 让 `import gd_text_scan` 在任何 cwd 下都成
 NL = chr(10)
 
 # ── 判据 ────────────────────────────────────────────────────────────────
@@ -100,9 +102,161 @@ DEVNOTE = ['待设计', '待定', '尚未定义', '后续精修', '暂未', '待
            # ★别的游戏的技能代号: 忍者龟的被动里写着「自动冲刺斩·亚索E式」、
            #   斩击的 detail 里写着「亚索E式自动冲刺斩」。那是我跟自己描述手感用的话,
            #   玩家读到只会莫名其妙 —— 而且把别家 IP 的角色名印在自己的图鉴里也不合适。
-           '亚索', '英雄联盟', 'LOL', 'DOTA', '类似原神', 'Q式', 'W式', 'E式', 'R式']
+           '亚索', '英雄联盟', 'LOL', 'DOTA', '类似原神', 'Q式', 'W式', 'E式', 'R式',
+           # ★★2026-09-28 补【在向玩家交代我们的开发状态】这一族。名单原来只有
+           #   待设计/待定/尚未定义/未实现/TODO —— 而**一个字都不含这五个词**的
+           #   「玩法开发中」「这招还在打磨」「暂按积分赛规则」照样印给玩家。
+           # ★实证(同日): 有 agent 把「候选技**开发中**」改成「这招还在**打磨**」。
+           #   玩家读到的信息**一个字没变**(都是"我们还没做完"), 而只搜「开发中」的
+           #   名单会放它过去。⇒ 收「打磨」不是收一个近义词, 是收同一个**形状**。
+           # ⚠ **故意不收「未解锁」**: 它是**陈述规则**(这格现在选不了),
+           #   不是开发备注, 而且是 2026-09-28 实拍定下来的角标文案。
+           #   收了会把 `skill_picker.gd` 一次打红 7 处全是误报。
+           #   判据要卡的形状是「在向玩家交代我们的开发状态」,**不是**「听起来像还没做好」。
+           '开发中', '打磨', '暂按', '暂锁', '还没做', '敬请期待', '未开放']
 FLAVOR = ['越战越勇', '所向披靡', '势不可挡', '锐不可当', '战意', '热血',
           '令人', '仿佛', '宛如', '犹如']
+
+
+## ══════════════════════════════════════════════════════════════════════
+##  洞 ①：这个脚本一行 `.gd` 都不读 (2026-09-28 补)
+## ══════════════════════════════════════════════════════════════════════
+## 在此之前 `collect()` 只 `load()` **5 个 json**(pets / phase2-equipment / status /
+## battle-rules / p2eq-types)。⇒ **屏幕上的字一条都没被查过**:
+##   · `MainMenuScene.gd:1117`  「玩法开发中, 暂按积分赛规则」
+##   · `BracketMapScene.gd:555` 「跨组总决赛还没做出来」
+## 判据(DEVNOTE)没错, **扫描范围不含出问题的地方** ⇒ 永远绿。
+##
+## 取料走 `tools/gd_text_scan.py`(共享抽取器, `text_golden.py` 也从它取)——
+## memory [[fb-hand-rolled-copies-drift]]: 两边各写一遍正则, 抄一次就永远落后。
+GD_ROOTS = ['scripts', 'autoload']
+
+## 【调试通道】的第二类: 整个文件都是 dev-only 工具的数据。
+## `print()` 已经在 gd_text_scan 里按行排掉了, 但 VFXLAB 的逐件配置表是
+## **一整张表的长注释串**(「★这一件没有任何战斗演出…每 6 秒一次的+3飘字」),
+## 玩家永远看不到 —— 它自己头注第 4 行就写着 "dev-only 数据·不进正式对局",
+## 全仓只有 `battle_vfx_lab.gd`(VFXLAB=1 才起) 读它。
+## ⚠ 这是**按文件**的豁免, 所以必须写理由 + 打印条数, 涨了看得见。
+GD_DEVTOOL = {
+    'scripts/gamedata/vfxlab_cases.gd':
+        'VFXLAB 调试台逐件配置表(头注自述 dev-only·只被 battle_vfx_lab.gd 读·VFXLAB=1 才起)',
+}
+
+## 存量台账 —— **脚本自己生成**(`--update`), 不手写死名单。
+## 键是 `相对路径|原文`, **不含行号**: 7 个 agent 同时在改 scripts/, 按行号记
+## 明天就全过期(而且"某行挪了两行"根本不是这条判据要抓的事)。
+## ★换个说法蒙不过去: 键含**原文**, 所以「开发中」改成「打磨」是**新键**, 当场红。
+GD_LEDGER = 'tools/_gd_devnote_ledger.json'
+
+## 台账里那几条**为什么留着** —— 不写理由的豁免和放宽判据是一回事。
+## (台账本身是脚本生成的; 这张表只给理由, 对不上号也不影响判定。)
+GD_WHY = {
+    'scripts/scenes/BracketMapScene.gd|现在你这一组的冠军就是本周冠军 · 跨组总决赛还没做出来':
+        '「还没做」三个字被 verify_bracket_map.gd:407 钉着当判据(它在别人的地盘上, 要改得同一次提交改断言)',
+    'scripts/scenes/BracketMapScene.gd|待定':
+        '这是**对阵表里那一格还没定下来**的玩家文案(TBD), 不是开发备注',
+    'scripts/scenes/MainMenuScene.gd|玩法开发中, 暂按积分赛规则':
+        '★真违规。只有 strip_finals_live_override(截图台/调试用) 才走到的兜底, 但它是玩家屏 ⇒ 交主会话',
+    'scripts/scenes/battle/battle_hud.gd|左队(友军)':
+        '伤害统计面板的**真实列名**(玩家侧就叫左队/右队), 不是开发备注',
+    'scripts/scenes/battle/battle_debug_arena.gd|左队(友军)': '调试场(DEBUG_EDIT)自己的标签, 不是玩家屏',
+    'scripts/scenes/battle/battle_debug_arena.gd|右队(假人)': '调试场(DEBUG_EDIT)自己的标签, 不是玩家屏',
+}
+
+
+def gd_devnote():
+    """→ (hits, stats)。`.gd` 里的开发备注: [(path, line, sink, word, text)]"""
+    import gd_text_scan as G
+    rows, st = G.scan(GD_ROOTS)
+    hits = []
+    st['skipped_devtool'] = 0
+    for path, ln, sink, txt, why in rows:
+        if path in GD_DEVTOOL:
+            st['skipped_devtool'] += 1
+            continue
+        if why:                      # 行内 `# devnote-ok: 原因`
+            continue
+        for w in DEVNOTE:
+            if w in txt:
+                hits.append((path, ln, sink, w, txt))
+                break
+    return hits, st
+
+
+def gd_devnote_gate():
+    """打分母 + 判台账。→ 退出码贡献(0/1)"""
+    import json as _json
+    import os as _os
+    hits, st = gd_devnote()
+    print('')
+    print('=== `.gd` 屏幕文案里的开发备注(洞① · 2026-09-28 补上) ===')
+    print('  [分母] 扫 %d 个 .gd · 抽出含中文的字符串字面量 %d 条'
+          % (st['files'], st['lits']))
+    print('         (跳过: 调试通道 print/push_* %d 条 · 三引号块 %d 行 · dev-only 工具表 %d 条)'
+          % (st['skipped_debug'], st['skipped_block'], st['skipped_devtool']))
+    for f, why in sorted(GD_DEVTOOL.items()):
+        print('         [按文件豁免] %s —— %s' % (f, why))
+    if st['lits'] < 400:
+        print('  [FAIL] 只抽到 %d 条字符串(<400) —— 取料失效了, 这是空检查不是通过' % st['lits'])
+        return 1
+    ledger = {}
+    if _os.path.exists(GD_LEDGER):
+        try:
+            ledger = _json.load(io.open(GD_LEDGER, encoding='utf-8')).get('known', {})
+        except Exception:
+            ledger = {}
+    cur = {}
+    for path, ln, sink, w, txt in hits:
+        cur['%s|%s' % (path, txt)] = {'line': ln, 'sink': sink, 'word': w}
+    if '--update' in sys.argv:
+        io.open(GD_LEDGER, 'w', encoding='utf-8', newline=NL).write(_json.dumps(
+            {'_why': '本文件由 `python tools/codex_text_lint.py --update` 生成, 不要手改。'
+                     '键 = 相对路径|原文(不含行号: 行号天天漂)。只减不增。',
+             'known': dict(sorted(cur.items()))}, ensure_ascii=False, indent=1) + NL)
+        print('  [台账已重写] %s (%d 条存量)' % (GD_LEDGER, len(cur)))
+        return 0
+    fresh = sorted(k for k in cur if k not in ledger)
+    cleared = sorted(k for k in ledger if k not in cur)
+    print('  [台账] %d 条存量(只减不增) · 本轮量到 %d 条' % (len(ledger), len(cur)))
+    for k in sorted(cur):
+        why = GD_WHY.get(k, '(理由未登记 —— 欠一条)')
+        print('     %s:%-4d [%s] 「%s」 %s' % (k.split('|')[0], cur[k]['line'],
+                                              cur[k]['word'], k.split('|', 1)[1][:44], why))
+    for k in cleared:
+        print('  [已清] %s —— 记得把它从台账里删掉(`--update`)' % k[:90])
+    if fresh:
+        print('')
+        for k in fresh:
+            print('  [FAIL] 新的开发备注上屏: %s:%d 「%s」 ← %s'
+                  % (k.split('|')[0], cur[k]['line'], k.split('|', 1)[1][:60], cur[k]['word']))
+        print('')
+        print('  ★换个文雅说法不算解决 —— 台账的键含**原文**, 「开发中」→「打磨」是新键。')
+        print('    判据卡的形状是「在向玩家交代我们的开发状态」。真是玩家该读的规则')
+        print('    (例: 对阵表那格「待定」) ⇒ 在那一行写 `# devnote-ok: 原因`。')
+        return 1
+    return 0
+
+
+## ★★已知失明(写在这儿是为了下一个人不会以为它全覆盖):
+##   关键词名单**天生绕得过** —— 同义词是无穷的。「开发中→打磨」就是实证,
+##   而「这块还在路上」「先这样」「后面会补」一条都拦不住。
+##   ⇒ 降低失明的**不是**继续堆词, 而是**洞②的快照门禁**: 它不认识含义,
+##     只要玩家看到的字变了就把新旧两版摆出来 ⇒ 改文案的人必须明确确认一次。
+##     这两条是一对: 名单负责**当场拦住已知的形状**, 快照负责**让所有改动都露头**。
+##
+## ★★★「搜关键词」这类判据的失明是**两面**的, 两面都要记住:
+##   ① **会漏**: 同义词绕得过(「开发中」→「打磨」→「这块还在路上」, 无穷)
+##   ② **会假过**: 字符串在, 而行为是错的。同日实证 —— 商店「已拥有掠光溢出」
+##      那个真 bug, 原有的 `_check_owned_shine` **四条判据全是 grep 源码**
+##      (`shine.rotation = -0.5` 在不在), 溢出的那几天**一条都没红**。
+##   ⇒ **字符串在不在, 和画出来的东西在哪, 是两件事。**
+##     凡是「靠我列的名单/搜源码认形状」的判据, 都该先问一句:
+##     **有没有一个客观事实可以代替我的名单?** 同日的好样本: 判「这是不是 emoji」
+##     不靠眼睛也不靠 Unicode 区块表, 而是**问打包回退链里的三张字体文件谁有这个码点**
+##     (只有 NotoEmoji 有 ⇒ 屏幕上就是另一套字画的)。那个 agent 第一版手写区块表,
+##     176 次里误判了一大半。
+##   本条判据目前**没有**这样的客观替代品(「这句话是不是在交代开发状态」是语义问题),
+##   所以它必须和洞②的快照门禁配对使用, 而**不能**单独当成"文案没问题"的证明。
 
 
 def load(p):
@@ -274,6 +428,9 @@ def main():
         for k, why in DETAIL_ALLOW.items():
             print('       %s %s.%s —— %s' % (k[0], k[1], k[2], why))
 
+    ## 洞①: `.gd` 屏幕文案那一节(在此之前本脚本一行 .gd 都不读)
+    gd_rc = gd_devnote_gate()
+
     # 2026-08-20 补上真正的判定行 + 非零退出码。
     #   在此之前本脚本从不打 ALL OK、恒返回 0, 是个报告工具 —— 而我今晚多次声称把
     #   改动史词 / 别家游戏黑话 / 数字间距「焊进门禁」, 实际 run-tests.sh 里根本没有它,
@@ -281,7 +438,12 @@ def main():
     if total > 0:
         print(chr(10) + "[FAIL] 图鉴文案体检: 上面 %d 处硬问题" % total)
         return 1
-    print(chr(10) + "ALL OK — 图鉴文案体检(无教学味/自夸/开发备注/别家黑话/数字贴字; 漏讲机制未超基线)")
+    if gd_rc != 0:
+        return gd_rc
+    if '--update' in sys.argv:
+        print(chr(10) + "已重写 .gd 开发备注台账。")
+        return 0
+    print(chr(10) + "ALL OK — 图鉴文案体检(无教学味/自夸/开发备注/别家黑话/数字贴字; 漏讲机制未超基线; .gd 屏幕文案无新增开发备注)")
     return 0
 
 

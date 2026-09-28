@@ -166,7 +166,10 @@ var dual_passive_xp_started: bool = false
 var dual_coins: Dictionary = {"left": 0, "right": 0}   # 双路局内币 (跨上/下/终极持续, 区别于按场重置的 battle_coins)
 ## PvP 控制方 (见 docs/design/PHASE2-PVP-DESIGN.md): 每方 local/ai/remote. 单机=left本地打右AI.
 var side_controllers: Dictionary = {"left": "local", "right": "ai"}
-## 战斗随机种子 (权威定+下发; 收口战斗内随机→可复现/回放). 0=未设(用系统随机).
+## 这一场战斗真正用的 sim 随机种子。**唯一写入点 = `note_battle_seed()`**(见那里的头注)。
+## ★★2026-09-28 改正了这一行的谎: 原文写「权威定+下发」—— 服务端**从来没有下发过种子**
+##   (`finals_opponent` 下发的是快照与排位种子号, 不是 RNG 种子), 而全仓一个写入点都没有,
+##   于是它恒为 0。0 的含义仍是「这一场没留下可复算的种子」(服务端 `coalesce(p_seed,0)` 收 0)。
 var battle_seed: int = 0
 
 const _DualLane := preload("res://scripts/gamedata/phase2_duallane.gd")
@@ -214,6 +217,48 @@ func reset_dual_lane() -> void:
 	dual_shop_locked = false
 	side_controllers = {"left": "local", "right": "ai"}
 	battle_seed = 0
+
+
+## 登记「这一场战斗真正用的 sim 随机种子」。**`battle_seed` 的唯一写入点。**
+## 调用点只有一个: `RealtimeBattle3DScene._ready()` 里紧跟 `_world_builder._build_camera()`
+##   —— `_battle_rng` 就是在那个函数里播种的(`battle_world_builder.gd` 的 `TURTLE_SEED`
+##   分支: 设了用它、没设 `randomize()`), 所以「真值」一直存在, 缺的只是登记这一步。
+##   一场战斗一个种子: 上路/下路/决胜是**同一个场景实例**(scene 只在回主菜单时才换),
+##   `_ready` 一场只跑一次 ⇒ 这里也一场只写一次。
+##
+## ★★2026-09-28 查实(这个函数就是为了补它): `battle_seed` **全仓零个写入点**, 而它有
+##   两个读者 —— `ai_dual_shop()`(V2 阶段1 已把调用删了, 整个函数零调用者=死码) 与
+##   `Backend.report_finals_if_any()` 的 `p_seed`(→ 服务端 `finals_results.seed_used`,
+##   schema 注释「确定性重算用的种子」)。后者是**唯一活读者**, 于是每一场决赛报上去的
+##   `p_seed` 都是 0 = 「这一场没留下可复算的种子」。
+##   这是 memory `fb-read-a-field-nobody-writes` 那一族: 镜像有读者、没有写者。
+##
+## ★★**返回值 = 规范化之后的种子, 调用方必须拿它回写 `_battle_rng.seed`** —— 不是多余的动作,
+##   而是让「记下的那个数」与「真正在用的那个数」是**同一个数**(memory `fb-hand-rolled-copies-drift`)。
+##   规范化在做什么: 把种子夹进 `[1, 2^53-1]`。
+##   ⚠ 理由是实测出来的, 不是洁癖 —— `randomize()` 给的是**完整 int64**(实测
+##   `-3986105570584568105`), 而这个种子要进 `finals_report_pending` → `_save_dict()` →
+##   **`JSON.stringify` 落盘 / 上云**, 回来时走 `JSON.new().parse()`。探针实测:
+##     stringify 4710949493607979540 → 文本精确, 但 parse 回来是 **float 4710949493607979008.0**
+##     ⇒ `int()` 一取就差了 532。
+##   也就是说过夜补报单上的种子会**静默漂掉**, 报上去的是一场根本不存在的战斗。
+##   2^53-1 是 double 能精确表示的整数上限 ⇒ 夹进去之后落盘/上云/取回逐位不变。
+##   (`TURTLE_SEED` 那些值本来就在范围内 ⇒ 原值直通, 确定性测试的 `seed == 77777` 不受影响。)
+##
+## ⚠ **诚实边界 —— 登记了种子不等于那一场就能复算。** 正式对局**不开** `_deterministic`
+##   (`battle_world_builder.gd` 只在 `TURTLE_SEED` 设时才开 ⇒ 帧长随机器抖), 且 `_juice_rng`
+##   与另外五处落点无条件 `randomize()`(清单见 `tests/_det_scenarios.gd` ⑧)。
+##   ⇒ 这里只保证「种子被如实记下」, 完整复算是 B 阶段的事。**但种子丢了 B 阶段就永远补不回来**,
+##   所以先记下来是对的; 不许反过来拿这个函数声称「决赛已可服务端复算」。
+const BATTLE_SEED_MAX: int = 9007199254740991   # 2^53-1: double 能精确表示的整数上限(JSON 往返不掉精度)
+
+func note_battle_seed(s: int) -> int:
+	var v: int = s if (s > 0 and s <= BATTLE_SEED_MAX) else (s & BATTLE_SEED_MAX)
+	if v == 0:
+		v = 1          # 0 是「这一场没留下可复算的种子」的保留值, 不许被折出来
+	battle_seed = v
+	return v
+
 
 ## 加 XP, 自动连续升级; 每升一级强化龟蛋(用户定: max+50且current+50, 累计伤害保留). 返回升的级数.
 func add_xp(side: String, n: int) -> int:
@@ -519,6 +564,11 @@ func ai_dual_shop() -> int:
 	var cap: int = _P2.UNIT_EQUIP_CAP   # 2026-07-27 统一规则: 单只上限固定3
 
 	# ② 掷货 (AI 自己的货架 RNG; 不碰玩家 dual_shop_offer — 临时换进, 跑完换回)
+	## ⚠ 2026-09-28 查实: **整个 `ai_dual_shop()` 零调用者** —— V2 阶段1「砍局内经济/战斗内商店」
+	##   把 `BattleScene` 里那两行调用删了(见 docs/archive/V2-阶段1-砍局内经济商店-实施规格.md D3),
+	##   算法本体留着给局外商店复用, 但**这个 AI 入口没人再调**。
+	##   下面这条 `battle_seed != 0` 在对局中已经是真的了(`note_battle_seed` 每场登记),
+	##   但那救不了它 —— 分支可达 ≠ 函数可达。「这个函数该不该删」是另一笔债, 别在这里顺手改。
 	if battle_seed != 0:
 		_dual_shop_rng.seed = battle_seed + dual_shop_visits + 7777
 	else:
@@ -611,8 +661,33 @@ func dual_lane_winner() -> String:
 ##
 ## 这一周有没有拿到周六的入场资格。★`promoted` 由 `settle_ranked_close()` 在积分赛收盘后写,
 ##   判据是硬线 `season_wins >= PROMOTE_WINS_FLOOR`(原稿的「前 30%」要服务端终榜, 还没做)。
+## ⚠⚠ 它**只回答「收盘算过了吗」** —— 周一~周五结构上恒假(`promoted` 那时还没人写)。
+##   要回答「这一周后面还有闯关赛可打吗」请用 `gauntlet_line_reached()`, 见那边的头注。
 func gauntlet_eligible() -> bool:
 	return bool(promoted)
+
+
+## 赛季胜场**已经过了晋级硬线**吗?
+##
+## ★★为什么非要单列这一个: `gauntlet_eligible()`(= `promoted`)**周一~周五结构上恒假** ——
+##   `promoted` 全仓只有一个写入点(`settle_ranked_close()`), 而那个函数开头就
+##   `if now < ranked_close_ts(...)  return 0` ⇒ **周五 23:00 UTC 之前谁也不会被写 true**。
+##   拿它去回答「这一周后面还有东西打吗」, 对**已经打够胜场**的人就是说谎:
+##   2026-09-28 探针 `tests/_probe_promote_ahead.gd` 实测 `season_wins=20`(线=5)、
+##   配额打满、0 命的玩家, 周一~周五点开打得到「💀 本大轮已出局 · 下周一开新的一轮」,
+##   而他周六铁定有 6 场闯关赛可打。那一支在收盘前**七天里 0 次可达**。
+##
+## ★判据**与 `settle_ranked_close()` 共用这一个函数**(那里是 `promoted` 的唯一写入点) ——
+##   就地再写一遍 `>= 5` 就是同一判据存两份(memory `fb-hand-rolled-copies-drift`)。
+##
+## ★★「过线 = 铁定晋级」这句话说得起, 依据是三条**查实**的事实(2026-09-28):
+##   ① 晋级判据里**只有胜场**: `promoted = season_wins >= PROMOTE_WINS_FLOOR`, 没有别的项;
+##   ② **没有名额上限、没有排名截断**: 原稿的「前 30%」= `_P2.PROMOTE_TOP_PCT`,
+##      全仓**零读取**(它要一份收盘时刻的服务端终榜, 还没做);
+##   ③ `season_wins` 在一周内**只增不减**(本文件只有 `+= 1`, 清零只发生在换轮/重置存档)。
+##   ⇒ 三条里任何一条将来变了, **这个函数就是要改的那一处**(门禁 `verify_gauntlet_ahead` ① 盯着)。
+func gauntlet_line_reached() -> bool:
+	return int(season_wins) >= int(_P2.PROMOTE_WINS_FLOOR)
 
 ## 现在能不能开一局闯关赛。三个条件缺一不可, 每条都有自己的话要对玩家说(见主菜单)。
 func gauntlet_can_play(now: int = 0) -> bool:
@@ -2104,7 +2179,9 @@ func settle_ranked_close(now_override: int = 0) -> int:
 	if now < _P2.ranked_close_ts(week_anchor_ts):
 		return 0                                   # 本周积分赛还没收盘
 	if not promoted:
-		promoted = int(season_wins) >= int(_P2.PROMOTE_WINS_FLOOR)
+		## ★判据走 `gauntlet_line_reached()` —— 主菜单「周六还有东西打吗」问的是同一条线,
+		##   两处各写一遍 `>= PROMOTE_WINS_FLOOR` 就是同一判据存两份。
+		promoted = gauntlet_line_reached()
 	return backfill_ranked_quota()
 
 

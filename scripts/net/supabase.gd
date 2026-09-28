@@ -1210,6 +1210,14 @@ static func resolve_conflict_use_local() -> void:
 
 func sign_in_anonymous() -> void:
 	if not enabled():
+		## ★★**请求没发出去就必须把闸放开**(2026-09-28 穷举同族时抓到)。
+		##   `_auth_inflight` 是调用方 `ensure_signed_in_async` **进门之前**就置上的,
+		##   而这条早退原来不清它 ⇒ 一旦走到, `_auth_inflight` **永久为真**
+		##   ⇒ 之后每一次 `ensure_signed_in_async` 都在第一行 return ⇒ **这个进程再也拿不到 token**
+		##   ⇒ 存档不同步 / 周日看不到分组(且屏幕只会说「连不上」, 因为它确实连不上了)。
+		##   旁证: 同文件 `refresh_session` 的同一条早退**是**清的 —— 两份手抄的副本漏了一份。
+		## ★门禁: `tests/verify_notoken_finals.gd` ⑤(拿掉这一行, 那一条当场红)。
+		_auth_inflight = false
 		_bye()
 		return
 	var url := base_url().rstrip("/") + "/auth/v1/signup"
@@ -1589,9 +1597,27 @@ static func fetch_finals_async(week: int, bucket: int) -> void:
 	##   判据是「服务端认得出你是谁」: 服务端 `finals_view` 里 `auth.uid() is null` 也拦,
 	##   这里只是省一次白跑。**不是** `sync_allowed`(那是存档同步的闸, 要绑邮箱)。
 	if str(gs.account_id) == "" or _token == "":
-		## ★标成「问过了」: 这一屏不会有数据了, 屏幕该说「本周没有你的桶」
-		##   而不是永远转着「正在连线」(实拍抓到的)。
+		## ★标成「问过了」: 这一屏此刻不会有数据了, 屏幕不该永远停在「还在找」(实拍抓到的)。
 		_finals_tried = true
+		## ★★★**请求一个字节都没发出去 ⇒ 这是「问不到」, 不是「你没这一组」**(2026-09-28)。
+		##   原来这里只标 tried、`_finals_view` 留空**且没有 reason** ⇒
+		##   `BracketMapScene._empty_kind()` 的前几道判据全躲过(`finals_tried()` 已真 →
+		##   reason 不是 UNREACHABLE → reason 不是 too_few) ⇒ 掉到兜底那一档
+		##   (「确实没有你这一组 · 周六晋级才进得来」)—— **对一个真打进决赛日的人说谎**
+		##   (探针实测: promoted=true / gauntlet_state=in / 闯关赛 4-0, 屏幕照样这么说)。
+		## ★为什么不是边角: `_token` **只活在内存、从不落盘**(见本文件 D-3c 那一段)
+		##   ⇒ **每次冷启动都是空的**; 而周日主菜单那扇进对阵图的门第一帧就能点,
+		##   恢复要等 `BracketMapScene.REFRESH_SEC` ⇒ **最长 30 秒都在说这句假话**。
+		## ★这是 2026-09-27 修过的同一个 bug 的另一半: 那次修的是**回包**侧
+		##   (「问不到就别抹掉好数据、别说成你没这一组」), **请求侧这一半漏了**。
+		##   同族对照: 上面 `fetch_opponent_async` 的同一道闸标 tried 后, `opponent_tip()`
+		##   说的是「过两秒再点一次」—— 一条说人话, 只有这条说「你不行」。
+		## ⚠ **只在一份好数据都没有时才写**: 2026-09-27 刚焊死「问不到别抹掉上一份好视图」,
+		##   两者必须共存 —— 否则周日打到一半 token 过期, 签表会从屏幕上消失。
+		## ★门禁: `tests/verify_notoken_finals.gd` ②③④(三条变异全红)。它**不抄屏幕字面量**,
+		##   量的是「请求侧这一句必须与回包侧『问不到』那一句完全相同」。
+		if _finals_view.is_empty():
+			_finals_view = {"reason": UNREACHABLE}
 		return
 	var n = _spawn()
 	if n != null:

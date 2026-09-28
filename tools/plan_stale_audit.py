@@ -31,7 +31,7 @@
   kind 支持三种（都只问"在不在"，不问"对不对"）：
     file:<repo 相对路径>        文件存在 ⇒ 过期
     gate:<测试名>               tests/<测试名>.gd 存在 ⇒ 过期
-    grep:<目录>:<正则>          在该目录的 .gd 里搜到 ⇒ 过期
+    grep:<目录或.gd文件>:<正则>  在那里搜到 ⇒ 过期(路径不存在 ⇒ 判红, 不是判没搜到)
 
 ★为什么 kind 要限定这三种：它们都是**机器能确定回答**的。
   「功能是否正确」不能当判据 —— 那正是上一次自动查证失败的地方。
@@ -84,11 +84,31 @@ _SRC_CACHE = {}
 
 
 def src_of(dirname):
-    """某目录下所有 .gd 的合并文本（缓存）。"""
+    """某目录【或单个 .gd 文件】下所有 .gd 的合并文本（缓存）。
+
+    ★★★2026-09-28 这里原来【只认目录】: `os.path.isdir()` 为假时直接落到空字符串,
+      于是 `grep:<文件路径>:<正则>` 这种锚点**恒判 False、而且一声不吭** ——
+      也就是「做完了永远不会变红」, 正是这条门禁自己要防的那件事(登记会烂)。
+      更糟的是它**失效的方向是开**: 路径写错、文件改名、目录搬家, 全都静默变成「还没做」。
+    ⇒ 两件事一起改: ① 认文件路径 ② **路径根本不存在时返回 None**, 由调用方判红,
+      不许再用空文本冒充「搜不到」。
+    """
     if dirname in _SRC_CACHE:
         return _SRC_CACHE[dirname]
     blob = []
     base = os.path.join(ROOT, dirname)
+    if os.path.isfile(base):
+        try:
+            blob.append(io.open(base, encoding="utf-8",
+                                errors="replace", newline="").read())
+        except Exception:
+            pass
+        s0 = chr(10).join(blob)
+        _SRC_CACHE[dirname] = s0
+        return s0
+    if not os.path.isdir(base):
+        _SRC_CACHE[dirname] = None      # ★不存在 != 搜不到
+        return None
     if os.path.isdir(base):
         for root, _dirs, files in os.walk(base):
             for f in sorted(files):
@@ -122,7 +142,12 @@ def artifact_exists(kind, value):
             rx = re.compile(pat)
         except re.error as e:
             return None, "正则编译失败: %s" % e
-        return bool(rx.search(src_of(d))), "%s 里搜 /%s/" % (d, pat)
+        body = src_of(d)
+        ## ★锚点指到不存在的路径 ⇒ 判「不认识」而不是「没搜到」。
+        ##   空文本冒充「搜不到」会让这条登记永远绿着烂在那儿。
+        if body is None:
+            return None, "锚点指向的路径不存在: %s(目录或 .gd 文件都行)" % d
+        return bool(rx.search(body)), "%s 里搜 /%s/" % (d, pat)
     return None, "不认识的 kind: %r（只支持 file/gate/grep）" % kind
 
 

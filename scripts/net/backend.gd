@@ -38,11 +38,43 @@ const BUCKET_CAP := 300
 ##   · 现在只有 exact/bot ——「正负一」和「往下找」都被 D5 删了
 ##   ⇒ **留着已经不可能发生的键只会让报表恒为 0**, 而恒为 0 的格子看起来像"这条路没人走",
 ##     跟"这条路不存在"是两回事。删掉才是诚实的。
+##
+## ★★★2026-09-28 `exact` 拆出【真人 / 陪练】两格。为什么必须拆:
+##   探针 `_probe_seed_exact` 实测 —— 池子 396 条**全是** `seed_` 陪练, 40 次抽对手
+##   40 次命中陪练, 而 `match_src_counts` 报的是 `exact: 40 / bot: 0`。
+##   ⇒ 「精确同场次命中率」看着 **100%**, 而**一个真人都没碰到**。
+##   A-R3 那条未决点(「命中率多低算太低」)要是拿这个数去答, 答案是反的。
+##
+##   ★判据不是我新发明的: 排行榜那一侧**早就在用**同一条筛子(`leaderboard()` 里
+##     「陪练不上榜」= `ghost_id` 的 `seed_` 前缀)。同一个判据本来只做了一半 ——
+##     现在两处都调 `is_sparring()`, 一处改另一处不会落后(手抄的副本必然落后)。
+##
+##   ★**不是把陪练从 exact 里删掉**: 陪练是**合法对手**(内置种子池存在的全部意义
+##     就是填池子, 打到它不是 bug, 也不该记成 bot —— 记成 bot 就把"池子里有人"
+##     说成了"池子是空的", 那是另一个方向的谎)。
+##     ⇒ `exact` 仍是**同场次命中总数**(语义一字未改, 老判据照旧读它),
+##       下面两格是它的**互斥拆分**, 不变量: `exact == exact_human + exact_seed`。
+##       要答 A-R3 的人读 `exact_human`。
+##
+##   ★闯关赛那条链**故意不拆**: 内置种子快照里**没有** `gl_w`/`gl_l`
+##     (`data/ghost_seed.json` 实测字段表里没有这一维) ⇒ `gauntlet_pool_find` 的
+##     标签检查一定把它们滤掉 ⇒ `gauntlet_seed` 会是一个**恒为 0** 的格子,
+##     正是上面那段话说不该留的东西。(`tests/verify_pool_truth.gd` 有一条断言钉着
+##     这个前提 —— 哪天种子带上 gl_ 标签了, 它会红, 那时才该拆。)
 static var match_src_counts: Dictionary = {"exact": 0, "bot": 0,
+	## `exact` 的互斥拆分: 这一场同场次对手, 是真人快照还是内置陪练。
+	"exact_human": 0, "exact_seed": 0,
 	## 周六闯关赛那条链单独记(见 `find_gauntlet_opponent`), 不与积分赛混在一起
 	"gauntlet_label": 0, "gauntlet_bot": 0}
 static func _tally(src: String) -> void:
 	match_src_counts[src] = int(match_src_counts.get(src, 0)) + 1
+
+
+## 同场次命中一次 —— 记总数, 同时把它记进【真人 / 陪练】里互斥的那一格。
+## ★入参是**真的那份快照**, 不是我另算一遍: 记账要量产品自己交出去的对手。
+static func _tally_exact(g) -> void:
+	_tally("exact")
+	_tally("exact_seed" if is_sparring(g) else "exact_human")
 const _P2 = preload("res://scripts/gamedata/phase2_config.gd")
 const _SkillChoice = preload("res://scripts/gamedata/skill_choice.gd")
 
@@ -97,6 +129,27 @@ static func pool_add(pool: Dictionary, snapshot: Dictionary) -> void:
 	bucket.push_front(snapshot)
 	while bucket.size() > BUCKET_CAP:
 		bucket.pop_back()
+
+## 内置陪练(策划种子池)的 `ghost_id` 前缀。
+##
+## ★★这条前缀是**产品自己就在用**的那个判据, 三处读它:
+##   · `_ensure_seeded`  认出"池里已经有种子了 / 该清哪些旧种子"
+##   · `leaderboard`     「陪练不上榜」(2026-09-26 加, 真机上看见 11 行里 10 行是陪练才发现)
+##   · `_tally_exact`    「碰到的是真人还是陪练」(2026-09-28 加, 见 match_src_counts 头注)
+##   写成常量 + 一个函数, 是因为前两处原来各写一遍字面量, 而第三处**压根没写** ——
+##   同一个判据做了一半正是那次 100% 虚高的成因。
+const SEED_ID_PREFIX := "seed_"
+
+
+## 这份快照是内置陪练吗?
+## ★判据**只能**是 ghost_id 前缀。已经错过两次, 两次都是选错维度(见 `leaderboard` 里那段):
+##   · 筛「缺 `season_wins`」⇒ 把真人的老格式快照也筛掉了
+##   · 筛 `is_bot` ⇒ 门禁全绿而真机一条没滤掉(种子池 396 条的 `is_bot` 实测全是 false)
+static func is_sparring(g) -> bool:
+	if not (g is Dictionary):
+		return false
+	return str((g as Dictionary).get("ghost_id", "")).begins_with(SEED_ID_PREFIX)
+
 
 ## 快照的【来源】—— 判"是不是我自己那份"只能靠它, 不能靠名字。见 _is_self_ghost 的长注释。
 const ORIGIN_KEY := "origin"
@@ -309,7 +362,9 @@ static func leaderboard(pool: Dictionary, self_name: String, self_wins: int, sel
 			##     而门禁 ⑦b 绿是因为我在那里**手动把 `is_bot` 置成 true** 造了个陪练
 			##     ⇒ 判据在测我自己喂进去的东西, 不是真池子。
 			##   ⇒ 是**真机上点开排行榜**看见 11 行里 10 行是陪练才发现的。
-			if str(gd.get("ghost_id", "")).begins_with("seed_"):
+			## ★★2026-09-28 这一行原来是就地写的 `begins_with("seed_")`, 已收进
+			##   `is_sparring()` —— 匹配记账那一侧要用**同一条**判据(见它的头注)。
+			if is_sparring(gd):
 				continue
 			rows.append({
 				"name": str(gd.get("profile", {}).get("name", "?")),
@@ -325,6 +380,66 @@ static func leaderboard(pool: Dictionary, self_name: String, self_wins: int, sel
 			return int(a["hearts"]) > int(c["hearts"])
 		return int(a["sweeps"]) > int(c["sweeps"]))
 	return rows.slice(0, limit) if rows.size() > limit else rows
+
+
+# ─── 「问没问到别人」—— 池子这一侧的事实 (2026-09-28) ───
+##
+## ★★★由来: 排行榜在只有自己一行时印的是
+##   「（榜上暂时只有你 —— 打完一场, 对手就会上来）」。**离线时那是假话。**
+##   `pool_add` 的全部调用点只有四条:
+##     · `_ensure_seeded`        内置陪练 —— 被 `leaderboard` 的「陪练不上榜」筛掉
+##     · `upload_ghost`          自己     —— 被 `_is_self_ghost` 筛掉
+##     · `apply_pull_response` / `ingest_remote`   **纯网络**
+##   ⇒ 断网时打一万场也不会有任何人上榜。那句话把**网络失败**归因到玩家的场次上。
+##
+## ★修法照本仓已经立过两次的规矩(2026-09-25 的 `too_few`、2026-09-27 的
+##   `supabase.UNREACHABLE`): 「**问不到**」和「**问到了, 答案是没有**」是两句话。
+##   而且「**还没问**」也要单列 —— `supabase.gd:37-49` 把 `ST_UNKNOWN` 从
+##   `ST_UNREACHABLE` 里分出来的理由逐字适用: 一次都没发过请求就说"连不上",
+##   是把一个没发生的网络故障说成发生了, 那只是换了个谎。
+const REACH_OFF := "off"          ## 没配后端 ⇒ 这台机器上的榜就是本地的
+const REACH_UNKNOWN := "unknown"  ## 配了, 但这个进程还没问过(刚开机就是它)
+const REACH_FAIL := "fail"        ## 配了, 问过, 一次都没问到
+const REACH_OK := "ok"            ## 这个进程真的问到过 ⇒ 「打完一场对手就会上来」才是真的
+
+## 纯判据 —— 四个输入定一档, 可穷举。
+## ★★做成纯函数是因为门禁**跑不到**另外三档: `run-tests.sh:359` 每个测试都带
+##   `TURTLE_SUPABASE=" "` ⇒ `enabled()` 恒 false ⇒ 真实取数永远只落在 REACH_OFF。
+##   把判据和取数分开, 四档才都有分母(而取数那一半另有一条端到端断言看着)。
+static func reach_of(configured: bool, ok_n: int, try_n: int, known_down: bool) -> String:
+	if not configured:
+		return REACH_OFF
+	## ★成功压过失败: 这个进程只要问到过一次, 管子就是通的(之后抖一下不改变"别人会上来")。
+	if ok_n > 0:
+		return REACH_OK
+	if try_n > 0 or known_down:
+		return REACH_FAIL
+	return REACH_UNKNOWN
+
+
+## 真事实版: 两层网络层各取一次, 落成上面四档之一。
+## ★用 `load` 不用 `preload`: `remote_pool.gd` 反过来 preload 本文件, 循环 preload 编译失败
+##   (与 `upload_ghost` 里那条同一个理由)。
+static func pool_reach() -> String:
+	var configured := false
+	var ok_n := 0
+	var try_n := 0
+	var down := false
+	var SB = load("res://scripts/net/supabase.gd")
+	if SB != null:
+		configured = configured or bool(SB.enabled())
+		ok_n += int(SB.pull_ok_count())
+		try_n += int(SB.pull_try_count())
+		## ★`/service_status` 那条独立的健康检查也算一条"问不到"的证据 ——
+		##   玩家可能压根还没打过一场(那时拉对手的计数是 0), 但主菜单已经问过服务状态了。
+		down = down or (str(SB.service_state()) == str(SB.ST_UNREACHABLE))
+	var RP = load("res://scripts/net/remote_pool.gd")
+	if RP != null:
+		configured = configured or bool(RP.enabled())
+		ok_n += int(RP.ok_count)
+		try_n += int(RP.ok_count) + int(RP.fail_count)
+		down = down or bool(RP.looks_broken())   # 现成的原语: 配了地址但一次都没成功过
+	return reach_of(configured, ok_n, try_n, down)
 
 # ─── 文件 I/O (薄包装, user://ghost_pool.json) ───
 ## 【门禁注入点】非空时 `load_pool()` 直接返回它, 不读文件。
@@ -471,7 +586,7 @@ static func _ensure_seeded(pool: Dictionary) -> void:
 	var have_seed := false
 	for b in buckets.keys():
 		for g in buckets[b]:
-			if str((g as Dictionary).get("ghost_id", "")).begins_with("seed_"):
+			if is_sparring(g):
 				have_seed = true
 				break
 		if have_seed: break
@@ -480,7 +595,7 @@ static func _ensure_seeded(pool: Dictionary) -> void:
 	for b in buckets.keys():                       # 清旧版seed_(玩家真ghost保留)
 		var keep: Array = []
 		for g in buckets[b]:
-			if not str((g as Dictionary).get("ghost_id", "")).begins_with("seed_"):
+			if not is_sparring(g):
 				keep.append(g)
 		buckets[b] = keep
 	var seed := _load_seed()
@@ -531,7 +646,10 @@ static func make_match_rng() -> RandomNumberGenerator:
 ##     那条约束当年只能用"格子"表达, 因为没有更细的尺子; 现在尺子就是场次本身,
 ##     「完全相同」比「只往下」更紧 ⇒ 那一级的意图**已经被 ① 完全覆盖**, 不是被放弃。
 ##   ⇒ 供给不够的正解是**把池子做厚**(SEED_VER v12 按每个场次各 12 支重做), 不是放宽尺子。
-##     `match_src_counts` 里 exact 与 bot 的比例就是这条决定的账, 拿真数据说话。
+##     `match_src_counts` 就是这条决定的账, 拿真数据说话。
+##     ⚠ **要看的那一格是 `exact_human`, 不是 `exact`**(2026-09-28 改):
+##       `exact` 把内置陪练也算进来 —— 实测 396 条种子池下它是 **100%** 而真人 0 次。
+##       「池子做厚了吗」问的是真人供给, 拿总数去答会得出"已经够厚了"这种反的结论。
 ##
 ## ★★★入参就是唯一的尺子。**不许在这里再读一遍 GameState** ——
 ##   2026-09-25 我把签名从 `bracket` 改成 `battles` 却忘了改函数体里那一行,
@@ -557,7 +675,8 @@ static func find_opponent(battles: int, exclude_ids: Array, rng: RandomNumberGen
 	## ① 场次完全相同
 	var ge = pool_find_battles(pool, battles, exclude_ids, rng)
 	if ge != null:
-		_tally("exact")
+		## ★记账要分得开【真人 / 陪练】—— 不分的话这个数 100% 虚高(见 match_src_counts 头注)。
+		_tally_exact(ge)
 		return ge
 	## ② 机器人(永久安全网)
 	_tally("bot")
@@ -682,27 +801,48 @@ static func ensure_finals_entry() -> void:
 	report_finals_entry()
 
 
+## 最近一次**交给网络层**的决赛结果上报参数。观测量, 进程内, 不进存档。
+##
+## ★★为什么要有它: 上报是"发完就忘"的, 而 `report_finals_async` 有四条早退
+##   (`_token == ""` 是其中一条, 而 token **只活在内存、每次冷启动都是空的**) ——
+##   那几条走掉时**一点痕迹都不留**, 客户端毫不知情。⇒ 在交接的那一刻记一笔。
+## ★它**不是**「我插一行数一行」那种假门禁: 判据量的是**流过这个交接口的值对不对**
+##   —— 补报必须带【那一场】的 seed 与周号, 不是「现在」的那个
+##   (探针 `tests/_probe_finals_retry.gd` 量到过 4242 ↔ 999 的分岔)。
+##   与 `match_src_counts` 同一条纪律: 记账放在**事件发生处且无条件**。
+## ⚠ 它记的是「交给网络层了」, **不是**「发出去了」。「真报成了」的唯一判据仍是
+##   `SupabaseNet.finals_reported()`(只在 2xx 回调里置真) —— 两者不许混。
+static var last_finals_report: Dictionary = {}
+
+
 ## E-B6: 把决赛日某一场的结果报上去。
 ## ★与 `report_finals_entry` 同一层、同一形状：**周号从 GameState 取**，
 ##   战斗场那边只负责说「哪个桶、第几轮、第几场、哪一侧赢」——
 ##   在主场景里再拼一次 `week_anchor_ts` 就是同一判据存两份。
 ## ★`winner_side` 已经由 `BracketMapScene.winner_side_for()` 算好，这里不重算。
+##
+## ★★★`seed_used` 是**入参**, 不在函数体里读 `GameState.battle_seed`(2026-09-28 改)。
+##   由来: 补报那条路(`retry_finals_report`)报的是**过去某一场**, 而
+##   `GameState.battle_seed` 是**现在这一场**的 —— 探针 `tests/_probe_finals_retry.gd`
+##   量出来的分岔就是这个: 补报单上存着 `seed=4242`, 而函数体读到的是 `999`。
+##   ⇒ 补报单里那个 `seed` 字段**一个读者都没有**(全仓 grep 过), 而报上去的是另一个数。
+##   `p_seed` 是服务端确定性复算用的种子 ⇒ 报错了就等于报了一场复算不出来的比赛。
+##   ⚠ 这正是 memory `fb-read-a-field-nobody-writes` / `fb-zero-caller-is-a-whole-class`
+##     那一族: 「写了没人读」。**入参化**之后, 两个调用点各自说清自己报的是哪一场的种子,
+##     编译器帮着数(少传一个直接不编译), 不会再有第二个人在函数体里偷偷换尺子。
+##   (`0` 的含义仍是「这一场没留下可复算的种子」—— 服务端 `coalesce(p_seed, 0)` 本来就收 0。)
 static func report_finals_result(bucket: int, round_no: int,
-		match_no: int, winner_side: int) -> void:
+		match_no: int, winner_side: int, seed_used: int) -> void:
 	if GameState == null or bucket < 0 or round_no < 1 or match_no < 0:
 		return
 	var SB5 = load("res://scripts/net/supabase.gd")
 	if SB5 == null:
 		return
-	## `p_seed` = 确定性重算用的种子（B 阶段第二步服务端复算要用）。
-	## ★用 `GameState.battle_seed` —— 它是**真实存在**的那个字段。
-	##   我第一版写了 `last_battle_seed`，全仓**只有我那两行**在用（凭空编的字段名，
-	##   本仓踩过三次，见 [[fb-gate-subject-never-constructed]]）。
-	## ★0 的含义是「这一场没留下可复算的种子」（没设 TURTLE_SEED 时就是 0），
-	##   不是出错 —— 服务端那边 `coalesce(p_seed, 0)` 本来就收 0。
-	var sd := int(GameState.battle_seed)
-	SB5.report_finals_async(int(GameState.week_anchor_ts), bucket, round_no,
-		match_no, winner_side, sd)
+	var wk := int(GameState.week_anchor_ts)
+	## ★★留痕 —— 见 `last_finals_report` 的头注。写在**交接的那一刻**且无条件。
+	last_finals_report = {"week": wk, "bucket": bucket, "round": round_no,
+		"match": match_no, "side": winner_side, "seed": seed_used}
+	SB5.report_finals_async(wk, bucket, round_no, match_no, winner_side, seed_used)
 
 
 ## E-B6: 这一局如果是决赛日对阵图里的某一场，把结果报上去；不是就什么都不做。
@@ -740,11 +880,15 @@ static func report_finals_if_any(won: bool) -> void:
 		##   `finals_match`」对它自己是对的(它是「我现在在哪一场」), 但那也意味着
 		##   **一旦发失败就再也没有重试所需的身份了**。
 		##   ⇒ 另存一份能过夜的补报单, 与 v0.19.446 的 `finals_entered_week` 同一个样板。
+		## ★★单子上的 seed 与真发出去的那个**必须是同一个表达式算出来的** ——
+		##   各读一遍就是同一个量存两份, 而这两份一分岔, 补报报的就是另一场
+		##   (2026-09-28 查实: 补报那条路原来真的分岔了, 见 `report_finals_result` 头注)。
+		var sd := int(GameState.battle_seed)
 		GameState.finals_report_pending = {
 			"bucket": int(d.get("bucket", -1)), "round": r, "match": m,
-			"side": ws, "seed": int(GameState.battle_seed),
+			"side": ws, "seed": sd,
 		}
-		report_finals_result(int(d.get("bucket", -1)), r, m, ws)
+		report_finals_result(int(d.get("bucket", -1)), r, m, ws, sd)
 	GameState.finals_match = {}
 
 
@@ -775,7 +919,19 @@ static func retry_finals_report() -> void:
 		GameState.finals_report_pending = {}       # 已经报成了, 销单
 		GameState.save()
 		return
-	report_finals_result(int(d2.get("bucket", -1)), r2, m2, int(d2.get("side", -1)))
+	## ★★★侧别坏掉的单子**报不出去也要销掉**(2026-09-28)。`report_finals_async` 对
+	##   `winner_side != 0/1` 是无条件早退 ⇒ 留着它就是**每次开主菜单都往那儿捶一下**,
+	##   而且永远捶不成(`ensure_finals_entry` 头注里点名不许出现的那种形状)。
+	##   ⇒ 这不是"漏报也要销单": 只有**结构上报不出去**的单子才销。
+	var sd2 := int(d2.get("side", -1))
+	if sd2 != 0 and sd2 != 1:
+		GameState.finals_report_pending = {}
+		GameState.save()
+		return
+	## ★★★seed 取**单子上那份**, 不是 `GameState.battle_seed` ——
+	##   后者是「现在这一场」的, 而补报报的是过去某一场。探针量到过 4242 ↔ 999 的分岔。
+	report_finals_result(int(d2.get("bucket", -1)), r2, m2, sd2,
+		int(d2.get("seed", 0)))
 
 
 ## 玩家显示名 —— **全仓唯一出处**。有昵称用昵称, 没有用确定性兜底短码。
@@ -804,7 +960,14 @@ static func gauntlet_pool_find(pool: Dictionary, gw: int, gl: int,
 	##   那个形状 `load_pool()` / `pool_add()` **从来不生产**
 	##   (memory fb-gate-subject-never-constructed: 判据没错但被测对象不在场)。
 	## ★id 从快照自己的 `ghost_id` 取(池子里是数组, 没有外层键当 id 用了)。
-	var now: int = int(Time.get_unix_time_from_system())
+	## ★★「现在」走 `_P2.now_utc()` 这条**可注入的时间缝**, 不直接读系统钟(2026-09-28 接)。
+	##   为什么: 下面那条 30 分钟新鲜度是**唯一**决定「周六打真人还是打机器人」的尺子,
+	##   而拿系统钟当尺子的判据只有"真的到了那一刻"才验得到 ——
+	##   本仓已经为此吃过一次(`_status_row` 那条只有真周六才执行得到)。
+	##   缝默认关着(`now_override_ts == 0` ⇒ 逐字节就是原来那个表达式) ⇒ 玩家路径一字未动。
+	##   门禁 `tests/verify_pool_truth.gd` ⑧ 钉住一个时刻、走**真入口** `gauntlet_pool_find`,
+	##   证明新鲜/隔夜的判定真的跟着钉的钟走(不是只在源码里出现了这个符号)。
+	var now: int = int(_P2.now_utc())
 	var buckets: Dictionary = pool.get(POOL_KEY, {})
 	var cands: Array = []      # 同标签 + 新鲜(30 分钟内)
 	var stale: Array = []      # 同标签 + 隔夜 —— 新鲜的一个都没有时才用它(见下面那段长注释)

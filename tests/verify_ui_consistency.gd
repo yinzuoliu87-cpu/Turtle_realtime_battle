@@ -28,6 +28,27 @@ extends Node
 ##  11 压边带   文字真实字块越出框的内容区
 ##  (12/13 = 分母: 每屏可见控件数、全局按钮/标签数)
 ##
+## ═══ ★★2026-09-28 补两列: 每条判据**认得哪些节点类型** / 每屏量的是**全部还是第一个样本** ═══
+## 不写这两列, 「这屏 0 违规」会被读成「这屏没问题」, 而实际可能是
+## 「判据认不出那种节点」或「只量了列表第一条」。两个都栽过:
+##
+## | 判据 | 认得哪些节点类型 | 已知认不出的 |
+## |---|---|---|
+## | 1 网页盒 / 2 圆角盒 | 任意 Control 的 `panel/normal/background/fill` 四个 StyleBox 槽 | 别的槽名(`hover`/`pressed`/`focus`)；`_draw()` 自绘的框 |
+## | 3 默认皮 | `Button` 且非 flat | 别的 `BaseButton` 子类(CheckBox/OptionButton 的皮没查) |
+## | 4 死点击 / 5 热区 | `BaseButton` · `Range`(滑条) · `LineEdit` · `TextEdit` · 接了 `gui_input` 的任意控件 | **裸 `Control` 靠 `MOUSE_FILTER_STOP` 吃点击**——规模见下面 `mfstop` 分母 |
+## | 6 截断 / 7 挤没 / 9 溢出 | `Label` | `RichTextLabel`(只进压字, 不进这三条)；`Button` 自己的 text |
+## | 8 压扁 | `NinePatchRect` | `StyleBoxTexture` 铺出来的框 |
+## | 10 压字 | `Label` + `RichTextLabel` | `Button` 的 text；Sprite/自绘文字 |
+## | 11 压边带 | `NinePatchRect` · `StyleBoxTexture` 槽 · 拉伸成框的 `TextureRect` | `_draw()` 自绘的框 |
+##
+## | 屏 | 量到的是全部还是第一个样本 |
+## |---|---|
+## | MainMenu / Settings / Record / Leaderboard / BracketMap / TrainerConfig | **全部**(整棵树) |
+## | Inventory / TeamSelect / Shop | **全部**(灌了 demo 数据/真池, 33 格 6 卡 / 28 张龟卡 / 10 张货架卡都在场) |
+## | Codex | ★**只有第一条**——列表只渲染选中那一行的详情。实证: `detail_views.gd:571` 的形态切换钮 `_add_rect(196, 34, …)`, `34 < UISkin.MIN_FRAME_PX(40)` ⇒ `nine_if_big` **静默退回 StyleBoxFlat**(= 网页盒), 而它**只有双形态龟**(双头/熔岩)才画 ⇒ 量图鉴时永远碰不到。**这一格是已知欠账, 不是 0 违规。** |
+## | 弹层(第二节) | **全部**(整棵树, 开弹层前后各量一次判增量) |
+##
 ## ═══ 三个"判据本身会不会骗我"的堵口(每个都是今晚栽出来的) ═══
 ## ① **分母**: 每屏必须真的扫到控件, 否则 = 场景没建起来的假绿(今晚踩过 6 次)
 ## ② **边带宽度从贴图里量, 不读配置边距**: panel-frame 配置 20 → 真实边带 13;
@@ -35,6 +56,10 @@ extends Node
 ##    空心框(中间透明)要从外往内扫, 否则返回半个贴图宽(card-frame 72px 报过 36)。
 ## ③ **量真实字块, 不量控件矩形**: 列表行的 Label 占满 52px 行高但字是垂直居中的,
 ##    拿控件矩形量会把"稳稳在行中间"的字报成压边带 13px。**尺子要匹配被测概念。**
+## ④ **配对要看节点树, 不能只看屏幕坐标**(2026-09-28): 屏幕坐标是**扁的** ——
+##    弹框一盖上来, 「页面上的字」与「弹框里的框」在屏幕上就重叠了, 而它们根本不在同一层。
+##    实测这一条造了 **5 条假违规里的 4 条**(设置屏 3 条 + 背包弹层 4 条, 两个方向都有)。
+##    ⇒ 见 `_frame_owns`: 只认「框是字的祖先」与「同父兄弟」两种关系, 自检见 `_selftest_frame_pairing`。
 
 ## 墙那句话的唯一出处 —— 测试不许自己拼。
 const _P2CX := preload("res://scripts/gamedata/phase2_config.gd")
@@ -121,7 +146,11 @@ const BASE: Dictionary = {
 	##   BracketMap(周日对阵图, 整天都在看) / Leaderboard / 
 	##   **Matchmaking(每一局对局之间都过)** / TrainerConfig。
 	##   ⇒ 「把 UI 做得更商业」在没人量的屏上做不完。
-	"BracketMap": {"web": 0, "round": 7, "frame": 0, "tap": 0},
+	## ★★2026-09-28 round 7 → 0(棘轮只许降): 上一轮把节点/页签/空态框全换成
+	##   直角 + 九宫格之后, 实测就是 **0** —— 7 是登记时那一版的数字。
+	##   ⚠ 只降不升这条规矩的**另一半**是"量到 0 就登 0", 否则棘轮空转 7 格,
+	##     期间任何一个新圆角盒溜回来都不会红。
+	"BracketMap": {"web": 0, "round": 0, "frame": 0, "tap": 0},
 	## ★★★排行榜/撮合 —— 这两屏 2026-09-27 差点被登记成**占位屏的基线**:
 	##   量出来 web/round/frame/tap 全 0, 看着干净, 而排行榜自带的分母打出来是
 	##   `[LB] rows=1`(**榜上只有我自己一行**)。登记那个 0 等于让棘轮去守一块空屏
@@ -136,7 +165,11 @@ const BASE: Dictionary = {
 	##   `get_tree()` 变 null, 后面断言连跑都没跑, 而且**没打 ALL PASS**、rc 还是 0)。
 	##   ★而且对手卡是 1.5~2 秒后才建的 ⇒ 早量到的那 13 个控件是「正在找对手」那一屏,
 	##     又是占位屏。两个理由都指向同一件事: **它要一条冻住时序的缝**, 单独做。
-	"TrainerConfig": {"web": 0, "round": 1, "frame": 7, "tap": 0},
+	## ★2026-09-28 frame 7 → 0: 那个 7 是「卡太短 + 只调 inset」那一版的读数。
+	##   真因查清后(内容最小高 102 > 内容区 94, 而 `offset_bottom` 被
+	##   `get_combined_minimum_size()` 夹住根本没生效)把卡加高 14px, 实测已是 0。
+	##   ★基线停在比实测高的数 = 给那个 bug 留了回来的路, 棘轮只许降。
+	"TrainerConfig": {"web": 0, "round": 1, "frame": 0, "tap": 0},
 }
 
 ## 分母下限: 这一屏至少该扫到这么多可见控件。少于它 = 场景没建起来, 下面的"0 问题"全是假的。
@@ -417,11 +450,73 @@ func _first_text(c: Node) -> String:
 	return "(无字)"
 
 
+## 这个控件**玩家能不能操作它** —— 「死点击」「热区不足」两条判据的入口。
+##
+## ★★2026-09-28 补【判据只认某类节点】这条失明: 原来写的是
+##   `c is BaseButton or c.gui_input.get_connections().size() > 0`。
+##   有人把音量滑条把手设成 `MOUSE_FILTER_STOP`(**裸 `Control`**, 能吃点击)
+##   做反向验证 —— **判据没红**。⇒ 滑条把手、拖拽区、自绘点击块全在盲区里。
+## ★收哪几类是**按本仓真实用到的交互原语**列的, 不是我想象的:
+##   `Range`(HSlider/VSlider/SpinBox —— 设置屏的音量/画质滑条是 `Range`, **不是** BaseButton)
+##   `LineEdit` / `TextEdit`(登录墙的昵称与邮箱输入框)
+##   接了 `gui_input` 的任意控件(羁绊小签、糖果罐格子都是这么做的)
+## ★**没有**把"所有 MOUSE_FILTER_STOP 的控件"都收进来: Godot 里 Panel /
+##   PanelContainer / ColorRect 默认就是 STOP, 收了会满屏噪音, 而噪音门禁等于没门禁。
+##   剩下那一片有多大, 由 `d["mfstop"]` 这个**分母**如实报出来。
+func _interactive(c: Control) -> bool:
+	return c is BaseButton or c is Range or c is LineEdit or c is TextEdit \
+		or c.gui_input.get_connections().size() > 0
+
+
+## 【这个框管得着这段字吗】—— 「压边带」第 11 条判据的**配对**规则。
+##
+## ★★由来(2026-09-28, 探针 `tests/_probe_settings_frame.gd` 实测): 原来的配对只有一句
+##   「取**屏幕坐标**上包住字块中心的**最小**框」—— 而屏幕坐标是**扁的**, 它认不出
+##   「这两个东西根本不在同一层」。设置屏一开弹框, 三条假违规当场全冒出来:
+##
+##   | 报的 | 真配到的框 | 实际关系 |
+##   |---|---|---|
+##   | `画质「高」+6`(页面上的按钮) | 弹框里的**「先不选」按钮**(520,452 240x48) | 弹框盖在它上面 |
+##   | `80%+21`(页面上的音量百分比) | 弹框的**金属面板**(380,210 520x300) | 同上 |
+##   | `两边的存档对不上+18`(弹框**标题**) | 页面上的**音量条槽**(450,207 380x26·内框只剩 10px 高) | 反过来: 框在弹框**背后** |
+##
+##   三条都不是产品 bug: 标题对**它自己那个框**量出来是 **−5**(框 560x340·边带 13·
+##   标题在 box 内 y=18 > 13, 干净); `画质「高」` 对**它自己那块木牌**量出来是 **−9.5**。
+##   ⇒ 判据把**一层的字**配给了**另一层的框**。两边都会中招, 所以不是"抬基线"能盖住的。
+##
+## ★这也解释了为什么它以前没红: 页面与弹框**同时在场**才可能跨层配对, 而弹层
+##   2026-09-28 之前**从没被建出来过**(memory `fb-gate-subject-never-constructed`)。
+##
+## ★★判据只认两种关系, 其余一律不配对:
+##   ① 框控件是字的**祖先** —— 字长在框里(对话框标题在 `Panel` 里、列表行的字在行框里)
+##   ② 框控件与字是**同一个父节点下的兄弟** —— 设置屏 `_text_button` 那种:
+##      一张 `btn-frame.png` 铺成 `TextureRect` 当框, 一个 `Label` 盖在它上面, 两个都是
+##      `cont` 的孩子。这一支**必须留**, 否则整屏三个木牌按钮的压边带从此没人查。
+## ★取不到宿主时(旧形状的数组)返回 true —— 宁可保持老行为, 不静默放过。
+func _frame_owns(owner: Node, txt: Node) -> bool:
+	if owner == null or txt == null:
+		return true
+	var n: Node = txt
+	while n != null:
+		if n == owner:
+			return true                      # ① 框是字的祖先
+		n = n.get_parent()
+	return owner.get_parent() != null and owner.get_parent() == txt.get_parent()   # ② 同父兄弟
+
+
 func _audit(root: Node) -> Dictionary:
 	## ★★`hits` 与下面的计数走【同一次遍历、同一个 if】 —— 分两段扫必然漂。
 	var d := {"hits": [], "web": 0, "round": 0, "ctrl": 0, "btn": 0, "lbl": 0,
 		"stock": [], "dead": [], "small": [], "clip": [], "squash": [],
-		"flat9": [], "spill": [], "overlap": [], "frame": [], "tap": []}
+		"flat9": [], "spill": [], "overlap": [], "frame": [], "tap": [],
+		## ★★2026-09-28 盲区分母: **非 BaseButton 却能吃鼠标事件**的控件有多少个。
+		##   「死点击/热区」两条原来只认 `BaseButton` 和接了 `gui_input` 的控件 ⇒
+		##   有人把音量滑条把手设成 `MOUSE_FILTER_STOP`(**裸 `Control`**)做反向验证,
+		##   判据没红。这个数就是那条盲区的**规模**: 只打印、不判红
+		##   (Godot 里 Panel/PanelContainer 默认就是 STOP, 拿它判红等于满屏噪音),
+		##   但它涨到哪儿是看得见的, 而且它说明了下面 `_interactive()` 收的那几类
+		##   之外还剩多大一片没人量。
+		"mfstop": 0}
 	var _vp_area: float = maxf(1.0, float(get_viewport().get_visible_rect().size.x)
 		* float(get_viewport().get_visible_rect().size.y))
 	var labels: Array = []
@@ -435,8 +530,12 @@ func _audit(root: Node) -> Dictionary:
 			d["ctrl"] = int(d["ctrl"]) + 1
 			## 触控热区: 短边 < 81px(=44pt) 的可点元素。★TouchPad 本身不算(它是别人的热区),
 			##   有效热区 = 控件矩形 与 它挂的 TouchPad 取大 —— 不这么算数字会反着涨(实测 43→51)。
+			## 盲区分母(见 d["mfstop"] 那段注释)
+			if not (c is BaseButton) and (c.mouse_filter == Control.MOUSE_FILTER_STOP
+					or c.mouse_filter == Control.MOUSE_FILTER_PASS):
+				d["mfstop"] = int(d["mfstop"]) + 1
 			if str(c.name) != "TouchPad":
-				var _hit: bool = c is BaseButton or c.gui_input.get_connections().size() > 0
+				var _hit: bool = _interactive(c)
 				var _ew: float = c.size.x
 				var _eh: float = c.size.y
 				var _pad = c.get_node_or_null("TouchPad")
@@ -462,7 +561,7 @@ func _audit(root: Node) -> Dictionary:
 					and c.size.x * c.size.y >= 4000.0 and minf(c.size.x, c.size.y) >= 40.0 \
 					and c.size.x * c.size.y < _vp_area * 0.20 \
 					and _is_frame_tex((n as TextureRect).texture)):
-					arts.append([_art_rect(n as TextureRect), "图<%s|%.0fx%.0f>" % [str(c.name), c.size.x, c.size.y]])
+					arts.append([_art_rect(n as TextureRect), "图<%s|%.0fx%.0f>" % [str(c.name), c.size.x, c.size.y], false, n])
 			## ★2026-08-19 补的第三种框: **TextureRect 拉伸出来的框**。
 			##   设置屏三个按钮就是这么做的(menu/btn-frame.png 铺满一个 TextureRect, 文字是它的兄弟 Label),
 			##   而 framed 原来只收 NinePatchRect 和 StyleBoxTexture ⇒ **这类框一个都没查过**。
@@ -481,10 +580,10 @@ func _audit(root: Node) -> Dictionary:
 				##   于是连「全屏」两个字都被判成压边(实测三个按钮全红)。**量到的不等于挡得住的。**
 				##   横向那 101 才是真挡人的东西(两端的花纹柱), 越过去字就骑在花上。
 				var _sx: float = c.size.x / maxf(1.0, float(_ft.get_width()))
-				framed.append([c.get_global_rect(), _band_of(_ft) * _sx, 0.0])
+				framed.append([c.get_global_rect(), _band_of(_ft) * _sx, 0.0, n])
 			if n is NinePatchRect and (n as NinePatchRect).texture != null:
 				var np := n as NinePatchRect
-				framed.append([c.get_global_rect(), _band_of(np.texture), _band_of(np.texture)])
+				framed.append([c.get_global_rect(), _band_of(np.texture), _band_of(np.texture), n])
 				var mv: float = np.patch_margin_top + np.patch_margin_bottom
 				var mh: float = np.patch_margin_left + np.patch_margin_right
 				if np.size.y > 0.0 and (np.size.y <= mv or np.size.x <= mh):
@@ -501,7 +600,7 @@ func _audit(root: Node) -> Dictionary:
 				var rr := rl.get_global_rect()
 				var used := minf(rl.get_content_height(), rr.size.y) if rl.get_content_height() > 0.0 else rr.size.y
 				labels.append([Rect2(rr.position, Vector2(rr.size.x, used)),
-					str(rl.get_parsed_text()).strip_edges(), _is_toast(rl)])
+					str(rl.get_parsed_text()).strip_edges(), _is_toast(rl), n])
 			if n is Label and str((n as Label).text).strip_edges().length() >= 1:
 				var lb := n as Label
 				d["lbl"] = int(d["lbl"]) + 1
@@ -510,7 +609,7 @@ func _audit(root: Node) -> Dictionary:
 				var _par := lb.get_parent() as Control
 				var _badge: bool = _par != null and (_par is PanelContainer or _par is Panel) \
 						and _par.size.x < 40.0 and _par.size.y < 40.0
-				labels.append([_ink_rect(lb), str(lb.text), _is_toast(lb) or _badge])
+				labels.append([_ink_rect(lb), str(lb.text), _is_toast(lb) or _badge, n])
 				var fs2: int = lb.get_theme_font_size("font_size")
 				# ⚠ 判据太宽第 8 次: 报选龟稀有度栏杆的「A」「B」「C」被挤没 —— 实拍那几个
 				#   字母**显示得好好的**。原因是这些 Label 是手工定位的, `size` 就是 (0,0),
@@ -530,7 +629,7 @@ func _audit(root: Node) -> Dictionary:
 				var sb = c.get_theme_stylebox(slot)
 				if sb is StyleBoxTexture and (sb as StyleBoxTexture).texture != null:
 					var _bb := _band_of((sb as StyleBoxTexture).texture)
-					framed.append([c.get_global_rect(), _bb, _bb])
+					framed.append([c.get_global_rect(), _bb, _bb, n])
 				elif sb is StyleBoxFlat:
 					var f2 := sb as StyleBoxFlat
 					var _r0: bool = f2.corner_radius_top_left > 0
@@ -557,7 +656,7 @@ func _audit(root: Node) -> Dictionary:
 								c.get_class(), str(c.name).substr(0, 14), _rc.size.x, _rc.size.y,
 								f2.corner_radius_top_left, f2.border_width_top, f2.bg_color.a, _txt])
 			var is_btn: bool = c is BaseButton
-			var wired: bool = c.gui_input.get_connections().size() > 0
+			var wired: bool = _interactive(c) and not (c is BaseButton)
 			if c is Button and not (c as Button).flat:
 				d["btn"] = int(d["btn"]) + 1
 				if not c.has_theme_stylebox_override("normal"):
@@ -598,6 +697,14 @@ func _audit(root: Node) -> Dictionary:
 			var fr: Rect2 = framed[fi][0]
 			if not fr.has_point(cc):
 				continue
+			## ★★★【框得管得着这段字】—— 只凭屏幕坐标配对会跨层乱配, 见 _frame_owns 的长注释。
+			if not _frame_owns(framed[fi][3] if framed[fi].size() > 3 else null,
+					boxed[k][3] if boxed[k].size() > 3 else null):
+				if _DUMP:
+					print("      [跨层·不配对] 「%s」 ⇢ 框<%s> (屏幕上重叠, 但不是它的框)" % [
+						str(boxed[k][1]).substr(0, 24),
+						str((framed[fi][3] as Node).name) if framed[fi].size() > 3 else "?"])
+				continue
 			var ar: float = fr.size.x * fr.size.y
 			if ar < best_a:
 				best_a = ar
@@ -625,6 +732,389 @@ func _audit(root: Node) -> Dictionary:
 	return d
 
 
+## ══════════════════════════════════════════════════════════════════════
+##  第二节【按了才建出来】—— 静止页一条判据都碰不到的那批界面 (2026-09-28)
+## ══════════════════════════════════════════════════════════════════════
+## ★由来: 上面那张 BASE 表扫的是**每个屏加载完静止下来的样子**。凡是"按一下才建"
+##   的界面, 被测对象根本不在场 ⇒ 判据没错, 却永远绿
+##   (memory `fb-gate-subject-never-constructed`)。实证四批:
+##     · 主菜单教程确认弹窗: 12px 圆角 + 2px 描边 + 一个 Godot 默认皮按钮
+##       —— **一次占三条判据, 而门禁一直绿**
+##     · 背包的糖果罐操作栏 / 羁绊详情弹框 / 糖果罐领奖弹框
+##       —— ★**全仓没有任何测试会建它们**
+##     · 设置屏的存档冲突框与重置确认框
+## ★★而且「改完了没有」不能拿上面那张棘轮表的数字看: 背包那三个真违规修掉之后,
+##   `verify_ui_consistency` 的 Inventory 圆角盒**改前改后都是 18** —— 棘轮上的数
+##   一格都没动。**判据的数字不动, 不等于什么都没发生。**
+##
+## ★量法: 同一个场景实例上 `_audit()` 两次(开弹层**前**/开弹层**后**), 判**增量**。
+##   这样 13 条判据一条不改就全都罩到弹层上了, 而且**分母是天然的**:
+##   「新增控件数 ≥ min_new」不成立 = 弹层没建起来 ⇒ 当场红, 而不是变成一条空检查
+##   ("催了但没出来"就是它当初躲过门禁的那个形状)。
+##
+## ★同族的 `nine_if_big` 只量到第一个样本那一类, 见 BASE 表末尾新加的两列说明。
+## ★★★基线全部是**2026-09-28 首次量到就如实登记**的存量, 棘轮**只许降**。
+##   这一节是新开的扫描范围, 扩范围必然扫出存量 —— 而"放宽判据让它绿"和
+##   "把存量当成没有"是同一件事。⇒ 照 `登录墙`(2026-09-27)那条的办法:
+##   **先按实测如实登记, 修完再往下拧**, 并把每条是什么问题写在旁边交出去。
+## `mode`: `"delta"`(默认) 判**增量** —— 弹层是叠在页面上的;
+##         `"abs"` 判**绝对值** —— `jar_op_bar` 走 `_rebuild()` 会把整页重建
+##         (实测控件数 196 → 178, **减少** 18), 增量在它身上根本不成立。
+## `mark`: 开完之后屏幕上必须出现的一句话 —— `abs` 模式下没有"新增控件数"可用,
+##         它就是那一条**分母**(催了但没出来 ⇒ 当场红, 不是静默变空检查)。
+const POPUPS: Array = [
+	## 存量: 两个按钮 96x40 / 120x40, 短边 40 < 81px(44pt)。★这是真缺陷, 交主会话。
+	{"scn": "MainMenu", "id": "tutorial_confirm", "label": "主菜单·教程确认弹窗",
+		"min_new": 6, "web": 0, "round": 0, "tap": 2, "frame": 0, "stock": 0},
+	## `abs`: 选中糖果罐会整页重建。数字与静止态的 Inventory 基线同一口径
+	## (web 10 / round 18 = 那批**刻意保留**的迷你装备格与羁绊赠送徽章, 见 KEEP_OK)。
+	## 存量: tap 13 = 静止态那 11 个 + 糖果罐那条栏带进来的 2 个 40x40 Panel。
+	{"scn": "Inventory", "id": "jar_op_bar", "label": "背包·糖果罐操作栏",
+		"mode": "abs", "mark": "打碎",
+		"min_new": 0, "web": 10, "round": 18, "tap": 13, "frame": 0, "stock": 0},
+	## ★★★2026-09-28 【frame 这一列整列重测过一遍】: 配对规则从「屏幕上最小的框」收紧成
+	##   「祖先 / 同父兄弟」(见 `_frame_owns`)之后, 原来登记的 5 条存量里 **4 条是跨层假违规**
+	##   —— 报的是**页面上的字**配**弹框里的框**(或反过来)。逐条实测(探针
+	##   `tests/_probe_settings_frame.gd` / `UICONS_DUMP=1` 的「跨层·不配对」行):
+	##     · 羁绊详情框 `月之刃+11`      ← 背包**页面上的装备名** vs 弹框的金属面板
+	##     · 领奖框 `糖果罐碎了！…+20`   ← 弹框**标题** vs 背包页面的一个 Panel
+	##       (对它**自己**那个框量出来是负的 = 干净)
+	##     · 领奖框 `月之刃+9` / `图<…44x36>+11` ← 同上, 页面的装备名/图标 vs 弹框面板
+	##     · 存档冲突框 `两边的存档对不上+18` ← 弹框**标题** vs 页面上的**音量条槽**
+	##       (槽 380x26·内框只剩 10px 高; 标题对**自己**那个框是 **−5.0**)
+	##   ★所以这四条不是"修好了", 是**从来就不该报**。棘轮按实测降到真值,
+	##     并把"它到底是什么"写在这儿 —— 否则下一个人会去"修"一个不存在的 bug
+	##     (`KEEP_OK` 那一节立在这儿就是为了这件事)。
+	## 存量: tap +1(一个 40x40 Panel)。frame 从 1 降到 0(那 1 条是跨层假违规, 见上)。
+	{"scn": "Inventory", "id": "synergy_popup", "label": "背包·羁绊详情弹框",
+		"min_new": 5, "web": 0, "round": 0, "tap": 1, "frame": 0, "stock": 0},
+	## 存量: tap +1 · frame +1 —— ★★**剩下这一条是真的**(关系=祖先, 字长在框里):
+	##   「临时等级器 ×1 收进背包 · 点它再点一只龟或小将, 这一大轮就多一级」
+	##   越出弹框内容区 **23px**。出处 `scripts/scenes/inventory/candy_jar.gd`
+	##   `_show_jar_reward()`: 框 520x300·panel-frame 边带 13, 而这一行 `l.size = (440, 48)`
+	##   放在 `x=40`, 18 号字按 `WORD_SMART` 断不开中文长句 ⇒ 字块比框的内容区宽。**交主会话。**
+	##   (frame 从 4 降到 1: 另外 3 条是跨层假违规, 见上。)
+	{"scn": "Inventory", "id": "jar_reward", "label": "背包·糖果罐领奖弹框",
+		"min_new": 5, "web": 0, "round": 0, "tap": 1, "frame": 1, "stock": 0},
+	## 干净(6 项全 0)。frame 从 1 降到 0 —— 原来那 1 条是跨层假违规(见上)。
+	{"scn": "Settings", "id": "conflict_dialog", "label": "设置·存档冲突框",
+		"min_new": 6, "web": 0, "round": 0, "tap": 0, "frame": 0, "stock": 0},
+	## 干净(6 项全 0)。
+	{"scn": "Settings", "id": "reset_confirm", "label": "设置·重置确认框",
+		"min_new": 5, "web": 0, "round": 0, "tap": 0, "frame": 0, "stock": 0},
+]
+
+
+## ══════════════════════════════════════════════════════════════════════
+##  【刻意保留·不许算违规】—— 带理由, 不是台账欠账
+## ══════════════════════════════════════════════════════════════════════
+## 这些是**复核过、退回过**的决定, 写在这里是为了下一个人(和下一个 agent)
+## 不会把它们当成"还没改完"去改坏:
+##   · `InventoryScene` 的 18 个 26px 迷你装备格 `r=3` 与 22px 羁绊赠送徽章 `r=3`
+##     —— 2026-08-18 实拍对比后**退回过一次**: 套金属槽框会让**费用色从整块实心
+##     退化成一圈细边**, 而那块实心色本身就是信息(一眼分得出 2/3/4/5 费)。
+##     ⇒ 贴图框有它的最小可用尺寸, 小于它就该保持纯色块。
+##     (它们正是 Inventory 基线里 `round 19` / `web 10` 那两个数的主体。)
+##   · 选阵容的 28 个**正圆**头像/被动图标遮罩(`pet_grid.gd` 26x26 半径 13)
+##     —— 用户点名的是 `border-radius` 的圆角**矩形**, 正圆不是那味, 刻意留着。
+##     (TeamSelect 基线 `round 32` 里 28 个是它。)
+## ⇒ 判据**一个字没放宽** —— 宁可让棘轮数着, 也不为了数字好看去改判据。
+const KEEP_OK := {
+	"Inventory/26px 迷你装备格 r=3": "换槽框会让费用色从整块实心退化成一圈细边, 而那块实心色就是信息(2026-08-18 实拍退回)",
+	"Inventory/22px 羁绊赠送徽章 r=3": "同上(同一批实拍对比)",
+	"TeamSelect/28 个正圆头像遮罩": "正圆不是 border-radius 那味(用户点名的是圆角矩形)",
+}
+
+
+## 走产品**自己的**那个入口把弹层催出来 —— 不在测试里另搭一套。
+## ★返回 false = 这一条催不出来(接口改名/前置条件不成立), 调用方会**判红**,
+##   不是静默跳过 —— 静默跳过正好复制了这些界面当初躲过门禁的那个形状。
+func _open_popup(inst, id: String) -> bool:
+	match id:
+		"tutorial_confirm":
+			if not inst.has_method("_on_tutorial"):
+				return false
+			inst._on_tutorial()
+			return true
+		"jar_op_bar":
+			## 这条栏只在【选中糖果罐】之后才建(InventoryScene.gd `_build_op_bar` 的双胞胎)
+			var gs2 = get_node_or_null("/root/GameState")
+			if gs2 == null or not gs2.has_candy_jar():
+				return false
+			if not inst.has_method("_rebuild"):
+				return false
+			inst._sel_jar = true
+			inst._rebuild()
+			return true
+		"synergy_popup":
+			if inst.get("_inv_synergy") == null:
+				return false
+			## 「剑」是 `Phase2Types.TYPES` 里第一个键, 不是我编的类型名
+			inst._inv_synergy._show_synergy_popup("剑", 1)
+			return true
+		"jar_reward":
+			if inst.get("_inv_jar") == null:
+				return false
+			## 形状照 `GameState.break_candy_jar()` 的返回值(不走真打碎: 那会改存档)
+			inst._inv_jar._show_jar_reward({"tier": 3, "coins": 40,
+				"equip": "p2eq_001", "star": 2, "leveler": true})
+			return true
+		"conflict_dialog":
+			if not inst.has_method("_open_conflict_dialog"):
+				return false
+			inst._open_conflict_dialog()
+			return true
+		"reset_confirm":
+			if not inst.has_method("_ask_reset"):
+				return false
+			inst._ask_reset()
+			return true
+	return false
+
+
+## 判据自检: `_interactive()` **真的认得**它声称认得的那几类节点。
+##
+## ★★为什么必须有这一节: 扩完 `_interactive()` 之后整份门禁照旧 ALL PASS ——
+##   而那不是"没有违规", 是**那几类节点在这七八个屏上一个都没出现**
+##   (设置屏可见控件只有 12 个, 滑条在折叠区里)。
+##   「改了判据 → 门禁还是绿 → 就以为改对了」正是 memory
+##   `fb-gate-subject-never-constructed` / `fb-gate-must-measure-requirement-not-my-hook`
+##   那一族。⇒ 现造四个节点, 逐类证明它分得清。
+func _selftest_interactive() -> void:
+	print("  ── 判据自检: `_interactive()` 认得哪几类节点 ──")
+	var sl := HSlider.new()          # 设置屏的音量/画质滑条是 Range, **不是** BaseButton
+	var le := LineEdit.new()         # 登录墙的昵称/邮箱输入框
+	var te := TextEdit.new()
+	var bt := Button.new()
+	var raw := Control.new()         # 裸 Control + MOUSE_FILTER_STOP: 能吃点击, 但不是交互原语
+	raw.mouse_filter = Control.MOUSE_FILTER_STOP
+	var lbl := Label.new()
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for n in [sl, le, te, bt, raw, lbl]:
+		add_child(n)
+	_ok("自检 ①`Range`(滑条)算交互控件", _interactive(sl), "改判据之前它不算 ⇒ 滑条的热区/死点击从没被量过")
+	_ok("自检 ②`LineEdit` 算交互控件", _interactive(le))
+	_ok("自检 ③`TextEdit` 算交互控件", _interactive(te))
+	_ok("自检 ④`Button` 仍然算(没改坏老口径)", _interactive(bt))
+	_ok("自检 ⑤裸 `Control`+MOUSE_FILTER_STOP **不**算交互控件",
+		not _interactive(raw),
+		"它确实能吃点击, 但 Panel/ColorRect 默认就是 STOP ⇒ 收了满屏噪音。规模走 mfstop 分母")
+	_ok("自检 ⑥MOUSE_FILTER_IGNORE 的 `Label` 不算", not _interactive(lbl))
+	for n2 in [sl, le, te, bt, raw, lbl]:
+		n2.queue_free()
+	await get_tree().process_frame
+
+
+## 判据自检②: 「压边带」的**配对**认得哪种关系 —— `_frame_owns` 的分母。
+##
+## ★★为什么必须有这一节: 2026-09-28 把配对从「屏幕上最小的那个框」收紧成
+##   「祖先 / 同父兄弟」之后, 整份门禁**从红变全绿**, 而且 4 条存量登记当场归零 ——
+##   「收紧判据 → 门禁变绿」和「判据从此一条都逮不到」在输出上**长得一模一样**
+##   (memory `fb-gate-subject-never-constructed` / `fb-gate-must-measure-requirement-not-my-hook`)。
+##   ⇒ 现造三种关系, 逐个证明: 前两种**必须逮到**, 第三种(跨层)**必须放过**。
+##   这三条是**反向验证的常驻版**: 把 `_frame_owns` 改回"永远 true", ③ 当场红;
+##   改成"只认祖先", ② 当场红。
+func _selftest_frame_pairing() -> void:
+	print("  ── 判据自检②: 「压边带」配对认得哪种关系 ──")
+	var _fb := StyleBoxFlat.new()
+	var _box_sb: StyleBox = UISkin.nine("panel-frame.png", 20, _fb)
+	_ok("自检⑦ 配对自检的素材在位(panel-frame/btn-frame 都能加载)",
+		_box_sb is StyleBoxTexture and ResourceLoader.exists(_BTN_TEX),
+		"贴图缺一张 ⇒ 下面三条全是空检查")
+
+	## ① 框是字的【祖先】: 对话框标题长在 Panel 里, 标题贴着框顶 ⇒ 该逮到
+	var r1 := Control.new()
+	r1.size = Vector2(400, 200)
+	add_child(r1)
+	var box := Panel.new()
+	box.add_theme_stylebox_override("panel", _box_sb)
+	box.position = Vector2.ZERO
+	box.size = Vector2(300, 100)
+	r1.add_child(box)
+	var l1 := Label.new()
+	l1.text = "压边带自检·祖先"
+	l1.add_theme_font_size_override("font_size", 16)
+	l1.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l1.position = Vector2.ZERO           # 顶到框的最上沿 ⇒ 越过 13px 边带
+	l1.size = Vector2(300, 20)
+	box.add_child(l1)
+	await get_tree().process_frame
+	_ok("自检⑦a 框是字的【祖先】时逮得到", (_audit(r1)["frame"] as Array).size() == 1,
+		"实测 %s" % str(_audit(r1)["frame"]))
+
+	## ② 框与字是【同父兄弟】: 设置屏 `_text_button` 的形状(TextureRect 当框 + Label 盖上去)
+	var r2 := Control.new()
+	r2.size = Vector2(400, 200)
+	add_child(r2)
+	r2.add_child(_mk_btn_shape(true))
+	await get_tree().process_frame
+	_ok("自检⑦b 框与字是【同父兄弟】时逮得到", (_audit(r2)["frame"] as Array).size() == 1,
+		"实测 %s —— 红了 = 设置屏那三块木牌按钮的压边带从此没人查" % str(_audit(r2)["frame"]))
+
+	## ③ 【跨层】: 同样的框、同样的字、同样的屏幕坐标, 但分别住在两个互不相干的分支里
+	##    (= 弹框盖在页面上那个形状) ⇒ 必须放过
+	var r3 := Control.new()
+	r3.size = Vector2(400, 200)
+	add_child(r3)
+	var br_a := Control.new()          # 分支 A: 只放框
+	var br_b := Control.new()          # 分支 B: 只放字(坐标与 A 完全重合)
+	r3.add_child(br_a)
+	r3.add_child(br_b)
+	br_a.add_child(_mk_btn_shape(false, true))
+	br_b.add_child(_mk_btn_shape(false, false))
+	await get_tree().process_frame
+	_ok("自检⑦c 【跨层】重叠时不配对(弹框盖在页面上那个形状)",
+		(_audit(r3)["frame"] as Array).size() == 0,
+		"实测 %s —— 绿不了 = 跨层假违规还在(设置屏那三条就是这么来的)" % str(_audit(r3)["frame"]))
+	for n in [r1, r2, r3]:
+		n.queue_free()
+	await get_tree().process_frame
+
+
+const _BTN_TEX := "res://assets/sprites/menu/btn-frame.png"
+
+## 造一份「木牌按钮」形状。`together` = 框与字同父(②);
+## 否则按 `frame_only` 只造框或只造字, 用来拼跨层那一组(③)。
+func _mk_btn_shape(together: bool, frame_only: bool = false) -> Control:
+	var cont := Control.new()
+	cont.size = Vector2(260, 50)
+	cont.position = Vector2.ZERO
+	if together or frame_only:
+		var fr := TextureRect.new()
+		fr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		fr.stretch_mode = TextureRect.STRETCH_SCALE
+		fr.size = Vector2(260, 50)
+		fr.texture = load(_BTN_TEX)
+		cont.add_child(fr)
+	if together or not frame_only:
+		var lb := Label.new()
+		## ★14 个全角字 @18px = 252px > 内框 201.2px(边带 101 × 260/893 = 29.4, 两侧共 58.8)
+		##   ⇒ 居中后左右各越出 25px。第一版只写了 11 个字(198px)**装得下**,
+		##   ⓑ 当场红、而 ⓒ 是**空检查也绿** —— 字数不够两条都白写。
+		lb.text = "压边带自检兄弟关系一二三四五"
+		lb.add_theme_font_size_override("font_size", 18)
+		lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		lb.size = Vector2(260, 50)
+		lb.position = Vector2.ZERO
+		cont.add_child(lb)
+	return cont
+
+
+func _audit_popups() -> void:
+	print("  ── 第二节【按了才建出来】(静止页扫不到的界面) ──")
+	var gs = get_node_or_null("/root/GameState")
+	for spec in POPUPS:
+		var scn: String = str(spec["scn"])
+		var path := "res://scenes/%s.tscn" % scn
+		if not ResourceLoader.exists(path):
+			_ok("弹层 %s: 场景在位" % str(spec["label"]), false, "找不到 %s" % path)
+			continue
+		## 背包要 33 格 6 卡 + 糖果罐, 不灌就是空背包(那是另一块屏)
+		if scn == "Inventory" and ResourceLoader.exists("res://tests/_setup_inv_demo.gd"):
+			var sc = load("res://tests/_setup_inv_demo.gd")
+			if sc != null and sc.has_method("run"):
+				sc.run()
+		if gs != null and int(gs.season_total_battles) <= 0:
+			gs.season_total_battles = 3
+		var inst = (load(path) as PackedScene).instantiate()
+		add_child(inst)
+		var _st1: bool = await _settle(inst)
+		var kids0: Array = inst.get_children()
+		var d0 := _audit(inst)
+		## ★★先证明**基态自己是干净的** —— 不然"增量 0"可能是"本来就满是违规、
+		##   弹层又加了一批", 两个数一减正好抵掉(memory `fb-gate-tautological...` 同族)。
+		var opened: bool = _open_popup(inst, str(spec["id"]))
+		_ok("★分母 弹层 %s: 产品自己的入口催得出来" % str(spec["label"]), opened,
+			"催不出来 = 接口改名/前置不成立 ⇒ 这一条从此是空检查")
+		if not opened:
+			inst.queue_free()
+			await get_tree().process_frame
+			continue
+		## ★等【落位】用的是同一套墙钟 `_settle`(弹层有入场 tween)。
+		##   ⚠ 不靠"撞到最坏那一帧": `_settle` 先无条件等够 MIN_WAIT 墙钟秒,
+		##     入场动画都 ≤1 秒 ⇒ 量的不是半空中的画面。
+		var _st2: bool = await _settle(inst)
+		## ★★★【探子】先塞一个**假违规**进弹层, 确认判据量得到, 再摘掉量真的。
+		##   不做这一步的话, 「催出来了**但判据没作用在它身上**」依然是恒绿 ——
+		##   而那正是这批界面当初躲过门禁的同一个形状(判据没错, 碰不到面)。
+		##   探子做成 12px 圆角 + 4 边描边 + 半透底 = 一次同时踩「网页盒」与「圆角盒」,
+		##   所以一条断言能证明两条判据都活着。
+		var host: Node = inst
+		for k2 in inst.get_children():
+			if not (k2 in kids0) and k2 is Control:
+				host = k2                    # 弹层自己那一层(证明扫的是它, 不只是静止页)
+				break
+		var spy := PanelContainer.new()
+		spy.name = "UICONS_SPY"
+		spy.position = Vector2(4, 4)
+		spy.custom_minimum_size = Vector2(60, 30)
+		var ssb := StyleBoxFlat.new()
+		ssb.bg_color = Color(0.1, 0.1, 0.1, 0.5)     # a < 0.95 ⇒ 网页盒那一条
+		ssb.set_border_width_all(2)                   # 四边有边框 ⇒ 同上
+		ssb.set_corner_radius_all(12)                 # ⇒ 圆角盒那一条
+		spy.add_theme_stylebox_override("panel", ssb)
+		host.add_child(spy)
+		await get_tree().process_frame
+		var dspy := _audit(inst)
+		spy.queue_free()
+		await get_tree().process_frame
+		var d1 := _audit(inst)
+		_ok("★★★探子 弹层 %s: 往它里头塞一个假网页盒, 判据逮得到"
+			% str(spec["label"]),
+			int(dspy["web"]) - int(d1["web"]) == 1 and int(dspy["round"]) - int(d1["round"]) == 1,
+			"塞进去 web %d→%d / round %d→%d (挂在 %s 上) —— 逮不到 = 判据没作用在这一层, 下面全是恒绿"
+			% [int(d1["web"]), int(dspy["web"]), int(d1["round"]), int(dspy["round"]),
+				str(host.name)])
+		var absmode: bool = str(spec.get("mode", "delta")) == "abs"
+		## ★★这一条就是"催了但没出来"的堵口: 它不成立, 下面所有增量都是 0-0=0 的空检查。
+		if absmode:
+			## `abs` 模式没有"新增控件数"可用(整页重建, 控件数会**变少**)
+			## ⇒ 分母改成【那一句话真的上了屏】—— 字取产品自己那一处, 不在测试里另编。
+			var mk: String = str(spec.get("mark", ""))
+			var seen := false
+			var stk: Array = [inst]
+			while not stk.is_empty():
+				var n2 = stk.pop_back()
+				if n2 is Button and str((n2 as Button).text).find(mk) >= 0:
+					seen = true
+				elif n2 is Label and str((n2 as Label).text).find(mk) >= 0:
+					seen = true
+				for c2 in n2.get_children():
+					stk.append(c2)
+			_ok("★★分母 弹层 %s: 真的建起来了(屏上找得到「%s」)" % [str(spec["label"]), mk],
+				seen, "找不到 = 它没被建出来, 而下面几条会变成永远绿的空检查")
+			_ok("★分母 弹层 %s: 整页真的重建过(控件数变了)" % str(spec["label"]),
+				int(d1["ctrl"]) != int(d0["ctrl"]),
+				"开之前 %d → 开之后 %d" % [int(d0["ctrl"]), int(d1["ctrl"])])
+		else:
+			var dn: int = int(d1["ctrl"]) - int(d0["ctrl"])
+			_ok("★★分母 弹层 %s: 真的建起来了(新增可见控件 ≥ %d)"
+				% [str(spec["label"]), int(spec["min_new"])], dn >= int(spec["min_new"]),
+				"新增 %d 个(开之前 %d → 开之后 %d)" % [dn, int(d0["ctrl"]), int(d1["ctrl"])])
+		for k in ["web", "round"]:
+			var inc: int = int(d1[k]) if absmode else int(d1[k]) - int(d0[k])
+			_ok("弹层 %s %s ≤ %d" % [str(spec["label"]),
+				"网页盒" if k == "web" else "圆角盒", int(spec[k])],
+				inc <= int(spec[k]),
+				"%s %d (页面基态 %d)" % ["实测" if absmode else "增量", inc, int(d0[k])])
+		for k2 in ["tap", "frame", "stock"]:
+			var a0: Array = d0[k2] as Array
+			var a1: Array = d1[k2] as Array
+			var inc2: int = a1.size() if absmode else a1.size() - a0.size()
+			var nm2: String = {"tap": "热区不足(短边<44pt)", "frame": "文字压边带",
+				"stock": "Godot 默认皮按钮"}[k2]
+			_ok("弹层 %s %s ≤ %d" % [str(spec["label"]), nm2, int(spec[k2])],
+				inc2 <= int(spec[k2]),
+				"%s %d %s" % ["实测" if absmode else "增量", inc2,
+					str((a1 if absmode else a1.slice(maxi(0, a0.size()), a1.size())).slice(0, 4))])
+		inst.queue_free()
+		await get_tree().process_frame
+	print("    [刻意保留·带理由] %d 条(不是欠账, 别去「修」它们):" % KEEP_OK.size())
+	for kk in KEEP_OK:
+		print("       %s —— %s" % [str(kk), str(KEEP_OK[kk])])
+
+
 func _ready() -> void:
 	await get_tree().process_frame
 	get_tree().root.size = Vector2i(1280, 720)
@@ -636,6 +1126,7 @@ func _ready() -> void:
 	var tot_ctrl := 0
 	var tot_btn := 0
 	var tot_lbl := 0
+	var tot_mf := 0
 	var all_stock: Array = []
 	var all_dead: Array = []
 	var all_clip: Array = []
@@ -704,7 +1195,7 @@ func _ready() -> void:
 		##   之后再设就晚了(墙已经按真实配置决定过建不建)。
 		if str(scn) == "登录墙":
 			inst.acct_override = 1
-		## ★★BracketMap 不喂数据就只画「正在连线 · 取本周的桶」那一句空态
+		## ★★BracketMap 不喂数据就只画一句空态(见 `_empty_text()`)
 		##   ⇒ 那是**量占位屏**(本仓 Record 2026-08-21 正是这样, 基线 0 守了一整个空档屏)。
 		##   ⇒ 走它自己的真入口 `set_data()` 喂一个 8 人桶。
 		if str(scn) == "BracketMap" and inst.has_method("set_data"):
@@ -727,6 +1218,7 @@ func _ready() -> void:
 		tot_ctrl += int(d["ctrl"])
 		tot_btn += int(d["btn"])
 		tot_lbl += int(d["lbl"])
+		tot_mf += int(d["mfstop"])
 		_ok("★分母 %s: 真的建起来了" % str(scn), int(d["ctrl"]) >= int(MIN_CTRL.get(scn, 10)),
 			"可见控件 %d (下限 %d)" % [int(d["ctrl"]), int(MIN_CTRL.get(scn, 10))])
 		if _DUMP:
@@ -775,7 +1267,15 @@ func _ready() -> void:
 			all_overlap.append("%s:%s" % [str(scn), str(v7)])
 		inst.queue_free()
 		await get_tree().process_frame
+	await _selftest_interactive()
+	await _selftest_frame_pairing()
+	await _audit_popups()
 	print("  ── 全屏合计 ──")
+	print("    [盲区分母] 非 BaseButton 却能吃鼠标事件(MOUSE_FILTER_STOP/PASS)的控件: %d 个" % tot_mf)
+	print("      —— 这个数是「判据只认某类节点」那条失明的**规模**。`_interactive()` 现在收了")
+	print("         Range/LineEdit/TextEdit/接了 gui_input 的, 剩下这 %d 个里绝大多数是" % tot_mf)
+	print("         Panel/ColorRect 这类**默认就 STOP** 的容器(不是交互点), 所以只打印不判红。")
+	_ok("★分母: 盲区分母本身要量得到(>0 说明这条统计真的在跑)", tot_mf > 0, "%d 个" % tot_mf)
 	_ok("★分母: 扫到的可见控件 ≥ 500", tot_ctrl >= 500, "%d 个" % tot_ctrl)
 	_ok("★分母: 扫到的按钮 ≥ 25", tot_btn >= 25, "%d 个" % tot_btn)
 	_ok("★分母: 扫到的带字标签 ≥ 120", tot_lbl >= 120, "%d 个" % tot_lbl)

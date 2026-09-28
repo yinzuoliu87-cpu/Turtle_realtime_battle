@@ -32,9 +32,18 @@ const SELF_WINS := 12
 const SELF_HEARTS := 5
 const SELF_SWEEPS := 3
 
-## 列的语义: 第 0 列 = 胜场(奖杯) / 第 1 列 = 余命(红心) / 第 2 列 = 横扫(另一张)。
+## 列的语义: 第 0 列 = 胜场(奖杯) / 第 1 列 = 余命(红心) / 第 2 列 = 横扫。
 ## 只认**概念**不认具体文件名, 但概念必须对得上 —— 图标顺序换了而数字没换, 靠这条抓。
-const ICON_KEY := ["trophy", "hp"]
+##
+## ★★2026-09-28 补上第 2 列。原来只有两条, 因为第 2 列当时借的是
+##   `stats/aspd-icon.png`(**攻速**那张) —— 那时按名字根本对不上"横扫"这个概念,
+##   于是我只写了两条, 而那一列就此**没有任何判据看着**。
+##   欠账还了(接上 `ui/icon-sweep.png`)⇒ 这一条同时钉住两件事: 概念对得上、欠账别回来。
+const ICON_KEY := ["trophy", "hp", "sweep"]
+
+## ★不许再出现的**借用**素材: 排行榜上没有"攻速"这个量。
+##   (借用当时是自我批准的「明知的借用」—— 那种欠账只有门禁盯着才不会回来。)
+const BORROWED_ICONS := ["aspd-icon"]
 
 ## ★过期量词: A8 之前榜是按击杀龟蛋数排的。屏幕上再出现它 = 又漂了一次。
 const STALE_TERMS := ["蛋数", "击杀蛋"]
@@ -374,6 +383,15 @@ func _ready() -> void:
 			spliced.append(s)
 	_ok("⑥ ★成绩没有被拼回一条串(每个量该有自己的图标和数字)", spliced.is_empty(),
 		str(spliced.slice(0, 3)))
+	## ★★借用的素材不许回来。分母 = 屏上真的收到了三张图标路径(空数组也"不含 aspd")。
+	_ok("⑥ ★★分母: 取到了三列图标的真实路径", ref_icons.size() == 3, str(ref_icons))
+	for bi in BORROWED_ICONS:
+		var borrowed: Array = []
+		for p in ref_icons:
+			if str(p).contains(str(bi)):
+				borrowed.append(str(p))
+		_ok("⑥ ★★榜上不再借用「%s」(那是别的量的图标)" % str(bi),
+			borrowed.is_empty() and ref_icons.size() == 3, str(borrowed))
 
 	_finish(inst)
 

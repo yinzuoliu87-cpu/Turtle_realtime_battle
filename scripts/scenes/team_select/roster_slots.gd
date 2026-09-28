@@ -180,7 +180,7 @@ func _slot_box(kind: String) -> StyleBox:
 	return tsb
 
 
-## 渲染特殊占位槽内容 (1:1 PoC .fg-summon TeamSelectScene.ts:591-598): 随从?/水晶球img/糖果炸弹emoji + 彩色名
+## 渲染特殊占位槽内容 (1:1 PoC .fg-summon TeamSelectScene.ts:591-598): 随从?/水晶球img/糖果炸弹img + 彩色名
 func _fill_mark_slot(vb: VBoxContainer, mark: String) -> void:
 	var nm_text = ""
 	var nm_color = Color.WHITE
@@ -206,13 +206,22 @@ func _fill_mark_slot(vb: VBoxContainer, mark: String) -> void:
 			img.texture = load(cb)
 		vb.add_child(img)
 	else:   # CANDY_BOMB_MARK
+		## ★★2026-09-28「🍬💣」→ 糖果炸弹**自己的立绘**。
+		##   上面水晶球那一支早就是这么画的(`pets/crystal-ball.png`),
+		##   只有糖果炸弹这一支拿两个 emoji 凑 —— **同一个函数里两种画法**。
+		##   用的是它本人的图(`pets/candy-bomb.png`), 不是拿别件素材顶替。
+		##   摆法/尺寸/过滤逐项拄水晶球那支, 不另写一份。
 		nm_text = "糖果炸弹"; nm_color = Color("#ff6bd8")
-		var e = Label.new()
-		e.text = "🍬💣"
-		e.add_theme_font_size_override("font_size", host._sf(22))
-		e.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		e.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		vb.add_child(e)
+		var cimg = TextureRect.new()
+		cimg.custom_minimum_size = Vector2(host._sp(32), host._sp(32))
+		cimg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		cimg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		cimg.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		cimg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var cbomb = "res://assets/sprites/pets/candy-bomb.png"
+		if ResourceLoader.exists(cbomb):
+			cimg.texture = load(cbomb)
+		vb.add_child(cimg)
 	var nm = Label.new()
 	nm.text = nm_text
 	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

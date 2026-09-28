@@ -4,7 +4,7 @@ extends Node
 ##
 ## 怀疑: `fetch_finals_async` 在 `_token == ""` 时**请求根本没发**却把
 ##   `_finals_tried` 标成 true, 而 `_finals_view` 是空的(没有 reason) ⇒
-##   `_empty_text()` 一路掉到最后那句「本周没有你的桶 · 周六闯关赛晋级才进得来」。
+##   `_empty_text()` 一路掉到最后那句「本周没有你这一组 · 周六闯关赛晋级才进得来」。
 ## 这正是 2026-09-27 在**回包**那一侧刚修过的形状(reason == UNREACHABLE 那条)。
 
 const _SB := preload("res://scripts/net/supabase.gd")

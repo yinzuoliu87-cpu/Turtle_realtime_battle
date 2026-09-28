@@ -4,7 +4,7 @@
 ##   文字语言也是」)。改前这块浮层是**全战斗 UI 里网页味最集中的一处**, 逐项:
 ##     圆角 8 的半透明底板 + 2px 描边 ＝ CSS 卡片 → 九宫格金属框(panel-frame)
 ##     `⚔🛡💚🔵` 四个 emoji 页签              → stats/ 那四张真图标(项目 2026-08-16 就定了全去 emoji)
-##     Godot 默认皮的 4 个页签键 + 裸字 ✕      → UISkin 金属签牌三态
+##     Godot 默认皮的 4 个页签键 + 裸字 ×      → UISkin 金属签牌三态
 ##     圆角 4 / `rgba(1,1,1,.05)` 空轨 / 纯色段 → 凹槽(bar-frame) + 液面(_bar_fill_skin)
 ##     两行裸标签「我方/敌方」压着一列数字      → 队伍签牌 + 名次牌 + 定宽右对齐数值
 ##   共用件一律从 `InfoPanel` 借(为此把它的 `_bar_frame`/`_bar_fill_skin` 改成 static),
@@ -208,7 +208,7 @@ func make_row(u: Dictionary, side: String, col_max: int, rank: int = 0) -> Contr
 	if rank > 0:
 		top.add_child(_rank_badge(rank))
 	var nm := Label.new()
-	nm.text = ("↳ " if u.get("is_summon", false) else "") + str(u.get("name", u.get("id", "")))
+	nm.text = ("└ " if u.get("is_summon", false) else "") + str(u.get("name", u.get("id", "")))
 	## 头名字号大一档 —— 名次差异不能只挂在一个小角标上(玩家扫的是名字, 不是角标)。
 	nm.add_theme_font_size_override("font_size", 16 if rank == 1 else 15)
 	nm.add_theme_color_override("font_color", Color(UIPalette.SIDE_LEFT) if side == "left" else Color(UIPalette.SIDE_RIGHT))
@@ -366,10 +366,10 @@ func build() -> void:
 	cols.add_theme_constant_override("separation", 20)
 	cols.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	# ★关闭按钮(用户 2026-07-30 报"交互很奇怪"): 原来只能【再点右上角那个统计按钮】关,
-	#   而面板在左上角、按钮在右上角 —— 鼠标要横跨整屏才关得掉。这里就近放一个 ✕。
-	# ★必须放在 TABS 循环【之后】—— 我第一版插在循环前, ✕ 跑到了 Tab 行最左边(实拍才看出来)。
+	#   而面板在左上角、按钮在右上角 —— 鼠标要横跨整屏才关得掉。这里就近放一个 ×。
+	# ★必须放在 TABS 循环【之后】—— 我第一版插在循环前, × 跑到了 Tab 行最左边(实拍才看出来)。
 	var close := Button.new()
-	close.text = "✕"
+	close.text = "×"
 	close.add_theme_font_size_override("font_size", 16)
 	close.add_theme_color_override("font_color", Color("#d7e3ef"))
 	## ★★同样换金属签牌皮。原来两个 `StyleBoxEmpty` = **一个完全没有皮的裸字**:
@@ -380,7 +380,7 @@ func build() -> void:
 	close.process_mode = Node.PROCESS_MODE_ALWAYS
 	close.custom_minimum_size = Vector2(34, 26)
 	close.pressed.connect(func() -> void: panel.visible = false)
-	var sp := Control.new()                      # 弹性占位: 把 ✕ 顶到最右
+	var sp := Control.new()                      # 弹性占位: 把 × 顶到最右
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sp.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tabs.add_child(sp)

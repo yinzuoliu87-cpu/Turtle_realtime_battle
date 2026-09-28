@@ -34,7 +34,13 @@ func _ready() -> void:
 " + FileAccess.get_file_as_string("res://scripts/scenes/codex/detail_views.gd")
 	_ok("★图鉴读同一 TurtleStats.STATS", csrc.contains("TurtleStats.STATS"))
 	_ok("★图鉴属性区加了移速", csrc.contains('"移速"'))
-	_ok("★图鉴属性区加了攻击速度", csrc.contains('"攻击速度"'))
+	## ★★2026-09-28 从 `contains('"攻击速度"')` 改成**按结构找那一行**。
+	##   原来那条是**拿文案当尺子**: 同一刻我把小字从「攻击速度」改成「每秒攻击」——
+	##   与战斗信息面板的「攻速 每秒 N 下」对齐(两处印的数和含义完全一致, 差的只是
+	##   单位那几个字; 而原来光秃秃一个 0.77 连"速率还是间隔"都读不出来) ⇒
+	##   那条断言会当场红, 而它想守的事(图鉴有攻速这一项)一点没变。
+	##   ⇒ 判据平移到【这一项在不在】: 属性表里有 `"key": "aspd"` 那一行。
+	_ok("★图鉴属性区有攻速那一项(按 key 找, 不按文案)", csrc.contains('"key": "aspd"'))
 
 	# ④ tag 已删: 图鉴不再画 标签.png
 	_ok("★图鉴龟详情不再画 tag(标签.png 已删)", not csrc.contains("标签.png"), "还残留 tag 渲染")

@@ -1,0 +1,9 @@
+{
+ "_why": "由 `python tools/asset_borrow_audit.py --update` 生成, 不要手改。第二道网【跨语义】里**白名单还没认领**的存量, 只减不增。认领的办法是往 CROSS_OK 里写一条**带理由**的。",
+ "known": {
+  "ui/icon-turtle.png": {
+   "Codex": "scripts/scenes/CodexScene.gd:51",
+   "Matchmaking": "scripts/scenes/MatchmakingScene.gd:39"
+  }
+ }
+}
