@@ -673,8 +673,11 @@ scripts/scenes/SettingsScene.gd|lit|⚠ 这台设备现在的进度会被换掉�
 scripts/scenes/SettingsScene.gd|lit|⚠ 重置所有存档
 scripts/scenes/SettingsScene.gd|lit|⚠ 龟和装备是存在这台手机上的，换设备仍然会丢。
 scripts/scenes/SettingsScene.gd|lit|低
+scripts/scenes/SettingsScene.gd|lit|关闭
+scripts/scenes/SettingsScene.gd|lit|发验证码
 scripts/scenes/SettingsScene.gd|lit|另一台设备上的进度会被这台覆盖
-scripts/scenes/SettingsScene.gd|lit|填邮箱 → 发验证码 → 把邮件里的数字填到下面
+scripts/scenes/SettingsScene.gd|lit|回上一步改邮箱
+scripts/scenes/SettingsScene.gd|lit|填邮箱 → 发验证码 → 填邮件里那串数字
 scripts/scenes/SettingsScene.gd|lit|处理存档冲突
 scripts/scenes/SettingsScene.gd|lit|存档清空了 · 从头再来
 scripts/scenes/SettingsScene.gd|lit|已绑定 · 换设备可用这个邮箱取回账号和进度
@@ -682,6 +685,7 @@ scripts/scenes/SettingsScene.gd|lit|换个邮箱
 scripts/scenes/SettingsScene.gd|lit|正在发送…
 scripts/scenes/SettingsScene.gd|lit|正在验证…
 scripts/scenes/SettingsScene.gd|lit|用云端那份
+scripts/scenes/SettingsScene.gd|lit|用你绑过的邮箱收一个验证码，把那个账号和它的进度取回到这台设备上。\n
 scripts/scenes/SettingsScene.gd|lit|用这台的
 scripts/scenes/SettingsScene.gd|lit|用邮箱取回
 scripts/scenes/SettingsScene.gd|lit|用邮箱取回账号
@@ -690,6 +694,7 @@ scripts/scenes/SettingsScene.gd|lit|画质「高」
 scripts/scenes/SettingsScene.gd|lit|画质换成「%s」了%s · 下一场开打时生效
 scripts/scenes/SettingsScene.gd|lit|画面「全屏」
 scripts/scenes/SettingsScene.gd|lit|画面「窗口」
+scripts/scenes/SettingsScene.gd|lit|确认
 scripts/scenes/SettingsScene.gd|lit|绑定之后，换手机能用这个邮箱把【账号】取回来（排名、战绩、你的阵容）。\n
 scripts/scenes/SettingsScene.gd|lit|绑定邮箱
 scripts/scenes/SettingsScene.gd|lit|设置
@@ -697,6 +702,7 @@ scripts/scenes/SettingsScene.gd|lit|调完就记住了，下次进来还是这�
 scripts/scenes/SettingsScene.gd|lit|账号 · %s
 scripts/scenes/SettingsScene.gd|lit|账号 · 匿名 %s
 scripts/scenes/SettingsScene.gd|lit|账号 · 连接中…
+scripts/scenes/SettingsScene.gd|lit|起个名字(%d~%d 个字) —— 排行榜和对阵图上别人看到的就是它
 scripts/scenes/SettingsScene.gd|lit|这台设备上次同步之后的进度会被换掉\n（换之前先在本机备份一份）
 scripts/scenes/SettingsScene.gd|lit|音乐
 scripts/scenes/SettingsScene.gd|lit|音效
@@ -714,14 +720,11 @@ scripts/scenes/SettingsScene.gd|text|云端的存档被另一台设备更新过�
 scripts/scenes/SettingsScene.gd|text|会清空：深海币 · 背包装备 · 出战统领 · 赛季进度（命/等级/胜场）· 糖果罐 · 布阵。\n
 scripts/scenes/SettingsScene.gd|text|先不清
 scripts/scenes/SettingsScene.gd|text|先不选
-scripts/scenes/SettingsScene.gd|text|关闭
-scripts/scenes/SettingsScene.gd|text|发验证码
+scripts/scenes/SettingsScene.gd|text|把邮件里那串数字填进来
 scripts/scenes/SettingsScene.gd|text|清空，我确定
 scripts/scenes/SettingsScene.gd|text|版本 
-scripts/scenes/SettingsScene.gd|text|用你绑过的邮箱收一个验证码，把那个账号和它的进度取回到这台设备上。\n
-scripts/scenes/SettingsScene.gd|text|确认
-scripts/scenes/SettingsScene.gd|text|起个名字(%d~%d 个字) —— 排行榜和对阵图上别人看到的就是它
 scripts/scenes/SettingsScene.gd|text|邮箱绑好了
+scripts/scenes/SettingsScene.gd|text|验证码已发到 %s
 scripts/scenes/ShopScene.gd|lit|  能进化了
 scripts/scenes/ShopScene.gd|lit|[color=#5b7a92]这件的门道, 摊主自己也讲不明白[/color]
 scripts/scenes/ShopScene.gd|lit|斧头

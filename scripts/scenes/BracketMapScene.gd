@@ -303,8 +303,18 @@ func _reveal_sealed() -> bool:
 	return true
 
 
+## 这一屏的「现在」。**全屏只有这一个出口** —— `default_view()` / 倒计时 / 周锚点都从它取。
+## ★★★兜底走 `_P2C.now_utc()`(全局缝), 不再就地读系统钟(2026-09-28)。
+##   原来这一行是本屏**第二条独立的时钟**: 把全局缝钉在周一上午渲这屏,
+##   `_L.default_view()` 照旧按**真实**时刻挑默认视图。
+##   实测(`tests/_probe_oneclock.gd`, 修前): 注「周一 10:00」与注「周日 21:00」
+##   量出来是**同一个** `_clock()` 值(= 真实系统钟 09-28 21:37), 默认视图两次都是 `finals`
+##   —— 注入值差六天, 这一屏一个字都没变。memory `fb-second-clock-drops-events`。
+## ★`_now_override` **不删**, 留作**更细的一层**(`verify_bracket_map` 的 `set_data(..., now)`
+##   在用); 但**真实时钟那条路只剩一条**: `_clock()` → `_now_override` → `_P2C.now_utc()`。
+##   两个 override 都是 0 时行为**逐字节不变**(玩家路径一字未动)。
 func _clock() -> int:
-	return _now_override if _now_override > 0 else int(Time.get_unix_time_from_system())
+	return _now_override if _now_override > 0 else int(_P2C.now_utc())
 
 
 ## 现在这一张的数据。★全屏所有判据都从这里取 —— 切 Tab 只换它, 其余一行不动。

@@ -41,9 +41,12 @@ const P2 := preload("res://scripts/gamedata/phase2_config.gd")
 const MON := 1789344000        # 2026-09-14 00:00:00 周一 = 该周锚点
 const FRI_CLOSE := 1789772400  # 2026-09-18 23:00:00 周五 —— 积分赛收盘
 
+## ★★⑥ 会动闯关那三个字段(它要走 `settle_gauntlet_close()`) ⇒ 一并进备份名单。
+##   漏登记的字段 = 门禁污染存档, 而 `test_mode` 只挡文件不挡内存(下一个用例读到脏值)。
 const KEYS := ["promoted", "ranked_used", "backfill_paid", "coins", "meta_deepsea_coins",
 	"season_xp", "season_level", "season_wins", "week_anchor_ts", "season_start_ts",
-	"hearts", "season_id", "week_phase"]
+	"hearts", "season_id", "week_phase",
+	"gauntlet_wins", "gauntlet_losses", "gauntlet_backfill_paid"]
 
 var _ok := 0
 var _fail := 0
@@ -95,6 +98,7 @@ func _ready() -> void:
 	_t_wins_floor()
 	_t_idempotent()
 	_t_real_entry()
+	_t_one_clock()
 
 	for k in KEYS:
 		_gs.set(k, _bak[k])
@@ -249,3 +253,116 @@ func _t_real_entry() -> void:
 		_chk("⑤ 还没收盘: 真入口一分不补(闸在真入口这条路上也生效)",
 			d == 0 and not bool(_gs.promoted),
 			"深海币 %+d · promoted=%s" % [d, str(_gs.promoted)])
+
+
+# ─────────────────────────────────────────────────────────────
+# ⑥ ★★★整条链同一天 —— 钉住**全局缝** `phase2_config.now_override_ts`,
+#    然后走产品自己的**不传参**入口。两个入口 + 相位函数必须说的是同一天。
+#
+# ★★为什么非要这一段(2026-09-28): 这两个函数的兜底原来是**就地**
+#   `int(Time.get_unix_time_from_system())` —— 它们和全局缝**互不相通**。
+#   实测(`tests/_probe_oneclock.gd`, 修前): 缝钉「周日 21:00」而不传 `now_override`
+#   ⇒ `settle_ranked_close()` 返回 **0 场**、`settle_gauntlet_close()` 也 **0 场**,
+#   而同一刻 `phase_at_utc(now_utc())` 已经说 `finals` —— **整条链说的不是同一天**。
+#   修后同一次实测: 5 场 / 2 场 / `finals`。memory `fb-second-clock-drops-events`。
+#
+# ★这一段**与真实星期几完全无关**: 锚点用写死的 MON, 注入值也从 MON 算 ⇒ CI 上不会偶发红。
+# ★`now_override`(每个函数自己那个参数)**一处都不写** —— 走的正是玩家路径那条兜底。
+# ─────────────────────────────────────────────────────────────
+func _t_one_clock() -> void:
+	print("── ⑥ 整条链同一天(全局缝 now_override_ts) ──")
+	## ★★分母之零: 产品默认必须是"缝关着" —— 缝要是默认开着, 下面全部无意义。
+	_chk("⑥ ★分母: 产品默认 now_override_ts == 0(缝默认关着)",
+		int(P2.now_override_ts) == 0, "now_override_ts=%d" % int(P2.now_override_ts))
+
+	var pin_sun: int = MON + 6 * 86400 + 21 * 3600    # 2026-09-20 21:00 周日
+	var pin_mon: int = MON + 10 * 3600                # 2026-09-14 10:00 周一
+	## ★先验尺子: 两个注入值本身确实是周日 / 周一, 而且一个在两道收盘线之后、一个在之前。
+	##   (用日期字符串核对, 不自己再算一遍星期几 —— 与 ① 同一口径。)
+	_chk("⑥ ★分母: 注入值 A 印出来是 2026-09-20(周日) 21:00",
+		Time.get_datetime_string_from_unix_time(pin_sun, true) == "2026-09-20 21:00:00"
+		and int(P2.iso_weekday_utc(pin_sun)) == 7,
+		Time.get_datetime_string_from_unix_time(pin_sun, true))
+	_chk("⑥ ★分母: 注入值 B 印出来是 2026-09-14(周一) 10:00",
+		Time.get_datetime_string_from_unix_time(pin_mon, true) == "2026-09-14 10:00:00"
+		and int(P2.iso_weekday_utc(pin_mon)) == 1,
+		Time.get_datetime_string_from_unix_time(pin_mon, true))
+	_chk("⑥ ★分母: A 在两道收盘线**之后**、B 在**之前**(否则下面量的不是这道闸)",
+		pin_sun > int(P2.ranked_close_ts(MON)) and pin_sun > int(P2.gauntlet_close_ts(MON))
+		and pin_mon < int(P2.ranked_close_ts(MON)) and pin_mon < int(P2.gauntlet_close_ts(MON)),
+		"A=%d B=%d 积分线=%d 闯关线=%d" % [pin_sun, pin_mon,
+			int(P2.ranked_close_ts(MON)), int(P2.gauntlet_close_ts(MON))])
+
+	var a := _one_clock_probe(pin_sun)
+	var b := _one_clock_probe(pin_mon)
+	print("     A 注 %s → 缝说 %s / 积分赛补 %d 场 / 闯关赛补 %d 场" % [
+		Time.get_datetime_string_from_unix_time(pin_sun, true), str(a["phase"]),
+		int(a["ranked"]), int(a["gauntlet"])])
+	print("     B 注 %s → 缝说 %s / 积分赛补 %d 场 / 闯关赛补 %d 场" % [
+		Time.get_datetime_string_from_unix_time(pin_mon, true), str(b["phase"]),
+		int(b["ranked"]), int(b["gauntlet"])])
+
+	## —— 缝本身说的那一天(这是另外两处必须对上的那个答案) ——
+	_chk("⑥ ★分母: 缝钉住 A 之后 now_utc() 就是 A, 相位=决赛日",
+		int(a["now"]) == pin_sun and str(a["phase"]) == str(P2.PHASE_FINALS),
+		"now=%d 相位=%s" % [int(a["now"]), str(a["phase"])])
+	_chk("⑥ ★分母: 缝钉住 B 之后 now_utc() 就是 B, 相位=休赛",
+		int(b["now"]) == pin_mon and str(b["phase"]) == str(P2.PHASE_REST),
+		"now=%d 相位=%s" % [int(b["now"]), str(b["phase"])])
+
+	## —— 两个产品入口(都**不传参**)必须跟着缝走 ——
+	_chk("⑥ ★★★注周日: `settle_ranked_close()` 不传参也认得出已收盘(补 配额−实打 场)",
+		int(a["ranked"]) == int(P2.RANKED_QUOTA) - (int(P2.RANKED_QUOTA) - 5)
+		and bool(a["promoted"]),
+		"补了 %d 场 promoted=%s" % [int(a["ranked"]), str(a["promoted"])])
+	_chk("⑥ ★★★注周日: `settle_gauntlet_close()` 不传参也认得出已收盘(4-0 补 2 场)",
+		int(a["gauntlet"]) == 2, "补了 %d 场" % int(a["gauntlet"]))
+	_chk("⑥ ★★★注周一: 两个入口都说【还没收盘】(一场不补)",
+		int(b["ranked"]) == 0 and int(b["gauntlet"]) == 0 and not bool(b["promoted"]),
+		"积分 %d / 闯关 %d / promoted=%s" % [int(b["ranked"]), int(b["gauntlet"]), str(b["promoted"])])
+
+	## —— ★★★「同一天」本身: 两个入口的答案与**缝说的那一天**逐一对上 ——
+	##   期望值由产品自己的 `ranked_close_ts` / `gauntlet_close_ts` 现算(不手抄公式)。
+	for row in [a, b]:
+		var n: int = int(row["now"])
+		var want_r: bool = n >= int(P2.ranked_close_ts(MON))
+		var want_g: bool = n >= int(P2.gauntlet_close_ts(MON))
+		_chk("⑥ ★★★同一天: 缝=%s ⇒ 积分赛入口口径一致(应%s 实%s)" % [
+				Time.get_datetime_string_from_unix_time(n, true),
+				"已收盘" if want_r else "未收盘", "已收盘" if int(row["ranked"]) > 0 else "未收盘"],
+			(int(row["ranked"]) > 0) == want_r)
+		_chk("⑥ ★★★同一天: 缝=%s ⇒ 闯关赛入口口径一致(应%s 实%s)" % [
+				Time.get_datetime_string_from_unix_time(n, true),
+				"已收盘" if want_g else "未收盘", "已收盘" if int(row["gauntlet"]) > 0 else "未收盘"],
+			(int(row["gauntlet"]) > 0) == want_g)
+
+	## ★★分母: 注入前后**本来就该不同** —— 两个注入值给出的答案必须不一样,
+	##   否则上面那组"口径一致"是在一个对时间不敏感的样本上量的, 永远绿。
+	_chk("⑥ ★★分母: A/B 两个注入值给出的答案确实不同(不是对时间不敏感的样本)",
+		int(a["ranked"]) != int(b["ranked"]) and int(a["gauntlet"]) != int(b["gauntlet"])
+		and str(a["phase"]) != str(b["phase"]),
+		"积分 %d/%d · 闯关 %d/%d · 相位 %s/%s" % [int(a["ranked"]), int(b["ranked"]),
+			int(a["gauntlet"]), int(b["gauntlet"]), str(a["phase"]), str(b["phase"])])
+
+	## ★缝是 **static** ⇒ 活过场景切换 ⇒ 用完必须还原, 否则波及同进程后面的用例。
+	P2.now_override_ts = 0
+	_chk("⑥ ★收尾: 缝已还原成 0(static 的东西漏还原会波及后面的用例)",
+		int(P2.now_override_ts) == 0 and absi(int(P2.now_utc()) - int(Time.get_unix_time_from_system())) <= 2,
+		"now_override_ts=%d" % int(P2.now_override_ts))
+
+
+## 钉住缝, 摆一个干净局面, 走两个**不传参**的产品入口, 把它们说的话收回来。
+func _one_clock_probe(pin: int) -> Dictionary:
+	P2.now_override_ts = pin
+	## 积分赛那一侧
+	_setup(int(P2.RANKED_QUOTA) - 5, int(P2.PROMOTE_WINS_FLOOR))
+	var r: int = int(_gs.settle_ranked_close())            # ★不传 now_override
+	var promo: bool = bool(_gs.promoted)
+	## 闯关赛那一侧(4-0 ⇒ 该补 2 场)
+	_setup(int(P2.RANKED_QUOTA) - 5, int(P2.PROMOTE_WINS_FLOOR))
+	_gs.gauntlet_wins = 4
+	_gs.gauntlet_losses = 0
+	_gs.gauntlet_backfill_paid = 0
+	var g: int = int(_gs.settle_gauntlet_close())          # ★不传 now_override
+	return {"now": int(P2.now_utc()), "phase": str(P2.phase_at_utc(int(P2.now_utc()))),
+		"ranked": r, "gauntlet": g, "promoted": promo}

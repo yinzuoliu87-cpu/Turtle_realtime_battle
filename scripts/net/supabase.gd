@@ -1363,12 +1363,32 @@ func _http(method: String, url: String, body: String, cb: Callable, extra: Strin
 		req.queue_free()
 
 
+## ★★★2026-09-28 **这张表里原来没有 `PUT`**, 而绑定邮箱走的正是 `PUT /auth/v1/user`
+##   ⇒ 它掉进 `_: return METHOD_GET`, 被**悄悄降级成 GET**。
+## ★为什么这个 bug 能一直活着、而且全链路看起来都正常:
+##   `GET /auth/v1/user` 是**合法端点**(返回当前用户) ⇒ 服务端回 **200**,
+##   但它**把请求体整个忽略** ⇒ 不改邮箱、不发信。
+##   而 `send_code_result` 只看状态码, 2xx 即判成功 ⇒ 屏幕报「验证码发到 X 了」。
+##   **于是: 服务端没撒谎(GET 本来就该这样), 客户端也没写错(2xx 就是成功),
+##   错的是这一行把 PUT 变成了 GET。玩家侧的表现是「点了没反应、永远收不到码」。**
+## ★实测证据(2026-09-28, 逐条走真网络):
+##   · 手写 `METHOD_PUT` 的请求 ⇒ 回包带 `new_email` + `email_change_sent_at`, Gmail 真发出去
+##   · 走本函数的请求(N=3) ⇒ 回包**没有** `new_email`, Gmail 发件记录里一封都没有
+##   · 两者的方法/地址/四个请求头/正文**逐字相同** —— 唯一差别就是这里
+## ★它为什么没被 grep 发现: 调用处是 `_http(("PUT" if bind else "POST"), …)` ——
+##   **方法是动态拼的**, 按字面量搜 `_http("PUT"` 一个都搜不到。
+## ★★兜底从 `METHOD_GET` 改成**出声**: 静默兜底正是这个 bug 的藏身处 ——
+##   一个拼错的方法名会变成一次「成功的 GET」, 而不是一次看得见的失败。
 static func _method_of(m: String) -> int:
 	match m.to_upper():
+		"GET": return HTTPClient.METHOD_GET
 		"POST": return HTTPClient.METHOD_POST
+		"PUT": return HTTPClient.METHOD_PUT
 		"PATCH": return HTTPClient.METHOD_PATCH
 		"DELETE": return HTTPClient.METHOD_DELETE
-		_: return HTTPClient.METHOD_GET
+		_:
+			push_error("[Supabase] 不认识的 HTTP 方法 %s —— 退回 GET(这会静默丢掉请求体)" % m)
+			return HTTPClient.METHOD_GET
 
 
 func _bye() -> void:

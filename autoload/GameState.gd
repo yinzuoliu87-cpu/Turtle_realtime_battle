@@ -716,7 +716,8 @@ func backfill_gauntlet_quota() -> int:
 func settle_gauntlet_close(now_override: int = 0) -> int:
 	if week_anchor_ts == 0:
 		return 0                                   # 锚点还没初始化, 谈不上收盘
-	var now: int = now_override if now_override > 0 else int(Time.get_unix_time_from_system())
+	## ★★★兜底走 `_P2.now_utc()`(全局缝), 不再就地读系统钟(2026-09-28) —— 同 `settle_ranked_close()`。
+	var now: int = now_override if now_override > 0 else int(_P2.now_utc())
 	if now < _P2.gauntlet_close_ts(int(week_anchor_ts)):
 		return 0                                   # 本周闯关赛还没收盘
 	return backfill_gauntlet_quota()
@@ -2082,7 +2083,16 @@ func backfill_ranked_quota() -> int:
 func settle_ranked_close(now_override: int = 0) -> int:
 	if week_anchor_ts == 0:
 		return 0                                   # 锚点还没初始化, 谈不上收盘
-	var now: int = now_override if now_override > 0 else int(Time.get_unix_time_from_system())
+	## ★★★兜底走 `_P2.now_utc()`(全局缝), 不再就地读系统钟(2026-09-28)。
+	##   `now_override` **不删**(它是**更细的一层**, `verify_ranked_close` ②③④ 与
+	##   `verify_gauntlet_ahead` 在用); 但**真实时钟那条路只剩一条**。
+	##   实测(`tests/_probe_oneclock.gd`, 修前): 全局缝钉「周日 21:00」而不传 `now_override`
+	##   ⇒ 本函数返回 **0 场**(它读的是真实系统钟 = 周一, 收盘还没到),
+	##   而同一刻 `_P2.phase_at_utc(_P2.now_utc())` 已经说 `finals` —— **整条链说的不是同一天**。
+	##   这一条是玩家真会碰到的: `ensure_season()` 不传参, 走的正是这条兜底。
+	##   memory `fb-second-clock-drops-events`。
+	## ★`now_override == 0` 且 `now_override_ts == 0` 时**逐字节等价**于原来那一行。
+	var now: int = now_override if now_override > 0 else int(_P2.now_utc())
 	if now < _P2.ranked_close_ts(week_anchor_ts):
 		return 0                                   # 本周积分赛还没收盘
 	if not promoted:

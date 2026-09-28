@@ -137,21 +137,69 @@ func _ready() -> void:
 	_chk("① ★弹出了封盘提示(和淘汰/配额那两条不是同一条)",
 		inst.get_node_or_null("LockoutToast") != null)
 
-	## ② 窗外点开打 ⇒ 这条闸不该拦(证明 ① 不是恒真式: 同一次调用在窗外就会写 left_team)
+	## ────────────────────────────────────────────────────────────
+	## ③ ★★★同一条闸, 时刻从**全局缝**来 (`phase2_config.now_override_ts`, 2026-09-28)
+	##
+	## ★★为什么非要这一条: 这条闸的兜底原来是**就地** `Time.get_unix_time_from_system()`
+	##   —— 它和全局缝**互不相通**。实测(`tests/_probe_oneclock.gd`, 修前):
+	##   缝钉在「周五 22:55 封盘窗内」而 `lockout_now_override` 留 0 ⇒ 这条闸
+	##   **照旧放过去**(left_team 被写了 3 只), 因为它读的是真实系统钟。
+	##   于是「整屏钉在收盘前五分钟」的端到端场景里, 主菜单已经在喊封盘、
+	##   而点开打照样开得出去。memory `fb-second-clock-drops-events`。
+	## ★这一条**不写** `lockout_now_override` —— 走的正是玩家路径那条兜底。
+	## ────────────────────────────────────────────────────────────
 	for c in inst.get_children():
 		if c.name == "LockoutToast":
 			c.queue_free()
 			inst.remove_child(c)
-	inst.lockout_now_override = t_out
+	_chk("③ ★分母: 产品默认 now_override_ts == 0(缝默认关着, 玩家路径一字未动)",
+		int(P2C.now_override_ts) == 0, "now_override_ts=%d" % int(P2C.now_override_ts))
+	inst.lockout_now_override = 0
+	P2C.now_override_ts = t_in
+	GameState.left_team = [] as Array[String]
+	_chk("③ ★分母: 这一次**只**钉了全局缝, 屏内那层是关着的",
+		int(inst.lockout_now_override) == 0 and int(P2C.now_override_ts) == t_in,
+		"屏内=%d 缝=%d" % [int(inst.lockout_now_override), int(P2C.now_override_ts)])
+	inst._on_start()
+	var seam_blocked_in: bool = GameState.left_team.is_empty()
+	_chk("③ ★★★只钉全局缝也拦得住: 产品没写 left_team",
+		seam_blocked_in, "left_team=%d 只" % GameState.left_team.size())
+	_chk("③ ★★★只钉全局缝也弹得出封盘提示",
+		inst.get_node_or_null("LockoutToast") != null)
+
+	## ② 窗外点开打 ⇒ 这条闸不该拦(证明 ①/③ 不是恒真式: 同一次调用在窗外就会写 left_team)
+	## ★★★驱动改用**全局缝**(2026-09-28): 一个进程里只能有**一次**"放过去", 因为放过去那次
+	##   会真的 `change_scene_to_file` 把场景树掀掉 ⇒ 这一次留给**新**的那一层,
+	##   它同时当 ① 与 ③ 的分母(证明 `_on_start()` 在不封盘时确实写得到 left_team),
+	##   并且证明这条缝**两个方向都通**(钉窗内=拦住 / 钉窗外=放过)。
+	##   屏内那层 `lockout_now_override` 的 ">0" 分支由 ① 与 `verify_week_phase_write` 守。
+	for c in inst.get_children():
+		if c.name == "LockoutToast":
+			c.queue_free()
+			inst.remove_child(c)
+	inst.lockout_now_override = 0
+	P2C.now_override_ts = t_out
 	inst._on_start()
 	## ★★这里**不许 await**: 窗外那次会真的走到 `change_scene_to_file("Matchmaking")`,
 	##   而换场景是【延迟到帧末】执行的 —— 一 await 就把门禁自己的场景树掀掉,
 	##   下一行 `get_tree().process_frame` 直接对 null 取属性而崩(第一版就这么炸的)。
 	##   而 `_lockout_toast()` 里的 `add_child` 是**同步**的 ⇒ 不 await 也查得到它在不在。
 	_chk("② ★窗外点开打: 没有弹封盘提示", inst.get_node_or_null("LockoutToast") == null)
-	_chk("② ★窗外点开打: 产品写了 left_team(证明 ① 的空不是「本来就没走到」)",
+	_chk("② ★窗外点开打: 产品写了 left_team(证明 ①/③ 的空不是「本来就没走到」)",
 		GameState.left_team.size() == int(TS.REQUIRED_PETS),
 		"left_team=%d 只" % GameState.left_team.size())
+	## ★★分母: 同一条缝, 钉窗内=拦住 / 钉窗外=放过 —— 注入前后**本来就该不同**。
+	##   少了这一条, ③ 就可能是在一个"怎么钉都拦"的实现上量的。
+	## ★判据是**两侧翻面**, 不是"窗外这一侧写了" —— 后者与 ② 第二条一字不差,
+	##   抄一遍等于白加一条(反向验证时它照样绿, 2026-09-28 实测过才改成这样)。
+	var seam_blocked_out: bool = GameState.left_team.is_empty()
+	_chk("③ ★★分母: 同一条缝两个方向都通(窗内=%s / 窗外=%s, 答案确实翻面)" % [
+			"拦住" if seam_blocked_in else "放过", "拦住" if seam_blocked_out else "放过"],
+		seam_blocked_in and not seam_blocked_out)
+
+	## ★缝是 **static** ⇒ 活过场景切换 ⇒ 用完必须还原。
+	P2C.now_override_ts = 0
+	_chk("★收尾: 全局缝已还原成 0", int(P2C.now_override_ts) == 0)
 	_done()
 
 func _done() -> void:

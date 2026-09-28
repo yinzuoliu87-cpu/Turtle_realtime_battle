@@ -1303,7 +1303,15 @@ func _on_start() -> void:
 	##   `_start_battle_flow` 的注释也这么写 —— **代码只做了 2/3**。
 	##   ⚠ 当时的门禁 `verify_week_season` ⑥ 测的是**那个纯函数本身**(喂时间戳看返回值),
 	##     不是"开打那一刻被拦住" —— 典型的「判据没错但被测对象不在场」。
-	var _now: int = lockout_now_override if lockout_now_override > 0 else int(Time.get_unix_time_from_system())
+	## ★★★兜底走 `_P2C.now_utc()`(全局缝), 不再就地读系统钟(2026-09-28)。
+	##   `lockout_now_override` **不删**(`verify_close_lockout` / `verify_week_phase_write` 在用),
+	##   它只是**更细的一层**; 但**真实时钟那条路只剩一条**。
+	##   实测(`tests/_probe_oneclock.gd`, 修前): 全局缝钉在「周五 22:55 封盘窗内」
+	##   而 `lockout_now_override` 留 0 ⇒ 这条闸**照旧放过去**(left_team 被写了 3 只) ——
+	##   因为它读的是真实系统钟。下面那句 `week_phase` 也跟着记错阶段。
+	##   memory `fb-second-clock-drops-events`。
+	## ★两个 override 都是 0 时**逐字节等价**于原来那一行(玩家路径一字未动)。
+	var _now: int = lockout_now_override if lockout_now_override > 0 else int(_P2C.now_utc())
 	if not _P2C.can_start_match_utc(_now):
 		_lockout_toast()
 		return

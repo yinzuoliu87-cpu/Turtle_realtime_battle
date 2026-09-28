@@ -418,6 +418,82 @@ func _tap(p: Vector2) -> void:
 		get_viewport().push_input(e)
 
 
+## 本仓触摸线 81px = 44pt, 与 `verify_ui_consistency.TOUCH_MIN` 同一个数。
+const TOUCH_MIN_PX := 81.0
+## 相邻靶子至少要隔多少。★这一条**没有权威出处**(44pt 有: iOS HIG),
+##   是 2026-09-28 本轮拍的下限 —— 上一版实测只有 **4 / 6 / 12 / 6 px**,
+##   而「瞄发验证码高 7px 就点进邮箱框」正好弹出键盘 = 玩家看到的「点了没反应」。
+const GAP_MIN_PX := 12.0
+## 三档键盘(占视口高的比例) —— 依据各自写清楚, 不凭印象:
+##   0.415 = iPhone 14/15 横屏 ASCII 键盘 162pt / 屏高 390pt
+##   0.520 = 同上加中文候选条(产品注释里写的「≈52%」那档)
+##   0.580 = 窄屏 + 候选条的最坏一档(iPhone 13 mini 横屏 360pt 高, 键盘+候选条 ≈203pt)
+const KB_TIERS := [0.415, 0.520, 0.580]
+## 三种视口: 设计基准 / iPhone 横屏 / iPad 4:3。
+const VP_MATRIX := [Vector2(1280.0, 720.0), Vector2(1560.0, 720.0), Vector2(1280.0, 960.0)]
+
+
+## 一个**回成功**的注入传输 —— ⑥d 要走真的「发码成功」那条路,
+## 而 `_spy` 回的是连不上(永远到不了 EM_SENT)。
+func _spy_ok(method, url, _headers, body, cb) -> void:
+	_reqs.append({"method": str(method), "url": str(url), "body": str(body)})
+	cb.call({"ok": true, "code": 200, "body": "{}"})
+
+
+## 屏幕上那一步的靶子: 短边 / 相邻间隙 / 谁吃到这一点。
+##
+## ★为什么要按步量: 分两步之后另一步的控件**还在树上只是隐的**,
+##   一起数会把屏幕上没有的东西也算进来(而玩家瞄不到隐掉的那些)。
+## ★间隙只在**真的上下叠着**(水平投影有重叠)时才算 —— 并排的两个钮
+##   竖向间隙是 0, 但那不是「挤在一起」(手指左右还分得开)。
+func _t_step_targets(inst, step: int) -> void:
+	var hot := _hot(inst._email_layer)
+	print("     ── ⑥a 第 %d 步 ──" % step)
+	_ok("⑥a ★分母: 第 %d 步屏幕上真的有 ≥3 个可点元素(没有 ⇒ 下面整段是空检查)" % step,
+		hot.size() >= 3, "实得 %d 个" % hot.size())
+	hot.sort_custom(func(a, b): return (a as Control).get_global_rect().position.y < (b as Control).get_global_rect().position.y)
+	var eaten: Array = []
+	var small: Array = []
+	var tight: Array = []
+	var prev: Control = null
+	for c in hot:
+		var cc := c as Control
+		var r: Rect2 = cc.get_global_rect()
+		var mn: float = minf(r.size.x, r.size.y)
+		var h := _hover_at(r.get_center())
+		var mine: bool = h == cc or (h != null and cc.is_ancestor_of(h))
+		var gap: float = INF
+		if prev != null:
+			var pr: Rect2 = prev.get_global_rect()
+			## 水平投影有重叠 = 真的上下叠着
+			if r.position.x < pr.position.x + pr.size.x and pr.position.x < r.position.x + r.size.x:
+				gap = r.position.y - (pr.position.y + pr.size.y)
+		print("        %-22s %s  短边 %.0fpx=%.1fpt  间隙 %s  吃到这一点: %s"
+			% [_txt_of(cc).substr(0, 20),
+				"%.0f,%.0f %.0fx%.0f" % [r.position.x, r.position.y, r.size.x, r.size.y],
+				mn, mn / PX_PER_PT,
+				("—" if is_inf(gap) else "%+.0fpx" % gap),
+				("自己" if mine else str(h))])
+		if not mine:
+			eaten.append("%s ← %s" % [_txt_of(cc), str(h)])
+		if mn < TOUCH_MIN_PX:
+			small.append("%s %.0fx%.0f(短边 %.1fpt)" % [_txt_of(cc), r.size.x, r.size.y, mn / PX_PER_PT])
+		if not is_inf(gap) and gap < GAP_MIN_PX:
+			tight.append("%s 与上一个只隔 %.0fpx" % [_txt_of(cc), gap])
+		prev = cc
+	## ★这一条**不是恒真**: 反向验证把 `dim.mouse_filter` 换成一块盖在按钮上的
+	##   `MOUSE_FILTER_STOP` 兄弟节点, 这里立刻报"← 那个节点"。
+	_ok("⑥a ★★★第 %d 步每个可点元素**自己**吃到落在它身上那一点(被别人吃掉 = 点了没反应)" % step,
+		eaten.is_empty(), str(eaten))
+	## ★★★**长条不再豁免**。上一版那条豁免(`maxf(w,h) >= 200` 就放行)让
+	##   5 个宽 440 的靶子带着 22.8~25.0pt 的高度一路绿 —— 而手指瞄的是**竖向**,
+	##   长条只解决了水平那一维。这一屏改成两步之后竖向装得下, 豁免就没理由了。
+	_ok("⑥a ★★★第 %d 步每个可点元素短边 ≥44pt(81px) —— 长条**不再豁免**" % step,
+		small.is_empty(), str(small))
+	_ok("⑥a ★★★第 %d 步相邻靶子竖直间隙 ≥%dpx(挤太近 = 瞄 A 点到 B)" % [step, int(GAP_MIN_PX)],
+		tight.is_empty(), str(tight))
+
+
 func _t_touch() -> void:
 	print("── ⑥ 墙上点得到吗(触摸层) ──")
 	var vp0 := get_tree().root.size
@@ -439,34 +515,22 @@ func _t_touch() -> void:
 		await _wf(2)
 		return
 
-	# ── ⑥a 热区 + 谁吃到这一点 ────────────────────────────────
-	var hot := _hot(inst._email_layer)
-	_ok("⑥a ★分母: 墙上找到了 ≥5 个可点元素(昵称/邮箱/验证码/发码/确认)",
-		hot.size() >= 5, "实得 %d 个" % hot.size())
-	var eaten_by_other: Array = []
-	var too_small: Array = []
-	for c in hot:
-		var r: Rect2 = (c as Control).get_global_rect()
-		var mn: float = minf(r.size.x, r.size.y)
-		var mx: float = maxf(r.size.x, r.size.y)
-		var h := _hover_at(r.get_center())
-		var mine: bool = h == c or (h != null and (c as Control).is_ancestor_of(h))
-		print("     %-22s %-9s %s  短边 %.0fpx=%.1fpt  吃到这一点: %s"
-			% [_txt_of(c as Control).substr(0, 20), c.get_class(),
-				"%.0f,%.0f %.0fx%.0f" % [r.position.x, r.position.y, r.size.x, r.size.y],
-				mn, mn / PX_PER_PT, ("自己" if mine else str(h))])
-		if not mine:
-			eaten_by_other.append("%s ← %s" % [_txt_of(c as Control), str(h)])
-		## 「长条」按本仓成规豁免(整行 440 宽本来就好点, 见 `verify_ui_consistency` 的 tap 那列),
-		## 但**短边连 200 都不到的小方块**没有这个理由。
-		if mn < 81.0 and mx < 200.0:
-			too_small.append("%s %.0fx%.0f" % [_txt_of(c as Control), r.size.x, r.size.y])
-	## ★这一条**不是恒真**: 反向验证把 `dim.mouse_filter` 换成一块盖在按钮上的
-	##   `MOUSE_FILTER_STOP` 兄弟节点, 这里立刻报"← 那个节点"。
-	_ok("⑥a ★★★每个可点元素**自己**吃到落在它身上的那一点(被别人吃掉 = 点了没反应)",
-		eaten_by_other.is_empty(), str(eaten_by_other))
-	_ok("⑥a ★没有短边<44pt 的**小方块**靶子(整行长条按成规豁免, 见判据里的注释)",
-		too_small.is_empty(), str(too_small))
+	# ── ⑥a 热区 + 谁吃到这一点 ────────────────
+	## ★分母: 两步加起来的节点数 —— 墙上本来就该有昵称/邮箱/发码/码/确认 五个起,
+	##   少了就是流程被我拆没了, 而不是"排得更开"。
+	var all_nodes := 0
+	for ch in (inst._email_box as Node).get_children():
+		if ch is LineEdit or ch is BaseButton:
+			all_nodes += 1
+	_ok("⑥a ★分母: 两步加起来仍有 ≥5 个可点节点(昵称/邮箱/发码/码/确认…)",
+		all_nodes >= 5, "实得 %d 个" % all_nodes)
+	for step in [1, 2]:
+		inst._email_set_step(step)
+		await _wf(3)
+		await _t_step_targets(inst, step)
+	inst._email_set_step(1)
+	await _wf(3)
+
 	## ⑥a-2 居中: 原来位置写死成 1280x720 设计坐标 ⇒ 1560 宽的屏上整块偏左 140px。
 	var box: Control = null
 	for ch in (inst._email_layer as Node).get_children():
@@ -479,7 +543,7 @@ func _t_touch() -> void:
 			absf(cx - VP_PHONE.x / 2.0) <= 1.0,
 			"框中心 x=%.0f  视口中心 x=%.0f" % [cx, VP_PHONE.x / 2.0])
 
-	# ── ⑥b 按下去真的有事发生 ──────────────────────────────────
+	# ── ⑥b 按下去真的有事发生 ──────────────────
 	inst._email_edit.text = "touch@example.com"
 	SB.reset_email_flow()
 	await _wf(20)
@@ -506,12 +570,18 @@ func _t_touch() -> void:
 	SB.send_code_async("touch@example.com", SB.FLOW_BIND)
 	await _wf(10)
 	inst._email_poll()
+	## ★★分两步之后「确认」在**第二步**。这里用产品自己的入口把它推过去
+	##   (注入的传输回的是"连不上" ⇒ 到不了 EM_SENT, 不会自己翻页)。
+	inst._email_set_step(2)
+	await _wf(3)
 	GameState.nickname = "阿龟"
 	inst._nick_edit.text = "阿龟"
 	inst._code_edit.text = "12345678"
-	_ok("⑥b ★分母④: 「确认」这一刻是**可用**的, 且 `_email_pending` 有值(否则验码会静默早退)",
-		not inst._email_ok_btn.disabled and SB._email_pending != "",
-		"disabled=%s pending=「%s」" % [str(inst._email_ok_btn.disabled), SB._email_pending])
+	_ok("⑥b ★分母④: 「确认」这一刻**看得见、可用**, 且 `_email_pending` 有值(否则验码会静默早退)",
+		inst._email_ok_btn.is_visible_in_tree() and not inst._email_ok_btn.disabled
+			and SB._email_pending != "",
+		"可见=%s disabled=%s pending=「%s」" % [str(inst._email_ok_btn.is_visible_in_tree()),
+			str(inst._email_ok_btn.disabled), SB._email_pending])
 	_reqs.clear()
 	await _wf(20)
 	_ok("⑥b ★分母⑤: 不按的话**一个请求都不会发**(否则下面那条恒真)",
@@ -525,31 +595,60 @@ func _t_touch() -> void:
 		urls.has("/auth/v1/verify"), str(urls))
 	SB._transport_for_test = Callable()
 
-	# ── ⑥c 虚拟键盘 ──────────────────────────────────────────
-	## iPhone 横屏键盘 162pt / 屏高 390pt = 41.5%(ASCII 键盘; 中文带候选条更高)。
-	## ★分母: **不让位的时候真的有东西被埋** —— 没有的话下面那条是空检查。
-	print("     ── ⑥c 虚拟键盘 ──")
-	var kb: float = VP_PHONE.y * 0.415
-	var kb_top: float = VP_PHONE.y - kb
+	# ── ⑥c 虚拟键盘: 三档键盘 × 三种视口 × 两步 = 18 格 ──────
+	## ★上一版只量了**一格**(1560x720 × 41.5% × 一步)。判据一个字没放宽,
+	##   只是从 1 格摊到 18 格 —— 因为重排之后“装不装得下”是按键盘档位分胜负的,
+	##   只量最宽松那一档等于没量。
+	print("     ── ⑥c 虚拟键盘: 三档 × 三种视口 × 两步 ──")
+	var cells := 0
+	var denom := 0
+	var bad: Array = []
+	for v in VP_MATRIX:
+		get_tree().root.size = Vector2i(v)
+		await _wf(3)
+		for step in [1, 2]:
+			inst._email_set_step(step)
+			await _wf(3)
+			var hot2 := _hot(inst._email_layer)
+			for frac in KB_TIERS:
+				var kb: float = v.y * float(frac)
+				var kb_top: float = v.y - kb
+				## ★分母: **不让位**的话这一格真的有东西被埋。
+				##   没有 ⇒ 那一格是空检查(memory `fb-gate-subject-never-constructed`)。
+				SET.vkb_override_vp = -1.0
+				await _wf(2)
+				if not _under(hot2, kb_top).is_empty():
+					denom += 1
+				SET.vkb_override_vp = kb
+				await _wf(2)
+				cells += 1
+				var bu := _under(hot2, kb_top)
+				var ab: Array = []
+				for c in hot2:
+					if (c as Control).get_global_rect().position.y < 0.0:
+						ab.append(_txt_of(c as Control))
+				print("        %dx%d 第%d步 kb %.1f%%(顶边 %.0f) ⇒ 埋 %d / 顶出 %d  框 y=%.0f"
+					% [int(v.x), int(v.y), step, float(frac) * 100.0, kb_top,
+						bu.size(), ab.size(), (box.position.y if box != null else -1.0)])
+				if not bu.is_empty() or not ab.is_empty():
+					bad.append("%dx%d/步%d/kb%.0f%%: 埋%s 顶%s"
+						% [int(v.x), int(v.y), step, float(frac) * 100.0, str(bu), str(ab)])
+	_ok("⑥c ★分母①: 18 个格子真的都量了(三档 × 三视口 × 两步)",
+		cells == 18, "实测 %d 格" % cells)
+	_ok("⑥c ★分母②: **不让位**的话每一格都真有元素被埋(否则那一格是空检查)",
+		denom == cells, "%d/%d 格有被埋的" % [denom, cells])
+	_ok("⑥c ★★★让位后 **0 个可点元素被埋、 0 个被顶出上沿**(iOS 上键盘是盖上来的, 视口不缩)",
+		bad.is_empty(), str(bad))
 	SET.vkb_override_vp = -1.0
+	get_tree().root.size = Vector2i(VP_PHONE)
+	inst._email_set_step(1)
 	await _wf(3)
-	var buried0 := _under(hot, kb_top)
-	_ok("⑥c ★分母: **不让位**的话确实有可点元素落在键盘底下(没有 ⇒ 下面那条是空检查)",
-		not buried0.is_empty(), "被埋: %s" % str(buried0))
 	var y_home: float = box.position.y if box != null else 0.0
-	SET.vkb_override_vp = kb
+	SET.vkb_override_vp = VP_PHONE.y * 0.415
 	await _wf(3)
-	var buried1 := _under(hot, kb_top)
-	_ok("⑥c ★★★键盘弹出后, **一个可点元素都不在键盘底下**(iOS 上键盘是盖上来的, 视口不缩)",
-		buried1.is_empty(), "框挪到 y=%.0f, 仍被埋: %s"
-			% [(box.position.y if box != null else -1.0), str(buried1)])
-	## ★让位不许把输入框顶出屏幕上沿 —— 那是"修一个病造一个新病"。
-	var above: Array = []
-	for c in hot:
-		if (c as Control).get_global_rect().position.y < 0.0:
-			above.append(_txt_of(c as Control))
-	_ok("⑥c ★★让位**没有把任何可点元素顶出屏幕上沿**(说明文字可以顶出去, 可点的不行)",
-		above.is_empty(), str(above))
+	_ok("⑥c ★分母: 键盘弹出时框**真的挖了**(没挖 ⇒ 下面那条回位是恒真)",
+		box != null and absf(box.position.y - y_home) > 1.0,
+		"y=%.0f  原位 %.0f" % [(box.position.y if box != null else -1.0), y_home])
 	SET.vkb_override_vp = -1.0
 	await _wf(3)
 	_ok("⑥c ★键盘收起后框**回到原位**(不回 = 键盘按一次墙就永久歪了)",
@@ -558,10 +657,59 @@ func _t_touch() -> void:
 	## 纯函数: 物理窗口像素 → 视口单位。★无头读不到真键盘, 这一条量的是**折算本身**。
 	##   iPhone 14 横屏 3x: 键盘 162pt=486px, 窗口 390pt=1170px ⇒ 720 * 486/1170 = 299.1
 	var conv: float = SET._vkb_to_vp(486.0, VP_PHONE, Vector2(1560.0, 1170.0))
-	_ok("⑥c ★★折算对(物理 486px / 窗口 1170px × 视口 720 = 299.1 —— 不折算会挪错 1.6 倍)",
+	_ok("⑥c ★★折算对(物理 486px / 窗口 1170px × 视口 720 = 299.1 —— 不折算会挖错 1.6 倍)",
 		absf(conv - 299.08) <= 0.5, "%.2f" % conv)
 	_ok("⑥c ★无头 `window_get_size()` 是 (0,0) ⇒ 折算必须返回 0, 不许除零",
 		SET._vkb_to_vp(486.0, VP_PHONE, Vector2.ZERO) == 0.0)
+
+	# ── ⑥d 两步流程本身: 自动翻页 + 退路 + 退路不是出口 ──────
+	## ★为什么要单列一节: "分两步"引入了三个新的死法,
+	##   而上面 ⑥a~⑥c 一条都碰不到它们:
+	##     ① 发完码不翻页 ⇒ 玩家永远看不到验证码框
+	##     ② 第二步没退路 ⇒ 邮箱打错一个字母就是**死局**(墙关不掉)
+	##     ③ 退回第一步却被状态机又弹回去(忘了 reset) ⇒ 又一个「点了没反应」
+	print("     ── ⑥d 两步流程本身 ──")
+	SB._reset_auth_for_test()
+	SB._token = "tok-step"
+	SB._transport_for_test = _spy_ok
+	SB.reset_email_flow()
+	inst._email_set_step(1)
+	await _wf(3)
+	inst._email_edit.text = "step@example.com"
+	_ok("⑥d ★分母: 现在停在第一步, 而「确认」钮**不在屏幕上**(在 ⇒ 下面那条恒真)",
+		inst._email_step == 1 and not inst._email_ok_btn.is_visible_in_tree(),
+		"step=%d 确认可见=%s" % [inst._email_step, str(inst._email_ok_btn.is_visible_in_tree())])
+	_tap(inst._email_send_btn.get_global_rect().get_center())
+	await _wf(10)
+	inst._email_poll()
+	await _wf(3)
+	_ok("⑥d ★分母: 发码真的成功了(state=%s)" % SB.email_state(),
+		SB.email_state() == SB.EM_SENT, "msg=「%s」" % SB.email_msg())
+	_ok("⑥d ★★★发码成功 ⇒ **自己翻到第二步**(不让玩家去找「下一步」在哪)",
+		inst._email_step == 2 and inst._email_ok_btn.is_visible_in_tree()
+			and inst._code_edit.is_visible_in_tree(),
+		"step=%d 确认可见=%s 码框可见=%s" % [inst._email_step,
+			str(inst._email_ok_btn.is_visible_in_tree()), str(inst._code_edit.is_visible_in_tree())])
+	_ok("⑥d ★★第二步屏幕上写着**码发去了哪个邮箱** —— 状态行会被「码不对」覆盖, 地址得有个稳的地方",
+		str(inst._email_hint.text).find("step@example.com") >= 0, str(inst._email_hint.text))
+	_ok("⑥d ★分母: 第二步有「回上一步改邮箱」且看得见",
+		inst._email_back_btn != null and inst._email_back_btn.is_visible_in_tree())
+	_tap(inst._email_back_btn.get_global_rect().get_center())
+	await _wf(6)
+	_ok("⑥d ★★★点「回上一步改邮箱」**真的回到第一步**(邮箱打错一个字母 = 这堤墙的死局出口)",
+		inst._email_step == 1 and inst._email_edit.is_visible_in_tree(),
+		"step=%d" % inst._email_step)
+	_ok("⑥d ★★★回上一步**没把墙关掉**(关得掉的墙不是墙)",
+		inst._email_layer != null and is_instance_valid(inst._email_layer)
+			and (inst._email_layer as Control).is_visible_in_tree())
+	inst._email_poll()
+	await _wf(6)
+	inst._email_poll()
+	await _wf(3)
+	_ok("⑥d ★★回到第一步之后**不会被自己又弹回去**(忘了 reset 流程就会: 看着像「点了没反应」)",
+		inst._email_step == 1, "step=%d state=%s" % [inst._email_step, SB.email_state()])
+	SB._transport_for_test = Callable()
+	SB.reset_email_flow()
 
 	inst.queue_free()
 	get_tree().root.size = vp0

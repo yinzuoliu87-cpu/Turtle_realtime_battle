@@ -9,7 +9,7 @@ extends Node
 
 const SB := preload("res://scripts/net/supabase.gd")
 
-const MAIL := "turtle-probe@example.com"
+const MAIL := "turtlesupport32+fresh4@gmail.com"
 
 
 func _w(n: int) -> void:

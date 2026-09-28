@@ -242,10 +242,23 @@ func _check_login_wall(vp: Vector2) -> void:
 	var names: Array = []
 	for b in btns:
 		names.append(str((b as Button).text) if b is Button else b.name)
-	## ★分母②: 墙立起来时背后的设置页是**藏掉的** ⇒ 可见按钮只剩墙上那两个。
+	## ★分母②: 墙立起来时背后的设置页是**藏掉的** ⇒ 可见按钮只剩墙上这一步该露的。
 	##   数多了就说明墙没盖住(那时量的是另一块屏)。
-	_ok("登录墙: ★分母 可见按钮 %d 个 = 墙上那两个(发验证码/确认)" % btns.size(),
-		btns.size() == 2 and names.has("发验证码") and names.has("确认"), str(names))
+	## ★★2026-09-28 原来写死 `== 2 且有「发验证码」和「确认」`。墙改成**分两步**之后
+	##   第一步只露「发验证码」、「确认」在第二步 ⇒ 这条当场红。
+	##   ★但它**红得对**: 它守的是「背后那一屏真的被盖住了」, 而它把「盖住了」
+	##   **抄成了一个写死的数字 2** —— 版式一动它就误报。
+	##   ⇒ 改成量它真正想守的那件事: **墙上露出来的按钮, 必须全是墙自己的**
+	##   (背后设置页那些「重置存档」「调试场」一个都不许露), 数量随步骤走。
+	var _wall_ok := ["发验证码", "确认", "回上一步改邮箱", "关闭"]
+	var _leak: Array = []
+	for _n in names:
+		if not _wall_ok.has(str(_n)):
+			_leak.append(_n)
+	_ok("登录墙: ★分母 可见按钮 %d 个, 且全是墙自己的(背后设置页没漏出来)" % btns.size(),
+		btns.size() >= 1 and _leak.is_empty(), "漏出来的: %s / 全部: %s" % [str(_leak), str(names)])
+	_ok("登录墙: ★分母 这一步至少露着一个能往下走的键",
+		names.has("发验证码") or names.has("确认"), str(names))
 	var bad := _offscreen_buttons(inst, vp)
 	_ok("登录墙: %d 个可见按钮全在屏内" % btns.size(), bad.is_empty(), "; ".join(bad))
 	var occ := _occluded_buttons(inst, vp)

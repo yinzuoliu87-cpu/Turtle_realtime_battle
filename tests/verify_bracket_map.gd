@@ -24,6 +24,7 @@ extends Node
 const SCENE := preload("res://scripts/scenes/BracketMapScene.gd")
 const B := preload("res://scripts/gamedata/bracket.gd")
 const L := preload("res://scripts/gamedata/bracket_layout.gd")
+const P2C := preload("res://scripts/gamedata/phase2_config.gd")
 
 const NAMES := ["甲龟", "乙龟", "丙龟", "丁龟", "戊龟", "己龟", "庚龟", "辛龟"]
 
@@ -455,6 +456,62 @@ func _t_two_views() -> void:
 	await get_tree().process_frame
 	_ok("⑤ ★切回来读的又是桶那份(8 人)",
 		int(_map.cur().get("size", 0)) == 8, "size=%d" % int(_map.cur().get("size", 0)))
+
+	## ────────────────────────────────────────────────────────────
+	## ⑤z ★★★时刻从**全局缝**来 (`phase2_config.now_override_ts`, 2026-09-28)
+	##
+	## ★★为什么非要这一段: `_clock()` 的兜底原来是**就地**
+	##   `Time.get_unix_time_from_system()` —— 它和全局缝**互不相通**, 于是
+	##   玩家从主菜单点进来那条路(`set_bucket()` / 联网 feed, `now` 一律不传)
+	##   **谁也管不住它**。实测(`tests/_probe_oneclock.gd`, 修前): 缝钉「周一 10:00」
+	##   与钉「周日 21:00」, `_clock()` 量出来是**同一个值**(真实系统钟 09-28 21:37),
+	##   默认视图两次都是 `finals` —— 注入值差六天, 这一屏一个字没变。
+	##   (更糟的是它只在真实时刻 20:00 之后才是 `finals` ⇒ 这一屏的默认视图
+	##    在真实世界里跟着**挂钟**走, 而不是跟着赛程走。)
+	##   memory `fb-second-clock-drops-events`。
+	## ★这一段的 `set_data(..., 0)` **第三个参数是 0** —— 走的正是玩家那条兜底。
+	## ────────────────────────────────────────────────────────────
+	_ok("⑤z ★分母: 产品默认 now_override_ts == 0(缝默认关着, 玩家路径一字未动)",
+		int(P2C.now_override_ts) == 0, "now_override_ts=%d" % int(P2C.now_override_ts))
+	var seam_views: Dictionary = {}
+	var seam_clocks: Dictionary = {}
+	for pin in [SUN_PM, SUN_AM]:
+		P2C.now_override_ts = pin
+		_map.set_data(
+			{"size": 8, "round": 5, "me": 2, "names": NAMES, "done": {}},
+			{"size": 4, "round": 1, "me": -1, "names": ["甲龟", "乙龟", "丙龟", "丁龟"], "done": {}},
+			0)
+		await get_tree().process_frame
+		seam_views[pin] = str(_map._view)
+		seam_clocks[pin] = int(_map._clock())
+		_ok("⑤z ★分母: 这一次**只**钉了全局缝, 屏内那层 `_now_override` 是关着的",
+			int(_map._now_override) == 0, "_now_override=%d" % int(_map._now_override))
+		_ok("⑤z ★★★`_clock()` 就是缝里那个值(不是真实系统钟)",
+			seam_clocks[pin] == pin,
+			"缝=%s 实得=%s" % [
+				Time.get_datetime_string_from_unix_time(pin, true),
+				Time.get_datetime_string_from_unix_time(seam_clocks[pin], true)])
+	_ok("⑤z ★★★只钉缝(21:00) ⇒ 默认看【冠军赛】",
+		str(seam_views[SUN_PM]) == L.VIEW_FINALS, str(seam_views[SUN_PM]))
+	_ok("⑤z ★★★只钉缝(10:00) ⇒ 默认看【我的桶】",
+		str(seam_views[SUN_AM]) == L.VIEW_BUCKET, str(seam_views[SUN_AM]))
+	## ★★分母: 注入前后**本来就该不同** —— 否则上面两条里有一条是蒙的。
+	_ok("⑤z ★★分母: 两个注入值给出的答案确实不同(不是对时间不敏感的样本)",
+		str(seam_views[SUN_PM]) != str(seam_views[SUN_AM])
+		and int(seam_clocks[SUN_PM]) != int(seam_clocks[SUN_AM]),
+		"%s / %s" % [str(seam_views[SUN_PM]), str(seam_views[SUN_AM])])
+	## ★★★「整条链同一天」: 这一屏的 `_clock()` 与缝的 `now_utc()` 必须是同一个时刻,
+	##   而且相位必须都是「周日决赛日」—— 这一屏本来就只在周日出现。
+	for pin in [SUN_PM, SUN_AM]:
+		P2C.now_override_ts = pin
+		_ok("⑤z ★★★同一天: 屏(`_clock()`) 与缝(`now_utc()`) 同一时刻, 相位=%s" % [
+				str(P2C.phase_at_utc(int(P2C.now_utc())))],
+			int(seam_clocks[pin]) == int(P2C.now_utc())
+			and str(P2C.phase_at_utc(int(P2C.now_utc()))) == str(P2C.PHASE_FINALS),
+			"屏=%d 缝=%d" % [int(seam_clocks[pin]), int(P2C.now_utc())])
+	## ★缝是 **static** ⇒ 活过场景切换 ⇒ 用完必须还原, 否则波及同进程后面的用例。
+	P2C.now_override_ts = 0
+	_ok("⑤z ★收尾: 全局缝已还原成 0", int(P2C.now_override_ts) == 0)
 
 # ─────────────────────────────────────────────────────────────
 # ⑧ ★★★揭晓被封存的那一场（方案书 20260927-周日结果封存.md）
