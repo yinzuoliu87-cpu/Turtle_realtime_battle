@@ -35,11 +35,16 @@ func _ready() -> void:
 	_account_row()
 
 	# BGM 滑条 @ (W/2, 220) — 拖动实时生效; 写盘只在松手时一次 (原来每帧 save() = 拖一下写几十次盘)
-	_slider(W / 2.0, 220.0, "🎵 BGM 音量", GameState.bgm_volume,
+	## ★★2026-09-28 文案去"网页/开发者味": 原来是「🎵 BGM 音量」「🔊 音效音量」。
+	##   ① **BGM 是开发者黑话** —— 玩家的词是「音乐」。项目里给玩家看的字从不写英文缩写
+	##     (「深海币」「出战统领」「糖果罐」), 只有这一处漏了。
+	##   ② 「音量」两个字是多余的: 右边就写着 45%, 而它前面是一根音量条 ——
+	##     「标签: 值」那套是网页表单的读法, 条自己就说清了它是什么。
+	_slider(W / 2.0, 220.0, "🎵 音乐", GameState.bgm_volume,
 		func(v): GameState.bgm_volume = v; Audio.bgm_volume = v; Audio.apply_bgm_volume(),   # ★补: 原来只设变量没调 apply → 拖动对正在播的BGM无效(用户2026-07-19"音量键根本没效果")
 		func(): GameState.save())
 	# SFX 滑条 @ (W/2, 330) — 松手才试听 + 写盘 (原来拖动中每帧都播音效)
-	_slider(W / 2.0, 330.0, "🔊 音效音量", GameState.sfx_volume,
+	_slider(W / 2.0, 330.0, "🔊 音效", GameState.sfx_volume,
 		func(v): GameState.sfx_volume = v; Audio.sfx_volume = v,
 		func(): Audio.play_sfx("hit-physical", 1.0); GameState.save())
 
@@ -62,8 +67,13 @@ func _ready() -> void:
 	# 重置存档 @ (W/2, 580 / 开发构建 640) — ⚠ 破坏性 → 二次确认
 	_text_button(W / 2.0, reset_y, "⚠ 重置所有存档", _ask_reset)
 
-	# 底部提示 @ (W/2, H-40), 11px #888
-	var hint := _stroked_label("设置自动保存", 11, "#888888", "", 0)   # PoC 字面是"到 localStorage"(浏览器术语), Godot 存 user:// → 去掉误导后缀
+	# 底部提示 @ (W/2, H-40)
+	## ★★2026-09-28 这一行原来是 **11px 的 #888 灰小字**「设置自动保存」——
+	##   网页页脚的标准长相(最小号、纯灰、贴底居中), 而且说的是**系统在做什么**,
+	##   不是玩家关心的事。改成 13px 的暖羊皮色 + 描边(和这一屏其它字同一套),
+	##   话也换成玩家听得懂的: 他想知道的是「我还要不要点保存」。
+	##   (PoC 字面是"到 localStorage" —— 浏览器术语, 那一版就已经去掉了后缀。)
+	var hint := _stroked_label("调完就记住了，下次进来还是这样", 13, "#d8c49a", "#2a1b08", 3)
 	_place_center(hint, W / 2.0, H - 40.0)
 
 
@@ -109,6 +119,18 @@ const _P2C := preload("res://scripts/gamedata/phase2_config.gd")
 var acct_override: int = 0
 
 
+## 【账号行的节点名前缀】—— `verify_account` ⑤ 靠它量「这一行到底建没建出来」。
+##
+## ★★为什么要有它: ⑤ 守的需求是「没配后端 ⇒ **整行不显示**(不是显示"离线")」,
+##   而它原来的实现是 `not _find_text(s3, "账号：")` —— **拿一个字面量当尺子**。
+##   2026-09-28 去掉那个半角/全角冒号(`label: value` 是网页表单的读法)的同一刻,
+##   那条断言就变成**恒真**: 找不到是因为词改了, 不是因为行没建。
+##   ⇒ 把判据从「屏幕上有没有这个词」平移到「这一族节点在不在树上」。
+## ★**常量在产品这边**, 门禁 `preload` 它来读 —— 门禁自己抄一份字符串,
+##   就是 memory `fb-hand-rolled-copies-drift` 那条"抄一次永远落后一次"。
+const ACCT_ROW_PREFIX := "AcctRow"
+
+
 ## 账号功能开着吗。**判据只从这一处取** —— 两处各判一份必然漂。
 func _acct_on() -> bool:
 	return true if acct_override == 1 else _SB_ACC.enabled()
@@ -128,32 +150,41 @@ func _account_row() -> void:
 	var sub := ""
 	if aid == "":
 		## 配了后端但还没拿到身份(刚开机还在登, 或登不上)。不说"失败" —— 说不准。
-		head = "账号：连接中…"
+		head = "账号 · 连接中…"
 		sub = ""
 	elif _SB_ACC.session_lost():
 		## D-3c: 绑了邮箱的号登录失效了。**不会**自动换成新匿名号(那是静默换身份),
 		##   只能用邮箱把同一个号取回来 —— 所以这里要明说该点哪个按钮。
-		head = "账号：%s" % mail
+		head = "账号 · %s" % mail
 		sub = "⚠ 登录已失效 —— 点「用邮箱取回」重新登录"
 	elif _SB_ACC.save_conflict():
 		## D-8: 两台设备交替玩 ⇒ 云端版本和这台对不上。**不自动选**, 等玩家二选一。
-		head = "账号：%s" % mail
+		head = "账号 · %s" % mail
 		sub = "⚠ 云端存档和这台设备的不一样（可能在别的设备上玩过）"
 	elif mail != "":
 		## ★D-8 之后这句才是真的: 绑了邮箱的号, 进度会同步到云端(verify_save_sync ⑦ 守着)。
-		head = "账号：%s" % mail
+		head = "账号 · %s" % mail
 		sub = "已绑定 · 换设备可用这个邮箱取回账号和进度"
 	else:
 		## ★只显前 8 位: 完整 uuid 36 个字符, 在 1280 宽里既放不下也没用 ——
 		##   它的用途是「报问题时能对上号」, 前 8 位足够。
-		head = "账号：匿名 · %s" % aid.substr(0, 8)
+		head = "账号 · 匿名 %s" % aid.substr(0, 8)
 		sub = "⚠ 未绑定邮箱 —— 换设备后账号和进度都找不回来"
+	## ★★2026-09-28 这一族**必须有名字**(`ACCT_ROW_PREFIX`)。
+	##   由来: `verify_account` ⑤ 守的是「没配后端 ⇒ 整行不显示」, 但它原来的实现是
+	##   `not _find_text(s3, "账号：")` —— **拿字面量当尺子**。
+	##   于是我把「账号：」的冒号去掉(那是 `label: value` 的网页表单读法)的同一刻,
+	##   那条断言就**恒真**了: 找不到是因为这个词没了, 不是因为行没建
+	##   (memory `fb-gate-tautological-when-it-spans-a-frame` 同族: 判据不再卡住那个形状)。
+	##   ⇒ 判据平移到**行为**: 这一族节点在不在树上。文案以后怎么改都不影响它。
 	var a := _stroked_label(head, 15, "#cfe3ff", "", 0)
 	_place_center(a, W / 2.0, 128.0)
+	a.name = ACCT_ROW_PREFIX + "Head"
 	if sub != "":
 		var col := "#ffb454" if mail == "" else "#8fa6bd"    # 未绑定用警示橙, 已绑定用灰
 		var b := _stroked_label(sub, 12, col, "", 0)
 		_place_center(b, W / 2.0, 148.0)
+		b.name = ACCT_ROW_PREFIX + "Sub"
 	## ★★2026-09-21 把「存档」两个字全部换掉 —— 原文案是**不准确的**。
 	##   核实过服务端五张表(`accounts` / `ghosts` / `matches` / `standings` /
 	##   `service_status`)：**没有一张存玩家存档**(`accounts` 只有
@@ -165,17 +196,19 @@ func _account_row() -> void:
 	var note := _stroked_label(("（绑定邮箱后，进度会同步到云端）" if mail == ""
 		else "（进度会自动同步到云端）"), 11, "#7e8fa0", "", 0)
 	_place_center(note, W / 2.0, 166.0)
+	note.name = ACCT_ROW_PREFIX + "Note"
 	## ★D-3c 补上 v0.19.423 漏掉的入口: 那一版只有「绑定邮箱」,
 	##   **取回流程写了但点不到** —— 新手机上根本没法用邮箱把号拿回来。
 	##   `verify_session_refresh` 没有覆盖到 UI, 这条由 `verify_account` ④ 走真入口验。
 	if aid != "" and _SB_ACC.save_conflict():
-		_small_button(W / 2.0 - 80.0, 192.0, "处理存档冲突", _open_conflict_dialog)
+		_small_button(W / 2.0 - 80.0, 192.0, "处理存档冲突", _open_conflict_dialog).name = \
+			ACCT_ROW_PREFIX + "BtnConflict"
 	elif aid != "":
 		_small_button(W / 2.0 - 80.0, 192.0,
 			("换个邮箱" if mail != "" else "绑定邮箱"),
-			func(): _open_email_dialog(_SB_ACC.FLOW_BIND))
+			func(): _open_email_dialog(_SB_ACC.FLOW_BIND)).name = ACCT_ROW_PREFIX + "BtnBind"
 	_small_button((W / 2.0 + 80.0) if aid != "" else W / 2.0, 192.0, "用邮箱取回",
-		func(): _open_email_dialog(_SB_ACC.FLOW_RECOVER))
+		func(): _open_email_dialog(_SB_ACC.FLOW_RECOVER)).name = ACCT_ROW_PREFIX + "BtnRecover"
 
 
 # ─── D-8 存档冲突: 二选一 ──────────────────────────────────────
@@ -193,14 +226,18 @@ func _open_conflict_dialog() -> void:
 
 	var box := Panel.new()
 	var sb := StyleBoxFlat.new()
+	## ★★2026-09-28 与重置框一起换成金属九宫格(理由见 `_ask_reset` 里那段)。
 	sb.bg_color = Color("#1c2836"); sb.border_color = Color("#ffb454")
-	sb.set_border_width_all(3); sb.set_corner_radius_all(12)
-	box.add_theme_stylebox_override("panel", sb)
-	box.position = Vector2(W / 2.0 - 280, H / 2.0 - 160); box.size = Vector2(560, 320)
+	sb.set_border_width_all(3); sb.set_corner_radius_all(0)
+	var ctex := UISkin.nine("panel-frame.png", 20, sb)
+	if ctex is StyleBoxTexture:
+		(ctex as StyleBoxTexture).modulate_color = UISkin.tint_of(Color("#ffb454"))
+	box.add_theme_stylebox_override("panel", ctex)
+	box.position = Vector2(W / 2.0 - 280, H / 2.0 - 170); box.size = Vector2(560, 340)
 	dim.add_child(box)
 
 	var ttl := Label.new()
-	ttl.text = "存档冲突"
+	ttl.text = "两边的存档对不上"
 	ttl.add_theme_font_size_override("font_size", 24)
 	ttl.add_theme_color_override("font_color", Color("#ffb454"))
 	ttl.position = Vector2(0, 18); ttl.size = Vector2(560, 32)
@@ -208,16 +245,18 @@ func _open_conflict_dialog() -> void:
 	box.add_child(ttl)
 
 	var msg := Label.new()
-	msg.text = "云端的存档被另一台设备更新过，和这台设备上的不一样。选一份留下："
+	msg.text = "云端的存档被另一台设备更新过，和这台设备上的不一样。留哪一份？"
 	msg.add_theme_font_size_override("font_size", 14)
 	msg.add_theme_color_override("font_color", Color("#c9d6e2"))
-	msg.position = Vector2(30, 60); msg.size = Vector2(500, 40)
-	msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	msg.position = Vector2(30, 60)
+	## ★中文按字断行(理由见 `_ask_reset` 的 msg)。
+	msg.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
 	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(msg)
+	msg.size = Vector2(500, 44)     # ★入树后再设一次, 写在 add_child 前的那次不一定算数
 
 	var opts := [
-		["用云端的", "这台设备上次同步之后的进度会被换掉\n（换之前先在本机备份一份）",
+		["用云端那份", "这台设备上次同步之后的进度会被换掉\n（换之前先在本机备份一份）",
 			func(): _SB_ACC.resolve_conflict_use_cloud()],
 		["用这台的", "另一台设备上的进度会被这台覆盖",
 			func(): _SB_ACC.resolve_conflict_use_local()],
@@ -228,7 +267,9 @@ func _open_conflict_dialog() -> void:
 		var b := Button.new()
 		b.text = str(o[0])
 		b.add_theme_font_size_override("font_size", 17)
-		b.position = Vector2(x, 112); b.size = Vector2(230, 44)
+		b.position = Vector2(x, 110); b.size = Vector2(230, 50)
+		## ★★原来是裸 `Button.new()` = Godot 默认皮(圆角灰板)。换皮走共享层 `UISkin`。
+		UISkin.button(b)
 		var cb: Callable = o[2]
 		b.pressed.connect(func():
 			cb.call()
@@ -239,17 +280,67 @@ func _open_conflict_dialog() -> void:
 		cost.text = str(o[1])
 		cost.add_theme_font_size_override("font_size", 12)
 		cost.add_theme_color_override("font_color", Color("#ff8a94"))
-		cost.position = Vector2(x, 162); cost.size = Vector2(230, 60)
-		cost.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		cost.position = Vector2(x, 168)
+		cost.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
 		cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		box.add_child(cost)
+		cost.size = Vector2(230, 64)
 
 	var close := Button.new()
 	close.text = "先不选"
 	close.add_theme_font_size_override("font_size", 15)
-	close.position = Vector2(200, 256); close.size = Vector2(160, 40)
+	## ★160x40 短边 40 < 81 触摸线; 拉成 240x48 的长条(宽的那边过 200, 热区判据也放行)。
+	close.position = Vector2(160, 262); close.size = Vector2(240, 48)
+	UISkin.button(close)
 	close.pressed.connect(func(): dim.queue_free(); _confirm_layer = null)
 	box.add_child(close)
+
+
+## 【输入框换皮】(2026-09-28)
+##
+## ★由来: 默认的 `LineEdit` 是**圆角灰盒 + 细边**, 那就是网页表单字段的长相,
+##   而这三个框(昵称/邮箱/验证码)正长在**每个新玩家看到的第一屏**(关不掉的登录墙)上。
+##   这一屏 2026-09-27 已经把对话框和按钮都换成金属件了, 只剩输入框还是网页的。
+##
+## ★用哪张图是**量出来选的**, 不是挑好看的: `bar-frame.png` 源图 96x24,
+##   本来就是给横条画的(战斗血条/龟能条用的同一张), 中间是真黑深槽 ——
+##   而"输入框"在像素 UI 里本来就该是个凹槽。
+##   边距从贴图量: 左右边带 7px、上下 4px ⇒ 取 8 / 5(各留 1px 把斜切角整个盖进去);
+##   8+8=16 < 440、5+5=10 < 44, 装得下(`UISkin` 铁律③: 边距之和必须小于目标尺寸)。
+##
+## ★`content_margin` 必须自己给: `StyleBoxTexture` 不像 `StyleBoxFlat` 那样自带内边距,
+##   不给的话文字会**压在左边那道金属沿上**(本仓「文字压边带」判据抓的就是这一类)。
+func _skin_edit(e: LineEdit) -> void:
+	var fb := StyleBoxFlat.new()
+	fb.bg_color = Color("#0e1726")
+	fb.border_color = Color("#3c5570")
+	fb.set_border_width_all(2)
+	fb.set_corner_radius_all(0)          # ★退回的那一份也不许带圆角
+	for slot in ["normal", "focus", "read_only"]:
+		## ★★这里**不能**开 `tile`(TILE_FIT) —— 试过, 实拍更糟: 96→440 要铺 4~5 份,
+		##   每一份的左右边沿都在黑槽里留一道竖线, 四个输入框看着像四张带列线的表格。
+		##   `bar-frame` 的中段本来就是一块匀色深槽, **拉伸不掉细节**(没细节可掉),
+		##   会被抻平的只有上下沿那两条光带, 而那两条本来就是平的。
+		##   ⇒ 「拉伸 vs 平铺」看中段有没有图案, 不看倍数。
+		var sb := UISkin.nine("bar-frame.png", 8, fb)
+		if sb is StyleBoxTexture:
+			var stx := sb as StyleBoxTexture
+			stx.set_texture_margin(SIDE_TOP, 5)
+			stx.set_texture_margin(SIDE_BOTTOM, 5)
+			## 聚焦时把整块槽提亮一档 —— 一张中性贴图 modulate 出所有状态,
+			## 不另做一张图(`UISkin` 铁律②)。
+			## ★常态压到 0.7 档: 原样(白)出来的金属沿**比对话框自己的框还亮**
+			##   (框走的是 `UISkin.tint_of(#5aa0ff)` ≈ 0.8/0.89/1.0), 实拍三个输入框
+			##   抢走了整块墙的视线。边框比内容响 = 又一种"表单"长相。
+			stx.modulate_color = Color(1.02, 1.06, 1.0) if slot == "focus" else Color(0.66, 0.73, 0.84)
+		sb.content_margin_left = 16
+		sb.content_margin_right = 16
+		sb.content_margin_top = 8
+		sb.content_margin_bottom = 8
+		e.add_theme_stylebox_override(slot, sb)
+	e.add_theme_color_override("font_color", Color("#e8f0ff"))
+	e.add_theme_color_override("font_placeholder_color", Color("#7d93ac"))
+	e.add_theme_color_override("caret_color", Color("#ffd93d"))
 
 
 ## 紧凑按钮 —— 账号行下面那一个。`_text_button` 是 260×50 的木框大按钮,
@@ -425,7 +516,8 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 		_nick_edit.text = str(GameState.nickname)
 		_nick_edit.max_length = _P2C.NICK_MAX * 2   # ★按**规范化后**判长度, 这里只防手滑贴一长串
 		_nick_edit.add_theme_font_size_override("font_size", 16)
-		_nick_edit.position = Vector2(40, 152); _nick_edit.size = Vector2(440, 40)
+		_nick_edit.position = Vector2(40, 150); _nick_edit.size = Vector2(440, 42)
+		_skin_edit(_nick_edit)
 		box.add_child(_nick_edit)
 		_dy = 60.0
 
@@ -434,6 +526,7 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 	_email_edit.text = str(GameState.account_email)
 	_email_edit.add_theme_font_size_override("font_size", 16)
 	_email_edit.position = Vector2(40, 136 + _dy); _email_edit.size = Vector2(440, 44)
+	_skin_edit(_email_edit)
 	box.add_child(_email_edit)
 
 	_email_send_btn = Button.new()
@@ -450,6 +543,7 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 	_code_edit.placeholder_text = "邮件里的验证码"
 	_code_edit.add_theme_font_size_override("font_size", 16)
 	_code_edit.position = Vector2(40, 244 + _dy); _code_edit.size = Vector2(440, 44)
+	_skin_edit(_code_edit)
 	box.add_child(_code_edit)
 
 	_email_ok_btn = Button.new()
@@ -579,11 +673,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 
 
+## ★★2026-09-28 与下面的画质键统一成【状态式】: 牌子上写的是**现在是什么**,
+##   不是"按下去会发生什么"。原来这一个是动作式(「全屏」/「退出全屏」)、
+##   旁边那个是状态式 —— 同一列两种读法, 玩家要在两种语法之间来回切。
+##   状态式那条原则是这一屏自己定的(见 `_perf_label` 头注), 这里把它补齐。
+## ★用「」而不是半角冒号: `画质: 高` 那种 `标签: 值` 就是网页表单的长相,
+##   而「」是这个项目通篇在用的引用号(「用邮箱取回」「财神龟」)。
 func _fullscreen_label() -> String:
 	var m := DisplayServer.window_get_mode()
 	if m == DisplayServer.WINDOW_MODE_FULLSCREEN or m == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
-		return "退出全屏"
-	return "全屏"
+		return "画面「全屏」"
+	return "画面「窗口」"
 
 
 ## ★2026-08-19 缩短: 原文「🪶 低画质模式: 关 (高画质)」在 260 宽的木牌里**装不下** ——
@@ -591,10 +691,13 @@ func _fullscreen_label() -> String:
 ##   (实拍看出来的; 门禁原来查不到, 因为它只把 StyleBoxTexture/NinePatchRect 当框,
 ##    而这里的框是一个**拉伸的 TextureRect**。已一并补进 verify_ui_consistency。)
 ##   "开/关" 也去掉了 —— 按钮显示的是**当前是什么**, 不是"这个开关的开关状态", 后者要绕一圈才读懂。
+## ★★2026-09-28 去掉那个**半角冒号**。「画质: 高」= `label: value`,
+##   是网页表单/设置页最典型的一行; 换成「」之后它读起来是一块写着当前状态的牌子。
+##   宽度没变大(冒号+空格 2 个半角 ≈ 「」1 个全角), 仍远小于木牌 202px 的内部净宽。
 func _perf_label() -> String:
 	if GameState.perf_lite:
-		return "🪶 画质: 低"
-	return "🪶 画质: 高"
+		return "🪶 画质「低」"
+	return "🪶 画质「高」"
 
 
 ## 低画质模式 = 真开关 (原来只改自己的 label, grep 全库无第二处引用 = 死按钮)
@@ -605,9 +708,10 @@ func _toggle_perf() -> void:
 	if _perf_btn != null:
 		_perf_btn.text = _perf_label()
 	## 按钮上只剩"高/低", 于是把"低=更流畅"这条信息挪到 toast 里, 不然玩家不知道调它图什么。
-	_toast("画质已设为%s%s · 下次进战斗生效" % [
+	## ★2026-09-28 换成说人话的版本: 「已设为」是设置面板的腔调, 玩家听的是"下一场就不卡了"。
+	_toast("画质换成「%s」了%s · 下一场开打时生效" % [
 		"低" if GameState.perf_lite else "高",
-		" (更流畅)" if GameState.perf_lite else ""])
+		"，手机会跑得更顺" if GameState.perf_lite else ""])
 
 
 func _toggle_fullscreen() -> void:
@@ -635,41 +739,66 @@ func _ask_reset() -> void:
 
 	var box := Panel.new()
 	var sb := StyleBoxFlat.new()
+	## ★★2026-09-28 换**金属九宫格框**(`panel-frame`, 与邮箱对话框/背包/图鉴/战绩同一张)。
+	##   原来是 `border 3 + 圆角 12` 的 StyleBoxFlat —— 这一屏最后两个还长着 CSS 卡片
+	##   长相的盒子之一(另一个是存档冲突框)。邮箱对话框 2026-09-27 已经换过,
+	##   这两个漏了, 因为它们**默认不显示** ⇒ `verify_ui_consistency` 的棘轮从没量到过。
+	##   —— memory `fb-gate-subject-never-constructed`: 判据没错, 被测对象不在场。
+	## ★`sb` 降级成 fallback(贴图缺失时才用), 圆角一并抹成 0: `UISkin` 铁律①说要优雅退回,
+	##   但退回的那一份不该把网页味带回来。
 	sb.bg_color = Color("#1c2836"); sb.border_color = Color("#ff5566")
-	sb.set_border_width_all(3); sb.set_corner_radius_all(12)
-	box.add_theme_stylebox_override("panel", sb)
-	box.position = Vector2(W / 2.0 - 260, H / 2.0 - 130); box.size = Vector2(520, 260)
+	sb.set_border_width_all(3); sb.set_corner_radius_all(0)
+	var rtex := UISkin.nine("panel-frame.png", 20, sb)
+	if rtex is StyleBoxTexture:
+		(rtex as StyleBoxTexture).modulate_color = UISkin.tint_of(Color("#ff5566"))
+	box.add_theme_stylebox_override("panel", rtex)
+	## 高 260→300: 两个键从 160x44(短边 44 < 81 触摸线)改成 210x52。
+	box.position = Vector2(W / 2.0 - 260, H / 2.0 - 150); box.size = Vector2(520, 300)
 	dim.add_child(box)
 
 	var ttl := Label.new()
 	ttl.text = "⚠ 重置所有存档？"
 	ttl.add_theme_font_size_override("font_size", 26)
 	ttl.add_theme_color_override("font_color", Color("#ff5566"))
-	ttl.position = Vector2(0, 22); ttl.size = Vector2(520, 36)
+	ttl.position = Vector2(0, 20); ttl.size = Vector2(520, 36)
 	ttl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(ttl)
 
 	var msg := Label.new()
-	msg.text = "将清空：深海币 · 背包装备 · 出战统领 · 赛季进度(命/等级/胜场) · 糖果罐 · 布阵。\n**此操作不可撤销。**（音量/全屏/画质等偏好设置不受影响）"
+	## ★★原文案里**带着字面量 `**`**(`**此操作不可撤销。**`) —— 那是 Markdown 的粗体语法,
+	##   Label 不解析它, 屏幕上就是四个星号。写文案的人当时在写文档不是在写 UI。
+	## ★「此操作不可撤销」是条款腔; 玩家要听的是「清了就拿不回来」。
+	msg.text = ("会清空：深海币 · 背包装备 · 出战统领 · 赛季进度（命/等级/胜场）· 糖果罐 · 布阵。\n"
+		+ "⚠ 清掉就拿不回来了。音量、全屏、画质这些不动。")
 	msg.add_theme_font_size_override("font_size", 15)
 	msg.add_theme_color_override("font_color", Color("#c9d6e2"))
-	msg.position = Vector2(30, 74); msg.size = Vector2(460, 90)
-	msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	msg.position = Vector2(30, 72)
+	## ★中文没有词边界, `WORD_SMART` 在这一段里找不到断点 ⇒ Label 的最小宽把自己撑出框外
+	##   (邮箱对话框 2026-09-27 实测被撑到 586 / 框只有 520)。中文本来就按字断行。
+	msg.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
 	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(msg)
+	## ★★**入树之后再设一次尺寸** —— 控件入树时尺寸会被重算掉,
+	##   写在 `add_child` 之前的那次不一定算数(同一坑见 `_open_email_dialog` 的 `why`)。
+	msg.size = Vector2(460, 96)
 
 	var cancel := Button.new()
-	cancel.text = "取消"
+	cancel.text = "先不清"
 	cancel.add_theme_font_size_override("font_size", 18)
-	cancel.position = Vector2(70, 186); cancel.size = Vector2(160, 44)
+	cancel.position = Vector2(40, 196); cancel.size = Vector2(210, 52)
+	## ★★原来是**裸 `Button.new()`** = Godot 默认皮(圆角灰板)。换皮走共享层 `UISkin`,
+	##   不在这里手写 StyleBox(memory `fb-hand-rolled-copies-drift`)。
+	UISkin.button(cancel)
 	cancel.pressed.connect(func(): dim.queue_free(); _confirm_layer = null)
 	box.add_child(cancel)
 
 	var ok := Button.new()
-	ok.text = "确认清空"
+	ok.text = "清空，我确定"
 	ok.add_theme_font_size_override("font_size", 18)
-	ok.add_theme_color_override("font_color", Color("#ff8a94"))
-	ok.position = Vector2(290, 186); ok.size = Vector2(160, 44)
+	ok.position = Vector2(270, 196); ok.size = Vector2(210, 52)
+	## 破坏性那一侧染红 —— 两个键长得一样时, 玩家分不出哪个是"会出事"的那个。
+	UISkin.button(ok, Color("#ff5566"))
+	ok.add_theme_color_override("font_color", Color("#ffdfe2"))
 	ok.pressed.connect(func():
 		dim.queue_free(); _confirm_layer = null
 		_do_reset())
@@ -678,89 +807,165 @@ func _ask_reset() -> void:
 
 func _do_reset() -> void:
 	GameState.reset_save()
-	_toast("✓ 存档已清空")
+	_toast("存档清空了 · 从头再来")
 
 
-# ── 滑条 (PoC renderSlider, track w=380, handle r14) ──
+# ── 音量条 (track w=380) ──────────────────────────────────────
 ## cb        = 拖动中每次变化都调 (实时生效, 不写盘)
 ## on_release= 松手/点轨道时调一次 (写盘 / 试听音效). 原实现在 cb 里 save()+play_sfx → 拖一下写几十次盘、爆音。
+##
+## ═══ ★★2026-09-28 整条重画: 这是全屏最像网页的一个控件 ═══
+## 原来是 —— 8px 高的 `#444444` 细灰条 + `#ffd93d` 纯色填充 + 一个纯色**圆球**把手。
+## 那三件凑在一起就是 `<input type="range">` 的默认长相(灰轨/实心进度/圆 thumb),
+## 与它上下左右那些金属木牌完全不是一个世界的东西。
+##
+## 换成本仓已有的像素件, **一张新素材都不用画**:
+##   · 槽  = `battlehud/bar-frame.png`(战斗血条/龟能条那张九宫格金属条)
+##   · 刻度 = 槽里的四道暗口子(1/5 一格), 只在**没填到的那段**看得见 —— 填充盖住走过的
+##   · 填充 = 三层像素明暗(顶高光 / 主色 / 底暗边), 不是一块纯色
+##   · 把手 = 有描边和高光的方钮, 中间两道握纹(`_knob`), 不是几何圆
+## 边距是**从贴图量的**(96x24: 左右边带 7、上下 4 ⇒ 取 8 / 5), 不是拍的 ——
+## 与 `info_panel._bar_frame` 对同一张图的做法一致。
+const _SLD_H := 26.0            # 槽总高(含金属边带)
+const _SLD_BAND_X := 8.0        # 槽左右边带厚度(量自贴图)
+const _SLD_BAND_Y := 5.0        # 槽上下边带厚度(量自贴图)
+
 func _slider(cx: float, cy: float, label: String, init: float, cb: Callable, on_release: Callable = Callable()) -> void:
 	var track_w := 380.0
 	var left := cx - track_w / 2.0
+	## 填充的可用区 = 槽减掉金属边带。把值映射到这一段而不是整条,
+	## 否则 0% 时会有一截颜色压在左边那道金属沿上。
+	var fx := left + _SLD_BAND_X
+	var fw := track_w - _SLD_BAND_X * 2.0
+	var fy := cy - _SLD_H / 2.0 + _SLD_BAND_Y
+	var fh := _SLD_H - _SLD_BAND_Y * 2.0
 
-	# 标签 @ (x - w/2, y - 30) origin(0,0.5), 16px #fff
-	var lbl := _stroked_label(label, 16, "#ffffff", "", 0)
-	lbl.position = Vector2(left, cy - 30.0 - 8.0)
+	## 名牌: 加描边 —— 这一屏的背景是平铺的图案砖, 无描边的白字在上面发糊。
+	var lbl := _stroked_label(label, 17, "#ffe9b0", "#2a1b08", 4)
+	lbl.position = Vector2(left, cy - _SLD_H / 2.0 - 30.0)
 	add_child(lbl)
 
-	# 轨道 8px 高 #444
-	var track := ColorRect.new()
-	track.color = Color("#444444")
-	track.size = Vector2(track_w, 8.0)
-	track.position = Vector2(left, cy - 4.0)
-	add_child(track)
-	# 填充 #ffd93d
-	var fill := ColorRect.new()
-	fill.color = Color("#ffd93d")
-	fill.size = Vector2(track_w * init, 8.0)
-	fill.position = Vector2(left, cy - 4.0)
-	add_child(fill)
+	## ① 金属槽(九宫格)。`mouse_filter=IGNORE` —— 命中全交给下面那条 48px 的透明条。
+	var groove := NinePatchRect.new()
+	if ResourceLoader.exists("res://assets/sprites/battlehud/bar-frame.png"):
+		groove.texture = load("res://assets/sprites/battlehud/bar-frame.png")
+	groove.patch_margin_left = int(_SLD_BAND_X); groove.patch_margin_right = int(_SLD_BAND_X)
+	groove.patch_margin_top = int(_SLD_BAND_Y); groove.patch_margin_bottom = int(_SLD_BAND_Y)
+	groove.size = Vector2(track_w, _SLD_H)
+	groove.position = Vector2(left, cy - _SLD_H / 2.0)
+	groove.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	## ★★染成**青铜**。`bar-frame` 是战斗 HUD 的件, 主体色量出来是 (119,178,250) 的
+	##   矢车菊蓝 —— 直接拿过来放在这一屏, 它是整块画面里唯一的冷色, 实拍一眼就是"外来件"。
+	##   乘数是按目标色**算**的不是拍的: 119×1.51≈180 / 178×0.79≈141 / 250×0.28≈70,
+	##   落在木牌那身 #c8862a 的同一族里。黑色乘出来还是黑, 深槽不受影响。
+	##   (`UISkin` 铁律②: 状态/配色走 modulate, 不为此另做一张图。)
+	groove.self_modulate = Color(1.51, 0.79, 0.28)
+	add_child(groove)
 
-	# 百分比文字 @ (x + w/2 + 20, y) origin(0,0.5), monospace 14px #ffd93d
+	## ② 槽底。贴图里那块是**纯黑**, 在暖色画面里读起来是个洞;
+	##   铺一层暗棕当底(贴图缺失时它也正好当兜底, 不用再写一支 if)。
+	var channel := ColorRect.new()
+	channel.color = Color("#241a0c")
+	channel.size = Vector2(fw, fh)
+	channel.position = Vector2(fx, fy)
+	channel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(channel)
+
+	## ③ 刻度口子(1/5 一格)。★先加 ⇒ 后面的填充会盖住它们,
+	##   于是刻度**只在空着的那一段**露出来 —— 一眼看得出还剩多少。
+	##   ★颜色要比槽底**亮**: 第一版用的是半透明黑, 压在黑槽上等于没画(实拍一道都看不见)。
+	for i in range(1, 5):
+		var tick := ColorRect.new()
+		tick.color = Color("#5a431d")
+		tick.size = Vector2(2.0, fh)
+		tick.position = Vector2(fx + fw * (float(i) / 5.0) - 1.0, fy)
+		tick.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(tick)
+
+	## ④ 填充: 三层像素明暗, 不是一块纯色(纯色 = 网页进度条)。
+	var fill := ColorRect.new()
+	fill.color = Color("#e0a020")
+	fill.size = Vector2(fw * init, fh)
+	fill.position = Vector2(fx, fy)
+	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(fill)
+	var fill_hi := ColorRect.new()             # 顶高光
+	fill_hi.color = Color("#ffe066")
+	fill_hi.size = Vector2(fw * init, 4.0)
+	fill_hi.position = Vector2(fx, fy)
+	fill_hi.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(fill_hi)
+	var fill_lo := ColorRect.new()             # 底暗边
+	fill_lo.color = Color("#9c5a08")
+	fill_lo.size = Vector2(fw * init, 3.0)
+	fill_lo.position = Vector2(fx, fy + fh - 3.0)
+	fill_lo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(fill_lo)
+
+	## ⑤ 百分比。★不再用 `monospace` SystemFont —— 等宽字体是终端/代码的字,
+	##   放在木牌旁边一眼就是"开发者面板"。改用全局中文字体 + 描边, 并**右对齐**:
+	##   右边缘钉死 ⇒ 45%→100% 位数变了也不会左右跳(等宽当初就是为了防跳)。
 	var pct := Label.new()
 	pct.text = "%d%%" % int(round(init * 100.0))
-	pct.add_theme_font_size_override("font_size", 14)
-	pct.add_theme_color_override("font_color", Color("#ffd93d"))
-	pct.add_theme_font_override("font", _mono_font())
-	pct.size = Vector2(60, 16)
-	pct.position = Vector2(cx + track_w / 2.0 + 20.0, cy - 8.0)
+	pct.add_theme_font_size_override("font_size", 18)
+	pct.add_theme_color_override("font_color", Color("#ffe066"))
+	pct.add_theme_constant_override("outline_size", 4)
+	pct.add_theme_color_override("font_outline_color", Color("#2a1b08"))
+	pct.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	pct.size = Vector2(66, 22)
+	pct.position = Vector2(cx + track_w / 2.0 + 12.0, cy - 12.0)
 	add_child(pct)
 
-	# 圆 handle r14 (用 HSlider 隐藏轨道, 自绘圆) — 用 Button 圆形 grabber
-	var handle := _circle(14.0, Color("#ffd93d"))
-	handle.position = Vector2(left + track_w * init - 14.0, cy - 14.0)
-	# ★2026-08-01: handle 不再自己吃事件 —— 它只有 28×28(手机上 15pt), 是个点不中的把手。
-	#   拖拽统一交给下面那条 48px 高的透明命中条(整行都能拖), 视觉不变、可拖范围大得多。
-	handle.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(handle)
+	## ⑥ 方钮把手。★2026-08-01 起它不吃事件(28x28 = 手机上 15pt, 点不中),
+	##   拖拽统一交给下面那条 48px 高的透明命中条 —— 这里只负责"看得见拖到哪了"。
+	var knob := _knob(18.0, 34.0)
+	knob.position = Vector2(fx + fw * init - 9.0, cy - 17.0)
+	knob.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(knob)
 
 	var apply := func(px: float):
-		var clamped: float = clampf(px, left, left + track_w)
-		var v: float = (clamped - left) / track_w
-		handle.position.x = clamped - 14.0
-		fill.size.x = track_w * v
+		var clamped: float = clampf(px, fx, fx + fw)
+		var v: float = (clamped - fx) / fw
+		knob.position.x = clamped - 9.0
+		fill.size.x = fw * v
+		fill_hi.size.x = fw * v
+		fill_lo.size.x = fw * v
 		pct.text = "%d%%" % int(round(v * 100.0))
 		cb.call(v)
 
-	# (原来挂在 handle 上的拖拽已删: handle 现在 mouse_filter=IGNORE, 那段代码永远收不到事件 ——
-	#  留着就是一段"看起来在工作"的死代码。拖拽全走下面的命中条。)
 	# 点轨道跳 (即刻应用 + 一次 on_release)
-	# ★手机板触控热区(用户2026-08-01): 轨道本体只有 8px 高 = 手机上【4pt】, 手指绝无可能点中;
-	#   handle 也只有 28px(15pt)。所以另铺一条【透明命中条】盖住整行(48px 高 = 26pt),
-	#   点/拖它都等价于点轨道 —— 视觉一点没变, 可点范围从 4pt 变成 26pt。
-	#   ★命中条要在 handle 【之前】加(add_child 顺序=绘制/命中顺序), 否则它会盖住 handle 的拖拽。
+	# ★手机板触控热区(用户2026-08-01): 槽本体只有 26px 高, 把手 18px 宽 —— 手指都难点中。
+	#   所以另铺一条【透明命中条】盖住整行(48px 高 = 26pt), 点/拖它都等价于点轨道。
+	#   ★命中条要在把手【之前】加(add_child 顺序=绘制/命中顺序), 否则它会盖住把手。
 	var hit := Control.new()
 	hit.size = Vector2(track_w, 48.0)
 	hit.position = Vector2(left, cy - 24.0)
 	hit.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(hit)
-	move_child(hit, handle.get_index())   # 排到 handle 前面
+	move_child(hit, knob.get_index())   # 排到把手前面
 	hit.gui_input.connect(func(ev: InputEvent):
 		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 			apply.call(hit.global_position.x + ev.position.x)
 			if on_release.is_valid(): on_release.call()
 		elif ev is InputEventMouseMotion and (ev.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
 			apply.call(hit.global_position.x + ev.position.x))
-	track.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 命中交给 hit, 轨道只负责显示
-	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
-func _circle(r: float, col: Color) -> Control:
+## 音量条的把手 —— 带描边/高光/握纹的方钮, 不是 `draw_circle` 画的纯色圆球。
+## ★全靠 `draw_rect` 拼, 不引新贴图: 圆球那一版是几何图元(网页 thumb 的长相),
+##   而像素 UI 里的把手是**有厚度的一块金属**: 暗描边 + 主面 + 顶高光 + 底暗边 + 两道握纹。
+func _knob(w: float, h: float) -> Control:
 	var c := Control.new()
-	c.custom_minimum_size = Vector2(r * 2.0, r * 2.0)
-	c.size = Vector2(r * 2.0, r * 2.0)
+	c.custom_minimum_size = Vector2(w, h)
+	c.size = Vector2(w, h)
 	var draw := func():
-		c.draw_circle(Vector2(r, r), r, col)
+		c.draw_rect(Rect2(0, 0, w, h), Color("#2a1b08"))                    # 描边
+		c.draw_rect(Rect2(2, 2, w - 4, h - 4), Color("#e8b33c"))            # 主面
+		c.draw_rect(Rect2(2, 2, w - 4, 6), Color("#fff0b3"))                # 顶高光
+		c.draw_rect(Rect2(2, h - 8, w - 4, 6), Color("#a8670c"))            # 底暗边
+		var gy := h * 0.5 - 6.0
+		c.draw_rect(Rect2(w * 0.5 - 4.0, gy, 2, 12), Color("#8a5407"))      # 握纹
+		c.draw_rect(Rect2(w * 0.5 + 2.0, gy, 2, 12), Color("#8a5407"))
 	c.draw.connect(draw)
 	return c
 
@@ -840,15 +1045,8 @@ func _place_center(l: Label, cx: float, cy: float) -> void:
 	add_child(l)
 
 
-func _mono_font() -> Font:
-	var f := SystemFont.new()
-	f.font_names = PackedStringArray(["monospace", "Consolas", "Courier New"])
-	# CJK + emoji 兜底 (SystemFont 在 web/linux 取不到系统字体 → 中文乱码/emoji 豆腐块)
-	f.fallbacks = [
-		load("res://assets/fonts/NotoSansSC-Regular.otf"),
-		load("res://assets/fonts/NotoEmoji-Regular.ttf"),
-	]
-	return f
+## (`_mono_font()` 2026-09-28 删除: 全屏唯一的调用点是音量条的百分比,
+##  而那处已经改用全局中文字体 + 右对齐。留一个零调用者的函数就是下一个人的坑。)
 
 
 ## 轻量提示 (1.4s 后淡出)

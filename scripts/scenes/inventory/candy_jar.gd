@@ -32,41 +32,71 @@ func _show_jar_reward(r: Dictionary) -> void:
 	var sb = StyleBoxFlat.new()
 	sb.bg_color = Color("#1c2836"); sb.border_color = Color("#ffd93d")
 	sb.set_border_width_all(3); sb.set_corner_radius_all(12)
-	box.add_theme_stylebox_override("panel", sb)
+	## ★2026-09-28 换九宫格金属框(同 `synergy_panel._show_synergy_popup`)。
+	##   本屏别的弹框 2026-08-18 都换过了, 这个和羁绊详情框是漏下的两个圆角网页盒。
+	##   静止态的运行时探针照不到它们 —— 弹框只在点开之后才建。
+	##   `StyleBoxFlat` 留着当 fallback: 贴图缺失时 `UISkin.nine` 原样返回它。
+	box.add_theme_stylebox_override("panel", UISkin.nine("panel-frame.png", 20, sb))
 	box.position = Vector2(host.W / 2.0 - 260, host.H / 2.0 - 150); box.size = Vector2(520, 300)
 	dim.add_child(box)
 
 	var ttl = Label.new()
-	ttl.text = "🍬 糖果罐碎了！  (档%d)" % int(r.get("tier", 1))
-	ttl.add_theme_font_size_override("font_size", 26)
+	## ★不写「(档3)」这种括号计数 —— 括号里塞个数字是策划表口气。
+	##   而且 `verify_inventory_layout` ㉖ 明令界面文本里不许出现「档1/档2/档3/档4」,
+	##   它只是因为这个弹框不在静止态的屏上才没被数到。改成「第 N 档」两不相犯。
+	ttl.text = "🍬 糖果罐碎了！第 %d 档的东西全掉出来了" % int(r.get("tier", 1))
+	ttl.add_theme_font_size_override("font_size", 22)
 	ttl.add_theme_color_override("font_color", Color("#ffd93d"))
 	ttl.position = Vector2(0, 20); ttl.size = Vector2(520, 36)
 	ttl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(ttl)
 
-	var lines: Array = ["💠 深海币  +%d" % int(r.get("coins", 0))]
+	## ★「💠」不再拿字符当深海币 —— 这一屏的顶栏 2026-09 就换成了 `ic-deepsea.png`,
+	##   `verify_inventory_layout` ④b 专门守着"界面上没有留下拿字符当币的旧写法"
+	##   (它扫的是静止态的屏, 所以这个弹框里的漏网之鱼它数不到)。图标画在文字前面。
+	var lines: Array = ["深海币 +%d" % int(r.get("coins", 0))]
 	var eid = str(r.get("equip", ""))
 	if eid != "":
 		var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
-		lines.append("🗡 装备  %s  %s  → 进背包" % [str(edef.get("name", eid)), "★".repeat(int(r.get("star", 1)))])
+		lines.append("%s %s 收进了背包" % [str(edef.get("name", eid)), "★".repeat(int(r.get("star", 1)))])
 	if bool(r.get("leveler", false)):
-		lines.append("🔼 临时等级器 ×1  → 进背包 (点它再点一只龟/小将, 本大轮 +1 级)")
+		## ★原文是"🔼 临时等级器 ×1 → 进背包 (点它再点一只龟/小将, 本大轮 +1 级)":
+		##   箭头 + 括号注解 = 说明书腔, 而且 35 字在 440px / 18 号字下要排**两行**,
+		##   却挤在 30px 高的 Label 里 ⇒ 第二行一直被静默吃掉(所以下面把行高改成 48)。
+		lines.append("临时等级器 ×1 收进背包 · 点它再点一只龟或小将, 这一大轮就多一级")
 
-	var y = 80.0
-	for t in lines:
+	const Y0 := 80.0
+	var y = Y0
+	for i in range(lines.size()):
 		var l = Label.new()
-		l.text = str(t)
+		l.text = str(lines[i])
 		l.add_theme_font_size_override("font_size", 18)
 		l.add_theme_color_override("font_color", Color("#e8f2ff"))
-		l.position = Vector2(40, y); l.size = Vector2(440, 30)
+		## 行高 48 = 18 号字排两行的高度(原来 30 = 一行多一点, 换行就静默吃字)。
+		## 三行走完 80 + 2×50 + 48 = 228 < 收下键的 234, 仍在 300 高的框里。
+		## ★第一行让出 32px 给深海币图标; 其余行顶到 40。
+		var lx: float = 72.0 if i == 0 else 40.0
+		l.position = Vector2(lx, y); l.size = Vector2(480.0 - lx, 48)
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		box.add_child(l)
-		y += 46.0
+		y += 50.0
+
+	## 深海币那一行的图标 —— 与顶栏/商店同一张 `ic-deepsea.png`(图标是用户点名允许复用的那一类)。
+	var ci = TextureRect.new()
+	ci.texture = host.COIN_TEX
+	ci.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	ci.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	ci.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	ci.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ci.position = Vector2(40, Y0 - 2.0); ci.size = Vector2(26, 26)
+	box.add_child(ci)
 
 	var ok = Button.new()
 	ok.text = "收下"
 	ok.add_theme_font_size_override("font_size", 20)
 	ok.position = Vector2(200, 234); ok.size = Vector2(120, 44)
+	## ★套金属签牌皮 —— 不套就是 Godot 默认皮(圆角纯色)。必须在 size 之后调, 见 UISkin.button 注释。
+	UISkin.button(ok, Color("#ffd93d"))
 	ok.pressed.connect(func(): dim.queue_free(); host._rebuild())
 	box.add_child(ok)
 

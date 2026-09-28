@@ -148,22 +148,29 @@ func _check_teamselect_edge_btns(inst: Node) -> void:
 	if root == null:
 		_ok("TeamSelect: 贴边按钮在最上层", false, "找不到 UI/Root")
 		return
+	## ★★不拿【屏幕上的词】当尺子(2026-09-28)。
+	##   旧版写死了 ["‹ 返回", "⊘ 清空", "🔄 上次阵容"] 逐个前缀比 ——
+	##   那三个符号正是用户点名要去掉的"网页味", 于是【改文案就红】,
+	##   而它想守的那件事(贴边按钮画在木托盘之上)一点没变。
+	## ⇒ 改成量【行为】: 拿场景**自己的登记** `_edge_btns`
+	##   (`_place_clamped` 建 UI 时逐个登记的贴边按钮)跟 root 末尾比, 零字面量。
+	## ★这**不是恒真**: `_edge_btns` 是【创建时】填的, "在末尾" 是
+	##   `_raise_edge_btns()` 【另一次调用】产生的结果 —— 那句调用没了,
+	##   或者之后又 add_child 了新面板(正是 2026-07-19 实机那个病), 这条当场红。
+	var edge: Array = inst.get("_edge_btns") if inst.get("_edge_btns") is Array else []
+	_ok("★分母 TeamSelect: 场景真登记了 4 个贴边按钮(返回/清空/上次/开始)",
+		edge.size() == 4, "实得 %d 个" % edge.size())
 	var n := root.get_child_count()
 	var tail: Array = []
 	for i in range(maxi(0, n - 4), n):
-		var c := root.get_child(i)
-		tail.append(str((c as Button).text) if c is Button else c.get_class())
-	var want := ["‹ 返回", "⊘ 清空", "🔄 上次阵容"]
+		tail.append(root.get_child(i))
 	var missing: Array = []
-	for w in want:
-		var hit := false
-		for t in tail:
-			if str(t).begins_with(w.substr(0, 3)):
-				hit = true
-		if not hit:
-			missing.append(w)
+	for b in edge:
+		if not (b in tail):
+			missing.append(str((b as Button).text) if b is Button else str(b))
 	_ok("TeamSelect: 贴边按钮在 root 末尾(画在最上层, 不会被木托盘压住)",
-		missing.is_empty(), "末4个子节点=%s 缺=%s" % [str(tail), str(missing)])
+		edge.size() == 4 and missing.is_empty(),
+		"登记 %d 个 · 不在末4=%s" % [edge.size(), str(missing)])
 
 ## 各页"建全了"的可见按钮下限。0 = 不设限。
 ## ★这些数是【实测出来的】: 先把页面种到正常态量一遍, 再往下留一点余量。

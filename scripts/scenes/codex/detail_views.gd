@@ -18,27 +18,32 @@ func _show_minion(kind: String) -> void:
 	host._add_image(100, 110, "res://assets/sprites/pets/%s" % mi["img"], 170, 170, true)
 	var mid_x = 220.0
 	host._add_text(mid_x, 30, str(mi["name"]), 32, "#ffd93d", 0.0, 0.5, true)
-	host._add_text(mid_x, 75, "深海小将", 14, "#888888", 0.0, 0.5)
-	host._add_text(mid_x + 80, 75, str(mi["role"]), 14, "#58d3ff", 0.0, 0.5, true)
-	host._add_text(mid_x, 112, "非统领单位 · 不可选入阵容 · 由系统补位生成", 13, "#7a8a96", 0.0, 0.5)
-	host._add_text(mid_x, 140, "生命与攻击随等级 ×1.05 复利成长, 双抗为定值", 13, "#7a8a96", 0.0, 0.5)
-	# 属性两列 (Lv1 值)
+	## ★★2026-09-27 抬头与龟页同一套: 名字 + 一排签牌, 不再是「深海小将   近战」这种
+	##   "字段名 + 值"的两段式(用户: 图鉴「全是 ai 味和网页味, 文字语言也是」)。
+	var _mcx: float = mid_x
+	_mcx += _tag_chip(_mcx, 84.0, "深海小将", "#9fb6c9") + 8.0
+	_mcx += _tag_chip(_mcx, 84.0, str(mi["role"]), "#58d3ff") + 8.0
+	## 两句说明改口语: 原文「非统领单位 · 不可选入阵容 · 由系统补位生成」「…×1.05 复利成长,
+	## 双抗为定值」—— "非统领单位""复利成长""定值"都是开发者/说明书用词, 不是游戏里的话。
+	host._add_text(mid_x, 122, "不能编进阵容, 开战时自己登场", 13, "#7a8a96", 0.0, 0.5)
+	host._add_text(mid_x, 148, "每升一级, 生命与攻击 ×1.05; 双抗不变", 13, "#7a8a96", 0.0, 0.5)
+	# 属性牌 2 列 × 4 行 (Lv1 值) —— 与龟页共用 _stat_plaque, 不在这里另摆一套表格
 	var rows = [
-		["最大生命值", str(mi["hp"]), "#06d6a0"], ["攻击力", str(mi["atk"]), "#ff9f43"],
-		["护甲", str(mi["def"]), "#ffd93d"], ["魔抗", str(mi["mr"]), "#4dabf7"],
-		["攻击间隔", "%s 秒" % str(mi["interval"]), "#d6e4f0"], ["攻击距离", str(mi["range"]), "#d6e4f0"],
-		["移动速度", str(mi["spd"]), "#d6e4f0"], ["", "", ""],
+		{"key": "hp", "label": "生命", "disp": str(mi["hp"]), "color": "#06d6a0"},
+		{"key": "atk", "label": "攻击", "disp": str(mi["atk"]), "color": "#ff9f43"},
+		{"key": "def", "label": "护甲", "disp": str(mi["def"]), "color": "#ffd93d"},
+		{"key": "mr", "label": "魔抗", "disp": str(mi["mr"]), "color": "#4dabf7"},
+		{"key": "aspd", "label": "间隔", "disp": "%s 秒" % str(mi["interval"]), "color": "#ff9ecb"},
+		{"key": "range", "label": "射程", "disp": str(mi["range"]), "color": "#d6e4f0"},
+		{"key": "move", "label": "移速", "disp": str(mi["spd"]), "color": "#8fd4ff"},
 	]
 	for i in range(rows.size()):
-		if str(rows[i][0]) == "":
-			continue
-		var cx: float = 500.0 + float(i % 2) * 200.0
-		var cy: float = 30.0 + float(i / 2) * 38.0
-		host._add_text(cx, cy, str(rows[i][0]), 13, "#888888", 0.0, 0.5)
-		host._add_text(cx + 110.0, cy, str(rows[i][1]), 18, str(rows[i][2]), 0.0, 0.5, true)
-	host._add_rect(host.DETAIL_W / 2.0, 195.0, host.DETAIL_W - 40, 1, "#ffd93d", 0.4)
+		_stat_plaque(STAT_COL_X + float(i % 2) * (STAT_CARD_W + STAT_GAP),
+			22.0 + float(i / 2) * (STAT_CARD_H + STAT_GAP), rows[i])
+	## 4 行牌子排到 y=235 —— 分隔线跟着往下(原来写死 195, 会被第 4 行压住)。
+	host._add_rect(host.DETAIL_W / 2.0, 248.0, host.DETAIL_W - 40, 1, "#ffd93d", 0.4)
 	# 技能 + 被动
-	var y = 216.0
+	var y = 268.0
 	host._add_text(20, y, "技能 · %s  (%d 龟能)" % [str(mi["skill_name"]), int(mi["skill_cost"])], 17, "#58d3ff", 0.0, 0.0, true)
 	y += 28.0
 	y = _minion_body(str(mi["skill_desc"]), y) + 18.0
@@ -68,6 +73,104 @@ func _minion_body(txt: String, y: float) -> float:
 	return y + maxf(20.0, rt.get_combined_minimum_size().y)
 
 
+# ══════════════════════════════════════════════════════════════════
+# 属性牌 / 稀有度牌 / 词条签 (2026-09-27 去"后台仪表盘"味)
+# ══════════════════════════════════════════════════════════════════
+## 一块牌子 = 金属签牌九宫格 + 语义色 modulate。
+##
+## ★为什么直接调 `UISkin.nine` 而不是 `nine_if_big`: 牌高只有 34~48,
+##   低于 `UISkin.MIN_FRAME_PX`(40) 的那几个会被 `nine_if_big` 退回**纯色块** ——
+##   而纯色块 + 四边描边 + 半透底正是门禁认的"网页盒"。`chip-frame` 源图 48x24、
+##   边带实测只有 4px, 34 高完全装得下(普攻条 36 高就是这么挂的, 见 _render_skill_cards)。
+## ★兜底 StyleBoxFlat 的底色 alpha 给 **1.0**: 贴图万一缺失时也不能变成"半透底+四边框",
+##   那会让图鉴凭空多出 N 个网页盒(verify_ui_consistency 的主指标)。
+func _plaque(x: float, y: float, w: float, h: float, col: String, bg: String = "") -> Panel:
+	var p := Panel.new()
+	p.position = Vector2(x, y)
+	p.custom_minimum_size = Vector2(w, h)
+	p.size = p.custom_minimum_size
+	var fb := StyleBoxFlat.new()
+	fb.bg_color = Color(bg) if bg != "" else Color(0.071, 0.125, 0.165, 1.0)
+	fb.bg_color.a = 1.0
+	fb.border_color = Color(col)
+	fb.set_border_width_all(2)
+	var sb := UISkin.nine("chip-frame.png", 7, fb)
+	if sb is StyleBoxTexture:
+		(sb as StyleBoxTexture).modulate_color = UISkin.tint_of(Color(col))
+	p.add_theme_stylebox_override("panel", sb)
+	host.detail.add_child(p)
+	return p
+
+## 牌子上那行字 —— **不走 `host._add_text` 的居中锚**。
+##
+## ★★为什么(2026-09-27 实测, 门禁当场逮到「近战斗士+4」):
+##   `_add_text` 的锚是拿 `字数 × 字号 × 0.62` 估出来的宽度算的, 而 0.62 是**英文的字宽比**。
+##   中文是**全角**(≈1.0×字号): 「近战斗士」16px 真宽 64, 估出来只有 39.7 ⇒
+##   "居中"实际把字往右推了 (64-39.7)/2 = 12px, 正好推出签牌的金属边带。
+##   ⇒ 牌里的字一律**给死矩形 + 让 Label 自己居中**, 宽度由牌决定、不由我估。
+##   (`_add_text` 本身不能改: 它是主场景的共享入口, 全图鉴几十处在用。)
+func _chip_text(x: float, y: float, w: float, h: float, txt: String, size: int, col: String) -> void:
+	var l := Label.new()
+	l.text = txt
+	l.add_theme_font_size_override("font_size", size)
+	l.add_theme_color_override("font_color", Color(col))
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	l.position = Vector2(x, y)
+	l.custom_minimum_size = Vector2(w, h)
+	host.detail.add_child(l)
+	l.size = Vector2(w, h)
+
+## 稀有度牌: 一块方牌, 牌上只有那个字母。**不写"稀有度"这个词** ——
+## 牌子本身就是"品阶"的表示法(与左栏列表行的稀有度字母同色同字)。
+const BADGE_PX := 48.0
+func _rarity_badge(cx: float, cy: float, letter: String, col: String) -> void:
+	_plaque(cx - BADGE_PX / 2.0, cy - BADGE_PX / 2.0, BADGE_PX, BADGE_PX, col)
+	## 字框比牌小一圈(牌 48 / 字框 38) —— chip-frame 的边带实测 4px, 留到 5 才有余量。
+	## ★字号 22 不是 24: 最长的品阶是三个字母(SSS), 22px 下约 36 宽, 装得进 38 的字框;
+	##   24px 下约 39 ⇒ Label 的最小宽度会**顶开字框**, 反而漫到边带上(门禁量 over>2 就红)。
+	_chip_text(cx - 19.0, cy - 15.0, 38.0, 30.0, letter, 22, col)
+
+## 词条签: 一块扁牌 + 一行字, 返回它占了多宽(调用方据此往右接下一块)。
+const TAG_H := 36.0
+func _tag_chip(x: float, cy: float, txt: String, col: String) -> float:
+	## 宽度按【全角字宽】估(16px 字 ⇒ 每字 16) —— 签牌是九宫格, 宽一点不变形; 宁可宽也别切字。
+	var w: float = maxf(58.0, float(txt.length()) * 16.0 + 26.0)
+	_plaque(x, cy - TAG_H / 2.0, w, TAG_H, col)
+	_chip_text(x + 7.0, cy - 12.0, w - 14.0, 24.0, txt, 16, col)
+	return w
+
+## 属性牌的排布。2 列 × 3 行, 右缘正好落在 DETAIL_W - 20。
+const STAT_COL_X := 500.0
+const STAT_CARD_W := 186.0
+const STAT_CARD_H := 48.0
+const STAT_GAP := 7.0
+
+## 一块属性牌: [图标] 大数字  小字名。
+##
+## ★★原来这一块是 6 行 `图标 + 名词 + 右对齐数字 + 一长串小方块` ——
+##   用户 2026-09-27:「全是 ai 味和网页味」。那串方块是**条形图**(hp 945/40 = 23 个),
+##   名词在左、数字在右、后面拖一条进度条 = 后台仪表盘的标准长相。
+## ★条【直接去掉】而不是改成"5 格像素刻度": 5 格刻度得先有个"满格是多少"的标尺,
+##   而那个数只能由我拍(memory `fb-my-thresholds-degrade-good-assets`: 我拍的阈值会把好素材改坏)。
+##   数字本身就是精确信息, 条只是把同一个数再画一遍 —— 去掉不丢任何东西。
+## ★名词降到 13px 暗灰、排在数字**右边**(不是上/下): 上下排会和大数字的字块竖着相交,
+##   门禁的"文字压字"判据按面积比算, 那就是一条真命中。
+func _stat_plaque(px: float, py: float, st: Dictionary) -> void:
+	_plaque(px, py, STAT_CARD_W, STAT_CARD_H, str(st["color"]))
+	var _iconp: String = "res://assets/sprites/stats/%s-icon.png" % str(st["key"])
+	var vx: float = px + 16.0
+	if ResourceLoader.exists(_iconp):   # 缺图只显文字, 不崩
+		host._add_image(px + 26.0, py + STAT_CARD_H / 2.0, _iconp, 26, 26)
+		vx = px + 48.0
+	var disp: String = str(st["disp"])
+	host._add_text(vx, py + STAT_CARD_H / 2.0, disp, 22, str(st["color"]), 0.0, 0.5, true)
+	## 14/字 是**上沿**估值(m6x11 像素字在 22px 下每个数字约 12px), 宁可多留也不让两块字相交。
+	host._add_text(vx + float(disp.length()) * 14.0 + 12.0, py + STAT_CARD_H / 2.0 + 2.0,
+		str(st["label"]), 13, "#8c9cab", 0.0, 0.5)
+
+
 func _show_pet(pet: Dictionary) -> void:
 	host._clear_detail()
 	var rarity: String = pet.get("rarity", "C")
@@ -78,22 +181,28 @@ func _show_pet(pet: Dictionary) -> void:
 	# 1) 立绘 170×170 @(100,110) — 全身 idle 动画 sprite (1:1 PoC showPetDetail:285-296), 非头像
 	host._add_pet_portrait(100, 110, pet, 170.0)
 
-	# 2) 名字 (详情) y30 32px #ffd93d bold; 稀有度标签 14px灰 + 值28px彩
-	# PoC L301: `Lv ${lv}.  ${pet.name}` (两空格). 图鉴默认等级 1 (getPetLevel 兜底).
+	# 2) 名字 y30 32px 金 bold。
+	## ★★2026-09-27 抬头改「名字 + 一排牌子」(用户: 图鉴「全是 ai 味和网页味」)。
+	##   原来是三行 `label: value` 的属性表写法:
+	##       Lv 1.  小龟
+	##       稀有度   C
+	##       定位     近战斗士
+	##   —— 「稀有度」「定位」两个词只是在给旁边那个值当字段名, 玩家一个都不需要读,
+	##   而「C」在游戏里从来不是一个"字段的值", 它是**一块牌子**。
+	##   现在: 名字独占一行, 下面一排 [稀有度牌][Lv 签][定位签] —— 牌/签的形状自己说明是什么。
 	var mid_x = 220.0
 	var lv: int = GameState.get_pet_level(str(pet.get("id", "")))
-	host._add_text(mid_x, 30, "Lv %d.  %s" % [lv, pet.get("name", "?")], 32, "#ffd93d", 0.0, 0.5, true)
-	host._add_text(mid_x, 75, "稀有度", 14, "#888888", 0.0, 0.5)
-	host._add_text(mid_x + 60, 75, rarity, 28, rarity_color, 0.0, 0.5, true)
-
+	host._add_text(mid_x, 30, str(pet.get("name", "?")), 32, "#ffd93d", 0.0, 0.5, true)
 	# ★tag 区已删(用户2026-07-23 点5): 守护/元素/物理/法术等 10 种标签全是凑羁绊的, 龟间羁绊已废 → 全去。
 	#   腾出的位置给【定位】(用户2026-07-28: 定位是移速/攻速的权威事实源, 玩家该看得到)。
 	var _role: String = str(host.TurtleStats.ROLE.get(str(pet.get("id", "")), ""))
+	_rarity_badge(mid_x + BADGE_PX / 2.0, 84.0, rarity, rarity_color)
+	var _chip_x: float = mid_x + BADGE_PX + 10.0
+	_chip_x += _tag_chip(_chip_x, 84.0, "Lv %d" % lv, "#ffd93d") + 8.0
 	if _role != "":
-		host._add_text(mid_x, 112, "定位", 14, "#888888", 0.0, 0.5)
-		host._add_text(mid_x + 60, 112, _role, 22, "#9ad0ff", 0.0, 0.5, true)
+		_chip_x += _tag_chip(_chip_x, 84.0, _role, "#9ad0ff") + 8.0
 
-	# 3) 4 属性条 — statColX500 statRowH42; 方块 sqW5 sqH14 gap2 pitch7
+	# 3) 属性牌 2 列 × 3 行 (原来是 6 行「名词 : 数字 + 一长串方块」)。
 	# m = 稀有度倍率 × 等级加成 (1:1 PoC CodexScene:168 RARITY_MULT×getLevelBonus); rarity_mult 取真值表(原硬编1.5/2.0=bug)
 	var m: float = float(DataRegistry.rarity_mult.get(rarity, 1.0)) * (1.0 + (lv - 1) * 0.05)
 	# ★移速/攻速(点5): 从 host.TurtleStats.STATS 单一事实源读, 与战斗同口径 ——
@@ -102,31 +211,21 @@ func _show_pet(pet: Dictionary) -> void:
 	var _ts: Array = host.TurtleStats.STATS.get(_tid, [])
 	var _mspd: int = int(round(float(_ts[1]))) if _ts.size() > 1 else 0
 	var _aspd: float = (1.0 / float(_ts[2])) * (1.0 + 0.02 * float(lv - 1)) if _ts.size() > 2 and float(_ts[2]) > 0.0 else 0.0
+	## `label` 是牌子底下那行**小字说明**(11px 暗灰), 不再是"字段名: 值"里的字段名;
+	## `unit` 单独一列, 这样大字永远只是那个数(原来「0.77 次/秒」整串都是 21px 大字)。
+	## ★「移速」「攻击速度」两个字面量被 verify_codex_stats 用源码 grep 守着, 别改字。
 	var stats = [
-		{"key": "hp", "label": "最大生命值", "val": roundi(pet.get("hp", 0) * m), "disp": str(roundi(pet.get("hp", 0) * m)), "color": "#06d6a0", "div": 40.0},
-		{"key": "atk", "label": "攻击力", "val": roundi(pet.get("atk", 0) * m), "disp": str(roundi(pet.get("atk", 0) * m)), "color": "#ff9f43", "div": 5.0},
-		{"key": "def", "label": "护甲", "val": roundi(pet.get("def", 0) * m), "disp": str(roundi(pet.get("def", 0) * m)), "color": "#ffd93d", "div": 2.5},
-		{"key": "mr", "label": "魔抗", "val": roundi(pet.get("mr", pet.get("def", 0)) * m), "disp": str(roundi(pet.get("mr", pet.get("def", 0)) * m)), "color": "#4dabf7", "div": 2.5},
-		{"key": "move", "label": "移速", "val": _mspd, "disp": str(_mspd), "color": "#8fd4ff", "div": 15.0},
-		{"key": "aspd", "label": "攻击速度", "val": roundi(_aspd * 100.0), "disp": ("%.2f" % _aspd) + " 次/秒", "color": "#ff9ecb", "div": 8.0},
+		{"key": "hp", "label": "生命", "disp": str(roundi(pet.get("hp", 0) * m)), "unit": "", "color": "#06d6a0"},
+		{"key": "atk", "label": "攻击", "disp": str(roundi(pet.get("atk", 0) * m)), "unit": "", "color": "#ff9f43"},
+		{"key": "def", "label": "护甲", "disp": str(roundi(pet.get("def", 0) * m)), "unit": "", "color": "#ffd93d"},
+		{"key": "mr", "label": "魔抗", "disp": str(roundi(pet.get("mr", pet.get("def", 0)) * m)), "unit": "", "color": "#4dabf7"},
+		{"key": "move", "label": "移速", "disp": str(_mspd), "unit": "", "color": "#8fd4ff"},
+		{"key": "aspd", "label": "攻击速度", "disp": "%.2f" % _aspd, "unit": "次/秒", "color": "#ff9ecb"},
 	]
-	var stat_col_x = 500.0
-	var stat_row_h = 27.0   # ★6 行(加了移速/攻速)压行高, 容进分隔线上方(点5)
-	var value_x = 700.0
-	var bars_start_x = 716.0
-	var sq_w = 5.0; var sq_h = 14.0; var sq_pitch = 7.0
 	for i in stats.size():
 		var st: Dictionary = stats[i]
-		var sy = 22.0 + i * stat_row_h
-		var _iconp: String = "res://assets/sprites/stats/%s-icon.png" % st["key"]
-		if ResourceLoader.exists(_iconp):   # move/aspd 图标可能未画 → 缺图只显文字, 不崩
-			host._add_image(stat_col_x, sy, _iconp, 24, 24)
-		host._add_text(stat_col_x + 28, sy, st["label"], 15, "#bbbbbb", 0.0, 0.5)
-		host._add_text(value_x, sy, str(st.get("disp", st["val"])), 21, st["color"], 1.0, 0.5, true)
-		var count = int(floor(float(st["val"]) / float(st["div"])))
-		for k in count:
-			var sq_cx = bars_start_x + k * sq_pitch + sq_w / 2.0
-			host._add_rect(sq_cx, sy, sq_w, sq_h, st["color"], 1.0)
+		_stat_plaque(STAT_COL_X + float(i % 2) * (STAT_CARD_W + STAT_GAP),
+			22.0 + float(i / 2) * (STAT_CARD_H + STAT_GAP), st)
 
 	# 8) 横分隔线 y195 宽 detailW-40 #ffd93d@0.4 1px
 	host._add_rect(host.DETAIL_W / 2.0, divider_y, host.DETAIL_W - 40, 1, "#ffd93d", 0.4)
@@ -174,8 +273,9 @@ func _show_pet(pet: Dictionary) -> void:
 			brt.add_theme_color_override("default_color", Color("#aab8c6"))
 			brt.text = SkillText.render_bbcode(p_brief, ctx, passive, 15)
 			host.detail.add_child(brt)
-		# hint: 展开→"收起 ▾"金 / 否则"展开全文 ▸"(与技能卡的"点开看全部 ▸"同一句式)
-		var p_hint: String = "收起 ▾" if host._codex_passive_view else "展开全文 ▸"
+		# hint: 展开→"收起"金 / 否则"看全部"蓝(与技能卡的"点开看全部"同一句式)
+		## ★同上去掉 ▾/▸ 两个折叠箭头。
+		var p_hint: String = "收起" if host._codex_passive_view else "看全部"
 		var p_hint_col: String = "#ffd93d" if host._codex_passive_view else "#7fb5d8"
 		host._add_text(host.DETAIL_W - 30 - CARD_PAD * 2.0, mid_y, p_hint, 14, p_hint_col, 1.0, 0.5)
 		# drill-down: 点被动条 → 内联展开/收起完整 passive desc (1:1 PoC showPetDetail view='passive' toggle, 非弹窗)
@@ -243,7 +343,10 @@ func _mark_card_clipped(rt: RichTextLabel, cx: float, y: float, card_w: float) -
 		return
 	y = float(_card_hint_y.get(rt, y))   # 收缩后各卡底边不同; 没登记就用调用侧给的兜底值
 	var l := Label.new()
-	l.text = "点开看全部 ▸"
+	## ★★2026-09-27 去掉 `▸` —— 它是网页折叠控件的展开箭头, 游戏里不用它指路。
+	##   ⚠ 「点开看全部」这四个字**不能再改**: verify_codex_layout ⑨ 逐只龟数
+	##   "被截的卡数 == 画出提示的卡数", 它认的就是 `begins_with("点开看全部")`。
+	l.text = "点开看全部"
 	l.add_theme_font_size_override("font_size", 12)
 	l.add_theme_color_override("font_color", Color("#7fb5d8"))
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -462,13 +565,19 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 		var btn_y = start_y - 22.0
 		var label: String
 		if is_melee_form:
-			label = "🏹 查看 远程形态技能" if host._codex_form_view else "⚔️ 查看 近战形态技能"
+			label = "🏹 换成 远程形态" if host._codex_form_view else "⚔️ 换成 近战形态"
 		else:
-			label = "🐢 查看 普通形态技能" if host._codex_form_view else "🌋 查看 火山形态技能"
+			label = "🐢 换成 普通形态" if host._codex_form_view else "🌋 换成 火山形态"
 		var bg_hex = "#3a1810" if host._codex_form_view else "#2a1430"
 		var border_hex = "#58d3ff" if host._codex_form_view else "#ff7043"
 		var txt_hex = "#9fd8ff" if host._codex_form_view else "#ffae80"
-		host._add_rect(btn_x, btn_y, btn_w, btn_h, bg_hex, 0.92, border_hex, 2.0, 1.0)
+		## ★★2026-09-27 这颗钮原来走 `host._add_rect(..., stroke=2.0)`, 而它内部是
+		##   `UISkin.nine_if_big(196, 34, "panel-frame.png", …)` —— **34 < MIN_FRAME_PX(40)**
+		##   ⇒ 静默退回 StyleBoxFlat(四边框 2px + 底 a=0.92)= 门禁定义的**网页盒**。
+		##   而它只在双形态龟(双头/熔岩)那两只身上画, `verify_ui_consistency` 只量列表
+		##   第一条 ⇒ **这个网页盒从来没被数到过**(棘轮基线 Codex web≤0 一直绿着)。
+		##   改挂边带只有 4px 的 chip-frame(与牌子/普攻条同一张), 34 高装得下。
+		_plaque(btn_x - btn_w / 2.0, btn_y - btn_h / 2.0, btn_w, btn_h, border_hex, bg_hex)
 		host._add_text(btn_x, btn_y, label, 14, txt_hex, 0.5, 0.5, true)
 		var hitb = Control.new()
 		hitb.position = Vector2(btn_x - btn_w / 2.0, btn_y - btn_h / 2.0)
@@ -536,7 +645,7 @@ func _fit_skill_cards(parts: Array, top: float, max_h: float) -> void:
 func _render_skill_detail_inline(pet: Dictionary, ctx: Dictionary, sk: Dictionary, top: float) -> void:
 	# 返回钮 100×34, fill #1a2740@0.9 边 #58d3ff 1px@0.6; 文字 14px #58d3ff (PoC L539-549)
 	host._add_rect(70, top + 17.0, 100, 34, "#1a2740", 0.9, "#58d3ff", 1, 0.6)
-	host._add_text(70, top + 17.0, "← 返回列表", 14, "#58d3ff", 0.5, 0.5)
+	host._add_text(70, top + 17.0, "← 返回", 14, "#58d3ff", 0.5, 0.5)
 	var bhit = Control.new()
 	bhit.position = Vector2(20, top)
 	bhit.size = Vector2(100, 34)
@@ -783,7 +892,7 @@ func _show_consumable(eq: Dictionary) -> void:
 	var tgt_label: String = str({"ally": "作用于友方", "enemy": "作用于敌方"}.get(tgt, ""))
 	host._add_text(180, 72, "消耗品" + ("   ·   " + tgt_label if tgt_label != "" else ""),
 		16, "#06d6a0", 0.0, 0.5, true)
-	host._add_text(20, 150, "描述", 17, "#58d3ff", 0.0, 0.0, true)
+	host._add_text(20, 150, "效果", 17, "#58d3ff", 0.0, 0.0, true)
 	var desc = SkillText.render_bbcode(str(eq.get("desc", "")), {"atk": 0, "def": 0, "mr": 0, "maxHp": 0}, {}, 17)
 	var rt = RichTextLabel.new()
 	rt.bbcode_enabled = true; rt.fit_content = true; rt.scroll_active = false
@@ -820,7 +929,7 @@ func _show_type(item: Dictionary) -> void:
 	host._add_text(130, 36, tname, 32, color, 0.0, 0.5, true)
 	## ★副标不写 display_name —— 那返回「剑系」「弓箭·神射手」这类游戏里不存在的花名(用户 2026-08-14)。
 	##   而且大标题已经写了类型名, 副标再写一遍就是同一屏说两遍。这里只说它【是什么】。
-	host._add_text(130, 72, "装备类型羁绊", 15, "#888888", 0.0, 0.5)
+	host._add_text(130, 72, "装备羁绊", 15, "#888888", 0.0, 0.5)
 	var thresh := ""
 	for i in range(tiers.size()):
 		thresh += ("" if i == 0 else " / ") + str(int(tiers[i]))
@@ -860,7 +969,8 @@ func _show_type(item: Dictionary) -> void:
 
 	# 成员装备清单 (从 p2eq-types.json 反查). 3 列流式网格, 接着上面的效果文案往下排(不再写死 y=446)。
 	var list_y: float = 176.0 + maxf(24.0, rt.get_combined_minimum_size().y) + 26.0
-	host._add_text(20, list_y, "该类型装备 (%d)" % members.size(), 17, "#58d3ff", 0.0, 0.0, true)
+	## ★★2026-09-27 去掉括号计数。
+	host._add_text(20, list_y, "同类装备", 17, "#58d3ff", 0.0, 0.0, true)
 	var cols := 3
 	var col_w: float = (host.DETAIL_W - 40.0) / float(cols)
 	for i in range(members.size()):
@@ -893,10 +1003,10 @@ func _show_status(st: Dictionary) -> void:
 	host._clear_detail()
 	var icon_key: String = st.get("iconKey", "")
 	host._add_image(70, 70, "res://assets/sprites/status/%s-icon.png" % icon_key.replace("status-", ""), 100, 100, true)
-	var cat_label = {"dot": "DoT 持续伤害", "cc": "CC 控制", "buff": "增益", "debuff": "减益"}
+	var cat_label = {"dot": "持续伤害", "cc": "控制", "buff": "增益", "debuff": "减益"}
 	host._add_text(140, 38, st.get("name", "?"), 32, "#ffd93d", 0.0, 0.5, true)
 	host._add_text(140, 78, cat_label.get(st.get("category", ""), st.get("category", "")), 15, "#58d3ff", 0.0, 0.5, true)
-	host._add_text(20, 150, "说明", 17, "#58d3ff", 0.0, 0.0, true)
+	host._add_text(20, 150, "效果", 17, "#58d3ff", 0.0, 0.0, true)
 	var rt = RichTextLabel.new()
 	rt.bbcode_enabled = true; rt.fit_content = true; rt.scroll_active = false
 	rt.position = Vector2(20, 176)

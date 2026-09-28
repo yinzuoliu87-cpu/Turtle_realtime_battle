@@ -327,13 +327,23 @@ func _build_page_buttons() -> void:
 	# ── 训龟大师: 挪到右栏、贴在主 CTA 正上方 ──
 	#    它跟「开始战斗」是同一件事的两步(配大师 → 出战), 放一起比塞在左栏列表里更讲得通;
 	#    直接原因则是竖向预算: 左栏 5×81 放不下(见文件头"触摸线"那段)。
-	var tb := _frame_button("🐢 训龟大师", func(): _go("TrainerConfig"), false, TRAINER_SIZE, FONT_BTN, "")
+	## ★★2026-09-27 去掉文字里的 emoji「🐢」(用户:「全是 ai 味和网页味」)。
+	##   实拍放大看得很清楚: emoji 走的是**系统彩色字体**(平滑抗锯齿的圆润小龟),
+	##   而它正贴在一块像素木牌上 —— 两种画法并排, 一眼就是"拿 emoji 当图标"。
+	##   (`verify_fonts` 早就记着 m6x11/NotoSansSC 里没有 🐢 ⇒ 它一定是 fallback
+	##    到 NotoEmoji 或系统 emoji 字体画出来的, 与像素风无关。)
+	## ★不换成别的图标: 仓里没有"训龟大师"的图标素材, 拿别件的顶替是本项目的铁律禁区。
+	##   木牌上只留字, 反而更像市面上的像素游戏。
+	var tb := _frame_button("训龟大师", func(): _go("TrainerConfig"), false, TRAINER_SIZE, FONT_BTN, "")
 	tb.position = TRAINER_POS
 	page_box.add_child(tb)
 	_slide_in(tb, 4)
 	# ── ⚔ 开始战斗: 右下角巨型主 CTA ──
 	#    位置照 Zookeeper World 的绿 PLAY —— 横屏手机右手拇指的落点, 也是全屏唯一的大木框。
-	var hero := _frame_button("⚔  开始战斗", func(): _start_battle_flow(), false, HERO_SIZE, FONT_HERO, "", eliminated)
+	## ★同上: 去掉「⚔」。这个字符在本项目的字体链里是**单色 emoji 兜底**画的,
+	##   实拍是一对细线条的交叉剑 —— 旁边整块木牌都是 3~4px 的像素笔触, 它是唯一的矢量线条。
+	##   全屏唯一的主 CTA 上, 一行大金字比一个外来字形更立得住。
+	var hero := _frame_button("开始战斗", func(): _start_battle_flow(), false, HERO_SIZE, FONT_HERO, "", eliminated)
 	hero.position = HERO_POS
 	page_box.add_child(hero)
 	if eliminated:
@@ -728,7 +738,10 @@ func _status_row() -> void:
 			int(GameState.season_id), int(GameState.season_level), gl_line]
 	var wN: int = GameState.battles_won
 	var tN: int = GameState.battles_total
-	var rec := "%d 胜 %d 负" % [wN, maxi(0, tN - wN)] if tN > 0 else "暂无战绩"
+	## ★★空态文案 2026-09-27 改: 「暂无战绩」是后台/电商的那句「暂无数据」——
+	##   同一个模子还有"暂无记录/暂无内容"。游戏里没人这么说话。
+	##   改成一句**有人味、且在催你去打**的话; 它旁边就是「开始战斗」那块大木牌。
+	var rec := "%d 胜 %d 负" % [wN, maxi(0, tN - wN)] if tN > 0 else "还没上过场"
 	## ★E-B5 头衔: 只挂**最高一档**。这一行宽 382px, 完整串会溢出 ——
 	##   而玩家要一眼看到的本来就是最硬的那个, 完整列表在战绩屏。
 	##   ★没有头衔时**一个字都不加**(不写「暂无头衔」): 那一行已经有"暂无战绩"了,
@@ -747,9 +760,35 @@ func _status_row() -> void:
 	glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(glow)
 	holder.add_child(_place_stroked(txt, 18, Color("#ffe9a8"), Vector2(4, 10), Vector2(LEFT_W - 8, 26)))
+	## ★★2026-09-27 去掉行尾那个 › —— 网页的「更多 ›」写法
+	##   (用户 2026-09-27:「一点也看不出来游戏的味道, 全是 ai 味和网页味」)。
+	##   这一行本来就是可点的整块, 不靠一个箭头告诉人。
+	## ★(下面这段是旧注释, 讲的是箭头为什么曾经连进同一行 —— 现在没有箭头了, 留档)
 	## ★箭头连进同一行文字 —— 第一版把它钉在行尾(x≈410), 而"暂无战绩"到 x≈190 就结束了,
 	##   中间一百多像素空着, 屏幕上就是一个飘在龟身上的孤零零箭头。
-	holder.add_child(_place_stroked("📜 战绩  %s  ›" % rec, 17, Color("#cfd8e4"), Vector2(4, 42), Vector2(LEFT_W - 8, 26)))
+	## ★★2026-09-27 把「📜」换成真像素图标 `menu/icon-record.png`(交叉双剑纹章)。
+	##   左栏四个入口(背包/商店/图鉴/排行榜)用的全是像素图标, **只有这一行用 emoji** ——
+	##   同一栏里两种画法, 那正是"ai 味"最好认的形状。
+	## ★不是拿别件素材顶替: 这张图的文件名就叫 `icon-record`, 是**给战绩画的**,
+	##   而且全仓 grep 下来一个调用点都没有(画好了没人用), 这里是它的正主。
+	## ★图标 24px 与 17 号字同高一档; 文字左沿随之从 4 推到 32。
+	var _rec_ic_x := 4.0
+	var _rec_tx := 4.0
+	if ResourceLoader.exists("res://assets/sprites/menu/icon-record.png"):
+		var rec_ic := TextureRect.new()
+		rec_ic.texture = load("res://assets/sprites/menu/icon-record.png")
+		rec_ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		rec_ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		rec_ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST   # 像素风: 缩小也不许插值糊掉
+		rec_ic.size = Vector2(24, 24)
+		rec_ic.position = Vector2(_rec_ic_x, 43)
+		rec_ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(rec_ic)
+		_rec_tx = _rec_ic_x + 28.0
+	## ★颜色从冷灰 #cfd8e4 改成暖羊皮纸 #ddcaa4: 冷灰细字 = 网页的次级说明句,
+	##   而这一屏的语言是木头 + 金边。同一行里"战绩"两个字仍在(门禁 ⑦ 按它找入口)。
+	holder.add_child(_place_stroked("战绩  %s" % rec, 17, Color("#ddcaa4"),
+		Vector2(_rec_tx, 42), Vector2(LEFT_W - _rec_tx - 8.0, 26)))
 	var btn := Button.new()
 	btn.flat = true
 	btn.focus_mode = Control.FOCUS_NONE
@@ -954,7 +993,22 @@ func _week_day_cell(wd: int, today: int) -> Control:
 	cs.content_margin_top = 3; cs.content_margin_bottom = 3
 	## 今天那格也不描边(同上)。改成更实的金底 + 顶部一条金色实条 ——
 	## 实条是 ColorRect 不是 StyleBox, 既不算"盒", 在像素风里也比 1px 描边立得住。
-	cs.bg_color = Color(1.0, 0.85, 0.24, 0.32) if is_today else Color(1, 1, 1, 0.05)
+	## ★★2026-09-27 材质层(用户:「全是 ai 味和网页味」)。
+	##   原来**七格每格都有一块** `Color(1,1,1,0.05)` 的半透明底 —— 那正是 CSS 的
+	##   `rgba(255,255,255,.05)`; 七块并排 + 一行细灰字, 屏幕上读起来是**网页的标签栏**。
+	##   零边框零圆角只让它不被门禁判成"网页盒", 并没有让它变成游戏里的东西
+	##   (判据量的是"有没有 border+rgba 那个长相", 不是"像不像游戏")。
+	##
+	## ★★我先试的是【给七格都套九宫格金属芯片 `chip-frame`】, **实拍之后退掉了**:
+	##   chip-frame 源图 48×24, 拉到 92×54 之后那圈金属只剩 **1px 亮边** ——
+	##   屏幕上就是七个细线描边的方盒, 比原来的半透明块**更像网页表格**。
+	##   (这就是 `ui_skin.gd` 记的「贴图有它的最小可用尺寸」, 只是这次卡在"拉太大"那头;
+	##    我是**量完 band=4 判定安全、拍完才看出来不对** —— 数值过关不等于长相过关。)
+	##
+	## ⇒ 改法是**把盒子拿掉**, 不是换一种盒子: 过去/未来的日子直接落在条子上,
+	##   只有今天那格留一块实心金牌 + 顶上一条金边。一排日子 + 一块高亮牌,
+	##   这是游戏里周历的长相; 七个等大的框是表格的长相。
+	cs.bg_color = Color(1.0, 0.85, 0.24, 0.32) if is_today else Color(0, 0, 0, 0)
 	cell.add_theme_stylebox_override("panel", cs)
 	var v := VBoxContainer.new(); v.add_theme_constant_override("separation", 0)
 	cell.add_child(v)
@@ -1088,7 +1142,10 @@ const BRACKET_SCENE := "BracketMap"
 func _finals_entry() -> Control:
 	var b := Button.new()
 	b.custom_minimum_size = Vector2(150, 81)
-	b.text = "决赛日\n看对阵图 →"
+	## ★★2026-09-27 去掉行尾的「→」。它跟上面状态行那个「›」是同一族:
+	##   网页的「更多 →」写法 —— 用一个箭头告诉人"这里可以点"。
+	##   这一整块本来就是一个 150×81 的按钮(触控下限), 不需要箭头来交代。
+	b.text = "决赛日\n看对阵图"
 	b.add_theme_font_size_override("font_size", 15)
 	b.add_theme_color_override("font_color", Color("#4ff0d0"))
 	## ★★2026-09-27 上皮。原来它用的是 **Godot 默认皮**(圆角纯灰), 与全屏其它按钮完全两个味。
@@ -1107,6 +1164,16 @@ func _finals_entry() -> Control:
 	## ★**不设 content_margin**: 第一版加了 10/6, 把按钮撑宽 ⇒ `verify_ios_ui`「全在屏内」
 	##   与 `verify_mainmenu_layout`「都在 1280×720 内」双双判红(越界 18 个)。
 	##   这一格的尺寸由 `custom_minimum_size` 定死(150×81, 触控下限), 皮只管颜色。
+	## ★★2026-09-27 **试过换九宫格金属皮, 实拍后退掉了** —— 记在这里免得下次再试一遍。
+	##   想法是对的(纯色块没有材质, 跟旁边的木牌不是一个世界), 但这个尺寸没有合适的贴图:
+	##     · `UISkin.button()` 会按尺寸自动挑 `menu/frame-rect.png`(150×81 判为"大"),
+	##       而它**边带实测 27px**, 上下 27+28=55, 装不下两行 15 号字(约 40 高)
+	##       ⇒ `verify_ui_consistency` 第 11 条「文字压边带」当场 +1(主菜单基线 2, 只降不升)。
+	##     · 退而用 `chip-frame`(边带 4px, 数值上完全安全) —— 但它源图只有 48×24,
+	##       拉到 150×81 之后那圈金属只剩 **1px 亮边**, 实拍就是一个**细线描边的青色方框**,
+	##       比原来的纯色块更像网页按钮。**量得过 ≠ 长得对**, 拍了才知道。
+	##   ⇒ 真正的修法是给这个尺寸画一张自己的九宫格(未做, 已在报告里登记)。
+	##     在那之前保持纯色块: 它至少**不是**"1px 描边 + 半透明底"那个长相。
 	b.add_theme_stylebox_override("normal", fsb)
 	var fsh := fsb.duplicate()
 	fsh.bg_color = Color(0.09, 0.26, 0.24, 0.98)
@@ -1366,36 +1433,65 @@ func _on_tutorial() -> void:
 	var box := PanelContainer.new()
 	box.anchor_left = 0.5; box.anchor_top = 0.5; box.anchor_right = 0.5; box.anchor_bottom = 0.5
 	box.grow_horizontal = Control.GROW_DIRECTION_BOTH; box.grow_vertical = Control.GROW_DIRECTION_BOTH
+	## ★★★2026-09-27 这块弹窗是**全主菜单唯一一个真正的"网页盒"**:
+	##   `#16213a` 底 + 2px 金描边 + **12px 圆角** + 一个 8px 圆角的纯色主按钮
+	##   + 一个**完全没换过皮的 Godot 默认按钮**(圆角纯灰)。
+	##   照着 `verify_ui_consistency` 的 13 条判据逐条对, 它一次占了 1(网页盒) / 2(圆角盒) / 3(默认皮)。
+	## ★★为什么门禁一直没红: 那张基线表扫的是**主菜单加载完的样子**, 而这块弹窗要按过
+	##   ❓ 磁贴才建得出来 ⇒ **被测对象根本不在场**(memory `fb-gate-subject-never-constructed`)。
+	##   跟上周那个"一周只有周日露面"的决赛日按钮是同一族: 判据没错, 只是碰不到面。
+	## ⇒ 换成共享皮肤层的九宫格金属面板(与背包/图鉴/排行榜的面板同一张皮), 零圆角零描边。
+	## ★内容留白设在**返回的那个 StyleBox 上**, 不是设在 `bsb` 上 ——
+	##   `UISkin.nine` 换掉的是整个 StyleBox, 写在 fallback 上的 margin 不会被带过去
+	##   (贴图缺失退回时才用得上, 所以两边都要设)。
 	var bsb := StyleBoxFlat.new()
-	bsb.bg_color = Color("#16213a"); bsb.set_border_width_all(2); bsb.border_color = Color("#ffd93d")
-	bsb.set_corner_radius_all(12)
+	bsb.bg_color = Color("#16213a")
+	bsb.set_border_width_all(0)
+	bsb.set_corner_radius_all(0)
 	bsb.content_margin_left = 36; bsb.content_margin_right = 36; bsb.content_margin_top = 28; bsb.content_margin_bottom = 28
-	box.add_theme_stylebox_override("panel", bsb)
+	var bframe := UISkin.nine("panel-frame.png", 20, bsb)
+	bframe.content_margin_left = 36; bframe.content_margin_right = 36
+	bframe.content_margin_top = 28; bframe.content_margin_bottom = 28
+	box.add_theme_stylebox_override("panel", bframe)
 	ov.add_child(box)
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 16); vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_child(vb)
+	## ★★文案改口(2026-09-27)。原稿是**说明书腔**:「新手教程」/「是否开始龟龟对战教程？」——
+	##   "是否…？" 是表单确认框的句式(Are you sure you want to…), 不是游戏里会有人说的话,
+	##   而且它在**描述一个功能**(教程), 不是在**招呼玩家做一件事**。
+	## ⇒ 改成场里那位老师傅开口: 说清楚要干嘛(选龟 + 摆阵), 一句话, 不带问句模板。
 	var t := Label.new()
-	t.text = "新手教程"; t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	t.text = "先下场练练"; t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	t.add_theme_font_size_override("font_size", 20); t.add_theme_color_override("font_color", Color("#ffd93d"))
 	vb.add_child(t)
 	var d := Label.new()
-	d.text = "是否开始龟龟对战教程？"; d.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	d.add_theme_font_size_override("font_size", 15); d.add_theme_color_override("font_color", Color("#dfe6f0"))
+	d.text = "来一场热身局, 我教你挑龟、摆阵"; d.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	d.add_theme_font_size_override("font_size", 15); d.add_theme_color_override("font_color", Color("#e8d9b0"))
 	vb.add_child(d)
 	var bh := HBoxContainer.new()
 	bh.alignment = BoxContainer.ALIGNMENT_CENTER; bh.add_theme_constant_override("separation", 14)
 	vb.add_child(bh)
+	## ★主按钮: 原来是 `#ffc23c` 纯色 + **8px 圆角** —— 那是 Bootstrap 的 primary button,
+	##   不是像素游戏的按钮。走 `UISkin.button` 上金属签牌皮(它自己按真实尺寸挑框:
+	##   120×40 短边 <56 ⇒ 用 48×24 的 `chip-frame`, 正是给这个尺寸画的那张)。
+	## ★文字色跟着改: 签牌是**深色金属**, 原来那个深褐 `#3a1f00` 压在上面根本读不出
+	##   (它是配亮金底的)。换暖金字。
 	var start_btn := Button.new()
-	start_btn.text = "开始教程"; start_btn.custom_minimum_size = Vector2(120, 40)
-	start_btn.add_theme_color_override("font_color", Color("#3a1f00"))
-	var ssb := StyleBoxFlat.new()
-	ssb.bg_color = Color("#ffc23c"); ssb.set_corner_radius_all(8)
-	start_btn.add_theme_stylebox_override("normal", ssb)
+	start_btn.text = "开打"; start_btn.custom_minimum_size = Vector2(120, 40)
+	start_btn.add_theme_color_override("font_color", Color("#ffe9a8"))
+	UISkin.button(start_btn, Color("#ffd08a"))
 	start_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	bh.add_child(start_btn)
+	## ★次按钮原来是**一个字都没动过的 Godot 默认皮**(圆角纯灰) ——
+	##   `ui_skin.gd` 头注里记着的那 12 个"没游戏味最直接的来源", 这是漏网的第 13 个。
+	##   (它连门禁第 3 条都躲过了, 因为那条先查 `has_theme_stylebox_override`,
+	##    而默认主题不是 override —— 跟战斗面板「✕」「详细」两个按钮当年一模一样。)
+	## ★「取消」也是表单词。这里不是在取消一个操作, 是在回一句话。
 	var cancel_btn := Button.new()
-	cancel_btn.text = "取消"; cancel_btn.custom_minimum_size = Vector2(96, 40)
+	cancel_btn.text = "等会儿"; cancel_btn.custom_minimum_size = Vector2(96, 40)
+	cancel_btn.add_theme_color_override("font_color", Color("#c6d2e0"))
+	UISkin.button(cancel_btn, Color("#9fb6c9"))
 	cancel_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	bh.add_child(cancel_btn)
 	start_btn.pressed.connect(func() -> void:

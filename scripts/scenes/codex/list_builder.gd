@@ -177,9 +177,12 @@ func _add_equip_rows() -> void:
 		var ccol: String = host.COST_COLOR.get(cost, "#4cc9f0")
 		## 费用 0 = 羁绊赠送(不上商店, 所以没有费用) —— 标题不写"费用 0", 那读起来像"免费"
 		if cost <= 0:
-			_add_header("▸ 羁绊赠送 (%d)" % items.size(), "#ffd93d")
+			## ★★2026-09-27 去掉折叠箭头与括号计数 —— `▸` 是网页折叠组的箭头,
+			##   `(12)` 那种括号计数是列表页的写法; 游戏里分组只写组名。
+			##   ★字面跟详情页对齐(detail_views 副标写的就是「羁绊赠送」)。
+			_add_header("羁绊赠送", "#ffd93d")
 		else:
-			_add_header("▸ 费用 %d (%d)" % [cost, items.size()], ccol)
+			_add_header("%d 费" % cost, ccol)
 		for eq in items:
 			host._items.append(eq)
 			var stroke: String = ccol
@@ -195,7 +198,7 @@ func _add_equip_rows() -> void:
 		if eq is Dictionary and eq.get("category", "") == "consumable":
 			consumables.append(eq)
 	if not consumables.is_empty():
-		_add_header("▸ 消耗品 (%d)" % consumables.size(), "#06d6a0")
+		_add_header("消耗品", "#06d6a0")
 		for eq in consumables:
 			host._items.append(eq)
 			var icon: String = str(eq.get("icon", ""))
@@ -205,8 +208,10 @@ func _add_equip_rows() -> void:
 
 func _add_status_rows() -> void:
 	var cat_label = {
-		"dot": ["DoT (持续伤害)", "#ef4444"], "cc": ["CC (控制)", "#c77dff"],
-		"buff": ["Buff (增益)", "#06d6a0"], "debuff": ["Debuff (减益)", "#fbbf24"],
+		## ★★2026-09-27 原文是「DoT (持续伤害)」「CC (控制)」—— 前半是开发者黑话,
+		##   括号里才是玩家看得懂的话。既然括号里那叠就够了, 前半就是多余的。
+		"dot": ["持续伤害", "#ef4444"], "cc": ["控制", "#c77dff"],
+		"buff": ["增益", "#06d6a0"], "debuff": ["减益", "#fbbf24"],
 	}
 	for cat in ["dot", "cc", "buff", "debuff"]:
 		var items = []

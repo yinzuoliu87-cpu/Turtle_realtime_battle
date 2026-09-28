@@ -223,9 +223,11 @@ func _rebuild() -> void:
 	capl.position = Vector2(SYN_X + 176, 22); capl.size = Vector2(190, 40)
 	capl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	var _nxt := int(GameState.season_level) + 1
-	capl.tooltip_text = "每只统领/小将最多装 %d 件；全队 6 只合计上限随赛季等级提升。\n当前 Lv%d → %d 件%s" % [
+	## ★原文"全队 6 只合计上限随赛季等级提升。当前 Lv3 → 5 件"是规则书的写法("上限""提升"
+	##   加一个箭头)。改成跟玩家说话: 现在能装几件、再升一级能装几件。
+	capl.tooltip_text = "一只身上最多 %d 件；全队六只一起能装几件, 看你的赛季等级。\n现在 Lv%d, 全队能装 %d 件%s" % [
 		P2.UNIT_EQUIP_CAP, int(GameState.season_level), cap,
-		("\n升到 Lv%d → %d 件" % [_nxt, P2.team_equip_cap(_nxt)]) if _nxt <= P2.MAX_LEVEL else "（已满级）"]
+		("\n升到 Lv%d 就能装 %d 件" % [_nxt, P2.team_equip_cap(_nxt)]) if _nxt <= P2.MAX_LEVEL else "\n已经满级, 不会再多了"]
 	add_child(capl)
 
 	## ★糖果罐已改为【背包格子里的一张卡】(用户 2026-08-14「以一个装备的形式」),
@@ -372,7 +374,7 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 	nm.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(nm)
 	if is_ph:
 		var hint := Label.new()
-		hint.text = "选龟后填入"
+		hint.text = "这个位子还空着"   # 原文"选龟后填入" —— "填入"是表单的词, 不是游戏里的话
 		hint.add_theme_font_size_override("font_size", 12)
 		hint.add_theme_color_override("font_color", Color("#7f8fa0"))
 		hint.position = Vector2(rx, 62); hint.size = Vector2(UBOX_W - rx - 8, 16)
@@ -395,7 +397,7 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 		var front := str(unit.get("role", "front")) == "front"
 		var tgl := Button.new()
 		tgl.text = "前排" if front else "后排"
-		tgl.tooltip_text = "前排=近战挥砍 / 后排=远程射击 · 点切换"
+		tgl.tooltip_text = "点一下换站位 —— 前排贴上去挥砍, 后排站远了射击"
 		tgl.add_theme_font_size_override("font_size", 12)
 		var tsb := StyleBoxFlat.new()
 		tsb.bg_color = Color("#5a3410") if front else Color("#0f3646")
@@ -484,7 +486,7 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, is_leade
 		if _sel_bench >= 0:
 			cell.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 装备模式: 透传→点框body装上
 		elif filled:
-			cell.tooltip_text = "点击卸下这件 → 回背包"
+			cell.tooltip_text = "点一下, 这件就回背包"
 			var cci := int((wear[ci] as Dictionary)["i"])    # ★真实下标, 不是格号
 			cell.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: (_inv_ops._unequip_at(pet_id, cci) if is_leader else _inv_ops._unequip_minion_at(lane, idx, cci)))
 		else:
@@ -530,7 +532,8 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, is_leade
 		if _sel_bench >= 0:
 			gcell.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		else:
-			gcell.tooltip_text = "%s · 羁绊赠送(不占装备位) · 盾羁绊掉档时自动收回" % str(gdef.get("name", ""))
+			## 原文"羁绊赠送(不占装备位) · 盾羁绊掉档时自动收回": 括号注解 + "掉档"这种表述。
+			gcell.tooltip_text = "%s · 盾羁绊白送的, 不占装备位 · 盾羁绊掉下去就收回" % str(gdef.get("name", ""))
 			var gci := int(g["i"])
 			gcell.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: (_inv_ops._unequip_at(pet_id, gci) if is_leader else _inv_ops._unequip_minion_at(lane, idx, gci)))
 		box.add_child(gcell)
@@ -631,11 +634,14 @@ func _show_lineup_help() -> void:
 	ttl.add_theme_font_size_override("font_size", 22); ttl.add_theme_color_override("font_color", Color("#ffd93d"))
 	ttl.position = Vector2(24, 18); ttl.size = Vector2(bw - 48, 30); box.add_child(ttl)
 	var body := Label.new()
-	body.text = "· 上/下是两个各自开打的战场, 分兵布置\n· 点两个单位 = 互换它们的战场 / 位置\n· 点小将的【前排 / 后排】= 近战挥砍 ↔ 远程射击\n· 点下方背包里的装备 → 再点龟 / 小将 = 装上\n· 点单位身上的装备格 = 卸下回背包\n· 3 件同款同星装备自动合成升星"
+	## ★原文每条都是「X = Y」的对照表式("点两个单位 = 互换它们的战场 / 位置"),
+	##   那是策划表的写法。改成直接对玩家说"你点了会怎样" —— 同样是六条, 一条不少。
+	body.text = "· 上下两个战场各打各的, 兵力自己分\n· 点两个单位, 它们就互换战场和位置\n· 点小将的【前排 / 后排】, 近战挥砍和远程射击之间切\n· 先点下面背包里的装备, 再点一只龟或小将, 就装上了\n· 点单位身上的装备格, 那件就回背包\n· 三件同款同星的装备会自己合成, 升一颗星"
 	body.add_theme_font_size_override("font_size", 15); body.add_theme_color_override("font_color", Color("#cfe0ef"))
 	body.position = Vector2(24, 58); body.size = Vector2(bw - 48, bh - 120); body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; box.add_child(body)
 	var ok := Button.new(); ok.text = "知道了"; ok.add_theme_font_size_override("font_size", 17)
 	ok.position = Vector2(bw / 2.0 - 60, bh - 52); ok.size = Vector2(120, 40)
+	UISkin.button(ok, Color("#ffd93d"))
 	ok.pressed.connect(func(): dim.queue_free())
 	box.add_child(ok)
 
@@ -759,7 +765,9 @@ func _build_op_bar() -> void:
 	if _sel_bench >= 0 and _sel_bench < GameState.persistent_bench.size():
 		var sit: Dictionary = GameState.persistent_bench[_sel_bench]
 		if str(sit.get("kind", "")) == "item":
-			var l := Label.new(); l.text = "🔼 临时等级器已选  →  点一只 龟 / 小将,本大轮永久 +1 级"
+			## ★原文「🔼 临时等级器已选 → 点一只 龟 / 小将,本大轮永久 +1 级」: "已选"+双箭头
+			##   是状态机说明书的口气。换成直接跟玩家说下一步做什么。
+			var l := Label.new(); l.text = "🔼 点一只龟或小将, 这一大轮就给它多一级"
 			l.add_theme_font_size_override("font_size", 16); l.add_theme_color_override("font_color", Color("#e6d8ff"))
 			l.position = Vector2(16, 24); l.size = Vector2(bw - 320, 28); l.mouse_filter = Control.MOUSE_FILTER_IGNORE; bar.add_child(l)
 		else:
@@ -814,7 +822,8 @@ func _build_op_bar() -> void:
 			var total := _op_total_lines(l, plain, body_w)
 			if total > OP_BODY_ROWS:
 				var more := Label.new()
-				more.text = "下面还有 %d 行 → 点【详情】" % (total - OP_BODY_ROWS)
+				## "还有 N 行"是排版口径, 玩家关心的是**还有没说完的事**。
+				more.text = "还有 %d 行没说完 · 点【详情】" % (total - OP_BODY_ROWS)
 				more.add_theme_font_size_override("font_size", 13)
 				more.add_theme_color_override("font_color", Color("#7fb0d8"))
 				more.position = Vector2(body_w + 16.0 - 250.0, 10); more.size = Vector2(250, 20)
@@ -828,15 +837,22 @@ func _build_op_bar() -> void:
 			det.add_theme_font_size_override("font_size", 16)
 			det.tooltip_text = "看这件的完整属性和效果"
 			det.position = Vector2(bw - 396, 14); det.size = Vector2(96, 38)
+			## ★★底栏这三个键原来全是 Godot 默认皮(圆角纯色) ——
+			##   `verify_click_targets_alive` 自己写着「圆角纯色是最直接的『没游戏味』」,
+			##   它们只是因为底栏得先选中一件装备才建、静止态的屏上不在场, 才一直没被数到。
+			##   ⚠ `UISkin.button` 按**按钮真实尺寸**挑大框/小签 ⇒ 必须在 `size` 之后调。
+			UISkin.button(det, Color("#9fb6c9"))
 			det.pressed.connect(func(): _show_equip_detail(sit)); bar.add_child(det)
 			var sv := _inv_ops._sell_value(sit)
 			var sell := Button.new(); sell.text = "💰 卖出 +%d💠" % sv
 			sell.add_theme_font_size_override("font_size", 16)
 			sell.position = Vector2(bw - 290, 14); sell.size = Vector2(170, 38)
+			UISkin.button(sell, Color("#ffd93d"))
 			sell.pressed.connect(_inv_ops._sell_selected); bar.add_child(sell)
 		var cancel := Button.new(); cancel.text = "取消"
 		cancel.add_theme_font_size_override("font_size", 16)
 		cancel.position = Vector2(bw - 108, 14); cancel.size = Vector2(92, 38)
+		UISkin.button(cancel, Color("#9fb6c9"))
 		cancel.pressed.connect(func(): _sel_bench = -1; _rebuild()); bar.add_child(cancel)
 
 
@@ -901,7 +917,7 @@ func _show_equip_detail(item: Dictionary) -> void:
 	var bbody := ""
 	var rows: Array = EquipStats.stat_lines(eid, star)
 	if rows.is_empty():
-		bbody = "[color=#8fa6bb]这件不加属性，只有下面的效果。[/color]"
+		bbody = "[color=#8fa6bb]这件不加属性，只有效果[/color]"
 	else:
 		var parts: Array = []
 		for kv in rows:
@@ -917,7 +933,7 @@ func _show_equip_detail(item: Dictionary) -> void:
 	## 估不准还有个更隐蔽的坏处: 每件装备的框高都对不上内容, 看起来就是"随便拍的"。
 	var bw := 700.0
 	var body_plain := "带来的属性\n%s\n\n效果\n%s" % [
-		("这件不加属性，只有下面的效果。" if rows.is_empty() else _stat_block(eid, star)),
+		("这件不加属性，只有效果" if rows.is_empty() else _stat_block(eid, star)),
 		SkillText.equip_full(edef)]
 	var bh: float = clampf(_measured_text_h(body_plain, bw - 48.0, DETAIL_BODY_FS) + 140.0,
 		300.0, H - 96.0)
@@ -951,8 +967,10 @@ func _show_equip_detail(item: Dictionary) -> void:
 	rt.text = bb
 	rt.name = "EquipDetailBody"
 	box.add_child(rt)
-	var ok := Button.new(); ok.text = "关闭"; ok.add_theme_font_size_override("font_size", 18)
+	## 「关闭」是网页/工具栏的词; 本屏的阵容帮助框一直用的是「知道了」—— 统一到那一个。
+	var ok := Button.new(); ok.text = "知道了"; ok.add_theme_font_size_override("font_size", 18)
 	ok.position = Vector2(bw / 2.0 - 60, bh - 52); ok.size = Vector2(120, 40)
+	UISkin.button(ok, Color("#ffd93d"))
 	ok.pressed.connect(func(): dim.queue_free())
 	box.add_child(ok)
 
@@ -964,7 +982,18 @@ func _build_jar_op_bar() -> void:
 	var bar := Panel.new()
 	var sb := StyleBoxFlat.new(); sb.bg_color = Color("#1c1226"); sb.border_color = Color("#e79bd6")
 	sb.set_border_width_all(2); sb.set_corner_radius_all(8)
-	bar.add_theme_stylebox_override("panel", sb)
+	## ★★2026-09-28 换九宫格金属框 —— **这是本屏最后一个真·圆角盒**。
+	##   隔壁 `_build_op_bar`(装备那条操作栏, 同一个位置同一套尺寸)2026-08-18 就换过了,
+	##   而它这个双胞胎漏了 ⇒ 选装备时底栏是金属框、选糖果罐时同一块地方变回圆角网页盒。
+	##   ★为什么一直没被门禁数到: 这条栏只在【选中糖果罐】之后才建,
+	##     `verify_ui_consistency` / `_probe_webbox` 量的是静止态的屏, 那时它不在场。
+	##     (memory [[fb-gate-subject-never-constructed]]: 判据没错, 被测对象不在场。)
+	##   ★糖果粉那道描边不丢: 走 `UISkin.tint_of` 把它变成框的 modulate ——
+	##     一张中性金属框 modulate 出"这是糖果罐那条栏", 而不是各做一张图。
+	var jtex := UISkin.nine("panel-frame.png", 20, sb)
+	if jtex is StyleBoxTexture:
+		(jtex as StyleBoxTexture).modulate_color = UISkin.tint_of(sb.border_color)
+	bar.add_theme_stylebox_override("panel", jtex)
 	var bw := _vw - 48.0
 	bar.position = Vector2(24, by); bar.size = Vector2(bw, OP_BAR_H); add_child(bar)
 	## ★★2026-08-15 修 off-by-one: `candy_jar_tier()` 返回的**已经是 1~6**
@@ -974,7 +1003,13 @@ func _build_jar_op_bar() -> void:
 	##   攒满 30 颗时还会显示【第 7 档】, 而总共只有 6 档。
 	var tier: int = GameState.candy_jar_tier()
 	var l := Label.new()
-	l.text = "🍬 糖果罐(第 %d 档) —— 打碎后本大轮消失。当前档位奖励: %s" % [
+	## ★原文「🍬 糖果罐(第 N 档) —— 打碎后本大轮消失。当前档位奖励: X」三样毛病:
+	##   括号计数「(第 N 档)」、"当前档位奖励:" 的 label: value 句式、以及「档位」这个词本身
+	##   ——「档位」正是 `verify_inventory_layout` ㉖ 明令界面上不许出现的字(它只是因为
+	##   这条栏不在静止态的屏上才没被数到)。
+	## ⚠ 但「第 %d 档」和 `candy_jar_tier_preview` 的原文**必须留在这句里**:
+	##   ㉑ 逐区间拿它们对账 off-by-one(7 组 count→tier), 少一个当场红。
+	l.text = "🍬 糖果罐 · 第 %d 档 —— 现在打碎能开出 %s。本大轮只碎这一次。" % [
 		tier, GameState.candy_jar_tier_preview(tier)]
 	l.add_theme_font_size_override("font_size", 15)
 	l.add_theme_color_override("font_color", Color("#f0d6ff"))
@@ -985,6 +1020,7 @@ func _build_jar_op_bar() -> void:
 	var smash := Button.new(); smash.text = "🔨 打碎"
 	smash.add_theme_font_size_override("font_size", 16)
 	smash.position = Vector2(bw - 290, 14); smash.size = Vector2(170, 38)   # ★与"卖出"同一位置同一尺寸
+	UISkin.button(smash, Color("#e79bd6"))
 	smash.pressed.connect(func() -> void:
 		_sel_jar = false
 		if _inv_jar != null:
@@ -993,6 +1029,7 @@ func _build_jar_op_bar() -> void:
 	var cancel := Button.new(); cancel.text = "取消"
 	cancel.add_theme_font_size_override("font_size", 16)
 	cancel.position = Vector2(bw - 108, 14); cancel.size = Vector2(92, 38)
+	UISkin.button(cancel, Color("#9fb6c9"))
 	cancel.pressed.connect(func(): _sel_jar = false; _rebuild())
 	bar.add_child(cancel)
 
@@ -1052,7 +1089,10 @@ func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	# ★系统 tooltip 是纯文本, 会把 [color=..] 原样显示给玩家 —— 所以挂 rich_tooltip
 	#   覆写 _make_custom_tooltip, 才能真的渲染出星级高亮。
 	box.set_script(RichTooltip)
-	box.tooltip_text = "[b]%s[/b]  ★%d  (费用%d)\n\n属性加成:\n%s\n\n效果: %s" % [
+	## ★"(费用3)" 括号计数 + "属性加成:" / "效果:" 的 label: value 句式, 两样都换掉。
+	##   小标题用的词与【详情】弹框逐字一致(那边是"带来的属性" / "效果", 见 `_show_equip_detail`)
+	##   —— 同一件东西的同一段信息, 两个入口不该有两套叫法。
+	box.tooltip_text = "[b]%s[/b]  ★%d  %d费\n\n带来的属性\n%s\n\n效果\n%s" % [
 		str(edef.get("name", eid)), star, int(edef.get("cost", 1)),
 		_stat_block(eid, star), SkillText.highlight_star(SkillText.equip_brief(edef) if str(edef.get("effectBrief", "")) != "" else "（无主动效果）", star)]
 	_wire_bench_tap(box, idx)
@@ -1065,7 +1105,11 @@ func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 func _stat_block(eid: String, star: int) -> String:
 	var rows: Array = EquipStats.stat_lines(eid, star)
 	if rows.is_empty():
-		return "  （本件不提供属性加成，只有效果）"
+		## ★★这一句的定稿在这里(2026-09-28)。原文「（本件不提供属性加成，只有效果）」是公文体,
+		##   而 `ShopScene._build_stat_rows` **有一句一模一样的** —— 同一句话出两个版本比都不改更糟
+		##   (玩家会以为商店和背包说的不是一回事)。⇒ 定稿为下面这一句, 商店那边同步到同一句。
+		##   本屏另外两处(`_show_equip_detail` 的渲染文与量高用的平文)也用同一句, 三处逐字一致。
+		return "  这件不加属性，只有效果"
 	var out: Array = []
 	for kv in rows:
 		out.append("  · %s  %s" % [kv[0], kv[1]])
@@ -1107,7 +1151,9 @@ func _item_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	box.add_child(nm)
 	for ch in box.get_children():
 		ch.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.tooltip_text = "临时等级器 (糖果罐战利品)\n选中它 → 点一只龟统领或小将 → 该单位【本大轮】永久 +1 级 (切大轮重置)"
+	## 原文"临时等级器 (糖果罐战利品)\n选中它 → 点一只龟统领或小将 → 该单位【本大轮】永久 +1 级 (切大轮重置)":
+	## 两个括号注解 + 两个箭头 = 说明书腔。改成两句话直说。
+	box.tooltip_text = "从糖果罐里开出来的临时等级器\n点它, 再点一只龟统领或小将 —— 这一大轮它就多一级, 换了大轮还原"
 	_wire_bench_tap(box, idx)
 	return box
 
@@ -1146,9 +1192,10 @@ func _candy_jar_cell(it: Dictionary, pos: Vector2) -> Control:
 	var tier: int = GameState.candy_jar_tier()
 	var jbox := _slot_panel(pos, Color("#3a2446") if _sel_jar else Color("#2a1c36"),
 		Color("#ffd93d") if _sel_jar else Color("#e79bd6"))   # 选中态: 与装备卡同一套金边
-	jbox.tooltip_text = "糖果罐 · 已攒 %d 颗糖(第 %d 档)
-本大轮只能打碎一次, 碎后消失。
-当前档位奖励: %s" % [
+	## 原文"已攒 N 颗糖(第 M 档)…当前档位奖励: X": 括号计数 + label: value + "档位"这个词。
+	jbox.tooltip_text = "糖果罐里攒了 %d 颗糖, 现在是第 %d 档
+一大轮只能碎一次, 碎完就没了
+现在打碎能开出 %s" % [
 		int(it.get("count", 0)), tier, GameState.candy_jar_tier_preview(tier)]
 	var jic := Label.new()
 	jic.text = "🍬"

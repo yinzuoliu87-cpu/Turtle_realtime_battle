@@ -37,6 +37,63 @@ const TIER_COLOR_OFF := "#6b7686"                                   # 一档都�
 const SYN_ROW_H := 62.0        # 一行的高度(手机触摸目标下限 44; 用户「按钮别又矮又扁」→ 62)
 
 
+## ── 「这一行点得开」的暗示: 一枚**逐像素画出来的**小箭头 ─────────────────
+##
+## ★原来这里是字体字形 `›`(2026-09-28 换掉)。那是网页列表那一味, 而且 22 号字的
+##   字形又细又灰, 在 62px 高的金属框里几乎读不出来是个记号。
+## ★**不是删掉了完事** —— 删了这一行就没有任何"可点"的暗示了(手机上连 hover 都没有,
+##   静态的那一枚才是主暗示)。所以是【换】不是【删】。
+## ★为什么逐像素画而不是加素材: `assets/sprites/` 递归搜过, **全库没有 UI 小箭头** ——
+##   只有 `vfx/bamboo-arrow` `vfx/hunter-arrow` `equip/virus-arrow` 三张**箭矢弹道图**
+##   (带杆带羽的投射物, 不是箭头符号), 拿来当 UI 记号既不对又违背「素材不复用」铁律。
+##   ⇒ 照 `VfxTex._make_egg_icon_texture` 的先例: 这么小一个 UI 记号不值得新起一个 png,
+##     逐像素画即可(那个函数的注释写的正是这条理由)。
+## ★白笔画 + 深描边**烤进图里**, 颜色一律走 `modulate`(档位色) —— 和 `UISkin` 同一套做法:
+##   一张中性图管所有状态, 否则"档位色"这条信息会被贴图吃掉(状态签那次的教训)。
+static var _chev_tex: ImageTexture = null
+static func _chevron_tex() -> ImageTexture:
+	if _chev_tex != null:
+		return _chev_tex
+	var W := 9
+	var HH := 14
+	var img := Image.create(W, HH, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var ink := Color(1, 1, 1, 1)                 # 笔画: 纯白, 由 modulate 上色
+	var edge := Color(0.10, 0.09, 0.12, 1.0)     # 描边: 很暗, modulate 之后仍是暗色
+	## 笔画 = 2px 宽的 45° 折线(上折点 → 中间尖 → 下折点), 就是 `›` 的形, 但是像素阶梯。
+	## 留出最外一圈(x=0/8 · y=0/13)给描边, 否则描边会被裁掉半边。
+	for y in range(1, HH - 1):
+		var d: int = int(absf(float(y) - 6.5) - 0.5)    # y=6/7 → 0 … y=1/12 → 5
+		var x0: int = 2 + (5 - d)                       # 尖端 x=7, 折点 x=2
+		img.set_pixel(x0, y, ink)
+		img.set_pixel(x0 - 1, y, ink)
+	## 1px 深描边 = 贴着笔画的透明像素。深蓝海底背景上没有描边的白线会发糊。
+	## ⚠ 先收集再写: 边写边读会把"贴着描边"也算进去, 描边自己越长越粗。
+	var ring: Array = []
+	for y in range(HH):
+		for x in range(W):
+			if img.get_pixel(x, y).a > 0.0:
+				continue
+			for o in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var nx: int = x + o.x
+				var ny: int = y + o.y
+				if nx < 0 or ny < 0 or nx >= W or ny >= HH:
+					continue
+				if img.get_pixel(nx, ny).a > 0.0:
+					ring.append(Vector2i(x, y))
+					break
+	for p in ring:
+		img.set_pixel((p as Vector2i).x, (p as Vector2i).y, edge)
+	_chev_tex = ImageTexture.create_from_image(img)
+	return _chev_tex
+
+
+## 提亮一个颜色(hover 用)。★钳到 1.0 —— 不钳的话金色(1,0.85,0.24)×1.3 会溢出成白,
+##   四个档位色 hover 之后长得一模一样, 等于把档位色这条信息 hover 掉了。
+static func _lift(c: Color, k: float) -> Color:
+	return Color(minf(c.r * k, 1.0), minf(c.g * k, 1.0), minf(c.b * k, 1.0), c.a)
+
+
 ## 某类型第 tier 档(1-based; 0 = 还没开启)的颜色。
 func _tier_color(typ: String, tier: int) -> Color:
 	if tier <= 0:
@@ -76,7 +133,8 @@ func _build_synergy_panel(_leaders: Array) -> void:
 	hdr.position = Vector2(x0, host.SYN_TOP); hdr.size = Vector2(w, 26); host.add_child(hdr)
 	var cy: float = host.SYN_TOP + 32.0
 	if host._sel_bench >= 0:   # 装备模式上下文提示: 引导玩家凑同类型激活/升档羁绊(用户2026-07-19)
-		var ctx = Label.new(); ctx.text = "给同一只装多件同类型 → 开启羁绊 / 升一档"
+		## ★不写"→ 开启羁绊 / 升一档"那种箭头式的说明书句 —— 这是给玩家的一句话, 不是流程图。
+		var ctx = Label.new(); ctx.text = "同一只多装几件同类型, 羁绊就开了"
 		ctx.add_theme_font_size_override("font_size", 15); ctx.add_theme_color_override("font_color", Color("#7fe39a"))
 		ctx.position = Vector2(x0, cy); ctx.size = Vector2(w, 20); ctx.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; host.add_child(ctx)
 		cy += 24.0
@@ -108,7 +166,7 @@ func _build_synergy_panel(_leaders: Array) -> void:
 			return ta > tb
 		return int(counts[a]) > int(counts[b]))
 	if keys.is_empty():
-		var e = Label.new(); e.text = "还没有羁绊。\n给同一只龟 / 小将装多件同类型装备就会开启。"
+		var e = Label.new(); e.text = "还没凑上羁绊。\n把同类型的装备堆到同一只身上, 它自己就开了。"
 		e.add_theme_font_size_override("font_size", 17); e.add_theme_color_override("font_color", Color("#6c7d8e"))
 		e.position = Vector2(x0, cy); e.size = Vector2(w, 60); e.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; host.add_child(e)
 		return
@@ -160,7 +218,9 @@ func _build_synergy_panel(_leaders: Array) -> void:
 		##   ⚠ 原来这里还有一行 `add_theme_stylebox_override("panel", csb)` —— 它在**后面**,
 		##     会把上面这次覆盖直接盖掉。插新代码时要看清楚原赋值在前还是在后。
 		chip.position = Vector2(0, y); chip.size = Vector2(w - 8.0, SYN_ROW_H)
-		chip.tooltip_text = "点开看这个羁绊每一档给什么"
+		## ⚠「点开看这个羁绊」这七个字是 `verify_inventory_layout` ㉖㉗ **认羁绊行用的识别位**
+		##   (产品自己写的 tooltip, 不是为测试加的标记) —— 改后半句可以, 这个前缀别动。
+		chip.tooltip_text = "点开看这个羁绊一路能给到什么"
 		inner.add_child(chip)
 		var nm = Label.new()
 		nm.text = "%s %s" % [host.Phase2Types.emoji_of(typ), _syn_name(typ)]
@@ -187,12 +247,36 @@ func _build_synergy_panel(_leaders: Array) -> void:
 		nxt.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		nxt.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		nxt.mouse_filter = Control.MOUSE_FILTER_IGNORE; chip.add_child(nxt)
-		var arw = Label.new(); arw.text = "›"
-		arw.add_theme_font_size_override("font_size", 22)
-		arw.add_theme_color_override("font_color", col if on else Color("#4a5766"))
-		arw.position = Vector2(w - 8.0 - 24.0, 0); arw.size = Vector2(18, SYN_ROW_H)
-		arw.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		## 「点得开」的静态暗示 —— 像素小箭头(见 `_chevron_tex` 的长注释)。
+		## ★2x 整数放大 + NEAREST: 非整数倍会把 1px 的描边插值成灰边, 那就不是像素画了。
+		## ★右沿留 2px: 槽框的 `content_margin_right = 12` 是内容区边界,
+		##   顶到 12 上会压在框自己那道内沿上(与 info_panel「边距要大于框自己的厚度」同一条)。
+		var arw := TextureRect.new()
+		arw.texture = _chevron_tex()
+		arw.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		arw.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		arw.stretch_mode = TextureRect.STRETCH_SCALE
+		arw.modulate = col if on else Color("#6b7686")
+		var arw_x: float = w - 8.0 - 14.0 - 18.0
+		arw.position = Vector2(arw_x, (SYN_ROW_H - 28.0) / 2.0)
+		arw.size = Vector2(18, 28)
 		arw.mouse_filter = Control.MOUSE_FILTER_IGNORE; chip.add_child(arw)
+		## ★hover: 整框提亮 + 箭头亮一档并往里挪 2px。
+		##   **手机上没有 hover**, 所以它只是 PC 上的加成 —— 主暗示仍是上面那枚静态箭头
+		##   和 `CURSOR_POINTING_HAND`(与战斗面板「更多属性」那条可点行同一套语言)。
+		chip.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		var base_mod: Color = (_cst as StyleBoxTexture).modulate_color if _cst is StyleBoxTexture else Color.WHITE
+		var base_arw: Color = arw.modulate
+		chip.mouse_entered.connect(func() -> void:
+			if _cst is StyleBoxTexture:
+				(_cst as StyleBoxTexture).modulate_color = _lift(base_mod, 1.30)
+			arw.modulate = _lift(base_arw, 1.45)
+			arw.position.x = arw_x + 2.0)
+		chip.mouse_exited.connect(func() -> void:
+			if _cst is StyleBoxTexture:
+				(_cst as StyleBoxTexture).modulate_color = base_mod
+			arw.modulate = base_arw
+			arw.position.x = arw_x)
 		chip.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _show_synergy_popup(typ, tier))
 		y += SYN_ROW_H + 10.0
 
@@ -252,7 +336,12 @@ func _show_synergy_popup(type_key: String, cur_tier: int) -> void:
 	var box = Panel.new()
 	var sb = StyleBoxFlat.new(); sb.bg_color = Color("#1c2836"); sb.border_color = Color("#ffd93d")
 	sb.set_border_width_all(3); sb.set_corner_radius_all(12)
-	box.add_theme_stylebox_override("panel", sb)
+	## ★2026-09-28 换九宫格金属框。本屏其余两个弹框(`_show_lineup_help` / `_show_equip_detail`)
+	##   2026-08-18 就换过了, **只剩这一个和糖果罐领奖框还是圆角网页盒** ——
+	##   同一屏里两种弹框长得不一样, 是我上次换皮漏掉的、不是设计。
+	##   (为什么运行时探针没照出来: 弹框只在点开之后才建, 静止态的屏上根本没有它。)
+	##   `StyleBoxFlat` 留着当 fallback: `UISkin.nine` 在贴图缺失时原样返回它, 不许崩也不许空白。
+	box.add_theme_stylebox_override("panel", UISkin.nine("panel-frame.png", 20, sb))
 	box.position = Vector2(host._vw / 2.0 - bw / 2.0, maxf(24.0, host.H / 2.0 - bh / 2.0))
 	box.size = Vector2(bw, bh)
 	box.mouse_filter = Control.MOUSE_FILTER_STOP   # 框内不穿透关闭
@@ -279,8 +368,12 @@ func _show_synergy_popup(type_key: String, cur_tier: int) -> void:
 	rt.text = bb
 	box.add_child(rt)
 
-	var ok = Button.new(); ok.text = "关闭"; ok.add_theme_font_size_override("font_size", 18)
+	var ok = Button.new(); ok.text = "知道了"; ok.add_theme_font_size_override("font_size", 18)
 	ok.position = Vector2(bw / 2.0 - 60, bh - 52); ok.size = Vector2(120, 40)
+	## ★套金属签牌皮。不套就是 Godot 默认皮 = 圆角纯色, `verify_click_targets_alive` 自己
+	##   写着「圆角纯色是最直接的『没游戏味』」—— 它只是因为弹框不在静止态的屏上才没数到。
+	##   ⚠ 必须在 `size` 之后调: `UISkin.button` 按**按钮真实尺寸**挑大框/小签, size 还是 0 会挑错。
+	UISkin.button(ok, Color("#ffd93d"))
 	ok.pressed.connect(func(): dim.queue_free())
 	box.add_child(ok)
 

@@ -272,9 +272,16 @@ const PHASE_MODE_LIVE := {
 ## 而原来屏幕上只说「休赛日 · 暂按积分赛规则」—— 一个字都没提这件事。
 ## 一个测试者周一兴致好打 24 场, 周二到周五点开打只会看到「本周配额 24 场已打满」,
 ## 而他完全不知道为什么。**说得不全和说错一样是缺陷。**
+##
+## ★★★2026-09-27 把「开发中 / 暂按 / 配额」三个词从屏幕上摘掉:
+##   · 「玩法开发中」「暂按」是**开发备注**。玩家不需要知道我们做到哪了,
+##     他要知道的只有一件事: **这天按什么规矩打**。而「暂」还顺带许了个不存在的期限。
+##   · 「配额」是行政词(quota)。同一件事说成「本周场次」, 玩家不用翻译。
+##   ⇒ 这里只留**陈述现状**的话。两句的后半句故意一字不差
+##     (「按积分赛的规矩打」), 那是两天共同的那条信息。
 const PHASE_PENDING_NOTE := {
-	PHASE_REST: "休赛日 · 暂按积分赛规则 · 打的算本周配额",
-	PHASE_FINALS: "玩法开发中 · 暂按积分赛规则",
+	PHASE_REST: "休赛日 · 按积分赛的规矩打 · 这天打的算本周场次",
+	PHASE_FINALS: "这天按积分赛的规矩打",
 }
 
 ## 这个阶段的玩法上线了没有。
@@ -340,7 +347,48 @@ static func finals_block_msg(entered: bool, eligible: bool) -> String:
 static func phase_pending_note(phase: String) -> String:
 	if phase_mode_live(phase):
 		return ""
-	return str(PHASE_PENDING_NOTE.get(phase, "玩法开发中 · 暂按积分赛规则"))
+	## ★兜底那句与表里的同一个口径: **只说现在按什么规矩打**, 不报开发进度
+	##   (见 PHASE_PENDING_NOTE 头注 2026-09-27 那段)。
+	return str(PHASE_PENDING_NOTE.get(phase, "这天按积分赛的规矩打"))
+
+## ══════════════════════════════════════════════════════════════════════
+##  【门禁注入点】把「现在」钉死 —— 纯静态时间缝 (2026-09-27)
+## ══════════════════════════════════════════════════════════════════════
+## ★为什么非有它不可: 本文件里全部赛程判定(`phase_at_utc` / `week_anchor_utc` /
+##   `close_left_sec` / `can_start_match_utc`)**本来就是纯函数、入参就是 ts** —— 钉得住。
+##   钉不住的是**调用点**: 它们各自就地 `Time.get_unix_time_from_system()`
+##   (2026-09-27 实测: scripts/+autoload/ 共 **23 处**读系统时钟(本函数自己不算),
+##   其中 **16 处**喂给赛程/周锚点判定; 而
+##   `MatchmakingScene._ready():82` 与 `Backend.gauntlet_pool_find():807` 两处
+##   **就在匹配路径上** —— 前者决定走哪条匹配, 后者判快照新鲜度)。
+##   于是跟相位相关的匹配判据只剩两种写法, 两种都不能进棘轮:
+##     ① 不写 —— 现状: 匹配侧一条相位断言都没有;
+##     ② 写成"今天是星期几"的形状 —— 本地绿 / CI 偶发红。
+##        本仓「判据挂在星期几上」已栽过五次(v0.19.446 一轮修了四条)。
+##
+## ★样式**照抄仓库里现成的三个**, 一个字都不新发明:
+##     `Backend.pool_override`(static Dictionary, 空 = 不生效)
+##     `Supabase._transport_for_test`(static Callable, 无效 = 不生效)
+##     `MainMenuScene.clock_override_ts`(int, 0 = 真实时钟)
+##   三者的共同点就是这条缝的全部约定: **默认值就是"关"** ⇒ 玩家路径一字不动;
+##   是 **static** ⇒ 活过场景切换 ⇒ **用完必须还原**(漏还原会波及同进程后面的用例)。
+##
+## ★为什么开在 phase2_config 而不是再给某个场景加一个: 时钟只能有一份。
+##   `MainMenuScene.clock_override_ts` / `.strip_now_override` /
+##   `BracketMapScene._now_override` / `TeamSelectScene.lockout_now_override` /
+##   `GameState.settle_*(now_override)` 已经是**六份手抄的副本**
+##   (memory `fb-hand-rolled-copies-drift`), 而它们**互不相通**:
+##   主菜单把时钟钉在周六, 匹配那一屏照旧读真实时间 ⇒ 端到端根本对不上。
+##
+## ⚠ 这条缝**只给数字, 不含任何判定** —— 上面那些纯函数照旧只认自己的入参,
+##   所以它不可能改变任何一条既有行为(`now_override_ts == 0` 时 `now_utc()`
+##   逐字节等价于 `int(Time.get_unix_time_from_system())`)。
+## ⚠ 只认 **> 0**: unix 0 (1970-01-01) 不是任何人想钉的时刻, 而"0 = 关"是上面三个先例的口径。
+static var now_override_ts: int = 0
+
+## 「现在」的 unix 秒(UTC)。`now_override_ts == 0` ⇒ 真实系统时钟。
+static func now_utc() -> int:
+	return now_override_ts if now_override_ts > 0 else int(Time.get_unix_time_from_system())
 
 ## unix 秒 → 星期几(1=周一 … 7=周日, ISO 口径)。
 ## ★Godot 的 `get_datetime_dict_from_unix_time` 返回的 `weekday` 是 0=周日,

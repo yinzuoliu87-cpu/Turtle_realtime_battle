@@ -17,6 +17,19 @@ var _top_bar = null
 ##    正好压满下边框(金属框实测边带 13px, 比原来的 2px 细边更吃亏)。⇒ 行数按内容区算出来。
 ## ④ 返回键 120×44 = **24pt**, 低于 44pt 触控下限(视口 720 ↔ 390pt ⇒ 44pt = 81px);
 ##    而且是 Godot 默认皮。⇒ UISkin.button + 81 高。
+##
+## ═══ 2026-09-28 从「后台管理表格」改成「游戏排行榜」═══
+## 用户:「图鉴, 排行榜什么我一点也看不出来游戏的味道, 全是 ai 味和网页味, 文字语言也是」。
+## 实拍那张上整屏就是**一条金色长条 + 一行字**。逐条对着改(详见下面 RANK_X 一段):
+## ① 表头行「排名 | 玩家 | 胜·余命·横扫」拆掉, 标题改「🏆 本周排行」(那一步先做的)。
+## ② 名次从纯文本「#1」改成**金/银/铜的九宫格签牌**(颜色 + 边框, 不是 emoji 堆砌);
+##    第 4 名起只剩一个暗号码 —— 领奖台和看台一眼分得开。
+## ③ 自己那行 = 整行金签牌底 + 名字后面一枚「你」金签, 不再是名字里拼一串 "  ◀ 你"。
+## ④ 成绩从拼接串「0胜 · ♥8 · 0横扫」改成**三格「图标 + 数字」**, 该量是 0 就把图标压暗。
+## ⑤ **空席**: 全新档的榜本来就只有自己一行(产品行为, 不是 bug), 而只画一行看着像坏掉的界面
+##    ⇒ 剩下的名次照画, 名次/牌位在、名字与成绩位是破折号。**不补零**(补零 = 造假对手)。
+## 判据同一轮搬家: `tests/verify_leaderboard_header.gd` 原来量表头, 表头没了之后那两条
+## 分母当场红 —— 产品对了判据还在量旧样子。已改成**在数据行上**量同一件事。
 
 const W := 1280.0
 const PANEL_W := 760.0
@@ -35,6 +48,74 @@ const PANEL_X := (W - PANEL_W) / 2.0
 const PANEL_Y := 86.0
 const Backend = preload("res://scripts/net/backend.gd")
 
+## ═══ 一行的版面 (2026-09-28, 用户「一点也看不出来游戏的味道, 全是 ai 味和网页味」) ═══
+##
+## 改之前一行是 **三个纯文字格**: 「#7」「名字  ◀ 你」「0胜 · ♥8 · 0横扫」。
+## 那是**后台管理表格**的三件套: 纯文本序号 / 纯文本标记 / 把三个量拼成一个字符串。
+## 游戏的榜靠三样东西说话, 下面每一条都对着其中一样:
+##   ① 名次**牌位**: 前三名是金/银/铜的九宫格金属签牌(颜色 + 边框), 第 4 名起只剩一个暗号码
+##      ⇒ "谁在领奖台上"不用读数字就看得出。(不堆 emoji —— 那只是把网页味换成表情味。)
+##   ② 「你」是一枚**金签牌**贴在自己名字后面 + 整行金色签牌底, 不是文字里的 "◀ 你"。
+##   ③ 成绩三个量各自**一个图标一个数字**, 不再拼成一条串; 该量是 0 就把图标压暗
+##      ⇒ "还没有"是看出来的。
+##
+## 全部横坐标按内容区 [PAD, PANEL_W-PAD] = [22, 738] **反算**, 不是拍脑袋:
+##   名次牌 24..58 │ 名字 74..484 │ 成绩三格 500..734
+const RANK_X := PAD + 2.0
+## ★34×28: **两边都 < 40** 是有讲究的 —— `verify_ui_consistency` 把"住在 <40px 小盒子里的字"
+##   当角标放过(那条判据的原话见它的 `_badge`)。牌子再大一格, 牌里的名次数字就会被
+##   当成"文字压边带"报上来, 而实拍它稳稳在牌中间。
+const RANK_W := 34.0
+const RANK_H := 28.0
+const NAME_X := PAD + 52.0
+const NAME_W := 410.0
+## 「你」签牌: 36×24, 同样 < 40(理由同上)。自己那行的名字列要先给它让出 48px,
+## 否则长昵称的字块会和签牌叠在一起(全屏"两段文字压在一起"那条判据是**全局清零**的)。
+const YOU_W := 36.0
+const YOU_H := 24.0
+const YOU_GAP := 12.0
+## 成绩三格: 每格 = 图标 22 + 空 4 + 数字 44, 格距 12 ⇒ 500 / 582 / 664, 末格右沿 734。
+const STAT_X0 := PAD + 478.0
+const STAT_CELL := 82.0
+const STAT_ICON := 22.0
+const STAT_NUM_W := 44.0
+
+## 三个量的图标。**都是本仓已有的图标库里的**, 没有新造也没有拿"别件的素材"顶替:
+##   胜场 `menu/ic-trophy.png`  —— 主菜单「排行榜」入口用的就是这张(MainMenuScene.gd:319),
+##                                 同一个概念在同一个游戏里用同一张图, 正是该做的事
+##   余命 `stats/hp-icon.png`   —— 选龟详情「生命值」那一格用的就是它(detail_panel.gd:125)
+##   横扫 `stats/aspd-icon.png` —— 交叉双刀。⚠ 它在战斗信息面板里是"攻速"(info_panel.gd:498),
+##                                 这是一次**明知的借用**: 排行榜上没有攻速这个量, 而交叉双刀
+##                                 = 完胜是通行读法。要是哪天有专门的"横扫"图标, 换这一行即可。
+const STAT_ICONS := [
+	"res://assets/sprites/menu/ic-trophy.png",
+	"res://assets/sprites/stats/hp-icon.png",
+	"res://assets/sprites/stats/aspd-icon.png",
+]
+
+## 金/银/铜。`modulate_color` 是**乘**在 chip-frame 上的(它是一块暗底 + 一圈银边:
+## 实测底 (52,58,69)、边 (158,164,179)) ⇒ 乘出来就是"暗底 + 金/银/铜边框"的签牌,
+## 而不是一块纯色圆角 —— 这正是"用颜色与边框"而不是堆 emoji 的做法。
+const MEDAL_PLATE := [
+	Color(1.50, 1.14, 0.44),      # 金
+	Color(1.22, 1.30, 1.44),      # 银
+	Color(1.42, 0.88, 0.52),      # 铜
+]
+## 整行的底签牌(比牌位暗一档, 只当"领奖台的台阶", 不许抢自己那行的亮度)。
+const MEDAL_BAND := [
+	Color(1.00, 0.82, 0.34),
+	Color(0.86, 0.92, 1.04),
+	Color(0.98, 0.64, 0.38),
+]
+const MEDAL_NUM := ["#ffefb0", "#eef5ff", "#ffd2a4"]
+## 自己那行: 全屏最亮的一条(和 MEDAL_BAND 三条都不一样 —— 门禁就是这么判"你看得出来"的)。
+const SELF_BAND := Color(1.18, 1.02, 0.52)
+const SELF_TAG := Color(1.34, 1.14, 0.56)
+const COL_SELF := "#ffe9a8"
+const COL_ROW := "#dfe9f2"
+const COL_DIM := "#5d6e7e"
+const COL_RANK := "#7f93a6"
+
 func _ready() -> void:
 	_bg()
 
@@ -42,7 +123,10 @@ func _ready() -> void:
 	##   规则来自 599 张/146 个触屏游戏枢纽页的逐张实测, 见 top_bar.gd 头注。
 	var _sm: Vector4 = SafeArea.margins(Vector2(get_viewport().get_visible_rect().size), 18.0)
 	_top_bar = TopBar.new(self, {
-		"title": "🏆 排行榜 · 胜场 → 余命 → 横扫",
+		## ★★2026-09-27 标题里**不写排序规则**。「排行榜 · 胜场 → 余命 → 横扫」是**规格书**
+		##   的写法(把内部比较器写在标题上), 用户 2026-09-27:「我一点也看不出来游戏的味道」。
+		##   排序规则该由榜自己的样子表达(名次牌 + 数字), 不是标题里念一遍。
+		"title": "🏆 本周排行",
 		"palette": TopBar.DEEP,
 		"width": W,
 		"safe_left": _sm.x,
@@ -77,11 +161,23 @@ func _ready() -> void:
 	##   改了比较器, **漏了这一行**, 于是表头写着「击杀蛋数」而数据是「x胜 · ♥y · z横扫」。
 	##   实拍巡检(2026-09-19)当场看见的, 而排序那条门禁一条都没红 —— 它只测函数不测 UI。
 	##   已补 `tests/verify_leaderboard_header.gd`: 表头↔行文案逐项对账。
-	_row_labels(panel, PAD, "#58d3ff", "排名", "玩家", "胜 · 余命 · 横扫", true)
+	## ★★去掉**表头行**。「排名 | 玩家 | 胜·余命·横扫」是数据表/后台界面的标志 ——
+	##   游戏的榜靠名次牌与数字本身说话, 不靠一行字段名。
+	##   (数字的含义已经写在每一行里: 图标 + 数字, 不会看不懂。)
 	var sep := ColorRect.new()
 	sep.color = Color(0.35, 0.55, 0.70, 0.55)
 	sep.position = Vector2(PAD, ROW_TOP - 12.0); sep.size = Vector2(PANEL_W - PAD * 2.0, 2)
 	panel.add_child(sep)
+	## 表头拆掉之后分隔线上面空出 46px。**不再摆一行字段名**(那正是要去掉的东西),
+	## 改摆一句说人话的规模数 —— 顺带把"榜上只有我一个"这件事直接说出来。
+	var cap_line := Label.new()
+	cap_line.text = "本周共 %d 人上榜" % rows.size()
+	cap_line.add_theme_font_size_override("font_size", 16)
+	cap_line.add_theme_color_override("font_color", Color("#8fa6b8"))
+	cap_line.position = Vector2(PAD + 6.0, PAD + 2.0)
+	cap_line.size = Vector2(PANEL_W - PAD * 2.0 - 12.0, 26.0)
+	cap_line.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	panel.add_child(cap_line)
 
 	# ★能画几行是【算出来】的, 不是写死的阈值 —— 写死那次末行正好压在金属边带上。
 	var body_h: float = PANEL_H - PAD - FOOT_H - ROW_TOP
@@ -102,39 +198,35 @@ func _ready() -> void:
 			panel.add_child(gap)
 			y += ROW_H
 			continue
-		var r: Dictionary = rows[idx]
-		var is_self: bool = bool(r.get("is_self", false))
-		if is_self:
-			# 自己那行套金属小签牌(原来是一块半透明黄色 ColorRect, 且高 36 会探出面板 4px)
-			var hl := Panel.new()
-			var hsb := StyleBoxFlat.new()
-			hsb.bg_color = Color(1.0, 0.85, 0.24, 0.14); hsb.set_corner_radius_all(6)
-			var htex := UISkin.nine("chip-frame.png", 7, hsb)
-			if htex is StyleBoxTexture:
-				(htex as StyleBoxTexture).modulate_color = Color(1.18, 1.02, 0.52, 1.0)
-			hl.add_theme_stylebox_override("panel", htex)
-			hl.position = Vector2(PAD - 6.0, y - 5.0)
-			hl.size = Vector2(PANEL_W - (PAD - 6.0) * 2.0, ROW_H - 4.0)
-			panel.add_child(hl)
-		elif idx % 2 == 1:
-			var zebra := ColorRect.new()   # 斑马纹: 纯色块, 不带边 ⇒ 不是"网页盒"
-			zebra.color = Color(1, 1, 1, 0.035)
-			zebra.position = Vector2(PAD - 6.0, y - 5.0)
-			zebra.size = Vector2(PANEL_W - (PAD - 6.0) * 2.0, ROW_H - 4.0)
-			panel.add_child(zebra)
-		_row_labels(panel, y, "#ffd93d" if is_self else "#dfe9f2",
-			"#%d" % (idx + 1), str(r.get("name", "?")) + ("  ◀ 你" if is_self else ""),
-			"%d胜 · ♥%d · %d横扫" % [int(r.get("wins", 0)), int(r.get("hearts", 0)), int(r.get("sweeps", 0))], false)
+		_draw_row(panel, y, idx, rows[idx] as Dictionary)
 		y += ROW_H
 
+	## ★★空席(2026-09-28)。用户那张实拍上整屏就是「一条金色长条 + 一行字」——
+	##   那**不是画错了**, 那就是全新档的真榜: `rows.size() == 1`(只有自己)。
+	##   一块只画了一行的榜看起来像坏掉的界面。⇒ 剩下的名次照样画出来, 画成**空席**:
+	##   名次在、牌位在(前三名的金银铜压暗), 名字位置一道破折号。
+	##   一眼能读出"这是一块 11 名的榜, 位置都空着", 而不是"这屏只有一行"。
+	##   ⚠ 空席**不带成绩数字** —— 补零会造出"别人 0 胜"的假数据。
+	var drawn: int = shown.size()
+	var vacant: int = rows.size() + 1
+	while drawn < cap:
+		_draw_vacant(panel, y, vacant)
+		y += ROW_H
+		drawn += 1
+		vacant += 1
+
 	# 底部提示行 —— 三种态各说各的话(原来只有"池子只有我一个"那一种才出提示)。
+	## ★「上传阵容」是**接口词**(那是 `upload_ghost` 在做的事, 不是玩家在做的事) ——
+	##   用户 2026-09-28 点的就是这个:「文字语言也是」。玩家侧只看得见"打了一场"。
+	##   (改这句之前 grep 过 `tests/` `tools/`: 没有任何判据钉这句文案;
+	##    `tests/_probe_newuser.gd:100` 里有一份手抄的同串, 那是探针的自印, 不是断言。)
 	var hint := Label.new()
 	if rows.size() <= 1:
-		hint.text = "（打几局上传阵容后, 这里会出现更多对手排名）"
+		hint.text = "（榜上暂时只有你 —— 打完一场, 对手就会上来）"
 	elif self_idx >= 0 and int((rows[self_idx] as Dictionary).get("wins", 0)) <= 0:
 		hint.text = "（赢下第一场就能上分 —— 你本赛季还是 0 胜）"
 	else:
-		hint.text = "（每场结算后上传, 榜单按 胜场 → 余命 → 横扫 排）"
+		hint.text = "（每场打完自动上榜）"
 	hint.add_theme_font_size_override("font_size", 15)
 	hint.add_theme_color_override("font_color", Color("#6b7b8c"))
 	hint.position = Vector2(PAD, PANEL_H - PAD - FOOT_H + 4.0)
@@ -217,21 +309,158 @@ func _pick_rows(rows: Array, cap: int, self_idx: int) -> Array:
 	return out
 
 
-func _row_labels(parent: Control, y: float, color: String, c1: String, c2: String, c3: String, header: bool) -> void:
-	var fs := 15 if header else 18
-	var xs := [PAD + 6.0, PAD + 110.0, PAD + 500.0]
-	var txts := [c1, c2, c3]
-	var ws := [100.0, 380.0, 210.0]
+## 一行: 底签牌 + 名次牌 + 名字(+「你」签) + 三个「图标 数字」。
+func _draw_row(parent: Control, y: float, idx: int, r: Dictionary) -> void:
+	var rank: int = idx + 1
+	var is_self: bool = bool(r.get("is_self", false))
+	if is_self:
+		_row_band(parent, y, SELF_BAND)
+	elif rank <= 3:
+		_row_band(parent, y, MEDAL_BAND[rank - 1])
+	elif idx % 2 == 1:
+		var zebra := ColorRect.new()   # 斑马纹: 纯色块, 不带边 ⇒ 不是"网页盒"
+		zebra.color = Color(1, 1, 1, 0.035)
+		zebra.position = Vector2(PAD - 6.0, y - 5.0)
+		zebra.size = Vector2(PANEL_W - (PAD - 6.0) * 2.0, ROW_H - 4.0)
+		parent.add_child(zebra)
+	_rank_badge(parent, y, rank, 1.0)
+	## 自己那行要先给「你」签牌让出位置 —— 名字字块和签牌叠在一起会踩全局的"两段文字压在一起"。
+	var nw: float = (NAME_W - YOU_W - YOU_GAP) if is_self else NAME_W
+	var nm := _cell(parent, str(r.get("name", "?")), NAME_X, y, nw, 18,
+		Color(COL_SELF if is_self else COL_ROW), HORIZONTAL_ALIGNMENT_LEFT)
+	## ghost 名来自玩家自定义 profile, 长度不受控 —— 截断加省略号, 别让它糊到成绩列上。
+	nm.clip_text = true
+	nm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	if is_self:
+		_you_tag(parent, nm, y)
+	var vals: Array = [int(r.get("wins", 0)), int(r.get("hearts", 0)), int(r.get("sweeps", 0))]
 	for i in range(3):
-		var l := Label.new(); l.text = txts[i]
-		l.add_theme_font_size_override("font_size", fs)
-		l.add_theme_color_override("font_color", Color(color))
-		l.position = Vector2(float(xs[i]), y); l.size = Vector2(float(ws[i]), ROW_H - 12.0)
-		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		if i == 1:
-			## ghost 名来自玩家自定义 profile, 长度不受控 —— 截断加省略号, 别让它糊到成绩列上。
-			l.clip_text = true
-			l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		if i == 2:
-			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		parent.add_child(l)
+		_stat_cell(parent, y, i, int(vals[i]), is_self)
+
+
+## 空席: 名次 + 牌位(压暗) + 破折号。
+## ★**不画成绩数字**(补零就成了"别人 0 胜"的假数据), 三个成绩位画破折号 ——
+##   既守住列的节奏(不然整块榜右半边是空的), 又明说"这里没有人"。
+## ★也**不画图标**: 图标是"这个量有多少"的标记, 空席上没有量。
+func _draw_vacant(parent: Control, y: float, rank: int) -> void:
+	_rank_badge(parent, y, rank, 0.42)
+	var l := _cell(parent, "—", NAME_X, y, NAME_W, 18, Color(COL_DIM), HORIZONTAL_ALIGNMENT_LEFT)
+	l.modulate.a = 0.75
+	for i in range(3):
+		var d := _cell(parent, "—", STAT_X0 + float(i) * STAT_CELL, y,
+			STAT_ICON + 4.0 + STAT_NUM_W, 18, Color(COL_DIM), HORIZONTAL_ALIGNMENT_CENTER)
+		d.modulate.a = 0.6
+
+
+## 整行的底签牌(九宫格金属签, 不是圆角色块)。
+func _row_band(parent: Control, y: float, tint: Color) -> void:
+	var band := Panel.new()
+	var fb := StyleBoxFlat.new()
+	## 兜底(贴图缺失时才会用上): **直角 + 不描边** —— 圆角/四边细边正是"网页盒"的长相,
+	## 全屏一致性门禁对本屏卡的是 0。
+	fb.bg_color = Color(0.10, 0.13, 0.17, 0.55)
+	var tex := UISkin.nine("chip-frame.png", 7, fb)
+	if tex is StyleBoxTexture:
+		(tex as StyleBoxTexture).modulate_color = Color(tint.r, tint.g, tint.b, 1.0)
+	band.add_theme_stylebox_override("panel", tex)
+	band.position = Vector2(PAD - 6.0, y - 5.0)
+	band.size = Vector2(PANEL_W - (PAD - 6.0) * 2.0, ROW_H - 4.0)
+	parent.add_child(band)
+
+
+## 名次: 前三名是金/银/铜签牌, 第 4 名起只剩一个暗号码(领奖台与看台的差别)。
+## `k` = 亮度系数, 空席用 0.42 压暗。
+func _rank_badge(parent: Control, y: float, rank: int, k: float) -> void:
+	if rank > 3:
+		var n := _cell(parent, str(rank), RANK_X, y, RANK_W, 16,
+			Color(COL_RANK), HORIZONTAL_ALIGNMENT_CENTER)
+		n.modulate.a = k
+		return
+	var plate := Panel.new()
+	var fb := StyleBoxFlat.new()
+	fb.bg_color = Color(0.10, 0.12, 0.16, 1.0)      # 直角不描边, 理由同 _row_band
+	var tex := UISkin.nine("chip-frame.png", 7, fb)
+	var c: Color = MEDAL_PLATE[rank - 1]
+	if tex is StyleBoxTexture:
+		(tex as StyleBoxTexture).modulate_color = Color(c.r * k, c.g * k, c.b * k, 1.0)
+	plate.add_theme_stylebox_override("panel", tex)
+	plate.position = Vector2(RANK_X, y)
+	plate.size = Vector2(RANK_W, RANK_H)
+	parent.add_child(plate)
+	## ★号码住在**牌子里**(而不是摆在牌子旁边): 牌子 34×28 两边都 <40,
+	##   一致性门禁按"角标"放过它 —— 见 RANK_W 的注释。
+	var l := Label.new()
+	l.text = str(rank)
+	l.add_theme_font_size_override("font_size", 17)
+	l.add_theme_color_override("font_color", Color(MEDAL_NUM[rank - 1]))
+	l.position = Vector2.ZERO
+	l.size = Vector2(RANK_W, RANK_H)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.modulate.a = k
+	plate.add_child(l)
+
+
+## 「你」金签牌, 贴在自己名字**后面**。位置按字块真实宽度算 —— 摆死一个 x 会在短名字后
+## 留一大段空, 在长名字上又叠上去。
+func _you_tag(parent: Control, nm: Label, y: float) -> void:
+	var tw: float = nm.size.x
+	var f: Font = nm.get_theme_font("font")
+	if f != null:
+		tw = minf(tw, f.get_string_size(nm.text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+			nm.get_theme_font_size("font_size")).x)
+	var tag := Panel.new()
+	var fb := StyleBoxFlat.new()
+	fb.bg_color = Color(0.16, 0.13, 0.05, 1.0)      # 直角不描边, 理由同 _row_band
+	var tex := UISkin.nine("chip-frame.png", 7, fb)
+	if tex is StyleBoxTexture:
+		(tex as StyleBoxTexture).modulate_color = Color(SELF_TAG.r, SELF_TAG.g, SELF_TAG.b, 1.0)
+	tag.add_theme_stylebox_override("panel", tex)
+	tag.position = Vector2(NAME_X + tw + 8.0, y + (ROW_H - 12.0 - YOU_H) / 2.0)
+	tag.size = Vector2(YOU_W, YOU_H)
+	parent.add_child(tag)
+	var l := Label.new()
+	l.text = "你"
+	l.add_theme_font_size_override("font_size", 15)
+	l.add_theme_color_override("font_color", Color(COL_SELF))
+	l.position = Vector2.ZERO
+	l.size = Vector2(YOU_W, YOU_H)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	tag.add_child(l)
+
+
+## 成绩一格 = 一个图标 + 一个数字。`i` 固定对应 STAT_ICONS 的同一格(顺序就是列顺序)。
+func _stat_cell(parent: Control, y: float, i: int, v: int, is_self: bool) -> void:
+	var cx: float = STAT_X0 + float(i) * STAT_CELL
+	var p := str(STAT_ICONS[i])
+	if ResourceLoader.exists(p):
+		var ic := TextureRect.new()
+		ic.texture = load(p)
+		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		ic.size = Vector2(STAT_ICON, STAT_ICON)
+		ic.position = Vector2(cx, y + (ROW_H - 12.0 - STAT_ICON) / 2.0)
+		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		## 该量是 0 就把图标压暗 —— "还没有"一眼看得出, 不用逐个读数字。
+		if v <= 0:
+			ic.modulate = Color(1, 1, 1, 0.30)
+		parent.add_child(ic)
+	var col: String = COL_DIM if v <= 0 else (COL_SELF if is_self else COL_ROW)
+	_cell(parent, str(v), cx + STAT_ICON + 4.0, y, STAT_NUM_W, 18,
+		Color(col), HORIZONTAL_ALIGNMENT_RIGHT)
+
+
+## 行内一格文字(统一字号/行高/垂直居中 —— 手写一遍就会漂)。
+func _cell(parent: Control, s: String, x: float, y: float, w: float, fs: int,
+		col: Color, align: HorizontalAlignment) -> Label:
+	var l := Label.new()
+	l.text = s
+	l.add_theme_font_size_override("font_size", fs)
+	l.add_theme_color_override("font_color", col)
+	l.position = Vector2(x, y)
+	l.size = Vector2(w, ROW_H - 12.0)
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.horizontal_alignment = align
+	parent.add_child(l)
+	return l

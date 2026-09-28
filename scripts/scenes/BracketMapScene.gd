@@ -59,12 +59,35 @@ const ACCENT := Color("#4ff0d0")       # ★全屏**唯一**的强调色(Worlds 
 const DIM := Color("#5a6a80")          # 轮空/空位
 const MINE := Color("#ffd93d")         # 只有"我"用金色 —— 找自己是这屏的头等大事
 
+## ══════════════════════════════════════════════════════════════════════
+##  ★★2026-09-27 改版: 用户「一点也看不出来游戏的味道, 全是 ai 味和网页味」
+## ══════════════════════════════════════════════════════════════════════
+## 这一屏的"网页味"是**两个具体东西**, 不是气质问题:
+##   ① 圆角矩形卡片(已改直角) ② **一根粗细颜色都一样的 2px 直角细线**当连接线
+##      —— 那就是 CSS 流程图的长相; 赛事对阵图的连线是有**轻重**的:
+##      已决出的那条粗而亮、还没决出的细而暗, 而且末端**带箭头**(谁走向哪一场)。
+## 像素味靠的是: 直角 + **不羽化的硬投影** + 粗细两档的实心块 + 明确描边,
+## 而**不是**再生成一张贴图 —— 节点是 104~268 宽的横条, 九宫格框的边带会把名字挤掉
+## (UISkin.MIN_FRAME_PX 那条教训的同族), 参考图(Worlds 官方图)本来也是直角实心条。
+const SHADOW := Color("#04070e")       # 硬投影 —— 像素 UI 的招牌(不是模糊 box-shadow)
+const LINE_DIM := Color("#31405a")     # 连线: 还没决出
+const DASH := Color("#46566f")         # 虚线描边(「还没到」的空槽)
+const PLATE_WIN := Color(0.31, 0.94, 0.82, 0.13)   # 胜者那一行的底板
+const PLATE_LOSE := Color(0.0, 0.0, 0.0, 0.42)     # 败者那一行压暗
+const LINE_W_LIT := 4.0                # 连线: 已决出 = 粗
+const LINE_W_DIM := 2.0                # 连线: 还没决出 = 细
+## 节点右侧那条槽 —— 「你」/「冠」小签与开打标住这里; 名字条**不许伸进来**(会撞上)。
+const GUTTER := 30.0
+
 var _bucket: Dictionary = {}           # 上午: 我自己那个桶
 var _finals: Dictionary = {}           # 晚上: 桶冠军的签表(上午是空的)
 var _view: String = _L.VIEW_BUCKET     # 现在看的是哪一张
 var _now_override := 0                 # ★只给门禁喂已知时刻; 产品不传
 var _tabs: HBoxContainer = null
 var _empty_lb: Label = null
+## 空态那句话的**框**。★没桶的人整个周日看到的就只有这一屏, 一句裸字飘在黑底上
+##   正是"网页味"最重的地方 ⇒ 套共享皮的金属框(UISkin.nine, 不手写圆角矩形)。
+var _empty_box: Panel = null
 var _bg: ColorRect = null
 var _canvas: Control = null            # 拖动的是它, 不是整屏
 var _scale := 1.0
@@ -107,7 +130,7 @@ func _ready() -> void:
 	_tabs.position = Vector2(24, 96)
 	_tabs.add_theme_constant_override("separation", 10)
 	add_child(_tabs)
-	for pair in [[_L.VIEW_BUCKET, "我的桶"], [_L.VIEW_FINALS, "冠军赛"]]:
+	for pair in [[_L.VIEW_BUCKET, "我的分组"], [_L.VIEW_FINALS, "冠军赛"]]:
 		var b := Button.new()
 		b.text = str(pair[1])
 		b.custom_minimum_size = Vector2(132, 81)    # 触控下限 81px(=44pt)
@@ -115,13 +138,35 @@ func _ready() -> void:
 		b.pressed.connect(func(): set_view(v))
 		## ★页签同上 —— 换皮走共享层, 不在这里手写 StyleBox。
 		UISkin.button(b)
+		## ★★选中态不能只靠字色(那是网页 tab 的做法): 底下压一条 4px 实心杠,
+		##   **形态**上就分得出现在看的是哪一张。颜色在 `_sync_tabs()` 里跟着切。
+		##   名字定死成 `Underline` —— `_sync_tabs` 按名字找它, 不靠子节点下标。
+		var ul := ColorRect.new()
+		ul.name = "Underline"
+		ul.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ul.position = Vector2(6.0, 81.0 - 6.0)
+		ul.size = Vector2(132.0 - 12.0, 4.0)
+		b.add_child(ul)
 		_tabs.add_child(b)
 
 	## 签表还没形成时说人话的那一行(不是画一张空图)
+	## ★先建框、后建字 —— 加入顺序就是绘制顺序, 反了字会被框盖住。
+	_empty_box = Panel.new()
+	_empty_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var ebfb := StyleBoxFlat.new()
+	ebfb.bg_color = Color("#121a27")
+	ebfb.border_color = Color("#2c3950")
+	ebfb.set_border_width_all(2)
+	ebfb.set_corner_radius_all(0)
+	_empty_box.add_theme_stylebox_override("panel", UISkin.nine("panel-frame.png", 20, ebfb))
+	_empty_box.visible = false
+	add_child(_empty_box)
 	_empty_lb = Label.new()
 	_empty_lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_empty_lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_empty_lb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_empty_lb.add_theme_font_size_override("font_size", 19)
-	_empty_lb.add_theme_color_override("font_color", DIM)
+	_empty_lb.add_theme_color_override("font_color", TXT)
 	_empty_lb.visible = false
 	add_child(_empty_lb)
 
@@ -410,14 +455,23 @@ func _rebuild() -> void:
 		##   上午切到「冠军赛」是常态(它本来就还没形成), 这不是出错。
 		if _empty_lb != null:
 			_empty_lb.text = _empty_text()
-			_empty_lb.position = Vector2(0, vp0.y * 0.5 - 20.0)
-			_empty_lb.size = Vector2(vp0.x, 40.0)
+			var bw: float = minf(660.0, vp0.x - 80.0)
+			var bh := 126.0
+			var bp := Vector2((vp0.x - bw) * 0.5, vp0.y * 0.5 - bh * 0.5 + 30.0)
+			if _empty_box != null:
+				_empty_box.position = bp
+				_empty_box.size = Vector2(bw, bh)
+				_empty_box.visible = true
+			_empty_lb.position = bp + Vector2(30.0, 18.0)
+			_empty_lb.size = Vector2(bw - 60.0, bh - 36.0)
 			_empty_lb.visible = true
 		if _home_btn != null:
 			_home_btn.visible = false
 		return
 	if _empty_lb != null:
 		_empty_lb.visible = false
+	if _empty_box != null:
+		_empty_box.visible = false
 	## ★★按**可用区**算, 不是整个视口 —— 顶栏 + 页签占掉 TOP_RESERVED。
 	##   实拍抓到: 32 人桶内容 599 高, 视口 720 说"放得下", 而可用只有 530 ⇒ 其实放不下,
 	##   左边两列的轮次标签被页签压在了底下。
@@ -430,11 +484,14 @@ func _rebuild() -> void:
 	_scale = 1.0 if _can_pan else _L.fit_scale(n, usable)
 	_canvas.scale = Vector2(_scale, _scale)
 
+	## ★★加入顺序 = 绘制顺序, 四层从后往前: 本轮竖带 → 连线 → 对阵格 → 轮次标签。
+	##   原来是「格子 → 连线」, 连线画在格子上面 —— 箭头顶进格子里就会糊在描边上。
 	var total := _B.rounds_for(n)
+	_make_round_band(n, total)
+	_make_links(n, total)
 	for r in range(1, total + 1):
 		for m in range(_B.matches_in_round(n, r)):
 			_canvas.add_child(_make_node(r, m))
-	_make_links(n, total)
 	_make_round_labels(n, total)
 	_center_on_me()
 	if _home_btn != null:
@@ -453,7 +510,7 @@ func _empty_text() -> String:
 	## ★自己联网取数时: **还没问到回音**跟**问到了但我没桶**要分开说。
 	##   混成一句的话, 网络慢的人会以为自己没进决赛日。
 	if not _injected and not _SB.finals_tried():
-		return "正在连线 · 取本周的桶"
+		return "正在连线 · 正在找你本周的分组"
 	## ★★「有资格但人不够」与「没资格」说的必须是两句话(2026-09-25)。
 	##   `finals_seat` 对 1 个人故意不建桶(一人一桶 = 没有对手的冠军, 那不是比赛),
 	##   而那个人**确实周六 4 胜晋级了** —— 底下那句「晋级才进得来」对他是假话,
@@ -463,10 +520,10 @@ func _empty_text() -> String:
 	## ★★「问不到」要说「连不上」, **不能**掉到最后那句「本周没有你的桶」——
 	##   那对一个已晋级的人是假话(2026-09-27 查实)。每 30 秒自己重试, 所以要说清在重试。
 	if str(_fv.get("reason", "")) == _SB.UNREACHABLE:
-		return "连不上服务器 · 拉不到本周的桶(每 30 秒重试)"
+		return "连不上服务器 · 你的分组还没读到, 每 30 秒会自己再看一次"
 	if str(_fv.get("reason", "")) == "too_few":
 		var ent := int(_fv.get("entered", 0))
-		return "本周只有 %d 人晋级 · 人太少没开起来, 你的晋级算数, 下周再来" % ent
+		return "本周只有 %d 人晋级 · 人太少, 决赛日没开起来; 你的晋级算数, 下周再来" % ent
 	if _view == _L.VIEW_FINALS:
 		## ★★★2026-09-26: 跨桶冠军赛是 **F 阶段**, 一行都没做 ——
 		##   服务端只有 `finals_buckets/entrants/results/scout/pending`, 没有任何
@@ -487,10 +544,19 @@ func _empty_text() -> String:
 		if CROSS_BUCKET_LIVE:
 			var left: int = int(_L.finals_start_ts(_clock())) - _clock()
 			if left > 0:
-				return "冠军赛 %d 小时 %d 分后开播 · 先等各桶决出冠军" % [left / 3600, (left % 3600) / 60]
-			return "冠军赛正在集结 · 等各桶决出冠军"
+				return "冠军赛 %d 小时 %d 分后开播 · 先等各组决出自己的冠军" % [left / 3600, (left % 3600) / 60]
+			return "冠军赛正在集结 · 等各组决出自己的冠军"
 		else:
-			return "跨桶冠军赛还没做 · 你那个桶的冠军就是本周冠军"
+			## ★★语序反过来了(2026-09-27): 原来开头就是「跨桶冠军赛还没做」——
+			##   **一句内部进度**顶在玩家脸上, 而他真正想知道的是「那我这周冠军算不算」。
+			##   ⇒ 先说对他为真的那句, 内部事实缀在后面。
+			##   「还没做」三个字**不能删** —— `verify_bracket_map` ⑤ 用它当
+			##   「没上线时不许数一个永远不来的倒计时」的判据(开关翻开那天两边一起改)。
+			return "现在你这一组的冠军就是本周冠军 · 跨组总决赛还没做出来"
+	## ⚠⚠**这一句里的「桶」改不掉, 不是漏了**: `verify_finals_feed.gd:659` 断言
+	##   `_empty_text()` 里有子串「没有你的桶」。全屏别处已统一成「分组」,
+	##   只剩这一处 —— 要改必须**同一次提交**改那条断言(它在别人的地盘上)。
+	##   同族: 上面那句的「还没做」被 `verify_bracket_map.gd:407` 钉着。
 	return "本周没有你的桶 · 周六闯关赛晋级才进得来"
 
 
@@ -503,15 +569,119 @@ func _sync_tabs() -> void:
 	if kids.size() < 2:
 		return
 	var names := [
-		"我的桶" + ("" if int(_bucket.get("size", 0)) > 1 else " ·无"),
-		"冠军赛" + ("" if int(_finals.get("size", 0)) > 1 else " ·未开"),
+		"我的分组" + ("" if int(_bucket.get("size", 0)) > 1 else " · 还没分"),
+		"冠军赛" + ("" if int(_finals.get("size", 0)) > 1 else " · 未开赛"),
 	]
 	var views := [_L.VIEW_BUCKET, _L.VIEW_FINALS]
 	for i in range(2):
 		var b := kids[i] as Button
 		b.text = str(names[i])
-		b.add_theme_color_override("font_color",
-			ACCENT if str(views[i]) == _view else DIM)
+		var on: bool = str(views[i]) == _view
+		b.add_theme_color_override("font_color", ACCENT if on else DIM)
+		## ★形态: 选中那一页底下压一条实心杠; 没选中的只留一道暗底槽。
+		var ul := b.get_node_or_null("Underline") as ColorRect
+		if ul != null:
+			ul.color = ACCENT if on else Color("#222c3e")
+
+
+## ══════════════════════════════════════════════════════════════════════
+##  像素描边小工具 —— 这一屏所有"质感"都由这四个函数堆出来, 一张贴图都不用
+## ══════════════════════════════════════════════════════════════════════
+## ★`mouse_filter = IGNORE` 是**必需的**, 不是顺手: ColorRect 继承 Control,
+##   默认 `MOUSE_FILTER_STOP` ⇒ 铺在格子上的装饰块会把「每一场自己就是按钮」那件事
+##   整片吃掉(点了没反应)。
+func _rect(parent: Control, x: float, y: float, w: float, h: float, col: Color) -> ColorRect:
+	var cr := ColorRect.new()
+	cr.color = col
+	cr.position = Vector2(x, y)
+	cr.size = Vector2(maxf(w, 1.0), maxf(h, 1.0))
+	cr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(cr)
+	return cr
+
+
+## 四条边的实心描边(直角, 不是 StyleBox —— 半透明描边走 StyleBoxFlat 会被
+## `verify_ui_consistency` 判成"网页盒"(四边描边 + 半透底 = CSS border+rgba 的长相),
+## 而这里要的正是半透明金色外环 ⇒ 用色块拼)。
+func _outline(parent: Control, r: Rect2, t: float, col: Color) -> void:
+	_rect(parent, r.position.x, r.position.y, r.size.x, t, col)
+	_rect(parent, r.position.x, r.end.y - t, r.size.x, t, col)
+	_rect(parent, r.position.x, r.position.y, t, r.size.y, col)
+	_rect(parent, r.end.x - t, r.position.y, t, r.size.y, col)
+
+
+## 一段虚线(横 `horiz=true` / 竖)。★「还没到」的那一格靠它与实线描边区分 ——
+##   形态差别不靠颜色, 弱视/小屏/截图压缩下都还在。
+func _dash(parent: Control, x: float, y: float, len_px: float, t: float,
+		col: Color, horiz: bool, on: float = 6.0, off: float = 5.0) -> void:
+	var p := 0.0
+	while p < len_px:
+		var seg: float = minf(on, len_px - p)
+		if horiz:
+			_rect(parent, x + p, y, seg, t, col)
+		else:
+			_rect(parent, x, y + p, t, seg, col)
+		p += on + off
+
+
+func _dash_box(parent: Control, r: Rect2, t: float, col: Color) -> void:
+	_dash(parent, r.position.x, r.position.y, r.size.x, t, col, true)
+	_dash(parent, r.position.x, r.end.y - t, r.size.x, t, col, true)
+	_dash(parent, r.position.x, r.position.y, r.size.y, t, col, false)
+	_dash(parent, r.end.x - t, r.position.y, r.size.y, t, col, false)
+
+
+## 阶梯像素箭头(不是三角形多边形 —— 斜边会被抗锯齿糊掉, 像素风要的是台阶)。
+## `tip_x` 是尖端, `to_right` 决定往哪边张开; `steps` 由可用空档决定(空档窄就缩短)。
+func _arrow(parent: Control, tip_x: float, y: float, to_right: bool,
+		col: Color, steps: int) -> void:
+	for i in range(steps):
+		var hh: float = float(i + 1) * 4.0
+		var x: float = (tip_x - float(i + 1) * 3.0) if to_right else (tip_x + float(i) * 3.0)
+		_rect(parent, x, y - hh * 0.5, 3.0, hh, col)
+
+
+## 一格的底色与描边色。★**形态**(实线 / 实线加粗+角标 / 虚线)才是主判据,
+##   颜色只是帮忙 —— 用户要的是"一眼分得出", 不是"配色好看"。
+func _state_colors(st: String) -> Array:
+	match st:
+		ST_DONE:
+			return [Color("#111b24"), Color("#3f6579")]
+		ST_LIVE:
+			return [Color("#1a2437"), ACCENT]
+		ST_LOCKED:
+			return [Color("#0b0f17"), Color("#161d2b")]
+		ST_BYE:
+			return [Color("#0d1118"), Color("#1a2231")]
+	return [Color("#141b28"), Color("#2c3950")]
+
+
+## 名字太长就截断。★不能用 `clip_text`: 那会被 `verify_ui_consistency` 判成
+##   「被 clip_text 截断的文字」(它是对的 —— 硬裁出来的半个字读不出来)。
+##   ⇒ 在**文字层**截, 留一个省略号。13px 的汉字≈13px 宽, 除得到能放几个。
+func _fit_name(nm: String, px: float, tick: bool) -> String:
+	var avail: float = px - (16.0 if tick else 0.0)
+	var maxc: int = int(avail / 13.0)
+	if maxc < 2 or nm.length() <= maxc:
+		return nm
+	return nm.substr(0, maxi(1, maxc - 1)) + "…"
+
+
+## 【本轮】那一列的竖带。★9 列的 32 人桶里"现在打到哪儿了"光靠标签变色看不出来,
+##   整列压一条极淡的带子, 眼睛一扫就落在对的那一列上。镜像布局两侧各一条。
+func _make_round_band(n: int, total: int) -> void:
+	var r0 := int(cur().get("round", 1))
+	if r0 < 1 or r0 > total:
+		return
+	var cnt := _B.matches_in_round(n, r0)
+	var picks: Array = [0] if r0 >= total else [0, cnt / 2]
+	var cs: Vector2 = _L.content_size(n)
+	for m in picks:
+		var rect: Rect2 = _L.node_rect(n, r0, m)
+		if rect.size == Vector2.ZERO:
+			continue
+		_rect(_canvas, rect.position.x - 10.0, -44.0, rect.size.x + 20.0, cs.y + 56.0,
+			Color(ACCENT.r, ACCENT.g, ACCENT.b, 0.05))
 
 
 func _make_round_labels(n: int, total: int) -> void:
@@ -526,6 +696,10 @@ func _make_round_labels(n: int, total: int) -> void:
 			var rect: Rect2 = _L.node_rect(n, r, m)
 			if rect.size == Vector2.ZERO:
 				continue
+			## 标签底下压一条杠: 本轮是实心亮杠, 其余是一道暗槽 —— 与页签同一套语言。
+			var on: bool = r == int(cur().get("round", 1))
+			_rect(_canvas, rect.position.x + 6.0, -12.0, rect.size.x - 12.0,
+				3.0 if on else 1.0, ACCENT if on else Color("#222c3e"))
 			var lb := Label.new()
 			lb.text = txt
 			lb.position = Vector2(rect.position.x, -34.0)
@@ -558,7 +732,7 @@ func competitor(r: int, m: int, side: int) -> Dictionary:
 		return {"name": "轮空", "seed": -1, "bye": true}
 	if sd < 0:
 		return {"name": "待定", "seed": -1, "bye": false}
-	return {"name": str(names[sd]) if sd < names.size() else "?", "seed": sd, "bye": false}
+	return {"name": str(names[sd]) if sd < names.size() else "神秘龟", "seed": sd, "bye": false}
 
 
 ## 本轮这一场里，**我的对手**是几号种子。`-1` = 拿不到。
@@ -621,6 +795,16 @@ func winner_side(r: int, m: int) -> int:
 	return int(d[key]) if d.has(key) else -1
 
 
+## ══════════════════════════════════════════════════════════════════════
+##  一格对阵 —— 三种状态**靠形态**分, 不只靠颜色(用户 2026-09-27)
+## ══════════════════════════════════════════════════════════════════════
+##   · 已打完 ST_DONE  : 实线框 + **胜者那一行整条亮底 + 前缘 4px 竖条 + ✓**,
+##                       败者那一行**压暗**。两行的明暗差本身就是"结果"。
+##   · 正在打 ST_LIVE  : 加粗描边 + **四角准星括号** + 中缝是**锯齿**(两边还在咬)
+##   · 还没到 ST_LOCKED: **虚线空槽**(描边宽度 0, 靠虚线画), 中缝也是虚线
+##   · 轮空   ST_BYE   : 最暗的底, 实线细框 —— 它不是"等着打", 而是"这里没人"
+## ★为什么不靠颜色: 这四种在灰度截图 / 小屏 / 色弱下都得分得出来。
+##   原来 LIVE 与 LOCKED **长得一模一样**(同底同框), 只有一个 ▶ 的差别。
 func _make_node(r: int, m: int) -> Control:
 	var n := int(cur().get("size", 0))
 	var rect: Rect2 = _L.node_rect(n, r, m)
@@ -628,32 +812,77 @@ func _make_node(r: int, m: int) -> Control:
 	var mine := is_my_match(r, m)
 	var ws := winner_side(r, m)
 	var sh: float = _L.slot_h()
+	var total := _B.rounds_for(n)
+	var w: float = rect.size.x
+	var h: float = rect.size.y
 
 	var holder := Control.new()
 	holder.position = rect.position
 	holder.custom_minimum_size = rect.size
 	holder.size = rect.size
 
-	## ★边框 + 实心底 —— 参考图的格子是圆角描边卡片, 没有边框就没有"格子感"。
+	## ★★「我在哪一格」= 这屏的头等大事(文件头 ★①)。原来只有**一圈 2px 金边**,
+	##   而已打完的格子也有亮底、当前轮也有亮框 ⇒ 32 人桶里根本挑不出来。
+	##   ⇒ 两层金色外环 往外撑 7px, 谁都不会长这样。
+	if mine:
+		_outline(holder, Rect2(-7.0, -7.0, w + 14.0, h + 14.0), 2.0,
+			Color(MINE.r, MINE.g, MINE.b, 0.15))
+		_outline(holder, Rect2(-4.0, -4.0, w + 8.0, h + 8.0), 2.0,
+			Color(MINE.r, MINE.g, MINE.b, 0.45))
+
+	## ★硬投影(右下 4px, **不羽化**) —— 像素 UI 的招牌。
+	##   网页味的那种是 `box-shadow: 0 2px 8px rgba(...)`, 有羽化; 这里一格实心块。
+	_rect(holder, 4.0, 4.0, w, h, SHADOW)
+
+	var cols: Array = _state_colors(st)
+	var bd_w: int = 2 if st == ST_LIVE else 1
+	var bd_c: Color = cols[1]
+	if mine:
+		bd_c = MINE
+		bd_w = 2
 	var frame := Panel.new()
 	frame.size = rect.size
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color("#141b28") if st != ST_BYE else Color("#0e1219")
-	sb.border_color = MINE if mine else Color("#2c3950")
-	sb.set_border_width_all(2 if mine else 1)
-	sb.set_corner_radius_all(3)
+	sb.bg_color = cols[0]
+	sb.border_color = bd_c
+	## ★「还没到」那一格描边宽度给 0 —— 它的边由下面的**虚线**画。
+	##   (我那一格例外: 金边压倒一切, 否则"我在哪"又看不见了。)
+	sb.set_border_width_all(0 if (st == ST_LOCKED and not mine) else bd_w)
+	## ★★2026-09-27 改**直角**: 原来 `set_corner_radius_all(3)`, 而圆角正是用户点名的
+	##   「很 ai 味和网页味」。参考图(Worlds 官方对阵图)的节点本来就是**直角横条**。
+	sb.set_corner_radius_all(0)
 	frame.add_theme_stylebox_override("panel", sb)
 	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(frame)
+	if st == ST_LOCKED and not mine:
+		_dash_box(holder, Rect2(0.0, 0.0, w, h), 2.0, DASH)
+	else:
+		## 内缘一亮一暗 = 像素浮雕。比 CSS 的渐变便宜, 而且缩放不糊。
+		_rect(holder, float(bd_w), float(bd_w), w - float(bd_w) * 2.0, 1.0, Color(1, 1, 1, 0.07))
+		_rect(holder, float(bd_w), h - float(bd_w) - 1.0, w - float(bd_w) * 2.0, 1.0,
+			Color(0, 0, 0, 0.30))
+
+	## ★已翻面: 两行的**明暗**就是结果。不剧透靠的是 `ws == -1`(当前轮拿不到),
+	##   所以这一整块在当前轮根本不画 —— 而不是"画了再藏起来"(文件头 ★②)。
+	if ws >= 0:
+		_rect(holder, 1.0, float(ws) * sh + 1.0, w - 2.0, sh - 2.0, PLATE_WIN)
+		_rect(holder, 1.0, float(1 - ws) * sh + 1.0, w - 2.0, sh - 2.0, PLATE_LOSE)
+		_rect(holder, 1.0, float(ws) * sh + 1.0, 4.0, sh - 2.0,
+			MINE if _is_me_side(r, m, ws) else ACCENT)
 
 	## 两行: 上侧 / 下侧
+	var name_w: float = maxf(28.0, w - 9.0 - GUTTER)
 	for side in range(2):
 		var c: Dictionary = competitor(r, m, side)
-		var nm := str(c.get("name", "?"))
+		var nm := str(c.get("name", "神秘龟"))
 		var is_bye := bool(c.get("bye", false))
+		var tick: bool = ws >= 0 and side == ws
 		var lb := Label.new()
 		lb.position = Vector2(9, float(side) * sh)
-		lb.size = Vector2(rect.size.x - 14, sh)
+		## ★★宽度**必须**给右边那条槽留出 GUTTER —— 「你」/「冠」小签住在那里,
+		##   不留的话名字会骑在小签上(而 `verify_ui_consistency` 的"两段文字压在一起"
+		##   只量 Label 矩形, 骑上去它也照样绿 ⇒ 这一条得自己守)。
+		lb.size = Vector2(name_w, sh)
 		lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		lb.add_theme_font_size_override("font_size", 13)
 		## ★★谁赢**只在已翻面时**标出来 —— 当前轮 `ws == -1`, 两侧一样亮 ⇒ 不剧透。
@@ -667,41 +896,96 @@ func _make_node(r: int, m: int) -> Control:
 		if _is_me_side(r, m, side):
 			col = MINE
 		lb.add_theme_color_override("font_color", col)
-		lb.text = ("✓ " if (ws >= 0 and side == ws) else "") + nm
+		## ★「✓ 」前缀**必须留在最前面**: `verify_bracket_map` ① 数的是
+		##   `begins_with("✓")` 的 Label 条数(它正是"已翻面才标胜者"那条判据的分母)。
+		lb.text = ("✓ " if tick else "") + _fit_name(nm, name_w, tick)
 		lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		holder.add_child(lb)
 
-	## 中间那道分隔线 —— 参考图两行之间有 VS，这里用一条细线 + 右侧状态标
-	var sep := ColorRect.new()
-	sep.color = Color("#2c3950")
-	sep.position = Vector2(6, sh - 1)
-	sep.size = Vector2(rect.size.x - 12, 1)
-	sep.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.add_child(sep)
+		## ★右槽小签: 金牌子 + 深色字, 一眼跳出来。「冠」优先于「你」——
+		##   我自己夺冠时"冠"信息量更大, 而我那一格本来就有金环 + 金字在标。
+		var badge := ""
+		if r >= total and ws == side:
+			badge = "冠"
+		elif _is_me_side(r, m, side):
+			badge = "你"
+		if badge != "":
+			var bx: float = w - GUTTER + 2.0
+			var by: float = float(side) * sh + (sh - 22.0) * 0.5
+			_rect(holder, bx + 2.0, by + 2.0, 24.0, 22.0, SHADOW)
+			_rect(holder, bx, by, 24.0, 22.0, MINE)
+			_rect(holder, bx, by, 24.0, 2.0, Color(1, 1, 1, 0.45))
+			var bl := Label.new()
+			bl.text = badge
+			bl.position = Vector2(bx, by)
+			bl.size = Vector2(24.0, 22.0)
+			bl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			bl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			bl.add_theme_font_size_override("font_size", 13)
+			bl.add_theme_color_override("font_color", BG)
+			bl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			holder.add_child(bl)
 
+	## ★中缝三种形态: 实线(打完/轮空) · 锯齿(正在打) · 虚线(还没到)。
+	##   参考图那里是个 VS 徽章, 但 104~268 宽的条子上塞 76x56 的徽章要缩到半尺寸,
+	##   像素图 0.5 倍最近邻会掉掉一半像素(battle_hud 那张 `pk-vs-emblem` 是原尺寸用的)
+	##   ⇒ 改用**缝的形状**说话, 零缩放、零新素材。
+	var seam_y: float = sh - 1.0
 	if st == ST_LIVE:
-		var play := Label.new()
-		play.text = "▶"
-		play.position = Vector2(rect.size.x - 22, sh - 10)
-		play.size = Vector2(20, 20)
-		play.add_theme_font_size_override("font_size", 14)
-		play.add_theme_color_override("font_color", MINE if mine else ACCENT)
-		play.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		holder.add_child(play)
+		var i := 0
+		var x := 6.0
+		while x < w - 9.0:
+			_rect(holder, x, seam_y + (-2.0 if i % 2 == 0 else 1.0), 4.0, 3.0,
+				MINE if mine else ACCENT)
+			x += 6.0
+			i += 1
+	elif st == ST_LOCKED:
+		_dash(holder, 6.0, seam_y, w - 12.0, 1.0, DASH, true, 5.0, 4.0)
+	else:
+		_rect(holder, 6.0, seam_y, w - 12.0, 1.0, Color("#2c3950"))
+
+	## ★四角准星括号 = 「正在打」的形态标记(赛事直播里锁定镜头的那种)。
+	if st == ST_LIVE:
+		var cc: Color = MINE if mine else ACCENT
+		var al := 11.0
+		for sx in [0, 1]:
+			for sy in [0, 1]:
+				_rect(holder, 0.0 if sx == 0 else w - al, 0.0 if sy == 0 else h - 3.0,
+					al, 3.0, cc)
+				_rect(holder, 0.0 if sx == 0 else w - 3.0, 0.0 if sy == 0 else h - al,
+					3.0, al, cc)
 
 	if can_open(r, m):
+		## 能点的那一格右槽里放一个**阶梯像素播放标**(原来是字体里的 ▶ 字形 ——
+		## 那玩意儿在像素风里是唯一一个抗锯齿的东西)。
+		var pc: Color = MINE if mine else ACCENT
+		for i2 in range(4):
+			var hh: float = float(4 - i2) * 4.0
+			_rect(holder, w - GUTTER + 6.0 + float(i2) * 3.0, sh - hh * 0.5, 3.0, hh, pc)
 		var btn := Button.new()
 		btn.flat = true
 		btn.size = rect.size
-		btn.tooltip_text = "开播"
+		## ★★用词分两种(2026-09-27): `can_open` 现在**只对我自己的当前轮**为真
+		##   (见 `can_open` 的头注), 点下去是**我上场打**, 不是看别人 ⇒ 写「开播」是错的。
+		##   重放那条路上线之后才是真的"开播看回放"(文件头 ★④: 不许写「直播」「回放」)。
+		btn.tooltip_text = "上场开打" if should_fetch_opponent(r, m) else "开播"
 		btn.pressed.connect(func(): match_opened.emit(r, m))
 		holder.add_child(btn)
 	return holder
 
 
-## ★★连接线 —— 参考图里那些直角线。没有它，整张图就是一堆飘着的条。
-##   每一场画三段: 两个来源各自伸出一小截 → 一条竖线把它们并起来 → 一截进本场。
-##   镜像布局里右半区方向相反, 所以 `dir` 决定往左还是往右伸。
+## ══════════════════════════════════════════════════════════════════════
+##  ★★★连接线 —— 用户点名的"网页味"第二个来源就在这里(2026-09-27)
+## ══════════════════════════════════════════════════════════════════════
+## 原来: 每一段都是**同一个颜色、同一个 2px 粗细**的直角细线 ⇒ 那就是 CSS 流程图。
+## 真的赛事对阵图里连线是**有轻重的**, 而且轻重**就是信息**:
+##   · 已经有人走过去了(那个坑的占位者已确定) ⇒ **4px 亮线 + 末端阶梯箭头**
+##   · 还没决出                              ⇒ **2px 暗线**, 没箭头
+##   · 那条路是**我**走的                     ⇒ 金色(和"我"那一格同一个语言)
+## ★★判据用 `competitor(r, m, side).seed >= 0` 而不是 `match_state(r-1, ...)`:
+##   前者就是「这个坑里坐的是谁」本身(`occupant_seed` 连**轮空自动晋级**都算进去了),
+##   后者会把"上一场是轮空"这种情况判成"还没决出" —— 而那个人其实已经站在这儿了。
+## ★不剧透不受影响: 当前轮的 `done` 客户端根本没有 ⇒ 占位者是 -1 ⇒ 线是暗的。
 func _make_links(n: int, total: int) -> void:
 	for r in range(2, total + 1):
 		for m in range(_B.matches_in_round(n, r)):
@@ -718,19 +1002,54 @@ func _make_links(n: int, total: int) -> void:
 			var ay: float = a.position.y + a.size.y * 0.5
 			var by: float = b.position.y + b.size.y * 0.5
 			var my: float = me_rect.position.y + me_rect.size.y * 0.5
-			_line(minf(src_x, mid_x), ay, absf(mid_x - src_x), 2.0)
-			_line(minf(src_x, mid_x), by, absf(mid_x - src_x), 2.0)
-			_line(mid_x - 1.0, minf(ay, by), 2.0, absf(by - ay))
-			_line(minf(mid_x, dst_x), my, absf(dst_x - mid_x), 2.0)
+			## `a` 喂本场的 0 侧、`b` 喂 1 侧 —— 与 `bracket.occupant_seed` 的
+			## `src_m = m * 2 + side` 同一条口径(反了会把两条线的明暗对调)。
+			var lit_a: bool = int(competitor(r, m, 0).get("seed", -1)) >= 0
+			var lit_b: bool = int(competitor(r, m, 1).get("seed", -1)) >= 0
+			var mine_a: bool = _is_me_side(r, m, 0)
+			var mine_b: bool = _is_me_side(r, m, 1)
+			_h_line(src_x, mid_x, ay, lit_a, mine_a)
+			_h_line(src_x, mid_x, by, lit_b, mine_b)
+			_v_line(mid_x, ay, by, lit_a and lit_b, mine_a or mine_b)
+			var lit: bool = lit_a or lit_b
+			_h_line(mid_x, dst_x, my, lit, is_my_match(r, m))
+			if lit:
+				## 箭头长度受空档限制: 32 人桶列间只剩 19px, 4 级台阶(12px)会顶过
+				## 中线糊在竖线上 ⇒ 按可用空档收级数。
+				var room: float = absf(dst_x - mid_x)
+				_arrow(_canvas, dst_x, my, from_left,
+					_link_col(true, is_my_match(r, m)), clampi(int(room / 3.0), 2, 4))
 
 
-func _line(x: float, y: float, w: float, h: float) -> void:
-	var seg := ColorRect.new()
-	seg.color = LINE
-	seg.position = Vector2(x, y - h * 0.5 if h <= 2.0 else y)
-	seg.size = Vector2(maxf(w, 2.0), maxf(h, 2.0))
-	seg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_canvas.add_child(seg)
+## 连线的颜色: 亮/暗两档 × 是不是我走的那条。
+func _link_col(lit: bool, mine: bool) -> Color:
+	if not lit:
+		return LINE_DIM
+	return MINE if mine else ACCENT
+
+
+## 一段横线(带硬投影)。★投影压在线的**下方 2px**, 与格子的右下投影同一个光源方向 ——
+##   方向不一致的话整屏立刻显得是拼出来的。
+func _h_line(x0: float, x1: float, y: float, lit: bool, mine: bool) -> void:
+	var t: float = LINE_W_LIT if lit else LINE_W_DIM
+	var w: float = absf(x1 - x0)
+	if w <= 0.5:
+		return
+	var x: float = minf(x0, x1)
+	_rect(_canvas, x, y + t * 0.5, w, 2.0, SHADOW)
+	_rect(_canvas, x, y - t * 0.5, w, t, _link_col(lit, mine))
+
+
+## 一段竖线(把两个来源并起来)。★两端各外扩 t/2, 否则拐角处会缺一小块
+##   —— 直角拼线的老毛病, 缺口正好在最显眼的位置。
+func _v_line(x: float, y0: float, y1: float, lit: bool, mine: bool) -> void:
+	var t: float = LINE_W_LIT if lit else LINE_W_DIM
+	var h: float = absf(y1 - y0)
+	if h <= 0.5:
+		return
+	var y: float = minf(y0, y1)
+	_rect(_canvas, x + t * 0.5, y - t * 0.5 + 2.0, 2.0, h + t, SHADOW)
+	_rect(_canvas, x - t * 0.5, y - t * 0.5, t, h + t, _link_col(lit, mine))
 
 
 ## 顶栏 + 页签占掉的高度 —— 图要摆在它们下面, 不然被压住。
@@ -916,12 +1235,12 @@ static func opponent_tip(res: Dictionary, tried: bool) -> String:
 		"wrong_round":
 			return "这一轮已经翻篇了 · 刷新一下看看新的对阵"
 		"not_in_bucket":
-			return "你不在这个桶里 · 只能观战"
+			return "你不在这个分组里 · 只能看别人打"
 		"empty_snapshot", "no_such_seed":
-			return "对手没留下阵容 · 这一场按无人应战处理"
+			return "对手没留下阵容 · 这一场算他弃权"
 		"net", "bad_body":
 			return "连不上服务器 · 过两秒再点一次"
-	return "暂时取不到对手阵容 · 过两秒再点一次"
+	return "暂时看不到对手阵容 · 过两秒再点一次"
 
 
 ## ★轮询缓存而不是接回调: 回调在网络那一侧, 接过来就得处理"场景已经被切掉了"的情况。

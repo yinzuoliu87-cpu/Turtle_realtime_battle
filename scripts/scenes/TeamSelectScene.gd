@@ -159,7 +159,7 @@ var _rarity_btns: Array = []         # [{btn, key}]
 func _ready() -> void:
 	rng.randomize()
 	if DataRegistry.all_pets.is_empty():
-		status_bar.text = "❌ DataRegistry 未加载"
+		status_bar.text = "龟谱没读出来 · 请重开一次"
 		push_error("[TeamSelect] DataRegistry 没加载!")
 		return
 	# 大轮已锁定? = season_leaders 已是有效 3 龟. 锁定→预填不清; 未锁(新赛季/首次)→清空全选.
@@ -186,7 +186,7 @@ func _ready() -> void:
 	_load_team()
 	_refresh_all()
 	if _roster_locked:
-		_flash_status("🔒 本大轮阵容已锁定 · 点龟查看并调整 3选1 技能 · 确认出战")
+		_flash_status("这一轮的三只龟定了 · 还能换招, 换不了龟")
 	# 新手引导: 教学模式挂分步引导(带高亮锚点)。导演按当前阶段选步骤集 + 是否 mandatory。
 	var _tdg = get_node_or_null("/root/TutorialDirector")
 	if _tdg != null and _tdg.is_active():
@@ -671,7 +671,11 @@ func _build_ui() -> void:
 
 	# 返回 (PoC .ts-overlay-btn: 半透深底 + 金边 + #ffd86b 文字)
 	var back := Button.new()
-	back.text = "‹ 返回"
+	## ★原文是 "‹ 返回"。‹ 是网页那套 chevron, 而【返回】两个字已经把意思说完了,
+	##   它纯粹是装饰 ⇒ **去掉**, 而不是换成 ← 或别的符号 ——
+	##   全项目的像素图标集正在另外做, 我在这里自己挑一个字符只会多出第 N 种长相。
+	##   (`verify_top_bar` 认 "返回"/←/‹ 任一, 纯汉字照样认得出来。)
+	back.text = "返回"
 	## ★薄片皮走全项目同一个函数(2026-09-19)。
 	##   原来这三个是 `_sf(13)` 的小字被 `_grow_to_touch` 撑到 81px 的框里 ——
 	##   实拍出来就是「78×85 的框里字只占中间一条」, 踩中 146 款参考里的第 ④ 条。
@@ -683,7 +687,11 @@ func _build_ui() -> void:
 
 	# 清空 (PoC .ts-frame-btn: 透明底无边, 白字阴影, 坐在画好的框上)
 	var clear := Button.new()
-	clear.text = "⊘ 清空"
+	## ★原文是 "⊘ 清空"。⊘ 是网页那套 "禁止" 图标, 像素风里没有它;
+	##   "清空" 也是程序话(清空一个数组), 换成与 "上阵" 成对的 "撤下"。
+	## ⚠ **只能两个字**: 三个顶栏键的位置被背景图烤死(RL 里写死的坐标),
+	##   实拍过 "全部撤下"(四字) —— 牌子被右边「沿用上次」那块盖住, "下" 字直接没了。
+	clear.text = "撤下"
 	TopBar.apply_chip_skin(clear, TopBar.WOOD)
 	root.add_child(clear)
 	_place_clamped(clear, "clear")
@@ -692,7 +700,11 @@ func _build_ui() -> void:
 
 	# 上次阵容 (PoC .ts-frame-btn)
 	_last_btn = Button.new()
-	_last_btn.text = "🔄 上次阵容"   # ↺(U+21BA) 打包字体链无字形(web/linux豆腐块) → 换 🔄(U+1F504, Noto Emoji 有)
+	## ★原文是 "🔄 上次阵容"。🔄 在 Noto Emoji 里是一枚**全彩图标** ——
+	##   实拍（C:/tmp/tsshots/before/2_filled.png）出来是木牌上贴了一个青蓝循环箭头,
+	##   像素风里它比任何一个字都跳。前一代把 ↺ 换成 🔄 是为了避豆腐块,
+	##   而**不要图标**才是真的无豆腐块。
+	_last_btn.text = "沿用上次"
 	TopBar.apply_chip_skin(_last_btn, TopBar.WOOD)
 	root.add_child(_last_btn)
 	_place_clamped(_last_btn, "last")
@@ -715,22 +727,25 @@ func _build_ui() -> void:
 	_start_btn = Button.new()
 	_start_btn.disabled = true
 	_start_btn.add_theme_font_size_override("font_size", _sf(18))
-	_start_btn.text = "请选择 3 只龟"
+	_start_btn.text = "挑 3 只龟上阵"
 	_start_btn.add_theme_color_override("font_color", Color("#eaffd0"))
 	_start_btn.add_theme_color_override("font_hover_color", Color("#ffffff"))
-	_start_btn.add_theme_color_override("font_pressed_color", Color("#eaffd0"))
+	## 按下压暗一档 —— 底板是画好的绿牌, 这是唯一不加盒子的按下反馈(见下方注释)。
+	_start_btn.add_theme_color_override("font_pressed_color", Color("#9fc47c"))
 	_start_btn.add_theme_color_override("font_disabled_color", Color(1, 1, 1, 0.5))
 	_start_btn.add_theme_constant_override("shadow_offset_x", 0)
 	_start_btn.add_theme_constant_override("shadow_offset_y", 1)
 	_start_btn.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.85))
-	var _cta_hover := StyleBoxFlat.new()
-	_cta_hover.bg_color = Color(1, 1, 1, 0.1)
-	_cta_hover.set_corner_radius_all(8)
-	_start_btn.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
-	_start_btn.add_theme_stylebox_override("hover", _cta_hover)
-	_start_btn.add_theme_stylebox_override("pressed", _cta_hover)
-	_start_btn.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
-	_start_btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	## ★★2026-09-28 把 hover/pressed 那块【半透白圆角盒】整个删掉。
+	##   它是这一屏第 5 个圆角盒(门禁只数 panel/normal/background/fill 四槽, 所以台账上没有它,
+	##   但玩家一把鼠标放上去就看得见)。
+	## ★为什么不是"改成直角"也不是"换九宫格": CTA 的底板**烤在 select-bg.png 上**
+	##   (实拍裁出来是一块带金边和菱形铆钉的绿牌, 见 :718 注释)。
+	##   · 套九宫格 = 画好的绿牌上再压一层框, 两层边;
+	##   · 直角半透白 = 白方块四角溢出绿牌的斜切角, 比圆角还难看。
+	##   ⇒ 底板已经有美术的按钮, 反馈就该走**字**: hover 提白 / 按下压暗一档(下面的 font_*_color)。
+	for _st in ["normal", "hover", "pressed", "disabled", "focus"]:
+		_start_btn.add_theme_stylebox_override(_st, StyleBoxEmpty.new())
 	root.add_child(_start_btn)
 	_place_clamped(_start_btn, "start")
 	_grow_to_touch(_start_btn)
@@ -835,7 +850,7 @@ func _refresh_synergy_chips() -> void:
 	var rows: Array = GameState.synergy_rows()
 	if rows.is_empty():
 		var none := Label.new()
-		none.text = "（出战的龟身上还没有同类型装备）"
+		none.text = "上阵的龟还没戴同类装备"
 		none.add_theme_font_size_override("font_size", _sf(11))
 		none.add_theme_color_override("font_color", Color("#6b5333"))
 		_synergy_box.add_child(none)
@@ -1108,7 +1123,7 @@ func _make_rarity_badge(rarity: String, rcolor: Color, font_px: int = 11) -> Con
 func _refresh_confirm() -> void:
 	if _roster_locked:
 		_start_btn.disabled = false
-		_start_btn.text = "⚔ 确认出战"
+		_start_btn.text = "就这三只 · 出战"
 		if _last_btn != null:
 			_last_btn.disabled = true          # 锁定态禁"上次阵容"
 		return
@@ -1121,11 +1136,11 @@ func _refresh_confirm() -> void:
 	# PoC #poc-btn-confirm(index.html:518) 显式 animation:none box-shadow:none → 开始按钮无脉冲发光
 	#   (.select-cta 通用脉冲被 ID 规则覆盖关掉)。曾自创发光 Panel 已删。
 	if placed == 0:
-		_start_btn.text = "请选择 3 只龟"
+		_start_btn.text = "挑 3 只龟上阵"
 	elif placed < REQUIRED_PETS:
-		_start_btn.text = "还需选 %d 只" % (REQUIRED_PETS - placed)
+		_start_btn.text = "还差 %d 只" % (REQUIRED_PETS - placed)
 	else:
-		_start_btn.text = "⚔ 开始冒险"
+		_start_btn.text = "带它们出战"
 	# 上次阵容: 空队 + 有完整存档才可恢复
 	var last := _read_last_lineup()
 	var can_restore: bool = placed == 0 and last.has("ids") and (last["ids"] as Array).size() == 3
@@ -1148,7 +1163,7 @@ func _on_pick_pet(pid: String) -> void:
 		if t != null and not _is_special_mark(t):
 			placed += 1
 	if placed >= REQUIRED_PETS:
-		_flash_status("已选 %d 只, 点击龟或格子可移除" % REQUIRED_PETS)   # 1:1 PoC onPickPet toast(:1556) — 原"⚠队伍已满(3/3)"是自创
+		_flash_status("三只满了 · 点格子把龟撤下来")   # 1:1 PoC onPickPet toast(:1556) — 原"⚠队伍已满(3/3)"是自创
 		return
 	# 优先填 active 槽 (PoC onPickPet:1561), 否则首个空槽
 	var empty_idx := -1
@@ -1246,7 +1261,7 @@ func _on_drop_pet(pet_id: String, slot_idx: int) -> void:
 			if t != null and not _is_special_mark(t):
 				placed += 1
 		if placed >= REQUIRED_PETS:
-			_flash_status("已选 3 只, 先移除再放置")
+			_flash_status("三只满了 · 先撤下一只")
 			return
 	team[slot_idx] = pet_id
 	_sync_special_slots()
@@ -1258,7 +1273,7 @@ func _on_drop_pet(pet_id: String, slot_idx: int) -> void:
 
 func _on_clear_all() -> void:
 	if _roster_locked:
-		_flash_status("本大轮阵容已锁定 · 无法清空(新赛季才能重选)")
+		_flash_status("这一轮的龟定了 · 下个赛季才能重挑")
 		return
 	team = [null, null, null]
 	_selected_slot_idx = -1
@@ -1360,7 +1375,9 @@ func _on_start() -> void:
 func _lockout_toast() -> void:
 	var lab := Label.new()
 	lab.name = "LockoutToast"
-	lab.text = "⏳ 已封盘 · 收盘前 %d 分钟起不开新局" % int(_P2C.CLOSE_LOCKOUT_SEC / 60)
+	## ★去掉 ⏳ —— 它在打包字体里是彩色 emoji, 与黄字黑描边的 toast 不是一套语言。
+	##   「已封盘/收盘」是本项目的固定说法(主菜单赛程条同词), 这两个词不动。
+	lab.text = "已封盘 · 收盘前 %d 分钟不再开新局" % int(_P2C.CLOSE_LOCKOUT_SEC / 60)
 	lab.add_theme_font_size_override("font_size", 24)
 	lab.add_theme_color_override("font_color", Color("#ffd93d"))
 	lab.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))

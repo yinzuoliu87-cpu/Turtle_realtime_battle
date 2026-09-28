@@ -35,7 +35,20 @@ const GOLD := Color(1.0, 0.86, 0.4)
 ## ③ 底部两个按钮是 **Godot 默认皮**(圆角纯色), 且 200×54 = 29pt < 44pt 触控下限。
 ## ④ 形象卡 80×96: 短边 80 < 81px(=44pt)。差 1px 也是不达标, 而且白给。
 const CARD_W := 124.0     # 技能卡
-const CARD_H := 106.0     # slot-frame 实测边带 6px, 上下各让开才不压图标/标签
+## ★★CARD_H 106 → 120（2026-09-28）。**这个数是算出来的, 不是调出来的** ——
+##   剖面探针 `tests/_probe_trainer_card2.gd` 打出来的三行:
+##     卡内容最小高 = 图标 52 + 间隔 4 + 名字 24(fs16) + 间隔 4 + 标签 18(fs12) = **102**
+##     106 的卡扣掉两条 6px 金属边带, 内容区只有 **94**
+##     ⇒ **内容比内容区高 8px** —— 这才是"文字压在边带上"的真因。
+##   102 + 2×CARD_INSET(7) + 4(居中余量) = **120**, 四边各留 3px 不碰边带。
+##   竖向够不够: 同一份探针量的是「视口 1280×720 上内容 bbox y 40~679, 上下共 81px 余量」,
+##   两行各长 14 = 28 < 81 ⇒ 装得下(改后实测余量 26/27)。
+const CARD_H := 120.0
+## slot-frame.png 的金属边带 —— **从贴图量出来的 6px**(与门禁 `_band_of` 同一把尺子)。
+## ⚠ 不是九宫格那个 12: 那个是「从哪切开去拉伸」, 不是「画了多宽的边」。
+const CARD_BAND := 6.0
+## 再往里让 1px, 好让"一根像素都不压在边带上"有余量。
+const CARD_INSET := CARD_BAND + 1.0
 const SKILL_PER_ROW := 4  # 见上面 ① —— 7 张一行在 16:9 上装不下
 const APP_W := 84.0       # 形象卡: 81px = 44pt 触控下限, 取 84 留 3px 余量
 const APP_H := 104.0
@@ -108,7 +121,10 @@ func _build_ui() -> void:
 	pad.add_child(box)
 
 	var title := Label.new()
-	title.text = "🐢 训龟大师"
+	## ★★没有 emoji(2026-09-28, 用户「全是 ai 味和网页味, 文字语言也是」)。
+	##   像素游戏的屏名就是屏名 —— 标题前挂一个彩色 emoji 是**网页/AI 排版的指纹**,
+	##   而且它是系统字体画的, 和这一屏的像素字体、金属框根本不是同一套东西。
+	title.text = "训龟大师"
 	title.add_theme_font_size_override("font_size", 34)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title)
@@ -122,7 +138,7 @@ func _build_ui() -> void:
 	# 左栏: 形象
 	var col_l := VBoxContainer.new()
 	col_l.add_theme_constant_override("separation", 8)
-	col_l.add_child(_heading("形象"))
+	col_l.add_child(_heading("挑个模样"))
 	col_l.add_child(_appearance_section())
 	main.add_child(col_l)
 
@@ -140,7 +156,12 @@ func _build_ui() -> void:
 	##   而 `SKILLS` 已经是 **7 条** —— 同一个文件里 `:20` 的注释自己都写着
 	##   「技能行 7×124」, `battle_render.gd:26` 也写着「【七选一】」。
 	##   手写的数字迟早会漂; 从数组算就永远不会。
-	col_r.add_child(_heading("技能  （%d 选 1 · 被动或主动只能带一样）" % SKILLS.size()))
+	## ★★2026-09-28 去掉那对全角括号里的说明书腔(原文「技能 （7 选 1 · 被动或主动只能带一样）」)。
+	##   括号 + "N 选 1" + "只能带一样"是**表单帮助文字**的口气, 不是游戏的口气。
+	## ⚠ 这一行的形状被 `tests/verify_trainer_skill_count.gd` 钉着, 改文案要守三条:
+	##   ① 必须以「技能」开头  ② 必须含「选」  ③ 第一串阿拉伯数字必须 == SKILLS.size()
+	##   (它当年抓到的正是这一行长期写着「五选一」而数组已经 7 条)。
+	col_r.add_child(_heading("技能　%d 门里只选 1 门 · 被动与主动不可兼得" % SKILLS.size()))
 	col_r.add_child(_skill_row())
 	var desc_panel := PanelContainer.new()
 	desc_panel.add_theme_stylebox_override("panel", _nine("panel-frame.png", 20,
@@ -175,7 +196,14 @@ func _build_ui() -> void:
 	## ★两个按钮原来是 **Godot 默认皮**(圆角纯色 —— "没游戏味"最直接的来源), 且 200×54。
 	##   54px 只有 29pt, 低于 44pt 触控下限(视口恒 720 高 ↔ iPhone 横屏 390pt ⇒ 44pt = 81px)。
 	var save_btn := Button.new()
-	save_btn.text = "保存并返回"
+	## ★★2026-09-28 文案去网页味: 「保存并返回」/「返回(不保存)」是**表单的 Save / Cancel**,
+	##   而且第二个用括号做否定 —— 那对括号是网页帮助文字的标志。
+	##   游戏里玩家说的是「就这么定了」和「算了不改了」。两条**都说清了会不会留下改动**,
+	##   所以不是把信息换成了氛围, 是换了个说法把同一件事说完。
+	## ⚠ 主 CTA 的文字里不要再出现「返回 / ← / ‹」: `tests/verify_top_bar.gd` 的规则是
+	##   「厚签牌只给主 CTA」, 它靠**文字里带返回字样**去认返回键(并靠"含保存"把这个按钮排掉)。
+	##   这一屏目前不在它的 SCREENS 里, 但别给以后埋一个"主 CTA 被当成返回键"的坑。
+	save_btn.text = "就这么定了"
 	save_btn.add_theme_font_size_override("font_size", 19)
 	save_btn.custom_minimum_size = Vector2(210, 81)
 	save_btn.focus_mode = Control.FOCUS_NONE
@@ -183,7 +211,7 @@ func _build_ui() -> void:
 	save_btn.pressed.connect(_save_and_back)
 	row.add_child(save_btn)
 	var back_btn := Button.new()
-	back_btn.text = "返回(不保存)"
+	back_btn.text = "算了不改了"
 	back_btn.custom_minimum_size = Vector2(210, 81)
 	back_btn.focus_mode = Control.FOCUS_NONE
 	## ★次操作走薄片皮; **主 CTA「保存并返回」保留厚金属签牌** ——
@@ -191,6 +219,26 @@ func _build_ui() -> void:
 	TopBar.apply_chip_skin(back_btn, TopBar.WOOD)
 	back_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
 	row.add_child(back_btn)
+
+## 把卡里那摞内容收进【金属边带以内】—— 技能卡与形象卡共用一处, 别再各写一份。
+##
+## ★★2026-09-28 重做。前三版都是**猜** offset(四边 8 / 只给底 -12 / 再加顶 10),
+##   越界在 7→3→7 之间弹, 一次也没归零。剖面探针
+##   `tests/_probe_trainer_card2.gd` 打出来才看清为什么猜不中:
+##   · `VBoxContainer` 的**最小高是 102**(图标 52 + 4 + 名 24 + 4 + 标签 18),
+##     而 `Control` 会把自己的尺寸**夹到 `get_combined_minimum_size()`** ⇒
+##     `offset_bottom = -12` 根本没让它变矮(实测改完它照旧是 102 高), 那一版等于没改。
+##   · 给 top 加 inset 只是把整摞内容**往下推**, 于是"越界从 +4 涨到 +10"。
+##     当时归因成"名字换行把标签顶下去了"——**错的**: 名字 ink 最宽 64px,
+##     Label 的最小宽就是文字宽, 110 的内容区里永远不会换行。
+## ⇒ 正解是**先让内容区装得下**(CARD_H 106→120, 见常量处的算式), 再把 VBox
+##   钉成内容区本身。形象卡内容 80 高、内容区 90, 套上去位置**逐像素不变**(实测 +12~+92)。
+func _fit_inside_band(vb: Control) -> void:
+	vb.offset_left = CARD_INSET
+	vb.offset_top = CARD_INSET
+	vb.offset_right = -CARD_INSET
+	vb.offset_bottom = -CARD_INSET
+
 
 func _heading(t: String) -> Label:
 	var lb := Label.new()
@@ -249,6 +297,7 @@ func _appearance_section() -> Control:
 		_skin_card(card)
 		var vb := VBoxContainer.new()
 		vb.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_fit_inside_band(vb)
 		vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		vb.alignment = BoxContainer.ALIGNMENT_CENTER
 		vb.add_theme_constant_override("separation", 1)
@@ -319,6 +368,7 @@ func _skill_row() -> Control:
 		_skin_card(card)
 		var vb := VBoxContainer.new()
 		vb.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_fit_inside_band(vb)
 		vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		vb.alignment = BoxContainer.ALIGNMENT_CENTER
 		vb.add_theme_constant_override("separation", 4)
@@ -368,7 +418,9 @@ func _refresh_desc() -> void:
 	for s in SKILLS:
 		if str(s["id"]) == _sel_skill:
 			var kc: String = "5cc6ff" if str(s["kind"]) == "被动" else "ffb27f"
-			_desc_label.text = "[color=#%s][b]%s[/b][/color]  [b]%s[/b]\n%s" % [kc, s["kind"], s["name"], s["desc"]]
+			## ★名字在前、被动/主动的签在后(2026-09-28)。原来是「主动  钩锁」——
+			##   **属性写在名字前面**是数据表的读法; 游戏里先说这门技叫什么, 再挂类别签。
+			_desc_label.text = "[b]%s[/b]  [color=#%s]%s[/color]\n%s" % [s["name"], kc, s["kind"], s["desc"]]
 			return
 	_desc_label.text = ""
 
@@ -449,6 +501,12 @@ func _sb(bg: Color, border: Color, bw: int, radius: int) -> StyleBoxFlat:
 	return sb
 
 ## 椭圆投影(全圆角矮条 ≈ 椭圆)。
+##
+## ★★这是本屏**唯一**一个带圆角的 StyleBoxFlat(2026-09-28 实测: 门禁 round=1 就是它,
+##   66x13 r=7 a=0.42 无字), **刻意留着**: 它是人物脚下的投影, 不是"深色圆角矩形面板"。
+##   本仓 `verify_ui_consistency` 的 TeamSelect 条目记着同一个判断 ——
+##   用户点名的 ai 味是 border-radius 的**圆角矩形盒**, 正圆/椭圆不是。
+##   ⇒ 别为了把这个数字刷成 0 去改它(那是改判据不是改东西)。
 func _oval(c: Color) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = c

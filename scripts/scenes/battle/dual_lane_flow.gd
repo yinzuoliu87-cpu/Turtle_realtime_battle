@@ -126,11 +126,15 @@ func _dl_build_present_overlay(mode: String) -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(title)
 	if mode == "overview":
-		title.text = "⚔  三路对阵总览"
+		## ★原文案 "⚔ 三路对阵总览" —— 「总览」是 Overview 直译(dashboard 词)。
+		##   这一幕摆的就是三个战场各自的对手, 用一句陈述事实的话说完, 不用栏目名。
+		title.text = "⚔  三个战场都要打"
 		for ln in ["top", "bottom", "final"]:
 			vb.add_child(_dl_overview_lane_row(ln, str(lane_cn.get(ln, ln))))
 	elif mode == "preview":
-		title.text = "【%s战场】 对阵预览" % lane_cn.get(cur_lane, cur_lane)
+		## ★原文案 "对阵预览" —— 「预览」是编辑器/网页词。这一幕的两列阵容+VS 本身就说清了
+		##   "谁对谁", 标题该说的是【接下来要发生什么】。
+		title.text = "【%s战场】 马上开打" % lane_cn.get(cur_lane, cur_lane)
 		vb.add_child(_dl_matchup_row(cur_lane))
 	elif mode == "lane_settle":
 		var win_lr = "right" if battle._dl_pending_loser == "left" else "left"
@@ -151,7 +155,11 @@ func _dl_build_present_overlay(mode: String) -> void:
 			vb.add_child(e)
 	var hint = Label.new(); hint.add_theme_font_size_override("font_size", 13); hint.add_theme_color_override("font_color", Color("#7a8a96"))
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.text = "（自动 5 秒 · 点击跳过）"
+	## ★原文案 "（自动 5 秒 · 点击跳过）" —— 「自动 5 秒」是实现参数(玩家不需要知道那个 5),
+	##   「点击」也是网页动词。两个可能的行为都还在, 只是不再报数。
+	## ⚠ 别把后半句写成"自己开打": 这行 hint 三幕共用(overview/preview/lane_settle),
+	##   而 lane_settle 那幕点下去是【进结算】不是开打 —— 写死"开打"就有一幕是假的。
+	hint.text = "（点一下接着来 · 不点也一样）"
 	vb.add_child(hint)
 	_dl_stagger_in(vb)
 
@@ -369,7 +377,11 @@ func _dl_enter_place() -> void:
 	battle._dl_go_btn.position = Vector2(vp.x * 0.5 - 110.0, vp.y - 100.0)
 	battle._dl_place_hint.position = Vector2(vp.x * 0.5 - 230.0, vp.y - 136.0)
 	battle._dl_place_hint.size = Vector2(460, 24)
-	battle._dl_place_hint.text = "【放置】拖我方单位到你半场(左侧)任意位置 → 点「开打」"
+	## ★原文案 "【放置】拖我方单位到你半场(左侧)任意位置 → 点「开打」" —— 三处网页/编辑器味:
+	##   ① 「【放置】」是编辑器模式名(玩家不在"模式"里, 他就是在摆龟)
+	##   ② 「(左侧)」是坐标注释 —— 自己那半场眼睛看得见, 而且 _dl_clamp_place 本来就拦着过不了中线
+	##   ③ 「单位」是 unit 直译, 场上就是龟
+	battle._dl_place_hint.text = "拖我方的龟在自己半场摆好站位 → 点「开打」"
 	battle._dl_go_btn.visible = true
 	battle._dl_place_hint.visible = true
 	# ★教学 match1: 摆位UI就绪 → 挂"place"引导(教站位), 只挂一次(首路; 别每路弹)。
@@ -992,7 +1004,10 @@ func _dl_update_hud() -> void:   # 双路 HUD: 当前路 + 破蛋窗口计时 + 
 	var st = ""
 	if battle._dl_state == "eggwindow":
 		var rem = battle._dl_window_until - battle._t
-		st = ("  ·  破蛋窗口 %.0fs" % maxf(0.0, rem)) if rem < 1.0e17 else "  ·  破蛋(决胜)"
+		## ★原文案 "破蛋窗口 %.0fs" —— 「窗口」是 time-window 直译。玩家要知道的是
+		##   【还剩多久】, 那就直说"还剩"。(状态名 eggwindow / 本函数注释里的"破蛋窗口"
+		##   是代码侧词汇, 不上屏, 保持不动。)
+		st = ("  ·  破蛋还剩 %.0fs" % maxf(0.0, rem)) if rem < 1.0e17 else "  ·  破蛋(决胜)"
 	if battle._sd_stacks > 0:   # §SUDDEN 决胜档位: 不显玩家会莫名其妙"怎么突然打得动了/奶不住了"
 		st += "  ·  ⚔决胜 +%d%%增伤 · 治疗-50%%" % int(battle._sd_amp() * 100.0)
 	battle._dl_hud.text = "【%s】%s" % [lane_cn, st]

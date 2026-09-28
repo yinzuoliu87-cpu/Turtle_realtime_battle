@@ -218,6 +218,28 @@ func _n_labels(n: Node) -> int:
 	return k
 
 
+## ★★2026-09-28 数【账号行那一族节点】有几个 —— ⑤ 的新尺子。
+##
+## 由来: ⑤ 守的需求是「没配后端 ⇒ **整行不显示**(不是显示"离线")」，
+##   而它原来的实现是 `not _find_text(s3, "账号：")` —— **拿屏幕上的字面量当尺子**。
+##   2026-09-28 设置屏去网页味时要拿掉那个冒号(`label: value` 是网页表单的读法)，
+##   拿掉的同一刻这条断言就变成**恒真**：找不到是因为那个词没了，不是因为行没建。
+##   ——「改了文案，判据静默变空检查」，与 memory
+##     `fb-changing-a-param-meaning-makes-gates-tautological` 同一族：
+##     类型没变、名字没变、编译器不拦，只有跑起来数分母才看得见。
+##
+## ⇒ 判据平移到**行为**：这一族节点到底在不在场景树上。文案以后随便改都不影响它。
+## ★前缀**从产品那边 preload 取**，门禁不自己抄一份字符串
+##   (memory `fb-hand-rolled-copies-drift`：抄一次就永远落后一次)。
+const SETTINGS_SCRIPT := preload("res://scripts/scenes/SettingsScene.gd")
+
+func _n_acct_row(n: Node) -> int:
+	var k := 1 if str(n.name).begins_with(SETTINGS_SCRIPT.ACCT_ROW_PREFIX) else 0
+	for c in n.get_children():
+		k += _n_acct_row(c)
+	return k
+
+
 func _open_settings() -> Node:
 	var s = SETTINGS.instantiate()
 	add_child(s)
@@ -257,6 +279,13 @@ func _t_real_settings() -> void:
 	var s1 = await _open_settings()
 	var n_lab: int = _n_labels(s1)
 	_chk("④ ★分母: 设置页真的建出了 Label(N=0 的话下面是空检查)", n_lab > 0, "%d 个" % n_lab)
+	## ★★⑤ 的分母(2026-09-28): ⑤ 要断言「后端关掉时这一行不在」, 那就必须先证明
+	##   **后端开着时它真的在** —— 否则 ⑤ 那条「不在」是恒真的空检查。
+	##   (memory `fb-judge-must-fit-the-shape` / `fb-gate-subject-never-constructed`:
+	##    凡「X 不许出现」必须配一条「X 真的出现过」。)
+	var n_row1: int = _n_acct_row(s1)
+	_chk("④ ★★分母: 后端开着时账号行【真的建在树上】(⑤ 的「整行不显示」才有意义)",
+		n_row1 >= 3, "%s* 节点 %d 个" % [SETTINGS_SCRIPT.ACCT_ROW_PREFIX, n_row1])
 	_chk("④ ★★匿名态: 屏幕上说清楚了【账号】找不回来", _find_text(s1, WARN))
 	var lied1 := []
 	for p in FALSE_PROMISE:
@@ -317,7 +346,18 @@ func _t_real_settings() -> void:
 	GameState.account_email = ""
 	_chk("⑤ ★分母: 这一层已停用", not SB.enabled())
 	var s3 = await _open_settings()
-	_chk("⑤ ★★没配后端: 屏幕上没有「账号：」这一行", not _find_text(s3, "账号："))
+	## ★★2026-09-28 换尺子: 原来是 `not _find_text(s3, "账号：")`。
+	##   那是**拿屏幕上的字面量当判据** —— 设置屏去网页味时要拿掉那个冒号
+	##   (`label: value` 是网页表单的读法), 拿掉的同一刻这条就静默变成恒真。
+	##   现在量**行为**: 账号行那一族节点(`AcctRow*`)到底在不在树上。
+	##   配套分母在 ④(后端开着时 ≥3 个) —— 两条合起来才卡得住「整行不显示」这个形状。
+	var n_row3: int = _n_acct_row(s3)
+	_chk("⑤ ★★没配后端: 账号行【整行没建出来】(量节点不量字面量, 文案改了判据不该变空检查)",
+		n_row3 == 0, "%s* 节点 %d 个" % [SETTINGS_SCRIPT.ACCT_ROW_PREFIX, n_row3])
+	## ★需求原话是「不显示(**不是显示"离线"**)」—— 那半句也要有人守:
+	##   做成常驻的"在线/离线"角标是反的, 等于告诉玩家"你是残缺状态, 去修",
+	##   而玩家多半修不了 ⇒ 制造焦虑但给不出行动(`remote_pool.gd` 头注同一条取舍)。
+	_chk("⑤ ★也没有「离线」这种常驻角标(需求明确不要它, 不是漏做)", not _find_text(s3, "离线"))
 	_chk("⑤ 也没有那行丢档警告", not _find_text(s3, WARN))
 	## ★分母: 设置页本身是好的(别把"页面没建起来"读成"没显示账号行")
 	_chk("⑤ ★分母: 设置页仍然正常(能找到「重置所有存档」)", _find_text(s3, "重置所有存档"))

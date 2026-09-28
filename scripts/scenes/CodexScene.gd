@@ -403,7 +403,10 @@ func _build_tab_bar() -> void:
 		var t: Array = TABS[i]
 		var active: bool = t[0] == current_tab
 		var b := Button.new()
-		b.text = "%s (%d)" % [t[1], int(tab_counts.get(t[0], 0))]
+		## ★★2026-09-27 去掉**括号计数**。「龟 (28)」「装备 (104)」是后台管理界面的写法
+		##   (用户 2026-09-27:「一点也看不出来游戏的味道, 全是 ai 味和网页味」)。
+		##   数量不是玩家在这一屏要的信息 —— 他要的是「有哪些龟」, 不是「一共几条记录」。
+		b.text = str(t[1])
 		b.position = Vector2(start_x + i * (tab_w + tab_gap), 0)
 		b.custom_minimum_size = Vector2(tab_w, tab_h)
 		b.size = Vector2(tab_w, tab_h)
@@ -678,6 +681,26 @@ func _clear_detail() -> void:
 
 
 ## PoC Phaser 文本以 origin (ox,oy) 锚 (x,y). Godot Label 左上锚 → 换算位置.
+##
+## ★★2026-09-27 锚点宽度从「字数 × 字号 × 0.62」改成【真量】。
+##
+## 由来: 图鉴新加的定位签实拍把「近战斗士」推出了金属边带(门禁 `Codex 文字压边带 +4`)。
+## 顺着查下去发现**不是那一处的局部问题, 是这个共享漏斗自己错着**, 而且**两个方向都错**:
+##
+##     「近战斗士」16px  真宽 64.0  估 39.7  ⇒ 居中把字往右推 +12.2 px
+##     「Lv 1」   16px  真宽 26.0  估 39.7  ⇒ 居中把字往左拉  -6.8 px
+##
+## 0.62 是**英文比例字体**的字宽比, 而本项目的字体链是 `m6x11`(像素字, ASCII 实测约
+## **0.41 em**) + `Noto Sans SC`(中文**全角 1.0 em**) —— 一个系数覆盖 0.41 与 1.0 两端,
+## 无论调成多少都有一半是错的。**换系数是把尺子改到能量过为止, 不是把尺子修对。**
+## ⇒ 直接问字体: `Font.get_string_size()`, 与门禁 `verify_ui_consistency._ink_rect`
+##   量"真正画出来那块字"用的**是同一行调用**, 两边同尺。
+##
+## ★`get_theme_font` 要在 `add_child` **之后**问: 主题是顺着场景树往上找的,
+##   离树的 Label 拿不到项目主题里那条字体链(会退到引擎内建字体, 量出来的宽是另一码事)。
+##   `detail` 是普通 Control(不布局), add_child 不会动 position ⇒ 后置设位置是安全的。
+## ★`est_h` 仍按 `字号 × 1.3` 估: 实测 `get_height()` 与它只差 1~2px(垂直锚 oy=0.5
+##   ⇒ 落到位置上是 0.5~1px), 而改它会让**整个图鉴每一行文字都动**, 收益不抵风险。
 func _add_text(x: float, y: float, text: String, size: int, color: String,
 		ox: float = 0.0, oy: float = 0.5, bold: bool = false, w: float = 0.0) -> Label:
 	var lbl := Label.new()
@@ -686,13 +709,22 @@ func _add_text(x: float, y: float, text: String, size: int, color: String,
 	lbl.add_theme_color_override("font_color", Color(color))
 	if bold:
 		lbl.add_theme_constant_override("outline_size", 0)
-	var est_w := w if w > 0.0 else float(text.length()) * size * 0.62
-	var est_h := float(size) * 1.3
-	lbl.position = Vector2(x - ox * est_w, y - oy * est_h)
 	if w > 0.0:
 		lbl.custom_minimum_size = Vector2(w, 0)
 	detail.add_child(lbl)
+	var est_w: float = w if w > 0.0 else _ink_w(lbl, text, size)
+	var est_h := float(size) * 1.3
+	lbl.position = Vector2(x - ox * est_w, y - oy * est_h)
 	return lbl
+
+
+## 一段字在某字号下**真正画出来**有多宽。拿不到字体才退回"按全角算"——
+## 宁可估宽(居中时字略偏左、贴边时留白多)也别估窄: 估窄会把字推出框外。
+func _ink_w(lbl: Label, text: String, size: int) -> float:
+	var f: Font = lbl.get_theme_font("font")
+	if f == null:
+		return float(text.length()) * float(size)
+	return f.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
 
 
 ## 居中锚的图片 (PoC addDomImage 默认中心锚) → Godot 左上 = 中心 - size/2

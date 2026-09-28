@@ -23,7 +23,9 @@ const AE := preload("res://scripts/gamedata/axe_evolution.gd")
 const EID := "p2eq_096"
 
 ## 配色与商店头部那条等级经验条保持一致 —— 同一个界面里两条进度条不该长得不一样。
-const BAR_BG := "#16293a"
+## ★★2026-09-28: 槽底色不再在这里定 —— 两条条都走 `ShopScene._pixel_bar`,
+##   槽是九宫格金属贴图画的, 底色由贴图自己带。原来的 `BAR_BG := "#16293a"` 随之删掉
+##   (留着就是个没人读的常量, 而"写了没人读"是本仓专门立过门禁的一整类毛病)。
 const BAR_FILL := "#d9a441"      # 木质暖黄, 与等级条的 #ffd93d 区分开(那条是"大轮等级")
 const BAR_FULL := "#7ee081"      # 攒满待进化 → 变绿, 提示"可以了"
 
@@ -80,11 +82,16 @@ func build(parent: Node, x: float, y: float, w: float) -> float:
 	tot.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	tot.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	parent.add_child(tot)
-	h += 32.0
+	## ★32 → 30: 标签本身 28 高, 原来留 4px 行距 —— 收成 2px, 省下的 2px 归下面
+	##   四选一按钮加高用(40→44 达标触控线)。面板总高不变, 不会新压到购买按钮。
+	h += 30.0
 
 	# ── 进度条 ──
 	var lbl := Label.new()
-	lbl.text = ("砍伐经验 %d/%d（可做最终进化）" % [bar, need]) if ready \
+	## ★★全角括号那一句改成平白的后缀(2026-09-28 去 ai 味)。
+	##   ⚠ 前半段「砍伐经验 %d/%d」**一个字都不能动** —— `verify_axe_shop_codex`
+	##     断言的就是屏幕上有「砍伐经验 40/80」这串(它是"玩家真的看得见进度"的分母)。
+	lbl.text = ("砍伐经验 %d/%d · 可以做最终进化了" % [bar, need]) if ready \
 		else ("砍伐经验 %d/%d" % [bar, need])
 	lbl.add_theme_font_size_override("font_size", 17)
 	lbl.add_theme_color_override("font_color", Color(BAR_FULL if ready else "#9fb4c8"))
@@ -92,18 +99,17 @@ func build(parent: Node, x: float, y: float, w: float) -> float:
 	lbl.size = Vector2(w, 24)
 	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	parent.add_child(lbl)
-	h += 26.0
-	var bg := ColorRect.new()
-	bg.color = Color(BAR_BG)
-	bg.position = Vector2(x, y + h)
-	bg.size = Vector2(w, 16)
-	parent.add_child(bg)
-	var fl := ColorRect.new()
-	fl.color = Color(BAR_FULL if ready else BAR_FILL)
-	fl.position = Vector2(x, y + h)
+	h += 24.0   # ★26 → 24: 同上, 行距从 2px 收成 0(标签 24 高), 省的 2px 也归按钮
+	## ★★2026-09-28 走宿主的 `_pixel_bar` —— 原来这里是「底一块 ColorRect + 填一块」,
+	##   与商店头部那条等级经验条**各写一份**的纯色矩形(= CSS 进度条)。
+	##   本文件头上那句「同一个界面里两条进度条不该长得不一样」现在才真正做到:
+	##   两条走同一个函数, 想改样子只有一处可改(手抄的副本必然落后)。
 	## ★分母用 `need` 而不是写死 —— 每一档的阈值不一样(80/110/130/160/400)
-	fl.size = Vector2(w * clampf(float(bar) / float(maxi(1, need)), 0.0, 1.0), 16)
-	parent.add_child(fl)
+	## ★不加 `has_method` 兜底: 兜底会把"函数没了"变成"条不见了"——
+	##   一条**静默消失的进度条**正是本文件要修的那种 bug(机制做完了玩家看不见)。
+	##   宁可当场报错。宿主永远是 ShopScene(构造时注入的就是它)。
+	host._pixel_bar(parent as Control, Vector2(x, y + h), Vector2(w, 16),
+		float(bar) / float(maxi(1, need)), Color(BAR_FULL if ready else BAR_FILL))
 	h += 22.0
 
 	## ★"怎么攒"**不在这里重复** —— 效果描述里已经有「砍伐经验：购买 +15／每场 +10／…」那一行,
@@ -112,7 +118,9 @@ func build(parent: Node, x: float, y: float, w: float) -> float:
 	# ── 最终造物四选一(只在攒够 400 且没选过时出现) ──
 	if ready:
 		var tip := Label.new()
-		tip.text = "选一个最终造物（本大轮锁定，选完不能改）"
+		## ★全角括号 + 逗号分句那一套是说明书体(「（本大轮锁定，选完不能改）」)。
+		##   换成一句话说完, 分句用本仓通行的「·」而不是括号嵌套。
+		tip.text = "挑一个最终造物 · 这一大轮定了就不能改"
 		tip.add_theme_font_size_override("font_size", 16)
 		tip.add_theme_color_override("font_color", Color(BAR_FULL))
 		tip.position = Vector2(x, y + h)
@@ -126,11 +134,18 @@ func build(parent: Node, x: float, y: float, w: float) -> float:
 			b.text = str(f["name"])
 			b.add_theme_font_size_override("font_size", 15)
 			b.position = Vector2(x + float(i) * (bw + 6.0), y + h)
-			b.size = Vector2(bw, 40)
+			## ★高 40 → 44: 移动端触摸目标下限(`ShopScene.MIN_TOUCH_H`)。
+			##   4px 从上面两段的行距里省出来(32→30 / 26→24), 面板总高一点没变。
+			b.size = Vector2(bw, 44)
 			## ★用 bind 传 key —— 循环变量在 lambda 里会被最后一轮覆盖(经典坑)
 			b.pressed.connect(_pick.bind(str(f["key"])))
+			## ★★这四个按钮一直是 **Godot 默认皮**(圆角纯灰) —— 全屏 UI 一致性门禁
+			##   的「没有还用默认皮的按钮」是全局断言, 但它只在 `final_ready` 时才建,
+			##   门禁跑的是全新档 ⇒ **从来没被量到过**(memory `fb-gate-subject-never-constructed`)。
+			##   走宿主的 `_skin_button` = 与商店其余按钮同一张深海金属签牌。
+			host._skin_button(b)
 			parent.add_child(b)
-		h += 46.0
+		h += 50.0
 	return h
 
 

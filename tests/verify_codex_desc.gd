@@ -94,7 +94,19 @@ func _ready() -> void:
 		i_fit > 0 and fit_body.find("CARD_BODY_TOP") >= 0
 		and fit_body.find("CARD_HINT_BAND") >= 0 and fit_body.find("CARD_PAD") >= 0,
 		"切出 %d 字符" % fit_body.length())
-	_ok("★★④ 被切断时挂「点开看全部」", src.find('l.text = "点开看全部 ▸"') >= 0)
+	## ★★★2026-09-28 这条原来是 `src.find('l.text = "点开看全部 ▸"')` —— **把屏幕上的字
+	##   一个不差地抄进判据**。去网页味那一轮只删了一个 ▸, 它当场就红, 而版面是变好了。
+	##   同一个文件 :85 的注释自己写着「搜字符串的判据」是假判据 —— 犯规的正是它自己。
+	## ★改成量【这段代码保证的事】: 被切断时**真的挂了一条非空提示**。**不认具体字眼** ——
+	##   字眼会改, 机制不会。文案写成什么不是这条该管的。
+	## ★真正的几何对账在 `verify_codex_layout ⑨`: 活场景里逐只龟数「被截的卡数 == 提示数」。
+	##   那条量真实矩形, 这条只守「代码里这一步没被删掉」。
+	var i_mk: int = src.find("func _mark_card_clipped")
+	var mk_body: String = src.substr(i_mk, 700) if i_mk > 0 else ""
+	var i_tx: int = mk_body.find('l.text = "')
+	_ok("★★④ 被切断时真的挂了一条非空提示(不认具体字眼)",
+		i_mk > 0 and i_tx > 0 and mk_body.substr(i_tx + 10, 1) != '"',
+		"提示串开头: %s" % (mk_body.substr(i_tx + 10, 8) if i_tx > 0 else "<找不到>"))
 	_ok("★★④ 提示要等一帧再判(刚 add_child 时 content_height = 0)",
 		src.find("func _mark_card_clipped") >= 0
 		and src.find("await host.get_tree().process_frame") >= 0)

@@ -25,7 +25,9 @@ func _build_skill_picker(pet: Dictionary) -> void:
 	title.add_theme_color_override("font_color", Color("#ffd86b"))
 	title_row.add_child(title)
 	var count_lbl = Label.new()
-	count_lbl.text = "%d 选 1 (主动/被动)" % maxi(1, pool.size() - 1)   # 普攻(idx0)外的候选数; 收敛成[普攻+3技]后=3选1
+	## ★原文案 "3 选 1 (主动/被动)" —— 括号计数 + 括号补注, 是说明书腔不是游戏话。
+	##   括号里那句还等于没说(玩家点开就看得见是主动还是被动)。改成一句话讲清"挑一个带上场"。
+	count_lbl.text = "挑 1 个带上场 · 共 %d 招" % maxi(1, pool.size() - 1)   # 普攻(idx0)外的候选数; 收敛成[普攻+3技]后=3选1
 	count_lbl.add_theme_font_size_override("font_size", host._sf(11))   # PoC .dp-skill-count 11px
 	count_lbl.add_theme_color_override("font_color", Color(1, 1, 1, 0.5))   # rgba(255,255,255,.5)
 	count_lbl.size_flags_vertical = Control.SIZE_SHRINK_END   # 底对齐近 baseline
@@ -51,12 +53,15 @@ func _build_skill_picker(pet: Dictionary) -> void:
 		icon_grid.add_child(ico)
 
 	# 已选技能名列表
+	## ★原来是 "✓ 打击" —— ✓ 是网页表单的对勾, 而且它就贴在那枚「上场」角标下面, 重复说同一件事。
+	##   改成一句话把"谁跟着上场"说完整。
 	var sel_names = ""
 	for i in selected:
 		if i >= 0 and i < pool.size():
-			sel_names += "✓ %s   " % pool[i].get("name", "?")
+			sel_names += "%s  " % pool[i].get("name", "?")
+	sel_names = sel_names.strip_edges()
 	var sel_lbl = Label.new()
-	sel_lbl.text = sel_names
+	sel_lbl.text = ("带上场 · %s" % sel_names) if sel_names != "" else ""
 	sel_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sel_lbl.add_theme_font_size_override("font_size", host._sf(12))
 	sel_lbl.add_theme_color_override("font_color", Color("#ffd86b"))
@@ -124,7 +129,9 @@ func _make_skill_icon(pet: Dictionary, sk: Dictionary, idx: int, is_fixed: bool,
 		##     (第一版写 1.9, 实拍下来选中格比没选的还难看)。金要靠**压蓝**出来, 不靠加亮。
 		##   · 层级必须 选中 > 基础 > 普通。第一版基础绿(亮度 1.19)反而压过选中金(1.07) —— 反了。
 		var tint := Color(0.55, 0.55, 0.60, 1.0)   # 普通: 压暗, 给另外两档让出对比空间
-		if is_sel:
+		if is_locked or dev_locked:
+			tint = Color(0.26, 0.27, 0.30, 1.0)   # 未解锁: 比普通再暗一半, 格子本身先"熔进背景"
+		elif is_sel:
 			tint = Color(1.35, 1.05, 0.40, 1.0)   # 选中: 压蓝出金(亮度 1.07 = 普通的 1.9 倍)
 		elif is_fixed:
 			tint = Color(0.55, 1.02, 0.72, 1.0)   # 基础: 绿, 亮度 0.90 —— 压在选中之下
@@ -146,22 +153,37 @@ func _make_skill_icon(pet: Dictionary, sk: Dictionary, idx: int, is_fixed: bool,
 	btn.add_theme_stylebox_override("pressed", sbn)
 	btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 
+	## ★★未解锁那格要**一眼看出是"不能点"而不是"还没点"**(2026-09-28)。
+	##   原来只把整个按钮 `modulate` 压成 alpha 0.5 —— 跟"没选中"那格的暗色几乎一样。
+	## ⚠ 第一版我把它压到 0.34 —— 实拍(`C:/tmp/tsshots/after3/4_devlocked.png`)当场否掉:
+	##   `modulate` 是**沿节点树乘下去**的, 于是那枚「未解锁」角标跟着一起淡掉, 字根本读不出。
+	##   “分得出来”不等于“读得出来”。
+	## ⇒ 改成分两层: 【图标】压暗抽色(icon_*_color, 只作用于 icon)
+	##   + 【格子】tint 另走一档(上面那支), 而**角标不动** —— 形态还在, 字也读得出。
+	if is_locked or dev_locked:
+		for _ic in ["icon_normal_color", "icon_hover_color", "icon_pressed_color",
+				"icon_focus_color", "icon_disabled_color"]:
+			btn.add_theme_color_override(_ic, Color(0.34, 0.36, 0.38, 0.55))
+		btn.add_theme_color_override("font_color", Color(0.62, 0.64, 0.66, 0.6))
 	if is_locked:
-		btn.modulate = Color(1, 1, 1, 0.45)   # PoC .dp-skill-ico.locked opacity .45 (index.html:633)
-		btn.tooltip_text = "已锁定"   # 【不可达】等级解锁已移除(2026-07-10); 分支留作将来若引入其它锁条件
+		btn.tooltip_text = "这招还没解锁"   # 【不可达】等级解锁已移除(2026-07-10); 分支留作将来若引入其它锁条件
 	elif dev_locked:
-		btn.modulate = Color(1, 1, 1, 0.5)
-		btn.tooltip_text = "候选技开发中, 当前锁定默认签名技"
+		## ★"候选技开发中, 当前锁定默认签名技" 是写给我自己看的。玩家不知道什么叫"候选技/签名技"。
+		## ★★接着又改一次(同日): 中间那版写的是"这招还在打磨" —— **还是开发状态**,
+		##   只是把"开发中"换了个文雅说法, 玩家读到的仍然是「我们还没做完」。
+		##   玩家要的是【现在按什么规则】: 这格选不了, 这只龟带的是它本来最拿手的那招。
+		## ⇒ 与它右下那枚角标(「未解锁」)对齐, 再补一句"那现在带的是什么"。
+		btn.tooltip_text = "这招还没解锁 · 先带它的看家本领"
 
 	# 角标 (PoC .ico-corner bottom-right, index.html:634-641): lock=Lv4/Lv7 / fixed=基础 / selected=✓
 	if is_locked:
-		btn.add_child(_make_skill_corner("锁", Color("#2a2f3a"), Color("#ccdddd")))   # 【不可达】同上
+		btn.add_child(_make_skill_corner("未解锁", Color("#2a2f3a"), Color("#ccdddd")))   # 【不可达】同上
 	elif dev_locked:
-		btn.add_child(_make_skill_corner("开发中", Color("#3a2f2a"), Color("#ddc9a0")))
+		btn.add_child(_make_skill_corner("未解锁", Color("#2a2f3a"), Color("#ccdddd")))
 	elif is_fixed:
-		btn.add_child(_make_skill_corner("基础", Color("#7dffb3"), Color("#0a2417")))
+		btn.add_child(_make_skill_corner("天生", Color("#7dffb3"), Color("#0a2417")))
 	elif is_sel:
-		btn.add_child(_make_skill_corner("已选", Color("#ffd86b"), Color("#2a1605")))
+		btn.add_child(_make_skill_corner("上场", Color("#ffd86b"), Color("#2a1605")))
 	# 强化被动 "+" 角标 (PoC .ico-plus 右上金圈, index.html:614-618)
 	if sk.get("enhancesPassive", false) or sk.get("iconPlus", false):
 		btn.add_child(_make_ico_plus())
@@ -176,10 +198,11 @@ func _make_skill_icon(pet: Dictionary, sk: Dictionary, idx: int, is_fixed: bool,
 		if is_fixed:
 			btn.disabled = false
 			var pi2 = pid
-			btn.pressed.connect(func() -> void: host._flash_status("基础技能必选"))
+			btn.pressed.connect(func() -> void: host._flash_status("这是它天生就会的, 换不掉"))
 		elif dev_locked:
 			btn.disabled = false
-			btn.pressed.connect(func() -> void: host._flash_status("该候选技开发中, 暂锁默认签名技"))
+			## ★与 tooltip / 角标同一句口径(上面 dev_locked 那支有为什么不提"开发中/打磨"的说明)。
+			btn.pressed.connect(func() -> void: host._flash_status("这招还没解锁, 先带它的看家本领"))
 	# 点/触 技能图标 → 弹窗看名+龟能+描述 (手机无 hover 的唯一途径; 与选中互不影响)
 	var _skinfo: String = _skill_tooltip(pet, sk, idx)
 	if not btn.disabled:
@@ -187,13 +210,21 @@ func _make_skill_icon(pet: Dictionary, sk: Dictionary, idx: int, is_fixed: bool,
 	return btn
 
 
-## PoC .ico-corner (index.html:634-641): 图标右下角小圆角徽章, 探出 6px (bottom:-6 right:-6)。
+## PoC .ico-corner (index.html:634-641): 图标右下角小角标, 探出 6px (bottom:-6 right:-6)。
+##
+## ★★2026-09-28 改**直角**(原 `_sp(8)` 圆角)。它和详情面板那枚「被动」签一起,
+##   是 `verify_ui_consistency` 在选龟屏数到的 4 个【圆角盒】里的 3 个。
+## ★为什么不换九宫格而是留纯色块: 实测 32x24, 远低于 `UISkin.MIN_FRAME_PX`(40) ——
+##   套上槽框四角铆钉会吃掉整个角标, 而**那块实心色本身就是信息**
+##   (绿=天生带的 / 金=这次选的 / 暗=还没解锁)。同一条教训已焊在 `UISkin` 里,
+##   背包 26px 迷你格 2026-08-18 实拍后正是这么退回的。
+## ⇒ 小件的去网页味手段是【直角】, 不是【贴图】。主菜单/稀有度小签走的也是这条。
 func _make_skill_corner(txt: String, bg: Color, fg: Color) -> Control:
 	var pc = PanelContainer.new()
 	pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sb = StyleBoxFlat.new()
 	sb.bg_color = bg
-	sb.set_corner_radius_all(host._sp(8))
+	sb.set_corner_radius_all(0)
 	sb.content_margin_left = host._sp(3); sb.content_margin_right = host._sp(3)
 	sb.shadow_color = Color(0, 0, 0, 0.5); sb.shadow_size = host._sp(1); sb.shadow_offset = Vector2(0, host._sp(1))
 	pc.add_theme_stylebox_override("panel", sb)
@@ -316,11 +347,11 @@ func _toggle_skill(pid: String, idx: int) -> void:
 	if pet.is_empty():
 		return
 	if idx == 0:
-		host._flash_status("普攻自动施放, 无需选择")        # skillPool[0]=普攻
+		host._flash_status("普攻自己会打, 不用选")        # skillPool[0]=普攻
 		return
 	var unlocked: Array = _available_skill_indices(pet)
 	if not (idx in unlocked):
-		host._flash_status("该技能已锁定")   # 【不可达】等级解锁已移除(2026-07-10)
+		host._flash_status("这招还没解锁")   # 【不可达】等级解锁已移除(2026-07-10)
 		return
 	# 3选1: idx1=默认签名技恒可选; idx2/3 候选需 impl:true(与按钮层 dev_locked L1250 同一门控)。
 	#   旧的 `if idx != 1` 一刀切拦截是陈旧死码, 与 impl 标记矛盾(28龟 idx2/3 全 impl:true) → 已拆, 改成逐技校验。
@@ -329,7 +360,7 @@ func _toggle_skill(pid: String, idx: int) -> void:
 		return
 	var sk: Dictionary = pool[idx]
 	if SkillChoice.dev_locked(pet, idx):
-		host._flash_status("该候选技开发中, 暂锁默认签名技")
+		host._flash_status("这招还没解锁, 先带它的看家本领")   # 与按钮层 dev_locked 同一句
 		return
 	GameState.loadouts[pid] = idx                       # 3选1: 单选, 点哪个就替换成哪个
 	# ★这三行的调用目标在上帝文件拆分时搬过家: _refresh_slots 去了 roster_slots.gd,

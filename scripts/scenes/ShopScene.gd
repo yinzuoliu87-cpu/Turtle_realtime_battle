@@ -18,6 +18,16 @@ const AxePanel = preload("res://scripts/scenes/shop/axe_panel.gd")   # 096: 砍�
 ## ★用户 2026-07-28「深海币可以复用吧」: 商店原先 6 处全在打 emoji 💠(方片), 而主菜单/局内
 ##   是这枚螺旋贝币 —— 同一种货币两套视觉。emoji 还随系统字体变, 换机器就换样。
 const COIN_TEX = preload("res://assets/sprites/menu/ic-deepsea.png")
+## 进度条框 —— 与战斗 HUD 的血条/龟能条【同一张】(`battlehud/bar-frame.png`, 96×24)。
+## ★为什么不是两个 ColorRect(2026-09-28): 「底一块 + 填一块」的纯色矩形正是
+##   `info_panel.gd:1390` 那段注释记下的用户原话「血条，龟能条都跟网页一样」——
+##   CSS 进度条的长相。那边 2026-08-17 就换成这张斜切金属槽了, 而商店的
+##   等级经验条 / 砍伐经验条**两条都还是纯色矩形**, 是本屏最后两处网页盒子。
+## ★边距是量过的(见 info_panel 同名注释): 黑槽 x 8..87 / y 5..18 ⇒ 左右 11 / 上下 6,
+##   各留 2~3px 把斜切角整个盖进角块。⚠ 上下 6+6=12 < 条高(16/20), 中段不会被压成负。
+const BAR_TEX = preload("res://assets/sprites/battlehud/bar-frame.png")
+const BAR_MARGIN_X := 11
+const BAR_MARGIN_Y := 6
 ## ★固化版式(方案书 docs/plans/20260729c-商店页重设计.md §7.3) —— 每个数都算过, 总计 716 < 720。
 ##   改这里要同步跑 tests/verify_shop_layout.gd(不超界 + 按钮 ≥44px)。
 ##   为什么不用容器自动布局: 全文件既有风格就是绝对坐标, 混两套更难维护。
@@ -161,7 +171,10 @@ func _build_locked() -> void:
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 	var lbl := Label.new()
-	lbl.text = "🔒 商店未开\n\n本大轮打完第一场战斗后开店"
+	## ★文案换成摊主的口气(2026-09-28 用户「全是 ai 味和网页味, 文字语言也是」)。
+	##   原「商店未开 / 本大轮打完第一场战斗后开店」是一句**系统状态播报**:
+	##   主语是"商店"这个功能模块, 句式是"条件 + 后 + 动作"——那正是网页提示条的写法。
+	lbl.text = "🔒 摊子还没摆开\n\n打完这一大轮的头一场, 老板才出摊"
 	lbl.add_theme_font_size_override("font_size", 26)
 	lbl.add_theme_color_override("font_color", Color("#ffd93d"))
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -336,11 +349,13 @@ func _rebuild() -> void:
 	xpn.position = Vector2(_lx + 76.0, HDR_CY - 26.0); xpn.size = Vector2(_lw - 76.0, 30)
 	xpn.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	xpn.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; add_child(xpn)
-	var xbg := ColorRect.new(); xbg.color = Color("#16293a")
-	xbg.position = Vector2(_lx, HDR_CY + 7.0); xbg.size = Vector2(_lw, 20); add_child(xbg)   # ★条: 长 170→340, 粗 12→20
-	var xfl := ColorRect.new(); xfl.color = Color("#ffd93d")
-	xfl.position = Vector2(_lx, HDR_CY + 7.0)
-	xfl.size = Vector2(_lw * clampf(float(_have) / float(_need), 0.0, 1.0), 20); add_child(xfl)
+	## ★★2026-09-28 换成【像素金属槽】—— 原来是「底一块 ColorRect + 填一块 ColorRect」,
+	##   即 CSS 进度条的长相。战斗 HUD 的血条/龟能条 2026-08-17 就为同一句用户原话
+	##   (「血条，龟能条都跟网页一样」)换过槽框了, 这一条一直漏着。
+	##   ★外沿矩形一个像素没动(560,55)–(900,75): 门禁⑩量的是头部三组的并集矩形共心 y=48,
+	##     换皮不许把版式带跑。
+	_pixel_bar(self, Vector2(_lx, HDR_CY + 7.0), Vector2(_lw, 20),
+		float(_have) / float(_need), Color("#ffd93d"))
 
 	# 组3: 买经验。两行 —— 上行【拿到什么】, 下行【花多少】。
 	## ★原文案「买经验 4 → +4XP」把两个 4 摆在一行还夹着英文 XP, 一眼分不清哪个是花的哪个是拿的。
@@ -353,7 +368,12 @@ func _rebuild() -> void:
 	##   ⇒ 「购买 4xp」是按钮【左边】的一行说明文字, 按钮本身只放价格「4💠」。
 	var _bw := 140.0
 	var _bx := W - 28.0 - _bw
-	var pl := Label.new(); pl.text = "购买 %dxp" % _xp_gain
+	## ★★「xp」这两个英文字母是本屏唯一的外文缩写(2026-09-28 去 ai 味):
+	##   同一屏左边已经写着「经验 0/2」, 右边却叫它 xp —— 一个概念两个名字, 是机翻味的来源。
+	##   ⚠ 用户 2026-08-15 的原话是「**购买4xp** 放在按钮左侧, 4图标放在按钮上」,
+	##     他定的是**位置**(说明文字在左 / 价格在按钮上), 我只改称呼不动位置。
+	##     称呼这一改**要用户回头确认一句** —— 见报告的「待拍板」。
+	var pl := Label.new(); pl.text = "买经验 +%d" % _xp_gain
 	pl.add_theme_font_size_override("font_size", 24)
 	pl.add_theme_color_override("font_color", Color("#cfe4f0"))
 	pl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -391,7 +411,10 @@ func _rebuild() -> void:
 		var row := i / 5
 		add_child(_card(i, Vector2(GRID_X + col * (SLOT_W + GRID_GAP_X), GRID_Y + row * (SLOT_H + GRID_GAP_Y))))
 
-	var rf := Button.new(); rf.text = "刷新  -%d" % REFRESH_COST
+	## ★「刷新 -2」→「换一批 2」: 「刷新」是浏览器的词, 「-2」是账本的写法。
+	##   摊主的说法是"给我换一批货"; 价钱由按钮上那枚深海币图标讲(`_coin_button_icon`),
+	##   不需要再打一个负号 —— 图标本身就说明这 2 是要付出去的。
+	var rf := Button.new(); rf.text = "换一批  %d" % REFRESH_COST
 	rf.add_theme_font_size_override("font_size", 22)
 	# 纵向节奏: 卡区止于 420 → 刷新 448(隔 28) → 底部按钮 552(隔 28) → 收于 648, 页底留 72
 	rf.position = Vector2(GRID_X + 250, 448); rf.size = Vector2(240, 76)
@@ -414,13 +437,19 @@ func _build_odds_row() -> void:
 	row.position = Vector2(GRID_X, 96); row.size = Vector2(740, 24)   # y96–120: 紧贴卡区上方(原116会压进卡区)
 	row.add_theme_constant_override("separation", 14)
 	add_child(row)
-	var lbl := Label.new(); lbl.text = "出货概率"
+	## ★★文案去网页味(2026-09-28)。原来这一行是「出货概率 / 费用1 45% / 费用2 30% …」——
+	##   一个统计学名词加五组 `label: value`, 读起来是后台报表, 不是摊位。
+	##   改成摊主挂的牌子「今日货源」+「1费 45%」: 数字一个不少(用户 2026-08-12 点名要数字),
+	##   但把字段名那一半去掉 —— 颜色已经在讲"这是哪一档"(与卡框同一套 5 色)。
+	var lbl := Label.new(); lbl.text = "今日货源"
 	lbl.add_theme_font_size_override("font_size", 15); lbl.add_theme_color_override("font_color", Color("#8aa0b4"))
 	row.add_child(lbl)
 	for c in range(5):
 		var pct: int = int(odds[c]) if c < odds.size() else 0
 		var chip := Label.new()
-		chip.text = "费用%d %d%%" % [c + 1, pct]
+		## ★数字与汉字之间要有空格 —— json 侧的文案门禁焊了这条, UI 侧一直没人管,
+		##   于是同一个游戏里「1 费」和「费用1」两种写法并存。跟 json 的口径。
+		chip.text = "%d 费 %d%%" % [c + 1, pct]
 		chip.add_theme_font_size_override("font_size", 16)
 		var cc := Color(cost_cols[c])
 		chip.add_theme_color_override("font_color", cc if pct > 0 else Color(cc.r, cc.g, cc.b, 0.28))
@@ -438,7 +467,10 @@ func _build_bench_preview(host: Node = null, ox: float = 0.0, oy: float = 0.0) -
 	#   用户 2026-07-28:「你那下面写背包那么多字意义在哪里」。确实没意义:
 	#   顶部已经有一个「🎒 背包」按钮, 后半句只是在解释背包页能干嘛 = 教程文字不是界面。
 	#   删掉, 改成告诉玩家【这里能点】(因为现在它真的能点了)。
-	bh.text = "我的背包 %d 件%s" % [bench.size(), "   · 点格子看详情" if bench.size() > 0 else ""]
+	## ★★2026-09-28 再改一次口气: 上一版「我的背包 N 件   · 点格子看详情」还是
+	##   「标题 + 计数 + 操作说明」三段拼的**控件说明**(「点格子」是在说界面构件的名字,
+	##   而玩家眼里那不是"格子"是"东西")。改成一句人话。
+	bh.text = ("背包里有 %d 件, 点一下看看" % bench.size()) if bench.size() > 0 else "背包里空着"
 	bh.add_theme_font_size_override("font_size", 15); bh.add_theme_color_override("font_color", Color("#9fb6c9"))
 	bh.position = Vector2(ox + GRID_X, (oy + BENCH_Y)); bh.size = Vector2(740, 22); host.add_child(bh)   # 原(80,560)宽900会伸进详情面板
 	var n := mini(10, bench.size())   # 14×72=1008 会伸出左栏(740) → 收到 10 件
@@ -446,13 +478,20 @@ func _build_bench_preview(host: Node = null, ox: float = 0.0, oy: float = 0.0) -
 		var it: Dictionary = bench[j]
 		var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(it.get("id", "")), {})
 		var cell := Panel.new()
+		## ★★2026-09-28 换像素槽框。原来是「2px 纯色描边 + 6px 圆角」= CSS 卡片,
+		##   全项目唯一还这么画的两处就在本函数和 `_build_lineup_equips`。
+		##   走共享层 `UISkin.slot`(背包页 `InventoryScene:607` 同一个调用) ——
+		##   不在这里手写 StyleBox, 手抄的副本必然落后。
+		## ★★选中态必须**在建 StyleBox 之前**定好: `UISkin.slot` 返回的是 StyleBoxTexture,
+		##   事后再改 `csb.border_color` 一点用都没有(原代码就是那么写的, 换皮后会静默失效)。
+		var _bsel: bool = str(it.get("id", "")) == _sel_own and int(it.get("star", 1)) == _sel_own_star
 		var csb := StyleBoxFlat.new()
-		csb.bg_color = Color("#162230"); csb.border_color = _cost_color(int(edef.get("cost", 1)))
-		csb.set_border_width_all(2); csb.set_corner_radius_all(6)
-		cell.add_theme_stylebox_override("panel", csb)
+		csb.bg_color = Color("#162230")
+		csb.border_color = Color("#ffd93d") if _bsel else _cost_color(int(edef.get("cost", 1)))
+		csb.set_border_width_all(3 if _bsel else 2)
+		csb.set_corner_radius_all(0)   # 贴图缺失时的兜底也走直角, 不留圆角
+		cell.add_theme_stylebox_override("panel", UISkin.slot(csb, UISkin.tint_of(csb.border_color)))
 		cell.position = Vector2(ox + GRID_X + j * 72, (oy + BENCH_Y) + 26); cell.size = Vector2(64, 64); host.add_child(cell)
-		if str(it.get("id", "")) == _sel_own and int(it.get("star", 1)) == _sel_own_star:
-			csb.border_color = Color("#ffd93d"); csb.set_border_width_all(3)
 		_wire_own_tap(cell, str(it.get("id", "")), int(it.get("star", 1)))
 		## ★走 EquipIcon: 无图时退化成 emoji 而不是空白(EquipIcon.make 的 else 分支)
 ##   ⚠"060~095 有 36 件没配图"这句已作废: 实测 phase2-equipment.json 95 件**全部**有 img,
@@ -466,7 +505,8 @@ func _build_bench_preview(host: Node = null, ox: float = 0.0, oy: float = 0.0) -
 		st.position = Vector2(0, 44); st.size = Vector2(64, 16); st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		cell.add_child(st)
 	if bench.is_empty():
-		var e := Label.new(); e.text = "（空 — 上面买几件）"
+		## ★去掉全角括号 + 破折号(「（空 — …）」是排版符号堆出来的空状态提示, 典型 ai 味)。
+		var e := Label.new(); e.text = "空的, 上面挑几件带走"
 		e.add_theme_font_size_override("font_size", 14); e.add_theme_color_override("font_color", Color("#5a6675"))
 		e.position = Vector2(ox + GRID_X + 4, (oy + BENCH_Y) + 28); e.size = Vector2(400, 22); host.add_child(e)
 
@@ -480,7 +520,8 @@ func _build_lineup_equips(host: Node = null, ox: float = 0.0, oy: float = 0.0) -
 	#   原位置在右侧 x730, 与本次新增的详情面板(x800)和第5列卡片重叠 —— 截图才看出来。
 	# 「回背包页调整」那半句删掉 —— 顶部本来就有背包按钮, 那是教程文字不是界面
 	#   (用户 2026-07-28 已就同类文案说过一次)。
-	var hdr := Label.new(); hdr.text = "🐢 出战阵容 · 已装备"
+	## ★「· 已装备」是字段名(被动式的状态标注), 换成一句说人话的定语。
+	var hdr := Label.new(); hdr.text = "🐢 出战阵容 · 身上带着的"
 	hdr.add_theme_font_size_override("font_size", 15); hdr.add_theme_color_override("font_color", Color("#9fb6c9"))
 	hdr.position = Vector2(ox + GRID_X, (oy + LINEUP_Y)); hdr.size = Vector2(740, 20); host.add_child(hdr)
 	var row := 0
@@ -516,8 +557,14 @@ func _build_lineup_equips(host: Node = null, ox: float = 0.0, oy: float = 0.0) -
 					var hsb := StyleBoxFlat.new()
 					hsb.bg_color = Color(1, 1, 1, 0.03)
 					hsb.border_color = Color(1, 1, 1, 0.10)
-					hsb.set_border_width_all(1); hsb.set_corner_radius_all(6)
-					hole.add_theme_stylebox_override("panel", hsb)
+					## ★★直角(2026-09-28)。这一格只有 36px —— 低于 `UISkin.MIN_FRAME_PX`(40),
+					##   **不该**套金属槽框(2026-08-18 背包那 26px 迷你格实拍退回过: 四角铆钉
+					##   吃掉大半格、费用色从整块实心退化成一圈细边, 而那块实心色本身就是信息)。
+					##   ⇒ 保持纯色块, 只把圆角去掉; 走 `nine_if_big` 让尺寸哪天变大时自动升级,
+					##     而不是我在这里替未来拍一个死结论。
+					hsb.set_border_width_all(1); hsb.set_corner_radius_all(0)
+					hole.add_theme_stylebox_override("panel",
+						UISkin.nine_if_big(36.0, 36.0, "slot-frame.png", 12, hsb))
 					hole.position = Vector2(ox + cx + ci0 * 40, y + 22); hole.size = Vector2(36, 36)
 					hole.mouse_filter = Control.MOUSE_FILTER_IGNORE
 					host.add_child(hole)
@@ -526,17 +573,19 @@ func _build_lineup_equips(host: Node = null, ox: float = 0.0, oy: float = 0.0) -
 					var it: Dictionary = eqs[ci]
 					var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(it.get("id", "")), {})
 					var cell := Panel.new()
+					## ★同上: 36px 格保持纯色块但改**直角**; 选中态在建 StyleBox 前定好。
+					var _lsel: bool = str(it.get("id", "")) == _sel_own and int(it.get("star", 1)) == _sel_own_star
 					var csb := StyleBoxFlat.new(); csb.bg_color = Color("#162230")
-					csb.border_color = _cost_color(int(edef.get("cost", 1))); csb.set_border_width_all(2); csb.set_corner_radius_all(6)
-					cell.add_theme_stylebox_override("panel", csb)
+					csb.border_color = Color("#ffd93d") if _lsel else _cost_color(int(edef.get("cost", 1)))
+					csb.set_border_width_all(3 if _lsel else 2); csb.set_corner_radius_all(0)
+					cell.add_theme_stylebox_override("panel",
+						UISkin.nine_if_big(36.0, 36.0, "slot-frame.png", 12, csb))
 					cell.position = Vector2(ox + cx + ci * 40, y + 22); cell.size = Vector2(36, 36)
 					# ★不要只靠 tooltip —— 手机没有 hover, 这正是本次重设计要根治的坑
 					#   (货架卡片的描述原来就藏在 tooltip 里)。这里补一行常驻的名字。
 					#   tooltip 保留给桌面端当补充, 但不再是【唯一】途径。
 					cell.tooltip_text = "%s ★%d" % [str(edef.get("name", "?")), int(it.get("star", 1))]
 					host.add_child(cell)
-					if str(it.get("id", "")) == _sel_own and int(it.get("star", 1)) == _sel_own_star:
-						csb.border_color = Color("#ffd93d"); csb.set_border_width_all(3)
 					_wire_own_tap(cell, str(it.get("id", "")), int(it.get("star", 1)))
 					var enm := Label.new(); enm.text = str(edef.get("name", "?"))
 					enm.add_theme_font_size_override("font_size", 10)
@@ -559,7 +608,8 @@ func _build_lineup_equips(host: Node = null, ox: float = 0.0, oy: float = 0.0) -
 					st.position = Vector2(0, 24); st.size = Vector2(36, 12); st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 					st.mouse_filter = Control.MOUSE_FILTER_IGNORE; cell.add_child(st)
 	if row == 0:
-		var e2 := Label.new(); e2.text = "（尚未编排出战阵容 · 去背包/选龟）"
+		## ★「尚未编排」是公文体, 「去背包/选龟」用斜杠把两个去处并排堆着(表单写法)。
+		var e2 := Label.new(); e2.text = "还没点兵, 先去选龟那边排一路人马"
 		e2.add_theme_font_size_override("font_size", 14); e2.add_theme_color_override("font_color", Color("#5a6675"))
 		e2.position = Vector2(ox + GRID_X, (oy + LINEUP_Y) + 24); e2.size = Vector2(400, 22); host.add_child(e2)
 
@@ -625,8 +675,22 @@ func _card(idx: int, pos: Vector2) -> Control:
 		var _c: int = clampi(int(_deco(_offer[idx]).get("cost", 1)), 1, 5)
 		_nine(box, CARD_TEX_SEL if sel else CARD_TEX_TIER[_c - 1], CARD_MARGIN, Vector2.ZERO, Vector2(SLOT_W, SLOT_H), 1)
 	if bought:
-		var sold := Label.new(); sold.text = "已购"
-		sold.add_theme_color_override("font_color", Color("#4a5663")); sold.add_theme_font_size_override("font_size", 16)
+		## ★★2026-09-28 空货位也要有【框】。原来买走之后这一格就是一块**裸深色矩形** +
+		##   一个「已购」二字 —— 全屏最像"占位符/还没做完"的地方, 而它恰好是货架上最常见的状态。
+		## ★★三态靠【形状】分得开, 不只靠颜色(色弱也要能玩):
+		##     · 空货位 = 有框、**里面什么都没有**(没图标/没名字/没价签)
+		##     · 买不起 = 内容齐全但**盖着斜纹**(下面 `_hatch`)
+		##     · 可买   = 内容齐全、无斜纹
+		##   三者的差别是"有没有内容"和"有没有斜纹"两个二值形状, 不是三种灰度。
+		## ★用 `card-frame-n.png`(中性档框, 库里早就有、一直没人用) —— 不新造素材。
+		## ★★压暗到 0.55 是**实拍改的**: 原样贴上去之后, 币不够那一屏里九张货都压暗了,
+		##   唯独这个**空位最亮** —— 一眼先看到的是"这里没东西", 主次整个反了。
+		##   空位该是最安静的一格。
+		var _hole := _nine(box, CARD_TEX_N, CARD_MARGIN, Vector2.ZERO, Vector2(SLOT_W, SLOT_H), 1)
+		_hole.self_modulate = Color(0.55, 0.60, 0.66)
+		## ★「已购」是订单状态词。摊位上的说法是"这件已经进你兜里了"。
+		var sold := Label.new(); sold.text = "已入袋"
+		sold.add_theme_color_override("font_color", Color("#6f8091")); sold.add_theme_font_size_override("font_size", 16)
 		sold.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		sold.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; sold.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		sold.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(sold)
@@ -672,27 +736,44 @@ func _card(idx: int, pos: Vector2) -> Control:
 		var glow := Panel.new()
 		var gsb := StyleBoxFlat.new()
 		gsb.bg_color = Color(1.0, 0.84, 0.35, 0.13)          # 淡金镀层
-		gsb.border_color = Color(1.0, 0.88, 0.45, 0.85)
-		gsb.set_border_width_all(2)
-		gsb.set_corner_radius_all(8)
+		## ★★2026-09-28: 金边原来是「2px 纯色描边 + 8px 圆角」——
+		##   `verify_ui_consistency` 管这个长相叫【网页盒】(四边纯色边 + 半透明底 = CSS
+		##   `border` + `rgba()`), 而且它**只在玩家拥有该件时才建**, 所以商店的基线一直是 0:
+		##   门禁跑的是全新档(背包空), 这个盒子**从来没被量到过**。
+		##   ⇒ 描边整个去掉, 金边改由下面那圈**像素框**画 —— 和货架上别的框同一种材质。
+		gsb.set_border_width_all(0)
+		gsb.set_corner_radius_all(0)
 		glow.add_theme_stylebox_override("panel", gsb)
 		glow.position = Vector2.ZERO
 		glow.size = Vector2(SLOT_W, SLOT_H)
 		glow.mouse_filter = Control.MOUSE_FILTER_IGNORE      # 别挡住点击买入
 		box.add_child(glow)
+		## 金色像素框(中性档框染金)。★z=2: 要压在档位框(z=1)之上才看得见这一圈金。
+		##   ★挂在 glow 下面 = 呼吸 tween 改 `glow.modulate` 时这圈金一起呼吸(父级 modulate 继承),
+		##     不必再起第二条 tween(两条时钟必然丢事件)。
+		var ring := _nine(glow, CARD_TEX_N, CARD_MARGIN, Vector2.ZERO, Vector2(SLOT_W, SLOT_H), 2)
+		ring.self_modulate = Color(1.0, 0.86, 0.42)
 		## ★`bind_node` 不能省(2026-09-01 门禁抓到): 不绑的话 `_rebuild()` 把卡片释放之后
 		##   这条**循环** tween 还活着, 目标没了 ⇒ 一圈瞬间跑完 ⇒ 引擎狂刷
 		##   `Infinite loop detected (tween.cpp:406)`。真实游戏里**每次买入/刷新货架都会触发**。
 		var bt := create_tween().bind_node(glow).set_loops()   # 呼吸: 让它活着, 不是一块死贴片
 		bt.tween_property(glow, "modulate:a", 0.45, 0.9).set_trans(Tween.TRANS_SINE)
 		bt.tween_property(glow, "modulate:a", 1.0, 0.9).set_trans(Tween.TRANS_SINE)
+		## ★★★实拍抓到的真 bug(2026-09-28): 这道掠光**从来没被裁过**。
+		##   它是 26×245 的长条, 绕左上角转了 -0.5 rad, 再横扫 -40 → SLOT_W+40 ——
+		##   而 Godot 的 Control **默认不裁子节点** ⇒ 一大块灰白斜带扫出卡外,
+		##   浮在货架的空隙上(实拍 `rich2.png` 里那条跨了两列的灰带就是它)。
+		##   肉眼看就是"界面上飘着一块没做完的东西", 而任何按矩形量的门禁都不会响
+		##   (它是 ColorRect, 既不是文字也不是框)。
+		##   ⇒ 套一层 `clip_contents` 的剪刀, 和买不起那道斜纹用同一个 `_clip_box`。
+		var shine_clip := _clip_box(glow)
 		var shine := ColorRect.new()                          # 斜掠高光: 从左下扫到右上
 		shine.color = Color(1.0, 0.95, 0.7, 0.20)
 		shine.size = Vector2(26, SLOT_H * 1.8)
 		shine.rotation = -0.5
 		shine.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		shine.position = Vector2(-40, -20)
-		glow.add_child(shine)
+		shine_clip.add_child(shine)
 		var st2 := create_tween().bind_node(shine).set_loops()   # 同上: 必须绑节点
 		st2.tween_property(shine, "position:x", float(SLOT_W) + 40.0, 1.4).set_trans(Tween.TRANS_SINE)
 		st2.tween_interval(1.6)
@@ -739,12 +820,55 @@ func _card(idx: int, pos: Vector2) -> Control:
 	#   modulate 在这里是【压暗】不是提亮, 乘法正好胜任(这也是它唯一擅长的事)。
 	if not afford:
 		box.modulate = Color(0.42, 0.46, 0.52)
+		## ★★2026-09-28 补一道【形状】上的信号。
+		##   原来"买不起"只有两处提示: 整卡压暗 + 价格数字变红 —— **两个都是颜色维度**。
+		##   红/绿是最常见的色盲轴, 而"整卡压暗"在手机日光下和"这张图本身偏暗"分不开。
+		##   斜纹是形状: 不依赖色觉、不依赖屏幕亮度, 而且是货摊上"这件今天不卖"的通行画法。
+		##   ★与"空货位"刻意不同形: 空货位是**没有内容**, 买不起是**内容齐全但被划掉**。
+		_hatch(box)
 	for ch in box.get_children():
 		ch.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# ★不再用 tooltip 放描述 —— 手机没有 hover, 那是"看不到装备描述"的直接原因(用户2026-07-28)。
 	#   描述改由右侧【常驻】详情面板显示; 点卡只负责【选中】, 买要在面板里再确认一次(防误触花钱)。
 	box.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _on_select(idx))
 	return box
+
+
+## 一张【卡大小的剪刀】: 装那些"斜着画、必然超出卡片轮廓"的东西(掠光 / 斜纹)。
+##
+## ★为什么必须有它: Godot 的 Control **默认不裁子节点**。一条旋转过的长条只要比卡长,
+##   多出来的部分就直接画到卡外的空隙上 —— 2026-09-28 实拍抓到的掠光溢出就是这么来的,
+##   而且**没有任何门禁能响**(溢出的是 ColorRect, 不是文字也不是框)。
+## ★两处共用一个函数: 斜向元素以后再加第三个, 也不会有人忘了套剪刀。
+func _clip_box(parent: Control) -> Control:
+	var clip := Control.new()
+	clip.position = Vector2.ZERO
+	clip.size = Vector2(SLOT_W, SLOT_H)
+	clip.clip_contents = true
+	clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(clip)
+	return clip
+
+
+## 买不起时盖在卡上的【斜纹】。三态里唯一一个"内容齐全却不能买"的状态, 要有自己的形状。
+##
+## ★做法: 一个 `clip_contents` 的空 Control 当剪刀, 里头几根旋转过的细长条 ——
+##   出框的部分被剪掉, 于是斜纹严丝合缝地卡在卡片轮廓里(不用为每种卡尺寸画一张贴图)。
+## ★角度 -0.5 rad 与已有的"镀层掠光"(`shine`)同一个倾角 —— 同一张卡上两种斜向元素
+##   不该各斜各的。
+## ★`z_index = 1` 与档位框同层: 压住图标/名字/价签(它们 z=0), 但不盖住 z=2 的合成指示星
+##   —— 那两颗星讲的是"再买一件就合成", 买不起的时候反而最需要看见。
+func _hatch(box: Control) -> void:
+	var clip := _clip_box(box)
+	clip.z_index = 1
+	for i in range(4):
+		var bar := ColorRect.new()
+		bar.color = Color(0.04, 0.07, 0.11, 0.55)
+		bar.size = Vector2(3.0, SLOT_H * 2.2)
+		bar.rotation = -0.5
+		bar.position = Vector2(-26.0 + float(i) * 46.0, -24.0)
+		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		clip.add_child(bar)
 
 
 ## 点卡 → 选中(两步购买第一步)。再点同一张 = 取消选中。
@@ -800,7 +924,9 @@ func _build_synergy_bar() -> void:
 	add_child(hdr)
 	if rows.is_empty():
 		var none := Label.new()
-		none.text = "（还没装上任何同类型装备 · 装 3 件同类型即可激活）"
+		## ★原句三个毛病一次改掉: 全角括号包一句、「任何」这种法条语气、「即可激活」是后台动词。
+		##   ⚠ 只改说法不改口径: 阈值仍然是"同类 3 件"(`Phase2Types` 那份事实源), 没有新承诺。
+		none.text = "同类装备凑够 3 件, 羁绊才会亮"
 		none.add_theme_font_size_override("font_size", 13)
 		none.add_theme_color_override("font_color", Color("#5a6675"))
 		none.position = Vector2(GRID_X + 46, y + 1); none.size = Vector2(700, 20)
@@ -836,8 +962,10 @@ func _build_synergy_bar() -> void:
 			var _nd: int = AxeEvo.need_for_next(int(GameState.axe_stage))
 			var _rd: bool = AxeEvo.final_ready(int(GameState.axe_exp_bar),
 				int(GameState.axe_stage), str(GameState.axe_final))
+			## ★尾巴那句原来是「  可进化!」—— 去掉感叹号。门禁⑫ 焊死的正是
+			##   "不许有带感叹号的推销话术"那一类; 它说的是事实, 但语气是广告位。
 			chip.text += "  ·  %s %d/%d%s" % [str(_d4["name"]), int(GameState.axe_exp_bar),
-				_nd, "  可进化!" if _rd else ""]
+				_nd, "  能进化了" if _rd else ""]
 			chip.size = Vector2(SYN_CHIP_W * 2.0, 20)   # 这一条比别的长, 给双倍宽
 			x += SYN_CHIP_W
 		chip.add_theme_font_size_override("font_size", 14)
@@ -882,7 +1010,11 @@ func _build_detail_panel() -> void:
 			_axe_panel.build(box, 34.0, 40.0, PANEL_W - 68.0)
 			return
 		var hint := Label.new()
-		hint.text = "← 点货架卡片看详情\n点下面的格子看已有装备"
+		## ★★原句是「← 点货架卡片看详情 / 点下面的格子看已有装备」——
+		##   两条"点 X 看 Y"的操作说明是网页空状态页的标准写法(而且在说界面构件的名字:
+		##   "货架卡片""格子"都不是玩家脑子里的东西)。改成摊主招呼客人的两句。
+		## ★`←` 留着 —— 它不是装饰, 是**指方向**的(详情面板在右, 货架在左)。
+		hint.text = "← 摊上的货, 点一件看看\n手里那些也能点开"
 		hint.add_theme_font_size_override("font_size", 18)
 		hint.add_theme_color_override("font_color", Color("#5b7a92"))
 		hint.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -1002,7 +1134,9 @@ func _build_detail_panel() -> void:
 	buy.position = Vector2(34, PANEL_H - 105); buy.size = Vector2(PANEL_W - 68, 78)
 	if own_mode:
 		# 看的是自己已有的那件 —— 商店不做装备/合星/卖, 那些在背包页。这里给一条去路。
-		buy.text = "去 🎒 背包页 装备 / 卖"
+		## ★「背包页」里的"页"是网页的量词(本作没有"页"这个概念, 只有背包这个地方);
+		##   「装备 / 卖」用斜杠把两个动作并排列着, 是按钮组的写法不是一句话。
+		buy.text = "回 🎒 背包装上或卖掉"
 		buy.add_theme_font_size_override("font_size", 19)
 		buy.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Inventory.tscn"))
 		_skin_button(buy, true, BUY_BTN_TEX)
@@ -1011,11 +1145,14 @@ func _build_detail_panel() -> void:
 		return
 	_coin_button_icon(buy, 24)
 	if coins >= price:
-		buy.text = "购买  %d" % price
+		## ★「购买」是收银台的词, 「买下」是摊子前说的话。价钱与币图标不动。
+		buy.text = "买下  %d" % price
 		buy.pressed.connect(func(): _on_buy(_sel))
 	else:
 		# 买不起要说清【原因和差多少】, 不是只把按钮变灰(用户 P1-4)
-		buy.text = "深海币不足 (还差 %d)" % (price - coins)
+		## ★原句是「深海币不足 (还差 3)」—— 半角括号包一个计数, 那是报错串的格式。
+		##   ⚠ 差多少这个数【不能丢】(上面那条 P1-4 就是为它写的), 只把括号拆成一句话。
+		buy.text = "还差 %d 枚深海币" % (price - coins)
 		buy.disabled = true
 	_skin_button(buy, true, BUY_BTN_TEX)
 	_gold_btn_text(buy)
@@ -1057,7 +1194,10 @@ func _add_scroll_hint(box: Control, desc: RichTextLabel) -> void:
 	if desc.get_content_height() <= desc.size.y + 0.5:
 		return
 	var h := Label.new()
-	h.text = "▼ 下滑看完整描述"
+	## ★原句「▼ 下滑看完整描述」里, 「下滑」是手势名、「完整描述」是字段名 —— 这两样去掉。
+	##   ★`▼` 留着: 它不是装饰性 chevron, 是**"这里还能滚"**这个功能的唯一提示,
+	##     去掉就只剩一句没有指向的话。改完还短一半, 在那条 18px 的留白里不挤。
+	h.text = "▼ 下面还有"
 	h.add_theme_font_size_override("font_size", 12)
 	h.add_theme_color_override("font_color", Color("#7fb5d8"))
 	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -1094,6 +1234,11 @@ func _build_stat_rows(box: Control, eid: String, star: int = 1) -> Array:
 	var rows: Array = EquipStats.stat_lines(eid, star)
 	if rows.is_empty():
 		var none := Label.new()
+		## ⚠★★这一句【故意没改】(2026-09-28)。
+		##   「（本件不提供属性加成，只有效果）」确实是公文体, 但 `InventoryScene.gd:1068`
+		##   **有一句一模一样的** —— 同一句话出现两个版本, 比两边都留着原文更糟
+		##   (玩家会以为商店和背包说的不是一回事)。
+		##   ⇒ 由背包那边定稿, 两处同时改。这里保持原文等它。
 		none.text = "（本件不提供属性加成，只有效果）"
 		none.add_theme_font_size_override("font_size", 15)
 		none.add_theme_color_override("font_color", Color("#5b7a92"))
@@ -1115,7 +1260,9 @@ func _build_stat_rows(box: Control, eid: String, star: int = 1) -> Array:
 	# ★装不下就明说, 不要静默截断(CLAUDE.md: 无声上限=假装覆盖全了)
 	if rows.size() > cap:
 		var more := Label.new()
-		more.text = "…另有 %d 项属性" % (rows.size() - cap)
+		## ★行首的「…」是省略号占位(网页里"更多"那一套), 而这句本来是**明说装不下**的。
+		##   ⚠ 不许改成静默截断 —— 这个数字存在的理由就是"无声上限 = 假装覆盖全了"。
+		more.text = "另外还有 %d 项" % (rows.size() - cap)
 		more.add_theme_font_size_override("font_size", 13)
 		more.add_theme_color_override("font_color", Color("#5b7a92"))
 		more.position = Vector2(STAT_COL_X[0], STAT_ROW_Y[2] + 20.0); more.size = Vector2(PANEL_W - 68, 18)
@@ -1123,12 +1270,28 @@ func _build_stat_rows(box: Control, eid: String, star: int = 1) -> Array:
 	return made
 
 
+## 面板里的分割线。★★2026-09-28 从「1px 半透明白线」改成【两像素刻线】——
+##   `rgba(255,255,255,.1)` 的 1px 细线是 CSS `<hr>` 的长相, 而像素界面里的分隔
+##   一律是"一道暗刻 + 一道高光"(凹进去的錾痕), 材质上才和金属面板是一家。
+## ★返回的是**容器**而不是那条线: `_center_middle` 要整体位移它, 两条线必须一起走
+##   (分开返回两个节点 = 将来谁忘了加进数组就错开 1px, 而那种错位没人看得出是 bug)。
 func _panel_sep(parent: Control, y: float) -> Control:
-	var ln := ColorRect.new()
-	ln.color = Color(1, 1, 1, 0.10)
-	ln.position = Vector2(34, y); ln.size = Vector2(PANEL_W - 68, 1)
-	parent.add_child(ln)
-	return ln
+	var grp := Control.new()
+	grp.position = Vector2(34, y)
+	grp.size = Vector2(PANEL_W - 68, 2)
+	grp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(grp)
+	var dark := ColorRect.new()                      # 上面一道暗 = 刻进去
+	dark.color = Color(0, 0, 0, 0.42)
+	dark.position = Vector2.ZERO; dark.size = Vector2(PANEL_W - 68, 1)
+	dark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	grp.add_child(dark)
+	var lite := ColorRect.new()                      # 下面一道亮 = 錾口的高光
+	lite.color = Color(0.62, 0.78, 0.90, 0.20)
+	lite.position = Vector2(0, 1); lite.size = Vector2(PANEL_W - 68, 1)
+	lite.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	grp.add_child(lite)
+	return grp
 
 
 ## 完整描述。★实测: 95 件装备的 effectDesc1 【全是纯文本】—— 无 HTML 标签、无方括号
@@ -1140,7 +1303,11 @@ func _rich_desc(edef: Dictionary, star: int = 1) -> String:
 	##   ⚠ 上面那句"全是纯文本"从此不再成立, 别再据此省掉渲染。
 	var raw := SkillText.equip_full(edef)   # ★走唯一取值口, 别再手抄 effectDesc1(手抄的副本必然落后)
 	if raw == "":
-		return "[color=#5b7a92](这件装备还没有效果描述)[/color]"
+		## ★★原句「(这件装备还没有效果描述)」是**开发者的空态**: 半角括号 + "还没有…描述"
+		##   等于当面告诉玩家"我们没写"。而且实测 95 件的 `effectDesc1` 全都有
+		##   ⇒ 这一支**打不到**, 它只是数据损坏时的兜底。
+		##   ⇒ 换成一句不暴露内情的摊主话: 玩家读到也只当是这件东西玄乎, 不会读成 bug。
+		return "[color=#5b7a92]这件的门道, 摊主自己也讲不明白[/color]"
 	# ★按星级高亮(用户 2026-07-29「上面的效果能按照描述规则渲染吗」)。
 	#   装备描述里的 `1/1.2/1.5` 是【一/二/三星三档值】。商店卖 ★1, 原来三档同色平铺,
 	#   玩家看不出哪个数才是自己买到的。highlight_star 把当前星那档高亮、另两档压暗。
@@ -1223,6 +1390,31 @@ func _coin_button_icon(b: Button, px: int) -> void:
 	b.icon_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 
 
+## 一条【像素槽】进度条: 九宫格金属槽 + 槽内填充。取代「两个 ColorRect 摞一起」。
+##
+## ★本屏两条进度条(头部等级经验 / 小木斧砍伐经验)走**同一个函数** ——
+##   `axe_panel.gd` 的注释本来就写着「同一个界面里两条进度条不该长得不一样」,
+##   而那时是各写一份纯色矩形。手抄的副本必然落后, 所以这里只留一处实现。
+## ★填充画在槽内(按九宫格边距内缩), 不是画在框上 —— 否则填充会骑在金属边带上。
+## ★`ratio` 由调用方钳到 0~1; 0 时填充宽为 0(不画), 满时正好齐槽右沿。
+func _pixel_bar(parent: Control, pos: Vector2, sz: Vector2, ratio: float, fill: Color) -> void:
+	## ★★槽【先】加、填充【后】加 —— 顺序反了填充就永远看不见。
+	##   `bar-frame.png` 是**实心**贴图(整张不透明: 黑槽是画出来的, 不是镂空),
+	##   我第一版按"框压住填充两端"的直觉把框画在后面, 实拍 14/36 的经验条**一格都不涨**
+	##   (截图里那条槽全黑)。空心框(card-frame 那种)能后画, 实心的不能 ——
+	##   ⇒ 判断依据是**贴图中间透不透**, 不是"框该不该压着内容"。
+	_nine_xy(parent, BAR_TEX, BAR_MARGIN_X, BAR_MARGIN_Y, pos, sz, 0)
+	var slot_x := float(BAR_MARGIN_X)
+	var slot_y := float(BAR_MARGIN_Y)
+	var inner := Vector2(maxf(1.0, sz.x - slot_x * 2.0), maxf(1.0, sz.y - slot_y * 2.0))
+	var fl := ColorRect.new()
+	fl.color = fill
+	fl.position = pos + Vector2(slot_x, slot_y)
+	fl.size = Vector2(inner.x * clampf(ratio, 0.0, 1.0), inner.y)
+	fl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(fl)
+
+
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -1261,6 +1453,12 @@ const CARD_TEX_TIER := [
 ]
 ## 选中态【整张换图】而不是给上面那张染色 —— 实测两框边框色差 135(modulate 版只有 26)。
 const CARD_TEX_SEL = preload("res://assets/sprites/shop/card-frame-s.png")
+## 中性档框(不带费用色)。★库里一直有这张、一直没人引用 —— 2026-09-28 起它管两件事:
+##   ① **空货位**的框(买走之后那一格原来是块裸矩形)
+##   ② **已拥有**那圈金边(原来是 2px 纯色描边 + 圆角 = 网页盒)
+##   两处都是"框的形状要在、但不该讲费用档"的场合, 正好是它。
+##   ⇒ 先搜库再动手: 不为这两件事新生成贴图(assets/sprites/shop/ 已有 9 张框)。
+const CARD_TEX_N = preload("res://assets/sprites/shop/card-frame-n.png")
 const PANEL_TEX = preload("res://assets/sprites/shop/panel-frame.png")
 const BTN_MARGIN := 18
 const CARD_MARGIN := 8       # 量的: 新框 72×72, 边框 7px
@@ -1303,12 +1501,18 @@ func _skin_button(b: Button, disabled_dim := true, tex: Texture2D = null) -> voi
 
 ## 九宫格框(卡片/面板用)。★MOUSE_FILTER_IGNORE —— 框是纯装饰, 不能吃掉点击。
 func _nine(parent: Control, tex: Texture2D, margin: int, pos: Vector2, sz: Vector2, z := -1) -> NinePatchRect:
+	return _nine_xy(parent, tex, margin, margin, pos, sz, z)
+
+
+## 横竖边距不同的九宫格。条框这类**扁贴图**必须分开给: bar-frame 的左右边带 11px、
+## 上下只有 6px —— 一律用 11 会把 16px 高的条压成负中段(框根本画不出来)。
+func _nine_xy(parent: Control, tex: Texture2D, mx: int, my: int, pos: Vector2, sz: Vector2, z := -1) -> NinePatchRect:
 	var np := NinePatchRect.new()
 	np.texture = tex
-	np.patch_margin_left = margin
-	np.patch_margin_right = margin
-	np.patch_margin_top = margin
-	np.patch_margin_bottom = margin
+	np.patch_margin_left = mx
+	np.patch_margin_right = mx
+	np.patch_margin_top = my
+	np.patch_margin_bottom = my
 	np.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	np.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	np.position = pos
@@ -1471,7 +1675,8 @@ func _build_bottom_buttons() -> void:
 	_skin_button(b1); add_child(b1)
 
 	var b2 := Button.new()
-	b2.text = "🐢 出战阵容  已装 %d / %d" % [int(lc[0]), int(lc[1])]
+	## ★「已装 3 / 9」中间那两个空格是表格对齐的写法; 收成 `3/9` 才像一个读数。
+	b2.text = "🐢 出战阵容  已装 %d/%d" % [int(lc[0]), int(lc[1])]
 	b2.add_theme_font_size_override("font_size", 21)
 	b2.position = Vector2(GRID_X + bw + 20.0, BOTTOM_BTN_Y); b2.size = Vector2(bw, bh2)
 	b2.pressed.connect(func(): _open_bottom_popup("lineup"))
@@ -1505,7 +1710,10 @@ func _open_bottom_popup(kind: String) -> void:
 	var py := (H - ph) * 0.5
 	var pan := Panel.new()
 	var psb := StyleBoxFlat.new()
-	psb.bg_color = Color("#0e1a26"); psb.set_corner_radius_all(10)
+	## ★★直角(2026-09-28)。这块只是**底板** —— 看得见的边是下面那行 `_nine(pan, BTN_TEX…)`
+	##   画的不透明像素框, 10px 圆角本来就被它盖住 ⇒ 视觉零变化, 但少一个圆角盒。
+	##   (与 2026-09-27 把货架卡底板/详情面板底板改直角是同一条理由。)
+	psb.bg_color = Color("#0e1a26"); psb.set_corner_radius_all(0)
 	pan.add_theme_stylebox_override("panel", psb)
 	pan.position = Vector2(px, py); pan.size = Vector2(pw, ph)
 	pan.mouse_filter = Control.MOUSE_FILTER_STOP     # 面板内点击不关弹层
@@ -1524,7 +1732,8 @@ func _open_bottom_popup(kind: String) -> void:
 		_build_lineup_equips(pan, 40.0 - GRID_X, 44.0 - LINEUP_Y)
 
 	var cl := Button.new()
-	cl.text = "关闭"
+	## ★「关闭」是窗口管理器的词。这一层是把摊位下面那排东西摊开看, 看完是"收起来"。
+	cl.text = "收起"
 	cl.add_theme_font_size_override("font_size", 18)
 	cl.position = Vector2(pw - 150.0, ph - 66.0); cl.size = Vector2(110, 46)
 	cl.pressed.connect(func(): lay.queue_free())

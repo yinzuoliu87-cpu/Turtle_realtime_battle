@@ -307,7 +307,11 @@ func _res_value_text(r: Dictionary) -> String:
 ##   下方的暗由条框自己那道下沿给。
 ## ★亮暗从 `col` **算**出来不写死 —— 血条绿/龟能黄/怒气橙/星能紫/储能黄/泡泡蓝
 ##   六种颜色走同一条路径, 写死等于给其中一种调好、其余全错。
-func _bar_fill_skin(sb: StyleBoxFlat, col: Color) -> void:
+## ★★`static`(2026-09-28): 战中【战报】浮层的分段条也要这层液面, 而它是另一个类
+##   (`DmgStatsPanel`)。改成静态就能 `InfoPanel._bar_fill_skin(...)` 直接借用 ——
+##   而不是在那边照抄三行(memory `fb-hand-rolled-copies-drift`: 抄一次永远落后一次)。
+##   本函数一个字没改, 只是把"谁能调它"放宽; 本文件里 4 处旧调用一字不动照样成立。
+static func _bar_fill_skin(sb: StyleBoxFlat, col: Color) -> void:
 	sb.bg_color = col.darkened(0.16)
 	sb.border_width_top = 3
 	sb.border_color = col.lightened(0.22)
@@ -1346,11 +1350,13 @@ func _info_more_row(parent: VBoxContainer, title: String, body: String,
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hb.add_child(l)
-	var a := Label.new(); a.text = "›"
-	a.add_theme_font_size_override("font_size", UIPalette.F_BODY)
-	a.add_theme_color_override("font_color", Color("#5f7186"))
-	a.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	## ★行尾的【可点暗示】: 一枚画出来的像素箭头, 不是字体里那个 `›`。见 `_pixel_arrow` 头注。
+	var a := _pixel_arrow()
 	hb.add_child(a)
+	## 第二层暗示(桌面): 悬停时整条亮一档 + 箭头点亮 = 选中态。
+	## ★手机没有悬停 ⇒ 第一层(箭头常驻可见)才是主力, 所以箭头不许做成"悬停才出现"。
+	row.mouse_entered.connect(func() -> void: _arrow_lit(row, a, true))
+	row.mouse_exited.connect(func() -> void: _arrow_lit(row, a, false))
 	## ★★`body` 是【建面板那一刻】的快照 —— 对"更多属性"这种活数值是错的(2026-08-19)。
 	##   用户 2026-07-21 点名要实时的三样是「血条, 移速攻速」: 血条和攻速在主属性 8 项里,
 	##   由 `_refresh_info_panel` 每帧对位改文字 ✅; 而 **移速在次要 11 项里**,
@@ -1363,6 +1369,56 @@ func _info_more_row(parent: VBoxContainer, title: String, body: String,
 			_show_detail(battle._info_panel, key, title,
 				(str(body_fn.call()) if body_fn.is_valid() else body), {}, u))
 	return row
+
+
+## 入口条行尾那枚【像素箭头】—— 5 根竖条叠成一个朝右的实心三角, 不是字体字形。
+##
+## ★由来(2026-09-28 用户:「一点也看不出来游戏的味道, 全是 ai 味和网页味」)。
+##   这里原来印一个 `›`(U+203A)。三条毛病, 第三条最要命:
+##     ① 它就是 HTML 折叠控件/面包屑那枚雪佛龙 —— "网页味"里最标志性的一个符号;
+##     ② 它是**字体字形**: 抗锯齿、随回退字体变形。一屏硬边像素框里只有它是软边;
+##     ③ `›` **不在 `tests/verify_fonts.gd` 的 `USED_CODEPOINTS` 白名单里** ——
+##        那条门禁只保证"名单里的字有字形", 名单外的少了它一声不响。打包到
+##        Web/Linux(没系统字体, 只剩 m6x11+NotoSansSC+NotoEmoji 三级回退) 就是豆腐块,
+##        连"这一条能点"这层暗示一起丢。
+## ★不许直接删箭头: 删了这条入口和上面那些**不可点**的属性行长得一模一样,
+##   玩家无从知道它能点(这一整条的存在意义就是"内容太多、点开看")。
+## ★为什么是画出来的而不是新做一张 PNG: `assets/sprites/` 下**没有任何箭头素材** ——
+##   battlehud(5 张全是框) / menu / ui / stats / shop / teamselect / rules 逐个 ls 过,
+##   一张都没有。而 5 个 `draw_rect` 就是一枚 1:1 的硬边像素箭头:
+##   不缩放(⇒ 不会踩 `vfx_discipline` 那条"像素贴图不许连续缩放") / 不抗锯齿 / 颜色跟状态走。
+## ★用 `draw` 信号而不是新开一个 .gd: 这是 UI 层一枚 10×14 的装饰, 不值一个文件;
+##   而 `bind(self 的方法)` 捕获的是 RefCounted(本类), 不是 Node —— 安全的那一侧
+##   (memory: 闭包捕获 Node 不安全、捕获 RefCounted 安全)。
+func _pixel_arrow() -> Control:
+	var c := Control.new()
+	c.custom_minimum_size = Vector2(ARROW_W, 14.0)
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	c.set_meta("tint", ARROW_DIM)
+	c.draw.connect(_draw_arrow.bind(c))
+	return c
+
+
+## 真正下笔的那一步: 5 根 2px 宽的竖条, 高 10/8/6/4/2, 各自竖向居中 ⇒ 朝右的实心三角。
+## 颜色取节点上的 `tint` 元数据 —— 悬停时 `_arrow_lit` 改它再 `queue_redraw()`。
+func _draw_arrow(c: Control) -> void:
+	if not is_instance_valid(c):
+		return
+	var t: Color = c.get_meta("tint", ARROW_DIM)
+	for i in range(5):
+		var hh: float = 10.0 - float(i) * 2.0
+		c.draw_rect(Rect2(float(i) * 2.0, (c.size.y - hh) * 0.5, 2.0, hh), t, true)
+
+
+## 悬停/离开时的【选中态】: 整条亮一档 + 箭头点亮。
+## ★`modulate` 可以 >1(过曝一档), 这正是金属签牌被光照到的样子 —— 与 `UISkin.button`
+##   的 hover 档(×1.22) 取同一个系数, 免得同一屏两种"亮一档"。
+func _arrow_lit(row: Control, arrow: Control, on: bool) -> void:
+	if not is_instance_valid(row) or not is_instance_valid(arrow):
+		return
+	row.modulate = Color(1.22, 1.22, 1.22) if on else Color.WHITE
+	arrow.set_meta("tint", ARROW_LIT if on else ARROW_DIM)
+	arrow.queue_redraw()
 
 
 ## 次要 11 项属性的整段文字。★单一出处 —— 建入口条、点开、以及浮层开着时每帧刷新
@@ -1383,9 +1439,18 @@ func _nine_box(tex_path: String, margin: int, fallback: StyleBox) -> StyleBox:
 
 const HUD_TEX := "res://assets/sprites/battlehud/"
 
+## 入口条行尾那枚像素箭头(见 `_pixel_arrow`)。宽 = 5 根 × 2px。
+const ARROW_W := 10.0
+## 常态色比原来那个 `›` 的 #5f7186 提一档 —— 原来那枚太暗, "可点"这层暗示本身就偏弱。
+const ARROW_DIM := Color("#7f9ab4")
+const ARROW_LIT := Color("#cfe6ff")
+
 
 ## 在给定容器里铺一层条框(九宫格)。没贴图返回 null, 调用方退回纯色底。
-func _bar_frame(holder: Control) -> NinePatchRect:
+##
+## ★★`static`(2026-09-28): 同 `_bar_fill_skin` —— 战中战报浮层的分段条要用同一道凹槽,
+##   那边是 `DmgStatsPanel`。它本来就没碰过 `battle`, 静态化是零行为改动。
+static func _bar_frame(holder: Control) -> NinePatchRect:
 	var p := HUD_TEX + "bar-frame.png"
 	if not ResourceLoader.exists(p):
 		return null
@@ -1521,8 +1586,17 @@ func _show_detail(host_panel: Control, key: String, title: String, body: String,
 		brow.alignment = BoxContainer.ALIGNMENT_END
 		vb.add_child(brow)
 		var tb = Button.new()
-		tb.text = "简明 ▸" if battle._skill_detail() else "详细 ▾"
-		tb.tooltip_text = "简明只给算好的数值; 详细展开公式与比率"
+		## ★★2026-09-27 去掉网页折叠控件的箭头写法。
+		tb.text = "收起" if battle._skill_detail() else "详细"
+		## ★★2026-09-28 这里原来挂一句 tooltip:「简明只给算好的数值; 详细展开公式与比率」。
+		##   **整句删掉**, 不是改口气:
+		##     ① "公式与比率"是开发者说的话, 玩家心里问的是"这数字怎么来的";
+		##     ② 更根本的是 —— 它在**教玩家怎么用这个按钮**。一个按钮需要说明书
+		##        就说明按钮本身没说清; 而「收起 / 详细」这两个字已经说清了。
+		##        (说明性 tooltip 是网页的习惯: 桌面才有悬停, 手机上这句话谁都看不到,
+		##         等于给一半用户写的说明。)
+		##   ★门禁核实过: `verify_two_level_desc.gd:123` 查的是 **`tb.text`**
+		##     (`begins_with("简明")/("详细")`)、而且那个 `found` 算完没人断言 —— 与 tooltip 无关。
 		tb.add_theme_font_size_override("font_size", UIPalette.F_SUB)
 		tb.focus_mode = Control.FOCUS_NONE
 		tb.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -1533,7 +1607,8 @@ func _show_detail(host_panel: Control, key: String, title: String, body: String,
 				GameState.skill_text_detail = not battle._skill_detail()
 			var ntpl = battle.SkillText.text_of(sk, battle._skill_detail())
 			dt.text = battle._render._render_skill_text(ntpl, unit, sk)
-			tb.text = "简明 ▸" if battle._skill_detail() else "详细 ▾"
+			## ★★2026-09-27 去掉网页折叠控件的箭头写法。
+			tb.text = "收起" if battle._skill_detail() else "详细"
 			_fit_detail_box(ov))
 	ov.visible = true
 	_fit_detail_box(ov)

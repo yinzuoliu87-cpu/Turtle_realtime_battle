@@ -167,11 +167,18 @@ func _refresh_detail() -> void:
 		pnm.add_theme_color_override("font_color", Color("#7dffb3"))
 		pnm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		prow.add_child(pnm)
-		# "被动" pill
+		# "被动" 小签
+		## ★★2026-09-28 两处改动, 都是实拍(`C:/tmp/tsshots/before/2_filled.png` 裁右栏)量出来的:
+		##   ① **直角**。原 `_sp(4)` 圆角 —— 与技能角标同族, 是这一屏 4 个【圆角盒】之一。
+		##      24x35 远低于 `UISkin.MIN_FRAME_PX`(40) ⇒ 不套九宫格, 去网页味靠直角。
+		##   ② **贴着字走, 别被撑高**。原来没给垂直 size_flags, PanelContainer 默认 FILL,
+		##      于是它跟着那行 34px 的被动图标一起被拉成 24x35 的**竖条**, 字缩在中间 ——
+		##      实拍看就是"一块灰绿方块里塞了两个字"。SHRINK_CENTER 之后它才是一枚签。
 		var tag_pc = PanelContainer.new()
+		tag_pc.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		var tag_sb = StyleBoxFlat.new()
 		tag_sb.bg_color = Color(125.0/255, 1, 179.0/255, 0.18)
-		tag_sb.set_corner_radius_all(host._sp(4))
+		tag_sb.set_corner_radius_all(0)
 		tag_sb.content_margin_left = host._sp(5); tag_sb.content_margin_right = host._sp(5)
 		tag_sb.content_margin_top = host._sp(1); tag_sb.content_margin_bottom = host._sp(1)
 		tag_pc.add_theme_stylebox_override("panel", tag_sb)

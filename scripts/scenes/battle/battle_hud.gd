@@ -93,7 +93,7 @@ func _build_ui_layer() -> void:
 func _build_topright_btns() -> void:
 	if battle.DEBUG_EDIT:                              # 调试场保留 📜(我自己排查要用·U8: 开发工具不属"局内")
 		var log_btn = Button.new()
-		log_btn.text = "📜"
+		log_btn.text = "日志"                      # ★同上: 摘掉 📜, 改成两个字(调试场专用键)
 		log_btn.size = Vector2(52, 38)
 		# ★贴【真实视口】右缘(原写死 1088 = 1280-192, 宽屏上会浮在屏幕中间)
 		log_btn.position = Vector2(float(battle.get_viewport().get_visible_rect().size.x) - 192.0, 12)
@@ -118,12 +118,19 @@ func _build_topright_btns() -> void:
 	#   → 改成【按右边缘 + 安全区反算】, 与法术圆盘同一套做法(SafeArea.margins)。
 	var _pos: Dictionary = _topright_positions()
 
-	_stats_btn = _mk_icon_btn(ICON_STATS, _pos["stats"], "伤害统计")
+	## ★2026-09-28 叫「战报」不叫「伤害统计」——「统计」是后台报表的说法, 玩家心里
+	##   问的是"这场打得怎么样"。浮层自己的名牌、这个 tooltip、结算屏那张表**三处同名**
+	##   (原来是 无标题 / 伤害统计 / 战斗数据 三个名字指同一件事)。
+	_stats_btn = _mk_icon_btn(ICON_STATS, _pos["stats"], "战报")
 	_stats_btn.pressed.connect(battle._on_dmg_stats_toggle)
 	battle._ui_layer.add_child(_stats_btn)
 
 	# 🏳 投降: 最右 —— 肌肉记忆上"最右是退出类操作"。
-	battle._surrender_btn = _mk_icon_btn(ICON_SURRENDER, _pos["surrender"], "投降认输")
+	## ★2026-09-28「投降认输」→「认输」: 投降和认输是同一件事的两个说法, 叠在一起
+	##   既不更清楚也更啰嗦。确认框里的三行字负责把后果说全, 这个键只需要说它是什么。
+	##   ⚠ `RealtimeBattle3DScene.gd:1224` 的战斗日志里还写着「🏳 投降认输 —— 本场判负」,
+	##     那个文件不在本轮地盘 —— 登记在案, 别当成"已经统一了"。
+	battle._surrender_btn = _mk_icon_btn(ICON_SURRENDER, _pos["surrender"], "认输")
 	battle._surrender_btn.pressed.connect(battle._show_surrender_confirm)
 	battle._ui_layer.add_child(battle._surrender_btn)
 
@@ -160,20 +167,38 @@ func _build_surrender_panel() -> void:
 	box.add_theme_constant_override("separation", 14)
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
 	battle._surrender_panel.add_child(box)
+	## ══════════════════════════════════════════════════════════════════
+	##  ★★2026-09-28 三行文案重写(用户:「文字语言也是 ai 味网页味」)
+	## ══════════════════════════════════════════════════════════════════
+	## 改前原文:
+	##   「确认认输？」/「投降将直接判定本场失败，不可撤销。」
+	##   /「（确认后进入结算，本场奖励与记录仍会结算）」
+	## 三条毛病, 一条比一条要紧:
+	##   ① **标点是全角的** `，（）` —— 而这个游戏别处的 UI 一律半角 + `·`
+	##     (「练习赛 · 不计入赛季进度」「阵容已上传 · 别人可能会打到你」)。
+	##     全角逗号+括号是文档/公告的排版, 不是游戏界面的排版。
+	##   ② **"判定/撤销/结算"是条款语气** —— "将直接判定本场失败，不可撤销"
+	##     读起来像用户协议的免责条款, 而玩家此刻想知道的只有"我按下去会怎样"。
+	##   ③ 括号里那句自己打自己: 「进入结算…仍会结算」同一个词用了两遍,
+	##     而且括号包起来 = 开发者备注的长相(结算屏 2026-08-02 就为这条整页重做过,
+	##     当时删掉的正是 `(练习赛 · 无赛季奖励)` `(失一命)` 这种括号口语 —— 这里是漏的一处)。
+	## ★现在: 标题是一句人话的问句(去掉"确认"这个按钮词);
+	##   第二行说**后果**(这一场就算输了, 按下去就收不回来);
+	##   第三行说**玩家真正会担心的那件事** —— 认输不等于白打, 该结的照结。
 	var title := Label.new()
-	title.text = "确认认输？"
+	title.text = "真要认输?"
 	title.add_theme_font_size_override("font_size", 40)
 	title.add_theme_color_override("font_color", Color("#ffb3b3"))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title)
 	var tip := Label.new()
-	tip.text = "投降将直接判定本场失败，不可撤销。"
+	tip.text = "举白旗 · 这一场就算输了, 按下去收不回来"
 	tip.add_theme_font_size_override("font_size", 19)
 	tip.add_theme_color_override("font_color", Color("#cfe6ff"))
 	tip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(tip)
 	var tip2 := Label.new()
-	tip2.text = "（确认后进入结算，本场奖励与记录仍会结算）"
+	tip2.text = "打到这里的战报和奖励照算, 不会白打"
 	tip2.add_theme_font_size_override("font_size", 15)
 	tip2.add_theme_color_override("font_color", Color("#8a93a0"))
 	tip2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -182,9 +207,13 @@ func _build_surrender_panel() -> void:
 	row.add_theme_constant_override("separation", 24)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_child(row)
-	row.add_child(battle._make_result_btn("取消", Color("#8a93a0"), Color("#12161f"),
+	## ★两个按钮的字也换了口气: 「取消」/「确认认输」是对话框的通用词(OK/Cancel 的中译),
+	##   换成【说清各自要干什么】——「再打」是留下来继续打, 「认输」是走。
+	##   ★门禁不看这两个字: `verify_battle_ui` 走的是 `_hide_surrender_confirm()` /
+	##     `_do_surrender()` 两个方法, 不按文字找按钮(已核实), 所以改字是安全的。
+	row.add_child(battle._make_result_btn("再打", Color("#8a93a0"), Color("#12161f"),
 		func() -> void: battle._hide_surrender_confirm()))
-	row.add_child(battle._make_result_btn("确认认输", Color("#ff6b6b"), Color("#3a0000"),
+	row.add_child(battle._make_result_btn("认输", Color("#ff6b6b"), Color("#3a0000"),
 		func() -> void: battle._do_surrender()))
 	battle._ui_layer.add_child(battle._surrender_panel)
 
@@ -194,7 +223,7 @@ func _build_surrender_panel() -> void:
 ##   而主文件有 arch_budget 行数警戒线 —— 加这 20 多行直接把它顶红了(8616>8600)。
 ##   规则是"先拆出去"不是抬台账, 而这里本来就是它们该在的地方。
 var _pk_bar: Control = null
-var _stats_btn: Control = null      # 右上"伤害统计"键 —— 存起来是为了 on_viewport_resized 能重摆它
+var _stats_btn: Control = null      # 右上"战报"键 —— 存起来是为了 on_viewport_resized 能重摆它
 var _pk_fill_l: Control = null             # 我方填充(绿)。★类型是 Control 不是 ColorRect ——
                                            #   主条现在是 TextureRect(竖向渐变·体积感做进斜切四边形里), 副条仍是 ColorRect
 var _pk_fill_r: Control = null             # 敌方填充(紫)。同上: 主条 TextureRect / 副条 ColorRect
@@ -1071,7 +1100,10 @@ func _build_log_panel() -> void:
 	vb.add_theme_constant_override("separation", 6)
 	battle._log_panel.add_child(vb)
 	var hdr = Label.new()
-	hdr.text = "📜 战斗日志"
+	## ★2026-09-28 摘掉 emoji。项目 2026-08-16 就定了「全去 emoji」(根治绿块 + 跨平台一致),
+	##   状态签那一轮换完了 —— 这里和战报浮层的四个页签是漏网的两处。
+	##   这块面板只在调试场(DEBUG_EDIT)出现, 但"一处一个例外"攒起来就是没有规矩。
+	hdr.text = "战斗日志"
 	hdr.add_theme_font_size_override("font_size", 17)
 	hdr.add_theme_color_override("font_color", Color("#cfe6ff"))
 	vb.add_child(hdr)
@@ -1251,14 +1283,7 @@ func _show_banner(won: bool, _sealed_hint: bool = false) -> void:
 	# ★整张卡有自己的底: 不然标题/后果/数据块是【浮在战场上的散件】, 和下面那块有边框的
 	#   数据表分成两坨。一个底把它们收成一张"结算单"。
 	var shell := PanelContainer.new()
-	var shell_sb := StyleBoxFlat.new()
-	shell_sb.bg_color = Color(0.035, 0.055, 0.085, 0.90)
-	shell_sb.border_color = Color(0.28, 0.44, 0.62, 0.50)
-	shell_sb.set_border_width_all(2)
-	shell_sb.set_corner_radius_all(14)
-	shell_sb.content_margin_left = 34; shell_sb.content_margin_right = 34
-	shell_sb.content_margin_top = 22; shell_sb.content_margin_bottom = 24
-	shell.add_theme_stylebox_override("panel", shell_sb)
+	shell.add_theme_stylebox_override("panel", _settle_shell_style())
 	center.add_child(shell)
 	## ★★结算页的按钮【必须永远够得着】(用户 2026-08-12 实测:「结算时数量单位过多还是会
 	##   导致按钮被挤下去, 我手机是钮点不到」)。
@@ -1270,8 +1295,13 @@ func _show_banner(won: bool, _sealed_hint: bool = false) -> void:
 	shell.add_child(outer)
 	var vp: Vector2 = battle.get_viewport().get_visible_rect().size
 	var sm: Vector4 = SafeArea.margins(vp, 6.0)
-	## 留给: 卡片上下内边距(46) + 按钮行(约 70) + 安全区 + 一点呼吸
-	var scroll_max: float = maxf(180.0, vp.y - 46.0 - 70.0 - sm.y - sm.w - 40.0)
+	## 留给: 卡片上下内边距 + 按钮行(约 70) + 安全区 + 一点呼吸
+	## ★★46 → 62(2026-09-28): 卡片的底换成九宫格金属框后上下内边距是 30+32=62,
+	##   不再是 StyleBoxFlat 那版的 22+24=46(见 `_settle_shell_style`)。
+	##   **这个数必须跟着改** —— 少扣 16px 就等于允许卡片长高 16px, 而卡片一超视口
+	##   `CenterContainer` 会上下一起溢出、按钮行正好在下面那一头被推出屏幕
+	##   (用户 2026-08-12 实测过的那个 bug:「手机上钮点不到」)。
+	var scroll_max: float = maxf(180.0, vp.y - 62.0 - 70.0 - sm.y - sm.w - 40.0)
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	## ★滚动条【不占位】: 默认的 AUTO 会给竖条预留宽度, 结算卡因此整体左移几像素,
@@ -1429,6 +1459,35 @@ func _result_subtitle(won: bool, gs) -> String:
 	return "赛季胜场 +1" if won else "消耗 1 点生命"
 
 
+## 结算卡那张【底】的皮。
+##
+## ★★2026-09-28 从"圆角卡片"换成九宫格金属框。原来是
+##   `圆角 14 + 2px 亮边 + 半透明深底` —— 逐项都是网页卡片:
+##   `border-radius:14px` / `border:2px solid` / `background:rgba(...)`。
+##   而**每打完一场都会看到这一屏**, 它是全游戏被看次数最多的一块底板。
+##   战斗信息面板 2026-08-16 就换成 `battlehud/panel-frame.png` 了(深蓝金属 + 青内沿
+##   + 四角铜铆钉), 结算屏是一直漏着的那一处。
+## ★抽成函数【不只是为了好看】: `_show_banner` 已经 241 行、离 `arch_budget` 的
+##   单函数上限 250 只剩 9 行 —— 在那里面就地加注释会当场把门禁顶红。
+##   抽出来之后 `_show_banner` 反而少了 7 行(还了点债)。
+## ★内边距: 框艺术约 14px 厚, 所以上下给到 30/32、左右仍 34(原来是 22/24, 会压住铆钉)。
+##   贴图缺失时返回的是那份 `StyleBoxFlat` 兜底, 它的边距按 2px 细边给 —— 两套各自成立。
+func _settle_shell_style() -> StyleBox:
+	var fb := StyleBoxFlat.new()
+	fb.bg_color = Color(0.035, 0.055, 0.085, 0.90)
+	fb.border_color = Color(0.28, 0.44, 0.62, 0.50)
+	fb.set_border_width_all(2)
+	fb.set_corner_radius_all(0)                   # 直角: 像素风的框不该有抗锯齿圆角
+	fb.content_margin_left = 34; fb.content_margin_right = 34
+	fb.content_margin_top = 22; fb.content_margin_bottom = 24
+	var sb := UISkin.nine("panel-frame.png", 20, fb)
+	if sb is StyleBoxTexture:
+		var st := sb as StyleBoxTexture
+		st.content_margin_left = 34; st.content_margin_right = 34
+		st.content_margin_top = 30; st.content_margin_bottom = 32
+	return sb
+
+
 ## 数据块一排: 每块 = 标签(小字灰) + 数值(大字亮)。练习赛没有赛季数据 → 返回 null 不占位。
 func _build_reward_chips(gs) -> Control:
 	if not battle._had_season or gs == null:
@@ -1460,8 +1519,17 @@ func _build_reward_chips(gs) -> Control:
 	##   他不问我就永远不知道。**静默失败比失败本身危险: 失败会被修, 静默不会。**
 	## ★只在"配了地址但一次都没成功"时出现 —— 没配地址是【有意关掉】(当前就是),
 	##   那种情况不该报警, 否则天天见到就没人看了。
+	## ★★2026-09-28 值从「失败」改成「没传上去」。
+	##   「阵容同步 / 失败」两个毛病:
+	##     ① **"失败"这两个字在结算屏上有别的意思** —— 同一屏最大那行字就是胜/负,
+	##        一个写着"失败"的小块摆在奖励里, 第一眼读成"这局输了"。
+	##     ② 它没说发生了什么。"没传上去"直接说清: 东西没送出去。
+	## ⚠ 标签「阵容同步」**没改**, 尽管"同步"是网络内部词 ——
+	##   `tests/verify_backend_not_silent.gd:78` 断言 `hud.contains("阵容同步")`,
+	##   那是**抄源码字面量**的判据, 而 `tests/` 不在本轮地盘。
+	##   改了标签那条当场红, 而我没有合法途径同步它 ⇒ 登记在案交主会话, 不自己放宽判据。
 	if RemotePoolRef.looks_broken():
-		items.append(["阵容同步", "失败", Color("#ff8a8a")])
+		items.append(["阵容同步", "没传上去", Color("#ff8a8a")])
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 30)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -1505,6 +1573,33 @@ func _banner_fade_in(c: Control, delay: float) -> void:
 ## ★y 同样改成【按屏幕高度的比例】(438/720 = 0.6083), 否则 iPad 的 960 高视口上表会浮在上半屏。
 ##   仍然不做"放不下就上顶": 那会盖住上方的「返回菜单」钮; 放不下由页体内部滚动兜(见 _stats_fit_body)。
 ## 一队 5 列表: 龟 / 造成伤害 / 承受伤害 / 治疗量 / 击杀; 金表头 / 稀有度点 / 存活白·阵亡灰(阵亡).
+## 把一个表头 Label 装进一块【金属栏牌】。
+##
+## ★由来: 结算屏那张表原来是"一行金色裸字 + 下面几列数字" —— 那就是 HTML 表格的
+##   `<th>` + `<td>`, 是这一屏最像后台 dashboard 的地方。栏牌让它读成"这一栏叫什么"。
+## ★宽度契约: 调用方给 Label 64, 这里左右各 4 ⇒ 正好 72 = 数值格的宽度(见调用点注释)。
+## ★没贴图就退回那块半透底(`ResourceLoader.exists()` 对没 `.import` 的 PNG 静默返回 false)。
+func _hdr_plate(l: Label) -> Control:
+	var box := PanelContainer.new()
+	var fb := StyleBoxFlat.new()
+	fb.bg_color = Color(0.16, 0.20, 0.27, 0.55)
+	fb.set_border_width_all(0)                    # 不描边: 1px 描边矩形就是 CSS `border:1px solid`
+	fb.set_corner_radius_all(0)
+	fb.content_margin_left = 4; fb.content_margin_right = 4
+	fb.content_margin_top = 1; fb.content_margin_bottom = 1
+	var sb := UISkin.nine("chip-frame.png", 7, fb)
+	if sb is StyleBoxTexture:
+		var st := sb as StyleBoxTexture
+		st.modulate_color = Color(0.86, 0.80, 0.62)   # 偏金的签牌, 与金色表头字同调
+		st.content_margin_left = 4; st.content_margin_right = 4
+		st.content_margin_top = 1; st.content_margin_bottom = 1
+	box.add_theme_stylebox_override("panel", sb)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(l)
+	return box
+
+
 func _stats_column(header: String, units: Array, hc: Color) -> Control:
 	var grid := GridContainer.new()
 	grid.columns = 5
@@ -1517,7 +1612,21 @@ func _stats_column(header: String, units: Array, hc: Color) -> Control:
 	#     只是不再显示 —— 删字段会连带动到战中统计面板与合计页, 收益为零。
 	# ★★表头用【全称】(用户 2026-08-02:「文字都非常口语化, 玩家压根不知道在说什么」)。
 	#   "出伤/承伤" 是开发者行话缩写, 玩家看不懂; 列宽相应放宽。
-	var hdrs := [header, "造成伤害", "承受伤害", "治疗量", "击杀"]
+	## ★★★2026-09-28 表头换成【主动语态的短动词】(用户:「文字语言也是 ai 味」)。
+	##   改前: `造成伤害 / 承受伤害 / 治疗量 / 击杀` —— 前三个都是**规格书的写法**:
+	##     "造成…" "承受…" 是被动语态的名词短语, "治疗量"的"量"是统计口径词。
+	##     一排这样的词 + 一格一个数字 = 报表, 而这一屏该是一份**战报**。
+	##   改后: `打出 / 扛住 / 治疗 / 击杀` —— 主语是玩家的龟, 说它**干了什么**。
+	##   ★「扛住」不是我现编的: 本函数下面 MVP 那段注释里本来就写着「标出"这场谁扛的"
+	##     才让数据变成信息」—— 这个仓库自己的话就是"扛"。
+	##   ⚠ **不能退回「出伤 / 承伤」**: 2026-08-02 用户当场否过, 那是开发者行话缩写。
+	##     "打出/扛住"是日常口语动词, 不是缩写 —— 两回事。
+	##   ★门禁核实过: `grep -rn '"造成伤害"' tests/ tools/` 只命中装备文案那边的用例,
+	##     **没有任何断言抄这张表的表头**(所以这次改词不欠测试侧的同步)。
+	var hdrs := [header, "打出", "扛住", "治疗", "击杀"]
+	## 表头带一层【金属签底】—— 一行金色裸字压着几列数字就是 `<th>` + 数据行的长相,
+	## 也正是这一屏最像 dashboard 的地方。签底把"表头"变成"栏牌"。
+	## ★只有数值那 4 列有签底, 第 0 列(队名)不加 —— 它下面是名字不是数字, 也不需要对齐锚。
 	for i in range(5):
 		var l := Label.new()
 		l.text = hdrs[i]
@@ -1525,10 +1634,13 @@ func _stats_column(header: String, units: Array, hc: Color) -> Control:
 		l.add_theme_color_override("font_color", hc if i == 0 else Color("#ffd93d"))   # 金表头(回合制)
 		if i == 0:
 			l.custom_minimum_size = Vector2(126, 0)
-		else:
-			l.custom_minimum_size = Vector2(72, 0)   # ★容得下"造成伤害"四字表头 + 五位数值
-			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		grid.add_child(l)
+			grid.add_child(l)
+			continue
+		## ★64 + 签底左右内边距 4+4 = **72**, 与下面数值格的 72 逐位对齐 ——
+		##   栏牌比数值列宽就会把列挤开, 窄就会看出错位。这个数是算出来的不是试出来的。
+		l.custom_minimum_size = Vector2(64, 0)
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		grid.add_child(_hdr_plate(l))
 	# ★★MVP: 本队【造成伤害最高】的那只(不含召唤体)。一张全是数字的表, 玩家扫一眼
 	#   得不出任何结论; 标出"这场谁扛的"才让数据变成信息。
 	var mvp_dmg: int = 0
@@ -1607,9 +1719,14 @@ func _build_stats_panel() -> Control:
 	var sb = StyleBoxFlat.new()
 	# ★它现在嵌在结算卡里 —— 再来一圈 2px 亮边就是"框中框"。改成淡底 + 极细边做分区。
 	sb.bg_color = Color(0.09, 0.13, 0.19, 0.55)
+	## ★★2026-09-28 去掉那圈 1px 描边 + 改直角。
+	##   `圆角 8 + 1px 半透明描边 + 半透明底` = CSS `border-radius / border:1px solid / rgba()`
+	##   —— 这正是 `verify_info_panel_fits` 那条"网页盒"判据抓的形状(四边描边 + 底半透),
+	##   只不过那条判据只扫战斗信息面板, **结算屏在它视野外**。
+	##   分区不靠描边靠底色差(淡底本身已经把这块从卡片上分出来了)。
 	sb.border_color = Color(0.30, 0.48, 0.66, 0.28)
-	sb.set_border_width_all(1)
-	sb.set_corner_radius_all(8)
+	sb.set_border_width_all(0)
+	sb.set_corner_radius_all(0)
 	sb.content_margin_left = 18; sb.content_margin_right = 18
 	sb.content_margin_top = 12; sb.content_margin_bottom = 14
 	panel.add_theme_stylebox_override("panel", sb)
@@ -1617,7 +1734,10 @@ func _build_stats_panel() -> Control:
 	vb.add_theme_constant_override("separation", 8)
 	panel.add_child(vb)
 	var title = Label.new()
-	title.text = "战斗数据"
+	## ★2026-09-28「战斗数据」→「战报」。"数据"是后台词(dashboard 那味), 而这块东西
+	##   就是一份战报; 右上角那个键的 tooltip 与战中浮层的名牌同日改成同一个词 ——
+	##   原来三处叫三个名字(无标题 / 伤害统计 / 战斗数据), 指的却是同一件事。
+	title.text = "战报"
 	title.add_theme_font_size_override("font_size", 20)
 	title.add_theme_color_override("font_color", Color("#cfe6ff"))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -1654,7 +1774,11 @@ func _build_stats_panel() -> Control:
 		sep.custom_minimum_size = Vector2(1, 0)
 		sep.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		cols.add_child(sep)
-		cols.add_child(_stats_column("对方", pg["right"], Color("#ff9a9a")))
+		## ★2026-09-28「对方」→「敌方」: 同一件事这个游戏里有三种叫法 ——
+		##   结算表「我方/对方」、战中战报浮层「我方/敌方」、信息面板副标题「友军/敌方」。
+		##   本轮把前两处统一到【我方/敌方】(信息面板那处的"友军"没动 —— 它是一个单位的
+		##   归属标签, 不是两栏对照, 换了反而和这两处的语境混起来; 登记在案)。
+		cols.add_child(_stats_column("敌方", pg["right"], Color("#ff9a9a")))
 		cols.visible = false
 		body.add_child(cols)
 		bodies.append(cols)
@@ -1869,13 +1993,32 @@ func _make_team_frame(u: Dictionary) -> Control:
 	sb.bg_color = Color("#12161f")
 	sb.set_border_width_all(2)
 	sb.border_color = accent
-	sb.set_corner_radius_all(6)
+	## ★★2026-09-28 直角 + 九宫格槽框。
+	##   这一栏是**全程挂在屏幕两侧**的东西(左右队各 3 张), 改前每张都是
+	##   `圆角 6 + 2px 阵营色描边` = CSS 卡片, 一屏 6 张一起喊"网页"。
+	##   ★用槽框(`slot-frame.png`)而不是面板框: 这一格就是"一个单位的位子",
+	##     与信息面板的技能/装备槽同类(那里 2026-08-17 定过这条语义 ——
+	##     条框中间那道凹槽的含义是"这里要填一个量", 套在"一个位子"上是错配)。
+	##   ★阵营色不丢: 走 `modulate_color`(UISkin 铁律②——一张中性贴图 modulate 出所有状态,
+	##     各做一张图会把"按状态配色"这层信息吃掉)。`tint_of` 把饱和的蓝/红往白里提一档,
+	##     否则直接 modulate 会把框自己的明暗关系压没。
+	sb.set_corner_radius_all(0)
 	sb.content_margin_left = 6; sb.content_margin_right = 6
 	sb.content_margin_top = 5; sb.content_margin_bottom = 5
-	frame.add_theme_stylebox_override("panel", sb)
+	var fsb := UISkin.nine("slot-frame.png", 12, sb)
+	if fsb is StyleBoxTexture:
+		var fst := fsb as StyleBoxTexture
+		fst.modulate_color = UISkin.tint_of(accent)
+		## ★内边距要大于框自己的厚度, 否则青内沿会压在头像上(信息面板入口条那次的教训:
+		##   槽框比原来厚, 10 就让内沿压住了字, 量出来要 16)。这里横向宽松、纵向抠着给。
+		fst.content_margin_left = 10; fst.content_margin_right = 10
+		fst.content_margin_top = 8; fst.content_margin_bottom = 8
+	frame.add_theme_stylebox_override("panel", fsb)
 	frame.custom_minimum_size = Vector2(124, 0)
 	frame.mouse_filter = Control.MOUSE_FILTER_STOP   # 吃掉点击 (别穿到战场)
-	frame.tooltip_text = "%s · 点击看详情" % str(u.get("name", u.get("id", "")))
+	## ★2026-09-28「点击看详情」→「点开细看」: "点击…" 是网页的 call-to-action 句式
+	##   (Click for details 的直译), 而且"详情"和面板里的"详细"是两个词指一件事。
+	frame.tooltip_text = "%s · 点开细看" % str(u.get("name", u.get("id", "")))
 
 	var main_col = VBoxContainer.new()   # 头像行 + 装备格行
 	main_col.add_theme_constant_override("separation", 5)
@@ -2276,7 +2419,11 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	var minor: Array = battle._info_sys._info_stat_rows_minor(u)
 	## ★末尾那个参数是【取数 Callable】—— 次要属性里有活的(移速会被减速/加速改),
 	##   传字符串等于把开面板那一刻的数钉死。见 info_panel._info_more_row 的注释。
-	battle._info_sys._info_more_row(vb, "更多属性（%d 项）" % minor.size(),
+	## ★2026-09-28 去掉全角括号计数:「更多属性（11 项）」→「更多属性 · 11 项」。`（N 项）`
+	##   是文档列条目数的写法, 全角括号在这个游戏的 UI 里还是独一份(别处一律半角 + `·`)。
+	## ⚠ 前缀「更多属性」**必须留着** —— `verify_panel_stats_onscreen.gd:260` 的
+	##   `_find_label_node(n, "更多属性")` 靠它找到这条入口(分母断言, 丢了后面整组变空检查)。
+	battle._info_sys._info_more_row(vb, "更多属性 · %d 项" % minor.size(),
 		battle._info_sys._more_stats_text(u), "more_stats", u,
 		func() -> String: return battle._info_sys._more_stats_text(u))
 	battle._info_stat_grid = gmain

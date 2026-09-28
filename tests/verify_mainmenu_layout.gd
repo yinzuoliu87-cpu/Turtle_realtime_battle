@@ -338,8 +338,28 @@ func _ready() -> void:
 	if note_today != "":
 		_ok("⑬b ★今天是「%s」(玩法还没上线) → 收盘块必须直说" % today_ph,
 			joined.find(note_today) >= 0, "条子里没有「%s」: %s" % [note_today, str(strip_txt)])
-		_ok("⑬b ★分母: 那句话确实是产品的纯函数给的, 不是我在门禁里硬写的",
-			note_today.find("开发中") >= 0, note_today)
+		## ★★2026-09-28 这条分母原来是 `note_today.find("开发中") >= 0` ——
+		##   拿**开发状态词**当「这句话来自产品」的证据。而「开发中」这类词
+		##   正是这一轮要从玩家面前摘掉的东西(玩家不需要知道我们还没做完,
+		##   只需要知道**现在按什么规则打**)⇒ 产品一改对, 这条分母就红。
+		##   典型的「门禁把 bug 钉在原地」: 判据替那个缺陷站了岗。
+		## ★改成量它**本来想证明的那件事**: 这句话得是产品纯函数算出来的、
+		##   而且**说清了今天按谁的规矩打**。后者用 `PHASE_LABEL` 那张表取,
+		##   **不在门禁里抄一份字面量** —— 抄了就又变成一份会落后的副本。
+		var _rk_name: String = str(_P2M.PHASE_LABEL.get(_P2M.PHASE_RANKED, ""))
+		_ok("⑬b ★分母: 那句话是产品纯函数给的, 且说清了今天按谁的规矩打",
+			_rk_name != "" and note_today.find(_rk_name) >= 0,
+			"规矩名「%s」/ 那句话「%s」" % [_rk_name, note_today])
+		## ★同时守住: 屏幕上**不许**出现开发状态词。
+		##   (原判据是「必须含开发中」, 现在是「不许含」—— 方向反过来了,
+		##    因为当初那个「必须」本身就是在替缺陷站岗。)
+		var _devw: Array = ["开发中", "打磨", "待做", "TODO", "占位", "未实现", "暂按", "暂锁", "还没做"]
+		var _hit_dev: Array = []
+		for _w in _devw:
+			if note_today.find(str(_w)) >= 0:
+				_hit_dev.append(_w)
+		_ok("⑬b ★收盘块不许把开发状态说给玩家听",
+			_hit_dev.is_empty(), "命中: %s ← 「%s」" % [str(_hit_dev), note_today])
 	elif today_ph == _P2M.PHASE_FINALS:
 		## ★★★2026-09-27 补上这一支。原来 else 那一支写着「今天是积分赛」, 而
 		##   `phase_pending_note()` 为空的条件是**玩法已上线** —— 周六闯关赛(2026-09-22 上线)
@@ -443,11 +463,24 @@ func _ready() -> void:
 			continue
 		_ok("⑬c ★分母(%s): 收盘块真建出了文字" % dn, btxt.size() >= 2, bj)
 		if want_kind == "note":
-			## ① 屏幕上必须说清**实际会发生什么** —— 判据写死, 不引被测函数。
-			##   ★needle 取「暂按积分赛规则」而不是「开发中」: 周一是设计上就没有玩法(休赛),
-			##     说开发中是另一种谎, 所以两天的前半句不同、**后半句才是共同的信息**。
-			_ok("⑬c ★%s: 玩法没上线 → 条子上要说清暂按什么规则" % dn,
-				bj.find("暂按积分赛规则") >= 0, bj)
+			## ① 屏幕上必须说清**实际会发生什么** —— 判据不引 `phase_pending_note()`
+			##   (拿被测函数当尺子: 它退化成空串时, 判据会跟着走进 else 分支然后全绿)。
+			## ★★2026-09-27 needle 从「暂按积分赛规则」换成**这天实际按哪个赛制的规矩打**,
+			##   取 `PHASE_LABEL[PHASE_RANKED]`(玩家看到的那个阶段名) —— 那是一张**数据表**、
+			##   不是被测函数, 而且它就是"按谁的规矩"这条信息本身。
+			##   换的原因: 「暂按」「开发中」是**开发备注印给了玩家**, 已从产品里摘掉
+			##   (见 `phase2_config.PHASE_PENDING_NOTE` 头注 2026-09-27 那段)。
+			##   判据不许把那几个词焊回去 —— 否则它会替那个缺陷站岗。
+			## ★只换 needle 是半条: 换完还得守住"别人再把开发状态词加回来" ⇒ 多一条。
+			_ok("⑬c ★%s: 条子上必须说清这天按【哪个赛制】的规矩打" % dn,
+				bj.find(str(_P2M.PHASE_LABEL[_P2M.PHASE_RANKED])) >= 0,
+				"要出现「%s」· 条子上是「%s」" % [str(_P2M.PHASE_LABEL[_P2M.PHASE_RANKED]), bj])
+			var devnote: Array = []
+			for w in ["开发中", "暂按", "待做", "TODO", "占位", "未实现"]:
+				if bj.find(str(w)) >= 0:
+					devnote.append(str(w))
+			_ok("⑬c ★★%s: 屏幕上不许出现开发状态词(玩家不需要知道我们做到哪了)" % dn,
+				devnote.is_empty(), "撞上 %s · 条子上是「%s」" % [str(devnote), bj])
 			## ② 而且必须**就是产品那个纯函数给的那一句**(否则 UI 自己抄了一份, 必然漂)
 			_ok("⑬c ★%s: 条子上那句 == phase_pending_note() 给的那句" % dn,
 				want_note != "" and bj.find(want_note) >= 0,
