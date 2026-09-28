@@ -206,6 +206,54 @@ func _post_scene_state(scene_name: String, inst: Node) -> void:
 			inst.call("_rebuild")
 
 
+## ── A2. ★★★登录墙 —— 这一屏**至今一次都没被本门禁量过** (2026-09-28) ──
+##
+## 由来(用户真机报「邮箱注册没用, app 里操作没反应」): `MENU_SCENES` 里那个 "Settings"
+## 载的是**普通设置页**。墙只在 `login_wall_on(后端开着, 邮箱为空)` 时才建, 而门禁给每个
+## 测试 `TURTLE_SUPABASE=" "`(有意关后端) ⇒ `SB.enabled()` 恒假 ⇒ **墙从来不在场**。
+## 探针 `tests/_probe_wall_hit.gd` 实测: 不注入 `acct_override` 时这一屏扫到 7 个可点元素
+## (顶栏返回 + 滑条把手那些), `_email_layer = false` —— **墙一个控件都没量到**。
+## 而这一屏是**每个新玩家开游戏看到的第一屏**(关不掉、返回箭头都藏了),
+## 本门禁两条主判据(按钮越界 / 按钮被后画的面板盖住)正是为它这种"盖上来的一层"准备的。
+## —— memory `fb-gate-subject-never-constructed`: 判据没错, 被测对象不在场。
+##
+## ★不走 `_check_scene_buttons`: 那个函数要 `await create_timer(1.7)` 等入场 tween,
+##   而墙**没有入场动画**, 白等 1.7 秒会把 4000 帧的预算吃掉一块。
+func _check_login_wall(vp: Vector2) -> void:
+	var ps = load("res://scenes/Settings.tscn")
+	if ps == null:
+		_ok("登录墙: 载入 Settings.tscn", false, "load 失败")
+		return
+	var gs = get_node_or_null("/root/GameState")
+	if gs != null:
+		gs.test_mode = true
+		gs.account_email = ""          ## 没绑邮箱 = 墙的条件之一
+	var inst = ps.instantiate()
+	## ★必须在 `add_child` **之前**注入 —— `_ready` 是 add_child 那一刻跑的,
+	##   之后再设就晚了(墙已经按真实配置决定过建不建)。
+	inst.acct_override = 1
+	add_child(inst)
+	for _i in range(8):
+		await get_tree().process_frame
+	_ok("登录墙: ★分母 墙真的立起来了(没立 ⇒ 下面两条量的是普通设置页, 不是墙)",
+		inst._email_layer != null and is_instance_valid(inst._email_layer))
+	var btns: Array = []
+	_visible_buttons(inst, btns)
+	var names: Array = []
+	for b in btns:
+		names.append(str((b as Button).text) if b is Button else b.name)
+	## ★分母②: 墙立起来时背后的设置页是**藏掉的** ⇒ 可见按钮只剩墙上那两个。
+	##   数多了就说明墙没盖住(那时量的是另一块屏)。
+	_ok("登录墙: ★分母 可见按钮 %d 个 = 墙上那两个(发验证码/确认)" % btns.size(),
+		btns.size() == 2 and names.has("发验证码") and names.has("确认"), str(names))
+	var bad := _offscreen_buttons(inst, vp)
+	_ok("登录墙: %d 个可见按钮全在屏内" % btns.size(), bad.is_empty(), "; ".join(bad))
+	var occ := _occluded_buttons(inst, vp)
+	_ok("登录墙: 无按钮被后画的面板盖住", occ.is_empty(), "; ".join(occ))
+	inst.queue_free()
+	await get_tree().process_frame
+
+
 func _check_scene_buttons(scene_name: String, vp: Vector2) -> void:
 	var ps = load("res://scenes/%s.tscn" % scene_name)
 	if ps == null:
@@ -253,6 +301,7 @@ func _ready() -> void:
 	print("  (画布=", vp_real, ")")
 	for sn in MENU_SCENES:
 		await _check_scene_buttons(sn, vp_real)
+	await _check_login_wall(vp_real)
 
 	# ── B. 调试场入口存在 + 接线到 DEBUG_EDIT ──
 	## ★2026-09-18 入口从主菜单搬到了【设置页】(用户:「调试场可以塞到设置里, 正式上线的不会要调试场」)。

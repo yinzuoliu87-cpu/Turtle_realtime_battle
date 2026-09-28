@@ -717,6 +717,7 @@ scripts/scenes/SettingsScene.gd|text|先不选
 scripts/scenes/SettingsScene.gd|text|关闭
 scripts/scenes/SettingsScene.gd|text|发验证码
 scripts/scenes/SettingsScene.gd|text|清空，我确定
+scripts/scenes/SettingsScene.gd|text|版本 
 scripts/scenes/SettingsScene.gd|text|用你绑过的邮箱收一个验证码，把那个账号和它的进度取回到这台设备上。\n
 scripts/scenes/SettingsScene.gd|text|确认
 scripts/scenes/SettingsScene.gd|text|起个名字(%d~%d 个字) —— 排行榜和对阵图上别人看到的就是它

@@ -380,6 +380,18 @@ func _small_button(cx: float, cy: float, label: String, cb: Callable) -> Button:
 ##   提示语写「邮件里的验证码」: 万一收到的邮件没有码,
 ##   测试者一眼就知道是哪儿的问题, 而不是对着输入框发呆。
 var _email_layer: Control = null
+## 对话框那块框本体。★位置**不在建的时候写死**, 由 `_email_relayout()` 每帧算
+##   (居中于真实视口 + 给虚拟键盘让位) —— 见那个函数的头注。
+var _email_box: Panel = null
+## 【门禁注入点】虚拟键盘高度(**视口单位**)。< 0 = 真实读 `DisplayServer`。
+##
+## ★为什么必须有它: 无头 `DisplayServer.has_feature(FEATURE_VIRTUAL_KEYBOARD)` **实测为 false**
+##   (探针 `tests/_probe_ds_vkb.gd`), `window_get_size()` 还是 `(0,0)` ⇒ 键盘让位那一支
+##   在门禁里**永远走不到**, 判据就是空检查(memory `fb-gate-subject-never-constructed`)。
+## ★默认 -1 ⇒ **玩家路径一字不动**(与 `acct_override` / `clock_override_ts` 同一个模式)。
+static var vkb_override_vp: float = -1.0
+## 键盘让位时, 可点元素与键盘上沿(以及与屏幕上沿)之间留的余量。
+const _KB_GAP := 8.0
 ## 这一次弹出来的是**关不掉的墙**还是玩家自己点开的对话框。
 ## ★两者在成功之后该做的事不一样: 墙要**放人进游戏**, 自己点开的只要染绿等他关。
 var _email_wall: bool = false
@@ -460,8 +472,23 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 	##   不该还留着。实拍看就是对话框底下空出一大块。
 	if not dismissible:
 		_bh -= 64.0
-	box.position = Vector2(W / 2.0 - 260, H / 2.0 - _bh / 2.0); box.size = Vector2(520, _bh)
+	## ★★★2026-09-28 墙上要印版本号。
+	##   用户实测撞上的: 他被墙挡住、报「邮箱注册没用」, 而**说不出版本号** ——
+	##   因为版本号只画在**主菜单右下角**(`MainMenuScene.gd:659`), 而这堵墙
+	##   **挡在主菜单之前**。⇒ 最需要报版本的人, 恰恰是唯一看不到版本的人。
+	## ★CLAUDE.md §2.5 原话: 「版本号的全部价值在于测试者报 bug 时能说清是哪个版本」——
+	##   那句话在这一屏上一直不成立。
+	## ★读 ProjectSettings, **不写死**(门禁扫硬编码字面量)。
+	if not dismissible:
+		_bh += 22.0
+	box.size = Vector2(520, _bh)
+	## ★★位置**不在这里写死** —— 交给 `_email_relayout()`(居中于真实视口 + 键盘让位)。
+	##   原来这一行是 `Vector2(W / 2.0 - 260, H / 2.0 - _bh / 2.0)`, 即 1280x720 的
+	##   **设计坐标**, 而 iPhone 横屏视口是 1560x720(canvas_items + expand 锁高)
+	##   ⇒ 探针 `_probe_wall_hit` 实测整块墙**偏左 140px**。
+	_email_box = box
 	dim.add_child(box)
+	_email_relayout()
 
 	var ttl := Label.new()
 	ttl.text = (_P2C.login_wall_head() if not dismissible
@@ -533,6 +560,10 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 	_email_edit = LineEdit.new()
 	_email_edit.placeholder_text = "你的邮箱"
 	_email_edit.text = str(GameState.account_email)
+	## ★★键盘**类型**要对(2026-09-28)。它不只是方便: 中文键盘的候选条会让键盘再高
+	##   一档(41.5% → ≈52% 屏高), 而这一屏的按钮就在那条线附近(见 `_email_relayout` 头注)。
+	##   `KEYBOARD_TYPE_EMAIL_ADDRESS` 直接给 ASCII + `@` 键, 没有候选条。
+	_email_edit.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_EMAIL_ADDRESS
 	_email_edit.add_theme_font_size_override("font_size", 16)
 	_email_edit.position = Vector2(40, 136 + _dy); _email_edit.size = Vector2(440, 44)
 	_skin_edit(_email_edit)
@@ -550,6 +581,9 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 
 	_code_edit = LineEdit.new()
 	_code_edit.placeholder_text = "邮件里的验证码"
+	## ★码是纯数字(`verify_code_async` 的提示原话:「把邮件里那串数字填进来」)
+	##   ⇒ 给数字键盘。同上: 顺带避掉中文候选条那一档高度。
+	_code_edit.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_NUMBER
 	_code_edit.add_theme_font_size_override("font_size", 16)
 	_code_edit.position = Vector2(40, 244 + _dy); _code_edit.size = Vector2(440, 44)
 	_skin_edit(_code_edit)
@@ -583,6 +617,19 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 
 	## ★★登录墙**不给关闭** —— 关得掉的墙不是墙。
 	##   (这一条被 `verify_login_wall` 守着: 墙上不许有可点的关闭。)
+	## ★墙上的版本号(见上面那段): 只在墙上印, 普通弹窗不印(那时主菜单就在背后)。
+	if not dismissible:
+		var vl := Label.new()
+		vl.text = "版本 " + str(ProjectSettings.get_setting("application/config/version", "?"))
+		vl.name = ACCT_ROW_PREFIX + "WallVer"
+		vl.add_theme_font_size_override("font_size", 13)
+		vl.add_theme_color_override("font_color", Color("#7f8fa6"))
+		## ★位置是**量出来的**不是摆的: 框走 panel-frame 九宫格, 边带 13px。
+		##   第一版放 `_bh - 30`(底 = _bh-10) ⇒ 门禁当场报「文字压边带 +3」。
+		##   改成 `_bh - 40`(底 = _bh-20) ⇒ 离边带内沿还剩 7px。
+		vl.position = Vector2(40, _bh - 40.0); vl.size = Vector2(440, 20)
+		vl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		box.add_child(vl)
 	if dismissible:
 		var close := Button.new()
 		close.text = "关闭"
@@ -591,7 +638,7 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 		close.position = Vector2(40, 404 + _dy); close.size = Vector2(440, 46)
 		close.pressed.connect(func():
 			_SB_ACC.reset_email_flow()
-			dim.queue_free(); _email_layer = null)
+			dim.queue_free(); _email_layer = null; _email_box = null)
 		UISkin.button(close)
 		box.add_child(close)
 
@@ -603,6 +650,119 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 	t.timeout.connect(_email_poll)
 	dim.add_child(t)
 	_email_poll()
+
+
+# ─── 对话框的位置 = 居中于真实视口 + 给虚拟键盘让位 (2026-09-28) ───────────
+##
+## ══════════════════════════════════════════════════════════════════════
+##  由来: 用户真机报「邮箱注册没用, app 里操作没反应」
+## ══════════════════════════════════════════════════════════════════════
+## 发信层(手工 `PUT /auth/v1/user` 回 200 · 两个邮箱都收到码)与客户端状态机
+## (`tests/_probe_wall_live.gd` 真后端实测 token→sending→sent)都已排除。
+## 剩下**触摸层**这一条没人查过, 探针 `tests/_probe_wall_hit.gd` 量出两件真事:
+##
+##   ① **这堵墙在任何非 16:9 的屏上都不居中。** 原来位置写死成 1280x720 的设计坐标,
+##      而 `project.godot` 是 `canvas_items + expand`(锁受限那一轴) ⇒ iPhone 横屏
+##      视口是 **1560x720** ⇒ 实测框在 x=380, 居中该是 520, **整块偏左 140px**。
+##      iPad 4:3 是 1280x960 ⇒ 竖着也偏(117 vs 该有的 237)。
+##      ★这一屏是**每个新玩家看到的第一屏**, 而全项目别的屏都由 `UIFrame` 居中过;
+##        只有它没有 —— 因为遮罩是满铺层, `UIFrame` 按设计**不收编**满铺层,
+##        于是框跟着遮罩留在了视口坐标系里, 却仍用设计坐标定位。
+##
+##   ② **全仓一处虚拟键盘处理都没有**(`grep -rn virtual_keyboard --include=*.gd` = 0 行)。
+##      iPhone 横屏键盘高 162pt / 屏高 390pt = **41.5%** ⇒ 视口 720 里顶边 y≈421,
+##      而实测「验证码」输入框 421~465、「确认」471~517 —— **两个都在键盘底下**。
+##      中文键盘带候选条再高一档(≈52%) ⇒ 连「发验证码」(363~409)一起埋掉。
+##      ⇒ 玩家点完邮箱框、键盘一弹, 他要按的那个钮就**不在屏幕上了** —— 这正是
+##        「点了没反应」最可能的形状。iOS 上 Godot 的键盘是**盖上来的**, 视口不缩,
+##        不自己读 `virtual_keyboard_get_height()` 让位就一定被埋。
+##
+## ★为什么每帧算而不是建的时候算一次: 键盘是**弹出/收起**的, 位置得跟着走;
+##   而且 `dim` 刚 `add_child` 那一刻锚点还没解算(本文件 `why.size` 那段记的同一坑)。
+func _email_relayout() -> void:
+	if _email_box == null or not is_instance_valid(_email_box):
+		return
+	var av: Vector2 = _email_avail()
+	## ★★照 `UIFrame` 自己那条居中公式(`_center()`: 设计框居中于可用区), **不另发明一套** ——
+	##   这样墙和别的屏落在同一个坐标系里(memory `fb-hand-rolled-copies-drift`)。
+	var origin: Vector2 = ((av - UIFrame.DESIGN) * 0.5).round()
+	origin.x = maxf(0.0, origin.x)
+	origin.y = maxf(0.0, origin.y)
+	var p: Vector2 = origin + Vector2(W / 2.0 - 260.0, H / 2.0 - _email_box.size.y / 2.0)
+	## 键盘让位: **只往上挪, 绝不往下**(往下只会把东西推得更深)。
+	##
+	## ★★让位量按「**最低的那个可点元素**」算, 不按框底算 —— 框底下面还有状态行和
+	##   版本号那两行**只读的字**, 它们躲进键盘后面完全没关系。按框底算会白挪 65px,
+	##   把标题顶出屏幕去换两行不用看的字, 那是**判据没匹配被测概念**。
+	## ★★能挪到的最上限是「**说明文字可以顶出去, 可点元素一个都不许顶出去**」:
+	##   玩家正在打字, 他要看见输入框和那个钮; 而「你的进度还在…」那段他已经读过了。
+	var kb: float = _vkb_height_vp(av)
+	if kb > 0.0:
+		var band: Vector2 = _email_ctl_band()      ## x = 最高可点元素顶, y = 最低可点元素底
+		p.y = minf(p.y, maxf(_KB_GAP - band.x, av.y - kb - band.y - _KB_GAP))
+	_email_box.position = p.round()
+
+
+## 框里**可点元素**竖向占的那一段(框内局部坐标): x = 最上沿, y = 最下沿。
+## ★从真实子节点量, 不写死 y 值 —— 绑定/取回两条流程行数不同(`_dy`),
+##   写死就是抄一份永远落后(memory `fb-hand-rolled-copies-drift`)。
+func _email_ctl_band() -> Vector2:
+	var lo: float = -1.0
+	var hi: float = 0.0
+	if _email_box != null and is_instance_valid(_email_box):
+		for ch in _email_box.get_children():
+			if not (ch is LineEdit or ch is BaseButton):
+				continue
+			var c := ch as Control
+			lo = c.position.y if lo < 0.0 else minf(lo, c.position.y)
+			hi = maxf(hi, c.position.y + c.size.y)
+	if lo < 0.0:
+		return Vector2(0.0, _email_box.size.y if _email_box != null else 0.0)
+	return Vector2(lo, hi)
+
+
+## 这一屏的可用区。★优先用根 Control 自己的矩形(.tscn 里是铺满视口的),
+## 拿不到再退视口, 最后退设计尺寸 —— 与 `UIFrame._avail()` 同一套退路。
+## (门禁里有 `SET.new()` 裸实例这种用法, 那时 `size` 是 0, 必须退得下去。)
+func _email_avail() -> Vector2:
+	var s: Vector2 = size
+	if s.x < UIFrame.DESIGN.x or s.y < 360.0:
+		var vp := get_viewport()
+		s = Vector2(vp.get_visible_rect().size) if vp != null else UIFrame.DESIGN
+	return Vector2(maxf(s.x, UIFrame.DESIGN.x), maxf(s.y, UIFrame.DESIGN.y))
+
+
+## 虚拟键盘现在有多高, **换算成视口单位**。没有键盘 ⇒ 0。
+##
+## ★`has_feature` 要先问一声: 桌面/无头直接调 `virtual_keyboard_get_height()` 会
+##   **每帧刷一条 WARNING**(实测 `Virtual keyboard not supported by this display server`)。
+## ★门禁注入(`vkb_override_vp`)优先 —— 无头下 `has_feature` 实测就是 false,
+##   不给缝的话键盘那一支永远走不到, 判据变空检查。
+func _vkb_height_vp(av: Vector2) -> float:
+	if vkb_override_vp >= 0.0:
+		return vkb_override_vp
+	if not DisplayServer.has_feature(DisplayServer.FEATURE_VIRTUAL_KEYBOARD):
+		return 0.0
+	return _vkb_to_vp(float(DisplayServer.virtual_keyboard_get_height()),
+		av, Vector2(DisplayServer.window_get_size()))
+
+
+## 物理窗口像素 → 视口单位。**纯函数**, 门禁直接量它。
+##
+## ★为什么要折算: `virtual_keyboard_get_height()` 给的是**物理窗口像素**
+##   (iPhone 14 横屏 3x: 键盘 162pt = 486px, 窗口 390pt = 1170px),
+##   而视口是 1280x720 拉伸的 ⇒ 不折算就会挪错量(486 而不是 299)。
+## ★`window_get_size()` 无头返回 `(0, 0)`(实测) ⇒ 除零要挡住。
+static func _vkb_to_vp(kb_px: float, av: Vector2, win: Vector2) -> float:
+	if kb_px <= 0.0 or win.y <= 1.0 or av.y <= 1.0:
+		return 0.0
+	return kb_px * (av.y / win.y)
+
+
+## ★只在对话框开着的时候动 —— 这一屏平时不需要每帧做事。
+func _process(_dt: float) -> void:
+	if _email_layer != null and is_instance_valid(_email_layer):
+		_email_relayout()
 
 
 ## 把网络层那个小状态机画出来。**每一步都要有话说** ——

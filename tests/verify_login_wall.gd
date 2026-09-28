@@ -59,6 +59,10 @@ func _ready() -> void:
 	print("=== 登录墙 ===")
 	_t_rule()
 	await _t_wall_ui()
+	## ★★必须排在 `_t_identity_under_wall` **之前**: 那一节会真 `change_scene_to_file`
+	##   把 MainMenu 加到 root 上, 而它**画在本门禁后面** ⇒ 它会把这一节推进去的
+	##   鼠标事件全部吃掉(命中测试只认最上面那个)。顺序反了这一整节就是空检查。
+	await _t_touch()
 	await _t_identity_under_wall()
 	for k in KEYS:
 		GameState.set(k, _bak[k])
@@ -114,6 +118,42 @@ func _ready() -> void:
 	_ok("④ ★★对照组: **自己点开的**对话框绑成功后留在原地(不跳走)",
 		st5._post_bind_dest() == "", st5._post_bind_dest())
 	st5.queue_free()
+	await get_tree().process_frame
+
+	## ══════════════════════════════════════════════════════════════════════
+	##  ⑤ ★★★墙上必须印版本号 (2026-09-28)
+	## ══════════════════════════════════════════════════════════════════════
+	## 用户实测撞上的: 他被墙挡住、报「邮箱注册没用」, 而**说不出自己装的是哪个版本** ——
+	## 因为版本号只画在**主菜单右下角**(`MainMenuScene.gd:659`), 而这堵墙**挡在主菜单之前**。
+	## ⇒ **最需要报版本的人, 恰恰是唯一看不到版本的人。**
+	## CLAUDE.md §2.5 原话:「版本号的全部价值在于测试者报 bug 时能说清是哪个版本」
+	## —— 那句话在这一屏上一直不成立, 而这一屏是**每个新玩家看到的第一屏**。
+	## ★判据量两件事: ①墙上真的有那行字 ②它**等于 ProjectSettings 里的真值**
+	##   (不许写死 —— 写死的版本号比没有更坏: 它会一直报一个假版本)。
+	print("── ⑤ 墙上要印版本号 ──")
+	GameState.account_email = ""          ## 没绑邮箱 ⇒ 墙该立起来
+	var st6 = SET.new()
+	add_child(st6)
+	await get_tree().process_frame
+	st6._open_email_dialog(SB.FLOW_BIND, false)   ## false = **墙**那一档
+	await get_tree().process_frame
+	_ok("⑤ ★分母: 墙真的建起来了(否则下面量的是空气)", st6._email_layer != null)
+	var _vtxt := ""
+	var _stack: Array = [st6]
+	while not _stack.is_empty():
+		var n = _stack.pop_back()
+		if n is Label and str((n as Label).text).begins_with("版本 "):
+			_vtxt = str((n as Label).text)
+		for c in (n as Node).get_children():
+			_stack.append(c)
+	var _real := str(ProjectSettings.get_setting("application/config/version", ""))
+	_ok("⑤ ★分母: ProjectSettings 里读得到版本(读不到的话下一条是空检查)",
+		_real != "", _real)
+	_ok("⑤ ★★★墙上印着版本号(被墙挡住的人才报得出自己是哪个版本)",
+		_vtxt != "", _vtxt)
+	_ok("⑤ ★★墙上那个版本 == ProjectSettings 的真值(不许写死)",
+		_vtxt.find(_real) >= 0, "墙上「%s」 vs 真值「%s」" % [_vtxt, _real])
+	st6.queue_free()
 	await get_tree().process_frame
 
 	print("ALL PASS — 登录墙" if _fail == 0 else "FAIL x%d" % _fail)
@@ -303,6 +343,239 @@ func _t_identity_under_wall() -> void:
 	GameState.finals_report_pending = {}
 	SB.finals_report_clear()
 	_reqs.clear()
+
+
+# ─────────────────────────────────────────────────────────────
+# ⑥ ★★★墙上到底点得到吗 —— 触摸层 (2026-09-28)
+#
+#    由来: 用户真机报「邮箱注册没用, app 里操作没反应」。
+#    发信层(手工 `PUT /auth/v1/user` 回 200 · 两个邮箱都收到码)与客户端状态机
+#    (`tests/_probe_wall_live.gd` 真后端实测 token→sending→sent)都已排除
+#    ⇒ 剩下**触摸层**这一条从没人查过, 而上面 ①~⑤ 一条都不碰它:
+#    它们验的是「墙该不该立」「关不关得掉」「放不放人」「印没印版本」,
+#    **没有一条验「玩家的手指按下去, 产品有没有动」**。
+#
+#    ★三件事各自成段, 每段都配分母:
+#      ⑥a 热区 + **谁吃到这一点**(`gui_get_hovered_control` 让引擎自己算, 不看
+#          `mouse_filter` 猜 —— `RichTextLabel` 那条坑证明光看 filter 是不够的)
+#      ⑥b **按下去真的有事发生**: 推真 `InputEventMouseButton`, 看产品状态/真实请求
+#      ⑥c **虚拟键盘**: 全仓原来一处都没处理(`grep -rn virtual_keyboard --include=*.gd` = 0),
+#          而 iPhone 横屏键盘 41.5% 屏高 ⇒ 实测「验证码」框与「确认」钮都在键盘底下。
+# ─────────────────────────────────────────────────────────────
+## iPhone 14/15 横屏画布(2.167:1) —— 与 `verify_ios_ui` 同一口径。
+const VP_PHONE := Vector2(1560.0, 720.0)
+## 本仓触控线: 81px = 44pt(见 `top_bar.gd` / `verify_ui_consistency.TOUCH_MIN`)。
+const PX_PER_PT := 81.0 / 44.0
+
+
+func _wf(n: int) -> void:
+	for _i in range(n):
+		await get_tree().process_frame
+
+
+## 这棵子树里**玩家能操作**的控件。判据与 `verify_ui_consistency._interactive` 同口径。
+func _hot(root) -> Array:
+	var out: Array = []
+	if root == null or not is_instance_valid(root):
+		return out
+	var stack: Array = [root]
+	while not stack.is_empty():
+		var n = stack.pop_back()
+		if n is Control and (n as Control).is_visible_in_tree():
+			var c := n as Control
+			if c is BaseButton or c is Range or c is LineEdit or c is TextEdit:
+				out.append(c)
+		for ch in (n as Node).get_children():
+			stack.append(ch)
+	return out
+
+
+func _txt_of(c: Control) -> String:
+	if c is Button:
+		return str((c as Button).text)
+	if c is LineEdit:
+		return "输入框「%s」" % str((c as LineEdit).placeholder_text)
+	return c.name
+
+
+## 引擎在 `p` 这一点真正选中的是谁 —— 推真 MouseMotion, 让 GUI 系统自己算。
+func _hover_at(p: Vector2) -> Control:
+	var mm := InputEventMouseMotion.new()
+	mm.position = p
+	mm.global_position = p
+	get_viewport().push_input(mm)
+	var h = get_viewport().gui_get_hovered_control()
+	return h as Control if h is Control else null
+
+
+func _tap(p: Vector2) -> void:
+	for down in [true, false]:
+		var e := InputEventMouseButton.new()
+		e.button_index = MOUSE_BUTTON_LEFT
+		e.pressed = down
+		e.position = p
+		e.global_position = p
+		get_viewport().push_input(e)
+
+
+func _t_touch() -> void:
+	print("── ⑥ 墙上点得到吗(触摸层) ──")
+	var vp0 := get_tree().root.size
+	get_tree().root.size = Vector2i(VP_PHONE)
+	await _wf(2)
+	OS.set_environment("TURTLE_SUPABASE", DEAD_URL)
+	SB._reset_auth_for_test()
+	GameState.account_email = ""
+	GameState.account_id = "uid-touch"
+	var inst = (load("res://scenes/Settings.tscn") as PackedScene).instantiate()
+	inst.acct_override = 1          ## ★必须在 add_child **之前** —— `_ready` 那一刻就决定建不建墙
+	add_child(inst)
+	await _wf(8)
+	_ok("⑥ ★分母: 墙真的立起来了(没立起来 ⇒ 下面整节是空检查)",
+		inst._email_layer != null and is_instance_valid(inst._email_layer))
+	if inst._email_layer == null:
+		inst.queue_free()
+		get_tree().root.size = vp0
+		await _wf(2)
+		return
+
+	# ── ⑥a 热区 + 谁吃到这一点 ────────────────────────────────
+	var hot := _hot(inst._email_layer)
+	_ok("⑥a ★分母: 墙上找到了 ≥5 个可点元素(昵称/邮箱/验证码/发码/确认)",
+		hot.size() >= 5, "实得 %d 个" % hot.size())
+	var eaten_by_other: Array = []
+	var too_small: Array = []
+	for c in hot:
+		var r: Rect2 = (c as Control).get_global_rect()
+		var mn: float = minf(r.size.x, r.size.y)
+		var mx: float = maxf(r.size.x, r.size.y)
+		var h := _hover_at(r.get_center())
+		var mine: bool = h == c or (h != null and (c as Control).is_ancestor_of(h))
+		print("     %-22s %-9s %s  短边 %.0fpx=%.1fpt  吃到这一点: %s"
+			% [_txt_of(c as Control).substr(0, 20), c.get_class(),
+				"%.0f,%.0f %.0fx%.0f" % [r.position.x, r.position.y, r.size.x, r.size.y],
+				mn, mn / PX_PER_PT, ("自己" if mine else str(h))])
+		if not mine:
+			eaten_by_other.append("%s ← %s" % [_txt_of(c as Control), str(h)])
+		## 「长条」按本仓成规豁免(整行 440 宽本来就好点, 见 `verify_ui_consistency` 的 tap 那列),
+		## 但**短边连 200 都不到的小方块**没有这个理由。
+		if mn < 81.0 and mx < 200.0:
+			too_small.append("%s %.0fx%.0f" % [_txt_of(c as Control), r.size.x, r.size.y])
+	## ★这一条**不是恒真**: 反向验证把 `dim.mouse_filter` 换成一块盖在按钮上的
+	##   `MOUSE_FILTER_STOP` 兄弟节点, 这里立刻报"← 那个节点"。
+	_ok("⑥a ★★★每个可点元素**自己**吃到落在它身上的那一点(被别人吃掉 = 点了没反应)",
+		eaten_by_other.is_empty(), str(eaten_by_other))
+	_ok("⑥a ★没有短边<44pt 的**小方块**靶子(整行长条按成规豁免, 见判据里的注释)",
+		too_small.is_empty(), str(too_small))
+	## ⑥a-2 居中: 原来位置写死成 1280x720 设计坐标 ⇒ 1560 宽的屏上整块偏左 140px。
+	var box: Control = null
+	for ch in (inst._email_layer as Node).get_children():
+		if ch is Panel:
+			box = ch as Control
+	_ok("⑥a ★分母: 找到了对话框那块框", box != null)
+	if box != null:
+		var cx: float = box.get_global_rect().get_center().x
+		_ok("⑥a ★★墙在**真实视口**里居中(写死设计坐标 ⇒ iPhone 横屏偏左 140px)",
+			absf(cx - VP_PHONE.x / 2.0) <= 1.0,
+			"框中心 x=%.0f  视口中心 x=%.0f" % [cx, VP_PHONE.x / 2.0])
+
+	# ── ⑥b 按下去真的有事发生 ──────────────────────────────────
+	inst._email_edit.text = "touch@example.com"
+	SB.reset_email_flow()
+	await _wf(20)
+	_ok("⑥b ★分母①: 不按的话状态**不会自己变**(变了 ⇒ 下面那条恒真)",
+		SB.email_state() == SB.EM_IDLE, SB.email_state())
+	var dimr: Rect2 = (inst._email_layer as Control).get_global_rect()
+	_tap(Vector2(dimr.position.x + 20.0, dimr.position.y + 20.0))
+	await _wf(6)
+	_ok("⑥b ★分母②: 点**空白遮罩**不该有事发生(有 ⇒ 我注入的事件本身在乱改状态)",
+		SB.email_state() == SB.EM_IDLE, SB.email_state())
+	_ok("⑥b ★分母③: 「发验证码」这一刻是**可用**的(disabled 的钮按了本来就不变)",
+		not inst._email_send_btn.disabled)
+	_tap(inst._email_send_btn.get_global_rect().get_center())
+	await _wf(6)
+	_ok("⑥b ★★★按「发验证码」**产品状态真的动了**(idle → %s)" % SB.email_state(),
+		SB.email_state() != SB.EM_IDLE, "msg=「%s」" % SB.email_msg())
+
+	## 「确认」那一钮: 状态机会在同一帧里 VERIFYING→ERR(注入的传输是同步回包的)
+	## ⇒ 判据换成**真实发出去的那个请求**, 它是记录下来的, 不会被时间清掉。
+	SB._reset_auth_for_test()
+	SB._token = "tok-touch"
+	SB._transport_for_test = _spy
+	SB.reset_email_flow()
+	SB.send_code_async("touch@example.com", SB.FLOW_BIND)
+	await _wf(10)
+	inst._email_poll()
+	GameState.nickname = "阿龟"
+	inst._nick_edit.text = "阿龟"
+	inst._code_edit.text = "12345678"
+	_ok("⑥b ★分母④: 「确认」这一刻是**可用**的, 且 `_email_pending` 有值(否则验码会静默早退)",
+		not inst._email_ok_btn.disabled and SB._email_pending != "",
+		"disabled=%s pending=「%s」" % [str(inst._email_ok_btn.disabled), SB._email_pending])
+	_reqs.clear()
+	await _wf(20)
+	_ok("⑥b ★分母⑤: 不按的话**一个请求都不会发**(否则下面那条恒真)",
+		_reqs.size() == 0, "实得 %d 条" % _reqs.size())
+	_tap(inst._email_ok_btn.get_global_rect().get_center())
+	await _wf(6)
+	var urls: Array = []
+	for r in _reqs:
+		urls.append(str(r.get("url", "")).replace(DEAD_URL, ""))
+	_ok("⑥b ★★★按「确认」**真的发出了验码请求**(不是「函数存在」, 是线上真的动了)",
+		urls.has("/auth/v1/verify"), str(urls))
+	SB._transport_for_test = Callable()
+
+	# ── ⑥c 虚拟键盘 ──────────────────────────────────────────
+	## iPhone 横屏键盘 162pt / 屏高 390pt = 41.5%(ASCII 键盘; 中文带候选条更高)。
+	## ★分母: **不让位的时候真的有东西被埋** —— 没有的话下面那条是空检查。
+	print("     ── ⑥c 虚拟键盘 ──")
+	var kb: float = VP_PHONE.y * 0.415
+	var kb_top: float = VP_PHONE.y - kb
+	SET.vkb_override_vp = -1.0
+	await _wf(3)
+	var buried0 := _under(hot, kb_top)
+	_ok("⑥c ★分母: **不让位**的话确实有可点元素落在键盘底下(没有 ⇒ 下面那条是空检查)",
+		not buried0.is_empty(), "被埋: %s" % str(buried0))
+	var y_home: float = box.position.y if box != null else 0.0
+	SET.vkb_override_vp = kb
+	await _wf(3)
+	var buried1 := _under(hot, kb_top)
+	_ok("⑥c ★★★键盘弹出后, **一个可点元素都不在键盘底下**(iOS 上键盘是盖上来的, 视口不缩)",
+		buried1.is_empty(), "框挪到 y=%.0f, 仍被埋: %s"
+			% [(box.position.y if box != null else -1.0), str(buried1)])
+	## ★让位不许把输入框顶出屏幕上沿 —— 那是"修一个病造一个新病"。
+	var above: Array = []
+	for c in hot:
+		if (c as Control).get_global_rect().position.y < 0.0:
+			above.append(_txt_of(c as Control))
+	_ok("⑥c ★★让位**没有把任何可点元素顶出屏幕上沿**(说明文字可以顶出去, 可点的不行)",
+		above.is_empty(), str(above))
+	SET.vkb_override_vp = -1.0
+	await _wf(3)
+	_ok("⑥c ★键盘收起后框**回到原位**(不回 = 键盘按一次墙就永久歪了)",
+		box != null and absf(box.position.y - y_home) <= 1.0,
+		"现在 y=%.0f  原位 y=%.0f" % [(box.position.y if box != null else -1.0), y_home])
+	## 纯函数: 物理窗口像素 → 视口单位。★无头读不到真键盘, 这一条量的是**折算本身**。
+	##   iPhone 14 横屏 3x: 键盘 162pt=486px, 窗口 390pt=1170px ⇒ 720 * 486/1170 = 299.1
+	var conv: float = SET._vkb_to_vp(486.0, VP_PHONE, Vector2(1560.0, 1170.0))
+	_ok("⑥c ★★折算对(物理 486px / 窗口 1170px × 视口 720 = 299.1 —— 不折算会挪错 1.6 倍)",
+		absf(conv - 299.08) <= 0.5, "%.2f" % conv)
+	_ok("⑥c ★无头 `window_get_size()` 是 (0,0) ⇒ 折算必须返回 0, 不许除零",
+		SET._vkb_to_vp(486.0, VP_PHONE, Vector2.ZERO) == 0.0)
+
+	inst.queue_free()
+	get_tree().root.size = vp0
+	await _wf(2)
+
+
+## `hot` 里有哪些控件的下沿越过了 `line`(= 键盘上沿)。
+func _under(hot: Array, line: float) -> Array:
+	var out: Array = []
+	for c in hot:
+		var r: Rect2 = (c as Control).get_global_rect()
+		if r.position.y + r.size.y > line:
+			out.append("%s@%.0f" % [_txt_of(c as Control), r.position.y])
+	return out
 
 
 ## 递归收集某棵子树里的 Button。

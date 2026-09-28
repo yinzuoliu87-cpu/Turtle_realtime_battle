@@ -78,6 +78,20 @@ func _scan(root: Node) -> Array:
 					stock_btn.append("%s「%s」" % [c.get_class(), str((c as Button).text).substr(0, 10)])
 			if c is BaseButton and c.mouse_filter == Control.MOUSE_FILTER_IGNORE:
 				dead.append("%s(按钮·收不到点击)" % c.name)
+			## ★★2026-09-28 补【输入框/滑条也要算】: 原判据只认 `BaseButton` 与接了
+			##   `gui_input` 的控件 ⇒ 一个 `MOUSE_FILTER_IGNORE` 的 `LineEdit`
+			##   (=点不进去、打不了字)完全在视野外。而登录墙上**三个输入框**就是
+			##   这一族 —— 玩家点进去没反应, 正是用户 2026-09-28 报的那句话。
+			## ★★收的是 `Slider`/`SpinBox`, **不是 `Range`** —— 第一版写 `Range` 当场报了
+			##   3 条假违规: 战斗信息面板里的 `ProgressBar` 也是 `Range`, 而进度条是**只读读数**,
+			##   给它 `MOUSE_FILTER_IGNORE` 是对的。判据宽一格就造出假 bug
+			##   (memory `fb-judge-must-fit-the-shape`)。
+			##   ⚠ 顺带记一笔: `verify_ui_consistency._interactive` 写的就是 `c is Range`,
+			##     那一处同样把 `ProgressBar` 当交互控件 —— 那份文件不在这次的地盘里, 留给主会话。
+			## ★不收「所有 `MOUSE_FILTER_STOP`」: Panel/ColorRect 默认就是 STOP, 收了满屏噪音。
+			if (c is LineEdit or c is TextEdit or c is Slider or c is SpinBox) \
+					and c.mouse_filter == Control.MOUSE_FILTER_IGNORE:
+				dead.append("%s(%s·收不到点击)" % [c.name, c.get_class()])
 			if c.gui_input.get_connections().size() > 0:
 				wired += 1
 				if c.mouse_filter == Control.MOUSE_FILTER_IGNORE:
@@ -138,6 +152,54 @@ func _ready() -> void:
 			% [str(path).get_file(), wired, dead.size()])
 		inst.queue_free()
 		await get_tree().process_frame
+
+	## ── ★★★登录墙 ────────────────────────────────────────────────────────
+	##   上面那份 SCENES 里有 `Settings.tscn`, 但它载出来的是**普通设置页**:
+	##   墙只在 `login_wall_on(后端开着, 邮箱为空)` 时才建, 而门禁给每个测试
+	##   `TURTLE_SUPABASE=" "` ⇒ `SB.enabled()` 恒假 ⇒ **墙从来不在场**。
+	##   探针 `tests/_probe_wall_hit.gd` 实测: 不注入 `acct_override` 时 `_email_layer = false`。
+	##   ⇒ 和战斗信息面板同一个道理(那个也不是独立场景) —— 要**单独把它建出来**才扫得到。
+	##   ★这一屏是每个新玩家看到的第一屏, 而本门禁守的正是「接了点击却收不到点击」——
+	##     墙上那两个钮 + 三个输入框要是哪天被一块 `MOUSE_FILTER_STOP` 的装饰层盖住,
+	##     玩家看到的就是用户 2026-09-28 报的那句「app 里操作没反应」。
+	var wgs = get_node_or_null("/root/GameState")
+	if wgs != null:
+		wgs.test_mode = true
+		wgs.account_email = ""
+	var wi = (load("res://scenes/Settings.tscn") as PackedScene).instantiate()
+	wi.acct_override = 1          ## ★必须在 add_child 之前 —— `_ready` 那一刻就决定建不建墙
+	add_child(wi)
+	for _iw in range(8):
+		await get_tree().process_frame
+	_ok("★分母 登录墙: 墙真的立起来了(没立 ⇒ 下面这一份扫的是普通设置页)",
+		wi._email_layer != null and is_instance_valid(wi._email_layer))
+	var rw := _scan(wi._email_layer if wi._email_layer != null else wi)
+	total_wired += int(rw[0])
+	total_labels += int(rw[3])
+	tot_btn += int(rw[4])
+	opened += 1
+	for dw in (rw[1] as Array):
+		all_dead.append("登录墙 → %s" % str(dw))
+	for sw in (rw[5] as Array):
+		all_stock.append("登录墙 → %s" % str(sw))
+	for qw in (rw[2] as Array):
+		all_squashed.append("登录墙 → %s" % str(qw))
+	print("    [分母] %-22s 接了点击的控件 %d 个, 其中收不到点击 %d 个"
+		% ["登录墙", int(rw[0]), (rw[1] as Array).size()])
+	## ★★墙上的可点元素**一个 `gui_input` 都没接**(全走 `pressed` / LineEdit 自己),
+	##   所以上面那个 `wired` 分母对这一屏是 0 —— 拿它当分母等于没有分母。
+	##   ⇒ 单独数一次「按钮 + 输入框」: 少于 5 个就是墙没建全, 上面那份扫描是空的。
+	var whot := 0
+	var wst: Array = [wi._email_layer if wi._email_layer != null else wi]
+	while not wst.is_empty():
+		var wn: Node = wst.pop_back()
+		if wn is Button or wn is LineEdit:
+			whot += 1
+		for wc in wn.get_children():
+			wst.append(wc)
+	_ok("★分母 登录墙: 扫到 %d 个可点元素(2 钮 + 3 输入框; <5 = 墙没建全)" % whot, whot >= 5)
+	wi.queue_free()
+	await get_tree().process_frame
 
 	## ── 战斗信息面板 ──────────────────────────────────────────────────────
 	##   ★这一段【必须有】: bug 本来就出在这里, 只扫独立场景的话,
