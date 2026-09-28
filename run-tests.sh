@@ -704,6 +704,15 @@ run_audit "tools/codex_text_lint.py"     "ALL OK" "codex_text_lint (图鉴文案
 run_audit "tools/twin_const_audit.py"    "ALL OK" "twin_const (同功能的逻辑侧↔演出侧同名常量取值打架)"
 run_audit "tools/twin_radius_audit.py"   "ALL OK" "twin_radius (判定侧↔演出侧【不同名但同值】的范围常量·同一个数存两份)"
 run_audit "tools/glow_ball_audit.py"     "ALL OK" "glow_ball (无含义白球 _make_fire_glow_tex 存量台账·只减不增)"
+## ★「套了皮, 但其实没套上」——`UISkin.nine_if_big()` 短边 <MIN_FRAME_PX(40) 就**悄悄**
+##   `return fallback` ⇒ 调用方以为自己套了金属框, 画出来是 StyleBoxFlat = 网页盒, **零报错**。
+##   实例(2026-09-27 修): 图鉴形态切换钮 196×34 —— 只有双形态龟(双头/熔岩)才画, 而
+##   `verify_ui_consistency` 量图鉴只量列表第一条 ⇒ 那个网页盒**从来没被数到过**。
+##   这器把全仓会落进降级/挑错皮分支的调用点扫成台账(只减不增), 顺带管住同族的另外五种:
+##   贴图缺 .import(ResourceLoader.exists 返回 false 且不报错) / 边距×2≥尺寸(中段是负的) /
+##   button 按尺寸挑错皮 / 中段拉伸过头 / button() 调在设尺寸之前(读到 0x0)。
+##   ⚠ 它有一条**已知失明**: 尺寸是变量/表达式的调用点静态判不了, 条数每次都打印出来。
+run_audit "tools/nine_downgrade_audit.py" "ALL OK" "nine_downgrade (九宫格静默降级/挑错皮·套了皮但没套上·台账只减不增)"
 run_audit "tools/type_tables_audit.py"   "ALL OK" "type_tables (装备类型四张平行表键集一致)"
 # ★★这条是"文案漂移"这个病的**总指标**(2026-08-20 用户连问两次「怎么根除」后建的):
 #   玩家看到的每个数字必须处在三态之一 —— 占位符(不可能错)/有审计器对代码验/没人验。

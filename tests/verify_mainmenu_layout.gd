@@ -22,6 +22,8 @@ extends Node
 const W := 1280.0
 const H := 720.0
 const MIN_TAP := 81.0          # 44pt, 见上
+## ★状态行那一块的节点名从**产品的常量**取, 不抄字面量(抄一次就永远落后一次)。
+const MENU_S := preload("res://scripts/scenes/MainMenuScene.gd")
 const SETTLE_MS := 15000       # 等入场 tween 落定的墙钟上限
 
 var _fail := 0
@@ -220,22 +222,80 @@ func _ready() -> void:
 		_ok("⑥ ★行距 = 行高 (贴着排, 不留缝也不重叠)", absf(g_lo - h_lo) <= 1.0,
 			"行距 %.0f vs 行高 %.0f" % [g_lo, h_lo])
 
-	# ── ⑦ ★赛季状态压成一行, 而且是可点的(→战绩) (2026-09-18 换的判据) ──
-	#    原来量的是「信息板四行的值右沿对齐」—— 那张 560×398 的表格卡已删。
-	#    新版式要守的是"玩家数据不占一整栏, 但该说的仍说全了"。
+	# ── ⑦ ★赛季状态压成【两行】, 而且是可点的(→战绩) (2026-09-28 改口径) ──
+	#    2026-09-18 这条换过一次判据(原来量的是"信息板四行的值右沿对齐", 那张 560×398 的表格卡已删)。
+	#    ★★2026-09-28 再改: 那一行拆成了**两行** —— 周六那句实测 ink 485px 而框只有
+	#      `LEFT_W - 8` = 374px, **顶穿控件 111px**, 从 2026-09-22 起就在而门禁没量到。
+	#      根因是这条判据在**一个 Label**里找 `大轮`+`Lv`+`本周`, 而屏幕上那三个词
+	#      **一周只有五天**在同一段字里(周六换闯关赛读数、周日换决赛日读数, 都没有"本周")
+	#      ⇒ 这条判据本身也是"一周只成立五天"的 —— 真在周六跑 CI 它会假红。
+	#    ⇒ 现在: ①按 `STATUS_TWO_LINE` 抓那一块 ②两行的字**合起来**看 ③"本周"那一维
+	#      改成**问产品自己今天该说什么**(`_phase_status_line(_now_ts())`), 七天都成立。
+	#    ★七天逐天的字宽/顶穿在 `verify_gauntlet_ahead ④`(那边钉死时钟跑七遍);
+	#      这里量的是**今天这一屏、等入场落定之后**的真实几何 —— 两边的尺子不一样, 都要。
+	var two_blk: Node = _find_named(_menu, str(MENU_S.STATUS_TWO_LINE))
+	_ok("⑦ ★分母: 场景树里有 `%s` 那一块(找不到 = 下面全是空检查)" % str(MENU_S.STATUS_TWO_LINE),
+		two_blk != null)
+	var status_lines: Array = []
+	if two_blk != null:
+		var q3: Array = [two_blk]
+		while not q3.is_empty():
+			var nd3 = q3.pop_front()
+			if nd3 is Label:
+				var t3 := str((nd3 as Label).text)
+				if t3.strip_edges() != "" and not status_lines.has(t3):
+					status_lines.append(t3)
+			for ch3 in nd3.get_children():
+				q3.append(ch3)
+	print("  ⑦ 状态行 %d 行: %s" % [status_lines.size(), str(status_lines)])
+	_ok("⑦ ★★状态行是【两行】(一行装不下周六那句, 见本节头注)", status_lines.size() == 2,
+		"%d 行 %s" % [status_lines.size(), str(status_lines)])
 	var status_txt := ""
-	for c in all:
-		if c is Label:
-			var t := str((c as Label).text)
-			if t.find("大轮") >= 0 and t.find("Lv") >= 0:
-				status_txt = t
-				break
-	_ok("⑦ ★屏幕上有一行写着「第 N 大轮 · Lv」的状态", status_txt != "", status_txt)
+	for s7 in status_lines:
+		status_txt += str(s7) + "  "
+	_ok("⑦ ★屏幕上有一行写着「第 N 大轮 · Lv」的状态",
+		status_txt.find("大轮") >= 0 and status_txt.find("Lv") >= 0, status_txt)
+	## ★"今天那一维"问产品自己 —— 空串 = 今天是积分赛口径(该说命 + 本周场次),
+	##   非空 = 今天有自己的相位读数(周六闯关赛 / 周日决赛日), 那一段就该原样出现在屏幕上。
+	var today_line := str(_menu._phase_status_line(_menu._now_ts()))
+	var want7: Array = ["大轮", "Lv"]
+	if today_line == "":
+		want7.append("♥")
+		want7.append("本周")
+	else:
+		want7.append(today_line)
 	var miss_s: Array = []
-	for k in ["大轮", "Lv", "本周"]:
-		if status_txt.find(k) < 0:
+	for k in want7:
+		if status_txt.find(str(k)) < 0:
 			miss_s.append(k)
-	_ok("⑦ ★状态行把赛季/等级/本周场次都说了", miss_s.is_empty(), "缺 %s" % str(miss_s))
+	_ok("⑦ ★状态行把赛季/等级/**今天那条读数**都说了(今天=%s)" % (
+			"积分赛口径" if today_line == "" else "「" + today_line + "」"),
+		miss_s.is_empty(), "缺 %s / 屏上「%s」" % [str(miss_s), status_txt])
+	## ★★★几何: 状态行里**每一段字的矩形**都必须还在那一行的框里。
+	##   `Control` 会把自己夹到 `get_combined_minimum_size()` ⇒ 设了 box 也拦不住字长出去,
+	##   一个错都不报 —— 顶穿 111px 那件事就是这么躲过门禁的。
+	if two_blk != null:
+		var row_holder: Control = (two_blk as Node).get_parent() as Control
+		var hr7: Rect2 = row_holder.get_global_rect()
+		var spill7: Array = []
+		var lab7 := 0
+		var q7: Array = [row_holder]
+		while not q7.is_empty():
+			var nd7 = q7.pop_front()
+			if nd7 is Label:
+				lab7 += 1
+				var lr7: Rect2 = (nd7 as Control).get_global_rect()
+				if not hr7.encloses(lr7):
+					spill7.append("「%s」x %.0f..%.0f y %.0f..%.0f" % [
+						str((nd7 as Label).text).substr(0, 20),
+						lr7.position.x, lr7.end.x, lr7.position.y, lr7.end.y])
+			for ch7 in nd7.get_children():
+				q7.append(ch7)
+		print("  ⑦ 状态行框 x %.0f..%.0f y %.0f..%.0f · 扫了 %d 段字" % [
+			hr7.position.x, hr7.end.x, hr7.position.y, hr7.end.y, lab7])
+		_ok("⑦ ★分母: 真扫到了那一行里的字(0 段 = 下面是空检查)", lab7 >= 3, "%d 段" % lab7)
+		_ok("⑦ ★★★没有一段字顶穿状态行(周六那句原来长出框外 111px)",
+			spill7.is_empty(), "%d 条 %s" % [spill7.size(), str(spill7.slice(0, 3))])
 	## ★不能用 _tag(): 它只取【第一个】子孙 Label, 而状态行的第一个是「第 N 大轮 · Lv」,
 	##   "战绩"在第二个 Label 里 —— 拿 _tag 找会漏判成"战绩入口没了"(实测红过)。
 	var rec_hit := false
@@ -719,6 +779,17 @@ func _font_of(root: Node, text: String) -> int:
 		if n is Label and str((n as Label).text).find(text) >= 0:
 			best = maxi(best, (n as Label).get_theme_font_size("font_size"))
 	return best
+
+
+## 按**节点名**找一个节点。★不按"第几个子节点"定位 —— 那种抓法一加节点就漂, 漂了还是绿的。
+func _find_named(n: Node, nm: String) -> Node:
+	if str(n.name) == nm:
+		return n
+	for c in n.get_children():
+		var r: Node = _find_named(c, nm)
+		if r != null:
+			return r
+	return null
 
 
 func _collect(n: Node, out: Array) -> void:

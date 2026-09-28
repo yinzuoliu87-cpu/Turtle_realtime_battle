@@ -1,0 +1,20 @@
+{
+ "_why": "由 `python tools/nine_downgrade_audit.py --update` 生成, 不要手改。`known` = 【会落进 ui_skin.gd 降级/挑错皮分支】的存量, 键 = `文件|类|调用|尺寸`(**故意不含行号**: 行号每天都在漂)。只减不增; 每条都必须在脚本的 WHY 里有一条理由。`blind_e` = 尺寸不是字面量、这条判据看不见的条数(已知失明, 只记不判)。",
+ "known": {
+  "scripts/scenes/CodexScene.gd|F|nine_if_big|170x56 battlehud/chip-frame.png(48x24)": 1,
+  "scripts/scenes/InventoryScene.gd|D|button|120x40 battlehud/chip-frame.png(48x24)": 2,
+  "scripts/scenes/InventoryScene.gd|D|button|170x38 battlehud/chip-frame.png(48x24)": 2,
+  "scripts/scenes/MainMenuScene.gd|D|button|120x40 battlehud/chip-frame.png(48x24)": 1,
+  "scripts/scenes/SettingsScene.gd|D|button|150x30 battlehud/chip-frame.png(48x24)": 1,
+  "scripts/scenes/SettingsScene.gd|D|button|210x52 battlehud/chip-frame.png(48x24)": 2,
+  "scripts/scenes/SettingsScene.gd|D|button|230x50 battlehud/chip-frame.png(48x24)": 1,
+  "scripts/scenes/SettingsScene.gd|D|button|240x48 battlehud/chip-frame.png(48x24)": 1,
+  "scripts/scenes/SettingsScene.gd|D|button|440x46 battlehud/chip-frame.png(48x24)": 3,
+  "scripts/scenes/ShopScene.gd|A|nine_if_big|36x36": 2,
+  "scripts/scenes/battle/dmg_stats_panel.gd|G|button|34x26": 1,
+  "scripts/scenes/codex/detail_views.gd|A|_add_rect|100x34": 1,
+  "scripts/scenes/inventory/candy_jar.gd|D|button|120x44 battlehud/chip-frame.png(48x24)": 1,
+  "scripts/scenes/inventory/synergy_panel.gd|D|button|120x40 battlehud/chip-frame.png(48x24)": 1
+ },
+ "blind_e": 7
+}

@@ -17,6 +17,11 @@ extends Node
 ##   `✕`(U+2715) ×4处 / `✗`(U+2717) / `✦`(U+2726) / `↳`(U+21B3) ×2处 /
 ##   `↻`(U+21BB) / `⊟`(U+229F) ×2处
 ## 其中 4 处已换成有字形的写法(`× └ ◆`), 剩下的进下面的台账。
+## 2026-09-28 第二轮又清掉 2 处(`↳`→`└ ` / `↻重载`→`重载`), 台账 4 处 → **2 处**,
+##   只剩 `⊟` 那一个跨文件配对的按钮(见台账里的理由)。同轮还补了两个盲区:
+##   ①扫描根从 `scripts/` 扩成 `scripts/` + `autoload/`
+##   ②`\u`/`\U` 转义以前**整对跳过**(注释还写着"实测 0 个" —— 假的, 实有 1 个),
+##     现在真解码。
 ##
 ## ══════════════════════════════════════════════════════════════════════
 ##  判据: 不靠我列名单, 问字体文件
@@ -27,7 +32,14 @@ extends Node
 ## 「排版字符 vs emoji 图标」: 只有 NotoEmoji 有 = emoji。两处同一个事实源。)
 ##
 ## 扫描口径(每一条都会打分母, 见 §2 的 `[分母]` 行):
-##   · `scripts/**/*.gd` 全部文件, 只取**字符串字面量**里的字符
+##   · `SCAN_ROOTS` 下全部 `.gd`(= `scripts/` + `autoload/`), 只取**字符串字面量**里的字符
+##     ★2026-09-28 把根从「只有 `scripts/`」扩成「`scripts/` + `autoload/`」——
+##       `autoload/` 8 个 .gd 里有**真上屏文案**: `tutorial_director.gd:142-145` 的
+##       `"装备买好了 → 去背包"` / `"看完了 → 打第二把 ▶"` 就是引导条上的字。
+##       原来整个目录是**盲区**(不是"没问题", 是**没被看过**)。
+##       单跑 `autoload/` 实测: 8 文件 / 514 含字面量行 / 58 个不同非 ASCII 码点 /
+##       1 个三引号块 / **0 条豆腐块存量** —— 它用的 `→`(U+2192) 和 `▶`(U+25B6)
+##       NotoSansSC 都有字形。扩根没照出新存量, 但盲区补上了。
 ##   · 去掉 `#` 注释(认引号里的 `#`, 否则 `"#ffd93d"` 会把整行吃掉)
 ##   · 去掉 `print/printerr/push_warning/push_error/print_rich` 的**整个实参表** ——
 ##     它们只进终端, 豆腐块不上屏。★按**括号深度**判, 不按行:
@@ -35,6 +47,27 @@ extends Node
 ##     按行判会把它当成屏幕文案误报(第一版就误报了它)。
 ##   · 三引号块单独收: 本仓的 `"""…"""` 全是 **shader 源码**(里面 `//` 注释带中文),
 ##     不是屏幕文案 ⇒ 不计入, 但**断言它们确实都是 shader**(冒出别的就红)。
+##   · `\uXXXX` / `\UXXXXXXXX` 转义**真解码**后进判据(见 `_scan_text` 里的长注释) ——
+##     以前是整对跳过, 注释还写着"本仓实测 0 个", 而实测其实有 1 个。
+##
+## ══════════════════════════════════════════════════════════════════════
+##  ★★ 已知失明清单 —— 写在明面上。不写等于在宣称"没有盲区", 而那从来不成立
+## ══════════════════════════════════════════════════════════════════════
+## 下面这些形状这个扫描器**看不见**。不是"不会出问题", 是"出了也不会红":
+##  ① **运行时拼出来的字符**: `char(cp)` / `String.chr(cp)` / `"%c" % cp` ——
+##     源码里根本没有那个字符, 静态扫必漏。
+##  ② **代理对写法**: 写成「反斜杠 u D83D」+「反斜杠 u DC22」这种 UTF-16
+##     代理对的, 不会被合成成 U+1F422 —— 会被当成两个孤立的 D800 区码点(而那两个三张字体都没有 ⇒ 反而
+##     **误报**)。本仓实测 0 处, 真出现了先改这里再说。
+##  ③ **`scripts/` + `autoload/` 之外的上屏文本**: `.tscn` 节点的 `text=` 属性、
+##     `.tres` 主题、`data/*.json` 的装备/龟名、`.csv` 翻译表。
+##     2026-09-28 量过: 那四处对当时已知的 21 个无字形码点**命中 0** ——
+##     但那是"今天没漏", 不是"以后不会漏"。`data/` 的 emoji 装备名另有
+##     `verify_no_emoji_icons` 的**运行时**扫描盯着(那条看的是真跑起来的控件)。
+##  ④ **拼接出来的组合字**: 零宽连接 / 变体选择符 / 组合音标单看每个码点都有字形,
+##     合起来画不出来这个判据看不出。
+##  ⑤ **注释里的字符**故意不算(它们不上屏)—— 但如果哪天有人把注释当文案 `print`
+##     到界面上(比如塞进 RichTextLabel), 这条就从"正确"变成"失明"。
 ##
 ## ══════════════════════════════════════════════════════════════════════
 ##  台账 = 棘轮, 每条带理由。**只减不增**(照 `tools/glow_ball_audit.py` 的形状)
@@ -52,28 +85,43 @@ const FONTS := {
 ## 只进终端的调用 —— 它们的**整个实参表**(按括号深度)都不算屏幕文案。
 const LOG_CALLS := ["print", "printerr", "push_warning", "push_error", "print_rich", "printt", "prints"]
 
+## 扫哪些根。★别只扫 `scripts/` —— `autoload/` 里也有上屏文案(引导词/存档提示),
+## 漏一个目录 = 那个目录里的豆腐块永远照不出来(它不会红, 它只是**没被看过**)。
+const SCAN_ROOTS := ["res://scripts", "res://autoload"]
+
 ## ── 豆腐块存量台账: 源文件 → [允许的无字形字符数, 为什么还留着] ──────────
 ## **只减不增**, 且实测数与登记数必须**相等**。
 const TOFU_LEDGER := {
-	## `⊟ 折叠`(U+229F)。★为什么没换: 这个按钮的【创建处】在 `battle_hud.gd:1844`、
-	##   【切换处】在 `battle_debug_arena.gd:266`, **分居两个文件**, 而本轮地盘只有后者
-	##   ⇒ 只改一半 = 同一个按钮初始显示豆腐块、点一下变 `▼`, 比统一的豆腐块更像 bug。
-	##   两处要一起换成 `▼ 折叠`(已实测 `▼` U+25BC 在 NotoSansSC 里)。
-	##   而且它只在 `DEBUG_EDIT` 调试场里建, **不是玩家路径**。
-	"scripts/scenes/battle/battle_debug_arena.gd": [1, "⊟ 折叠(U+229F) ×1 —— 配对的创建处在 battle_hud.gd, 不在本轮地盘; 且仅 DEBUG_EDIT 调试场"],
-	## `↳`(U+21B3) 召唤物缩进标记 ×1 + `⊟ 折叠`(U+229F) ×1。
-	## ★同一语义的 `↳` 在 `dmg_stats_panel.gd` 里本轮已换成 `└ `(U+2514, NotoSansSC 里有),
-	##   这一处照同样改法即可 —— 只是 `battle_hud.gd` 不在本轮地盘。
-	"scripts/scenes/battle/battle_hud.gd": [2, "↳ 召唤缩进(U+21B3) ×1 + ⊟ 折叠(U+229F) ×1 —— 文件不在本轮地盘, 改法已定(└ / ▼)"],
-	## `↻重载`(U+21BB)。MAPEDIT 地图编辑器, 开发工具, 玩家进不去; 且不在本轮地盘。
-	## 改法: 直接去掉这个字符 —— 按钮上「重载」两个字已经把话说完了。
-	"scripts/scenes/map_editor.gd": [1, "↻ 重载(U+21BB) ×1 —— MAPEDIT 地图编辑器(开发工具), 且不在本轮地盘"],
+	## ★★2026-09-28 **台账现在是空的** —— 全仓玩家可见文案里没有一个豆腐块字符。
+	##   空不等于这条判据没用: 它是**只减不增**的棘轮, 新写进一个没字形的字符当场红。
+	##   分母见下面那几条断言(扫了多少文件/多少行/多少个不同码位) —— **分母为 0 才是空检查**。
+	## ⚠ 往这里加条目之前先问一句: 是真的换不掉, 还是我不想换?
+	##   跨文件配对那种(同一个按钮两处分居两个文件)**不是**加台账的理由, 是**两处一起换**的理由。
+	## ── 已清掉的(留痕, 别再当"历史存量"往回加) ──────────────────────────
+	## 2026-09-28 清掉 3 条/4 处:
+	##   `battle_hud.gd:1674`  `↳ `(U+21B3) 召唤物缩进 → `└ `(U+2514, NotoSansSC 有)
+	##   `map_editor.gd:90`    `↻重载`(U+21BB) → `重载`(同排「清空」「撤销」本就没图标, 去掉反而齐)
+	##   `battle_hud.gd:1844` + `battle_debug_arena.gd:266`  `⊟ 折叠`(U+229F) → `▼ 折叠`
+	##      —— **同一个按钮的两处, 分居两个文件**。只改一半 = 初始豆腐块、点一下变 ▼,
+	##         比统一的豆腐块更像 bug ⇒ 两处同一个提交一起换。`▶`(U+25B6) 本来就有字形,
+	##         所以换完展开/折叠两态都干净。字形是**两种独立探针**量过的
+	##         (引擎侧 `FontFile.has_char` + fontTools 读 cmap, 两边结论一致)。
+	## 2026-09-28 清掉 2 条/2 处:
+	##   `battle_hud.gd:1674`  `↳ `(U+21B3) 召唤物缩进 → `└ `(U+2514, NotoSansSC 有)
+	##      —— 与 `dmg_stats_panel.gd` 同语义处保持一致的写法。
+	##   `map_editor.gd:90`    `↻重载`(U+21BB) → `重载`
+	##      —— 直接去掉这个字符: 按钮上「重载」两个字已经把话说完, 而且同排的
+	##         「清空」「撤销」本来就没有图标, 去掉反而齐了。
+	##   ⇒ 台账从 4 处/3 个文件降到 2 处/2 个文件。
 }
 
 ## 分母下限 —— 低于它说明扫描根本没跑起来, 下面的"0 个豆腐块"全是假的。
-const MIN_FILES := 150
-const MIN_CODEPOINTS := 800
-const MIN_LIT_LINES := 10000
+## 2026-09-28 扩根后实测 188 文件 / 19200 含字面量行 / 1269 码点, 下限随之抬紧一档
+## (抬**下限**是把判据变严, 不是放宽)。留足余量: 别人正常删死码不该把它撞红;
+## 而「某个根整体扫成 0」由 `empty_roots` 那条单独盯, 不靠这三个数。
+const MIN_FILES := 170
+const MIN_CODEPOINTS := 1000
+const MIN_LIT_LINES := 14000
 
 var _pass := 0
 var _fail := 0
@@ -126,7 +174,7 @@ func _ready() -> void:
 	_ok("NotoSansSC 无 emoji 🐢 (它只有中文)", not noto.has_char(0x1F422))
 
 	# ══════════════════════════════════════════════════════════════════
-	print("=== 2. ★自动扫 scripts/**/*.gd 的字符串字面量, 逐个问三张字体 ===")
+	print("=== 2. ★自动扫 scripts/ + autoload/ 下 **/*.gd 的字符串字面量, 逐个问三张字体 ===")
 	## 分类器自证: 喂几个已知答案进去, 判据必须分得开。
 	##   (旧版这里是一行手抄名单 ⇒ 名单漏了就等于没测, 没有任何一条能照出来。)
 	_ok("★分类器自证: `×`(U+00D7) 有字形(m6x11 里就有)", _has_glyph(0x00D7))
@@ -138,16 +186,34 @@ func _ready() -> void:
 	## 扫描器自证(探子): 喂一段合成源码, 断言它
 	##   ①逮到字面量里的豆腐块 ②不把注释里的算进来 ③不把 print 实参算进来
 	##   ④跨行的 print 实参也不算(按括号深度, 不按行)。
-	var canary_src := "var a := \"✕tofu\"\n# ✗ comment only\nprint(\"✦ in print\")\nprint(\"x %s\" % [\n\t\"↻ multi-line print\"])\n"
+	##   ⑤`\uXXXX` / `\UXXXXXXXX` 转义解得开(以前是整对跳过 ⇒ 这一类**天生漏**)
+	##   ⑥`\\`(转义的反斜杠)仍按**一对**吃掉 —— 否则它会把结尾的引号当成 `\"`,
+	##     字符串就永远闭合不了, 后面的**注释**会被当字符串内容收进来。
+	##     所以这一条用「结尾反斜杠 + 注释里放个 ⨯(U+2A2F)」来判: 收到了就说明闭合错了。
+	var canary_src := "var a := \"✕tofu\"\n# ✗ comment only\nprint(\"✦ in print\")\nprint(\"x %s\" % [\n\t\"↻ multi-line print\"])\nvar e := \"\\u2718 esc4 \\U0001F600 esc8\"\nvar f := \"a\\\\\"  # ⨯ tail comment\n"
 	var cres: Dictionary = _scan_text(canary_src, "canary")
 	var ckeys: Array = (cres["cps"] as Dictionary).keys()
 	_ok("★探子: 字面量里的 ✕ 被逮到", ckeys.has(0x2715), "收到 %d 个码点" % ckeys.size())
 	_ok("★探子: 注释里的 ✗ 不算(注释不上屏)", not ckeys.has(0x2717))
 	_ok("★探子: print 实参里的 ✦ 不算(只进终端)", not ckeys.has(0x2726))
 	_ok("★探子: **跨行** print 实参里的 ↻ 也不算(按括号深度不按行)", not ckeys.has(0x21BB))
+	_ok("★探子: `\\u2718` 4 位转义被解开并计入(U+2718)", ckeys.has(0x2718))
+	_ok("★探子: `\\U0001F600` 8 位转义被解开并计入(U+1F600)", ckeys.has(0x1F600))
+	_ok("★探子: 结尾 `\\\\` 按一对吃掉(字符串正常闭合 ⇒ 注释里的 ⨯ 没被收进来)", not ckeys.has(0x2A2F))
 
 	## ── 真扫 ──
-	var files := _all_gd("res://scripts")
+	var files := _all_gd(SCAN_ROOTS)
+	## ★分母: 每个根都真的出了文件。少了这条, 哪天某个根写错字(或目录改名)
+	##   就会静默变成"扫了 0 个文件"的空检查, 而总数仍被 scripts/ 撑着 ⇒ 照样全绿。
+	var per_root: Dictionary = {}
+	for p in files:
+		for r in SCAN_ROOTS:
+			if str(p).begins_with(str(r) + "/"):
+				per_root[r] = int(per_root.get(r, 0)) + 1
+	var empty_roots: Array = []
+	for r in SCAN_ROOTS:
+		if int(per_root.get(r, 0)) <= 0:
+			empty_roots.append(str(r))
 	var cps: Dictionary = {}        # cp -> {"file:line": true}
 	var per_file: Dictionary = {}   # rel -> 无字形字符出现次数
 	var lit_lines := 0
@@ -181,8 +247,11 @@ func _ready() -> void:
 			var rel2: String = str(w).substr(0, str(w).rfind(":"))
 			per_file[rel2] = int(per_file.get(rel2, 0)) + 1
 
-	print("  [分母] 扫了 %d 个 .gd · 含字面量的行 %d 行 · 不同非 ASCII 码点 %d 个 · 三引号块 %d 个"
-		% [files.size(), lit_lines, cps.size(), trip_blocks])
+	var root_parts: Array = []
+	for r in SCAN_ROOTS:
+		root_parts.append("%s=%d" % [str(r).replace("res://", ""), int(per_root.get(r, 0))])
+	print("  [分母] 扫了 %d 个 .gd (%s) · 含字面量的行 %d 行 · 不同非 ASCII 码点 %d 个 · 三引号块 %d 个"
+		% [files.size(), " + ".join(root_parts), lit_lines, cps.size(), trip_blocks])
 	print("  [结果] 三张字体都没有字形的码点 %d 个, 落在 %d 个文件里" % [tofu.size(), per_file.size()])
 	for cp in tofu:
 		var ws: Array = (cps[cp] as Dictionary).keys()
@@ -191,6 +260,8 @@ func _ready() -> void:
 			("  " + ", ".join(ws)) if (_dump or ws.size() <= 4) else ""])
 
 	_ok("★分母: 扫到的文件数 ≥ %d" % MIN_FILES, files.size() >= MIN_FILES, "%d 个" % files.size())
+	_ok("★分母: SCAN_ROOTS 每个根都出了文件(没有哪个根静默扫成 0)", empty_roots.is_empty(),
+		"%s%s" % [" + ".join(root_parts), ("; 空根: " + ", ".join(empty_roots)) if not empty_roots.is_empty() else ""])
 	_ok("★分母: 含字面量的行数 ≥ %d" % MIN_LIT_LINES, lit_lines >= MIN_LIT_LINES, "%d 行" % lit_lines)
 	_ok("★分母: 收集到的不同非 ASCII 码点 ≥ %d" % MIN_CODEPOINTS, cps.size() >= MIN_CODEPOINTS, "%d 个" % cps.size())
 	## ★分母: 三引号块真被认出来了。少了这一条, 把三引号当普通字符串收
@@ -296,9 +367,9 @@ func _chain_has(fv: FontVariation, cp: int) -> bool:
 	return false
 
 
-func _all_gd(root: String) -> Array:
+func _all_gd(roots: Array) -> Array:
 	var out: Array = []
-	var dirs: Array = [root]
+	var dirs: Array = roots.duplicate()
 	while not dirs.is_empty():
 		var d: String = str(dirs.pop_back())
 		var da := DirAccess.open(d)
@@ -358,7 +429,33 @@ func _scan_text(src: String, rel: String) -> Dictionary:
 			while i < n:
 				var c2 := src[i]
 				if c2 == "\\":
-					## 转义符: 本仓 scripts/ 实测 0 个 `\u`/`\U` 转义(已量), 整对跳过。
+					## ── 转义符 ──
+					## ★★2026-09-28: 这里原来写着「本仓 scripts/ 实测 0 个 `\u`/`\U` 转义(已量)」
+					##   然后**整对跳过**。那句话是**假的** —— 重新量了一遍(scripts/ + autoload/
+					##   共 188 个 .gd)有 **1 个**: `scripts/gamedata/phase2_config.gd:745`
+					##   里那个全角空格(写成「反斜杠 u 3000」; 实测 m6x11/NotoSansSC 都有字形,
+					##   所以没漏成豆腐块, 但那是**运气**不是判据)。
+					##   ⇒ 不再靠「实测 0 个」这个会烂的前提, 改成**真解码**: `\uXXXX`(4 位) /
+					##     `\UXXXXXXXX`(8 位) 解出的码点照样进判据(canary 有自证)。
+					var esc: String = src[i + 1] if i + 1 < n else ""
+					var hexlen := 0
+					if esc == "u":
+						hexlen = 4
+					elif esc == "U":
+						hexlen = 8
+					if hexlen > 0 and i + 2 + hexlen <= n:
+						var hx: String = src.substr(i + 2, hexlen)
+						if hx.is_valid_hex_number(false):
+							var ecp := hx.hex_to_int()
+							if ecp >= 0x80 and not in_log:
+								if not cps.has(ecp):
+									cps[ecp] = {}
+								(cps[ecp] as Dictionary)["%s:%d" % [rel, line]] = true
+								lit_line_seen["%s:%d" % [rel, line]] = true
+							i += 2 + hexlen
+							continue
+					if esc == "\n":
+						line += 1        # `\` 接真换行: 不数行号会让后面所有 file:line 偏
 					i += 2
 					continue
 				if c2 == q:

@@ -122,7 +122,13 @@ func _add_group_header(title: String) -> void:
 		h.add_child(ln)
 
 
-func _add_simple_row(label: String, label_color: String, stroke: Color, icon_path: String, idx: int) -> void:
+## `icon_native` = 图标按**原尺寸 1x 居中**画, 一点不缩(2026-09-28)。
+## ★类型标签图 `assets/sprites/tags/*.png` 是 32×32 的**硬边像素画**(半透明像素 0 个),
+##   塞进 36×36 的图标格再 KEEP_ASPECT 就是 1.125 倍 ⇒ 像素网格被打烂
+##   (同一条教训的门禁是 `tools/vfx_discipline_audit.py` 判据 A)。32 < 36, 原尺寸放得下。
+## ★其余调用点(深海小将 / 规则)的图尺寸不统一(几十到上千), 仍走等比内缩 —— 默认 false。
+func _add_simple_row(label: String, label_color: String, stroke: Color, icon_path: String,
+		idx: int, icon_native: bool = false) -> void:
 	var col = stroke; col.a = 0.7
 	var p = host._make_row(52, 0.85, col)
 	var _ictex: Texture2D = _icon(icon_path)
@@ -131,7 +137,11 @@ func _add_simple_row(label: String, label_color: String, stroke: Color, icon_pat
 		ic.position = Vector2(6, 8)
 		ic.custom_minimum_size = Vector2(36, 36); ic.size = Vector2(36, 36)
 		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		if icon_native:
+			ic.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+			ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		else:
+			ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		ic.texture = _ictex
 		p.add_child(ic)
 	var lbl = Label.new()

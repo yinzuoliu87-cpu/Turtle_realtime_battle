@@ -818,9 +818,31 @@ func _show_p2eq(eq: Dictionary) -> void:
 	## ★费用 0 = 盾羁绊赠送的圣光护盾, 它不上商店所以没有费用; 写"费用 0"读起来像"免费"。
 	##   左栏分组标题早就写的是"羁绊赠送"(list_builder.gd:178), 详情跟着对齐。
 	var sub: String = ("羁绊赠送" if cost <= 0 else "费用 %d" % cost)
+	## ★★ 2026-09-28 类型图标从 emoji 换成 `tags/` 像素图, 走**行内 [img]** ——
+	##   照仓库里现成的写法(`scripts/util/skill_text.gd:288` 的 "[img=%d]" 与本文件 725 行的
+	##   [img=40x40]), 不另造一套“Label 旁边摆 TextureRect”的排版。
+	## ★尺寸取 16 而不是 17: 源图 32×32 硬边像素画, 只有 32(1x) 与 16(1:2) 保得住像素网格
+	##   (16 时每个输出像素恰好取一个源像素); 这一行字号 17 ⇒ 16 最贴字高, 32 会高出一倍。
+	const SUB_ICON_PX := 16
+	var sub_bb: String = sub
 	for tp0 in _tps:
-		sub += "   ·   %s %s" % [host._type_emoji(str(tp0)), str(tp0)]
-	host._add_text(130, 74, sub, 17, ccol, 0.0, 0.5, true)
+		var tic: String = host._type_icon(str(tp0))
+		sub_bb += "   ·   "
+		if tic != "":
+			sub_bb += "[img=%dx%d]%s[/img] " % [SUB_ICON_PX, SUB_ICON_PX, tic]
+		sub_bb += str(tp0)
+	var subrt := RichTextLabel.new()
+	subrt.bbcode_enabled = true
+	subrt.fit_content = true
+	subrt.scroll_active = false
+	subrt.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST   # 行内图标像素锐利(同 735 行)
+	## y 跟原来的 `_add_text(..., oy=0.5)` 逐像素对齐: 中心 74 − 行高(17×1.3)/2。
+	subrt.position = Vector2(130.0, 74.0 - 17.0 * 1.3 / 2.0)
+	subrt.custom_minimum_size = Vector2(host.DETAIL_W - 150.0, 22.0)
+	subrt.add_theme_font_size_override("normal_font_size", 17)
+	subrt.add_theme_color_override("default_color", Color(ccol))
+	subrt.text = sub_bb
+	host.detail.add_child(subrt)
 
 	## ── 以下各块【按实测高度顺排】(2026-08-15) ────────────────────────────
 	## 原来是一串写死的绝对 y(134/154/200/224…): 上面任何一块长了就压住下一块、短了就留洞。
@@ -963,13 +985,19 @@ func _show_type(item: Dictionary) -> void:
 	# 类型的色/图标只走 host 那一对取值函数 —— 三处各自 `TYPE_STYLE.get(...)` 加各自的兜底,
 	# 正是「香火在羁绊页是 🔗、在装备页是 🗡️」那种两处默认值不一样的来源。
 	var color: String = host._type_color(tname)
-	var emoji: String = host._type_emoji(tname)
+	var icon: String = host._type_icon(tname)
 	var tiers: Array = def.get("tiers", [])
 	var members: Array = _type_members(tname)   # [{id,name,emoji}], 该类型全部装备
 
-	# 头图区: 无 tag PNG → 类型色框 + emoji 徽章
+	# 头图区: 类型色框 + 类型图标徽章
 	host._add_rect(60, 70, 90, 90, "#12202a", 0.55, color, 2.0, 0.9)
-	host._add_text(60, 70, emoji, 44, color, 0.5, 0.5, true)
+	## ★★ 2026-09-28 从 44px 的 emoji 字换成 tags/ 的 32×32 像素图, **按 2x = 64 画**。
+	##   44 是 1.375 倍 —— 非整数倍会把像素网格打烂; 这个框是 90×90, 64 装得下(四边各留 13)。
+	## ★图标为空(表里没这个类型)就只留空框 —— 看得见的缺口好过兜底成别的类型的图。
+	if icon != "":
+		var _badge = host._add_image(60, 70, icon, 64, 64, true)   # host 无类型标注 ⇒ 返回 Variant, 不能用 :=
+		if _badge != null:
+			_badge.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	# 名 32px 类型色 + 副标 + 档阈值 / 成员件数
 	host._add_text(130, 36, tname, 32, color, 0.0, 0.5, true)
 	## ★副标不写 display_name —— 那返回「剑系」「弓箭·神射手」这类游戏里不存在的花名(用户 2026-08-14)。

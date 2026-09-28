@@ -88,34 +88,40 @@ func _skill_energy(sk: Dictionary) -> int:
 #   ★不再在图鉴里手抄一份: 原来 SCHOOL_EFFECTS 是"实时版口径"、phase2_schools.gd 是"回合制口径",
 #   两份互相矛盾且都自称权威(方案书 §4.1 表格第 3 行点名了这件事)。现在只有一份。
 const TYPE_STYLE := {
-	"剑":   {"color": "#ff6b6b", "emoji": "🗡️"},
-	"奇械": {"color": "#60a5fa", "emoji": "⚙️"},
-	"食物": {"color": "#ff7ab8", "emoji": "🍖"},
-	"盾":   {"color": "#ffd93d", "emoji": "🛡️"},
-	"药水": {"color": "#22d3ee", "emoji": "🧪"},
-	"枪":   {"color": "#fb923c", "emoji": "🔫"},
-	"弓箭": {"color": "#9d4edd", "emoji": "🏹"},
-	"法器": {"color": "#34d399", "emoji": "🔮"},
-	"灵物": {"color": "#c084fc", "emoji": "🐙"},
+	"剑":   {"color": "#ff6b6b", "icon": "res://assets/sprites/tags/tag-sword.png"},
+	"奇械": {"color": "#60a5fa", "icon": "res://assets/sprites/tags/tag-gadget.png"},
+	"食物": {"color": "#ff7ab8", "icon": "res://assets/sprites/tags/tag-food.png"},
+	"盾":   {"color": "#ffd93d", "icon": "res://assets/sprites/tags/tag-shield.png"},
+	"药水": {"color": "#22d3ee", "icon": "res://assets/sprites/tags/tag-potion.png"},
+	"枪":   {"color": "#fb923c", "icon": "res://assets/sprites/tags/tag-gun.png"},
+	"弓箭": {"color": "#9d4edd", "icon": "res://assets/sprites/tags/tag-bow.png"},
+	"法器": {"color": "#34d399", "icon": "res://assets/sprites/tags/tag-staff.png"},
+	"灵物": {"color": "#c084fc", "icon": "res://assets/sprites/tags/tag-spirit.png"},
 	## ★2026-08-15 补上「香火」—— 它 2026-08-13 进了 Phase2Types.TYPES(第 11 个类型),
 	##   但这张表没跟着加, 于是羁绊页拿默认值画成 🔗 灰蓝, 而装备页走 Phase2Types.emoji_of
 	##   拿到的默认值是【🗡️ 剑】—— 一件香火装备顶着把剑的图标。两处默认值还不一样。
-	"香火": {"color": "#f59e0b", "emoji": "🕯️"},
-	"遗物": {"color": "#a3e635", "emoji": "🏺"},
+	"香火": {"color": "#f59e0b", "icon": "res://assets/sprites/tags/tag-incense.png"},
+	"遗物": {"color": "#a3e635", "icon": "res://assets/sprites/tags/tag-relic.png"},
 	## ★★2026-09-28 补上「斧头」—— **上面那条香火的教训原样重演了一遍**。
 	##   斧头 2026-08-31 进了 Phase2Types(第 12 个类型), 这张表又没跟着加,
 	##   于是羁绊页又拿默认值画成 🔗。上一次补完没做的那件事是: 让门禁盯住这张表。
 	## ⇒ `tools/type_tables_audit.py` 的 SRC 写死 `phase2_types.gd`, 而这是**第五张**
 	##   平行表、住在**另一个文件**里 —— 它根本不在审计器视野里。已一并纳入。
-	"斧头": {"color": "#94a3b8", "emoji": "🪓"},
+	"斧头": {"color": "#94a3b8", "icon": "res://assets/sprites/tags/tag-axe.png"},
 }
 
 
-## 类型的 emoji / 强调色 —— 图鉴内【只认这一张表】。
-## ★别再直接调 Phase2Types.emoji_of(): 它对表里没有的类型兜底成 🗡️(剑),
-##   香火就是这么变成一把剑的。这里兜底成中性的 🔗, 而且缺哪个类型是看得见的。
-func _type_emoji(t: String) -> String:
-	return str((TYPE_STYLE.get(t, {}) as Dictionary).get("emoji", "🔗"))
+## 类型的图标 / 强调色 —— 图鉴内【只认这一张表】。
+## ★★ 2026-09-28 从 emoji 换成 `assets/sprites/tags/` 的 32×32 像素图标。
+##   原来的 emoji 由 NotoEmoji 画(彩色矢量 / 单色线条两种), 而这一屏是 3~4px 的像素笔触
+##   ⇒ 同一块屏上三种画法。判据与台账见 `tests/verify_no_emoji_icons.gd` 头注。
+## ★别再直接调 Phase2Types.emoji_of(): 它对表里没有的类型兜底成【剑】。
+## ★★缺的类型返回 **""**(就不画图), 而不是兜底成别的类型的图 ——
+##   香火(2026-08-15) 与 斧头(2026-09-28) 两次事故都是“兜底成一把剑 / 一条链”,
+##   看上去像是有意设计。空图标 = 缺谁一眼看得见
+##   (而 `tools/type_tables_audit.py` 已经盯着这张表的键集)。
+func _type_icon(t: String) -> String:
+	return str((TYPE_STYLE.get(t, {}) as Dictionary).get("icon", ""))
 
 
 func _type_color(t: String) -> String:
@@ -507,10 +513,13 @@ func _switch_tab(tab: String) -> void:
 			# 11 装备类型羁绊 (2026-08-03 批1 取代 11 学派). 名序按 Phase2Types.TYPES 声明序.
 			for sname in Phase2Types.TYPES.keys():
 				_items.append({"_type": sname})
-				var emoji: String = _type_emoji(sname)
 				var col: String = _type_color(sname)
-				# 无 tag PNG → emoji 前缀进名字; 描边用类型色 (列表行 _codex_list._add_simple_row 复用)
-				_codex_list._add_simple_row("%s %s" % [emoji, sname], col, Color(col), "", _items.size() - 1)
+				## ★★ 2026-09-28 图标走 `_add_simple_row` 本来就有的第 4 参 `icon_path`
+				##   —— 它一直传的是空串, 所以只能把 emoji 拼进名字里。
+				## ★第 6 参 `icon_native=true`: 36×36 的图标格里按 **1x = 32px 原尺寸**居中画。
+				##   源图就是 32×32, 拉到 36 是 1.125 倍 ⇒ 非整数倍会把像素网格打烂。
+				_codex_list._add_simple_row(sname, col, Color(col), _type_icon(sname),
+					_items.size() - 1, true)
 		"status":
 			_codex_list._add_status_rows()
 		"rules":

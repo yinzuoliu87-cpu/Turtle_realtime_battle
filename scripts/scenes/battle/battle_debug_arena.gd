@@ -263,7 +263,7 @@ func _edit_apply_collapse() -> void:
 	if body != null and is_instance_valid(body):
 		body.visible = not battle._edit_collapsed
 	if battle._edit_btn_collapse != null and is_instance_valid(battle._edit_btn_collapse):
-		battle._edit_btn_collapse.text = "▶ 展开" if battle._edit_collapsed else "⊟ 折叠"
+		battle._edit_btn_collapse.text = "▶ 展开" if battle._edit_collapsed else "▼ 折叠"
 
 # ════════════════════════════════════════════════════════════════════
 #  底部常驻笔刷栏 (用户2026-07-24: 取代模态选龟弹窗, 点选笔刷→连点连摆·不挡战场)

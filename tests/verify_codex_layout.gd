@@ -44,6 +44,29 @@ func _detail_texts() -> Array:
 	return out
 
 
+## 类型标签【图标 + 类型名】在当前详情里出现几次。
+## ★★ 2026-09-28 图标从 emoji 字换成 `assets/sprites/tags/` 的像素图 ⇒
+##   它不再是“字”, `_detail_texts()` 根本看不见它。再按字符串数就是 **恒 0**
+##   —— 那会让 ⑥ 的“最多一次”恒真、⑦ 的“每个羁绊都写了”恒假。
+## ⇒ 换载体: 数【贴图】。两条路都要认 ——
+##   · 羁绊详情头图是独立 TextureRect(比 `texture.resource_path`)
+##   · 装备详情副标是 RichTextLabel 的行内 [img](比 bbcode 源文本里的路径)
+## ★判据的**意思一个字没改**, 只是换了载体 —— 同本文件 ⑤ 框色那次的规矩。
+func _type_label_count(tp: String) -> int:
+	var path: String = str(_inst._type_icon(tp))
+	if path == "":
+		return 0
+	var n := 0
+	for c in _inst.detail.get_children():
+		if c is TextureRect:
+			var t: Texture2D = (c as TextureRect).texture
+			if t != null and str(t.resource_path) == path:
+				n += 1
+		elif c is RichTextLabel:
+			n += str((c as RichTextLabel).text).count(path)
+	return n
+
+
 func _settle(n: int = 4) -> void:
 	for _i in range(n):
 		await get_tree().process_frame
@@ -432,10 +455,8 @@ func _check_no_duplicate_type_line() -> void:
 		seen += 1
 		_inst._select(i)
 		await _settle(2)
-		var tok: String = "%s %s" % [_inst._type_emoji(tp), tp]
-		var cnt := 0
-		for t in _detail_texts():
-			cnt += str(t).count(tok)
+		var tok: String = "%s + %s" % [str(_inst._type_icon(tp)).get_file(), tp]
+		var cnt: int = _type_label_count(tp)
 		if cnt > worst:
 			worst = cnt
 			worst_id = str(it.get("id", ""))
@@ -484,15 +505,14 @@ func _check_multi_type() -> void:
 	if found >= 0:
 		_inst._select(found)
 		await _settle(4)
-		var joined := "\n".join(PackedStringArray(_detail_texts()))
-		## ★找【图标+类型名】这个标签, 不能找光秃秃的类型名 ——
+		## ★找【类型图标】, 不能找光秃秃的类型名 ——
 		##   这件装备自己就叫「香火石」, 名字里带着"香火"两个字 ⇒ 只搜类型名的话,
 		##   把代码改回 type_of(只认第一个类型)它照样绿。反向验证时当场抓到的假绿灯。
+		## ★图标现在是贴图不是字(2026-09-28) ⇒ 走 `_type_label_count`, 见它的头注。
 		var miss: Array = []
 		for t in multi_types:
-			var tok: String = "%s %s" % [_inst._type_emoji(str(t)), str(t)]
-			if joined.find(tok) < 0:
-				miss.append(tok)
+			if _type_label_count(str(t)) <= 0:
+				miss.append("%s + %s" % [str(_inst._type_icon(str(t))).get_file(), str(t)])
 		_ok("★★★⑦ 装备详情把它的每一个羁绊都写出来了(按【图标+名】找, 不按名找)",
 			miss.is_empty(), "漏掉 %s" % str(miss))
 	# ② 第二个类型的羁绊页要列得出这件装备

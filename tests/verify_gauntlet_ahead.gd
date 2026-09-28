@@ -53,7 +53,9 @@ const WD := ["周一", "周二", "周三", "周四", "周五", "周六", "周日
 
 ## 状态行那个 Label 的框宽 = `MainMenuScene.LEFT_W - 8`。★不抄数字, 从产品的常量算。
 var ROW_BOX_W: float = float(MENU.LEFT_W) - 8.0
-const ROW_FONT := 18       # = `_status_row()` 里 `_place_stroked(txt, 18, ...)` 那个 18
+## 两行版式的字号 —— ★从产品的常量取, 不抄数字(抄一次就永远落后一次)。
+var ROW_FONT: int = int(MENU.STATUS_L1_FONT)    # L1 身份行
+var L2_FONT: int = int(MENU.STATUS_L2_FONT)     # L2 今天行(相位读数就在这一行)
 
 var _n := 0
 var _fail := 0
@@ -398,28 +400,67 @@ func _t_sunday_row() -> void:
 		str(per_day[5]).find("闯关赛") >= 0, str(per_day[5]))
 	_ok("③ ★周日那一段是决赛日", str(per_day[6]).find("决赛日") >= 0, str(per_day[6]))
 
-	## (d) 字宽: 框只有 `LEFT_W - 8`。★只卡**这一版新加的周日三态** ——
-	##     周六那一行实测 485px / 框 374(顶穿 111px)是 2026-09-22 就在的老问题,
-	##     要改它就得改掉那句「再赢 N 场晋级 / 再输 N 场出局」的信息量(拍板过的),
-	##     **不在这一版的范围里**, 也不许把基线抬上去装作没事(见收尾报告里的缺口一节)。
+	## (d) 字宽 —— ★★2026-09-28 改口径: 状态行拆成两行之后,
+	##     相位段**自己占一整行**(17 号字, 框仍是 `LEFT_W - 8`), 身份段在它上面另一行。
+	##     所以这里量的是「相位段一个人装不装得进 374」, 不再拼 `第 N 大轮 · Lv X` 那个前缀。
+	##     ★真渲染的顶穿判据在 ④(量 Label 的真实 rect 包不包得住 holder) —— 这里是纯函数那一层,
+	##     两层都要: 纯函数这层能穷举所有战绩组合, 真渲染那层才证明产品真的这么画。
 	var f = m._bold_font()
-	var head: String = "第 %d 大轮 · Lv %d   " % [int(_gs.season_id), int(_gs.season_level)]
 	var over: Array = []
 	for s in [s_in, s_try, s_no]:
-		var w: float = f.get_string_size(head + s, HORIZONTAL_ALIGNMENT_LEFT, -1, ROW_FONT).x
-		print("     周日字宽 %6.1f / 框 %.0f  「%s」" % [w, ROW_BOX_W, head + s])
+		var w: float = f.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, L2_FONT).x
+		print("     周日相位段 ink %6.1f / 框 %.0f  「%s」" % [w, ROW_BOX_W, s])
 		if w > ROW_BOX_W:
 			over.append("%.0f「%s」" % [w, s])
 	_ok("③ ★★周日那三句都装得进那一行(顶穿就把词改短, 不许把框改宽)",
 		over.is_empty(), str(over))
-	_ok("③ ★分母: 尺子是活的 —— 周六那一行确实量出**超框**(它超 111px, 见上面那段注释)",
-		f.get_string_size(head + str(per_day[5]), HORIZONTAL_ALIGNMENT_LEFT, -1, ROW_FONT).x > ROW_BOX_W,
-		"%.0f" % f.get_string_size(head + str(per_day[5]), HORIZONTAL_ALIGNMENT_LEFT, -1, ROW_FONT).x)
+	## ★★★穷举**所有**闯关赛战绩组合(0..4 胜 × 0..3 负)的周六相位段 —— 门禁不许只量我手里这一种。
+	##   周六那句是全屏最长的一行, 而战绩数字会变(再赢 N / 再输 N 两个数跟着变)。
+	var wide: Array = []
+	var sat_ts: int = MON + 5 * 86400 + NOON
+	_gs.promoted = true
+	var widest := 0.0
+	for gw in range(0, int(P2.GAUNTLET_WINS_IN) + 1):
+		for gl in range(0, int(P2.GAUNTLET_LOSSES_OUT) + 1):
+			_gs.gauntlet_wins = gw
+			_gs.gauntlet_losses = gl
+			var sl: String = str(m._phase_status_line(sat_ts))
+			var sw: float = f.get_string_size(sl, HORIZONTAL_ALIGNMENT_LEFT, -1, L2_FONT).x
+			widest = maxf(widest, sw)
+			if sw > ROW_BOX_W:
+				wide.append("%d-%d %.0f「%s」" % [gw, gl, sw, sl])
+	print("     周六相位段 20 种战绩里最宽 %.1f / 框 %.0f" % [widest, ROW_BOX_W])
+	_ok("③ ★★★周六**所有**战绩组合的相位段都装得进 %.0f(它是全屏最长的一行)" % ROW_BOX_W,
+		wide.is_empty(), str(wide))
+	_ok("③ ★分母: 那 20 种真的量到了非零宽度(全 0 = 穷举白跑了)", widest > 100.0,
+		"最宽 %.1f" % widest)
+	## ★★分母「尺子是活的」: 拿**改之前那种一行写法**(身份段 + 相位段拼一行, 18 号字)再量一次,
+	##   它必须仍然**量得出超框** —— 否则上面那一串 PASS 可能只是尺子坏了。
+	##   (实测 485 / 框 374, 顶穿 111px, 正是这一版要修的那件事。)
+	_gs.gauntlet_wins = 2
+	_gs.gauntlet_losses = 1
+	var one_line: String = "第 %d 大轮 · Lv %d   %s" % [
+		int(_gs.season_id), int(_gs.season_level), str(m._phase_status_line(sat_ts))]
+	var one_w: float = f.get_string_size(one_line, HORIZONTAL_ALIGNMENT_LEFT, -1, ROW_FONT).x
+	print("     (反证)旧的一行写法 ink %.1f / 框 %.0f 「%s」" % [one_w, ROW_BOX_W, one_line])
+	_ok("③ ★分母: 尺子是活的 —— 旧的「拼成一行」写法在同一把尺子下**照旧超框 %.0fpx**" % (one_w - ROW_BOX_W),
+		one_w > ROW_BOX_W, "%.0f > %.0f" % [one_w, ROW_BOX_W])
 	m.free()
 
 
 # ─────────────────────────────────────────────────────────────
-# ④ 真渲染路径: `_status_row()` 到底跟不跟可注入时钟走
+# ④ 真渲染路径 × 七天全量: 那一行说了什么 + 它到底有没有顶穿控件
+#
+#  ★★★2026-09-28 从三天扩到七天, 并加上**几何**那一维。
+#    起因: 周六那句实测 ink **485px** 而框只有 `LEFT_W - 8` = **374px** ⇒ 顶穿 111px,
+#    从 2026-09-22 那条读数上线起就在, 门禁一次都没量到 —— 因为**它一周只渲染一天**,
+#    而 `verify_ui_consistency` / `verify_mainmenu_layout` 扫的都是「今天」那一屏。
+#    ⇒ 判据必须**逐天钉死时钟**跑七遍, 不许再靠"今天正好是星期几"。
+#
+#  ★判据量的是**真实 rect**, 不是"我设了多大的 box":
+#    `Control` 会把自己夹到 `get_combined_minimum_size()` ⇒ 给 Label 设 box 只是下限,
+#    字比 box 宽时它照样长出去、一个错都不报(顶穿就是这么来的)。
+#    ⇒ 唯一算数的问题是「这个 Label 的矩形还在 holder 里面吗」。
 # ─────────────────────────────────────────────────────────────
 func _find_row_texts(n: Node, out: Array) -> void:
 	if n is Label:
@@ -430,8 +471,27 @@ func _find_row_texts(n: Node, out: Array) -> void:
 		_find_row_texts(c, out)
 
 
+## 按**节点名**把「两行状态」那一块抓出来(`MainMenuScene.STATUS_TWO_LINE`)。
+## ★不按"第几个子节点"定位 —— 那种抓法一加节点就漂, 而且漂了还是绿的。
+func _two_line_block(n: Node) -> Node:
+	if str(n.name) == str(MENU.STATUS_TWO_LINE):
+		return n
+	for c in n.get_children():
+		var r: Node = _two_line_block(c)
+		if r != null:
+			return r
+	return null
+
+
+func _all_labels(n: Node, out: Array) -> void:
+	if n is Label:
+		out.append(n)
+	for c in n.get_children():
+		_all_labels(c, out)
+
+
 func _t_real_render() -> void:
-	print("── ④ 真渲染路径: 建 MainMenu 钉死日期, 从场景树读那一行 ──")
+	print("── ④ 真渲染路径 × 七天: 钉死日期建 MainMenu, 量那一行的字与矩形 ──")
 	var pk = load("res://scenes/MainMenu.tscn")
 	_ok("④ ★分母: 载得到 MainMenu.tscn", pk != null)
 	if pk == null:
@@ -441,38 +501,109 @@ func _t_real_render() -> void:
 	_gs.gauntlet_losses = 1
 	_gs.hearts = 3
 	_gs.ranked_used = 7
-	var got := {}
-	for pair in [["周四", THU + NOON], ["周六", SAT + NOON], ["周日", SUN + NOON]]:
+	## ★大轮/等级取**两位数**: 「第 9 大轮」与「第 99 大轮」不一样宽, 拿最窄的那种量等于没量。
+	_gs.season_id = 99
+	_gs.season_level = 99
+	var got := {}                # 星期 → L1 身份行
+	var l2 := {}                 # 星期 → L2 今天行
+	var spill: Array = []        # 顶穿 holder 的 Label
+	var built := 0
+	print("     %-4s %-7s %-7s  %s" % ["天", "框宽", "最宽ink", "两行各说什么"])
+	for d in range(7):
 		var mm = pk.instantiate()
 		## ★注入必须在 add_child **之前** —— `_ready()` 一进树就跑, 之后再设已经晚了。
-		mm.clock_override_ts = int(pair[1])
+		mm.clock_override_ts = MON + d * 86400 + NOON
 		get_tree().root.add_child(mm)
-		for _i in range(6):
+		## ★等布局落定: `Control` 的最小尺寸是**延迟**算的, 拍早了量到的是 box 不是 ink。
+		for _i in range(24):
 			await get_tree().process_frame
-		var rows: Array = []
-		_find_row_texts(mm, rows)
-		got[str(pair[0])] = str(rows[0]) if rows.size() > 0 else ""
-		print("     %s 渲染出「%s」" % [str(pair[0]), str(got[str(pair[0])])])
+		var blk: Node = _two_line_block(mm)
+		if blk == null:
+			_ok("④ ★分母(%s): 场景树里找得到 `%s` 那一块" % [WD[d], str(MENU.STATUS_TWO_LINE)], false)
+			mm.queue_free()
+			await get_tree().process_frame
+			continue
+		built += 1
+		var holder: Control = blk.get_parent() as Control
+		var hr: Rect2 = holder.get_global_rect()
+		var t1: Array = []
+		_find_row_texts(blk, t1)
+		got[WD[d]] = str(t1[0]) if t1.size() > 0 else ""
+		## L2 = 这一块里**不含「大轮」**的那段字
+		var labs2: Array = []
+		_all_labels(blk, labs2)
+		var l2t := ""
+		for lb in labs2:
+			var tx: String = str((lb as Label).text)
+			if tx.find("大轮") < 0 and tx.strip_edges() != "":
+				l2t = tx
+				break
+		l2[WD[d]] = l2t
+		## ★★★几何: holder 里**每一个** Label(含战绩那行)的矩形都必须还在 holder 里面。
+		##   顶穿 111px 那件事在这里现形 —— 它是 x 方向长出去; 两行版式还会在 y 方向被卡。
+		var labs: Array = []
+		_all_labels(holder, labs)
+		var widest := 0.0
+		for lb2 in labs:
+			var lr: Rect2 = (lb2 as Control).get_global_rect()
+			widest = maxf(widest, (lb2 as Control).get_combined_minimum_size().x)
+			if not hr.encloses(lr):
+				spill.append("%s 「%s」rect x %.0f..%.0f y %.0f..%.0f / holder x %.0f..%.0f y %.0f..%.0f" % [
+					WD[d], str((lb2 as Label).text).substr(0, 24),
+					lr.position.x, lr.end.x, lr.position.y, lr.end.y,
+					hr.position.x, hr.end.x, hr.position.y, hr.end.y])
+		_ok("④ ★分母(%s): 那一块里真的有 Label(0 个 = 下面全是空检查)" % WD[d],
+			labs.size() >= 3, "%d 个" % labs.size())
+		## ★★「尺子是活的」: 框宽与 ink 宽**两个数都打出来**, 不许只打 PASS。
+		print("     %-4s %-7.0f %-7.0f  L1「%s」 / L2「%s」" % [
+			WD[d], hr.size.x, widest, str(got[WD[d]]), l2t])
 		mm.queue_free()
 		await get_tree().process_frame
-	_ok("④ ★分母: 三天都从场景树里读到了那一行(读不到 = 下面全是空检查)",
-		str(got.get("周四", "")) != "" and str(got.get("周六", "")) != "" \
-			and str(got.get("周日", "")) != "", str(got))
-	_ok("④ ★★★三天的字**两两不同** —— 这一条就是 bug ③ 的判据: " \
-			+ "`_status_row()` 改回「不传参」立刻三天全一样",
-		str(got.get("周四", "")) != str(got.get("周六", "")) \
-			and str(got.get("周六", "")) != str(got.get("周日", "")) \
-			and str(got.get("周四", "")) != str(got.get("周日", "")), str(got))
+
+	_ok("④ ★分母: 七天都建出来了那一块(少一天 = 那一天从没被量过)", built == 7, "%d/7" % built)
+	_ok("④ ★分母: 七天都读到了 L1 身份行", got.size() == 7 and not got.values().has(""), str(got))
+	_ok("④ ★分母: 七天都读到了 L2 今天行(空串 = 第二行根本没建)",
+		l2.size() == 7 and not l2.values().has(""), str(l2))
+
+	## ── ★★★这一版的主判据: 一个字都不许顶穿控件 ──
+	_ok("④ ★★★七天里没有任何一段文字顶穿状态行(周六那句原来超框 111px)",
+		spill.is_empty(), "%d 条: %s" % [spill.size(), str(spill.slice(0, 4))])
+
+	## ── L1 身份行: 七天**一个字不变**(它无条件; 有分支就又是一条"一周只走一天的代码") ──
+	var l1set := {}
+	for k in got:
+		l1set[str(got[k])] = true
+	_ok("④ ★★L1 身份行七天同字(它无条件, 不跟星期几走)", l1set.size() == 1, str(l1set.keys()))
+	_ok("④ ★L1 里**没有**命与本周场次那两个数(它们周六周日冻着, 属于 L2)",
+		str(got.get("周一", "")).find("♥") < 0
+			and str(got.get("周一", "")).find("/%d" % int(P2.RANKED_QUOTA)) < 0,
+		str(got.get("周一", "")))
+
+	## ── L2 今天行: 跟着可注入时钟走(bug ③ 的判据) ──
+	var l2set := {}
+	for k2 in l2:
+		l2set[str(l2[k2])] = true
+	_ok("④ ★★★L2 一周里**至少三种**说法(积分赛/闯关赛/决赛日) —— "
+			+ "`_status_row()` 改回「不传参」立刻七天全一样",
+		l2set.size() >= 3, "%d 种: %s" % [l2set.size(), str(l2set.keys())])
+	_ok("④ ★分母: 周一~周五那五天说的是同一句(它们同属积分赛口径)",
+		str(l2.get("周一", "")) == str(l2.get("周五", ""))
+			and str(l2.get("周二", "")) == str(l2.get("周四", "")), str(l2))
 	_ok("④ ★周四(积分赛)那一行摆的是命 + 本周配额",
-		str(got.get("周四", "")).find("本周 %d/%d" % [
-			int(_gs.ranked_used), int(P2.RANKED_QUOTA)]) >= 0, str(got.get("周四", "")))
-	_ok("④ ★周六那一行是闯关赛读数", str(got.get("周六", "")).find("闯关赛") >= 0,
-		str(got.get("周六", "")))
+		str(l2.get("周四", "")).find("本周 %d/%d" % [
+			int(_gs.ranked_used), int(P2.RANKED_QUOTA)]) >= 0, str(l2.get("周四", "")))
+	_ok("④ ★周四那一行也摆着命", str(l2.get("周四", "")).find("♥") >= 0, str(l2.get("周四", "")))
+	_ok("④ ★周六那一行是闯关赛读数", str(l2.get("周六", "")).find("闯关赛") >= 0,
+		str(l2.get("周六", "")))
 	_ok("④ ★★★周日那一行是决赛日读数, 而且**不带**那两个冻着的数",
-		str(got.get("周日", "")).find("决赛日") >= 0 \
-			and str(got.get("周日", "")).find("♥") < 0 \
-			and str(got.get("周日", "")).find("/%d" % int(P2.RANKED_QUOTA)) < 0,
-		str(got.get("周日", "")))
+		str(l2.get("周日", "")).find("决赛日") >= 0
+			and str(l2.get("周日", "")).find("♥") < 0
+			and str(l2.get("周日", "")).find("/%d" % int(P2.RANKED_QUOTA)) < 0,
+		str(l2.get("周日", "")))
+	_ok("④ ★★周六那一行也**不带**那两个数(2026-09-22 已有的行为, 分母: 不是我新加的)",
+		str(l2.get("周六", "")).find("♥") < 0
+			and str(l2.get("周六", "")).find("/%d" % int(P2.RANKED_QUOTA)) < 0,
+		str(l2.get("周六", "")))
 
 
 # ─────────────────────────────────────────────────────────────

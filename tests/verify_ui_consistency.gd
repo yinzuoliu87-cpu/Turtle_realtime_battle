@@ -158,13 +158,23 @@ const BASE: Dictionary = {
 	##   真屏 18 个圆角盒从没被看见。⇒ **已知量错状态的基线, 一个都不登记。**
 	##   现在走 `Backend.pool_override` 灌 14 条真人快照, 量的是**真榜**。
 	"Leaderboard": {"web": 0, "round": 0, "frame": 0, "tap": 0},
-	## ⚠★★★**Matchmaking 故意没进表** —— 它会**自己走掉**。
-	##   `_ready` 里两个计时器(2.2s + 2.6s)之后 `change_scene_to_file` 进战斗,
-	##   而本门禁的 `_settle()` 最长等 8 秒 ⇒ 正好会撞上「**当场把门禁自己拆掉**」
-	##   那个形状(`verify_mainmenu_layout` 2026-09-26 因此一周有两天整份不算数:
-	##   `get_tree()` 变 null, 后面断言连跑都没跑, 而且**没打 ALL PASS**、rc 还是 0)。
-	##   ★而且对手卡是 1.5~2 秒后才建的 ⇒ 早量到的那 13 个控件是「正在找对手」那一屏,
-	##     又是占位屏。两个理由都指向同一件事: **它要一条冻住时序的缝**, 单独做。
+	## ★★★**Matchmaking —— 2026-09-28 终于进表了**。它原来没进表不是漏登记:
+	##   `_ready` 里两个计时器(2.2s + 2.6s)到点就 `change_scene_to_file` 进战斗
+	##   ⇒ 门禁刚把这一屏建起来、还没量完, **它就把门禁自己拆了**
+	##   (`get_tree()` 变 null, 后面断言连跑都没跑, 而且**没打 ALL PASS**、rc 还是 0 ——
+	##    `verify_mainmenu_layout` 2026-09-26 因此一周有两天整份不算数)。
+	##   ⇒ 这是「被测对象不在场」的第**四**种形状: **它在场过, 但撑不到被量。**
+	##   ★缝 = `MatchmakingScene._may_leave_for_test`(static Callable, 无效 = 不生效),
+	##     只管「什么时候走」。下面 `_mm_*` 那一节带三层分母。
+	## ★★对手卡是 **2.2 秒后**才建的 ⇒ 早量到的那十几个控件是「正在找对手」
+	##   那块**占位屏**。所以量之前要先等到对手名上屏(`_mm_wait_vs`),
+	##   而不是拿 `_settle()` 的 MIN_WAIT 碰运气 —— 2.0s 的 MIN_WAIT 就在 2.2s 前面,
+	##   雷达环恰好有六帧不动的话它当场量到占位屏(「靠运气绿」就是这个形状)。
+	## ★★★基线 = **2026-09-28 首次量到就如实登记**的存量(棘轮只许降):
+	##   web 0 / round 0 / tap 0 / frame 0。
+	##   ★窗口控件只有 20 个而已(两张卡 x 5 + 标题/勾/VS + 背景 + 顶栏),
+	##     这一屏本身就简 —— 但「简」不等于「不用量」, 上一个理由就是这么说的。
+	"Matchmaking": {"web": 0, "round": 0, "frame": 0, "tap": 0},
 	## ★2026-09-28 frame 7 → 0: 那个 7 是「卡太短 + 只调 inset」那一版的读数。
 	##   真因查清后(内容最小高 102 > 内容区 94, 而 `offset_bottom` 被
 	##   `get_combined_minimum_size()` 夹住根本没生效)把卡加高 14px, 实测已是 0。
@@ -185,6 +195,11 @@ const MIN_CTRL: Dictionary = {
 	## ★排行榜: 面板 + 表头 + 11 行 ⇒ 灌了池就该有这么多。19 = 只有我自己那一行(占位屏)。
 	"Leaderboard": 30,
 	"MainMenu": 20, "Inventory": 120, "Codex": 120,
+	## ★撑合屏: VS 态实测 **20** 个(两张卡 x 5 + 「已匹配到对手!」+ 勾 + VS
+	##   + 底色/渐变/content_root + 顶栏 3)。而「正在找对手」那块占位屏只有 9~12 个
+	##   ⇒ 18 这条线正好把两者分开。★但它**不是**这一屏的真分母——
+	##   真分母是「对手名真的在屏幕上」(见 `_mm_wait_vs`), 同登录墙那一条的道理。
+	"Matchmaking": 18,
 	## ★Record 下限从 10 提到 80: 10 是占位屏也能过的数, 等于分母没起作用。
 	"TeamSelect": 150, "Shop": 60, "Settings": 10, "Record": 80,
 }
@@ -1115,6 +1130,181 @@ func _audit_popups() -> void:
 		print("       %s —— %s" % [str(kk), str(KEEP_OK[kk])])
 
 
+## ═══════════════════════════════════════════════════════════════════
+##  【撑合屏】—— 它在场过, 但撑不到被量 (2026-09-28)
+## ═══════════════════════════════════════════════════════════════════
+## 缝开在**产品那边**: `MatchmakingScene._may_leave_for_test`(static Callable,
+## 无效 = 不生效), 样式抄仓库里现成的三个 —— `Backend.pool_override` /
+## `Supabase._transport_for_test` / `phase2_config.now_override_ts`。
+## 它**只答「现在该不该离开这一屏」**, 去哪不由它说。
+##
+## ★三层分母(缺一层那两种假绿就回来了):
+##   ① 这一屏真的建起来了       —— 可见控件 ≥ `MIN_CTRL`, 且**对手名在屏幕上**
+##   ② 缝真的生效了             —— **两边都断**: 路真的走到了最后一步(回调被调) +
+##                                      调完之后真的没跳场(实例还在树里)
+##   ③ 判据真的作用在它身上   —— **探子**: 塞一个假违规进去, 判据要逐得到
+const _MM := preload("res://scripts/scenes/MatchmakingScene.gd")
+## 门禁**自己**写的那条期望路径 —— 故意**不**读 `_MM.BATTLE_SCENE`。
+## ★读它就成了「拿同一个常量比它自己」: 目标被改成别的场景时两边一起变,
+##   判据恒真(memory `fb-completeness-needs-external-yardstick`: 尺子得在被测物之外)。
+const _MM_DEST := "res://scenes/RealtimeBattle3D.tscn"
+var _mm_leave_calls := 0
+var _mm_leave_path := ""
+
+
+## 缝的回调: 只答「不走」, 并把被告知的目标记下来。
+func _mm_may_leave(dest: String) -> bool:
+	_mm_leave_calls += 1
+	_mm_leave_path = dest
+	return false
+
+
+func _mm_opp_name() -> String:
+	if GameState.dual_opponent is Dictionary:
+		return str((GameState.dual_opponent as Dictionary).get("name", ""))
+	return ""
+
+
+func _mm_find_label(root: Node, txt: String) -> bool:
+	var st: Array = [root]
+	while not st.is_empty():
+		var n: Node = st.pop_back()
+		if n is Label and (n as Label).is_visible_in_tree() \
+				and str((n as Label).text).find(txt) >= 0:
+			return true
+		for ch in n.get_children():
+			st.append(ch)
+	return false
+
+
+## 等到【对手卡真的建出来】—— 不等它量的就是「正在找对手」那块占位屏。
+## 【尺子】墙钟(CLAUDE.md §3.5): 帧数在无头下与真实时间完全脱钩。
+## 【判据】屏幕上出现一个写着**对手名**的 Label。名字取 `GameState.dual_opponent`
+##   —— 那是**撑合逻辑自己算出来**的那一份, 不是测试里拄的一句屏幕词
+##   (拄屏幕词的话改文案会让这条分母静默失明; 而 bot 昵称表是范本不许动)。
+func _mm_wait_vs(root: Node) -> bool:
+	var t0: float = float(Time.get_ticks_msec()) / 1000.0
+	while float(Time.get_ticks_msec()) / 1000.0 - t0 < 8.0:
+		await get_tree().process_frame
+		var nm := _mm_opp_name()
+		if nm != "" and _mm_find_label(root, nm):
+			return true
+	return false
+
+
+## ★★★【探子】—— 往这一屏塞一个**假违规**, 断言判据逮得到, 再摸掉量真的。
+##
+## ★它堵的是: **屏建出来了, 但判据没作用在它身上**。
+##   没有这一步的话, 「这屏恰好没违规所以绿」与「判据瞎了/量的是另一棵树」
+##   **长得一模一样** —— 而本门禁 2026-09-27/28 已经栓过两次同族
+##   (登录墙从没被建出来 / 弹层从没被建出来)。
+## ★★**四列棘轮每一列都要有一个假违规被逮到** —— 只验两条的话,
+##   剩下两列的 0 依旧分不清「干净」与「瞎了」。四个探子各占一块**空地**,
+##   互不覆盖(否则一个探子会把另一个的数带偏):
+##     web/round —— 12px 圆角 + 2px 四边描边 + 半透底 `StyleBoxFlat`(两条签名各一)
+##     tap       —— 40x40 的 `Button`(短边 < 81px = 44pt)。`flat = true` 是故意的:
+##                  不带皮的非 flat 按钮会同时进【Godot 默认皮】那条全局名单,
+##                  而我要量的是 tap 这一列, 不是造一条别的噪声。
+##     frame     —— 一个用**产品自己的** `UISkin.nine("panel-frame.png")` 铺的框,
+##                  里头塞一条顶到距边 2px 的字(真实边带 13px ⇒ 越界 11px > 2px 阀值)。
+##                  ★框不自己拄贴图路径: 用同一个原语就不会抄一份永远落后的副本。
+## ★摸掉之后**再量一次并要求逐个相等** —— 变异必须还原,
+##   不还原就把本屏的基线污染了(memory `fb-restore-mutations-after-reverse-verify`)。
+func _mm_probe(root: Node, d0: Dictionary) -> Dictionary:
+	## ① web + round
+	var bad := Panel.new()
+	bad.name = "UICONS_PROBE_BOX"
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.10, 0.20, 0.30, 0.50)     # a < 0.95 ⇒ 网页盒那一条要的半透底
+	sb.set_corner_radius_all(12)
+	sb.set_border_width_all(2)
+	bad.add_theme_stylebox_override("panel", sb)
+	bad.size = Vector2(150, 90)
+	bad.position = Vector2(60, 600)
+	## 不碰「死点击」那一条(它不是交互位)。
+	bad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(bad)
+	## ② tap
+	var badb := Button.new()
+	badb.name = "UICONS_PROBE_TAP"
+	badb.text = ""
+	badb.flat = true
+	badb.size = Vector2(40, 40)
+	badb.custom_minimum_size = Vector2(40, 40)
+	badb.position = Vector2(1150, 610)
+	root.add_child(badb)
+	## ③ frame
+	var badf := Panel.new()
+	badf.name = "UICONS_PROBE_FRAME"
+	badf.add_theme_stylebox_override("panel",
+		UISkin.nine("panel-frame.png", 20, StyleBoxEmpty.new()))
+	badf.size = Vector2(300, 120)
+	badf.position = Vector2(490, 590)
+	badf.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(badf)
+	var badl := Label.new()
+	badl.name = "UICONS_PROBE_SPILL"
+	badl.text = "探子压边带"
+	badl.size = Vector2(200, 30)
+	badl.position = Vector2(2, 2)
+	badl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	badf.add_child(badl)
+	await get_tree().process_frame
+	var d1 := _audit(root)
+	_ok("★★★探子 Matchmaking: 四列各塞一个假违规, 判据四条都逮得到",
+		int(d1["web"]) == int(d0["web"]) + 1 and int(d1["round"]) == int(d0["round"]) + 1
+			and (d1["tap"] as Array).size() == (d0["tap"] as Array).size() + 1
+			and (d1["frame"] as Array).size() == (d0["frame"] as Array).size() + 1,
+		"web %d→%d  round %d→%d  tap %d→%d  frame %d→%d (各应 +1) %s" % [
+			int(d0["web"]), int(d1["web"]), int(d0["round"]), int(d1["round"]),
+			(d0["tap"] as Array).size(), (d1["tap"] as Array).size(),
+			(d0["frame"] as Array).size(), (d1["frame"] as Array).size(),
+			str((d1["frame"] as Array).slice(0, 2))])
+	badl.free()
+	badf.free()
+	badb.free()
+	bad.free()
+	await get_tree().process_frame
+	var d2 := _audit(root)
+	_ok("★★★探子 Matchmaking: 摸掉之后逐个复原(不复原就把本屏基线污染了)",
+		int(d2["web"]) == int(d0["web"]) and int(d2["round"]) == int(d0["round"])
+			and int(d2["ctrl"]) == int(d0["ctrl"])
+			and (d2["tap"] as Array).size() == (d0["tap"] as Array).size()
+			and (d2["frame"] as Array).size() == (d0["frame"] as Array).size(),
+		"web %d/%d round %d/%d ctrl %d/%d tap %d/%d frame %d/%d" % [
+			int(d2["web"]), int(d0["web"]), int(d2["round"]), int(d0["round"]),
+			int(d2["ctrl"]), int(d0["ctrl"]),
+			(d2["tap"] as Array).size(), (d0["tap"] as Array).size(),
+			(d2["frame"] as Array).size(), (d0["frame"] as Array).size()])
+	return d2
+
+
+## 缝的**两边**各一条断言 —— 只断一边都会漏。
+func _mm_after(root: Node, me_scene: Node) -> void:
+	var t0: float = float(Time.get_ticks_msec()) / 1000.0
+	while _mm_leave_calls == 0 and float(Time.get_ticks_msec()) / 1000.0 - t0 < 10.0:
+		await get_tree().process_frame
+	## ① 【不注入时它会自己跳场】那一半。
+	##   ★为什么不能真让它跳一次给你看: 跳了门禁自己就没了 —— **那正是这条缝
+	##     要解决的问题本身**。所以这一半量的是**同一条路真的走到了最后一步**:
+	##     回调就在 `change_scene_to_file` 的**前一行**, 它被调到 ⇒ 不注入的话
+	##     此刻执行的就是跳场。
+	##   ★这一条挡的是「缝变成死代码」: 哪天计时器或跳场那段被删/被挑,
+	##     回调不再被调 ⇒ **当场红**, 而不是静默退化成一条永远成立的空检查
+	##     (memory `fb-gate-tautological-when-it-spans-a-frame` 同族)。
+	_ok("★★分母 Matchmaking: 缝真的被走到了(= 不注入的话此刻正在 change_scene_to_file)",
+		_mm_leave_calls == 1, "回调 %d 次" % _mm_leave_calls)
+	_ok("★★分母 Matchmaking: 缝没改「跳去哪」(目标仍是战斗场景)",
+		_mm_leave_path == _MM_DEST, "目标 %s" % _mm_leave_path)
+	## ② 【注入后它不会跳场】那一半。两边加起来才叫「缝真的生效了」。
+	_ok("★★分母 Matchmaking: 缝真的拦住了(实例还在树里 + current_scene 还是门禁自己)",
+		is_instance_valid(root) and root.is_inside_tree() and get_tree().current_scene == me_scene,
+		"in_tree=%s current_scene=%s" % [str(root.is_inside_tree()),
+			str(get_tree().current_scene == me_scene)])
+	## ★用完立刻还原 —— static, 活过场景切换。下一屏开头有一条断言盯着它。
+	_MM._may_leave_for_test = Callable()
+
+
 func _ready() -> void:
 	await get_tree().process_frame
 	get_tree().root.size = Vector2i(1280, 720)
@@ -1122,6 +1312,8 @@ func _ready() -> void:
 	if gs != null:
 		gs.test_mode = true
 	await get_tree().process_frame
+	## 门禁自己这棵树 —— 撑合屏那条「真的没跳场」拿它做参照。
+	var _me_scene: Node = get_tree().current_scene
 	print("=== 全屏 UI 一致性棘轮 ===")
 	var tot_ctrl := 0
 	var tot_btn := 0
@@ -1143,6 +1335,11 @@ func _ready() -> void:
 		_ok("★分母 %s: 进这一屏时池注入是干净的(上一屏漏清 = 后面全在量假池)" % str(scn),
 			(_BE.pool_override as Dictionary).is_empty(),
 			"残留 %d 桶" % (_BE.pool_override as Dictionary).size())
+		## ★同族的第二份 static: 撑合屏那条缝。漏还原一次, 后面每一个
+		##   跑到撑合屏的用例都会被它拦在原地, 而**没有任何判据会发现**。
+		_ok("★分母 %s: 进这一屏时撑合缝是还原的(static, 漏还原会波及后面每一屏)" % str(scn),
+			not _MM._may_leave_for_test.is_valid(),
+			"注入还在 = 撑合屏从此永不跳场")
 		## ★屏名不一定等于场景名: 「登录墙」量的是 Settings 的**另一个状态**。
 		var scene_name: String = "Settings" if str(scn) == "登录墙" else str(scn)
 		var path := "res://scenes/%s.tscn" % scene_name
@@ -1203,6 +1400,13 @@ func _ready() -> void:
 			inst.set_data({"size": 8, "round": 2, "me": 2,
 				"names": ["甲龟", "乙龟", "丙龟", "丁龟", "戊龟", "己龟", "庚龟", "辛龟"],
 				"done": {"1:0": 0, "1:1": 1, "1:2": 0, "1:3": 1}}, {}, 1789862400 + 10 * 3600)
+		## ★★★撑合屏要一条【冻住时序的缝】才量得到 —— 详见上面 `_mm_*` 那一节
+		##   与 `MatchmakingScene._may_leave_for_test` 的长注释。
+		##   ★注入必须在 `add_child` **之前**: `_ready` 是 add_child 那一刻起跑的。
+		if str(scn) == "Matchmaking":
+			_mm_leave_calls = 0
+			_mm_leave_path = ""
+			_MM._may_leave_for_test = _mm_may_leave
 		add_child(inst)
 		## ★用完立刻清掉池注入 —— `Backend.pool_override` 是 static, 活过场景切换,
 		##   留着会把后面每一屏都喂上这份假池。
@@ -1211,9 +1415,19 @@ func _ready() -> void:
 			_lb_seed = null
 		## ★等够 MIN_WAIT 墙钟秒再量(见 _settle 的长注释)。返回值只打印不当判据 ——
 		##   带常驻动效的屏永远"稳不住", 拿它当失败就是判据不匹配被测对象。
+		## ★★撑合屏: **先等到对手卡建出来**再让 `_settle` 去判稳。
+		##   不这么做的话它就是靠运气: `_settle` 的 MIN_WAIT(2.0s) 就在对手卡
+		##   那个 2.2s 计时器**前面**, 雷达环恰好有六帧不动 ⇒ 当场量到占位屏。
+		if str(scn) == "Matchmaking":
+			var _vs_ok: bool = await _mm_wait_vs(inst)
+			_ok("★★分母 Matchmaking: 对手卡真的建出来了(不等它 = 在量「正在找对手」那块占位屏)",
+				_vs_ok, "对手名「%s」" % _mm_opp_name())
 		var _stable: bool = await _settle(inst)
 		print("    [落位] %s: %s" % [str(scn), "已静止" if _stable else "仍有常驻动效(入场已过, 照量)"])
 		var d := _audit(inst)
+		## ★★★第三层分母: **判据真的作用在这一屏身上吗**。见 `_mm_probe`。
+		if str(scn) == "Matchmaking":
+			d = await _mm_probe(inst, d)
 		var b: Dictionary = BASE[scn]
 		tot_ctrl += int(d["ctrl"])
 		tot_btn += int(d["btn"])
@@ -1265,6 +1479,9 @@ func _ready() -> void:
 			all_spill.append("%s:%s" % [str(scn), str(v6)])
 		for v7 in (d["overlap"] as Array):
 			all_overlap.append("%s:%s" % [str(scn), str(v7)])
+		## ★★撑合屏收尾: 缝的两边各一条断言 + 还原 static。
+		if str(scn) == "Matchmaking":
+			await _mm_after(inst, _me_scene)
 		inst.queue_free()
 		await get_tree().process_frame
 	await _selftest_interactive()

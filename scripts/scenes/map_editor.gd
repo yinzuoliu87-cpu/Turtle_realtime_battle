@@ -87,7 +87,7 @@ func build_ui() -> void:
 	var hb2 := HBoxContainer.new()
 	vb.add_child(hb2)
 	var bsave := Button.new(); bsave.text = "💾保存"; bsave.pressed.connect(save); hb2.add_child(bsave)
-	var brel := Button.new(); brel.text = "↻重载"; brel.pressed.connect(reload); hb2.add_child(brel)
+	var brel := Button.new(); brel.text = "重载"; brel.pressed.connect(reload); hb2.add_child(brel)
 	var bclr := Button.new(); bclr.text = "清空"; bclr.pressed.connect(clear); hb2.add_child(bclr)
 	var bund := Button.new(); bund.text = "撤销"; bund.pressed.connect(undo_last); hb2.add_child(bund)
 	cl.add_child(panel)

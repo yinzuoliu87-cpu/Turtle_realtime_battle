@@ -51,6 +51,20 @@ const ROW_H := 81.0                         # ★触摸线: 44pt = 81 视口像�
 const LEFT_X := 48.0                        # 左栏左沿 (= WALL*3, 与 LOGO 左沿对齐)
 const LEFT_W := 382.0                       # 左栏宽
 const STATUS_Y := 210.0                     # 状态+战绩行 顶沿
+## ★★状态行是【两行】(2026-09-28)。这个名字同时是**那两行文字的容器节点名**,
+##   门禁按它从场景树里把那一块抓出来量真实 rect —— 不靠"第几个子节点"这种会漂的定位。
+## 为什么拆两行, 见 `_status_row()` 头上那段(量出来的: 周六那句 ink 485px / 框 374px)。
+const STATUS_TWO_LINE := "StatusTwoLine"
+## 三段文字在 holder 里的顶沿与字号。★抽成常量是因为**竖向一分都涨不了**
+##   (剖面见 `_status_row()` 头注), 三段必须塞进原来的 ROW_H=81 里, 数字改一个就要重算全部。
+##   眼睛看不出"差 1px 就顶穿", 所以把它们摆成一张表, 旁边写清各自的实测行高。
+const STATUS_L1_Y := 1.0                    # 身份行: 18 号字实测行高 27 ⇒ 占 0..29(含 ±1 描边)
+const STATUS_L2_Y := 29.0                   # 今天行: 17 号字实测行高 25 ⇒ 占 28..55
+const STATUS_L3_Y := 54.0                   # 战绩行: 17 号字 ⇒ 占 53..80, 底下还剩 1px
+const STATUS_L1_FONT := 18                  # 身份行
+## ★L2 与 L3 **共用**这一个字号(17): 它们是同一档「次级读数」, 不许各写一个 17 ——
+##   同一个数存两份, 改一处漏一处(memory `fb-hand-rolled-copies-drift`)。
+const STATUS_L2_FONT := 17                  # 今天行 + 战绩行
 const MENU_Y := 299.0                       # 四个次级入口 顶沿
 const MENU_N := 4
 const HERO_SIZE := Vector2(508.0, 158.0)    # 主 CTA: 全屏唯一大木框, 右下角
@@ -781,18 +795,53 @@ func _phase_status_line(now: int = 0) -> String:
 	return ""
 
 
+## ══════════════════════════════════════════════════════════════════════
+##  ★★★状态行是**两行**(2026-09-28) —— 一行装不下, 而且是量出来的不是看出来的
+## ══════════════════════════════════════════════════════════════════════
+## 周六那句实测 `第 1 大轮 · Lv 1   闯关赛 2-1 · 再赢 2 场晋级 / 再输 2 场出局`
+## = **ink 485px**, 而框只有 `LEFT_W - 8` = **374px** ⇒ **顶穿控件 111px**
+## (真渲染量到的 Label rect 是 x 51..538, 而 holder 右沿在 430)。
+## 从 2026-09-22 周六那条读数上线时就在, 一直没红 —— 因为**它一周只渲染一天**,
+## 而 `verify_ui_consistency` / `verify_mainmenu_layout` 扫的都是「今天」那一屏。
+##
+## ★为什么不削词: 量过 16 个更短的写法, 装得进 374 的**都要削掉「再赢/再输」的后果**
+##   (最短可读的 407 仍然超; 降到 371 就只剩「再赢 2 / 再输 2」, 丢了晋级/出局这件事)。
+##   那句话的信息量是拍板过的 —— 「再输两场就出局」正是闯关赛每一场的分量。
+## ★为什么不加宽左栏: `LEFT_W` 同时定着四个入口、赛程条的对齐带与右栏的镜像,
+##   动它就是动整屏版式。两行只动这一行自己。
+##
+## ★★★竖向一分都涨不了 —— 剖面(实测, `tests/_probe_satrow.gd`):
+##     LOGO 底沿  205.5      ← 上面只剩 4.5px
+##     状态行     210..291   (= STATUS_Y + ROW_H)
+##     四个入口   299..623
+##     赛程条     周日被「看对阵图」按钮撑到 95 高 ⇒ 顶沿 **624**
+##   ⇒ 栈底与条顶只差 **1px**: `MENU_Y` 往下挪一格整屏就溢出(那条 2026-09-27 刚修过)。
+##   ⇒ 三段文字必须塞进原来的 81px: 27(18号) + 25(17号) + 25(17号) = 77, 上下各留 2。
+##
+## ⚠ `Control` 会把自己夹到 `get_combined_minimum_size()` ⇒ 给 Label 设 box **只是下限**:
+##   字比 box 宽时它照样长出去(顶穿就是这么来的, 一个错都不报)。
+##   所以门禁量的是**真实 rect 包不包得住 holder**, 不是"我设了多大的 box"。
+##   (同一个坑 2026-09-28 在训龟大师那屏也栽过: 以为是"名字换行", 真因是内容最小高 102 > 94。)
+##
+## 三段各说一件事:
+##   L1 身份 `第 N 大轮 · Lv X`                 ← 七天一个字不变
+##   L2 今天 `♥ a/8   本周 n/24` | 闯关赛… | 决赛日…  ← `_phase_status_line()` 分派
+##   L3 战绩 `[纹章] 战绩  x 胜 y 负`
+## ★★★命与本周场次进 **L2 而不是 L1** —— 它们是「今天在动的数」, 而周六周日**都不动**
+##   (`phase_uses_ranked_quota(GAUNTLET/FINALS)=false`; `finals_*` 一个字都不碰 `hearts`)。
+##   摆在 L1 就得给 L1 加一个"今天是不是积分赛"的分支, 而那个分支一周只走两天 ——
+##   本文件刚因为"一周只走一天的代码"栽过两次。⇒ **L1 无条件、七天同字**, 一个分支都不要。
 func _status_row() -> void:
-	var txt := "第 %d 大轮 · Lv %d   ♥ %d/8   本周 %d/%d" % [
-		int(GameState.season_id), int(GameState.season_level), int(GameState.hearts),
-		int(GameState.ranked_used), int(_P2C.RANKED_QUOTA)]
-	## ★周六换闯关赛读数 / **周日换决赛日读数** —— 命与积分赛配额那两个数
-	##   周六周日**都不动**, 摆在那儿只会误导(周日那一半 2026-09-28 才补上)。
-	## ★★走 `_now_ts()`: 不传参的话这一行读的是真实时钟, 于是**一周只有一天**
+	## L1 身份 —— 七天不变, 没有任何分支。
+	var id_txt := "第 %d 大轮 · Lv %d" % [
+		int(GameState.season_id), int(GameState.season_level)]
+	## L2 今天 ——★★走 `_now_ts()`: 不传参的话这一行读的是真实时钟, 于是**一周只有一天**
 	##   会被门禁执行到(见 `_phase_status_line` 头注)。
-	var gl_line: String = _phase_status_line(_now_ts())
-	if gl_line != "":
-		txt = "第 %d 大轮 · Lv %d   %s" % [
-			int(GameState.season_id), int(GameState.season_level), gl_line]
+	var today_txt: String = _phase_status_line(_now_ts())
+	if today_txt == "":
+		## 积分赛/休赛那几天: 命与本周场次**就是**今天在动的那两个数。
+		today_txt = "♥ %d/8   本周 %d/%d" % [
+			int(GameState.hearts), int(GameState.ranked_used), int(_P2C.RANKED_QUOTA)]
 	var wN: int = GameState.battles_won
 	var tN: int = GameState.battles_total
 	## ★★空态文案 2026-09-27 改: 「暂无战绩」是后台/电商的那句「暂无数据」——
@@ -816,7 +865,18 @@ func _status_row() -> void:
 	glow.size = Vector2(LEFT_W, ROW_H)
 	glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(glow)
-	holder.add_child(_place_stroked(txt, 18, Color("#ffe9a8"), Vector2(4, 10), Vector2(LEFT_W - 8, 26)))
+	## ★两行装进一个**具名容器**: 门禁按 `STATUS_TWO_LINE` 抓它, 再逐个 Label 量
+	##   "rect 有没有长出 holder"。容器自己不吃鼠标, 整块的点击仍由下面那个 Button 接。
+	var two := Control.new()
+	two.name = STATUS_TWO_LINE
+	two.size = Vector2(LEFT_W, ROW_H)
+	two.custom_minimum_size = Vector2(LEFT_W, ROW_H)
+	two.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	two.add_child(_place_stroked(id_txt, STATUS_L1_FONT, Color("#ffe9a8"),
+		Vector2(4, STATUS_L1_Y), Vector2(LEFT_W - 8, 26)))
+	two.add_child(_place_stroked(today_txt, STATUS_L2_FONT, Color("#ffe9a8"),
+		Vector2(4, STATUS_L2_Y), Vector2(LEFT_W - 8, 25)))
+	holder.add_child(two)
 	## ★★2026-09-27 去掉行尾那个 › —— 网页的「更多 ›」写法
 	##   (用户 2026-09-27:「一点也看不出来游戏的味道, 全是 ai 味和网页味」)。
 	##   这一行本来就是可点的整块, 不靠一个箭头告诉人。
@@ -838,14 +898,14 @@ func _status_row() -> void:
 		rec_ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		rec_ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST   # 像素风: 缩小也不许插值糊掉
 		rec_ic.size = Vector2(24, 24)
-		rec_ic.position = Vector2(_rec_ic_x, 43)
+		rec_ic.position = Vector2(_rec_ic_x, STATUS_L3_Y + 1.0)
 		rec_ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		holder.add_child(rec_ic)
 		_rec_tx = _rec_ic_x + 28.0
 	## ★颜色从冷灰 #cfd8e4 改成暖羊皮纸 #ddcaa4: 冷灰细字 = 网页的次级说明句,
 	##   而这一屏的语言是木头 + 金边。同一行里"战绩"两个字仍在(门禁 ⑦ 按它找入口)。
-	holder.add_child(_place_stroked("战绩  %s" % rec, 17, Color("#ddcaa4"),
-		Vector2(_rec_tx, 42), Vector2(LEFT_W - _rec_tx - 8.0, 26)))
+	holder.add_child(_place_stroked("战绩  %s" % rec, STATUS_L2_FONT, Color("#ddcaa4"),
+		Vector2(_rec_tx, STATUS_L3_Y), Vector2(LEFT_W - _rec_tx - 8.0, 25)))
 	var btn := Button.new()
 	btn.flat = true
 	btn.focus_mode = Control.FOCUS_NONE
@@ -989,8 +1049,17 @@ var strip_finals_live_override: int = -1
 
 func _week_strip() -> void:
 	## ★UTC 纪元秒, 与本地时区无关
-	var now: int = strip_now_override if strip_now_override > 0 \
-		else int(Time.get_unix_time_from_system())
+	## ★★★兜底走 `_now_ts()`, 不再就地读系统钟(2026-09-28)。
+	##   原来这一行是主菜单上**第二条独立的时钟**: 把 `clock_override_ts` 钉在周六渲整屏时,
+	##   状态行已经改说「闯关赛」, 而赛程条仍把**真实的那一天**标成「今」。
+	##   实测(`tests/_probe_mmclock.gd`, 修前): 只注 `clock_override_ts` 逐日走一遍,
+	##   **七天里六天**条上标「今」的格与注入日对不上 —— 对得上的只有
+	##   “恰好是真实今天”那一天。memory `fb-second-clock-drops-events`。
+	## ★`strip_now_override` 不删, 留作**更细的一层**(截图脚本 `shot_menu_to_bracket`
+	##   与 `verify_week_strip` 在用); 但**真实时钟那条路只剩一条**:
+	##   `_now_ts()` → `clock_override_ts` → `_P2C.now_utc()`。
+	##   两个 override 都是 0 时行为**逐字节不变**(玩家路径一字未动)。
+	var now: int = strip_now_override if strip_now_override > 0 else _now_ts()
 	var today: int = _P2C.iso_weekday_utc(now)
 	_sb_state_shown = _SB.service_state()
 	var box := PanelContainer.new()
@@ -1459,7 +1528,9 @@ func _toast(msg: String) -> void:
 ##   (memory `fb-gate-subject-never-constructed`)。产品调用一律不传, 只有门禁传。
 ##   先例: `GameState.ranked_quota_full(now)`、`TeamSelectScene.lockout_now_override`。
 func _battle_block_msg(now: int = 0) -> String:
-	var ts: int = now if now > 0 else int(Time.get_unix_time_from_system())
+	## ★兜底同样走 `_now_ts()`(2026-09-28): 否则这里就是本文件的第三条时钟。
+	##   产品路径(`_start_battle_flow`)本来就传 `_now_ts()` ∴ 行为逐字节不变。
+	var ts: int = now if now > 0 else _now_ts()
 	if _P2C.phase_at_utc(ts) == _P2C.PHASE_GAUNTLET \
 			and _P2C.phase_mode_live(_P2C.PHASE_GAUNTLET):
 		return _msg_gauntlet_block()

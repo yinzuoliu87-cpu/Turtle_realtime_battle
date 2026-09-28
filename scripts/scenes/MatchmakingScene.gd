@@ -47,6 +47,35 @@ const FAKE_NAMES := [
 ]
 const Backend := preload("res://scripts/net/backend.gd")
 
+## 撮合结束去哪 —— **单一出处**。下面那条缝把它当入参交给回调, 回调只读不改。
+const BATTLE_SCENE := "res://scenes/RealtimeBattle3D.tscn"
+
+## 【门禁注入点】有效时由它回答「现在该不该离开这一屏」—— 返回 false = 留在原地不动。
+##
+## ★为什么必须有它(2026-09-28): `tests/verify_ui_consistency.gd` 那张 13 条判据 x N 屏的
+##   棘轮表里**唯独没有撮合屏**, 而它是「每一局对局之间都要过」的一屏。
+##   原因不是漏登记: `_ready` 里两个计时器(2.2s + 2.6s)到点就 `change_scene_to_file`
+##   ⇒ 门禁刚把这一屏建起来、还没量完, **它就把门禁自己拆了**
+##   (`get_tree()` 变 null, 后面断言连跑都没跑, 而且**不打 ALL PASS** 而 rc 还是 0 ——
+##    `verify_mainmenu_layout` 2026-09-26 栽过一模一样的形状)。
+##   ⇒ 这是「被测对象不在场」的第**四**种形状: **它在场过, 但撑不到被量。**
+##
+## ★样式照抄仓库里现成的三个, 一个字不新发明:
+##     `Backend.pool_override`(static Dictionary, 空 = 不生效)
+##     `Supabase._transport_for_test`(static Callable, 无效 = 不生效)
+##     `phase2_config.now_override_ts`(static int, 0 = 真实系统时钟)
+##   三者的共同点就是这条缝的全部约定: **默认值就是「关」** ⇒ 玩家路径一字不动;
+##   是 **static** ⇒ 活过场景切换 ⇒ **用完必须还原**(漏还原会波及同进程后面的用例)。
+##
+## ⚠ 这条缝**只管「什么时候走」**, 两条边界都是硬的:
+##   · **去哪不由它说** —— 目标始终是上面那个 `BATTLE_SCENE` 常量。它作为**入参**
+##     交给回调只为一件事: 让门禁能断言「目标没被这条缝改过」。回调改不了它。
+##   · **撮合逻辑一个字没动** —— 抽对手 / 排除自己 / 写 `dual_ghost` 全在它之前,
+##     两个计时器的时长也没动。缝只搭在**最后那一步**上。
+## ⚠ 拦点在**淡出黑幕之前**: 淡出与 `change_scene_to_file` 是「离开这一屏」同一件事的
+##   两半, 拦在两者中间的话门禁量到的是一块**盖着黑幕**的屏。
+static var _may_leave_for_test: Callable = Callable()
+
 var content_root: Control
 var _font_cache: FontVariation = null
 var _dots_lbl: Label = null
@@ -116,10 +145,14 @@ func _ready() -> void:
 	await get_tree().create_timer(2.6).timeout
 	if _cancelled or not is_inside_tree():
 		return
+	## 【门禁注入点】见文件顶部 `_may_leave_for_test` 的长注释。
+	## 默认是无效 Callable ⇒ 这两行对玩家路径等于不存在。
+	if _may_leave_for_test.is_valid() and not bool(_may_leave_for_test.call(BATTLE_SCENE)):
+		return
 	await _fade_to_black(0.4)       # 硬切→淡出: 进战斗不再"啪"一下换画面
 	if _cancelled or not is_inside_tree():
 		return
-	get_tree().change_scene_to_file("res://scenes/RealtimeBattle3D.tscn")
+	get_tree().change_scene_to_file(BATTLE_SCENE)
 
 
 # ---------------------------------------------------------------------------

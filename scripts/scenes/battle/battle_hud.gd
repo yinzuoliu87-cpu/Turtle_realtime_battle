@@ -1671,7 +1671,7 @@ func _stats_column(header: String, units: Array, hc: Color) -> Control:
 		dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		name_cell.add_child(dot)
 		var nml := Label.new()
-		nml.text = ("↳ " if is_sm else "") + battle._st_name(u) + ("  阵亡" if dead else "")
+		nml.text = ("└ " if is_sm else "") + battle._st_name(u) + ("  阵亡" if dead else "")
 		nml.add_theme_font_size_override("font_size", 13)
 		nml.add_theme_color_override("font_color", Color("#888888") if dead else (Color("#cdd9c2") if is_sm else Color("#ffffff")))
 		name_cell.add_child(nml)
@@ -1841,7 +1841,7 @@ func _build_edit_palette() -> void:
 	title.add_theme_color_override("font_color", Color("#ffd93d"))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	titlebar.add_child(title)
-	battle._edit_btn_collapse = battle._debug._edit_mk_btn("⊟ 折叠", func(): battle._debug._edit_toggle_collapse(), 84)
+	battle._edit_btn_collapse = battle._debug._edit_mk_btn("▼ 折叠", func(): battle._debug._edit_toggle_collapse(), 84)
 	titlebar.add_child(battle._edit_btn_collapse)
 	# 可折叠主体: 后续所有设置行都进 battle._edit_body(把 vb 重指向它)
 	# 主体套 ScrollContainer: 内容多(尤其选中单位→Inspector追加行)时不撑出屏外够不到(治与"加装备够不到"同类·2026-07-27)
