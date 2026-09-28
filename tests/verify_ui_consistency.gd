@@ -140,7 +140,11 @@ const BASE: Dictionary = {
 	##   于是墙与账号 UI 从不建出来(memory `fb-gate-subject-never-constructed`)。
 	##   2026-09-27 拿真后端一跑, 当场 4 条: 默认皮按钮 ×4 / 热区不足 ×4 / 文字相撞 / 圆角盒 ×1。
 	##   ⇒ 基线**先按实测如实登记**, 修完再往下拧(棘轮只许降)。
-	"登录墙": {"web": 0, "round": 1, "frame": 0, "tap": 2},
+	## ★2026-09-28 round 1→0 / tap 2→0: 查触摸那轮把墙**第一次真正量到**之后的实测值。
+	##   (在那之前这一屏在两个触摸门禁里都**不在场** —— 门禁给 `TURTLE_SUPABASE=" "`,
+	##    `SB.enabled()` 恒假 ⇒ 墙根本没建起来, 扫到的是普通设置页。)
+	##   ★基线停在比实测高的数 = 给那个 bug 留了回来的路。棘轮只许降。
+	"登录墙": {"web": 0, "round": 0, "frame": 0, "tap": 0},
 	## ★★★2026-09-27 补上剩下 4 个屏 —— 它们至今**一条判据都没量过**。
 	##   `scenes/` 下 12 个场景, 这张表原来只有 7 个。缺的偏偏是:
 	##   BracketMap(周日对阵图, 整天都在看) / Leaderboard / 
@@ -478,8 +482,13 @@ func _first_text(c: Node) -> String:
 ## ★**没有**把"所有 MOUSE_FILTER_STOP 的控件"都收进来: Godot 里 Panel /
 ##   PanelContainer / ColorRect 默认就是 STOP, 收了会满屏噪音, 而噪音门禁等于没门禁。
 ##   剩下那一片有多大, 由 `d["mfstop"]` 这个**分母**如实报出来。
+## ★★2026-09-28 `c is Range` 收窄成「能被拖动的那几种」。
+##   `ProgressBar` 也是 `Range`, 而它是**只读读数** —— 给它 `MOUSE_FILTER_IGNORE` 是对的,
+##   按原来的写法会被判成「死点击」⇒ 三条假违规(实测: 战斗面板的血条/能量条)。
+##   查登录墙触摸那轮的 agent 第一版也写 `Range`, 当场撞到同一批, 已收窄。
 func _interactive(c: Control) -> bool:
-	return c is BaseButton or c is Range or c is LineEdit or c is TextEdit \
+	return c is BaseButton or c is Slider or c is SpinBox or c is ScrollBar \
+		or c is LineEdit or c is TextEdit \
 		or _wired_from_outside(c)
 
 
