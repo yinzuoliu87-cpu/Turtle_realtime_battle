@@ -164,6 +164,20 @@ jobs:
           # ★2026-08-20 加重试: 连着 push 几个提交时会有**两次构建并发抢同一个 ios-latest**,
           #   后到的那次 `--clobber` 撞上前一次正在写 ⇒ 整个 run 红, 而产物其实是对的。
           #   (那次实测: 失败的是先到的, 后到的传成功, release 上是最新包。)
+          # ★★★2026-09-28 上面原来那句「后到的传成功, release 上是最新包」**是错的**,
+          #   而且今天真的咬人了: v0.19.466 完成 10:52:14 / v0.19.465 完成 10:52:55(晚 41 秒)
+          #   ⇒ 后到的是 465, 「ios-latest」上挂着**旧版本**, 用户下到的是 465。
+          #   「**后完成**」不等于「**版本最新**」—— 两个 tag 同时推, 谁先跑完只看 runner 排队。
+          # ⇒ 传之前先比一次版本: release 上已有的包比我新就**不许覆盖**(跳过, 不判红 ——
+          #   它不是失败, 是这一次本来就不该当 latest)。想要旧版去 Actions artifact 拿。
+          CUR=$(gh release view ios-latest --json assets --jq '.assets[].name | select(endswith(".ipa"))' 2>/dev/null | sed -E 's/^turtle-v//; s/[.]ipa$//' | head -1)
+          if [ -n "$CUR" ] && [ "$CUR" != "$VER" ]; then
+            NEWEST=$( { echo "$CUR"; echo "$VER"; } | sort -V | tail -1 )
+            if [ "$NEWEST" = "$CUR" ]; then
+              echo "release 上已是 v$CUR, 比本次 v$VER 新 ⇒ 不覆盖(本包在 artifact 里)"
+              exit 0
+            fi
+          fi
           #   ⇒ 重试三次, 每次间隔 15 秒; 三次都不行才真的红。
           for i in 1 2 3; do
             if gh release upload ios-latest "build/ios/turtle-v${VER}.ipa" --clobber; then
