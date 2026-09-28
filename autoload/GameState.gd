@@ -140,17 +140,12 @@ var egg_hp_max: Dictionary = {"left": 0, "right": 0}
 var lane_results: Dictionary = {}   # {"top": "left"/"right"/"egg", ...} 哪方赢了该路
 ## 备战席库存 (装备 id+星级) [{id, star}...], 容量 BENCH_CAP
 var bench_inventory: Array = []
-## 敌方 AI 专属备战席 (与玩家 bench_inventory 隔离; 装不下的件留这里, 下回合开槽再装).
-##   ai_dual_shop 临时把它换进 bench_inventory 跑玩家管线再换回 → 复用 buy/equip/merge 又不污染玩家席。
-var ai_bench_inventory: Array = []
 ## 玩家每龟身上装备 {pet_id → [{id, star}...]}; right 队的键带 "right::" 前缀(p2eq_key)与玩家隔离。
 var equipped_p2: Dictionary = {}
 var last_merges: Array = []   # try_merge_all 最近一次合成详情(UI 飘字读)
 ## 跨路幸存者 (待命回复后, 终极战场带血汇合用) {"left":[{id,hp,maxHp,level}...], "right":[...]}.
 ## 每路打完 snapshot 存活统领(已回复30%已损), 累计; 终极战场从此重建带血.
 var dual_survivors: Dictionary = {"left": [], "right": []}
-## 整局累计开店次数 (跨上/下/终极) — 商店费用概率档位由它推进 (Phase2Config.stage_for_shop_visit)
-var dual_shop_visits: int = 0
 ## 局内等级 (TFT风, 1-10, 每局重置): 绑龟蛋HP + 商店概率档 + 小将等级. 见 docs/design/PHASE2-LEVEL-DESIGN.md.
 var dual_level: Dictionary = {"left": 1, "right": 1}
 var dual_avg_level: Dictionary = {"left": 1, "right": 1}   # 选龟时队伍平均等级(固定不随局内升级涨); 深海小将等级用此
@@ -203,9 +198,7 @@ func reset_dual_lane() -> void:
 	egg_hp_max = {"left": 0, "right": 0}
 	lane_results = {}
 	bench_inventory = []
-	ai_bench_inventory = []
 	equipped_p2 = {}
-	dual_shop_visits = 0
 	dual_level = {"left": 1, "right": 1}
 	dual_avg_level = {"left": 1, "right": 1}
 	dual_xp = {"left": 0, "right": 0}
@@ -227,7 +220,7 @@ func reset_dual_lane() -> void:
 ##   `_ready` 一场只跑一次 ⇒ 这里也一场只写一次。
 ##
 ## ★★2026-09-28 查实(这个函数就是为了补它): `battle_seed` **全仓零个写入点**, 而它有
-##   两个读者 —— `ai_dual_shop()`(V2 阶段1 已把调用删了, 整个函数零调用者=死码) 与
+##   两个读者 —— `ai_dual_shop()`(**2026-09-28 已整函数删除**: V2 阶段1 删了调用、函数留成死码) 与
 ##   `Backend.report_finals_if_any()` 的 `p_seed`(→ 服务端 `finals_results.seed_used`,
 ##   schema 注释「确定性重算用的种子」)。后者是**唯一活读者**, 于是每一场决赛报上去的
 ##   `p_seed` 都是 0 = 「这一场没留下可复算的种子」。
@@ -532,92 +525,6 @@ func equip_to_turtle(bench_idx: int, pet_id: String, side: String = "left") -> b
 	bench_inventory.remove_at(bench_idx)
 	try_merge_all(side)   # 装备后跨域三合一
 	return true
-
-## 敌方AI购物 (right): 全复用玩家管线 (buy_xp / buy_shop_item / equip_to_turtle+try_merge_all).
-##   ① 盈余高于装备预算且未满级 → 买经验升级开槽 (槽跟上玩家)。
-##   ② 掷货 → 每件买得起的 → buy_shop_item 进【AI 专属席】→ equip_to_turtle 装到有空槽的敌方龟(自带三合一升星)。
-##   ③ 装不下的件留 AI 席, 下回合开槽再装 (不再 break 整轮丢弃)。
-##   side 命名空间 (p2eq_key): 龟身键带 "right::" 前缀, 与玩家 equipped_p2["basic"] 等隔离, 不串装。
-##   返回本次新装到龟身的件数 (用于测试/调试)。
-func ai_dual_shop() -> int:
-	var side := "right"
-	# 预算守卫: 没币直接返回
-	if int(dual_coins.get(side, 0)) <= 0:
-		return 0
-	var turtles: Array = []
-	for k in ["top", "bottom"]:
-		for t in enemy_lane_assign.get(k, []):
-			turtles.append(str(t))
-	if turtles.is_empty():
-		return 0
-
-	# ① 买经验升级 (留够 AI_GEAR_RESERVE 装备预算后, 盈余拿去升级开槽; 每次调用最多买几次, 跟玩家逐回合节奏)
-	var xp_buys := 0
-	while xp_buys < _P2.AI_MAX_XP_BUYS_PER_VISIT \
-			and int(dual_level.get(side, 1)) < _P2.MAX_LEVEL \
-			and int(dual_coins.get(side, 0)) >= _P2.AI_GEAR_RESERVE + _P2.BUY_XP_COST:
-		if not buy_xp(side):
-			break
-		xp_buys += 1
-
-	var lvl: int = int(dual_level.get(side, 1))
-	var cap: int = _P2.UNIT_EQUIP_CAP   # 2026-07-27 统一规则: 单只上限固定3
-
-	# ② 掷货 (AI 自己的货架 RNG; 不碰玩家 dual_shop_offer — 临时换进, 跑完换回)
-	## ⚠ 2026-09-28 查实: **整个 `ai_dual_shop()` 零调用者** —— V2 阶段1「砍局内经济/战斗内商店」
-	##   把 `BattleScene` 里那两行调用删了(见 docs/archive/V2-阶段1-砍局内经济商店-实施规格.md D3),
-	##   算法本体留着给局外商店复用, 但**这个 AI 入口没人再调**。
-	##   下面这条 `battle_seed != 0` 在对局中已经是真的了(`note_battle_seed` 每场登记),
-	##   但那救不了它 —— 分支可达 ≠ 函数可达。「这个函数该不该删」是另一笔债, 别在这里顺手改。
-	if battle_seed != 0:
-		_dual_shop_rng.seed = battle_seed + dual_shop_visits + 7777
-	else:
-		_dual_shop_rng.randomize()
-	var offer: Array = _Equip.roll_shop(DataRegistry.phase2_equipment, lvl, _P2.SMALL_SHOP_SLOTS, _dual_shop_rng)
-
-	# 临时把【玩家货架/玩家席】换成【AI 货架/AI 席】→ 跑真玩家管线 → 再换回, 零污染玩家状态。
-	var saved_offer: Array = dual_shop_offer
-	var saved_bench: Array = bench_inventory
-	dual_shop_offer = offer
-	bench_inventory = ai_bench_inventory
-
-	var bought := 0
-	for idx in range(dual_shop_offer.size()):
-		# 席已超 CAP (上回合留下的件 + 本轮买进, 各龟满装不掉) → 停止再买, 别让 AI 席无限涨/浪费币。
-		#   (玩家路买后必 _battle_merge_p2eq/try_merge_bench 合掉, AI 路同理在本轮末补合, 但若合不掉就别再加件。)
-		if bench_inventory.size() >= _P2.BENCH_CAP:
-			break
-		var it = dual_shop_offer[idx]
-		if not (it is Dictionary):
-			continue
-		var cost: int = int(it.get("cost", 1))
-		if int(dual_coins.get(side, 0)) < cost:
-			continue
-		# 买进 AI 席 (走玩家管线; 席满则跳过, 不丢币)
-		if not buy_shop_item(idx, side):
-			continue
-		var bench_idx: int = bench_inventory.size() - 1   # 刚 append 的那件
-		# 找一个有空槽的敌方龟装上 (random 顺序无所谓, 取第一个有空位的)
-		var target := ""
-		for t in turtles:
-			var tkey := p2eq_key(side, str(t))
-			if (equipped_p2.get(tkey, []) as Array).size() < cap:
-				target = str(t)
-				break
-		if target != "":
-			if equip_to_turtle(bench_idx, target, side):   # 自带 try_merge_all 三合一升星
-				bought += 1
-		# 装不下 (各龟满): 件留 AI 席, 下回合开槽再装 (不 break, 继续买别的填席)
-
-	# 本轮买完: 席内同款三合一升星 (1:1 玩家买后 _battle_merge_p2eq/try_merge_bench)。
-	#   各龟满 → equip_to_turtle 没触发 try_merge_all → 散件堆 AI 席; 这里席内自合, 防 ai_bench_inventory 稳定停在 >CAP。
-	try_merge_bench()
-
-	# 换回玩家状态; AI 席持久化 (留下的件下回合还在)
-	ai_bench_inventory = bench_inventory
-	bench_inventory = saved_bench
-	dual_shop_offer = saved_offer
-	return bought
 
 ## 记录某路胜者 ("left"/"right"), 推进到下一路.
 func record_lane_result(winner: String) -> void:

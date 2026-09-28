@@ -99,9 +99,31 @@ memory [[fb-hand-rolled-copies-drift]]:「手抄的副本必然落后」。
   python tools/nine_downgrade_audit.py            # 对账(进门禁)
   python tools/nine_downgrade_audit.py --update    # 按当前实测重写台账
   python tools/nine_downgrade_audit.py --file <p>  # 只看一个文件(反向验证用)
-  git show HEAD~3:scripts/scenes/codex/detail_views.gd > /tmp/x.gd \
-      && python tools/nine_downgrade_audit.py --blob /tmp/x.gd=scripts/scenes/codex/detail_views.gd
-      # ↑ 反向验证: 拿**真实的历史违规**喂进来, 确认判据会红(不用动工作树)
+
+════════════════════════════════════════════════════════════════════════
+ ★反向验证(证明这条判据真的会红) —— 提交号**写死**, 不许写 HEAD~N
+════════════════════════════════════════════════════════════════════════
+  git show 70008b73:scripts/scenes/codex/detail_views.gd > /tmp/x.gd \
+      && python tools/nine_downgrade_audit.py --blob=/tmp/x.gd=scripts/scenes/codex/detail_views.gd
+
+应当打出(`70008b73` = v0.19.464, 那颗 196×34 形态钮还在走 `_add_rect(stroke=2.0)` 的最后一版):
+  scripts/scenes/codex/detail_views.gd:471  196x34, 短边 34 < MIN_FRAME_PX(40) ⇒ 静默退回 StyleBoxFlat
+(还会带出同文件 `:538` 的 100×34 —— 那一处是存量, 在 WHY 里有理由。)
+
+★★这里原来写的是 `git show HEAD~3:…`, 2026-09-28 实测**已经腐烂**:
+  写它的时候 HEAD~3 正是 70008b73, 之后仓库又提交了一次 ⇒ HEAD~3 漂成了
+  **已修好的那一版**(494c1f59 把钮改成了挂 chip-frame 的 `_plaque`)。
+  照那行跑只会报一条无关的 `:647 100x34`, 而那**看起来就像「判据没抓到那个 bug」**。
+  ⇒ 相对引用(`HEAD~N` / `HEAD^` / `@{N}`)每提交一次就腐烂一格, 而腐烂的方向
+    恰好是**让判据显得是瞎的** —— 反向验证的说明书里一律写死提交号。
+
+★★反向验证**优先用 `--blob`**(或 `--file`), 别把历史树整棵喂给全树模式:
+  台账对的是**今天**的代码, 拿 70008b73 全树跑会额外冒出 10 条
+  「现在只剩 0 处(台账写着 N)」—— 那是台账与历史代码错位, 不是判据命中。
+  `--blob` 不对台账、只打命中, 才是干净的证据口。
+  (★同日已把那 10 条从 `[FAIL]` 降成 `[已清]`、不再判红 —— 见下面 `got < cap` 那段。
+    所以现在全树跑也不会被噪音埋掉: HEAD~4 全树从 12 条 FAIL 变成 2 条,
+    两条都是真正那处 196×34。但 `--blob` 仍是**一句话就说清**的那个口。)
 """
 import io
 import json
@@ -1014,6 +1036,7 @@ def main():
         return 0
 
     bad = []
+    cleared_rows = []           # 「变少了/没了」—— 打印但**不判红**(见下面 got < cap 那段)
     for k in sorted(set(list(rows.keys()) + list(known.keys()))):
         got = len(rows.get(k, []))
         cap = int(known.get(k, 0))
@@ -1028,14 +1051,25 @@ def main():
                        "       首处: %s  %s"
                        % (k, got, cap, CLS_NAME.get(cls, cls), rows[k][0][1], rows[k][0][2]))
         elif got < cap:
-            bad.append("[FAIL] %s: 现在只剩 %d 处(台账写着 %d) —— 修好了就 `--update` 把"
-                       "数字改小, 棘轮只减不增。" % (k, got, cap))
+            ## ★★2026-09-28 这条原来是 `bad.append("[FAIL] …")` ⇒ **把降级改好了反而判红**。
+            ##   与 `vfx_discipline_audit` 同日抓到的那条一模一样的形状: 那边一条
+            ##   已经不成立的债条直接**拦住了一次正当的删除**(删 `_signal_pulse`, 于是被还原了)。
+            ##   ⇒ 统一成本仓的约定: **只有"新增"判红**; "变少了"是目标, 用 `[已清]` 打出来。
+            ##   ⚠ 代价照旧要写明: 不销账这条会继续按老数字发许可 ⇒ 每轮都打印, 不静默。
+            cleared_rows.append(
+                "  [已清] %s: 现在只剩 %d 处(台账写着 %d) —— **不判红**; `--update` 把数字改小。"
+                % (k, got, cap))
     no_why = [k for k in sorted(rows) if k not in WHY]
     for k in no_why:
         bad.append("[FAIL] %s 没在 WHY 里写理由 —— 不写理由的白名单和放宽判据是一回事。\n"
                    "       首处: %s  %s" % (k, rows[k][0][1], rows[k][0][2]))
 
     print("")
+    ## `[已清]` 先打 —— 哪怕本轮同时有新增(别让红灯把"你修好了这几条"盖掉)
+    for c in cleared_rows:
+        print(c)
+    if cleared_rows:
+        print("")
     if bad:
         for b in bad:
             print(b)

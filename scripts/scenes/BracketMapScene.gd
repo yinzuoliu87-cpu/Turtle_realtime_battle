@@ -441,15 +441,6 @@ func winner_side_for(r: int, m: int, i_won: bool) -> int:
 	return s if i_won else (1 - s)
 
 
-func _i_won(r: int, m: int) -> bool:
-	var key := "%d-%d" % [r, m]
-	var w = (cur().get("done", {}) as Dictionary).get(key, -1)
-	if int(w) < 0:
-		return false
-	var s := my_side(r, m)
-	return s >= 0 and s == int(w)
-
-
 ## ─────────────────────────────────────────────────────────────
 ## 画
 ## ─────────────────────────────────────────────────────────────

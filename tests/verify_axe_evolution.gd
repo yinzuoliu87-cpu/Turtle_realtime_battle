@@ -397,13 +397,26 @@ func _t_synergy(gs) -> void:
 		P2T.TYPES.has("斧头") and (P2T.TYPES["斧头"] as Dictionary)["tiers"] == [1],
 		str((P2T.TYPES.get("斧头", {}) as Dictionary).get("tiers", [])))
 	## 四张平行表键集一致 —— 少一张就会在某个界面上显示成空白
-	var tabs := {"TYPES": P2T.TYPES, "TYPE_EMOJI": P2T.TYPE_EMOJI,
+	## ★★2026-09-28 `TYPE_EMOJI` → `TYPE_ICON`(类型图标从 emoji 换成 tags/ 像素图)。
+	var tabs := {"TYPES": P2T.TYPES, "TYPE_ICON": P2T.TYPE_ICON,
 		"TYPE_NAME": P2T.TYPE_NAME, "TIER_DESCS": P2T.TIER_DESCS}
 	var bad: Array = []
 	for k in tabs.keys():
 		if not (tabs[k] as Dictionary).has("斧头"):
 			bad.append(k)
 	_ok("★四张平行表都有「斧头」这一项(分母: 查了 %d 张)" % tabs.size(), bad.is_empty(), str(bad))
+	## ★★「表里有这个键」守不住「图标真的画得出来」—— 键在、值是空串 / 路径打错,
+	##   两种都是**悄悄不画一个图标**, 不报错不崩溃。⇒ 量到能加载为止。
+	##   (斧头 2026-08-31 进 TYPES 时正是**只补了键没补图**, 于是界面上画成一条链。)
+	var axe_icon: String = str(P2T.icon_of("斧头"))
+	_ok("★斧头的类型图标真的在盘上(键在而图不在 = 界面上悄悄少一个图标)",
+		axe_icon != "" and ResourceLoader.exists(axe_icon), "icon_of(斧头) = 「%s」" % axe_icon)
+	## ★反面/分母: 它必须是**斧头自己**那张, 不是兜底成别的类型的图。
+	##   `icon_of` 的兜底值 2026-09-28 从 "🗡️" 改成 "" 正是为这条 ——
+	##   兜底成一把剑**看上去像是有意设计**, 谁也发现不了。
+	_ok("★没有兜底成别的类型的图(不存在的类型必须返回空串, 不是某张图)",
+		str(P2T.icon_of("__不存在的类型__")) == "" and axe_icon.find("tag-axe") >= 0,
+		"未知类型→「%s」 / 斧头→「%s」" % [str(P2T.icon_of("__不存在的类型__")), axe_icon])
 	_ok("★096 在 p2eq-types.json 里映射到「斧头」(没有它羁绊永远数不到)",
 		P2T.types_of("p2eq_096").has("斧头"), str(P2T.types_of("p2eq_096")))
 	## 真装上一件 → 激活; 摘掉 → 不激活(分母)

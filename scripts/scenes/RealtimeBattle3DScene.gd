@@ -661,7 +661,6 @@ var _edit_btn_energy: Button = null       # 满龟能开关按钮
 var _edit_sel_unit = null                 # 选中的已摆单位(配装/删除)
 var _edit_grid_popup: Control = null      # 龟/装备网格弹层
 var _edit_equip_box: VBoxContainer = null # 选中单位装备栏容器
-var _edit_btn_pick: Button = null
 var _edit_btn_side: Button = null
 var _edit_star_btns: Array = []
 var _edit_speed_btns: Array = []
@@ -3453,28 +3452,6 @@ func _heal_circle_vfx(pos2d: Vector2, radius_px: float, dur: float) -> void:
 	tw.tween_property(r, "modulate:a", 0.55, dur * 0.6)
 	tw.tween_property(r, "modulate:a", 0.0, dur * 0.4)
 	tw.tween_callback(r.queue_free)
-
-# 爆炸波(AI生成动画): 卡通爆炸帧表播一次, billboard, 抖屏. size_px=爆炸直径
-func _boom_wave(pos2d: Vector2, size_px: float, h: float = 0.8) -> void:
-	var tex: Texture2D = load("res://assets/sprites/vfx/boom-wave-anim.png")
-	var fh: int = maxi(1, tex.get_height())
-	var nf: int = maxi(1, int(tex.get_width() / fh))
-	var b := Sprite3D.new()
-	b.texture = tex
-	b.hframes = nf
-	b.frame = 0
-	b.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	b.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	b.shaded = false; b.transparent = true
-	b.pixel_size = (size_px * WS) / float(fh)
-	b.position = _world_pos(pos2d, h)
-	_world.add_child(b)
-	var tw := _reg_tween()
-	if nf > 1:
-		tw.tween_property(b, "frame", nf - 1, 0.36)
-	else:
-		tw.tween_interval(0.36)
-	tw.tween_callback(b.queue_free)
 
 func _signal_pulse(pos2d: Vector2) -> void:
 	var sw_tex: Texture2D = load("res://assets/sprites/vfx/signal-wave.png")
@@ -8286,18 +8263,6 @@ func _zap_frame(fr: float, spr: Sprite3D) -> void:
 	if is_instance_valid(spr):
 		spr.frame = clampi(int(fr), 0, 4)
 
-# 宽刃弯刀 009
-## ★★2026-08-07: 这里原来**完全不钳位**(`spr.frame = f`, f 由调用方给) ——
-##   冒烟随机报的 `Index p_frame = 17 is out of bounds (vframes*hframes = 7)` 第三条就在这。
-##   同族第 6 处了(v0.19.37 三处 + battle_render 两处 + 这里), 共同的形状都是
-##   **"帧号来自别处、钳位却按别处的帧数(或干脆不钳)"**。
-##   ⇒ 统一判据: 钳位只认**精灵自己的 hframes × vframes**(引擎校验的就是这个乘积)。
-func _set_sprite_frame(spr: Sprite3D, f: int) -> void:
-	if is_instance_valid(spr):
-		spr.frame = clampi(f, 0, maxi(0, int(spr.hframes) * int(spr.vframes) - 1))
-
-
-
 func _sniper_charge_fx(u: Dictionary, tgt: Dictionary) -> void:   # 蓄力1秒: 细红瞄准线由暗渐亮 + 枪口聚能球胀大 + 目标身上三道收缩锁定环
 	var dir: Vector2 = (tgt["pos"] - u["pos"]).normalized()
 	if dir == Vector2.ZERO: dir = Vector2.RIGHT
@@ -8585,10 +8550,10 @@ var _info_en_bar: ProgressBar = null
 var _info_en_lbl: Label = null
 var _info_stat_n: int = -1             # 上次的属性行数; 变了就得重建(有属性从0变非0)
 ## 技能/被动描述里的伤害数值也要跟着属性实时变(用户 2026-07-21:「下面的技能伤害数值」)。
-## 存"模板原文 + 对应 Label + 技能字典", 每帧用当前属性重渲染。
-var _info_passive_lbl: Label = null
-var _info_passive_tpl: String = ""
-var _info_skill_lbls: Array = []       # [{lbl: Label, tpl: String, sk: Dictionary}, ...]
+## 一条 = 技能栏一个槽(被动/普攻/主动技·顺序同槽)。`lbl` 是【描述框那个 RichTextLabel】,
+## 由 InfoPanel._show_detail 点开时登记(框全场只一个 ⇒ 最多一条非 null); 2026-09-28 之前
+## 它永远是 null, 每帧刷新那循环整段空转 = 技能伤害数字不跟属性变。`key`="sk:"+标题。
+var _info_skill_lbls: Array = []       # [{lbl: RichTextLabel, key: String, tpl: String, sk: Dictionary}, ...]
 var _info_status_box: VBoxContainer = null   # 状态 chips 容器(条目数会变→整块重建)
 var _info_status_sig := ""                   # 上次的状态签名; 没变就不重建(省每帧分配节点)
 var _info_equip_box: VBoxContainer = null    # 装备区容器(星级/件数会变→整块重建)
@@ -8600,15 +8565,6 @@ func _equip_signature(u: Dictionary) -> String:
 	for e in u.get("equips", []):
 		s += "%s:%d," % [str((e as Dictionary).get("id", "")), int((e as Dictionary).get("star", 1))]
 	return s
-
-func _fill_equip_section(box: VBoxContainer, u: Dictionary) -> void:
-	var equips: Array = u.get("equips", [])
-	_add_section_title(box, "装备 (%d)" % equips.size())
-	if equips.is_empty():
-		_add_body_text(box, "无装备", Color("#7a8694"))
-	else:
-		for e in equips:
-			_add_equip_row(box, str(e.get("id", "")), int(e.get("star", 1)))
 
 ## 状态签名: 把当前所有状态压成一个字符串, 变了才重建 chips。
 ## ★不能每帧无脑重建 —— 那会每帧 queue_free + new 一堆节点, 还会让 UI 闪。
@@ -8666,88 +8622,11 @@ func _fill_chest_section(sec: VBoxContainer, u: Dictionary) -> void:
 	_info_sys._info_more_row(vb, "战利品 %d/5" % owned.size(),
 		_chest_sys.loot_detail_text(owned), "chest_loot", u)
 
-## 一件战利品: 金框图标 + 名 + 效果描述 (样式对齐 _add_equip_row)
 ## MINION_SKILL_DESC 已删(2026-08-20): 它是图鉴那张表的**第二份手抄**, 而且已经漂了
 ## (这份连铁锤的伤害数字都没有, 图鉴那份没有龟能消耗)。现在统一走 `MinionCodex.skill_desc(type)`。
 
 func _skill_detail() -> bool:
 	return GameState != null and bool(GameState.get("skill_text_detail"))
-
-func _add_equip_row(parent: VBoxContainer, eid: String, star: int) -> void:
-	var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	parent.add_child(row)
-	# 图标框
-	var icon_box := PanelContainer.new()
-	var isb := StyleBoxFlat.new()
-	isb.bg_color = Color("#0c141c")
-	isb.set_border_width_all(2)
-	isb.border_color = _equip_cost_color(int(edef.get("cost", 1)))
-	isb.set_corner_radius_all(5)
-	icon_box.add_theme_stylebox_override("panel", isb)
-	icon_box.custom_minimum_size = Vector2(40, 40)
-	row.add_child(icon_box)
-	var img := str(edef.get("img", ""))
-	if img != "" and ResourceLoader.exists("res://assets/sprites/" + img):
-		var ic := TextureRect.new()
-		ic.texture = load("res://assets/sprites/" + img)
-		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		icon_box.add_child(ic)
-	else:
-		var em := Label.new()
-		em.text = str(edef.get("emoji", "?"))
-		em.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		em.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		icon_box.add_child(em)
-	# 文本: 名 ★×star + 效果
-	var tcol := VBoxContainer.new()
-	tcol.add_theme_constant_override("separation", 1)
-	tcol.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(tcol)
-	var title := Label.new()
-	var stars := ""
-	for _i in range(clampi(star, 1, 3)):
-		stars += "★"
-	title.text = "%s  %s" % [str(edef.get("name", eid)), stars]
-	title.add_theme_font_size_override("font_size", 13)
-	title.add_theme_color_override("font_color", _equip_cost_color(int(edef.get("cost", 1))))
-	tcol.add_child(title)
-	var eff := _strip_html(SkillText.equip_full(edef))   # ★走唯一取值口, 别再手抄 effectDesc1
-	if eff != "":
-		var el := Label.new()
-		el.text = eff
-		el.add_theme_font_size_override("font_size", 11)
-		el.add_theme_color_override("font_color", Color("#aab8c6"))
-		el.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		el.custom_minimum_size = Vector2(300, 0)
-		tcol.add_child(el)
-
-# 小工具: 分隔线 / 小标题 / 正文 / 数字格式
-
-func _add_section_title(parent: VBoxContainer, text: String, col: Color = Color("#ffce4d"), fs: int = 15) -> void:
-	var l := Label.new()
-	l.text = text
-	l.add_theme_font_size_override("font_size", fs)
-	l.add_theme_color_override("font_color", col)
-	parent.add_child(l)
-
-func _add_body_text(parent: VBoxContainer, text: String, col: Color = Color("#c2d0de")) -> Label:
-	var l := Label.new()
-	l.text = text
-	l.add_theme_font_size_override("font_size", 12)
-	l.add_theme_color_override("font_color", col)
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	## ★不许写死宽度。原来是 `Vector2(380, 0)` —— 那是面板还 400 宽时代的数字,
-	##   2026-08-16 面板收窄到 312 时【没跟着改】, 于是这一行反过来把面板顶宽:
-	##   实测宝箱龟 min=380 ⇒ 面板 312→432, 比别的龟宽 120px(同一个界面两种宽度)。
-	##   min 给 0 + 横向填充 ⇒ 换行按【容器实际宽度】走, 面板多宽它就多宽。
-	l.custom_minimum_size = Vector2(0, 0)
-	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	parent.add_child(l)
-	return l   # ★返回 Label 供每帧重渲染技能伤害数值
 
 # 攻速等小数: 去多余 0 (0.850000 → 0.85)
 ## 攻速倍率与沉锚加速已搬去 `battle_damage`(纯函数·不持每帧状态·CLAUDE.md §5)。

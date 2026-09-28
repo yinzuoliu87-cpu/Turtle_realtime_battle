@@ -1,9 +1,5 @@
 {
  "_why": "由 `python tools/zero_caller_audit.py --update` 生成, 不要手改。第二道网(同名掩护)的存量, 只减不增。",
- "known": [
-  "_stroked_label"
- ],
- "where": {
-  "_stroked_label": "scripts/scenes/RecordScene.gd:444"
- }
+ "known": [],
+ "where": {}
 }

@@ -116,6 +116,18 @@ WHY = {
     "strip_now_override": "主菜单赛程条的时刻注入(截图台/门禁用)",
     "strip_finals_live_override": "把决赛日**手动**按成「没上线」(截图台/调试用)",
     "acct_override": "设置屏账号态注入 —— 登录墙那一屏只有靠它才建得出来(verify_ui_consistency 在用)",
+    ## ★★洞⑥ 的容器网一开就露出来的一条: 它**本来就在本文件头注的测试缝名单里**
+    ##   (「`pool_override` / `now_override_ts` / `_transport_for_test`」),
+    ##   只是从没进过 WHY —— 因为旧判据只收标量, 它是 Dictionary, **从来没被量到过**。
+    ##   ⇒ 头注写了、字典里没有, 正是"写了没人读"的镜像: 登记在案而判据看不见。
+    "pool_override": "撮合池注入(backend.gd:458 static, verify_matchmaking_phase.gd:206 写、"
+                     ":234 清空)。产品只读是设计如此: 正式对局的池子来自服务端",
+    ## ⚠ 这张表**只写核对过出处的理由** —— 一条实测教训, 留一句免得重犯:
+    ##   2026-09-28 我顺手给 `_info_passive_lbl` / `_info_passive_tpl` 编了两条理由,
+    ##   一查全错: 它们当时已经被删掉了, 而"tests 在写它"其实是判据把
+    ##   `rb.contains("_info_passive_tpl")`(**按源码文本 grep 变量名**)当成了写入点。
+    ##   ⇒ 给**不存在的东西**写理由, 正是这批白名单最该防的病: 烂掉的理由看着最周全。
+    ##   (那两个字段与那条 grep 判据都已清理; 现在 `verify_info_panel.gd:324` 量的是行为。)
 }
 
 
@@ -137,6 +149,71 @@ def read_nocmt(rel):
     """去掉行尾注释的源码(注释里的 `x = 1` 不是写入点)。"""
     src = io.open(os.path.join(ROOT, rel), encoding="utf-8", errors="replace").read()
     return NL.join(_G.strip_comment(l) for l in src.split(NL))
+
+
+## ══════════════════════════════════════════════════════════════════════
+##  第二道网【容器】—— 洞⑥ (2026-09-28)
+## ══════════════════════════════════════════════════════════════════════
+## 原来判据只收**标量 + 声明时就是默认值**的字段(见上面 SCALAR_DEFAULTS 那段),
+## 理由写得没错: 容器"靠方法改内容, 赋值语句永远不出现"。
+## **但那段话只证明了"不能按赋值来判", 没证明"容器不用判"** —— 于是
+## `Array`/`Dictionary` 字段的「有读者、没写者」整类量不到。
+##
+## ★活实例(清死码那轮实测撞到): `scripts/scenes/RecordScene.gd:419`
+##     var _draw_btns: Array = []
+##   被读两次(`:424 .size()` / `:426 [i]`)、**全仓一次 append 都没有**
+##   ⇒ 整张自绘按钮登记表是死的, 不只是画它的那个函数。这条判据当时报绿。
+##
+## ⇒ 容器的"真写入"= **改内容的那些动作**, 不是赋值:
+##   `x.append(...)` / `x.push_back` / `x[k] = v` / `x.erase` / `x.merge` / `x = <非空表达式>` …
+##   而 `x.clear()` 与 `x = []` / `x = {}` 是**清回默认**, 与标量的"重置写"同一档, 不算。
+## ══════════════════════════════════════════════════════════════════════
+##  ★★★这张网的【已知失明】—— 它会产生**让人去删活代码**的假报 (2026-09-28)
+## ══════════════════════════════════════════════════════════════════════
+## 判据只认**本文件里**的写入动作(`append` / `x[k]=` / `= 非空`)。它看不见:
+##   **容器作为实参传给一个会【就地改写】它的函数** —— Dictionary/Array 按引用传,
+##   被调方 `stt["k"] = v` 就是对这个字段的真写入, 而这张网一个字都看不到。
+##
+## ★活实例(差一步就把活代码删了): `battle_vfx.gd` 的 `_sw_prev_stt` 被本网报成
+##   「读 1 处 · 零写入」。探针实测**它根本不是空的**: 震荡波张角序列
+##   `[90, 180, 270, 360, 360, 360]`(对照组每次传新 `{}` 是 `[90]*6`) ——
+##   写它的是被调方 `signal_wave_system.gd:87` 的 `_fire` 里那句 `stt["sig_arc_deg"] = deg`。
+##   接手的 agent 原话: **「下一个 agent 会照着这条假报去删活代码 —— 我差一步就那么干了。」**
+##
+## ⇒ 用这张网的台账时, **每一条都要先写探针打真值再动手**, 不许照单删。
+##   「审计器说它没人写」= 一条**线索**, 不是结论。本仓铁律: 推理出来的不算根因。
+## ⇒ 想收掉这个失明, 要做的是「字段被当实参传出去、且被调方改写了它」这一路分析;
+##   在那之前, **这张网的定位是线索生成器, 不是判决**。
+CONTAINER_DEFAULTS = {"[]", "{}"}
+## 会改内容的方法(只列真正写的; `.size()`/`.has()`/`.get()` 是读, 不在内)
+MUT_METHODS = ("append", "append_array", "push_back", "push_front", "insert", "erase",
+               "assign", "resize", "merge", "sort", "sort_custom", "reverse", "shuffle",
+               "remove_at", "pop_back", "pop_front", "pop_at", "fill", "make_read_only")
+
+
+def mut_re(name):
+    """容器 `name` 的**改内容**点(不含 `.clear()` 与 `= []`/`= {}`, 那是清回默认)。
+
+    ★★这条正则第一版写错了两处, 两处都**只造假报不漏报**, 而假报 27 条
+      (含 `_units` 读 202 处却"零写入")当场就露了 —— 记在这儿免得下一个人重犯:
+      ① 前瞻写成 `(?<![\\w.])` ⇒ **把跨对象写整类挡在门外**。
+         本仓上帝文件拆分之后主力写法就是它: `battle._units.append(u)`
+         (`battle_debug_arena.gd:60/87/201/667`)。`.` 不是 `\\w`, 所以改成
+         `(?<!\\w)` 就既收 `_units.append` 也收 `battle._units.append`,
+         而 `my_units` 仍被挡住(`y` 是 `\\w`)。
+      ② 下标写成 `\\[[^\\]]*\\]` ⇒ **嵌套下标全漏**。真实写法是
+         `pet_by_id[pet["id"]] = pet`(`DataRegistry.gd:37`) —— `[^\\]]*` 在第一个
+         `]` 就停住, 后面等不到 `=`。改成贪婪 `.*` 后回溯到 `=` 之前最后一个 `]`。
+      ⇒ 教训与 memory [[fb-judge-must-fit-the-shape]] 同族: 判据窄一格放过真 bug,
+        宽一格造假 bug; 这里是**窄**了, 而"27 条里有 _units"是它自己喊出来的分母。
+    """
+    n = re.escape(name)
+    return re.compile(
+        r"(?<!\w)" + n + r"\s*(?:"
+        r"\.\s*(?:" + "|".join(MUT_METHODS) + r")\s*\("      # x.append(...) / battle._units.append(...)
+        r"|\[.*\]\s*=(?!=)"                                  # x[k] = v / x[a["b"]] = v
+        r"|\+="                                              # x += [...]
+        r")")
 
 
 def write_re(name):
@@ -223,8 +300,67 @@ def main():
             " · tests 写 %d 处" % t_w if t_w else "")
         (seams if t_w > 0 else orphans).append((name, row))
 
+    ## ══════════════════════════════════════════════════════════════════
+    ##  第二道网【容器】: Array/Dictionary 字段「有读者、一次都没被改过内容」
+    ## ══════════════════════════════════════════════════════════════════
+    cont_orphans = []
+    cont_seams = []
+    n_cont = 0
+    for name, sites in sorted(decls.items()):
+        if len(name) < 3:
+            continue
+        ## 所有声明处都必须是 `= []` / `= {}`(空容器起步的那一类)
+        if not all((d or "").strip() in CONTAINER_DEFAULTS for (_r, _l, _st, d) in sites):
+            continue
+        n_cont += 1
+        mre = mut_re(name)
+        wre = write_re(name)
+        clr = re.compile(r"(?<!\w)" + re.escape(name) + r"\s*\.\s*clear\s*\(")
+
+        def _count(srcs):
+            """→ (改内容次数, 清空/重置次数)。prod 与 tests **必须同一套口径**。
+
+            ★★第一版只给 tests 数了 `mre`(改内容方法/下标/+=), **漏了赋值**
+              ⇒ `BE.pool_override = pool`(`verify_matchmaking_phase.gd:206`)数不到,
+              于是一条**已登记的测试缝**被判成孤儿。两侧各写一套口径必然分叉
+              (memory [[fb-hand-rolled-copies-drift]]) ⇒ 合成一个闭包, 只此一份。
+            """
+            mu = 0
+            rs = 0
+            for _s in srcs:
+                for ln in _s.split(NL):
+                    if DECL.match(ln):
+                        continue                 # 声明行本身
+                    if mre.search(ln):
+                        mu += 1
+                    elif wre.search(ln):
+                        ## 赋一个**非空**表达式也算真写入(`x = build_rows()` / `x = [a, b]`)
+                        rhs = ln.split("=", 1)[1].strip() if "=" in ln else ""
+                        if rhs in CONTAINER_DEFAULTS or rhs == "":
+                            rs += 1
+                        else:
+                            mu += 1
+                    elif clr.search(ln):
+                        rs += 1
+            return mu, rs
+
+        muts, resets = _count(prod.values())
+        if muts > 0:
+            continue
+        readers = prod_tok.get(name, 0) - len(sites) - resets
+        if readers <= 0:
+            continue                 # 没人读 = 死字段, 另一类问题
+        t_m, _t_rs = _count(tests.values())
+        row = "%s  (%s:%d) 读 %d 处 · 产品侧改内容 0 次 · 清空/重置 %d 处%s" % (
+            name, sites[0][0], sites[0][1], readers, resets,
+            " · tests 改 %d 处" % t_m if t_m else "")
+        (cont_seams if t_m > 0 else cont_orphans).append((name, row))
+
     print("  [分母] 产品 .gd %d 个 · tests .gd %d 个 · 成员字段声明 %d 条"
           % (len(prod), len(tests), n_decl))
+    print("  [分母] 【容器 = [] / {}】(洞⑥ 2026-09-28 补)的字段名 %d 个 ·"
+          " 判为【有读者但一次没被改过内容】的: 孤儿 %d 个 · 测试缝 %d 个"
+          % (n_cont, len(cont_orphans), len(cont_seams)))
     print("  [分母] 其中【标量 + 声明时就是默认值】(= `battle_seed` 那个形状)的字段名 %d 个"
           % n_scope)
     print("  [分母] 判为【有读者但产品侧零真写入】的: 孤儿 %d 个 · 测试缝 %d 个"
@@ -241,17 +377,29 @@ def main():
             ledger = {}
     known = set(ledger.get("known", []))
     known_seam = set(ledger.get("seams", []))
+    ## 洞⑥ 容器网的两本(键仍是字段名, 与上面同口径)
+    known_cont = set(ledger.get("containers", []))
+    known_cont_seam = set(ledger.get("container_seams", []))
 
     if upd:
+        ## ★★重写棘轮台账之前先提醒「你正在把谁的未提交改动焊进来」。
+        ##   只提醒不拦; 由来与代价见 tools/_ledger_guard.py 的头注(实测差一步就把
+        ##   别人没做完的活记成存量, 而棘轮是靠"新增当场红"活着的)。
+        import _ledger_guard
+        _ledger_guard.warn_if_dirty(sorted(set(PROD_DIRS + DECL_DIRS + TEST_DIRS)), ROOT)
         io.open(LEDGER, "w", encoding="utf-8", newline=NL).write(json.dumps(
             {"_why": "由 `python tools/write_orphan_audit.py --update` 生成, 不要手改。"
                      "`known` = 【有读者但没人写真值】的存量(只减不增); "
                      "`seams` = 产品只读、只有 tests/ 写的测试缝存量。",
              "known": sorted(n for n, _r in orphans),
              "seams": sorted(n for n, _r in seams),
-             "where": {n: r for n, r in sorted(orphans + seams)}},
+             "containers": sorted(n for n, _r in cont_orphans),
+             "container_seams": sorted(n for n, _r in cont_seams),
+             "where": {n: r for n, r in sorted(orphans + seams
+                                              + cont_orphans + cont_seams)}},
             ensure_ascii=False, indent=1) + NL)
-        print("  [台账已重写] %s (孤儿 %d · 测试缝 %d)" % (LEDGER, len(orphans), len(seams)))
+        print("  [台账已重写] %s (孤儿 %d · 测试缝 %d · 容器孤儿 %d · 容器测试缝 %d)"
+              % (LEDGER, len(orphans), len(seams), len(cont_orphans), len(cont_seams)))
         return 0
 
     if seams:
@@ -262,11 +410,23 @@ def main():
         print("  [存量/命中] %d 个:" % len(orphans))
         for n, r in orphans:
             print("     %s%s" % (r, ("  —— " + WHY[n]) if n in WHY else ""))
+    if cont_seams:
+        print("  [测试缝·容器] %d 个(产品只读 · 只有 tests/ 改内容):" % len(cont_seams))
+        for n, r in cont_seams:
+            print("     %s%s" % (r, ("  —— " + WHY[n]) if n in WHY else "  ⚠理由未登记"))
+    if cont_orphans:
+        print("  [存量/命中·容器] %d 个(洞⑥):" % len(cont_orphans))
+        for n, r in cont_orphans:
+            print("     %s%s" % (r, ("  —— " + WHY[n]) if n in WHY else ""))
     fresh = [(n, r) for n, r in orphans if n not in known and n not in WHY]
     fresh_seam = [(n, r) for n, r in seams if n not in known_seam and n not in WHY]
+    fresh += [(n, r) for n, r in cont_orphans if n not in known_cont and n not in WHY]
+    fresh_seam += [(n, r) for n, r in cont_seams
+                   if n not in known_cont_seam and n not in WHY]
     cleared = [n for n in known if n not in [x for x, _ in orphans]]
+    cleared += [n for n in known_cont if n not in [x for x, _ in cont_orphans]]
     for n in sorted(cleared):
-        print("  [已清] %s 现在有人写真值了 —— `--update` 把它从台账里删掉" % n)
+        print("  [已清] %s 现在有人写真值了(或被删了) —— `--update` 把它从台账里删掉" % n)
     if fresh or fresh_seam:
         print("")
         for n, r in fresh:

@@ -43,9 +43,32 @@ for t in verify_top_bar verify_menu verify_codex_layout; do
   fi
 done
 
+echo "── tools/ 里每个脚本都还能解析吗(毫秒级) ──"
+## ★为什么要有这一条: 我删 `codex_text_lint.py` 里一条烂掉的豁免时**按行删 ——
+##   把字典的键删了、值那行留下**, 语法当场炸。而当时 preflight **一声不吭**,
+##   因为清单里只有八个审计器, 它不在内。
+##   (那正是我前一刻还在警告 agent 的「块删法」: 按函数名/键名整条删, 不许按行切。)
+## ★为什么不是"把那三个审计器加进下面的清单": 实测 `write_orphan_audit` **65 秒**、
+##   `zero_caller_audit` 11.7 秒 —— 加进去 preflight 从 22 秒涨到 98 秒,
+##   而它的全部价值就在于**便宜到随时能跑**。贵了就没人跑, 等于没有。
+## ⇒ 改成只问「**能不能解析**」: 毫秒级, 而且覆盖 tools/ **全部**脚本, 不只那三个。
+##   能不能跑出正确结果由全量门禁判; 这里只保证**不会因为我手抖而整个审计器哑掉**。
+BADPY=0
+for f in tools/*.py; do
+  if ! python -c "import ast,io,sys; ast.parse(io.open(sys.argv[1],encoding='utf-8').read())" "$f" 2>/dev/null; then
+    echo "  FAIL  $f 解析不了"; BADPY=$((BADPY+1)); FAIL=$((FAIL+1))
+  fi
+done
+[ "$BADPY" = "0" ] && echo "  ok    $(ls tools/*.py | wc -l) 个脚本全部可解析"
+
 echo "── 审计器(只收便宜的) ──"
+## ★2026-09-28 加了两样东西, 各自堵一个真踩过的坑:
+##   我删 GD_WHY 里一条烂掉的豁免时**按行删、把键删了值那行留下**, 字典语法当场炸 ——
+##   而 preflight 当时**一声不吭**, 因为这三个审计器不在清单里。
+##   (正是我前一刻还在警告 agent 的「块删法」: 按函数名/键名整条删, 不许按行切。)
+##   ⇒ 判据: **能跑起来**本身就是一层检查。三个都是秒级, 收进来不影响 25 秒预算。
 for a in workflow_lint plans_lint plan_stale_audit docs_authority_lint \
-         type_tables_audit arch_budget data_integrity style_lint; do
+         type_tables_audit arch_budget data_integrity style_lint codex_text_lint; do
   [ -f "tools/$a.py" ] || continue
   if OUT=$(python "tools/$a.py" 2>&1); then
     echo "  ok    $a"

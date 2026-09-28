@@ -61,7 +61,12 @@ const RL := {
 	"start":      {"x": 1258, "y": 715, "w": 214, "h": 68},
 }
 
-const Phase2Types := preload("res://scripts/gamedata/phase2_types.gd")   # 羁绊 chips 用(emoji/档位阈值)
+const Phase2Types := preload("res://scripts/gamedata/phase2_types.gd")   # 羁绊 chips 用(类型图标/档位阈值)
+## 羁绊 chip 里【行内类型图标】的边长(px)。
+## ★★**固定 16, 不乘 `_s()`** —— 这一屏的其它像素素材(羊皮纸/木框/龟立绘)都按**原生尺寸**摆,
+##   只有字在跟着 `_sf()` 缩。图标跟着缩会出现 16×0.83=13.3 这种非整数倍率,
+##   把 32×32 硬边像素画插值糊掉(源图半透明像素 0 个, 只有 16(1:2)/32(1×) 落在网格上)。
+const SYN_CHIP_ICON_PX := 16
 
 const RARITY_COLOR: Dictionary = {
 	"C":   Color("#06d6a0"), "B": Color("#4cc9f0"), "A": Color("#3a9abf"),
@@ -863,16 +868,36 @@ func _refresh_synergy_chips() -> void:
 		var stars := ""
 		for si in range(int(r.get("tiers_n", 0))):
 			stars += "★" if si < tier else "☆"
-		var chip := Label.new()
-		if need > 0:
-			chip.text = "%s%s %d/%d %s" % [str(Phase2Types.emoji_of(typ)), typ, n_now, n_now + need, stars]
-		else:
-			chip.text = "%s%s %d %s" % [str(Phase2Types.emoji_of(typ)), typ, n_now, stars]
-		chip.add_theme_font_size_override("font_size", _sf(13))
+		## ★★2026-09-28 类型图标 emoji → `tags/` 像素图 ⇒ `Label` 换 `RichTextLabel`
+		##   (Label 画不了行内图)。写法走 `Phase2Types.icon_bb()`, 与商店/图鉴同一份。
+		var chip := RichTextLabel.new()
+		chip.bbcode_enabled = true
+		chip.fit_content = false
+		chip.scroll_active = false
+		chip.autowrap_mode = TextServer.AUTOWRAP_OFF
+		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		chip.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST   # 32→16 不许线性插值糊掉硬边
+		var plain: String = ("%s %d/%d %s" % [typ, n_now, n_now + need, stars]) if need > 0 \
+			else ("%s %d %s" % [typ, n_now, stars])
+		chip.text = Phase2Types.icon_bb(typ, SYN_CHIP_ICON_PX) + plain
+		## ★`RichTextLabel` 认的键是 `normal_font_size`, **不是** `Label` 的 `font_size`
+		##   (照抄 Label 那一行会静默无效 —— 不报错, 只是字号没变)。
+		chip.add_theme_font_size_override("normal_font_size", _sf(13))
 		## ★羊皮纸底实测 rgb(132,96,56) —— 亮色/金色在上面根本读不出来(第一版就是这么翻的车)。
 		##   改成深褐系: 已激活用标题同款深褐(最跳), 未激活浅一档(在, 但不抢眼)。
-		chip.add_theme_color_override("font_color",
+		chip.add_theme_color_override("default_color",
 			Color("#3a2408") if tier > 0 else Color("#5c4322"))
+		## ★★`HFlowContainer` 里必须**自己给宽**: `Label` 的最小尺寸自带文字宽, 而
+		##   `RichTextLabel` 的最小宽是 **0** ⇒ 照抄 Label 的写法会让所有 chip 挤成一条竖线。
+		##   ⇒ 拿控件**自己的**主题字体量一遍(不硬编码), 再加上图标那 16px 与 2px 余量。
+		var _cf: Font = chip.get_theme_font("normal_font")
+		var _cfs: int = _sf(13)
+		var _tw: float = (_cf.get_string_size(plain, HORIZONTAL_ALIGNMENT_LEFT, -1.0, _cfs).x
+			if _cf != null else float(plain.length()) * float(_cfs)) \
+			+ float(Phase2Types.icon_bb_px(typ, SYN_CHIP_ICON_PX)) + 2.0
+		var _th: float = maxf(_cf.get_height(_cfs) if _cf != null else float(_cfs) * 1.6,
+			float(SYN_CHIP_ICON_PX))
+		chip.custom_minimum_size = Vector2(ceilf(_tw), ceilf(_th))
 		_synergy_box.add_child(chip)
 
 
@@ -943,48 +968,6 @@ func _add_text_shadow(lbl: Label, ofs: Vector2, col: Color) -> void:
 	lbl.add_theme_constant_override("shadow_offset_x", int(ofs.x))
 	lbl.add_theme_constant_override("shadow_offset_y", int(ofs.y))
 	lbl.add_theme_color_override("font_shadow_color", col)
-
-
-## PoC .ts-overlay-btn — 半透深底 + 金边 + #ffd86b 文字 (返回)
-func _style_overlay_btn(btn: Button) -> void:
-	btn.add_theme_color_override("font_color", Color("#ffd86b"))
-	btn.add_theme_color_override("font_hover_color", Color("#ffe6b0"))
-	btn.add_theme_color_override("font_pressed_color", Color("#ffd86b"))
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(20.0/255, 14.0/255, 8.0/255, 0.55)
-	sb.border_color = Color(1, 216.0/255, 107.0/255, 0.4)
-	sb.set_border_width_all(1)
-	sb.set_corner_radius_all(6)
-	var sbh := sb.duplicate()
-	sbh.bg_color = Color(74.0/255, 40.0/255, 16.0/255, 0.7)
-	sbh.border_color = Color("#ffd86b")
-	btn.add_theme_stylebox_override("normal", sb)
-	btn.add_theme_stylebox_override("hover", sbh)
-	btn.add_theme_stylebox_override("pressed", sbh)
-	## 上面这套纯色圆角是**兜底**(贴图不在时原样留着); 贴图在就整套覆盖成金属小框,
-	## 五个状态一起给 —— 只换 normal 会出现"平时是金属、按下去变回网页盒"。
-	## 1.15 而不是 1.55: 同一条教训 —— chip-frame 的芯是半透的, modulate 一过 1.3 就把金属细节冲平
-	## (技能格上实拍确认过)。要暖靠压蓝, 不靠加亮。
-	UISkin.button(btn, Color(1.15, 0.96, 0.62), 7)
-
-
-## PoC .ts-frame-btn — 透明底无边 + 白字阴影 (清空/上次阵容, 坐画好的框上)
-func _style_frame_btn(btn: Button) -> void:
-	btn.add_theme_color_override("font_color", Color(1, 1, 1))
-	btn.add_theme_color_override("font_hover_color", Color(1, 1, 1))
-	btn.add_theme_color_override("font_pressed_color", Color(1, 1, 1))
-	btn.add_theme_color_override("font_disabled_color", Color(1, 1, 1, 0.4))
-	btn.add_theme_constant_override("shadow_offset_x", 0)
-	btn.add_theme_constant_override("shadow_offset_y", 1)
-	btn.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
-	var empty := StyleBoxEmpty.new()
-	var sbh := StyleBoxFlat.new()
-	sbh.bg_color = Color(1, 1, 1, 0.12)
-	sbh.set_corner_radius_all(6)
-	btn.add_theme_stylebox_override("normal", empty)
-	btn.add_theme_stylebox_override("hover", sbh)
-	btn.add_theme_stylebox_override("pressed", sbh)
-	btn.add_theme_stylebox_override("disabled", empty)
 
 
 ## PoC .pg-rarity-btn — 非激活: 金边半透; 激活: 金渐变填充 + 深字

@@ -480,7 +480,32 @@ func _first_text(c: Node) -> String:
 ##   剩下那一片有多大, 由 `d["mfstop"]` 这个**分母**如实报出来。
 func _interactive(c: Control) -> bool:
 	return c is BaseButton or c is Range or c is LineEdit or c is TextEdit \
-		or c.gui_input.get_connections().size() > 0
+		or _wired_from_outside(c)
+
+
+## `gui_input` 上**外面**有人接吗(引擎自己接的那条不算)。
+##
+## ★★2026-09-28 由来(探针 `tests/_probe_wire2.gd` 实测): `RichTextLabel` 一进场景树,
+##   它**内部的 `VScrollBar`** 就会把 `ScrollBar::_drag_node_input` 接到宿主的
+##   `gui_input` 上 —— `scroll_active = false` 与 `mouse_filter = IGNORE` 都关不掉它。
+##   ⇒ 照原来那句 `gui_input.get_connections().size() > 0`, **每一个** RichTextLabel
+##   都被判成"接了 gui_input 的交互控件"。这条失明是**双向**的:
+##     · 小尺寸的 RTL 文字(羁绊 chip 那类 97×16)被算成「热区不足」
+##     · 而它们本来就设了 `MOUSE_FILTER_IGNORE` ⇒ 又被算成「死点击」
+##   两边都是**假违规**, 而真正该抓的小按钮就埋在这些噪音里(噪音门禁等于没门禁)。
+## ★判据平移到语义本身:「**外面**有人给它接了点击处理」——
+##   回调对象是本控件自己、或本控件的内部子节点(RTL 的滚动条那类), 一律不算。
+##   真接线(`chip.gui_input.connect(func(e): …)`)的回调对象是**脚本实例**, 不在这棵子树里。
+func _wired_from_outside(c: Control) -> bool:
+	for cn in c.gui_input.get_connections():
+		var cb: Callable = cn.get("callable")
+		var o = cb.get_object()
+		if o == null:
+			continue
+		if o is Node and (o == c or c.is_ancestor_of(o as Node)):
+			continue                      # 引擎自己的内部件
+		return true
+	return false
 
 
 ## 【这个框管得着这段字吗】—— 「压边带」第 11 条判据的**配对**规则。
@@ -905,8 +930,16 @@ func _selftest_interactive() -> void:
 	raw.mouse_filter = Control.MOUSE_FILTER_STOP
 	var lbl := Label.new()
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	for n in [sl, le, te, bt, raw, lbl]:
+	## ★★⑦⑧: `RichTextLabel` 进树就被引擎接上内部滚动条的 gui_input(见 `_wired_from_outside`)。
+	##   ⑦ 证明那条**不算**交互; ⑧ 证明**外面真接的**照样算 —— 只有 ⑦ 的话, 把整类 RTL
+	##   一刀排掉也能过, 那就把"谁真的给 RTL 接了点击"一起放走了。
+	var rtl := RichTextLabel.new()
+	rtl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var rtl_w := RichTextLabel.new()
+	rtl_w.gui_input.connect(func(_e): pass)
+	for n in [sl, le, te, bt, raw, lbl, rtl, rtl_w]:
 		add_child(n)
+	await get_tree().process_frame     # ★必须等一帧: 内部滚动条是进树之后才接上的
 	_ok("自检 ①`Range`(滑条)算交互控件", _interactive(sl), "改判据之前它不算 ⇒ 滑条的热区/死点击从没被量过")
 	_ok("自检 ②`LineEdit` 算交互控件", _interactive(le))
 	_ok("自检 ③`TextEdit` 算交互控件", _interactive(te))
@@ -915,7 +948,16 @@ func _selftest_interactive() -> void:
 		not _interactive(raw),
 		"它确实能吃点击, 但 Panel/ColorRect 默认就是 STOP ⇒ 收了满屏噪音。规模走 mfstop 分母")
 	_ok("自检 ⑥MOUSE_FILTER_IGNORE 的 `Label` 不算", not _interactive(lbl))
-	for n2 in [sl, le, te, bt, raw, lbl]:
+	## ★分母: 先证明那条引擎内部连接**真的在**(连接数 0 ⇒ ⑦ 恒真, 是空检查)。
+	_ok("自检 ⑦分母: 裸 `RichTextLabel` 进树后 gui_input 上真有引擎接的那条(%d 条)"
+		% rtl.gui_input.get_connections().size(), rtl.gui_input.get_connections().size() > 0,
+		"0 条 ⇒ 下面那条是空检查")
+	_ok("自检 ⑦裸 `RichTextLabel` **不**算交互控件(引擎内部滚动条接的那条不算)",
+		not _interactive(rtl),
+		"算了的话每个 RTL 文字都会被报「热区不足/死点击」—— 假违规压死真违规")
+	_ok("自检 ⑧但**外面真接了** gui_input 的 `RichTextLabel` 仍然算(没把整类一刀排掉)",
+		_interactive(rtl_w))
+	for n2 in [sl, le, te, bt, raw, lbl, rtl, rtl_w]:
 		n2.queue_free()
 	await get_tree().process_frame
 

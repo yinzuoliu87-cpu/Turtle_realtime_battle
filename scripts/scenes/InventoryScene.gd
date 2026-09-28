@@ -22,6 +22,9 @@ const LOCK_ICON := "res://assets/sprites/ui/icon-lock.png"
 const EQUIP_ICON := "res://assets/sprites/ui/icon-equip.png"
 ## 全队装备容量那一行的节点名 —— 门禁靠**名字**找它, 不靠文案(见 `capl.name` 处的注释)。
 const CAP_ROW_NAME := "EquipCapRow"
+## 底栏那颗「细看」键的节点名 —— 同上, 门禁靠**名字**找它, 不拿按钮上的字当尺子
+## (2026-09-28: 这颗键原来叫「详情」, `verify_inventory_layout` ⑬ 就是按那两个字找的)。
+const DETAIL_BTN_NAME := "EquipDetailButton"
 ## 糖果罐在背包格子里的像素图。★这张图一直躺在 `assets/sprites/equip/` 里没人接线
 ##   (全仓 grep 零引用), 而它的文件名就是给糖果罐画的 —— 接上它不是"拿别的图顶替"。
 const CANDY_JAR_ICON := "res://assets/sprites/equip/equip-candy-jar.png"
@@ -56,7 +59,7 @@ const BENCH_PITCH := 108.0     # 格子行距(96 格 + 12 间隙): 3 行 = 312 �
 const OP_BAR_Y := 632.0        # 底部操作条(原 636·高 66 → 现 632·高 80: 装备文案多一行)
 const OP_BAR_H := 80.0
 const OP_BODY_FS := 14         # 底栏效果正文字号
-const OP_BODY_ROWS := 2        # 底栏效果正文显示几【整】行(放不下的部分由"点详情"接住)
+const OP_BODY_ROWS := 2        # 底栏效果正文显示几【整】行(放不下的部分由"点细看"接住)
 const DETAIL_BODY_FS := 16     # 装备详情框正文字号
 const P2 = preload("res://scripts/gamedata/phase2_config.gd")
 const Phase2Types = preload("res://scripts/gamedata/phase2_types.gd")
@@ -716,7 +719,13 @@ func _build_bench() -> void:
 	hdr.position = Vector2(40, BENCH_HDR_Y); hdr.size = Vector2(400, 30)
 	add_child(hdr)
 	var swipe := Label.new()
-	swipe.text = "上下滑动看更多"
+	## ★★2026-09-28。「看更多」是网页 Load more 的直译, 「上下滑动」是手势名 ——
+	##   两样都不是在说屏幕上有什么。商店那条滚动提示(`ShopScene._add_scroll_hint`)
+	##   2026-09-28 已经定稿成「▼ 下面还有」, 理由逐字适用于这里: `▼` 不是装饰性
+	##   chevron, 它是"这里还能滚"的唯一指向; 而话本身只陈述事实。同一件事同一句话。
+	##   ★这行**始终为真**: `_build_bench` 的 `min_rows = ceil(scroll_h / pitch)`
+	##     保证格子总是铺过可视区下沿(下面确实还有格子)。
+	swipe.text = "▼ 下面还有"
 	swipe.add_theme_font_size_override("font_size", 15)
 	swipe.add_theme_color_override("font_color", Color("#5f7285"))
 	swipe.position = Vector2(_vw - 260, BENCH_HDR_Y + 4); swipe.size = Vector2(220, 24)
@@ -851,7 +860,7 @@ func _build_op_bar() -> void:
 			##   ① `fit_content=true` 固定 48 高 → 文字**静默截断**;
 			##   ② 改成 `scroll_active=true` 让它可滚 —— 但正文 `mouse_filter=IGNORE`,
 			##      滚轮事件根本进不来, 手机上只剩一根 5px 宽的滚动条可拖 ⇒ 等于没解决。
-			##   ③ 现在: 底栏只放**摘要 2 行**, 全文交给【详情】弹框(手机也能看),
+			##   ③ 现在: 底栏只放**摘要 2 行**, 全文交给【细看】弹框(手机也能看),
 			##      并且**被裁了就明说还有几行** —— 判据是 RichTextLabel 自己的
 			##      `get_line_count()` / `get_visible_line_count()`(产品自己的账),
 			##      不是我按"每行几个字"估的。
@@ -876,7 +885,7 @@ func _build_op_bar() -> void:
 			if total > OP_BODY_ROWS:
 				var more := Label.new()
 				## "还有 N 行"是排版口径, 玩家关心的是**还有没说完的事**。
-				more.text = "还有 %d 行没说完 · 点【详情】" % (total - OP_BODY_ROWS)
+				more.text = "还有 %d 行没说完 · 点【细看】" % (total - OP_BODY_ROWS)
 				more.add_theme_font_size_override("font_size", 13)
 				more.add_theme_color_override("font_color", Color("#7fb0d8"))
 				more.position = Vector2(body_w + 16.0 - 250.0, 10); more.size = Vector2(250, 20)
@@ -884,11 +893,20 @@ func _build_op_bar() -> void:
 				more.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				bar.add_child(more)
 				_op_more = more
-			## ── 【详情】: 属性加成 + 效果全文。原来这些只在 tooltip 里,
+			## ── 【细看】: 属性 + 效果全文。原来这些只在 tooltip 里,
 			##    而手机上没有 hover ⇒ 手机玩家**一辈子看不到装备加了多少属性**。
-			var det := Button.new(); det.text = "详情"
+			## ★★2026-09-28 两处一起改:
+			##   · 「详情」→「细看」: 「详情」是后台/表单里的栏目名(detail), 而这颗键
+			##     要说的是玩家的动作。战斗信息框那边已经是「点开细看」(battle_hud.gd),
+			##     同一个动作全游戏一个词。
+			##   · tooltip 整条删掉: 原文「看这件的完整属性和效果」是**字段名罗列**,
+			##     而且**手机没有 hover** —— 这条提示在真实玩家那里等于不存在,
+			##     键上「细看」两个字已经把它说完了。
+			##   ★节点名走常量 `DETAIL_BTN_NAME`: 门禁按名字 + 按下去真开框来判,
+			##     不拿"按钮上写着哪两个字"当尺子(memory [[fb-tests-pin-screen-words]])。
+			var det := Button.new(); det.text = "细看"
+			det.name = DETAIL_BTN_NAME
 			det.add_theme_font_size_override("font_size", 16)
-			det.tooltip_text = "看这件的完整属性和效果"
 			det.position = Vector2(bw - 396, 14); det.size = Vector2(96, 38)
 			## ★★底栏这三个键原来全是 Godot 默认皮(圆角纯色) ——
 			##   `verify_click_targets_alive` 自己写着「圆角纯色是最直接的『没游戏味』」,
@@ -991,13 +1009,21 @@ func _show_equip_detail(item: Dictionary) -> void:
 	## 详情弹窗是"点开看全部"那一层, 给**全文**; 操作栏/tooltip 才给一句话简述。
 	var eff := SkillText.highlight_star(SkillText.equip_full(edef), star)
 	if eff.strip_edges() == "":
-		eff = "[color=#8fa6bb]这件没有额外效果，属性直接生效。[/color]"
-	var bb := "[color=#9fb6c9][b]带来的属性[/b][/color]\n%s\n\n[color=#9fb6c9][b]效果[/b][/color]\n[color=#cfe0ef]%s[/color]" % [bbody, eff]
+		## ★★2026-09-28。原文「这件没有额外效果，属性直接生效。」三个词全是规格书用语:
+		##   「额外效果」是字段名、「直接生效」是实现说明, 而句尾那个句号连它的**姊妹句**
+		##   (`_stat_block` 的「这件不加属性，只有效果」, 没有句号)都不一致。
+		##   ⇒ 定稿成姊妹句的镜像: 不加属性/只有效果 ←→ 只加属性/不带效果。
+		eff = "[color=#8fa6bb]这件只加属性，不带效果[/color]"
+	## ★★2026-09-28 段标题「带来的属性」→「属性」: 「带来的」是 "brought by" 的翻译腔,
+	##   而商店详情面板(`ShopScene._build_stat_rows` 的「属性」标题)和图鉴
+	##   (`detail_views.gd:857` 的「属性」)本来就都只写两个字 —— 同一段信息三个界面
+	##   现在一个词。★下面那份【量高用的平文】必须跟着改, 否则量的高度和渲染的不是同一段字。
+	var bb := "[color=#9fb6c9][b]属性[/b][/color]\n%s\n\n[color=#9fb6c9][b]效果[/b][/color]\n[color=#cfe0ef]%s[/color]" % [bbody, eff]
 	## 框高按【字体自己排出来的高度】算, 不是按"每行几个字"估 ——
 	## 估的那一版实拍下面空了 160px(估多了), 而估少了就会把文案切掉。
 	## 估不准还有个更隐蔽的坏处: 每件装备的框高都对不上内容, 看起来就是"随便拍的"。
 	var bw := 700.0
-	var body_plain := "带来的属性\n%s\n\n效果\n%s" % [
+	var body_plain := "属性\n%s\n\n效果\n%s" % [
 		("这件不加属性，只有效果" if rows.is_empty() else _stat_block(eid, star)),
 		SkillText.equip_full(edef)]
 	var bh: float = clampf(_measured_text_h(body_plain, bw - 48.0, DETAIL_BODY_FS) + 140.0,
@@ -1160,9 +1186,9 @@ func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	#   覆写 _make_custom_tooltip, 才能真的渲染出星级高亮。
 	box.set_script(RichTooltip)
 	## ★"(费用3)" 括号计数 + "属性加成:" / "效果:" 的 label: value 句式, 两样都换掉。
-	##   小标题用的词与【详情】弹框逐字一致(那边是"带来的属性" / "效果", 见 `_show_equip_detail`)
+	##   小标题用的词与【细看】弹框逐字一致(那边是"属性" / "效果", 见 `_show_equip_detail`)
 	##   —— 同一件东西的同一段信息, 两个入口不该有两套叫法。
-	box.tooltip_text = "[b]%s[/b]  ★%d  %d费\n\n带来的属性\n%s\n\n效果\n%s" % [
+	box.tooltip_text = "[b]%s[/b]  ★%d  %d费\n\n属性\n%s\n\n效果\n%s" % [
 		str(edef.get("name", eid)), star, int(edef.get("cost", 1)),
 		_stat_block(eid, star), SkillText.highlight_star(SkillText.equip_brief(edef) if str(edef.get("effectBrief", "")) != "" else "（无主动效果）", star)]
 	_wire_bench_tap(box, idx)

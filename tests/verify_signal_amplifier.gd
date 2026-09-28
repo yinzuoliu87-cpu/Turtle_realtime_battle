@@ -209,6 +209,47 @@ func _ready() -> void:
 	_chk("⑤ ★弧形波每帧只推进一次(按帧号去重·否则一帧推 N 次=飞太快)",
 		src.contains("_sig_tick_fr"))
 
+	# ── ⑥ 演示台(VFXPREVIEW=sigwave)的张角真的一次次张开 ──
+	# ★★2026-09-28 由来: `write_orphan_audit` 的容器网报 `battle_vfx.gd` 的
+	#   `_sw_prev_stt`「读 1 处 · 全仓零写入」。探针实测**不是**没人写 —— 是
+	#   `_fire` 自己把 `stt["sig_arc_deg"]` 写回它收到的那个字典(按引用传),
+	#   审计器看不见"实参被被调方就地改写"这种写入。
+	# ★那个影子字典已改成【单位自己的 eq_state["p2eq_038"]】(与实战同一个容器),
+	#   而"张角一次次张开"这件事从来没有门禁量过 —— 补在这儿。
+	print("")
+	print("  ⑥ 演示台张角递增(与实战同一个状态容器):")
+	var pv_degs: Array = []
+	for _k in range(5):
+		var n0: int = sw._waves.size()
+		s._vfx._vfx_preview_sigwave(_ac, Vector2.RIGHT, 2)
+		pv_degs.append(float(sw._waves[sw._waves.size() - 1].get("deg", -1.0)) if sw._waves.size() > n0 else -1.0)
+	var prev_src = s._vfx._sw_prev_src
+	var prev_stt: Dictionary = {}
+	if prev_src != null and (prev_src as Dictionary).has("eq_state"):
+		prev_stt = ((prev_src as Dictionary)["eq_state"] as Dictionary).get("p2eq_038", {})
+	print("     张角序列 %s · 演示台单位 eq_state[p2eq_038] = %s" % [str(pv_degs), str(prev_stt)])
+	_chk("⑥ ★分母: 五次都真发了波(没有 -1)", not pv_degs.has(-1.0), str(pv_degs))
+	_chk("⑥ 张角 %d° 一档地张开到 %d° 封顶" % [int(WANT_ARC_STEP), int(WANT_ARC_MAX)],
+		pv_degs == [90.0, 180.0, 270.0, 360.0, 360.0], str(pv_degs))
+	_chk("⑥ ★状态存在【单位自己的 eq_state】里(与实战 equip_system 同一个容器)",
+		absf(float(prev_stt.get("sig_arc_deg", -1.0)) - WANT_ARC_MAX) < 0.01,
+		"eq_state[p2eq_038] = %s" % str(prev_stt))
+	# ★反证(这一条让上面那条不恒真): 每次换一个新字典 ⇒ 张角永远停在第一档。
+	#   若哪天有人把状态容器又改成"每次新建", 上面那条会红, 而这条仍绿 —— 两条分开才看得出病灶。
+	var lone_src: Dictionary = s._spawn._make_unit("basic", "left", _ac + Vector2(-3000.0, 0.0), {})
+	lone_src["equips"] = []; lone_src["eq_state"] = {}
+	var lone_foe: Dictionary = s._spawn._make_unit("basic", "right", _ac + Vector2(-2700.0, 0.0), {})
+	lone_foe["maxHp"] = 99999.0; lone_foe["hp"] = 99999.0
+	s._units.append(lone_src); s._units.append(lone_foe)
+	var pv_degs_fresh: Array = []
+	for _k2 in range(5):
+		var n1: int = sw._waves.size()
+		sw._fire(lone_src, lone_foe, 2, {})
+		pv_degs_fresh.append(float(sw._waves[sw._waves.size() - 1].get("deg", -1.0)) if sw._waves.size() > n1 else -1.0)
+	print("     对照(每次传新 {}) 张角序列 = %s" % str(pv_degs_fresh))
+	_chk("⑥ ★对照: 不复用状态容器时张角就永远停在第一档 ⇒ 上面那条不是恒真",
+		pv_degs_fresh == [90.0, 90.0, 90.0, 90.0, 90.0], str(pv_degs_fresh))
+
 	_done(s)
 
 

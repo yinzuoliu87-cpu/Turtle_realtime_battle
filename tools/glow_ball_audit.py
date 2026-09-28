@@ -90,7 +90,18 @@ def main():
     print("=== 无含义白球台账 `VfxTex._make_fire_glow_tex()`(只减不增) ===")
     print("  [分母] 扫描 %d 个 .gd · 实测调用点 %d 处 · 台账登记 %d 处(%d 个文件)"
           % (nfiles, total, sum(LEDGER.values()), len(LEDGER)))
+    ## ★★空检查哨兵(2026-09-28 补): 原来**没有**这一条 —— 实测把脚本拷到别处跑,
+    ##   `scan()` 一个文件都没扫到(它按相对路径走), 于是 96 处白球全变成
+    ##   「只剩 0 处」、`ALL OK` + rc=0。**扫了 0 个文件不是"白球没有新增", 是没在检查。**
+    ##   (这正是本仓那条老规矩: 判 0 之前先打分母 —— memory [[fb-redirect-order-fake-green]]。
+    ##    而且它与下面新加的 `[已清]` 分支叠在一起更危险: 空扫会被读成"全清了"。)
+    if nfiles < 50:
+        print("")
+        print("  [FAIL] 只扫到 %d 个 .gd(<50) —— 收集失效了(cwd 不对?), "
+              "这是空检查不是通过。" % nfiles)
+        return 1
     bad = []
+    cleared = []        # 「变少了」—— 打印但**不判红**(见下面 got < cap 那段)
     for rel in sorted(set(list(hits.keys()) + list(LEDGER.keys()))):
         got = hits.get(rel, 0)
         cap = LEDGER.get(rel, 0)
@@ -101,13 +112,23 @@ def main():
                        "       要么在 tools/glow_ball_audit.py 的 LEDGER 里说明为什么这一处必须是白球。"
                        % (rel, got, cap))
         elif got < cap:
-            bad.append("[FAIL] %s: 白球只剩 %d 处(台账写着 %d) —— 修好了就把台账改小, 棘轮只减不增。"
-                       % (rel, got, cap))
+            ## ★★2026-09-28 原来这条是 `[FAIL]` ⇒ **把白球换掉反而判红**。
+            ##   这是同日抓到的第三处同族(另两处: vfx_discipline 的 stale 分支、
+            ##   nine_downgrade 的 got<cap) —— 其中 vfx_discipline 那条**真的拦住了
+            ##   一次正当的删除**(删 `_signal_pulse`, 作者因为门禁红而还原了)。
+            ## ⇒ 统一约定: **只有"新增"判红**; "变少了"是这条判据的**目的**, 用 `[已清]` 打出来。
+            ## ⚠ 代价: 不改小台账, 这一处会继续按老数字发许可 ⇒ 必须每轮打印, 不静默。
+            cleared.append("  [已清] %s: 白球只剩 %d 处(台账写着 %d) —— **不判红**; "
+                           "把 LEDGER 里的数字改成 %d。" % (rel, got, cap, got))
     ## 台账外的文件只要有一处就是新增
     for rel, got in sorted(hits.items()):
         if rel not in LEDGER:
             bad.append("[FAIL] %s: 白球 %d 处, **不在台账里** —— 新增的当场红。" % (rel, got))
     print("")
+    for c in cleared:
+        print(c)
+    if cleared:
+        print("")
     if bad:
         for b in bad:
             print(b)

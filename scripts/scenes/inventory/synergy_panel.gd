@@ -35,6 +35,24 @@ func _syn_name(t: String) -> String:
 const TIER_COLORS := ["#c87941", "#c6ced8", "#ffd93d", "#8ef0ff"]   # 铜 / 银 / 金 / 钻石
 const TIER_COLOR_OFF := "#6b7686"                                   # 一档都没到
 const SYN_ROW_H := 62.0        # 一行的高度(手机触摸目标下限 44; 用户「按钮别又矮又扁」→ 62)
+## 行内【类型图标】的边长(px)。★源图 32×32 硬边像素画、半透明像素 0 个 ⇒
+##   只有 **16(1:2)** 与 **32(1×)** 每个输出像素恰好取整数个源像素, 别的倍率糊硬边。
+##   列表行字号 20 ⇒ 取 16(行高 62 放得下); 弹框标题字号 24 距 16/32 等远 ⇒ 取大的 32。
+const ROW_ICON_PX := 16
+const TITLE_ICON_PX := 32
+
+## 【羁绊详情弹框·正文】那个 RichTextLabel 的节点名 —— `verify_synergy_popup` 靠它认正文。
+##
+## ★★为什么要有它(2026-09-28): 那份门禁原来按「整棵背包页里**深度优先第一个**
+##   `RichTextLabel`」找正文。而这一屏 2026-09-28 把**列表行行名**与**弹框标题**
+##   也换成了 `RichTextLabel`(类型图标从 emoji 换成像素图, `Label` 画不了行内图)
+##   ⇒ 它抓到的是**行名**, 于是「12 个类型每一档都整段没出现」「正文不可滚动」全红 ——
+##   两条红都不是产品坏了, 是判据抓错了控件(memory `fb-gate-subject-never-constructed`)。
+## ★为什么不改成「取第二个」: 那只是把"第一个"换成"第二个", 下次再加一个 RTL 还是错。
+##   按**名字**认才是稳的 —— 照本仓现成的 `InventoryScene.DETAIL_BTN_NAME` /
+##   `SettingsScene.ACCT_ROW_PREFIX` 同一个模式: **常量放产品这边**, 门禁 preload 来读,
+##   门禁自己抄一份字符串就是 memory `fb-hand-rolled-copies-drift` 那条"抄一次永远落后"。
+const BODY_RT_NAME := "SynergyPopupBody"
 
 
 ## ── 「这一行点得开」的暗示: 一枚**逐像素画出来的**小箭头 ─────────────────
@@ -222,12 +240,24 @@ func _build_synergy_panel(_leaders: Array) -> void:
 		##   (产品自己写的 tooltip, 不是为测试加的标记) —— 改后半句可以, 这个前缀别动。
 		chip.tooltip_text = "点开看这个羁绊一路能给到什么"
 		inner.add_child(chip)
-		var nm = Label.new()
-		nm.text = "%s %s" % [host.Phase2Types.emoji_of(typ), _syn_name(typ)]
-		nm.add_theme_font_size_override("font_size", 20)
-		nm.add_theme_color_override("font_color", col)           # 名字 = 当前档位色
-		nm.position = Vector2(14, 0); nm.size = Vector2(150, SYN_ROW_H)
-		nm.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		## ★★2026-09-28 类型图标 emoji → `tags/` 像素图 ⇒ `Label` 换 `RichTextLabel`
+		##   (Label 画不了行内图)。写法走 `Phase2Types.icon_bb()`, 与商店/出战/图鉴同一份。
+		## ★图标 16: 源图 32×32 硬边像素画, 只有 16(1:2)/32(1×) 落在像素网格上;
+		##   20(跟着字号)会把硬边插值糊掉。行高 62 放得下 16。
+		var nm = RichTextLabel.new()
+		nm.bbcode_enabled = true
+		nm.fit_content = false
+		nm.scroll_active = false
+		nm.autowrap_mode = TextServer.AUTOWRAP_OFF
+		nm.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		nm.text = "%s %s" % [host.Phase2Types.icon_bb(typ, ROW_ICON_PX), _syn_name(typ)]
+		nm.add_theme_font_size_override("normal_font_size", 20)   # ★RTL 的键名不是 font_size
+		nm.add_theme_color_override("default_color", col)         # 名字 = 当前档位色
+		## ★★纵向居中: `Label` 有 `vertical_alignment`, `RichTextLabel` **没有** ——
+		##   照抄那一行会静默不居中(字顶在行首)。改成把控件本身摆到行的垂直中线上,
+		##   高度取实测行高(20px 字 = 30, 与 16 的图标取大者)。
+		const _NM_H := 30.0
+		nm.position = Vector2(14, (SYN_ROW_H - _NM_H) * 0.5); nm.size = Vector2(150, _NM_H)
 		nm.mouse_filter = Control.MOUSE_FILTER_IGNORE; chip.add_child(nm)
 		## 进度只有两个数: 现在几件 / 下一档要几件(到顶就是"已满")。不写"档"。
 		var cnt = Label.new()
@@ -347,17 +377,31 @@ func _show_synergy_popup(type_key: String, cur_tier: int) -> void:
 	box.mouse_filter = Control.MOUSE_FILTER_STOP   # 框内不穿透关闭
 	dim.add_child(box)
 
-	var ttl = Label.new()
+	## ★★2026-09-28 类型图标 emoji → `tags/` 像素图 ⇒ `Label` 换 `RichTextLabel`。
+	## ★★这里图标取 **32**(1×) 而不是 16: 字号 24 **距 16 和 32 等远**(±8),
+	##   而只有这两档落在像素网格上 ⇒ 标题取大的那档, 弹框标题本来就该比列表行醒目。
+	var ttl = RichTextLabel.new()
+	ttl.bbcode_enabled = true
+	ttl.fit_content = false
+	ttl.scroll_active = false
+	ttl.autowrap_mode = TextServer.AUTOWRAP_OFF
+	ttl.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	## ★★必须显式设 IGNORE: `RichTextLabel` 默认 `mouse_filter = STOP`(而 `Label` 默认 IGNORE)
+	##   ⇒ 照抄 Label 的写法会让标题**开始吞点击**。标题是纯装饰, 一点也不该收点击。
+	ttl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	## ★标题里也不写"档" —— 每一段本来就以【N 件】开头, 强弱看颜色。
 	##   cur_tier 可能是 0(未开启的羁绊现在也能点开看), 那就直接说还没开启。
-	ttl.text = "%s %s%s" % [host.Phase2Types.emoji_of(type_key), _syn_name(type_key),
+	ttl.text = "%s %s%s" % [host.Phase2Types.icon_bb(type_key, TITLE_ICON_PX), _syn_name(type_key),
 		"   还没开启" if cur_tier <= 0 else ""]
-	ttl.add_theme_font_size_override("font_size", 24)
-	ttl.add_theme_color_override("font_color", _tier_color(type_key, cur_tier))
-	ttl.position = Vector2(24, 18); ttl.size = Vector2(bw - 48, 34); box.add_child(ttl)
+	ttl.add_theme_font_size_override("normal_font_size", 24)   # ★RTL 的键名不是 font_size
+	ttl.add_theme_color_override("default_color", _tier_color(type_key, cur_tier))
+	## ★高 34 → 36: 24px 字的行高实测 **35**(图标 32 更矮), 34 会把底下 1px 切掉。
+	ttl.position = Vector2(24, 18); ttl.size = Vector2(bw - 48, 36); box.add_child(ttl)
 
 	# ★RichTextLabel + 滚动：文案再长也不会被吃掉（原来是固定 66px 的 Label，直接截断）
 	var rt = RichTextLabel.new()
+	## ★★给正文一个**节点名**, 让门禁按名字找它 —— 见 `BODY_RT_NAME` 的长注释。
+	rt.name = BODY_RT_NAME
 	rt.bbcode_enabled = true
 	rt.fit_content = false
 	rt.scroll_active = true

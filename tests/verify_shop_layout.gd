@@ -439,11 +439,13 @@ func _ready() -> void:
 	_chk("⑫ ★也没有「还差 N 件」的复述(进度本身已经说完了)",
 		src_shop.find("还差 %d 件") < 0 and src_shop.find("再装 %d 件") < 0)
 	## ★但【类型】不能跟着一起没了 —— 它是买之前要知道的事实。改挂在价格行后面。
-	_chk("⑫ ★类型仍然写得出来(挂在价格行: 「1 深海币 · 🏹弓箭」)",
-		src_shop.find('cl.text = "%d 深海币%s"') >= 0
-		## ★只认羁绊名本身 —— `display_name` 会返回「弓箭·神射手」, 而"神射手"是花名, 游戏里没有。
-		and src_shop.find("Phase2Types.emoji_of(_tp2), _tp2") >= 0
-		and src_shop.find("display_name(_tp2)") < 0)
+	##
+	## ★★2026-09-28 判据从【grep 源码字面量】改成【量真实建出来的那一行】。
+	##   原来是 `src_shop.find("Phase2Types.emoji_of(_tp2), _tp2") >= 0` —— 那是拿
+	##   **一句源码长什么样**当尺子: 类型图标 emoji→像素图那天它必然红, 而它红不是因为
+	##   需求坏了; 反过来, 只要我在源码里留着那串字符、把这一行**从面板上删掉**, 它照样绿。
+	##   ⇒ 平移到行为: 把那一行从**建出来的树上**捞出来, 问它身上挂了什么。
+	_type_line_checks(all)
 	## ★分母: 羁绊总览条还在(它才是这一页说羁绊的地方)
 	_chk("⑫ ★分母: 页面底部的羁绊总览条还在", src_shop.find("func _build_synergy_bar") >= 0)
 
@@ -702,3 +704,61 @@ func _done(sc) -> void:
 	print("")
 	print("ALL PASS — 商店版式" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  ⑫ 详情面板【价格行】: 类型写得出来, 且图标是【这个类型自己】的像素图
+# ══════════════════════════════════════════════════════════════════════
+## ★为什么要单独一节: 2026-09-28 类型图标从 emoji 换成 `assets/sprites/tags/` 的像素图,
+##   这一行也从 `Label` 换成 `RichTextLabel`(Label 画不了行内图)。
+##   原判据 grep 的是源码里那句 `Phase2Types.emoji_of(_tp2), _tp2` ——
+##   **换个名字继续 grep `icon_of(_tp2)` 是同一个毛病**: 它守的是"源码长这样",
+##   而需求是"玩家在这一行上看得见类型 + 一张属于这个类型的图"。
+##
+## ★★量的四件事, 每件都能单独红:
+##   ① 价格行在树上, 而且**是 RichTextLabel** —— Label 画不了行内图, 换回去就是没图标
+##   ② 行里写着类型名本身(「弓箭」), **不许出现花名**(「弓箭·神射手」游戏里没有这东西)
+##   ③ 行内图标的路径 == `Phase2Types.icon_of(行上写的那个类型名)`
+##      —— 这一条才是「香火显示成一把剑」那一族的判据: 挂错类型的图当场红
+##   ④ 那张图**真的在盘上** —— 路径写错也是"悄悄不画", 不报错
+func _type_line_checks(all: Array) -> void:
+	var P2T = load("res://scripts/gamedata/phase2_types.gd")
+	## 价格行的识别位 = 产品自己写的单位「深海币」(不是我为测试加的标记)。
+	var lines: Array = []
+	var as_label: int = 0
+	for c in all:
+		if c is RichTextLabel and str((c as RichTextLabel).text).find("深海币") >= 0:
+			lines.append(c)
+		elif c is Label and str((c as Label).text).find("深海币") >= 0 \
+			and str((c as Label).text).find("·") >= 0:
+			as_label += 1
+	_chk("⑫ ★分母: 详情面板的价格行建出来了, 而且是 RichTextLabel(%d 条; Label 版 %d 条)"
+		% [lines.size(), as_label], lines.size() >= 1 and as_label == 0)
+	if lines.is_empty():
+		return
+	var txt: String = str((lines[0] as RichTextLabel).text)
+	print("     ⑫ 价格行原文: %s" % txt)
+	## 「N 深海币  ·  [img=16x16]res://...tags/tag-bow.png 弓箭」
+	var sep: int = txt.find("  ·  ")
+	_chk("⑫ ★价格行上仍然写着类型(买之前要知道的事实)", sep >= 0)
+	if sep < 0:
+		return
+	var tail: String = txt.substr(sep + 5)
+	var i_end: int = tail.find("[/img]")
+	var i_open: int = tail.find("]")
+	var icon: String = tail.substr(i_open + 1, i_end - i_open - 1) if (tail.begins_with("[img") and i_end > i_open and i_open >= 0) else ""
+	var name_shown: String = (tail.substr(i_end + 6) if i_end >= 0 else tail).strip_edges()
+	_chk("⑫ ★只写羁绊名本身「%s」, 不用「弓箭·神射手」这种花名" % name_shown,
+		name_shown != "" and name_shown.find("·") < 0)
+	## ★★这一条是核心: 行上画的图必须属于行上写的那个类型。
+	_chk("⑫ ★★行内图标 == Phase2Types.icon_of(「%s」)  实测 %s" % [name_shown, icon],
+		icon != "" and icon == str(P2T.icon_of(name_shown)))
+	_chk("⑫ ★★那张图真的在盘上(路径写错也只是悄悄不画)",
+		icon != "" and ResourceLoader.exists(icon))
+	## ★分母: 这张表不是"所有类型都回落成同一张图" —— 否则上面那条恒真。
+	var uniq: Dictionary = {}
+	for t in (P2T.TYPES as Dictionary).keys():
+		uniq[str(P2T.icon_of(str(t)))] = true
+	_chk("⑫ ★分母: %d 个类型有 %d 张互不相同的图(全回落成一张时上一条恒真)"
+		% [(P2T.TYPES as Dictionary).size(), uniq.size()],
+		uniq.size() == (P2T.TYPES as Dictionary).size() and not uniq.has(""))

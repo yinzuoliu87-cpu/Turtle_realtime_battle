@@ -66,17 +66,38 @@ const TYPES := {
 
 # ══════════════════════════════════════════════════════════════════
 # 【两区式 TFT 羁绊面板·显示数据】(用户 2026-06-25 拍板)
-#   每个类型: 图标 emoji + 逐档效果文本(属性写完整: 全名+数值, 不缩写)。
+#   每个类型: 图标(像素图路径, 见 TYPE_ICON) + 逐档效果文本(属性写完整: 全名+数值, 不缩写)。
 #   TIER_DESCS[类型] 的第 i 项 = 第 (i+1) 档(对应 TYPES[类型].tiers[i] 阈值)的完整效果描述。
 #   文本逐字对应 docs/specs/类型效果-实装规格.md (#543-554)。档位区列全部档, 主区取当前激活档。
 # ══════════════════════════════════════════════════════════════════
-const TYPE_EMOJI := {
-	"剑": "🗡️", "奇械": "⚙️", "食物": "🍖", "盾": "🛡️", "药水": "🧪",
-	"枪": "🔫", "弓箭": "🏹", "法器": "🔮", "灵物": "🐙", "遗物": "🏺",
-	"香火": "🕯️",
-	"斧头": "🪓",
-	## ★2026-08-20 补: 香火在 TYPES 里(第 56 行)但这两张表都漏了它 ⇒ `emoji_of("香火")`
-	##   静默回落成 "🗡️", 界面上香火羁绊显示成一把剑。**表分三张而只加了一张**是典型漏法。
+## 类型 → 图标贴图路径。★★2026-09-28 从 emoji 换成 `assets/sprites/tags/` 的 12 张
+##   32×32 硬边像素图 —— 与 `CodexScene.TYPE_STYLE` 的 `icon` **同一批文件**。
+##
+## ★为什么两张表要同时换: 图鉴走 `TYPE_STYLE`, 而商店/出战/战斗HUD/背包羁绊面板走
+##   **这一张**。上一轮只换了图鉴那张 ⇒ 同一个类型在图鉴里是像素图、在商店里还是 emoji。
+##   「只改一张表」正是「香火显示成一把剑(2026-08-15)」「斧头显示成一条链(2026-09-28)」
+##   两次事故的形状; `tools/type_tables_audit.py` 现在连**值的形状**一起守(不只键集)。
+##
+## ★emoji 不是我们画的: 它由 NotoEmoji 渲染(彩色矢量/单色线条), 而 UI 是 3~4px 像素笔触
+##   ⇒ 同一块屏上两套画法。判据与台账见 `tests/verify_no_emoji_icons.gd`。
+##
+## ★★尺寸只许 **16(1:2)** 与 **32(1×)**: 源图 32×32、硬边、半透明像素 0 个 ——
+##   只有这两档每个输出像素恰好取整数个源像素, 别的倍率会把硬边糊掉。
+const TYPE_ICON := {
+	"剑":   "res://assets/sprites/tags/tag-sword.png",
+	"奇械": "res://assets/sprites/tags/tag-gadget.png",
+	"食物": "res://assets/sprites/tags/tag-food.png",
+	"盾":   "res://assets/sprites/tags/tag-shield.png",
+	"药水": "res://assets/sprites/tags/tag-potion.png",
+	"枪":   "res://assets/sprites/tags/tag-gun.png",
+	"弓箭": "res://assets/sprites/tags/tag-bow.png",
+	"法器": "res://assets/sprites/tags/tag-staff.png",
+	"灵物": "res://assets/sprites/tags/tag-spirit.png",
+	"遗物": "res://assets/sprites/tags/tag-relic.png",
+	"香火": "res://assets/sprites/tags/tag-incense.png",
+	"斧头": "res://assets/sprites/tags/tag-axe.png",
+	## ★2026-08-20 补: 香火在 TYPES 里(第 56 行)但这两张表都漏了它 ⇒ 静默回落成剑,
+	##   界面上香火羁绊显示成一把剑。**表分几张而只加了一张**是典型漏法。
 }
 const TYPE_NAME := {
 	"剑": "剑系", "奇械": "奇械·魔抗", "食物": "食物·增益", "盾": "盾·守护",
@@ -151,9 +172,37 @@ const TIER_DESCS := {
 	],
 }
 
-## 两区式面板·显示元数据: 给一个类型的图标 emoji。
-static func emoji_of(typ: String) -> String:
-	return str(TYPE_EMOJI.get(typ, "🗡️"))
+## 两区式面板·显示元数据: 给一个类型的图标**贴图路径**。
+##
+## ★★兜底值是 **""**(就不画图), 不是某个类型的图。
+##   原来它兜底成 `"🗡️"` —— 那正是「香火显示成一把剑」的**直接成因**:
+##   兜底成别的类型的图**看上去像是有意设计**, 不报错、不崩溃, 谁也发现不了。
+##   空图标 = 缺谁一眼看得见。(`CodexScene._type_icon` 2026-09-28 已按同一条改过。)
+static func icon_of(typ: String) -> String:
+	return str(TYPE_ICON.get(typ, ""))
+
+
+## 类型图标的【行内 BBCode】—— `Label` 画不了行内图, 消费点一律 `RichTextLabel`。
+##
+## ★写法照仓库里现成的两处(`scripts/util/skill_text.gd:288` 的 `[img=%d]` 与
+##   `scripts/scenes/codex/detail_views.gd` 的 `[img=%dx%d]`), **不另造**一套
+##   "Label 旁边摆 TextureRect" 的排版 —— 那会让"图标跟着字走"这件事在每个屏各写一遍。
+## ★`px` 只许 **16 或 32**(见 TYPE_ICON 头注)。缺图标返回 "" ⇒ 调用点原样只剩文字。
+## ⚠ 消费点别忘了 `texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST`,
+##   否则 32→16 会被线性插值糊成一团(默认是线性)。
+static func icon_bb(typ: String, px: int = 16) -> String:
+	var p: String = icon_of(typ)
+	if p == "":
+		return ""
+	return "[img=%dx%d]%s[/img]" % [px, px, p]
+
+
+## 行内图标真正占掉的**横向像素**(缺图标 = 0)。
+## ★给那些必须自己算控件宽的容器用: `HFlowContainer` / `HBoxContainer` 里
+##   `RichTextLabel` 的最小宽是 **0**(Label 自带文字宽) ⇒ 不给宽就全挤成一条竖线。
+## ★与 `icon_bb` 同一个 `px` 入口 —— 两处各写一个数必然漂。
+static func icon_bb_px(typ: String, px: int = 16) -> int:
+	return px if icon_of(typ) != "" else 0
 
 ## 两区式面板·显示名 (类型·别名)。
 static func display_name(typ: String) -> String:

@@ -35,6 +35,43 @@ func _ok(nm: String, cond: bool, detail: String = "") -> void:
 		print("  [FAIL] %s  %s" % [nm, detail])
 
 
+## 一棵子树里的可读文字(去重, 保序)。
+## ★★**Button 也要收**: 周日的收盘块是 `_finals_entry()` 的一个 **Button**,
+##   只收 Label 的话周日那一天永远量到空串 —— 那是**假的空值**,
+##   会把「两边都是空」当成「两边一致」(memory `fb-gate-subject-never-constructed`)。
+## ★去重: 描边文字会把同一句话生成好几份。
+func _texts(n: Node) -> Array:
+	var out: Array = []
+	var st: Array = [n]
+	while not st.is_empty():
+		var c = st.pop_front()
+		var t := ""
+		if c is Label:
+			t = str((c as Label).text)
+		elif c is Button:
+			t = str((c as Button).text)
+		if t.strip_edges() != "" and not out.has(t):
+			out.append(t)
+		for ch in c.get_children():
+			st.append(ch)
+	return out
+
+
+## 一个控件某个 slot 上挂的九宫格。没挂 / 挂的不是贴图 ⇒ null。
+func _nine(c: Control, slot: String) -> StyleBoxTexture:
+	if c == null or not c.has_theme_stylebox_override(slot):
+		return null
+	return c.get_theme_stylebox(slot) as StyleBoxTexture
+
+
+## 贴图文件名(拿不到 ⇒ 空串)。★判据比**名字**不比“是不是贴图” ——
+##   “挂了一张贴图”这种判据会把 `frame-rect.png` 也放过去, 而那张正是上次顶红的。
+func _tex_name(sb: StyleBoxTexture) -> String:
+	if sb == null or sb.texture == null:
+		return ""
+	return str(sb.texture.resource_path).get_file()
+
+
 ## 条内每一格的两行字: [星期几, 相位名(可能带「今」)]
 func _cells(strip: Node) -> Array:
 	var out: Array = []
@@ -149,7 +186,228 @@ func _ready() -> void:
 	_ok("★★★七天标「今」的位置**各不相同**(全一样 = 注入时钟没生效, 上面全是恒真)",
 		uniq.size() == today_marks.size() and today_marks.size() == 7,
 		"七天标在 %s" % str(today_marks))
+
+	await _one_clock(packed)
 	_done()
+
+
+## ═══════════════════════════════════════════════════════════════════
+##  ⑤★★★整屏同一天 —— **只注 `clock_override_ts`**, 不碰 `strip_now_override`
+## ═══════════════════════════════════════════════════════════════════
+## 上面 ①~④ 把**两个** override 一起喂 ⇒ 就算赛程条挂着**自己那条时钟**也照样全绿。
+## 而 2026-09-28 实测(`tests/_probe_mmclock.gd`, 修前): 只注 `clock_override_ts` 时
+## **七天里有六天**条上标「今」的格与注入日对不上 —— 状态行已经改口说「闯关赛」,
+## 条子底下还写着「一 休赛 今」。memory `fb-second-clock-drops-events`。
+##
+## ★三处各自有判据, 不拿一处代表整屏:
+##   a) 条上标「今」的格 == 注入日
+##   b) 收盘块 == **产品自己的** `_week_close_block(注入时刻)` 的文字
+##      (不在这里重拄一遍那串 if —— 手抄的副本必然落后)
+##   c) 状态行 L2 == `_phase_status_line(注入时刻)`
+func _one_clock(packed) -> void:
+	print("--- ⑤ 整屏同一天(只注 clock_override_ts) ---")
+	var marks: Array = []
+	var blocks: Array = []
+	var phase_lines := 0
+	for d in range(7):
+		var iso: int = 7 if d == 0 else d
+		var ts: int = SUN0 + d * 86400 + 12 * 3600
+		var mm = packed.instantiate()
+		mm.clock_override_ts = ts          ## ★只注这一条
+		add_child(mm)
+		for _i in range(6):
+			await get_tree().process_frame
+		var tag: String = WD_LONG[iso - 1]
+		_ok("%s ★分母: `_now_ts()` 拿到的就是注入的那一刻" % tag,
+			int(mm._now_ts()) == ts, "_now_ts=%d want=%d" % [int(mm._now_ts()), ts])
+
+		## a) 条上标「今」的格
+		var hb = null
+		var box = mm.find_child("WeekStrip", true, false)
+		if box != null:
+			for c in box.get_children():
+				if c is HBoxContainer:
+					hb = c
+					break
+		_ok("%s ★分母: 条子建出来了" % tag, hb != null)
+		if hb == null:
+			mm.queue_free()
+			await get_tree().process_frame
+			continue
+		var cells: Array = _cells(hb)
+		_ok("%s ★分母: 恰好 7 格" % tag, cells.size() == 7, "实测 %d" % cells.size())
+		var mk := -1
+		for k in range(cells.size()):
+			if str((cells[k] as Array)[1]).ends_with(" 今"):
+				mk = k + 1
+		marks.append(mk)
+		_ok("%s ★★★a) 条上标「今」的那格 = 第 %d 格(只注整屏那条缝)" % [tag, iso],
+			mk == iso, "实测第 %d 格" % mk)
+
+		## b) 收盘块 —— 与**产品自己的函数**喂注入时刻的结果逐字比
+		var got_blk: Array = []
+		for cell in hb.get_children():
+			var t2: Array = _texts(cell)
+			if t2.is_empty():
+				continue
+			if t2.size() >= 2 and WD_CN.has(str(t2[0])):
+				continue                     ## 日格, 不是收盘块
+			got_blk = t2
+		var want_node = mm._week_close_block(ts)
+		var want_blk: Array = _texts(want_node)
+		want_node.free()
+		blocks.append(str(want_blk))
+		_ok("%s ★分母: 收盘块有字(空的话下面是在比两个空数组)" % tag,
+			not want_blk.is_empty() and not got_blk.is_empty(),
+			"want=%s got=%s" % [str(want_blk), str(got_blk)])
+		_ok("%s ★★★b) 收盘块 == `_week_close_block(注入时刻)`" % tag,
+			got_blk == want_blk, "屏上=%s  产品函数=%s" % [str(got_blk), str(want_blk)])
+
+		## c) 状态行 L2
+		var want_l2: String = str(mm._phase_status_line(ts))
+		if want_l2 != "":
+			phase_lines += 1
+			var two = mm.find_child(mm.STATUS_TWO_LINE, true, false)
+			_ok("%s ★分母: 状态行那个具名容器在" % tag, two != null)
+			if two != null:
+				var ls: Array = _texts(two)
+				_ok("%s ★★★c) 状态行 L2 == `_phase_status_line(注入时刻)`" % tag,
+					ls.has(want_l2), "想要「%s」, 屏上 %s" % [want_l2, str(ls)])
+
+		## ════ ⑦ 中间档九宫格接线 —— **素材画好了 ≠ 接上了** ════
+		## 2026-09-28 接三处: 条子外框 `panel-wide-flat` / 今天那格 `panel-wide-on`
+		## / 决赛日那扇门 `panel-wide`。
+		## ★判据不是「我插了一行」 —— 而是**屏幕上那三个控件真挂着那张图**,
+		##   外加**字块落在九宫格边框里面**(memory `fb-gate-must-measure-requirement-not-my-hook`)。
+		var obx := _nine(box, "panel")
+		_ok("%s ⑦a 条子外框挂着 `panel-wide-flat.png`(一个框, 不是七个)" % tag,
+			_tex_name(obx) == "panel-wide-flat.png", "实测「%s」" % _tex_name(obx))
+		var nined := 0
+		var today_tex := ""
+		var pad_ok := true
+		var pad_txt := ""
+		for cell in hb.get_children():
+			if not (cell is Control):
+				continue
+			var tt: Array = _texts(cell)
+			if not (tt.size() >= 2 and WD_CN.has(str(tt[0]))):
+				continue
+			var nb := _nine(cell as Control, "panel")
+			if nb == null or nb.texture == null:
+				continue
+			nined += 1
+			if str(tt[1]).ends_with(" 今"):
+				today_tex = _tex_name(nb)
+			## ★★字块必须落在**九宫格边框**里(边框读 `texture_margin` —— 那是真实的那圈金属)。
+			##   这就是 `verify_ui_consistency` 「文字压边带」那条棘轮的同一件事, 只是量在源头:
+			##   上一轮四版对照实测——格高不动 ⇒ 两行字 45px 装不进 54−16=38 的内容区。
+			var mgn: float = nb.get_texture_margin(SIDE_TOP)
+			var cr: Rect2 = (cell as Control).get_global_rect()
+			var lt := 1.0e9
+			var lb := -1.0e9
+			var q: Array = [cell]
+			while not q.is_empty():
+				var nn = q.pop_back()
+				if nn is Label and str((nn as Label).text).strip_edges() != "":
+					var rr: Rect2 = (nn as Label).get_global_rect()
+					lt = minf(lt, rr.position.y)
+					lb = maxf(lb, rr.end.y)
+				for ch3 in nn.get_children():
+					q.append(ch3)
+			pad_txt = "字 %.0f..%.0f  边框内沿 %.0f..%.0f (margin %.0f)" % [
+				lt, lb, cr.position.y + mgn, cr.end.y - mgn, mgn]
+			if lb <= lt or lt < cr.position.y + mgn or lb > cr.end.y - mgn:
+				pad_ok = false
+		_ok("%s ⑦b **恰好一格**套九宫格(七格全套=表格, 上一轮四版对照实拍否掉过)" % tag,
+			nined == 1, "实测 %d 格" % nined)
+		_ok("%s ⑦b 套的就是【今天】那格, 用的是 `panel-wide-on.png`" % tag,
+			today_tex == "panel-wide-on.png", "实测「%s」" % today_tex)
+		_ok("%s ⑦c 亮牌上那两行字落在九宫格边框**里面**" % tag, pad_ok, pad_txt)
+
+		## ⑦d 几何 —— **七天都跑**。`verify_mainmenu_layout ④` 只量【真实今天】那一屏,
+		##   而**周日**条子被 81px 的门撑到 95 高、顶沿与左栏栈底实测只差 **1px**:
+		##   条子的 content_margin 多给 1 就压住入口, 而那一天一周只来一次。
+		var pb: Control = mm.get("page_box")
+		var stack_bot := -1.0e9
+		if pb != null:
+			for c4 in pb.get_children():
+				if c4 is Control and (c4 as Control).visible:
+					stack_bot = maxf(stack_bot, (c4 as Control).get_global_rect().end.y)
+		var sr2: Rect2 = box.get_global_rect()
+		_ok("%s ⑦d ★分母: 量到了左栏栈底(量不到 ⇒ 下一条是空检查)" % tag,
+			stack_bot > 0.0, "栈底 %.0f" % stack_bot)
+		_ok("%s ⑦d 条子不压住左栏入口(顶沿 ≥ 栈底−2)" % tag,
+			sr2.position.y >= stack_bot - 2.0,
+			"条顶 %.0f vs 栈底 %.0f" % [sr2.position.y, stack_bot])
+		_ok("%s ⑦d 条子没掉出屏幕(底沿 ≤ 720) 且仍是【条】(高 ≤ 96)" % tag,
+			sr2.end.y <= 720.0 and sr2.size.y <= 96.0,
+			"底沿 %.0f 高 %.0f" % [sr2.end.y, sr2.size.y])
+
+		## ⑦e 决赛日那扇门 —— 只有周日在场
+		if iso == 7:
+			var door: Button = null
+			var q2: Array = [box]
+			while not q2.is_empty():
+				var n2 = q2.pop_back()
+				if n2 is Button:
+					door = n2 as Button
+				for ch4 in n2.get_children():
+					q2.append(ch4)
+			_ok("%s ⑦e ★分母: 门在场(不在 ⇒ 下两条是空检查)" % tag, door != null)
+			if door != null:
+				var dn := _nine(door, "normal")
+				_ok("%s ⑦e 门挂着 `panel-wide.png`" % tag,
+					_tex_name(dn) == "panel-wide.png", "实测「%s」" % _tex_name(dn))
+				## ★★不许退回 `UISkin.button()`: 它的 big 判据(短边≥56 且面积≥5000)
+				##   会让 150×81 去挑 `menu/frame-rect.png`, 而那张**边带 27**,
+				##   上下 55 装不下两行 15 号字 ⇒ 「文字压边带」当场 +1(棘轮只降不升)。
+				_ok("%s ⑦e 门用的**不是** `frame-rect.png`(边带 27, 装不下两行字)" % tag,
+					_tex_name(dn) != "frame-rect.png", "实测「%s」" % _tex_name(dn))
+
+		mm.queue_free()
+		await get_tree().process_frame
+
+	var uq: Dictionary = {}
+	for m in marks:
+		uq[int(m)] = true
+	_ok("★★★七天标「今」的位置各不相同(全一样 = 条子还挂着自己那条时钟)",
+		uq.size() == 7 and marks.size() == 7, "七天标在 %s" % str(marks))
+	## ★分母: 收盘块的期望值本身得**随天变** —— 七天一个样的话,
+	##   b) 那条就是在比一个恒量, 条子读哪条时钟都能绿。
+	var ub: Dictionary = {}
+	for b in blocks:
+		ub[str(b)] = true
+	_ok("★分母: 收盘块的期望值七天至少有 5 种(一种 = b) 是空检查)",
+		ub.size() >= 5, "实测 %d 种: %s" % [ub.size(), str(ub.keys())])
+	## ★分母: 恰好两天有相位专属读数(周六闯关/周日决赛) —— c) 那条才不是空跑
+	_ok("★分母: c) 真正比过的天数 = 2(周六/周日)", phase_lines == 2,
+		"实测 %d 天" % phase_lines)
+
+	## ⑥ ★分母: **不注入**时条子跟真实时钟走。
+	##   不验这一条的话, 把 `_week_strip` 里的 now 写死成一个常量也能让 ⑤ 全绿。
+	var mm0 = packed.instantiate()
+	add_child(mm0)
+	for _k in range(6):
+		await get_tree().process_frame
+	var sys_iso: int = P2.iso_weekday_utc(int(Time.get_unix_time_from_system()))
+	var mk0 := -1
+	var hb0 = null
+	var bx0 = mm0.find_child("WeekStrip", true, false)
+	if bx0 != null:
+		for c0 in bx0.get_children():
+			if c0 is HBoxContainer:
+				hb0 = c0
+				break
+	_ok("★分母: 不注入时条子也建出来了", hb0 != null)
+	if hb0 != null:
+		var cs0: Array = _cells(hb0)
+		for k0 in range(cs0.size()):
+			if str((cs0[k0] as Array)[1]).ends_with(" 今"):
+				mk0 = k0 + 1
+		_ok("⑥ ★★不注入 ⇒ 条上标「今」的格 = 真实系统时钟的星期几",
+			mk0 == sys_iso, "真实=%d 条上=%d" % [sys_iso, mk0])
+	mm0.queue_free()
+	await get_tree().process_frame
 
 
 func _done() -> void:

@@ -415,45 +415,6 @@ func _rel_time(ts: int) -> String:
 	return "%d 天前" % int(d / 86400.0)
 
 
-## 圆形按钮的自绘登记表(见下面 `_paint_round_btn` 的病历)。
-var _draw_btns: Array = []
-
-
-## 按下标重绘一个圆形按钮。★只接受 int 下标 —— 闭包不许捕获节点。
-func _paint_round_btn(i: int) -> void:
-	if i < 0 or i >= _draw_btns.size():
-		return
-	var d: Dictionary = _draw_btns[i]
-	var n = d.get("n", null)
-	if n == null or not is_instance_valid(n):
-		return
-	var c0: float = float(d["c0"])
-	var r: float = float(d["r"])
-	(n as Control).draw_circle(Vector2(c0, c0), r, Color(0, 0, 0, 0.55))
-	(n as Control).draw_arc(Vector2(c0, c0), r - 1.0, 0, TAU, 32,
-		(d["stroke"] as Dictionary)["c"], 2.0)
-
-
-func _mono_font() -> Font:
-	var f := SystemFont.new()
-	f.font_names = PackedStringArray(["monospace", "Consolas", "Courier New"])
-	f.fallbacks = [load("res://assets/fonts/NotoSansSC-Regular.otf")]   # CJK 网页/iOS 兜底 (SystemFont 在 web 取不到系统字体→中文乱码)
-	return f
-
-
-func _stroked_label(t: String, size: int, color: String, stroke: String, thick: int) -> Label:
-	var l := Label.new()
-	l.text = t
-	l.add_theme_font_size_override("font_size", size)
-	l.add_theme_color_override("font_color", Color(color))
-	if thick > 0 and stroke != "":
-		l.add_theme_constant_override("outline_size", thick)
-		l.add_theme_color_override("font_outline_color", Color(stroke))
-	return l
-
-
-
-
 func _bg() -> void:
 	# PoC (index.html menu-bg-active): RecordScene 套主菜单 tile bg = menu-bg-tile.png 平铺 (512px repeat)
 	#   over 深绿底 #1a3a2a, 上叠暗渐变 ::after rgba(8,12,20,.15→.40). 不是 menu-bg.png 废墟图!

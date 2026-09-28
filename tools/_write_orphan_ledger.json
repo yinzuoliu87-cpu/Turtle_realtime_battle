@@ -1,11 +1,6 @@
 {
  "_why": "由 `python tools/write_orphan_audit.py --update` 生成, 不要手改。`known` = 【有读者但没人写真值】的存量(只减不增); `seams` = 产品只读、只有 tests/ 写的测试缝存量。",
- "known": [
-  "_edit_btn_pick",
-  "_info_passive_lbl",
-  "_info_passive_tpl",
-  "dual_shop_visits"
- ],
+ "known": [],
  "seams": [
   "NO_PRESENT",
   "NO_TRAINER",
@@ -16,18 +11,19 @@
   "strip_finals_live_override",
   "strip_now_override"
  ],
+ "containers": [],
+ "container_seams": [
+  "pool_override"
+ ],
  "where": {
   "NO_PRESENT": "NO_PRESENT  (scripts/scenes/battle/dual_lane_flow.gd:20) 读 1 处 · 产品侧真写入 0 · 重置写 0 处 · tests 写 1 处",
   "NO_TRAINER": "NO_TRAINER  (scripts/scenes/RealtimeBattle3DScene.gd:650) 读 3 处 · 产品侧真写入 0 · 重置写 0 处 · tests 写 3 处",
-  "_edit_btn_pick": "_edit_btn_pick  (scripts/scenes/RealtimeBattle3DScene.gd:664) 读 3 处 · 产品侧真写入 0 · 重置写 0 处",
-  "_info_passive_lbl": "_info_passive_lbl  (scripts/scenes/RealtimeBattle3DScene.gd:8589) 读 4 处 · 产品侧真写入 0 · 重置写 0 处",
-  "_info_passive_tpl": "_info_passive_tpl  (scripts/scenes/RealtimeBattle3DScene.gd:8590) 读 2 处 · 产品侧真写入 0 · 重置写 0 处",
   "acct_override": "acct_override  (scripts/scenes/SettingsScene.gd:128) 读 2 处 · 产品侧真写入 0 · 重置写 0 处 · tests 写 7 处",
-  "clock_override_ts": "clock_override_ts  (scripts/scenes/MainMenuScene.gd:1500) 读 2 处 · 产品侧真写入 0 · 重置写 0 处 · tests 写 18 处",
-  "dual_shop_visits": "dual_shop_visits  (autoload/GameState.gd:153) 读 1 处 · 产品侧真写入 0 · 重置写 1 处",
-  "lockout_now_override": "lockout_now_override  (scripts/scenes/TeamSelectScene.gd:89) 读 2 处 · 产品侧真写入 0 · 重置写 0 处 · tests 写 3 处",
-  "now_override_ts": "now_override_ts  (scripts/gamedata/phase2_config.gd:387) 读 2 处 · 产品侧真写入 0 · 重置写 0 处 · tests 写 35 处",
-  "strip_finals_live_override": "strip_finals_live_override  (scripts/scenes/MainMenuScene.gd:987) 读 2 处 · 产品侧真写入 0 · 重置写 0 处 · tests 写 1 处",
-  "strip_now_override": "strip_now_override  (scripts/scenes/MainMenuScene.gd:981) 读 2 处 · 产品侧真写入 0 · 重置写 0 处 · tests 写 3 处"
+  "clock_override_ts": "clock_override_ts  (scripts/scenes/MainMenuScene.gd:1625) 读 2 处 · 产品侧真写入 0 · 重置写 0 处 · tests 写 24 处",
+  "lockout_now_override": "lockout_now_override  (scripts/scenes/TeamSelectScene.gd:94) 读 2 处 · 产品侧真写入 0 · 重置写 0 处 · tests 写 3 处",
+  "now_override_ts": "now_override_ts  (scripts/gamedata/phase2_config.gd:387) 读 2 处 · 产品侧真写入 0 · 重置写 0 处 · tests 写 36 处",
+  "pool_override": "pool_override  (scripts/net/backend.gd:458) 读 2 处 · 产品侧改内容 0 次 · 清空/重置 0 处 · tests 改 4 处",
+  "strip_finals_live_override": "strip_finals_live_override  (scripts/scenes/MainMenuScene.gd:1055) 读 2 处 · 产品侧真写入 0 · 重置写 0 处 · tests 写 3 处",
+  "strip_now_override": "strip_now_override  (scripts/scenes/MainMenuScene.gd:1049) 读 2 处 · 产品侧真写入 0 · 重置写 0 处 · tests 写 3 处"
  }
 }

@@ -24,6 +24,8 @@ extends Node
 
 const Phase2Types := preload("res://scripts/gamedata/phase2_types.gd")
 const InvScene := preload("res://scripts/scenes/InventoryScene.gd")
+## ★正文控件的节点名常量**从产品那边读**(不抄一份字符串) —— 见 `_find_body_rt` 的长注释。
+const SynergyPanel := preload("res://scripts/scenes/inventory/synergy_panel.gd")
 
 var _n := 0
 var _fail := 0
@@ -62,10 +64,14 @@ func _ready() -> void:
 		# 真的建一次弹框（当前档取 1）
 		host._inv_synergy._show_synergy_popup(tname, 1)
 		await get_tree().process_frame
-		var rt: RichTextLabel = _find_rt(host)
 		var box: Panel = _find_box(host)
+		var rt: RichTextLabel = _find_body_rt(box) if box != null else null
 		if rt == null or box == null:
-			geo_bad.append("%s 没建出弹框" % tname)
+			## ★把两种失败分开说: 弹框没建出来 ≠ 建出来了但**按名字找不到正文**
+			##   (后者是节点名漂了 —— 常量改了而产品没跟着改, 或反过来)。
+			geo_bad.append("%s 没建出弹框" % tname if box == null
+				else "%s 弹框建了, 但找不到名为「%s」的正文控件(节点名漂了)"
+					% [tname, str(SynergyPanel.BODY_RT_NAME)])
 			_clear(host)
 			continue
 		built += 1
@@ -131,13 +137,28 @@ func _ready() -> void:
 	get_tree().quit(1 if _fail > 0 else 0)
 
 
-func _find_rt(n: Node) -> RichTextLabel:
-	for c in n.get_children():
-		if c is RichTextLabel:
-			return c
-		var r := _find_rt(c)
-		if r != null:
-			return r
+## 弹框【正文】那个 RichTextLabel —— **按节点名认**。
+##
+## ★★2026-09-28 从「整棵 host 树里深度优先第一个 RichTextLabel」改成按名字找。
+##   由来: 类型图标 emoji → `tags/` 像素图那天, 羁绊**列表行的行名**和**弹框标题**
+##   也都从 `Label` 变成了 `RichTextLabel`(Label 画不了行内图) ⇒ 原来那句"第一个"
+##   抓到的是**列表行的行名**, 于是 ② 报「12 个类型每一档都整段没出现」、
+##   ⑤ 报「正文不可滚动」—— 两条红都不是产品坏了, 是**判据抓错了控件**
+##   (memory `fb-gate-subject-never-constructed`)。
+## ★为什么不是「取第二个」/「取最高的那个」: 那只是把序号或尺寸当身份,
+##   下次再加一个 RTL / 改一次高度就又错。
+## ★★名字常量**放在产品那边**(`SynergyPanel.BODY_RT_NAME`), 这里 preload 来读 ——
+##   门禁自己抄一份字符串就是 memory `fb-hand-rolled-copies-drift`: 抄一次永远落后。
+##   照的是本仓现成的 `InventoryScene.DETAIL_BTN_NAME` / `SettingsScene.ACCT_ROW_PREFIX`。
+func _find_body_rt(n: Node) -> RichTextLabel:
+	var want: String = str(SynergyPanel.BODY_RT_NAME)
+	var st: Array = [n]
+	while not st.is_empty():
+		var x: Node = st.pop_back()
+		for c in x.get_children():
+			st.append(c)
+		if x is RichTextLabel and str(x.name) == want:
+			return x as RichTextLabel
 	return null
 
 

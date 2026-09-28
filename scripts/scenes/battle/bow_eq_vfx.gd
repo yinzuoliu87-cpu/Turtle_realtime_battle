@@ -182,8 +182,6 @@ const GROUND_Y := 0.06
 ## ★2026-08-11 补验收: "一出生就线性淡出"是特效八病之首(memory [[fb-vfx-defect-families]]) ——
 ##   弓箭批实拍复核 9 张里 0 张抓到藤蔓箭, 短命亮片在任意采样时刻平均只有半亮。
 const FADE_HOLD := 0.7
-## 贴地环的经向分段
-const RING_LON := 48
 ## 本层节点上打的 meta 键 —— 门禁按 meta 数, 不按节点名/贴图路径
 ## (程序生成贴图 resource_path 是空串, 按路径数会全数成 0)。
 const META_KEY := "bow_eq_vfx"
@@ -197,7 +195,6 @@ var _owned: Array = []
 ## 正在播的短命特效 [{node, t, life, kind, …}] —— 每帧由 tick() 推进, **不用 tween**。
 var _fx: Array = []
 ## 单位半径网格缓存(整局各建一次; 材质不能共享, 会串色 —— 同 shockwave_vfx)
-var _mesh_ring: ArrayMesh = null
 var _mesh_plate: ArrayMesh = null
 var _mesh_orb_shield: SphereMesh = null
 var _mesh_shard: ArrayMesh = null
@@ -417,29 +414,6 @@ static func _tri(st: SurfaceTool, a: Array, b: Array, c: Array) -> void:
 	for v in [a, b, c]:
 		st.set_color(v[1])
 		st.add_vertex(v[0])
-
-
-static func _flat(r: float, th: float, a: float) -> Array:
-	return [Vector3(r * cos(th), GROUND_Y, r * sin(th)), Color(1, 1, 1, a)]
-
-
-## 单位半径的贴地环(外沿硬 = 落区边界, 内沿渐隐)。
-static func _build_ring() -> ArrayMesh:
-	var mesh := ArrayMesh.new()
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for j in range(RING_LON):
-		var t0: float = float(j) / float(RING_LON) * TAU
-		var t1: float = float(j + 1) / float(RING_LON) * TAU
-		for q in [[0.82, 0.0, 0.97, 0.9], [0.97, 0.9, 1.0, 0.35]]:
-			var ri: float = float(q[0])
-			var ai: float = float(q[1])
-			var ro: float = float(q[2])
-			var ao: float = float(q[3])
-			_tri(st, _flat(ri, t0, ai), _flat(ro, t0, ao), _flat(ro, t1, ao))
-			_tri(st, _flat(ri, t0, ai), _flat(ro, t1, ao), _flat(ri, t1, ai))
-	st.commit(mesh)
-	return mesh
 
 
 ## 一片鲸骨 = 竖长的肋骨条(局部 XY 平面, 长轴 Y, 法线 +Z): 中段平直、两端锥形收口。

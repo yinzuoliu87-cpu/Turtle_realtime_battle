@@ -119,17 +119,37 @@ func _ready() -> void:
 	var row_r: Control = _s._hud.make_synergy_chip_row("right")
 	_ok("③ ★我方 chip 数 = 档位>0 的类型数(食物 0 档不该出现)",
 		row_l.get_child_count() == 2, "实得 %d 个" % row_l.get_child_count())
-	var texts: Array = []
+	## ★★2026-09-28 类型图标 emoji → `tags/` 像素图, chip 从 `Label` 变 `RichTextLabel`。
+	##   判据**不是把 `emoji_of` 换成 `icon_of` 继续拼字符串** —— 那只是换了个名字继续
+	##   "断言我自己算出来的那串"。改成**量行为**: 每个 chip 上
+	##     · 挂的是【这个类型自己】的图(拿到的路径 == `icon_of(该类型)`, 且**互不相同**)
+	##     · 数字是【这个类型自己】的档位
+	##   这样"香火兜底成一把剑"那一族(所有类型拿到同一张图)会当场红, 而旧写法不会 ——
+	##   旧写法两边都用 `emoji_of`, 兜底成什么它都自洽。
+	var _chip_of: Dictionary = {}          # 图标路径 → chip 上的数字串
 	for c in row_l.get_children():
-		texts.append(str((c as Label).text))
-	_ok("③ ★档位数字逐个对得上 _by_side(不是'有就行')",
-		texts.has("%s3" % Phase2Types.emoji_of("枪")) and texts.has("%s1" % Phase2Types.emoji_of("盾")),
-		str(texts))
+		_chip_of[_icon_src_of(c)] = _plain_of(c)
+	var _i_gun: String = Phase2Types.icon_of("枪")
+	var _i_shd: String = Phase2Types.icon_of("盾")
+	var _i_stf: String = Phase2Types.icon_of("法器")
+	## ★分母: 三个类型的图**必须互不相同、且都真在盘上**。少了这条, 一旦 `icon_of`
+	##   对所有类型都回落成同一张(或都回落成 ""), 下面两条会自洽地全绿。
+	_ok("③ ★分母: 三个类型的图标互不相同且都在盘上(全回落成同一张时下面两条会假绿)",
+		_i_gun != "" and _i_shd != "" and _i_stf != ""
+			and _i_gun != _i_shd and _i_shd != _i_stf and _i_gun != _i_stf
+			and ResourceLoader.exists(_i_gun) and ResourceLoader.exists(_i_shd)
+			and ResourceLoader.exists(_i_stf),
+		"枪=%s 盾=%s 法器=%s" % [_i_gun, _i_shd, _i_stf])
+	_ok("③ ★每个 chip 挂【自己类型】的图 + 【自己】的档位数字(不是'有就行')",
+		str(_chip_of.get(_i_gun, "")) == "3" and str(_chip_of.get(_i_shd, "")) == "1",
+		str(_chip_of))
 	_ok("③ 敌方那列读的是 _by_side['right'](不是把我方抄一遍)",
 		row_r.get_child_count() == 1
-			and str((row_r.get_child(0) as Label).text) == "%s2" % Phase2Types.emoji_of("法器"),
-		"实得 %d 个: %s" % [row_r.get_child_count(),
-			(str((row_r.get_child(0) as Label).text) if row_r.get_child_count() > 0 else "无")])
+			and _icon_src_of(row_r.get_child(0)) == _i_stf
+			and _plain_of(row_r.get_child(0)) == "2",
+		"实得 %d 个: %s / %s" % [row_r.get_child_count(),
+			(_icon_src_of(row_r.get_child(0)) if row_r.get_child_count() > 0 else "无"),
+			(_plain_of(row_r.get_child(0)) if row_r.get_child_count() > 0 else "无")])
 	# ★时序(方案书 R4): apply_all 必须在建列之前, 否则建列时读到空 _by_side ⇒ 永远空行
 	var src_spawn: String = FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_spawn.gd")
 	var i_apply: int = src_spawn.find("_synergy.apply_all()")
@@ -255,3 +275,32 @@ func _ready() -> void:
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 羁绊显示" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  chip 拆解小工具(③ 用) —— 量的是 chip **自己身上挂了什么**, 不是我拼出来的串
+# ══════════════════════════════════════════════════════════════════════
+
+## chip 上行内图标的【贴图路径】: 从 `[img=WxH]path[/img]` 里抠出 path。
+## ★不是 `RichTextLabel` 就返回 "" —— `Label` **画不了行内图**, 换回 Label
+##   等于屏幕上没有图标, 这条判据必须逮到它。
+func _icon_src_of(c: Node) -> String:
+	if not (c is RichTextLabel):
+		return ""
+	var t: String = str((c as RichTextLabel).text)
+	if not t.begins_with("[img"):
+		return ""
+	var i: int = t.find("]")
+	var j: int = t.find("[/img]")
+	if i < 0 or j <= i:
+		return ""
+	return t.substr(i + 1, j - i - 1)
+
+
+## chip 上【图标以外】的那串字(局内 chip 就是档位数字)。
+func _plain_of(c: Node) -> String:
+	if not (c is RichTextLabel):
+		return ""
+	var t: String = str((c as RichTextLabel).text)
+	var j: int = t.find("[/img]")
+	return (t.substr(j + 6) if j >= 0 else t).strip_edges()

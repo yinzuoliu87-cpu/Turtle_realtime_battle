@@ -85,13 +85,17 @@ const SCREEN_LEDGER: Dictionary = {
 	##   ★这正是【运行时扫描】比【源码扫描】多拿到的一类: 源码里一个字都搜不到。
 	##   改它们要动 `data/`(不在本轮地盘) ⇒ 已登记进缺口表交上去。
 	## ★另外那 1 个是右上角的 🛠 调试面板钮 —— 只在 `OS.is_debug_build()` 下建, 不是玩家路径。
-	## 背包。剩下的 1 个 = 【临时等级器】那张卡上的 🔼 ——
-	## 它是这件东西在背包里的**唯一视觉**, 删了就是一张空卡; 而仓库里没有任何
-	## 「升级 / 等级」的像素图标(已 grep: level/upgrade/arrow 全无)。
-	## 其余是羁绊栏的类型图标(同上)。
-	"Inventory": [5, "临时等级器 🔼 ×1(无素材) + 右侧羁绊栏的类型图标 ×4"],
-	## 选龟。全部是羁绊 chips 的类型图标(`Phase2Types.emoji_of`)。
-	"TeamSelect": [6, "羁绊 chips 的类型图标 ×6(tags/ 未画)"],
+	## 背包。★★2026-09-28 **5 → 1**: 右侧羁绊栏的类型图标已换成 `tags/` 像素图
+	##   (`Phase2Types.TYPE_ICON` + `icon_bb()`, 行名与弹框标题两处都换)。
+	##   剩下的 1 个 = 【临时等级器】那张卡上的 🔼 ——
+	##   它是这件东西在背包里的**唯一视觉**, 删了就是一张空卡; 而仓库里没有任何
+	##   「升级 / 等级」的像素图标(已 grep: level/upgrade/arrow 全无)。
+	## ★1 是 `EMOJI_DUMP=1` **实测**的, 不是 5−4 算的 —— 上一轮按算术估会差 20。
+	"Inventory": [1, "临时等级器 🔼 ×1(无素材)"],
+	## 选龟。★★2026-09-28 **6 → 0**: 羁绊 chips 的类型图标全部换成 `tags/` 像素图
+	##   (`Label` → `RichTextLabel` + 行内 `[img=16x16]`)。这一屏已经一个 emoji 都没有。
+	##   ★0 是实测, 不是"应该为 0" —— 而登 0 的价值是**钉住**: 以后这屏再冒一个就红。
+	"TeamSelect": [0, ""],
 	"Record": [0, ""],
 	## 设置。⚠ 不计入(它在 NotoSansSC 里, 与正文同一套字);
 	## 🛠 调试场只在 `OS.is_debug_build()` 下建 —— 正式包玩家看不到, 不是玩家路径。
@@ -135,7 +139,13 @@ const SRC_LEDGER: Dictionary = {
 	##   它们的改法与上面一样: 有对得上的像素图就接图, 没有就登记进缺口表。
 	"scripts/scenes/MainMenuScene.gd": [15, "主菜单(另一路在改)"],
 	"scripts/scenes/ShopScene.gd": [13, "商店(另一路在改)"],
-	"scripts/scenes/battle/battle_hud.gd": [14, "战斗 HUD(另一路在改)"],
+	## ★★2026-09-28 **14 → 5**(实测)。局内羁绊 chips 的类型图标已换成 `tags/` 像素图,
+	##   但 ⚠ **这一格的数字并不是因此降的** —— 类型 emoji 从来不是这个文件里的字面量,
+	##   它们住在 `scripts/gamedata/phase2_types.gd`, 而本静态扫描的范围只有
+	##   `scripts/scenes/**` ⇒ 那 12 个 emoji **一直不在这张台账里**(见文件末尾的缺口说明)。
+	##   14 是别的路清理时留下的余量, 现在按实测收到 5。
+	"scripts/scenes/battle/battle_hud.gd": [5,
+		"战斗日志那行的 🏆/💀 ×2 + 调试场面板的 🛠⏸🔁 ×3(调试场是开发工具, 不是玩家路径)"],
 	"scripts/scenes/battle/battle_debug_arena.gd": [7, "调试场: 开发工具, 不是玩家路径"],
 	## ★这两条实测已经是 **0** —— 它们的 emoji 全在 `print/printerr` 里(只进终端,
 	##   不上屏), 本扫描器本来就跳掉那些行。登 0 是为了**钉住**它们别变成屏幕文案。
@@ -212,6 +222,7 @@ func _audit_tree(root: Node) -> Dictionary:
 	var n := 0
 	var texts := 0
 	var hits: Dictionary = {}
+	var raw_bb: Dictionary = {}
 	var stack: Array = [root]
 	while not stack.is_empty():
 		var node: Node = stack.pop_back()
@@ -234,6 +245,13 @@ func _audit_tree(root: Node) -> Dictionary:
 		elif ctrl is LineEdit:
 			parts.append(str((ctrl as LineEdit).text))
 			parts.append(str((ctrl as LineEdit).placeholder_text))
+		## ★★bbcode 原文泄漏那一条**只看直接画在控件上的字**(上面 parts 里这几项),
+		##   **不看 `tooltip_text`** —— 本仓的技能提示(`SkillTipButton` / `TutorialGuide`)
+		##   是**带样式的自定义 tooltip**, 它的 `tooltip_text` 里本来就装着 bbcode,
+		##   由那个渲染器解析。把它算进去就是 5 条假违规(实测: 选龟屏三个技能钮)。
+		for pd in parts:
+			if str(pd).find("[img=") >= 0 or str(pd).find("[/img]") >= 0:
+				raw_bb[("%s: %s" % [str(ctrl.get_class()), str(pd).substr(0, 56)])] = true
 		if str(ctrl.tooltip_text) != "":
 			parts.append(str(ctrl.tooltip_text))
 		var any := false
@@ -241,6 +259,15 @@ func _audit_tree(root: Node) -> Dictionary:
 			if str(p).strip_edges() != "":
 				any = true
 			var r: Array = _scan_text(str(p))
+			## ★★2026-09-28 补一条**同族的**失明: 类型图标换成行内 `[img=WxH]…[/img]`
+			##   之后,「图标没画出来」有了第二种长相 —— **bbcode 原文上了屏**:
+			##     · 把 `RichTextLabel` 改回 `Label`(Label 不认 bbcode)
+			##     · 或忘了 `bbcode_enabled = true`
+			##   两种都不报错、不崩溃, 屏幕上就是一串 `[img=16x16]res://…png[/img]枪 5/6`。
+			##   emoji 台账逮不到它(那串里一个 emoji 都没有) ⇒ 必须单开一条。
+			## ★量的是【上了屏的字】, 与控件是哪个类无关 —— 改回 Label 照样逮得到。
+			##   (`RichTextLabel` 走 `get_parsed_text()`, 正常渲染时那串标记已经不在了。)
+			##   ⇒ 实际收集在上面 `parts` 组装完、把 tooltip 追加进来【之前】那一段。
 			if int(r[0]) > 0:
 				n += int(r[0])
 				## ★ key 里带上控件类 + 命中的字 + 前 40 字 ⇒ 同一个控件在不同状态
@@ -249,7 +276,7 @@ func _audit_tree(root: Node) -> Dictionary:
 					str(p).substr(0, 40)])] = int(r[0])
 		if any:
 			texts += 1
-	return {"n": n, "texts": texts, "hits": hits}
+	return {"n": n, "texts": texts, "hits": hits, "raw_bb": raw_bb}
 
 
 ## ★★★**每一个被催出来的状态都要当场量一遍**。
@@ -259,11 +286,14 @@ func _audit_tree(root: Node) -> Dictionary:
 var _acc_hits: Dictionary = {}
 var _acc_texts: int = 0
 var _acc_states: int = 0
+var _acc_raw_bb: Dictionary = {}
 
 func _absorb(root: Node) -> Dictionary:
 	var d: Dictionary = _audit_tree(root)
 	for k in (d["hits"] as Dictionary).keys():
 		_acc_hits[k] = int((d["hits"] as Dictionary)[k])
+	for k2 in (d["raw_bb"] as Dictionary).keys():
+		_acc_raw_bb[k2] = true
 	_acc_texts = maxi(_acc_texts, int(d["texts"]))
 	_acc_states += 1
 	return d
@@ -441,6 +471,103 @@ func _ready() -> void:
 	_ok("★分母: 分类器**不**把 ★✓⚠→·汉字 判成 emoji(0/8)", int(_scan_text(no)[0]) == 0,
 		"误报 %d 个「%s」" % [int(_scan_text(no)[0]), str(_scan_text(no)[1])])
 
+	# ── ②.5 类型图标表: 每个类型都要有图, 且图真在盘上 ─────────
+	## ★★这一节是**反向验证当场照出来的洞**(2026-09-28)。把 `TYPE_STYLE` 里「剑」
+	##   那条从 `icon` 换回 `emoji` 之后实测:
+	##     · 静态台账  红(5 > 3) —— **只因为换成的是 emoji**
+	##     · 运行时    绿 —— `_type_icon` 返回 "", 屏上什么都不画
+	##     · verify_codex_layout ⑥/⑦  绿 —— ⑥ 取的是 95 件里的**最大值**, 别的类型顶着
+	##     · type_tables_audit          绿 —— 它只比**顶层键集**, 不问值里有没有 icon
+	##   ⇒ 把 `"icon"` 那一项**直接删掉**(不换成 emoji), **一条都不会红**。
+	## ★那正是「香火变成一把剑(2026-08-15) / 斧头变成一条链(2026-09-28)」换了个壳:
+	##   不报错、不崩溃, 只是悄悄少画一个图标。两次都是“补了数据、没补门禁”。
+	## ★分母: 先断言类型表真的解析出来了(≥ 10 个) —— 拿不到表时下面两条恒绿。
+	var _codex_scr: GDScript = load("res://scripts/scenes/CodexScene.gd")
+	var _p2t: GDScript = load("res://scripts/gamedata/phase2_types.gd")
+	var _style: Dictionary = {}
+	var _types: Dictionary = {}
+	if _codex_scr != null:
+		_style = _codex_scr.get("TYPE_STYLE") if _codex_scr.get("TYPE_STYLE") is Dictionary else {}
+	if _p2t != null:
+		_types = _p2t.get("TYPES") if _p2t.get("TYPES") is Dictionary else {}
+	_ok("★分母: 两张类型表都拿到了(TYPES %d / TYPE_STYLE %d, 各 ≥ 10)"
+		% [_types.size(), _style.size()], _types.size() >= 10 and _style.size() >= 10,
+		"拿不到 = 下面两条是空检查")
+	var _no_icon: Array = []
+	var _no_file: Array = []
+	for _t in _types.keys():
+		var _ip: String = str((_style.get(_t, {}) as Dictionary).get("icon", ""))
+		if _ip == "":
+			_no_icon.append(str(_t))
+		elif not ResourceLoader.exists(_ip):
+			_no_file.append("%s→%s" % [str(_t), _ip])
+	_ok("★★ TYPE_STYLE 里每个类型都有 icon(少一个 = 那一项悄悄不画图标)",
+		_no_icon.is_empty(), "缺图标的类型: %s" % str(_no_icon))
+	_ok("★★ 每张类型图真的在盘上(路径写错也是悄悄不画)",
+		_no_file.is_empty(), "加载不到: %s" % str(_no_file))
+
+	# ── ②.6 ★★**第二张**类型图标表 `Phase2Types.TYPE_ICON` —— 同样三条 ─────
+	## ★★为什么要照搬一份: 上面那三条只盯 `CodexScene.TYPE_STYLE`(图鉴那一屏),
+	##   而**商店 / 出战选人 / 战斗 HUD / 背包羁绊面板**走的是**另一张表**
+	##   `Phase2Types.TYPE_ICON`(经 `icon_of()` / `icon_bb()`)。
+	##   ⇒ 只给一张表配判据 = 另一张表照样能悄悄丢图标, 而那正是
+	##   「香火显示成一把剑(2026-08-15)」「斧头显示成一条链(2026-09-28)」两次事故的形状:
+	##   **表分几张而只改了一张**。
+	## ★这三条各自能单独红, 对应三种"不报错的坏":
+	##   ① 分母拿不到表 ⇒ 下面两条是空检查   ② 键在而 icon 是空串 ⇒ 悄悄不画
+	##   ③ 路径打错 / 被换成一个 emoji       ⇒ 加载不到, 也是悄悄不画
+	## ★第四条是**兜底值**: 它原来是 `"🗡️"` —— 缺图标的类型会画成一把剑,
+	##   **看上去像是有意设计**, 所以两次事故都是等用户发现的。现在必须回 ""。
+	var _icons: Dictionary = {}
+	if _p2t != null:
+		_icons = _p2t.get("TYPE_ICON") if _p2t.get("TYPE_ICON") is Dictionary else {}
+	_ok("★分母: 第二张表也拿到了(TYPES %d / Phase2Types.TYPE_ICON %d, 各 ≥ 10)"
+		% [_types.size(), _icons.size()], _types.size() >= 10 and _icons.size() >= 10,
+		"拿不到 = 下面三条是空检查")
+	var _p2_no_icon: Array = []
+	var _p2_no_file: Array = []
+	var _p2_uniq: Dictionary = {}
+	for _t in _types.keys():
+		## ★走**产品自己的取值口** `icon_of()`, 不直接读字典 ——
+		##   读字典会绕开兜底那一支, 而兜底正是这两次事故的发生地。
+		var _ip2: String = str(_p2t.call("icon_of", str(_t))) if _p2t != null else ""
+		if _ip2 == "":
+			_p2_no_icon.append(str(_t))
+			continue
+		_p2_uniq[_ip2] = true
+		if not ResourceLoader.exists(_ip2):
+			_p2_no_file.append("%s→%s" % [str(_t), _ip2])
+	_ok("★★ Phase2Types.TYPE_ICON 里每个类型都有 icon(少一个 = 那一屏悄悄不画图标)",
+		_p2_no_icon.is_empty(), "缺图标的类型: %s" % str(_p2_no_icon))
+	_ok("★★ 每张图真的在盘上(路径写错 / 被换回 emoji 都落在这一条)",
+		_p2_no_file.is_empty(), "加载不到: %s" % str(_p2_no_file))
+	## ★分母: 12 个类型必须是 12 张【互不相同】的图。
+	##   少了这条, 「所有类型都回落成同一张」能把上面两条全骗过去(都非空、都加载得到)。
+	_ok("★分母: %d 个类型 %d 张互不相同的图(全回落成同一张时上面两条会假绿)"
+		% [_types.size(), _p2_uniq.size()], _p2_uniq.size() == _types.size())
+	## ★★兜底值: 不存在的类型必须返回 ""(什么都不画), 不是某个类型的图。
+	var _fb: String = str(_p2t.call("icon_of", "__这个类型不存在__")) if _p2t != null else "x"
+	_ok("★★ 兜底值是空串 —— 不许兜底成别的类型的图(「香火显示成一把剑」的直接成因)",
+		_fb == "", "实得「%s」" % _fb)
+	## ★两张表必须指向**同一批文件** —— 两张各画一套, 同一个类型在图鉴与商店会长得不一样。
+	var _mismatch: Array = []
+	for _t in _types.keys():
+		var _a: String = str((_style.get(_t, {}) as Dictionary).get("icon", ""))
+		var _b: String = str(_p2t.call("icon_of", str(_t))) if _p2t != null else ""
+		if _a != _b:
+			_mismatch.append("%s: 图鉴 %s ≠ 其余 %s" % [str(_t), _a, _b])
+	_ok("★★两张表指向同一批文件(否则同一个类型在图鉴与商店长得不一样)",
+		_mismatch.is_empty(), str(_mismatch.slice(0, 4)))
+	## ★★★下面这条补的是**本门禁自己的一个盲区**:
+	##   ②(静态扫描)的范围写死 `scripts/scenes/**`, 而这张表住在
+	##   `scripts/gamedata/phase2_types.gd` ⇒ 它那 12 个 emoji **从来不在台账里**
+	##   (所以 ShopScene/battle_hud 那两格的数字换图标前后一个样 —— 不是没换, 是没数)。
+	##   ⇒ 单独盯这一个文件: 它是两张图标表之一的家, 里面**一个 emoji 字面量都不该有**。
+	##   (不把整个 `scripts/gamedata/` 纳进台账, 是因为那会把别的路在改的几个文件一并钉住。)
+	var _p2t_src: Array = _scan_source("res://scripts/gamedata/phase2_types.gd")
+	_ok("★★ phase2_types.gd 里一个 emoji 字面量都没有(它是类型图标表的家, 却在静态扫描范围外)",
+		int(_p2t_src[0]) == 0, "实测 %d 个: %s" % [int(_p2t_src[0]), str((_p2t_src[1] as Array).slice(0, 6))])
+
 	# ── ② 静态扫描 ───────────────────────────────────────────────
 	print("  ── 静态: scripts/scenes/**.gd 的屏幕字面量 ──")
 	var files: Array = _all_scene_scripts()
@@ -477,6 +604,22 @@ func _ready() -> void:
 			stale.append(str(k))
 	if not stale.is_empty():
 		print("    [提醒] 台账里这几条已经清零了, 下次可以把上限改成 0: %s" % str(stale))
+	## ★★2026-09-28 把「余量」也**机械地报出来**。
+	##   由来: 「多留的余量就是下次悄悄长回来的地方」—— 但一条条手写"这里还有 7 格余量"
+	##   的提醒**本身会烂**(memory `fb-registered-todos-rot`)。
+	##   ⇒ 让门禁**每轮自己算**: 实测比上限低 ≥3 的条目直接列出来, 谁拥有那个文件谁收。
+	##   (不判红: 别人正在改的文件此刻低于上限是好事, 钉死会让他们拿到假红;
+	##    但**必须看得见** —— 看不见的余量才是悄悄长回来的那种。)
+	var slack: Array = []
+	for k2 in SRC_LEDGER.keys():
+		var cap2: int = int((SRC_LEDGER[k2] as Array)[0])
+		var got2: int = int(src_seen.get(str(k2), 0))
+		if cap2 > 0 and src_seen.has(str(k2)) and cap2 - got2 >= 3:
+			slack.append("%s 实测 %d / 上限 %d(余 %d)" % [str(k2), got2, cap2, cap2 - got2])
+	if not slack.is_empty():
+		print("    [提醒] 这几格还留着余量, 收紧到实测值即可(余量 = 下次悄悄长回来的地方):")
+		for s2 in slack:
+			print("            %s" % str(s2))
 
 	# ── ① 运行时扫描(逐屏 + 主动催出"点了才出现"的界面)──────────────
 	print("  ── 运行时: 逐屏走真实节点树 ──")
@@ -506,6 +649,7 @@ func _audit_screen(scn: String) -> void:
 	_acc_hits = {}
 	_acc_texts = 0
 	_acc_states = 0
+	_acc_raw_bb = {}
 	add_child(inst)
 	await _wait(24)
 	_absorb(inst)                       # 静止页先量一遍
@@ -525,6 +669,10 @@ func _audit_screen(scn: String) -> void:
 		"逮不到 = 这一屏的 0 是假的(扫描器没走到这棵树)")
 	_ok("%s: emoji 图标 ≤ %d%s" % [scn, cap, ("  (台账: " + why + ")") if why != "" else ""],
 		total <= cap, "实测 %d 个(跨 %d 个状态取并集)" % [total, _acc_states])
+	## ★★「图标没画出来」的第二种长相: bbcode 原文上了屏(见 `_audit_tree` 里那段注释)。
+	##   一个都不许有 —— 这不是台账项, 因为它没有"有理由留着"的情形。
+	_ok("%s: 屏上没有 bbcode 原文(`[img=…]` 漏成文字 = 图标没画出来的另一种长相)" % scn,
+		_acc_raw_bb.is_empty(), "%d 处: %s" % [_acc_raw_bb.size(), str(_acc_raw_bb.keys().slice(0, 3))])
 	if _dump:
 		print("    ── %s 明细 %d 条(并集) ──" % [scn, _acc_hits.size()])
 		for h in _acc_hits.keys():

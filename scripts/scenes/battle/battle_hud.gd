@@ -9,7 +9,12 @@ const RemotePoolS = preload("res://scripts/net/remote_pool.gd")
 const UPLOAD_FLASH_POLL := 0.4
 const UPLOAD_FLASH_TRIES := 20
 
-const _P2T_HUD := preload("res://scripts/gamedata/phase2_types.gd")   # 羁绊 chips 的 emoji
+const _P2T_HUD := preload("res://scripts/gamedata/phase2_types.gd")   # 羁绊 chips 的类型图标
+## 局内羁绊 chip 的字号与【行内类型图标】边长。
+## ★图标 16 而不是跟着字号 13: 源图 32×32 硬边像素画, 只有 16(1:2)/32(1×) 落在像素网格上,
+##   13 会把硬边插值糊掉。16 也正好 ≥ 13px 字的行高 20 里放得下。
+const SYN_CHIP_FONT_PX := 13
+const SYN_CHIP_ICON_PX := 16
 const _P2C_HUD := preload("res://scripts/gamedata/phase2_config.gd")   # A5: 结算屏配额读数取 RANKED_QUOTA
 ## 战斗HUD/面板构建与显示: UI层/暂停/日志/统计/编辑笔刷/队伍头像框/胜负横幅/点龟详情面板/触控盘·纯UI
 ## 类内名不变;外部名加 battle.
@@ -2532,14 +2537,33 @@ func make_synergy_chip_row(side: String) -> Control:
 		var tier: int = int(tiers[t])
 		if tier <= 0:
 			continue
-		var lb := Label.new()
-		lb.text = "%s%d" % [str(_P2T_HUD.emoji_of(str(t))), tier]
-		lb.add_theme_font_size_override("font_size", 13)
-		lb.add_theme_color_override("font_color", Color("#ffd93d"))
+		## ★★2026-09-28 类型图标 emoji → `tags/` 像素图 ⇒ `Label` 换 `RichTextLabel`
+		##   (Label 画不了行内图)。写法走 `Phase2Types.icon_bb()`, 与商店/出战/图鉴同一份。
+		var lb := RichTextLabel.new()
+		lb.bbcode_enabled = true
+		lb.fit_content = false
+		lb.scroll_active = false
+		lb.autowrap_mode = TextServer.AUTOWRAP_OFF
+		lb.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST   # 32→16 不许线性插值糊掉硬边
+		lb.text = "%s%d" % [_P2T_HUD.icon_bb(str(t), SYN_CHIP_ICON_PX), tier]
+		lb.add_theme_font_size_override("normal_font_size", SYN_CHIP_FONT_PX)
+		## ★RTL 的描边键名与 Label **不同**: `font_outline_color` / `outline_size`
+		##   在 RTL 上是 `font_outline_color` + `outline_size` 两个同名键, 但作用在
+		##   `normal_font` 上 —— 必须显式再设一遍, 照抄 Label 的写法不会报错、只是没描边。
+		lb.add_theme_color_override("default_color", Color("#ffd93d"))
 		lb.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1.0))
 		lb.add_theme_constant_override("outline_size", 4)
 		lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		lb.tooltip_text = "%s · %d 档" % [str(t), tier]
+		## ★★`HBoxContainer` 里必须自己给宽: `RichTextLabel` 最小宽 **0**(Label 自带文字宽)
+		##   ⇒ 不给就全挤成一条竖线。拿控件自己的主题字体量, 不硬编码。
+		var _lf: Font = lb.get_theme_font("normal_font")
+		var _tw: float = (_lf.get_string_size(str(tier), HORIZONTAL_ALIGNMENT_LEFT, -1.0,
+			SYN_CHIP_FONT_PX).x if _lf != null else 8.0) \
+			+ float(_P2T_HUD.icon_bb_px(str(t), SYN_CHIP_ICON_PX)) + 2.0
+		var _th: float = maxf(_lf.get_height(SYN_CHIP_FONT_PX) if _lf != null else 20.0,
+			float(SYN_CHIP_ICON_PX))
+		lb.custom_minimum_size = Vector2(ceilf(_tw), ceilf(_th))
 		row.add_child(lb)
 	return row
 

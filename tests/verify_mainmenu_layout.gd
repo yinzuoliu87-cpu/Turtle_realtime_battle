@@ -555,6 +555,46 @@ func _ready() -> void:
 				bj.find("距收盘") >= 0 or bj.find("已封盘") >= 0, bj)
 		blk.queue_free()
 
+	# ── ⑬e ★BK_PENDING 的【兜底那一句】也不许把开发状态说给玩家听 (2026-09-28) ──
+	#  ★由来: `MainMenuScene._week_close_block` 里 BK_PENDING 那一支有一条兜底,
+	#    原文是「玩法开发中, 暂按积分赛规则」—— 而 ⑬b/⑬c **一条都走不到它**:
+	#    它只在「kind=BK_PENDING 而 `phase_pending_note()` 给空串」时才上屏,
+	#    那要 `strip_finals_live_override` 把决赛日手动按成"没上线"
+	#    (`PHASE_MODE_LIVE[FINALS]` 已是 true ⇒ 纯函数返回 "")。
+	#    ⇒ 在此之前唯一守它的只有文案快照(而快照只证明"字没变", 不证明"字是对的")。
+	#    这里把那个局面**真的造出来**再量, 判据与 ⑬c 的 note 档同一条口径。
+	var _ov0: int = int(_menu.strip_finals_live_override)
+	_menu.strip_finals_live_override = 0          # 0 = 手动按成「玩法没上线」
+	var sun_ts: int = 1789862400                  # 周日(与 ⑬c 同一个时刻)
+	_ok("⑬e ★分母①: 这个局面真是 BK_PENDING(纯静态函数穷举得到)",
+		MENU_S.close_block_kind(_P2M.PHASE_FINALS, false, false, -1, false) == MENU_S.BK_PENDING,
+		str(MENU_S.close_block_kind(_P2M.PHASE_FINALS, false, false, -1, false)))
+	_ok("⑬e ★分母②: 纯函数这时给的是空串 ⇒ 走的正是那条兜底",
+		_P2M.phase_pending_note(_P2M.PHASE_FINALS) == "",
+		"给了「%s」" % _P2M.phase_pending_note(_P2M.PHASE_FINALS))
+	var blk_e = _menu._week_close_block(sun_ts)
+	var etxt: Array = []
+	var eq: Array = [blk_e]
+	while not eq.is_empty():
+		var en = eq.pop_back()
+		for ec in en.get_children():
+			eq.append(ec)
+			if ec is Label:
+				etxt.append(str((ec as Label).text).strip_edges())
+	var ej := " / ".join(PackedStringArray(etxt))
+	_ok("⑬e ★分母③: 兜底那一格真建出了文字", etxt.size() >= 2, ej)
+	_ok("⑬e 兜底那句也说清了这天按【哪个赛制】的规矩打",
+		ej.find(str(_P2M.PHASE_LABEL[_P2M.PHASE_RANKED])) >= 0,
+		"要出现「%s」· 条子上是「%s」" % [str(_P2M.PHASE_LABEL[_P2M.PHASE_RANKED]), ej])
+	var edev: Array = []
+	for ew in ["开发中", "打磨", "暂按", "暂锁", "待做", "TODO", "占位", "未实现", "还没做"]:
+		if ej.find(str(ew)) >= 0:
+			edev.append(str(ew))
+	_ok("⑬e ★★兜底那句不许出现开发状态词(玩家不需要知道我们做到哪了)",
+		edev.is_empty(), "撞上 %s · 条子上是「%s」" % [str(edev), ej])
+	blk_e.queue_free()
+	_menu.strip_finals_live_override = _ov0
+
 	# ── ⑬d ★两条拦截提示说的也得是**今天真会发生的事** (2026-09-22) ──
 	#    原文案「等周六闯关赛(开赛观战)」在闯关赛玩法没上线时是做不到的事。
 	#    ★走**真入口**(`_start_battle_flow()` / `_open_shop()`), 量真的飘出来的那行字 ——

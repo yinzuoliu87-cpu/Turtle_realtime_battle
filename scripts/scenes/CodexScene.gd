@@ -98,7 +98,7 @@ const TYPE_STYLE := {
 	"法器": {"color": "#34d399", "icon": "res://assets/sprites/tags/tag-staff.png"},
 	"灵物": {"color": "#c084fc", "icon": "res://assets/sprites/tags/tag-spirit.png"},
 	## ★2026-08-15 补上「香火」—— 它 2026-08-13 进了 Phase2Types.TYPES(第 11 个类型),
-	##   但这张表没跟着加, 于是羁绊页拿默认值画成 🔗 灰蓝, 而装备页走 Phase2Types.emoji_of
+	##   但这张表没跟着加, 于是羁绊页拿默认值画成 🔗 灰蓝, 而装备页走当时的 Phase2Types 取值口
 	##   拿到的默认值是【🗡️ 剑】—— 一件香火装备顶着把剑的图标。两处默认值还不一样。
 	"香火": {"color": "#f59e0b", "icon": "res://assets/sprites/tags/tag-incense.png"},
 	"遗物": {"color": "#a3e635", "icon": "res://assets/sprites/tags/tag-relic.png"},
@@ -115,7 +115,9 @@ const TYPE_STYLE := {
 ## ★★ 2026-09-28 从 emoji 换成 `assets/sprites/tags/` 的 32×32 像素图标。
 ##   原来的 emoji 由 NotoEmoji 画(彩色矢量 / 单色线条两种), 而这一屏是 3~4px 的像素笔触
 ##   ⇒ 同一块屏上三种画法。判据与台账见 `tests/verify_no_emoji_icons.gd` 头注。
-## ★别再直接调 Phase2Types.emoji_of(): 它对表里没有的类型兜底成【剑】。
+## ★★2026-09-28 那个取值口已改名 `icon_of()` 并换成像素图, **兜底值也从【剑】改成空串** ——
+##   兜底成别的类型的图, 看上去像是有意设计; 缺了就该空着, 空着才看得见。
+##   两张表(本表 TYPE_STYLE 与 Phase2Types.TYPE_ICON)现在由门禁盯着必须指向同一批文件。
 ## ★★缺的类型返回 **""**(就不画图), 而不是兜底成别的类型的图 ——
 ##   香火(2026-08-15) 与 斧头(2026-09-28) 两次事故都是“兜底成一把剑 / 一条链”,
 ##   看上去像是有意设计。空图标 = 缺谁一眼看得见

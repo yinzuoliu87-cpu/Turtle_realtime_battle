@@ -33,6 +33,7 @@ func _ready() -> void:
 	_test_live_refresh()
 	_test_no_close_button()
 	_test_placeholder_rendered(s)
+	await _test_skill_desc_live(s)
 
 	s.queue_free()
 	print("ALL PASS — 详情面板(更多属性/小将技能/实时刷新/点空白关)" if _fail == 0 else "FAILED: %d" % _fail)
@@ -150,9 +151,15 @@ func _test_live_refresh() -> void:
 	_ok("★有 _render_skill_text(把占位符按当前属性算成数字)",
 		src.contains("func _render_skill_text"))
 	var rb := _func_body(src, "_refresh_info_panel")
-	_ok("★技能描述纳入每帧刷新(伤害数值跟着属性变)",
-		rb.contains("_info_skill_lbls"), "刷新函数体 %d 字符" % rb.length())
-	_ok("★被动描述也纳入每帧刷新", rb.contains("_info_passive_tpl"))
+	## ★★这里原来有两条判据: `rb.contains("_info_skill_lbls")` 与
+	##   `rb.contains("_info_passive_tpl")` —— **grep 变量名在不在**。
+	##   而那个名字在、行为死: `_info_skill_lbls` 全仓唯一的 append 写的是 `"lbl": null`,
+	##   于是刷新循环每一条都在第一行 continue; `_info_passive_lbl/_tpl` 更是**零写入点**
+	##   (write_orphan_audit 判成孤儿字段)。探针实测 ATK 40→80、屏上「造成 40 物理伤害」
+	##   一个字没动, 这两条却是 PASS —— 判据不但没抓住 bug, 还把那段死代码焊在原地。
+	##   ⇒ 已整条搬到 `_test_skill_desc_live()`(量屏幕节点, 不 grep 名字)。
+	_ok("★刷新函数里仍有技能描述那一段(行为判据在 _test_skill_desc_live)",
+		rb.contains("_skill_body_text"), "刷新函数体 %d 字符" % rb.length())
 	# ★「当前状态」chips(护盾/灼烧/眩晕/怒气…)在战斗中变得最频繁, 原来也是建一次就不动
 	_ok("★状态 chips 纳入刷新(护盾/灼烧/眩晕会跟着变)", rb.contains("_info_status_box"),
 		"" if rb.contains("_info_status_box") else "状态区还是死的")
@@ -163,6 +170,222 @@ func _test_live_refresh() -> void:
 	_ok("★技能条目走模板渲染(不再原样贴 pets.json)",
 		pe.contains("_render_skill_text"), "仍在直接 _strip_html 原文 = 占位符会漏出来")
 
+
+## ★★2c-bis【行为级】: 屏幕上的技能/被动【伤害数字】真的跟着属性变 (2026-09-28)
+##
+## 判据落在**面板节点树里取回来的那段字**, 不碰源码字符串、也不碰取数函数的返回值。
+## 链条是: 取数函数算对了 → 每帧有人调刷新 → 刷新真的写进屏上那个节点 → 玩家看见。
+## 上一版判据只站在这条链的第 0 环(源码里有没有那个变量名), 于是整条链断了照样全绿。
+##
+## 三层分母, 缺一条这测试就是空检查:
+##   ① 描述框那个 RichTextLabel 真的在场、真的有字(不是读了个空字符串在比空)
+##   ② 那段字里抠得出数字(抠不到 ⇒ 后面比的全是 0)
+##   ③ ★「改之前和改之后【本来就该】不同」—— 每个槽先用取数函数独立算一遍
+##      "ATK 翻倍会不会改变这段文案"。不受 ATK 影响的样本**不计入证据**:
+##      竹叶龟的治疗技(数值全按最大生命算)就是这种, 拿它当样本判据永远绿。
+## ★另加一条**反向分母**: 只调刷新、不改属性 ⇒ 屏上的字不许变。
+##   没有它的话"字变了"可能只是"刷新把别的东西写了进去"。
+## ★驱动用的是产品每帧真正调的那一个(`_update_team_panels`, 见 battle_render:580),
+##   不是直接调 `_refresh_info_panel` —— 免得量的是我自己的钩子。
+func _test_skill_desc_live(s) -> void:
+	var c: Vector2 = s.ARENA.position + s.ARENA.size * 0.5
+	## ★样本挑「小龟」: 它三个槽(被动 不屈 / 普攻 攻击 / 技能 打击)**全部**含 ATK 项
+	##   ⇒ 被动与主动技一次都覆盖到(被动那条原来是靠孤儿字段假装覆盖的)。
+	var u: Dictionary = s._spawn._make_unit("basic", "left", c)
+	s._units.clear()
+	s._units.append(u)
+	s._edit_mode = false
+	s._over = false
+	s.set_process(false)          # 全同步: 每一步刷新都由本测试显式驱动
+	s._hud._show_unit_info_panel(u)
+	for _i in range(4):
+		await get_tree().process_frame
+
+	var ents: Array = s._info_sys._skill_bar_entries(u)
+	var slots: Array = []
+	_collect_slots(s._info_panel, slots)
+	_ok("★分母: 技能栏槽数 == 条目数(对不上 ⇒ 下面按下标取 tpl 会张冠李戴)",
+		slots.size() == ents.size() and slots.size() >= 3,
+		"槽 %d / 条目 %d" % [slots.size(), ents.size()])
+	_ok("★分母: 登记表条数也一致", s._info_skill_lbls.size() == slots.size(),
+		"登记 %d 条" % s._info_skill_lbls.size())
+	if slots.size() != ents.size() or slots.is_empty():
+		return
+
+	## ★★分母③自己的自证: 「这段文案本来就该随 ATK 变吗」这个判法必须**能分开**两种样本。
+	##   要是它恒为真, 下面的 `n_dep` 就是个橡皮图章 —— 拿一条跟 ATK 无关的技能当样本,
+	##   判据会永远绿(竹叶龟的治疗技就是这种: 数值全按最大生命算, 攻击力翻倍它一个数不动)。
+	##   用两条**合成模板**验, 不依赖任何龟的数据, 也不会随 pets.json 改动而失效。
+	var _a0: float = float(u.get("atk", 0.0))
+	var _dep_lo: String = s._info_sys._skill_body_text(u, {}, "造成 {N:1.0*ATK} 点伤害")
+	var _ind_lo: String = s._info_sys._skill_body_text(u, {}, "持续 3 秒")
+	u["atk"] = _a0 * 2.0
+	var _dep_hi: String = s._info_sys._skill_body_text(u, {}, "造成 {N:1.0*ATK} 点伤害")
+	var _ind_hi: String = s._info_sys._skill_body_text(u, {}, "持续 3 秒")
+	u["atk"] = _a0
+	_ok("★分母③自证(正): 含 ATK 的模板 —— ATK 翻倍后判法说「会变」",
+		_dep_lo != _dep_hi and _dep_lo != "", "%s → %s" % [_dep_lo, _dep_hi])
+	_ok("★分母③自证(反): 不含 ATK 的模板 —— 判法必须说「不会变」(恒真就是橡皮图章)",
+		_ind_lo == _ind_hi and _ind_lo != "", "%s → %s" % [_ind_lo, _ind_hi])
+
+	var n_dep := 0        # 文案本来就随 ATK 变的槽数 = 真正能当证据的样本数
+	var n_changed := 0
+	var passive_proved := false
+	for i in range(slots.size()):
+		var ent: Dictionary = ents[i]
+		var sk = ent.get("sk", {})
+		var tpl := str(ent.get("tpl", ""))
+		var nm := str(ent.get("name", ""))
+		var is_passive: bool = nm.begins_with("被动 · ")
+		## ── 分母③: 这段文案【本来就该】随 ATK 变吗? 走取数函数独立算, 不碰屏幕 ──
+		var atk0: float = float(u.get("atk", 0.0))
+		var lo: String = s._info_sys._skill_body_text(u, sk, tpl)
+		u["atk"] = atk0 * 2.0
+		var hi: String = s._info_sys._skill_body_text(u, sk, tpl)
+		u["atk"] = atk0
+		var dep: bool = (lo != hi and lo != "")
+		## ── 走产品自己的入口: 给槽喂一次真左键点击, 不去调 _show_detail ──
+		_click(slots[i])
+		for _j in range(2):
+			await get_tree().process_frame
+		var before := _overlay_text(s)
+		_ok("★分母: 槽 %d「%s」的描述框在屏上且有字" % [i, nm], before.length() > 5,
+			before.substr(0, 40))
+		_ok("★分母: 点开后【这一条】的 lbl 登记上了且只有这一条(原来永远是 null)",
+			s._info_skill_lbls[i].get("lbl", null) != null and _reg_n(s) == 1,
+			"非 null 条数 %d" % _reg_n(s))
+		## ── 反向分母: 只刷新不改属性 ⇒ 字不许变 ──
+		s._info_sys._update_team_panels()
+		s._info_sys._update_team_panels()
+		_ok("★分母(反向): 只刷新不改属性 ⇒ 屏上的字不变(变了说明下面测不到东西)",
+			_overlay_text(s) == before, "刷新后 %s" % _overlay_text(s).substr(0, 40))
+		if not dep:
+			## 不含 ATK 项的样本: 不计入证据, 但要证明它确实没变(否则是别的东西在乱写)
+			s._damage._buff(u, "atk", 1.0, true, 9999.0)
+			s._info_sys._update_team_panels()
+			_ok("样本「%s」不含 ATK 项 ⇒ 不计入证据; 改 ATK 后它确实不变" % nm,
+				_overlay_text(s) == before)
+			(u["buffs"] as Array).clear()
+			s._recalc_stats(u)
+			s._info_sys._update_team_panels()
+			_click(slots[i])
+			await get_tree().process_frame
+			continue
+		n_dep += 1
+		var n0: Array = _nums_in(before)
+		_ok("★分母: 槽 %d 的描述里抠得出数字(0 个 = 空检查)" % i, n0.size() >= 1,
+			"抠到 %d 个数" % n0.size())
+		## ── 用产品自己的 buff 入口把攻击力翻倍(_damage._buff → _recalc_stats) ──
+		s._damage._buff(u, "atk", 1.0, true, 9999.0)
+		_ok("★分母: _damage._buff 真把 atk 翻上去了", float(u.get("atk", 0.0)) > atk0 * 1.9,
+			"%.1f → %.1f" % [atk0, float(u.get("atk", 0.0))])
+		s._info_sys._update_team_panels()
+		var after := _overlay_text(s)
+		var okc: bool = (after != before and after != "")
+		if okc:
+			n_changed += 1
+			if is_passive:
+				passive_proved = true
+		_ok("★★槽 %d「%s」: 攻击力翻倍后【屏幕上那段字】跟着变" % [i, nm], okc,
+			"%s → %s" % [before.substr(0, 44), after.substr(0, 44)])
+		## ★两边都是**纯文本**(_render_skill_text 里 _strip_html 过), 所以能逐字比。
+		##   哪天描述改成带 BBCode 的, 这条会红在"字不一样"上 —— 那时要改的是比法,
+		##   不是把这条删掉(它拦的是"字变了但不是刷新写的"那一类)。
+		var want: String = s._info_sys._skill_body_text(u, sk, tpl)
+		_ok("★★屏上印的就是取数函数现算的那段(不是别处写进去的东西)", after == want,
+			"屏 %s ┃ 现算 %s" % [after.substr(0, 40), want.substr(0, 40)])
+		## 方向: 同位的数只许涨不许跌, 且至少有一个真的涨了。
+		## ★不能只看"第一个数" —— 被动那段第一个数是稀有度加成 +20%, 它跟 ATK 无关,
+		##   拿它当方向判据会把一条**修好了的**功能判成红(第一版就是这么写的)。
+		var n1: Array = _nums_in(after)
+		var up := 0
+		var down := 0
+		if n0.size() == n1.size():
+			for k in range(n0.size()):
+				if float(n1[k]) > float(n0[k]) + 0.0001:
+					up += 1
+				elif float(n1[k]) < float(n0[k]) - 0.0001:
+					down += 1
+		_ok("★方向对: 攻击力涨 ⇒ 描述里的数只涨不跌, 且至少一个真涨了",
+			n0.size() == n1.size() and up >= 1 and down == 0,
+			"同位 %d 个数: 涨 %d 跌 %d" % [n0.size(), up, down])
+		## ── 反面: buff 撤掉 ⇒ 字跌回原样(只涨不落 = 改过一次就钉住, 不算实时) ──
+		(u["buffs"] as Array).clear()
+		s._recalc_stats(u)
+		s._info_sys._update_team_panels()
+		_ok("★反面: buff 撤掉后屏上的字跌回原样(不是单向钉死)",
+			_overlay_text(s) == before, _overlay_text(s).substr(0, 44))
+		_click(slots[i])   # 收起, 下一个槽从干净状态起
+		await get_tree().process_frame
+
+	_ok("★★★分母总账: 至少 2 个槽的文案本来就该随 ATK 变(样本不含 ATK ⇒ 判据恒绿)",
+		n_dep >= 2, "含 ATK 项的槽 %d 个" % n_dep)
+	_ok("★★★每一个该变的槽都真的变了", n_changed == n_dep, "%d / %d" % [n_changed, n_dep])
+	_ok("★★★【被动】那一槽也在证据里(原 `_info_passive_tpl` 那条测的是零写入点的孤儿字段)",
+		passive_proved)
+	print("  (技能描述实时性: 用掉 %d 帧, 默认预算 500)" % Engine.get_process_frames())
+
+
+## 技能栏的槽 = 88×88 且自己接了 gui_input 的 PanelContainer(装备槽不接 gui_input)。
+func _collect_slots(n: Node, out: Array) -> void:
+	if n == null or not is_instance_valid(n):
+		return
+	if n is PanelContainer and not (n as Control).gui_input.get_connections().is_empty():
+		var cm: Vector2 = (n as Control).custom_minimum_size
+		if int(cm.x) == 88 and int(cm.y) == 88:
+			out.append(n)
+	for ch in n.get_children():
+		_collect_slots(ch, out)
+
+
+## 描述框里【屏幕上】那段字。浮层没开 / 没有 RichTextLabel 都返回空串 ——
+## 返回空串而不是抛错, 是为了让上面的分母断言把"读不到"照出来。
+func _overlay_text(s) -> String:
+	if s._info_panel == null or not is_instance_valid(s._info_panel):
+		return ""
+	var ov = s._info_panel.get_node_or_null("DetailOverlay")
+	if ov == null or not ov.visible:
+		return ""
+	var bd = ov.get_node_or_null("Box/Body")
+	if bd == null:
+		return ""
+	for ch in bd.get_children():
+		if ch is RichTextLabel:
+			return str((ch as RichTextLabel).get_parsed_text())
+	return ""
+
+
+## 登记表里 lbl 非 null 的条数 —— 描述框全场只有一个, 所以正常只该是 0 或 1。
+func _reg_n(s) -> int:
+	var k := 0
+	for e in s._info_skill_lbls:
+		if (e as Dictionary).get("lbl", null) != null:
+			k += 1
+	return k
+
+
+## 一段字里的所有数(按出现顺序)。给"同位比大小"用。
+func _nums_in(t: String) -> Array:
+	var out: Array = []
+	var cur := ""
+	for i in range(t.length()):
+		var ch := t[i]
+		if (ch >= "0" and ch <= "9") or (ch == "." and cur != ""):
+			cur += ch
+		elif cur != "":
+			out.append(cur.to_float())
+			cur = ""
+	if cur != "":
+		out.append(cur.to_float())
+	return out
+
+
+## 喂一次真的左键点击 —— 走产品自己的 gui_input 回调, 不去调内部函数。
+func _click(c: Control) -> void:
+	var ev := InputEventMouseButton.new()
+	ev.button_index = MOUSE_BUTTON_LEFT
+	ev.pressed = true
+	c.gui_input.emit(ev)
 
 ## 2d. 去掉 ✖ + 点空白关
 func _test_no_close_button() -> void:

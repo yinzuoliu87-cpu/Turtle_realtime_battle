@@ -21,6 +21,8 @@ extends Node
 
 const InvScene := preload("res://scripts/scenes/InventoryScene.gd")
 const Phase2Types := preload("res://scripts/gamedata/phase2_types.gd")
+## ★`equip_stats.gd` 故意没有 class_name(防 F5 未声明崩) ⇒ 必须 preload
+const EquipStats := preload("res://scripts/gamedata/equip_stats.gd")
 const INV_SRC := "res://scripts/scenes/InventoryScene.gd"
 const SYN_SRC := "res://scripts/scenes/inventory/synergy_panel.gd"
 
@@ -187,7 +189,7 @@ func _ready() -> void:
 	sc.queue_free()
 	await get_tree().process_frame
 
-	# ══ F. 底栏: 最长文案 → 两行摘要 + 明确说还有几行 + 【详情】按钮 ══
+	# ══ F. 底栏: 最长文案 → 两行摘要 + 明确说还有几行 + 【细看】按钮 ══
 	sc = _mk(-1)
 	for _i in range(10):
 		await get_tree().process_frame
@@ -214,7 +216,7 @@ func _ready() -> void:
 			"框高 %.1f 行高 %.1f 余 %.2f" % [br.size.y, lh, fmod(br.size.y, lh)])
 		## ★2026-08-19 改判据: 底栏现在放的是【一句话简述】(effectBrief), 不再是那段
 		##   中位 129 字、最长 329 字的全文 —— 所以"放不下要明说"这条不再适用于底栏,
-		##   **它现在就该一行不截地放得下**。全文由「详情」那一层承接(下面有断言)。
+		##   **它现在就该一行不截地放得下**。全文由「细看」那一层承接(下面有断言)。
 		##   判据的意思没变: **不许静默截断**。只是从"截断了要提示"变成"根本不截断"。
 		var eb: String = SkillText.equip_brief(DataRegistry.phase2_equipment_by_id.get(long_id, {}))
 		var total: int = int(sc.call("_op_total_lines", body, eb, br.size.x))
@@ -225,11 +227,38 @@ func _ready() -> void:
 			total <= rows, "要 %d 行 > 能放 %d 行" % [total, rows])
 		_ok("⑫ ★没截断就不该再挂「还有几行」的提示", more == null or not is_instance_valid(more),
 			"仍挂着: %s" % ("无" if more == null else str(more.text)))
-	var has_detail_btn := false
+	## ══ ⑬ 全文的去处 —— 判据落在【按下去真的开出全文】, 不落在键上写着哪两个字 ══
+	## ★★2026-09-28 重写。原判据是 `Button.text == "详情"`, 而这一刻那颗键的文案
+	##   正从「详情」统一成「细看」(战斗信息框 `battle_hud.gd` 一直写「点开细看」)
+	##   ⇒ 那条断言会**假红**, 而它本来要守的是"手机玩家有地方看到全文",
+	##   跟那两个字毫无关系(memory [[fb-tests-pin-screen-words]])。
+	##   ⇒ ① 按【产品自己出的节点名常量】找它 ② 真按一下, 看全文那一层有没有开出来。
+	##   ★★为什么必须收掉弹框: 不收的话下面 H 段会同时存在两个 `EquipDetailBody`,
+	##     ⑯~⑳ 量到的就不一定是 H 段自己开的那个 —— 那是一条会随机绿的假判据。
+	var det_btn: Button = null
 	for c in _all(sc):
-		if c is Button and str((c as Button).text) == "详情":
-			has_detail_btn = true
-	_ok("⑬ ★底栏有【详情】按钮(全文的去处; 手机没有 hover, tooltip 等于不存在)", has_detail_btn)
+		if c is Button and str(c.name) == str(InvScene.DETAIL_BTN_NAME):
+			det_btn = c
+	_ok("⑬ ★分母: 底栏那颗看全文的键在场(按节点名找, 不按按钮上的字)", det_btn != null)
+	var det_opened := false
+	var det_words := ""
+	if det_btn != null:
+		det_btn.pressed.emit()
+		for _i in range(8):
+			await get_tree().process_frame
+		var pop: RichTextLabel = null
+		for c in _all(sc):
+			if c is RichTextLabel and str(c.name) == "EquipDetailBody":
+				pop = c
+		if pop != null:
+			det_words = pop.get_parsed_text().strip_edges()
+			det_opened = det_words.length() > 40
+			var dim0: Node = pop.get_parent().get_parent()   # rt → box → dim
+			if dim0 != null:
+				dim0.queue_free()
+			await get_tree().process_frame
+	_ok("⑬b ★★按下它【真的开出全文那一层】(手机没有 hover, 全文只有这一个去处)",
+		det_opened, "开出来 %d 字: %s" % [det_words.length(), det_words.substr(0, 30)])
 
 	# ══ G. 短文案不许也挂"还有 N 行" ═════════════════════════════
 	GameState.persistent_bench = [{"id": short_id, "star": 1}]
@@ -271,8 +300,30 @@ func _ready() -> void:
 			"还差 %.0f px ⇒ 又是一次静默截断" % (need - dr.size.y))
 		_ok("⑲ 详情正文仍可滚(万一以后文案再变长, 不静默吃字)", det.scroll_active)
 		var dtxt: String = det.get_parsed_text()
-		_ok("⑳ ★详情里有【属性加成】(原来只在 tooltip 里, 手机永远看不到)",
-			dtxt.find("带来的属性") >= 0 and dtxt.find("效果") >= 0)
+		## ★★2026-09-28 从 `find("带来的属性")` 改成**量内容本身**。
+		##   原判据钉的是段标题那几个字 —— 而这一刻标题正从「带来的属性」统一成「属性」
+		##   (商店 `ShopScene._build_stat_rows` 与图鉴 `detail_views.gd:857` 一直只写两个字)
+		##   ⇒ 那条会假红; 而它要守的东西是「手机上看得到属性数值 + 效果全文」,
+		##   跟标题写什么字无关。⇒ 判据改成 `EquipStats.stat_lines()` 真实返回的
+		##   【每一项名与值】都在屏上, 加效果全文的头一句也在屏上。
+		var want_rows: Array = EquipStats.stat_lines(long_id, 1)
+		var miss: Array = []
+		for kv in want_rows:
+			if dtxt.find(str(kv[0])) < 0 or dtxt.find(str(kv[1])) < 0:
+				miss.append("%s %s" % [str(kv[0]), str(kv[1])])
+		_ok("⑳ ★分母: 这件真有属性行可查(%d 项; 0 项 = 下面是空检查)" % want_rows.size(),
+			want_rows.size() > 0)
+		_ok("⑳ ★详情里逐项写着属性的【名与值】(原来只在 tooltip 里, 手机永远看不到)",
+			miss.is_empty(), "缺 %d 项: %s" % [miss.size(), str(miss.slice(0, 4))])
+		## 效果全文: 拿 `SkillText.equip_full()` 自己吐的**第一行前 14 字**当针 ——
+		## 不找段标题、也不靠字数估。(`highlight_star` 只加 bbcode 标签, 而这里比的是
+		##  `get_parsed_text()` = 标签剥掉之后的字 ⇒ 两边是同一串。)
+		var full: String = SkillText.equip_full(DataRegistry.phase2_equipment_by_id.get(long_id, {}))
+		var fl: String = str(full.strip_edges().split("\n", false)[0]) if full.strip_edges() != "" else ""
+		var needle: String = fl.substr(0, 14)
+		_ok("⑳b ★分母: 取到了效果全文的针(%d 字)" % needle.length(), needle.length() >= 8)
+		_ok("⑳c ★详情里有【效果全文】(按全文自己的头一句找, 不按段标题找)",
+			needle != "" and dtxt.find(needle) >= 0, "找不到「%s」" % needle)
 
 	sc.queue_free()
 	await get_tree().process_frame

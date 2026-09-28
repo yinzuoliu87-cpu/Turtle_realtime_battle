@@ -904,9 +904,16 @@ func _tt_isolate() -> void:
 
 ## 信号放大器 038 弧形电磁波预览: 每次调用发一道, 张角 90→180→270→360 递增(看张角变化)。
 ## ★单位钉住(移速0/不普攻) —— 演示台的单位是给人看的道具, 不该让 AI 动它们。
+##
+## ★★2026-09-28 张角是怎么递增的: `_fire` 自己把新张角**写回它收到的那个状态字典**
+##   (`signal_wave_system.gd:87  stt["sig_arc_deg"] = deg`; Dictionary 按引用传)。
+##   所以这里【必须】跨调用复用同一个字典 —— 每次传新的 `{}` 就永远停在 90°(探针实测)。
+##   原来复用的是本文件私有的 `_sw_prev_stt`: 行为一样, 但**单位自己的 `eq_state`
+##   永远是空的**, 而下面特意给它装真 038 就是为了"与实战走同一条路"。
+##   ⇒ 改用单位的 `eq_state["p2eq_038"]`, 与实战路径(`equip_system.gd:1568/1569`)
+##     同一个容器; 本文件不再另存一份影子状态。
 var _sw_prev_src = null
 var _sw_prev_foes: Array = []
-var _sw_prev_stt: Dictionary = {}
 
 func _vfx_preview_sigwave(origin: Vector2, dir: Vector2, si: int) -> void:
 	if _sw_prev_src == null or not (_sw_prev_src is Dictionary):
@@ -934,7 +941,12 @@ func _vfx_preview_sigwave(origin: Vector2, dir: Vector2, si: int) -> void:
 		(e as Dictionary)["alive"] = true
 		(e as Dictionary)["stun_until"] = 0.0
 	var tgt: Dictionary = _sw_prev_foes[0]
-	battle._equip_sys._sigwave._fire(_sw_prev_src, tgt, si, _sw_prev_stt)
+	## 状态容器 = 单位自己的 `eq_state["p2eq_038"]`(与实战同一个), 见本节头注。
+	var eqs: Dictionary = (_sw_prev_src as Dictionary)["eq_state"]
+	if not eqs.has("p2eq_038"):
+		eqs["p2eq_038"] = {}
+	var stt: Dictionary = eqs["p2eq_038"]
+	battle._equip_sys._sigwave._fire(_sw_prev_src, tgt, si, stt)
 
 
 ## 靶向器 055 钩索炸弹预览: 挂弹 → 每秒跳伤 → 宿主死亡 → 甩钩/眩晕/拉拢 → 聚爆。

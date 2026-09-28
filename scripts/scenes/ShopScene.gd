@@ -47,6 +47,17 @@ const LINEUP_Y := 580.0      # 阵容装备(横排)
 ## 羁绊总览条(货架与底部按钮之间那条空带)。★进 verify_shop_layout 的越界检查
 const SYN_BAR_Y := 528.0
 const SYN_CHIP_W := 176.0
+## 羁绊 chip 的字号 / 行高 / 行内类型图标边长。
+## ★★2026-09-28 换 `RichTextLabel` + 行内像素图标后**逐项量过**(探针 `f.get_string_size`):
+##   · 最长的普通 chip「🏺遗物 2/5 ★☆☆☆」= 文字 111 + 图标 16 = **127** ⇒ 176 够, 宽不用动。
+##   · 但**行高不够**: 14px 字的行高是 **22**, 而原来 chip 高写死 20 ——
+##     `Label` 只横向 `clip_text` 所以看不出来, 换 `RichTextLabel` + `clip_contents`
+##     之后就是**底下 2px 被切掉**。⇒ 高度 20 → 22。
+##   · 斧头那条(带砍伐进度)= 252 ⇒ 仍需双倍宽 352(那条双倍宽原来从没生效, 见下方注释)。
+## ★图标 16 而不是 14/18: 源图 32×32 硬边像素画, 只有 16(1:2) 与 32(1×) 落在像素网格上。
+const SYN_CHIP_FONT_PX := 14
+const SYN_CHIP_H := 22.0
+const SYN_CHIP_ICON_PX := 16
 const MIN_TOUCH_H := 44.0    # 移动端触摸目标最低高度(用户2026-07-28「买经验按钮很小」: 原36不达标)
 const REFRESH_COST := 2   # 刷新花费。原 phase2_config 那套(SHOP_REFRESH_BASE + shop_refresh_cost())已随死代码清理删除, 现在这里是唯一来源(2026-07-19)
 const PRICE_MULT := 1        # 售价 = 装备 cost (费) × 1 = 几费卖几深海币 (用户 2026-07-01; 原 ×3 占位已改)
@@ -947,7 +958,20 @@ func _build_synergy_bar() -> void:
 	for r in rows:
 		if x > GRID_X + 700.0:
 			break
-		var chip := Label.new()
+		## ★★2026-09-28 类型图标从 emoji 换成 `tags/` 像素图 ⇒ 这一条必须从 `Label`
+		##   换成 `RichTextLabel`: **Label 画不了行内图**。
+		##   写法走 `Phase2Types.icon_bb()`(内部就是 `[img=16x16]`, 与图鉴副标同一份)。
+		## ★`clip_text` 是 Label 的属性, RTL 侧对应的是 `clip_contents` + 关掉滚动/换行:
+		##   三个缺一个, 长条子(斧头那条)就会换行顶破 20px 的行高或长出滚动条。
+		var chip := RichTextLabel.new()
+		chip.bbcode_enabled = true
+		chip.fit_content = false
+		chip.scroll_active = false
+		chip.autowrap_mode = TextServer.AUTOWRAP_OFF
+		chip.clip_contents = true
+		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		chip.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST   # 32→16 不许线性插值糊掉硬边
+		var _wide: bool = false                                   # 斧头那条要双倍宽(见下)
 		var tier: int = int(r["tier"])
 		var need: int = int(r["need"])
 		var n_now: int = int(r["n"])
@@ -959,11 +983,11 @@ func _build_synergy_bar() -> void:
 		for si in range(star_n):
 			stars += "★" if si < tier else "☆"
 		if need > 0:
-			chip.text = "%s%s %d/%d %s" % [str(Phase2Types.emoji_of(str(r["t"]))), str(r["t"]),
-				n_now, n_now + need, stars]
+			chip.text = "%s%s %d/%d %s" % [Phase2Types.icon_bb(str(r["t"]), SYN_CHIP_ICON_PX),
+				str(r["t"]), n_now, n_now + need, stars]
 		else:
-			chip.text = "%s%s %d %s" % [str(Phase2Types.emoji_of(str(r["t"]))), str(r["t"]),
-				n_now, stars]
+			chip.text = "%s%s %d %s" % [Phase2Types.icon_bb(str(r["t"]), SYN_CHIP_ICON_PX),
+				str(r["t"]), n_now, stars]
 		## ★★斧头羁绊的 chip 上【直接带砍伐进度】(用户 2026-09-01:
 		##   「应该是在羁绊里显示最好啊，这是跟着羁绊走的」)。
 		##   砍伐经验确实是跟着这条羁绊走的东西 —— 它不该藏在某件装备的详情面板里,
@@ -977,16 +1001,26 @@ func _build_synergy_bar() -> void:
 			##   "不许有带感叹号的推销话术"那一类; 它说的是事实, 但语气是广告位。
 			chip.text += "  ·  %s %d/%d%s" % [str(_d4["name"]), int(GameState.axe_exp_bar),
 				_nd, "  能进化了" if _rd else ""]
-			chip.size = Vector2(SYN_CHIP_W * 2.0, 20)   # 这一条比别的长, 给双倍宽
-			x += SYN_CHIP_W
-		chip.add_theme_font_size_override("font_size", 14)
-		chip.add_theme_color_override("font_color",
+			## ⚠ 2026-09-28 顺手修掉一处**双倍宽从来没生效过**: 原来这里写
+			##   `chip.size = Vector2(SYN_CHIP_W * 2.0, 20)`, 而下面还有一行**无条件**的
+			##   `chip.size = Vector2(SYN_CHIP_W, 20)` —— 后者在后面, 直接把它盖掉,
+			##   于是斧头这条长条子一直被 `clip_text` 截在 176px。改成用标记, 由末尾统一定宽。
+			## ⚠⚠ 同时挪掉原来这里的 `x += SYN_CHIP_W`: 它在 `chip.position` **之前**,
+			##   效果是把斧头这条**整体右推 176px**(前面留一个 176 的洞), 而它自己只有
+			##   176 宽时刚好不撞上下一条。宽度真的变成 352 之后, 那个推法就会让它
+			##   **压住下一条 170px**。改成「原位摆 + 按真实宽度进位」——
+			##   合计步进一个字没变(旧: 176 前推 + 182 后进 = 358 / 新: 352 + 6 = 358)。
+			_wide = true
+		## ★RichTextLabel 的主题键名与 Label **不同**: `normal_font_size` / `default_color`
+		##   (照抄 Label 的 `font_size` / `font_color` 会静默无效 —— 不报错, 只是字号颜色不变)。
+		chip.add_theme_font_size_override("normal_font_size", SYN_CHIP_FONT_PX)
+		chip.add_theme_color_override("default_color",
 			Color("#ffd93d") if tier > 0 else Color("#7a92a8"))
 		chip.position = Vector2(x, y + 1)
-		chip.size = Vector2(SYN_CHIP_W, 20)
-		chip.clip_text = true
+		var _cw: float = SYN_CHIP_W * (2.0 if _wide else 1.0)
+		chip.size = Vector2(_cw, SYN_CHIP_H)
 		add_child(chip)
-		x += SYN_CHIP_W + 6.0
+		x += _cw + 6.0
 
 
 func _build_detail_panel() -> void:
@@ -1063,12 +1097,27 @@ func _build_detail_panel() -> void:
 	var _tp2: String = Phase2Types.type_of(str(edef.get("id", "")))
 	## ★只写羁绊名本身(「弓箭」), 不用 `display_name`——那个返回「弓箭·神射手」,
 	##   而"神射手"是 TYPE_NAME 里的花名, 游戏里根本没有这个东西(用户 2026-08-15 当场指出)。
-	var _tps: String = ("  ·  %s%s" % [Phase2Types.emoji_of(_tp2), _tp2]) if _tp2 != "" else ""
-	var cl := Label.new(); cl.text = "%d 深海币%s" % [_price(edef), _tps]
-	cl.add_theme_font_size_override("font_size", 17)
-	cl.add_theme_color_override("font_color", Color("#9fb6c9"))
-	cl.clip_text = true
-	cl.position = Vector2(112, 70); cl.size = Vector2(PANEL_W - 148, 22)
+	## ★★2026-09-28 类型图标从 emoji 换成 `tags/` 像素图 ⇒ 这一行从 `Label` 换 `RichTextLabel`
+	##   (Label 画不了行内图)。**与图鉴装备详情的副标是同一个形状**, 所以照那边抄:
+	##   `codex/detail_views.gd` 的 `SUB_ICON_PX = 16` + `[img=16x16]` + NEAREST 过滤。
+	## ★图标 16 而不是跟着字号 17: 源图 32×32 硬边像素画, 只有 16(1:2)/32(1×) 落在像素网格上;
+	##   17 会把硬边插值糊掉。16 也最贴这一行的字高。
+	const DETAIL_TYPE_ICON_PX := 16
+	var _tps: String = ("  ·  %s%s" % [Phase2Types.icon_bb(_tp2, DETAIL_TYPE_ICON_PX), _tp2]) if _tp2 != "" else ""
+	var cl := RichTextLabel.new()
+	cl.bbcode_enabled = true
+	cl.fit_content = false
+	cl.scroll_active = false
+	cl.autowrap_mode = TextServer.AUTOWRAP_OFF
+	cl.clip_contents = true                                 # 原 Label 的 clip_text
+	cl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cl.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	cl.text = "%d 深海币%s" % [_price(edef), _tps]
+	cl.add_theme_font_size_override("normal_font_size", 17)  # ★RTL 的键名不是 font_size
+	cl.add_theme_color_override("default_color", Color("#9fb6c9"))
+	## ★高 22 → 26: 17px 字的行高实测 **25**(探针量的), 原来 22 是够 Label 画的
+	##   (Label 不纵向裁), 换 RTL + clip_contents 之后 22 就是**底下 3px 被切掉**。
+	cl.position = Vector2(112, 70); cl.size = Vector2(PANEL_W - 148, 26)
 	box.add_child(cl)
 
 	_panel_sep(box, 104)

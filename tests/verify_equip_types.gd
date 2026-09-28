@@ -100,9 +100,16 @@ func _ready() -> void:
 		"实得 %d 个: %s" % [keys.size(), str(keys)])
 	for g in GONE:
 		_ok("① ★已解散的「%s」不在 TYPES 里(反向断言)" % g, not Phase2Types.TYPES.has(g))
-		_ok("① ★已解散的「%s」不在 TYPE_EMOJI/TYPE_NAME/TIER_DESCS 里" % g,
-			not Phase2Types.TYPE_EMOJI.has(g) and not Phase2Types.TYPE_NAME.has(g)
+		## ★★2026-09-28 `TYPE_EMOJI` → `TYPE_ICON`(类型图标从 emoji 换成 tags/ 像素图)。
+		_ok("① ★已解散的「%s」不在 TYPE_ICON/TYPE_NAME/TIER_DESCS 里" % g,
+			not Phase2Types.TYPE_ICON.has(g) and not Phase2Types.TYPE_NAME.has(g)
 			and not Phase2Types.TIER_DESCS.has(g))
+		## ★「表里没这个键」守不住「界面上不会冒出一张图」—— 取值那一步还有个**兜底**。
+		##   `icon_of` 原来兜底成 "🗡️" ⇒ 已解散的类型在界面上会显示成**一把剑**,
+		##   看上去像是有意设计(香火 2026-08-15 / 斧头 2026-09-28 两次事故都是这个形状)。
+		##   ⇒ 兜底值必须是**空串**(就不画图), 这条直接量取值行为。
+		_ok("① ★★已解散的「%s」取图标返回空串(不许兜底成别的类型的图)" % g,
+			str(Phase2Types.icon_of(g)) == "", "实得「%s」" % str(Phase2Types.icon_of(g)))
 
 	# ── ② 每件恰好 1 个类型 · 全覆盖 · 无孤儿 ────────────────────
 	_ok("② ★分母: p2eq-types.json 有 %d 条映射" % WANT_ITEMS, map.size() == WANT_ITEMS,

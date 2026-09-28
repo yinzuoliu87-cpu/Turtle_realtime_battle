@@ -610,11 +610,6 @@ func _edit_replay() -> void:
 	_edit_start_battle()
 
 func _edit_refresh_labels() -> void:
-	if battle._edit_btn_pick != null:
-		if battle._edit_pick_id == "__minion__":
-			battle._edit_btn_pick.text = "当前笔刷: %s" % ("近战小将·浪板" if battle._edit_minion_role == "front" else "远程小将·火箭")
-		else:
-			battle._edit_btn_pick.text = "选龟: %s" % str(battle._data_by_id.get(battle._edit_pick_id, {}).get("name", battle._edit_pick_id))
 	if battle._edit_btn_side != null:
 		battle._edit_btn_side.text = "左队(友军)" if battle._edit_pick_side == "left" else "右队(假人)"
 	if battle._edit_btn_energy != null:

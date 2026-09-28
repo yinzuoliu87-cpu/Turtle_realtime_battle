@@ -190,23 +190,27 @@ func _refresh_info_panel() -> void:
 						break
 	# ★技能/被动描述里的伤害数值也要跟着属性变(用户 2026-07-21:「下面的技能伤害数值」)。
 	#   模板里的 {N:0.7*ATK} 按【当前】ATK 重算 —— 吃了增伤/破防 buff 后数字会跟着动。
-	if battle._info_passive_lbl != null and is_instance_valid(battle._info_passive_lbl) and battle._info_passive_tpl != "":
-		var pv: Dictionary = ud.get("passive", {}) if ud.get("passive", null) is Dictionary else {}
-		var ptxt = battle._render._render_skill_text(battle._info_passive_tpl, ud, pv)
-		if battle._info_passive_lbl.text != ptxt:
-			battle._info_passive_lbl.text = ptxt
+	#
+	# ★★2026-09-28 查实: 这一段【原来整段是死的】。探针走真入口(`_damage._buff` 给 atk +100%)
+	#   把 ATK 40→80, 屏幕上那句「造成 40 物理伤害」一个字都没动。两条互相独立的死因:
+	#     ① `_info_skill_lbls` 全仓【唯一】的 append 写的是 `"lbl": null`(见 _info_skill_bar),
+	#        于是下面这个循环【每一条都在第一行 continue】—— 赋值那行一次都没到过。
+	#     ② 被动那块读的 `battle._info_passive_lbl` / `battle._info_passive_tpl`
+	#        **全仓零写入点**(tools/write_orphan_audit.py 把它们判成孤儿字段)。
+	#   ★被动【不需要单独一块】: `_skill_bar_entries` 产出的第一条就是被动(带它自己的 tpl/sk),
+	#     所以它本来就在下面这个循环里。那两个字段是上一代"一行一条描述"布局的残留,
+	#     已连 RealtimeBattle3DScene 里的声明一起删 —— 接一个没人用的东西和留死代码一样糟。
+	#   ⇒ 修法: 描述框那个 RichTextLabel 由 `_show_detail` 登记回来(那里是全仓唯一知道
+	#     "当前描述框是哪个节点"的地方); 这里照旧【只改文字、不重建节点】。
 	for ent in battle._info_skill_lbls:
 		var slb = (ent as Dictionary).get("lbl", null)
 		if slb == null or not is_instance_valid(slb):
 			continue
-		var stpl = str((ent as Dictionary).get("tpl", ""))
-		if stpl == "":
-			continue
-		var sdict = (ent as Dictionary).get("sk", {})
-		## ★头一行是【龟能花费 + 还差几秒】, 每帧重算 —— 与 _panel_skill_entries 建条目时同一个函数,
-		##   两处同源(建面板那一刻的文字与刷新后的文字不会是两套)。
-		var stxt = _skill_status_line(ud, sdict) + battle._render._render_skill_text(stpl, ud, sdict if sdict is Dictionary else {})
-		if slb.text != stxt:
+		## ★空串不写回 —— 小将那条分支没有模板(tpl 空 · sk 空), 它的描述是 MinionCodex 的
+		##   静态文案, 拿现算的空串盖上去等于把描述框清空。
+		var stxt := _skill_body_text(ud, (ent as Dictionary).get("sk", {}),
+			str((ent as Dictionary).get("tpl", "")))
+		if stxt != "" and str(slb.text) != stxt:
 			slb.text = stxt
 	# ★状态 chips: 签名变了才整块重建(条目数会变, 改不了单个 Label)
 	if battle._info_status_box != null and is_instance_valid(battle._info_status_box):
@@ -725,33 +729,6 @@ func _energy_state(u: Dictionary, stype: String) -> Array:
 	return [rdy * cost, cost, maxf(0.0, left), rdy]
 
 
-## 技能 type → 玩家看得懂的名字(pets.json 技能池; 小将走 MinionCodex.skill_desc 兜底(单一文案源))。
-func _skill_name_of(u: Dictionary, stype: String) -> String:
-	var pet: Dictionary = DataRegistry.pet_by_id.get(str(u.get("id", "")), {})
-	for sk in pet.get("skillPool", []):
-		if sk is Dictionary and str((sk as Dictionary).get("type", "")) == stype:
-			return str((sk as Dictionary).get("name", stype))
-	var md = MinionCodex.skill_desc(stype)
-	if md != null:
-		return str((md as Dictionary).get("name", stype))
-	return stype
-
-
-## 龟能条上那行字。★重点是把【点数】露出来 —— 技能文案里写的就是点数。
-func _energy_bar_text(u: Dictionary) -> String:
-	var acts: Array = u.get("active_skills", [])
-	if acts.is_empty():
-		return "龟能  这只龟没有主动技"
-	var st0 := str(acts[0])
-	var es: Array = _energy_state(u, st0)
-	var head := "龟能  %d / %d" % [int(es[0]), int(es[1])]
-	if battle._t < float(u.get("energy_lock_until", 0.0)):
-		return head + "  ·  龟能被锁住 %.1f 秒" % (float(u.get("energy_lock_until", 0.0)) - battle._t)
-	if float(es[2]) <= 0.001:
-		return head + "  ·  攒满了, 可以放「%s」" % _skill_name_of(u, st0)
-	return head + "  ·  还差 %.1f 秒" % float(es[2])
-
-
 ## 技能条目最上面那一行状态字(每帧重算, 见 _refresh_info_panel)。
 ## ★只给【真的进主动轮转的技】(u.active_skills 里有的)加 —— 被动型技与普攻没有龟能花费,
 ##   给它们编一个"龟能 0"是假信息。判据取自单位字典里的真实字段, 不是我自己插的标记。
@@ -776,6 +753,24 @@ func _skill_status_line(u: Dictionary, sk) -> String:
 	if float(es[2]) <= 0.001:
 		return head + "  ·  攒满了, 随时能放\n"
 	return head + "  ·  还差 %.1f 秒\n" % float(es[2])
+
+
+## 技能描述框里印的那一段字 —— 【建面板 / 点开 / 每帧刷新】三处同源(2026-09-28)。
+##
+## ★模板【现取】, 不用建面板那一刻存下的那份: 「详细 / 收起」切的是
+##   `GameState.skill_text_detail`, 拿旧 tpl 去刷会把玩家刚切到的那一级在下一帧冲回去
+##   (登记 lbl 之前摸不到这个 bug —— 那个循环本来一次都不走)。
+## ★这里【不加】`_skill_status_line` 那行龟能/还差几秒: 用户 2026-08-16 对龟能条明确说过
+##   「不需要文字不需要几秒后释放」, 印进描述框就是把否掉的东西换个地方加回来。
+## ★tpl 空且 sk 空 ⇒ 返回空串(小将走 MinionCodex 静态文案, 没有模板可算), 由调用方兜底。
+func _skill_body_text(u: Dictionary, sk, tpl: String) -> String:
+	var skd: Dictionary = sk if sk is Dictionary else {}
+	var t := tpl
+	if not skd.is_empty():
+		var t2 := str(battle.SkillText.text_of(skd, battle._skill_detail()))
+		if t2 != "":
+			t = t2
+	return battle._render._render_skill_text(t, u, skd)
 
 
 ## 当前形态 chip → ["文字", "#色"]; 没有形态的龟返回空数组。
@@ -1312,9 +1307,14 @@ func _info_skill_bar(vb: VBoxContainer, u: Dictionary) -> void:
 
 		var cur_sk: Dictionary = ent.get("sk", {})
 		var d_title := str(ent.get("name", ""))
-		var d_body := str(ent.get("desc", ""))
 		var d_key := "sk:" + d_title
-		battle._info_skill_lbls.append({"lbl": null, "tpl": str(ent.get("tpl", "")), "sk": cur_sk})
+		var d_tpl := str(ent.get("tpl", ""))
+		## ★描述正文与每帧刷新走【同一个】_skill_body_text —— 开面板那一刻的字与刷新后的字
+		##   不会是两套(memory fb-hand-rolled-copies-drift)。小将没有模板 ⇒ 回落到静态 desc。
+		var d_body := (_skill_body_text(u, cur_sk, d_tpl) if d_tpl != "" else str(ent.get("desc", "")))
+		## ★★`key` 是【登记回来】用的(见 _show_detail 末尾): 描述框只有一个, 谁打开就登记给谁。
+		##   原来这里写死 `"lbl": null` 且全仓没有第二个写入点 ⇒ 每帧刷新那个循环整段空转。
+		battle._info_skill_lbls.append({"lbl": null, "key": d_key, "tpl": d_tpl, "sk": cur_sk})
 		slot.gui_input.connect(func(ev: InputEvent) -> void:
 			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 				_show_detail(battle._info_panel, d_key, d_title, d_body, cur_sk, u))
@@ -1606,6 +1606,13 @@ func _show_detail(host_panel: Control, key: String, title: String, body: String,
 	dt.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	dt.text = body
 	vb.add_child(dt)
+	## ★★把【屏上这个描述框】登记回 `_info_skill_lbls` —— 这里是全仓唯一知道
+	##   "当前描述框是哪个节点"的地方, 所以登记只能发生在这里。
+	##   · key 对上的那一条拿到 dt ⇒ 每帧刷新写它 ⇒ 屏幕上的伤害数字跟着属性变;
+	##   · 其余全部置 null ⇒ 「更多属性」/「战利品」那两种 key 打开时, 技能刷新不会去碰它们
+	##     (那两块有自己的刷新路径: more_stats 在 _refresh_info_panel 里单独一段)。
+	for reg in battle._info_skill_lbls:
+		(reg as Dictionary)["lbl"] = (dt if str((reg as Dictionary).get("key", "")) == key else null)
 	## 两级切换: 只在【真有两级】的条目上出现(140 条里只有 28 条)
 	if not sk.is_empty() and _has_two_levels(sk):
 		var brow = HBoxContainer.new()
@@ -1632,7 +1639,7 @@ func _show_detail(host_panel: Control, key: String, title: String, body: String,
 			if GameState != null:
 				GameState.skill_text_detail = not battle._skill_detail()
 			var ntpl = battle.SkillText.text_of(sk, battle._skill_detail())
-			dt.text = battle._render._render_skill_text(ntpl, unit, sk)
+			dt.text = _skill_body_text(unit, sk, ntpl)
 			## ★★2026-09-27 去掉网页折叠控件的箭头写法。
 			tb.text = "收起" if battle._skill_detail() else "详细"
 			_fit_detail_box(ov))

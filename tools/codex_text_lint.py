@@ -150,13 +150,17 @@ GD_LEDGER = 'tools/_gd_devnote_ledger.json'
 
 ## 台账里那几条**为什么留着** —— 不写理由的豁免和放宽判据是一回事。
 ## (台账本身是脚本生成的; 这张表只给理由, 对不上号也不影响判定。)
+## ★★2026-09-28 删掉了一条**已经烂掉**的理由(就是新加的「豁免体检」当场照出来的那条):
+##     'BracketMapScene.gd|现在你这一组的冠军就是本周冠军 · 跨组总决赛还没做出来':
+##         '「还没做」三个字被 verify_bracket_map.gd:407 钉着当判据…'
+##   逐条核实过它**确实**不成立了, 不是"话挪了两行":
+##     · `BracketMapScene.gd:627` 头注自述那句话缀的「跨组总决赛还没做出来」**已删**;
+##     · `verify_bracket_map.gd:407` 自己写着「原来写的是 `et.find("还没做") >= 0`」
+##       —— 那条**要求**开发状态词上屏的断言早改了(现在 :421 是反过来的黑名单)。
+##   ⇒ 前提(判据钉着它)没了, 理由就该走。**留着它 = 这张表看着很周全而其实有一条是假的。**
 GD_WHY = {
-    'scripts/scenes/BracketMapScene.gd|现在你这一组的冠军就是本周冠军 · 跨组总决赛还没做出来':
-        '「还没做」三个字被 verify_bracket_map.gd:407 钉着当判据(它在别人的地盘上, 要改得同一次提交改断言)',
     'scripts/scenes/BracketMapScene.gd|待定':
         '这是**对阵表里那一格还没定下来**的玩家文案(TBD), 不是开发备注',
-    'scripts/scenes/MainMenuScene.gd|玩法开发中, 暂按积分赛规则':
-        '★真违规。只有 strip_finals_live_override(截图台/调试用) 才走到的兜底, 但它是玩家屏 ⇒ 交主会话',
     'scripts/scenes/battle/battle_hud.gd|左队(友军)':
         '伤害统计面板的**真实列名**(玩家侧就叫左队/右队), 不是开发备注',
     'scripts/scenes/battle/battle_debug_arena.gd|左队(友军)': '调试场(DEBUG_EDIT)自己的标签, 不是玩家屏',
@@ -170,9 +174,15 @@ def gd_devnote():
     rows, st = G.scan(GD_ROOTS)
     hits = []
     st['skipped_devtool'] = 0
+    ## 逐文件记豁免命中数 —— 给【按文件豁免烂掉了】那条 stale 检查当分母
+    ## (文件被改名/删掉/内容清空 ⇒ 这一条豁免还挂着, 而它已经什么都不豁免了)。
+    st['devtool_by_file'] = {f: 0 for f in GD_DEVTOOL}
+    st['scanned_paths'] = set()
     for path, ln, sink, txt, why in rows:
+        st['scanned_paths'].add(path)
         if path in GD_DEVTOOL:
             st['skipped_devtool'] += 1
+            st['devtool_by_file'][path] = st['devtool_by_file'].get(path, 0) + 1
             continue
         if why:                      # 行内 `# devnote-ok: 原因`
             continue
@@ -195,7 +205,8 @@ def gd_devnote_gate():
     print('         (跳过: 调试通道 print/push_* %d 条 · 三引号块 %d 行 · dev-only 工具表 %d 条)'
           % (st['skipped_debug'], st['skipped_block'], st['skipped_devtool']))
     for f, why in sorted(GD_DEVTOOL.items()):
-        print('         [按文件豁免] %s —— %s' % (f, why))
+        print('         [按文件豁免] %s (本轮豁免 %d 条) —— %s'
+              % (f, st['devtool_by_file'].get(f, 0), why))
     if st['lits'] < 400:
         print('  [FAIL] 只抽到 %d 条字符串(<400) —— 取料失效了, 这是空检查不是通过' % st['lits'])
         return 1
@@ -224,6 +235,32 @@ def gd_devnote_gate():
                                               cur[k]['word'], k.split('|', 1)[1][:44], why))
     for k in cleared:
         print('  [已清] %s —— 记得把它从台账里删掉(`--update`)' % k[:90])
+
+    ## ══════════════════════════════════════════════════════════════════
+    ##  【豁免自身的 stale 检查】—— 2026-09-28 补(照 asset_borrow 的 `[已清]` 样式)
+    ## ══════════════════════════════════════════════════════════════════
+    ## ★由来: `asset_borrow_audit` 会主动报「白名单里的 X 已经不跨屏了 —— 把那条理由删掉」,
+    ##   而这里**不报** ⇒ 一条**烂掉的理由会一直留着**, 而且它长得跟有效的理由一模一样,
+    ##   于是这张表**看着很周全**。memory [[fb-registered-todos-rot]] 那一族:
+    ##   登记会烂, 而没有 stale 检查就等于给自己留一条**永远不会被发现已经过期**的账。
+    ## ★实证(同日抓到): `GD_WHY` 里
+    ##   `BracketMapScene.gd|现在你这一组的冠军就是本周冠军 · 跨组总决赛还没做出来`
+    ##   —— 那句话早就改了, 命中里没有它, 而这条理由还挂着。
+    ## ★为什么**只报不红**: 与 asset_borrow 同一口径。烂理由是"该去清一下", 不是
+    ##   "屏幕上多了一句开发备注"; 拿它去红会让两件事共用一个红灯, 人只会去改判据。
+    ##   ⚠ 但**必须打印**, 而且打印的是"删掉它"这个动作, 不是含糊的提示。
+    stale_why = sorted(k for k in GD_WHY if k not in cur)
+    stale_dev = sorted(f for f in GD_DEVTOOL if st['devtool_by_file'].get(f, 0) == 0)
+    print('  [豁免体检] GD_WHY %d 条(其中已烂 %d) · 按文件豁免 %d 条(其中已烂 %d)'
+          % (len(GD_WHY), len(stale_why), len(GD_DEVTOOL), len(stale_dev)))
+    for k in stale_why:
+        print('  [已烂·GD_WHY] %s' % k[:100])
+        print('        这条理由对应的原文**已不在命中里**(话改了或删了) ⇒ 把它从 GD_WHY 删掉。')
+    for f in stale_dev:
+        gone = f not in st['scanned_paths']
+        print('  [已烂·按文件豁免] %s —— %s ⇒ 把这条豁免删掉。'
+              % (f, '文件已不在扫描范围里(改名/删了?)' if gone else '文件还在, 但本轮一条都没豁免到'))
+
     if fresh:
         print('')
         for k in fresh:

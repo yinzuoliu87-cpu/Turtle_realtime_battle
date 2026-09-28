@@ -435,8 +435,8 @@ scripts/scenes/CodexScene.gd|text|龟币: %d   龟种: %d\n等级分布: %s\n战
 scripts/scenes/CodexScene.gd|text|🛠 调试面板
 scripts/scenes/InventoryScene.gd|lit|  这件不加属性，只有效果
 scripts/scenes/InventoryScene.gd|lit|[color=#8fa6bb]这件不加属性，只有效果[/color]
-scripts/scenes/InventoryScene.gd|lit|[color=#8fa6bb]这件没有额外效果，属性直接生效。[/color]
-scripts/scenes/InventoryScene.gd|lit|[color=#9fb6c9][b]带来的属性[/b][/color]\n%s\n\n[color=#9fb6c9][b]效果[/b][/color]\n[color=#cfe0ef]%s[/color]
+scripts/scenes/InventoryScene.gd|lit|[color=#8fa6bb]这件只加属性，不带效果[/color]
+scripts/scenes/InventoryScene.gd|lit|[color=#9fb6c9][b]属性[/b][/color]\n%s\n\n[color=#9fb6c9][b]效果[/b][/color]\n[color=#cfe0ef]%s[/color]
 scripts/scenes/InventoryScene.gd|lit|\n升到 Lv%d 就能装 %d 件
 scripts/scenes/InventoryScene.gd|lit|\n已经满级, 不会再多了
 scripts/scenes/InventoryScene.gd|lit|　　小将 ×%d
@@ -445,7 +445,7 @@ scripts/scenes/InventoryScene.gd|lit|下战场
 scripts/scenes/InventoryScene.gd|lit|去商店买装备
 scripts/scenes/InventoryScene.gd|lit|商店
 scripts/scenes/InventoryScene.gd|lit|小将 ×%d
-scripts/scenes/InventoryScene.gd|lit|带来的属性\n%s\n\n效果\n%s
+scripts/scenes/InventoryScene.gd|lit|属性\n%s\n\n效果\n%s
 scripts/scenes/InventoryScene.gd|lit|怎么配阵容
 scripts/scenes/InventoryScene.gd|lit|打完本大轮第一场后解锁
 scripts/scenes/InventoryScene.gd|lit|盾
@@ -457,7 +457,7 @@ scripts/scenes/InventoryScene.gd|lit|这件不加属性，只有效果
 scripts/scenes/InventoryScene.gd|lit|（无主动效果）
 scripts/scenes/InventoryScene.gd|text|[b][color=#ffffff]%s[/color][/b]   [color=#ffd93d]%s[/color]   [color=#8fa6bb]%d费%s[/color]
 scripts/scenes/InventoryScene.gd|text|· 上下两个战场各打各的, 兵力自己分\n· 点两个单位, 它们就互换战场和位置\n· 点小将的【前排 / 后排】, 近战挥砍和远程射击之间切\n· 先点下面背包里的装备, 再点一只龟或小将, 就装上了\n· 点单位身上的装备格, 那件就回背包\n· 三件同款同星的装备会自己合成, 升一颗星
-scripts/scenes/InventoryScene.gd|text|上下滑动看更多
+scripts/scenes/InventoryScene.gd|text|▼ 下面还有
 scripts/scenes/InventoryScene.gd|text|临时等级器
 scripts/scenes/InventoryScene.gd|text|前排
 scripts/scenes/InventoryScene.gd|text|卖出 +%d
@@ -473,21 +473,20 @@ scripts/scenes/InventoryScene.gd|text|知道了
 scripts/scenes/InventoryScene.gd|text|精英小将
 scripts/scenes/InventoryScene.gd|text|糖果罐 %d档
 scripts/scenes/InventoryScene.gd|text|糖果罐 · 第 %d 档 —— 现在打碎能开出 %s。本大轮只碎这一次。
+scripts/scenes/InventoryScene.gd|text|细看
 scripts/scenes/InventoryScene.gd|text|统领%d
 scripts/scenes/InventoryScene.gd|text|背包是空的 —— 去商店买几件装备
 scripts/scenes/InventoryScene.gd|text|装备 %d / %d
 scripts/scenes/InventoryScene.gd|text|装备背包
-scripts/scenes/InventoryScene.gd|text|详情
-scripts/scenes/InventoryScene.gd|text|还有 %d 行没说完 · 点【详情】
+scripts/scenes/InventoryScene.gd|text|还有 %d 行没说完 · 点【细看】
 scripts/scenes/InventoryScene.gd|text|这个位子还空着
 scripts/scenes/InventoryScene.gd|tooltip_text|%s · 盾羁绊白送的, 不占装备位 · 盾羁绊掉下去就收回
-scripts/scenes/InventoryScene.gd|tooltip_text|[b]%s[/b]  ★%d  %d费\n\n带来的属性\n%s\n\n效果\n%s
+scripts/scenes/InventoryScene.gd|tooltip_text|[b]%s[/b]  ★%d  %d费\n\n属性\n%s\n\n效果\n%s
 scripts/scenes/InventoryScene.gd|tooltip_text|一只身上最多 %d 件；全队六只一起能装几件, 看你的赛季等级。\n现在 Lv%d, 全队能装 %d 件%s
 scripts/scenes/InventoryScene.gd|tooltip_text|从糖果罐里开出来的临时等级器\n点它, 再点一只龟统领或小将 —— 这一大轮它就多一级, 换了大轮还原
 scripts/scenes/InventoryScene.gd|tooltip_text|全队装备已满 %d / %d · 升赛季等级可再装
 scripts/scenes/InventoryScene.gd|tooltip_text|点一下, 这件就回背包
 scripts/scenes/InventoryScene.gd|tooltip_text|点一下换站位 —— 前排贴上去挥砍, 后排站远了射击
-scripts/scenes/InventoryScene.gd|tooltip_text|看这件的完整属性和效果
 scripts/scenes/LeaderboardScene.gd|lit|（对手还没读到 —— 下一场开打时去取一次）
 scripts/scenes/LeaderboardScene.gd|lit|（榜上暂时只有你 —— 打完一场, 对手就会上来）
 scripts/scenes/LeaderboardScene.gd|lit|（榜上暂时只有你）
@@ -529,13 +528,13 @@ scripts/scenes/MainMenuScene.gd|lit|日
 scripts/scenes/MainMenuScene.gd|lit|本地 %s
 scripts/scenes/MainMenuScene.gd|lit|本地 %s 开打
 scripts/scenes/MainMenuScene.gd|lit|版本维护, 稍后回来
-scripts/scenes/MainMenuScene.gd|lit|玩法开发中, 暂按积分赛规则
 scripts/scenes/MainMenuScene.gd|lit|第 %d 大轮 · Lv %d
 scripts/scenes/MainMenuScene.gd|lit|维护中
 scripts/scenes/MainMenuScene.gd|lit|背包
 scripts/scenes/MainMenuScene.gd|lit|训龟大师
 scripts/scenes/MainMenuScene.gd|lit|距收盘 %s
 scripts/scenes/MainMenuScene.gd|lit|还没上过场
+scripts/scenes/MainMenuScene.gd|lit|这天按积分赛的规矩打
 scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 再赢 %d 场晋级 / 再输 %d 场出局
 scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 已出局
 scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 已晋级决赛日
@@ -609,7 +608,6 @@ scripts/scenes/RealtimeBattle3DScene.gd|lit|护甲与魔抗 +25%, 最大生命 +
 scripts/scenes/RealtimeBattle3DScene.gd|lit|攻击力 +25%
 scripts/scenes/RealtimeBattle3DScene.gd|lit|攻击力 +40%, 暴击 +40%, 暴击伤害 +25%, 吸血提升
 scripts/scenes/RealtimeBattle3DScene.gd|lit|攻击力 +45%
-scripts/scenes/RealtimeBattle3DScene.gd|lit|无装备
 scripts/scenes/RealtimeBattle3DScene.gd|lit|星辉
 scripts/scenes/RealtimeBattle3DScene.gd|lit|普攻命中使目标受到的治疗 -50%, 持续 5 秒
 scripts/scenes/RealtimeBattle3DScene.gd|lit|普攻命中施加灼烧
@@ -632,7 +630,6 @@ scripts/scenes/RealtimeBattle3DScene.gd|lit|砸击额外 +100% 护甲与 +100% �
 scripts/scenes/RealtimeBattle3DScene.gd|lit|终极
 scripts/scenes/RealtimeBattle3DScene.gd|lit|自身造成的所有伤害转为真实伤害
 scripts/scenes/RealtimeBattle3DScene.gd|lit|血筛子
-scripts/scenes/RealtimeBattle3DScene.gd|lit|装备 (%d)
 scripts/scenes/RealtimeBattle3DScene.gd|lit|观测:stun_chain
 scripts/scenes/RealtimeBattle3DScene.gd|lit|钩锁
 scripts/scenes/RealtimeBattle3DScene.gd|lit|锁链
@@ -864,13 +861,9 @@ scripts/scenes/battle/battle_debug_arena.gd|text|▶ 展开
 scripts/scenes/battle/battle_debug_arena.gd|text|▼ 折叠
 scripts/scenes/battle/battle_debug_arena.gd|text|右队(假人)
 scripts/scenes/battle/battle_debug_arena.gd|text|左队(友军)
-scripts/scenes/battle/battle_debug_arena.gd|text|当前笔刷: %s
 scripts/scenes/battle/battle_debug_arena.gd|text|满龟能:关
 scripts/scenes/battle/battle_debug_arena.gd|text|满龟能:开
-scripts/scenes/battle/battle_debug_arena.gd|text|近战小将·浪板
-scripts/scenes/battle/battle_debug_arena.gd|text|远程小将·火箭
 scripts/scenes/battle/battle_debug_arena.gd|text|选中: %s(%s)
-scripts/scenes/battle/battle_debug_arena.gd|text|选龟: %s
 scripts/scenes/battle/battle_hud.gd|lit|⏸ 编辑
 scripts/scenes/battle/battle_hud.gd|lit|▶ 开始
 scripts/scenes/battle/battle_hud.gd|lit|▼ 折叠
@@ -1001,11 +994,8 @@ scripts/scenes/battle/dual_lane_flow.gd|text|🏆 我方拿下本路！
 scripts/scenes/battle/dual_lane_flow.gd|text|💀 本路失守
 scripts/scenes/battle/incense_vfx.gd|lit|香火 +%d
 scripts/scenes/battle/incense_vfx.gd|lit|香火 满
-scripts/scenes/battle/info_panel.gd|lit|  ·  攒满了, 可以放「%s」
 scripts/scenes/battle/info_panel.gd|lit|  ·  攒满了, 随时能放\n
-scripts/scenes/battle/info_panel.gd|lit|  ·  还差 %.1f 秒
 scripts/scenes/battle/info_panel.gd|lit|  ·  还差 %.1f 秒\n
-scripts/scenes/battle/info_panel.gd|lit|  ·  龟能被锁住 %.1f 秒
 scripts/scenes/battle/info_panel.gd|lit|  ·  龟能被锁住 %.1f 秒\n
 scripts/scenes/battle/info_panel.gd|lit| (普攻)
 scripts/scenes/battle/info_panel.gd|lit|%.1f 秒后炸开 · 回血 %d · 伤害 %d
@@ -1063,8 +1053,6 @@ scripts/scenes/battle/info_panel.gd|lit|韧性
 scripts/scenes/battle/info_panel.gd|lit|魔抗 %d
 scripts/scenes/battle/info_panel.gd|lit|魔法穿透 %d
 scripts/scenes/battle/info_panel.gd|lit|龟能
-scripts/scenes/battle/info_panel.gd|lit|龟能  %d / %d
-scripts/scenes/battle/info_panel.gd|lit|龟能  这只龟没有主动技
 scripts/scenes/battle/info_panel.gd|lit|龟能 %d / %d
 scripts/scenes/battle/info_panel.gd|lit|龟能充能 
 scripts/scenes/battle/info_panel.gd|lit|龟能锁

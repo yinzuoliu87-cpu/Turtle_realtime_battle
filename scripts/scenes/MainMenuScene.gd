@@ -85,6 +85,14 @@ const STRIP_Y := 636.0                      # = STRIP_BOTTOM - STRIP_H, 常规�
 const STRIP_H := 68.0
 const STRIP_X := 48.0
 const STRIP_W := 884.0
+## ★★★今天那一格的上下留白(九宫格亮牌的内边距)。这个数字是**量出来的**:
+##   `ui/panel-wide-on.png` 真实边带 8px, 而 `verify_ui_consistency._band_of`
+##   从贴图中心往外扫到的是 **7**(实测, 见 `tests/_probe_mmprofile.gd`)。
+##   两行字实测共 **45px** ⇒ 格高 = 9 + 45 + 9 = **63**, 字块居中后
+##   距边带内沿还剩 **2px** ⇒ 「文字压边带」那条棘轮(主菜单基线 2, 只降不升)不会涨。
+## ⚠ 改小了(比如 7)字就骑在金属边带上; 改大了条子变高, 而**周日**那天
+##   条高 = 门按钮 81 + 上下 margin, 顶沿与左栏栈底实测只差 **1px**。
+const STRIP_TODAY_PAD := 9.0
 ## 训龟大师: 原 300×62 (4.84:1, 全场最扁) 且离 2×2 网格 71px = 看着像掉队的孤儿。
 ## 改成与网格同高 82 (3.66:1), 并按网格自己的 14px 节奏紧贴其下 —— 归队, 不再单飞。
 
@@ -1091,7 +1099,18 @@ func _week_strip() -> void:
 	sb.set_corner_radius_all(0)
 	sb.content_margin_left = 12; sb.content_margin_right = 12
 	sb.content_margin_top = 7; sb.content_margin_bottom = 7
-	box.add_theme_stylebox_override("panel", sb)
+	## ★★★2026-09-28 外框上九宫格 `ui/panel-wide-flat.png`(不可点的底板 · 源图 80×48 · 边带 8)。
+	##   **一个框, 不是七个** —— 七格各套一个实拍读成表格(理由见 `_week_day_cell` 头注)。
+	## ★它对「文字压边带」是安全的: 这张图的实测 band = **5**(比另两张薄),
+	##   而最靠边的字块距内沿还有 11px 以上(`tests/_probe_mmprofile.gd`)。
+	## ⚠ content_margin **必须原样钉住 12/12/7/7**: StyleBoxTexture 默认拿
+	##   texture_margin(8) 当 content_margin ⇒ 上下各 +1 ⇒ 条子长高 2px。
+	##   而**周日**那天条高 = 门按钮 81 + 上下 margin, 顶沿 = 719 − 条高,
+	##   实测顶沿与左栏栈底只差 **1px** ⇒ 多 2px 当场压住入口(门禁 ④ 那条)。
+	var frame: StyleBox = UISkin.nine("ui/panel-wide-flat.png", 8, sb)
+	frame.content_margin_left = 12; frame.content_margin_right = 12
+	frame.content_margin_top = 7; frame.content_margin_bottom = 7
+	box.add_theme_stylebox_override("panel", frame)
 	content_root.add_child(box)
 	_week_box = box          # D-1: 服务状态变了要能把它换掉
 	var h := HBoxContainer.new(); h.add_theme_constant_override("separation", 6)
@@ -1135,16 +1154,27 @@ func _week_day_cell(wd: int, today: int) -> Control:
 	##   只有今天那格留一块实心金牌 + 顶上一条金边。一排日子 + 一块高亮牌,
 	##   这是游戏里周历的长相; 七个等大的框是表格的长相。
 	cs.bg_color = Color(1.0, 0.85, 0.24, 0.32) if is_today else Color(0, 0, 0, 0)
-	cell.add_theme_stylebox_override("panel", cs)
-	var v := VBoxContainer.new(); v.add_theme_constant_override("separation", 0)
-	cell.add_child(v)
+	## ★★★2026-09-28 今天那一格换成**九宫格亮牌** `ui/panel-wide-on.png`。
+	##   上面那段说的「不换一种盒子」仍然成立 —— **只有今天这一格有牌子**,
+	##   其余六天还是直接落在条子上。一排日子 + 一块亮牌 = 游戏里的周历;
+	##   七个等大的框才是表格(上一轮四版对照实拍拍出来的, 不是推的)。
+	## ★为什么把 4px 金条去掉: 牌子本身就是高亮, 再掞一条金条就是两层高亮叠着;
+	##   而且那 4px 会把字块顶成 49px, 直接吃掉边带的余量。
+	## ⚠ 贴图不在就退回原来的金底(`cs`) —— `UISkin.nine` 自带这一手。
+	var skin: StyleBox = cs
 	if is_today:
-		var topbar := ColorRect.new()
-		topbar.color = Color("#ffd93d")
-		topbar.custom_minimum_size = Vector2(0, 4)
-		topbar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		v.add_child(topbar)
-		v.move_child(topbar, 0)
+		skin = UISkin.nine("ui/panel-wide-on.png", 8, cs)
+		skin.content_margin_left = 6; skin.content_margin_right = 6
+		skin.content_margin_top = STRIP_TODAY_PAD
+		skin.content_margin_bottom = STRIP_TODAY_PAD
+	cell.add_theme_stylebox_override("panel", skin)
+	var v := VBoxContainer.new(); v.add_theme_constant_override("separation", 0)
+	## ★★七格**一律竖向居中**。不居中的话: 今天那格的内边距是 9(要避边带),
+	##   其余格是 3, 而 HBox 会把七格拉成等高 ⇒ 一排日子的字会差出 6px, 读起来是歪的。
+	## ★居中之后两种 margin 给出的**绝对位置完全相同**(内容区上下对称),
+	##   七格自动齐 —— 不用再给其余六格也填一份跟着漂的 margin。
+	v.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	cell.add_child(v)
 	var d := Label.new(); d.text = _WD_CN[wd - 1]
 	d.add_theme_font_size_override("font_size", 15)
 	d.add_theme_color_override("font_color", Color("#ffd93d") if is_today else Color("#c6d2e0"))
@@ -1227,7 +1257,7 @@ func _week_close_block(now: int) -> Control:
 	##   在此之前周日写「决赛日 本地 X 点开打」、周一写「本日维护」, 而两天都能照常开局:
 	##   玩家按字面读会以为自己错过了决赛、或者以为维护日不能玩。**说了做不到的事就是缺陷**。
 	## ★★周日决赛日**玩法上线之后**, 这一格变成进对阵图的门。
-	##   在此之前 `phase_mode_live(PHASE_FINALS)` 是 false ⇒ 走下面那条「玩法开发中」,
+	##   在此之前 `phase_mode_live(PHASE_FINALS)` 是 false ⇒ 走下面 BK_PENDING 那一支,
 	##   **门根本不存在** —— 而不是摆一个点了没反应的按钮
 	##   (memory `fb-branch-to-an-unbuilt-mode-is-a-backdoor`: 没做出来的那一支
 	##    要让「没上线」是个可读状态)。
@@ -1239,8 +1269,14 @@ func _week_close_block(now: int) -> Control:
 		## ★兜底: 走到 BK_PENDING 而 `phase_pending_note()` 给空串, 只有一种情况 ——
 		##   用 `strip_finals_live_override` 把决赛日**手动**按成"没上线"(截图台/调试用),
 		##   而那张表里它其实已经上线了。不兜的话这一格会渲出一行空 Label。
+		## ★★2026-09-28 摘掉开发状态。原文是「玩法开发中, 暂按积分赛规则」——
+		##   「开发中」「暂按」是**开发备注**(玩家不需要知道我们做到哪了, 而「暂」
+		##   还顺带许了个不存在的期限)。玩家要知道的只有一件事: **这天按什么规矩打**。
+		##   与 `phase2_config.PHASE_PENDING_NOTE` 同一口径(那张表 2026-09-27 就改过,
+		##   只剩这条兜底一直没跟上), 后半句一字不差 —— 那是两处共同的那条信息。
+		## ★仍写字面量而不是去读那张表: 这一支的前提正是"那张表里查不到这个阶段"。
 		if sub == "":
-			sub = "玩法开发中, 暂按积分赛规则"
+			sub = "这天按积分赛的规矩打"
 		return _close_block_labels(head, sub)
 	if kind == BK_NO_CLOSE:
 		if ph == _P2C.PHASE_FINALS:
@@ -1298,13 +1334,28 @@ func _finals_entry() -> Control:
 	##     · 退而用 `chip-frame`(边带 4px, 数值上完全安全) —— 但它源图只有 48×24,
 	##       拉到 150×81 之后那圈金属只剩 **1px 亮边**, 实拍就是一个**细线描边的青色方框**,
 	##       比原来的纯色块更像网页按钮。**量得过 ≠ 长得对**, 拍了才知道。
-	##   ⇒ 真正的修法是给这个尺寸画一张自己的九宫格(未做, 已在报告里登记)。
-	##     在那之前保持纯色块: 它至少**不是**"1px 描边 + 半透明底"那个长相。
-	b.add_theme_stylebox_override("normal", fsb)
-	var fsh := fsb.duplicate()
-	fsh.bg_color = Color(0.09, 0.26, 0.24, 0.98)
-	b.add_theme_stylebox_override("hover", fsh)
-	b.add_theme_stylebox_override("pressed", fsh)
+	##   ⇒ 真正的修法是给这个尺寸画一张自己的九宫格 —— **2026-09-28 画好了**。
+	## ★★★2026-09-28 上皮: `ui/panel-wide.png`(可点的门 · 源图 80×48 · 边带 8 · 中段纯色
+	##   · alpha 全 255 ⇒ 不用补 expand margin)。
+	## ⚠ **不走 `UISkin.button()`**: 它的 `big` 判据(短边 ≥56 且面积 ≥5000)会让
+	##   150×81 又去挑 `menu/frame-rect.png` —— **就是上面记的那张边带 27 的**。
+	## ★竖向预算(实测 `tests/_probe_mmprofile.gd`): 这张图 band = **7**,
+	##   门 150×81 ⇒ 内容区 67px, 两行 15 号字 45px 居中 ⇒ 上下各余 11px。
+	##   (frame-rect 那张 27×2=54 ⇒ 内容区只剩 27, 装不下 —— 差得就是这么远。)
+	var fnine: StyleBox = UISkin.nine("ui/panel-wide.png", 8, fsb)
+	b.add_theme_stylebox_override("normal", fnine)
+	## 三态: 贴图在就用 modulate 提亮/压暗(与 `UISkin.button` 同一招、同一组系数);
+	##   贴图缺了 `UISkin.nine` 退回 fsb, 这里就走原来的换底色。
+	var fhov: StyleBox = fnine.duplicate()
+	var fprs: StyleBox = fnine.duplicate()
+	if fnine is StyleBoxTexture:
+		(fhov as StyleBoxTexture).modulate_color = Color(1.22, 1.22, 1.22, 1.0)
+		(fprs as StyleBoxTexture).modulate_color = Color(0.74, 0.74, 0.74, 1.0)
+	else:
+		(fhov as StyleBoxFlat).bg_color = Color(0.09, 0.26, 0.24, 0.98)
+		(fprs as StyleBoxFlat).bg_color = Color(0.09, 0.26, 0.24, 0.98)
+	b.add_theme_stylebox_override("hover", fhov)
+	b.add_theme_stylebox_override("pressed", fprs)
 	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	b.pressed.connect(_open_bracket_map)
 	return b
@@ -1320,6 +1371,9 @@ func _open_bracket_map() -> void:
 ##   就地再写一份 Label 就是「手抄的副本必然落后」(本项目记过)。
 func _close_block_labels(head: String, sub: String) -> Control:
 	var v := VBoxContainer.new(); v.add_theme_constant_override("separation", 0)
+	## ★同七格: 竖向居中。不居中的话它会被 HBox 拉成满高而字靠顶,
+	##   与旁边居中的七格差出九几像素(实测 643 vs 652)。
+	v.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var a := Label.new(); a.text = head
 	a.add_theme_font_size_override("font_size", 16)
 	a.add_theme_color_override("font_color", Color("#ffd93d"))

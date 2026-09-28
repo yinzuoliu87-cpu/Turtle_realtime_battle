@@ -395,6 +395,18 @@ def main():
         fresh = [x for x in cur[k] if x not in known]
         stale = sorted(known - set(cur[k]))
         title, how = TITLES[k]
+        ## ★★2026-09-28 这里原来是 `if fresh: … elif stale: … rc = 1` —— 两个毛病:
+        ##   ① **`elif`**: fresh 与 stale 同时存在时, stale 那段根本不打印。
+        ##   ② **stale 也判红** ⇒ **还债本身变成了红灯**。这不是假想:
+        ##      清死码那轮删 `RealtimeBattle3DScene._signal_pulse`(零调用点的死函数),
+        ##      它的 `::pixel_size` 债条随之不成立, 这条判据当场红
+        ##      ⇒ 那次**正当的删除被还原了**。台账替缺陷站岗、还拦住了修它的人
+        ##      (memory [[fb-gate-can-pin-the-bug-in-place]])。
+        ## ⇒ 改成本仓的统一约定: **只有"新增欠债"判红**; "欠债消失"是目标, 永远不判红,
+        ##   但要以 `[已清]` 大声打出来(asset_borrow / write_orphan / codex_text_lint /
+        ##   zero_caller 都是这个口径)。销账照旧用 VFX_DISCIPLINE_UPDATE=1。
+        ## ⚠ 代价写在这儿: stale 不判红 ⇒ 没人销账时那几条会**继续发着许可**,
+        ##   万一同名违规回来了会被当存量放过。所以它必须每轮都打印, 而不是静默。
         if fresh:
             print("")
             print("[FAIL] **新增**了%s —— %d 条:" % (title, len(fresh)))
@@ -404,15 +416,15 @@ def main():
                 print("   …… 另 %d 条" % (len(fresh) - 20))
             print("  ⇒ " + how)
             rc = 1
-        elif stale:
+        if stale:
             print("")
-            print("[FAIL] 台账里这 %d 条已经不成立了 —— 还了债要销账(棘轮只能往小转):"
-                  % len(stale))
+            print("  [已清] %s 里这 %d 条欠债没了(还掉了/代码被删了) —— **不判红**:"
+                  % (k, len(stale)))
             for x in stale[:20]:
-                print("   " + x)
-            print("  跑一次: VFX_DISCIPLINE_UPDATE=1 python tools/vfx_discipline_audit.py")
-            rc = 1
-        else:
+                print("     " + x)
+            print("     销账: VFX_DISCIPLINE_UPDATE=1 python tools/vfx_discipline_audit.py")
+            print("     ⚠ 不销账它们会继续发着许可(同名违规回来会被当存量放过)。")
+        if not fresh and not stale:
             print("  [存量] %-14s %d 条在台账里(只减不增)" % (k, len(cur[k])))
 
     if rc == 0:
