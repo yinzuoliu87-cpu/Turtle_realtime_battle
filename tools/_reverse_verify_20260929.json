@@ -1,0 +1,61 @@
+{
+ "_doc": "2026-09-29 五条核心修复的反向验证。每条: 变异什么 → 红没红 → 红的形状对不对 → 还原 md5 逐字节一致。",
+ "_why": "本仓铁律: 判据没被证明会红就不算修好(可能是恒真式)。七路修复 agent 被额度限流打断, 一路正死在这一步。",
+ "ALL_RED": true,
+ "results": {
+  "GHOST_ROUNDTRIP": {
+   "gate": "tests/verify_ghost_upload.gd",
+   "mutation": "backend.gd build_ghost_snapshot 不再写 lane_assign(退回三个月来那个真 bug)",
+   "red": true,
+   "shape": [
+    "分母先红: 存进去那份分路非空 → top=[] bottom=[]",
+    "往返红: 拉回来 ghost_id=bot_... (消费侧兜底把坏快照挡掉)",
+    "分路逐字相同 红"
+   ],
+   "restore_md5": "a268226a59eb1474de5cb571ae5aeaa7"
+  },
+  "DEDUP_BY_PERSON": {
+   "gate": "tests/verify_leaderboard_sort.gd",
+   "mutation": "person_key 退回按昵称认(owner 置空)",
+   "red": true,
+   "shape": [
+    "同名不同人 应 2 行 → 得 1 行(撞名被合并, 一个人消失)",
+    "改过名 应 1 行 → 得 3 行(裂成多行)",
+    "「N 人上榜」跟着错"
+   ],
+   "restore_md5": "a268226a59eb1474de5cb571ae5aeaa7"
+  },
+  "SANDBOX_ABANDON": {
+   "gate": "tests/verify_tutorial_director.gd",
+   "mutation": "掐掉看门狗 _process(退回「只在 _finish() 还原」)",
+   "red": true,
+   "shape": [
+    "分母先红: 看门狗没看见人在教学那一屏",
+    "深海币应还回 292 → 实测 20(正是真机丢币那个值)",
+    "season_leaders 应还回 → 实际停在教学三只"
+   ],
+   "restore_md5": "9d8c2b1c19c8ad7fa32fb3314f314c8d"
+  },
+  "TOAST_SURVIVES": {
+   "gate": "tests/verify_inventory_layout.gd",
+   "mutation": "_rebuild 不再放过 TOAST_GROUP(退回原 bug)",
+   "red": true,
+   "shape": [
+    "8 帧后屏上找得到那句提示 → 找到 0 个",
+    "另有保护同时红: 断言只跑了 41 条(至少该 46) —— 防半路掐断判绿"
+   ],
+   "restore_md5": "e6ddce6f091528da089f45adada2c28f"
+  },
+  "BUDGET_SAME_SOURCE": {
+   "gate": "tests/verify_result_reachable.gd",
+   "mutation": "settle_fit_inner 退回写死 vp.y-320(与外层各算各的, 差 56px)",
+   "red": true,
+   "shape": [
+    "穷举 R=12..16 外层都有可滚量而它 SHOW_NEVER 永不画条",
+    "R=14 看不到 2 行 / R=15 看不到 4 行 / R=16 看不到 6 行, 屏上一句提示没有",
+    "= 用户原话「能下滑吗, 不能啊, 有很多单位看不到啊」的精确形状"
+   ],
+   "restore_md5": "d9a8ffc596e3a024ecdf5b48f7211a8c"
+  }
+ }
+}

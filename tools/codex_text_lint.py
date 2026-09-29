@@ -296,6 +296,105 @@ def gd_devnote_gate():
 ##   所以它必须和洞②的快照门禁配对使用, 而**不能**单独当成"文案没问题"的证明。
 
 
+
+## ══════════════════════════════════════════════════════════════════════
+##  DEV_UNIT —— 「什么 ai 味的描述」(用户 2026-09-29) 的四个**可机器扫**的成因
+## ══════════════════════════════════════════════════════════════════════
+## 实例(磷光水母伞 p2eq_060, 用户在真窗口里截到的):
+##   「每 7 秒打开一次伞：自身与 **200 码**内的队友获得 11/22/35% 伤害减免与
+##     15% 闪避率**（固定值）**，持续 2.5 秒；效果结束时**携带者**回复 50/80/130 生命，
+##     **然后才重新开始 7 秒计时**。」
+## 这四处不是"写得不好", 是**四种不同的越界** —— 开发侧的东西漏到了玩家屏上:
+##   ① 「码」    = 引擎的世界单位(`battle_vfx.gd:1460`: 1 码 = WS = 0.024 m)。玩家不按码想事情。
+##   ② 「（固定值）」= 实现备注(在跟自己交代这个值不是百分比/不随星级)。
+##   ③ 「携带者」= 规格书主语。本仓自己的语料里同一件事有**三种叫法**
+##                (装备文案实测: 携带者 55 · 自身 24 · 自己 22 · 持有者 2) —— 这本身就是缺陷。
+##   ④ 「然后才重新开始 N 秒计时」= 在解释冷却**怎么实现的**。
+##
+## ★★为什么是【棘轮】而不是要求清零(见 GD_LEDGER 同一条经验: 第一天就红的门禁只会被绕过):
+##   ①「码」有 93 条存量, 而**换掉它就必须换算, 换算就要动数字** —— 而数字是这轮的硬约束
+##   (`tooltip_number_audit` 守着文案数值↔代码)。仓库里也**没有**一个已定的玩家侧距离口径:
+##   `身位` 只活在代码注释里, 而且两处互相矛盾(`eq_venom_drone.gd:89` 说 92 码 ≈ 1 身位,
+##   `vfxlab_cases.gd:476` 说 130 码 = 一个身位)。⇒ 先把存量**钉住只减不增**, 换算口径留给用户拍板。
+##
+## ★键 = `类别|实体|字段|词`, **不含原文也不含行号**: 存量里 93 条「码」句子随时会因为
+##   别的原因改写, 拿原文当键会让那些改动集体变成"新违规"(假红)。而值存**命中次数**,
+##   所以"同一条文案里又多塞一个码"照样当场红。
+AI_FLAVOR = [
+    ('码·开发单位', r'\d\s*码',
+     '「码」是引擎世界单位(1 码 = 0.024 m), 不是玩家能感知的说法'),
+    ('固定值·实现备注', r'（固定值）|\(固定值\)',
+     '在跟自己交代"这个值不是百分比/不随星级", 玩家不需要知道我们怎么存的'),
+    ('规格书主语', r'携带者|持有者|佩戴者|装备者',
+     '规格书用语; 本仓语料里同一个东西已经有 自身/自己 两种玩家侧叫法, 统一到「自身」'),
+    ('解释冷却怎么实现', r'重新开始[^，。；]{0,10}计时|重新计时|重置计时|重新计算冷却|冷却重新开始',
+     '在解释定时器怎么转。要讲的是"什么时候会再发生一次", 不是"计时从哪一刻开始数"'),
+]
+AI_LEDGER = 'tools/_ai_flavor_ledger.json'
+
+
+def ai_flavor_gate():
+    """DEV_UNIT: 开发侧用语漏进玩家文案。棘轮(只减不增) + 分母。→ 退出码贡献(0/1)"""
+    import json as _json
+    import os as _os
+    rows = collect()
+    body = [r for r in rows if len(plain(r[3]).strip()) >= 4]
+    cur = {}
+    samples = {}
+    for tag, ident, field, txt in body:
+        p = plain(txt)
+        for name, pat, _why in AI_FLAVOR:
+            ms = re.findall(pat, p)
+            if not ms:
+                continue
+            k = '%s|%s|%s|%s' % (name, tag, ident, field)
+            cur[k] = len(ms)
+            samples[k] = p[:46]
+    print('')
+    print('=== DEV_UNIT · 开发侧用语漏进玩家文案(2026-09-29 补) ===')
+    print('  [分母] 受检文案 %d 条 · 其中有正文(去占位符后 ≥4 字) %d 条 · 判据 %d 类'
+          % (len(rows), len(body), len(AI_FLAVOR)))
+    if len(body) < 400:
+        print('  [FAIL] 只抽到 %d 条有正文的文案(<400) —— 取料失效了, 这是空检查不是通过' % len(body))
+        return 1
+    by_cat = collections.Counter(k.split('|')[0] for k in cur)
+    for name, _pat, why in AI_FLAVOR:
+        print('  %-16s %3d 条文案 / 共 %3d 处 —— %s'
+              % (name, by_cat.get(name, 0),
+                 sum(v for k, v in cur.items() if k.split('|')[0] == name), why))
+    if '--update' in sys.argv:
+        io.open(AI_LEDGER, 'w', encoding='utf-8', newline=NL).write(_json.dumps(
+            {'_why': '本文件由 `python tools/codex_text_lint.py --update` 生成, 不要手改。'
+                     '键 = 类别|来源|实体|字段, 值 = 该条文案里的命中次数。**只减不增**。',
+             'known': dict(sorted(cur.items()))}, ensure_ascii=False, indent=1) + NL)
+        print('  [台账已重写] %s (%d 条存量)' % (AI_LEDGER, len(cur)))
+        return 0
+    if not _os.path.exists(AI_LEDGER):
+        print('  [FAIL] 台账 %s 不存在 —— 这是空检查不是通过' % AI_LEDGER)
+        return 1
+    led = _json.load(io.open(AI_LEDGER, encoding='utf-8')).get('known', {})
+    fresh = sorted(k for k in cur if k not in led)
+    worse = sorted(k for k in cur if k in led and cur[k] > led[k])
+    gone = sorted(k for k in led if k not in cur)
+    print('  [台账] %d 条存量(只减不增) · 本轮量到 %d 条 · 已清 %d 条'
+          % (len(led), len(cur), len(gone)))
+    for k in gone[:12]:
+        print('     [已清] %s —— 跑 `--update` 把它从台账里删掉' % k)
+    if fresh or worse:
+        print('')
+        for k in fresh:
+            print('  [FAIL] 新的开发侧用语上屏: %s 「%s」' % (k, samples.get(k, '')))
+        for k in worse:
+            print('  [FAIL] 同一条里又多了 %d → %d 处: %s 「%s」'
+                  % (led[k], cur[k], k, samples.get(k, '')))
+        print('')
+        print('  ★这四类都是【开发侧的东西漏到玩家屏上】, 不是文笔问题:')
+        print('    码 → 玩家能感知的说法(换算口径未定, 先别新增) · （固定值）→ 删')
+        print('    携带者 → 自身 · "重新开始N秒计时" → 说清什么时候会再发生一次')
+        return 1
+    return 0
+
+
 def load(p):
     d = json.load(io.open(p, encoding='utf-8'))
     return d if isinstance(d, list) else list(d.values())[0]
@@ -465,6 +564,9 @@ def main():
         for k, why in DETAIL_ALLOW.items():
             print('       %s %s.%s —— %s' % (k[0], k[1], k[2], why))
 
+    ## DEV_UNIT: 开发侧用语漏进玩家文案(码/（固定值）/携带者/解释计时)
+    ai_rc = ai_flavor_gate()
+
     ## 洞①: `.gd` 屏幕文案那一节(在此之前本脚本一行 .gd 都不读)
     gd_rc = gd_devnote_gate()
 
@@ -475,12 +577,14 @@ def main():
     if total > 0:
         print(chr(10) + "[FAIL] 图鉴文案体检: 上面 %d 处硬问题" % total)
         return 1
+    if ai_rc != 0:
+        return ai_rc
     if gd_rc != 0:
         return gd_rc
     if '--update' in sys.argv:
         print(chr(10) + "已重写 .gd 开发备注台账。")
         return 0
-    print(chr(10) + "ALL OK — 图鉴文案体检(无教学味/自夸/开发备注/别家黑话/数字贴字; 漏讲机制未超基线; .gd 屏幕文案无新增开发备注)")
+    print(chr(10) + "ALL OK — 图鉴文案体检(无教学味/自夸/开发备注/别家黑话/数字贴字; 漏讲机制未超基线; .gd 屏幕文案无新增开发备注; DEV_UNIT 开发侧用语未增)")
     return 0
 
 

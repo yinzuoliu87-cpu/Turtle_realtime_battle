@@ -76,12 +76,11 @@ scripts/gamedata/minion_codex.gd|lit|铁锤
 scripts/gamedata/minion_codex.gd|lit|锁上 2000 码内的敌人，蓄力 1.5 秒后发射一枚慢速追踪导弹，命中处核爆：400 码范围内造成 [color=#ff9f43]4×攻击力[/color] 物理伤害，并使命中的敌人受到的治疗降低 50%，持续 4 秒。
 scripts/gamedata/minion_codex.gd|lit|长手刃 · 普攻
 scripts/gamedata/minion_codex.gd|lit|顶上统领位 · 近战
-scripts/gamedata/phase2_config.gd|lit|\n不绑，换了手机就接不回来；邮箱和名字以后随时能改。
+scripts/gamedata/phase2_config.gd|lit|\n不绑也能玩 —— 只是换了手机接不回来；邮箱和名字以后随时能改。
 scripts/gamedata/phase2_config.gd|lit|\n收不到验证码？看看垃圾邮件，或回上一步换个邮箱重发。
 scripts/gamedata/phase2_config.gd|lit|乌龟
 scripts/gamedata/phase2_config.gd|lit|休赛
 scripts/gamedata/phase2_config.gd|lit|休赛日 · 按积分赛的规矩打 · 这天打的算本周场次
-scripts/gamedata/phase2_config.gd|lit|你的进度还在这台手机上 —— 绑上邮箱，换手机或重装都能接回来。
 scripts/gamedata/phase2_config.gd|lit|冠军
 scripts/gamedata/phase2_config.gd|lit|决赛日
 scripts/gamedata/phase2_config.gd|lit|双方同时开打 · 结果统一在本轮开播时揭晓\n去【决赛日 → 看对阵图】等翻面
@@ -99,10 +98,12 @@ scripts/gamedata/phase2_config.gd|lit|海盗
 scripts/gamedata/phase2_config.gd|lit|满配额
 scripts/gamedata/phase2_config.gd|lit|石头
 scripts/gamedata/phase2_config.gd|lit|积分赛
-scripts/gamedata/phase2_config.gd|lit|绑定邮箱才能开始
+scripts/gamedata/phase2_config.gd|lit|绑上邮箱，换手机或重装都能把进度接回来。
+scripts/gamedata/phase2_config.gd|lit|绑定邮箱，换手机也接得回来
 scripts/gamedata/phase2_config.gd|lit|统领
 scripts/gamedata/phase2_config.gd|lit|这天按积分赛的规矩打
 scripts/gamedata/phase2_config.gd|lit|进决赛日
+scripts/gamedata/phase2_config.gd|lit|进度没备份 · 绑定邮箱
 scripts/gamedata/phase2_config.gd|lit|闪电
 scripts/gamedata/phase2_config.gd|lit|闯关赛
 scripts/gamedata/phase2_config.gd|lit|龟
@@ -743,7 +744,9 @@ scripts/scenes/SettingsScene.gd|text|邮箱绑好了
 scripts/scenes/SettingsScene.gd|text|验证码已发到 %s
 scripts/scenes/ShopScene.gd|lit|  能进化了
 scripts/scenes/ShopScene.gd|lit|[color=#5b7a92]这件的门道, 摊主自己也讲不明白[/color]
+scripts/scenes/ShopScene.gd|lit|已经是最高等级 Lv%d · 经验用不上了
 scripts/scenes/ShopScene.gd|lit|斧头
+scripts/scenes/ShopScene.gd|lit|深海币不够 · 买一次经验要 %d
 scripts/scenes/ShopScene.gd|lit|精英小将
 scripts/scenes/ShopScene.gd|lit|近战小将
 scripts/scenes/ShopScene.gd|lit|还没选龟
@@ -763,9 +766,11 @@ scripts/scenes/ShopScene.gd|text|同类装备凑够 3 件, 羁绊才会亮
 scripts/scenes/ShopScene.gd|text|回 🎒 背包装上或卖掉
 scripts/scenes/ShopScene.gd|text|属性
 scripts/scenes/ShopScene.gd|text|已入袋
+scripts/scenes/ShopScene.gd|text|已满级
 scripts/scenes/ShopScene.gd|text|换一批  %d
 scripts/scenes/ShopScene.gd|text|收起
 scripts/scenes/ShopScene.gd|text|空的, 上面挑几件带走
+scripts/scenes/ShopScene.gd|text|等级已满
 scripts/scenes/ShopScene.gd|text|经验 %d/%d
 scripts/scenes/ShopScene.gd|text|羁绊
 scripts/scenes/ShopScene.gd|text|背包里有 %d 件, 点一下看看
@@ -887,6 +892,7 @@ scripts/scenes/battle/battle_debug_arena.gd|text|选中: %s(%s)
 scripts/scenes/battle/battle_hud.gd|lit|⏸ 编辑
 scripts/scenes/battle/battle_hud.gd|lit|▶ 开始
 scripts/scenes/battle/battle_hud.gd|lit|▼ 折叠
+scripts/scenes/battle/battle_hud.gd|lit|▼ 还有 %d 只在下面 · 可上下滑动
 scripts/scenes/battle/battle_hud.gd|lit|倍速
 scripts/scenes/battle/battle_hud.gd|lit|假人HP
 scripts/scenes/battle/battle_hud.gd|lit|再打
@@ -1002,7 +1008,7 @@ scripts/scenes/battle/dual_lane_flow.gd|lit|终极战场
 scripts/scenes/battle/dual_lane_flow.gd|lit|结算
 scripts/scenes/battle/dual_lane_flow.gd|lit|龟蛋破碎
 scripts/scenes/battle/dual_lane_flow.gd|text|▶  开  打
-scripts/scenes/battle/dual_lane_flow.gd|text|⚔  三个战场都要打
+scripts/scenes/battle/dual_lane_flow.gd|text|⚔  三路开战
 scripts/scenes/battle/dual_lane_flow.gd|text|【%s战场】 结算
 scripts/scenes/battle/dual_lane_flow.gd|text|【%s战场】 马上开打
 scripts/scenes/battle/dual_lane_flow.gd|text|上下路幸存者对决
@@ -1239,6 +1245,7 @@ scripts/systems/equip/potion_synergy_system.gd|lit|药水
 scripts/systems/equip/relic_synergy_system.gd|lit|遗物
 scripts/systems/equip/shield_synergy_system.gd|lit|盾
 scripts/systems/equip/signal_wave_system.gd|lit|电磁波 %d°
+scripts/systems/equip/spirit_synergy_system.gd|lit|亡魂
 scripts/systems/equip/spirit_synergy_system.gd|lit|灵物
 scripts/systems/equip/staff_synergy_system.gd|lit|中毒
 scripts/systems/equip/staff_synergy_system.gd|lit|减速

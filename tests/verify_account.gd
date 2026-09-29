@@ -68,6 +68,7 @@ func _ready() -> void:
 	_t_identity_not_progress()
 	_t_no_duplicate_signup()
 	await _t_real_settings()
+	await _t_unwall()
 
 	for k in KEYS:
 		GameState.set(k, _bak[k])
@@ -363,3 +364,103 @@ func _t_real_settings() -> void:
 	_chk("⑤ ★分母: 设置页仍然正常(能找到「重置所有存档」)", _find_text(s3, "重置所有存档"))
 	s3.queue_free()
 	await get_tree().process_frame
+
+
+# ─────────────────────────────────────────────────────────────
+# ⑥ ★★★WALL_SOFT: 拆墙之后, 绑过邮箱的老玩家行为一个字不变 (2026-09-29)
+#
+#    用户 2026-09-24「直接改为必须绑定账号吧」→ 2026-09-29「那就不用必须绑定吧」。
+#    后一句在后 ⇒ 墙拆了（判据只有 `phase2_config.WALL_BLOCKS` 一处）。
+#    拆墙带来两条**不许破**的规矩, 都在这一节量, 而且**都配反向分母**：
+#      · 风险 3「绑过邮箱的老玩家不许受影响」—— 光断言「他没被打扰」是恒真式,
+#        必须配一条「没绑的人**真的**变了」才证得出那条判据卡住了形状。
+#      · 风险 4「`sync_allowed` 这条闸不许动」—— 拆的是**墙**, 不是「云存档要邮箱」。
+#        动它会让匿名号去写别人的档（memory `fb-id-without-owner-dimension`）。
+#
+#    ★为什么在这份门禁里: 「谁是谁」「哪些功能匿名号就够」本来就是这一份守的事,
+#      墙关不关得掉那一面在 `verify_login_wall`（那边 ⑧ 走真入口从第一屏走到一局）。
+# ─────────────────────────────────────────────────────────────
+const _P2C_ACC := preload("res://scripts/gamedata/phase2_config.gd")
+## ★提示那一块的节点名从产品那边取, 不在测试里抄一份字(memory `fb-hand-rolled-copies-drift`)。
+const _MM_ACC := preload("res://scripts/scenes/MainMenuScene.gd")
+const MAINMENU := preload("res://scenes/MainMenu.tscn")
+
+
+func _find_node_named(n: Node, nm: String) -> bool:
+	if str(n.name) == nm:
+		return true
+	for c in n.get_children():
+		if _find_node_named(c, nm):
+			return true
+	return false
+
+
+func _t_unwall() -> void:
+	print("── ⑥ WALL_SOFT: 绑过邮箱的老玩家一个字不变 ──")
+	OS.set_environment("TURTLE_SUPABASE", "https://example.invalid")
+	ProjectSettings.set_setting("turtle/supabase_anon_key", "sb_publishable_forgate")
+	_chk("⑥ ★分母: 这一层现在是启用的(关着的话整节是空检查)", SB.enabled())
+
+	# ── ⑥a 纯函数: 拦谁 / 请谁 ──
+	_chk("⑥a ★★绑过邮箱 ⇒ **不再请他绑**(老玩家不该再被提示)",
+		not _P2C_ACC.bind_needed(true, "someone@example.com"))
+	_chk("⑥a ★★分母: 而没绑的人**要请** —— 没有这一条, 上面那条是恒真式",
+		_P2C_ACC.bind_needed(true, ""))
+	_chk("⑥a ★★★WALL_SOFT: 谁都不许被**拦**(判据只有 `WALL_BLOCKS` 一处, 现在是 false)",
+		(not _P2C_ACC.WALL_BLOCKS)
+			and not _P2C_ACC.login_wall_on(true, "")
+			and not _P2C_ACC.login_wall_on(true, "someone@example.com"),
+		"WALL_BLOCKS=%s" % str(_P2C_ACC.WALL_BLOCKS))
+
+	# ── ⑥b 真造一个【已绑账号】, 走真入口进设置页 ──
+	## ★分母的意思: 拆墙之前绑过邮箱的人进设置页也是不弹绑定屏的 ⇒ 这一条要的是
+	##   「**和从前一模一样**」, 不是「现在也不弹」。所以下面 ⑥c 再拿没绑的那一档作对照。
+	GameState.account_id = UID_OK
+	GameState.account_email = "someone@example.com"
+	var s5 = await _open_settings()
+	_chk("⑥b ★★★已绑账号进设置页: 绑定屏**不弹**(和拆墙之前一模一样)",
+		s5._email_layer == null, str(s5._email_layer))
+	_chk("⑥b ★分母: 而账号行照旧写着他的邮箱(页面真的建起来了)",
+		_find_text(s5, "someone@example.com"))
+	_chk("⑥b ★★已绑账号**看不到**那句「没备份」(那句话是给没绑的人的)",
+		not _find_text(s5, str(_P2C_ACC.bind_nudge_text())),
+		str(_P2C_ACC.bind_nudge_text()))
+	_chk("⑥b ★分母: 按钮照旧是「换个邮箱」(绑定入口留着, 且没变成别的字)",
+		_find_button(s5, "换个邮箱"))
+	s5.queue_free()
+	await get_tree().process_frame
+
+	# ── ⑥c 主菜单那句非阻塞提示: 绑过的人没有 / 没绑的人有 ──
+	## ★★这一对就是「老玩家一个字不变」的**真分母**: 只量绑过的人看不到它,
+	##   那么把整块提示删掉也能绿。两档一起量才卡得住。
+	## ★主菜单当**子节点**挂(不是 current_scene) ⇒ 首启教学与场景跳转都不触发,
+	##   这一节只想看「那块提示建不建」。
+	for case in [["someone@example.com", false], ["", true]]:
+		GameState.account_email = str(case[0])
+		var want: bool = bool(case[1])
+		var mm = MAINMENU.instantiate()
+		add_child(mm)
+		for _i in range(8):
+			await get_tree().process_frame
+		var has: bool = _find_node_named(mm, str(_MM_ACC.NUDGE_NAME))
+		_chk("⑥c %s ⇒ 主菜单上那句「没备份」提示 %s" % [
+				("绑过邮箱" if want == false else "没绑邮箱"),
+				("不该在" if want == false else "**该在**")],
+			has == want, "实测 %s" % str(has))
+		mm.queue_free()
+		await get_tree().process_frame
+
+	# ── ⑥d 风险 4: `sync_allowed` 一个字没动 ──
+	## ★★★拆的是**墙**, 不是「云存档要邮箱」这条规则。动它 = 让匿名号去写别人的档。
+	##   四格穷举: 三者齐才许, 缺一个就不许。
+	_chk("⑥d ★★★绑定号(id + 邮箱 + token 三者齐) ⇒ 许同步",
+		SB.sync_allowed(UID_OK, "someone@example.com", "tok"))
+	_chk("⑥d ★★★而**匿名号**(邮箱为空)仍然**不许**同步 —— 这条闸一个字没动",
+		not SB.sync_allowed(UID_OK, "", "tok"))
+	_chk("⑥d ★没 token 不许", not SB.sync_allowed(UID_OK, "someone@example.com", ""))
+	_chk("⑥d ★没 account_id 不许", not SB.sync_allowed("", "someone@example.com", "tok"))
+
+	## 收尾: 把这一层关回去(与 ⑤ 留下的状态一致), 免得污染后面
+	OS.set_environment("TURTLE_SUPABASE", " ")
+	ProjectSettings.set_setting("turtle/supabase_anon_key", "")
+	_chk("⑥ ★收尾: 这一层已关回去", not SB.enabled())

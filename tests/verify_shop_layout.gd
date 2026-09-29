@@ -698,6 +698,7 @@ func _outside_amount(vis: Rect2, card: Rect2) -> float:
 
 
 func _done(sc) -> void:
+	_check_shared_skin(sc)
 	await _check_owned_shine(sc)
 	sc.queue_free()
 	await get_tree().process_frame
@@ -762,3 +763,87 @@ func _type_line_checks(all: Array) -> void:
 	_chk("⑫ ★分母: %d 个类型有 %d 张互不相同的图(全回落成一张时上一条恒真)"
 		% [(P2T.TYPES as Dictionary).size(), uniq.size()],
 		uniq.size() == (P2T.TYPES as Dictionary).size() and not uniq.has(""))
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  SHARED_SKIN —— 商店的按钮皮必须来自共享层, 不许再有屏幕专用的一次性皮
+# ══════════════════════════════════════════════════════════════════════
+## ★由来(用户 2026-09-29:「不好看的按钮」)。在此之前商店自己建 StyleBoxTexture,
+##   贴 `assets/sprites/shop/btn-frame.png`(128×64) + `shop/buy-btn.png` —— 而
+##   主菜单/背包/图鉴/排行榜/设置/对阵表… 十个屏都走 `UISkin.button`。
+##   **同一种控件两套皮**, 而且那张 128×64 里 36 行是边框、中段只剩 28 行,
+##   套到实测 76~96 高的按钮上被拉 2.7~3.4 倍 ⇒ 实拍就是一圈青色细描边。
+##
+## ★★判据**不是我列的一张贴图白名单** —— 名单会跟着共享层漂(memory:
+##   「有没有一个客观事实可以代替我的名单」)。这里拿**共享层自己**当尺子:
+##   造一颗同尺寸的临时按钮丢给 `UISkin.button()`, 问它会挑哪张,
+##   再和商店那颗真按钮身上挂的那张比。共享层哪天改了挑法, 这条跟着走, 不用改判据。
+##
+## ★量四件事, 每件都能单独红:
+##   ① [分母] 真的扫到了按钮, 而且其中带贴图皮的 ≥5 颗 —— N=0 是空检查不是通过
+##   ② 没有一颗按钮的皮来自 `res://assets/sprites/shop/` (= 屏幕专用的一次性皮)
+##   ③ 每一颗的贴图 == `UISkin.button()` 对**同样宽高**会挑的那张
+##   ④ 边带×2 装得进这颗按钮的真实宽高(ui_skin.gd:117 那条量出来的判法) ——
+##      装不进去的话九宫格会把两端叠在一起, 那正是当初不选 `menu/btn-frame.png` 的原因
+func _check_shared_skin(sc) -> void:
+	var btns: Array = []
+	_collect_buttons(sc, btns)
+	var skinned: Array = []
+	var from_shop: Array = []
+	var mismatch: Array = []
+	var band_overflow: Array = []
+	for b in btns:
+		var bt := b as Button
+		var sb := bt.get_theme_stylebox("normal")
+		if not (sb is StyleBoxTexture):
+			continue                       # TopBar 那两颗是共享原语给的扁平薄片, 本来就没贴图
+		var st := sb as StyleBoxTexture
+		if st.texture == null:
+			continue
+		skinned.append(bt)
+		var path := str(st.texture.resource_path)
+		var r := bt.get_global_rect()
+		if path.begins_with("res://assets/sprites/shop/"):
+			from_shop.append("%s ← %s" % [bt.text.substr(0, 10), path])
+		## 共享层对同尺寸会挑哪张? 造一颗一次性按钮去问它, 不拿我写死的名单比。
+		var probe := Button.new()
+		probe.size = r.size
+		probe.custom_minimum_size = r.size
+		UISkin.button(probe)
+		var psb := probe.get_theme_stylebox("normal")
+		var want := ""
+		var want_margin := 0.0
+		if psb is StyleBoxTexture and (psb as StyleBoxTexture).texture != null:
+			want = str(((psb as StyleBoxTexture).texture as Texture2D).resource_path)
+			want_margin = (psb as StyleBoxTexture).texture_margin_left
+		probe.free()
+		if want != "" and want != path:
+			mismatch.append("%s 用 %s, 而共享层对 %.0fx%.0f 会挑 %s"
+				% [bt.text.substr(0, 10), path.get_file(), r.size.x, r.size.y, want.get_file()])
+		## ④ 边带×2 装不装得进这个控件(横竖各算一遍)
+		var mx: float = st.texture_margin_left + st.texture_margin_right
+		var my: float = st.texture_margin_top + st.texture_margin_bottom
+		if mx >= r.size.x or my >= r.size.y:
+			band_overflow.append("%s %.0fx%.0f 装不下边带 %.0f/%.0f"
+				% [bt.text.substr(0, 10), r.size.x, r.size.y, mx, my])
+	print("  [SHARED_SKIN 分母] 扫到 %d 颗按钮, 其中带贴图皮 %d 颗" % [btns.size(), skinned.size()])
+	for b2 in skinned:
+		var s2 := (b2 as Button).get_theme_stylebox("normal") as StyleBoxTexture
+		print("     %-22s %5.0fx%-4.0f %s" % [str((b2 as Button).text).substr(0, 20),
+			(b2 as Button).get_global_rect().size.x, (b2 as Button).get_global_rect().size.y,
+			str(s2.texture.resource_path).get_file()])
+	_chk("SHARED_SKIN ★分母: 商店里带贴图皮的按钮 ≥5 颗(N=0 是空检查)", skinned.size() >= 5)
+	_chk("SHARED_SKIN ★没有屏幕专用的一次性皮(assets/sprites/shop/ 下的贴图不许当按钮皮): %s"
+		% ("无" if from_shop.is_empty() else str(from_shop)), from_shop.is_empty())
+	_chk("SHARED_SKIN ★★每颗的皮 == UISkin.button() 对同尺寸会挑的那张: %s"
+		% ("全对上" if mismatch.is_empty() else str(mismatch)), mismatch.is_empty())
+	_chk("SHARED_SKIN ★边带×2 装得进每颗按钮的真实宽高: %s"
+		% ("全装得下" if band_overflow.is_empty() else str(band_overflow)), band_overflow.is_empty())
+
+
+func _collect_buttons(n: Node, out: Array) -> void:
+	if n is Button and (n as Button).visible:
+		out.append(n)
+	for c in n.get_children():
+		_collect_buttons(c, out)
+

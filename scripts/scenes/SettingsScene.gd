@@ -97,10 +97,11 @@ func _ready() -> void:
 	##   ⇒ 往函数之间插代码前, 先确认插入点【不在某个函数体内】(CLAUDE.md §3.7 同族)。
 	UIFrame.attach(self)
 
-	## ★★登录墙(2026-09-24 用户「直接改为必须绑定账号吧」): 页面建完再盖上去。
-	##   放 `_ready` 末尾而不是开头 —— 开头盖的话底下的控件还没建,
-	##   玩家会看到墙先出现、页面在后面一块块长出来。
-	_maybe_login_wall()
+	## ★★绑定屏: 页面建完再盖上去。放 `_ready` 末尾而不是开头 ——
+	##   开头盖的话底下的控件还没建, 玩家会看到它先出现、页面在后面一块块长出来。
+	## ★★★ 2026-09-29 拆墙之后它**不再是开机就立**的: 只有玩家从主菜单那句
+	##   非阻塞提示点过来(`open_bind_on_entry`)才立 —— 见 `_maybe_bind_screen`。
+	_maybe_bind_screen()
 
 
 # ─── D-3 账号行 (2026-09-21) ───────────────────────────────────────
@@ -125,7 +126,24 @@ const _P2C := preload("res://scripts/gamedata/phase2_config.gd")
 ##   —— memory `fb-gate-subject-never-constructed`: 判据没错, 被测对象不在场。
 ##
 ## ★默认 0 ⇒ **玩家路径一字不动**(与 v0.19.446 的 `clock_override_ts` 同一个模式)。
+##
+## ★★★ 2026-09-29 拆墙之后它的含义稍微平移了: 拆墙之前「后端开着 + 邮箱为空」
+##   **自动就意味着那一屏会立起来**; 拆墙之后不再自动立 ⇒ 如果这个缝只改条件,
+##   那三条靠它把绑定屏造出来的门禁(`verify_ui_consistency` 的「登录墙」屏 /
+##   `verify_click_targets_alive` / `verify_ios_ui`)就会静默地去量**普通设置页** ——
+##   被测对象不在场(memory `fb-gate-subject-never-constructed`)。
+##   ⇒ 它现在的意思是「**强制把绑定屏造出来**(并且当作后端开着、邮箱为空)」,
+##   它要量的那一屏一直是同一屏。
 var acct_override: int = 0
+
+
+## 【从主菜单过来的请求】true = 这一次进设置页是为了绑定, 直接把绑定屏打开。
+##
+## ★★为什么是 static: 主菜单那句非阻塞提示要把人送到**另一个场景**去,
+##   而绑定屏的代码在这一侧 ⇒ 跨场景传一个布尔。同 `vkb_override_vp` 那个模式。
+## ★**读完就清**(一次性): 不清的话以后每次进设置页都会弹绑定屏 ——
+##   那就是把刚拆的墙换个地方重建一遍。
+static var open_bind_on_entry: bool = false
 
 
 ## 【账号行的节点名前缀】—— `verify_account` ⑤ 靠它量「这一行到底建没建出来」。
@@ -392,9 +410,12 @@ var _email_box: Panel = null
 static var vkb_override_vp: float = -1.0
 ## 键盘让位时, 可点元素与键盘上沿(以及与屏幕上沿)之间留的余量。
 const _KB_GAP := 8.0
-## 这一次弹出来的是**关不掉的墙**还是玩家自己点开的对话框。
-## ★两者在成功之后该做的事不一样: 墙要**放人进游戏**, 自己点开的只要染绿等他关。
-var _email_wall: bool = false
+## 这一次弹出来的是**盖满全屏的绑定屏**还是设置页里那个小对话框。
+## ★两者在成功之后该做的事不一样: 绑定屏要**放人进游戏**(他本来就是从
+##   主菜单过来的), 设置页里自己点开的只要染绿等他关。
+## ★★名字从 `_email_wall` 改成这个(2026-09-29 拆墙): 名字里再带「墙」就是指错路了,
+##   它现在分的是「盖满全屏 / 嵌在设置页里」, 不是「关得掉 / 关不掉」。
+var _email_standalone: bool = false
 var _email_edit: LineEdit = null
 var _code_edit: LineEdit = null
 var _nick_edit: LineEdit = null
@@ -594,44 +615,69 @@ func _email_set_step(step: int) -> void:
 			_email_hint.text = ("验证码已发到 %s" % _to) if _to != "" else "把邮件里那串数字填进来"
 	_email_relayout()
 
-## `dismissible = false` ⇒ **登录墙**: 没有「关闭」, 关不掉也返回不了。
-## ★墙与「设置里主动绑定」共用这一个对话框 —— 另做一份就要把昵称那一行
+## ★绑定屏与「设置里主动绑定」共用这一个对话框 —— 另做一份就要把昵称那一行
 ##   和验证码状态机抄第二遍, 而抄一次永远落后一次。
-## 该不该开登录墙。★判据只有 `phase2_config.login_wall_on` 一处 ——
-##   主菜单只负责把人送过来, 不自己判(两处各判一份必然漂)。
-## 返回主菜单。★★**墙上失效** —— 判据与开墙同一处, 不另写一份。
+## ★★两个开关各管一件, **不许再用一个布尔兼职两件事**(拆墙之前就是那样):
+##   · `dismissible` —— 有没有「关闭」。**现在永远是 true**(墙拆了),
+##     它留着只为了 `WALL_BLOCKS` 翻回来时能当场复原(反向验证走得通)。
+##   · `standalone` —— 这一屏**就是绑定屏本身**(背后没别的内容):
+##     铺游戏美术 + 印版本号 + 藏返回箭头 + 绑成功后送回主菜单。
+## 返回主菜单。★★**真上墙时失效** —— 判据与开墙同一处(`login_wall_on`),
+##   而那一处 2026-09-29 起恒假 ⇒ 这一道现在从不生效, 留着作反向验证的配件。
 func _on_back() -> void:
 	if _P2C.login_wall_on(_acct_on(), _acct_mail()):
 		return
 	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 
 
-func _maybe_login_wall() -> void:
-	if not _P2C.login_wall_on(_acct_on(), _acct_mail()):
+## 进设置页时该不该把**绑定屏**盖上去。
+##
+## ★★★ 2026-09-29 拆墙: 原来这里的判据是「`login_wall_on` 为真就盖」,
+##   而主菜单会把没绑邮箱的人**强行送进来** ⇒ 那就是墙。现在三个入口:
+##     ① `open_bind_on_entry` —— 玩家自己点了主菜单那句「进度没备份」(唯一的玩家路径)
+##     ② `acct_override == 1` —— 门禁注入点(把这一屏造出来给它量, 见那个变量的注释)
+##     ③ `login_wall_on()` —— **恒假**。留着只为一件事: 翻回 `WALL_BLOCKS` 时
+##        这一条把墙原封不动地恢复(包括不给「关闭」), 门禁那条反向验证才走得通。
+## ★**关不关得掉**只看 ③: 真上墙时 `dismissible = false`, 其余情况都给「关闭」。
+func _maybe_bind_screen() -> void:
+	var blocking: bool = _P2C.login_wall_on(_acct_on(), _acct_mail())
+	var asked: bool = open_bind_on_entry or acct_override == 1
+	## ★读完就清(一次性) —— 不清就是把刚拆的墙换个地方重建一遍。
+	open_bind_on_entry = false
+	if not (blocking or asked):
 		return
 	## ★★把返回箭头**藏掉** —— 实拍拓出来的: 顶栏在更高的 CanvasLayer 上,
 	##   遮罩盖不住它 ⇒ 它看着能按、按下去却没反应。
 	##   本仓原则: **「点了没反应」比「按钮是灰的」糟得多**。
-	##   (`_on_back` 里那道判据留着作防御 —— 万一哪天须栏改成同层。)
+	##   ★拆墙之后它**仍然要藏**: 这一屏盖满全屏, 一个浮在美术上的顶栏箭头
+	##   既不好看也多余 —— 现在屏上有「关闭」, 出口不靠它。
 	if _top_bar != null and _top_bar.back_btn != null:
 		_top_bar.back_btn.visible = false
-	## ★★把墙**背后**的设置页藏掉。遮罩只有 0.65 ⇒ 底下的音量百分比「45%」
-	##   从半透里浮上来, 正好压在墙的正文「你的进度还…」上
+	## ★★把绑定屏**背后**的设置页藏掉。遮罩只有 0.65 ⇒ 底下的音量百分比「45%」
+	##   从半透里浮上来, 正好压在正文上
 	##   (`verify_ui_consistency` 的「两段文字压在一起」当场抓到)。
-	## ★这不是把判据绕过去: 墙是**关不掉的**、返回箭头都藏了 ⇒ 背后没有任何
-	##   可用的东西, 让它半透着只制造视觉噪声。
 	## ★只藏 `self` 下的 Control(顶栏在更高的 CanvasLayer 上, 上面单独藏了它的返回键);
 	##   遮罩与对话框是**这一行之后**才建的 ⇒ 不会被一起藏掉。
+	## ★★★**记下藏了哪几个**(不是关的时候 `visible = true` 一抹) ——
+	##   拆墙之后这一屏是**关得掉**的, 关掉之后得把设置页原样交还给玩家;
+	##   而设置页上本来就可能有有意隐掉的东西, 一抹就把它们也翻出来了。
+	_hidden_by_screen.clear()
 	for ch in get_children():
-		if ch is Control:
+		if ch is Control and (ch as Control).visible:
+			_hidden_by_screen.append(ch)
 			(ch as Control).visible = false
-	_open_email_dialog(_SB_ACC.FLOW_BIND, false)
+	_open_email_dialog(_SB_ACC.FLOW_BIND, not blocking, true)
 
 
-func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
+## 被 `_maybe_bind_screen` 藏起来的设置页控件 —— 关掉绑定屏时原样交还。
+var _hidden_by_screen: Array = []
+
+
+func _open_email_dialog(flow: String, dismissible: bool = true,
+		standalone: bool = false) -> void:
 	if _email_layer != null and is_instance_valid(_email_layer):
 		return
-	_email_wall = not dismissible
+	_email_standalone = standalone
 	_SB_ACC.reset_email_flow()
 	_wall_reset_state()
 	var dim := ColorRect.new()
@@ -640,25 +686,27 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dim)
 	_email_layer = dim
-	## ★★★这一屏是**每个新玩家看到的第一屏**, 而它原来**一只龟都看不见**。
-	##   探针 `tests/_probe_wall_look.gd` 实测: `_maybe_login_wall` 把 self 下的
+	## ★★★这一屏盖满全屏, 而它原来**一只龟都看不见**。
+	##   (★ 2026-09-29 拆墙之后它不再是「每个新玩家看到的第一屏」—— 第一屏是主菜单;
+	##    这一屏只在玩家点了「进度没备份」之后才出现。美术的理由不变: 它仍然盖满整屏。)
+	##   探针 `tests/_probe_wall_look.gd` 实测: `_maybe_bind_screen`(当时叫 `_maybe_login_wall`) 把 self 下的
 	##   Control **整批藏掉**, 连 `_bg()` 建的底色/平铺砖/渐变一起藏 
 	##   (探针打出来那三个节点都是 visible=false) ⇒ 玩家看到的是一块深蓝面板
 	##   压在**自动载入的 `PersistentBg` 那张平铺花砖**上 —— 全屏没有任何
 	##   属于这个游戏的东西。
 	## ★参考里 Arknights / Free Fire / Disney Mirrorverse / Hungry Shark 的账号控件
 	##   **直接浮在游戏美术上**, 没有对话框、没有纯黑遮罩。
-	## ★★只墙上铺: 玩家自己在设置里点开的那个对话框背后本来就是设置页,
+	## ★★只盖满全屏那一屏铺: 玩家自己在设置里点开的那个对话框背后本来就是设置页,
 	##   再铺一层美术只是把他正在看的东西盖掉。
-	if not dismissible:
+	if standalone:
 		_email_logo = _WALL_ART.build(dim)
 
-	var box := _wall_make_box(dim, dismissible)
-	_wall_title(box, flow, dismissible)
-	_wall_explain(box, flow, dismissible)
+	var box := _wall_make_box(dim, standalone)
+	_wall_title(box, flow, standalone)
+	_wall_explain(box, flow, standalone)
 	_wall_build_step1(box, flow)
 	_wall_build_step2(box, flow)
-	_wall_build_footer(box, dim, dismissible)
+	_wall_build_footer(box, dim, dismissible, standalone)
 
 	## ★★所有行控件的 y / 宽 / 显隐都在 `_email_set_step` 里一处算出来。
 	##   这一行必须在**全部 add_child 之后** —— `ctrl.size = X` 写在 add_child 前不生效。
@@ -697,7 +745,7 @@ func _wall_reset_state() -> void:
 
 
 ## 建框: 金属九宫格 + 从网格算出来的高。★返回那块框, 并已经入树·已经摆好位。
-func _wall_make_box(dim: Control, dismissible: bool) -> Panel:
+func _wall_make_box(dim: Control, standalone: bool) -> Panel:
 	var box := Panel.new()
 	var sb := StyleBoxFlat.new()
 	## ★★2026-09-27 换**金属九宫格框**(和背包/图鉴/战绩/排行榜同一张 panel-frame)。
@@ -721,7 +769,7 @@ func _wall_make_box(dim: Control, dismissible: bool) -> Panel:
 	##   因为版本号只画在**主菜单右下角**, 而这堤墙**挡在主菜单之前**。
 	##   ⇒ 最需要报版本的人, 恰恰是唯一看不到版本的人。
 	## ★读 ProjectSettings, **不写死**(门禁扫硬编码字面量)。
-	if not dismissible:
+	if standalone:
 		_bh += 30.0
 	box.size = Vector2(520, _bh)
 	## ★★位置**不在这里写死** —— 交给 `_email_relayout()`(居中于真实视口 + 键盘让位)。
@@ -735,11 +783,11 @@ func _wall_make_box(dim: Control, dismissible: bool) -> Panel:
 
 
 ## 标题。
-func _wall_title(box: Control, flow: String, dismissible: bool) -> void:
+func _wall_title(box: Control, flow: String, standalone: bool) -> void:
 	var ttl := Label.new()
 	## ★标题**两步共用一份**, 不随步骤换字 —— 墙上那句话是
 	##   `verify_ui_consistency` 的真分母(“墙那句话真的在屏幕上”), 换字就量不到了。
-	ttl.text = (_P2C.login_wall_head() if not dismissible
+	ttl.text = (_P2C.login_wall_head() if standalone
 		else ("绑定邮箱" if flow == _SB_ACC.FLOW_BIND else "用邮箱取回账号"))
 	ttl.add_theme_font_size_override("font_size", 24)
 	ttl.add_theme_color_override("font_color", Color("#cfe3ff"))
@@ -749,7 +797,7 @@ func _wall_title(box: Control, flow: String, dismissible: bool) -> void:
 
 
 ## 说明文字: 按流程 / 是不是墙 选一段, 再按步切成两份。
-func _wall_explain(box: Control, flow: String, dismissible: bool) -> void:
+func _wall_explain(box: Control, flow: String, standalone: bool) -> void:
 	## ★★★说明文字**一个字都不删**(用户 2026-09-24 点名:「没绑邮箱换设备就是丢档,
 	##   这一点要在 UI 上说清楚」)。第一步照旧把**整段**印出来;
 	##   第二步再把**最后那一句**留在屏幕上 —— 墙上那句恰好是
@@ -760,7 +808,7 @@ func _wall_explain(box: Control, flow: String, dismissible: bool) -> void:
 	var body: String = ""
 	if flow == _SB_ACC.FLOW_BIND:
 		## ★墙上第一句先让**老玩家别慌**: 绑定是升级同一个号, 进度一个字节都不会变。
-		body = (_P2C.login_wall_body() if not dismissible
+		body = (_P2C.login_wall_body() if standalone
 			else ("绑定之后，换手机能用这个邮箱把【账号】取回来（排名、战绩、你的阵容）。\n"
 				+ "⚠ 龟和装备是存在这台手机上的，换设备仍然会丢。"))
 	else:
@@ -879,17 +927,19 @@ func _wall_build_step2(box: Control, flow: String) -> void:
 
 ## 框底那几样: 状态行 + (墙上的)版本号 / (对话框的)关闭。
 ## ★版本号的 y 从 **框自己的高**算, 不再传 `_bh` 进来 —— 传一份数就是抄一份。
-func _wall_build_footer(box: Control, dim: Control, dismissible: bool) -> void:
+func _wall_build_footer(box: Control, dim: Control, dismissible: bool,
+		standalone: bool) -> void:
 	_email_status = Label.new()
 	_email_status.add_theme_font_size_override("font_size", 13)
 	_email_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_email_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_email_status)
 
-	## ★★登录墙**不给关闭** —— 关得掉的墙不是墙。
-	##   (这一条被 `verify_login_wall` 守着: 墙上不许有可点的关闭。)
-	## ★墙上的版本号: 只在墙上印, 普通弹窗不印(那时主菜单就在背后)。
-	if not dismissible:
+	## ★★★盖满全屏那一屏要**印版本号**。理由与 2026-09-28 那次一样, 不是“顺便印”:
+	##   这一屏盖满全屏 ⇒ 主菜单右下角那个版本号被盖掉了, 而玩家就是在这一屏
+	##   碰到邮箱问题、在这一屏报 bug。设置页里那个小对话框不印(背后就是设置页)。
+	## ★读 ProjectSettings, **不写死**(门禁扫硬编码字面量)。
+	if standalone:
 		_email_ver = Label.new()
 		_email_ver.text = "版本 " + str(ProjectSettings.get_setting("application/config/version", "?"))
 		_email_ver.name = ACCT_ROW_PREFIX + "WallVer"
@@ -902,13 +952,45 @@ func _wall_build_footer(box: Control, dim: Control, dismissible: bool) -> void:
 		##   ★★**入树之后**再设尺寸(本文件 `why.size` 那段记的同一坑)。
 		_email_ver.position = Vector2(_W_PAD, box.size.y - 44.0)
 		_email_ver.size = Vector2(_W_CW, 24)
-	else:
-		## ★★「关闭」与主按钮**并排在同一行**, 不占新的一行 ——
-		##   占了就是四行(4×81+3×12 = 360), 中文键盘那一档(上限 330)当场破。
-		##   它也仍然是 168×81 ⇒ 短边 81px = 44pt, 过线。
+	## ★★「关闭」与主按钮**并排在同一行**, 不占新的一行 ——
+	##   占了就是四行(4×81+3×21 = 387), 中文键盘那一档(上限 330)当场破。
+	##   它也仍然是 159×81 ⇒ 短边 81px = 44pt, 过线。
+	## ★★★ 2026-09-29 拆墙之后**盖满全屏那一屏也有它**。那正是「拦不住人」
+	##   在屏幕上的样子: 这一屏给了一个出口, 而那个出口通回游戏。
+	if dismissible:
 		_email_close_btn = _wall_btn(box, "关闭", func():
-			_SB_ACC.reset_email_flow()
-			dim.queue_free(); _email_layer = null; _email_box = null)
+			_close_email_dialog(dim))
+
+
+## 把对话框/绑定屏关掉。
+##
+## ★★★抽成一个函数而不是写在闭包里: 盖满全屏那一屏关掉时要做三件事,
+##   写在闭包里的话以后谁动那一屏都要把这三件抄一遍:
+##     ① 把被藏起来的设置页原样交还(只翻回自己藏的那几个, 不是 `visible = true` 一抹)
+##     ② 把顶栏返回箭头还回来
+##     ③ 如果这一屏就是当前场景(= 玩家从主菜单那句提示点过来的), **送他回主菜单**
+##       —— 他点「关闭」要的是回去玩, 不是落在一页设置里。
+## ★③ 那道 `current_scene == self` 的守卫不是可选的: 门禁/实拍常把设置页当子节点
+##   挂起来量东西, 在那种情况下 `change_scene_to_file` 会把**宿主的**场景树换掉
+##   (本仓踩过这个; 主菜单那边的跳转也带着同一道守卫)。
+func _close_email_dialog(dim: Control) -> void:
+	_SB_ACC.reset_email_flow()
+	if dim != null and is_instance_valid(dim):
+		dim.queue_free()
+	_email_layer = null
+	_email_box = null
+	var was_standalone: bool = _email_standalone
+	_email_standalone = false
+	for ch in _hidden_by_screen:
+		if ch != null and is_instance_valid(ch) and ch is Control:
+			(ch as Control).visible = true
+	_hidden_by_screen.clear()
+	if _top_bar != null and _top_bar.back_btn != null:
+		_top_bar.back_btn.visible = true
+	if was_standalone and get_tree() != null and get_tree().current_scene == self:
+		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+
+
 func _email_relayout() -> void:
 	if _email_box == null or not is_instance_valid(_email_box):
 		return
@@ -1013,9 +1095,15 @@ func _process(_dt: float) -> void:
 ## ★抽成**纯函数**是为了让门禁量得到这个决策 —— 直接写在 `_email_poll` 里的话,
 ##   门禁一调它就 `change_scene_to_file`, **当场把自己拆掉**(本仓 `verify_mainmenu_layout`
 ##   2026-09-26 正是这样一周有两天整份不算数)。现在门禁量决策、探针量端到端。
-## ★判据不是「我自认是墙」而是 `login_wall_on` **已经变假** —— 与开墙同一处判据。
+## ★★★判据不是「我自认绑完了」而是 `bind_needed` **已经变假**(= 邮箱真的落盘了),
+##   与主菜单那句提示、与开墙全是同一条条件 —— 两处各判一份必然漂。
+## ★★为何不再读 `login_wall_on`(拆墙之前读的就是它): 那一处现在**恒假**
+##   ⇒ `not login_wall_on(...)` 恒真 ⇒ 这个函数会在**还没绑**的时候就把人送走,
+##   而门禁 ④ 那条分母「这一刻还不能放人走」当场红。这就是 memory
+##   `fb-changing-a-param-meaning-makes-gates-tautological` 那一类: 名字没变、
+##   类型没变、编译器不拦, 只有跑起来才看得见。
 func _post_bind_dest() -> String:
-	if _email_wall and not _P2C.login_wall_on(_acct_on(), _acct_mail()):
+	if _email_standalone and not _P2C.bind_needed(_acct_on(), _acct_mail()):
 		return "res://scenes/MainMenu.tscn"
 	return ""
 
@@ -1043,7 +1131,8 @@ func _email_poll() -> void:
 			##      加了拦截就要验「被拦住的人能不能完成解锁动作」。
 			##
 			## ★判据不是「我自认是墙」, 而是 `login_wall_on` **已经变假** —— 与开墙
-			##   同一处判据(两处各判一份必然漂)。`_email_wall` 只用来分「墙 / 自己点开的」。
+			##   同一处判据(两处各判一份必然漂)。`_email_standalone` 只用来分
+			##   「盖满全屏的绑定屏 / 设置页里自己点开的」。
 			## ★去主菜单而不是只关遮罩: 他在墙上绑定, 想要的就是**进游戏**;
 			##   而设置页本体在墙立起来时就没什么可看的了。
 			var _dest: String = _post_bind_dest()

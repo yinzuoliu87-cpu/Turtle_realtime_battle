@@ -129,7 +129,10 @@ func _sell_value(item: Dictionary) -> int:
 	var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(item.get("id", "")), {})
 	var cost = maxi(1, int(edef.get("cost", 1)))
 	var star = maxi(1, int(item.get("star", 1)))
-	return int(floor(cost * star * 0.8))
+	## ★★卖价单一事实源 = `Phase2Config.sell_value()`(2026-09-29)。原来这里手写
+	##   `int(floor(cost * star * 0.8))` —— 1费1★ 算出 **0**, 玩家点「卖出 +0」
+	##   东西没了、币一分不涨(96 件里 23 件可卖件中招)。地板价与系数的理由写在那边。
+	return int(host.P2.sell_value(int(cost), int(star)))
 
 func _sell_selected() -> void:
 	if host._sel_bench < 0 or host._sel_bench >= GameState.persistent_bench.size():

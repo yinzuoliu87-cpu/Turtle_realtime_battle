@@ -87,25 +87,28 @@ func _ready() -> void:
 
 	# ── 035 黄铜齿轮: 每 6 秒 +[1,2,3][si] 深海币 ────────────────────────────
 	var u35: Dictionary = _stage(s, "p2eq_035", 3)
-	var coin0: int = int(GameState.meta_deepsea_coins)
+	## ★★ 2026-09-29: 齿轮产币不再直接写 meta, 改进本场账本 `gear_minted()`,
+	##   结算时随 `_last_reward` 进钱包(与奇械铸币同一条路)。绕过去会让结算屏少算。
+	tk.reset_match()
+	var coin0: int = int(tk.gear_minted())
 	tk._tick_gear(u35, 5.9)
 	_ok("★035 未到 6 秒不该产币",
-		int(GameState.meta_deepsea_coins) == coin0,
-		"币 %d → %d" % [coin0, int(GameState.meta_deepsea_coins)])
+		int(tk.gear_minted()) == coin0,
+		"币 %d → %d" % [coin0, int(tk.gear_minted())])
 	tk._tick_gear(u35, 0.2)
 	_ok("★★035 到点 ★3 产 3 枚深海币(从 [1,2,3][si] 推导)",
-		int(GameState.meta_deepsea_coins) == coin0 + 3,
-		"币 %d → %d(应 +3)" % [coin0, int(GameState.meta_deepsea_coins)])
+		int(tk.gear_minted()) == coin0 + 3,
+		"币 %d → %d(应 +3)" % [coin0, int(tk.gear_minted())])
 	## ★反面: 右队(敌方)携带者不该产币 —— 深海币是玩家侧 meta 货币。
 	var c2: Vector2 = s.ARENA.position + s.ARENA.size * 0.5
 	var ur: Dictionary = s._spawn._make_unit("basic", "right", c2 + Vector2(200, 0))
 	ur["equips"] = [{"id": "p2eq_035", "star": 3}]
 	ur["eq_state"] = {"p2eq_035": {}}
-	var coin1: int = int(GameState.meta_deepsea_coins)
+	var coin1: int = int(tk.gear_minted())
 	tk._tick_gear(ur, 60.0)
 	_ok("★★反面: 敌方携带者【一枚都不产】(深海币只给玩家侧)",
-		int(GameState.meta_deepsea_coins) == coin1,
-		"币 %d → %d" % [coin1, int(GameState.meta_deepsea_coins)])
+		int(tk.gear_minted()) == coin1,
+		"币 %d → %d" % [coin1, int(tk.gear_minted())])
 	GameState.meta_deepsea_coins = coin0            # ★还原: 测试不许改玩家数据
 
 	# ── 025 雷鸣贝壳: 每 4 秒降雷 ──────────────────────────────────────────

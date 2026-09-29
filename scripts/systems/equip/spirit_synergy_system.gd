@@ -415,7 +415,13 @@ func on_death(dead) -> void:
 		return
 		## ★2026-08-21 补 spr_id: 此前没传 ⇒ 落到 battle_spawn 的兜底 = **队色软发光球**,
 	##   用户 2026-08-20:「亡魂也需要建模和动作或者动画立绘」。
-	var w = battle._spawn._spawn_summon(dead, "wraith", hp, atk, {"col_size": 20.0, "spr_id": "wraith"})
+	## ★★2026-09-29 补 `label`: 此前没传 ⇒ `_spawn_summon` 里
+	##   `"name": str(behavior.get("label", kind))` 落到 **kind 本身** ⇒ 玩家在结算战报
+	##   的「我方/敌方」表里看到一行写着英文 `wraith`。全仓 16 个 `_spawn_summon` 调用点里
+	##   **只有这一个**漏了(其余都带中文 label, 已逐个查过)。
+	##   门禁: tests/verify_eq_spirit_batch.gd 的 NO_RAW_ID 段。
+	var w = battle._spawn._spawn_summon(dead, "wraith", hp, atk,
+		{"label": "亡魂", "col_size": 20.0, "spr_id": "wraith"})
 	if w is Dictionary:
 		w["_is_wraith"] = true
 		w["_wraith_loops"] = loops_left

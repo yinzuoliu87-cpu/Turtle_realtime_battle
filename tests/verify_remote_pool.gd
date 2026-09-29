@@ -46,7 +46,9 @@ func _good() -> Dictionary:
 		"leaders": [pid],
 		"pet_levels": {pid: 5},
 		"equipped": {pid: [{"id": eid, "star": 1}]},
-		"minions": {}, "loadouts": {}, "lane_assign": {},
+		## ★ 2026-09-29: 补合法分路 —— 空分路现在会被 `ghost_lanes_broken()` 当坏快照拦下
+		##   (真人快照三个月都是空的 ⇒ 对手上场 6 小将)。这份 fixture 验的是**远端池**不是分路。
+		"minions": {}, "loadouts": {}, "lane_assign": {"top": ["angel"], "bottom": []},
 		"season_total_battles": 12, "season_eggs_killed": 0,
 		"chest_treasures_won": [], "chest_treasure_value": 0.0,
 	}

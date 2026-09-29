@@ -151,6 +151,65 @@ static func is_sparring(g) -> bool:
 	return str((g as Dictionary).get("ghost_id", "")).begins_with(SEED_ID_PREFIX)
 
 
+## 这份快照的**分路是坏的**吗 —— 「不许当对手」的判据。
+##
+## ★★★2026-09-29 加。由来: `build_ghost_snapshot()` 三个月来把 `lane_assign` 写成空
+##   (根因见那边的头注), 而**修好上传之后, 池子里那些坏快照仍然躺在里面** ——
+##   它们在 `remote_pool.snapshot_valid()` 眼里**完全合法**: 那道入池校验查
+##   schema / ghost_id / 场次 / leaders / pet_levels / equipped, **没有一条查分路**。
+##   ⇒ 只修生产侧, 玩家下一局照样从池子里捞出坏的、照样打「6 个小将」。
+##
+## ★★★判据**只认一种形状**: `lane_assign` **在**, 而里面一个统领都没有。
+##   拿真数据分了三类才这么定的(2026-09-29 实测):
+##     A 有 `lane_assign` 且有统领 —— 真池 396 / 种子文件 396      ⇒ 正常
+##     B 有 `lane_assign` 但**是空的** —— 真池 **30**(全是真人上传)  ⇒ **就是今天这个 bug**
+##     C **压根没有** `lane_assign` —— 真池 **0** / 种子文件 **0**
+##   ★C 故意**不判为坏**, 两个理由:
+##     ① 生产链一份都不产 C(上面那两个 0 是分母); 只有门禁的手造 fixture 是 C
+##        (`verify_matchmaking_phase._ghost` / `verify_exact_match` / `verify_self_match`
+##         / `verify_pool_truth` 都只带身份与场次这一维)。
+##     ② C 在消费侧**走不到**出 bug 的那条路: `_dual_foe_lane()` 的
+##        `la.get(lane) is Array` 对 `{}` 就是 false ⇒ 它整条掉到 bot 兜底,
+##        **不会**拼出 6 个小将。⇒ C 是另一件(更老、更轻)的事, 不在这条账里。
+##        真要求「快照必须声明分路」, 那条规矩属于 `snapshot_valid()`(入池校验), 不属于这里。
+##
+## ★**不给任何来源开例外**(bot / 陪练 / 远端都过同一条): 它们本来就自己算分路、天然带统领,
+##   给来源开例外就等于让"要不要检查"跟着来源走 —— 那正是 `is_sparring` 判据
+##   选错维度(`is_bot`)那次的形状。
+## ★装备为什么**不在**这条判据里: 0 件装备是**合法状态**(人生第一把就是 0 件,
+##   `make_bot(0)` 的预算也是 0) ⇒ 拿"装备空"当非法会把新手的快照全打成 bot。
+##   装备那一半的修法只有一条: 生产侧别再读那个空字段(已修)。
+## ★★以下这段 2026-09-29 从 `RealtimeBattle3DScene` 的调用处搬来 ——
+##   注释该跟它解释的那个函数住, 而不是堆在调用方(上帝文件行数也是预算)。
+## ★★★2026-09-29 这道闸原来判的是「**这一路**的统领和小将是不是都空」——
+##   而 `build_ghost_snapshot` 三个月来产的每一份真人快照 `lane_assign` **整个都是空的**
+##   (根因见 `backend.gd:build_ghost_snapshot` 头注)。空数组也是 `Array`,
+##   `minions` 那一路又非空 ⇒ **照样进来**, `specs` 里 0 个统领,
+##   下面 `_foe_normalize_lane` 按「3 - 统领数」把这一路补到 **3 个小将**
+##   ⇒ 玩家看到的就是「对手 6 个小将、一个统领都没有」。
+## ⇒ 判据换成**整份快照排不排得出一支队**, 走匹配那一侧的**同一个函数**
+##   `Backend.ghost_lanes_broken()` —— 分路坏掉就整条落到下面的 bot 兜底。
+## ★为什么**不按路**判: 3 统领可以全排在一路 ⇒ 另一路 0 统领 + 3 小将是**合法阵型**
+##   (用户 2026-07-18「3统领→0小将 / 空统领→3小将 皆合规」), 那一路该由
+##   **这份快照**服务, 而不是掉到下面写死的 bot 池 —— 原来就会那样:
+##   同一个对手上路是 bot 的龟、下路是鬼影的小将, 拼出来的对手根本不存在。
+## ⚠ 这里是**第二道**。第一道在 `Backend.pool_find_battles`(坏快照压根选不上),
+##   留两道是因为 `dual_ghost` 还能从别处被写(调试台/教程/手工录入)。
+static func ghost_lanes_broken(g) -> bool:
+	if not (g is Dictionary):
+		return false
+	var la = (g as Dictionary).get("lane_assign", null)
+	if not (la is Dictionary):
+		return false                  # 形状 C: 没表态 ⇒ 不是这条账管的事(见头注)
+	for lk in ["top", "bottom"]:
+		var arr = (la as Dictionary).get(lk, null)
+		if arr is Array:
+			for pid in (arr as Array):
+				if str(pid) != "":
+					return false      # 形状 A: 至少一路有统领
+	return true                       # 形状 B: 表了态, 而一个统领都没有
+
+
 ## 快照的【来源】—— 判"是不是我自己那份"只能靠它, 不能靠名字。见 _is_self_ghost 的长注释。
 const ORIGIN_KEY := "origin"
 const ORIGIN_LOCAL := "local"      # 本机打完一局自己传的
@@ -224,6 +283,15 @@ static func pool_find_battles(pool: Dictionary, battles: int, exclude_ids: Array
 		if not (g is Dictionary):
 			continue
 		if _is_self_ghost(g):
+			continue
+		## ★★★分路坏掉的快照**不是对手**(2026-09-29, 判据与三类形状的分母见
+		##   `ghost_lanes_broken` 的头注)。这不是放宽/收紧匹配尺子 ——
+		##   D5 的「总场次完全相同」就在下面那一行, 一个字没动; 这是**合法性**筛,
+		##   与同循环里的 `_is_self_ghost` / `exclude_ids` 同一档。
+		##   筛光了本函数返回 null ⇒ 调用方落到 bot(D5 认可的唯一回落)。
+		## ★放在循环里 = 坏快照压在好快照上面时, **自动接着往下找**,
+		##   而不是"抽到一份坏的就整场掉机器人"(那会把真人对手一起扔掉)。
+		if ghost_lanes_broken(g):
 			continue
 		if int((g as Dictionary).get("season_total_battles", -1)) != battles:
 			continue                  # ★以快照自己的账为准, 不信桶的键名
@@ -327,10 +395,104 @@ static func _shuffle(arr: Array, rng: RandomNumberGenerator) -> void:
 ##   · 横扫 = 2-0 拿下的场数(再同, 比谁赢得更利落)
 ## ★旧快照没有这三个字段 ⇒ 一律 `get(..., 0)` 兜底, **不作废旧池**(用户拍板不重开档)。
 ## ★`self_*` 参数从"只传蛋数"扩成三个键。调用点 `LeaderboardScene.gd:58` 同步。
+## 「这份快照是**谁**产的」—— `ghost_id` 里那一维【人】。找不到返回 ""。
+##
+## ★★★判据不是新发明的: `player_ghost_id()` 拼的就是
+##     `self_prefix(赛季)` + `<赛季>` + `_` + `"-".join(排序后的三龟)` [+ `_b<场次>`]
+##   而 `self_prefix()` = `g_<install_uid>_`。⇒ 去掉「三龟」以及它后面的一切,
+##   剩下的 `g_<uid>_<赛季>_` **正好就是 `self_season_prefix(赛季)`** ——
+##   也就是 `_is_self_ghost()` 第一判据用的那同一个串(它 `begins_with` 的就是它)。
+##   ⇒ 「谁」这一维在本文件里**只有一个定义**, 这里是把它**读出来**而不是另立一套。
+##   门禁把这条等式钉住了(`verify_ghost_upload` ⑥: 自己那份快照的 owner tag
+##   必须与 `self_season_prefix(赛季)` 逐字相同)。
+##
+## ★边界怎么切: 用**快照自己的 `leaders`** 排序后拼出那一段, 再在 id 里找它 ——
+##   不靠数下划线(uid 可能为空、龟 id 本身带下划线如 `two_head`, 数位置一定会错)。
+## ★换龟也算同一个人: 三龟那一段被整段切掉 ⇒ 同赛季换过阵容仍是同一维
+##   (这正是 `_is_self_ghost` 头注里「自己同赛季换过龟之后的旧阵容」要挡住的那件事)。
+static func ghost_owner_tag(g) -> String:
+	if not (g is Dictionary):
+		return ""
+	var d: Dictionary = g
+	var gid := str(d.get("ghost_id", ""))
+	if gid == "":
+		return ""
+	var ldr = d.get("leaders", null)
+	if not (ldr is Array) or (ldr as Array).is_empty():
+		return ""
+	var arr: Array = []
+	for x in (ldr as Array):
+		arr.append(str(x))
+	arr.sort()
+	var at := gid.find("_" + "-".join(PackedStringArray(arr)))
+	return gid.substr(0, at + 1) if at > 0 else ""
+
+
+## 「榜上这一行是**谁**」—— 排行榜去重的那一维(DEDUP_BY_PERSON)。
+##
+## ★★★2026-09-29 加。由来: `leaderboard()` 的去重**只筛了自己**(`_is_self_ghost`),
+##   别人的历史快照一条都没合 —— 而 `ghost_id` 带**场次**这一维(A6),
+##   `pool_add` 又只按精确 id 去重 ⇒ **同一个人每打一场就在榜上多一行**。
+##   后果两条, 都是真机上看得见的:
+##     · 面板只画 11 行 ⇒ 「前 11 名」里其实只有 6 个真人, 另外 5 行是同几个人的旧场次
+##     · `LeaderboardScene.gd:200` 的「本周共 %d 人上榜」拿的是 `rows.size()`
+##       ⇒ 它数的是**快照条数**, 不是人数
+##   ★所以这一层去重之后, 那句「N 人上榜」**不用改屏**就变成真的了
+##     (它传的 limit 是 `1 << 30` = 全量, `rows.size()` 就是去重后的人数)。
+##
+## ★★★四级判据, 强的在前。**每一级都是量出来才排上的**:
+##
+##   ① `ghost_owner_tag()` = `g_<uid>_<赛季>_` —— 真正的「谁」。
+##      撞不了(uid 是 6 字节随机的 12 位十六进制), 改名不裂(不含名字), 换龟不裂(三龟被切掉)。
+##
+##   ② `profile.id`, **且它不等于 `ghost_id`**。这一条挡的是队列模拟那一族
+##      (`_cohort._snapshot_of` 的 `profile.id` = `COH0-11` = 一个机器人一个号,
+##       而它的 `ghost_id` 是 `coh_0_b3` 每场一个)。
+##      ⚠ **`profile.id` 不能无条件当身份用**: 真人快照的 `profile.id` 就是
+##        `ghost_id` **本身**(`upload_ghost` 的调用点传的是同一个 `gid`) ——
+##        2026-09-29 拿真机池数过: 30 条真人快照 `profile.id` **22 个互不相同**,
+##        与 `ghost_id` 的 22 个**一一对应** ⇒ 拿它当身份就是**一条都不合**,
+##        而覆盖率是 100%(30/30 有这个字段) ⇒ **只看"带不带"会以为它可用**。
+##        这正是 `is_sparring` 头注记的那个形状:「只量了带不带, 没量它的值」。
+##
+##   ③ `profile.name`(昵称) —— 只在上面两条都取不到时才用(缺 `leaders` 的畸形快照)。
+##      ⚠ 它**会撞**: 随机昵称池 56×6=336, 十来个人就有一成撞名; 改名还会把一个人裂成两行。
+##        所以它排第三, 不排第一。
+##
+##   ④ `ghost_id` —— 一条一行, 与改之前逐字相同(不会把不同的人误合)。
+static func person_key(g) -> String:
+	if not (g is Dictionary):
+		return ""
+	var d: Dictionary = g
+	var owner := ghost_owner_tag(d)
+	if owner != "":
+		return "o:" + owner
+	var gid := str(d.get("ghost_id", ""))
+	var pr = d.get("profile", null)
+	if pr is Dictionary:
+		var pid := str((pr as Dictionary).get("id", "")).strip_edges()
+		if pid != "" and pid != gid:
+			return "a:" + pid
+		var nm := str((pr as Dictionary).get("name", "")).strip_edges()
+		if nm != "" and nm != "?":
+			return "n:" + nm
+	return "g:" + gid
+
+
 static func leaderboard(pool: Dictionary, self_name: String, self_wins: int, self_hearts: int,
 		self_sweeps: int, limit: int) -> Array:
 	var rows: Array = [{"name": self_name, "wins": self_wins, "hearts": self_hearts,
 		"sweeps": self_sweeps, "is_self": true}]
+	## ★字典序: 前一键相等才看后一键。写成「先比胜场, 相等再比余命, 再相等才比横扫」。
+	## ★★提成变量是为了**只有一份**: 排序用它, 下面「同一个人留哪一行」也用它。
+	var cmp := func(a, c) -> bool:
+		if int(a["wins"]) != int(c["wins"]):
+			return int(a["wins"]) > int(c["wins"])
+		if int(a["hearts"]) != int(c["hearts"]):
+			return int(a["hearts"]) > int(c["hearts"])
+		return int(a["sweeps"]) > int(c["sweeps"])
+	var by_person: Dictionary = {}     ## person_key → 这个人目前最好的那一行
+	var seen_order: Array = []         ## person_key 的首次出现序(让同分时的次序确定)
 	var buckets: Dictionary = pool.get(POOL_KEY, {})
 	for b in buckets.keys():
 		for g in buckets[b]:
@@ -366,19 +528,26 @@ static func leaderboard(pool: Dictionary, self_name: String, self_wins: int, sel
 			##   `is_sparring()` —— 匹配记账那一侧要用**同一条**判据(见它的头注)。
 			if is_sparring(gd):
 				continue
-			rows.append({
+			## ★★★③ **同一个人只占一行**(2026-09-29, 判据见 `person_key` 头注)。
+			##   留哪一行 = 这个人**最好**的那一行, 而「最好」用的是**下面排序那同一个比较器**
+			##   `cmp`(所以下面才把它先提出来成一个变量) —— 各写一份必然漂
+			##   (memory `fb-hand-rolled-copies-drift`)。
+			var row := {
 				"name": str(gd.get("profile", {}).get("name", "?")),
 				"wins": int(gd.get("season_wins", 0)),
 				"hearts": int(gd.get("hearts", 0)),
 				"sweeps": int(gd.get("season_sweeps", 0)),
-				"is_self": false})
-	## ★字典序: 前一键相等才看后一键。写成「先比胜场, 相等再比余命, 再相等才比横扫」。
-	rows.sort_custom(func(a, c):
-		if int(a["wins"]) != int(c["wins"]):
-			return int(a["wins"]) > int(c["wins"])
-		if int(a["hearts"]) != int(c["hearts"]):
-			return int(a["hearts"]) > int(c["hearts"])
-		return int(a["sweeps"]) > int(c["sweeps"]))
+				"is_self": false}
+			var pk := person_key(gd)
+			if by_person.has(pk):
+				if cmp.call(row, by_person[pk]):
+					by_person[pk] = row
+			else:
+				by_person[pk] = row
+				seen_order.append(pk)      # 首次出现序 = 桶序(上传倒序) ⇒ 全平时次序稳定
+	for pk2 in seen_order:
+		rows.append(by_person[pk2])
+	rows.sort_custom(cmp)
 	return rows.slice(0, limit) if rows.size() > limit else rows
 
 
@@ -673,6 +842,9 @@ static func find_opponent(battles: int, exclude_ids: Array, rng: RandomNumberGen
 		SB.pull_opponents_async(int(GameState.week_anchor_ts), battles,
 			str(GameState.account_id))
 	## ① 场次完全相同
+	## ★★选靶器内部另有一道**合法性**筛(`ghost_lanes_broken`, 2026-09-29):
+	##   分路坏掉的快照不算对手, 筛光了这里就拿到 null ⇒ 落到 ② bot。
+	##   匹配的**尺子**一个字没动(D5「总场次完全相同」), 回落也还是只有 bot。
 	var ge = pool_find_battles(pool, battles, exclude_ids, rng)
 	if ge != null:
 		## ★记账要分得开【真人 / 陪练】—— 不分的话这个数 100% 虚高(见 match_src_counts 头注)。
@@ -709,6 +881,7 @@ static func find_gauntlet_opponent(gw: int, gl: int, exclude_ids: Array,
 			SB2.pull_gauntlet_async(int(GameState.week_anchor_ts), gw, gl,
 				str(GameState.account_id))
 	## ① 同标签的新鲜快照。**一格都不降**。
+	## ★`gauntlet_pool_find` 内部与积分赛那条**调同一个**合法性筛 `ghost_lanes_broken`。
 	var ge = gauntlet_pool_find(pool, gw, gl, exclude_ids, rng)
 	if ge != null:
 		_tally("gauntlet_label")
@@ -983,6 +1156,11 @@ static func gauntlet_pool_find(pool: Dictionary, gw: int, gl: int,
 				continue                  # 自己(含同赛季换过龟的旧阵容)
 			if exclude_ids.has(gid):
 				continue
+			## ★分路坏掉的不是对手 —— 与积分赛那条**调同一个函数**
+			##   (`ghost_lanes_broken`, 2026-09-29)。两处各写一遍就等于下次改判据时漏一处
+			##   (`is_sparring` 的头注记着同一件事做了一半的代价)。
+			if ghost_lanes_broken(g):
+				continue
 			if int(g.get("gl_w", -1)) != gw or int(g.get("gl_l", -1)) != gl:
 				continue                  # ★标签必须完全相同
 			var ts: int = int(g.get("gl_ts", 0))
@@ -1107,10 +1285,85 @@ static func upload_ghost(snapshot: Dictionary) -> void:
 			str(ProjectSettings.get_setting("application/config/version", "")))
 		SB.upload_ghost_async(row)      # row 为空(缺身份/缺场次) 时它自己 return
 
-## 从玩家刚打的这局 (left 侧) 序列化成 ghost 快照 (上传自己用). ghost_id/profile 调用方给.
+## 从玩家刚打的这局序列化成 ghost 快照 (上传自己用). ghost_id/profile 调用方给.
+##
+## ★★★2026-09-29 分路与装备的**来源换了** —— 原来读的那两个字段没有任何人往里写:
+##
+##   · `GameState.lane_assign` —— 全仓只有三处: `GameState.gd:132` 声明成空、
+##     `:194` `reset_dual_lane()` 重置成空、**这里读它**。`grep` 全仓零个写入点。
+##     真数据在 `dual_lineup`(玩家在背包里排的阵, `_save_dict` 里存的也是它)。
+##   · `GameState.equipped_p2` —— 是**局内临时**的: `reset_dual_lane()` 每局清空、
+##     **不在 `_save_dict()` 里**。持久 build 在 `persistent_equipped`,
+##     战斗自己读的就是它(`RealtimeBattle3DScene:8105` / `dual_lane_flow._dl_spec_equips`)。
+##     `tests/_cohort.gd:510` 三个月前就把这件事写在注释里了(「产出的 equipped 恒为空」),
+##     所以它宁可自己重写一份快照生成 —— 而**生产侧没跟着改**。
+##
+## ⇒ 后果(2026-09-29 拿真机池 `user://ghost_pool.json` 量的):
+##   非种子(真人上传)快照 **30/30** 两个字段全空; 396 条内置种子**一条都不空**
+##   (种子走 `make_bot` / `_cohort._snapshot_of`, 它们**自己从阵容算分路**, 不读这两个字段)
+##   ⇒ 坏的只有"上传"这一步。
+##   消费侧 `RealtimeBattle3DScene._dual_foe_lane()` 拿到「0 统领 + N 小将」照样进分支,
+##   `_foe_normalize_lane()` 把每路补到 3 个小将 ⇒ **对手上场 6 个小将、一个统领都没有、全裸**。
+##   (真机实测的两种形状: `minions` 1/2 ⇒ 两路各补到 3; `minions` 0/3 ⇒ 上路连小将都没有,
+##    那一路整条掉到写死的 bot 池。)
+##
+## ★形状不是我新定的 —— 照 `_cohort.gd:_snapshot_of()` 与 `make_bot()` 抄同一套,
+##   而那正是 `_dual_foe_lane()` 期望的那套:
+##     `lane_assign` = {"top": [pet_id…], "bottom": […]}          纯 id 串
+##     `minions`     = {"top": [{role, elite, equips?}…], …}
+##     `equipped`    = {pet_id: [{id, star}…]}                    只收本快照这几只
 static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dictionary:
-	var leaders: Array = GameState.left_team.duplicate() if GameState.left_team is Array else []
-	var lane_assign: Dictionary = GameState.lane_assign.duplicate(true) if GameState.lane_assign is Dictionary else {}
+	## ★走 `get_dual_lineup()` 而不是裸读 `dual_lineup`: 它会按 `slot` 把统领 id 回填成
+	##   `season_leaders[slot]`(幂等), 结构不合法时重置成默认阵 —— 背包/战斗两侧读的都是它。
+	var dl: Dictionary = {}
+	if GameState != null and GameState.has_method("get_dual_lineup"):
+		var _dl = GameState.get_dual_lineup()
+		if _dl is Dictionary:
+			dl = _dl
+	var lane_assign := {"top": [], "bottom": []}
+	# 小将(dual_lineup)配置+装备也存进快照(用户2026-07-18"快照里小将也应该有装备")→对手小将不再裸装
+	var minions := {"top": [], "bottom": []}
+	for lk in ["top", "bottom"]:
+		var arr: Array = dl.get(lk, []) if dl.get(lk) is Array else []
+		## ★精英判据与战斗侧**逐字相同**(`battle_spawn._spawn_lane_side`:「该路 0 统领 ⇒ 首个小将精英」)。
+		##   所以先数一遍这一路真有几个统领, 再走第二遍。
+		var lead_n := 0
+		for uu in arr:
+			if not (uu is Dictionary):
+				continue
+			if str((uu as Dictionary).get("kind", "")) != "leader":
+				continue
+			if str((uu as Dictionary).get("id", "")) != "":
+				lead_n += 1
+		var m_seen := 0
+		for uu in arr:
+			if not (uu is Dictionary):
+				continue
+			var ud: Dictionary = uu
+			if str(ud.get("kind", "")) == "leader":
+				## ★空 id = 大轮还没选统领时的占位(`_resolve_leader_slots` 填的 "")。
+				##   传上去会让对手场上多一只 id="" 的龟 ⇒ 跳过, 让 normalize 补小将。
+				if str(ud.get("id", "")) != "":
+					(lane_assign[lk] as Array).append(str(ud.get("id", "")))
+			else:
+				var m := {"role": str(ud.get("role", "front")),
+					"elite": (lead_n == 0 and m_seen == 0)}
+				var meq = ud.get("equips", null)
+				if meq is Array and not (meq as Array).is_empty():
+					m["equips"] = (meq as Array).duplicate(true)
+				(minions[lk] as Array).append(m)
+				m_seen += 1
+	## ★统领名单与分路**同源**。原来读 `GameState.left_team`, 而它只在【赢了】那支分支里
+	##   才被回填(`RealtimeBattle3DScene:7623` 就在 `if won:` 里面) ⇒ 输的那局传上去的快照
+	##   `leaders` 可能是空的, 而 `remote_pool.snapshot_valid` 以「leaders 不是 1~3 只」
+	##   把它整条**静默**拒掉。分路里那几只就是这一场真正上场的, 用它。
+	var leaders: Array = []
+	for lk in ["top", "bottom"]:
+		for pid in (lane_assign[lk] as Array):
+			if not leaders.has(str(pid)):
+				leaders.append(str(pid))
+	if leaders.is_empty() and GameState != null and GameState.left_team is Array:
+		leaders = (GameState.left_team as Array).duplicate()   # 兜底: 阵容一次都没排过
 	var equipped := {}
 	var levels := {}
 	## ★★2026-09-17 补上一直是空的技能选择(U10)。
@@ -1120,29 +1373,18 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 	##   (`:5183` `var idx := 1`), 一个用户要过的功能静默失效了两个月。
 	## ★只收这份快照里真有的那几只 —— 不把玩家对别的龟的选择一起传上云(同 `levels` 的口径)。
 	var lo_out := {}
+	var pe: Dictionary = {}
+	if GameState != null and GameState.persistent_equipped is Dictionary:
+		pe = GameState.persistent_equipped
 	for pid in leaders:
 		var p := str(pid)
-		var eqs: Array = GameState.equipped_p2.get(p, [])   # left 侧裸 pet_id (无 right:: 前缀)
-		if not eqs.is_empty():
-			equipped[p] = eqs.duplicate(true)
+		var eqs = pe.get(p, [])            # 统领装备的**持久** build(小将的在 dual_lineup 里, 上面已收)
+		if eqs is Array and not (eqs as Array).is_empty():
+			equipped[p] = (eqs as Array).duplicate(true)
 		levels[p] = GameState.get_pet_level(p)
 		var _lo = GameState.loadouts.get(p, null) if GameState.loadouts is Dictionary else null
 		if _lo is int or _lo is float:
 			lo_out[p] = int(_lo)
-	# 小将(dual_lineup)配置+装备也存进快照(用户2026-07-18"快照里小将也应该有装备")→对手小将不再裸装
-	var minions := {}
-	if GameState.dual_lineup is Dictionary:
-		for lk in ["top", "bottom"]:
-			var arr: Array = (GameState.dual_lineup as Dictionary).get(lk, [])
-			var mlist: Array = []
-			for uu in arr:
-				if uu is Dictionary and str((uu as Dictionary).get("kind", "")) == "minion":
-					var m := {"role": str((uu as Dictionary).get("role", "front")), "elite": bool((uu as Dictionary).get("elite", false))}
-					var meq = (uu as Dictionary).get("equips", null)
-					if meq is Array and not (meq as Array).is_empty():
-						m["equips"] = (meq as Array).duplicate(true)
-					mlist.append(m)
-			minions[lk] = mlist
 	return {
 		## ★schema 1 → 2(2026-08-15, 用户拍板 A): 快照开始带【宝箱进度】。
 		##   老快照没有这两个字段, 而敌方宝箱龟要靠它决定开几件 ——
@@ -1160,6 +1402,15 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 		"loadouts": lo_out,
 		"equipped": equipped,
 		"pet_levels": levels,
+		## ★★★2026-09-29 第三个漏掉的字段: 训龟大师装配的那个技能。
+		##   消费侧 `battle_spawn.gd:575` 读 `dual_ghost.trainer_skill` 决定**敌方大师**用什么,
+		##   取不到就回落 `"hook"`(钩锁) —— 那一段 2026-07-27 的注释写着
+		##   「原来恒为 hook…玩家能选七种, 对手永远只会钩锁, 是系统性不对称」,
+		##   而**它当时只接上了队列模拟那一侧**(`_cohort._snapshot_of` 写了 `trainer_skill`),
+		##   玩家上传这一侧一直没写 ⇒ 打真人对手时大师又退回只会钩锁。
+		##   (同一个形状在本文件出现过第三次: `loadouts` 09-17、分路/装备今天、这一条。
+		##    判据都一样 —— 消费侧在读, 生产侧没写。)
+		"trainer_skill": str(GameState.trainer_skill) if GameState != null else "",
 		"season_total_battles": int(GameState.season_total_battles),
 		"season_eggs_killed": int(GameState.season_eggs_killed),
 		## ★★A8(2026-09-19) 终榜三键。排序换成字典序「胜场 → 余命 → 横扫」,

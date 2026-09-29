@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c4f275jp1hlq6"
-path="res://.godot/imported/buy-btn.png-ec1797ba38372e72bb8da4c8ac2a6725.ctex"
+uid="uid://doheb21mrrlki"
+path="res://.godot/imported/tmpop_before.png-f24631658133ea510a29229184234cba.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/shop/buy-btn.png"
-dest_files=["res://.godot/imported/buy-btn.png-ec1797ba38372e72bb8da4c8ac2a6725.ctex"]
+source_file="res://tmpop_before.png"
+dest_files=["res://.godot/imported/tmpop_before.png-f24631658133ea510a29229184234cba.ctex"]
 
 [params]
 

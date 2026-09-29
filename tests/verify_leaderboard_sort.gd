@@ -30,6 +30,25 @@ func _g(name: String, wins: int, hearts: int, sweeps: int) -> Dictionary:
 		"origin": Backend.ORIGIN_REMOTE, "profile": {"name": name},
 		"season_wins": wins, "hearts": hearts, "season_sweeps": sweeps}
 
+## 造一份【某个人某一场】的快照。★`ghost_id` 的形状**不是我编的** ——
+##   与 `Backend.player_ghost_id()` 拼法逐字相同(`g_<uid>_<赛季>_<排序后三龟>_b<场次>`),
+##   下面 ⑧ 的第二条断言就是拿生产函数把这件事钉住的(不然我可能在测一个不存在的形状,
+##   memory `fb-gate-subject-never-constructed`)。
+func _gp(uid: String, season: int, leaders: Array, battles: int, name: String,
+		wins: int, hearts: int, sweeps: int) -> Dictionary:
+	var srt: Array = []
+	for x in leaders:
+		srt.append(str(x))
+	srt.sort()
+	var gid := "g_%s_%d_%s_b%d" % [uid, season, "-".join(PackedStringArray(srt)), battles]
+	return {"schema_ver": Backend.SCHEMA_VER, "ghost_id": gid, "is_bot": false,
+		"origin": Backend.ORIGIN_REMOTE,
+		"profile": {"name": name, "id": gid},      # ★真人快照的 profile.id **就是** ghost_id
+		"leaders": leaders.duplicate(),
+		"lane_assign": {"top": leaders.slice(0, 2), "bottom": leaders.slice(2)},
+		"minions": {"top": [{"role": "front"}], "bottom": [{"role": "front"}, {"role": "back"}]},
+		"season_wins": wins, "hearts": hearts, "season_sweeps": sweeps}
+
 func _names(rows: Array) -> Array:
 	var out: Array = []
 	for r in rows:
@@ -144,6 +163,103 @@ func _ready() -> void:
 	_chk("⑦ ★分母: 真池子里确实有一堆种子(否则下面是空检查)", seed_n >= 100, "%d 条" % seed_n)
 	_chk("⑦ ★★★**真种子池**上榜的行数 = 1(只有我自己那行) —— 合成的滤得掉不等于真的滤得掉",
 		seed_rows.size() == 1, "%d 行 / 池里 %d 条" % [seed_rows.size(), seed_n])
+
+	## ══════════════════════════════════════════════════════════════════
+	## ⑧ DEDUP_BY_PERSON —— **同一个人只占一行**, 且「N 人上榜」数的是人不是快照
+	##
+	## ★由来(2026-09-29): `leaderboard()` 的去重只筛了自己(`_is_self_ghost`),
+	##   别人的历史快照一条没合。而 `ghost_id` 带**场次**这一维(A6)、`pool_add` 按精确 id
+	##   去重 ⇒ 别人每打一场就在榜上多一行 ⇒ 面板 11 行里只有 6 个真人;
+	##   `LeaderboardScene.gd:200` 的「本周共 %d 人上榜」拿的是 `rows.size()`
+	##   ⇒ 它数的是**快照条数**不是人数。
+	##
+	## ★★这一节压住**四个方向**, 少一个都会放过一种错判据:
+	##   (a) 同一个人多条     ⇒ 合成 1 行     —— 光验这个, 「拿昵称当身份」也能绿
+	##   (b) **撞名的两个人** ⇒ 各占 1 行     —— 专门挡「拿昵称当身份」
+	##       (随机昵称池 56 定语 × 6 名头 = 336, 十来个人就有一成撞名, 不是理论风险)
+	##   (c) 同一个人**改过名** ⇒ 仍 1 行     —— 挡「昵称当身份」的另一半
+	##   (d) 同一个人**换过龟** ⇒ 仍 1 行     —— `ghost_id` 里三龟那一段会变
+	## ══════════════════════════════════════════════════════════════════
+	print("── ⑧ DEDUP_BY_PERSON: 同一个人只占一行 ──")
+	var _sid: int = int(GameState.season_id) if GameState != null else 3
+	var _team: Array = ["angel", "basic", "stone"]
+	var _uid_me := str(GameState.get_install_uid()) if GameState != null else ""
+	_chk("⑧ ★★分母: 本机 uid 非空(没有它整条身份维都不存在)", _uid_me != "", _uid_me)
+	_chk("⑧ ★★分母: 我造的 ghost_id 与生产函数 `player_ghost_id()` 逐字相同",
+		str(_gp(_uid_me, _sid, _team, 5, "x", 0, 0, 0)["ghost_id"])
+			== Backend.player_ghost_id(_sid, _team, 5),
+		"造=%s / 产=%s" % [str(_gp(_uid_me, _sid, _team, 5, "x", 0, 0, 0)["ghost_id"]),
+			Backend.player_ghost_id(_sid, _team, 5)])
+	## ★★★「谁」这一维**只有一个定义**: 从快照里读出来的 owner tag, 与
+	##   `_is_self_ghost()` 拿来比的 `self_season_prefix()` 必须是**同一个串** ——
+	##   否则同文件里就有两套身份判法, 改一处另一处静默落后(⑦a 的注释记着同一件事)。
+	_chk("⑧ ★★★身份维只有一份: `ghost_owner_tag(自己那份)` == `self_season_prefix(赛季)`",
+		Backend.ghost_owner_tag(_gp(_uid_me, _sid, _team, 9, "我", 1, 1, 1))
+			== Backend.self_season_prefix(_sid),
+		"tag=%s / prefix=%s" % [Backend.ghost_owner_tag(_gp(_uid_me, _sid, _team, 9, "我", 1, 1, 1)),
+			Backend.self_season_prefix(_sid)])
+
+	## (a) 甲一个人打了 3 场 ⇒ 池里 3 条; (b) 乙**撞名**但 uid 不同 ⇒ 另一个人
+	var A := "aaaaaaaaaaaa"
+	var B := "bbbbbbbbbbbb"
+	var a1 := _gp(A, _sid, _team, 5, "同名的甲", 2, 8, 0)
+	var a2 := _gp(A, _sid, _team, 6, "同名的甲", 9, 3, 2)      # ← 他最好的那一场
+	var a3 := _gp(A, _sid, _team, 7, "同名的甲", 4, 8, 1)
+	var b1 := _gp(B, _sid, _team, 5, "同名的甲", 6, 6, 0)
+	var p8 := {Backend.POOL_KEY: {"5": [a1, b1], "6": [a2], "7": [a3]}}
+	_chk("⑧ ★分母: 池里确实是 4 条快照(甲 3 条 + 乙 1 条)",
+		(p8[Backend.POOL_KEY]["5"] as Array).size() + (p8[Backend.POOL_KEY]["6"] as Array).size()
+			+ (p8[Backend.POOL_KEY]["7"] as Array).size() == 4)
+	_chk("⑧ ★分母: 甲这 3 条的 `ghost_id` 互不相同(否则 `pool_add` 早合掉了, 不需要这一节)",
+		str(a1["ghost_id"]) != str(a2["ghost_id"]) and str(a2["ghost_id"]) != str(a3["ghost_id"]),
+		str(a1["ghost_id"]) + " / " + str(a2["ghost_id"]))
+	_chk("⑧ ★★分母: 甲乙的 `profile.name` **逐字相同**(这才叫撞名, 否则 (b) 是空检查)",
+		str((a1["profile"] as Dictionary)["name"]) == str((b1["profile"] as Dictionary)["name"]),
+		str((a1["profile"] as Dictionary)["name"]))
+	_chk("⑧ ★★分母: 甲乙的 owner tag **不同**(uid 不同 = 两个人)",
+		Backend.ghost_owner_tag(a1) != Backend.ghost_owner_tag(b1),
+		"%s vs %s" % [Backend.ghost_owner_tag(a1), Backend.ghost_owner_tag(b1)])
+	_chk("⑧ ★分母: 甲这 3 条的 `person_key` 是**同一个**",
+		Backend.person_key(a1) == Backend.person_key(a2)
+			and Backend.person_key(a2) == Backend.person_key(a3),
+		Backend.person_key(a1))
+
+	var r8: Array = Backend.leaderboard(p8, "我", 0, 0, 0, 1 << 30)
+	var n8 := _names(r8)
+	var same_n := 0
+	for nm in n8:
+		if str(nm) == "同名的甲":
+			same_n += 1
+	_chk("⑧ ★★★(a)+(b) 甲 3 条合成 1 行、乙另占 1 行 ⇒ 「同名的甲」恰好 **2** 行",
+		same_n == 2, "%d 行 %s" % [same_n, str(n8)])
+	_chk("⑧ ★★★「N 人上榜」== 去重后的人数: 我 + 甲 + 乙 = 3 行(不去重是 5)",
+		r8.size() == 3, "%d 行 %s" % [r8.size(), str(n8)])
+	var best := -1
+	for r in r8:
+		if str((r as Dictionary).get("name", "")) == "同名的甲":
+			best = maxi(best, int((r as Dictionary)["wins"]))
+	_chk("⑧ ★留下的是这个人**最好**那一行(9 胜, 不是最后进池的 4 胜)",
+		best == 9, "留下 %d 胜" % best)
+
+	## (c) 改名: 同一个 uid, 老快照旧名 / 新快照新名 ⇒ 仍是一个人
+	var c1 := _gp(A, _sid, _team, 5, "旧名字", 3, 7, 0)
+	var c2 := _gp(A, _sid, _team, 6, "改过的新名字", 5, 7, 0)
+	_chk("⑧ ★分母: (c) 两条名字**确实不同**(否则这条是空检查)",
+		str((c1["profile"] as Dictionary)["name"]) != str((c2["profile"] as Dictionary)["name"]))
+	var rc: Array = Backend.leaderboard({Backend.POOL_KEY: {"5": [c1], "6": [c2]}},
+		"我", 0, 0, 0, 1 << 30)
+	_chk("⑧ ★★★(c) 改过名仍然只占 1 行(我 + 他 = 2 行)", rc.size() == 2,
+		"%d 行 %s" % [rc.size(), str(_names(rc))])
+
+	## (d) 换龟: 同一个 uid、同赛季, 三龟换掉 ⇒ 仍是一个人
+	var d2 := _gp(A, _sid, ["bubble", "candy", "chest"], 8, "同名的甲", 6, 7, 0)
+	_chk("⑧ ★分母: (d) 两条的三龟**确实不同**",
+		str(a1["leaders"]) != str(d2["leaders"]),
+		"%s vs %s" % [str(a1["leaders"]), str(d2["leaders"])])
+	var rd: Array = Backend.leaderboard({Backend.POOL_KEY: {"5": [a1], "8": [d2]}},
+		"我", 0, 0, 0, 1 << 30)
+	_chk("⑧ ★★★(d) 同赛季换过龟仍然只占 1 行(我 + 他 = 2 行)", rd.size() == 2,
+		"%d 行 %s" % [rd.size(), str(_names(rd))])
 
 	_done()
 

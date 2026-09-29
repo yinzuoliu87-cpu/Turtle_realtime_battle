@@ -2,7 +2,7 @@
   "_note": "新手引导步骤。由 scripts/scenes/TutorialGuide.gd 读取; 教学导演 TutorialDirector.steps_key_for 决定当前阶段用哪套。",
   "_schema": "每步: text(必填, 支持 <b>) / anchor(top|bottom, 默认 top) / highlight(可选: 场景 _tutorial_anchor(name) 认得的锚点名, 挖洞高亮该控件) / advanceOn(可选: 等这个事件才前进, 场景调 notify() 触发)",
   "_anchors": {
-    "team_select": "roster(3龟卡) / slots(阵容槽) / confirm(确认出战钮)",
+    "team_select": "roster(3龟卡) / slots(阵容槽) / confirm(出战钮)",
     "place": "field(左半场) / go_button(开打钮)",
     "shop": "offer(货架) / coins(深海币)",
     "inventory": "lanes(上下战场) / backpack(装备背包)",
@@ -11,21 +11,22 @@
 
   "team_select": [
     {
-      "text": "欢迎来到<b>斗龟场</b>！先在这里挑选你的出战龟。教学里给你三只上手最简单的 —— 就用它们。",
+      "text": "欢迎来到<b>斗龟场</b>！教学给你三只上手最简单的龟 —— <b>点头像</b>就派它上阵，三只都点上。",
       "anchor": "top",
-      "highlight": "roster"
+      "highlight": "roster",
+      "advanceOn": "team_filled"
     },
     {
-      "text": "点龟头像能在右侧看它的<b>属性和技能</b>。把鼠标停在技能图标上看说明；<b>数值是彩色的</b>：红=物理、蓝=魔法、白=真伤。",
+      "text": "点龟头像时，<b>右侧</b>会显示它的属性和技能。技能图标<b>点一下</b>就弹出说明；<b>数值是彩色的</b>：红=物理、蓝=魔法、白=真伤。",
       "anchor": "top"
     },
     {
-      "text": "上面这三格是你的<b>出战阵容</b>。三只龟已经帮你放好了 —— 记住这个位置，一会儿战场上还能细调站位。",
+      "text": "上面这三格是你的<b>出战阵容</b> —— 点上的龟就站到这儿。站位一会儿在战场上还能细调。",
       "anchor": "top",
       "highlight": "slots"
     },
     {
-      "text": "准备好了就点<b>「确认出战」</b>，进入第一场战斗。",
+      "text": "三只齐了，点右下角的<b>「带它们出战」</b>，第一场战斗开始。",
       "anchor": "bottom",
       "highlight": "confirm"
     }
@@ -59,11 +60,11 @@
       "advanceOn": "info_panel_opened"
     },
     {
-      "text": "滚轮<b>缩放</b>、按住左键<b>拖动视角</b>。<b>暂停时也能拖</b>，方便你看清乱战。",
+      "text": "<b>两指捏合</b>能缩放战场，<b>一根手指拖</b>能挪视角 —— 乱战看不清就拖一拖。",
       "anchor": "top"
     },
     {
-      "text": "打完会结算。接下来带你去<b>商店</b>买装备、在<b>背包</b>里装到龟身上 —— 变强主要靠这一步。",
+      "text": "打完这一把，教学就结束了。往后变强主要靠<b>商店</b>买装备、在<b>背包</b>里装到龟身上。",
       "anchor": "bottom"
     }
   ],
@@ -75,12 +76,12 @@
       "highlight": "coins"
     },
     {
-      "text": "货架上<b>点一张卡就买下</b>，装备会进你的背包。挑一件便宜的买来试试。",
+      "text": "货架上<b>点一张卡</b>看它的详情，再点<b>「买下」</b>才付钱 —— 装备会进你的背包。挑一件便宜的试试。",
       "anchor": "top",
       "highlight": "offer"
     },
     {
-      "text": "买好了，点右上角<b>「去背包」</b>，把装备装到龟身上。",
+      "text": "买好了，点上方的<b>「去背包」</b>，把装备装到龟身上。",
       "anchor": "bottom"
     }
   ],
@@ -92,12 +93,12 @@
       "highlight": "lanes"
     },
     {
-      "text": "下面是你的<b>装备背包</b>。<b>点一件装备、再点一只龟的空槽</b>，就装上了。拖动龟头像还能<b>换上下战场</b>调站位。",
+      "text": "下面是你的<b>装备背包</b>。<b>先点一件装备、再点一只龟</b>，就装上了。想调上下战场就<b>点两只龟</b>，它们互换位置。",
       "anchor": "bottom",
       "highlight": "backpack"
     },
     {
-      "text": "装好、位置也调顺了，点右上角<b>「看看图鉴」</b>。",
+      "text": "装好、位置也调顺了，点上方的<b>「看看图鉴」</b>。",
       "anchor": "top"
     }
   ],
@@ -109,7 +110,7 @@
       "highlight": "tabs"
     },
     {
-      "text": "看完了，点右上角<b>「打第二把」</b>，带着刚装好的装备再打一场，教学就结束啦。",
+      "text": "看完了，点上方的<b>「打第二把」</b>，带着刚装好的装备再打一场，教学就结束啦。",
       "anchor": "top"
     }
   ]

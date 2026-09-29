@@ -13,9 +13,16 @@
 #    当场照出三条一直靠运气绿的竞态。CLAUDE.md §2 记着。)
 #   ⇒ 每个槽位一个目录: $SIM_ROOT/p01 … p10
 #
-# ★★★为什么必须绑邮箱(不是可选)
-#   `phase2_config.login_wall_on(后端已配, account_email)` —— 后端配着而邮箱为空就**挡住**,
-#   一局都开不了。所以 10 个槽位各要一个邮箱。
+# ★★★2026-09-29 起【默认走游客, 不用邮箱】 —— 上面那条理由已经作废
+#   原文写的是「为什么必须绑邮箱(不是可选)」: 因为 `login_wall_on()` 后端配着而邮箱为空就挡住,
+#   一局都开不了。**那堵墙 2026-09-29 拆了**(用户「那就不用必须绑定吧」, `WALL_BLOCKS := false`)。
+#
+#   ★查实过的三道闸(别再重查, 但复核便宜):
+#     · 排位/报名/看桶/周赛事/传鬼魂 → 「服务端认得出你是谁」⇒ **匿名号就够**
+#     · 云存档同步 → `sync_allowed() = id!="" and email!="" and token!=""` ⇒ 这条才要邮箱
+#   ⇒ 十个槽位**要的是能打排位**, 不是要云存档 ⇒ **游客足够**, 省掉发码/限流/回填一整套。
+#
+#   MODE=mail 仍然保留(要验绑定流程本身时用), 下面那套 + 别名的办法照旧有效。
 #
 # ★★★邮箱用 Gmail 的 `+` 别名, 不用真去注册 10 个
 #   `turtlesupport32+t01@gmail.com` … `+t10@gmail.com`
@@ -31,7 +38,9 @@
 #     读码、统一回填 —— 码有一小时, 不用发一个读一个。
 #
 # 跑法:
-#   bash tools/sim10.sh start [N]     # 起 N 个窗口(默认 10)
+#   bash tools/sim10.sh start [N]     # 起 N 个窗口(默认 10) · 默认游客, 跨两块屏
+#   AUTOPILOT=1 bash tools/sim10.sh start 10   # ★自动驾驶: 自己选技能/打/每轮买装备
+#   MODE=mail bash tools/sim10.sh mails 10     # 要验绑定流程时才用邮箱那套
 #   bash tools/sim10.sh stop          # 只关本脚本起的那些(**不用 taskkill /IM**)
 #   bash tools/sim10.sh status        # 每个槽位: 进程活着吗 / 账号 / 邮箱 / 场次
 #   bash tools/sim10.sh mails [N]     # 打印槽位 ↔ 邮箱 ↔ 昵称对照表
@@ -60,11 +69,42 @@ MAIL_DOMAIN="${MAIL_DOMAIN:-gmail.com}"
 #
 # ★★十个窗口**标题完全一样**(都叫「斗龟场 实时版」), 光看标题分不出哪个是 p03。
 #   ⇒ 用 `bash tools/sim10.sh focus 3` 把 p03 提到最前; 位置本身也是身份(见下面的地图)。
+# ★★★2026-09-29 二改: 窗口尺寸必须是设计分辨率的【整数分之一】, 否则像素画糊。
+#   用户当场看出来:「这个像素跟糊的一样」。查实:
+#     · 设置本身是对的 —— default_texture_filter=0(Nearest) / stretch=canvas_items
+#     · 真机 iPhone 横屏视口 1560x720 对基准 1280x720, 缩放因子**正好 1.0** ⇒ 1:1 清晰
+#     · 而我把窗口开成 624x351 ⇒ 因子 0.4875, **非整数倍缩小像素画必糊**。是我的错不是产品的。
+#   ⇒ 一律用 640x360 = **正好 1/2**。3 列 x 640 = 1920 严丝合缝铺满主屏宽; 2 行 x 360 = 720。
+#   ⚠ 想更清楚就少开几个窗口用 1280x720(1:1), 屏幕只放得下 2 个。清晰度和窗口数是**换的**。
+#
+# ★★2026-09-29 改成【跨两块屏】—— 用户「我有两块屏你都可以用」。
+#   实测(System.Windows.Forms.Screen): DISPLAY2 1920x1080 @(0,0) 主屏 / DISPLAY1 1707x1067 @(1920,0)
+#   ⇒ 桌面总宽 3627。**不让任何窗口跨屏边界 1920**(骑在两块屏中间没法看)。
+#   主屏 6 个(3 列 x 2 行, 格 640x540), 副屏 4 个(2 列 x 2 行, 格 853x533), 窗口按 16:9 塞进格子。
+# ★★★2026-09-29 三改: 【叠放】而不是平铺 —— 用户「就是太糊了啊，这窗口」「叠放不行吗」。
+#   平铺的代价是缩放: 10 个窗口摆得下就只能 640x360(0.5 倍)甚至更小, 而副屏 150% 缩放
+#   还会变成 0.75 倍 —— **非整数倍缩小像素画必糊**, 这是物理上躲不掉的。
+#   ⇒ 叠放, 每个窗口都开**原生 1280x720 = 1:1**, 像素彻底清晰。
+#   反正鼠标一次只能操作一个窗口, 平铺看得见十个但十个都糊, 不如一个清楚的。
+#   ★全部放【主屏】(1920x1080, 100% 缩放) —— 副屏 150% 会把 1280x720 撑成 1920x1080 放不下。
+#   ★十个窗口同一个位置, 靠 **pid** 区分(pids.txt 记的是真 pid, 已修), 不靠位置。
+STACK_X=320
+STACK_Y=100
+WIN_CW=1280
+WIN_CH=720
+
+slot_geom() {
+  printf "%d %d %d %d" "$STACK_X" "$STACK_Y" "$WIN_CW" "$WIN_CH"
+}
+
+# 旧的单屏 4 列摆位(SIM_LAYOUT=grid1 可回到它)
 COLS=4
 WIN_W=460
 WIN_H=258
 PITCH_X=421
 PITCH_Y=315
+
+# 槽位 → 位置与尺寸。回显 "x y w h"。
 
 N_DEFAULT=10
 
@@ -104,11 +144,11 @@ cmd_start() {
   echo "  项目: $PROJ_DIR"
   echo "  存档根: $SIM_ROOT"
   for i in $(seq 1 "$n"); do
-    local d x y
+    local d x y w h
     d="$(slot_dir "$i")"
     mkdir -p "$d"
-    x=$(( ( (i - 1) % COLS ) * PITCH_X ))
-    y=$(( ( (i - 1) / COLS ) * PITCH_Y ))
+    read -r x y w h <<< "$(slot_geom "$i")"
+    WIN_W="$w"; WIN_H="$h"
     # ★用 PowerShell 的 Start-Process 起 —— 直接 `&` 起的进程会跟着这个 shell 一起被收掉
     #   (memory fb-vfxlab-window-must-be-muted 里同一个坑)。
     # ★--audio-driver Dummy: 十个窗口同时出声没法用。
@@ -116,12 +156,22 @@ cmd_start() {
     APPDATA="$d" SHIP=1 powershell -NoProfile -Command "
       \$env:APPDATA='$(cygpath -w "$d" 2>/dev/null || echo "$d")';
       \$env:SHIP='1';
+      ## ★自动驾驶(选技能/打/每轮买装备)。AUTOPILOT=1 bash tools/sim10.sh start 10
+      ##   不带就是普通实例, 人自己玩 —— 默认必须彻底关掉, 这是它的硬约束之一。
+      if ('${AUTOPILOT:-}' -ne '') { \$env:SIM_AUTOPILOT='1' };
       \$p = Start-Process -FilePath '$(cygpath -w "$GODOT" 2>/dev/null || echo "$GODOT")' \
         -ArgumentList '--path','$(cygpath -w "$PROJ_DIR" 2>/dev/null || echo "$PROJ_DIR")', \
                       '--audio-driver','Dummy', \
                       '--resolution','${WIN_W}x${WIN_H}','--position','$x,$y' \
         -PassThru;
-      Write-Output \$p.Id" 2>/dev/null | tr -d '\r' | while read -r pid; do
+      ## ★★别用 Start-Process 回的那个 Id —— Godot 起来之后**换进程**, 那个 Id 很快就不存在了,
+      ##   于是 focus/click 全部找不到窗口(2026-09-29 实测: 记的 42608 已不在, 窗口在 47464 手里)。
+      ##   ⇒ 等它把真进程拉起来, 取**带窗口的、最新的那个 Godot 进程**。
+      Start-Sleep -Milliseconds 2500;
+      \$g = Get-Process -Name 'Godot*' -ErrorAction SilentlyContinue |
+            Where-Object { \$_.MainWindowHandle -ne 0 } |
+            Sort-Object StartTime -Descending | Select-Object -First 1;
+      if (\$null -ne \$g) { Write-Output \$g.Id } else { Write-Output \$p.Id }" 2>/dev/null | tr -d '\r' | while read -r pid; do
         case "$pid" in
           [0-9]*) printf "%d %s\n" "$i" "$pid" >> "$PIDFILE"
                   printf "  p%02d  pid=%-7s 位置=(%4d,%4d)  邮箱=%s\n" "$i" "$pid" "$x" "$y" "$(slot_mail "$i")" ;;
@@ -134,7 +184,8 @@ cmd_start() {
 " "$n"
   echo "  要把某一个提到最前: bash tools/sim10.sh focus <槽位号>"
   echo ""
-  echo "★下一步(每个窗口): 登录墙里填上面那个邮箱 → 发送 → 等 ≥60 秒再做下一个窗口"
+  echo "★下一步: 什么都不用做 —— 2026-09-29 起【默认游客】, 墙已拆, 全新安装直接进教学的选龟屏。
+  (要验绑定流程本身才走邮箱: MODE=mail, 填上面那个邮箱 → 发送 → 等 ≥60 秒再做下一个窗口"
   echo "  全发完后去 ${MAIL_BASE}@${MAIL_DOMAIN} 读 10 个码, 再逐个回填。"
   echo "  关掉: bash tools/sim10.sh stop"
 }

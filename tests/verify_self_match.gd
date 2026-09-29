@@ -38,7 +38,11 @@ func _snap(gid: String) -> Dictionary:
 		"schema_ver": Backend.SCHEMA_VER, "ghost_id": gid, "is_bot": false,
 		"profile": {"name": "玩家阵容", "avatar": "angel", "id": gid},
 		"leaders": ["angel"], "pet_levels": {"angel": 5}, "equipped": {},
-		"minions": {}, "loadouts": {}, "lane_assign": {},
+		## ★★ 2026-09-29: 原来这里 `lane_assign` 是空的—— 写于「坏快照兜底」之前, 拿空当「不关心」。
+		##   而空分路正是 `Backend.ghost_lanes_broken()` 要拦的那个形状(真人快照三个月都是空的,
+		##   导致对手上场 6 个小将)。这份 fixture 的**本意是验身份不是验分路**,
+		##   ★★所以补一个**合法分路**而不是放宽兜底 —— 兜底本身由 `verify_ghost_upload` 守着。
+		"minions": {}, "loadouts": {}, "lane_assign": {"top": ["angel"], "bottom": []},
 		"season_total_battles": 12, "season_eggs_killed": 0,
 		"chest_treasures_won": [], "chest_treasure_value": 0.0,
 	}

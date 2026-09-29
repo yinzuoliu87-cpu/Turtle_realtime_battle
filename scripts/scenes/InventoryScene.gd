@@ -175,8 +175,10 @@ func _rebuild() -> void:
 	#   现在统一走 UIFrame 设计框(内容锁 1280×720 居中·背景铺满整窗), 全屏一个口径。
 	_vw = W
 	for c in get_children():
-		if c.is_in_group("tut_overlay"):
-			continue   # ★教学浮层(引导/下一站按钮)不随重建销毁 —— 装/卸装备会触发 _rebuild
+		if c.is_in_group("tut_overlay") or c.is_in_group(TOAST_GROUP):
+			## ★教学浮层(引导/下一站按钮)不随重建销毁 —— 装/卸装备会触发 _rebuild。
+			## ★★提示层(toast)同理, 而且它是本函数亲手杀掉过的: 见 `_toast()` 头注。
+			continue
 		c.visible = false   # 立即隐藏避免与新节点重叠 (queue_free 延到帧末, 不在信号中即时free防崩)
 		c.queue_free()
 	var bg := ColorRect.new()
@@ -1260,16 +1262,53 @@ func _item_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	return box
 
 
-# 轻量提示条 (1.4s 后淡出) — 临时等级器等一次性反馈
+## 提示层所在的组。★`_rebuild()` 必须跳过它 —— 理由见 `_toast()` 头注。
+const TOAST_GROUP := "ui_toast"
+var _toast_layer: CanvasLayer = null
+
+# 轻量提示条 (1.4s 后淡出) — 装备位满了 / 全队满了 / 临时等级器 等一次性反馈
+#
+# ★★★TOAST_SURVIVES(2026-09-29 查实): 原来这行是 `add_child(l)` —— 直接挂在本场景下。
+#   而每一处 `host._toast(...)` 的【下一行】就是 `host._rebuild()`(见 inventory/equip_ops.gd 七处),
+#   `_rebuild()` 开头把所有非浮层子节点 `visible=false; queue_free()`
+#   ⇒ **提示生下来那一帧就被销毁**。实测(tests/_probe_toast_killed.gd):
+#       触发前 0 个 → 同帧立刻查 1 个 → +1 帧起 0 个 … +6 帧 0 个
+#   七条提示玩家一条都没看见过 —— 这就是「装到上限点了没反应」的真根因(提示其实全写好了)。
+#
+# ★为什么用 CanvasLayer, 而不是"给 Label 加个组让 _rebuild 跳过":
+#   跳过只解决【活下来】, 解决不了【看得见】—— `_rebuild()` 随后建的 `bg` 是满铺不透明的
+#   ColorRect, 而它比提示【后】加 ⇒ 提示被压在背景底下(节点还在、visible 还是 true, 只是没人看得见,
+#   判据照样报绿)。CanvasLayer 的 `layer` 与子节点顺序无关, 结构上保证画在内容之上。
+#   layer 取 6000 < 教学浮层的 7000 ⇒ 教学「下一站」按钮仍在最上。
+# ★为什么不改 equip_ops 的七处调用顺序(先 _rebuild 再 _toast): 那是"每处都得记得"的修法,
+#   下一个人照现有写法再加一条就又没了。这里收口一次, 七处与将来的第八处一起管。
 func _toast(msg: String) -> void:
+	if _toast_layer == null or not is_instance_valid(_toast_layer):
+		_toast_layer = CanvasLayer.new()
+		_toast_layer.name = "ToastLayer"
+		_toast_layer.layer = 6000
+		_toast_layer.add_to_group(TOAST_GROUP)
+		add_child(_toast_layer)
+	## 上一条还没淡完就来新的 → 把旧的收掉, 否则两行金字叠在同一处成一团糊。
+	## ★用 `queue_free` 不用 `free`: 本函数是从 `gui_input` 信号里被调到的(点格子 → 装备),
+	##   在信号里即时 free 会崩(与 `_rebuild()` 里同一条理由)。
+	for old_t in _toast_layer.get_children():
+		(old_t as CanvasItem).visible = false
+		old_t.queue_free()
 	var l := Label.new()
+	l.name = "Toast"   # ★verify_ui_consistency._is_toast 认这个名字(浮层与内容重叠是设计如此)
 	l.text = msg
 	l.add_theme_font_size_override("font_size", 18)
 	l.add_theme_color_override("font_color", Color("#ffd93d"))
-	l.position = Vector2(W / 2.0 - 300, 96); l.size = Vector2(600, 30)
+	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
+	l.add_theme_constant_override("outline_size", 5)   # 描边: 提示浮在内容上, 没描边会糊进背景
+	## ★按【真实视口宽】居中, 不按设计宽 W: 提示层是 CanvasLayer, 坐标就是屏幕坐标,
+	##   而宽屏视口可达 1680 —— 用 W/2 会把它顶到左边去(UIFrame 头注记的那个指纹)。
+	var vw: float = maxf(W, get_viewport_rect().size.x)
+	l.position = Vector2(vw / 2.0 - 300.0, 96.0); l.size = Vector2(600, 30)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(l)
+	_toast_layer.add_child(l)
 	var tw := create_tween()
 	tw.tween_interval(1.4)
 	tw.tween_property(l, "modulate:a", 0.0, 0.6)

@@ -29,6 +29,9 @@ const SYN_SRC := "res://scripts/scenes/inventory/synergy_panel.gd"
 var _n := 0
 var _fail := 0
 
+## 全绿时的断言条数。加/删断言时同步改这个数(它是"有没有被掐断"的分母)。
+const MIN_ASSERTS := 46
+
 
 func _ok(name: String, cond: bool, detail: String = "") -> void:
 	_n += 1
@@ -460,7 +463,131 @@ func _ready() -> void:
 	sc3.queue_free()
 	await get_tree().process_frame
 
+	# ══ L. TOAST_SURVIVES: 提示必须【活过 _rebuild】并且真的看得见 ═══
+	#
+	# ★★★2026-09-29 查实的 bug: `equip_ops.gd` 里七处 `host._toast(...)` 的下一行都是
+	#   `host._rebuild()`, 而 `_rebuild()` 开头把所有非浮层子节点 queue_free
+	#   ⇒ 提示【生下来那一帧就被销毁】。实测(tests/_probe_toast_killed.gd):
+	#       同帧立刻查 1 个 → +1 帧起 0 个 … 一直 0
+	#   七条提示玩家一条都没看见过 —— 「装到上限点了没反应」的真根因。提示其实全写好了。
+	#
+	# ★判据【不】数"调了几次 _toast" —— 那是数我自己插的标记, 插一行数一行必绿。
+	#   量的是产品自己的账: **那个节点还在不在 / 看不看得见 / 是不是被背景压住了**。
+	await _check_toast_survives()
+
 	print("")
+	## ★★断言条数的【地板】。低于它 = 有协程在半路被掐断 / 静默 abort ⇒ 判红。
+	##   2026-09-29 在另一个门禁上当场撞到: 读一个不存在的成员会让协程【就地返回】,
+	##   后面十条断言一条不跑, 而进程 rc=0 还打 ALL PASS(fb-null-readback-makes-test-silently-abort)。
+	if _n < MIN_ASSERTS:
+		_fail += 1
+		print("  [FAIL] ★★断言只跑了 %d 条(至少该有 %d) —— 有东西在半路被掐断了, 别当绿灯"
+			% [_n, MIN_ASSERTS])
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 背包页排版" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
+
+
+## 它头上那层 CanvasLayer(没有 = 它就在内容那一层, 会被随后建的背景压住)
+func _canvas_layer_of(n: Node) -> CanvasLayer:
+	var p: Node = n
+	while p != null:
+		if p is CanvasLayer:
+			return p as CanvasLayer
+		p = p.get_parent()
+	return null
+
+
+## 屏上文字里含 needle 的 Label(产品自己的账, 不是我插的标记)
+func _toasts_on_screen(sc: Node, needle: String) -> Array:
+	var hit: Array = []
+	for c in _all(sc):
+		if c is Label and str((c as Label).text).find(needle) >= 0:
+			hit.append(c)
+	return hit
+
+
+func _check_toast_survives() -> void:
+	const OPS_SRC := "res://scripts/scenes/inventory/equip_ops.gd"
+	const NEEDLE := "已装满"
+	## ★分母0: 这句话确实是产品的原文(有人改文案时, 红的是这条, 不是下面一堆谜语)
+	var src := ""
+	var fo := FileAccess.open(OPS_SRC, FileAccess.READ)
+	if fo != null:
+		src = fo.get_as_text(); fo.close()
+	_ok("㉚ ★分母: %s 里真有「%s」这句提示" % [OPS_SRC.get_file(), NEEDLE],
+		src.find(NEEDLE) >= 0 and src.find("host._toast(") >= 0)
+
+	## 一只【装满 3 件】的统领 + 背包里还剩一件 ⇒ 再装 = 撞单只上限, 走 toast 那一支
+	var ids: Array = DataRegistry.phase2_equipment_by_id.keys()
+	var e0 := str(ids[0])
+	GameState.season_leaders = ["basic", "stone", "bamboo"]
+	GameState.persistent_equipped = {"basic": [
+		{"id": e0, "star": 1}, {"id": e0, "star": 1}, {"id": e0, "star": 1}]}
+	GameState.persistent_bench = [{"id": str(ids[1]), "star": 1}]
+	var sc = _mk(-1)
+	## ★真实场景里背包屏的根 Control 是【铺满视口】的(UIFrame._avail 头注也记着这一点),
+	##   门禁里它默认 0x0 ⇒ 满铺背景 ColorRect 跟着缩成 0,
+	##   下面那条「提示底下到底有没有背景压着」的分母就测不出东西(实测当场红)。
+	sc.size = get_viewport().get_visible_rect().size
+	for _i in range(10):
+		await get_tree().process_frame
+
+	var worn0: int = (GameState.persistent_equipped.get("basic", []) as Array).size()
+	var bench0: int = GameState.persistent_bench.size()
+	_ok("㉛ ★分母: 摆出了「装满了还要装」的局面(身上 %d 件 = 上限 %d, 背包还有 %d 件)"
+		% [worn0, int(sc.P2.UNIT_EQUIP_CAP), bench0],
+		worn0 == int(sc.P2.UNIT_EQUIP_CAP) and bench0 >= 1)
+	_ok("㉜ ★分母: 触发前屏上本来没有这句提示",
+		_toasts_on_screen(sc, NEEDLE).is_empty())
+
+	sc._sel_bench = 0
+	sc._inv_ops._equip_to("basic", 0)     # ← 点格子时走的就是这一行(InventoryScene.gd:608)
+	## ★分母: 这次操作【真的】走到了会 toast 的那一支 —— 走到了就装不上(两边件数都没动)
+	_ok("㉝ ★★分母: 那次操作真的撞上了上限分支(没装上 · 身上仍 %d / 背包仍 %d)" % [worn0, bench0],
+		(GameState.persistent_equipped.get("basic", []) as Array).size() == worn0
+		and GameState.persistent_bench.size() == bench0,
+		"身上 %d / 背包 %d" % [(GameState.persistent_equipped.get("basic", []) as Array).size(),
+			GameState.persistent_bench.size()])
+
+	for _i in range(8):
+		await get_tree().process_frame    # ★关键: queue_free 延到帧末 —— 要等过这几帧才算"活下来"
+
+	var found: Array = _toasts_on_screen(sc, NEEDLE)
+	_ok("㉞ ★★★TOAST_SURVIVES: 8 帧之后屏上仍然找得到那句提示(原来这里是 0 个)",
+		found.size() == 1, "找到 %d 个" % found.size())
+	if found.size() >= 1:
+		var t: Label = found[0]
+		var tr: Rect2 = t.get_global_rect()
+		_ok("㉟ ★★TOAST_SURVIVES: 提示是可见的(整条链上没有谁被关掉 · alpha 没归零)",
+			t.is_visible_in_tree() and t.modulate.a > 0.5,
+			"visible_in_tree=%s alpha=%.2f" % [str(t.is_visible_in_tree()), t.modulate.a])
+		_ok("㊱ ★TOAST_SURVIVES: 提示落在屏内(不是飘到视口外去了)",
+			tr.position.x >= -1.0 and tr.position.y >= -1.0
+			and tr.end.x <= get_viewport().get_visible_rect().size.x + 1.0,
+			str(tr))
+		## ★「活下来」还不够 —— `_rebuild()` 随后铺的满屏不透明背景比它【后】加,
+		##   同一层的话提示就被压在底下(节点还在、visible 还是 true, 只是没人看得见)。
+		var cl: CanvasLayer = _canvas_layer_of(t)
+		var covered := false
+		for c in _all(sc):
+			if c is ColorRect and (c as ColorRect).color.a >= 0.99 \
+					and (c as Control).get_global_rect().encloses(tr):
+				covered = true
+		_ok("㊲ ★分母: 提示那块地方底下真的有一层满铺不透明背景(所以「压不压住」这件事有意义)",
+			covered)
+		_ok("㊳ ★★TOAST_SURVIVES: 提示画在内容【之上】(自己一层 CanvasLayer · layer>0)",
+			cl != null and cl.layer > 0,
+			"没有 CanvasLayer" if cl == null else "layer=%d" % cl.layer)
+
+		## 连点两下不许叠成一团糊(旧的收掉, 屏上永远只有一条)
+		sc._sel_bench = 0
+		sc._inv_ops._equip_to("basic", 0)
+		for _i in range(4):
+			await get_tree().process_frame
+		_ok("㊴ ★再点一次只剩一条提示(旧的收掉, 不叠成一团糊)",
+			_toasts_on_screen(sc, NEEDLE).size() == 1,
+			"屏上 %d 条" % _toasts_on_screen(sc, NEEDLE).size())
+
+	sc.queue_free()
+	await get_tree().process_frame

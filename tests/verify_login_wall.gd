@@ -1,26 +1,40 @@
 extends Node
-## verify_login_wall.gd — 登录墙 (2026-09-24)
+## verify_login_wall.gd — 绑定邮箱: 墙已拆 (2026-09-24 上墙 → 2026-09-29 拆墙)
 ##
 ## ══════════════════════════════════════════════════════════════════════
-##  这份门禁守什么
+##  这份门禁 2026-09-29 整份掉头
 ## ══════════════════════════════════════════════════════════════════════
-## 用户 2026-09-24:「直接改为必须绑定账号吧」，在三个选项里选的是
-## **开局就必须绑，没有 guest** —— 明确接受「没网 / 后端挂了就打不开」。
+## 用户 2026-09-24:「直接改为必须绑定账号吧」⇒ 上墙。
+## 用户 2026-09-29:「那就不用必须绑定吧，是游客模式吗，其他的你自己推进」⇒ **拆墙**。
+## 后一句在后，按后一句办。原来那两条主判据（「墙上没有关闭」「关不掉的墙才是墙」）
+## **连同它们守的需求一起作废**，现在要证明的是反过来的那件事：**拦不住人。**
 ##
-## 这道墙最容易出的两种错，各自成节：
-##   ① **挡多了**：把「后端没配置」也挡住 ⇒ 384 条门禁当场全红、开发机打不开游戏。
-##      「没配」是 dev 状态，不是玩家状态；「配了但连不上」才该挡。
-##   ② **挡不住**：墙上留着「关闭」或返回键还能用 —— **关得掉的墙不是墙**。
+## ★★★而「判据掉头」最容易变成恒真式：断言「有一个叫关闭的按钮存在」＝
+##   **数我自己插的标记**，插一行数一行必绿。所以这份门禁里那件事分三层量：
+##     · ② 真开一次绑定屏，**真点那颗「关闭」**，看屏幕真的没了、设置页原样回来
+##     · ⑧ **走真入口**：全新安装态从第一屏开始，**一个绑定控件都不碰**，
+##          一路走到战斗场景真的建起来、sim 真的在跑，而 `account_email` 全程是空的
+##     · ⑧ 的**反向验证**：把 `phase2_config.WALL_BLOCKS` 翻成 true，⑧ 必须当场红，
+##          而且红的形状就是「被送到 Settings，走不过去」
 ##
 ## ══════════════════════════════════════════════════════════════════════
-##  判据为什么这么写
+##  各节守什么
 ## ══════════════════════════════════════════════════════════════════════
-## ★① 判定是纯函数 ⇒ **穷举** 后端配没配 × 绑没绑 四格，不靠起整个场景去试。
-## ★② 「墙上没有关闭」不数源码，**真开一次墙、在节点树里数 Button**。
-## ★③ 返回键：量它接的**方法名**（具名方法才量得到），再单独验那个方法在墙上不跳转。
-## ★④ 每条都配分母：没墙时那些东西**必须在**，否则「墙上没有」是恒真式。
+## ★① 拦不拦 / 请不请，两档各自穷举。「拦」那一档**六格里一格都不许为真**。
+## ★② 绑定屏关得掉：真点「关闭」，量行为不量按钮在不在。
+##    配分母：**不请自来的那一档已经没了** —— 不注入任何东西进设置页，绑定屏不弹。
+## ★③ 主菜单 `_ready` 上那三个「必须早于任何 return」的调用（建身份 / 补报 / 报名）
+##    照旧守着 —— 墙拆了，但那条纪律是「谁都不许排在一个会 return 的分支后面」。
+## ★④ 绑成功之后放不放人走；⑤ 盖满全屏那一屏要印版本号；
+##    ⑥ 触摸层（热区/间隙/虚拟键盘/两步流/美术）；⑦ 文案与名字池。
+## ★⑧ WALL_SOFT / BIND_LATER：真入口那一条，见上。
 ##
-## 跑法: <godot> --headless --path . res://tests/verify_login_wall.tscn --quit-after 900
+## 跑法: <godot> --headless --path . res://tests/verify_login_wall.tscn --quit-after 500
+## ★帧预算: 这份**没在 `run-tests.sh` 的 `frames_for()` 里登记** ⇒ 走默认的 **500 帧**。
+##   2026-09-29 实测: 加上 ⑧ 那一整节之后 500 帧仍能跑完
+##   (连跑三次 + `--max-fps 15` 复现 CI 时序各一次, 全结)。
+##   ★要是哪天在这份里再加「等游戏内效果」的节, 先看这一行 —— 帧不够会被掉在半路,
+##   表现是「没打 ALL PASS」而不是某条断言 FAIL(CLAUDE.md §2 那个坑)。
 
 const P2C := preload("res://scripts/gamedata/phase2_config.gd")
 const SET := preload("res://scripts/scenes/SettingsScene.gd")
@@ -28,6 +42,9 @@ const SB := preload("res://scripts/net/supabase.gd")
 ## ★素材路径与摆位几何都在产品那边(`WALL_ART_TEX` / `place_logo`),
 ##   测试里再抄一份就是抄一遍永远落后。
 const WALL_ART := preload("res://scripts/scenes/settings/login_wall_art.gd")
+## ★ ⑧ 要读主菜单自己的节点名与主 CTA 几何(`NUDGE_NAME` / `HERO_SIZE`),
+##   在测试里拄一份就是抄一次永远落后一次(memory `fb-hand-rolled-copies-drift`)。
+const MM := preload("res://scripts/scenes/MainMenuScene.gd")
 const DEAD_URL := "http://127.0.0.1:9"
 
 var _n := 0
@@ -138,7 +155,11 @@ func _ready() -> void:
 	var st6 = SET.new()
 	add_child(st6)
 	await get_tree().process_frame
-	st6._open_email_dialog(SB.FLOW_BIND, false)   ## false = **墙**那一档
+	## ★第三个 true = **盖满全屏那一档**(版本号只在它上面印)。
+	## ★第二个参数从 `false` 改成 `true`(2026-09-29 拆墙): 那个布尔现在只管
+	##   「有没有关闭」, 不再兼职「是不是那一屏」—— 再传 false 量到的是一个
+	##   既没美术也没版本号、玩家永远看不到的屏(那就是量空气)。
+	st6._open_email_dialog(SB.FLOW_BIND, true, true)
 	await get_tree().process_frame
 	_ok("⑤ ★分母: 墙真的建起来了(否则下面量的是空气)", st6._email_layer != null)
 	var _vtxt := ""
@@ -159,27 +180,78 @@ func _ready() -> void:
 	st6.queue_free()
 	await get_tree().process_frame
 
-	print("ALL PASS — 登录墙" if _fail == 0 else "FAIL x%d" % _fail)
+	## ★★★排在**最后**: 它会真的把战斗场景建起来, 建完就收摆退出 ——
+	##   摆在中间的话后面那几节量的就是一个背后还在跑战斗的场景树。
+	await _t_open_path()
+	print("")
+	print("  (共 %d 条断言)" % _n)
+	print("ALL PASS — 绑定邮箱(墙已拆)" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
 
 
 # ─────────────────────────────────────────────────────────────
-# ① 判定: 四格穷举
+# ① 判定: 【拦】那一档穷举为空 + 【请】那一档四格穷举
 # ─────────────────────────────────────────────────────────────
 func _t_rule() -> void:
-	print("── ① 什么时候挡 ──")
-	_ok("① ★★后端配了 + 没绑 ⇒ **挡**", P2C.login_wall_on(true, ""))
-	_ok("① 后端配了 + 绑了 ⇒ 不挡", not P2C.login_wall_on(true, "me@x.co"))
-	_ok("① ★★★后端**没配**(dev/门禁) ⇒ **不挡** —— 挡住的话 384 条门禁当场全红",
-		not P2C.login_wall_on(false, ""))
-	_ok("① 后端没配 + 绑了 ⇒ 不挡", not P2C.login_wall_on(false, "me@x.co"))
+	print("── ① 什么时候【请】他绑, 什么时候【拦】他 ──")
+	## ★★★WALL_SOFT —— 「拦」那一档 2026-09-29 退役。
+	##   判据不是「我看代码觉得它退役了」, 而是**六格穷举里一格都不为真**:
+	##   后端配了/没配 × 邮箱空/空白/有值。
+	## ★为什么连「后端配了 + 没绑」也要穷举进来: 那**正是**拆墙之前唯一会挡人的那一格。
+	##   把它单独漏掉的话, 这一条就绕开了要守的东西。
+	var blocked: Array = []
+	for bo in [true, false]:
+		for em in ["", "   ", "me@x.co"]:
+			if P2C.login_wall_on(bo, em):
+				blocked.append("backend=%s email=「%s」" % [str(bo), str(em)])
+	_ok("① ★★★WALL_SOFT: 六格穷举里**一格都不拦**(用户 2026-09-29「那就不用必须绑定吧」)",
+		blocked.is_empty(), "还在拦的: %s" % str(blocked))
+	## ★★分母: 上面那条**能 FAIL**。它的全部开关就是 `WALL_BLOCKS` 这一个常量 ——
+	##   翻成 true, 六格里立刻有一格为真, 上面那条当场红。
+	##   (⑧ 那一节的反向验证走的就是这个开关, 红的形状是「被送到 Settings」。)
+	_ok("① ★★分母: 判据只有 `WALL_BLOCKS` 一处, 且它现在是 false(翻成 true ⇒ 上条当场红)",
+		not P2C.WALL_BLOCKS, "WALL_BLOCKS=%s" % str(P2C.WALL_BLOCKS))
+	## 「该不该**请**他绑」那一档照旧四格穷举 —— 它是主菜单那句非阻塞提示的判据。
+	_ok("① 后端配了 + 没绑 ⇒ **请**他绑", P2C.bind_needed(true, ""))
+	_ok("① 后端配了 + 绑了 ⇒ 不请", not P2C.bind_needed(true, "me@x.co"))
+	_ok("① ★★★后端**没配**(dev/门禁) ⇒ 不请 —— 请了就是在开发机主菜单上挂一句用不上的话",
+		not P2C.bind_needed(false, ""))
+	_ok("① 后端没配 + 绑了 ⇒ 不请", not P2C.bind_needed(false, "me@x.co"))
 	## ★空白邮箱也算没绑 —— 存档里留一串空格不该当成绑过了
-	_ok("① ★邮箱是空白 ⇒ 仍然挡", P2C.login_wall_on(true, "   "))
-	## 文案: 墙上第一句要让老玩家别慌
+	_ok("① ★邮箱是空白 ⇒ 仍然算没绑", P2C.bind_needed(true, "   "))
+
+	## ── BIND_LATER: 主菜单那句**非阻塞**提示的字 ──
+	## ★★它是拆墙唯一的缓解手段(风险 1): 说一个**事实**(没备份) + 给一个**动作**(绑定)。
+	##   只有事实 = 制造焦虑给不出出路; 只有动作 = 玩家不知道为什么要点。两样都要。
+	var nudge := str(P2C.bind_nudge_text())
+	print("     主菜单那句: 「%s」" % nudge)
+	_ok("① ★★BIND_LATER: 那句提示说清了「没备份」这个**事实**",
+		nudge.find("没备份") >= 0, nudge)
+	_ok("① ★★BIND_LATER: 也给了一个**动作**(绑定), 不是只报一句坏消息",
+		nudge.find("绑定") >= 0, nudge)
+	_ok("① ★那句提示里**不许有威胁词**(丢 / ⚠) —— 它是邀请, 不是通牒",
+		not _is_scary(nudge), nudge)
+
+	## ── wall_dismissible: 标题按新事实重写 ──
+	## ★★★旧标题是「绑定邮箱才能开始」, 而**那句话本身就是假的**: 不绑也能开始
+	##   (匿名号已经够排位/报名/看桶/传鬼魂, 邮箱只买云存档 ⇒ 换手机能接回来)。
+	## ★判据两头卡: ①不许再出现「才能开始 / 必须」②必须说清**绑了买到什么**。
+	##   只卡一头的话, 换成一句什么都不说的标题也能绿。
+	var head := str(P2C.login_wall_head())
+	print("     绑定屏标题: 「%s」" % head)
+	_ok("① ★★★wall_dismissible: 标题**不再说「才能开始」/「必须」**(不绑也能开始)",
+		head.find("才能开始") < 0 and head.find("必须") < 0, head)
+	_ok("① ★★标题讲**绑了买到什么**(换手机/换设备 + 接得回来), 不讲代价",
+		(head.find("换手机") >= 0 or head.find("换设备") >= 0)
+			and (head.find("回来") >= 0), head)
+	_ok("① ★标题里也不许有威胁词", not _is_scary(head), head)
+	## 文案: 第一句要讲**买到什么**
 	var body := str(P2C.login_wall_body())
-	print("     墙上第一句: 「%s」" % body.split("\n")[0])
-	_ok("① ★★墙上第一句先说【进度还在】—— 老玩家升级过来会被挡一次, 别让他以为丢了",
-		body.find("进度还在") >= 0, body.substr(0, 40))
+	print("     绑定屏第一句: 「%s」" % body.split("\n")[0])
+	_ok("① ★★第一句讲**绑了买到什么**(接回来), 不是开口就说代价",
+		body.split("\n")[0].find("接回来") >= 0, body.substr(0, 40))
+	_ok("① ★★★wall_dismissible: 正文明说**不绑也能玩** —— 拆墙之后这才是真话",
+		body.find("不绑也能玩") >= 0, body)
 	_ok("① ★还告诉他收不到验证码怎么办(不然就是死路)",
 		body.find("垃圾") >= 0 or body.find("重发") >= 0 or body.find("换一个") >= 0,
 		body.substr(0, 60))
@@ -361,62 +433,135 @@ func _t_suggest_pool() -> void:
 
 
 # ─────────────────────────────────────────────────────────────
-# ② ★★真开一次墙: 关不掉、返回不了
+# ② ★★真开一次绑定屏: 关得掉, 而且**点了真的关掉**
+#
+#    2026-09-29 整节掉头。原来这一节守的是「墙上没有关闭」「返回箭头藏起来了」——
+#    那两条守的需求（必须绑定）已经作废，现在要证明的是反过来的那件事。
+#
+#    ★★★掉头最容易踩的坑: 断言「有一个叫关闭的按钮存在」= **数我自己插的标记**,
+#      插一行数一行必绿。⇒ 这一节量**行为**:
+#        ②a 不注入任何东西进设置页 ⇒ 绑定屏**不会不请自来**(原来这里就是墙)
+#        ②b 从主菜单那句提示过来 ⇒ 立起来, **真点那颗关闭**, 屏没了、设置页原样回来
+#        ②c 设置页里自己点开的那个小对话框照旧有关闭(两条路都通)
 # ─────────────────────────────────────────────────────────────
+## 设置页**本体**(不含绑定屏那层遮罩)现在有几个看得见的直接子控件。
+## ★为什么不数整棵树: `_maybe_bind_screen` 藏的就是 `self` 下的直接 Control,
+##   量的东西要和产品干的那件事对上(memory `fb-judge-must-fit-the-shape`)。
+func _page_ctrl(inst) -> int:
+	var k := 0
+	for ch in (inst as Node).get_children():
+		if ch is Control and (ch as Control).visible and ch != inst._email_layer:
+			k += 1
+	return k
+
+
 func _t_wall_ui() -> void:
-	print("── ② 墙关不关得掉 ──")
+	print("── ② 绑定屏: 不请自来吗 / 关得掉吗 ──")
 	OS.set_environment("TURTLE_SUPABASE", DEAD_URL)
 	SB._reset_auth_for_test()
 	GameState.account_email = ""
 	GameState.account_id = "uid-wall"
-
-	var st = SET.new()
-	add_child(st)
+	SET.open_bind_on_entry = false
+	## ★★★这一节要**真点那颗关闭**, 所以两件事跟 ⑥ 同口径:
+	##   ① 载真的 `Settings.tscn`, **不用 `SET.new()`** —— 裸脚本节点的 rect 是 0x0,
+	##     引擎的 GUI 命中测试走不到它的子控件 ⇒ `gui_get_hovered_control()` 回 null,
+	##     于是“点不动”看起来像产品坏了(实测过一次, 差点跟着它去改产品)。
+	##   ② 把根视口设成 iPhone 横屏 —— 无头默认视口是方的, 框会被推到屏外去。
+	var vp0 := get_tree().root.size
+	get_tree().root.size = Vector2i(VP_PHONE)
 	await get_tree().process_frame
-	_ok("② ★分母: 后端算「配了」(否则下面全是空检查)", SB.enabled())
-	_ok("② ★★墙真的开了(对话框在场)",
+
+	## ── ②a ★★★WALL_SOFT: 不请自来的那一档已经没了 ──
+	var st0 = (load("res://scenes/Settings.tscn") as PackedScene).instantiate()
+	add_child(st0)
+	for _i0 in range(4):
+		await get_tree().process_frame
+	_ok("②a ★分母: 后端算「配了」(否则整节是空检查)", SB.enabled())
+	_ok("②a ★★分母: 这一刻确实**该请他绑** —— 这正是拆墙之前会被挡住的那个状态",
+		P2C.bind_needed(SB.enabled(), str(GameState.account_email)))
+	_ok("②a ★★★WALL_SOFT: 没绑邮箱的人进设置页, 绑定屏**不会不请自来**(原来这里就是墙)",
+		st0._email_layer == null, str(st0._email_layer))
+	_ok("②a ★分母: 而设置页本体**看得见** —— 整页被藏掉的话上面那条也会绿(那才是墙没拆干净)",
+		_page_ctrl(st0) >= 3, "%d 个可见控件" % _page_ctrl(st0))
+	st0.queue_free()
+	await get_tree().process_frame
+
+	## ── ②b 从主菜单那句提示过来 ⇒ 立起来, 而且关得掉 ──
+	SET.open_bind_on_entry = true
+	var st = (load("res://scenes/Settings.tscn") as PackedScene).instantiate()
+	add_child(st)
+	for _i1 in range(4):
+		await get_tree().process_frame
+	_ok("②b ★分母: 从主菜单那句提示过来时, 绑定屏**真的立起来了**",
 		st._email_layer != null and is_instance_valid(st._email_layer),
 		str(st._email_layer))
-
+	_ok("②b ★★分母: 那个一次性旗子**读完就清** —— 不清就是把刚拆的墙换个地方重建一遍",
+		not SET.open_bind_on_entry)
 	var btns := _buttons(st._email_layer)
 	var labels: Array = []
 	for b in btns:
 		labels.append(str((b as Button).text))
-	print("     墙上的按钮: %s" % str(labels))
-	_ok("② ★★★墙上**没有「关闭」** —— 关得掉的墙不是墙",
-		not labels.has("关闭"), str(labels))
-	_ok("② ★分母: 墙上该有的按钮在(发验证码 / 确认)",
+	print("     绑定屏上的按钮: %s" % str(labels))
+	_ok("②b ★分母: 该有的按钮在(发验证码 / 确认)",
 		labels.has("发验证码") and labels.has("确认"), str(labels))
-	## ★★实拍拓出来的: 顶栏在更高的 CanvasLayer 上, 遮罩盖不住返回箭头 ⇒
-	##   它看着能按、按下去却没反应。本仓原则:「点了没反应」比「按钮是灰的」糟得多。
-	_ok("② ★★★墙上返回箭头**藏起来了**(而不是留着让人点了没反应)",
+	_ok("②b ★★★WALL_SOFT: 这一屏**有出口**(一颗「关闭」) —— 关不掉的那一版已经拆了",
+		labels.has("关闭"), str(labels))
+	_ok("②b ★分母: 绑定屏立着时背后的设置页是**藏掉的**(不藏 ⇒ 下面「原样交还」恒真)",
+		_page_ctrl(st) == 0, "%d 个可见控件" % _page_ctrl(st))
+	## ★这一屏盖满全屏 ⇒ 顶栏那个返回箭头要藏(它在更高的 CanvasLayer 上, 遮罩盖不住,
+	##   留着就是一个浮在美术上、按了也不知道去哪的箭头)。出口是「关闭」, 不是它。
+	_ok("②b ★分母: 立着时顶栏返回箭头是藏着的(下面那条「关掉后回来」才不是恒真)",
 		st._top_bar != null and st._top_bar.back_btn != null
 			and not st._top_bar.back_btn.visible,
 		str(st._top_bar.back_btn.visible) if st._top_bar != null else "<no bar>")
+	## ★★★**真点它**, 不是断言它在。判据是屏幕上真的变了。
+	var close_btn: Button = null
+	for b in btns:
+		if str((b as Button).text) == "关闭":
+			close_btn = b as Button
+	_ok("②b ★分母: 找到了那颗「关闭」, 且它看得见", close_btn != null
+		and close_btn.is_visible_in_tree())
+	if close_btn != null:
+		var cc: Vector2 = close_btn.get_global_rect().get_center()
+		var h := _hover_at(cc)
+		_ok("②b ★★分母: 落在它身上那一点**是它自己吃到的**(被别人吃掉 = 下面点了没反应)",
+			h == close_btn, "%s @ %s" % [str(h), str(cc)])
+		_tap(cc)
+		for _i in range(6):
+			await get_tree().process_frame
+		_ok("②b ★★★WALL_SOFT: 点「关闭」**真的把这一屏关掉了**(不是摆个钮在那儿)",
+			st._email_layer == null, str(st._email_layer))
+		_ok("②b ★★★关掉之后设置页**原样交还**(藏起来的那几个又看得见了)",
+			_page_ctrl(st) >= 3, "%d 个可见控件" % _page_ctrl(st))
+		_ok("②b ★★关掉之后顶栏返回箭头也回来了(还藏着 = 又一个「点了没反应」)",
+			st._top_bar != null and st._top_bar.back_btn != null
+				and st._top_bar.back_btn.visible,
+			str(st._top_bar.back_btn.visible) if st._top_bar != null else "<no bar>")
 	st.queue_free()
 	await get_tree().process_frame
 
-	## ★同一个对话框在**设置里主动绑定**时该有「关闭」—— 否则上面那条是恒真式
-	GameState.account_email = "me@x.co"          # 绑过了 ⇒ 不开墙
-	var st2 = SET.new()
+	## ── ②c 设置页里自己点开的那个小对话框: 两条路都通 ──
+	GameState.account_email = "me@x.co"          # 绑过了
+	var st2 = (load("res://scenes/Settings.tscn") as PackedScene).instantiate()
 	add_child(st2)
-	await get_tree().process_frame
-	_ok("② ★分母: 绑过了就不开墙", st2._email_layer == null, str(st2._email_layer))
-	st2._open_email_dialog(SB.FLOW_BIND)          # 主动打开(可关闭那一档)
+	for _i2 in range(4):
+		await get_tree().process_frame
+	_ok("②c ★分母: 绑过了就更不会自己弹", st2._email_layer == null, str(st2._email_layer))
+	st2._open_email_dialog(SB.FLOW_BIND)          # 主动打开(设置页里那一档)
 	await get_tree().process_frame
 	var labels2: Array = []
 	for b in _buttons(st2._email_layer):
 		labels2.append(str((b as Button).text))
-	_ok("② ★★分母: **主动**打开时「关闭」在 —— 证明上面那条是「墙」挡的, 不是对话框本来就没有",
+	_ok("②c ★★设置页里**自己点开**的那个对话框也有「关闭」(B: 绑定入口留着且找得到)",
 		labels2.has("关闭"), str(labels2))
-
-	_ok("② ★返回键接的是具名方法 `_on_back`(匿名闭包门禁量不到)",
+	_ok("②c ★返回键接的是具名方法 `_on_back`(匿名闭包门禁量不到)",
 		st2.has_method("_on_back"))
-	_ok("② ★分母: 没墙时返回箭头**看得见**(否则下面那条是恒真)",
+	_ok("②c ★分母: 这一档**没盖满全屏** ⇒ 顶栏返回箭头照常看得见",
 		st2._top_bar != null and st2._top_bar.back_btn != null
 			and st2._top_bar.back_btn.visible,
 		str(st2._top_bar.back_btn.visible) if st2._top_bar != null else "<no bar>")
 	st2.queue_free()
+	get_tree().root.size = vp0
 	await get_tree().process_frame
 
 
@@ -429,7 +574,7 @@ func _t_wall_ui() -> void:
 #    ⇒ **而墙正好不让他开局**。唯一兜底是 GameState 那个第一次要等 20 秒的保活 tick。
 #
 #    这一节守两件事, 缺一不可:
-#      ①「墙触发了, 身份照样在建」—— 真走主菜单入口量, 不看源码顺序
+#      ①「这三个调用真的跑了」—— 真走主菜单入口量, 不看源码顺序
 #         (源码顺序是我改的东西, 拿它当判据等于自己数自己)
 #      ②「提示不许教玩家去做墙不让他做的事」—— 量**函数真的吐出来的那句话**
 # ─────────────────────────────────────────────────────────────
@@ -458,7 +603,7 @@ func _t_identity_under_wall() -> void:
 	_ok("③ ★★`bind_accepts` 的同一句话也不许说「开一局」",
 		str(br.get("reason", "")).find("开一局") < 0, str(br.get("reason", "")))
 
-	## ── ①再验真入口: 走一次真实开机, 看墙触发之后身份有没有在建 ──
+	## ── ①再验真入口: 走一次真实开机, 看这三个调用有没有真的跑 ──
 	## ★★★判据换过一次(2026-09-24 CI 当场红): 原来量的是 `_auth_inflight`,
 	##   那是个**瞬时量** —— 只在请求在飞的那几帧为真, 回包一到就被清回 false。
 	##   同一份代码, 本地跑到 412 帧它还是 true, CI 上 16 帧就已经是 false 了
@@ -490,32 +635,43 @@ func _t_identity_under_wall() -> void:
 	## ★不能直接 `change_scene_to_file`: 门禁自己就是 `current_scene`, 那一句当场把
 	##   门禁拆掉(本仓踩过)。先把 current_scene 置空 —— 引擎只 `memdelete(current_scene)`,
 	##   置空之后它谁也不删, 门禁作为 root 的普通子节点活下来继续量。
-	## ★必须走真 `change_scene_to_file`: 墙的条件里有 `current_scene == self`,
-	##   手动 `add_child` 的话墙根本不会触发(第一版探针就是这么骗过自己的)。
+	## ★必须走真 `change_scene_to_file`: 这三个调用都在主菜单 `_ready` 里,
+	##   手动 `add_child` 量不到真实开机的那个时序(第一版探针就是这么骗过自己的)。
+	## ★★关掉首启教学(`ONBOARD=0`): 否则全新存档会被教学直接带进选龟屏,
+	##   这一节要看的是「主菜单留不留得住」, 教学那条路由 ⑧b 单独走。
+	OS.set_environment("ONBOARD", "0")
 	get_tree().current_scene = null
 	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 	for _i in 16:
 		await get_tree().process_frame
 	var cur := get_tree().current_scene
-	_ok("③ ★★分母: 墙**真的触发了**(被送到 Settings) —— 否则下面量的是没墙的路径",
-		cur != null and cur.name == "Settings", cur.name if cur != null else "<null>")
+	## ★★★ 2026-09-29 这条分母掉头了。原文是「墙**真的触发了**(被送到 Settings)」——
+	##   墙拆了之后没人被送走, 这一条再留着就是把旧事实钉在产品里
+	##   (memory `fb-gate-can-pin-the-bug-in-place`)。
+	## ★而这一节本身**不作废**: 它守的纪律是「这三个调用不许排在任何会
+	##   `return` 的分支后面」—— 墙只是当时那个 return。现在分母换成
+	##   「第一屏真的留住了」, 下面三条请求断言一字不改。
+	_ok("③ ★★★WALL_SOFT 分母: 没绑邮箱也**没被送走** —— 第一屏就是主菜单",
+		cur != null and cur.name == "MainMenu", cur.name if cur != null else "<null>")
+	_ok("③ ★分母: 而这一刻确实该请他绑(= 拆墙之前会被送走的那个状态)",
+		P2C.bind_needed(SB.enabled(), str(GameState.account_email)))
 	var urls: Array = []
 	for r in _reqs:
 		urls.append(str(r.get("url", "")).replace(DEAD_URL, ""))
-	print("     墙触发之后, 真实发出去的请求: %s" % str(urls))
-	_ok("③ ★★★墙触发之后, 建身份**仍然跑了** —— 不跑的话玩家永远发不出验证码",
+	print("     进主菜单之后, 真实发出去的请求: %s" % str(urls))
+	_ok("③ ★★★建身份**跑了** —— 不跑的话玩家永远发不出验证码",
 		urls.has("/auth/v1/signup"), str(urls))
 	## ★★★同一条纪律的第二例(2026-09-27): 决赛日那一场的**结果补报**也挂在主菜单
 	##   `_ready` 上, 和建身份并排。挂在墙的 `return` **后面**的话, 被墙挡住的人
 	##   (=没绑邮箱的)永远补不了报 —— 而本仓正是这样把 `ensure_signed_in_async`
 	##   排丢过一次(「全新安装的头 20 秒打不开游戏」)。
 	## ★量的是**真实发出去的那个请求**, 不是「函数被调用了」这种我自己插的标记。
-	_ok("③ ★★★墙触发之后, 决赛日**结果补报**仍然跑了(排在墙后面 = 被挡住的人永远补不了报)",
+	_ok("③ ★★★决赛日**结果补报**也跑了(排在任何会 return 的分支后面 = 那批人永远补不了报)",
 		urls.has("/rest/v1/rpc/finals_report"), str(urls))
 	## ★★★第三条(2026-09-27 补齐): **报名**也挂在这儿, 而它正是 v0.19.446 修的那条
 	##   (「那一刻没网 / token 刚过期 / 杀了 App 就静默漏报, 而报名在周六第 4 胜那一刻」)。
 	##   三条「必须在墙之前跑」的调用, 原来只有两条有门禁守着。
-	_ok("③ ★★★墙触发之后, 决赛日**报名补报**也仍然跑了(v0.19.446 修的那条, 位置没人守)",
+	_ok("③ ★★★决赛日**报名补报**也跑了(v0.19.446 修的那条, 位置没人守)",
 		urls.has("/rest/v1/rpc/finals_enter"), str(urls))
 	SB._transport_for_test = Callable()
 	GameState.finals_report_pending = {}
@@ -964,7 +1120,7 @@ func _t_no_typing(inst) -> void:
 	var st7 = SET.new()
 	add_child(st7)
 	await _wf(2)
-	st7._open_email_dialog(SB.FLOW_BIND, false)
+	st7._open_email_dialog(SB.FLOW_BIND, true, true)   ## 盖满全屏那一档
 	await _wf(3)
 	_ok("⑥e ★★已经有名字的人: 框里还是他自己的名字(不被随机名覆盖)",
 		st7._nick_edit != null and str(st7._nick_edit.text) == keep,
@@ -1097,6 +1253,318 @@ func _t_gap_ceiling(inst) -> void:
 		"剩 %.1f px, 一个行隙 %.0f px —— 抬不动了才叫到顶" % [room - bh, SET._W_ROW_GAP])
 
 
+# ──────────────────────────────────────────────────────────
+# ⑧ ★★★WALL_SOFT / BIND_LATER · 真入口: 拦不住人 (2026-09-29)
+#
+#    ★★★这一节是整份门禁的主判据。上面 ①②③ 量的都是【零件】
+#      (纯函数 / 一块屏 / 三个调用), 而「墙拆了吗」这件事只有**走一遍**才算数。
+#
+#    ★★为什么非得走真入口: 判据掉头最容易变成恒真式 ——
+#      断言「有一个叫关闭的按钮存在」= 数我自己插的标记, 插一行数一行必绿。
+#      ⇒ 这一节从**第一屏**开始, **一个绑定控件都不碰**, 一路走到战斗场景真的建起来、
+#        sim 真的在跑; 而 `account_email` **全程是空的** —— 那就是「不绑也能玩」的证据。
+#
+#    ★★★反向验证(怎么证它会 FAIL): 把 `phase2_config.WALL_BLOCKS` 翻成 true,
+#      ⑧a 那条「第一屏是主菜单」当场变成 `Settings` ⇒ 红, 而且红的形状正是
+#      「走不过去」。（2026-09-29 实测走过一遍, 见方案书报告。）
+#
+#    ★两条路都要走, 它们是**两个不同的产品行为**:
+#      ⑧a 老玩家(走过教学) —— 主菜单留住, 屏上挂那句非阻塞提示, 真点「开始战斗」进对局链
+#      ⑧b 全新安装(没走过教学) —— 产品自己把他直接送进第一局, 一直送到战斗场景
+# ──────────────────────────────────────────────────────────
+## 这棵子树里有几个看得见的 Control(分母: 屏建起来了没有)。
+func _ctrl_count(root) -> int:
+	if root == null or not is_instance_valid(root):
+		return 0
+	var k := 0
+	var stack: Array = [root]
+	while not stack.is_empty():
+		var n = stack.pop_back()
+		if n is Control and (n as Control).is_visible_in_tree():
+			k += 1
+		for c in (n as Node).get_children():
+			stack.append(c)
+	return k
+
+
+## 这棵子树里有没有哪个 Label 写着 `needle`。
+func _has_text(root, needle: String) -> bool:
+	if root == null or not is_instance_valid(root) or needle == "":
+		return false
+	var stack: Array = [root]
+	while not stack.is_empty():
+		var n = stack.pop_back()
+		if n is Label and str((n as Label).text).find(needle) >= 0:
+			return true
+		for c in (n as Node).get_children():
+			stack.append(c)
+	return false
+
+
+## 按节点名找(名字从产品那边的常量取, 不在这里抄一份字)。
+func _find_named(root, nm: String) -> Control:
+	if root == null or not is_instance_valid(root):
+		return null
+	var stack: Array = [root]
+	while not stack.is_empty():
+		var n = stack.pop_back()
+		if n is Control and str((n as Node).name) == nm:
+			return n as Control
+		for c in (n as Node).get_children():
+			stack.append(c)
+	return null
+
+
+## 按尺寸找(主 CTA 那块木框: 尺寸取 `MainMenuScene.HERO_SIZE`, 不写死)。
+func _find_sized(root, sz: Vector2) -> Control:
+	if root == null or not is_instance_valid(root):
+		return null
+	var stack: Array = [root]
+	while not stack.is_empty():
+		var n = stack.pop_back()
+		if n is Control and (n as Control).is_visible_in_tree() \
+				and absf((n as Control).size.x - sz.x) <= 1.0 \
+				and absf((n as Control).size.y - sz.y) <= 1.0:
+			return n as Control
+		for c in (n as Node).get_children():
+			stack.append(c)
+	return null
+
+
+## 等到当前场景变成 `nm` 那一屏(上限防死循环)。
+##
+## ★★★三个坑都是 2026-09-29 实测踩到的:
+##   ① `change_scene_to_file` 是**延迟**执行的, 换的中途 `current_scene` 会是 **null**
+##      ⇒ 判「变了没有」会当场误判成到了(第一版打出来就是「等了 0 帧 ⇒ <null>」)。
+##   ② `_btn_press` 里有一个 0.016 秒的 `create_timer`(按下缩放 → 渲染一帧 → 回调),
+##      它走**真实时间** ⇒ 按帧数猜要等多久就是「尺子跟机器快慢挂钩」。
+##   ③ 上一屏没清掉的话 root 上留着一个同名节点, 引擎会把新来的那个改名成
+##      `@Control@769` ⇒ 按名字判全部扑空。★所以每次换屏前走 `_drop_scene()`,
+##      名字还是用 `begins_with` 兼一手。
+func _wait_scene_named(nm: String, cap: int) -> int:
+	var w := 0
+	while w < cap:
+		var c = get_tree().current_scene
+		if c != null and is_instance_valid(c) and str(c.name).begins_with(nm):
+			return w
+		await get_tree().process_frame
+		w += 1
+	return w
+
+
+## 把当前场景**清掉**再换 —— 见上面 ③。
+## ★`current_scene = null` 先置空: 引擎换屏时只 `memdelete(current_scene)`,
+##   置空之后它谁也不删 ⇒ 门禁自己(root 的普通子节点)活下来继续量。
+## ★旧那屏走 `queue_free` 而不是 `free` —— 立刻硬释放会把还挂着的
+##   tween/await 打成「Lambda capture was freed」, 而那是致命正则里的一条。
+func _drop_scene() -> void:
+	var old = get_tree().current_scene
+	get_tree().current_scene = null
+	if old != null and is_instance_valid(old):
+		old.queue_free()
+	await _wf(2)
+
+
+func _t_open_path() -> void:
+	print("── ⑧ 真入口: 一个绑定控件都不碰, 走得到一局吗 ──")
+	var vp0 := get_tree().root.size
+	get_tree().root.size = Vector2i(1280, 720)
+	OS.set_environment("TURTLE_SUPABASE", DEAD_URL)
+	SB._reset_auth_for_test()
+	SB._transport_for_test = _spy           ## 不真打网络(回"连不上", 产品照常走失败分支)
+	SB._token = "tok-path"
+	GameState.account_email = ""
+	GameState.account_id = "uid-path"
+	var pl0: bool = bool(GameState.perf_lite)
+	var ob0: bool = bool(GameState.onboarded)
+	## ★★`perf_lite = true` ⇒ `_slide_in` 直接就位, 不播 0.85+0.42 秒的入场 tween。
+	##   量几何要**落位之后**才算数(memory `fb-screenshot-must-settle-and-multi-ratio`),
+	##   而等 tween 落位要烧掉上千帧(无头帧率极高) ⇒ 走产品自己的低画质路直接就位。
+	GameState.perf_lite = true
+
+	# ── ⑧a 老玩家: 主菜单留住 + 那句提示不挡路 + 真点「开始战斗」──
+	OS.set_environment("ONBOARD", "0")      ## 关掉首启教学, 这一支要看「主菜单留不留得住」
+	GameState.onboarded = true
+	_ok("⑧a ★★分母: 这一刻确实**该请他绑** —— 正是拆墙之前会被送走的那个状态",
+		P2C.bind_needed(SB.enabled(), str(GameState.account_email)))
+	_ok("⑧a ★★分母: 而**拦**那一档是关的(`WALL_BLOCKS=false`)",
+		not P2C.login_wall_on(SB.enabled(), str(GameState.account_email)))
+	await _drop_scene()
+	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+	## ★等固定帧数而不是「等 MainMenu 出现」: 墙要是开着, MainMenu 也会先建起来,
+	##   再由 `call_deferred("_go","Settings")` 换走 ⇒ 等「出现」会在换走之前就判完,
+	##   那条判据就成了恒真式。⇒ 等它**落定**(14 帧 ≫ 一次 deferred)再量。
+	await _wf(14)
+	var cur := get_tree().current_scene
+	_ok("⑧a ★★★WALL_SOFT: **第一屏是主菜单**, 不是绑定屏(把 WALL_BLOCKS 翻回 true ⇒ 这里变 Settings)",
+		cur != null and str(cur.name).begins_with("MainMenu"),
+		str(cur.name) if cur != null else "<null>")
+	_ok("⑧a ★分母: 主菜单真的建起来了(没建起来 ⇒ 下面量的是一块空屏)",
+		_ctrl_count(cur) >= 30, "%d 个可见控件" % _ctrl_count(cur))
+	## ★场景名之外**再要一条独立证据**: 整棵场景树里连绑定屏那句标题都找不到。
+	##   只看场景名的话, 哪天绑定屏改成盖在主菜单上就量不到了。
+	_ok("⑧a ★★全场景树里**一句绑定屏的标题都没有**(场景名之外的第二条证据)",
+		not _has_text(get_tree().root, str(P2C.login_wall_head())),
+		str(P2C.login_wall_head()))
+
+	## ── BIND_LATER: 那句非阻塞提示在屏上, 而且**不挡路** ──
+	var nudge := _find_named(cur, MM.NUDGE_NAME)
+	_ok("⑧a ★★★BIND_LATER: 主菜单上那句非阻塞提示**在屏幕上**(B: 绑定入口找得到)",
+		nudge != null and nudge.is_visible_in_tree(),
+		str(nudge.get_global_rect()) if nudge != null else "<不在>")
+	if nudge != null:
+		_ok("⑧a ★那句提示上写的字 == `bind_nudge_text()`(产品那一处, 不在测试里拼)",
+			_has_text(nudge, str(P2C.bind_nudge_text())), str(P2C.bind_nudge_text()))
+		var nr: Rect2 = nudge.get_global_rect()
+		var mn: float = minf(nr.size.x, nr.size.y)
+		print("     提示 %s  短边 %.0fpx = %.1fpt" % [str(nr), mn, mn / PX_PER_PT])
+		_ok("⑧a ★那句提示短边 ≥44pt(81px) —— 它是可点的, 就得过触摸线",
+			mn >= TOUCH_MIN_PX, "%.0fpx" % mn)
+		_ok("⑧a ★那句提示整块在 %d×%d 设计框内(戳出去 = 点不到)" % [int(MM.W), int(MM.H)],
+			nr.position.x >= -0.5 and nr.position.y >= -0.5
+				and nr.end.x <= float(MM.W) + 0.5 and nr.end.y <= float(MM.H) + 0.5, str(nr))
+		## ★★★**不压住任何一个可点元素** —— 压住了就是「点开始战斗点到绑定」,
+		##   那正是「退回成拦路」最隐蔽的一种长相。
+		var hot := _hot(cur)
+		_ok("⑧a ★分母: 主菜单上真扫到了 ≥8 个可点元素(否则下面那条是空检查)",
+			hot.size() >= 8, "%d 个" % hot.size())
+		var clash: Array = []
+		for c in hot:
+			var cc := c as Control
+			if cc == nudge or nudge.is_ancestor_of(cc):
+				continue
+			if nr.intersects(cc.get_global_rect()):
+				clash.append("%s %s" % [str(cc.name), str(cc.get_global_rect())])
+		_ok("⑧a ★★★BIND_LATER: 那句提示**不压住主菜单上任何一个可点元素**(压住 = 悄悄又变成拦路)",
+			clash.is_empty(), str(clash))
+
+	## ── 真点「开始战斗」(不是绑定控件) ──
+	var hero := _find_sized(cur, MM.HERO_SIZE)
+	_ok("⑧a ★分母: 找到了主 CTA 那块木框(%.0fx%.0f)" % [MM.HERO_SIZE.x, MM.HERO_SIZE.y],
+		hero != null, str(hero.get_global_rect()) if hero != null else "<不在>")
+	if hero != null:
+		var hc: Vector2 = hero.get_global_rect().get_center()
+		var hh := _hover_at(hc)
+		_ok("⑧a ★★分母: 主 CTA 中心那一点是**它自己**吃到的(被那句提示吃掉 ⇒ 这里当场红)",
+			hh != null and (hh == hero or hero.is_ancestor_of(hh)),
+			"%s @ %s" % [str(hh), str(hc)])
+		_tap(hc)
+		var waited: int = await _wait_scene_named("TeamSelect", 400)
+		var cur1 := get_tree().current_scene
+		print("     点「开始战斗」等了 %d 帧 ⇒ %s" % [waited,
+			str(cur1.name) if cur1 != null else "<null>"])
+		_ok("⑧a ★★★WALL_SOFT: 没绑邮箱、真点「开始战斗」⇒ **真的进了对局链**(选龟屏)",
+			cur1 != null and str(cur1.name).begins_with("TeamSelect"),
+			str(cur1.name) if cur1 != null else "<null>")
+		_ok("⑧a ★分母: 走到这一步 `account_email` 仍然是空的(= 一次都没绑)",
+			str(GameState.account_email) == "", str(GameState.account_email))
+
+	# ── ⑧b 全新安装: 产品自己把他一路送到战斗场景 ──
+	## ★这一支不设 `ONBOARD` —— 走**产品默认的首启判据**(`onboarded == false`),
+	##   而它做的事就是把新玩家直接带进第一局(选龟 → 战斗, 教学不经匹配)。
+	print("     ── ⑧b 全新安装(没走过教学) ──")
+	OS.set_environment("ONBOARD", "")
+	GameState.onboarded = false
+	GameState.tutorial_active = false
+	GameState.account_email = ""
+	await _drop_scene()
+	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+	await _wf(6)
+	var _wb: int = await _wait_scene_named("TeamSelect", 200)
+	var cur2 = get_tree().current_scene
+	print("     全新安装进主菜单后等了 %d 帧" % _wb)
+	_ok("⑧b ★★★WALL_SOFT: 全新安装 —— 产品自己把他送进**第一局的选龟屏**, 一个绑定控件都没碰",
+		cur2 != null and str(cur2.name).begins_with("TeamSelect") and bool(GameState.tutorial_active),
+		"%s / tutorial_active=%s" % [str(cur2.name) if cur2 != null else "<null>",
+			str(GameState.tutorial_active)])
+	if cur2 != null and str(cur2.name).begins_with("TeamSelect"):
+		## 用**产品自己的入口**选满三只(`_on_pick_pet` 就是点卡片跑的那一条),
+		## 不直接写 `team` —— 写字段就绕开了产品的规则。
+		_ok("⑧b ★分母: 阵容没被大轮锁定(锁了 `_on_pick_pet` 直接 return, 下面全是空检查)",
+			not bool(cur2._roster_locked))
+		var ids: Array = []
+		for p in DataRegistry.all_pets:
+			if ids.size() >= 3:
+				break
+			var pid := str((p as Dictionary).get("id", ""))
+			if pid != "":
+				ids.append(pid)
+		for pid in ids:
+			cur2._on_pick_pet(str(pid))
+		await _wf(3)
+		var got := 0
+		for t in cur2.team:
+			if t != null:
+				got += 1
+		_ok("⑧b ★分母: 三只真的进队了(没进 ⇒ `_on_start()` 会静默早退, 下面是空检查)",
+			got >= 3, "队里 %d 只: %s" % [got, str(cur2.team)])
+		## ★封盘闸: `_on_start()` 第一件事就是查它。真实时钟落在封盘窗内的话
+		##   这一步会静默 return ⇒ **一周里有几十分钟这条判据是空检查**。
+		##   ⇒ 用产品自己的缝 `lockout_now_override` 钉一个开着的时刻, 并把它断言出来。
+		var t_ok: int = int(P2C.now_utc())
+		for _k in range(24 * 8):
+			if P2C.can_start_match_utc(t_ok):
+				break
+			t_ok += 3600
+		cur2.lockout_now_override = t_ok
+		_ok("⑧b ★分母: 钉的那个时刻**不在封盘窗内**(否则 `_on_start()` 静默早退)",
+			P2C.can_start_match_utc(t_ok), "ts=%d" % t_ok)
+		cur2._on_start()
+		var w2: int = await _wait_scene_named("RealtimeBattle3D", 400)
+		var bat = get_tree().current_scene
+		print("     `_on_start()` 之后等了 %d 帧 ⇒ %s" % [w2,
+			str(bat.name) if bat != null else "<null>"])
+		_ok("⑧b ★★★WALL_SOFT: 一路走到**战斗场景真的建起来了** —— 全程一个绑定控件都没碰",
+			bat != null and str(bat.name).begins_with("RealtimeBattle3D"),
+			str(bat.name) if bat != null else "<null>")
+		if bat != null and str(bat.name).begins_with("RealtimeBattle3D"):
+			## ★★★「场景建起来了」≠「这一局开了」。量的是双路流程自己那本相位账
+			##   `_dl_state`: 空 = 流程根本没起来(那才是「建起来了但什么也没发生」);
+			##   非空 = 它已经进了开场幕(overview → preview → place → fight)。
+			##
+			## ★★**这里止步, 并且把边界写清楚**(不假装量到了更远):
+			##   从这一刻到「真的在互砍」还要走 **2×5 游戏秒的开场幕 + 摆位**
+			##   (`DL_PRESENT_SEC = 5.0`, 而 `_dl_present_t += dt` 走钳制后的帧 delta ⇒
+			##    无头高帧率下 10 游戏秒要上万帧), 而本门禁的帧预算是 500 帧 ——
+			##   强要等到那一步就会被 `--quit-after` 掐在半路, 表现是「没打 ALL PASS」
+			##   而不是某条断言 FAIL(CLAUDE.md §2 那个坑)。
+			##   ★而「一局能不能打完」本来就不是墙管的事: 它由**冒烟测试**跑满 60 秒
+			##   自然结束 + 结算路径守着(`tests/smoke_scenes.gd` 第 4 节)。
+			##   这一节要证的是「没绑邮箱的人能走到这里」—— 到这里就够了。
+			## ★轮询而不是「等 N 帧」: 开场建世界要多久跟机器快慢有关,
+			##   拿固定帧数当尺子就是本仓那一族(本地绿 / CI 红)。
+			var _wu := 0
+			while _wu < 300 and str(bat._dl_state) == "":
+				await get_tree().process_frame
+				_wu += 1
+			print("        等双路流程起步等了 %d 帧  ·  _dl_state=「%s」  单位 %d 个  _t=%.3f"
+				% [_wu, str(bat._dl_state), (bat._units as Array).size(), float(bat._t)])
+			_ok("⑧b ★★★而且这一局**真的开了**: 双路流程进了开场幕(建起来 ≠ 开了)",
+				str(bat._dl_state) != "", "_dl_state=「%s」" % str(bat._dl_state))
+			_ok("⑧b ★分母: 战斗拿到的就是这一路点出来的三只(拿错阵容 = 上面那条量的是别的局)",
+				(GameState.season_leaders as Array).size() == 3, str(GameState.season_leaders))
+		_ok("⑧b ★★★分母: 走到这一步 `account_email` **仍然是空的** —— 不绑真的能打一局",
+			str(GameState.account_email) == "", str(GameState.account_email))
+		## 清场走 `queue_free`(产品自己那条路), **不用 `free()`** ——
+		## 立刻硬释放会把还挂着的技能 await/tween 打成「Lambda capture was freed」
+		## (冒烟测试里那条已登记的缺口就是这么来的), 而那是致命正则里的一条。
+		if bat != null:
+			get_tree().current_scene = null
+			bat.queue_free()
+			await _wf(4)
+
+	## 收尾: 环境与存档字段一律还原(memory `fb-restore-mutations-after-reverse-verify`)。
+	SB._transport_for_test = Callable()
+	_reqs.clear()
+	OS.set_environment("ONBOARD", "")
+	OS.set_environment("TURTLE_SUPABASE", " ")
+	SB._reset_auth_for_test()
+	GameState.perf_lite = pl0
+	GameState.onboarded = ob0
+	GameState.tutorial = false
+	GameState.tutorial_active = false
+	get_tree().root.size = vp0
+	await _wf(2)
 ## `hot` 里有哪些控件的下沿越过了 `line`(= 键盘上沿)。
 func _under(hot: Array, line: float) -> Array:
 	var out: Array = []

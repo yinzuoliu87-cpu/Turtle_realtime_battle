@@ -92,9 +92,27 @@ func _scan() -> Array:
 				var lj: String = lines[j]
 				if lj.strip_edges().begins_with("#"):
 					continue
-				var hp: int = lj.find("#")
-				if hp >= 0:
-					lj = lj.substr(0, hp)
+				## ★★ 2026-09-29 修一个**判据自己的 bug**: 原来是 `lj.find("#")` 然后砍掉后面 ——
+				##   而 `#` 也会出现在**字符串里**。两个真实误报:
+				##     `return "%s#%d@%s" % [base, n, lane]`      砍在 `"%s` ⇒ `lane` 被切掉
+				##     `Color("#f0c27a") if primary else Color(...)` 砍在 `Color("` ⇒ `primary` 被切掉
+				##   ⇒ 参数明明用了, 却被判成死的。**去注释必须认引号。**
+				var q := ""          # 当前在哪种引号里("" = 不在字符串里)
+				var cut := -1
+				for ci in range(lj.length()):
+					var ch := lj[ci]
+					if q != "":
+						if ch == "\\":
+							continue
+						if ch == q:
+							q = ""
+					elif ch == "\"" or ch == "'":
+						q = ch
+					elif ch == "#":
+						cut = ci
+						break
+				if cut >= 0:
+					lj = lj.substr(0, cut)
 				body += lj + "\n"
 			for a in args:
 				var an: String = str(a.get("name", ""))

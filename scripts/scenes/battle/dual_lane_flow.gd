@@ -126,9 +126,13 @@ func _dl_build_present_overlay(mode: String) -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(title)
 	if mode == "overview":
-		## ★原文案 "⚔ 三路对阵总览" —— 「总览」是 Overview 直译(dashboard 词)。
-		##   这一幕摆的就是三个战场各自的对手, 用一句陈述事实的话说完, 不用栏目名。
-		title.text = "⚔  三个战场都要打"
+		## ★★文案改过两次, 两次错得不一样 —— 记下来免得第三次又改回去:
+		##   v1 "⚔ 三路对阵总览"   —— 「总览」是 Overview 直译, 仪表盘词。
+		##   v2 "⚔ 三个战场都要打" —— 我 2026-09-28 改的, **把标题写成了一句规则说明**,
+		##      读起来像教学提示。用户 2026-09-29 当场指出:「任何别人的商业游戏会这样子写吗」—— 不会。
+		##   ★两次的共同病因: **拿标题去解释屏幕上已经看得见的东西**。
+		##      三路对手就摆在下面, 标题该说的是【此刻发生什么】, 不是【你得做什么】。
+		title.text = "⚔  三路开战"
 		for ln in ["top", "bottom", "final"]:
 			vb.add_child(_dl_overview_lane_row(ln, str(lane_cn.get(ln, ln))))
 	elif mode == "preview":
@@ -384,6 +388,15 @@ func _dl_enter_place() -> void:
 	battle._dl_place_hint.text = "拖我方的龟在自己半场摆好站位 → 点「开打」"
 	battle._dl_go_btn.visible = true
 	battle._dl_place_hint.visible = true
+	## ★自动驾驶(`SIM_AUTOPILOT=1`): 停 `DWELL_PLACE` 帧让人看清双方站位,
+	##   再替人按上面那颗「▶ 开 打」。**不带开关时 `attach()` 第二行就 return、一行都不跑。**
+	##   ★接在这里(而不是另起一条旁路): 按的就是上面刚建好的那颗按钮,
+	##     所以「摆位阶段真的结束了吗」量得到(`_dl_state` 从 place 走到 fight)。
+	##   ★与本函数开头那条 `DL_AUTOFIGHT` 不会互相顶: 那条已经 return 了(根本不建按钮),
+	##     而且它还会跳掉「3 路总览 → 对阵预览」整段演出(`battle_spawn.gd:234`) —— 那不是“少按一下键”。
+	##   ★在这一屏停多久不影响战斗结果: `_dl_state == "place"` 时 `_fight_on` 恒假
+	##     (`RealtimeBattle3DScene.gd:2219`) ⇒ `_t` 不涨、单位不 tick。
+	SimAutopilot.attach(battle)
 	# ★教学 match1: 摆位UI就绪 → 挂"place"引导(教站位), 只挂一次(首路; 别每路弹)。
 	if not battle._tut_place_shown:
 		var _tdp = battle.get_node_or_null("/root/TutorialDirector")

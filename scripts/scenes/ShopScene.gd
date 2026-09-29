@@ -42,6 +42,21 @@ const PANEL_W := 440.0
 const PANEL_Y := 124.0
 const PANEL_H := 592.0
 const BENCH_Y := 484.0       # 备战席(现只在弹层里用, 主页面是按钮)
+## §弹层「出战阵容」里每个单位的三件装备 —— **竖排**, 一行一件: [36 图标格] + 名字。
+## ★★2026-09-29 从横排改竖排的理由(真机实测): 原来 3 格横着摆(40px 一格), 名字标签只有
+##   **36px 宽 / 字号 10** ⇒ 96 件里 **71 件**显示不全, 而且 **3 对被裁成同一个词**
+##   (守护贝壳 / 守护贝母 → 都成「守护贝」, 另两对同理)。
+##   讽刺的是这行名字当初就是为了「手机没 hover, 别只靠 tooltip」才加的 —— 裁成前 3 个字之后
+##   它既没说清是哪一件, 又占着位置, 比不写更坏。
+##   竖排之后名字拿到 LINEUP_NAME_W 的宽度, 96 件一个不裁(门禁 NAME_NOT_TRUNCATED 量的是
+##   **真实渲染宽度**而不是数字数)。图标格尺寸/点击靶/星级一个像素没动。
+## ⚠ 竖排三行的总高 = 22 + 3×LINEUP_ROW_H = 142; 弹层里这块从 y=68 起 ⇒ 底沿 210,
+##   而「收起」按钮在 y=234 —— 别把行高再往上加。
+const LINEUP_ROW_H := 40.0    # 一件一行的行高(36 格 + 4 间隙)
+const LINEUP_CELL := 36.0     # 图标格边长(点击靶 + 星级都画在它上面)
+const LINEUP_NAME_X := 40.0   # 名字相对该单位列左边的偏移
+const LINEUP_NAME_W := 78.0   # 名字可用宽度 = 列宽 118 − LINEUP_NAME_X
+const LINEUP_NAME_FONT := 11  # 名字字号(原横排时是 10)
 const BOTTOM_BTN_Y := 552.0  # 底部两个摘要按钮
 const LINEUP_Y := 580.0      # 阵容装备(横排)
 ## 羁绊总览条(货架与底部按钮之间那条空带)。★进 verify_shop_layout 的越界检查
@@ -75,6 +90,7 @@ var _sel: int = -1            # 当前选中的货架格(两步购买: 点卡选
 var _sel_own: String = ""
 var _sel_own_star: int = 1
 var _popup: Control = null   # 底栏弹层(备战席/出战阵容)
+var _toast_node: Label = null   # 一句话提示(见 _toast); 同时只留一条
 
 func _ready() -> void:
 	var _td = get_node_or_null("/root/TutorialDirector")
@@ -294,6 +310,61 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):   # ESC 返回主菜单 (与图鉴一致)
 		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 
+# ══════════════════════════════════════════════════════════════
+#  §一句话提示 (toast)
+# ══════════════════════════════════════════════════════════════
+## ★由来(2026-09-29 真机实测): 商店里「按不动」的路径原来**一条反馈都没有** ——
+##   满级还去买经验、币不够去买装备, 都是一句 `return` 或一个空的 else。
+##   玩家看到的是「点了没反应」, 而那与「游戏卡住了」在屏幕上**长得一模一样**。
+##   实测一个只看屏幕的 agent 在满级后连点了 8 下 —— 它不是笨, 是界面没说话。
+## ★★不在提示后面调 `_rebuild()`: 背包页那 7 条 toast 全部看不见, 根因就是
+##   `host._toast(...)` 的**下一行**就是 `host._rebuild()`, 而 `_rebuild()` 开头把
+##   子节点全 `queue_free()` ⇒ 提示生下来那一帧就被销毁。这里的提示只在
+##   「什么都没变」的分支出现, 本来就不需要重画; 上一条记在 `_toast_node` 里, 下一条来时先收掉。
+func _toast(msg: String) -> void:
+	if _toast_node != null and is_instance_valid(_toast_node):
+		_toast_node.queue_free()
+	var t := Label.new()
+	t.text = msg
+	t.add_theme_font_size_override("font_size", 22)
+	t.add_theme_color_override("font_color", Color("#ffe9a8"))
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	t.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	t.size = Vector2(760, 44)
+	t.position = Vector2((W - 760.0) * 0.5, 430.0)
+	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	t.z_index = 30       # 底栏弹层是 20 —— 提示必须压得住它
+	var bgp := Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.03, 0.09, 0.14, 0.92)
+	sb.border_color = Color("#2b6b7d")
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(0)   # 全屏统一直角
+	bgp.add_theme_stylebox_override("panel", sb)
+	bgp.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bgp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bgp.show_behind_parent = true
+	t.add_child(bgp)
+	add_child(t)
+	_toast_node = t
+	## 2.4 秒后自己收走。★这里用 `create_timer` 是对的 —— CLAUDE.md §3.5 禁的是
+	##   「拿 create_timer 等**游戏内**效果」(战斗时钟走钳制后的 delta), 而商店没有 sim 时钟,
+	##   这条量的就是真实时间。
+	## ★★ 2026-09-29: 原来用树级 `create_timer` + 闭包 —— 它**会活过场景释放**:
+	##   玩家 2.4 秒内离开商店, 回调照样触发。`is_instance_valid` 挡得住崩溃,
+	##   挡不住闭包把 self 延寿 —— `tree_timer` 守的正是这个。
+	##   ⇒ 换成挂在自己身上的 Timer 子节点: 场景没了它跟着没。
+	var tm := Timer.new()
+	tm.one_shot = true
+	tm.wait_time = 2.4
+	add_child(tm)
+	tm.timeout.connect(func():
+		if is_instance_valid(t):
+			t.queue_free()
+		tm.queue_free())
+	tm.start()
+
+
 func _rebuild() -> void:
 	for c in get_children():
 		if c.is_in_group("tut_overlay"):
@@ -355,7 +426,14 @@ func _rebuild() -> void:
 	lv.add_theme_font_size_override("font_size", 28); lv.add_theme_color_override("font_color", Color("#ffd93d"))
 	lv.position = Vector2(_lx, HDR_CY - 27.0); lv.size = Vector2(76, 32)
 	lv.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; add_child(lv)
-	var xpn := Label.new(); xpn.text = "经验 %d/%d" % [_have, _need]
+	## ★★满级不印哨兵分母。`xp_to_next()` 在 level≥MAX_LEVEL 时返回 **999999**,
+	##   它的注释写着「极大(不可升)」—— 那是**代码内部表示"升不了了"的约定**,
+	##   而原样印到屏幕上变成「经验 0/999999」—— 玩家读出来是"还差好多, 继续攒"。
+	##   同一个数在两边意思**正好相反**。(2026-09-29 用户点名; 实测一个只看屏幕的
+	##   agent 在满级后反复去点那颗已经死了的按钮 —— 真玩家会做一模一样的事。)
+	var _maxed: bool = int(GameState.season_level) >= P2.MAX_LEVEL
+	var xpn := Label.new()
+	xpn.text = "已满级" if _maxed else ("经验 %d/%d" % [_have, _need])
 	xpn.add_theme_font_size_override("font_size", 19); xpn.add_theme_color_override("font_color", Color("#9fb4c8"))
 	xpn.position = Vector2(_lx + 76.0, HDR_CY - 26.0); xpn.size = Vector2(_lw - 76.0, 30)
 	xpn.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -366,7 +444,7 @@ func _rebuild() -> void:
 	##   ★外沿矩形一个像素没动(560,55)–(900,75): 门禁⑩量的是头部三组的并集矩形共心 y=48,
 	##     换皮不许把版式带跑。
 	_pixel_bar(self, Vector2(_lx, HDR_CY + 7.0), Vector2(_lw, 20),
-		float(_have) / float(_need), Color("#ffd93d"))
+		1.0 if _maxed else (float(_have) / float(_need)), Color("#ffd93d"))
 
 	# 组3: 买经验。两行 —— 上行【拿到什么】, 下行【花多少】。
 	## ★原文案「买经验 4 → +4XP」把两个 4 摆在一行还夹着英文 XP, 一眼分不清哪个是花的哪个是拿的。
@@ -384,7 +462,9 @@ func _rebuild() -> void:
 	##   ⚠ 用户 2026-08-15 的原话是「**购买4xp** 放在按钮左侧, 4图标放在按钮上」,
 	##     他定的是**位置**(说明文字在左 / 价格在按钮上), 我只改称呼不动位置。
 	##     称呼这一改**要用户回头确认一句** —— 见报告的「待拍板」。
-	var pl := Label.new(); pl.text = "买经验 +%d" % _xp_gain
+	## ★满级时这行说明也要跟着改口 —— 右边那颗按钮已经是死的了, 这里还写着「买经验 +4」
+	##   等于继续吆喝一个买不到的东西(2026-09-29 那个 agent 连点 8 下的直接诱因)。
+	var pl := Label.new(); pl.text = "等级已满" if _maxed else ("买经验 +%d" % _xp_gain)
 	pl.add_theme_font_size_override("font_size", 24)
 	pl.add_theme_color_override("font_color", Color("#cfe4f0"))
 	pl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -397,10 +477,34 @@ func _rebuild() -> void:
 	##   改成两个子节点手动排成【一个贴紧的组】, 再把这个组在按钮里上下左右居中。
 	##   数字宽 24 + 间隙 6 + 图标 30 = 60 ⇒ 起点 (140-60)/2 = 40, 组中心正好落在按钮中心 70。
 	## ★68 → 81(44pt): 绕 HDR_CY 对称长, 上下各多 6.5 —— 头部这一条本来就是空的。
-	##   ⚠ 下面两个子节点的 y 是拿 68 算的居中偏移, **必须一起改成 81**, 否则数字和币会偏上 6.5。
-	const BXP_H := 81.0
+	##   ⚠ 下面两个子节点的 y 是拿 BXP_H 算的居中偏移, 所以改这一个常量就够, 不会偏。
+	## ★★81 → 92(2026-09-29 换共享皮之后**量出来必须改**): 新皮 `menu/frame-rect.png`
+	##   的边带实测 **28**(旧的 shop/btn-frame 只有 15) ⇒ 上下吃掉 56, 81 高只剩 25px 内容区,
+	##   而这里那个 28 号字的数字**整行高 36** ⇒ `verify_ui_consistency`「Shop 文字压边带」
+	##   当场从 0 变 1(实测 +5)。92 ⇒ 内容区 36, 正好装得下, 不用把数字改小。
+	##   ⚠ 下界: 绕 HDR_CY=48 对称 ⇒ 下沿 94, 而出货概率行从 96 起 —— **再高就压上去了**。
+	const BXP_H := 92.0
 	bxp.size = Vector2(_bw, BXP_H); bxp.position = Vector2(_bx, HDR_CY - BXP_H * 0.5)
-	bxp.pressed.connect(func(): if GameState.buy_season_xp(): _rebuild())
+	## ★满级后这颗按钮本来就按不动(`buy_season_xp()` 会拒)—— 但它**看着还能点**,
+	##   那就是在骗人。死按钮要**长得像死的**。
+	bxp.disabled = _maxed
+	## ★★`disabled` 只换 StyleBox 与 `font_disabled_color` —— 而这颗按钮的字**不是**
+	##   `Button.text`: 价格是两个【子节点】(数字 Label + 币图标)。子节点不吃 disabled,
+	##   所以只设 disabled 的话满级后那个「4💠」照样是亮的, 看着还能按 ⇒
+	##   上面那句「死按钮要长得像死的」并没有兑现。`CanvasItem.modulate` 会往子节点传,
+	##   整颗(含价格)一起暗下来才算。
+	bxp.modulate = Color(1, 1, 1, 0.42) if _maxed else Color(1, 1, 1, 1)
+	## ★★★`disabled` 是【点不动】, 不等于【说清了为什么】(用户 2026-09-29:「满级后买经验
+	##   是死按钮, 点了零反馈」)。原来的 false 分支**什么都不做**, 而 `buy_season_xp()`
+	##   会为【两个】理由返回 false —— 满级 / 币不够 ⇒ 两个理由各给一句话。
+	##   满级那句不是"到不了的分支": 按钮被程序触发、或哪天 disabled 的条件漂了, 它就是唯一的出口。
+	bxp.pressed.connect(func():
+		if GameState.buy_season_xp():
+			_rebuild()
+		elif int(GameState.season_level) >= int(P2.MAX_LEVEL):
+			_toast("已经是最高等级 Lv%d · 经验用不上了" % int(P2.MAX_LEVEL))
+		else:
+			_toast("深海币不够 · 买一次经验要 %d" % int(P2.BUY_XP_COST)))
 	_skin_button(bxp); add_child(bxp)
 	var _gw2 := 60.0
 	var _gx := (_bw - _gw2) * 0.5
@@ -574,7 +678,7 @@ func _build_lineup_equips(host: Node = null, ox: float = 0.0, oy: float = 0.0) -
 			#   原来这里是一行小灰字, 6 只龟全空时底部就是 6 行同样的灰字, 一大片死区。
 			#   空槽方框既占住位置说明"这里能放 3 件", 又和有装备时的格子对齐, 一眼看懂。
 			if eqs.is_empty():
-				for ci0 in range(3):
+				for ci0 in range(int(P2.UNIT_EQUIP_CAP)):
 					var hole := Panel.new()
 					var hsb := StyleBoxFlat.new()
 					hsb.bg_color = Color(1, 1, 1, 0.03)
@@ -587,11 +691,12 @@ func _build_lineup_equips(host: Node = null, ox: float = 0.0, oy: float = 0.0) -
 					hsb.set_border_width_all(1); hsb.set_corner_radius_all(0)
 					hole.add_theme_stylebox_override("panel",
 						UISkin.nine_if_big(36.0, 36.0, "slot-frame.png", 12, hsb))
-					hole.position = Vector2(ox + cx + ci0 * 40, y + 22); hole.size = Vector2(36, 36)
+					hole.position = Vector2(ox + cx, y + 22 + ci0 * LINEUP_ROW_H)
+					hole.size = Vector2(LINEUP_CELL, LINEUP_CELL)
 					hole.mouse_filter = Control.MOUSE_FILTER_IGNORE
 					host.add_child(hole)
 			else:
-				for ci in range(mini(eqs.size(), 3)):   # 横排每列只放得下 3 格(3×40=120)
+				for ci in range(mini(eqs.size(), int(P2.UNIT_EQUIP_CAP))):   # 竖排 3 行 = 单只装备上限
 					var it: Dictionary = eqs[ci]
 					var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(it.get("id", "")), {})
 					var cell := Panel.new()
@@ -602,7 +707,8 @@ func _build_lineup_equips(host: Node = null, ox: float = 0.0, oy: float = 0.0) -
 					csb.set_border_width_all(3 if _lsel else 2); csb.set_corner_radius_all(0)
 					cell.add_theme_stylebox_override("panel",
 						UISkin.nine_if_big(36.0, 36.0, "slot-frame.png", 12, csb))
-					cell.position = Vector2(ox + cx + ci * 40, y + 22); cell.size = Vector2(36, 36)
+					cell.position = Vector2(ox + cx, y + 22 + ci * LINEUP_ROW_H)
+					cell.size = Vector2(LINEUP_CELL, LINEUP_CELL)
 					# ★不要只靠 tooltip —— 手机没有 hover, 这正是本次重设计要根治的坑
 					#   (货架卡片的描述原来就藏在 tooltip 里)。这里补一行常驻的名字。
 					#   tooltip 保留给桌面端当补充, 但不再是【唯一】途径。
@@ -610,13 +716,17 @@ func _build_lineup_equips(host: Node = null, ox: float = 0.0, oy: float = 0.0) -
 					host.add_child(cell)
 					_wire_own_tap(cell, str(it.get("id", "")), int(it.get("star", 1)))
 					var enm := Label.new(); enm.text = str(edef.get("name", "?"))
-					enm.add_theme_font_size_override("font_size", 10)
-					enm.add_theme_color_override("font_color", Color("#7f93a6"))
+					enm.add_theme_font_size_override("font_size", LINEUP_NAME_FONT)
+					enm.add_theme_color_override("font_color", Color("#9fb4c8"))
+					## ★裁切**留着**(哪天进了更长的名字, 宁可省略号也别糊到隔壁那一列),
+					##   但门禁 NAME_NOT_TRUNCATED 会穷举 96 件保证它一次都不该触发。
 					enm.clip_text = true
 					enm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-					enm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+					enm.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+					enm.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 					enm.mouse_filter = Control.MOUSE_FILTER_IGNORE
-					enm.position = Vector2(ox + cx + ci * 40, y + 59); enm.size = Vector2(36, 14)
+					enm.position = Vector2(ox + cx + LINEUP_NAME_X, y + 22 + ci * LINEUP_ROW_H)
+					enm.size = Vector2(LINEUP_NAME_W, LINEUP_CELL)
 					host.add_child(enm)
 					## ★走 EquipIcon: 无图时退化成 emoji 而不是空白(EquipIcon.make 的 else 分支)
 ##   ⚠"060~095 有 36 件没配图"这句已作废: 实测 phase2-equipment.json 95 件**全部**有 img,
@@ -1199,8 +1309,7 @@ func _build_detail_panel() -> void:
 		buy.text = "回 🎒 背包装上或卖掉"
 		buy.add_theme_font_size_override("font_size", 19)
 		buy.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Inventory.tscn"))
-		_skin_button(buy, true, BUY_BTN_TEX)
-		_gold_btn_text(buy)
+		_skin_button(buy, true)
 		box.add_child(buy)
 		return
 	_coin_button_icon(buy, 24)
@@ -1214,8 +1323,7 @@ func _build_detail_panel() -> void:
 		##   ⚠ 差多少这个数【不能丢】(上面那条 P1-4 就是为它写的), 只把括号拆成一句话。
 		buy.text = "还差 %d 枚深海币" % (price - coins)
 		buy.disabled = true
-	_skin_button(buy, true, BUY_BTN_TEX)
-	_gold_btn_text(buy)
+	_skin_button(buy, true)
 	box.add_child(buy)
 
 
@@ -1478,22 +1586,30 @@ func _pixel_bar(parent: Control, pos: Vector2, sz: Vector2, ratio: float, fill: 
 
 
 # ════════════════════════════════════════════════════════════════════════
-#  皮肤: 三张【本项目新生成】的像素框 (assets/sprites/shop/)
+#  皮肤: 卡框 / 面板框 —— 【本项目新生成】的像素框 (assets/sprites/shop/)
 #
 #  ★用户 2026-07-28「别复用，自己画或生产」「只有背包或商店的图标可以复用」——
-#    所以这三张是 PixelLab 新生成的, 没有从 menu/ 搬现成的 frame-*.png。
+#    所以这些是 PixelLab 新生成的, 没有从 menu/ 搬现成的 frame-*.png。
 #    (深海币 ic-deepsea.png 是用户点名允许复用的那个例外。)
+#  ★★2026-09-29 这条**只管卡框/面板框了**: 按钮那两张已经退场(见下)。
+#    这两条不冲突 —— 那条铁律说的是「不许拿别的内容的素材顶替新内容」,
+#    而按钮不是"商店的新内容", 它是**全游戏同一种控件**; 同一种控件长两副样子
+#    正是用户 2026-09-29 说的「不好看的按钮」。⇒ 卡框保持自产, 按钮归共享层。
 #
 #  ★margin 是【量出来的】不是猜的: 见工具输出
-#      btn-frame  128x64  边框 L14 R14 T17 B16 → 18
 #      card-frame 117x117 边框 L13 R14 T16 B13 → 17
 #      panel-frame 191x246 边框 L23 R22 T24 B24 → 25
-#    九宫格 margin 大于控件一半会把中间压没 —— 按钮最矮 44px, 上下 18+18=36 < 44, 成立。
+#    九宫格 margin 大于控件一半会把中间压没。
 # ════════════════════════════════════════════════════════════════════════
-const BTN_TEX = preload("res://assets/sprites/shop/btn-frame.png")
-## 购买按钮专用金框 —— 它是全页最主要的动作, 用和"返回/背包/刷新"一样的灰蓝框
-## 就没有主次(用户 2026-07-29「购买按钮你不觉得很扁吗」的另一半: 不只是矮, 是不够重)。
-const BUY_BTN_TEX = preload("res://assets/sprites/shop/buy-btn.png")
+## ★★2026-09-29 **按钮皮已全部交给共享层 `UISkin.button`** —— 见下方 `_skin_button`。
+##   原来这里有 `BTN_TEX`(shop/btn-frame.png) 与 `BUY_BTN_TEX`(shop/buy-btn.png),
+##   那是**全项目唯一一套屏幕专用的按钮皮**。卡框/面板框仍是商店自己的(它们没有共享层对应物)。
+## ★`shop/btn-frame.png` **没有退场** —— 它还有第二个身份: 底栏弹层的底板
+##   (`_open_bottom_popup` 那张 820×300 的横板, 见那里的注释)。那是**面板**不是按钮,
+##   所以常量改名成 `POPUP_TEX`, 名字现在和用途对得上了。
+const POPUP_TEX = preload("res://assets/sprites/shop/btn-frame.png")
+## 量的: 源图 128×64, 边框 L14 R14 T17 B16 → 18
+const POPUP_MARGIN := 18
 ## ★卡框换新(2026-07-29)。旧的 card-frame.png 是珊瑚/藤壶纹, 两个问题:
 ##   ① 132px 下那些碎装饰就是噪点, 十张并排还形成很强的重复图案
 ##   ② 它同时背着"费用档"和"选中态"两个颜色职责, 而 modulate 是【乘法】——
@@ -1520,7 +1636,6 @@ const CARD_TEX_SEL = preload("res://assets/sprites/shop/card-frame-s.png")
 ##   ⇒ 先搜库再动手: 不为这两件事新生成贴图(assets/sprites/shop/ 已有 9 张框)。
 const CARD_TEX_N = preload("res://assets/sprites/shop/card-frame-n.png")
 const PANEL_TEX = preload("res://assets/sprites/shop/panel-frame.png")
-const BTN_MARGIN := 18
 const CARD_MARGIN := 8       # 量的: 新框 72×72, 边框 7px
 ## 合成指示星(像素·12 帧闪光循环)。★只在「已有 2 件、再买 1 件就合成」时出现 ——
 ## 装备本身就有 ★1/★2/★3 星级, 画一颗星会被读成"这是 ★1 装备", 而每张货架卡都是 ★1 = 零信息。
@@ -1530,32 +1645,30 @@ const STAR_FRAME_W := 32
 const PANEL_MARGIN := 25
 
 
-## 给按钮套上新生成的深海金属框, 取代 Godot 默认灰皮。
-## 三态用 modulate 区分, 不另外生成贴图: normal / hover 提亮 / pressed 压暗+文字下沉。
-func _skin_button(b: Button, disabled_dim := true, tex: Texture2D = null) -> void:
-	for st in ["normal", "hover", "pressed", "disabled", "focus"]:
-		var sb := StyleBoxTexture.new()
-		sb.texture = tex if tex != null else BTN_TEX
-		sb.texture_margin_left = BTN_MARGIN
-		sb.texture_margin_right = BTN_MARGIN
-		sb.texture_margin_top = BTN_MARGIN
-		sb.texture_margin_bottom = BTN_MARGIN
-		# ★content_margin 必须显式设小 —— 它默认【跟随 texture_margin】(18), 于是按钮的
-		#   最小高度 = 文字高 + 36, 刷新键从 48 被撑到 66、压到了下面的备战席标题(门禁④抓到)。
-		#   texture_margin 管九宫格怎么切图, content_margin 管文字离边多远, 两码事。
-		sb.content_margin_left = 14.0
-		sb.content_margin_right = 14.0
-		sb.content_margin_top = 4.0
-		sb.content_margin_bottom = 4.0
-		match st:
-			"hover":    sb.modulate_color = Color(1.22, 1.22, 1.22)
-			"pressed":  sb.modulate_color = Color(0.78, 0.78, 0.78)
-			"disabled": sb.modulate_color = Color(0.5, 0.52, 0.55) if disabled_dim else Color(1, 1, 1)
-			"focus":    sb.modulate_color = Color(1.1, 1.1, 1.1)
-		b.add_theme_stylebox_override(st, sb)
-	b.add_theme_color_override("font_color", Color("#dff2ff"))
+## 给按钮上皮 —— **一律走共享层 `UISkin.button`**, 商店不再有自己的一套。
+##
+## ★由来(用户 2026-09-29:「不好看的按钮」)。原来这里自己建 `StyleBoxTexture`,
+##   贴 `assets/sprites/shop/btn-frame.png`(128×64) + `shop/buy-btn.png`, margin 18。
+##   **那张图 64 行里 36 行是边框, 中段只剩 28 行** —— 套到实测 76~96 高的按钮上
+##   中段被拉 2.7~3.4 倍, 金属质感全被拉平, 实拍(改前图)就是**一圈青色细描边的方块**。
+##   这与 2026-08-19 给返回键换框时量到的是**同一条**毛病(`ui_skin.gd:112`:
+##   「小签牌拉 2.5~3.4 倍 ⇒ 看起来就是一块灰板」)。
+## ★★为什么不是"再画一张商店专用的大框": 全项目 10 个屏(背包/图鉴/主菜单/排行榜/
+##   设置/对阵表/战斗面板/羁绊面板/糖罐/选龟)都走 `UISkin.button`, **商店是唯一的例外** ——
+##   例外本身就是用户看到的那个毛病。共享层已经按**控件真实尺寸**挑框
+##   (短边 ≥56 且面积 ≥5000 → `menu/frame-rect.png` margin 27; 否则 `chip-frame.png` margin 7),
+##   判据是「边带×2 装不装得进这个控件」而不是「哪张更华丽」(ui_skin.gd:117 那段是量出来的)。
+##   ⚠ 顺带记下**量过但用不了**的那张: `menu/btn-frame.png`(893×212) 端花左右各 101px、
+##   上下边带实测 85/41 —— 上下加起来 126, 而商店最高的按钮才 96。**装不进去, 不是不想用。**
+## ★主次改用 `tint` 表达, 不再靠第二张贴图: 「买下」是全页最主要的动作 ⇒ 暖金;
+##   其余冷蓝。(原来那张 `buy-btn.png` 金框正是"屏幕专用的一次性皮"。)
+## ⚠ 调用方必须**先设好 `size` 再调** —— `UISkin.button` 按真实尺寸挑框, size 还是 0 会挑错。
+func _skin_button(b: Button, primary := false) -> void:
+	UISkin.button(b, Color("#f0c27a") if primary else Color("#b9c8d8"))
+	## 字色留在商店侧(它是本屏的配色, 不是皮): 主按钮暖白, 其余冷白。
+	b.add_theme_color_override("font_color", Color("#fff1d6") if primary else Color("#dff2ff"))
 	b.add_theme_color_override("font_hover_color", Color("#ffffff"))
-	b.add_theme_color_override("font_pressed_color", Color("#9fd8ea"))
+	b.add_theme_color_override("font_pressed_color", Color("#e7c68a") if primary else Color("#9fd8ea"))
 	b.add_theme_color_override("font_disabled_color", Color("#6b7f8e"))
 
 
@@ -1679,14 +1792,6 @@ func _center_middle(desc: RichTextLabel, nodes: Array) -> void:
 
 
 
-## 金底按钮的字色。抽出来是因为它要在两个分支各用一次(可买 / 已拥有跳背包),
-## 而那两处缩进层级不同 —— 直接把四行贴进去撕过一次块结构(CLAUDE.md §3.7 同族)。
-func _gold_btn_text(b: Button) -> void:
-	b.add_theme_color_override("font_color", Color("#3a2a06"))
-	b.add_theme_color_override("font_hover_color", Color("#1e1503"))
-	b.add_theme_color_override("font_pressed_color", Color("#5c4712"))
-
-
 # ══════════════════════════════════════════════════════════════
 # §底栏 备战席 / 出战阵容 —— 打包成两个按钮, 点开看全部
 #
@@ -1697,24 +1802,18 @@ func _gold_btn_text(b: Button) -> void:
 # 常驻这么大面积不划算。改成摘要按钮 + 点开弹层: 信息一条不少, 屏幕还回来了。
 # ══════════════════════════════════════════════════════════════
 
-## 统计出战阵容里已装备的件数 / 总槽位(每单位 3 格)
+## 出战阵容【已装件数 / 全队装备上限】。
+## ★★2026-09-29 改成与背包页**同源**。原来这里自己数: `slots += 3` × 6 个单位 ⇒ 分母
+##   **恒等于 18**, 而真上限是 `GameState.team_equip_cap()` = `(赛季等级−1)×2`
+##   (Lv1..Lv10 = 0,2,4,6,8,10,12,14,16,18) —— 只有 Lv10 才碰巧对上。
+##   实测 Lv7 时商店写「已装 12/18」、背包写「12/12」, 玩家照 18 去买了 4 件,
+##   回来点空槽**毫无反应**(拦人的是 12 那个数)。
+## ★分子也是同一个病: 手数会把羁绊赠品(圣光护盾)算进去 ⇒ 满编时出现「已装 19/18」;
+##   而 `GameState.team_equipped_count()` 走 `_cap_count()`, 明确跳过赠品。
+## ⇒ 两个数都从 GameState 取: **商店显示的分母 == 真正拦人的那个上限, 同一个函数**
+##   (memory [[fb-hand-rolled-copies-drift]]: 手抄的副本必然落后)。
 func _lineup_equip_count() -> Array:
-	var lineup: Dictionary = GameState.get_dual_lineup() if GameState.has_method("get_dual_lineup") else {}
-	var n := 0
-	var slots := 0
-	for lk in ["top", "bottom"]:
-		for u in (lineup.get(lk, []) as Array):
-			if not (u is Dictionary):
-				continue
-			slots += 3
-			var eqs: Array = []
-			if str(u.get("kind", "")) == "leader":
-				var pe = GameState.persistent_equipped.get(str(u.get("id", "")), []) if GameState.persistent_equipped is Dictionary else []
-				if pe is Array: eqs = pe
-			elif u.get("equips") is Array:
-				eqs = u["equips"]
-			n += eqs.size()
-	return [n, slots]
+	return [int(GameState.team_equipped_count()), int(GameState.team_equip_cap())]
 
 
 func _build_bottom_buttons() -> void:
@@ -1770,7 +1869,7 @@ func _open_bottom_popup(kind: String) -> void:
 	var py := (H - ph) * 0.5
 	var pan := Panel.new()
 	var psb := StyleBoxFlat.new()
-	## ★★直角(2026-09-28)。这块只是**底板** —— 看得见的边是下面那行 `_nine(pan, BTN_TEX…)`
+	## ★★直角(2026-09-28)。这块只是**底板** —— 看得见的边是下面那行 `_nine(pan, POPUP_TEX…)`
 	##   画的不透明像素框, 10px 圆角本来就被它盖住 ⇒ 视觉零变化, 但少一个圆角盒。
 	##   (与 2026-09-27 把货架卡底板/详情面板底板改直角是同一条理由。)
 	psb.bg_color = Color("#0e1a26"); psb.set_corner_radius_all(0)
@@ -1778,11 +1877,11 @@ func _open_bottom_popup(kind: String) -> void:
 	pan.position = Vector2(px, py); pan.size = Vector2(pw, ph)
 	pan.mouse_filter = Control.MOUSE_FILTER_STOP     # 面板内点击不关弹层
 	lay.add_child(pan)
-	# ★用 BTN_TEX 而不是 PANEL_TEX: 面板框源图 191×246 是竖长条, 拉成 820×300 的横板会
-	#   把边饰扯变形(截图上很明显)。按钮框 128×64 是 2:1, 与这里的 2.7:1 接近得多。
-	#   ★z 传 0 不是 1: BTN_TEX 是【实心】按钮板(中间不透明), z=1 会把它画在内容之上、
+	# ★用 POPUP_TEX(shop/btn-frame.png) 而不是 PANEL_TEX: 面板框源图 191×246 是竖长条,
+	#   拉成 820×300 的横板会把边饰扯变形(截图上很明显)。这张 128×64 是 2:1, 与这里的 2.7:1 接近得多。
+	#   ★z 传 0 不是 1: 它是【实心】板(中间不透明), z=1 会把它画在内容之上、
 	#     整块盖住(卡框能透是因为它中间是透明的)。弹层的底板本来就该在内容【后面】。
-	_nine(pan, BTN_TEX, BTN_MARGIN, Vector2.ZERO, Vector2(pw, ph), 0)
+	_nine(pan, POPUP_TEX, POPUP_MARGIN, Vector2.ZERO, Vector2(pw, ph), 0)
 
 	# ★把原来那两个构建函数【原样画进弹层】—— 它们已经改成接受 host/ox/oy,
 	#   所以这里不需要复制一份布局代码(复制就会有两份会漂的实现)。

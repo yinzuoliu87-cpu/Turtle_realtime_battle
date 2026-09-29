@@ -242,10 +242,184 @@ func _ready() -> void:
 
 	sc.queue_free()
 	await get_tree().process_frame
+	await get_tree().process_frame
+
+	await _scan_budget()          ## ⑪ BUDGET_SAME_SOURCE
+
 	print("")
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 结算屏按钮可达" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
+
+
+## ======================================================================
+##  ⑪ BUDGET_SAME_SOURCE —— 穷举行数 (2026-09-29)
+## ======================================================================
+## 用户原话:「每场打完后结算界面能下滑吗, 不能啊, 有很多单位看不到啊」。
+##
+## 量的就是用户说的那个形状: 某一档行数下, 卡片被裁掉了,
+##   而全屏一根滚动条 / 一句提示都没有。
+##
+## 判据三条, 都量真实节点:
+##   A. 两处预算同源 ⇒ 外层卡片永远没有可滚的量
+##      (等价于「内层 ≤ 外层 − 表以外的部分」, 而**不是**断言某个常量等于某个数)
+##   B. 穷举 R=7..16: 不存在「有行看不到而屏上没有任何提示」的那一档
+##   C. 分母: 扇描里真的出现过「有行看不到」, 也出现过「全看得到」
+##
+## ★提示的文字不在这里抄第二份: 拿 `BattleHud.SETTLE_MORE_FMT` 自己算
+##   (memory [[fb-hand-rolled-copies-drift]]).
+func _scan_budget() -> void:
+	print("  ── ⑪ BUDGET_SAME_SOURCE: 穷举行数, 不许有「溢出了而屏上没提示」的档 ──")
+	var sc2 = load(SCENE).instantiate()
+	get_tree().root.add_child(sc2)
+	for _i in range(30):
+		await get_tree().process_frame
+	## 停掉 sim —— 不然清 `_units` 会触发它自己的结算/死亡逻辑, 量到的就不是我摆的那一档
+	sc2.set_process(false)
+	sc2.set_physics_process(false)
+	await get_tree().process_frame
+	var base: int = sc2._ui_layer.get_child_count()
+	var vp: Vector2 = sc2.get_viewport().get_visible_rect().size
+	var pre: String = BattleHud.SETTLE_MORE_FMT.split("%d")[0]     # 「▼ 还有 」—— 派生出来的, 不是我又抄一份
+	var built: int = 0
+	var n_over: int = 0
+	var n_clean: int = 0
+	var silent: Array = []
+	var outer_bad: Array = []
+	var wrong_n: Array = []
+	var btn_out: Array = []
+	for r in range(7, 17):
+		# ── 收掉上一档的结算幕 ──
+		var kids: Array = sc2._ui_layer.get_children()
+		for i in range(kids.size() - 1, base - 1, -1):
+			(kids[i] as Node).queue_free()
+		await get_tree().process_frame
+		# ── 摆这一档的名单 ──
+		sc2._units.clear()
+		for side in ["left", "right"]:
+			for k in range(r):
+				var u = sc2._spawn._make_unit("green", side, sc2.ARENA.position + sc2.ARENA.size * 0.5
+					+ Vector2(-260.0 + 34.0 * float(k), -140.0 + 120.0 * (0.0 if side == "left" else 1.0)))
+				if u is Dictionary:
+					u["_st_dealt"] = 1000 + 137 * k
+					u["_st_taken"] = 500 + 91 * k
+					u["_st_heal"] = 40 * k
+					if not sc2._arr_has_unit(sc2._units, u):
+						sc2._units.append(u)
+		for _i in range(4):
+			await get_tree().process_frame
+		sc2._settled = false
+		sc2._hud._show_banner(true)
+		## ★只数帧不看墙钟: 排版是逐帧级联的(deferred + 协程), 与机器快慢无关
+		for _i in range(16):
+			await get_tree().process_frame
+
+		var shell: Control = _find_shell(sc2._ui_layer)
+		if shell == null:
+			continue
+		var scrolls: Array = []
+		_collect_cls(shell, "ScrollContainer", scrolls)
+		if scrolls.size() < 2:
+			continue
+		built += 1
+		# ── A. 外层卡片还有可滚的量吗 ──
+		var obar: VScrollBar = (scrolls[0] as ScrollContainer).get_v_scroll_bar()
+		var oscrollable: float = maxf(0.0, obar.max_value - obar.page)
+		if oscrollable > 1.5:
+			outer_bad.append("R=%d 外层还剩 %.0fpx 可滚(而它是 SHOW_NEVER, 永远不画条)" % [r, oscrollable])
+		# ── B/C. 有几行看不到 ──
+		var rows: Array = []
+		var grids: Array = []
+		_collect_cls(shell, "GridContainer", grids)
+		for g in grids:
+			if not (g as Control).is_visible_in_tree():
+				continue
+			for ch in (g as Node).get_children():
+				if ch is HBoxContainer:
+					rows.append(ch)
+		var hidden: int = 0
+		for rr in rows:
+			if not _clip_of(rr, vp).encloses((rr as Control).get_global_rect()):
+				hidden += 1
+		# ── 屏上那些真看得见的提示 ──
+		var want: String = BattleHud.SETTLE_MORE_FMT % hidden
+		var seen_exact: bool = false
+		var seen_any: String = ""
+		for l in _visible_labels(shell, vp):
+			if str(l) == want:
+				seen_exact = true
+			if str(l).begins_with(pre):
+				seen_any = str(l)
+		if hidden > 0:
+			n_over += 1
+			if seen_any == "":
+				silent.append("R=%d 共 %d 行·看不到 %d 行, 屏上一句提示没有" % [r, rows.size(), hidden])
+			elif not seen_exact:
+				wrong_n.append("R=%d 该写「%s」屏上写的是「%s」" % [r, want, seen_any])
+		else:
+			n_clean += 1
+			if seen_any != "":
+				wrong_n.append("R=%d 全看得到, 却还写着「%s」" % [r, seen_any])
+		# ── 按钮还完整在屏内吗 ──
+		var bs: Array = []
+		_collect_buttons(shell, bs)
+		for b in bs:
+			var br: Rect2 = (b as Control).get_global_rect()
+			if br.position.y < 0.0 or br.end.y > vp.y or br.position.x < 0.0 or br.end.x > vp.x:
+				btn_out.append("R=%d '%s' @%s" % [r, str((b as Button).text), str(br)])
+		print("     R=%2d 行=%2d 卡片最小高=%4.0f 外层可滚=%3.0f 看不到=%2d 提示=%s"
+			% [r, rows.size(), (scrolls[0] as ScrollContainer).get_children()[0].get_combined_minimum_size().y,
+			   oscrollable, hidden, (seen_any if seen_any != "" else "-")])
+
+	_ok("⑪ ★分母: 10 档里都把结算卡建出来了", built == 10, "built=%d" % built)
+	_ok("⑪ ★分母: 扇描里真的出现过「有行看不到」(0 次 ⇒ 下面那条是空检查)",
+		n_over > 0, "看不到行的档=%d" % n_over)
+	_ok("⑪ ★分母: 也出现过「全看得到」的档(提示不是恒亮的)",
+		n_clean > 0, "全看得到的档=%d" % n_clean)
+	_ok("⑪ ★★两处预算同源: 任何行数下外层卡片都没有可滚的量",
+		outer_bad.is_empty(), str(outer_bad))
+	_ok("⑪ ★★★不存在「有行看不到而屏上没有任何提示」的那一档",
+		silent.is_empty(), str(silent))
+	_ok("⑪ ★提示上的数字 = 真的看不到的行数", wrong_n.is_empty(), str(wrong_n))
+	_ok("⑪ ★每档的按钮都完整落在屏内", btn_out.is_empty(), str(btn_out))
+	sc2.queue_free()
+	await get_tree().process_frame
+
+
+func _collect_cls(n: Node, cls: String, out: Array) -> void:
+	if n.is_class(cls):
+		out.append(n)
+	for c in n.get_children(true):
+		_collect_cls(c, cls, out)
+
+
+## 全部祖先 `clip_contents` 矩形的交集 —— 玩家**真正**看得见的那一块。
+## ★不能只看内层滚动区: 结算卡是两层嵌套滚动,
+##   内层以为自己有 400px 可用, 可它的下沿可能被外层裁在半路 —— 那就是这次那 56px 的现场。
+func _clip_of(c: Control, vp: Vector2) -> Rect2:
+	var r := Rect2(Vector2.ZERO, vp)
+	var p: Node = c
+	while p != null:
+		if p is Control and (p as Control).clip_contents:
+			r = r.intersection((p as Control).get_global_rect())
+		p = p.get_parent()
+	return r
+
+
+## 屏幕上真看得见的 Label 文字: 可见 + 矩形完整落在 clip 交集内。
+## ★「有个 Label」不算 —— 被裁掉的提示对玩家而言就是没有提示。
+func _visible_labels(root: Node, vp: Vector2) -> Array:
+	var out: Array = []
+	var st: Array = [root]
+	while not st.is_empty():
+		var n = st.pop_back()
+		if n is Label and (n as Control).is_visible_in_tree():
+			var t: String = str((n as Label).text)
+			if t.strip_edges() != "" and _clip_of(n, vp).encloses((n as Control).get_global_rect()):
+				out.append(t)
+		for ch in n.get_children():
+			st.append(ch)
+	return out
 
 
 func _collect_buttons(n: Node, out: Array) -> void:

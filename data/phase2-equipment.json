@@ -18,7 +18,7 @@
     "baseStats1": "+攻12/24/40",
     "shopAvailable": 1,
     "emoji": "⚔️",
-    "effectDesc1": "携带者的普攻命中后，对目标施加 0.075/0.1/0.15×攻击力的流血层数。",
+    "effectDesc1": "自身的普攻命中后，对目标施加 0.075/0.1/0.15×攻击力的流血层数。",
     "effectDesc3": "3 星：流血可叠加至 3 层。",
     "img": "equip/chili-pepper.png",
     "effectBrief": "普攻命中后，施加 0.075/0.1/0.15×攻击力的流血层数。"
@@ -42,7 +42,7 @@
     "baseStats1": "+攻15/30/90·暴击25/35/60%·吸血5/9/15%",
     "shopAvailable": 1,
     "emoji": "😈",
-    "effectDesc1": "伤害可处决生命值低于斩杀线的敌人（斩杀线=4/6/12%最大生命值×（1+暴击率））；处决后回复 {C:EquipSystem.FANG_EXEC_ENERGY} 点龟能（无龟能的单位改为回复 {C:EquipSystem.FANG_EXEC_HEAL} 点生命）。\n此外携带者每 {C:EquipSystem.FANG_IV} 秒向最近的敌人射出一颗剧毒獠牙，造成 1/1.8/4×攻击力魔法伤害，并回复自身该伤害 {C:EquipSystem.FANG_LIFESTEAL%}%的生命。",
+    "effectDesc1": "伤害可处决生命值低于斩杀线的敌人（斩杀线=4/6/12%最大生命值×（1+暴击率））；处决后回复 {C:EquipSystem.FANG_EXEC_ENERGY} 点龟能（无龟能的单位改为回复 {C:EquipSystem.FANG_EXEC_HEAL} 点生命）。\n此外自身每 {C:EquipSystem.FANG_IV} 秒向最近的敌人射出一颗剧毒獠牙，造成 1/1.8/4×攻击力魔法伤害，并回复自身该伤害 {C:EquipSystem.FANG_LIFESTEAL%}%的生命。",
     "effectDesc3": "",
     "img": "equip/tyrant-fang-new.png",
     "effectBrief": "伤害可处决生命低于 4/6/12% 最大生命值的敌人；每 {C:EquipSystem.FANG_IV} 秒射出毒牙吸血。"
@@ -114,7 +114,7 @@
     "baseStats1": "+攻30/75/200·护穿10/18/30·生命50/120/1300",
     "shopAvailable": 1,
     "emoji": "☄️",
-    "effectDesc1": "每隔一次攻击间隔朝最近的敌人斩出一道 {C:EquipSystem.LASER_ARC_DEG}°扇形红激光，半径等于自身攻击射程（3 星时×2）；若携带者为近战单位，半径再+{C:EquipSystem.LASER_MELEE_BONUS} 码。\n对扇形内每名敌人造成（15/32/200+0.6/1.0/8.0×攻击力）物理伤害；\n若仅命中 1 名敌人则追加一道竖劈冲击波，沿直线推进对沿途每名敌人各造成一次全额伤害；\n携带者回复本次总伤害 35/80/100%的生命。",
+    "effectDesc1": "每隔一次攻击间隔朝最近的敌人斩出一道 {C:EquipSystem.LASER_ARC_DEG}°扇形红激光，半径等于自身攻击射程（3 星时×2）；若自身为近战单位，半径再+{C:EquipSystem.LASER_MELEE_BONUS} 码。\n对扇形内每名敌人造成（15/32/200+0.6/1.0/8.0×攻击力）物理伤害；\n若仅命中 1 名敌人则追加一道竖劈冲击波，沿直线推进对沿途每名敌人各造成一次全额伤害；\n自身回复本次总伤害 35/80/100%的生命。",
     "effectDesc3": "",
     "img": "equip/eq010-icon.png",
     "effectBrief": "每隔一次攻击斩出红激光；只命中 1 名敌人时追加一道竖劈冲击波。"
@@ -126,7 +126,7 @@
     "baseStats1": "+攻10/23/40·吸血15/24/33%·治疗增幅15/24/33%",
     "shopAvailable": 1,
     "emoji": "🌙",
-    "effectDesc1": "该法器法力条集满时连斩 5/6/8 次随机敌人，每次造成（40/50/70+0.5/0.7/1.0×攻击力）物理伤害（后续每发逐渐衰减）；\n携带者的溢出治疗转化为血护盾（上限 200/350/500）。",
+    "effectDesc1": "该法器法力条集满时连斩 5/6/8 次随机敌人，每次造成（40/50/70+0.5/0.7/1.0×攻击力）物理伤害（后续每发逐渐衰减）；\n自身的溢出治疗转化为血护盾（上限 200/350/500）。",
     "effectDesc3": "",
     "img": "equip/eq011-icon.png",
     "effectBrief": "法力满时连斩 5/6/8 次随机敌人；溢出的治疗转为血护盾。"
@@ -162,7 +162,7 @@
     "baseStats1": "+生命80/160/600·护甲&魔抗14/25/50",
     "shopAvailable": 1,
     "emoji": "🏰",
-    "effectDesc1": "每次受到伤害获得 1 层硬化，每层提供+2/4/6 护甲和魔抗（上限 {C:EquipTickSystem.FORTRESS_CAP} 层，无满层护盾）；\n硬化叠满 {C:EquipTickSystem.FORTRESS_CAP} 层时立即汲取一次，此后每 {C:EquipTickSystem.FORTRESS_IV} 秒对全体敌人汲取生命，每名敌人受到 0.8/1/2.5×（护甲+魔抗）魔法伤害，每汲取 1 名敌人携带者回复（50/100/250+自身已损生命值 {C:EquipTickSystem.FORTRESS_HEAL_LOST%}%）生命；\n汲取不作用于训龟大师与屏障中的龟蛋。",
+    "effectDesc1": "每次受到伤害获得 1 层硬化，每层提供+2/4/6 护甲和魔抗（上限 {C:EquipTickSystem.FORTRESS_CAP} 层，无满层护盾）；\n硬化叠满 {C:EquipTickSystem.FORTRESS_CAP} 层时立即汲取一次，此后每 {C:EquipTickSystem.FORTRESS_IV} 秒对全体敌人汲取生命，每名敌人受到 0.8/1/2.5×（护甲+魔抗）魔法伤害，每汲取 1 名敌人就回复（50/100/250+自身已损生命值 {C:EquipTickSystem.FORTRESS_HEAL_LOST%}%）生命；\n汲取不作用于训龟大师与屏障中的龟蛋。",
     "effectDesc3": "",
     "img": "equip/eq014-icon.png",
     "effectBrief": "每次受伤叠 1 层硬化（各 +2/4/6 双抗）；满 {C:EquipTickSystem.FORTRESS_CAP} 层后每 {C:EquipTickSystem.FORTRESS_IV} 秒全场汲取生命。"
@@ -186,7 +186,7 @@
     "baseStats1": "+护甲6/13/21·魔抗6/13/21",
     "shopAvailable": 1,
     "emoji": "🛡️",
-    "effectDesc1": "每段受到的非真实伤害减少 3/6/10 点（固定值）；\n每 {C:EquipTickSystem.IRONWALL_IV} 秒产生一个（100/250/400+携带者 {C:EquipTickSystem.IRONWALL_MAXHP_PCT%}%最大生命值）的护盾总量，由全队（含自己）平均分摊——分摊名单不含龟蛋与训龟大师。",
+    "effectDesc1": "每段受到的非真实伤害减少 3/6/10 点；\n每 {C:EquipTickSystem.IRONWALL_IV} 秒产生一个（100/250/400+自身 {C:EquipTickSystem.IRONWALL_MAXHP_PCT%}%最大生命值）的护盾总量，由全队（含自己）平均分摊——分摊名单不含龟蛋与训龟大师。",
     "effectDesc3": "",
     "img": "equip/eq016-icon.png",
     "effectBrief": "受到的非真实伤害各减 3/6/10 点；每 {C:EquipTickSystem.IRONWALL_IV} 秒生成一份护盾由全队分摊。"
@@ -246,7 +246,7 @@
     "baseStats1": "+生命60/100/180·+20初始龟能",
     "shopAvailable": 1,
     "emoji": "🦪",
-    "effectDesc1": "每 {C:EquipTickSystem.BARNACLE_IV} 秒向全队攻击力最高的友军连接绿色绑定光束（持续），为该友军提供 60/110/180 点护盾并将其受到的 25/40/60%伤害按原类型转移给携带者（携带者护盾可吸收）；\n同时为自己和该友军提供 {C:EquipTickSystem.BARNACLE_ENERGY} 龟能与+{C:EquipTickSystem.BARNACLE_ASPD%}%攻击速度（叠加，持续到本场战斗结束）。",
+    "effectDesc1": "每 {C:EquipTickSystem.BARNACLE_IV} 秒向全队攻击力最高的友军连接绿色绑定光束（持续），为该友军提供 60/110/180 点护盾并将其受到的 25/40/60%伤害按原类型转移给自身（自身护盾可吸收）；\n同时为自己和该友军提供 {C:EquipTickSystem.BARNACLE_ENERGY} 龟能与+{C:EquipTickSystem.BARNACLE_ASPD%}%攻击速度（叠加，持续到本场战斗结束）。",
     "effectDesc3": "",
     "img": "equip/eq021-icon.png",
     "effectBrief": "每 {C:EquipTickSystem.BARNACLE_IV} 秒向攻击力最高的友军连上光束，替它承受 25/40/60% 伤害。"
@@ -270,7 +270,7 @@
     "baseStats1": "+生命40/60/80·攻10/25/40·魔穿5/8/13",
     "shopAvailable": 1,
     "emoji": "🔥",
-    "effectDesc1": "被动：携带者的普攻命中额外施加（2/5/8+7/11/15%攻击力）层灼烧，并获得 {C:EquipSystem.CORAL_MANA_PER_HIT} 点法力（法力进度显示在图标下方）。\n主动（法力条集满时自动释放）：蓄力后朝敌方挥出一道火焰波，在 {C:EquipSystem.CORAL_ARC_DEG} 度扇形内缓慢移动 {C:EquipSystem.CORAL_TRAVEL} 码，对扫过的敌人各施加 40/60/90 层灼烧（主动施加的灼烧不获得法力）。",
+    "effectDesc1": "被动：自身的普攻命中额外施加（2/5/8+7/11/15%攻击力）层灼烧，并获得 {C:EquipSystem.CORAL_MANA_PER_HIT} 点法力（法力进度显示在图标下方）。\n主动（法力条集满时自动释放）：蓄力后朝敌方挥出一道火焰波，在 {C:EquipSystem.CORAL_ARC_DEG} 度扇形内缓慢移动 {C:EquipSystem.CORAL_TRAVEL} 码，对扫过的敌人各施加 40/60/90 层灼烧（主动施加的灼烧不获得法力）。",
     "effectDesc3": "",
     "img": "equip/dungeon-fire-coral.png",
     "effectBrief": "普攻额外施加灼烧并攒法力；法力满时挥出火焰波扩散灼烧。"
@@ -282,7 +282,7 @@
     "baseStats1": "+攻20/45/70·魔穿8/15/27·+20龟能",
     "shopAvailable": 1,
     "emoji": "🐲",
-    "effectDesc1": "装备时即拥有 3 层吐息，之后每 {C:RealtimeBattle3DScene.EQ_TICK} 秒获得 1 层；\n满 3 层时清零并召唤喷火龙：龙从携带者位置朝最靠近敌方质心的那名敌人拉出一条直线，一直飞到最远敌人身后，对这条直线两侧各 {C:DragonSystem.BREATH_HALF_W} 码内的单位按火柱扫到的先后依次结算——敌人受到（45/80/120+1×攻击力）魔法伤害并被施加 20/35/50 层灼烧；\n友军回复（45/80/120+1×攻击力）生命。",
+    "effectDesc1": "装备时即拥有 3 层吐息，之后每 {C:RealtimeBattle3DScene.EQ_TICK} 秒获得 1 层；\n满 3 层时清零并召唤喷火龙：龙从自身位置朝最靠近敌方质心的那名敌人拉出一条直线，一直飞到最远敌人身后，对这条直线两侧各 {C:DragonSystem.BREATH_HALF_W} 码内的单位按火柱扫到的先后依次结算——敌人受到（45/80/120+1×攻击力）魔法伤害并被施加 20/35/50 层灼烧；\n友军回复（45/80/120+1×攻击力）生命。",
     "effectDesc3": "",
     "img": "equip/dungeon-dragon-egg.png",
     "effectBrief": "每 {C:RealtimeBattle3DScene.EQ_TICK} 秒攒 1 层吐息，满 3 层召唤喷火龙贯穿全场并施加灼烧。"
@@ -306,7 +306,7 @@
     "baseStats1": "+魔穿8/13/20",
     "shopAvailable": 1,
     "emoji": "🌩️",
-    "effectDesc1": "携带者的普攻为该法器法力条充能 {C:EquipSystem.THUNDER_MANA_PER_HIT} 点；法力条集满时朝随机目标发射连锁闪电，造成 40/60/90 魔法伤害，在不同敌人间跳跃，最多命中 4/5/6 个目标。",
+    "effectDesc1": "自身的普攻为该法器法力条充能 {C:EquipSystem.THUNDER_MANA_PER_HIT} 点；法力条集满时朝随机目标发射连锁闪电，造成 40/60/90 魔法伤害，在不同敌人间跳跃，最多命中 4/5/6 个目标。",
     "effectDesc3": "",
     "img": "equip/equip-lightning-staff.png",
     "effectBrief": "普攻攒法力，满时发射连锁闪电，最多命中 4/5/6 个目标。"
@@ -366,7 +366,7 @@
     "baseStats1": "+攻7/12/20·生命20/40/80·魔穿3/6/10",
     "shopAvailable": 1,
     "emoji": "🔮",
-    "effectDesc1": "该法器法力条集满时以自身为中心用水晶射线 {C:CrystalSystem.SWEEP_ARC_DEG}°扫射一圈（半径 {C:CrystalSystem.SWEEP_REACH} 码，耗时 {C:CrystalSystem.SWEEP_SEC} 秒，射线跟随携带者移动），扫到的敌人各造成 60/130/250 魔法伤害并施加 1 层迷你水晶，同时偷取目标 {C:CrystalSystem.MINI_MR_STEAL%}%当前魔抗（真偷取：目标减少、携带者获得，永久到战斗结束）；\n敌人叠满 {C:CrystalSystem.MINI_STACK_MAX} 层水晶时被引爆，受到 14/17/20%其最大生命值的魔法伤害并重置层数。",
+    "effectDesc1": "该法器法力条集满时以自身为中心用水晶射线 {C:CrystalSystem.SWEEP_ARC_DEG}°扫射一圈（半径 {C:CrystalSystem.SWEEP_REACH} 码，耗时 {C:CrystalSystem.SWEEP_SEC} 秒，射线跟随自身移动），扫到的敌人各造成 60/130/250 魔法伤害并施加 1 层迷你水晶，同时偷取目标 {C:CrystalSystem.MINI_MR_STEAL%}%当前魔抗（真偷取：目标减少、自身获得，永久到战斗结束）；\n敌人叠满 {C:CrystalSystem.MINI_STACK_MAX} 层水晶时被引爆，受到 14/17/20%其最大生命值的魔法伤害并重置层数。",
     "effectDesc3": "",
     "img": "equip/dungeon-mini-crystal-b.png",
     "effectBrief": "法力满时 {C:CrystalSystem.SWEEP_ARC_DEG}° 扫射水晶射线并偷取魔抗；敌人叠满 {C:CrystalSystem.MINI_STACK_MAX} 层即引爆。"
@@ -402,7 +402,7 @@
     "baseStats1": "+攻20/50/300·生命120/250/1000",
     "shopAvailable": 1,
     "emoji": "🧸",
-    "effectDesc1": "每 {C:EquipTickSystem.DOLL_IV} 秒派出一只小熊走向最近的敌人，造成（1/2/5×攻击力+100/210/1000）物理伤害并将其击飞，同时携带者+1 大熊层；大熊层满 5/3/1 层时装备销毁，携带者蓄力 {C:EquipTickSystem.DOLL_CHARGE_SEC} 秒后在空位召唤一只大熊（生命 1600/3000/15000·攻击力 70/120/2000·护甲与魔抗各 {C:EquipTickSystem.BEAR_RESIST}·攻击速度 {C:EquipTickSystem.BEAR_ASPD}/秒·近战）登场；若无空位则继续小熊攻击直到出现空位。\n大熊普攻为熊掌（1×攻击力物理）并每次累积 1 层，满 {C:EquipTickSystem.BEAR_PAW_STACKS} 层时下一击改为冲击波（射程临时扩至 {C:EquipTickSystem.BEAR_WAVE_RANGE} 码）：造成 {C:EquipTickSystem.BEAR_WAVE_COEF}×攻击力物理伤害，将命中的敌人击飞 {C:EquipTickSystem.BEAR_WAVE_KNOCK_SEC} 秒并拉回身前 {C:EquipTickSystem.BEAR_WAVE_PULL} 码，随后层数清零。",
+    "effectDesc1": "每 {C:EquipTickSystem.DOLL_IV} 秒派出一只小熊走向最近的敌人，造成（1/2/5×攻击力+100/210/1000）物理伤害并将其击飞，同时自身+1 大熊层；大熊层满 5/3/1 层时装备销毁，自身蓄力 {C:EquipTickSystem.DOLL_CHARGE_SEC} 秒后在空位召唤一只大熊（生命 1600/3000/15000·攻击力 70/120/2000·护甲与魔抗各 {C:EquipTickSystem.BEAR_RESIST}·攻击速度 {C:EquipTickSystem.BEAR_ASPD}/秒·近战）登场；若无空位则继续小熊攻击直到出现空位。\n大熊普攻为熊掌（1×攻击力物理）并每次累积 1 层，满 {C:EquipTickSystem.BEAR_PAW_STACKS} 层时下一击改为冲击波（射程临时扩至 {C:EquipTickSystem.BEAR_WAVE_RANGE} 码）：造成 {C:EquipTickSystem.BEAR_WAVE_COEF}×攻击力物理伤害，将命中的敌人击飞 {C:EquipTickSystem.BEAR_WAVE_KNOCK_SEC} 秒并拉回身前 {C:EquipTickSystem.BEAR_WAVE_PULL} 码，随后层数清零。",
     "effectDesc3": "",
     "img": "equip/dungeon-doll.png",
     "effectBrief": "每 {C:EquipTickSystem.DOLL_IV} 秒派出小熊撞击最近的敌人；攒满 5/3/1 层后召唤一只大熊。"
@@ -438,7 +438,7 @@
     "baseStats1": "+攻10/25/40·生命80/130/180",
     "shopAvailable": 1,
     "emoji": "🕯️",
-    "effectDesc1": "蜡烛在 {C:EquipSystem.CANDLE_PHASES} 个阶段间循环，每 {C:EquipSystem.CANDLE_IV} 秒切换并触发：熄灭阶段无效果；\n微弱阶段携带者在 {C:EquipSystem.CANDLE_IV} 秒内持续回复共（20/30/44+0.5/0.7/1.0×攻击力）生命，{C:EquipSystem.CANDLE_HEAL_R} 码内的友军各按半数持续回复；\n燃烧阶段蜡烛爆燃，对携带者 {C:EquipSystem.CANDLE_BURN_R} 码范围内的所有敌人各造成（20/30/44+0.5/0.7/1.0×攻击力）魔法伤害并施加 20/30/40 层灼烧。",
+    "effectDesc1": "蜡烛在 {C:EquipSystem.CANDLE_PHASES} 个阶段间循环，每 {C:EquipSystem.CANDLE_IV} 秒切换并触发：熄灭阶段无效果；\n微弱阶段自身在 {C:EquipSystem.CANDLE_IV} 秒内持续回复共（20/30/44+0.5/0.7/1.0×攻击力）生命，{C:EquipSystem.CANDLE_HEAL_R} 码内的友军各按半数持续回复；\n燃烧阶段蜡烛爆燃，对自身 {C:EquipSystem.CANDLE_BURN_R} 码范围内的所有敌人各造成（20/30/44+0.5/0.7/1.0×攻击力）魔法伤害并施加 20/30/40 层灼烧。",
     "effectDesc3": "",
     "img": "equip/dungeon-candle-off.png",
     "effectBrief": "蜡烛每 {C:EquipSystem.CANDLE_IV} 秒切换阶段：微弱阶段持续治疗，燃烧阶段爆燃并施加灼烧。"
@@ -450,7 +450,7 @@
     "baseStats1": "+生命80/140/200",
     "shopAvailable": 1,
     "emoji": "📡",
-    "effectDesc1": "提供 {C:SignalWaveSystem.ASPD_FLAT%}%攻击速度；\n携带者每次普攻获得 1 层放大，每层使自己获得 1/2/5%增伤和 {C:SignalWaveSystem.ASPD_PER_STACK%}%攻击速度，最多叠加 {C:SignalWaveSystem.MAX_STACKS} 层；\n每获得 {C:SignalWaveSystem.EVERY} 层，由携带者中心朝目标爆发一道张角 {C:SignalWaveSystem.ARC_STEP_DEG} 度、缓慢移动的弧形电磁波，命中造成 125/250/500 魔法伤害并眩晕 {C:SignalWaveSystem.WAVE_STUN} 秒；\n每释放一次张角增加 {C:SignalWaveSystem.ARC_STEP_DEG} 度（最多 {C:SignalWaveSystem.ARC_MAX_DEG} 度），并使自己永久获得 5/7/10 点魔抗穿透。",
+    "effectDesc1": "提供 {C:SignalWaveSystem.ASPD_FLAT%}%攻击速度；\n每次普攻获得 1 层放大，每层使自身获得 1/2/5%增伤和 {C:SignalWaveSystem.ASPD_PER_STACK%}%攻击速度，最多叠加 {C:SignalWaveSystem.MAX_STACKS} 层；\n每获得 {C:SignalWaveSystem.EVERY} 层，由自身中心朝目标爆发一道张角 {C:SignalWaveSystem.ARC_STEP_DEG} 度、缓慢移动的弧形电磁波，命中造成 125/250/500 魔法伤害并眩晕 {C:SignalWaveSystem.WAVE_STUN} 秒；\n每释放一次张角增加 {C:SignalWaveSystem.ARC_STEP_DEG} 度（最多 {C:SignalWaveSystem.ARC_MAX_DEG} 度），并使自己永久获得 5/7/10 点魔抗穿透。",
     "effectDesc3": "",
     "img": "equip/dungeon-amplifier.png",
     "effectBrief": "普攻叠放大层（每层 +1/2/5% 增伤）；每 {C:SignalWaveSystem.EVERY} 层爆发一道弧形电磁波。"
@@ -462,7 +462,7 @@
     "baseStats1": "+生命80/140/200",
     "shopAvailable": 1,
     "emoji": "🎋",
-    "effectDesc1": "获得 6/10/15 次生长充能（同一局对局内跨战场保留、开新对局才重置）；\n每第 3 段普攻消耗 1 次充能：射一发强化竹箭给最近的敌人，造成（25/30/35+{C:EquipSystem.BAMBOO_ARROW_MAXHP_PCT%}%自身最大生命值）魔法伤害，命中后冒出一颗绿色生命球飞回携带者——落到身上才结算：回复自身 {C:EquipSystem.BAMBOO_ARROW_MAXHP_PCT%}%最大生命值，并使自身最大生命值永久+50/70/90（持续到本局对局结束）。",
+    "effectDesc1": "获得 6/10/15 次生长充能（同一局对局内跨战场保留、开新对局才重置）；\n每第 3 段普攻消耗 1 次充能：射一发强化竹箭给最近的敌人，造成（25/30/35+{C:EquipSystem.BAMBOO_ARROW_MAXHP_PCT%}%自身最大生命值）魔法伤害，命中后冒出一颗绿色生命球飞回来——落到身上才结算：回复自身 {C:EquipSystem.BAMBOO_ARROW_MAXHP_PCT%}%最大生命值，并使自身最大生命值永久+50/70/90（持续到本局对局结束）。",
     "effectDesc3": "",
     "img": "equip/equip-bamboo-leaf.png",
     "effectBrief": "每第 3 段普攻射出竹箭，回收的生命球使最大生命值永久 +50/70/90。"
@@ -654,7 +654,7 @@
     "baseStats1": "+攻9/15/21·+20龟能",
     "shopAvailable": 1,
     "emoji": "🎯",
-    "effectDesc1": "本场累计造成 {C:HookBombSystem.TRIGGER_DMG} 点伤害后，向最近的 1/1/2 名敌人发射钩索炸弹：炸弹附在敌人身上，每 {C:HookBombSystem.BOMB_TICK} 秒对其造成 3/6/6%其最大生命值的物理伤害，直到该敌人死亡。\n若带弹的敌人死亡，则朝所有敌方单位发射钩索，眩晕 {C:HookBombSystem.PULL_STUN} 秒后将其拉向携带者，聚拢后产生一次爆炸，造成（120/250/400+{C:HookBombSystem.BLAST_MAXHP_PCT%}%目标最大生命值）物理伤害（训龟大师、龟蛋与免控单位不受钩索影响）。",
+    "effectDesc1": "本场累计造成 {C:HookBombSystem.TRIGGER_DMG} 点伤害后，向最近的 1/1/2 名敌人发射钩索炸弹：炸弹附在敌人身上，每 {C:HookBombSystem.BOMB_TICK} 秒对其造成 3/6/6%其最大生命值的物理伤害，直到该敌人死亡。\n若带弹的敌人死亡，则朝所有敌方单位发射钩索，眩晕 {C:HookBombSystem.PULL_STUN} 秒后将其拉向自身，聚拢后产生一次爆炸，造成（120/250/400+{C:HookBombSystem.BLAST_MAXHP_PCT%}%目标最大生命值）物理伤害（训龟大师、龟蛋与免控单位不受钩索影响）。",
     "effectDesc3": "",
     "img": "equip/virus-arrow.png",
     "effectBrief": "累计造成 {C:HookBombSystem.TRIGGER_DMG} 点伤害后投出钩索炸弹，持续扣血直到目标死亡。"
@@ -666,7 +666,7 @@
     "baseStats1": "+攻45/90/400",
     "shopAvailable": 1,
     "emoji": "🎯",
-    "effectDesc1": "任何敌人被己方击飞时即挂上「靶子」标记（不会自行消失）；\n携带者每 {C:RealtimeBattle3DScene.EQ_TICK} 秒向所有带靶子的敌人各射 1 镖，造成（130/190/600+1.5/3.0/9.0×攻击力）物理伤害并施加 {C:EquipSystem.DART_BLEED_COEF%}%攻击力的流血层数，命中后移除该敌人的靶子；\n此外提供 40/80/150%攻击速度，且携带者每 {C:EquipSystem.DART_EVERY} 下普攻会强化下一次普攻，命中时将目标击飞 {C:EquipSystem.DART_KNOCKUP_SEC} 秒。",
+    "effectDesc1": "任何敌人被己方击飞时即挂上「靶子」标记（不会自行消失）；\n自身每 {C:RealtimeBattle3DScene.EQ_TICK} 秒向所有带靶子的敌人各射 1 镖，造成（130/190/600+1.5/3.0/9.0×攻击力）物理伤害并施加 {C:EquipSystem.DART_BLEED_COEF%}%攻击力的流血层数，命中后移除该敌人的靶子；\n此外提供 40/80/150%攻击速度，且自身每 {C:EquipSystem.DART_EVERY} 下普攻会强化下一次普攻，命中时将目标击飞 {C:EquipSystem.DART_KNOCKUP_SEC} 秒。",
     "effectDesc3": "",
     "img": "equip/dungeon-dart.png",
     "effectBrief": "被击飞的敌人挂上靶子；每 {C:RealtimeBattle3DScene.EQ_TICK} 秒向所有带靶子的敌人各射一镖。"
@@ -690,7 +690,7 @@
     "baseStats1": "+攻17/29/41·+20龟能",
     "shopAvailable": 1,
     "emoji": "🔩",
-    "effectDesc1": "登场时召唤一座不可移动的炮台：500/1000/1800 最大生命值、20/30/45 攻击力、每秒 {C:EquipSystem.TURRET_ASPD} 次攻击速度、{C:EquipSystem.TURRET_RANGE} 码射程；\n普攻锁定目标（一条红色细线连向它），造成 1×攻击力物理伤害，并使炮台自身永久获得 2/2/3 护甲穿透与 2%暴击率（持续到本场战斗结束）。\n携带者存活时炮台获得 70/85/100 护甲与魔抗；携带者位于炮台 {C:EquipSystem.TURRET_BUFF_R} 码范围内时自身获得 {C:EquipSystem.TURRET_BUFF_ASPD%}%攻击速度。",
+    "effectDesc1": "登场时召唤一座不可移动的炮台：500/1000/1800 最大生命值、20/30/45 攻击力、每秒 {C:EquipSystem.TURRET_ASPD} 次攻击速度、{C:EquipSystem.TURRET_RANGE} 码射程；\n普攻锁定目标（一条红色细线连向它），造成 1×攻击力物理伤害，并使炮台自身永久获得 2/2/3 护甲穿透与 2%暴击率（持续到本场战斗结束）。\n自身存活时炮台获得 70/85/100 护甲与魔抗；自身位于炮台 {C:EquipSystem.TURRET_BUFF_R} 码范围内时获得 {C:EquipSystem.TURRET_BUFF_ASPD%}%攻击速度。",
     "effectDesc3": "",
     "img": "equip/ancient-turret.png",
     "effectBrief": "登场时召唤一座炮台，普攻锁定目标并永久累积护甲穿透。"
@@ -702,7 +702,7 @@
     "baseStats1": "+生命100/210/1000·龟能充能+10%",
     "shopAvailable": 1,
     "emoji": "⏳",
-    "effectDesc1": "登场第 {C:TimestopSystem.TS_START_T} 秒蓄力 {C:TimestopSystem.TS_CHARGE} 秒后释放「时间停止」：全场其他单位/弹道/特效全部定格，持续 4/7/20 秒；\n此期间只有【全场最高星级】沙漏的携带者（敌我皆可，同星并存）能自由攻击/施法/移动，伤害即时结算，并额外获得 1.5/2/3 倍龟能充能速度、且在时停开始瞬间立即获得 40/150/300 点龟能；\n若场上存在更高星的沙漏，低星那件本场不会生效。\n每个战场各一次（上路 / 下路 / 终极战场各可触发一次）。",
+    "effectDesc1": "登场第 {C:TimestopSystem.TS_START_T} 秒蓄力 {C:TimestopSystem.TS_CHARGE} 秒后释放「时间停止」：全场其他单位/弹道/特效全部定格，持续 4/7/20 秒；\n此期间只有带着【全场最高星级】沙漏的那只龟（敌我皆可，同星并存）能自由攻击/施法/移动，伤害即时结算，并额外获得 1.5/2/3 倍龟能充能速度、且在时停开始瞬间立即获得 40/150/300 点龟能；\n若场上存在更高星的沙漏，低星那件本场不会生效。\n每个战场各一次（上路 / 下路 / 终极战场各可触发一次）。",
     "effectDesc3": "",
     "img": "equip/dungeon-hourglass.png",
     "effectBrief": "登场第 {C:TimestopSystem.TS_START_T} 秒发动时间停止，全场定格 4/7/20 秒，每个战场各一次。"
@@ -714,7 +714,7 @@
     "baseStats1": "+护甲5/11/19·+魔抗5/11/19",
     "shopAvailable": 1,
     "emoji": "🎐",
-    "effectDesc1": "每 {C:EqSpiritBatch.PARASOL_IDLE} 秒打开一次伞：自身与 {C:EqSpiritBatch.PARASOL_RADIUS} 码内的队友获得 11/22/35%伤害减免与 {C:EqSpiritBatch.PARASOL_DODGE%}%闪避率（固定值），持续 {C:EqSpiritBatch.PARASOL_OPEN} 秒；\n效果结束时携带者回复 50/80/130 生命，然后才重新开始 {C:EqSpiritBatch.PARASOL_IDLE} 秒计时。",
+    "effectDesc1": "每 {C:EqSpiritBatch.PARASOL_IDLE} 秒打开一次伞：自身与 {C:EqSpiritBatch.PARASOL_RADIUS} 码内的队友获得 11/22/35%伤害减免与 {C:EqSpiritBatch.PARASOL_DODGE%}%闪避率，持续 {C:EqSpiritBatch.PARASOL_OPEN} 秒；\n效果结束时自身回复 50/80/130 生命，{C:EqSpiritBatch.PARASOL_IDLE} 秒后再次撑开。",
     "effectDesc3": "",
     "img": "equip/p2eq_060.png",
     "effectBrief": "每 {C:EqSpiritBatch.PARASOL_IDLE} 秒撑伞 {C:EqSpiritBatch.PARASOL_OPEN} 秒，自己与 {C:EqSpiritBatch.PARASOL_RADIUS} 码内队友获得 11/22/35% 伤害减免。"
@@ -750,7 +750,7 @@
     "baseStats1": "+攻速8/15/25%·+暴击10/18/30%",
     "shopAvailable": 1,
     "emoji": "🌀",
-    "effectDesc1": "释放技能后获得 30/60/100%攻击速度，持续【本次技能消耗的龟能×{C:EqSpiritBatch.RING_SEC_PER_ENERGY}】秒（对所有龟折合恒定 {C:EqSpiritBatch.RING_COVERAGE%}%覆盖率）。\n携带者的普攻会对敌人施加一个【环】，敌人身上有 3 个环时环被引爆，该敌人受到（25/40/70+2/3/5%该敌人最大生命值）真实伤害。",
+    "effectDesc1": "释放技能后获得 30/60/100%攻击速度，持续【本次技能消耗的龟能×{C:EqSpiritBatch.RING_SEC_PER_ENERGY}】秒（对所有龟折合恒定 {C:EqSpiritBatch.RING_COVERAGE%}%覆盖率）。\n自身的普攻会对敌人施加一个【环】，敌人身上有 3 个环时环被引爆，该敌人受到（25/40/70+2/3/5%该敌人最大生命值）真实伤害。",
     "effectDesc3": "",
     "img": "equip/p2eq_063.png",
     "effectBrief": "释放技能后 +30/60/100% 攻击速度；普攻叠环，3 环引爆造成真实伤害（含 %目标最大生命值）。"
@@ -798,7 +798,7 @@
     "baseStats1": "+生命110/280/650·+攻15/38/90·+法穿10/20/38",
     "shopAvailable": 1,
     "emoji": "☠️",
-    "effectDesc1": "每 {C:EquipSystem.VIAL_IV} 秒朝敌人最密集的地方投出一个药瓶，对落点 {C:EqPotionBatch.VIAL_RADIUS} 码内的敌人施加 40/70/110 层中毒；普攻额外施加 {C:VenomDroneSystem.POISON_STACKS} 层中毒。\n携带者存活时，中毒的敌人受到的治疗与获得的护盾都减半。",
+    "effectDesc1": "每 {C:EquipSystem.VIAL_IV} 秒朝敌人最密集的地方投出一个药瓶，对落点 {C:EqPotionBatch.VIAL_RADIUS} 码内的敌人施加 40/70/110 层中毒；普攻额外施加 {C:VenomDroneSystem.POISON_STACKS} 层中毒。\n自身存活时，中毒的敌人受到的治疗与获得的护盾都减半。",
     "effectDesc3": "",
     "img": "equip/p2eq_067.png",
     "effectBrief": "每 {C:EquipSystem.VIAL_IV} 秒向敌人最密处投毒瓶，施加 40/70/110 层中毒并压制其治疗。"
@@ -846,7 +846,7 @@
     "baseStats1": "+治疗与护盾14/26/45%·+双抗10/22/40",
     "shopAvailable": 1,
     "emoji": "🥛",
-    "effectDesc1": "战斗开始为所有友军（含自己）套上其最大生命值 10/18/25%的【奶油护盾】，永久不衰减。\n奶油护盾被打破时，对持有者 {C:EqFoodBatch.CREAM_BURST_R} 码内的敌人造成 70/100/150 点魔法伤害，随后给持有者+{C:EqFoodBatch.CREAM_RESIST} 双抗、+20/30/40%攻击速度与+{C:EqFoodBatch.CREAM_RANGE} 射程，持续整路。\n携带者每累计损失 {C:EqFoodBatch.CREAM_LOSS_STEP%}%最大生命值会再给全队上一次，每路共 {C:EqFoodBatch.CREAM_TIMES} 次。",
+    "effectDesc1": "战斗开始为所有友军（含自己）套上其最大生命值 10/18/25%的【奶油护盾】，永久不衰减。\n奶油护盾被打破时，对自身 {C:EqFoodBatch.CREAM_BURST_R} 码内的敌人造成 70/100/150 点魔法伤害，随后给自身+{C:EqFoodBatch.CREAM_RESIST} 双抗、+20/30/40%攻击速度与+{C:EqFoodBatch.CREAM_RANGE} 射程，持续整路。\n自身每累计损失 {C:EqFoodBatch.CREAM_LOSS_STEP%}%最大生命值会再给全队上一次，每路共 {C:EqFoodBatch.CREAM_TIMES} 次。",
     "effectDesc3": "",
     "img": "equip/p2eq_071.png",
     "effectBrief": "战斗开始给全队套上 10/18/25% 最大生命值的奶油护盾，破碎时炸伤敌人。"
@@ -858,7 +858,7 @@
     "baseStats1": "+生命200/550/1400·+双抗10/24/55",
     "shopAvailable": 1,
     "emoji": "🎂",
-    "effectDesc1": "被动获得最大生命值 50/80/120%的【终极护盾】，永久。\n护盾存在时携带者化身蛋糕礼盒：属性不变但射程变为近战，普攻与技能替换为礼盒专属。\n礼盒嘲讽 {C:EqFoodBatch.BOX_TAUNT_PX} 码内所有敌人，每有一个敌人以自己为目标就实时+20/30/60 双抗；礼盒普攻造成 1 倍攻击力物理伤害；礼盒技能召唤 {C:EqFoodBatch.BOX_FIELD_PX} 码蛋糕法阵 {C:EqFoodBatch.BOX_FIELD_SEC} 秒，每秒为其中友军回复 50/70/120 生命与 2/4/6 龟能。\n终极护盾被打破时携带者出盒参战。\n携带者阵亡时分裂出两个蛋糕礼盒，拥有携带者 20/40/100%最大生命值、携带者的攻击力与双抗，其余为 0 与默认值，同样嘲讽并施放礼盒技能。",
+    "effectDesc1": "被动获得最大生命值 50/80/120%的【终极护盾】，永久。\n护盾存在时自身化身蛋糕礼盒：属性不变但射程变为近战，普攻与技能替换为礼盒专属。\n礼盒嘲讽 {C:EqFoodBatch.BOX_TAUNT_PX} 码内所有敌人，每有一个敌人以自己为目标就实时+20/30/60 双抗；礼盒普攻造成 1 倍攻击力物理伤害；礼盒技能召唤 {C:EqFoodBatch.BOX_FIELD_PX} 码蛋糕法阵 {C:EqFoodBatch.BOX_FIELD_SEC} 秒，每秒为其中友军回复 50/70/120 生命与 2/4/6 龟能。\n终极护盾被打破时自身出盒参战。\n自身阵亡时分裂出两个蛋糕礼盒，拥有自身 20/40/100%最大生命值，以及与自身相同的攻击力与双抗，其余为 0 与默认值，同样嘲讽并施放礼盒技能。",
     "effectDesc3": "",
     "img": "equip/p2eq_072.png",
     "effectBrief": "获得 50/80/120% 最大生命值的终极护盾，期间化身蛋糕礼盒嘲讽敌人。"
@@ -870,7 +870,7 @@
     "baseStats1": "+暴击10/18/30%·+射程50/70/100",
     "shopAvailable": 1,
     "emoji": "🏹",
-    "effectDesc1": "身上悬着一颗藤蔓小球。\n每次普攻时，小球会向随机敌人射出一支藤蔓箭，造成 20/30/45%攻击力的物理伤害。\n藤蔓箭单独判定暴击（暴击率同携带者）；暴击时藤蔓箭转为真实伤害，并使携带者获得 20/25/30%攻击速度，持续 2 秒（再次暴击只刷新时长，不叠加）。",
+    "effectDesc1": "身上悬着一颗藤蔓小球。\n每次普攻时，小球会向随机敌人射出一支藤蔓箭，造成 20/30/45%攻击力的物理伤害。\n藤蔓箭单独判定暴击（暴击率同自身）；暴击时藤蔓箭转为真实伤害，并使自身获得 20/25/30%攻击速度，持续 2 秒（再次暴击只刷新时长，不叠加）。",
     "effectDesc3": "",
     "img": "equip/p2eq_073.png",
     "effectBrief": "每次普攻由藤蔓小球射出一箭；箭暴击时转真实伤害并提升攻击速度。"
@@ -894,7 +894,7 @@
     "baseStats1": "+攻12/30/68·+射程40/60/90",
     "shopAvailable": 1,
     "emoji": "📏",
-    "effectDesc1": "每 {C:EqBowBatch.RAIN_IV} 秒放一轮箭雨：落点取敌人最密集处，半径 {C:EqBowBatch.RAIN_RADIUS} 码，持续 {C:EqBowBatch.RAIN_SEC} 秒，每 {C:EqBowBatch.RAIN_HOP_IV} 秒造成 0.25/0.35/0.5 倍攻击力的物理伤害并施加 3/4/5 层流血。\n被动：目标每距离携带者 {C:EqBowBatch.AMP_PER_PX} 码，携带者对它+3/4/5%增伤，不封顶（箭雨自己也吃这个增伤）。",
+    "effectDesc1": "每 {C:EqBowBatch.RAIN_IV} 秒放一轮箭雨：落点取敌人最密集处，半径 {C:EqBowBatch.RAIN_RADIUS} 码，持续 {C:EqBowBatch.RAIN_SEC} 秒，每 {C:EqBowBatch.RAIN_HOP_IV} 秒造成 0.25/0.35/0.5 倍攻击力的物理伤害并施加 3/4/5 层流血。\n被动：目标每距离自身 {C:EqBowBatch.AMP_PER_PX} 码，对它+3/4/5%增伤，不封顶（箭雨自己也吃这个增伤）。",
     "effectDesc3": "",
     "img": "equip/p2eq_075.png",
     "effectBrief": "每 {C:EqBowBatch.RAIN_IV} 秒在敌人最密处落一轮箭雨；目标每远 {C:EqBowBatch.AMP_PER_PX} 码增伤 3/4/5%。"
@@ -918,7 +918,7 @@
     "baseStats1": "+暴击10/18/30%·+破甲4/9/18",
     "shopAvailable": 1,
     "emoji": "🔫",
-    "effectDesc1": "生成一把迷你小手枪：30/60/100 生命值、10/20/30 攻击力、{C:EqGunBatch.PISTOL_RANGE} 码射程、每 {C:EqGunBatch.PISTOL_IV} 秒攻击一次，普攻造成 1 倍攻击力物理伤害并拥有 {C:EqGunBatch.PISTOL_CRIT%}%暴击率；\n每次攻击使小手枪永久获得 {C:EqGunBatch.PISTOL_PEN_PER_SHOT} 点护甲穿透（每路重置）。\n小手枪【没有护盾时】受到的所有伤害（含真实伤害）降为 2 点，携带者阵亡后降为 {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} 点；小手枪受到的所有治疗封顶 1 点。\n小手枪的攻击会触发枪羁绊【金弹】。",
+    "effectDesc1": "生成一把迷你小手枪：30/60/100 生命值、10/20/30 攻击力、{C:EqGunBatch.PISTOL_RANGE} 码射程、每 {C:EqGunBatch.PISTOL_IV} 秒攻击一次，普攻造成 1 倍攻击力物理伤害并拥有 {C:EqGunBatch.PISTOL_CRIT%}%暴击率；\n每次攻击使小手枪永久获得 {C:EqGunBatch.PISTOL_PEN_PER_SHOT} 点护甲穿透（每路重置）。\n小手枪【没有护盾时】受到的所有伤害（含真实伤害）降为 2 点，自身阵亡后降为 {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} 点；小手枪受到的所有治疗封顶 1 点。\n小手枪的攻击会触发枪羁绊【金弹】。",
     "effectDesc3": "",
     "img": "equip/p2eq_077.png",
     "effectBrief": "生成一把迷你手枪协同开火，它受到的任何伤害都降为 2 点。"
@@ -942,7 +942,7 @@
     "baseStats1": "+生命90/200/420·+治疗与护盾10/18/30%·+攻速8/15/25%",
     "shopAvailable": 1,
     "emoji": "🏥",
-    "effectDesc1": "在携带者后方 {C:EqGunBatch.TOWER_BACK} 码生成一座医疗炮台：700/1200/2500 生命值、15/20/30 攻击力、50/70/100 双抗，攻击速度实时等于携带者。\n炮台普攻造成 1 倍攻击力物理伤害+目标最大生命值 1/1.5/2%魔法伤害，并为生命百分比最低的友军回复 10/15/20 生命值。\n炮台自己维持金弹计数，每射满 4/3/2 发打出一发金弹，继承全部效果并附加 60/80/100%真实伤害，且金弹的回血量翻倍。",
+    "effectDesc1": "在自身后方 {C:EqGunBatch.TOWER_BACK} 码生成一座医疗炮台：700/1200/2500 生命值、15/20/30 攻击力、50/70/100 双抗，攻击速度实时与自身相同。\n炮台普攻造成 1 倍攻击力物理伤害+目标最大生命值 1/1.5/2%魔法伤害，并为生命百分比最低的友军回复 10/15/20 生命值。\n炮台自己维持金弹计数，每射满 4/3/2 发打出一发金弹，继承全部效果并附加 60/80/100%真实伤害，且金弹的回血量翻倍。",
     "effectDesc3": "",
     "img": "equip/p2eq_079.png",
     "effectBrief": "在身后生成一座医疗炮台，普攻伤敌并为最残的友军回血。"
@@ -954,7 +954,7 @@
     "baseStats1": "+攻30/90/260·+双抗12/28/60",
     "shopAvailable": 1,
     "emoji": "🚁",
-    "effectDesc1": "登场时召唤一架无法选中、完全免疫的直升机在战场盘旋，它拥有独立龟能条。\n直升机每 {C:EqGunBatch.HELI_FIRE_IV} 秒朝正下方最近的敌人扫射 3/4/10 发机炮，每发造成 {C:EqGunBatch.HELI_SHOT_COEF} 倍攻击力物理伤害；每命中一发获得 {C:EqGunBatch.HELI_EN_PER_HIT} 点龟能（上限 {C:EqGunBatch.HELI_EN_MAX}）。\n龟能满时发动【地毯轰炸】：沿一条覆盖敌人最多的 {C:EqGunBatch.BOMB_LANE_LEN} 码长、{C:EqGunBatch.BOMB_LANE_W} 码宽航线飞过，投下 8/10/14 枚炸弹，每枚在落点 {C:EqGunBatch.BOMB_R} 码内造成 0.8/1.1/1.5 倍攻击力物理伤害+40/70/120 魔法伤害。\n机炮与炸弹都计入枪羁绊【金弹】计数。\n携带者阵亡后直升机继续飞行 {C:EqGunBatch.DOOM_SEC} 秒然后坠向敌方随机单位，爆炸对 {C:EqGunBatch.CRASH_R} 码内敌人造成 200/300/500 物理伤害并施加 {C:EqGunBatch.CRASH_BURN} 层灼烧。",
+    "effectDesc1": "登场时召唤一架无法选中、完全免疫的直升机在战场盘旋，它拥有独立龟能条。\n直升机每 {C:EqGunBatch.HELI_FIRE_IV} 秒朝正下方最近的敌人扫射 3/4/10 发机炮，每发造成 {C:EqGunBatch.HELI_SHOT_COEF} 倍攻击力物理伤害；每命中一发获得 {C:EqGunBatch.HELI_EN_PER_HIT} 点龟能（上限 {C:EqGunBatch.HELI_EN_MAX}）。\n龟能满时发动【地毯轰炸】：沿一条覆盖敌人最多的 {C:EqGunBatch.BOMB_LANE_LEN} 码长、{C:EqGunBatch.BOMB_LANE_W} 码宽航线飞过，投下 8/10/14 枚炸弹，每枚在落点 {C:EqGunBatch.BOMB_R} 码内造成 0.8/1.1/1.5 倍攻击力物理伤害+40/70/120 魔法伤害。\n机炮与炸弹都计入枪羁绊【金弹】计数。\n自身阵亡后直升机继续飞行 {C:EqGunBatch.DOOM_SEC} 秒然后坠向敌方随机单位，爆炸对 {C:EqGunBatch.CRASH_R} 码内敌人造成 200/300/500 物理伤害并施加 {C:EqGunBatch.CRASH_BURN} 层灼烧。",
     "effectDesc3": "",
     "img": "equip/p2eq_080.png",
     "effectBrief": "登场时召唤一架直升机扫射；它龟能满时沿航线地毯轰炸。"
@@ -978,7 +978,7 @@
     "baseStats1": "+生命70/170/380·+魔抗8/17/30",
     "shopAvailable": 1,
     "emoji": "🐚",
-    "effectDesc1": "【护心反伤】携带者每受到一段攻击，反伤 3/5/8 点魔法伤害给攻击者（持续伤害不计，多段攻击每段独立计数，反伤不触发对方的反伤）。\n每反伤 {C:EqBladeBatch.CLAM_PER_CHARGE} 次获得一层充能；携带者的普攻消耗一层充能，使自己回复 5/7/10%最大生命值，并附带自身 100%魔抗的魔法伤害。",
+    "effectDesc1": "【护心反伤】自身每受到一段攻击，反伤 3/5/8 点魔法伤害给攻击者（持续伤害不计，多段攻击每段独立计数，反伤不触发对方的反伤）。\n每反伤 {C:EqBladeBatch.CLAM_PER_CHARGE} 次获得一层充能；自身的普攻消耗一层充能，回复 5/7/10%最大生命值，并附带自身 100%魔抗的魔法伤害。",
     "effectDesc3": "",
     "img": "equip/p2eq_082.png",
     "effectBrief": "每受到一段攻击反伤 3/5/8 点；每反伤 {C:EqBladeBatch.CLAM_PER_CHARGE} 次攒一层，普攻消耗后回血。"
@@ -1002,7 +1002,7 @@
     "baseStats1": "+攻速10/18/30%·+移速7/13/22%",
     "shopAvailable": 1,
     "emoji": "🗡️",
-    "effectDesc1": "效果随携带者是近战或远程而改变。\n近战携带：获得 {C:EqBladeBatch.HH_MELEE_RANGE} 码射程（普攻改为射出红色闪电激光），并获得 {C:EqBladeBatch.HH_MELEE_AMP%}% 增伤，技能被替换为 {C:EqBladeBatch.HH_ENERGY} 龟能的【十字斩】——横斩以 {C:BladeEqVfx.SLASH_REACH} 码 {C:BladeEqVfx.SLASH_DEG_WIDE} 度扫过造成 40/70/130+0.6/0.9/1.4 倍攻击力物理伤害并生成一道横波造成 25/45/85+0.4/0.6/0.9 倍攻击力物理伤害，随后竖斩造成 50/85/160+0.7/1.1/1.7 倍攻击力物理伤害并生成一道竖波造成 30/55/100+0.5/0.7/1.1 倍攻击力物理伤害。\n远程携带：射程固定为 {C:EqBladeBatch.HH_RANGED_RANGE} 码，获得 {C:EqBladeBatch.HH_RANGED_DR%}% 减伤、{C:EqBladeBatch.HH_RANGED_HP} 最大生命值、登场时攻击力的 10/15/20%作为额外攻击力、10/12.5/15%生命偷取，且每转化 {C:EqBladeBatch.HH_CONV_PER} 码射程使这些属性提升 {C:EqBladeBatch.HH_CONV_BONUS%}%（射程变化实时重算），主动技能不替换。",
+    "effectDesc1": "效果随自身是近战或远程而改变。\n近战携带：获得 {C:EqBladeBatch.HH_MELEE_RANGE} 码射程（普攻改为射出红色闪电激光），并获得 {C:EqBladeBatch.HH_MELEE_AMP%}% 增伤，技能被替换为 {C:EqBladeBatch.HH_ENERGY} 龟能的【十字斩】——横斩以 {C:BladeEqVfx.SLASH_REACH} 码 {C:BladeEqVfx.SLASH_DEG_WIDE} 度扫过造成 40/70/130+0.6/0.9/1.4 倍攻击力物理伤害并生成一道横波造成 25/45/85+0.4/0.6/0.9 倍攻击力物理伤害，随后竖斩造成 50/85/160+0.7/1.1/1.7 倍攻击力物理伤害并生成一道竖波造成 30/55/100+0.5/0.7/1.1 倍攻击力物理伤害。\n远程携带：射程固定为 {C:EqBladeBatch.HH_RANGED_RANGE} 码，获得 {C:EqBladeBatch.HH_RANGED_DR%}% 减伤、{C:EqBladeBatch.HH_RANGED_HP} 最大生命值、登场时攻击力的 10/15/20%作为额外攻击力、10/12.5/15%生命偷取，且每转化 {C:EqBladeBatch.HH_CONV_PER} 码射程使这些属性提升 {C:EqBladeBatch.HH_CONV_BONUS%}%（射程变化实时重算），主动技能不替换。",
     "effectDesc3": "",
     "img": "equip/p2eq_084.png",
     "effectBrief": "近战携带换成十字斩、普攻射出红色闪电激光并获得增伤；远程携带则把射程换成生命、攻击与吸血，并获得减伤。"
@@ -1026,7 +1026,7 @@
     "baseStats1": "+攻30/90/260·+充能12/22/38%",
     "shopAvailable": 1,
     "emoji": "🧭",
-    "effectDesc1": "登场后每 3 秒生成一个浮游炮环绕自身，最多 {C:EqGadgetBatch.SEXT_CAP} 个。\n浮游炮每 2 秒攻击一次随机敌人，造成携带者 0.3/0.4/0.5 倍攻击力物理伤害。\n每个浮游炮为携带者提供 10/15/20 魔抗。\n所有浮游炮累计发射 40/30/20 次攻击后，全部飞散到战场随机点并朝随机目标共同发射紫色终极射线，每条造成 200/350/1000 魔法伤害。",
+    "effectDesc1": "登场后每 3 秒生成一个浮游炮环绕自身，最多 {C:EqGadgetBatch.SEXT_CAP} 个。\n浮游炮每 2 秒攻击一次随机敌人，造成自身 0.3/0.4/0.5 倍攻击力物理伤害。\n每个浮游炮为自身提供 10/15/20 魔抗。\n所有浮游炮累计发射 40/30/20 次攻击后，全部飞散到战场随机点并朝随机目标共同发射紫色终极射线，每条造成 200/350/1000 魔法伤害。",
     "effectDesc3": "",
     "img": "equip/p2eq_086.png",
     "effectBrief": "每 3 秒生成一个浮游炮（最多 {C:EqGadgetBatch.SEXT_CAP} 个）；攒够攻击次数后齐射终极射线。"
@@ -1038,7 +1038,7 @@
     "baseStats1": "+护甲25/60/150·+生命150/420/1200",
     "shopAvailable": 1,
     "emoji": "🔔",
-    "effectDesc1": "效果一：每 15/10/4 秒从训龟大师的主动技能中随机偷取一个释放，每一路不会偷到重复的技能，全部偷取并释放过后不再偷取。\n效果二：压载舱容量为自身最大生命值的 60/90/150%，受到的伤害先灌进舱里，舱满后才真的掉血；\n每 {C:EqGadgetBatch.DIVE_PUMP_IV} 秒把舱内 {C:EqGadgetBatch.DIVE_PUMP_FRAC%}%抽出还成生命，并朝最远的敌人喷出等量的水柱伤害；\n舱内每存有 {C:EqGadgetBatch.DIVE_STACK_FRAC%}%最大生命值，携带者获得 {C:EqGadgetBatch.DIVE_MOVE_PER%}%移速与 {C:EqGadgetBatch.DIVE_DEF_PER} 点护甲（最多 {C:EqGadgetBatch.DIVE_STACK_CAP} 层）。",
+    "effectDesc1": "效果一：每 15/10/4 秒从训龟大师的主动技能中随机偷取一个释放，每一路不会偷到重复的技能，全部偷取并释放过后不再偷取。\n效果二：压载舱容量为自身最大生命值的 60/90/150%，受到的伤害先灌进舱里，舱满后才真的掉血；\n每 {C:EqGadgetBatch.DIVE_PUMP_IV} 秒把舱内 {C:EqGadgetBatch.DIVE_PUMP_FRAC%}%抽出还成生命，并朝最远的敌人喷出等量的水柱伤害；\n舱内每存有 {C:EqGadgetBatch.DIVE_STACK_FRAC%}%最大生命值，自身获得 {C:EqGadgetBatch.DIVE_MOVE_PER%}%移速与 {C:EqGadgetBatch.DIVE_DEF_PER} 点护甲（最多 {C:EqGadgetBatch.DIVE_STACK_CAP} 层）。",
     "effectDesc3": "",
     "img": "equip/p2eq_087.png",
     "effectBrief": "每 15/10/4 秒偷放一个训龟大师的技能；受到的伤害先灌进压载舱。"
@@ -1074,7 +1074,7 @@
     "baseStats1": "+法穿18/42/110·+生命150/420/1200·+龟能45/80/150",
     "shopAvailable": 1,
     "emoji": "🔱",
-    "effectDesc1": "该法器法力条集满时，携带者跳跃到空中后向整个战场猛砸：对 {C:EqArcaneBatch.PESTLE_RADIUS} 码内的敌人造成 1 倍攻击力+150/300/4000 魔法伤害，并施加 2/3/8 秒眩晕与 1 秒击飞；\n造成伤害后才重新开始记录法力值。\n被动：携带者每第三次普攻发射一片浪潮，从携带者飞向目标后不断跳向最近的、未被本次浪潮飞过的友军或敌军，最多跳跃 4/5/8 次；\n打到敌人造成 40/70/140 魔法伤害，打到友军提供 20/40/80 治疗。",
+    "effectDesc1": "该法器法力条集满时，自身跳跃到空中后向整个战场猛砸：对 {C:EqArcaneBatch.PESTLE_RADIUS} 码内的敌人造成 1 倍攻击力+150/300/4000 魔法伤害，并施加 2/3/8 秒眩晕与 1 秒击飞；\n造成伤害后才重新开始记录法力值。\n被动：自身每第三次普攻发射一片浪潮，浪潮飞向目标后不断跳向最近的、未被本次浪潮飞过的友军或敌军，最多跳跃 4/5/8 次；\n打到敌人造成 40/70/140 魔法伤害，打到友军提供 20/40/80 治疗。",
     "effectDesc3": "",
     "img": "equip/p2eq_090.png",
     "effectBrief": "法力满时跃起猛砸全场，造成伤害并眩晕 2/3/8 秒。"
@@ -1098,7 +1098,7 @@
     "baseStats1": "+生命50/70/100·+魔抗10/22/40",
     "shopAvailable": 1,
     "emoji": "🦋",
-    "effectDesc1": "召唤一只剧毒飞行物，不可选中，携带者阵亡后飞行物也阵亡。\n飞行物缓慢飞行，朝随机目标飞，穿过目标落到它对面的落点后再飞向下一个目标，如此往复。\n它每 {C:VenomDroneSystem.BEAT} 秒在路径上留下一团持续 {C:VenomDroneSystem.FOG_LIFE} 秒的毒雾；毒雾每 {C:VenomDroneSystem.BEAT} 秒给触碰到的敌方单位施加 {C:VenomDroneSystem.POISON_STACKS} 层中毒，并施加一层剧毒缓速。\n每个单位最多 {C:VenomDroneSystem.VSLOW_CAP} 层剧毒缓速，每层减少目标 {C:VenomDroneSystem.VSLOW_MOVE_PER%}%移速和 {C:VenomDroneSystem.VSLOW_MR_PER%}%魔抗；若目标 {C:VenomDroneSystem.VSLOW_GRACE} 秒内没有被施加剧毒缓速，则每 {C:VenomDroneSystem.BEAT} 秒失去一层。",
+    "effectDesc1": "召唤一只剧毒飞行物，不可选中，自身阵亡后飞行物也阵亡。\n飞行物缓慢飞行，朝随机目标飞，穿过目标落到它对面的落点后再飞向下一个目标，如此往复。\n它每 {C:VenomDroneSystem.BEAT} 秒在路径上留下一团持续 {C:VenomDroneSystem.FOG_LIFE} 秒的毒雾；毒雾每 {C:VenomDroneSystem.BEAT} 秒给触碰到的敌方单位施加 {C:VenomDroneSystem.POISON_STACKS} 层中毒，并施加一层剧毒缓速。\n每个单位最多 {C:VenomDroneSystem.VSLOW_CAP} 层剧毒缓速，每层减少目标 {C:VenomDroneSystem.VSLOW_MOVE_PER%}%移速和 {C:VenomDroneSystem.VSLOW_MR_PER%}%魔抗；若目标 {C:VenomDroneSystem.VSLOW_GRACE} 秒内没有被施加剧毒缓速，则每 {C:VenomDroneSystem.BEAT} 秒失去一层。",
     "effectDesc3": "",
     "img": "equip/p2eq_092.png",
     "effectBrief": "召唤一只剧毒飞行物，沿途留下毒雾给敌人叠中毒与缓速。"
@@ -1134,7 +1134,7 @@
     "baseStats1": "+生命250",
     "shopAvailable": 0,
     "emoji": "✨",
-    "effectDesc1": "每 3 秒为携带者生成 {C:ShieldSynergySystem.HOLY_AMOUNT} 点圣光护盾值；圣光护盾存在时，反击敌人的每段伤害造成 2 点真实伤害。",
+    "effectDesc1": "每 3 秒为自身生成 {C:ShieldSynergySystem.HOLY_AMOUNT} 点圣光护盾值；圣光护盾存在时，反击敌人的每段伤害造成 2 点真实伤害。",
     "effectDesc3": "",
     "img": "equip/p2eq_095.png",
     "effectBrief": "每 3 秒生成 {C:ShieldSynergySystem.HOLY_AMOUNT} 点圣光护盾；护盾存在时反击各造成 2 点真实伤害。"

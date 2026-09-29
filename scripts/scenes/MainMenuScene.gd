@@ -16,6 +16,11 @@ const _P2C := preload("res://scripts/gamedata/phase2_config.gd")
 ## D-1: 服务状态三态(没配 / 正常 / 维护中 / 连不上)。维护态要盖掉赛程显示, 见 `_week_close_block`。
 const _SB := preload("res://scripts/net/supabase.gd")
 const _BE := preload("res://scripts/net/backend.gd")
+## 拆墙之后那句非阻塞提示要把人送到【绑定屏】去, 而那一屏的代码在设置页那侧
+## ⇒ 跨场景传一个 static 布尔 `open_bind_on_entry`。
+## ★不在这边再建一份绑定 UI: 抄一份就要把昵称那一行和验证码状态机抄第二遍
+##   (memory `fb-hand-rolled-copies-drift`)。
+const _SET := preload("res://scripts/scenes/SettingsScene.gd")
 
 const W := 1280
 const H := 720
@@ -159,10 +164,16 @@ func _ready() -> void:
 	##   「那一刻可能没网, 而那一刻只有一次」。漏报会让那一场只能靠 960 秒宽限兜,
 	##   **可能把错的人送进下一轮**(2026-09-27)。
 	_BE.retry_finals_report()
-	## ★★登录墙: 没绑邮箱就把人送到账号那一屏(用户 2026-09-24「直接改为必须绑定账号吧」)。
-	##   ★主菜单**不自己判**要不要挡 —— 判据只有 `phase2_config.login_wall_on` 一处,
-	##     设置页也读同一个(两处各判一份必然漂)。这里只负责把人送过去。
-	##   ★「后端没配置」不挡: 那是 dev/门禁状态, 玩家永远遇不到(见那个纯函数的注释)。
+	## ★★★ 2026-09-29 【墙拆了】—— 用户「那就不用必须绑定吧」推翻了他 2026-09-24
+	##   那句「直接改为必须绑定账号吧」。`login_wall_on()` 现在**恒假**
+	##   (`phase2_config.WALL_BLOCKS = false`) ⇒ 下面这三行对玩家永远不成立,
+	##   第一屏就是主菜单。没绑邮箱的人改用下面 `_bind_nudge()` 那句**非阻塞**提示。
+	##   ★★为什么不删这三行: 门禁那条「拦不住人」的判据要能**反向验证** ——
+	##     把 `WALL_BLOCKS` 翻成 true, 墙当场回来(这三行就是它的身体),
+	##     那条判据当场红、而且红的形状就是「走不过去」。删干净了就再也证不了
+	##     它不是恒真式(memory `fb-gate-must-measure-requirement-not-my-hook`)。
+	##   ★主菜单**不自己判**要不要挡 —— 判据只有 `phase2_config.WALL_BLOCKS` 一处,
+	##     设置页也读同一个(两处各判一份必然漂)。
 	##   ★★只在**自己就是 current_scene** 时才跳 —— 门禁/实拍常把主菜单当子节点挂起来
 	##     量东西, 那不是玩家流程; 在那种情况下 `change_scene_to_file` 会把**宿主的**
 	##     场景树换掉(本仓踩过这个)。
@@ -187,6 +198,10 @@ func _ready() -> void:
 	page_box = Control.new()
 	content_root.add_child(page_box)
 	_build_page_buttons(paint_ts)
+	## ★★拆墙之后唯一还会主动找玩家的地方 —— 见 `_bind_nudge()` 头注。
+	##   放在 `_build_page_buttons` **之后**: 它不进 `page_box`(那一叠的子节点数是
+	##   `verify_mainmenu_layout` 的分母「左栏按钮栈 = 6 个」), 直接挂 `content_root`。
+	_bind_nudge()
 	get_viewport().size_changed.connect(_on_menu_resize)
 	# (去掉全屏询问弹窗·用户2026-07-18「去掉这个全屏提示」; _maybe_ask_fullscreen 保留未调用, 需要可在设置里切全屏)
 	# ★首次打开强制新手教学(用户2026-07-23)。判据: 从没走完过教学(onboarded=false)。
@@ -391,6 +406,52 @@ func _build_page_buttons(now: int = 0) -> void:
 	if eliminated:
 		_add_lock_badge(hero, HERO_SIZE)
 	_slide_in(hero, 5)
+
+
+## 【非阻塞提示】位置与大小。
+## ★x / 宽与主 CTA **同轴**(右栏那一叠从上到下: 提示 → 训龟大师 → 开始战斗),
+##   高 = `ROW_H`(81 视口像素 = 44pt), 与全屏所有靶子同一条触摸线。
+## ★y 是**算出来的空地**: 它的底沿 240+81 = 321, 训龟大师顶沿 `TRAINER_POS.y` = 344
+##   ⇒ 留 23px; 头上那排货币/磁贴到 y≈115 就结束了。两边都不挤。
+const NUDGE_SIZE := Vector2(508.0, 81.0)
+const NUDGE_POS := Vector2(732.0, 240.0)
+
+
+## 【拆墙的配件】没绑邮箱的人在主菜单上看到的那一句。
+##
+## ★★★它存在的理由: 2026-09-29 拆墙的代价是「一批人永远不绑, 换手机就丢档」,
+##   而缓解**只能**靠这一句。它说一个**事实**(进度没备份) + 给一个**动作**(绑定)。
+## ★★**不许退回成拦路**: 它就是主菜单上一个普通可点元素 —— 不点照常开始战斗,
+##   不弹窗、不遮罩、不拦 `_start_battle_flow()`。这一条由 `verify_login_wall`
+##   那条「一个绑定控件都不碰也能走到打一局」守着。
+## ★字**不在这里拼**: `phase2_config.bind_nudge_text()` 是唯一一份。
+## ★条件也不在这里判: `bind_needed()` 是唯一一处(设置页/绑定屏读的是同一个)。
+## ★★后端没配时不建——于是门禁进程(`TURTLE_SUPABASE=" "`)里它一直不在场,
+##   所以 `verify_login_wall` 里是**真开后端配置**把它造出来冏量的
+##   (memory `fb-gate-subject-never-constructed`)。
+func _bind_nudge() -> void:
+	if not _P2C.bind_needed(_SB.enabled(), str(GameState.account_email)):
+		return
+	var b := _frame_button(_P2C.bind_nudge_text(), _open_bind_screen, false,
+		NUDGE_SIZE, FONT_BTN, "")
+	b.name = NUDGE_NAME
+	b.position = NUDGE_POS
+	content_root.add_child(b)
+	_slide_in(b, 3)
+
+
+## 提示那一块的节点名 —— 门禁按它找得到这一块(不靠数字下标, 也不靠抄一份文案)。
+const NUDGE_NAME := "BindNudge"
+
+
+## 点了那句提示 → 去【绑定屏】。
+## ★绑定屏的代码在 `SettingsScene` 那侧(昵称 + 两步验码流都在那里),
+##   所以这里只竖一个 static 旗子再过去 —— 在这边再建一份就是抄第二遍。
+## ★不是 `func(): ...` 闭包: 具名方法门禁量得到(本仓 `verify_login_wall` 那条
+##   「返回键接的是具名方法」同一个理由)。
+func _open_bind_screen() -> void:
+	_SET.open_bind_on_entry = true
+	_go("Settings")
 
 
 ## 左栏的一个无框文字入口。

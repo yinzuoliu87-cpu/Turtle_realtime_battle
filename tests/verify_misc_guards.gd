@@ -64,7 +64,8 @@ func _ready() -> void:
 	# ── D. 结算统计: 跨战场快照函数在 ──
 	# 起因: 结算页原本只显当前战场; 快照存的是纯标量(不能存单位字典, 会成环)
 	_ok("有跨战场快照 _st_snapshot_lane", s.has_method("_st_snapshot_lane"))
-	_ok("有合计归并 _st_merge_all", s.has_method("_st_merge_all"))
+	## ★ 2026-09-29 `_st_merge_all` 搬到 battle_hud(只在结算时用, 不在 sim 链上)。
+	_ok("有合计归并 _st_merge_all", s._hud != null and s._hud.has_method("_st_merge_all"))
 	var row: Dictionary = s._st_row({"name": "测试龟", "hp": 50.0, "maxHp": 100.0, "_st_dealt": 7})
 	_ok("★快照行是纯标量(无单位字典引用, 防成环)",
 		not row.values().any(func(v): return v is Dictionary or v is Array),

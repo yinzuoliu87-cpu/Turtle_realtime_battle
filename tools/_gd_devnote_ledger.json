@@ -2,7 +2,7 @@
  "_why": "本文件由 `python tools/codex_text_lint.py --update` 生成, 不要手改。键 = 相对路径|原文(不含行号: 行号天天漂)。只减不增。",
  "known": {
   "scripts/scenes/BracketMapScene.gd|待定": {
-   "line": 834,
+   "line": 844,
    "sink": "lit",
    "word": "待定"
   },

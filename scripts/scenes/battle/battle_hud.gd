@@ -30,6 +30,13 @@ const SHOP_BTN_TEXT := "前往商店"
 ##   往上帝文件加成员就是在往那笔欠债上加; 而这几行只有面板用得着, 本就该待在面板这边。
 var _info_res_rows: Array = []
 
+## 结算卡那个 VBox(标题~战报) 与战报表底下那行提示。
+## ★为什么存引用而不每次现找: `settle_inner_avail` 要拿卡片最小高当减数,
+##   现找就得再写一遗“怎么从滚动容器走到卡片”的树结构知识 —— 那就是第二份副本。
+var _settle_card: Control = null
+var _settle_more_hint: Label = null
+var _settle_more_scroll: ScrollContainer = null
+
 
 ## 被动技能 id → 圆盘图标。
 ## ★为什么单列一张: battle.TRAINER_SKILLS 只收【主动技】, 被动的图标一直只存在
@@ -1215,6 +1222,55 @@ func _banner_sealed() -> bool:
 	return p is Dictionary and not (p as Dictionary).is_empty()
 
 
+## ====================================================================
+##  ★★★结算屏高度预算 —— 【唯一事实源】(2026-09-29)
+## ====================================================================
+## 用户原话:「每场打完后结算界面能下滑吗, 不能啊, 有很多单位看不到啊」。
+##
+## 根因是**算术错, 不是设计权衡**: 同一屏的高度被两处各算了一份, 差 56px ——
+##   · 外层卡片滚动区(`_show_banner`) = 视口 − 卡片内边距 − 按钮行 − 安全区 − 呼吸 = 536
+##   · 内层战报(`_stats_fit_body`)    = 视口 − 320                                = 400
+##   而卡片里【表以外的部分】实测 192(标题/副标题/间距/面板边)
+##   ⇒ 内层最多只能 536 − 192 = **344**, 代码却给到 400。
+## 探针实测(1560×720·每侧 R 只龟·`tests/_probe_settle_budget.gd`):
+##   R=12 卡片 516 不溢出 | R=13 **541 溢出 +5** | R=14 566 **+30·2 行看不到·0 根滚动条**
+##   | R=15 591 +55·4 行看不到 | R=16 592 **+56**(内层撞到 400 上限·逐位对上那 56)
+## ★那行注释当时还在算「按钮 46」, 而按钮 2026-08-12 就搬到滚动区【外面】了;
+##   它也从没算过九宫格卡片的 62px 内边距与 SafeArea。
+##
+## ⇒ 现在**只有一处算预算**: 外层由 `settle_outer_budget()` 出, 内层 = 外层 − 表以外的部分,
+##   而「表以外的部分」是**量出来的**(卡片最小高 − 内层当前占的那份), 不是第二个手写常量。
+##   memory [[fb-hand-rolled-copies-drift]]: 手抄的副本必然落后。
+const SETTLE_SHELL_PAD := 62.0     # 卡片上下内边距: 九宫格金属框 30+32(见 _settle_shell_style)
+const SETTLE_BTN_ROW := 70.0       # 按钮行 —— 它在滚动区【外面】, 所以要从预算里扣掉
+const SETTLE_BREATH := 40.0        # 一点呼吸, 别让卡贴着安全区边
+
+## 结算卡外层滚动区能有多高。★这是这一屏高度的唯一出处。
+static func settle_outer_budget(vp: Vector2) -> float:
+	var sm: Vector4 = SafeArea.margins(vp, 6.0)
+	return maxf(180.0, vp.y - SETTLE_SHELL_PAD - SETTLE_BTN_ROW - sm.y - sm.w - SETTLE_BREATH)
+
+
+## 内层战报的可用高 = 外层预算 − 卡片里【表以外的部分】。
+## ★"表以外的部分" = 卡片最小高 − 内层滚动区当前占的那一份 ⇒ 与内层多高无关(不会自激)。
+##   也【不写死 192】: 多一行副标题/多一行提示它就变, 写死就是又抄了一份。
+func settle_inner_avail(inner: ScrollContainer) -> float:
+	var budget: float = settle_outer_budget(battle.get_viewport().get_visible_rect().size)
+	if _settle_card == null or not is_instance_valid(_settle_card) or not is_instance_valid(inner):
+		return budget
+	var chrome: float = _settle_card.get_combined_minimum_size().y - inner.custom_minimum_size.y
+	## ★地板取 0 不取 120: 极矮视口下宁可表收成一条, 也不许卡片溢出把按钮顶出屏
+	##   (用户 2026-08-12 实测过的那个「手机上钮点不到」)。
+	return maxf(0.0, budget - chrome)
+
+
+## 把内层战报夹到预算内。★`_stats_fit_body` 只调这里, 不再自己算高度。
+func settle_fit_inner(inner: ScrollContainer, content: Vector2) -> void:
+	if not is_instance_valid(inner):
+		return
+	inner.custom_minimum_size = Vector2(content.x, minf(content.y, settle_inner_avail(inner)))
+
+
 func _show_banner(won: bool, _sealed_hint: bool = false) -> void:
 	if battle._settled:
 		return
@@ -1299,14 +1355,9 @@ func _show_banner(won: bool, _sealed_hint: bool = false) -> void:
 	outer.add_theme_constant_override("separation", 12)
 	shell.add_child(outer)
 	var vp: Vector2 = battle.get_viewport().get_visible_rect().size
-	var sm: Vector4 = SafeArea.margins(vp, 6.0)
-	## 留给: 卡片上下内边距 + 按钮行(约 70) + 安全区 + 一点呼吸
-	## ★★46 → 62(2026-09-28): 卡片的底换成九宫格金属框后上下内边距是 30+32=62,
-	##   不再是 StyleBoxFlat 那版的 22+24=46(见 `_settle_shell_style`)。
-	##   **这个数必须跟着改** —— 少扣 16px 就等于允许卡片长高 16px, 而卡片一超视口
-	##   `CenterContainer` 会上下一起溢出、按钮行正好在下面那一头被推出屏幕
-	##   (用户 2026-08-12 实测过的那个 bug:「手机上钮点不到」)。
-	var scroll_max: float = maxf(180.0, vp.y - 62.0 - 70.0 - sm.y - sm.w - 40.0)
+	## 高度预算见本文件 `settle_outer_budget()` —— 那里是这一屏高度的**唯一出处**,
+	## 内层战报的预算由它减出来(2026-09-29 之前两处各算一份, 差 56px ⇒ 卡片静默溢出)。
+	var scroll_max: float = settle_outer_budget(vp)
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	## ★滚动条【不占位】: 默认的 AUTO 会给竖条预留宽度, 结算卡因此整体左移几像素,
@@ -1321,6 +1372,8 @@ func _show_banner(won: bool, _sealed_hint: bool = false) -> void:
 	card.alignment = BoxContainer.ALIGNMENT_CENTER
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(card)
+	## ★存下卡片 —— `settle_inner_avail()` 要拿它的最小高减出内层的预算。
+	_settle_card = card
 	## 内容比预算矮就按内容高(卡片不至于凭空拉长); 高了就封顶并内部滚动。
 	## ★★必须【延迟求值】: `set_deferred("custom_minimum_size", <算式>)` 只延迟**赋值**,
 	##   算式在这一行就求完了 —— 那时 card 还是空的, 于是恒得 120, 卡片被压成一小条
@@ -1662,10 +1715,18 @@ func _stats_column(header: String, units: Array, hc: Color) -> Control:
 		var d: int = int(u.get("_st_dealt", 0))
 		if d > mvp_dmg:
 			mvp_dmg = d; mvp_name = battle._st_name(u)
+	## ★ 先算出 MVP 那一行的**下标**(而不是名字)。
+	var _mvp_i: int = _st_mvp_index(units)
+	var u_i: int = -1
 	for u in units:
+		u_i += 1
 		var dead: bool = not u.get("alive", true)
 		var is_sm: bool = u.get("is_summon", false)
-		var is_mvp: bool = mvp_dmg > 0 and not is_sm and battle._st_name(u) == mvp_name
+		## ★★ 2026-09-29: 原来拿**名字**认 MVP ⇒ 同名的两只会**一起**挂角标。
+		##   而对手恒为 6 只同名小将(快照空壳那条)⇒ 敌方这一侧几乎每场必中。
+		##   ⇒ 改成按**单位**认: `_st_mvp_index(rows)` 返回那一行的下标。
+		##   ⚠ 单位字典不能做 key / 不能用 `==`(CLAUDE.md §3.2) ⇒ 走下标。
+		var is_mvp: bool = mvp_dmg > 0 and not is_sm and _mvp_i >= 0 and u_i == _mvp_i
 		# col0: 稀有度色点 + 名(阵亡后缀)
 		var name_cell := HBoxContainer.new()
 		name_cell.add_theme_constant_override("separation", 5)
@@ -1724,7 +1785,7 @@ func _build_stats_panel() -> Control:
 		return null
 	if pages.size() > 1:             # 只有一路就没有「合计」的必要
 		pages.append({"lane": "all", "title": "合计",
-			"left": battle._st_merge_all(pages, "left"), "right": battle._st_merge_all(pages, "right")})
+			"left": _st_merge_all(pages, "left"), "right": _st_merge_all(pages, "right")})
 
 	var panel = PanelContainer.new()
 	var sb = StyleBoxFlat.new()
@@ -1768,8 +1829,10 @@ func _build_stats_panel() -> Control:
 	## 已经吃掉 720 的九成, 再多就必然把按钮推出去。
 	## ⇒ 上限 = 视口高 − 其余部分(标题/后果句/奖励块/按钮行/边距)所需, 钳进 [140, 420]。
 	##   同 Inspector 面板那处的做法(本文件 `_body_sc`), 也同图鉴详情框。
-	var _vp: Vector2 = battle.get_viewport().get_visible_rect().size
-	scroll.custom_minimum_size = Vector2(0, clampf(_vp.y - 440.0, 140.0, 400.0))
+	## ★★初始高 0 —— 真正的高度下一帧由 `settle_fit_inner()` 给(它从外层预算里减)。
+	##   这里原本写的是 `clampf(vp.y - 440, 140, 400)` —— 与外层预算**毫无关系**的第二份
+	##   手写常量。只要它还在, “两处预算同源”就是假的(第三处。2026-09-29)。
+	scroll.custom_minimum_size = Vector2(0, 0)
 	scroll.size_flags_vertical = Control.SIZE_FILL
 	var body = Control.new()
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1812,8 +1875,105 @@ func _build_stats_panel() -> Control:
 			tabs.add_child(b)
 			tab_btns.append(b)
 	vb.add_child(scroll)
+	## ── 表底下那一行「下面还有几只」(见 `_settle_refresh_more` 头注) ──
+	var more := Label.new()
+	more.name = "SettleMoreHint"
+	more.add_theme_font_size_override("font_size", 13)
+	more.add_theme_color_override("font_color", Color("#ffd93d"))
+	more.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	## ★高度**永远占位**, 只换字: 它是 `settle_inner_avail` 里那个减数的一部分,
+	##   一出现才占位的话卡片当场比预算高出这一行 ⇒ 又溢出了。
+	more.custom_minimum_size = Vector2(0, 20)
+	more.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(more)
+	_settle_more_hint = more
+	_settle_more_scroll = scroll
+	## ★事件驱动, 不猜“等几帧”: `changed` 在 max/page 变了时发(= 溢出与否变了),
+	##   `value_changed` 在玩家滑动时发(滑到底就该把提示收掉)。
+	##   包一层 `call_deferred`: 两个信号都在布局过程中发, 直接量矩形会量到上一帧的。
+	var _bar := scroll.get_v_scroll_bar()
+	_bar.changed.connect(func() -> void: _settle_refresh_more.call_deferred())
+	_bar.value_changed.connect(func(_v: float) -> void: _settle_refresh_more.call_deferred())
+	## 再加一道: 滚动区自己被重排了(切页/换分辨率) —— max/page 可能一个字没变,
+	##   那两个信号就不会发, 而行数已经变了。
+	scroll.resized.connect(func() -> void: _settle_refresh_more.call_deferred())
 	battle._stats_show_page(bodies, tab_btns, pages.size() - 1)   # 默认落在最后一页(多路=合计 / 单路=本场)
 	return panel
+
+## ====================================================================
+##  ★★★「还有更多」—— 战报表底下那一行 (2026-09-29)
+## ====================================================================
+## 用户原话:「每场打完后结算界面能下滑吗, 不能啊, 有很多单位看不到啊」。
+## ★注意这句话里的事实: 表**能**滑(拖动/滚轮都行), 屏幕上却一个字都没说。
+##   唯一那根滚动条宽 **8 逼辑像素**, 720 高的视口映到手机上就是 **4.3pt**
+##   (HIG 最小靶 44pt) —— 等于没有; 而外层那个是 `SCROLL_MODE_SHOW_NEVER`, 永远不画条。
+##
+## ★参考 244 张同品类结算/名单截图: **全样本没有一屏是「溢出了而什么提示都没有」**。
+##   常见两种做法: 露半行(Arknights / CATS / Disney Heroes / Looney Tunes / Valkyrie)
+##   或 写字+箭头(Dota Underlords「SCROLL TO READ MORE」)。
+## ⇒ 这里选【写字+箭头, 并且带上数量】, 理由三条:
+##   ① 行高只有 25px, 露半行 = 12px 的半截名字 —— 在 4~5pt 当量下读不出"下面还有东西";
+##   ② 玩家抱怨的原话就是"有很多单位看不到" —— **数量本身就是答案**, 露半行给不了;
+##   ③ 它是一个 Label, 门禁能量"屏幕上真的有这句话、数字还对得上", 而不是量像素猜。
+## ⚠ 没改成"给外层预留条宽": 那会把卡挤偏, `verify_ui_layout` ⑥「居中于真实视口」
+##   当场红(实测偏 -5) —— 那条判据本身是对的, 不动它。
+##
+## ★抽成常量【不是为了复用】: 门禁要能拿同一份格式串算出"屏上该写的那句话",
+##   测试自己拼一遗就是抄第二份(memory [[fb-hand-rolled-copies-drift]])。
+const SETTLE_MORE_FMT := "▼ 还有 %d 只在下面 · 可上下滑动"
+
+
+## 量一遍【玩家真正看得见的那一块】下面还压着几行, 把数字写到提示行上。
+## 没行被压 ⇒ 清空那一行(而不是隐起来, 见 `custom_minimum_size` 那条注)。
+func _settle_refresh_more() -> void:
+	if _settle_more_hint == null or not is_instance_valid(_settle_more_hint):
+		return
+	if _settle_more_scroll == null or not is_instance_valid(_settle_more_scroll):
+		return
+	var kids: Array = _settle_more_scroll.get_children()      # 滚动条是 internal 子节点, 不在里面
+	if kids.is_empty() or not (kids[0] is Control):
+		return
+	var content: Control = kids[0]
+	var bar: VScrollBar = _settle_more_scroll.get_v_scroll_bar()
+	var fold: float = bar.value + bar.page                    # 可视窗口的下沿(内容坐标)
+	var below: int = 0
+	for g in _settle_grids():
+		for ch in (g as Node).get_children():
+			if not (ch is HBoxContainer):
+				continue                                          # 表头那一行是 Label/栅牌, 不是龟
+			if _settle_local_bottom(ch as Control, content) > fold + 0.5:
+				below += 1
+	_settle_more_hint.text = (SETTLE_MORE_FMT % below) if below > 0 else ""
+
+
+## 某一行的下沿在【内容坐标】里的 y。
+## ★★为何不用 `get_global_rect()` 去比 clip 矩形(第一版就是那么写的, 当场量错):
+##   那条链(CenterContainer→卡→外层滚动区→面板→内层滚动区)的排版是**跨帧级联**的,
+##   信号发出来那一刻祖先的矩形还是上一轮的 ⇒ 量出来“每一行都在下面”
+##   (探针实测: R=7 全 14 行都看得全, 却报「还有 14 只在下面」)。
+##   局部 `position` 是**纯排版值**、与滚动偏移无关; 拿它跟滚动条自己的
+##   `value + page` 比, 两边都是同一套内容坐标, 才对得上。
+##   memory [[fb-gate-tautological-when-it-spans-a-frame]] 的反面: 跨帧的尺子量出来的是假数。
+func _settle_local_bottom(row: Control, content: Control) -> float:
+	var y: float = row.size.y
+	var p: Node = row
+	while p != null and p != content and p is Control:
+		y += (p as Control).position.y
+		p = p.get_parent()
+	return y
+
+
+func _settle_grids() -> Array:
+	var out: Array = []
+	var st: Array = [_settle_more_scroll]
+	while not st.is_empty():
+		var n = st.pop_back()
+		if n is GridContainer and (n as Control).is_visible_in_tree():
+			out.append(n)
+		for c in (n as Node).get_children():
+			st.append(c)
+	return out
+
 
 func _build_edit_palette() -> void:
 	var ids: Array = battle.STATS.keys()
@@ -2638,3 +2798,77 @@ func _upload_flash_tick(lb: Label, t: Timer) -> void:
 		return
 	if int(t.get_meta("n", 0)) >= UPLOAD_FLASH_TRIES:
 		t.stop()                          # 没等到就安静收摊, 不显示任何东西
+
+## ★★ 2026-09-29 从 `RealtimeBattle3DScene` 搬来的三个**只在结算时用**的函数。
+##   依据 CLAUDE.md §5：不在 `_sim_step` 调用链上的，不进主文件。
+##   `_st_add_type` / `_st_row` / `_st_snapshot_lane` **留在主文件** —— 它们每次伤害都走，在 sim 链上。
+##   主文件 8718 → 8649，回到 `arch_budget` 台账。
+func _st_ident(r: Dictionary, lane: String, seen: Dictionary) -> String:
+	var base: String = "%s|%s" % [str(r.get("id", "")), battle._st_name(r)]
+	var n: int = int(seen.get(base, 0))
+	seen[base] = n + 1
+	if bool(r.get("_st_multi", false)):
+		return "%s#%d@%s" % [base, n, lane]
+	return "%s#%d" % [base, n]
+
+
+## 本队 MVP = 【造成伤害最高的那一只】(不含召唤体) 在 `rows` 里的**下标**; 没有就 -1。
+## ★★2026-09-29 这个函数就是「MVP 按单位认」那条修法的本体。
+##   原来结算表是这么判的(battle_hud `_stats_column`):
+##     `mvp_name = _st_name(最高那只)` … `is_mvp = _st_name(u) == mvp_name`
+##   ⇒ **同名的两只会一起挂上 MVP 角标**, 而且第二只哪怕伤害更低也挂
+##     (探针实测 500 / 300 两只同名小将, MVP 标签量出 **2** 条)。
+##   敌方恒是 6 只同名小将 ⇒ 敌方那一列几乎每场必中。
+## ★身份用**下标**而不是名字/字典: 下标就是"这一列里的第几个", 对本列是唯一且稳定的;
+##   拿单位字典比较只能用 `is_same()`(不能 `==`), 而这一列里也可能是**快照行**(plain dict,
+##   跨路的那几页), 那时压根没有"同一个字典"可比 —— 下标两种都成立。
+## ★并列最高只给**一个**(先出现的那个) —— 角标的意义是"这场谁扛的", 给两个等于没标。
+func _st_mvp_index(rows: Array) -> int:
+	var best: int = -1
+	var best_dmg: int = 0
+	for i in range(rows.size()):
+		var r = rows[i]
+		if not (r is Dictionary) or bool((r as Dictionary).get("is_summon", false)):
+			continue
+		var d: int = int((r as Dictionary).get("_st_dealt", 0))
+		if d > best_dmg:
+			best_dmg = d
+			best = i
+	return best
+
+
+## 合计页: 按【单位身份】归并求和 —— key = 该路内 (id, 同 id 第几个) [, 路]。
+## ★★2026-09-29 从「按名字」改成「按单位」。原来 key 是 `名字#同名序号`:
+##   · 同一路内的 6 只同名小将确实分得开(序号不同), 但
+##   · **跨路**的两只不同实体只要同名同序号就被并成一行、数字相加
+##     ⇒ 合计页的单位数比真打过的少。探针实测: 上/下路各一只小将(打 100 / 200),
+##       合计出 **1 行 300**(应是 2 行)。同名不同 id 的两只也一样被并掉。
+##   而敌方恒是 6 只同名小将 ⇒ 敌方这一列几乎每场必中。
+## ★身份维度与 `dual_lane_flow._eq_carry_key` 一致(阵营|id|同 id 序号) —— 不新发明一套。
+##   同 id 可能多实例的那几类(小将/召唤体, 见 `_st_row` 的 `_st_multi`)**再带上路**:
+##   它们每路都是新造的, 没有任何字段能证明"跨路是同一只"(终极路的幸存名单是
+##   上路+下路**拼接**而成, 连顺序都对不上) ⇒ 一路一行才是真的。
+##   真龟/龟蛋/大师**不带路**, 于是"打完上路又打决胜的同一只龟"仍然合成一行。
+## ⚠ 不许拿单位字典当 key(Godot 递归哈希 → 卡死, CLAUDE.md §3.2), 所以身份是**字符串**。
+## 剩余血量取【最后出现的那一路】的值(累加没意义).
+func _st_merge_all(pages: Array, side: String) -> Array:
+	var order: Array = []            # 保序: 先出现的排前面
+	var acc: Dictionary = {}         # key(String) -> row
+	for pg in pages:
+		var lane: String = str(pg.get("lane", ""))
+		var seen: Dictionary = {}    # 本路内同 id 计数
+		for r in (pg[side] as Array):
+			var key := _st_ident(r, lane, seen)
+			if not acc.has(key):
+				acc[key] = battle._st_row(r); order.append(key)   # _st_row 对 plain row 幂等 = 拷贝
+			else:
+				var a: Dictionary = acc[key]
+				for f in ["_st_dealt", "_st_taken", "_st_heal", "_st_crit", "_st_kills"]:
+					a[f] = int(a[f]) + int(r[f])
+				a["alive"] = r["alive"]; a["hp"] = r["hp"]; a["maxHp"] = r["maxHp"]   # 血量取最后一路
+	var out: Array = []
+	for k in order:
+		out.append(acc[k])
+	return out
+
+## 📊 战中统计面板开关 (1:1 回合制 _on_dmg_stats_toggle)

@@ -1542,7 +1542,9 @@ func _dual_foe_lane(lane: String) -> Array:
 			var lane_leaders: Array = (la as Dictionary)[lane]
 			var gmin = dg.get("minions", {})
 			var lane_minions: Array = (gmin as Dictionary).get(lane, []) if gmin is Dictionary else []
-			if not lane_leaders.is_empty() or not lane_minions.is_empty():
+			## ★为什么这里要拦一道、为什么**不按路**判 —— 长注解跟着它解释的那个函数住:
+			##   见 `scripts/net/backend.gd` 的 `ghost_lanes_broken()` 头注(2026-09-29 搬过去)。
+			if not Backend.ghost_lanes_broken(dg):
 				var geq: Dictionary = dg.get("equipped", {}) if dg.get("equipped") is Dictionary else {}
 				var specs: Array = []
 				for pid in lane_leaders:
@@ -7646,13 +7648,18 @@ func _settle_season(won: bool) -> void:
 			var _av := str(gs.season_leaders[0]) if (gs.season_leaders as Array).size() > 0 else "basic"
 			Backend.upload_ghost(Backend.build_ghost_snapshot(_gid,
 				{"name": Backend.player_display_name(), "avatar": _av, "id": _gid}))
-	# 奇械羁绊【铸币】: 本场累积的深海币(有硬上限, 见 gadget_synergy_system.gd)一次性进账。
+	# 战斗内【铸币】: 本场累积的深海币一次性进账。两个来源, 汇进【同一个】_last_reward:
+	#   ① 奇械羁绊铸币(有硬上限, 见 gadget_synergy_system.gd)
+	#   ② 035 黄铜齿轮(每 GEAR_IV 秒 1/2/3 枚, 无上限, 见 equip_tick_system.gd `_gear_coins`)
 	# ★加在 `_last_reward` 上而不是直接加 meta —— 结算屏显示的就是 _last_reward,
 	#   直接加 meta 会出现"钱多了但结算屏没说是哪来的", 玩家看不到因果。
-	var _minted: int = _gadget_syn.minted("left")
+	# ★★2026-09-29: 齿轮那笔原来**就是**直接加 meta 的(绕过这里) ⇒ 结算屏少算,
+	#   真机受控对照 结算屏 +30 / 存档 +34。**下一件会产币的装备也接到这一行**, 别再自己写 meta。
+	var _minted: int = _gadget_syn.minted("left") + _equip_tick_sys.gear_minted()
 	if _minted > 0:
 		_last_reward += _minted
 	_gadget_syn.reset_match()
+	_equip_tick_sys.reset_match()   # 035 齿轮本场铸币归零(与上一行同一时机)
 	_food_syn.reset_match()      # 食物成长: 以【场】重置(用户 2026-08-04) —— 跨路保留, 换场清零
 	_potion_syn.reset_match()    # 药水战利品: 同上
 	_relic_syn.reset_match()     # 遗物远古之力: 同上
@@ -7743,9 +7750,22 @@ func _st_name(u: Dictionary) -> String:
 	n = str(u.get("id", ""))
 	return n if n != "" else "未知龟"
 
+## ★★2026-09-29 身份维度: 行里必须带 `id` 与 `_st_multi`。
+##   原来一行只有 `name`, 而 `name` **不是单位身份** —— 敌方恒是 6 只同名「小将」,
+##   合计页于是把不同的实体并成一行、数字加在一起(探针实测: 两路各一只、各打 100/200,
+##   合计出 1 行 300)。现在身份跟 `dual_lane_flow._eq_carry_key` 同一维度: 阵营|id|同 id 序号。
+## · `id`       —— 真身份键。小将/龟蛋/大师/召唤体的 id 是**同类共享**的, 所以还要下一个字段。
+## · `_st_multi` —— 「一侧一路里可能有**多个**同 id 实例」⇒ 身份必须再带上【路】,
+##   否则上路的小将会和下路的小将并成一行。真龟(leader)/龟蛋/大师一侧一路只有一个,
+##   它们**不带路** —— 那样一只龟打完上路又打决胜时, 合计里仍然是同一行(这是要保住的行为)。
+##   ⚠ 这个字段必须**存在行里**: `_st_row()` 对 plain row 幂等复制时读不到 `_isMinion`
+##   (快照行没有那个字段), 现场重算会静默变成 false。
 func _st_row(u: Dictionary) -> Dictionary:
 	return {
 		"name": _st_name(u), "is_summon": bool(u.get("is_summon", false)),
+		"id": str(u.get("id", "")),
+		"_st_multi": bool(u.get("_st_multi",
+			bool(u.get("is_summon", false)) or bool(u.get("_isMinion", false)))),
 		"rarity": str(u.get("rarity", "C")), "alive": bool(u.get("alive", true)),
 		"hp": maxf(0.0, float(u.get("hp", 0))), "maxHp": float(u.get("maxHp", 0)),
 		"_st_dealt": int(u.get("_st_dealt", 0)), "_st_taken": int(u.get("_st_taken", 0)),
@@ -7764,30 +7784,10 @@ func _st_snapshot_lane(lane: String) -> void:
 			(snap[sd] as Array).append(_st_row(u))
 	_st_lane_hist.append(snap)
 
-## 合计页: 按 (阵营, 名字, 该路内同名第几个) 归并求和 —— 同名小将不会挤成一行, 跨路的"同一只"能对上.
-## 剩余血量取【最后出现的那一路】的值(累加没意义).
-func _st_merge_all(pages: Array, side: String) -> Array:
-	var order: Array = []            # 保序: 先出现的排前面
-	var acc: Dictionary = {}         # key(String) -> row
-	for pg in pages:
-		var seen: Dictionary = {}    # 本路内同名计数
-		for r in (pg[side] as Array):
-			var nm: String = str(r["name"])
-			var n: int = int(seen.get(nm, 0)); seen[nm] = n + 1
-			var key := "%s#%d" % [nm, n]
-			if not acc.has(key):
-				acc[key] = _st_row(r); order.append(key)   # _st_row 对 plain row 幂等 = 拷贝
-			else:
-				var a: Dictionary = acc[key]
-				for f in ["_st_dealt", "_st_taken", "_st_heal", "_st_crit", "_st_kills"]:
-					a[f] = int(a[f]) + int(r[f])
-				a["alive"] = r["alive"]; a["hp"] = r["hp"]; a["maxHp"] = r["maxHp"]   # 血量取最后一路
-	var out: Array = []
-	for k in order:
-		out.append(acc[k])
-	return out
-
-## 📊 战中统计面板开关 (1:1 回合制 _on_dmg_stats_toggle)
+## 一行/一只单位在【本场】的身份键。`seen` 是调用方持有的「本路内同 id 计数器」。
+## ★为什么是字符串: 单位字典不能做 Dictionary 的键(Godot 会递归哈希互引成环的单位字典
+##   → 无限递归卡死, CLAUDE.md §3.2)。同一条理由写在 `dual_lane_flow._eq_carry_key` 上。
+## ★`lane` 只对「同 id 可能多实例」的那几类生效 —— 理由见 `_st_merge_all` 头注。
 func _on_dmg_stats_toggle() -> void:
 	_dmg_stats.setup(_ui_layer, _stat_units)
 	_dmg_stats.toggle()
@@ -7819,9 +7819,9 @@ func _stats_fit_body(bodies: Array, idx: int) -> void:
 	#   旧版末尾会调 _center_stats_panel(panel) 把面板摆到写死的 y, 而它现在是
 	#   VBoxContainer 的子节点 ⇒ 两套定位打架, 实拍表现是【「返回主菜单」按钮画在表格中间】。
 	#   位置一律交给容器算, 这里只负责"页体多高、滚动区裁到多高"。
-	# 可用高 = 视口高 − 卡片其余部分(标题54+副标题20+数据块50+按钮46+间距/内边距 ≈ 320)
-	var avail: float = maxf(120.0, get_viewport().get_visible_rect().size.y - 320.0)
-	(scroll as ScrollContainer).custom_minimum_size = Vector2(c.size.x, minf(c.size.y, avail))
+	## ★★高度预算【不在这里算】: 内层 = 外层卡片预算 − 表以外的部分, 与 `_show_banner` 同源。
+	##   为何不在这里写 `vp.y - 320`(那就是那 56px), 见 `battle_hud.settle_fit_inner` 头注。
+	_hud.settle_fit_inner(scroll as ScrollContainer, c.size)
 
 ## 结算表的一队一列 —— 实现搬到 battle_hud.gd(纯 UI 表格构建, 属 HUD 层)。
 ## ★搬的理由不是好看: 留在这里会把上帝文件顶破 arch_budget(8600 行)。

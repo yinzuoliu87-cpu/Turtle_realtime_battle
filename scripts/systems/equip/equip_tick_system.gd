@@ -323,6 +323,36 @@ func _tick_thunder(u: Dictionary, delta: float) -> void:
 ##   法器的主动只能由法力条满触发(用户定的规则), 那个计时器是第二个触发口。
 ##   效果本体 `EquipSystem._eq_ice_fissure` 还在, 现在只由 fire_equip_effect 调。
 
+## 035 黄铜齿轮【本场】已铸的深海币(只玩家侧)。
+## ★★2026-09-29 修「结算屏少算币」: 原来 `_tick_gear` 直接
+##   `GameState.meta_deepsea_coins += coins` —— 钱进了存档, **结算屏一分钱都不知道**,
+##   因为结算屏显示的是 `RealtimeBattle3DScene._last_reward`(battle_hud 里那行 `"+%d" % battle._last_reward`)。
+##   真机受控对照: 戴齿轮的那只结算屏 +30 / 存档实到 +34(差 4, 两次都如此);
+##   不戴的那只 +24 / +24 一致 ⇒ 差的就是齿轮这笔。
+## ★规矩本来就写在 `_settle_season` 的奇械铸币那段上, 逐字是:
+##   「加在 `_last_reward` 上而不是直接加 meta —— 直接加 meta 会出现『钱多了但结算屏
+##     没说是哪来的』, 玩家看不到因果」。齿轮没遵守它。
+## ★口径与奇械铸币【逐字相同】: 以**场**累积(一场 = 上路 + 下路 + 决胜), 换路**不清**
+##   (`clear()` 里没有它), 整场结束由 `reset_match()` 归零、由 `_settle_season` 一次性取走。
+## ★★为什么不塞进已经存在的那本账 `_gadget_syn.mint_extra()`(它的头注还写着
+##   「下一件要额外铸币的装备直接调它」): 那本账带**本场上限**, 而齿轮现在没有上限。
+##   借它 = ① 凭空给齿轮加一条上限 ② 齿轮的币**吃掉奇械羁绊自己的额度**
+##   —— 两条都是数值改动, 这一轮不许改数值。所以另记一份计数, 在结算处与它
+##   **汇进同一个 `_last_reward`** —— 记账路同一条, 数值一个不动。
+var _gear_coins: int = 0
+
+
+## 本场(上路+下路+决胜)齿轮铸出来的深海币。结算时由 `RealtimeBattle3DScene._settle_season`
+## 加进 `_last_reward` —— 与 `GadgetSynergySystem.minted()` 同一个位置、同一行。
+func gear_minted() -> int:
+	return _gear_coins
+
+
+## 整场结束(**不是**换路): 归零。与 `_gadget_syn.reset_match()` 同一时机、同一理由。
+func reset_match() -> void:
+	_gear_coins = 0
+
+
 func _tick_gear(u: Dictionary, delta: float) -> void:   # 黄铜齿轮035(用户2026-07-18改: 随时间铸币·每6秒左队携带者直接+1/2/3深海币+飘字·跟死亡无关·原"攒齿轮层战斗结束折币"改掉)
 	if u.get("equips", []).is_empty(): return
 	if str(u.get("side", "")) != "left": return   # 深海币=玩家侧meta货币, 只玩家(左队)携带者产币
@@ -334,9 +364,7 @@ func _tick_gear(u: Dictionary, delta: float) -> void:   # 黄铜齿轮035(用户
 		if float(stt["gear_t"]) >= GEAR_IV:
 			stt["gear_t"] = float(stt["gear_t"]) - GEAR_IV   # ★读常量不写死(原来是 6.0, 与 GEAR_IV 两份)
 			var coins: int = [1, 2, 3][si]
-			var gs = battle.get_node_or_null("/root/GameState")
-			if gs != null and gs.get("meta_deepsea_coins") != null:
-				gs.set("meta_deepsea_coins", int(gs.get("meta_deepsea_coins")) + coins)
+			_gear_coins += coins   # ★进【本场账本】, 不直接写 meta —— 见 _gear_coins 上方长注释
 			battle._vfx._float_text(u["pos"], "+%d💠" % coins, Color("#5fd0e0"))   # 可见反馈(用户: 之前无反馈以为没生效)
 			battle._vfx.coin_pop(u, coins)   # 头顶旋转金币(用户2026-09-13: 「做一个头顶获得金币旋转的特效」)
 			stt["coins_made"] = int(stt.get("coins_made", 0)) + coins   # 头像装备格徽章显示本局累计产币(用户2026-07-19)

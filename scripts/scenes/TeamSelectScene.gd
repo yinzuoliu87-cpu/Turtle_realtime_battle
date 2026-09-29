@@ -153,6 +153,12 @@ var _drag_last: Vector2 = Vector2.ZERO
 
 var _info_popup: Control = null       # 点按信息弹窗(被动/技能·跨PC点击+手机点触)
 
+## 新手引导实例(TutorialGuide)。★留着是为了能 notify() 推进 ——
+##   `data/tutorial-steps.json` team_select[0] 挂了 `advanceOn: "team_filled"`,
+##   玩家把三格点满的那一刻自己翻页。原来这个返回值是直接丢掉的, 于是
+##   "三只都点上"这一步没有任何完成信号, 玩家只能自己猜该按"知道了"。
+var _tut_guide: Node = null
+
 # 入场 choreography + CTA 脉冲 (1:1 PoC index.html:328/659-687)
 var _ent_title: Control = null       # .screen-title
 var _ent_top: Array = []             # .select-top (返回/清空/上次)
@@ -195,9 +201,9 @@ func _ready() -> void:
 	# 新手引导: 教学模式挂分步引导(带高亮锚点)。导演按当前阶段选步骤集 + 是否 mandatory。
 	var _tdg = get_node_or_null("/root/TutorialDirector")
 	if _tdg != null and _tdg.is_active():
-		_tdg.attach_guide(self, "team_select")
+		_tut_guide = _tdg.attach_guide(self, "team_select")
 	elif GameState.tutorial:
-		TutorialGuide.attach(self, "team_select")   # 兜底(旧 tutorial=true 路径)
+		_tut_guide = TutorialGuide.attach(self, "team_select")   # 兜底(旧 tutorial=true 路径)
 	# 窗口 resize/全屏/最大化 → 重算背景 + 按新尺寸重建浮层 (PoC fitSelectStage 绑 resize; 之前缺 → 铺不满根因)
 	get_viewport().size_changed.connect(_on_resize)
 	if OS.has_environment("TSEDIT"):
@@ -1172,6 +1178,26 @@ func _refresh_after_team() -> void:
 	_pet_grid._refresh_grid()
 	_refresh_confirm()
 	_refresh_synergy_chips()   # 换人就换羁绊(装备跟着龟上场)
+	_tut_notify_team_filled()
+
+
+## 阵容凑满 REQUIRED_PETS 只 → 给新手引导发 "team_filled"。
+##
+## ★为什么需要这个事件(2026-09-29): 教学第 1 步写的是"三只都点上",
+##   而在此之前 team_select[2] 写的是"三只龟已经帮你放好了" —— 那三格其实是空的
+##   (`_ready` 开头 `GameState.clear_team()`, 全仓零处教学自动入队)。文案已改成
+##   "点头像就派它上阵", 这个事件是它的**完成信号**: 点满第三只当场翻页。
+## ★条件写成 == 不是 >=: 撤下一只再放回去会再满一次, 但那时引导早翻过这一步了,
+##   `notify()` 自己会比对当前步的 advanceOn, 名字不对什么都不做(见 TutorialGuide:46)。
+func _tut_notify_team_filled() -> void:
+	if _tut_guide == null or not is_instance_valid(_tut_guide):
+		return
+	var placed := 0
+	for t in team:
+		if t != null and not _is_special_mark(t):
+			placed += 1
+	if placed == REQUIRED_PETS:
+		_tut_guide.notify("team_filled")
 
 
 func _mark_label(mark) -> String:

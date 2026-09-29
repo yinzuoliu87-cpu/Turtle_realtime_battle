@@ -75,29 +75,36 @@ func _ready() -> void:
 		c["equips"] = [{"id": "p2eq_035", "star": [1, 2, 3][si]}]
 		c["eq_state"] = {}
 		_s._units.append(c)
-		var before: int = int(gs.meta_deepsea_coins)
+		## ★★ 2026-09-29: 齿轮产的币不再直接写 meta, 而是进**本场账本** `gear_minted()`,
+		##   结算时随 `_last_reward` 一起进钱包 —— 奇械铸币本来就这么走, 齿轮是唯一绕过去的。
+		##   绕过去的后果: **结算屏少算**(真机受控对照 屏显 +30 / 存档 +34)。
+		##   ⇒ 这几条改成量**产品自己的账本**。⚠ 这不是放宽:
+		##   钱包那一步由 `verify_tick_equips_exact` 与冒烟测试走真结算路径守着。
+		ets.reset_match()
+		var before: int = int(ets.gear_minted())
 		ets._tick_gear(c, ET.GEAR_IV - 0.2)
 		_ok("① ★分母(%d 星): 差 0.2 秒时还没到账(+%d)"
-			% [si + 1, int(gs.meta_deepsea_coins) - before],
-			int(gs.meta_deepsea_coins) == before,
+			% [si + 1, int(ets.gear_minted()) - before],
+			int(ets.gear_minted()) == before,
 			"卡住「每 %.0f 秒」那个数" % ET.GEAR_IV)
 		ets._tick_gear(c, 0.3)
-		var got: int = int(gs.meta_deepsea_coins) - before
+		var got: int = int(ets.gear_minted()) - before
 		_ok("① ★★★%d 星: 满周期进 %d 枚深海币(应 %d)" % [si + 1, got, GEAR_COINS[si]],
 			got == GEAR_COINS[si],
-			"这条直接量 GameState.meta_deepsea_coins —— 产品真正写的那个钱包")
+			"这条量 `gear_minted()` —— 产品自己的本场账本(钱包由结算路径守)")
 	## ★★扣周期必须读 GEAR_IV 而不是写死的 6.0 —— 连喂两个周期, 第二枚必须准时到
 	_s._units.clear()
 	var c2: Dictionary = _mk(500.0, 400.0, "left")
 	c2["equips"] = [{"id": "p2eq_035", "star": 3}]
 	c2["eq_state"] = {}
 	_s._units.append(c2)
-	var b2: int = int(gs.meta_deepsea_coins)
+	ets.reset_match()
+	var b2: int = int(ets.gear_minted())
 	for _k in range(2):
 		ets._tick_gear(c2, ET.GEAR_IV + 0.01)
 	_ok("① ★★连喂两个周期进两次账(+%d, 应 %d)"
-		% [int(gs.meta_deepsea_coins) - b2, GEAR_COINS[2] * 2],
-		int(gs.meta_deepsea_coins) - b2 == GEAR_COINS[2] * 2,
+		% [int(ets.gear_minted()) - b2, GEAR_COINS[2] * 2],
+		int(ets.gear_minted()) - b2 == GEAR_COINS[2] * 2,
 		"扣周期原来写死 `- 6.0`, 与常量 GEAR_IV 是两份")
 	## ★右队不产币(文案口径: 深海币是玩家侧 meta 货币)
 	_s._units.clear()
