@@ -30,7 +30,7 @@ var _n := 0
 var _fail := 0
 
 ## 全绿时的断言条数。加/删断言时同步改这个数(它是"有没有被掐断"的分母)。
-const MIN_ASSERTS := 46
+const MIN_ASSERTS := 56
 
 
 func _ok(name: String, cond: bool, detail: String = "") -> void:
@@ -475,6 +475,12 @@ func _ready() -> void:
 	#   量的是产品自己的账: **那个节点还在不在 / 看不看得见 / 是不是被背景压住了**。
 	await _check_toast_survives()
 
+	# ══ M. SELL_NONZERO: 「卖出 +0」—— 东西没了, 一分钱不退 ════════
+	await _check_sell_nonzero()
+
+	# ══ N. EQUIP_CAP_SAME_SOURCE: 「装备 N / M」那个 M 必须是真上限 ══
+	await _check_equip_cap_same_source()
+
 	print("")
 	## ★★断言条数的【地板】。低于它 = 有协程在半路被掐断 / 静默 abort ⇒ 判红。
 	##   2026-09-29 在另一个门禁上当场撞到: 读一个不存在的成员会让协程【就地返回】,
@@ -591,3 +597,165 @@ func _check_toast_survives() -> void:
 
 	sc.queue_free()
 	await get_tree().process_frame
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  SELL_NONZERO —— 背包里那颗「卖出 +N」按钮, N 不许是 0
+# ══════════════════════════════════════════════════════════════════════
+## ★★这一节是**端到端**那一半(数据层那一半在 `verify_shop_layout` 里逐格穷举 96×3)。
+##   台账 ⑶ 的原始实测: 选中木制长剑(1 费 ★1) → 按钮写「卖出 +0」→ 点下去
+##   **装备从背包消失、深海币 4→4**。那不是「便宜」是白没。
+##
+## ★判据量的是**玩家看到的那颗按钮**和**账上真进的钱**, 不是卖价函数本身:
+##   ① [分母] 真的摆出了当年那一格(1 费 ★1), 而且按钮建出来了
+##   ② [分母·反证] 这一格在修复前的原式下确实算出 0(否则这条用例测的不是那个 bug)
+##   ③ 按钮上的数 == `InvOps._sell_value()` 的返回值(屏上的价与真价同源)
+##   ④ 按钮上的数 ≥ 1
+##   ⑤ 真点下去, 深海币正好涨了那么多, 而且装备真的出账了(不是「钱没涨、东西没了」)
+func _check_sell_nonzero() -> void:
+	## 当年中招的那一格: 1 费、★1、能卖(羁绊赠送件走不到卖出路径)
+	var one := ""
+	for e in DataRegistry.phase2_equipment:
+		if not (e is Dictionary):
+			continue
+		var d: Dictionary = e
+		if int(d.get("cost", 1)) == 1 and int(d.get("shopAvailable", 1)) != 0:
+			one = str(d.get("id", ""))
+			break
+	var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(one, {})
+	GameState.season_leaders = ["basic", "stone", "bamboo"]
+	GameState.persistent_equipped = {}
+	GameState.persistent_bench = [{"id": one, "star": 1}]
+	GameState.meta_deepsea_coins = 4          # 台账里那一刻的币数
+	var sc = _mk(-1)
+	sc.size = get_viewport().get_visible_rect().size
+	sc._sel_bench = 0                          # 选中它 ⇒ 底栏那排操作键才建
+	sc._rebuild()
+	for _i in range(8):
+		await get_tree().process_frame
+	var btn: Button = null
+	for c in _all(sc):
+		if c is Button and str((c as Button).text).begins_with("卖出 +"):
+			btn = c as Button
+	var shown := -1
+	if btn != null:
+		var tail := str(btn.text).substr(str(btn.text).find("+") + 1).strip_edges()
+		if tail.is_valid_int():
+			shown = int(tail)
+	var it: Dictionary = {"id": one, "star": 1}
+	var truth := int(sc._inv_ops._sell_value(it))
+	## 修复前的原式 = 同一个 SELL_RATE, 只是没有地板价。
+	## ★系数走事实源 `Phase2Config.SELL_RATE`, 不在测试里再抄一个 0.8。
+	var raw := int(floor(float(int(edef.get("cost", 1)) * 1) * float(sc.P2.SELL_RATE)))
+	_ok("㊵ ★分母: 摆出了当年中招的那一格 —— %s「%s」%d 费 ★1, 而且底栏那颗卖出键建出来了"
+		% [one, str(edef.get("name", "?")), int(edef.get("cost", 1))],
+		one != "" and int(edef.get("cost", 1)) == 1 and btn != null,
+		"one=%s btn=%s" % [one, str(btn)])
+	_ok("㊶ ★分母·反证: 这一格在修复前的原式 floor(费×星×0.8) 下确实算出 %d(=0 才说明测的是那个 bug)" % raw,
+		raw == 0, "原式算出 %d ⇒ 这条用例测的不是那个 bug" % raw)
+	_ok("㊷ ★★屏上写的「卖出 +%d」== InvOps._sell_value() 的 %d(屏上的价与真价同源)" % [shown, truth],
+		shown == truth, "屏 %d vs 真 %d" % [shown, truth])
+	_ok("㊸ ★★★SELL_NONZERO: 卖价不是 0 —— 要么给钱、要么别让卖, 不许「白没」(实测 +%d)" % shown,
+		shown >= 1, "按钮写着「卖出 +%d」" % shown)
+	if btn != null:
+		var coin0 := int(GameState.meta_deepsea_coins)
+		var bench0 := GameState.persistent_bench.size()
+		btn.emit_signal("pressed")
+		for _i in range(4):
+			await get_tree().process_frame
+		var d_coin := int(GameState.meta_deepsea_coins) - coin0
+		var d_bench := bench0 - GameState.persistent_bench.size()
+		_ok("㊹ ★★点下去: 深海币 %d→%d(+%d, 应 +%d) 且背包 %d→%d(真出账了)"
+			% [coin0, int(GameState.meta_deepsea_coins), d_coin, shown,
+				bench0, GameState.persistent_bench.size()],
+			d_coin == shown and d_coin >= 1 and d_bench == 1,
+			"币 +%d / 背包 -%d" % [d_coin, d_bench])
+	sc.queue_free()
+	await get_tree().process_frame
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  EQUIP_CAP_SAME_SOURCE —— 背包屏那个「装备 N / M」的 M 必须是真上限
+# ══════════════════════════════════════════════════════════════════════
+## ★这一节是跨屏那件事的背包侧(商店侧在 `verify_shop_layout` 同名段)。
+##   两边都拿 `GameState.team_equip_cap()` / `team_equipped_count()` 当尺子 ⇒
+##   两屏的读数必然相等, 而且**等于真正拦人的那个数**
+##   (原来商店自己数出恒等于 18, 背包写 12, 玩家照 18 去买、回来点空槽毫无反应)。
+##
+## ★★必须扫**多个等级**: 恒等于 18 的写法在 Lv10 上是对的 —— 单档测永远绿。
+func _check_equip_cap_same_source() -> void:
+	var caps: Dictionary = {}
+	var bad: Array = []
+	var found := 0
+	GameState.season_leaders = ["basic", "stone", "bamboo"]
+	GameState.persistent_equipped = {"basic": []}
+	GameState.persistent_bench = []
+	for L in [1, 3, 7, 10]:
+		GameState.season_level = L
+		var sc = _mk(-1)
+		sc.size = get_viewport().get_visible_rect().size
+		for _i in range(8):
+			await get_tree().process_frame
+		var pair := _cap_pair(sc)
+		var want_cap := int(GameState.team_equip_cap())
+		var want_used := int(GameState.team_equipped_count())
+		caps[want_cap] = true
+		if pair.is_empty():
+			bad.append("Lv%d 读不到「装备 N / M」那一行" % L)
+		else:
+			found += 1
+			print("     Lv%-2d 背包屏写「装备 %d / %d」   真上限 %d / 真已装 %d"
+				% [L, pair[0], pair[1], want_cap, want_used])
+			if pair[1] != want_cap:
+				bad.append("Lv%d 屏上分母 %d ≠ team_equip_cap()=%d" % [L, pair[1], want_cap])
+			if pair[0] != want_used:
+				bad.append("Lv%d 屏上分子 %d ≠ team_equipped_count()=%d" % [L, pair[0], want_used])
+		sc.queue_free()
+		await get_tree().process_frame
+	_ok("㊺ ★分母: 四档都读到了那一行(%d/4)" % found, found == 4)
+	_ok("㊻ ★分母: 这四档的真上限有 %d 个不同值(全一样的话「恒等于 18」也能全绿)" % caps.size(),
+		caps.size() >= 3, str(caps.keys()))
+	_ok("㊼ ★★EQUIP_CAP_SAME_SOURCE: 背包屏的分母/分子 == team_equip_cap()/team_equipped_count(): %s"
+		% ("四档全对上" if bad.is_empty() else str(bad)), bad.is_empty())
+	## 羁绊赠品不占容量 ⇒ 装上去分子不许变(与商店侧同口径, 也与真正拦人的
+	## `team_has_equip_room()` 同口径 —— 它走的就是跳过赠品的 `_cap_count`)
+	GameState.season_level = 7
+	GameState.persistent_equipped = {"basic": []}
+	var sa = _mk(-1)
+	sa.size = get_viewport().get_visible_rect().size
+	for _i in range(8):
+		await get_tree().process_frame
+	var q0 := _cap_pair(sa)
+	sa.queue_free()
+	await get_tree().process_frame
+	GameState.persistent_equipped = {"basic": [{"id": "p2eq_095", "star": 1}]}
+	var sb = _mk(-1)
+	sb.size = get_viewport().get_visible_rect().size
+	for _i in range(8):
+		await get_tree().process_frame
+	var q1 := _cap_pair(sb)
+	sb.queue_free()
+	await get_tree().process_frame
+	_ok("㊽ ★分母: 那件确实被 GameState 认成羁绊赠品, 而且真装到身上了(%d 件)"
+		% (GameState.persistent_equipped.get("basic", []) as Array).size(),
+		GameState.is_synergy_grant({"id": "p2eq_095", "star": 1})
+		and (GameState.persistent_equipped.get("basic", []) as Array).size() == 1)
+	_ok("㊾ ★★羁绊赠品不计入「已装」(装上前 %s / 装上后 %s) —— 两屏同口径" % [str(q0), str(q1)],
+		q0.size() == 2 and q1.size() == 2 and q0[0] == q1[0] and q0[1] == q1[1])
+
+
+## 背包屏「装备 N / M」那一行上的两个数。找不到 ⇒ 空数组(分母不成立)
+## ★按节点名 `CAP_ROW_NAME` 找, 不按「装备」这两个字找(文案改了判据不许跟着废)。
+func _cap_pair(sc: Node) -> Array:
+	for c in _all(sc):
+		if not (c is Label) or str(c.name) != str(InvScene.CAP_ROW_NAME):
+			continue
+		var t := str((c as Label).text)
+		var parts: PackedStringArray = t.split("/")
+		if parts.size() < 2:
+			continue
+		var a := str(parts[0]).replace("装备", "").strip_edges()
+		var b := str(parts[1]).strip_edges()
+		if a.is_valid_int() and b.is_valid_int():
+			return [int(a), int(b)]
+	return []

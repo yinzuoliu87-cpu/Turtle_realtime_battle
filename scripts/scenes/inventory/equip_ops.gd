@@ -51,7 +51,7 @@ func _equip_to(pet_id: String, bench_idx: int) -> void:
 		host._toast("临时等级器 → %s 本大轮 +1 级 (现 +%d)" % [pet_id, GameState.temp_level_bonus(pet_id)])
 		host._rebuild(); return
 	var eqs: Array = GameState.persistent_equipped.get(pet_id, [])
-	## ★★【羨绞赠送件】直接放行: 它不占任何容量(见 GameState._cap_count),
+	## ★★【羁绊赠送件】直接放行: 它不占任何容量(见 GameState._cap_count),
 	##   所以也不该被"已装满"拦住。
 	##   ★★原来的写法把容量检查放在**读取要装哪件之前** —— 于是一只装满 3 件的龟
 	##   永远接不了圣光护盾(用户 2026-08-10:「背包里应该不算占位, 怎么满了就不能装」)。
@@ -97,7 +97,7 @@ func _equip_minion(lane: String, idx: int, bench_idx: int) -> void:
 	if str(u.get("kind", "")) != "minion":
 		host._sel_bench = -1; host._rebuild(); return
 	var eqs: Array = u.get("equips", []) if u.get("equips", null) is Array else []
-	## ★★【羨绞赠送件】直接放行: 它不占任何容量(见 GameState._cap_count),
+	## ★★【羁绊赠送件】直接放行: 它不占任何容量(见 GameState._cap_count),
 	##   所以也不该被"已装满"拦住。
 	##   ★★原来的写法把容量检查放在**读取要装哪件之前** —— 于是一只装满 3 件的龟
 	##   永远接不了圣光护盾(用户 2026-08-10:「背包里应该不算占位, 怎么满了就不能装」)。

@@ -710,6 +710,101 @@ func _ready() -> void:
 	for dead in ["_maybe_ask_fullscreen", "_fs_dialog_btn", "layer_modulate_fade", "_show_page", "_card_nodes", "_title_node"]:
 		_ok("⑫ 死代码已删净: %s" % dead, src.find("func %s" % dead) < 0 and src.find("%s =" % dead) < 0 and src.find("%s." % dead) < 0)
 
+	# ── ⑭ ★★PLAY_LOCK_SAME_SOURCE: 画在按钮上的锁 == 那扇门自己的判据 ──
+	#
+	# 由来 (2026-09-29 台账 ④·真手点出来的): 打满 24 场之后同一屏上
+	#   「商店」正确挂了 🔒, 而「开始战斗」**还是亮的** —— 点下去只飘一行 1.9 秒的字。
+	#   根因: 商店的锁在 `_build_page_buttons` 里**就地又写了一遍**三条公式,
+	#   而「开始战斗」画的锁只看 `is_eliminated()`, 它自己的门 `_battle_block_msg()`
+	#   却还管配额打满与周末阶段 ⇒ **画的锁与真正的门相反**。
+	#
+	# ★判据的形状: 不重写公式, 而是**问那扇门**(`_battle_block_msg` / `_shop_block_msg`)
+	#   再比对**玩家看得到的那把锁**(按钮上有没有 🔒)。两边只要有一格对不上就红。
+	#   ⇒ 以后谁再在画按钮那里就地写一份公式, 这条当场红。
+	# ★★分母是这条判据的命(memory `fb-changing-a-param-meaning-makes-gates-tautological`):
+	#   四种状态里**两颗按钮都必须各出现过锁上与没锁**, 否则"两边都恒为 false"也全绿。
+	#   第四格(没打过第一场)还专门证明两颗**不是同一条公式的复制**: 商店锁、开打不锁。
+	var gs_l = get_node_or_null("/root/GameState")
+	if gs_l == null:
+		_ok("⑭ ★分母: 拿不到 GameState", false)
+	else:
+		var k_h: int = int(gs_l.hearts)
+		var k_u: int = int(gs_l.ranked_used)
+		var k_b: int = int(gs_l.season_total_battles)
+		## ★把"现在是哪一刻"钉死成周四(积分赛日) —— 与 ⑬d 同一个时间戳。
+		##   不钉的话周六/周日走的是闯关赛/决赛日那两支闸, 这一整节跟着星期几变。
+		_menu.clock_override_ts = 1789603200
+		## 每格: [名字, hearts, ranked_used, season_total_battles, 期望开打锁, 期望商店锁]
+		var cases: Array = [
+			["能打", 5, 0, 3, false, false],
+			["配额打满", 5, int(_P2M.RANKED_QUOTA), 3, true, true],
+			["命尽出局", 0, 0, 3, true, true],
+			["还没打第一场", 5, 0, 0, false, true],
+		]
+		var seen_play := {"locked": 0, "open": 0}
+		var seen_shop := {"locked": 0, "open": 0}
+		for cs in cases:
+			gs_l.hearts = int(cs[1])
+			gs_l.ranked_used = int(cs[2])
+			gs_l.season_total_battles = int(cs[3])
+			for ch_l in page_box.get_children():
+				page_box.remove_child(ch_l)
+				ch_l.queue_free()
+			await get_tree().process_frame
+			_menu._build_page_buttons(_menu.clock_override_ts)
+			await get_tree().process_frame
+			await get_tree().process_frame
+			## 门自己怎么说 —— 判据不重写公式, 只比对
+			var judge_play: bool = str(_menu._battle_block_msg(_menu.clock_override_ts)) != ""
+			var judge_shop: bool = str(_menu._shop_block_msg(_menu.clock_override_ts)) != ""
+			var paint_play: bool = _has_lock_glyph(_entry_holder(page_box, "开始战斗"))
+			var paint_shop: bool = _has_lock_glyph(_entry_holder(page_box, str(MENU_S.SHOP_LABEL)))
+			print("  ⑭ [%s] 开打: 门=%s 画=%s / 商店: 门=%s 画=%s" % [
+				str(cs[0]), str(judge_play), str(paint_play), str(judge_shop), str(paint_shop)])
+			_ok("⑭ [%s] 开打: 门的判据 == 拍板的期望" % str(cs[0]), judge_play == bool(cs[4]),
+				"门说 %s, 期望 %s" % [str(judge_play), str(cs[4])])
+			_ok("⑭ [%s] 商店: 门的判据 == 拍板的期望" % str(cs[0]), judge_shop == bool(cs[5]),
+				"门说 %s, 期望 %s" % [str(judge_shop), str(cs[5])])
+			_ok("⑭ ★★[%s] PLAY_LOCK_SAME_SOURCE: 开打按钮上画的锁 == 它自己那扇门" % str(cs[0]),
+				paint_play == judge_play, "画=%s 门=%s" % [str(paint_play), str(judge_play)])
+			_ok("⑭ ★★[%s] PLAY_LOCK_SAME_SOURCE: 商店那行画的锁 == 它自己那扇门" % str(cs[0]),
+				paint_shop == judge_shop, "画=%s 门=%s" % [str(paint_shop), str(judge_shop)])
+			seen_play["locked" if paint_play else "open"] += 1
+			seen_shop["locked" if paint_shop else "open"] += 1
+		print("  ⑭ [分母] 开打 锁上 %d 格 / 没锁 %d 格; 商店 锁上 %d 格 / 没锁 %d 格" % [
+			int(seen_play["locked"]), int(seen_play["open"]),
+			int(seen_shop["locked"]), int(seen_shop["open"])])
+		_ok("⑭ ★分母: 开打按钮**两种态都出现过**(只出现一种 ⇒ 上面四条恒真)",
+			int(seen_play["locked"]) > 0 and int(seen_play["open"]) > 0)
+		_ok("⑭ ★分母: 商店那行**两种态都出现过**",
+			int(seen_shop["locked"]) > 0 and int(seen_shop["open"]) > 0)
+		## ★两颗**不是同一条公式的复制** —— 有一格它们必须分道扬镳(商店锁而开打不锁),
+		##   否则"共用判据"会被误解成"合并成一条", 而商店确实多一条「本大轮打完第一场才开店」。
+		_ok("⑭ ★★两颗按钮不是同一条公式: 「还没打第一场」那格商店锁而开打不锁",
+			int(seen_shop["locked"]) > int(seen_play["locked"]),
+			"商店锁 %d 格 / 开打锁 %d 格" % [int(seen_shop["locked"]), int(seen_play["locked"])])
+		## ★源码纪律: 公式只许住在那两个 `_*_block_msg` 里。画按钮那里再写一遍就是第二份事实源。
+		var bpb := _func_body(src, "_build_page_buttons")
+		_ok("⑭ ★分母: 切出了 _build_page_buttons 的函数体", bpb.length() > 200, "%d 字符" % bpb.length())
+		_ok("⑭ ★★画按钮处不许再就地写一份公式(ranked_quota_full / is_eliminated)",
+			bpb.find("ranked_quota_full") < 0 and bpb.find("is_eliminated") < 0,
+			"公式只许住在 _battle_block_msg / _shop_block_msg 里")
+		_ok("⑭ 画按钮处读的就是那两扇门",
+			bpb.find("_battle_block_msg(") >= 0 and bpb.find("_shop_block_msg(") >= 0)
+		var osb := _func_body(src, "_open_shop")
+		_ok("⑭ ★商店入口走的是同一条判据(不是自己再判一遍)",
+			osb.find("_shop_block_msg(") >= 0 and osb.find("ranked_quota_full") < 0, osb.strip_edges())
+		gs_l.hearts = k_h
+		gs_l.ranked_used = k_u
+		gs_l.season_total_battles = k_b
+		_menu.clock_override_ts = 0
+		for ch_r in page_box.get_children():
+			page_box.remove_child(ch_r)
+			ch_r.queue_free()
+		await get_tree().process_frame
+		_menu._build_page_buttons(0)
+		await get_tree().process_frame
+
 	_done()
 
 
@@ -881,3 +976,60 @@ func _done() -> void:
 	print("")
 	print("ALL PASS — 主菜单版式" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
+
+
+## page_box 里"子树中有哪个 Label 的文字含 text"的那块按钮。
+## ★按文字找不按下标 —— 下标一加节点就漂, 漂了还是绿的。
+func _entry_holder(box: Control, text: String) -> Control:
+	for c in box.get_children():
+		if not (c is Control):
+			continue
+		for n in _walk(c):
+			if n is Label and str((n as Label).text).find(text) >= 0:
+				return c as Control
+	return null
+
+
+## 玩家看得到的那把锁: 这块按钮的子树里有没有 🔒。
+## ★量的是**玩家看得到的东西**, 不是我自己插的标记
+##   (memory `fb-gate-must-measure-requirement-not-my-hook`): 🔒 要么是
+##   `_add_lock_badge` 挂的角标(主 CTA), 要么是 `_text_entry` 给文字加的前缀(左栏)。
+func _has_lock_glyph(holder: Control) -> bool:
+	if holder == null:
+		return false
+	for n in _walk(holder):
+		if n is Label and str((n as Label).text).find("🔒") >= 0:
+			return true
+	return false
+
+
+## 源码里某个函数的函数体(到下一个顶层 `func ` 为止), **注释已剥掉**。
+## ★必须剥注释: 这个函数体的注释里就写着"原来在这里写了一遍 quota_full", 不剥就自己把自己判红。
+## ★剥注释要认引号 —— `#` 也出现在字符串里(`Color("#f0c27a")`), 那是 2026-09-29
+##   `verify_dead_params` 刚修掉的同一个坑。
+func _func_body(block: String, fname: String) -> String:
+	var nl := char(10)
+	var i := block.find("func %s(" % fname)
+	if i < 0:
+		return ""
+	var j := block.find(nl + "func ", i + 1)
+	var body := block.substr(i, (j - i) if j > i else -1)
+	var out := ""
+	for l in body.split(nl):
+		var line := str(l)
+		var in_q := false
+		var q := ""
+		var cut := line.length()
+		for k in line.length():
+			var ch := line[k]
+			if in_q:
+				if ch == q and (k == 0 or line[k - 1] != char(92)):
+					in_q = false
+			elif ch == char(34) or ch == char(39):
+				in_q = true
+				q = ch
+			elif ch == "#":
+				cut = k
+				break
+		out += line.substr(0, cut) + nl
+	return out

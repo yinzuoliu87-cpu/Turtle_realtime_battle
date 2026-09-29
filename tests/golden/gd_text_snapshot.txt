@@ -776,6 +776,7 @@ scripts/scenes/ShopScene.gd|text|羁绊
 scripts/scenes/ShopScene.gd|text|背包里有 %d 件, 点一下看看
 scripts/scenes/ShopScene.gd|text|背包里空着
 scripts/scenes/ShopScene.gd|text|还差 %d 枚深海币
+scripts/scenes/ShopScene.gd|text|还有 %d 件, 去背包页看全部
 scripts/scenes/ShopScene.gd|text|还没点兵, 先去选龟那边排一路人马
 scripts/scenes/ShopScene.gd|text|这件不加属性，只有效果
 scripts/scenes/ShopScene.gd|text|🎒 我的背包  %d 件

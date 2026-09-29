@@ -42,6 +42,16 @@ const PANEL_W := 440.0
 const PANEL_Y := 124.0
 const PANEL_H := 592.0
 const BENCH_Y := 484.0       # 备战席(现只在弹层里用, 主页面是按钮)
+## 备战席格子的排布。★★2026-09-29: 原来写死 `mini(10, bench.size())` ——
+##   背包 18 件时**只画 10 格**, 剩下 8 件在弹层里一点痕迹都没有(标题还写着
+##   「背包里有 18 件, 点一下看看」, 点开却只有 10 个)。那不是"放不下", 是**静默截断**:
+##   一行 10 格才占 720px, 而弹层面板 820 宽 / 300 高, 多的那些**换行就放得下**。
+##   ⇒ 改成换行铺, 弹层高度跟着行数长; 真到放不下的量(>PER_ROW×MAX_ROWS)才截,
+##     而且**必须把剩下几件写在屏上** —— 截断本身不是 bug, 不说话才是。
+const BENCH_CELL := 64.0      # 一格边长(点击靶)
+const BENCH_STEP := 72.0      # 格距 = 64 + 8 间隙
+const BENCH_PER_ROW := 10     # 一行 10 格 = 720px ≤ 左栏可用宽 740
+const BENCH_MAX_ROWS := 4     # 4 行 = 40 件; 更多就写「还有 N 件」
 ## §弹层「出战阵容」里每个单位的三件装备 —— **竖排**, 一行一件: [36 图标格] + 名字。
 ## ★★2026-09-29 从横排改竖排的理由(真机实测): 原来 3 格横着摆(40px 一格), 名字标签只有
 ##   **36px 宽 / 字号 10** ⇒ 96 件里 **71 件**显示不全, 而且 **3 对被裁成同一个词**
@@ -588,8 +598,10 @@ func _build_bench_preview(host: Node = null, ox: float = 0.0, oy: float = 0.0) -
 	bh.text = ("背包里有 %d 件, 点一下看看" % bench.size()) if bench.size() > 0 else "背包里空着"
 	bh.add_theme_font_size_override("font_size", 15); bh.add_theme_color_override("font_color", Color("#9fb6c9"))
 	bh.position = Vector2(ox + GRID_X, (oy + BENCH_Y)); bh.size = Vector2(740, 22); host.add_child(bh)   # 原(80,560)宽900会伸进详情面板
-	var n := mini(10, bench.size())   # 14×72=1008 会伸出左栏(740) → 收到 10 件
-	for j in range(n):
+	## ★画得下的件数 = 一行 BENCH_PER_ROW × 最多 BENCH_MAX_ROWS 行。
+	##   真超了才截, 并且**在屏上写清楚还剩几件**(见函数尾)。
+	var shown := mini(BENCH_PER_ROW * BENCH_MAX_ROWS, bench.size())
+	for j in range(shown):
 		var it: Dictionary = bench[j]
 		var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(it.get("id", "")), {})
 		var cell := Panel.new()
@@ -606,7 +618,9 @@ func _build_bench_preview(host: Node = null, ox: float = 0.0, oy: float = 0.0) -
 		csb.set_border_width_all(3 if _bsel else 2)
 		csb.set_corner_radius_all(0)   # 贴图缺失时的兜底也走直角, 不留圆角
 		cell.add_theme_stylebox_override("panel", UISkin.slot(csb, UISkin.tint_of(csb.border_color)))
-		cell.position = Vector2(ox + GRID_X + j * 72, (oy + BENCH_Y) + 26); cell.size = Vector2(64, 64); host.add_child(cell)
+		cell.position = Vector2(ox + GRID_X + float(j % BENCH_PER_ROW) * BENCH_STEP,
+			(oy + BENCH_Y) + 26.0 + float(j / BENCH_PER_ROW) * BENCH_STEP)
+		cell.size = Vector2(BENCH_CELL, BENCH_CELL); host.add_child(cell)
 		_wire_own_tap(cell, str(it.get("id", "")), int(it.get("star", 1)))
 		## ★走 EquipIcon: 无图时退化成 emoji 而不是空白(EquipIcon.make 的 else 分支)
 ##   ⚠"060~095 有 36 件没配图"这句已作废: 实测 phase2-equipment.json 95 件**全部**有 img,
@@ -617,8 +631,19 @@ func _build_bench_preview(host: Node = null, ox: float = 0.0, oy: float = 0.0) -
 		cell.add_child(ic2)
 		var st := Label.new(); st.text = "★".repeat(int(it.get("star", 1)))
 		st.add_theme_font_size_override("font_size", 11); st.add_theme_color_override("font_color", Color("#ffd93d"))
-		st.position = Vector2(0, 44); st.size = Vector2(64, 16); st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		## ★宽度跟着 BENCH_CELL 走(星级那一行就画在格子底下) —— 别在这里再留一个裸 64。
+		st.position = Vector2(0, 44); st.size = Vector2(BENCH_CELL, 16); st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		cell.add_child(st)
+	## ★★装不下的那些**必须有一句话** —— 原来是静默截断(标题写 18 件、格子只有 10 个,
+	##   而屏上没有任何东西告诉玩家"还有"。玩家只会以为东西丢了)。
+	if bench.size() > shown:
+		var more := Label.new()
+		more.text = "还有 %d 件, 去背包页看全部" % (bench.size() - shown)
+		more.add_theme_font_size_override("font_size", 14)
+		more.add_theme_color_override("font_color", Color("#ffb454"))
+		more.position = Vector2(ox + GRID_X,
+			(oy + BENCH_Y) + 26.0 + float(BENCH_MAX_ROWS) * BENCH_STEP - 4.0)
+		more.size = Vector2(460, 22); host.add_child(more)
 	if bench.is_empty():
 		## ★去掉全角括号 + 破折号(「（空 — …）」是排版符号堆出来的空状态提示, 典型 ai 味)。
 		var e := Label.new(); e.text = "空的, 上面挑几件带走"
@@ -1864,7 +1889,16 @@ func _open_bottom_popup(kind: String) -> void:
 			lay.queue_free())
 
 	var pw := 820.0
+	## ★★高度**跟着内容长**(2026-09-29)。写死 300 时 11 件起就有一行画到「收起」按钮上,
+	##   而当时代码正好把件数砍到 10 ⇒ 版式看着没问题, 代价是 8 件东西从界面上消失。
+	##   现在件数不砍了, 高度就得自己涨: 头 44 + 标题 26 + N 行×72 + 按钮区 74。
 	var ph := 300.0
+	if kind == "bench":
+		var _rows: int = clampi(int(ceil(float(GameState.persistent_bench.size()) / float(BENCH_PER_ROW))),
+			1, BENCH_MAX_ROWS)
+		if GameState.persistent_bench.size() > BENCH_PER_ROW * BENCH_MAX_ROWS:
+			_rows += 1     # 「还有 N 件」那行也要留地方
+		ph = maxf(300.0, 136.0 + float(_rows) * BENCH_STEP)
 	var px := (W - pw) * 0.5
 	var py := (H - ph) * 0.5
 	var pan := Panel.new()

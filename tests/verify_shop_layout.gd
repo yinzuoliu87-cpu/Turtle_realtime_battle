@@ -19,6 +19,10 @@ extends Node
 ## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_shop_layout.tscn
 
 const SHOP := preload("res://scenes/Shop.tscn")
+## ★★这两个 preload 是为了【从产品自己身上回读常量】, 不在这里手抄一份副本
+##   (memory [[fb-hand-rolled-copies-drift]]: 手抄的副本必然落后)。
+const SHOP_GD = preload("res://scripts/scenes/ShopScene.gd")
+const P2CFG = preload("res://scripts/gamedata/phase2_config.gd")
 const SCREEN_W := 1280.0
 const SCREEN_H := 720.0
 const MIN_TOUCH_H := 44.0     # 移动端触摸目标最低高度
@@ -38,6 +42,11 @@ const PANEL_MARGIN := 25.0
 const HEADER_CY := 48.0
 
 var _fail := 0
+var _n := 0
+## 全绿时的断言条数【地板】。低于它 = 有协程在半路被掐断 / 静默 abort ⇒ 判红
+## (fb-null-readback-makes-test-silently-abort: 读一个不存在的成员会让协程就地返回,
+##  后面的断言一条不跑, 而进程 rc=0 还照样打 ALL PASS)。加/删断言时同步改这个数。
+const MIN_ASSERTS := 69
 
 
 func _ready() -> void:
@@ -576,6 +585,7 @@ func _collect(n: Node, out: Array) -> void:
 
 
 func _chk(what: String, ok: bool) -> void:
+	_n += 1
 	if not ok:
 		_fail += 1
 	print("  %s %s" % ["[PASS]" if ok else "[FAIL]", what])
@@ -700,9 +710,20 @@ func _outside_amount(vis: Rect2, card: Rect2) -> float:
 func _done(sc) -> void:
 	_check_shared_skin(sc)
 	await _check_owned_shine(sc)
+	## ★下面四条各自改 GameState(等级/背包/身上的装备), 所以一律放在前面那些
+	##   "看现场版式"的判据【之后】—— 顺序反了会把它们的现场掀掉。
+	_check_sell_nonzero()
+	await _check_name_not_truncated(sc)
+	await _check_equip_cap_same_source(sc)
+	await _check_bag_popup_all(sc)
 	sc.queue_free()
 	await get_tree().process_frame
 	print("")
+	if _n < MIN_ASSERTS:
+		_fail += 1
+		print("  [FAIL] ★★断言只跑了 %d 条(至少该有 %d) —— 有东西在半路被掐断了, 别当绿灯"
+			% [_n, MIN_ASSERTS])
+	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 商店版式" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
 
@@ -847,3 +868,392 @@ func _collect_buttons(n: Node, out: Array) -> void:
 	for c in n.get_children():
 		_collect_buttons(c, out)
 
+
+# ══════════════════════════════════════════════════════════════════════
+#  SELL_NONZERO —— 不许存在「卖了一分钱不退」的装备
+# ══════════════════════════════════════════════════════════════════════
+## ★由来(2026-09-29 真机实测·台账 ⑶): 背包里点「卖出 +0」⇒ 木制长剑从背包消失、
+##   深海币 4→4。原式 `floor(cost * star * 0.8)` 在 1费1★ 上算出 **0**,
+##   而 1 费正是出货率最高的那一档 —— 96 件里 23 件可卖件全中。
+##   那不是「便宜」是 **白没**: 一次点击、不可撤销、还没有确认框。
+##
+## ★★判据量的是**卖价函数本身**, 逐格穷举 96 件 × 3 星 —— 不抽样、不挑代表件。
+##   四条各自能单独红:
+##     ① [分母] 真的扫到了可卖件 × 3 星(N=0 是空检查不是通过)
+##     ② 没有一格 < 1
+##     ③ [分母·反证] **同一套量法**把地板价摘掉(= 修复前的原式)会量出 N 格为 0,
+##        N>0 ⇒ 这条判据不是恒真式(照 SHARED_SKIN 那条的做法: 拿产品自己当尺子)
+##     ④ 单一事实源: 屏上写的价与真进账的数都只能从 `Phase2Config.sell_value` 取
+func _check_sell_nonzero() -> void:
+	var dr := get_node_or_null("/root/DataRegistry")
+	var eqs: Array = dr.phase2_equipment if dr != null else []
+	var zero: Array = []
+	var raw_zero := 0
+	var cells := 0
+	var sellable := 0
+	var one_cost := 0
+	for e in eqs:
+		var ed: Dictionary = e if e is Dictionary else {}
+		## 羁绊赠送件(圣光护盾 shopAvailable=0): `_sell_selected` 开头就早退,
+		## 它根本进不了交易路径 ⇒ 不算「可卖装备」。
+		if int(ed.get("shopAvailable", 1)) == 0:
+			continue
+		sellable += 1
+		var cost := int(ed.get("cost", 1))
+		if cost <= 1:
+			one_cost += 1
+		for star in range(1, 4):
+			cells += 1
+			var v := int(P2CFG.sell_value(cost, star))
+			if v < 1:
+				zero.append("%s(%d 费)★%d → +%d" % [str(ed.get("name", "?")), cost, star, v])
+			## 同一套量法, 只把地板价摘掉 = 修复前那条原式
+			if int(floor(float(maxi(1, cost) * star) * float(P2CFG.SELL_RATE))) < 1:
+				raw_zero += 1
+	print("")
+	print("  [SELL_NONZERO 分母] 装备表 %d 件, 其中可卖 %d 件(1 费 %d 件) × 3 星 = %d 格"
+		% [eqs.size(), sellable, one_cost, cells])
+	_chk("SELL_NONZERO ★分母: 真扫到 %d 件可卖装备 × 3 星 = %d 格(N=0 是空检查)" % [sellable, cells],
+		sellable >= 90 and cells >= 270)
+	_chk("SELL_NONZERO ★★没有一格卖价是 0 —— 要么给钱、要么别让卖, 不许「白没」: %s"
+		% ("全部 ≥1" if zero.is_empty() else str(zero.slice(0, 6))), zero.is_empty())
+	_chk("SELL_NONZERO ★分母·反证: 同一套量法摘掉地板价会量出 %d 格为 0(>0 ⇒ 上一条不是恒真式)"
+		% raw_zero, raw_zero > 0)
+	## ★只看**代码行**, 注释行要跳过 —— 那个原式此刻正被写在注释里当反面教材,
+	##   整份文件里搜一下必然命中, 那样这条就永远红(第一版就是这么红的)。
+	var ops := FileAccess.get_file_as_string("res://scripts/scenes/inventory/equip_ops.gd")
+	var handrolled: Array = []
+	var routed := false
+	for ln in ops.split("
+"):
+		var t := str(ln).strip_edges()
+		if t.begins_with("#"):
+			continue
+		if t.find("P2.sell_value(") >= 0:
+			routed = true
+		if t.find("0.8") >= 0:
+			handrolled.append(t.substr(0, 60))
+	_chk("SELL_NONZERO ★单一事实源: 卖价只从 Phase2Config.sell_value 取, 代码里没有手写的取整式 %s"
+		% ("" if handrolled.is_empty() else str(handrolled)),
+		routed and handrolled.is_empty())
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  NAME_NOT_TRUNCATED —— 出战阵容里那行装备名不许被裁
+# ══════════════════════════════════════════════════════════════════════
+## ★由来(台账 ⑺): 那行字**就是为了「手机没有 hover、别只靠 tooltip」才加的**,
+##   而它当初画在 36px 宽的格子上 ⇒ 只看得见前 3 个字。讽刺就在这里。
+##
+## ★★判据量的是**真实渲染宽度**, 不是数字数 —— 中文/拉丁/数字每个字的宽都不一样,
+##   「N 个字以内」这种判据换一件带 A/B 后缀的装备就骗过去了。
+## ★七条断言, 每条能单独红:
+##   ① [分母] 96 件全扫到, 并打出最长名字/最宽像素
+##   ② 现宽度下**一件都不超**
+##   ③ 现宽度下没有两个不同的名字被裁成**同一个词**(守护贝壳/守护贝母 →「守护贝」那一族)
+##   ④⑤ [分母·反证] 同一套量法, 把宽度换回改版前的 36px 会量出一堆超宽 + 好几组同词
+##      ⇒ 量法不是恒真式
+##   ⑥⑦ 屏上那个控件**真的**是这个宽度和字号(常量对得上而控件没读它 = 判据白跑,
+##      memory [[fb-gate-subject-never-constructed]])
+func _check_name_not_truncated(sc) -> void:
+	var box_w := float(SHOP_GD.LINEUP_NAME_W)
+	var fsz := int(SHOP_GD.LINEUP_NAME_FONT)
+	## 量尺 = 产品那行字自己的字体/字号。这颗 Label 只借来拿 Font, 不参与版式。
+	var ruler := Label.new()
+	ruler.add_theme_font_size_override("font_size", fsz)
+	add_child(ruler)
+	await get_tree().process_frame
+	var f: Font = ruler.get_theme_font("font")
+	## ★键名是 "font_size" 不是 "font" —— 写错会静默拿到主题默认的 16 号,
+	##   量出来的宽度全部偏大 45%(第一版探针就是这么量的, 那个 96px 是假数)。
+	var fs: int = ruler.get_theme_font_size("font_size")
+	ruler.queue_free()
+	var dr := get_node_or_null("/root/DataRegistry")
+	var eqs: Array = dr.phase2_equipment if dr != null else []
+	var over: Array = []
+	var over36 := 0
+	var worst := 0.0
+	var worst_nm := ""
+	var maxchars := 0
+	var vis_now: Dictionary = {}
+	var vis_36: Dictionary = {}
+	var names := 0
+	for e in eqs:
+		var nm := str((e as Dictionary).get("name", ""))
+		if nm == "":
+			continue
+		names += 1
+		maxchars = maxi(maxchars, nm.length())
+		var w: float = f.get_string_size(nm, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs).x
+		if w > worst:
+			worst = w
+			worst_nm = nm
+		if w > box_w + 0.5:
+			over.append("%s 需 %.0fpx" % [nm, w])
+		if w > 36.5:
+			over36 += 1
+		_bump(vis_now, _visible_prefix(f, fs, nm, box_w), nm)
+		_bump(vis_36, _visible_prefix(f, fs, nm, 36.0), nm)
+	var dup_now := _dup_groups(vis_now)
+	var dup_36 := _dup_groups(vis_36)
+	print("")
+	print("  [NAME_NOT_TRUNCATED 分母] 扫到 %d 个装备名; 最长 %d 个字; 最宽「%s」= %.0fpx; 框宽 %.0fpx / 字号 %d"
+		% [names, maxchars, worst_nm, worst, box_w, fs])
+	_chk("NAME_NOT_TRUNCATED ★分母: 96 件名字全扫到, 字体/字号取到了(%d 号)" % fs,
+		names >= 90 and f != null and fs == fsz)
+	_chk("NAME_NOT_TRUNCATED ★★现框宽 %.0fpx 下一件都不超(最宽的「%s」占 %.0fpx): %s"
+		% [box_w, worst_nm, worst, "无" if over.is_empty() else str(over.slice(0, 6))], over.is_empty())
+	_chk("NAME_NOT_TRUNCATED ★★没有两个不同的装备被裁成同一个词: %s"
+		% ("无" if dup_now.is_empty() else str(dup_now)), dup_now.is_empty())
+	print("     反证(同一套量法·把框宽换回改版前的 36px): %d 件超宽 / %d 组撞成同词 %s"
+		% [over36, dup_36.size(), str(dup_36.slice(0, 3))])
+	_chk("NAME_NOT_TRUNCATED ★分母·反证: 36px 下量出 %d 件超宽(>0 ⇒ 量法不是恒真式)" % over36,
+		over36 > 0)
+	_chk("NAME_NOT_TRUNCATED ★分母·反证: 36px 下量出 %d 组撞成同词(>0 ⇒ 撞词那条也不是恒真式)"
+		% dup_36.size(), dup_36.size() > 0)
+	## ── 屏上那个控件真的用这个宽度和字号吗 ────────────────────────
+	var long_id := ""
+	for e in eqs:
+		if str((e as Dictionary).get("name", "")) == worst_nm:
+			long_id = str((e as Dictionary).get("id", ""))
+	GameState.season_leaders = ["basic", "stone", "bamboo"]
+	GameState.dual_lineup = {}          # 让 get_dual_lineup 重建成合法默认结构
+	GameState.persistent_equipped = {"basic": [{"id": long_id, "star": 1}]}
+	if sc._popup != null and is_instance_valid(sc._popup):
+		sc._popup.queue_free()
+		await get_tree().process_frame
+	sc._open_bottom_popup("lineup")
+	for _i in range(5):
+		await get_tree().process_frame
+	var hits: Array = []
+	for c in _labels_in(sc._popup):
+		if str((c as Label).text) == worst_nm:
+			hits.append(c)
+	_chk("NAME_NOT_TRUNCATED ★分母: 弹层里真的画出了「%s」那行字(%d 个) —— 找不到就说明上面全白量"
+		% [worst_nm, hits.size()], hits.size() >= 1)
+	if hits.size() >= 1:
+		var lb: Label = hits[0]
+		_chk("NAME_NOT_TRUNCATED ★★屏上那个控件宽 %.0fpx == LINEUP_NAME_W(%.0f)"
+			% [lb.size.x, box_w], absf(lb.size.x - box_w) < 0.5)
+		_chk("NAME_NOT_TRUNCATED ★★屏上那个控件字号 %d == LINEUP_NAME_FONT(%d)"
+			% [lb.get_theme_font_size("font_size"), fsz], lb.get_theme_font_size("font_size") == fsz)
+		var wr: float = f.get_string_size(str(lb.text), HORIZONTAL_ALIGNMENT_LEFT, -1.0,
+			lb.get_theme_font_size("font_size")).x
+		_chk("NAME_NOT_TRUNCATED ★★那行字在自己的控件里放得下(%.0f ≤ %.0f, 省略号一次都不该出现)"
+			% [wr, lb.size.x], wr <= lb.size.x + 0.5)
+
+
+## 宽度 w 装得下的最长前缀 = 玩家实际看得见的那个词
+func _visible_prefix(f: Font, fs: int, nm: String, w: float) -> String:
+	if f.get_string_size(nm, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs).x <= w + 0.5:
+		return nm
+	var k := 0
+	while k < nm.length():
+		if f.get_string_size(nm.substr(0, k + 1), HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs).x > w + 0.5:
+			break
+		k += 1
+	return nm.substr(0, k)
+
+
+func _bump(d: Dictionary, key: String, val: String) -> void:
+	if not d.has(key):
+		d[key] = []
+	(d[key] as Array).append(val)
+
+
+## 同一个可见词对应 >1 个装备名 = 玩家看到两件「同名」的东西
+func _dup_groups(d: Dictionary) -> Array:
+	var out: Array = []
+	for k in d.keys():
+		if (d[k] as Array).size() > 1:
+			out.append("「%s」= %s" % [str(k), str(d[k])])
+	return out
+
+
+func _labels_in(n: Node) -> Array:
+	var out: Array = []
+	if n == null or not is_instance_valid(n):
+		return out
+	_labels_rec(n, out)
+	return out
+
+
+func _labels_rec(n: Node, out: Array) -> void:
+	if n is Label:
+		out.append(n)
+	for c in n.get_children():
+		_labels_rec(c, out)
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  EQUIP_CAP_SAME_SOURCE —— 商店写的「已装 N/M」必须就是真正拦人的那个上限
+# ══════════════════════════════════════════════════════════════════════
+## ★由来: `_lineup_equip_count()` 原来自己数 `slots += 3` × 6 只 ⇒ 分母**恒等于 18**,
+##   而真上限是 `GameState.team_equip_cap()` = (赛季等级−1)×2。实测 Lv7 时商店写
+##   「已装 12/18」而背包写「12/12」, 玩家照 18 去买了 4 件, 回来点空槽**毫无反应**
+##   (拦人的是 12 那个数)。分子同病: 手数会把羁绊赠品算进去 ⇒ 满编时出现「已装 19/18」。
+##
+## ★★为什么必须扫**多个等级**: 恒等于 18 的写法在 Lv10 上是对的 —— 单档测永远绿。
+##   所以判据里有一条分母专门问「这几档的真上限是不是同一个数」。
+func _check_equip_cap_same_source(sc) -> void:
+	print("")
+	var caps: Dictionary = {}
+	var bad: Array = []
+	var found := 0
+	GameState.persistent_equipped = {"basic": []}
+	for L in [1, 3, 7, 10]:
+		GameState.season_level = L
+		sc._rebuild()
+		for _i in range(4):
+			await get_tree().process_frame
+		var pair := _lineup_pair(sc)
+		var want_cap := int(GameState.team_equip_cap())
+		var want_used := int(GameState.team_equipped_count())
+		caps[want_cap] = true
+		if pair.is_empty():
+			bad.append("Lv%d 找不到「出战阵容」按钮上那个读数" % L)
+			continue
+		found += 1
+		print("     Lv%-2d 屏上「已装 %d/%d」   真上限 team_equip_cap()=%d  真已装 team_equipped_count()=%d"
+			% [L, pair[0], pair[1], want_cap, want_used])
+		if pair[1] != want_cap:
+			bad.append("Lv%d 屏上分母 %d ≠ team_equip_cap()=%d" % [L, pair[1], want_cap])
+		if pair[0] != want_used:
+			bad.append("Lv%d 屏上分子 %d ≠ team_equipped_count()=%d" % [L, pair[0], want_used])
+	_chk("EQUIP_CAP_SAME_SOURCE ★分母: 四档都读到了那个读数(%d/4)" % found, found == 4)
+	_chk("EQUIP_CAP_SAME_SOURCE ★分母: 这四档的真上限有 %d 个不同值(全一样的话「恒等于 18」也能全绿)"
+		% caps.size(), caps.size() >= 3)
+	_chk("EQUIP_CAP_SAME_SOURCE ★★商店那个分母/分子 == GameState 的 team_equip_cap()/team_equipped_count(): %s"
+		% ("四档全对上" if bad.is_empty() else str(bad)), bad.is_empty())
+	## ── 羁绊赠品算不算进「已装」: 与真正拦人的 team_has_equip_room 同口径(= 不算) ──
+	GameState.season_level = 7
+	GameState.persistent_equipped = {"basic": []}
+	sc._rebuild()
+	for _i in range(4):
+		await get_tree().process_frame
+	var p0 := _lineup_pair(sc)
+	GameState.persistent_equipped = {"basic": [{"id": "p2eq_095", "star": 1}]}
+	sc._rebuild()
+	for _i in range(4):
+		await get_tree().process_frame
+	var p1 := _lineup_pair(sc)
+	_chk("EQUIP_CAP_SAME_SOURCE ★分母: p2eq_095 确实被 GameState 认成羁绊赠品",
+		GameState.is_synergy_grant({"id": "p2eq_095", "star": 1}))
+	_chk("EQUIP_CAP_SAME_SOURCE ★分母: 装上去这一步真的改动了身上的装备数组(现在 %d 件)"
+		% (GameState.persistent_equipped.get("basic", []) as Array).size(),
+		(GameState.persistent_equipped.get("basic", []) as Array).size() == 1)
+	_chk("EQUIP_CAP_SAME_SOURCE ★★羁绊赠品不计入「已装」(装上前 %s / 装上后 %s) —— 否则满编时会写出「19/18」"
+		% [str(p0), str(p1)],
+		p0.size() == 2 and p1.size() == 2 and p0[0] == p1[0] and p0[1] == p1[1])
+
+
+## 「🐢 出战阵容  已装 A/B」那颗按钮上的两个数。找不到 ⇒ 空数组(分母不成立)
+func _lineup_pair(sc) -> Array:
+	var btns: Array = []
+	_collect_buttons(sc, btns)
+	for b in btns:
+		var t := str((b as Button).text)
+		var i := t.find("已装 ")
+		if i < 0:
+			continue
+		var parts: PackedStringArray = t.substr(i + 3).strip_edges().split("/")
+		if parts.size() < 2:
+			continue
+		var a := str(parts[0]).strip_edges()
+		var c := str(parts[1]).strip_edges()
+		if a.is_valid_int() and c.is_valid_int():
+			return [int(a), int(c)]
+	return []
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  BAG_POPUP_ALL —— 「背包里有 N 件, 点一下看看」点开就得有 N 件
+# ══════════════════════════════════════════════════════════════════════
+## ★由来: 标题写「背包里有 18 件」, 而 `_build_bench_preview` 里写死
+##   `mini(10, bench.size())` ⇒ 点开只画 10 格, 剩下 8 件在界面上一点痕迹都没有,
+##   弹层下半还空着两行。**静默截断**: 玩家只会以为东西丢了。
+##
+## ★两个量级各测一遍, 因为它们要的是两种不同的正确行为:
+##   · 放得下(18 件) ⇒ **一件不少全画出来**
+##   · 真放不下(>PER_ROW×MAX_ROWS) ⇒ 画满 + **屏上写清楚还剩几件**(截断可以, 不说话不行)
+func _check_bag_popup_all(sc) -> void:
+	print("")
+	var per_row := int(SHOP_GD.BENCH_PER_ROW)
+	var cap := per_row * int(SHOP_GD.BENCH_MAX_ROWS)
+	print("  [BAG_POPUP_ALL 分母] 弹层一行 %d 格 × 最多 %d 行 = 画得下 %d 件"
+		% [per_row, int(SHOP_GD.BENCH_MAX_ROWS), cap])
+	for n in [18, cap + 5]:
+		var bench: Array = []
+		for i in range(n):
+			bench.append({"id": "p2eq_%03d" % (1 + (i % 90)), "star": 1})
+		GameState.persistent_bench = bench
+		if sc._popup != null and is_instance_valid(sc._popup):
+			sc._popup.queue_free()
+			await get_tree().process_frame
+		sc._open_bottom_popup("bench")
+		for _i in range(5):
+			await get_tree().process_frame
+		var pan: Panel = _popup_panel(sc)
+		var cells: Array = []
+		if pan != null:
+			_bench_cells(pan, cells)
+		var want := mini(cap, n)
+		print("     背包 %d 件 → 弹层画出 %d 格(该画 %d)   面板 %s"
+			% [n, cells.size(), want, str(pan.size) if pan != null else "找不到"])
+		_chk("BAG_POPUP_ALL ★分母: 背包真塞了 %d 件, 且弹层面板建出来了(>10 = 原来那个硬上限)" % n,
+			n > 10 and GameState.persistent_bench.size() == n and pan != null)
+		_chk("BAG_POPUP_ALL ★★背包 %d 件 → 弹层该画 %d 格(实测 %d)" % [n, want, cells.size()],
+			cells.size() == want)
+		if pan == null:
+			continue
+		var pr: Rect2 = Rect2(pan.global_position, pan.size)
+		var spill: Array = []
+		for c in cells:
+			var r: Rect2 = Rect2((c as Control).global_position, (c as Control).size)
+			if not pr.encloses(r):
+				spill.append("格@(%.0f,%.0f) 跑出面板 %s" % [r.position.x, r.position.y, str(pr)])
+		_chk("BAG_POPUP_ALL ★每一格都在弹层面板里(换行铺也不许伸出去): %s"
+			% ("全在里面" if spill.is_empty() else str(spill.slice(0, 4))), spill.is_empty())
+		## 「收起」按钮不许被格子压住 —— 压住就是点不掉这层弹层
+		var closer: Button = null
+		var bts: Array = []
+		_collect_buttons(pan, bts)
+		for b in bts:
+			if str((b as Button).text) == "收起":
+				closer = b
+		var blocked := 0
+		if closer != null:
+			var cr: Rect2 = Rect2(closer.global_position, closer.size)
+			for c in cells:
+				if cr.intersects(Rect2((c as Control).global_position, (c as Control).size)):
+					blocked += 1
+		_chk("BAG_POPUP_ALL ★分母+判据: 找到「收起」按钮, 而且没有格子压住它(压住 %d 格)" % blocked,
+			closer != null and blocked == 0)
+		if n > cap:
+			var need := "还有 %d 件" % (n - cap)
+			var said := false
+			for l in _labels_in(pan):
+				if str((l as Label).text).find(need) >= 0:
+					said = true
+			_chk("BAG_POPUP_ALL ★★真放不下的时候屏上写着「%s」(静默截断才是 bug)" % need, said)
+	if sc._popup != null and is_instance_valid(sc._popup):
+		sc._popup.queue_free()
+		await get_tree().process_frame
+
+
+## 弹层里那块 820 宽的面板
+func _popup_panel(sc) -> Panel:
+	if sc._popup == null or not is_instance_valid(sc._popup):
+		return null
+	for c in (sc._popup as Node).get_children():
+		if c is Panel and absf((c as Panel).size.x - 820.0) < 1.0:
+			return c as Panel
+	return null
+
+
+## 备战席格子 = 边长恰为 BENCH_CELL 的 Panel
+func _bench_cells(n: Node, out: Array) -> void:
+	if n is Panel and absf((n as Panel).size.x - float(SHOP_GD.BENCH_CELL)) < 0.5 \
+			and absf((n as Panel).size.y - float(SHOP_GD.BENCH_CELL)) < 0.5:
+		out.append(n)
+	for c in n.get_children():
+		_bench_cells(c, out)

@@ -9,6 +9,27 @@ var _top_bar = null
 const W := 1280.0
 const H := 720.0
 
+## ── 竖向流水 (2026-09-29 台账 ④) ──────────────────────────────────────
+## ★★为什么不是一串写死的 y: 原来每一块自己写死(账号按钮 192 / 音乐 220 / 音效 330 /
+##   全屏 410 / 画质 490 / 调试场 560 / 重置 580~640)。账号行有四行高 ⇒ 那两颗按钮
+##   (实测 y 177..209)整个落进音乐条那条 **48px 拖动带**(196..244)里, 重叠 13px ——
+##   而拖动带是后建的、画在按钮上面 ⇒ **点按钮下沿会变成拖音量**。
+##   写死的坐标之间没有任何东西保证它们不相撞, 而账号行的行数还是**随状态变的**
+##   (连接中 / 未绑定 / 已绑定 / 存档冲突 → 一到四行)。
+## ★★这个 bug 只有**真玩家**碰得到: 门禁给每个测试 `TURTLE_SUPABASE=" "` ⇒
+##   `_acct_on()` 恒假 ⇒ 账号那四行**一次都没建出来**, 所以从 2026-09-22 起
+##   没有任何判据看见过它(memory `fb-gate-subject-never-constructed`)。
+##   判据 SETTINGS_NO_OVERLAP(`tests/verify_ios_ui.gd`)是拿 `acct_override = 1`
+##   把这一屏造出来再穷举两两重叠的。
+## ⇒ 现在每一块从**上一块的下沿**算出来: 账号行多一句话, 下面整叠自动让位。
+const _FLOW_TOP := 96.0        # TopBar 高 87, 往下留 9
+const _GAP_LINE := 4.0         # 同一块里两行之间
+const _GAP_BLOCK := 14.0       # 块与块之间
+const _SLD_LABEL_GAP := 30.0   # 名牌顶沿到槽中心的距离(原来写死在 _slider 里的那个 30)
+const _SLD_HIT_H := 48.0       # 滑条的透明触摸带高(26pt, 见 _slider 末尾那段)
+const _ACCT_BTN_H := 34.0      # _small_button 的占位高(设的是 30, 九宫格内边距顶到 32, 留 2)
+const _BTN_H := 50.0           # _text_button 的高(见那个函数里的 Vector2(260, 50))
+
 var _perf_btn: Label = null
 var _full_btn: Label = null   # 全屏按钮文字 (切换后要同步, 原来没接住 → 切了还写"全屏")
 
@@ -34,10 +55,14 @@ func _ready() -> void:
 		"on_back": _on_back,
 	})
 
-	# 账号行 @ (W/2, 150) — 标题栏与第一个滑条之间那块空地
-	_account_row()
+	# ── 从这里开始走【竖向流水】(见文件头 `_FLOW_TOP` 那段) ──
+	var y := _FLOW_TOP
 
-	# BGM 滑条 @ (W/2, 220) — 拖动实时生效; 写盘只在松手时一次 (原来每帧 save() = 拖一下写几十次盘)
+	# 账号行 — 标题栏与第一个滑条之间。行数随状态变(一到四行), 所以它自己报下沿
+	y = _account_row(y)
+	y += _GAP_BLOCK
+
+	# BGM 滑条 — 拖动实时生效; 写盘只在松手时一次 (原来每帧 save() = 拖一下写几十次盘)
 	## ★★2026-09-28 文案去"网页/开发者味": 原来是「🎵 BGM 音量」「🔊 音效音量」。
 	##   ① **BGM 是开发者黑话** —— 玩家的词是「音乐」。项目里给玩家看的字从不写英文缩写
 	##     (「深海币」「出战统领」「糖果罐」), 只有这一处漏了。
@@ -49,32 +74,36 @@ func _ready() -> void:
 	##   **同屏两套画法** —— 用户 2026-09-27 点名的「ai 味/网页味」就是这一类。
 	##   仓库里没有音乐/音效的像素图标(已 grep: music/sound/audio 全无),
 	##   而素材铁律是「不拿语义不符的图顶替」 ⇒ 先只留字, 图标已登进缺口表。
-	_slider(W / 2.0, 220.0, "音乐", GameState.bgm_volume,
+	y = _slider_row(y, "音乐", GameState.bgm_volume,
 		func(v): GameState.bgm_volume = v; Audio.bgm_volume = v; Audio.apply_bgm_volume(),   # ★补: 原来只设变量没调 apply → 拖动对正在播的BGM无效(用户2026-07-19"音量键根本没效果")
 		func(): GameState.save())
-	# SFX 滑条 @ (W/2, 330) — 松手才试听 + 写盘 (原来拖动中每帧都播音效)
-	_slider(W / 2.0, 330.0, "音效", GameState.sfx_volume,
+	y += _GAP_BLOCK
+	# SFX 滑条 — 松手才试听 + 写盘 (原来拖动中每帧都播音效)
+	y = _slider_row(y, "音效", GameState.sfx_volume,
 		func(v): GameState.sfx_volume = v; Audio.sfx_volume = v,
 		func(): Audio.play_sfx("hit-physical", 1.0); GameState.save())
+	y += _GAP_BLOCK
 
-	# 全屏 @ (W/2, 410) — PoC 用 ⛶(U+26F6) 做图标, 但打包字体链无此字形(web/linux 豆腐块)且无等义替代 → 只留文字
-	_full_btn = _text_button(W / 2.0, 410.0, _fullscreen_label(), _toggle_fullscreen)
+	# 全屏 — PoC 用 ⛶(U+26F6) 做图标, 但打包字体链无此字形(web/linux 豆腐块)且无等义替代 → 只留文字
+	_full_btn = _text_button(W / 2.0, y + _BTN_H / 2.0, _fullscreen_label(), _toggle_fullscreen)
+	y += _BTN_H + _GAP_BLOCK
 
-	# 低画质模式 @ (W/2, 490) — 现在是【真开关】: 关 MSAA + 3D 渲染分辨率 ×0.75 + 停菜单背景漂移; 持久化到存档.
-	_perf_btn = _text_button(W / 2.0, 490.0, _perf_label(), _toggle_perf)
+	# 低画质模式 — 现在是【真开关】: 关 MSAA + 3D 渲染分辨率 ×0.75 + 停菜单背景漂移; 持久化到存档.
+	_perf_btn = _text_button(W / 2.0, y + _BTN_H / 2.0, _perf_label(), _toggle_perf)
+	y += _BTN_H + _GAP_BLOCK
 
-	# 🛠 调试场 @ (W/2, 560) — 用户 2026-09-17:「调试场可以塞到设置里, 正式上线的不会要调试场」。
+	# 🛠 调试场 — 用户 2026-09-17:「调试场可以塞到设置里, 正式上线的不会要调试场」。
 	#   原来它钉在主菜单中间那条空档上, 而那块地现在给了「本周赛程条」。
 	#   ★gate 原样搬过来: OS.is_debug_build() 在导出 release 模板下为 false ⇒ 正式包玩家看不到。
 	#   门禁 verify_menu 也跟着搬(它验的是"调试入口不泄漏给玩家", 不是"这行代码在哪个文件")。
+	#   ★正式包里没这个键 ⇒ 下面的重置自动往上收, 不留空洞(原来这里是 580/640 两个写死的数)。
 	var dev := OS.is_debug_build() or OS.has_environment("DEVTOOLS")
-	var reset_y := 580.0
 	if dev:
-		_text_button(W / 2.0, 560.0, "🛠 调试场", _open_debug_arena)
-		reset_y = 640.0     # 让开调试场; 正式包里没这个键, 重置就回到原来的 580(不留空洞)
+		_text_button(W / 2.0, y + _BTN_H / 2.0, "🛠 调试场", _open_debug_arena)
+		y += _BTN_H + _GAP_BLOCK
 
-	# 重置存档 @ (W/2, 580 / 开发构建 640) — ⚠ 破坏性 → 二次确认
-	_text_button(W / 2.0, reset_y, "⚠ 重置所有存档", _ask_reset)
+	# 重置存档 — ⚠ 破坏性 → 二次确认
+	_text_button(W / 2.0, y + _BTN_H / 2.0, "⚠ 重置所有存档", _ask_reset)
 
 	# 底部提示 @ (W/2, H-40)
 	## ★★2026-09-28 这一行原来是 **11px 的 #888 灰小字**「设置自动保存」——
@@ -168,9 +197,11 @@ func _acct_mail() -> String:
 	return "" if acct_override == 1 else str(GameState.account_email)
 
 
-func _account_row() -> void:
+## 返回这一块的**下沿** —— 行数随状态变(连接中/未绑定/已绑定/存档冲突 → 一到四行),
+## 所以下面那一叠的位置只能由它报出来, 不能各自写死(见文件头 `_FLOW_TOP` 那段)。
+func _account_row(top: float) -> float:
 	if not _acct_on():
-		return                                   # 没配后端 = 有意关掉, 什么都不显示
+		return top                               # 没配后端 = 有意关掉, 什么都不显示
 	var aid := str(GameState.account_id)
 	var mail := _acct_mail()
 	var head := ""
@@ -204,13 +235,14 @@ func _account_row() -> void:
 	##   那条断言就**恒真**了: 找不到是因为这个词没了, 不是因为行没建
 	##   (memory `fb-gate-tautological-when-it-spans-a-frame` 同族: 判据不再卡住那个形状)。
 	##   ⇒ 判据平移到**行为**: 这一族节点在不在树上。文案以后怎么改都不影响它。
+	var y := top
 	var a := _stroked_label(head, 15, "#cfe3ff", "", 0)
-	_place_center(a, W / 2.0, 128.0)
+	y = _place_flow(a, y)
 	a.name = ACCT_ROW_PREFIX + "Head"
 	if sub != "":
 		var col := "#ffb454" if mail == "" else "#8fa6bd"    # 未绑定用警示橙, 已绑定用灰
 		var b := _stroked_label(sub, 12, col, "", 0)
-		_place_center(b, W / 2.0, 148.0)
+		y = _place_flow(b, y + _GAP_LINE)
 		b.name = ACCT_ROW_PREFIX + "Sub"
 	## ★★2026-09-21 把「存档」两个字全部换掉 —— 原文案是**不准确的**。
 	##   核实过服务端五张表(`accounts` / `ghosts` / `matches` / `standings` /
@@ -222,20 +254,24 @@ func _account_row() -> void:
 	## ★D-8: 匿名号**不**同步(隐私政策承诺过只有绑定者才上传) ⇒ 两种状态说的话不一样。
 	var note := _stroked_label(("（绑定邮箱后，进度会同步到云端）" if mail == ""
 		else "（进度会自动同步到云端）"), 11, "#7e8fa0", "", 0)
-	_place_center(note, W / 2.0, 166.0)
+	y = _place_flow(note, y + _GAP_LINE)
 	note.name = ACCT_ROW_PREFIX + "Note"
 	## ★D-3c 补上 v0.19.423 漏掉的入口: 那一版只有「绑定邮箱」,
 	##   **取回流程写了但点不到** —— 新手机上根本没法用邮箱把号拿回来。
 	##   `verify_session_refresh` 没有覆盖到 UI, 这条由 `verify_account` ④ 走真入口验。
+	## ★★这两颗按钮的 y **原来写死成 192**, 而那正好落在音乐条的 48px 拖动带里(见文件头那段)。
+	##   现在钉在账号文字的下沿之后 —— 账号行多一句话, 它自己往下走。
+	var by := y + _GAP_LINE + _ACCT_BTN_H / 2.0
 	if aid != "" and _SB_ACC.save_conflict():
-		_small_button(W / 2.0 - 80.0, 192.0, "处理存档冲突", _open_conflict_dialog).name = \
+		_small_button(W / 2.0 - 80.0, by, "处理存档冲突", _open_conflict_dialog).name = \
 			ACCT_ROW_PREFIX + "BtnConflict"
 	elif aid != "":
-		_small_button(W / 2.0 - 80.0, 192.0,
+		_small_button(W / 2.0 - 80.0, by,
 			("换个邮箱" if mail != "" else "绑定邮箱"),
 			func(): _open_email_dialog(_SB_ACC.FLOW_BIND)).name = ACCT_ROW_PREFIX + "BtnBind"
-	_small_button((W / 2.0 + 80.0) if aid != "" else W / 2.0, 192.0, "用邮箱取回",
+	_small_button((W / 2.0 + 80.0) if aid != "" else W / 2.0, by, "用邮箱取回",
 		func(): _open_email_dialog(_SB_ACC.FLOW_RECOVER)).name = ACCT_ROW_PREFIX + "BtnRecover"
+	return by + _ACCT_BTN_H / 2.0
 
 
 # ─── D-8 存档冲突: 二选一 ──────────────────────────────────────
@@ -1341,6 +1377,16 @@ const _SLD_H := 26.0            # 槽总高(含金属边带)
 const _SLD_BAND_X := 8.0        # 槽左右边带厚度(量自贴图)
 const _SLD_BAND_Y := 5.0        # 槽上下边带厚度(量自贴图)
 
+## 按流水放一条滑条: 顶沿钉在 top, 返回下沿。
+## ★一条滑条占的竖向空间 = 名牌(槽中心往上 `_SLD_LABEL_GAP`) 到 触摸带下沿(槽中心往下 24) ——
+##   **触摸带比槽本身各往外宽 11px**, 忘了它就是 2026-09-29 那条"按钮压进拖动带"的来源。
+func _slider_row(top: float, label: String, init: float, cb: Callable,
+		on_release: Callable = Callable()) -> float:
+	var cy := top + _SLD_H / 2.0 + _SLD_LABEL_GAP
+	_slider(W / 2.0, cy, label, init, cb, on_release)
+	return cy + _SLD_HIT_H / 2.0
+
+
 func _slider(cx: float, cy: float, label: String, init: float, cb: Callable, on_release: Callable = Callable()) -> void:
 	var track_w := 380.0
 	var left := cx - track_w / 2.0
@@ -1353,7 +1399,7 @@ func _slider(cx: float, cy: float, label: String, init: float, cb: Callable, on_
 
 	## 名牌: 加描边 —— 这一屏的背景是平铺的图案砖, 无描边的白字在上面发糊。
 	var lbl := _stroked_label(label, 17, "#ffe9b0", "#2a1b08", 4)
-	lbl.position = Vector2(left, cy - _SLD_H / 2.0 - 30.0)
+	lbl.position = Vector2(left, cy - _SLD_H / 2.0 - _SLD_LABEL_GAP)
 	add_child(lbl)
 
 	## ① 金属槽(九宫格)。`mouse_filter=IGNORE` —— 命中全交给下面那条 48px 的透明条。
@@ -1547,6 +1593,16 @@ func _stroked_label(t: String, size: int, color: String, stroke: String, thick: 
 		l.add_theme_constant_override("outline_size", thick)
 		l.add_theme_color_override("font_outline_color", Color(stroke))
 	return l
+
+
+## 按【流水】放一行居中文字: 顶沿钉在 top, 返回它的下沿。
+## ★返回的是**控件矩形**的下沿(比字的 ink 高 8px 左右) —— 宁可多留一点也不要压住下一行。
+func _place_flow(l: Label, top: float) -> float:
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.size = Vector2(400, float(l.get_theme_font_size("font_size")) + 16.0)
+	l.position = Vector2(W / 2.0 - 200.0, top)
+	add_child(l)
+	return top + l.size.y
 
 
 func _place_center(l: Label, cx: float, cy: float) -> void:

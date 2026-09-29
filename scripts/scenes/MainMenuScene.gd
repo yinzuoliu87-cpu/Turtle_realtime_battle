@@ -356,18 +356,15 @@ func _menu_bottom() -> float:
 ##   (详见 `_ready` 里 `paint_ts` 那段 + 探针 `tests/_probe_twoclocks.gd`)。
 func _build_page_buttons(now: int = 0) -> void:
 	var ts: int = now if now > 0 else _now_ts()
-	var eliminated := GameState.is_eliminated()   # 0命=本大轮淘汰(用户2026-07-24拍板"淘汰锁定") → 锁匹配+商店, 只"设置→重置存档"解锁
-	## A4(2026-09-17 user decision): quota full also locks the shop.
-	## WARNING: this line affects FIVE gates that rely on setting season_total_battles=3
-	##   (verify_shop_layout / shop_merge_pips / shop_persist / ui_consistency / ui_layout).
-	##   None of them sets ranked_used => on a fresh CI save ranked_used=0 < quota,
-	##   so they happen NOT to be locked. That is luck, not design: if someone sets the
-	##   quota to 0 or feeds those gates a ranked_used, all five go red at once -
-	##   do not chase it as a product regression then.
-	## ★★`ranked_quota_full(ts)` —— **必须带参**。不带参就是 2026-09-29 修掉的那条 bug:
-	##   它兜底读真实系统钟 ⇒ 与同一屏的状态行/赛程条(走 `_now_ts()`)**不是同一条钟**,
-	##   画出来的 🔒 会和 `_open_shop()` 真正的判据相反(锁画在那儿而门是开的)。
-	var shop_locked := int(GameState.season_total_battles) <= 0 or eliminated or GameState.ranked_quota_full(ts)
+	## ★★★两颗按钮的锁**都从各自那条真判据取**(2026-09-29 台账 ④):
+	##   原来商店的锁在这里就地写了一遍 `<=0 or eliminated or quota_full`, 而
+	##   `_open_shop()` 里又写了一遍 —— 同一件事两份公式(memory `fb-hand-rolled-copies-drift`);
+	##   「开始战斗」更糟: 画的锁只看 `eliminated`, 而它自己的门 `_battle_block_msg()` 还管
+	##   **配额打满**与**周末阶段** ⇒ 打满 24 场后它**照样亮着**, 点下去只飘一行 1.9 秒的字,
+	##   而同屏的商店已经正确上锁。玩家读到的是「能打」, 门说的是「不能打」。
+	##   ⇒ 现在两颗都是「问那扇门自己」: 门说拦 ⇒ 画锁。判据 PLAY_LOCK_SAME_SOURCE 守着。
+	var shop_locked := _shop_block_msg(ts) != ""
+	var battle_locked := _battle_block_msg(ts) != ""
 	var mic := "res://assets/sprites/menu/"
 	var subs: Array = [
 		["背包", func(): _go("Inventory"), mic + "ic-bag.png", false],
@@ -400,10 +397,12 @@ func _build_page_buttons(now: int = 0) -> void:
 	## ★同上: 去掉「⚔」。这个字符在本项目的字体链里是**单色 emoji 兜底**画的,
 	##   实拍是一对细线条的交叉剑 —— 旁边整块木牌都是 3~4px 的像素笔触, 它是唯一的矢量线条。
 	##   全屏唯一的主 CTA 上, 一行大金字比一个外来字形更立得住。
-	var hero := _frame_button("开始战斗", func(): _start_battle_flow(), false, HERO_SIZE, FONT_HERO, "", eliminated)
+	var hero := _frame_button("开始战斗", func(): _start_battle_flow(), false, HERO_SIZE, FONT_HERO, "", battle_locked)
 	hero.position = HERO_POS
 	page_box.add_child(hero)
-	if eliminated:
+	## ★锁要**看得见地静态存在**: 灰框 + 🔒 角标。原来只有"点下去飘一行 1.9 秒的字",
+	##   而那一行还压在 LOGO 上 —— 一个状态不该只在瞬时提示里存在。
+	if battle_locked:
 		_add_lock_badge(hero, HERO_SIZE)
 	_slide_in(hero, 5)
 
@@ -1521,25 +1520,44 @@ func _go(scene: String) -> void:
 
 ## 商店入口: 大轮未打第一场 → 上锁不进(用户2026-07-18); 打完第一场解锁
 func _open_shop() -> void:
-	## A4(2026-09-17): three reasons, each with its own message - same wording as
-	##   _start_battle_flow so the player never sees two different names for one state.
-	##   Quota-full also locks the shop (user decision: stop completely when the quota is used up).
-	if GameState.is_eliminated():
-		_toast(_msg_eliminated())
-		return
-	## ★★把「现在是哪一刻」传下去 —— 与 `_start_battle_flow()` 同一个注入口。
-	##   不传的话这个入口也跟着今天星期几变: `ranked_quota_full()` 内部先问
-	##   `phase_uses_ranked_quota(phase_at_utc(ts))`, UTC 周六/周日不吃积分赛配额
-	##   ⇒ 恒返回 false ⇒ **配额打满的人在周末照样进得了商店**。
-	##   (这是真行为差异, 不只是门禁的事: 周末该不该锁店是玩法问题, 而原来它是
-	##    "跟着星期几悄悄变"—— 现在至少变成一个可注入、可验的量。)
-	if GameState.ranked_quota_full(_now_ts()):
-		_toast(_msg_quota_full())
-		return
-	if int(GameState.season_total_battles) <= 0:
-		_toast("🔒 本大轮打完第一场才开店")
+	var block: String = _shop_block_msg(_now_ts())
+	if block != "":
+		_toast(block)
 		return
 	_go("Shop")
+
+
+## 现在能不能进商店? 返回**要飘给玩家的那句话**; 空串 = 放行。
+##
+## ★★★它同时是**画在商店那行上的锁**的唯一来源(`_build_page_buttons` 读它) ——
+##   原来这两处各写了一遍同样的三条公式, 改一处漏一处就是「锁画在那儿而门是开的」
+##   (本函数上一版的头注就为这件事写过警告, 而警告防不住第二份公式)。
+## A4(2026-09-17): three reasons, each with its own message - same wording as
+##   _start_battle_flow so the player never sees two different names for one state.
+##   Quota-full also locks the shop (user decision: stop completely when the quota is used up).
+## ★★`ts` 必须由调用方传 —— 不传的话这个入口跟着今天星期几变: `ranked_quota_full()`
+##   内部先问 `phase_uses_ranked_quota(phase_at_utc(ts))`, UTC 周六/周日不吃积分赛配额
+##   ⇒ 恒返回 false ⇒ **配额打满的人在周末照样进得了商店**。
+##   (这是真行为差异, 不只是门禁的事: 周末该不该锁店是玩法问题, 而原来它是
+##    "跟着星期几悄悄变"—— 现在至少变成一个可注入、可验的量。)
+## ★三条的**先后顺序有意义**, 与 `_battle_block_msg` 同一个排法: 命尽是最终态、
+##   配额是本周期上限、没开店只是"还没到"。
+##
+## A4(2026-09-17 user decision): quota full also locks the shop.
+## WARNING: this function affects FIVE gates that rely on setting season_total_battles=3
+##   (verify_shop_layout / shop_merge_pips / shop_persist / ui_consistency / ui_layout).
+##   None of them sets ranked_used => on a fresh CI save ranked_used=0 < quota,
+##   so they happen NOT to be locked. That is luck, not design: if someone sets the
+##   quota to 0 or feeds those gates a ranked_used, all five go red at once -
+##   do not chase it as a product regression then.
+func _shop_block_msg(ts: int) -> String:
+	if GameState.is_eliminated():
+		return _msg_eliminated()
+	if GameState.ranked_quota_full(ts):
+		return _msg_quota_full()
+	if int(GameState.season_total_battles) <= 0:
+		return "🔒 本大轮打完第一场才开店"
+	return ""
 
 
 ## ★★拦截提示的文案放这两个函数里 —— 商店入口与开打入口原来**各写了一份同样的字符串**,
@@ -1629,7 +1647,16 @@ func _msg_gauntlet_block() -> String:
 	return ""
 
 
-## 轻提示: 顶部飘一行金字, 1.4s 后淡出
+## 轻提示: 顶部飘一行金字, 停 2.6s 后淡出。
+##
+## ★★2026-09-29 停留从 1.4+0.5 加到 2.6+0.6(台账 ④「点下去有提示但只活 1.9 秒」)。
+##   1.9 秒读不完「📋 本周配额 24 场已打满 · 下周一开新的一轮」这种双句提示。
+## ★★**位置动不了**, 而这不是懒: 主菜单竖向是排满的(剖面见 `_status_row` 头注 ——
+##   LOGO 4.5..205.5 / 状态行 210..291 / 四个入口 299..623 / 赛程条 624..720,
+##   栈底与条顶只差 1px)。**任何 y 都会压住别的东西** ⇒ 与其挪个位置压别人,
+##   不如让这行字不再是唯一的通道: 锁现在是**画在按钮上的静态状态**
+##   (灰框 + 🔒 角标, 见 `_build_page_buttons` 里 `battle_locked`),
+##   提示退回它本来的角色 —— 解释为什么。
 func _toast(msg: String) -> void:
 	var t := Label.new()
 	t.text = msg
@@ -1643,8 +1670,8 @@ func _toast(msg: String) -> void:
 	t.z_index = 200
 	add_child(t)
 	var tw := create_tween()
-	tw.tween_interval(1.4)
-	tw.tween_property(t, "modulate:a", 0.0, 0.5)
+	tw.tween_interval(2.6)
+	tw.tween_property(t, "modulate:a", 0.0, 0.6)
 	tw.tween_callback(t.queue_free)
 
 

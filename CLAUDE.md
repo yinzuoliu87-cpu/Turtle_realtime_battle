@@ -144,7 +144,7 @@ A/B 差分（同参数只换装备）也**只在"同一件改前 vs 改后"时�
 
 `大版本.功能版本.改动序号`，当前 `0.18.7`（真值以 `project.godot` `config/version` 为准，别信这行——它会漂）。第 3 位每次改动 +1；第 2 位加新玩法时 +1。
 
-**改版本号要同时改四处**，漏一处 `verify_version` 直接红：
+**改版本号要同时改五处**，漏一处 `verify_version` 直接红。（★ 2026-09-29 改正：原来写「四处」、漏了路线图。★★**两条门禁各管一半**，这就是它能漏掉一处的原因：`tests/verify_version.gd` 管 ①②③④，**路线图那一处在 `tools/docs_authority_lint.py:130`**（判据：路线图正文里的**最大**版本号 == `project.godot`）。两者都在提交门禁里，所以漏了照样红，只是**报错会出在你想不到的那条工具里**。（我 2026-09-29 就在这里踩过：grep 到 `verify_version.gd:49` 有「路线图」三个字就当成了断言，**那是注释**。））：
 
 | 处 | 位置 |
 |---|---|
@@ -152,6 +152,7 @@ A/B 差分（同参数只换装备）也**只在"同一件改前 vs 改后"时�
 | ② 记账 | `CHANGELOG.md` 顶部新增 `## x.y.z — YYYY-MM-DD` |
 | ③ iOS 包 | `export_presets.cfg` → `application/short_version` |
 | ④ Android 包 | `export_presets.cfg` → `version/name` |
+| ⑤ 路线图 | `docs/实时版-路线图与待办.md` → 得出现这个版本号 |
 
 游戏内显示（主菜单右下角）**从 `ProjectSettings` 读**，不许写死 —— 门禁会扫硬编码字面量。
 版本号的全部价值在于**测试者报 bug 时能说清是哪个版本**，四处不一致就说不清了。

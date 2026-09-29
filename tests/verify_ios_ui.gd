@@ -443,6 +443,12 @@ func _ready() -> void:
 
 	_check_teamselect_stage()
 
+	# ── F2. ★★SETTINGS_NO_OVERLAP: 设置页穷举两两不重叠(见那个函数的头注) ──
+	#    ★放在**最后**: 它要临时把后端配上才造得出账号行, 跑完还原 —— 不让它波及上面各段。
+	get_tree().root.size = Vector2i(1280, 720)
+	await get_tree().process_frame
+	await _check_settings_no_overlap()
+
 	_done()
 
 
@@ -523,3 +529,176 @@ func _done() -> void:
 	else:
 		print("FAIL x", _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
+
+
+## ★★SETTINGS_NO_OVERLAP —— 设置页穷举两两不重叠 (2026-09-29 台账 ④)
+##
+## 由来: `SettingsScene` 账号那两颗按钮的 y **写死成 192**(git blame 2026-09-22, 不是新写的),
+##   而音乐条的 48px 拖动带占 196..244 ⇒ 实测重叠 13px; 拖动带**后建、画在按钮上面**
+##   ⇒ **点按钮下沿会变成拖音量**。同屏还有账号头行与副行的字 ink 压 2px。
+##
+## ★★为什么两年没有判据看见过它: 门禁给每个测试 `TURTLE_SUPABASE=" "` ⇒
+##   `SettingsScene._acct_on()` 恒假 ⇒ 账号那四行**一次都没建出来**
+##   (memory `fb-gate-subject-never-constructed`: 判据没错, 被测对象不在场)。
+##   ⇒ 这一节**真把后端配上**(而不是用 `acct_override`, 那条会顺手立起绑定屏把整页藏掉),
+##   并且配一条分母断言「账号行真的在场」。
+##
+## 判据两条, **穷举**不是抽样:
+##   ① 任意两个【可点区域】不许重叠 —— 重叠 = 一次点击有两个主人, 后画的吃掉先画的。
+##      这一条就是那个 bug 的形状(拖动带吃掉按钮下沿)。
+##   ② 任意两行【字的 ink】不许重叠 —— 压字。ink 用 `verify_ui_consistency._ink_rect`,
+##      **不自己再写一份**(memory `fb-hand-rolled-copies-drift`): Label 的 rect 是 400 宽的框,
+##      拿框比会把所有居中文字都判成互相重叠。
+## ★祖孙不算(容器套着自己的按钮是正常的); 铺满全屏的遮罩/背景不算(它们本来就该盖住一切)。
+const UIC_INK := preload("res://tests/verify_ui_consistency.gd")
+
+
+func _check_settings_no_overlap() -> void:
+	var ps = load("res://scenes/Settings.tscn")
+	if ps == null:
+		_ok("SETTINGS_NO_OVERLAP: 载入 Settings.tscn", false, "load 失败")
+		return
+	var gs = get_node_or_null("/root/GameState")
+	if gs == null:
+		_ok("SETTINGS_NO_OVERLAP: ★分母 拿不到 GameState", false)
+		return
+	var ink = UIC_INK.new()
+	## 真把后端配上 —— 见头注。跑完还原, 免得波及本文件后面的小节。
+	var env0 := OS.get_environment("TURTLE_SUPABASE")
+	var key0 = ProjectSettings.get_setting("turtle/supabase_anon_key", "")
+	var mail0 := str(gs.account_email)
+	var aid0 := str(gs.account_id)
+	OS.set_environment("TURTLE_SUPABASE", "https://example.invalid")
+	ProjectSettings.set_setting("turtle/supabase_anon_key", "sb_publishable_forgate")
+	gs.account_id = "ae08e589-1111-2222-3333-444455556666"
+	## 两种账号态都量: 未绑定(警示橙那行最长) / 已绑定(头行最长)。
+	## ★账号行的**行数与字长都随状态变**, 而写死的 y 只对其中一种碰巧成立 —— 所以要穷举状态。
+	for mail in ["", "someone@example.com"]:
+		gs.account_email = mail
+		var inst = ps.instantiate()
+		add_child(inst)
+		if inst is Control:
+			(inst as Control).set_anchors_preset(Control.PRESET_TOP_LEFT)
+			(inst as Control).size = Vector2(1280, 720)
+		for _i in range(16):
+			await get_tree().process_frame
+		var tag := "未绑定" if mail == "" else "已绑定"
+		## ★分母①: 账号那几行真的建出来了 —— 没建出来的话下面全是空检查
+		var acct := 0
+		for n in _walk_ios(inst):
+			if n is Control and str(n.name).begins_with("AcctRow"):
+				acct += 1
+		_ok("SETTINGS_NO_OVERLAP[%s] ★分母: 账号行真的在场(%d 个 AcctRow* 节点)" % [tag, acct],
+			acct >= 3, "< 3 就是后端没配上, 这一节量的会是另一屏")
+		_ok("SETTINGS_NO_OVERLAP[%s] ★分母: 没立起绑定屏(立了就把整页藏掉了)" % tag,
+			inst._email_layer == null or not is_instance_valid(inst._email_layer))
+		## ── 收集 ──
+		var hits: Array = []      # 可点区域(取最外层)
+		var inks: Array = []      # 字的 ink
+		for n in _walk_ios(inst):
+			if not (n is Control) or not (n as Control).is_visible_in_tree():
+				continue
+			var c := n as Control
+			var r: Rect2 = c.get_global_rect()
+			if r.size.x <= 0.5 or r.size.y <= 0.5:
+				continue
+			if r.size.x >= 1279.0 and r.size.y >= 719.0:
+				continue          # 铺满全屏的背景/遮罩: 它本来就该盖住一切
+			if c is Label and str((c as Label).text).strip_edges() != "":
+				inks.append({"r": ink._ink_rect(c as Label), "t": str((c as Label).text), "n": c})
+			var clickable: bool = (c is BaseButton and not (c as BaseButton).disabled) \
+				or (not (c is BaseButton) and c.mouse_filter == Control.MOUSE_FILTER_STOP)
+			if clickable and not _has_hit_ancestor(c, inst):
+				hits.append({"r": r, "t": _hit_tag(c), "n": c})
+		print("  [分母] SETTINGS_NO_OVERLAP[%s]: 可点区域 %d 个 / 有字的 Label %d 个" % [
+			tag, hits.size(), inks.size()])
+		_ok("SETTINGS_NO_OVERLAP[%s] ★分母: 扫到可点区域(0 个 = 空检查)" % tag, hits.size() >= 6,
+			"%d 个" % hits.size())
+		_ok("SETTINGS_NO_OVERLAP[%s] ★分母: 扫到字(0 条 = 空检查)" % tag, inks.size() >= 6,
+			"%d 条" % inks.size())
+		## ── ① 可点区域两两不重叠 ──
+		var bad_hit: Array = []
+		for i in range(hits.size()):
+			for j in range(i + 1, hits.size()):
+				var a = hits[i]
+				var b = hits[j]
+				if _nested_ios(a["n"], b["n"]) or _nested_ios(b["n"], a["n"]):
+					continue
+				var it: Rect2 = (a["r"] as Rect2).intersection(b["r"])
+				if it.size.x > 0.5 and it.size.y > 0.5:
+					bad_hit.append("%s × %s 压 %.0f×%.0f" % [
+						str(a["t"]), str(b["t"]), it.size.x, it.size.y])
+		_ok("SETTINGS_NO_OVERLAP[%s] ★★任意两个可点区域不重叠(重叠=后画的吃掉先画的)" % tag,
+			bad_hit.is_empty(), " / ".join(bad_hit))
+		## ── ② 字的 ink 两两不重叠 ──
+		var bad_ink: Array = []
+		for i2 in range(inks.size()):
+			for j2 in range(i2 + 1, inks.size()):
+				var a2 = inks[i2]
+				var b2 = inks[j2]
+				if _nested_ios(a2["n"], b2["n"]) or _nested_ios(b2["n"], a2["n"]):
+					continue
+				var it2: Rect2 = (a2["r"] as Rect2).intersection(b2["r"])
+				if it2.size.x > 0.5 and it2.size.y > 0.5:
+					bad_ink.append("「%s」× 「%s」压 %.0f×%.0f" % [
+						str(a2["t"]).substr(0, 12), str(b2["t"]).substr(0, 12),
+						it2.size.x, it2.size.y])
+		_ok("SETTINGS_NO_OVERLAP[%s] ★★任意两行字的 ink 不重叠" % tag,
+			bad_ink.is_empty(), " / ".join(bad_ink))
+		## ── ③ 全在屏内(流水往下算, 别把最后一块推出屏外) ──
+		var out_of: Array = []
+		for h in hits:
+			var hr: Rect2 = h["r"]
+			if hr.position.y < -0.5 or hr.end.y > 720.5:
+				out_of.append("%s y %.0f..%.0f" % [str(h["t"]), hr.position.y, hr.end.y])
+		_ok("SETTINGS_NO_OVERLAP[%s] ★可点区域全在 720 高之内(流水不许把末块推出屏)" % tag,
+			out_of.is_empty(), " / ".join(out_of))
+		inst.queue_free()
+		await get_tree().process_frame
+		await get_tree().process_frame
+	## 还原(不还原会波及本文件后面的小节与同进程里别的东西)
+	OS.set_environment("TURTLE_SUPABASE", env0)
+	ProjectSettings.set_setting("turtle/supabase_anon_key", key0)
+	gs.account_email = mail0
+	gs.account_id = aid0
+	ink.free()
+
+
+func _walk_ios(n: Node) -> Array:
+	var out: Array = [n]
+	for c in n.get_children():
+		out.append_array(_walk_ios(c))
+	return out
+
+
+func _nested_ios(a: Node, b: Node) -> bool:
+	var p := a.get_parent()
+	while p != null:
+		if p == b:
+			return true
+		p = p.get_parent()
+	return false
+
+
+## 这个可点区域的祖先里已经有一个可点区域了吗 —— 有的话只算最外层那个。
+## ★`_text_button` 是 `Control`(默认 STOP) 套一个 `TextureRect`(也 STOP), 两个同矩形;
+##   不去重的话每颗按钮都会跟自己的壳报一次"重叠"。
+func _has_hit_ancestor(c: Control, root_n: Node) -> bool:
+	var p := c.get_parent()
+	while p != null and p != root_n:
+		if p is Control:
+			var pc := p as Control
+			if pc is BaseButton or pc.mouse_filter == Control.MOUSE_FILTER_STOP:
+				return true
+		p = p.get_parent()
+	return false
+
+
+## 报错里认得出是哪一块: 按钮自己的字 → 子树里第一行字 → 节点名
+func _hit_tag(c: Control) -> String:
+	if c is Button and str((c as Button).text).strip_edges() != "":
+		return "「%s」" % str((c as Button).text).substr(0, 12)
+	for n in _walk_ios(c):
+		if n is Label and str((n as Label).text).strip_edges() != "":
+			return "「%s」" % str((n as Label).text).substr(0, 12)
+	return "%s<%s>" % [str(c.name), c.get_class()]

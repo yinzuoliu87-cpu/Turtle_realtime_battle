@@ -52,8 +52,27 @@ func _ready() -> void:
 	_ok("调试场入口有 gate(在设置页)", set_src.find("OS.is_debug_build() or OS.has_environment(\"DEVTOOLS\")") >= 0)
 	_ok("gate 出现在建按钮之前",
 		set_src.find("OS.is_debug_build()") < set_src.find("_open_debug_arena"))
+	## ★★判据量【需求】不量【源码副本】(2026-09-29): 原文是
+	##   `set_src.find(两个tab + _text_button(W / 2.0, 560.0, 调试场, _open_debug_arena))`
+	##   —— 把产品那一行**整句抄了一份**, 连写死的 y=560 都抄进来了。
+	##   设置页 2026-09-29 改成竖向流水(坐标不再写死)之后这条当场红, 而需求一个字没变
+	##   (memory `fb-hand-rolled-copies-drift`: 抄一次就永远落后一次)。
+	## ⇒ 改成量它真正想守的那件事: 建这颗按钮的那一行**缩进比 `if dev:` 深**
+	##   (= 在分支体里), 而且顺序在它之后。那一行具体长什么样, 与这条需求无关。
+	var _tab := char(9)
+	var _dev_i := set_src.find("var dev := OS.is_debug_build()")
+	var _arena_line := ""
+	for _l in set_src.split(char(10)):
+		if str(_l).find("_open_debug_arena)") >= 0 and str(_l).find("_text_button") >= 0:
+			_arena_line = str(_l)
+			break
+	_ok("★分母: 找到了建调试场按钮那一行", _arena_line != "" and _dev_i >= 0,
+		_arena_line.strip_edges())
 	_ok("★调试场按钮真的挂在 gate 的 true 分支里(不是建完再判)",
-		set_src.find("\t\t_text_button(W / 2.0, 560.0, \"🛠 调试场\", _open_debug_arena)") >= 0)
+		_dev_i >= 0 and _arena_line != "" and _dev_i < set_src.find(_arena_line)
+			and _arena_line.begins_with(_tab + _tab)
+			and not _arena_line.begins_with(_tab + _tab + _tab),
+		"缩进 %d 个 tab" % (_arena_line.length() - _arena_line.lstrip(_tab).length()))
 	_ok("★主菜单已不再建调试场入口(搬家不是复制)",
 		menu_src.find("_debug_arena_entry") < 0 and menu_src.find("_open_debug_arena") < 0)
 	_ok("★DEBUG_EDIT 全项目只有设置页这一个玩家可达的入口在写",
