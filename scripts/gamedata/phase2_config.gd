@@ -862,6 +862,11 @@ static func nickname_suggest_count() -> int:
 	return nickname_stems().size() * NICK_HEADS.size()
 
 
+## 命名随机源。裸的全局 `randi()` 会被 `tools/rng_discipline.py` 判红 ——
+##   那条棘轮护的是「战斗 sim 的确定性不被悄悄回退」, 取名字虽然不在 sim 路径上,
+##   但规矩是**不许裸全局 RNG**, 一处都不例外(留一个口子就没有棘轮了)。
+static var _nick_rng := RandomNumberGenerator.new()
+
 ## 随便给一个候选名。★`avoid` 里那个**不许再给** —— 「换一个」按下去还是同一个名字,
 ##   就是本仓最忌的那种「点了没反应」。池子只剩一个时才会重复(这里 336 个)。
 static func nickname_suggest(avoid: String = "") -> String:
@@ -870,7 +875,7 @@ static func nickname_suggest(avoid: String = "") -> String:
 		return nickname_fallback("")
 	var heads: int = NICK_HEADS.size()
 	var av := nickname_clean(avoid)
-	var start: int = randi() % n
+	var start: int = _nick_rng.randi() % n
 	for k in range(n):
 		var idx: int = (start + k) % n
 		var s := nickname_suggest_at(idx / heads, idx % heads)
