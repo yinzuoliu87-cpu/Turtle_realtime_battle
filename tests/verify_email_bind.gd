@@ -298,4 +298,34 @@ func _t_wire() -> void:
 	n4.free()
 
 	OS.set_environment("TURTLE_SUPABASE", env_bak)
+	## ══════════════════════════════════════════════════════════════════════
+	##  ★★★方法名 → HTTPClient 常量 的那一步 (2026-09-28 真事故)
+	## ══════════════════════════════════════════════════════════════════════
+	## 上面 ⑤⑥ 已经在查「发出去的方法是不是 PUT/POST」—— 但它查的是**传给 `_http`
+	## 的那个字符串**, 而字符串一直是对的(`"PUT"`)。
+	## **被降级的是下一步**: `_method_of("PUT")` 当时掉进 `_: return METHOD_GET`
+	## (那张 match 表里根本没有 PUT) ⇒ 真正发出去的是 **GET /auth/v1/user**。
+	## GET 那个端点合法 ⇒ 服务端回 **200**, 但**请求体被整个忽略** ⇒ 不改邮箱、不发信;
+	## 而客户端只看状态码 ⇒ 屏幕报「验证码发到 X 了」。**玩家永远收不到码。**
+	## ⇒ 判据必须量**翻译之后的那个常量**, 不是翻译之前的那个字符串。
+	##   (这也是「判据量的是我以为的那一步, 而 bug 在下一步」的一个实例。)
+	print("── ⑦ 方法名→常量 的翻译 ──")
+	var _mm := {
+		"GET": HTTPClient.METHOD_GET, "POST": HTTPClient.METHOD_POST,
+		"PUT": HTTPClient.METHOD_PUT, "PATCH": HTTPClient.METHOD_PATCH,
+		"DELETE": HTTPClient.METHOD_DELETE,
+	}
+	var _bad: Array = []
+	for _k in _mm.keys():
+		if SB._method_of(str(_k)) != int(_mm[_k]):
+			_bad.append("%s→%d(该 %d)" % [_k, SB._method_of(str(_k)), int(_mm[_k])])
+	_chk("⑦ ★分母: 这张表真的查了 %d 个方法" % _mm.size(), _mm.size() >= 5)
+	_chk("⑦ ★★★每个方法名都翻译成**对应**的常量(PUT 曾被悄悄降级成 GET)",
+		_bad.is_empty(), str(_bad))
+	## ★分母: 小写也要认(调用处写的是 `"PUT"`, 但别处可能写小写)
+	_chk("⑦ ★大小写不敏感", SB._method_of("put") == HTTPClient.METHOD_PUT)
+	## ★反面: 真正不认识的才退回 GET —— 这一条证明上面那条不是恒真
+	_chk("⑦ ★分母(反面): 不认识的方法才退回 GET",
+		SB._method_of("BOGUS") == HTTPClient.METHOD_GET)
+
 	_chk("★收尾: 后端地址已还原", OS.get_environment("TURTLE_SUPABASE") == env_bak)
