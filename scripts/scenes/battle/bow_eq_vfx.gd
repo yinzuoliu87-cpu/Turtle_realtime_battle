@@ -410,12 +410,6 @@ static func recoil_sum(t: float, shot_times: Array) -> float:
 #  §几何 —— 程序化 ArrayMesh, 零素材
 # ══════════════════════════════════════════════════════════════════
 
-static func _tri(st: SurfaceTool, a: Array, b: Array, c: Array) -> void:
-	for v in [a, b, c]:
-		st.set_color(v[1])
-		st.add_vertex(v[0])
-
-
 ## 一片鲸骨 = 竖长的肋骨条(局部 XY 平面, 长轴 Y, 法线 +Z): 中段平直、两端锥形收口。
 ## ★2026-08-11 重做: 旧版是正方形薄片 + 加色混合, 实拍读成"一撮白色纸屑"(白化 + 无形态,
 ##   验收口径「形状要像题面」—— 鲸骨胸甲的题面是骨头)。顶点色上亮象牙、下沉骨影,
@@ -433,7 +427,7 @@ static func _build_plate() -> ArrayMesh:
 	for i in range(pts.size()):
 		var a2: Vector2 = pts[i]
 		var b2: Vector2 = pts[(i + 1) % pts.size()]
-		_tri(st, [Vector3(0.0, 0.0, 0.0), Color(1.0, 0.99, 0.94, 0.98)],
+		VfxGeom.tri(st, [Vector3(0.0, 0.0, 0.0), Color(1.0, 0.99, 0.94, 0.98)],
 			[Vector3(a2.x, a2.y, 0.0), shade if a2.y < 0.0 else ivory],
 			[Vector3(b2.x, b2.y, 0.0), shade if b2.y < 0.0 else ivory])
 	st.commit(mesh)
@@ -529,13 +523,13 @@ func _orb_wrap(orb: Node3D) -> void:
 			var t1: float = float(j + 1) / float(seg) * TAU
 			var d0 := Vector3(cos(t0), 0.0, sin(t0))
 			var d1 := Vector3(cos(t1), 0.0, sin(t1))
-			_tri(st, [q * (d0 * (r - bw)), vine], [q * (d0 * (r + bw)), vine], [q * (d1 * (r + bw)), vine])
-			_tri(st, [q * (d0 * (r - bw)), vine], [q * (d1 * (r + bw)), vine], [q * (d1 * (r - bw)), vine])
+			VfxGeom.tri(st, [q * (d0 * (r - bw)), vine], [q * (d0 * (r + bw)), vine], [q * (d1 * (r + bw)), vine])
+			VfxGeom.tri(st, [q * (d0 * (r - bw)), vine], [q * (d1 * (r + bw)), vine], [q * (d1 * (r - bw)), vine])
 		## 每条藤上错开长几片叶: 根在环上, 尖沿径向伸出
 		for lt in ([0.7, 2.8] if float(tilt) > 0.0 else [4.4]):
 			var dl := Vector3(cos(float(lt)), 0.0, sin(float(lt)))
 			var tang := Vector3(-sin(float(lt)), 0.0, cos(float(lt)))
-			_tri(st, [q * ((dl - tang * 0.18) * r), leaf],
+			VfxGeom.tri(st, [q * ((dl - tang * 0.18) * r), leaf],
 				[q * ((dl + tang * 0.18) * r), leaf],
 				[q * (dl * (r * 1.65)), Color(leaf.r, leaf.g, leaf.b, 0.0)])
 	var mesh := ArrayMesh.new()
@@ -600,11 +594,11 @@ func _streak(a: Vector2, b: Vector2, col: Color, half_w_px: float) -> MeshInstan
 	var p1 := [battle._world_pos(a + w, ya), Color(col.r, col.g, col.b, 0.0)]
 	var p2 := [battle._world_pos(neck + w, ya), Color(col.r, col.g, col.b, col.a)]
 	var p3 := [battle._world_pos(neck - w, ya), Color(col.r, col.g, col.b, col.a)]
-	_tri(st, p0, p1, p2)
-	_tri(st, p0, p2, p3)
+	VfxGeom.tri(st, p0, p1, p2)
+	VfxGeom.tri(st, p0, p2, p3)
 	## 箭头: 底边 = 3 倍杆宽、尖恰在 b —— 加色混合下三角重叠处自然比杆亮一档
 	var hw: Vector2 = perp * (half_w_px * 3.0)
-	_tri(st, [battle._world_pos(neck - hw, ya), Color(col.r, col.g, col.b, col.a)],
+	VfxGeom.tri(st, [battle._world_pos(neck - hw, ya), Color(col.r, col.g, col.b, col.a)],
 		[battle._world_pos(neck + hw, ya), Color(col.r, col.g, col.b, col.a)],
 		[battle._world_pos(b, ya), Color(col.r, col.g, col.b, col.a)])
 	## 两对倒刺(藤蔓的荆棘): 杆长 45%/70% 处, 斜向后伸、尖端渐隐
@@ -612,7 +606,7 @@ func _streak(a: Vector2, b: Vector2, col: Color, half_w_px: float) -> MeshInstan
 		var root: Vector2 = a + d * float(f)
 		for s in [1.0, -1.0]:
 			var tip: Vector2 = root - dirn * (half_w_px * 4.0) + perp * (half_w_px * 3.2 * float(s))
-			_tri(st, [battle._world_pos(root - dirn * half_w_px, ya), Color(col.r, col.g, col.b, col.a * 0.8)],
+			VfxGeom.tri(st, [battle._world_pos(root - dirn * half_w_px, ya), Color(col.r, col.g, col.b, col.a * 0.8)],
 				[battle._world_pos(root + dirn * half_w_px, ya), Color(col.r, col.g, col.b, col.a * 0.8)],
 				[battle._world_pos(tip, ya), Color(col.r, col.g, col.b, 0.0)])
 	var mesh := ArrayMesh.new()
@@ -847,7 +841,7 @@ static func _build_rain_field() -> ArrayMesh:
 	for j2 in range(4):
 		var a0: float = float(j2) * TAU / 4.0
 		var a1: float = float(j2 + 1) * TAU / 4.0
-		_tri(st, [Vector3(0, GROUND_Y, 0), hi],
+		VfxGeom.tri(st, [Vector3(0, GROUND_Y, 0), hi],
 			[Vector3(0.06 * cos(a0), GROUND_Y, 0.06 * sin(a0)), dim],
 			[Vector3(0.06 * cos(a1), GROUND_Y, 0.06 * sin(a1)), dim])
 
@@ -859,7 +853,7 @@ static func _build_rain_field() -> ArrayMesh:
 		var tip := Vector3(tipr * cos(th2), GROUND_Y, tipr * sin(th2))
 		var l := Vector3(basr * cos(th2 - 0.06), GROUND_Y, basr * sin(th2 - 0.06))
 		var r := Vector3(basr * cos(th2 + 0.06), GROUND_Y, basr * sin(th2 + 0.06))
-		_tri(st, [tip, hi], [l, dim], [r, dim])
+		VfxGeom.tri(st, [tip, hi], [l, dim], [r, dim])
 
 	var mesh := ArrayMesh.new()
 	st.commit(mesh)
@@ -873,8 +867,8 @@ static func _flat_quad(st: SurfaceTool, r0: float, r1: float, th0: float, th1: f
 	var b := Vector3(r1 * cos(th0), GROUND_Y, r1 * sin(th0))
 	var c := Vector3(r1 * cos(th1), GROUND_Y, r1 * sin(th1))
 	var d := Vector3(r0 * cos(th1), GROUND_Y, r0 * sin(th1))
-	_tri(st, [a, c0], [b, c1], [c, c1])
-	_tri(st, [a, c0], [c, c1], [d, c0])
+	VfxGeom.tri(st, [a, c0], [b, c1], [c, c1])
+	VfxGeom.tri(st, [a, c0], [c, c1], [d, c0])
 
 
 ## 落区标定圈: **展开 → 常驻 → 往中间关闭** 三段(用户 2026-08-12 点名的顺序)。
@@ -977,15 +971,15 @@ static func _build_flying_arrow() -> ArrayMesh:
 		var b := [Vector3(0, L, 0) + axis * 0.35, tail]
 		var c := [Vector3(0, L, 0) - axis * 0.35, tail]
 		var d := [Vector3.ZERO - axis * 0.35, hi]
-		_tri(st, a, b, c)
-		_tri(st, a, c, d)
+		VfxGeom.tri(st, a, b, c)
+		VfxGeom.tri(st, a, c, d)
 		# 箭头: 尖在原点的三角
-		_tri(st, [Vector3.ZERO, hi], [Vector3(0, 0.22, 0) + axis * 1.9, mid],
+		VfxGeom.tri(st, [Vector3.ZERO, hi], [Vector3(0, 0.22, 0) + axis * 1.9, mid],
 			[Vector3(0, 0.22, 0) - axis * 1.9, mid])
 		# 尾羽: 杆尾两片
-		_tri(st, [Vector3(0, L, 0), mid], [Vector3(0, L * 0.74, 0) + axis * 1.7, tail],
+		VfxGeom.tri(st, [Vector3(0, L, 0), mid], [Vector3(0, L * 0.74, 0) + axis * 1.7, tail],
 			[Vector3(0, L * 0.80, 0), tail])
-		_tri(st, [Vector3(0, L, 0), mid], [Vector3(0, L * 0.74, 0) - axis * 1.7, tail],
+		VfxGeom.tri(st, [Vector3(0, L, 0), mid], [Vector3(0, L * 0.74, 0) - axis * 1.7, tail],
 			[Vector3(0, L * 0.80, 0), tail])
 	var mesh := ArrayMesh.new()
 	st.commit(mesh)
@@ -1013,8 +1007,8 @@ static func _build_trail() -> ArrayMesh:
 			var b := [Vector3(0, y1, 0) + axis * w1, c1]
 			var c := [Vector3(0, y1, 0) - axis * w1, c1]
 			var d := [Vector3(0, y0, 0) - axis * w0, c0]
-			_tri(st, a, b, c)
-			_tri(st, a, c, d)
+			VfxGeom.tri(st, a, b, c)
+			VfxGeom.tri(st, a, c, d)
 	var mesh := ArrayMesh.new()
 	st.commit(mesh)
 	return mesh
@@ -1051,7 +1045,7 @@ static func _build_shadow_disc() -> ArrayMesh:
 	for j in range(24):
 		var t0: float = float(j) / 24.0 * TAU
 		var t1: float = float(j + 1) / 24.0 * TAU
-		_tri(st, [Vector3(0, GROUND_Y, 0), Color(1, 1, 1, 0.9)],
+		VfxGeom.tri(st, [Vector3(0, GROUND_Y, 0), Color(1, 1, 1, 0.9)],
 			[Vector3(cos(t0), GROUND_Y, sin(t0)), Color(1, 1, 1, 0.0)],
 			[Vector3(cos(t1), GROUND_Y, sin(t1)), Color(1, 1, 1, 0.0)])
 	var mesh := ArrayMesh.new()
@@ -1077,22 +1071,22 @@ func _build_rain_arrow(run: float, h_px: float) -> ArrayMesh:
 		var p1 := [a + axis, Color(col.r, col.g, col.b, 0.0)]
 		var p2 := [b + axis, col]
 		var p3 := [b - axis, col]
-		_tri(st, p0, p1, p2)
-		_tri(st, p0, p2, p3)
+		VfxGeom.tri(st, p0, p1, p2)
+		VfxGeom.tri(st, p0, p2, p3)
 	## 箭头: 沿杆向的双面三角尖(两个正交平面各一片), 尖恰在落点 b
 	var dirv: Vector3 = (b - a).normalized()
 	var side := Vector3(0.0, 0.0, 1.0)
 	var up2: Vector3 = dirv.cross(side).normalized()
 	var neck: Vector3 = b - dirv * (14.0 * ws)
 	for hx in [side * (half * 2.6), up2 * (half * 2.6)]:
-		_tri(st, [neck - hx, col], [neck + hx, col], [b, col])
+		VfxGeom.tri(st, [neck - hx, col], [neck + hx, col], [b, col])
 	## 尾羽: 杆长 65% 处(alpha 梯度到这已有 ~0.65)两对小斜羽, 斜向后、尖端渐隐
 	var tail: Vector3 = a + (b - a) * 0.65
 	var fcol := Color(col.r, col.g, col.b, 0.65)
 	for fx in [side, up2]:
 		for sgn in [1.0, -1.0]:
 			var tip2: Vector3 = tail - dirv * (10.0 * ws) + fx * (float(sgn) * 7.0 * ws)
-			_tri(st, [tail - dirv * (2.5 * ws), fcol], [tail + dirv * (2.5 * ws), fcol],
+			VfxGeom.tri(st, [tail - dirv * (2.5 * ws), fcol], [tail + dirv * (2.5 * ws), fcol],
 				[tip2, Color(col.r, col.g, col.b, 0.0)])
 	var mesh := ArrayMesh.new()
 	st.commit(mesh)
@@ -1162,8 +1156,8 @@ func _bolt_hit_mark(at: Vector2, dirn: Vector2, k: int) -> MeshInstance3D:
 		var p1 := [battle._world_pos(at - ax * arm + px * w, ya), col]
 		var p2 := [battle._world_pos(at + ax * arm + px * w, ya), col]
 		var p3 := [battle._world_pos(at + ax * arm - px * w, ya), col]
-		_tri(st, p0, p1, p2)
-		_tri(st, p0, p2, p3)
+		VfxGeom.tri(st, p0, p1, p2)
+		VfxGeom.tri(st, p0, p2, p3)
 	var mesh := ArrayMesh.new()
 	st.commit(mesh)
 	var m := _mat(true, 13)
@@ -1194,10 +1188,10 @@ func _pierce_hits(from: Vector2, dirn: Vector2, len_px: float, cuts: Array) -> M
 		for ang in [0.7853981633974483, 2.356194490192345]:   # ±45°: X 形的两根斜杆(π/4 与 3π/4)
 			var ax: Vector2 = (d * cos(float(ang)) + perp * sin(float(ang))) * 13.0
 			var aw: Vector2 = Vector2(-ax.y, ax.x).normalized() * 2.6
-			_tri(st, [battle._world_pos(c0 - ax - aw, ya), Color(col.r, col.g, col.b, a)],
+			VfxGeom.tri(st, [battle._world_pos(c0 - ax - aw, ya), Color(col.r, col.g, col.b, a)],
 				[battle._world_pos(c0 - ax + aw, ya), Color(col.r, col.g, col.b, a)],
 				[battle._world_pos(c0 + ax + aw, ya), Color(col.r, col.g, col.b, a)])
-			_tri(st, [battle._world_pos(c0 - ax - aw, ya), Color(col.r, col.g, col.b, a)],
+			VfxGeom.tri(st, [battle._world_pos(c0 - ax - aw, ya), Color(col.r, col.g, col.b, a)],
 				[battle._world_pos(c0 + ax + aw, ya), Color(col.r, col.g, col.b, a)],
 				[battle._world_pos(c0 + ax - aw, ya), Color(col.r, col.g, col.b, a)])
 	## 弩矢镖: 菱形头(尖在线末端) + 两片斜尾翼
@@ -1206,11 +1200,11 @@ func _pierce_hits(from: Vector2, dirn: Vector2, len_px: float, cuts: Array) -> M
 	var back: Vector2 = tip - d * 40.0
 	var da: float = tracer_alpha(cuts.size())
 	var wv: Vector2 = perp * 6.0
-	_tri(st, [battle._world_pos(mid - wv, ya), Color(col.r, col.g, col.b, da)],
+	VfxGeom.tri(st, [battle._world_pos(mid - wv, ya), Color(col.r, col.g, col.b, da)],
 		[battle._world_pos(mid + wv, ya), Color(col.r, col.g, col.b, da)],
 		[battle._world_pos(tip, ya), Color(col.r, col.g, col.b, da)])
 	for s in [1.0, -1.0]:
-		_tri(st, [battle._world_pos(mid, ya), Color(col.r, col.g, col.b, da)],
+		VfxGeom.tri(st, [battle._world_pos(mid, ya), Color(col.r, col.g, col.b, da)],
 			[battle._world_pos(back + perp * (11.0 * float(s)), ya), Color(col.r, col.g, col.b, da * 0.6)],
 			[battle._world_pos(back, ya), Color(col.r, col.g, col.b, da * 0.8)])
 	var mesh := ArrayMesh.new()

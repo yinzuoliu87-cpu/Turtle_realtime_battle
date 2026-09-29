@@ -557,14 +557,14 @@ static func _build_turret_base() -> ArrayMesh:
 	for k in range(6):
 		var t0: float = float(k) * TAU / 6.0
 		var t1: float = float(k + 1) * TAU / 6.0
-		_tri3(st, [Vector3(cos(t0), 0.0, sin(t0)), lo], [Vector3(cos(t0), 1.0, sin(t0)), mid],
+		VfxGeom.tri(st, [Vector3(cos(t0), 0.0, sin(t0)), lo], [Vector3(cos(t0), 1.0, sin(t0)), mid],
 			[Vector3(cos(t1), 1.0, sin(t1)), mid])
-		_tri3(st, [Vector3(cos(t0), 0.0, sin(t0)), lo], [Vector3(cos(t1), 1.0, sin(t1)), mid],
+		VfxGeom.tri(st, [Vector3(cos(t0), 0.0, sin(t0)), lo], [Vector3(cos(t1), 1.0, sin(t1)), mid],
 			[Vector3(cos(t1), 0.0, sin(t1)), lo])
 	for k2 in range(6):
 		var u0: float = float(k2) * TAU / 6.0
 		var u1: float = float(k2 + 1) * TAU / 6.0
-		_tri3(st, [Vector3(0.0, 1.02, 0.0), hi],
+		VfxGeom.tri(st, [Vector3(0.0, 1.02, 0.0), hi],
 			[Vector3(cos(u0) * 0.92, 1.0, sin(u0) * 0.92), mid],
 			[Vector3(cos(u1) * 0.92, 1.0, sin(u1) * 0.92), mid])
 	return _commit3(st)
@@ -617,9 +617,9 @@ func gun_laser(from2d: Vector2, dir2d: Vector2, len_px: float) -> MeshInstance3D
 		var c: Color = layer[1]
 		## 尾端(炮口)最亮, 远端稍收 —— 激光是从炮口射出去的, 不是两头一样亮
 		var c_far := Color(c.r, c.g, c.b, c.a * 0.55)
-		_tri3(st, [battle._world_pos(a - perp * w, ya), c], [battle._world_pos(a + perp * w, ya), c],
+		VfxGeom.tri(st, [battle._world_pos(a - perp * w, ya), c], [battle._world_pos(a + perp * w, ya), c],
 			[battle._world_pos(b + perp * w * 0.6, ya), c_far])
-		_tri3(st, [battle._world_pos(a - perp * w, ya), c], [battle._world_pos(b + perp * w * 0.6, ya), c_far],
+		VfxGeom.tri(st, [battle._world_pos(a - perp * w, ya), c], [battle._world_pos(b + perp * w * 0.6, ya), c_far],
 			[battle._world_pos(b - perp * w * 0.6, ya), c_far])
 	var mesh := ArrayMesh.new()
 	st.commit(mesh)
@@ -642,10 +642,10 @@ func gun_laser_hit(at2d: Vector2, dir2d: Vector2) -> MeshInstance3D:
 	for ax in [[d, perp], [perp, d]]:
 		var u: Vector2 = ax[0]
 		var v: Vector2 = ax[1]
-		_tri3(st, [battle._world_pos(at2d - u * LASER_HIT_ARM, ya), Color(hot.r, hot.g, hot.b, 0.0)],
+		VfxGeom.tri(st, [battle._world_pos(at2d - u * LASER_HIT_ARM, ya), Color(hot.r, hot.g, hot.b, 0.0)],
 			[battle._world_pos(at2d + v * 4.0, ya), hot],
 			[battle._world_pos(at2d - v * 4.0, ya), hot])
-		_tri3(st, [battle._world_pos(at2d + u * LASER_HIT_ARM, ya), Color(hot.r, hot.g, hot.b, 0.0)],
+		VfxGeom.tri(st, [battle._world_pos(at2d + u * LASER_HIT_ARM, ya), Color(hot.r, hot.g, hot.b, 0.0)],
 			[battle._world_pos(at2d + v * 4.0, ya), hot],
 			[battle._world_pos(at2d - v * 4.0, ya), hot])
 	## 外环(细): 命中处炸开的一圈
@@ -654,10 +654,10 @@ func gun_laser_hit(at2d: Vector2, dir2d: Vector2) -> MeshInstance3D:
 		var t1: float = float(k + 1) * TAU / 20.0
 		var r0 := LASER_HIT_ARM * 0.52
 		var r1 := LASER_HIT_ARM * 0.66
-		_tri3(st, [battle._world_pos(at2d + Vector2(cos(t0), sin(t0)) * r0, ya), warm],
+		VfxGeom.tri(st, [battle._world_pos(at2d + Vector2(cos(t0), sin(t0)) * r0, ya), warm],
 			[battle._world_pos(at2d + Vector2(cos(t0), sin(t0)) * r1, ya), Color(warm.r, warm.g, warm.b, 0.0)],
 			[battle._world_pos(at2d + Vector2(cos(t1), sin(t1)) * r1, ya), Color(warm.r, warm.g, warm.b, 0.0)])
-		_tri3(st, [battle._world_pos(at2d + Vector2(cos(t0), sin(t0)) * r0, ya), warm],
+		VfxGeom.tri(st, [battle._world_pos(at2d + Vector2(cos(t0), sin(t0)) * r0, ya), warm],
 			[battle._world_pos(at2d + Vector2(cos(t1), sin(t1)) * r1, ya), Color(warm.r, warm.g, warm.b, 0.0)],
 			[battle._world_pos(at2d + Vector2(cos(t1), sin(t1)) * r0, ya), warm])
 	var mesh := ArrayMesh.new()
@@ -807,10 +807,10 @@ static func _build_emitter_rings() -> ArrayMesh:
 			var t0: float = float(k) * TAU / 36.0
 			var t1: float = float(k + 1) * TAU / 36.0
 			## 环立在 XZ 平面(贴地)但抬到炮台顶 —— 从侧面看是一圈光箍
-			_tri3(st, [Vector3(cos(t0) * ri, 0.0, sin(t0) * ri), c],
+			VfxGeom.tri(st, [Vector3(cos(t0) * ri, 0.0, sin(t0) * ri), c],
 				[Vector3(cos(t0) * ro, 0.0, sin(t0) * ro), c],
 				[Vector3(cos(t1) * ro, 0.0, sin(t1) * ro), c])
-			_tri3(st, [Vector3(cos(t0) * ri, 0.0, sin(t0) * ri), c],
+			VfxGeom.tri(st, [Vector3(cos(t0) * ri, 0.0, sin(t0) * ri), c],
 				[Vector3(cos(t1) * ro, 0.0, sin(t1) * ro), c],
 				[Vector3(cos(t1) * ri, 0.0, sin(t1) * ri), c])
 	return _commit3(st)
@@ -837,10 +837,10 @@ static func _build_star_wave() -> ArrayMesh:
 			var a_out: float = float(seg3[3])
 			var ri1: float = float(seg3[0]) * w1
 			var ro1: float = float(seg3[2]) * w1
-			_tri3(st, [Vector3(cos(t0) * ri0, GROUND_Y, sin(t0) * ri0), Color(1, 1, 1, a_in)],
+			VfxGeom.tri(st, [Vector3(cos(t0) * ri0, GROUND_Y, sin(t0) * ri0), Color(1, 1, 1, a_in)],
 				[Vector3(cos(t0) * ro0, GROUND_Y, sin(t0) * ro0), Color(1, 1, 1, a_out)],
 				[Vector3(cos(t1) * ro1, GROUND_Y, sin(t1) * ro1), Color(1, 1, 1, a_out)])
-			_tri3(st, [Vector3(cos(t0) * ri0, GROUND_Y, sin(t0) * ri0), Color(1, 1, 1, a_in)],
+			VfxGeom.tri(st, [Vector3(cos(t0) * ri0, GROUND_Y, sin(t0) * ri0), Color(1, 1, 1, a_in)],
 				[Vector3(cos(t1) * ro1, GROUND_Y, sin(t1) * ro1), Color(1, 1, 1, a_out)],
 				[Vector3(cos(t1) * ri1, GROUND_Y, sin(t1) * ri1), Color(1, 1, 1, a_in)])
 	## ② 放射星尾: 冠外一条条向外拉长的细尾(长度按序号错落 —— 星浪不是齐头并进)
@@ -848,7 +848,7 @@ static func _build_star_wave() -> ArrayMesh:
 		var th: float = float(j) * TAU / float(WAVE_RAYS) + 0.07
 		var ln: float = [0.16, 0.09, 0.13, 0.06][j % 4]
 		var hw: float = 0.005
-		_tri3(st, [Vector3(cos(th - hw) * 0.99, GROUND_Y, sin(th - hw) * 0.99), Color(1, 1, 1, 0.85)],
+		VfxGeom.tri(st, [Vector3(cos(th - hw) * 0.99, GROUND_Y, sin(th - hw) * 0.99), Color(1, 1, 1, 0.85)],
 			[Vector3(cos(th) * (1.0 + ln), GROUND_Y, sin(th) * (1.0 + ln)), Color(1, 1, 1, 0.0)],
 			[Vector3(cos(th + hw) * 0.99, GROUND_Y, sin(th + hw) * 0.99), Color(1, 1, 1, 0.85)])
 	return _commit3(st)
@@ -1006,10 +1006,10 @@ static func _build_rune_ring() -> ArrayMesh:
 	for k in range(48):
 		var t0: float = float(k) * TAU / 48.0
 		var t1: float = float(k + 1) * TAU / 48.0
-		_tri3(st, [Vector3(cos(t0) * 0.94, GROUND_Y, sin(t0) * 0.94), mid],
+		VfxGeom.tri(st, [Vector3(cos(t0) * 0.94, GROUND_Y, sin(t0) * 0.94), mid],
 			[Vector3(cos(t0), GROUND_Y, sin(t0)), hi],
 			[Vector3(cos(t1), GROUND_Y, sin(t1)), hi])
-		_tri3(st, [Vector3(cos(t0) * 0.94, GROUND_Y, sin(t0) * 0.94), mid],
+		VfxGeom.tri(st, [Vector3(cos(t0) * 0.94, GROUND_Y, sin(t0) * 0.94), mid],
 			[Vector3(cos(t1), GROUND_Y, sin(t1)), hi],
 			[Vector3(cos(t1) * 0.94, GROUND_Y, sin(t1) * 0.94), mid])
 	## 刻痕: 环外一圈短齿(长短交替 —— 齐长的一圈齿会读成锯片)
@@ -1017,7 +1017,7 @@ static func _build_rune_ring() -> ArrayMesh:
 		var th: float = float(j) * TAU / float(ENCHANT_RUNES)
 		var ln: float = 1.0 + ([0.20, 0.12][j % 2])
 		var hw := 0.035
-		_tri3(st, [Vector3(cos(th - hw), GROUND_Y, sin(th - hw)), hi],
+		VfxGeom.tri(st, [Vector3(cos(th - hw), GROUND_Y, sin(th - hw)), hi],
 			[Vector3(cos(th) * ln, GROUND_Y, sin(th) * ln), Color(1, 1, 1, 0.0)],
 			[Vector3(cos(th + hw), GROUND_Y, sin(th + hw)), hi])
 	return _commit3(st)
@@ -1115,9 +1115,9 @@ static func _build_blood_wisp() -> ArrayMesh:
 		var w1: float = sin(PI * y1) * 0.5 + 0.12
 		var a0: float = 1.0 - y0
 		var a1: float = 1.0 - y1
-		_tri3(st, [Vector3(-w0, y0, 0.0), Color(1, 1, 1, a0)],
+		VfxGeom.tri(st, [Vector3(-w0, y0, 0.0), Color(1, 1, 1, a0)],
 			[Vector3(w0, y0, 0.0), Color(1, 1, 1, a0)], [Vector3(w1, y1, 0.0), Color(1, 1, 1, a1)])
-		_tri3(st, [Vector3(-w0, y0, 0.0), Color(1, 1, 1, a0)],
+		VfxGeom.tri(st, [Vector3(-w0, y0, 0.0), Color(1, 1, 1, a0)],
 			[Vector3(w1, y1, 0.0), Color(1, 1, 1, a1)], [Vector3(-w1, y1, 0.0), Color(1, 1, 1, a1)])
 	return _commit3(st)
 
@@ -1254,8 +1254,8 @@ static func _build_reap_orb() -> ArrayMesh:
 					var a: float = aa * (0.45 + 0.55 * sin(ph))
 					v.append([Vector3(sin(ph) * cos(th) * rr, cos(ph) * rr, sin(ph) * sin(th) * rr),
 						Color(1, 1, 1, a)])
-				_tri3(st, v[0], v[1], v[2])
-				_tri3(st, v[0], v[2], v[3])
+				VfxGeom.tri(st, v[0], v[1], v[2])
+				VfxGeom.tri(st, v[0], v[2], v[3])
 	return _commit3(st)
 
 
@@ -1325,23 +1325,17 @@ static func _build_turret_barrel() -> ArrayMesh:
 	var mid := Color(1, 1, 1, 0.70)
 	var w := 0.24
 	for axis in [Vector3(0, w, 0), Vector3(0, 0, w)]:
-		_tri3(st, [Vector3.ZERO + axis, mid], [Vector3(1.0, 0, 0) + axis, hi],
+		VfxGeom.tri(st, [Vector3.ZERO + axis, mid], [Vector3(1.0, 0, 0) + axis, hi],
 			[Vector3(1.0, 0, 0) - axis, hi])
-		_tri3(st, [Vector3.ZERO + axis, mid], [Vector3(1.0, 0, 0) - axis, hi],
+		VfxGeom.tri(st, [Vector3.ZERO + axis, mid], [Vector3(1.0, 0, 0) - axis, hi],
 			[Vector3.ZERO - axis, mid])
 	for k in range(8):
 		var t0: float = float(k) * TAU / 8.0
 		var t1: float = float(k + 1) * TAU / 8.0
-		_tri3(st, [Vector3(1.0, 0, 0), hi],
+		VfxGeom.tri(st, [Vector3(1.0, 0, 0), hi],
 			[Vector3(1.0, cos(t0) * w * 1.7, sin(t0) * w * 1.7), hi],
 			[Vector3(1.0, cos(t1) * w * 1.7, sin(t1) * w * 1.7), mid])
 	return _commit3(st)
-
-
-static func _tri3(st: SurfaceTool, a: Array, b: Array, c: Array) -> void:
-	for v in [a, b, c]:
-		st.set_color(v[1])
-		st.add_vertex(v[0])
 
 
 static func _commit3(st: SurfaceTool) -> ArrayMesh:
@@ -1440,15 +1434,15 @@ static func _build_turret_dish() -> ArrayMesh:
 		var t0: float = float(k) * TAU / 28.0
 		var t1: float = float(k + 1) * TAU / 28.0
 		var ri := 0.82
-		_tri3(st, [Vector3(cos(t0) * ri, sin(t0) * ri, 0.0), mid],
+		VfxGeom.tri(st, [Vector3(cos(t0) * ri, sin(t0) * ri, 0.0), mid],
 			[Vector3(cos(t0), sin(t0), 0.0), hi], [Vector3(cos(t1), sin(t1), 0.0), hi])
-		_tri3(st, [Vector3(cos(t0) * ri, sin(t0) * ri, 0.0), mid],
+		VfxGeom.tri(st, [Vector3(cos(t0) * ri, sin(t0) * ri, 0.0), mid],
 			[Vector3(cos(t1), sin(t1), 0.0), hi], [Vector3(cos(t1) * ri, sin(t1) * ri, 0.0), mid])
 	## 三根辐条
 	for j in range(3):
 		var a: float = float(j) * TAU / 3.0
 		var w := 0.07
-		_tri3(st, [Vector3(0, 0, 0), hi],
+		VfxGeom.tri(st, [Vector3(0, 0, 0), hi],
 			[Vector3(cos(a - w), sin(a - w), 0.0), mid], [Vector3(cos(a + w), sin(a + w), 0.0), mid])
 	return _commit3(st)
 

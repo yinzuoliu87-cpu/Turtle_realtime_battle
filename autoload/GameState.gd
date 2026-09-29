@@ -598,7 +598,17 @@ func gauntlet_line_reached() -> bool:
 
 ## 现在能不能开一局闯关赛。三个条件缺一不可, 每条都有自己的话要对玩家说(见主菜单)。
 func gauntlet_can_play(now: int = 0) -> bool:
-	var ts: int = now if now > 0 else int(Time.get_unix_time_from_system())
+	## ★兜底走全局时间缝 `_P2.now_utc()` 而不是就地读系统钟(2026-09-29)。
+	##   `phase2_config.now_override_ts == 0` 时**逐字节等价**于原来那一行
+	##   (它自己就是 `int(Time.get_unix_time_from_system())`) ⇒ 玩家路径一字未动。
+	## ★★为什么要改: 本函数原来是全仓**唯一不听该缝**的时钟判据 ——
+	##   门禁/实拍把整屏钉在周六, 它依旧回答真实的周二 ⇒ 一屏两条钟
+	##   (探针 `tests/_probe_twoclocks.gd`: 10 个时刻里 5 个答案相反)。
+	## ⚠ `ensure_season()` / `is_season_expired()` / `start_new_season()` 那几处
+	##   **故意没动**: 它们会 `save()` / 滚下一轮 / 补发配额 —— 接上缝之后,
+	##   凡钉过时刻的门禁(verify_bracket_map / close_lockout / matchmaking_phase)
+	##   都可能被顺手滚掉一轮存档。那是另一件事, 不在这条账里。
+	var ts: int = now if now > 0 else int(_P2.now_utc())
 	if _P2.phase_at_utc(ts) != _P2.PHASE_GAUNTLET:
 		return false                      # 今天不是周六
 	if not gauntlet_eligible():
@@ -796,7 +806,17 @@ func consume_ranked_quota() -> void:
 
 
 func ranked_quota_full(now: int = 0) -> bool:
-	var ts: int = now if now > 0 else int(Time.get_unix_time_from_system())
+	## ★兜底走全局时间缝 `_P2.now_utc()` 而不是就地读系统钟(2026-09-29)。
+	##   `phase2_config.now_override_ts == 0` 时**逐字节等价**于原来那一行
+	##   (它自己就是 `int(Time.get_unix_time_from_system())`) ⇒ 玩家路径一字未动。
+	## ★★为什么要改: 本函数原来是全仓**唯一不听该缝**的时钟判据 ——
+	##   门禁/实拍把整屏钉在周六, 它依旧回答真实的周二 ⇒ 一屏两条钟
+	##   (探针 `tests/_probe_twoclocks.gd`: 10 个时刻里 5 个答案相反)。
+	## ⚠ `ensure_season()` / `is_season_expired()` / `start_new_season()` 那几处
+	##   **故意没动**: 它们会 `save()` / 滚下一轮 / 补发配额 —— 接上缝之后,
+	##   凡钉过时刻的门禁(verify_bracket_map / close_lockout / matchmaking_phase)
+	##   都可能被顺手滚掉一轮存档。那是另一件事, 不在这条账里。
+	var ts: int = now if now > 0 else int(_P2.now_utc())
 	if not _P2.phase_uses_ranked_quota(_P2.phase_at_utc(ts)):
 		return false                      # 闯关赛/决赛日不吃积分赛配额, 自然谈不上打满
 	return int(ranked_used) >= int(_P2.RANKED_QUOTA)

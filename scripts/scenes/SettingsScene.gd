@@ -442,20 +442,35 @@ var _email_ver: Label = null
 ## ★数字的依据分两类, 别混:
 ##   · `_W_ROW_H = 81` —— **不是我拍的**: 本仓 `TOUCH_MIN` 就是 81px(= iOS HIG 44pt),
 ##     `top_bar.gd` / `verify_ui_consistency` 一直用它。
-##   · `_W_ROW_GAP = 12` —— 这一条**是拍的**(本轮任务给的下限)。它只要 ≥ 手指
-##     误差就够, 没有权威出处; 真要改先量同类游戏, 别拿它当定律。
+##   · `_W_ROW_GAP = 21` —— **2026-09-29 由上面那道除法反解出来的**, 不再是拍的。
+##     参考真值(`python tools/login_screen_audit.py thresholds`, 13 屏逐像素):
+##     最小相邻间隙中位 **23.3pt(≈43px)**, 地板 Hungry Shark **8.2pt** / Free Fire 9.2pt。
+##     原来的 12px = 6.5pt **低于参考里任何一屏**。
+##     往上抬的天花板就是最坏那一档键盘:  3×81 + 2×gap ≤ 286.4  ⇒  gap ≤ 21.7
+##     ⇒ 取 **21px = 11.4pt**(留 1.4px 余量)。
+##     ★★**中位 43px 在「一步三行 44pt」的前提下算不出来**: 3×81 + 2×43 = 329 > 286.4。
+##     要到中位只能一步两行, 那就得分三步 —— 而参考的「分几步」中位数是 **1**,
+##     我们已经是 2 了。抬间隙 ⇔ 多一步, 两头都是参考在管的指标 ⇒ 这一格到此为止。
 ##   · `_W_ROWS = 3` —— **量出来的**, 就是上面那道除法。
+## 墙背后的游戏美术。★抽到外面了(`RefCounted` + 构造注入, 拆法照
+##   `scripts/scenes/battle/dmg_stats_panel.gd`): 它不在任何每帧链上, 纯摆设,
+##   素材路径与摆位几何都在那边(`WALL_ART_TEX` / `place_logo`)。
+const _WALL_ART := preload("res://scripts/scenes/settings/login_wall_art.gd")
 const _W_PAD := 40.0            ## 框内左右边距(沿用旧值)
 const _W_CW := 440.0            ## 内容宽 = 520 - 2×40
 const _W_ROW_H := 81.0          ## 一行靶子的高 = 44pt
-const _W_ROW_GAP := 12.0        ## 相邻靶子之间的空
+const _W_ROW_GAP := 21.0        ## 相邻靶子之间的空(由净空除法反解, 见上)
 const _W_ROW_Y0 := 158.0        ## 第一行靶子的顶(标题+说明+小字之下)
 const _W_ROWS := 3              ## 一步最多三行 —— 见上面那道除法
-## 次要按钮(「关闭」)与主按钮并排时的宽度切分: 260 + 12 + 168 = 440。
+## 副按钮(「关闭」/「换一个」)与主控件并排时的宽度切分: 260 + 21 + 159 = 440。
 ## ★并排**不占新的一行** ⇒ band 不变, 键盘让位那道判据照样成立。
+## ★横向的空**单立一个常量**: 竖向那道净空除法只管竖向,
+##   两边共用一个常量的话, 以后竖向被键盘逼回去会把横向也一起拽回去。
+const _W_COL_GAP := 21.0
 const _W_MAIN_W := 260.0
-const _W_SIDE_W := 168.0
-const _W_SIDE_X := _W_PAD + _W_MAIN_W + _W_ROW_GAP
+## ★算出来而不是写死: 改了 `_W_COL_GAP` 而忘了改它, 并排那一行就会戳出框外。
+const _W_SIDE_W := _W_CW - _W_MAIN_W - _W_COL_GAP
+const _W_SIDE_X := _W_PAD + _W_MAIN_W + _W_COL_GAP
 
 ## 现在停在第几步(1 = 填昵称/邮箱, 2 = 填验证码)。
 var _email_step: int = 1
@@ -466,6 +481,13 @@ var _email_rows2: Array = []
 var _email_hint1: String = ""
 ## 「关闭」—— 只有玩家自己点开的对话框才有。**与主按钮并排**, 不占新的一行。
 var _email_close_btn: Button = null
+## 某一行旁边的**副按钮**: {行控件 → 副按钮}。现在只有昵称那一行的「换一个」。
+## ★做成表而不是再加一个成员: 下一个并排需求就不用再抄一份摆位代码。
+## ★★键是 **Control 对象**(按引用哈希), 不是 Dictionary —— CLAUDE.md §3.2 禁的是
+##   拿**字典**当键(递归哈希会卡死), 节点对象当键是安全的。
+var _email_side: Dictionary = {}
+## 墙背后那张游戏的标。★只墙上有; 位置跟着框走(见 `_email_relayout`)。
+var _email_logo: TextureRect = null
 
 
 ## 框里的一行说明文字。★三处(第一步整段 / 第二步那一句 / 小字)形状一模一样,
@@ -523,14 +545,27 @@ func _email_set_step(step: int) -> void:
 	var rows: Array = _email_rows2 if _email_step == 2 else _email_rows1
 	for c in (_email_rows1 if _email_step == 2 else _email_rows2):
 		(c as Control).visible = false
+		## ★并排的副按钮跟着它那一行走 —— 漏掉这两行, 「换一个」就会在
+		##   第二步飘在验证码框旁边(而那一步没名字可换), 而且会被
+		##   `_email_ctl_band` 算进 band 里。
+		var h0 = _email_side.get(c)
+		if h0 != null and is_instance_valid(h0):
+			(h0 as Control).visible = false
 	var last: int = rows.size() - 1
 	for i in range(rows.size()):
 		var c := rows[i] as Control
 		c.visible = true
-		## 最后一行要是还得给「关闭」让地方, 就让出 260 + 12; 否则整行 440。
-		var w: float = _W_MAIN_W if (i == last and _email_close_btn != null) else _W_CW
+		## 这一行要是得给副按钮(「换一个」)或「关闭」让地方, 就让出
+		## 260 + `_W_COL_GAP`; 否则整行 440。
+		var side = _email_side.get(c)
+		var has_side: bool = side != null and is_instance_valid(side)
+		var w: float = _W_MAIN_W if (has_side or (i == last and _email_close_btn != null)) else _W_CW
 		c.position = Vector2(_W_PAD, _W_ROW_Y0 + float(i) * (_W_ROW_H + _W_ROW_GAP))
 		c.size = Vector2(w, _W_ROW_H)
+		if has_side:
+			(side as Control).visible = true
+			(side as Control).position = Vector2(_W_SIDE_X, c.position.y)
+			(side as Control).size = Vector2(_W_SIDE_W, _W_ROW_H)
 	var bot: float = _W_ROW_Y0 + float(maxi(last, 0)) * (_W_ROW_H + _W_ROW_GAP) + _W_ROW_H
 	if _email_close_btn != null and is_instance_valid(_email_close_btn):
 		_email_close_btn.position = Vector2(_W_SIDE_X, bot - _W_ROW_H)
@@ -598,6 +633,50 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 		return
 	_email_wall = not dismissible
 	_SB_ACC.reset_email_flow()
+	_wall_reset_state()
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.65)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(dim)
+	_email_layer = dim
+	## ★★★这一屏是**每个新玩家看到的第一屏**, 而它原来**一只龟都看不见**。
+	##   探针 `tests/_probe_wall_look.gd` 实测: `_maybe_login_wall` 把 self 下的
+	##   Control **整批藏掉**, 连 `_bg()` 建的底色/平铺砖/渐变一起藏 
+	##   (探针打出来那三个节点都是 visible=false) ⇒ 玩家看到的是一块深蓝面板
+	##   压在**自动载入的 `PersistentBg` 那张平铺花砖**上 —— 全屏没有任何
+	##   属于这个游戏的东西。
+	## ★参考里 Arknights / Free Fire / Disney Mirrorverse / Hungry Shark 的账号控件
+	##   **直接浮在游戏美术上**, 没有对话框、没有纯黑遮罩。
+	## ★★只墙上铺: 玩家自己在设置里点开的那个对话框背后本来就是设置页,
+	##   再铺一层美术只是把他正在看的东西盖掉。
+	if not dismissible:
+		_email_logo = _WALL_ART.build(dim)
+
+	var box := _wall_make_box(dim, dismissible)
+	_wall_title(box, flow, dismissible)
+	_wall_explain(box, flow, dismissible)
+	_wall_build_step1(box, flow)
+	_wall_build_step2(box, flow)
+	_wall_build_footer(box, dim, dismissible)
+
+	## ★★所有行控件的 y / 宽 / 显隐都在 `_email_set_step` 里一处算出来。
+	##   这一行必须在**全部 add_child 之后** —— `ctrl.size = X` 写在 add_child 前不生效。
+	_email_set_step(1)
+	## ★用 Timer 子节点轮询, **不用 `create_timer` 闭包** ——
+	##   树级计时器接闭包会活过场景释放(本仓有一条门禁专门守这个)。
+	var t := Timer.new()
+	t.wait_time = 0.25
+	t.autostart = true
+	t.timeout.connect(_email_poll)
+	dim.add_child(t)
+	_email_poll()
+
+
+## 重开一次就要**清干净**。★抽成一个函数而不是就地写:
+##   新加一个 `_email_*` 成员忘了在这里清, 表现是「第二次打开时摆一批死对象」,
+##   而它只在**关了再开**这个场景里发作(memory `fb-restart-is-a-separate-scenario`)。
+func _wall_reset_state() -> void:
 	## ★★重开一次就要**清干净**: 这几个是成员变量, 不清的话第二次打开
 	##   `_email_rows*` 里还躺着上一次那批已经 `queue_free` 的节点
 	##   ⇒ `_email_set_step` 去摆一批死对象。(「关了再开」是另一个场景, 要单列 —— memory
@@ -613,13 +692,12 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 	_email_hint = null
 	_email_ver = null
 	_nick_edit = null
-	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.65)
-	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	add_child(dim)
-	_email_layer = dim
+	_email_side = {}
+	_email_logo = null
 
+
+## 建框: 金属九宫格 + 从网格算出来的高。★返回那块框, 并已经入树·已经摆好位。
+func _wall_make_box(dim: Control, dismissible: bool) -> Panel:
 	var box := Panel.new()
 	var sb := StyleBoxFlat.new()
 	## ★★2026-09-27 换**金属九宫格框**(和背包/图鉴/战绩/排行榜同一张 panel-frame)。
@@ -653,7 +731,11 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 	_email_box = box
 	dim.add_child(box)
 	_email_relayout()
+	return box
 
+
+## 标题。
+func _wall_title(box: Control, flow: String, dismissible: bool) -> void:
 	var ttl := Label.new()
 	## ★标题**两步共用一份**, 不随步骤换字 —— 墙上那句话是
 	##   `verify_ui_consistency` 的真分母(“墙那句话真的在屏幕上”), 换字就量不到了。
@@ -665,6 +747,9 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 	ttl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(ttl)
 
+
+## 说明文字: 按流程 / 是不是墙 选一段, 再按步切成两份。
+func _wall_explain(box: Control, flow: String, dismissible: bool) -> void:
 	## ★★★说明文字**一个字都不删**(用户 2026-09-24 点名:「没绑邮箱换设备就是丢档,
 	##   这一点要在 UI 上说清楚」)。第一步照旧把**整段**印出来;
 	##   第二步再把**最后那一句**留在屏幕上 —— 墙上那句恰好是
@@ -685,10 +770,21 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 		##   并说清替换之前会先备份(GameState.backup_save)。
 		body = ("用你绑过的邮箱收一个验证码，把那个账号和它的进度取回到这台设备上。\n"
 			+ "⚠ 这台设备现在的进度会被换掉（换之前会先在本机备份一份）。")
-	_email_why = _wall_text(box, body, 13, "#9fb4c8", 58.0, 64.0)
+	## ★★第一步只印**除最后一句以外的全部**。原来第一步把**整段**都印上去,
+	##   而墙上最后那句恰好是「收不到验证码？…」—— 第一步还没发码,
+	##   这句话在那里一点用处也没有, 就是白白多两行字。
+	##   (参考里说明文字的中位数是 **0 行**。我们删不到 0 —— 用户点名
+	##   「换设备会丢档要说清楚」; 但至少不要在用不上的那一步印它。)
+	## ★切点还是作者自己写的换行, **不在这一屏重写文案**。
 	var parts: PackedStringArray = body.split("\n")
+	var head_lines: PackedStringArray = parts.slice(0, maxi(parts.size() - 1, 1))
+	_email_why = _wall_text(box, "\n".join(head_lines), 13, "#9fb4c8", 58.0, 64.0)
 	_email_why2 = _wall_text(box, str(parts[parts.size() - 1]), 13, "#9fb4c8", 58.0, 64.0)
 
+
+## 第一步的三行: 昵称(+「换一个」并排) / 邮箱 / 发验证码。
+## ★那一行小字两步共用一个 Label, 所以它也建在这里。
+func _wall_build_step1(box: Control, flow: String) -> void:
 	## 靶子上方那一行小字。第一步 = 昵称规则(只绑定流程有);
 	## 第二步 = 码发到哪个邮箱了(没这一行, 第二步就是一屏没上下文的空框)。
 	## ★两步共用**一个 Label**, 文字由 `_email_set_step` 统一给 —— 两份各写一份必然漂。
@@ -697,16 +793,30 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 		## ★★昵称(只有绑定流程要填)。用户 2026-09-24:「这个在创建账号应该一起吧」——
 		##   这个项目里玩家感知得到的「创建账号」只有这一处(首启建匈名号是**静默**的)。
 		##   取回流程不填: 那个号已经有昵称了, 跟着账号一起回来。
-		_email_hint1 = "起个名字(%d~%d 个字) —— 排行榜和对阵图上别人看到的就是它" % [
+		_email_hint1 = "起个名字(%d~%d 个字) —— 排行榜上别人看到的就是它，以后随时能改" % [
 			_P2C.NICK_MIN, _P2C.NICK_MAX]
 		_nick_edit = LineEdit.new()
 		_nick_edit.placeholder_text = "你的名字"
-		_nick_edit.text = str(GameState.nickname)
+		## ★★★**预填一个龟世界的随机名** —— 参考里取名那一步的设计目标是
+		##   「玩家一个字都不打也能过去」(Sonic Rumble 预填 `Player_561962` 直接点 OK)。
+		##   而这一屏是每个新玩家开游戏的第一屏, 原来是**空框**: 第一件事就是
+		##   用虚拟键盘打中文 —— 而中文键盘带候选条, 正是把下面那些钮盖住的
+		##   那一档高度(见 `_email_relayout` 头注)。
+		## ★已经有名字的人**不覆盖**: 老玩家升级过来会被墙挡一次, 名字得留住。
+		_nick_edit.text = _P2C.nickname_clean(str(GameState.nickname))
+		if not _P2C.nickname_valid(_nick_edit.text):
+			_nick_edit.text = _P2C.nickname_suggest()
 		_nick_edit.max_length = _P2C.NICK_MAX * 2   # ★按**规范化后**判长度, 这里只防手滑贴一长串
 		_nick_edit.add_theme_font_size_override("font_size", 16)
 		_skin_edit(_nick_edit)
 		box.add_child(_nick_edit)
 		_email_rows1.append(_nick_edit)
+		## ★★「换一个」—— 与昵称框**并排**, 不占新的一行。
+		##   占了就是四行(4×81 + 3×21 = 387), 中文键盘那一档(上限 330)当场破。
+		## ★★★`nickname_suggest(avoid)` 保证给的**不是**现在这个名字 ——
+		##   按下去还是同一个名字, 就是本仓最忌的那种「点了没反应」。
+		_email_side[_nick_edit] = _wall_btn(box, _P2C.NICK_REROLL, func():
+			_nick_edit.text = _P2C.nickname_suggest(_nick_edit.text))
 
 	_email_edit = LineEdit.new()
 	_email_edit.placeholder_text = "你的邮箱"
@@ -724,6 +834,9 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 		_SB_ACC.send_code_async(_email_edit.text, flow))
 	_email_rows1.append(_email_send_btn)
 
+
+## 第二步的三行: 验证码 / 确认 / 回上一步改邮箱。
+func _wall_build_step2(box: Control, flow: String) -> void:
 	_code_edit = LineEdit.new()
 	_code_edit.placeholder_text = "邮件里的验证码"
 	## ★码是纯数字(`verify_code_async` 的提示原话:「把邮件里那串数字填进来」)
@@ -763,6 +876,10 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 		_email_set_step(1))
 	_email_rows2.append(_email_back_btn)
 
+
+## 框底那几样: 状态行 + (墙上的)版本号 / (对话框的)关闭。
+## ★版本号的 y 从 **框自己的高**算, 不再传 `_bh` 进来 —— 传一份数就是抄一份。
+func _wall_build_footer(box: Control, dim: Control, dismissible: bool) -> void:
 	_email_status = Label.new()
 	_email_status.add_theme_font_size_override("font_size", 13)
 	_email_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -783,7 +900,7 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 		## ★位置是**量出来的**不是摆的: 框走 panel-frame 九宫格, 边带 13px。
 		##   `_bh - 44` ⇒ 底 = `_bh - 20`, 离边带内沿还剩 7px。
 		##   ★★**入树之后**再设尺寸(本文件 `why.size` 那段记的同一坑)。
-		_email_ver.position = Vector2(_W_PAD, _bh - 44.0)
+		_email_ver.position = Vector2(_W_PAD, box.size.y - 44.0)
 		_email_ver.size = Vector2(_W_CW, 24)
 	else:
 		## ★★「关闭」与主按钮**并排在同一行**, 不占新的一行 ——
@@ -792,48 +909,6 @@ func _open_email_dialog(flow: String, dismissible: bool = true) -> void:
 		_email_close_btn = _wall_btn(box, "关闭", func():
 			_SB_ACC.reset_email_flow()
 			dim.queue_free(); _email_layer = null; _email_box = null)
-
-	## ★★所有行控件的 y / 宽 / 显隐都在 `_email_set_step` 里一处算出来。
-	##   这一行必须在**全部 add_child 之后** —— `ctrl.size = X` 写在 add_child 前不生效。
-	_email_set_step(1)
-
-	## ★用 Timer 子节点轮询, **不用 `create_timer` 闭包** ——
-	##   树级计时器接闭包会活过场景释放(本仓有一条门禁专门守这个)。
-	var t := Timer.new()
-	t.wait_time = 0.25
-	t.autostart = true
-	t.timeout.connect(_email_poll)
-	dim.add_child(t)
-	_email_poll()
-
-
-# ─── 对话框的位置 = 居中于真实视口 + 给虚拟键盘让位 (2026-09-28) ───────────
-##
-## ══════════════════════════════════════════════════════════════════════
-##  由来: 用户真机报「邮箱注册没用, app 里操作没反应」
-## ══════════════════════════════════════════════════════════════════════
-## 发信层(手工 `PUT /auth/v1/user` 回 200 · 两个邮箱都收到码)与客户端状态机
-## (`tests/_probe_wall_live.gd` 真后端实测 token→sending→sent)都已排除。
-## 剩下**触摸层**这一条没人查过, 探针 `tests/_probe_wall_hit.gd` 量出两件真事:
-##
-##   ① **这堵墙在任何非 16:9 的屏上都不居中。** 原来位置写死成 1280x720 的设计坐标,
-##      而 `project.godot` 是 `canvas_items + expand`(锁受限那一轴) ⇒ iPhone 横屏
-##      视口是 **1560x720** ⇒ 实测框在 x=380, 居中该是 520, **整块偏左 140px**。
-##      iPad 4:3 是 1280x960 ⇒ 竖着也偏(117 vs 该有的 237)。
-##      ★这一屏是**每个新玩家看到的第一屏**, 而全项目别的屏都由 `UIFrame` 居中过;
-##        只有它没有 —— 因为遮罩是满铺层, `UIFrame` 按设计**不收编**满铺层,
-##        于是框跟着遮罩留在了视口坐标系里, 却仍用设计坐标定位。
-##
-##   ② **全仓一处虚拟键盘处理都没有**(`grep -rn virtual_keyboard --include=*.gd` = 0 行)。
-##      iPhone 横屏键盘高 162pt / 屏高 390pt = **41.5%** ⇒ 视口 720 里顶边 y≈421,
-##      而实测「验证码」输入框 421~465、「确认」471~517 —— **两个都在键盘底下**。
-##      中文键盘带候选条再高一档(≈52%) ⇒ 连「发验证码」(363~409)一起埋掉。
-##      ⇒ 玩家点完邮箱框、键盘一弹, 他要按的那个钮就**不在屏幕上了** —— 这正是
-##        「点了没反应」最可能的形状。iOS 上 Godot 的键盘是**盖上来的**, 视口不缩,
-##        不自己读 `virtual_keyboard_get_height()` 让位就一定被埋。
-##
-## ★为什么每帧算而不是建的时候算一次: 键盘是**弹出/收起**的, 位置得跟着走;
-##   而且 `dim` 刚 `add_child` 那一刻锚点还没解算(本文件 `why.size` 那段记的同一坑)。
 func _email_relayout() -> void:
 	if _email_box == null or not is_instance_valid(_email_box):
 		return
@@ -856,6 +931,11 @@ func _email_relayout() -> void:
 		var band: Vector2 = _email_ctl_band()      ## x = 最高可点元素顶, y = 最低可点元素底
 		p.y = minf(p.y, maxf(_KB_GAP - band.x, av.y - kb - band.y - _KB_GAP))
 	_email_box.position = p.round()
+	## 标的位置**跟着框走**: 摆在框左边那块空地的正中, 竖向居中于可用区。
+	## ★它是**背景**, 不跟着键盘让位一起挑 —— 让位是为了让要打字的那几个
+	##   东西露出来, 把一张标也一起往上挑只会把它顶出屏幕。
+	## ★★空地不够宽就**整个不显示**, 而不是压到框上去。
+	_WALL_ART.place_logo(_email_logo, _email_box.position.x, av.y)
 
 
 ## 框里**可点元素**竖向占的那一段(框内局部坐标): x = 最上沿, y = 最下沿。

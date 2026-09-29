@@ -703,6 +703,12 @@ run_audit "tools/const_leftover_audit.py" "ALL OK" "const_leftover_audit (抽了
 run_audit "tools/codex_text_lint.py"     "ALL OK" "codex_text_lint (图鉴文案: 教学味/自夸/开发备注/别家黑话/数字贴字)"
 run_audit "tools/twin_const_audit.py"    "ALL OK" "twin_const (同功能的逻辑侧↔演出侧同名常量取值打架)"
 run_audit "tools/twin_radius_audit.py"   "ALL OK" "twin_radius (判定侧↔演出侧【不同名但同值】的范围常量·同一个数存两份)"
+## ★与上面两条 twin_* 的分工(别合并, 它们各自故意很窄):
+##   · twin_const  只看**同一功能组**(文件名去后缀后同名)里的同名常量 ⇒ 跨功能的一律看不见
+##   · twin_radius 只看**判定侧↔演出侧**的范围常量
+##   · 本条看**跨功能复制的共享原语**: 8 个 `*_vfx.gd` 各手写一份 `_tri` / `_flat` / `RING_LON`,
+##     五个文件五个 stem, twin_const 从来没把它们配成一组。按 **body 哈希**找(改名躲不掉)。
+run_audit "tools/dup_primitive_audit.py" "ALL OK" "dup_primitive (共享几何原语被复制到多个文件·按body哈希·棘轮只减不增)"
 run_audit "tools/glow_ball_audit.py"     "ALL OK" "glow_ball (无含义白球 _make_fire_glow_tex 存量台账·只减不增)"
 ## ★「套了皮, 但其实没套上」——`UISkin.nine_if_big()` 短边 <MIN_FRAME_PX(40) 就**悄悄**
 ##   `return fallback` ⇒ 调用方以为自己套了金属框, 画出来是 StyleBoxFlat = 网页盒, **零报错**。

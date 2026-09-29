@@ -57,8 +57,6 @@ extends RefCounted
 
 ## 贴地几何离地高度(米)。地板在 y=0, 抬一点免 z-fighting(同 shockwave_vfx)。
 const GROUND_Y := 0.06
-## 贴地环的经向分段
-const RING_LON := 48
 
 ## ── 069 ──
 ## 三块糖糕 = 三体等分圆轨道
@@ -321,9 +319,9 @@ static func _build_ring_mesh() -> ArrayMesh:
 	var mesh := ArrayMesh.new()
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for j in range(RING_LON):
-		var t0: float = float(j) / float(RING_LON) * TAU
-		var t1: float = float(j + 1) / float(RING_LON) * TAU
+	for j in range(VfxGeom.RING_LON):
+		var t0: float = float(j) / float(VfxGeom.RING_LON) * TAU
+		var t1: float = float(j + 1) / float(VfxGeom.RING_LON) * TAU
 		for q in [[0.86, 0.0, 0.97, 1.0], [0.97, 1.0, 1.0, 0.55]]:
 			var ri: float = float(q[0])
 			var ai: float = float(q[1])
@@ -348,8 +346,8 @@ static func _build_crown_mesh() -> ArrayMesh:
 		var b := [Vector3(cos(t0), 1.0, sin(t0)), Color(1, 1, 1, 0.0)]
 		var c := [Vector3(cos(t1), 1.0, sin(t1)), Color(1, 1, 1, 0.0)]
 		var d := [Vector3(0.88 * cos(t1), GROUND_Y, 0.88 * sin(t1)), Color(1, 1, 1, 1.0)]
-		_tri(st, a, b, c)
-		_tri(st, a, c, d)
+		VfxGeom.tri(st, a, b, c)
+		VfxGeom.tri(st, a, c, d)
 	st.commit(mesh)
 	return mesh
 
@@ -359,18 +357,15 @@ static func _quad(st: SurfaceTool, ri: float, ai: float, ro: float, ao: float, t
 	var b := _flat_vert(ro, t0, ao)
 	var c := _flat_vert(ro, t1, ao)
 	var d := _flat_vert(ri, t1, ai)
-	_tri(st, a, b, c)
-	_tri(st, a, c, d)
+	VfxGeom.tri(st, a, b, c)
+	VfxGeom.tri(st, a, c, d)
 
 
+## 贴地环顶点。几何在 `VfxGeom.flat()`; 这一行只把**本文件的** GROUND_Y 绑上去。
+## ★各件特效的离地高度**本来就不一样**(0.03/0.055/0.06/0.07), 不能搬进 VfxGeom ——
+##   搬过去就改了画面。这一行适配器是**故意留的**, 不是漏改的副本。
 static func _flat_vert(r: float, th: float, a: float) -> Array:
-	return [Vector3(r * cos(th), GROUND_Y, r * sin(th)), Color(1, 1, 1, a)]
-
-
-static func _tri(st: SurfaceTool, a: Array, b: Array, c: Array) -> void:
-	for v in [a, b, c]:
-		st.set_color(v[1])
-		st.add_vertex(v[0])
+	return VfxGeom.flat(r, th, a, GROUND_Y)
 
 
 ## 加性发光材质(零素材, 顶点色当亮度)。

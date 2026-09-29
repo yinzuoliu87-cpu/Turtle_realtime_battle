@@ -228,8 +228,6 @@ const WARN_FOE := Color(1.0, 0.353, 0.353)
 
 ## 贴地几何的离地高度(米) —— 高于地板顶面才不会被吞
 const GROUND_Y := 0.06
-## 环的经向分段
-const RING_LON := 48
 ## 浪潮拱线的分段数
 const ARC_SEG := 20
 
@@ -452,14 +450,11 @@ static func path_length(pts: Array) -> float:
 #  §几何 —— 程序化 ArrayMesh, 零素材
 # ══════════════════════════════════════════════════════════════════
 
-static func _tri(st: SurfaceTool, a: Array, b: Array, c: Array) -> void:
-	for v in [a, b, c]:
-		st.set_color(v[1])
-		st.add_vertex(v[0])
-
-
+## 贴地环顶点。几何在 `VfxGeom.flat()`; 这一行只把**本文件的** GROUND_Y 绑上去。
+## ★各件特效的离地高度**本来就不一样**(0.03/0.055/0.06/0.07), 不能搬进 VfxGeom ——
+##   搬过去就改了画面。这一行适配器是**故意留的**, 不是漏改的副本。
 static func _flat(r: float, th: float, a: float) -> Array:
-	return [Vector3(r * cos(th), GROUND_Y, r * sin(th)), Color(1, 1, 1, a)]
+	return VfxGeom.flat(r, th, a, GROUND_Y)
 
 
 ## 单位半径的贴地环(外沿硬 = 区域边界, 内沿渐隐)。
@@ -467,16 +462,16 @@ static func _build_ring() -> ArrayMesh:
 	var mesh := ArrayMesh.new()
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for j in range(RING_LON):
-		var t0: float = float(j) / float(RING_LON) * TAU
-		var t1: float = float(j + 1) / float(RING_LON) * TAU
+	for j in range(VfxGeom.RING_LON):
+		var t0: float = float(j) / float(VfxGeom.RING_LON) * TAU
+		var t1: float = float(j + 1) / float(VfxGeom.RING_LON) * TAU
 		for q in [[0.80, 0.0, 0.96, 0.85], [0.96, 0.85, 1.0, 0.30]]:
 			var r0: float = q[0]
 			var a0: float = q[1]
 			var r1: float = q[2]
 			var a1: float = q[3]
-			_tri(st, _flat(r0, t0, a0), _flat(r1, t0, a1), _flat(r1, t1, a1))
-			_tri(st, _flat(r0, t0, a0), _flat(r1, t1, a1), _flat(r0, t1, a0))
+			VfxGeom.tri(st, _flat(r0, t0, a0), _flat(r1, t0, a1), _flat(r1, t1, a1))
+			VfxGeom.tri(st, _flat(r0, t0, a0), _flat(r1, t1, a1), _flat(r0, t1, a0))
 	st.commit(mesh)
 	return mesh
 
@@ -497,22 +492,22 @@ static func _build_boundary_ring() -> ArrayMesh:
 	var mesh := ArrayMesh.new()
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for j in range(RING_LON):
-		var t0: float = float(j) / float(RING_LON) * TAU
-		var t1: float = float(j + 1) / float(RING_LON) * TAU
+	for j in range(VfxGeom.RING_LON):
+		var t0: float = float(j) / float(VfxGeom.RING_LON) * TAU
+		var t1: float = float(j + 1) / float(VfxGeom.RING_LON) * TAU
 		# ① 圈内底色: 从圆心铺到刻度起点(用扇形三角, 内半径 0)
-		_tri(st, _flat(0.0, t0, BOUNDARY_FILL), _flat(BOUNDARY_TICK_IN, t0, BOUNDARY_FILL),
+		VfxGeom.tri(st, _flat(0.0, t0, BOUNDARY_FILL), _flat(BOUNDARY_TICK_IN, t0, BOUNDARY_FILL),
 			_flat(BOUNDARY_TICK_IN, t1, BOUNDARY_FILL))
 		# ② 硬边: 内外沿都不渐隐 ⇒ 边界是"线"不是"雾"
-		_tri(st, _flat(BOUNDARY_RIM, t0, 1.0), _flat(1.0, t0, 1.0), _flat(1.0, t1, 1.0))
-		_tri(st, _flat(BOUNDARY_RIM, t0, 1.0), _flat(1.0, t1, 1.0), _flat(BOUNDARY_RIM, t1, 1.0))
+		VfxGeom.tri(st, _flat(BOUNDARY_RIM, t0, 1.0), _flat(1.0, t0, 1.0), _flat(1.0, t1, 1.0))
+		VfxGeom.tri(st, _flat(BOUNDARY_RIM, t0, 1.0), _flat(1.0, t1, 1.0), _flat(BOUNDARY_RIM, t1, 1.0))
 	# ③ 向内的刻度(每 TAU/BOUNDARY_TICKS 一根)
 	var half: float = TAU / float(BOUNDARY_TICKS) * 0.16
 	for k in range(BOUNDARY_TICKS):
 		var th: float = float(k) / float(BOUNDARY_TICKS) * TAU
-		_tri(st, _flat(BOUNDARY_TICK_IN, th - half, 0.0), _flat(BOUNDARY_RIM, th - half, 0.95),
+		VfxGeom.tri(st, _flat(BOUNDARY_TICK_IN, th - half, 0.0), _flat(BOUNDARY_RIM, th - half, 0.95),
 			_flat(BOUNDARY_RIM, th + half, 0.95))
-		_tri(st, _flat(BOUNDARY_TICK_IN, th - half, 0.0), _flat(BOUNDARY_RIM, th + half, 0.95),
+		VfxGeom.tri(st, _flat(BOUNDARY_TICK_IN, th - half, 0.0), _flat(BOUNDARY_RIM, th + half, 0.95),
 			_flat(BOUNDARY_TICK_IN, th + half, 0.0))
 	st.commit(mesh)
 	return mesh

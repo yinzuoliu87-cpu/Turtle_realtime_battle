@@ -232,8 +232,10 @@ const RING_R0 := 0.62   # 0.42→0.62(2026-08-11 用户「要环不要圆」: �
 const RING_A0_FRAC := 0.12   # 0.30→0.12(细管才读成空心环; 守恒律 R·a²≡const 与 a₀ 取值无关)
 ## 一个环的存活时长(秒)
 const RING_LIFE := 1.10
-## 环的经向 / 管周向分段
-const RING_LON := 40
+## 环面的经向 / 管周向分段。★名字里的 TORUS 是故意的: 这是**三维环面**的细分度,
+## 不是贴地平环的 `VfxGeom.RING_LON`(=48)。两者取值不同是因为它们不是同一个量 ——
+##   它和下一行 `RING_TUBE` 成对喂 `_build_torus` / `_build_torus_thin`。
+const RING_TORUS_LON := 40
 const RING_TUBE := 8
 
 ## 浮力涡环: **R² 对 t 线性**(dI/dt = 浮力, I = ρΓπR²)。归一到 R(RING_LIFE) = 1。
@@ -368,15 +370,11 @@ func _has_world() -> bool:
 	return battle != null and is_instance_valid(battle._world)
 
 
-static func _tri(st: SurfaceTool, a: Array, b: Array, c: Array) -> void:
-	for v in [a, b, c]:
-		st.set_color(v[1])
-		st.add_vertex(v[0])
-
-
-## 贴地面上的一个顶点(y = GROUND_Y, 平的)
+## 贴地环顶点。几何在 `VfxGeom.flat()`; 这一行只把**本文件的** GROUND_Y 绑上去。
+## ★各件特效的离地高度**本来就不一样**(0.03/0.055/0.06/0.07), 不能搬进 VfxGeom ——
+##   搬过去就改了画面。这一行适配器是**故意留的**, 不是漏改的副本。
 static func _flat(r: float, th: float, a: float) -> Array:
-	return [Vector3(r * cos(th), GROUND_Y, r * sin(th)), Color(1, 1, 1, a)]
+	return VfxGeom.flat(r, th, a, GROUND_Y)
 
 
 ## 加性发光材质(零素材, 顶点色当亮度)
@@ -457,7 +455,7 @@ static func _build_bell() -> ArrayMesh:
 	return mesh
 
 
-## 带 UV 通道的顶点写入(v = [pos, color, uv]; 旧 _tri 的三元组没有 uv)
+## 带 UV 通道的顶点写入(v = [pos, color, uv]; 旧 VfxGeom.tri 的三元组没有 uv)
 static func _tri_uv(st: SurfaceTool, a: Array, b: Array, c: Array) -> void:
 	for v in [a, b, c]:
 		st.set_color(v[1])
@@ -627,8 +625,8 @@ static func _build_ring() -> ArrayMesh:
 			var ai: float = float(q[1])
 			var ro: float = float(q[2])
 			var ao: float = float(q[3])
-			_tri(st, _flat(ri, t0, ai), _flat(ro, t0, ao), _flat(ro, t1, ao))
-			_tri(st, _flat(ri, t0, ai), _flat(ro, t1, ao), _flat(ri, t1, ai))
+			VfxGeom.tri(st, _flat(ri, t0, ai), _flat(ro, t0, ao), _flat(ro, t1, ao))
+			VfxGeom.tri(st, _flat(ri, t0, ai), _flat(ro, t1, ao), _flat(ri, t1, ai))
 	st.commit(mesh)
 	return mesh
 
@@ -643,7 +641,7 @@ static func _build_disc() -> ArrayMesh:
 	for j in range(n):
 		var t0: float = float(j) / float(n) * TAU
 		var t1: float = float(j + 1) / float(n) * TAU
-		_tri(st, ctr, _flat(1.0, t0, 0.0), _flat(1.0, t1, 0.0))
+		VfxGeom.tri(st, ctr, _flat(1.0, t0, 0.0), _flat(1.0, t1, 0.0))
 	st.commit(mesh)
 	return mesh
 
@@ -653,14 +651,14 @@ static func _build_torus() -> ArrayMesh:
 	var mesh := ArrayMesh.new()
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for j in range(RING_LON):
-		var t0: float = float(j) / float(RING_LON) * TAU
-		var t1: float = float(j + 1) / float(RING_LON) * TAU
+	for j in range(RING_TORUS_LON):
+		var t0: float = float(j) / float(RING_TORUS_LON) * TAU
+		var t1: float = float(j + 1) / float(RING_TORUS_LON) * TAU
 		for k in range(RING_TUBE):
 			var p0: float = float(k) / float(RING_TUBE) * TAU
 			var p1: float = float(k + 1) / float(RING_TUBE) * TAU
-			_tri(st, _torus_vert(t0, p0), _torus_vert(t1, p0), _torus_vert(t1, p1))
-			_tri(st, _torus_vert(t0, p0), _torus_vert(t1, p1), _torus_vert(t0, p1))
+			VfxGeom.tri(st, _torus_vert(t0, p0), _torus_vert(t1, p0), _torus_vert(t1, p1))
+			VfxGeom.tri(st, _torus_vert(t0, p0), _torus_vert(t1, p1), _torus_vert(t0, p1))
 	st.commit(mesh)
 	return mesh
 
@@ -686,14 +684,14 @@ static func _build_torus_thin() -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var A := 0.14
-	for j in range(RING_LON):
-		var t0: float = float(j) / float(RING_LON) * TAU
-		var t1: float = float(j + 1) / float(RING_LON) * TAU
+	for j in range(RING_TORUS_LON):
+		var t0: float = float(j) / float(RING_TORUS_LON) * TAU
+		var t1: float = float(j + 1) / float(RING_TORUS_LON) * TAU
 		for k in range(RING_TUBE):
 			var p0: float = float(k) / float(RING_TUBE) * TAU
 			var p1: float = float(k + 1) / float(RING_TUBE) * TAU
-			_tri(st, _tor2_vert(t0, p0, A), _tor2_vert(t1, p0, A), _tor2_vert(t1, p1, A))
-			_tri(st, _tor2_vert(t0, p0, A), _tor2_vert(t1, p1, A), _tor2_vert(t0, p1, A))
+			VfxGeom.tri(st, _tor2_vert(t0, p0, A), _tor2_vert(t1, p0, A), _tor2_vert(t1, p1, A))
+			VfxGeom.tri(st, _tor2_vert(t0, p0, A), _tor2_vert(t1, p1, A), _tor2_vert(t0, p1, A))
 	st.commit(mesh)
 	return mesh
 
@@ -716,8 +714,8 @@ static func _build_sphere() -> ArrayMesh:
 		for j in range(BLADDER_LON):
 			var t0: float = float(j) / float(BLADDER_LON) * TAU
 			var t1: float = float(j + 1) / float(BLADDER_LON) * TAU
-			_tri(st, _sph_vert(p0, t0), _sph_vert(p0, t1), _sph_vert(p1, t1))
-			_tri(st, _sph_vert(p0, t0), _sph_vert(p1, t1), _sph_vert(p1, t0))
+			VfxGeom.tri(st, _sph_vert(p0, t0), _sph_vert(p0, t1), _sph_vert(p1, t1))
+			VfxGeom.tri(st, _sph_vert(p0, t0), _sph_vert(p1, t1), _sph_vert(p1, t0))
 	st.commit(mesh)
 	return mesh
 

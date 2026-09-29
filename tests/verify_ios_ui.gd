@@ -9,6 +9,8 @@ extends Node
 ##   E. iPad 4:3 画布(1280×960)复检 A(主菜单+调试场面板)
 ## 匹配按档位匹快照由 tests/verify_ghost_seed 独立守卫(9档全覆盖)。
 
+## 昵称规则 / 墙上文案的事实源 —— 登录墙那节要拿 `NICK_REROLL`。
+const _P2C_IOS := preload("res://scripts/gamedata/phase2_config.gd")
 const RTScene := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const MENU_SCENES := ["MainMenu", "Matchmaking", "TeamSelect", "Inventory", "Shop", "Codex", "Settings", "Leaderboard", "Record"]
 
@@ -250,7 +252,10 @@ func _check_login_wall(vp: Vector2) -> void:
 	##   **抄成了一个写死的数字 2** —— 版式一动它就误报。
 	##   ⇒ 改成量它真正想守的那件事: **墙上露出来的按钮, 必须全是墙自己的**
 	##   (背后设置页那些「重置存档」「调试场」一个都不许露), 数量随步骤走。
-	var _wall_ok := ["发验证码", "确认", "回上一步改邮箱", "关闭"]
+	## ★「换一个」(2026-09-29)从产品那一处读, **不在这里再抄一份字** ——
+	##   改了屏上那个字而这里还找旧的, 就会拿到一条“背后设置页漏出来了”的假红。
+	var _wall_ok := ["发验证码", "确认", "回上一步改邮箱", "关闭",
+		str(_P2C_IOS.NICK_REROLL)]
 	var _leak: Array = []
 	for _n in names:
 		if not _wall_ok.has(str(_n)):

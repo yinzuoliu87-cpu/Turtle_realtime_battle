@@ -245,8 +245,6 @@ static func beam_frac(t: float) -> float:
 
 ## 贴地几何的离地高度(米)。地板在 y=0, 抬一点免得 z-fighting。
 const GROUND_Y := 0.055
-## 环/盘的经向分段
-const RING_LON := 48
 ## 毒云剖面的径向分段(采 e^(−ρ²) 到 ρ=2.2, 即 0.8% 峰值)
 const CLOUD_RINGS := 12
 const CLOUD_RHO_MAX := 2.2
@@ -268,14 +266,11 @@ func _init(b) -> void:
 	battle = b
 
 
-static func _tri(st: SurfaceTool, a: Array, b: Array, c: Array) -> void:
-	for v in [a, b, c]:
-		st.set_color(v[1])
-		st.add_vertex(v[0])
-
-
+## 贴地环顶点。几何在 `VfxGeom.flat()`; 这一行只把**本文件的** GROUND_Y 绑上去。
+## ★各件特效的离地高度**本来就不一样**(0.03/0.055/0.06/0.07), 不能搬进 VfxGeom ——
+##   搬过去就改了画面。这一行适配器是**故意留的**, 不是漏改的副本。
 static func _flat(r: float, th: float, a: float) -> Array:
-	return [Vector3(r * cos(th), GROUND_Y, r * sin(th)), Color(1, 1, 1, a)]
+	return VfxGeom.flat(r, th, a, GROUND_Y)
 
 
 ## 单位半径的毒云盘。★顶点 alpha **就是**自相似剖面 e^(−ρ²) ——
@@ -291,15 +286,15 @@ func _cloud_mesh() -> ArrayMesh:
 		var r1: float = float(i + 1) / float(CLOUD_RINGS) * CLOUD_RHO_MAX
 		var a0: float = cloud_profile(r0)
 		var a1: float = cloud_profile(r1)
-		for j in range(RING_LON):
-			var t0: float = float(j) / float(RING_LON) * TAU
-			var t1: float = float(j + 1) / float(RING_LON) * TAU
+		for j in range(VfxGeom.RING_LON):
+			var t0: float = float(j) / float(VfxGeom.RING_LON) * TAU
+			var t1: float = float(j + 1) / float(VfxGeom.RING_LON) * TAU
 			var a := _flat(r0 / CLOUD_RHO_MAX, t0, a0)
 			var b := _flat(r1 / CLOUD_RHO_MAX, t0, a1)
 			var c := _flat(r1 / CLOUD_RHO_MAX, t1, a1)
 			var d := _flat(r0 / CLOUD_RHO_MAX, t1, a0)
-			_tri(st, a, b, c)
-			_tri(st, a, c, d)
+			VfxGeom.tri(st, a, b, c)
+			VfxGeom.tri(st, a, c, d)
 	st.commit(mesh)
 	_m_cloud = mesh
 	return mesh
@@ -328,8 +323,8 @@ func _beam_mesh() -> ArrayMesh:
 			var b := [Vector3(x1, GROUND_Y, z0), Color(1, 1, 1, av0 * b1)]
 			var c := [Vector3(x1, GROUND_Y, z1), Color(1, 1, 1, av1 * b1)]
 			var d := [Vector3(x0, GROUND_Y, z1), Color(1, 1, 1, av1 * b0)]
-			_tri(st, a, b, c)
-			_tri(st, a, c, d)
+			VfxGeom.tri(st, a, b, c)
+			VfxGeom.tri(st, a, c, d)
 	st.commit(mesh)
 	_m_beam = mesh
 	return mesh

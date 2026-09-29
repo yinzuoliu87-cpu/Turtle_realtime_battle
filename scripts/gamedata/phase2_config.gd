@@ -787,6 +787,99 @@ static func display_name(nick: String, account_id: String) -> String:
 
 
 # ═══════════════════════════════════════════════════════════════
+#  预填一个名字 —— 让玩家**一个字都不打**也能过去 (2026-09-29)
+#
+#  ★由来: 逐像素量过的 13 屏参考里, 取名那一步的设计目标是「不打字也能过」——
+#    Sonic Rumble 预填 `Player_561962` 直接点 OK; Monster Hunter Stories /
+#    Lapis / Worms 给一个 Generate 钮; Cat Game 重名时给三个候选让你点;
+#    Angry Birds Match 直接发一个 `AwesomeHyacinth`。
+#    而我们原来是**空框 + 一行规则**, 玩家开局第一件事就是用虚拟键盘打中文。
+#  ★★名字要**像这个游戏的**, 不是 `Player_561962`:
+#    定语从 `data/pets.json` 的龟名里剥出来(去掉尾巴的「龟」/「乌龟」),
+#    名头用本仓自己的词: `龟主` 就是 `nickname_fallback` 已经在用的那个词,
+#    `统领` / `小将` 是本作的单位定位, `大师` 出自「训龟大师」。
+#  ★★★池子**跟着 pets.json 走**, 不在这里抄一份龟名 ——
+#    抄一份就等于以后加的龟悄悄不进池(memory `fb-hand-rolled-copies-drift`)。
+# ═══════════════════════════════════════════════════════════════
+const NICK_HEADS := ["龟主", "龟王", "统领", "小将", "大师", "教头"]
+## 「换一个」那颗钮的字。★写在这里而不是屏上: 门禁要拿它找那颗钮,
+##   两边各写一份就成了「改了屏上那个字门禁还在找旧的」。
+const NICK_REROLL := "换一个"
+## 词表的**唯一出口**。★定语池故意不列在这里 —— 它整张从 `stem_src`
+##   摸出来(见 `nickname_stems`), 列在这里就是拄一份永远落后的副本。
+const NICK_WORDS := {
+	"heads": NICK_HEADS,
+	"stem_src": "res://data/pets.json",
+}
+## 只在**读不到 pets.json** 时用(dev / 裸实例)。不是第二份事实源, 所以故意只留几个。
+const NICK_STEM_FALLBACK := ["小", "石头", "忍者", "闪电", "海盗", "彩虹"]
+
+
+## 定语池。两个来源, **都在 `data/pets.json` 里**:
+##   ① 28 个龟名剥掉尾巴的那个「龟」/「乌龟」(石头 / 彩虹 / 海盗…)
+##   ② 28 个被动技名(不屈 / 坚壁 / 涅槃 / 水晶共鸣…) —— 它们本来就是这个游戏
+##     自己的词, 拼上名头读起来就是个头衔(「不屈龟主」「水晶共鸣大师」)。
+## ★★为什么要两个来源: 只拿龟名是 28×6 = **168** 个名字, 按生日碰撞算,
+##   10 个人里就有 24% 的概率撞名; 加上被动技名是 56×6 = **336**, 降到 12%。
+##   (参考里的 `Player_561962` 是拿**数字**拉开的, 而本轮明确不要那种名字 ⇒
+##    不加数字的前提下, 撞名只能缩小不能消灭。撞了也只是重名, 玩家改得掉:
+##    本仓任何一处都没有昵称唯一性约束。)
+## ★去重 —— 两处剥出同一个词时池子不该有两份。
+static func nickname_stems() -> Array:
+	var out: Array = []
+	for p in DataRegistry.all_pets:
+		var pd := p as Dictionary
+		var nm := str(pd.get("name", "")).strip_edges()
+		if nm.ends_with("乌龟"):
+			nm = nm.substr(0, nm.length() - 2)
+		elif nm.ends_with("龟"):
+			nm = nm.substr(0, nm.length() - 1)
+		if nm != "" and not out.has(nm):
+			out.append(nm)
+		var pas := str((pd.get("passive", {}) as Dictionary).get("name", "")).strip_edges()
+		if pas != "" and not out.has(pas):
+			out.append(pas)
+	return out if not out.is_empty() else NICK_STEM_FALLBACK.duplicate()
+
+
+## 第 (si, hi) 个候选名。★**纯函数** —— 门禁据此穷举全池, 证明每一个都合法。
+## ★龟名要是长到装不下名头就**截短**, 不是丢掉: 丢掉等于新龟悄悄不进池。
+static func nickname_suggest_at(si: int, hi: int) -> String:
+	var stems: Array = nickname_stems()
+	if stems.is_empty():
+		return nickname_fallback("")
+	var stem := str(stems[posmod(si, stems.size())])
+	var head := str(NICK_HEADS[posmod(hi, NICK_HEADS.size())])
+	var room: int = maxi(NICK_MAX - head.length(), 1)
+	if stem.length() > room:
+		stem = stem.substr(0, room)
+	var s := nickname_clean(stem + head)
+	return s if nickname_valid(s) else nickname_fallback("")
+
+
+## 池子一共多少个候选。★门禁的分母: N=0 就是空检查。
+static func nickname_suggest_count() -> int:
+	return nickname_stems().size() * NICK_HEADS.size()
+
+
+## 随便给一个候选名。★`avoid` 里那个**不许再给** —— 「换一个」按下去还是同一个名字,
+##   就是本仓最忌的那种「点了没反应」。池子只剩一个时才会重复(这里 336 个)。
+static func nickname_suggest(avoid: String = "") -> String:
+	var n: int = nickname_suggest_count()
+	if n <= 0:
+		return nickname_fallback("")
+	var heads: int = NICK_HEADS.size()
+	var av := nickname_clean(avoid)
+	var start: int = randi() % n
+	for k in range(n):
+		var idx: int = (start + k) % n
+		var s := nickname_suggest_at(idx / heads, idx % heads)
+		if s != av:
+			return s
+	return nickname_suggest_at(start / heads, start % heads)
+
+
+# ═══════════════════════════════════════════════════════════════
 #  登录墙 (2026-09-24 · 用户「直接改为必须绑定账号吧」)
 #
 #  ★用户在三个选项里选的是**开局就必须绑, 没有 guest** ——
@@ -814,6 +907,21 @@ static func login_wall_head() -> String:
 	return "绑定邮箱才能开始"
 
 
+## 墙上那段话。★**一行一句、按步分发**: 第一步印前面那些, 最后一句留给第二步
+##   (`SettingsScene._email_why` / `_email_why2` 就是按换行切的)。
+##
+## ════════════════════════════════════════════════════════════════════
+##  2026-09-29 重写: 把「不做会失去什么」换成「这一步能得到什么 + 以后还能改」
+## ════════════════════════════════════════════════════════════════════
+## ★量出来的依据: 13 屏逐像素参考里, 「以后还能改」这句话到处都是 ——
+##   Pokémon HOME「you can change this later, too!」/ Nier「This can be
+##   changed later.」/ Octopath / Smash Legends / Sonic Rumble。
+##   它干的事是**把这一步的心理成本压下去**。
+##   而**参考里没有一屏是靠恐吓把人推过去的**。
+## ★★但「没绑邮箱换手机就接不回来」这个**事实不许删** —— 用户 2026-09-24 点名
+##   「这一点要在 UI 上说清楚」。改的是**说法**(陈述 + 可逆), 不是事实本身。
+## ★第一句仍然先说【进度还在】: 老玩家升级过来会被这堆墙挡一次, 第一眼别让他以为丢了。
 static func login_wall_body() -> String:
-	return ("你的进度还在这台手机上 —— 绑定只是把它锁到这个邮箱上，"
-		+ "换手机时能拿回来。\n收不到验证码？看看垃圾邮件，或者换一个邮箱重发。")
+	return ("你的进度还在这台手机上 —— 绑上邮箱，换手机或重装都能接回来。"
+		+ "\n不绑，换了手机就接不回来；邮箱和名字以后随时能改。"
+		+ "\n收不到验证码？看看垃圾邮件，或回上一步换个邮箱重发。")

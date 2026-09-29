@@ -178,12 +178,87 @@ func _ready() -> void:
 	_ok("占位符全部能求出数字 (扫了 %d 个)" % n_tok, unresolved.is_empty(), str(unresolved.slice(0, 4)))
 	_ok("★分母: 占位符数 > 0 (0 个 = 空检查不是通过)", n_tok > 0, "n_tok=%d" % n_tok)
 
+	_check_rules_no_round()
+
 	print("")
 	if _fail == 0:
-		print("ALL PASS — 图鉴文案: 无占位符残留 / 无回合制陈旧模型 / 无开发术语 / 无空白字段 / 占位符全部可求值")
+		print("ALL PASS — 图鉴文案: 无占位符残留 / 无回合制陈旧模型 / 无开发术语 / 无空白字段 / 占位符全部可求值 / 规则之日不提「回合」")
 	else:
 		print("FAIL x", _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
+
+
+# ══════════════════════════════════════════════════════════════════════
+# ⑥ 规则之日不许提「回合」 (2026-09-29 用户「假规则要删掉」)
+# ══════════════════════════════════════════════════════════════════════
+## 这是一款**实时**游戏 —— 全仓零个回合计数器(`当前回合数`/`round_index`/`current_round`
+## 命中数 0), 局内小商店也早删干净了(CodexScene.gd:532 注释)。可 battle-rules.json 里
+## 「装备之日」写着「每 3 回合双方各选 1 件装备」、「下雨天」写着「每回合 5×N (N = 当前
+## 回合数)」—— 两条描述的机制玩家永远遇不到, 那两条已按用户要求删掉。
+##
+## ★判据形状: **json 里任何一个字符串字段都不许出现「回合」这两个字**。
+##   范围就卡在这一份文件 —— json 没有注释, 键只有 id/name/emoji/icon/desc/color,
+##   实测(删前)3 处「回合」全在那两条的 `desc` 里, 没有任何"正当的回合"要豁免。
+##   (`verify_codex_text` 上面那张 BANNED 表管的是 pets.json 的技能文案, 两条互不覆盖。)
+## ★两条分母: ① 真的扫到了 N 条规则(N=0 就是空检查) ② 其中至少一条有正文(desc 非空),
+##   不然"没扫到回合"可能只是因为根本没读到字。
+const RULES_JSON := "res://data/battle-rules.json"
+const ROUND_WORD := "回合"
+
+func _check_rules_no_round() -> void:
+	print("  ── ⑥ 规则之日(battle-rules.json)不许提「回合」 ──")
+	var txt := FileAccess.get_file_as_string(RULES_JSON)
+	_ok("★分母: 读得到 battle-rules.json", txt.length() > 0, "%d 字符" % txt.length())
+	if txt.length() == 0:
+		_fail += 1
+		return
+	var parsed = JSON.parse_string(txt)
+	_ok("battle-rules.json 是合法 JSON 数组", parsed is Array, "got=%s" % type_string(typeof(parsed)))
+	if not (parsed is Array):
+		return
+	var rules: Array = parsed
+	# ── 分母① 真的有条目 ──
+	_ok("★分母: 扫到 %d 条规则(0 条 = 空检查不是通过)" % rules.size(), rules.size() > 0)
+	# ── 分母② 至少一条有正文 ──
+	var bodied := 0
+	var body_chars := 0
+	for r in rules:
+		if not (r is Dictionary):
+			continue
+		var d: String = str((r as Dictionary).get("desc", ""))
+		if d.length() >= 8:
+			bodied += 1
+			body_chars += d.length()
+	_ok("★分母: 至少一条规则有正文(有正文 %d 条 / 共 %d 字)" % [bodied, body_chars],
+		bodied > 0 and body_chars > 0)
+	# ── 自检探针: 扫描器本身必须真的会命中 ──
+	var probe: Array = _scan_rules_for_round([{
+		"id": "_probe", "desc": "每 3 回合双方各选 1 件装备。",
+	}])
+	_ok("自检·已知阳性(埋一条「每 3 回合…」被抓到)", probe.size() == 1, str(probe))
+	var probe2: Array = _scan_rules_for_round([{
+		"id": "_probe", "desc": "风平浪静的一天，场上只有平常那套规矩。",
+	}])
+	_ok("自检·已知阴性(干净文案不误报)", probe2.is_empty(), str(probe2))
+	# ── 真判据 ──
+	var bad: Array = _scan_rules_for_round(rules)
+	_ok("★★★⑥ 规则之日一条都不提「回合」(实时版没有回合这个概念)", bad.is_empty(),
+		"命中 %d 处: %s" % [bad.size(), str(bad)])
+
+
+## 扫一组规则条目里所有【字符串字段】有没有「回合」。
+## 抽成函数是为了让上面的自检探针走**同一条路** —— 否则探针验的是另一份代码。
+func _scan_rules_for_round(rules: Array) -> Array:
+	var out: Array = []
+	for r in rules:
+		if not (r is Dictionary):
+			continue
+		var d: Dictionary = r
+		for k in d.keys():
+			var v = d[k]
+			if v is String and (v as String).find(ROUND_WORD) >= 0:
+				out.append("%s.%s 命中「%s」" % [str(d.get("id", "?")), str(k), ROUND_WORD])
+	return out
 
 
 func _scan_text(_pid: String, _path: String, text: String, needle: String) -> bool:

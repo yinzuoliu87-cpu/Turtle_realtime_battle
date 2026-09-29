@@ -512,8 +512,8 @@ static func _build_fog_mesh() -> ArrayMesh:
 			var b := _flat_vert(r1, t0, a1)
 			var c := _flat_vert(r1, t1, a1)
 			var d := _flat_vert(r0, t1, a0)
-			_tri(st, a, b, c)
-			_tri(st, a, c, d)
+			VfxGeom.tri(st, a, b, c)
+			VfxGeom.tri(st, a, c, d)
 	st.commit(mesh)
 	return mesh
 
@@ -540,8 +540,8 @@ static func _build_rim_mesh() -> ArrayMesh:
 			var b := _flat_vert(r1, t0, a1)
 			var c := _flat_vert(r1, t1, a1)
 			var d := _flat_vert(r0, t1, a0)
-			_tri(st, a, b, c)
-			_tri(st, a, c, d)
+			VfxGeom.tri(st, a, b, c)
+			VfxGeom.tri(st, a, c, d)
 	st.commit(mesh)
 	return mesh
 
@@ -563,8 +563,8 @@ static func _build_body_mesh() -> ArrayMesh:
 			var b := _sph_vert(p1, t0)
 			var c := _sph_vert(p1, t1)
 			var d := _sph_vert(p0, t1)
-			_tri(st, a, b, c)
-			_tri(st, a, c, d)
+			VfxGeom.tri(st, a, b, c)
+			VfxGeom.tri(st, a, c, d)
 	st.commit(mesh)
 	return mesh
 
@@ -576,14 +576,11 @@ static func _sph_vert(phi: float, th: float) -> Array:
 	return [p, Color(1, 1, 1, a)]
 
 
+## 贴地环顶点。几何在 `VfxGeom.flat()`; 这一行只把**本文件的** GROUND_Y 绑上去。
+## ★各件特效的离地高度**本来就不一样**(0.03/0.055/0.06/0.07), 不能搬进 VfxGeom ——
+##   搬过去就改了画面。这一行适配器是**故意留的**, 不是漏改的副本。
 static func _flat_vert(r: float, th: float, a: float) -> Array:
-	return [Vector3(r * cos(th), GROUND_Y, r * sin(th)), Color(1, 1, 1, a)]
-
-
-static func _tri(st: SurfaceTool, a: Array, b: Array, c: Array) -> void:
-	for v in [a, b, c]:
-		st.set_color(v[1])
-		st.add_vertex(v[0])
+	return VfxGeom.flat(r, th, a, GROUND_Y)
 
 
 ## 加性发光材质(零素材, 顶点色当亮度)。

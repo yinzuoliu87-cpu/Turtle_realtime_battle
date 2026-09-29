@@ -122,8 +122,21 @@ func _ready() -> void:
 	content_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(content_root)
 	_center_content()
+	## ★★★一屏只读一次钟(2026-09-29)。这一句是本屏唯一的「现在」,
+	##   往下传给状态行 / 赛程条 / 入口按钮 三处。
+	## ★★为什么非得这样: 探针 `tests/_probe_twoclocks.gd` 实测——`_build_page_buttons()`
+	##   原来调 `GameState.ranked_quota_full()` **不带参**, 而那个函数的兜底是
+	##   真实系统钟 ⇒ 它既不过 `clock_override_ts` 也不过全局缝
+	##   `phase2_config.now_override_ts`。同一屏上的后果(探针原文):
+	##     钉周六 ⇒ 状态行画的是「闯关赛 1-1 · 再赢 3 场晋级」(周六不吃积分赛配额),
+	##     而商店那一行画的是「🔒 商店」(拿真实的周二算出来的「配额打满」),
+	##     而 `_open_shop()` 自己的判据是 false ⇒ **锁画在那里, 门却是开的**。
+	##   10 个构造时刻里 5 个两种写法给出不同答案(quota) / 3 个(gauntlet)。
+	##   memory `fb-second-clock-drops-events`。
+	## ★两个 override 都是 0 时行为**逐字节不变**(玩家路径一字未动)。
+	var paint_ts: int = _now_ts()
 	_title()
-	_right_column()
+	_right_column(paint_ts)
 	## ★★D-3: 建服务端身份。**必须在登录墙之前** —— v0.19.440 上墙之后这一句原本在
 	##   下面第 118 行, 而墙会在这之前 `return`, 于是**全新安装的玩家永远拿不到 token**:
 	##   绑定流程(`send_code_async` 的 FLOW_BIND 分支)要求 `_token != ""`, 拿不到就回
@@ -157,7 +170,7 @@ func _ready() -> void:
 			and get_tree() != null and get_tree().current_scene == self:
 		call_deferred("_go", "Settings")
 		return
-	_week_strip()               # 左右两栏之间那条空档 → 本周赛程条
+	_week_strip(paint_ts)       # 左右两栏之间那条空档 → 本周赛程条(吃 paint_ts, 不再自己读钟)
 	## ★D-1: 去问一次服务状态(没配后端时这一句什么都不做, 连节点都不建)。
 	##   答复是异步回来的 ⇒ 配一个**挂在自己身上的 Timer 子节点**轮询状态变没变,
 	##   变了就重建赛程条。★不能用 `get_tree().create_timer` 接闭包 ——
@@ -173,7 +186,7 @@ func _ready() -> void:
 	add_child(sb_t)
 	page_box = Control.new()
 	content_root.add_child(page_box)
-	_build_page_buttons()
+	_build_page_buttons(paint_ts)
 	get_viewport().size_changed.connect(_on_menu_resize)
 	# (去掉全屏询问弹窗·用户2026-07-18「去掉这个全屏提示」; _maybe_ask_fullscreen 保留未调用, 需要可在设置里切全屏)
 	# ★首次打开强制新手教学(用户2026-07-23)。判据: 从没走完过教学(onboarded=false)。
@@ -323,7 +336,11 @@ func _menu_bottom() -> float:
 ##   左栏  背包 / 商店 / 图鉴 / 排行榜   —— 无框文字, 每行 ROW_H
 ##   右栏  训龟大师(小木框) + ⚔开始战斗(巨型木框, 全屏唯一大框)
 ## 原版式是 1 个英雄键 + 2×2 网格 + 训龟大师, 六个木框全挤在左栏。
-func _build_page_buttons() -> void:
+## ★`now` = 本屏那一刻(`_ready` 传)。**商店锁就指这一刻** —— 不传的话
+##   `ranked_quota_full()` 兜底去读真实系统钟, 于是本屏就有两条钟
+##   (详见 `_ready` 里 `paint_ts` 那段 + 探针 `tests/_probe_twoclocks.gd`)。
+func _build_page_buttons(now: int = 0) -> void:
+	var ts: int = now if now > 0 else _now_ts()
 	var eliminated := GameState.is_eliminated()   # 0命=本大轮淘汰(用户2026-07-24拍板"淘汰锁定") → 锁匹配+商店, 只"设置→重置存档"解锁
 	## A4(2026-09-17 user decision): quota full also locks the shop.
 	## WARNING: this line affects FIVE gates that rely on setting season_total_battles=3
@@ -332,7 +349,10 @@ func _build_page_buttons() -> void:
 	##   so they happen NOT to be locked. That is luck, not design: if someone sets the
 	##   quota to 0 or feeds those gates a ranked_used, all five go red at once -
 	##   do not chase it as a product regression then.
-	var shop_locked := int(GameState.season_total_battles) <= 0 or eliminated or GameState.ranked_quota_full()
+	## ★★`ranked_quota_full(ts)` —— **必须带参**。不带参就是 2026-09-29 修掉的那条 bug:
+	##   它兜底读真实系统钟 ⇒ 与同一屏的状态行/赛程条(走 `_now_ts()`)**不是同一条钟**,
+	##   画出来的 🔒 会和 `_open_shop()` 真正的判据相反(锁画在那儿而门是开的)。
+	var shop_locked := int(GameState.season_total_battles) <= 0 or eliminated or GameState.ranked_quota_full(ts)
 	var mic := "res://assets/sprites/menu/"
 	var subs: Array = [
 		["背包", func(): _go("Inventory"), mic + "ic-bag.png", false],
@@ -621,7 +641,8 @@ func _btn_press(holder: Control, frame_node: TextureRect, cb: Callable) -> void:
 
 # ─── 右上工具簇(设置/教程/龟币) + 右信息板(赛季进度/战绩) — 正式化重排(用户2026-07-18) ───
 #   去掉旧的右侧 4 磁贴竖列 + 左上赛季裸条; 信息统一进右侧金边信息板, 设置/教程收进右上小磁贴.
-func _right_column() -> void:
+## ★`now` = 本屏那一刻(`_ready` 里算一次)。自己不读钟 —— 它只负责往下传。
+func _right_column(now: int = 0) -> void:
 	# ── 右上一排: [教程][设置] 方形磁贴 + 龟币框 (右边缘贴墙) ──
 	## A5: two currency chips side by side (gold + gems treatment, user 2026-09-17).
 	##   right = 龟币 (main-site currency), left = 深海币 (the in-run currency, moved out of
@@ -647,7 +668,7 @@ func _right_column() -> void:
 	var help_tile := _tile("ui/help-button", "❓", func(): _on_tutorial(), Vector2(help_x, uy), "", usz)
 	content_root.add_child(help_tile)
 	_slide_in(help_tile, 2)
-	_status_row()          # 赛季状态压成一行(原来是 560×398 的表格卡)
+	_status_row(now)       # 赛季状态压成一行(原来是 560×398 的表格卡)
 	_version_stamp()
 
 
@@ -839,13 +860,14 @@ func _phase_status_line(now: int = 0) -> String:
 ##   (`phase_uses_ranked_quota(GAUNTLET/FINALS)=false`; `finals_*` 一个字都不碰 `hearts`)。
 ##   摆在 L1 就得给 L1 加一个"今天是不是积分赛"的分支, 而那个分支一周只走两天 ——
 ##   本文件刚因为"一周只走一天的代码"栽过两次。⇒ **L1 无条件、七天同字**, 一个分支都不要。
-func _status_row() -> void:
+## ★`now` = 本屏那一刻; 0 时才自己问一次(单独被门禁/实拍调用时)。
+func _status_row(now: int = 0) -> void:
 	## L1 身份 —— 七天不变, 没有任何分支。
 	var id_txt := "第 %d 大轮 · Lv %d" % [
 		int(GameState.season_id), int(GameState.season_level)]
 	## L2 今天 ——★★走 `_now_ts()`: 不传参的话这一行读的是真实时钟, 于是**一周只有一天**
 	##   会被门禁执行到(见 `_phase_status_line` 头注)。
-	var today_txt: String = _phase_status_line(_now_ts())
+	var today_txt: String = _phase_status_line(now if now > 0 else _now_ts())
 	if today_txt == "":
 		## 积分赛/休赛那几天: 命与本周场次**就是**今天在动的那两个数。
 		today_txt = "♥ %d/8   本周 %d/%d" % [
@@ -1055,7 +1077,9 @@ var strip_now_override: int = 0
 var strip_finals_live_override: int = -1
 
 
-func _week_strip() -> void:
+## ★`paint_now` = 本屏那一刻(`_ready` 传); 0 = 自己问一次
+##   (`rebuild_week_strip()` 走这一支 —— 它是**另一次刷屏**, 该读新的)。
+func _week_strip(paint_now: int = 0) -> void:
 	## ★UTC 纪元秒, 与本地时区无关
 	## ★★★兜底走 `_now_ts()`, 不再就地读系统钟(2026-09-28)。
 	##   原来这一行是主菜单上**第二条独立的时钟**: 把 `clock_override_ts` 钉在周六渲整屏时,
@@ -1067,7 +1091,8 @@ func _week_strip() -> void:
 	##   与 `verify_week_strip` 在用); 但**真实时钟那条路只剩一条**:
 	##   `_now_ts()` → `clock_override_ts` → `_P2C.now_utc()`。
 	##   两个 override 都是 0 时行为**逐字节不变**(玩家路径一字未动)。
-	var now: int = strip_now_override if strip_now_override > 0 else _now_ts()
+	var now: int = strip_now_override if strip_now_override > 0 \
+		else (paint_now if paint_now > 0 else _now_ts())
 	var today: int = _P2C.iso_weekday_utc(now)
 	_sb_state_shown = _SB.service_state()
 	var box := PanelContainer.new()
@@ -1630,7 +1655,20 @@ var clock_override_ts: int = 0
 ##   但端到端门禁从此能用一处缝把整屏(主菜单 + 匹配 + 赛程判定)钉在同一刻 ——
 ##   两条互不相通的时钟正是 memory `fb-second-clock-drops-events` 那一族。
 func _now_ts() -> int:
+	_clock_reads += 1
 	return clock_override_ts if clock_override_ts > 0 else int(_P2C.now_utc())
+
+
+## 门禁用: 「这一屏问了几次现在几点」的计数。一屏刷完应该恰好 **1**。
+##
+## ⚠★它单独不成判据 —— 数的是我自己插的计数器(memory
+##   `fb-gate-must-measure-requirement-not-my-hook`)。有人绕过 `_now_ts()` 直接
+##   `Time.get_unix_time_from_system()` 它数不到。★所以 `verify_quota_clock` 里
+##   它**总和一条源码扇一起**用: 本文件里 `Time.get_unix_time_from_system` 必须 0 次,
+##   `_P2C.now_utc()` 只允许出现在 `_now_ts()` 里。两条合起来才堵得住。
+## ★恰好 1 而不是“≤N”: 数到 0 说明这一屏根本没建起来(空检查),
+##   数到 ≥2 说明又有人自己去问钟了。
+var _clock_reads: int = 0
 
 
 func _start_battle_flow() -> void:

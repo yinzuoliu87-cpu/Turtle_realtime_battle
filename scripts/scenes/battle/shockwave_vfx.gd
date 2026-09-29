@@ -100,8 +100,6 @@ const DUST_SEED := 0.35
 ## 波前几何: 半球壳的经纬分段
 const SHELL_LON := 24
 const SHELL_LAT := 8
-## 贴地环的经向分段(要更密, 否则大半径时看得见多边形折线)
-const RING_LON := 48
 
 ## 半球壳的顶点亮度: 赤道(贴地)最亮 → 极点最暗。
 ## ★这不是美术偏好, 是【马赫反射】: 入射波与地面反射波在近地处汇合成马赫杆,
@@ -260,8 +258,8 @@ static func _build_shell_mesh() -> ArrayMesh:
 			var b := _shell_vert(p0, t1)
 			var c := _shell_vert(p1, t1)
 			var d := _shell_vert(p1, t0)
-			_tri(st, a, b, c)
-			_tri(st, a, c, d)
+			VfxGeom.tri(st, a, b, c)
+			VfxGeom.tri(st, a, c, d)
 	st.commit(mesh)
 	return mesh
 
@@ -274,9 +272,9 @@ static func _build_ring_mesh() -> ArrayMesh:
 	## 亮度最集中的一圈落在 1 − SHELL_THICK_FRAC 处(Sedov 薄壳中心), 那里给满亮度;
 	## 从它往内侧一路渐隐到 RING_IN, 往外侧到 1.0 只掉一点点(外沿仍然是亮的硬边)。
 	var r_hot: float = 1.0 - SHELL_THICK_FRAC
-	for j in range(RING_LON):
-		var t0: float = float(j) / float(RING_LON) * TAU
-		var t1: float = float(j + 1) / float(RING_LON) * TAU
+	for j in range(VfxGeom.RING_LON):
+		var t0: float = float(j) / float(VfxGeom.RING_LON) * TAU
+		var t1: float = float(j + 1) / float(VfxGeom.RING_LON) * TAU
 		var quads := [[RING_IN, 0.0, r_hot, 1.0], [r_hot, 1.0, 1.0, 0.85]]
 		for q in quads:
 			var ri: float = float(q[0])
@@ -287,8 +285,8 @@ static func _build_ring_mesh() -> ArrayMesh:
 			var b := _flat_vert(ro, t0, ao)
 			var c := _flat_vert(ro, t1, ao)
 			var d := _flat_vert(ri, t1, ai)
-			_tri(st2, a, b, c)
-			_tri(st2, a, c, d)
+			VfxGeom.tri(st2, a, b, c)
+			VfxGeom.tri(st2, a, c, d)
 	st2.commit(mesh)
 	return mesh
 
@@ -300,9 +298,9 @@ static func _build_dust_mesh() -> ArrayMesh:
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var r_in: float = 1.0 - DUST_BAND
 	var r_mid: float = 1.0 - DUST_BAND * 0.5
-	for j in range(RING_LON):
-		var t0: float = float(j) / float(RING_LON) * TAU
-		var t1: float = float(j + 1) / float(RING_LON) * TAU
+	for j in range(VfxGeom.RING_LON):
+		var t0: float = float(j) / float(VfxGeom.RING_LON) * TAU
+		var t1: float = float(j + 1) / float(VfxGeom.RING_LON) * TAU
 		for q in [[r_in, 0.0, r_mid, 1.0], [r_mid, 1.0, 1.0, 0.0]]:
 			var ri: float = float(q[0])
 			var ai: float = float(q[1])
@@ -312,8 +310,8 @@ static func _build_dust_mesh() -> ArrayMesh:
 			var b := _flat_vert(ro, t0, ao)
 			var c := _flat_vert(ro, t1, ao)
 			var d := _flat_vert(ri, t1, ai)
-			_tri(st, a, b, c)
-			_tri(st, a, c, d)
+			VfxGeom.tri(st, a, b, c)
+			VfxGeom.tri(st, a, c, d)
 	st.commit(mesh)
 	return mesh
 
@@ -325,15 +323,11 @@ static func _shell_vert(phi: float, th: float) -> Array:
 	return [p, Color(1, 1, 1, a)]
 
 
-## 贴地面上的一个顶点(y = GROUND_Y, 平的)
+## 贴地环顶点。几何在 `VfxGeom.flat()`; 这一行只把**本文件的** GROUND_Y 绑上去。
+## ★各件特效的离地高度**本来就不一样**(0.03/0.055/0.06/0.07), 不能搬进 VfxGeom ——
+##   搬过去就改了画面。这一行适配器是**故意留的**, 不是漏改的副本。
 static func _flat_vert(r: float, th: float, a: float) -> Array:
-	return [Vector3(r * cos(th), GROUND_Y, r * sin(th)), Color(1, 1, 1, a)]
-
-
-static func _tri(st: SurfaceTool, a: Array, b: Array, c: Array) -> void:
-	for v in [a, b, c]:
-		st.set_color(v[1])
-		st.add_vertex(v[0])
+	return VfxGeom.flat(r, th, a, GROUND_Y)
 
 
 ## 加性发光材质(零素材, 顶点色当亮度)

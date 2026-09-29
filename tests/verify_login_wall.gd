@@ -25,6 +25,9 @@ extends Node
 const P2C := preload("res://scripts/gamedata/phase2_config.gd")
 const SET := preload("res://scripts/scenes/SettingsScene.gd")
 const SB := preload("res://scripts/net/supabase.gd")
+## ★素材路径与摆位几何都在产品那边(`WALL_ART_TEX` / `place_logo`),
+##   测试里再抄一份就是抄一遍永远落后。
+const WALL_ART := preload("res://scripts/scenes/settings/login_wall_art.gd")
 const DEAD_URL := "http://127.0.0.1:9"
 
 var _n := 0
@@ -180,6 +183,181 @@ func _t_rule() -> void:
 	_ok("① ★还告诉他收不到验证码怎么办(不然就是死路)",
 		body.find("垃圾") >= 0 or body.find("重发") >= 0 or body.find("换一个") >= 0,
 		body.substr(0, 60))
+	_t_copy_tone()
+	_t_suggest_pool()
+
+
+# ──────────────────────────────────────────────────────────
+# ⑦ B · ★★★恐吓换成退路 (2026-09-29)
+#
+#    量出来的依据(`tools/login_screen_audit.py`, 13 屏逐像素):
+#    参考里「以后还能改」这句话到处都是(Pokémon HOME / Nier / Octopath /
+#    Smash Legends / Sonic Rumble), 而**没有一屏是靠恐吓把人推过去的**。
+#
+#    ★★两边都要守, 只守一边就会把事情弄反:
+#      · 只守「不许恐吓」⇒ 下一个人把丢档那句话删干净也绿, 而那是用户 2026-09-24
+#        点名要的(「这一点要在 UI 上说清楚」)。
+#      · 只守「事实要在」⇒ 又退回原样。
+#    ★★★判据自己能不能 FAIL 当场证: 拿**旧那两句原文**当样本跑同一个谓词,
+#    它必须被判成恐吓 —— 否则这整节是恒真式。
+# ──────────────────────────────────────────────────────────
+## “这句话在吓人”的谓词。★只看**第一句** —— 参考的做法是第一句说得到什么,
+##   代价往后摆; 把「业务会丢」摆在第一眼就是用恐惧开场。
+## ★“⚠” 也算 —— 它是警告标, 不是句子。
+func _is_scary(first_line: String) -> bool:
+	return first_line.find("丢") >= 0 or first_line.find("⚠") >= 0
+
+
+## ★不带 await —— `_t_rule` 是同步的, 把它变成协程 ⇒ `_ready` 会跳过它往下跑,
+##   后面那几节的断言**静默少跑**(memory `fb-null-readback-makes-test-silently-abort`)。
+func _t_copy_tone() -> void:
+	print("── ⑦B 恐吓 → 退路 ──")
+	var body := str(P2C.login_wall_body())
+	var lines: PackedStringArray = body.split("\n")
+	for i in range(lines.size()):
+		print("     [%d] %s" % [i, str(lines[i])])
+	## ★分母①: 谓词真的会 FAIL —— 拿旧版原文试一遍。
+	##   这两句是 v0.19.471 与 D-3 那两版的原文(审计报告里引的就是它们)。
+	var OLD_A := "你的进度还在这台手机上 —— 不绑就会丢档"
+	var OLD_B := "⚠ 龟和装备是存在这台手机上的，换设备仍然会丢。"
+	_ok("⑦B ★分母: 谓词拿旧版原文跑一遍 **两句都判成恐吓**(判不出来 ⇒ 下面恒真)",
+		_is_scary(OLD_A) and _is_scary(OLD_B),
+		"A=%s B=%s" % [str(_is_scary(OLD_A)), str(_is_scary(OLD_B))])
+	_ok("⑦B ★★★第一句**不再是恐吓**(不开口就说丢档 / 不抬⚠)",
+		not _is_scary(str(lines[0])), str(lines[0]))
+	_ok("⑦B ★★★说了**以后还能改**(参考里到处都是这句, 它把这一步的心理成本压下去)",
+		body.find("以后") >= 0 and body.find("改") >= 0, body)
+	## ★★用户 2026-09-24 点名的那个**事实不许删**。两个字都要在:
+	##   “不绑”(条件) + “换手机/换设备”(场景) —— 只剩一个就不叫说清楚了。
+	_ok("⑦B ★★★「没绑邮箱换手机就拿不回来」这个**事实还在**(用户 2026-09-24 点名要的)",
+		body.find("不绑") >= 0 and (body.find("换手机") >= 0 or body.find("换设备") >= 0), body)
+	## `verify_account` §④ 的禁令: 服务端根本没存存档, 不许承诺「存档」能找回。
+	var lied: Array = []
+	for bad in ["丢失存档", "取回存档", "找回存档"]:
+		if body.find(str(bad)) >= 0:
+			lied.append(str(bad))
+	_ok("⑦B ★不许冒出「取回存档」这类假承诺(与 `verify_account` ④ 同一条禁令)",
+		lied.is_empty(), str(lied))
+	## ★按步分发的前提: 至少两行, 而**最后一行必须是「收不到码」**那一句 ——
+	##   `SettingsScene` 就是拿最后一行当第二步的文字的。顺序反了,
+	##   第二步会去印「不绑会…」而当下正在等码的人需要的是「收不到怎么办」。
+	_ok("⑦B ★分母: 文案至少两行(只一行 ⇒ 两步就共用同一句, 分发没意义)",
+		lines.size() >= 2, "%d 行" % lines.size())
+	_ok("⑦B ★★最后一行是「收不到验证码」那句(第二步就拿它当正文)",
+		str(lines[lines.size() - 1]).find("验证码") >= 0, str(lines[lines.size() - 1]))
+	## ★而第一步印的那几行里**不该**有「收不到码」—— 那一步还没发码。
+	var head_join := "\n".join(lines.slice(0, maxi(lines.size() - 1, 1)))
+	_ok("⑦B ★第一步要印的那几行里没有「收不到码」(还没发码, 印了只是多两行字)",
+		head_join.find("收不到") < 0, head_join)
+
+
+# ──────────────────────────────────────────────────────────
+# ⑦ A · ★★★名字池: 全池穷举 + 熵 (2026-09-29)
+#
+#    参考里取名那一步的设计目标是「不打字也能过」⇒ 昵称框预填一个名字。
+#    ★★判据不能只问「有没有预填」—— 预填一个**固定**名字也能过那一条,
+#      而那会让排行榜上一片同名。⇒ 要量**熵**: N 次生成有多少个不同的。
+#    ★三条各管一事, 缺一条就能被蒙过去:
+#      ① 全池每一个名字都合法(不超 `NICK_MAX`) —— 否则玩家一点确认就报错
+#      ② 名字**像这个游戏的** —— 字形得能在 pets.json 里找到出处, 且没有 ASCII
+#      ③ 熵 —— 池子大小 + 重复率
+# ──────────────────────────────────────────────────────────
+## “这个名字像不像这个游戏的”的谓词。两位一体:
+##   · 没有 ASCII 字母/数字(`Player_561962` 就是这样被判掉的)
+##   · 去掉尾部名头之后剩下的字**在 pets.json 里找得到**(龟名或被动技名)
+func _looks_like_this_game(s: String) -> bool:
+	for i in range(s.length()):
+		var c := s.unicode_at(i)
+		if (c >= 48 and c <= 57) or (c >= 65 and c <= 90) or (c >= 97 and c <= 122) or c == 95:
+			return false
+	var stem := s
+	for h in P2C.NICK_HEADS:
+		if s.ends_with(str(h)):
+			stem = s.substr(0, s.length() - str(h).length())
+			break
+	if stem == s or stem == "":
+		return false
+	for p in DataRegistry.all_pets:
+		var pd := p as Dictionary
+		if str(pd.get("name", "")).find(stem) >= 0:
+			return true
+		if str((pd.get("passive", {}) as Dictionary).get("name", "")).find(stem) >= 0:
+			return true
+	return false
+
+
+func _t_suggest_pool() -> void:
+	print("── ⑦A 名字池 ──")
+	var n: int = P2C.nickname_suggest_count()
+	var stems: Array = P2C.nickname_stems()
+	print("     池子 = %d 个定语 × %d 个名头 = %d 个名字"
+		% [stems.size(), P2C.NICK_HEADS.size(), n])
+	## ★分母①: 池子真的建起来了。N=0 时下面的「每一个都合法」是空检查。
+	_ok("⑦A ★分母: 池子里真有名字(N=%d, 读不到 pets.json 就只剩兑底的 6×6)" % n,
+		n >= 150 and stems.size() >= 40, "定语 %d / 名字 %d" % [stems.size(), n])
+	## ★★词表的**出处**也要守: `NICK_WORDS` 只拿得出名头表 + 定语的源文件,
+	##   定语池本身必须是从那个文件摸出来的 —— 哪天有人把 28 个龟名抄进
+	##   代码里当常量, 新加的龟就悄悄不进池了(memory `fb-hand-rolled-copies-drift`)。
+	var words: Dictionary = P2C.NICK_WORDS
+	var src: String = str(words.get("stem_src", ""))
+	_ok("⑦A ★`NICK_WORDS` 指的词表源文件真存在: %s" % src,
+		src != "" and ResourceLoader.exists(src) and (words.get("heads", []) as Array).size() >= 4,
+		"src=%s heads=%d" % [src, (words.get("heads", []) as Array).size()])
+	## 定语池是不是真从那个文件摸的: 每一个定语都要能在 pets.json 里找到。
+	var orphan: Array = []
+	for st in stems:
+		var hit := false
+		for p in DataRegistry.all_pets:
+			var pd := p as Dictionary
+			if str(pd.get("name", "")).find(str(st)) >= 0 \
+					or str((pd.get("passive", {}) as Dictionary).get("name", "")).find(str(st)) >= 0:
+				hit = true
+				break
+		if not hit:
+			orphan.append(str(st))
+	_ok("⑦A ★★`NICK_WORDS` 的 %d 个定语**每一个**都在 pets.json 里找得到(不是手抄的表)" % stems.size(),
+		orphan.is_empty(), "找不到出处的 %d 个: %s" % [orphan.size(), str(orphan.slice(0, 5))])
+	## ① 全池穷举: 每一个都得合法, 且像这个游戏的
+	var bad_len: Array = []
+	var bad_style: Array = []
+	var seen_all: Dictionary = {}
+	var heads: int = P2C.NICK_HEADS.size()
+	for idx in range(n):
+		var s := str(P2C.nickname_suggest_at(idx / heads, idx % heads))
+		seen_all[s] = true
+		if not P2C.nickname_valid(s):
+			bad_len.append("%s(%d 字)" % [s, s.length()])
+		if not _looks_like_this_game(s):
+			bad_style.append(s)
+	print("     例: %s" % str(seen_all.keys().slice(0, 8)))
+	_ok("⑦A ★★全池 %d 个名字**每一个**都过 `nickname_valid`(2~%d 字)" % [n, P2C.NICK_MAX],
+		bad_len.is_empty(), "越线 %d 个: %s" % [bad_len.size(), str(bad_len.slice(0, 5))])
+	_ok("⑦A ★★★全池 %d 个名字都**像这个游戏的**(字在 pets.json 里找得到 · 没 ASCII)" % n,
+		bad_style.is_empty(), "不像的 %d 个: %s" % [bad_style.size(), str(bad_style.slice(0, 5))])
+	## ★分母②: 谓词真的会 FAIL —— 拿参考里那两个名字跑一遍。
+	_ok("⑦A ★分母: 谓词把 `Player_561962` / `AwesomeHyacinth` 判成**不像**(判不出 ⇒ 上条恒真)",
+		not _looks_like_this_game("Player_561962")
+			and not _looks_like_this_game("AwesomeHyacinth"))
+	_ok("⑦A ★分母: 谓词把池子里随便一个判成**像**(判不出 ⇒ 上条也恒真)",
+		_looks_like_this_game(str(P2C.nickname_suggest_at(0, 0))),
+		str(P2C.nickname_suggest_at(0, 0)))
+	## ③ 熵: 抽 400 次, 数去重。
+	##   ★★固定预填一个名字 ⇒ 去重 = 1; 这条把它卡在外面。
+	##   期望值 = N×(1-(1-1/N)^400); N=336 时 ≈ 233 ⇒ 卡 120 留着余量。
+	var draws := 400
+	var seen: Dictionary = {}
+	for _i in range(draws):
+		seen[str(P2C.nickname_suggest())] = true
+	print("     熵: 抽 %d 次 ⇒ %d 个不同的(池子 %d)" % [draws, seen.size(), n])
+	_ok("⑦A ★★★**名字熵**够: 抽 %d 次至少 120 个不同(固定预填一个名字 ⇒ 只有 1 个)" % draws,
+		seen.size() >= 120, "实测 %d 个" % seen.size())
+	## ★「换一个」永远不该给同一个名字 —— 全池逐个验。
+	var same: Array = []
+	for k in seen_all.keys():
+		if str(P2C.nickname_suggest(str(k))) == str(k):
+			same.append(str(k))
+	_ok("⑦A ★★★全池 %d 个名字每一个当 avoid 传进去, 都**不会再得到它**(否则就是点了没反应)" % seen_all.size(),
+		same.is_empty(), "重复的 %d 个: %s" % [same.size(), str(same.slice(0, 5))])
 
 
 # ─────────────────────────────────────────────────────────────
@@ -423,7 +601,18 @@ const TOUCH_MIN_PX := 81.0
 ## 相邻靶子至少要隔多少。★这一条**没有权威出处**(44pt 有: iOS HIG),
 ##   是 2026-09-28 本轮拍的下限 —— 上一版实测只有 **4 / 6 / 12 / 6 px**,
 ##   而「瞄发验证码高 7px 就点进邮箱框」正好弹出键盘 = 玩家看到的「点了没反应」。
-const GAP_MIN_PX := 12.0
+## ★★★ 2026-09-29 从 12 抬到 20(棘轮: 只往上)。依据不再是“拍”:
+##   参考真值(`python tools/login_screen_audit.py thresholds`, 13 屏逐像素):
+##     最小相邻间隙 中位 **23.3pt(≈43px)** · p10 9.2pt · 地板 Hungry Shark 8.2pt。
+##   旧值 12px = **6.5pt**, 低于参考里任何一屏。
+##   新值 21px = **11.4pt**, 过了地板与 p10, 但还到不了中位 —— 因为中位在
+##   「一步三行 44pt」的前提下**算不出来**(见 ⑥e 那条天花板判据)。
+## ★为何卡 20 而不是 21: 这一条只管“别掉回去”; “有没有抬到顶”由 ⑥e 两头卡住。
+const GAP_MIN_PX := 20.0
+## ★★★`GAP_RAISED` 棘轮的旧值。卡「严格大于旧值」而不是「等于 21」 ——
+##   写死等于 21 会把下一次合理的上调也判成红; 而只卡 ≥12 等于没抬。
+##   「有没有抬到顶」由 ⑥g 那两条两头卡住。
+const GAP_RAISED_FROM := 12.0
 ## 三档键盘(占视口高的比例) —— 依据各自写清楚, 不凭印象:
 ##   0.415 = iPhone 14/15 横屏 ASCII 键盘 162pt / 屏高 390pt
 ##   0.520 = 同上加中文候选条(产品注释里写的「≈52%」那档)
@@ -530,6 +719,9 @@ func _t_touch() -> void:
 		await _t_step_targets(inst, step)
 	inst._email_set_step(1)
 	await _wf(3)
+	await _t_no_typing(inst)
+	await _t_wall_art(inst)
+	_t_gap_ceiling(inst)
 
 	## ⑥a-2 居中: 原来位置写死成 1280x720 设计坐标 ⇒ 1560 宽的屏上整块偏左 140px。
 	var box: Control = null
@@ -714,6 +906,195 @@ func _t_touch() -> void:
 	inst.queue_free()
 	get_tree().root.size = vp0
 	await _wf(2)
+
+
+# ──────────────────────────────────────────────────────────
+# ⑥e A · ★★★玩家**一个字不打**能不能过去 (2026-09-29)
+#
+#    上面 ⑦A 量的是**池子**(纯函数); 这一节量的是**屏幕上那个框**:
+#    池子再好, 控件没接上就是空框(memory `fb-write-without-reader-and-fake-gates`)。
+# ──────────────────────────────────────────────────────────
+func _t_no_typing(inst) -> void:
+	print("     ── ⑥e 一个字不打能不能过 ──")
+	_ok("⑥e ★分母: 昵称框在屏幕上", inst._nick_edit != null
+		and inst._nick_edit.is_visible_in_tree())
+	var pre := str(inst._nick_edit.text)
+	print("     预填的名字: 「%s」" % pre)
+	## ★★真正的判据: 不碰键盘的情况下, 这个名字**已经能过规则**。
+	##   量的是产品自己那道门(`nickname_error` 就是「确认」按下去跑的那一条)。
+	_ok("⑥e ★★★**预填名**能直接过(玩家不碰键盘也能按确认)",
+		P2C.nickname_error(pre) == "", "「%s」 ⇒ %s" % [pre, P2C.nickname_error(pre)])
+	_ok("⑥e ★预填的名字像这个游戏的(不是 `Player_561962`)",
+		_looks_like_this_game(pre), pre)
+	## 「换一个」
+	var re: Button = inst._email_side.get(inst._nick_edit)
+	_ok("⑥e ★分母: `NICK_REROLL` 那颗钮在第一步看得见, 且短边 ≥ 44pt",
+		re != null and re.is_visible_in_tree()
+			and minf(re.get_global_rect().size.x, re.get_global_rect().size.y) >= TOUCH_MIN_PX,
+		str(re.get_global_rect()) if re != null else "<不在>")
+	## ★字也要对得上 —— 钮在那里但写着另一句话, 玩家也找不到它。
+	_ok("⑥e ★那颗钮上写的字 == `NICK_REROLL`(产品那一处, 不是测试里拼的)",
+		re != null and str(re.text) == str(P2C.NICK_REROLL),
+		"「%s」 vs 「%s」" % [str(re.text) if re != null else "", str(P2C.NICK_REROLL)])
+	if re == null:
+		return
+	## ★分母: 不点的话名字**不会自己变**(会变 ⇒ 下面那条恒真)。
+	await _wf(20)
+	_ok("⑥e ★分母: 不点「换一个」的话名字不会自己变",
+		str(inst._nick_edit.text) == pre, "%s → %s" % [pre, str(inst._nick_edit.text)])
+	_tap(re.get_global_rect().get_center())
+	await _wf(6)
+	var post := str(inst._nick_edit.text)
+	_ok("⑥e ★★★按「换一个」名字**真的换了**(换完还是同一个 = 点了没反应)",
+		post != pre and post != "", "「%s」 → 「%s」" % [pre, post])
+	_ok("⑥e ★换完那个也直接能过(换出一个不合法的 = 把人坑进报错里)",
+		P2C.nickname_error(post) == "", "「%s」 ⇒ %s" % [post, P2C.nickname_error(post)])
+	## ★★第二步必须藏掉它 —— 那一步没名字可换, 而且它会被 `_email_ctl_band`
+	##   算进键盘让位的 band 里。
+	inst._email_set_step(2)
+	await _wf(3)
+	_ok("⑥e ★★「换一个」在第二步**藏掉了**(那一步没名字可换)",
+		not re.is_visible_in_tree())
+	inst._email_set_step(1)
+	await _wf(3)
+	## ★★对照组: **已经有名字的人不允许被覆盖**。
+	##   老玩家升级过来会被墙挡一次, 覆了就是把他的名字默默改掉。
+	var keep := "龟主阿龟"
+	GameState.nickname = keep
+	var st7 = SET.new()
+	add_child(st7)
+	await _wf(2)
+	st7._open_email_dialog(SB.FLOW_BIND, false)
+	await _wf(3)
+	_ok("⑥e ★★已经有名字的人: 框里还是他自己的名字(不被随机名覆盖)",
+		st7._nick_edit != null and str(st7._nick_edit.text) == keep,
+		str(st7._nick_edit.text) if st7._nick_edit != null else "<没框>")
+	st7.queue_free()
+	GameState.nickname = ""
+	await _wf(2)
+
+
+# ──────────────────────────────────────────────────────────
+# ⑥f C · ★★★这一屏看不看得见这个游戏 (2026-09-29)
+#
+#    探针 `tests/_probe_wall_look.gd` 实测过: `_maybe_login_wall` 把 self 下的
+#    Control 整批藏掉(连 `_bg()` 建的底色/平铺砖/渐变) ⇒ 这一屏一只龟都没有。
+#    ★判据量“屏幕上有没有一张盖满的真图”, 不量“源码里有没有 load 一张图”。
+#    ★★配对照组: **自己点开的对话框没有这层** —— 否则证不了是墙才有。
+# ──────────────────────────────────────────────────────────
+## 遮罩层里那些**贴了真贴图**的 TextureRect。
+func _art_of(layer) -> Array:
+	var out: Array = []
+	if layer == null or not is_instance_valid(layer):
+		return out
+	for ch in (layer as Node).get_children():
+		if ch is TextureRect and (ch as TextureRect).texture != null:
+			out.append(ch)
+	return out
+
+
+func _t_wall_art(inst) -> void:
+	print("     ── ⑥f 这一屏看得见这个游戏吗 ──")
+	var vp: Vector2 = Vector2(get_tree().root.size)
+	var art: Array = _art_of(inst._email_layer)
+	var covers: Array = []
+	for a in art:
+		var r: Rect2 = (a as Control).get_global_rect()
+		print("        %-12s %s  tex %s" % [(a as Node).get_class(), str(r),
+			str((a as TextureRect).texture.get_size())])
+		if r.size.x >= vp.x - 1.0 and r.size.y >= vp.y - 1.0:
+			covers.append(a)
+	_ok("⑥f ★★★墙背后铺了**一张盖满屏幕的游戏美术**(原来是 0.65 纯黑 + 菜单平铺砖)",
+		covers.size() >= 1, "遮罩层里 %d 张图, 其中 %d 张盖满 %s" % [art.size(), covers.size(), str(vp)])
+	## 素材得是仓库里已经有的(本轮不新生成)
+	for p in [WALL_ART.WALL_ART_TEX, WALL_ART.WALL_LOGO_TEX]:
+		_ok("⑥f ★`WALL_ART_TEX` 指的是仓库里**已经有的**素材: %s" % str(p).get_file(),
+			ResourceLoader.exists(str(p)))
+	## ★★★光“存在”不够 —— 得证明**画在屏幕上那张就是它**。
+	var on_screen: Array = []
+	for a in covers:
+		on_screen.append(str((a as TextureRect).texture.resource_path))
+	_ok("⑥f ★★★盖满屏幕那张图的 resource_path == `WALL_ART_TEX`(不是别处随便一张)",
+		on_screen.has(str(WALL_ART.WALL_ART_TEX)), str(on_screen))
+	## ★★这一条守的是「**不再是所有菜单屏共用的那张平铺花砖**」:
+	##   `PersistentBg`(autoload·layer -100) 与 `SettingsScene._bg()` 画的都是
+	##   `menu-bg-tile.png`。墙上这层美术不许又是它 —— 换了张图还是同一块砖,
+	##   玩家看到的一点没变。
+	_ok("⑥f ★★★铺的不是 `PersistentBg` / `_bg()` 那张共用平铺花砖(又是它 = 白换)",
+		not on_screen.has("res://assets/sprites/menu/menu-bg-tile.png"), str(on_screen))
+	## ★美术不许抢点击 —— 抢了就是「点了没反应」。拿引擎自己算,
+	##   不看 `mouse_filter`(看标记 = 插一行数一行)。
+	var gut: Vector2 = Vector2(16.0, vp.y * 0.5)
+	var h := _hover_at(gut)
+	_ok("⑥f ★★美术**不吃点击**(点在图上时命中的不是 TextureRect)",
+		not (h is TextureRect), "%s @ %s" % [str(h), str(gut)])
+	## 标: 在屏幕上, 且**不跋框**
+	var logo = inst._email_logo
+	_ok("⑥f ★分母: 斗龟场的标在屏幕上(看不见 ⇒ 下一条是空检查)",
+		logo != null and is_instance_valid(logo) and (logo as Control).is_visible_in_tree(),
+		str((logo as Control).get_global_rect()) if logo != null else "<不在>")
+	if logo != null and is_instance_valid(logo) and (logo as Control).is_visible_in_tree():
+		var lr: Rect2 = (logo as Control).get_global_rect()
+		var br: Rect2 = (inst._email_box as Control).get_global_rect()
+		_ok("⑥f ★★标**不压到框上**(压上去就是把要填的东西遮住)",
+			not lr.intersects(br), "标 %s vs 框 %s" % [str(lr), str(br)])
+		_ok("⑥f ★标在屏幕里(没戳出左/上沿)",
+			lr.position.x >= -1.0 and lr.position.y >= -1.0, str(lr))
+	## ★★对照组: 玩家自己在设置里点开的那个对话框**没有**这层 ——
+	##   否则上面那条只是“对话框本来就带张图”, 证不了是墙才铺的。
+	GameState.account_email = "someone@x.co"
+	var st8 = SET.new()
+	add_child(st8)
+	await _wf(2)
+	st8._open_email_dialog(SB.FLOW_BIND)
+	await _wf(3)
+	_ok("⑥f ★★对照组: **自己点开的**对话框没有这层美术(背后本来就是设置页)",
+		_art_of(st8._email_layer).is_empty() and st8._email_logo == null,
+		"实测 %d 张图" % _art_of(st8._email_layer).size())
+	st8.queue_free()
+	GameState.account_email = ""
+	await _wf(2)
+
+
+# ──────────────────────────────────────────────────────────
+# ⑥g D · ★★★间隙**抬到顶了吗** —— 两头卡住 (2026-09-29)
+#
+#    上面 ⑥a 只卡住了下限(gap ≥ GAP_MIN_PX)。光有下限不够:
+#      · 往下掉回 12px —— 下限卡住了 ✅
+#      · 往上越过天花板 —— ⑥c 那 18 格卡住了 ✅
+#      · **停在中间白白浪费净空** —— 两条都管不到❗
+#    ⇒ 这一条量「还剩多少净空没用上」。天花板不写死:
+#    拿 **产品自己的 band** 与 **本文件自己的 KB_TIERS / _KB_GAP** 算,
+#    两边都不是我在这一行手抄的数字。
+# ──────────────────────────────────────────────────────────
+func _t_gap_ceiling(inst) -> void:
+	print("     ── ⑥g 间隙抬到顶了吗 ──")
+	var band: Vector2 = inst._email_ctl_band()
+	var bh: float = band.y - band.x
+	## 最坏那一档键盘留给可点元素的净空。720 高那两个视口是最穿的一档。
+	var worst: float = 0.0
+	for f in KB_TIERS:
+		worst = maxf(worst, float(f))
+	var room: float = VP_PHONE.y * (1.0 - worst) - 2.0 * float(SET._KB_GAP)
+	print("        band 高 %.1f px  ·  最坏一档(kb %.1f%%)净空 %.1f px  ·  剩 %.1f px"
+		% [bh, worst * 100.0, room, room - bh])
+	print("        算式: %d 行 × %.0f(44pt) + %d × gap %.0f = %.0f  ≤  %.0f×(1-%.3f) - 2×%.0f = %.1f"
+		% [SET._W_ROWS, SET._W_ROW_H, SET._W_ROWS - 1, SET._W_ROW_GAP, bh,
+			VP_PHONE.y, worst, SET._KB_GAP, room])
+	_ok("⑥g ★分母: band 量到了(0 ⇒ 下面两条是空检查)", bh > 100.0, "%.1f px" % bh)
+	_ok("⑥g ★★GAP_RAISED: `_W_ROW_GAP` 真的从旧值 %.0f 抬上去了(现在 %.0f)"
+			% [GAP_RAISED_FROM, SET._W_ROW_GAP],
+		float(SET._W_ROW_GAP) > GAP_RAISED_FROM, "%.0f px" % SET._W_ROW_GAP)
+	_ok("⑥g ★★没越过天花板(越了 ⇒ 最坏一档键盘底下埋东西, ⑥c 那 18 格会同时红)",
+		bh <= room + 0.01, "band %.1f > 净空 %.1f" % [bh, room])
+	## ★★★上限: 剩下的净空不得超过 **一个行隙**。
+	##   剩得比一个行隙还多 ⇒ 那一步本来可以再抬, 却没抬 ⇒ 白白浪费。
+	##   (旧值 gap=12 时 band=267, 剩 19.4px > 行隙 ⇒ 这一条当场红。
+	##    新值 gap=21 时 band=285, 剩 1.4px ⇒ 绿。)
+	_ok("⑥g ★★★GAP_RAISED **抬到顶了**: 剩下的净空 %.1f px < 一个行隙 %.0f px(剩得多 ⇒ 本来还能再抬)"
+			% [room - bh, SET._W_ROW_GAP],
+		room - bh < float(SET._W_ROW_GAP),
+		"剩 %.1f px, 一个行隙 %.0f px —— 抬不动了才叫到顶" % [room - bh, SET._W_ROW_GAP])
 
 
 ## `hot` 里有哪些控件的下沿越过了 `line`(= 键盘上沿)。

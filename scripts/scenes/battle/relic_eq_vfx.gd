@@ -409,7 +409,7 @@ static func impact_speed(h: float, g: float) -> float:
 #  §网格 —— 程序化 ArrayMesh, 零素材
 # ══════════════════════════════════════════════════════════════════
 
-static func _tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3) -> void:
+static func _tri_normal(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3) -> void:
 	var n: Vector3 = (b - a).cross(c - a)
 	n = n.normalized() if n.length() > 1e-9 else Vector3.UP
 	for v in [a, b, c]:
@@ -418,8 +418,8 @@ static func _tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3) -> void:
 
 
 static func _quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3) -> void:
-	_tri(st, a, b, c)
-	_tri(st, a, c, d)
+	_tri_normal(st, a, b, c)
+	_tri_normal(st, a, c, d)
 
 
 ## 单位外接圆半径的正六边形甲片(贴地·顶点在 0°/60°/…/300°)。
