@@ -74,7 +74,17 @@ const CLOSE_LOCKOUT_SEC := 600
 const PULL_BATTLES_AHEAD := 1
 
 ## 积分赛(周二~周五)
-const RANKED_QUOTA := 24               # 场次配额(原稿: 与 8 命咬合, 16 胜双清)
+const RANKED_QUOTA := 24               # 场次配额(原稿: 与 HEARTS_MAX 命咬合, 16 胜双清)
+
+## ★★命数上限。用户 2026-09-29 14:05 定了方向:「现在是 24 场 8 条命对吧, **之后**我们改为 16 场 6 条命了」。
+##   ⇒ 值**没动**(仍是 8 + 24), 这里只是把原来散在三处的字面量 `8` 收成一处 ——
+##     `GameState` 的声明 / `reset_all()` / `start_new_season()` 各写过一遍。
+##   ★真要改成 16/6, 现在就是改这两行(`HEARTS_MAX = 6` + `RANKED_QUOTA = 16`), 不用再去翻调用点。
+##     门禁 `verify_titles` 的 HEARTS_ONE_SOURCE 守着「三处都跟着这一个常量走」。
+## ⚠ **不要顺手把 `RealtimeBattle3DScene:7597` 那个 `8` 也换掉** ——
+##   那条是深海币奖励公式 `8 + 余命 + 2×已失命 + 胜6` 的**基数**, 与命数上限**不是同一个 8**。
+##   (它旁边的注释说的「整条都吃 hearts」指的是公式的**取值**跟着 hearts 变, 不是那个字面量是命数。)
+const HEARTS_MAX := 8                  # 命数上限(输一场 -1, 0 = 淘汰)
 const RANKED_BACKFILL_COINS := 16      # 补发地板/场: 原稿「固定数 + 满命×A」= 8 + 8×1, **不含胜利奖**
 const RANKED_BACKFILL_XP := 2          # 补发经验/场(与实打每场 +2 同额)
 const PROMOTE_TOP_PCT := 0.30          # 晋级线: 前 30%

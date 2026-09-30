@@ -67,6 +67,7 @@ func _ready() -> void:
 	await _t_quota_and_sweep()
 	_t_schedule()
 	_t_weekend_interim()
+	_t_hearts_one_source()
 
 	print("")
 	print("  (共 %d 条断言)" % _n)
@@ -205,7 +206,7 @@ func _t_quota_and_sweep() -> void:
 	## 摆一个「有赛季、没淘汰」的干净局面
 	_gs.season_start_ts = int(Time.get_unix_time_from_system())   # 防赛季过期滚动
 	_gs.season_leaders = ["basic", "stone", "ice"]                # _had_season=true
-	_gs.hearts = 8
+	_gs.hearts = _P2.HEARTS_MAX
 	_gs.ranked_used = 0
 	_gs.season_sweeps = 0
 	_gs.week_phase = "ranked"
@@ -226,7 +227,7 @@ func _t_quota_and_sweep() -> void:
 	##   判据没错、代码也"照设计写了", 错的是**这两件事没有同时上线**。
 	## ⇒ 现在判据跟着 `PHASE_MODE_LIVE` 那张表走, 每个阶段各断言各的;
 	##   而且卡的是【加了几】(0 或 1), 不是"变了没有" —— 后者在连打两场时也会蒙对。
-	_gs.hearts = 8                                    # 重置: 上面输掉的两场别把命耗到 0
+	_gs.hearts = _P2.HEARTS_MAX                                    # 重置: 上面输掉的两场别把命耗到 0
 	## ★期望**写死**在这张表里, 不问 `phase_mode_live()` ——
 	##   问被测函数等于拿它当尺子(今天栽过一次: 它退化成空串时判据跟着全绿)。
 	##   周六闯关赛 E-A 已上线 ⇒ 它吃自己的 6 场配额, **不吃**积分赛的 24 场。
@@ -251,7 +252,7 @@ func _t_quota_and_sweep() -> void:
 
 	print("── ⑤ 横扫(2-0)计数 ──")
 	_gs.week_phase = "ranked"
-	_gs.hearts = 8
+	_gs.hearts = _P2.HEARTS_MAX
 	_gs.season_sweeps = 0
 
 	## 2-0 横扫: 两路都是我方赢、没打终极
@@ -372,7 +373,7 @@ func _t_weekend_interim() -> void:
 	var keep_phase = _gs.week_phase
 	var keep_used: int = int(_gs.ranked_used)
 	var keep_hearts: int = int(_gs.hearts)
-	_gs.hearts = 8                                   # 淘汰态下另有一条闸, 排掉它
+	_gs.hearts = _P2.HEARTS_MAX                                   # 淘汰态下另有一条闸, 排掉它
 	_gs.week_phase = "gauntlet"                      # 上一场是上周六打的
 	_gs.ranked_used = int(_P2.RANKED_QUOTA)
 	_ok("⑦ ★存档里写着 gauntlet + 本周四配额已满 → 仍然拦住(不看存档里的旧阶段)",
@@ -402,3 +403,81 @@ func _t_weekend_interim() -> void:
 	_gs.week_phase = keep_phase
 	_gs.ranked_used = keep_used
 	_gs.hearts = keep_hearts
+
+
+# ─────────────────────────────────────────────────────────────
+# ⑨ HEARTS_ONE_SOURCE —— 命数上限只有一个事实源
+#
+# 由来（用户 2026-09-29 14:05）：「现在是 24 场 8 条命对吧，**之后**我们改为 16 场 6 条命了」。
+# ★这一节不改值（仍是 8 + 24），它要保证的是：**将来改 16/6 时只需改一处**。
+#   原来 `8` 散在三处：`GameState` 的声明 / `reset_all()` / `start_new_season()`，
+#   改漏一处就会在切轮之后悄悄漂（本仓 `fb-hand-rolled-copies-drift` 那一族）。
+#
+# ★★判据分两层，缺哪层都不算守住：
+#   ① **行为层**：三条路（初值 / reset_all / start_new_season）拿到的都必须 == `HEARTS_MAX`。
+#      —— 只有这层的话，有人把 `HEARTS_MAX` 也改成字面量 8 它照样绿。
+#   ② **源码层**：`autoload/` + `scripts/` 里不许再出现 `hearts = <数字>`。
+#      —— 这层挡的是「将来又长出第四处」。扫的是产品源码，不是测试自己。
+# ★分母：源码层必须真的扫到文件、真的扫到 `hearts` 这个词（扫了 0 个文件是空检查）。
+# ─────────────────────────────────────────────────────────────
+func _t_hearts_one_source() -> void:
+	var hm: int = int(_P2.HEARTS_MAX)
+	_ok("⑨ ★分母: `HEARTS_MAX` 是个正数(%d)" % hm, hm > 0, str(hm))
+
+	## ① 行为层：三条路
+	_gs.reset_save()
+	_ok("⑨ ★★`reset_save()` 后命数 == HEARTS_MAX(%d)" % hm, int(_gs.hearts) == hm,
+		"实得 %d" % int(_gs.hearts))
+	_gs.hearts = 1
+	_gs.start_new_season()
+	_ok("⑨ ★★`start_new_season()` 后命数 == HEARTS_MAX(%d)" % hm, int(_gs.hearts) == hm,
+		"实得 %d" % int(_gs.hearts))
+
+	## ② 源码层：不许再长出第四处写死的命数
+	var files: Array = []
+	for root in ["res://autoload", "res://scripts"]:
+		_collect_gd(root, files)
+	var offenders: Array = []
+	var saw_hearts: int = 0
+	var re := RegEx.create_from_string("hearts[ \t]*=[ \t]*[0-9]")
+	for fp in files:
+		var f := FileAccess.open(str(fp), FileAccess.READ)
+		if f == null:
+			continue
+		var txt: String = f.get_as_text()
+		f.close()
+		if txt.find("hearts") >= 0:
+			saw_hearts += 1
+		if re == null:
+			continue
+		for ln in txt.split("\n"):
+			var s2: String = str(ln).strip_edges()
+			if s2.begins_with("#") or s2.begins_with("##"):
+				continue      # 注释里写「8 命」是记账, 不是事实源
+			if re.search(s2) != null:
+				offenders.append("%s: %s" % [str(fp).get_file(), s2.substr(0, 70)])
+	print("  [分母] HEARTS_ONE_SOURCE: 扫了 %d 个 .gd / 其中 %d 个提到 hearts" % [files.size(), saw_hearts])
+	_ok("⑨ ★分母: 真的扫到文件且真的扫到 `hearts`(0 = 空检查)",
+		files.size() >= 50 and saw_hearts >= 3, "%d 文件 / %d 提到" % [files.size(), saw_hearts])
+	_ok("⑨ ★★★HEARTS_ONE_SOURCE: 产品源码里不许再写死命数(要读 `_P2.HEARTS_MAX`)",
+		offenders.is_empty(), "; ".join(offenders))
+
+
+## 递归收 .gd（★不按我以为的层级走 —— 一律递归到底，memory `fb-recursive-scan-not-structured-walk`）
+func _collect_gd(dir_path: String, out: Array) -> void:
+	var d := DirAccess.open(dir_path)
+	if d == null:
+		return
+	d.list_dir_begin()
+	var fn := d.get_next()
+	while fn != "":
+		if fn.begins_with("."):
+			fn = d.get_next()
+			continue
+		var full: String = dir_path.path_join(fn)
+		if d.current_is_dir():
+			_collect_gd(full, out)
+		elif fn.get_extension() == "gd":
+			out.append(full)
+		fn = d.get_next()
+	d.list_dir_end()

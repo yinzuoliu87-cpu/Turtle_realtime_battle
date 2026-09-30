@@ -878,7 +878,7 @@ var meta_shop_offer: Array = []
 var meta_shop_battles: int = -1
 var season_id: int = 1                                # 第几大轮赛季 (★一个自然周一轮, 切轮全重置)
 var season_start_ts: int = 0                          # 本赛季开始 unix 时间戳 = 本周一 00:00 UTC (0=未初始化)
-var hearts: int = 8                                   # 命数 (8起, 输-1, 0=淘汰; 玩法在阶段4)
+var hearts: int = _P2.HEARTS_MAX                      # 命数 (输-1, 0=淘汰; 上限的事实源 = phase2_config.HEARTS_MAX)
 var season_total_battles: int = 0                     # 本赛季总战斗数 → 决定装备槽 0/1/2/3/4
 var season_eggs_killed: int = 0                       # 本赛季击杀龟蛋数 (排行榜口径)
 var season_wins: int = 0                              # 本赛季胜场数 (实时战斗赢一场+1; 排行指标候选)
@@ -1921,7 +1921,7 @@ func reset_save() -> void:
 	meta_shop_battles = -1
 	season_id = 1
 	season_start_ts = 0
-	hearts = 8
+	hearts = _P2.HEARTS_MAX
 	season_total_battles = 0
 	season_eggs_killed = 0
 	season_wins = 0
@@ -2419,7 +2419,7 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	##   一大轮 = 一个自然周(见 `_P2.week_anchor_utc`)。写成"当前时刻"的话,
 	##   周三才开一次游戏就把赛季起点定在周三, 赛程条与倒计时立刻和星期几错位。
 	season_start_ts = _P2.week_anchor_utc(int(Time.get_unix_time_from_system()))
-	hearts = 8
+	hearts = _P2.HEARTS_MAX
 	meta_shop_offer = []      # 新赛季货架作废(否则会带着上赛季的货开局)
 	meta_shop_battles = -1
 	season_total_battles = 0
