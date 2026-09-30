@@ -9,9 +9,31 @@ GODOT="${GODOT:-/c/Users/Louis/Desktop/Godot_v4.6.3-stable_win64.exe}"
 
 ## 门禁专用的隔离存档目录 —— 见 run_one 里那段长注释。
 ## 每轮开跑前清空: 上一轮留下的存档同样会污染这一轮(那就成了"门禁污染门禁")。
-GATE_APPDATA="${GATE_APPDATA:-/c/tmp/gate_appdata}"
+##
+## ★★★2026-09-30: 默认值原来写死成 `/c/tmp/gate_appdata` —— 那是 Git-Bash 风格的
+##   **Windows** 路径。它在 Linux 上不能用, 而且**从前不出事只是因为运气**:
+##   那时只把它塞给 `APPDATA`, 而 Linux 上 Godot **完全忽略 APPDATA** ⇒ 假路径没人读,
+##   代价是隔离整个失效(404 个测试共用一份 user://)。
+##   等我把 `XDG_DATA_HOME` 也设上之后, 这个假路径**第一次真的被使用** ⇒
+##   Godot 建不出 `/c/...` ⇒ **signal 11, 400 个测试全崩(rc=134)**。
+##   ⇒ 教训: 换掉一个平台变量时, 连它指向的**路径本身**是不是跨平台也要一起换。
+if [ -z "${GATE_APPDATA:-}" ]; then
+  if [ -d /c ]; then
+    GATE_APPDATA="/c/tmp/gate_appdata"          # Windows(Git Bash)
+  else
+    GATE_APPDATA="${TMPDIR:-/tmp}/gate_appdata"  # Linux/macOS(= CI)
+  fi
+fi
 rm -rf "$GATE_APPDATA" 2>/dev/null
 mkdir -p "$GATE_APPDATA" 2>/dev/null
+## ★★开跑前就验它能不能写 —— 不验的话故障表现成「几百个测试各自崩一次」,
+##   而真因(一个目录建不出来)被埋在每份日志的第一行里, 谁都不会去翻第 400 份。
+if ! ( mkdir -p "$GATE_APPDATA/.wtest" && rmdir "$GATE_APPDATA/.wtest" ) 2>/dev/null; then
+  echo "★门禁隔离目录建不出来 / 不可写: $GATE_APPDATA"
+  echo "  Godot 的 user:// 会被指到这里(APPDATA + XDG_DATA_HOME), 建不出来就是全体崩溃。"
+  echo "  用 GATE_APPDATA=<一个可写目录> bash run-tests.sh 覆盖。"
+  exit 1
+fi
 export GATE_APPDATA
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
