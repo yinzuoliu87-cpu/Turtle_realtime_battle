@@ -21,7 +21,21 @@ func _ready() -> void:
 	var s = RB.new(); add_child(s); _scene = s
 	await get_tree().process_frame; await get_tree().process_frame
 	var G := _ids("枪", 9)
-	_ok("★分母: 找到 %d 件枪" % G.size(), G.size() >= 9)
+	## ★★分母要把**到底找到哪几件**打出来, 不只打个数。
+	##   由来(2026-09-30): 【枪】在 `data/p2eq-types.json` 里**恰好 9 件**, 而顶档要的就是 9
+	##   ⇒ **零余量**: 少解析出一件, 顶档永不激活 ⇒ 每条「期望非零」全红、
+	##   每条「期望为零」全绿 —— 正是 CI 上那一片红的形状, 而本地永远绿。
+	##   光打个数还不够用: 要知道**哪一件没解析出来**才能定案。
+	var _all_guns: Array = []
+	for _e in DataRegistry.phase2_equipment:
+		var _eid: String = str((_e as Dictionary).get("id", ""))
+		if _scene.Phase2Types.type_of(_eid) == "枪":
+			_all_guns.append(_eid)
+	print("  [分母] 装备表 %d 件 / 其中解析成【枪】的 %d 件: %s"
+		% [DataRegistry.phase2_equipment.size(), _all_guns.size(), str(_all_guns)])
+	_ok("★分母: 找到 %d 件枪(顶档要 9 件, 而类型表里恰好就 9 件 = 零余量)" % G.size(),
+		G.size() >= 9, "装备表 %d 件 · 解析成枪 %d 件 · G=%s"
+			% [DataRegistry.phase2_equipment.size(), _all_guns.size(), str(G)])
 	print("=== 枪羁绊 ===")
 
 	# ── ① 火控: 顶档才有, 按【携带者身上】件数, 最高 40% ──

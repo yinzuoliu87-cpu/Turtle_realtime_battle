@@ -336,7 +336,15 @@ run_one () {  # $1 = 测试名
   #   535 血而不是 500 —— 载入的队伍给了它加成)。把存档挪开再跑, 同一份代码立刻全绿。
   #   ★CLAUDE.md 早记过这条的一半(「CI默认队 vs 本地存档队」), 但只当成"CI 偶发红"的
   #     解释、没人焊住它 ⇒ 每次都要重新查一遍。
-  #   ★做法: Windows 上 Godot 的 `user://` 解析到 `%APPDATA%`, 换掉它就完全隔离。
+  #   ★做法: **两个平台各走一个变量, 两个都得换** ——
+  #     · Windows: `user://` 解析到 `%APPDATA%`
+  #     · Linux(=CI): `user://` 走 `$XDG_DATA_HOME`(没设就 `$HOME/.local/share`), **不看 APPDATA**
+  #   ★★★ 2026-09-30 改正: 这条原来只写了 Windows 那一半, 下面的命令也只换了 APPDATA
+  #     ⇒ **隔离在 CI 上从来没生效过**: 404 个测试共用同一份 `user://`。
+  #     铁证: CI 日志里那句 `[GameState] ⚠ 正式存档损坏, 用备份 .bak 开局`
+  #     —— 全新目录上不该有存档, 更不该有**坏掉的**存档, 那是别的进程写到一半的。
+  #     ★而它在本地永远绿, 所以一直没人发现 ——
+  #     **一个写死了平台的隔离, 只在那个平台上算数。**
   #     实测: 测试全绿 / 只在隔离目录生成文件 / 真存档逐字节没动。
   #     **这同时堵死了"测试污染真存档"的反向路径。**
   # ★★`TURTLE_SUPABASE=" "` 与上面那条同理(2026-09-20 加): D 阶段接了真 Supabase 之后,
@@ -361,7 +369,7 @@ run_one () {  # $1 = 测试名
   #   `--headless` **不包含静音** —— 它只关渲染, 音频驱动照旧初始化并出声,
   #   而门禁并行 8~16 个进程 ⇒ 扬声器里是十几局游戏同时在响。
   #   (旧注释只记了它「不影响耗时」就没加, 那是只看了一个维度。)
-  TURTLE_BACKEND=" " TURTLE_SUPABASE=" " APPDATA="$_ad" "$GODOT" --headless --audio-driver Dummy --path "$DIR" "res://tests/$t.tscn" \
+  TURTLE_BACKEND=" " TURTLE_SUPABASE=" " APPDATA="$_ad" XDG_DATA_HOME="$_ad" "$GODOT" --headless --audio-driver Dummy --path "$DIR" "res://tests/$t.tscn" \
       --quit-after "$(frames_for "$t")" > "$RAW/$t.log" 2>&1
   echo $? > "$RAW/$t.rc"
   echo $(( ( $(date +%s%N) - _t0 ) / 1000000 )) > "$RAW/$t.ms"
@@ -439,7 +447,7 @@ trap 'rm -rf "$RAW" "$ARAW"' EXIT
 
 # ★先单独导入一次: `.godot/` 导入缓存是并行下唯一的共享可写状态,
 #   让 N 个进程同时冷启动去建它会打架。这一步之后缓存是热的, 后面只读。
-APPDATA="$GATE_APPDATA" "$GODOT" --headless --audio-driver Dummy --path "$DIR" --import > /dev/null 2>&1
+APPDATA="$GATE_APPDATA" XDG_DATA_HOME="$GATE_APPDATA" "$GODOT" --headless --audio-driver Dummy --path "$DIR" --import > /dev/null 2>&1
 
 # ★冒烟(80 秒)与测试池【同时】跑 —— 它是完全独立的进程, 与自证测试零共享状态,
 #   排在后面串行等 = 白白多花 80 秒。判定逻辑在下面的冒烟段, 一个字没改。
