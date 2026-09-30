@@ -1553,7 +1553,7 @@ func _build_reward_chips(gs) -> Control:
 	var lv: int = int(gs.get("season_level")) if gs.get("season_level") != null else 1
 	var items: Array = [["深海币", "+%d" % battle._last_reward, Color("#ffd93d")]]
 	if not battle._last_was_exhibition:
-		items.append(["剩余生命", "%d / 8" % int(gs.hearts), Color("#ff8a8a") if int(gs.hearts) <= 2 else Color("#e8f0f6")])
+		items.append(["剩余生命", "%d / %d" % [int(gs.hearts), int(_P2C_HUD.HEARTS_MAX)], Color("#ff8a8a") if int(gs.hearts) <= 2 else Color("#e8f0f6")])
 	items.append(["赛季胜场", "%d" % int(gs.season_wins), Color("#e8f0f6")])
 	## ★★A5 的另一半(2026-09-19): 结算屏的本周配额读数。
 	##   由来: 方案书 A5 写的是「主菜单**与结算屏**读数」, 而落地时只做了主菜单

@@ -17,7 +17,7 @@ extends Node
 ##   · **有效窗口 = 周五 23:00 ~ 周日 23:59（同一个自然周内），不做跨周补发。**
 ##     理由是硬的：`start_new_season()` 会清 `meta_deepsea_coins`，周一之后补上一周的币**当场作废**。
 ##     代价写在明处：整个周末一次没开游戏 = 拿不到补发。**这是有意的取舍，不是漏。**
-##   · **`promoted` 离线版只用硬线「≥ PROMOTE_WINS_FLOOR 胜保送」** ——
+##   · **`promoted` 离线版只用硬线「≥ PROMOTE_WINS 胜保送」** ——
 ##     原稿的「前 30%」要一份收盘时刻的全服终榜，离线版没有。
 ##
 ## ══════════════════════════════════════════════════════════════════════
@@ -138,7 +138,7 @@ func _t_close_ts() -> void:
 func _t_both_sides() -> void:
 	print("── ② 收盘前后两侧 ──")
 	var K := int(P2.RANKED_QUOTA) - 5      # 差 5 场
-	var W := int(P2.PROMOTE_WINS_FLOOR)    # 够晋级
+	var W := int(P2.PROMOTE_WINS)    # 够晋级
 
 	## —— 收盘前一秒 ——
 	_setup(K, W)
@@ -172,11 +172,11 @@ func _t_both_sides() -> void:
 
 
 # ─────────────────────────────────────────────────────────────
-# ③ promoted 走硬线「≥ PROMOTE_WINS_FLOOR 胜」, 且配分母
+# ③ promoted 走硬线「≥ PROMOTE_WINS 胜」, 且配分母
 # ─────────────────────────────────────────────────────────────
 func _t_wins_floor() -> void:
 	print("── ③ 晋级硬线 ──")
-	var floor_w: int = int(P2.PROMOTE_WINS_FLOOR)
+	var floor_w: int = int(P2.PROMOTE_WINS)
 	var K := int(P2.RANKED_QUOTA) - 5
 
 	_setup(K, floor_w - 1)
@@ -202,7 +202,7 @@ func _t_wins_floor() -> void:
 func _t_idempotent() -> void:
 	print("── ④ 同一周内不许重复领 ──")
 	var K := int(P2.RANKED_QUOTA) - 5
-	_setup(K, int(P2.PROMOTE_WINS_FLOOR))
+	_setup(K, int(P2.PROMOTE_WINS))
 	var first: int = int(_gs.settle_ranked_close(FRI_CLOSE))
 	var m: int = int(_gs.meta_deepsea_coins)
 	var second: int = int(_gs.settle_ranked_close(FRI_CLOSE + 3600))
@@ -232,7 +232,7 @@ func _t_real_entry() -> void:
 	_gs.week_anchor_ts = anchor
 	_gs.season_start_ts = anchor
 	_gs.ranked_used = K
-	_gs.season_wins = int(P2.PROMOTE_WINS_FLOOR)
+	_gs.season_wins = int(P2.PROMOTE_WINS)
 	_gs.backfill_paid = 0
 	_gs.promoted = false
 	_gs.meta_deepsea_coins = 1000
@@ -355,11 +355,11 @@ func _t_one_clock() -> void:
 func _one_clock_probe(pin: int) -> Dictionary:
 	P2.now_override_ts = pin
 	## 积分赛那一侧
-	_setup(int(P2.RANKED_QUOTA) - 5, int(P2.PROMOTE_WINS_FLOOR))
+	_setup(int(P2.RANKED_QUOTA) - 5, int(P2.PROMOTE_WINS))
 	var r: int = int(_gs.settle_ranked_close())            # ★不传 now_override
 	var promo: bool = bool(_gs.promoted)
 	## 闯关赛那一侧(4-0 ⇒ 该补 2 场)
-	_setup(int(P2.RANKED_QUOTA) - 5, int(P2.PROMOTE_WINS_FLOOR))
+	_setup(int(P2.RANKED_QUOTA) - 5, int(P2.PROMOTE_WINS))
 	_gs.gauntlet_wins = 4
 	_gs.gauntlet_losses = 0
 	_gs.gauntlet_backfill_paid = 0

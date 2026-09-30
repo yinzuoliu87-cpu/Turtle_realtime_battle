@@ -203,7 +203,7 @@ func _good_snap(gid: String) -> Dictionary:
 		"leaders": ["basic", "stone", "ice"], "lane_assign": {}, "minions": {},
 		"loadouts": {}, "equipped": {}, "pet_levels": {"basic": 3},
 		"season_total_battles": 5, "season_eggs_killed": 1,
-		"season_wins": 2, "hearts": 6, "season_sweeps": 0,
+		"season_wins": 2, "hearts": 4, "season_sweeps": 0,   # ★别用刚好等于满命的数当夹具(会被 HEARTS_ONE_SOURCE 判成"想说满命却写了字面量")
 	}
 
 

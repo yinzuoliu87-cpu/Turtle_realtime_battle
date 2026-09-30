@@ -18,8 +18,8 @@ func _ready() -> void:
 	var m = _MENU.new()
 	var anchor: int = _P2C.week_anchor_utc(int(Time.get_unix_time_from_system()))
 	print("=== 常量(分母) ===")
-	print("  PROMOTE_WINS_FLOOR=%d  RANKED_QUOTA=%d  GAUNTLET_QUOTA=%d" % [
-		int(_P2C.PROMOTE_WINS_FLOOR), int(_P2C.RANKED_QUOTA), int(_P2C.GAUNTLET_QUOTA)])
+	print("  PROMOTE_WINS=%d  RANKED_QUOTA=%d  GAUNTLET_QUOTA=%d" % [
+		int(_P2C.PROMOTE_WINS), int(_P2C.RANKED_QUOTA), int(_P2C.GAUNTLET_QUOTA)])
 	print("  积分赛收盘 = 周%d %d:00 UTC" % [int(_P2C.RANKED_CLOSE_WD), int(_P2C.WEEK_CLOSE_HOUR_UTC)])
 
 	print("=== A. 一个【胜场远超晋级线、但还没到周五收盘】的玩家 ===")
@@ -30,7 +30,7 @@ func _ready() -> void:
 	gs.gauntlet_wins = 0
 	gs.gauntlet_losses = 0
 	print("  season_wins=%d(线=%d)  ranked_used=%d  hearts=%d  promoted=%s" % [
-		int(gs.season_wins), int(_P2C.PROMOTE_WINS_FLOOR), int(gs.ranked_used),
+		int(gs.season_wins), int(_P2C.PROMOTE_WINS), int(gs.ranked_used),
 		int(gs.hearts), str(gs.promoted)])
 	for d in range(1, 8):
 		var ts: int = anchor + (d - 1) * 86400 + 12 * 3600

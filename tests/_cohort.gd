@@ -454,7 +454,7 @@ func _settle_mirror(bot: Dictionary, won: bool) -> void:
 		return
 	if not won:
 		bot["hearts"] = maxi(0, int(bot["hearts"]) - 1)
-	var lost: int = maxi(0, 8 - int(bot["hearts"]))
+	var lost: int = maxi(0, int(P2.HEARTS_MAX) - int(bot["hearts"]))
 	bot["coins"] = int(bot["coins"]) + 8 + int(bot["hearts"]) + 2 * lost + (6 if won else 0)
 	bot["battles"] = int(bot["battles"]) + 1
 	bot["xp"] = int(bot["xp"]) + 2

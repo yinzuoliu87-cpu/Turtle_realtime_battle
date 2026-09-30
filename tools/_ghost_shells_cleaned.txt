@@ -1,0 +1,34 @@
+# 空壳快照清理记录 (2026-09-30)
+#
+# 用户 2026-09-30:「你先把空壳处理了」
+# 删的是 public.ghosts 里 227 行【形状 B】快照(lane_assign 在而一个统领都没有),
+# 判据用的是 tools/probe_ghost_shells.py 的 is_shell —— 与产品 ghost_lanes_broken 同一份,
+# 没在 SQL 里再抄一遍(手抄的副本必然落后)。按主键三维(account_id, season_week, battles)精确删。
+# 备份: C:/tmp/_ghosts_backup_before_delete.json (删前全表 243 行)
+#       十份本机池各留 ghost_pool.json.bak_before_shell_purge
+# ★顺带发现: 库里有 14 行 client_version=0.19.473 的快照【全是好的】
+#   ⇒ 修好的写入函数确实在真客户端产出过好快照(那条台账可以结了)。
+#
+# 清理后实测:
+  [分母] 服务端 ghosts 共 16 行 / 3 个客户端版本
+    client_version         行数       空壳
+    0.19.473               14        0 
+    0.19.421                1        0 
+    probe-d3c               1        0 
+
+  [分母] 本机模拟根目录 C:\tmp\turtle-sim10
+    槽位          池子总     remote      local         种子       空壳
+    p01         396          0          0        396        0
+    p02         396          0          0        396        0
+    p03         396          0          0        396        0
+    p04         396          0          0        396        0
+    p05         396          0          0        396        0
+    p06         396          0          0        396        0
+    p07         396          0          0        396        0
+    p08         396          0          0        396        0
+    p09         396          0          0        396        0
+    p10         396          0          0        396        0
+    合计                       0          0       3960        0
+    ★对照: remote+local = 0, 空壳 = 0 (相等 ⇒ 真人全空壳·种子全好)
+
+ALL OK — 3976 份快照没有空壳

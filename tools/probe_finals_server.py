@@ -349,8 +349,8 @@ chk("⑯ ★分母: 到线了就收(证明上面那条是「线」挡的, 不是
 ## ★★★晋级线必须**踩在边界上**验, 而且要和客户端那个常量对账。
 ##
 ## 2026-09-25 的真 bug: 服务端写的是 `floor_wins := 5`, 注释说「与
-## PROMOTE_WINS_FLOOR 同值」—— 但 `p_gw` 传进来的是 **gauntlet_wins(周六胜场)**,
-## 而 `PROMOTE_WINS_FLOOR` 是**积分赛→周六**那条线(比的是 season_wins)。
+## PROMOTE_WINS 同值」—— 但 `p_gw` 传进来的是 **gauntlet_wins(周六胜场)**,
+## 而 `PROMOTE_WINS` 是**积分赛→周六**那条线(比的是 season_wins)。
 ## 两个不同的量被当成了同一个 ⇒ 周六 4 胜晋级的人 `gauntlet_wins=4 < 5` 被拒,
 ## 而 4 胜之后 `gauntlet_state()` 已经返回「晋级」、开局闸不让再打 ⇒ 永远到不了 5
 ## ⇒ **没有任何人进得了周日**。

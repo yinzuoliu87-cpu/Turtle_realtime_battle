@@ -68,6 +68,7 @@ func _ready() -> void:
 	_t_schedule()
 	_t_weekend_interim()
 	_t_hearts_one_source()
+	_t_promote_line_derived()
 
 	print("")
 	print("  (共 %d 条断言)" % _n)
@@ -462,6 +463,88 @@ func _t_hearts_one_source() -> void:
 	_ok("⑨ ★★★HEARTS_ONE_SOURCE: 产品源码里不许再写死命数(要读 `_P2.HEARTS_MAX`)",
 		offenders.is_empty(), "; ".join(offenders))
 
+	## ── ③ 更刁的一族: 拿【满命那个数字本身】当字面量写在断言/夹具里 ──
+	##
+	## ★由来(2026-09-30 翻 16/6 当场遇到): 产品源码是干净的(第 ② 层守着),
+	##   但**五处测试**写着「hearts 回到 8」「range(7)」这种 —— 8 是满命, 7 是满命−1。
+	##   命一改这五条全红, **而错在尺子不在产品**。
+	## ★★判据设计得很窄, 不是"禁止 hearts 附近出现数字":
+	##   只在**那个字面量恰好等于当前 HEARTS_MAX** 时才报。
+	##   ⇒ 测试写 `hearts = 1`(模拟残命)、`== 3`(扣了三次) 一律放过 —— 那是真夹具;
+	##     写到跟满命一样的数, 就说明它想表达的是"满命", 那就该读常量。
+	##   ⇒ 这条规则**在满命改变之后自动仍然正确**, 不需要跟着改。
+	## ★用 `\b` 边界: `hearts_y = 160` 里的 6 不算(否则一堆假违规)。
+	var lit_offenders: Array = []
+	## ★★判据必须**刚好卡住那个形状** —— 宽一格会造假 bug(深海币公式
+	##   `8 + 余命 + 2×已失命 + 胜6` 里那些数字不是命数, 只是碰巧长得一样)。
+	##   ⇒ 只认三种**真正意味着"满命"**的写法:
+	##     A `hearts` 被赋值/比较成一个**恰好等于满命**的字面量 —— 那就是在说"满命"
+	##       (写 `hearts = 1` / `== 3` 一律放过, 那是真夹具)
+	##     B `<数字> - …hearts…` —— 那个位置上唯一讲得通的数就是满命,
+	##       所以**不论取值都报**(这样连"改漏了、还留着旧满命 8"也抓得到)
+	##     C 同一行里 `/ <数字>` 且提到 hearts —— 屏幕上的分母就是满命
+	##       (`battle_hud` 的「%d / 8」就是这么被抓到的, 那是真 bug)
+	var shapes: Array = [
+		["A 赋值/比较成满命", RegEx.create_from_string("hearts\"?[ \t]*[:=]=?[ \t]*(?<![0-9])%d(?![0-9])" % hm)],
+		["B <数> - hearts(那个数就是满命)", RegEx.create_from_string("(?<![A-Za-z_0-9])[0-9]+[ \t]*-[ \t]*[^,;]*hearts")],
+		["C 屏上分母 / <数>", RegEx.create_from_string("/[ \t]*[0-9]+")],
+	]
+	var files2: Array = []
+	for root2 in ["res://autoload", "res://scripts", "res://tests"]:
+		_collect_gd(root2, files2)
+	for fp2 in files2:
+		var f2 := FileAccess.open(str(fp2), FileAccess.READ)
+		if f2 == null:
+			continue
+		var txt2: String = f2.get_as_text()
+		f2.close()
+		## ★`_probe_*` 是开发期探针草稿(run-tests.sh 不自动发现它们, 也不上屏) ⇒ 不纳入。
+		##   纳入的话这条判据会被一堆一次性脚本长期钉红, 而它们本来就该随手写随手改。
+		if str(fp2).get_file().begins_with("_probe_"):
+			continue
+		if txt2.find("hearts") < 0:
+			continue
+		var lno: int = 0
+		for ln2 in txt2.split("\n"):
+			lno += 1
+			var t2: String = str(ln2).strip_edges()
+			if t2.begins_with("#") or t2.begins_with("##"):
+				continue
+			## ★行尾注释要剥掉: 注释里出现「砍到约1/3」这种会被 shape C 当成屏上分母
+			##   (2026-09-30 实测误判过一次)。只按第一个不在引号里的 # 切。
+			var q2: String = ""
+			var cut2: int = -1
+			for ci2 in range(t2.length()):
+				var ch2: String = t2[ci2]
+				if q2 != "":
+					if ch2 == q2:
+						q2 = ""
+				elif ch2 == "\"" or ch2 == "'":
+					q2 = ch2
+				elif ch2 == "#":
+					cut2 = ci2
+					break
+			if cut2 >= 0:
+				t2 = t2.substr(0, cut2)
+			if t2.find("hearts") < 0:
+				continue
+			if t2.find("HEARTS_MAX") >= 0:
+				continue        # 已经读常量了, 顺带把常量声明那行也放过
+			var shape_hit: String = ""
+			for sh in shapes:
+				var rx = sh[1]
+				if rx != null and rx.search(t2) != null:
+					shape_hit = str(sh[0])
+					break
+			if shape_hit == "":
+				continue
+			lit_offenders.append("[%s] %s:%d: %s" % [shape_hit, str(fp2).get_file(), lno, t2.substr(0, 58)])
+	print("  [分母] HEARTS_ONE_SOURCE ③: 扫了 %d 个 .gd(含 tests/), 满命字面量 = %d" % [files2.size(), hm])
+	_ok("⑨ ★分母: 第三层真的扫到文件(0 = 空检查)", files2.size() >= 100, "%d 文件" % files2.size())
+	_ok("⑨ ★★★HEARTS_ONE_SOURCE: 不许拿【满命那个数字】当字面量(要读 `HEARTS_MAX`) —— "
+		+ "写成字面量的话, 满命一改这些地方就集体红, 而错在尺子不在产品",
+		lit_offenders.is_empty(), "; ".join(lit_offenders))
+
 
 ## 递归收 .gd（★不按我以为的层级走 —— 一律递归到底，memory `fb-recursive-scan-not-structured-walk`）
 func _collect_gd(dir_path: String, out: Array) -> void:
@@ -481,3 +564,53 @@ func _collect_gd(dir_path: String, out: Array) -> void:
 			out.append(full)
 		fn = d.get_next()
 	d.list_dir_end()
+
+# ─────────────────────────────────────────────────────────────
+# ⑩ PROMOTE_LINE_DERIVED —— 晋级线是算出来的，不是拍的
+#
+# 用户 2026-09-30:「满足11胜且不出局就是唯一晋级条件了啊」
+# ★而 11 不是第四个魔法数字: PROMOTE_WINS = RANKED_QUOTA − (HEARTS_MAX − 1)
+#   = 「把配额打满而不被淘汰所需的最少胜场」。
+#   ⇒ 以后改配额或命数, 这条线自己跟着走, 不用有人记得来改它。
+#
+# ★★这一节守三件事(缺哪件都会让那句话变成空话):
+#   ① 派生关系本身: 常量真的等于那个算式 —— 防有人哪天把它改回写死的数
+#   ② 「不出局」那半条的**冗余性质**: 在当前数字下, 过线就必然还活着
+#      (过线 + 出局 = 胜线 + 命 = 11 + 6 = 17 场 > 16 配额, 打不出来)。
+#      ⚠ 冗余是巧合带来的, 不是定理。哪天配额放宽到 ≥17, 这条会红 ——
+#        那时该做的是**重读晋级线那段文字**, 而不是删掉这条断言。
+#   ③ 走产品自己的 `gauntlet_line_reached()` 穷举翻转点, 不自己抄公式。
+# ─────────────────────────────────────────────────────────────
+func _t_promote_line_derived() -> void:
+	var q: int = int(_P2.RANKED_QUOTA)
+	var hm: int = int(_P2.HEARTS_MAX)
+	var pw: int = int(_P2.PROMOTE_WINS)
+	_ok("⑩ ★★★PROMOTE_LINE_DERIVED: 晋级线 == 配额 − (满命 − 1) = %d − %d = %d"
+		% [q, hm - 1, pw], pw == q - (hm - 1), "实得 %d" % pw)
+	_ok("⑩ ★分母: 三个数都是正的且线 ≤ 配额(否则谁都晋级不了)",
+		q > 0 and hm > 0 and pw > 0 and pw <= q, "q=%d hm=%d pw=%d" % [q, hm, pw])
+
+	## ② 冗余性质: 过线 + 出局 需要 pw + hm 场, 而配额只有 q 场
+	_ok("⑩ ★★「不出局」那半条在当前数字下是**冗余**的(过线 %d + 打光 %d 命 = %d 场 > 配额 %d)"
+		% [pw, hm, pw + hm, q], pw + hm > q,
+		"若它红了: 说明配额已经大到能「过线后再被淘汰」 ⇒ 去重读晋级线那段文字, 别删这条")
+
+	## ③ 走产品自己的函数穷举翻转点 —— 不自己抄 `>=` 那个公式
+	var bak_w = _gs.season_wins
+	var bak_h = _gs.hearts
+	var flip: int = -1
+	for w in range(0, q + 1):
+		_gs.season_wins = w
+		_gs.hearts = hm                      # 活着
+		if _gs.gauntlet_line_reached():
+			flip = w
+			break
+	_ok("⑩ ★★★翻转点就在 %d 胜(走产品自己的 `gauntlet_line_reached()` 穷举 0~%d)"
+		% [pw, q], flip == pw, "实测翻转点 %d" % flip)
+	## 出局的人一律不过线 —— 这是规则的另一半, 必须单独验
+	_gs.season_wins = q                      # 胜场拉满
+	_gs.hearts = 0                           # 但出局了
+	_ok("⑩ ★★★出局的人**一律不晋级**(哪怕胜场拉满 %d) —— 这是规则的另一半" % q,
+		not _gs.gauntlet_line_reached(), "season_wins=%d hearts=0" % q)
+	_gs.season_wins = bak_w
+	_gs.hearts = bak_h

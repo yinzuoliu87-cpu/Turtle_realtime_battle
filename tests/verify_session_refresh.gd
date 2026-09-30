@@ -1,4 +1,5 @@
 extends Node
+const _P2_HM := preload("res://scripts/gamedata/phase2_config.gd")   # ★命数上限只有一份事实源: HEARTS_MAX
 ## verify_session_refresh.gd — D-3c：登录态续期（2026-09-21 查实的 bug）
 ##
 ## ══════════════════════════════════════════════════════════════════════
@@ -323,6 +324,7 @@ func _t_identity_line() -> void:
 		GameState.auth_refresh)
 	GameState.hearts = 3
 	GameState.reset_save()
-	_chk("⑦ ★分母: 清档确实执行了(hearts 回 8)", int(GameState.hearts) == 8)
+	_chk("⑦ ★分母: 清档确实执行了(hearts 回满命 %d)" % int(_P2_HM.HEARTS_MAX),
+		int(GameState.hearts) == int(_P2_HM.HEARTS_MAX))
 	_chk("⑦ ★★清档保留 refresh_token(清掉 = 这台设备的登录跟着没了)",
 		str(GameState.auth_refresh) == "rt-keep", GameState.auth_refresh)

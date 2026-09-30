@@ -103,7 +103,7 @@ func _setup_gs() -> void:
 	GameState.week_anchor_ts = _anchor
 	GameState.season_start_ts = _anchor
 	GameState.ranked_used = int(P2C.RANKED_QUOTA) - 5
-	GameState.season_wins = int(P2C.PROMOTE_WINS_FLOOR)
+	GameState.season_wins = int(P2C.PROMOTE_WINS)
 	GameState.backfill_paid = 0
 	GameState.gauntlet_backfill_paid = 0
 	GameState.promoted = false

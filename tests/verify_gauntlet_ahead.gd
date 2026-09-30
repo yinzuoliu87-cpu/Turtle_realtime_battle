@@ -145,9 +145,11 @@ func _t_promote_rule() -> void:
 	_ok("① ★★那一处的判据就是 `gauntlet_line_reached()`(= season_wins ≥ 硬线), 没有别的项",
 		truthy.size() == 1 and str(truthy[0]).find("gauntlet_line_reached()") >= 0, str(truthy))
 
-	## (b) 原稿的「前 30%」= `PROMOTE_TOP_PCT`。它**全仓零读取** ⇒ 没有排名截断。
-	##     ★这一条是「过线就一定晋级」成立的前提之一。哪天有人把它接上, 这里必须红,
-	##       因为那时候 `_gauntlet_ahead_tail()` 那句「周六闯关赛见」就变成猜的了。
+	## (b) **没有排名截断** —— 这是「过线就一定晋级」成立的前提之一。
+	##     ★★2026-09-30: 原稿的「前 30%」(`PROMOTE_TOP_PCT`) 已**整个删掉** ——
+	##       用户当场把晋级线重定成「≥PROMOTE_WINS 胜且不出局」, 那是一条**绝对线**,
+	##       按定义不需要排名截断。原来这里断言那个常量"零读取", 现在常量不存在了,
+	##       断言得换成**它真的不存在** —— 否则这一节会变成对着一个空名字的恒真式。
 	var files: Array = []
 	_collect_gd("res://scripts", files)
 	_collect_gd("res://autoload", files)
@@ -161,19 +163,18 @@ func _t_promote_rule() -> void:
 			var t: String = line.strip_edges()
 			if t.begins_with("#"):
 				continue
-			if t.find("PROMOTE_TOP_PCT") >= 0 and t.find("const PROMOTE_TOP_PCT") < 0:
+			if t.find("PROMOTE_TOP_PCT") >= 0:
 				top_pct_hits.append("%s: %s" % [f, t])
-			if t.find("PROMOTE_WINS_FLOOR") >= 0 and t.find("const PROMOTE_WINS_FLOOR") < 0:
+			if t.find("PROMOTE_WINS") >= 0 and t.find("const PROMOTE_WINS") < 0:
 				floor_hits += 1
 	## ★这一条只证明「扫法本身找得到读取点」(否则下一条是空检查) ⇒ 门槛 1 就够。
-	##   卡 ≥2 会让它跟着"某处正好不再读这个常量"一起红, 而那与被测的事无关。
-	_ok("① ★分母: 同一个扫法**找得到** PROMOTE_WINS_FLOOR 的读取点(%d 处) —— 否则下一条是空检查" % floor_hits,
+	_ok("① ★分母: 同一个扫法**找得到** PROMOTE_WINS 的读取点(%d 处) —— 否则下一条是空检查" % floor_hits,
 		floor_hits >= 1, "%d 处" % floor_hits)
-	_ok("① ★★没有排名截断: `PROMOTE_TOP_PCT`(前 30%) 除声明处外**零读取**",
+	_ok("① ★★没有排名截断: `PROMOTE_TOP_PCT`(前 30%) **连声明都不存在了**(2026-09-30 删)",
 		top_pct_hits.is_empty(), str(top_pct_hits))
 
 	## (c) 走**产品自己的** `settle_ranked_close()` 穷举胜场, 看翻转点在哪一格。
-	var fl: int = int(P2.PROMOTE_WINS_FLOOR)
+	var fl: int = int(P2.PROMOTE_WINS)
 	var anchor: int = P2.week_anchor_utc(MON + NOON)
 	var close_ts: int = P2.ranked_close_ts(anchor)
 	_ok("① ★分母: 收盘时刻算得出来且在这一周内", close_ts > anchor and close_ts < anchor + 7 * 86400,
@@ -247,7 +248,7 @@ func _t_ahead_seven_days() -> void:
 	for _i in range(6):
 		await get_tree().process_frame
 
-	var fl: int = int(P2.PROMOTE_WINS_FLOOR)
+	var fl: int = int(P2.PROMOTE_WINS)
 	## ★★收盘前的**真实状态**: `promoted` 一定是 false(见 ①d)。这一节一个字都不手改它 ——
 	##   手改 promoted 就是在测一个玩家周一~周五根本不可能处在的状态。
 	_gs.promoted = false
@@ -257,8 +258,18 @@ func _t_ahead_seven_days() -> void:
 
 	for grp in ["过线", "差一场"]:
 		_gs.season_wins = fl if grp == "过线" else fl - 1
-		_gs.hearts = 0                               # 0 命 ⇒ 走 `_msg_eliminated()` 那一支
+		## ★★命数**不手写, 由战绩推** —— 手写就会造出一个玩家不可能处在的状态。
+		##   2026-09-30 晋级线改成「≥PROMOTE_WINS 胜 且 不出局」之后,
+		##   原来这里写死的 `hearts = 0` 让「过线」那组变成
+		##   **11 胜 + 0 命** —— 而那在新数字下**数学上不可能**:
+		##   11 胜 + 6 负 = 17 场 > 16 配额, 而周六/周日都不掉命。
+		##   ⇒ 造一个不可能的状态去测消息分支, 测的是一个玩家永远读不到的句子。
+		## ★推出来之后两组正好各自落在有意义的状态上:
+		##   · 过线   11胜5负 → 命 1, 还活着 → 该被指向周六
+		##   · 差一场 10胜6负 → 命 0, 已淘汰 → 该说下周一
+		##   「已淘汰」那条分支仍然被走到(由"差一场"那组), 没变成死代码。
 		_gs.ranked_used = int(P2.RANKED_QUOTA)
+		_gs.hearts = maxi(0, int(P2.HEARTS_MAX) - (int(_gs.ranked_used) - int(_gs.season_wins)))
 		var said: Array = []                          # 周一~周五那五句
 		for d in range(7):
 			var ts: int = MON + d * 86400 + NOON
@@ -634,8 +645,8 @@ func _t_locks() -> void:
 	_ok("⑤ ★★没晋级那句: 原来只说「要积分赛拿到资格」, 而它指的积分赛**本周已经过去了** " \
 			+ "⇒ 必须写清是下周一",
 		l_no.find("下周一") >= 0, l_no)
-	_ok("⑤ ★而且把门槛说出来(线在 PROMOTE_WINS_FLOOR, 不许抄数字)",
-		l_no.find("%d 胜" % int(P2.PROMOTE_WINS_FLOOR)) >= 0, l_no)
+	_ok("⑤ ★而且把门槛说出来(线在 PROMOTE_WINS, 不许抄数字)",
+		l_no.find("%d 胜" % int(P2.PROMOTE_WINS)) >= 0, l_no)
 	_ok("⑤ ★★★刚晋级那句: 必须告诉他**明天有决赛日**(不说 ⇒ 他周日不来, 座位空着桶还可能卡住)",
 		l_in.find("决赛日") >= 0 and (l_in.find("明天") >= 0 or l_in.find("周日") >= 0), l_in)
 	_ok("⑤ ★已出局那句本来就带下一步(分母: 这一维不是我新加的)",

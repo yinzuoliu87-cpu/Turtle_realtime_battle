@@ -138,7 +138,8 @@ func _t_identity_not_progress() -> void:
 	GameState.account_id = UID_OK
 	GameState.account_email = "someone@example.com"
 	GameState.reset_save()
-	_chk("② ★分母: 清档确实把进度清了(hearts 回到 8)", int(GameState.hearts) == 8,
+	_chk("② ★分母: 清档确实把进度清了(hearts 回到满命 %d)" % int(_P2C_ACC.HEARTS_MAX),
+		int(GameState.hearts) == int(_P2C_ACC.HEARTS_MAX),
 		"hearts=%d" % int(GameState.hearts))
 	_chk("② ★★清档【保留】account_id —— 清掉的话服务器上那份数据就再也认不回来了",
 		str(GameState.account_id) == UID_OK, "实得「%s」" % str(GameState.account_id))

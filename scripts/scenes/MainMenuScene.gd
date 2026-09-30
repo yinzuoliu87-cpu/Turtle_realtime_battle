@@ -1630,13 +1630,13 @@ func _msg_quota_full() -> String:
 ##   (「下周一开新的一轮」/「周六闯关赛见」)。周六是这两句唯一的出场日,
 ##   玩家当天读完就该知道"接下来去哪"：
 ##     · 没晋级那句里的「积分赛」指周二~周五, **本周已经过去了** ⇒ 必须写清是下周一,
-##       而且把门槛写出来(线在 `PROMOTE_WINS_FLOOR`, 不抄数字);
+##       而且把门槛写出来(线在 `PROMOTE_WINS`, 不抄数字);
 ##     · 刚晋级那句只说了"到此为止", **没告诉他明天有决赛日** ⇒ 他周日不来,
 ##       座位空着、桶还可能卡住。
 func _msg_gauntlet_block() -> String:
 	if not GameState.gauntlet_eligible():
 		return "🔒 本周没晋级 · 下周一开新的一轮, 积分赛打够 %d 胜就能来" % int(
-			_P2C.PROMOTE_WINS_FLOOR)
+			_P2C.PROMOTE_WINS)
 	var st: String = GameState.gauntlet_state()
 	if st == _P2C.GAUNTLET_IN:
 		return "✅ 已晋级决赛日 · 闯关赛到此为止(%s) · 明天周日来打决赛日" % _P2C.gauntlet_label(

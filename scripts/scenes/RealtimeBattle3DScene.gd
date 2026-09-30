@@ -7593,7 +7593,7 @@ func _settle_season(won: bool) -> void:
 	else:
 		if not won:
 			gs.lose_heart()                          # 输 → 失一颗心 (0命=淘汰)
-		var lost_hearts: int = maxi(0, 8 - int(gs.hearts))
+		var lost_hearts: int = maxi(0, int(Phase2Cfg.HEARTS_MAX) - int(gs.hearts))   # ★满命读常量: 写死 8 的话命改成 6 就把满命玩家算成丢了 2 命(每场白送 4 币)
 		_last_reward = 8 + int(gs.hearts) + 2 * lost_hearts + (6 if won else 0)   # ★深海币砍到约1/3(用户2026-07-18"太多要减"): 原25+2命+5失命+15胜≈胜60/负45→一场买20件毫无取舍; 新≈满命胜22/负17·残命胜29·一场买5-7件(逆风补偿保留·糖果罐大奖不动)
 		gs.season_total_battles += 1
 		## ★★A3(大轮赛制 v2·2026-09-17): 积分赛【配额】消耗。

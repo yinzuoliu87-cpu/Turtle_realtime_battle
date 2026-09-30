@@ -1,4 +1,5 @@
 extends Node
+const _P2_HM := preload("res://scripts/gamedata/phase2_config.gd")   # ★命数上限只有一份事实源: HEARTS_MAX
 ## verify_season_elim.gd — 赛季淘汰锁 (用户2026-07-24 拍板"淘汰锁定": 0命→锁匹配+商店, 只重置存档解锁)
 ## 守: ①hearts 状态机(8→扣满→is_eliminated·钳0) ②reset_save 解锁(回8)
 ##     ③主菜单 guard: 淘汰时"开始战斗"不放行(不置 dual_active·弹淘汰toast)
@@ -24,9 +25,12 @@ func _count_toasts(scene: Node, needle: String) -> int:
 
 func _ready() -> void:
 	# ① hearts 状态机(整个淘汰锁的地基)
-	GameState.hearts = 8
-	_ok("满命非淘汰(分母:确实 8 命)", not GameState.is_eliminated() and int(GameState.hearts) == 8)
-	for _i in range(7): GameState.lose_heart()
+	GameState.hearts = int(_P2_HM.HEARTS_MAX)
+	_ok("满命非淘汰(分母:确实 %d 命)" % int(_P2_HM.HEARTS_MAX),
+		not GameState.is_eliminated() and int(GameState.hearts) == int(_P2_HM.HEARTS_MAX))
+	## ★原来写 `range(7)` —— 那其实是「满命 − 1」, 只在满命=8 时对。
+	##   命改成 6 之后扣 7 次就直接扣到 0(已淘汰) ⇒ 这条断言会红, 而错在尺子不在产品。
+	for _i in range(int(_P2_HM.HEARTS_MAX) - 1): GameState.lose_heart()
 	_ok("扣到 1 命仍非淘汰(证明在真扣·非恒真)", not GameState.is_eliminated() and int(GameState.hearts) == 1)
 	var last := GameState.lose_heart()
 	_ok("扣到 0 命 = 淘汰 且 lose_heart 返回 true", GameState.is_eliminated() and last)
@@ -63,7 +67,7 @@ func _ready() -> void:
 	#   follows the product wording. Counting by wording is fragile by nature - that is
 	#   exactly why this block also asserts dual_active stays false: wording can drift,
 	#   but "the player must not get into a match" cannot.
-	GameState.hearts = 8                 # not eliminated - isolate the quota reason
+	GameState.hearts = int(_P2_HM.HEARTS_MAX)   # not eliminated - isolate the quota reason
 	GameState.season_total_battles = 5
 	GameState.week_phase = "ranked"
 	GameState.ranked_used = 0
@@ -106,7 +110,8 @@ func _ready() -> void:
 
 	# ② reset_save 解锁(唯一出口)
 	GameState.reset_save()
-	_ok("重置存档→回满命·解锁(is_eliminated=false·hearts=8)", not GameState.is_eliminated() and int(GameState.hearts) == 8)
+	_ok("重置存档→回满命·解锁(is_eliminated=false·hearts=%d)" % int(_P2_HM.HEARTS_MAX),
+		not GameState.is_eliminated() and int(GameState.hearts) == int(_P2_HM.HEARTS_MAX))
 
 	scene.queue_free()
 	print("ALL PASS — 赛季淘汰锁(状态机+主菜单guard+🔒+解锁)" if _fail == 0 else "FAILED: %d" % _fail)

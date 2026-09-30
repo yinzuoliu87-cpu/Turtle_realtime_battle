@@ -567,7 +567,7 @@ func dual_lane_winner() -> String:
 ## ⚠ 与 `dungeon_*`(深海闯关, 5 关 PvE 冒险)**毫无关系** —— 同名不同物, 别在这两组字段之间抄代码。
 ##
 ## 这一周有没有拿到周六的入场资格。★`promoted` 由 `settle_ranked_close()` 在积分赛收盘后写,
-##   判据是硬线 `season_wins >= PROMOTE_WINS_FLOOR`(原稿的「前 30%」要服务端终榜, 还没做)。
+##   判据是硬线 `season_wins >= PROMOTE_WINS`(原稿的「前 30%」要服务端终榜, 还没做)。
 ## ⚠⚠ 它**只回答「收盘算过了吗」** —— 周一~周五结构上恒假(`promoted` 那时还没人写)。
 ##   要回答「这一周后面还有闯关赛可打吗」请用 `gauntlet_line_reached()`, 见那边的头注。
 func gauntlet_eligible() -> bool:
@@ -588,13 +588,18 @@ func gauntlet_eligible() -> bool:
 ##   就地再写一遍 `>= 5` 就是同一判据存两份(memory `fb-hand-rolled-copies-drift`)。
 ##
 ## ★★「过线 = 铁定晋级」这句话说得起, 依据是三条**查实**的事实(2026-09-28):
-##   ① 晋级判据里**只有胜场**: `promoted = season_wins >= PROMOTE_WINS_FLOOR`, 没有别的项;
+##   ① 晋级判据里**只有胜场**: `promoted = season_wins >= PROMOTE_WINS`, 没有别的项;
 ##   ② **没有名额上限、没有排名截断**: 原稿的「前 30%」= `_P2.PROMOTE_TOP_PCT`,
 ##      全仓**零读取**(它要一份收盘时刻的服务端终榜, 还没做);
 ##   ③ `season_wins` 在一周内**只增不减**(本文件只有 `+= 1`, 清零只发生在换轮/重置存档)。
 ##   ⇒ 三条里任何一条将来变了, **这个函数就是要改的那一处**(门禁 `verify_gauntlet_ahead` ① 盯着)。
 func gauntlet_line_reached() -> bool:
-	return int(season_wins) >= int(_P2.PROMOTE_WINS_FLOOR)
+	## ★★晋级线 = 「≥ PROMOTE_WINS 胜」+「没出局」(用户 2026-09-30 定的唯一条件)。
+	##   `PROMOTE_WINS` 本身是 `RANKED_QUOTA − (HEARTS_MAX − 1)` 算出来的, 见它的头注。
+	## ⚠ 「没出局」这半条在当前数字下是**冗余**的(11 胜 + 6 负 = 17 > 16 场, 打不出来),
+	##   但照样写出来 —— 冗余来自「配额恰好 = 胜线 + 命 − 1」这个巧合, 配额一改就不冗余。
+	##   判据 `PROMOTE_LINE_DERIVED` 有一条专门断言这个冗余性质, 哪天不成立会当场红。
+	return int(season_wins) >= int(_P2.PROMOTE_WINS) and not is_eliminated()
 
 ## 现在能不能开一局闯关赛。三个条件缺一不可, 每条都有自己的话要对玩家说(见主菜单)。
 func gauntlet_can_play(now: int = 0) -> bool:
@@ -2107,7 +2112,7 @@ func backfill_ranked_quota() -> int:
 ##   ⇒ 代价写在明处: **整个周末一次没开游戏 = 拿不到补发。这是有意的取舍, 不是漏。**
 ##   补发的用途本来就是让打不满配额的人在**周六闯关赛**有装备可买, 那正好是这个窗口。
 ##
-## ★`promoted` 离线版**只用硬线**「≥ `PROMOTE_WINS_FLOOR` 胜保送」。
+## ★`promoted` 离线版**只用硬线**「≥ `PROMOTE_WINS` 胜保送」。
 ##   原稿的「前 30%」需要一份收盘时刻的**全服终榜**, 离线版没有 ——
 ##   等真后端上了再把比例线加回来(母方案书 D 阶段)。
 ## ★`now_override` 只给门禁用(照 `TeamSelectScene.lockout_now_override` 的先例):
@@ -2132,7 +2137,7 @@ func settle_ranked_close(now_override: int = 0) -> int:
 		return 0                                   # 本周积分赛还没收盘
 	if not promoted:
 		## ★判据走 `gauntlet_line_reached()` —— 主菜单「周六还有东西打吗」问的是同一条线,
-		##   两处各写一遍 `>= PROMOTE_WINS_FLOOR` 就是同一判据存两份。
+		##   两处各写一遍 `>= PROMOTE_WINS` 就是同一判据存两份。
 		promoted = gauntlet_line_reached()
 	return backfill_ranked_quota()
 

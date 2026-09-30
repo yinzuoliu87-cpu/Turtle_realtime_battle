@@ -250,7 +250,7 @@ func _t_real_settle() -> void:
 	_ok("④ ★分母: 而且真的是 8(与周六同值, 都是无命模式)",
 		coin_win == int(P2C.FINALS_COINS_PER_ROUND) and coin_win == 8, str(coin_win))
 	_ok("④ ★★决赛日的币**不等于**积分赛那条公式算出来的(否则等于没分流)",
-		coin_win != 8 + int(GameState.hearts) + 2 * maxi(0, 8 - int(GameState.hearts)) + 6,
+		coin_win != 8 + int(GameState.hearts) + 2 * maxi(0, int(P2C.HEARTS_MAX) - int(GameState.hearts)) + 6,
 		str(coin_win))
 	scene.queue_free()
 	await get_tree().process_frame

@@ -256,7 +256,8 @@ func _t_ensure_season_branches() -> void:
 	_gs.ensure_season()
 	_ok("④ ★★分支④(跨周): 积分赛配额清零 —— 这就是用户要的「配额跟着自然周滚」",
 		int(_gs.ranked_used) == 0, "实得 %d" % int(_gs.ranked_used))
-	_ok("④ 分支④: 命回到 8", int(_gs.hearts) == 8, "实得 %d" % int(_gs.hearts))
+	_ok("④ 分支④: 命回到满命(%d)" % int(_P2.HEARTS_MAX),
+		int(_gs.hearts) == int(_P2.HEARTS_MAX), "实得 %d" % int(_gs.hearts))
 	_ok("④ 分支④: 闯关战绩清零", int(_gs.gauntlet_wins) == 0, "实得 %d" % int(_gs.gauntlet_wins))
 	_ok("④ 分支④: 赛季号 +1", int(_gs.season_id) == sid2 + 1,
 		"%d → %d" % [sid2, int(_gs.season_id)])
