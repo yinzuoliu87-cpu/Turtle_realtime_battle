@@ -57,7 +57,14 @@ const STRIKE_LIFESTEAL := 0.20     # 附带生命偷取
 const QUAKE_RADIUS := 180.0        # 岩浆池半径(码)
 const QUAKE_SEC := 5.0             # 持续(秒)
 const QUAKE_TICK_SEC := 0.5        # 每几秒结算一次
-const QUAKE_ATK_COEF := 0.06       # 每跳 ×ATK 魔法
+## 【地裂·每跳】用户 2026-09-30:「熔岩龟的地裂在 10 跳改为每一条造成 12%ATK
+##   + 目标 0.5% 最大生命值魔法伤害」—— 原为纯 0.06×ATK(总 0.6A), 现 0.12A + 0.5%目标maxHp/跳。
+## ★两段**合成一个 base 再过一次** `_resolve_dmg(..., magic=true)`:
+##   memory [[fb-damage-type-is-wiring-not-color]] 魔法必吃魔抗, 没有例外。
+##   (同族的 PIERCE_MAXHP_PCT 把 maxHp 段加在 `_atk_dmg` **外面** ⇒ 那一段绕过魔抗;
+##    那是旧写法, 不照抄。正解的先例是 equip_system.gd:151「原裸值不吃护甲=真伤, 改走护甲」。)
+const QUAKE_ATK_COEF := 0.12       # 每跳 ×ATK 魔法
+const QUAKE_TGT_HP := 0.005        # 每跳 + 目标最大生命 ×
 const QUAKE_SLOW_PCT := 0.35       # 减速比例(语义值)
 const QUAKE_SLOW_MULT := 1.0 - QUAKE_SLOW_PCT
 const QUAKE_MR_DOWN := 0.30        # 魔抗降低
@@ -98,7 +105,8 @@ func _tick_lava_zones(_delta: float) -> void:   # 每帧: 周期结算池内敌 
 						continue
 					if o["pos"].distance_to(c) > r:
 						continue
-					battle._damage._apply_damage_from(src, o, battle._atk_dmg(src, QUAKE_ATK_COEF, o, true), Color("#ff7a33"))   # 0.06×ATK魔/0.5s
+					## 每跳 = ATK×QUAKE_ATK_COEF + 目标maxHp×QUAKE_TGT_HP, 两段一起吃魔抗(魔法)
+					battle._damage._apply_damage_from(src, o, _quake_tick_dmg(src, o), Color("#ff7a33"))
 					o["slow_until"] = maxf(float(o.get("slow_until", 0.0)), battle._t + 0.6); o["slow_mag"] = 0.65   # 地裂减速35%(move×0.65·用户2026-07-09"35"·≥0.6s续)
 					battle._damage._buff(o, "mr", -QUAKE_MR_DOWN, true, 0.6)                                              # 魔抗-30% (每跳刷新)
 		if battle._t >= float(z["until"]):
@@ -111,7 +119,13 @@ func _tick_lava_zones(_delta: float) -> void:   # 每帧: 周期结算池内敌 
 			keep.append(z)
 	_lava_zones = keep
 
-func _lava_quake(u: Dictionary) -> void:                         # 小·岩浆池: 敌最密处生成5秒岩浆池, 每0.5s池内敌 0.06ATK魔+减速35%+魔抗-30%
+## 一跳的伤害(纯函数·门禁直接调它验数, 不必打一整场去撞)。
+## ★ATK 段与「目标最大生命%」段**合成一个 base** 再 `_resolve_dmg(magic=true)` ⇒ 两段都吃魔抗。
+func _quake_tick_dmg(src: Dictionary, tgt: Dictionary) -> int:
+	var base: float = float(src["atk"]) * QUAKE_ATK_COEF + float(tgt.get("maxHp", 0.0)) * QUAKE_TGT_HP
+	return battle._resolve_dmg(src, base, tgt, true)
+
+func _lava_quake(u: Dictionary) -> void:                         # 小·岩浆池: 敌最密处生成5秒岩浆池, 每0.5s池内敌 0.12ATK魔+0.5%目标maxHp+减速35%+魔抗-30%
 	var center: Vector2 = battle._densest_enemy_point(u, QUAKE_RADIUS)
 	var radius := QUAKE_RADIUS
 	var disc := Sprite3D.new()                                   # 持续贴地橙红岩浆盘

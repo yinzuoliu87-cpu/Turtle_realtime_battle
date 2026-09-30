@@ -292,6 +292,8 @@ func _eq_mantis_strike(src: Dictionary, tgt: Dictionary, dmg: int, si: int, basi
 #  「① 释放技能后获得 **30/60/100% 攻速**, 持续 **本次技能消耗的龟能 × 0.03** 秒。
 #    ② 携带者的普攻会对敌人施加一个【环】; 敌人身上有 **3 个环**时环被引爆,
 #       该敌人受到 **25/40/70 真实伤害**。」
+#    ★数值已被用户两次改写(见下方 RING_FLAT 注释): 现为
+#      **15/30/50 + 0.8×ATK + 目标 2.5/4/6% 最大生命值** 真实伤害。
 #
 #  ★覆盖率恒定 40%, 与龟无关 —— 不是调出来的, 是 0.03 这个系数自带的性质:
 #    充满龟能要 `消耗 × 0.075` 秒(RealtimeBattle3DScene._skill_cd),
@@ -308,13 +310,20 @@ const _SE := preload("res://scripts/systems/skill_energy.gd")
 const RING_COVERAGE := RING_SEC_PER_ENERGY / _SE.CD_FACTOR
 ## 引爆需要的环数
 const RING_TRIGGER := 3
-## 引爆伤害 = 定额 + 百分比×【目标】最大生命 (用户 2026-08-31:
-##   「白鲸气环的三环伤害改为 25/40/70+目标 2/3/5%最大生命值真实伤害」, 原为纯定额 25/40/70)。
-## ★两个常量放【一处】—— 036 温泉蛋刚踩过"同一个数存两份必漂"的坑(它有两个写入点)。
-##   这里只有一个写入点, 但门禁会拿这两个表当分母, 所以仍然只许存在这一份。
-## ★百分比读的是【目标】的 maxHp 不是携带者的 —— 需求原话是"目标2/3/5%最大生命值"。
-const RING_FLAT := [25.0, 40.0, 70.0]
-const RING_MAXHP_PCT := [0.02, 0.03, 0.05]
+## 引爆伤害 = 定额 + 携带者ATK× + 百分比×【目标】最大生命。
+##   · 用户 2026-08-31: 「三环伤害改为 25/40/70+目标 2/3/5%最大生命值真实伤害」(原为纯定额)
+##   · 用户 2026-09-30: 「白鲸气环的引爆伤害变为 15/30/50+0.8ATK+目标 2.5/4/6%最大生命值真实伤害」
+##     ⇒ 定额下调 25/40/70 → 15/30/50, 新增 0.8×ATK 一段, 目标生命 2/3/5% → 2.5/4/6%。
+## ★三个常量放【一处】—— 036 温泉蛋刚踩过"同一个数存两份必漂"的坑(它有两个写入点)。
+##   这里只有一个写入点, 但门禁会拿这三个表当分母, 所以仍然只许存在这一份。
+## ★百分比读的是【目标】的 maxHp 不是携带者的 —— 需求原话是"目标 2.5/4/6%最大生命值"。
+## ★ATK 段读的是【携带者】的 atk, 且**不过 `_resolve_dmg`** —— 整段是**真实伤害**
+##   (`_apply_damage_from(..., raw = true)`), 真伤两抗都不吃。
+##   memory [[fb-damage-type-is-wiring-not-color]]: 类型是接线不是颜色 —— 这一段既然是真伤,
+##   ATK 部分也不许悄悄去吃魔抗/护甲。
+const RING_FLAT := [15.0, 30.0, 50.0]
+const RING_ATK_COEF := 0.8
+const RING_MAXHP_PCT := [0.025, 0.04, 0.06]
 
 
 ## 从 `u["pending"]` 取本次施放的技能类型。
@@ -346,11 +355,15 @@ func _eq_whale_haste(u: Dictionary, si: int) -> void:
 	_vfx.whale_haste(u, sec)   # 攻速期读数: 升泡流冒够 buff 全程
 
 
-## 三环引爆的伤害 = 定额 + 百分比×【目标】最大生命 (纯函数, 门禁直接调它验数)。
+## 三环引爆的伤害 = 定额 + 携带者ATK× + 百分比×【目标】最大生命 (纯函数, 门禁直接调它验数)。
 ## ★★抽成独立函数而不是写在调用处, 是因为 CLAUDE.md §3.5 的教训:
 ##   要验的数值不许只存在于"演出/结算链的中间某一行" —— 那样门禁只能靠打一场真战斗去撞它。
-func _ring_boom_dmg(tgt: Dictionary, si: int) -> float:
-	return RING_FLAT[si] + float(tgt.get("maxHp", 0.0)) * RING_MAXHP_PCT[si]
+## ★签名 2026-09-30 加了 `src` —— ATK 段要读【携带者】的攻击力。
+##   ⚠ 加参数那次特意回头核了唯一调用点也传了 src(memory: 改了签名而函数体还在读旧来源 ⇒ 全绿)。
+func _ring_boom_dmg(src: Dictionary, tgt: Dictionary, si: int) -> float:
+	return (RING_FLAT[si]
+		+ float(src.get("atk", 0.0)) * RING_ATK_COEF
+		+ float(tgt.get("maxHp", 0.0)) * RING_MAXHP_PCT[si])
 
 
 ## 普攻命中 → 挂一个环; 满 3 个引爆【定额 + %目标最大生命】真伤并清零。
@@ -365,7 +378,7 @@ func _eq_whale_ring(src: Dictionary, tgt: Dictionary, si: int, basic: bool = fal
 	var n: int = int(tgt.get("whale_rings", 0)) + 1
 	if n >= RING_TRIGGER:
 		tgt["whale_rings"] = 0
-		battle._damage._apply_damage_from(src, tgt, maxi(1, int(round(_ring_boom_dmg(tgt, si)))),
+		battle._damage._apply_damage_from(src, tgt, maxi(1, int(round(_ring_boom_dmg(src, tgt, si)))),
 			Color("#ffffff"), 0.0, true, true)
 		tgt["_ring_boom_n"] = int(tgt.get("_ring_boom_n", 0)) + 1
 		_vfx.whale_detonate(tgt)   # 叠环归心收缩 + 星形爆闪(旧通用 skill_ring 圆已废)

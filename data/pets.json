@@ -1661,8 +1661,8 @@
           "pct": 20,
           "turns": 3
         },
-        "brief": "在敌人最密处生成一片岩浆池，持续 <span class=\"val-atk\">{C:LavaSystem.QUAKE_SEC} 秒</span>。\n岩浆池每 {C:LavaSystem.QUAKE_TICK_SEC} 秒对池内敌人造成 {M:LavaSystem.QUAKE_ATK_COEF*ATK} 魔法伤害，并使其<span class=\"val-atk\">减速 {C:LavaSystem.QUAKE_SLOW_PCT%}%</span>、魔抗降低 <span class=\"val-atk\">{C:LavaSystem.QUAKE_MR_DOWN%}%</span>。",
-        "detail": "熔岩龟撕裂大地，在敌人最密集处生成一个半径 {C:LavaSystem.QUAKE_RADIUS} 码的岩浆池，持续 {C:LavaSystem.QUAKE_SEC} 秒。\n每 {C:LavaSystem.QUAKE_TICK_SEC} 秒结算一次（共 {C:LavaSystem.QUAKE_TICKS} 跳）：池内所有敌人各受到（{C:LavaSystem.QUAKE_ATK_COEF%}%×攻击力({ATK}) = {M:LavaSystem.QUAKE_ATK_COEF*ATK}）魔法伤害，并被减速 <span class=\"val-atk\">{C:LavaSystem.QUAKE_SLOW_PCT%}%</span>、魔抗 <span class=\"val-atk\">-{C:LavaSystem.QUAKE_MR_DOWN%}%</span>（每跳刷新，离开岩浆池即失效）。\n<span style=\"color:#8a93a0\">火山形态下本技变为「火山爆发」：\n一道熔岩浪从场地远端横扫到近端，波前每扫过一名敌人即将其击飞，并造成（{C:LavaSystem.ERUPT_ATK_COEF}×攻击力）魔法伤害与（{C:LavaSystem.ERUPT_BURN_COEF}×攻击力）层灼烧。\n熔岩龟每命中一名敌人回复 {C:LavaSystem.ERUPT_HEAL_PCT%}% 最大生命值。\n</span>"
+        "brief": "在敌人最密处生成一片岩浆池，持续 <span class=\"val-atk\">{C:LavaSystem.QUAKE_SEC} 秒</span>。\n岩浆池每 {C:LavaSystem.QUAKE_TICK_SEC} 秒对池内敌人造成（{M:LavaSystem.QUAKE_ATK_COEF*ATK} + {C:LavaSystem.QUAKE_TGT_HP%}%目标最大生命值）魔法伤害，并使其<span class=\"val-atk\">减速 {C:LavaSystem.QUAKE_SLOW_PCT%}%</span>、魔抗降低 <span class=\"val-atk\">{C:LavaSystem.QUAKE_MR_DOWN%}%</span>。",
+        "detail": "熔岩龟撕裂大地，在敌人最密集处生成一个半径 {C:LavaSystem.QUAKE_RADIUS} 码的岩浆池，持续 {C:LavaSystem.QUAKE_SEC} 秒。\n每 {C:LavaSystem.QUAKE_TICK_SEC} 秒结算一次（共 {C:LavaSystem.QUAKE_TICKS} 跳）：池内所有敌人各受到（{C:LavaSystem.QUAKE_ATK_COEF%}%×攻击力({ATK}) = {M:LavaSystem.QUAKE_ATK_COEF*ATK}）+ {C:LavaSystem.QUAKE_TGT_HP%}%目标最大生命值 魔法伤害，并被减速 <span class=\"val-atk\">{C:LavaSystem.QUAKE_SLOW_PCT%}%</span>、魔抗 <span class=\"val-atk\">-{C:LavaSystem.QUAKE_MR_DOWN%}%</span>（每跳刷新，离开岩浆池即失效）。\n<span style=\"color:#8a93a0\">火山形态下本技变为「火山爆发」：\n一道熔岩浪从场地远端横扫到近端，波前每扫过一名敌人即将其击飞，并造成（{C:LavaSystem.ERUPT_ATK_COEF}×攻击力）魔法伤害与（{C:LavaSystem.ERUPT_BURN_COEF}×攻击力）层灼烧。\n熔岩龟每命中一名敌人回复 {C:LavaSystem.ERUPT_HEAL_PCT%}% 最大生命值。\n</span>"
       },
       {
         "name": "岩浆涌动",

@@ -4,6 +4,13 @@ extends Node
 ## ★需求原文(用户 2026-08-31):
 ##   「靶向器改名为病毒箭头，重做图标，白鲸气环的三环伤害改为
 ##     25/40/70+目标2/3/5%最大生命值真实伤害」
+## ★需求原文(用户 2026-09-30·本轮):
+##   「白鲸气环的引爆伤害变为 15/30/50+0.8ATK+目标 2.5/4/6%最大生命值真实伤害」
+##   ⇒ 三项都动了: 定额下调、**新增一段 0.8×携带者ATK**、目标生命百分比上调。
+## ★★新增 ATK 段之后判据也必须跟着长一维 —— 只拿一种 ATK 去量的话,
+##   「0.8×ATK」与「定额再高一点」在那一组样本下同解, **把 ATK 段整个删掉门禁照样绿**
+##   (与下面那条"只用一种血量"的坑是同一个形状)。所以下面用
+##   (atk, maxHp) 三个点 (100,1000) (100,6000) (300,1000) —— 三个未知量三个方程, 唯一确定。
 ##   055 只改**显示名与图**, 效果一字不动(未决点 ④, 我按建议自拍: `HookBombSystem` 类名保留)。
 ##
 ## ★★063 的判据必须【拿两种不同的目标 maxHp 各量一次】——
@@ -16,6 +23,14 @@ extends Node
 ##   所以这里专门给目标堆满护甲/魔抗/减伤, 再看伤害是不是一点没少。
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const EqSpiritBatch := preload("res://scripts/systems/equip/eq_spirit_batch.gd")
+
+## ★★★需求字面值 —— 期望值一律从这里算, **绝不从 EqSpiritBatch 的常量算**。
+##   反向验证实测(2026-09-30): 第一版把期望写成 `flat[si] + mh*pct[si]`(读被测常量),
+##   于是把 15/30/50 改回 25/40/70 时**只有下面那条「常量表」分母红**,
+##   精确值那两条(纯函数 / 端到端)一条都没红 —— 那是拿代码跟自己比, 天生永远绿。
+const WANT_FLAT := [15.0, 30.0, 50.0]
+const WANT_ATK_COEF := 0.8
+const WANT_PCT := [0.025, 0.04, 0.06]
 
 var _s = null
 var _n := 0
@@ -32,7 +47,7 @@ func _ok(t: String, c: bool, ex: String = "") -> void:
 ## 造一个目标, 给定 maxHp 与「抗性拉满与否」, 让携带者普攻命中三次 → 回报目标掉了多少血。
 ## ★走真入口 `_eq_whale_ring(src, tgt, si, basic=true)` 三次, 不是直接调伤害函数 ——
 ##   否则「满 3 环才引爆」这一段根本没被验到。
-func _boom_once(si: int, maxhp: float, tanky: bool) -> float:
+func _boom_once(si: int, maxhp: float, tanky: bool, atk: float = 100.0) -> float:
 	_s._units.clear()
 	var c: Vector2 = _s.ARENA.position + _s.ARENA.size * 0.5
 	var src: Dictionary = _s._spawn._make_unit("basic", "left", c + Vector2(-120.0, 0.0))
@@ -67,6 +82,9 @@ func _boom_once(si: int, maxhp: float, tanky: bool) -> float:
 	##      我第一版就是拿它去对精确值, 判据必红且红得毫无信息。
 	src["id"] = "__ring_probe__"
 	src["crit"] = 0.0
+	## ★③ 第三个测试自己带进来的变量: 携带者 ATK。合成单位的 atk 随龟表走,
+	##   而 2026-09-30 起引爆公式里有 0.8×ATK ⇒ 不钉住它, 期望值就算不出来。
+	src["atk"] = atk
 	var h0: float = float(tgt["hp"])
 	## ★成员名是 `_spirit_sys` 不是 `_spirit` —— 第一版写错, 六次调用全抛
 	##   「Invalid access to property」, 伤害全量到 0, 差点当成产品 bug 去查。
@@ -96,8 +114,10 @@ func _ready() -> void:
 	# ── 063: 分母 —— 常量表就是需求给的那两组字面值 ──
 	var flat: Array = EqSpiritBatch.RING_FLAT
 	var pct: Array = EqSpiritBatch.RING_MAXHP_PCT
-	_ok("063 ★分母: 常量表 = 定额 %s + 百分比 %s" % [str(flat), str(pct)],
-		flat == [25.0, 40.0, 70.0] and pct == [0.02, 0.03, 0.05])
+	var akc: float = EqSpiritBatch.RING_ATK_COEF
+	_ok("063 ★分母: 常量表 = 定额 %s + %.2f×ATK + 百分比 %s (用户 2026-09-30)"
+			% [str(flat), akc, str(pct)],
+		flat == WANT_FLAT and absf(akc - WANT_ATK_COEF) < 1e-9 and pct == WANT_PCT)
 
 	# ── 063: 纯函数逐星 × 两种目标血量(精确值) ──
 	## ★精确值判据落在**纯函数** `_ring_boom_dmg` 上 —— 它就是文案承诺的那个数。
@@ -106,25 +126,31 @@ func _ready() -> void:
 	##   (CLAUDE.md §3.5 同一条道理: 要验的数值不该只存在于结算链中间。)
 	var pure_ok := true
 	var pure_detail: Array = []
+	## (携带者ATK, 目标maxHp) 三个点 —— 三个未知量(定额/ATK系数/生命百分比)唯一确定
+	const SAMPLES := [[100.0, 1000.0], [100.0, 6000.0], [300.0, 1000.0]]
 	for si in range(3):
-		for mh in [1000.0, 6000.0]:
+		for sp in SAMPLES:
+			var at: float = float(sp[0])
+			var mh: float = float(sp[1])
 			var t: Dictionary = {"maxHp": mh}
-			var pg: float = _s._equip_sys._spirit_sys._ring_boom_dmg(t, si)
-			var pw: float = float(flat[si]) + mh * float(pct[si])
-			pure_detail.append("%d★/%.0fHP: %.1f" % [si + 1, mh, pg])
+			var pg: float = _s._equip_sys._spirit_sys._ring_boom_dmg({"atk": at}, t, si)
+			var pw: float = float(WANT_FLAT[si]) + at * WANT_ATK_COEF + mh * float(WANT_PCT[si])
+			pure_detail.append("%d★/%.0fATK/%.0fHP: %.1f(期望 %.1f)" % [si + 1, at, mh, pg, pw])
 			if absf(pg - pw) > 0.01:
 				pure_ok = false
-	_ok("063 ★★纯函数逐星 × 两种目标血量 = 【定额 + 百分比×目标最大生命】", pure_ok,
+	_ok("063 ★★纯函数逐星 × 三个样本点 = 【定额 + 0.8×ATK + 百分比×目标最大生命】", pure_ok,
 		" · ".join(pure_detail))
 
 	# ── 063: 端到端(摘掉不屈与暴击后应当与纯函数一致) ──
 	var ok_all := true
 	var detail: Array = []
 	for si in range(3):
-		for mh in [1000.0, 6000.0]:
-			var got: float = _boom_once(si, mh, false)
-			var want: float = float(flat[si]) + mh * float(pct[si])
-			detail.append("%d★/%.0fHP: %.1f(期望 %.1f)" % [si + 1, mh, got, want])
+		for sp in SAMPLES:
+			var at2: float = float(sp[0])
+			var mh2: float = float(sp[1])
+			var got: float = _boom_once(si, mh2, false, at2)
+			var want: float = float(WANT_FLAT[si]) + at2 * WANT_ATK_COEF + mh2 * float(WANT_PCT[si])
+			detail.append("%d★/%.0fATK/%.0fHP: %.1f(期望 %.1f)" % [si + 1, at2, mh2, got, want])
 			if absf(got - want) > 1.01:
 				ok_all = false
 	_ok("063 ★★端到端: 三环引爆真的按这个数掉血(已摘掉小龟不屈与暴击)", ok_all, " · ".join(detail))
@@ -135,6 +161,16 @@ func _ready() -> void:
 	var hi: float = _boom_once(2, 6000.0, false)
 	_ok("063 ★★目标血量翻 6 倍 → 引爆伤害必须变多(证明百分比那半真的在算)",
 		hi > lo + 200.0, "1000HP 掉 %.1f / 6000HP 掉 %.1f" % [lo, hi])
+
+	## ★★ATK 段的分母(2026-09-30 新增那一段自己的证据):
+	##   同一个目标, 只把【携带者 ATK】从 100 抬到 300 ⇒ 伤害必须多出 0.8×200 = 160。
+	##   没有这条的话, 把 `+ src.atk * RING_ATK_COEF` 整行删掉、再把定额调高 80,
+	##   上面那些精确值判据全都还能凑绿。
+	var atk_lo: float = _boom_once(2, 1000.0, false, 100.0)
+	var atk_hi: float = _boom_once(2, 1000.0, false, 300.0)
+	_ok("063 ★★携带者 ATK 100→300 → 引爆伤害多 0.8×200 = 160(证明 ATK 那段真的在算)",
+		absf((atk_hi - atk_lo) - WANT_ATK_COEF * 200.0) < 1.01,
+		"100ATK 掉 %.1f / 300ATK 掉 %.1f · 差 %.1f(期望 160.0)" % [atk_lo, atk_hi, atk_hi - atk_lo])
 
 	## ★真实伤害: 把护甲/魔抗/减伤全拉满, 伤害一点都不许少
 	var soft: float = _boom_once(2, 6000.0, false)

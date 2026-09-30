@@ -518,7 +518,7 @@ scripts/scenes/MainMenuScene.gd|lit|%d 分 %02d 秒
 scripts/scenes/MainMenuScene.gd|lit|%d 天 %d 小时
 scripts/scenes/MainMenuScene.gd|lit|%d 小时 %d 分
 scripts/scenes/MainMenuScene.gd|lit|%d 胜 %d 负
-scripts/scenes/MainMenuScene.gd|lit|♥ %d/8   本周 %d/%d
+scripts/scenes/MainMenuScene.gd|lit|♥ %d/%d   本周 %d/%d
 scripts/scenes/MainMenuScene.gd|lit|✅ 已晋级决赛日 · 闯关赛到此为止(%s) · 明天周日来打决赛日
 scripts/scenes/MainMenuScene.gd|lit|一
 scripts/scenes/MainMenuScene.gd|lit|三

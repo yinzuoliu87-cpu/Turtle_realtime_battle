@@ -938,8 +938,12 @@ func _status_row(now: int = 0) -> void:
 	var today_txt: String = _phase_status_line(now if now > 0 else _now_ts())
 	if today_txt == "":
 		## 积分赛/休赛那几天: 命与本周场次**就是**今天在动的那两个数。
-		today_txt = "♥ %d/8   本周 %d/%d" % [
-			int(GameState.hearts), int(GameState.ranked_used), int(_P2C.RANKED_QUOTA)]
+		## ★满命读常量 —— 原来写死成 `/8`, 而 2026-09-30 满命改成 6 之后
+		##   主菜单会显示「♥ 6/8」。实拍才照出来的 —— 我那条 HEARTS_ONE_SOURCE
+		##   逐行扫, 而这句的格式串与 `GameState.hearts` **分在两行** ⇒ 它没看见。
+		today_txt = "♥ %d/%d   本周 %d/%d" % [
+			int(GameState.hearts), int(_P2C.HEARTS_MAX),
+			int(GameState.ranked_used), int(_P2C.RANKED_QUOTA)]
 	var wN: int = GameState.battles_won
 	var tN: int = GameState.battles_total
 	## ★★空态文案 2026-09-27 改: 「暂无战绩」是后台/电商的那句「暂无数据」——

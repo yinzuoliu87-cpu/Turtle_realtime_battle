@@ -505,10 +505,31 @@ func _t_hearts_one_source() -> void:
 			continue
 		if txt2.find("hearts") < 0:
 			continue
-		var lno: int = 0
-		for ln2 in txt2.split("\n"):
-			lno += 1
-			var t2: String = str(ln2).strip_edges()
+		## ★★按【逻辑语句】扫, 不按物理行 —— GDScript 会折行。
+		##   2026-09-30 实拍照出: 主菜单那句 `"♥ %d/8   本周 %d/%d" % [` 与
+		##   `int(GameState.hearts), ...` **分在两行** ⇒ 逐行扫时
+		##   「有 hearts」和「有 /8」永远不在同一行 ⇒ 这条判据看不见它,
+		##   而屏幕上明明白白写着「♥ 6/8」。**门禁没红, 实拍红了。**
+		##   ⇒ 括号没配平就把下一行接上, 直到配平为止(最多接 4 行, 够用且不会吃掉整段)。
+		var stmts: Array = []
+		var raw: PackedStringArray = txt2.split("\n")
+		var li: int = 0
+		while li < raw.size():
+			var acc: String = str(raw[li]).strip_edges()
+			var lno0: int = li + 1
+			var depth: int = acc.count("(") + acc.count("[") - acc.count(")") - acc.count("]")
+			var extra: int = 0
+			while depth > 0 and li + 1 < raw.size() and extra < 4:
+				li += 1
+				extra += 1
+				var nxt: String = str(raw[li]).strip_edges()
+				acc += " " + nxt
+				depth += nxt.count("(") + nxt.count("[") - nxt.count(")") - nxt.count("]")
+			stmts.append([lno0, acc])
+			li += 1
+		for st in stmts:
+			var lno: int = int(st[0])
+			var t2: String = str(st[1])
 			if t2.begins_with("#") or t2.begins_with("##"):
 				continue
 			## ★行尾注释要剥掉: 注释里出现「砍到约1/3」这种会被 shape C 当成屏上分母
