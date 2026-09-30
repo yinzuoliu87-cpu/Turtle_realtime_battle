@@ -87,7 +87,12 @@ func _ready() -> void:
 	_ok("058 图标换成专属新图且文件在盘上",
 		str(e58.get("img", "")) == "equip/ancient-turret.png"
 		and ResourceLoader.exists("res://assets/sprites/equip/ancient-turret.png"))
-	_ok("058 ★效果文案一个字没动(只换名换图)",
+	## ★★2026-09-30 改判据。原来这条叫「效果文案一个字没动(只换名换图)」——
+	##   那是 2026-08-31 那次**只换名换图**时写的, 措辞把"当时没动"写成了永久要求。
+	##   用户 2026-09-30 加强了 058 的数值 ⇒ 文案必须跟着改 ⇒ 这条会把**合法改动**判红。
+	##   同一形状见 memory `fb-gate-can-pin-the-bug-in-place`(门禁会把 bug 钉住)。
+	##   ⇒ 判据收窄成"它仍然是【召唤一座不可移动的炮台】这件事", 数值交给下面 ⑤ 段。
+	_ok("058 ★效果仍然是【召唤一座不可移动的炮台】(换名换图与数值调整都不该改掉这件事)",
 		str(e58.get("effectDesc1", "")).contains("召唤一座不可移动的炮台"))
 
 	var e45: Dictionary = DataRegistry.phase2_equipment_by_id.get("p2eq_045", {})
@@ -101,6 +106,8 @@ func _ready() -> void:
 		str(e45.get("effectDesc1", "")).contains("发射火球")
 		and str(e45.get("effectDesc1", "")).contains("回复"))
 
+	_t058_turret_numbers()
+
 	_s.queue_free()
 	print("")
 	print("  (共 %d 条断言)" % _n)
@@ -109,3 +116,93 @@ func _ready() -> void:
 		_fail += 1
 	print("ALL PASS — 058/036/045" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
+
+
+# ═════════════════════════════════════════════════════════════════════
+# ⑤ 058 炮台的数值 —— 2026-09-30 新增, 此前这几个数【零门禁】
+#
+# ★用户 2026-09-30 原话:
+#   「炮台拥有650/1400/2500+10*携带者ATK最大生命值和70/120/180+携带者ATK的攻击力,
+#     每次炮台攻击不再提供ATK(★用户随后更正: 是**护甲穿透**), 只提供暴击率,
+#     改为提供4%暴击率」
+# ★期望值一律写成上面那句话的字面量, **绝不读 equip_system 里的数组** ——
+#   读被测常量就是恒真门禁(verify_eq055_063 栽过一次)。
+# ★★携带者 ATK 项必须用【两个不同的 atk】各量一次: 只用一个 atk 的话,
+#   "650 + 10×atk" 和 "写死 1650" 给出同一个数, 两种实现分不开(同 036 那条的道理)。
+# ═════════════════════════════════════════════════════════════════════
+func _t058_turret_numbers() -> void:
+	print("")
+	print("── ⑤ 058 远古炮台 · 召唤数值 + 每次普攻的累积 ──")
+	var WANT_HP: Array = [650.0, 1400.0, 2500.0]
+	var WANT_ATK: Array = [70.0, 120.0, 180.0]
+	var HP_PER_ATK := 10.0
+	var ATK_PER_ATK := 1.0
+	for si in range(3):
+		for oatk in [40.0, 90.0]:            # ★两个不同的携带者 atk
+			_s._units.clear()
+			var c: Vector2 = _s.ARENA.position + _s.ARENA.size * 0.5
+			var u: Dictionary = _s._spawn._make_unit("basic", "left", c + Vector2(-150.0, 0.0))
+			u["atk"] = oatk
+			u["no_basic"] = true
+			u["no_move"] = true
+			_s._units.append(u)
+			_s._equip_sys._eq_summon_turret(u, si)          # ★真入口
+			var tr = u.get("_turret_ref", null)
+			_ok("⑤ ★分母 si=%d atk=%.0f: 炮台真的建出来了" % [si, oatk],
+				tr is Dictionary and (tr as Dictionary).get("alive", false),
+				"tr=%s" % ("Dictionary" if tr is Dictionary else str(tr)))
+			if not (tr is Dictionary):
+				continue
+			var trd: Dictionary = tr
+			var want_hp: float = float(WANT_HP[si]) + HP_PER_ATK * oatk
+			var want_atk: float = float(WANT_ATK[si]) + ATK_PER_ATK * oatk
+			_ok("⑤ 058 si=%d 携带者atk=%.0f ⇒ 炮台 maxHp = %.0f + 10×%.0f = %.0f"
+					% [si, oatk, float(WANT_HP[si]), oatk, want_hp],
+				absf(float(trd.get("maxHp", 0.0)) - want_hp) < 1.0,
+				"实得 %.0f" % float(trd.get("maxHp", 0.0)))
+			_ok("⑤ 058 si=%d 携带者atk=%.0f ⇒ 炮台 atk = %.0f + %.0f = %.0f"
+					% [si, oatk, float(WANT_ATK[si]), oatk, want_atk],
+				absf(float(trd.get("atk", 0.0)) - want_atk) < 1.0,
+				"实得 %.0f" % float(trd.get("atk", 0.0)))
+	## ★★携带者 ATK 项【真的在算】: 同一档换 atk, 结果必须不同
+	##   (这一条就是"写死 1650"那种实现的墓碑)
+	_s._units.clear()
+	var c2: Vector2 = _s.ARENA.position + _s.ARENA.size * 0.5
+	var ua: Dictionary = _s._spawn._make_unit("basic", "left", c2 + Vector2(-150.0, 0.0))
+	ua["atk"] = 40.0; ua["no_basic"] = true; ua["no_move"] = true
+	_s._units.append(ua)
+	_s._equip_sys._eq_summon_turret(ua, 2)
+	var ta = ua.get("_turret_ref", null)
+	_s._units.clear()
+	var ub: Dictionary = _s._spawn._make_unit("basic", "left", c2 + Vector2(-150.0, 0.0))
+	ub["atk"] = 90.0; ub["no_basic"] = true; ub["no_move"] = true
+	_s._units.append(ub)
+	_s._equip_sys._eq_summon_turret(ub, 2)
+	var tb = ub.get("_turret_ref", null)
+	_ok("⑤ ★★分母: 携带者 atk 40→90 使炮台血量【真的变了】(差应为 10×50 = 500)",
+		ta is Dictionary and tb is Dictionary
+		and absf((float((tb as Dictionary)["maxHp"]) - float((ta as Dictionary)["maxHp"])) - 500.0) < 1.0,
+		"差 %.0f" % ((float((tb as Dictionary)["maxHp"]) - float((ta as Dictionary)["maxHp"])) if (ta is Dictionary and tb is Dictionary) else -1.0))
+	_ok("⑤ ★★分母: 携带者 atk 40→90 使炮台攻击【真的变了】(差应为 50)",
+		ta is Dictionary and tb is Dictionary
+		and absf((float((tb as Dictionary)["atk"]) - float((ta as Dictionary)["atk"])) - 50.0) < 1.0,
+		"差 %.0f" % ((float((tb as Dictionary)["atk"]) - float((ta as Dictionary)["atk"])) if (ta is Dictionary and tb is Dictionary) else -1.0))
+
+	## ── 每次普攻: +4% 暴击率, 且【不再累积护甲穿透】 ──
+	if tb is Dictionary:
+		var trb: Dictionary = tb
+		var crit0: float = float(trb.get("crit", 0.0))
+		var apen0: float = float(trb.get("armor_pen", 0.0))
+		_s._turret_on_shot(trb, null)                      # ★真入口(演出侧 tgt=null 走得通)
+		_ok("⑤ 058 每次普攻 ⇒ 暴击率 +4%(用户 2026-09-30: 2% → 4%)",
+			absf(float(trb.get("crit", 0.0)) - crit0 - 0.04) < 0.0005,
+			"crit %.4f → %.4f" % [crit0, float(trb.get("crit", 0.0))])
+		_ok("⑤ ★★058 每次普攻【不再累积护甲穿透】(用户 2026-09-30 更正: 删掉的是护甲穿透那一项)",
+			absf(float(trb.get("armor_pen", 0.0)) - apen0) < 0.0005,
+			"armor_pen %.2f → %.2f" % [apen0, float(trb.get("armor_pen", 0.0))])
+		## 打三下累到 12% —— 证明它是【每次累积】而不是一次性设成 4%
+		_s._turret_on_shot(trb, null)
+		_s._turret_on_shot(trb, null)
+		_ok("⑤ 058 ★分母: 连打 3 下累到 12%(证明是每次累积, 不是一次性设成 4%)",
+			absf(float(trb.get("crit", 0.0)) - crit0 - 0.12) < 0.0005,
+			"crit = %.4f" % float(trb.get("crit", 0.0)))

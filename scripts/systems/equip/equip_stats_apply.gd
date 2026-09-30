@@ -240,9 +240,11 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 			u["hammer_pct"] = float(u.get("hammer_pct", 0.0)) + [0.04, 0.06, 0.15][si]   # 重击锤: 随maxHp动态(在_recalc_stats累加), 多件叠加
 			battle._recalc_stats(u)
 		"p2eq_041":   # 退潮浊液: 登场5秒后涨潮(临时+maxHp/+攻击/+体积/+射程), 到期退潮还原(用户2026-07-19)
-			var hp41: float = [250.0, 400.0, 650.0][si]   # 装备hp是最终值, 不乘HP_MULT
-			var atk41: float = [10.0, 16.0, 25.0][si]
-			var dur41: float = [8.0, 11.0, 15.0][si]
+			## ★用户 2026-09-30 加强: 250/400/650 → 500/1100/2000 maxHp ·
+			##   10/16/25 → 16/31/60 atk · 8/11/15 → 12/16/22 秒。
+			var hp41: float = [500.0, 1100.0, 2000.0][si]   # 装备hp是最终值, 不乘HP_MULT
+			var atk41: float = [16.0, 31.0, 60.0][si]
+			var dur41: float = [12.0, 16.0, 22.0][si]
 			battle._pending_shots.append({"delay": EquipSystem.TIDE_DELAY, "fn": func(): battle._equip_sys._eq_ebb_surge(u, hp41, atk41, dur41), "src": u})
 		"p2eq_035":   # 黄铜齿轮: 本局累计产币数(显示用)
 			stt["coins_made"] = 0

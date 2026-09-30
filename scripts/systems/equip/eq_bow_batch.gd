@@ -170,13 +170,15 @@ func on_basic_074(u: Dictionary, tgt, si: int) -> void:
 	if not u.get("alive", false):
 		return
 	var stt: Dictionary = u["eq_state"].get("p2eq_074", {})
-	var amt: float = float(u.get("maxHp", 0.0)) * [0.02, 0.03, 0.04][si]
+	## ★用户 2026-09-30 加强: 纯百分比 2/3/4% → 【固定 9/16/25 + 2.5/3.5/4.5% 自身最大生命值】。
+	##   两部分相加成一个护盾量, 不是两层盾 —— 文案写的是"获得 A+B% 的护盾"。
+	var amt: float = [9.0, 16.0, 25.0][si] + float(u.get("maxHp", 0.0)) * [0.025, 0.035, 0.045][si]
 	if amt > 0.0:
 		battle._damage._grant_shield(u, amt)
 		stt["bone_layers"] = int(stt.get("bone_layers", 0)) + 1
 		stt["bone_total"] = float(stt.get("bone_total", 0.0)) + amt
 	if tgt is Dictionary and (tgt as Dictionary).get("alive", false):
-		var flat: float = [10.0, 20.0, 30.0][si]
+		var flat: float = [15.0, 30.0, 50.0][si]   # ★用户 2026-09-30: 10/20/30 → 15/30/50
 		battle._damage._apply_damage_from(u, tgt, _magic_after_mr(u, flat, tgt),
 			Color("#9be7ff"), 0.0, false, true)
 	u["eq_state"]["p2eq_074"] = stt

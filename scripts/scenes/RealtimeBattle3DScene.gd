@@ -3279,10 +3279,11 @@ func _stress_reload() -> void:   # 一局结束(或超时)→停看门狗→重�
 	Engine.time_scale = 1.0
 	get_tree().reload_current_scene()
 
-func _turret_on_shot(tr: Dictionary, tgt) -> void:   # 058炮台每次普攻: 永久+护穿+2%暴击(到本场战斗结束) + 枪口闪
-	var si: int = int(tr.get("_turret_si", 0))
-	tr["armor_pen"] = float(tr.get("armor_pen", 0.0)) + [2.0, 2.0, 3.0][si]
-	tr["crit"] = minf(1.0, float(tr.get("crit", 0.0)) + 0.02)
+func _turret_on_shot(tr: Dictionary, tgt) -> void:   # 058炮台每次普攻: 永久+4%暴击(到本场战斗结束) + 枪口闪
+	## ★用户 2026-09-30: 「每次炮台攻击不再提供 ATK, 只提供暴击率, 改为提供 4% 暴击率」。
+	##   代码里原本累积的是**护甲穿透** [2,2,3](文案两层写的也是护甲穿透, 没有 ATK) ⇒
+	##   按意图去掉那一项, 只留暴击率, 并把 2% 抬到 4%。
+	tr["crit"] = minf(1.0, float(tr.get("crit", 0.0)) + EquipSystem.TURRET_CRIT_PER_SHOT)
 	if tgt is Dictionary:
 		_muzzle_flash(tr["pos"], (tgt["pos"] - tr["pos"]), Color("#ff6a6a"))
 	_skill_ring(tr["pos"], Color(1.0, 0.45, 0.42, 0.45), 34.0)

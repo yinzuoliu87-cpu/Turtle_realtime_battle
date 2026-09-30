@@ -449,20 +449,29 @@ func _t073_random_and_nochain() -> void:
 
 
 # ═════════════════════════════════════════════════════════════
-# ② 074 鲸骨胸甲 「每次普攻 +2/3/4% 最大生命护盾 + 10/20/30 魔法伤害」
+# ② 074 魔法胸甲 「每次普攻 +(9/16/25 + 2.5/3.5/4.5% 自身最大生命)护盾 + 15/30/50 魔法伤害」
+#    ★数值来自用户 2026-09-30 原话, **本文件里的期望值一律写成那句话的字面量** ——
+#      绝不读 eq_bow_batch 里的常量(那样改常量期望跟着变 ⇒ 恒真, 上次 verify_eq055_063 就栽在这)。
 # ═════════════════════════════════════════════════════════════
 func _t074_bone_cuirass() -> void:
 	print("── ② 074 鲸骨胸甲 · 普攻叠盾 + 附带魔伤 ──")
 	for si in range(3):
-		var pct: float = [0.02, 0.03, 0.04][si]
-		var flat: float = [10.0, 20.0, 30.0][si]
+		var want_flat_shield: float = [9.0, 16.0, 25.0][si]       # 用户原话的固定部分
+		var want_pct: float = [0.025, 0.035, 0.045][si]           # 用户原话的百分比部分
+		var flat: float = [15.0, 30.0, 50.0][si]                  # 用户原话的附带魔伤
 		_s._units.clear()
 		var u: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, 20.0), 5000.0), "p2eq_074", si + 1)
 		var t: Dictionary = _mk("basic", "right", Vector2(-100.0, 20.0))
 		var h0: float = float(t["hp"])
 		_s._equip_sys._eq_on_basic_attack(u, t)          # ★真入口
-		_ok("② 074 si=%d 护盾 = %.0f(最大生命 5000 的 2/3/4%%)" % [si, 5000.0 * pct],
-			absf(float(u["shield"]) - 5000.0 * pct) < 0.51, "shield=%.1f" % float(u["shield"]))
+		var want_shield: float = want_flat_shield + 5000.0 * want_pct
+		_ok("② 074 si=%d 护盾 = %.0f = 固定 %.0f + 最大生命 5000 的 %.1f%%"
+				% [si, want_shield, want_flat_shield, want_pct * 100.0],
+			absf(float(u["shield"]) - want_shield) < 0.51, "shield=%.1f" % float(u["shield"]))
+		_ok("② 074 ★分母 si=%d: 固定那半真的在算(只有百分比的话是 %.0f, 实测该是 %.0f)"
+				% [si, 5000.0 * want_pct, want_shield],
+			absf(float(u["shield"]) - 5000.0 * want_pct) > 0.51,
+			"shield=%.1f 纯百分比=%.1f" % [float(u["shield"]), 5000.0 * want_pct])
 		_ok("② 074 si=%d 附带 %.0f 魔法伤害(魔抗 0)" % [si, flat],
 			absf(h0 - float(t["hp"]) - flat) < 0.51, "实掉 %.1f" % (h0 - float(t["hp"])))
 	## ★魔抗真的在吃这段(证明它是【魔法】伤害不是真伤): 40 魔抗 ⇒ ×0.5 ⇒ 30 打成 15
@@ -473,8 +482,8 @@ func _t074_bone_cuirass() -> void:
 	mt["base_mr"] = 40.0
 	var m0: float = float(mt["hp"])
 	_s._equip_sys._eq_on_basic_attack(m, mt)
-	_ok("② 074 ★是【魔法】伤害不是真伤(40 魔抗 ⇒ 30 打成 15)",
-		absf(m0 - float(mt["hp"]) - 15.0) < 0.51, "实掉 %.1f 期望 15" % (m0 - float(mt["hp"])))
+	_ok("② 074 ★是【魔法】伤害不是真伤(40 魔抗 ⇒ 50 打成 25)",
+		absf(m0 - float(mt["hp"]) - 25.0) < 0.51, "实掉 %.1f 期望 25" % (m0 - float(mt["hp"])))
 	## ★★【无上限】: 全局护盾上限 2026-08-05 已删除 ⇒ 灌 60 下普攻 = 240% 最大生命
 	##   旧的 SHIELD_CAP_MULT=1.5 会把它砍在 150% —— 这条断言就是那个上限的墓碑。
 	_s._units.clear()
@@ -482,9 +491,10 @@ func _t074_bone_cuirass() -> void:
 	var gt: Dictionary = _mk("basic", "right", Vector2(-100.0, 100.0))
 	for _k in range(60):
 		_s._equip_sys._eq_on_basic_attack(g, gt)
-	_ok("② 074 ★★护盾【没有上限】: 60 下普攻 = 5000×4%×60 = 12000(旧上限会砍到 7500)",
-		absf(float(g["shield"]) - 12000.0) < 0.51, "shield=%.1f" % float(g["shield"]))
-	_ok("② 074 ★分母: 12000 确实超过了最大生命的 150%(7500) —— 这条断言不是恒真",
+	## ★3: (25 + 5000×4.5%) × 60 = 250 × 60 = 15000
+	_ok("② 074 ★★护盾【没有上限】: 60 下普攻 = (25 + 5000×4.5%)×60 = 15000(旧上限会砍到 7500)",
+		absf(float(g["shield"]) - 15000.0) < 0.51, "shield=%.1f" % float(g["shield"]))
+	_ok("② 074 ★分母: 15000 确实超过了最大生命的 150%(7500) —— 这条断言不是恒真",
 		float(g["shield"]) > float(g["maxHp"]) * 1.5,
 		"shield=%.0f  1.5×maxHp=%.0f" % [float(g["shield"]), float(g["maxHp"]) * 1.5])
 	_ok("② 074 ★分母: eq_state 记了 60 层(演出的甲片数就读它)",

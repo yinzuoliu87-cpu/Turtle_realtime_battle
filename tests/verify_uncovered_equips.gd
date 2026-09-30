@@ -121,7 +121,7 @@ func _delta_differs(d1: Array, d2: Array) -> bool:
 	return false
 
 
-func _stage(s, iid: String) -> Array:
+func _stage(s, iid: String, star: int = 3) -> Array:
 	## 干净战场: 携带者 + 3 个静音敌人。★静音是必须的 —— 否则双方互相普攻,
 	##   敌人掉血跟这件装备毫无关系(法器门禁第一版就是这么假绿的)。
 	var c: Vector2 = s.ARENA.position + s.ARENA.size * 0.5
@@ -144,7 +144,7 @@ func _stage(s, iid: String) -> Array:
 	s._units.append_array(es)
 	s._edit_mode = false
 	s._over = false
-	u["equips"] = [{"id": iid, "star": 3}]
+	u["equips"] = [{"id": iid, "star": star}]
 	u["eq_state"] = {iid: {}}
 	s._equip_sys._stats._eq_apply_all_stats()
 	return [u, es]
@@ -263,6 +263,49 @@ func _ready() -> void:
 			break
 	_ok("★★041: 登场就把【涨潮】排进了延时队列(延时 %.0f 秒)" % EquipSystemS.TIDE_DELAY,
 		queued41, "_pending_shots 里有它的条目=%s" % str(queued41))
+
+	## ── 041 【涨潮】到底加了多少 —— 2026-09-30 新增, 此前这三个数【零门禁】 ──
+	##
+	## ★期望值一律写成**用户原话的字面量**, 绝不读 equip_stats_apply 里那三个数组 ——
+	##   读被测常量就是恒真门禁(verify_eq055_063 栽过一次: 期望写成 `flat[si] + mh*pct[si]`,
+	##   改常量期望跟着变, 永远绿)。
+	## ★用户 2026-09-30 原话: 「涨潮提供500/1100/2000最大生命值和16/31/60攻击力, 持续12/16/22秒」
+	## ★涨潮是**延时事件**(登场 TIDE_DELAY 秒后) ⇒ 手动把那条闭包 call() 掉, 不等墙钟也不等帧
+	##   (CLAUDE.md §3.5: 数值判据不许依赖任何 tween / 延时跑完)。
+	var WANT_HP41: Array = [500.0, 1100.0, 2000.0]
+	var WANT_ATK41: Array = [16.0, 31.0, 60.0]
+	var WANT_DUR41: Array = [12.0, 16.0, 22.0]
+	for si41 in range(3):
+		s._pending_shots.clear()          # ★上一轮的条目必须清, 否则 is_same 会命中旧单位
+		var stx: Array = _stage(s, "p2eq_041", si41 + 1)
+		var ux: Dictionary = stx[0]
+		var hp0x: float = float(ux["maxHp"])
+		var bat0x: float = float(ux.get("base_atk", 0.0))
+		var atk0x: float = float(ux["atk"])
+		var fired41 := false
+		for ps2 in s._pending_shots:
+			if ps2 is Dictionary and is_same((ps2 as Dictionary).get("src", null), ux):
+				((ps2 as Dictionary)["fn"] as Callable).call()
+				fired41 = true
+				break
+		_ok("★分母 041 si=%d: 涨潮闭包排上队并被触发(没触发的话下面三条全是空检查)" % si41,
+			fired41, "fired=%s" % str(fired41))
+		_ok("★★041 si=%d 【涨潮】maxHp +%.0f" % [si41, float(WANT_HP41[si41])],
+			absf(float(ux["maxHp"]) - hp0x - float(WANT_HP41[si41])) < 1.0,
+			"%.0f → %.0f (增 %.0f)" % [hp0x, float(ux["maxHp"]), float(ux["maxHp"]) - hp0x])
+		_ok("★★041 si=%d 【涨潮】base_atk +%.0f" % [si41, float(WANT_ATK41[si41])],
+			absf(float(ux.get("base_atk", 0.0)) - bat0x - float(WANT_ATK41[si41])) < 1.0,
+			"%.0f → %.0f (增 %.0f)" % [bat0x, float(ux.get("base_atk", 0.0)), float(ux.get("base_atk", 0.0)) - bat0x])
+		_ok("★041 si=%d ★分母: 生效后的 atk 也跟着变了(证明 _recalc_stats 真的跑了)" % si41,
+			absf(float(ux["atk"]) - atk0x) > 0.5,
+			"atk %.1f → %.1f" % [atk0x, float(ux["atk"])])
+		_ok("★★041 si=%d 【涨潮】持续 %.0f 秒" % [si41, float(WANT_DUR41[si41])],
+			absf(float(ux.get("_ebb_until", 0.0)) - float(s._t) - float(WANT_DUR41[si41])) < 0.51,
+			"_ebb_until - _t = %.2f" % (float(ux.get("_ebb_until", 0.0)) - float(s._t)))
+	## ★三档必须互不相同 —— 否则"读错了档"这种 bug 照样绿
+	_ok("★041 ★分母: 三档数值互不相同(500/1100/2000 · 16/31/60 · 12/16/22)",
+		WANT_HP41[0] != WANT_HP41[1] and WANT_HP41[1] != WANT_HP41[2]
+		and WANT_ATK41[0] != WANT_ATK41[1] and WANT_DUR41[0] != WANT_DUR41[1])
 
 	## ── 059 沙漏: 龟能充能 +10% ⇒ echarge_perm 应为对照组的 1.1 倍 ──
 	var st4: Array = _stage(s, "p2eq_059")

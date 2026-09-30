@@ -486,10 +486,10 @@
     "baseStats1": "+生命40/90/170·盾疗10/15/20%",
     "shopAvailable": 1,
     "emoji": "🐚",
-    "effectDesc1": "登场 {C:EquipSystem.TIDE_DELAY} 秒后进入涨潮：获得 250/400/650 最大生命值与 10/16/25 攻击力，体积增大 {C:EquipSystem.TIDE_SIZE_UP%}%、攻击射程+{C:EquipSystem.TIDE_RANGE_UP} 码，持续 8/11/15 秒；\n到期退潮，上述临时加成全部还原（退潮不会致死，只把生命削到新上限）。",
+    "effectDesc1": "登场 {C:EquipSystem.TIDE_DELAY} 秒后进入【涨潮】：获得 500/1100/2000 最大生命值与 16/31/60 攻击力，体积增大 {C:EquipSystem.TIDE_SIZE_UP%}%、攻击射程 +{C:EquipSystem.TIDE_RANGE_UP} 码，持续 12/16/22 秒。\n持续时间结束后【退潮】，上述加成全部还原（【退潮】不会致死，只把生命削到新上限）。",
     "effectDesc3": "",
     "img": "equip/ebb-vial.png",
-    "effectBrief": "登场 {C:EquipSystem.TIDE_DELAY} 秒后涨潮：+250/400/650 最大生命值与 10/16/25 攻击力，到期还原。"
+    "effectBrief": "登场 {C:EquipSystem.TIDE_DELAY} 秒后进入【涨潮】，获得最大生命值与攻击力、体积增大、射程提升；持续时间结束后【退潮】，加成全部还原。"
   },
   {
     "id": "p2eq_042",
@@ -690,10 +690,10 @@
     "baseStats1": "+攻17/29/41·+20龟能",
     "shopAvailable": 1,
     "emoji": "🔩",
-    "effectDesc1": "登场时召唤一座不可移动的炮台：500/1000/1800 最大生命值、20/30/45 攻击力、每秒 {C:EquipSystem.TURRET_ASPD} 次攻击速度、{C:EquipSystem.TURRET_RANGE} 码射程；\n普攻锁定目标（一条红色细线连向它），造成 1×攻击力物理伤害，并使炮台自身永久获得 2/2/3 护甲穿透与 2%暴击率（持续到本场战斗结束）。\n自身存活时炮台获得 70/85/100 护甲与魔抗；自身位于炮台 {C:EquipSystem.TURRET_BUFF_R} 码范围内时获得 {C:EquipSystem.TURRET_BUFF_ASPD%}%攻击速度。",
+    "effectDesc1": "登场时召唤一座不可移动的炮台：650/1400/2500 外加 {C:EquipSystem.TURRET_HP_PER_ATK}×自身攻击力 的最大生命值、70/120/180 外加 1×自身攻击力 的攻击力、每秒 {C:EquipSystem.TURRET_ASPD} 次攻击速度、{C:EquipSystem.TURRET_RANGE} 码射程。\n炮台的普攻锁定目标（一条红色细线连向它），造成 1×攻击力物理伤害，并使炮台永久获得 {C:EquipSystem.TURRET_CRIT_PER_SHOT%}% 暴击率，持续到本场战斗结束。\n自身存活时炮台获得 70/85/100 护甲与魔抗；自身位于炮台 {C:EquipSystem.TURRET_BUFF_R} 码范围内时，自身获得 {C:EquipSystem.TURRET_BUFF_ASPD%}% 攻击速度。",
     "effectDesc3": "",
     "img": "equip/ancient-turret.png",
-    "effectBrief": "登场时召唤一座炮台，普攻锁定目标并永久累积护甲穿透。"
+    "effectBrief": "登场时召唤一座不可移动的炮台，它的普攻锁定目标并永久累积暴击率。"
   },
   {
     "id": "p2eq_059",
@@ -882,10 +882,10 @@
     "baseStats1": "+生命50/120/260·+攻速6/11/18%",
     "shopAvailable": 1,
     "emoji": "🦴",
-    "effectDesc1": "每次普攻会使自己获得 2/3/4%最大生命值的护盾（可一直叠加，无上限）；每次普攻还会附带 10/20/30 点魔法伤害。",
+    "effectDesc1": "每次普攻使自身获得 9/16/25 外加 2.5/3.5/4.5% 自身最大生命值 的护盾，可一直叠加且没有上限；每次普攻还会附带 15/30/50 魔法伤害。",
     "effectDesc3": "",
     "img": "equip/p2eq_074.png",
-    "effectBrief": "每次普攻获得 2/3/4% 最大生命值的护盾，可一直叠加。"
+    "effectBrief": "每次普攻都会获得护盾并不断叠加，没有上限；普攻还附带魔法伤害。"
   },
   {
     "id": "p2eq_075",
