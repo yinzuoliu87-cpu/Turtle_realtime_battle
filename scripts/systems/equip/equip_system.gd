@@ -2901,7 +2901,7 @@ func fire_equip_effect(u: Dictionary, iid: String, star: int, stt = null) -> voi
 ##   有效目视验证(memory [[fb-verify-must-run-the-real-path]] 那次就栽在这个形状上)。
 
 
-## ★073 藤蔓弓弦 / 074 鲸骨胸甲 / 075 测距绳结 / 076 连发弩机 ——
+## ★073 藤蔓弓弦 / 074 魔法胸甲 / 075 银色箭袋 / 076 连发弩机 ——
 ##   四件已由用户逐件亲手重写(2026-08-05 §0.5 定稿), 效果本体搬到
 ##   `scripts/systems/equip/eq_bow_batch.gd`(EqBowBatch), 演出在 `scripts/scenes/battle/bow_eq_vfx.gd`。
 ##   原来住在这里的 `_eq_vine_bow` / `_eq_bone_quiver` / `_eq_eagle_lens` / `_eq_corroder`

@@ -119,7 +119,7 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	gs.test_mode = true
-	print("=== 弓箭 4 件(073 藤蔓弓弦 / 074 鲸骨胸甲 / 075 银色箭袋 / 076 连发弩机) ===")
+	print("=== 弓箭 4 件(073 藤蔓弓弦 / 074 魔法胸甲 / 075 银色箭袋 / 076 连发弩机) ===")
 	_s = RB.new()
 	add_child(_s)
 	for _i in range(30):
@@ -454,7 +454,7 @@ func _t073_random_and_nochain() -> void:
 #      绝不读 eq_bow_batch 里的常量(那样改常量期望跟着变 ⇒ 恒真, 上次 verify_eq055_063 就栽在这)。
 # ═════════════════════════════════════════════════════════════
 func _t074_bone_cuirass() -> void:
-	print("── ② 074 鲸骨胸甲 · 普攻叠盾 + 附带魔伤 ──")
+	print("── ② 074 魔法胸甲 · 普攻叠盾 + 附带魔伤 ──")
 	for si in range(3):
 		var want_flat_shield: float = [9.0, 16.0, 25.0][si]       # 用户原话的固定部分
 		var want_pct: float = [0.025, 0.035, 0.045][si]           # 用户原话的百分比部分
