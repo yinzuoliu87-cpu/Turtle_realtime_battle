@@ -213,16 +213,34 @@ func _ready() -> void:
 			kinds.append(nd != null)
 		_ok("★三座各自建得出来(kind 0/1/2)", kinds == [true, true, true], str(kinds))
 		## 形态真的不同: 火控塔的碟【在转】而炮一/炮二不转(量真实节点的旋转)
-		var d0: float = sv._turrets["left|2"]["barrel"].rotation.z
+		##
+		## ★★2026-09-30: 这里原来是**裸取字典键** `sv._turrets["left|2"]["barrel"]`。
+		##   CI 上炮台没建起来 ⇒ 键不存在 ⇒ **`SCRIPT ERROR` 当场把整个 `_ready` 中止**,
+		##   后面几十条断言一条没跑, 而退出码反而是 **0** ⇒ 门禁只能靠「致命报错正则」判红,
+		##   而报出来的不是「炮台没建起来」而是一条看不出真因的引擎错误
+		##   (2026-09-29 那次我对着这条错查了很久才明白它只是后果)。
+		## ⇒ 缺口**显式登记成断言**、并把 `_turrets` 里到底有哪些键打出来, 不静默截断。
+		var _h2 = sv._turrets.get("left|2", null)
+		var _h0 = sv._turrets.get("left|0", null)
+		var _ok2: bool = _h2 is Dictionary and (_h2 as Dictionary).has("barrel")
+		var _ok0: bool = _h0 is Dictionary and (_h0 as Dictionary).has("barrel")
+		_ok("★分母: 炮台句柄 `left|0` / `left|2` 真的登记在 `_turrets` 里(不在 ⇒ 下面几条全是空检查)",
+			_ok0 and _ok2,
+			"count=%d · _turrets 里的键: %s" % [sv.gun_turret_count(), str(sv._turrets.keys())])
+		var _brl2 = (_h2 as Dictionary)["barrel"] if _ok2 else null
+		var _brl0 = (_h0 as Dictionary)["barrel"] if _ok0 else null
+		var d0: float = (_brl2.rotation.z as float) if _brl2 != null else 0.0
+
 		_scene._gun_syn.tick(0.5)
-		var d1: float = sv._turrets["left|2"]["barrel"].rotation.z
+		var d1: float = (_brl2.rotation.z as float) if _brl2 != null else 0.0
 		_ok("★炮台三·火控: 雷达碟在转(0.5 秒转过 %.3f rad) —— 它不开火, 转就是它在工作的证据"
-				% absf(d1 - d0), absf(d1 - d0) > 0.5, "")
-		var b0x: float = sv._turrets["left|0"]["barrel"].rotation.z
+				% absf(d1 - d0), _ok2 and absf(d1 - d0) > 0.5, "" if _ok2 else "句柄不在, 没得量")
+		var b0x: float = (_brl0.rotation.z as float) if _brl0 != null else 0.0
 		_scene._gun_syn.tick(0.5)
+		var b0y: float = (_brl0.rotation.z as float) if _brl0 != null else 0.0
 		_ok("★分母: 炮台一的管【不转】(0.5 秒转过 %.3f rad ≈ 0) —— 三座不是同一个形态"
-				% absf(sv._turrets["left|0"]["barrel"].rotation.z - b0x),
-			absf(sv._turrets["left|0"]["barrel"].rotation.z - b0x) < 1e-6, "")
+				% absf(b0y - b0x), _ok0 and absf(b0y - b0x) < 1e-6,
+			"" if _ok0 else "句柄不在, 没得量")
 		## ★★火控【开局一次性附魔】(2026-08-12 用户:「只要有该局给所有携带枪的友军一个
 		##   附魔的动作 …… 只需要战斗开始后展示一个演示特效就好」) —— 旧的每 1.6 秒
 		##   拉光束那套已删, 判据随之改成"一局一次、每人一套附魔演出"。

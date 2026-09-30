@@ -147,7 +147,12 @@ jobs:
           #   ⇒ 拷成 `gatefail-<名>.log`(没有前导点、不匹配那条忽略规则)。
           for f in .gate-fail-*.log; do
             [ -e "$f" ] || continue
-            tail -n 400 "$f" > "/tmp/cilog/gatefail-${f#.gate-fail-}" 2>/dev/null || true
+            # ★★ 2026-09-30 400 → 4000: 上一次查 CI 红时发现 **诊断信息一直都在,
+            #   是这根管子把它截掉了** —— `verify_gun_synergy` 头上那条
+            #   「★分母: 找到 N 件枪」刚好落在 400 行窗口外, 于是我对着一份
+            #   看不到分母的日志猜了很久。分母在头、FAIL 在尾, 只留尾就等于
+            #   把「为何全是 0」那一半丢掉。
+            tail -n 4000 "$f" > "/tmp/cilog/gatefail-${f#.gate-fail-}" 2>/dev/null || true
           done
           # ★诊断: 把真的拷进去了什么打出来 —— 上一版"看着跑了其实没拷到"就是因为没有这一行
           echo "::notice::cilog 内容: $(ls -A /tmp/cilog 2>/dev/null | tr '\n' ' ')"

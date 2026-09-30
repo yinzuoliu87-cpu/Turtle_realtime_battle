@@ -228,6 +228,83 @@ func _ready() -> void:
 		% int((nope["eq_state"]["p2eq_036"] as Dictionary).get("egg_levels", 0)),
 		int((nope["eq_state"]["p2eq_036"] as Dictionary).get("egg_levels", 0)) == 0)
 
+	# ══════════════ ⑤ GEAR_COIN_SPIN —— 头顶那枚金币真的在转、在飘 ══════════════
+	#
+	# 由来（用户 2026-09-29 14:46）：「1费器械的那个加深海币的装备，这个装备特效怎么变了，
+	#   你给我改了？**我之前的弹出金币旋转的动画呢**」。
+	# ★查下来链路是通的（贴图在 / `coin_pop` 在调 / `_tick_coin_fx` 在 `_render_step` 里），
+	#   但**没有任何判据量过它** —— 所以我答不上那句话，只能说「看着是通的」。
+	#   这一节就是把它变成量得到的。
+	#
+	# ★★为什么必须分成【建出来】和【动起来】两段：
+	#   `coin_pop()` 只负责**建**精灵并塞进 `battle._coin_fx`；
+	#   转（`spr.frame = int(age*COIN_FPS) % COIN_FRAMES`）与飘（`COIN_RISE * age/life`）
+	#   全在 `battle_render._tick_coin_fx()` 里。
+	#   ⇒ 只断言「金币出来了」会放过用户描述的那个形状：**弹出来了但不转不飘**。
+	#
+	# ★这一节不等演出 tween（本仓 §3.5：数值测试不许依赖 tween 跑完），
+	#   而是自己推 `battle._t` 再手调 `_tick_coin_fx()` —— 一步喂一步，帧内跃迁抓得住。
+	var cvfx = _s._vfx
+	var crd = _s._render
+	_s._coin_fx.clear()
+	var cu: Dictionary = _mk(300.0, 300.0, "left")
+	cu["equips"] = [{"id": "p2eq_035", "star": 3}]
+	cu["eq_state"] = {}
+	_s._units.clear(); _s._units.append(cu)
+	var minted0: int = ets.gear_minted()
+	## 推过一个完整产币周期（一步一喂，不靠等帧）
+	var cn: int = 0
+	while cn < 200 and ets.gear_minted() == minted0:
+		ets._tick_gear(cu, 0.05)
+		cn += 1
+	var coins: int = ets.gear_minted() - minted0
+	_ok("⑤ ★分母: 产币真的发生了(否则下面全是空检查) —— 3★ 应得 3 枚, 实得 %d 枚(推了 %d 步)"
+		% [coins, cn], coins == 3)
+	_ok("⑤ ★★GEAR_COIN_SPIN: 头顶金币**建出来了** —— 每枚币一个精灵(实得 %d 个)"
+		% _s._coin_fx.size(), _s._coin_fx.size() == coins,
+		"coins=%d fx=%d" % [coins, _s._coin_fx.size()])
+	var in_tree: int = 0
+	for f in _s._coin_fx:
+		var sp0 = f.get("spr", null)
+		if is_instance_valid(sp0) and sp0.get_parent() == _s._world:
+			in_tree += 1
+	_ok("⑤ ★★金币真的挂在 `_world` 下(建了没进场景树 = 屏上什么都没有) —— %d/%d"
+		% [in_tree, _s._coin_fx.size()], in_tree == _s._coin_fx.size())
+	## ── 转：一步一采，收集 frame 的不同取值 ──
+	var frames_seen: Dictionary = {}
+	var y_lo: float = 1.0e9
+	var y_hi: float = -1.0e9
+	var t_base: float = _s._t
+	var steps: int = 0
+	while steps < 60 and _s._coin_fx.size() > 0:
+		_s._t = t_base + float(steps) * (cvfx.COIN_LIFE / 40.0)
+		## ★★★走**产品自己那条每帧入口** `_render_step()`, 不直接调 `_tick_coin_fx()`。
+		##   由来(2026-09-30 反向验证当场拿住): 第一版这里写的是 `crd._tick_coin_fx()`,
+		##   于是把 `_render_step` 里那一行调用**整行拿掉**, 门禁竟然 **0 条红** ——
+		##   它量的是我自己的调用, 不是产品的接线(memory `fb-gate-must-measure-requirement-not-my-hook`
+		##   / `fb-verify-must-run-the-real-path`)。而那正好就是用户描述的形状:
+		##   **金币弹出来了但不转** ⇒ 这条洞刚好开在要守的那一点上。
+		crd._render_step(0.0, false, false)
+		steps += 1
+		for f2 in _s._coin_fx:
+			var sp2 = f2.get("spr", null)
+			if is_instance_valid(sp2) and sp2.visible:
+				frames_seen[int(sp2.frame)] = true
+				y_lo = minf(y_lo, sp2.position.y)
+				y_hi = maxf(y_hi, sp2.position.y)
+	_ok("⑤ ★分母: 真的采到样本(采了 %d 步 / 见到 %d 个不同帧号)" % [steps, frames_seen.size()],
+		steps >= 10 and frames_seen.size() > 0)
+	## ★判据是「转过多少个不同帧」而不是「frame 变了」—— 变一次也叫变, 那放得过
+	##   「只在生成那一刻算了一次帧号」这种假转。贴图 12 帧, 一个生命周期该扫过大半。
+	_ok("⑤ ★★★GEAR_COIN_SPIN: 金币**在转** —— 一个生命周期里扫过 %d 个不同帧号(贴图共 %d 帧, 要求 ≥4)"
+		% [frames_seen.size(), cvfx.COIN_FRAMES], frames_seen.size() >= 4,
+		"见到的帧号: %s" % str(frames_seen.keys()))
+	_ok("⑤ ★★★GEAR_COIN_SPIN: 金币**在往上飘**(高度差 %.3f m, 要求 > 0.05)"
+		% (y_hi - y_lo), (y_hi - y_lo) > 0.05,
+		"y %.3f → %.3f · COIN_RISE=%.2f" % [y_lo, y_hi, cvfx.COIN_RISE])
+	_ok("⑤ ★寿命到了自己收掉(不许留在场上) —— 剩 %d 个" % _s._coin_fx.size(),
+		_s._coin_fx.size() == 0)
+
 	_done()
 
 

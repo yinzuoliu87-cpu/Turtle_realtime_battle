@@ -1467,6 +1467,13 @@ func _t_open_path() -> void:
 	GameState.onboarded = false
 	GameState.tutorial_active = false
 	GameState.account_email = ""
+	## ★★2026-09-30: 这里原来**没清 `season_leaders`**, 而「全新安装」的定义里它必须是空的。
+	##   本节前面几段会把它写上 ⇒ `TeamSelectScene._season_roster_ready()` 为真
+	##   ⇒ `_roster_locked = true` ⇒ `_on_pick_pet` 直接 return ⇒ 下面整段变空检查。
+	##   ★而它红不红取决于**前面哪些分支跑过**, 所以本地全绿、CI 偶发红
+	##   (2026-09-29 CI 上就是这一条红, 而它的细节字段还是空的, 看不出真因)。
+	##   同族: 「重开之后是另一个场景」——「全新安装」也是另一个场景, 状态要自己清干净。
+	GameState.season_leaders = []
 	await _drop_scene()
 	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 	await _wf(6)
@@ -1481,7 +1488,9 @@ func _t_open_path() -> void:
 		## 用**产品自己的入口**选满三只(`_on_pick_pet` 就是点卡片跑的那一条),
 		## 不直接写 `team` —— 写字段就绕开了产品的规则。
 		_ok("⑧b ★分母: 阵容没被大轮锁定(锁了 `_on_pick_pet` 直接 return, 下面全是空检查)",
-			not bool(cur2._roster_locked))
+			not bool(cur2._roster_locked),
+			"_roster_locked=%s · season_leaders=%s (全新安装下它必须是空的)"
+				% [str(cur2._roster_locked), str(GameState.season_leaders)])
 		var ids: Array = []
 		for p in DataRegistry.all_pets:
 			if ids.size() >= 3:
