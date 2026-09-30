@@ -753,7 +753,7 @@
     "effectDesc1": "释放技能后获得 30/60/100%攻击速度，持续【本次技能消耗的龟能×{C:EqSpiritBatch.RING_SEC_PER_ENERGY}】秒（对所有龟折合恒定 {C:EqSpiritBatch.RING_COVERAGE%}%覆盖率）。\n自身的普攻会对敌人施加一个【环】，敌人身上有 3 个环时环被引爆，该敌人受到（15/30/50+{C:EqSpiritBatch.RING_ATK_COEF}×攻击力+2.5/4/6%该敌人最大生命值）真实伤害。",
     "effectDesc3": "",
     "img": "equip/p2eq_063.png",
-    "effectBrief": "释放技能后获得 30/60/100% 攻击速度。普攻对敌人施加一层【气环】，可叠加 3 层；满层引爆，造成 15/30/50+{C:EqSpiritBatch.RING_ATK_COEF}×攻击力+2.5/4/6% 该敌人最大生命值的真实伤害。"
+    "effectBrief": "释放技能后获得攻击速度。普攻对敌人施加一层【气环】，可叠加 3 层；满层引爆，造成基于该敌人最大生命值的真实伤害。"
   },
   {
     "id": "p2eq_064",
