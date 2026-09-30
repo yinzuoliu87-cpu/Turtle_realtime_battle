@@ -31,8 +31,13 @@ const EXP_SHOTGUN_COEF := 0.22
 const EXP_SHOTGUN_STUN_HITS := 8
 const EXP_TRIGGER_DMG := 400
 const EXP_BOMB_PCT := [0.03, 0.06, 0.06]
-const EXP_TURRET_HP := [500.0, 1000.0, 1800.0]
-const EXP_TURRET_ATK := [20.0, 30.0, 45.0]
+## ★2026-09-30 用户加强 058: 炮台生命 = 档位 650/1400/2500 外加 10×自身攻击力;
+##   攻击 = 档位 70/120/180 外加 1×自身攻击力。本文件 _mk 造的携带者 atk = 100
+##   ⇒ 1650/2400/3500 与 170/220/280。
+## ★「加成长」这件事本身在 verify_eq058_036_045 ⑤ 段用**两个不同的 atk** 对照验
+##   (只用一个 atk 的话「档位 + 10×atk」与写死同解, 分不开) —— 本文件只按固定 atk 对值。
+const EXP_TURRET_HP := [1650.0, 2400.0, 3500.0]
+const EXP_TURRET_ATK := [170.0, 220.0, 280.0]
 const EXP_TURRET_ASPD := 0.5
 const EXP_TURRET_RES := [70.0, 85.0, 100.0]
 const EXP_TURRET_BUFF_ASPD := 1.00   # 携带者在 400 码内的自身攻速加成(用户 2026-09-14 从 20/30/40% 统一到 100%)
@@ -247,7 +252,7 @@ func _ready() -> void:
 		_ok("④ ★分母: 找得到那座炮台", tr != null)
 		if tr == null:
 			continue
-		_ok("④ ★★★%d 星炮台 %.0f 生命 / %.0f 攻击(文案 %.0f / %.0f)"
+		_ok("④ ★★★%d 星炮台 %.0f 生命 / %.0f 攻击(期望 %.0f / %.0f · 携带者 atk=100)"
 			% [si + 1, float(tr["maxHp"]), float(tr["base_atk"]), EXP_TURRET_HP[si], EXP_TURRET_ATK[si]],
 			absf(float(tr["maxHp"]) - EXP_TURRET_HP[si]) < 1.0
 				and absf(float(tr["base_atk"]) - EXP_TURRET_ATK[si]) < 1.0,

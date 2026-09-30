@@ -274,20 +274,12 @@ func _eq_crystal_sweep(u: Dictionary, si: int) -> void:
 # 032: 登场召唤亡灵骷髅 (双抗为 0, 靠 _dmg_cap_one 把任何一击钳成 1 = 近乎免疫; 存活 13/17/23s 自灭, 死亡 200 码内 8/13/20% 最大生命真伤)
 func _eq_summon_turret(u: Dictionary, si: int) -> void:   # 穿甲遗弹058(重做): 登场召唤不可移动的炮台
 	if not u.get("alive", false): return
-	## ★用户 2026-09-30 加强: 500/1000/1800 → 650/1400/2500 **外加 10×携带者攻击力** 最大生命值;
-	##   20/30/45 → 70/120/180 **外加 1×携带者攻击力** 攻击力。
-	##   ★召唤时取一次快照(携带者之后的 atk 变化不追) —— 与 032 骷髅同口径。
-	##   ★不乘 HP_MULT: `_spawn_summon` 里是 `"hp": hp, "maxHp": hp` 直接落值,
-	##     用户给的是玩家看得见的最终值(CLAUDE.md §3.1)。
-	var oatk58: float = float(u.get("atk", 0.0))
-	var tr = battle._spawn._spawn_summon(u, "turret",
-		[650.0, 1400.0, 2500.0][si] + TURRET_HP_PER_ATK * oatk58, [70.0, 120.0, 180.0][si] + oatk58,
+	var tr = battle._spawn._spawn_summon(u, "turret", [650.0, 1400.0, 2500.0][si] + TURRET_HP_PER_ATK * float(u.get("atk", 0.0)), [70.0, 120.0, 180.0][si] + float(u.get("atk", 0.0)),
 		{"label": "炮台", "spr_id": "turret", "col_size": 44.0, "hp_w": 32.0,
 		 "atk_interval": 1.0 / TURRET_ASPD, "atk_range": TURRET_RANGE, "move_spd": 0.0, "melee": false})
 	if tr == null: return
 	tr["eq_state"] = {}; tr["equips"] = []
-	tr["_eq_turret"] = true
-	tr["_turret_si"] = si
+	tr["_eq_turret"] = true; tr["_turret_si"] = si
 	tr["move_spd"] = 0.0; tr["no_move"] = true      # 移速为0
 	tr["crit"] = 0.0; tr["armor_pen"] = 0.0
 	u["_turret_ref"] = tr                            # 只用 is_same 比较, 绝不当Dict键/深比较
@@ -1437,7 +1429,7 @@ func _eq_charge(stt: Dictionary, key: String, amt: float, cap: float, on_full: C
 const TURRET_ASPD := 0.5          # 攻速(次/秒) ⇒ atk_interval = 1 / 它
 const TURRET_RANGE := 2000.0      # 射程(码)·全场
 const TURRET_BUFF_R := 400.0      # 携带者在此范围内 → 自身获得攻速加成(码)
-const TURRET_HP_PER_ATK := 10.0    # 炮台生命 = 档位值 + 这个系数 × 自身攻击力(用户 2026-09-30)
+const TURRET_HP_PER_ATK := 10.0    # 炮台生命 = 档位 + 它×自身攻击力(召唤时快照·不追后续变化·不乘HP_MULT·用户 2026-09-30)
 const TURRET_CRIT_PER_SHOT := 0.04 # 炮台每次普攻永久累积的暴击率(用户 2026-09-30: 2% → 4%)
 const TURRET_BUFF_ASPD := 1.00    # 在范围内时携带者自身攻速加成(用户 2026-09-14: 20/30/40% → 统一 100%)
 ## 【033 复活海螺】3★ 变虫之后的自我分裂(小虫自己的周期, 不走携带者的 eq_tick)。
