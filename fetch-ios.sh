@@ -15,9 +15,17 @@ set -uo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO="${REPO:-yinzuoliu87-cpu/Turtle_realtime_battle}"
 DESKTOP="${DESKTOP:-/c/Users/Louis/Desktop}"
-URL="https://github.com/$REPO/releases/download/ios-latest/turtle-ios-unsigned.ipa"
 
 VER="$(sed -n 's/^config\/version="\(.*\)"/\1/p' "$DIR/project.godot")"
+
+# ★★ 2026-09-30 修: 资产名**带版本号**, 而这里原来写死成 turtle-ios-unsigned.ipa
+#   ⇒ 自从工作流把产物改成带版本号那天起, 这个脚本一直是 404。
+#   ★而 CLAUDE.md §6 记的名字(turtle-v<版本>.ipa)**反而是对的** ——
+#     文档没漂, 是工具漂了; 而工具没人跑就没人发现。
+#   ★不写死也不猜: ASSET 从版本号推, 而版本号的事实源是 project.godot
+#     (跟升版本号那五处同一个源) ⇒ 下次改名只改一处。
+ASSET="${ASSET:-turtle-v$VER.ipa}"
+URL="https://github.com/$REPO/releases/download/ios-latest/$ASSET"
 OUT="$DESKTOP/斗龟场-v$VER-unsigned.ipa"
 
 echo "=== 取 iOS 包 v$VER ==="

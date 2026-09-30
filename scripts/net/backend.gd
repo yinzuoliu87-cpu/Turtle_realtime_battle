@@ -406,10 +406,24 @@ static func _shuffle(arr: Array, rng: RandomNumberGenerator) -> void:
 ##   门禁把这条等式钉住了(`verify_ghost_upload` ⑥: 自己那份快照的 owner tag
 ##   必须与 `self_season_prefix(赛季)` 逐字相同)。
 ##
-## ★边界怎么切: 用**快照自己的 `leaders`** 排序后拼出那一段, 再在 id 里找它 ——
-##   不靠数下划线(uid 可能为空、龟 id 本身带下划线如 `two_head`, 数位置一定会错)。
 ## ★换龟也算同一个人: 三龟那一段被整段切掉 ⇒ 同赛季换过阵容仍是同一维
 ##   (这正是 `_is_self_ghost` 头注里「自己同赛季换过龟之后的旧阵容」要挡住的那件事)。
+##
+## ★★★2026-09-30 换成**只读 `ghost_id` 自己**(`owner_tag_of_id`), 原来那版读的是
+##   「快照的 `leaders` 排序后拼出来的那一段, 再在 id 里找它」。
+##   换的理由是**真机池量出来的**(探针跑 `user://ghost_pool.json`, 426 条里 30 条真人):
+##     旧解析成功 **13/30**, 另外 **17 条静默返回 ""** ⇒ 掉到 `person_key` 的
+##     第三判据(昵称) —— 而它的头注自己写着「会撞 / 改名会裂 / 排第三不排第一」。
+##   17 条失败的形状**一模一样**: `ghost_id` 里写的三龟与快照 `leaders` 字段**不是同一套**
+##     实测: `gid=g_c0adac635229_3_diamond-ghost-two_head` 而 `leaders=["angel","ice","ninja"]`
+##   —— 因为这两个量**不同源**: `ghost_id` 由调用点用 `GameState.season_leaders` 拼
+##   (`RealtimeBattle3DScene.gd:7647`), 而 `leaders` 由 `build_ghost_snapshot` 从
+##   `get_dual_lineup()` 的**分路**里取(见那段「统领名单与分路同源」的注释)。
+##   两者平时一致, 不一致时旧解析就**整条认不出人**。
+##   ⇒ 身份这一维不该挂在"另一个字段恰好对得上"这个前提上。
+##   新解析在旧解析成功的 13 条上结果**逐字相同**(探针: 不一致 0 条), 失败的 17 条全部救回
+##   ⇒ 30/30。纯增益, 不改任何已经对的答案。
+## ★旧解析仍留作**兜底**: 万一有不按 `g_<uid>_<赛季>_` 拼的历史 id, 覆盖率只会 ≥ 从前。
 static func ghost_owner_tag(g) -> String:
 	if not (g is Dictionary):
 		return ""
@@ -417,6 +431,9 @@ static func ghost_owner_tag(g) -> String:
 	var gid := str(d.get("ghost_id", ""))
 	if gid == "":
 		return ""
+	var byid := owner_tag_of_id(gid)
+	if byid != "":
+		return byid
 	var ldr = d.get("leaders", null)
 	if not (ldr is Array) or (ldr as Array).is_empty():
 		return ""
@@ -426,6 +443,53 @@ static func ghost_owner_tag(g) -> String:
 	arr.sort()
 	var at := gid.find("_" + "-".join(PackedStringArray(arr)))
 	return gid.substr(0, at + 1) if at > 0 else ""
+
+
+## `install_uid` 的长度 —— `GameState.get_install_uid()` 是 `generate_random_bytes(6).hex_encode()`。
+## ★它是下面那条解析**唯一**用到的形状假设(拿它把 `g_<uid>_<赛季>_` 与 `g_<赛季>_` 分开),
+##   所以门禁里有一条断言直接量 `get_install_uid().length()` —— 改了长度当场红,
+##   而不是静默把所有人的身份解析成另一个串。
+const UID_HEX_LEN := 12
+
+
+## `player_ghost_id()` 的**反函数**: 从 id 里切出 `g_<uid>_<赛季>_` 这一段。
+##
+## 拼法(`player_ghost_id` + `self_prefix`)是:
+##   `"g_"` [+ `<uid>` + `"_"`] + `<赛季>` + `"_"` + `"-".join(排序后三龟)` [+ `"_b<场次>"`]
+##                                                                        [+ `"_g<胜>-<负>"`]
+## ⇒ 按 `_` 切开后, 头两/三段一定是 `g` / (uid) / 赛季, **三龟那一段及其后面一概不看**
+##   —— 所以龟 id 自带下划线(`two_head`)也影响不到它(旧注释担心的"数位置一定会错"
+##   指的是从**右往左**数; 从左往右只数到赛季那一段就停, 是安全的)。
+##
+## ★uid 空 / 非空两种拼法怎么分开(`self_prefix` 在拿不到 GameState 时给 `"g_"`):
+##   uid 是 **12 位十六进制**, 而赛季是个小整数 ⇒ 第 2 段长度是 12 且全是十六进制字符
+##   就是 uid, 否则它就是赛季。赛季要长到 12 位数才会撞, 那不可能。
+## ★形状不对就返回 "" —— `bot_*` / `seed_*` / `coh_*` / 空串都落在这里(它们本来也不该有 owner)。
+## ⚠ 已知缺口(与旧解析**同款**, 不是这次带进来的): uid 为空那一支拼出来的是 `g_<赛季>_`,
+##   **不含「谁」** ⇒ 两个都拿不到 GameState 的玩家在同一赛季会合成一行。
+##   真机池里这种 id 只有 1 条(`g_1_bamboo-basic-stone`), 旧解析对它给的也是 `g_1_`
+##   ⇒ 覆盖率没退步, 但这个洞还在。要堵它得在**上传那一侧**保证 uid 非空, 不是在这里猜。
+static func owner_tag_of_id(gid: String) -> String:
+	if gid == "":
+		return ""
+	var parts: PackedStringArray = gid.split("_")
+	if parts.size() < 3 or parts[0] != "g":
+		return ""
+	var si := -1                    # 赛季那一段的下标
+	if parts[1].length() == UID_HEX_LEN and parts[1].is_valid_hex_number(false):
+		si = 2
+	elif parts[1].is_valid_int():
+		si = 1
+	if si < 0 or si >= parts.size() or not parts[si].is_valid_int():
+		return ""
+	## ★赛季后面必须**还有东西**(三龟那一段) —— 否则 `g_<uid>_3` 这种截断串也会被
+	##   当成合法身份。旧解析的 `at > 0` 守的就是这件事, 这里不能丢掉。
+	if si + 1 >= parts.size() or parts[si + 1] == "":
+		return ""
+	var out := "g_"
+	if si == 2:
+		out += parts[1] + "_"
+	return out + parts[si] + "_"
 
 
 ## 「榜上这一行是**谁**」—— 排行榜去重的那一维(DEDUP_BY_PERSON)。

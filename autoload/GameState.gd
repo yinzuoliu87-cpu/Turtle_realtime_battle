@@ -803,6 +803,21 @@ func record_finals_progress(deepest: int, total: int, champion: bool) -> bool:
 func consume_ranked_quota() -> void:
 	if _P2.phase_uses_ranked_quota(str(week_phase)):
 		ranked_used += 1
+		## ★★头衔在这里补一次账 —— 不能只靠 `ensure_season()`。
+		##   由来(2026-09-30 探针实测, 台账 ⑱): `_settle_season()` 调 `ensure_season()`
+		##   是在 `ranked_used++` 的**前面**(那行自己的注释就写着「下方 season_total_battles++
+		##   /coins+= 全在这行之后」) ⇒ 打满那一场结束时它看到的还是 23 ⇒ 不发；
+		##   而**打满之后不会再有下一场**(配额把门关了) ⇒ 那个唯一的补发时机
+		##   **再也不会到来**, 玩家必须关掉游戏重开才看得见「满配额」。
+		##   ★探针数(不是推理): 拿 `ranked_used=24` 的真存档开机, `titles` 当场就有
+		##     `full_quota`, 而手动再 `sync_titles()` 新发 **0** 条
+		##     ⇒ 条件一直是满足的, 缺的只是「打满之后有人再调一次」。
+		## ★为什么调 `sync_titles()` 而不是就地 `award_title(TITLE_FULL_QUOTA)`:
+		##   它按 `{id, week}` 幂等(重复调不会多发), 而且顺手把同一时刻可能刚满足的
+		##   另几档一起对账 —— 就地写一份等于又抄一遍判据(手抄的副本必然落后)。
+		## ★不在这里 `save()`: 调用方(`_settle_season` → `gs.save()`)本来就会存,
+		##   在这儿多存一次只是多写一遍盘, 而且会让"一场结算存几次"变得说不清。
+		sync_titles()
 
 
 func ranked_quota_full(now: int = 0) -> bool:

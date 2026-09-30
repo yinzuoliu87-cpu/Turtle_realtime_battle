@@ -502,7 +502,7 @@ scripts/scenes/InventoryScene.gd|tooltip_text|[b]%s[/b]  ★%d  %d费\n\n属性\
 scripts/scenes/InventoryScene.gd|tooltip_text|一只身上最多 %d 件；全队六只一起能装几件, 看你的赛季等级。\n现在 Lv%d, 全队能装 %d 件%s
 scripts/scenes/InventoryScene.gd|tooltip_text|从糖果罐里开出来的临时等级器\n点它, 再点一只龟统领或小将 —— 这一大轮它就多一级, 换了大轮还原
 scripts/scenes/InventoryScene.gd|tooltip_text|全队装备已满 %d / %d · 升赛季等级可再装
-scripts/scenes/InventoryScene.gd|tooltip_text|点一下, 这件就回背包
+scripts/scenes/InventoryScene.gd|tooltip_text|点一下 → 底下出现「卸下」键
 scripts/scenes/InventoryScene.gd|tooltip_text|点一下换站位 —— 前排贴上去挥砍, 后排站远了射击
 scripts/scenes/LeaderboardScene.gd|lit|（对手还没读到 —— 下一场开打时去取一次）
 scripts/scenes/LeaderboardScene.gd|lit|（榜上暂时只有你 —— 打完一场, 对手就会上来）
@@ -744,12 +744,19 @@ scripts/scenes/SettingsScene.gd|text|邮箱绑好了
 scripts/scenes/SettingsScene.gd|text|验证码已发到 %s
 scripts/scenes/ShopScene.gd|lit|  能进化了
 scripts/scenes/ShopScene.gd|lit|[color=#5b7a92]这件的门道, 摊主自己也讲不明白[/color]
+scripts/scenes/ShopScene.gd|lit|「%s」刚被人抢走了 · 换一批看看
+scripts/scenes/ShopScene.gd|lit|买下「%s」· 凑齐 3 件, 合成 ★%d 了
+scripts/scenes/ShopScene.gd|lit|买下「%s」· 进背包了
 scripts/scenes/ShopScene.gd|lit|已经是最高等级 Lv%d · 经验用不上了
+scripts/scenes/ShopScene.gd|lit|已经有一把「%s」了 · 这一笔化成 +%d 砍伐经验
 scripts/scenes/ShopScene.gd|lit|斧头
 scripts/scenes/ShopScene.gd|lit|深海币不够 · 买一次经验要 %d
+scripts/scenes/ShopScene.gd|lit|深海币不够 · 换一批要 %d
 scripts/scenes/ShopScene.gd|lit|精英小将
 scripts/scenes/ShopScene.gd|lit|近战小将
+scripts/scenes/ShopScene.gd|lit|还差 %d 枚深海币 ·「%s」要 %d
 scripts/scenes/ShopScene.gd|lit|还没选龟
+scripts/scenes/ShopScene.gd|lit|这件
 scripts/scenes/ShopScene.gd|lit|远程小将
 scripts/scenes/ShopScene.gd|lit|🎒 背包
 scripts/scenes/ShopScene.gd|text|%d 深海币%s
@@ -810,21 +817,21 @@ scripts/scenes/TeamSelectScene.gd|text|龟谱没读出来 · 请重开一次
 scripts/scenes/TrainerConfigScene.gd|lit|主动
 scripts/scenes/TrainerConfigScene.gd|lit|冰川
 scripts/scenes/TrainerConfigScene.gd|lit|口哨
+scripts/scenes/TrainerConfigScene.gd|lit|吹哨唤来一种帮手，三者随机。护盾：全体友军获得 700 点临时生命，5 秒后逐渐消退。灵龟：召出一只灵体小龟，蓄力后打出贯穿 2000 码的气波，命中的敌人受到 100 点、加目标最大生命 15% 的真实伤害、被击飞，破甲 30% 持续 5 秒。狂暴：全体友军 4 秒内攻击力 +20%、每次出手 +20 点吸血，且不会死亡。冷却 14 秒。
 scripts/scenes/TrainerConfigScene.gd|lit|少女
 scripts/scenes/TrainerConfigScene.gd|lit|怒火药水
 scripts/scenes/TrainerConfigScene.gd|lit|技能　%d 门里只选 1 门 · 被动与主动不可兼得
 scripts/scenes/TrainerConfigScene.gd|lit|挑个模样
-scripts/scenes/TrainerConfigScene.gd|lit|普攻附带 2% 目标最大生命 魔法伤害；每次攻击自身 +3% 攻速(可叠·不封顶·整局不清零)。攒到 10/25/50 层时身上会亮起共鸣特效。
-scripts/scenes/TrainerConfigScene.gd|lit|朝 700 码内一点丢药水：落点 300 码内友军 5 秒 +30%攻速 / +25%龟能充能 / +25%移速。CD 16。
-scripts/scenes/TrainerConfigScene.gd|lit|朝方向甩钩(射程 600)勾住第一个敌人：眩晕 4 秒、一段段拽向大师、受伤+25%。CD 20，空放返还。
+scripts/scenes/TrainerConfigScene.gd|lit|普攻额外造成目标最大生命 2% 的魔法伤害。每次出手让自己攻速 +3%，整场不断累积、没有上限。层数攒到 10、25、50 时，身上会亮起共鸣。
+scripts/scenes/TrainerConfigScene.gd|lit|朝 700 码内选一点丢出药水。落点 300 码内的友军获得 5 秒狂热：攻速 +30%，移速 +25%，龟能充能 +25%。冷却 16 秒。
+scripts/scenes/TrainerConfigScene.gd|lit|朝指定方向甩出钩索，勾住 600 码内第一个敌人：眩晕 4 秒，一路拖到大师身边，期间它受到的伤害 +25%。冷却 20 秒；钩空了只冷却 10 秒。
+scripts/scenes/TrainerConfigScene.gd|lit|朝指定方向铺出一条 500 码长的冰川，留存 6 秒。站在冰面上的敌人移速 -40%，受到的伤害 +20%。冷却 17 秒。
 scripts/scenes/TrainerConfigScene.gd|lit|村民
-scripts/scenes/TrainerConfigScene.gd|lit|标记 600 码内一个敌人：它死亡时不真死，以 30%最大生命重生并归顺我方(重生 2.5 秒无敌)，此后每秒损失 2%最大生命。可跨入终极战场。CD 60(空放返还一半)。
-scripts/scenes/TrainerConfigScene.gd|lit|沿方向生成 500 码冰川(6 秒)：站上的敌 -40%移速 + 受伤+20%。CD 17。
+scripts/scenes/TrainerConfigScene.gd|lit|标记 600 码内一个敌人。它下次死亡时不会真死，而是以 30% 最大生命复活、倒向我方，复活后 2.5 秒无敌，此后每秒损失 2% 最大生命。驯服来的龟能一直跟你打到决胜。冷却 60 秒；没标中只冷却 30 秒。
 scripts/scenes/TrainerConfigScene.gd|lit|猎龟令
 scripts/scenes/TrainerConfigScene.gd|lit|被动
 scripts/scenes/TrainerConfigScene.gd|lit|钩锁
-scripts/scenes/TrainerConfigScene.gd|lit|锁定 600 码内一个敌人 15 秒：它受到伤害+15%，且以它为圆心 400 码内的我方友军优先攻击它(圈随它移动)。CD 30(空放返还一半)。
-scripts/scenes/TrainerConfigScene.gd|lit|随机 1 个：给友军 700 临时生命(5 秒·到期按比例削) / 召灵体小龟蓄力放气波(2000 码贯穿·命中扣 100+15%目标最大生命真实伤害+击飞+削甲 30%持续 5 秒) / 友军狂暴 4 秒(+20%攻击力·+20 点吸血·免疫死亡)。CD 14。
+scripts/scenes/TrainerConfigScene.gd|lit|锁定 600 码内一个敌人，持续 15 秒：它受到的伤害 +15%，而它周围 400 码内的友军会优先揍它 —— 这个范围跟着它走。冷却 30 秒；没锁中只冷却 15 秒。
 scripts/scenes/TrainerConfigScene.gd|lit|驯服
 scripts/scenes/TrainerConfigScene.gd|lit|魔法师
 scripts/scenes/TrainerConfigScene.gd|lit|魔法石

@@ -21,6 +21,11 @@ var _ring: ColorRect                 # 目标矩形的亮边框
 var _mandatory: bool = false         # 首次强制: 无"跳过"按钮
 var _anchor_fn: Callable             # (name:String)->Rect2 屏幕矩形; 空=不高亮
 var _cur_hl: String = ""             # 当前步的高亮锚点名(每帧重贴, 见 _process)
+## 本步锚点连续解析出空矩形的帧数 + 本步是否已经报过警。见 _apply_highlight 的空矩形分支。
+var _hl_empty_frames: int = 0
+var _hl_warned: bool = false
+## 首帧解析出空矩形是【正常且会自愈】的(容器还没跑布局) ⇒ 撑过这几帧还空才算真出事。
+const HL_GRACE_FRAMES := 3
 
 
 ## on_done: 走完/跳过的回调。mandatory: 首次强制(无跳过)。anchor_fn: 把 step.highlight 名字换成屏幕 Rect2。
@@ -136,6 +141,8 @@ func _render() -> void:
 	# ★高亮遮罩: 这一步指定了 highlight 目标 → 挖洞压暗其余; 没指定 → 无遮罩(纯提示条)
 	#   _cur_hl 记住当前锚点名, _process 每帧重贴(布局时序/resize 稳)。
 	_cur_hl = str(step.get("highlight", ""))
+	_hl_empty_frames = 0     # 换步 = 重新数宽限帧(否则上一步的计数会让新步第一帧就报警)
+	_hl_warned = false
 	_apply_highlight(_cur_hl)
 	# 重建按钮
 	for c in _btn_row.get_children():
@@ -171,7 +178,7 @@ func _apply_highlight(hl_name: String) -> void:
 		return
 	var rect: Rect2 = _anchor_fn.call(hl_name)
 	if rect.size.x <= 0.0 or rect.size.y <= 0.0:
-		# 锚点解析失败(控件还没布局好/名字错) → 别挖个空洞把全屏挡死, 退回无高亮
+		# 锚点解析失败(控件还没布局好/名字错/目标已经被藏起来) → 别挖个空洞把全屏挡死, 退回无高亮
 		## ★★【看到这条 WARNING 先别当 bug 查】(2026-08-20 有人照它下过"聚光灯没挖出来"的错误结论)
 		##   **首帧解析出空矩形是正常的、而且会自愈**: 场景 `_ready` 里就 attach 引导(如
 		##   TeamSelectScene.gd:176 → attach → start → _render → 这里), 而那一刻 Godot 的容器
@@ -184,9 +191,23 @@ func _apply_highlight(hl_name: String) -> void:
 		##     就已经是有效矩形了。配合截图 `C:/tmp/tut_flow_0_1_team_select.png`(角标还停在
 		##     1/4 = 没翻过步, 洞却已经挖在 3 只教学龟那一排上)可确认画面是对的。
 		##   ⇒ 只有当这条**每帧连刷**(而不是每进一次场景刷一条)时才说明真出事了。
-		push_warning("[Tutorial] 高亮锚点 '%s' 解析出空矩形 → 本步不挖洞(首帧正常, 下一帧 _process 会补上)" % hl_name)
+		##
+		## ★★2026-09-30 改口径(台账 ⑧ 的连带): 上面那句"首帧正常"既然成立, **首帧就不该报警**;
+		##   而"每帧连刷"这个真出事的信号原来靠人去数日志行数 —— 现在直接由代码判:
+		##   撑过 HL_GRACE_FRAMES 帧还空 = 目标真的不在了, **报一条**(不是每帧一条)。
+		##   由来: 修好台账 ⑧ 后这层浮层第一次真出场, 当场量到一个**每帧连刷**的真形状 ——
+		##   摆位第三步 highlight 的就是「开打」钮, 而玩家一按开打 `_dl_start_fight` 就把它
+		##   `visible = false` ⇒ `_tutorial_anchor` 返回空 Rect2 ⇒ 这条警告刷到玩家点「完成」为止。
+		##   (那个形状本身已由 place[2] 的 `advanceOn: fight_started` 修掉, 见 dual_lane_flow._dl_start_fight;
+		##    这里管的是"下一个人再造出同样形状时, 日志不许被冲垮、但也不许静音"。)
+		_hl_empty_frames += 1
+		if _hl_empty_frames >= HL_GRACE_FRAMES and not _hl_warned:
+			_hl_warned = true
+			push_warning("[Tutorial] 高亮锚点 '%s' 连续 %d 帧解析出空矩形 → 本步不挖洞(目标控件不在/已隐藏; 本步只报这一条)"
+				% [hl_name, _hl_empty_frames])
 		_set_mask_visible(false)
 		return
+	_hl_empty_frames = 0
 	var pad := 8.0
 	rect = rect.grow(pad)
 	var vp: Vector2 = Vector2(_layer.get_viewport().get_visible_rect().size)

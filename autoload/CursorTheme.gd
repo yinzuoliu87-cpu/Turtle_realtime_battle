@@ -3,7 +3,44 @@ extends Node
 ## PoC = 跟随式像素龟爪 div, 带动画: default POINT(爪尖朝上) / pointer 可点(放大1.12+青光+微浮bob)
 ##   / press 按下(缩0.8) / grab·grabbing 换 FIST 卷爪(grabbing 缩0.9+青光) / disabled 红化。hotspot=(11,1)。
 ## Godot 实现: 隐藏系统光标(MOUSE_MODE_HIDDEN) + 顶层 CanvasLayer 自绘跟随节点, 每帧测状态切贴图/缩放/青光。
-##   尺寸固定屏幕 ~24px (除内容缩放因子, 1:1 PoC position:fixed div 不随画布缩放)。
+##   尺寸 = **24 个设计像素**(与场上一切像素同比例缩放)。★这不是 PoC 的那条规矩, 见 §CURSOR_SCALE。
+##
+## ═══ §CURSOR_SCALE 光标尺寸的口径(2026-09-30 改, 用户「这个光标为什么这么大？」) ═══
+## ★**两个 bug 叠在一起**, 所以它比看代码想象的还要大一倍。都是探针实测的
+##   (tests/_probe_cursor_size.gd 量比例 / tests/_probe_paw.gd 量真节点几何), 不是推算:
+##
+## ① 旧的 `_cur.scale = base_scl / clampf(cf, 0.5, 4.0)` 把爪子钉在**屏幕物理像素**上,
+##    故意不随内容缩放(照抄 PoC 那个 `position:fixed` div) ⇒ 换算成设计像素时它**随窗口变四倍**。
+## ② `_g.size = Vector2(ART, ART)` 那一行**写在 `expand_mode` 之前**, 而默认 expand_mode 是
+##    `EXPAND_KEEP_SIZE` ⇒ 最小尺寸 = 贴图尺寸 **48**(`_build` 按 2× 放大过) ⇒ `size` 当场被
+##    上调到 48 并且再也没缩回来。**实测 `_g.size = (48, 48)`**, 是 `ART` 的两倍。
+##    连带: `HOT(11,1)` / `ORIGIN` 都是 24 坐标系的 ⇒ **爪尖画在鼠标点右下 (11, 1) 设计px**,
+##    即"热点"整个是歪的(实测偏移 (11,1); 修好后是 (0,0))。
+##
+## 两条叠起来的实际尺寸(旧, 单位=设计px; 参照: 摆位屏「开打」钮 220×62 / 本仓触控下限 TOUCH_MIN=81):
+##   | 窗口 | cf | 实测设计px | 占开打钮高 | 占触控下限 | 物理px |
+##   | 2560×1440 | 2.000 | 24.0 | 39%  | 30%  | 48.0 |
+##   | 1920×1080 | 1.500 | 32.0 | 52%  | 40%  | 48.0 |
+##   | 1280×720  | 1.000 | 48.0 | 77%  | 59%  | 48.0 |
+##   | 640×360   | 0.500 | 96.0 | 155% | 119% | 48.0 |
+##   | 480×270   | 0.375→**夹到 0.5** | 96.0 | 155% | 119% | 36.0 |
+## ⇒ 用户看到的"太大"就是小窗口那几行: **一只爪子比「开打」钮还高一半**。
+##   而文件头原来写的"固定屏幕 ~24px"两头都不对: 真实是 48 物理px, 且 `clampf` 下界在 480 宽
+##   时**真的被夹住**(36 而不是 48) —— 那句承诺本来就是假的, 624 宽时只差 2.5% 才一直没被发现。
+##
+## ★**为什么选"跟着 UI 缩"而不是"修 clamp 下界"**: 这是**手机触屏游戏** —— 下面 `_ready` 的早退
+##   写着 Android/iOS **一只爪子都不建**(用户 2026-07-18: 手机上是屏上残留)。也就是说这只爪子
+##   **只存在于桌面/开发期**, 不是玩家实际游玩的形态。既然如此, 「和屏上别的东西同一套比例」
+##   比「1:1 复刻网页 PoC 的 fixed div」重要得多; 而修 clamp 下界只会让小窗口的爪子**更大**
+##   (48 物理px ÷ 0.375 = 128 设计px), 正好把用户抱怨的那件事做得更狠。
+## ⇒ 改法(两条各修一处):
+##   ① `_cur.scale` **只吃状态缩放**(0.8/0.9/1.0/1.12), 不再碰 cf;
+##   ② `expand_mode` 提到 `size` 之前 ⇒ 控件框真的是 `ART`=24。
+##   合起来: 爪子恒 **24 设计px** = 开打钮高的 39% / 触控下限的 30%, 与窗口无关; 热点归零。
+##   (24 也正是 `ART` / `HOT` / `ORIGIN` 三个常量自己写的坐标系 —— 这不是我另定的数。)
+##   代价(已知, 接受): 小窗口下物理像素跟着变小(624 宽时 11.7px)。它和场上每一个像素同比例,
+##   这正是"一致"的定义; 而且非整数倍缩放时它与别的像素画**糊得一样**, 不再独一份地抖。
+## ⇒ 门禁: `tests/verify_ui_consistency.gd` 的 `_test_cursor_scale`(搜 CURSOR_SCALE)。
 ## 状态测法: gui_get_hovered_control().get_cursor_shape() (覆盖所有 Control UI) + 全局鼠标键(press)
 ##   + 外部 force_state (战斗 Area2D 拖拽/选目标无 Control hover, 由场景显式设)。
 
@@ -49,6 +86,14 @@ func _ready() -> void:
 		return   # 单测无显示
 	if OS.get_name() in ["Android", "iOS"]:
 		return   # 移动端触屏无鼠标 → 不建自绘光标(否则屏上残留一只绿龟爪·用户2026-07-18)
+	_build_cursor()
+
+
+## 建爪子(贴图 + 顶层 CanvasLayer + 跟随节点)。
+## ★从 `_ready` 抽出来的**唯一**原因: 无头下 `_ready` 必须早退(没有显示), 于是门禁想量
+##   "爪子在屏上多大" 就只能自己照抄一份建树代码 —— 而手抄的副本必然落后(见 memory)。
+##   抽成函数后门禁调的是**产品自己这一份**, 只绕过平台早退那两行。
+func _build_cursor() -> void:
 	_point_tex = _build(2, _point_cols, _point_rects, 24, 24)
 	_fist_tex = _build(2, _fist_cols, _fist_rects, 24, 22)
 	Input.mouse_mode = Input.MOUSE_MODE_HIDDEN
@@ -57,9 +102,13 @@ func _ready() -> void:
 	add_child(_layer)
 	_glow = TextureRect.new()
 	_glow.texture = _point_tex
+	## ★★`expand_mode` 必须在 `size` 【之前】设(2026-09-30 修, 见文件头 §CURSOR_SCALE 第 ② 条)。
+	##   默认 expand_mode 是 `EXPAND_KEEP_SIZE` ⇒ 最小尺寸 = 贴图尺寸(48, 因为 `_build` 按 2× 放大),
+	##   于是 `size = 24` 当场被**上调成 48**, 再改 expand_mode 也不会缩回去(Control 不会主动缩)。
+	##   后果(探针实测): 爪子一直是 ART 的**两倍**, 而 `HOT`/`ORIGIN` 还是 24 坐标系的 ⇒ 热点偏了。
+	_glow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_glow.custom_minimum_size = Vector2(ART, ART)
 	_glow.size = Vector2(ART, ART)
-	_glow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_glow.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_glow.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -67,9 +116,9 @@ func _ready() -> void:
 	_glow.visible = false
 	_g = TextureRect.new()
 	_g.texture = _point_tex
+	_g.expand_mode = TextureRect.EXPAND_IGNORE_SIZE   # ★同上: 必须在 size 之前, 否则 size 被上调到 48
 	_g.custom_minimum_size = Vector2(ART, ART)
 	_g.size = Vector2(ART, ART)
-	_g.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_g.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_g.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_g.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -138,10 +187,10 @@ func _process(_dt: float) -> void:
 		bob_y = -2.0 * (0.5 - 0.5 * cos(t / 0.45 * PI))   # 0↔-2, 周期 .9s
 	_g.modulate = tint
 	_glow.visible = glow
-	# 内容缩放反向 → 屏幕固定 ~24px (1:1 PoC fixed div 不随画布缩)
-	var cf := vp.get_screen_transform().get_scale().y
-	cf = clampf(cf, 0.5, 4.0)
-	_cur.scale = Vector2.ONE * (base_scl / cf)
+	## ★§CURSOR_SCALE(见文件头): **只吃状态缩放, 不碰内容缩放因子**。
+	##   爪子恒 24 设计px, 和场上每个像素同比例 —— 相对 UI 的大小不再随窗口变四倍。
+	##   (旧写法: `base_scl / clampf(vp.get_screen_transform().get_scale().y, 0.5, 4.0)`)
+	_cur.scale = Vector2.ONE * base_scl
 	# pivot 在 ORIGIN, position = 鼠标 - 热点 → 热点恒落鼠标点; bob 叠加竖移
 	_cur.position = pos - HOT + Vector2(0, bob_y)
 

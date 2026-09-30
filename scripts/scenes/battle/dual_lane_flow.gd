@@ -398,13 +398,28 @@ func _dl_enter_place() -> void:
 	##     (`RealtimeBattle3DScene.gd:2219`) ⇒ `_t` 不涨、单位不 tick。
 	SimAutopilot.attach(battle)
 	# ★教学 match1: 摆位UI就绪 → 挂"place"引导(教站位), 只挂一次(首路; 别每路弹)。
+	## ★★host 必须是 `battle` 不是 `self`(2026-09-30 修, 台账 ⑧)。`DualLaneFlow extends RefCounted`,
+	##   而 `attach_guide(host: Node, …)` 要 Node ⇒ 传 self 时运行期报
+	##   `SCRIPT ERROR: Invalid type in function 'attach_guide' … argument 1 (RefCounted (DualLaneFlow))
+	##    is not a subclass of the expected argument class`(探针 tests/_probe_guide_host.gd 实测),
+	##   而 GDScript 的这条错**当场中止整个 `_dl_enter_place`** ⇒ 左值 `battle._tutorial` 根本没被写
+	##   (实测 null)、树里 group `tut_overlay` 节点数 **0** ⇒ 教站位那三步**一个画面都没出过**。
+	##   **上一行已经把 `_tut_place_shown` 置了 true**, 所以后面几路也不会再试 —— 一次报错永久沉默。
+	##   ⇒ 本来就该传 battle: 两个高亮锚点 `field`/`go_button` 定义在
+	##     `RealtimeBattle3DScene._tutorial_anchor()`(实测解析出 (64,384)576×537.6 / (530,1180)220×62),
+	##     而 `DualLaneFlow` 既没有 `_tutorial_anchor` 也没有 `add_child`。
+	##   ⇒ 门禁: `tests/verify_tutorial.gd` 的 `_test_guide_host`(搜 GUIDE_HOST)。
 	if not battle._tut_place_shown:
 		var _tdp = battle.get_node_or_null("/root/TutorialDirector")
 		if _tdp != null and _tdp.is_active() and str(_tdp.stage()) == "match1":
 			battle._tut_place_shown = true
-			battle._tutorial = _tdp.attach_guide(self, "battle")   # stage match1 → steps "place"
+			battle._tutorial = _tdp.attach_guide(battle, "battle")   # stage match1 → steps "place"
 
-## 新手引导高亮锚点(用户2026-07-23 D): 摆位阶段用。名字→屏幕矩形; 解析不到返回空 Rect2(本步不挖洞)。
+# ── 摆位阶段的新手引导高亮锚点(用户2026-07-23 D): 名字→屏幕矩形, 解析不到返回空 Rect2(本步不挖洞)。
+#    ★实现在 `RealtimeBattle3DScene._tutorial_anchor()` —— host 是 battle, **本文件没有这个函数**。
+#    (这段说明原来紧贴在下面 `_dl_start_fight` 头上, 像是它的文档, 其实是上面那段引导的延续。)
+
+
 func _dl_start_fight() -> void:
 	battle._sd_t0 = battle._t          # ★每个战场各自计时(battle._t 跨路累加, 见 §SUDDEN)
 	battle._sd_stacks = 0
@@ -418,6 +433,15 @@ func _dl_start_fight() -> void:
 	battle._dl_state = "fight"
 	if is_instance_valid(battle._dl_go_btn): battle._dl_go_btn.visible = false
 	if is_instance_valid(battle._dl_place_hint): battle._dl_place_hint.visible = false
+	## ★教学「摆位」第三步等的就是这个动作(`tutorial-steps.json` place[2] 的 advanceOn: fight_started)。
+	##   不发这一下会怎样(修台账 ⑧ 让那层浮层第一次真出场后才暴露出来, 实测):
+	##     ① 那一步的 highlight 是 `go_button`, 而上面刚把开打钮 `visible=false`
+	##        ⇒ `_tutorial_anchor` 返回空 Rect2 ⇒ `_apply_highlight` 每帧刷一条 push_warning;
+	##     ② 屏上继续挂着「摆好了就点开打」——而开打已经按过了, 教学在说假话。
+	##   `notify()` 自己会比对当前步的 advanceOn, 名字不对什么都不做(TutorialGuide:46)
+	##   ⇒ 第二把(match2)挂的是 "battle" 那套, 这一下对它是空操作, 不会误推进。
+	if is_instance_valid(battle._tutorial):
+		battle._tutorial.notify("fight_started")
 	_dl_fight_start_dramatize()
 
 

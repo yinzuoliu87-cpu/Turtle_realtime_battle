@@ -419,7 +419,13 @@ func on_death(dead) -> void:
 	##   `"name": str(behavior.get("label", kind))` 落到 **kind 本身** ⇒ 玩家在结算战报
 	##   的「我方/敌方」表里看到一行写着英文 `wraith`。全仓 16 个 `_spawn_summon` 调用点里
 	##   **只有这一个**漏了(其余都带中文 label, 已逐个查过)。
-	##   门禁: tests/verify_eq_spirit_batch.gd 的 NO_RAW_ID 段。
+	##   门禁: `tests/verify_summon_label.gd`(NO_RAW_ID)。★2026-09-30 更正: 这行原来写的是
+	##   `verify_eq_spirit_batch.gd 的 NO_RAW_ID 段`, 而**那一段从来不存在**(grep 全仓只命中这条注释本身)
+	##   —— 「写了没人读」的镜像: 注释声称有门禁看着, 而门禁没建。现在建了, 而且是三段:
+	##   ① 真调一次不传 label 的 `_spawn_summon` 证明英文确实会上屏(机制分母)
+	##   ② 扫全仓**每一个** `_spawn_summon(` 调用点(实测 16 个)逐个要求带中文 label
+	##      —— 只补亡魂这一件挡不住下一个新召唤物
+	##   ③ 走 `on_death()` 真入口生一只亡魂, 读产品自己的战报取名函数 `battle._st_name()`
 	var w = battle._spawn._spawn_summon(dead, "wraith", hp, atk,
 		{"label": "亡魂", "col_size": 20.0, "spr_id": "wraith"})
 	if w is Dictionary:

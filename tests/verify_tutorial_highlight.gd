@@ -96,5 +96,22 @@ func _ready() -> void:
 	print("  [实测] 坏锚点时可见暗幕 = %d (应=0, 否则全屏被挡死)" % _count_visible_masks(g2))
 	_ok("★锚点解析失败时不挖空洞(退回无高亮)", _count_visible_masks(g2) == 0)
 
+	# ⑤ ★空矩形的那条 WARNING 不许每帧刷 (2026-09-30)
+	## 由来: 修台账 ⑧ 让摆位引导第一次真出场后, 当场量到一个【每帧连刷】的真形状 ——
+	##   摆位第三步 highlight 的是「开打」钮, 玩家一按开打它就 visible=false ⇒ 锚点恒空
+	##   ⇒ 这条 WARNING 一直刷到玩家点「完成」。日志被冲垮, 而它原本是用来报警的。
+	## ★判据量的是产品自己的两个字段(`_hl_empty_frames` 计数 / `_hl_warned` 闩), 不是我插的标记:
+	##   计数一直在涨 = 每帧都真的走到了那个分支(= 分母), 而闩只翻一次 = push_warning 只发了一条。
+	## ⚠ 已知缺口: GDScript 数不到"引擎真打了几条 WARNING", 这里量的是产品自己那道闩。
+	for _w in range(30):
+		await get_tree().process_frame
+	print("  [实测] 坏锚点 30 帧后: _hl_empty_frames=%d  _hl_warned=%s"
+		% [int(g2._hl_empty_frames), str(g2._hl_warned)])
+	_ok("★分母: 那个分支真的每帧都在走(空帧计数 > 宽限帧数, 否则下一条是空检查)",
+		int(g2._hl_empty_frames) > int(TutorialGuide.HL_GRACE_FRAMES) + 10,
+		"_hl_empty_frames=%d 宽限=%d" % [int(g2._hl_empty_frames), int(TutorialGuide.HL_GRACE_FRAMES)])
+	_ok("★★空矩形警告只发一条(闩住了) —— 没这道闩就是每帧一条冲垮日志",
+		bool(g2._hl_warned), "_hl_warned=%s" % str(g2._hl_warned))
+
 	print("ALL PASS — 高亮遮罩 + mandatory" if _fail == 0 else "FAILED: %d" % _fail)
 	get_tree().quit(0 if _fail == 0 else 1)

@@ -46,7 +46,7 @@ var _n := 0
 ## 全绿时的断言条数【地板】。低于它 = 有协程在半路被掐断 / 静默 abort ⇒ 判红
 ## (fb-null-readback-makes-test-silently-abort: 读一个不存在的成员会让协程就地返回,
 ##  后面的断言一条不跑, 而进程 rc=0 还照样打 ALL PASS)。加/删断言时同步改这个数。
-const MIN_ASSERTS := 69
+const MIN_ASSERTS := 92
 
 
 func _ready() -> void:
@@ -716,6 +716,8 @@ func _done(sc) -> void:
 	await _check_name_not_truncated(sc)
 	await _check_equip_cap_same_source(sc)
 	await _check_bag_popup_all(sc)
+	await _check_maxlevel_xp()      # ★台账 ⑷: 满级不许印哨兵分母 / 死按钮要长得像死的
+	await _check_buy_feedback()     # ★台账 ⑮: 不成交要说为什么, 成交要看得见
 	sc.queue_free()
 	await get_tree().process_frame
 	print("")
@@ -1257,3 +1259,291 @@ func _bench_cells(n: Node, out: Array) -> void:
 		out.append(n)
 	for c in n.get_children():
 		_bench_cells(c, out)
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  MAXLEVEL_XP —— 满级后屏幕不许把「升不了了」说成「还差好多」
+# ══════════════════════════════════════════════════════════════════════
+## ★由来(2026-09-29 台账 ⑷, 用户当场点名): `P2.xp_to_next()` 在 level ≥ MAX_LEVEL 时
+##   返回 **999999**, 它自己的注释写着「极大(不可升)」—— 那是**代码内部表示"升不了了"的约定**。
+##   原样印到屏上就变成「经验 0/999999」+ 一条**空**的进度条 ⇒ 玩家读出来是"还差好多, 继续攒",
+##   同一个数在两边意思**正好相反**。实测证据: 一个只看屏幕的 agent 在满级后连点了 8 下
+##   那颗已经死掉的「买经验」按钮。用户原话:「10级就是满级了，怎么有agent还想着点升级」
+##   「满级了那就不应该这个样子按钮误导别人啊」。
+##
+## ★★量的是**屏幕**不是源码; 四条各自能单独红, 每条都配一条【未满级】的分母 ——
+##   否则"满级时看不到 999999"在任何情况下都成立(界面没建出来时也成立)。
+##     ① 满级那一屏一个字符都不许出现哨兵值, 而未满级那一屏必须印着「经验 a/b」
+##     ② 经验条填满(ratio ≥ 0.99), 而未满级 xp=0 时它是空的(≤ 0.01) —— 尺子量得出区别
+##     ③ 买经验按钮 disabled **且整颗压暗**(价格是子节点, 子节点不吃 disabled, 只有 modulate 传下去)
+##     ④ 就算这颗按钮被【程序】按下, 也只说一句话、不动等级/经验/币
+##        (`disabled` 是"点不动", 不等于"说清了为什么")
+func _check_maxlevel_xp() -> void:
+	print("")
+	var sentinel: int = int(P2CFG.xp_to_next(int(P2CFG.MAX_LEVEL)))
+	_chk("MAXLEVEL_XP ★分母: `xp_to_next(MAX_LEVEL)` 真是个哨兵大数(实测 %d ≥ 100000)" % sentinel,
+		sentinel >= 100000)
+	var seen := {}
+	for lv in [int(P2CFG.MAX_LEVEL) - 1, int(P2CFG.MAX_LEVEL)]:
+		GameState.season_level = lv
+		GameState.season_xp = 0
+		GameState.meta_deepsea_coins = 999
+		GameState.meta_shop_offer = []
+		var sc2 = SHOP.instantiate()
+		add_child(sc2)
+		if sc2 is Control:
+			(sc2 as Control).set_anchors_preset(Control.PRESET_TOP_LEFT)
+			(sc2 as Control).size = Vector2(SCREEN_W, SCREEN_H)
+		for _i in range(8):
+			await get_tree().process_frame
+		var all2: Array = []
+		_collect(sc2, all2)
+		## 屏上所有文字拼起来 —— 哨兵值出现在任何一条可见文本里就算露出来了
+		var joined := ""
+		var xp_line := ""
+		for c in all2:
+			var t := ""
+			if c is Label:
+				t = str((c as Label).text)
+			elif c is RichTextLabel:
+				t = str((c as RichTextLabel).get_parsed_text())
+			elif c is Button:
+				t = str((c as Button).text)
+			if t == "":
+				continue
+			joined += t + "\n"
+			if t.find("经验 ") >= 0 and t.find("/") >= 0:
+				xp_line = t
+		## 头部那条等级经验条: 先找它自己的槽框(bar-frame 贴图, 落在头部 y<110),
+		## 再拿槽里那块填充 ColorRect 的宽度 ÷ 槽内宽 = 真实填充比例。
+		## ★ratio 是从**渲染出来的矩形**算的, 不是回读我传给 `_pixel_bar` 的参数。
+		var slot: NinePatchRect = null
+		for c in all2:
+			if c is NinePatchRect and (c as NinePatchRect).texture != null \
+				and str((c as NinePatchRect).texture.resource_path).find("bar-frame") >= 0 \
+				and (c as Control).position.y < 110.0:
+				slot = c
+		var ratio := -1.0
+		if slot != null:
+			var inner_w: float = slot.size.x - 2.0 * float(SHOP_GD.BAR_MARGIN_X)
+			## ★一律用【局部】坐标: 无头视口是方形的, `UIFrame.attach` 把内容收编进设计框
+			##   再居中 ⇒ 全局 y 会整体偏 (视口高−720)/2(实测偏 280, 判据当场找不到条)。
+			##   本文件其余判据也都用局部坐标, 保持同一口径。
+			var sr: Rect2 = Rect2(slot.position, slot.size)
+			for c in all2:
+				if c is ColorRect and sr.encloses(Rect2((c as Control).position, (c as Control).size)):
+					ratio = maxf(ratio, (c as Control).size.x / maxf(1.0, inner_w))
+			if ratio < 0.0:
+				ratio = 0.0     # 槽在、填充块一个都没有 ⇒ 空条(宽 0 的 ColorRect 不进 _collect)
+		## 买经验按钮 = 头部右上那颗【无字】按钮(价格是两个子节点, 所以 text 是空串)
+		var bxp: Button = null
+		for c in all2:
+			var gr: Rect2 = Rect2((c as Control).position, (c as Control).size)
+			if c is Button and gr.position.x > SCREEN_W - 200.0 and gr.position.y < 110.0 \
+				and str((c as Button).text) == "":
+				bxp = c
+		seen[lv] = {
+			"sentinel": joined.find(str(sentinel)) >= 0,
+			"ratio": ratio,
+			"xp_line": xp_line,
+			"slot": slot != null,
+			"bxp": bxp != null,
+			"disabled": bxp != null and bxp.disabled,
+			"alpha": bxp.modulate.a if bxp != null else -1.0,
+		}
+		## ④ 死按钮被【程序】按下也得说话 —— 按钮哪天 disabled 的条件漂了, 这里就是唯一出口
+		if lv == int(P2CFG.MAX_LEVEL) and bxp != null:
+			var lv0: int = int(GameState.season_level)
+			var xp0: int = int(GameState.season_xp)
+			var coin0: int = int(GameState.meta_deepsea_coins)
+			bxp.pressed.emit()
+			for _i in range(4):
+				await get_tree().process_frame
+			var said := ""
+			for c2 in _labels_in(sc2):
+				if str((c2 as Label).text).find("最高等级") >= 0:
+					said = str((c2 as Label).text)
+			_chk("MAXLEVEL_XP ④ 满级时按下买经验: 等级/经验/币一个没动(%d/%d/%d → %d/%d/%d), 且屏上给了一句话「%s」"
+				% [lv0, xp0, coin0, int(GameState.season_level), int(GameState.season_xp),
+				   int(GameState.meta_deepsea_coins), said],
+				int(GameState.season_level) == lv0 and int(GameState.season_xp) == xp0
+				and int(GameState.meta_deepsea_coins) == coin0 and said != "")
+		sc2.queue_free()
+		await get_tree().process_frame
+	var mx: Dictionary = seen[int(P2CFG.MAX_LEVEL)]
+	var sub: Dictionary = seen[int(P2CFG.MAX_LEVEL) - 1]
+	print("     满级(Lv%d): 哨兵露出=%s 条填充=%.3f disabled=%s 整颗alpha=%.2f 经验行「%s」"
+		% [int(P2CFG.MAX_LEVEL), str(mx["sentinel"]), float(mx["ratio"]), str(mx["disabled"]),
+		   float(mx["alpha"]), str(mx["xp_line"])])
+	print("     未满级(Lv%d): 哨兵露出=%s 条填充=%.3f disabled=%s 整颗alpha=%.2f 经验行「%s」"
+		% [int(P2CFG.MAX_LEVEL) - 1, str(sub["sentinel"]), float(sub["ratio"]), str(sub["disabled"]),
+		   float(sub["alpha"]), str(sub["xp_line"])])
+	_chk("MAXLEVEL_XP ★分母: 两态的头部经验条都真的建出来了, 买经验按钮也都在场",
+		bool(mx["slot"]) and bool(sub["slot"]) and bool(mx["bxp"]) and bool(sub["bxp"]))
+	_chk("MAXLEVEL_XP ★分母: 未满级那一屏确实印着「经验 a/b」(否则 ① 是空检查) —— 「%s」"
+		% str(sub["xp_line"]), str(sub["xp_line"]) != "")
+	_chk("MAXLEVEL_XP ① 满级那一屏一个字符都没露出哨兵值 %d" % sentinel, not bool(mx["sentinel"]))
+	_chk("MAXLEVEL_XP ① 未满级那一屏也没露哨兵(它的分母是真实数 %d)"
+		% int(P2CFG.xp_to_next(int(P2CFG.MAX_LEVEL) - 1)), not bool(sub["sentinel"]))
+	_chk("MAXLEVEL_XP ② 满级时经验条是【满的】(实测 %.3f ≥ 0.99)" % float(mx["ratio"]),
+		float(mx["ratio"]) >= 0.99)
+	_chk("MAXLEVEL_XP ② ★分母: 未满级 xp=0 时它是【空的】(实测 %.3f ≤ 0.01) —— 这把尺子量得出区别"
+		% float(sub["ratio"]), float(sub["ratio"]) <= 0.01)
+	_chk("MAXLEVEL_XP ③ 满级时买经验按钮 disabled=true 且整颗压暗(alpha %.2f < 0.6)"
+		% float(mx["alpha"]), bool(mx["disabled"]) and float(mx["alpha"]) < 0.6)
+	_chk("MAXLEVEL_XP ③ ★分母: 未满级时它是亮的、能点(disabled=%s alpha=%.2f)"
+		% [str(sub["disabled"]), float(sub["alpha"])],
+		not bool(sub["disabled"]) and float(sub["alpha"]) > 0.95)
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  BUY_FEEDBACK —— 不成交要说为什么, 成交要看得见
+# ══════════════════════════════════════════════════════════════════════
+## ★由来(2026-09-29 台账 ⑮): 「商店买不起是一句 `return`，零反馈；买成功的唯一反馈是
+##   `_rebuild()` 整屏重画(卡凭空消失、钱数变一下)」。
+##   探针实测三条路**全部** `_toast_node = <null>`: `_on_buy` 买不起 / `_on_buy` 成交 /
+##   `_on_refresh` 币不够。而「换一批」那颗按钮在 coins=0 时 `disabled=false` ——
+##   点得下去、什么也不发生, 与满级那颗死按钮**同一个形状**。
+##
+## ★★两样一起量:【屏幕上多出来的那句话】+【状态有没有真的变】。
+##   只看提示会被"提示出来了但钱没扣"骗过去; 只看状态会把"零反馈"判成通过。
+## ★顺序是**按币量从少到多**排的: 换一批(要 0~1 币) → 买不起(price-1) → 成交(price+50)。
+##   顺序反了"买不起"那两条就变成空检查(钱够了当然买得起)。
+func _check_buy_feedback() -> void:
+	print("")
+	GameState.season_level = 5
+	GameState.persistent_bench = []
+	GameState.persistent_equipped = {}
+	GameState.meta_shop_offer = []
+	GameState.meta_deepsea_coins = 0
+	var sc3 = SHOP.instantiate()
+	add_child(sc3)
+	if sc3 is Control:
+		(sc3 as Control).set_anchors_preset(Control.PRESET_TOP_LEFT)
+		(sc3 as Control).size = Vector2(SCREEN_W, SCREEN_H)
+	for _i in range(8):
+		await get_tree().process_frame
+	var offer: Array = sc3._offer
+	var first := -1
+	for i in range(offer.size()):
+		if offer[i] != null:
+			first = i
+			break
+	_chk("BUY_FEEDBACK ★分母: 货架真的摆出了货(%d 格, 第一件在 #%d)" % [offer.size(), first],
+		first >= 0)
+	if first < 0:
+		sc3.queue_free()
+		await get_tree().process_frame
+		return
+	var edef3: Dictionary = sc3._deco(offer[first])
+	var price: int = int(sc3._price(edef3))
+	var nm: String = str(edef3.get("name", ""))
+
+	# ── ① 换一批买不起: 按钮长得像死的 + 点了说为什么 + 货架一件没换 ──
+	var rf: Button = null
+	var bts: Array = []
+	_collect_buttons(sc3, bts)
+	for b in bts:
+		if str((b as Button).text).find("换一批") >= 0:
+			rf = b
+	var before_ids: Array = []
+	for it in sc3._offer:
+		before_ids.append("" if it == null else str((it as Dictionary).get("id", "")))
+	sc3._on_refresh()
+	for _i in range(4):
+		await get_tree().process_frame
+	var msg2 := ""
+	for l in _labels_in(sc3):
+		if str((l as Label).text).find("换一批要") >= 0:
+			msg2 = str((l as Label).text)
+	var after_ids: Array = []
+	for it in sc3._offer:
+		after_ids.append("" if it == null else str((it as Dictionary).get("id", "")))
+	print("     换一批买不起(币 0): 按钮 disabled=%s alpha=%.2f 屏上「%s」 货架变了=%s"
+		% [str(rf != null and rf.disabled), rf.modulate.a if rf != null else -1.0, msg2,
+		   str(before_ids != after_ids)])
+	_chk("BUY_FEEDBACK ① ★分母: 找到「换一批」按钮", rf != null)
+	_chk("BUY_FEEDBACK ① 币不够时「换一批」disabled 且整颗压暗(价钱那枚币图标是子节点, 不吃 disabled)",
+		rf != null and rf.disabled and rf.modulate.a < 0.6)
+	_chk("BUY_FEEDBACK ① 点它 → 屏上说清换一批要多少钱(「%s」里含 %d)" % [msg2, int(SHOP_GD.REFRESH_COST)],
+		msg2 != "" and msg2.find(str(int(SHOP_GD.REFRESH_COST))) >= 0)
+	_chk("BUY_FEEDBACK ① ★分母: 货架一件没换(不成交就不许偷偷重掷)", before_ids == after_ids)
+
+	# ── ② 买不起: 说清【差多少】, 且一分钱不扣、一件不进背包 ──
+	## ★币故意给成 price-1 而不是 0: 差额 1 ≠ 售价 price ⇒ 那句话里写的到底是
+	##   "还差多少"还是"标价多少"分得清。给 0 的话两个数相等, 判据分不出来。
+	GameState.meta_deepsea_coins = maxi(0, price - 1)
+	sc3._rebuild()
+	for _i in range(6):
+		await get_tree().process_frame
+	var coin0: int = int(GameState.meta_deepsea_coins)
+	var bench0: int = GameState.persistent_bench.size()
+	var gap0: int = price - coin0
+	sc3._on_buy(first)
+	for _i in range(4):
+		await get_tree().process_frame
+	var msg1 := ""
+	for l in _labels_in(sc3):
+		if str((l as Label).text).find("还差") >= 0:
+			msg1 = str((l as Label).text)
+	print("     买不起(币 %d / 价 %d, 差 %d): 屏上「%s」 币 %d→%d 背包 %d→%d"
+		% [coin0, price, gap0, msg1, coin0, int(GameState.meta_deepsea_coins),
+		   bench0, GameState.persistent_bench.size()])
+	_chk("BUY_FEEDBACK ② 买不起 → 屏上写着「还差 %d 枚深海币」(不是只把按钮变灰)" % gap0,
+		msg1.find("还差 %d 枚深海币" % gap0) >= 0)
+	_chk("BUY_FEEDBACK ② ★分母: 买不起时钱和背包一个都没动(%d→%d / %d→%d)"
+		% [coin0, int(GameState.meta_deepsea_coins), bench0, GameState.persistent_bench.size()],
+		int(GameState.meta_deepsea_coins) == coin0
+		and GameState.persistent_bench.size() == bench0)
+
+	# ── ③ 成交: 屏上看得见买到了什么 + 背包真多一件 + 钱真扣了 + 提示活过整屏重画 ──
+	GameState.meta_deepsea_coins = price + 50
+	sc3._rebuild()
+	for _i in range(6):
+		await get_tree().process_frame
+	var coin1: int = int(GameState.meta_deepsea_coins)
+	var bench1: int = GameState.persistent_bench.size()
+	sc3._on_buy(first)
+	for _i in range(6):
+		await get_tree().process_frame
+	var msg3 := ""
+	for l in _labels_in(sc3):
+		if str((l as Label).text).find("买下") >= 0:
+			msg3 = str((l as Label).text)
+	print("     成交(价 %d): 屏上「%s」 币 %d→%d 背包 %d→%d"
+		% [price, msg3, coin1, int(GameState.meta_deepsea_coins), bench1,
+		   GameState.persistent_bench.size()])
+	_chk("BUY_FEEDBACK ③ 成交 → 屏上一句话写出买到的是哪一件(「%s」里含「%s」)" % [msg3, nm],
+		msg3 != "" and msg3.find(nm) >= 0)
+	_chk("BUY_FEEDBACK ③ ★分母: 成交真的发生了(背包 %d→%d, 币 %d→%d)"
+		% [bench1, GameState.persistent_bench.size(), coin1, int(GameState.meta_deepsea_coins)],
+		GameState.persistent_bench.size() == bench1 + 1
+		and int(GameState.meta_deepsea_coins) == coin1 - price)
+	## ★★成交的提示必须**活过那一次 `_rebuild()`** —— 商店 `_rebuild()` 开头把所有子节点
+	##   `queue_free()`, 提示若在重画【之前】发就当场被清掉(背包页 7 条 toast 一条看不见,
+	##   根因一模一样)。这一条量的正是"它还在树上"。
+	_chk("BUY_FEEDBACK ③ ★提示活过了那次整屏重画(不是发出来就被 _rebuild 清掉)",
+		sc3._toast_node != null and is_instance_valid(sc3._toast_node)
+		and (sc3._toast_node as Node).is_inside_tree())
+
+	# ── ④ 提示不许盖住任何按钮 + 不许伸出 720 ──
+	## ★由来: 提示原来摆在 y 430..474, 而「换一批」按钮就在 448..524 ——
+	##   一句"深海币不够 · 换一批要 2"**盖住它解释的那颗按钮的上沿 26px**。
+	##   提示越常出现, 这条越要紧, 所以焊住。(弹层 z=20 被压住是故意的, 不算。)
+	if sc3._toast_node != null and is_instance_valid(sc3._toast_node):
+		var tr: Rect2 = Rect2((sc3._toast_node as Control).position, (sc3._toast_node as Control).size)
+		var covered: Array = []
+		var bts2: Array = []
+		_collect_buttons(sc3, bts2)
+		for b in bts2:
+			var brr: Rect2 = Rect2((b as Control).position, (b as Control).size)
+			if tr.intersects(brr):
+				covered.append("「%s」%s" % [str((b as Button).text).substr(0, 10), str(brr)])
+		print("     提示矩形 %s ; 扫了 %d 颗按钮, 被盖住 %d 颗" % [str(tr), bts2.size(), covered.size()])
+		_chk("BUY_FEEDBACK ④ ★分母: 这一屏真的有按钮可盖(扫到 %d 颗)" % bts2.size(), bts2.size() >= 4)
+		_chk("BUY_FEEDBACK ④ 提示一颗按钮都没盖住: %s"
+			% ("干净" if covered.is_empty() else str(covered.slice(0, 3))), covered.is_empty())
+		_chk("BUY_FEEDBACK ④ 提示整条都在 %.0f 设计框内(底沿 %.0f)" % [SCREEN_H, tr.end.y],
+			tr.end.y <= SCREEN_H + 0.5 and tr.position.y >= -0.5)
+	sc3.queue_free()
+	await get_tree().process_frame

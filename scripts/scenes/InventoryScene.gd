@@ -58,6 +58,12 @@ const BENCH_TOP := 418.0       # 跟着 BENCH_HDR_Y 一起下移 20 —— 漏�
 const BENCH_PITCH := 108.0     # 格子行距(96 格 + 12 间隙): 3 行 = 312 ≤ 316, 刚好铺进去
 const OP_BAR_Y := 632.0        # 底部操作条(原 636·高 66 → 现 632·高 80: 装备文案多一行)
 const OP_BAR_H := 80.0
+## ★★选中战场卡片时那条「卸下」操作条【比其它两条高】—— 它里面装的是 81px(44pt) 的键,
+##   而 `OP_BAR_H = 80` **装不下 81**。原来就是硬塞的: 键从条内 y=12 起 ⇒ 底沿 725,
+##   不但伸出条子 13px, 还**伸出 720 设计框 5px**(探针实测 10 颗键全中)。
+##   ⇒ 给它自己的高度 = 81 + 上下各 6 = 93, 并且**向上长**(下沿仍是 712, 与另两条齐平)。
+const UNIT_BAR_H := 93.0
+const UNIT_BAR_PAD := 6.0      # 键在条内的上下留白(93 = 81 + 6×2)
 const OP_BODY_FS := 14         # 底栏效果正文字号
 const OP_BODY_ROWS := 2        # 底栏效果正文显示几【整】行(放不下的部分由"点细看"接住)
 const DETAIL_BODY_FS := 16     # 装备详情框正文字号
@@ -367,7 +373,44 @@ func _build_lineup(_leaders: Array) -> void:
 		for i in range(arr.size()):
 			add_child(_dl_unit_box(lkey, i, arr[i], lead_n, Vector2(40 + i * (UBOX_W + UBOX_GAP), by)))
 
-## 布阵单位框(大改): 大立绘+名+可点装备格(点填充格=卸那件)+小将前后排角标. 选中装备时整框高亮"装这里". 点框body=装备(选中时)↔互换分路.
+## 这一只单位身上的装备清单 —— **全屏唯一一份口径**。
+##
+## ★★为什么必须抽出来(2026-09-30 抓到的真 bug, 探针实测):
+##   统领的装备住在 `GameState.persistent_equipped[pid]`, 小将的住在 `unit["equips"]`。
+##   `_dl_unit_box` 原来就地写着这个二分, 而底部那条「44pt 卸下条」(`_build_unit_equip_bar`)
+##   **只读了后一半** —— `unit.get("equips", [])` 对统领永远是空 ⇒ `eqs.is_empty()` 就地 return
+##   ⇒ **选中统领卡时那条操作栏一个按钮都不建**。实测: 选中带 3 件装备的统领 basic,
+##     「卸下」按钮 **0 个 / 标题 0 条**; 同一刻选中小将 **2 个 190×81**(对照组成立)。
+##   于是 `_build_equip_cells` 注释里写的「真正的 44pt 路径另给」对**一半的单位是句空话**:
+##   统领要卸装备只剩那 3 个 40px(21.7pt) 的迷你格 —— 台账 ⑭「整屏最小的靶子恰好是主操作」
+##   说的正是这个, 而它之所以成立**不是因为格子小, 是因为大的那条路根本没通**。
+##   ⇒ 两处读同一个函数。手抄的副本必然落后(memory fb-hand-rolled-copies-drift)。
+func _unit_equips(unit: Dictionary) -> Array:
+	if str(unit.get("kind", "")) == "leader":
+		if GameState.persistent_equipped is Dictionary:
+			var pe = GameState.persistent_equipped.get(str(unit.get("id", "")), [])
+			return pe if pe is Array else []
+		return []
+	return unit.get("equips", []) if unit.get("equips", null) is Array else []
+
+
+## 把一只单位的装备分成【占位的】与【羁绊白送的】两摊, 各自带真实下标。
+## ★下标必须是 `_unit_equips()` 里的真实下标 —— 卸下按它走, 不能按"第几个格子"
+##   (赠送件插在数组中间时, 按格号卸会卸错一件)。
+## ★这也是**唯一一份**分摊口径: 三个迷你格与底部那条 44pt 卸下条都用它,
+##   否则两边对"哪一件算装备位"各有一套, 屏幕上就会出现"格子里有、卸下条里没有"。
+func _split_equips(eqs: Array) -> Array:
+	var wear: Array = []
+	var grants: Array = []
+	for i in range(eqs.size()):
+		if GameState.is_synergy_grant(eqs[i]):
+			grants.append({"i": i, "it": eqs[i]})
+		else:
+			wear.append({"i": i, "it": eqs[i]})
+	return [wear, grants]
+
+
+## 布阵单位框(大改): 大立绘+名+装备格(点格子=选中这只单位→底部出大号卸下键)+小将前后排角标. 选中装备时整框高亮"装这里". 点框body=装备(选中时)↔互换分路.
 func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Vector2) -> Control:
 	var kind := str(unit.get("kind", "minion"))
 	var pid := str(unit.get("id", ""))
@@ -436,18 +479,13 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 		hint.position = Vector2(rx, 62); hint.size = Vector2(UBOX_W - rx - 8, 16)
 		hint.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(hint)
 	else:
-		var eqs: Array = []
-		if kind == "leader":
-			if GameState.persistent_equipped is Dictionary:
-				eqs = GameState.persistent_equipped.get(pid, [])
-		elif unit.get("equips", null) is Array:
-			eqs = unit.get("equips", [])
+		var eqs: Array = _unit_equips(unit)
 		# ★格数【恒定 = 单只上限 3】: 三格就是"你的装备位", 布局稳定、一眼看出还能装几件。
 		#   羁绊赠送件(圣光护盾)不占装备位 ⇒ 它不进这三格, 由 _build_equip_cells 画在三格
 		#   【之后】的一枚小徽章上(金边 + "赠"角标)。
 		#   (2026-08-12 修: 之前写死 3 格却把赠送件排在数组第 4 位 ⇒ 界面上根本看不见它;
 		#    中途改成 3+N 格也不对 —— 队列里有的 3 格有的 4 格, 且第 4 格看着像"能装 4 件"。)
-		_build_equip_cells(box, 60.0, eqs, P2.UNIT_EQUIP_CAP, kind == "leader", pid, lane, idx, rx)
+		_build_equip_cells(box, 60.0, eqs, P2.UNIT_EQUIP_CAP, lane, idx, rx)
 	# 小将 前排/后排 pill (右上·精英小将=统领替身不显·用户2026-07-18)
 	if is_reg_minion:
 		var front := str(unit.get("role", "front")) == "front"
@@ -486,24 +524,37 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 	box.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _dl_click(lane, idx))
 	return box
 
-## 单位身上的装备格一行: 填充格显图标·点它=卸那一件(无选中时); 选中装备时格子透传→点框body装备.
-func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, is_leader: bool, pet_id: String, lane: String, idx: int, x_start: float = -1.0) -> void:
+## 单位身上的装备格一行: 填充格显图标·点它=**选中这只单位**(底部随即出现大号「卸下」键);
+## 选中装备时格子透传→点框body装备.
+## ★★`is_leader` / `pet_id` 两个参数 2026-09-30 **删掉了**: 它们原来只喂给格子上那句
+##   就地卸下(`_unequip_at(pet_id, …)`); 卸下改走底部 81px 的键之后这两个就没人读了,
+##   留着就是下一个"写了没人读"。`lane`/`idx` 仍在用(选中这只单位要它们)。
+func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, lane: String, idx: int, x_start: float = -1.0) -> void:
 	## ★28 → 40: 手机触控下限是 44pt(81px), 而卡片右列只有约 134px 宽 ——
 	##   3 格要到 81px 得 243px, **版式里塞不下**(加高卡片又会撞到下面的背包区)。
 	##   所以取版式允许的最大值: 3×40 + 2×4 = 128 ≤ 134。从 15pt 提到 22pt。
-	##   ★真正的 44pt 路径另给: 选中卡片后, 底部操作条会列出它的装备 + 大号「卸下」按钮。
+	## ★★2026-09-30 量过一遍确认 40 就是**版式硬上限**, 不是"懒得再挤":
+	##   右列可用宽 = UBOX_W(244) − rx(110) − 右留白 6 = 128 ⇒ (128 − 2×gap 4) / 3 = 40.0 整。
+	##   往外要地方也没有: 单位区右沿 804 / 羁绊列左沿 828(只剩 24px, 三格分不到 8px 一格);
+	##   竖向两条战场带 88..236 与 234..382 已经**互相压了 2px**, 而背包标题在 386 ——
+	##   UBOX_H 一个像素都涨不了。所以**格子不可能达到 44pt**, 只能让它**不再是靶子**:
+	## ★★★点格子 = 选中这只单位(非破坏性), 不再是"就地卸掉那一件"。
+	##   由来(台账 ⑭「整屏最小的靶子恰好是主操作」): 21.7pt 的格子、相邻只隔 2.2pt,
+	##   而它原来直接执行**卸下** —— 手指偏一格就卸错一件, 且卸下没有任何提示。
+	##   现在三个格子映射到**同一个**动作(选中这只单位) ⇒ 偏一格也不会做错事,
+	##   而真正的卸下走底部那条 81px(44pt) 的「卸下」键。
+	##   ⚠ 不是改成 `MOUSE_FILTER_IGNORE` 透传给框 —— 框 body 的语义是
+	##     "已有选中时 = **互换分路**", 那样点第二只龟身上的装备会把两只龟换路(更坏)。
+	##     所以显式接一个"只选中、不换路"的处理。
 	var cw := 40.0
 	var gap := 4.0
 	var team_full: bool = not GameState.team_has_equip_room()   # 全队预算是否已用尽(空格样式据此区分)
 	## ★三格只放【占装备位】的件; 羁绊赠送件(圣光护盾)另挂徽章 —— 它不是装备位。
-	##   `slot_idx` 记录每格对应 eqs 里的真实下标: 卸下要按真实下标走, 不能按格号。
-	var wear: Array = []        # [{i(真实下标), it}]
-	var grants: Array = []      # 同上, 羁绊赠送件
-	for i in range(eqs.size()):
-		if GameState.is_synergy_grant(eqs[i]):
-			grants.append({"i": i, "it": eqs[i]})
-		else:
-			wear.append({"i": i, "it": eqs[i]})
+	##   `i` 记录每格对应 eqs 里的真实下标: 卸下要按真实下标走, 不能按格号。
+	##   ★分摊口径走 `_split_equips()`(与底部 44pt 卸下条同一份), 不在这里再写一遍。
+	var _sp: Array = _split_equips(eqs)
+	var wear: Array = _sp[0]    # [{i(真实下标), it}]
+	var grants: Array = _sp[1]  # 同上, 羁绊赠送件
 	var total := float(slots) * cw + maxf(0.0, float(slots - 1)) * gap
 	var x0 := x_start if x_start >= 0.0 else (UBOX_W / 2.0 - total / 2.0)   # x_start≥0=横排卡片右列左对齐, 否则居中
 	for ci in range(slots):
@@ -542,9 +593,11 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, is_leade
 		if _sel_bench >= 0:
 			cell.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 装备模式: 透传→点框body装上
 		elif filled:
-			cell.tooltip_text = "点一下, 这件就回背包"
-			var cci := int((wear[ci] as Dictionary)["i"])    # ★真实下标, 不是格号
-			cell.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: (_inv_ops._unequip_at(pet_id, cci) if is_leader else _inv_ops._unequip_minion_at(lane, idx, cci)))
+			## ★文案也得跟着改 —— 原来写「点一下, 这件就回背包」, 那是**旧行为**的说明;
+			##   而 tooltip 在手机上根本看不见(本仓反复记过: 手机没 hover),
+			##   所以真正告诉玩家下一步的那句话在底部操作条上("点「卸下」把装备收回背包")。
+			cell.tooltip_text = "点一下 → 底下出现「卸下」键"
+			cell.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _select_unit(lane, idx))
 		else:
 			cell.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 空格透传
 			cell.tooltip_text = ("全队装备已满 %d / %d · 升赛季等级可再装" % [
@@ -590,9 +643,25 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, is_leade
 		else:
 			## 原文"羁绊赠送(不占装备位) · 盾羁绊掉档时自动收回": 括号注解 + "掉档"这种表述。
 			gcell.tooltip_text = "%s · 盾羁绊白送的, 不占装备位 · 盾羁绊掉下去就收回" % str(gdef.get("name", ""))
-			var gci := int(g["i"])
-			gcell.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: (_inv_ops._unequip_at(pet_id, gci) if is_leader else _inv_ops._unequip_minion_at(lane, idx, gci)))
+			## ★★这枚徽章只有 30px = **16.3pt**, 比装备格还小一圈, 而它原来同样是
+			##   "点一下就地卸掉" —— 全屏最小的靶子干着破坏性的活。同装备格一起改成
+			##   【只选中这只单位】, 卸下交给底部那颗 81px 的键(它也会列出赠送件)。
+			gcell.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _select_unit(lane, idx))
 		box.add_child(gcell)
+
+
+## 点单位身上的装备格/赠送徽章 ⇒ **只选中这只单位**(底部随即出现 81px 的「卸下」键)。
+##
+## ★为什么不复用 `_dl_click`: 它在"已有选中"时的语义是**互换分路** ——
+##   点第二只龟身上的装备会把两只龟换路, 而玩家想做的只是"看看这只身上有什么、卸一件"。
+## ★幂等: 再点同一只不取消(取消留给点卡片 body), 否则玩家点第二格会把刚出来的卸下条收掉。
+func _select_unit(lane: String, idx: int) -> void:
+	if str(_dl_sel.get("lane", "")) == lane and int(_dl_sel.get("idx", -1)) == idx:
+		return
+	_sel_bench = -1        # 与"选中背包里的装备"互斥(底部操作条同时只讲一件事)
+	_sel_jar = false
+	_dl_sel = {"lane": lane, "idx": idx}
+	_rebuild()
 
 ## 卸下统领第 cell_idx 件装备 → 回背包.
 func _dl_first_minion_idx(lane: String) -> int:
@@ -708,7 +777,38 @@ func _show_lineup_help() -> void:
 func _bench_bottom() -> float:
 	var sel_eq: bool = _sel_bench >= 0 and _sel_bench < GameState.persistent_bench.size()
 	var sel_jar: bool = _sel_jar and GameState.has_candy_jar()
+	## ★★选中战场卡片时那条「卸下」操作条**也要让位** —— 它是 2026-08-19 才加的第三条,
+	##   而本函数当时没跟上 ⇒ 背包照样铺到 712, 操作条后画、直接压在最后一排格子上。
+	##   它比另两条高(UNIT_BAR_H), 所以让的是它自己的顶沿。
+	if _unit_bar_shows():
+		return _unit_bar_y() - 8.0
 	return (OP_BAR_Y - 8.0) if (sel_eq or sel_jar) else (H - 8.0)
+
+
+## 「卸下」操作条的顶沿 —— 下沿与另两条齐平(OP_BAR_Y + OP_BAR_H), 高度不同所以向上长。
+func _unit_bar_y() -> float:
+	return OP_BAR_Y + OP_BAR_H - UNIT_BAR_H
+
+
+## 当前选中的战场卡片(统领/小将); 没选中 / 越界 / 被"选中背包装备"抢了 ⇒ 空字典。
+func _sel_unit() -> Dictionary:
+	if _sel_bench >= 0 or _dl_sel.is_empty():
+		return {}
+	if _sel_jar and GameState.has_candy_jar():
+		return {}                        # 糖果罐那条操作栏优先(与 _build_op_bar 同序)
+	var arr: Array = GameState.get_dual_lineup().get(str(_dl_sel.get("lane", "")), [])
+	var i := int(_dl_sel.get("idx", -1))
+	if i < 0 or i >= arr.size() or not (arr[i] is Dictionary):
+		return {}
+	return arr[i]
+
+
+## 「卸下」操作条到底画不画 —— `_build_op_bar` 的分派、`_bench_bottom` 的让位
+## **共用这一个判据**。两边各写一份的下场就是上面那条注释里记的:
+## 一边画了、另一边没让, 屏幕上就是"操作条压着背包格子"。
+func _unit_bar_shows() -> bool:
+	var u: Dictionary = _sel_unit()
+	return not u.is_empty() and not _unit_equips(u).is_empty()
 
 
 func _build_bench() -> void:
@@ -811,7 +911,11 @@ func _build_op_bar() -> void:
 	##   由来: 卡片上那 3 个装备格受版式限制只能做到 40px(22pt), 低于手机 44pt 下限,
 	##   而它们**曾是卸下装备的唯一入口**。这里给出一条 44pt 达标的主路径:
 	##   点卡片(244×96 的大目标) → 底部出现每件装备一个 81px 高的「卸下」键。
-	if _sel_bench < 0 and not _dl_sel.is_empty():
+	## ★条件走 `_unit_bar_shows()`(与 `_bench_bottom` 同一个判据), 不在这里再写一遍 ——
+	##   原来这里写 `_sel_bench < 0 and not _dl_sel.is_empty()`, 而真正决定"画不画"的
+	##   还有一条"这只身上得有装备"藏在 `_build_unit_equip_bar` 里面 ⇒ 背包那边让位与否
+	##   量的是**另一个**条件。
+	if _unit_bar_shows():
 		_build_unit_equip_bar()
 		return
 	if _sel_bench < 0 or _sel_bench >= GameState.persistent_bench.size():
@@ -1388,14 +1492,21 @@ func _candy_jar_cell(it: Dictionary, pos: Vector2) -> Control:
 
 
 ## 选中战场卡片时的操作栏: 列出它身上的装备, 每件一个 81px 高的「卸下」键(手机 44pt 达标路径)。
+##
+## ★★2026-09-30 修一个**整条路对统领不存在**的 bug(台账 ⑭ 的真根因):
+##   原来这里写 `unit.get("equips", [])` —— 统领的装备根本不住在单位字典里,
+##   它住在 `GameState.persistent_equipped[pid]` ⇒ `eqs` 恒空 ⇒ 就地 return ⇒
+##   **选中统领卡时这条操作栏一个按钮都不建**(探针实测: basic 带 3 件, 「卸下」按钮 0 个;
+##   同一刻小将 2 个 190×81)。而下面 `if is_leader: _unequip_at(pid, cci)` 这一整支
+##   因此是**死代码** —— 判据没错, 被测对象从没在场(memory fb-gate-subject-never-constructed)。
+##   ⇒ 改成走 `_unit_equips()`, 与卡片上那三个格子读同一份。
 func _build_unit_equip_bar() -> void:
 	var lane := str(_dl_sel.get("lane", ""))
 	var idx := int(_dl_sel.get("idx", -1))
-	var arr: Array = GameState.get_dual_lineup().get(lane, [])
-	if idx < 0 or idx >= arr.size() or not (arr[idx] is Dictionary):
+	var unit: Dictionary = _sel_unit()
+	if unit.is_empty():
 		return
-	var unit: Dictionary = arr[idx]
-	var eqs: Array = unit.get("equips", []) if unit.get("equips", null) is Array else []
+	var eqs: Array = _unit_equips(unit)
 	if eqs.is_empty():
 		return
 	var bar := Panel.new()
@@ -1404,34 +1515,54 @@ func _build_unit_equip_bar() -> void:
 	sb.border_color = Color("#2a3a4e")
 	sb.set_border_width_all(2)
 	bar.add_theme_stylebox_override("panel", UISkin.nine("panel-frame.png", 20, sb))
-	bar.position = Vector2(24, OP_BAR_Y)
-	bar.size = Vector2(_vw - 48.0, OP_BAR_H)
+	bar.position = Vector2(24, _unit_bar_y())
+	bar.size = Vector2(_vw - 48.0, UNIT_BAR_H)
 	add_child(bar)
 	var ttl := Label.new()
 	ttl.text = "点「卸下」把装备收回背包"
 	ttl.add_theme_font_size_override("font_size", 15)
 	ttl.add_theme_color_override("font_color", Color("#9fb6c9"))
-	ttl.position = Vector2(20, 16)
+	## 标题在条内竖直居中(条子换高度之后写死 16 就偏上了)
+	ttl.position = Vector2(20, (UNIT_BAR_H - 22.0) * 0.5)
 	ttl.size = Vector2(260, 22)
 	bar.add_child(ttl)
-	var x := 300.0
-	for ci in range(mini(eqs.size(), 3)):
-		var eid := str((eqs[ci] as Dictionary).get("id", ""))
+	## ★★顺序 = 【占装备位的三件】在前、【羁绊白送的】在后, 下标用真实下标。
+	##   原来是 `for ci in range(mini(eqs.size(), 3))`: 3 件装备 + 1 件赠送时
+	##   第 4 个(赠送件)拿不到按钮, 而赠送件若插在数组前面还会把一件真装备顶掉。
+	##   分摊口径与卡片上那三个格子同一个函数(`_split_equips`)。
+	var _sp2: Array = _split_equips(eqs)
+	var order: Array = []
+	for w in (_sp2[0] as Array):
+		order.append(w)
+	for g in (_sp2[1] as Array):
+		order.append(g)
+	## 按钮排在标题右边: 起点 300 / 宽 190 / 步长 200 ⇒ 塞得下几个由**条子自己的宽度**说,
+	## 不写死个数(1280 下 bar 宽 1232 ⇒ 4 个止于 1090, 还有余)。
+	const UB_BTN_W := 190.0
+	const UB_BTN_STEP := 200.0
+	const UB_BTN_X0 := 300.0
+	var _room: int = maxi(1, int((bar.size.x - UB_BTN_X0 - 12.0 + (UB_BTN_STEP - UB_BTN_W)) / UB_BTN_STEP))
+	var x := UB_BTN_X0
+	var is_leader: bool = str(unit.get("kind", "")) == "leader"
+	var pid := str(unit.get("id", ""))
+	for oi in range(mini(order.size(), _room)):
+		var ent: Dictionary = order[oi]
+		var eid := str((ent["it"] as Dictionary).get("id", ""))
 		var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
 		var b := Button.new()
 		b.text = "卸下 %s" % str(edef.get("name", eid))
 		b.add_theme_font_size_override("font_size", 15)
-		b.position = Vector2(x, 12)
-		b.custom_minimum_size = Vector2(190.0, 81.0)   # 44pt 触控下限
-		b.size = Vector2(190.0, 81.0)
+		## ★81 = 44pt 触控下限; 条高 UNIT_BAR_H 就是按它算的(81 + UNIT_BAR_PAD×2),
+		##   所以 y 用 UNIT_BAR_PAD 而不是写死 12 —— 写死 12 时底沿 725, 伸出条子也伸出屏。
+		b.position = Vector2(x, UNIT_BAR_PAD)
+		b.custom_minimum_size = Vector2(UB_BTN_W, UNIT_BAR_H - UNIT_BAR_PAD * 2.0)
+		b.size = Vector2(UB_BTN_W, UNIT_BAR_H - UNIT_BAR_PAD * 2.0)
 		UISkin.button(b, Color("#9fb6c9"))
-		var cci := ci
-		var is_leader: bool = str(unit.get("kind", "")) == "leader"
-		var pid := str(unit.get("id", ""))
+		var cci := int(ent["i"])      # ★真实下标(不是"第几个按钮")
 		b.pressed.connect(func() -> void:
 			if is_leader:
 				_inv_ops._unequip_at(pid, cci)
 			else:
 				_inv_ops._unequip_minion_at(lane, idx, cci))
 		bar.add_child(b)
-		x += 200.0
+		x += UB_BTN_STEP

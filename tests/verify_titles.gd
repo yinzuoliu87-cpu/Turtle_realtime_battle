@@ -61,6 +61,7 @@ func _ready() -> void:
 	await _t_real_entry()
 	_t_survive_resets()
 	await _t_finals_titles()
+	_t_quota_title_no_restart()
 	for k in KEYS:
 		GameState.set(k, _bak[k])
 	print("")
@@ -359,3 +360,63 @@ func _t_finals_titles() -> void:
 		GameState.titles.size() == titles_before,
 		"%d → %d" % [titles_before, GameState.titles.size()])
 
+
+# ─────────────────────────────────────────────────────────────
+# ⑥ QUOTA_TITLE_NO_RESTART —— 打满那一刻称号就该在, 不用重启游戏
+#
+# 由来(2026-09-30 台账 ⑱): 用户的十个真号有 7 个打满了 24 场, 而存档里
+#   `titles` **全是空的**。
+# ★根因不是发放逻辑坏了, 是**顺序**: `_settle_season()` 调 `ensure_season()`
+#   在 `ranked_used++` 的**前面**(那行注释自己写着「下方 season_total_battles++
+#   /coins+= 全在这行之后」) ⇒ 打满那一场结束时它看到的还是 23 ⇒ 不发；
+#   而**打满之后不会再有下一场**(配额把门关了) ⇒ 唯一的补发时机再也不会到来。
+#   探针实测: 拿 `ranked_used=24` 的真存档开机, `titles` 当场就有 `full_quota`,
+#   手动再 `sync_titles()` 新发 **0** 条 ⇒ 条件一直满足, 缺的只是有人再调一次。
+#
+# ★★判据必须走**产品自己的那个函数** `consume_ranked_quota()`(结算路径调的就是它),
+#   不许在测试里自己 `ranked_used = QUOTA` 再 `sync_titles()` —— 那样测的是我的
+#   复现步骤, 不是产品的路径(memory `fb-verify-must-run-the-real-path`)。
+# ★★并且**不许调 `ensure_season()`** —— 那正是"重启才看得见"的那条路。
+#   这一节的全部意思就是「不靠它也得有」。
+# ★分母两条: ①打满前那一刻称号**不能**已经在(否则整节恒真)
+#            ②`ranked_used` 真的从 QUOTA-1 走到了 QUOTA(否则量的是别的东西)
+# ─────────────────────────────────────────────────────────────
+func _t_quota_title_no_restart() -> void:
+	var wk: int = 1789344000            # 一个固定的周一锚点(与本文件别处同一个口径)
+	GameState.titles = []
+	GameState.week_anchor_ts = wk
+	GameState.season_start_ts = wk
+	GameState.week_phase = P2C.PHASE_RANKED
+	GameState.ranked_used = int(P2C.RANKED_QUOTA) - 1
+	GameState.promoted = false
+	GameState.finals_deepest_round = 0
+	GameState.finals_rounds_total = 0
+	GameState.finals_champion = false
+
+	## ★分母①: 差一场的时候不许已经有 —— 证明下面那条断言不是恒真的
+	_ok("⑥ ★分母: 差 1 场时「满配额」还不该有",
+		not P2C.title_has(GameState.titles, P2C.TITLE_FULL_QUOTA, wk),
+		"ranked_used=%d / titles=%s" % [GameState.ranked_used, str(GameState.titles)])
+
+	var used_before: int = int(GameState.ranked_used)
+	## 产品自己的那一步: 打完这一场吃掉一格配额。**故意不调 ensure_season()**。
+	GameState.consume_ranked_quota()
+
+	## ★分母②: 配额真的走到了打满, 不然上面那一步等于没发生
+	_ok("⑥ ★分母: 配额真的从 %d 走到 %d" % [used_before, int(P2C.RANKED_QUOTA)],
+		int(GameState.ranked_used) == int(P2C.RANKED_QUOTA)
+			and int(GameState.ranked_used) == used_before + 1,
+		"%d → %d" % [used_before, int(GameState.ranked_used)])
+
+	## ★★★正题: 打满那一刻称号就在 —— 没有重启、没有 ensure_season()
+	_ok("⑥ ★★★QUOTA_TITLE_NO_RESTART: 打满的那一场结束就该有「满配额」(不用关掉游戏重开)",
+		P2C.title_has(GameState.titles, P2C.TITLE_FULL_QUOTA, wk),
+		"ranked_used=%d/%d  titles=%s" % [GameState.ranked_used,
+			int(P2C.RANKED_QUOTA), str(GameState.titles)])
+
+	## ★幂等: 再打一场(超配额)不许多发一条 —— `sync_titles` 按 {id, week} 去重
+	var n_before: int = GameState.titles.size()
+	GameState.consume_ranked_quota()
+	_ok("⑥ 幂等: 再吃一格配额不许多发一条同周同档",
+		GameState.titles.size() == n_before,
+		"%d → %d  titles=%s" % [n_before, GameState.titles.size(), str(GameState.titles)])

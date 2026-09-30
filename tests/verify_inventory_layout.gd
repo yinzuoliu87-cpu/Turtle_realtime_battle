@@ -30,7 +30,7 @@ var _n := 0
 var _fail := 0
 
 ## 全绿时的断言条数。加/删断言时同步改这个数(它是"有没有被掐断"的分母)。
-const MIN_ASSERTS := 56
+const MIN_ASSERTS := 64
 
 
 func _ok(name: String, cond: bool, detail: String = "") -> void:
@@ -481,6 +481,9 @@ func _ready() -> void:
 	# ══ N. EQUIP_CAP_SAME_SOURCE: 「装备 N / M」那个 M 必须是真上限 ══
 	await _check_equip_cap_same_source()
 
+	# ══ O. EQUIP_SLOT_PT: 21.7pt 的装备格 + 那条"44pt 卸下路径"到底通不通 ══
+	await _check_equip_slot_pt()
+
 	print("")
 	## ★★断言条数的【地板】。低于它 = 有协程在半路被掐断 / 静默 abort ⇒ 判红。
 	##   2026-09-29 在另一个门禁上当场撞到: 读一个不存在的成员会让协程【就地返回】,
@@ -759,3 +762,231 @@ func _cap_pair(sc: Node) -> Array:
 		if a.is_valid_int() and b.is_valid_int():
 			return [int(a), int(b)]
 	return []
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  EQUIP_SLOT_PT —— 龟身上那 18 个装备格不许是"最小的靶子干最要紧的活"
+# ══════════════════════════════════════════════════════════════════════
+## ★由来(2026-09-29 台账 ⑭): 「整屏最小的靶子恰好是主操作 —— 龟身上 18 个装备格
+##   40×40px = **21.7pt**, 而同屏背包格是 **52pt**(差 2.4 倍); 相邻间隙只有 **2.2pt**。」
+##   (换算: 视口高 720 ↔ iPhone 横屏 390pt ⇒ 1pt = 1.846px ⇒ iOS HIG 的 44pt = **81px**。)
+##
+## ★★真根因不是"格子小"(2026-09-30 探针实测, 三条数都在下面打出来):
+##   格子做到 40 已经是**版式硬上限** —— 右列可用宽 = UBOX_W(244) − rx(110) − 右留白 6 = 128,
+##   (128 − 2×gap 4) / 3 = **40.0 整**; 往外也没地方(单位区右沿 804 / 羁绊列左沿 828,
+##   两条战场带 88..236 与 234..382 已互相压了 2px, 背包标题就在 386 ⇒ UBOX_H 一像素都涨不了)。
+##   真问题是：**大的那条路根本没通**。`_build_unit_equip_bar()`(注释自称"44pt 达标路径")
+##   原来读 `unit.get("equips")` —— 统领的装备住在 `GameState.persistent_equipped[pid]`,
+##   所以对统领 `eqs` 恒空、就地 return ⇒ **选中统领卡时那条操作栏一个按钮都不建**。
+##   实测: basic 带 3 件, 「卸下」按钮 **0 个 / 标题 0 条**; 同一刻小将 **2 个 190×81**。
+##   ⇒ 统领要卸装备只剩那个 21.7pt 的格子, 而它**直接执行卸下**(偏一格就卸错一件, 且无提示)。
+##
+## ★★★所以判据分两层, 少一层都守不住:
+##   ① 分母: 18 个格子真的在场、尺寸真的是 40×40(21.7pt), 且填充格数 == 身上装备件数
+##   ② 点任何一个格子都是**非破坏性**的(身上/背包一件不动), 且它把这只单位【选中】
+##   ③ 选中之后底部真的出现「卸下」键, 每颗短边 ≥ 81px(44pt)、全落在操作条里,
+##      **数量 == 这只单位身上的件数**(少一颗就有一件只能靠小格子卸)
+##   ④ ③ 对【统领】和【小将】分别验 —— 这正是原 bug 只坏一半的那一刀
+const PX_PER_PT := 81.0 / 44.0     # 81px = 44pt (见 tests/_probe_touch.gd 的换算推导)
+const TOUCH_MIN_PX := 81.0
+
+
+## 这一只单位身上的装备件数 —— 拿产品自己的读法(`InventoryScene._unit_equips`) 反问,
+## 测试不在这里手抄一份"统领看 persistent_equipped / 小将看 equips"的副本。
+func _worn_n(sc: Node, unit: Dictionary) -> int:
+	return (sc.call("_unit_equips", unit) as Array).size()
+
+
+func _mini_cells(sc: Node) -> Array:
+	var out: Array = []
+	for c in _all(sc):
+		var ctl: Control = c
+		if ctl is Panel and absf(ctl.size.x - ctl.size.y) < 0.5 \
+			and ctl.size.x >= 20.0 and ctl.size.x <= 60.0:
+			out.append(ctl)
+	return out
+
+
+func _unload_buttons(sc: Node) -> Array:
+	var out: Array = []
+	for c in _all(sc):
+		if c is Button and str((c as Button).text).begins_with("卸下"):
+			out.append(c)
+	return out
+
+
+## 给一个 Control 派一次真的左键按下(走它自己的 `gui_input`) —— 不调内部函数,
+## 量的是玩家真按下去会发生什么。
+func _tap(c: Control) -> void:
+	var ev := InputEventMouseButton.new()
+	ev.button_index = MOUSE_BUTTON_LEFT
+	ev.pressed = true
+	ev.position = c.size * 0.5
+	c.gui_input.emit(ev)
+
+
+## 全队(统领 + 小将)身上的装备总数 —— 破坏性检查的"账"
+func _worn_total() -> int:
+	var n := 0
+	if GameState.persistent_equipped is Dictionary:
+		for pid in GameState.persistent_equipped:
+			n += (GameState.persistent_equipped[pid] as Array).size()
+	var dl: Dictionary = GameState.get_dual_lineup()
+	for lane in ["top", "bottom"]:
+		for u in (dl.get(lane, []) as Array):
+			if u is Dictionary and u.get("equips", null) is Array:
+				n += (u["equips"] as Array).size()
+	return n
+
+
+func _check_equip_slot_pt() -> void:
+	print("")
+	GameState.season_leaders = ["basic", "stone", "bamboo"]
+	GameState.persistent_equipped = {
+		"basic": [{"id": "p2eq_001", "star": 1}, {"id": "p2eq_002", "star": 1}, {"id": "p2eq_003", "star": 1}],
+		"stone": [{"id": "p2eq_004", "star": 1}],
+	}
+	GameState.dual_lineup = {}
+	var dl0: Dictionary = GameState.get_dual_lineup()
+	var minion_n := 0
+	for lane in ["top", "bottom"]:
+		for u in (dl0.get(lane, []) as Array):
+			if u is Dictionary and str(u.get("kind", "")) == "minion":
+				u["equips"] = [{"id": "p2eq_005", "star": 1}, {"id": "p2eq_006", "star": 1}]
+				minion_n += 1
+	GameState.dual_lineup = dl0
+	GameState.persistent_bench = [{"id": "p2eq_007", "star": 1}]
+
+	var sc = _mk(-1)
+	for _i in range(14):
+		await get_tree().process_frame
+
+	# ── ① 分母: 18 个格子在场, 尺寸就是 40×40, 而同屏背包格是 96 ──
+	var minis: Array = _mini_cells(sc)
+	var sizes := {}
+	for m in minis:
+		sizes["%.0f" % (m as Control).size.x] = int(sizes.get("%.0f" % (m as Control).size.x, 0)) + 1
+	var slot_px: float = float(InvScene.SLOT)
+	var mini_px: float = 0.0
+	for m in minis:
+		mini_px = maxf(mini_px, (m as Control).size.x)
+	var filled: Array = []
+	for m in minis:
+		if (m as Control).mouse_filter != Control.MOUSE_FILTER_IGNORE:
+			filled.append(m)
+	var worn0: int = _worn_total()
+	print("  [EQUIP_SLOT_PT 分母] 迷你格 %d 个 尺寸分布 %s ⇒ %.0fpx = %.1fpt ; 背包格 %.0fpx = %.1fpt ; 可点的 %d 个 / 全队在身装备 %d 件"
+		% [minis.size(), str(sizes), mini_px, mini_px / PX_PER_PT, slot_px, slot_px / PX_PER_PT,
+		   filled.size(), worn0])
+	_ok("EQUIP_SLOT_PT ① ★分母: 6 个单位 × %d 格 = %d 个迷你格全在场"
+		% [int(InvScene.P2.UNIT_EQUIP_CAP), 6 * int(InvScene.P2.UNIT_EQUIP_CAP)],
+		minis.size() == 6 * int(InvScene.P2.UNIT_EQUIP_CAP),
+		"只扫到 %d 个(分布 %s)" % [minis.size(), str(sizes)])
+	_ok("EQUIP_SLOT_PT ① ★分母: 它们确实小于触控下限(%.0fpx = %.1fpt < 81px = 44pt) —— 否则本节整节是空检查"
+		% [mini_px, mini_px / PX_PER_PT], mini_px > 0.0 and mini_px < TOUCH_MIN_PX,
+		"迷你格 %.0fpx 已经 ≥ 81px, 那这一节该重写" % mini_px)
+	_ok("EQUIP_SLOT_PT ① ★分母: 身上有装备的格子数 == 全队在身件数(%d)" % worn0,
+		filled.size() == worn0, "可点 %d 件 vs 在身 %d 件" % [filled.size(), worn0])
+
+	# ── ② 点每一个格子: 一件都不许被卸掉, 而且必须【选中】了某只单位 ──
+	var bench_before: int = GameState.persistent_bench.size()
+	var destroyed: Array = []
+	var selected := 0
+	var tapped := 0
+	## ★★只记**位置**不记节点引用: 每一轮都要 `_rebuild()`(把 `_dl_sel` 清回去),
+	##   而 `_rebuild()` 会 `queue_free` 掉全部子节点 ⇒ 上一轮拿的 Control 下一轮就是
+	##   freed object(实测 `SCRIPT ERROR: Trying to cast a freed object`, 协程当场中止、
+	##   后面四条断言一条没跑)。位置是数据, 活得过重建。
+	var spots: Array = []
+	for m in filled:
+		spots.append((m as Control).get_global_rect().position)
+	for sp in spots:
+		var w_before: int = _worn_total()
+		var b_before: int = GameState.persistent_bench.size()
+		sc.set("_dl_sel", {})
+		sc.call("_rebuild")
+		for _i in range(6):
+			await get_tree().process_frame
+		## _rebuild 换了节点, 按位置重新拿到"同一个格子"
+		var again: Control = null
+		for c in _mini_cells(sc):
+			if (c as Control).mouse_filter != Control.MOUSE_FILTER_IGNORE \
+				and (c as Control).get_global_rect().position.distance_to(sp as Vector2) < 1.0:
+				again = c
+		if again == null:
+			continue
+		tapped += 1
+		_tap(again)
+		for _i in range(6):
+			await get_tree().process_frame
+		if _worn_total() != w_before or GameState.persistent_bench.size() != b_before:
+			destroyed.append("格@%s: 在身 %d→%d 背包 %d→%d" % [
+				str(sp), w_before, _worn_total(), b_before, GameState.persistent_bench.size()])
+		if not (sc.get("_dl_sel") as Dictionary).is_empty():
+			selected += 1
+	print("  [EQUIP_SLOT_PT ②] 逐个点了 %d / %d 个格子: 破坏了 %d 次 / 选中成功 %d 次 ; 背包 %d→%d"
+		% [tapped, spots.size(), destroyed.size(), selected, bench_before,
+		   GameState.persistent_bench.size()])
+	_ok("EQUIP_SLOT_PT ② ★分母: 每个有装备的格子都真按到了(%d / %d)" % [tapped, spots.size()],
+		spots.size() > 0 and tapped == spots.size())
+	_ok("EQUIP_SLOT_PT ② 21.7pt 的格子**没有一个**是破坏性的(逐个点 %d 次, 卸掉 0 件)" % tapped,
+		destroyed.is_empty(), "; ".join(destroyed.slice(0, 3)))
+	_ok("EQUIP_SLOT_PT ② 点格子把那只单位【选中】了(%d / %d 次)" % [selected, tapped],
+		tapped > 0 and selected == tapped)
+
+	# ── ③④ 统领 / 小将各自都有 81px(44pt) 的卸下路径, 且数量 == 在身件数 ──
+	var dl: Dictionary = GameState.get_dual_lineup()
+	var kinds_seen := {}
+	var bad: Array = []
+	for lane in ["top", "bottom"]:
+		var arr: Array = dl.get(lane, [])
+		for i in range(arr.size()):
+			if not (arr[i] is Dictionary):
+				continue
+			var unit: Dictionary = arr[i]
+			var want: int = _worn_n(sc, unit)
+			if want <= 0:
+				continue
+			var kind := str(unit.get("kind", ""))
+			sc.set("_dl_sel", {"lane": lane, "idx": i})
+			sc.call("_rebuild")
+			for _i in range(8):
+				await get_tree().process_frame
+			var btns: Array = _unload_buttons(sc)
+			kinds_seen[kind] = int(kinds_seen.get(kind, 0)) + 1
+			## ★★条子本身: 不许伸出 720 设计框, 也不许压在背包格子上。
+			##   两件都是真踩过的 —— 81px 的键硬塞进 80 高的条 ⇒ 底沿 725(出屏 5px);
+			##   而 `_bench_bottom()` 当年没跟上这条新操作条 ⇒ 背包照样铺到 712, 被它压住。
+			if btns.size() > 0:
+				var bar0: Control = (btns[0] as Node).get_parent() as Control
+				if bar0 != null:
+					var br: Rect2 = Rect2(bar0.position, bar0.size)
+					if br.end.y > 720.5:
+						bad.append("%s/%s#%d: 操作条底沿 %.0f 伸出 720 设计框" % [lane, kind, i, br.end.y])
+					for sco in _all(sc):
+						if sco is ScrollContainer:
+							var sr2: Rect2 = Rect2((sco as Control).position, (sco as Control).size)
+							if sr2.intersects(br):
+								bad.append("%s/%s#%d: 操作条 %s 压在背包滚动区 %s 上"
+									% [lane, kind, i, str(br), str(sr2)])
+			if btns.size() != want:
+				bad.append("%s/%s#%d(%s): 在身 %d 件, 卸下键 %d 个"
+					% [lane, kind, i, str(unit.get("id", "")), want, btns.size()])
+				continue
+			for b in btns:
+				var bs: Vector2 = (b as Control).size
+				if minf(bs.x, bs.y) < TOUCH_MIN_PX:
+					bad.append("%s/%s#%d: 卸下键只有 %.0f×%.0f(短边 %.1fpt)"
+						% [lane, kind, i, bs.x, bs.y, minf(bs.x, bs.y) / PX_PER_PT])
+				var bar: Control = (b as Node).get_parent() as Control
+				if bar != null and not bar.get_global_rect().grow(1.0).encloses((b as Control).get_global_rect()):
+					bad.append("%s/%s#%d: 卸下键伸出操作条 %s / %s"
+						% [lane, kind, i, str((b as Control).get_global_rect()), str(bar.get_global_rect())])
+	print("  [EQUIP_SLOT_PT ③④] 验过的单位类型: %s ; 不合格 %d 条" % [str(kinds_seen), bad.size()])
+	_ok("EQUIP_SLOT_PT ③ ★分母: 统领与小将【两类】都验到了(%s) —— 原 bug 只坏统领那一半, 少验一类就照样绿"
+		% str(kinds_seen),
+		int(kinds_seen.get("leader", 0)) >= 1 and int(kinds_seen.get("minion", 0)) >= 1)
+	_ok("EQUIP_SLOT_PT ④ 每只带装备的单位: 卸下键数 == 在身件数, 每颗短边 ≥ 81px(44pt), 且不伸出操作条",
+		bad.is_empty(), " / ".join(bad.slice(0, 4)))
+	sc.queue_free()
+	await get_tree().process_frame

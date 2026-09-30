@@ -1538,6 +1538,7 @@ func _ready() -> void:
 	await _selftest_interactive()
 	await _selftest_frame_pairing()
 	await _audit_popups()
+	await _test_cursor_scale()
 	print("  ── 全屏合计 ──")
 	print("    [盲区分母] 非 BaseButton 却能吃鼠标事件(MOUSE_FILTER_STOP/PASS)的控件: %d 个" % tot_mf)
 	print("      —— 这个数是「判据只认某类节点」那条失明的**规模**。`_interactive()` 现在收了")
@@ -1558,3 +1559,175 @@ func _ready() -> void:
 	if _fail == 0:
 		print("ALL PASS — 全屏 UI 一致性")
 	get_tree().quit(1 if _fail > 0 else 0)
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  ★★CURSOR_SCALE —— 自绘光标相对 UI 的大小不许随窗口变
+# ══════════════════════════════════════════════════════════════════════════
+## 由来 (2026-09-29 台账 ④, 用户原话「不合理的地方比如这个光标为什么这么大？」):
+##   `autoload/CursorTheme.gd` 原来写 `_cur.scale = base_scl / clampf(cf, 0.5, 4.0)`,
+##   把爪子钉死在**屏幕物理 ~24px**、故意不随内容缩放。实测(tests/_probe_cursor_size.gd)
+##   换算成设计像素时它**随窗口变四倍**: 2560 宽 12px / 1280 宽 24px / 640 宽 48px,
+##   而本文件自己的触控下限 `TOUCH_MIN = 81`(44pt) ⇒ 小窗口下一只爪子有触控区的 59%。
+##   附带: `clampf` 的下界 0.5 在 480 宽(cf=0.375)**真的被夹住** ⇒ 那句"固定 24px"本来就是假的。
+##
+## ★这是**手机触屏游戏**: `CursorTheme._ready` 在 Android/iOS 直接早退, 手机上一只爪子都没有
+##   ⇒ 这只爪子只存在于桌面/开发期, 「和屏上别的东西同一套比例」比「1:1 照抄网页 PoC 的
+##   position:fixed div」重要。所以改成**只吃状态缩放**(0.8/0.9/1.0/1.12), 恒 24 设计px。
+##
+## ★判据形状(memory「判据要刚好卡住那个形状」): 那个形状是**「相对 UI 的大小随窗口变」**,
+##   所以主判据是**跨窗口尺寸的一致性**(旧写法 4 倍差 ⇒ 红), 幅度上限只是第二道。
+## ★分母(memory「凡『X 不许超上限』必须配一条『X 真的到过上限附近』"): 必须先证明这一轮
+##   **真的量到了一个跨度很大的 cf 区间** —— 窗口没真变过的话"到处都一样大"是恒真的空检查。
+## ★跑的是产品自己那份建树 + 每帧代码(`_build_cursor()` / `_process()`), 只绕过平台早退那两行;
+##   量的是真节点的全局变换 × 真 `get_screen_transform()`, 不是我这里重算一遍公式。
+const _CURSOR_DESIGN := Vector2(1280.0, 720.0)   # project.godot window/size/viewport_*
+## 爪子在【设计像素】里的高度上限 = 触控下限的 40%。
+## 24(现状) 过, 48(旧写法在 640 宽时) 红; 悬停态 1.12× = 26.9 也还在里面。
+const _CURSOR_MAX_OF_TOUCH := 0.40
+
+
+func _test_cursor_scale() -> void:
+	print("  ── ★★CURSOR_SCALE: 光标相对 UI 的大小 ──")
+	var src := FileAccess.get_file_as_string("res://autoload/CursorTheme.gd")
+	_ok("★分母 CURSOR_SCALE: 读得到 CursorTheme.gd", src != "")
+	var ct = load("res://autoload/CursorTheme.gd").new()
+	add_child(ct)
+	await get_tree().process_frame
+	## ★先证明【平台早退真的把建树挡住了】: 无头下 _ready 一个节点都不该建。
+	##   这条同时是"手机上没有这只爪子"那半句的行为证据(同一道早退)。
+	_ok("★★CURSOR_SCALE: 无头下 `_ready` 没建爪子(平台早退真的挡住了建树)",
+		ct._cur == null and not bool(ct._enabled),
+		"_cur=%s _enabled=%s" % [str(ct._cur), str(ct._enabled)])
+	_ok("★★CURSOR_SCALE: 手机(Android/iOS)不建自绘光标 ⇒ 这只爪子只存在于桌面",
+		src.contains("OS.get_name() in [\"Android\", \"iOS\"]"),
+		"早退没了 = 手机上会残留一只绿龟爪(用户 2026-07-18)")
+	var mm0 := Input.mouse_mode
+	ct._build_cursor()      # 产品自己那份建树代码(只绕过早退)
+	_ok("★分母 CURSOR_SCALE: 手动建树之后爪子在场(不在场 ⇒ 下面全是空检查)",
+		ct._cur != null and ct._g != null and bool(ct._enabled),
+		"_cur=%s _g=%s" % [str(ct._cur), str(ct._g)])
+	if ct._cur == null or ct._g == null:
+		ct.queue_free()
+		Input.mouse_mode = mm0
+		return
+
+	## ★★控件框必须真的等于 `ART` —— `_g.size = ART` 那行要是又被写到 `expand_mode` 前面,
+	##   默认 EXPAND_KEEP_SIZE 会把它上调到贴图尺寸(48 = ART 的两倍), 而且**不报任何错**。
+	##   这条量的是真节点的 `size`, 不是源码里那行赋值。
+	_ok("★★CURSOR_SCALE: 爪子控件框 = ART(%d) —— 不是被上调到贴图尺寸的 %d" % [ct.ART, ct.ART * 2],
+		is_equal_approx((ct._g as Control).size.y, float(ct.ART))
+			and is_equal_approx((ct._glow as Control).size.y, float(ct.ART)),
+		"_g.size=%s _glow.size=%s 贴图=%s" % [str((ct._g as Control).size),
+			str((ct._glow as Control).size), str((ct._g as TextureRect).texture.get_size())])
+	## ★热点: `HOT`/`ORIGIN` 是 24 坐标系的, 控件框一胀大爪尖就不落在鼠标点上了。
+	##   量法: 美术坐标 (11,1)(爪尖) 画在哪 vs 代码认为鼠标点在哪, 两者之差应为 0。
+	var _S: Vector2 = (ct._g as Control).size
+	var _drawn: Vector2 = (ct._g as Control).get_global_transform() 		* Vector2(11.0 * _S.x / ct.ART, 1.0 * _S.y / ct.ART)
+	var _assumed: Vector2 = (ct._cur as Control).get_global_transform() * ct.HOT
+	_ok("★★CURSOR_SCALE: 爪尖真的落在鼠标点上(热点偏移 = 0)",
+		(_drawn - _assumed).length() <= 0.01,
+		"偏移 %s (控件框胀大时实测 (11,1))" % str(_drawn - _assumed))
+
+	var vp := get_viewport()
+	var root_win := get_tree().root
+	var size0: Vector2i = root_win.size
+	var rows: Array = []          # [窗口, cf_真实, 设计px, 物理px]
+	var design_min := 1e9
+	var design_max := -1.0
+	var cf_min := 1e9
+	var cf_max := -1.0
+	for win in [Vector2i(2560, 1440), Vector2i(1920, 1080), Vector2i(1280, 720),
+			Vector2i(800, 600), Vector2i(640, 360), Vector2i(624, 351)]:
+		root_win.size = win
+		await get_tree().process_frame
+		await get_tree().process_frame
+		ct._process(0.0)          # 产品自己的每帧代码(它才是决定 scale 的那一行)
+		var cf: float = vp.get_screen_transform().get_scale().y
+		var design_px: float = (ct._g as Control).get_global_transform().get_scale().y \
+			* (ct._g as Control).size.y
+		var phys_px: float = design_px * cf
+		rows.append([win, cf, design_px, phys_px])
+		design_min = minf(design_min, design_px)
+		design_max = maxf(design_max, design_px)
+		cf_min = minf(cf_min, cf)
+		cf_max = maxf(cf_max, cf)
+		print("    [实测] 窗口 %dx%d  cf=%.4f  设计px=%.1f (占触控下限 %.0f%%)  物理px=%.1f"
+			% [win.x, win.y, cf, design_px, design_px / TOUCH_MIN * 100.0, phys_px])
+	root_win.size = size0
+	await get_tree().process_frame
+
+	## ① 分母: 这一轮真的量到了一个跨度很大的 cf 区间 —— 否则"到处一样大"是恒真的
+	print("    [分母] 量了 %d 个窗口尺寸, cf 区间 %.4f ~ %.4f" % [rows.size(), cf_min, cf_max])
+	_ok("★★分母 CURSOR_SCALE: cf 真的跨了大区间(≤0.55 到 ≥1.5), 否则下面那条恒真",
+		rows.size() >= 4 and cf_min <= 0.55 and cf_max >= 1.5,
+		"n=%d cf %.4f~%.4f" % [rows.size(), cf_min, cf_max])
+	## ② 主判据: 换窗口大小时, 爪子在【设计像素】里的大小不许变(旧写法这里是 4 倍差)
+	var ratio: float = (design_max / design_min) if design_min > 0.0 else 999.0
+	_ok("★★★CURSOR_SCALE: 爪子相对 UI 的大小不随窗口变(设计px 最大/最小 ≤ 1.02)",
+		ratio <= 1.02, "设计px %.1f ~ %.1f ⇒ %.2f 倍(两个 bug 都在时实测 24~96 = 4.00 倍)"
+			% [design_min, design_max, ratio])
+	## ③ 幅度: 相对本仓自己的触控下限不许太大
+	_ok("★★CURSOR_SCALE: 爪子高度 ≤ 触控下限的 %.0f%%(=%.1f 设计px)"
+			% [_CURSOR_MAX_OF_TOUCH * 100.0, TOUCH_MIN * _CURSOR_MAX_OF_TOUCH],
+		design_max <= TOUCH_MIN * _CURSOR_MAX_OF_TOUCH,
+		"实测最大 %.1f 设计px = 触控下限的 %.0f%%" % [design_max, design_max / TOUCH_MIN * 100.0])
+	## ④ 反过来: 物理像素【应该】跟着窗口走(= 它真的和别的像素同比例缩)。
+	##   这条和 ② 是一对: 只有 ② 会让"干脆写死一个常数"也过, 加上 ④ 才钉住"跟着 UI 缩"。
+	var phys_min := 1e9
+	var phys_max := -1.0
+	for r in rows:
+		phys_min = minf(phys_min, float(r[3]))
+		phys_max = maxf(phys_max, float(r[3]))
+	_ok("★★CURSOR_SCALE: 物理像素跟着窗口走(≥3 倍跨度) ⇒ 它和场上别的像素同比例",
+		phys_min > 0.0 and phys_max / phys_min >= 3.0,
+		"物理px %.1f ~ %.1f ⇒ %.2f 倍" % [phys_min, phys_max, (phys_max / phys_min) if phys_min > 0.0 else 0.0])
+	## ⑤ 那条 clamp 的谎话没了: 缩放不再读内容缩放因子, 也就没有"被夹住"这回事
+	var proc := _cursor_strip_comments(_cursor_func_body(src, "_process"))
+	_ok("★CURSOR_SCALE: `_process` 不再用内容缩放因子给爪子定尺寸(没有 clamp 下界可撒谎)",
+		not proc.contains("get_screen_transform"),
+		"_process 里还在读 get_screen_transform ⇒ 又把爪子钉回物理像素了")
+
+	ct.queue_free()
+	Input.mouse_mode = mm0
+	await get_tree().process_frame
+
+
+## 剥掉 `#` 注释 —— 上面那条判据搜的是【代码】里还有没有 get_screen_transform。
+## ★不剥会栽: 修好那一行时我在旁边留了一句「(旧写法: base_scl / clampf(vp.get_screen_transform()…))」,
+##   门禁当场把它当成代码判红了 —— 判据搜源码字符串就必须先剥注释。
+func _cursor_strip_comments(block: String) -> String:
+	var out := ""
+	for line in block.split("
+"):
+		var s := str(line)
+		var in_q := false
+		var q := ""
+		var cut := -1
+		for i in s.length():
+			var ch := s[i]
+			if in_q:
+				if ch == q and (i == 0 or s[i - 1] != "\\"):
+					in_q = false
+			elif ch == "\"" or ch == "'":
+				in_q = true
+				q = ch
+			elif ch == "#":
+				cut = i
+				break
+		out += (s.substr(0, cut) if cut >= 0 else s) + "
+"
+	return out
+
+
+## 取某个函数的函数体源码(到下一个顶层 func 为止)。
+func _cursor_func_body(src: String, fname: String) -> String:
+	var head := "\nfunc %s(" % fname
+	var i := src.find(head)
+	if i < 0:
+		return ""
+	var start := i + 1
+	var j := src.find("\nfunc ", start)
+	if j < 0:
+		j = src.length()
+	return src.substr(start, j - start)

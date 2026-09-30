@@ -58,7 +58,7 @@ func _ready() -> void:
 			["射程", "%d" % int(K["HOOK_RANGE"])],
 			["眩晕", "%d秒" % int(K["HOOK_STUN"])],
 			["受伤加成", "+%d%%" % int(round((K["HOOK_VULN_MULT"] - 1.0) * 100.0))],
-			["冷却", "CD%d" % int(SK["hook"]["cd"])],
+			["冷却", "冷却%d秒" % int(SK["hook"]["cd"])],
 		],
 		# ↓2026-07-30 补: 原来这三个技能【只查射程和 CD】, 实质数值一个都不查 ——
 		#   因为数值是 trainer_system 里的裸字面量, 没有常量可以推。现已提成常量。
@@ -69,15 +69,15 @@ func _ready() -> void:
 			["攻速", "+%d%%攻速" % int(round((TK["FURY_HASTE"] - 1.0) * 100.0))],
 			["龟能充能", "+%d%%龟能充能" % int(round((TK["FURY_ECHARGE"] - 1.0) * 100.0))],
 			["移速", "+%d%%移速" % int(round((TK["FURY_MOVE"] - 1.0) * 100.0))],
-			["冷却", "CD%d" % int(SK["fury_potion"]["cd"])],
+			["冷却", "冷却%d秒" % int(SK["fury_potion"]["cd"])],
 		],
 		"whistle": [
 			["临时生命", "%d临时生命" % int(TK["WHISTLE_TEMPHP"])],
 			# ★2026-07-30 用户改数值: 200 物理 → 100 + 15% 目标最大生命【真实伤害】
-			["气波定值段", "%d+" % int(TK["WHISTLE_WAVE_DMG"])],
-			["气波百分比段", "%d%%目标最大生命真实伤害" % int(round(TK["WHISTLE_WAVE_MAXHP_PCT"] * 100.0))],
+			["气波定值段", "%d点" % int(TK["WHISTLE_WAVE_DMG"])],
+			["气波百分比段", "%d%%目标最大生命" % int(round(TK["WHISTLE_WAVE_MAXHP_PCT"] * 100.0))],
 			["气波射程", "%d码" % int(TK["WAVE_RANGE"])],
-			["削甲", "削甲%d%%" % int(round((1.0 - K["WHISTLE_SHRED_MULT"]) * 100.0))],
+			["削甲", "破甲%d%%" % int(round((1.0 - K["WHISTLE_SHRED_MULT"]) * 100.0))],
 			# ↓2026-07-30 补: 这两个时长原来【文案里根本没写】(常量注释自己标着"★文案没写这个时长")
 			["临时血时长", "%d秒" % int(TK["WHISTLE_TEMPHP_SEC"])],
 			["削甲时长", "持续%d秒" % int(TK["WHISTLE_SHRED_SEC"])],
@@ -89,32 +89,36 @@ func _ready() -> void:
 			["狂暴时长(三项共用)", "狂暴%d秒" % int(TK["WHISTLE_BERSERK_SEC"])],
 			["吸血是定值不是百分比", "+%d点吸血" % int(TK["WHISTLE_BERSERK_LS"])],
 			["不许把4秒只挂免死上", "!免死4秒"],
-			["冷却", "CD%d" % int(SK["whistle"]["cd"])],
+			["冷却", "冷却%d秒" % int(SK["whistle"]["cd"])],
 		],
 		"glacier": [
 			["长度", "%d码" % int(SK["glacier"]["range"])],
-			["持续", "(%d秒)" % int(K["GLACIER_SEC"])],
+			["持续", "%d秒" % int(K["GLACIER_SEC"])],
 			["减速", "-%d%%移速" % int(round((1.0 - TK["GLACIER_SLOW_MAG"]) * 100.0))],
 			["受伤加成", "+%d%%" % int(round((K["GLACIER_VULN_MULT"] - 1.0) * 100.0))],
-			["冷却", "CD%d" % int(SK["glacier"]["cd"])],
+			["冷却", "冷却%d秒" % int(SK["glacier"]["cd"])],
 		],
 		# ★审核 §3-e: 钩锁写了"空放返还"而猎龟令/驯服没写 → 三技口径不一致。已补齐。
 		#   (空放返还: 钩锁 HOOK_CD_MISS 10 秒; 猎龟令/驯服 各自 CD × 0.5)
 		"hunt_order": [
-			["空放返还(与钩锁口径一致)", "空放返还一半"],
+			["没锁中的冷却(=一半·从常量算)", "冷却%d秒" % int(K["HUNT_CD"] * 0.5)],
+			["不许写黑话「空放」", "!空放"],
+			["不许写黑话「返还」", "!返还"],
 			["射程", "%d码" % int(K["HUNT_RANGE"])],
 			["持续", "%d秒" % int(K["HUNT_SEC"])],
 			["受伤加成", "+%d%%" % int(round((K["HUNT_VULN"] - 1.0) * 100.0))],
 			["嘲讽半径", "%d码" % int(K["HUNT_TAUNT_R"])],
-			["冷却", "CD%d" % int(K["HUNT_CD"])],
+			["冷却", "冷却%d秒" % int(K["HUNT_CD"])],
 		],
 		"tame": [
-			["空放返还(与钩锁口径一致)", "空放返还一半"],
+			["没标中的冷却(=一半·从常量算)", "冷却%d秒" % int(K["TAME_CD"] * 0.5)],
+			["不许写黑话「空放」", "!空放"],
+			["不许写黑话「返还」", "!返还"],
 			["射程", "%d码" % int(K["TAME_RANGE"])],
 			["重生血量", "%d%%最大生命" % int(K["TAME_REVIVE_PCT"] * 100.0)],
 			["无敌时长", "%.1f秒无敌" % K["TAME_REVIVE_SEC"]],
 			["每秒衰减", "每秒损失%d%%最大生命" % int(K["TAME_DECAY_PCT"] * 100.0)],
-			["冷却", "CD%d" % int(K["TAME_CD"])],
+			["冷却", "冷却%d秒" % int(K["TAME_CD"])],
 		],
 	}
 
@@ -146,8 +150,20 @@ func _ready() -> void:
 		var cd2: float = float(e2.get("cd", 0.0))
 		var rg2: float = float(e2.get("range", 0.0))
 		_derived += 1
-		_chk("①.5 「%s」文案里的 CD 与注册表一致(CD%d)" % [str(e2.get("name", sid2)), int(cd2)],
-			d2.find("CD%d" % int(cd2)) >= 0)
+		_chk("①.5 「%s」文案里的冷却与注册表一致(冷却%d秒)" % [str(e2.get("name", sid2)), int(cd2)],
+			d2.find("冷却%d秒" % int(cd2)) >= 0)
+		## ★★反面: 「CD」是开发黑话, 不许上屏(用户 2026-09-29 点名这一族。
+		##   原文案六条主动全写「CD N」—— 无单位、且是英文缩写)。
+		## ★★这一条不是洁癖, 而是在拆一座**自己搭的墙**:
+		##   本门禁原来拿 `d2.find("CD%d")` 当尺子 ⇒ 文案想改成人话
+		##   **就会被自己的门禁报红**(2026-09-30 实测: 改完 7 条文案后红了 30 条,
+		##   其中组组都是「找不到「CD30」」「找不到「空放返还一半」」这种)。
+		##   而它头注声明的意图是「每个**数字**都要能从常量推出来」——
+		##   **实现超出了它自己声明的意图**, 于是黑话被钉在了屏幕上
+		##   (memory `fb-gate-can-pin-the-bug-in-place`)。
+		##   现在尺子 = 「冷却N秒」(N 仍然来自注册表, 一改就红) + 这条反向。
+		_chk("①.5 「%s」文案里不许写开发黑话「CD」(要写「冷却N秒」)" % str(e2.get("name", sid2)),
+			d2.find("CD") < 0)
 		if rg2 > 0.0:
 			_derived += 1
 			_chk("①.5 「%s」文案里的射程与注册表一致(%d 码)" % [str(e2.get("name", sid2)), int(rg2)],
@@ -173,7 +189,8 @@ func _ready() -> void:
 			var neg: bool = frag.begins_with("!")
 			if neg:
 				frag = frag.substr(1)
-			var found: bool = d.find(frag) >= 0
+			## ★否定断言走严格逐字; 正向断言走「数字锁死·词序不锁」(见 `_frag_found`)。
+			var found: bool = (d.find(frag) >= 0) if neg else _frag_found(d, frag)
 			var ok: bool = (not found) if neg else found
 			if not ok:
 				if neg:
@@ -201,3 +218,50 @@ func _chk(name: String, ok: bool) -> void:
 	print("  [%s] %s" % ["PASS" if ok else "FAIL", name])
 	if not ok:
 		_fail += 1
+
+
+## ★★片段比对: 【数字口径】必须在, 但【词序】不锁死。
+##
+## 由来(2026-09-30): 用户点名「训龟大师技能描述是数据表黑话」。而本门禁原来
+##   拿 `d.find(frag)` 逐字找 `"+3%攻速"` 这种串 ⇒ 文案想写成人话的
+##   「攻速 +3%」**就会被自己的门禁报红** —— 它把词序也钉住了,
+##   而头注声明的意图只是「每个**数字**都要能从常量推出来」。
+##   (memory `fb-gate-can-pin-the-bug-in-place`: 门禁会把 bug 钉住。)
+##
+## ★宽一格不是放水: 数值 token 与属性词**两者都必须在, 而且必须紧邻**
+##   (窗口 8 字, 容得下「提升」「获得」这类连接词)。数字一改照样红;
+##   把「+30%攻速」写成「攻速+30%」算过, 写成「攻速…一大段…+30%」不算过。
+## ⚠ 否定断言(`!` 前缀)**不走这条宽松路** —— 它要守的是「旧说法不许残留」,
+##   宽松了会把“旧说法换了个词序潜回来”放过去。调用处已经分开写了。
+func _frag_found(d: String, frag: String) -> bool:
+	## ● 先脱掉纯排版字符(括号) —— 它们不承载数值口径
+	var dd := d.replace("(", "").replace(")", "").replace("（", "").replace("）", "")
+	var ff := frag.replace("(", "").replace(")", "").replace("（", "").replace("）", "")
+	if dd.find(ff) >= 0:
+		return true
+	var re := RegEx.create_from_string("([+-]?[0-9]+(?:[.][0-9]+)?%?)")
+	if re == null:
+		return false
+	var m := re.search(ff)
+	if m == null:
+		return false
+	var num: String = m.get_string(1)
+	var pre: String = ff.substr(0, m.get_start(1))
+	var post: String = ff.substr(m.get_end(1))
+	var i: int = dd.find(num)
+	while i >= 0:
+		## 窗口 8 字: 容得下「提升」「获得」「的」这类连接词, 容不下一整句话
+		var a: int = i
+		var b: int = i + num.length()
+		var lo: int = maxi(0, a - (pre.length() + post.length() + 8))
+		var hi: int = mini(dd.length(), b + pre.length() + post.length() + 8)
+		var left: String = dd.substr(lo, a - lo)
+		var right: String = dd.substr(b, hi - b)
+		## ★两侧都试: 「+30%攻速」与「攻速+30%」都算对,
+		##   「狂暴4秒」与「狂暴：…友先4秒内」也都算对。
+		var ok_pre: bool = pre == "" or left.find(pre) >= 0 or right.find(pre) >= 0
+		var ok_post: bool = post == "" or right.find(post) >= 0 or left.find(post) >= 0
+		if ok_pre and ok_post:
+			return true
+		i = dd.find(num, i + 1)
+	return false

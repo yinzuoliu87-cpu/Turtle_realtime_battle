@@ -32,6 +32,9 @@ func _ready() -> void:
 	_test_wired_in()
 	_test_touch_only()
 	await _test_tutorial_claims()
+	await _test_guide_host()
+	print("  [耗帧] 本测试共跑 %d 帧(默认预算 500 帧; 超了会被 --quit-after 掐断 ⇒ 打不出 ALL PASS)"
+		% Engine.get_process_frames())
 	print("ALL PASS — 新手引导已接线且能推进" if _fail == 0 else "FAILED: %d" % _fail)
 	get_tree().quit(0 if _fail == 0 else 1)
 
@@ -864,3 +867,237 @@ func _check_gestures(parsed: Dictionary) -> void:
 		_ok("★教学说的手势「%s」代码里真的实现了" % str(g), miss.is_empty(), "缺: %s" % str(miss))
 	print("  [分母] 教学文案里出现的手势词 %d 个" % seen)
 	_ok("★分母>0(一个手势词都没出现 ⇒ 上面那几条是空检查)", seen > 0, "seen=%d" % seen)
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  ⑤ ★★GUIDE_HOST —— 「教站位」那三步真的会出现在新玩家眼前, 并且挡对了东西
+# ══════════════════════════════════════════════════════════════════════════
+## 由来 (2026-09-29 台账 ⑧): `dual_lane_flow.gd` 那行写的是 `attach_guide(self, "battle")`,
+##   而 `DualLaneFlow extends RefCounted`、`attach_guide(host: Node, …)` 要 Node ⇒ 运行期
+##   `SCRIPT ERROR: Invalid type in function 'attach_guide' …(RefCounted (DualLaneFlow))…`,
+##   **这条错当场中止整个 `_dl_enter_place`** ⇒ 左值 `battle._tutorial` 没被写、
+##   group `tut_overlay` 节点数 0 ⇒ 那三步**从来没有一个画面**。每个新玩家都白吃一条报错。
+##
+## ★为什么五条教学门禁全绿还漏掉它: 它们**没有一条走过「真的进第一把战斗的摆位阶段」**这条路。
+##   报错文本是 `SCRIPT ERROR` 开头, run-tests.sh 的 FATAL 正则本来就认得 ——
+##   **漏的不是正则, 是路径**。所以本节必须建真战斗场、真走到 `_dl_state == "place"`。
+##
+## ★★修好之后这层【强制挡点击】的浮层第一次真出现在玩家面前 ⇒ 引入一条从没跑过的交互路径。
+##   首次教学 mandatory = **没有跳过钮**, 摆位屏唯一的出路就是提示条上那颗钮。
+##   本仓教训「拦住人的同时别拦住解锁动作」⇒ 所以下面既验「挡住了开打」, 也验「出路钮点得动」、
+##   「洞里落到 3D 拖拽输入」、「照提示按开打之后引导会自己收掉」。
+##   量的是引擎自己的命中测试(`gui_get_hovered_control()` 就是决定这一下点击给谁的那套) +
+##   真 `push_input` 点击之后**产品自己的状态**(`_dl_state` / `_idx` / group 节点数)。
+func _hovered_at(p: Vector2) -> Control:
+	var mm := InputEventMouseMotion.new()
+	mm.position = p
+	mm.global_position = p
+	get_viewport().push_input(mm)
+	return get_viewport().gui_get_hovered_control()
+
+
+func _click_at(p: Vector2) -> void:
+	_hovered_at(p)
+	for down in [true, false]:
+		var mb := InputEventMouseButton.new()
+		mb.button_index = MOUSE_BUTTON_LEFT
+		mb.pressed = down
+		mb.position = p
+		mb.global_position = p
+		get_viewport().push_input(mb)
+	await get_tree().process_frame
+
+
+func _guide_next_btn(g) -> Button:
+	var kids: Array = (g._btn_row as HBoxContainer).get_children()
+	return kids[kids.size() - 1] as Button if not kids.is_empty() else null
+
+
+func _is_guide_mask(g, c: Control) -> bool:
+	if c == null or g == null or not is_instance_valid(g):
+		return false
+	for m in (g._mask as Array):
+		if is_same(c, m):
+			return true
+	return false
+
+
+func _test_guide_host() -> void:
+	print("  ── ⑤ GUIDE_HOST: 教站位那三步真的出场 + 挡对东西 ──")
+	var gs = get_node_or_null("/root/GameState")
+	var td = get_node_or_null("/root/TutorialDirector")
+	_ok("★分母 GUIDE_HOST: GameState / TutorialDirector 两个 autoload 都在", gs != null and td != null)
+	if gs == null or td == null:
+		return
+	## ── 快照全局态(含 static) —— 不还原会波及同进程后面的一切 ──
+	var snap := {
+		"test_mode": bool(gs.test_mode), "tutorial": bool(gs.tutorial),
+		"tutorial_active": bool(gs.tutorial_active), "tutorial_stage": str(gs.tutorial_stage),
+		"tutorial_mandatory": bool(gs.tutorial_mandatory), "dual_active": bool(gs.dual_active),
+		"dual_ghost": gs.dual_ghost, "season_leaders": gs.season_leaders.duplicate(),
+		"left_team": Array(gs.left_team), "dual_lineup": gs.dual_lineup,
+	}
+	var no_present0: bool = DualLaneFlow.NO_PRESENT
+	gs.test_mode = true             # 绝不写玩家存档
+	gs.tutorial = true
+	gs.tutorial_active = true
+	gs.tutorial_stage = "match1"
+	gs.tutorial_mandatory = true    # 首次强制 = 没有跳过钮(最恶劣的那一档)
+	var lt: Array[String] = []
+	for id in td.FIXED_TEAM:
+		lt.append(str(id))
+	gs.season_leaders = lt.duplicate()
+	gs.left_team.assign(lt)
+	gs.dual_lineup = {}
+	gs.reset_dual_lane()
+	td.arm_battle_sandbox()         # 真入口: 教学弱 ghost + dual_active
+	DualLaneFlow.NO_PRESENT = true  # 跳掉 5+5 秒纯演出(对摆位阶段的 UI/引导没有影响)
+	_ok("★分母 GUIDE_HOST: 教学沙盒真的武装了(stage=match1 + 弱 ghost + 双路)",
+		td.is_active() and str(td.stage()) == "match1" and bool(gs.dual_active)
+			and str(gs.dual_ghost.get("ghost_id", "")) == "tutorial_weak",
+		"stage=%s dual=%s ghost=%s" % [str(td.stage()), str(gs.dual_active),
+			str(gs.dual_ghost.get("ghost_id", ""))])
+	_ok("★分母 GUIDE_HOST: 本阶段该挂的是「place」那套(不是 battle 那套)",
+		td.steps_key_for("battle") == "place", "steps_key=%s" % td.steps_key_for("battle"))
+
+	var s = load("res://scripts/scenes/RealtimeBattle3DScene.gd").new()
+	add_child(s)
+	var w := 0
+	while w < 400 and str(s._dl_state) != "place":
+		await get_tree().process_frame
+		w += 1
+	_ok("★★分母 GUIDE_HOST: 真战斗场走到了【摆位阶段】(走不到 = 下面全是空检查)",
+		str(s._dl_state) == "place", "等了 %d 帧, _dl_state=%s" % [w, str(s._dl_state)])
+	var g = s._tutorial
+	var ov: Array = get_tree().get_nodes_in_group("tut_overlay")
+	print("    [实测] battle._tutorial=%s  group tut_overlay=%d 个  _tut_place_shown=%s"
+		% [str(g), ov.size(), str(s._tut_place_shown)])
+	## ★这两条就是台账 ⑧ 本体: 传 self 时 battle._tutorial 是 null、group 里 0 个。
+	_ok("★★GUIDE_HOST: `battle._tutorial` 真的被赋值了(传 RefCounted 时报错中止 ⇒ 这里是 null)",
+		g != null and is_instance_valid(g), "实测 %s" % str(g))
+	_ok("★★GUIDE_HOST: 引导浮层真的进了场景树(group `tut_overlay` ≥1; 台账 ⑧ 时是 0)",
+		ov.size() >= 1, "实测 %d 个" % ov.size())
+	if g == null or not is_instance_valid(g):
+		_ok("GUIDE_HOST 后续(挡点击 / 出路钮 / 自动收尾)", false, "引导没挂上, 没得量")
+		s.queue_free()
+		await get_tree().process_frame
+		_guide_host_restore(gs, snap, no_present0)
+		return
+	_ok("★GUIDE_HOST: 挂的是「place」三步(不是 battle 四步)", int((g._steps as Array).size()) == 3,
+		"实测 %d 步" % int((g._steps as Array).size()))
+	_ok("★GUIDE_HOST: 首次是强制的(mandatory) ⇒ 没有跳过钮, 所以出路钮必须点得动",
+		bool(g._mandatory))
+	# 等布局落定(首帧容器还没算 rect ⇒ 洞是空的; 见 TutorialGuide._apply_highlight 那段)
+	for _i in range(20):
+		await get_tree().process_frame
+
+	var go_btn: Button = s._dl_go_btn
+	_ok("★分母 GUIDE_HOST: 「开打」钮在场且可见(它是被挡 / 该放行的那个对象)",
+		is_instance_valid(go_btn) and go_btn.visible and go_btn.get_global_rect().size.x > 0.0,
+		"rect=%s" % (str(go_btn.get_global_rect()) if is_instance_valid(go_btn) else "无"))
+
+	# ── 第 1 步: highlight=field ⇒ 洞在我方半场, 开打该被挡住, 出路钮该点得动 ──
+	_ok("★分母 GUIDE_HOST: 第 1 步高亮的是 `field`", str(g._cur_hl) == "field",
+		"实测 highlight=%s" % str(g._cur_hl))
+	var vis := 0
+	for m in (g._mask as Array):
+		if (m as Control).visible:
+			vis += 1
+	_ok("★分母 GUIDE_HOST: 第 1 步四块暗幕真的在压暗(0 块 ⇒ 下面那条「挡住了」是假绿)", vis == 4,
+		"可见 %d/4" % vis)
+	var who_go := _hovered_at(go_btn.get_global_rect().get_center())
+	_ok("★★GUIDE_HOST: 引导挡得住该挡的 —— 「开打」那一点被自家暗幕吃掉(引擎自己的命中测试)",
+		_is_guide_mask(g, who_go), "命中的是 %s" % (who_go.get_class() if who_go != null else "null"))
+	await _click_at(go_btn.get_global_rect().get_center())
+	_ok("★★GUIDE_HOST: 真点一下「开打」, 摆位阶段没被跳掉", str(s._dl_state) == "place",
+		"_dl_state=%s" % str(s._dl_state))
+	var hole := Rect2(s._tutorial_anchor("field"))
+	_ok("★分母 GUIDE_HOST: `field` 锚点解析出非空矩形(空矩形 ⇒ 根本没挖洞)",
+		hole.size.x > 0.0 and hole.size.y > 0.0, "rect=%s" % str(hole))
+	var who_hole := _hovered_at(hole.get_center())
+	_ok("★★GUIDE_HOST: 洞【里】没有控件吃点击 ⇒ 玩家照第 1 步说的拖龟还拖得动",
+		who_hole == null, "洞里命中了 %s" % (who_hole.get_class() if who_hole != null else "null"))
+	var nb := _guide_next_btn(g)
+	_ok("★分母 GUIDE_HOST: 出路钮在场", nb != null and nb.get_global_rect().size.x > 0.0,
+		"钮=%s rect=%s" % [(str(nb.text) if nb != null else "无"),
+			(str(nb.get_global_rect()) if nb != null else "-")])
+	if nb != null:
+		var who_nb := _hovered_at(nb.get_global_rect().get_center())
+		_ok("★★GUIDE_HOST: 出路钮那一点归【钮】自己(不是暗幕) —— 否则 mandatory 引导 = 死局",
+			who_nb != null and is_same(who_nb, nb),
+			"命中的是 %s" % (who_nb.get_class() if who_nb != null else "null"))
+		var idx0: int = int(g._idx)
+		await _click_at(nb.get_global_rect().get_center())
+		_ok("★★GUIDE_HOST: 真点出路钮, 步数前进了(没前进 = 被自家暗幕挡住 = 永久卡死)",
+			is_instance_valid(g) and int(g._idx) == idx0 + 1,
+			"_idx %d → %s" % [idx0, (str(g._idx) if is_instance_valid(g) else "引导已销毁")])
+
+	# ── 走到最后一步: highlight=go_button ⇒ 开打该【放行】, 且按下去引导要自己收掉 ──
+	var guard := 0
+	while is_instance_valid(g) and int(g._idx) < int((g._steps as Array).size()) - 1 and guard < 8:
+		var nb2 := _guide_next_btn(g)
+		if nb2 == null:
+			break
+		await _click_at(nb2.get_global_rect().get_center())
+		for _j in range(4):
+			await get_tree().process_frame
+		guard += 1
+	_ok("★分母 GUIDE_HOST: 走到了最后一步(highlight=go_button)",
+		is_instance_valid(g) and str(g._cur_hl) == "go_button",
+		"_idx=%s highlight=%s" % [(str(g._idx) if is_instance_valid(g) else "已销毁"),
+			(str(g._cur_hl) if is_instance_valid(g) else "-")])
+	if is_instance_valid(g) and str(g._cur_hl) == "go_button":
+		var who_go2 := _hovered_at(go_btn.get_global_rect().get_center())
+		_ok("★★GUIDE_HOST: 最后一步的洞开在「开打」上 ⇒ 那一点归钮自己(挡住它 = 教学让你按而你按不着)",
+			who_go2 != null and is_same(who_go2, go_btn),
+			"命中的是 %s" % (who_go2.get_class() if who_go2 != null else "null"))
+		await _click_at(go_btn.get_global_rect().get_center())
+		for _k in range(10):
+			await get_tree().process_frame
+		_ok("★★GUIDE_HOST: 照提示按下「开打」, 战斗真的开了", str(s._dl_state) == "fight",
+			"_dl_state=%s" % str(s._dl_state))
+		## ★按下开打之后开打钮被 `visible=false`, 而这一步高亮的就是它 ⇒ 引导要是还挂着,
+		##   `_tutorial_anchor` 每帧返回空 Rect2, 既刷警告又在屏上说假话(「摆好了就点开打」)。
+		##   place[2] 的 `advanceOn: fight_started` 就是为这个加的。
+		_ok("★★GUIDE_HOST: 按开打之后引导自己收掉了(否则屏上继续教你按一个已经按过且藏起来的钮)",
+			not is_instance_valid(g), "引导还在 = %s" % str(is_instance_valid(g)))
+		_ok("★GUIDE_HOST: 收掉之后 group `tut_overlay` 也清了",
+			get_tree().get_nodes_in_group("tut_overlay").is_empty(),
+			"还剩 %d 个" % get_tree().get_nodes_in_group("tut_overlay").size())
+	## 上面那条自动收尾靠的两头: 数据侧的 advanceOn + 代码侧真的发这个事件。两头各钉一条。
+	var praw := FileAccess.get_file_as_string(STEPS_JSON)
+	var ppj = JSON.parse_string(praw)
+	var padv := ""
+	if ppj is Dictionary and (ppj as Dictionary).has("place"):
+		var parr = (ppj as Dictionary)["place"]
+		if parr is Array and (parr as Array).size() == 3 and (parr as Array)[2] is Dictionary:
+			padv = str(((parr as Array)[2] as Dictionary).get("advanceOn", ""))
+	_ok("★GUIDE_HOST: place[2]「点开打」挂了完成信号 advanceOn=fight_started",
+		padv == "fight_started", "advanceOn=%s" % padv)
+	var dl_src := _code_only(FileAccess.get_file_as_string("res://scripts/scenes/battle/dual_lane_flow.gd"))
+	_ok("★GUIDE_HOST: 开打那一刻真的发这个信号(不发 ⇒ advanceOn 永远等不到)",
+		dl_src.contains('notify("fight_started")'))
+	_ok("★★GUIDE_HOST: 挂引导时 host 传的是 `battle` 不是 `self`(self 是 RefCounted ⇒ 运行期报错中止)",
+		dl_src.contains('attach_guide(battle, "battle")') and not dl_src.contains("attach_guide(self,"),
+		"源码里还留着 attach_guide(self, …)")
+
+	s.queue_free()
+	await get_tree().process_frame
+	_guide_host_restore(gs, snap, no_present0)
+
+
+## 还原本节改过的全局态 + static。★不还原会波及同进程后面的一切(本仓栽过 static 没还原那一类)。
+func _guide_host_restore(gs, snap: Dictionary, no_present0: bool) -> void:
+	DualLaneFlow.NO_PRESENT = no_present0
+	gs.tutorial = bool(snap["tutorial"])
+	gs.tutorial_active = bool(snap["tutorial_active"])
+	gs.tutorial_stage = str(snap["tutorial_stage"])
+	gs.tutorial_mandatory = bool(snap["tutorial_mandatory"])
+	gs.dual_active = bool(snap["dual_active"])
+	gs.dual_ghost = snap["dual_ghost"]
+	gs.season_leaders = snap["season_leaders"]
+	gs.left_team.assign(snap["left_team"])
+	gs.dual_lineup = snap["dual_lineup"]
+	gs.test_mode = bool(snap["test_mode"])
+	_ok("★GUIDE_HOST 收尾: static `DualLaneFlow.NO_PRESENT` 还原了(不还原 = 污染同进程后面每一条)",
+		DualLaneFlow.NO_PRESENT == no_present0, "现在=%s" % str(DualLaneFlow.NO_PRESENT))

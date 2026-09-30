@@ -45,7 +45,8 @@
     {
       "text": "摆好了就点<b>「开打」</b>。战斗全自动，你的所有决策都在开打之前。",
       "anchor": "bottom",
-      "highlight": "go_button"
+      "highlight": "go_button",
+      "advanceOn": "fight_started"
     }
   ],
 

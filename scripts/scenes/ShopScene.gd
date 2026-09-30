@@ -341,7 +341,12 @@ func _toast(msg: String) -> void:
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	t.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	t.size = Vector2(760, 44)
-	t.position = Vector2((W - 760.0) * 0.5, 430.0)
+	## ★★y 430 → 656(2026-09-30): 430..474 **正好盖住「换一批」按钮的上沿**
+	##   (按钮 y 448..524) —— 而现在最常出现的提示之一就是"深海币不够 · 换一批要 2",
+	##   等于一句话挡住它解释的那颗按钮。656..700 落在底栏两颗按钮(552..648)之下、
+	##   720 设计框之内, 是本屏唯一一条谁都不压的横带(门禁 BUY_FEEDBACK 会穷举核这一条)。
+	##   ⚠ 弹层(z=20)仍被它压住 —— 那是故意的, 见下面 z_index 那行。
+	t.position = Vector2((W - 760.0) * 0.5, 656.0)
 	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	t.z_index = 30       # 底栏弹层是 20 —— 提示必须压得住它
 	var bgp := Panel.new()
@@ -364,14 +369,20 @@ func _toast(msg: String) -> void:
 	##   玩家 2.4 秒内离开商店, 回调照样触发。`is_instance_valid` 挡得住崩溃,
 	##   挡不住闭包把 self 延寿 —— `tree_timer` 守的正是这个。
 	##   ⇒ 换成挂在自己身上的 Timer 子节点: 场景没了它跟着没。
+	## ★★★计时器挂在**提示自己身上**, 不挂在场景上(2026-09-30 改):
+	##   `_rebuild()` 会把 `self` 的每个直接子节点做 `c.visible = false` —— 而 `Timer`
+	##   不是 `CanvasItem`, **没有 `visible` 这个属性** ⇒ 一旦有过 toast, 下一次
+	##   `_rebuild()` 当场 `SCRIPT ERROR: Invalid assignment of property 'visible' … on Timer`。
+	##   在此之前 `_toast` 只被"什么都没变"的分支调用(那些分支不 `_rebuild`), 所以这颗雷
+	##   一直没炸; 我给"买成功"加提示(它后面紧跟 `_rebuild`)第一下就踩到了。
+	##   ⇒ 挂在提示 Label 下: 提示被清掉时计时器跟着走, 而 `_rebuild` 永远看不见它。
 	var tm := Timer.new()
 	tm.one_shot = true
 	tm.wait_time = 2.4
-	add_child(tm)
+	t.add_child(tm)
 	tm.timeout.connect(func():
 		if is_instance_valid(t):
-			t.queue_free()
-		tm.queue_free())
+			t.queue_free())
 	tm.start()
 
 
@@ -379,7 +390,11 @@ func _rebuild() -> void:
 	for c in get_children():
 		if c.is_in_group("tut_overlay"):
 			continue   # ★教学浮层(引导/下一站按钮)不能随重建销毁 —— 买装备会触发 _rebuild
-		c.visible = false
+		## ★`visible = false` 是为了**立刻**从屏上消失(`queue_free` 要等到帧末)。
+		##   ⚠ 必须先问是不是 `CanvasItem`: 非 CanvasItem(Timer/AudioStreamPlayer…)
+		##     没有 `visible`, 直接赋值会 `SCRIPT ERROR`(2026-09-30 被 toast 的计时器踩出来)。
+		if c is CanvasItem:
+			(c as CanvasItem).visible = false
 		c.queue_free()
 	var bg := ColorRect.new(); bg.color = Color("#0a1622")
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(bg)
@@ -544,6 +559,14 @@ func _rebuild() -> void:
 	# 纵向节奏: 卡区止于 420 → 刷新 448(隔 28) → 底部按钮 552(隔 28) → 收于 648, 页底留 72
 	rf.position = Vector2(GRID_X + 250, 448); rf.size = Vector2(240, 76)
 	_coin_button_icon(rf, 20)
+	## ★★买不起时这颗按钮**原来照样是亮的**(实测 coins=0 → `disabled=false`) ——
+	##   点下去走 `_on_refresh` 的裸 return, 玩家看到的就是"点了没反应"。
+	##   照满级那颗买经验按钮的做法办: `disabled` + `modulate` 一起。
+	##   ⚠ 只设 `disabled` 不够 —— 价钱那枚币图标是【子节点】, 不吃 `disabled` 的
+	##     `font_disabled_color`, 只有 `modulate` 会往子节点传(见 bxp 处同一条注释)。
+	var _rf_afford: bool = int(GameState.meta_deepsea_coins) >= REFRESH_COST
+	rf.disabled = not _rf_afford
+	rf.modulate = Color(1, 1, 1, 1) if _rf_afford else Color(1, 1, 1, 0.42)
 	rf.pressed.connect(_on_refresh); _skin_button(rf); add_child(rf)
 
 	_build_synergy_bar()    # ★羁绊总览: 当前激活了哪些 + 距下一档还差几件(2026-08-12 用户点名)
@@ -1513,20 +1536,35 @@ func _on_buy(idx: int) -> void:
 		return
 	var edef: Dictionary = _deco(_offer[idx])
 	var price := _price(edef)
+	var _nm: String = str(edef.get("name", "这件"))
+	## ★★三条不成交的路原来都是【裸 return】—— 玩家看到的是"点了没反应",
+	##   而那与"游戏卡住了"在屏幕上长得一模一样(同 `_toast` 头注记的那次真机实测)。
+	##   ⚠ 别以为"按钮已经 disabled 了所以走不到": 那是**另一处**的判断。
+	##     按钮文案与这里各算一遍价钱, 两边一漂(或按钮被程序触发)这里就是唯一的出口 ——
+	##     满级那颗买经验按钮的 else 分支就是为同一个理由补的。
 	if int(GameState.meta_deepsea_coins) < price:
+		_toast("还差 %d 枚深海币 ·「%s」要 %d" % [price - int(GameState.meta_deepsea_coins), _nm, price])
 		return   # 买不起
 	# ★私人池: 先扣张再扣钱 —— 扣不到张就整笔不成交(货架是异步持久化的, 极端情况下
 	#   可能出现"货架上还挂着、池子已被别的路径抽空"; 那时宁可这一次点击无效, 也不能凭空造张)。
 	var _eid: String = str(edef.get("id", ""))
 	if not GameState.pool_take(_eid, 1):
+		## ★这一条**不是**到不了的分支: 货架是异步持久化的, 同一件被别的路径抽空时
+		##   摊上那张卡还挂着。玩家点下去钱没扣、货没来, 必须有人告诉他为什么。
+		_toast("「%s」刚被人抢走了 · 换一批看看" % _nm)
 		return
 	GameState.meta_deepsea_coins -= price
 	## ★096 小木斧(方案书未决点 ⑧, 用户 2026-08-31 亲自纠正过我): **只能拥有一把**。
 	##   已经有了还买 ⇒ 这一次购买【整笔化成 +15 砍伐经验】, 不进背包。
 	##   钱照扣 —— 这就是它的"用钱换经验"通路, 也是需求原话「购买该装备会使经验条+15」。
 	##   ⚠ 第一把也 +15(需求没有"第一把不算"的例外), 差别只在进不进背包。
+	## ★成交反馈要说的那句话在**合成发生之前**才算得出来 ——
+	##   `auto_merge_all()` 跑完之后 ★1 已经被吃掉, 再问"这一买合到几星"永远是 0。
+	var _will_star: int = _purchase_merge_star(_eid)
+	var _axe_dup := false
 	if _eid == "p2eq_096":
 		var _dup: bool = GameState.axe_owned()
+		_axe_dup = _dup
 		GameState.axe_add_exp(AxeEvo.EXP_ON_BUY)
 		if not _dup:
 			GameState.persistent_bench.append({"id": _eid, "star": 1})
@@ -1537,9 +1575,24 @@ func _on_buy(idx: int) -> void:
 	_persist_offer()   # 买走的位子要留空, 不能退出重进又长回来
 	GameState.save()
 	_rebuild()
+	## ★★成交也要有一句话(用户 2026-09-29 台账 ⑮:「买成功的唯一反馈是整屏重画」)。
+	##   `_rebuild()` 之后才发 —— 它开头把所有子节点 queue_free, 先发就当场被清掉
+	##   (背包页那 7 条 toast 全部看不见, 根因一模一样, 见 `_toast` 头注)。
+	##   ★三种成交各有各的话: 合成到 ★N / 小木斧重复买(化成砍伐经验) / 普通进背包。
+	##     合成那条最要紧 —— 卡片消失了而背包里【多出来的是另一件东西】, 不说就是"我的钱去哪了"。
+	if _will_star >= 2:
+		_toast("买下「%s」· 凑齐 3 件, 合成 ★%d 了" % [_nm, _will_star])
+	elif _axe_dup:
+		_toast("已经有一把「%s」了 · 这一笔化成 +%d 砍伐经验" % [_nm, int(AxeEvo.EXP_ON_BUY)])
+	else:
+		_toast("买下「%s」· 进背包了" % _nm)
 
 func _on_refresh() -> void:
 	if int(GameState.meta_deepsea_coins) < REFRESH_COST:
+		## ★同 `_on_buy`: 原来是裸 return。而「换一批」那颗按钮**一直是亮的**
+		##   (实测 coins=0 时 `disabled=false`) ⇒ 玩家点得下去、什么也不发生。
+		##   这是满级买经验那颗死按钮的同一个形状: 死按钮要长得像死的 + 点了要说为什么。
+		_toast("深海币不够 · 换一批要 %d" % REFRESH_COST)
 		return
 	GameState.meta_deepsea_coins -= REFRESH_COST
 	_roll()
