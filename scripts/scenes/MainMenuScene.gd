@@ -822,12 +822,20 @@ func _gauntlet_status_line(now: int = 0) -> String:
 	var l: int = int(GameState.gauntlet_losses)
 	var lab: String = _P2C.gauntlet_label(w, l)
 	var st: String = GameState.gauntlet_state()
+	## ★★「没打的场次化成了多少」—— 晋级者才可能有, 所以挂在这几条后面。
+	##   金额与 `backfill_ranked_quota()` 读同一份账(见 `backfill_summary()` 头注),
+	##   这里一个数都不自己算。`backfill_paid == 0` 时是空串, 不占位。
+	var bf: Dictionary = GameState.backfill_summary()
+	var conv: String = ""
+	if int(bf.get("games", 0)) > 0:
+		conv = " · 没打的 %d 场化成 深海币 +%d · 经验 +%d" % [
+			int(bf["games"]), int(bf["coins"]), int(bf["xp"])]
 	if st == _P2C.GAUNTLET_IN:
-		return "闯关赛 %s · 已晋级决赛日" % lab
+		return "闯关赛 %s · 已晋级决赛日%s" % [lab, conv]
 	if st == _P2C.GAUNTLET_OUT:
-		return "闯关赛 %s · 已出局" % lab
-	return "闯关赛 %s · 再赢 %d 场晋级 / 再输 %d 场出局" % [
-		lab, maxi(0, int(_P2C.GAUNTLET_WINS_IN) - w), maxi(0, int(_P2C.GAUNTLET_LOSSES_OUT) - l)]
+		return "闯关赛 %s · 已出局%s" % [lab, conv]
+	return "闯关赛 %s · 再赢 %d 场晋级 / 再输 %d 场出局%s" % [
+		lab, maxi(0, int(_P2C.GAUNTLET_WINS_IN) - w), maxi(0, int(_P2C.GAUNTLET_LOSSES_OUT) - l), conv]
 
 
 ## 周日那一行读数。返回**空串 = 今天不是决赛日**。

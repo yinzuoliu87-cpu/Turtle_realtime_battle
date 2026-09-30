@@ -69,6 +69,7 @@ func _ready() -> void:
 	_t_weekend_interim()
 	_t_hearts_one_source()
 	_t_promote_line_derived()
+	await _t_backfill_visible()
 
 	print("")
 	print("  (共 %d 条断言)" % _n)
@@ -614,3 +615,102 @@ func _t_promote_line_derived() -> void:
 		not _gs.gauntlet_line_reached(), "season_wins=%d hearts=0" % q)
 	_gs.season_wins = bak_w
 	_gs.hearts = bak_h
+
+# ─────────────────────────────────────────────────────────────
+# ⑪ BACKFILL_VISIBLE —— 「没打的场次化成了多少」必须说给玩家听
+#
+# 用户 2026-09-30:「补发要实现的，**语义你得学习别的游戏怎么说话的啊**」。
+#
+# ★★查下来这机制**金额一直是对的, 但完全静默** ——
+#   `grep '补发'` 在 `scripts/scenes/` 与 `data/*.json` 里**零命中**
+#   ⇒ 币和经验凭空多出来, 屏上一个字都没有。
+#   这与"静默失败"是同一族毛病, 只是方向相反: 事情做了, 玩家读不出为什么。
+#
+# ★玩家侧的词用「化成」而**不是**「补发」——
+#   「补发」是运营/后台用词(停机补偿那种语境);
+#   而本仓自己早就有这个说法: 商店买到重复斧头那句「这一笔化成 +N 砍伐经验」。
+#   ⇒ 不自创新词, 用游戏自己已有的那个。这一条也写成断言(见下面的 NO_ADMIN_WORD)。
+#
+# ★★判据三条, 缺哪条都不算说给玩家听了:
+#   ① 金额**与账本同源**: 屏上那三个数必须等于 `backfill_summary()`,
+#      而它又与 `backfill_ranked_quota()` 读同一份 `backfill_paid`
+#      ⇒ 不许屏上自己算一遍(手抄的副本必然落后)。
+#   ② 那句话**真的出现在产品自己拼的那一行里** —— 走 `_gauntlet_status_line()`,
+#      不是我在测试里自己拼一个字符串再断言它等于自己。
+#   ③ 没化成过的人(`backfill_paid == 0`)屏上**不许**出现这句话(否则是恒真式 + 占位噪声)。
+# ─────────────────────────────────────────────────────────────
+func _t_backfill_visible() -> void:
+	var pk = load("res://scenes/MainMenu.tscn")
+	if pk == null:
+		_ok("⑪ ★分母: 载入 MainMenu.tscn", false, "load 失败")
+		return
+	var mm = pk.instantiate()
+	get_tree().root.add_child(mm)
+	for _i in range(6):
+		await get_tree().process_frame
+
+	var anchor: int = _P2.week_anchor_utc(int(Time.get_unix_time_from_system()))
+	_gs.week_anchor_ts = anchor
+	_gs.season_start_ts = anchor
+	## 周六那一天的正午 —— 状态行只有这一天出闯关赛那一段
+	var sat: int = anchor + 5 * 86400 + 43200
+	_ok("⑪ ★分母: 钉的那一刻真的是周六(否则下面量的是另一段)",
+		_P2.phase_at_utc(sat) == _P2.PHASE_GAUNTLET, _P2.phase_at_utc(sat))
+
+	## ── ③ 先验反面: 没化成过的人屏上不许有这句话 ──
+	_gs.promoted = true
+	_gs.gauntlet_wins = 0
+	_gs.gauntlet_losses = 0
+	_gs.backfill_paid = 0
+	var s0: String = str(mm._gauntlet_status_line(sat))
+	_ok("⑪ ★★没化成过的人屏上**不许**出现这句话(否则是恒真式 + 占位噪声)",
+		s0.find("化成") < 0, s0)
+
+	## ── ①② 正题: 化成过 4 场的人, 屏上那三个数必须等于账本 ──
+	_gs.backfill_paid = 4
+	var bf: Dictionary = _gs.backfill_summary()
+	_ok("⑪ ★分母: 账本自己算出来的三个数(0 场 = 下面全是空检查)",
+		int(bf["games"]) == 4 and int(bf["coins"]) > 0 and int(bf["xp"]) > 0, str(bf))
+	var s1: String = str(mm._gauntlet_status_line(sat))
+	_ok("⑪ ★★★BACKFILL_VISIBLE: 屏上真有那句话(走产品自己拼的那一行, 不是我拼的)",
+		s1.find("化成") >= 0, s1)
+	_ok("⑪ ★★★金额与账本同源: 场数/币/经验三个数都在屏上且与 `backfill_summary()` 一致",
+		s1.find("%d 场" % int(bf["games"])) >= 0
+			and s1.find("+%d" % int(bf["coins"])) >= 0
+			and s1.find("+%d" % int(bf["xp"])) >= 0,
+		"屏上=%s / 账本=%s" % [s1, str(bf)])
+	## ★反向: 账本一改, 屏上必须跟着改(证明它不是写死的一句话)
+	_gs.backfill_paid = 2
+	var bf2: Dictionary = _gs.backfill_summary()
+	var s2: String = str(mm._gauntlet_status_line(sat))
+	_ok("⑪ ★★账本一改屏上跟着改(4 场 → 2 场), 证明那句话不是写死的",
+		s2.find("%d 场" % int(bf2["games"])) >= 0 and s2 != s1,
+		"2 场时屏上=%s" % s2)
+
+	## ── NO_ADMIN_WORD: 玩家可见文案里不许出现「补发」这种后台词 ──
+	var admin_hits: Array = []
+	var files3: Array = []
+	_collect_gd("res://scripts/scenes", files3)
+	for fp3 in files3:
+		var f3 := FileAccess.open(str(fp3), FileAccess.READ)
+		if f3 == null:
+			continue
+		var t3: String = f3.get_as_text()
+		f3.close()
+		var ln3: int = 0
+		for line3 in t3.split("\n"):
+			ln3 += 1
+			var s3: String = str(line3).strip_edges()
+			if s3.begins_with("#") or s3.begins_with("##"):
+				continue      # 注释里叫它 `backfill`/「补发」是可以的, 那是给读代码的人看的
+			if s3.find("\"") < 0:
+				continue      # 只看有字符串字面量的行 —— 玩家看到的只可能是它们
+			if s3.find("补发") >= 0:
+				admin_hits.append("%s:%d: %s" % [str(fp3).get_file(), ln3, s3.substr(0, 60)])
+	print("  [分母] NO_ADMIN_WORD: 扫了 %d 个 scenes/*.gd" % files3.size())
+	_ok("⑪ ★分母: 真的扫到 scenes 下的文件(0 = 空检查)", files3.size() >= 10, "%d 个" % files3.size())
+	_ok("⑪ ★★NO_ADMIN_WORD: 玩家可见字符串里不许出现「补发」(那是后台词, 玩家侧用「化成」)",
+		admin_hits.is_empty(), "; ".join(admin_hits))
+
+	mm.queue_free()
+	await get_tree().process_frame

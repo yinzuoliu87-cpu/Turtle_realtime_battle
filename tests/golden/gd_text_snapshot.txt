@@ -513,6 +513,7 @@ scripts/scenes/LeaderboardScene.gd|lit|（连不上服务器 · 对手还没读�
 scripts/scenes/LeaderboardScene.gd|lit|🏆 本周排行
 scripts/scenes/LeaderboardScene.gd|text|你
 scripts/scenes/LeaderboardScene.gd|text|本周共 %d 人上榜
+scripts/scenes/MainMenuScene.gd|lit| · 没打的 %d 场化成 深海币 +%d · 经验 +%d
 scripts/scenes/MainMenuScene.gd|lit|%d 分 %02d 秒
 scripts/scenes/MainMenuScene.gd|lit|%d 天 %d 小时
 scripts/scenes/MainMenuScene.gd|lit|%d 小时 %d 分
@@ -552,9 +553,9 @@ scripts/scenes/MainMenuScene.gd|lit|训龟大师
 scripts/scenes/MainMenuScene.gd|lit|距收盘 %s
 scripts/scenes/MainMenuScene.gd|lit|还没上过场
 scripts/scenes/MainMenuScene.gd|lit|这天按积分赛的规矩打
-scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 再赢 %d 场晋级 / 再输 %d 场出局
-scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 已出局
-scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 已晋级决赛日
+scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 再赢 %d 场晋级 / 再输 %d 场出局%s
+scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 已出局%s
+scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 已晋级决赛日%s
 scripts/scenes/MainMenuScene.gd|lit|闯关赛 · 本周没晋级
 scripts/scenes/MainMenuScene.gd|lit|💀 本大轮已出局 · %s
 scripts/scenes/MainMenuScene.gd|lit|💀 本大轮已出局 · 下周一开新的一轮
