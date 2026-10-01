@@ -31,6 +31,25 @@
 #       069 eq_food_batch.gd:195      … * float(u["maxHp"])                          ⇒ 自身（两处文案）
 #       072 eq_food_batch.gd:490      grant(u, KEY_ULT, float(u["maxHp"])*pct)       ⇒ 自身
 #       091 eq_relic_batch.gd:166     amt = flat + float(u.get("maxHp"))*pct         ⇒ 自身
+#
+# v0.19.487: 百分比无归属 28→7。21 条, **全部逐件读过代码**（行号即证据）:
+#   ⇒ 自身  bamboo RealtimeBattle3DScene.gd:6745 / ice ice_system.gd:502(注释原文"5%施法者maxHp")
+#           gambler battle_spawn.gd:644 + gambler_system.gd:240 / candy candy_system.gd:183
+#           phoenix RealtimeBattle3DScene.gd:4566 / lava lava_system.gd:690 / chest chest_system.gd:80
+#           space battle_damage.gd:497 / shell battle_damage.gd:500
+#           040 equip_system.gd:768 + gremlin_gun.gd:65 / 087 eq_gadget_batch.gd:573
+#   ⇒ 目标  headless RealtimeBattle3DScene.gd:2929 tgt["maxHp"] / space 星光弹 RB:309 "tcurhp"
+#           diamond diamond_system.gd:74 o["maxHp"] / crystal RealtimeBattle3DScene.gd:6724 tgt["maxHp"]
+#   ⇒ 斧头自己  096 axe_final_forms.gd:146 ax["maxHp"]
+#
+# ★★这一轮最值得记的发现: **detail / desc 层本来就写着归属, 跑偏的全是 brief**。
+#   「{C:...}%<b>目标</b>最大生命值」(diamond detail)、「{C:...}%目标最大生命值」(headless/crystal detail)、
+#   「HP={C:...}%糖果龟最大生命值」(candy detail) —— 而同一条的 brief 把归属删掉了。
+#   和装备侧 034/071 的形状**一模一样**: 简介是漂移发生地, 因为它是"照着详细版删出来的"。
+#
+# 剩下 7 条(都要先读代码才知道是谁的, 还没定位到实现):
+#   p2eq_004 斩杀线 / p2eq_013 海胆护盾 / p2eq_081 举盾 / p2eq_082 回复
+#   rainbow 2%攻击力 / lightning 护盾 / chest 贪婪
 口语·叠满	10
 口语·攒满	0
-百分比生命值·没写是谁的	28
+百分比生命值·没写是谁的	7
