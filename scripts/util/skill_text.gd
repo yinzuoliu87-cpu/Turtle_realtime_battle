@@ -72,8 +72,13 @@ const KEYWORD_RULES := [
 ##   ② 剩下 10 个(KEYWORD_RULES 里没有内联图标的)落到 ICON_CLASS_EXTRA。它映到的是
 ##      **已有的 val 色类**, 不是新的十六进制 —— UIPalette 仍是颜色的唯一出处。
 const ICON_CLASS_EXTRA := {
-	"armorpen": "val-def",                             # 与 KEYWORD_RULES 里"护甲穿透"同色类
-	"magicpen": "val-magic",
+	## ★★这两个"穿透"原来跟着被穿的属性走(armorpen→val-def 黄 / magicpen→val-magic 蓝),
+	##   理由是"与 KEYWORD_RULES 里那条文字规则同色类"。**量完发现那是错的**:
+	##   `armorpen`(裂开的盾) 与 `def`(盾) 形状 IoU 0.70 且同色; `magicpen`(星爆) 与 `mr`(菱形) 0.71 且同色
+	##   —— 而 v0.19.481 的路线图里我写的是「靠运行时染不同颜色区分」。**染色根本没把它们分开。**
+	##   改成穿透自己一族: 护甲穿透=橙(攻击性)、法术穿透=紫。judge 见 verify_stat_icon_color ⑦。
+	"armorpen": "val-burn",
+	"magicpen": "val-dot",
 	"maxenergy": "val-extra", "echarge": "val-extra",   # 龟能
 	"healamp": "val-heal", "shieldheal": "val-heal",
 	"shieldamp": "val-shield",

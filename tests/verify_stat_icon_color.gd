@@ -118,6 +118,66 @@ func _ready() -> void:
 	_ok("★每个消费点都调了 stat_icon_color_of(忘染 = 屏幕上一枚白方块, 不报错)",
 		undyed.is_empty(), "没染的: %s" % str(undyed))
 
+	# ── ⑦ 同色的两张图标, 形状不许也撞 ──
+	#
+	# ★这条是 2026-10-01 染色接完之后【量出来的】, 不是想出来的。路线图 v0.19.481 里我写过
+	#   「`armorpen`(裂开的盾) 与 `shieldamp`(双层盾) 在 16px 下会退化成普通盾形, 与 `def` 接近
+	#     —— 这是有意接受的: 运行时它们染不同颜色, 颜色能分开」。
+	#   接完染色一量: `armorpen` 与 `def` **同是 #ffd93d**, `magicpen` 与 `mr` **同是 #4dabf7**。
+	#   那句「颜色能分开」是**假的** —— 我登记了一条缓解措施, 却从没验过它成不成立。
+	#
+	# 判据: 把两张图的不透明区当掩膜, 在**真实显示尺寸 16×16** 上算 IoU(交并比)。
+	# 阈值 0.70 是从实测剖面挑的, 不是拍的:
+	#   越线的两对 = 0.70(armorpen/def) 与 0.71(magicpen/mr) —— 正是我肉眼挑出来的那两对;
+	#   同色里第三名 = 0.66(healamp 十字 / shieldheal 药瓶) —— 十字和药瓶不会看错。
+	# 修法也不是放宽阈值, 是**给穿透一族自己的颜色**(armorpen→橙, magicpen→紫)。
+	const IOU_MAX := 0.70
+	var masks: Dictionary = {}
+	for n2 in names:
+		var tex2: Texture2D = load("%s/%s-icon.png" % [ICON_DIR, n2]) as Texture2D
+		if tex2 == null:
+			continue
+		var im2 := tex2.get_image()
+		im2.resize(16, 16, Image.INTERPOLATE_NEAREST)
+		var m: Array[bool] = []
+		for y in 16:
+			for x in 16:
+				m.append(im2.get_pixel(x, y).a > 0.375)
+		masks[n2] = m
+	var clash: Array[String] = []
+	var worst_same := 0.0
+	var worst_pair := ""
+	var n_same := 0
+	for i in names.size():
+		for j in range(i + 1, names.size()):
+			var ka: String = names[i]
+			var kb: String = names[j]
+			if not (masks.has(ka) and masks.has(kb)):
+				continue
+			if not SkillText.stat_icon_color_of(ka).is_equal_approx(SkillText.stat_icon_color_of(kb)):
+				continue
+			n_same += 1
+			var ma: Array = masks[ka]
+			var mb: Array = masks[kb]
+			var inter := 0
+			var uni := 0
+			for q in ma.size():
+				if ma[q] and mb[q]:
+					inter += 1
+				if ma[q] or mb[q]:
+					uni += 1
+			var iou := (float(inter) / float(uni)) if uni > 0 else 0.0
+			if iou > worst_same:
+				worst_same = iou
+				worst_pair = "%s/%s" % [ka, kb]
+			if iou >= IOU_MAX:
+				clash.append("%s 与 %s 同色 #%s 且形状 IoU %.2f" % [ka, kb,
+					SkillText.stat_icon_color_of(ka).to_html(false), iou])
+	print("  [分母] 同色的图标对共 %d 组, 形状最像的一组 %s = %.2f(上限 %.2f)"
+		% [n_same, worst_pair, worst_same, IOU_MAX])
+	_ok("★分母: 真的有同色对可比(0 组则这条是空检查)", n_same > 0, "同色对 0 组")
+	_ok("★同色的两张图标形状不许也撞(颜色和形状都一样 = 玩家分不出)", clash.is_empty(), str(clash))
+
 	_finish()
 
 
