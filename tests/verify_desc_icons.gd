@@ -1,6 +1,7 @@
 extends Node
 ## verify_desc_icons.gd — 描述内联属性图标 (用户2026-07-24: 选A·只真属性加图标, 图标紧贴属性词前)
 ## SkillText.render_bbcode 在【真属性关键词】前插一枚 [img] 属性图标; 伤害类型/DoT/控制词不插。
+## ★2026-10-01: 图标改成纯白模板后, 这枚 [img] 必须自带 color=(它不吃外面的 [color])。
 
 const SkillText = preload("res://scripts/util/skill_text.gd")
 
@@ -30,7 +31,16 @@ func _ready() -> void:
 
 	# ③ 无原始 <img> 泄漏(都转成 [img]) + [img] 语法
 	_ok("★无 <img> 原始标签漏给玩家", not bb.contains("<img"))
-	_ok("★用的是 BBCode [img=..] 语法", bb.contains("[img="))
+	## ★★2026-10-01 改: 这条原来断言的是**短式** `[img=`。属性图标那天改成了【纯白模板】,
+	##   短式没有 color 参数 ⇒ 必须换长式 `[img width=W color=#rrggbb]`, 否则文字是彩的、
+	##   图标是一枚白方块。**这条门禁当时把旧语法钉在原地**(memory `fb-gate-can-pin-the-bug-in-place`),
+	##   所以不是"放宽它", 而是把它改成钉**新**契约 —— 而且比原来严: 要求每一处都带 color。
+	var n_img := bb.count("[img")
+	print("  [分母] 内联图标 %d 处" % n_img)
+	_ok("★分母: 这条模板真插出了图标(0 处则下面是空检查)", n_img >= 8, "只有 %d 处" % n_img)
+	_ok("★用的是 BBCode 长式 [img width=.. color=..](短式 [img=W] 没有 color 参数)",
+		bb.count("[img width=%d color=#" % SkillText.ICON_PX) == n_img,
+		"带 color 的 %d / 共 %d" % [bb.count("[img width=%d color=#" % SkillText.ICON_PX), n_img])
 
 	# ④ 反向: 关键词表里【没有 icon 的】(灼烧/眩晕/物理) 不应带图标路径混入其色块
 	var bb2 := SkillText.render_bbcode("灼烧与眩晕, 造成魔法伤害", f, {})

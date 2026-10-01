@@ -498,9 +498,12 @@ func _stat_cell(parent: Control, y: float, i: int, v: int, is_self: bool) -> voi
 		ic.size = Vector2(STAT_ICON, STAT_ICON)
 		ic.position = Vector2(cx, y + (ROW_H - 12.0 - STAT_ICON) / 2.0)
 		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		## `stats/` 那套是【纯白模板】(2026-10-01)要染色; 奖杯与横扫是成品彩图, **不能**染。
+		var base := Color.WHITE
+		if p.begins_with("res://assets/sprites/stats/"):
+			base = SkillText.stat_icon_color_of(p)
 		## 该量是 0 就把图标压暗 —— "还没有"一眼看得出, 不用逐个读数字。
-		if v <= 0:
-			ic.modulate = Color(1, 1, 1, 0.30)
+		ic.modulate = Color(base.r, base.g, base.b, 0.30) if v <= 0 else base
 		parent.add_child(ic)
 	var col: String = COL_DIM if v <= 0 else (COL_SELF if is_self else COL_ROW)
 	_cell(parent, str(v), cx + STAT_ICON + 4.0, y, STAT_NUM_W, 18,

@@ -940,6 +940,11 @@ func _info_stat_cell(grid: GridContainer, icon: String, val: String, col: Color 
 	var h = HBoxContainer.new(); h.add_theme_constant_override("separation", 6)
 	if icon_tex != "" and ResourceLoader.exists(icon_tex):
 		var it = TextureRect.new(); it.texture = load(icon_tex)
+		## ★2026-10-01: 属性图标改成**纯白模板**后在这里染色。
+		##   染色源是 SkillText.stat_icon_color_of(路径) —— **不是**这一行文字的颜色 col:
+		##   同一个"攻击"在三个界面的文字色分别是 #ff9d8a / #ff9f43 / UIPalette.PHYS(实测),
+		##   跟着文字走 = 图标也跟着漂。图标要做成属性的**固定身份**, 全项目一个属性一个色。
+		it.modulate = SkillText.stat_icon_color_of(icon_tex)
 		it.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; it.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		## ★属性图标 20 不是 26(2026-08-16): 属性区是 4 行 × 2 列的密表, 行高由图标决定 ——
 		##   26→20 让整块从 110px 收到 86px, 而文字字号一点没动(可读性不变)。
@@ -1042,6 +1047,7 @@ func _info_status_chips(vb: VBoxContainer, u: Dictionary) -> void:
 		if _ip != "" and ResourceLoader.exists(_ip):
 			var ir = TextureRect.new()
 			ir.texture = load(_ip)
+			ir.modulate = SkillText.stat_icon_color_of(_ip)   # 同上: 按属性固定色, 不跟文字
 			ir.custom_minimum_size = Vector2(16, 16)
 			ir.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			ir.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED

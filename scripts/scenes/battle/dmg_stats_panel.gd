@@ -348,6 +348,11 @@ func build() -> void:
 		var ip: String = TAB_ICON + str(pair[2])
 		if ResourceLoader.exists(ip):
 			b.icon = load(ip)
+			## 纯白模板要染色(2026-10-01)。Button 的图标不吃 modulate 槽, 走 icon_*_color;
+			## 五个状态都要覆盖 —— 只盖 normal 会让按下/悬停时图标跳回白。
+			var icol := SkillText.stat_icon_color_of(ip)
+			for _st in ["icon_normal_color", "icon_hover_color", "icon_pressed_color", "icon_focus_color", "icon_disabled_color"]:
+				b.add_theme_color_override(_st, icol)
 			b.add_theme_constant_override("icon_max_width", TAB_ICON_PX)
 			b.add_theme_constant_override("h_separation", 5)
 		b.process_mode = Node.PROCESS_MODE_ALWAYS

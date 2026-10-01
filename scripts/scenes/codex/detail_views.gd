@@ -169,7 +169,12 @@ func _stat_plaque(px: float, py: float, st: Dictionary) -> void:
 	var _iconp: String = "res://assets/sprites/stats/%s-icon.png" % str(st["key"])
 	var vx: float = px + 16.0
 	if ResourceLoader.exists(_iconp):   # 缺图只显文字, 不崩
-		host._add_image(px + 26.0, py + STAT_CARD_H / 2.0, _iconp, 26, 26)
+		## ★`host` 没有类型标注 ⇒ 这个调用是动态派发, 返回 Variant, 不能用 `:=` 推断
+		##   (2026-10-01 实测: 写成 `var _ir :=` 当场 Parse Error, 而**门禁全绿** ——
+		##    verify_stat_icon_color 不载入 CodexScene, 是真跑了一次图鉴才照出来的)。
+		var _ir: Variant = host._add_image(px + 26.0, py + STAT_CARD_H / 2.0, _iconp, 26, 26)
+		if _ir is TextureRect:
+			(_ir as TextureRect).modulate = SkillText.stat_icon_color_of(_iconp)   # 纯白模板→按属性固定色
 		vx = px + 48.0
 	var disp: String = str(st["disp"])
 	host._add_text(vx, py + STAT_CARD_H / 2.0, disp, 22, str(st["color"]), 0.0, 0.5, true)

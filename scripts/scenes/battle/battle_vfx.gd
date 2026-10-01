@@ -296,6 +296,7 @@ func _float_text(pos2d: Vector2, text: String, col: Color, is_crit: bool = false
 		box.add_theme_constant_override("separation", 1)
 		var icon = TextureRect.new()
 		icon.texture = load("res://assets/sprites/stats/crit-dmg-icon.png")
+		icon.modulate = SkillText.stat_icon_color_of("crit-dmg")   # 纯白模板→暴伤橙(2026-10-01)
 		icon.custom_minimum_size = Vector2(20, 20)
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE   # 忽略贴图原尺寸→缩到20 (缺它则700px原图撑爆)
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED

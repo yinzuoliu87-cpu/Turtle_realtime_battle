@@ -59,6 +59,54 @@ const KEYWORD_RULES := [
 ]
 
 
+## 属性图标的「固定身份色」—— 2026-10-01 全套图标改成【纯白模板】后, 消费点必须染色,
+## 否则 22 张图标在屏幕上是同一个白(重做方案书 docs/plans/20260930-属性图标重做.md)。
+##
+## ★为什么不是「染成这一行文字的颜色」: 实测同一个"攻击"在三个界面的文字色是
+##   #ff9d8a(战斗信息面板) / #ff9f43(图鉴属性牌) / UIPalette.PHYS(备战席) —— 三个值。
+##   跟着文字走 = 图标也跟着漂。图标要做成属性的**固定身份**: 全项目一个属性一个色。
+##
+## ★也不新建一张颜色表。两段来源都是现成的:
+##   ① 先查 KEYWORD_RULES —— 它第 3 项本来就是图标 key, 第 2 项就是色类。12 个 key
+##      这样就有了, 而且以后谁改了规则的颜色, 图标**自动跟着走**。
+##   ② 剩下 10 个(KEYWORD_RULES 里没有内联图标的)落到 ICON_CLASS_EXTRA。它映到的是
+##      **已有的 val 色类**, 不是新的十六进制 —— UIPalette 仍是颜色的唯一出处。
+const ICON_CLASS_EXTRA := {
+	"armorpen": "val-def",                             # 与 KEYWORD_RULES 里"护甲穿透"同色类
+	"magicpen": "val-magic",
+	"maxenergy": "val-extra", "echarge": "val-extra",   # 龟能
+	"healamp": "val-heal", "shieldheal": "val-heal",
+	"shieldamp": "val-shield",
+	"reflect": "val-reflect",                           # 与"反伤"同色类
+	"dmg-amp": "val-normal", "dmg-red": "val-reflect",
+}
+
+static var _ICON_COL_CACHE := {}
+
+
+## 传图标 key("atk") 或完整路径("res://assets/sprites/stats/atk-icon.png") 都可以。
+static func stat_icon_color_of(key_or_path: String) -> Color:
+	var k := key_or_path
+	if k.ends_with(".png"):
+		k = k.get_file().trim_suffix("-icon.png")
+	if _ICON_COL_CACHE.has(k):
+		return _ICON_COL_CACHE[k]
+	var cls := ""
+	for r in KEYWORD_RULES:
+		if (r as Array).size() >= 3 and str(r[2]) == k:
+			cls = str(r[1])
+			break
+	if cls == "":
+		cls = str(ICON_CLASS_EXTRA.get(k, ""))
+	## ★故意不兜底成白。兜底成白 = 以后加一个属性忘了登记就静默变白, 跟重做前一模一样,
+	##   而那正是这次要治的毛病。洋红是刺眼的, 并且 verify_stat_icon_color 会在门禁里先拦下。
+	var c: Color = Color("#ff00ff")
+	if cls != "" and VAL_HEX.has(cls):
+		c = Color(str(VAL_HEX[cls]))
+	_ICON_COL_CACHE[k] = c
+	return c
+
+
 ## 安全计算 expr: 用 Expression 把 ATK/atkScale… 替换成真值再算; 失败原样返回. PoC evalSkillExpr.
 ## 表达式里出现的 `类名.常量名` —— 求值前先换成数值(见 _sub_consts 的说明)。
 static var _CONST_IN_EXPR := RegEx.create_from_string("[A-Z][A-Za-z0-9_]*\\.[A-Z][A-Z0-9_]{2,}")
@@ -280,12 +328,16 @@ static func html_to_bbcode(html: String, icon_px: int = ICON_PX) -> String:
 					out += "[color=%s]" % _span_color(tag)
 				depth += 1
 			elif low.begins_with("<img"):
-				# 内联属性图标: <img src="res://..."/> → [img=W]path[/img](等比·高≈字高)。
+				# 内联属性图标: <img src="res://..."/> → [img width=W color=C]path[/img](等比·高≈字高)。
 				# ★放在 depth 判断【之外】: 图标插在关键词 span【前】, 此刻可能在灰字 span 内(depth>0),
-				#   但 [img] 不受 [color] 影响, 直接输出即可(图标本身有色, 不吃文字色)。
+				#   而 [img] 不受外面的 [color] 影响 —— 所以**它必须自己带 color=**。
+				# ★★2026-10-01 改: 原来这里是 `[img=%d]`, 注释写的理由是"图标本身有色"。
+				#   那句话从今天起是假的 —— 全套属性图标改成了【纯白模板】(见 stat_icon_color_of),
+				#   不带 color= 就是一行文字里嵌一枚白方块。短式 `[img=W]` 没有 color 参数,
+				#   必须换成长式 `[img width=W color=#rrggbb]`。
 				var isrc := _img_src(tag)
 				if isrc != "":
-					out += "[img=%d]%s[/img]" % [icon_px, isrc]
+					out += "[img width=%d color=#%s]%s[/img]" % [icon_px, stat_icon_color_of(isrc).to_html(false), isrc]
 			# 其它未知标签: 丢弃
 		else:
 			var lt := s.find("<", i)

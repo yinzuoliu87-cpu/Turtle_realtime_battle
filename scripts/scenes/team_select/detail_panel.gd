@@ -220,6 +220,7 @@ func _stat_row(icon_path: String, label: String, val: int) -> HBoxContainer:
 		ic.custom_minimum_size = Vector2(host._sp(16), host._sp(16))
 		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		ic.modulate = SkillText.stat_icon_color_of(icon_path)   # 纯白模板→按属性染色(2026-10-01)
 		row.add_child(ic)
 	var lbl = Label.new()
 	lbl.text = label
