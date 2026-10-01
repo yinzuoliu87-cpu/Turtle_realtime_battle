@@ -1127,6 +1127,11 @@ func _show_equip_detail(item: Dictionary) -> void:
 	##   (`detail_views.gd:857` 的「属性」)本来就都只写两个字 —— 同一段信息三个界面
 	##   现在一个词。★下面那份【量高用的平文】必须跟着改, 否则量的高度和渲染的不是同一段字。
 	var bb := "[color=#9fb6c9][b]属性[/b][/color]\n%s\n\n[color=#9fb6c9][b]效果[/b][/color]\n[color=#cfe0ef]%s[/color]" % [bbody, eff]
+	## ★2026-10-01: 专名解释行(灰字斜体)接在详细说明底部 —— 用户「要，加在详细说明底部」。
+	##   算的是**纯文本**那一份: eff 已经带 BBCode 标记, 拿它去找【X】会把标记一起扫进来。
+	var _gloss := SkillText.glossary_bb(SkillText.equip_full(edef), DETAIL_BODY_FS)
+	if _gloss != "":
+		bb += "\n\n" + _gloss
 	## 框高按【字体自己排出来的高度】算, 不是按"每行几个字"估 ——
 	## 估的那一版实拍下面空了 160px(估多了), 而估少了就会把文案切掉。
 	## 估不准还有个更隐蔽的坏处: 每件装备的框高都对不上内容, 看起来就是"随便拍的"。

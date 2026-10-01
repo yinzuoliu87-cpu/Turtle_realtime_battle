@@ -488,6 +488,26 @@ static func plain_to_bb(plain: String, font_px: int = 0) -> String:
 	return html_to_bbcode(colorize_keywords(plain), ipx)
 
 
+## 【专名解释行】—— 详细说明的末尾, 灰字斜体, 逐条解释这段文字里出现过的【X】。
+##
+## ★由来: 用户 2026-10-01「要，加在详细说明底部」。依据是 LoL 实读 692 条 tooltip 的结论
+##   (`docs/plans/ref/20260930-LoL文案体例.md` §6.1): 展开后的详细版底部就有这么一行。
+##   我们一直用【】标专名, 而**从来没有任何地方解释它是什么**。
+##
+## ★只列**这段文字里真的出现过**的词, 不是把整张表倒出来(见 Glossary.terms_in)。
+## ★返回空串 = 这段没有专名 —— 调用方据此决定要不要加那个空行, 别无条件拼。
+static func glossary_bb(source_text: String, font_px: int = 0) -> String:
+	var terms := Glossary.terms_in(source_text)
+	if terms.is_empty():
+		return ""
+	var fs: int = maxi(10, (font_px - 3) if font_px > 0 else 12)
+	var lines: Array[String] = []
+	for k in terms:
+		lines.append("[b]【%s】[/b] %s" % [k, str(Glossary.TERMS[k])])
+	return "[font_size=%d][i][color=%s]%s[/color][/i][/font_size]" % [
+		fs, UIPalette.DIM, "\n".join(lines)]
+
+
 ## 这件装备的【简述】值不值得单独显示一遍。
 ##
 ## ★由来(2026-08-31): 用户在图鉴里看到「同一件事写了两遍」—— 简述一行 + 全文一段,

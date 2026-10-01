@@ -756,7 +756,15 @@ func _render_skill_detail_inline(pet: Dictionary, ctx: Dictionary, sk: Dictionar
 	rt.add_theme_font_size_override("normal_font_size", 17)
 	rt.add_theme_constant_override("line_separation", 5)
 	rt.add_theme_color_override("default_color", Color("#e8f2ff"))
-	rt.text = SkillText.render_bbcode(str(sk.get("detail", sk.get("brief", ""))), ctx, sk, 17)
+	var _sk_src: String = str(sk.get("detail", sk.get("brief", "")))
+	rt.text = SkillText.render_bbcode(_sk_src, ctx, sk, 17)
+	## ★2026-10-01 专名解释行(用户「要，加在详细说明底部」)。只加在**详细**这一层:
+	##   商店那个 246px 的说明框实测加上之后要滚的从 3 件涨到 7 件 —— 那是销售文案, 不是资料页。
+	var _g := SkillText.glossary_bb(_sk_src, 17)
+	if _g != "":
+		rt.text += "
+
+" + _g
 	host.detail.add_child(rt)
 
 
@@ -776,6 +784,11 @@ func _render_passive_detail_inline(pet: Dictionary, ctx: Dictionary, top: float)
 	rt.add_theme_constant_override("line_separation", 5)
 	rt.add_theme_color_override("default_color", Color("#e8f2ff"))
 	rt.text = SkillText.render_bbcode(full_desc, ctx, passive, 17)
+	var _g2 := SkillText.glossary_bb(full_desc, 17)   # 专名解释行(同上)
+	if _g2 != "":
+		rt.text += "
+
+" + _g2
 	host.detail.add_child(rt)
 
 
@@ -899,9 +912,14 @@ func _show_p2eq(eq: Dictionary) -> void:
 	##   `{C:类.常量}` 会**原样显示给玩家**。2026-09-01 给 096 写四个最终造物那一段时
 	##   被门禁当场抓到(「图鉴渲染后没有 {C: 占位符残留」)。desc1 一直走的是
 	##   `SkillText.equip_full`(内部展开), 只有 desc3 这一路漏了。
+	## ★★2026-10-01: 专名解释行要盖住**这一屏显示的全部文字**, 所以在 d3 之后再算
+	##   (096 小木斧的【最终造物】【进化被动】只出现在 desc3 里 —— 只按 desc1 算会漏掉它们)。
 	var d3: String = SkillText.render_consts(str(eq.get("effectDesc3", "")))
 	if d3.strip_edges() != "":
 		bb += "\n\n[color=%s][b]%s[/b][/color]" % [rcol, d3]
+	var _gloss := SkillText.glossary_bb(_eb + "\n" + _ef + "\n" + d3, 17)
+	if _gloss != "":
+		bb += "\n\n" + _gloss
 	var rt = RichTextLabel.new()
 	rt.bbcode_enabled = true; rt.fit_content = true; rt.scroll_active = false
 	rt.position = Vector2(20, y)
