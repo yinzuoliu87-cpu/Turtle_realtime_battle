@@ -473,7 +473,12 @@ func _t_codex() -> void:
 		"买%d/场%d/杀%d" % [AE.EXP_ON_BUY, AE.EXP_ON_MATCH, AE.EXP_ON_KILL])
 	_ok("★文案讲了【四个进化阈值】", txt.contains("80/110/130/160"), "")
 	_ok("★文案讲了【随大轮重置】", txt.contains("大轮重置"), "")
-	_ok("★文案讲了【只能拥有一把】", txt.contains("只能拥有一把"), "")
+	## ★2026-10-02: 原来钉的是**整串字面量**「只能拥有一把」。改文案时把「拥有」精简成「有」
+	##   就当场红了 —— 而那是**同一个意思**。钉字面 = 把一种措辞焊死在屏幕上
+	##   (memory `fb-gate-can-pin-the-bug-in-place`; 同一天在 verify_codex 的 chip 上刚踩过)。
+	##   ⇒ 改成钉**语义**: 「只能」+「一把」同时出现。换词不红, 真把这条机制删了才红。
+	_ok("★文案讲了【只能拥有一把】这件事", txt.contains("只能") and txt.contains("一把"),
+		"原文: %s" % txt.substr(maxi(0, txt.find("只能")), 24))
 	## ★占位符名写错时 const_of 会**原样吐回** {C:...} —— 那会直接显示给玩家看
 	_ok("★★渲染后不残留 {C: 占位符(名字写错时会原样显示给玩家)",
 		not txt.contains("{C:"), txt.substr(maxi(0, txt.find("{C:")), 60))

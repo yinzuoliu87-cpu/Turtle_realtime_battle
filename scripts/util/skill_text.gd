@@ -33,6 +33,7 @@ const VAL_HEX := {
 	"val-burn": "#ff6600", "val-lifesteal": "#e85d75", "val-dot": "#9b59b6",
 	"val-stun": "#fbbf24", "val-crit": UIPalette.PHYS, "val-crit-dmg": "#ffaa33",
 	"val-reflect": "#94a3b8", "val-heal-reduce": "#a78bfa", "val-atk": UIPalette.PHYS,
+	"val-keyword": UIPalette.KEYWORD,
 }
 
 # 关键词自动上色 (照搬 PoC ui-skill-text.js:107-136, 顺序敏感 — 长词在前)
@@ -41,6 +42,24 @@ const VAL_HEX := {
 #   (用户2026-07-24 需求·选 A: 只给【真属性】加图标, 伤害类型/DoT/控制词 保持彩色字不加图标)。
 const ICON_PX := 16     # 内联属性图标默认像素高(没传字号时的兜底; 传了字号则按字号缩放, 见 render_bbcode)
 const KEYWORD_RULES := [
+	## ★★2026-10-02 加两族, 依据是实抓 LoL 16.19.1 的 860 条技能 / 688 条详细版 tooltip,
+	##   把**渲染标签全统计了一遍**(上一轮我只数了 3 个伤害类型标签, 漏掉另外 27 种):
+	##     keywordMajor(专名) 308 次 —— 非伤害类第一名, 而我们【X】标了 39 处却零上色
+	##     status(控制/状态)  509 次 —— 而我们只给了「眩晕」一条色, 另外 109 处是裸字
+	##
+	## 【专名】放**最前面**: 它是整段里最该先被认出来的东西。
+	## ⚠ 里层会嵌套: 【奶油护盾】里的「护盾」仍会被后面那条规则再包一层 span,
+	##   BBCode 是内层优先 ⇒ 读作「专名色的【奶油 + 护盾色的护盾】」。这是有意保留的 ——
+	##   护盾两个字本来就该读成护盾; 全库只有 3 个专名含关键词(奶油/幽灵/终极护盾)。
+	["【[^】]{1,12}】", "val-keyword"],
+	## 【控制/状态】LoL 把这些**全归一个 status 色**(509 次)。我们照这个思路, 但**没照抄它的紫**
+	##   —— 那个在我们这儿已经是 DoT(诅咒/中毒)的色。用户:「不需要一模一样抄, 要的是思路」。
+	##   原来只有「眩晕」有色, 现在 击飞48/减速15/击退21/嘲讽9/定身7/束缚3/时停3/沉默2/缴械1 一起归位。
+	["(?<!\">)击飞(?!<)", "val-stun"], ["(?<!\">)击退(?!<)", "val-stun"],
+	["(?<!\">)减速(?!<)", "val-stun"], ["(?<!\">)嘲讽(?!<)", "val-stun"],
+	["(?<!\">)定身(?!<)", "val-stun"], ["(?<!\">)束缚(?!<)", "val-stun"],
+	["(?<!\">)沉默(?!<)", "val-stun"], ["(?<!\">)缴械(?!<)", "val-stun"],
+	["(?<!\">)时停(?!<)", "val-stun"],
 	["物理伤害", "val-normal"], ["魔法伤害", "val-magic"], ["真实伤害", "val-true"],
 	["(?<!\">)真实(?!伤害|<)", "val-true"], ["(?<!\">)物理(?!伤害|<)", "val-normal"],
 	["(?<!\">)魔法(?!伤害|<)", "val-magic"], ["防御力加成", "val-def", "def"],
@@ -312,6 +331,7 @@ static func colorize_keywords(result: String) -> String:
 ## ★语义采【最外层 span 颜色胜出】: 灰字注释整段保持灰(去强调本意), 内层关键词不再抢色;
 ##   手写色块整段保持该色。对【无嵌套】输入与旧实现逐字节等价(仅多解码 &lt; 等实体), 只消泄漏不造泄漏。
 static func html_to_bbcode(html: String, icon_px: int = ICON_PX) -> String:
+	var _bold_open := false   # 专名 span 另加粗(见下方 val-keyword 分支)
 	var s := html
 	var out := ""
 	var depth := 0   # span 嵌套深度; 只在最外层 span 开/合处发 [color]/[/color]
@@ -338,8 +358,20 @@ static func html_to_bbcode(html: String, icon_px: int = ICON_PX) -> String:
 					depth -= 1
 					if depth == 0:
 						out += "[/color]"
+						if _bold_open:
+							out += "[/b]"
+							_bold_open = false
 			elif low.begins_with("<span"):
 				if depth == 0:
+					## ★★专名另加粗(2026-10-02)。实拍量出来的问题: 专名色 #e6ddc9 与正文 #e8f2ff
+					##   **亮度只差 19** —— 颜色是上去了(实测到 #bbb6a5 这类混色), 但肉眼分不出来。
+					##   根因是**我抄了色值没抄对比关系**: LoL 的专名能跳出来, 是因为他们正文是
+					##   暗褐 #a09b8c; 我们正文接近纯白, 奶白压根压不住。
+					##   ⇒ 不另发明一个会跟现有色撞的色(黄已是 DEF、绿是 BUFF、紫是 DoT…),
+					##     改成**加粗**: 字重是与颜色正交的一维, 不占色盘。
+					if tag.contains("val-keyword"):
+						out += "[b]"
+						_bold_open = true
 					out += "[color=%s]" % _span_color(tag)
 				depth += 1
 			elif low.begins_with("<img"):
