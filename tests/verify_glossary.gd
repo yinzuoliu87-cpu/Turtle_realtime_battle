@@ -102,6 +102,17 @@ func _ready() -> void:
 			and bb.contains(str(Glossary.TERMS["涨潮"])), bb.substr(0, 60))
 	_ok("★解释行是灰字(走 UIPalette.DIM, 不是现拍一个灰)", bb.contains(UIPalette.DIM))
 
+	## ★★「就地定义」不再抄一遍 —— 这条是**实拍之后**才加的(2026-10-01 双头龟技能一):
+	##   正文写「· 远程形态【灵能冲击】：射出一颗紫色炮弹…」, 底部解释行又来一句
+	##   「【灵能冲击】双头龟远程形态的技能一：射出一颗炮弹…」—— 同一件事隔三行再说一遍,
+	##   而且信息更少(解释行里没有数值)。判据: 专名后面紧跟全角冒号 ⇒ 不解释。
+	var inplace := "· 远程形态【灵能冲击】：射出一颗紫色炮弹。"
+	_ok("★就地定义(【X】：)不再在底部抄一遍", Glossary.terms_in(inplace).is_empty(),
+		str(Glossary.terms_in(inplace)))
+	var crossref := "普攻对敌人施加一层【气环】，可叠加 3 层。"
+	_ok("★★反面: 跨段引用的(后面跟逗号/句号)照常解释 —— 否则这条可以靠「一律不解释」作弊",
+		Glossary.terms_in(crossref).size() == 1, str(Glossary.terms_in(crossref)))
+
 	# ④ 消费点真的接上了
 	var wired := {
 		"res://scripts/scenes/codex/detail_views.gd": "图鉴(装备详情 + 龟技能/被动详情)",

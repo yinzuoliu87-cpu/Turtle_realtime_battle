@@ -1160,11 +1160,11 @@ scripts/scenes/battle/review_console.gd|lit|◀龟
 scripts/scenes/battle/review_console.gd|lit|关
 scripts/scenes/battle/review_console.gd|lit|技%d%s
 scripts/scenes/codex/detail_views.gd|lit|%s 秒
-scripts/scenes/codex/detail_views.gd|lit|3选1候选 · 龟能%d
 scripts/scenes/codex/detail_views.gd|lit|[color=%s][b]%d 件[/b][/color]  %s
 scripts/scenes/codex/detail_views.gd|lit|← 返回
-scripts/scenes/codex/detail_views.gd|lit|　[color=#06d6a0][font_size=20]龟能%d[/font_size][/color]
+scripts/scenes/codex/detail_views.gd|lit|　[color=#06d6a0][font_size=20]龟能 %d[/font_size][/color]
 scripts/scenes/codex/detail_views.gd|lit|不能编进阵容, 开战时自己登场
+scripts/scenes/codex/detail_views.gd|lit|主动 · 龟能 %d
 scripts/scenes/codex/detail_views.gd|lit|作用于友方
 scripts/scenes/codex/detail_views.gd|lit|作用于敌方
 scripts/scenes/codex/detail_views.gd|lit|减益

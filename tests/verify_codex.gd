@@ -75,7 +75,16 @@ func _ready() -> void:
 " + _src("res://scripts/scenes/codex/detail_views.gd")
 	_ok("图鉴无「🔒 Lv.4 解锁」文案", csrc.find("Lv.4 解锁") < 0)
 	_ok("图鉴 is_locked 已恒 false", csrc.find("var is_locked: bool = false") >= 0)
-	_ok("图鉴 chip 改成「3选1候选」", csrc.find("3选1候选 · 龟能") >= 0)
+	## ★2026-10-01 改: 原来钉的是「3选1候选 · 龟能」。用户指出那是 ai 味 ——
+	##   它说的是我们这边的选择机制(三取一), 不是技能本身, 而玩家眼前就摆着三张卡。
+	##   这条不是放宽, 是改成钉**新**契约, 而且多守一条: 不许再出现那串旧词。
+	_ok("图鉴 chip 用「主动 · 龟能 N」(与「被动」「基础 · 普攻」同句式)",
+		csrc.find("主动 · 龟能 %d") >= 0)
+	## ⚠ 查的是**字符串字面量**(前面带一个双引号), 不是整份源码里的任何出现 ——
+	##   源码注释里还留着好几处"原来叫 3选1候选"的来历说明, 那是历史不是屏幕文案。
+	##   直接 find 整串会把**这次改动的说明本身**判红(verify_palette 头上记过同一个坑)。
+	_ok("图鉴 chip 的字面量里不再有「3选1候选」这种讲我们自己机制的话",
+		csrc.find('"3选1候选') < 0)
 	var tsrc := _src("res://scripts/scenes/TeamSelectScene.gd")
 	_ok("选龟界面 _available_skill_indices 不再读 get_pet_level", tsrc.find("var lv: int = GameState.get_pet_level") < 0)
 

@@ -317,6 +317,37 @@ func _codex_selfshot() -> void:
 				_select(_si)
 				await get_tree().process_frame
 				await get_tree().process_frame
+	## SHOT_SKILL=N: 再点开第 N 个技能卡的【详情】后才抓 —— 与 SHOT_SEL 同一个理由。
+	##   2026-10-01 加: 专名解释行落在**技能详情**里, 而详情要点「点开看全部」才出来,
+	##   没这个开关就只能抓到技能卡列表, 于是我跟用户说「我截不到」—— 那是偷懒的说法,
+	##   钩子一直在, 只是少一个开关。SHOT_SKILL=p 表示【被动】。
+	if OS.has_environment("SHOT_SKILL") and current_tab == "pets":
+		var _kv := OS.get_environment("SHOT_SKILL")
+		var _pet: Dictionary = _items[_sel_idx] if (_sel_idx >= 0 and _sel_idx < _items.size()) else {}
+		if not _pet.is_empty():
+			if _kv == "p":
+				_codex_skill_detail = _pet.get("passive", {})
+			elif _kv.is_valid_int():
+				var _pool: Array = _pet.get("skillPool", [])
+				var _ki := int(_kv)
+				if _ki >= 0 and _ki < _pool.size():
+					_codex_skill_detail = _pool[_ki]
+			if not _codex_skill_detail.is_empty():
+				_codex_detail._show_pet(_pet)
+				await get_tree().process_frame
+				await get_tree().process_frame
+	## SHOT_DSCROLL=N: 把【详情框内部】滚到第 N 像素再抓。SHOT_SCROLL 滚的是左边的列表,
+	##   而详情超出 DETAIL_MAX_H 的那部分在**另一个** ScrollContainer 里 —— 没这个开关,
+	##   任何落在折叠线以下的东西(例: 2026-10-01 加的专名解释行)都拍不到, 只能凭空说"加好了"。
+	##   SHOT_DSCROLL=-1 表示【滚到底】。
+	if OS.has_environment("SHOT_DSCROLL") and is_instance_valid(_detail_scroll):
+		var _dv := OS.get_environment("SHOT_DSCROLL")
+		if _dv.is_valid_int():
+			await get_tree().process_frame
+			var _vs := _detail_scroll.get_v_scroll_bar()
+			_detail_scroll.scroll_vertical = (int(_vs.max_value) if int(_dv) < 0 else int(_dv))
+			await get_tree().process_frame
+			await get_tree().process_frame
 	if OS.has_environment("SHOT_SCROLL") and is_instance_valid(list_scroll):
 		list_scroll.scroll_vertical = int(OS.get_environment("SHOT_SCROLL"))
 		await get_tree().process_frame

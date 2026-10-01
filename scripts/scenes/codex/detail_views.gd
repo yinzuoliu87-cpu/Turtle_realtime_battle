@@ -540,7 +540,13 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 			match host._skill_role(str(pet.get("id", "")), sk, (int(_orig_idx[i]) if i < _orig_idx.size() else i)):
 				"passive": chip_text = "被动"; chip_color = "#c77dff"
 				"basic": chip_text = "基础 · 普攻"; chip_color = "#58d3ff"
-				_: chip_text = "3选1候选 · 龟能%d" % host._skill_energy(sk); chip_color = "#06d6a0"
+				## ★★2026-10-01 改: 原来写「3选1候选 · 龟能N」。用户:「3选1候选，这又是什么 ai 味描述，
+				##   你不是学习了吗」—— 他是对的。「3选1候选」说的是**我们这边的选择机制**
+				##   (skillPool 里三取一), 不是这个技能本身; 玩家眼前就摆着三张卡, 不需要我告诉他有三张。
+				##   LoL 的技能头上只写**名字 + 消耗 + 冷却**, 没有一个字在解释"这是候选之一"。
+				##   ⇒ 与两个兄弟分支(「被动」「基础 · 普攻」)对齐成同一个句式: 角色 · 代价。
+				##   ⚠ 并把「龟能100」分开成「龟能 100」—— codex_text_lint 有一条「汉字贴着数字」。
+				_: chip_text = "主动 · 龟能 %d" % host._skill_energy(sk); chip_color = "#06d6a0"
 		host._add_text(cx + CARD_PAD, start_y + 60, chip_text, 13, chip_color, 0.0, 0.0)
 		# 简述 — 富文本 BBCode, 多行 clamp
 		var brief = SkillText.render_bbcode(str(sk.get("brief", "")), ctx, sk, 13)
@@ -732,7 +738,9 @@ func _render_skill_detail_inline(pet: Dictionary, ctx: Dictionary, sk: Dictionar
 		bb += "[color=#06d6a0][font_size=28]★[/font_size][/color] "
 	bb += "[color=#ffd93d][font_size=32]%s[/font_size][/color]" % str(sk.get("name", "?"))
 	if role_d == "active":   # 龟能口径: 主动技显龟能花费 (无"CD"); 攒满龟能自动施放
-		bb += "　[color=#06d6a0][font_size=20]龟能%d[/font_size][/color]" % host._skill_energy(sk)
+		## ★2026-10-01: 「龟能100」→「龟能 100」。codex_text_lint 有一条「汉字贴着数字」,
+		##   它只扫 data/*.json 的玩家文案, 扫不到这里拼出来的屏幕串 —— 所以这处一直漏着。
+		bb += "　[color=#06d6a0][font_size=20]龟能 %d[/font_size][/color]" % host._skill_energy(sk)
 	var title = RichTextLabel.new()
 	title.bbcode_enabled = true
 	title.fit_content = true
