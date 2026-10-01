@@ -974,7 +974,7 @@ func _build_op_bar() -> void:
 			l.fit_content = false
 			l.scroll_active = false
 			## 背包格子里的一行说明 —— 用一句话简述(原文中位 129 字, 这里放不下)。
-			var plain := SkillText.equip_brief(sdef)
+			var plain := SkillText.equip_brief_bb(sdef, OP_BODY_FS)   # ★_bb: 上色+内联属性图标(2026-10-01 P2)
 			l.text = SkillText.highlight_star(plain, _star)
 			l.add_theme_font_size_override("normal_font_size", OP_BODY_FS)
 			l.add_theme_color_override("default_color", Color("#cfe0ef"))
@@ -1113,7 +1113,9 @@ func _show_equip_detail(item: Dictionary) -> void:
 			parts.append("[color=#9fb6c9]%s[/color]  [color=#7fe39a][b]%s[/b][/color]" % [kv[0], kv[1]])
 		bbody = "  　　".join(parts)
 	## 详情弹窗是"点开看全部"那一层, 给**全文**; 操作栏/tooltip 才给一句话简述。
-	var eff := SkillText.highlight_star(SkillText.equip_full(edef), star)
+	## ★先上色再 highlight_star: highlight_star 认的是 `数/数/数`, 而上色产出的
+	##   `[img width=16 color=#xxxxxx]` 与 `res://assets/...` 里没有这个形状, 不会误伤。
+	var eff := SkillText.highlight_star(SkillText.equip_full_bb(edef, DETAIL_BODY_FS), star)
 	if eff.strip_edges() == "":
 		## ★★2026-09-28。原文「这件没有额外效果，属性直接生效。」三个词全是规格书用语:
 		##   「额外效果」是字段名、「直接生效」是实现说明, 而句尾那个句号连它的**姊妹句**

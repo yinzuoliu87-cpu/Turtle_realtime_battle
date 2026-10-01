@@ -1517,7 +1517,9 @@ func _rich_desc(edef: Dictionary, star: int = 1) -> String:
 	## ★2026-08-20: 加一道 `render_consts` —— 文案里现在可能有 {C:类名.常量名}(直接引用代码常量,
 	##   见 skill_text.gd)。不展开就会把 `{C:...}` 原样显示给玩家。
 	##   ⚠ 上面那句"全是纯文本"从此不再成立, 别再据此省掉渲染。
-	var raw := SkillText.equip_full(edef)   # ★走唯一取值口, 别再手抄 effectDesc1(手抄的副本必然落后)
+	## ★★2026-10-01(两层渲染 P2): 换成 `_bb` 版 —— 与龟技能走同一条上色/内联图标管线。
+	##   上面那句「保留 bbcode_enabled 只为将来装备文案要上色时不用改结构」兑现了, 结构确实没改。
+	var raw := SkillText.equip_full_bb(edef, 20)   # ★走唯一取值口, 别再手抄 effectDesc1(手抄的副本必然落后)
 	if raw == "":
 		## ★★原句「(这件装备还没有效果描述)」是**开发者的空态**: 半角括号 + "还没有…描述"
 		##   等于当面告诉玩家"我们没写"。而且实测 95 件的 `effectDesc1` 全都有

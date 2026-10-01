@@ -883,13 +883,18 @@ func _show_p2eq(eq: Dictionary) -> void:
 	##   现在: 简述(粗体, 一句话) → 空行 → 完整机制。
 	var _eb := SkillText.equip_brief(eq)
 	var _ef := SkillText.equip_full(eq)
+	## ★★2026-10-01(两层渲染 P2): 显示用【上色 + 内联属性图标】的版本, 与龟技能同一条管线。
+	##   ⚠ 纯文本那两个**不能删** —— 下面 `brief_is_redundant` 比的是文字内容,
+	##   拿带 [img]/[color] 的串去比, 相似度会被标记稀释, 判据直接失真。
+	var _eb_bb := SkillText.equip_brief_bb(eq, 17)
+	var _ef_bb := SkillText.equip_full_bb(eq, 17)
 	## ★★2026-08-31: 判据从「一字不差才算重复」放宽到
 	##   「既没更短、也没说新东西」—— 见 SkillText.brief_is_redundant 的头注。
 	##   原来只挡一字不差的, 于是"差几个字"的重复(辣椒/黄铜齿轮等 4 件)全漏过去,
 	##   玩家在图鉴里看到同一件事写两遍。
-	var bb = _ef if SkillText.brief_is_redundant(_eb, _ef) else ("[b]%s[/b]
+	var bb = _ef_bb if SkillText.brief_is_redundant(_eb, _ef) else ("[b]%s[/b]
 
-%s" % [_eb, _ef])
+%s" % [_eb_bb, _ef_bb])
 	## ★★这里原来是**裸取** `effectDesc3` —— 不走 `render_consts` ⇒ 里面的
 	##   `{C:类.常量}` 会**原样显示给玩家**。2026-09-01 给 096 写四个最终造物那一段时
 	##   被门禁当场抓到(「图鉴渲染后没有 {C: 占位符残留」)。desc1 一直走的是

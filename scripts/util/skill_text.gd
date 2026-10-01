@@ -278,6 +278,16 @@ static func render_html(template: String, f: Dictionary, s: Dictionary) -> Strin
 		last = m.get_end()
 	result += template.substr(last)
 	# 2) 关键词自动上色 (+ 属性词前内联图标·用户2026-07-24)
+	return colorize_keywords(result)
+
+
+## 关键词自动上色 + 真属性词前内联图标。输出是 HTML(span/img), 还要再过 html_to_bbcode。
+##
+## ★2026-10-01 从 render_html 里抽出来, 为的是**装备文案也能用同一份**。
+##   抽出来而不是在装备那边另写一遍 —— memory `fb-hand-rolled-copies-drift`:
+##   手抄的副本抄一次就永远落后一次(这张规则表 29 条, 而且还在长)。
+static func colorize_keywords(result: String) -> String:
+	_ensure_re()
 	for kr in _keyword_re:
 		var re: RegEx = kr[0]
 		var cls: String = kr[1]
@@ -447,6 +457,35 @@ static func equip_full(edef: Dictionary) -> String:
 	return base + "
 " + render_consts("
 ".join(take))
+
+
+## 装备文案的【BBCode 版】—— 与龟技能走同一条上色 / 内联图标管线 (2026-10-01·两层渲染 P2)。
+##
+## ★由来: 用户 2026-09-30「要统一吧, 按新的学习的语术来, 包括装备和技能」。
+##   在这之前**只有龟技能**走 render_bbcode(颜色 + 词前内联属性图标), 装备侧只展开 {C:} 占位符
+##   ⇒ 同一个「魔法伤害」, 龟技能里是青蓝带图标、装备里是一片白字。
+##
+## ★只加颜色与图标, **一个字都不改** —— 文字由 equip_brief/equip_full 给,
+##   `text_prose_guard` 守着"文案的文字部分逐字未动"。
+##
+## ★为什么敢直接上 BBCode 而不怕 `[` `]` 被当标记吃掉: 2026-10-01 全量扫过两份 json ——
+##   装备 0 条、龟技能 0 条含方括号(方案书 §5.9 担心的那件事**不成立**, 分母是全库 369 段)。
+##   将来真有人写了方括号, `verify_equip_text_bb` 里那条断言会红。
+static func equip_brief_bb(edef: Dictionary, font_px: int = 0) -> String:
+	return plain_to_bb(equip_brief(edef), font_px)
+
+
+static func equip_full_bb(edef: Dictionary, font_px: int = 0) -> String:
+	return plain_to_bb(equip_full(edef), font_px)
+
+
+## 已展开占位符的纯文本 → 上色 + 内联图标的 BBCode。
+## ★font_px 传了就按字号缩图标(与 render_bbcode 同一口径), 不传用 ICON_PX。
+static func plain_to_bb(plain: String, font_px: int = 0) -> String:
+	if plain == "":
+		return ""
+	var ipx := ICON_PX if font_px <= 0 else maxi(12, roundi(float(font_px) * 1.15))
+	return html_to_bbcode(colorize_keywords(plain), ipx)
 
 
 ## 这件装备的【简述】值不值得单独显示一遍。

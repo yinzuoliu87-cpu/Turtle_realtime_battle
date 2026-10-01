@@ -243,6 +243,13 @@ func _ready() -> void:
 		src_shop.find("const DESC_BOX_H := %.1f" % DESC_H) >= 0)
 	_chk("⑥ ★口径自检: 字号阶梯与 ShopScene.DESC_FONT_STEPS 一致",
 		src_shop.find("const DESC_FONT_STEPS := [20, 18, 16, 15]") >= 0)
+	## ★★2026-10-01 补这一条: 上面两条只对了【框与字号】, 没对**量的是哪一串文字**。
+	##   这条判据原来自己算 `render_consts(effectDesc1)`, 而商店真正显示的是
+	##   `SkillText.equip_full_bb(edef, 20)` —— P2 给装备接上内联属性图标之后, 两者**不是一回事**
+	##   (实测: 按老写法 3 件要滚, 按真入口 4 件), 而这条判据会一直绿着。
+	##   ⇒ 现在下面取文字用的就是那一行; 这里焊住"商店确实还在用它", 它一改这条就红。
+	_chk("⑥ ★口径自检: 取文字走的与 ShopScene._rich_desc 同一个口(equip_full_bb(edef, 20))",
+		src_shop.find("SkillText.equip_full_bb(edef, 20)") >= 0)
 	print("  ⑥ 描述容纳体检: 框 %.0f×%.0f / 字号阶梯 %s / 装备 %d 件 (★分母)" % [
 		DESC_W, DESC_H, str(DESC_FONT_STEPS), eqs.size()])
 	if eqs.is_empty():
@@ -258,7 +265,14 @@ func _ready() -> void:
 		var worst_nm := ""
 		for e in eqs:
 			var ed: Dictionary = e if e is Dictionary else {}
-			var raw := SkillText.render_consts(str(ed.get("effectDesc1", "")))
+			## ★★2026-10-01 修【判据没跑真入口】: 这里原来是
+			##   `SkillText.render_consts(str(ed.get("effectDesc1", "")))` —— 自己另算一份,
+			##   而商店真正显示的是 `ShopScene._rich_desc` ⇒ `SkillText.equip_full_bb(edef, 20)`。
+			##   P2 给装备文案接上内联属性图标之后, **图标比字高**, 正是会撑爆这个 246px 框的东西,
+			##   而这条判据按老写法量的是没有图标的纯文本 —— 它会一直绿着, 说的却是另一件事。
+			##   (memory `fb-verify-must-run-the-real-path` / `fb-hand-rolled-copies-drift`)
+			## ⚠ 与真入口仍差两点, 都不影响高度: ① 数据损坏时的空态兜底 ② highlight_star 只加色标记。
+			var raw := SkillText.equip_full_bb(ed, 20)
 			if raw == "":
 				continue
 			## 逐档缩字号 —— 复刻 ShopScene._fit_desc_font 的行为, 不是量"字号 20 放不放得下"。

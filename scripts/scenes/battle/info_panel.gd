@@ -898,7 +898,7 @@ func _info_equip_slots(vb: VBoxContainer, u: Dictionary) -> void:
 		var d_title := "%s %s" % [str(edef.get("name", eid)),
 			"★".repeat(maxi(1, int((it as Dictionary).get("star", 1))))]
 		## 战斗中的信息面板空间最紧 —— 用一句话简述, 点开才看全文。
-		var d_body := SkillText.equip_brief(edef)
+		var d_body := SkillText.equip_brief_bb(edef, 15)   # ★_bb: 上色+内联属性图标(2026-10-01 P2)
 		slot.gui_input.connect(func(ev: InputEvent) -> void:
 			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 				_show_detail(battle._info_panel, "eq:" + eid, d_title, d_body, {}, u))

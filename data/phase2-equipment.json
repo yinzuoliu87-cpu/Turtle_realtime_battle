@@ -402,7 +402,7 @@
     "baseStats1": "+攻20/50/300·生命120/250/1000",
     "shopAvailable": 1,
     "emoji": "🧸",
-    "effectDesc1": "每 {C:EquipTickSystem.DOLL_IV} 秒派出一只小熊走向最近的敌人，造成（1/2/5×攻击力+100/210/1000）物理伤害并将其击飞，同时自身+1 大熊层；大熊层满 5/3/1 层时装备销毁，自身蓄力 {C:EquipTickSystem.DOLL_CHARGE_SEC} 秒后在空位召唤一只大熊（生命 1600/3000/15000·攻击力 70/120/2000·护甲与魔抗各 {C:EquipTickSystem.BEAR_RESIST}·攻击速度 {C:EquipTickSystem.BEAR_ASPD}/秒·近战）登场；若无空位则继续小熊攻击直到出现空位。\n大熊普攻为熊掌（1×攻击力物理）并每次累积 1 层，满 {C:EquipTickSystem.BEAR_PAW_STACKS} 层时下一击改为冲击波（射程临时扩至 {C:EquipTickSystem.BEAR_WAVE_RANGE} 码）：造成 {C:EquipTickSystem.BEAR_WAVE_COEF}×攻击力物理伤害，将命中的敌人击飞 {C:EquipTickSystem.BEAR_WAVE_KNOCK_SEC} 秒并拉回身前 {C:EquipTickSystem.BEAR_WAVE_PULL} 码，随后层数清零。",
+    "effectDesc1": "每 {C:EquipTickSystem.DOLL_IV} 秒派出一只小熊走向最近的敌人，造成（1/2/5×攻击力+100/210/1000）物理伤害并将其击飞，同时自身+1 大熊层；满 5/3/1 层时装备销毁，自身蓄力 {C:EquipTickSystem.DOLL_CHARGE_SEC} 秒后在空位召唤一只大熊（生命 1600/3000/15000·攻击力 70/120/2000·护甲与魔抗各 {C:EquipTickSystem.BEAR_RESIST}·攻击速度 {C:EquipTickSystem.BEAR_ASPD}/秒·近战）登场；无空位则继续派小熊，直到有空位。\n大熊普攻为熊掌（1×攻击力物理）并累积 1 层，满 {C:EquipTickSystem.BEAR_PAW_STACKS} 层时下一击改为冲击波（射程临时扩至 {C:EquipTickSystem.BEAR_WAVE_RANGE} 码）：造成 {C:EquipTickSystem.BEAR_WAVE_COEF}×攻击力物理伤害，把命中的敌人击飞 {C:EquipTickSystem.BEAR_WAVE_KNOCK_SEC} 秒、拉到身前 {C:EquipTickSystem.BEAR_WAVE_PULL} 码，随后清零。",
     "effectDesc3": "",
     "img": "equip/dungeon-doll.png",
     "effectBrief": "每 {C:EquipTickSystem.DOLL_IV} 秒派出小熊撞击最近的敌人；满 5/3/1 层后召唤一只大熊。"
