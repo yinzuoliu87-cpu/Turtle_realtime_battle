@@ -348,13 +348,17 @@ func _g10_gpu_particles() -> void:
 	if tgt == null:
 		return
 
-	var base10: int = _gpu_count(WANT_IMPACT_AMOUNT)
+	var snap10: Array = _gpu_snapshot(WANT_IMPACT_AMOUNT)
+	var base10: int = snap10.size()
 	_s._vfx._impact(tgt, 999, "big")            # ← live 入口(不是直接点 _impact_particles)
 	var now10: int = _gpu_count(WANT_IMPACT_AMOUNT)
 	print("     _vfx._impact(dmg=999,'big') → amount=%d 的粒子节点 %d → %d" % [
 		WANT_IMPACT_AMOUNT, base10, now10])
 	_ok("⑩ ★重击真的经 _impact 迸出一组 GPU 粒子", now10 == base10 + 1)
-	var ps10 := _gpu_pick(WANT_IMPACT_AMOUNT)
+	var ps10 := _gpu_new_since(snap10, WANT_IMPACT_AMOUNT)
+	## ★分母: 场上原本就有 base10 个同 amount 的旧节点时, "随便挑一个"挑到的多半是死的那个。
+	print("     场上原有同 amount 的旧节点 %d 个 ⇒ 必须挑【新建的那一个】" % base10)
+	_ok("⑩ ★分母: 挑到的是这一步新建的那个粒子节点", ps10 != null)
 	if ps10 != null:
 		print("     参数: amount=%d lifetime=%.2f one_shot=%s emitting=%s pm=%s draw_pass_1=%s" % [
 			ps10.amount, ps10.lifetime, str(ps10.one_shot), str(ps10.emitting),
@@ -366,6 +370,42 @@ func _g10_gpu_particles() -> void:
 		_ok("⑩ draw_pass_1 在(没网格 = 什么都看不见)", ps10.draw_pass_1 != null)
 		_ok("⑩ lifetime > 0", ps10.lifetime > 0.0)
 
+	# ══════════════════════════════════════════════════════════════════════
+	#  ★★复现 2026-10-01 那次 CI 偶发红(`⑩ emitting 已打开`), 本地从来复现不出来
+	# ══════════════════════════════════════════════════════════════════════
+	# 根因**不在粒子, 在挑错了对象**。`_impact_particles` 的自销走
+	#   `battle._reg_tween().tween_interval(lifetime + 0.15) → queue_free`,
+	# 而 **tween 在无头 CI 下推进不稳**(CLAUDE.md §3.5 海盗钩索那条)。
+	#   · 本地: tween 照常跑完 ⇒ 旧节点被 free ⇒ 场上只剩新建那一个 ⇒ 随便挑都对
+	#   · CI  : tween 推不动 ⇒ **放完的旧节点一直赖在树里**, 且排在新节点前面;
+	#           而 `emitting` 是引擎自己管的, one_shot 放完就回 false
+	#     ⇒ "第一个匹配的" 挑到的是**死的那个** ⇒ `emitting 已打开` FAIL。
+	# 场上留不留得住旧节点, 取决于 tween 推没推动 = **跟机器快慢挂钩**。
+	#
+	# 下面这段把那个状态**造出来**: 往树里插一个已经放完的同 amount 节点(就是 CI 上的样子),
+	# 然后断言两件事 —— ① 旧写法会挑到它(所以当年那条红是真的) ② 新写法跳过它。
+	var stale := GPUParticles3D.new()
+	stale.amount = WANT_IMPACT_AMOUNT
+	stale.one_shot = true
+	stale.emitting = false            # one_shot 放完之后引擎就是把它置回 false
+	_s._world.add_child(stale)
+	_s._world.move_child(stale, 0)    # 排到前面 —— CI 上旧节点就在新节点前面
+	var snapS: Array = _gpu_snapshot(WANT_IMPACT_AMOUNT)
+	_s._vfx._impact(tgt, 999, "big")
+	var first_match: GPUParticles3D = null
+	for c in _s._world.get_children():
+		if c is GPUParticles3D and (c as GPUParticles3D).amount == WANT_IMPACT_AMOUNT:
+			first_match = c
+			break
+	var freshS := _gpu_new_since(snapS, WANT_IMPACT_AMOUNT)
+	print("     造出 CI 那个状态: 第一个匹配的 emitting=%s / 新建那个 emitting=%s"
+		% [str(first_match != null and first_match.emitting), str(freshS != null and freshS.emitting)])
+	_ok("⑩ ★根因复现: 旧写法(第一个匹配)挑到的确实是放完的死节点",
+		first_match != null and not first_match.emitting)
+	_ok("⑩ ★修法有效: 快照差分挑到的是新建的那个, emitting 为真",
+		freshS != null and freshS.emitting)
+	stale.queue_free()
+
 	# ★反面: 轻击(dmg 低于门槛)不该迸粒子 —— 否则 ⑩ 可能是"随便调都增加"
 	var b2: int = _gpu_count(WANT_IMPACT_AMOUNT)
 	_s._vfx._impact(tgt, 1, "light")
@@ -373,12 +413,14 @@ func _g10_gpu_particles() -> void:
 	_ok("⑩ ★反面: 轻击不迸粒子(证明上面不是'随便调都增加')", _gpu_count(WANT_IMPACT_AMOUNT) == b2)
 
 	# 主场景的 _particle_burst(90 颗) —— 活代码, 3 处调用方(RB:3464 / equip_tick:460 / hookbomb:262)
-	var b90: int = _gpu_count(WANT_BURST_AMOUNT)
+	var snap90: Array = _gpu_snapshot(WANT_BURST_AMOUNT)
+	var b90: int = snap90.size()
 	_s._particle_burst(P_A)
 	print("     _particle_burst → amount=%d 的粒子节点 %d → %d" % [
 		WANT_BURST_AMOUNT, b90, _gpu_count(WANT_BURST_AMOUNT)])
 	_ok("⑩ _particle_burst 也建得出来", _gpu_count(WANT_BURST_AMOUNT) == b90 + 1)
-	var ps90 := _gpu_pick(WANT_BURST_AMOUNT)
+	var ps90 := _gpu_new_since(snap90, WANT_BURST_AMOUNT)
+	_ok("⑩ ★分母: 90 颗那组挑到的是新建的那一个(场上原有 %d 个)" % b90, ps90 != null)
 	if ps90 != null:
 		_ok("⑩ 90 颗那组: one_shot + emitting + 有 draw_pass",
 			ps90.one_shot and ps90.emitting and ps90.draw_pass_1 != null)
@@ -386,9 +428,10 @@ func _g10_gpu_particles() -> void:
 			(ps90.process_material as ParticleProcessMaterial).color_ramp != null)
 
 	# 本层自己的 spark_burst
+	var snap18: Array = _gpu_snapshot(18)
 	_syn.spark_burst(P_A, Color(0.7, 1.0, 0.8, 1.0), 0.6, 18)
-	var ps18 := _gpu_pick(18)
-	_ok("⑩ ★分母: 本层 spark_burst 的节点在", ps18 != null)
+	var ps18 := _gpu_new_since(snap18, 18)
+	_ok("⑩ ★分母: 本层 spark_burst 新建的那个节点在(场上原有 %d 个)" % snap18.size(), ps18 != null)
 	if ps18 != null:
 		_ok("⑩ 本层粒子: one_shot + emitting + ParticleProcessMaterial + draw_pass",
 			ps18.one_shot and ps18.emitting
@@ -427,11 +470,29 @@ func _gpu_count(amt: int) -> int:
 	return n
 
 
-func _gpu_pick(amt: int) -> GPUParticles3D:
+## ⛔ 旧的 `_gpu_pick(amt)` 返回【第一个】匹配的子节点 —— 2026-10-01 在 CI 上红了一次
+##    (`⑩ emitting 已打开`), 本地从来复现不出来。根因不是粒子, 是**挑错了对象**:
+##    `one_shot` 的发射器放完就把 `emitting` 关回 false, 而场上可能还留着**上一组**
+##    同 amount 的旧节点(`base10 > 0` 时就有)。旧节点排在前面 ⇒ 第一个匹配的是**死的那个**。
+##    场上留不留得住旧节点, 取决于两次调用之间过了多少帧 —— **跟机器快慢挂钩**,
+##    于是本地必绿、CI 偶发红(CLAUDE.md §2「尺子跟机器快慢挂钩」那一类)。
+## ⇒ 改成"挑**刚刚新建**的那个": 先拍一张快照, 再拿不在快照里的那个。
+##    这不是放宽判据, 是把判据对准它本来要判的对象。
+func _gpu_snapshot(amt: int) -> Array:
+	var out: Array = []
 	for c in _s._world.get_children():
 		if c is GPUParticles3D and (c as GPUParticles3D).amount == amt:
-			return c
-	return null
+			out.append(c)
+	return out
+
+
+## 拿 `before` 之后新出现的那个。多于一个说明这一步建了不止一组, 返回 null 让分母断言红。
+func _gpu_new_since(before: Array, amt: int) -> GPUParticles3D:
+	var fresh: Array = []
+	for c in _s._world.get_children():
+		if c is GPUParticles3D and (c as GPUParticles3D).amount == amt and not before.has(c):
+			fresh.append(c)
+	return fresh[0] if fresh.size() == 1 else null
 
 
 ## |世界法线 · 上|。Sprite3D 的局部法线由 axis 决定 (照 verify_ms_tier_vfx.gd:94-99)。

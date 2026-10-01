@@ -167,9 +167,17 @@ jobs:
           #   tests.yml 没有 permissions 块(默认只读) → push 必然 403, 而 || true 把它咽了,
           #   于是这一步永远显示 success, ci-logs 却停在 2026-07-17。
           #   2026-07-22: 0.10.2 那次门禁红了, 我因此完全读不到原因。
-          if git push -f origin HEAD:ci-logs; then
+          # ★★2026-10-01: 这一步在 v0.19.483 那次失败时**自己也失败了**, 而它只喊了一句
+          #   「检查 permissions」—— 可 permissions 明明写着 contents: write。
+          #   于是我拿到的是一条**指向错误方向的诊断**: 它把 git 真正说的话丢掉了。
+          #   ⇒ 把 push 的输出接住并原样做成注解。逃生口自己坏了的时候,
+          #     它也得说得出是怎么坏的, 否则下一个人照着它那句话去查权限, 查不到任何东西。
+          if git push -f origin HEAD:ci-logs > /tmp/push.out 2>&1; then
             echo "::notice::失败日志已推到 ci-logs 分支; 本地看: git fetch -f origin +refs/heads/ci-logs:refs/remotes/origin/ci-logs && git show origin/ci-logs:gate.errors.log"
           else
-            echo "::error::推 ci-logs 失败 —— 检查 workflow 的 permissions: contents: write"
+            echo "::error::推 ci-logs 失败 —— 下面是 git 自己说的话(别再直接去查 permissions)"
+            while IFS= read -r line; do
+              echo "::error title=cilog-push::${line}"
+            done < /tmp/push.out
             exit 1
           fi
