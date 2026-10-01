@@ -799,6 +799,10 @@ run_audit "tools/shield_duration_audit.py" "ALL OK" "shield_duration (通用护�
 #   他当时那句:「**我问一句你才意识到一个漏洞？那我怎么敢开工**」
 #   ⇒ memory 靠我想起来, 门禁自己会红。三条全是只减不增的棘轮。
 run_audit "tools/vfx_discipline_audit.py" "ALL OK" "vfx_discipline (像素贴图不许连续缩放 / 不许新增手写生成器 / 新素材要有逐帧研究)"
+
+# ★属性图标纪律(2026-10-01): 重做那次才发现属性有 19 种而图标只有 14 张, 缺 8 个 ——
+#   而且是用户问「治疗强度和护盾强度呢」才查出来的。这条让"缺图标"当场红。
+run_audit "tools/stat_icon_audit.py" "ALL OK" "stat_icon (每个属性都有图标 / 色数 / 尺寸 / import)"
 run_audit "tools/tween_freeze_audit.py" "ALL OK" "tween_freeze (战斗世界侧的演出 tween 必须走 _reg_tween·否则时停冻不住)"
 run_audit "tools/tween_capture_audit.py" "ALL OK" "tween_capture (演出 tween 的 lambda 捕获了可能被释放的节点·台账只减不增)"
 run_audit "tools/nine_bracket_audit.py" "ALL PASS" "nine_bracket (9 档进度档已彻底删除·匹配只认同场次·同名的周日对阵图不许误伤)"
