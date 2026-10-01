@@ -387,11 +387,16 @@ run_one () {  # $1 = 测试名
   #   ⇒ 这不是并行度的错, 是**共享可写状态**的错; 拆开之后这一类竞态整体消失。
   local _ad="$GATE_APPDATA/$t"
   mkdir -p "$_ad" 2>/dev/null
+  # ★★★2026-10-01 加 `QUIET=1` —— 用户「你一开窗口，就有声音啊」。
+  #   `--audio-driver Dummy` **我拿不出它生效的证据**(--verbose 里引擎根本不打印
+  #   选中了哪个音频驱动), 所以它只能当第二道。真正那一道是 QUIET=1 ⇒
+  #   autoload/Audio.gd 把**引擎主总线**静音 + 压到 -80 dB: 与音频驱动无关,
+  #   而且 `AudioServer.is_bus_mute(0)` 能被 tests/verify_quiet_mute.gd 直接量(正反两面都断言过)。
   # ★★`--audio-driver Dummy`: 用户 2026-09-25「静音，不要有游戏声音」。
   #   `--headless` **不包含静音** —— 它只关渲染, 音频驱动照旧初始化并出声,
   #   而门禁并行 8~16 个进程 ⇒ 扬声器里是十几局游戏同时在响。
   #   (旧注释只记了它「不影响耗时」就没加, 那是只看了一个维度。)
-  TURTLE_BACKEND=" " TURTLE_SUPABASE=" " APPDATA="$_ad" XDG_DATA_HOME="$_ad" "$GODOT" --headless --audio-driver Dummy --path "$DIR" "res://tests/$t.tscn" \
+  TURTLE_BACKEND=" " TURTLE_SUPABASE=" " QUIET=1 APPDATA="$_ad" XDG_DATA_HOME="$_ad" "$GODOT" --headless --audio-driver Dummy --path "$DIR" "res://tests/$t.tscn" \
       --quit-after "$(frames_for "$t")" > "$RAW/$t.log" 2>&1
   echo $? > "$RAW/$t.rc"
   echo $(( ( $(date +%s%N) - _t0 ) / 1000000 )) > "$RAW/$t.ms"
@@ -469,12 +474,12 @@ trap 'rm -rf "$RAW" "$ARAW"' EXIT
 
 # ★先单独导入一次: `.godot/` 导入缓存是并行下唯一的共享可写状态,
 #   让 N 个进程同时冷启动去建它会打架。这一步之后缓存是热的, 后面只读。
-APPDATA="$GATE_APPDATA" XDG_DATA_HOME="$GATE_APPDATA" "$GODOT" --headless --audio-driver Dummy --path "$DIR" --import > /dev/null 2>&1
+QUIET=1 APPDATA="$GATE_APPDATA" XDG_DATA_HOME="$GATE_APPDATA" "$GODOT" --headless --audio-driver Dummy --path "$DIR" --import > /dev/null 2>&1
 
 # ★冒烟(80 秒)与测试池【同时】跑 —— 它是完全独立的进程, 与自证测试零共享状态,
 #   排在后面串行等 = 白白多花 80 秒。判定逻辑在下面的冒烟段, 一个字没改。
 #   必须用 SHIP=1: 否则 _review_demo() 为真 → 假人永不死 → 战斗永不结束 → 结算路径根本没测到。
-( SHIP=1 APPDATA="$GATE_APPDATA" "$GODOT" --headless --audio-driver Dummy --path "$DIR" res://tests/smoke_scenes.tscn \
+( SHIP=1 QUIET=1 APPDATA="$GATE_APPDATA" "$GODOT" --headless --audio-driver Dummy --path "$DIR" res://tests/smoke_scenes.tscn \
     --quit-after 40000 > "$RAW/smoke.log" 2>&1; echo $? > "$RAW/smoke.rc" ) &
 SMOKE_PID=$!
 

@@ -42,7 +42,31 @@ var _current_bgm: String = ""
 var _current_base_vol: float = 0.45
 
 
+## 开发用总闸: `QUIET=1` ⇒ 整个引擎一声不出。
+##
+## ★由来(2026-10-01): 用户在用电脑时要求「一定要静音」。我先答了"headless 没窗口",
+##   被指出那答的不是他问的那一维; 改成到处加 `--audio-driver Dummy` 之后他说**还是有声音**,
+##   最后挑明「你一开窗口，就有声音」。
+## ★★为什么不靠 `--audio-driver Dummy`: 我**拿不出它生效的证据** ——
+##   `--verbose` 里引擎根本不打印选中了哪个音频驱动, 于是"我加了 Dummy"只是个说法。
+##   把静音做在**引擎内部的主总线**上就不一样了: 它与音频驱动无关, 而且
+##   `AudioServer.is_bus_mute(0)` 能被门禁直接量(见 verify_quiet_mute)。
+##   ⇒ 规矩: **凡是我自己起的 Godot(含开窗口的), 一律 QUIET=1。**
+func _apply_quiet_gate() -> void:
+	if not OS.has_environment("QUIET"):
+		return
+	if str(OS.get_environment("QUIET")).strip_edges() in ["", "0", "false"]:
+		return
+	AudioServer.set_bus_mute(0, true)                 # 主总线静音(盖住一切, 含 BGM 与 SFX)
+	AudioServer.set_bus_volume_db(0, -80.0)           # 双保险: 就算有人把 mute 改回去也听不见
+	sfx_volume = 0.0
+	bgm_volume = 0.0
+	print("[Audio] QUIET=1 ⇒ 主总线已静音(mute=%s, %.0f dB)" % [
+		str(AudioServer.is_bus_mute(0)), AudioServer.get_bus_volume_db(0)])
+
+
 func _ready() -> void:
+	_apply_quiet_gate()
 	# 预加载所有 SFX (小, < 1MB 全部进内存便宜)
 	for name in SFX_PATHS:
 		var path: String = SFX_PATHS[name]
