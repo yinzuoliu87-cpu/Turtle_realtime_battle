@@ -42,7 +42,7 @@
     "baseStats1": "+攻15/30/90·暴击25/35/60%·吸血5/9/15%",
     "shopAvailable": 1,
     "emoji": "😈",
-    "effectDesc1": "伤害可处决生命值低于斩杀线的敌人（斩杀线=4/6/12%最大生命值×（1+暴击率））；处决后回复 {C:EquipSystem.FANG_EXEC_ENERGY} 点龟能（无龟能的单位改为回复 {C:EquipSystem.FANG_EXEC_HEAL} 点生命）。\n此外自身每 {C:EquipSystem.FANG_IV} 秒向最近的敌人射出一颗剧毒獠牙，造成 1/1.8/4×攻击力魔法伤害，并回复自身该伤害 {C:EquipSystem.FANG_LIFESTEAL%}%的生命。",
+    "effectDesc1": "伤害可处决生命值低于斩杀线的敌人（斩杀线=目标最大生命值 4/6/12%×（1+暴击率））；处决后回复 {C:EquipSystem.FANG_EXEC_ENERGY} 点龟能（无龟能的单位改为回复 {C:EquipSystem.FANG_EXEC_HEAL} 点生命）。\n此外自身每 {C:EquipSystem.FANG_IV} 秒向最近的敌人射出一颗剧毒獠牙，造成 1/1.8/4×攻击力魔法伤害，并回复自身该伤害 {C:EquipSystem.FANG_LIFESTEAL%}%的生命。",
     "effectDesc3": "",
     "img": "equip/tyrant-fang-new.png",
     "effectBrief": "伤害可处决生命低于 4/6/12% 最大生命值的敌人；每 {C:EquipSystem.FANG_IV} 秒射出毒牙吸血。"
@@ -150,7 +150,7 @@
     "baseStats1": "+生命60/110/200·反伤8/11/15%",
     "shopAvailable": 1,
     "emoji": "🦪",
-    "effectDesc1": "每次受到伤害获得 1 层硬化，每层提供+1/1.5/2 护甲和+1/1.5/2 魔抗（上限 {C:EquipSystem.URCHIN_CAP} 层）；\n叠满 {C:EquipSystem.URCHIN_CAP} 层时获得「海胆护盾」（100/170/250+5/12/20%最大生命值），该护盾在 {C:EquipSystem.URCHIN_DECAY} 秒内逐渐衰减。",
+    "effectDesc1": "每次受到伤害获得 1 层硬化，每层提供+1/1.5/2 护甲和+1/1.5/2 魔抗（上限 {C:EquipSystem.URCHIN_CAP} 层）；\n叠满 {C:EquipSystem.URCHIN_CAP} 层时获得「海胆护盾」（100/170/250+自身最大生命值 5/12/20%），该护盾在 {C:EquipSystem.URCHIN_DECAY} 秒内逐渐衰减。",
     "effectDesc3": "",
     "img": "equip/eq013-icon.png",
     "effectBrief": "每次受伤叠 1 层硬化（各 +1/1.5/2 双抗，上限 {C:EquipSystem.URCHIN_CAP} 层），满层给护盾。"
@@ -969,7 +969,7 @@
     "effectDesc1": "充能条：每累计受到自身 40/35/30%最大生命值的伤害后举盾 2.5/3/3.5 秒，期间获得 60/100/160 护盾值与 50/80/140 双抗，且举盾期间受到的伤害不计入充能条；\n举盾结束后重新开始计数。",
     "effectDesc3": "",
     "img": "equip/p2eq_081.png",
-    "effectBrief": "每受到 40/35/30% 最大生命值的伤害就举盾 2.5/3/3.5 秒，期间加护盾与双抗。"
+    "effectBrief": "每受到自身最大生命值 40/35/30% 的伤害就举盾 2.5/3/3.5 秒，期间加护盾与双抗。"
   },
   {
     "id": "p2eq_082",
@@ -978,7 +978,7 @@
     "baseStats1": "+生命70/170/380·+魔抗8/17/30",
     "shopAvailable": 1,
     "emoji": "🐚",
-    "effectDesc1": "【护心反伤】自身每受到一段攻击，反伤 3/5/8 点魔法伤害给攻击者（持续伤害不计，多段攻击每段独立计数，反伤不触发对方的反伤）。\n每反伤 {C:EqBladeBatch.CLAM_PER_CHARGE} 次获得一层充能；自身的普攻消耗一层充能，回复 5/7/10%最大生命值，并附带自身 100%魔抗的魔法伤害。",
+    "effectDesc1": "【护心反伤】自身每受到一段攻击，反伤 3/5/8 点魔法伤害给攻击者（持续伤害不计，多段攻击每段独立计数，反伤不触发对方的反伤）。\n每反伤 {C:EqBladeBatch.CLAM_PER_CHARGE} 次获得一层充能；自身的普攻消耗一层充能，回复自身最大生命值 5/7/10%，并附带自身 100%魔抗的魔法伤害。",
     "effectDesc3": "",
     "img": "equip/p2eq_082.png",
     "effectBrief": "每受到一段攻击反伤 3/5/8 点；每反伤 {C:EqBladeBatch.CLAM_PER_CHARGE} 次攒一层，普攻消耗后回血。"

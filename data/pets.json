@@ -926,7 +926,7 @@
     "passive": {
       "type": "rainbowPrism",
       "name": "棱镜",
-      "brief": "棱镜每 <span class=\"val-atk\">{C:RainbowSystem.PRISM_COLOR_SEC} 秒</span> 随机获得一种颜色，为普攻附带对应效果：\n🔴 红色附加 <span class=\"val-atk\">{C:RainbowSystem.PRISM_RED_TRUE%}% 攻击力</span> 的真实伤害，🔵 蓝色使每次普攻获得 <span class=\"val-atk\">{C:RainbowSystem.PRISM_BLUE_SHIELD%}% 攻击力</span> 护盾，🟢 绿色使每次普攻回复 <span class=\"val-heal\">{C:RainbowSystem.PRISM_GREEN_HEAL%}% 已损生命值</span>。\n彩虹龟持续获得 <span class=\"val-hp\">2% 最大生命值</span> 的攻击力，以及<span class=\"val-atk\">({C:RainbowSystem.PRISM_ASPD_PER_ATK%}×攻击力)%</span> 的攻击速度。",
+      "brief": "棱镜每 <span class=\"val-atk\">{C:RainbowSystem.PRISM_COLOR_SEC} 秒</span> 随机获得一种颜色，为普攻附带对应效果：\n🔴 红色附加 <span class=\"val-atk\">{C:RainbowSystem.PRISM_RED_TRUE%}% 攻击力</span> 的真实伤害，🔵 蓝色使每次普攻获得 <span class=\"val-atk\">{C:RainbowSystem.PRISM_BLUE_SHIELD%}% 攻击力</span> 护盾，🟢 绿色使每次普攻回复 <span class=\"val-heal\">{C:RainbowSystem.PRISM_GREEN_HEAL%}% 已损生命值</span>。\n彩虹龟持续获得 <span class=\"val-hp\">自身最大生命值 2%</span> 的攻击力，以及<span class=\"val-atk\">({C:RainbowSystem.PRISM_ASPD_PER_ATK%}×攻击力)%</span> 的攻击速度。",
       "desc": "每 {C:RainbowSystem.PRISM_COLOR_SEC} 秒随机获得一种颜色（🔴红/🔵蓝/🟢绿），普攻附带对应效果：🔴红光额外造成（{C:RainbowSystem.PRISM_RED_TRUE%}%×攻击力({ATK}) = {T:RainbowSystem.PRISM_RED_TRUE*ATK}）真实伤害。\n🔵蓝光每次普攻获得（{C:RainbowSystem.PRISM_BLUE_SHIELD%}%×攻击力({ATK}) = {S:RainbowSystem.PRISM_BLUE_SHIELD*ATK}）护盾（持续 {C:RainbowSystem.PRISM_BLUE_SEC} 秒）\n🟢绿光每次普攻回复 <span class=\"val-heal\">{C:RainbowSystem.PRISM_GREEN_HEAL%}% 已损生命值</span>。\n彩虹龟持续获得（2%×最大生命值）的攻击力和（{C:RainbowSystem.PRISM_ASPD_PER_ATK%}×攻击力）%的攻击速度。\n两者实时生效：\n中途提升最大生命值会同时抬高攻击力与攻速。"
     },
     "skillPool": [
@@ -1513,7 +1513,7 @@
         "cd": 0,
         "selfCast": true,
         "counterScale": 0.3,
-        "brief": "以雷电包裹自身，获得 {S:LightningSystem.SHIELD_ATK_COEF*ATK} 外加 <span class=\"val-hp\">{C:LightningSystem.SHIELD_MAXHP_PCT%}% 最大生命值</span> 的护盾，持续 {C:LightningSystem.SHIELD_SEC} 秒。\n护盾存在时，闪电龟每受到一段攻击便反击 {M:LightningSystem.SHIELD_RETALIATE*ATK} 魔法伤害，并为攻击者叠加 1 层电击。",
+        "brief": "以雷电包裹自身，获得 {S:LightningSystem.SHIELD_ATK_COEF*ATK} 外加 <span class=\"val-hp\">自身最大生命值 {C:LightningSystem.SHIELD_MAXHP_PCT%}%</span> 的护盾，持续 {C:LightningSystem.SHIELD_SEC} 秒。\n护盾存在时，闪电龟每受到一段攻击便反击 {M:LightningSystem.SHIELD_RETALIATE*ATK} 魔法伤害，并为攻击者叠加 1 层电击。",
         "detail": "闪电龟以雷电包裹自身，获得（{C:LightningSystem.SHIELD_ATK_COEF%}%×攻击力({ATK}) = {S:LightningSystem.SHIELD_ATK_COEF*ATK}）+ <span class=\"val-hp\">{C:LightningSystem.SHIELD_MAXHP_PCT%}%最大生命值</span> 的护盾，持续 {C:LightningSystem.SHIELD_SEC} 秒。\n护盾存在时，每受到一段攻击便反击（{C:LightningSystem.SHIELD_RETALIATE%}%×攻击力({ATK}) = {M:LightningSystem.SHIELD_RETALIATE*ATK}）魔法伤害并叠加 1 层电击。",
         "energyCost": 90
       }
@@ -1934,7 +1934,7 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "蓄力后朝一条直线射出长能量射线，对直线上的所有敌人各造成 {N:ChestSystem.CANNON_COEF*ATK} 物理伤害，并将其<span class=\"val-atk\">击飞击退</span>。\n打包被动·<span class=\"val-normal\">贪婪</span>：\n宝箱龟每携带一件装备，便<span class=\"val-atk\">永久</span>获得 <span class=\"val-atk\">{C:ChestSystem.GREED_ATK_PER_EQ%}% 攻击力</span> 和 <span class=\"val-atk\">{C:ChestSystem.GREED_HP_PER_EQ%}% 最大生命值</span>。",
+        "brief": "蓄力后朝一条直线射出长能量射线，对直线上的所有敌人各造成 {N:ChestSystem.CANNON_COEF*ATK} 物理伤害，并将其<span class=\"val-atk\">击飞击退</span>。\n打包被动·<span class=\"val-normal\">贪婪</span>：\n宝箱龟每携带一件装备，便<span class=\"val-atk\">永久</span>获得 <span class=\"val-atk\">{C:ChestSystem.GREED_ATK_PER_EQ%}% 攻击力</span> 和自身最大生命值 <span class=\"val-atk\">{C:ChestSystem.GREED_HP_PER_EQ%}%</span>。",
         "detail": "宝箱龟蓄力后朝一条直线发出一道长激光能量射线，对直线上所有敌人各造成（{C:ChestSystem.CANNON_COEF%}%×攻击力({ATK}) = {N:ChestSystem.CANNON_COEF*ATK}）物理伤害，并将其击飞与击退。\n<span style=\"color:#8a93a0\">打包被动·贪婪：\n选择本技能后，宝箱龟每携带一件装备便永久获得攻击力 +{C:ChestSystem.GREED_ATK_PER_EQ%}% 与最大生命值 +{C:ChestSystem.GREED_HP_PER_EQ%}%（含藏宝图开出的装备，实时累计）。\n</span>"
       }
     ],

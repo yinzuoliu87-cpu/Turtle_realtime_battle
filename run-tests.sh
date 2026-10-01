@@ -733,7 +733,7 @@ run_audit "tools/const_leftover_audit.py" "ALL OK" "const_leftover_audit (抽了
 run_audit "tools/codex_text_lint.py"     "ALL OK" "codex_text_lint (图鉴文案: 教学味/自夸/开发备注/别家黑话/数字贴字)"
 # 文案体例(2026-10-01): 四个 LoL 语料零命中的口语词硬零; 叠满/攒满 与「百分比没写是谁的」记台账只减不增。
 #   ★台账在 tests/golden/copy_style_debt.txt, 减下去要同时改那边的数(脚本有一条专判这个)。
-run_audit "tools/copy_style_audit.py"    "ALL OK" "copy_style (文案体例: 口语词硬零/歧义百分比台账只减不增)"
+run_audit "tools/copy_style_audit.py"    "ALL OK" "copy_style (文案体例: 口语词硬零/「X%生命值」必须写明是谁的/叠满台账只减不增)"
 run_audit "tools/twin_const_audit.py"    "ALL OK" "twin_const (同功能的逻辑侧↔演出侧同名常量取值打架)"
 run_audit "tools/twin_radius_audit.py"   "ALL OK" "twin_radius (判定侧↔演出侧【不同名但同值】的范围常量·同一个数存两份)"
 ## ★与上面两条 twin_* 的分工(别合并, 它们各自故意很窄):

@@ -110,19 +110,34 @@ def main():
                 hard.append('%s 里有「%s」' % (path, w))
     chk('★四个口语动词硬零 %s(LoL 692 条语料里一次都没有)' % '/'.join(HARD_ZERO), hard)
 
-    # ── ②③ 台账 ──
-    counts = {}
-    for w in SOFT:
-        counts['口语·' + w] = sum(t.count(w) for _, _, t in segs)
+    # ── ② 「X% 生命值」必须写明是谁的 —— 2026-10-01 清到 0, 从台账升级成硬零 ──
+    #
+    # ★这条原来是台账(45 起步)。台账头上写着「减到 0 了就把那一行改成硬零」, 现在兑现:
+    #   留着一个 0 的台账等于留着一个"可以再涨回去"的额度。
+    # ★45 条逐件改的时候量出一条通则, 已写进方案书 §4.1:
+    #   **写丢归属的几乎全在 brief, 而同一条的 detail/desc 本来就写着**
+    #   (钻石龟 detail「<b>目标</b>最大生命值」/ 糖果龟 detail「糖果龟最大生命值」/
+    #    081 desc1「每累计受到**自身** 40/35/30%最大生命值的伤害」)。
+    #   简介是照着详细版删出来的, 删的时候把归属词一起删了。**brief 删修饰, 不删归属。**
+    n_pct = 0
     noown = []
     for tag, path, t in segs:
         for cl in CLAUSE.split(t):
             if not PCT_HP.search(cl):
                 continue
+            n_pct += 1
             if THRESH.search(cl) or OWNER.search(cl):
                 continue
             noown.append('%s: %s' % (path, cl.strip()[:40]))
-    counts['百分比生命值·没写是谁的'] = len(noown)
+    print('  [分母] 含「%% … 生命值」的子句共 %d 条(0 条则下面是空检查)' % n_pct)
+    # ★下限 30: 实测 38 条, 留一点余量。它挡的是"正则坏了于是一条都扫不到", 不是挡文案数量变化。
+    chk('★分母: 真的扫到带百分比生命值的子句', [] if n_pct >= 30 else ['只有 %d 条' % n_pct])
+    chk('★每处「X% 生命值」都写明是谁的(目标/自身/各自…) —— 2026-10-01 清零后焊死', noown)
+
+    # ── ③ 台账 ──
+    counts = {}
+    for w in SOFT:
+        counts['口语·' + w] = sum(t.count(w) for _, _, t in segs)
 
     led = read_ledger()
     if led is None:
@@ -152,7 +167,7 @@ def main():
             print('  %s' % f)
         print('FAILED: %d 处' % len(fails))
         sys.exit(1)
-    print('ALL OK — 文案体例纪律(硬零口语词 / 歧义百分比台账只减不增)')
+    print('ALL OK — 文案体例纪律(口语词硬零 / 「X% 生命值」必须写明是谁的 / 叠满攒满台账只减不增)')
 
 
 main()
