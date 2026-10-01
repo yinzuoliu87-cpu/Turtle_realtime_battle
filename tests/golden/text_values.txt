@@ -59,7 +59,7 @@ eq|涟漪药剂|effectDesc1	8.0
 eq|涨潮碑|effectBrief	5.0
 eq|涨潮碑|effectDesc1	5.0 250.0
 eq|深海堡垒甲|effectBrief	8.0 25.0
-eq|深海堡垒甲|effectDesc1	5.0 8.0 25.0 25.0
+eq|深海堡垒甲|effectDesc1	5.0 8.0 25.0
 eq|深海气压罐|effectBrief	12.0
 eq|深海气压罐|effectDesc1	3.0 5.0 8.0 12.0 12.0 2000.0
 eq|深海项链|effectBrief	16.0 50.0
@@ -74,7 +74,7 @@ eq|激光手枪|effectDesc1	8.0 50.0 50.0
 eq|激光长刃|effectDesc1	120.0 250.0
 eq|灼热火珊瑚|effectDesc1	10.0 60.0 550.0
 eq|炙烤海胆|effectBrief	20.0
-eq|炙烤海胆|effectDesc1	10.0 20.0 20.0
+eq|炙烤海胆|effectDesc1	10.0 20.0
 eq|炼乳罐|effectDesc1	3.0 10.0 50.0 50.0 300.0
 eq|狙击长管|effectBrief	8.0
 eq|狙击长管|effectDesc1	8.0 12.0
@@ -97,7 +97,7 @@ eq|蛋糕蜡烛|effectBrief	5.0
 eq|蛋糕蜡烛|effectDesc1	3.0 5.0 5.0 250.0 500.0
 eq|螳螂虾钳|effectBrief	40.0
 eq|螳螂虾钳|effectDesc1	40.0
-eq|远古炮台|effectDesc1	0.5 100.0 400.0 2000.0
+eq|远古炮台|effectDesc1	0.5 4.0 10.0 100.0 400.0 2000.0
 eq|远古龟甲片|effectBrief	0.25 6.0 25.0
 eq|远古龟甲片|effectDesc1	0.25 6.0 25.0
 eq|连发弩|effectBrief	8.0
@@ -341,7 +341,7 @@ pet|糖果龟/糖衣炮弹|brief	0.2 0.42 0.5 1.5 2.0 2.94 8.0 20.0
 pet|糖果龟/糖衣炮弹|detail	0.2 0.42 0.5 0.5 1.5 1.5 2.0 2.0 2.94 8.0 20.0 20.0 20.0 27.4 600.0
 pet|线条龟/墨水炸弹|brief	4.0 137.0
 pet|线条龟/墨水炸弹|detail	4.0 4.0 7.0 10.0 100.0 137.0 300.0
-pet|线条龟/墨迹|brief	0.5 5.0 7.0 10.0 10.0 50.0
+pet|线条龟/墨迹|brief	0.5 5.0 7.0 10.0 50.0
 pet|线条龟/墨迹|desc	0.5 5.0 7.0 10.0 10.0 50.0
 pet|线条龟/画龙点睛|brief	45.0 70.0
 pet|线条龟/画龙点睛|detail	7.0 10.0 45.0 70.0 70.0 385.0 520.0

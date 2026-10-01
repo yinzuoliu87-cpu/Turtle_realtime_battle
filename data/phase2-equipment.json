@@ -150,7 +150,7 @@
     "baseStats1": "+生命60/110/200·反伤8/11/15%",
     "shopAvailable": 1,
     "emoji": "🦪",
-    "effectDesc1": "每次受到伤害获得 1 层硬化，每层提供+1/1.5/2 护甲和+1/1.5/2 魔抗（上限 {C:EquipSystem.URCHIN_CAP} 层）；\n叠满 {C:EquipSystem.URCHIN_CAP} 层时获得「海胆护盾」（100/170/250+自身最大生命值 5/12/20%），该护盾在 {C:EquipSystem.URCHIN_DECAY} 秒内逐渐衰减。",
+    "effectDesc1": "每次受到伤害获得 1 层硬化，每层提供+1/1.5/2 护甲和+1/1.5/2 魔抗（上限 {C:EquipSystem.URCHIN_CAP} 层）；\n满层时获得「海胆护盾」（100/170/250+自身最大生命值 5/12/20%），该护盾在 {C:EquipSystem.URCHIN_DECAY} 秒内逐渐衰减。",
     "effectDesc3": "",
     "img": "equip/eq013-icon.png",
     "effectBrief": "每次受伤叠 1 层硬化（各 +1/1.5/2 双抗，上限 {C:EquipSystem.URCHIN_CAP} 层），满层给护盾。"
@@ -162,7 +162,7 @@
     "baseStats1": "+生命80/160/600·护甲&魔抗14/25/50",
     "shopAvailable": 1,
     "emoji": "🏰",
-    "effectDesc1": "每次受到伤害获得 1 层硬化，每层提供+2/4/6 护甲和魔抗（上限 {C:EquipTickSystem.FORTRESS_CAP} 层，无满层护盾）；\n硬化叠满 {C:EquipTickSystem.FORTRESS_CAP} 层时立即汲取一次，此后每 {C:EquipTickSystem.FORTRESS_IV} 秒对全体敌人汲取生命，每名敌人受到 0.8/1/2.5×（护甲+魔抗）魔法伤害，每汲取 1 名敌人就回复（50/100/250+自身已损生命值 {C:EquipTickSystem.FORTRESS_HEAL_LOST%}%）生命；\n汲取不作用于训龟大师与屏障中的龟蛋。",
+    "effectDesc1": "每次受到伤害获得 1 层硬化，每层提供+2/4/6 护甲和魔抗（上限 {C:EquipTickSystem.FORTRESS_CAP} 层，无满层护盾）；\n硬化满层时立即汲取一次，此后每 {C:EquipTickSystem.FORTRESS_IV} 秒对全体敌人汲取生命，每名敌人受到 0.8/1/2.5×（护甲+魔抗）魔法伤害，每汲取 1 名敌人就回复（50/100/250+自身已损生命值 {C:EquipTickSystem.FORTRESS_HEAL_LOST%}%）生命；\n汲取不作用于训龟大师与屏障中的龟蛋。",
     "effectDesc3": "",
     "img": "equip/eq014-icon.png",
     "effectBrief": "每次受伤叠 1 层硬化（各 +2/4/6 双抗）；满 {C:EquipTickSystem.FORTRESS_CAP} 层后每 {C:EquipTickSystem.FORTRESS_IV} 秒全场汲取生命。"
@@ -354,10 +354,10 @@
     "baseStats1": "+攻7/12/20·生命20/40/80·魔穿5/8/13",
     "shopAvailable": 1,
     "emoji": "🔮",
-    "effectDesc1": "该法器法力条集满时朝最近的敌人方向发射 2/2/3 段贯穿水晶光束（每段间隔 {C:CrystalSystem.LINE_SEG_GAP} 秒），每段对这条直线上（中线两侧各 {C:CrystalSystem.LINE_HALF_W} 码）的每名敌人造成 30/35/40 魔法伤害并施加 1 层迷你水晶；\n敌人叠满 3 层水晶时被引爆，受到 14/17/20%其最大生命值的魔法伤害并重置层数。",
+    "effectDesc1": "该法器法力条集满时朝最近的敌人方向发射 2/2/3 段贯穿水晶光束（每段间隔 {C:CrystalSystem.LINE_SEG_GAP} 秒），每段对这条直线上（中线两侧各 {C:CrystalSystem.LINE_HALF_W} 码）的每名敌人造成 30/35/40 魔法伤害并施加 1 层迷你水晶；\n敌人满 3 层水晶时引爆，受到 14/17/20%其最大生命值的魔法伤害并重置层数。",
     "effectDesc3": "",
     "img": "equip/dungeon-mini-crystal.png",
-    "effectBrief": "法力满时发射贯穿水晶光束；敌人叠满 3 层水晶即引爆。"
+    "effectBrief": "法力满时发射贯穿水晶光束；敌人满 3 层水晶即引爆。"
   },
   {
     "id": "p2eq_031",
@@ -366,10 +366,10 @@
     "baseStats1": "+攻7/12/20·生命20/40/80·魔穿3/6/10",
     "shopAvailable": 1,
     "emoji": "🔮",
-    "effectDesc1": "该法器法力条集满时以自身为中心用水晶射线 {C:CrystalSystem.SWEEP_ARC_DEG}°扫射一圈（半径 {C:CrystalSystem.SWEEP_REACH} 码，耗时 {C:CrystalSystem.SWEEP_SEC} 秒，射线跟随自身移动），扫到的敌人各造成 60/130/250 魔法伤害并施加 1 层迷你水晶，同时偷取目标 {C:CrystalSystem.MINI_MR_STEAL%}%当前魔抗（真偷取：目标减少、自身获得，永久到战斗结束）；\n敌人叠满 {C:CrystalSystem.MINI_STACK_MAX} 层水晶时被引爆，受到 14/17/20%其最大生命值的魔法伤害并重置层数。",
+    "effectDesc1": "该法器法力条集满时以自身为中心用水晶射线 {C:CrystalSystem.SWEEP_ARC_DEG}°扫射一圈（半径 {C:CrystalSystem.SWEEP_REACH} 码，耗时 {C:CrystalSystem.SWEEP_SEC} 秒，射线跟随自身移动），扫到的敌人各造成 60/130/250 魔法伤害并施加 1 层迷你水晶，同时偷取目标 {C:CrystalSystem.MINI_MR_STEAL%}%当前魔抗（真偷取：目标减少、自身获得，永久到战斗结束）；\n敌人满 {C:CrystalSystem.MINI_STACK_MAX} 层水晶时引爆，受到 14/17/20%其最大生命值的魔法伤害并重置层数。",
     "effectDesc3": "",
     "img": "equip/dungeon-mini-crystal-b.png",
-    "effectBrief": "法力满时 {C:CrystalSystem.SWEEP_ARC_DEG}° 扫射水晶射线并偷取魔抗；敌人叠满 {C:CrystalSystem.MINI_STACK_MAX} 层即引爆。"
+    "effectBrief": "法力满时 {C:CrystalSystem.SWEEP_ARC_DEG}° 扫射水晶射线并偷取魔抗；敌人满 {C:CrystalSystem.MINI_STACK_MAX} 层即引爆。"
   },
   {
     "id": "p2eq_032",

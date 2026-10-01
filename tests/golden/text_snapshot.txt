@@ -76,7 +76,7 @@ eq|涟漪药剂|effectDesc1|每 8 秒为全队（含自己）各回复其已损�
 eq|涨潮碑|effectBrief|法力满时立一块潮汐碑 5 秒：碑内敌人掉血，友军得护盾与攻击速度。
 eq|涨潮碑|effectDesc1|该法器法力条集满时，在自己脚下立一块潮汐碑，钉在地上不跟随，持续 5 秒，半径 250 码。\n碑内敌人每秒受到 15/25/40 魔法伤害；碑内友军每秒获得 20/35/55 护盾（可叠加）并获得 10/15/25%攻击速度（离开范围即失效）。\n碑存在期间该法器的法力条锁定不增长。
 eq|深海堡垒甲|effectBrief|每次受伤叠 1 层硬化（各 +2/4/6 双抗）；满 25 层后每 8 秒全场汲取生命。
-eq|深海堡垒甲|effectDesc1|每次受到伤害获得 1 层硬化，每层提供+2/4/6 护甲和魔抗（上限 25 层，无满层护盾）；\n硬化叠满 25 层时立即汲取一次，此后每 8 秒对全体敌人汲取生命，每名敌人受到 0.8/1/2.5×（护甲+魔抗）魔法伤害，每汲取 1 名敌人就回复（50/100/250+自身已损生命值 5%）生命；\n汲取不作用于训龟大师与屏障中的龟蛋。
+eq|深海堡垒甲|effectDesc1|每次受到伤害获得 1 层硬化，每层提供+2/4/6 护甲和魔抗（上限 25 层，无满层护盾）；\n硬化满层时立即汲取一次，此后每 8 秒对全体敌人汲取生命，每名敌人受到 0.8/1/2.5×（护甲+魔抗）魔法伤害，每汲取 1 名敌人就回复（50/100/250+自身已损生命值 5%）生命；\n汲取不作用于训龟大师与屏障中的龟蛋。
 eq|深海气压罐|effectBrief|把受到的伤害存成充能；每 12 秒清空换成法力护盾并射出激光。
 eq|深海气压罐|effectDesc1|受到的伤害按 60/100/200%存进专属充能条（上限为最大生命值的 30/50/100%）。\n登场第 12 秒起每 12 秒清空充能：获得充能值 100/120/300%的法力护盾（8 秒内衰减完），并朝最远敌人射出一道 2000 码法力激光，3 秒内共造成充能值 100/120/600%的魔法伤害；\n法力护盾存在期间充能条锁住。\n普攻额外获得 5 龟能并回复 20/35/50 生命。
 eq|深海项链|effectBrief|生命首次低于 50% 时，16 秒内回复自身最大生命值 40/85/130%。
@@ -94,7 +94,7 @@ eq|激光长刃|effectDesc1|每隔一次攻击间隔朝最近的敌人斩出一�
 eq|灼热火珊瑚|effectBrief|普攻额外施加灼烧并攒法力；法力满时挥出火焰波扩散灼烧。
 eq|灼热火珊瑚|effectDesc1|被动：自身的普攻命中额外施加（2/5/8+7/11/15%攻击力）层灼烧，并获得 10 点法力（法力进度显示在图标下方）。\n主动（法力条集满时自动释放）：蓄力后朝敌方挥出一道火焰波，在 60 度扇形内缓慢移动 550 码，对扫过的敌人各施加 40/60/90 层灼烧（主动施加的灼烧不获得法力）。
 eq|炙烤海胆|effectBrief|每次受伤叠 1 层硬化（各 +1/1.5/2 双抗，上限 20 层），满层给护盾。
-eq|炙烤海胆|effectDesc1|每次受到伤害获得 1 层硬化，每层提供+1/1.5/2 护甲和+1/1.5/2 魔抗（上限 20 层）；\n叠满 20 层时获得「海胆护盾」（100/170/250+自身最大生命值 5/12/20%），该护盾在 10 秒内逐渐衰减。
+eq|炙烤海胆|effectDesc1|每次受到伤害获得 1 层硬化，每层提供+1/1.5/2 护甲和+1/1.5/2 魔抗（上限 20 层）；\n满层时获得「海胆护盾」（100/170/250+自身最大生命值 5/12/20%），该护盾在 10 秒内逐渐衰减。
 eq|炼乳罐|effectBrief|战斗开始给全队套上各自最大生命值 10/18/25% 的奶油护盾，破碎时炸伤敌人。
 eq|炼乳罐|effectDesc1|战斗开始为所有友军（含自己）套上其最大生命值 10/18/25%的【奶油护盾】，永久不衰减。\n奶油护盾被打破时，对自身 300 码内的敌人造成 70/100/150 点魔法伤害，随后给自身+10 双抗、+20/30/40%攻击速度与+50 射程，持续整路。\n自身每累计损失 50%最大生命值会再给全队上一次，每路共 3 次。
 eq|狙击长管|effectBrief|每 8 秒狙击最残的敌人；这一枪造成击杀就重新蓄力再来一枪。
@@ -146,10 +146,10 @@ eq|连发弩|effectBrief|每 8 秒朝最远的敌人连射 1/2/3 发，目标越
 eq|连发弩|effectDesc1|每 8 秒朝距离自己最远的敌人方向依次连射 1/2/3 发，每发命中沿途第一个敌人（可被前排阻挡），按目标已损失生命造成 0.8~1.3×攻击力的物理伤害（已损 30%生命时达到最大）。
 eq|连发弩机|effectBrief|释放技能后连射竹箭贯穿敌人，每穿过一个偷取 0.5/0.5/1 点龟能。
 eq|连发弩机|effectDesc1|被动（仅在弓箭羁绊激活时）：每第 3 下普攻给目标施加 1 层【腐蚀】（与弓箭羁绊共用层数）。\n主动：释放技能后每 0.15 秒射出一支箭，发数=本次技能消耗龟能÷8；\n箭沿直线飞 2000 码贯穿沿途敌人，每支造成 0.05/0.06/0.08 倍攻击力的物理伤害加 9/13/16 点真实伤害，每穿过一个敌人伤害降低 25%（最低 25%），并从该敌人身上偷取 0.5/0.5/1 点龟能给自己。
-eq|迷你水晶球A|effectBrief|法力满时发射贯穿水晶光束；敌人叠满 3 层水晶即引爆。
-eq|迷你水晶球A|effectDesc1|该法器法力条集满时朝最近的敌人方向发射 2/2/3 段贯穿水晶光束（每段间隔 0.2 秒），每段对这条直线上（中线两侧各 55 码）的每名敌人造成 30/35/40 魔法伤害并施加 1 层迷你水晶；\n敌人叠满 3 层水晶时被引爆，受到 14/17/20%其最大生命值的魔法伤害并重置层数。
-eq|迷你水晶球B|effectBrief|法力满时 {C:CrystalSystem.SWEEP_ARC_DEG}° 扫射水晶射线并偷取魔抗；敌人叠满 3 层即引爆。
-eq|迷你水晶球B|effectDesc1|该法器法力条集满时以自身为中心用水晶射线 {C:CrystalSystem.SWEEP_ARC_DEG}°扫射一圈（半径 1000 码，耗时 1.5 秒，射线跟随自身移动），扫到的敌人各造成 60/130/250 魔法伤害并施加 1 层迷你水晶，同时偷取目标 10%当前魔抗（真偷取：目标减少、自身获得，永久到战斗结束）；\n敌人叠满 3 层水晶时被引爆，受到 14/17/20%其最大生命值的魔法伤害并重置层数。
+eq|迷你水晶球A|effectBrief|法力满时发射贯穿水晶光束；敌人满 3 层水晶即引爆。
+eq|迷你水晶球A|effectDesc1|该法器法力条集满时朝最近的敌人方向发射 2/2/3 段贯穿水晶光束（每段间隔 0.2 秒），每段对这条直线上（中线两侧各 55 码）的每名敌人造成 30/35/40 魔法伤害并施加 1 层迷你水晶；\n敌人满 3 层水晶时引爆，受到 14/17/20%其最大生命值的魔法伤害并重置层数。
+eq|迷你水晶球B|effectBrief|法力满时 {C:CrystalSystem.SWEEP_ARC_DEG}° 扫射水晶射线并偷取魔抗；敌人满 3 层即引爆。
+eq|迷你水晶球B|effectDesc1|该法器法力条集满时以自身为中心用水晶射线 {C:CrystalSystem.SWEEP_ARC_DEG}°扫射一圈（半径 1000 码，耗时 1.5 秒，射线跟随自身移动），扫到的敌人各造成 60/130/250 魔法伤害并施加 1 层迷你水晶，同时偷取目标 10%当前魔抗（真偷取：目标减少、自身获得，永久到战斗结束）；\n敌人满 3 层水晶时引爆，受到 14/17/20%其最大生命值的魔法伤害并重置层数。
 eq|退潮浊液|effectBrief|登场 5 秒后进入【涨潮】，获得最大生命值与攻击力、体积增大、射程提升；持续时间结束后【退潮】，加成全部还原。
 eq|退潮浊液|effectDesc1|登场 5 秒后进入【涨潮】：获得 500/1100/2000 最大生命值与 16/31/60 攻击力，体积增大 30%、攻击射程 +50 码，持续 12/16/22 秒。\n持续时间结束后【退潮】，上述加成全部还原（【退潮】不会致死，只把生命削到新上限）。
 eq|重击锤|effectBrief|获得自身 4/6/15% 最大生命值的攻击力，随最大生命值成长。
@@ -305,9 +305,9 @@ pet|星际龟/星能|brief|将造成伤害的 <span class="val-atk">35%</span> �
 pet|星际龟/星能|desc|将<span class="val-atk">普攻与技能直接命中</span>造成伤害的 <span class="val-atk">35%</span> 转化为星能（灼烧/中毒等持续伤害不计），上限为（40%×最大生命值({HP}) = {B:HP*StarSystem.ENERGY_CAP_PCT}）\n每次普攻或释放技能后对目标追加一次储存星能 <span class="val-atk">12%</span> 的真实伤害。\n当星能充满（自身最大生命值 40%）时，技能【星波】与【扭曲空间】释放强化变体并消耗全部星能。
 pet|星际龟/虫洞|brief|短暂蓄力后发射一个缓慢移动的虫洞，沿目标所在的直线推进。\n沿途的敌人会被吸向虫洞，靠得更近的敌人则被<span class="val-atk">捕获</span>、被虫洞吸着一起移动。\n虫洞抵达地图边界时爆炸，对被捕获者与爆点附近的敌人造成 {M:StarSystem.WORM_BOOM_COEF*ATK} ×（1+5%×本路已打秒数）魔法伤害。\n<span style="color:#8a93a0">吸取与捕获过程本身不造成伤害；\n<span class="val-atk">本路战斗打得越久</span>，爆炸伤害越高（按发射时刻定格）。\n</span>\n<span style="color:#8a93a0">释放虫洞后<span class="val-atk">锁定龟能</span>，直到虫洞消失才恢复充能。\n</span>
 pet|星际龟/虫洞|detail|星际龟短暂蓄力（0.3 秒）后，朝目标所在的直线发射一个缓慢移动的虫洞。\n虫洞以 140 码/秒直线飞向<b>地图边界</b>：沿途 150 码内的敌人被真重力吸引（弧线卷入，<b>此过程不造成伤害</b>），100 码内被捕获吸着一起走。\n虫洞抵达边界时<b>爆炸</b>，对携带者与爆点 150 码内的敌人造成（150%×攻击力({ATK}) = {M:StarSystem.WORM_BOOM_COEF*ATK}，再乘以（1 + 5%×战斗已过秒数））魔法伤害。\n<span style="color:#8a93a0">伤害倍率在发射瞬间定格 —— 开战越久，虫洞越强。\n</span>。\n<span style="color:#8a93a0">释放虫洞后<span class="val-atk">锁定龟能</span>，直到虫洞消失才恢复充能。</span>
-pet|水晶龟/水晶共鸣|brief|对受到的魔法伤害额外减免 <span class="val-magic">20%</span>。\n水晶龟每次攻击都为目标叠加一层<span class="val-normal">结晶印记</span>，叠满 <span class="val-atk">5</span> 层时引爆，造成目标 <span class="val-magic">22% 最大生命值</span> 的魔法伤害，并<span class="val-atk">持续 5 秒</span>削减其 20% 魔抗。
+pet|水晶龟/水晶共鸣|brief|对受到的魔法伤害额外减免 <span class="val-magic">20%</span>。\n水晶龟每次攻击都为目标叠加一层<span class="val-normal">结晶印记</span>，满 <span class="val-atk">5</span> 层时引爆，造成目标 <span class="val-magic">22% 最大生命值</span> 的魔法伤害，并<span class="val-atk">持续 5 秒</span>削减其 20% 魔抗。
 pet|水晶龟/水晶共鸣|desc|受到魔法伤害时额外减免 <span class="val-magic">20%</span>（在魔抗基础上叠加）\n每段攻击为目标叠加 1 层结晶印记，满 <span class="val-atk">5</span> 层引爆，造成目标最大生命值 <span class="val-magic">22%</span> 的魔法伤害（吃魔抗），并<span class="val-atk">持续 5 秒</span>削减其 <span class="val-magic">20%</span> 魔抗，引爆后清零重新叠加。\n<span style="color:#8a93a0">普攻、碎晶爆破、水晶球（本体光线与随从光线）叠的结晶层数共享同一份计数。\n</span>
-pet|水晶龟/水晶刺|brief|刺出一根水晶刺，造成 {N:CrystalSystem.BASIC_ATK_COEF*ATK} 物理伤害和 <span class="val-magic">目标最大生命值 1.5%</span> 的魔法伤害，并叠加 1 层<span class="val-normal">结晶印记</span>。\n<span style="color:#8a93a0">结晶印记叠满 5 层时引爆。\n</span>
+pet|水晶龟/水晶刺|brief|刺出一根水晶刺，造成 {N:CrystalSystem.BASIC_ATK_COEF*ATK} 物理伤害和 <span class="val-magic">目标最大生命值 1.5%</span> 的魔法伤害，并叠加 1 层<span class="val-normal">结晶印记</span>。\n<span style="color:#8a93a0">结晶印记满 5 层时引爆。\n</span>
 pet|水晶龟/水晶刺|detail|水晶龟刺出水晶刺，造成（60%×攻击力({ATK}) = {N:CrystalSystem.BASIC_ATK_COEF*ATK}）物理伤害 + 1.5%目标最大生命值 魔法伤害，并叠加 1 层结晶印记（结晶满 5 层引爆，造成目标 22%最大生命值魔法伤害并削减魔抗）。
 pet|水晶龟/水晶壁垒|brief|竖起水晶壁垒，为自己获得 {S:CrystalSystem.BULWARK_ATK*ATK} 外加 <span class="val-atk">10% 最大生命值</span> 的护盾，持续 4 秒，并使全体友方的护甲与魔抗提升 <span class="val-atk">15%</span>，持续 4 秒。\n护盾结束或被打破时，水晶龟朝目标射出一条直线水晶刺，命中的敌人受到 {T:CrystalSystem.SPIKE_TRUE_COEF*ATK} 真实伤害、叠加 <span class="val-atk">2</span> 层<span class="val-normal">结晶印记</span>、被<span class="val-atk">击飞</span> 0.8 秒 并<span class="val-atk">减速 50%</span>，持续 3 秒。\n<span style="color:#8a93a0">持盾期间龟能锁定。\n</span>
 pet|水晶龟/水晶壁垒|detail|水晶龟竖起水晶壁垒：自身获得（200%×攻击力({ATK}) = {S:CrystalSystem.BULWARK_ATK*ATK}）+ 10%最大生命值 的护盾（持续 4 秒），持盾期间龟能锁定（盾破或到期恢复充能）\n全体友方的护甲与魔抗提升 <span class="val-atk">+15%</span>，持续 4 秒。\n护盾结束或被打破的瞬间，朝当前目标方向放出一条 700 码的直线水晶刺——水晶一段段从地底刺出：\n命中的敌人受到（150%×攻击力({ATK}) = {T:CrystalSystem.SPIKE_TRUE_COEF*ATK}）真实伤害、叠加 2 层结晶印记、被击飞 0.8 秒，并受到 50% 移动速度削减，持续 3 秒。\n护盾结束或被打破时，水晶龟朝目标射出一条直线水晶刺，命中的敌人受到 {T:CrystalSystem.SPIKE_TRUE_COEF*ATK} 真实伤害、叠加 <span class="val-atk">2</span> 层<span class="val-normal">结晶印记</span>、被<span class="val-atk">击飞</span> 0.8 秒 并<span class="val-atk">减速 50%</span>，持续 3 秒。
@@ -396,7 +396,7 @@ pet|糖果龟/糖衣炮弹|brief|在敌方最密集处降下糖衣炮弹雨，<s
 pet|糖果龟/糖衣炮弹|detail|糖果龟指挥在敌方最密集区域降下糖衣炮弹雨：\n半径 600 码，持续约 2.94 秒，每 <b>0.42 秒</b>一跳（共 8 跳）。\n每跳：\n范围内友军获得糖果龟 1.5%最大生命值的护盾。\n范围内敌军受到（20%×攻击力({ATK}) = {N:CandySystem.BARRAGE_ATK_COEF*ATK}）+ 2%糖果龟最大生命值 魔法伤害，并被减速 20%（每次受击刷新 0.5 秒）。\n每一跳为友军提供【糖果龟】1.5% 最大生命值的护盾，并对敌军造成（0.2×攻击力 + 2% 自身最大生命值）魔法伤害 和 <span class="val-atk">20% 减速</span>。\n<span style="color:#8a93a0">减速每跳重新施加，每次持续 0.5 秒。\n</span>
 pet|线条龟/墨水炸弹|brief|远程投掷墨水炸弹，对落点范围内的敌人溅射四段，共造成 {M:LineSystem.BOMB_SEG_COEF*ATK*LineSystem.BOMB_SEGMENTS} 魔法伤害，每段命中各叠加 <span class="val-normal">1 层墨迹</span>（四段共 4 层）。
 pet|线条龟/墨水炸弹|detail|线条龟远程投掷墨水炸弹（全场投放，落点自动锁定敌方最密集处），对落点 300 码范围内敌方溅射 4 段共（100%×攻击力({ATK}) = {M:LineSystem.BOMB_SEG_COEF*ATK*LineSystem.BOMB_SEGMENTS}）魔法伤害，每段命中为目标叠加 1 层墨迹（四段共 4 层）。\n<span style="color:#8a93a0">投掷落点自动锁定敌方最密集处；选择本技能后，被动「墨迹」的层数上限由 7 提升至 10。\n</span>
-pet|线条龟/墨迹|brief|普攻与技能都会为目标叠加<span class="val-normal">墨迹</span>。\n目标每受到一次伤害，每层墨迹便使其在原伤害之外额外承受 <span class="val-atk">5%</span> 真实伤害，且该真伤穿透减伤与护盾。\n<span style="color:#8a93a0">墨迹上限为 7 层，选择「墨水炸弹」时提升至 10 层；叠满 10 层即额外承受 50%。\n</span>\n线条龟自身实时获得<span class="val-atk">(0.5×攻击力)%</span> 的额外攻击速度。
+pet|线条龟/墨迹|brief|普攻与技能都会为目标叠加<span class="val-normal">墨迹</span>。\n目标每受到一次伤害，每层墨迹便使其在原伤害之外额外承受 <span class="val-atk">5%</span> 真实伤害，且该真伤穿透减伤与护盾。\n<span style="color:#8a93a0">墨迹上限为 7 层，选择「墨水炸弹」时提升至 10 层；满层时额外承受 50%。\n</span>\n线条龟自身实时获得<span class="val-atk">(0.5×攻击力)%</span> 的额外攻击速度。
 pet|线条龟/墨迹|desc|普攻与技能为目标叠加墨迹（上限 7 层；若选择「墨水炸弹」则上限提升至 10 层）。\n目标每受到一次伤害，在原伤害之外，每层墨迹使其额外承受 <span class="val-true">5% 真实伤害</span>（穿透减伤与护盾；满 10 层 = 额外 +50%）。\n线条龟自身<span class="val-normal">实时</span>获得<span class="val-atk">(0.5×攻击力)%</span> 的额外攻击速度（攻击力提升会同步抬高攻速）。
 pet|线条龟/画龙点睛|brief|对<span class="val-normal">墨迹层数最多</span>的敌人点下终笔，造成（70% + 每层墨迹 45%）×攻击力 物理伤害。\n<span style="color:#8a93a0">该伤害不消耗墨迹。\n</span>
 pet|线条龟/画龙点睛|detail|线条龟对<span class="val-normal">墨迹层数最多</span>的敌人点下终笔，造成（70%×攻击力 + 每层墨迹 45%×攻击力）物理伤害。\n<span class="val-atk">不消耗墨迹</span>。\n<span style="color:#8a93a0">满 7 层 = 385%×攻击力。\n若选择「墨水炸弹」把上限提到 10 层，满层 = 520%×攻击力。\n场上无墨迹时改打最近敌人（70%×攻击力）。\n</span>
@@ -460,7 +460,7 @@ pet|闪电龟/闪电|brief|射出一道闪电，造成 {M:LightningSystem.BOLT_A
 pet|闪电龟/闪电|detail|闪电龟普攻射出一道闪电，造成（90%×攻击力({ATK}) = {M:LightningSystem.BOLT_ATK_COEF*ATK}）魔法伤害。\n随后依次接力连锁 2 跳——主目标 → 其 260 码内最近的敌人 → 再向外最近的敌人，每跳伤害 ×0.6 递减（0.54×攻击力 / 0.324×攻击力），每段命中叠加 1 层电击。\n<span style="color:#8a93a0">电击满 8 层→天降大雷引爆并清零；每 4 秒自动电击一名随机敌。\n</span>
 pet|闪电龟/雷暴|brief|释放 <span class="val-atk">二十道</span>闪电随机轰击敌方，共造成 {M:LightningSystem.BARRAGE_TOTAL*ATK} 魔法伤害，每道命中各叠加 <span class="val-normal">1 层电击</span>。
 pet|闪电龟/雷暴|detail|闪电龟释放二十道闪电随机轰击敌方，共造成（300%×攻击力({ATK}) = {M:LightningSystem.BARRAGE_TOTAL*ATK}）魔法伤害，每道命中叠加 1 层电击。
-pet|闪电龟/雷电|brief|每 <span class="val-atk">4 秒</span>自动电击一名随机敌人，造成 {T:ATK*LightningSystem.SHOCK_COEF} 真实伤害。\n闪电龟的每段攻击都会为敌人叠加 <span class="val-normal">1 层电击标记</span>，叠满 <span class="val-atk">8 层</span>时引爆雷暴，造成 {T:ATK*LightningSystem.SHOCK_COEF} 真实伤害并清零层数。
+pet|闪电龟/雷电|brief|每 <span class="val-atk">4 秒</span>自动电击一名随机敌人，造成 {T:ATK*LightningSystem.SHOCK_COEF} 真实伤害。\n闪电龟的每段攻击都会为敌人叠加 <span class="val-normal">1 层电击标记</span>，满 <span class="val-atk">8 层</span>时引爆雷暴，造成 {T:ATK*LightningSystem.SHOCK_COEF} 真实伤害并清零层数。
 pet|闪电龟/雷电|desc|每 4 秒自动电击随机敌人，造成（100%×攻击力({ATK}) = {T:ATK*LightningSystem.SHOCK_COEF}）真实伤害。\n每段攻击为敌人叠加 1 层电击标记，满 8 层时引爆雷暴，造成（100%×攻击力({ATK}) = {T:ATK*LightningSystem.SHOCK_COEF}）真实伤害并清零层数。
 pet|闪电龟/雷盾|brief|以雷电包裹自身，获得 {S:LightningSystem.SHIELD_ATK_COEF*ATK} 外加 <span class="val-hp">自身最大生命值 5%</span> 的护盾，持续 5 秒。\n护盾存在时，闪电龟每受到一段攻击便反击 {M:LightningSystem.SHIELD_RETALIATE*ATK} 魔法伤害，并为攻击者叠加 1 层电击。
 pet|闪电龟/雷盾|detail|闪电龟以雷电包裹自身，获得（200%×攻击力({ATK}) = {S:LightningSystem.SHIELD_ATK_COEF*ATK}）+ <span class="val-hp">5%最大生命值</span> 的护盾，持续 5 秒。\n护盾存在时，每受到一段攻击便反击（30%×攻击力({ATK}) = {M:LightningSystem.SHIELD_RETALIATE*ATK}）魔法伤害并叠加 1 层电击。
