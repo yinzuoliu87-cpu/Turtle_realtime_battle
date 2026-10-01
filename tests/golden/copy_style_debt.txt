@@ -10,13 +10,27 @@
 #
 # ★减下去了必须同时把这里的数改小。留着空额迟早被人用掉 —— 脚本里有一条专门判这个。
 #
-# 冻结于 2026-10-01（v0.19.485）
+# 冻结于 2026-10-01
 #   起点: 叠满 10 / 攒满 2 / 百分比无归属 45
-#   本次: 攒满 2→0（034 brief、096 desc1，都与它们自己的 desc 对齐）
-#         百分比无归属 45→40（018/044/071 五处，逐件读过代码：
-#           018 equip_tick_system.gd:381 u["maxHp"] ⇒ 自身
-#           044 equip_system.gd:2582    u["maxHp"] ⇒ 自身
-#           071 eq_food_batch.gd:408    o["maxHp"]，o 是逐个友军 ⇒ 各自）
+#
+# v0.19.485: 攒满 2→0（034 brief、096 desc1，都与它们自己的 desc 对齐）
+#            百分比无归属 45→40（018/044/071 五处，逐件读过代码：
+#              018 equip_tick_system.gd:381 u["maxHp"] ⇒ 自身
+#              044 equip_system.gd:2582    u["maxHp"] ⇒ 自身
+#              071 eq_food_batch.gd:408    o["maxHp"]，o 是逐个友军 ⇒ 各自）
+#
+# v0.19.486: 百分比无归属 40→28。⚠ 这 12 条**不是同一回事，必须分开记**：
+#   · 3 条是【判据的词表缺口】，文案本来就写清楚了 —— 「并造成**该单位** X% 最大生命值的
+#     真实伤害」「随从拥有**原龟** X% 最大生命值」。补了 该单位/原龟/该目标/本体/原主 五个词。
+#     ★这 3 条**不算改进文案的成绩**。放宽判据也能让「只减不增」变好看，所以要写明白哪几条是这么来的。
+#   · 9 条是真改了文案，逐件读过代码（行号即证据）：
+#       012 equip_tick_system.gd:487  _grant_shield(u, …+u["maxHp"]*JELLY_MAXHP_PCT) ⇒ 自身
+#       036 equip_tick_system.gd:272  ps += float(u.get("maxHp"))*HOTSPRING_PCT[si]  ⇒ 自身（两处文案）
+#       045 equip_system.gd:2585      _eq_start_hot(u, u["maxHp"]*[.30,.60,1.0][si]) ⇒ 自身
+#       064 eq_spirit_batch.gd:452    amt = float(u["maxHp"])*[.50,.80,1.60][si]     ⇒ 自身
+#       069 eq_food_batch.gd:195      … * float(u["maxHp"])                          ⇒ 自身（两处文案）
+#       072 eq_food_batch.gd:490      grant(u, KEY_ULT, float(u["maxHp"])*pct)       ⇒ 自身
+#       091 eq_relic_batch.gd:166     amt = flat + float(u.get("maxHp"))*pct         ⇒ 自身
 口语·叠满	10
 口语·攒满	0
-百分比生命值·没写是谁的	40
+百分比生命值·没写是谁的	28
