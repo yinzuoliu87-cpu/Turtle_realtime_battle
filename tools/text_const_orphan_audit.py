@@ -93,6 +93,27 @@ def main():
         print('  [FAIL] 分母太小(%d < 40) —— 扫串了, 不是真通过' % len(refs))
         return 1
 
+    # ══════════════════════════════════════════════════════════════════
+    #  ★★2026-10-01 提速: 全仓按【标识符】建一次索引, 不要每个常量重切一遍全仓
+    # ══════════════════════════════════════════════════════════════════
+    # 由来: 门禁耗时表里本审计器 **329 秒**, 与 const_leftover(411s) 一起把整套门禁的
+    #   墙钟地板顶在 7 分钟 —— 而测试池 JOBS=8 只要 363 秒, 再加并行也下不去这两个数。
+    # 原来的内层是 `for p, s in srcs.items(): for line in s.split('\n')` ——
+    #   **`s.split()` 写在循环里**, 于是 111,797 行被重新切了几百遍(每个受检常量一遍)。
+    # ⇒ ① 只切一次 ② 按行里出现的标识符建索引, 每个常量只去看**真的提到它**的那几行。
+    # ★判据没动: `\bCONST\b` 认的就是标识符边界, 而索引用的
+    #   `[A-Za-z_][A-Za-z0-9_]*` 切出来的正是同一套边界 ⇒ 命中集合完全一致。
+    #   同一行里出现两次仍只算一次(原来是逐行 `hits += 1`), 所以索引里按行去重。
+    lines_of = {p: s.split('\n') for p, s in srcs.items()}
+    WORDRE = re.compile(r'[A-Za-z_][A-Za-z0-9_]*')
+    widx = {}
+    for p, ls in lines_of.items():
+        for i, line in enumerate(ls):
+            for w in set(WORDRE.findall(line)):
+                widx.setdefault(w, []).append((p, i))
+    print('  [分母] 索引: %d 个不同标识符 / 全仓 %d 行'
+          % (len(widx), sum(len(v) for v in lines_of.values())))
+
     fails = []
     orphan_ok = []
     derived = []
@@ -115,17 +136,14 @@ def main():
             continue
 
         # 声明行以外的引用(全仓)
-        use = re.compile(r'\b' + re.escape(const) + r'\b')
         hits = 0
-        for p, s in srcs.items():
-            for line in s.split('\n'):
-                if not use.search(line):
-                    continue
-                if p == fp and decl.search(line + '\n'):
-                    continue          # 自己的声明行不算
-                if line.lstrip().startswith('#'):
-                    continue          # 注释里提到不算"有人读"
-                hits += 1
+        for p, i in widx.get(const, ()):          # 只看真的提到它的那几行
+            line = lines_of[p][i]
+            if p == fp and decl.search(line + '\n'):
+                continue          # 自己的声明行不算
+            if line.lstrip().startswith('#'):
+                continue          # 注释里提到不算"有人读"
+            hits += 1
         # 推导常量(值本身就是别的常量算出来的)结构上不可能漂 —— 自动豁免。
         dm = re.search(r'^\s*const\s+' + re.escape(const) + r'\s*:?=\s*(.+?)\s*(?:#|$)',
                        srcs[fp], re.M)

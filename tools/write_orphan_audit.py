@@ -255,6 +255,21 @@ def main():
     orphans = []        # 真孤儿: 有读者, 产品侧零真写入, tests 也没写
     seams = []          # 测试缝: 产品侧零真写入, 但 tests/ 写了
     n_scope = 0
+    WORDIDX = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+    def _build_idx(srcs_map):
+        """标识符 → 出现它的行 [(文件, 行号, 行文本)]。全仓只建一次, 两个判据循环共用。"""
+        idx = {}
+        for rel, s in srcs_map.items():
+            for i, ln in enumerate(s.split(NL)):
+                for w in set(WORDIDX.findall(ln)):
+                    idx.setdefault(w, []).append((rel, i, ln))
+        return idx
+
+    prod_idx = _build_idx(prod)
+    tests_idx = _build_idx(tests)
+    print("  [分母] 标识符索引: 产品 %d 个 / tests %d 个" % (len(prod_idx), len(tests_idx)))
+
     for name, sites in sorted(decls.items()):
         if len(name) < 3:
             continue                 # 太短的名字(i/x/dt)同名碰撞太多, 量不准
@@ -270,8 +285,8 @@ def main():
         real_w = 0
         reset_w = 0
         where = []
-        for rel, s in prod.items():
-            for i, ln in enumerate(s.split(NL)):
+        ## ★只看含这个标识符的行 —— 两条正则都以字段名为锚, 别的行不可能命中。
+        for rel, i, ln in prod_idx.get(name, ()):
                 if not wre.search(ln):
                     continue
                 if DECL.match(ln):
@@ -306,6 +321,15 @@ def main():
     cont_orphans = []
     cont_seams = []
     n_cont = 0
+    ## ★★2026-10-01 提速(两步)。门禁耗时表里本审计器 180 秒, 代价是
+    ##   `受检字段数 × 全仓行数`, 而每个字段都把全仓重新切一遍行、再逐行跑两条正则。
+    ##   ① 只切一次。② **按标识符建索引** —— `mut_re`/`write_re` 两条都以字段名为锚
+    ##      (`(?<!\w)name` / `(?<![=!<>])name`), 所以**只有含这个标识符的行**才可能命中,
+    ##      每个字段只去看那几行就够。
+    ##   ★判据没动: 索引用 `[A-Za-z_][A-Za-z0-9_]*` 切标识符, 与两条正则的边界一致 ——
+    ##     `battle._units.append` 切得出 `_units`(`.` 不是 \w, 两边都收),
+    ##     而 `my_units` 切出来是整个 `my_units`(两条正则也都挡住)。
+    ##     验收标准是**输出逐行相同**, 不是"看起来一样"。
     for name, sites in sorted(decls.items()):
         if len(name) < 3:
             continue
@@ -317,7 +341,7 @@ def main():
         wre = write_re(name)
         clr = re.compile(r"(?<!\w)" + re.escape(name) + r"\s*\.\s*clear\s*\(")
 
-        def _count(srcs):
+        def _count(srcs_lines):
             """→ (改内容次数, 清空/重置次数)。prod 与 tests **必须同一套口径**。
 
             ★★第一版只给 tests 数了 `mre`(改内容方法/下标/+=), **漏了赋值**
@@ -327,8 +351,7 @@ def main():
             """
             mu = 0
             rs = 0
-            for _s in srcs:
-                for ln in _s.split(NL):
+            for _rel, _i, ln in srcs_lines:
                     if DECL.match(ln):
                         continue                 # 声明行本身
                     if mre.search(ln):
@@ -344,13 +367,13 @@ def main():
                         rs += 1
             return mu, rs
 
-        muts, resets = _count(prod.values())
+        muts, resets = _count(prod_idx.get(name, ()))
         if muts > 0:
             continue
         readers = prod_tok.get(name, 0) - len(sites) - resets
         if readers <= 0:
             continue                 # 没人读 = 死字段, 另一类问题
-        t_m, _t_rs = _count(tests.values())
+        t_m, _t_rs = _count(tests_idx.get(name, ()))
         row = "%s  (%s:%d) 读 %d 处 · 产品侧改内容 0 次 · 清空/重置 %d 处%s" % (
             name, sites[0][0], sites[0][1], readers, resets,
             " · tests 改 %d 处" % t_m if t_m else "")

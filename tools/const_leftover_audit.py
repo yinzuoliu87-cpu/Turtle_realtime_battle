@@ -163,6 +163,57 @@ def main():
     print('=' * 68)
     print('  分母: 文案引用 %d 个常量 · 扫 %d 个 .gd' % (len(refs), len(srcs)))
 
+    # ══════════════════════════════════════════════════════════════════
+    #  ★★2026-10-01 提速: 把【与常量无关】的那部分从内层循环里提出来, 只做一次
+    # ══════════════════════════════════════════════════════════════════
+    # 由来: 门禁耗时表摊开 —— 本审计器 **411 秒**, 一个人就是整套门禁的墙钟地板
+    #   (测试池 JOBS=8 只要 363 秒, 再加并行也下不去这 411)。CLAUDE.md 上次记的是 145 秒,
+    #   两个月涨了 2.8 倍 —— 因为代价是 `受检常量数 × 全仓行数`, 两边都在长。
+    #   实测规模: 192 个 .gd / 111,797 行 × 几百个常量 ≈ **四千万次行扫描**,
+    #   而每行里那 5 个检查(注释 / const 声明 / 切注释 / VFXY / SINK)**与是哪个常量无关**,
+    #   却被原样重复了几百遍。
+    #
+    # ⇒ 两步:
+    #   ① 先过一遍全仓, 把过得了那 5 关的行留下来(`kept`)。
+    #   ② 给留下来的行建「数值字面量 → 行」索引。每个常量只去看**真的含它那个数**的行,
+    #      而不是全仓每一行。
+    # ★判据一个字没动: 留下来的行、以及"值出现在这行"的判法, 与原来逐行跑出来的完全一致
+    #   (索引用的就是原来那条 `(?<![\w.])…(?![\w.\d])` 的同一套边界规则)。
+    #   验收标准是**输出逐字节相同**, 不是"看起来一样"。
+    # ⚠ 负号要**两种都收**(2026-10-01 对账时当场抓到, 差了 1 处):
+    #   原版找 `1.0` 时, `-1.0` 里的那个 `1.0` **是算命中的** —— 它的 lookbehind 是
+    #   `(?<![\w.])`, 而减号既不是 \w 也不是 `.`, 过得去。
+    #   第一版索引写成 `-?[0-9]...`, 把 `-1.0` 整个当一个 token ⇒ 查 `1.0` 就漏了
+    #   (FANG_LIFESTEAL 原版 9 处、我这边 8 处, 就是这一条)。
+    #   ⇒ 带符号与不带符号**各索引一份**: 这样 `pats` 里无论是 `1.0` 还是 `-5` 都查得到,
+    #     而 `x-5` 这种(减号前面是 \w, 原版匹配不到 `-5`)也不会多收 —— 因为 lookbehind
+    #     写在可选负号【之前】, 那种位置整体就不成立, 引擎会退到数字本身重试, 与原版一致。
+    NUMTOK = re.compile(r'(?<![\w.])(-?)([0-9]+(?:\.[0-9]+)?)(?![\w.\d])')
+    CONST_DECL = re.compile(r'const\s')
+    kept = {}        # fp2 -> [(i, line, code)]
+    index = {}       # 数值字面量 -> [(file_ord, fp2, i)]
+    for _ord, (fp2, ls) in enumerate(lines_of.items()):
+        rows = []
+        for i, line in enumerate(ls):
+            st = line.lstrip()
+            if st.startswith('#') or CONST_DECL.match(st):
+                continue
+            code = line.split('#')[0]
+            if VFXY.search(code) or not SINK.search(code):
+                continue
+            rows.append((i, line, code))
+            toks = set()
+            for sign, num in NUMTOK.findall(code):
+                toks.add(num)
+                if sign:
+                    toks.add(sign + num)
+            for tok in toks:
+                index.setdefault(tok, []).append((_ord, fp2, i))
+        kept[fp2] = {i: (line, code) for i, line, code in rows}
+    print('  [分母] 预筛后剩 %d 行可疑(全仓 %d 行) · 索引到 %d 个不同数值'
+          % (sum(len(v) for v in kept.values()),
+             sum(len(v) for v in lines_of.values()), len(index)))
+
     hits = []
     checked = 0
     for cls, const in sorted(refs):
@@ -188,22 +239,17 @@ def main():
         subject = subject_of(os.path.basename(fp))
         prefix = const.split('_')[0]
 
+        # 只看**真的含这个数**的行。候选按 (文件顺序, 行号) 排 —— 与原来
+        # `for fp2 in lines_of: for i in ls:` 的遍历顺序一致, 输出顺序不变。
+        cand_set = set()
+        for pt in pats:
+            for ent in index.get(pt, ()):
+                cand_set.add(ent)
         found = []
-        for fp2, ls in lines_of.items():
-            same = (fp2 == fp)
-            for i, line in enumerate(ls):
-                st = line.lstrip()
-                if st.startswith('#') or re.match(r'const\s', st):
-                    continue
-                code = line.split('#')[0]
-                if VFXY.search(code) or not SINK.search(code):
-                    continue
-                if not same and not related(ls, i, subject, prefix):
-                    continue
-                for pt in pats:
-                    if re.search(r'(?<![\w.])' + re.escape(pt) + r'(?![\w.\d])', code):
-                        found.append((os.path.basename(fp2), i + 1, line.strip()[:96]))
-                        break
+        for _ord, fp2, i in sorted(cand_set):
+            if fp2 != fp and not related(lines_of[fp2], i, subject, prefix):
+                continue
+            found.append((os.path.basename(fp2), i + 1, kept[fp2][i][0].strip()[:96]))
         if found:
             hits.append((cls, const, val, os.path.basename(fp), found))
 
