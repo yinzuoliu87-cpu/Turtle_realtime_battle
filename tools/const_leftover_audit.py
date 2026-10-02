@@ -88,6 +88,48 @@ CROSS_OK = {
 
 REF = re.compile(r'\{C:([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)%?\}')
 
+## ══════════════════════════════════════════════════════════════════
+##  §RANGE_M —— 独立规则: `range_m(` 里不许有裸字面量 (2026-10-02)
+## ══════════════════════════════════════════════════════════════════
+## 【为什么要独立成一条】`range_m\(` 2026-09-14 就加进了上面的 SINK 白名单, 方案书
+## `20260914c` 也登记着「反向验证: 把 300 硬写回去, 扫描必须报出来」——
+## **今天真去反向验证, 它一声不吭。**
+##
+## 根因不在 SINK, 在它后面那两道: 上面那套扫描只认**文案里 `{C:...}` 引用过的常量**,
+## 而且跨文件命中还要过 `related()`(行的上下文必须提到那个常量的主体)。
+## 一个画在 vfx 文件里的裸半径, 上下文通常不提 `food_batch`/`BOX` ⇒ **被过滤掉**。
+## ⇒ 那条登记写的是"能查出", 实际查不出。补成独立规则。
+##
+## 【判据形状】`range_m()` 的定义就是「码 → 世界单位」, 出现在它里面的裸字面量
+## **要么是玩法半径写了第二遍, 要么是纯演出尺寸** —— 后者必须逐条写明理由,
+## 照 CROSS_OK 的成例(白名单是"我看过了", 不是"我懒得管")。
+RANGE_M = re.compile(r'range_m\(\s*(-?[0-9]+(?:\.[0-9]+)?)\s*[,)]')
+RANGE_M_OK = {
+    ('food_eq_vfx.gd', '70.0'):
+        '070 压舱咸鱼砖的水花【冠本体】尺寸, 不是玩法半径 —— 玩法的 250 码由 brick_wave '
+        '冲击环表达(环恒速扩到 250 码, 碰到谁谁那一刻掉血; 2026-08-11 用户拍板), '
+        '而冠只是落点读数。同函数的注释里写着这件事。',
+}
+
+
+def check_range_m(srcs):
+    """返回 [(文件名, 行号, 值, 整行)] —— 不在白名单里的裸半径。"""
+    bad = []
+    n_scan = 0
+    for p, s in sorted(srcs.items()):
+        base = os.path.basename(p)
+        for i, ln in enumerate(s.split('\n'), 1):
+            st = ln.strip()
+            if st.startswith('#'):
+                continue
+            code = ln.split('#')[0]
+            for m in RANGE_M.finditer(code):
+                n_scan += 1
+                if (base, m.group(1)) in RANGE_M_OK:
+                    continue
+                bad.append((base, i, m.group(1), st[:92]))
+    return bad, n_scan
+
 
 def subject_of(fname):
     """常量属于哪个"主体"(哪只龟 / 哪类装备): two_head_system.gd -> two_head。"""
@@ -214,6 +256,17 @@ def main():
           % (sum(len(v) for v in kept.values()),
              sum(len(v) for v in lines_of.values()), len(index)))
 
+    ## §RANGE_M 先判 —— 它与常量表无关, 是独立的一条。
+    rm_bad, rm_n = check_range_m(srcs)
+    print('  [分母] `range_m(<裸字面量>)` 全仓 %d 处 · 白名单 %d 条 · 不在白名单的 %d 处'
+          % (rm_n, len(RANGE_M_OK), len(rm_bad)))
+    if rm_n == 0:
+        print('  [FAIL] §RANGE_M: 一处都没扫到 —— 正则坏了, 这条是空检查')
+        rm_bad.append(('—', 0, '—', '扫到 0 处'))
+    for b, i, v, ln in rm_bad:
+        print('  [FAIL] §RANGE_M %s:%d 裸半径 %s —— %s' % (b, i, v, ln))
+        print('         (玩法半径请读判定侧那个常量; 确属纯演出尺寸就写进 RANGE_M_OK 并说明理由)')
+
     hits = []
     checked = 0
     for cls, const in sorted(refs):
@@ -289,6 +342,15 @@ def main():
         print()
         print('FAIL x%d — 常量残留扫描(跨文件)' % len(bad))
         return 1
+    if rm_bad:
+        print()
+        print('FAIL x%d — §RANGE_M 裸半径' % len(rm_bad))
+        return 1
+    if rm_bad:
+        print()
+        print('FAIL x%d — §RANGE_M 裸半径' % len(rm_bad))
+        return 1
+    print('  [ OK ] §RANGE_M: range_m() 里没有白名单外的裸半径')
     print('  [ OK ] 跨文件嫌疑 %d 条全部在白名单里(各有定性理由)' % len(cross))
     print('  提示: 同文件嫌疑 %d 条 —— 每几批扫一眼, 别积累' % (len(hits) - len(cross)))
     print()
