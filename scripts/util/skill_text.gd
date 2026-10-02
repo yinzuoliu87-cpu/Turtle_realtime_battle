@@ -34,6 +34,10 @@ const VAL_HEX := {
 	"val-stun": "#fbbf24", "val-crit": UIPalette.PHYS, "val-crit-dmg": "#ffaa33",
 	"val-reflect": "#94a3b8", "val-heal-reduce": "#a78bfa", "val-atk": UIPalette.PHYS,
 	"val-keyword": UIPalette.KEYWORD,
+	## 段标记(「主动：」「被动：」) —— LoL 的 spellActive/spellPassive, 它俩合计 164 次。
+	## ★★**复用专名那一个色, 不新开一种**: 我刚量完战场噪声(我们是参考的 4 倍),
+	##   不该转头自己往调色板里添乱。段标记与专名都是「这是个名字/标题」, 同一类待遇。
+	"val-section": UIPalette.KEYWORD,
 }
 
 # 关键词自动上色 (照搬 PoC ui-skill-text.js:107-136, 顺序敏感 — 长词在前)
@@ -52,6 +56,9 @@ const KEYWORD_RULES := [
 	##   BBCode 是内层优先 ⇒ 读作「专名色的【奶油 + 护盾色的护盾】」。这是有意保留的 ——
 	##   护盾两个字本来就该读成护盾; 全库只有 3 个专名含关键词(奶油/幽灵/终极护盾)。
 	["【[^】]{1,12}】", "val-keyword"],
+	## 【段标记】「主动：」「被动：」——照 LoL 的 spellActive/spellPassive, **加粗不加色**。
+	##   (加粗那一步在 html_to_bbcode 里按 class 判, 与专名共用同一条分支。)
+	["(?<!\">)(?:主动|被动)：", "val-section"],
 	## 【控制/状态】LoL 把这些**全归一个 status 色**(509 次)。我们照这个思路, 但**没照抄它的紫**
 	##   —— 那个在我们这儿已经是 DoT(诅咒/中毒)的色。用户:「不需要一模一样抄, 要的是思路」。
 	##   原来只有「眩晕」有色, 现在 击飞48/减速15/击退21/嘲讽9/定身7/束缚3/时停3/沉默2/缴械1 一起归位。
@@ -369,7 +376,7 @@ static func html_to_bbcode(html: String, icon_px: int = ICON_PX) -> String:
 					##   暗褐 #a09b8c; 我们正文接近纯白, 奶白压根压不住。
 					##   ⇒ 不另发明一个会跟现有色撞的色(黄已是 DEF、绿是 BUFF、紫是 DoT…),
 					##     改成**加粗**: 字重是与颜色正交的一维, 不占色盘。
-					if tag.contains("val-keyword"):
+					if tag.contains("val-keyword") or tag.contains("val-section"):
 						out += "[b]"
 						_bold_open = true
 					out += "[color=%s]" % _span_color(tag)

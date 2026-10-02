@@ -1353,6 +1353,7 @@ scripts/systems/skills/shell_system.gd|lit|破隐!
 scripts/systems/skills/shell_system.gd|lit|觉醒
 scripts/systems/trainer/trainer_system.gd|lit|归顺!
 scripts/systems/trainer/trainer_system.gd|lit|魔法石·共鸣 %s
+scripts/util/skill_text.gd|lit|(?<!\">)(?:主动|被动)：
 scripts/util/skill_text.gd|lit|(?<!\">)中毒(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)冰寒(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)减速(?!<)

@@ -61,7 +61,19 @@ func _ready() -> void:
 	_ok("★★反面: 普通句子不许出现控制色",
 		not bb2n.contains("[color=" + str(SkillText.VAL_HEX["val-stun"]) + "]"), bb2n)
 
-	# ── ③ 真实文案抽样: 这两族在全库里确实被用到(不是只在我造的句子里成立) ──
+	# ── ③ 段标记(「主动：」「被动：」) —— LoL 的 spellActive/spellPassive, 合计 164 次 ──
+	## ★★它**加粗不加新色**(复用专名那一个色): 刚量完战场噪声是参考的 4 倍,
+	##   不该转头自己往调色板里添乱。段标记与专名都是「这是个名字/标题」, 同一类待遇。
+	for w in ["主动", "被动"]:
+		var bbs: String = SkillText.render_bbcode("%s：对目标造成伤害。" % w, f, {})
+		_ok("★「%s：」被渲染成加粗的段标记" % w,
+			bbs.begins_with("[b][color=" + UIPalette.KEYWORD + "]" + w + "："), bbs.substr(0, 46))
+	## ★反面: 句中的「主动」二字(后面不是全角冒号)不许被当成段标记 —— 否则规则写宽了。
+	var bbn: String = SkillText.render_bbcode("这是一个主动技能。", f, {})
+	_ok("★★反面: 不带全角冒号的「主动」不算段标记(规则写宽会把正文也加粗)",
+		not bbn.contains("[b]"), bbn)
+
+	# ── ④ 真实文案抽样: 这两族在全库里确实被用到(不是只在我造的句子里成立) ──
 	var n_kw := 0
 	var n_cc := 0
 	var n_seg := 0
