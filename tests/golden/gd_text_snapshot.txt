@@ -61,6 +61,7 @@ scripts/gamedata/equip_stats.gd|lit|龟能充能速率
 scripts/gamedata/glossary.gd|lit|【涨潮】到期后的还原：加成全部收回。它不会致死，只把生命削到新的上限。
 scripts/gamedata/glossary.gd|lit|【融合】之后获得的被动：每挨一段攻击就永久加一点护甲与魔抗，各有上限。
 scripts/gamedata/glossary.gd|lit|低血模式
+scripts/gamedata/glossary.gd|lit|余烬点上的状态：期间这名敌人受到的灼烧全部改判成真实伤害（不吃魔抗）。
 scripts/gamedata/glossary.gd|lit|冰霜
 scripts/gamedata/glossary.gd|lit|剑士
 scripts/gamedata/glossary.gd|lit|剑羁绊：对同一个目标连续命中会触发追打。
@@ -71,13 +72,14 @@ scripts/gamedata/glossary.gd|lit|双头龟近战形态的技能一：对目标�
 scripts/gamedata/glossary.gd|lit|双头龟近战形态的技能二：打出伤害并把其中一部分转化回自己身上。
 scripts/gamedata/glossary.gd|lit|双头龟远程形态的技能一：射出一颗炮弹，碰到第一个敌人就爆炸。
 scripts/gamedata/glossary.gd|lit|双头龟远程形态的技能二：真实伤害，并削减目标的治疗与护盾。
-scripts/gamedata/glossary.gd|lit|叠在同一个敌人身上的层，不会随时间衰减。叠满之后，这件装备打出的伤害转为真实伤害。
+scripts/gamedata/glossary.gd|lit|叠在同一个敌人身上的层，不会随时间衰减。满层之后，这件装备打出的伤害转为真实伤害。
 scripts/gamedata/glossary.gd|lit|古灵精怪枪
 scripts/gamedata/glossary.gd|lit|吸收
 scripts/gamedata/glossary.gd|lit|地毯轰炸
 scripts/gamedata/glossary.gd|lit|奶油护盾
 scripts/gamedata/glossary.gd|lit|寒冰龟留在地面的减速领域。冰柱层数会让它的范围与持续时间一起变大。
-scripts/gamedata/glossary.gd|lit|小木斧召唤的近战随从。它自己会升级，属性随攒到的经验增长。
+scripts/gamedata/glossary.gd|lit|小木斧召唤的近战随从。它自己会升级，属性随累计的经验增长。
+scripts/gamedata/glossary.gd|lit|小龟每隔一段时间蓄满的一次强化普攻：额外伤害、击飞目标，并把这次伤害的一部分转成自己的护盾。
 scripts/gamedata/glossary.gd|lit|幽灵护盾
 scripts/gamedata/glossary.gd|lit|开战时给全队套上的护盾，永久不衰减；被打破时会炸伤周围的敌人。
 scripts/gamedata/glossary.gd|lit|弓箭系叠在敌人身上的层，与弓箭羁绊共用同一份层数。
@@ -85,18 +87,23 @@ scripts/gamedata/glossary.gd|lit|手半剑替换掉原技能的招式：先横�
 scripts/gamedata/glossary.gd|lit|扭曲空间
 scripts/gamedata/glossary.gd|lit|护心反伤
 scripts/gamedata/glossary.gd|lit|持续掉血的负面状态：每秒按目标最大生命值的百分比造成真实伤害，无视护甲与魔抗。不叠层，重复施加改为累加剩余时长。
+scripts/gamedata/glossary.gd|lit|敌人被己方击飞时挂上的标记，不会自己消失；飞镖每周期向所有带标记的敌人各射一发，命中即摘掉标记。
 scripts/gamedata/glossary.gd|lit|斧头
 scripts/gamedata/glossary.gd|lit|斧头每进化一档额外叠加的属性加成，售价也随之上涨。
-scripts/gamedata/glossary.gd|lit|斧头进化到钻石斧之后再攒够经验的四选一终形态，选定后本大轮锁定。
+scripts/gamedata/glossary.gd|lit|斧头进化到钻石斧之后、经验再满一次时的四选一终形态，选定后本大轮锁定。
+scripts/gamedata/glossary.gd|lit|时间停止
 scripts/gamedata/glossary.gd|lit|星波
 scripts/gamedata/glossary.gd|lit|星际龟的技能：以自身为中心放出一圈向外扩散的环形波。
 scripts/gamedata/glossary.gd|lit|星际龟的技能：扭曲一片区域的空间。
-scripts/gamedata/glossary.gd|lit|普攻给敌人叠的层。叠满会引爆，按那名敌人的最大生命值造成真实伤害。
+scripts/gamedata/glossary.gd|lit|普攻给敌人施加的层。满层即引爆，按那名敌人的最大生命值造成真实伤害。
 scripts/gamedata/glossary.gd|lit|最终造物
-scripts/gamedata/glossary.gd|lit|枪羁绊：每打满若干发普通子弹就打出一发金弹，继承那一发的全部效果并额外附带真实伤害。
+scripts/gamedata/glossary.gd|lit|枪羁绊：每打出若干发普通子弹后接一发金弹，它继承那一发的全部效果并额外附带真实伤害。
 scripts/gamedata/glossary.gd|lit|每挨一段攻击就反弹一份魔法伤害给攻击者。持续伤害不计，多段攻击每段单独算。
 scripts/gamedata/glossary.gd|lit|气环
 scripts/gamedata/glossary.gd|lit|永久不衰减的护盾。它存在期间自身化身蛋糕礼盒：射程变近战，普攻与技能也换成礼盒专属的。
+scripts/gamedata/glossary.gd|lit|沙漏放出的全场定格：除持有全场最高星沙漏的那只龟之外，所有单位、弹道、特效一律静止。
+scripts/gamedata/glossary.gd|lit|海胆护盾
+scripts/gamedata/glossary.gd|lit|海胆每受一次伤害就叠一层硬化，层数满时给自己的护盾，之后会在几秒内逐渐衰减掉。
 scripts/gamedata/glossary.gd|lit|涨潮
 scripts/gamedata/glossary.gd|lit|灵能冲击
 scripts/gamedata/glossary.gd|lit|猎人龟打上的猎杀印记。被标记的敌人，处决线会抬高。
@@ -104,6 +111,7 @@ scripts/gamedata/glossary.gd|lit|生命跌破阈值时获得的一次性护盾�
 scripts/gamedata/glossary.gd|lit|登场一段时间后进入的强化状态：最大生命值与攻击力大幅提升，体型也变大。
 scripts/gamedata/glossary.gd|lit|登场时塞给敌人的枪。持枪的敌人属性会变强，但每次普攻都要付出自己的血。
 scripts/gamedata/glossary.gd|lit|直升机龟能满时的大招：沿一条覆盖敌人最多的航线飞过，一路投弹。
+scripts/gamedata/glossary.gd|lit|真火
 scripts/gamedata/glossary.gd|lit|破损
 scripts/gamedata/glossary.gd|lit|精准射击
 scripts/gamedata/glossary.gd|lit|精神干扰
@@ -111,11 +119,15 @@ scripts/gamedata/glossary.gd|lit|终极护盾
 scripts/gamedata/glossary.gd|lit|腐蚀
 scripts/gamedata/glossary.gd|lit|融合
 scripts/gamedata/glossary.gd|lit|诅咒
+scripts/gamedata/glossary.gd|lit|财神龟用过【梭哈】之后那个技能槽变成的护盾技能：护盾值按当前金币数折算，不花金币，持盾期间锁住龟能。
 scripts/gamedata/glossary.gd|lit|赌神龟生命低于阈值时【赌注】的替代行为：不甩牌、不消耗生命，改为回血。
 scripts/gamedata/glossary.gd|lit|进化被动
 scripts/gamedata/glossary.gd|lit|退潮
 scripts/gamedata/glossary.gd|lit|金弹
+scripts/gamedata/glossary.gd|lit|金盾
 scripts/gamedata/glossary.gd|lit|锤击
+scripts/gamedata/glossary.gd|lit|靶子
+scripts/gamedata/glossary.gd|lit|龟盾
 scripts/gamedata/minion_codex.gd|lit|500 码内有敌人就举拳蓄力 0.35 秒，随后一锤砸地，对身前 60° 锥形 500 码内造成 [color=#ff9f43]4×攻击力[/color] 魔法伤害；每第 3 次改为高高跃起、空中蓄力 1 秒后下锤，覆盖 700 码全域并造成 [color=#ff9f43]6×攻击力[/color] 魔法伤害。
 scripts/gamedata/minion_codex.gd|lit|人体浪板
 scripts/gamedata/minion_codex.gd|lit|前排 · 近战

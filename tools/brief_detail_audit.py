@@ -134,5 +134,7 @@ def main():
     print('ALL OK — brief 与详细文案数值一致' if not bad else 'NEEDS FIX: %d' % len(bad))
     sys.exit(1 if bad else 0)
 
-
-main()
+# ★ __main__ 守卫: 别的脚本要 import 本文件复用它的判据函数(不另抄一份口径);
+#   没有守卫时 import 会当场跑完审计并 sys.exit, **把调用方静默掐死**。
+if __name__ == '__main__':
+    main()

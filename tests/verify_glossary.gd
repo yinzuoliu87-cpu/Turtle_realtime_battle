@@ -7,7 +7,14 @@ extends Node
 ## 我们一直用【】标专名，而**从来没有任何地方解释它是什么**。
 ##
 ## 【守什么】
-##   ① 玩家文案里出现的每个【X】**都必须有解释** —— 漏一个，解释行就当着玩家的面跳过它
+##   ① 玩家文案里出现的每个【X】**都必须有出处** —— 漏一个，解释行就当着玩家的面跳过它。
+##      ★★2026-10-02 从「只认一类」升级成**三类合法出处**（因为这天把 19 个原来写成
+##        「X」的专名并进了【】，而它们里头只有 6 个该进解释表）：
+##          (a) 在 `Glossary.TERMS` ⇒ 底部出一行解释
+##          (b) **就地定义** `【X】：` 后面紧跟着就是解释 ⇒ 底部不必抄第二遍
+##              （`terms_in` 2026-10-01 就有这条豁免，是**这条门禁的正则没跟上**）
+##          (c) **引用另一个技能/装备的真名字** ⇒ 它自己那张卡就是解释，再抄一份只会撑长面板
+##        ⚠ 三类各配一条**分母断言**：某一类命中 0 个，那一支就是空检查。
 ##   ② 表里**不许有没人用的词条** —— 删了专名却忘删解释，下一个人会以为游戏里还有这东西
 ##   ③ `glossary_bb` 只列**这段文字里真的出现过**的词，不是把整张表倒出来
 ##   ④ 消费点真的接上了（源码扫描：详细说明那几处必须调过 `glossary_bb`）
@@ -56,6 +63,36 @@ func _walk(node, out: Array[String]) -> void:
 			_walk(v, out)
 
 
+## 数据里**所有技能/装备的真名字** —— 判定 (c) 那一类用。
+## ★不另立手写名单：手抄的副本必然落后（memory `fb-hand-rolled-copies-drift`）。
+## 判据就是「这个【X】是不是 json 里某个 name」，名字改了这条自动跟着走。
+func _all_names() -> Dictionary:
+	var out: Dictionary = {}
+	for path in ["res://data/phase2-equipment.json", "res://data/pets.json"]:
+		var txt := FileAccess.get_file_as_string(path)
+		if txt == "":
+			continue
+		var parsed = JSON.parse_string(txt)
+		if parsed != null:
+			_walk_names(parsed, out)
+	return out
+
+
+func _walk_names(node, out: Dictionary) -> void:
+	if node is Dictionary:
+		for k in (node as Dictionary):
+			var v = (node as Dictionary)[k]
+			if v is String and (str(k) == "name" or str(k) == "title"):
+				var s := str(v).strip_edges()
+				if s != "":
+					out[s] = true
+			else:
+				_walk_names(v, out)
+	elif node is Array:
+		for v in (node as Array):
+			_walk_names(v, out)
+
+
 func _ready() -> void:
 	var copy := _all_copy()
 	print("  [分母] 玩家文案段落 %d 段 / 解释表词条 %d 个" % [copy.size(), Glossary.TERMS.size()])
@@ -64,22 +101,75 @@ func _ready() -> void:
 		_finish()
 		return
 
-	# 文案里用到的全部【X】
-	var re := RegEx.create_from_string("【([^】]{1,12})】")
+	# 文案里用到的全部【X】。★正则多抓一组：】后面紧跟的那个全角冒号(就地定义的标志)。
+	var re := RegEx.create_from_string("【([^】]{1,12})】(：)?")
 	var used: Dictionary = {}
+	var _def_inplace: Dictionary = {}       # 至少出现过一次「【X】：」的
 	for s in copy:
 		for m in re.search_all(s):
-			used[m.get_string(1)] = int(used.get(m.get_string(1), 0)) + 1
+			var k := m.get_string(1)
+			used[k] = int(used.get(k, 0)) + 1
+			if m.get_string(2) == "：":
+				_def_inplace[k] = true
 	print("  [分母] 文案里出现的【专名】共 %d 个 / %d 次" % [used.size(), _sum(used)])
 	_ok("★分母: 真的扫到专名", used.size() >= 10, "只有 %d 个" % used.size())
 
-	# ① 每个都有解释
+	# ① 每个【X】都得有出处 —— 三类之一
+	var names := _all_names()
+	var by_terms: Array[String] = []
+	var by__def_inplace: Array[String] = []
+	var by_name: Array[String] = []
 	var missing: Array[String] = []
 	for k in used:
-		if not Glossary.TERMS.has(k):
+		if Glossary.TERMS.has(k):
+			by_terms.append(str(k))
+		elif _def_inplace.has(k):
+			by__def_inplace.append(str(k))
+		elif names.has(k):
+			by_name.append(str(k))
+		else:
 			missing.append("【%s】×%d" % [k, int(used[k])])
-	_ok("★文案里每个【专名】都有解释(漏一个, 解释行就当着玩家的面跳过它)",
+	print("  [分母] 出处分布: 解释表 %d · 就地定义 %d · 引用真名字 %d · 没出处 %d  (数据里的真名字共 %d 个)"
+		% [by_terms.size(), by__def_inplace.size(), by_name.size(), missing.size(), names.size()])
+	_ok("★文案里每个【专名】都有出处(解释表 / 就地定义 / 引用另一个技能的真名字)",
 		missing.is_empty(), str(missing))
+	## ★★三条分母 —— 某一类命中 0 个, 上面那条就有一支是空检查, 而它照样会绿。
+	_ok("★分母(a): 真有专名走【解释表】这一支", by_terms.size() >= 10,
+		"只有 %d 个: %s" % [by_terms.size(), str(by_terms)])
+	_ok("★分母(b): 真有专名走【就地定义】这一支", by__def_inplace.size() >= 1,
+		"%d 个 —— 0 的话 `【X】：` 这条豁免等于没被量过: %s" % [_def_inplace.size(), str(_def_inplace.keys())])
+	_ok("★分母(c): 真有专名走【引用真名字】这一支", by_name.size() >= 5,
+		"只有 %d 个: %s" % [by_name.size(), str(by_name)])
+	_ok("★分母: 真的读到了数据里的名字(0 个会让 (c) 那一支永远走不到)", names.size() >= 100,
+		"只有 %d 个" % names.size())
+
+	# ①b ★解释文本**自己**引用的【X】也必须有出处 —— 2026-10-02 加。
+	## 【由来】这天新写 6 条词条时，我顺手在解释里写了「海胆叠满【硬化】时…」
+	##   与「受到的【灼烧】全部改判成真实伤害」——**【硬化】【灼烧】两个都没登记、也不是技能名**。
+	##   玩家点开看到的就是一个带括号却没有任何解释的词，等于**解释行里又生出一个新谜语**。
+	##   抓到它的不是任何断言，是 `tools/text_golden.py` 把新增的屏幕文案逐条列出来给我看见的。
+	## ★★顺带: 那句话还用了「叠满」—— 正是 2026-10-01 刚从文案里清零的口语词。
+	##   解释表是**后来加的新表**，前面清过的规矩没有自动覆盖到它。
+	var dangling: Array[String] = []
+	var n_ref := 0
+	var re2 := RegEx.create_from_string("【([^】]{1,12})】")
+	for k in Glossary.TERMS:
+		for m in re2.search_all(str(Glossary.TERMS[k])):
+			n_ref += 1
+			var r := m.get_string(1)
+			if not (Glossary.TERMS.has(r) or names.has(r)):
+				dangling.append("【%s】的解释引用了【%s】" % [str(k), r])
+	print("  [分母] 解释文本里的交叉引用【X】共 %d 处" % n_ref)
+	_ok("★分母: 解释里真的有交叉引用(0 处 ⇒ 下一条是空检查)", n_ref >= 2, "只有 %d 处" % n_ref)
+	_ok("★解释文本自己引用的【X】也得有出处(否则解释行里又生出一个没人解释的谜语)",
+		dangling.is_empty(), str(dangling))
+	## ★解释表是后加的新表 —— 前面在文案上清过的口语词规矩不会自动覆盖到它。
+	var oral: Array[String] = []
+	for w in ["叠满", "攒满", "炸开", "攒到", "攒够", "打满"]:
+		for k in Glossary.TERMS:
+			if str(Glossary.TERMS[k]).contains(w):
+				oral.append("【%s】: %s" % [str(k), w])
+	_ok("★解释文本也不许用那几个口语词(2026-10-01 在文案里清零的那批)", oral.is_empty(), str(oral))
 
 	# ② 没有孤儿词条
 	var orphan: Array[String] = []

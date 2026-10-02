@@ -36,7 +36,15 @@ LEDGER = 'tests/golden/copy_style_debt.txt'
 HARD_ZERO = ['炸开', '攒到', '攒够', '打满']        # LoL 语料零命中
 SOFT = ['叠满', '攒满']                              # LoL 自己也用, 只记账
 
-TEXT_KEY = re.compile(r'(brief|desc|Desc|Brief|text|Text|tip|Tip)')
+# ★★2026-10-02 补上 `detail`。原来这条正则是
+#      r'(brief|desc|Desc|Brief|text|Text|tip|Tip)'
+#   —— **匹配不到 `detail`**，而 `detail` 是玩家点开就看得见的字段。
+#   对照组：`tests/verify_glossary.gd` 的 `TEXT_KEYS` 里一直都有 `detail`
+#   ⇒ 两份白名单不一致，以有 detail 的那份为准（段数 369 → 580）。
+#   memory `fb-recursive-scan-not-structured-walk`：字段白名单天生会漏。
+TEXT_KEY = re.compile(r'(brief|desc|Desc|Brief|detail|Detail|text|Text|tip|Tip)')
+# 专名记法：2026-10-02 起只许 `【X】` 一种。`「X」` 当专名用是硬零（见 main 里那条）。
+CORNER = re.compile(r'「([^」]{1,20})」')
 # 子句切分: 中文句读 + 真换行 + 括号
 CLAUSE = re.compile(r'[，。；、\n（）()]')
 PCT_HP = re.compile(r'%\s*(最大|已损失|当前)?生命值')
@@ -134,6 +142,27 @@ def main():
     chk('★分母: 真的扫到带百分比生命值的子句', [] if n_pct >= 30 else ['只有 %d 条' % n_pct])
     chk('★每处「X% 生命值」都写明是谁的(目标/自身/各自…) —— 2026-10-01 清零后焊死', noown)
 
+    # ── ②b 专名记法只许一种: 【X】。「X」当专名用是硬零 (2026-10-02) ──
+    # 【由来】量出同一件事有三套记法在并行:
+    #     【X】 22 个(全部已登记 Glossary) / 「X」 19 个(**一个都没登记**)
+    #     / <span class="val-normal"> 47 个
+    #   「X」那一套渲染出来**什么都没有** —— 玩家看到的只是一对角括号, 没有颜色也没有解释。
+    #   LoL 体例 ⑥: 可叠加的效果一律有专名并当专有名词反复引用(是【气环】不是「气环效果」)。
+    # ★这条是**硬零**不是台账: 它不是偏好问题, 是"同一件事两种记法"的纪律问题 ——
+    #   留一个额度就等于允许下一个人再写一个看不见的专名。
+    # ★★判据刚好卡那个形状: 只认【成对且内容不含句读】的「X」。
+    #   引语/书名号式用法(里面带逗号句号的)不在此列 —— 那不是专名。
+    corner = []
+    for tag, path, txt in segs:
+        for m in CORNER.finditer(txt):
+            inner = m.group(1)
+            if any(ch in inner for ch in '，。；、'):
+                continue       # 带句读 ⇒ 是引语不是专名
+            corner.append('%s: 「%s」' % (path, inner))
+    print('  [分母] 扫到的「X」式专名 %d 处(0 处 = 已清干净, 这条守的是别回潮)' % len(corner))
+    chk('★专名记法只许【X】一种 —— 「X」渲染出来没有颜色也没有解释(2026-10-02 清零后焊死)',
+        corner)
+
     # ── ③ 台账 ──
     counts = {}
     for w in SOFT:
@@ -169,5 +198,7 @@ def main():
         sys.exit(1)
     print('ALL OK — 文案体例纪律(口语词硬零 / 「X% 生命值」必须写明是谁的 / 叠满攒满台账只减不增)')
 
-
-main()
+# ★ __main__ 守卫: 别的脚本要 import 本文件复用它的判据函数(不另抄一份口径);
+#   没有守卫时 import 会当场跑完审计并 sys.exit, **把调用方静默掐死**。
+if __name__ == '__main__':
+    main()

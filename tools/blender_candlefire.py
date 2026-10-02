@@ -255,5 +255,7 @@ def main():
         print("  ignite f%d ok" % k)
     print("DONE %s" % A.out)
 
-
-main()
+# ★ __main__ 守卫: 别的脚本要 import 本文件复用它的判据函数(不另抄一份口径);
+#   没有守卫时 import 会当场跑完审计并 sys.exit, **把调用方静默掐死**。
+if __name__ == '__main__':
+    main()

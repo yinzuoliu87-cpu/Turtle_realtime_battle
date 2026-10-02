@@ -150,7 +150,7 @@
     "baseStats1": "+生命60/110/200·反伤8/11/15%",
     "shopAvailable": 1,
     "emoji": "🦪",
-    "effectDesc1": "每次受到伤害获得 1 层硬化，每层提供+1/1.5/2 护甲和+1/1.5/2 魔抗（上限 {C:EquipSystem.URCHIN_CAP} 层）；\n满层时获得「海胆护盾」（100/170/250+自身最大生命值 5/12/20%），该护盾在 {C:EquipSystem.URCHIN_DECAY} 秒内逐渐衰减。",
+    "effectDesc1": "每次受到伤害获得 1 层硬化，每层提供+1/1.5/2 护甲和+1/1.5/2 魔抗（上限 {C:EquipSystem.URCHIN_CAP} 层）；\n满层时获得【海胆护盾】（100/170/250+自身最大生命值 5/12/20%），该护盾在 {C:EquipSystem.URCHIN_DECAY} 秒内逐渐衰减。",
     "effectDesc3": "",
     "img": "equip/eq013-icon.png",
     "effectBrief": "每次受伤叠 1 层硬化（各 +1/1.5/2 双抗，上限 {C:EquipSystem.URCHIN_CAP} 层），满层给护盾。"
@@ -258,7 +258,7 @@
     "baseStats1": "+攻8/15/25·+10%龟能充能速率",
     "shopAvailable": 1,
     "emoji": "🔮",
-    "effectDesc1": "每 {C:EquipSystem.EMBER_IV} 秒短暂蓄力，抛出一个火瓶砸向最近的敌人，命中造成 40/60/100 真实伤害，并施加（20/35/60+10/15/20%攻击力）灼烧层数+「真火」{C:EquipSystem.EMBER_TRUEFIRE_SEC} 秒（其受到的灼烧改为真实伤害）。",
+    "effectDesc1": "每 {C:EquipSystem.EMBER_IV} 秒短暂蓄力，抛出一个火瓶砸向最近的敌人，命中造成 40/60/100 真实伤害，并施加（20/35/60+10/15/20%攻击力）灼烧层数+【真火】{C:EquipSystem.EMBER_TRUEFIRE_SEC} 秒（其受到的灼烧改为真实伤害）。",
     "effectDesc3": "",
     "img": "equip/ember-flask.png",
     "effectBrief": "每 {C:EquipSystem.EMBER_IV} 秒抛出火瓶，造成 40/60/100 真实伤害并点燃真火 {C:EquipSystem.EMBER_TRUEFIRE_SEC} 秒。"
@@ -666,7 +666,7 @@
     "baseStats1": "+攻45/90/400",
     "shopAvailable": 1,
     "emoji": "🎯",
-    "effectDesc1": "任何敌人被己方击飞时即挂上「靶子」标记（不会自行消失）；\n自身每 {C:RealtimeBattle3DScene.EQ_TICK} 秒向所有带靶子的敌人各射 1 镖，造成（130/190/600+1.5/3.0/9.0×攻击力）物理伤害并施加 {C:EquipSystem.DART_BLEED_COEF%}%攻击力的流血层数，命中后移除该敌人的靶子；\n此外提供 40/80/150%攻击速度，且自身每 {C:EquipSystem.DART_EVERY} 下普攻会强化下一次普攻，命中时将目标击飞 {C:EquipSystem.DART_KNOCKUP_SEC} 秒。",
+    "effectDesc1": "任何敌人被己方击飞时即挂上【靶子】标记（不会自行消失）；\n自身每 {C:RealtimeBattle3DScene.EQ_TICK} 秒向所有带靶子的敌人各射 1 镖，造成（130/190/600+1.5/3.0/9.0×攻击力）物理伤害并施加 {C:EquipSystem.DART_BLEED_COEF%}%攻击力的流血层数，命中后移除该敌人的靶子；\n此外提供 40/80/150%攻击速度，且自身每 {C:EquipSystem.DART_EVERY} 下普攻会强化下一次普攻，命中时将目标击飞 {C:EquipSystem.DART_KNOCKUP_SEC} 秒。",
     "effectDesc3": "",
     "img": "equip/dungeon-dart.png",
     "effectBrief": "被击飞的敌人挂上靶子；每 {C:RealtimeBattle3DScene.EQ_TICK} 秒向所有带靶子的敌人各射一镖。"
@@ -702,7 +702,7 @@
     "baseStats1": "+生命100/210/1000·龟能充能+10%",
     "shopAvailable": 1,
     "emoji": "⏳",
-    "effectDesc1": "登场第 {C:TimestopSystem.TS_START_T} 秒蓄力 {C:TimestopSystem.TS_CHARGE} 秒后释放「时间停止」：全场其他单位/弹道/特效全部定格，持续 4/7/20 秒；\n此期间只有带着全场最高星级沙漏的那只龟（敌我皆可，同星并存）能自由攻击/施法/移动，伤害即时结算，并额外获得 1.5/2/3 倍龟能充能速度、且在时停开始瞬间立即获得 40/150/300 点龟能；\n若场上存在更高星的沙漏，低星那件本场不会生效。\n每个战场各一次（上路 / 下路 / 终极战场各可触发一次）。",
+    "effectDesc1": "登场第 {C:TimestopSystem.TS_START_T} 秒蓄力 {C:TimestopSystem.TS_CHARGE} 秒后释放【时间停止】：全场其他单位/弹道/特效全部定格，持续 4/7/20 秒；\n此期间只有带着全场最高星级沙漏的那只龟（敌我皆可，同星并存）能自由攻击/施法/移动，伤害即时结算，并额外获得 1.5/2/3 倍龟能充能速度、且在时停开始瞬间立即获得 40/150/300 点龟能；\n若场上存在更高星的沙漏，低星那件本场不会生效。\n每个战场各一次（上路 / 下路 / 终极战场各可触发一次）。",
     "effectDesc3": "",
     "img": "equip/dungeon-hourglass.png",
     "effectBrief": "登场第 {C:TimestopSystem.TS_START_T} 秒发动时间停止，全场定格 4/7/20 秒，每个战场各一次。"

@@ -36,8 +36,8 @@
     "passive": {
       "type": "basicTurtle",
       "name": "不屈",
-      "brief": "对敌人造成的<span class=\"val-normal\">所有伤害</span>（普攻、技能、真实伤害都算）按<span class=\"val-normal\">目标的稀有度</span>提升：C <span class=\"val-atk\">+{C:BasicConsts.RARITY_AMP_C%}%</span> 至 SSS <span class=\"val-atk\">+{C:BasicConsts.RARITY_AMP_SSS%}%</span>。\n每 <span class=\"val-atk\">{C:BasicConsts.SHIELD_CD} 秒</span>，小龟的下一次普攻附带「<span class=\"val-normal\">龟盾</span>」，额外造成 {N:BasicConsts.SHIELD_ATK_COEF*ATK} 加 {C:BasicConsts.SHIELD_LOST_PCT%}% 目标已损生命的物理伤害，将目标<span class=\"val-atk\">击飞</span>，并为自己获得该伤害 <span class=\"val-atk\">{C:BasicConsts.SHIELD_GAIN_PCT%}%</span> 的护盾。",
-      "desc": "对敌人造成的任何伤害都按目标稀有度增伤（普攻、技能、真实伤害、固定伤害全覆盖，每次只算一次）：\n<span style=\"color:#06d6a0\">C</span> <span class=\"val-atk\">+{C:BasicConsts.RARITY_AMP_C%}%</span>　<span style=\"color:#4cc9f0\">B</span> <span class=\"val-atk\">+{C:BasicConsts.RARITY_AMP_B%}%</span>　<span style=\"color:#3a9abf\">A</span> <span class=\"val-atk\">+{C:BasicConsts.RARITY_AMP_A%}%</span>　<span style=\"color:#c77dff\">S</span> <span class=\"val-atk\">+{C:BasicConsts.RARITY_AMP_S%}%</span>　<span style=\"color:#ffd93d\">SS</span> <span class=\"val-atk\">+{C:BasicConsts.RARITY_AMP_SS%}%</span>　<span style=\"color:#ff6b6b\">SSS</span> <span class=\"val-atk\">+{C:BasicConsts.RARITY_AMP_SSS%}%</span>。\n<span class=\"val-normal\">龟盾</span>（已融入被动）：\n每 <span class=\"val-atk\">{C:BasicConsts.SHIELD_CD} 秒</span> 蓄力一次，下一发普攻获得强化——额外造成（{C:BasicConsts.SHIELD_ATK_COEF%}%×攻击力({ATK}) = {N:BasicConsts.SHIELD_ATK_COEF*ATK}）+ {C:BasicConsts.SHIELD_LOST_PCT%}%×目标已损生命值 物理伤害，将目标<span class=\"val-atk\">击飞</span>（约 {C:BasicConsts.SHIELD_KNOCK_SEC} 秒滞空 + 击退），\n并让小龟获得（这两段伤害之和 × <span class=\"val-atk\">{C:BasicConsts.SHIELD_GAIN_PCT%}%</span>）的护盾（不限时）。"
+      "brief": "对敌人造成的<span class=\"val-normal\">所有伤害</span>（普攻、技能、真实伤害都算）按<span class=\"val-normal\">目标的稀有度</span>提升：C <span class=\"val-atk\">+{C:BasicConsts.RARITY_AMP_C%}%</span> 至 SSS <span class=\"val-atk\">+{C:BasicConsts.RARITY_AMP_SSS%}%</span>。\n每 <span class=\"val-atk\">{C:BasicConsts.SHIELD_CD} 秒</span>，小龟的下一次普攻附带【龟盾】，额外造成 {N:BasicConsts.SHIELD_ATK_COEF*ATK} 加 {C:BasicConsts.SHIELD_LOST_PCT%}% 目标已损生命的物理伤害，将目标<span class=\"val-atk\">击飞</span>，并为自己获得该伤害 <span class=\"val-atk\">{C:BasicConsts.SHIELD_GAIN_PCT%}%</span> 的护盾。",
+      "desc": "对敌人造成的任何伤害都按目标稀有度增伤（普攻、技能、真实伤害、固定伤害全覆盖，每次只算一次）：\n<span style=\"color:#06d6a0\">C</span> <span class=\"val-atk\">+{C:BasicConsts.RARITY_AMP_C%}%</span>　<span style=\"color:#4cc9f0\">B</span> <span class=\"val-atk\">+{C:BasicConsts.RARITY_AMP_B%}%</span>　<span style=\"color:#3a9abf\">A</span> <span class=\"val-atk\">+{C:BasicConsts.RARITY_AMP_A%}%</span>　<span style=\"color:#c77dff\">S</span> <span class=\"val-atk\">+{C:BasicConsts.RARITY_AMP_S%}%</span>　<span style=\"color:#ffd93d\">SS</span> <span class=\"val-atk\">+{C:BasicConsts.RARITY_AMP_SS%}%</span>　<span style=\"color:#ff6b6b\">SSS</span> <span class=\"val-atk\">+{C:BasicConsts.RARITY_AMP_SSS%}%</span>。\n【龟盾】（已融入被动）：\n每 <span class=\"val-atk\">{C:BasicConsts.SHIELD_CD} 秒</span> 蓄力一次，下一发普攻获得强化——额外造成（{C:BasicConsts.SHIELD_ATK_COEF%}%×攻击力({ATK}) = {N:BasicConsts.SHIELD_ATK_COEF*ATK}）+ {C:BasicConsts.SHIELD_LOST_PCT%}%×目标已损生命值 物理伤害，将目标<span class=\"val-atk\">击飞</span>（约 {C:BasicConsts.SHIELD_KNOCK_SEC} 秒滞空 + 击退），\n并让小龟获得（这两段伤害之和 × <span class=\"val-atk\">{C:BasicConsts.SHIELD_GAIN_PCT%}%</span>）的护盾（不限时）。"
     },
     "skillPool": [
       {
@@ -197,7 +197,7 @@
       "type": "bambooCharge",
       "name": "生长",
       "brief": "每 <span class=\"val-atk\">{C:BambooSystem.GROW_CD} 秒</span>蓄力一次，强化下一发普攻：额外造成 {M:ATK*BambooSystem.GROW_ATK_COEF+HP*BambooSystem.GROW_HP_PCT} 魔法伤害，飞回一颗生命球回复 <span class=\"val-heal\">自身最大生命值 {C:BambooSystem.GROW_HEAL_PCT%}%</span>，并<span class=\"val-heal\">永久</span>提升最大生命值。\n<span style=\"color:#8a93a0\">生命上限每次提升 +{C:BambooSystem.GROW_MAXHP_PER_ATK}×基础攻击力，但攻击力本身不增长。\n</span>",
-      "desc": "每 {C:BambooSystem.GROW_CD} 秒蓄力一次。\n蓄力后，下一发普攻获得强化：额外造成（{C:BambooSystem.GROW_ATK_COEF%}%×攻击力({ATK}) + {C:BambooSystem.GROW_HP_PCT%}%×最大生命值({HP}) = {M:ATK*BambooSystem.GROW_ATK_COEF+HP*BambooSystem.GROW_HP_PCT}）魔法伤害。\n命中后飞出一颗绿色生命球回到竹叶龟身上（<span style=\"color:#8a93a0\">落到自己身上才生效</span>），回复 <span class=\"val-heal\">{C:BambooSystem.GROW_HEAL_PCT%}%</span> 最大生命值，并<span class=\"val-heal\">永久</span>提升最大生命值（+{C:BambooSystem.GROW_MAXHP_PER_ATK}×基础攻击力；攻击力本身不涨）。\n若出战选了「竹击」，强化提升为 {C:BambooSystem.GROW_SMACK_ATK_COEF%}%×攻击力 + {C:BambooSystem.GROW_SMACK_HP_PCT%}%×最大生命值 魔法伤害、回血 {C:BambooSystem.GROW_SMACK_HEAL_PCT%}%、永久 +{C:BambooSystem.GROW_SMACK_MAXHP_PER_ATK}×基础攻击力 最大生命值。"
+      "desc": "每 {C:BambooSystem.GROW_CD} 秒蓄力一次。\n蓄力后，下一发普攻获得强化：额外造成（{C:BambooSystem.GROW_ATK_COEF%}%×攻击力({ATK}) + {C:BambooSystem.GROW_HP_PCT%}%×最大生命值({HP}) = {M:ATK*BambooSystem.GROW_ATK_COEF+HP*BambooSystem.GROW_HP_PCT}）魔法伤害。\n命中后飞出一颗绿色生命球回到竹叶龟身上（<span style=\"color:#8a93a0\">落到自己身上才生效</span>），回复 <span class=\"val-heal\">{C:BambooSystem.GROW_HEAL_PCT%}%</span> 最大生命值，并<span class=\"val-heal\">永久</span>提升最大生命值（+{C:BambooSystem.GROW_MAXHP_PER_ATK}×基础攻击力；攻击力本身不涨）。\n若出战选了【竹击】，强化提升为 {C:BambooSystem.GROW_SMACK_ATK_COEF%}%×攻击力 + {C:BambooSystem.GROW_SMACK_HP_PCT%}%×最大生命值 魔法伤害、回血 {C:BambooSystem.GROW_SMACK_HEAL_PCT%}%、永久 +{C:BambooSystem.GROW_SMACK_MAXHP_PER_ATK}×基础攻击力 最大生命值。"
     },
     "skillPool": [
       {
@@ -407,7 +407,7 @@
         "selfCast": true,
         "shieldDuration": 3,
         "brief": "为全体友军（含自己）罩上冰霜护盾，护盾量等于自身 <span class=\"val-def\">{C:IceSystem.TEAM_SHIELD_PCT%}% 最大生命值</span>，持续 <span class=\"val-atk\">{C:IceSystem.TEAM_SHIELD_SEC} 秒</span>。\n<span style=\"color:#8a93a0\">护盾到期、被打破或持盾者阵亡时爆裂，对其 {C:IceSystem.TEAM_BURST_RADIUS} 码内的敌人造成 {C:IceSystem.TEAM_BURST_COEF}×攻击力魔法伤害。\n若场上没有其他友军，护盾改为自身最大生命值 {C:IceSystem.TEAM_SHIELD_SOLO_PCT%}%、爆裂伤害改为 {C:IceSystem.TEAM_BURST_SOLO_COEF}×攻击力。\n</span>",
-        "detail": "寒冰龟为全体友军（含自己）施加等于【寒冰龟 <span class=\"val-def\">{C:IceSystem.TEAM_SHIELD_PCT%}% 最大生命值</span>】的冰霜护盾，持续 <span class=\"val-def\">{C:IceSystem.TEAM_SHIELD_SEC} 秒</span>。\n场上没有其他友军时护盾 ×{C:IceSystem.TEAM_SHIELD_SOLO_MULT}（{C:IceSystem.TEAM_SHIELD_SOLO_PCT%}% 最大生命值）。\n护盾<span class=\"val-atk\">到期、被打破、或持盾者阵亡</span>时都会爆裂，对持盾者周围 {C:IceSystem.TEAM_BURST_RADIUS} 码内的敌人造成 <span class=\"val-atk\">{C:IceSystem.TEAM_BURST_COEF%}%×攻击力</span> 魔法伤害（独狼时 {C:IceSystem.TEAM_BURST_SOLO_COEF%}%）。",
+        "detail": "寒冰龟为全体友军（含自己）施加等于<span class=\"val-def\">自身 {C:IceSystem.TEAM_SHIELD_PCT%}% 最大生命值</span>的冰霜护盾，持续 <span class=\"val-def\">{C:IceSystem.TEAM_SHIELD_SEC} 秒</span>。\n场上没有其他友军时护盾 ×{C:IceSystem.TEAM_SHIELD_SOLO_MULT}（自身 {C:IceSystem.TEAM_SHIELD_SOLO_PCT%}% 最大生命值）。\n护盾<span class=\"val-atk\">到期、被打破、或持盾者阵亡</span>时都会爆裂，对持盾者周围 {C:IceSystem.TEAM_BURST_RADIUS} 码内的敌人造成 <span class=\"val-atk\">{C:IceSystem.TEAM_BURST_COEF%}%×攻击力</span> 魔法伤害（独狼时 {C:IceSystem.TEAM_BURST_SOLO_COEF%}%）。",
         "energyCost": 120
       }
     ],
@@ -661,7 +661,7 @@
         "dodgePct": 25,
         "dodgeTurns": 2,
         "brief": "突袭目标，造成 {M:GhostSystem.RAID_MAGIC*ATK} 魔法伤害，<span class=\"val-heal\">回复所造成伤害 {C:GhostSystem.RAID_LIFESTEAL%}% 的生命值</span>，并获得 <span class=\"val-atk\">{C:GhostSystem.RAID_DODGE%}% 闪避</span>持续 <span class=\"val-atk\">{C:GhostSystem.RAID_DODGE_SEC} 秒</span>。",
-        "detail": "幽灵龟对目标造成（{C:GhostSystem.RAID_MAGIC%}%×攻击力 = {M:GhostSystem.RAID_MAGIC*ATK}）魔法伤害，回复造成伤害的 {C:GhostSystem.RAID_LIFESTEAL%}% 生命值，将目标击退抛飞，并获得 {C:GhostSystem.RAID_DODGE%}% 闪避，持续 <span class=\"val-def\">{C:GhostSystem.RAID_DODGE_SEC} 秒</span>。\n<span style=\"color:#8a93a0\">命中还会把目标<b>击退抛飞</b>。\n</span>"
+        "detail": "幽灵龟对目标造成（{C:GhostSystem.RAID_MAGIC%}%×攻击力 = {M:GhostSystem.RAID_MAGIC*ATK}）魔法伤害，按造成伤害的 {C:GhostSystem.RAID_LIFESTEAL%}% 回复自身生命，将目标击退抛飞，并获得 {C:GhostSystem.RAID_DODGE%}% 闪避，持续 <span class=\"val-def\">{C:GhostSystem.RAID_DODGE_SEC} 秒</span>。\n<span style=\"color:#8a93a0\">命中还会把目标<b>击退抛飞</b>。\n</span>"
       },
       {
         "name": "灵魂风暴",
@@ -789,8 +789,8 @@
     "passive": {
       "type": "fortuneGold",
       "name": "聚宝盆",
-      "brief": "聚宝盆源源不断产出金币：每 <span class=\"val-atk\">{C:FortuneSystem.COIN_IV} 秒</span> 获得 <span class=\"val-atk\">{C:FortuneSystem.COIN_MIN}~{C:FortuneSystem.COIN_MAX}</span> 枚，场上任意单位阵亡时额外获得 <span class=\"val-atk\">{C:FortuneSystem.COIN_ON_DEATH}</span> 枚。\n<span style=\"color:#8a93a0\">金币只在本场战斗内有效，供「打击」与「梭哈」消耗。\n</span>\n首次血量降至 {C:FortuneSystem.LOWHP_PCT%}% 以下时立即获得 <span class=\"val-atk\">{C:FortuneSystem.LOWHP_ENERGY} 点龟能</span>。",
-      "desc": "持续产出<span class=\"val-atk\">局内金币</span>：每 <span class=\"val-atk\">{C:FortuneSystem.COIN_IV} 秒</span> 获得 <span class=\"val-atk\">{C:FortuneSystem.COIN_MIN}~{C:FortuneSystem.COIN_MAX}</span> 枚；\n场上任意单位阵亡时额外获得 <span class=\"val-atk\">{C:FortuneSystem.COIN_ON_DEATH}</span> 枚。\n<span style=\"color:#8a93a0\">金币只在本场战斗内有效，喂给「打击」与「梭哈」。\n</span>\n财神龟<span class=\"val-atk\">首次</span>血量降至 <span class=\"val-atk\">{C:FortuneSystem.LOWHP_PCT%}% 以下</span>时，立即获得 <span class=\"val-atk\">{C:FortuneSystem.LOWHP_ENERGY} 点龟能</span>（每场一次）。"
+      "brief": "聚宝盆源源不断产出金币：每 <span class=\"val-atk\">{C:FortuneSystem.COIN_IV} 秒</span> 获得 <span class=\"val-atk\">{C:FortuneSystem.COIN_MIN}~{C:FortuneSystem.COIN_MAX}</span> 枚，场上任意单位阵亡时额外获得 <span class=\"val-atk\">{C:FortuneSystem.COIN_ON_DEATH}</span> 枚。\n<span style=\"color:#8a93a0\">金币只在本场战斗内有效，供【打击】与【梭哈】消耗。\n</span>\n首次血量降至 {C:FortuneSystem.LOWHP_PCT%}% 以下时立即获得 <span class=\"val-atk\">{C:FortuneSystem.LOWHP_ENERGY} 点龟能</span>。",
+      "desc": "持续产出<span class=\"val-atk\">局内金币</span>：每 <span class=\"val-atk\">{C:FortuneSystem.COIN_IV} 秒</span> 获得 <span class=\"val-atk\">{C:FortuneSystem.COIN_MIN}~{C:FortuneSystem.COIN_MAX}</span> 枚；\n场上任意单位阵亡时额外获得 <span class=\"val-atk\">{C:FortuneSystem.COIN_ON_DEATH}</span> 枚。\n<span style=\"color:#8a93a0\">金币只在本场战斗内有效，喂给【打击】与【梭哈】。\n</span>\n财神龟<span class=\"val-atk\">首次</span>血量降至 <span class=\"val-atk\">{C:FortuneSystem.LOWHP_PCT%}% 以下</span>时，立即获得 <span class=\"val-atk\">{C:FortuneSystem.LOWHP_ENERGY} 点龟能</span>（每场一次）。"
     },
     "skillPool": [
       {
@@ -822,8 +822,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 999,
-        "brief": "蓄力后逐枚投出全部金币，每枚造成 {N:ATK*FortuneSystem.ALLIN_COIN_COEF} 物理伤害 和 {T:ATK*FortuneSystem.ALLIN_COIN_COEF} 真实伤害。\n<span style=\"color:#8a93a0\">目标阵亡时改投最近的敌人；\n<span class=\"val-normal\">投币全程免疫控制</span>，首次释放时<span class=\"val-atk\">同时按当时金币数获得金盾</span>（{C:FortuneSystem.ALLIN_SHIELD_SEC} 秒）。\n一场战斗限用一次。\n梭哈用过后本技能变为「金盾」（消耗 {C:FortuneSystem.GOLD_SHIELD_COST} 龟能，护盾值 = 当前金币数 ×{C:FortuneSystem.GOLD_SHIELD_MULT}，不消耗金币，持盾期间锁定龟能）。\n</span>",
-        "detail": "财神龟蓄力后<span class=\"val-normal\">逐枚投出</span>全部金币，每枚造成（{C:FortuneSystem.ALLIN_COIN_COEF%}%×攻击力({ATK}) = {N:ATK*FortuneSystem.ALLIN_COIN_COEF}）物理 +（{C:FortuneSystem.ALLIN_COIN_COEF%}%×攻击力({ATK}) = {T:ATK*FortuneSystem.ALLIN_COIN_COEF}）真实伤害。\n投币期间目标阵亡则改投最近的敌人。\n<span class=\"val-normal\">逐枚投币的全程免疫控制</span>。\n首次释放时<span class=\"val-atk\">同时按当时金币数获得金盾</span>（持续 {C:FortuneSystem.ALLIN_SHIELD_SEC} 秒，<span style=\"color:#8a93a0\">此金盾不锁龟能</span>）。\n<span style=\"color:#8a93a0\">一场限用一次。\n</span>\n梭哈释放后，该技能槽变为「金盾（持续 {C:FortuneSystem.GOLD_SHIELD_SEC} 秒）」：消耗 {C:FortuneSystem.GOLD_SHIELD_COST} 龟能，获得 当前金币数 ×{C:FortuneSystem.GOLD_SHIELD_MULT} 的通用护盾（不消耗金币），持有该护盾期间锁龟能（护盾被打光或到期即恢复）。\n梭哈用过后本技能变为「金盾」（消耗 {C:FortuneSystem.GOLD_SHIELD_COST} 龟能，护盾值等于当前金币数，不消耗金币，持盾期间锁定龟能）。"
+        "brief": "蓄力后逐枚投出全部金币，每枚造成 {N:ATK*FortuneSystem.ALLIN_COIN_COEF} 物理伤害 和 {T:ATK*FortuneSystem.ALLIN_COIN_COEF} 真实伤害。\n<span style=\"color:#8a93a0\">目标阵亡时改投最近的敌人；\n<span class=\"val-normal\">投币全程免疫控制</span>，首次释放时<span class=\"val-atk\">同时按当时金币数获得金盾</span>（{C:FortuneSystem.ALLIN_SHIELD_SEC} 秒）。\n一场战斗限用一次。\n梭哈用过后本技能变为【金盾】（消耗 {C:FortuneSystem.GOLD_SHIELD_COST} 龟能，护盾值 = 当前金币数 ×{C:FortuneSystem.GOLD_SHIELD_MULT}，不消耗金币，持盾期间锁定龟能）。\n</span>",
+        "detail": "财神龟蓄力后<span class=\"val-normal\">逐枚投出</span>全部金币，每枚造成（{C:FortuneSystem.ALLIN_COIN_COEF%}%×攻击力({ATK}) = {N:ATK*FortuneSystem.ALLIN_COIN_COEF}）物理 +（{C:FortuneSystem.ALLIN_COIN_COEF%}%×攻击力({ATK}) = {T:ATK*FortuneSystem.ALLIN_COIN_COEF}）真实伤害。\n投币期间目标阵亡则改投最近的敌人。\n<span class=\"val-normal\">逐枚投币的全程免疫控制</span>。\n首次释放时<span class=\"val-atk\">同时按当时金币数获得金盾</span>（持续 {C:FortuneSystem.ALLIN_SHIELD_SEC} 秒，<span style=\"color:#8a93a0\">此金盾不锁龟能</span>）。\n<span style=\"color:#8a93a0\">一场限用一次。\n</span>\n梭哈释放后，该技能槽变为【金盾】（持续 {C:FortuneSystem.GOLD_SHIELD_SEC} 秒）：消耗 {C:FortuneSystem.GOLD_SHIELD_COST} 龟能，获得 当前金币数 ×{C:FortuneSystem.GOLD_SHIELD_MULT} 的通用护盾（不消耗金币），持有该护盾期间锁龟能（护盾被打光或到期即恢复）。\n梭哈用过后本技能变为【金盾】（消耗 {C:FortuneSystem.GOLD_SHIELD_COST} 龟能，护盾值等于当前金币数，不消耗金币，持盾期间锁定龟能）。"
       },
       {
         "name": "招财进宝",
@@ -903,7 +903,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "朝随机敌人突刺 <span class=\"val-atk\">{C:DiceSystem.FLASH_SEG_MIN}~{C:DiceSystem.FLASH_SEG_MAX}</span> 次，首段造成 {N:DiceSystem.FLASH_FIRST_COEF*ATK} 物理伤害，此后每段递减 <span class=\"val-atk\">{C:DiceSystem.FLASH_FALLOFF%}%</span>。\n每穿刺一次获得 {S:DiceSystem.FLASH_SHIELD_PER_HIT*ATK} 护盾。",
-        "detail": "骰子龟对随机敌人突刺 <span class=\"val-atk\">{C:DiceSystem.FLASH_SEG_MIN}~{C:DiceSystem.FLASH_SEG_MAX}</span> 次，首段造成（{C:DiceSystem.FLASH_FIRST_COEF%}%×攻击力({ATK}) = {N:DiceSystem.FLASH_FIRST_COEF*ATK}）物理伤害，之后每段伤害递减 <span class=\"val-atk\">{C:DiceSystem.FLASH_FALLOFF%}%</span>。\n<span class=\"val-normal\">每穿刺一次获得（{C:DiceSystem.FLASH_SHIELD_PER_HIT%}%×攻击力 = {S:DiceSystem.FLASH_SHIELD_PER_HIT*ATK}）护盾</span>。\n<span style=\"color:#8a93a0\">打包被动「真正的赌徒」：选择本技能后，骰子龟登场即把<b>全部护甲与魔抗转化为等量护甲穿透</b>，双抗清零（纯物理流）。\n</span>"
+        "detail": "骰子龟对随机敌人突刺 <span class=\"val-atk\">{C:DiceSystem.FLASH_SEG_MIN}~{C:DiceSystem.FLASH_SEG_MAX}</span> 次，首段造成（{C:DiceSystem.FLASH_FIRST_COEF%}%×攻击力({ATK}) = {N:DiceSystem.FLASH_FIRST_COEF*ATK}）物理伤害，之后每段伤害递减 <span class=\"val-atk\">{C:DiceSystem.FLASH_FALLOFF%}%</span>。\n<span class=\"val-normal\">每穿刺一次获得（{C:DiceSystem.FLASH_SHIELD_PER_HIT%}%×攻击力 = {S:DiceSystem.FLASH_SHIELD_PER_HIT*ATK}）护盾</span>。\n<span style=\"color:#8a93a0\">打包被动【真正的赌徒】：选择本技能后，骰子龟登场即把<b>全部护甲与魔抗转化为等量护甲穿透</b>，双抗清零（纯物理流）。\n</span>"
       }
     ],
     "defaultSkills": [
@@ -979,7 +979,7 @@
         "cd": 0,
         "aoe": true,
         "brief": "射出一道彩虹光，从自身开始在敌我之间交替弹射 <span class=\"val-atk\">共 {C:RainbowSystem.REFLECT_BOUNCES} 段</span>：命中友军（含自身）时回复 {H:RainbowSystem.REFLECT_COEF*ATK} 生命值，命中敌人时造成 {M:RainbowSystem.REFLECT_COEF*ATK} 魔法伤害。\n<span style=\"color:#8a93a0\">每段效果相同、不递减。\n</span>",
-        "detail": "彩虹龟以自身开始，射出一道彩虹光在敌我之间交替弹射，<span class=\"val-atk\">共 {C:RainbowSystem.REFLECT_BOUNCES} 段</span>：\n治疗友军（含自身）（{C:RainbowSystem.REFLECT_COEF%}%×攻击力({ATK}) = {H:RainbowSystem.REFLECT_COEF*ATK}）生命、对敌人造成（{C:RainbowSystem.REFLECT_COEF%}%×攻击力 = {M:RainbowSystem.REFLECT_COEF*ATK}）魔法伤害。\n<span style=\"color:#8a93a0\">每段效果相同、不递减。\n</span>\n<span style=\"color:#8a93a0\">打包被动「强化棱镜」：\n选择本技能后，彩虹龟每 {C:RainbowSystem.PRISM_PROC_SEC} 秒额外抽取一色 —— 🟠橙=全队 +{C:RainbowSystem.PRISM_LIFESTEAL%}% 生命偷取({C:RainbowSystem.PRISM_BUFF_SEC} 秒) / 🟡黄=随机敌 {C:RainbowSystem.PRISM_BURN_COEF}×攻击力灼烧 / 🔵青=随机敌冰寒({C:RainbowSystem.PRISM_BUFF_SEC} 秒) / 🟣紫=随机敌诅咒({C:RainbowSystem.PRISM_BUFF_SEC} 秒)。\n</span>",
+        "detail": "彩虹龟以自身开始，射出一道彩虹光在敌我之间交替弹射，<span class=\"val-atk\">共 {C:RainbowSystem.REFLECT_BOUNCES} 段</span>：\n治疗友军（含自身）（{C:RainbowSystem.REFLECT_COEF%}%×攻击力({ATK}) = {H:RainbowSystem.REFLECT_COEF*ATK}）生命、对敌人造成（{C:RainbowSystem.REFLECT_COEF%}%×攻击力 = {M:RainbowSystem.REFLECT_COEF*ATK}）魔法伤害。\n<span style=\"color:#8a93a0\">每段效果相同、不递减。\n</span>\n<span style=\"color:#8a93a0\">打包被动【强化棱镜】：\n选择本技能后，彩虹龟每 {C:RainbowSystem.PRISM_PROC_SEC} 秒额外抽取一色 —— 🟠橙=全队 +{C:RainbowSystem.PRISM_LIFESTEAL%}% 生命偷取({C:RainbowSystem.PRISM_BUFF_SEC} 秒) / 🟡黄=随机敌 {C:RainbowSystem.PRISM_BURN_COEF}×攻击力灼烧 / 🔵青=随机敌冰寒({C:RainbowSystem.PRISM_BUFF_SEC} 秒) / 🟣紫=随机敌诅咒({C:RainbowSystem.PRISM_BUFF_SEC} 秒)。\n</span>",
         "energyCost": 110
       }
     ],
@@ -1010,7 +1010,7 @@
       "name": "多重打击",
       "dmgScale": 0.5,
       "brief": "每次普攻命中后有 <span class=\"val-atk\">{C:GamblerSystem.MULTI_BASE%}%</span> 概率<span class=\"val-normal\">立刻以约 {N:1/GamblerSystem.MULTI_ASPD} 倍攻击速度再打一次普攻</span>。\n再次命中可继续触发，每连锁一次概率 ×{C:GamblerSystem.MULTI_DECAY}（<span class=\"val-atk\">{C:GamblerSystem.MULTI_BASE%}% → {C:GamblerSystem.MULTI_CHAIN2%}% → {C:GamblerSystem.MULTI_CHAIN3%}% → …</span>）。\n<span style=\"color:#8a93a0\">未触发时概率重置回基础值。\n</span>",
-      "desc": "每次普攻命中后有 <span class=\"val-atk\">{C:GamblerSystem.MULTI_BASE%}%</span> 概率<span class=\"val-normal\">立刻以约 {N:1/GamblerSystem.MULTI_ASPD} 倍攻击速度再打一次普攻</span>。\n再次命中可继续触发，每连锁一次概率 ×{C:GamblerSystem.MULTI_DECAY}（{C:GamblerSystem.MULTI_BASE%}% → {C:GamblerSystem.MULTI_CHAIN2%}% → {C:GamblerSystem.MULTI_CHAIN3%}% → …），没触发则重置回基础概率、等下一次普攻。\n<span style=\"color:#8a93a0\">基础概率 {C:GamblerSystem.MULTI_BASE%}%。\n出战选「命运之轮」→ 基础概率变 {C:GamblerSystem.MULTI_WHEEL%}%（代价是登场损失自身最大生命值 {C:GamblerSystem.WHEEL_HP_COST%}%）\n释放「赌注」→ 之后 {C:GamblerSystem.BET_BONUS_SEC} 秒内再 +{C:GamblerSystem.MULTI_BET_BONUS%}%。\n</span>"
+      "desc": "每次普攻命中后有 <span class=\"val-atk\">{C:GamblerSystem.MULTI_BASE%}%</span> 概率<span class=\"val-normal\">立刻以约 {N:1/GamblerSystem.MULTI_ASPD} 倍攻击速度再打一次普攻</span>。\n再次命中可继续触发，每连锁一次概率 ×{C:GamblerSystem.MULTI_DECAY}（{C:GamblerSystem.MULTI_BASE%}% → {C:GamblerSystem.MULTI_CHAIN2%}% → {C:GamblerSystem.MULTI_CHAIN3%}% → …），没触发则重置回基础概率、等下一次普攻。\n<span style=\"color:#8a93a0\">基础概率 {C:GamblerSystem.MULTI_BASE%}%。\n出战选【命运之轮】→ 基础概率变 {C:GamblerSystem.MULTI_WHEEL%}%（代价是登场损失自身最大生命值 {C:GamblerSystem.WHEEL_HP_COST%}%）\n释放【赌注】→ 之后 {C:GamblerSystem.BET_BONUS_SEC} 秒内再 +{C:GamblerSystem.MULTI_BET_BONUS%}%。\n</span>"
     },
     "skillPool": [
       {
@@ -1033,8 +1033,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "丢出一张万能牌，造成 <span class=\"val-normal\">1 段</span> {N:2*ATK} 物理伤害，自身获得 {S:1*ATK} 永久护盾并回复 <span class=\"val-heal\">{C:GamblerSystem.JOKER_HEAL%}% 最大生命值</span>，同时使目标攻击力 <span class=\"val-atk\">-{C:GamblerSystem.JOKER_ATK_DOWN%}%</span>。",
-        "detail": "赌神龟丢出一张万能牌，造成 <span class=\"val-normal\">1 段</span>（{C:GamblerSystem.JOKER_DMG%}%×攻击力({ATK}) = {N:GamblerSystem.JOKER_DMG*ATK}）物理伤害。\n自身获得（100%×攻击力 = {S:1*ATK}）<span class=\"val-def\">永久护盾</span>，回复 <span class=\"val-heal\">{C:GamblerSystem.JOKER_HEAL%}% 最大生命值</span>，并使目标<span class=\"val-atk\">攻击力 -{C:GamblerSystem.JOKER_ATK_DOWN%}%</span>。"
+        "brief": "丢出一张万能牌，造成 <span class=\"val-normal\">1 段</span> {N:2*ATK} 物理伤害，自身获得 {S:1*ATK} 永久护盾并回复 <span class=\"val-heal\">自身 {C:GamblerSystem.JOKER_HEAL%}% 最大生命值</span>，同时使目标攻击力 <span class=\"val-atk\">-{C:GamblerSystem.JOKER_ATK_DOWN%}%</span>。",
+        "detail": "赌神龟丢出一张万能牌，造成 <span class=\"val-normal\">1 段</span>（{C:GamblerSystem.JOKER_DMG%}%×攻击力({ATK}) = {N:GamblerSystem.JOKER_DMG*ATK}）物理伤害。\n自身获得（100%×攻击力 = {S:1*ATK}）<span class=\"val-def\">永久护盾</span>，回复 <span class=\"val-heal\">自身 {C:GamblerSystem.JOKER_HEAL%}% 最大生命值</span>，并使目标<span class=\"val-atk\">攻击力 -{C:GamblerSystem.JOKER_ATK_DOWN%}%</span>。"
       },
       {
         "name": "赌注",
@@ -1045,7 +1045,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "消耗当前 <span class=\"val-atk\">{C:GamblerSystem.BET_HP_COST%}%</span> 生命值，将其化为 {C:GamblerSystem.BET_SEGMENTS} 段物理伤害打向目标，之后 <span class=\"val-atk\">{C:GamblerSystem.BET_BONUS_SEC} 秒</span> 内多重打击概率 <span class=\"val-atk\">+{C:GamblerSystem.MULTI_BET_BONUS%}%</span>。\n<span style=\"color:#8a93a0\">当自身生命低于 {C:GamblerSystem.BET_HP_COST%}% 时，改为回复自身最大生命值 {C:GamblerSystem.BET_LOWHP_HEAL%}% 而不甩牌。\n</span>",
-        "detail": "赌神龟消耗当前 <span class=\"val-atk\">{C:GamblerSystem.BET_HP_COST%}%</span> 生命值，将其分为 <span class=\"val-normal\">{C:GamblerSystem.BET_SEGMENTS} 段</span>物理伤害打向目标（总量≈所消耗的生命值）\n释放后 <span class=\"val-atk\">{C:GamblerSystem.BET_BONUS_SEC} 秒</span> 内多重打击概率额外 +{C:GamblerSystem.MULTI_BET_BONUS%}%。\n<span style=\"color:#8a93a0\">当前生命 <b>低于 {C:GamblerSystem.BET_HP_COST%}% 最大生命值</b> 时改为【低血模式】：不甩牌、不消耗生命，改为回复 {C:GamblerSystem.BET_LOWHP_HEAL%}% 最大生命值，同样获得 {C:GamblerSystem.BET_BONUS_SEC} 秒多重打击 +{C:GamblerSystem.MULTI_BET_BONUS%}%。\n</span>"
+        "detail": "赌神龟消耗当前 <span class=\"val-atk\">{C:GamblerSystem.BET_HP_COST%}%</span> 生命值，将其分为 <span class=\"val-normal\">{C:GamblerSystem.BET_SEGMENTS} 段</span>物理伤害打向目标（总量≈所消耗的生命值）\n释放后 <span class=\"val-atk\">{C:GamblerSystem.BET_BONUS_SEC} 秒</span> 内多重打击概率额外 +{C:GamblerSystem.MULTI_BET_BONUS%}%。\n<span style=\"color:#8a93a0\">当前生命 <b>低于 {C:GamblerSystem.BET_HP_COST%}% 最大生命值</b> 时改为【低血模式】：不甩牌、不消耗生命，改为回复自身 {C:GamblerSystem.BET_LOWHP_HEAL%}% 最大生命值，同样获得 {C:GamblerSystem.BET_BONUS_SEC} 秒多重打击 +{C:GamblerSystem.MULTI_BET_BONUS%}%。\n</span>"
       },
       {
         "name": "命运之轮",
@@ -1057,7 +1057,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "每次释放进入抽取阶段，花色转盘落定后永久提升一项属性：\n♠ 黑桃：\n攻击力 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_SPADE_ATK}</span>、最大生命值 <span class=\"val-heal\">+{C:GamblerSystem.WHEEL_SPADE_HP}</span>。\n♥ 红心：\n护甲 <span class=\"val-def\">+{C:GamblerSystem.WHEEL_HEART_RESIST}</span>、魔抗 <span class=\"val-magic\">+{C:GamblerSystem.WHEEL_HEART_RESIST}</span>。\n♦ 方块：\n暴击率 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_DIAMOND_CRIT%}%</span>、护甲穿透 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_DIAMOND_PEN}</span>。\n♣ 梅花：\n生命偷取 <span class=\"val-heal\">+{C:GamblerSystem.WHEEL_CLUB_LIFESTEAL%}%</span>、攻击速度 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_CLUB_ASPD%}%</span>。\n<span style=\"color:#8a93a0\">抽取阶段锁定龟能。\n选择本技能后，登场损失自身最大生命值 {C:GamblerSystem.WHEEL_HP_COST%}%，换取基础多重打击概率由 {C:GamblerSystem.MULTI_BASE%}% 提升至 {C:GamblerSystem.MULTI_WHEEL%}%。\n</span>",
-        "detail": "<span class=\"val-normal\">选择本技能时</span>：赌神龟登场即<span class=\"val-true\">损失 {C:GamblerSystem.WHEEL_HP_COST%}% 最大生命值</span>，换取<span class=\"val-atk\">额外 +{C:GamblerSystem.MULTI_BET_BONUS%}% 多重打击概率</span>（基础 {C:GamblerSystem.MULTI_BASE%}% → {C:GamblerSystem.MULTI_WHEEL%}%）。\n<span class=\"val-normal\">主动</span>（龟能满自动释放）：随机抽取一个花色，永久提升一项属性：♠黑桃 攻击力 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_SPADE_ATK}</span>、最大生命值 <span class=\"val-heal\">+{C:GamblerSystem.WHEEL_SPADE_HP}</span>。\n♥红心 护甲 <span class=\"val-def\">+{C:GamblerSystem.WHEEL_HEART_RESIST}</span>、魔抗 <span class=\"val-magic\">+{C:GamblerSystem.WHEEL_HEART_RESIST}</span>。\n♦方块 暴击率 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_DIAMOND_CRIT%}%</span>、护甲穿透 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_DIAMOND_PEN}</span>。\n♣梅花 生命偷取 <span class=\"val-heal\">+{C:GamblerSystem.WHEEL_CLUB_LIFESTEAL%}%</span>、攻击速度 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_CLUB_ASPD%}%</span>。\n<span style=\"color:#8a93a0\">赌神龟抽到的花色会在本大轮跨场累积，下一场登场时自动套用；换大轮时重置。\n</span>\n<span style=\"color:#8a93a0\">抽取阶段（转盘旋转约 {C:GamblerSystem.WHEEL_LOCK_SEC} 秒）内<b>锁龟能不充能</b>，花色落定后自动解锁。\n</span>。\n<span style=\"color:#8a93a0\">抽取阶段锁定龟能。</span>"
+        "detail": "<span class=\"val-normal\">选择本技能时</span>：赌神龟登场即<span class=\"val-true\">损失自身 {C:GamblerSystem.WHEEL_HP_COST%}% 最大生命值</span>，换取<span class=\"val-atk\">额外 +{C:GamblerSystem.MULTI_BET_BONUS%}% 多重打击概率</span>（基础 {C:GamblerSystem.MULTI_BASE%}% → {C:GamblerSystem.MULTI_WHEEL%}%）。\n<span class=\"val-normal\">主动</span>（龟能满自动释放）：随机抽取一个花色，永久提升一项属性：♠黑桃 攻击力 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_SPADE_ATK}</span>、最大生命值 <span class=\"val-heal\">+{C:GamblerSystem.WHEEL_SPADE_HP}</span>。\n♥红心 护甲 <span class=\"val-def\">+{C:GamblerSystem.WHEEL_HEART_RESIST}</span>、魔抗 <span class=\"val-magic\">+{C:GamblerSystem.WHEEL_HEART_RESIST}</span>。\n♦方块 暴击率 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_DIAMOND_CRIT%}%</span>、护甲穿透 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_DIAMOND_PEN}</span>。\n♣梅花 生命偷取 <span class=\"val-heal\">+{C:GamblerSystem.WHEEL_CLUB_LIFESTEAL%}%</span>、攻击速度 <span class=\"val-atk\">+{C:GamblerSystem.WHEEL_CLUB_ASPD%}%</span>。\n<span style=\"color:#8a93a0\">赌神龟抽到的花色会在本大轮跨场累积，下一场登场时自动套用；换大轮时重置。\n</span>\n<span style=\"color:#8a93a0\">抽取阶段（转盘旋转约 {C:GamblerSystem.WHEEL_LOCK_SEC} 秒）内<b>锁龟能不充能</b>，花色落定后自动解锁。\n</span>。\n<span style=\"color:#8a93a0\">抽取阶段锁定龟能。</span>"
       }
     ],
     "defaultSkills": [
@@ -1289,7 +1289,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "在战斗开始时召唤一颗糖果炸弹，其生命值为糖果龟 {C:CandySystem.BOMB_HP_PCT%}% 最大生命值。\n每当龟能充满，若炸弹存活，便为其提升糖果龟 <span class=\"val-atk\">{C:CandySystem.BOMB_FEED_MAXHP_PCT%}%</span> 最大生命值的生命上限并<span class=\"val-heal\">治疗 {C:CandySystem.BOMB_FEED_HEAL_PCT%}%</span>。\n若炸弹已阵亡，则召唤一颗新炸弹（生命值为自身最大生命值 {C:CandySystem.BOMB_REVIVE_HP_PCT%}%）。\n炸弹死亡时爆炸，对全体敌人均摊其 {C:CandySystem.BOMB_DEATH_AOE%}% 最大生命值的魔法伤害。\n<span style=\"color:#8a93a0\">炸弹每秒衰减 {C:CandySystem.BOMB_DECAY_PCT%}% 生命，不攻击也不移动。\n</span>",
-        "detail": "糖果炸弹（召唤实体·技能三）：\n选择本技能后战斗开始即召唤一只糖果炸弹（最大生命值=糖果龟登场最大生命值×{C:CandySystem.BOMB_HP_PCT%}%，0 攻击/护甲/魔抗，不主动攻击，每秒自衰减 {C:CandySystem.BOMB_DECAY_PCT%}%最大生命值）。\n每次本技能龟能充满：若炸弹存活→其最大生命值上限 +{C:CandySystem.BOMB_FEED_MAXHP_PCT%}%糖果龟最大生命值 并 治疗 {C:CandySystem.BOMB_FEED_HEAL_PCT%}%糖果龟最大生命值（喂续命）\n若炸弹已阵亡→召唤新炸弹（HP={C:CandySystem.BOMB_REVIVE_HP_PCT%}%糖果龟最大生命值）。\n<span style=\"color:#8a93a0\">炸弹死亡（自损或被击杀）时爆炸：对全体敌方造成总计 {C:CandySystem.BOMB_DEATH_AOE%}%炸弹最大生命值的魔法伤害，由存活敌人均摊。\n</span>"
+        "detail": "糖果炸弹（召唤实体·技能三）：\n选择本技能后战斗开始即召唤一只糖果炸弹（最大生命值=糖果龟登场最大生命值×{C:CandySystem.BOMB_HP_PCT%}%，0 攻击/护甲/魔抗，不主动攻击，每秒自衰减自身 {C:CandySystem.BOMB_DECAY_PCT%}% 最大生命值）。\n每次本技能龟能充满：若炸弹存活→其最大生命值上限 +{C:CandySystem.BOMB_FEED_MAXHP_PCT%}%糖果龟最大生命值 并 治疗 {C:CandySystem.BOMB_FEED_HEAL_PCT%}%糖果龟最大生命值（喂续命）\n若炸弹已阵亡→召唤新炸弹（HP={C:CandySystem.BOMB_REVIVE_HP_PCT%}%糖果龟最大生命值）。\n<span style=\"color:#8a93a0\">炸弹死亡（自损或被击杀）时爆炸：对全体敌方造成总计 {C:CandySystem.BOMB_DEATH_AOE%}%炸弹最大生命值的魔法伤害，由存活敌人均摊。\n</span>"
       }
     ],
     "defaultSkills": [
@@ -1393,8 +1393,8 @@
     "passive": {
       "type": "inkMark",
       "name": "墨迹",
-      "brief": "普攻与技能都会为目标叠加<span class=\"val-normal\">墨迹</span>。\n目标每受到一次伤害，每层墨迹便使其在原伤害之外额外承受 <span class=\"val-atk\">{C:LineSystem.INK_TRUE_PER_STACK%}%</span> 真实伤害，且该真伤穿透减伤与护盾。\n<span style=\"color:#8a93a0\">墨迹上限为 {C:LineSystem.INK_CAP} 层，选择「墨水炸弹」时提升至 {C:LineSystem.INK_CAP_BOMB} 层；满层时额外承受 {C:LineSystem.INK_TRUE_FULL_BOMB%}%。\n</span>\n线条龟自身实时获得<span class=\"val-atk\">({C:LineSystem.ASPD_PER_ATK%}×攻击力)%</span> 的额外攻击速度。",
-      "desc": "普攻与技能为目标叠加墨迹（上限 {C:LineSystem.INK_CAP} 层；若选择「墨水炸弹」则上限提升至 {C:LineSystem.INK_CAP_BOMB} 层）。\n目标每受到一次伤害，在原伤害之外，每层墨迹使其额外承受 <span class=\"val-true\">{C:LineSystem.INK_TRUE_PER_STACK%}% 真实伤害</span>（穿透减伤与护盾；满 {C:LineSystem.INK_CAP_BOMB} 层 = 额外 +{C:LineSystem.INK_TRUE_FULL_BOMB%}%）。\n线条龟自身<span class=\"val-normal\">实时</span>获得<span class=\"val-atk\">({C:LineSystem.ASPD_PER_ATK%}×攻击力)%</span> 的额外攻击速度（攻击力提升会同步抬高攻速）。"
+      "brief": "普攻与技能都会为目标叠加<span class=\"val-normal\">墨迹</span>。\n目标每受到一次伤害，每层墨迹便使其在原伤害之外额外承受 <span class=\"val-atk\">{C:LineSystem.INK_TRUE_PER_STACK%}%</span> 真实伤害，且该真伤穿透减伤与护盾。\n<span style=\"color:#8a93a0\">墨迹上限为 {C:LineSystem.INK_CAP} 层，选择【墨水炸弹】时提升至 {C:LineSystem.INK_CAP_BOMB} 层；满层时额外承受 {C:LineSystem.INK_TRUE_FULL_BOMB%}%。\n</span>\n线条龟自身实时获得<span class=\"val-atk\">({C:LineSystem.ASPD_PER_ATK%}×攻击力)%</span> 的额外攻击速度。",
+      "desc": "普攻与技能为目标叠加墨迹（上限 {C:LineSystem.INK_CAP} 层；若选择【墨水炸弹】则上限提升至 {C:LineSystem.INK_CAP_BOMB} 层）。\n目标每受到一次伤害，在原伤害之外，每层墨迹使其额外承受 <span class=\"val-true\">{C:LineSystem.INK_TRUE_PER_STACK%}% 真实伤害</span>（穿透减伤与护盾；满 {C:LineSystem.INK_CAP_BOMB} 层 = 额外 +{C:LineSystem.INK_TRUE_FULL_BOMB%}%）。\n线条龟自身<span class=\"val-normal\">实时</span>获得<span class=\"val-atk\">({C:LineSystem.ASPD_PER_ATK%}×攻击力)%</span> 的额外攻击速度（攻击力提升会同步抬高攻速）。"
     },
     "skillPool": [
       {
@@ -1428,7 +1428,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "对<span class=\"val-normal\">墨迹层数最多</span>的敌人点下终笔，造成（{C:LineSystem.DOT_BASE_COEF%}% + 每层墨迹 {C:LineSystem.DOT_PER_INK%}%）×攻击力 物理伤害。\n<span style=\"color:#8a93a0\">该伤害不消耗墨迹。\n</span>",
-        "detail": "线条龟对<span class=\"val-normal\">墨迹层数最多</span>的敌人点下终笔，造成（{C:LineSystem.DOT_BASE_COEF%}%×攻击力 + 每层墨迹 {C:LineSystem.DOT_PER_INK%}%×攻击力）物理伤害。\n<span class=\"val-atk\">不消耗墨迹</span>。\n<span style=\"color:#8a93a0\">满 {C:LineSystem.INK_CAP} 层 = {C:LineSystem.DOT_FULL_COEF%}%×攻击力。\n若选择「墨水炸弹」把上限提到 {C:LineSystem.INK_CAP_BOMB} 层，满层 = {C:LineSystem.DOT_FULL_COEF_BOMB%}%×攻击力。\n场上无墨迹时改打最近敌人（{C:LineSystem.DOT_BASE_COEF%}%×攻击力）。\n</span>"
+        "detail": "线条龟对<span class=\"val-normal\">墨迹层数最多</span>的敌人点下终笔，造成（{C:LineSystem.DOT_BASE_COEF%}%×攻击力 + 每层墨迹 {C:LineSystem.DOT_PER_INK%}%×攻击力）物理伤害。\n<span class=\"val-atk\">不消耗墨迹</span>。\n<span style=\"color:#8a93a0\">满 {C:LineSystem.INK_CAP} 层 = {C:LineSystem.DOT_FULL_COEF%}%×攻击力。\n若选择【墨水炸弹】把上限提到 {C:LineSystem.INK_CAP_BOMB} 层，满层 = {C:LineSystem.DOT_FULL_COEF_BOMB%}%×攻击力。\n场上无墨迹时改打最近敌人（{C:LineSystem.DOT_BASE_COEF%}%×攻击力）。\n</span>"
       },
       {
         "name": "墨水炸弹",
@@ -1440,7 +1440,7 @@
         "cd": 0,
         "aoe": true,
         "brief": "远程投掷墨水炸弹，对落点范围内的敌人溅射四段，共造成 {M:LineSystem.BOMB_SEG_COEF*ATK*LineSystem.BOMB_SEGMENTS} 魔法伤害，每段命中各叠加 <span class=\"val-normal\">1 层墨迹</span>（四段共 {C:LineSystem.BOMB_SEGMENTS} 层）。",
-        "detail": "线条龟远程投掷墨水炸弹（全场投放，落点自动锁定敌方最密集处），对落点 {C:RealtimeBattle3DScene.INK_BOMB_RADIUS} 码范围内敌方溅射 {C:LineSystem.BOMB_SEGMENTS} 段共（{C:LineSystem.BOMB_TOTAL%}%×攻击力({ATK}) = {M:LineSystem.BOMB_SEG_COEF*ATK*LineSystem.BOMB_SEGMENTS}）魔法伤害，每段命中为目标叠加 1 层墨迹（四段共 {C:LineSystem.BOMB_SEGMENTS} 层）。\n<span style=\"color:#8a93a0\">投掷落点自动锁定敌方最密集处；选择本技能后，被动「墨迹」的层数上限由 {C:LineSystem.INK_CAP} 提升至 {C:LineSystem.INK_CAP_BOMB}。\n</span>"
+        "detail": "线条龟远程投掷墨水炸弹（全场投放，落点自动锁定敌方最密集处），对落点 {C:RealtimeBattle3DScene.INK_BOMB_RADIUS} 码范围内敌方溅射 {C:LineSystem.BOMB_SEGMENTS} 段共（{C:LineSystem.BOMB_TOTAL%}%×攻击力({ATK}) = {M:LineSystem.BOMB_SEG_COEF*ATK*LineSystem.BOMB_SEGMENTS}）魔法伤害，每段命中为目标叠加 1 层墨迹（四段共 {C:LineSystem.BOMB_SEGMENTS} 层）。\n<span style=\"color:#8a93a0\">投掷落点自动锁定敌方最密集处；选择本技能后，被动【墨迹】的层数上限由 {C:LineSystem.INK_CAP} 提升至 {C:LineSystem.INK_CAP_BOMB}。\n</span>"
       }
     ],
     "defaultSkills": [
@@ -1514,7 +1514,7 @@
         "selfCast": true,
         "counterScale": 0.3,
         "brief": "以雷电包裹自身，获得 {S:LightningSystem.SHIELD_ATK_COEF*ATK} 外加 <span class=\"val-hp\">自身最大生命值 {C:LightningSystem.SHIELD_MAXHP_PCT%}%</span> 的护盾，持续 {C:LightningSystem.SHIELD_SEC} 秒。\n护盾存在时，闪电龟每受到一段攻击便反击 {M:LightningSystem.SHIELD_RETALIATE*ATK} 魔法伤害，并为攻击者叠加 1 层电击。",
-        "detail": "闪电龟以雷电包裹自身，获得（{C:LightningSystem.SHIELD_ATK_COEF%}%×攻击力({ATK}) = {S:LightningSystem.SHIELD_ATK_COEF*ATK}）+ <span class=\"val-hp\">{C:LightningSystem.SHIELD_MAXHP_PCT%}%最大生命值</span> 的护盾，持续 {C:LightningSystem.SHIELD_SEC} 秒。\n护盾存在时，每受到一段攻击便反击（{C:LightningSystem.SHIELD_RETALIATE%}%×攻击力({ATK}) = {M:LightningSystem.SHIELD_RETALIATE*ATK}）魔法伤害并叠加 1 层电击。",
+        "detail": "闪电龟以雷电包裹自身，获得（{C:LightningSystem.SHIELD_ATK_COEF%}%×攻击力({ATK}) = {S:LightningSystem.SHIELD_ATK_COEF*ATK}）+ <span class=\"val-hp\">自身 {C:LightningSystem.SHIELD_MAXHP_PCT%}% 最大生命值</span> 的护盾，持续 {C:LightningSystem.SHIELD_SEC} 秒。\n护盾存在时，每受到一段攻击便反击（{C:LightningSystem.SHIELD_RETALIATE%}%×攻击力({ATK}) = {M:LightningSystem.SHIELD_RETALIATE*ATK}）魔法伤害并叠加 1 层电击。",
         "energyCost": 90
       }
     ],
@@ -1602,7 +1602,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "获得 <span class=\"val-atk\">{C:PhoenixSystem.NIRVANA_ENH_ASPD%}% 攻击速度</span> 和 <span class=\"val-atk\">{C:PhoenixSystem.NIRVANA_ENH_SPD%}% 移动速度</span>，持续 <span class=\"val-atk\">{C:PhoenixSystem.NIRVANA_ENH_SEC} 秒</span>。\n强化涅槃被动，使其改为以 <span class=\"val-heal\">{C:PhoenixSystem.NIRVANA_ENH_HP_PCT%}% 最大生命值</span>复活并永久提升 <span class=\"val-atk\">{C:PhoenixSystem.NIRVANA_ENH_ATK%}%</span> 攻击力。",
-        "detail": "主动（{C:PhoenixSystem.NIRVANA_ENERGY} 龟能）：凤凰龟周身烈焰暴涨，自身获得 <span class=\"val-atk\">+{C:PhoenixSystem.NIRVANA_ENH_ASPD%}%</span> 攻击速度与 <span class=\"val-atk\">+{C:PhoenixSystem.NIRVANA_ENH_SPD%}%</span> 移动速度，持续 {C:PhoenixSystem.NIRVANA_ENH_SEC} 秒（配合喷火随攻击速度增伤）。\n被动强化涅槃：\n浴火重生时转而以 {C:PhoenixSystem.NIRVANA_ENH_HP_PCT%}%最大生命值复活，并永久获得 <span class=\"val-atk\">+{C:PhoenixSystem.NIRVANA_ENH_ATK%}%</span> 攻击力。",
+        "detail": "主动（{C:PhoenixSystem.NIRVANA_ENERGY} 龟能）：凤凰龟周身烈焰暴涨，自身获得 <span class=\"val-atk\">+{C:PhoenixSystem.NIRVANA_ENH_ASPD%}%</span> 攻击速度与 <span class=\"val-atk\">+{C:PhoenixSystem.NIRVANA_ENH_SPD%}%</span> 移动速度，持续 {C:PhoenixSystem.NIRVANA_ENH_SEC} 秒（配合喷火随攻击速度增伤）。\n被动强化涅槃：\n浴火重生时转而以自身 {C:PhoenixSystem.NIRVANA_ENH_HP_PCT%}% 最大生命值复活，并永久获得 <span class=\"val-atk\">+{C:PhoenixSystem.NIRVANA_ENH_ATK%}%</span> 攻击力。",
         "energyCost": 120,
         "icon": "skills/phoenix-3.png"
       }
@@ -1662,7 +1662,7 @@
           "turns": 3
         },
         "brief": "在敌人最密处生成一片岩浆池，持续 <span class=\"val-atk\">{C:LavaSystem.QUAKE_SEC} 秒</span>。\n岩浆池每 {C:LavaSystem.QUAKE_TICK_SEC} 秒对池内敌人造成（{M:LavaSystem.QUAKE_ATK_COEF*ATK} + {C:LavaSystem.QUAKE_TGT_HP%}%目标最大生命值）魔法伤害，并使其<span class=\"val-atk\">减速 {C:LavaSystem.QUAKE_SLOW_PCT%}%</span>、魔抗降低 <span class=\"val-atk\">{C:LavaSystem.QUAKE_MR_DOWN%}%</span>。",
-        "detail": "熔岩龟撕裂大地，在敌人最密集处生成一个半径 {C:LavaSystem.QUAKE_RADIUS} 码的岩浆池，持续 {C:LavaSystem.QUAKE_SEC} 秒。\n每 {C:LavaSystem.QUAKE_TICK_SEC} 秒结算一次（共 {C:LavaSystem.QUAKE_TICKS} 跳）：池内所有敌人各受到（{C:LavaSystem.QUAKE_ATK_COEF%}%×攻击力({ATK}) = {M:LavaSystem.QUAKE_ATK_COEF*ATK}）+ {C:LavaSystem.QUAKE_TGT_HP%}%目标最大生命值 魔法伤害，并被减速 <span class=\"val-atk\">{C:LavaSystem.QUAKE_SLOW_PCT%}%</span>、魔抗 <span class=\"val-atk\">-{C:LavaSystem.QUAKE_MR_DOWN%}%</span>（每跳刷新，离开岩浆池即失效）。\n<span style=\"color:#8a93a0\">火山形态下本技变为「火山爆发」：\n一道熔岩浪从场地远端横扫到近端，波前每扫过一名敌人即将其击飞，并造成（{C:LavaSystem.ERUPT_ATK_COEF}×攻击力）魔法伤害与（{C:LavaSystem.ERUPT_BURN_COEF}×攻击力）层灼烧。\n熔岩龟每命中一名敌人回复 {C:LavaSystem.ERUPT_HEAL_PCT%}% 最大生命值。\n</span>"
+        "detail": "熔岩龟撕裂大地，在敌人最密集处生成一个半径 {C:LavaSystem.QUAKE_RADIUS} 码的岩浆池，持续 {C:LavaSystem.QUAKE_SEC} 秒。\n每 {C:LavaSystem.QUAKE_TICK_SEC} 秒结算一次（共 {C:LavaSystem.QUAKE_TICKS} 跳）：池内所有敌人各受到（{C:LavaSystem.QUAKE_ATK_COEF%}%×攻击力({ATK}) = {M:LavaSystem.QUAKE_ATK_COEF*ATK}）+ {C:LavaSystem.QUAKE_TGT_HP%}%目标最大生命值 魔法伤害，并被减速 <span class=\"val-atk\">{C:LavaSystem.QUAKE_SLOW_PCT%}%</span>、魔抗 <span class=\"val-atk\">-{C:LavaSystem.QUAKE_MR_DOWN%}%</span>（每跳刷新，离开岩浆池即失效）。\n<span style=\"color:#8a93a0\">火山形态下本技变为【火山爆发】：\n一道熔岩浪从场地远端横扫到近端，波前每扫过一名敌人即将其击飞，并造成（{C:LavaSystem.ERUPT_ATK_COEF}×攻击力）魔法伤害与（{C:LavaSystem.ERUPT_BURN_COEF}×攻击力）层灼烧。\n熔岩龟每命中一名敌人回复 {C:LavaSystem.ERUPT_HEAL_PCT%}% 最大生命值。\n</span>"
       },
       {
         "name": "岩浆涌动",
@@ -1673,7 +1673,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "蓄力后使目标脚下喷出岩浆柱，将附近敌人<span class=\"val-atk\">击飞</span>并造成 {M:LavaSystem.SURGE_ATK_COEF*ATK} 魔法伤害，同时自身获得 {S:LavaSystem.SURGE_SHIELD_COEF*ATK} 护盾。\n<span style=\"color:#8a93a0\">该盾不限持续时间。\n</span>",
-        "detail": "熔岩龟蓄力后，在目标脚下喷出岩浆柱：\n击飞附近的敌人（约 {C:LavaSystem.SURGE_KNOCK_SEC} 秒滞空），造成（{C:LavaSystem.SURGE_ATK_COEF%}%×攻击力({ATK}) = {M:LavaSystem.SURGE_ATK_COEF*ATK}）魔法伤害，熔岩龟自身获得（{C:LavaSystem.SURGE_SHIELD_COEF%}%×攻击力({ATK}) = {S:LavaSystem.SURGE_SHIELD_COEF*ATK}）护盾（不限时）。\n<span style=\"color:#8a93a0\">火山形态下本技变为「重击」：蓄力猛砸目标，将其击飞，造成（{C:LavaSystem.STRIKE_ATK_COEF%}%×攻击力 + {C:LavaSystem.STRIKE_MAXHP_PCT%}%×熔岩龟自身最大生命值）物理伤害，并附带 {C:LavaSystem.STRIKE_LIFESTEAL%}% 生命偷取。\n</span>"
+        "detail": "熔岩龟蓄力后，在目标脚下喷出岩浆柱：\n击飞附近的敌人（约 {C:LavaSystem.SURGE_KNOCK_SEC} 秒滞空），造成（{C:LavaSystem.SURGE_ATK_COEF%}%×攻击力({ATK}) = {M:LavaSystem.SURGE_ATK_COEF*ATK}）魔法伤害，熔岩龟自身获得（{C:LavaSystem.SURGE_SHIELD_COEF%}%×攻击力({ATK}) = {S:LavaSystem.SURGE_SHIELD_COEF*ATK}）护盾（不限时）。\n<span style=\"color:#8a93a0\">火山形态下本技变为【重击】：蓄力猛砸目标，将其击飞，造成（{C:LavaSystem.STRIKE_ATK_COEF%}%×攻击力 + {C:LavaSystem.STRIKE_MAXHP_PCT%}%×熔岩龟自身最大生命值）物理伤害，并附带 {C:LavaSystem.STRIKE_LIFESTEAL%}% 生命偷取。\n</span>"
       },
       {
         "name": "熔岩爆发",
@@ -1705,21 +1705,21 @@
         "icon": "skills/volcano-2.png",
         "type": "volcanoErupt",
         "brief": "火山龟指定一个方向，竞技场外涌来一道熔岩浪横扫全场，击退沿途敌人并造成（{M:LavaSystem.ERUPT_ATK_COEF*ATK}）魔法伤害 + 灼烧层，每命中一名敌人回复 <span class=\"val-heal\">{C:LavaSystem.ERUPT_HEAL_PCT%}%</span> 最大生命值。",
-        "detail": "（对应小形态「地裂」）火山龟朝目标指定一个方向，出现一条超长矩形预警区。\n随后一道岩浆浪墙从场地远端推进到近端。\n波前每扫过一名敌人：将其击退，造成（{C:LavaSystem.ERUPT_ATK_COEF%}%×攻击力({ATK}) = {M:LavaSystem.ERUPT_ATK_COEF*ATK}）魔法伤害，施加 <span style=\"color:#ff6600\">（{C:LavaSystem.ERUPT_BURN_COEF}×攻击力）层灼烧</span>，并使火山龟回复 <span class=\"val-heal\">{C:LavaSystem.ERUPT_HEAL_PCT%}%</span> 最大生命值。"
+        "detail": "（对应小形态【地裂】）火山龟朝目标指定一个方向，出现一条超长矩形预警区。\n随后一道岩浆浪墙从场地远端推进到近端。\n波前每扫过一名敌人：将其击退，造成（{C:LavaSystem.ERUPT_ATK_COEF%}%×攻击力({ATK}) = {M:LavaSystem.ERUPT_ATK_COEF*ATK}）魔法伤害，施加 <span style=\"color:#ff6600\">（{C:LavaSystem.ERUPT_BURN_COEF}×攻击力）层灼烧</span>，并使火山龟回复 <span class=\"val-heal\">{C:LavaSystem.ERUPT_HEAL_PCT%}%</span> 最大生命值。"
       },
       {
         "name": "重击",
         "icon": "skills/volcano-0.png",
         "type": "volcanoSmash",
         "brief": "火山龟蓄力猛砸目标，将其击飞，造成（{N:LavaSystem.STRIKE_ATK_COEF*ATK} + {C:LavaSystem.STRIKE_MAXHP_PCT%}%自身最大生命值）物理伤害，并附带 <span class=\"val-heal\">{C:LavaSystem.STRIKE_LIFESTEAL%}%</span> 生命偷取。",
-        "detail": "（对应小形态「岩浆涌动」）火山龟蓄力后猛砸目标：\n将其击飞（约 {C:LavaSystem.SURGE_KNOCK_SEC} 秒滞空），造成（{C:LavaSystem.STRIKE_ATK_COEF%}%×攻击力({ATK}) = {N:LavaSystem.STRIKE_ATK_COEF*ATK}）+（{C:LavaSystem.STRIKE_MAXHP_PCT%}%×自身最大生命值({HP}) = {N:HP*LavaSystem.STRIKE_MAXHP_PCT}）物理伤害，并附带 <span class=\"val-heal\">{C:LavaSystem.STRIKE_LIFESTEAL%}%</span> 生命偷取。"
+        "detail": "（对应小形态【岩浆涌动】）火山龟蓄力后猛砸目标：\n将其击飞（约 {C:LavaSystem.SURGE_KNOCK_SEC} 秒滞空），造成（{C:LavaSystem.STRIKE_ATK_COEF%}%×攻击力({ATK}) = {N:LavaSystem.STRIKE_ATK_COEF*ATK}）+（{C:LavaSystem.STRIKE_MAXHP_PCT%}%×自身最大生命值({HP}) = {N:HP*LavaSystem.STRIKE_MAXHP_PCT}）物理伤害，并附带 <span class=\"val-heal\">{C:LavaSystem.STRIKE_LIFESTEAL%}%</span> 生命偷取。"
       },
       {
         "name": "烈焰暴走",
         "icon": "skills/volcano-1.png",
         "type": "lavaErupt",
         "brief": "火山龟周身烈焰暴涨：自身 +{C:LavaSystem.RAMPAGE_HP_PCT%}% 最大生命值、<span class=\"val-atk\">+{C:LavaSystem.RAMPAGE_HASTE%}%</span> 攻击速度、<span class=\"val-atk\">+{C:LavaSystem.RAMPAGE_SPD%}%</span> 移动速度，均持续 {C:LavaSystem.RAMPAGE_SEC} 秒。",
-        "detail": "（对应小形态「熔岩爆发」）火山形态下技能三变为烈焰暴走（{C:LavaSystem.RAMPAGE_ENERGY} 龟能）：火山龟获得 +{C:LavaSystem.RAMPAGE_HP_PCT%}% 最大生命值、<span class=\"val-atk\">+{C:LavaSystem.RAMPAGE_HASTE%}%</span> 攻击速度、<span class=\"val-atk\">+{C:LavaSystem.RAMPAGE_SPD%}%</span> 移动速度，均持续 {C:LavaSystem.RAMPAGE_SEC} 秒。"
+        "detail": "（对应小形态【熔岩爆发】）火山形态下技能三变为烈焰暴走（{C:LavaSystem.RAMPAGE_ENERGY} 龟能）：火山龟自身最大生命值 +{C:LavaSystem.RAMPAGE_HP_PCT%}%、<span class=\"val-atk\">+{C:LavaSystem.RAMPAGE_HASTE%}%</span> 攻击速度、<span class=\"val-atk\">+{C:LavaSystem.RAMPAGE_SPD%}%</span> 移动速度，均持续 {C:LavaSystem.RAMPAGE_SEC} 秒。"
       }
     ]
   },
@@ -1837,7 +1837,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "竖起水晶壁垒，为自己获得 {S:CrystalSystem.BULWARK_ATK*ATK} 外加 <span class=\"val-atk\">{C:CrystalSystem.BULWARK_HP_PCT%}% 最大生命值</span> 的护盾，持续 {C:CrystalSystem.BULWARK_SEC} 秒，并使全体友方的护甲与魔抗提升 <span class=\"val-atk\">{C:CrystalSystem.BULWARK_TEAM_RESIST%}%</span>，持续 {C:CrystalSystem.BULWARK_SEC} 秒。\n护盾结束或被打破时，水晶龟朝目标射出一条直线水晶刺，命中的敌人受到 {T:CrystalSystem.SPIKE_TRUE_COEF*ATK} 真实伤害、叠加 <span class=\"val-atk\">{C:CrystalSystem.SPIKE_STACKS}</span> 层<span class=\"val-normal\">结晶印记</span>、被<span class=\"val-atk\">击飞</span> {C:CrystalSystem.SPIKE_KNOCK_SEC} 秒 并<span class=\"val-atk\">减速 {C:CrystalSystem.SPIKE_SLOW_PCT%}%</span>，持续 {C:CrystalSystem.SPIKE_SLOW_SEC} 秒。\n<span style=\"color:#8a93a0\">持盾期间龟能锁定。\n</span>",
-        "detail": "水晶龟竖起水晶壁垒：自身获得（{C:CrystalSystem.BULWARK_ATK%}%×攻击力({ATK}) = {S:CrystalSystem.BULWARK_ATK*ATK}）+ {C:CrystalSystem.BULWARK_HP_PCT%}%最大生命值 的护盾（持续 {C:CrystalSystem.BULWARK_SEC} 秒），持盾期间龟能锁定（盾破或到期恢复充能）\n全体友方的护甲与魔抗提升 <span class=\"val-atk\">+{C:CrystalSystem.BULWARK_TEAM_RESIST%}%</span>，持续 {C:CrystalSystem.BULWARK_SEC} 秒。\n护盾结束或被打破的瞬间，朝当前目标方向放出一条 {C:RealtimeBattle3DScene.SPIKE_LINE_RANGE} 码的直线水晶刺——水晶一段段从地底刺出：\n命中的敌人受到（{C:CrystalSystem.SPIKE_TRUE_COEF%}%×攻击力({ATK}) = {T:CrystalSystem.SPIKE_TRUE_COEF*ATK}）真实伤害、叠加 {C:CrystalSystem.SPIKE_STACKS} 层结晶印记、被击飞 {C:CrystalSystem.SPIKE_KNOCK_SEC} 秒，并受到 {C:CrystalSystem.SPIKE_SLOW_PCT%}% 移动速度削减，持续 {C:CrystalSystem.SPIKE_SLOW_SEC} 秒。\n护盾结束或被打破时，水晶龟朝目标射出一条直线水晶刺，命中的敌人受到 {T:CrystalSystem.SPIKE_TRUE_COEF*ATK} 真实伤害、叠加 <span class=\"val-atk\">{C:CrystalSystem.SPIKE_STACKS}</span> 层<span class=\"val-normal\">结晶印记</span>、被<span class=\"val-atk\">击飞</span> {C:CrystalSystem.SPIKE_KNOCK_SEC} 秒 并<span class=\"val-atk\">减速 {C:CrystalSystem.SPIKE_SLOW_PCT%}%</span>，持续 {C:CrystalSystem.SPIKE_SLOW_SEC} 秒。",
+        "detail": "水晶龟竖起水晶壁垒：自身获得（{C:CrystalSystem.BULWARK_ATK%}%×攻击力({ATK}) = {S:CrystalSystem.BULWARK_ATK*ATK}）+ 自身 {C:CrystalSystem.BULWARK_HP_PCT%}% 最大生命值 的护盾（持续 {C:CrystalSystem.BULWARK_SEC} 秒），持盾期间龟能锁定（盾破或到期恢复充能）\n全体友方的护甲与魔抗提升 <span class=\"val-atk\">+{C:CrystalSystem.BULWARK_TEAM_RESIST%}%</span>，持续 {C:CrystalSystem.BULWARK_SEC} 秒。\n护盾结束或被打破的瞬间，朝当前目标方向放出一条 {C:RealtimeBattle3DScene.SPIKE_LINE_RANGE} 码的直线水晶刺——水晶一段段从地底刺出：\n命中的敌人受到（{C:CrystalSystem.SPIKE_TRUE_COEF%}%×攻击力({ATK}) = {T:CrystalSystem.SPIKE_TRUE_COEF*ATK}）真实伤害、叠加 {C:CrystalSystem.SPIKE_STACKS} 层结晶印记、被击飞 {C:CrystalSystem.SPIKE_KNOCK_SEC} 秒，并受到 {C:CrystalSystem.SPIKE_SLOW_PCT%}% 移动速度削减，持续 {C:CrystalSystem.SPIKE_SLOW_SEC} 秒。\n护盾结束或被打破时，水晶龟朝目标射出一条直线水晶刺，命中的敌人受到 {T:CrystalSystem.SPIKE_TRUE_COEF*ATK} 真实伤害、叠加 <span class=\"val-atk\">{C:CrystalSystem.SPIKE_STACKS}</span> 层<span class=\"val-normal\">结晶印记</span>、被<span class=\"val-atk\">击飞</span> {C:CrystalSystem.SPIKE_KNOCK_SEC} 秒 并<span class=\"val-atk\">减速 {C:CrystalSystem.SPIKE_SLOW_PCT%}%</span>，持续 {C:CrystalSystem.SPIKE_SLOW_SEC} 秒。",
         "shieldHpPct": 5
       },
       {
@@ -2041,7 +2041,7 @@
       "name": "喊龟",
       "hpPct": 40,
       "brief": "在战斗开始时，从全部 A/B/C 稀有度的乌龟中随机召唤一只作为<span class=\"val-normal\">随从</span>。\n随从拥有原龟 <span class=\"val-atk\">{C:HidingSystem.MINION_HP_SCALE%}% 最大生命值</span> 和 <span class=\"val-atk\">{C:HidingSystem.MINION_ATK_SCALE%}% 攻击力</span>，并带着自己的整套技能与龟能自主作战。",
-      "desc": "在战斗开始时，从全部 A/B/C 稀有度乌龟中随机召唤一只作为随从（名单随版本自动覆盖）。\n随从的属性取自那只龟本身：最大生命值 ×<span class=\"val-atk\">{C:HidingSystem.MINION_HP_SCALE%}%</span>、攻击力 ×<span class=\"val-atk\">{C:HidingSystem.MINION_ATK_SCALE%}%</span>，护甲 / 魔抗 / 暴击率照原值（均随等级缩放）\n它的被动照常生效，并带着<span class=\"val-atk\">自己的技能与龟能条</span>自主释放（不是固定节奏）。\n<span style=\"color:#8a93a0\">缩头乌龟阵亡时随从一同阵亡；随从阵亡会触发它自身的死亡被动，并把「强化随从」那套增益永久传给缩头乌龟。\n</span>"
+      "desc": "在战斗开始时，从全部 A/B/C 稀有度乌龟中随机召唤一只作为随从（名单随版本自动覆盖）。\n随从的属性取自那只龟本身：最大生命值 ×<span class=\"val-atk\">{C:HidingSystem.MINION_HP_SCALE%}%</span>、攻击力 ×<span class=\"val-atk\">{C:HidingSystem.MINION_ATK_SCALE%}%</span>，护甲 / 魔抗 / 暴击率照原值（均随等级缩放）\n它的被动照常生效，并带着<span class=\"val-atk\">自己的技能与龟能条</span>自主释放（不是固定节奏）。\n<span style=\"color:#8a93a0\">缩头乌龟阵亡时随从一同阵亡；随从阵亡会触发它自身的死亡被动，并把【强化随从】那套增益永久传给缩头乌龟。\n</span>"
     },
     "skillPool": [
       {
@@ -2166,7 +2166,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "龟能充满后（约 {C:HeadlessSystem.SOUL_FULL_SEC} 秒），接下来 <b>{C:HeadlessSystem.SOUL_HITS} 次</b>普攻额外附带 {M:HeadlessSystem.SOUL_ATK_COEF*ATK} 魔法伤害和 <span class=\"val-magic\">{C:HeadlessSystem.SOUL_CURHP_PCT%}% 目标当前生命值</span> 的魔法伤害。\n第 {C:HeadlessSystem.SOUL_HITS} 下落地后挥出<span class=\"val-atk\">镰刀横扫</span>。\n<span style=\"color:#8a93a0\">强化窗口全程锁龟能，镰刀扫完才重新充能。\n</span>",
-        "detail": "无头龟蓄积灵魂之力（充能型）：\n龟能充满（{C:HeadlessSystem.SOUL_ENERGY} 龟能≈{C:HeadlessSystem.SOUL_FULL_SEC} 秒）后，接下来 <b>{C:HeadlessSystem.SOUL_HITS} 次</b>普攻额外附带（{C:HeadlessSystem.SOUL_ATK_COEF%}%×攻击力({ATK}) = {M:HeadlessSystem.SOUL_ATK_COEF*ATK}）<span class=\"val-magic\">魔法</span>伤害 + <span class=\"val-magic\">{C:HeadlessSystem.SOUL_CURHP_PCT%}%目标当前生命值</span> 魔法伤害（叠加在撕咬的 1×攻击力物理 + 3%最大生命值之上·单体），射程额外 +{C:HeadlessSystem.SOUL_RANGE_BONUS}。\n第 <b>{C:HeadlessSystem.SOUL_HITS}</b> 下命中落地后，无头龟挥出<span class=\"val-atk\">镰刀横扫</span>：\n正面 {C:HeadlessSystem.SCYTHE_ARC_DEG}° 锥形、{C:HeadlessSystem.SCYTHE_RANGE} 码内的敌人被<span class=\"val-atk\">击退 {C:HeadlessSystem.SCYTHE_KNOCK} 码</span>，并被施加 <span class=\"val-magic\">{C:HeadlessSystem.SCYTHE_CURSE_SEC} 秒诅咒</span>（每秒造成其最大生命值 {C:BattleDamage.CURSE_HP_PCT%}% 的真实伤害，无视双抗）。\n<span class=\"val-normal\">强化窗口全程锁龟能</span>，镰刀扫完才解锁并清零重新充能。\n<span style=\"color:#8a93a0\">\n</span>"
+        "detail": "无头龟蓄积灵魂之力（充能型）：\n龟能充满（{C:HeadlessSystem.SOUL_ENERGY} 龟能≈{C:HeadlessSystem.SOUL_FULL_SEC} 秒）后，接下来 <b>{C:HeadlessSystem.SOUL_HITS} 次</b>普攻额外附带（{C:HeadlessSystem.SOUL_ATK_COEF%}%×攻击力({ATK}) = {M:HeadlessSystem.SOUL_ATK_COEF*ATK}）<span class=\"val-magic\">魔法</span>伤害 + <span class=\"val-magic\">{C:HeadlessSystem.SOUL_CURHP_PCT%}%目标当前生命值</span> 魔法伤害（叠加在撕咬的 1×攻击力物理 + {C:BasicConsts.HEADLESS_BITE_MAXHP%}%目标最大生命值之上·单体），射程额外 +{C:HeadlessSystem.SOUL_RANGE_BONUS}。\n第 <b>{C:HeadlessSystem.SOUL_HITS}</b> 下命中落地后，无头龟挥出<span class=\"val-atk\">镰刀横扫</span>：\n正面 {C:HeadlessSystem.SCYTHE_ARC_DEG}° 锥形、{C:HeadlessSystem.SCYTHE_RANGE} 码内的敌人被<span class=\"val-atk\">击退 {C:HeadlessSystem.SCYTHE_KNOCK} 码</span>，并被施加 <span class=\"val-magic\">{C:HeadlessSystem.SCYTHE_CURSE_SEC} 秒诅咒</span>（每秒造成其最大生命值 {C:BattleDamage.CURSE_HP_PCT%}% 的真实伤害，无视双抗）。\n<span class=\"val-normal\">强化窗口全程锁龟能</span>，镰刀扫完才解锁并清零重新充能。\n<span style=\"color:#8a93a0\">\n</span>"
       }
     ],
     "defaultSkills": [
