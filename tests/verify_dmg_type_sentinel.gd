@@ -41,6 +41,12 @@ extends Node
 
 const MIN_TOTAL := 150          # 分母下限：这场至少要打出这么多次伤害，否则不算数
 const MIN_SLAPS := 3            # 触手至少要拍这么多次，否则触手那半边不算数
+## ★收工条件 = 每条分母都攒到地板的这么多倍(见下面「换尺子」那一节)。
+##   它不是判据、是**尺子**: 判据仍然是上面那两条地板。
+const MARGIN := 2
+## 宽松墙钟硬顶(秒): 只防 sim 卡死把门禁挂住。它**不参与判定** ——
+## 撞到它而分母没攒够, 报的是"尺子没走完"那一条。
+const WALL_CAP := 300.0
 
 var _fails: PackedStringArray = []
 
@@ -102,12 +108,61 @@ func _ready() -> void:
 	var tr: int = int(scn._spirit_syn._side_tier("right"))
 
 	var secs: float = float(OS.get_environment("SENT_SECS")) if OS.has_environment("SENT_SECS") else 40.0
-	## ★墙钟，不是帧数、不是游戏时钟（CLAUDE.md §3.5：三把尺子里只有墙钟对）。
+	## ══════════════════════════════════════════════════════════════════
+	##  ★★2026-10-02 换尺子: 【墙钟】→【sim 真实进度】(CI 专属红, 本地永远复现不出来)
+	## ══════════════════════════════════════════════════════════════════
+	## 原来这里写着「墙钟，不是帧数、不是游戏时钟(§3.5：三把尺子里只有墙钟对)」——
+	## 那句话对「等一件游戏内效果发生」是对的, 对**攒分母**是错的, 而且错得很隐蔽:
+	##
+	## 墙钟**每一帧最多只能买到 0.1 游戏秒** —— `_process` 顶上 `rd = minf(delta, 0.1)`
+	## 是防卡死的钳位, 一帧真实耗时超过 0.1 秒, 多出来的那部分游戏时间**直接蒸发**。
+	## ⇒ 同样的 40 墙秒, 买到的 sim 进度随机器快慢差一个数量级(探针实测, 不是推测):
+	##
+	##   | 机器                     | 40 墙秒买到的游戏时间 | 取用次数 | 拍击 |
+	##   |--------------------------|----------------------|---------|------|
+	##   | 本机 --max-fps 15        | 28.4 秒 (601 帧)      | 1019    | 14   |
+	##   | CI ubuntu(4核跑16并行)    | ≈4 秒                 | **143** | **2**|
+	##
+	## 本场是全仓最重的场面(28 龟 × 5 灵物件 14v14), CI 上一帧远远超过 0.1 秒,
+	## 于是「采到多少条」这个分母**跟机器快慢挂钩** ⇒ 本机必绿、CI 必红。
+	## 这正是 CLAUDE.md §2 表里「采样条数当分母」那一行。
+	##
+	## ⇒ 改法不是把 150 调低(那是放宽判据, 等于把空检查合法化), 而是
+	##   **不再按"跑了多久"收工, 按"本文件每一条分母都真的攒够了余量"收工** ——
+	##   各攒到地板的 MARGIN 倍就立刻走(快机器因此反而更快), 上限仍是 secs 游戏秒,
+	##   外面再套一道宽松墙钟硬顶防 sim 卡死挂住门禁。
+	##   地板 MIN_TOTAL / MIN_SLAPS **一个字没动**。
+	##
+	## ★并且「尺子自己」也是一条判据(`enough`): 攒不够就直接报"尺子没走完",
+	##   而不是让它伪装成「这场碰巧没打够」—— 后者就是上面那四次 CI 红的样子。
 	var t0: float = float(Time.get_ticks_msec()) / 1000.0
-	while float(Time.get_ticks_msec()) / 1000.0 - t0 < secs:
+	var g0: float = float(scn._t)
+	var frames := 0
+	var enough := false
+	var gnow := 0.0
+	var wnow := 0.0
+	while true:
 		await get_tree().process_frame
+		frames += 1
+		gnow = float(scn._t) - g0
+		wnow = float(Time.get_ticks_msec()) / 1000.0 - t0
+		## 本文件的四条分母, 一条不落(谁将来加新分母, 把它也加进这个条件)
+		enough = int(scn._damage.sentinel_total()) >= MIN_TOTAL * MARGIN \
+			and int(scn._spirit_syn._pk.get("queued", 0)) >= MIN_SLAPS * MARGIN \
+			and int(scn._ballistics._crit_drift) >= MARGIN
+		if enough:
+			break
+		if gnow >= secs:
+			break          # sim 真的跑完了 secs 游戏秒还没攒够 ⇒ 下面 `enough` 这条会红
+		if bool(scn._over):
+			break          # 一边被打光了: 再等也不会有新伤害, 而 `_t` 从此冻结(§3.5)
+		if wnow >= WALL_CAP:
+			break          # 宽松硬顶: 只防 sim 卡死挂住门禁, 不当判据用
 
 	print("=== verify_dmg_type_sentinel ===")
+	print("  分母·尺子: sim 走了 %.2f 游戏秒 / %d 帧 / 墙钟 %.1f 秒 (每帧买到 %.4f 游戏秒)" % [
+		gnow, frames, wnow, gnow / maxf(1.0, float(frames))])
+	_ok(enough, "分母·尺子: 每条分母都攒到地板的 %d 倍才收工（攒不够=这场没跑到位, 不是判据过了）" % MARGIN)
 	print("  分母: 灵物档位 左=%d 右=%d" % [tl, tr])
 	_ok(tl > 0 and tr > 0, "分母·两边都有触手 (左=%d 右=%d)" % [tl, tr])
 	print("  分母: 本场上场龟种 %d / 全库 %d" % [ROSTER.size(), DataRegistry.pet_by_id.size()])

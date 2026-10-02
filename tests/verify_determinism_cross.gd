@@ -38,7 +38,7 @@ extends Node
 ##
 ## ★★金标**不是**"随手记一串"。它必须先满足三条, 否则钉住的是噪声:
 ##   ① 同一台机器跑两遍摘要相同(跨进程稳定) —— 本门禁自己带这一条
-##   ② 摘要随场景变化(9 个场景不能出同一个摘要) —— 否则摘要函数坏了
+##   ② 摘要随场景变化(10 个场景不能出同一个摘要) —— 否则摘要函数坏了
 ##   ③ 换种子摘要必须变 —— 否则摘要根本没读到随机
 ##
 ## ══════════════════════════════════════════════════════════════════════
@@ -47,7 +47,7 @@ extends Node
 ## · **ARM 没验**: 玩家跑 iOS(ARM64), 而 CI 只出 IPA、不跑测试。本门禁证明的是
 ##   「Windows/MSVC ↔ Linux/glibc 一致」。ARM 要么上 macOS/ARM runner,
 ##   要么做成「首次上线时用真机跑一次并把摘要回传」。**在那之前不许声称跨设备确定**。
-## · 只覆盖这 9 个场景。场景外的技能/装备没被这条尺子量过。
+## · 只覆盖这 10 个场景。场景外的技能/装备没被这条尺子量过。
 ##
 ## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_determinism_cross.tscn --quit-after 12000
 
@@ -64,7 +64,7 @@ const GOLDEN_PATH := "res://tests/golden/determinism_cross.json"
 ## (本仓已有同形状的先例: `asset_orphan_debt.json` / `tween_capture` 台账。)
 ##
 ## 台账里这一条的**全部已知事实**(五轮 CI 实测, 见 `docs/plans/20260926-A跨设备确定性.md` §9):
-##   · 9 个场景里**只有这一个**分叉, 另外 8 个 Windows/MSVC ↔ Linux/glibc **逐位相同**
+##   · 10 个场景里**只有这一个**分叉, 另外 9 个 Windows/MSVC ↔ Linux/glibc **逐位相同**
 ##   · 二分到具体装备: 18 件逐件都不飘, **三件同时在场才飘**(组合效应)
 ##   · 分叉在**第 271 步**(≈4.5 游戏秒), 前 270 步逐位相同
 ##   · 差的是**一个浮点末位**: 石头龟的 x, 本地 658.13 / CI 658.12;
@@ -150,6 +150,12 @@ func _run(sc: Dictionary) -> Array:
 			for e in (p[4] as Array):
 				el.append({"id": str(e), "star": 3})
 			u["_edit_equips"] = el
+		## 第 6 项 = 给右队假人恢复真实主动技(见 `_det_scenarios.gd` 的说明)。
+		## ★两个消费者**必须一字不差地同样处理** —— 处理方式分家 = 两边跑的不是同一局,
+		##   而金标是拿这边跑出来的(memory `fb-hand-rolled-copies-drift`)。
+		if (p as Array).size() > 5 and bool(p[5]):
+			u["active_skills"] = s._resolve_active_skills(pid, false)
+			u["skill_idx"] = 0
 	s._debug._edit_start_battle()
 	var tr: Array = []
 	for _i in range(int(sc["frames"])):
@@ -184,7 +190,7 @@ func _ready() -> void:
 
 	var scs: Array = SC.all()
 	_ok("★分母: 场景表读到 %d 个场景(与 verify_determinism_b 同一份表)" % scs.size(),
-		scs.size() == 9, "%d 个" % scs.size())
+		scs.size() == 10, "%d 个" % scs.size())
 
 	var golden: Dictionary = _load_golden()
 	var missing: Array = []

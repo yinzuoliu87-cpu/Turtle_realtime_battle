@@ -1664,6 +1664,44 @@ func _hdr_plate(l: Label) -> Control:
 	return box
 
 
+## ════════════════════════════════════════════════════════════════════
+##  ★★★ 结算战报表【零值不印数字】(2026-10-02)
+## ════════════════════════════════════════════════════════════════════
+## 由来: 用户两次点名这一屏(「这些 ui 很 ai 味」/「每场打完后结算界面能下滑吗,
+##   不能啊, 有很多单位看不到啊」)。今天把这一屏**自己量了一遍**:
+##
+##   · 工具 `tests/_probe_ig_geom.gd`(遍历真控件树, 不读常量) + 自己的计数脚本
+##   · v0.19.504 · 1560x720 · 每侧注入 14 只(共 34 只) ⇒ 屏上 **89 个数字 token**
+##     (= 看得见的 22 行 x 4 个数值格 + 底下那行「还有 12 只」里的 12)
+##   · 同一口径跑 2026-09-29 那份存档(v0.19.472·37 只) ⇒ **逐位复现 104**
+##     ⇒ 「一屏 104 个数字」这个数**是真的**, 只是它量的是一份 37 只的合成名单,
+##        而且 56px 溢出修掉之后可见行从 26 掉到 22, 同场景今天是 89。
+##   · 真实对局(未注入, 3v3 = 6 只) ⇒ **24 个**。
+##
+## ★ 参考侧(C:/tmp/uiref · 11 张同品类结算屏, 2026-09-29 标注):
+##     数字个数 0,0,0,0,0,1,6,10,10,14,40 —— 中位 1, 最大 40(Tennis Manager,
+##     11 张里**唯一**一张有逐单位数据表的)。
+##     而**逐单位那几张给每只龟印几个数**才是可比的那一维:
+##       Brawl Stars 每只 **2** 个 / Heroes of Rings 每只 **1** 个(EXP)。
+##     我们是每只 **4** 个 —— 这是这一屏超标的真正形状。
+##
+## ★ 为什么不是直接砍列: 哪几列显示是**用户 2026-08-02 当场拍过板的**
+##   (「去掉暴击与剩余血量, 保留承受伤害」), 我不替他改回去。
+##   零值不印数字**一列不删、一个有效数字不丢** —— 丢的只有"0"这个噪声:
+##   不治疗的龟治疗栏本来就该是空的, 不是"治疗了 0"。
+##   真实对局里多数龟的 治疗/击杀 都是 0 ⇒ 落到每只 ~2 个数字, 正好是 Brawl Stars 那一档。
+##
+## ★ 抽成常量 + 纯函数【不是为了复用】, 是为了让门禁与屏幕读同一个答案
+##   (memory [[fb-hand-rolled-copies-drift]]: 测试自己拼一份就是抄第二份)。
+##   ⚠ 用「·」不用「-」: 数值列里的短横会被读成**负号**。
+const SETTLE_ZERO_MARK := "·"
+
+
+## 战报表一个数值格该印什么。0 ⇒ 占位符; 其余 ⇒ 数字本身。
+func settle_cell_text(v: int) -> String:
+	return SETTLE_ZERO_MARK if v == 0 else str(v)
+
+
 func _stats_column(header: String, units: Array, hc: Color) -> Control:
 	var grid := GridContainer.new()
 	grid.columns = 5
@@ -1749,12 +1787,17 @@ func _stats_column(header: String, units: Array, hc: Color) -> Control:
 			tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			name_cell.add_child(tag)
 		grid.add_child(name_cell)
-		var vals := [str(int(u.get("_st_dealt", 0))), str(int(u.get("_st_taken", 0))), str(int(u.get("_st_heal", 0))), str(int(u.get("_st_kills", 0)))]
+		var raw := [int(u.get("_st_dealt", 0)), int(u.get("_st_taken", 0)), int(u.get("_st_heal", 0)), int(u.get("_st_kills", 0))]
 		for i in range(4):
 			var l := Label.new()
-			l.text = vals[i]
+			## ★★★ 2026-10-02 零值不印数字 —— 见本文件 `SETTLE_ZERO_MARK` 头注。
+			l.text = settle_cell_text(raw[i])
 			l.add_theme_font_size_override("font_size", 13)
-			l.add_theme_color_override("font_color", Color("#888888") if dead else (Color("#ffd93d") if is_mvp else Color("#e8f0f6")))
+			## 零值那一格再压一档灰: 它不是"数据", 是"这一格没有内容"。
+			if raw[i] == 0:
+				l.add_theme_color_override("font_color", Color("#4e5b68"))
+			else:
+				l.add_theme_color_override("font_color", Color("#888888") if dead else (Color("#ffd93d") if is_mvp else Color("#e8f0f6")))
 			l.custom_minimum_size = Vector2(72, 0)
 			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 			grid.add_child(l)

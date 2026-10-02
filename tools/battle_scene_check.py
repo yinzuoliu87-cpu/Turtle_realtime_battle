@@ -74,6 +74,11 @@ def shoot():
 def main():
     if _no_display():
         print("  [SKIP] " + SKIP_MARK)
+        print("  ⚠ 本机没跑到它 —— **推之前必须在本地跑过一次全套门禁**, 这条只有本地能验。")
+        ## ★这一行是给 run-tests.sh 的 run_audit 看的: 它判的是输出里有没有【ALL OK】。
+        ##   v0.19.499 加这条审计时**漏了它** ⇒ CI 上审计器正确跳过(退出码 0)却被判成 FAIL,
+        ##   而我当时没看 CI, 所以连红了 5 次都不知道。现成的 vfx_ingame_check 一直是这么写的。
+        print("ALL OK — (已登记跳过)")
         return 0
 
     if not os.path.exists(GODOT):

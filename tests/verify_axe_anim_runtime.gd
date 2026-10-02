@@ -28,8 +28,29 @@ const CAST := "eq096-axe-wood-cast.png"
 
 var _s = null
 var _n := 0
-## 等一条动作播完最多等多少帧。★动画按帧推进(每帧 ≤ 0.1 秒), 所以尺子是帧不是墙钟。
-const WAIT_FRAMES := 900
+## ══════════════════════════════════════════════════════════════════════
+##  ★★2026-10-02 第三次换尺子: 帧数 → 【游戏时钟】(这次是 CI 专属红, 连红 4 轮)
+## ══════════════════════════════════════════════════════════════════════
+## 前两版的尺子都**跟机器快慢挂钩**, 只是挂的方向相反:
+##   · 墙钟(2026-09-01): 并行门禁里进程被饿着, 3 秒墙钟只摸到几帧 ⇒ 动画根本没推进。
+##   · 帧数(2026-09-27): 一帧推进 `rd = minf(delta, 0.1)` 秒动画 ⇒
+##       900 帧在本机(无头高帧率)= **0.9 游戏秒**, 在 CI(一帧 ~0.06 秒)= **59 游戏秒**。
+##       差 65 倍。而这只斧头是**在一场真打里站着的召唤物** —— 探针实测(本机 --max-fps 15,
+##       把 900 帧跑满): hp 500 → 215(2.1 游戏秒) → **第 100 帧(5 游戏秒)就 0 血死了**。
+##       斧头一死, `_render_step` 的 `if u["alive"]` 把它跳过 ⇒ `_advance_anim` 不再推帧 ⇒
+##       **贴图永久冻在死的那一刻那张**。CI 日志里那句「实测 …-cast.png」就是这个:
+##       不是动画坏了, 是**被测对象在量它的半路上被打死了**, 而判据把这说成了"贴图不对"。
+##
+## ⇒ 这一版两件事一起做, 缺一条都挡不住:
+##   ① 尺子换成 `_s._t`(游戏时钟 = 一路累加的 Σ钳制delta, 正是喂给 `_advance_anim` 的那条钟)
+##      ⇒ 「等 N 游戏秒」在任何机器上都是同样的 N 秒动画时间。帧数只剩一道宽松硬顶。
+##   ② 把斧头/主人/对手的血**钉住**(对手早就钉了 1e8, 现在三个都钉) ——
+##      本门禁量的是「四条动作播不播」, 不是「斧头能不能活过 60 秒」;
+##      被测对象在量它的中途消失是**台子的毛病**, 不是产品的毛病。
+##      并且新增两条分母断言: 量之前先问「它还活着吗 / 这条钟真的走了吗」,
+##      再也不许一只死斧头伪装成"贴图不对"。(memory [[fb-gate-subject-never-constructed]])
+const WAIT_GAME_S := 4.0     # 等一条动作播完最多等多少【游戏秒】(本机实测施法 0.40 秒播完)
+const HARD_FRAMES := 6000    # 宽松帧数硬顶: 只防死循环, 不当尺子用
 
 var _fail := 0
 
@@ -39,6 +60,18 @@ func _ok(t: String, c: bool, ex: String = "") -> void:
 	if not c:
 		_fail += 1
 	print("  [%s] %s  %s" % ["PASS" if c else "FAIL", t, ex])
+
+
+## 等到引擎拿 `want` 这张图画它, 或者**游戏时钟**走完 `budget` 秒。
+## ★尺子是 `_s._t` 不是帧数、不是墙钟 —— 见顶上「第三次换尺子」。
+## 返回 {ok, g(走掉的游戏秒), fr(用掉的帧)} —— 三个数都打出来, 红的时候一眼看出是哪一维不对。
+func _wait_tex(u: Dictionary, want: String, budget: float) -> Dictionary:
+	var g0: float = float(_s._t)
+	var fr := 0
+	while _cur_tex(u) != want and float(_s._t) - g0 < budget and fr < HARD_FRAMES:
+		await get_tree().process_frame
+		fr += 1
+	return {"ok": _cur_tex(u) == want, "g": float(_s._t) - g0, "fr": fr}
 
 
 ## 引擎【此刻】拿哪张贴图画它 —— 这是本门禁唯一的尺子。
@@ -72,6 +105,10 @@ func _ready() -> void:
 	_s._units.append(foe)
 	foe["maxHp"] = 1.0e8
 	foe["hp"] = 1.0e8
+	## ★主人也钉住: 它一死, 左边就空了 ⇒ `_over=true` ⇒ **游戏时钟从此冻结**(CLAUDE.md §3.5),
+	##   而本门禁的尺子就是那条钟。探针实测它确实会死(_t 冻在 11.55 秒不动了)。
+	owner_u["maxHp"] = 1.0e8
+	owner_u["hp"] = 1.0e8
 	var ax = _s._equip_sys._axe.summon(owner_u)
 	_ok("★分母: 真召唤出了斧头(走 AxeSystem.summon)", ax is Dictionary and ax.get("alive", false))
 	if not (ax is Dictionary):
@@ -80,6 +117,10 @@ func _ready() -> void:
 		return
 	_ok("★分母: 它有立绘节点(没有的话下面全是空检查)",
 		is_instance_valid(ax.get("sprite", null)))
+	## ★钉住被测对象的血: 它是在一场真打里站着的召唤物, 探针实测 5 游戏秒就被打死,
+	##   死了之后 `_advance_anim` 不再推它的帧 ⇒ 贴图永久冻住。见顶上「第三次换尺子」②。
+	ax["maxHp"] = 1.0e8
+	ax["hp"] = 1.0e8
 
 	# ── ① 待机 ──
 	## ★★2026-09-03 修不稳定: 原来是"等 6 帧再断言待机", 实测 3 次里红 2 次
@@ -89,29 +130,31 @@ func _ready() -> void:
 	## ⇒ 先把它钉住(no_move), 再**轮询等它回到 idle**(上限防死循环), 拿到确定态才断言。
 	##   ★用墙钟不用帧数(CLAUDE.md §3.5): 无头 CI 帧率极高, 固定帧数在那边等于没等。
 	ax["no_move"] = true
-	var _t_idle := Time.get_ticks_msec()
-	while _cur_tex(ax) != IDLE and Time.get_ticks_msec() - _t_idle < 3000:
-		await get_tree().process_frame
-	_ok("① 待机: 引擎正拿 %s 画它" % IDLE, _cur_tex(ax) == IDLE,
-		"实测 %s (已钉住 no_move 并等到 %d ms)" % [_cur_tex(ax), Time.get_ticks_msec() - _t_idle])
+	var r_idle: Dictionary = await _wait_tex(ax, IDLE, WAIT_GAME_S)
+	_ok("① 待机: 引擎正拿 %s 画它" % IDLE, bool(r_idle["ok"]),
+		"实测 %s (已钉住 no_move 并等了 %.2f 游戏秒 / %d 帧)" % [
+			_cur_tex(ax), float(r_idle["g"]), int(r_idle["fr"])])
 	ax["no_move"] = false      # ★还原 —— 下面 ② 要真的让它跑起来
 
 	# ── ② 走路: 真让它跑起来, 等换表 ──
 	## ★不能靠"设一次 pos" —— `_update_run_anim` 是按【0.1 秒时间窗累计位移】测速的,
 	##   一次瞬移在窗内只有一帧有位移, 平均速度不够。要**持续**推它。
-	var t0 := Time.get_ticks_msec()
+	## ★同样按游戏钟: `_update_run_anim` 测速用的是【0.1 秒时间窗】, 那个窗走的也是 `rd`。
+	var g_walk0: float = float(_s._t)
+	var fr_walk := 0
 	var seen_walk := false
 	var seen_speed := 0.0
-	while Time.get_ticks_msec() - t0 < 2500:
+	while float(_s._t) - g_walk0 < WAIT_GAME_S and fr_walk < HARD_FRAMES:
 		ax["pos"] = (ax["pos"] as Vector2) + Vector2(6.0, 0.0)
 		ax["pos"].x = clampf(ax["pos"].x, _s.ARENA.position.x, _s.ARENA.end.x - 10.0)
 		await get_tree().process_frame
+		fr_walk += 1
 		if _cur_tex(ax) == WALK:
 			seen_walk = true
 			break
 	seen_speed = float(ax.get("_run_acc", 0.0))
 	_ok("★★② 走路: 真的跑起来之后, 引擎换成了 %s" % WALK, seen_walk,
-		"实测 %s（跑了 %d 毫秒墙钟）" % [_cur_tex(ax), Time.get_ticks_msec() - t0])
+		"实测 %s（推了 %.2f 游戏秒 / %d 帧）" % [_cur_tex(ax), float(_s._t) - g_walk0, fr_walk])
 	## ★分母: 停下来必须换回 idle —— 只验"切到走路"会漏掉"再也回不去"
 	## ★★★2026-09-27 尺子从【墙钟】换成【帧数】。根因:
 	##   立绘动画由 `_render_step(rd, …)` 推进, 而 `rd = minf(delta, 0.1)` ——
@@ -122,14 +165,9 @@ func _ready() -> void:
 	##   而 2026-09-27 CI 上第 ④ 段(3 秒那个)就真的红了。
 	## ★帧数上限给宽: 每帧至少推进一个渲染步, WAIT_FRAMES 帧足够任何一条动作播完;
 	##   成立就立刻 break, 宽上限不花钱。
-	var back_idle := false
-	for _i in range(WAIT_FRAMES):
-		await get_tree().process_frame
-		if _cur_tex(ax) == IDLE:
-			back_idle = true
-			break
-	_ok("★② 停下来换回 %s(只验切走路会漏掉「再也回不去」)" % IDLE, back_idle,
-		"实测 %s" % _cur_tex(ax))
+	var r_back: Dictionary = await _wait_tex(ax, IDLE, WAIT_GAME_S)
+	_ok("★② 停下来换回 %s(只验切走路会漏掉「再也回不去」)" % IDLE, bool(r_back["ok"]),
+		"实测 %s（等了 %.2f 游戏秒 / %d 帧）" % [_cur_tex(ax), float(r_back["g"]), int(r_back["fr"])])
 
 	# ── ③ 技能释放: 攒满龟能放主动 ──
 	ax["energy"] = AE.ACTIVE_ENERGY
@@ -146,12 +184,16 @@ func _ready() -> void:
 	# ── ④ 攻击 ──
 	## 先让施法播完回 idle, 再打一次普攻
 	## ★同上: 按帧等, 不按墙钟(2026-09-27 CI 就是在这一处红的 —— 3 秒墙钟里帧数不够)
-	for _i2 in range(WAIT_FRAMES):
-		if _cur_tex(ax) == IDLE:
-			break
-		await get_tree().process_frame
-	_ok("★分母: 施法播完自己回了 %s(回不去的话下一条量不到攻击)" % IDLE, _cur_tex(ax) == IDLE,
-		"实测 %s" % _cur_tex(ax))
+	var r_cast: Dictionary = await _wait_tex(ax, IDLE, WAIT_GAME_S)
+	## ★★两条新分母 —— 它们是为了【把 2026-10-02 那次 CI 红诊断成它真实的样子】:
+	##   斧头死了 / 游戏钟根本没走, 都会让下面那条"贴图不对"红得莫名其妙。先把这两维问清。
+	_ok("★分母: 量它的时候斧头还活着(死了 `_advance_anim` 就不推它的帧, 贴图会永久冻住)",
+		bool(ax.get("alive", false)), "hp=%.1f/%.1f" % [float(ax.get("hp", 0.0)), float(ax.get("maxHp", 0.0))])
+	_ok("★分母: 这条钟真的走了(游戏钟冻住=根本没等, 不是「等过了」)",
+		float(r_cast["g"]) > 0.0 or bool(r_cast["ok"]),
+		"走了 %.2f 游戏秒 / %d 帧" % [float(r_cast["g"]), int(r_cast["fr"])])
+	_ok("★分母: 施法播完自己回了 %s(回不去的话下一条量不到攻击)" % IDLE, bool(r_cast["ok"]),
+		"实测 %s（等了 %.2f 游戏秒 / %d 帧）" % [_cur_tex(ax), float(r_cast["g"]), int(r_cast["fr"])])
 	_s._vfx._play_action(ax, "attack")
 	_ok("★★④ 攻击: 引擎换成了 %s" % ATK, _cur_tex(ax) == ATK, "实测 %s" % _cur_tex(ax))
 
@@ -210,8 +252,8 @@ func _ready() -> void:
 		gs2.set("axe_stage", stage0)
 		gs2.set("axe_final", final0)
 
-	if _n < 12:
-		print("  [FAIL] ★分母: 断言只有 %d 条(<12) —— 有整段被跳过了" % _n)
+	if _n < 14:
+		print("  [FAIL] ★分母: 断言只有 %d 条(<14) —— 有整段被跳过了" % _n)
 		_fail += 1
 	print("ALL PASS — 斧头动作真的会播(%d 条)" % _n if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)

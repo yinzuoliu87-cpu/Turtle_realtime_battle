@@ -22,8 +22,15 @@ class_name DetScenarios
 ## ══════════════════════════════════════════════════════════════════════
 
 ## 一条 = {tag, pairs, frames, seed, loadouts}
-## pairs 每项 = [turtle_id, side, x, y, [装备 id…]]
+## pairs 每项 = [turtle_id, side, x, y, [装备 id…], foe_skills?]
 ##   `"__minion__:front"` / `":back"` = 小将，前后排由笔刷字段决定
+##   第 6 项 `foe_skills`（可省）= **给这只右队假人恢复它真实的主动技**。
+##     ★为什么需要它：调试场的 `_edit_place_unit` 对 `side == "right"` 一律
+##       `u["active_skills"] = []`（battle_debug_arena.gd:80，右队是"不动不打"的假人）。
+##       ⇒ 凡是**从敌人身上读技能**的机制（龟壳【复制】、精英偷技）在这张表里
+##       **天生是空跑**：池子恒为 0，判据怎么写都恒绿。
+##     ★恢复的方式是调**产品自己的** `battle._resolve_active_skills(id, false)`，
+##       不许在表里手写技能名 —— 手抄的副本必然落后（memory `fb-hand-rolled-copies-drift`）。
 static func all() -> Array:
 	var bare3: Array = [
 		["stone", "left", 320.0, 220.0, []], ["basic", "left", 320.0, 320.0, []],
@@ -115,6 +122,31 @@ static func all() -> Array:
 			["dice", "left", 320.0, 300.0, []],
 			["basic", "right", 560.0, 300.0, []],
 			["basic", "right", 640.0, 380.0, []]]},
+
+		## ⑩ ★龟壳【复制】: `shell_system.gd` 决定"从可抄池里抄哪两个技能"的那一下。
+		##    v0.19.501 之前它是 `pool.shuffle()` —— `Array.shuffle()` 走**引擎全局 RNG**,
+		##    而这一步**直接决定这一局打出什么技能**。三道防线当时全看不见它:
+		##      · `tools/rng_discipline.py` 的正则不认 `.shuffle(`
+		##      · tween 台账与它无关
+		##      · 而 `shell` **在任何确定性门禁里都不在场**(grep 命中 0)
+		##    ⇒ 修好了也没有端到端判据守着。这一条就是那个判据。
+		## ★为什么右队要开 `foe_skills`: 不开的话可抄池恒为 0(见上方第 6 项的说明),
+		##   这一条会是**彻头彻尾的空跑**。实测 POOL = 5。
+		## ★为什么五只敌人都挑**非伤害技**(石壳/竹疗/钻石固守/泡泡盾/水晶壁障):
+		##   第一版挑的是 basic/ninja/candy/two_head 四个**伤害技** ⇒ 右队假人会把龟壳
+		##   **打死**(实测 hp=0 / 只抄到 1 次 / 后 900 步指纹冻住)。
+		##   抄到的是盾/治疗也**照样进指纹**(`_fp` 记 hp 与 shield), 而且龟壳活得久 ⇒ 抄满 3 次。
+		## ★窗口 1200 步(20 游戏秒): 复制 130 龟能 ÷ 调试场 ×4 回充 ≈ 每 2.4 秒一发,
+		##   实测 3 次施放。1 次也能红, 但只有 1 次时"两遍恰好抽到同一对"的概率有 1/12 ——
+		##   3 次把它压到千分之一以下(反向验证实测 771/1200 步分叉, 首个分叉步 21)。
+		{"tag": "⑩ 龟壳复制(抄哪两个技能·受控 PRNG)", "frames": 1200, "seed": "424242",
+			"loadouts": {"shell": 1}, "pairs": [
+			["shell", "left", 320.0, 300.0, []],
+			["stone", "right", 700.0, 180.0, [], true],
+			["bamboo", "right", 700.0, 280.0, [], true],
+			["diamond", "right", 700.0, 380.0, [], true],
+			["bubble", "right", 700.0, 480.0, [], true],
+			["crystal", "right", 700.0, 580.0, [], true]]},
 	]
 
 

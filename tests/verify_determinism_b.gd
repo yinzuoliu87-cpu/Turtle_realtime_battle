@@ -25,6 +25,7 @@ extends Node
 
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const SC := preload("res://tests/_det_scenarios.gd")
+const CopyRules := preload("res://scripts/gamedata/copy_rules.gd")
 
 var _fail := 0
 var _n := 0
@@ -93,13 +94,37 @@ func _trace(pairs: Array, frames: int, loadouts: Dictionary = {}) -> Array:
 			for e in (p[4] as Array):
 				el.append({"id": str(e), "star": 3})
 			u["_edit_equips"] = el
+		## 第 6 项 = 给右队假人恢复真实主动技(见 `_det_scenarios.gd` 的说明)。
+		## ★用产品自己的解析器, 不在表里手写技能名。
+		if (p as Array).size() > 5 and bool(p[5]):
+			u["active_skills"] = s._resolve_active_skills(pid, false)
+			u["skill_idx"] = 0
 	s._debug._edit_start_battle()
+	## ★龟壳【复制】专用的两个分母, 都是**产品自己的账**(见 `_scenario` 里的断言):
+	##   ① 可抄池 = 用产品的 `CopyRules.can_copy` 过一遍**活着的敌人**的 `active_skills`
+	##   ② 施放次数 = 数 `u["skill_cd"]["shellCopy"]` **抬头**的次数 ——
+	##      那是 `RealtimeBattle3DScene.gd:2618` 在 `_cast_skill` 成功之后写的, 不是我插的标记
+	var pool_n := 0
+	var has_shell := false
+	for u2 in s._units:
+		if str(u2.get("id", "")) == "shell" and str(u2.get("side", "")) == "left": has_shell = true
+		if str(u2.get("side", "")) != "right": continue
+		for st in u2.get("active_skills", []):
+			if CopyRules.can_copy(str(st), s._IMPL_SKILLS): pool_n += 1
 	var tr: Array = []
 	var tw_max := 0
+	var copy_casts := 0
+	var cd_prev := -1.0
 	for _i in range(frames):
 		await get_tree().process_frame
 		tr.append(_fp(s))
 		tw_max = maxi(tw_max, s._sim_tweens.size())
+		if has_shell:
+			for u3 in s._units:
+				if str(u3.get("id", "")) != "shell" or str(u3.get("side", "")) != "left": continue
+				var cd: float = float((u3.get("skill_cd", {}) as Dictionary).get("shellCopy", -1.0))
+				if cd_prev >= 0.0 and cd - cd_prev > 0.5: copy_casts += 1
+				cd_prev = cd
 	var det: bool = bool(s._deterministic)
 	var taken := 0.0
 	for u in s._units:
@@ -107,7 +132,7 @@ func _trace(pairs: Array, frames: int, loadouts: Dictionary = {}) -> Array:
 	s.queue_free()
 	await get_tree().process_frame
 	await get_tree().process_frame
-	return [tr, det, tw_max, taken]
+	return [tr, det, tw_max, taken, pool_n, copy_casts]
 
 
 ## 同种子跑两遍 → 逐步比对。返回 [分叉步数, 比对步数, 首个分叉步, A的trace, 附注]
@@ -128,12 +153,14 @@ func _two_runs(pairs: Array, frames: int, sd: String, loadouts: Dictionary = {})
 	var uniq := {}
 	for f in ta:
 		uniq[str(f)] = true
-	var note := "det=%s 比对步数=%d tween峰值=%d 全场承伤=%.0f 不同指纹=%d" % [
-		str(a[1]), n, int(a[2]), float(a[3]), uniq.size()]
-	return [bad, n, first, ta, note, int(a[2]), float(a[3]), uniq.size(), tb]
+	var note := "det=%s 比对步数=%d tween峰值=%d 全场承伤=%.0f 不同指纹=%d 可抄池=%d 复制施放=%d" % [
+		str(a[1]), n, int(a[2]), float(a[3]), uniq.size(), int(a[4]), int(a[5])]
+	return [bad, n, first, ta, note, int(a[2]), float(a[3]), uniq.size(), tb,
+		int(a[4]), int(a[5]), int(b[4]), int(b[5])]
 
 
-func _scenario(tag: String, pairs: Array, frames: int, sd: String, loadouts: Dictionary = {}) -> void:
+func _scenario(tag: String, pairs: Array, frames: int, sd: String, loadouts: Dictionary = {},
+		copy_probe: bool = false) -> void:
 	var r: Array = await _two_runs(pairs, frames, sd, loadouts)
 	var bad: int = int(r[0])
 	var n: int = int(r[1])
@@ -146,6 +173,17 @@ func _scenario(tag: String, pairs: Array, frames: int, sd: String, loadouts: Dic
 		int(r[7]) > 1 and float(r[6]) > 0.0)
 	# 走到了被修的那条路: 本局真的建过演出 tween(tween 时钟这条修不修才量得到)
 	_ok("分母 · %s · 本局真的建过演出 tween(峰值 %d > 0)" % [tag, int(r[5])], int(r[5]) > 0)
+	## ★★龟壳【复制】那一条**必配**的两个分母(方案书 §4 条目 3 点名):
+	##   龟壳没触发抄技能的话, 上面那条"逐步指纹 0 分叉"**恒绿** —— 那是空跑。
+	##   ① 可抄池 ≥ 2: 池子是 `pool.shuffle()` 的**被洗对象**。池子为 0/1 时洗牌无可洗,
+	##      改坏了也不会红(实测: 右队假人默认 `active_skills = []` ⇒ 池子恒 0)。
+	##   ② 两遍都**真的放过**复制: 数的是产品自己写的 `skill_cd["shellCopy"]` 抬头。
+	if copy_probe:
+		_ok("分母 · %s · 可抄池 ≥ 2(实测 %d 个可抄技·用 CopyRules.can_copy 过的活敌人技)" % [tag, int(r[9])],
+			int(r[9]) >= 2, "池子 < 2 ⇒ 洗牌无可洗 ⇒ 这一条恒绿(空跑)")
+		_ok("分母 · %s · 两遍都真的放过【复制】(A %d 次 / B %d 次, 都须 ≥ 1)" % [tag, int(r[10]), int(r[12])],
+			int(r[10]) >= 1 and int(r[12]) >= 1,
+			"数的是 skill_cd[\"shellCopy\"] 抬头(RealtimeBattle3DScene.gd:2618 写的), 不是我插的标记")
 	# ★正题
 	var d := ""
 	if first >= 0:
@@ -189,11 +227,16 @@ func _ready() -> void:
 	## ★分母: 表里必须正好 9 个场景 —— 少一个就是有人把场景删了而没人发现。
 	var scs: Array = SC.all()
 	_ok("分母 · 场景表读到 %d 个场景(与 verify_determinism_cross 同一份表)" % scs.size(),
-		scs.size() == 9, "%d 个" % scs.size())
+		scs.size() == 10, "%d 个" % scs.size())
 	for sc in scs:
 		var scd: Dictionary = sc
+		## ⑩ 龟壳复制那一条要多两个分母(可抄池 / 真的放过复制) —— 判别靠摆位里有没有 shell,
+		## 不另立名单(名单会烂: 测试名单漏登记让 8 个测试从没被执行过)。
+		var cp := false
+		for p0 in (scd["pairs"] as Array):
+			if str((p0 as Array)[0]) == "shell": cp = true
 		await _scenario(str(scd["tag"]), scd["pairs"] as Array, int(scd["frames"]),
-			str(scd["seed"]), scd.get("loadouts", {}) as Dictionary)
+			str(scd["seed"]), scd.get("loadouts", {}) as Dictionary, cp)
 
 	# ⑩ 反证(非恒真式): 换种子 → 逐步指纹序列必须不同; 否则说明结果根本不吃 _battle_rng
 	## ★与场景 ② 同一套摆位(共用表里取) —— 唯一的变量只能是种子

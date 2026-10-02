@@ -101,6 +101,18 @@ func _ready() -> void:
 		if c != self and c != root_node:
 			_walk(c, acc, 0, "<root>")
 	print("[IG] mode=%s 扫到 %d 个控件  视口 %s" % [mode, acc.size(), str(vp)])
+	## ── 实拍一张(可选) ────────────────────────────────────────────────
+	## ★`IG_SHOT=<png 绝对路径>`。必须【去掉 --headless】跑, 否则抓到的是空图
+	##   **而且不报错**(同 tests/_shot_scene.gd 头注那条)。窗口挪到 5000,5000
+	##   不影响结果 —— 抓的是视口纹理, 不是屏幕。
+	## ★为什么顺手加在这支探针里而不另写一个台子: 这一屏的"造长名单"那套设置
+	##   (IG_UNITS / NO_SAVE / test_mode)全在这里, 另写一份就是抄第二遍。
+	if OS.has_environment("IG_SHOT"):
+		await RenderingServer.frame_post_draw
+		var img: Image = get_viewport().get_texture().get_image()
+		var sp: String = OS.get_environment("IG_SHOT")
+		var err: int = img.save_png(sp)
+		print("[IG] 实拍 %s  rc=%d  %dx%d" % [sp, err, img.get_width(), img.get_height()])
 	var p: String = OS.get_environment("IG_OUT")
 	if p == "":
 		p = "C:/tmp/uiref/ours_%s.json" % mode
