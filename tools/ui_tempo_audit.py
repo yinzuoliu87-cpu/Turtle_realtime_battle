@@ -33,7 +33,77 @@ LEDGER = 'tests/golden/ui_tempo_debt.txt'
 # ★只管 UI 场景, 不管战斗特效 —— 特效时长是美术参数, 另有 vfx_discipline 管。
 SCAN_DIR = 'scripts/scenes'
 SKIP_DIR = 'battle'
-TWEEN = re.compile(r'tween_(?:property|interval)\([^)]*?,\s*([0-9]*\.?[0-9]+)\s*\)')
+# ★★2026-10-02 换掉了原来那条正则 —— 它是个**假解析器**:
+#      r'tween_(?:property|interval)\([^)]*?,\s*([0-9]*\.?[0-9]+)\s*\)'
+#   `[^)]*?` 非贪婪 ⇒ 遇到**嵌套调用**就停在内层的右括号上, 于是两头都错:
+#     · 虚报 21 处: `tween_property(spr,"scale",Vector3(0.3,0.3,0.3),0.46)` 数成了时长 0.3
+#     · 漏报 65 处: `tween_interval(1.4)` 没有逗号, 一次都没被数到
+#   而**棘轮把虚报的 159 焊成了基线** —— 判据本身错了, 棘轮只会把错数字守得更牢。
+#   现在改成括号配平的真解析: 取 tween 调用的【最后一个顶层参数】, 它是裸数字才算时长。
+CALL = re.compile(r'tween_(?:property|interval)\(')
+_NUM_ONLY = re.compile(r'^[0-9]*\.?[0-9]+$')
+
+
+def tween_durations(src):
+	"""逐个 yield (起, 止, 值) —— src 里每个 tween_property/interval 的时长参数。
+
+	★这是本审计器与批量改造脚本【共用的唯一口径】。想换写法的脚本 import 这个函数,
+	  不许自己再抄一条正则(memory `fb-hand-rolled-copies-drift`: 抄一次永远落后)。
+	"""
+	for m in CALL.finditer(src):
+		i = m.end() - 1               # 指向 '('
+		depth = 0
+		quote = None
+		args = []
+		cur = []
+		j = i
+		while j < len(src):
+			c = src[j]
+			if quote is not None:
+				if ord(c) == 92:	# 反斜杠转义 —— 不写字面量(heredoc 会把它折叠)
+					cur.append(c)
+					j += 2
+					continue
+				if c == quote:
+					quote = None
+				cur.append(c)
+				j += 1
+				continue
+			if c == '"' or ord(c) == 39:	# 单/双引号 —— 同上, 不写转义字面量
+				quote = c
+				cur.append(c)
+				j += 1
+				continue
+			if c == '(':
+				depth += 1
+				if depth > 1:
+					cur.append(c)
+				j += 1
+				continue
+			if c == ')':
+				depth -= 1
+				if depth == 0:
+					args.append(''.join(cur))
+					break
+				cur.append(c)
+				j += 1
+				continue
+			if c == ',' and depth == 1:
+				args.append(''.join(cur))
+				cur = []
+				j += 1
+				continue
+			cur.append(c)
+			j += 1
+		if depth != 0 or not args:
+			continue                  # 括号没配平(多半是跨行/截断) —— 不猜
+		last = args[-1]
+		if not _NUM_ONLY.match(last.strip()):
+			continue
+		# 末参在原串里的精确位置: j 指向调用的右括号, 末参紧贴在它前面
+		end = j - (len(last) - len(last.rstrip()))
+		start = end - len(last.strip())
+		yield start, end, float(last.strip())
 
 fails = []
 
@@ -71,8 +141,7 @@ def main():
                 continue
             n_file += 1
             s = io.open(os.path.join(dp, f), encoding='utf-8', errors='replace').read()
-            for m in TWEEN.finditer(s):
-                v = float(m.group(1))
+            for _a, _b, v in tween_durations(s):
                 if not (0.01 <= v <= 3.0):
                     continue      # 超出这个区间的多半不是时长(是坐标/比例)
                 n_hit += 1
@@ -126,4 +195,7 @@ def main():
     print('ALL OK — UI 动效节拍(裸时长只减不增)')
 
 
-main()
+# ★加 __main__ 守卫: 批量改造脚本要 import tween_durations 复用口径,
+#   不加守卫的话 import 当场跑完审计并 sys.exit, 把调用方掐死。
+if __name__ == '__main__':
+	main()

@@ -1622,7 +1622,7 @@ func _toast(msg: String) -> void:
 	_place_center(l, W / 2.0, 650.0)
 	l.modulate.a = 0.0
 	var tw := create_tween()
-	tw.tween_property(l, "modulate:a", 1.0, 0.2)
+	tw.tween_property(l, "modulate:a", 1.0, UIPalette.T_BASE)
 	tw.tween_interval(1.4)
 	tw.tween_property(l, "modulate:a", 0.0, UIPalette.T_TRANS)
 	tw.tween_callback(l.queue_free)

@@ -321,9 +321,9 @@ func _title() -> void:
 		t.scale = Vector2(0.85, 0.85); t.modulate.a = 0.0
 		var tw := create_tween()
 		tw.tween_interval(0.25)                          # PoC delay 250ms
-		tw.tween_property(t, "position:y", end_top_y, 0.55).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tw.parallel().tween_property(t, "scale", Vector2(LOGO_SCALE, LOGO_SCALE), 0.55).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tw.parallel().tween_property(t, "modulate:a", 1.0, 0.55)
+		tw.tween_property(t, "position:y", end_top_y, UIPalette.T_SLOW).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.parallel().tween_property(t, "scale", Vector2(LOGO_SCALE, LOGO_SCALE), UIPalette.T_SLOW).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.parallel().tween_property(t, "modulate:a", 1.0, UIPalette.T_SLOW)
 		return
 	else:
 		var l := Label.new(); l.text = "斗龟场"; l.add_theme_font_size_override("font_size", 80)

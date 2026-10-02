@@ -145,7 +145,7 @@ func _start_trail(old_frac: float, new_frac: float) -> void:
 	var start := old_frac if _trail_frac < 0.0 else maxf(_trail_frac, old_frac)
 	_trail_frac = start
 	_trail_tw = create_tween()
-	_trail_tw.tween_interval(0.2)                                    # hold 200ms (turtle-hud:457 delay)
+	_trail_tw.tween_interval(UIPalette.T_BASE)                                    # hold 200ms (turtle-hud:457 delay)
 	_trail_tw.tween_method(_set_trail, start, new_frac, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	_trail_tw.tween_callback(func() -> void:
 		_trail_frac = -1.0

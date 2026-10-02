@@ -1492,9 +1492,9 @@ func _flash_status(msg: String) -> void:
 	# PoC showToast (TeamSelectScene.ts:1975): fade-in .2s → 显示 1.8s → fade-out .2s
 	status_bar.modulate = Color(1, 0.9, 0.4, 0.0)
 	var tween := create_tween()
-	tween.tween_property(status_bar, "modulate:a", 1.0, 0.2)
+	tween.tween_property(status_bar, "modulate:a", 1.0, UIPalette.T_BASE)
 	tween.tween_interval(1.8)
-	tween.tween_property(status_bar, "modulate:a", 0.0, 0.2)
+	tween.tween_property(status_bar, "modulate:a", 0.0, UIPalette.T_BASE)
 
 
 ## 该技的龟能花费: 【pets.json 的 energyCost 优先】, 缺了才退回 SkillEnergy 类型兜底。

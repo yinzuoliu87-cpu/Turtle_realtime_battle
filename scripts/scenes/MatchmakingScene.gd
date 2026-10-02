@@ -465,7 +465,7 @@ func _build_vs(opp: Dictionary) -> void:
 		_shake(15.0, 0.30)
 		_shockwave(Vector2(W / 2.0, CARD_Y + CARD_H / 2.0), Color("#ff6b6b"), 480.0, 0.42))
 	# 落定后微微回弹, 免得砸完就死板杵着
-	vtw.tween_property(vs, "scale", Vector2(1.12, 1.12), 0.12)
+	vtw.tween_property(vs, "scale", Vector2(1.12, 1.12), UIPalette.T_TAP)
 	vtw.tween_property(vs, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 

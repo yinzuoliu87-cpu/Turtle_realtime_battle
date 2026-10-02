@@ -2995,7 +2995,7 @@ func _big_bear_charge_and_spawn(u: Dictionary, si: int) -> void:   # 满层: 携
 		ctw.tween_interval(float(k) * 0.14)
 		ctw.tween_callback(_gold_chunk_erupt.bind(u["pos"] + Vector2(cos(ca), sin(ca)) * randf_range(40.0, 62.0)))
 	var gt := _reg_tween()
-	gt.tween_property(glow, "modulate:a", 0.95, 1.0)
+	gt.tween_property(glow, "modulate:a", 0.95, UIPalette.T_SET)
 	gt.parallel().tween_property(glow, "scale", Vector3(3.2, 3.2, 3.2), 1.2)
 	await _wait_sim(EquipTickSystem.DOLL_CHARGE_SEC)
 	if not is_instance_valid(self): return
@@ -3108,10 +3108,10 @@ func _spawn_bamboo_spike(pos2d: Vector2, hscale: float, linger: float) -> void: 
 	_world.add_child(spr)
 	var tw := _reg_tween()
 	tw.set_parallel(true)
-	tw.tween_property(spr, "position", base_pos, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)   # 破土弹出
+	tw.tween_property(spr, "position", base_pos, UIPalette.T_TAP).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)   # 破土弹出
 	tw.tween_property(spr, "modulate:a", 0.95, 0.09)
 	tw.chain().tween_interval(linger)
-	tw.chain().tween_property(spr, "modulate:a", 0.0, 0.3)
+	tw.chain().tween_property(spr, "modulate:a", 0.0, UIPalette.T_TRANS)
 	tw.chain().tween_callback(spr.queue_free)
 
 func _unfollow_vfx(spr) -> void:
@@ -3402,7 +3402,7 @@ func _ripple_heal_vfx(pos2d: Vector2, size_px: float) -> void:
 	_world.add_child(r)
 	var tw := _reg_tween(); tw.set_parallel(true)
 	if nf > 1:
-		tw.tween_property(r, "frame", nf - 1, 0.55)
+		tw.tween_property(r, "frame", nf - 1, UIPalette.T_SLOW)
 	tw.tween_property(r, "modulate:a", 0.0, 0.6).set_ease(Tween.EASE_IN)
 	tw.chain().tween_callback(r.queue_free)
 
@@ -3638,8 +3638,8 @@ func _update_shield_barrier(u: Dictionary) -> void:
 		b.position = _world_pos(u["pos"], float(u.get("height", 0.0)) + 0.75)
 		_world.add_child(b)
 		var pt := _reg_tween().bind_node(b).set_loops()             # 呼吸脉动(绑节点→节点free自停·走 _reg_tween ⇒ 时停冻结)
-		pt.tween_property(b, "modulate:a", 0.30, 0.55).set_trans(Tween.TRANS_SINE)
-		pt.tween_property(b, "modulate:a", 0.52, 0.55).set_trans(Tween.TRANS_SINE)
+		pt.tween_property(b, "modulate:a", 0.30, UIPalette.T_SLOW).set_trans(Tween.TRANS_SINE)
+		pt.tween_property(b, "modulate:a", 0.52, UIPalette.T_SLOW).set_trans(Tween.TRANS_SINE)
 		_follow_vfx.append({"spr": b, "unit": u, "h": 0.75})
 		u["_barrier_spr"] = b
 		u["_barrier_pulse"] = pt
@@ -3650,8 +3650,8 @@ func _update_shield_barrier(u: Dictionary) -> void:
 		u["_barrier_pulse"] = null
 		var s2 = spr
 		var bt := _reg_tween(); bt.set_parallel(true)               # 盾没了→护罩碎裂放大淡出(你就"知道盾消失了")
-		bt.tween_property(s2, "modulate:a", 0.0, 0.2)
-		bt.tween_property(s2, "pixel_size", s2.pixel_size * 1.35, 0.2)
+		bt.tween_property(s2, "modulate:a", 0.0, UIPalette.T_BASE)
+		bt.tween_property(s2, "pixel_size", s2.pixel_size * 1.35, UIPalette.T_BASE)
 		bt.chain().tween_callback(s2.queue_free)
 
 # 钻石坚不可摧: 持盾期常驻青色水晶六棱护罩(跟随单位), 盾破/到期→碎裂淡出. 与锁龟能同判据(diamond_fortify_until + shield>0).
@@ -3671,8 +3671,8 @@ func _update_diamond_barrier(u: Dictionary) -> void:
 		b.position = _world_pos(u["pos"], float(u.get("height", 0.0)) + 0.75)
 		_world.add_child(b)
 		var pt := _reg_tween().bind_node(b).set_loops()             # 呼吸脉动(绑节点→节点free自停·走 _reg_tween ⇒ 时停冻结)
-		pt.tween_property(b, "modulate:a", 0.30, 0.55).set_trans(Tween.TRANS_SINE)
-		pt.tween_property(b, "modulate:a", 0.52, 0.55).set_trans(Tween.TRANS_SINE)
+		pt.tween_property(b, "modulate:a", 0.30, UIPalette.T_SLOW).set_trans(Tween.TRANS_SINE)
+		pt.tween_property(b, "modulate:a", 0.52, UIPalette.T_SLOW).set_trans(Tween.TRANS_SINE)
 		_follow_vfx.append({"spr": b, "unit": u, "h": 0.75})
 		u["_dia_barrier_spr"] = b
 		u["_dia_barrier_pulse"] = pt
@@ -3684,8 +3684,8 @@ func _update_diamond_barrier(u: Dictionary) -> void:
 		var s2 = spr
 		_burst_vfx("res://assets/sprites/vfx/diamond-impact.png", u["pos"], 92.0, float(u.get("height", 0.0)) + 0.5)   # 盾没了→水晶碎裂小爆
 		var bt := _reg_tween(); bt.set_parallel(true)               # 护罩碎裂放大淡出(你就"知道盾消失了/龟能恢复")
-		bt.tween_property(s2, "modulate:a", 0.0, 0.2)
-		bt.tween_property(s2, "pixel_size", s2.pixel_size * 1.35, 0.2)
+		bt.tween_property(s2, "modulate:a", 0.0, UIPalette.T_BASE)
+		bt.tween_property(s2, "pixel_size", s2.pixel_size * 1.35, UIPalette.T_BASE)
 		bt.chain().tween_callback(s2.queue_free)
 
 # 财神金盾: 持盾期常驻金色六棱护罩(跟随单位), 盾破/到期→碎裂淡出. 与锁龟能同判据(gold_shield_until + shield>0). 仿钻石护罩·金色区分.
@@ -3705,8 +3705,8 @@ func _update_gold_barrier(u: Dictionary) -> void:
 		b.position = _world_pos(u["pos"], float(u.get("height", 0.0)) + 0.75)
 		_world.add_child(b)
 		var pt := _reg_tween().bind_node(b).set_loops()
-		pt.tween_property(b, "modulate:a", 0.30, 0.55).set_trans(Tween.TRANS_SINE)
-		pt.tween_property(b, "modulate:a", 0.55, 0.55).set_trans(Tween.TRANS_SINE)
+		pt.tween_property(b, "modulate:a", 0.30, UIPalette.T_SLOW).set_trans(Tween.TRANS_SINE)
+		pt.tween_property(b, "modulate:a", 0.55, UIPalette.T_SLOW).set_trans(Tween.TRANS_SINE)
 		_follow_vfx.append({"spr": b, "unit": u, "h": 0.75})
 		u["_gold_barrier_spr"] = b
 		u["_gold_barrier_pulse"] = pt
@@ -3718,8 +3718,8 @@ func _update_gold_barrier(u: Dictionary) -> void:
 		var s2 = spr
 		_burst_vfx("res://assets/sprites/vfx/fortune-coin-burst.png", u["pos"], 88.0, float(u.get("height", 0.0)) + 0.5)   # 盾没了→金币爆(你就知道盾消失/龟能恢复)
 		var bt := _reg_tween(); bt.set_parallel(true)
-		bt.tween_property(s2, "modulate:a", 0.0, 0.2)
-		bt.tween_property(s2, "pixel_size", s2.pixel_size * 1.35, 0.2)
+		bt.tween_property(s2, "modulate:a", 0.0, UIPalette.T_BASE)
+		bt.tween_property(s2, "pixel_size", s2.pixel_size * 1.35, UIPalette.T_BASE)
 		bt.chain().tween_callback(s2.queue_free)
 
 
@@ -3781,8 +3781,8 @@ func _update_bamboo_charge_dots(u: Dictionary) -> void:
 			if is_instance_valid(s):
 				var ss = s
 				var t := _reg_tween(); t.set_parallel(true)
-				t.tween_property(ss, "modulate:a", 0.0, 0.12)                  # 放出→散
-				t.tween_property(ss, "pixel_size", ss.pixel_size * 1.9, 0.12)
+				t.tween_property(ss, "modulate:a", 0.0, UIPalette.T_TAP)                  # 放出→散
+				t.tween_property(ss, "pixel_size", ss.pixel_size * 1.9, UIPalette.T_TAP)
 				t.chain().tween_callback(ss.queue_free)
 		u["_bamboo_dots"] = []
 
@@ -4164,7 +4164,7 @@ func _barrage_cloud_fade(cloud: Sprite3D) -> void:
 	if not is_instance_valid(cloud):
 		return
 	var tw := _reg_tween()
-	tw.tween_property(cloud, "modulate:a", 0.0, 0.3)
+	tw.tween_property(cloud, "modulate:a", 0.0, UIPalette.T_TRANS)
 	tw.tween_callback(cloud.queue_free)
 
 
@@ -4292,7 +4292,7 @@ func _summon_walking_bear(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   #
 	# 小熊消失 (淡出)
 	if is_instance_valid(bear):
 		var tw := _reg_tween()
-		tw.tween_property(bear, "modulate:a", 0.0, 0.2)
+		tw.tween_property(bear, "modulate:a", 0.0, UIPalette.T_BASE)
 		tw.tween_callback(bear.queue_free)
 
 ## ★2026-08-03 加了 `gun_id` —— 枪羁绊【金弹】挂在这里。
@@ -4617,7 +4617,7 @@ func _kill(u: Dictionary, killer = null) -> void:
 	if is_instance_valid(spr_n):
 		var stw := _reg_tween()
 		if has_death_anim:
-			stw.tween_interval(0.55)        # 等 death 帧演完 (~7-13帧 @11-12fps) 再淡出
+			stw.tween_interval(UIPalette.T_SLOW)        # 等 death 帧演完 (~7-13帧 @11-12fps) 再淡出
 		stw.tween_property(spr_n, "modulate:a", 0.0, 0.4)
 		stw.tween_callback(spr_n.hide)
 	# ★同 `reborn_used`：合成单位不一定带这个键，直读会抛错。
@@ -4864,8 +4864,8 @@ func _surf_chain_shoot(from2d: Vector2, fromh: float, to2d: Vector2, col: Color)
 		imesh.surface_add_vertex(a.lerp(b, q))
 		imesh.surface_end()
 	, 0.0, 1.0, 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tw.tween_interval(0.12)
-	tw.tween_property(mat, "albedo_color:a", 0.0, 0.2)
+	tw.tween_interval(UIPalette.T_TAP)
+	tw.tween_property(mat, "albedo_color:a", 0.0, UIPalette.T_BASE)
 	tw.tween_callback(im.queue_free)
 
 func _skill_vfx_tex(name: String) -> Texture2D:
@@ -4907,7 +4907,7 @@ func _burst_vfx(path: String, pos2d: Vector2, size_px: float, height: float = 0.
 	_world.add_child(b)
 	var tw := _reg_tween()
 	tw.bind_node(b)
-	tw.tween_property(b, "scale", Vector3.ONE, 0.12).from(Vector3.ONE * 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(b, "scale", Vector3.ONE, UIPalette.T_TAP).from(Vector3.ONE * 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	if nf > 1:
 		# 帧在"起势+停留"这 0.26 秒里播完(与原来的节奏一致, 只是现在真的在播)
 		tw.parallel().tween_method(func(fv: float) -> void:
@@ -4915,7 +4915,7 @@ func _burst_vfx(path: String, pos2d: Vector2, size_px: float, height: float = 0.
 				b.frame = clampi(int(fv), 0, mini(nf, maxi(1, int(b.hframes) * int(b.vframes))) - 1)
 		, 0.0, float(nf), 0.26)
 	tw.tween_interval(0.14)
-	tw.tween_property(b, "modulate:a", 0.0, 0.3)
+	tw.tween_property(b, "modulate:a", 0.0, UIPalette.T_TRANS)
 	tw.tween_callback(b.queue_free)
 
 # 通用飞行VFX: 贴图从A飞到B (自动识别横排帧动画 nf=宽/高) → 到点自销. delay=起飞延迟(连珠错峰用).
@@ -4969,7 +4969,7 @@ func _aura_vfx(path: String, u: Dictionary, radius_px: float, color: Color, dur:
 	_follow_vfx.append({"spr": s, "unit": u, "h": height})
 	var tw := _reg_tween(); tw.set_parallel(true)
 	tw.tween_property(s, "modulate:a", color.a, 0.14)
-	tw.tween_property(s, "scale", Vector3.ONE, 0.20).from(Vector3.ONE * 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(s, "scale", Vector3.ONE, UIPalette.T_BASE).from(Vector3.ONE * 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.chain().tween_interval(maxf(0.05, dur - 0.5))
 	tw.chain().tween_property(s, "modulate:a", 0.0, 0.34)
 	tw.chain().tween_callback(s.queue_free)
@@ -5022,7 +5022,7 @@ func _beam_vfx(path: String, from2d: Vector2, to2d: Vector2, width_px: float, co
 	var tw := _reg_tween(); tw.set_parallel(true)
 	tw.tween_property(s, "modulate:a", color.a, 0.06)
 	tw.chain().tween_interval(maxf(0.02, dur - 0.26))
-	tw.chain().tween_property(s, "modulate:a", 0.0, 0.20)
+	tw.chain().tween_property(s, "modulate:a", 0.0, UIPalette.T_BASE)
 	tw.chain().tween_callback(s.queue_free)
 
 
@@ -6207,7 +6207,7 @@ func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁�
 			var lt := _reg_tween()
 			lt.tween_interval(0.01 * float(i))
 			lt.tween_property(lk, "modulate:a", 1.0, 0.03)
-			lt.tween_interval(0.3)
+			lt.tween_interval(UIPalette.T_TRANS)
 			lt.tween_property(lk, "modulate:a", 0.0, 0.1)
 			lt.tween_callback(lk.queue_free)
 	_pending_shots.append({"delay": 0.14, "fn": func() -> void:   # 命中: 顿一下+目标眩晕0.4s
@@ -6255,7 +6255,7 @@ func _screen_flash_light() -> void:                              # 全屏轻白�
 	add_child(cl)
 	var tw := _reg_tween()
 	tw.tween_property(rect, "color:a", 0.28, 0.06)
-	tw.tween_property(rect, "color:a", 0.0, 0.12)
+	tw.tween_property(rect, "color:a", 0.0, UIPalette.T_TAP)
 	tw.tween_callback(cl.queue_free)
 func _slam_debris(at2d: Vector2) -> void:
 	var ps := GPUParticles3D.new()
@@ -7058,7 +7058,7 @@ func _tick_cyber_drones(u: Dictionary, delta: float) -> void:   # 浮游炮纯�
 		s.modulate = Color(1, 1, 1, 0.0)
 		s.position = _world_pos(u["pos"], 1.5)
 		_world.add_child(s)
-		var ft := _reg_tween(); ft.tween_property(s, "modulate:a", 1.0, 0.3)
+		var ft := _reg_tween(); ft.tween_property(s, "modulate:a", 1.0, UIPalette.T_TRANS)
 		## ★B 阶段: `fire_t` 决定这门炮【第一发在哪一步打出去】= 对局结果 ⇒ 走 _battle_rng;
 		##   `ph`(环绕相位)是纯演出, 留在原处不动。
 		arr.append({"spr": s, "fire_t": CyberSystem.DRONE_FIRE_SEC * _battle_rng.randf(), "ph": randf() * TAU})
@@ -7094,7 +7094,7 @@ func _tick_cyber_drones(u: Dictionary, delta: float) -> void:   # 浮游炮纯�
 				mz.modulate = Color(0.5, 0.95, 1.0, 0.9)
 				mz.position = spr.position
 				_world.add_child(mz)
-				var mt := _reg_tween(); mt.tween_property(mz, "modulate:a", 0.0, 0.12); mt.tween_callback(mz.queue_free)
+				var mt := _reg_tween(); mt.tween_property(mz, "modulate:a", 0.0, UIPalette.T_TAP); mt.tween_callback(mz.queue_free)
 				var rc := _reg_tween(); rc.tween_property(spr, "scale", Vector3(0.82, 0.82, 0.82), 0.05); rc.tween_property(spr, "scale", Vector3.ONE, 0.1)
 				var p := Sprite3D.new()                           # 小而淡的青色弹(用户Q14: 防20炮糊屏)
 				p.texture = VfxTex._make_bolt_texture(Color(0.55, 0.95, 1.0))
@@ -7306,7 +7306,7 @@ func _heal_body_glow(u: Dictionary) -> void:
 		var basem: Color = spr.modulate
 		var mt := _reg_tween()
 		mt.tween_property(spr, "modulate", Color(0.5, 1.55, 0.65, basem.a), 0.14)
-		mt.tween_property(spr, "modulate", basem, 0.2)
+		mt.tween_property(spr, "modulate", basem, UIPalette.T_BASE)
 		mt.tween_property(spr, "modulate", Color(0.5, 1.55, 0.65, basem.a), 0.14)
 		mt.tween_property(spr, "modulate", basem, 0.34)
 	var tex := VfxTex._make_fire_glow_tex()   # ② 上半身绿辉光overlay(裹住脉动)
@@ -7477,7 +7477,7 @@ func _particle_burst(pos2d: Vector2) -> void:
 	ps.position = _world_pos(pos2d, 0.4)
 	_world.add_child(ps)
 	ps.emitting = true
-	var _pt := _reg_tween(); _pt.tween_interval(1.0); _pt.tween_callback(ps.queue_free)   # 拆开(tween_interval返回IntervalTweener不能再链)
+	var _pt := _reg_tween(); _pt.tween_interval(UIPalette.T_SET); _pt.tween_callback(ps.queue_free)   # 拆开(tween_interval返回IntervalTweener不能再链)
 
 func _make_glow_quad(size_m: float) -> QuadMesh:
 	var dm := StandardMaterial3D.new()
@@ -8283,7 +8283,7 @@ func _sniper_charge_fx(u: Dictionary, tgt: Dictionary) -> void:   # 蓄力1秒: 
 	var ot := _reg_tween(); ot.set_parallel(true)
 	ot.tween_property(orb, "pixel_size", (60.0 * WS) / tw0, 0.9).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	ot.tween_property(orb, "modulate:a", 0.95, 0.8)
-	ot.chain().tween_property(orb, "modulate:a", 0.0, 0.12)
+	ot.chain().tween_property(orb, "modulate:a", 0.0, UIPalette.T_TAP)
 	ot.chain().tween_callback(orb.queue_free)
 	# 目标身上三道收缩锁定环(每0.3秒一道, 越来越小=锁定收紧)
 	for k in range(3):
