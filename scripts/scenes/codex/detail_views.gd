@@ -451,8 +451,26 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 			host._add_image(50, bmid, "res://assets/sprites/%s" % bic, 32, 32)
 			btx = 80.0
 		host._add_text(btx, bmid, "普攻 · %s" % str(bsk.get("name", "?")), 18, "#58d3ff", 0.0, 0.5, true)
-		var bbrief := SkillText.render_plain(str(bsk.get("brief", "")), ctx, bsk)
-		host._add_text(btx + 150.0, bmid, bbrief, 14, "#aab8c6", 0.0, 0.5)
+		## ★★2026-10-02: 普攻简述从 `Label`(`_add_text`) 换成 `RichTextLabel`。
+		##   原来走 `render_plain` —— 它是这一屏上【唯一一条不上色的技能简述】:
+		##   旁边三张 3 选 1 卡和上面被动条都是 `render_bbcode` + RichTextLabel,
+		##   就这一条是白字。同一屏四段同类文案两种长相。
+		## ★版式照上面被动条那一份(定高一行 + clip), 不自创:
+		##   `RichTextLabel` 没有 `vertical_alignment`, 所以自己减半行高对齐到 bmid。
+		## ★条高就 36px, `fit_content` 必须是 false —— 开了它会被撑高把三选一卡片挤下去。
+		var bbrief := SkillText.render_bbcode(str(bsk.get("brief", "")), ctx, bsk, 14)
+		var brt2 := RichTextLabel.new()
+		brt2.bbcode_enabled = true
+		brt2.fit_content = false
+		brt2.scroll_active = false
+		brt2.clip_contents = true
+		brt2.position = Vector2(btx + 150.0, bmid - 11.0)
+		brt2.custom_minimum_size = Vector2(host.DETAIL_W - 40.0 - (btx + 150.0) - 20.0, 22.0)
+		brt2.size = brt2.custom_minimum_size
+		brt2.add_theme_font_size_override("normal_font_size", 14)
+		brt2.add_theme_color_override("default_color", Color("#aab8c6"))
+		brt2.text = bbrief
+		host.detail.add_child(brt2)
 		start_y += bar_h + 6.0
 		# 三选一那一排上面给一句抬头 —— 不然玩家不知道这三张是"要选一个"
 		host._add_text(start_x + 2.0, start_y + 6.0, "开局三选一", 12, "#06d6a0", 0.0, 0.5, true)

@@ -1301,9 +1301,15 @@ func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	## ★"(费用3)" 括号计数 + "属性加成:" / "效果:" 的 label: value 句式, 两样都换掉。
 	##   小标题用的词与【细看】弹框逐字一致(那边是"属性" / "效果", 见 `_show_equip_detail`)
 	##   —— 同一件东西的同一段信息, 两个入口不该有两套叫法。
+	## ★★2026-10-02: 效果那段换 `_bb` 版(上色 + 内联属性图标)。
+	##   这一格的 tooltip 宿主【本来就是 RichTextLabel】(上面那行 set_script),
+	##   却一直喂纯文本 ⇒ 同一屏上, 底下操作栏(`equip_brief_bb`、2026-10-01 P2 改过)
+	##   是彩色带图标的, 而鼠标悬在格子上弹出来的是一片白字。两个入口两套长相。
+	## ★`highlight_star` 认的是 `数/数/数`, 上色产出的 `[img width=15 color=#xxxxxx]`
+	##   里没有这个形状, 不会误伤 —— 与 `_show_equip_detail` 里那次同一条理由。
 	box.tooltip_text = "[b]%s[/b]  ★%d  %d费\n\n属性\n%s\n\n效果\n%s" % [
 		str(edef.get("name", eid)), star, int(edef.get("cost", 1)),
-		_stat_block(eid, star), SkillText.highlight_star(SkillText.equip_brief(edef) if str(edef.get("effectBrief", "")) != "" else "（无主动效果）", star)]
+		_stat_block(eid, star), SkillText.highlight_star(SkillText.equip_brief_bb(edef, 13) if str(edef.get("effectBrief", "")) != "" else "（无主动效果）", star)]
 	_wire_bench_tap(box, idx)
 	return box
 

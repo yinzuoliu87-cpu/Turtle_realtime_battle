@@ -3,6 +3,10 @@ extends RefCounted
 ## 双路对战流程(呈现总览/放置/逐路推进/破蛋决胜/HUD)
 ## 类内名不变;外部名加 battle.
 
+## 能渲染 BBCode 的 tooltip 宿主(背包 2026-07-22 起就在用的那一份) —— 对阵预览里那个
+## 44×44 装备格的 tooltip 正文带颜色与内联属性图标, 不挂它就是纯 Label 原样印标记。
+const RichTooltip = preload("res://scripts/scenes/rich_tooltip.gd")
+
 var battle
 
 func _init(b) -> void:
@@ -321,7 +325,14 @@ func _dl_equip_chip(eid: String, star: int) -> Control:
 	var bsb = StyleBoxFlat.new(); bsb.bg_color = Color("#0c141c"); bsb.set_border_width_all(2); bsb.set_corner_radius_all(4)
 	bsb.border_color = battle._equip_cost_color(int(edef.get("cost", 1)))
 	box.add_theme_stylebox_override("panel", bsb)
-	box.tooltip_text = "%s  ★%d\n%s" % [str(edef.get("name", eid)), star, SkillText.equip_brief(edef)]
+	## ★★2026-10-02: 战斗内这个 44×44 装备格是【全场唯一一处还在走系统 tooltip 的装备文案】。
+	##   系统 tooltip 是纯 `Label` ⇒ 既印不出 2026-10-01 上的色, 也画不出内联属性图标,
+	##   同一件装备在背包/商店/图鉴是彩色带图标的, 一进战斗就变成一片白字。
+	##   ⇒ 挂 `rich_tooltip`(背包 2026-07-22 就在用的那份, 不另抄), 文案换成 `_bb` 版。
+	##   ★字号 13 对齐 `rich_tooltip` 里正文的 12px —— `equip_brief_bb` 按字号缩内联图标
+	##     (maxi(12, round(13×1.15)) = 15px), 比默认 16 更贴这行小字。
+	box.set_script(RichTooltip)
+	box.tooltip_text = "%s  ★%d\n%s" % [str(edef.get("name", eid)), star, SkillText.equip_brief_bb(edef, 13)]
 	var img = str(edef.get("img", ""))
 	if img != "" and ResourceLoader.exists("res://assets/sprites/" + img):
 		var ic = TextureRect.new(); ic.texture = load("res://assets/sprites/" + img)

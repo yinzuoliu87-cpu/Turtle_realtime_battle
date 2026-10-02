@@ -3,6 +3,11 @@ extends RefCounted
 ## 选龟页·右栏详情面板渲染(立绘/属性/被动·_set_detail_pet协调器留主场景)
 ## 类内名不变;外部名加 battle.
 
+## 能渲染 BBCode 的 tooltip 宿主 —— 被动 chip 的 tooltip 正文是 `render_bbcode` 的产物,
+## 不挂它就走 Godot 的系统 tooltip(纯 Label), 标记会原样印给玩家(2026-10-02 实拍)。
+## ★用 preload 常量而不是靠 class_name: 这份脚本没有 class_name(有意的, 见它的头注)。
+const RichTooltip = preload("res://scripts/scenes/rich_tooltip.gd")
+
 var host
 
 func _init(b) -> void:
@@ -191,6 +196,14 @@ func _refresh_detail() -> void:
 		chip.add_child(prow)
 		# 被动描述只在 hover 看 (1:1 PoC ts:796/825 "悬浮看描述 省空间") — 不常驻铺文字(撑爆面板的自创)
 		var fake_f = {"atk": atk, "def": def_, "mr": mr, "maxHp": hp, "crit": pet.get("crit", 0.25), "lv": det_lv, "passive": passive}
+		## ★★2026-10-02: 挂能渲染 BBCode 的 tooltip 宿主。
+		##   下面这行塞进去的是 `render_bbcode` 的产物(带 [color]/[b]/[img]), 而 Godot 的
+		##   【系统 tooltip 是一个纯 Label】—— 实拍确认它把 `[color=#ff4444]+20%[/color]`
+		##   这种标记**原样印在屏幕上**(docs/plans/20261002-文案落点BBCode普查.md 存图)。
+		##   背包格子 2026-07-22 就踩过同一条并修好了, 这里只是一直没挂。
+		##   ⚠ 顺序: `set_script` 要在写 `tooltip_text` 之前 —— 换脚本不会丢 tooltip_text
+		##     (那是 Control 的原生属性, 不随脚本走), 但先挂再写读起来才是因果顺序。
+		chip.set_script(RichTooltip)
 		chip.tooltip_text = "%s\n%s" % [passive.get("name", "被动"), SkillText.render_bbcode(str(passive.get("brief", "")), fake_f, passive, 14)]
 		# 内容 IGNORE 鼠标 → 整 chip 捕获 hover 出 tooltip
 		prow.mouse_filter = Control.MOUSE_FILTER_IGNORE

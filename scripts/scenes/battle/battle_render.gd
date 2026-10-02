@@ -3,6 +3,11 @@ extends RefCounted
 ## 战斗渲染/动画显示层(每帧插值/世界变换/跑动画/覆盖/dot飘字/相机抖/技能文案·纯视觉不改战斗态)
 ## 类内名不变;外部名加 battle.
 
+## 战斗信息面板描述正文的字号 —— `_render_skill_text` 拿它给 `render_bbcode` 缩内联属性图标。
+## ★和 `info_panel._show_detail` 里那个 RichTextLabel 的 `normal_font_size` 是同一个数;
+##   `verify_battle_skill_text_bb` 会回读源码对账, 那边改了这里不跟就红。
+const SKILL_TEXT_FS := 13
+
 var battle
 
 func _init(b) -> void:
@@ -661,13 +666,25 @@ func _update_overlay() -> void:
 # ============================================================================
 #  灭队判定 + 结算横幅 (复用 2D _check_end; 赛季结算 Phase 3 接 GameState)
 # ============================================================================
+## 战斗信息面板里那段技能/被动描述 —— 占位符按【当前属性】算成数字。
+##
+## ★★2026-10-02 换成 `render_bbcode`。原来是 `render_plain` + `_strip_html`
+##   —— 也就是把渲染管线刚上好的颜色 / 内联属性图标【原场扒掉】。
+##   而收这段字的控件本来就是 `RichTextLabel` + `bbcode_enabled`
+##   (`info_panel.gd` 的描述浮层) ⇒ 只是一直没人喂它 BBCode。
+##   同一句「造成 40 物理伤害」在图鉴/背包/商店是彩色带图标的,
+##   一进战斗面板就变成一片白字。
+## ★不再调 `_strip_html`: `render_bbcode` 内部已经把 HTML 转成 BBCode
+##   并解过实体(`html_to_bbcode` → `_decode_entities`), 再扒一遍会把
+##   `[color=...]` 之外的标签干掉——且 `<[^>]*>` 那条正则对 BBCode 本来就不生效。
+## ★字号走 `SKILL_TEXT_FS` —— 它就是 `info_panel._show_detail` 里描述正文的
+##   `normal_font_size`。对不上内联图标就会比字大一圈。
 func _render_skill_text(tpl: String, u: Dictionary, sk: Dictionary) -> String:
 	if tpl == "":
 		return ""
-	var out = tpl
-	if battle.SkillText != null:
-		out = battle.SkillText.render_plain(tpl, u, sk if sk is Dictionary else {})
-	return battle._strip_html(out)
+	if battle.SkillText == null:
+		return battle._strip_html(tpl)
+	return battle.SkillText.render_bbcode(tpl, u, sk if sk is Dictionary else {}, SKILL_TEXT_FS)
 
 ## 详情面板【属性行】的单一事实源 —— 建面板和每帧刷新都走这一个函数,
 ## 所以两边不可能漂移(加属性只改这里一处)。返回 [[图标路径, 文本, 颜色], ...]。

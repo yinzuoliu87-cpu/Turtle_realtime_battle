@@ -195,7 +195,14 @@ func _check_facing() -> void:
 		_fail("只扫到 %d 张图, 预期 ≥15 —— 目录没读到就等于漏检" % cur.size())
 	var want := ""
 	if FileAccess.file_exists(FACING_GOLDEN_PATH):
-		want = FileAccess.get_file_as_string(FACING_GOLDEN_PATH).strip_edges()
+		## ★★2026-10-02 把行尾的 CR 扒掉再比。金样本是 Godot 写的(LF行尾), 而本仓
+		##   `core.autocrlf=true` ⇒ 任何【新 clone / 新 worktree】把它检出来都是 CRLF行尾。
+		##   于是按换行切出来的每一行末尾都多一个 CR, 与内存里算出来的 cur
+		##   永远对不上 ⇒ 全部 23 行都被报成「素材变了」。
+		##   实测: 新 worktree 里这条必红, 而主仓绿 —— 因为主仓那份是测试自己写出来的 LF。
+		## ★判据一个字没放宽: CR 不属于任何一行的含义, 扒掉之前必红、之后照样红。
+		##   (memory [[fb-grep-sed-lie-about-crlf]] / [[fb-bytewise-check-isnt-bytewise]] 同一类。)
+		want = FileAccess.get_file_as_string(FACING_GOLDEN_PATH).replace(char(13), "").strip_edges()
 	var got := "\n".join(PackedStringArray(cur))
 	if want == "":
 		var fh := FileAccess.open(FACING_GOLDEN_PATH, FileAccess.WRITE)

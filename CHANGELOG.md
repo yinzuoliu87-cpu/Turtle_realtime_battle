@@ -1,3 +1,36 @@
+## 0.19.504 — 2026-10-02
+
+### 选龟页把 BBCode 原样印在玩家屏幕上
+
+`team_select/detail_panel.gd:194` 喂的是 `render_bbcode` 的产物，
+却落在**系统 tooltip 的纯 `Label`** 上 ⇒ 玩家直接看到
+`[color=#ff4444]+20%[/color]`、`[b]所有伤害[/b]`、`[color=#e6ddc9]【龟盾】[/color]`。
+实拍留证：`docs/plans/shot-20261002-ts-passive-before.png` / `-after.png`。
+
+#### 全项目普查：21 个文案落点
+
+| | 个数 | 情况 |
+|---|---|---|
+| 不吃 BBCode | **3** | 选龟页被动 chip（上面那个事故）／战斗内 44×44 对阵预览装备格／图鉴普攻条简述 |
+| 控件吃、却一直喂纯文本 | **3** | 背包格子 tooltip ／ 战斗技能描述（`render_plain` + `_strip_html` 把标记**原场扒掉**）／图鉴普攻条 |
+| 本来就正常 | 15 | — |
+
+⇒ 这两天做的颜色 / 内联属性图标 / 加粗，**有 6 个落点看不到或看错**。已全部接上。
+
+★`rich_tooltip.gd` 从 `extends Panel` 放宽到 `extends Control` —— 它一直只有背包在用，
+因为 `Panel` 与 `PanelContainer` 是**兄弟不是父子**，`set_script` 挂不上去。
+放宽后三处共用同一份宿主，**没抄第二份**。
+
+判据 `tests/verify_text_bbcode_hosts.gd`（17 条，含断言条数对账防静默跳过）：
+真调控件的 `_make_custom_tooltip()`、真读 `get_parsed_text()`、整屏遍历 456 个 `Control`
+查 `Label.text` 里有没有残留标记。四处一起改坏 ⇒ `FAILED: 5`，各红在对应那条。
+
+#### 顺手修的一条「换个工作区就必红」
+
+`verify_elite_anim` 在**新 worktree 里必红**：金样本是 Godot 写的 LF，而本仓
+`core.autocrlf=true`，新检出是 CRLF ⇒ 23 行全被报成「素材变了」。
+判据一个字没放宽，只是扒掉行尾 CR。
+
 ## 0.19.503 — 2026-10-02
 
 ### 图鉴在教一个玩家永远遇不到的机制 —— 消耗品分组删掉

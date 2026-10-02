@@ -1,4 +1,4 @@
-extends Panel
+extends Control
 ## rich_tooltip.gd — 能渲染 BBCode 的自定义 tooltip 宿主 (2026-07-22)
 ##
 ## Godot 的系统 tooltip 是纯文本, 直接把 [color=..] 原样显示给玩家。
@@ -7,6 +7,17 @@ extends Panel
 ##
 ## 用法: box.set_script(preload("res://scripts/scenes/rich_tooltip.gd"))
 ##       box.tooltip_text = <含 BBCode 的文本>
+##
+## ★★2026-10-02 `extends Panel` → `extends Control`。
+##   由来: 这份脚本一直【只有背包在用】, 而另外两个落点挂不上去 ——
+##   `set_script` 要求脚本的原生基类是节点类型的**祖先**, 而 `Panel` 与
+##   `PanelContainer` 是**兄弟**(两个都直接继承 Control), 不是父子。
+##   选龟页那个被动 chip 正是 `PanelContainer` ⇒ 挂不上 ⇒ 它的 tooltip 一直在把
+##   `[color=#ff4444]攻击力[/color]` 这种标记【原样印给玩家】(2026-10-02 实拍留证:
+##   docs/plans/20261002-文案落点BBCode普查.md)。
+##   ⇒ 基类放宽到 Control, 这份宿主就能挂在任何控件上, 不用再抄第二份。
+##   ⚠ 脚本里不碰 Panel 独有的 API(只覆写 _make_custom_tooltip), 所以放宽是安全的;
+##     原来挂着它的 `Panel` 仍然是 Control 的子类, 一个字都不用改。
 
 func _make_custom_tooltip(for_text: String) -> Object:
 	var pc := PanelContainer.new()

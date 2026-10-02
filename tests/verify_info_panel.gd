@@ -288,10 +288,16 @@ func _test_skill_desc_live(s) -> void:
 				passive_proved = true
 		_ok("★★槽 %d「%s」: 攻击力翻倍后【屏幕上那段字】跟着变" % [i, nm], okc,
 			"%s → %s" % [before.substr(0, 44), after.substr(0, 44)])
-		## ★两边都是**纯文本**(_render_skill_text 里 _strip_html 过), 所以能逐字比。
-		##   哪天描述改成带 BBCode 的, 这条会红在"字不一样"上 —— 那时要改的是比法,
-		##   不是把这条删掉(它拦的是"字变了但不是刷新写的"那一类)。
-		var want: String = s._info_sys._skill_body_text(u, sk, tpl)
+		## ★★2026-10-02 改了【比法】, 判据一个字没改。
+		##   原来这里写着「两边都是纯文本(_render_skill_text 里 _strip_html 过),
+		##   所以能逐字比」并预告「哪天描述改成带 BBCode 的, 要改的是比法,
+		##   不是把这条删掉」—— 那一天到了(`_render_skill_text` 换成 `render_bbcode`,
+		##   见 docs/plans/20261002-文案落点BBCode普查.md)。
+		##   `_overlay_text` 取的是 `get_parsed_text()`(去了标记), 而 `_skill_body_text`
+		##   现在返回带标记的串 ⇒ 把现算那一侧也过一遍【同一个】BBCode 解析器再比。
+		## ★用真 `RichTextLabel` 解析, 不自己写正则扒标记 —— 扒法和引擎差一点,
+		##   这条就会变成恒假(或者更糟: 恒真)。
+		var want: String = _parsed_text(s._info_sys._skill_body_text(u, sk, tpl))
 		_ok("★★屏上印的就是取数函数现算的那段(不是别处写进去的东西)", after == want,
 			"屏 %s ┃ 现算 %s" % [after.substr(0, 40), want.substr(0, 40)])
 		## 方向: 同位的数只许涨不许跌, 且至少有一个真的涨了。
@@ -340,6 +346,19 @@ func _collect_slots(n: Node, out: Array) -> void:
 
 ## 描述框里【屏幕上】那段字。浮层没开 / 没有 RichTextLabel 都返回空串 ——
 ## 返回空串而不是抛错, 是为了让上面的分母断言把"读不到"照出来。
+## 一段 BBCode 在屏幕上到底是哪几个字 —— 走引擎自己的解析器。
+## ★不自写正则扒 `[color=...]`: 扒法与 `RichTextLabel` 差一点, 拿它去比
+##   `get_parsed_text()` 就是在比两个不同的东西。
+func _parsed_text(bb: String) -> String:
+	var rt := RichTextLabel.new()
+	rt.bbcode_enabled = true
+	add_child(rt)
+	rt.text = bb
+	var out := rt.get_parsed_text()
+	rt.queue_free()
+	return out
+
+
 func _overlay_text(s) -> String:
 	if s._info_panel == null or not is_instance_valid(s._info_panel):
 		return ""
