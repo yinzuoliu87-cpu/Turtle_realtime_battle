@@ -55,6 +55,20 @@ func _ready() -> void:
 	s._units.append_array([u, e])
 	s._edit_mode = false
 	s._over = false
+	## ★★2026-10-02 钉死【一帧恰 1 步 SIM_DT】。这条测试原来在 16 路并行门禁下读
+	##   「削 5.0」、单跑读「削 4.0」, 而期望是 3.0 —— 判据容差 ±1 跳, 所以 4 擦边过、5 红。
+	##
+	## 【探针实测】(`tests/_probe_talisman_clock.gd`, 已删) 那段循环里**有两条时钟**:
+	##     手工 _sim_step 推进 3.100 秒  (= 186 轮 × 1/60, 这是意图)
+	##     await 那一帧 _process 又推进 1.283 秒  ← 第二条, 占 29%
+	##     合计 4.383 ⇒ el=4.383 ⇒ ticks=4 ⇒ 削 4.0
+	##   第二条是**机器快慢的函数**(真实 delta), 并行下更大 ⇒ el 过 5 ⇒ 削 5.0 ⇒ 红。
+	##   ⇒ 容差本来是给浮点残差留的, 被第二条时钟吃光了。
+	##
+	## 【改法】`_deterministic = true` ⇒ `_process` 每帧恰跑一步 SIM_DT
+	##   (`RealtimeBattle3DScene.gd:2178`), 于是下面所有「等 N 帧」都是确切的游戏秒数,
+	##   手工 `_sim_step` 一概不要 —— 这正是 CLAUDE.md §2 推荐的那一招。
+	s._deterministic = true
 	s._equip_sys._stats._eq_apply_all_stats()
 
 	# ── ① 分母: 开场没有任何符纸 ────────────────────────────────────────────
@@ -77,10 +91,10 @@ func _ready() -> void:
 			"tgt 是那只敌人=%s" % str(t0.has("tgt") and is_same(t0["tgt"], e)))
 
 	# ── ③ 每跳削魔抗 = TALISMAN_MR_PER_TICK(期望值从常量推导) ────────────────
-	##   ★推进 1 个结算节拍。用 sim 时钟 + 真实帧(符纸 tick 挂在 arcane 的 tick 上)。
+	##   ★推进 `beats` 个结算节拍。det 模式下**一帧 = 一步 SIM_DT**, 所以帧数就是游戏秒数 × 60,
+	##     不许再手工 `_sim_step` —— 那会和 `_process` 凑成两条时钟(见上方建场处的探针数值)。
 	var beats := 3
 	for _f in range(int(Arcane.TALISMAN_TICK * float(beats) * 60.0) + 6):
-		s._sim_step(1.0 / 60.0, false, false)
 		await get_tree().process_frame
 	var shred: float = mr0 - float(e["mr"])
 	var want: float = Arcane.TALISMAN_MR_PER_TICK * float(beats)
@@ -110,13 +124,15 @@ func _ready() -> void:
 	s._staff_syn.add_mana(u2, s._staff_syn.mana_full_for(u2, "p2eq_089", 3) + 1.0)
 	var n_after_fire: int = arc._talismans.size()
 	_ok("★分母: 灌满后确实贴上了 %d 张" % n_after_fire, n_after_fire >= 1)
-	## ★★符纸的 `el` 跟的是【真实帧的 delta】, 不是我推的 sim 步 ——
-	##   探针实测: 推 1020 个 sim 步(=17 秒游戏时间)但只 await 510 帧时, `el` 才 2.48。
-	##   ⇒ 想让它到期就必须**逐帧 await 够 15 秒的真实帧**, 光推 sim 时钟没用。
-	##   (这与 CLAUDE.md §3.5 那条同源: 尺子必须匹配被测对象用的时钟。)
+	## ★★2026-10-02 **这里原来写着「`el` 跟的是真实帧的 delta, 光推 sim 时钟没用」—— 那是错的。**
+	##   符纸的 tick 挂在 `_equip_sys.tick_global(dt)` 上, 而那一行在
+	##   `RealtimeBattle3DScene.gd:2248`, **在 `_sim_step` 里面** ⇒ `el` 走的就是 sim 钟。
+	##   今天的探针逐位印证: `el=4.383` 与 `_t` 走的 `4.383` **完全相等**。
+	##   ⇒ 原注释把「两条时钟一起推, 所以比我手工推的多」误读成了「它跟的是真实帧」。
+	## ★这个 while 是**条件驱动**的(跑到到期为止, guard 封顶), 所以它本身不脆;
+	##   det 模式下到期需要 TALISMAN_SEC × 60 ≈ 900 帧, guard=4000 装得下。
 	var guard := 0
 	while arc._talismans.size() >= n_after_fire and guard < 4000:
-		s._sim_step(1.0 / 60.0, false, false)
 		await get_tree().process_frame
 		guard += 1
 	if arc._talismans.size() > 0:

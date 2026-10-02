@@ -62,6 +62,7 @@ func _ready() -> void:
 	_t_clear_all_not_empty()
 	_t_new_lane_summons_alive()
 	_t_ui_residue()
+	await _t_readout_lane_reset()
 
 	_s.queue_free()
 	await get_tree().process_frame
@@ -302,6 +303,135 @@ func _t_new_lane_summons_alive() -> void:
 	_ok("④ 同管线的小手枪也活着(它是真单位, 只会丢驱动登记表 ⇒ 另一副面孔)",
 		int(live.get("pistol", -1)) >= 1, "pistol=%d" % int(live.get("pistol", -1)))
 	## ★收尾还原(CLAUDE.md §7 铁律④: 测试不许污染真存档)
+	GameState.dual_lineup = saved
+	GameState.current_lane = saved_lane
+	GameState.set("dual_active", saved_active)
+	GameState.season_leaders = saved_leaders
+	_s._units.clear()
+
+
+# ─────────────────────────────────────────────────────────────
+# ⑤ 换路之后【图标上那个数字】不许还是上一路的
+#
+# ★由来 2026-10-02: 欠账分诊把「079/080/086 的读数换路不清零」列成疑似活 bug,
+#   依据是 `grep p2eq_079\|p2eq_080\|p2eq_086 dual_lane_flow.gd` 命中 0。
+#   ★那个依据是**反的** —— `dual_lane_flow.gd` 里那张 `EQ_CARRY` 是
+#   「刻意**跨路保留**」的白名单, 不是重置表; `_dl_build_lane_field` 重建单位时
+#   `eq_state: {}` ⇒ 默认**全清**。所以"不在表里"恰恰意味着"会被清"。
+#
+# ⇒ 真实的缺口不在产品而在判据: `verify_readouts_d7.gd` 只有同场内归零断言,
+#   **零条换路断言** ⇒ 哪天有人把这三个键加进 EQ_CARRY、或者镜像函数改成从
+#   存活的召唤物回填, 玩家就会在新一路看到上一路的数字, 而没有任何门禁会红。
+#   本条就是补这个洞(memory [[fb-per-lane-state-must-reset-in-owner]])。
+#
+# ★判据形状: 每个键**自己带分母** —— 换路前它得真的被产品写成非 0,
+#   否则这个键记成**显式缺口**(CLAUDE.md 铁律⑤: 不许静默截断), 并要求至少 1 个键真验到。
+# ─────────────────────────────────────────────────────────────
+const RO_KEYS: Array = [
+	["p2eq_080", "heli_en"],    # 直升机龟能
+	["p2eq_079", "gold_pct"],   # 炮台铸币进度
+	["p2eq_086", "shots_pct"],  # 浮游炮齐射进度
+]
+
+
+## 场上左侧所有携带者身上这个键的最大值(-1 = 没有任何携带者带着这件)。
+func _ro_max(eid: String, key: String) -> float:
+	var best := -1.0
+	for u in _s._units:
+		if not (u is Dictionary) or str(_s._eff_side(u)) != "left":
+			continue
+		var has := false
+		for e in u.get("equips", []):
+			if e is Dictionary and str(e.get("id", "")) == eid:
+				has = true
+		if not has:
+			continue
+		var st = (u.get("eq_state", {}) as Dictionary).get(eid, {})
+		var v: float = float((st as Dictionary).get(key, 0.0)) if st is Dictionary else 0.0
+		best = maxf(best, v)
+	return best
+
+
+func _t_readout_lane_reset() -> void:
+	print("── ⑤ 换路后图标读数 ──")
+	_s._units.clear()
+	var saved: Dictionary = GameState.dual_lineup.duplicate(true)
+	var saved_lane = GameState.current_lane
+	var saved_active = GameState.get("dual_active")
+	var saved_leaders: Array = (GameState.season_leaders as Array).duplicate(true)
+	## 同 ④ 的三个前提(双路标记 / 结构合法的阵容 / season_leaders 摆好), 原因见 ④ 的注释。
+	GameState.set("dual_active", true)
+	GameState.season_leaders = ["basic", "basic", "basic"]
+	var three: Array = [
+		{"id": "p2eq_079", "star": 3}, {"id": "p2eq_080", "star": 3}, {"id": "p2eq_086", "star": 3}]
+	## ★三件**两路都放** —— 只放一路的话新一路没有携带者, `_ro_max` 返回 -1,
+	##   「读数是 0」就成了恒真(memory [[fb-gate-subject-never-constructed]])。
+	GameState.dual_lineup = {
+		"top": [
+			{"kind": "leader", "id": "basic", "slot": 0, "equips": three.duplicate(true)},
+			{"kind": "leader", "id": "basic", "slot": 1},
+			{"kind": "minion", "role": "front"}],
+		"bottom": [
+			{"kind": "leader", "id": "basic", "slot": 2, "equips": three.duplicate(true)},
+			{"kind": "minion", "role": "front"},
+			{"kind": "minion", "role": "back"}],
+	}
+
+	# ── 上路: 让产品自己把读数写成非 0 ──
+	GameState.current_lane = "top"
+	_s._dl_sys._dl_build_lane_field()
+	## ★079 的读数**按设计在枪羁绊未激活时恒 0**(`eq_gun_batch.gd:815` 那条镜像的来源是
+	##   `tier_for(u,"枪")`; `verify_readouts_d7.gd:148` 还专门有一条反证断言守着这个 0)。
+	##   ⇒ 不摆羁绊的话这个键永远进不了「非 0」, 这条换路断言就只剩显式缺口。
+	##   这里照 `verify_readouts_d7.gd:114` 的成例, 用**产品自己的羁绊表**造前提
+	##   (不是我自己插的标记 —— memory [[fb-gate-must-measure-requirement-not-my-hook]])。
+	##   下路重建时 `_dl_build_lane_field` 里的 `apply_all()` 会按新一路阵容重算它, 不会沿用。
+	if _s._synergy.get("_by_side") != null:
+		_s._synergy._by_side = {"left": {"枪": 1}, "right": {}}
+	var peak := {}
+	for p in RO_KEYS:
+		peak[str(p[1])] = -1.0
+	for _i in range(900):
+		_s._sim_step(1.0 / 60.0, false, false)
+		for p in RO_KEYS:
+			var k: String = str(p[1])
+			peak[k] = maxf(float(peak[k]), _ro_max(str(p[0]), k))
+		if _i % 60 == 0:
+			await get_tree().process_frame
+
+	# ── 换到下路, 走真入口重建 ──
+	## ★★必须是 `_dl_clear_units()` + `_dl_build_lane_field()` **这一对** ——
+	##   第一版只调了后者, 结果反向验证打不红: 把 `heli_en` 塞进 `EQ_CARRY` 之后读数照样 0。
+	##   根因不是判据写错, 是**前提走不到**: 存层数的 `_dl_save_eq_carry()` 在
+	##   `_dl_clear_units()` 里(`dual_lane_flow.gd:963`), 而还原在 `_dl_build_lane_field()`
+	##   里(:631) ⇒ 只调后者时 `battle._eq_carry` 是空的, 跨路保留这条路整条是死的,
+	##   于是「读数清零」怎么改都成立 = 恒真。
+	##   (memory [[fb-fallback-judge-needs-a-reachable-precondition]]、[[fb-verify-must-run-the-real-path]])
+	GameState.current_lane = "bottom"
+	_s._dl_sys._dl_clear_units()
+	_s._dl_sys._dl_build_lane_field()
+	await get_tree().process_frame
+
+	var checked := 0
+	for p in RO_KEYS:
+		var eid: String = str(p[0])
+		var key: String = str(p[1])
+		var before: float = float(peak[key])
+		var after: float = _ro_max(eid, key)
+		_ok("⑤ ★分母: 新一路真的有带 %s 的携带者(没有他下面那条恒真)" % eid,
+			after >= 0.0, "_ro_max=%.2f ⇒ -1 表示场上没人带它" % after)
+		if before <= 0.0:
+			## 显式登记的缺口 —— 不许静默跳过。
+			print("    [缺口] %s/%s 在上路没被写成非 0(峰值 %.2f) ⇒ 这个键本轮没验到换路清零"
+				% [eid, key, before])
+			continue
+		checked += 1
+		_ok("⑤ ★★%s 的读数换路后不许是上一路的值(上路峰值 %.2f ⇒ 新一路必须 ≤0)" % [eid, before],
+			after <= 0.0, "新一路实测 %.2f" % after)
+	_ok("⑤ ★分母: 至少有 1 个键真的验到了(0 个 = 整条 ⑤ 是空检查)",
+		checked >= 1, "真验到 %d / %d 个键 · 上路峰值 %s" % [checked, RO_KEYS.size(), str(peak)])
+
+	## 收尾还原(CLAUDE.md §7 铁律④)
 	GameState.dual_lineup = saved
 	GameState.current_lane = saved_lane
 	GameState.set("dual_active", saved_active)
