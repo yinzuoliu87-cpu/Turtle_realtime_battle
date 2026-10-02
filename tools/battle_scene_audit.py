@@ -134,8 +134,34 @@ def audit(path, pad_lr=185, pad_top=60, pad_bot=10, step=2):
         "ramp_ratio": (round((n_ramp_lo / 40.0) / max(1e-9, n_ramp_hi / 45.0), 2)
                        if n_ramp_hi >= 50 else None),
         "neutral_pct": round(100.0 * n_neutral / n, 1),
+        # ★2026-10-02 新增: 战场中带的视觉噪声(高频像素占比)。
+        #   量法与参考**完全同口径**: 整图转灰 → 短边归一到 540(免得分辨率影响) →
+        #   Sobel 式一阶差分取模 → 阈值 28 → 去掉上下各 15%(那是 UI 带) → 取占比。
+        #   ⚠ 用的是**整图**不是裁剪后的场地区: 噪声要算进 UI 压在场上的那部分。
+        "edge_mid_pct": _edge_mid_pct(path),
     }
     return out
+
+
+def _edge_mid_pct(path):
+    """战场中带(去掉上下各 15%)的高频像素占比 —— 「信息密度」的可量化形态。
+
+    ★为什么要有这一条: ①~④ 量的是颜色与明暗, 实测**我们 4/4、参考只有 2/4** ——
+      那把尺子解释不了用户说的「UI 全方面差距」。换这个口径当场量出 **4.0 倍**差距。
+    """
+    try:
+        import numpy as np
+    except ImportError:
+        return None
+    im = Image.open(path).convert("L")
+    w, h = im.size
+    im = im.resize((540, max(2, int(h * 540.0 / w))), Image.LANCZOS)
+    a = np.asarray(im, dtype=np.float32)
+    gx = np.abs(np.diff(a, axis=1))[:-1, :]
+    gy = np.abs(np.diff(a, axis=0))[:, :-1]
+    e = (np.hypot(gx, gy) > 28)
+    H = e.shape[0]
+    return round(float(e[int(H * 0.15):int(H * 0.85), :].mean()) * 100.0, 1)
 
 
 ## ★★阈值是【拿 7 款已知好游戏标定出来的】, 不是我拍的。标定表(2026-09-18 实测):
@@ -216,6 +242,24 @@ def verdict(a):
     else:
         rules.append(("④ 亮坡比 ≥ 1.0(亮区周围要有明度过渡, 不是硬贴的亮板)",
                       a["ramp_ratio"] >= 1.0, "%.2f" % a["ramp_ratio"]))
+    ## ⑤ 战场中带的视觉噪声(2026-10-02 加)。
+    ##
+    ## ★由来: 用户 2026-09-30「你知道什么叫 UI **全方面差距**吗」。我拿①~④ 这四条去量,
+    ##   结果是**我们 4/4、参考只有 2/4** —— 这把尺子解释不了他看到的差距, 因为它量的是
+    ##   颜色与明暗分布, 而差距不在那儿。⇒ 换口径量「信息密度」, 当场量出来了:
+    ##
+    ##     战场中带(去掉上下各 15% 的 UI 带)的高频像素占比
+    ##       参考(Botworld 战斗段 24~28s 五帧)  中位 **3.2%**
+    ##       我们(真在打的三张)                中位 **12.5%**   ⇒ **4.0 倍**
+    ##
+    ##   而且分布是**反的**: 参考把 UI 堆在底部(17.5%)、战场中间很干净(4.6%);
+    ##   我们堆在顶部(19.5%)、战场本身就吵(12.5%)。
+    ##
+    ## ★阈值取 **8.0%** —— 不是参考那个 3.2%: 一步到位要求降到 1/4 是不现实的,
+    ##   而 8.0 已经能逼着砍掉一半噪声。它是**可以收紧的起点**, 不是终点。
+    if a.get("edge_mid_pct") is not None:
+        rules.append(("⑤ 战场中带高频密度 ≤ 8.0%(参考 3.2%, 我们起点 12.5%)",
+                      a["edge_mid_pct"] <= 8.0, "%.1f%%" % a["edge_mid_pct"]))
     return rules
 
 
