@@ -169,6 +169,18 @@ func _apply_damage(u: Dictionary, dmg: int, _col: Color, src = null, bucket: Str
 		return   # 机甲组装期免疫一切伤害。★这条路径(DoT/真伤)原先没有这个闸, 只有 _apply_damage_from 有 → DoT 能打穿组装免疫(2026-07-19)
 	if battle._sd_stacks > 0:
 		dmg = maxi(1, int(round(float(dmg) * (1.0 + battle._sd_amp()))))   # §SUDDEN 决胜增伤(这条路走 DoT/真伤等)
+	## ★★小龟·不屈 (2026-10-02 补)。文案(`pets.json` basic.passive.desc)写的是
+	##   「对敌人造成的**任何**伤害都按目标稀有度增伤(普攻、技能、真实伤害、固定伤害**全覆盖**,
+	##     每次只算一次)」, 而实现**只在 `_apply_damage_from` 那一条路上** ——
+	##   `_BASIC_RARITY_BONUS` 全仓只有一个消费点。
+	##   ⇒ 小龟带 DoT 装备(灼烧/流血/中毒…)时, **那部分伤害一直吃不到不屈**。
+	##   这正是 CLAUDE.md §3.3 点名的形状: 两条伤害路, 只改了一条。
+	## ★抓到它的不是读代码, 是新加的判据 `verify_dmg_paths_agree ④`:
+	##   给两条路喂同一发名义伤害, 实测 1000 → 1500 / 1800, 差的正好是这个 ×1.2。
+	## ★「每次只算一次」仍然成立: 一发伤害只会走两条路中的一条。
+	if src != null and src is Dictionary and str((src as Dictionary).get("id", "")) == "basic" \
+			and not is_self and not is_same(src, u):
+		dmg = int(round(float(dmg) * (1.0 + battle._BASIC_RARITY_BONUS.get(str(u.get("rarity", "C")), 0.20))))
 	# ★2026-07-22 全量对齐: 过与 _apply_damage_from 同一套受害者减伤(见 §MITIGATE)。
 	#   bucket=="tru" 视为真伤 → 与另一条路的 raw 语义一致(真伤只无视护甲/减伤, 护盾照吸)。
 	var _raw: bool = (bucket == "tru")
@@ -330,6 +342,8 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 		battle._spirit_syn.on_dodge(u)             # 灵物【闪避追击】: 触手立即追击 1 次(25% 伤害, 每周期上限队伍共用)
 		return
 	# 小龟·不屈: 造成的任何伤害按目标稀有度增伤 (总闸→普攻/技能/真伤/固定伤全覆盖, 只算一次)
+	# ★2026-10-02: `_apply_damage`(DoT/真伤那条路)**也有**同一段 —— 原先只有这里,
+	#   于是「全覆盖」这句话在 DoT 上是假的。判据 `verify_dmg_paths_agree ④` 守着两条一致。
 	if src.get("id", "") == "basic" and not is_same(src, u):
 		dmg = int(round(float(dmg) * (1.0 + battle._BASIC_RARITY_BONUS.get(str(u.get("rarity", "C")), 0.20))))
 	# 伤害输出乘数 (龟壳复制60%等; 默认1.0=不变): 缩放src本次造成的即时伤害

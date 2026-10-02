@@ -151,6 +151,81 @@ func _ready() -> void:
 		"没进或数目对不上 ⇒ 伤害类型统计漏了这条路")
 	_ok("③b `_apply_damage_from` 的真伤进了 tru 桶(%d)" % b2, b2 == rec_b, "同上")
 
+	# ══════════════════════════════════════════════════════════════
+	#  ④ A-3 受害者侧减伤：同一发名义伤害，两条路必须算出同一个扣血
+	# ══════════════════════════════════════════════════════════════
+	## 【由来】方案书 `20260904b-全项目代码彻查.md` 的验收项 **A-3**
+	##   「两条伤害路：护甲/魔抗结算走同一个收口」长期挂着 ⏳，
+	##   而同一份文档的结论段里又写着「A-3 已有三只眼哨兵 ⇒ 查过但不用改」。
+	##   —— 登记与结论对不上（memory `fb-registered-todos-rot`）。
+	## 查下来**收口确实是真的**（两条路都调 `battle._mitigate_incoming`），
+	##   但**没有任何判据量它**：谁把其中一条改成自己算，门禁一条都不会红。
+	##
+	## ★判据形状照本文件的规矩：**不断言"调了同一个函数"**（那是实现细节），
+	##   只断言**外部可观察的结果** —— 同一个带减伤/增伤状态的受害者、同一个名义伤害，
+	##   两条路扣掉的血必须一样多。
+	## ★★配分母：减伤必须**真的起作用**（扣血 != 名义值）。
+	##   否则两条路都原样扣，这条会为了完全错误的理由变绿。
+	print("── ④ A-3 受害者侧减伤: 两条路同输入同扣血 ──")
+	var m1 := _mk("ally", c + Vector2(260, 60))
+	var m2 := _mk("ally", c + Vector2(300, 60))
+	var msrc := _mk("enemy", c + Vector2(340, 60))
+	## 挂两种受害者侧状态: 靶向器(增伤) + 钩索易伤。两条路都该吃到。
+	for m in [m1, m2]:
+		m["eq_marked_until"] = _s._t + 30.0
+		m["hook_vuln_until"] = _s._t + 30.0
+	var NOM := 1000
+	var h1: float = float(m1["hp"])
+	var h2: float = float(m2["hp"])
+	_s._damage._apply_damage(m1, NOM, Color.WHITE, msrc, "phy")
+	_s._damage._apply_damage_from(msrc, m2, NOM, Color.WHITE)
+	var l1: int = int(round(h1 - float(m1["hp"])))
+	var l2: int = int(round(h2 - float(m2["hp"])))
+	print("  [分母] 名义 %d → _apply_damage 扣 %d · _apply_damage_from 扣 %d" % [NOM, l1, l2])
+	_ok("★分母: 两条路都真的扣了血(A=%d B=%d)" % [l1, l2], l1 > 0 and l2 > 0,
+		"有一条是 0 ⇒ 下面那条是空检查")
+	_ok("★分母: 受害者侧状态【真的改变了伤害】(名义 %d vs 实扣 %d)" % [NOM, l1], l1 != NOM,
+		"扣的正好是名义值 ⇒ 减伤没生效, 两条路'一致'没有意义")
+	_ok("④ A-3 同一发名义伤害, 两条路扣血相同(A=%d B=%d)" % [l1, l2], l1 == l2,
+		"两条路各算各的受害者减伤 ⇒ 同一个状态在不同伤害类型下表现不同(CLAUDE.md §3.3)")
+
+	# ══════════════════════════════════════════════════════════════
+	#  ⑤ A-2 暴击口径：两条路【本就该不同】—— 把这句话变成判据
+	# ══════════════════════════════════════════════════════════════
+	## 方案书 `20260904b` 的 A-2 写的是「暴击判定口径相同(**或确认本就该不同并写明**)」。
+	## 代码里确实写明了(`battle_damage.gd`「was_crit 恒 false: 这条路是 DoT/真伤,
+	## 本就不暴击」)—— 但那是**注释**, 谁把 DoT 改成会暴击, 门禁一条都不会红。
+	## ⇒ 判成正面判据, 两个方向都断言: 只断言「DoT 不暴击」的话,
+	##   暴击整个坏掉(两条都不暴击)也会绿。
+	##
+	## ★★判据量的是**扣血**, 不是 `_st_crit` 那个计数器。
+	##   第一版读了 `_st_crit` —— 它由全局 `battle._last_atk_crit` 驱动, 而那个标志是
+	##   **上游 `_resolve_dmg` 设的**; 测试直接调 `_apply_damage_from` 绕过了它,
+	##   于是读到的是**上一次活动的残留** ⇒ 同一份代码三次红一次绿。
+	##   (memory `fb-gate-must-measure-requirement-not-my-hook`: 判据要量产品自己的账。)
+	## ★暴击在这条路上只在 `raw and not pre_crit` 时掷(普通伤害的暴击在上游算过了),
+	##   所以攻击路这一发必须走 raw=true, DoT 那一发用 bucket="tru" 对齐同一语义。
+	print("── ⑤ A-2 暴击: 攻击路会暴, DoT 路不暴(本就该不同) ──")
+	var ca := _mk("ally", c + Vector2(260, 150))
+	var cb := _mk("ally", c + Vector2(300, 150))
+	var csrc := _mk("enemy", c + Vector2(340, 150))
+	csrc["crit"] = 1.0          # 100% 暴击率 ⇒ 必暴, 与随机无关
+	csrc["crit_dmg"] = 2.0
+	var NOM2 := 500
+	var ha: float = float(ca["hp"])
+	var hb: float = float(cb["hp"])
+	_s._damage._apply_damage_from(csrc, ca, NOM2, Color.WHITE, 0.0, true)   # raw=true
+	_s._damage._apply_damage(cb, NOM2, Color.WHITE, csrc, "tru")
+	var la: int = int(round(ha - float(ca["hp"])))
+	var lb: int = int(round(hb - float(cb["hp"])))
+	print("  [分母] 名义 %d · 100%% 暴击率 · 暴伤 ×2 → 攻击路扣 %d · DoT 路扣 %d" % [NOM2, la, lb])
+	_ok("★分母: 两条路都真的扣了血(A=%d B=%d)" % [la, lb], la > 0 and lb > 0,
+		"有一条是 0 ⇒ 下面是空检查")
+	_ok("⑤ A-2 攻击路吃到暴击(扣 %d > DoT 的 %d)" % [la, lb], la > lb,
+		"攻击路没暴 ⇒ 暴击机制坏了, 而不是'两条一致'")
+	_ok("⑤b A-2 DoT 路一次都不暴 —— 攻击路正好是它的 2 倍(暴伤 ×2)", la == lb * 2,
+		"%d vs %d×2=%d ⇒ DoT 也在暴击 或 攻击路暴伤口径变了" % [la, lb, lb * 2])
+
 	print("")
 	if _fail == 0:
 		print("ALL PASS (%d 条)" % _n)
