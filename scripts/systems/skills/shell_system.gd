@@ -332,7 +332,17 @@ func _sk_shell_copy(u: Dictionary, tgt) -> void:
 				pool.append(s)
 				if SkillForms.is_multi(s):
 					forms[s] = SkillForms.current_index(o, s)
-	pool.shuffle()
+	## ★★2026-10-02: 这里原来是 `pool.shuffle()` —— `Array.shuffle()` 走的是
+	##   **引擎全局 RNG**, 而这一步决定龟壳从 76 个可抄技能里抄哪两个 = **直接改结果**。
+	##   三道防线全看不见它: `tools/rng_discipline.py` 的正则**不认 `.shuffle(`**、
+	##   tween 台账与它无关、而 `shell` **在任何确定性门禁里都不在场**。
+	##   与 2026-08-06 已修的召唤物落点同形状(那次实测 3v3 敌血差 262 点)。
+	## ⇒ 改成自己用 `_battle_rng` 洗(Fisher-Yates), 与其它改结果的随机同一条流。
+	for _i in range(pool.size() - 1, 0, -1):
+		var _j: int = battle._battle_rng.randi_range(0, _i)
+		var _tmp = pool[_i]
+		pool[_i] = pool[_j]
+		pool[_j] = _tmp
 	if pool.size() >= 1:                                       # 2026-07-17镜像签名: 施放前两侧紫白残影错位闪现0.35s+白紫环(复制感)
 		var glow = VfxTex._make_fire_glow_tex()
 		for mi in range(2):
