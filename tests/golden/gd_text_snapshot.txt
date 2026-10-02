@@ -1366,6 +1366,10 @@ scripts/systems/skills/shell_system.gd|lit|觉醒
 scripts/systems/trainer/trainer_system.gd|lit|归顺!
 scripts/systems/trainer/trainer_system.gd|lit|魔法石·共鸣 %s
 scripts/util/skill_text.gd|lit|(?<!\">)(?:主动|被动)：
+scripts/util/skill_text.gd|lit|(?<!\">)(?:伤害减免|减伤)(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)(?:治疗效果提升|受到的治疗)(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)(?:魔抗穿透|法穿)(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)(?:龟能充能|充能速度)(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)中毒(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)冰寒(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)减速(?!<)
@@ -1373,6 +1377,7 @@ scripts/util/skill_text.gd|lit|(?<!\">)击退(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)击飞(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)反伤(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)嘲讽(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)增伤(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)定身(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)射程(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)护甲(?!穿透|<)
@@ -1399,7 +1404,7 @@ scripts/util/skill_text.gd|lit|(?<!\">)缴械(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)诅咒(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)闪避(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)额外伤害(?!<)
-scripts/util/skill_text.gd|lit|(?<!\">)魔抗(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)魔抗(?!穿透|<)
 scripts/util/skill_text.gd|lit|(?<!\">)魔法(?!伤害|<)
 scripts/util/skill_text.gd|lit|物理伤害
 scripts/util/skill_text.gd|lit|真实伤害
