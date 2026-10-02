@@ -24,6 +24,7 @@
   换分辨率要按比例传 --pad。
 """
 import argparse
+import io
 import json
 import os
 import sys
@@ -143,11 +144,51 @@ def audit(path, pad_lr=185, pad_top=60, pad_bot=10, step=2):
     return out
 
 
+EDGE_LEDGER = "tests/golden/battle_scene_debt.txt"
+
+
+def _edge_ledger():
+    """读台账里的「战场中带高频密度」。★不存在就返回 None —— 判据会当场红,
+    而不是悄悄跳过(没有台账的棘轮等于没有棘轮)。"""
+    p = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), EDGE_LEDGER)
+    if not os.path.exists(p):
+        return None
+    for line in io.open(p, encoding="utf-8"):
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        k, _, v = line.partition("\t")
+        if k.strip() == "战场中带高频密度":
+            try:
+                return float(v.strip())
+            except ValueError:
+                return None
+    return None
+
+
 def _edge_mid_pct(path):
     """战场中带(去掉上下各 15%)的高频像素占比 —— 「信息密度」的可量化形态。
 
     ★为什么要有这一条: ①~④ 量的是颜色与明暗, 实测**我们 4/4、参考只有 2/4** ——
-      那把尺子解释不了用户说的「UI 全方面差距」。换这个口径当场量出 **4.0 倍**差距。
+      那把尺子解释不了用户说的「UI 全方面差距」。换这个口径才量得出差距。
+
+    ★★★2026-10-02 这把尺子**自己被修过一次**, 旧数字一律作废(见文件尾的更正表):
+      原来写的是 `im.resize((540, h*540/w))` —— 归一的是**宽边**, 而上面这段 docstring
+      和方案书里都写的是「短边归一到 540」。对 1280x720 来说那是 0.42 倍降采样
+      (文档说的 0.75 的一半还多), 于是**把细节抹平了**。
+      合成梯子实测(1280x720):
+
+        | 合成图      | 宽归540(旧) | 短边归540(现) | 原生不缩 |
+        |-------------|------------|--------------|---------|
+        | 纯色        |    0.00    |     0.00     |   0.00  |
+        | **2px 格纹**|  **0.00**  |   88.88      |  74.98  |  ← 旧尺子【瞎】
+        | 4px 格纹    |   97.24    |   55.51      |  43.71  |  ← 旧尺子【饱和】
+        | 白噪声      |   73.89    |   91.40      |  96.53  |
+
+      旧尺子在 2px 完全看不见、4px 就顶到 97 —— 单调性都不成立。
+      ⇒ 它当初量出「逐像素抖动 `dither_steps` 对噪声贡献 **0%**」那条结论,
+        **是尺子看不见, 不是它不存在**。
+      同一场战斗换分辨率的敏感度也是短边归一最小(4.8pp vs 9.4pp), 所以取它。
     """
     try:
         import numpy as np
@@ -155,7 +196,9 @@ def _edge_mid_pct(path):
         return None
     im = Image.open(path).convert("L")
     w, h = im.size
-    im = im.resize((540, max(2, int(h * 540.0 / w))), Image.LANCZOS)
+    ## ★短边归一到 540 —— 与 docstring 一致。改这一行前先跑文件尾的合成梯子自检。
+    _s = 540.0 / min(w, h)
+    im = im.resize((max(2, int(w * _s)), max(2, int(h * _s))), Image.LANCZOS)
     a = np.asarray(im, dtype=np.float32)
     gx = np.abs(np.diff(a, axis=1))[:-1, :]
     gy = np.abs(np.diff(a, axis=0))[:, :-1]
@@ -255,11 +298,37 @@ def verdict(a):
     ##   而且分布是**反的**: 参考把 UI 堆在底部(17.5%)、战场中间很干净(4.6%);
     ##   我们堆在顶部(19.5%)、战场本身就吵(12.5%)。
     ##
-    ## ★阈值取 **8.0%** —— 不是参考那个 3.2%: 一步到位要求降到 1/4 是不现实的,
-    ##   而 8.0 已经能逼着砍掉一半噪声。它是**可以收紧的起点**, 不是终点。
+    ## ★★★2026-10-02 更正: 上面那两段里的 **3.2% / 12.5% / 4.0 倍 全部作废**,
+    ##   阈值 8.0% 也作废。原因有两条, 都是实测:
+    ##
+    ##   ① **尺子自己有 bug**(见 `_edge_mid_pct` 的 docstring): 归一的是宽边不是短边,
+    ##      1280x720 被压到 0.42 倍 ⇒ 2px 尺度的细节**完全看不见**(合成梯子量出 0.00)。
+    ##   ② 拿**同一批参考帧**(51 张 Botworld @1280x720, 就是当初那批)用修好的尺子重量:
+    ##
+    ##        | | 旧记录 | 修正后实测 |
+    ##        |---|---|---|
+    ##        | 参考(中位) | 3.2% | **10.55%**(四分位 10.35~10.87 · 全距 10.22~11.80) |
+    ##        | 我们(中位) | 12.5% | **18.74%**(五个拍摄时刻, 极差 1.07pp) |
+    ##        | 倍数 | 4.0× | **1.78×** |
+    ##
+    ##   ⇒ **阈值 8.0% 比参考自己(10.55%)还低** —— 那是一条「参考来了也得红」的判据,
+    ##     memory `fb-judge-must-fit-the-shape`: 判据宽一格造假 bug、窄一格放过真 bug。
+    ##
+    ## ★现在怎么判: 差距是真的(1.78 倍), 但一步到位不现实 ⇒ 不设硬阈值, 改**棘轮**:
+    ##   与 `tests/golden/battle_scene_debt.txt` 比, **只减不增**。
+    ##   目标写在台账里: 参考全距上沿 **11.80%**。
+    ##   容差 +1.5pp —— 实测同一场战斗五个拍摄时刻极差 1.07pp, 容差要大于它, 否则
+    ##   判据量的是拍摄抖动不是画面(memory `fb-make-assertions-rng-insensitive`)。
     if a.get("edge_mid_pct") is not None:
-        rules.append(("⑤ 战场中带高频密度 ≤ 8.0%(参考 3.2%, 我们起点 12.5%)",
-                      a["edge_mid_pct"] <= 8.0, "%.1f%%" % a["edge_mid_pct"]))
+        _base = _edge_ledger()
+        if _base is None:
+            rules.append(("⑤ 战场中带高频密度: 台账不存在(tests/golden/battle_scene_debt.txt)",
+                          False, "%.2f%%" % a["edge_mid_pct"]))
+        else:
+            _cap = _base + 1.5
+            rules.append(("⑤ 战场中带高频密度只减不增 ≤ %.2f%%(台账 %.2f + 容差 1.5pp; "
+                          "参考 10.55%%, 目标 ≤ 11.80%%)" % (_cap, _base),
+                          a["edge_mid_pct"] <= _cap, "%.2f%%" % a["edge_mid_pct"]))
     return rules
 
 

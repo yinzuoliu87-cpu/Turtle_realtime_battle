@@ -44,6 +44,10 @@ LOCAL_ONLY = {
     "tools/vfx_ingame_check.py":
         "它开真窗口截图(--position 5000,5000, 不是 --headless)量游戏内像素; "
         "GitHub runner 没有显示设备 ⇒ 一张都拍不到。只有本地能验, 推前必须本地跑全套。",
+    "tools/battle_scene_check.py":
+        "它开真窗口拍一张战斗实拍(--position 5000,5000 把窗口丢到屏幕外)再量画面指标; "
+        "GitHub runner 没有显示设备 ⇒ 拍不到。拍摄口径(1280x720 / SELFSHOT=4)钉在脚本里, "
+        "换分辨率量出来就不是同一件事(见 tests/golden/battle_scene_debt.txt)。",
 }
 
 fails = []
