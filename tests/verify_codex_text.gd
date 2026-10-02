@@ -220,6 +220,10 @@ func _ready() -> void:
 ##   (`verify_codex_text` 上面那张 BANNED 表管的是 pets.json 的技能文案, 两条互不覆盖。)
 ## ★两条分母: ① 真的扫到了 N 条规则(N=0 就是空检查) ② 其中至少一条有正文(desc 非空),
 ##   不然"没扫到回合"可能只是因为根本没读到字。
+## ★2026-10-02 扩面: 原来只扫 battle-rules.json。同一天查出 `data/equipment.json` 的
+##   消耗品 `desc` 里也有 3 处「回合」, 而消耗品整个机制在实时版里**零实现**
+##   (图鉴之外 grep 命中 0) —— 已把图鉴那个分组删掉, 数据文件留着当将来的起点。
+##   ⇒ 判据一并扫它, 「回合」回潮(或分组被重新打开)会当场红。
 const RULES_JSON := "res://data/battle-rules.json"
 const ROUND_WORD := "回合"
 
@@ -262,6 +266,26 @@ func _check_rules_no_round() -> void:
 	var bad: Array = _scan_rules_for_round(rules)
 	_ok("★★★⑥ 规则之日一条都不提「回合」(实时版没有回合这个概念)", bad.is_empty(),
 		"命中 %d 处: %s" % [bad.size(), str(bad)])
+
+	## ⑥b 图鉴不许再建【消耗品分组】。
+	##
+	## ★★判据形状换过一次, 记下来: 第一版我去扫 `data/equipment.json` 里还有没有「回合」
+	##   —— **卡错了形状**。那个数据文件现在是**死的**(图鉴之外 grep 命中 0, 分组也删了),
+	##   它里面写什么都不影响玩家; 而且它那 3 条「回合」是回合制时代的原话,
+	##   消耗品**一行实现都没有** ⇒ 我没有任何依据把「3 回合」翻译成「N 秒」,
+	##   硬翻就是**替一个不存在的功能编规格**。
+	## ⇒ 真正要挡的是**分组被重新打开**。那一刻玩家才会看到回合制文案。
+	##   判据就卡这件事: `list_builder.gd` 里不许出现 `consumable`。
+	var lb := FileAccess.get_file_as_string("res://scripts/scenes/codex/list_builder.gd")
+	_ok("★分母: 读得到 list_builder.gd", lb.length() > 500, "%d 字符" % lb.length())
+	var n_c := 0
+	for ln in lb.split("
+"):
+		var code := ln.split("#")[0]
+		if code.contains("consumable"):
+			n_c += 1
+	_ok("★⑥b 图鉴不再建消耗品分组(整个机制实时版零实现, 文案还是回合制的)",
+		n_c == 0, "list_builder.gd 里有 %d 行代码提到 consumable" % n_c)
 
 
 ## 扫一组规则条目里所有【字符串字段】有没有「回合」。

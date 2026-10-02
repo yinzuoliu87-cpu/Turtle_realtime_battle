@@ -92,12 +92,19 @@ func _ready() -> void:
 	for _k in range(8):
 		await get_tree().process_frame
 	var n_p2: int = DataRegistry.phase2_equipment.size()
+	## ★★2026-10-02 重钉到【新契约】: 消耗品分组已从图鉴删掉, 所以它们**不该**出现在行数里。
+	##   原来这里是 `want_eq = n_p2 + n_cons` —— 那是旧契约。
+	##   ⚠ 这不是"把判据放宽让它过": 配套加了一条**反向断言**, 消耗品要是被重新列进去
+	##   (哪怕只有一件), 行数就会超出 `n_p2` ⇒ 当场红。删掉分组的理由见
+	##   `scripts/scenes/codex/list_builder.gd` 那段注释与 `verify_codex_text ⑥b`。
 	var n_cons := 0
 	for eq in DataRegistry.all_equipment:
 		if eq is Dictionary and str(eq.get("category", "")) == "consumable":
 			n_cons += 1
-	var want_eq: int = n_p2 + n_cons
-	_ok("★分母: 数据源里 %d 件装备 + %d 件消耗品" % [n_p2, n_cons], n_p2 >= 90 and n_cons > 0)
+	var want_eq: int = n_p2
+	_ok("★分母: 数据源里 %d 件装备(消耗品 %d 件【有意不列】)" % [n_p2, n_cons],
+		n_p2 >= 90 and n_cons > 0,
+		"n_cons=0 的话下面那条反向断言就是空检查")
 	_ok("★★装备页列出的行数 = 数据源条数(一件都不许被静默丢掉)",
 		inst._items.size() == want_eq,
 		"列表 %d 行 / 数据 %d 条" % [inst._items.size(), want_eq])

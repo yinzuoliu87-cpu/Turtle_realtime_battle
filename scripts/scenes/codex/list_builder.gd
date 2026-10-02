@@ -204,18 +204,24 @@ func _add_equip_rows() -> void:
 			##     一个 NotoEmoji 的彩色字符 —— 而行里本来就有名字, 不写 emoji 不会开天窗。
 			var rname: String = str(eq.get("name", "?"))
 			_add_simple_row(rname, "#ffffff", Color(stroke), ipath, host._items.size() - 1)
-	# 消耗品分组 (取自 all_equipment category=consumable, 8 件; 有 PNG icon)
-	var consumables = []
-	for eq in DataRegistry.all_equipment:
-		if eq is Dictionary and eq.get("category", "") == "consumable":
-			consumables.append(eq)
-	if not consumables.is_empty():
-		_add_header("消耗品", "#06d6a0")
-		for eq in consumables:
-			host._items.append(eq)
-			var icon: String = str(eq.get("icon", ""))
-			var ipath = "res://assets/sprites/%s" % icon if icon.ends_with(".png") else ""
-			_add_simple_row(eq.get("name", "?"), "#ffffff", Color("#06d6a0"), ipath, host._items.size() - 1)
+	## ★★2026-10-02 删掉【消耗品分组】—— 它在教一个玩家永远遇不到的机制。
+	##
+	## 【证据】`grep -rn consumable scripts/ --include=*.gd` 去掉图鉴三处之后 **命中 0**:
+	##   没有使用入口、没有背包格、没有战斗侧实现。整个机制在实时版里**一行都没有**。
+	## 【而且文案还是回合制的】`data/equipment.json` 里 3 条 `desc` 写着
+	##   「剩余冷却时间 -1 **回合**」「持续 3 **回合**」「标记 2 **回合**」——
+	##   这是一款实时游戏, 全仓零个回合计数器。
+	## 【按用户成例处理】用户 2026-09-29「**假规则要删掉**」—— 当时按这句话删了
+	##   battle-rules.json 里「装备之日/下雨天」两条(机制玩家永远遇不到), 并焊了判据⑥。
+	##   消耗品是同一个形状, 而且更彻底(那两条规则至少还在同一个 Tab 里有同伴)。
+	## ⚠ **与「规则之日」不同**: 规则之日是**用户 2026-07-11 明确说过**「改制后加入, 现在待做」
+	##   (见 CodexScene.gd 里那条注释) ⇒ 它保留。消耗品没有这样一句话。
+	## ★数据文件 `data/equipment.json` **不删** —— 真要做消耗品时它是起点;
+	##   判据 `verify_codex_text ⑥b` 卡的是**分组不许重建**(`list_builder.gd` 里不许出现
+	##   `consumable`) —— 不是去扫那份死数据里还有没有「回合」, 那是卡错形状。
+	## ⚠ 删这一段时我**按可见的开头匹配、没看清结尾**, 把 `for` 头删了却留下 3 行循环体,
+	##   当场 14 个测试致命报错(memory `fb-block-delete-eats-functions`: 删块按函数/块的
+	##   **真实边界**定位, 不按注释切范围)。
 
 
 func _add_status_rows() -> void:

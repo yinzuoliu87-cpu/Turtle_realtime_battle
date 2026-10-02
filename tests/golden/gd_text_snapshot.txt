@@ -1227,7 +1227,6 @@ scripts/scenes/codex/list_builder.gd|lit|减益
 scripts/scenes/codex/list_builder.gd|lit|增益
 scripts/scenes/codex/list_builder.gd|lit|持续伤害
 scripts/scenes/codex/list_builder.gd|lit|控制
-scripts/scenes/codex/list_builder.gd|lit|消耗品
 scripts/scenes/codex/list_builder.gd|lit|羁绊赠送
 scripts/scenes/inventory/candy_jar.gd|lit|%s %s 收进了背包
 scripts/scenes/inventory/candy_jar.gd|lit|临时等级器 ×1 收进背包 · 点它再点一只龟或小将, 这一大轮就多一级
