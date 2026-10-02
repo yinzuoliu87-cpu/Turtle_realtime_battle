@@ -22,6 +22,12 @@ const COLOR_CLASS := {
 	"N": "val-normal", "P": "val-pierce", "S": "val-shield",
 	"H": "val-heal", "B": "val-buff", "D": "val-def",
 	"M": "val-magic", "T": "val-true",
+	## ★★E = 【算出来的中性数值】(2026-10-02 加)。原来一个**非伤害**的算术数值
+	##   只能借 `{N:}`(= 物理伤害色 #ff4444) —— 赌徒龟「立刻以约 {N:1/MULTI_ASPD}
+	##   **倍攻击速度**再打一次普攻」就是这么来的: 一个攻速倍率染成了物理伤害红。
+	##   参考自己的规矩是「只有伤害数值上色, 别的不上」(ref/20260930-LoL文案体例.md §6.2),
+	##   而我们连"不上色的算术数值"这一档都没有 ⇒ 补上。
+	"E": "val-emph",
 }
 
 # val-class → hex。三色伤害等语义色【引用 UIPalette】, 不再写字面量
@@ -275,10 +281,32 @@ static var _keyword_re: Array = []
 
 static func _ensure_re() -> void:
 	if _token_re == null:
-		_token_re = RegEx.create_from_string("\\{([NPHSBDMTC]):([^}]+)\\}|\\{([^}]+)\\}")
+		## ★★字母表【从 COLOR_CLASS 生成】, 不手写第二份 (2026-10-02)。
+		## 原来这里写死 `[NPHSBDMTC]` —— 我往 COLOR_CLASS 加了 `"E"` 之后, 颜色那一份认它、
+		## **求值这一份不认**, 于是 `{E:1/X}` 落进后半个分支当成整个表达式求值, 印出字面量
+		## `E:1/0.1667`。门禁 `verify_codex_text` 的「占位符全部能求出数字」当场抓到。
+		## ⇒ 同一个概念出现两份白名单, 必有一份会落后(memory `fb-new-table-doesnt-inherit-old-rules`)。
+		var _letters := ""
+		for k in COLOR_CLASS:
+			_letters += str(k)
+		_letters += "C"   # C = 直接读代码常量, 不走 COLOR_CLASS
+		_token_re = RegEx.create_from_string("\\{([%s]):([^}]+)\\}|\\{([^}]+)\\}" % _letters)
 		_span_re = RegEx.create_from_string("<span\\s+(?:class=\"([^\"]+)\"|style=\"color:\\s*(#[0-9a-fA-F]+)[^\"]*\")[^>]*>([^<]*)</span>|([^<]+)")
 		for rule in KEYWORD_RULES:
 			_keyword_re.append([RegEx.create_from_string(rule[0]), rule[1], (rule[2] if rule.size() > 2 else "")])
+
+
+## 占位符 `{X:expr}` 的**唯一**解析口径。
+##
+## ★★2026-10-02 开这个口子的理由: 这张字母表在仓里有过**三份**——
+##   `COLOR_CLASS`(颜色) / `_token_re`(求值) / `tests/verify_codex_text.gd` 自己又抄了一份。
+##   我往 COLOR_CLASS 加了 `"E"` 之后前两份对上了、第三份没有, 于是门禁红在
+##   「`{E:1/X}` 印出字面量 `E:1/0.1667`」。那个测试文件自己的注释里早就写着
+##   「这是同一晚第三次踩**消费方各写各的求值器**」—— 这回是第四次。
+## ⇒ 谁要扫占位符就调这个函数, 不许再抄正则(memory `fb-hand-rolled-copies-drift`)。
+static func token_regex() -> RegEx:
+	_ensure_re()
+	return _token_re
 
 
 ## 渲染模板 → HTML (1:1 PoC renderSkillTemplate: token 展开 + 关键词上色).
@@ -339,6 +367,7 @@ static func colorize_keywords(result: String) -> String:
 ##   手写色块整段保持该色。对【无嵌套】输入与旧实现逐字节等价(仅多解码 &lt; 等实体), 只消泄漏不造泄漏。
 static func html_to_bbcode(html: String, icon_px: int = ICON_PX) -> String:
 	var _bold_open := false   # 专名 span 另加粗(见下方 val-keyword 分支)
+	var _color_open := false  # 这一层 span 到底开没开 [color] —— val-emph 不开
 	var s := html
 	var out := ""
 	var depth := 0   # span 嵌套深度; 只在最外层 span 开/合处发 [color]/[/color]
@@ -364,7 +393,11 @@ static func html_to_bbcode(html: String, icon_px: int = ICON_PX) -> String:
 				if depth > 0:
 					depth -= 1
 					if depth == 0:
-						out += "[/color]"
+						## ★只有真开过 [color] 才闭合 —— val-emph 是【只加粗不上色】的,
+						##   无条件吐 [/color] 会让 BBCode 配对错位。
+						if _color_open:
+							out += "[/color]"
+							_color_open = false
 						if _bold_open:
 							out += "[/b]"
 							_bold_open = false
@@ -379,7 +412,24 @@ static func html_to_bbcode(html: String, icon_px: int = ICON_PX) -> String:
 					if tag.contains("val-keyword") or tag.contains("val-section"):
 						out += "[b]"
 						_bold_open = true
+					## ★★val-emph = 【强调, 但它不是伤害也不是属性】(2026-10-02)。
+					## 【由来】实测本仓 `val-normal` 一个类在干三件事, 而它的色是
+					##   `UIPalette.PHYS = #ff4444`(物理伤害色):
+					##     ① 物理伤害(`物理伤害` 与 `{N:}` 数值) ② 攻击力属性(图标+文字)
+					##     ③ **通用强调** —— 数据里手写了 111 处, 像「全场最远的敌人」
+					##        「所有伤害」「射程」「选择本技能时」, 全渲染成物理伤害红。
+					## ★判据不是我拍的, 是参考自己的规矩(`ref/20260930-LoL文案体例.md` §6.2,
+					##   从那张干净 PNG 实测):「**只有伤害数值上色, 别的不上**
+					##   —— `takes 55% reduced damage for 7 seconds` 里 55% 和 7 都是白的」。
+					## ⇒ 强调改成**只加粗不上色**: 与 2026-10-02 段标记那次同一个理由 ——
+					##   字重与颜色正交, 不往已经饱和的调色板里再添一种。
+					elif tag.contains("val-emph"):
+						out += "[b]"
+						_bold_open = true
+						depth += 1
+						continue
 					out += "[color=%s]" % _span_color(tag)
+					_color_open = true
 				depth += 1
 			elif low.begins_with("<img"):
 				# 内联属性图标: <img src="res://..."/> → [img width=W color=C]path[/img](等比·高≈字高)。

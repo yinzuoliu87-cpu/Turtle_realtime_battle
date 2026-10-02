@@ -45,6 +45,8 @@ SOFT = ['叠满', '攒满']                              # LoL 自己也用, 只
 TEXT_KEY = re.compile(r'(brief|desc|Desc|Brief|detail|Detail|text|Text|tip|Tip)')
 # 专名记法：2026-10-02 起只许 `【X】` 一种。`「X」` 当专名用是硬零（见 main 里那条）。
 CORNER = re.compile(r'「([^」]{1,20})」')
+# 手写的 val-normal span —— 强调用错了伤害色。正确写法是 val-emph(只加粗不上色)。
+HAND_NORMAL = re.compile(r'<span class="val-normal">([^<]*)</span>')
 # 子句切分: 中文句读 + 真换行 + 括号
 CLAUSE = re.compile(r'[，。；、\n（）()]')
 PCT_HP = re.compile(r'%\s*(最大|已损失|当前)?生命值')
@@ -162,6 +164,25 @@ def main():
     print('  [分母] 扫到的「X」式专名 %d 处(0 处 = 已清干净, 这条守的是别回潮)' % len(corner))
     chk('★专名记法只许【X】一种 —— 「X」渲染出来没有颜色也没有解释(2026-10-02 清零后焊死)',
         corner)
+
+    # ── ②c 数据里不许手写 class="val-normal" 当强调 (2026-10-02) ──
+    # 【实测】`val-normal` 的色是 `UIPalette.PHYS = #ff4444`(物理伤害色), 而它被用在三件事上:
+    #     ① 物理伤害(`物理伤害` 与 `{N:}` 数值)  ② 攻击力属性(图标+文字)
+    #     ③ **通用强调** —— 数据里手写了 111 处, 像「全场最远的敌人」「所有伤害」
+    #        「射程」「选择本技能时」「切近战时」, 全渲染成物理伤害红。
+    # 【判据不是我拍的】是参考自己的规矩(`docs/plans/ref/20260930-LoL文案体例.md` §6.2,
+    #   从用户给的干净 PNG 实测):「**只有伤害数值上色, 别的不上** ——
+    #   `takes 55% reduced damage for 7 seconds` 里 55% 和 7 都是白的」。
+    # ⇒ 强调改用 `val-emph`(只加粗不上色)。①② 两种用法在**代码的自动规则**里, 不在数据里,
+    #   所以这条只管数据 —— 手写一个 val-normal span 就是在把非伤害染成伤害色。
+    # ★硬零不是台账: 留一个额度 = 允许下一个人再把一句话染成物理红。
+    hand = []
+    for tag, path, txt in segs:
+        for m in HAND_NORMAL.finditer(txt):
+            hand.append('%s: %s' % (path, m.group(1)[:24]))
+    print('  [分母] 数据里手写的 class="val-normal" span %d 处(0 = 已清干净)' % len(hand))
+    chk('★数据里不许手写 val-normal 当强调 —— 那是物理伤害色(参考: 只有伤害数值上色)',
+        hand)
 
     # ── ③ 台账 ──
     counts = {}

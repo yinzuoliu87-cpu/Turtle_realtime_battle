@@ -121,7 +121,9 @@ func _ready() -> void:
 	#    2026-07-28 用它抓到: 石头龟被动的 {D:initDef*maxDefInitPct/100/capTurns} 求不出值,
 	#      玩家在图鉴上直接看到公式原文。
 	## ⚠ 这条正则是**本文件自己的一份**, 和 skill_text.gd 里那条是两份手抄 —— 加 token 要两边都改。
-	var tok := RegEx.create_from_string("\\{([NPHSBDMTC]):([^}]+)\\}|\\{([^}]+)\\}")
+	## ★不自己抄正则 —— 字母表的唯一出处是 SkillText.COLOR_CLASS, 见 token_regex() 的头注。
+	##   这里原来写死 `[NPHSBDMTC]`, 新增 `{E:}` 之后它不认, 把一个**正确**的占位符判成求不出数字。
+	var tok := SkillText.token_regex()
 	var dr = get_node_or_null("/root/DataRegistry")
 	var gs = get_node_or_null("/root/GameState")
 	var unresolved: Array = []
@@ -176,6 +178,22 @@ func _ready() -> void:
 		_fail += 1
 		print("  [FAIL] 缺 autoload, 占位符求值检查没跑")
 	_ok("占位符全部能求出数字 (扫了 %d 个)" % n_tok, unresolved.is_empty(), str(unresolved.slice(0, 4)))
+
+	## ★★全仓只许 `skill_text.gd` 自己写占位符正则 (2026-10-02 焊进来)。
+	## 【由来】这张字母表在仓里有过**三份**: `COLOR_CLASS`(颜色) / `_token_re`(求值) /
+	##   **本文件自己又抄了一份**。往 COLOR_CLASS 加 `"E"` 之后前两份对上了、第三份没有,
+	##   于是一个**正确**的占位符被判成"求不出数字"。
+	##   而本文件 160 行附近的注释里早就写着「这是同一晚第三次踩**消费方各写各的求值器**」
+	##   —— 这回是第四次。记 memory `fb-hand-rolled-copies-drift`。
+	## ⇒ 判据量的是**源码事实**: 除了 skill_text.gd, 没有第二个文件在构造这个形状的正则。
+	var copies: Array[String] = []
+	var n_scan := 0
+	for d in ["res://scripts", "res://tests", "res://autoload"]:
+		n_scan += _scan_gd(d, copies)
+	print("  [分母] 扫了 %d 个 .gd 找手抄的占位符正则" % n_scan)
+	_ok("★分母: 真的扫到 .gd(0 个 ⇒ 下一条是空检查)", n_scan >= 100, "只有 %d 个" % n_scan)
+	_ok("★占位符正则全仓只许一份(在 skill_text.gd; 别处要扫占位符请调 SkillText.token_regex())",
+		copies.is_empty(), str(copies))
 	_ok("★分母: 占位符数 > 0 (0 个 = 空检查不是通过)", n_tok > 0, "n_tok=%d" % n_tok)
 
 	_check_rules_no_round()
@@ -273,3 +291,36 @@ func _check(pid: String, path: String, text: String) -> Array:
 		if text.find(str(row[0])) >= 0:
 			out.append("%s.%s 命中「%s」(%s)" % [pid, path, str(row[0]), str(row[1])])
 	return out
+
+## 递归找「自己构造占位符正则」的 .gd。★递归走, 不按我以为的层级。
+## ★返回扫到的 .gd 个数 —— 第一版用 `counter: Callable` 往外加,
+##   而 **GDScript 的 lambda 是按值捕获的**, 外面那个 `n_scan` 永远是 0 ⇒
+##   「只许一份」那条当场变成空检查(配套的分母断言把它抓住了, 这就是分母断言的用处)。
+func _scan_gd(dir_path: String, out: Array[String]) -> int:
+	var n := 0
+	var da := DirAccess.open(dir_path)
+	if da == null:
+		return 0
+	da.list_dir_begin()
+	var nm := da.get_next()
+	while nm != "":
+		var p := dir_path + "/" + nm
+		if da.current_is_dir():
+			if not nm.begins_with("."):
+				n += _scan_gd(p, out)
+		elif nm.ends_with(".gd"):
+			n += 1
+			if p.ends_with("/skill_text.gd"):
+				nm = da.get_next()
+				continue
+			var src := FileAccess.get_file_as_string(p)
+			## 形状: create_from_string 里带着 `{`…`:` 的 token 文法。
+			## ★针要【拼出来】—— 整串写在一行里的话, 这条判据会匹配到它自己(第一版就是这样当场假红)。
+			var needle := "]):(" + "[^}]+)"
+			for ln in src.split("\n"):
+				if ln.contains("create_from_string") and ln.contains(needle):
+					out.append(p.replace("res://", ""))
+					break
+		nm = da.get_next()
+	da.list_dir_end()
+	return n
