@@ -503,14 +503,14 @@ func _text_entry(label: String, cb: Callable, icon_path: String, locked: bool) -
 	var tx0 := tx
 	btn.mouse_entered.connect(func():
 		var tw := holder.create_tween().set_parallel()
-		tw.tween_property(glow, "color:a", 0.10, 0.12)
-		tw.tween_property(dia, "modulate:a", 1.0, 0.12)
-		tw.tween_property(lb, "position:x", tx0 + 6.0, 0.12))
+		tw.tween_property(glow, "color:a", 0.10, UIPalette.T_TAP)
+		tw.tween_property(dia, "modulate:a", 1.0, UIPalette.T_TAP)
+		tw.tween_property(lb, "position:x", tx0 + 6.0, UIPalette.T_TAP))
 	btn.mouse_exited.connect(func():
 		var tw := holder.create_tween().set_parallel()
-		tw.tween_property(glow, "color:a", 0.0, 0.12)
-		tw.tween_property(dia, "modulate:a", 0.0, 0.12)
-		tw.tween_property(lb, "position:x", tx0, 0.12))
+		tw.tween_property(glow, "color:a", 0.0, UIPalette.T_TAP)
+		tw.tween_property(dia, "modulate:a", 0.0, UIPalette.T_TAP)
+		tw.tween_property(lb, "position:x", tx0, UIPalette.T_TAP))
 	btn.pressed.connect(func(): cb.call())
 	return holder
 
@@ -1014,8 +1014,8 @@ func _status_row(now: int = 0) -> void:
 	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	btn.set_anchors_preset(Control.PRESET_FULL_RECT)
 	holder.add_child(btn)
-	btn.mouse_entered.connect(func(): holder.create_tween().tween_property(glow, "color:a", 0.09, 0.12))
-	btn.mouse_exited.connect(func(): holder.create_tween().tween_property(glow, "color:a", 0.0, 0.12))
+	btn.mouse_entered.connect(func(): holder.create_tween().tween_property(glow, "color:a", 0.09, UIPalette.T_TAP))
+	btn.mouse_exited.connect(func(): holder.create_tween().tween_property(glow, "color:a", 0.0, UIPalette.T_TAP))
 	btn.pressed.connect(func(): _go("Record"))
 	content_root.add_child(holder)
 	_slide_in_left(holder, 0)

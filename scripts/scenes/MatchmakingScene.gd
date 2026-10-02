@@ -537,6 +537,6 @@ func _build_card(prof: Dictionary, pos: Vector2, accent: Color, slide_from_dx: f
 	card.pivot_offset = card.size * 0.5
 	var tw := card.create_tween()
 	tw.tween_property(card, "position:x", home_x, 0.42).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-	tw.parallel().tween_property(card, "modulate:a", 1.0, 0.30)
+	tw.parallel().tween_property(card, "modulate:a", 1.0, UIPalette.T_TRANS)
 	tw.tween_property(card, "scale", Vector2(1.06, 0.94), 0.08)   # 撞停 squash
 	tw.tween_property(card, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

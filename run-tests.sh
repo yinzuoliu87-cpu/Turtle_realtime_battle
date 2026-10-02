@@ -752,6 +752,8 @@ run_audit "tools/codex_text_lint.py"     "ALL OK" "codex_text_lint (图鉴文案
 # 文案体例(2026-10-01): 四个 LoL 语料零命中的口语词硬零; 叠满/攒满 与「百分比没写是谁的」记台账只减不增。
 #   ★台账在 tests/golden/copy_style_debt.txt, 减下去要同时改那边的数(脚本有一条专判这个)。
 run_audit "tools/copy_style_audit.py"    "ALL OK" "copy_style (文案体例: 口语词硬零/「X%生命值」必须写明是谁的/叠满台账只减不增)"
+# UI 动效节拍(2026-10-02): 非战斗场景的 tween 裸时长只减不增 —— 参考实测只有三档, 我们有 45 种。
+run_audit "tools/ui_tempo_audit.py"      "ALL OK" "ui_tempo (UI 动效节拍·裸时长种类与处数只减不增)"
 run_audit "tools/twin_const_audit.py"    "ALL OK" "twin_const (同功能的逻辑侧↔演出侧同名常量取值打架)"
 run_audit "tools/twin_radius_audit.py"   "ALL OK" "twin_radius (判定侧↔演出侧【不同名但同值】的范围常量·同一个数存两份)"
 ## ★与上面两条 twin_* 的分工(别合并, 它们各自故意很窄):
