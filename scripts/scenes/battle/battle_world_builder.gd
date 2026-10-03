@@ -535,7 +535,17 @@ func _edge_band_mesh(loops: Array, tex: Texture2D) -> MeshInstance3D:
 	mi.mesh = st.commit()
 	var m := StandardMaterial3D.new()
 	m.albedo_texture = tex
-	m.albedo_color = WALL_COL_LIT
+	## ★★★2026-10-03 海岸线竖面按主题上色。
+	##   实拍四版拼图照出来的: 这道墙**四版一模一样**, 而它是画面上最显眼的构件之一
+	##   ⇒ 四个世界共用同一道边界, 看着就像"同一张图换了个滤镜"。
+	##   咩咩每个生态区的边界也都不一样(地牢是石 curb、沼泽是木栈、营地是草坡)。
+	## ★★用**专用键 `wall_col`**, 而且 `base` **刻意不给** —— 与远景端点同一套做法。
+	##   我第一版图省事直接拿 `stone_col` 推: 算出来 base 会变成 (0.629,0.604,0.570),
+	##   而原值 `WALL_COL_LIT` 是 (0.620,0.660,0.860) —— **不相等**, 等于悄悄改掉已验收的画面。
+	##   (这已经是今晚第三次差点这样: 远景斜坡、沙地映射、这里。
+	##    形状都一样 —— "顺手复用一个相近的键", 而相近 ≠ 相等。)
+	var _wt: Dictionary = ArenaTheme.cfg()
+	m.albedo_color = _wt.get("wall_col", WALL_COL_LIT)
 	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST     # 像素画不许插值成糊
 	m.texture_repeat = true
 	## ★★吃光(W8): 原来是 UNSHADED + 手工标定的 `WALL_GAIN` —— 那个数被地面亮度牵着走,
