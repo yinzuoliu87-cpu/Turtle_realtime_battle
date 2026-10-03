@@ -117,6 +117,11 @@ static func tile_material(ti: int, ws: float, cx: float, cy: float) -> Material:
 			var _ac: Vector2 = _A.position + _A.size * 0.5
 			sm.set_shader_parameter("spot_c", Vector2((_ac.x - cx) * ws, (_ac.y - cy) * ws))
 			sm.set_shader_parameter("spot_half", _A.size * 0.5 * ws)
+		## ★主题地面纹理(detail_tex/detail_scale): 参考地面是手绘的草/泥笔触, 不是程序砖纹。base 不给 ⇒ 原砖纹。
+		var _dt: String = str(ArenaTheme.cfg().get("detail_tex", ""))
+		if _dt != "" and ResourceLoader.exists("res://assets/sprites/map/themes/%s.png" % _dt):
+			sm.set_shader_parameter("detail_tex", load("res://assets/sprites/map/themes/%s.png" % _dt))
+			sm.set_shader_parameter("tex_scale", float(ArenaTheme.cfg().get("detail_scale", 0.32)))
 		## ★岸线切角色: shader 默认是 base 的青色浅水; 主题的海是暗色 ⇒ 不改就在岸边留一圈青色细边(实拍放大照出来的)。
 		if ArenaTheme.cfg().has("water_col"):
 			sm.set_shader_parameter("shore_water_col", ArenaTheme.cfg()["water_col"])

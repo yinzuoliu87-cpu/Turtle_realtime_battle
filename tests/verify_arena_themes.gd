@@ -100,7 +100,7 @@ func _ready() -> void:
 		"detail_amt", "sed_amt",     # 地面砖纹 0.90~1.14 / 斑驳 ±0.08
 		"caustic_web", "edge_soft", "spot_amt",  # 焦散形状 / 岛缘压暗过渡宽度
 		"rim_light_mod", "rim_halo_col", "rim_halo_size",   # 光点着色 / 光晕
-		"field_tufts", "field_tufts_clusters", "field_tufts_h", "field_tufts_mod", "field_piles", "field_piles_clusters", "field_piles_h", "field_piles_mod", "lamp_tex", "lamp_h", "wall_h",   # 场内成簇草丛
+		"field_tufts", "field_tufts_clusters", "field_tufts_h", "field_tufts_mod", "field_piles", "field_piles_clusters", "field_piles_h", "field_piles_mod", "lamp_tex", "lamp_h", "wall_h", "detail_tex", "detail_scale",   # 场内成簇草丛
 	]
 	var base_cfg: Dictionary = AT.cfg_of(AT.V0_BASE)
 	var leaked: Array = []

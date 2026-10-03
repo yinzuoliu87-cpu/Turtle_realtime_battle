@@ -86,8 +86,10 @@ const THEMES: Dictionary = {
 		"label": "暗林",
 		## 地面: Darkwood 真实地面渲染色实测 (0.60,0.57,0.35); 按本仓光照实测倍率 ×1.8 反推反照率
 		"ground_col": Color(0.400, 0.410, 0.210),
-		"stone_col": Color(0.372, 0.381, 0.195),   # 贴近地面色: 两块石台不再是显眼的方块
-		"detail_amt": 0.22,   # 砖纹压到几乎看不见
+		"stone_col": Color(0.396, 0.405, 0.207),   # 贴近地面色: 两块石台不再是显眼的方块
+		"detail_amt": 0.9,   # 配手绘笔触纹理(ground_strokes), 不再是砖纹
+		"detail_tex": "ground_strokes",
+		"detail_scale": 0.14,
 		"sed_amt": 0.16,      # 大块柔和斑驳加强
 		"shore_col": Color(0.262, 0.248, 0.140),
 		## 边界: 真实房间是平台边缘断成**暗色竖崖**, 不是亮色砖墙
@@ -150,8 +152,10 @@ const THEMES: Dictionary = {
 		"label": "深礁",
 		## 地面: Anchordeep 真实地面渲染色实测 (0.15~0.27, 0.42~0.61, 0.41~0.56) 青绿, 反推反照率
 		"ground_col": Color(0.160, 0.410, 0.390),
-		"stone_col": Color(0.150, 0.385, 0.366),
-		"detail_amt": 0.22,   # 砖纹压到几乎看不见
+		"stone_col": Color(0.158, 0.406, 0.386),
+		"detail_amt": 0.9,   # 配手绘笔触纹理(ground_strokes)
+		"detail_tex": "ground_strokes",
+		"detail_scale": 0.14,
 		"sed_amt": 0.16,      # 大块柔和斑驳加强
 		"shore_col": Color(0.100, 0.230, 0.220),
 		"wall_col": Color(0.040, 0.075, 0.085),       # 暗色竖崖
@@ -216,8 +220,10 @@ const THEMES: Dictionary = {
 		"label": "紫墟",
 		## 地面: 真实渲染色实测 (0.24~0.35, 0.04~0.10, 0.36~0.44) 很饱和的深紫, 反推反照率
 		"ground_col": Color(0.300, 0.215, 0.420),   # mixed_012: 薰衣草紫地面, 不是深酒红
-		"stone_col": Color(0.282, 0.202, 0.395),
-		"detail_amt": 0.22,   # 砖纹压到几乎看不见
+		"stone_col": Color(0.297, 0.213, 0.416),
+		"detail_amt": 0.9,   # 配手绘笔触纹理(ground_strokes)
+		"detail_tex": "ground_strokes",
+		"detail_scale": 0.14,
 		"sed_amt": 0.16,      # 大块柔和斑驳加强
 		"shore_col": Color(0.130, 0.035, 0.190),
 		"wall_col": Color(0.050, 0.020, 0.080),
@@ -276,8 +282,10 @@ const THEMES: Dictionary = {
 		##   只换色调。不是复用旧素材库(用户「不要复用」说的是库里已有的那些)。
 		"label": "赤林",
 		"ground_col": Color(0.420, 0.440, 0.240),   # mixed_035: 中心是淡黄绿的亮地, 红的是四周
-		"stone_col": Color(0.392, 0.410, 0.222),
-		"detail_amt": 0.22,   # 砖纹压到几乎看不见
+		"stone_col": Color(0.416, 0.436, 0.238),
+		"detail_amt": 0.9,   # 配手绘笔触纹理(ground_strokes)
+		"detail_tex": "ground_strokes",
+		"detail_scale": 0.14,
 		"sed_amt": 0.16,      # 大块柔和斑驳加强
 		"shore_col": Color(0.300, 0.110, 0.080),
 		"wall_col": Color(0.200, 0.035, 0.040),   # mixed_035: 平台外一整圈是红雾, 暗林那版是黑
