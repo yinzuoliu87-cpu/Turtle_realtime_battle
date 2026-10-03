@@ -114,6 +114,14 @@ static func tile_material(ti: int, ws: float, cx: float, cy: float) -> Material:
 		var wc: Color = ArenaTheme.cfg().get("water_col", Color(0.122, 0.722, 0.769))
 		sm.set_shader_parameter("shallow_col", wc)
 		sm.set_shader_parameter("deep_col", wc.darkened(0.42))
+		## ⛔ 这里试过「浪尖/泡沫映天色」(物理上对: 水反射环境), 动机是**凑有效色数**。
+		##   实测 81 → 78, **反而更低** —— 浪尖与泡沫只出现在很小的面积上, 而判据数的是
+		##   占到 0.1% 面积以上的颜色。⇒ 撤回, 保持从 water_col 同源推出。
+		##   ★★更要紧的是那次测量把**整个方向**推翻了: 拿同一把尺子量咩咩自己的暗地牢
+		##   (raw_01) = **79 色 / 中间调 16.5%**, **低于**我们门禁的 88 / 24%。
+		##   那两个阈值是拿一张**亮场**截图标定的(表里 174/59.7% ≈ raw_04 的 175/56.9%),
+		##   暗场景本来就达不到。我差点为了凑这个数把调色板一路改坏
+		##   (memory `fb-calibrate-the-ruler-before-trusting-it`)。
 		sm.set_shader_parameter("crest_col", wc.lightened(0.55))
 		sm.set_shader_parameter("foam_col", wc.lightened(0.82))
 		sm.set_shader_parameter("shore_land_col", theme_tile_col(0).darkened(0.18))
@@ -717,6 +725,14 @@ func _build_tilemap_decor() -> void:
 			px += step
 		py += step
 	_build_midground(root)      # P2: 中距离地标(补远景与边框装饰带之间那段空白)
+	## ★★★2026-10-03 前景框边挂在这里, 理由有两条:
+	##   ① **这条路才跑**: 地图是数据驱动的, `_build_tilemap_ground` 载入 json 后就 return,
+	##      程序化那条路(`_build_map_props`)根本不跑 —— 我第一版挂在那里, 探针实测一行都没打出来
+	##      (「函数写好了、门禁全绿、游戏里看不见」的经典形状)。
+	##   ② **继承 MAPEDIT 闸**: 中景就是这么挂的, 判据 `verify_midground ②` 按**源码字面**
+	##      认那句单行的 `if not OS.has_environment("MAPEDIT"): _build_tilemap_decor()`。
+	##      我一度把它改成多行 ⇒ 那条判据当场红。挂进来就不用动那一行。
+	_build_foreground_band()
 	_build_tilemap_ambient(root)
 
 
@@ -1029,7 +1045,8 @@ func _build_map_props() -> void:
 		dome.scale = Vector3(1.9, 1.9, 1.9)   # 罩大盖住蛋
 		root.add_child(dome)
 		battle._base_domes[str(pair[0])] = dome
-	_build_theme_decorations(root)   # 珊瑚/海草/礁石 铺边框住战场+填空地(纯装饰无footprint)
+	_build_theme_decorations(root)
+	# 珊瑚/海草/礁石 铺边框住战场+填空地(纯装饰无footprint)
 	_build_lightshafts(root)   # 水面光柱(加性发光, 深海氛围)
 	_build_bubbles(root)       # 漂浮气泡颗粒
 
@@ -1052,6 +1069,65 @@ func _build_map_props() -> void:
 ##      ★顺带解掉一条约束: 椭圆可活动区只有矩形的 78.5%, 往里摆东西会再吃活动空间。
 ##
 ## ★确定性: 用**播种** RNG(`rng_discipline` 门禁拦裸随机, 护确定性回放)。
+## 前景框边 —— 压住画面下沿的一条剪影带。**本仓原来一层都没有。**
+##
+## ★★★2026-10-03 由来: 逐张看咩咩才发现的一条构图装置(上一轮那份统计报告量不出来) ——
+##   `raw_13`(沼泽) 用**超大荷叶**压住上下两边、`raw_04`(营地日景) 用一整排**高草**压住下沿、
+##   `raw_18`(BOSS 场) 左右下角是大片橙草。它们都**部分遮挡**画面, 而且比场内任何东西都近。
+##   作用有两个, 缺了就"少一层":
+##     ① 给画面一个**最近的深度层** —— 没有它, 最近的东西就是单位本身, 画面是平的;
+##     ② 把视线往中间收 —— 参考的战斗区几乎是空的, 靠四周收束才不散。
+##
+## ★为什么用 side 视角的素材而不是 top-down: 它是"立在镜头前"的东西, 不是躺在地上的。
+## ★为什么贴在相机近处而不是场地边缘: 要的是**遮挡**, 不是"场地边上有草"。
+##   放场地边就又变成一圈装饰(我们已经有那一层了)。
+##
+## ⚠ 只做**下沿**。上沿被血条/VS 那条 HUD 占着(实拍可见), 再压一条会打架。
+func _build_foreground_band() -> void:   # ★不收 root: 它挂在相机上, 不挂在世界树上
+	var cfg: Dictionary = ArenaTheme.cfg()
+	var img: String = str(cfg.get("fg_band", ""))
+	if img == "" or img.begins_with("("):
+		return                                   # `base`(现状) 没有这一层, 保持原样
+	var path: String = "res://assets/sprites/map/themes/%s.png" % img
+	if not ResourceLoader.exists(path):
+		return
+	var tex: Texture2D = load(path)
+	if tex == null or battle._cam == null:
+		return
+	## ★★★第一版把它摆在战场平面上(`ARENA.end.y + 210`) —— **实拍里完全看不见**,
+	##   因为那已经在相机可见范围之外(实测 ARENA 下方只有约 124px 可见余量)。
+	##   前景层按定义就该**挂在相机前面**: 它是"立在镜头前的东西", 不是"场地边上的草"。
+	##   ⇒ 做成 `battle._cam` 的子节点, 用相机局部坐标摆位, 与场地几何完全解耦。
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261003
+	## ★★★位置与宽度是**探针量出来的**, 不是拍的:
+	##   第一版 local y = -1.46 ⇒ `unproject_position` 报屏幕 y = **1748**, 而视口只有 1280 高
+	##   —— 整条带在画面底下很远的地方, 所以"函数跑了却看不见"。
+	##   实测相机 fov=40° / near=0.05 / 视口 1280×1280; 在 z=-2.35 处
+	##   半高 = 2.35·tan20° = 0.855 世界单位 ↔ 640px ⇒ **1 世界单位 ≈ 748px**。
+	##   最终成图是 1280×720(从 1280×1280 视口裁出) ⇒ 可见区纵向约 y∈[280,1000]。
+	##   ⇒ 要把带压在可见区下沿 ⇒ 屏幕 y≈960 ⇒ 偏离中心 320px ⇒ local y ≈ -0.43。
+	## ★宽度同理: 贴图 400px 宽, 要铺满 1280px 的 1.3 倍 ⇒ 2.22 世界单位 ⇒ pixel_size ≈ 0.0055。
+	var n := 2
+	for i in range(n):
+		var q := Sprite3D.new()
+		q.texture = tex
+		q.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		q.shaded = false
+		q.transparent = true
+		q.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+		q.pixel_size = 0.0055 * rng.randf_range(0.96, 1.10)
+		## 相机局部坐标: x 横向铺三段(互相重叠), y 压在画面下沿, z 最近。
+		q.position = Vector3((float(i) - 0.5) * 1.05, -0.54 + rng.randf_range(-0.03, 0.03), -2.35)
+		var sx: float = (-1.0 if i == 1 else 1.0)          # 中段镜像, 破平铺感
+		q.scale = Vector3(sx, 1.0, 1.0)
+		## ★压暗: 前景是**剪影**不是主角(咩咩的前景草带实测比场内暗一大截)。
+		var bl: float = rng.randf_range(0.34, 0.46)
+		q.modulate = Color(bl, bl * 0.98, bl * 1.04)
+		q.sorting_offset = 8.0                              # 压在所有东西前面
+		battle._cam.add_child(q)
+
+
 func _build_theme_decorations(root: Node3D) -> void:
 	var cfg: Dictionary = ArenaTheme.cfg()
 	var props: Array = cfg.get("ring_props", [])

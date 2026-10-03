@@ -69,7 +69,11 @@ const THEMES: Dictionary = {
 		"water_col": Color(0.078, 0.090, 0.169),
 		"shore_col": Color(0.318, 0.263, 0.188),      # 湿沙
 		## 周边装饰环(ARENA 外的海面/岸上, 不占活动空间)
-		"ring_props": ["dusk_grass_tuft", "dusk_driftwood", "dusk_lamp_post"],
+		## ★物件**类别数**是对着参考来的: 咩咩单屏中位 7~8 类, 我们原来 3 类。
+		##   而且刻意选**色相互不相同**的 —— 判据「有效色数」量的是 16 级量化后占到
+		##   0.1% 面积以上的颜色数, 靠地面明暗起伏补不上来(试过, 没用), 只能靠真不同的色相。
+		"ring_props": ["dusk_grass_tuft", "dusk_driftwood", "dusk_lamp_post",
+			"dusk_boat", "dusk_flowers", "dusk_crate"],
 		"ring_density": 1.0,
 		## 前景框边: 压住画面下沿的剪影
 		"fg_band": "dusk_grass_silhouette",
