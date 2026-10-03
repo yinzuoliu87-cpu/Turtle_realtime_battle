@@ -102,7 +102,7 @@ const THEMES: Dictionary = {
 		"edge_tufts_n": 70,
 		"edge_tufts_h": [0.8, 1.4],
 		## 框边: 比角色大好几倍的暗色树干剪影(参考 mixed_033~035 左右两侧)
-		"ring_props": ["dusk_trunk_silhouette"],
+		"ring_props": ["field_dark_trunk", "field_dark_trunk", "dusk_trunk_silhouette"],   # 有树皮有描线的深色树干; 纯剪影在黑底上看不见
 		"ring_density": 0.8,
 		"ring_h": [4.2, 6.4],
 		"ring_avoid_bottom": true,
@@ -292,7 +292,7 @@ const THEMES: Dictionary = {
 		"water_col": Color(0.110, 0.012, 0.020),
 		"edge_dark": 0.05,
 		"caustic_amt": 0.0,
-		"ring_props": ["dusk_trunk_silhouette"],
+		"ring_props": ["field_dark_trunk", "field_dark_trunk", "dusk_trunk_silhouette"],   # 有树皮有描线的深色树干; 纯剪影在黑底上看不见
 		"ring_density": 0.9,
 		"ring_h": [4.2, 6.4],
 		"ring_avoid_bottom": true,
