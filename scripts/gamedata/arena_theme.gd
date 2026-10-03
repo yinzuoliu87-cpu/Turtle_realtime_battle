@@ -67,6 +67,7 @@ const THEMES: Dictionary = {
 		"ambient_kind": "bubbles",
 	},
 	V1_DUSK: {
+		"wall_h": 0.35,   # 海岸竖面压成矮边(高墙沿格子成一排台阶方块)
 		"lamp_tex": "field_red_torch",   # 参考: 场内光源是插地的红火把, 不是黄火盆
 		"lamp_h": 1.7,
 		"field_tufts": ["field_tall_grass", "dusk_grass_tuft"],   # 场内成簇大草丛(mixed_033/034 · anchordeep_005/011)
@@ -129,6 +130,7 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(1.0, 0.86, 0.42, 0.45),     # 林间萤光(慢·微上飘)
 	},
 	V2_REEF: {
+		"wall_h": 0.35,   # 海岸竖面压成矮边(高墙沿格子成一排台阶方块)
 		"lamp_tex": "reef_glow_orb",   # anchordeep: 场内光源是青白发光球, 不是黄火盆
 		"lamp_h": 1.3,
 		"field_tufts": ["field_seaweed", "field_seaweed", "reef_kelp_tuft"],   # 场内成簇海草: anchordeep_005/011 的浅绿高海草
@@ -194,6 +196,7 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(0.55, 1.0, 0.75, 0.45),   # 水中浮游光点
 	},
 	V3_SHOAL: {
+		"wall_h": 0.35,   # 海岸竖面压成矮边(高墙沿格子成一排台阶方块)
 		"lamp_tex": "field_red_torch",   # 参考: 场内光源是插地的红火把, 不是黄火盆
 		"lamp_h": 1.7,
 		"field_tufts": ["field_tall_grass"],   # mixed_012: 深蓝紫的高草丛
@@ -252,6 +255,7 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(1.0, 0.45, 0.70, 0.45),
 	},
 	V4_STORM: {
+		"wall_h": 0.35,   # 海岸竖面压成矮边(高墙沿格子成一排台阶方块)
 		"lamp_tex": "field_red_torch",   # 参考: 场内光源是插地的红火把, 不是黄火盆
 		"lamp_h": 1.7,
 		"field_tufts": ["field_tall_grass", "dusk_grass_tuft"],   # 场内成簇大草丛(mixed_033/034 · anchordeep_005/011)

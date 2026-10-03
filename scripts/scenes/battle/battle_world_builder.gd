@@ -117,6 +117,9 @@ static func tile_material(ti: int, ws: float, cx: float, cy: float) -> Material:
 			var _ac: Vector2 = _A.position + _A.size * 0.5
 			sm.set_shader_parameter("spot_c", Vector2((_ac.x - cx) * ws, (_ac.y - cy) * ws))
 			sm.set_shader_parameter("spot_half", _A.size * 0.5 * ws)
+		## ★岸线切角色: shader 默认是 base 的青色浅水; 主题的海是暗色 ⇒ 不改就在岸边留一圈青色细边(实拍放大照出来的)。
+		if ArenaTheme.cfg().has("water_col"):
+			sm.set_shader_parameter("shore_water_col", ArenaTheme.cfg()["water_col"])
 		for _k in ["caustic_amt", "caustic_far", "caustic_col", "caustic_scale", "detail_amt", "sed_amt", "caustic_web", "edge_soft", "spot_amt"]:
 			var _v = ArenaTheme.cfg().get(_k, null)
 			if _v != null:
@@ -516,6 +519,9 @@ func _edge_band_mesh(loops: Array, tex: Texture2D) -> MeshInstance3D:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var tex_w_m: float = WALL_H_M_GEO * (float(tex.get_width()) / WALL_TEX_H)
+	## ★主题可压低海岸竖面(wall_h, 默认 1.0 = 原值): 墙沿格子走成台阶, 一高就是一排方块;
+	##   参考的平台边沿是一道矮边 + 草丛, 不是一圈围墙。
+	var _wh: float = float(ArenaTheme.cfg().get("wall_h", 1.0))
 	var quads := 0
 	for poly in loops:
 		var pts: Array = poly
@@ -531,8 +537,8 @@ func _edge_band_mesh(loops: Array, tex: Texture2D) -> MeshInstance3D:
 			run += seg_m
 			var a_lo: Vector3 = battle._world_pos(a, 0.0)
 			var b_lo: Vector3 = battle._world_pos(b, 0.0)
-			var a_hi: Vector3 = a_lo + Vector3(0.0, WALL_H_M_GEO, 0.0)
-			var b_hi: Vector3 = b_lo + Vector3(0.0, WALL_H_M_GEO, 0.0)
+			var a_hi: Vector3 = a_lo + Vector3(0.0, WALL_H_M_GEO * _wh, 0.0)
+			var b_hi: Vector3 = b_lo + Vector3(0.0, WALL_H_M_GEO * _wh, 0.0)
 			st.set_uv(Vector2(u0, 1.0)); st.add_vertex(a_lo)
 			st.set_uv(Vector2(u1, 1.0)); st.add_vertex(b_lo)
 			st.set_uv(Vector2(u1, 0.0)); st.add_vertex(b_hi)
