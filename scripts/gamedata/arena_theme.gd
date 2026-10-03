@@ -172,7 +172,8 @@ const THEMES: Dictionary = {
 		"edge_tufts_h": [0.7, 1.3],
 		## 框边: 暗色高海草(参考里平台四周一圈海草剪影)
 		"ring_props": ["reef_kelp_silhouette", "reef_kelp_silhouette", "field_pearl_shell"],   # anchordeep_010/011: 外围有大珍珠贝, 珠子发白光
-		"ring_h_of": {"field_pearl_shell": [1.1, 1.6]},   # 第一版带方尖碑, 实拍像一排墓碑, 参考里没有
+		"ring_h_of": {"field_pearl_shell": [1.1, 1.6]},
+		"ring_glow_of": {"field_pearl_shell": Color(0.85, 1.0, 0.95, 0.95)},   # 第一版带方尖碑, 实拍像一排墓碑, 参考里没有
 		"ring_density": 1.1,
 		"ring_h": [3.0, 5.2],
 		"ring_avoid_bottom": true,

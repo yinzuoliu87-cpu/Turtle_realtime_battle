@@ -694,6 +694,47 @@ func _build_rim_lights() -> Array:
 	return made
 
 
+## 立着的一团加性辉光 + 一盏点光, 罩在发光物件(珍珠)上。h = 物件世界高。
+func _glow_puff(p: Vector2, col: Color, h: float) -> Node3D:
+	var n := Node3D.new()
+	n.name = "GlowPuff"
+	var g := Gradient.new()
+	g.set_color(0, Color(col.r, col.g, col.b, col.a))
+	g.set_color(1, Color(col.r, col.g, col.b, 0.0))
+	g.add_point(0.3, Color(col.r, col.g, col.b, col.a * 0.5))
+	var gt := GradientTexture2D.new()
+	gt.gradient = g
+	gt.fill = GradientTexture2D.FILL_RADIAL
+	gt.fill_from = Vector2(0.5, 0.5)
+	gt.fill_to = Vector2(1.0, 0.5)
+	gt.width = 64
+	gt.height = 64
+	var s := Sprite3D.new()
+	s.texture = gt
+	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	s.shaded = false
+	s.transparent = true
+	s.pixel_size = h * 2.6 / 64.0
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	m.albedo_texture = gt
+	m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	s.material_override = m
+	s.position = battle._world_pos(p, h * 0.42)
+	n.add_child(s)
+	var L := OmniLight3D.new()
+	L.light_color = Color(col.r, col.g, col.b)
+	L.light_energy = 4.0
+	L.omni_range = h * 2.2
+	L.shadow_enabled = false
+	L.position = battle._world_pos(p, h * 0.5)
+	n.add_child(L)
+	return n
+
+
 ## 光点脚下贴地的一圈加性光晕(径向渐变)。点光只照得出很淡的一圈, 参考里的光池是饱和的一大片。
 func _rim_halo(p: Vector2, col: Color, size: float) -> MeshInstance3D:
 	var g := Gradient.new()
@@ -1456,6 +1497,11 @@ func _build_theme_decorations(root: Node3D) -> void:
 			if _rm.has(img):
 				spr.modulate = spr.modulate * (_rm[img] as Color)
 			ring_root.add_child(spr)
+			## ★按素材名加辉光(ring_glow_of = {素材名: Color}): anchordeep_010/011 的珍珠是**发光的**,
+			##   一团柔白光晕把周围照亮; 只有贴图没有光 = 一颗白球。
+			var _rg: Dictionary = cfg.get("ring_glow_of", {})
+			if _rg.has(img):
+				ring_root.add_child(_glow_puff(Vector2(px, py), _rg[img] as Color, h * sc))
 
 
 func _build_decorations(root: Node3D) -> void:
