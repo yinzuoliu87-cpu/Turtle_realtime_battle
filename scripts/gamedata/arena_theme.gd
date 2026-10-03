@@ -327,7 +327,17 @@ const REQUIRED_KEYS: Array = [
 
 
 ## 当前主题的配置。★找不到就**报错而不是静默兜底** —— 兜底会让"主题没生效"看起来像"主题生效了"。
+## ★桌面预览用: 环境变量 ARENA_THEME=V1_DUSK 等只在**第一次取配置时**覆盖一次 active。
+##   之后代码里对 active 的赋值照常生效(门禁里切主题的测试不受影响); 不设 ⇒ 什么都不变。
+static var _env_checked: bool = false
+
 static func cfg() -> Dictionary:
+	if not _env_checked:
+		_env_checked = true
+		var _e: String = OS.get_environment("ARENA_THEME")
+		_e = {"V1_DUSK": V1_DUSK, "V2_REEF": V2_REEF, "V3_SHOAL": V3_SHOAL, "V4_STORM": V4_STORM}.get(_e, _e)
+		if THEMES.has(_e):
+			active = _e
 	assert(THEMES.has(active), "ArenaTheme.active 不是已知主题: " + str(active))
 	return THEMES.get(active, THEMES[V1_DUSK])
 
