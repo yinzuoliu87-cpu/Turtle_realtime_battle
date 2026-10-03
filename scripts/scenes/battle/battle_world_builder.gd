@@ -136,6 +136,14 @@ static func tile_material(ti: int, ws: float, cx: float, cy: float) -> Material:
 		var wc: Color = ArenaTheme.cfg().get("water_col", Color(0.122, 0.722, 0.769))
 		sm.set_shader_parameter("shallow_col", wc)
 		sm.set_shader_parameter("deep_col", wc.darkened(0.42))
+		## ★主题: 浪尖/泡沫/岸线切角/细节纹也必须跟着主题走。原来只换了水体色,
+		##   这三样还是默认的青白 ⇒ 四版的黑海在岸边拐角下面泛出一团青白光、海面散着蓝紫小点(实拍放大照出)。
+		if ArenaTheme.cfg().has("water_col"):
+			sm.set_shader_parameter("crest_col", wc.lightened(0.10))
+			sm.set_shader_parameter("foam_col", wc.lightened(0.18))
+			sm.set_shader_parameter("shore_land_col", ArenaTheme.cfg().get("wall_col", wc))
+			sm.set_shader_parameter("detail_amt", 0.0)
+			sm.set_shader_parameter("caustic_amt", 0.0)
 		## ⛔ 这里试过「浪尖/泡沫映天色」(物理上对: 水反射环境), 动机是**凑有效色数**。
 		##   实测 81 → 78, **反而更低** —— 浪尖与泡沫只出现在很小的面积上, 而判据数的是
 		##   占到 0.1% 面积以上的颜色。⇒ 撤回, 保持从 water_col 同源推出。
@@ -787,7 +795,7 @@ func _glow_puff(p: Vector2, col: Color, h: float) -> Node3D:
 	n.add_child(s)
 	var L := OmniLight3D.new()
 	L.light_color = Color(col.r, col.g, col.b)
-	L.light_energy = 2.6
+	L.light_energy = 1.4
 	L.omni_range = h * 2.2
 	L.shadow_enabled = false
 	L.position = battle._world_pos(p, h * 0.5)
@@ -1495,6 +1503,10 @@ func _build_foreground_band() -> void:   # ★不收 root: 它挂在相机上, �
 		## ★压暗: 前景是**剪影**不是主角(咩咩的前景草带实测比场内暗一大截)。
 		var bl: float = rng.randf_range(0.34, 0.46)
 		q.modulate = Color(bl, bl * 0.98, bl * 1.04)
+		## ★贴图已清成纯白剪影(原图是靛蓝 + 品红噪点 + 白高光, 四版共用 ⇒ 暗林前景是蓝紫带亮点);
+		##   颜色由主题给(fg_band_col), 小幅明暗抖动保留。
+		var _fc: Color = cfg.get("fg_band_col", Color(0.06, 0.06, 0.09))
+		q.modulate = Color(_fc.r * bl / 0.40, _fc.g * bl / 0.40, _fc.b * bl / 0.40)
 		q.sorting_offset = 8.0                              # 压在所有东西前面
 		battle._cam.add_child(q)
 
@@ -1644,7 +1656,11 @@ func _build_far_backdrop(root: Node3D) -> void:
 	#   因为远景海床只铺到 z=-30 而最坏机位要看到 z=-42.2(差 12.2 米)。
 	#   现在改成【一张真地形网格】: 有真实高低与透视, 平移缩放都不穿帮。
 	_build_far_terrain(holder)
-	_build_backdrop_thicket(holder)     # ★②a 密集竖直剪影带(2026-09-18, 见该函数长注)
+	## ★主题(no_base_midground)关掉以下全部水下专用远景: 海带剪影带 / 水面光柱 / 鱼群 / 气泡柱。
+	##   它们是默认画面(水下)的东西, 不看主题照画 ⇒ 四版顶上一直挂着光柱(用户 2026-10-03 指出)。
+	var _uw: bool = not bool(ArenaTheme.cfg().get("no_base_midground", false))
+	if _uw:
+		_build_backdrop_thicket(holder)     # ★②a 密集竖直剪影带(2026-09-18, 见该函数长注)
 
 	# ── ②b 远景发光群(珊瑚/海葵/海带) ──────────────────────────
 	# 剪影只有轮廓没有"生气"。加一层加性发光的小点缀, 让远处天际线有光斑闪烁感,
@@ -1698,7 +1714,7 @@ func _build_far_backdrop(root: Node3D) -> void:
 	#   真因是【material_override 没设 albedo_texture】(见上), 修好后光柱是正常的。
 	#   教训: 看到渲染异常先查材质/贴图有没有接上, 别急着归因于"角度/尺寸不合适"。
 	var stex = VfxTex._make_lightshaft_texture()
-	for i in range(6):
+	for i in range(6 if _uw else 0):
 		var sh = Sprite3D.new()
 		sh.texture = stex
 		sh.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -1727,8 +1743,9 @@ func _build_far_backdrop(root: Node3D) -> void:
 	# ── ④鱼群 + ⑤气泡柱: 背景"活起来"的关键 ────────────────────
 	# ★这才是第一版最大的漏 —— 整条远景带零动态。前景在打架、背景一动不动,
 	#   再多装饰也读作"贴了张图"(用户 2026-07-21)。
-	_build_far_fish(holder)
-	_build_far_bubbles(holder)
+	if _uw:
+		_build_far_fish(holder)
+		_build_far_bubbles(holder)
 
 
 ## 程序生成一条山脊剪影贴图: 通宽锯齿轮廓, 下方实心上方透明, 顶沿带一道亮边(轮廓可读).

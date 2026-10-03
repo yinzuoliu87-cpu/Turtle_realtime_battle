@@ -56,13 +56,17 @@ func _ready() -> void:
 			_ok("[%s] ★分母: 装饰精灵数 ≥ 12" % th, sprites.size() >= 12, "%d 个" % sprites.size())
 			_ok("[%s] ★★最远的装饰离中心 ≤ %.2f 倍战场半径(超出 = 摆到岛外黑海面上, 读作悬空)" % [th, R_MAX],
 				worst <= R_MAX, "最远 %.2f  (%s)" % [worst, worst_tex.get_file()])
+		## ★远景只许有地形网格: 水面光柱 / 鱼群 / 气泡柱 / 海带剪影带 / 发光群 都是默认(水下)画面的,
+		##   第一版这里只查了发光群 ⇒ 顶上 4 道光柱照样漏进四版, 用户又指了一次(2026-10-03)。
 		var far: Node = _find_named(s._world, "FarBackdrop")
-		var glows := 0
-		for sp in _all_sprites(far):
+		_ok("[%s] ★分母: 找得到远景容器 FarBackdrop" % th, far != null)
+		var far_sp: Array = _all_sprites(far)
+		var names := {}
+		for sp in far_sp:
 			var tx: Texture2D = (sp as Sprite3D).texture
-			if tx != null and tx.resource_path.get_file().begins_with("glow-"):
-				glows += 1
-		_ok("[%s] 远景没有悬在半空的发光群(珊瑚/海葵光点)" % th, glows == 0, "%d 个" % glows)
+			var k: String = (tx.resource_path.get_file() if tx != null and tx.resource_path != "" else "(程序生成)")
+			names[k] = int(names.get(k, 0)) + 1
+		_ok("[%s] ★★远景里没有任何精灵(光柱/鱼群/气泡/海带带/发光群)" % th, far_sp.size() == 0, str(names))
 		s.queue_free()
 		await get_tree().process_frame
 	AT.active = keep

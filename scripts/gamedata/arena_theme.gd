@@ -67,6 +67,7 @@ const THEMES: Dictionary = {
 		"ambient_kind": "bubbles",
 	},
 	V1_DUSK: {
+		"fg_band_col": Color(0.035, 0.050, 0.030),   # 镜头前剪影带颜色(贴图是纯白剪影)
 		"no_base_midground": true,   # 默认中景(沉船/紫海葵)不进主题
 		"ring_r": [1.0, 1.06],      # 外围物件站在平台边沿上, 不悬在黑海面上
 		"ring_spread": 55.0,
@@ -140,6 +141,7 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(1.0, 0.86, 0.42, 0.45),     # 林间萤光(慢·微上飘)
 	},
 	V2_REEF: {
+		"fg_band_col": Color(0.020, 0.060, 0.060),   # 镜头前剪影带颜色(贴图是纯白剪影)
 		"no_base_midground": true,   # 默认中景(沉船/紫海葵)不进主题
 		"ring_r": [1.0, 1.06],      # 外围物件站在平台边沿上, 不悬在黑海面上
 		"ring_spread": 55.0,
@@ -185,7 +187,7 @@ const THEMES: Dictionary = {
 		## 框边: 暗色高海草(参考里平台四周一圈海草剪影)
 		"ring_props": ["reef_kelp_silhouette", "reef_kelp_silhouette", "field_pearl_shell"],   # anchordeep_010/011: 外围有大珍珠贝, 珠子发白光
 		"ring_h_of": {"field_pearl_shell": [1.1, 1.6]},
-		"ring_glow_of": {"field_pearl_shell": Color(0.85, 1.0, 0.95, 0.6)},   # 0.95 顶上过曝成一大团白   # 第一版带方尖碑, 实拍像一排墓碑, 参考里没有
+		"ring_glow_of": {"field_pearl_shell": Color(0.70, 0.95, 0.88, 0.28)},   # 0.6 仍是过曝白团   # 0.95 顶上过曝成一大团白   # 第一版带方尖碑, 实拍像一排墓碑, 参考里没有
 		"ring_density": 1.1,
 		"ring_h": [3.0, 5.2],
 		"ring_avoid_bottom": true,
@@ -216,6 +218,7 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(0.55, 1.0, 0.75, 0.45),   # 水中浮游光点
 	},
 	V3_SHOAL: {
+		"fg_band_col": Color(0.050, 0.025, 0.070),   # 镜头前剪影带颜色(贴图是纯白剪影)
 		"no_base_midground": true,   # 默认中景(沉船/紫海葵)不进主题
 		"ring_r": [1.0, 1.06],      # 外围物件站在平台边沿上, 不悬在黑海面上
 		"ring_spread": 55.0,
@@ -290,6 +293,7 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(1.0, 0.45, 0.70, 0.45),
 	},
 	V4_STORM: {
+		"fg_band_col": Color(0.090, 0.015, 0.020),   # 镜头前剪影带颜色(贴图是纯白剪影)
 		"no_base_midground": true,   # 默认中景(沉船/紫海葵)不进主题
 		"ring_r": [1.0, 1.06],      # 外围物件站在平台边沿上, 不悬在黑海面上
 		"ring_spread": 55.0,
