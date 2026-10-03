@@ -426,14 +426,51 @@ func upload_ghost(row: Dictionary) -> void:
 	if not enabled() or row.is_empty():
 		_bye()
 		return
+	if not await _await_token():
+		print("[SupabaseNet] 快照没传: 拿不到登录令牌(ghosts)")
+		apply_upload_response(false, 0)
+		_bye()
+		return
 	## ★`Prefer: resolution=merge-duplicates` = upsert。同键(同一个人·同一周·同一场次)
 	##   再传就覆盖 —— D5「每场都传」靠的就是这个, 否则第二次传会撞主键报 409。
 	var url := base_url().rstrip("/") + "/rest/v1/ghosts"
 	_http("POST", url, JSON.stringify(row),
 		func(res):
+			_log_upload_fail("ghosts", res)
 			apply_upload_response(bool(res.get("ok", false)), int(res.get("code", 0)))
 			_bye(),
 		"Prefer: resolution=merge-duplicates,return=minimal")
+
+
+## ★★2026-10-04 上传前先要有**有效的**登录令牌。
+##   由来: 10 个模拟号这周打了两百多场, 服务端 `ghosts` 里**一行都没有**(只读查实);
+##   探针: 令牌为空时上传 ⇒ 请求头退回公共匿名钥匙 ⇒ 401 / 42501「违反行级权限」;
+##   同一个号先续期拿到令牌再传 ⇒ 201。令牌只活在内存, 冷启动头几秒是空的, 约 1 小时过期;
+##   原来上传那条路**不看令牌**就发, 失败也只记一个计数、不打日志 —— 所以一直没人发现。
+## ⇒ 没有/快过期就先续(走产品自己的 `ensure_signed_in_async`), 等最多约 10 秒。
+static func token_fresh(now: int) -> bool:
+	return _token != "" and (_expires_at <= 0 or _expires_at - now > REFRESH_MARGIN_SEC)
+
+
+func _await_token() -> bool:
+	if token_fresh(int(Time.get_unix_time_from_system())):
+		return true
+	ensure_signed_in_async()
+	for _i in range(600):
+		if not is_inside_tree():
+			return false
+		await get_tree().process_frame
+		if _token != "":
+			return true
+	return _token != ""
+
+
+## 上传被拒时把服务端原话打出来 —— 原来只记一个失败计数, 401 静默了一整周。
+static func _log_upload_fail(table: String, res: Dictionary) -> void:
+	var code := int(res.get("code", 0))
+	if code >= 200 and code < 300:
+		return
+	print("[SupabaseNet] 上传 %s 被拒 code=%d %s" % [table, code, str(res.get("body", "")).left(200)])
 
 
 # ═════════════════════════════════════════════════════════════
@@ -475,9 +512,15 @@ func upload_gauntlet(row: Dictionary) -> void:
 	if not enabled() or row.is_empty():
 		_bye()
 		return
+	if not await _await_token():
+		print("[SupabaseNet] 快照没传: 拿不到登录令牌(gauntlet_ghosts)")
+		apply_upload_response(false, 0)
+		_bye()
+		return
 	var url := base_url().rstrip("/") + "/rest/v1/gauntlet_ghosts"
 	_http("POST", url, JSON.stringify(row),
 		func(res):
+			_log_upload_fail("gauntlet_ghosts", res)
 			apply_upload_response(bool(res.get("ok", false)), int(res.get("code", 0)))
 			_bye(),
 		"Prefer: resolution=merge-duplicates,return=minimal")
