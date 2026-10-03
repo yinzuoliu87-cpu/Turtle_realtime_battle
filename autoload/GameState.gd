@@ -1750,7 +1750,8 @@ func _apply_save_dict(data: Dictionary) -> void:
 	cloud_rev = int(data.get("cloud_rev", 0))
 	season_id = int(data.get("season_id", 1))
 	season_start_ts = int(data.get("season_start_ts", 0))
-	hearts = int(data.get("hearts", 8))
+	## ★2026-10-03 周六实操 S6:「剩余生命 8 / 6」—— 上限从 8 改成 6 后老档没夹, 默认值也还写着 8。
+	hearts = clampi(int(data.get("hearts", _P2.HEARTS_MAX)), 0, int(_P2.HEARTS_MAX))
 	season_total_battles = int(data.get("season_total_battles", 0))
 	season_eggs_killed = int(data.get("season_eggs_killed", 0))
 	season_wins = int(data.get("season_wins", 0))

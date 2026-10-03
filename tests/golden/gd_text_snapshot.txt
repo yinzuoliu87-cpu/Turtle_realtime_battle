@@ -641,6 +641,7 @@ scripts/scenes/MainMenuScene.gd|lit|💀 闯关赛已出局(%s) · 下周一开�
 scripts/scenes/MainMenuScene.gd|lit|📋 本周配额 %d 场已打满 · %s
 scripts/scenes/MainMenuScene.gd|lit|📋 本周配额 %d 场已打满 · 下周一开新的一轮
 scripts/scenes/MainMenuScene.gd|lit|🔒 本周没晋级 · 下周一开新的一轮, 积分赛打够 %d 胜就能来
+scripts/scenes/MainMenuScene.gd|lit|🔒 本周没晋级 · 积分赛命用完了 · 下周一开新的一轮
 scripts/scenes/MainMenuScene.gd|lit|🔒 本大轮打完第一场才开店
 scripts/scenes/MainMenuScene.gd|text| 今
 scripts/scenes/MainMenuScene.gd|text|先下场练练
@@ -1020,6 +1021,9 @@ scripts/scenes/battle/battle_hud.gd|lit|赛季胜场
 scripts/scenes/battle/battle_hud.gd|lit|赛季胜场 +1
 scripts/scenes/battle/battle_hud.gd|lit|返回主菜单
 scripts/scenes/battle/battle_hud.gd|lit|返回菜单
+scripts/scenes/battle/battle_hud.gd|lit|闯关 %s · 不消耗生命
+scripts/scenes/battle/battle_hud.gd|lit|闯关 %s · 晋级决赛日
+scripts/scenes/battle/battle_hud.gd|lit|闯关 %s · 闯关赛出局
 scripts/scenes/battle/battle_hud.gd|lit|阵容上传
 scripts/scenes/battle/battle_hud.gd|lit|🏆 战斗胜利!
 scripts/scenes/battle/battle_hud.gd|lit|💀 战斗失败!

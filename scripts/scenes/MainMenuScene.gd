@@ -1654,6 +1654,10 @@ func _msg_quota_full() -> String:
 ##       座位空着、桶还可能卡住。
 func _msg_gauntlet_block() -> String:
 	if not GameState.gauntlet_eligible():
+		## ★2026-10-03 周六实操 S13: 14 胜 / 16 胜的人被告知「打够 11 胜就能来」——
+		##   晋级是「胜场过线 **且** 没淘汰」(gauntlet_line_reached), 这句原来不分是哪一条没过。
+		if GameState.is_eliminated() and int(GameState.season_wins) >= int(_P2C.PROMOTE_WINS):
+			return "🔒 本周没晋级 · 积分赛命用完了 · 下周一开新的一轮"
 		return "🔒 本周没晋级 · 下周一开新的一轮, 积分赛打够 %d 胜就能来" % int(
 			_P2C.PROMOTE_WINS)
 	var st: String = GameState.gauntlet_state()

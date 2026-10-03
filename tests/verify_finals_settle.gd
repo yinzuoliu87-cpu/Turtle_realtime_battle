@@ -52,6 +52,13 @@ func _ready() -> void:
 	await _t_real_settle()
 	_t_seal_and_reveal()
 	print("")
+	## S6(2026-10-03 周六实操):「剩余生命 8 / 6」—— 读档必须把命夹进上限。★整份重载存档字段, 所以放最后。
+	GameState._apply_save_dict({"hearts": 8})
+	_ok("⑨ ★老档 8 命读进来夹到上限 %d" % int(P2C.HEARTS_MAX), int(GameState.hearts) == int(P2C.HEARTS_MAX), str(GameState.hearts))
+	GameState._apply_save_dict({})
+	_ok("⑨ 没有记录时默认 = 上限", int(GameState.hearts) == int(P2C.HEARTS_MAX), str(GameState.hearts))
+	GameState._apply_save_dict({"hearts": 2})
+	_ok("⑨ ★分母: 上限以内的命原样保留", int(GameState.hearts) == 2, str(GameState.hearts))
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 决赛日结算" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
@@ -253,6 +260,25 @@ func _t_real_settle() -> void:
 	var u2: int = int(_BE.gauntlet_uploads)
 	scene._settle_season(true)
 	_ok("③ ★分母: 周日那一场不传周六快照", int(_BE.gauntlet_uploads) == u2)
+
+	## ★2026-10-03 周六实操 S3/S17: 周六结算屏副标题。走真结算 → 真 HUD 函数。
+	GameState.week_phase = P2C.PHASE_GAUNTLET
+	GameState.lane_results = {"top": "lost"}
+	GameState.gauntlet_wins = 1
+	GameState.gauntlet_losses = 0
+	GameState.hearts = 3
+	scene._settle_season(false)          # 1-0 → 输 → 1-1
+	var sub1: String = scene._hud._result_subtitle(false, GameState)
+	_ok("③ ★★周六输了**不写**「消耗 1 点生命」, 写闯关战绩", sub1.find("消耗 1 点生命") < 0 and sub1.find("1-1") >= 0, sub1)
+	GameState.gauntlet_losses = 2
+	scene._settle_season(false)          # 1-2 → 输 → 1-3 出局
+	var sub2: String = scene._hud._result_subtitle(false, GameState)
+	_ok("③ ★★打到出局那场写「闯关赛出局」", sub2.find("出局") >= 0, sub2)
+	GameState.week_phase = P2C.PHASE_RANKED
+	GameState.hearts = 5
+	scene._settle_season(false)
+	_ok("③ ★分母: 积分赛输了照旧写「消耗 1 点生命」",
+		scene._hud._result_subtitle(false, GameState) == "消耗 1 点生命", scene._hud._result_subtitle(false, GameState))
 
 	## ★★决赛日那套记账本身(`finals_settle`)单独量 —— 它上线那天才会被调到,
 	##   但规则现在就得对, 不然上线那天才发现就晚了。

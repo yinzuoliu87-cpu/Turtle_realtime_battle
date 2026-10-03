@@ -1510,6 +1510,16 @@ func _show_banner(won: bool, _sealed_hint: bool = false) -> void:
 func _result_subtitle(won: bool, gs) -> String:
 	if not battle._had_season or gs == null:
 		return "练习赛 · 不计入赛季进度"
+	## ★★2026-10-03 周六实操 S3/S17: 周六输了写着「消耗 1 点生命」(周六根本不掉命), 出局那场也不说出局。
+	##   周六这一支必须排在「生命已耗尽」前面: 0 命但已晋级的人周六照常打闯关赛。
+	if str(battle._last_settle_kind) == _P2C_HUD.SETTLE_GAUNTLET:
+		var _gl: String = _P2C_HUD.gauntlet_label(int(gs.gauntlet_wins), int(gs.gauntlet_losses))
+		var _st: String = str(gs.gauntlet_state())
+		if _st == _P2C_HUD.GAUNTLET_IN:
+			return "闯关 %s · 晋级决赛日" % _gl
+		if _st == _P2C_HUD.GAUNTLET_OUT:
+			return "闯关 %s · 闯关赛出局" % _gl
+		return "闯关 %s · 不消耗生命" % _gl
 	if gs.is_eliminated():
 		return "生命已耗尽 · 本赛季结束"
 	if battle._last_was_exhibition:

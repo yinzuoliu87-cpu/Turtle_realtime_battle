@@ -587,6 +587,7 @@ var _settled := false                       # 结果只喂赛季一次的守卫
 var _had_season := false                     # 本局有赛季态(玩家配了season_leaders); demo=false→不喂只显横幅
 var _last_reward := 0                         # 本局给的深海币 (结算显示)
 var _last_was_exhibition := false             # 进场已0命=表演赛(无stake)
+var _last_settle_kind := ""                   # 这一局用哪套结算口径(结算屏的副标题要分周六) —— 2026-10-03 S3
 
 var _cam: Camera3D
 var _ui_layer: CanvasLayer                # 血条/龟能 overlay + 标题 + 结算 (贴在 3D 之上)
@@ -7551,6 +7552,7 @@ func _settle_season(won: bool) -> void:
 		Phase2Cfg.phase_mode_live(str(gs.week_phase)))
 	## ★判据与「为什么这几支是这个顺序」都在 `Phase2Cfg.is_exhibition()` 头注里。
 	_last_was_exhibition = Phase2Cfg.is_exhibition(gs.is_eliminated(), _sk)
+	_last_settle_kind = _sk
 	if _sk == Phase2Cfg.SETTLE_GAUNTLET:
 		## ★★E-A5 闯关赛(周六): **不掉命**, 每场固定 8 币 + 2 经验。
 		##   原稿逐字:「每场照常结算深海币(**无命**, 公式退化为固定数 8)+ 经验 2 + 货架刷新」。
