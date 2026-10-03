@@ -131,7 +131,11 @@ const THEMES: Dictionary = {
 	V2_REEF: {
 		"lamp_tex": "reef_glow_orb",   # anchordeep: 场内光源是青白发光球, 不是黄火盆
 		"lamp_h": 1.3,
-		"field_tufts": ["reef_kelp_tuft"],   # 场内成簇大草丛(mixed_033/034 · anchordeep_005/011)
+		"field_tufts": ["field_seaweed", "field_seaweed", "reef_kelp_tuft"],   # 场内成簇海草: anchordeep_005/011 的浅绿高海草
+		"field_piles": ["field_reef_rocks"],   # anchordeep_016/031: 场内一堆堆深色礁石
+		"field_piles_clusters": 7,
+		"field_piles_h": [0.8, 1.2],
+		"field_tufts_mod": Color(0.72, 0.86, 0.62),   # 新海草偏白 ⇒ 压向参考的橄榄绿
 		"field_tufts_clusters": 9,
 		"field_tufts_h": [1.4, 2.3],
 		"caustic_web": 1.0,    # 网状细线焦散(anchordeep_011/016/020)
@@ -143,8 +147,8 @@ const THEMES: Dictionary = {
 		##   anchordeep_003/011/020/025 等 14 张(桌面 `咩咩参考_真实游玩20张.jpg`)。
 		"label": "深礁",
 		## 地面: Anchordeep 真实地面渲染色实测 (0.15~0.27, 0.42~0.61, 0.41~0.56) 青绿, 反推反照率
-		"ground_col": Color(0.140, 0.350, 0.330),
-		"stone_col": Color(0.130, 0.325, 0.306),
+		"ground_col": Color(0.160, 0.410, 0.390),
+		"stone_col": Color(0.150, 0.385, 0.366),
 		"detail_amt": 0.22,   # 砖纹压到几乎看不见
 		"sed_amt": 0.16,      # 大块柔和斑驳加强
 		"shore_col": Color(0.100, 0.230, 0.220),
