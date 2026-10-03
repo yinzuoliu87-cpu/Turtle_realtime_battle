@@ -1413,7 +1413,7 @@ func _week_close_block(now: int) -> Control:
 	if kind == BK_NO_CLOSE:
 		if ph == _P2C.PHASE_FINALS:
 			head = "决赛日"
-			sub = "本地 %s 开打" % _local_hhmm(_utc_today_at(now, int(_P2C.FINALS_START_HOUR_UTC)))
+			sub = "本地 %s 开打" % _local_hhmm(_utc_today_at(now, int(_P2C.FINALS_SEAT_HOUR_UTC)))
 		else:
 			head = "休赛日"
 			sub = "周二开赛 · 本日维护"
@@ -1422,7 +1422,7 @@ func _week_close_block(now: int) -> Control:
 		var _tmr: int = now + 86400
 		var _tph: String = _P2C.phase_at_utc(_tmr)
 		if _tph == _P2C.PHASE_FINALS:
-			sub = "明天决赛日 · 本地 %s 开打" % _local_hhmm(_utc_today_at(_tmr, int(_P2C.FINALS_START_HOUR_UTC)))
+			sub = "明天决赛日 · 本地 %s 开打" % _local_hhmm(_utc_today_at(_tmr, int(_P2C.FINALS_SEAT_HOUR_UTC)))
 		else:
 			sub = "明天%s" % str(_P2C.PHASE_LABEL.get(_tph, ""))
 	elif kind == BK_LOCKED:

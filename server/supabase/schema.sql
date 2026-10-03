@@ -801,3 +801,11 @@ end $$;
 revoke all on function public.finals_opponent(bigint, int, int, int) from public;
 revoke execute on function public.finals_opponent(bigint, int, int, int) from anon;
 grant execute on function public.finals_opponent(bigint, int, int, int) to authenticated;
+
+-- ─────────────────────────────────────────────────────────────
+-- 线上 pg_cron 任务（2026-10-04 从真库 `cron.job` 只读抄来；原来仓库里没有记录）
+--   jobid 1  '* * * * 0'          select public.finals_advance(<本周一 00:00 UTC 的 epoch>)   周日每分钟推进轮次/补判
+--   jobid 5  '*/10 8-23 * * 0'    select public.finals_seat(<同上>)                          周日 08:00 起每 10 分钟分桶
+--   周号写法: (extract(epoch from date_trunc('week', now() at time zone 'UTC'))::bigint) —— 与客户端 week_anchor_ts 一致(已核)。
+--   ★客户端 phase2_config.FINALS_SEAT_HOUR_UTC 必须等于 jobid 5 的首个小时(8)。
+-- ─────────────────────────────────────────────────────────────

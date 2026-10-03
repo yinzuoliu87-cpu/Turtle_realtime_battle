@@ -465,7 +465,7 @@ func _ticks(packed) -> void:
 		await get_tree().process_frame
 	var c: Array = _strip_texts(mm)
 	## ★2026-10-03 实拍: 周六收盘后写着「休赛日 · 周二开赛 · 本日维护」, 而明天是决赛日
-	_ok("⑥ ★★周六 23:00 收盘后写「今日已收盘」并说明天是决赛日(不是休赛日)", c.has("今日已收盘") and not c.has("休赛日") and str(c).find("明天决赛日") >= 0, str(c))
+	_ok("⑥ ★★周六 23:00 收盘后写「今日已收盘」并说明天是决赛日(不是休赛日)", c.has("今日已收盘") and not c.has("休赛日") and str(c).find("明天决赛日 · 本地 %s 开打" % mm._local_hhmm(mm._utc_today_at(sat + 86400, int(P2.FINALS_SEAT_HOUR_UTC)))) >= 0, str(c))
 	mm.strip_now_override = SUN0 + 5 * 86400 + 23 * 3600 + 5 * 60   # 周五 23:05
 	mm._sb_poll()
 	for _i in range(4):
