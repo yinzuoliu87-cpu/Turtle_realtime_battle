@@ -323,7 +323,7 @@ func _adopt(n: Node3D, life: float, kind: String, extra: Dictionary = {}) -> Nod
 	if _fx.size() >= OWNED_CAP:
 		var old: Dictionary = _fx.pop_front()
 		var x = old.get("node", null)
-		if x is Node3D and is_instance_valid(x):
+		if is_instance_valid(x) and x is Node3D:
 			x.queue_free()
 	var d: Dictionary = {"node": n, "t": 0.0, "life": maxf(0.01, life), "kind": kind}
 	for k in extra:
@@ -530,10 +530,10 @@ func _spawn_aegis(u: Dictionary) -> void:
 ## ★为什么是子节点: 位置/缩放/朝向全跟着罩子走, 不用两处各算一遍(手抄的副本必然落后)。
 func _ensure_panels(a: Dictionary) -> void:
 	var old = a.get("panels", null)
-	if old is MeshInstance3D and is_instance_valid(old):
+	if is_instance_valid(old) and old is MeshInstance3D:
 		return
 	var host = a.get("node", null)
-	if not (host is Node3D) or not is_instance_valid(host):
+	if not is_instance_valid(host) or not (host is Node3D):
 		return
 	var mi := MeshInstance3D.new()
 	mi.mesh = panel_mesh()
@@ -564,7 +564,7 @@ func _start_build(a: Dictionary) -> void:
 	_ensure_panels(a)
 	a["build_t"] = 0.0
 	var pn = a.get("panels", null)
-	if pn is MeshInstance3D and is_instance_valid(pn):
+	if is_instance_valid(pn) and pn is MeshInstance3D:
 		(pn as MeshInstance3D).visible = true
 
 
@@ -600,7 +600,7 @@ func tick(delta: float) -> void:
 	for i in range(_fx.size() - 1, -1, -1):
 		var f: Dictionary = _fx[i]
 		var n = f.get("node", null)
-		if not (n is Sprite3D) or not is_instance_valid(n):
+		if not is_instance_valid(n) or not (n is Sprite3D):
 			_fx.remove_at(i)
 			continue
 		f["t"] = float(f["t"]) + delta
@@ -651,7 +651,7 @@ func _tick_aegis(delta: float) -> void:
 		var nd = a.get("node", null)
 		## ⚠ 罩子是 MeshInstance3D 不是 Sprite3D —— 这里漏改会让它一进 tick 就被当成
 		##   无效条目移除掉(2026-08-09 实测: 罩子建出来了但下一帧就没了)
-		if not (nd is Node3D) or not is_instance_valid(nd):
+		if not is_instance_valid(nd) or not (nd is Node3D):
 			_aegis.remove_at(i)
 			continue
 		var s: MeshInstance3D = nd
@@ -719,7 +719,7 @@ func _tick_build(a: Dictionary, delta: float, out_a: float) -> void:
 	if bt < 0.0:
 		return
 	var pn = a.get("panels", null)
-	if not (pn is MeshInstance3D) or not is_instance_valid(pn):
+	if not is_instance_valid(pn) or not (pn is MeshInstance3D):
 		a["build_t"] = -1.0
 		return
 	bt += delta
@@ -747,13 +747,13 @@ func clear() -> int:
 	var n := 0
 	for f in _fx:
 		var x = f.get("node", null)
-		if x is Node3D and is_instance_valid(x):
+		if is_instance_valid(x) and x is Node3D:
 			x.queue_free()
 			n += 1
 	_fx.clear()
 	for a in _aegis:
 		var y = a.get("node", null)
-		if y is Node3D and is_instance_valid(y):
+		if is_instance_valid(y) and y is Node3D:
 			y.queue_free()
 			n += 1
 	_aegis.clear()
@@ -761,7 +761,7 @@ func clear() -> int:
 	##   (memory [[fb-write-without-reader-and-fake-gates]] 同族: 新增了一类节点却没接进撤场)
 	for b in _bolts:
 		var z = b.get("node", null)
-		if z is Node3D and is_instance_valid(z):
+		if is_instance_valid(z) and z is Node3D:
 			z.queue_free()
 			n += 1
 	_bolts.clear()
@@ -774,20 +774,20 @@ func alive_count(kind: String = "") -> int:
 	if kind == "" or kind == "aegis":
 		for a in _aegis:
 			var y = a.get("node", null)
-			if y is Node3D and is_instance_valid(y):
+			if is_instance_valid(y) and y is Node3D:
 				n += 1
 	## ★在途光弹存在 `_bolts` 里(不在 `_fx`) —— 漏了这一段, `alive_count("rbolt")` 永远是 0,
 	##   门禁会把"光弹当场就在"判成没有(2026-08-09 实测)。
 	if kind == "" or kind == "rbolt":
 		for b in _bolts:
 			var bn = b.get("node", null)
-			if bn is Node3D and is_instance_valid(bn):
+			if is_instance_valid(bn) and bn is Node3D:
 				n += 1
 	if kind == "aegis" or kind == "rbolt":
 		return n
 	for f in _fx:
 		var x = f.get("node", null)
-		if not (x is Node3D) or not is_instance_valid(x):
+		if not is_instance_valid(x) or not (x is Node3D):
 			continue
 		if kind != "" and str((x as Node).get_meta(META_KEY, "")) != kind:
 			continue
@@ -803,7 +803,7 @@ func fx_nodes(kind: String = "") -> Array:
 	var out: Array = []
 	for f in _fx:
 		var x = f.get("node", null)
-		if not (x is Node3D) or not is_instance_valid(x):
+		if not is_instance_valid(x) or not (x is Node3D):
 			continue
 		if kind != "" and str(f.get("kind", "")) != kind:
 			continue
@@ -818,7 +818,7 @@ func aegis_node_of(u) -> Node3D:
 	if a.is_empty():
 		return null
 	var n = a.get("node", null)
-	return n if (n is Node3D and is_instance_valid(n)) else null
+	return n if (is_instance_valid(n) and n is Node3D) else null
 
 
 ## 某只龟当下那层【合拢板】的节点(没有返回 null)。★门禁量真实对象用。
@@ -827,7 +827,7 @@ func panels_node_of(u) -> MeshInstance3D:
 	if a.is_empty():
 		return null
 	var n = a.get("panels", null)
-	return n if (n is MeshInstance3D and is_instance_valid(n)) else null
+	return n if (is_instance_valid(n) and n is MeshInstance3D) else null
 
 
 ## 合拢进度(秒; < 0 表示当下没在装配)。门禁用它验"补盾真的放了一次合拢"。

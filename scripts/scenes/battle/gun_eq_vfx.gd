@@ -967,7 +967,7 @@ func heli_spawn(h: Dictionary) -> void:
 func heli_update(h: Dictionary, delta: float) -> void:
 	h["rotor"] = rotor_phase(float(h.get("rotor", 0.0)), ROTOR_OMEGA, delta)
 	var root = h.get("node", null)
-	if not (root is Node3D) or not is_instance_valid(root):
+	if not is_instance_valid(root) or not (root is Node3D):
 		return
 	# ★★2026-08-07 用户:「直升机方向」—— 原来 `flip_h` 只在**生成时**按队伍设一次,
 	#   之后**永远不转**。一架直升机倒着飞而机头始终朝一边, 一眼就假。
@@ -978,10 +978,10 @@ func heli_update(h: Dictionary, delta: float) -> void:
 	var dx: float = float(h["pos"].x) - prev.x
 	h["_last_pos"] = Vector2(h["pos"])
 	var bs2 = h.get("_body_spr", null)
-	if bs2 is Sprite3D and is_instance_valid(bs2) and absf(dx) > 0.5:
+	if is_instance_valid(bs2) and bs2 is Sprite3D and absf(dx) > 0.5:
 		(bs2 as Sprite3D).flip_h = dx < 0.0
 	# 机头的**场地坐标**回填给效果层 —— 机炮从这里出膛(和 077 手枪同一套做法)
-	if bs2 is Sprite3D and is_instance_valid(bs2):
+	if is_instance_valid(bs2) and bs2 is Sprite3D:
 		var b2: Sprite3D = bs2
 		var fw2: float = float(b2.texture.get_width() / maxi(1, int(b2.hframes)))
 		var nx: float = ((HELI_NOSE_PX_X + 0.5) - fw2 * 0.5) * b2.pixel_size
@@ -990,14 +990,14 @@ func heli_update(h: Dictionary, delta: float) -> void:
 		h["_muzzle_px"] = nx / float(battle.WS)
 	_heli_shadow(h)
 	# ㉒ 起手闪白: 机身在 ALERT_FLASH 秒里由亮转常, 让"它要放大招了"在机身上也读得到
-	if bs2 is Sprite3D and is_instance_valid(bs2):
+	if is_instance_valid(bs2) and bs2 is Sprite3D:
 		var at2: float = float(h.get("_alert_t", 9.0)) + delta
 		h["_alert_t"] = at2
 		var kf: float = clampf(1.0 - at2 / ALERT_FLASH, 0.0, 1.0)
 		(bs2 as Sprite3D).modulate = Color(1.0 + kf * 1.6, 1.0 + kf * 1.2, 1.0 + kf * 0.7, 1.0)
 	# ㉔ 坠机: 机身摇摆 + 持续冒烟, 让那 10 秒之后的坠落**看得出是失控**
 	if str(h.get("state", "")) == "crash":
-		if bs2 is Sprite3D and is_instance_valid(bs2):
+		if is_instance_valid(bs2) and bs2 is Sprite3D:
 			(bs2 as Sprite3D).rotation.z = sin(float(h["rotor"]) * 0.8) * 0.35
 		h["_smoke_t"] = float(h.get("_smoke_t", 0.0)) + delta
 		while float(h["_smoke_t"]) >= CRASH_SMOKE_IV:
@@ -1008,17 +1008,17 @@ func heli_update(h: Dictionary, delta: float) -> void:
 			_adopt(pf, 0.7, "puff", {"a0": 0.85})
 	root.position = battle._world_pos(Vector2(h["pos"]), HELI_H)
 	var rotor = h.get("_rotor", null)
-	if rotor is Node3D and is_instance_valid(rotor):
+	if is_instance_valid(rotor) and rotor is Node3D:
 		rotor.rotation = Vector3(0.0, float(h["rotor"]), 0.0)
 	# 机身立绘的帧: 用**旋翼相位**驱动(不另起时钟) —— 旋翼相位本来就是每帧积分出来的,
 	# 拿它取模就天然与"旋翼在转"同步, 也不会因为暂停/变速跑掉。
 	var bs = h.get("_body_spr", null)
-	if bs is Sprite3D and is_instance_valid(bs) and int(bs.hframes) > 1:
+	if is_instance_valid(bs) and bs is Sprite3D and int(bs.hframes) > 1:
 		var nf: int = int(bs.hframes)
 		var ph: float = fposmod(float(h["rotor"]) / TAU * HELI_FRAME_CYCLES, 1.0)
 		bs.frame = clampi(int(ph * float(nf)), 0, nf - 1)
 	var en = h.get("_en", null)
-	if en is Sprite3D and is_instance_valid(en):
+	if is_instance_valid(en) and en is Sprite3D:
 		var f: float = clampf(float(h.get("energy", 0.0)) / 100.0, 0.0, 1.0)
 		en.scale = Vector3(maxf(0.01, 4.0 * f), 0.5, 1.0)
 		en.position = Vector3(-4.0 * 0.02 * (1.0 - f) * 0.5, 0.92, 0.0)
@@ -1043,7 +1043,7 @@ func heli_alert(h: Dictionary) -> void:
 ## 影子跟着 2D 位置走、贴地; 大小按高度收缩(越高越小越淡, 全行业通用的高度读数)。
 func _heli_shadow(h: Dictionary) -> void:
 	var sh = h.get("_shadow", null)
-	if not (sh is Sprite3D) or not is_instance_valid(sh):
+	if not is_instance_valid(sh) or not (sh is Sprite3D):
 		return
 	var s2: Sprite3D = sh
 	s2.position = battle._world_pos(Vector2(h["pos"]), 0.04)
@@ -1054,7 +1054,7 @@ func _heli_shadow(h: Dictionary) -> void:
 
 func heli_free(h: Dictionary) -> void:
 	var root = h.get("node", null)
-	if root is Node3D and is_instance_valid(root):
+	if is_instance_valid(root) and root is Node3D:
 		_owned.erase(root)
 		root.queue_free()
 	h["node"] = null
@@ -1168,7 +1168,7 @@ func tick(delta: float) -> void:
 	for i in range(_fx.size() - 1, -1, -1):
 		var f: Dictionary = _fx[i]
 		var n = f.get("node", null)
-		if not (n is Node3D) or not is_instance_valid(n):
+		if not is_instance_valid(n) or not (n is Node3D):
 			_fx.remove_at(i)
 			continue
 		f["t"] = float(f["t"]) + delta
@@ -1309,12 +1309,12 @@ func clear() -> int:
 	var n := 0
 	for f in _fx:
 		var x = f.get("node", null)
-		if x is Node3D and is_instance_valid(x):
+		if is_instance_valid(x) and x is Node3D:
 			x.queue_free()
 			n += 1
 	_fx.clear()
 	for o in _owned:
-		if o is Node3D and is_instance_valid(o):
+		if is_instance_valid(o) and o is Node3D:
 			o.queue_free()
 			n += 1
 	_owned.clear()
@@ -1327,9 +1327,9 @@ func alive_count() -> int:
 	var n := 0
 	for f in _fx:
 		var x = f.get("node", null)
-		if x is Node3D and is_instance_valid(x):
+		if is_instance_valid(x) and x is Node3D:
 			n += 1
 	for o in _owned:
-		if o is Node3D and is_instance_valid(o):
+		if is_instance_valid(o) and o is Node3D:
 			n += 1
 	return n

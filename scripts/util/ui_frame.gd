@@ -57,7 +57,7 @@ static func attach(host: Node) -> Control:
 		#   还是 true。商店 _rebuild() 开头 queue_free 掉所有子节点、末尾再 attach ——
 		#   不判这一条就会复用到那个注定要死的框, 把新内容收编进去, 下一帧连内容一起没了
 		#   (实测: 门禁只扫到 1 个可见控件)。
-		if ch is UIFrame and is_instance_valid(ch) and not (ch as Node).is_queued_for_deletion():
+		if is_instance_valid(ch) and ch is UIFrame and not (ch as Node).is_queued_for_deletion():
 			(ch as UIFrame)._adopt()
 			(ch as UIFrame)._center()
 			return ch as Control

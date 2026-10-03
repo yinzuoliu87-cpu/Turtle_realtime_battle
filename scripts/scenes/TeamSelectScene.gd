@@ -1527,7 +1527,7 @@ func _tut_union_rect(nodes: Array) -> Rect2:
 	var r := Rect2()
 	var first := true
 	for n in nodes:
-		if n is Control and is_instance_valid(n):
+		if is_instance_valid(n) and n is Control:
 			var gr: Rect2 = (n as Control).get_global_rect()
 			if gr.size.x <= 0.0 or gr.size.y <= 0.0:
 				continue

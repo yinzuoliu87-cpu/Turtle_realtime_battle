@@ -2814,7 +2814,7 @@ const UI_TRANSIENT_GROUP := "battle_ui_transient"
 func sweep_ui_vfx() -> int:
 	var freed := 0
 	for n in battle.get_tree().get_nodes_in_group(UI_TRANSIENT_GROUP):
-		if n is Node and is_instance_valid(n) and not (n as Node).is_queued_for_deletion():
+		if is_instance_valid(n) and n is Node and not (n as Node).is_queued_for_deletion():
 			(n as Node).queue_free()
 			freed += 1
 	return freed

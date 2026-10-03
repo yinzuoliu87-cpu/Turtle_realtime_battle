@@ -6091,10 +6091,10 @@ func _update_headless_flame(u: Dictionary) -> void:            # 亡灵残血: �
 	var lost: float = 1.0 - clampf(float(u.get("hp", 1.0)) / maxf(1.0, float(u.get("maxHp", 1.0))), 0.0, 1.0)
 	var spr = u.get("_undead_flame", null)
 	if lost < 0.12:                                            # 血够高->无焰(清)
-		if spr is Sprite3D and is_instance_valid(spr): (spr as Sprite3D).queue_free()
+		if is_instance_valid(spr) and spr is Sprite3D: (spr as Sprite3D).queue_free()
 		u["_undead_flame"] = null
 		return
-	if not (spr is Sprite3D and is_instance_valid(spr)):       # 首次跌破->建常驻焰(跟随)
+	if not (is_instance_valid(spr) and spr is Sprite3D):       # 首次跌破->建常驻焰(跟随)
 		var fl := Sprite3D.new()
 		fl.texture = VfxTex._make_fire_glow_tex()
 		fl.billboard = BaseMaterial3D.BILLBOARD_ENABLED; fl.shaded = false; fl.transparent = true

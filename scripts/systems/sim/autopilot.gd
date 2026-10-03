@@ -133,7 +133,7 @@ func _go_btn_ready() -> bool:
 	if _host == null or not is_instance_valid(_host):
 		return false
 	var b = _host.get("_dl_go_btn")
-	return b is Button and is_instance_valid(b)
+	return is_instance_valid(b) and b is Button
 
 
 func _note(tag: String) -> void:

@@ -377,7 +377,7 @@ static func film_radius(stacks: int) -> float:
 
 func film_clear(u: Dictionary) -> void:
 	var nd = u.get("_oilfilm_nd", null)
-	if nd is MeshInstance3D and is_instance_valid(nd):
+	if is_instance_valid(nd) and nd is MeshInstance3D:
 		nd.queue_free()
 	u["_oilfilm_nd"] = null
 
@@ -577,7 +577,7 @@ func apply_at(h: Dictionary, uu: float) -> void:
 	if h.is_empty() or not _alive_world():
 		return
 	var nd = h.get("nd", null)
-	if not (nd is MeshInstance3D) or not is_instance_valid(nd):
+	if not is_instance_valid(nd) or not (nd is MeshInstance3D):
 		return
 	var mat := nd.material_override as StandardMaterial3D
 	var s: float = clampf(uu, 0.0, 1.0)
@@ -641,7 +641,7 @@ func advance(delta: float) -> void:
 			keep.append(h)
 		else:
 			var nd = h.get("nd", null)
-			if nd is MeshInstance3D and is_instance_valid(nd):
+			if is_instance_valid(nd) and nd is MeshInstance3D:
 				nd.queue_free()
 	_live = keep
 

@@ -106,7 +106,7 @@ func boom_spawn(pos2d: Vector2) -> Sprite3D:
 
 ## 每步: 把镖搬到当前中心、按飞行时间切帧。
 func boom_step(s, pos2d: Vector2, t: float) -> void:
-	if not (s is Sprite3D) or not is_instance_valid(s):
+	if not is_instance_valid(s) or not (s is Sprite3D):
 		return
 	(s as Sprite3D).position = battle._world_pos(pos2d, BOOM_Y)
 	(s as Sprite3D).frame = boom_frame(t)
@@ -114,7 +114,7 @@ func boom_step(s, pos2d: Vector2, t: float) -> void:
 
 ## 飞回斧头 / 源头离场: 收掉节点。
 func boom_free(s) -> void:
-	if s is Node and is_instance_valid(s):
+	if is_instance_valid(s) and s is Node:
 		(s as Node).queue_free()
 
 

@@ -281,7 +281,7 @@ func _adopt(n: Node3D, life: float, kind: String, extra: Dictionary = {}) -> Nod
 	if _fx.size() >= OWNED_CAP:
 		var old: Dictionary = _fx.pop_front()
 		var x = old.get("node", null)
-		if x is Node3D and is_instance_valid(x):
+		if is_instance_valid(x) and x is Node3D:
 			x.queue_free()
 	var d: Dictionary = {"node": n, "t": 0.0, "life": maxf(0.01, life), "kind": kind}
 	for k in extra:
@@ -407,7 +407,7 @@ func tick(delta: float) -> void:
 	for i in range(_fx.size() - 1, -1, -1):
 		var f: Dictionary = _fx[i]
 		var n = f.get("node", null)
-		if not (n is Sprite3D) or not is_instance_valid(n):
+		if not is_instance_valid(n) or not (n is Sprite3D):
 			_fx.remove_at(i)
 			continue
 		f["t"] = float(f["t"]) + delta
@@ -443,7 +443,7 @@ func _tick_altars(delta: float) -> void:
 	for i in range(_altars.size() - 1, -1, -1):
 		var a: Dictionary = _altars[i]
 		var root = a.get("node", null)
-		if not (root is Node3D) or not is_instance_valid(root):
+		if not is_instance_valid(root) or not (root is Node3D):
 			_altars.remove_at(i)
 			continue
 		a["t"] = float(a["t"]) + delta
@@ -475,7 +475,7 @@ func _tick_altars(delta: float) -> void:
 		var snuff: Dictionary = a.get("snuff", {})
 		for k in range(sticks.size()):
 			var sp = sticks[k]
-			if not (sp is Sprite3D) or not is_instance_valid(sp):
+			if not is_instance_valid(sp) or not (sp is Sprite3D):
 				continue
 			# 第 k 支还亮着 ⇔ k < emp。灭掉的那一支走 STICK_SNUFF_SEC 的熄灭
 			var lit: bool = k < emp
@@ -509,7 +509,7 @@ func _drop_altar_of(u: Dictionary) -> void:
 		var a: Dictionary = _altars[i]
 		if is_same(a.get("u", null), u):
 			var x = a.get("node", null)
-			if x is Node3D and is_instance_valid(x):
+			if is_instance_valid(x) and x is Node3D:
 				x.queue_free()
 			_altars.remove_at(i)
 
@@ -523,13 +523,13 @@ func clear() -> int:
 	var n := 0
 	for f in _fx:
 		var x = f.get("node", null)
-		if x is Node3D and is_instance_valid(x):
+		if is_instance_valid(x) and x is Node3D:
 			x.queue_free()
 			n += 1
 	_fx.clear()
 	for a in _altars:
 		var y = a.get("node", null)
-		if y is Node3D and is_instance_valid(y):
+		if is_instance_valid(y) and y is Node3D:
 			y.queue_free()
 			n += 1
 	_altars.clear()
@@ -542,13 +542,13 @@ func alive_count(kind: String = "") -> int:
 	if kind == "" or kind == "altar":
 		for a in _altars:
 			var y = a.get("node", null)
-			if y is Node3D and is_instance_valid(y):
+			if is_instance_valid(y) and y is Node3D:
 				n += 1
 	if kind == "altar":
 		return n
 	for f in _fx:
 		var x = f.get("node", null)
-		if not (x is Node3D) or not is_instance_valid(x):
+		if not is_instance_valid(x) or not (x is Node3D):
 			continue
 		if kind != "" and str((x as Node).get_meta(META_KEY, "")) != kind:
 			continue
@@ -564,7 +564,7 @@ func lit_sticks_of(u: Dictionary) -> int:
 			continue
 		var n := 0
 		for sp in (a.get("sticks", []) as Array):
-			if sp is Sprite3D and is_instance_valid(sp) and float((sp as Sprite3D).modulate.a) > 0.5:
+			if is_instance_valid(sp) and sp is Sprite3D and float((sp as Sprite3D).modulate.a) > 0.5:
 				n += 1
 		return n
 	return -1

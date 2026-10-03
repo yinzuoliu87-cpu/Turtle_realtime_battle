@@ -220,7 +220,7 @@ func _adopt(n: Node3D, life: float, kind: String, extra: Dictionary = {}) -> Nod
 	if _fx.size() >= OWNED_CAP:
 		var old: Dictionary = _fx.pop_front()
 		var x = old.get("node", null)
-		if x is Node3D and is_instance_valid(x):
+		if is_instance_valid(x) and x is Node3D:
 			x.queue_free()
 	var d: Dictionary = {"node": n, "t": 0.0, "life": maxf(0.01, life), "kind": kind}
 	for k in extra:
@@ -413,7 +413,7 @@ func tick(delta: float) -> void:
 	for i in range(_fx.size() - 1, -1, -1):
 		var f: Dictionary = _fx[i]
 		var n = f.get("node", null)
-		if not (n is Node3D) or not is_instance_valid(n):
+		if not is_instance_valid(n) or not (n is Node3D):
 			_fx.remove_at(i)
 			continue
 		f["t"] = float(f["t"]) + delta
@@ -449,7 +449,7 @@ func clear() -> int:
 	var n := 0
 	for f in _fx:
 		var x = f.get("node", null)
-		if x is Node3D and is_instance_valid(x):
+		if is_instance_valid(x) and x is Node3D:
 			x.queue_free()
 			n += 1
 	_fx.clear()
@@ -464,7 +464,7 @@ func nodes_of(kind: String) -> Array:
 	var out: Array = []
 	for f in _fx:
 		var x = f.get("node", null)
-		if not (x is Node3D) or not is_instance_valid(x):
+		if not is_instance_valid(x) or not (x is Node3D):
 			continue
 		if str((x as Node).get_meta(META_KEY, "")) != kind:
 			continue
@@ -476,7 +476,7 @@ func alive_count(kind: String = "") -> int:
 	var n := 0
 	for f in _fx:
 		var x = f.get("node", null)
-		if not (x is Node3D) or not is_instance_valid(x):
+		if not is_instance_valid(x) or not (x is Node3D):
 			continue
 		if kind != "" and str((x as Node).get_meta(META_KEY, "")) != kind:
 			continue

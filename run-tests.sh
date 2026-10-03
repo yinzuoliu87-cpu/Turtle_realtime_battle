@@ -834,6 +834,7 @@ run_audit "tools/stat_icon_audit.py" "ALL OK" "stat_icon (每个属性都有图�
 run_audit "tools/tween_freeze_audit.py" "ALL OK" "tween_freeze (战斗世界侧的演出 tween 必须走 _reg_tween·否则时停冻不住)"
 run_audit "tools/tween_capture_audit.py" "ALL OK" "tween_capture (演出 tween 的 lambda 捕获了可能被释放的节点·台账只减不增)"
 run_audit "tools/nine_bracket_audit.py" "ALL PASS" "nine_bracket (9 档进度档已彻底删除·匹配只认同场次·同名的周日对阵图不许误伤)"
+run_audit "tools/freed_is_order_audit.py" "ALL OK" "freed_is_order (先 is_instance_valid 再 is·对已释放对象 is 会报错并中断函数)"
 
 echo ""
 if [ "$FAIL" -eq 0 ]; then

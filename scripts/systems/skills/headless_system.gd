@@ -254,7 +254,7 @@ func _headless_scythe_telegraph(center: Vector2, aim: Vector2, dur: float) -> vo
 func _headless_scythe(u: Dictionary) -> void:                  # 镰刀横扫(Camille W式/用户2026-07-17): 撤紫焰+恢复射程->蓄力0.55s->预警扇形0.5s->镰刀扫过+结算(100度300码敌击退300从龟朝外+幽灵诅咒3s·用户2026-07-30 第六轮 5→3)->解锁龟能
 	var uu: Dictionary = u
 	var sspr = u.get("_soul_spr", null)                        # 撤紫焰tell
-	if sspr is Sprite3D and is_instance_valid(sspr): (sspr as Sprite3D).queue_free()
+	if is_instance_valid(sspr) and sspr is Sprite3D: (sspr as Sprite3D).queue_free()
 	u["_soul_spr"] = null
 	u["headless_soul_stacks"] = 0
 	u["atk_range"] = float(u.get("headless_soul_base_range", 100.0))   # 恢复基础射程(强化窗口结束)
@@ -613,7 +613,7 @@ func _sk_headless_soul_charge(u: Dictionary) -> void:           # 无头·灵魂
 	u["atk_range"] = float(u["headless_soul_base_range"]) + SOUL_RANGE_BONUS   # 强化窗口+60射程(用户"60+基础射程")
 	u["energy_lock_until"] = battle._t + 999.0                            # 锁龟能条到镰刀扫完(_headless_scythe置回_t)
 	var old = u.get("_soul_spr", null)
-	if old is Sprite3D and is_instance_valid(old): (old as Sprite3D).queue_free()
+	if is_instance_valid(old) and old is Sprite3D: (old as Sprite3D).queue_free()
 	var fl = Sprite3D.new()                                     # 紫焰绕颈tell(循环·3次+镰刀全程亮·bind_node防泄漏)
 	fl.texture = VfxTex._make_fire_glow_tex()
 	fl.billboard = BaseMaterial3D.BILLBOARD_ENABLED; fl.shaded = false; fl.transparent = true
