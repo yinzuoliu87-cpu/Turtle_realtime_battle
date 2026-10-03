@@ -67,9 +67,12 @@ const THEMES: Dictionary = {
 		"ambient_kind": "bubbles",
 	},
 	V1_DUSK: {
+		"no_base_midground": true,   # 默认中景(沉船/紫海葵)不进主题
+		"ring_r": [1.0, 1.06],      # 外围物件站在平台边沿上, 不悬在黑海面上
+		"ring_spread": 55.0,
 		"prop_shadow": 0.55,   # 物件接地影
 		"smooth_shade": 1.0,   # 地面不抖动: 参考是柔和涂抹, 抖动网点读作纱窗
-		"ring_lanterns": 16,   # 外围暗林里悬着的红光(mixed_034/035/012)
+		"ring_lanterns": 0,   # 撤: 悬在黑里的红光没有挂点, 读作乱飞(用户 2026-10-03); 红光只留插地火把
 		"ring_lantern_col": Color(1.0, 0.08, 0.10, 0.95),
 		"wall_h": 0.35,   # 海岸竖面压成矮边(高墙沿格子成一排台阶方块)
 		"lamp_tex": "field_red_torch",   # 参考: 场内光源是插地的红火把, 不是黄火盆
@@ -83,8 +86,8 @@ const THEMES: Dictionary = {
 		"edge_soft": 1.0,      # 聚光往里收: 参考 mixed_033/034 中心亮池、四周沉黑
 		"spot_amt": 0.55,
 		"rim_light_mod": Color(1, 1, 1),
-		"rim_halo_col": Color(0.85, 0.06, 0.05, 0.55),
-		"rim_halo_size": 2.6,
+		"rim_halo_col": Color(0.85, 0.06, 0.05, 0.35),   # 参考红光是小而亮的点, 地面不抹成一片橙
+		"rim_halo_size": 1.7,
 		## ★★2026-10-03 改成「暗林」(对标咩咩 Darkwood)。原来那版「黄昏孤岛」是我凭空想的方向;
 		##   这版每一项都对着**真实游玩**截帧(桌面 `咩咩参考_真实游玩20张.jpg` 的 mixed_033~035)。
 		"label": "暗林",
@@ -122,8 +125,8 @@ const THEMES: Dictionary = {
 		"rim_light_tex": "field_red_torch",
 		"rim_light_real": 6,
 		"rim_light_h": 1.25,          # 第一版 0.55 实拍看不见(火盆是 1.28)
-		"rim_light_energy": 2.8,
-		"rim_light_range": 4.6,
+		"rim_light_energy": 1.6,
+		"rim_light_range": 3.0,
 		"light_col": Color(1.0, 0.262, 0.180),
 		"light_energy": 1.0,
 		"light_fixture": "dusk_candle",
@@ -137,6 +140,9 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(1.0, 0.86, 0.42, 0.45),     # 林间萤光(慢·微上飘)
 	},
 	V2_REEF: {
+		"no_base_midground": true,   # 默认中景(沉船/紫海葵)不进主题
+		"ring_r": [1.0, 1.06],      # 外围物件站在平台边沿上, 不悬在黑海面上
+		"ring_spread": 55.0,
 		"prop_shadow": 0.55,   # 物件接地影
 		"smooth_shade": 1.0,   # 地面不抖动: 参考是柔和涂抹, 抖动网点读作纱窗
 		"wall_h": 0.35,   # 海岸竖面压成矮边(高墙沿格子成一排台阶方块)
@@ -210,9 +216,12 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(0.55, 1.0, 0.75, 0.45),   # 水中浮游光点
 	},
 	V3_SHOAL: {
+		"no_base_midground": true,   # 默认中景(沉船/紫海葵)不进主题
+		"ring_r": [1.0, 1.06],      # 外围物件站在平台边沿上, 不悬在黑海面上
+		"ring_spread": 55.0,
 		"prop_shadow": 0.55,   # 物件接地影
 		"smooth_shade": 1.0,   # 地面不抖动: 参考是柔和涂抹, 抖动网点读作纱窗
-		"ring_lanterns": 16,   # 外围暗林里悬着的红光(mixed_034/035/012)
+		"ring_lanterns": 0,   # 撤: 悬在黑里的红光没有挂点, 读作乱飞(用户 2026-10-03); 红光只留插地火把
 		"ring_lantern_col": Color(1.0, 0.06, 0.16, 0.95),
 		"edge_tufts": ["field_tall_grass"],   # mixed_012: 边沿一圈深蓝紫草
 		"edge_tufts_n": 150,
@@ -233,8 +242,8 @@ const THEMES: Dictionary = {
 		"edge_soft": 1.0,
 		"spot_amt": 0.45,
 		"rim_light_mod": Color(1, 1, 1),
-		"rim_halo_col": Color(0.85, 0.05, 0.12, 0.55),
-		"rim_halo_size": 2.6,
+		"rim_halo_col": Color(0.85, 0.05, 0.12, 0.35),   # 参考红光是小而亮的点, 地面不抹成一片橙
+		"rim_halo_size": 1.7,
 		## ★★2026-10-03 改成「紫墟」(对标咩咩教程那座紫色地牢), 对照真实游玩截帧 mixed_009/012/016。
 		"label": "紫墟",
 		## 地面: 真实渲染色实测 (0.24~0.35, 0.04~0.10, 0.36~0.44) 很饱和的深紫, 反推反照率
@@ -265,8 +274,8 @@ const THEMES: Dictionary = {
 		"rim_light_tex": "field_red_torch",
 		"rim_light_real": 6,
 		"rim_light_h": 1.25,
-		"rim_light_energy": 3.0,
-		"rim_light_range": 4.5,
+		"rim_light_energy": 1.7,
+		"rim_light_range": 3.0,
 		"light_col": Color(1.0, 0.20, 0.26),
 		"light_energy": 1.0,
 		"light_fixture": "dusk_candle",
@@ -281,9 +290,12 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(1.0, 0.45, 0.70, 0.45),
 	},
 	V4_STORM: {
+		"no_base_midground": true,   # 默认中景(沉船/紫海葵)不进主题
+		"ring_r": [1.0, 1.06],      # 外围物件站在平台边沿上, 不悬在黑海面上
+		"ring_spread": 55.0,
 		"prop_shadow": 0.55,   # 物件接地影
 		"smooth_shade": 1.0,   # 地面不抖动: 参考是柔和涂抹, 抖动网点读作纱窗
-		"ring_lanterns": 16,   # 外围暗林里悬着的红光(mixed_034/035/012)
+		"ring_lanterns": 0,   # 撤: 悬在黑里的红光没有挂点, 读作乱飞(用户 2026-10-03); 红光只留插地火把
 		"ring_lantern_col": Color(1.0, 0.05, 0.06, 0.95),
 		"wall_h": 0.35,   # 海岸竖面压成矮边(高墙沿格子成一排台阶方块)
 		"lamp_tex": "field_red_torch",   # 参考: 场内光源是插地的红火把, 不是黄火盆
@@ -299,8 +311,8 @@ const THEMES: Dictionary = {
 		"edge_soft": 1.0,
 		"spot_amt": 0.72,
 		"rim_light_mod": Color(1, 1, 1),
-		"rim_halo_col": Color(0.95, 0.05, 0.04, 0.60),
-		"rim_halo_size": 3.6,
+		"rim_halo_col": Color(0.95, 0.05, 0.04, 0.45),   # 参考红光是小而亮的点, 地面不抹成一片橙
+		"rim_halo_size": 2.6,
 		## ★★2026-10-03 改成「赤林」(对标红调的 Darkwood, 真实游玩截帧 mixed_035)。
 		##   结构与 V1 暗林相同, **用的是今天给 V1 新做的那批素材**(树干/红烛/碎件/草丛),
 		##   只换色调。不是复用旧素材库(用户「不要复用」说的是库里已有的那些)。
@@ -335,8 +347,8 @@ const THEMES: Dictionary = {
 		"rim_light_tex": "field_red_torch",
 		"rim_light_real": 8,
 		"rim_light_h": 1.25,
-		"rim_light_energy": 3.6,
-		"rim_light_range": 5.2,
+		"rim_light_energy": 2.6,
+		"rim_light_range": 4.0,
 		"light_col": Color(1.0, 0.16, 0.12),
 		"light_energy": 1.4,
 		"light_fixture": "dusk_candle",

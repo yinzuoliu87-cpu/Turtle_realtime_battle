@@ -1040,6 +1040,10 @@ func _build_tilemap_decor() -> void:
 		for _p in _tp:
 			kelp.append("themes/" + str(_p))
 	var mg = 200.0   # ★装饰带收窄 288→200(点2: 太密)
+	## ★主题不铺这一圈: 它在岛外 200px 宽的黑海面上种东西, 主题素材(贝壳等)脚下没地,
+	##   实拍飘在画面上方(用户 2026-10-03:「装饰物乱飞到上面」)。主题外围只留站在边沿上的 ThemeRing。
+	if bool(_tc.get("no_base_midground", false)):
+		mg = -1.0e9
 	var step = 120.0   # ★网格放大 80→120(点2: 稀疏)
 	var placed: Array = []   # ★防扎堆: 记已放点, 太近(<70px)跳过(点2: 原无间距检查→成簇)
 	var py = A.position.y - mg
@@ -1123,6 +1127,10 @@ const MID_COUNT := 13          # 总件数。少而大 = 地标; 多了就变回
 const MID_MIN_GAP := 260.0     # 两件之间最小间距(码), 防扎堆
 
 func _build_midground(root: Node3D) -> void:
+	## ★主题不摆默认中景(沉船/紫海葵等): 那是默认画面的素材, 不看主题照摆 ⇒ 漏进四版,
+	##   而且摆在岛外的黑海面上, 实拍读作「悬在半空乱飞」(用户 2026-10-03 指出)。
+	if bool(ArenaTheme.cfg().get("no_base_midground", false)):
+		return
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20260730                       # 播种(不用裸随机·护 rng_discipline 棘轮)
 	var A: Rect2 = battle.ARENA      # ★不能用 := —— battle 是无类型变量, 推不出 A 的类型(编译直接红)
@@ -1525,7 +1533,9 @@ func _build_theme_decorations(root: Node3D) -> void:
 		if cos(th0) < 0.0:
 			th = PI - th
 		## ★半径收到 1.02~1.16: 1.30 把簇心推到画面外(第一版实拍基本看不见)
-		var rr: float = rng.randf_range(1.02, 1.16)
+		## ★主题可把整圈收到平台边沿(ring_r): 摆在岛外黑海面上的物件脚下没有地, 透视一抬就飘到画面上方。
+		var _rr: Array = cfg.get("ring_r", [1.02, 1.16])
+		var rr: float = rng.randf_range(float(_rr[0]), float(_rr[1]))
 		## ★`ring_avoid_bottom`: 高大的框边物(树干)落在**下方正中**会站进画面挡住战场
 		##   (V1 第一版实拍: 几棵树干立在岛面下半部中间)。参考里树干在左右两侧与上方。
 		if bool(cfg.get("ring_avoid_bottom", false)) and sin(th) > 0.35 and absf(cos(th)) < 0.75:
@@ -1537,7 +1547,7 @@ func _build_theme_decorations(root: Node3D) -> void:
 			## 簇内散布: 半径很小才成"组"; 大了就又摊成均匀
 			var a2: float = rng.randf_range(0.0, TAU)
 			var d2: float = rng.randf_range(0.0, 1.0)
-			d2 = sqrt(d2) * 118.0
+			d2 = sqrt(d2) * float(cfg.get("ring_spread", 118.0))
 			var px: float = cxp + cos(a2) * d2
 			var py: float = cyp + sin(a2) * d2 * 0.62      # 俯视压扁
 			var img: String = str(props[rng.randi_range(0, props.size() - 1)])
@@ -1645,6 +1655,9 @@ func _build_far_backdrop(root: Node3D) -> void:
 	## ★只有水下类远景(base 的 undersea / 深礁的 deep_glow)才画; 其余主题(暗林/紫墟/赤林)一律不画。
 	##   第一版只判 into_black, V3/V4 换了别的远景做法就会把珊瑚光点又放出来。
 	if not (str(ArenaTheme.cfg().get("bg_kind", "undersea")) in ["undersea", "deep_glow"]):
+		glows = []
+	## ★主题一律不画: 远处半空的紫海葵/珊瑚光点读作「悬在天上」(用户 2026-10-03 指出)。
+	if bool(ArenaTheme.cfg().get("no_base_midground", false)):
 		glows = []
 	var grng = RandomNumberGenerator.new()
 	grng.seed = 20260722
