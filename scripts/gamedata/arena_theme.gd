@@ -67,12 +67,17 @@ const THEMES: Dictionary = {
 		"ambient_kind": "bubbles",
 	},
 	V1_DUSK: {
-		"field_tufts": ["dusk_grass_tuft"],   # 场内成簇大草丛(mixed_033/034 · anchordeep_005/011)
+		"lamp_tex": "field_red_torch",   # 参考: 场内光源是插地的红火把, 不是黄火盆
+		"lamp_h": 1.7,
+		"field_tufts": ["field_tall_grass", "dusk_grass_tuft"],   # 场内成簇大草丛(mixed_033/034 · anchordeep_005/011)
 		"field_tufts_clusters": 9,
+		"field_piles": ["field_bone_pile"],
+		"field_piles_clusters": 7,
+		"field_piles_h": [0.55, 0.85],
 		"field_tufts_h": [1.3, 2.1],
 		"edge_soft": 1.0,      # 聚光往里收: 参考 mixed_033/034 中心亮池、四周沉黑
 		"spot_amt": 0.55,
-		"rim_light_mod": Color(1.0, 0.45, 0.40),
+		"rim_light_mod": Color(1, 1, 1),
 		"rim_halo_col": Color(0.85, 0.06, 0.05, 0.55),
 		"rim_halo_size": 2.6,
 		## ★★2026-10-03 改成「暗林」(对标咩咩 Darkwood)。原来那版「黄昏孤岛」是我凭空想的方向;
@@ -106,9 +111,9 @@ const THEMES: Dictionary = {
 		"detritus_edge_bias": 1.5,
 		## 周边一圈红烛(参考 Darkwood 房间沿边一圈红光)
 		"rim_lights": 18,
-		"rim_light_tex": "dusk_candle",
+		"rim_light_tex": "field_red_torch",
 		"rim_light_real": 6,
-		"rim_light_h": 1.05,          # 第一版 0.55 实拍看不见(火盆是 1.28)
+		"rim_light_h": 1.25,          # 第一版 0.55 实拍看不见(火盆是 1.28)
 		"rim_light_energy": 2.8,
 		"rim_light_range": 4.6,
 		"light_col": Color(1.0, 0.262, 0.180),
@@ -124,6 +129,8 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(1.0, 0.86, 0.42, 0.45),     # 林间萤光(慢·微上飘)
 	},
 	V2_REEF: {
+		"lamp_tex": "reef_glow_orb",   # anchordeep: 场内光源是青白发光球, 不是黄火盆
+		"lamp_h": 1.3,
 		"field_tufts": ["reef_kelp_tuft"],   # 场内成簇大草丛(mixed_033/034 · anchordeep_005/011)
 		"field_tufts_clusters": 9,
 		"field_tufts_h": [1.4, 2.3],
@@ -183,16 +190,26 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(0.55, 1.0, 0.75, 0.45),   # 水中浮游光点
 	},
 	V3_SHOAL: {
+		"lamp_tex": "field_red_torch",   # 参考: 场内光源是插地的红火把, 不是黄火盆
+		"lamp_h": 1.7,
+		"field_tufts": ["field_tall_grass"],   # mixed_012: 深蓝紫的高草丛
+		"field_tufts_clusters": 9,
+		"field_tufts_h": [1.3, 2.1],
+		"field_tufts_mod": Color(0.42, 0.36, 0.70),
+		"field_piles": ["field_bone_pile"],   # mixed_012: 粉色骷髅堆
+		"field_piles_clusters": 8,
+		"field_piles_h": [0.55, 0.85],
+		"field_piles_mod": Color(1.0, 0.62, 0.85),
 		"edge_soft": 1.0,
 		"spot_amt": 0.45,
-		"rim_light_mod": Color(1.0, 0.45, 0.40),
+		"rim_light_mod": Color(1, 1, 1),
 		"rim_halo_col": Color(0.85, 0.05, 0.12, 0.55),
 		"rim_halo_size": 2.6,
 		## ★★2026-10-03 改成「紫墟」(对标咩咩教程那座紫色地牢), 对照真实游玩截帧 mixed_009/012/016。
 		"label": "紫墟",
 		## 地面: 真实渲染色实测 (0.24~0.35, 0.04~0.10, 0.36~0.44) 很饱和的深紫, 反推反照率
-		"ground_col": Color(0.155, 0.040, 0.225),
-		"stone_col": Color(0.140, 0.036, 0.205),
+		"ground_col": Color(0.300, 0.215, 0.420),   # mixed_012: 薰衣草紫地面, 不是深酒红
+		"stone_col": Color(0.282, 0.202, 0.395),
 		"detail_amt": 0.22,   # 砖纹压到几乎看不见
 		"sed_amt": 0.16,      # 大块柔和斑驳加强
 		"shore_col": Color(0.130, 0.035, 0.190),
@@ -206,15 +223,15 @@ const THEMES: Dictionary = {
 		"ring_avoid_bottom": true,
 		"fg_band": "dusk_grass_silhouette",
 		"detritus": ["shoal_debris_rubble"],
-		"detritus_n": 90,
+		"detritus_n": 50,
 		"detritus_size": 1.1,
 		"detritus_edge_bias": 1.6,
-		"detritus_tint": Color(0.85, 0.75, 0.95, 1.0),
+		"detritus_tint": Color(0.70, 0.48, 0.72, 1.0),   # 白碎屑读作噪点 ⇒ 压成暗粉
 		## 周边一圈红光(参考紫色地牢沿边是红色光源)
 		"rim_lights": 16,
-		"rim_light_tex": "dusk_candle",
+		"rim_light_tex": "field_red_torch",
 		"rim_light_real": 6,
-		"rim_light_h": 1.1,
+		"rim_light_h": 1.25,
 		"rim_light_energy": 3.0,
 		"rim_light_range": 4.5,
 		"light_col": Color(1.0, 0.20, 0.26),
@@ -231,12 +248,19 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(1.0, 0.45, 0.70, 0.45),
 	},
 	V4_STORM: {
-		"field_tufts": ["dusk_grass_tuft"],   # 场内成簇大草丛(mixed_033/034 · anchordeep_005/011)
+		"lamp_tex": "field_red_torch",   # 参考: 场内光源是插地的红火把, 不是黄火盆
+		"lamp_h": 1.7,
+		"field_tufts": ["field_tall_grass", "dusk_grass_tuft"],   # 场内成簇大草丛(mixed_033/034 · anchordeep_005/011)
 		"field_tufts_clusters": 8,
+		"field_tufts_mod": Color(0.85, 0.70, 0.60),
+		"field_piles": ["field_bone_pile"],
+		"field_piles_clusters": 8,
+		"field_piles_h": [0.55, 0.85],
+		"field_piles_mod": Color(1.0, 0.82, 0.78),
 		"field_tufts_h": [1.3, 2.1],
 		"edge_soft": 1.0,
 		"spot_amt": 0.45,
-		"rim_light_mod": Color(1.0, 0.40, 0.36),
+		"rim_light_mod": Color(1, 1, 1),
 		"rim_halo_col": Color(0.95, 0.05, 0.04, 0.60),
 		"rim_halo_size": 2.8,
 		## ★★2026-10-03 改成「赤林」(对标红调的 Darkwood, 真实游玩截帧 mixed_035)。
@@ -267,9 +291,9 @@ const THEMES: Dictionary = {
 		"edge_tufts_h": [0.8, 1.4],
 		## 比 V1 更多更亮的红光(参考 mixed_035 整个房间被红光浸着)
 		"rim_lights": 24,
-		"rim_light_tex": "dusk_candle",
+		"rim_light_tex": "field_red_torch",
 		"rim_light_real": 8,
-		"rim_light_h": 1.1,
+		"rim_light_h": 1.25,
 		"rim_light_energy": 3.6,
 		"rim_light_range": 5.2,
 		"light_col": Color(1.0, 0.16, 0.12),

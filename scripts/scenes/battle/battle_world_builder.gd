@@ -581,9 +581,13 @@ func build_field_lamps() -> Array:
 	battle._world.add_child(root)
 	made.append(root)
 	var A: Rect2 = battle.ARENA
-	var tex: Texture2D = load(LAMP_TEX) if ResourceLoader.exists(LAMP_TEX) else null
+	## ★主题可换灯具(lamp_tex/lamp_h): 参考里场内光源是插在地上的红火把, 不是黄火盆。base 不给 ⇒ 原火盆。
+	var _ltn: String = str(ArenaTheme.cfg().get("lamp_tex", ""))
+	var _lt_path: String = ("res://assets/sprites/map/themes/%s.png" % _ltn) if _ltn != "" else LAMP_TEX
+	var _lh: float = float(ArenaTheme.cfg().get("lamp_h", LAMP_H_M))
+	var tex: Texture2D = load(_lt_path) if ResourceLoader.exists(_lt_path) else null
 	if tex == null:
-		push_warning("[field_lamps] 火盆贴图缺失: %s —— 光会没有来源物(不做静默兜底)" % LAMP_TEX)
+		push_warning("[field_lamps] 火盆贴图缺失: %s —— 光会没有来源物(不做静默兜底)" % _lt_path)
 	for uv in LAMP_AT:
 		var px := A.position + Vector2(A.size.x * uv.x, A.size.y * uv.y)
 		var lamp := OmniLight3D.new()
@@ -609,13 +613,17 @@ func build_field_lamps() -> Array:
 			s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 			s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST   # 像素画不许插值成糊
 			s.shaded = false
-			s.pixel_size = LAMP_H_M / float(tex.get_height())
-			s.position = battle._world_pos(px, LAMP_H_M * 0.5)
+			s.pixel_size = _lh / float(tex.get_height())
+			s.position = battle._world_pos(px, _lh * 0.5)
 			root.add_child(s)
 			made.append(s)
+			if ArenaTheme.cfg().has("rim_halo_col"):
+				var _hz = _rim_halo(px, ArenaTheme.cfg()["rim_halo_col"], float(ArenaTheme.cfg().get("rim_halo_size", 2.0)) * 1.6)
+				root.add_child(_hz)
 	made.append_array(_build_rim_lights())   # ★主题: 周边一圈彩色小光点(base 不给 ⇒ 什么都不加)
 	made.append_array(_build_edge_tufts())   # ★主题: 平台边沿一圈草/海草丛(base 不给 ⇒ 什么都不加)
 	made.append_array(_build_field_tufts())  # ★主题: 场内成簇草丛(base 不给 ⇒ 什么都不加)
+	made.append_array(_build_field_tufts("field_piles", 20261006))  # ★主题: 场内骨堆(mixed_033/034/012)
 	return made
 
 
@@ -749,11 +757,11 @@ func _build_edge_tufts() -> Array:
 ## ★依据(真实游玩截帧 mixed_033/034, anchordeep_005/011): 地面中间也散着一簇簇大草丛/海草,
 ##   不只边沿一圈; 我们的场内只有几像素的碎屑, 远看是一块空地。
 ## ★成簇(每簇 3~5 丛)而不是均匀撒 —— 均匀撒读作噪点; 避开正中心(r < 0.30)留出交战区。
-func _build_field_tufts() -> Array:
+func _build_field_tufts(key: String = "field_tufts", seed: int = 20261005) -> Array:
 	var made: Array = []
 	var cfg: Dictionary = ArenaTheme.cfg()
-	var names: Array = cfg.get("field_tufts", [])
-	var nc: int = int(cfg.get("field_tufts_clusters", 0))
+	var names: Array = cfg.get(key, [])
+	var nc: int = int(cfg.get(key + "_clusters", 0))
 	if names.is_empty() or nc <= 0:
 		return made
 	var paths: Array = []
@@ -762,17 +770,17 @@ func _build_field_tufts() -> Array:
 		if ResourceLoader.exists(p):
 			paths.append(p)
 	if paths.is_empty():
-		push_warning("[field_tufts] 素材一张都没有 —— 不铺(不做静默兜底)")
+		push_warning("[%s] 素材一张都没有 —— 不铺(不做静默兜底)" % key)
 		return made
 	var A: Rect2 = battle.ARENA
 	var c: Vector2 = A.position + A.size * 0.5
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 20261005
+	rng.seed = seed
 	var root := Node3D.new()
-	root.name = "FieldTufts"
+	root.name = "FieldTufts" if key == "field_tufts" else "FieldPiles"
 	battle._world.add_child(root)
 	made.append(root)
-	var hr: Array = cfg.get("field_tufts_h", [0.5, 0.9])
+	var hr: Array = cfg.get(key + "_h", [0.5, 0.9])
 	for k in range(nc):
 		var th: float = TAU * (float(k) + rng.randf_range(-0.35, 0.35)) / float(nc)
 		var rr: float = rng.randf_range(0.36, 0.80)
@@ -783,6 +791,7 @@ func _build_field_tufts() -> Array:
 				rng.randf_range(float(hr[0]), float(hr[1])))
 			var sc: float = rng.randf_range(0.8, 1.2)
 			s.scale = Vector3(sc * (-1.0 if rng.randf() < 0.5 else 1.0), sc, sc)
+			s.modulate = cfg.get(key + "_mod", Color(1, 1, 1))
 			root.add_child(s)
 	return made
 
