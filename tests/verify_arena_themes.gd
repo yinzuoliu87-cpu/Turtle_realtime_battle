@@ -96,6 +96,7 @@ func _ready() -> void:
 		"wall_col",                  # 海岸线竖面 WALL_COL_LIT
 		"edge_dark",                 # 岛缘压暗下限 0.18
 		"ambient_col",               # 氛围粒子 Color(1,1,1,0.55)
+		"fog_col",                   # 雾色 Color(0.035,0.105,0.150)
 	]
 	var base_cfg: Dictionary = AT.cfg_of(AT.V0_BASE)
 	var leaked: Array = []

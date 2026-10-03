@@ -17,6 +17,8 @@ uniform vec4 wet_tint : source_color = vec4(0.42, 0.60, 0.98, 1.0);
 uniform float wet_width = 2.2;
 // 岛缘压暗的下限(越小 = 边缘越黑 = 聚光越强)。默认 0.18 是 2026-09 标定的原值。
 uniform float edge_dark = 0.18;
+uniform float caustic_far = 0.35;
+uniform float caustic_scale = 0.5;
 // 岸线切角用的水色(与 ground_water 的 shallow_col 对齐)
 uniform vec4 shore_water_col : source_color = vec4(0.30, 0.93, 0.90, 1.0);
 
@@ -59,9 +61,12 @@ void fragment() {
 	// ★靠水的地方更强(那儿水浅、光透得下来), 深入内陆逐渐消失。
 	// 同样过抖动分级 —— 平滑的光纹在像素风里会显得"太 3D"。
 	if (rich_fx) {
-		float ca = dither_steps(caustics(wp * 0.5, TIME * caustic_speed), 3.0, FRAGCOORD.xy);
+		// ★caustic_scale(默认 0.5 = 原值): 深礁主题实拍是一大团一大团光斑, 参考是细密网状亮纹 ⇒ 调细。
+		float ca = dither_steps(caustics(wp * caustic_scale, TIME * caustic_speed), 3.0, FRAGCOORD.xy);
 		float near_water = 1.0 - smoothstep(0.0, 5.0, -d);
-		c += caustic_col.rgb * ca * caustic_amt * (0.35 + 0.65 * near_water);
+		// ★caustic_far: 离水远处的焦散强度(默认 0.35 = 原值)。深礁主题要整片地面都有光纹(对标 Anchordeep),
+		//   暗林主题要 0(林地上不该有水波光) —— 由主题经 caustic_amt / caustic_far 控制。
+		c += caustic_col.rgb * ca * caustic_amt * (caustic_far + (1.0 - caustic_far) * near_water);
 	}
 
 	// ── ★★岸线【切角】: 边界跟着插值后的距离场走, 不跟着砖块的直角走 ─────

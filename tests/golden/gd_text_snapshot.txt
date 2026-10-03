@@ -19,11 +19,11 @@ autoload/tutorial_director.gd|lit|装好了 → 看看图鉴
 scripts/gamedata/arena_theme.gd|lit|(现状)
 scripts/gamedata/arena_theme.gd|lit|(现状·无)
 scripts/gamedata/arena_theme.gd|lit|(现状·无灯具)
-scripts/gamedata/arena_theme.gd|lit|夜礁
 scripts/gamedata/arena_theme.gd|lit|暗林
+scripts/gamedata/arena_theme.gd|lit|深礁
 scripts/gamedata/arena_theme.gd|lit|现状(已验收)
-scripts/gamedata/arena_theme.gd|lit|白昼浅滩
-scripts/gamedata/arena_theme.gd|lit|风暴
+scripts/gamedata/arena_theme.gd|lit|紫墟
+scripts/gamedata/arena_theme.gd|lit|赤林
 scripts/gamedata/axe_evolution.gd|lit|亡灵之斧
 scripts/gamedata/axe_evolution.gd|lit|余烬
 scripts/gamedata/axe_evolution.gd|lit|全息斧

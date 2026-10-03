@@ -79,6 +79,10 @@ const THEMES: Dictionary = {
 		## 外围压到近黑(参考: 平台外是虚空)。用户定的是海, 所以保留海、只压到接近虚空的明度
 		"water_col": Color(0.030, 0.036, 0.050),
 		"edge_dark": 0.06,
+		"caustic_amt": 0.0,   # 林地上不该有水下焦散光纹
+		"edge_tufts": ["dusk_grass_tuft"],
+		"edge_tufts_n": 70,
+		"edge_tufts_h": [0.8, 1.4],
 		## 框边: 比角色大好几倍的暗色树干剪影(参考 mixed_033~035 左右两侧)
 		"ring_props": ["dusk_trunk_silhouette"],
 		"ring_density": 0.8,
@@ -89,6 +93,7 @@ const THEMES: Dictionary = {
 		"detritus": ["dusk_debris_bones", "dusk_debris_grass"],
 		"detritus_n": 260,
 		"detritus_size": 0.62,        # 原 0.38 太小(48px 贴图)
+		"detritus_edge_bias": 1.5,
 		## 周边一圈红烛(参考 Darkwood 房间沿边一圈红光)
 		"rim_lights": 18,
 		"rim_light_tex": "dusk_candle",
@@ -109,81 +114,139 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(1.0, 0.86, 0.42, 0.45),     # 林间萤光(慢·微上飘)
 	},
 	V2_REEF: {
-		"label": "夜礁",
-		"ground_col": Color(0.157, 0.161, 0.149),
-		"stone_col": Color(0.212, 0.216, 0.204),
-		"wall_col": Color(0.286, 0.306, 0.388),      # 海岸线竖面(夜礁: 冷青灰)
-		"edge_dark": 0.04,                           # 聚光(夜礁: 最强·对标 raw_01 的 30.5%)
-		"water_col": Color(0.035, 0.047, 0.078),
-		"shore_col": Color(0.196, 0.200, 0.192),
-		"ring_props": ["reef_candle_stone", "reef_fungus", "reef_bone_rubble"],
-		"fg_band": "reef_rock_silhouette",
-		"ring_density": 1.3,
+		## ★★2026-10-03 改成「深礁」(对标咩咩 Anchordeep), 对照真实游玩截帧
+		##   anchordeep_003/011/020/025 等 14 张(桌面 `咩咩参考_真实游玩20张.jpg`)。
+		"label": "深礁",
+		## 地面: Anchordeep 真实地面渲染色实测 (0.15~0.27, 0.42~0.61, 0.41~0.56) 青绿, 反推反照率
+		"ground_col": Color(0.117, 0.283, 0.267),
+		"stone_col": Color(0.090, 0.200, 0.200),
+		"shore_col": Color(0.100, 0.230, 0.220),
+		"wall_col": Color(0.040, 0.075, 0.085),       # 暗色竖崖
+		"water_col": Color(0.012, 0.030, 0.040),      # 外围压到接近虚空
+		"edge_dark": 0.05,
+		"caustic_amt": 0.24,
+		"caustic_far": 1.0,   # 整片地面都有水下光纹(Anchordeep 最认得出的特征)
+		"caustic_col": Color(0.70, 1.0, 0.92, 1.0),
+		"caustic_scale": 1.35,  # 0.5 是大团光斑, 2.2 是规整豹纹; 参考是很淡的细网纹
+		"edge_tufts": ["reef_kelp_tuft"],
+		"edge_tufts_n": 70,
+		"edge_tufts_h": [0.7, 1.3],
+		## 框边: 暗色高海草(参考里平台四周一圈海草剪影)
+		"ring_props": ["reef_kelp_silhouette"],   # 第一版带方尖碑, 实拍像一排墓碑, 参考里没有
+		"ring_density": 1.1,
+		"ring_h": [3.0, 5.2],
+		"ring_avoid_bottom": true,
+		"fg_band": "dusk_grass_silhouette",   # 第一版用礁石剪影读成「远山」; 参考底部是暗色海草
+		## 地面碎件: 贝壳/小骨/碎石
+		"detritus": ["reef_debris_shells"],
+		"detritus_n": 110,
+		"detritus_edge_bias": 2.0,
+		"detritus_tint": Color(0.55, 0.68, 0.76, 1.0),   # 偏暗蓝灰(参考碎件不是白的)
+		"detritus_size": 0.6,
+		## 周边一圈绿色光球(参考 Anchordeep 的绿/白光点)
+		"rim_lights": 16,
+		"rim_light_tex": "reef_glow_orb",
+		"rim_light_real": 6,
+		"rim_light_h": 1.3,
+		"rim_light_energy": 3.2,
+		"rim_light_range": 4.4,
+		"light_col": Color(0.42, 1.0, 0.62),
+		"light_energy": 1.0,
+		"light_fixture": "reef_glow_orb",
 		"obstacles": ["reef_menhir"],
-		"mid_props": ["reef_far_spire"],
+		"mid_props": ["reef_kelp_silhouette"],
 		"bg_kind": "deep_glow",                        # 深水: 暗青底 + 远处光点(对标 Anchordeep)
-		"bg_top": Color(0.016, 0.020, 0.031),
-		"bg_horizon": Color(0.027, 0.035, 0.051),
-		"light_col": Color(1.0, 0.580, 0.278),
-		"light_energy": 1.5,
-		"light_fixture": "reef_candle_stone",
-		"sun_col": Color(0.541, 0.620, 0.839),
-		"sun_energy": 0.60,
-		"ambient_kind": "embers",                      # 只在烛台附近, 有因
-		"ambient_col": Color(1.0, 0.608, 0.271, 0.5),
+		"bg_top": Color(0.008, 0.022, 0.030),
+		"bg_horizon": Color(0.030, 0.080, 0.090),
+		"sun_col": Color(1.0, 0.96, 0.86), "sun_energy": 1.0,
+		"ambient_kind": "embers",
+		"ambient_col": Color(0.55, 1.0, 0.75, 0.45),   # 水中浮游光点
 	},
 	V3_SHOAL: {
-		"label": "白昼浅滩",
-		## ★★2026-10-03 从 (0.800,0.722,0.553) 压到这里。第一版按"白昼=高明度"想当然,
-		##   实拍中间调只有 11.3%(判据要 ≥24%)、亮坡比 0.44(要 ≥1.0), **当场红两条**。
-		##   量了参考才知道判据是对的: 咩咩的日景(raw_04 营地)地面 luma 中位 **119**、
-		##   中间调占比 **47.7%** —— 它的白天**不是高调**, 和地牢(106/43.4%)在同一档。
-		##   ⇒ 按 dusk 的实测反推(反照率 luma 0.200 → 渲染中间调 49.9%), 这里取 ≈0.33。
-		"ground_col": Color(0.380, 0.349, 0.271),
-		"stone_col": Color(0.333, 0.325, 0.310),
-		"wall_col": Color(0.773, 0.729, 0.635),      # 海岸线竖面(白昼: 亮砂)
-		"edge_dark": 0.46,                           # 聚光(白昼: 最弱·日光下本来就没有聚光)
-		"water_col": Color(0.129, 0.239, 0.263),   # 仍须比陆暗(判据④)
-		"shore_col": Color(0.439, 0.408, 0.322),
-		"ring_props": ["shoal_palm", "shoal_reed", "shoal_shell_pile", "shoal_flagpole"],
-		"ring_density": 1.1,
-		"fg_band": "shoal_big_leaf",
-		"obstacles": ["shoal_rock"],
-		"mid_props": ["shoal_far_island"],
-		"bg_kind": "sky_horizon",                      # 开阔海 + 海平线 + 天空云带
-		"bg_top": Color(0.596, 0.780, 0.898),
-		"bg_horizon": Color(0.839, 0.890, 0.902),
-		"light_col": Color(1.0, 0.961, 0.863),
-		"light_energy": 0.4,
-		"light_fixture": "shoal_flagpole",
-		"sun_col": Color(1.0, 0.980, 0.925),
-		"sun_energy": 0.60,
-		"ambient_kind": "sun_glints",
-		"ambient_col": Color(1.0, 1.0, 0.941, 0.28),
+		## ★★2026-10-03 改成「紫墟」(对标咩咩教程那座紫色地牢), 对照真实游玩截帧 mixed_009/012/016。
+		"label": "紫墟",
+		## 地面: 真实渲染色实测 (0.24~0.35, 0.04~0.10, 0.36~0.44) 很饱和的深紫, 反推反照率
+		"ground_col": Color(0.155, 0.040, 0.225),
+		"stone_col": Color(0.120, 0.040, 0.170),
+		"shore_col": Color(0.130, 0.035, 0.190),
+		"wall_col": Color(0.050, 0.020, 0.080),
+		"water_col": Color(0.015, 0.008, 0.030),
+		"edge_dark": 0.05,
+		"caustic_amt": 0.0,
+		"ring_props": ["shoal_ruin_column"],
+		"ring_density": 0.9,
+		"ring_h": [2.6, 4.2],
+		"ring_avoid_bottom": true,
+		"fg_band": "dusk_grass_silhouette",
+		"detritus": ["shoal_debris_rubble"],
+		"detritus_n": 160,
+		"detritus_size": 0.6,
+		"detritus_edge_bias": 1.6,
+		"detritus_tint": Color(0.85, 0.75, 0.95, 1.0),
+		## 周边一圈红光(参考紫色地牢沿边是红色光源)
+		"rim_lights": 16,
+		"rim_light_tex": "dusk_candle",
+		"rim_light_real": 6,
+		"rim_light_h": 1.1,
+		"rim_light_energy": 3.0,
+		"rim_light_range": 4.5,
+		"light_col": Color(1.0, 0.20, 0.26),
+		"light_energy": 1.0,
+		"light_fixture": "dusk_candle",
+		"obstacles": ["shoal_ruin_column"],
+		"mid_props": ["shoal_ruin_column"],
+		"fog_col": Color(0.090, 0.020, 0.120),
+		"bg_kind": "violet_haze",
+		"bg_top": Color(0.012, 0.004, 0.024),
+		"bg_horizon": Color(0.060, 0.016, 0.090),
+		"sun_col": Color(1.0, 0.96, 0.86), "sun_energy": 1.0,
+		"ambient_kind": "embers",
+		"ambient_col": Color(1.0, 0.45, 0.70, 0.45),
 	},
 	V4_STORM: {
-		"label": "风暴",
-		"ground_col": Color(0.188, 0.176, 0.161),
-		"stone_col": Color(0.247, 0.247, 0.251),
-		"wall_col": Color(0.408, 0.435, 0.478),      # 海岸线竖面(风暴: 湿铅灰)
-		"edge_dark": 0.14,                           # 聚光(风暴: 偏强·乌云压顶)
-		"water_col": Color(0.129, 0.149, 0.169),
-		"shore_col": Color(0.224, 0.216, 0.200),
-		"ring_props": ["storm_bent_grass", "storm_broken_frame"],
+		## ★★2026-10-03 改成「赤林」(对标红调的 Darkwood, 真实游玩截帧 mixed_035)。
+		##   结构与 V1 暗林相同, **用的是今天给 V1 新做的那批素材**(树干/红烛/碎件/草丛),
+		##   只换色调。不是复用旧素材库(用户「不要复用」说的是库里已有的那些)。
+		"label": "赤林",
+		"ground_col": Color(0.300, 0.230, 0.140),
+		"stone_col": Color(0.220, 0.160, 0.110),
+		"shore_col": Color(0.240, 0.180, 0.115),
+		"wall_col": Color(0.090, 0.030, 0.030),
+		"water_col": Color(0.030, 0.010, 0.012),
+		"edge_dark": 0.05,
+		"caustic_amt": 0.0,
+		"ring_props": ["dusk_trunk_silhouette"],
 		"ring_density": 0.9,
-		"fg_band": "storm_rain_veil",
-		"obstacles": ["storm_boulder"],
-		"mid_props": ["storm_far_wreck"],
-		"bg_kind": "overcast",                         # 低垂乌云 + 远处雨幕
-		"bg_top": Color(0.149, 0.157, 0.176),
-		"bg_horizon": Color(0.361, 0.376, 0.400),
-		"light_col": Color(0.776, 0.843, 1.0),
-		"light_energy": 0.5,
-		"light_fixture": "storm_broken_frame",
-		"sun_col": Color(0.729, 0.769, 0.831),
-		"sun_energy": 0.70,
-		"ambient_kind": "rain_streaks",
-		"ambient_col": Color(0.800, 0.859, 0.941, 0.4),
+		"ring_h": [4.2, 6.4],
+		"ring_avoid_bottom": true,
+		"fg_band": "dusk_grass_silhouette",
+		"detritus": ["dusk_debris_bones", "dusk_debris_grass"],
+		"detritus_n": 220,
+		"detritus_size": 0.62,
+		"detritus_edge_bias": 1.5,
+		"detritus_tint": Color(1.0, 0.85, 0.80, 1.0),
+		"edge_tufts": ["dusk_grass_tuft"],
+		"edge_tufts_n": 70,
+		"edge_tufts_h": [0.8, 1.4],
+		## 比 V1 更多更亮的红光(参考 mixed_035 整个房间被红光浸着)
+		"rim_lights": 24,
+		"rim_light_tex": "dusk_candle",
+		"rim_light_real": 8,
+		"rim_light_h": 1.1,
+		"rim_light_energy": 3.6,
+		"rim_light_range": 5.2,
+		"light_col": Color(1.0, 0.16, 0.12),
+		"light_energy": 1.4,
+		"light_fixture": "dusk_candle",
+		"obstacles": ["dusk_boulder"],
+		"mid_props": ["dusk_trunk_silhouette"],
+		"fog_col": Color(0.200, 0.020, 0.030),
+		"bg_kind": "crimson_fog",
+		"bg_top": Color(0.030, 0.004, 0.008),
+		"bg_horizon": Color(0.160, 0.020, 0.030),
+		"sun_col": Color(1.0, 0.96, 0.86), "sun_energy": 1.0,
+		"ambient_kind": "embers",
+		"ambient_col": Color(1.0, 0.40, 0.30, 0.5),
 	},
 }
 

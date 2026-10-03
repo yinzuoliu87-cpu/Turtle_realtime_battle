@@ -111,6 +111,11 @@ static func tile_material(ti: int, ws: float, cx: float, cy: float) -> Material:
 		var _ed = ArenaTheme.cfg().get("edge_dark", null)
 		if _ed != null:
 			sm.set_shader_parameter("edge_dark", float(_ed))
+		## ★焦散按主题(base 不给 ⇒ shader 默认值逐值不变)。暗林=0(林地无水波光), 深礁=整片铺满。
+		for _k in ["caustic_amt", "caustic_far", "caustic_col", "caustic_scale"]:
+			var _v = ArenaTheme.cfg().get(_k, null)
+			if _v != null:
+				sm.set_shader_parameter(_k, _v)
 	else:
 		## ★水也按主题走。四色**同源于一个 `water_col`**: 浅/深/浪尖/泡沫各自从它推出来,
 		##   而不是每版手填四个色 —— 手填四份必然有一份忘了改(memory `fb-hand-rolled-copies-drift`)。
@@ -604,6 +609,7 @@ func build_field_lamps() -> Array:
 			root.add_child(s)
 			made.append(s)
 	made.append_array(_build_rim_lights())   # ★主题: 周边一圈彩色小光点(base 不给 ⇒ 什么都不加)
+	made.append_array(_build_edge_tufts())   # ★主题: 平台边沿一圈草/海草丛(base 不给 ⇒ 什么都不加)
 	return made
 
 
@@ -639,7 +645,11 @@ func _build_rim_lights() -> Array:
 	made.append(root)
 	for i in range(n):
 		var th: float = TAU * (float(i) + rng.randf_range(-0.3, 0.3)) / float(n)
-		var rr: float = rng.randf_range(1.02, 1.08)
+		## ★★第一版摆在岛外(半径 1.02~1.08): 实拍四版**一盏都看不出来** ——
+		##   点光照到的是近黑的海, 等于没照亮任何东西; 顶上那一圈还被岸边竖崖挡住。
+		##   参考里蜡烛是**放在平台边沿上**, 把地面照出一圈光池。⇒ 挪到边沿内侧。
+		var _rr: Array = cfg.get("rim_light_r", [0.90, 0.97])
+		var rr: float = rng.randf_range(float(_rr[0]), float(_rr[1]))
 		var p := Vector2(c.x + cos(th) * A.size.x * 0.5 * rr, c.y + sin(th) * A.size.y * 0.5 * rr)
 		## ★探针: 光点 24 个节点都建了, 实拍看不见 —— 0.55 米只有火盆(1.28 米)的四成, 压不过亮地面。
 		var s = battle._map_billboard(path, p, float(cfg.get("rim_light_h", 0.55)))
@@ -652,6 +662,46 @@ func _build_rim_lights() -> Array:
 			L.shadow_enabled = false
 			L.position = battle._world_pos(p, 0.5)
 			root.add_child(L)
+	return made
+
+
+## 平台**边沿**一圈草/海草丛 —— 主题专用, `base` 不给就一件不加。
+## ★依据(真实游玩截帧): 参考里平台边沿一圈长满草丛/海草丛, 把"地面在哪里结束"描出来;
+##   我们的边沿是光的。这些丛长在可活动区的**最外一圈**(r ≥ 0.86), 只是装饰, 不挡路。
+## ★立着的(billboard), 不是贴地 —— 参考里草丛是竖着长的, 有高度。
+func _build_edge_tufts() -> Array:
+	var made: Array = []
+	var cfg: Dictionary = ArenaTheme.cfg()
+	var names: Array = cfg.get("edge_tufts", [])
+	var n: int = int(cfg.get("edge_tufts_n", 0))
+	if names.is_empty() or n <= 0:
+		return made
+	var paths: Array = []
+	for nm in names:
+		var p: String = "res://assets/sprites/map/themes/%s.png" % str(nm)
+		if ResourceLoader.exists(p):
+			paths.append(p)
+	if paths.is_empty():
+		push_warning("[edge_tufts] 素材一张都没有 —— 不铺(不做静默兜底)")
+		return made
+	var A: Rect2 = battle.ARENA
+	var c: Vector2 = A.position + A.size * 0.5
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261004
+	var root := Node3D.new()
+	root.name = "EdgeTufts"
+	battle._world.add_child(root)
+	made.append(root)
+	var hr: Array = cfg.get("edge_tufts_h", [0.6, 1.1])
+	for i in range(n):
+		var th: float = rng.randf_range(0.0, TAU)
+		var rr: float = rng.randf_range(0.86, 0.99)
+		var p2 := Vector2(c.x + cos(th) * A.size.x * 0.5 * rr, c.y + sin(th) * A.size.y * 0.5 * rr)
+		var s = battle._map_billboard(str(paths[rng.randi_range(0, paths.size() - 1)]), p2,
+			rng.randf_range(float(hr[0]), float(hr[1])))
+		var sc: float = rng.randf_range(0.85, 1.2)
+		s.scale = Vector3(sc * (-1.0 if rng.randf() < 0.5 else 1.0), sc, sc)
+		root.add_child(s)
 	return made
 
 
@@ -721,8 +771,21 @@ func build_detritus(grid: Array, w: int, h: int, tile: float, ox: float, oy: flo
 		mm.mesh = q
 		mm.instance_count = per
 		var placed := 0
+		## ★碎件偏向边沿: 参考(真实游玩截帧)里碎件**堆在平台边沿与石头周围**, 中间较干净;
+		##   均匀撒出来是"一地纸屑"(V2 第一版实拍)。按格子到中心的归一化半径 r 做接受率 r^bias。
+		var _bias: float = float(ArenaTheme.cfg().get("detritus_edge_bias", 0.0))
+		var _A: Rect2 = battle.ARENA
+		var _c: Vector2 = _A.position + _A.size * 0.5
 		for k in range(per):
 			var cell: Vector2i = cells[rng.randi_range(0, cells.size() - 1)]
+			if _bias > 0.0:
+				for _try in range(12):
+					var _cx := ox + (float(cell.x) + 0.5) * tile
+					var _cy := oy + (float(cell.y) + 0.5) * tile
+					var _r: float = clampf(sqrt(pow((_cx - _c.x) / (_A.size.x * 0.5), 2.0) + pow((_cy - _c.y) / (_A.size.y * 0.5), 2.0)), 0.0, 1.0)
+					if rng.randf() < pow(_r, _bias):
+						break
+					cell = cells[rng.randi_range(0, cells.size() - 1)]
 			var px := ox + (float(cell.x) + rng.randf()) * tile
 			var py := oy + (float(cell.y) + rng.randf()) * tile
 			var b := Basis()
@@ -736,6 +799,7 @@ func build_detritus(grid: Array, w: int, h: int, tile: float, ox: float, oy: flo
 		mi.multimesh = mm
 		var m := StandardMaterial3D.new()
 		m.albedo_texture = tex
+		m.albedo_color = ArenaTheme.cfg().get("detritus_tint", Color(1, 1, 1, 1))   # ★主题着色(base 不给=白=原样)
 		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST        # 像素画不许插值成糊
 		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR      # 硬边像素画: 裁剪不混合
 		m.alpha_scissor_threshold = 0.5
@@ -1048,7 +1112,10 @@ func _build_environment() -> void:
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
 	env.fog_enabled = true
 	## ★同主光: 试过把雾色换成主题的地平线色, 一并撤回(它吃掉大片远景面积, 实测把色数从 96 压到 74)。
-	env.fog_light_color = Color(0.035, 0.105, 0.150)   # 提亮 + 偏青: 远处是海水不是黑洞
+	## ★主题雾色: 用**专用键 `fog_col`**, base 刻意不给 ⇒ 原值逐值不变。
+	##   (之前试过拿 bg_horizon 推, 连带改了 dusk 的曝光被我撤回; 这次只给明确要的主题。
+	##    参考 mixed_035 整个房间被红雾浸着, 光靠几盏点光做不出来。)
+	env.fog_light_color = ArenaTheme.cfg().get("fog_col", Color(0.035, 0.105, 0.150))
 	env.fog_light_energy = 0.55
 	env.fog_sun_scatter = 0.0
 	env.fog_density = 0.008                            # 0.022 → 0.008: 远景能透出来
@@ -1353,7 +1420,9 @@ func _build_far_backdrop(root: Node3D) -> void:
 	var glows = ["glow-coral", "glow-anem", "glow-kelp"]
 	## ★海底发光群(珊瑚/海葵/海带)只属于水下设定。主题的远景是「沉进黑」就不画 ——
 	##   V1 实拍顶上还飘着鱼和紫色光点, 就是这一层。base(现状) 照画, 一个像素不动。
-	if str(ArenaTheme.cfg().get("bg_kind", "undersea")) == "into_black":
+	## ★只有水下类远景(base 的 undersea / 深礁的 deep_glow)才画; 其余主题(暗林/紫墟/赤林)一律不画。
+	##   第一版只判 into_black, V3/V4 换了别的远景做法就会把珊瑚光点又放出来。
+	if not (str(ArenaTheme.cfg().get("bg_kind", "undersea")) in ["undersea", "deep_glow"]):
 		glows = []
 	var grng = RandomNumberGenerator.new()
 	grng.seed = 20260722
