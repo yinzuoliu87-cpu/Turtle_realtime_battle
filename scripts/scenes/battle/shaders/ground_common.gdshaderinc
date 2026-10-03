@@ -101,7 +101,7 @@ vec2 _c_hash(vec2 p) {
 }
 float caustics_web(vec2 p, float t) {
 	// 轻度扭曲坐标: 网线弯曲、粗细不一(参考里是水面折射的曲线网, 不是龟裂的直线砖缝)
-	p += 0.22 * vec2(sin(p.y * 1.7 + t * 0.7), sin(p.x * 1.5 - t * 0.6));
+	p += 0.40 * vec2(sin(p.y * 1.7 + t * 0.7), sin(p.x * 1.5 - t * 0.6)) + 0.18 * vec2(sin(p.y * 3.9 - t), sin(p.x * 4.3 + t * 0.8));
 	vec2 ip = floor(p);
 	vec2 fp = fract(p);
 	float d1 = 8.0;
