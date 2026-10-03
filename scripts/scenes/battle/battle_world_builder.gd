@@ -1439,12 +1439,20 @@ func _build_theme_decorations(root: Node3D) -> void:
 				continue
 			## ★高度由主题给: 参考里框边的东西**比角色大好几倍**(树干/巨叶), 原来固定 1.1~2.0 米太小。
 			var _rh: Array = cfg.get("ring_h", [1.1, 2.0])
+			## ★按素材名单独给高度(ring_h_of = {素材名: [lo, hi]}): 树干/海草要高, 贝壳这类矮物件按同一高度会大到压进战场。
+			var _rho: Dictionary = cfg.get("ring_h_of", {})
+			if _rho.has(img):
+				_rh = _rho[img]
 			var h: float = rng.randf_range(float(_rh[0]), float(_rh[1]))
 			var spr = battle._map_billboard(path, Vector2(px, py), h)
 			var sc: float = rng.randf_range(0.80, 1.25)
 			spr.scale = Vector3(sc * (-1.0 if rng.randf() < 0.5 else 1.0), sc, sc)
 			var b: float = rng.randf_range(0.82, 1.0)
 			spr.modulate = Color(b, b * 0.98, b * 0.96)
+			## ★主题按素材名着色(ring_mod = {素材名: Color}), 让同一件新素材进别的色调世界; 没写的不动。
+			var _rm: Dictionary = cfg.get("ring_mod", {})
+			if _rm.has(img):
+				spr.modulate = spr.modulate * (_rm[img] as Color)
 			ring_root.add_child(spr)
 
 

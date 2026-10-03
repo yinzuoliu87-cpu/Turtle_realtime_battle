@@ -169,7 +169,8 @@ const THEMES: Dictionary = {
 		"edge_tufts_n": 70,
 		"edge_tufts_h": [0.7, 1.3],
 		## 框边: 暗色高海草(参考里平台四周一圈海草剪影)
-		"ring_props": ["reef_kelp_silhouette"],   # 第一版带方尖碑, 实拍像一排墓碑, 参考里没有
+		"ring_props": ["reef_kelp_silhouette", "reef_kelp_silhouette", "field_pearl_shell"],   # anchordeep_010/011: 外围有大珍珠贝, 珠子发白光
+		"ring_h_of": {"field_pearl_shell": [1.1, 1.6]},   # 第一版带方尖碑, 实拍像一排墓碑, 参考里没有
 		"ring_density": 1.1,
 		"ring_h": [3.0, 5.2],
 		"ring_avoid_bottom": true,
@@ -230,7 +231,8 @@ const THEMES: Dictionary = {
 		"water_col": Color(0.015, 0.008, 0.030),
 		"edge_dark": 0.05,
 		"caustic_amt": 0.0,
-		"ring_props": ["shoal_ruin_column"],
+		"ring_props": ["shoal_ruin_column", "field_dark_trunk", "field_dark_trunk"],   # mixed_012/016: 外围是暗紫树林
+		"ring_mod": {"field_dark_trunk": Color(0.62, 0.48, 0.95)},
 		"ring_density": 0.9,
 		"ring_h": [2.6, 4.2],
 		"ring_avoid_bottom": true,
