@@ -67,6 +67,8 @@ const THEMES: Dictionary = {
 		"ambient_kind": "bubbles",
 	},
 	V1_DUSK: {
+		"ring_lanterns": 16,   # 外围暗林里悬着的红光(mixed_034/035/012)
+		"ring_lantern_col": Color(1.0, 0.08, 0.10, 0.95),
 		"wall_h": 0.35,   # 海岸竖面压成矮边(高墙沿格子成一排台阶方块)
 		"lamp_tex": "field_red_torch",   # 参考: 场内光源是插地的红火把, 不是黄火盆
 		"lamp_h": 1.7,
@@ -204,6 +206,8 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(0.55, 1.0, 0.75, 0.45),   # 水中浮游光点
 	},
 	V3_SHOAL: {
+		"ring_lanterns": 16,   # 外围暗林里悬着的红光(mixed_034/035/012)
+		"ring_lantern_col": Color(1.0, 0.06, 0.16, 0.95),
 		"edge_tufts": ["field_tall_grass"],   # mixed_012: 边沿一圈深蓝紫草
 		"edge_tufts_n": 150,
 		"edge_tufts_r": [0.93, 1.01],
@@ -271,6 +275,8 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(1.0, 0.45, 0.70, 0.45),
 	},
 	V4_STORM: {
+		"ring_lanterns": 16,   # 外围暗林里悬着的红光(mixed_034/035/012)
+		"ring_lantern_col": Color(1.0, 0.05, 0.06, 0.95),
 		"wall_h": 0.35,   # 海岸竖面压成矮边(高墙沿格子成一排台阶方块)
 		"lamp_tex": "field_red_torch",   # 参考: 场内光源是插地的红火把, 不是黄火盆
 		"lamp_h": 1.7,

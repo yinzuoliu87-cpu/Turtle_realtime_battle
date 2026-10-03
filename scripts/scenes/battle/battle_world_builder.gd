@@ -634,6 +634,7 @@ func build_field_lamps() -> Array:
 	made.append_array(_build_rim_lights())   # ★主题: 周边一圈彩色小光点(base 不给 ⇒ 什么都不加)
 	made.append_array(_build_edge_tufts())   # ★主题: 平台边沿一圈草/海草丛(base 不给 ⇒ 什么都不加)
 	made.append_array(_build_field_tufts())  # ★主题: 场内成簇草丛(base 不给 ⇒ 什么都不加)
+	made.append_array(_build_ring_lanterns())  # ★主题: 外围树林里悬着的红光(base 不给 ⇒ 不加)
 	made.append_array(_build_field_tufts("field_piles", 20261006))  # ★主题: 场内骨堆(mixed_033/034/012)
 	return made
 
@@ -691,6 +692,36 @@ func _build_rim_lights() -> Array:
 			L.shadow_enabled = false
 			L.position = battle._world_pos(p, 0.5)
 			root.add_child(L)
+	return made
+
+
+## 外围树林里悬着的光(主题 ring_lanterns = 个数, ring_lantern_col = 颜色)。
+## ★依据 mixed_033/034/035、mixed_012: 参考最有辨识度的红光**挂在平台外的暗林里**, 是暗底上的饱和红点;
+##   我们的红光只照在黄绿地面上, 混成了橙色。
+func _build_ring_lanterns() -> Array:
+	var made: Array = []
+	var cfg: Dictionary = ArenaTheme.cfg()
+	var n: int = int(cfg.get("ring_lanterns", 0))
+	if n <= 0:
+		return made
+	var col: Color = cfg.get("ring_lantern_col", Color(1.0, 0.1, 0.1, 0.9))
+	var A: Rect2 = battle.ARENA
+	var c: Vector2 = A.position + A.size * 0.5
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261007
+	var root := Node3D.new()
+	root.name = "RingLanterns"
+	battle._world.add_child(root)
+	made.append(root)
+	for i in range(n):
+		var th: float = TAU * (float(i) + rng.randf_range(-0.3, 0.3)) / float(n)
+		if sin(th) > 0.3:
+			continue                      # 下半圈(镜头前)不挂: 会挡战场
+		var rr: float = rng.randf_range(1.08, 1.22)
+		var p := Vector2(c.x + cos(th) * A.size.x * 0.5 * rr, c.y + sin(th) * A.size.y * 0.5 * rr)
+		var g := _glow_puff(p, col, rng.randf_range(0.7, 1.0))
+		g.position.y += rng.randf_range(0.8, 1.8)   # 悬在半空
+		root.add_child(g)
 	return made
 
 
