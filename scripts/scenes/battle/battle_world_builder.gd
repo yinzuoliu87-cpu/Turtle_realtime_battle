@@ -439,8 +439,125 @@ const DETRITUS_SEED := 20260920
 ##   水面重做把场内地面明度从 78.2 抬到 81.6, 墙就从 +24% 掉到 **+18%**, 掉出标定区间(+23~40%)。
 ##   ⇒ 只要动灯光/地面亮度, 这个数必须重量。方案书 20260918b 的 W3 登记的就是这条。
 
+## ★★画出来的地面与崖边(主题 `ground_tileset`): PixelLab Wang 图块, 按四角「地面/深渊」选块。
+## 依据(开发者原话): 咩咩「all the art is hand drawn, minus a few shaders」—— 地面和平台边缘是画的,
+##   不是 shader 调色 + 代码软化。用户 2026-10-03:「人家是用代码解决的吗」。
+## 做法: 地图格心当角点, 图块铺在格心之间的对偶网格上(每块的四角 = 相邻四个格子是不是陆地)。
+##   贴图: assets/sprites/map/themes/tilesets/<名>.png, 选块表: <名>.json = {"tile": 像素, "wang": {"0..15": [x,y]}}。
+## base 不给 ⇒ 不建, 一个像素不动。
+func build_tileset_ground(grid: Array, w: int, h: int, tile: float, ox: float, oy: float) -> Array:
+	var made: Array = []
+	var nm: String = str(ArenaTheme.cfg().get("ground_tileset", ""))
+	if nm == "":
+		return made
+	var png: String = "res://assets/sprites/map/themes/tilesets/%s.png" % nm
+	var js: String = "res://assets/sprites/map/themes/tilesets/%s.json" % nm
+	if not ResourceLoader.exists(png) or not FileAccess.file_exists(js):
+		push_warning("[tileset_ground] 图块缺失: %s —— 不铺(不做静默兜底)" % nm)
+		return made
+	var tex: Texture2D = load(png)
+	var meta: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(js))
+	var tpx: float = float(meta.get("tile", 32))
+	var wang: Dictionary = meta.get("wang", {})
+	var tw: float = float(tex.get_width())
+	var th: float = float(tex.get_height())
+	var is_land := func(r: int, c: int) -> int:
+		if r < 0 or r >= h or c < 0:
+			return 0
+		var row: Array = grid[r]
+		if c >= row.size():
+			return 0
+		var v: int = int(row[c])
+		return 1 if (v == 0 or v == 2 or v == 3) else 0
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var quads := 0
+	var y: float = 0.004
+	for r in range(-1, h):
+		for c in range(-1, w):
+			var nw: int = is_land.call(r, c)
+			var ne: int = is_land.call(r, c + 1)
+			var sw: int = is_land.call(r + 1, c)
+			var se: int = is_land.call(r + 1, c + 1)
+			var key: String = str(nw * 8 + ne * 4 + sw * 2 + se)
+			if key == "0" or not wang.has(key):
+				continue      # 全是深渊的块不铺: 被灯照成一片灰板(实拍), 让底下的黑海露出来
+			var xy: Array = wang[key]
+			var u0: float = float(xy[0]) / tw
+			var v0: float = float(xy[1]) / th
+			var u1: float = (float(xy[0]) + tpx) / tw
+			var v1: float = (float(xy[1]) + tpx) / th
+			## 四角 = 相邻四个格心
+			var p00: Vector3 = battle._world_pos(Vector2(ox + (float(c) + 0.5) * tile, oy + (float(r) + 0.5) * tile), y)
+			var p10: Vector3 = battle._world_pos(Vector2(ox + (float(c) + 1.5) * tile, oy + (float(r) + 0.5) * tile), y)
+			var p01: Vector3 = battle._world_pos(Vector2(ox + (float(c) + 0.5) * tile, oy + (float(r) + 1.5) * tile), y)
+			var p11: Vector3 = battle._world_pos(Vector2(ox + (float(c) + 1.5) * tile, oy + (float(r) + 1.5) * tile), y)
+			st.set_normal(Vector3.UP)
+			st.set_uv(Vector2(u0, v0)); st.add_vertex(p00)
+			st.set_uv(Vector2(u1, v0)); st.add_vertex(p10)
+			st.set_uv(Vector2(u1, v1)); st.add_vertex(p11)
+			st.set_uv(Vector2(u0, v0)); st.add_vertex(p00)
+			st.set_uv(Vector2(u1, v1)); st.add_vertex(p11)
+			st.set_uv(Vector2(u0, v1)); st.add_vertex(p01)
+			quads += 1
+	if quads == 0:
+		push_warning("[tileset_ground] 一块都没铺")
+		return made
+	var mi := MeshInstance3D.new()
+	mi.name = "TilesetGround"
+	mi.mesh = st.commit()
+	## 小 shader: 贴图 × 主题着色 × 中心聚光(图块原色是生成器给的鲜绿/粉红崖边, 要压进主题色调;
+	##   参考 mixed_034 中心亮池、四周沉暗)。吃光照(火把照得亮)。
+	var sh := Shader.new()
+	sh.code = """shader_type spatial;
+render_mode cull_disabled;
+uniform sampler2D tex : filter_nearest, source_color;
+uniform vec4 tint : source_color = vec4(1.0);
+// 目标色(参考截帧地面中位数实测): 色相 0..1 / 饱和 / 亮度。图块只贡献明暗笔触, 颜色对齐参考。
+uniform vec3 hsv_target = vec3(-1.0, 0.0, 0.0);
+uniform vec2 spot_c = vec2(0.0);
+uniform vec2 spot_half = vec2(1.0);
+uniform float spot_amt = 0.0;
+varying vec3 wpos;
+void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void fragment() {
+	vec3 c = texture(tex, UV).rgb * tint.rgb;
+	if (hsv_target.x >= 0.0) {
+		// 以图块地面中位亮度 0.55 为基准保留明暗起伏, 色相/饱和统一到目标
+		float lum = dot(c, vec3(0.299, 0.587, 0.114));
+		float v = clamp(hsv_target.z * lum / 0.55, 0.0, 1.0);
+		vec3 k = vec3(1.0, 2.0 / 3.0, 1.0 / 3.0);
+		vec3 p = abs(fract(vec3(hsv_target.x) + k) * 6.0 - 3.0);
+		c = v * mix(vec3(1.0), clamp(p - 1.0, 0.0, 1.0), hsv_target.y);
+	}
+	float sr = length((wpos.xz - spot_c) / spot_half);
+	c *= 1.0 - spot_amt * smoothstep(0.30, 1.05, sr);
+	ALBEDO = c;
+}
+"""
+	var m := ShaderMaterial.new()
+	m.shader = sh
+	m.set_shader_parameter("tex", tex)
+	m.set_shader_parameter("tint", ArenaTheme.cfg().get("ground_tileset_tint", Color(1, 1, 1)))
+	if ArenaTheme.cfg().has("ground_tileset_hsv"):
+		m.set_shader_parameter("hsv_target", ArenaTheme.cfg()["ground_tileset_hsv"])
+	var _A: Rect2 = battle.ARENA
+	var _c3: Vector3 = battle._world_pos(_A.position + _A.size * 0.5, 0.0)
+	var _e3: Vector3 = battle._world_pos(_A.end, 0.0)
+	m.set_shader_parameter("spot_c", Vector2(_c3.x, _c3.z))
+	m.set_shader_parameter("spot_half", Vector2(absf(_e3.x - _c3.x), absf(_e3.z - _c3.z)))
+	m.set_shader_parameter("spot_amt", float(ArenaTheme.cfg().get("spot_amt", 0.0)))
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	battle._world.add_child(mi)
+	made.append(mi)
+	return made
+
+
 func build_edge_wall(grid: Array, w: int, h: int, tile: float, ox: float, oy: float) -> Array:
 	var made: Array = []
+	if str(ArenaTheme.cfg().get("ground_tileset", "")) != "":
+		return made    # ★崖边已经画在图块里, 不再立代码墙
 	var tex: Texture2D = load(WALL_TEX) if ResourceLoader.exists(WALL_TEX) else null
 	if tex == null:
 		push_warning("[edge_wall] 贴图缺失: %s —— 不画边界墙(不做静默兜底)" % WALL_TEX)
@@ -641,9 +758,13 @@ func build_field_lamps() -> Array:
 				root.add_child(_hz)
 	made.append_array(_build_rim_lights())   # ★主题: 周边一圈彩色小光点(base 不给 ⇒ 什么都不加)
 	made.append_array(_build_edge_tufts())   # ★主题: 平台边沿一圈草/海草丛(base 不给 ⇒ 什么都不加)
-	made.append_array(_build_field_tufts())  # ★主题: 场内成簇草丛(base 不给 ⇒ 什么都不加)
+	if bool(ArenaTheme.cfg().get("use_layout", false)):
+		made.append_array(_build_layout_props())   # ★主题: 按设计布局摆(ArenaTheme.LAYOUT), 不随机撒
+	else:
+		made.append_array(_build_field_tufts())  # ★主题: 场内成簇草丛(base 不给 ⇒ 什么都不加)
 	made.append_array(_build_ring_lanterns())  # ★主题: 外围树林里悬着的红光(base 不给 ⇒ 不加)
-	made.append_array(_build_field_tufts("field_piles", 20261006))  # ★主题: 场内骨堆(mixed_033/034/012)
+	if not bool(ArenaTheme.cfg().get("use_layout", false)):
+		made.append_array(_build_field_tufts("field_piles", 20261006))  # ★主题: 场内骨堆(mixed_033/034/012)
 	return made
 
 
@@ -872,6 +993,44 @@ func _build_edge_tufts() -> Array:
 		s.scale = Vector3(sc * (-1.0 if rng.randf() < 0.5 else 1.0), sc, sc)
 		s.modulate = cfg.get("edge_tufts_mod", Color(1, 1, 1))
 		root.add_child(s)
+	return made
+
+
+## 按 ArenaTheme.LAYOUT 逐件摆场内物件(素材取主题的 field_tufts / field_piles, 着色与接地影同随机版)。
+func _build_layout_props() -> Array:
+	var made: Array = []
+	var cfg: Dictionary = ArenaTheme.cfg()
+	var A: Rect2 = battle.ARENA
+	var c: Vector2 = A.position + A.size * 0.5
+	var root := Node3D.new()
+	root.name = "LayoutProps"
+	battle._world.add_child(root)
+	made.append(root)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261008                    # 只用来挑同类素材里的哪一张 + 镜像, 位置全来自布局表
+	var lists := {"t": cfg.get("field_tufts", []), "p": cfg.get("field_piles", [])}
+	var mods := {"t": cfg.get("field_tufts_mod", Color(1, 1, 1)), "p": cfg.get("field_piles_mod", Color(1, 1, 1))}
+	var _ps: float = float(cfg.get("prop_shadow", 0.0))
+	var n_put := 0
+	for row in ArenaTheme.LAYOUT:
+		var kind: String = str(row[2])
+		var names: Array = lists.get(kind, [])
+		if names.is_empty():
+			continue
+		var path: String = "res://assets/sprites/map/themes/%s.png" % str(names[rng.randi_range(0, names.size() - 1)])
+		if not ResourceLoader.exists(path):
+			continue
+		var p2 := Vector2(c.x + float(row[0]) * A.size.x * 0.5, c.y + float(row[1]) * A.size.y * 0.5)
+		var s = battle._map_billboard(path, p2, float(row[3]))
+		if rng.randf() < 0.5:
+			s.scale = Vector3(-1.0, 1.0, 1.0)
+		s.modulate = mods[kind]
+		root.add_child(s)
+		if _ps > 0.0 and s.texture != null:
+			root.add_child(_contact_shadow(p2, _ps, s.pixel_size * float(s.texture.get_width()) * 1.1))
+		n_put += 1
+	if n_put == 0:
+		push_warning("[layout_props] 布局表一件都没摆出来")
 	return made
 
 

@@ -67,6 +67,10 @@ const THEMES: Dictionary = {
 		"ambient_kind": "bubbles",
 	},
 	V1_DUSK: {
+		"ground_tileset_hsv": Vector3(0.156, 0.43, 0.66),   # 地面目标色 = mixed_034 地面中位实测(H56 S0.43)
+		"ground_tileset_tint": Color(0.70, 0.66, 0.42),   # 图块原色(生成器的鲜绿/粉红崖边)压进主题色调
+		"ground_tileset": "tiles_dusk",   # 画出来的地面+崖边(PixelLab Wang 图块)
+		"use_layout": true,   # 场内物件按 LAYOUT 设计布局摆
 		"fg_band_col": Color(0.035, 0.050, 0.030),   # 镜头前剪影带颜色(贴图是纯白剪影)
 		"no_base_midground": true,   # 默认中景(沉船/紫海葵)不进主题
 		"ring_r": [1.0, 1.06],      # 外围物件站在平台边沿上, 不悬在黑海面上
@@ -141,6 +145,10 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(1.0, 0.86, 0.42, 0.45),     # 林间萤光(慢·微上飘)
 	},
 	V2_REEF: {
+		"ground_tileset_hsv": Vector3(0.467, 0.56, 0.44),   # 地面目标色 = anchordeep_011 地面中位实测(H168 S0.50)
+		"ground_tileset_tint": Color(0.62, 0.78, 0.76),   # 图块原色(生成器的鲜绿/粉红崖边)压进主题色调
+		"ground_tileset": "tiles_reef",   # 画出来的地面+崖边(PixelLab Wang 图块)
+		"use_layout": true,   # 场内物件按 LAYOUT 设计布局摆
 		"fg_band_col": Color(0.020, 0.060, 0.060),   # 镜头前剪影带颜色(贴图是纯白剪影)
 		"no_base_midground": true,   # 默认中景(沉船/紫海葵)不进主题
 		"ring_r": [1.0, 1.06],      # 外围物件站在平台边沿上, 不悬在黑海面上
@@ -218,6 +226,10 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(0.55, 1.0, 0.75, 0.45),   # 水中浮游光点
 	},
 	V3_SHOAL: {
+		"ground_tileset_hsv": Vector3(0.733, 0.62, 0.55),   # 地面目标色 = mixed_012 地面中位实测(H264 S0.62)
+		"ground_tileset_tint": Color(0.80, 0.70, 0.95),   # 图块原色(生成器的鲜绿/粉红崖边)压进主题色调
+		"ground_tileset": "tiles_shoal",   # 画出来的地面+崖边(PixelLab Wang 图块)
+		"use_layout": true,   # 场内物件按 LAYOUT 设计布局摆
 		"fg_band_col": Color(0.050, 0.025, 0.070),   # 镜头前剪影带颜色(贴图是纯白剪影)
 		"no_base_midground": true,   # 默认中景(沉船/紫海葵)不进主题
 		"ring_r": [1.0, 1.06],      # 外围物件站在平台边沿上, 不悬在黑海面上
@@ -293,6 +305,10 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(1.0, 0.45, 0.70, 0.45),
 	},
 	V4_STORM: {
+		"ground_tileset_hsv": Vector3(0.158, 0.41, 0.42),   # 地面目标色 = mixed_035 地面中位实测(H57 S0.41)
+		"ground_tileset": "tiles_storm",   # 画出来的地面+崖边(PixelLab Wang 图块)
+		"ground_tileset_tint": Color(0.82, 0.78, 0.55),
+		"use_layout": true,   # 场内物件按 LAYOUT 设计布局摆
 		"fg_band_col": Color(0.090, 0.015, 0.020),   # 镜头前剪影带颜色(贴图是纯白剪影)
 		"no_base_midground": true,   # 默认中景(沉船/紫海葵)不进主题
 		"ring_r": [1.0, 1.06],      # 外围物件站在平台边沿上, 不悬在黑海面上
@@ -376,6 +392,43 @@ const REQUIRED_KEYS: Array = [
 	"bg_kind",                                   # ⑦远景背景
 	"light_fixture",                             # ⑧灯光(带灯具)
 	"ambient_kind",                              # ⑨氛围粒子
+]
+
+
+## ★★场内物件的**设计布局**(四版共用一张构图, 各版换各自素材)。
+## 依据: 咩咩每间房的物件是有构图的(四角成簇 / 边上框住 / 中间留战斗区), 不是随机撒点。
+##   用户 2026-10-03:「人家是用代码解决的吗」—— 之前 field_tufts/field_piles 按半径随机撒, 一看就是程序生成。
+## ★左右两侧 |u|>0.5 的已乘 0.84: 实拍角上的簇一半压在两侧 HUD 面板底下。
+## 每行 [u, v, 种类, 高(米)]: u/v = 战场椭圆归一化坐标(右/下为正); 种类 t = 草丛(field_tufts), p = 物件堆(field_piles)。
+const LAYOUT: Array = [
+	[-0.62, -0.60, "p", 1.9],
+	[-0.69, -0.47, "t", 2.2],
+	[-0.53, -0.71, "t", 1.9],
+	[-0.74, -0.63, "t", 2.0],
+	[0.60, -0.62, "p", 1.8],
+	[0.50, -0.73, "t", 2.0],
+	[0.70, -0.51, "t", 2.2],
+	[-0.55, 0.64, "p", 2.0],
+	[-0.66, 0.57, "p", 1.5],
+	[-0.71, 0.45, "t", 2.1],
+	[-0.46, 0.75, "t", 1.8],
+	[0.59, 0.62, "p", 1.9],
+	[0.71, 0.48, "t", 2.2],
+	[0.48, 0.73, "t", 1.9],
+	[0.66, 0.71, "t", 1.7],
+	[-0.12, -0.88, "t", 1.8],
+	[0.10, -0.86, "t", 2.0],
+	[0.00, -0.83, "p", 1.4],
+	[-0.18, 0.87, "t", 1.9],
+	[0.16, 0.88, "t", 2.1],
+	[-0.78, -0.08, "t", 2.2],
+	[-0.76, 0.12, "t", 1.9],
+	[0.78, 0.06, "t", 2.1],
+	[0.76, -0.12, "t", 1.8],
+	[-0.30, 0.38, "p", 1.4],
+	[0.34, -0.32, "t", 1.6],
+	[0.28, 0.44, "p", 1.2],
+	[-0.36, -0.36, "t", 1.5]
 ]
 
 

@@ -1043,6 +1043,8 @@ func _tilemap_from_data(meta: Dictionary, grid: Array, height: Array) -> void:  
 	if _world_builder != null:
 		for n in _world_builder.build_edge_wall(grid, w, h, tile, ox, oy):
 			_tile_nodes.append(n)
+		for n in _world_builder.build_tileset_ground(grid, w, h, tile, ox, oy):   # 主题: 画出来的地面+崖边
+			_tile_nodes.append(n)
 		# ★场内暖色点光源(2026-09-20): 全仓此前 **0 个** `OmniLight3D`/`SpotLight3D`。
 		#   规格是 6 张参考图逐个人工定位 + 程序测量 13 个光源量出来的
 		#   (每屏 2.2 个 · 发光核合计 0.299% · 色相中位 57°)，
