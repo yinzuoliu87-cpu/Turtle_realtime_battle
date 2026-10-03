@@ -75,8 +75,8 @@ const THEMES: Dictionary = {
 		"field_tufts": ["field_tall_grass", "dusk_grass_tuft"],   # 场内成簇大草丛(mixed_033/034 · anchordeep_005/011)
 		"field_tufts_clusters": 9,
 		"field_piles": ["field_bone_pile"],
-		"field_piles_clusters": 7,
-		"field_piles_h": [0.55, 0.85],
+		"field_piles_clusters": 10,
+		"field_piles_h": [0.8, 1.25],
 		"field_tufts_h": [1.3, 2.1],
 		"edge_soft": 1.0,      # 聚光往里收: 参考 mixed_033/034 中心亮池、四周沉黑
 		"spot_amt": 0.55,
@@ -87,8 +87,8 @@ const THEMES: Dictionary = {
 		##   这版每一项都对着**真实游玩**截帧(桌面 `咩咩参考_真实游玩20张.jpg` 的 mixed_033~035)。
 		"label": "暗林",
 		## 地面: Darkwood 真实地面渲染色实测 (0.60,0.57,0.35); 按本仓光照实测倍率 ×1.8 反推反照率
-		"ground_col": Color(0.400, 0.410, 0.210),
-		"stone_col": Color(0.396, 0.405, 0.207),   # 贴近地面色: 两块石台不再是显眼的方块
+		"ground_col": Color(0.360, 0.420, 0.250),   # mixed_034: 灰绿(鼠尾草绿), 不是橄榄黄
+		"stone_col": Color(0.356, 0.415, 0.247),   # 贴近地面色: 两块石台不再是显眼的方块
 		"detail_amt": 0.9,   # 配手绘笔触纹理(ground_strokes), 不再是砖纹
 		"detail_tex": "ground_strokes",
 		"detail_scale": 0.14,
