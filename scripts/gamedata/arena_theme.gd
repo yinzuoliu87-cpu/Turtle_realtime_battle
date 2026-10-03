@@ -66,6 +66,7 @@ const THEMES: Dictionary = {
 		"ground_col": Color(0.231, 0.196, 0.137),
 		"stone_col": Color(0.286, 0.251, 0.200),
 		"wall_col": Color(0.541, 0.431, 0.306),      # 海岸线竖面(黄昏: 暖砂岩)
+		"edge_dark": 0.10,                           # 聚光(黄昏: 中等)
 		## 海: 深蓝紫、低饱和 —— 必须比陆暗(实测参考: 海/陆 亮度比 < 1)
 		"water_col": Color(0.078, 0.090, 0.169),
 		"shore_col": Color(0.318, 0.263, 0.188),      # 湿沙
@@ -101,6 +102,7 @@ const THEMES: Dictionary = {
 		"ground_col": Color(0.157, 0.161, 0.149),
 		"stone_col": Color(0.212, 0.216, 0.204),
 		"wall_col": Color(0.286, 0.306, 0.388),      # 海岸线竖面(夜礁: 冷青灰)
+		"edge_dark": 0.04,                           # 聚光(夜礁: 最强·对标 raw_01 的 30.5%)
 		"water_col": Color(0.035, 0.047, 0.078),
 		"shore_col": Color(0.196, 0.200, 0.192),
 		"ring_props": ["reef_candle_stone", "reef_fungus", "reef_bone_rubble"],
@@ -129,6 +131,7 @@ const THEMES: Dictionary = {
 		"ground_col": Color(0.380, 0.349, 0.271),
 		"stone_col": Color(0.333, 0.325, 0.310),
 		"wall_col": Color(0.773, 0.729, 0.635),      # 海岸线竖面(白昼: 亮砂)
+		"edge_dark": 0.46,                           # 聚光(白昼: 最弱·日光下本来就没有聚光)
 		"water_col": Color(0.129, 0.239, 0.263),   # 仍须比陆暗(判据④)
 		"shore_col": Color(0.439, 0.408, 0.322),
 		"ring_props": ["shoal_palm", "shoal_reed", "shoal_shell_pile", "shoal_flagpole"],
@@ -152,6 +155,7 @@ const THEMES: Dictionary = {
 		"ground_col": Color(0.188, 0.176, 0.161),
 		"stone_col": Color(0.247, 0.247, 0.251),
 		"wall_col": Color(0.408, 0.435, 0.478),      # 海岸线竖面(风暴: 湿铅灰)
+		"edge_dark": 0.14,                           # 聚光(风暴: 偏强·乌云压顶)
 		"water_col": Color(0.129, 0.149, 0.169),
 		"shore_col": Color(0.224, 0.216, 0.200),
 		"ring_props": ["storm_bent_grass", "storm_broken_frame"],

@@ -107,6 +107,10 @@ static func tile_material(ti: int, ws: float, cx: float, cy: float) -> Material:
 	sm.set_shader_parameter("detail_tex", tile_detail_tex(ti))
 	if ti != 1:
 		sm.set_shader_parameter("base_col", theme_tile_col(ti))
+		## ★聚光强度按主题(`base` 不给 ⇒ shader 默认 0.18 = 原值, 逐值不变)。
+		var _ed = ArenaTheme.cfg().get("edge_dark", null)
+		if _ed != null:
+			sm.set_shader_parameter("edge_dark", float(_ed))
 	else:
 		## ★水也按主题走。四色**同源于一个 `water_col`**: 浅/深/浪尖/泡沫各自从它推出来,
 		##   而不是每版手填四个色 —— 手填四份必然有一份忘了改(memory `fb-hand-rolled-copies-drift`)。
