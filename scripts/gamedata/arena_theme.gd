@@ -67,6 +67,7 @@ const THEMES: Dictionary = {
 		"ambient_kind": "bubbles",
 	},
 	V1_DUSK: {
+		"smooth_shade": 1.0,   # 地面不抖动: 参考是柔和涂抹, 抖动网点读作纱窗
 		"ring_lanterns": 16,   # 外围暗林里悬着的红光(mixed_034/035/012)
 		"ring_lantern_col": Color(1.0, 0.08, 0.10, 0.95),
 		"wall_h": 0.35,   # 海岸竖面压成矮边(高墙沿格子成一排台阶方块)
@@ -89,10 +90,10 @@ const THEMES: Dictionary = {
 		## 地面: Darkwood 真实地面渲染色实测 (0.60,0.57,0.35); 按本仓光照实测倍率 ×1.8 反推反照率
 		"ground_col": Color(0.360, 0.420, 0.250),   # mixed_034: 灰绿(鼠尾草绿), 不是橄榄黄
 		"stone_col": Color(0.356, 0.415, 0.247),   # 贴近地面色: 两块石台不再是显眼的方块
-		"detail_amt": 0.9,   # 配手绘笔触纹理(ground_strokes), 不再是砖纹
+		"detail_amt": 0.35,   # 细纹压低: 放大看是一层颗粒
 		"detail_tex": "ground_strokes",
 		"detail_scale": 0.14,
-		"sed_amt": 0.16,      # 大块柔和斑驳加强
+		"sed_amt": 0.20,      # 大块柔和明暗(参考地面是涂抹感)
 		"shore_col": Color(0.262, 0.248, 0.140),
 		## 边界: 真实房间是平台边缘断成**暗色竖崖**, 不是亮色砖墙
 		"wall_col": Color(0.100, 0.110, 0.080),
@@ -111,9 +112,9 @@ const THEMES: Dictionary = {
 		"ring_avoid_bottom": true,
 		"fg_band": "dusk_grass_silhouette",
 		## 地面碎件: 真实房间散着大量低对比小碎件(骨头/碎石/草屑)
-		"detritus": ["dusk_debris_bones", "dusk_debris_grass"],
-		"detritus_n": 120,
-		"detritus_size": 1.15,        # 原 0.38→0.62 仍是几像素的碎屑; 参考里骨堆/碎石是看得清的一块
+		"detritus": ["ink_tuft_a", "ink_tuft_b", "ink_tuft_c"],   # 深色墨线小草(参考地上的散件); 原来的白碎屑读作噪点
+		"detritus_n": 140,
+		"detritus_size": 0.95,
 		"detritus_edge_bias": 1.5,
 		## 周边一圈红烛(参考 Darkwood 房间沿边一圈红光)
 		"rim_lights": 18,
@@ -135,6 +136,7 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(1.0, 0.86, 0.42, 0.45),     # 林间萤光(慢·微上飘)
 	},
 	V2_REEF: {
+		"smooth_shade": 1.0,   # 地面不抖动: 参考是柔和涂抹, 抖动网点读作纱窗
 		"wall_h": 0.35,   # 海岸竖面压成矮边(高墙沿格子成一排台阶方块)
 		"lamp_tex": "reef_glow_orb",   # anchordeep: 场内光源是青白发光球, 不是黄火盆
 		"lamp_h": 1.3,
@@ -156,10 +158,10 @@ const THEMES: Dictionary = {
 		## 地面: Anchordeep 真实地面渲染色实测 (0.15~0.27, 0.42~0.61, 0.41~0.56) 青绿, 反推反照率
 		"ground_col": Color(0.160, 0.410, 0.390),
 		"stone_col": Color(0.158, 0.406, 0.386),
-		"detail_amt": 0.9,   # 配手绘笔触纹理(ground_strokes)
+		"detail_amt": 0.35,   # 细纹压低: 放大看是一层颗粒
 		"detail_tex": "ground_strokes",
 		"detail_scale": 0.14,
-		"sed_amt": 0.16,      # 大块柔和斑驳加强
+		"sed_amt": 0.20,      # 大块柔和明暗(参考地面是涂抹感)
 		"shore_col": Color(0.100, 0.230, 0.220),
 		"wall_col": Color(0.040, 0.075, 0.085),       # 暗色竖崖
 		"water_col": Color(0.012, 0.030, 0.040),      # 外围压到接近虚空
@@ -181,11 +183,11 @@ const THEMES: Dictionary = {
 		"ring_avoid_bottom": true,
 		"fg_band": "dusk_grass_silhouette",   # 第一版用礁石剪影读成「远山」; 参考底部是暗色海草
 		## 地面碎件: 贝壳/小骨/碎石
-		"detritus": ["reef_debris_shells"],
-		"detritus_n": 70,
+		"detritus": ["ink_tuft_a", "ink_tuft_b", "ink_tuft_c"],   # 深色墨线小草(参考地上的散件); 原来的白碎屑读作噪点
+		"detritus_n": 140,
 		"detritus_edge_bias": 2.0,
-		"detritus_tint": Color(0.55, 0.68, 0.76, 1.0),   # 偏暗蓝灰(参考碎件不是白的)
-		"detritus_size": 1.1,
+		"detritus_tint": Color(1, 1, 1, 1.0),
+		"detritus_size": 0.95,
 		## 周边一圈绿色光球(参考 Anchordeep 的绿/白光点)
 		"rim_lights": 16,
 		"rim_light_tex": "reef_glow_orb",
@@ -206,6 +208,7 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(0.55, 1.0, 0.75, 0.45),   # 水中浮游光点
 	},
 	V3_SHOAL: {
+		"smooth_shade": 1.0,   # 地面不抖动: 参考是柔和涂抹, 抖动网点读作纱窗
 		"ring_lanterns": 16,   # 外围暗林里悬着的红光(mixed_034/035/012)
 		"ring_lantern_col": Color(1.0, 0.06, 0.16, 0.95),
 		"edge_tufts": ["field_tall_grass"],   # mixed_012: 边沿一圈深蓝紫草
@@ -234,10 +237,10 @@ const THEMES: Dictionary = {
 		## 地面: 真实渲染色实测 (0.24~0.35, 0.04~0.10, 0.36~0.44) 很饱和的深紫, 反推反照率
 		"ground_col": Color(0.300, 0.215, 0.420),   # mixed_012: 薰衣草紫地面, 不是深酒红
 		"stone_col": Color(0.297, 0.213, 0.416),
-		"detail_amt": 0.9,   # 配手绘笔触纹理(ground_strokes)
+		"detail_amt": 0.35,   # 细纹压低: 放大看是一层颗粒
 		"detail_tex": "ground_strokes",
 		"detail_scale": 0.14,
-		"sed_amt": 0.16,      # 大块柔和斑驳加强
+		"sed_amt": 0.20,      # 大块柔和明暗(参考地面是涂抹感)
 		"shore_col": Color(0.130, 0.035, 0.190),
 		"wall_col": Color(0.050, 0.020, 0.080),
 		"water_col": Color(0.015, 0.008, 0.030),
@@ -249,11 +252,11 @@ const THEMES: Dictionary = {
 		"ring_h": [2.6, 4.2],
 		"ring_avoid_bottom": true,
 		"fg_band": "dusk_grass_silhouette",
-		"detritus": ["shoal_debris_rubble"],
-		"detritus_n": 50,
-		"detritus_size": 1.1,
+		"detritus": ["ink_tuft_a", "ink_tuft_b", "ink_tuft_c"],   # 深色墨线小草(参考地上的散件); 原来的白碎屑读作噪点
+		"detritus_n": 140,
+		"detritus_size": 0.95,
 		"detritus_edge_bias": 1.6,
-		"detritus_tint": Color(0.70, 0.48, 0.72, 1.0),   # 白碎屑读作噪点 ⇒ 压成暗粉
+		"detritus_tint": Color(1, 1, 1, 1.0),
 		## 周边一圈红光(参考紫色地牢沿边是红色光源)
 		"rim_lights": 16,
 		"rim_light_tex": "field_red_torch",
@@ -275,6 +278,7 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(1.0, 0.45, 0.70, 0.45),
 	},
 	V4_STORM: {
+		"smooth_shade": 1.0,   # 地面不抖动: 参考是柔和涂抹, 抖动网点读作纱窗
 		"ring_lanterns": 16,   # 外围暗林里悬着的红光(mixed_034/035/012)
 		"ring_lantern_col": Color(1.0, 0.05, 0.06, 0.95),
 		"wall_h": 0.35,   # 海岸竖面压成矮边(高墙沿格子成一排台阶方块)
@@ -299,10 +303,10 @@ const THEMES: Dictionary = {
 		"label": "赤林",
 		"ground_col": Color(0.460, 0.500, 0.300),   # mixed_035: 中心是淡黄绿的亮地, 红的是四周
 		"stone_col": Color(0.455, 0.495, 0.297),
-		"detail_amt": 0.9,   # 配手绘笔触纹理(ground_strokes)
+		"detail_amt": 0.35,   # 细纹压低: 放大看是一层颗粒
 		"detail_tex": "ground_strokes",
 		"detail_scale": 0.14,
-		"sed_amt": 0.16,      # 大块柔和斑驳加强
+		"sed_amt": 0.20,      # 大块柔和明暗(参考地面是涂抹感)
 		"shore_col": Color(0.300, 0.110, 0.080),
 		"wall_col": Color(0.200, 0.035, 0.040),   # mixed_035: 平台外一整圈是红雾, 暗林那版是黑
 		"water_col": Color(0.110, 0.012, 0.020),
@@ -313,11 +317,11 @@ const THEMES: Dictionary = {
 		"ring_h": [4.2, 6.4],
 		"ring_avoid_bottom": true,
 		"fg_band": "dusk_grass_silhouette",
-		"detritus": ["dusk_debris_bones", "dusk_debris_grass"],
-		"detritus_n": 120,
-		"detritus_size": 1.15,
+		"detritus": ["ink_tuft_a", "ink_tuft_b", "ink_tuft_c"],   # 深色墨线小草(参考地上的散件); 原来的白碎屑读作噪点
+		"detritus_n": 140,
+		"detritus_size": 0.95,
 		"detritus_edge_bias": 1.5,
-		"detritus_tint": Color(0.95, 0.85, 0.80, 1.0),
+		"detritus_tint": Color(1, 1, 1, 1.0),
 		"edge_tufts": ["field_tall_grass"],   # 035: 边沿是鲜绿高草
 		"edge_tufts_n": 170,
 		"edge_tufts_r": [0.93, 1.01],   # 贴着平台边沿一圈密草, 盖住格子台阶(参考边沿是草边)

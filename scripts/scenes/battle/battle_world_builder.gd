@@ -125,7 +125,7 @@ static func tile_material(ti: int, ws: float, cx: float, cy: float) -> Material:
 		## ★岸线切角色: shader 默认是 base 的青色浅水; 主题的海是暗色 ⇒ 不改就在岸边留一圈青色细边(实拍放大照出来的)。
 		if ArenaTheme.cfg().has("water_col"):
 			sm.set_shader_parameter("shore_water_col", ArenaTheme.cfg()["water_col"])
-		for _k in ["caustic_amt", "caustic_far", "caustic_col", "caustic_scale", "detail_amt", "sed_amt", "caustic_web", "edge_soft", "spot_amt"]:
+		for _k in ["caustic_amt", "caustic_far", "caustic_col", "caustic_scale", "detail_amt", "sed_amt", "caustic_web", "edge_soft", "spot_amt", "smooth_shade"]:
 			var _v = ArenaTheme.cfg().get(_k, null)
 			if _v != null:
 				sm.set_shader_parameter(_k, _v)

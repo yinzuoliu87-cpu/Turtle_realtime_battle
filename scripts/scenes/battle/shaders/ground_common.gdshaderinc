@@ -115,10 +115,11 @@ float caustics_web(vec2 p, float t) {
 			if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) { d2 = d; }
 		}
 	}
-	float w = 0.07 + 0.05 * sin(p.x * 0.6 + p.y * 0.4);
+	float w = 0.16 + 0.10 * sin(p.x * 0.6 + p.y * 0.4);   // 宽而软的亮带(anchordeep_011), 不是细硬线
 	// 大尺度明暗起伏: 有的地方网亮、有的地方几乎没有(参考里光纹是一片片的)
 	float patch = 0.55 + 0.45 * sin(p.x * 0.35 + 1.3) * sin(p.y * 0.42 - 0.7);
-	return (1.0 - smoothstep(0.0, w, d2 - d1)) * patch;
+	float e = 1.0 - smoothstep(0.0, w, d2 - d1);
+	return e * e * patch;
 }
 
 
