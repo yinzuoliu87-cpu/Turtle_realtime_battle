@@ -1,0 +1,23 @@
+Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org
+
+[DataRegistry] Loading PoC data → res://data/*.json
+[DataRegistry] ✓ loaded: 28 pets, 8 equipment, 13 status, 5 rules
+[Audio] QUIET=1 ⇒ 主总线已静音(mute=true, -80 dB)
+=== 法器主动: 同窗隔离(两组同装备, 只一组灌满法力) ===
+  [PASS] ★分母: 本条解掉 3 件, 另有 0 件隔离失败(显式登记)  解掉 ["p2eq_023", "p2eq_029", "p2eq_090"] / 未解决 []
+  [PASS] p2eq_023: 灌满法力那组变化 18909.15 > 同装备未灌那组 236.00(差值 = 主动)  A 18909.145 / B 236.000
+  [FAIL] p2eq_029: 灌满法力那组变化 398.35 > 同装备未灌那组 451.87(差值 = 主动)  A 398.347 / B 451.870
+  [PASS] p2eq_090: 灌满法力那组变化 700.24 > 同装备未灌那组 125.06(差值 = 主动)  A 700.237 / B 125.064
+  [FAIL] ★★这 3 件全部隔离出了主动效果(仍隔离不了的: 1 件)  仍隔离不了: ["p2eq_029"]
+  [PASS] ★★已知缺口: 0 件(031 tween 驱动, 无头推不动 —— 要先把结算从 tween 抽出来)  待解决: []
+
+  (共 6 条断言)
+FAIL x2
+WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+   at: cleanup (core/object/object.cpp:2663)
+ERROR: 42 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:810)
+ERROR: 6 RID allocations of type 'PN13RendererDummy14TextureStorage12DummyTextureE' were leaked at exit.
+ERROR: 1 RID allocations of type 'N13RendererDummy9DummyMeshE' were leaked at exit.
+ERROR: 14 RID allocations of type 'N13RendererDummy15MaterialStorage13DummyMaterialE' were leaked at exit.
+ERROR: 1 RID allocations of type 'N13RendererDummy15MaterialStorage11DummyShaderE' were leaked at exit.
