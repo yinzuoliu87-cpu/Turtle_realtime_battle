@@ -19,6 +19,16 @@ uniform float wet_width = 2.2;
 uniform float edge_dark = 0.18;
 uniform float caustic_far = 0.35;
 uniform float caustic_scale = 0.5;
+uniform float detail_amt = 1.0;
+uniform float sed_amt = 0.08;
+// 0 = 旧的 sin 光斑焦散(默认, 逐值不变); 1 = 网状细线焦散(深礁主题)
+uniform float caustic_web = 0.0;
+// 岛缘压暗的过渡宽度(默认 0.60 = 原值); 越大 = 暗得越往里 = 聚光越集中在中心
+uniform float edge_soft = 0.60;
+// 中心聚光: 离地图中心越远越暗(默认 0 = 不加, 逐值不变)。参考 mixed_033/034 中心一个亮池、四周沉黑。
+uniform float spot_amt = 0.0;
+uniform vec2 spot_c = vec2(0.0);      // 战场中心(世界 xz·米)
+uniform vec2 spot_half = vec2(1.0);   // 战场半宽/半深(米): 归一化后边沿 = 1
 // 岸线切角用的水色(与 ground_water 的 shallow_col 对齐)
 uniform vec4 shore_water_col : source_color = vec4(0.30, 0.93, 0.90, 1.0);
 
@@ -38,13 +48,16 @@ void fragment() {
 	//   纯空地是 **16.4 倍**(10.77% vs 0.66%, 见 docs/plans/ref/20260930-Botworld逐帧参考.md §8)。
 	//   ⇒ 改后**五条尺子全部不退反进**: 空地噪声 10.77→7.69 / 中间调 41.3→42.5 /
 	//     色数 117→121 / 亮坡比 2.49→2.74 / 战场中带 12.5→10.7。
-	vec3 c = base_col.rgb * mix(0.90, 1.14, det);
+	// ★detail_amt(默认 1.0 = 原值 0.90~1.14): 主题把砖纹压到几乎看不见 —— 真实游玩截帧里
+	//   咩咩地面是平滑的涂抹感, 没有方格砖纹; 我们实拍最显眼的就是这层砖纹。
+	vec3 c = base_col.rgb * (1.0 + detail_amt * (mix(0.90, 1.14, det) - 1.0));
 
 	// ── 大尺度沉积起伏: 让大片平地有"地形"而不是一块底色 ────────────
 	// 同样过抖动分级(6 级) —— 平滑的明暗起伏在像素风里会显得像 3D 渲染的脏。
 	if (rich_fx) {
 		float sed = dither_steps(sediment(wp) * 0.5 + 0.5, 6.0, FRAGCOORD.xy);
-		c *= mix(0.92, 1.08, sed);
+		// ★sed_amt(默认 0.08 = 原值): 主题加大这层**大块柔和**斑驳, 替代被压掉的砖纹。
+		c *= mix(1.0 - sed_amt, 1.0 + sed_amt, sed);
 	}
 
 	// ── 湿沙带: 靠水的这一圈地压暗并偏向水色 ────────────────────────
@@ -62,7 +75,8 @@ void fragment() {
 	// 同样过抖动分级 —— 平滑的光纹在像素风里会显得"太 3D"。
 	if (rich_fx) {
 		// ★caustic_scale(默认 0.5 = 原值): 深礁主题实拍是一大团一大团光斑, 参考是细密网状亮纹 ⇒ 调细。
-		float ca = dither_steps(caustics(wp * caustic_scale, TIME * caustic_speed), 3.0, FRAGCOORD.xy);
+		float ca_raw = caustic_web > 0.5 ? caustics_web(wp * caustic_scale, TIME * caustic_speed) : caustics(wp * caustic_scale, TIME * caustic_speed);
+		float ca = dither_steps(ca_raw, 3.0, FRAGCOORD.xy);
 		float near_water = 1.0 - smoothstep(0.0, 5.0, -d);
 		// ★caustic_far: 离水远处的焦散强度(默认 0.35 = 原值)。深礁主题要整片地面都有光纹(对标 Anchordeep),
 		//   暗林主题要 0(林地上不该有水波光) —— 由主题经 caustic_amt / caustic_far 控制。
@@ -78,7 +92,7 @@ void fragment() {
 
 	// ── 岛缘压暗: 越靠板子外沿越暗(照不到光) ────────────────────
 	// 同样过抖动分级, 免得出现一圈羽化的模糊晕。
-	float ef = dither_steps(smoothstep(0.02, 0.60, edge_fade(wp)), 4.0, FRAGCOORD.xy);
+	float ef = dither_steps(smoothstep(0.02, edge_soft, edge_fade(wp)), 4.0, FRAGCOORD.xy);
 	// ★系数 0.18 而不是 0.34: 场景开着雾, 而【雾是叠加的】——
 	// 乘性压暗会被雾底冲淡, 探针实测 0.34 只做到 13% 的实际压暗(30→26)。
 	// ★★★2026-10-03 下限做成 uniform, 默认 0.18 = 原值 ⇒ 不设就逐值不变。
@@ -87,6 +101,10 @@ void fragment() {
 	// 中心一个亮池、四周沉进黑, 是咩咩地牢最标志性的一笔。
 	// ⇒ 调这个下限就是调"中心到边缘沉多少"。
 	c *= mix(edge_dark, 1.0, ef);
+	if (spot_amt > 0.0) {
+		float sr = length((wp - spot_c) / spot_half);
+		c *= 1.0 - spot_amt * dither_steps(smoothstep(0.30, 1.0, sr), 4.0, FRAGCOORD.xy);
+	}
 
 	ALBEDO = c;
 }

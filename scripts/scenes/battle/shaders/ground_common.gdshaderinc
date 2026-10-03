@@ -92,6 +92,35 @@ float caustics(vec2 p, float t) {
 	return pow(clamp(v, 0.0, 1.0), 3.0);        // 收窄成亮脉, 不是平铺的波
 }
 
+// ── 网状焦散(深礁主题): Voronoi 胞元的**细边**亮、胞内暗 ──────────────
+// ★依据(真实游玩截帧 anchordeep_011/016/020): 地面上是一张细密的亮线网, 不是一团团光斑。
+//   sin 叠加那版只能出光斑, 换形状必须换原语。返回 0..1, 只有贴近胞元边界那一窄条才亮。
+vec2 _c_hash(vec2 p) {
+	p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
+	return fract(sin(p) * 43758.5453);
+}
+float caustics_web(vec2 p, float t) {
+	// 轻度扭曲坐标: 网线弯曲、粗细不一(参考里是水面折射的曲线网, 不是龟裂的直线砖缝)
+	p += 0.22 * vec2(sin(p.y * 1.7 + t * 0.7), sin(p.x * 1.5 - t * 0.6));
+	vec2 ip = floor(p);
+	vec2 fp = fract(p);
+	float d1 = 8.0;
+	float d2 = 8.0;
+	for (int j = -1; j <= 1; j++) {
+		for (int i = -1; i <= 1; i++) {
+			vec2 g = vec2(float(i), float(j));
+			vec2 o = _c_hash(ip + g);
+			o = 0.5 + 0.38 * sin(t + 6.2831 * o);
+			float d = length(g + o - fp);
+			if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) { d2 = d; }
+		}
+	}
+	float w = 0.07 + 0.05 * sin(p.x * 0.6 + p.y * 0.4);
+	// 大尺度明暗起伏: 有的地方网亮、有的地方几乎没有(参考里光纹是一片片的)
+	float patch = 0.55 + 0.45 * sin(p.x * 0.35 + 1.3) * sin(p.y * 0.42 - 0.7);
+	return (1.0 - smoothstep(0.0, w, d2 - d1)) * patch;
+}
+
 
 // ── 大尺度沉积起伏 ────────────────────────────────────────────────────
 // ★解决的是"岛心两大片平坦暗地": 细节贴图只有 3 米的周期, 再远就一片均匀。

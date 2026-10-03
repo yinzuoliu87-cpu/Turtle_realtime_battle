@@ -97,6 +97,10 @@ func _ready() -> void:
 		"edge_dark",                 # 岛缘压暗下限 0.18
 		"ambient_col",               # 氛围粒子 Color(1,1,1,0.55)
 		"fog_col",                   # 雾色 Color(0.035,0.105,0.150)
+		"detail_amt", "sed_amt",     # 地面砖纹 0.90~1.14 / 斑驳 ±0.08
+		"caustic_web", "edge_soft", "spot_amt",  # 焦散形状 / 岛缘压暗过渡宽度
+		"rim_light_mod", "rim_halo_col", "rim_halo_size",   # 光点着色 / 光晕
+		"field_tufts", "field_tufts_clusters", "field_tufts_h",   # 场内成簇草丛
 	]
 	var base_cfg: Dictionary = AT.cfg_of(AT.V0_BASE)
 	var leaked: Array = []

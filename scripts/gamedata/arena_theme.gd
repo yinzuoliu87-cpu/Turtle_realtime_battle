@@ -67,12 +67,22 @@ const THEMES: Dictionary = {
 		"ambient_kind": "bubbles",
 	},
 	V1_DUSK: {
+		"field_tufts": ["dusk_grass_tuft"],   # 场内成簇大草丛(mixed_033/034 · anchordeep_005/011)
+		"field_tufts_clusters": 9,
+		"field_tufts_h": [1.3, 2.1],
+		"edge_soft": 1.0,      # 聚光往里收: 参考 mixed_033/034 中心亮池、四周沉黑
+		"spot_amt": 0.55,
+		"rim_light_mod": Color(1.0, 0.45, 0.40),
+		"rim_halo_col": Color(0.85, 0.06, 0.05, 0.55),
+		"rim_halo_size": 2.6,
 		## ★★2026-10-03 改成「暗林」(对标咩咩 Darkwood)。原来那版「黄昏孤岛」是我凭空想的方向;
 		##   这版每一项都对着**真实游玩**截帧(桌面 `咩咩参考_真实游玩20张.jpg` 的 mixed_033~035)。
 		"label": "暗林",
 		## 地面: Darkwood 真实地面渲染色实测 (0.60,0.57,0.35); 按本仓光照实测倍率 ×1.8 反推反照率
-		"ground_col": Color(0.330, 0.312, 0.170),
-		"stone_col": Color(0.240, 0.228, 0.150),
+		"ground_col": Color(0.400, 0.410, 0.210),
+		"stone_col": Color(0.372, 0.381, 0.195),   # 贴近地面色: 两块石台不再是显眼的方块
+		"detail_amt": 0.22,   # 砖纹压到几乎看不见
+		"sed_amt": 0.16,      # 大块柔和斑驳加强
 		"shore_col": Color(0.262, 0.248, 0.140),
 		## 边界: 真实房间是平台边缘断成**暗色竖崖**, 不是亮色砖墙
 		"wall_col": Color(0.100, 0.110, 0.080),
@@ -91,8 +101,8 @@ const THEMES: Dictionary = {
 		"fg_band": "dusk_grass_silhouette",
 		## 地面碎件: 真实房间散着大量低对比小碎件(骨头/碎石/草屑)
 		"detritus": ["dusk_debris_bones", "dusk_debris_grass"],
-		"detritus_n": 260,
-		"detritus_size": 0.62,        # 原 0.38 太小(48px 贴图)
+		"detritus_n": 120,
+		"detritus_size": 1.15,        # 原 0.38→0.62 仍是几像素的碎屑; 参考里骨堆/碎石是看得清的一块
 		"detritus_edge_bias": 1.5,
 		## 周边一圈红烛(参考 Darkwood 房间沿边一圈红光)
 		"rim_lights": 18,
@@ -114,20 +124,30 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(1.0, 0.86, 0.42, 0.45),     # 林间萤光(慢·微上飘)
 	},
 	V2_REEF: {
+		"field_tufts": ["reef_kelp_tuft"],   # 场内成簇大草丛(mixed_033/034 · anchordeep_005/011)
+		"field_tufts_clusters": 9,
+		"field_tufts_h": [1.4, 2.3],
+		"caustic_web": 1.0,    # 网状细线焦散(anchordeep_011/016/020)
+		"edge_soft": 0.9,
+		"spot_amt": 0.35,
+		"rim_halo_col": Color(0.15, 0.75, 0.40, 0.40),
+		"rim_halo_size": 2.2,
 		## ★★2026-10-03 改成「深礁」(对标咩咩 Anchordeep), 对照真实游玩截帧
 		##   anchordeep_003/011/020/025 等 14 张(桌面 `咩咩参考_真实游玩20张.jpg`)。
 		"label": "深礁",
 		## 地面: Anchordeep 真实地面渲染色实测 (0.15~0.27, 0.42~0.61, 0.41~0.56) 青绿, 反推反照率
-		"ground_col": Color(0.117, 0.283, 0.267),
-		"stone_col": Color(0.090, 0.200, 0.200),
+		"ground_col": Color(0.140, 0.350, 0.330),
+		"stone_col": Color(0.130, 0.325, 0.306),
+		"detail_amt": 0.22,   # 砖纹压到几乎看不见
+		"sed_amt": 0.16,      # 大块柔和斑驳加强
 		"shore_col": Color(0.100, 0.230, 0.220),
 		"wall_col": Color(0.040, 0.075, 0.085),       # 暗色竖崖
 		"water_col": Color(0.012, 0.030, 0.040),      # 外围压到接近虚空
 		"edge_dark": 0.05,
-		"caustic_amt": 0.24,
+		"caustic_amt": 0.26,
 		"caustic_far": 1.0,   # 整片地面都有水下光纹(Anchordeep 最认得出的特征)
 		"caustic_col": Color(0.70, 1.0, 0.92, 1.0),
-		"caustic_scale": 1.35,  # 0.5 是大团光斑, 2.2 是规整豹纹; 参考是很淡的细网纹
+		"caustic_scale": 0.95,  # 网状焦散的胞元≈1 米(参考里比角色略大)
 		"edge_tufts": ["reef_kelp_tuft"],
 		"edge_tufts_n": 70,
 		"edge_tufts_h": [0.7, 1.3],
@@ -139,10 +159,10 @@ const THEMES: Dictionary = {
 		"fg_band": "dusk_grass_silhouette",   # 第一版用礁石剪影读成「远山」; 参考底部是暗色海草
 		## 地面碎件: 贝壳/小骨/碎石
 		"detritus": ["reef_debris_shells"],
-		"detritus_n": 110,
+		"detritus_n": 70,
 		"detritus_edge_bias": 2.0,
 		"detritus_tint": Color(0.55, 0.68, 0.76, 1.0),   # 偏暗蓝灰(参考碎件不是白的)
-		"detritus_size": 0.6,
+		"detritus_size": 1.1,
 		## 周边一圈绿色光球(参考 Anchordeep 的绿/白光点)
 		"rim_lights": 16,
 		"rim_light_tex": "reef_glow_orb",
@@ -163,11 +183,18 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(0.55, 1.0, 0.75, 0.45),   # 水中浮游光点
 	},
 	V3_SHOAL: {
+		"edge_soft": 1.0,
+		"spot_amt": 0.45,
+		"rim_light_mod": Color(1.0, 0.45, 0.40),
+		"rim_halo_col": Color(0.85, 0.05, 0.12, 0.55),
+		"rim_halo_size": 2.6,
 		## ★★2026-10-03 改成「紫墟」(对标咩咩教程那座紫色地牢), 对照真实游玩截帧 mixed_009/012/016。
 		"label": "紫墟",
 		## 地面: 真实渲染色实测 (0.24~0.35, 0.04~0.10, 0.36~0.44) 很饱和的深紫, 反推反照率
 		"ground_col": Color(0.155, 0.040, 0.225),
-		"stone_col": Color(0.120, 0.040, 0.170),
+		"stone_col": Color(0.140, 0.036, 0.205),
+		"detail_amt": 0.22,   # 砖纹压到几乎看不见
+		"sed_amt": 0.16,      # 大块柔和斑驳加强
 		"shore_col": Color(0.130, 0.035, 0.190),
 		"wall_col": Color(0.050, 0.020, 0.080),
 		"water_col": Color(0.015, 0.008, 0.030),
@@ -179,8 +206,8 @@ const THEMES: Dictionary = {
 		"ring_avoid_bottom": true,
 		"fg_band": "dusk_grass_silhouette",
 		"detritus": ["shoal_debris_rubble"],
-		"detritus_n": 160,
-		"detritus_size": 0.6,
+		"detritus_n": 90,
+		"detritus_size": 1.1,
 		"detritus_edge_bias": 1.6,
 		"detritus_tint": Color(0.85, 0.75, 0.95, 1.0),
 		## 周边一圈红光(参考紫色地牢沿边是红色光源)
@@ -204,12 +231,22 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(1.0, 0.45, 0.70, 0.45),
 	},
 	V4_STORM: {
+		"field_tufts": ["dusk_grass_tuft"],   # 场内成簇大草丛(mixed_033/034 · anchordeep_005/011)
+		"field_tufts_clusters": 8,
+		"field_tufts_h": [1.3, 2.1],
+		"edge_soft": 1.0,
+		"spot_amt": 0.45,
+		"rim_light_mod": Color(1.0, 0.40, 0.36),
+		"rim_halo_col": Color(0.95, 0.05, 0.04, 0.60),
+		"rim_halo_size": 2.8,
 		## ★★2026-10-03 改成「赤林」(对标红调的 Darkwood, 真实游玩截帧 mixed_035)。
 		##   结构与 V1 暗林相同, **用的是今天给 V1 新做的那批素材**(树干/红烛/碎件/草丛),
 		##   只换色调。不是复用旧素材库(用户「不要复用」说的是库里已有的那些)。
 		"label": "赤林",
 		"ground_col": Color(0.300, 0.230, 0.140),
-		"stone_col": Color(0.220, 0.160, 0.110),
+		"stone_col": Color(0.278, 0.212, 0.130),
+		"detail_amt": 0.22,   # 砖纹压到几乎看不见
+		"sed_amt": 0.16,      # 大块柔和斑驳加强
 		"shore_col": Color(0.240, 0.180, 0.115),
 		"wall_col": Color(0.090, 0.030, 0.030),
 		"water_col": Color(0.030, 0.010, 0.012),
@@ -221,8 +258,8 @@ const THEMES: Dictionary = {
 		"ring_avoid_bottom": true,
 		"fg_band": "dusk_grass_silhouette",
 		"detritus": ["dusk_debris_bones", "dusk_debris_grass"],
-		"detritus_n": 220,
-		"detritus_size": 0.62,
+		"detritus_n": 120,
+		"detritus_size": 1.15,
 		"detritus_edge_bias": 1.5,
 		"detritus_tint": Color(1.0, 0.85, 0.80, 1.0),
 		"edge_tufts": ["dusk_grass_tuft"],

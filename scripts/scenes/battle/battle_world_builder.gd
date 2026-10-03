@@ -112,7 +112,12 @@ static func tile_material(ti: int, ws: float, cx: float, cy: float) -> Material:
 		if _ed != null:
 			sm.set_shader_parameter("edge_dark", float(_ed))
 		## ★焦散按主题(base 不给 ⇒ shader 默认值逐值不变)。暗林=0(林地无水波光), 深礁=整片铺满。
-		for _k in ["caustic_amt", "caustic_far", "caustic_col", "caustic_scale"]:
+		if ArenaTheme.cfg().has("spot_amt"):
+			var _A: Rect2 = RealtimeBattle3DScene.ARENA
+			var _ac: Vector2 = _A.position + _A.size * 0.5
+			sm.set_shader_parameter("spot_c", Vector2((_ac.x - cx) * ws, (_ac.y - cy) * ws))
+			sm.set_shader_parameter("spot_half", _A.size * 0.5 * ws)
+		for _k in ["caustic_amt", "caustic_far", "caustic_col", "caustic_scale", "detail_amt", "sed_amt", "caustic_web", "edge_soft", "spot_amt"]:
 			var _v = ArenaTheme.cfg().get(_k, null)
 			if _v != null:
 				sm.set_shader_parameter(_k, _v)
@@ -610,6 +615,7 @@ func build_field_lamps() -> Array:
 			made.append(s)
 	made.append_array(_build_rim_lights())   # ★主题: 周边一圈彩色小光点(base 不给 ⇒ 什么都不加)
 	made.append_array(_build_edge_tufts())   # ★主题: 平台边沿一圈草/海草丛(base 不给 ⇒ 什么都不加)
+	made.append_array(_build_field_tufts())  # ★主题: 场内成簇草丛(base 不给 ⇒ 什么都不加)
 	return made
 
 
@@ -653,7 +659,11 @@ func _build_rim_lights() -> Array:
 		var p := Vector2(c.x + cos(th) * A.size.x * 0.5 * rr, c.y + sin(th) * A.size.y * 0.5 * rr)
 		## ★探针: 光点 24 个节点都建了, 实拍看不见 —— 0.55 米只有火盆(1.28 米)的四成, 压不过亮地面。
 		var s = battle._map_billboard(path, p, float(cfg.get("rim_light_h", 0.55)))
+		## ★参考(mixed_033/034/035)里的光是**饱和的红**、带一圈地面光晕; 我们的烛火是黄的 ⇒ 着色 + 地面光晕。
+		s.modulate = cfg.get("rim_light_mod", Color(1, 1, 1))
 		root.add_child(s)
+		if cfg.has("rim_halo_col"):
+			root.add_child(_rim_halo(p, cfg["rim_halo_col"], float(cfg.get("rim_halo_size", 2.0))))
 		if i % maxi(1, n / maxi(1, n_real)) == 0:
 			var L := OmniLight3D.new()
 			L.light_color = col
@@ -663,6 +673,36 @@ func _build_rim_lights() -> Array:
 			L.position = battle._world_pos(p, 0.5)
 			root.add_child(L)
 	return made
+
+
+## 光点脚下贴地的一圈加性光晕(径向渐变)。点光只照得出很淡的一圈, 参考里的光池是饱和的一大片。
+func _rim_halo(p: Vector2, col: Color, size: float) -> MeshInstance3D:
+	var g := Gradient.new()
+	g.set_color(0, Color(col.r, col.g, col.b, col.a))
+	g.set_color(1, Color(col.r, col.g, col.b, 0.0))
+	g.add_point(0.35, Color(col.r, col.g, col.b, col.a * 0.45))
+	var gt := GradientTexture2D.new()
+	gt.gradient = g
+	gt.fill = GradientTexture2D.FILL_RADIAL
+	gt.fill_from = Vector2(0.5, 0.5)
+	gt.fill_to = Vector2(1.0, 0.5)
+	gt.width = 64
+	gt.height = 64
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.albedo_texture = gt
+	m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(size, size)
+	var mi := MeshInstance3D.new()
+	mi.name = "RimHalo"
+	mi.mesh = pm
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.position = battle._world_pos(p, 0.04)
+	return mi
 
 
 ## 平台**边沿**一圈草/海草丛 —— 主题专用, `base` 不给就一件不加。
@@ -702,6 +742,48 @@ func _build_edge_tufts() -> Array:
 		var sc: float = rng.randf_range(0.85, 1.2)
 		s.scale = Vector3(sc * (-1.0 if rng.randf() < 0.5 else 1.0), sc, sc)
 		root.add_child(s)
+	return made
+
+
+## 场内**成簇**的草/海草丛 —— 主题专用, `base` 不给就一件不加。
+## ★依据(真实游玩截帧 mixed_033/034, anchordeep_005/011): 地面中间也散着一簇簇大草丛/海草,
+##   不只边沿一圈; 我们的场内只有几像素的碎屑, 远看是一块空地。
+## ★成簇(每簇 3~5 丛)而不是均匀撒 —— 均匀撒读作噪点; 避开正中心(r < 0.30)留出交战区。
+func _build_field_tufts() -> Array:
+	var made: Array = []
+	var cfg: Dictionary = ArenaTheme.cfg()
+	var names: Array = cfg.get("field_tufts", [])
+	var nc: int = int(cfg.get("field_tufts_clusters", 0))
+	if names.is_empty() or nc <= 0:
+		return made
+	var paths: Array = []
+	for nm in names:
+		var p: String = "res://assets/sprites/map/themes/%s.png" % str(nm)
+		if ResourceLoader.exists(p):
+			paths.append(p)
+	if paths.is_empty():
+		push_warning("[field_tufts] 素材一张都没有 —— 不铺(不做静默兜底)")
+		return made
+	var A: Rect2 = battle.ARENA
+	var c: Vector2 = A.position + A.size * 0.5
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261005
+	var root := Node3D.new()
+	root.name = "FieldTufts"
+	battle._world.add_child(root)
+	made.append(root)
+	var hr: Array = cfg.get("field_tufts_h", [0.5, 0.9])
+	for k in range(nc):
+		var th: float = TAU * (float(k) + rng.randf_range(-0.35, 0.35)) / float(nc)
+		var rr: float = rng.randf_range(0.36, 0.80)
+		var cc := Vector2(c.x + cos(th) * A.size.x * 0.5 * rr, c.y + sin(th) * A.size.y * 0.5 * rr)
+		for j in range(rng.randi_range(3, 5)):
+			var p2: Vector2 = cc + Vector2(rng.randf_range(-38.0, 38.0), rng.randf_range(-22.0, 22.0))
+			var s = battle._map_billboard(str(paths[rng.randi_range(0, paths.size() - 1)]), p2,
+				rng.randf_range(float(hr[0]), float(hr[1])))
+			var sc: float = rng.randf_range(0.8, 1.2)
+			s.scale = Vector3(sc * (-1.0 if rng.randf() < 0.5 else 1.0), sc, sc)
+			root.add_child(s)
 	return made
 
 
