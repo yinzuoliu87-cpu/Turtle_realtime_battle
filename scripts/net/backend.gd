@@ -953,8 +953,19 @@ static func find_gauntlet_opponent(gw: int, gl: int, exclude_ids: Array,
 	## ② 机器人(永久安全网)。★记成**另一个**计数, 不与积分赛的 bot 混在一起 ——
 	##    「周六有多少场是打机器人的」是 R2 那条风险唯一能回答的数字。
 	_tally("gauntlet_bot")
-	## ★场次 = 胜 + 负 —— 周六每场只增一个, 所以标签本身就把场次算出来了, 不用另取。
-	return make_bot(gw + gl, rng)
+	return make_bot(gauntlet_bot_battles(
+		int(GameState.season_total_battles) if GameState != null else 0, gw, gl), rng)
+
+
+## 周六机器人按几场的强度造。
+## ★★2026-10-03 用户实打:「周六对手什么装备都没有，这怎么可能？整个机制就是坏的啊」。
+##   原来是 `make_bot(gw + gl)` —— 拿**周六的标签**当**本大轮场次**用。两个不同的量:
+##   周六第一场标签是 0-0 ⇒ 场次 0 ⇒ `bot_level_for_battles(0)=1` ⇒ `team_equip_cap(1)=0` ⇒ **一件装备都没有**;
+##   而走到周六的人已经打了整个积分赛(探针: 24 场的人该配 16 件)。
+##   而且 0-0 这一格**永远没有真人快照**(快照是打完才按新标签传的), 所以周六第一场**每个人都**碰到这个裸机器人。
+## ★取 `season_total_battles`(它本来就含周六场次, `gauntlet_settle` 里 +1), 兜底不低于标签算出的场数。
+static func gauntlet_bot_battles(season_total: int, gw: int, gl: int) -> int:
+	return maxi(season_total, gw + gl)
 
 
 ## 周六打完一场 → 产出一份**带战绩标签**的快照, 入本地池并传云端。

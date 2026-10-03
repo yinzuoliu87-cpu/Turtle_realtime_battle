@@ -56,6 +56,7 @@ func _ready() -> void:
 	_t_query()
 	_t_pool_pick(gs)
 	_t_row()
+	_t_bot_equipped(gs)
 	print("")
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 闯关赛匹配" if _fail == 0 else "FAIL x%d" % _fail)
@@ -301,3 +302,40 @@ func _t_stale_fallback() -> void:
 	_ok("②C2 ★★★隔夜也**绝不跨标签**(3-2 / 2-1 一次都不许)",
 		not (hits.has("s_cross1") or hits.has("s_cross2")), str(hk))
 
+
+## ⑥ 周六机器人必须带装备(2026-10-03 用户实打:「周六对手什么装备都没有」)。
+##   原来 `make_bot(gw + gl)` 把周六标签当场次 ⇒ 0-0 那场 0 件装备。
+##   ★走真入口 `find_gauntlet_opponent`(池里没有 0-0 快照 ⇒ 必回落机器人), 数它身上的装备件数。
+func _count_equips(g: Dictionary) -> int:
+	var n := 0
+	var eq = g.get("equipped", {})
+	if eq is Dictionary:
+		for k in eq:
+			n += (eq[k] as Array).size()
+	var mi = g.get("minions", {})
+	if mi is Dictionary:
+		for lk in mi:
+			for m in (mi[lk] as Array):
+				var me = (m as Dictionary).get("equips", [])
+				if me is Array:
+					n += (me as Array).size()
+	return n
+
+
+func _t_bot_equipped(gs) -> void:
+	var keep: int = int(gs.season_total_battles)
+	gs.season_total_battles = 24
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	var g = BE.find_gauntlet_opponent(0, 0, [], rng)
+	gs.season_total_battles = keep
+	var is_bot: bool = g is Dictionary and bool((g as Dictionary).get("is_bot", false))
+	_ok("⑥ ★分母: 0-0 回落到的是机器人(池里没有 0-0 真人快照)", is_bot,
+		str((g as Dictionary).get("ghost_id", "")) if g is Dictionary else "null")
+	if not is_bot:
+		return
+	var want: int = P2.team_equip_cap(P2.bot_level_for_battles(24))
+	var got: int = _count_equips(g)
+	_ok("⑥ ★★打了 24 场的人周六第一场的机器人带 %d 件装备(原 bug: 0 件)" % want, got == want and got > 0,
+		"实际 %d 件" % got)
+	_ok("⑥ 兜底: 场次比标签还小时取标签场数", BE.gauntlet_bot_battles(1, 3, 1) == 4)
