@@ -58,7 +58,13 @@ const THEMES: Dictionary = {
 		"light_col": Color(1.0, 0.96, 0.86), "light_energy": 1.0,
 		"light_fixture": "(现状·无灯具)",
 		"sun_col": Color(1.0, 0.96, 0.86), "sun_energy": 1.0,
-		"ambient_kind": "bubbles", "ambient_col": Color(0.58, 0.84, 1.0, 0.85),
+		## ★★base **刻意不给** `ambient_col` —— 原值是 `Color(1,1,1,0.55)`(白·半透),
+		##   我一度在这里填了 (0.58,0.84,1.0,0.85), 那会**悄悄改掉已验收的粒子颜色**,
+		##   而五条画面判据量不到这么小的东西 ⇒ 照样全绿。
+		##   ★这是今晚**第四次**同一个形状(远景斜坡 / 沙地映射 / 墙色 / 这里):
+		##     「顺手给 base 也填一个相近的值」, 而**相近 ≠ 相等**。
+		##   ⇒ 凡是 base 该保持原样的键, 一律**不给**, 让代码侧走原字面值兜底。
+		"ambient_kind": "bubbles",
 	},
 	V1_DUSK: {
 		"label": "黄昏孤岛",

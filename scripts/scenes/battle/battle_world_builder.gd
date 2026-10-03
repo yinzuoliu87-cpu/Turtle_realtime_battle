@@ -1627,10 +1627,44 @@ func _build_bubbles(root: Node3D) -> void:
 	p.lifetime = 9.0
 	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
 	p.emission_box_extents = Vector3(battle.ARENA.size.x * battle.WS * 0.5, 0.3, battle.ARENA.size.y * battle.WS * 0.5)
-	p.direction = Vector3(0, 1, 0)
-	p.gravity = Vector3(0, 0.28, 0)
-	p.initial_velocity_min = 0.2
-	p.initial_velocity_max = 0.55
+	## ★★★2026-10-03 氛围粒子按主题。
+	##   原来这一层是**气泡**: 向上飘(`direction (0,1,0)` + `gravity +0.28`), 注释原文
+	##   「缓缓上升的小圆点, 满场飘 → **深海**有生气」—— 只在"镜头在水下"时成立。
+	##   而四版是**海上孤岛**: 向上飘的气泡在岛上是错的。
+	##   用户 2026-10-02:「还有地图上这些**气泡**，灯光，背景等**全部重做**」。
+	##
+	## ★四版各自的运动是**有因**的, 不是随手换个方向:
+	##     dusk  横飘的沙尘 —— 黄昏的风       · reef  烛台附近的火星(微微上飘)
+	##     shoal 水面反光点(几乎不动)          · storm 斜雨线(统一方向·快)
+	## ⚠ 频率/速度/生命周期这些**动态**参数, 我手上只有静态截图量不出来
+	##   (方案书风险 7)。所以这里只做**方向与速度的量级**对题, 不假装标定过曲线。
+	var _ak: String = str(ArenaTheme.cfg().get("ambient_kind", "bubbles"))
+	match _ak:
+		"drift_dust":                     # 黄昏: 横飘的沙尘
+			p.direction = Vector3(1, 0.15, 0)
+			p.gravity = Vector3(0.22, 0.02, 0)
+			p.initial_velocity_min = 0.35
+			p.initial_velocity_max = 0.9
+		"embers":                         # 夜礁: 火星(慢·微上飘)
+			p.direction = Vector3(0, 1, 0)
+			p.gravity = Vector3(0.03, 0.12, 0)
+			p.initial_velocity_min = 0.08
+			p.initial_velocity_max = 0.3
+		"sun_glints":                     # 白昼: 水面反光点(几乎不动)
+			p.direction = Vector3(0, 1, 0)
+			p.gravity = Vector3(0, 0.01, 0)
+			p.initial_velocity_min = 0.02
+			p.initial_velocity_max = 0.08
+		"rain_streaks":                   # 风暴: 斜雨(快·统一方向·往下)
+			p.direction = Vector3(0.45, -1, 0)
+			p.gravity = Vector3(0.9, -3.2, 0)
+			p.initial_velocity_min = 2.2
+			p.initial_velocity_max = 3.6
+		_:                                # `base`(现状·已验收): 气泡, **逐值不变**
+			p.direction = Vector3(0, 1, 0)
+			p.gravity = Vector3(0, 0.28, 0)
+			p.initial_velocity_min = 0.2
+			p.initial_velocity_max = 0.55
 	p.scale_amount_min = 0.018
 	p.scale_amount_max = 0.05
 	var bm = StandardMaterial3D.new()
@@ -1638,7 +1672,8 @@ func _build_bubbles(root: Node3D) -> void:
 	bm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	bm.blend_mode = BaseMaterial3D.BLEND_MODE_MIX   # 普通alpha混合(非加性实心球)→ 真气泡(透明+亮环+高光点)
 	bm.albedo_texture = VfxTex._make_bubble_texture()
-	bm.albedo_color = Color(1, 1, 1, 0.55)
+	## ★颜色也按主题(base 不给 ⇒ 原值 (1,1,1,0.55) 逐值不变)
+	bm.albedo_color = ArenaTheme.cfg().get("ambient_col", Color(1, 1, 1, 0.55))
 	bm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	var qm = QuadMesh.new(); qm.size = Vector2(1.0, 1.0)
 	p.mesh = qm

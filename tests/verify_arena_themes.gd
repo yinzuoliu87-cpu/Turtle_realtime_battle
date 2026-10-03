@@ -85,6 +85,28 @@ func _ready() -> void:
 	_ok("④★★每一版的海都比陆暗(靠材质区分可走区, 不靠亮度)",
 		bad_lum.is_empty(), str(bad_lum))
 
+	# ── ④b `base` 不许覆盖任何"该保持原样"的键 ──────────────────
+	##   ★★★这是今晚踩了**四次**的同一个形状(远景斜坡 / 沙地映射 / 墙色 / 氛围粒子色):
+	##     我顺手给 `base` 也填一个**相近**的值, 而**相近 ≠ 相等** ⇒ 悄悄改掉已验收的画面,
+	##     偏偏五条画面判据量的是统计量、量不到这种小差别, 所以**照样全绿**。
+	##   ⇒ 焊死: 这些键 `base` 一律**不给**, 让代码侧走各调用点的原字面值兜底。
+	##     想给 base 换外观 = 改那些字面值并重新验收, 不是在这里塞一个键。
+	const BASE_MUST_NOT_SET: Array = [
+		"bg_top", "bg_horizon",      # 远景三层 + 远地形 + 天际光斑的五个原色不在一条线上
+		"wall_col",                  # 海岸线竖面 WALL_COL_LIT
+		"edge_dark",                 # 岛缘压暗下限 0.18
+		"ambient_col",               # 氛围粒子 Color(1,1,1,0.55)
+	]
+	var base_cfg: Dictionary = AT.cfg_of(AT.V0_BASE)
+	var leaked: Array = []
+	for k in BASE_MUST_NOT_SET:
+		if base_cfg.has(k):
+			leaked.append(str(k))
+	_ok("④b★分母: 这张「不许覆盖」的清单非空", BASE_MUST_NOT_SET.size() >= 5,
+		"%d 个键" % BASE_MUST_NOT_SET.size())
+	_ok("④b★★`base`(现状·已验收) 不许覆盖这些键（填了=悄悄改掉已验收的画面, 而画面判据量不到）",
+		leaked.is_empty(), str(leaked))
+
 	# ── ⑤ 切换真的生效 ────────────────────────────────────────────
 	var keep: String = AT.active
 	var ok_switch := true
