@@ -198,9 +198,9 @@ const THEMES: Dictionary = {
 		"edge_tufts_r": [0.93, 1.01],
 		"edge_tufts_h": [0.7, 1.3],
 		## 框边: 暗色高海草(参考里平台四周一圈海草剪影)
-		"ring_props": ["reef2_kelp_a", "reef2_kelp_b", "reef2_kelp_a", "reef2_rocks_b", "reef2_coral_a"],   # anchordeep_011: 平台四周是高海草墙夹着石堆/珊瑚塔
-		"ring_h_of": {"reef2_rocks_b": [1.5, 2.2], "reef2_coral_a": [2.0, 2.8]},
-		"ring_glow_of": {},
+		"ring_props": ["reef2_kelp_a", "reef2_kelp_b", "reef2_kelp_a", "reef2_rocks_b", "reef2_coral_a", "reef2_clam_a", "reef2_clam_b"],   # anchordeep_011: 高海草墙夹着石堆/珊瑚塔, 上沿是发光的大珍珠贝
+		"ring_h_of": {"reef2_rocks_b": [1.5, 2.2], "reef2_coral_a": [2.0, 2.8], "reef2_clam_a": [1.6, 2.2], "reef2_clam_b": [1.5, 2.0]},
+		"ring_glow_of": {"reef2_clam_a": Color(0.80, 0.92, 1.0, 0.30)},   # 珍珠是发光的(anchordeep_011 上沿那几团白光)
 		"ring_density": 1.1,
 		"ring_h": [3.0, 5.2],
 		"ring_avoid_bottom": true,
@@ -374,7 +374,7 @@ const THEMES: Dictionary = {
 		"edge_tufts_r": [0.93, 1.01],   # 贴着平台边沿一圈密草, 盖住格子台阶(参考边沿是草边)
 		"edge_tufts_h": [0.8, 1.4],
 		## 比 V1 更多更亮的红光(参考 mixed_035 整个房间被红光浸着)
-		"rim_lights": 24,
+		"rim_lights": 14,   # 墓碑烛放大后 24 座排成一圈篱笆; mixed_035 一圈约 8~10 座
 		"rim_light_tex": "storm2_grave_a",
 		"rim_light_real": 8,
 		"rim_light_h": 1.9,   # mixed_035: 墓碑烛比角色还高
