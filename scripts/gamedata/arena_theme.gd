@@ -280,7 +280,7 @@ const THEMES: Dictionary = {
 		"wall_h": 0.35,   # 海岸竖面压成矮边(高墙沿格子成一排台阶方块)
 		"lamp_tex": "field_red_torch",   # 参考: 场内光源是插地的红火把, 不是黄火盆
 		"lamp_h": 1.7,
-		"field_tufts": ["field_tall_grass", "dusk_grass_tuft"],   # 场内成簇大草丛(mixed_033/034 · anchordeep_005/011)
+		"field_tufts": ["field_tall_grass"],   # 场内成簇大草丛(mixed_033/034 · anchordeep_005/011)
 		"field_tufts_clusters": 8,
 		"field_tufts_mod": Color(1, 1, 1),
 		"field_piles": ["field_bone_pile"],
@@ -297,8 +297,8 @@ const THEMES: Dictionary = {
 		##   结构与 V1 暗林相同, **用的是今天给 V1 新做的那批素材**(树干/红烛/碎件/草丛),
 		##   只换色调。不是复用旧素材库(用户「不要复用」说的是库里已有的那些)。
 		"label": "赤林",
-		"ground_col": Color(0.420, 0.440, 0.240),   # mixed_035: 中心是淡黄绿的亮地, 红的是四周
-		"stone_col": Color(0.416, 0.436, 0.238),
+		"ground_col": Color(0.460, 0.500, 0.300),   # mixed_035: 中心是淡黄绿的亮地, 红的是四周
+		"stone_col": Color(0.455, 0.495, 0.297),
 		"detail_amt": 0.9,   # 配手绘笔触纹理(ground_strokes)
 		"detail_tex": "ground_strokes",
 		"detail_scale": 0.14,
@@ -318,7 +318,7 @@ const THEMES: Dictionary = {
 		"detritus_size": 1.15,
 		"detritus_edge_bias": 1.5,
 		"detritus_tint": Color(0.95, 0.85, 0.80, 1.0),
-		"edge_tufts": ["dusk_grass_tuft", "field_tall_grass"],
+		"edge_tufts": ["field_tall_grass"],   # 035: 边沿是鲜绿高草
 		"edge_tufts_n": 170,
 		"edge_tufts_r": [0.93, 1.01],   # 贴着平台边沿一圈密草, 盖住格子台阶(参考边沿是草边)
 		"edge_tufts_h": [0.8, 1.4],
