@@ -754,12 +754,14 @@ func _build_edge_tufts() -> Array:
 	var hr: Array = cfg.get("edge_tufts_h", [0.6, 1.1])
 	for i in range(n):
 		var th: float = rng.randf_range(0.0, TAU)
-		var rr: float = rng.randf_range(0.86, 0.99)
+		var _er: Array = cfg.get("edge_tufts_r", [0.86, 0.99])
+		var rr: float = rng.randf_range(float(_er[0]), float(_er[1]))
 		var p2 := Vector2(c.x + cos(th) * A.size.x * 0.5 * rr, c.y + sin(th) * A.size.y * 0.5 * rr)
 		var s = battle._map_billboard(str(paths[rng.randi_range(0, paths.size() - 1)]), p2,
 			rng.randf_range(float(hr[0]), float(hr[1])))
 		var sc: float = rng.randf_range(0.85, 1.2)
 		s.scale = Vector3(sc * (-1.0 if rng.randf() < 0.5 else 1.0), sc, sc)
+		s.modulate = cfg.get("edge_tufts_mod", Color(1, 1, 1))
 		root.add_child(s)
 	return made
 

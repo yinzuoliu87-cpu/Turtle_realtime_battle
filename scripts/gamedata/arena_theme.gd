@@ -98,8 +98,9 @@ const THEMES: Dictionary = {
 		"water_col": Color(0.030, 0.036, 0.050),
 		"edge_dark": 0.06,
 		"caustic_amt": 0.0,   # 林地上不该有水下焦散光纹
-		"edge_tufts": ["dusk_grass_tuft"],
-		"edge_tufts_n": 70,
+		"edge_tufts": ["dusk_grass_tuft", "field_tall_grass"],
+		"edge_tufts_n": 170,
+		"edge_tufts_r": [0.93, 1.01],   # 贴着平台边沿一圈密草, 盖住格子台阶(参考边沿是草边)
 		"edge_tufts_h": [0.8, 1.4],
 		## 框边: 比角色大好几倍的暗色树干剪影(参考 mixed_033~035 左右两侧)
 		"ring_props": ["field_dark_trunk", "field_dark_trunk", "dusk_trunk_silhouette"],   # 有树皮有描线的深色树干; 纯剪影在黑底上看不见
@@ -165,8 +166,9 @@ const THEMES: Dictionary = {
 		"caustic_far": 1.0,   # 整片地面都有水下光纹(Anchordeep 最认得出的特征)
 		"caustic_col": Color(0.70, 1.0, 0.92, 1.0),
 		"caustic_scale": 0.95,  # 网状焦散的胞元≈1 米(参考里比角色略大)
-		"edge_tufts": ["reef_kelp_tuft"],
-		"edge_tufts_n": 70,
+		"edge_tufts": ["reef_kelp_tuft", "field_seaweed"],
+		"edge_tufts_n": 150,
+		"edge_tufts_r": [0.93, 1.01],
 		"edge_tufts_h": [0.7, 1.3],
 		## 框边: 暗色高海草(参考里平台四周一圈海草剪影)
 		"ring_props": ["reef_kelp_silhouette", "reef_kelp_silhouette", "field_pearl_shell"],   # anchordeep_010/011: 外围有大珍珠贝, 珠子发白光
@@ -201,6 +203,11 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(0.55, 1.0, 0.75, 0.45),   # 水中浮游光点
 	},
 	V3_SHOAL: {
+		"edge_tufts": ["field_tall_grass"],   # mixed_012: 边沿一圈深蓝紫草
+		"edge_tufts_n": 150,
+		"edge_tufts_r": [0.93, 1.01],
+		"edge_tufts_h": [0.6, 1.0],
+		"edge_tufts_mod": Color(0.42, 0.36, 0.70),
 		"wall_h": 0.35,   # 海岸竖面压成矮边(高墙沿格子成一排台阶方块)
 		"lamp_tex": "field_red_torch",   # 参考: 场内光源是插地的红火把, 不是黄火盆
 		"lamp_h": 1.7,
@@ -304,8 +311,9 @@ const THEMES: Dictionary = {
 		"detritus_size": 1.15,
 		"detritus_edge_bias": 1.5,
 		"detritus_tint": Color(0.95, 0.85, 0.80, 1.0),
-		"edge_tufts": ["dusk_grass_tuft"],
-		"edge_tufts_n": 70,
+		"edge_tufts": ["dusk_grass_tuft", "field_tall_grass"],
+		"edge_tufts_n": 170,
+		"edge_tufts_r": [0.93, 1.01],   # 贴着平台边沿一圈密草, 盖住格子台阶(参考边沿是草边)
 		"edge_tufts_h": [0.8, 1.4],
 		## 比 V1 更多更亮的红光(参考 mixed_035 整个房间被红光浸着)
 		"rim_lights": 24,
