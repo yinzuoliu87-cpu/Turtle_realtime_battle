@@ -171,9 +171,9 @@ cmd_start() {
       \$g = Get-Process -Name 'Godot*' -ErrorAction SilentlyContinue |
             Where-Object { \$_.MainWindowHandle -ne 0 } |
             Sort-Object StartTime -Descending | Select-Object -First 1;
-      if (\$null -ne \$g) { Write-Output \$g.Id } else { Write-Output \$p.Id }" 2>/dev/null | tr -d '\r' | while read -r pid; do
+      if (\$null -ne \$g) { Write-Output ([string]\$g.Id + ' ' + [string]\$g.StartTime.Ticks) } else { Write-Output ([string]\$p.Id + ' 0') }" 2>/dev/null | tr -d '\r' | while read -r pid ticks; do
         case "$pid" in
-          [0-9]*) printf "%d %s\n" "$i" "$pid" >> "$PIDFILE"
+          [0-9]*) printf "%d %s %s\n" "$i" "$pid" "${ticks:-0}" >> "$PIDFILE"
                   printf "  p%02d  pid=%-7s 位置=(%4d,%4d)  邮箱=%s\n" "$i" "$pid" "$x" "$y" "$(slot_mail "$i")" ;;
         esac
       done
@@ -193,9 +193,12 @@ cmd_start() {
 cmd_stop() {
   if [ ! -f "$PIDFILE" ]; then echo "没有 $PIDFILE, 没什么可关的"; exit 0; fi
   local n=0
-  while read -r slot pid; do
+  ## ★★2026-10-03: PID 会被系统复用。周六实操里 p06 早已关掉, 它的 pid 被别的进程拿去,
+  ##   `stop` 照着 pid 一刀杀了一个不知道是什么的进程。⇒ 只杀「名字是 Godot 且启动时刻与登记时一致」的那个;
+  ##   老 pid 文件没有第三列(启动时刻)⇒ 至少要求名字是 Godot。
+  while read -r slot pid ticks; do
     case "$pid" in
-      [0-9]*) if powershell -NoProfile -Command "Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue; if (\$?) { 'ok' }" 2>/dev/null | grep -q ok; then
+      [0-9]*) if powershell -NoProfile -Command "\$q = Get-Process -Id $pid -ErrorAction SilentlyContinue; if (\$null -ne \$q -and \$q.ProcessName -like 'Godot*' -and ('${ticks:-0}' -eq '0' -or [string]\$q.StartTime.Ticks -eq '${ticks:-0}')) { Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue; if (\$?) { 'ok' } }" 2>/dev/null | grep -q ok; then
                 n=$((n+1)); printf "  关掉 p%s (pid=%s)\n" "$slot" "$pid"
               fi ;;
     esac

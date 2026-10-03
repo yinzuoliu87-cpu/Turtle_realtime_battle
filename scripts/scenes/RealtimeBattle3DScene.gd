@@ -7562,6 +7562,17 @@ func _settle_season(won: bool) -> void:
 		##   ★整块记账写在 `GameState.gauntlet_settle()` 里(数据的主人那一层), 这里只调它并拿回币数 ——
 		##     理由同下面的 `dual_lane_was_sweep()` / `consume_ranked_quota()`。
 		_last_reward = gs.gauntlet_settle(won)
+		## ★★2026-10-03 这一块原来**错放在下面的 SETTLE_FINALS 分支里**(commit 969acf0a3 插入周日分支时把它挤过去了)
+		##   ⇒ 周六一份快照都没传过, 周六每一场都回落机器人(实操: 31 次拉取 31 次 0 份)。判据 verify_gauntlet_upload_branch。
+		## ★★E-A4 快照上传: **记完战绩之后**才传, 标签取的是打完这一场的新战绩 ——
+		##   下一场要找的是"跟我现在同样几胜几负"的人。传打之前那个标签等于把自己
+		##   挂在上一格上, 别人永远找不到我, 而且**一声不吭**(表现成"周六老是打机器人")。
+		## ★投降局不传(与积分赛 E18 同一条): 判据是 `lane_results` 为空。
+		if gs.lane_results is Dictionary and not (gs.lane_results as Dictionary).is_empty():
+			Backend.upload_gauntlet_ghost(int(gs.gauntlet_wins), int(gs.gauntlet_losses))
+			## ★E-B3 决赛日报到: 这一场把我打成「晋级」时, 把阵容快照交给服务端。
+			##   判据与上传一样在 Backend 那一层, 这里只调 —— 「该不该报」不是战斗的事。
+			Backend.report_finals_entry()
 	elif _sk == Phase2Cfg.SETTLE_FINALS:
 		## ★★E-B7 决赛日(周日): **不掉命** + **对称轮次币**(赢输一样多, 原稿逐字)。
 		##   整块记账写在 `GameState.finals_settle()` 里(数据的主人那一层), 这里只调它 ——
@@ -7575,15 +7586,6 @@ func _settle_season(won: bool) -> void:
 		##   ⇒ 上线那天改那一格, 结算口径与配额豁免**同时翻**, 不会一半新一半旧。
 		## ★结果封存: 只结算与胜负无关的那部分; 理由见 `GameState.finals_settle_sealed()` 头注。
 		_last_reward = gs.finals_settle_sealed()
-		## ★★E-A4 快照上传: **记完战绩之后**才传, 标签取的是打完这一场的新战绩 ——
-		##   下一场要找的是"跟我现在同样几胜几负"的人。传打之前那个标签等于把自己
-		##   挂在上一格上, 别人永远找不到我, 而且**一声不吭**(表现成"周六老是打机器人")。
-		## ★投降局不传(与积分赛 E18 同一条): 判据是 `lane_results` 为空。
-		if gs.lane_results is Dictionary and not (gs.lane_results as Dictionary).is_empty():
-			Backend.upload_gauntlet_ghost(int(gs.gauntlet_wins), int(gs.gauntlet_losses))
-			## ★E-B3 决赛日报到: 这一场把我打成「晋级」时, 把阵容快照交给服务端。
-			##   判据与上传一样在 Backend 那一层, 这里只调 —— 「该不该报」不是战斗的事。
-			Backend.report_finals_entry()
 	elif _last_was_exhibition:
 		_last_reward = 5                             # 表演赛: 少量练手币, 不掉命/不计战/不上榜
 	else:

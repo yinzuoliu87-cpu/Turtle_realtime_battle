@@ -231,6 +231,29 @@ func _t_real_settle() -> void:
 	_ok("③ ★分母: 闯关赛不吃积分赛配额",
 		int(GameState.ranked_used) == q1, "%d → %d" % [q1, int(GameState.ranked_used)])
 
+	## ★★★2026-10-03 周六实操: 周六**一份快照都没传过**(31 次拉取 31 次 0 份) ——
+	##   上传那几行错放在 SETTLE_FINALS 分支里。判据走真入口: 周六打完一场(非投降 ⇒ lane_results 非空),
+	##   本地池里必须多出一份**带本场新战绩标签**的快照; 周日那一场不许传周六快照。
+	## ★本地跑这个测试时 user:// 是真目录, 而 test_mode 下 save_pool 不落盘 ⇒ 不数池子, 数事件发生处的计数。
+	var _BE = load("res://scripts/net/backend.gd")
+	GameState.lane_results = {"top": "won"}
+	GameState.week_phase = P2C.PHASE_GAUNTLET
+	GameState.gauntlet_wins = 1
+	GameState.gauntlet_losses = 0
+	var u0: int = int(_BE.gauntlet_uploads)
+	scene._settle_season(true)
+	_ok("③ ★★★周六打完一场, 真的产出一份周六快照(原 bug: 上传错放在周日分支, 一份都不传)",
+		int(_BE.gauntlet_uploads) == u0 + 1, "%d → %d" % [u0, int(_BE.gauntlet_uploads)])
+	GameState.lane_results = {}
+	var u1: int = int(_BE.gauntlet_uploads)
+	scene._settle_season(false)
+	_ok("③ ★分母: 周六投降局(lane_results 空)不传", int(_BE.gauntlet_uploads) == u1)
+	GameState.lane_results = {"top": "won"}
+	GameState.week_phase = P2C.PHASE_FINALS
+	var u2: int = int(_BE.gauntlet_uploads)
+	scene._settle_season(true)
+	_ok("③ ★分母: 周日那一场不传周六快照", int(_BE.gauntlet_uploads) == u2)
+
 	## ★★决赛日那套记账本身(`finals_settle`)单独量 —— 它上线那天才会被调到,
 	##   但规则现在就得对, 不然上线那天才发现就晚了。
 	print("── ④ 决赛日记账本身(上线那天才会被调到, 规则现在就得对) ──")

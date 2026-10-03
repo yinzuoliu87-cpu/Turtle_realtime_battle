@@ -976,6 +976,10 @@ static func gauntlet_bot_battles(season_total: int, gw: int, gl: int) -> int:
 ## ★三个 `gl_*` 字段是匹配层唯一的依据(`gauntlet_pool_find` 读它们)。
 ##   ghost_id 也要带标签, 否则 `pool_add` 按 id 去重会让同一个人只剩最新一格
 ##   —— 那正是 A6 给积分赛 id 加"场次"那一维的同一个理由。
+## 本进程里周六快照真的产出过几份(记在事件发生处·无条件)。只读用途: 门禁 verify_finals_settle ③
+##   —— 周六快照的上传曾经整块错放在周日分支里, 一份都没传过, 而且不报任何错。
+static var gauntlet_uploads: int = 0
+
 static func upload_gauntlet_ghost(gw: int, gl: int) -> void:
 	if GameState == null:
 		return
@@ -990,6 +994,7 @@ static func upload_gauntlet_ghost(gw: int, gl: int) -> void:
 	snap["gl_w"] = gw
 	snap["gl_l"] = gl
 	snap["gl_ts"] = int(Time.get_unix_time_from_system())
+	gauntlet_uploads += 1
 	upload_ghost(snap)                 ## 老通道: 进本地池(+ 旧后端, 现在是 no-op)
 	var SB3 = load("res://scripts/net/supabase.gd")
 	if SB3 != null:
