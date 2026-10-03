@@ -105,8 +105,7 @@ func _two_head_cannon(u: Dictionary, from2d: Vector2, dir: Vector2) -> void:
 		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
 		traveled = minf(2000.0, traveled + 760.0 * battle._frame_sim_dt)
 		pos = from2d + dir * traveled
-		pos.x = clampf(pos.x, battle.ARENA.position.x, battle.ARENA.end.x)
-		pos.y = clampf(pos.y, battle.ARENA.position.y, battle.ARENA.end.y)
+		pos = ArenaShape.clamp_in(pos, battle.ARENA)
 		if is_instance_valid(spr): spr.position = battle._world_pos(pos, 1.1)
 		for o in battle._targeting._enemies_of(u):
 			if o.get("alive", false) and pos.distance_to(o["pos"]) <= 46.0:
@@ -380,8 +379,7 @@ func _two_head_retreat(u: Dictionary, et) -> void:
 		away = (from2d - et["pos"]).normalized()
 		if away.length() < 0.1: away = Vector2.RIGHT
 	var dest: Vector2 = from2d + away * RETREAT_DIST                  # 切远程滑退距离(用户2026-07-11: 350→200码)
-	dest.x = clampf(dest.x, battle.ARENA.position.x, battle.ARENA.end.x)
-	dest.y = clampf(dest.y, battle.ARENA.position.y, battle.ARENA.end.y)
+	dest = ArenaShape.clamp_in(dest, battle.ARENA)
 	u["_slam"] = true
 	u["_anim_lock_until"] = battle._t + 0.36
 	var tw = battle._reg_tween()

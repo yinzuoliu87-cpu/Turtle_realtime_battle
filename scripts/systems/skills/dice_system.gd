@@ -40,8 +40,7 @@ func _dice_dash_set_target(u: Dictionary, tgt) -> void:
 	dir = dir.normalized()
 	u["dice_dash_dir"] = dir
 	var land: Vector2 = tgt["pos"] + dir * battle.DICE_DASH_OVERSHOOT     # 落点在目标后方一点(穿过去)
-	land.x = clampf(land.x, battle.ARENA.position.x + 20.0, battle.ARENA.end.x - 20.0)   # ★落点clamp进场内(否则算到边界外→被clamp卡死)
-	land.y = clampf(land.y, battle.ARENA.position.y + 20.0, battle.ARENA.end.y - 20.0)
+	land = ArenaShape.clamp_in(land, battle.ARENA, 20)   # ★落点clamp进场内(否则算到边界外→被clamp卡死)
 	u["dice_dash_land"] = land
 
 # 稳定骰子真冲刺连突(刀妹Irelia Q式): 逐帧固定速位移穿过目标到落点 → 挥剑斩 → 顿0.2s → 下一段. 覆盖正常AI(锁住).
@@ -62,8 +61,7 @@ func _dice_dash_tick(u: Dictionary, delta: float) -> void:
 	var stuck: bool = battle._t - float(u.get("dice_dash_seg_start", battle._t)) > 1.6   # ★超时保险: 本段冲>1.6s还没到(卡边界)→强制结算
 	if to_land.length() <= 26.0 or to_land.dot(ddir) <= 0.0 or stuck:   # 到达落点/已穿过/卡住 → 挥剑斩结算
 		u["pos"] = land
-		u["pos"].x = clampf(u["pos"].x, battle.ARENA.position.x, battle.ARENA.end.x)
-		u["pos"].y = clampf(u["pos"].y, battle.ARENA.position.y, battle.ARENA.end.y)
+		u["pos"] = ArenaShape.clamp_in(u["pos"], battle.ARENA)
 		_dice_dash_hit(u, tgt, ddir)
 		u["dice_dash_remaining"] = int(u.get("dice_dash_remaining", 1)) - 1
 		u["dice_dash_seg"] = int(u.get("dice_dash_seg", 0)) + 1
@@ -74,8 +72,7 @@ func _dice_dash_tick(u: Dictionary, delta: float) -> void:
 		u["dice_dash_pause_until"] = battle._t + battle.DICE_DASH_PAUSE       # 顿一下再冲
 		return
 	u["pos"] += ddir * battle.DICE_DASH_SPD * delta                   # 固定速真位移(沿冲刺方向直线·穿过目标)
-	u["pos"].x = clampf(u["pos"].x, battle.ARENA.position.x, battle.ARENA.end.x)
-	u["pos"].y = clampf(u["pos"].y, battle.ARENA.position.y, battle.ARENA.end.y)
+	u["pos"] = ArenaShape.clamp_in(u["pos"], battle.ARENA)
 	u["face_right"] = ddir.x > 0.0
 	if int(battle._t * 45.0) % 2 == 0:                      # 青蓝刀锋拖尾(刀妹穿刺残影)
 		_dice_blade_trail(u["pos"], ddir)

@@ -249,8 +249,7 @@ func _sk_shell_shadow_dive(u: Dictionary, tgt) -> void:        # 龟壳·暗影�
 	if dir.length() < 1.0: dir = Vector2.RIGHT
 	dir = dir.normalized()
 	var dest: Vector2 = start + dir * DIVE_RANGE
-	dest.x = clampf(dest.x, battle.ARENA.position.x, battle.ARENA.end.x)
-	dest.y = clampf(dest.y, battle.ARENA.position.y, battle.ARENA.end.y)
+	dest = ArenaShape.clamp_in(dest, battle.ARENA)
 	for o in battle._targeting._enemies_of(u):                                    # 落地+路径敌: 2.0A魔法+击退
 		if not o.get("alive", false): continue
 		if not battle._on_line(start, dir, o["pos"], 75.0): continue

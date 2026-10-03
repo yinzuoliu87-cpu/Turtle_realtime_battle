@@ -45,11 +45,22 @@ const WALL_ART := preload("res://scripts/scenes/settings/login_wall_art.gd")
 ## ★ ⑧ 要读主菜单自己的节点名与主 CTA 几何(`NUDGE_NAME` / `HERO_SIZE`),
 ##   在测试里拄一份就是抄一次永远落后一次(memory `fb-hand-rolled-copies-drift`)。
 const MM := preload("res://scripts/scenes/MainMenuScene.gd")
+## 钉死一个【工作日】时刻(UTC 周三 12:00, 2026-09-30) —— 用于把主菜单的阶段固定成积分赛。
+## ★绝对时刻而不是"今天往前推几天": 后者下周就漂到别的星期几去了。
+const WEEKDAY_TS := 1790769600
 const DEAD_URL := "http://127.0.0.1:9"
 
 var _n := 0
 var _fail := 0
-const KEYS := ["account_email", "account_id", "nickname"]
+## ★★★2026-10-03 把 `auth_refresh` 补进来。原来只备份这三个 ⇒ **上一次运行留下的会话**
+##   会漏进这一次: 2026-10-03 实跑 ③ 红, 发出去的请求里有 `/auth/v1/token?grant_type=refresh_token`
+##   —— 有现成的 refresh_token 就直接续签成功, **根本不需要建新身份**, 于是 ③「建身份跑了」判空。
+## ★根因不是登录墙, 是**判据的输入继承自自己上次的运行**: 每个测试有一份独立且**跨运行持久**的
+##   `user://`, 而 `auth_refresh` 是存进存档的(`supabase.gd:199`)。
+##   同一天在 `verify_record_reltime` 身上抓到过一模一样的形状
+##   (memory `fb-judge-inputs-must-be-made-on-the-spot`)。
+## ⇒ 既备份它, 也在开头**清空**它(见 `_ready`), 让每次运行都从"没有会话"开始。
+const KEYS := ["account_email", "account_id", "nickname", "auth_refresh"]
 var _bak := {}
 ## ★注入传输用: 记下**真实发出去的请求**(方法/地址/正文)。
 ## 照抄 `verify_session_refresh.gd` 的形状 —— 那是本仓验"发没发、发给谁"的标准写法。
@@ -73,9 +84,22 @@ func _ok(name: String, cond: bool, detail: String = "") -> void:
 
 func _ready() -> void:
 	await get_tree().process_frame
+	## ★★★2026-10-03 把【全局】时钟钉在工作日。先只钉了主菜单那一条缝, 结果 ③ 还是红 ——
+	##   报的端点里有 `finals_enter`/`finals_report`, 说明**决赛日分支**也跑了。
+	##   ⇒ 这条门禁里挂着日期的**不止一处**, 得在入口统一钉, 不是逐处补。
+	##   `now_override_ts` 是产品自己的覆盖点(`phase2_config.gd:431`), `== 0` 时逐字节等价于真实时钟。
+	## ⚠ 代价显式登记: **周六(闯关赛)/周日(决赛日)那两天的登录墙这条门禁不覆盖**。
+	##   2026-10-03 周六实跑正是在那块屏上照出了「🔒 角标压边 13px」这个真 bug ——
+	##   说明周末屏确实需要覆盖, 但那要另起一条按阶段遍历的判据, 不在本次范围。
+	P2C.now_override_ts = WEEKDAY_TS
 	GameState.test_mode = true
 	for k in KEYS:
 		_bak[k] = GameState.get(k)
+	## ★清掉上次运行留下的会话 —— 必须排在**备份之后**, 否则备份到的是我刚清掉的空值,
+	##   收尾"还原"就把真值抹了。不清的话这一轮走续签, ③「建身份跑了」永远判空。
+	GameState.auth_refresh = ""
+	GameState.account_id = ""
+	GameState.account_email = ""
 	print("=== 登录墙 ===")
 	_t_rule()
 	await _t_wall_ui()
@@ -86,6 +110,7 @@ func _ready() -> void:
 	await _t_identity_under_wall()
 	for k in KEYS:
 		GameState.set(k, _bak[k])
+	P2C.now_override_ts = 0   # ★收尾还原(铁律④: 测试不许留下污染)
 	SB._transport_for_test = Callable()
 	OS.set_environment("TURTLE_SUPABASE", " ")
 	SB._reset_auth_for_test()
@@ -1396,6 +1421,20 @@ func _t_open_path() -> void:
 	##   那条判据就成了恒真式。⇒ 等它**落定**(14 帧 ≫ 一次 deferred)再量。
 	await _wf(14)
 	var cur := get_tree().current_scene
+	## ★★★2026-10-03 把主菜单的时钟**钉在工作日**。
+	##   由来: 这一条在 2026-10-03(周六)跑门禁时红了 ——
+	##   `[FAIL] ⑧a WALL_SOFT: 没绑邮箱、真点「开始战斗」⇒ 真的进了对局链(选龟屏)` 实得 MainMenu。
+	##   根因不是登录墙坏了, 是**周六是闯关赛日**: `_battle_block_msg()` 那支会先拦下来
+	##   (`MainMenuScene.gd:1709`), 于是点了也进不去。
+	##   ⇒ 这条判据的被测对象是**登录墙**, 阶段是它继承来的环境输入 ——
+	##   不钉的话它每个周六/周日都红(CI 也一样), 而红的理由跟登录墙无关。
+	##   (memory `fb-judge-inputs-must-be-made-on-the-spot`)
+	## ★用产品自己的那条缝 `clock_override_ts`(成例: `tests/_probe_mmclock.gd:65`),
+	##   不去改系统时钟, 也不碰全局 `now_override_ts`。
+	## ⚠ 这意味着**周六/周日那两块主菜单屏这条门禁没覆盖** —— 显式登记, 不假装覆盖到了。
+	##   (2026-10-03 周六实跑正是在那块屏上照出了「🔒 角标压边 13px」这个真 bug。)
+	if cur != null and cur.get("clock_override_ts") != null:
+		cur.clock_override_ts = WEEKDAY_TS
 	_ok("⑧a ★★★WALL_SOFT: **第一屏是主菜单**, 不是绑定屏(把 WALL_BLOCKS 翻回 true ⇒ 这里变 Settings)",
 		cur != null and str(cur.name).begins_with("MainMenu"),
 		str(cur.name) if cur != null else "<null>")

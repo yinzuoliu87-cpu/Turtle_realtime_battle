@@ -246,8 +246,7 @@ func _pirate_shotgun(u: Dictionary, tgt) -> void:
 			battle._damage._apply_damage_from(u, hit, battle._atk_dmg(u, SHOT_COEF, hit), Color("#ffd07a"))   # 0.5A物理
 			var pd: Vector2 = (hit["pos"] - u["pos"]).normalized()               # 40码轻击退(不用_knockback避免8连击飞震屏)
 			hit["pos"] += pd * SHOT_KNOCK
-			hit["pos"].x = clampf(hit["pos"].x, battle.ARENA.position.x, battle.ARENA.end.x)
-			hit["pos"].y = clampf(hit["pos"].y, battle.ARENA.position.y, battle.ARENA.end.y)
+			hit["pos"] = ArenaShape.clamp_in(hit["pos"], battle.ARENA)
 			battle._vfx._hit_spark(hit)
 
 func _pirate_ship_charge(ship, from2d: Vector2, from_h: float, to2d: Vector2, on_impact: Callable) -> void:   # 演出船俯冲: 从后方高空冲向撞击点·边冲边变大·拉水花航迹
@@ -328,8 +327,7 @@ func _pirate_grapple_dest(pirate_pos: Vector2, killer_pos: Vector2) -> Vector2:
 	var dir: Vector2 = (pirate_pos - killer_pos)
 	dir = dir.normalized() if dir.length() > 0.001 else Vector2.RIGHT
 	var dest: Vector2 = pirate_pos - dir * HOOK_DEST_DIST
-	dest.x = clampf(dest.x, battle.ARENA.position.x, battle.ARENA.end.x)
-	dest.y = clampf(dest.y, battle.ARENA.position.y, battle.ARENA.end.y)
+	dest = ArenaShape.clamp_in(dest, battle.ARENA)
 	return dest
 
 

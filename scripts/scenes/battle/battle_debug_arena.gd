@@ -30,8 +30,7 @@ func _edit_handle_mouse_button(ev: InputEventMouseButton) -> void:
 				_edit_select_unit(battle._edit_drag_unit)   # 单击已有单位(没拖动) → 选中配装(用户2026-07-12)
 		else:
 			var fp = battle._screen_to_field(screen)
-			fp.x = clampf(fp.x, battle.ARENA.position.x, battle.ARENA.end.x)
-			fp.y = clampf(fp.y, battle.ARENA.position.y, battle.ARENA.end.y)
+			fp = ArenaShape.clamp_in(fp, battle.ARENA)
 			_edit_place_unit(battle._edit_pick_id, battle._edit_pick_side, fp)
 		battle._edit_drag_unit = null
 		battle._edit_drag_moved = false
@@ -44,8 +43,7 @@ func _edit_handle_mouse_motion(ev: InputEventMouseMotion) -> void:
 		return
 	battle._edit_drag_moved = true
 	var fp = battle._screen_to_field(ev.position)
-	fp.x = clampf(fp.x, battle.ARENA.position.x, battle.ARENA.end.x)
-	fp.y = clampf(fp.y, battle.ARENA.position.y, battle.ARENA.end.y)
+	fp = ArenaShape.clamp_in(fp, battle.ARENA)
 	battle._edit_drag_unit["pos"] = fp   # transforms/overlay 下一帧自动跟到新位置
 
 # 摆放一个单位: 复用 battle._spawn._make_unit, 右队按调试场设置改成假人 (不动/不打/可设血/可不死).

@@ -2497,8 +2497,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 		u["pos"].y += u["vz"] / WS * delta
 		var _kdamp: float = pow(0.9, delta * 60.0)   # ★帧率无关阻尼(2026-07-25): 原每帧×0.9 假设60fps; 高帧率下每秒衰减快数倍→击飞竖直照抛(vy走delta)但横向vx几乎不滑="飞不出去"。按时间衰减·60fps下=0.9原值
 		u["vx"] *= _kdamp; u["vz"] *= _kdamp
-		u["pos"].x = clampf(u["pos"].x, ARENA.position.x, ARENA.end.x)
-		u["pos"].y = clampf(u["pos"].y, ARENA.position.y, ARENA.end.y)
+		u["pos"] = ArenaShape.clamp_in(u["pos"], ARENA)
 		if u["height"] <= 0.0:
 			u["height"] = 0.0; u["vy"] = 0.0; u["vx"] = 0.0; u["vz"] = 0.0
 			u["airborne"] = false
@@ -4521,8 +4520,7 @@ func _dash_to(u: Dictionary, tgt: Dictionary, gap: float) -> void:
 	var dir: Vector2 = (u["pos"] - tgt["pos"]).normalized()
 	if dir.length() < 0.1: dir = Vector2.RIGHT
 	u["pos"] = tgt["pos"] + dir * gap
-	u["pos"].x = clampf(u["pos"].x, ARENA.position.x, ARENA.end.x)
-	u["pos"].y = clampf(u["pos"].y, ARENA.position.y, ARENA.end.y)
+	u["pos"] = ArenaShape.clamp_in(u["pos"], ARENA)
 
 func _kill(u: Dictionary, killer = null) -> void:
 	if u.get("_dead_done", false):
@@ -5311,8 +5309,7 @@ func _apply_separation_pass(delta: float) -> void:   # 每帧全单位软分离:
 		var push: Vector2 = _separation(u)
 		if push.length() > 0.001:
 			u["pos"] += push.limit_length(1.0) * SEP_PUSH_SPD * _sepmul * delta
-			u["pos"].x = clampf(u["pos"].x, ARENA.position.x, ARENA.end.x)
-			u["pos"].y = clampf(u["pos"].y, ARENA.position.y, ARENA.end.y)
+			u["pos"] = ArenaShape.clamp_in(u["pos"], ARENA)
 
 # 移动; no_move 召唤体定点不动. 分离已移到 _apply_separation_pass. (状态机仅"move"态调)
 func _do_move(u: Dictionary, tgt: Dictionary, dist: float, rng: float, spd: float, delta: float) -> void:
@@ -5345,8 +5342,7 @@ func _do_move(u: Dictionary, tgt: Dictionary, dist: float, rng: float, spd: floa
 	if intent.length() > 0.01:
 		u["vel"] = intent.limit_length(1.0) * spd            # 合力调速, 力抵消缓停
 		u["pos"] += u["vel"] * delta
-		u["pos"].x = clampf(u["pos"].x, ARENA.position.x, ARENA.end.x)
-		u["pos"].y = clampf(u["pos"].y, ARENA.position.y, ARENA.end.y)
+		u["pos"] = ArenaShape.clamp_in(u["pos"], ARENA)
 		var _slowed: bool = _t < float(u.get("slow_until", 0.0)) or (_t < float(u.get("spd_dbf_until", 0.0)) and float(u.get("spd_move_mult", 1.0)) < 0.99)
 		if _slowed:   # 全局: 被减速单位行走留短暂泥印(非脚印, 节流)
 			u["_mud_t"] = float(u.get("_mud_t", 0.0)) + delta
@@ -5694,8 +5690,7 @@ func _sk_basic_slam(u: Dictionary, tgt) -> void:  # 小龟·过肩摔(#7重做·
 	dir = dir.normalized()
 	var u_start: Vector2 = u["pos"]
 	var land: Vector2 = u_start - dir * BasicConsts.SLAM_LAND_BACK    # 落点=龟背后~55码(过肩摔到身后)
-	land.x = clampf(land.x, ARENA.position.x + 20.0, ARENA.end.x - 20.0)
-	land.y = clampf(land.y, ARENA.position.y + 20.0, ARENA.end.y - 20.0)
+	land = ArenaShape.clamp_in(land, ARENA, 20)
 	_basic_slam_run(u, tgt, dir, u_start, land, tmax)   # async 编排(fire-and-forget)
 
 ## 过肩摔伤害结算(主目标 1.0A + 0.2%×ATK×目标maxHp / 周围350码 0.3A + 0.13%×ATK×主目标maxHp) — 落地时调.
@@ -6227,8 +6222,7 @@ func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁�
 		var dirp: Vector2 = tp - (uu["pos"] as Vector2)
 		dirp = dirp.normalized() if dirp.length() > 1.0 else Vector2.RIGHT
 		var dest: Vector2 = tp + dirp * 46.0
-		dest.x = clampf(dest.x, ARENA.position.x + 30.0, ARENA.end.x - 30.0)
-		dest.y = clampf(dest.y, ARENA.position.y + 20.0, ARENA.end.y - 20.0)
+		dest = ArenaShape.clamp_in(dest, ARENA, 30, 20)
 		var fromp: Vector2 = uu["pos"]
 		_beam_vfx("res://assets/sprites/vfx/fx-trail.png", fromp, dest, 40.0, Color(0.45, 0.08, 0.1, 0.6), 0.25)
 		var pt5 := _reg_tween()

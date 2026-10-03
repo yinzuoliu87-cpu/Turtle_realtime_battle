@@ -223,6 +223,7 @@ func _reloc_tick(delta: float) -> void:
 			if back.length() < 1.0:
 				back = Vector2.LEFT if s2 == "left" else Vector2.RIGHT
 			var to2: Vector2 = fp + back.normalized() * (rng * RELOC_NEAR)
+			to2 = ArenaShape.clamp_in(to2, battle.ARENA, 40.0)
 			to2.x = clampf(to2.x, battle.ARENA.position.x + 40.0,
 				battle.ARENA.position.x + battle.ARENA.size.x - 40.0)
 			to2.y = clampf(to2.y, battle.ARENA.position.y + 40.0,

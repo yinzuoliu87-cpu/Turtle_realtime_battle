@@ -604,8 +604,7 @@ func pestle_dest(u: Dictionary) -> Vector2:
 	if d.length() > PESTLE_LEAP_MAX:
 		want = here + d.normalized() * PESTLE_LEAP_MAX
 	## 钳进战场(别跳到墙外/屏外)
-	want.x = clampf(want.x, battle.ARENA.position.x + 40.0, battle.ARENA.end.x - 40.0)
-	want.y = clampf(want.y, battle.ARENA.position.y + 40.0, battle.ARENA.end.y - 40.0)
+	want = ArenaShape.clamp_in(want, battle.ARENA, 40)
 	return want
 
 

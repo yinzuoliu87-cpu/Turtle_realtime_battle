@@ -75,16 +75,24 @@ func _ready() -> void:
 			return void_i
 		return int(row[c])
 
+	## ★★★2026-10-03 口径从「非void ↔ void」改成【陆 ↔ 非陆】(海岸线)。
+	##   用户:「要么中间就是可活动的陆地，外边为海，以此为边界」「**墙移到海岸线吧**」。
+	##   ⇒ **这是需求变了, 不是判据原来写错了** —— 改前那条界画在"所有渲染物的最外沿",
+	##   翻成「岛→海→虚空」之后它会落在**海的外缘**, 离玩法边界更远。
+	## ★这份重算仍然是**独立**的(自己按格子数, 不读产品的 segs), 口径跟着需求走而已。
+	##   实测: 旧口径 176 段 / 新口径(海岸线) 122 段。
+	var land_types: Array = [types.find("grass"), types.find("stone"), types.find("sand")]
+	_chk("① ★分母: types 里三种陆地下标都查得到", not (-1 in land_types), str(land_types))
 	var want_segs := 0
 	var want_north := 0
 	for r in range(h):
 		for c in range(w):
-			if at.call(r, c) == void_i:
+			if not (at.call(r, c) in land_types):
 				continue
 			for d in [[-1, 0], [1, 0], [0, -1], [0, 1]]:
-				if at.call(r + int(d[0]), c + int(d[1])) == void_i:
+				if not (at.call(r + int(d[0]), c + int(d[1])) in land_types):
 					want_segs += 1
-			if at.call(r - 1, c) == void_i:
+			if not (at.call(r - 1, c) in land_types):
 				want_north += 1
 	_chk("① ★分母: 整圈边界段 > 0(否则这条门禁什么都没测)", want_segs > 0,
 		"整圈 %d 段 · 其中朝北 %d 段" % [want_segs, want_north])

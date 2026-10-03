@@ -150,8 +150,7 @@ func _cyber_smart_dash(u: Dictionary) -> void:   # 智能走位冲刺核心(主�
 	for i in range(16):
 		var aa: float = TAU * float(i) / 16.0
 		var cand: Vector2 = u["pos"] + Vector2(cos(aa), sin(aa)) * 200.0
-		cand.x = clampf(cand.x, battle.ARENA.position.x + 50.0, battle.ARENA.end.x - 50.0)
-		cand.y = clampf(cand.y, battle.ARENA.position.y + 40.0, battle.ARENA.end.y - 40.0)
+		cand = ArenaShape.clamp_in(cand, battle.ARENA, 50, 40)
 		var d_enemy = INF
 		for o in es:
 			if o.get("alive", false): d_enemy = minf(d_enemy, cand.distance_to(o["pos"]))
@@ -183,8 +182,7 @@ func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡演出(用户2026-07
 	var cpos: Vector2 = u["pos"]
 	var retreat: float = -1.0 if str(u.get("side", "left")) == "left" else 1.0   # 集结点=尸位向己方后场偏120码
 	var gather: Vector2 = cpos + Vector2(retreat * 120.0, 0.0)
-	gather.x = clampf(gather.x, battle.ARENA.position.x + 60.0, battle.ARENA.end.x - 60.0)
-	gather.y = clampf(gather.y, battle.ARENA.position.y + 40.0, battle.ARENA.end.y - 40.0)
+	gather = ArenaShape.clamp_in(gather, battle.ARENA, 60, 40)
 	var uu: Dictionary = u
 	var live: Array = []
 	for d in arr:

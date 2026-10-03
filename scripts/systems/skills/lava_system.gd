@@ -707,8 +707,7 @@ func _sk_lava_erupt(u: Dictionary, tgt) -> void:                # 熔岩龟·技
 		var d: Vector2 = ((u["pos"] - threat["pos"]).normalized() if threat != null else Vector2.RIGHT)
 		if d.length() < 0.1: d = Vector2.RIGHT
 		u["pos"] += d * 220.0
-		u["pos"].x = clampf(u["pos"].x, battle.ARENA.position.x, battle.ARENA.end.x)
-		u["pos"].y = clampf(u["pos"].y, battle.ARENA.position.y, battle.ARENA.end.y)
+		u["pos"] = ArenaShape.clamp_in(u["pos"], battle.ARENA)
 	elif tgt != null and tgt.get("alive", false):               # 追击: 冲贴目标
 		battle._dash_to(u, tgt, 80.0)
 	u["atk_cd"] = 0.0                                            # 重置下次普攻(立刻可放)

@@ -61,8 +61,7 @@ func _diamond_roll_tick(u: Dictionary, delta: float) -> void:
 		return
 	var roll_spd: float = battle.DIAMOND_ROLL_MAX_SPD * (0.1 + 0.9 * sf)  # 0.1起步(避免完全不动)→满速
 	u["pos"] += to_t.normalized() * roll_spd * delta
-	u["pos"].x = clampf(u["pos"].x, battle.ARENA.position.x, battle.ARENA.end.x)
-	u["pos"].y = clampf(u["pos"].y, battle.ARENA.position.y, battle.ARENA.end.y)
+	u["pos"] = ArenaShape.clamp_in(u["pos"], battle.ARENA)
 	u["face_right"] = to_t.x > 0.0
 	if int(battle._t * 30.0) % 2 == 0:                                    # 速度线拖尾(越快越猛·美术L231)
 		battle._skill_ring(u["pos"], Color(0.6, 0.86, 1.0, 0.2 + 0.35 * sf), 28.0 + 22.0 * sf)

@@ -75,8 +75,7 @@ func _ninja_dash(u: Dictionary, target: Dictionary) -> void:    # 被动·冲击
 	dir = dir.normalized()
 	# ★#5修〖用户2026-07-11〗: 亚索 E 式【滑行穿过】(非瞬移), 滑速 600 码/秒. 固定路径 300 码(同日 450→300).
 	var endp: Vector2 = start + dir * DASH_RANGE                     # 冲刺距离 300码(用户2026-07-11: 450→300)
-	endp.x = clampf(endp.x, battle.ARENA.position.x, battle.ARENA.end.x)
-	endp.y = clampf(endp.y, battle.ARENA.position.y, battle.ARENA.end.y)
+	endp = ArenaShape.clamp_in(endp, battle.ARENA)
 	# 路径上的敌 (按沿路投影排序 → 滑到谁割谁)
 	var hits: Array = []
 	for o in battle._targeting._enemies_of(u):

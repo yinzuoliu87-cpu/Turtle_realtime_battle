@@ -138,8 +138,7 @@ func _trainer_move_by(u: Dictionary, dir: Vector2, delta: float) -> void:
 	var spd: float = float(u.get("move_spd", battle.TRAINER_MOVE_SPD))
 	u["pos"] += dir * spd * delta
 	# ★clamp 进战场 —— 不夹的话摇杆一直推就飞出地图外了
-	u["pos"].x = clampf(u["pos"].x, battle.ARENA.position.x, battle.ARENA.end.x)
-	u["pos"].y = clampf(u["pos"].y, battle.ARENA.position.y, battle.ARENA.end.y)
+	u["pos"] = ArenaShape.clamp_in(u["pos"], battle.ARENA)
 	if absf(dir.x) > 0.05:
 		u["face_right"] = dir.x > 0.0
 
@@ -849,8 +848,7 @@ func _tick_hooks(delta: float) -> void:
 					var to: Vector2 = by["pos"] - u["pos"]
 					if to.length() > 24.0:                    # 留 24 码不重叠
 						u["pos"] += to.normalized() * tug_spd * delta
-						u["pos"].x = clampf(u["pos"].x, battle.ARENA.position.x, battle.ARENA.end.x)
-						u["pos"].y = clampf(u["pos"].y, battle.ARENA.position.y, battle.ARENA.end.y)
+						u["pos"] = ArenaShape.clamp_in(u["pos"], battle.ARENA)
 
 ## 敌方(右侧/快照)训龟大师 AI: 像真人一样来回乱走 + 逮到机会甩钩锁(场外援助·用户2026-07-23 点3)。
 ## 左侧大师由玩家操控(WASD 走 + Q 甩); 但 STRESS 无头对练时左侧也交给 AI ——

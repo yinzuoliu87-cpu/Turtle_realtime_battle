@@ -113,15 +113,13 @@ func _hunter_roll_tick(u: Dictionary, delta: float) -> void:
 	var to_d: Vector2 = dest - u["pos"]
 	if to_d.length() <= step + 2.0 or to_d.dot(rdir) <= 0.0:     # 到达/穿过 → 落地结算
 		u["pos"] = dest
-		u["pos"].x = clampf(u["pos"].x, battle.ARENA.position.x, battle.ARENA.end.x)
-		u["pos"].y = clampf(u["pos"].y, battle.ARENA.position.y, battle.ARENA.end.y)
+		u["pos"] = ArenaShape.clamp_in(u["pos"], battle.ARENA)
 		u["hunter_roll_active"] = false
 		u["state"] = "move"
 		battle._burst_vfx("res://assets/sprites/vfx/dust-impact.png", u["pos"], 200.0, 0.12)   # 落地轻尘
 		return
 	u["pos"] += rdir * step                                      # 固定速真位移(平滑滑行·非瞬移)
-	u["pos"].x = clampf(u["pos"].x, battle.ARENA.position.x, battle.ARENA.end.x)
-	u["pos"].y = clampf(u["pos"].y, battle.ARENA.position.y, battle.ARENA.end.y)
+	u["pos"] = ArenaShape.clamp_in(u["pos"], battle.ARENA)
 
 func _hunter_roll_ghost(u: Dictionary) -> void:                 # 单道灵巧绿立绘幻影(在当前位铺·淡出=翻滚拖尾)
 	var spr = u.get("sprite", null)

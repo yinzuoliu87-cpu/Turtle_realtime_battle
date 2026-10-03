@@ -530,10 +530,9 @@ func _in_any_fog(arr: Array, p: Vector2) -> bool:
 
 
 func _clamp_arena(p: Vector2) -> Vector2:
-	var r: Rect2 = battle.ARENA
-	return Vector2(
-		clampf(p.x, r.position.x + ARENA_PAD, r.end.x - ARENA_PAD),
-		clampf(p.y, r.position.y + ARENA_PAD, r.end.y - ARENA_PAD))
+	## ★2026-10-03 圆岛: 原来是自己手抄的轴向夹(矩形), 现在转调共用的超椭圆钳位。
+	##   memory `fb-hand-rolled-copies-drift`: 就地手写 = 抄一次永远落后。
+	return ArenaShape.clamp_in(p, battle.ARENA, ARENA_PAD)
 
 
 func _erase_node(n) -> void:

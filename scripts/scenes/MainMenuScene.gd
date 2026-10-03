@@ -548,8 +548,15 @@ func _add_lock_badge(holder: Control, size: Vector2) -> void:
 	lock.add_theme_font_size_override("font_size", 26)
 	## ★2026-08-19 从 (w-36, 2) 挪到 (w-44, 10): 原位置让锁**骑在木牌右上角的花纹柱上、还探出板外**
 	##   (实拍确认, 门禁也报了「🔒+8」)。木牌的花纹边实测约占 22px, 往里让开就落在木面上。
-	lock.position = Vector2(size.x - 44.0, 10.0)
-	lock.size = Vector2(32, 32)
+	## ★★★2026-10-03 又超了, 门禁报「🔒+13」。根因是上一次**照症状挪**(报 +8 就挪 8px),
+	##   而没有按花纹边的真宽度算 ⇒ 换一个控件尺寸就又探出去。
+	##   现在按带宽推: 右沿必须退到 `BAND` 以内 ⇒ x = size.x - BAND - 宽, 并留 2px 余量。
+	##   ⚠ 这个缺陷**只在周六/周日出现**(商店锁着才画角标), 平时根本看不见 ——
+	##   是 2026-10-03 周六跑门禁才照出来的。
+	const _BAND := 22.0          # 木牌花纹边宽(实拍量的)
+	const _LOCK_W := 32.0
+	lock.position = Vector2(size.x - _BAND - _LOCK_W - 2.0, 10.0)
+	lock.size = Vector2(_LOCK_W, _LOCK_W)
 	lock.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lock.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(lock)

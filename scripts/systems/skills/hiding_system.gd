@@ -280,8 +280,7 @@ func _sk_minion_bodysurf(u: Dictionary, tgt) -> void:   # 近战小将·人体�
 	var back_dir: Vector2 = (jstart - (tref["pos"] as Vector2))
 	back_dir = back_dir.normalized() if back_dir.length() > 1.0 else Vector2.LEFT
 	var apex: Vector2 = jstart + back_dir * 120.0        # 往后上方跳~120码(后撤+20%·用户2026-07-18)
-	apex.x = clampf(apex.x, battle.ARENA.position.x + 30.0, battle.ARENA.end.x - 30.0)
-	apex.y = clampf(apex.y, battle.ARENA.position.y + 20.0, battle.ARENA.end.y - 20.0)
+	apex = ArenaShape.clamp_in(apex, battle.ARENA, 30, 20)
 	var jt = battle._reg_tween()
 	jt.tween_interval(0.3)                               # 蓄力更久(蹬地聚力·用户2026-07-18"蓄力久点·用力一跳·符合现实")
 	jt.tween_method(func(q: float) -> void:              # 用力爆发式起跳: 高度sin(离地瞬间最快→到顶减速=真实抛物上升)·水平匀速往后上→到顶悬停
@@ -356,8 +355,7 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己�
 	sdir = sdir.normalized() if sdir.length() > 1.0 else Vector2.RIGHT
 	var slide_from: Vector2 = tref["pos"]
 	var slide_to: Vector2 = slide_from + sdir * 200.0
-	slide_to.x = clampf(slide_to.x, battle.ARENA.position.x + 30.0, battle.ARENA.end.x - 30.0)
-	slide_to.y = clampf(slide_to.y, battle.ARENA.position.y + 20.0, battle.ARENA.end.y - 20.0)
+	slide_to = ArenaShape.clamp_in(slide_to, battle.ARENA, 30, 20)
 	var hit_others: Array = []                           # 已蹭到的敌(Array身份去重·不用dict-key防recursive_hash)
 	var dot_t = 0.0
 	var sd = 0.0
@@ -401,8 +399,7 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己�
 	if perp.length() < 0.5: perp = Vector2.UP
 	var base: Vector2 = (tref["pos"] as Vector2) if tref.get("alive", false) else land_from
 	var land_to: Vector2 = base + perp * 72.0            # 跳到目标侧边72码(不与目标重叠)
-	land_to.x = clampf(land_to.x, battle.ARENA.position.x + 30.0, battle.ARENA.end.x - 30.0)
-	land_to.y = clampf(land_to.y, battle.ARENA.position.y + 20.0, battle.ARENA.end.y - 20.0)
+	land_to = ArenaShape.clamp_in(land_to, battle.ARENA, 30, 20)
 	var ho = battle._reg_tween()
 	ho.tween_method(func(q: float) -> void:
 		if u.get("alive", false):

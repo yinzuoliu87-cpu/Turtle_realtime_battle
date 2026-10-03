@@ -215,6 +215,45 @@ func _build_tilemap_ground() -> void:
 	battle._tilemap_add(xf_stone, Vector3(maxf(0.02, tw_m - TILE_GAP_M), battle.TILE_THICK, maxf(0.02, tw_m - TILE_GAP_M)), Color(0.24, 0.26, 0.38))   # 石台(凸)
 
 # 阶段4: 边框密植发光水草/珊瑚(确定性种子·只非战斗区=ARENA外) + 氛围辉光粒子
+## 海岸线的边界段 —— 【陆地格 ↔ 非陆地格】那条界, 不是「非虚空 ↔ 虚空」。
+##
+## ★★★2026-10-03 用户:「要么中间就是可活动的陆地，外边为海，以此为边界」「**墙移到海岸线吧**」
+##
+## 【改前跟的是哪条界】`非void ↔ void` —— 也就是「所有渲染出来的东西」的最外沿。
+##   在改前那张图上(岛心→潟湖→浅滩→虚空)那条界画在**浅滩的外缘**, 离玩家走得到的地方
+##   外扩 左298/右334/上192/下194 px ⇒ 玩家看见的最明显的构件**不是**玩法边界。
+##   翻成「岛→海→虚空」之后它会落在**海的外缘** —— 更远, 更不是边界。
+##
+## 【现在跟的是】陆地(grass/stone/sand) ↔ 非陆地(water/void)。
+##   因为岛 == 可活动区(`tools/gen_arena_map.py` 的 `ISLE` 与 `ArenaShape.N` 同一个超椭圆),
+##   所以这条界**就是**玩法边界, 一条线同时是"看得见的"和"走得到的"。
+##
+## ⚠ 竖面高度的标定值 `WALL_H`(照 TFT 实测: 竖面 ÷ 角色屏幕高 = 0.81 ⇒ 31px ⇒ 世界高 1.11 米)
+##   **一个字没动** —— 本次只换"画在哪条界上", 不换"画多高"。
+##   `tests/verify_edge_wall.gd` 里那条独立重算同步改成同一口径, 并反向验证过会红。
+const _LAND_TYPES := [0, 2, 3]            # grass / stone / sand (water=1 void=4 不是陆)
+
+func _coast_edge_segs(at: Callable, w: int, h: int, ox: float, oy: float, tile: float) -> Array:
+	var segs: Array = []                              # [[Vector2 a, Vector2 b], ...] 像素口径
+	for r in range(h):
+		for c in range(w):
+			if not (int(at.call(r, c)) in _LAND_TYPES):
+				continue
+			var x0 := ox + float(c) * tile
+			var y0 := oy + float(r) * tile
+			var x1 := x0 + tile
+			var y1 := y0 + tile
+			if not (int(at.call(r - 1, c)) in _LAND_TYPES):
+				segs.append([Vector2(x0, y0), Vector2(x1, y0)])
+			if not (int(at.call(r + 1, c)) in _LAND_TYPES):
+				segs.append([Vector2(x1, y1), Vector2(x0, y1)])
+			if not (int(at.call(r, c - 1)) in _LAND_TYPES):
+				segs.append([Vector2(x0, y1), Vector2(x0, y0)])
+			if not (int(at.call(r, c + 1)) in _LAND_TYPES):
+				segs.append([Vector2(x1, y0), Vector2(x1, y1)])
+	return segs
+
+
 ## ═══ 场地边界的体积(P1-5) ═════════════════════════════════════════════
 ## 用户 2026-09-18 说战斗场景很烂; 对标 30 款同类型好游戏后, 边界是差距最明确的一条:
 ## 好游戏的场地边界从来不是「颜色换一下」, 而是一个**能看见侧面的构件**。
@@ -307,7 +346,17 @@ const DETRITUS := [
 ##   290 件/0.185m ⇒  56 件/Mpx · 覆盖 0.12%   ← **其实铺得太少**(与活战斗量的结论相反)
 ##   1540 件/0.34m  ⇒ 574 件/Mpx · 覆盖 2.97%
 ##   **820 件/0.38m  ⇒ 349 件/Mpx · 覆盖 2.05%**  ← 取这档(参考 296 / 2.20%)
-const DETRITUS_N := 820
+## ★★★2026-10-03 **820 → 0**。用户原话:「**别管brotato的**」。
+##   这一层当初(2026-09-20)加进来的全部依据就是上面那句「参考里 Brotato_3 的地面碎料
+##   296 件/Mpx、覆盖 2.20%」—— **那个参考被作废了, 依据跟着没了**。
+##   实拍也印证: `tools/battle_scene_check.py` 的 ⑤「中带高频密度」台账 18.74,
+##   而参考值 4.90% / 目标 ≤5.20% —— 满地碎料正是最吵的那一项。
+## ★为什么留着常量而不是删掉整层: 剩下两份参考(咩咩 178 件/Mpx · Botworld 战斗场 0 件)
+##   **还没定要像哪个**(方案书 `20261003-岛与海作为边界.md` 风险 5)。
+##   改成 0 ⇒ 这一层整个不生成; 哪天定了像咩咩, 把这个数调回去即可, 不用重写代码。
+## ⚠ 不许在"没定参考"的情况下自己拍一个中间值 —— 那是 memory
+##   `fb-my-thresholds-degrade-good-assets` 和 `fb-my-goal-can-be-wrong-not-just-my-code` 那两类。
+const DETRITUS_N := 0
 const DETRITUS_SIZE_M := 0.38
 const DETRITUS_SEED := 20260920
 
@@ -347,23 +396,7 @@ func build_edge_wall(grid: Array, w: int, h: int, tile: float, ox: float, oy: fl
 	##     **共同点是「边界上有一条连续构件」, 不是「轮廓必须是直边」** ——
 	##     C 类(格子化阶梯)在参考里有 8 张, 格子阶梯本身不是病, **裸着的阶梯边**才是。
 	##   ⇒ 现在: 整圈边界抽成折线, 生成**一个 ArrayMesh 的连续竖直带**(连续 UV、不断开)。
-	var segs: Array = []                                  # [[Vector2 a, Vector2 b], ...] 像素口径
-	for r in range(h):
-		for c in range(w):
-			if at.call(r, c) == 4:
-				continue
-			var x0 := ox + float(c) * tile
-			var y0 := oy + float(r) * tile
-			var x1 := x0 + tile
-			var y1 := y0 + tile
-			if at.call(r - 1, c) == 4:
-				segs.append([Vector2(x0, y0), Vector2(x1, y0)])
-			if at.call(r + 1, c) == 4:
-				segs.append([Vector2(x1, y1), Vector2(x0, y1)])
-			if at.call(r, c - 1) == 4:
-				segs.append([Vector2(x0, y1), Vector2(x0, y0)])
-			if at.call(r, c + 1) == 4:
-				segs.append([Vector2(x1, y0), Vector2(x1, y1)])
+	var segs: Array = _coast_edge_segs(at, w, h, ox, oy, tile)
 	if segs.is_empty():
 		push_warning("[edge_wall] 一条边界段都没收到 —— 地图全是 void? 不画(不做静默兜底)")
 		return made

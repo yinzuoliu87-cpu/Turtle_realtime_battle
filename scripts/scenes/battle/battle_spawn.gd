@@ -813,8 +813,7 @@ func _spawn_summon(owner: Dictionary, kind: String, hp: float, atk: float, behav
 	#   PvP 的快照对拍靠的正是"同种子两遍同结果", 所以这条不是小事。
 	var pos: Vector2 = owner["pos"] + Vector2(
 		battle._battle_rng.randf_range(-40, 40), battle._battle_rng.randf_range(30, 60))
-	pos.x = clampf(pos.x, battle.ARENA.position.x, battle.ARENA.end.x)
-	pos.y = clampf(pos.y, battle.ARENA.position.y, battle.ARENA.end.y)
+	pos = ArenaShape.clamp_in(pos, battle.ARENA)
 	var col = Color("#3fa9ff") if owner["side"] == "left" else Color("#ff5a5a")
 	var spr_id: String = str(behavior.get("spr_id", ""))
 	var col_size: float = float(behavior.get("col_size", 22.0))
