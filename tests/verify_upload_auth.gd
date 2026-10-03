@@ -52,7 +52,7 @@ func _ready() -> void:
 	gs.auth_refresh = "r1"
 	_ok("★分母: 后端真的打开了", SB.enabled())
 
-	for table in ["ghosts", "gauntlet_ghosts"]:
+	for table in ["ghosts", "gauntlet_ghosts", "pull:ghosts", "pull:gauntlet_ghosts"]:
 		SB._reset_auth_for_test()
 		gs.auth_refresh = "r1"
 		_reqs.clear()
@@ -63,12 +63,16 @@ func _ready() -> void:
 					"access_token": "tok-new", "refresh_token": "r2", "expires_in": 3600,
 					"user": {"id": "uid-me", "is_anonymous": true}})})
 			else:
-				cb.call({"ok": true, "code": 201, "body": ""})
+				cb.call({"ok": true, "code": 200 if str(m) == "GET" else 201, "body": "[]" if str(m) == "GET" else ""})
 		_ok("[%s] ★分母: 起点令牌是空的(冷启动 / 过期)" % table, SB.access_token() == "")
 		if table == "ghosts":
 			SB.upload_ghost_async(SB.ghost_row_from_snapshot({"x": 1}, "uid-me", 1790553600, 3, "gate"))
-		else:
+		elif table == "gauntlet_ghosts":
 			SB.upload_gauntlet_async(SB.gauntlet_row_from_snapshot({"x": 1}, "uid-me", 1790553600, 1, 0, "gate"))
+		elif table == "pull:ghosts":
+			SB.pull_opponents_async(1790553600, 3, "uid-me")
+		else:
+			SB.pull_gauntlet_async(1790553600, 1, 0, "uid-me")
 		for _i in range(60):
 			await get_tree().process_frame
 		var up := {}
@@ -78,7 +82,7 @@ func _ready() -> void:
 			var r: Dictionary = _reqs[i]
 			if str(r["url"]).find("/auth/v1/token") >= 0 and refresh_i < 0:
 				refresh_i = i
-			if str(r["url"]).find("/rest/v1/" + table) >= 0:
+			if str(r["url"]).find("/rest/v1/" + table.trim_prefix("pull:") + ("?" if table.begins_with("pull:") else "")) >= 0:
 				up = r
 				up_i = i
 		_ok("[%s] ★★上传真的发出去了" % table, up_i >= 0, str(_reqs))

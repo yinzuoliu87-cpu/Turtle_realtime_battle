@@ -556,6 +556,12 @@ func pull_gauntlet(q: String) -> void:
 	if not enabled() or q == "":
 		_bye()
 		return
+	## ★2026-10-04: 读也要令牌 —— 读规则是 auth.uid() is not null, 没令牌去拉服务端**不报错、只返回 0 行**,
+	##   客户端就当成「没有对手」回落机器人(与上传 401 同一个根: 令牌只活在内存、冷启动为空、会过期)。
+	if not await _await_token():
+		print("[SupabaseNet] 没拉对手: 拿不到登录令牌(gauntlet_ghosts)")
+		_bye()
+		return
 	## ★入池走的是与积分赛**同一个** `apply_pull_response()` ——
 	##   那里已经把「解包 → 验快照 → 入池 → 存盘 → 记账」整条路封好了。
 	##   手写第二份就是「手抄的副本必然落后」(我第一版就这么写的,
@@ -725,6 +731,12 @@ static func pull_opponents_async(season_week: int, battles: int, account_id: Str
 
 func pull_opponents(query: String) -> void:
 	if not enabled() or query == "":
+		_bye()
+		return
+	## ★2026-10-04: 读也要令牌 —— 读规则是 auth.uid() is not null, 没令牌去拉服务端**不报错、只返回 0 行**,
+	##   客户端就当成「没有对手」回落机器人(与上传 401 同一个根: 令牌只活在内存、冷启动为空、会过期)。
+	if not await _await_token():
+		print("[SupabaseNet] 没拉对手: 拿不到登录令牌(ghosts)")
 		_bye()
 		return
 	var url := base_url().rstrip("/") + "/rest/v1/ghosts?" + query
