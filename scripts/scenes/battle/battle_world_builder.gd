@@ -725,6 +725,35 @@ func _build_ring_lanterns() -> Array:
 	return made
 
 
+## 物件脚下贴地的一块椭圆深色影(径向渐变, 普通混合)。w = 物件世界宽。
+func _contact_shadow(p: Vector2, alpha: float, w: float) -> MeshInstance3D:
+	var g := Gradient.new()
+	g.set_color(0, Color(0, 0, 0, alpha))
+	g.set_color(1, Color(0, 0, 0, 0.0))
+	g.add_point(0.55, Color(0, 0, 0, alpha * 0.8))
+	var gt := GradientTexture2D.new()
+	gt.gradient = g
+	gt.fill = GradientTexture2D.FILL_RADIAL
+	gt.fill_from = Vector2(0.5, 0.5)
+	gt.fill_to = Vector2(1.0, 0.5)
+	gt.width = 64
+	gt.height = 64
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.albedo_texture = gt
+	m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(w, w * 0.55)
+	var mi := MeshInstance3D.new()
+	mi.name = "PropShadow"
+	mi.mesh = pm
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.position = battle._world_pos(p, 0.03)
+	return mi
+
+
 ## 立着的一团加性辉光 + 一盏点光, 罩在发光物件(珍珠)上。h = 物件世界高。
 func _glow_puff(p: Vector2, col: Color, h: float) -> Node3D:
 	var n := Node3D.new()
@@ -758,7 +787,7 @@ func _glow_puff(p: Vector2, col: Color, h: float) -> Node3D:
 	n.add_child(s)
 	var L := OmniLight3D.new()
 	L.light_color = Color(col.r, col.g, col.b)
-	L.light_energy = 4.0
+	L.light_energy = 2.6
 	L.omni_range = h * 2.2
 	L.shadow_enabled = false
 	L.position = battle._world_pos(p, h * 0.5)
@@ -878,6 +907,10 @@ func _build_field_tufts(key: String = "field_tufts", seed: int = 20261005) -> Ar
 			s.scale = Vector3(sc * (-1.0 if rng.randf() < 0.5 else 1.0), sc, sc)
 			s.modulate = cfg.get(key + "_mod", Color(1, 1, 1))
 			root.add_child(s)
+			## ★接地影(prop_shadow = 不透明度): 参考每件物件脚下都有一块深色影, 没有就像贴上去的。
+			var _ps: float = float(cfg.get("prop_shadow", 0.0))
+			if _ps > 0.0:
+				root.add_child(_contact_shadow(p2, _ps, s.pixel_size * float(s.texture.get_width()) * sc * 1.1))
 	return made
 
 

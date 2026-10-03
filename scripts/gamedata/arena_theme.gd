@@ -67,18 +67,19 @@ const THEMES: Dictionary = {
 		"ambient_kind": "bubbles",
 	},
 	V1_DUSK: {
+		"prop_shadow": 0.55,   # 物件接地影
 		"smooth_shade": 1.0,   # 地面不抖动: 参考是柔和涂抹, 抖动网点读作纱窗
 		"ring_lanterns": 16,   # 外围暗林里悬着的红光(mixed_034/035/012)
 		"ring_lantern_col": Color(1.0, 0.08, 0.10, 0.95),
 		"wall_h": 0.35,   # 海岸竖面压成矮边(高墙沿格子成一排台阶方块)
 		"lamp_tex": "field_red_torch",   # 参考: 场内光源是插地的红火把, 不是黄火盆
 		"lamp_h": 1.7,
-		"field_tufts": ["field_tall_grass", "dusk_grass_tuft"],   # 场内成簇大草丛(mixed_033/034 · anchordeep_005/011)
+		"field_tufts": ["field_tall_grass"],   # 场内成簇大草丛(mixed_033/034 · anchordeep_005/011)
 		"field_tufts_clusters": 9,
 		"field_piles": ["field_bone_pile"],
 		"field_piles_clusters": 10,
-		"field_piles_h": [0.8, 1.25],
-		"field_tufts_h": [1.3, 2.1],
+		"field_piles_h": [1.1, 1.6],
+		"field_tufts_h": [1.6, 2.4],
 		"edge_soft": 1.0,      # 聚光往里收: 参考 mixed_033/034 中心亮池、四周沉黑
 		"spot_amt": 0.55,
 		"rim_light_mod": Color(1, 1, 1),
@@ -101,7 +102,7 @@ const THEMES: Dictionary = {
 		"water_col": Color(0.030, 0.036, 0.050),
 		"edge_dark": 0.06,
 		"caustic_amt": 0.0,   # 林地上不该有水下焦散光纹
-		"edge_tufts": ["dusk_grass_tuft", "field_tall_grass"],
+		"edge_tufts": ["field_tall_grass"],   # 统一描线: 没描线的黄草撤掉
 		"edge_tufts_n": 170,
 		"edge_tufts_r": [0.93, 1.01],   # 贴着平台边沿一圈密草, 盖住格子台阶(参考边沿是草边)
 		"edge_tufts_h": [0.8, 1.4],
@@ -136,17 +137,18 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(1.0, 0.86, 0.42, 0.45),     # 林间萤光(慢·微上飘)
 	},
 	V2_REEF: {
+		"prop_shadow": 0.55,   # 物件接地影
 		"smooth_shade": 1.0,   # 地面不抖动: 参考是柔和涂抹, 抖动网点读作纱窗
 		"wall_h": 0.35,   # 海岸竖面压成矮边(高墙沿格子成一排台阶方块)
 		"lamp_tex": "reef_glow_orb",   # anchordeep: 场内光源是青白发光球, 不是黄火盆
 		"lamp_h": 1.3,
-		"field_tufts": ["field_seaweed", "field_seaweed", "reef_kelp_tuft"],   # 场内成簇海草: anchordeep_005/011 的浅绿高海草
+		"field_tufts": ["field_seaweed"],   # 场内成簇海草: anchordeep_005/011 的浅绿高海草
 		"field_piles": ["field_reef_rocks"],   # anchordeep_016/031: 场内一堆堆深色礁石
 		"field_piles_clusters": 7,
-		"field_piles_h": [0.8, 1.2],
+		"field_piles_h": [0.75, 1.05],   # 礁石放到 1.1~1.6 会盖住正在打的龟(装饰物不挡路, 单位会走进去)
 		"field_tufts_mod": Color(0.72, 0.86, 0.62),   # 新海草偏白 ⇒ 压向参考的橄榄绿
 		"field_tufts_clusters": 9,
-		"field_tufts_h": [1.4, 2.3],
+		"field_tufts_h": [1.6, 2.4],
 		"caustic_web": 1.0,    # 网状细线焦散(anchordeep_011/016/020)
 		"edge_soft": 0.9,
 		"spot_amt": 0.35,
@@ -177,7 +179,7 @@ const THEMES: Dictionary = {
 		## 框边: 暗色高海草(参考里平台四周一圈海草剪影)
 		"ring_props": ["reef_kelp_silhouette", "reef_kelp_silhouette", "field_pearl_shell"],   # anchordeep_010/011: 外围有大珍珠贝, 珠子发白光
 		"ring_h_of": {"field_pearl_shell": [1.1, 1.6]},
-		"ring_glow_of": {"field_pearl_shell": Color(0.85, 1.0, 0.95, 0.95)},   # 第一版带方尖碑, 实拍像一排墓碑, 参考里没有
+		"ring_glow_of": {"field_pearl_shell": Color(0.85, 1.0, 0.95, 0.6)},   # 0.95 顶上过曝成一大团白   # 第一版带方尖碑, 实拍像一排墓碑, 参考里没有
 		"ring_density": 1.1,
 		"ring_h": [3.0, 5.2],
 		"ring_avoid_bottom": true,
@@ -208,6 +210,7 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(0.55, 1.0, 0.75, 0.45),   # 水中浮游光点
 	},
 	V3_SHOAL: {
+		"prop_shadow": 0.55,   # 物件接地影
 		"smooth_shade": 1.0,   # 地面不抖动: 参考是柔和涂抹, 抖动网点读作纱窗
 		"ring_lanterns": 16,   # 外围暗林里悬着的红光(mixed_034/035/012)
 		"ring_lantern_col": Color(1.0, 0.06, 0.16, 0.95),
@@ -221,11 +224,11 @@ const THEMES: Dictionary = {
 		"lamp_h": 1.7,
 		"field_tufts": ["field_tall_grass"],   # mixed_012: 深蓝紫的高草丛
 		"field_tufts_clusters": 9,
-		"field_tufts_h": [1.3, 2.1],
+		"field_tufts_h": [1.6, 2.4],
 		"field_tufts_mod": Color(0.42, 0.36, 0.70),
 		"field_piles": ["field_bone_pile"],   # mixed_012: 粉色骷髅堆
 		"field_piles_clusters": 13,
-		"field_piles_h": [0.8, 1.25],
+		"field_piles_h": [1.1, 1.6],
 		"field_piles_mod": Color(1.0, 0.62, 0.85),
 		"edge_soft": 1.0,
 		"spot_amt": 0.45,
@@ -278,6 +281,7 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(1.0, 0.45, 0.70, 0.45),
 	},
 	V4_STORM: {
+		"prop_shadow": 0.55,   # 物件接地影
 		"smooth_shade": 1.0,   # 地面不抖动: 参考是柔和涂抹, 抖动网点读作纱窗
 		"ring_lanterns": 16,   # 外围暗林里悬着的红光(mixed_034/035/012)
 		"ring_lantern_col": Color(1.0, 0.05, 0.06, 0.95),
@@ -289,9 +293,9 @@ const THEMES: Dictionary = {
 		"field_tufts_mod": Color(1, 1, 1),
 		"field_piles": ["field_bone_pile"],
 		"field_piles_clusters": 8,
-		"field_piles_h": [0.55, 0.85],
+		"field_piles_h": [1.1, 1.6],
 		"field_piles_mod": Color(1.0, 0.82, 0.78),
-		"field_tufts_h": [1.3, 2.1],
+		"field_tufts_h": [1.6, 2.4],
 		"edge_soft": 1.0,
 		"spot_amt": 0.72,
 		"rim_light_mod": Color(1, 1, 1),
