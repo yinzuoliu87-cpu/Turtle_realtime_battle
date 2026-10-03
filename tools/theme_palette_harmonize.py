@@ -60,6 +60,20 @@ ACCENT_L = 0.52
 ##   (memory `fb-my-thresholds-degrade-good-assets`: 我拍的阈值会把好素材改坏。)
 SKIP_WORDS = ("silhouette", "band", "veil", "leaf")
 
+## ★★★统一墨线(2026-10-03)。实测第一批 17 件的**描边**:
+##   描边明度中位从 **12 到 141**、「近黑描边」占比从 **0% 到 98%** ——
+##   花丛 97% / 灯柱 74% 有浓重深描边, 而浮木 / 草丛 / 棕榈 / 贝壳堆**是 0%**。
+##   同一画面里混着两种画法, 这是「不像一套」最直接的原因。
+##   咩咩的每件东西都是**同一种深色墨线**(逐张看参考可见)。
+## ⇒ 每版一种墨色(主色相的极暗版, 不是纯黑 —— 咩咩的墨线是偏暖的深褐/深紫, 不是 #000),
+##   把每件物件**最外一圈**不透明像素统一换成它。
+INK = {
+    "dusk":  (46, 26, 20),     # 暖深褐
+    "reef":  (16, 18, 38),     # 深靛
+    "shoal": (58, 40, 26),     # 中深褐(白昼整体亮, 墨线不必压到最黑)
+    "storm": (22, 26, 34),     # 冷深灰
+}
+
 
 def _hue_pull(h_deg, target_deg, f):
     """把色相往目标拉 f 比例，走最短弧（别绕一圈）。"""
@@ -67,7 +81,25 @@ def _hue_pull(h_deg, target_deg, f):
     return (h_deg + d * f) % 360.0
 
 
-def harmonize(path, target_h, pull, lo, hi):
+def _ink_outline(im, ink):
+    """把最外一圈不透明像素(4 邻域里有透明的)换成墨色, alpha 保留。"""
+    w, h = im.size
+    px = im.load()
+    edge = []
+    for y in range(h):
+        for x in range(w):
+            if px[x, y][3] <= 40:
+                continue
+            for a, b in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                if not (0 <= a < w and 0 <= b < h) or px[a, b][3] <= 40:
+                    edge.append((x, y))
+                    break
+    for x, y in edge:
+        px[x, y] = (ink[0], ink[1], ink[2], px[x, y][3])
+    return len(edge)
+
+
+def harmonize(path, target_h, pull, lo, hi, ink=None):
     orig = path[:-4] + ".orig.png"
     if not os.path.exists(orig):
         Image.open(path).save(orig)          # 第一次先留底，可重跑
@@ -93,6 +125,8 @@ def harmonize(path, target_h, pull, lo, hi):
             if ss2 > 0.12:
                 hs_a.append(hh2 * 360.0)
             ls_a.append(ll2)
+    if ink is not None:
+        _ink_outline(im, ink)      # ★统一墨线放在调色**之后**: 墨色不该再被拉色相/压明度
     im.save(path)
     def med(v):
         return sorted(v)[len(v) // 2] if v else -1.0
@@ -123,7 +157,7 @@ def main():
         print("── %s（主色相 %.0f° · 拉拢 %.0f%% · 明度 %.2f~%.2f）" % (th, target_h, pull * 100, lo, hi))
         hs = []
         for f in files:
-            hb, lb, ha, la = harmonize(f, target_h, pull, lo, hi)
+            hb, lb, ha, la = harmonize(f, target_h, pull, lo, hi, INK.get(th))
             hs.append(ha)
             print("    %-26s 色相 %5.0f°→%5.0f°   明度中位 %.2f→%.2f"
                   % (os.path.basename(f)[:-4], hb, ha, lb, la))
