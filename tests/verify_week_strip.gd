@@ -188,6 +188,7 @@ func _ready() -> void:
 		"七天标在 %s" % str(today_marks))
 
 	await _one_clock(packed)
+	await _ticks(packed)
 	_done()
 
 
@@ -418,3 +419,45 @@ func _done() -> void:
 	else:
 		print("FAIL x%d" % _fail)
 		get_tree().quit(1)
+
+
+## ⑥ 倒计时要走、22:50 要变「已封盘」(2026-10-03 周六实操 S16:
+##   22:36 和 22:49 两张截图都写「距收盘 24 分 18 秒」, 22:50 之后仍不显示已封盘)。
+##   ★走产品自己的每秒轮询 `_sb_poll`, 只拨时钟, 不手动重建。
+func _strip_texts(mm) -> Array:
+	## ★不按名字找: 重画时旧条还没释放, 新条会被引擎自动改名。拿主菜单自己持有的那一条。
+	var box = mm._week_box
+	return _texts(box) if is_instance_valid(box) else []
+
+
+func _ticks(packed) -> void:
+	var sat: int = SUN0 + 6 * 86400               # 周六 00:00 UTC
+	var mm = packed.instantiate()
+	mm.strip_now_override = sat + 22 * 3600 + 30 * 60      # 22:30
+	mm.clock_override_ts = mm.strip_now_override
+	add_child(mm)
+	for _i in range(6):
+		await get_tree().process_frame
+	var a: Array = _strip_texts(mm)
+	var has_cd := false
+	for s in a:
+		if str(s).begins_with("距收盘"):
+			has_cd = true
+	_ok("⑥ ★分母: 22:30 显示倒计时", has_cd, str(a))
+	mm.strip_now_override = sat + 22 * 3600 + 40 * 60      # 过了 10 分钟
+	mm._sb_poll()
+	for _i in range(4):
+		await get_tree().process_frame
+	var b: Array = _strip_texts(mm)
+	var cd_b := ""
+	for s in b:
+		if str(s).begins_with("距收盘"):
+			cd_b = str(s)
+	_ok("⑥ ★★过了 10 分钟倒计时跟着变(原 bug: 停在打开那一刻)", cd_b != "" and not a.has(cd_b), "%s → %s" % [str(a), str(b)])
+	mm.strip_now_override = sat + 22 * 3600 + 55 * 60      # 22:55 已过封盘线
+	mm._sb_poll()
+	for _i in range(4):
+		await get_tree().process_frame
+	_ok("⑥ ★★22:50 之后显示「已封盘」", _strip_texts(mm).has("已封盘"), str(_strip_texts(mm)))
+	mm.queue_free()
+	await get_tree().process_frame

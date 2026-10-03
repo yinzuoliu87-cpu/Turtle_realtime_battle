@@ -1129,9 +1129,30 @@ var _sb_state_shown: String = ""
 ## ★判据是**状态变了**而不是"每秒都重建" —— 后者会让主菜单每秒扔一堆节点。
 func _sb_poll() -> void:
 	var s: String = _SB.service_state()
-	if s == _sb_state_shown:
+	## ★★2026-10-03 周六实操 S16: 原来**只在服务状态变了才重画** ⇒ 倒计时停在打开主菜单那一刻
+	##   (22:36 与 22:49 两张截图都写「距收盘 24 分 18 秒」), 22:50 的「已封盘」也永远出不来。
+	##   ⇒ 右侧那一块要显示的东西(档位 + 剩余时间文字)变了也重画。
+	if s == _sb_state_shown and _close_key(_strip_now()) == _close_key_shown:
 		return
 	rebuild_week_strip()
+
+
+## 赛程条此刻用哪个时钟(与 `_week_strip` 同一条: strip_now_override → _now_ts())。
+func _strip_now() -> int:
+	return strip_now_override if strip_now_override > 0 else _now_ts()
+
+
+## 右侧收盘块「要显示的内容」的指纹: 档位 + 剩余时间文字。变了就该重画。
+var _close_key_shown: String = ""
+
+func _close_key(now: int) -> String:
+	var ph: String = _P2C.phase_at_utc(now)
+	var left: int = _P2C.close_left_sec(now)
+	var live: bool = (_P2C.phase_mode_live(_P2C.PHASE_FINALS)
+		if strip_finals_live_override < 0 else strip_finals_live_override == 1)
+	var kind := close_block_kind(ph, live,
+		_SB.service_state() == _SB.ST_MAINTENANCE, left, _P2C.can_start_match_utc(now))
+	return "%s|%s|%s" % [ph, kind, _left_text(left) if left >= 0 else ""]
 
 
 ## 重建赛程条。★抽出来是因为实拍要在换过时钟之后再建一次 ——
@@ -1337,6 +1358,7 @@ static func close_block_kind(phase: String, finals_live: bool, maintenance: bool
 
 
 func _week_close_block(now: int) -> Control:
+	_close_key_shown = _close_key(now)
 	var ph: String = _P2C.phase_at_utc(now)
 	var left: int = _P2C.close_left_sec(now)
 	var head := ""
