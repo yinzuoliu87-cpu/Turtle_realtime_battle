@@ -211,8 +211,8 @@ const THEMES: Dictionary = {
 		"edge_tufts": ["field_tall_grass"],   # mixed_012: 边沿一圈深蓝紫草
 		"edge_tufts_n": 150,
 		"edge_tufts_r": [0.93, 1.01],
-		"edge_tufts_h": [0.6, 1.0],
-		"edge_tufts_mod": Color(0.42, 0.36, 0.70),
+		"edge_tufts_h": [0.8, 1.3],
+		"edge_tufts_mod": Color(0.55, 0.50, 0.92),
 		"wall_h": 0.35,   # 海岸竖面压成矮边(高墙沿格子成一排台阶方块)
 		"lamp_tex": "field_red_torch",   # 参考: 场内光源是插地的红火把, 不是黄火盆
 		"lamp_h": 1.7,
@@ -221,8 +221,8 @@ const THEMES: Dictionary = {
 		"field_tufts_h": [1.3, 2.1],
 		"field_tufts_mod": Color(0.42, 0.36, 0.70),
 		"field_piles": ["field_bone_pile"],   # mixed_012: 粉色骷髅堆
-		"field_piles_clusters": 8,
-		"field_piles_h": [0.55, 0.85],
+		"field_piles_clusters": 13,
+		"field_piles_h": [0.8, 1.25],
 		"field_piles_mod": Color(1.0, 0.62, 0.85),
 		"edge_soft": 1.0,
 		"spot_amt": 0.45,
@@ -244,7 +244,7 @@ const THEMES: Dictionary = {
 		"edge_dark": 0.05,
 		"caustic_amt": 0.0,
 		"ring_props": ["shoal_ruin_column", "field_dark_trunk", "field_dark_trunk"],   # mixed_012/016: 外围是暗紫树林
-		"ring_mod": {"field_dark_trunk": Color(0.62, 0.48, 0.95)},
+		"ring_mod": {"field_dark_trunk": Color(0.95, 0.70, 1.35)},
 		"ring_density": 0.9,
 		"ring_h": [2.6, 4.2],
 		"ring_avoid_bottom": true,
