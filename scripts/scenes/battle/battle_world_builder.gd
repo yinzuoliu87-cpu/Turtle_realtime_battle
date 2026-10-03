@@ -603,6 +603,55 @@ func build_field_lamps() -> Array:
 			s.position = battle._world_pos(px, LAMP_H_M * 0.5)
 			root.add_child(s)
 			made.append(s)
+	made.append_array(_build_rim_lights())   # ★主题: 周边一圈彩色小光点(base 不给 ⇒ 什么都不加)
+	return made
+
+
+## 周边一圈彩色小光点 —— 主题专用, `base` 不给就一盏不加。
+##
+## ★★依据是**真实游玩**截帧(桌面 `咩咩参考_真实游玩20张.jpg`): 20 张里几乎张张都有
+##   沿平台边沿排的一圈小光源 —— Darkwood 是红烛, Anchordeep 是绿/白光球。
+##   每盏都有**来源物**(烛台/光球精灵), 不是凭空的光斑。我们原来只有场内 3 盏火盆。
+## ★摆在**岛边沿外侧一点**(岸上/浅水), 不占可活动区: 椭圆可活动区本来就只有矩形的 78.5%。
+## ★性能: 真光源(OmniLight3D)只开 `rim_light_real` 盏, 其余只画精灵 + 加性光晕 ——
+##   28 只龟的场景里铺几十盏真点光会掉帧(本仓有 _probe_fps 量过点光开销)。
+func _build_rim_lights() -> Array:
+	var made: Array = []
+	var cfg: Dictionary = ArenaTheme.cfg()
+	var n: int = int(cfg.get("rim_lights", 0))
+	if n <= 0:
+		return made
+	var img: String = str(cfg.get("rim_light_tex", ""))
+	var path: String = "res://assets/sprites/map/themes/%s.png" % img
+	var tex: Texture2D = load(path) if (img != "" and ResourceLoader.exists(path)) else null
+	if tex == null:
+		push_warning("[rim_lights] 光点贴图缺失: %s —— 不铺(光必须有来源物, 不做静默兜底)" % path)
+		return made
+	var n_real: int = int(cfg.get("rim_light_real", 6))
+	var col: Color = cfg.get("light_col", LAMP_COL)
+	var A: Rect2 = battle.ARENA
+	var c: Vector2 = A.position + A.size * 0.5
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261003
+	var root := Node3D.new()
+	root.name = "RimLights"
+	battle._world.add_child(root)
+	made.append(root)
+	for i in range(n):
+		var th: float = TAU * (float(i) + rng.randf_range(-0.3, 0.3)) / float(n)
+		var rr: float = rng.randf_range(1.02, 1.08)
+		var p := Vector2(c.x + cos(th) * A.size.x * 0.5 * rr, c.y + sin(th) * A.size.y * 0.5 * rr)
+		## ★探针: 光点 24 个节点都建了, 实拍看不见 —— 0.55 米只有火盆(1.28 米)的四成, 压不过亮地面。
+		var s = battle._map_billboard(path, p, float(cfg.get("rim_light_h", 0.55)))
+		root.add_child(s)
+		if i % maxi(1, n / maxi(1, n_real)) == 0:
+			var L := OmniLight3D.new()
+			L.light_color = col
+			L.light_energy = float(cfg.get("rim_light_energy", 1.4))
+			L.omni_range = float(cfg.get("rim_light_range", 3.2))
+			L.shadow_enabled = false
+			L.position = battle._world_pos(p, 0.5)
+			root.add_child(L)
 	return made
 
 
@@ -614,7 +663,21 @@ func build_field_lamps() -> Array:
 func build_detritus(grid: Array, w: int, h: int, tile: float, ox: float, oy: float) -> Array:
 	var made: Array = []
 	var texes: Array = []
-	for path in DETRITUS:
+	## ★★2026-10-03 主题碎件。依据是**真实游玩**截帧(桌面 `咩咩参考_真实游玩20张.jpg`):
+	##   真实战斗房间的地面散着大量低对比小碎件(骨头/碎石/草屑/贝壳)。
+	##   我之前说的「战斗区几乎是空的」是拿 BOSS **宣传图**得出的, 错了。
+	## ★主题碎件只用**新做的**素材(用户:「不要复用，从新做」); `base` 不给 ⇒ 走原来那套(N=0 = 不铺)。
+	var _tc: Dictionary = ArenaTheme.cfg()
+	var _tdn: Array = _tc.get("detritus", [])
+	var n_total: int = int(_tc.get("detritus_n", DETRITUS_N))
+	var paths: Array = DETRITUS
+	if not _tdn.is_empty():
+		paths = []
+		for nm in _tdn:
+			paths.append("res://assets/sprites/map/themes/%s.png" % str(nm))
+	if n_total <= 0:
+		return made
+	for path in paths:
 		if ResourceLoader.exists(path):
 			texes.append(load(path))
 	## ★分母：贴图一张都没有就别画，也别静默兜底 —— 兜底会让"素材没导入"看起来像"设计如此"。
@@ -645,12 +708,13 @@ func build_detritus(grid: Array, w: int, h: int, tile: float, ox: float, oy: flo
 		return made
 
 	## 每种贴图一个 MultiMesh
-	var per: int = int(ceil(float(DETRITUS_N) / float(texes.size())))
+	var per: int = int(ceil(float(n_total) / float(texes.size())))
 	for tex in texes:
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_3D
 		var q := QuadMesh.new()
-		q.size = Vector2(DETRITUS_SIZE_M, DETRITUS_SIZE_M)
+		var _ds: float = float(ArenaTheme.cfg().get("detritus_size", DETRITUS_SIZE_M))
+		q.size = Vector2(_ds, _ds)
 		## ★贴地: QuadMesh 默认立在 XY 面, 掰平成 XZ。
 		##   ⚠ 这里**不能**照抄 `axis = AXIS_Y` 那套 —— 那是 Sprite3D 的属性,
 		##     QuadMesh 得靠实例 transform 转。(本项目记过「AXIS_Y 加 -90 旋转会抵消」。)
@@ -1186,6 +1250,10 @@ func _build_theme_decorations(root: Node3D) -> void:
 			th = PI - th
 		## ★半径收到 1.02~1.16: 1.30 把簇心推到画面外(第一版实拍基本看不见)
 		var rr: float = rng.randf_range(1.02, 1.16)
+		## ★`ring_avoid_bottom`: 高大的框边物(树干)落在**下方正中**会站进画面挡住战场
+		##   (V1 第一版实拍: 几棵树干立在岛面下半部中间)。参考里树干在左右两侧与上方。
+		if bool(cfg.get("ring_avoid_bottom", false)) and sin(th) > 0.35 and absf(cos(th)) < 0.75:
+			continue
 		var cxp: float = c.x + cos(th) * rx * rr
 		var cyp: float = c.y + sin(th) * ry * rr
 		var n: int = rng.randi_range(3, per)
@@ -1200,7 +1268,9 @@ func _build_theme_decorations(root: Node3D) -> void:
 			var path: String = "res://assets/sprites/map/themes/%s.png" % img
 			if not ResourceLoader.exists(path):
 				continue
-			var h: float = rng.randf_range(1.1, 2.0)
+			## ★高度由主题给: 参考里框边的东西**比角色大好几倍**(树干/巨叶), 原来固定 1.1~2.0 米太小。
+			var _rh: Array = cfg.get("ring_h", [1.1, 2.0])
+			var h: float = rng.randf_range(float(_rh[0]), float(_rh[1]))
 			var spr = battle._map_billboard(path, Vector2(px, py), h)
 			var sc: float = rng.randf_range(0.80, 1.25)
 			spr.scale = Vector3(sc * (-1.0 if rng.randf() < 0.5 else 1.0), sc, sc)
@@ -1281,9 +1351,13 @@ func _build_far_backdrop(root: Node3D) -> void:
 	# 剪影只有轮廓没有"生气"。加一层加性发光的小点缀, 让远处天际线有光斑闪烁感,
 	# 这也是深海题材最能出氛围的一笔。
 	var glows = ["glow-coral", "glow-anem", "glow-kelp"]
+	## ★海底发光群(珊瑚/海葵/海带)只属于水下设定。主题的远景是「沉进黑」就不画 ——
+	##   V1 实拍顶上还飘着鱼和紫色光点, 就是这一层。base(现状) 照画, 一个像素不动。
+	if str(ArenaTheme.cfg().get("bg_kind", "undersea")) == "into_black":
+		glows = []
 	var grng = RandomNumberGenerator.new()
 	grng.seed = 20260722
-	for i in range(14):   # ★远景发光 22→14(点2: 减重复的发光刷屏)
+	for i in range(14 if not glows.is_empty() else 0):   # ★远景发光 22→14(点2: 减重复的发光刷屏); 主题清空时整段不跑(否则 i % 0)
 		var gp = "res://assets/sprites/map/%s.png" % glows[i % glows.size()]
 		if not ResourceLoader.exists(gp):
 			continue

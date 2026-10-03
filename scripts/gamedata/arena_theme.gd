@@ -67,41 +67,46 @@ const THEMES: Dictionary = {
 		"ambient_kind": "bubbles",
 	},
 	V1_DUSK: {
-		"label": "黄昏孤岛",
-		## 地面: 暖沙→干草, 低饱和。★只给一种主材质(参考的战斗区都是单材质)
-		"ground_col": Color(0.231, 0.196, 0.137),
-		"stone_col": Color(0.286, 0.251, 0.200),
-		"wall_col": Color(0.541, 0.431, 0.306),      # 海岸线竖面(黄昏: 暖砂岩)
-		"edge_dark": 0.10,                           # 聚光(黄昏: 中等)
-		## 海: 深蓝紫、低饱和 —— 必须比陆暗(实测参考: 海/陆 亮度比 < 1)
-		"water_col": Color(0.078, 0.090, 0.169),
-		"shore_col": Color(0.318, 0.263, 0.188),      # 湿沙
-		## 周边装饰环(ARENA 外的海面/岸上, 不占活动空间)
-		## ★物件**类别数**是对着参考来的: 咩咩单屏中位 7~8 类, 我们原来 3 类。
-		##   而且刻意选**色相互不相同**的 —— 判据「有效色数」量的是 16 级量化后占到
-		##   0.1% 面积以上的颜色数, 靠地面明暗起伏补不上来(试过, 没用), 只能靠真不同的色相。
-		"ring_props": ["dusk_grass_tuft", "dusk_driftwood", "dusk_lamp_post",
-			"dusk_boat", "dusk_flowers", "dusk_crate"],
-		"ring_density": 1.0,
-		## 前景框边: 压住画面下沿的剪影
+		## ★★2026-10-03 改成「暗林」(对标咩咩 Darkwood)。原来那版「黄昏孤岛」是我凭空想的方向;
+		##   这版每一项都对着**真实游玩**截帧(桌面 `咩咩参考_真实游玩20张.jpg` 的 mixed_033~035)。
+		"label": "暗林",
+		## 地面: Darkwood 真实地面渲染色实测 (0.60,0.57,0.35); 按本仓光照实测倍率 ×1.8 反推反照率
+		"ground_col": Color(0.330, 0.312, 0.170),
+		"stone_col": Color(0.240, 0.228, 0.150),
+		"shore_col": Color(0.262, 0.248, 0.140),
+		## 边界: 真实房间是平台边缘断成**暗色竖崖**, 不是亮色砖墙
+		"wall_col": Color(0.100, 0.110, 0.080),
+		## 外围压到近黑(参考: 平台外是虚空)。用户定的是海, 所以保留海、只压到接近虚空的明度
+		"water_col": Color(0.030, 0.036, 0.050),
+		"edge_dark": 0.06,
+		## 框边: 比角色大好几倍的暗色树干剪影(参考 mixed_033~035 左右两侧)
+		"ring_props": ["dusk_trunk_silhouette"],
+		"ring_density": 0.8,
+		"ring_h": [4.2, 6.4],
+		"ring_avoid_bottom": true,
 		"fg_band": "dusk_grass_silhouette",
-		## 挡路障碍
+		## 地面碎件: 真实房间散着大量低对比小碎件(骨头/碎石/草屑)
+		"detritus": ["dusk_debris_bones", "dusk_debris_grass"],
+		"detritus_n": 260,
+		"detritus_size": 0.62,        # 原 0.38 太小(48px 贴图)
+		## 周边一圈红烛(参考 Darkwood 房间沿边一圈红光)
+		"rim_lights": 18,
+		"rim_light_tex": "dusk_candle",
+		"rim_light_real": 6,
+		"rim_light_h": 1.05,          # 第一版 0.55 实拍看不见(火盆是 1.28)
+		"rim_light_energy": 2.8,
+		"rim_light_range": 4.6,
+		"light_col": Color(1.0, 0.262, 0.180),
+		"light_energy": 1.0,
+		"light_fixture": "dusk_candle",
 		"obstacles": ["dusk_boulder"],
-		## 中景地标
-		"mid_props": ["dusk_far_rock", "dusk_wreck_post"],
-		## 远景
-		"bg_kind": "horizon_glow",                     # 海面→地平线暖光带→渐暗天
-		"bg_top": Color(0.102, 0.090, 0.161),
-		"bg_horizon": Color(0.627, 0.388, 0.212),
-		## 灯光(必须有灯具, 不许凭空暖斑)
-		"light_col": Color(1.0, 0.698, 0.388),
-		"light_energy": 1.1,
-		"light_fixture": "dusk_lamp_post",
-		"sun_col": Color(1.0, 0.804, 0.620),
-		"sun_energy": 0.85,
-		## 氛围粒子(横飘沙尘 —— **不是**向上的气泡)
-		"ambient_kind": "drift_dust",
-		"ambient_col": Color(0.902, 0.780, 0.584, 0.35),
+		"mid_props": ["dusk_trunk_silhouette"],
+		"bg_kind": "into_black",
+		"bg_top": Color(0.010, 0.016, 0.012),
+		"bg_horizon": Color(0.040, 0.056, 0.040),
+		"sun_col": Color(1.0, 0.96, 0.86), "sun_energy": 1.0,
+		"ambient_kind": "embers",
+		"ambient_col": Color(1.0, 0.86, 0.42, 0.45),     # 林间萤光(慢·微上飘)
 	},
 	V2_REEF: {
 		"label": "夜礁",
@@ -116,7 +121,7 @@ const THEMES: Dictionary = {
 		"ring_density": 1.3,
 		"obstacles": ["reef_menhir"],
 		"mid_props": ["reef_far_spire"],
-		"bg_kind": "into_black",                       # 咩咩地牢的做法: 直接沉进黑
+		"bg_kind": "deep_glow",                        # 深水: 暗青底 + 远处光点(对标 Anchordeep)
 		"bg_top": Color(0.016, 0.020, 0.031),
 		"bg_horizon": Color(0.027, 0.035, 0.051),
 		"light_col": Color(1.0, 0.580, 0.278),
