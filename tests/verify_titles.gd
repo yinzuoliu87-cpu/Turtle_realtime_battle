@@ -195,10 +195,28 @@ func _t_real_entry() -> void:
 	_ok("③ ★再走一次入口 ⇒ 不重复发(%d 条没变)" % n1, GameState.titles.size() == n1,
 		str(GameState.titles.size()))
 
+	## ★★2026-10-03 周六实操 S4: 原来这里断言「promoted(积分赛过线)⇒ 发进决赛日」—— 门禁替 bug 站岗:
+	##   周六 0-0 就挂着「进决赛日」, 3-3 出局后还挂着。头衔要的是**周六闯关赛晋级**。
 	GameState.promoted = true
+	GameState.gauntlet_wins = 0
+	GameState.gauntlet_losses = 0
 	GameState.ensure_season()
 	await get_tree().process_frame
-	_ok("③ ★★晋级了 ⇒ 真入口发「进决赛日」",
+	_ok("③ ★★只是有资格打周六(0-0) ⇒ **不发**「进决赛日」",
+		not P2C.title_has(GameState.titles, P2C.TITLE_FINALS_DAY, int(GameState.week_anchor_ts)),
+		str(GameState.titles))
+	GameState.gauntlet_wins = 3
+	GameState.gauntlet_losses = 3
+	GameState.ensure_season()
+	await get_tree().process_frame
+	_ok("③ ★★周六 3-3 出局 ⇒ **不发**",
+		not P2C.title_has(GameState.titles, P2C.TITLE_FINALS_DAY, int(GameState.week_anchor_ts)),
+		str(GameState.titles))
+	GameState.gauntlet_wins = 4
+	GameState.gauntlet_losses = 0
+	GameState.ensure_season()
+	await get_tree().process_frame
+	_ok("③ ★★周六 4 胜晋级 ⇒ 真入口发「进决赛日」",
 		P2C.title_has(GameState.titles, P2C.TITLE_FINALS_DAY, int(GameState.week_anchor_ts)),
 		str(GameState.titles))
 	_ok("③ ★分母: 现在两条(两档各一个)", GameState.titles.size() == 2, str(GameState.titles))

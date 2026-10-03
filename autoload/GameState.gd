@@ -763,7 +763,9 @@ func sync_titles() -> int:
 	if int(ranked_used) >= int(_P2.RANKED_QUOTA):
 		if award_title(_P2.TITLE_FULL_QUOTA):
 			got += 1
-	if bool(promoted):
+	## ★★2026-10-03 周六实操 S4: 原来按 `promoted`(积分赛过线 = 有资格打周六)发 ⇒ 周六 0-0 就挂着
+	##   「🏅 进决赛日」, 3-3 出局后还挂着。头衔的意思是**周六闯关赛晋级**(phase2_config 常量注释原文)。
+	if str(gauntlet_state()) == _P2.GAUNTLET_IN:
 		if award_title(_P2.TITLE_FINALS_DAY):
 			got += 1
 	## ★★★2026-09-26 冠军/四强也走这一个入口(原来它们**没有任何发放路径** ——
