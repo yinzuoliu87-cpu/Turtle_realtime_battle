@@ -78,13 +78,45 @@ const MAP_PATH := "res://data/maps/arena.json"
 ##   中间零过渡, 近景放大一眼看穿, 是全图最不"精美"的地方。
 ##   有了距离场, 岸线泡沫 / 水深分级 / 湿沙带 全在 shader 里一次拿到。
 ##   所有梯度都过 4×4 Bayer 抖动再量化 —— 像素画表现渐变靠有序抖动, 不靠平滑插值。
+## 这个地块类型该用什么颜色 —— **主题优先, 没给就用那套已批准的 `TILE_COLS`**。
+##
+## ★★★2026-10-03 为什么是"覆盖"而不是"替换": `TILE_COLS` 是**用户 2026-09-20 拍过板的**
+##   (「别被深海局限住了」→「你自己定」, 三套候选实拍量过取 A 暖石台),
+##   而且 `tests/verify_ground_palette.gd` 把它和设计文档 §4 那张表**焊在一起**。
+##   四版主题是**加法**: 不覆盖就还是那套批准过的; 用户选中哪一版, 再把那版扶正成 `TILE_COLS` + 改文档。
+##   ⇒ 任何一版都不会**悄悄**改掉一个已拍板的决定(memory `fb-pin-user-words-dont-drift`)。
+##
+## ★水(ti==1)不走这里 —— 它由 `ground_water.gdshader` 自己的颜色参数管, 见下方 `apply_theme_water`。
+static func theme_tile_col(ti: int) -> Color:
+	var c: Dictionary = ArenaTheme.cfg()
+	match ti:
+		0: return c.get("ground_col", TILE_COLS.get(0, Color(0.2, 0.2, 0.2)))
+		2: return c.get("stone_col", TILE_COLS.get(2, Color(0.2, 0.2, 0.2)))
+		## ★★sand 必须走 `shore_col` 不是 `ground_col`。第一版映射错了, 于是 base 下
+		##   沙地被画成草色 —— `verify_tile_texture ④`「TILE_COLS 是锁死的」当场抓住。
+		##   ★那条判据救了一次: 它比的是**产品材质的 base_col == TILE_COLS**, 所以
+		##   任何"悄悄换掉已锁死调色板"的改动都会红, 哪怕画面统计判据全绿。
+		3: return c.get("shore_col", TILE_COLS.get(3, Color(0.2, 0.2, 0.2)))
+	return TILE_COLS.get(ti, Color(0.2, 0.2, 0.2))
+
+
 static func tile_material(ti: int, ws: float, cx: float, cy: float) -> Material:
 	var f: Dictionary = MapField.get_field(MAP_PATH, ws, cx, cy)
 	var sm := ShaderMaterial.new()
 	sm.shader = SH_WATER if ti == 1 else SH_LAND
 	sm.set_shader_parameter("detail_tex", tile_detail_tex(ti))
 	if ti != 1:
-		sm.set_shader_parameter("base_col", TILE_COLS.get(ti, Color(0.2, 0.2, 0.2)))
+		sm.set_shader_parameter("base_col", theme_tile_col(ti))
+	else:
+		## ★水也按主题走。四色**同源于一个 `water_col`**: 浅/深/浪尖/泡沫各自从它推出来,
+		##   而不是每版手填四个色 —— 手填四份必然有一份忘了改(memory `fb-hand-rolled-copies-drift`)。
+		## ★判据 `verify_arena_themes` ④ 焊死「海必须比陆暗」, 所以这里只许往暗里推。
+		var wc: Color = ArenaTheme.cfg().get("water_col", Color(0.122, 0.722, 0.769))
+		sm.set_shader_parameter("shallow_col", wc)
+		sm.set_shader_parameter("deep_col", wc.darkened(0.42))
+		sm.set_shader_parameter("crest_col", wc.lightened(0.55))
+		sm.set_shader_parameter("foam_col", wc.lightened(0.82))
+		sm.set_shader_parameter("shore_land_col", theme_tile_col(0).darkened(0.18))
 	if not f.is_empty():
 		sm.set_shader_parameter("map_field", f["tex"])
 		sm.set_shader_parameter("map_org", f["org"])
@@ -523,8 +555,13 @@ func build_field_lamps() -> Array:
 	for uv in LAMP_AT:
 		var px := A.position + Vector2(A.size.x * uv.x, A.size.y * uv.y)
 		var lamp := OmniLight3D.new()
-		lamp.light_color = LAMP_COL
-		lamp.light_energy = LAMP_ENERGY
+		## ★★2026-10-03 灯色/强度按主题走。`LAMP_COL`(#FDF77B·色相 57°, 参考中位) 与
+		##   `LAMP_ENERGY` 是 2026-09-18 标定的, 作为【主题没给时的兜底】保留。
+		##   ⚠ 与主光不同: 主光改了会把整张图的曝光推歪(试过, 已撤回); 点光是**加法**的,
+		##   改它只会往画面里**加**颜色 —— 参考里暗场的色彩变化正是靠彩色点光来的。
+		var _lc: Dictionary = ArenaTheme.cfg()
+		lamp.light_color = _lc.get("light_col", LAMP_COL)
+		lamp.light_energy = LAMP_ENERGY * float(_lc.get("light_energy", 1.0))
 		lamp.omni_range = LAMP_RANGE_M
 		## ★不投影：这是氛围光不是主光，投影会让 28 只龟各拖一条影子、且吃性能。
 		lamp.shadow_enabled = false
@@ -633,7 +670,16 @@ func _build_tilemap_decor() -> void:
 	var cy = A.position.y + A.size.y * 0.5
 	# ★点2(用户2026-07-23: 测试反馈太密+很多相同装饰): 去掉原glow-coral/glow-kelp各2遍的人为加权刷屏,
 	#   并补 PixelLab 生成的 4 种新装饰(扇贝/石头/海星/海草·壳石生植不同类)增加种类, 现共 11 种。
+	## ★★2026-10-03 这一层(边框密植)也按主题换素材。原来写死的是**海底系**
+	##   (海草/珊瑚/海星/扇贝) —— 用户 2026-10-02:「这些珊瑚海草不适合你听明白了吗」。
+	##   主题给了 `ring_props` 就用主题的; `base`(现状) 仍用原来这张表, 一个像素不动。
+	var _tc: Dictionary = ArenaTheme.cfg()
+	var _tp: Array = _tc.get("ring_props", [])
 	var kelp = ["deco_kelp", "deco_coral_pink", "deco_coral_orange", "deco_rocks", "deco_scallop", "deco_boulder", "deco_starfish", "deco_seagrass", "glow-kelp", "glow-anem", "glow-coral"]
+	if not _tp.is_empty() and not str(_tp[0]).begins_with("("):
+		kelp = []
+		for _p in _tp:
+			kelp.append("themes/" + str(_p))
 	var mg = 200.0   # ★装饰带收窄 288→200(点2: 太密)
 	var step = 120.0   # ★网格放大 80→120(点2: 稀疏)
 	var placed: Array = []   # ★防扎堆: 记已放点, 太近(<70px)跳过(点2: 原无间距检查→成簇)
@@ -816,6 +862,15 @@ func _build_environment() -> void:
 	##     亮部饱和 0.542~0.621(极差 0.079) → V3 0.486 落在区间外; 色数 113~116 → 125; 中间调 52.6~54.5 → 55.7。
 	##     而"近中性"基线 1.6~3.0、V3 2.7 **落在噪声内 ⇒ 这一项不算改善, 不许拿它邀功**。
 	##   ⚠ 动这两个数就要重标定 `WALL_GAIN`(见本文件 WALL_GAIN 处的长注)。
+	## ★★★2026-10-03 **试过按主题调主光, 撤回了。**
+	##   实测: dusk 在动它之前是「中间调 49.9% / 色数 96」, 按主题给系数之后扫了三档,
+	##   最好只有 38.9% / 74 —— 四版全部低于阈值。
+	##   根因: 1.55 / (1.0,0.96,0.86) 是 2026-09-18「都要仔细重做」那轮**认真标定**的,
+	##   我拿一组拍脑袋的系数把它覆盖了(memory `fb-my-thresholds-degrade-good-assets`)。
+	##   ★而且方向本来就错: 参考里**咩咩的暗地牢有 174 色**, 靠的是**彩色点光 + 物件**,
+	##   不是把主光调暗。四版的差异该从**加法的层**(远景渐变/带灯具的点光/物件)来。
+	##   ⇒ 主光保持标定值不动; `sun_col`/`sun_energy` 两个键留在主题表里**暂未接线**,
+	##     等物件层建完再评估要不要微调(接线前它们是死配置, 这一点如实写在这)。
 	light.light_energy = 1.55
 	light.light_color = Color(1.0, 0.96, 0.86)
 	battle._world.add_child(light)
@@ -889,6 +944,7 @@ func _build_environment() -> void:
 	env.glow_hdr_threshold = 0.92
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
 	env.fog_enabled = true
+	## ★同主光: 试过把雾色换成主题的地平线色, 一并撤回(它吃掉大片远景面积, 实测把色数从 96 压到 74)。
 	env.fog_light_color = Color(0.035, 0.105, 0.150)   # 提亮 + 偏青: 远处是海水不是黑洞
 	env.fog_light_energy = 0.55
 	env.fog_sun_scatter = 0.0
@@ -973,12 +1029,80 @@ func _build_map_props() -> void:
 		dome.scale = Vector3(1.9, 1.9, 1.9)   # 罩大盖住蛋
 		root.add_child(dome)
 		battle._base_domes[str(pair[0])] = dome
-	_build_decorations(root)   # 珊瑚/海草/礁石 铺边框住战场+填空地(纯装饰无footprint)
+	_build_theme_decorations(root)   # 珊瑚/海草/礁石 铺边框住战场+填空地(纯装饰无footprint)
 	_build_lightshafts(root)   # 水面光柱(加性发光, 深海氛围)
 	_build_bubbles(root)       # 漂浮气泡颗粒
 
 # 装饰景物: 珊瑚/海草/礁石 沿上下边框+四角+基地周围铺 (纯装饰, 无导航footprint, 不挡移动). 固定布局(可复现).
 # 装饰景物: 珊瑚/海草/礁石 沿上下边框+四角+基地周围铺 (纯装饰, 无导航footprint, 不挡移动). 固定布局(可复现).
+## 主题装饰环 —— **成组** + **中空外密**。
+##
+## ★★★2026-10-03。原来那张 `_build_decorations` 是**写死的坐标表**:
+##   16 件 / 4 类 / 沿上下两条直线一字排开, 实测 Clark-Evans **R = 1.13**(比随机还均匀)、
+##   y 坐标只有 11 个不同值、中间 642px 一件都没有。
+##
+## 【参考怎么做】逐张看咩咩(raw_18 BOSS 场最明显):
+##   **战斗区几乎是空的, 细节全推到周边一圈** —— 中间只有零散石板, 四周密集高草/烛台/菌丛。
+##   实测 R = **0.66**(23 张里 22 张 < 1 = 成组), 单屏中位 **79 件 / 7~8 类**。
+##
+## 【所以这里做两件事】
+##   ① **成组**: 先在环上选 `clusters` 个簇心, 再在每个簇心周围撒 k 件 —— 均匀撒出来的是 R≈1,
+##      只有"簇心 + 小半径散布"才压得到 0.66。
+##   ② **中空外密**: 簇心一律落在**岛外**的环带上(ARENA 之外), 战斗区内一件不放。
+##      ★顺带解掉一条约束: 椭圆可活动区只有矩形的 78.5%, 往里摆东西会再吃活动空间。
+##
+## ★确定性: 用**播种** RNG(`rng_discipline` 门禁拦裸随机, 护确定性回放)。
+func _build_theme_decorations(root: Node3D) -> void:
+	var cfg: Dictionary = ArenaTheme.cfg()
+	var props: Array = cfg.get("ring_props", [])
+	if props.is_empty() or str(props[0]).begins_with("("):
+		_build_decorations(root)       # ★`base`(现状) 走老的那张坐标表, 一个像素不动
+		return
+	var A: Rect2 = battle.ARENA
+	var c: Vector2 = A.position + A.size * 0.5
+	var rx: float = A.size.x * 0.5
+	var ry: float = A.size.y * 0.5
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261003
+	var dens: float = float(cfg.get("ring_density", 1.0))
+	var clusters: int = int(round(11.0 * dens))          # 簇数
+	var per: int = 7                                     # 每簇件数上限 ⇒ 约 70~90 件, 对齐参考中位 79
+	for i in range(clusters):
+		## 簇心: 环上均匀取角, 再加抖动; 半径 1.04~1.30 倍 ⇒ 落在岛外的海面/岸上
+		## ★★角度**偏向上下**而不是环上均匀: 实测 ARENA 投到 1280×720 后
+		##   左右几乎没有可见余量(左 x=11~179 / 右 x=1101~1269, 还被侧边栏压着),
+		##   而上有 205px、下有 124px。均匀撒的话一大半件数落在屏幕外 = 白做。
+		##   做法: 角度先均匀取, 再往 ±90°(上下)**挤** —— `asin` 重映射把密度压到两极。
+		var th0: float = TAU * (float(i) + rng.randf_range(-0.28, 0.28)) / float(clusters)
+		var s: float = sin(th0)
+		var th: float = asin(clampf(signf(s) * pow(absf(s), 0.45), -1.0, 1.0))
+		if cos(th0) < 0.0:
+			th = PI - th
+		## ★半径收到 1.02~1.16: 1.30 把簇心推到画面外(第一版实拍基本看不见)
+		var rr: float = rng.randf_range(1.02, 1.16)
+		var cxp: float = c.x + cos(th) * rx * rr
+		var cyp: float = c.y + sin(th) * ry * rr
+		var n: int = rng.randi_range(3, per)
+		for _j in range(n):
+			## 簇内散布: 半径很小才成"组"; 大了就又摊成均匀
+			var a2: float = rng.randf_range(0.0, TAU)
+			var d2: float = rng.randf_range(0.0, 1.0)
+			d2 = sqrt(d2) * 118.0
+			var px: float = cxp + cos(a2) * d2
+			var py: float = cyp + sin(a2) * d2 * 0.62      # 俯视压扁
+			var img: String = str(props[rng.randi_range(0, props.size() - 1)])
+			var path: String = "res://assets/sprites/map/themes/%s.png" % img
+			if not ResourceLoader.exists(path):
+				continue
+			var h: float = rng.randf_range(1.1, 2.0)
+			var spr = battle._map_billboard(path, Vector2(px, py), h)
+			var sc: float = rng.randf_range(0.80, 1.25)
+			spr.scale = Vector3(sc * (-1.0 if rng.randf() < 0.5 else 1.0), sc, sc)
+			var b: float = rng.randf_range(0.82, 1.0)
+			spr.modulate = Color(b, b * 0.98, b * 0.96)
+			root.add_child(spr)
+
+
 func _build_decorations(root: Node3D) -> void:
 	var A = battle.ARENA
 	var top: float = A.position.y + 46.0
@@ -1163,6 +1287,28 @@ func _build_far_backdrop(root: Node3D) -> void:
 ##   每层只占各自上限的一半左右, 才叠得出纵深(顶满就是一整块色斑, 后层全被挡住)。
 const BACKDROP_THICKET := "res://assets/sprites/map/backdrop-kelpband.png"
 
+## 远景的【深度→颜色】斜坡: 0 = 最近(贴 bg_top), 1 = 最远(贴 bg_horizon)。
+## 允许传 <0 / >1 外推, 因为远地形与天际光斑本来就比三层剪影更近/更远。
+##
+## ★★为什么做成一条斜坡而不是每层填一个色: 换主题时只要给两个端点,
+##   中间全自动跟着走 —— 手填 N 个色必然有一个忘了改(memory `fb-hand-rolled-copies-drift`)。
+## ★规律照搬 2026-07-22 第三版的标定结论:「越远越亮、越贴雾色」(水下/雾中远山同理),
+##   所以 bg_horizon 必须比 bg_top 亮; 四版的配置都满足这一条。
+## ★★★`fallback` 是**必填**的: 主题没给远景端点时, 原样返回该调用点的原字面值。
+##   为什么必须这样: `V0_BASE`(现状·已验收) 的全部意义是「什么都没换」, 而这五个远景色
+##   (三层剪影 + 远地形近/远 + 天际光斑)**本来就不在一条直线上** —— 拿两个端点的斜坡
+##   怎么都推不出它们。我第一版给斜坡填了兜底端点, 结果 base 的远景整体被压暗了,
+##   而五条画面判据**照样全绿**(它们量的是统计量, 不是具体某个色) —— 差一点就悄悄改掉了
+##   一套已验收的画面。(memory `fb-my-thresholds-degrade-good-assets`)
+func _bg_ramp(f: float, fallback: Color) -> Color:
+	var c: Dictionary = ArenaTheme.cfg()
+	if not (c.has("bg_top") and c.has("bg_horizon")):
+		return fallback
+	var a: Color = c.get("bg_top", fallback)
+	var b: Color = c.get("bg_horizon", fallback)
+	return Color(a.r + (b.r - a.r) * f, a.g + (b.g - a.g) * f, a.b + (b.b - a.b) * f, 1.0)
+
+
 func _build_backdrop_thicket(holder: Node3D) -> void:
 	var tex: Texture2D = load(BACKDROP_THICKET) if ResourceLoader.exists(BACKDROP_THICKET) else null
 	if tex == null:
@@ -1179,9 +1325,14 @@ func _build_backdrop_thicket(holder: Node3D) -> void:
 	##   ★第一版每层只铺 5~7 张(约 31m), 实拍只盖住画面上方中间一小段、两侧仍是空的。
 	##   现在按上面的横向可见宽 + 20% 余量算张数(镜头还能缩放/平移)。
 	var layers := [
-		{"z": -16.0, "h": 2.5, "col": Color(0.20, 0.30, 0.44), "span": 73.0},
-		{"z": -19.0, "h": 1.7, "col": Color(0.24, 0.35, 0.48), "span": 78.0},
-		{"z": -22.0, "h": 0.9, "col": Color(0.28, 0.40, 0.52), "span": 82.0},
+		## ★★2026-10-03 三层剪影的颜色改从**主题**推(四版完整地图)。
+		##   原值 (0.20,0.30,0.44)/(0.24,0.35,0.48)/(0.28,0.40,0.52) 是 2026-07-22 第三版标定的,
+		##   规律是「越远越亮、越贴雾色」(水下远景 = 雾里的亮轮廓, 同雾中远山)。
+		##   ⇒ 这里**保住那条规律**, 只把端点换成主题色: 近层贴 bg_top, 远层贴 bg_horizon。
+		##   ⚠ 不许各层手填三个色 —— 那样换主题必有一层忘了改(memory `fb-hand-rolled-copies-drift`)。
+		{"z": -16.0, "h": 2.5, "col": _bg_ramp(0.00, Color(0.20, 0.30, 0.44)), "span": 73.0},
+		{"z": -19.0, "h": 1.7, "col": _bg_ramp(0.50, Color(0.24, 0.35, 0.48)), "span": 78.0},
+		{"z": -22.0, "h": 0.9, "col": _bg_ramp(1.00, Color(0.28, 0.40, 0.52)), "span": 82.0},
 	]
 	for L in layers:
 		var zz: float = float(L["z"])
@@ -1215,8 +1366,9 @@ func _build_far_terrain(holder: Node3D) -> void:
 	var stepz = battle.FAR_TERRAIN_SIZE.y / float(seg.y)
 	# 顶点色做大气透视: 越远越亮越贴雾色(水下远景是雾里的亮轮廓, 同雾中远山)。
 	#   第二版把山脊做成"比背景暗的剪影"→ 在 y≈32~50 压出一条纯黑带(filmic tonemap 把暗部再吃一半)。
-	var near_col = Color(0.070, 0.125, 0.190)
-	var far_col = Color(0.205, 0.455, 0.520)
+	## ★同三层剪影: 远地形的近/远端色也从主题推, 保住「越远越亮越贴雾色」那条规律。
+	var near_col = _bg_ramp(-0.35, Color(0.070, 0.125, 0.190))
+	var far_col = _bg_ramp(1.30, Color(0.205, 0.455, 0.520))
 	for iz in range(seg.y):
 		for ix in range(seg.x):
 			var x0 = -half.x + float(ix) * stepx
@@ -1267,7 +1419,7 @@ func _build_far_fish(holder: Node3D) -> void:
 		var scl: float = rng.randf_range(0.55, 0.95) * (1.0 - depth * 0.35)
 		# ★要比背景水色【亮】才看得见(背景实测 #0D3349 ~ (0.05,0.20,0.28));
 		#   暗鱼在 filmic tonemap 下会直接糊进背景, 同山脊那次的坑
-		var col = Color(0.46, 0.72, 0.86).lerp(Color(0.30, 0.50, 0.66), depth)
+		var col = _bg_ramp(1.55, Color(0.46, 0.72, 0.86)).lerp(_bg_ramp(0.95, Color(0.30, 0.50, 0.66)), depth)
 		var n = rng.randi_range(5, 9)
 		for i in range(n):
 			var fs = Sprite3D.new()
