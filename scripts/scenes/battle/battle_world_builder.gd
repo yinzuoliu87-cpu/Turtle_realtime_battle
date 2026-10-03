@@ -747,6 +747,15 @@ func _build_tilemap_decor() -> void:
 	##      认那句单行的 `if not OS.has_environment("MAPEDIT"): _build_tilemap_decor()`。
 	##      我一度把它改成多行 ⇒ 那条判据当场红。挂进来就不用动那一行。
 	_build_foreground_band()
+	## ★★★2026-10-03 主题环也挂这里。
+	##   它原来挂在 `_build_map_props()` 里 —— 和前景框边**一模一样的坑**:
+	##   地图是数据驱动的, `_build_tilemap_ground` 载入 json 后就 return,
+	##   那条程序化的路根本不跑 ⇒ 我写的「簇心 + 小半径散布」**一次都没执行过**,
+	##   屏幕上看到的主题物件全是**本函数**(边框密植)换了素材名的结果。
+	##   ⇒ 我一度据此声称"装饰已改成成组摆放", 那是假的; 是判据
+	##   `verify_arena_density` 的分母断言「找得到 ThemeRing 容器吗」把它抓出来的。
+	##   ★同一个坑今晚踩了两次 ⇒ 以后往世界里加层, **第一件事是确认这条路跑不跑**。
+	_build_theme_decorations(root)
 	_build_tilemap_ambient(root)
 
 
@@ -1154,6 +1163,13 @@ func _build_theme_decorations(root: Node3D) -> void:
 	var ry: float = A.size.y * 0.5
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20261003
+	## ★★具名容器: 判据 `verify_arena_density` **只量这一层**。
+	##   第一版判据捞的是全场所有 Sprite3D(边框密植 + 中景 + 远景光斑 + 本层 = 214 个),
+	##   主题环只占一小部分 ⇒ 把本层的散布半径从 118 改到 900(簇彻底消失)**判据照样绿**。
+	##   「判据没错, 但被测对象被稀释了」—— 必须把被测对象单独圈出来。
+	var ring_root := Node3D.new()
+	ring_root.name = "ThemeRing"
+	root.add_child(ring_root)
 	var dens: float = float(cfg.get("ring_density", 1.0))
 	var clusters: int = int(round(11.0 * dens))          # 簇数
 	var per: int = 7                                     # 每簇件数上限 ⇒ 约 70~90 件, 对齐参考中位 79
@@ -1190,7 +1206,7 @@ func _build_theme_decorations(root: Node3D) -> void:
 			spr.scale = Vector3(sc * (-1.0 if rng.randf() < 0.5 else 1.0), sc, sc)
 			var b: float = rng.randf_range(0.82, 1.0)
 			spr.modulate = Color(b, b * 0.98, b * 0.96)
-			root.add_child(spr)
+			ring_root.add_child(spr)
 
 
 func _build_decorations(root: Node3D) -> void:
