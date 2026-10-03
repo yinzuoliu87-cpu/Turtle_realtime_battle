@@ -1333,6 +1333,7 @@ const BK_PENDING := "pending"                # 玩法还没上线, 直说
 const BK_NO_CLOSE := "no_close"              # 这个阶段没有收盘概念
 const BK_LOCKED := "locked"                  # 已进封盘窗口
 const BK_COUNTDOWN := "countdown"            # 距收盘还有多久
+const BK_CLOSED_TODAY := "closed_today"      # 今天有收盘、而且已经收了(周五/周六 23:00 之后)
 static func close_block_kind(phase: String, finals_live: bool, maintenance: bool,
 		close_left: int, can_start: bool) -> String:
 	if maintenance:
@@ -1350,6 +1351,11 @@ static func close_block_kind(phase: String, finals_live: bool, maintenance: bool
 		return BK_PENDING
 	if _P2C.phase_pending_note(phase) != "":
 		return BK_PENDING
+	## ★★2026-10-03 周六实拍: 23:00 收盘之后 `close_left` 变负 ⇒ 原来落进 BK_NO_CLOSE,
+	##   那一支只认「周日 / 其余当休赛日」⇒ 周六收盘后写着「休赛日 · 周二开赛 · 本日维护」,
+	##   而明天就是决赛日。积分赛/闯关赛这两个**有收盘**的阶段收完盘要单独一档。
+	if close_left < 0 and (phase == _P2C.PHASE_RANKED or phase == _P2C.PHASE_GAUNTLET):
+		return BK_CLOSED_TODAY
 	if close_left < 0:
 		return BK_NO_CLOSE
 	if not can_start:
@@ -1411,6 +1417,14 @@ func _week_close_block(now: int) -> Control:
 		else:
 			head = "休赛日"
 			sub = "周二开赛 · 本日维护"
+	elif kind == BK_CLOSED_TODAY:
+		head = "今日已收盘"
+		var _tmr: int = now + 86400
+		var _tph: String = _P2C.phase_at_utc(_tmr)
+		if _tph == _P2C.PHASE_FINALS:
+			sub = "明天决赛日 · 本地 %s 开打" % _local_hhmm(_utc_today_at(_tmr, int(_P2C.FINALS_START_HOUR_UTC)))
+		else:
+			sub = "明天%s" % str(_P2C.PHASE_LABEL.get(_tph, ""))
 	elif kind == BK_LOCKED:
 		head = "已封盘"
 		sub = "收盘前 %d 分钟起不开新局" % int(_P2C.CLOSE_LOCKOUT_SEC / 60)

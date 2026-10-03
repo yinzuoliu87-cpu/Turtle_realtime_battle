@@ -88,8 +88,10 @@ MAIL_DOMAIN="${MAIL_DOMAIN:-gmail.com}"
 #   反正鼠标一次只能操作一个窗口, 平铺看得见十个但十个都糊, 不如一个清楚的。
 #   ★全部放【主屏】(1920x1080, 100% 缩放) —— 副屏 150% 会把 1280x720 撑成 1920x1080 放不下。
 #   ★十个窗口同一个位置, 靠 **pid** 区分(pids.txt 记的是真 pid, 已修), 不靠位置。
-STACK_X=320
-STACK_Y=100
+## ★2026-10-03 用户:「你就用这一块屏幕，我用另一块，不要干涉我用的那个屏」⇒ 位置可由环境变量指定
+##   (例: 副屏在主屏右边 ⇒ SIM_X=2000 SIM_Y=80)。不给 = 原值。
+STACK_X=${SIM_X:-320}
+STACK_Y=${SIM_Y:-100}
 WIN_CW=1280
 WIN_CH=720
 
@@ -159,6 +161,8 @@ cmd_start() {
       ## ★自动驾驶(选技能/打/每轮买装备)。AUTOPILOT=1 bash tools/sim10.sh start 10
       ##   不带就是普通实例, 人自己玩 —— 默认必须彻底关掉, 这是它的硬约束之一。
       if ('${AUTOPILOT:-}' -ne '') { \$env:SIM_AUTOPILOT='1' };
+      ## ★自拍(不动窗口焦点): 每个槽位存到 <槽位目录>/shots/latest.png。SHOTS=1 打开。
+      if ('${SHOTS:-}' -ne '') { \$env:SIM_SHOT_DIR='$(cygpath -w "$d" 2>/dev/null || echo "$d")\shots' };
       \$p = Start-Process -FilePath '$(cygpath -w "$GODOT" 2>/dev/null || echo "$GODOT")' \
         -ArgumentList '--path','$(cygpath -w "$PROJ_DIR" 2>/dev/null || echo "$PROJ_DIR")', \
                       '--audio-driver','Dummy', \

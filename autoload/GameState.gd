@@ -1319,6 +1319,7 @@ func _resolve_leader_slots(dl: Dictionary) -> void:
 
 
 func _ready() -> void:
+	SimShot.attach(self)   # 模拟窗口自拍(只在 SIM_SHOT_DIR 设了时; 见 sim_shot.gd 头注)
 	## ★这一句必须在 `_load()` / `ensure_season()` 之前 —— 2026-09-19 探针实证:
 	##   全新空 user:// 下, **场景脚本拿到控制权时 `savegame.json` 已经写出来了**
 	##   (`ensure_season()` 滚赛季会 `save()`), 所以任何台子在自己 `_ready` 里置

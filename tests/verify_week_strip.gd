@@ -459,5 +459,17 @@ func _ticks(packed) -> void:
 	for _i in range(4):
 		await get_tree().process_frame
 	_ok("⑥ ★★22:50 之后显示「已封盘」", _strip_texts(mm).has("已封盘"), str(_strip_texts(mm)))
+	mm.strip_now_override = sat + 23 * 3600 + 5 * 60       # 23:05 已收盘
+	mm._sb_poll()
+	for _i in range(4):
+		await get_tree().process_frame
+	var c: Array = _strip_texts(mm)
+	## ★2026-10-03 实拍: 周六收盘后写着「休赛日 · 周二开赛 · 本日维护」, 而明天是决赛日
+	_ok("⑥ ★★周六 23:00 收盘后写「今日已收盘」并说明天是决赛日(不是休赛日)", c.has("今日已收盘") and not c.has("休赛日") and str(c).find("明天决赛日") >= 0, str(c))
+	mm.strip_now_override = SUN0 + 5 * 86400 + 23 * 3600 + 5 * 60   # 周五 23:05
+	mm._sb_poll()
+	for _i in range(4):
+		await get_tree().process_frame
+	_ok("⑥ ★周五积分赛收盘后说明天闯关赛", str(_strip_texts(mm)).find("明天闯关赛") >= 0, str(_strip_texts(mm)))
 	mm.queue_free()
 	await get_tree().process_frame

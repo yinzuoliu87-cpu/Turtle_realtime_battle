@@ -443,14 +443,28 @@ func _ready() -> void:
 			door_ok, "条里的文字: %s" % str(strip_txt))
 	elif today_ph == _P2M.PHASE_GAUNTLET:
 		## 周六闯关赛(已上线): 与积分赛一样有收盘(WEEK_CLOSE_HOUR_UTC), 所以照旧是倒计时/封盘
-		_ok("⑬b ★今天是闯关赛(已上线) → 收盘块给的是倒计时或封盘提示",
-			joined.find("距收盘") >= 0 or joined.find("已封盘") >= 0
-			or joined.find("维护") >= 0, str(strip_txt))
+		## ★★2026-10-04: 原来接受「维护」二字 ⇒ 收盘后那句错话「休赛日 · 周二开赛 · **本日维护**」反而让它绿
+		##   (门禁替 bug 站岗)。改成按收盘前/后分开判, 维护只认真正的维护态「维护中」。
+		if _P2M.close_left_sec(now_ts) < 0:
+			_ok("⑬b ★今天是闯关赛(已上线)、已过收盘 → 「今日已收盘」并说明天",
+				joined.find("今日已收盘") >= 0 and joined.find("明天") >= 0 and joined.find("休赛日") < 0
+				or joined.find("维护中") >= 0, str(strip_txt))
+		else:
+			_ok("⑬b ★今天是闯关赛(已上线) → 收盘块给的是倒计时或封盘提示",
+				joined.find("距收盘") >= 0 or joined.find("已封盘") >= 0
+				or joined.find("维护中") >= 0, str(strip_txt))
 	else:
 		## 积分赛那几天照旧: 要么在倒计时, 要么已进封盘窗口(收盘前 10 分钟)
-		_ok("⑬b ★今天是积分赛 → 收盘块给的是倒计时或封盘提示",
-			joined.find("距收盘") >= 0 or joined.find("已封盘") >= 0
-			or joined.find("维护") >= 0, str(strip_txt))
+		## ★★2026-10-04: 原来接受「维护」二字 ⇒ 收盘后那句错话「休赛日 · 周二开赛 · **本日维护**」反而让它绿
+		##   (门禁替 bug 站岗)。改成按收盘前/后分开判, 维护只认真正的维护态「维护中」。
+		if _P2M.close_left_sec(now_ts) < 0:
+			_ok("⑬b ★今天是积分赛、已过收盘 → 「今日已收盘」并说明天",
+				joined.find("今日已收盘") >= 0 and joined.find("明天") >= 0 and joined.find("休赛日") < 0
+				or joined.find("维护中") >= 0, str(strip_txt))
+		else:
+			_ok("⑬b ★今天是积分赛 → 收盘块给的是倒计时或封盘提示",
+				joined.find("距收盘") >= 0 or joined.find("已封盘") >= 0
+				or joined.find("维护中") >= 0, str(strip_txt))
 
 	# ── ⑬c ★**四个阶段各喂一个已知日期**, 别只量"今天"那一格 ──
 	#    上面 ⑬b 量的是今天 —— 一周里有四天走不到周末那半, 等于那几天它是空检查

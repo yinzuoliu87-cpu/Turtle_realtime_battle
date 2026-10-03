@@ -602,6 +602,7 @@ scripts/scenes/MainMenuScene.gd|lit|一
 scripts/scenes/MainMenuScene.gd|lit|三
 scripts/scenes/MainMenuScene.gd|lit|二
 scripts/scenes/MainMenuScene.gd|lit|五
+scripts/scenes/MainMenuScene.gd|lit|今日已收盘
 scripts/scenes/MainMenuScene.gd|lit|休赛日
 scripts/scenes/MainMenuScene.gd|lit|但你已晋级, 周六闯关赛见
 scripts/scenes/MainMenuScene.gd|lit|但你已过晋级线, 周六闯关赛见
@@ -621,6 +622,8 @@ scripts/scenes/MainMenuScene.gd|lit|战绩  %s
 scripts/scenes/MainMenuScene.gd|lit|排行榜
 scripts/scenes/MainMenuScene.gd|lit|收盘前 %d 分钟起不开新局
 scripts/scenes/MainMenuScene.gd|lit|日
+scripts/scenes/MainMenuScene.gd|lit|明天%s
+scripts/scenes/MainMenuScene.gd|lit|明天决赛日 · 本地 %s 开打
 scripts/scenes/MainMenuScene.gd|lit|本地 %s
 scripts/scenes/MainMenuScene.gd|lit|本地 %s 开打
 scripts/scenes/MainMenuScene.gd|lit|版本维护, 稍后回来
