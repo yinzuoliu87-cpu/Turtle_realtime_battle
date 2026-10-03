@@ -112,6 +112,32 @@ func _ready() -> void:
 	_ok("★④合规存档(6件 ≤ Lv5的8件, 单只2 ≤ 3) → 一件都不该动",
 		moved3 == 0 and _total_equipped(gs) == 6, "动了 %d 件, 剩 %d 件" % [moved3, _total_equipped(gs)])
 
+	# ── ⑤ 羁绊赠品不占容量, 迁移不许因为它删东西(2026-10-03 周六实操 S10) ──
+	##   p03 实查: 小将带 [047, 013, 095(圣光护盾·赠品), 087] —— 3 件真装备 + 1 件赠品, 合规;
+	##   旧迁移按 arr.size() 数成 4 件, 每次读档删一件。
+	_setup(gs, 10)
+	gs.persistent_equipped["basic"] = [{"id": "kelp_blade", "star": 1}, {"id": "kelp_blade", "star": 1},
+		{"id": "p2eq_095", "star": 1}, {"id": "kelp_blade", "star": 1}]
+	var b5: int = (gs.persistent_equipped["basic"] as Array).size()
+	var moved5: int = gs.migrate_equip_caps()
+	var a5: Array = gs.persistent_equipped["basic"]
+	var still_grant := false
+	for it in a5:
+		if str((it as Dictionary).get("id", "")) == "p2eq_095":
+			still_grant = true
+	_ok("★⑤ 3 件真装备 + 1 件羁绊赠品 = 合规 ⇒ 一件都不删(原 bug: 删 1 件)",
+		moved5 == 0 and a5.size() == b5 and still_grant, "删了 %d 件, %d → %d, 赠品还在=%s" % [moved5, b5, a5.size(), str(still_grant)])
+	gs.persistent_equipped["basic"] = [{"id": "kelp_blade", "star": 1}, {"id": "kelp_blade", "star": 1},
+		{"id": "p2eq_095", "star": 1}, {"id": "kelp_blade", "star": 1}, {"id": "kelp_blade", "star": 1}]
+	var moved6: int = gs.migrate_equip_caps()
+	var a6: Array = gs.persistent_equipped["basic"]
+	var g6 := 0
+	for it in a6:
+		if str((it as Dictionary).get("id", "")) == "p2eq_095":
+			g6 += 1
+	_ok("★⑤ 分母: 真装备 4 件 + 赠品 ⇒ 删 1 件真装备, 赠品保留",
+		moved6 == 1 and a6.size() == 4 and g6 == 1, "删了 %d 件, 剩 %d 件, 赠品 %d" % [moved6, a6.size(), g6])
+
 	# ── 分母 ──
 	_ok("★分母: 容量表核了 %d 个等级(不是空检查)" % got.size(), got.size() == 10)
 

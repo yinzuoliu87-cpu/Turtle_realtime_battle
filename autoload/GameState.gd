@@ -1193,15 +1193,27 @@ func migrate_equip_caps() -> int:
 		return maxi(1, int(e.get("cost", 1))) * maxi(1, int((it as Dictionary).get("star", 1)))
 
 	# ① 单只裁到 3 (保留最强的 3 件)
+	## ★★2026-10-03 周六实操 S10: 原来按 `arr.size()` 数 —— 把**羁绊赠品**(圣光护盾 p2eq_095, 不占容量)也算进去,
+	##   带赠品的满装小将被判成 4 件超额, 每次读档悄悄删一件(p03 实查: 下路后排 [047, 013, 095, 087])。
+	##   ⇒ 用与装备入口同一把尺子 `_cap_count`, 赠品永不删。
+	var trim := func(items: Array) -> Array:
+		var grants: Array = []
+		var real: Array = []
+		for it in items:
+			if is_synergy_grant(it):
+				grants.append(it)
+			else:
+				real.append(it)
+		if real.size() <= _P2.UNIT_EQUIP_CAP:
+			return items
+		real.sort_custom(func(a, b): return val.call(a) > val.call(b))
+		return real.slice(0, _P2.UNIT_EQUIP_CAP) + grants      # 彻底删除(用户口径), 不回背包
 	for pid in (season_leaders if season_leaders is Array else []):
 		var p := str(pid)
 		var arr: Array = persistent_equipped.get(p, [])
-		if arr.size() > _P2.UNIT_EQUIP_CAP:
-			arr.sort_custom(func(a, b): return val.call(a) > val.call(b))
-			while arr.size() > _P2.UNIT_EQUIP_CAP:
-				arr.pop_back()          # 彻底删除(用户口径), 不回背包
-				moved += 1
-			persistent_equipped[p] = arr
+		if _cap_count(arr) > _P2.UNIT_EQUIP_CAP:
+			moved += _cap_count(arr) - _P2.UNIT_EQUIP_CAP     # ★在 lambda 外记: GDScript lambda 改外层局部变量不生效
+			persistent_equipped[p] = trim.call(arr)
 	var dl: Dictionary = get_dual_lineup()
 	for lane in ["top", "bottom"]:
 		var lst: Array = dl.get(lane, [])
@@ -1210,12 +1222,9 @@ func migrate_equip_caps() -> int:
 			if str(u.get("kind", "")) != "minion":
 				continue
 			var me: Array = u.get("equips", []) if u.get("equips", null) is Array else []
-			if me.size() > _P2.UNIT_EQUIP_CAP:
-				me.sort_custom(func(a, b): return val.call(a) > val.call(b))
-				while me.size() > _P2.UNIT_EQUIP_CAP:
-					me.pop_back()       # 彻底删除
-					moved += 1
-				u["equips"] = me
+			if _cap_count(me) > _P2.UNIT_EQUIP_CAP:
+				moved += _cap_count(me) - _P2.UNIT_EQUIP_CAP
+				u["equips"] = trim.call(me)
 				lst[i] = u
 		dl[lane] = lst
 	dual_lineup = dl
@@ -1233,6 +1242,8 @@ func migrate_equip_caps() -> int:
 			var p := str(pid)
 			var arr: Array = persistent_equipped.get(p, [])
 			for ci in range(arr.size()):
+				if is_synergy_grant(arr[ci]):
+					continue        # 赠品不占容量, 删它不减少计数(只会白删)
 				if val.call(arr[ci]) < worst_v:
 					worst_v = val.call(arr[ci]); worst_p = p; worst_lane = ""; worst_ci = ci
 		var dl2: Dictionary = get_dual_lineup()
@@ -1244,6 +1255,8 @@ func migrate_equip_caps() -> int:
 					continue
 				var me2: Array = u2.get("equips", []) if u2.get("equips", null) is Array else []
 				for ci in range(me2.size()):
+					if is_synergy_grant(me2[ci]):
+						continue
 					if val.call(me2[ci]) < worst_v:
 						worst_v = val.call(me2[ci]); worst_p = ""; worst_lane = lane; worst_i = i; worst_ci = ci
 		if worst_ci < 0:
