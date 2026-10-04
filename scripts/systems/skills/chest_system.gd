@@ -473,10 +473,17 @@ func _sk_chest_storm(u: Dictionary, tgt) -> void:              # 技二·财宝�
 			var rt2 = battle._reg_tween()
 			rt2.tween_property(rs, "modulate:a", 0.0, 0.7)
 			rt2.tween_callback(rs.queue_free))
+	## ★捕获 weakref 不捕获 disc 本身(tween_capture_audit 台账 2026-10-04)。
+	##   这几跳走 `_pending_shots`(sim 时钟, 顿帧期间不走), 而 disc 由上面那条 tween 链在 2.6 秒处释放
+	##   (tween 顿帧期间照走) ⇒ 一场里累计顿帧超过 0.6 秒, 最后一跳就落在 disc 释放之后,
+	##   Godot 在调用 lambda 之前就报「Lambda capture ... freed」—— 函数体里的 is_instance_valid 拦不住。
+	##   只改了"拿 disc"这一步, 伤害那几行一个字没动。门禁: verify_tween_capture_lane。
+	var disc_w: WeakRef = weakref(disc) if disc != null else null
 	for i in range(STORM_TICKS):                                # ⑥ 5跳结算(数值不动)+命中特效+脉冲
 		var fn = func():
-			if is_instance_valid(disc):
-				disc.modulate.a = minf(0.85, disc.modulate.a + 0.25)   # 风暴脉冲闪亮(驱动器逐帧回落)
+			var dn = disc_w.get_ref() if disc_w != null else null
+			if is_instance_valid(dn):
+				dn.modulate.a = minf(0.85, dn.modulate.a + 0.25)   # 风暴脉冲闪亮(驱动器逐帧回落)
 			for o in battle._targeting._enemies_of(uu):
 				if o.get("alive", false) and o["pos"].distance_to(center) <= STORM_RADIUS:
 					battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, STORM_ATK_COEF, o), Color("#ffd93d"))

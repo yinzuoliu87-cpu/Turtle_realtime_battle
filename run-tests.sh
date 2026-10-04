@@ -328,6 +328,8 @@ frames_for () {
     #   无头帧率越高这段吃的帧越多 ⇒ 500 帧会半路掐断 = 没打 ALL PASS。测试跑完自己退出, 给大不花钱。
     verify_axe_batch10) echo 20000 ;;
     verify_settle_pages) echo 1500 ;;   # 两个视口 × 建 3 次结算屏 + 推鼠标点页签/滑动; 实测 342 帧
+    # tween 捕获物先释放(换路/顿帧/时停 三段): 每推一步 sim 等一帧, 共约 1050 步 ⇒ 给 3000
+    verify_tween_capture_lane) echo 3000 ;;
     *)             echo 500  ;;
   esac
 }
