@@ -724,6 +724,23 @@ func _ready() -> void:
 	for dead in ["_maybe_ask_fullscreen", "_fs_dialog_btn", "layer_modulate_fade", "_show_page", "_card_nodes", "_title_node"]:
 		_ok("⑫ 死代码已删净: %s" % dead, src.find("func %s" % dead) < 0 and src.find("%s =" % dead) < 0 and src.find("%s." % dead) < 0)
 
+	# ── ⑬z 货币区不含按钮材质(方案书 20260917 P0-2 / 验收「frame-coin.png 零引用」) ──
+	#   量真建出来的节点: 全屏每张 TextureRect 的贴图路径。
+	#   分母: 全屏确实扫到了按钮族木框(frame-rect, 训龟大师/开始战斗用的那张) ⇒ 扫描器看得见这一族。
+	var tex_paths: Array = []
+	for n_t in _walk(_menu):
+		if n_t is TextureRect and (n_t as TextureRect).texture != null:
+			tex_paths.append(str((n_t as TextureRect).texture.resource_path))
+	var n_btn_frame := 0
+	var n_coin_frame := 0
+	for tp in tex_paths:
+		if str(tp).find("menu/frame-rect") >= 0:
+			n_btn_frame += 1
+		if str(tp).find("frame-coin") >= 0:
+			n_coin_frame += 1
+	_ok("⑬z ★分母: 扫到了按钮族木框(frame-rect)", n_btn_frame > 0, "TextureRect %d 张, frame-rect %d" % [tex_paths.size(), n_btn_frame])
+	_ok("⑬z ★货币芯片不再垫按钮族木框(frame-coin 零引用)", n_coin_frame == 0, "frame-coin %d 张" % n_coin_frame)
+
 	# ── ⑭ ★★PLAY_LOCK_SAME_SOURCE: 画在按钮上的锁 == 那扇门自己的判据 ──
 	#
 	# 由来 (2026-09-29 台账 ④·真手点出来的): 打满 24 场之后同一屏上
@@ -757,6 +774,7 @@ func _ready() -> void:
 		]
 		var seen_play := {"locked": 0, "open": 0}
 		var seen_shop := {"locked": 0, "open": 0}
+		var seen_reason := 0
 		for cs in cases:
 			gs_l.hearts = int(cs[1])
 			gs_l.ranked_used = int(cs[2])
@@ -783,6 +801,19 @@ func _ready() -> void:
 				paint_play == judge_play, "画=%s 门=%s" % [str(paint_play), str(judge_play)])
 			_ok("⑭ ★★[%s] PLAY_LOCK_SAME_SOURCE: 商店那行画的锁 == 它自己那扇门" % str(cs[0]),
 				paint_shop == judge_shop, "画=%s 门=%s" % [str(paint_shop), str(judge_shop)])
+			## ⑭b ★锁的**理由**常驻在屏幕上(方案书 20260917 验收「不点不弹 toast 也看得见」)。
+			##   量玩家看得到的那行字: 商店那行子树里名为 LOCK_REASON_NAME 的块,
+			##   锁着 ⇒ 必须在且非空、且就是产品那条短句; 没锁 ⇒ 必须不在。
+			var shop_h := _entry_holder(page_box, str(MENU_S.SHOP_LABEL))
+			var rs_txt := _reason_text(shop_h)
+			var rs_want: String = str(_menu._shop_lock_reason(_menu.clock_override_ts))
+			print("  ⑭b [%s] 商店锁理由(屏幕上) = 「%s」" % [str(cs[0]), rs_txt])
+			if judge_shop:
+				_ok("⑭b ★[%s] 商店锁着 ⇒ 理由常驻显示在那一行" % str(cs[0]),
+					rs_txt != "" and rs_txt == rs_want, "屏幕=「%s」 期望=「%s」" % [rs_txt, rs_want])
+				seen_reason += 1
+			else:
+				_ok("⑭b [%s] 商店没锁 ⇒ 不显示理由" % str(cs[0]), rs_txt == "", rs_txt)
 			seen_play["locked" if paint_play else "open"] += 1
 			seen_shop["locked" if paint_shop else "open"] += 1
 		print("  ⑭ [分母] 开打 锁上 %d 格 / 没锁 %d 格; 商店 锁上 %d 格 / 没锁 %d 格" % [
@@ -792,6 +823,8 @@ func _ready() -> void:
 			int(seen_play["locked"]) > 0 and int(seen_play["open"]) > 0)
 		_ok("⑭ ★分母: 商店那行**两种态都出现过**",
 			int(seen_shop["locked"]) > 0 and int(seen_shop["open"]) > 0)
+		_ok("⑭b ★分母: 三种锁因都量过理由那行(出局/配额/没打第一场)", seen_reason == 3,
+			"%d 格" % seen_reason)
 		## ★两颗**不是同一条公式的复制** —— 有一格它们必须分道扬镳(商店锁而开打不锁),
 		##   否则"共用判据"会被误解成"合并成一条", 而商店确实多一条「本大轮打完第一场才开店」。
 		_ok("⑭ ★★两颗按钮不是同一条公式: 「还没打第一场」那格商店锁而开打不锁",
@@ -1002,6 +1035,18 @@ func _entry_holder(box: Control, text: String) -> Control:
 			if n is Label and str((n as Label).text).find(text) >= 0:
 				return c as Control
 	return null
+
+
+## 商店那行下面常驻的锁理由: 子树里名为 LOCK_REASON_NAME 的块里的字(没有 ⇒ "")。
+func _reason_text(holder: Control) -> String:
+	if holder == null:
+		return ""
+	for n in _walk(holder):
+		if str(n.name) == str(MENU_S.LOCK_REASON_NAME):
+			for m in _walk(n):
+				if m is Label and str((m as Label).text) != "":
+					return str((m as Label).text)
+	return ""
 
 
 ## 玩家看得到的那把锁: 这块按钮的子树里有没有 🔒。

@@ -598,6 +598,10 @@ scripts/scenes/MainMenuScene.gd|lit|%d 分 %02d 秒
 scripts/scenes/MainMenuScene.gd|lit|%d 天 %d 小时
 scripts/scenes/MainMenuScene.gd|lit|%d 小时 %d 分
 scripts/scenes/MainMenuScene.gd|lit|%d 胜 %d 负
+scripts/scenes/MainMenuScene.gd|lit|%s 休赛 · 按积分赛的规矩打, 算本周场次
+scripts/scenes/MainMenuScene.gd|lit|%s 决赛日 · 闯关赛晋级的人来打决赛
+scripts/scenes/MainMenuScene.gd|lit|%s 积分赛 · 每周最多 %d 场 · 周五收盘
+scripts/scenes/MainMenuScene.gd|lit|%s 闯关赛 · 积分赛打够 %d 胜才能来
 scripts/scenes/MainMenuScene.gd|lit|♥ %d/%d   本周 %d/%d
 scripts/scenes/MainMenuScene.gd|lit|✅ 已晋级决赛日 · 闯关赛到此为止(%s) · 明天周日来打决赛日
 scripts/scenes/MainMenuScene.gd|lit|一
@@ -613,6 +617,7 @@ scripts/scenes/MainMenuScene.gd|lit|决赛日
 scripts/scenes/MainMenuScene.gd|lit|决赛日 · 去看对阵图
 scripts/scenes/MainMenuScene.gd|lit|决赛日 · 本周没晋级
 scripts/scenes/MainMenuScene.gd|lit|决赛日 · 闯关赛止步 %s
+scripts/scenes/MainMenuScene.gd|lit|周
 scripts/scenes/MainMenuScene.gd|lit|周%s %02d:%02d 收盘
 scripts/scenes/MainMenuScene.gd|lit|周二开赛 · 本日维护
 scripts/scenes/MainMenuScene.gd|lit|商店
@@ -621,13 +626,16 @@ scripts/scenes/MainMenuScene.gd|lit|图鉴
 scripts/scenes/MainMenuScene.gd|lit|已封盘
 scripts/scenes/MainMenuScene.gd|lit|开始战斗
 scripts/scenes/MainMenuScene.gd|lit|战绩  %s
+scripts/scenes/MainMenuScene.gd|lit|打完第一场才开店
 scripts/scenes/MainMenuScene.gd|lit|排行榜
 scripts/scenes/MainMenuScene.gd|lit|收盘前 %d 分钟起不开新局
 scripts/scenes/MainMenuScene.gd|lit|日
 scripts/scenes/MainMenuScene.gd|lit|明天%s
 scripts/scenes/MainMenuScene.gd|lit|明天决赛日 · 本地 %s 开打
+scripts/scenes/MainMenuScene.gd|lit|本周 %d 场已打满
 scripts/scenes/MainMenuScene.gd|lit|本地 %s
 scripts/scenes/MainMenuScene.gd|lit|本地 %s 开打
+scripts/scenes/MainMenuScene.gd|lit|本大轮已出局
 scripts/scenes/MainMenuScene.gd|lit|版本维护, 稍后回来
 scripts/scenes/MainMenuScene.gd|lit|第 %d 大轮 · Lv %d
 scripts/scenes/MainMenuScene.gd|lit|维护中
@@ -775,7 +783,6 @@ scripts/scenes/SettingsScene.gd|lit|⚠ 清掉就拿不回来了。音量、全�
 scripts/scenes/SettingsScene.gd|lit|⚠ 登录已失效 —— 点「用邮箱取回」重新登录
 scripts/scenes/SettingsScene.gd|lit|⚠ 这台设备现在的进度会被换掉（换之前会先在本机备份一份）。
 scripts/scenes/SettingsScene.gd|lit|⚠ 重置所有存档
-scripts/scenes/SettingsScene.gd|lit|⚠ 龟和装备是存在这台手机上的，换设备仍然会丢。
 scripts/scenes/SettingsScene.gd|lit|低
 scripts/scenes/SettingsScene.gd|lit|关闭
 scripts/scenes/SettingsScene.gd|lit|发验证码
@@ -786,8 +793,11 @@ scripts/scenes/SettingsScene.gd|lit|处理存档冲突
 scripts/scenes/SettingsScene.gd|lit|存档清空了 · 从头再来
 scripts/scenes/SettingsScene.gd|lit|已绑定 · 换设备可用这个邮箱取回账号和进度
 scripts/scenes/SettingsScene.gd|lit|换个邮箱
+scripts/scenes/SettingsScene.gd|lit|改好了 · 现在叫「%s」
+scripts/scenes/SettingsScene.gd|lit|改昵称
 scripts/scenes/SettingsScene.gd|lit|正在发送…
 scripts/scenes/SettingsScene.gd|lit|正在验证…
+scripts/scenes/SettingsScene.gd|lit|没绑定之前，进度只存在这台设备上。
 scripts/scenes/SettingsScene.gd|lit|用云端那份
 scripts/scenes/SettingsScene.gd|lit|用你绑过的邮箱收一个验证码，把那个账号和它的进度取回到这台设备上。\n
 scripts/scenes/SettingsScene.gd|lit|用这台的
@@ -799,7 +809,7 @@ scripts/scenes/SettingsScene.gd|lit|画质换成「%s」了%s · 下一场开打
 scripts/scenes/SettingsScene.gd|lit|画面「全屏」
 scripts/scenes/SettingsScene.gd|lit|画面「窗口」
 scripts/scenes/SettingsScene.gd|lit|确认
-scripts/scenes/SettingsScene.gd|lit|绑定之后，换手机能用这个邮箱把【账号】取回来（排名、战绩、你的阵容）。\n
+scripts/scenes/SettingsScene.gd|lit|绑定之后，换手机用这个邮箱就能把账号和进度（龟、装备、排名、战绩）一起取回来。\n
 scripts/scenes/SettingsScene.gd|lit|绑定邮箱
 scripts/scenes/SettingsScene.gd|lit|设置
 scripts/scenes/SettingsScene.gd|lit|调完就记住了，下次进来还是这样
@@ -818,12 +828,15 @@ scripts/scenes/SettingsScene.gd|lit|🛠 调试场
 scripts/scenes/SettingsScene.gd|placeholder_text|你的名字
 scripts/scenes/SettingsScene.gd|placeholder_text|你的邮箱
 scripts/scenes/SettingsScene.gd|placeholder_text|邮件里的验证码
+scripts/scenes/SettingsScene.gd|text|%d~%d 个字 —— 排行榜上别人看到的就是它
 scripts/scenes/SettingsScene.gd|text|⚠ 重置所有存档？
 scripts/scenes/SettingsScene.gd|text|两边的存档对不上
 scripts/scenes/SettingsScene.gd|text|云端的存档被另一台设备更新过，和这台设备上的不一样。留哪一份？
 scripts/scenes/SettingsScene.gd|text|会清空：深海币 · 背包装备 · 出战统领 · 赛季进度（命/等级/胜场）· 糖果罐 · 布阵。\n
+scripts/scenes/SettingsScene.gd|text|先不改
 scripts/scenes/SettingsScene.gd|text|先不清
 scripts/scenes/SettingsScene.gd|text|先不选
+scripts/scenes/SettingsScene.gd|text|就叫这个
 scripts/scenes/SettingsScene.gd|text|把邮件里那串数字填进来
 scripts/scenes/SettingsScene.gd|text|清空，我确定
 scripts/scenes/SettingsScene.gd|text|版本 
@@ -1261,10 +1274,10 @@ scripts/scenes/inventory/candy_jar.gd|text|收下
 scripts/scenes/inventory/candy_jar.gd|text|糖果罐碎了！第 %d 档的东西全掉出来了
 scripts/scenes/inventory/equip_ops.gd|lit|临时等级器 → %s 本大轮 +1 级 (现 +%d)
 scripts/scenes/inventory/equip_ops.gd|lit|临时等级器 → 小将(%s路第%d格) 本大轮 +1 级
-scripts/scenes/inventory/equip_ops.gd|lit|全队装备已满 %d/%d · 升赛季等级可再装
+scripts/scenes/inventory/equip_ops.gd|lit|全队装备已满 %d/%d · 卸一件或升等级再装
 scripts/scenes/inventory/equip_ops.gd|lit|圣光护盾是羁绊赠送的，不能卖（盾羁绊掉档时会自动收回）
-scripts/scenes/inventory/equip_ops.gd|lit|这个小将已装满 %d 件（单只上限）
-scripts/scenes/inventory/equip_ops.gd|lit|这只已装满 %d 件（单只上限）
+scripts/scenes/inventory/equip_ops.gd|lit|这个小将已装满 %d 件 · 先点它卸下一件
+scripts/scenes/inventory/equip_ops.gd|lit|这只已装满 %d 件 · 先点它卸下一件
 scripts/scenes/inventory/synergy_panel.gd|lit|   还没开启
 scripts/scenes/inventory/synergy_panel.gd|lit|  ◀ 现在这档
 scripts/scenes/inventory/synergy_panel.gd|lit|%d 件升级

@@ -739,6 +739,22 @@ func _test_panel_v2() -> void:
 		minor_rows.size() == 11 and str(minor_rows[10][1]).find("韧性") >= 0,
 		"实得「%s」" % (str(minor_rows[10][1]) if minor_rows.size() == 11 else "?"))
 
+	# ⑤b ★次要属性的图标**真画进浮层**(2026-10-04): 原来 7 行的图标路径是空串,
+	#   而且 `_more_stats_text` 只拼字、不读路径 —— 浮层里一枚图标都没有。
+	#   量的是**浮层正文里真出现的 [img] 与它指向的文件**, 不是我插的标记;
+	#   每一枚都必须带 color(白模板图标不染色 = 白方块)。
+	var mtxt: String = str(_s._info_sys._more_stats_text(_s._units[0] if not _s._units.is_empty() else u))
+	var n_img: int = mtxt.count("[img width=")
+	var n_dyed: int = mtxt.count(" color=#")
+	var missing: Array = []
+	for want_ic in ["dodge", "healamp", "shieldamp", "echarge", "armorpen", "magicpen", "reflect"]:
+		var pth := "res://assets/sprites/stats/%s-icon.png" % want_ic
+		if mtxt.find("]" + pth + "[/img]") < 0 or not ResourceLoader.exists(pth):
+			missing.append(want_ic)
+	_ok("★★⑤b 浮层里次要属性带图标: 7 张都画上了(护盾强度/治疗强度/龟能充能…)", missing.is_empty() and n_img >= 7,
+		"缺 %s · [img] %d 处" % [str(missing), n_img])
+	_ok("★⑤b 每一枚都染了色(不许白方块)", n_img > 0 and n_dyed == n_img, "%d / %d" % [n_dyed, n_img])
+
 ## 资源条里某一条的【数值文本】; 没有这条返回 ""。
 ## ★2026-08-16 龟能/怒气/星能从"独立条 + 状态 chip"搬进了统一的资源条,
 ##   老断言读的 `_info_en_lbl` / chip 文本都失效了。要求没变, 来源变了 ⇒ 判据跟着搬。

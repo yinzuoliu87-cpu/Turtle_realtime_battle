@@ -546,13 +546,17 @@ func _info_stat_rows_minor(u: Dictionary) -> Array:
 		[sic + "crit-dmg-icon.png", "暴伤 " + _pct_mult(float(u.get("crit_dmg", 1.5)) + crit_over), Color("#ffb37a")],
 		[sic + "move-icon.png",     "移速 %d" % int(round(_eff_move_spd(u))),      Color("#d6e4f0")],
 		[sic + "lifesteal-icon.png", "吸血 " + _pct(ls),                           Color("#ff8fb0")],
-		["", "闪避 " + _pct(float(u.get("dodge_bonus", 0.0))),                     Color("#a0e8ff")],
-		["", "治疗强度 " + _pct_mult(1.0 + float(u.get("heal_amp", 0.0))),         Color("#7fe39a")],
-		["", "护盾强度 " + _pct_mult(1.0 + float(u.get("shield_amp", 0.0))),       Color("#ffd93d")],
-		["", "龟能充能 " + _pct_mult(1.0 + float(u.get("echarge_perm", 0.0))),     Color("#ffce4d")],
-		["", "护甲穿透 %d" % int(u.get("armor_pen", 0.0)),                         Color("#ffc48a")],
-		["", "魔法穿透 %d" % int(u.get("magic_pen", 0.0)),                         Color("#c9a0ff")],
-		["", "反伤 " + _pct(float(u.get("reflect", 0.0))),                         Color("#ff9d8a")],
+		## ★2026-10-04 补图标: 下面 7 行原来图标路径全是空串 —— 而 `assets/sprites/stats/` 里
+		##   这 7 张(10-01 重做的那套)一直都在, 浮层里只有字。韧性没有图标, 留空不硬配。
+		## ⚠ 染色走 `SkillText.stat_icon_color_of`(那套已把同形的分开: shieldamp 走护盾色、
+		##   armorpen 走穿透橙 —— 不跟 def 同色, 见 verify_stat_icon_color ⑦), 这里不另配色。
+		[sic + "dodge-icon.png",     "闪避 " + _pct(float(u.get("dodge_bonus", 0.0))),             Color("#a0e8ff")],
+		[sic + "healamp-icon.png",   "治疗强度 " + _pct_mult(1.0 + float(u.get("heal_amp", 0.0))), Color("#7fe39a")],
+		[sic + "shieldamp-icon.png", "护盾强度 " + _pct_mult(1.0 + float(u.get("shield_amp", 0.0))), Color("#ffd93d")],
+		[sic + "echarge-icon.png",   "龟能充能 " + _pct_mult(1.0 + float(u.get("echarge_perm", 0.0))), Color("#ffce4d")],
+		[sic + "armorpen-icon.png",  "护甲穿透 %d" % int(u.get("armor_pen", 0.0)),                 Color("#ffc48a")],
+		[sic + "magicpen-icon.png",  "魔法穿透 %d" % int(u.get("magic_pen", 0.0)),                 Color("#c9a0ff")],
+		[sic + "reflect-icon.png",   "反伤 " + _pct(float(u.get("reflect", 0.0))),                 Color("#ff9d8a")],
 		["", "韧性 " + _pct(float(u.get("tenacity", 0.0))),                        Color("#d6e4f0")],
 	]
 
@@ -1460,6 +1464,13 @@ func _arrow_lit(row: Control, arrow: Control, on: bool) -> void:
 func _more_stats_text(u: Dictionary) -> String:
 	var out := ""
 	for r in _info_stat_rows_minor(u):
+		## ★行首内联图标(2026-10-04): 原来这里只拼字, 行表里的图标路径**没人读** ——
+		##   浮层是 bbcode RichTextLabel, 用与技能文案同一个长式 `[img width color]`
+		##   (短式 `[img=W]` 没有 color 参数, 白模板图标会是一枚白方块)。
+		var ip := str((r as Array)[0])
+		if ip != "" and ResourceLoader.exists(ip):
+			out += "[img width=%d color=#%s]%s[/img] " % [SkillText.ICON_PX,
+				SkillText.stat_icon_color_of(ip).to_html(false), ip]
 		out += str((r as Array)[1]) + char(10)
 	return out
 

@@ -176,6 +176,10 @@ func _ready() -> void:
 			wd_row.append(str((cells[k2] as Array)[0]))
 		_ok("%s ★星期几那行是周一→周日" % WD_LONG[iso - 1], wd_row == WD_CN, str(wd_row))
 
+		## ⑥ 台账 S15 的现场就是周六点「日 决赛日」: 在周六那一屏把七格都真按一遍。
+		if iso == 6:
+			await _day_taps(mm, hb)
+
 		mm.queue_free()
 		await get_tree().process_frame
 
@@ -350,7 +354,8 @@ func _one_clock(packed) -> void:
 			var q2: Array = [box]
 			while not q2.is_empty():
 				var n2 = q2.pop_back()
-				if n2 is Button:
+				## ★日格里各有一颗透明点击按钮(⑥ / 台账 S15) —— 不是门, 按名字前缀排除。
+				if n2 is Button and not str(n2.name).begins_with(str(mm.DAY_TAP_PREFIX)):
 					door = n2 as Button
 				for ch4 in n2.get_children():
 					q2.append(ch4)
@@ -473,3 +478,34 @@ func _ticks(packed) -> void:
 	_ok("⑥ ★周五积分赛收盘后说明天闯关赛", str(_strip_texts(mm)).find("明天闯关赛") >= 0, str(_strip_texts(mm)))
 	mm.queue_free()
 	await get_tree().process_frame
+
+
+## ⑥ ★★台账 S15「点『日 决赛日』页签没反应」: 赛程条每一格点了都要有回应。
+##   走真入口(格子里那颗 Button 的 pressed), 量**真的飘出来的那行字**(新增的 Label 子节点),
+##   不问我插的标记。并量触摸线(短边 ≥ 81 = 44pt)。
+func _day_taps(mm: Node, hb: Node) -> void:
+	var got_notes: Dictionary = {}
+	var found := 0
+	for wd in range(1, 8):
+		var tap = hb.find_child(str(mm.DAY_TAP_PREFIX) + str(wd), true, false)
+		if tap == null or not (tap is Button):
+			_ok("⑥ 周%s 那格有可点的按钮" % WD_CN[wd - 1], false)
+			continue
+		found += 1
+		var r: Rect2 = (tap as Control).get_global_rect()
+		_ok("⑥ 周%s 那格触摸线 ≥ 81(44pt)" % WD_CN[wd - 1], minf(r.size.x, r.size.y) >= 81.0,
+			"%.0f×%.0f" % [r.size.x, r.size.y])
+		var before: Array = mm.get_children()
+		(tap as Button).pressed.emit()
+		var txt := ""
+		for ch in mm.get_children():
+			if not before.has(ch):
+				if ch is Label:
+					txt = str((ch as Label).text)
+				ch.queue_free()
+		var lab: String = str(P2.PHASE_LABEL.get(str(P2.phase_of_weekday(wd)), "?"))
+		_ok("⑥ ★★点周%s 那格 → 真飘出一行, 说的是那天(%s)" % [WD_CN[wd - 1], lab],
+			txt != "" and txt.find(lab) >= 0 and txt.find("周" + str(WD_CN[wd - 1])) >= 0, "「%s」" % txt)
+		got_notes[txt] = true
+	_ok("⑥ ★分母: 七格都找到了按钮", found == 7, "%d" % found)
+	_ok("⑥ ★分母: 七句各不相同(都一样 = 没按天分)", got_notes.size() == 7, "%d 种" % got_notes.size())

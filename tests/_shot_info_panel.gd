@@ -208,10 +208,8 @@ func _ready() -> void:
 				"%s %s" % [str(edef.get("name", eid)), "★★★"],
 				str(edef.get("effectDesc1", "")), {}, u)
 		elif which == "more":
-			var mtxt := ""
-			for r2 in s._info_sys._info_stat_rows_minor(u):
-				mtxt += str((r2 as Array)[1]) + "
-"
+			## ★走产品那一份(`_more_stats_text`, 带行首图标) —— 原来这里手抄了一份只拼字的, 拍不到图标。
+			var mtxt: String = s._info_sys._more_stats_text(u)
 			s._info_sys._show_detail(s._info_panel, "more_stats", "更多属性", mtxt, {}, u)
 		for _j in range(8):
 			await get_tree().process_frame

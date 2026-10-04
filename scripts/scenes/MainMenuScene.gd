@@ -2,7 +2,7 @@ extends Control
 
 ## MainMenuScene — 主菜单, 1:1 PoC MainMenuScene.ts 布局.
 ## 设计台 1280×720. 标题menu-title图@(240,130) / 左栏btn-frame按钮(360×87)中心x=240 /
-## 右墙 frame-coin龟币框 + 4个frame-square磁贴(图鉴/教程/排行榜/战绩, 仅图标).
+## 右上货币芯片(裸图标+数字) + 4个frame-square磁贴(图鉴/教程/排行榜/战绩, 仅图标).
 
 ## 商店按钮的文字。★它同时是【商店锁的判别式】(下面 `str(s[0]) == SHOP_LABEL`) ——
 ##   所以必须是一个常量, 不能两处各写一遍字面量: 改了按钮名字而漏改判别式,
@@ -22,6 +22,8 @@ const _RU := preload("res://scripts/systems/replay/replay_uploader.gd")
 ## ★不在这边再建一份绑定 UI: 抄一份就要把昵称那一行和验证码状态机抄第二遍
 ##   (memory `fb-hand-rolled-copies-drift`)。
 const _SET := preload("res://scripts/scenes/SettingsScene.gd")
+## 冠军/亚军/四强头衔的发放链住在对阵图那侧(`record_progress_from`), 主菜单只喂 feed 调它。
+const _BMS := preload("res://scripts/scenes/BracketMapScene.gd")
 
 const W := 1280
 const H := 720
@@ -193,6 +195,7 @@ func _ready() -> void:
 	##   那种计时器活过场景释放, 响的时候去绑已释放的捕获就报错
 	##   (`tools/tree_timer_audit.py` 守这条, 它推荐的修法就是 Timer 子节点)。
 	_SB.fetch_status_async()
+	_finals_title_pull(paint_ts)   # 决赛日: 不进对阵图也对一次冠军/四强头衔账(U1)
 	## (D-3 建身份已经**挪到登录墙之前**了, 见上面那段长注释 —— 放这儿的话墙一 return
 	##  就永远跑不到。这里不要再调一次: 两处各调一份, 改动时必然漂掉一处。)
 	var sb_t := Timer.new()
@@ -378,9 +381,12 @@ func _build_page_buttons(now: int = 0) -> void:
 		["图鉴", func(): _go("Codex"), mic + "ic-codex.png", false],
 		["排行榜", func(): _go("Leaderboard"), mic + "ic-trophy.png", false],
 	]
+	## 锁着的那行底下常驻一行短原因(不点也看得见) —— 只有商店有锁, 所以只给它传。
+	var shop_reason := _shop_lock_reason(ts)
 	for i in range(subs.size()):
 		var sN: Array = subs[i]
-		var e := _text_entry(str(sN[0]), sN[1], str(sN[2]), bool(sN[3]))
+		var e := _text_entry(str(sN[0]), sN[1], str(sN[2]), bool(sN[3]),
+			shop_reason if str(sN[0]) == SHOP_LABEL else "")
 		e.position = Vector2(LEFT_X, _menu_row_y(i))
 		page_box.add_child(e)
 		_slide_in_left(e, i)
@@ -459,11 +465,16 @@ func _open_bind_screen() -> void:
 	_go("Settings")
 
 
+## 锁原因那行小字的节点名 —— 门禁按它找(不抄文案)。
+const LOCK_REASON_NAME := "LockReason"
+
+
 ## 左栏的一个无框文字入口。
 ## ★"无框"是照参考来的(Absolum / Black Jacket / Replaced / Fuga 的次级项都没有框),
 ##   但【可点区域仍然是整行 LEFT_W×ROW_H】—— 视觉轻、手指目标不小, 两件事不能混为一谈。
 ## 悬停时: 左侧 ◆ 淡入 + 文字右移 6px + 一层金色底光, 代替原来那个木框。
-func _text_entry(label: String, cb: Callable, icon_path: String, locked: bool) -> Control:
+## `reason` 非空且 locked ⇒ 主文字上移, 底下常驻一行小字写锁的理由(节点名 LOCK_REASON_NAME)。
+func _text_entry(label: String, cb: Callable, icon_path: String, locked: bool, reason: String = "") -> Control:
 	var holder := Control.new()
 	holder.custom_minimum_size = Vector2(LEFT_W, ROW_H)
 	holder.size = Vector2(LEFT_W, ROW_H)
@@ -490,9 +501,17 @@ func _text_entry(label: String, cb: Callable, icon_path: String, locked: bool) -
 		tx += 52.0
 	# 文字: 背景是龟群像(有明有暗), 所以一律带黑描边 —— 纯色字在群像上会读不出
 	var col := Color("#8d9099") if locked else Color("#ffe9a8")
+	var with_reason: bool = locked and reason != ""
+	var lb_y: float = ROW_H / 2.0 - (32.0 if with_reason else 21.0)
 	var lb := _place_stroked(("🔒 " if locked else "") + label, 26, col,
-		Vector2(tx, ROW_H / 2.0 - 21), Vector2(LEFT_W - tx - 8.0, 42))
+		Vector2(tx, lb_y), Vector2(LEFT_W - tx - 8.0, 42))
 	holder.add_child(lb)
+	if with_reason:
+		var rs := _place_stroked(reason, 17, Color("#d9c9a3"),
+			Vector2(tx, ROW_H / 2.0 + 10.0), Vector2(LEFT_W - tx - 8.0, 26))
+		rs.name = LOCK_REASON_NAME
+		rs.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(rs)
 	## (不画分隔线: 第一版画了, 实拍出来那条线横跨在背景的龟身上, 把版面切碎了。
 	##  参考里的无框菜单 Absolum / Black Jacket / Replaced 一条分隔线都没有 —— 行距本身就够分行。)
 	# 透明按钮铺满 = 真正的点击区 (整行 382×81, 过 44pt 触摸线)
@@ -770,7 +789,7 @@ func _version_stamp() -> void:
 	content_root.add_child(l)
 
 
-## 龟币框 (frame-coin + 绿龟币图标染色 + 数字) — 抽出复用; 返回未定位的 Control, 调用方定位/入场
+## 货币芯片 (裸图标染色 + 描边数字, 无底框) — 抽出复用; 返回未定位的 Control, 调用方定位/入场
 ## A5(2026-09-17, user): 龟币 is the MAIN-SITE currency and must stay visible, but the two
 ## currencies used to sit in two totally different places/styles - 龟币 in a frame up top,
 ## 深海币 as a text row inside the season panel. User asked for the usual game treatment:
@@ -779,10 +798,10 @@ func _version_stamp() -> void:
 func _coin_frame(value: int = -1, icon_path: String = "", tint: Color = Color(0.122, 0.561, 0.247)) -> Control:
 	var coin := Control.new()
 	coin.custom_minimum_size = Vector2(152, 85); coin.size = Vector2(152, 85)
-	if ResourceLoader.exists("res://assets/sprites/menu/frame-coin.png"):
-		var cf := TextureRect.new(); cf.texture = load("res://assets/sprites/menu/frame-coin.png")
-		cf.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; cf.stretch_mode = TextureRect.STRETCH_SCALE
-		cf.size = Vector2(152, 85); coin.add_child(cf)
+	## P0-2(方案书 20260917 主菜单版式重做): 货币区【不套任何按钮材质】。
+	##   原来这里垫一张 menu/frame-coin 贴图 —— 与按钮同一族木框, 两个芯片看着像两个按钮。
+	##   参考的 18 款里没有一款给货币套框: 一律裸图标 + 描边数字。
+	##   外框尺寸 152x85 保留(右上那排磁贴按它排位), 只是不再画底。
 	var _ip: String = icon_path if icon_path != "" else "res://assets/sprites/ui/coin.png"
 	if ResourceLoader.exists(_ip):   # 黑线稿→非透明像素染绿(#1f8f3f)
 		var cimg: Image = load(_ip).get_image()
@@ -803,7 +822,10 @@ func _coin_frame(value: int = -1, icon_path: String = "", tint: Color = Color(0.
 	var cl := Label.new(); cl.text = "%d" % (GameState.coins if value < 0 else value)
 	cl.position = Vector2(79, 0); cl.size = Vector2(73, 85)
 	cl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT; cl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	cl.add_theme_font_size_override("font_size", 22); cl.add_theme_color_override("font_color", Color("#2c4a1e")); coin.add_child(cl)
+	## 没了木底, 深绿字直接压在背景上读不出来 ⇒ 改亮字 + 黑描边(同 _tile 的数字)。
+	cl.add_theme_font_size_override("font_size", 26); cl.add_theme_color_override("font_color", Color("#fff4d6"))
+	cl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1)); cl.add_theme_constant_override("outline_size", 6)
+	coin.add_child(cl)
 	return coin
 
 
@@ -1319,9 +1341,46 @@ func _week_day_cell(wd: int, today: int) -> Control:
 	n.add_theme_color_override("font_color", Color("#ffe9a8") if is_today else Color("#9fb0c4"))
 	n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(n)
+	## ★★2026-10-04 台账 S15(两轮实操都记了「点别的天什么都不会发生」):
+	##   七格并排 + 今天一块亮牌 = 页签的长相, 玩家就会去点 ⇒ 让它**点了有回应**:
+	##   飘一行「那天是什么、谁能打」。不切页 —— 主菜单没有"别的天"的内容可切。
+	## ★触摸线: 格高吃 ROW_H(81), 与全屏所有靶子同一条线; 条子因此恒为周日那天的高度(95),
+	##   顶沿由 `resized` 那段贴底算出, 不是新的写死坐标。
+	cell.custom_minimum_size = Vector2(92, ROW_H)
+	var tap := Button.new()
+	tap.name = DAY_TAP_PREFIX + str(wd)
+	tap.flat = true
+	tap.focus_mode = Control.FOCUS_NONE
+	tap.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	tap.pressed.connect(func() -> void: _toast(_week_day_note(wd)))
+	cell.add_child(tap)
+	## PanelContainer 会把子控件缩进 content_margin 里(今天那格上下各 9 ⇒ 只剩 63 高)。
+	##   `sort_children` 在容器排完之后才发 ⇒ 这里把按钮铺回整格, 点击区 = 整格 92×81。
+	cell.sort_children.connect(func() -> void:
+		if is_instance_valid(tap) and is_instance_valid(cell):
+			tap.position = Vector2.ZERO
+			tap.size = cell.size)
 	if wd < today:
 		cell.modulate.a = 0.42
 	return cell
+
+
+## 赛程条每一格那个透明按钮的节点名前缀(+ 星期几 1~7)。门禁按它找, 不抄文案。
+const DAY_TAP_PREFIX := "DayTap"
+
+
+## 点了赛程条某一天飘的那一句: 那天打什么、谁能打。
+## ★数字一律读规则常量(配额 / 晋级线), 不抄字面量。
+func _week_day_note(wd: int) -> String:
+	var day: String = "周" + str(_WD_CN[wd - 1])
+	match _P2C.phase_of_weekday(wd):
+		_P2C.PHASE_REST:
+			return "%s 休赛 · 按积分赛的规矩打, 算本周场次" % day
+		_P2C.PHASE_GAUNTLET:
+			return "%s 闯关赛 · 积分赛打够 %d 胜才能来" % [day, int(_P2C.PROMOTE_WINS)]
+		_P2C.PHASE_FINALS:
+			return "%s 决赛日 · 闯关赛晋级的人来打决赛" % day
+	return "%s 积分赛 · 每周最多 %d 场 · 周五收盘" % [day, int(_P2C.RANKED_QUOTA)]
 
 
 ## 条子右端的收盘块: 主行(倒计时/状态) + 副行(本地时刻)。
@@ -1611,12 +1670,46 @@ func _open_shop() -> void:
 ##   quota to 0 or feeds those gates a ranked_used, all five go red at once -
 ##   do not chase it as a product regression then.
 func _shop_block_msg(ts: int) -> String:
+	match _shop_block_kind(ts):
+		SHOP_LOCK_OUT:
+			return _msg_eliminated()
+		SHOP_LOCK_QUOTA:
+			return _msg_quota_full()
+		SHOP_LOCK_FIRST:
+			return "🔒 本大轮打完第一场才开店"
+	return ""
+
+
+## 商店锁的三种原因。★公式只住在 `_shop_block_kind` 一处 ——
+##   长句(点了飘的 toast)与短句(常驻在那一行下面的小字)都从它翻译, 不各判一遍。
+const SHOP_LOCK_OUT := "out"
+const SHOP_LOCK_QUOTA := "quota"
+const SHOP_LOCK_FIRST := "first"
+
+
+## 现在锁着的话是哪一条原因; 空串 = 放行。顺序与 `_battle_block_msg` 同(见上)。
+func _shop_block_kind(ts: int) -> String:
 	if GameState.is_eliminated():
-		return _msg_eliminated()
+		return SHOP_LOCK_OUT
 	if GameState.ranked_quota_full(ts):
-		return _msg_quota_full()
+		return SHOP_LOCK_QUOTA
 	if int(GameState.season_total_battles) <= 0:
-		return "🔒 本大轮打完第一场才开店"
+		return SHOP_LOCK_FIRST
+	return ""
+
+
+## 常驻在商店那一行下面的**短**原因(方案书 20260917 P1-4 / 验收「不点不弹 toast 也看得见」)。
+## ★原来锁的理由只在 toast 里活 2.6 秒 —— 不点就永远不知道为什么锁。
+## ★要短: 左栏一行只有 ~300px; 「下一步去哪」那半句留给 toast(长句)说。
+## 空串 = 没锁。
+func _shop_lock_reason(ts: int) -> String:
+	match _shop_block_kind(ts):
+		SHOP_LOCK_OUT:
+			return "本大轮已出局"
+		SHOP_LOCK_QUOTA:
+			return "本周 %d 场已打满" % int(_P2C.RANKED_QUOTA)
+		SHOP_LOCK_FIRST:
+			return "打完第一场才开店"
 	return ""
 
 
@@ -1956,3 +2049,82 @@ func _begin_tutorial(mandatory: bool) -> void:
 	if _td != null:
 		_td.begin_sandbox()    # 快照真经济+发教学币(结束还原, 不给奖励)
 	get_tree().change_scene_to_file("res://scenes/TeamSelect.tscn")
+
+
+## ══════════════════════════════════════════════════════════════════════
+##  ★★决赛日头衔不必打开对阵图(方案书 20260926-冠军四强头衔发放 · U1 · 2026-10-04)
+## ══════════════════════════════════════════════════════════════════════
+## 原来冠军/亚军/四强**只在 `BracketMapScene` 拿到 feed 时**才记进度、才 `sync_titles()` ——
+##   周日打完、之后只开主菜单不再点进对阵图的人, **永远拿不到头衔**。
+## ⇒ 主菜单在决赛日(UTC 周日, 玩法已上线)打开时也拉一次 feed, 拿到就交给
+##   `BracketMapScene.record_progress_from()` —— **同一条链**(记进度 → 揭晓封存 → sync_titles → 存档),
+##   主菜单这里一个判据都不写(memory `fb-hand-rolled-copies-drift`)。
+## ★问不到(没网 / token 还没下来: 冷启动时 `ensure_signed_in_async` 是异步的)⇒ 隔几秒重试, 有上限。
+## ★问到了「没有你的桶」⇒ 收手(纯观众不发, 判据在 `record_progress_from` 里)。
+## ⚠ 已知边界: 只在**周日**拉。周一 00:00 换轮会清掉决赛进度(`start_new_season`),
+##   所以周日一次都没开游戏的人仍拿不到 —— 与闯关赛补发同一个既有取舍(方案书 U1 原文)。
+## ★自带一个 Timer 子节点(不借 `_sb_poll`): 不是决赛日时一个节点都不建。
+const FINALS_TITLE_TRIES := 5          # 问不到时最多再问几次
+const FINALS_TITLE_RETRY_TICKS := 5    # 问不到后隔几拍(秒)再问
+var _ft_timer: Timer = null
+var _ft_sent := false
+var _ft_tries := 0
+var _ft_cool := 0
+var _ft_week := 0                      # 拉哪一周(决赛日那一周的锚点)
+## 门禁读: 主菜单这条路记过几次(= 调过几次 `record_progress_from`)。
+var finals_title_records := 0
+
+
+## 现在该不该替玩家拉一次决赛 feed。**纯静态**, 门禁能把四个入参穷举。
+static func finals_title_due(backend_on: bool, phase: String, finals_live: bool) -> bool:
+	return backend_on and finals_live and phase == _P2C.PHASE_FINALS
+
+
+func _finals_title_pull(now: int) -> void:
+	if not finals_title_due(_SB.enabled(), _P2C.phase_at_utc(now),
+			_P2C.phase_mode_live(_P2C.PHASE_FINALS)):
+		return
+	_ft_week = _P2C.week_anchor_utc(now)
+	_ft_tries = 0
+	_ft_cool = 0
+	_ft_sent = false
+	_ft_timer = Timer.new()
+	_ft_timer.wait_time = 1.0
+	_ft_timer.autostart = true
+	_ft_timer.timeout.connect(_finals_title_tick)     # 方法引用, 不是闭包(tree_timer_audit)
+	add_child(_ft_timer)
+	_finals_title_tick()
+
+
+
+func _finals_title_tick() -> void:
+	if _ft_sent:
+		if not _SB.finals_tried():
+			return                                    # 还在路上
+		_ft_sent = false
+		var v: Dictionary = _SB.finals_cached()
+		if str(v.get("reason", "")) != _SB.UNREACHABLE:
+			## 问到了: 有桶就走那条链; 没桶(观众 / 人不够)那条链自己会一个字都不记。
+			_BMS.record_progress_from(v)
+			finals_title_records += 1
+			_finals_title_stop()
+			return
+		_ft_cool = FINALS_TITLE_RETRY_TICKS
+	if _ft_cool > 0:
+		_ft_cool -= 1
+		return
+	if _ft_tries >= FINALS_TITLE_TRIES:
+		_finals_title_stop()
+		return
+	_ft_tries += 1
+	## ★先清缓存: 不清的话, 上一次(比如刚从对阵图回来)留下的旧视图会被当成这次的答案。
+	_SB.finals_clear()
+	_SB.fetch_finals_async(_ft_week, -1)
+	_ft_sent = true
+
+
+func _finals_title_stop() -> void:
+	if is_instance_valid(_ft_timer):
+		_ft_timer.stop()
+		_ft_timer.queue_free()
+	_ft_timer = null

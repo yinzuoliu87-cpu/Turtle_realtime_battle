@@ -63,11 +63,11 @@ func _equip_to(pet_id: String, bench_idx: int) -> void:
 	#   漏了这一处就会出现"明明只装了 2 件却说已装满"。
 	if not _grant and GameState._cap_count(eqs) >= host.P2.UNIT_EQUIP_CAP:
 		host._sel_bench = -1
-		host._toast("这只已装满 %d 件（单只上限）" % host.P2.UNIT_EQUIP_CAP)
+		host._toast("这只已装满 %d 件 · 先点它卸下一件" % host.P2.UNIT_EQUIP_CAP)
 		host._rebuild(); return
 	if not _grant and not GameState.team_has_equip_room():
 		host._sel_bench = -1
-		host._toast("全队装备已满 %d/%d · 升赛季等级可再装" % [GameState.team_equipped_count(), GameState.team_equip_cap()])
+		host._toast("全队装备已满 %d/%d · 卸一件或升等级再装" % [GameState.team_equipped_count(), GameState.team_equip_cap()])
 		host._rebuild(); return
 	var item = bench[bench_idx]
 	bench.remove_at(bench_idx)
@@ -108,11 +108,11 @@ func _equip_minion(lane: String, idx: int, bench_idx: int) -> void:
 	#   漏了这一处就会出现"明明只装了 2 件却说已装满"。
 	if not _grant and GameState._cap_count(eqs) >= host.P2.UNIT_EQUIP_CAP:
 		host._sel_bench = -1
-		host._toast("这个小将已装满 %d 件（单只上限）" % host.P2.UNIT_EQUIP_CAP)
+		host._toast("这个小将已装满 %d 件 · 先点它卸下一件" % host.P2.UNIT_EQUIP_CAP)
 		host._rebuild(); return
 	if not _grant and not GameState.team_has_equip_room():
 		host._sel_bench = -1
-		host._toast("全队装备已满 %d/%d · 升赛季等级可再装" % [GameState.team_equipped_count(), GameState.team_equip_cap()])
+		host._toast("全队装备已满 %d/%d · 卸一件或升等级再装" % [GameState.team_equipped_count(), GameState.team_equip_cap()])
 		host._rebuild(); return
 	eqs.append(bench[bench_idx])
 	bench.remove_at(bench_idx)

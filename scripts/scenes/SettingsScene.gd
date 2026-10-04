@@ -262,15 +262,20 @@ func _account_row(top: float) -> float:
 	## ★★这两颗按钮的 y **原来写死成 192**, 而那正好落在音乐条的 48px 拖动带里(见文件头那段)。
 	##   现在钉在账号文字的下沿之后 —— 账号行多一句话, 它自己往下走。
 	var by := y + _GAP_LINE + _ACCT_BTN_H / 2.0
+	## ★2026-10-04 加第三颗「改昵称」(E 阶段方案书 ③「还没做: 改名」) ⇒ 有账号时三颗居中排开,
+	##   间距 160(按钮宽 150 + 10); 没账号(连接中)时只有「用邮箱取回」一颗, 位置不变。
 	if aid != "" and _SB_ACC.save_conflict():
-		_small_button(W / 2.0 - 80.0, by, "处理存档冲突", _open_conflict_dialog).name = \
+		_small_button(W / 2.0 - 160.0, by, "处理存档冲突", _open_conflict_dialog).name = \
 			ACCT_ROW_PREFIX + "BtnConflict"
 	elif aid != "":
-		_small_button(W / 2.0 - 80.0, by,
+		_small_button(W / 2.0 - 160.0, by,
 			("换个邮箱" if mail != "" else "绑定邮箱"),
 			func(): _open_email_dialog(_SB_ACC.FLOW_BIND)).name = ACCT_ROW_PREFIX + "BtnBind"
-	_small_button((W / 2.0 + 80.0) if aid != "" else W / 2.0, by, "用邮箱取回",
+	_small_button(W / 2.0, by, "用邮箱取回",
 		func(): _open_email_dialog(_SB_ACC.FLOW_RECOVER)).name = ACCT_ROW_PREFIX + "BtnRecover"
+	if aid != "":
+		_small_button(W / 2.0 + 160.0, by, RENAME_LABEL, _open_rename_dialog).name = \
+			ACCT_ROW_PREFIX + "BtnRename"
 	return by + _ACCT_BTN_H / 2.0
 
 
@@ -845,8 +850,8 @@ func _wall_explain(box: Control, flow: String, standalone: bool) -> void:
 	if flow == _SB_ACC.FLOW_BIND:
 		## ★墙上第一句先让**老玩家别慌**: 绑定是升级同一个号, 进度一个字节都不会变。
 		body = (_P2C.login_wall_body() if standalone
-			else ("绑定之后，换手机能用这个邮箱把【账号】取回来（排名、战绩、你的阵容）。\n"
-				+ "⚠ 龟和装备是存在这台手机上的，换设备仍然会丢。"))
+			else ("绑定之后，换手机用这个邮箱就能把账号和进度（龟、装备、排名、战绩）一起取回来。\n"
+				+ "没绑定之前，进度只存在这台设备上。"))
 	else:
 		## ★取回只换【账号】, 这台设备上的龟和装备原样不动 —— 照实说, 不许说成「取回存档」
 		##   (服务端现在没有存档, `verify_account` ④ 有一条专门禁这句话)。
@@ -1678,3 +1683,124 @@ func _bg() -> void:
 	ov.stretch_mode = TextureRect.STRETCH_SCALE
 	ov.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(ov)
+
+
+# ─── 改昵称 (2026-10-04 · E 阶段方案书 ③「还没做: 改名(现在设了就不能改)」) ───
+## ★规则只有 `phase2_config` 一份: `nickname_clean` / `nickname_error` —— 这里不另写长度判断。
+## ★写的是 `GameState.nickname`(玩家自己起的名)。`nickname_default` **不动**:
+##   它是「没起过名时显示的那个」, 判「起没起过名」靠的就是 `nickname == ""`。
+## ★同步走现有链路, 不另开请求: `GameState.save()` 末尾给云存档标脏
+##   (绑了邮箱的号下一拍推上去; 匿名号按隐私承诺不上传), 之后上传的快照 / 周日报到
+##   取名都走 `Backend.player_display_name()`, 自然带新名字。
+## ⚠ 本周已经报过到的决赛桶里那份名字是报到那一刻的, 不会跟着改(服务端没有改名接口)。
+## ⚠ 重名规则(要不要加后缀)在等用户拍板 —— 这里**不碰**生成规则。
+const RENAME_LABEL := "改昵称"
+## 门禁按名字找这几个节点(不抄文案)。
+const RENAME_EDIT := "RenameEdit"
+const RENAME_OK := "RenameOk"
+const RENAME_STATUS := "RenameStatus"
+var _rename_layer: Control = null
+
+
+func _open_rename_dialog() -> void:
+	if _rename_layer != null and is_instance_valid(_rename_layer):
+		return
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.65)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(dim)
+	_rename_layer = dim
+	## 框与「重置存档」那个确认框同一张金属九宫格(不另造一种盒子)。
+	var box := Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color("#1c2836"); sb.border_color = Color("#5aa0ff")
+	sb.set_border_width_all(3); sb.set_corner_radius_all(0)
+	var rtex := UISkin.nine("panel-frame.png", 20, sb)
+	if rtex is StyleBoxTexture:
+		(rtex as StyleBoxTexture).modulate_color = UISkin.tint_of(Color("#5aa0ff"))
+	box.add_theme_stylebox_override("panel", rtex)
+	## 高 330: 标题 / 规则一行 / 名字框(81) / 状态一行 / 两颗键(81) —— 框与键都吃 44pt 触摸线。
+	box.position = Vector2(W / 2.0 - 260, H / 2.0 - 165); box.size = Vector2(520, 330)
+	dim.add_child(box)
+
+	var ttl := Label.new()
+	ttl.text = RENAME_LABEL
+	ttl.add_theme_font_size_override("font_size", 24)
+	ttl.add_theme_color_override("font_color", Color("#cfe3ff"))
+	ttl.position = Vector2(0, 18); ttl.size = Vector2(520, 32)
+	ttl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(ttl)
+	var rule := Label.new()
+	rule.text = "%d~%d 个字 —— 排行榜上别人看到的就是它" % [_P2C.NICK_MIN, _P2C.NICK_MAX]
+	rule.add_theme_font_size_override("font_size", 13)
+	rule.add_theme_color_override("font_color", Color("#9fb4c8"))
+	rule.position = Vector2(0, 56); rule.size = Vector2(520, 22)
+	rule.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(rule)
+
+	var ed := LineEdit.new()
+	ed.name = RENAME_EDIT
+	ed.placeholder_text = "你的名字"
+	## 预填**现在显示的那个名字**(自己起过的, 或默认名) —— 改一两个字不用全打。
+	ed.text = str(preload("res://scripts/net/backend.gd").player_display_name())
+	ed.max_length = _P2C.NICK_MAX * 2   # 按规范化后判长度, 这里只防手滑贴一长串(同绑定屏)
+	ed.add_theme_font_size_override("font_size", 16)
+	_skin_edit(ed)
+	ed.position = Vector2(_W_PAD, 88); ed.size = Vector2(_W_MAIN_W, _W_ROW_H)
+	box.add_child(ed)
+	## 「换一个」与名字框并排(同绑定屏)。`nickname_suggest(avoid)` 保证换出来的不是同一个。
+	var rr := Button.new()
+	rr.text = _P2C.NICK_REROLL
+	rr.add_theme_font_size_override("font_size", 16)
+	rr.position = Vector2(_W_SIDE_X, 88); rr.size = Vector2(_W_SIDE_W, _W_ROW_H)
+	UISkin.button(rr)
+	rr.pressed.connect(func() -> void: ed.text = _P2C.nickname_suggest(ed.text))
+	box.add_child(rr)
+
+	var st := Label.new()
+	st.name = RENAME_STATUS
+	st.add_theme_font_size_override("font_size", 13)
+	st.add_theme_color_override("font_color", Color("#ff9a9a"))
+	st.position = Vector2(0, 176); st.size = Vector2(520, 24)
+	st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(st)
+
+	var cancel := Button.new()
+	cancel.text = "先不改"
+	cancel.add_theme_font_size_override("font_size", 18)
+	cancel.position = Vector2(40, 214); cancel.size = Vector2(210, _W_ROW_H)
+	UISkin.button(cancel)
+	cancel.pressed.connect(_close_rename_dialog)
+	box.add_child(cancel)
+	var ok := Button.new()
+	ok.name = RENAME_OK
+	ok.text = "就叫这个"
+	ok.add_theme_font_size_override("font_size", 18)
+	ok.position = Vector2(270, 214); ok.size = Vector2(210, _W_ROW_H)
+	UISkin.button(ok, Color("#9fe0a8"))
+	ok.pressed.connect(func() -> void:
+		var err: String = rename_apply(ed.text)
+		if err != "":
+			st.text = err
+			return
+		_close_rename_dialog()
+		_toast("改好了 · 现在叫「%s」" % str(GameState.nickname)))
+	box.add_child(ok)
+
+
+func _close_rename_dialog() -> void:
+	if _rename_layer != null and is_instance_valid(_rename_layer):
+		_rename_layer.queue_free()
+	_rename_layer = null
+
+
+## 改名本身。返回**要对玩家说的错误**; 空串 = 改好了(已写进存档)。
+## ★static: 门禁能不建界面直接穷举规则那一半; 界面那一半门禁真按「就叫这个」来量。
+static func rename_apply(raw: String) -> String:
+	var err: String = _P2C.nickname_error(raw)
+	if err != "":
+		return err
+	GameState.nickname = _P2C.nickname_clean(raw)
+	GameState.save()
+	return ""
