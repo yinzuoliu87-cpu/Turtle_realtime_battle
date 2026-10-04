@@ -1562,8 +1562,7 @@ func _local_stamp(utc_ts: int) -> String:
 
 
 func _local_hhmm(utc_ts: int) -> String:
-	var d := _local_dict(utc_ts)
-	return "%02d:%02d" % [int(d.get("hour", 0)), int(d.get("minute", 0))]
+	return _P2C.local_hhmm(utc_ts)
 
 
 # ─── 路由 ───

@@ -276,6 +276,22 @@ const FINALS_START_HOUR_UTC := 20      # 冠军签表开赛 20:00(同样是 UTC,
 ##   晋级的人照着晚上 9 点才来, 白天的分桶赛就全错过了。
 const FINALS_SEAT_HOUR_UTC := 8
 
+
+## UTC 时刻 → 玩家本地「HH:MM」。★唯一一份: 主菜单与对阵图共用(原来只在主菜单里有一份)。
+static func local_hhmm(utc_ts: int) -> String:
+	var bias: int = int(Time.get_time_zone_from_system().get("bias", 0))   # 分钟
+	var d: Dictionary = Time.get_datetime_dict_from_unix_time(utc_ts + bias * 60)
+	return "%02d:%02d" % [int(d.get("hour", 0)), int(d.get("minute", 0))]
+
+
+## 周日分组(finals_seat)第一次跑之前吗? 服务端在这之前对「报了名还没分组」的人回 too_few, 不能照字面念给玩家。
+## ★多给 15 分钟: cron 是每 10 分钟一次, 08:00 那一拍之后客户端还要过一个刷新周期才看得到桶。
+static func finals_before_seating(ts: int) -> bool:
+	if phase_at_utc(ts) != PHASE_FINALS:
+		return false
+	var d: Dictionary = Time.get_datetime_dict_from_unix_time(ts)
+	return int(d.get("hour", 0)) * 3600 + int(d.get("minute", 0)) * 60 < FINALS_SEAT_HOUR_UTC * 3600 + 15 * 60
+
 ## ─── 赛程判定(纯函数, 全部按 UTC) ────────────────────────────
 ## ★★E2 拍板: **赛程逻辑一律用 UTC, 时区换算只发生在显示层**。
 ##   两边都换算必然有一边忘 —— 那种 bug 一年只在夏令时切换那两天出现, 最难查。

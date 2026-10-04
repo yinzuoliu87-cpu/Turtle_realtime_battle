@@ -554,6 +554,7 @@ func _rebuild() -> void:
 const EK_WAIT := "wait"                  # 还没问到回音(正在找名册)
 const EK_UNREACHABLE := "unreachable"    # 问不到 —— 每 30 秒自己再看一次
 const EK_TOO_FEW := "too_few"            # 我晋级了, 但全周人太少, 决赛日没开起来
+const EK_NOT_SEATED := "not_seated"      # 报了名, 但还没到周日分组时间(服务端此时也回 too_few)
 const EK_FINALS_SOON := "finals_soon"    # 冠军赛还没集结(CROSS_BUCKET_LIVE 之后才走到)
 const EK_FINALS_LOCAL := "finals_local"  # 跨组总决赛没上线 ⇒ 各组自己评冠军
 const EK_NO_GROUP := "no_group"          # 确实没有我这一组(没晋级)
@@ -581,6 +582,10 @@ func _empty_kind() -> String:
 	##   他会以为自己的胜场没算。10 个人规模下晋级率约 34% ⇒ 只 0~1 人晋级约 10%,
 	##   这不是假想的边角。
 	if str(fv.get("reason", "")) == "too_few":
+		## ★★2026-10-04 周日实操: 08:00 UTC 分组之前, 服务端对每个已报名的人都回 too_few,
+		##   原来照字面说「人太少, 决赛日没开起来, 下周再来」—— 6 个晋级号全被劝走。
+		if _P2C.finals_before_seating(_clock()):
+			return EK_NOT_SEATED
 		return EK_TOO_FEW
 	if _view == _L.VIEW_FINALS:
 		## ★★★2026-09-26: 跨组总决赛是 **F 阶段**, 一行都没做 ——
@@ -626,6 +631,9 @@ func _empty_text() -> String:
 			return "正在翻本周的名册 · 看看你分在哪一组"
 		EK_UNREACHABLE:
 			return "连不上服务器 · 你这一组还没看到, 每 30 秒自己再看一次"
+		EK_NOT_SEATED:
+			return "还没分组 · 本地 %s 自动分组开打, 到时候这里会出现你的对阵" % _P2C.local_hhmm(
+				_P2C.week_anchor_utc(_clock()) + 6 * 86400 + int(_P2C.FINALS_SEAT_HOUR_UTC) * 3600)
 		EK_TOO_FEW:
 			return "本周只有 %d 人晋级 · 人太少, 决赛日没开起来; 你的晋级算数, 下周再来" % int(_feed_view().get("entered", 0))
 		EK_FINALS_SOON:

@@ -488,6 +488,7 @@ scripts/scenes/BracketMapScene.gd|lit|本轮备战已结束 · 等开打
 scripts/scenes/BracketMapScene.gd|lit|正在翻本周的名册 · 看看你分在哪一组
 scripts/scenes/BracketMapScene.gd|lit|神秘龟
 scripts/scenes/BracketMapScene.gd|lit|轮空
+scripts/scenes/BracketMapScene.gd|lit|还没分组 · 本地 %s 自动分组开打, 到时候这里会出现你的对阵
 scripts/scenes/BracketMapScene.gd|lit|这一轮你已经看过 %d 号了 · 一轮只能看一个对手
 scripts/scenes/BracketMapScene.gd|lit|这一轮已经翻篇了 · 刷新一下看看新的对阵
 scripts/scenes/BracketMapScene.gd|lit|连不上服务器 · 你这一组还没看到, 每 30 秒自己再看一次

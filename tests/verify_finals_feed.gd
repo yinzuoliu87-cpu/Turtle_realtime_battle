@@ -536,6 +536,7 @@ func _t_real_request() -> void:
 		int(vf.get("size", 0)) == 0, str(vf.get("size", "缺")))
 	## ★★走真场景的那个函数, 量**屏幕上真会出现的那句话**
 	var m2 = MAP.new()
+	m2._now_override = P2C.week_anchor_utc(int(Time.get_unix_time_from_system())) + 6 * 86400 + 12 * 3600   # 钉在周日分组之后(否则周日 08:15 UTC 前跑会拿到「还没分组」)
 	add_child(m2)
 	await get_tree().process_frame
 	var txt := str(m2._empty_text())
