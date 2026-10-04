@@ -1373,8 +1373,10 @@ func _ready() -> void:
 ##   · account_id / account_email / auth_refresh —— **身份只来自登录, 永远不许从存档里读**
 ##     (否则改一份云存档就能让别的设备「变成」另一个号)
 ##   · cloud_rev —— 同步元数据, 由服务端回包决定
+##   · replay_upload_pending —— 回放上传队列: 录像文件只在这台设备上, 别的设备拿到单子也发不出去
 const DEVICE_LOCAL_KEYS := ["bgm_volume", "sfx_volume", "fullscreen", "perf_lite",
-	"install_uid", "account_id", "account_email", "auth_refresh", "cloud_rev"]
+	"install_uid", "account_id", "account_email", "auth_refresh", "cloud_rev",
+	"replay_upload_pending"]
 
 
 ## 要上云的那一份: 全部字段减去设备本地键。
@@ -1485,6 +1487,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 ## 这一局录下的回放 id(`ReplayRecorder.on_settle` 写, 下面 `record_match` 挂到战绩行上就清)。
 ## ★只放内存: 它只活「结算 → 记战绩」这几行代码之间。
 var replay_pending_id: String = ""
+## 回放 S2: 还没**回读确认**传上服务端的录像单子(数组, 每条 {id, wk, acc, t, ls})。
+## ★进存档: 结算那一刻没网 / 杀了 App, 下次开主菜单补(`ReplayUploader.retry()`)。
+## ★设备本地、不进云(见 DEVICE_LOCAL_KEYS): 录像文件只在这台设备的 user://replays/ 里。
+## 写入/销单都在 `scripts/systems/replay/replay_uploader.gd`, 形状说明也在那里。
+var replay_upload_pending: Array = []
 
 func record_match(result: String, lineup: Array, mode_str: String, turn_num: int) -> void:
 	match_history.insert(0, {"result": result, "lineup": lineup, "mode": mode_str, "turn": turn_num})
@@ -1634,6 +1641,7 @@ func _save_dict() -> Dictionary:
 		"gauntlet_entry_week": gauntlet_entry_week,
 		"finals_pending_reveal": finals_pending_reveal,
 		"finals_report_pending": finals_report_pending,
+		"replay_upload_pending": replay_upload_pending,   # 回放 S2 上传队列(设备本地, 不上云)
 		"finals_deepest_round": finals_deepest_round,
 		"finals_rounds_total": finals_rounds_total,
 		"finals_champion": finals_champion,
@@ -1799,6 +1807,8 @@ func _apply_save_dict(data: Dictionary) -> void:
 	gauntlet_entry_week = int(data.get("gauntlet_entry_week", 0))
 	finals_pending_reveal = (data.get("finals_pending_reveal", {}) as Dictionary).duplicate(true)
 	finals_report_pending = (data.get("finals_report_pending", {}) as Dictionary).duplicate(true)
+	var _rup = data.get("replay_upload_pending", [])
+	replay_upload_pending = (_rup as Array).duplicate(true) if _rup is Array else []
 	finals_deepest_round = int(data.get("finals_deepest_round", 0))
 	finals_rounds_total = int(data.get("finals_rounds_total", 0))
 	finals_champion = bool(data.get("finals_champion", false))

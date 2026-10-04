@@ -23,6 +23,7 @@ extends Node
 
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const Backend := preload("res://scripts/net/backend.gd")
+const RU := preload("res://scripts/systems/replay/replay_uploader.gd")
 
 ## 两组不同的帧长序列(秒)。都含「一帧 0 步」(0.004)与「一帧 2~3 步」(0.04/0.05)。
 const PAT_REC := [0.016, 0.004, 0.04, 0.0167, 0.025, 0.05, 0.009, 0.0333]
@@ -128,14 +129,28 @@ func _ready() -> void:
 	_ok("分母 · 录制那一局真的写过存档(否则 V5 的「字节不变」是空检查)", save0.size() > 0, "%d 字节" % save0.size())
 	var hist_n0: int = (gs.match_history as Array).size()
 	var rp_n0: int = _count_replays()
+	var q0: PackedByteArray = var_to_bytes(gs.replay_upload_pending)
+	_ok("S2 录像里不带上传队列(不然每份录像都背着前几份的单子, 播放时还会被它覆盖)",
+		not (rec["state"] as Dictionary).has("replay_upload_pending") and (rec["state"] as Dictionary).has("dual_ghost"))
+	_ok("分母 · 录制那一局进了上传队列(S2; V5 的「队列不变」才不是空检查)",
+		(gs.replay_upload_pending as Array).size() >= 1 and str((gs.replay_upload_pending as Array)[-1].get("id", "")) == rid)
+
+	# ── S2: 播的是**上传用的那一份**(摘掉了会让人认出机器人的字段)——别的设备拿到的就是它 ──
+	var fg: Dictionary = (rec["state"] as Dictionary).get("dual_ghost", {})
+	_ok("分母 · 录制时的对手确实带着机器人标记(is_bot / bot_ 开头的 ghost_id)",
+		bool(fg.get("is_bot", false)) and str(fg.get("ghost_id", "")).begins_with("bot_"), str(fg.get("ghost_id", "")))
+	var up_rec: Dictionary = RU.for_upload(rec)
+	var ufg: Dictionary = (up_rec["state"] as Dictionary).get("dual_ghost", {})
+	_ok("★S2 上传那一份里没有机器人标记", not ufg.has("is_bot") and not ufg.has("ghost_id") and ufg.size() > 0,
+		str(ufg.keys()))
 
 	# ── V3: 播之前把 GameState 改成另一份 ──
 	_tamper_gs(gs)
 	var tampered: Dictionary = ReplayRecorder.capture_state()
 	var tm0: bool = bool(gs.test_mode)
 
-	print("=== 播: GameState 已改成另一份, 换一组帧长重算 ===")
-	ReplayRecorder.begin_play(rec)
+	print("=== 播: GameState 已改成另一份, 换一组帧长重算(播上传用的那一份) ===")
+	ReplayRecorder.begin_play(up_rec)
 	var play: Dictionary = await _run(PAT_PLAY, false)
 	_ok("★★V1 播放全程没有一个校验点对不上(diverged_at=%d %s)" % [int(play["div"]), str(play["why"])], int(play["div"]) < 0)
 	var n_real_cp := 0
@@ -157,6 +172,7 @@ func _ready() -> void:
 	_ok("★V5 存档文件逐字节不变", FileAccess.get_file_as_bytes(GameState.SAVE_PATH) == save0)
 	_ok("★V5 战绩条数不变(%d)" % (gs.match_history as Array).size(), (gs.match_history as Array).size() == hist_n0)
 	_ok("★V5 没有多录一份回放(%d)" % _count_replays(), _count_replays() == rp_n0)
+	_ok("★V5 上传队列不变(播放既不入队、也没被记录里的那份覆盖)", var_to_bytes(gs.replay_upload_pending) == q0)
 
 	# ── V6 版本闸 ──
 	var old: Dictionary = rec.duplicate(true)

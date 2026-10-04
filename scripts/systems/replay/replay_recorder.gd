@@ -40,7 +40,10 @@ const BATTLE_SCENE := "res://scenes/RealtimeBattle3D.tscn"
 ## 不进记录的 GameState 变量。★只放【与对局无关且不该外传】的 —— 每加一个都要想清楚
 ##   "战斗场读不读它"; 读的话 V3(篡改法)会红。
 const STATE_DENY := ["test_mode", "auth_refresh", "account_email", "install_uid", "cloud_rev",
-	"match_history", "finals_report_pending", "replay_pending_id"]
+	"match_history", "finals_report_pending", "replay_pending_id",
+	## S2 上传队列: 不进记录(否则每份录像都背着前几份的单子), 播放时也不许被记录覆盖(V5)。
+	"replay_upload_pending"]
+const Uploader := preload("res://scripts/systems/replay/replay_uploader.gd")
 
 ## 待播的那一份: 播放入口写、战斗场 `_ready` 里 `start()` 读走。
 static var pending_play: Dictionary = {}
@@ -231,6 +234,7 @@ func on_settle(won: bool) -> bool:
 		var id := save_record(rec)
 		if id != "" and GameState != null:
 			GameState.replay_pending_id = id      # record_match 那一刻挂到战绩行上
+			Uploader.enqueue(id)                  # S2: 先进落盘队列再发; 回读确认才销单
 		return false
 	if mode == "play":
 		if not finished:
@@ -346,7 +350,7 @@ static func decode(b: PackedByteArray) -> Dictionary:
 	return v if v is Dictionary else {}
 
 
-## 存本地 user://replays/<id>.rpl, 返回 id("" = 没存成)。第二步(上传)才进服务端。
+## 存本地 user://replays/<id>.rpl, 返回 id("" = 没存成)。上传(S2)见 `replay_uploader.gd`。
 static func save_record(r: Dictionary) -> String:
 	var id := new_id()
 	r["id"] = id
@@ -369,9 +373,14 @@ static func load_record(id: String) -> Dictionary:
 	return decode(b)
 
 
+## uuid v4 —— S2 起它同时是服务端 `matches.match_id`(uuid 列), 本地文件名与战绩行 `replay_id` 也是它,
+##   S3 按它去服务端取那一行。
 static func new_id() -> String:
-	var c := Crypto.new()
-	return c.generate_random_bytes(12).hex_encode()
+	var b := Crypto.new().generate_random_bytes(16)
+	b[6] = (b[6] & 0x0f) | 0x40
+	b[8] = (b[8] & 0x3f) | 0x80
+	var h := b.hex_encode()
+	return "%s-%s-%s-%s-%s" % [h.substr(0, 8), h.substr(8, 4), h.substr(12, 4), h.substr(16, 4), h.substr(20, 12)]
 
 
 # ─────────────────────────────── 播放入口 ───────────────────────────────

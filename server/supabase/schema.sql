@@ -161,6 +161,26 @@ create policy matches_write_own on public.matches
   for insert with check (left_account = auth.uid() or right_account = auth.uid());
 
 -- ─────────────────────────────────────────────────────────────
+-- 3b. matches.replay —— 跨设备回放 S2（2026-10-04，方案书 docs/plans/20261003-跨设备回放.md §4.6）
+--    内容：一局「重算所需的全部输入」—— Godot `var_to_bytes` + deflate 的二进制，再 base64。
+--      ★不用 jsonb：JSON 往返会改浮点末位（实测 0.30000000000000004 → 0.3），站位差一位第一步就分叉。
+--      ★不用 bytea：PostgREST 写 bytea 要 `\x` 十六进制，体积翻倍；base64 文本最省事。
+--    一局实测约 2.5 KB（base64 后约 3.4 KB）。上限 64 KB 是二十倍余量，
+--      ★必须与客户端 `replay_uploader.gd` 的 `REPLAY_MAX_B64` 同一个数（门禁 verify_replay_upload_retry 逐字对）。
+--    客户端写法：POST 时自带 `match_id`（uuid v4，= 本地录像 id），写完**按 match_id 回读、逐字比对 replay**
+--      才算传成（插入回 201 不算）——所以这张表的读策略（matches_read_all）是 S2 的前提，别收窄成「只读别人的」。
+--    `right_account` 客户端恒写 null：对手是机器人时那一列没法填，填了就等于告诉所有人「这是机器人」。
+--    ★没有 update / delete 策略（同上）：一场录像一旦写进去就不可改；重复 POST 撞主键回 409，客户端靠回读裁决。
+-- ─────────────────────────────────────────────────────────────
+alter table public.matches add column if not exists replay text;
+
+alter table public.matches drop constraint if exists matches_replay_size;
+alter table public.matches add constraint matches_replay_size
+  check (replay is null
+         or (octet_length(replay) between 1 and 65536
+             and replay ~ '^[A-Za-z0-9+/]+={0,2}$'));
+
+-- ─────────────────────────────────────────────────────────────
 -- 4. standings —— 周榜与头衔
 --    ★**客户端不许直接写**：排名与头衔是可作弊的。写入走 Edge Function（service_role），
 --      它复用 server/rules.mjs 做账目校验（D7 第一步：客户端算 + 服务端校验与抽检）。
