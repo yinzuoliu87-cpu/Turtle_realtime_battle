@@ -13,6 +13,42 @@ const TS_CHARGE := 1.0       # 蓄力几秒才真的定格
 ##   所以文案同步改成手写三档(见 data/phase2-equipment.json p2eq_059)。
 ## ★三项都跟 `_ts_maxstar`(全场最高星)走 —— 因为只有最高星的携带者才进 `casters`
 ##   (低星本场不生效), 所以"最高星"就是"能动那批人自己的星", 不会错位。
+## 时停里随携带者顺延的【装备子状态】到期时刻(`u["eq_state"][id][字段]`, 与 battle._t 比)。
+##   aspd_until = 蛋糕第三块攻速窗口 · up_until = 081 举盾 · vine_aspd_until = 藤蔓攻速 · emp_cd_until = 062 螳螂 EMP 冷却
+## ⚠ 不收 085 压电的 `win_end`: 那是「每秒受伤转龟能」的结算窗, 时停里没人打得到携带者, 窗口顺不顺延都不起作用。
+const TS_EQ_TIMER_FIELDS := ["aspd_until", "up_until", "vine_aspd_until", "emp_cd_until"]
+## 主场景 `_TS_TIMER_FIELDS` 之外再补的【单位顶层】到期时刻(2026-10-04·§8.7 #9 逐个核过; 放这里是因为主文件有行数预算)。
+##   原来时停里不倒计时: 大师狂怒的移速半边(`haste_until`/`echarge_until` 早在表里, 同一个 buff 两半不同步)、
+##   僵硬减益(同 `slow_until`)、钻石自动滚/赛博闪避冷却、041 涨潮(还原走 `_pending_shots`, 时停里照走)、财神梭哈免控。
+const TS_EXTRA_UNIT_TIMER_FIELDS := ["move_buff_until", "stiff_until", "roll_free_cd", "_ai_dodge_cd", "_ebb_until", "cc_immune_until"]
+
+## ── 时停里的协程(2026-10-04·方案书 20260916c §8.7 #8) ──
+## `_wait_sim` 量的是 `battle._t`, 而 `_t` 只在正常分支走 ⇒ 原来**携带者自己**的多段技/装备协程
+## 一碰 `_wait_sim` 就停在半路, 等时停结束才继续(探针: `_wait_sim(0.1)` 平时 6 步醒, 时停里 1206 步)。
+## 时停的设计是「携带者自由攻击/施法/移动、伤害即时结算, 其余定格」⇒ 时停里**携带者 tick 了的那一步**,
+## 主人是携带者的等待也算走了 dt。主人缺省(全局演出) / 是被定格者 ⇒ 0, 照旧停。
+## ⚠ 顿帧(U2)那一步走 `if frozen:` 分支, 携带者不 tick、这里不记 ⇒ 顿帧期间协程照旧停, 行为不变。
+## ⚠ 没有时停的局永远返回 0 ⇒ `_wait_sim` 的终点与改前逐位相同。
+var _carrier_step: int = -1
+var _carrier_units: Array = []
+var _carrier_dt: float = 0.0
+
+func mark_carrier_step(step_n: int, dt: float) -> void:
+	_carrier_step = step_n
+	_carrier_units = _ts_active.duplicate()
+	_carrier_dt = dt
+
+## 这一步(step_n)主人 `who` 该记多少游戏秒: 时停里携带者 tick 了 ⇒ dt, 否则 0。
+func carrier_credit(who, step_n: int) -> float:
+	if _carrier_step == step_n and battle._arr_has_unit(_carrier_units, who):
+		return _carrier_dt
+	return 0.0
+
+## 时停里 `who` 是否【被定格】—— 给直接 `await sim_stepped` 推位移/计时的协程用(那一族不经 `_wait_sim`、
+## 每步都醒 ⇒ 原来被定格的忍者冲刺/双头炮弹/剑气在时停里照样走)。携带者返回 false 照常推进。
+## ⚠ 只看时停不看顿帧: 这一族在顿帧期间本来就推进, 行为不变(U2 不在本轮动)。
+func holds(who) -> bool:
+	return not _ts_active.is_empty() and not battle._arr_has_unit(_ts_active, who)
 const TS_DUR := [4.0, 7.0, 20.0]                  # 定格时长(秒) ★原 5/10/30
 const TS_ECHARGE_MULT := [1.5, 2.0, 3.0]          # 时停期间携带者的龟能充能倍率 ★原 2.0 全星同值
 const TS_INSTANT_ENERGY := [40.0, 150.0, 300.0]   # 定格瞬间立即给的龟能 ★原 15.0 全星同值
@@ -63,7 +99,7 @@ func _ts_advance_unit_timers(u: Dictionary, delta: float) -> void:
 	# (眩晕/嘲讽/减速/护盾/各种buff的到期时刻) 都是相对 battle._t 记的, battle._t 不走就永远不到期。
 	# 用户2026-07-19: "如果在时间暂停的时候自己眩晕了, 为什么会被一直眩晕?" —— 就是这个原因。
 	# 修法: 只为该单位把这些到期时刻按真实 delta 前移, 等价于单独为它推进时间。
-	for f in battle._TS_TIMER_FIELDS:
+	for f in battle._TS_TIMER_FIELDS + TS_EXTRA_UNIT_TIMER_FIELDS:
 		var v: float = float(u.get(f, 0.0))
 		if v > battle._t:
 			u[f] = maxf(battle._t, v - delta)
@@ -73,6 +109,13 @@ func _ts_advance_unit_timers(u: Dictionary, delta: float) -> void:
 	for d in u.get("dots", []):
 		if d is Dictionary and float(d.get("until", 0.0)) > battle._t:
 			d["until"] = maxf(battle._t, float(d["until"]) - delta)
+	## ★装备子状态里的到期时刻(2026-10-04·§8.7 #9): 它们记在 `u["eq_state"][装备id]` 里, 上面那张表够不着
+	##   ⇒ 携带者的蛋糕攻速窗口/081 举盾/藤蔓攻速 buff 在时停里白白延长, 062 螳螂 EMP 冷却冻住。
+	for est in (u.get("eq_state", {}) as Dictionary).values():
+		if not (est is Dictionary): continue
+		for f2 in TS_EQ_TIMER_FIELDS:
+			if (est as Dictionary).has(f2) and float(est[f2]) > battle._t:
+				est[f2] = maxf(battle._t, float(est[f2]) - delta)
 
 func _unit_hourglass_star(u: Dictionary) -> int:   # 该单位所装沙漏最高星(0=无)
 	var best := 0

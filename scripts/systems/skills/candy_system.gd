@@ -124,8 +124,9 @@ func _sk_candy_barrage(u: Dictionary, tgt) -> void:            # 糖果龟·技�
 	for i in range(BARRAGE_TICKS):                              # 8跳·每跳8颗糖弹密集散落该区·落点局部结算(用户2026-07-15两次加密→3→6→8颗+炮弹/糖爆调大)
 		battle._pending_shots.append({"delay": float(i) * BARRAGE_TICK_SEC, "src": u, "fn": func() -> void:
 			for b in range(8):
-				var ang = randf() * TAU
-				var land: Vector2 = ctr + Vector2(cos(ang), sin(ang)) * randf_range(15.0, 430.0)
+				## ★2026-10-04: 落点决定谁吃伤害/谁拿盾 ⇒ 必须走战斗随机流(原来是全局 randf ⇒ 同种子两遍 945/1000 步分叉·首个分叉步 50)
+				var ang = battle._battle_rng.randf() * TAU
+				var land: Vector2 = ctr + Vector2(cos(ang), sin(ang)) * battle._battle_rng.randf_range(15.0, 430.0)
 				_candy_shell_drop(land, func() -> void:          # 糖弹落地: 大糖爆+落点120码局部结算
 					battle._burst_vfx("res://assets/sprites/vfx/candy-burst.png", land, 185.0, 0.3)
 					for o in battle._units:
@@ -151,6 +152,8 @@ func _candy_shell_drop(land2d: Vector2, on_land: Callable) -> void:   # 糖衣�
 	s.billboard = BaseMaterial3D.BILLBOARD_DISABLED; s.shaded = false; s.transparent = true
 	s.pixel_size = (58.0 * battle.WS) / float(maxi(1, tex.get_height()))   # 炮弹调大(用户2026-07-15)
 	var from_h = 8.5
+	## ★下落时长决定 on_land(伤害结算)落在哪一步 ⇒ 走战斗随机流(tween 由 sim 步喂, 时长就是结算时刻)
+	var fall_sec: float = battle._battle_rng.randf_range(0.42, 0.6)
 	s.position = battle._world_pos(land2d, from_h)
 	battle._world.add_child(s)
 	var tw = battle._reg_tween()
@@ -162,7 +165,7 @@ func _candy_shell_drop(land2d: Vector2, on_land: Callable) -> void:   # 糖衣�
 			var tf = s.global_transform
 			tf.basis = battle._vfx.cam_basis() * Basis(Vector3(0, 0, 1), p * TAU * 2.0)   # 翻滚
 			s.global_transform = tf
-	, 0.0, 1.0, randf_range(0.42, 0.6)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	, 0.0, 1.0, fall_sec).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tw.tween_callback(func() -> void:
 		if is_instance_valid(s): s.queue_free()
 		if on_land.is_valid(): on_land.call())

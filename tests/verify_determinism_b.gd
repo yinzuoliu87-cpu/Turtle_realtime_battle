@@ -118,11 +118,14 @@ func _trace(pairs: Array, frames: int, loadouts: Dictionary = {}, cast_probe: bo
 	## ★`cast_probe` 场景的分母(⑫⑬): 每只左队单位放了几次主动技。数的是产品自己写的
 	##   `skill_cd[技]` **抬头**(放技成功后冷却被写满) —— 与上面龟壳那条同一个口径, 不是我插的标记。
 	var casts := {}     # "序号:id" → 次数
+	## ★`ts_probe`(⑮)的分母: 本遍有多少步时停是开着的(产品自己的 `_timestop._ts_active`)。
+	var ts_steps := 0
 	var cd_last := {}   # "序号:id:技" → 上一步的冷却
 	for _i in range(frames):
 		await get_tree().process_frame
 		tr.append(_fp(s))
 		tw_max = maxi(tw_max, s._sim_tweens.size())
+		if not (s._timestop._ts_active as Array).is_empty(): ts_steps += 1
 		if cast_probe:
 			var ui := 0
 			for u4 in s._units:
@@ -150,7 +153,7 @@ func _trace(pairs: Array, frames: int, loadouts: Dictionary = {}, cast_probe: bo
 	s.queue_free()
 	await get_tree().process_frame
 	await get_tree().process_frame
-	return [tr, det, tw_max, taken, pool_n, copy_casts, casts]
+	return [tr, det, tw_max, taken, pool_n, copy_casts, casts, ts_steps]
 
 
 ## 同种子跑两遍 → 逐步比对。返回 [分叉步数, 比对步数, 首个分叉步, A的trace, 附注]
@@ -175,11 +178,11 @@ func _two_runs(pairs: Array, frames: int, sd: String, loadouts: Dictionary = {},
 	var note := "det=%s 比对步数=%d tween峰值=%d 全场承伤=%.0f 不同指纹=%d 可抄池=%d 复制施放=%d" % [
 		str(a[1]), n, int(a[2]), float(a[3]), uniq.size(), int(a[4]), int(a[5])]
 	return [bad, n, first, ta, note, int(a[2]), float(a[3]), uniq.size(), tb,
-		int(a[4]), int(a[5]), int(b[4]), int(b[5]), a[6], b[6]]
+		int(a[4]), int(a[5]), int(b[4]), int(b[5]), a[6], b[6], int(a[7]), int(b[7])]
 
 
 func _scenario(tag: String, pairs: Array, frames: int, sd: String, loadouts: Dictionary = {},
-		copy_probe: bool = false, cast_probe: bool = false) -> void:
+		copy_probe: bool = false, cast_probe: bool = false, ts_probe: bool = false) -> void:
 	var r: Array = await _two_runs(pairs, frames, sd, loadouts, cast_probe)
 	var bad: int = int(r[0])
 	var n: int = int(r[1])
@@ -214,6 +217,10 @@ func _scenario(tag: String, pairs: Array, frames: int, sd: String, loadouts: Dic
 		_ok("分母 · %s · 左队 %d 只两遍都真的放过主动技(A %s)" % [tag, ca.size(), str(ca)],
 			ca.size() >= 5 and silent.is_empty(),
 			"没放过技的: %s —— 数的是产品写的 skill_cd 抬头" % str(silent))
+	## ★`ts_probe`(⑮)的分母: 两遍都真的进过时停, 且至少 300 步 —— 没进时停, 那条「时停分支逐步一致」就是空跑。
+	if ts_probe:
+		_ok("分母 · %s · 两遍都真的进过时停(A %d 步 / B %d 步, 都须 ≥ 300)" % [tag, int(r[15]), int(r[16])],
+			int(r[15]) >= 300 and int(r[16]) >= 300, "数的是产品的 _timestop._ts_active 非空的步数")
 	# ★正题
 	var d := ""
 	if first >= 0:
@@ -257,7 +264,7 @@ func _ready() -> void:
 	## ★分母: 表里必须正好 9 个场景 —— 少一个就是有人把场景删了而没人发现。
 	var scs: Array = SC.all()
 	_ok("分母 · 场景表读到 %d 个场景(与 verify_determinism_cross 同一份表)" % scs.size(),
-		scs.size() == 13, "%d 个" % scs.size())
+		scs.size() == 15, "%d 个" % scs.size())
 	## ★★28 龟覆盖(2026-10-04 加): pets.json 里的**每一只**龟至少在一个场景里出场。
 	##   在这之前 10 只从没出现过(angel/ice/ghost/candy/line/phoenix/lava/chest/space/headless),
 	##   而没有任何判据会因此红 —— 下一只新龟加进来时同样会静静地漏掉。
@@ -290,7 +297,7 @@ func _ready() -> void:
 			if str((p0 as Array)[0]) == "shell": cp = true
 		await _scenario(str(scd["tag"]), scd["pairs"] as Array, int(scd["frames"]),
 			str(scd["seed"]), scd.get("loadouts", {}) as Dictionary, cp,
-			bool(scd.get("cast_probe", false)))
+			bool(scd.get("cast_probe", false)), bool(scd.get("ts_probe", false)))
 
 	# ⑩ 反证(非恒真式): 换种子 → 逐步指纹序列必须不同; 否则说明结果根本不吃 _battle_rng
 	## ★与场景 ② 同一套摆位(共用表里取) —— 唯一的变量只能是种子

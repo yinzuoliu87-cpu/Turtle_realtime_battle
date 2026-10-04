@@ -1687,13 +1687,14 @@ func _snapshot_render_prev() -> void:
 ##   第二次施放变成 3 步, 同一段演出两次施放长度差 33%。
 ##   ⇒ 拿一个远小于 SIM_DT(0.0167)、又远大于浮点噪声(~1e-13)的 EPS 把这条刀锋抹掉。
 ##   凡是【等 N 个 sim 步】的演出(几乎全部)都吃这个亏, 不止 010。
-func _wait_sim(secs: float) -> void:
+func _wait_sim(secs: float, who = null) -> void:   # who=协程主人: 时停里携带者照走、被定格者/缺省照停(TimestopSystem.carrier_credit)
 	const _WAIT_EPS := 1.0e-6
 	var t_end: float = _t + secs - _WAIT_EPS
 	var guard: int = 0
 	while _t < t_end and guard < 6000 and is_instance_valid(self) and is_inside_tree():   # 离场后不再有 sim 步 ⇒ 不再醒(台账 S8: 原来醒来就撞 get_tree()==null)
 		await sim_stepped
 		guard += 1
+		if who != null: t_end -= _timestop.carrier_credit(who, _sim_step_n)
 
 func _my_trainer():
 	for u in _units:
@@ -2268,6 +2269,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 			_timestop._end_timestop()
 		else:
 			if not _over:
+				_timestop.mark_carrier_step(_sim_step_n, dt)   # 给 `_wait_sim(secs, who)`: 这一步携带者走了 dt
 				for u in _timestop._ts_active:
 					_timestop._ts_advance_unit_timers(u, dt)   # 先让它自己的状态到期时刻按真实时间走(否则_t冻结→眩晕等永不解除)
 					_tick_unit(u, dt)        # active携带者自由行动(移动/普攻/放技/命中即时结算)
@@ -2995,7 +2997,7 @@ func _big_bear_charge_and_spawn(u: Dictionary, si: int) -> void:   # 满层: 携
 	var gt := _reg_tween()
 	gt.tween_property(glow, "modulate:a", 0.95, UIPalette.T_SET)
 	gt.parallel().tween_property(glow, "scale", Vector3(3.2, 3.2, 3.2), 1.2)
-	await _wait_sim(EquipTickSystem.DOLL_CHARGE_SEC)
+	await _wait_sim(EquipTickSystem.DOLL_CHARGE_SEC, u)
 	if not is_instance_valid(self): return
 	if is_instance_valid(glow): glow.queue_free()
 	var stt: Dictionary = u.get("eq_state", {}).get("p2eq_034", {})
@@ -3527,7 +3529,7 @@ func _throw_dumbbell(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   # 钢�
 		var pf: float = el / FLY_T
 		if is_instance_valid(spr):
 			spr.position = _world_pos(from2d.lerp(to2d, pf), lerpf(1.1, 1.0, pf))
-		await _wait_sim(FLY_STEP)
+		await _wait_sim(FLY_STEP, u)
 		if not is_instance_valid(self):
 			return   ## await 期间战斗可能已结束(场景 free)
 	_dumbbell_hit(spr, u, tgt, dmg)
@@ -3855,6 +3857,7 @@ func _bear_shockwave(u: Dictionary, tgt: Dictionary, _si: int) -> void:   # 大�
 	var rt := 0.0
 	while rt < 0.4 and u.get("alive", false):
 		await sim_stepped
+		if _timestop.holds(u): continue   # 时停: 被定格的单位这一步不推进(携带者照常; 顿帧行为不变)
 		rt += _frame_sim_dt
 		var a: float = rt / 0.4
 		u["_bear_voff"] = Vector3(0.0, a * a * 0.95, 0.0)   # 起身: 直上举高(无横移=不左右滑)
@@ -3864,6 +3867,7 @@ func _bear_shockwave(u: Dictionary, tgt: Dictionary, _si: int) -> void:   # 大�
 	var st := 0.0
 	while st < 0.12 and u.get("alive", false):
 		await sim_stepped
+		if _timestop.holds(u): continue   # 时停: 被定格的单位这一步不推进(携带者照常; 顿帧行为不变)
 		st += _frame_sim_dt
 		u["_bear_voff"] = Vector3(0.0, lerpf(0.95, -0.22, st / 0.12), 0.0)   # 猛砸下: 直下(无横移)
 	# === 砸地瞬间: 落地压扁 + 大震屏 + 顿帧 + 尘, 冲击波起 ===
@@ -4258,6 +4262,7 @@ func _summon_walking_bear(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   #
 	var wt := 0.0
 	while is_instance_valid(bear) and tgt != null and tgt.get("alive", false):
 		await sim_stepped
+		if _timestop.holds(u): continue   # 时停: 被定格的单位这一步不推进(携带者照常; 顿帧行为不变)
 		var dt := _frame_sim_dt
 		guard += dt; wt += dt
 		bear.frame = int(wt * 10.0) % 7             # 走路循环 10fps
@@ -4280,6 +4285,7 @@ func _summon_walking_bear(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   #
 		var hit := false
 		while kt < 0.34 and is_instance_valid(bear):
 			await sim_stepped
+			if _timestop.holds(u): continue   # 时停: 被定格的单位这一步不推进(携带者照常; 顿帧行为不变)
 			kt += _frame_sim_dt
 			bear.frame = mini(4, int(kt / 0.06))
 			if not hit and bear.frame >= 3:
@@ -5583,6 +5589,7 @@ func _sk_basic_chiwave(u: Dictionary, tgt) -> void:            # 小龟·龟派�
 		var _del: float = 0.0
 		while _del < _ddur and u.get("alive", false) and is_inside_tree():
 			await sim_stepped
+			if _timestop.holds(u): continue   # 时停: 被定格的单位这一步不推进(携带者照常; 顿帧行为不变)
 			_del += _frame_sim_dt
 			u["pos"] = _ds.lerp(_bp, clampf(_del / _ddur, 0.0, 1.0))
 		u["pos"] = _bp
@@ -5719,6 +5726,7 @@ func _basic_slam_run(u: Dictionary, tgt: Dictionary, dir: Vector2, u_start: Vect
 	var p := 0.0
 	while el < total and u.get("alive", false) and tgt.get("alive", false) and is_inside_tree():
 		await sim_stepped
+		if _timestop.holds(u): continue   # 时停: 被定格的单位这一步不推进(携带者照常; 顿帧行为不变)
 		el += _frame_sim_dt
 		if el < T_GRAB:                                     # ① 擒住: 敌拉到龟身前
 			p = el / T_GRAB

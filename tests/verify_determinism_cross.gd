@@ -190,7 +190,7 @@ func _ready() -> void:
 
 	var scs: Array = SC.all()
 	_ok("★分母: 场景表读到 %d 个场景(与 verify_determinism_b 同一份表)" % scs.size(),
-		scs.size() == 13, "%d 个" % scs.size())
+		scs.size() == 15, "%d 个" % scs.size())
 
 	var golden: Dictionary = _load_golden()
 	var missing: Array = []
