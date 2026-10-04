@@ -18,6 +18,13 @@ extends Node
 ##      反证: 从记录里删掉 `persistent_equipped`(那件装备真的在场上) ⇒ 必须对不上
 ##   V5 回放零副作用: 存档文件逐字节不变 / 战绩条数不变 / 不多录一份回放 / GameState 播完还原
 ##   V6 版本闸: 版本号不同 ⇒ `play()` 返回原因、不进战斗场、GameState 不动
+##   V1b 引擎帧不走也一致(2026-10-04 修「约 40 次红 1 次 · 第 360 步校验点 5」):
+##      播放时从「建场」到「开打后 40 帧」**一帧都不让引擎走**(连着调 `_process`、中间不 await)
+##      ⇒ 物理帧一个都不推进(分母断言: 物理帧计数前后相等)。
+##      根因: 寻路图(NavigationServer2D)默认**异步**, 建好之后要等下一个**物理帧**才生效,
+##        而物理帧按墙钟走 ⇒ 开打头几步走直线还是绕障, 取决于那几帧真实花了多久。
+##        回放摆位期 8 倍速快进, 建场到开打只隔约 5 帧 —— 机器快到这 5 帧不满 1/60 秒, 就分叉。
+##      这一遍把「这几帧不满 1/60 秒」从运气造成必然: 修之前**必红**, 修之后必绿。
 ##
 ## ★分母: 录到的校验点数 > 0, 每类输入(fight / present / surrender)至少一条, 两路都开打过。
 
@@ -166,6 +173,18 @@ func _ready() -> void:
 		int(rec_run["juice"]) != int(play["juice"]) and int(cmp[0]) == 0)
 	_ok("分母 · 回放那一遍一帧也跑过 0 步与 ≥2 步", int(play["min_pf"]) == 0 and int(play["max_pf"]) >= 2)
 
+	# ── V1b: 建场 → 开打后 40 帧, 引擎一帧都不走(物理帧不推进) ──
+	print("=== 播(V1b): 从建场到开打后 40 帧, 引擎一帧都不走 ===")
+	ReplayRecorder.begin_play(rec)
+	var hold: Dictionary = await _run(PAT_PLAY, false, true)
+	_ok("分母 · V1b 那段窗口里物理帧真的一个没走(建场后 %d / 开打后 40 帧 %d)" % [int(hold["pf_a"]), int(hold["pf_b"])],
+		int(hold["pf_a"]) >= 0 and int(hold["pf_b"]) == int(hold["pf_a"]))
+	_ok("★★V1b 引擎帧不走 ⇒ 播放全程校验点仍一个不差(diverged_at=%d %s)" % [int(hold["div"]), str(hold["why"])],
+		int(hold["div"]) < 0 and int(hold["cps"]) == n_real_cp)
+	var cmp_h: Array = _compare(rec_run["fps"], hold["fps"], int(rec["end"]["s"]))
+	_ok("★★V1b 逐 sim 步全场指纹一致: %d/%d 步分叉(首个 %d)" % [int(cmp_h[0]), int(cmp_h[1]), int(cmp_h[2])],
+		int(cmp_h[0]) == 0 and int(cmp_h[1]) >= int(rec["end"]["s"]) / 2, str(cmp_h[3]))
+
 	# ── V5 回放零副作用 ──
 	_ok("★V5 播完 GameState 还原成播之前那一份(篡改后的那份)", _same(ReplayRecorder.capture_state(), tampered))
 	_ok("★V5 test_mode 还原(%s)" % str(gs.test_mode), bool(gs.test_mode) == tm0)
@@ -215,7 +234,8 @@ func _reverse(name: String, r: Dictionary) -> void:
 
 
 ## 跑一局。rec=true 时扮演玩家(点幕布/拖站位/按开打/第二路打一会儿认输)。
-func _run(pat: Array, as_player: bool) -> Dictionary:
+## hold=true(V1b): 从第一路预览期到开打后 40 帧不 await 引擎帧 ⇒ 这段里物理帧一个都不走。
+func _run(pat: Array, as_player: bool, hold: bool = false) -> Dictionary:
 	var s = RB.new()
 	add_child(s)
 	s.set_process(false)          # 帧长由我喂(交互模式的累加器照常工作, 只是帧切法受控)
@@ -233,6 +253,8 @@ func _run(pat: Array, as_player: bool) -> Dictionary:
 	var min_pf := 99
 	var max_pf := 0
 	var done_frames := 0
+	var pf_a := -1                 # V1b: 第一路建场之后(第一次看到摆位/开打)的物理帧计数
+	var pf_b := -1                 # V1b: 第一路开打后第 40 帧的物理帧计数
 	var i := 0
 	while i < MAX_FRAMES:
 		var st: String = str(s._dl_state)
@@ -259,7 +281,14 @@ func _run(pat: Array, as_player: bool) -> Dictionary:
 				surrendered = true
 		var before: int = int(s._sim_step_n)
 		s._process(float(pat[i % pat.size()]))
-		await get_tree().process_frame
+		var st2: String = str(s._dl_state)
+		if hold and pf_a < 0 and (st2 == "place" or st2 == "fight"):
+			pf_a = Engine.get_physics_frames()
+		if hold and pf_a >= 0 and pf_b < 0 and st == "fight" and st2 == "fight" and st_frames >= 40:
+			pf_b = Engine.get_physics_frames()
+		var holding: bool = hold and pf_b < 0 and (st == "preview" or st2 == "preview" or pf_a >= 0)
+		if not holding:
+			await get_tree().process_frame
 		var stepped: int = int(s._sim_step_n) - before
 		if str(s._dl_state) == "fight":
 			min_pf = mini(min_pf, stepped)
@@ -274,7 +303,7 @@ func _run(pat: Array, as_player: bool) -> Dictionary:
 	var out := {"fps": fps, "juice": juice, "det": det, "state": str(s._dl_state),
 		"div": int(s._replay.diverged_at), "why": str(s._replay.diverge_why),
 		"cps": int(s._replay.cp_checked), "finished": bool(s._replay.finished),
-		"min_pf": min_pf, "max_pf": max_pf, "dragged": dragged, "frames": i}
+		"min_pf": min_pf, "max_pf": max_pf, "dragged": dragged, "frames": i, "pf_a": pf_a, "pf_b": pf_b}
 	for _g in range(10):
 		await get_tree().process_frame
 	s.queue_free()
