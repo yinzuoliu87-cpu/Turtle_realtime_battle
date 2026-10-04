@@ -156,15 +156,28 @@ scripts/gamedata/minion_codex.gd|lit|长手刃 · 普攻
 scripts/gamedata/minion_codex.gd|lit|顶上统领位 · 近战
 scripts/gamedata/phase2_config.gd|lit|\n不绑也能玩 —— 只是换了手机接不回来；邮箱和名字以后随时能改。
 scripts/gamedata/phase2_config.gd|lit|\n收不到验证码？看看垃圾邮件，或回上一步换个邮箱重发。
+scripts/gamedata/phase2_config.gd|lit|一
+scripts/gamedata/phase2_config.gd|lit|三
 scripts/gamedata/phase2_config.gd|lit|乌龟
+scripts/gamedata/phase2_config.gd|lit|二
+scripts/gamedata/phase2_config.gd|lit|五
 scripts/gamedata/phase2_config.gd|lit|亚军
 scripts/gamedata/phase2_config.gd|lit|休赛
 scripts/gamedata/phase2_config.gd|lit|休赛日 · 按积分赛的规矩打 · 这天打的算本周场次
+scripts/gamedata/phase2_config.gd|lit|六
 scripts/gamedata/phase2_config.gd|lit|冠军
 scripts/gamedata/phase2_config.gd|lit|决赛日
 scripts/gamedata/phase2_config.gd|lit|双方同时开打 · 结果统一在本轮开播时揭晓\n去【决赛日 → 看对阵图】等翻面
 scripts/gamedata/phase2_config.gd|lit|名字太短了 —— 至少 %d 个字
 scripts/gamedata/phase2_config.gd|lit|名字太长了 —— 最多 %d 个字(现在 %d 个)
+scripts/gamedata/phase2_config.gd|lit|周一
+scripts/gamedata/phase2_config.gd|lit|周三
+scripts/gamedata/phase2_config.gd|lit|周二
+scripts/gamedata/phase2_config.gd|lit|周五
+scripts/gamedata/phase2_config.gd|lit|周六
+scripts/gamedata/phase2_config.gd|lit|周四
+scripts/gamedata/phase2_config.gd|lit|周日
+scripts/gamedata/phase2_config.gd|lit|四
 scripts/gamedata/phase2_config.gd|lit|四强
 scripts/gamedata/phase2_config.gd|lit|大师
 scripts/gamedata/phase2_config.gd|lit|小
@@ -174,6 +187,8 @@ scripts/gamedata/phase2_config.gd|lit|彩虹
 scripts/gamedata/phase2_config.gd|lit|忍者
 scripts/gamedata/phase2_config.gd|lit|换一个
 scripts/gamedata/phase2_config.gd|lit|教头
+scripts/gamedata/phase2_config.gd|lit|日
+scripts/gamedata/phase2_config.gd|lit|测试时间 周%s %02d:%02d UTC
 scripts/gamedata/phase2_config.gd|lit|海盗
 scripts/gamedata/phase2_config.gd|lit|满配额
 scripts/gamedata/phase2_config.gd|lit|石头
@@ -605,15 +620,10 @@ scripts/scenes/MainMenuScene.gd|lit|%s 积分赛 · 每周最多 %d 场 · 周�
 scripts/scenes/MainMenuScene.gd|lit|%s 闯关赛 · 积分赛打够 %d 胜才能来
 scripts/scenes/MainMenuScene.gd|lit|♥ %d/%d   本周 %d/%d
 scripts/scenes/MainMenuScene.gd|lit|✅ 已晋级决赛日 · 闯关赛到此为止(%s) · 明天周日来打决赛日
-scripts/scenes/MainMenuScene.gd|lit|一
-scripts/scenes/MainMenuScene.gd|lit|三
-scripts/scenes/MainMenuScene.gd|lit|二
-scripts/scenes/MainMenuScene.gd|lit|五
 scripts/scenes/MainMenuScene.gd|lit|今日已收盘
 scripts/scenes/MainMenuScene.gd|lit|休赛日
 scripts/scenes/MainMenuScene.gd|lit|但你已晋级, 周六闯关赛见
 scripts/scenes/MainMenuScene.gd|lit|但你已过晋级线, 周六闯关赛见
-scripts/scenes/MainMenuScene.gd|lit|六
 scripts/scenes/MainMenuScene.gd|lit|决赛日
 scripts/scenes/MainMenuScene.gd|lit|决赛日 · 去看对阵图
 scripts/scenes/MainMenuScene.gd|lit|决赛日 · 本周没晋级
@@ -622,7 +632,6 @@ scripts/scenes/MainMenuScene.gd|lit|周
 scripts/scenes/MainMenuScene.gd|lit|周%s %02d:%02d 收盘
 scripts/scenes/MainMenuScene.gd|lit|周二开赛 · 本日维护
 scripts/scenes/MainMenuScene.gd|lit|商店
-scripts/scenes/MainMenuScene.gd|lit|四
 scripts/scenes/MainMenuScene.gd|lit|图鉴
 scripts/scenes/MainMenuScene.gd|lit|已封盘
 scripts/scenes/MainMenuScene.gd|lit|开始战斗
@@ -630,7 +639,6 @@ scripts/scenes/MainMenuScene.gd|lit|战绩  %s
 scripts/scenes/MainMenuScene.gd|lit|打完第一场才开店
 scripts/scenes/MainMenuScene.gd|lit|排行榜
 scripts/scenes/MainMenuScene.gd|lit|收盘前 %d 分钟起不开新局
-scripts/scenes/MainMenuScene.gd|lit|日
 scripts/scenes/MainMenuScene.gd|lit|明天%s
 scripts/scenes/MainMenuScene.gd|lit|明天决赛日 · 本地 %s 开打
 scripts/scenes/MainMenuScene.gd|lit|本周 %d 场已打满
@@ -799,6 +807,7 @@ scripts/scenes/SettingsScene.gd|lit|改昵称
 scripts/scenes/SettingsScene.gd|lit|正在发送…
 scripts/scenes/SettingsScene.gd|lit|正在验证…
 scripts/scenes/SettingsScene.gd|lit|没绑定之前，进度只存在这台设备上。
+scripts/scenes/SettingsScene.gd|lit|测试时间
 scripts/scenes/SettingsScene.gd|lit|用云端那份
 scripts/scenes/SettingsScene.gd|lit|用你绑过的邮箱收一个验证码，把那个账号和它的进度取回到这台设备上。\n
 scripts/scenes/SettingsScene.gd|lit|用这台的
@@ -1308,6 +1317,19 @@ scripts/scenes/map_editor.gd|text|清空
 scripts/scenes/map_editor.gd|text|重载
 scripts/scenes/map_editor.gd|text|💾保存
 scripts/scenes/map_editor.gd|text|🖌 地图编辑器 (左键刷格 · MAPEDIT)
+scripts/scenes/settings/time_travel_panel.gd|lit|+1 时
+scripts/scenes/settings/time_travel_panel.gd|lit|+5 分
+scripts/scenes/settings/time_travel_panel.gd|lit|-1 时
+scripts/scenes/settings/time_travel_panel.gd|lit|-5 分
+scripts/scenes/settings/time_travel_panel.gd|lit|关闭
+scripts/scenes/settings/time_travel_panel.gd|lit|只改这台机器的时钟, 从选的那一刻起照常往前走; 服务端照真实时间
+scripts/scenes/settings/time_travel_panel.gd|lit|周
+scripts/scenes/settings/time_travel_panel.gd|lit|恢复真实时间
+scripts/scenes/settings/time_travel_panel.gd|lit|测试时间(只在开发包里有)
+scripts/scenes/settings/time_travel_panel.gd|lit|现在: 真实时间
+scripts/scenes/settings/time_travel_panel.gd|lit|穿越到这一刻
+scripts/scenes/settings/time_travel_panel.gd|text|周%s %02d:%02d UTC
+scripts/scenes/settings/time_travel_panel.gd|text|现在: 
 scripts/scenes/shop/axe_panel.gd|lit|砍伐经验 %d/%d
 scripts/scenes/shop/axe_panel.gd|text|挑一个最终造物 · 这一大轮定了就不能改
 scripts/scenes/shop/axe_panel.gd|text|砍伐经验 %d/%d · 可以做最终进化了

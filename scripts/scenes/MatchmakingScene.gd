@@ -117,7 +117,9 @@ func _ready() -> void:
 	## ★★E-A4: 周六走**闯关赛的匹配**(按战绩标签, 永不跨标签), 不是按总场次那条。
 	##   判据与开局闸/结算共用 `phase_mode_live()` —— 就地再写一份 `== "gauntlet"`
 	##   就是同一判据存四份(memory `fb-hand-rolled-copies-drift`)。
-	var _now_mm: int = int(Time.get_unix_time_from_system())
+	## ★2026-10-04 改走全局时间缝 `now_utc()`(原来就地读系统钟): 开发包时间穿越到周六时,
+	##   主菜单说「闯关赛」而这里照旧按真实星期几分流 ⇒ 匹配走错了那条。两个开关都关着时逐字节等价。
+	var _now_mm: int = int(_P2C_MM.now_utc())
 	if _P2C_MM.phase_at_utc(_now_mm) == _P2C_MM.PHASE_GAUNTLET \
 			and _P2C_MM.phase_mode_live(_P2C_MM.PHASE_GAUNTLET):
 		GameState.dual_ghost = Backend.find_gauntlet_opponent(
