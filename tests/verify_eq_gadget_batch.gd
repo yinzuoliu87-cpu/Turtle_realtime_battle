@@ -131,7 +131,7 @@ func _t086_pierce() -> void:
 		es.append(_mk("fortune", "right", Vector2(-100.0 + float(k) * 5.0, float(k) * 3.0), 9.0e7))
 	var st: Dictionary = _g()._stt(u, "p2eq_086")
 	st["drones"] = [{"ang": 0.0, "ft": 0.0, "sx": 0.0, "sy": 0.0, "scat": 0.0}]
-	_pump_shots(1.5)                       # 先排空: 共享假人身上可能压着别的小节的延后伤害
+	_drain_pending()                       # 先排空: 共享假人身上可能压着别的小节的延后伤害
 	var h0: Array = []
 	for e in es:
 		h0.append(float(e["hp"]))
@@ -170,7 +170,7 @@ func _t086_pierce() -> void:
 	st2["drones"] = []
 	for k2 in range(3):
 		st2["drones"].append({"ang": TAU * float(k2) / 3.0, "ft": 0.0, "sx": 0.0, "sy": 0.0, "scat": 0.0})
-	_pump_shots(1.5)
+	_drain_pending()
 	var hv: float = float(vic["hp"])
 	var he: float = float(egg["hp"])
 	var ht: float = float(tr["hp"])
@@ -206,7 +206,7 @@ func _t086_pierce() -> void:
 	st3["drones"] = []
 	for k3 in range(3):
 		st3["drones"].append({"ang": TAU * float(k3) / 3.0, "ft": 0.0, "sx": 0.0, "sy": 0.0, "scat": 0.0})
-	_pump_shots(1.5)
+	_drain_pending()
 	var he2: float = float(egg2["hp"])
 	var ht2: float = float(tr2["hp"])
 	# ① 终极: 没有合法目标 ⇒ 一条都放不出来
@@ -230,6 +230,20 @@ func _t086_pierce() -> void:
 func _pump_shots(seconds: float, dt: float = 0.05) -> void:
 	for _i in range(int(round(seconds / dt))):
 		_s._ballistics._step_pending_shots(dt)
+
+
+## 把延后队列【推到空为止】(上限 20 游戏秒防死循环), 返回还剩几条(应为 0)。
+## ★★2026-10-04 偶发红根因: 原来"先排空"写的是固定窗口 `_pump_shots(1.0)`, 而终极射线的
+##   伤害延后 SEXT_FIRE_DELAY = 1.35 秒 ⇒ 预热 18.2 秒里那轮**自然终极**若落在最后 0.35 秒
+##   (实测种子 1360: 17.95 秒、5 门炮), 有 5 条 × 1000 漏过排空, 落进被测那一轮 ⇒ 11000 ≠ 6000。
+##   跟机器快慢无关(固定 TURTLE_SEED 下 15fps 与满速 RNG 状态逐位相同), 是种子随机 ⇒ 偶发。
+##   ⇒ 排空不再猜窗口长短, 推到队列空为止; 调用方再断言"确实空了"。
+func _drain_pending(dt: float = 0.05) -> int:
+	var k: int = 0
+	while not _s._pending_shots.is_empty() and k < int(20.0 / dt):
+		_s._ballistics._step_pending_shots(dt)
+		k += 1
+	return _s._pending_shots.size()
 
 
 func _fn_body(code: String, header: String) -> String:
@@ -561,7 +575,11 @@ func _t086_sextant() -> void:
 		g["atk"] = 100.0
 		g["base_atk"] = 100.0
 		_equip(g, "p2eq_086", si + 1)
-		_pump_shots(1.0)   # ★先排空: 共享假人身上可能压着**别的小节**留下的延后伤害
+		# ★先排空: 共享假人身上可能压着**别的小节**留下的延后伤害(上面魔抗那段 3★ 也跑了 18.2 秒,
+		#   同样可能刚放过一轮自然终极 ⇒ 1.35 秒延后, 固定窗口 1.0 秒排不干净)
+		var left0: int = _drain_pending()
+		_ok("086 %d★ ★分母: 基线前延后队列已排空(否则别处的伤害会算进这一发)" % (si + 1),
+			left0 == 0, "剩 %d 条" % left0)
 		var h0: float = float(foe["hp"])
 		var mult: float = [0.3, 0.4, 0.5][si]
 		var hit: bool = _g().sext_fire_one(g, mult)
@@ -584,7 +602,12 @@ func _t086_sextant() -> void:
 		# ★★先把队列排空再记基线: 18.2 秒里**自然触发过一轮终极**, 它的伤害现在是延后的,
 		#   很可能还压在队列里没落。不排空就会在下面那次 `_pump_shots` 里一起落下来
 		#   ⇒ 3★ 实测 11000 而不是 6000。(这是"伤害改成延后"之后必须补的一步。)
-		_pump_shots(1.0)
+		# ★★2026-10-04: 这里原来是固定窗口 `_pump_shots(1.0)` —— 短于终极延后 1.35 秒,
+		#   自然终极落在 18.2 秒预热的最后 0.35 秒时(种子 1360: 17.95 秒/5 门)照样漏 5000。
+		#   ⇒ 推到队列空为止, 并断言真的空了。
+		var left: int = _drain_pending()
+		_ok("086 %d★ ★分母: 基线前延后队列已排空(自然终极的伤害不许漏进被测那一轮)" % (si + 1),
+			left == 0, "剩 %d 条" % left)
 		foe["hp"] = 9.0e7
 		var h0: float = float(foe["hp"])
 		var rays: int = _g().sext_ultimate(q, si)
