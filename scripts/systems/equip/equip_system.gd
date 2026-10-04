@@ -1228,11 +1228,16 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 		sp.position = battle._world_pos(anchor - dir * SWORD_SPAWN_BACK + perp * off, 0.0)
 		sp.modulate = Color(0.85, 0.9, 1.0, 1.0)
 		battle._world.add_child(sp)
-		var spr0: Sprite3D = sp
+		## ★捕获 weakref 不捕获剑节点(2026-10-04 tween 捕获台账那轮)。时停里携带者的这条协程照走,
+		##   而这条 tween 若建在时停之前就被定格 ⇒ 剑飞完被释放了它还没放完, 时停一解除它接着跑,
+		##   Godot 在调用 lambda 之前就报「Lambda capture ... freed」。门禁: verify_tween_capture_lane。
 		var st: Tween = battle._reg_tween()
+		var spr0w: WeakRef = weakref(sp)
 		st.tween_interval(float(k) * 0.03)   # 错峰: 从中间往两边依次顶出来
 		st.tween_method(func(h: float) -> void:
-			sword_reveal(spr0, h),
+			var s0 = spr0w.get_ref()
+			if is_instance_valid(s0):
+				sword_reveal(s0, h),
 			float(SWORD_TIP_ROW + 1), float(SWORD_CELL), 0.30)
 		swords.append(sp)
 	_close_slits(slits)   # 缝在剑升起来之后合上 —— 有开就要有合, 不能一直裂着
