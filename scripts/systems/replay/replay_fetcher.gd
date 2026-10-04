@@ -38,6 +38,12 @@ const MSG := {
 	"missing": "服务器上找不到这场回放（每周二清掉上周的回放）",
 	"corrupt": "这场回放的数据坏了，播不了",
 	"timeout": "等了太久服务器都没回音，稍后再试",
+	## 周日对阵图(周末看回放 2026-10-04): 服务端 `finals_replay()` 的原因码
+	"unavailable": "这场的回放还没开放",
+	"not_revealed": "这一场还没揭晓，揭晓之后再来看",
+	"no_result": "这一场还没有结果",
+	"no_replay": "这一场没有留下回放",
+	"no_bucket": "这一组已经不在了",
 }
 
 
@@ -154,22 +160,39 @@ static func message(code: String, http_code: int = 0) -> String:
 ##   code == "" ⇒ 已进战斗场(`ReplayRecorder.play` 换场景了); 否则 msg 是给玩家看的那句话。
 ##   本机有录像时**同步**回调(一个请求都不发); 要去服务端取时异步回调。
 ##   调用方已经离场(`done` 失效)时: 不回调, 也**不播**(人已经走了, 别把他拽进回放)。
-static func open(tree: SceneTree, id: String, done: Callable) -> void:
+## `back` = 看完回哪一页(空 = 战绩页); `names` = {"l": 录像方, "r": 对手}(看别人的录像时用, 见 `ReplayRecorder.play_names`)。
+static func open(tree: SceneTree, id: String, done: Callable, back: String = "", names: Dictionary = {}) -> void:
 	if local_available(id):
 		var rec: Dictionary = ReplayRecorder.load_record(id)
 		if not rec.is_empty():
-			_play(tree, rec, done)
+			_play(tree, rec, done, back, names)
 			return
 		## 本机那份读不出(文件坏了) ⇒ 往下走服务端那条, 而不是直接报坏。
 	if not SB.enabled():
 		_reply(done, "no_backend", message("no_backend"))
 		return
-	var started: bool = SB.fetch_match_async(id, func(res: Dictionary) -> void: _on_fetched(tree, id, res, done))
+	var started: bool = SB.fetch_match_async(id, func(res: Dictionary) -> void: _on_fetched(tree, id, res, done, back, names))
 	if not started:
 		_reply(done, "corrupt", message("corrupt"))
 
 
-static func _on_fetched(tree: SceneTree, id: String, res: Dictionary, done: Callable) -> void:
+## 周日对阵图点已揭晓那一格: 按 (周, 组, 轮, 场) 问服务端要**裁判采纳的那一份**(`finals_replay()`),
+##   拿到 match_id + 录像之后与 `open` 同一条路(认场 / 存本机 / 播)。`done` 约定同 `open`。
+##   ★不先看本机: 本机那份可能是**没被采纳**的那一场(双方各在本机打一场), 播错了比不播更糟。
+static func open_finals(tree: SceneTree, week: int, bucket: int, round_no: int, match_no: int,
+		done: Callable, back: String = "", names: Dictionary = {}) -> void:
+	if not SB.enabled():
+		_reply(done, "no_backend", message("no_backend"))
+		return
+	var started: bool = SB.fetch_finals_replay_async(week, bucket, round_no, match_no,
+		func(res: Dictionary) -> void:
+			_on_fetched(tree, str(res.get("match_id", "")), res, done, back, names))
+	if not started:
+		_reply(done, "corrupt", message("corrupt"))
+
+
+static func _on_fetched(tree: SceneTree, id: String, res: Dictionary, done: Callable,
+		back: String = "", names: Dictionary = {}) -> void:
 	if not done.is_valid():
 		return
 	var err := str(res.get("err", ""))
@@ -185,11 +208,12 @@ static func _on_fetched(tree: SceneTree, id: String, res: Dictionary, done: Call
 		_reply(done, "corrupt", message("corrupt"))
 		return
 	_cache(id, raw)
-	_play(tree, rec, done)
+	_play(tree, rec, done, back, names)
 
 
-static func _play(tree: SceneTree, rec: Dictionary, done: Callable) -> void:
-	var why := ReplayRecorder.play(tree, rec)
+static func _play(tree: SceneTree, rec: Dictionary, done: Callable, back: String = "",
+		names: Dictionary = {}) -> void:
+	var why := ReplayRecorder.play(tree, rec, back, names)
 	if why != "":
 		_reply(done, "unplayable", why)
 		return

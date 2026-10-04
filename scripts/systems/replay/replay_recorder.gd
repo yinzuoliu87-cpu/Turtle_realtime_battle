@@ -138,12 +138,18 @@ func start() -> void:
 		}
 
 
-## 这一局录不录。Q3(用户授权按推荐): **先只录周六闯关赛**。
+## 这一局录不录。Q3(用户授权按推荐): 先只录周六闯关赛;
+## 2026-10-04 周末看回放(docs/plans/20261004-周末看回放.md): **周日决赛场也录** —— 对阵图点已揭晓那一格要看它。
+##   决赛场的身份是 `finals_match`(对阵图开打时盖章, 结算尾部才清; `on_settle` 在它之前跑)。
 static func should_record() -> bool:
 	if GameState == null or not bool(GameState.dual_active) or bool(GameState.get("tutorial_active")):
 		return false
 	var ph := str(GameState.week_phase)
-	return Phase2Cfg.settle_kind(ph, Phase2Cfg.phase_mode_live(ph)) == Phase2Cfg.SETTLE_GAUNTLET
+	var sk := Phase2Cfg.settle_kind(ph, Phase2Cfg.phase_mode_live(ph))
+	if sk == Phase2Cfg.SETTLE_FINALS:
+		var fm = GameState.get("finals_match")
+		return fm is Dictionary and not (fm as Dictionary).is_empty()
+	return sk == Phase2Cfg.SETTLE_GAUNTLET
 
 
 static func client_version() -> String:
@@ -466,14 +472,36 @@ static func new_id() -> String:
 
 # ─────────────────────────────── 播放入口 ───────────────────────────────
 
+## 看完回哪一页(场景路径)。空 = 战绩页(S3 原来的去处)。每次 `play` 都重写 ⇒ 不会残留上一次的。
+static var return_scene := ""
+## 回放结束那句话里的双方名字 {"l": 录像方, "r": 对手}。空 = 照旧说「胜利 / 失败」(那是看自己的录像)。
+static var play_names: Dictionary = {}
+const DEFAULT_EXIT_SCENE := "res://scenes/Record.tscn"
+
+
+static func exit_scene() -> String:
+	return return_scene if return_scene != "" else DEFAULT_EXIT_SCENE
+
+
+## 回放结束那一句。看别人的录像时「胜利」是录像方的视角, 对旁观者是错话 ⇒ 有名字就说谁赢了。
+static func end_caption(won: bool) -> String:
+	var who := str(play_names.get("l" if won else "r", ""))
+	if who != "":
+		return "回放结束 —— %s 赢了" % who
+	return "回放结束 —— " + ("胜利" if won else "失败")
+
+
 ## 播一份记录。返回 "" = 已进战斗场; 否则是不能播的原因(V6: 版本不同就不进战斗场)。
-static func play(tree: SceneTree, r: Dictionary) -> String:
+## `back` = 看完回哪一页(空 = 战绩页); `names` 见 `play_names`。
+static func play(tree: SceneTree, r: Dictionary, back: String = "", names: Dictionary = {}) -> String:
 	if r.is_empty():
 		return "回放记录读不出来"
 	if str(r.get("client_version", "")) != client_version():
 		return "这场比赛是旧版本(%s)打的, 当前版本(%s)播不了" % [str(r.get("client_version", "?")), client_version()]
 	if int(r.get("v", 0)) != FORMAT_V:
 		return "回放格式不认识"
+	return_scene = back
+	play_names = names.duplicate()
 	begin_play(r)
 	if tree != null:
 		tree.change_scene_to_file(BATTLE_SCENE)

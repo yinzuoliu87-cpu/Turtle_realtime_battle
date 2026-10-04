@@ -35,6 +35,10 @@ const QUEUE_MAX := 12
 ## U7: 重放只活周六~周一。`week_anchor_ts` 是那周周一 00:00 UTC ⇒ 可见期截止 = 下周二 00:00 = +8 天。
 ##   过了这一刻补上去也没人看得到(服务端每周二 00:00 UTC 清掉上周的(purge_old_matches)只是兜底)。
 const VISIBLE_SEC := 8 * 86400
+const WEEK_SEC := 7 * 86400
+## 单子上的对局种类(= `matches.phase`)。
+const PH_GAUNTLET := "gauntlet"
+const PH_FINALS := "finals"
 ## base64 后的录像上限(字节)。★必须与 `server/supabase/schema.sql` 的 `matches_replay_size`
 ##   约束同一个数 —— 门禁 V7 逐字对过; 客户端先挡, 不让一条注定被服务端拒的单子永远留着。
 const REPLAY_MAX_B64 := 65536
@@ -61,13 +65,25 @@ static func enqueue(id: String) -> void:
 	for e in q:
 		if e is Dictionary and str((e as Dictionary).get("id", "")) == id:
 			return
-	q.append({
+	var e := {
 		"id": id,
 		"wk": int(GameState.week_anchor_ts),
 		"acc": str(GameState.account_id),
 		"t": int(Time.get_unix_time_from_system()),
 		"ls": my_snapshot(),
-	})
+	}
+	## 周末看回放(docs/plans/20261004-周末看回放.md): 单子记下「这是哪一种对局」。
+	##   ★此刻在 `_settle_season` 第一行(`on_settle`)里: 闯关战绩还是**赛前**的、`finals_match` 还没清。
+	var fm = GameState.get("finals_match")
+	if fm is Dictionary and not (fm as Dictionary).is_empty():
+		e["ph"] = PH_FINALS
+		e["fk"] = {"b": int(fm.get("bucket", -1)), "r": int(fm.get("round", -1)),
+			"m": int(fm.get("match", -1)), "s": int(fm.get("side", -1))}
+	else:
+		e["ph"] = PH_GAUNTLET
+		e["gw0"] = int(GameState.gauntlet_wins)
+		e["gl0"] = int(GameState.gauntlet_losses)
+	q.append(e)
 	while q.size() > QUEUE_MAX:
 		var gone: Dictionary = q.pop_front()
 		print("[Replay] 上传队列满, 丢掉最旧的一条 %s" % str(gone.get("id", "")))
@@ -109,6 +125,10 @@ static func retry() -> void:
 	for e in keep:
 		var id := str((e as Dictionary).get("id", ""))
 		if _inflight.has(id):
+			continue
+		## ★周日那一场**揭晓之前不发**(不剧透做在数据层: `matches` 现在谁都读得到 `result.won`)。
+		##   单子留着; 对阵图拿到新数据时会再调 retry()。
+		if not finals_upload_ready(e, now, _cached_buckets()):
 			continue
 		var row := build_row(e, ReplayRecorder.load_record(id), acc)
 		if row.is_empty():
@@ -173,20 +193,62 @@ static func build_row(e: Dictionary, rec: Dictionary, acc: String) -> Dictionary
 	for ev in rec.get("events", []):
 		if ev is Dictionary and str((ev as Dictionary).get("k", "")) == "surrender":
 			surrendered = true
+	var won := bool(end.get("won", false))
+	var result := {"won": won, "steps": int(end.get("s", 0)), "surrendered": surrendered}
+	var ph := str(e.get("ph", PH_GAUNTLET))
+	if ph == PH_FINALS:
+		## 周日: 这一场在对阵图上的坐标。服务端 `finals_replay()` 按它 + `seed = finals_results.seed_used` 认出采纳那一份。
+		var fk: Dictionary = e.get("fk", {}) if e.get("fk", {}) is Dictionary else {}
+		result["fb"] = int(fk.get("b", -1))
+		result["fr"] = int(fk.get("r", -1))
+		result["fm"] = int(fk.get("m", -1))
+	elif e.has("gw0"):
+		## 周六: 这一局**打完之后**的战绩(赛况板拿它排名)。老单子没有赛前战绩 ⇒ 不写(赛况板退回数场次)。
+		result["gw"] = int(e.get("gw0", 0)) + (1 if won else 0)
+		result["gl"] = int(e.get("gl0", 0)) + (0 if won else 1)
 	return {
 		"match_id": str(e.get("id", "")),
 		"season_week": int(e.get("wk", 0)),
-		"phase": "gauntlet",
+		"phase": ph,
 		"left_account": acc,
 		"right_account": null,
 		"seed": int(rec.get("seed", 0)),
 		"left_snapshot": e.get("ls", {}) if e.get("ls", {}) is Dictionary else {},
 		"right_snapshot": strip_ghost(foe if foe is Dictionary else {}),
-		"result": {"won": bool(end.get("won", false)), "steps": int(end.get("s", 0)),
-			"surrendered": surrendered},
+		"result": result,
 		"client_version": str(rec.get("client_version", "")),
 		"replay": upload_b64(rec),
 	}
+
+
+## 周日单子能不能发了。**纯函数**(时钟与对阵数据都由调用方给, 门禁拿边界喂)。
+##   不是周日单子 ⇒ 能。是 ⇒ 那一场已在某份对阵数据的 `done` 里(已揭晓), 或那一周已经过完(周日早结束了)。
+## `buckets` = 本机缓存里的组(形状同 `SupabaseNet._bucket_from`, 带 `bucket` 与 `done`)。
+static func finals_upload_ready(e, now: int, buckets: Array) -> bool:
+	if not (e is Dictionary) or str((e as Dictionary).get("ph", "")) != PH_FINALS:
+		return true
+	var d: Dictionary = e
+	if now >= int(d.get("wk", 0)) + WEEK_SEC:
+		return true
+	var fk: Dictionary = d.get("fk", {}) if d.get("fk", {}) is Dictionary else {}
+	var key := "%d-%d" % [int(fk.get("r", -1)), int(fk.get("m", -1))]
+	for b in buckets:
+		if b is Dictionary and int((b as Dictionary).get("bucket", -2)) == int(fk.get("b", -1)) \
+				and ((b as Dictionary).get("done", {}) as Dictionary).has(key):
+			return true
+	return false
+
+
+## 本机手上的对阵数据: 我那一组(`finals_view`) + 观赛那几组(`finals_week_view`)。
+static func _cached_buckets() -> Array:
+	var out: Array = []
+	var mine: Dictionary = SB.finals_cached()
+	if mine.has("bucket"):
+		out.append(mine)
+	var wv: Dictionary = SB.finals_week_cached()
+	for b in (wv.get("buckets", []) if wv.get("buckets", []) is Array else []):
+		out.append(b)
+	return out
 
 
 ## 上传用的那一份录像(摘掉露馅字段) → base64。

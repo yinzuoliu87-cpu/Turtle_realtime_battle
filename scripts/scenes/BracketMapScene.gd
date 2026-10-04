@@ -51,6 +51,10 @@ extends Control
 const TopBar := preload("res://scripts/util/top_bar.gd")
 const _B := preload("res://scripts/gamedata/bracket.gd")
 const _L := preload("res://scripts/gamedata/bracket_layout.gd")
+const _RF := preload("res://scripts/systems/replay/replay_fetcher.gd")
+const _RU := preload("res://scripts/systems/replay/replay_uploader.gd")
+## 看完回放回到对阵图。
+const SELF_SCENE := "res://scenes/BracketMap.tscn"
 
 const BG := Color("#0a0e18")           # 黑底(Worlds 那张也是几乎纯黑)
 const LINE := Color("#8fa3bd")         # 连接线: 细、冷、低调
@@ -417,7 +421,11 @@ func match_state(r: int, m: int) -> String:
 ## ⇒ 拿一个命名常量把「没上线」变成可读状态, 而不是让 `can_open` 悄悄放行
 ##   (memory fb-branch-to-an-unbuilt-mode-is-a-backdoor: 分流给没做的模式 = 开后门)。
 ##   重放真上线那天改这一格, 并把 `verify_bracket_map` ③ 那条判据一起翻回来。
-const REPLAY_LIVE := false
+## ★★2026-10-04 周末看回放(docs/plans/20261004-周末看回放.md)打开: 周日对局现在也录、揭晓后上传,
+##   服务端 `finals_replay()` 只给**已揭晓**场次的**采纳那一份**。客户端这边也只放已翻面(`ST_DONE`)的格子 ——
+##   `done` 里本来就只有已揭晓的(服务端不下发当前轮), 所以当前轮 / 未到 / 轮空一律点不开。
+##   函数没上线(404)时点了说「这场的回放还没开放」, 不报错。
+const REPLAY_LIVE := true
 
 ## ★★跨桶「冠军赛」做出来了没有。**没有**(F 阶段)—— 服务端没有桶冠军汇总,
 ##   客户端联网那条路只写 `_bucket`。上线那天改这一格。
@@ -1371,7 +1379,8 @@ func _make_node(r: int, m: int) -> Control:
 		## ★★用词分两种(2026-09-27): `can_open` 现在**只对我自己的当前轮**为真
 		##   (见 `can_open` 的头注), 点下去是**我上场打**, 不是看别人 ⇒ 写「开播」是错的。
 		##   重放那条路上线之后才是真的"开播看回放"(文件头 ★④: 不许写「直播」「回放」)。
-		btn.tooltip_text = "上场开打" if should_fetch_opponent(r, m) else "开播"
+		btn.tooltip_text = "上场开打" if should_fetch_opponent(r, m) else "重看这一场"
+		btn.set_meta("rm", Vector2i(r, m))     # 门禁按格子找按钮(手指点的就是它)
 		btn.pressed.connect(func(): match_opened.emit(r, m))
 		holder.add_child(btn)
 	return holder
@@ -1589,6 +1598,8 @@ var _await_match := Vector2i(-1, -1)
 
 func _on_match_opened(r: int, m: int) -> void:
 	if not should_fetch_opponent(r, m):
+		if REPLAY_LIVE and match_state(r, m) == ST_DONE:
+			open_replay(r, m)
 		return
 	var bk := int(cur().get("bucket", -1))
 	if bk < 0:
@@ -1596,6 +1607,58 @@ func _on_match_opened(r: int, m: int) -> void:
 	_SB.opponent_clear()
 	_await_match = Vector2i(r, m)
 	_SB.fetch_opponent_async(_P2C.week_anchor_utc(_clock()), bk, r, my_opponent_seed(r, m))
+
+
+## ─────────────────────────────────────────────────────────────
+## 周末看回放(2026-10-04): 点已揭晓的那一格 ⇒ 看这一场(裁判采纳的那一份录像)
+## ─────────────────────────────────────────────────────────────
+## 正在取哪一场(`Vector2i(-1, -1)` = 没在取)。取的时候别的格子点了不理。
+var replay_busy := Vector2i(-1, -1)
+## 门禁读: 最近一次点格看回放的结果(原因码 / 那句话)与请求了哪一场。
+var last_replay_code := ""
+var last_replay_msg := ""
+var last_replay_ask: Dictionary = {}
+var _replay_lb: Label = null
+
+
+func open_replay(r: int, m: int) -> void:
+	if replay_busy.x >= 0 or not (REPLAY_LIVE and match_state(r, m) == ST_DONE):
+		return
+	var bk := int(cur().get("bucket", -1))
+	if bk < 0:
+		return
+	## 回放结束那句话说「X 赢了」: 胜者就是 `done` 里那一侧(录像方赢 ⇒ 说左, 输 ⇒ 说右, 两边都填胜者)。
+	var ws := winner_side(r, m)
+	var wn := str(competitor(r, m, ws).get("name", "")) if ws >= 0 else ""
+	replay_busy = Vector2i(r, m)
+	var wk: int = _P2C.week_anchor_utc(_clock())
+	last_replay_ask = {"week": wk, "bucket": bk, "round": r, "match": m}
+	_show_replay_msg("正在读取这一场…", ACCENT)
+	_RF.open_finals(get_tree(), wk, bk, r, m, _on_replay_done, SELF_SCENE, {"l": wn, "r": wn})
+
+
+func _on_replay_done(code: String, msg: String) -> void:
+	last_replay_code = code
+	last_replay_msg = msg
+	replay_busy = Vector2i(-1, -1)
+	if code == "" or not is_inside_tree():
+		return
+	_show_replay_msg(msg, Color("#ff9b7a"))
+
+
+func _show_replay_msg(t: String, col: Color) -> void:
+	if _replay_lb == null:
+		_replay_lb = Label.new()
+		_replay_lb.name = "ReplayMsg"
+		_replay_lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_replay_lb.add_theme_font_size_override("font_size", 15)
+		_replay_lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_replay_lb)
+	var vs := get_viewport().get_visible_rect().size
+	_replay_lb.position = Vector2(0, vs.y - 92)
+	_replay_lb.size = Vector2(vs.x, 26)
+	_replay_lb.text = t
+	_replay_lb.add_theme_color_override("font_color", col)
 
 
 ## 对手快照到了 ⇒ 开打。
@@ -1729,6 +1792,8 @@ func _on_poll() -> void:
 		_bucket = v.duplicate(true)
 		_record_progress()             # ★权威结果到手 ⇒ 记进度 + 对头衔账(见那个函数的头注)
 		_rebuild()
+		## 周末看回放: 有场次刚翻面 ⇒ 我那一场的录像(揭晓前压着没传)现在可以传了。
+		_RU.retry()
 	_sync_tip()
 
 
