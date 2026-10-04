@@ -266,6 +266,13 @@ func _on_cancel() -> void:
 
 
 ## 对手资料卡 = 抽到的 ghost 快照 profile (头像取其首领 / 名+ID); profile 缺字段时随机兜底 (老 bot 也有 profile).
+const BOT_TAG := "陪练机器人"
+
+## 卡片 ID 那一行写什么(门禁 verify_bot_card_honest 直接调它, 不抄一份)。
+static func card_id_text(prof: Dictionary) -> String:
+	return BOT_TAG if bool(prof.get("bot", false)) else "ID %s" % str(prof.get("id", ""))
+
+
 func _opponent_from_ghost(ghost: Dictionary) -> Dictionary:
 	var prof: Dictionary = ghost.get("profile", {}) if ghost is Dictionary else {}
 	var leaders: Array = ghost.get("leaders", []) if ghost is Dictionary else []
@@ -277,6 +284,10 @@ func _opponent_from_ghost(ghost: Dictionary) -> Dictionary:
 	var nm := str(prof.get("name", ""))
 	if nm == "":
 		nm = FAKE_NAMES[randi() % FAKE_NAMES.size()]
+	## ★★2026-10-03 周六实操台账 S14: 机器人卡上印着「海域守卫 ID #451562」—— 编出来的玩家号让它冒充真人。
+	##   方案书 R2:「个位数人口下几乎必落到机器人 ⇒ 要在 UI 上说实话」。⇒ 机器人不给假 ID, 写明是陪练。
+	if ghost is Dictionary and bool(ghost.get("is_bot", false)):
+		return {"name": nm, "avatar": avatar, "id": "", "bot": true}
 	return {"name": nm, "avatar": avatar, "id": _display_id(str(prof.get("id", "")))}
 
 
@@ -528,7 +539,7 @@ func _build_card(prof: Dictionary, pos: Vector2, accent: Color, slide_from_dx: f
 	name_l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; card.add_child(name_l)
 	var id_l := _font(18, Color("#9fb6c9"))
-	id_l.text = "ID %s" % str(prof.get("id", "")); id_l.size = Vector2(CARD_W, 24)
+	id_l.text = card_id_text(prof); id_l.size = Vector2(CARD_W, 24)
 	id_l.position = Vector2(0, 18 + AV_BOX + 54.0)
 	id_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; card.add_child(id_l)
 	# 滑入动画: EASE_IN 加速冲进来(不是滑进来), 到位后 BACK 回弹一下做"撞停"

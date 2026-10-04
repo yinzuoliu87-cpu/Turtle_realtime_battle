@@ -1690,7 +1690,7 @@ func _wait_sim(secs: float) -> void:
 	const _WAIT_EPS := 1.0e-6
 	var t_end: float = _t + secs - _WAIT_EPS
 	var guard: int = 0
-	while _t < t_end and guard < 6000 and is_instance_valid(self):
+	while _t < t_end and guard < 6000 and is_instance_valid(self) and is_inside_tree():   # 离场后 get_tree() 为空(台账 S8)
 		await get_tree().process_frame
 		guard += 1
 

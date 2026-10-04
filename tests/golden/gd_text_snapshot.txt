@@ -667,6 +667,7 @@ scripts/scenes/MatchmakingScene.gd|lit|稳健型选手
 scripts/scenes/MatchmakingScene.gd|lit|老司机带带我
 scripts/scenes/MatchmakingScene.gd|lit|萌新龟龟
 scripts/scenes/MatchmakingScene.gd|lit|退役龟皇
+scripts/scenes/MatchmakingScene.gd|lit|陪练机器人
 scripts/scenes/MatchmakingScene.gd|lit|龟界传说
 scripts/scenes/MatchmakingScene.gd|lit|龟速前进
 scripts/scenes/MatchmakingScene.gd|lit|龟龟不下班
