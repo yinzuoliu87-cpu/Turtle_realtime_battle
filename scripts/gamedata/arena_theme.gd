@@ -179,6 +179,8 @@ const THEMES: Dictionary = {
 		"ground_tileset_hsv": Vector3(0.467, 0.56, 0.37),   # V 0.44→0.37: 实拍中位 V0.69 而参考 0.57   # 地面目标色 = anchordeep_011 地面中位实测(H168 S0.50)
 		"ground_tileset_tint": Color(0.62, 0.78, 0.76),   # 图块原色(生成器的鲜绿/粉红崖边)压进主题色调
 		"ground_tileset": "tiles_reef",   # 画出来的地面+崖边(PixelLab Wang 图块)
+		"prop_cycle": true,   # 2026-10-04 同类素材轮流摆(随机挑会把一张图挑成大多数, verify_arena_variety)
+		"layout_clear_obstacles": true,   # 2026-10-04 布局表有一格物件堆正压在下墙上, 叠成一坨像怪(暗林留下的差距) ⇒ 清掉
 		"use_layout": true,   # 场内物件按 LAYOUT 设计布局摆
 		"fg_band_col": Color(0.020, 0.060, 0.060),   # 镜头前剪影带颜色(贴图是纯白剪影)
 		"no_base_midground": true,   # 默认中景(沉船/紫海葵)不进主题
@@ -224,8 +226,9 @@ const THEMES: Dictionary = {
 		"edge_tufts_r": [0.93, 1.01],
 		"edge_tufts_h": [0.7, 1.3],
 		## 框边: 暗色高海草(参考里平台四周一圈海草剪影)
-		"ring_props": ["reef2_kelp_a", "reef2_kelp_b", "reef2_kelp_a", "reef2_rocks_b", "reef3_coral_a", "reef2_clam_a", "reef2_clam_b"],   # anchordeep_011: 高海草墙夹着石堆/珊瑚塔, 上沿是发光的大珍珠贝
-		"ring_h_of": {"reef2_rocks_b": [1.5, 2.2], "reef3_coral_a": [2.0, 2.8], "reef2_clam_a": [1.6, 2.2], "reef2_clam_b": [1.5, 2.0]},
+		"ring_props": ["reef2_kelp_a", "reef2_kelp_b", "reef2_kelp_a", "reef2_rocks_a", "reef2_rocks_b", "reef3_coral_a", "reef2_clam_a", "reef2_clam_b", "reef4_spire_a", "reef4_spire_b"],   # anchordeep_011: 高海草墙夹着石堆/珊瑚塔, 上沿是发光的大珍珠贝   # 2026-10-04 +礁石柱两款(吊灯的宿主)
+		"ring_h_of": {"reef2_rocks_a": [1.4, 2.0], "reef2_rocks_b": [1.5, 2.2], "reef3_coral_a": [2.0, 2.8], "reef2_clam_a": [1.6, 2.2], "reef2_clam_b": [1.5, 2.0], "reef4_spire_a": [3.6, 5.0], "reef4_spire_b": [3.6, 5.0]},
+		"ring_mod": {"reef4_spire_a": Color(0.80, 0.86, 0.90), "reef4_spire_b": Color(0.80, 0.86, 0.90)},
 		"ring_glow_of": {"reef2_clam_a": Color(0.80, 0.92, 1.0, 0.30)},   # 珍珠是发光的(anchordeep_011 上沿那几团白光)
 		"ring_density": 1.1,
 		"ring_h": [3.0, 5.2],
@@ -240,21 +243,45 @@ const THEMES: Dictionary = {
 		## 周边一圈绿色光球(参考 Anchordeep 的绿/白光点)
 		"rim_lights": 16,
 		"rim_light_tex": "reef2_lamp_b",
+		"rim_light_tex_alt": ["reef4_cairn_a", "reef4_cairn_b"],   # 2026-10-04 16 盏同一张图 ⇒ 轮流换藤壶石堆托扇贝光球(两款)
+		"rim_light_h_of": {"reef4_cairn_a": 1.15, "reef4_cairn_b": 1.15},
 		"rim_light_real": 6,
 		"rim_light_h": 1.3,
 		"rim_light_energy": 3.2,
 		"rim_light_range": 4.4,
 		"light_col": Color(0.42, 1.0, 0.62),
 		"light_energy": 1.0,
-		"light_fixture": "reef_glow_orb",
-		"obstacles": ["reef_menhir"],
-		"mid_props": ["reef_kelp_silhouette"],
+		"light_fixture": "reef2_lamp_b",   # 2026-10-04 改成真在用的灯具名(原 reef_glow_orb 是一版没接线的旧名)
+		## ★2026-10-04 把暗林那一轮的四层复制过来(素材全新画, 风格锚 = 自家 reef3_coral_a):
+		## ⑤挡路障碍: 中央大礁 → 缠旧锚链、长藤壶的扁礁石; 两侧矮墙 → 长苔的长条礁脊(两款)。footprint 不动, 只换外观。
+		##   ★暗林教训「障碍别像一只怪」: 选的是扁平、横向、没有凸起头部的那几张。
+		"obstacles": ["reef4_reefrock", "reef4_ridge_a", "reef4_ridge_b"],
+		"obstacle_tex": {"reef_big": "reef4_reefrock", "reef_wall": ["reef4_ridge_a", "reef4_ridge_b"]},
+		"obstacle_mod": Color(0.80, 0.84, 0.86),
+		## ⑥中景: 平台上沿一圈暗色海扇/柳珊瑚丛(只在上半圈)。
+		"mid_props": ["reef4_fan_a", "reef4_fan_b", "reef4_fan_c"],
+		"mid_n": 9,
+		"mid_h": [1.8, 2.6],
+		"mid_r": [1.02, 1.10],
+		"mid_mod": Color(0.62, 0.70, 0.70),
+		## ⑧灯光: 钉在礁石柱上的绿藻玻璃灯(宿主 = 礁石柱 reef4_spire_*; 不许悬空)。深礁的光是冷绿, 不是火。
+		"hang_lamp_tex": ["reef4_hang_lamp_a", "reef4_hang_lamp_b"],
+		"hang_lamps": 5,
+		"hang_on": ["reef4_spire_a", "reef4_spire_b"],
+		"hang_at": [0.34, 0.44],
+		"hang_lamp_h": 1.0,   # 礁石柱 3.6~5 米(暗林树干 6.5~9 米配 1.3 米灯)
+		"hang_light_energy": 1.6,
+		"hang_light_range": 2.6,
+		## 「光源像素」色域: 亮青绿(藻灯/珍珠)。暖色判据在这版一个像素都认不出来。
+		"flame_rgb": {"r": [-1.0, 0.85], "g": [0.85, 2.0], "b": [0.55, 2.0]},
+		## ⑨氛围: 只留灯旁浮游光点(删掉满场上飘气泡)。
+		"ambient_lamp_embers": true,
 		"bg_kind": "deep_glow",                        # 深水: 暗青底 + 远处光点(对标 Anchordeep)
 		"bg_top": Color(0.008, 0.022, 0.030),
 		"bg_horizon": Color(0.030, 0.080, 0.090),
 		"sun_col": Color(1.0, 0.96, 0.86), "sun_energy": 1.0,
-		"ambient_kind": "embers",
-		"ambient_col": Color(0.55, 1.0, 0.75, 0.45),   # 水中浮游光点
+		"ambient_kind": "lamp_embers",
+		"ambient_col": Color(0.55, 1.0, 0.75, 0.80),   # 2026-10-04 灯旁浮游光点(原满场撒的那层已删)
 	},
 	V3_SHOAL: {
 		"fg_band_layer_gain": [1.0, 1.8, 1.7],   # 前景远/中层提亮(同深礁): 主题色近黑时远层贴着黑底读不出
@@ -262,10 +289,12 @@ const THEMES: Dictionary = {
 		"fg_band_px": 0.00475,   # 单张整幅(800 格 ≈ 3.8 单位宽), 每格 ≈ 2 屏幕像素
 		"fg_band_gain": 3.4,   # 贴图是灰度(近层 ~0.27 / 远层 ~0.9), 抬回剪影色量级: 近层 ≈ fg_band_col, 远层 ≈ 3 倍亮
 		"ring_per": 2,
-		"ring_h_of": {"shoal2_rubble_b": [1.4, 2.0]},
+		"ring_h_of": {"shoal2_rubble_b": [1.4, 2.0], "shoal4_column_a": [4.6, 6.4], "shoal4_column_b": [4.6, 6.4]},
 		"ground_tileset_hsv": Vector3(0.750, 0.80, 0.55),   # S 0.62→0.80 H→270: 实拍 S0.56 而参考 S0.78 H282   # 地面目标色 = mixed_012 地面中位实测(H264 S0.62)
 		"ground_tileset_tint": Color(0.80, 0.70, 0.95),   # 图块原色(生成器的鲜绿/粉红崖边)压进主题色调
 		"ground_tileset": "tiles_shoal",   # 画出来的地面+崖边(PixelLab Wang 图块)
+		"prop_cycle": true,   # 2026-10-04 同类素材轮流摆(随机挑会把一张图挑成大多数, verify_arena_variety)
+		"layout_clear_obstacles": true,   # 2026-10-04 布局表有一格物件堆正压在下墙上, 叠成一坨像怪(暗林留下的差距) ⇒ 清掉
 		"use_layout": true,   # 场内物件按 LAYOUT 设计布局摆
 		"fg_band_col": Color(0.050, 0.025, 0.070),   # 镜头前剪影带颜色(贴图是纯白剪影)
 		"no_base_midground": true,   # 默认中景(沉船/紫海葵)不进主题
@@ -310,8 +339,8 @@ const THEMES: Dictionary = {
 		"water_col": Color(0.015, 0.008, 0.030),
 		"edge_dark": 0.05,
 		"caustic_amt": 0.0,
-		"ring_props": ["shoal2_trunk", "shoal2_trunk", "shoal2_rubble_b"],   # mixed_012/016: 外围暗紫巨树 + 碎石堆
-		"ring_mod": {"shoal2_trunk": Color(0.80, 0.76, 0.86)},
+		"ring_props": ["shoal2_trunk", "shoal4_column_a", "shoal4_column_b", "shoal2_rubble_b", "shoal4_column_a", "shoal4_column_b"],   # mixed_012/016: 外围暗紫巨树 + 碎石堆   # 2026-10-04 +龟纹断柱两款(废墟的身份 + 吊灯宿主); 巨树降成 1/6, 一圈同一张树看得出是复制的
+		"ring_mod": {"shoal2_trunk": Color(0.80, 0.76, 0.86), "shoal4_column_a": Color(0.72, 0.68, 0.78), "shoal4_column_b": Color(0.72, 0.68, 0.78)},
 		"ring_density": 0.9,
 		"ring_h": [6.5, 9.0],   # 巨树干要顶出画面上沿(参考两侧树干比角色大好几倍)
 		"ring_avoid_bottom": true,
@@ -324,22 +353,43 @@ const THEMES: Dictionary = {
 		## 周边一圈红光(参考紫色地牢沿边是红色光源)
 		"rim_lights": 16,
 		"rim_light_tex": "shoal2_brazier_a",
+		"rim_light_tex_alt": ["shoal4_brazier_a", "shoal4_brazier_b"],   # 2026-10-04 16 盏同一张铁杆火盆 ⇒ 轮流换龟纹石墩火盆(两款)
+		"rim_light_h_of": {"shoal4_brazier_a": 1.35, "shoal4_brazier_b": 1.5},
 		"rim_light_real": 6,
 		"rim_light_h": 2.0,   # 参考火盆比角色高一倍
 		"rim_light_energy": 1.7,
 		"rim_light_range": 3.0,
 		"light_col": Color(1.0, 0.20, 0.26),
 		"light_energy": 1.0,
-		"light_fixture": "dusk_candle",
-		"obstacles": ["shoal_ruin_column"],
-		"mid_props": ["shoal_ruin_column"],
+		"light_fixture": "shoal2_brazier_a",   # 2026-10-04 改成真在用的灯具名(原 dusk_candle 是暗林一版没接线的旧名)
+		## ★2026-10-04 把暗林那一轮的四层复制过来(素材全新画, 风格锚 = 自家 shoal3_coral_altar), 题材是「沉没的龟纹神殿废墟」:
+		## ⑤挡路障碍: 中央大礁 → 龟甲纹石台上倒着的断柱段; 两侧矮墙 → 半塌的石墙(两款)。footprint 不动, 只换外观。
+		"obstacles": ["shoal4_drums", "shoal4_wall_a", "shoal4_wall_b"],
+		"obstacle_tex": {"reef_big": "shoal4_drums", "reef_wall": ["shoal4_wall_a", "shoal4_wall_b"]},
+		"obstacle_mod": Color(0.82, 0.80, 0.84),
+		## ⑥中景: 平台上沿一圈被暗紫灌丛吞掉一半的残拱/断墙角(只在上半圈)。
+		"mid_props": ["shoal4_ruin_a", "shoal4_ruin_b", "shoal4_ruin_c"],
+		"mid_n": 9,
+		"mid_h": [2.0, 2.8],
+		"mid_r": [1.02, 1.10],
+		"mid_mod": Color(0.66, 0.62, 0.70),
+		## ⑧灯光: 钉在断柱/巨树上的铜壁灯(宿主 = 断柱 shoal4_column_* 与紫巨树 shoal2_trunk; 不许悬空)。
+		"hang_lamp_tex": ["shoal4_hang_lamp_a", "shoal4_hang_lamp_b"],
+		"hang_lamps": 5,
+		"hang_on": ["shoal4_column_a", "shoal4_column_b", "shoal2_trunk"],
+		"hang_at": [0.32, 0.42],
+		"hang_lamp_h": 1.15,
+		"hang_light_energy": 1.4,
+		"hang_light_range": 2.6,
+		## ⑨氛围: 只留灯旁火星(删掉满场上飘气泡)。
+		"ambient_lamp_embers": true,
 		"fog_col": Color(0.090, 0.020, 0.120),
 		"bg_kind": "violet_haze",
 		"bg_top": Color(0.012, 0.004, 0.024),
 		"bg_horizon": Color(0.060, 0.016, 0.090),
 		"sun_col": Color(1.0, 0.96, 0.86), "sun_energy": 1.0,
-		"ambient_kind": "embers",
-		"ambient_col": Color(1.0, 0.45, 0.70, 0.45),
+		"ambient_kind": "lamp_embers",
+		"ambient_col": Color(1.0, 0.45, 0.40, 0.85),   # 2026-10-04 灯旁火星(原满场撒的那层已删)
 	},
 	V4_STORM: {
 		"fg_band_layer_gain": [1.0, 1.8, 1.7],   # 前景远/中层提亮(同深礁): 主题色近黑时远层贴着黑底读不出
@@ -347,9 +397,11 @@ const THEMES: Dictionary = {
 		"fg_band_px": 0.00475,   # 单张整幅(800 格 ≈ 3.8 单位宽), 每格 ≈ 2 屏幕像素
 		"fg_band_gain": 3.4,   # 贴图是灰度(近层 ~0.27 / 远层 ~0.9), 抬回剪影色量级: 近层 ≈ fg_band_col, 远层 ≈ 3 倍亮
 		"ring_per": 2,
-		"ring_mod": {"storm2_trunk": Color(0.80, 0.74, 0.74)},
+		"ring_mod": {"storm2_trunk": Color(0.80, 0.74, 0.74), "storm4_trunk_b": Color(0.80, 0.74, 0.74), "storm4_trunk_c": Color(0.80, 0.74, 0.74)},
 		"ground_tileset_hsv": Vector3(0.158, 0.30, 0.34),   # 2026-10-04「看清每只龟」: S0.41→0.30 V0.42→0.34(同一把尺: 最坏一只 0.15→0.12)   # 地面目标色 = mixed_035 地面中位实测(H57 S0.41)
 		"ground_tileset": "tiles_storm",   # 画出来的地面+崖边(PixelLab Wang 图块)
+		"prop_cycle": true,   # 2026-10-04 同类素材轮流摆(随机挑会把一张图挑成大多数, verify_arena_variety)
+		"layout_clear_obstacles": true,   # 2026-10-04 布局表有一格物件堆正压在下墙上, 叠成一坨像怪(暗林留下的差距) ⇒ 清掉
 		"ground_tileset_tint": Color(0.82, 0.78, 0.55),
 		"use_layout": true,   # 场内物件按 LAYOUT 设计布局摆
 		"fg_band_col": Color(0.090, 0.015, 0.020),   # 镜头前剪影带颜色(贴图是纯白剪影)
@@ -366,7 +418,7 @@ const THEMES: Dictionary = {
 		"field_tufts": ["storm2_grass_a", "storm2_grass_b", "storm2_grass_c"],   # 2026-10-03 重画: 鲜绿高草丛(mixed_035 边沿)
 		"field_tufts_clusters": 8,
 		"field_tufts_mod": Color(1, 1, 1),
-		"field_piles": ["storm2_logs_a", "storm2_logs_b", "storm3_net_a", "storm3_traps_a"],   # 2026-10-04: 木桩 X 架/十字桩换成挂浮子的渔网 / 捕虾笼, 留捆柴堆
+		"field_piles": ["storm2_logs_a", "storm3_net_a", "storm4_flotsam_a", "storm2_logs_b", "storm3_traps_a", "storm4_flotsam_b"],   # 2026-10-04 +风暴冲上岸的漂流物两款(海藻/断桨/绳圈; 新类别)   # 2026-10-04: 木桩 X 架/十字桩换成挂浮子的渔网 / 捕虾笼, 留捆柴堆
 		"field_piles_clusters": 8,
 		"field_piles_h": [1.1, 1.6],
 		"field_piles_mod": Color(1, 1, 1),
@@ -391,7 +443,8 @@ const THEMES: Dictionary = {
 		"water_col": Color(0.110, 0.012, 0.020),
 		"edge_dark": 0.05,
 		"caustic_amt": 0.0,
-		"ring_props": ["storm2_trunk"],   # 2026-10-03 重画: 长刺刻符的暗红巨树干(mixed_035 两侧)
+		"ring_props": ["storm2_trunk", "storm4_trunk_b", "storm4_trunk_c"],   # 2026-10-03 重画: 长刺刻符的暗红巨树干(mixed_035 两侧)   # 2026-10-04 +雷劈焦裂/扭身断顶两款: 一圈同一张树看得出是复制的
+		"ring_h_of": {"storm4_trunk_b": [5.4, 7.2], "storm4_trunk_c": [5.4, 7.2]},
 		"ring_density": 1.1,
 		"ring_h": [6.5, 9.0],   # 巨树干要顶出画面上沿(参考两侧树干比角色大好几倍)
 		"ring_avoid_bottom": true,
@@ -408,22 +461,43 @@ const THEMES: Dictionary = {
 		## 比 V1 更多更亮的红光(参考 mixed_035 整个房间被红光浸着)
 		"rim_lights": 14,   # 墓碑烛放大后 24 座排成一圈篱笆; mixed_035 一圈约 8~10 座
 		"rim_light_tex": "storm3_buoy_lamp",   # 2026-10-04: 墓碑烛→系泊桩船灯
+		"rim_light_tex_alt": ["storm4_beacon_a", "storm4_beacon_b"],   # 2026-10-04 14 盏同一张系泊桩灯 ⇒ 轮流换木杆铁篮信号火(两款)
+		"rim_light_h_of": {"storm4_beacon_a": 2.0, "storm4_beacon_b": 2.0},
 		"rim_light_real": 8,
 		"rim_light_h": 2.0,   # 2026-10-04 1.7→2.0: 系泊桩比旧墓碑烛(1.9)窄一圈, 同高读着细
 		"rim_light_energy": 2.6,
 		"rim_light_range": 4.0,
 		"light_col": Color(1.0, 0.16, 0.12),
 		"light_energy": 1.4,
-		"light_fixture": "dusk_candle",
-		"obstacles": ["dusk_boulder"],
-		"mid_props": ["dusk_trunk_silhouette"],
+		"light_fixture": "storm3_buoy_lamp",   # 2026-10-04 改成真在用的灯具名(原 dusk_candle 是暗林一版没接线的旧名)
+		## ★2026-10-04 把暗林那一轮的四层复制过来(素材全新画, 风格锚 = 自家 storm3_traps_a), 题材是「风暴打过的海边红林」:
+		## ⑤挡路障碍: 中央大礁 → 被风暴打烂的石笼码头墩; 两侧矮墙 → 绳子捆的断木桩栅(两款)。footprint 不动, 只换外观。
+		"obstacles": ["storm4_crib", "storm4_stakes_a", "storm4_stakes_b"],
+		"obstacle_tex": {"reef_big": "storm4_crib", "reef_wall": ["storm4_stakes_a", "storm4_stakes_b"]},
+		"obstacle_mod": Color(0.84, 0.80, 0.78),
+		## ⑥中景: 平台上沿一圈被风吹向一边的暗红灌木团(只在上半圈)。
+		"mid_props": ["storm4_bush_a", "storm4_bush_b", "storm4_bush_c"],
+		"mid_n": 9,
+		"mid_h": [1.9, 2.7],
+		"mid_r": [1.02, 1.10],
+		"mid_mod": Color(0.56, 0.50, 0.50),   # 灌木原色是饱和红, 不压会比龟还抢眼(暗林教训)
+		## ⑧灯光: 绳绑木架挂的红风灯, 钉在巨树干上(宿主 = 三种树干; 不许悬空)。
+		"hang_lamp_tex": ["storm4_hang_lamp_a", "storm4_hang_lamp_b"],
+		"hang_lamps": 5,
+		"hang_on": ["storm2_trunk", "storm4_trunk_b", "storm4_trunk_c"],
+		"hang_at": [0.30, 0.40],
+		"hang_lamp_h": 1.3,
+		"hang_light_energy": 1.4,
+		"hang_light_range": 2.8,
+		## ⑨氛围: 只留灯旁火星(删掉满场上飘气泡)。
+		"ambient_lamp_embers": true,
 		"fog_col": Color(0.300, 0.025, 0.040),
 		"bg_kind": "crimson_fog",
 		"bg_top": Color(0.090, 0.008, 0.016),
 		"bg_horizon": Color(0.300, 0.030, 0.045),
 		"sun_col": Color(1.0, 0.96, 0.86), "sun_energy": 1.0,
-		"ambient_kind": "embers",
-		"ambient_col": Color(1.0, 0.40, 0.30, 0.5),
+		"ambient_kind": "lamp_embers",
+		"ambient_col": Color(1.0, 0.50, 0.24, 0.85),   # 2026-10-04 灯旁火星(原满场撒的那层已删)
 	},
 }
 
@@ -440,9 +514,10 @@ const REQUIRED_KEYS: Array = [
 
 ## ★★已经【真的画出来】的版(不只是配置齐) —— 判据 `verify_arena_layers_drawn` /
 ##   `verify_arena_variety` / `verify_island_ambient` 只对这里列出的版逐层验。
-## ★用户 2026-10-03 拍板「先把暗林一版做到位再复制」⇒ 现在只有暗林。
+## ★用户 2026-10-03 拍板「先把暗林一版做到位再复制」; 2026-10-04 看完暗林对比图「地图感觉差不多了」
+##   ⇒ 同一天把同一套做法复制到深礁/紫墟/赤林(素材每版全新画, 不拿暗林的图换色), 四版全进。
 ##   别为了让清单变长把没做的版塞进来: 塞进来门禁当场红, 那正是它的用处。
-const DRAWN: Array = [V1_DUSK]
+const DRAWN: Array = [V1_DUSK, V2_REEF, V3_SHOAL, V4_STORM]
 
 ## 物件【类别】表(素材名 → 类)。判据 `verify_arena_variety` 按它数「一屏几类」与「同一张图重复多少」。
 ## ★参考(咩咩地牢, 人工归类 23 张): 一屏 7~8 类 —— 石板碎石 / 蘑菇 / 蜡烛 / 草簇 / 墓标 / 骨头 / 宝箱门 / 背景墙
@@ -460,6 +535,40 @@ const PROP_CLASS: Dictionary = {
 	"dusk4_mush_a": "mushroom", "dusk4_mush_b": "mushroom",
 	"dusk4_bush_a": "bush", "dusk4_bush_b": "bush", "dusk4_bush_c": "bush",
 	"dusk4_stump": "deadwood", "dusk4_log_a": "deadwood", "dusk4_log_b": "deadwood",
+	## ── 深礁(2026-10-04) ── 类名同上规矩(英文键): coral 珊瑚(珊瑚塔 + 中景海扇/柳珊瑚, 都是珊瑚) /
+	##   clam 珍珠贝 / spire 礁石柱(吊灯宿主) / reefrock 挡路礁石 / relic 沉物
+	"reef2_kelp_a": "grass", "reef2_kelp_b": "grass",
+	"reef2_rocks_a": "stones", "reef2_rocks_b": "stones",
+	"reef2_lamp_a": "lamp", "reef2_lamp_b": "lamp", "reef4_cairn_a": "lamp", "reef4_cairn_b": "lamp",
+	"reef4_hang_lamp_a": "lamp", "reef4_hang_lamp_b": "lamp",
+	"reef3_coral_a": "coral", "reef4_fan_a": "coral", "reef4_fan_b": "coral", "reef4_fan_c": "coral",
+	"reef3_shell_coins": "relic",
+	"reef2_clam_a": "clam", "reef2_clam_b": "clam",
+	"reef4_spire_a": "spire", "reef4_spire_b": "spire",
+	"reef4_reefrock": "reefrock", "reef4_ridge_a": "reefrock", "reef4_ridge_b": "reefrock",
+	## ── 紫墟(2026-10-04) ── rubble 碎石堆(含倒下的断柱段) / relic 砗磲深海币 / coral 龟纹珊瑚石台 /
+	##   pillar 立着的龟纹断柱 / ruinwall 残拱断墙(中景 + 两侧矮墙)
+	"shoal2_grass_a": "grass", "shoal2_grass_b": "grass",
+	"shoal2_brazier_a": "lamp", "shoal2_brazier_b": "lamp", "shoal4_brazier_a": "lamp", "shoal4_brazier_b": "lamp",
+	"shoal4_hang_lamp_a": "lamp", "shoal4_hang_lamp_b": "lamp",
+	"shoal2_rubble_a": "rubble", "shoal2_rubble_b": "rubble", "shoal4_drums": "rubble",
+	"shoal3_coins": "relic",
+	"shoal3_coral_altar": "coral",
+	"shoal2_trunk": "trunk",
+	"shoal4_column_a": "pillar", "shoal4_column_b": "pillar",
+	"shoal4_ruin_a": "ruinwall", "shoal4_ruin_b": "ruinwall", "shoal4_ruin_c": "ruinwall",
+	"shoal4_wall_a": "ruinwall", "shoal4_wall_b": "ruinwall",
+	## ── 赤林(2026-10-04) ── timber 捆柴 / gear 渔网虾笼 / flotsam 风暴冲上岸的漂流物 /
+	##   wreck 风暴残骸(石笼码头墩 + 断木桩栅) / bush 暗红灌木团
+	"storm2_grass_a": "grass", "storm2_grass_b": "grass", "storm2_grass_c": "grass",
+	"storm3_buoy_lamp": "lamp", "storm4_beacon_a": "lamp", "storm4_beacon_b": "lamp",
+	"storm4_hang_lamp_a": "lamp", "storm4_hang_lamp_b": "lamp",
+	"storm2_trunk": "trunk", "storm4_trunk_b": "trunk", "storm4_trunk_c": "trunk",
+	"storm2_logs_a": "timber", "storm2_logs_b": "timber",
+	"storm3_net_a": "gear", "storm3_traps_a": "gear",
+	"storm4_flotsam_a": "flotsam", "storm4_flotsam_b": "flotsam",
+	"storm4_bush_a": "bush", "storm4_bush_b": "bush", "storm4_bush_c": "bush",
+	"storm4_crib": "wreck", "storm4_stakes_a": "wreck", "storm4_stakes_b": "wreck",
 }
 
 

@@ -1030,12 +1030,22 @@ func _build_layout_props() -> Array:
 	var mods := {"t": cfg.get("field_tufts_mod", Color(1, 1, 1)), "p": cfg.get("field_piles_mod", Color(1, 1, 1))}
 	var _ps: float = float(cfg.get("prop_shadow", 0.0))
 	var n_put := 0
+	## ★2026-10-04 主题可让同类素材**轮流**摆(prop_cycle): 随机挑在 11 个物件堆位上把一张图挑成了 5/6,
+	##   同一个精灵重复看得出来(判据 verify_arena_variety)。不给 ⇒ 原随机挑法, rng 序列逐值不变(暗林不动)。
+	var _cyc: bool = bool(cfg.get("prop_cycle", false))
+	var _cyc_n := {"t": 0, "p": 0}
 	for row in ArenaTheme.LAYOUT:
 		var kind: String = str(row[2])
 		var names: Array = lists.get(kind, [])
 		if names.is_empty():
 			continue
-		var path: String = "res://assets/sprites/map/themes/%s.png" % str(names[rng.randi_range(0, names.size() - 1)])
+		var _pick: int
+		if _cyc:
+			_pick = int(_cyc_n.get(kind, 0)) % names.size()
+			_cyc_n[kind] = int(_cyc_n.get(kind, 0)) + 1
+		else:
+			_pick = rng.randi_range(0, names.size() - 1)
+		var path: String = "res://assets/sprites/map/themes/%s.png" % str(names[_pick])
 		if not ResourceLoader.exists(path):
 			continue
 		var p2 := Vector2(c.x + float(row[0]) * A.size.x * 0.5, c.y + float(row[1]) * A.size.y * 0.5)
@@ -1612,6 +1622,7 @@ func _build_map_props() -> void:
 			_oi += 1
 		else:
 			root.add_child(battle._map_billboard("res://assets/sprites/map/%s.png" % _on, ob["c"], float(ob["h"])))
+	_clear_layout_on_obstacles()
 	# 基地穹顶围栏(加性发光, 罩蛋) — 两端基地
 	for pair in [["left", battle.ARENA.position.x + 70.0], ["right", battle.ARENA.end.x - 70.0]]:
 		var dome = battle._map_billboard("res://assets/sprites/map/base_dome.png", Vector2(float(pair[1]), c.y), 3.0, true)
@@ -1797,6 +1808,7 @@ func _build_theme_decorations(root: Node3D) -> void:
 	## ★主题可压每簇件数(ring_per): 巨树干一簇 7 棵挤成一堵墙, 参考里是一棵棵分开站的。
 	var per_min: int = mini(3, int(cfg.get("ring_per", per)))
 	per = int(cfg.get("ring_per", per))
+	var _ring_k := 0
 	for i in range(clusters):
 		## 簇心: 环上均匀取角, 再加抖动; 半径 1.04~1.30 倍 ⇒ 落在岛外的海面/岸上
 		## ★★角度**偏向上下**而不是环上均匀: 实测 ARENA 投到 1280×720 后
@@ -1826,7 +1838,13 @@ func _build_theme_decorations(root: Node3D) -> void:
 			d2 = sqrt(d2) * float(cfg.get("ring_spread", 118.0))
 			var px: float = cxp + cos(a2) * d2
 			var py: float = cyp + sin(a2) * d2 * 0.62      # 俯视压扁
-			var img: String = str(props[rng.randi_range(0, props.size() - 1)])
+			## ★prop_cycle(同 _build_layout_props): 轮流挑, 不让随机数把一款摆成大多数。不给 ⇒ 原随机挑法(暗林逐值不变)。
+			var img: String
+			if bool(cfg.get("prop_cycle", false)):
+				img = str(props[_ring_k % props.size()])
+				_ring_k += 1
+			else:
+				img = str(props[rng.randi_range(0, props.size() - 1)])
 			var path: String = "res://assets/sprites/map/themes/%s.png" % img
 			if not ResourceLoader.exists(path):
 				continue
@@ -1899,6 +1917,12 @@ func sprite_px_world(s: Sprite3D, px: float, py: float) -> Vector3:
 	return o + (b.x * lx * s.scale.x + b.y * ly * s.scale.y) * s.pixel_size
 
 
+## ★2026-10-04 主题可给自己的「光源像素」色域(flame_rgb = {"r": [lo, hi], "g": [..], "b": [..]}, 开区间):
+##   深礁的灯是发绿光的藻/珍珠, 不是火 —— 暖色判据一个像素都认不出来, 吊灯就没有光、也没有浮游光点。
+##   不给 ⇒ 原暖色判据(暗林/紫墟/赤林), 逐值不变。
+const FLAME_RGB_WARM := {"r": [0.85, 2.0], "g": [0.30, 0.85], "b": [-1.0, 0.45]}
+
+
 ## 灯具贴图里「火」的像素重心(亮暖色像素)。找不到 ⇒ (-1,-1), 调用方跳过(火星必须有火源)。
 func _flame_px(tex: Texture2D) -> Vector2:
 	if tex == null:
@@ -1908,21 +1932,71 @@ func _flame_px(tex: Texture2D) -> Vector2:
 		return _flame_cache[k]
 	var im: Image = _tex_img(tex)
 	var out := Vector2(-1, -1)
+	var fr: Dictionary = ArenaTheme.cfg().get("flame_rgb", FLAME_RGB_WARM)
+	var r0: float = float(fr["r"][0])
+	var r1: float = float(fr["r"][1])
+	var g0: float = float(fr["g"][0])
+	var g1: float = float(fr["g"][1])
+	var b0: float = float(fr["b"][0])
+	var b1: float = float(fr["b"][1])
 	if im != null:
 		var sx := 0.0
 		var sy := 0.0
 		var n := 0
+		var hits: Array = []
 		for y in range(im.get_height()):
 			for x in range(im.get_width()):
 				var c: Color = im.get_pixel(x, y)
-				if c.a > 0.5 and c.r > 0.85 and c.g > 0.30 and c.g < 0.85 and c.b < 0.45:
+				if c.a > 0.5 and c.r > r0 and c.r < r1 and c.g > g0 and c.g < g1 and c.b > b0 and c.b < b1:
 					sx += float(x) + 0.5
 					sy += float(y) + 0.5
 					n += 1
+					hits.append(Vector2i(x, y))
 		if n > 0:
 			out = Vector2(sx / float(n), sy / float(n))
+			## ★2026-10-04 光源是一圈(光球外圈亮、正中发白)时重心落在圈心, 周围 3×3 一格光源色都没有 ⇒
+			##   这种情况才吸附到最近的光源像素。3×3 里有光源像素(暗林那几盏都是)就原样不动, 暗林逐值不变。
+			var ci := Vector2i(int(floor(out.x)), int(floor(out.y)))
+			var near := false
+			for dy in range(-1, 2):
+				for dx in range(-1, 2):
+					if hits.has(ci + Vector2i(dx, dy)):
+						near = true
+			if not near:
+				var best: Vector2i = hits[0]
+				for h in hits:
+					if Vector2(h).distance_squared_to(out) < Vector2(best).distance_squared_to(out):
+						best = h
+				out = Vector2(float(best.x) + 0.5, float(best.y) + 0.5)
 	_flame_cache[k] = out
 	return out
+
+
+## ★2026-10-04 布局表(ArenaTheme.LAYOUT)里有一格物件堆正好落在下墙的碰撞椭圆上(u0.28 v0.44 = 中心 +235,+198),
+##   两张图叠在一起读作「一坨带刺的东西」—— 正是暗林留下的差距「障碍外观要和角色轮廓分得开」。
+##   布局表四版共用, 改表会动暗林 ⇒ 主题开 layout_clear_obstacles 才把**落在障碍碰撞椭圆附近(见下)**的
+##   布局物件和它的接地影删掉。障碍要等本函数才有, 所以在这里清, 不在摆布局时清。不给 ⇒ 一件不动(暗林/base 不变)。
+## ★「叠在一起」是屏幕上的事: 那堆东西其实站在下墙**身后** 1.9 个 ry(探针实测), 立起来的图往上画, 被墙压住下半截。
+##   ⇒ 横向放大 1.3 倍、纵深放大 2.5 倍的椭圆(纵深方向是屏幕上下)。
+func _clear_layout_on_obstacles() -> void:
+	if not bool(ArenaTheme.cfg().get("layout_clear_obstacles", false)):
+		return
+	var lp: Node = battle._world.find_child("LayoutProps", true, false)
+	if lp == null:
+		return
+	for ch in lp.get_children():
+		if not (ch is Node3D):
+			continue
+		var p: Vector3 = (ch as Node3D).position
+		for ob in battle._obstacles:
+			var o3: Vector3 = battle._world_pos(ob["c"], 0.0)
+			var dx: float = (p.x - o3.x) / (float(ob["rx"]) * battle.WS * 1.3)
+			var dz: float = (p.z - o3.z) / (float(ob["ry"]) * battle.WS * 2.5)
+			if dx * dx + dz * dz < 1.0:
+				ch.set_meta("cleared_on_obstacle", true)
+				ch.visible = false
+				ch.queue_free()
+				break
 
 
 ## 挡路障碍换外观: 按**原图的视觉宽**反推主题素材的高度 ⇒ 看起来多宽就挡多宽(footprint 一个数不动)。
@@ -2042,7 +2116,21 @@ func _build_hang_lamps(root: Node3D) -> void:
 		if xmin < 0:
 			continue
 		## 屏幕右侧那一格: 没镜像取 xmax; 镜像(scale.x<0)后 xmin 才在右边。往树干里收 2 格, 底板压在树皮上。
-		var edge_px: float = (float(xmax) - 1.5) if t.scale.x > 0.0 else (float(xmin) + 2.5)
+		## ★2026-10-04 最外侧那格可能是一根伸出去的藤/一块掉落的碎石(紫墟断柱实测: 底板落在空像素上)
+		##   ⇒ 从屏幕右侧往里找**连续 3 格不透明**的第一段, 取它往里第 3 格。轮廓实心时与原算法逐格相同(暗林不变)。
+		var edge_px: float = -1.0
+		if t.scale.x > 0.0:
+			for x in range(xmax, xmin + 1, -1):
+				if im.get_pixel(x, row).a > 0.5 and im.get_pixel(x - 1, row).a > 0.5 and im.get_pixel(x - 2, row).a > 0.5:
+					edge_px = float(x) - 1.5
+					break
+		else:
+			for x in range(xmin, xmax - 1):
+				if im.get_pixel(x, row).a > 0.5 and im.get_pixel(x + 1, row).a > 0.5 and im.get_pixel(x + 2, row).a > 0.5:
+					edge_px = float(x) + 2.5
+					break
+		if edge_px < 0.0:
+			continue
 		var edge_w: Vector3 = sprite_px_world(t, edge_px, float(row) + 0.5)
 		var lt_path: String = THEME_TEX % str(texs[k % texs.size()])
 		if not ResourceLoader.exists(lt_path):

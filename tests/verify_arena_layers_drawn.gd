@@ -105,6 +105,26 @@ func _ready() -> void:
 		_ok("[%s] ★★每件障碍的视觉半宽与碰撞 rx 差 ≤20%%(用户 2026-07-21「生效范围比看起来的大」)" % th,
 			bad_w.is_empty(), str(bad_w))
 
+		## ④b 布局物件不许压在障碍上(2026-10-04: 布局表一格物件堆正落在下墙碰撞椭圆中心, 两图叠成一坨读作怪)
+		##   只验开了 layout_clear_obstacles 的版(暗林没开: 布局表四版共用, 改它会动已认可的暗林)。
+		if bool(cfg.get("layout_clear_obstacles", false)):
+			var lp: Node = s._world.find_child("LayoutProps", true, false)
+			var lps: Array = []
+			for sp in _all_sprites(lp):
+				if not (sp as Node).is_queued_for_deletion():
+					lps.append(sp)
+			_ok("[%s] ★分母: 布局物件 LayoutProps ≥ 10 件" % th, lps.size() >= 10, "%d 件" % lps.size())
+			var on_ob: Array = []
+			for sp in lps:
+				var p: Vector3 = (sp as Node3D).global_position
+				for ob in s._obstacles:
+					var o3: Vector3 = s._world_pos(ob["c"], 0.0)
+					var dx: float = (p.x - o3.x) / (float(ob["rx"]) * RB.WS * 1.3)
+					var dz: float = (p.z - o3.z) / (float(ob["ry"]) * RB.WS * 2.5)   # 纵深放大: 站在墙身后 2 个 ry 内的立图会被墙压住下半截(屏幕上叠成一坨)
+					if dx * dx + dz * dz < 1.0:
+						on_ob.append("%s 压在 %s 上" % [(sp as Sprite3D).texture.resource_path.get_file(), str(ob["img"])])
+			_ok("[%s] ★★没有布局物件和障碍在屏幕上叠成一坨(碰撞椭圆横×1.3 纵深×2.5)(两图叠成一坨读作怪)" % th, on_ob.is_empty(), str(on_ob))
+
 		## ⑤ 中景: 有, 站在平台边沿以内, 只在上半圈
 		var mid: Node = s._world.find_child("ThemeMid", true, false)
 		var mids: Array = _all_sprites(mid)
