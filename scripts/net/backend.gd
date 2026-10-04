@@ -315,7 +315,22 @@ static func pool_find_battles(pool: Dictionary, battles: int, exclude_ids: Array
 ##   战斗侧读的是 `leaders / equipped / lane_assign / minions / loadouts` ——
 ##   **没有一处读 ghost 的 `pet_levels`**(2026-09-26 grep 全仓确认, 只有
 ##   `remote_pool.snapshot_valid` 检查它存在)。所以"bot 多强"= "bot 有几件装备"。
-static func make_bot(battles: int, rng: RandomNumberGenerator) -> Dictionary:
+## ★★★2026-10-04 用户「不能让玩家知道是机器人，以及对手的场次一定要相同」——
+##   卡片(v0.19.521)之外, **快照本身**也不许露馅: 对手快照会原样进录像(`var_to_bytes`,
+##   **类型也保留**)和 `matches.right_snapshot`, 任何登录用户都读得到。
+##   量出来的差异(门禁 `verify_bot_snapshot_shape` 对着 `build_ghost_snapshot` 递归逐层比):
+##     · 缺键: trainer_skill / season_wins / hearts / season_sweeps /
+##       chest_treasures_won / chest_treasure_value / origin(真人对手经 `ingest_remote` 盖章)
+##       / 周六的 gl_w / gl_l / gl_ts
+##     · 类型: 真人对手是**从 JSON 解出来的**(服务端拉回 / `load_pool` 读盘) ⇒ 数字全是 float;
+##       机器人是现造的 int ⇒ 录像里一眼分得出。⇒ 末尾过一遍同样的 JSON 往返。
+##     · 值域: `pet_levels` 真人恒为 1(`get_pet_level` 默认, 只有调试面板改), 机器人写的是赛季等级;
+##       `profile.id` 真人 = 自己的 ghost_id(`g_<12hex>_<赛季>_<三龟>_b<场次>`), 机器人是 `#123456`;
+##       `season_eggs_killed` 真人随胜场涨, 机器人恒 0。
+##   ⚠ `is_bot` / `ghost_id` **留着**(门禁与匹配记账要分得清), 它们只在本机:
+##     出站的两条路(录像 / right_snapshot)都过 `ReplayUploader.GHOST_STRIP` 摘掉。
+## ★`gw / gl` = 周六战绩标签(-1 = 积分赛)。周六的真人快照带 gl_w/gl_l/gl_ts, 机器人也得带。
+static func make_bot(battles: int, rng: RandomNumberGenerator, gw: int = -1, gl: int = -1) -> Dictionary:
 	var bot_lv := _P2.bot_level_for_battles(battles)
 	# ★装备容量统一规则(2026-07-27): 与玩家同一套 —— 全队合计 team_equip_cap(等级), 单只 ≤ UNIT_EQUIP_CAP。
 	#   原来这里走 equip_slots_for_battles(每只固定N件) = 敌我两把尺子, 已废。
@@ -339,7 +354,9 @@ static func make_bot(battles: int, rng: RandomNumberGenerator) -> Dictionary:
 	var levels := {}
 	# 先给统领分, 每只最多 UNIT_EQUIP_CAP; 分完剩下的留给小将(下面)。总数受 budget 硬约束。
 	for pid in leaders:
-		levels[pid] = bot_lv
+		## ★写 1 不写 bot_lv: 真人快照这里是 `GameState.get_pet_level()` —— 默认 1、只有调试面板改,
+		##   真机池 30/30 条全是 1。写赛季等级就是一个真人产不出来的值。战斗侧不读它(见上面头注)。
+		levels[pid] = 1
 		var eqs: Array = []
 		while eqs.size() < _P2.UNIT_EQUIP_CAP and budget > 0 and shop_ids.size() > 0:
 			eqs.append({"id": shop_ids[rng.randi() % shop_ids.size()], "star": 1})
@@ -360,14 +377,27 @@ static func make_bot(battles: int, rng: RandomNumberGenerator) -> Dictionary:
 			if meqs.size() > 0:
 				m["equips"] = meqs
 			(minions[lk] as Array).append(m)
-	return {
+	var ghost_id := "bot_%d_%d" % [battles, rng.randi() % 1000000]
+	## ★★用户 2026-10-04「不能让玩家知道是机器人」: 原来全体机器人同名「海域守卫」、同号(hash("BOT") 恒为 #451562),
+	##   打两场就认得出。⇒ 名字用**真人注册时的预填名生成器**(「石头统领」这类), 不用「龟主-xxxxx」兜底名
+	##   (用户 2026-10-04:「龟主-32c6c这是真人会用的名字？」)。
+	var nick: String = _P2.nickname_suggest_at(rng.randi(), rng.randi())
+	## ★`profile.id` 与真人同形: 真人四个上传点都传 `{"id": gid}`, 即 `player_ghost_id()` 拼的那串。
+	##   卡片上两者都经 `MatchmakingScene._display_id` 折成 `#6位数`(门禁 verify_bot_card_honest)。
+	var fake_uid := "%06x%06x" % [rng.randi() % 0x1000000, rng.randi() % 0x1000000]
+	var sorted_ldr: Array = leaders.duplicate()
+	sorted_ldr.sort()
+	var sid: int = int(GameState.season_id) if GameState != null else 1
+	var pid_str := "g_%s_%d_%s" % [fake_uid, sid, "-".join(PackedStringArray(sorted_ldr))]
+	pid_str += ("_g%d-%d" % [gw, maxi(0, gl)]) if gw >= 0 else ("_b%d" % battles)
+	var loadouts: Dictionary = _SkillChoice.pick_loadouts(leaders,
+		func(pid: String) -> Dictionary: return DataRegistry.pet_by_id.get(pid, {}), rng)
+	var rec := _bot_season_record(battles, rng, gw, gl)
+	var snap := {
 		"schema_ver": SCHEMA_VER,
-		"ghost_id": "bot_%d_%d" % [battles, rng.randi() % 1000000],
+		"ghost_id": ghost_id,
 		"is_bot": true,
-		## ★★用户 2026-10-04「不能让玩家知道是机器人」: 原来全体机器人同名「海域守卫」、同号(hash("BOT") 恒为 #451562),
-		##   打两场就认得出。⇒ 名字用**真人注册时的预填名生成器**(「石头统领」这类), 不用「龟主-xxxxx」兜底名
-		##   (用户 2026-10-04:「龟主-32c6c这是真人会用的名字？」); 号码每个不同。
-		"profile": {"name": _P2.nickname_suggest_at(rng.randi(), rng.randi()), "avatar": str(leaders[0]) if leaders.size() > 0 else "basic", "id": "#%06d" % (rng.randi() % 1000000)},
+		"profile": {"name": nick, "avatar": str(leaders[0]) if leaders.size() > 0 else "basic", "id": pid_str},
 		"leaders": leaders,
 		"lane_assign": lane_assign,
 		"minions": minions,
@@ -376,13 +406,69 @@ static func make_bot(battles: int, rng: RandomNumberGenerator) -> Dictionary:
 		##   永远走默认签名技, 而 28 只龟全部有 2~3 个已实装替代技 ⇒ 对手身上只体现
 		##   三分之一的技能多样性。判据不在这里手写 —— 见 `SkillChoice` 的头注:
 		##   同一个形状原本有三个生产者, 09-17 那次只补了"玩家上传"那一个。
-		"loadouts": _SkillChoice.pick_loadouts(leaders,
-			func(pid: String) -> Dictionary: return DataRegistry.pet_by_id.get(pid, {}), rng),
+		"loadouts": loadouts,
 		"equipped": equipped,
 		"pet_levels": levels,
+		## 敌方大师读它(`battle_spawn.gd`)。从玩家**能选的那张表**里抽, 真人谁都在这七个里。
+		"trainer_skill": _bot_trainer_skill(rng),
 		"season_total_battles": battles,
-		"season_eggs_killed": 0,
+		"season_eggs_killed": int(rec["wins"]),
+		"season_wins": int(rec["wins"]),
+		"hearts": int(rec["hearts"]),
+		"season_sweeps": int(rec["sweeps"]),
+		## 宝箱进度: 空/0 = 「没养宝箱龟」的真人的值, 也是这两个键缺失时战斗侧的回落值
+		##   (`battle_spawn` 宝箱分支) ⇒ 补键不改变任何一场机器人战斗。
+		"chest_treasures_won": [],
+		"chest_treasure_value": 0.0,
+		## 真人对手都是从服务端拉回来的, `RemotePool.ingest_remote` 必盖这个章。
+		ORIGIN_KEY: ORIGIN_REMOTE,
 	}
+	if gw >= 0:
+		## 与 `upload_gauntlet_ghost` 同三键。时间戳落在 30 分钟新鲜窗里(`gauntlet_pool_find` 只挑新鲜的)。
+		snap["gl_w"] = gw
+		snap["gl_l"] = maxi(0, gl)
+		snap["gl_ts"] = int(_P2.now_utc()) - rng.randi_range(60, 25 * 60)
+	## ★最后一步: 过一遍真人对手走过的同一个 JSON 往返(服务端拉回 `snapshots_from_body` / `load_pool` 读盘)。
+	##   不做的话数字是 int 而真人是 float, `var_to_bytes` 的录像里类型是保留的。
+	return JSON.parse_string(JSON.stringify(snap))
+
+
+## 机器人的赛季战绩: 「打了 battles 场」的真人会有的胜负/命/横扫。
+## ★约束都来自产品自己的规则: 积分赛每输一场掉一命(`lose_heart`), 0 命不能再打积分赛;
+##   周六的人一定已晋级(`PROMOTE_WINS` 胜); 周六场次不掉命、不记横扫(`gauntlet_settle`)。
+##   胜一场 `season_wins` 与 `season_eggs_killed` 同时 +1(各结算路径都成对加)。
+static func _bot_season_record(battles: int, rng: RandomNumberGenerator, gw: int, gl: int) -> Dictionary:
+	var g_w := maxi(0, gw)
+	var g_l := maxi(0, gl)
+	var ladder_n := maxi(0, battles - g_w - g_l)
+	var need_w := mini(int(_P2.PROMOTE_WINS), ladder_n) if gw >= 0 else 0
+	var w := 0
+	var l := 0
+	var sweeps := 0
+	for i in range(ladder_n):
+		var left_after := ladder_n - i - 1
+		## 必须赢: 再输就凑不够晋级胜场 / 再输就 0 命而后面还有场要打(0 命不能再打积分赛)。
+		var must_win: bool = (w + left_after + 1 <= need_w) \
+			or (l >= int(_P2.HEARTS_MAX) - 1 and (left_after > 0 or gw >= 0))
+		if must_win or rng.randf() < 0.5:
+			w += 1
+			if rng.randf() < 0.5:
+				sweeps += 1
+		else:
+			l += 1
+	return {"wins": w + g_w, "hearts": int(_P2.HEARTS_MAX) - l, "sweeps": sweeps}
+
+
+## 机器人大师装配的技能 —— 从训龟大师配置界面的 `SKILLS`(玩家的全部选项)里抽。
+static func _bot_trainer_skill(rng: RandomNumberGenerator) -> String:
+	var TC = load("res://scripts/scenes/TrainerConfigScene.gd")
+	var ids: Array = []
+	if TC != null:
+		for s in TC.SKILLS:
+			ids.append(str((s as Dictionary).get("id", "")))
+	if ids.is_empty():
+		return "hook"
+	return str(ids[rng.randi() % ids.size()])
 
 ## Fisher-Yates 洗牌 (rng 确定).
 static func _shuffle(arr: Array, rng: RandomNumberGenerator) -> void:
@@ -957,7 +1043,7 @@ static func find_gauntlet_opponent(gw: int, gl: int, exclude_ids: Array,
 	##    「周六有多少场是打机器人的」是 R2 那条风险唯一能回答的数字。
 	_tally("gauntlet_bot")
 	return make_bot(gauntlet_bot_battles(
-		int(GameState.season_total_battles) if GameState != null else 0, gw, gl), rng)
+		int(GameState.season_total_battles) if GameState != null else 0, gw, gl), rng, gw, gl)
 
 
 ## 周六机器人按几场的强度造。
