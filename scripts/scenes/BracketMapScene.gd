@@ -237,23 +237,32 @@ func set_data(bucket: Dictionary, finals: Dictionary, now: int = 0) -> void:
 ## ★两条路都调它: 联网那条(`_on_poll` 指纹变了)与喂数据那条(`set_data`)。
 ##   只挂一条的话, 门禁验的就不是玩家真走的那条(memory fb-verify-must-run-the-real-path)。
 func _record_progress() -> void:
+	record_progress_from(_bucket)
+
+
+## ★★2026-10-04 (方案书 20260926 头衔发放 · U1): 记进度 + 对头衔账的**本体**抽成静态,
+##   让主菜单也能拿同一份 feed 走同一条链 —— 原来只有打开对阵图才会跑到这里,
+##   **从不再打开对阵图的冠军永远拿不到头衔**。主菜单不另写判据, 只喂 feed 调它。
+## 返回: 存档有没有变(门禁用)。
+static func record_progress_from(bucket: Dictionary) -> bool:
 	if GameState == null:
-		return
-	var n := int(_bucket.get("size", 0))
-	var me := int(_bucket.get("me", -1))
+		return false
+	var n := int(bucket.get("size", 0))
+	var me := int(bucket.get("me", -1))
 	if n <= 1 or me < 0:
-		return                        # 没有桶 / 我不在桶里(纯观众) ⇒ 一个字都不记
-	var pr: Dictionary = _B.my_progress(me, n, _bucket.get("done", {}) as Dictionary)
+		return false                  # 没有桶 / 我不在桶里(纯观众) ⇒ 一个字都不记
+	var pr: Dictionary = _B.my_progress(me, n, bucket.get("done", {}) as Dictionary)
 	var changed: bool = GameState.record_finals_progress(
 		int(pr.get("deepest", 0)), int(pr.get("total", 0)), bool(pr.get("champion", false)),
 		bool(pr.get("runner_up", false)))
-	if _reveal_sealed():
+	if _reveal_sealed_from(bucket):
 		changed = true
 	## ★头衔在 `sync_titles()` 里发(与满配额/进决赛日同一个入口) —— 这里不自己发。
 	##   `sync_titles` 自带按 `{id, week}` 去重, 每次 feed 都调一遍是幂等的。
 	var got: int = GameState.sync_titles()
 	if changed or got > 0:
 		GameState.save()
+	return changed or got > 0
 
 
 ## ══════════════════════════════════════════════════════════════════════
@@ -270,7 +279,7 @@ func _record_progress() -> void:
 ## ★只看 `_bucket`(我那个桶)那一张, 不看 `cur()` —— `cur()` 跟着页签变,
 ##   切到「冠军赛」那张会拿另一张图的 `done` 去判我的场。
 ## 返回值: 真的揭晓了吗(调用方据此决定要不要存档)。
-func _reveal_sealed() -> bool:
+static func _reveal_sealed_from(bucket: Dictionary) -> bool:
 	if GameState == null:
 		return false
 	var p = GameState.get("finals_pending_reveal")
@@ -282,21 +291,21 @@ func _reveal_sealed() -> bool:
 	if r < 1 or m < 0:
 		GameState.finals_pending_reveal = {}    # 坏坐标: 清掉, 别永远挂着
 		return true
-	var n := int(_bucket.get("size", 0))
-	var me := int(_bucket.get("me", -1))
+	var n := int(bucket.get("size", 0))
+	var me := int(bucket.get("me", -1))
 	## ★`me < 0` 这一半是**防御性, 不承重**(2026-09-27 反向验证查实): 唯一的调用方
 	##   `_record_progress()` 第一行就挡了 `me < 0`, 所以拿掉它一条断言都不红。
 	##   留着是把「纯观众没有待揭晓的场」写在明面上。
 	##   ⚠ 别因为它在这儿就以为「纯观众」有判据在守 —— 守它的是
 	##   `verify_bracket_map` ⑧e 那条「纯观众 ⇒ 胜场不动、pending 也不清」, 它量的是**结果**,
 	##   所以无论哪一层挡住的都算。(memory fb-mutation-not-reddening-can-mean-dead-code)
-	## ★`n <= 1` 那一半**是承重的**: feed 还没到时 `_bucket` 是空的。
+	## ★`n <= 1` 那一半**是承重的**: feed 还没到时 `bucket` 是空的。
 	if n <= 1 or me < 0:
 		return false                            # 还没桶 / 我不在桶里 ⇒ 等下一次 feed
-	var w = (_bucket.get("done", {}) as Dictionary).get("%d-%d" % [r, m], -1)
+	var w = (bucket.get("done", {}) as Dictionary).get("%d-%d" % [r, m], -1)
 	if int(w) < 0:
 		return false                            # 那一轮还没翻面 —— 这正是「封存」本身
-	var side := _B.my_side_in(me, r, m, n, _bucket.get("done", {}) as Dictionary)
+	var side := _B.my_side_in(me, r, m, n, bucket.get("done", {}) as Dictionary)
 	if side < 0:
 		GameState.finals_pending_reveal = {}    # 我根本不在那一场里(坐标错了) ⇒ 清掉
 		return true

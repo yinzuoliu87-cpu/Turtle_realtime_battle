@@ -55,6 +55,8 @@ func _ready() -> void:
 	_t_survive_resets()
 	_t_default_name()
 	await _t_frozen_default()
+	await _t_rename()
+	await _t_bind_copy()
 	for k in KEYS:
 		GameState.set(k, _bak[k])
 	print("")
@@ -396,5 +398,112 @@ func _t_frozen_default() -> void:
 	await get_tree().process_frame
 	var pre := str(inst._nick_edit.text) if inst._nick_edit != null else "<没框>"
 	_ok("⑥④ ★★★绑定邮箱那屏预填的就是存下来的默认名", pre == before, "预填「%s」 存的「%s」" % [pre, before])
+	inst.queue_free()
+	await get_tree().process_frame
+
+
+# ─────────────────────────────────────────────────────────────
+# ⑦ 改名(2026-10-04 · E 阶段方案书 ③ done-when:「GameState 有改名入口 且 verify_nickname 有『改名』一节」)
+# ─────────────────────────────────────────────────────────────
+## ★走真入口: 设置页账号行那颗「改昵称」→ 弹框 → 填字 → 真按「就叫这个」。
+##   后端要**真开着**(账号行只在后端开着时才建) —— 门禁进程默认关, 不开的话
+##   被测对象根本不在场(memory `fb-gate-subject-never-constructed`)。
+func _find_named(n: Node, nm: String) -> Node:
+	if str(n.name) == nm:
+		return n
+	for c in n.get_children():
+		var f = _find_named(c, nm)
+		if f != null:
+			return f
+	return null
+
+
+func _t_rename() -> void:
+	print("── ⑦ 改名 ──")
+	const SETS := preload("res://scripts/scenes/SettingsScene.gd")
+	## (a) 规则那一半(静态, 不建界面)
+	GameState.nickname = "老名字"
+	GameState.nickname_default = "默认的名"
+	var e1: String = SETS.rename_apply("a")
+	_ok("⑦a 太短 ⇒ 报错且不改", e1 != "" and str(GameState.nickname) == "老名字", "err「%s」 名「%s」" % [e1, GameState.nickname])
+	var e2: String = SETS.rename_apply("一二三四五六七八九")
+	_ok("⑦a 太长 ⇒ 报错且不改", e2 != "" and str(GameState.nickname) == "老名字", "err「%s」" % e2)
+	var e3: String = SETS.rename_apply("  新  名字 ")
+	_ok("⑦a ★合法 ⇒ 规范化后写进 nickname", e3 == "" and str(GameState.nickname) == "新 名字",
+		"err「%s」 名「%s」" % [e3, GameState.nickname])
+	_ok("⑦a ★★nickname_default 一个字不动(它是「没起过名」时用的)", str(GameState.nickname_default) == "默认的名",
+		str(GameState.nickname_default))
+	_ok("⑦a ★显示名跟着变(三处同源)", str(BK.player_display_name()) == "新 名字", str(BK.player_display_name()))
+	_ok("⑦a ★走现有上传链路: 云存档载荷里就是新名字", str(GameState.cloud_payload().get("nickname", "")) == "新 名字")
+
+	## (b) 界面那一半: 后端开着 + 有账号 ⇒ 账号行建出来
+	var env0: String = OS.get_environment("TURTLE_SUPABASE")
+	var key0 = ProjectSettings.get_setting("turtle/supabase_anon_key", "")
+	OS.set_environment("TURTLE_SUPABASE", "https://example.invalid")
+	ProjectSettings.set_setting("turtle/supabase_anon_key", "sb_publishable_forgate")
+	GameState.account_id = "11111111-2222-3333-4444-555555555555"
+	GameState.account_email = ""
+	GameState.nickname = "老名字"
+	var inst = (load("res://scenes/Settings.tscn") as PackedScene).instantiate()
+	add_child(inst)
+	for _i in range(3):
+		await get_tree().process_frame
+	var btn = _find_named(inst, str(SETS.ACCT_ROW_PREFIX) + "BtnRename")
+	_ok("⑦b ★分母: 设置页账号行里有「改昵称」", btn != null and btn is Button and str((btn as Button).text) == str(SETS.RENAME_LABEL),
+		"节点 %s" % str(btn))
+	if btn != null:
+		(btn as Button).pressed.emit()
+		await get_tree().process_frame
+	var ed = _find_named(inst, str(SETS.RENAME_EDIT))
+	var okb = _find_named(inst, str(SETS.RENAME_OK))
+	var stl = _find_named(inst, str(SETS.RENAME_STATUS))
+	_ok("⑦b ★分母: 点了真弹出改名框(名字框 + 确定键 + 状态行)", ed is LineEdit and okb is Button and stl is Label)
+	if ed is LineEdit and okb is Button and stl is Label:
+		_ok("⑦b 名字框预填的是现在的名字", str((ed as LineEdit).text) == "老名字", str((ed as LineEdit).text))
+		(ed as LineEdit).text = "x"
+		(okb as Button).pressed.emit()
+		await get_tree().process_frame
+		_ok("⑦b ★不合法 ⇒ 框上说原因、名字不改、框还开着",
+			str((stl as Label).text) != "" and str(GameState.nickname) == "老名字" and is_instance_valid(ed) and (ed as Node).is_inside_tree(),
+			"状态「%s」 名「%s」" % [(stl as Label).text, GameState.nickname])
+		(ed as LineEdit).text = "改过的名"
+		(okb as Button).pressed.emit()
+		await get_tree().process_frame
+		await get_tree().process_frame
+		_ok("⑦b ★★★真按「就叫这个」⇒ GameState.nickname 改了", str(GameState.nickname) == "改过的名", str(GameState.nickname))
+		_ok("⑦b 改好之后框关掉", _find_named(inst, str(SETS.RENAME_EDIT)) == null)
+	inst.queue_free()
+	await get_tree().process_frame
+	OS.set_environment("TURTLE_SUPABASE", env0)
+	ProjectSettings.set_setting("turtle/supabase_anon_key", key0)
+
+
+# ─────────────────────────────────────────────────────────────
+# ⑧ 绑定邮箱那屏不许再说假话(2026-10-04)
+# ─────────────────────────────────────────────────────────────
+## 原文「⚠ 龟和装备是存在这台手机上的，换设备仍然会丢。」—— v0.19.425 起云存档已同步
+##   除设备设置与身份之外的全部进度(`GameState.cloud_payload()`), 而只在绑了邮箱时同步
+##   (`SupabaseNet.sync_allowed`)。这句话对绑了邮箱的人是**假的**。
+## ★量的是屏幕上那两块说明文字(`_email_why` 第一步 / `_email_why2` 第二步), 不是源码。
+## ★配一条事实断言: 载荷里真的有龟和装备(否则「能取回龟和装备」这句也成了假话)。
+func _t_bind_copy() -> void:
+	print("── ⑧ 绑定屏说明 ──")
+	var cp: Dictionary = GameState.cloud_payload()
+	_ok("⑧ ★分母: 云存档载荷里真有龟和装备(新文案的承诺成立)",
+		cp.has("season_leaders") and cp.has("persistent_equipped") and cp.has("persistent_bench"), str(cp.keys().slice(0, 8)))
+	var inst = (load("res://scenes/Settings.tscn") as PackedScene).instantiate()
+	add_child(inst)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	inst._open_email_dialog(inst._SB_ACC.FLOW_BIND)
+	await get_tree().process_frame
+	var t1 := str(inst._email_why.text) if inst._email_why != null else ""
+	var t2 := str(inst._email_why2.text) if inst._email_why2 != null else ""
+	var all := t1 + "\n" + t2
+	print("     第一步「%s」 / 第二步「%s」" % [t1, t2])
+	_ok("⑧ ★分母: 两块说明都建出来了", t1 != "" and t2 != "")
+	_ok("⑧ ★★★不再说「换设备仍然会丢」", all.find("换设备仍然会丢") < 0, all)
+	_ok("⑧ ★说了绑定之后进度能取回", t1.find("取回") >= 0 and t1.find("进度") >= 0, t1)
+	_ok("⑧ ★说了没绑定时进度只在这台设备上", all.find("只存在这台设备") >= 0, all)
 	inst.queue_free()
 	await get_tree().process_frame

@@ -1427,7 +1427,9 @@ func _toast(msg: String) -> void:
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_toast_layer.add_child(l)
 	var tw := create_tween()
-	tw.tween_interval(1.4)
+	## ★2026-10-04 台账 S18: 1.4+0.6 秒读不完「这只已装满 3 件 · 先点它卸下一件」这种两截的提示,
+	##   玩家报的是「什么都不发生」。与主菜单 `_toast` 同一组停留(那边台账 ④ 已从 1.9 秒加到 3.2 秒)。
+	tw.tween_interval(2.6)
 	tw.tween_property(l, "modulate:a", 0.0, 0.6)
 	tw.tween_callback(l.queue_free)
 
