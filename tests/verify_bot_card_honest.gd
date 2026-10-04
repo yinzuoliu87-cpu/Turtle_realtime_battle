@@ -32,12 +32,15 @@ func _ready() -> void:
 	_ok("★分母: make_bot 产出的是机器人", bool(bot.get("is_bot", false)), str(bot.get("ghost_id", "")))
 	var pb: Dictionary = mm._opponent_from_ghost(bot)
 	var line_b := _id_line(pb)
-	var human := {"is_bot": false, "profile": {"name": "龟主-abc", "id": "#123456"}, "leaders": ["basic"]}
+	## 真人: 走产品自己的快照生成(带 `profile.tag` = 账号算的玩家 ID)。
+	var _gid := BE.player_ghost_id(int(GameState.season_id), ["basic", "stone", "ice"], 20)
+	var human: Dictionary = BE.build_ghost_snapshot(_gid, {"name": "石头统领", "avatar": "basic", "id": _gid})
 	var ph: Dictionary = mm._opponent_from_ghost(human)
 	var line_h := _id_line(ph)
 	var fmt_ok := func(s: String) -> bool:
-		return s.begins_with("ID #") and s.length() == len("ID #123456") and s.substr(4).is_valid_int()
-	_ok("★★机器人卡的 ID 行与真人同一格式「ID #6位数」(用户 2026-10-04: 不能让玩家知道是机器人)", fmt_ok.call(line_b), line_b)
+		## ★2026-10-04 起是玩家 ID 的形状(`#` + 6 位字母数字, `_P2.tag_valid`), 不再是 6 位数字。
+		return s.begins_with("ID ") and BE._P2.tag_valid(s.substr(3))
+	_ok("★★机器人卡的 ID 行与真人同一格式「ID #XXXXXX」(用户 2026-10-04: 不能让玩家知道是机器人)", fmt_ok.call(line_b), line_b)
 	_ok("★分母: 真人卡也是这个格式", fmt_ok.call(line_h), line_h)
 	var bad := []
 	for w in ["机器人", "陪练", "BOT", "bot", "Bot", "AI"]:

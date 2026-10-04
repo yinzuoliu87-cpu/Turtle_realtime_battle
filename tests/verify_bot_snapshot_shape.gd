@@ -245,6 +245,11 @@ func _ready() -> void:
 	shown = 25 * 8 + 40
 	_ok("★★值域: %d 个机器人的场次/战绩/命/等级/技能/ID 都是真人产得出来的" % shown, bad.is_empty(),
 		str(bad.slice(0, 5)))
+	## ★玩家 ID: 真人那份(经服务端回包 → 入池)带着, 就是自己设置页上那串; 机器人同形。
+	var _htag := str((human["profile"] as Dictionary).get("tag", ""))
+	_ok("★★真人快照的 profile.tag 到了对手手里还在, 且 = 上传者自己的 ID", _htag == BE.my_tag() and P2.tag_valid(_htag), _htag)
+	_ok("★★机器人的 profile.tag 与真人同一种形状", P2.tag_valid(str((bot["profile"] as Dictionary).get("tag", ""))),
+		str((bot["profile"] as Dictionary).get("tag", "")))
 	## 机器人自报的 profile.id 用产品自己的身份解析器读得出「谁」, 与真人一样。
 	_ok("★profile.id 与真人同形(产品的 owner_tag_of_id 解析得出人)",
 		BE.owner_tag_of_id(str((bot["profile"] as Dictionary)["id"])) != ""
@@ -285,6 +290,16 @@ func _value_problem(b: Dictionary, battles: int, gw: int, gl: int, skill_ids: Di
 			return "pet_levels %s=%s(真人恒 1)" % [k, str(b["pet_levels"][k])]
 	if BE.owner_tag_of_id(str((b.get("profile", {}) as Dictionary).get("id", ""))) == "":
 		return "profile.id %s 不是真人 id 的形状" % str((b.get("profile", {}) as Dictionary).get("id", ""))
+	## ★玩家 ID(2026-10-04): 与真人同一个算法同一种长相(`_P2.tag_valid`) ——
+	##   而且**不许**等于「拿快照里看得见的 uid 算出来的号」: 真人的号由账号算、与 uid 无关,
+	##   机器人要是 = f(uid), 拿到快照的人逐条一验就认出来了(机器人独有特征)。
+	var _prf: Dictionary = b.get("profile", {}) if b.get("profile") is Dictionary else {}
+	var _tg := str(_prf.get("tag", ""))
+	if not P2.tag_valid(_tg):
+		return "profile.tag %s 不是玩家 ID 的形状" % _tg
+	var _ow := BE.owner_tag_of_id(str(_prf.get("id", "")))
+	if _ow != "" and P2.player_tag(_ow.split("_")[1]) == _tg:
+		return "profile.tag 能由 profile.id 里的 uid 算出来(机器人独有特征)"
 	if gw >= 0:
 		if int(b.get("gl_w", -1)) != gw or int(b.get("gl_l", -1)) != gl:
 			return "周六标签 %s-%s ≠ %d-%d" % [str(b.get("gl_w")), str(b.get("gl_l")), gw, gl]
@@ -446,6 +461,8 @@ func _check_seeds(human: Dictionary, skill_ids: Dictionary) -> int:
 				_tally(problems, "同一个人不同场次名字变了")
 			if BE.owner_tag_of_id(str(a0["profile"]["id"])) != BE.owner_tag_of_id(str(a1["profile"]["id"])):
 				_tally(problems, "同一个人不同场次身份(uid)变了")
+			if str(a0["profile"].get("tag", "")) != str(a1["profile"].get("tag", "")):
+				_tally(problems, "同一个人不同场次玩家 ID 变了")
 			if int(a1.get("season_wins", 0)) < int(a0.get("season_wins", 0)):
 				_tally(problems, "同一个人场次多了胜场反而少了")
 	var keys: Array = problems.keys()

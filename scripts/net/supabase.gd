@@ -1786,8 +1786,13 @@ static func parse_finals(ok: bool, code: int, body: String, my_account: String,
 	## 名字按**种子**落位(不靠回包的顺序 —— 顺序是服务端的实现细节, 种子才是约定)
 	var names: Array = []
 	names.resize(n)
+	## ★玩家 ID(2026-10-04): 回包本来就带每个人的 account_id ⇒ 在本机现算, 服务端一个字不用改。
+	##   算法与设置页那串**同一个**(`_P2S.player_tag`), 所以这里看到的号就是那个人在他自己设置页看到的号。
+	var tags: Array = []
+	tags.resize(n)
 	for i in range(n):
 		names[i] = "?"
+		tags[i] = ""
 	var me := -1
 	for e in (d.get("entrants", []) as Array):
 		var ed: Dictionary = e if e is Dictionary else {}
@@ -1795,6 +1800,7 @@ static func parse_finals(ok: bool, code: int, body: String, my_account: String,
 		if sd < 0 or sd >= n:
 			continue
 		names[sd] = str(ed.get("name", "?"))
+		tags[sd] = _P2S.player_tag(str(ed.get("account_id", "")))
 		if my_account != "" and str(ed.get("account_id", "")) == my_account:
 			me = sd
 	## `done` 的值过一遍 int() —— JSON 解出来是浮点, 直接当 side 用会在比较时出错
@@ -1810,7 +1816,7 @@ static func parse_finals(ok: bool, code: int, body: String, my_account: String,
 	##   没有它就只能再往返一次去问, 那会出现「查到桶号、桶却没了」的中间态
 	##   (服务端当初把这两件事并进一次往返, 正是为了避开它)。
 	return {"size": n, "round": maxi(1, int(d.get("round", 1))), "done": done,
-		"names": names, "me": me, "closed": bool(d.get("closed", false)),
+		"names": names, "tags": tags, "me": me, "closed": bool(d.get("closed", false)),
 		"left": left, "recv_at": recv_at, "bucket": int(d.get("bucket", -1)),
 		## ★E-B7 备战购物窗要的两个数。**都用服务端的** ——
 		##   `round_at` 是本轮开始时刻，`srv_now` 是收包那一刻服务端的钟。

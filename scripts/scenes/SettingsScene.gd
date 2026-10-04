@@ -145,6 +145,7 @@ func _ready() -> void:
 ##   而玩家多半修不了 ⇒ 制造焦虑但给不出行动(`remote_pool.gd` 头注记过同样的取舍)。
 const _SB_ACC := preload("res://scripts/net/supabase.gd")
 const _P2C := preload("res://scripts/gamedata/phase2_config.gd")
+const _BE_ID := preload("res://scripts/net/backend.gd")
 
 ## 【门禁注入点】0 = 真实(读后端配置与存档) / 1 = 强制当作「后端开着且邮箱为空」。
 ##
@@ -239,6 +240,12 @@ func _account_row(top: float) -> float:
 	var a := _stroked_label(head, 15, "#cfe3ff", "", 0)
 	y = _place_flow(a, y)
 	a.name = ACCT_ROW_PREFIX + "Head"
+	## ★玩家 ID(2026-10-04): 名字允许重复, 别人靠这串分开同名的人 —— 自己也得看得见自己是哪一串。
+	##   只在拿到账号之后显示: 「连接中」那会儿算出来的是安装号的号, 一会儿就要换, 不给人看。
+	if aid != "":
+		var idl := _stroked_label("ID %s" % str(_BE_ID.my_tag()), 13, "#8fa6bd", "", 0)
+		y = _place_flow(idl, y + _GAP_LINE)
+		idl.name = ACCT_ROW_PREFIX + "Id"
 	if sub != "":
 		var col := "#ffb454" if mail == "" else "#8fa6bd"    # 未绑定用警示橙, 已绑定用灰
 		var b := _stroked_label(sub, 12, col, "", 0)

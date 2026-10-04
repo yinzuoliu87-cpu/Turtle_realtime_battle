@@ -383,7 +383,8 @@ static func make_bot(battles: int, rng: RandomNumberGenerator, gw: int = -1, gl:
 	##   (用户 2026-10-04:「龟主-32c6c这是真人会用的名字？」)。
 	var nick: String = _P2.nickname_suggest_at(rng.randi(), rng.randi())
 	## ★`profile.id` 与真人同形: 真人四个上传点都传 `{"id": gid}`, 即 `player_ghost_id()` 拼的那串。
-	##   卡片上两者都经 `MatchmakingScene._display_id` 折成 `#6位数`(门禁 verify_bot_card_honest)。
+	##   卡片上的号读 `profile.tag`(真人 = 账号算的, 机器人 = `fake_person_tag(ghost_id)`, 同一个算法同一种长相;
+	##   门禁 verify_bot_card_honest / verify_player_tag)。
 	var fake_uid := "%06x%06x" % [rng.randi() % 0x1000000, rng.randi() % 0x1000000]
 	var sorted_ldr: Array = leaders.duplicate()
 	sorted_ldr.sort()
@@ -397,7 +398,8 @@ static func make_bot(battles: int, rng: RandomNumberGenerator, gw: int = -1, gl:
 		"schema_ver": SCHEMA_VER,
 		"ghost_id": ghost_id,
 		"is_bot": true,
-		"profile": {"name": nick, "avatar": str(leaders[0]) if leaders.size() > 0 else "basic", "id": pid_str},
+		"profile": {"name": nick, "avatar": str(leaders[0]) if leaders.size() > 0 else "basic", "id": pid_str,
+			"tag": fake_person_tag(ghost_id)},
 		"leaders": leaders,
 		"lane_assign": lane_assign,
 		"minions": minions,
@@ -608,9 +610,8 @@ static func owner_tag_of_id(gid: String) -> String:
 ##        而覆盖率是 100%(30/30 有这个字段) ⇒ **只看"带不带"会以为它可用**。
 ##        这正是 `is_sparring` 头注记的那个形状:「只量了带不带, 没量它的值」。
 ##
-##   ③ `profile.name`(昵称) —— 只在上面两条都取不到时才用(缺 `leaders` 的畸形快照)。
-##      ⚠ 它**会撞**: 随机昵称池 56×6=336, 十来个人就有一成撞名; 改名还会把一个人裂成两行。
-##        所以它排第三, 不排第一。
+##   ③ `profile.tag`(玩家 ID, 账号算的) —— 只在上面两条都取不到时才用(缺 `leaders` 的畸形快照)。
+##      ★原来这一级是【昵称】; 2026-10-04 起名字允许重复, 昵称**不再当任何键**(见下方函数体)。
 ##
 ##   ④ `ghost_id` —— 一条一行, 与改之前逐字相同(不会把不同的人误合)。
 static func person_key(g) -> String:
@@ -626,16 +627,21 @@ static func person_key(g) -> String:
 		var pid := str((pr as Dictionary).get("id", "")).strip_edges()
 		if pid != "" and pid != gid:
 			return "a:" + pid
-		var nm := str((pr as Dictionary).get("name", "")).strip_edges()
-		if nm != "" and nm != "?":
-			return "n:" + nm
+		## ★★2026-10-04 第三级从【昵称】换成【玩家 ID】(`profile.tag`, 账号算出来的)。
+		##   名字现在明确**允许重复**(用户 2026-10-04 拍板「名字可以重, 靠 ID 分」) ⇒
+		##   拿昵称当键 = 两个同名的人在榜上合成一行、其中一个人消失。
+		##   ID 由账号单向算出(快照里不放 account_id 本身), 改名也不裂。
+		var tg := str((pr as Dictionary).get("tag", ""))
+		if _P2.tag_valid(tg):
+			return "t:" + tg
 	return "g:" + gid
 
 
 static func leaderboard(pool: Dictionary, self_name: String, self_wins: int, self_hearts: int,
 		self_sweeps: int, limit: int) -> Array:
+	## ★`tag` = 玩家 ID。界面只在**真的重名**时才把它摆出来(`_P2.names_needing_tag`)。
 	var rows: Array = [{"name": self_name, "wins": self_wins, "hearts": self_hearts,
-		"sweeps": self_sweeps, "is_self": true}]
+		"sweeps": self_sweeps, "is_self": true, "tag": my_tag()}]
 	## ★字典序: 前一键相等才看后一键。写成「先比胜场, 相等再比余命, 再相等才比横扫」。
 	## ★★提成变量是为了**只有一份**: 排序用它, 下面「同一个人留哪一行」也用它。
 	var cmp := func(a, c) -> bool:
@@ -690,7 +696,8 @@ static func leaderboard(pool: Dictionary, self_name: String, self_wins: int, sel
 				"wins": int(gd.get("season_wins", 0)),
 				"hearts": int(gd.get("hearts", 0)),
 				"sweeps": int(gd.get("season_sweeps", 0)),
-				"is_self": false}
+				"is_self": false,
+				"tag": profile_tag(gd.get("profile", {}) if gd.get("profile") is Dictionary else {})}
 			var pk := person_key(gd)
 			if by_person.has(pk):
 				if cmp.call(row, by_person[pk]):
@@ -867,7 +874,9 @@ static func _load_seed() -> Dictionary:
 		return parsed
 	return {POOL_KEY: {}}
 
-const SEED_VER := 14  # ★★2026-10-04 v14: **种子文件一个字节没动**, 升版只为一件事:
+const SEED_VER := 15  # ★★2026-10-04 v15: 种子文件没动, 陪练入池时多盖一个 `profile.tag`(玩家 ID, 与真人同一套算法 ——
+                      #   `fake_person_tag`)。不升版老池里那 396 条没有这个键, 与真人快照不同形。
+                      # ★★2026-10-04 v14: **种子文件一个字节没动**, 升版只为一件事:
                       #   陪练入池时改成**真人对手的形状**(`seed_as_human`, 用户 2026-10-04
                       #   「不能让玩家知道是机器人」)。老存档池里那 396 条是旧形状
                       #   (带 `_strategy` / `season_level`、`profile.id` = `COHxx`、缺 hearts 等),
@@ -1027,7 +1036,7 @@ static func seed_as_human(g: Dictionary, season_id: int) -> Dictionary:
 		"schema_ver": SCHEMA_VER,
 		"ghost_id": gid,
 		"is_bot": false,
-		"profile": {"name": nick, "avatar": avatar, "id": pid_str},
+		"profile": {"name": nick, "avatar": avatar, "id": pid_str, "tag": fake_person_tag(seed_person_of(gid))},
 		"leaders": leaders,
 		"lane_assign": lane_assign,
 		"minions": minions,
@@ -1462,6 +1471,52 @@ static func player_display_name() -> String:
 	return str(GameState.default_nickname())
 
 
+## 我自己的玩家 ID(`#XXXXXX`, 见 `_P2.player_tag`)。
+## ★种子与默认名同一条规则(`nickname_seed`): 有账号用账号 ⇒ 换设备 / 重装后用邮箱取回同一个号,
+##   ID 不变; 还没拿到账号(首启离线 / 没配后端)时用本机安装号。
+## ★拿到账号那一刻 ID 会从「安装号算的」**换成**「账号算的」, 而且故意不冻结:
+##   对阵图上别人看到的我的号是拿 `finals_view` 回包里的 account_id **在他那台机器上现算**的,
+##   冻结一个安装号算出来的旧号 ⇒ 我在设置页看到的和别人看到的对不上。
+##   而没账号的阶段什么都传不上服务端(`ghost_row_from_snapshot` 缺 account_id 直接不传),
+##   那串旧号从来没被别人看见过 ⇒ 换掉不会让任何人困惑。
+static func my_tag() -> String:
+	if GameState == null:
+		return ""
+	return _P2.player_tag(_P2.nickname_seed(str(GameState.account_id), str(GameState.get_install_uid())))
+
+
+## 一份对手资料(快照里的 `profile`)该显示哪个 ID。
+## ① 快照自带 `tag`(2026-10-04 起真人 / 机器人 / 陪练都带) ⇒ 用它。
+## ② 老快照没有 ⇒ 从 `profile.id` 里切出「谁」(`owner_tag_of_id` 的 uid 段)现算 ——
+##    同一个人各场次是同一个号; 实在切不出就拿整串算(仍是同一格式, 不会冒出另一种长相)。
+## ★任何分支给出来的都是 `_P2.tag_valid` 的形状 —— 卡片上不许出现第二种格式
+##   (第二种格式 = 一眼认得出是哪一类对手, 用户 2026-10-04「不能让玩家知道是机器人」)。
+static func profile_tag(prof: Dictionary) -> String:
+	var t := str(prof.get("tag", ""))
+	if _P2.tag_valid(t):
+		return t
+	var pid := str(prof.get("id", "")).strip_edges()
+	if pid == "":
+		return ""
+	var owner := owner_tag_of_id(pid)
+	if owner != "":
+		var parts := owner.split("_")
+		## `g_<uid>_<赛季>_` ⇒ parts = [g, uid, 赛季, ""]; 没 uid 的 `g_<赛季>_` 只剩赛季, 不能拿它算(人人相同)。
+		if parts.size() >= 4 and parts[1].length() == UID_HEX_LEN:
+			return _P2.player_tag(parts[1])
+	return _P2.player_tag(pid)
+
+
+## 机器人 / 陪练的那串 ID 从哪个身份算。
+## ★★不能拿 `profile.id` 里那段 uid 算: 真人的号是**账号**算的, 与 uid 无关;
+##   要是机器人的号恰好 = f(uid), 任何拿到快照的人都能逐条验出「这是机器人」(用户 2026-10-04
+##   「不能让玩家知道是机器人」)。⇒ 用 `ghost_id` 这一维 —— 它是用机器人自己的随机数生成的,
+##   而且只在本机(出站两条路都过 `ReplayUploader.GHOST_STRIP` 摘掉), 别人拿不到。
+## ★陪练用 `seed_person_of(ghost_id)`(去掉场次那一段) ⇒ 同一个人各场次同一个号。
+static func fake_person_tag(person: String) -> String:
+	return _P2.player_tag("acct:" + person)
+
+
 ## 在本地池里找【同标签且新鲜】的一份快照。找不到返回 null(回落交给上面那个函数)。
 ## ★新鲜度用快照自带的 `gl_ts`(上传时刻), 缺这个字段的一律当**不新鲜**排除 ——
 ##   老快照没有这一维, 把它当新鲜就等于"永不过期", 那条 30 分钟规则会静默失效。
@@ -1730,6 +1785,11 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 		var _lo = GameState.loadouts.get(p, null) if GameState.loadouts is Dictionary else null
 		if _lo is int or _lo is float:
 			lo_out[p] = int(_lo)
+	## ★玩家 ID(2026-10-04): 快照自带我的号, 对手卡片 / 排行榜直接读它(`profile_tag`)。
+	##   调用方给了就不覆盖(门禁 / 教程会自己造 profile)。
+	var prof_out: Dictionary = profile.duplicate()
+	if not prof_out.has("tag"):
+		prof_out["tag"] = my_tag()
 	return {
 		## ★schema 1 → 2(2026-08-15, 用户拍板 A): 快照开始带【宝箱进度】。
 		##   老快照没有这两个字段, 而敌方宝箱龟要靠它决定开几件 ——
@@ -1740,7 +1800,7 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 		## ★★★2026-09-26 原来这里有个 `"bracket": bracket_for_battles(…)` 字段, 已删。
 		##   它是 `season_total_battles`(就在下面几行)的**有损镜像** —— 同一个量存两份,
 		##   而分桶用镜像、匹配用原件 ⇒ 必然漂。现在只留原件, 分桶也读原件。
-		"profile": profile,
+		"profile": prof_out,
 		"leaders": leaders,
 		"lane_assign": lane_assign,
 		"minions": minions,
