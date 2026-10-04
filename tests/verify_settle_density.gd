@@ -105,8 +105,16 @@ func _ready() -> void:
 		await get_tree().process_frame
 
 	## ── 屏幕侧: 走真控件树找数值格 ───────────────────────────────
+	## ★2026-10-04 结算屏三页: 表在「我方」「敌方」两页上, 默认停的「战果」页一张表都没有
+	##   ⇒ 两页各翻过去收一次(只收**看得见**的表, 不然合计/分路几份叠在一起会重复数)。
 	var grids: Array = []
-	_find_grids(sc._ui_layer, grids)
+	var scr = sc._hud._settle
+	_ok("★分母: 结算屏建出来了(三页)", scr != null and (scr.pages as Array).size() == 3)
+	for pi in [1, 2]:
+		scr.show_page(pi)
+		for _i in range(4):
+			await get_tree().process_frame
+		_find_grids(sc._ui_layer, grids)
 	var cells: Array = []                # 只收【数值格】那 4 个 Label
 	var rows := 0
 	for g in grids:

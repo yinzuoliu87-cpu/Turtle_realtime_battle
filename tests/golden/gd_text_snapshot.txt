@@ -1001,31 +1001,22 @@ scripts/scenes/battle/battle_debug_arena.gd|text|选中: %s(%s)
 scripts/scenes/battle/battle_hud.gd|lit|⏸ 编辑
 scripts/scenes/battle/battle_hud.gd|lit|▶ 开始
 scripts/scenes/battle/battle_hud.gd|lit|▼ 折叠
-scripts/scenes/battle/battle_hud.gd|lit|▼ 还有 %d 只在下面 · 可上下滑动
 scripts/scenes/battle/battle_hud.gd|lit|倍速
 scripts/scenes/battle/battle_hud.gd|lit|假人HP
 scripts/scenes/battle/battle_hud.gd|lit|再打
 scripts/scenes/battle/battle_hud.gd|lit|决赛日 · 不消耗生命 · 胜负在下一轮开播时揭晓
-scripts/scenes/battle/battle_hud.gd|lit|击杀
 scripts/scenes/battle/battle_hud.gd|lit|前往商店
 scripts/scenes/battle/battle_hud.gd|lit|剩余生命
-scripts/scenes/battle/battle_hud.gd|lit|合计
 scripts/scenes/battle/battle_hud.gd|lit|回放结束 —— 
 scripts/scenes/battle/battle_hud.gd|lit|大师
 scripts/scenes/battle/battle_hud.gd|lit|失败
 scripts/scenes/battle/battle_hud.gd|lit|完成新手教学
 scripts/scenes/battle/battle_hud.gd|lit|左队(友军)
-scripts/scenes/battle/battle_hud.gd|lit|我方
 scripts/scenes/battle/battle_hud.gd|lit|战报
-scripts/scenes/battle/battle_hud.gd|lit|打出
-scripts/scenes/battle/battle_hud.gd|lit|扛住
 scripts/scenes/battle/battle_hud.gd|lit|掉血/不死
-scripts/scenes/battle/battle_hud.gd|lit|敌方
 scripts/scenes/battle/battle_hud.gd|lit|更多属性 · %d 个
 scripts/scenes/battle/battle_hud.gd|lit|本周场次
-scripts/scenes/battle/battle_hud.gd|lit|本场
 scripts/scenes/battle/battle_hud.gd|lit|没传上去
-scripts/scenes/battle/battle_hud.gd|lit|治疗
 scripts/scenes/battle/battle_hud.gd|lit|浪板
 scripts/scenes/battle/battle_hud.gd|lit|消耗 1 点生命
 scripts/scenes/battle/battle_hud.gd|lit|深海币
@@ -1054,21 +1045,16 @@ scripts/scenes/battle/battle_hud.gd|lit|阵容上传
 scripts/scenes/battle/battle_hud.gd|lit|🏆 战斗胜利!
 scripts/scenes/battle/battle_hud.gd|lit|💀 战斗失败!
 scripts/scenes/battle/battle_hud.gd|lit|🔁 再来一把
-scripts/scenes/battle/battle_hud.gd|text|  阵亡
 scripts/scenes/battle/battle_hud.gd|text|← 手指横滑挑龟(共28只+小将+大师) →   点一格选笔刷 → 点战场连点连摆 · 点已摆的龟→出配置面板
 scripts/scenes/battle/battle_hud.gd|text|举白旗 · 这一场就算输了, 按下去收不回来
 scripts/scenes/battle/battle_hud.gd|text|友军
 scripts/scenes/battle/battle_hud.gd|text|回放
-scripts/scenes/battle/battle_hud.gd|text|失败
-scripts/scenes/battle/battle_hud.gd|text|战报
 scripts/scenes/battle/battle_hud.gd|text|战斗日志
 scripts/scenes/battle/battle_hud.gd|text|打到这里的战报和奖励照算, 不会白打
 scripts/scenes/battle/battle_hud.gd|text|敌方
 scripts/scenes/battle/battle_hud.gd|text|日志
 scripts/scenes/battle/battle_hud.gd|text|点空地=摆(龟/小将) · 点单位=选中配装 · 拖拽=挪位 · 满龟能开→秒放技看效果
 scripts/scenes/battle/battle_hud.gd|text|真要认输?
-scripts/scenes/battle/battle_hud.gd|text|结果已封存
-scripts/scenes/battle/battle_hud.gd|text|胜利
 scripts/scenes/battle/battle_hud.gd|text|退出回放
 scripts/scenes/battle/battle_hud.gd|text|阵容已上传 · 别人可能会打到你
 scripts/scenes/battle/battle_hud.gd|text|🛠 调试场
@@ -1211,6 +1197,28 @@ scripts/scenes/battle/review_console.gd|lit|◀装
 scripts/scenes/battle/review_console.gd|lit|◀龟
 scripts/scenes/battle/review_console.gd|lit|关
 scripts/scenes/battle/review_console.gd|lit|技%d%s
+scripts/scenes/battle/settle_screen.gd|lit|← 滑动翻页 →
+scripts/scenes/battle/settle_screen.gd|lit|▼ 还有 %d 只在下面 · 可上下滑动
+scripts/scenes/battle/settle_screen.gd|lit|击杀
+scripts/scenes/battle/settle_screen.gd|lit|合计
+scripts/scenes/battle/settle_screen.gd|lit|失败
+scripts/scenes/battle/settle_screen.gd|lit|已封存
+scripts/scenes/battle/settle_screen.gd|lit|平
+scripts/scenes/battle/settle_screen.gd|lit|我方
+scripts/scenes/battle/settle_screen.gd|lit|战果
+scripts/scenes/battle/settle_screen.gd|lit|打出
+scripts/scenes/battle/settle_screen.gd|lit|打出 %d
+scripts/scenes/battle/settle_screen.gd|lit|扛住
+scripts/scenes/battle/settle_screen.gd|lit|敌方
+scripts/scenes/battle/settle_screen.gd|lit|本场
+scripts/scenes/battle/settle_screen.gd|lit|本场 MVP
+scripts/scenes/battle/settle_screen.gd|lit|治疗
+scripts/scenes/battle/settle_screen.gd|lit|结果已封存
+scripts/scenes/battle/settle_screen.gd|lit|胜
+scripts/scenes/battle/settle_screen.gd|lit|胜利
+scripts/scenes/battle/settle_screen.gd|lit|负
+scripts/scenes/battle/settle_screen.gd|lit|这一场没有留下战报
+scripts/scenes/battle/settle_screen.gd|lit|阵亡
 scripts/scenes/codex/detail_views.gd|lit|%s 秒
 scripts/scenes/codex/detail_views.gd|lit|[color=%s][b]%d 件[/b][/color]  %s
 scripts/scenes/codex/detail_views.gd|lit|← 返回

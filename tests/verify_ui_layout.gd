@@ -188,27 +188,35 @@ func _check_battle_result() -> void:
 		for i in range(8):
 			await get_tree().process_frame
 		var cx: float = float(v.x) * 0.5
-		# ★★结算页 2026-08-02 改成【居中卡片】后, 数据表不再是 _ui_layer 的直接子节点
-		#   (卡片壳 PanelContainer → VBox → 数据表 PanelContainer)。只看直接子节点会量到 0 块,
-		#   而"分母=0"正是空检查 —— 遍历整棵树。
-		var panels: Array = []
-		_walk_all(inst._ui_layer, panels)
-		for ch in panels:
-			if not (ch is PanelContainer) or not (ch as Control).visible:
-				continue
-			var r: Rect2 = (ch as Control).get_global_rect()
-			if r.size.x < 200.0 or r.size.x > float(v.x) * 0.95:
-				continue                       # 只认那块宽结算表
+		## ★★2026-10-04 结算屏改成三页(settle_screen.gd): 左栏页签 + 右边金属框正文。
+		##   判据的意思不变 ——「这一屏按【真实视口】摆, 不按写死的 1280」——
+		##   只是量的对象从「居中的那张卡」换成「左栏 + 正文这一整组」:
+		##   ① 整组居中于真实视口(左栏左沿与正文右沿到两边等距)
+		##   ② 正文框不出下边界
+		##   ③ ★正文框跟着视口变宽(根因 C: 旧卡片按内容宽居中, 手机上左右空着 31%)
+		##   找不到就记 0 块 ⇒ 下面的分母断言红, 不是空检查。
+		var scr: Node = null
+		for c in inst._ui_layer.get_children():
+			if str(c.name).begins_with("SettleScreen"):
+				scr = c
+		var frame: Control = scr.find_child("SettleFrame", true, false) if scr != null else null
+		var rail: Control = (scr.get("tab_btns")[0] as Control).get_parent() if scr != null and not (scr.get("tab_btns") as Array).is_empty() else null
+		if frame != null and rail != null and frame.visible:
 			n_measured += 1
-			var mid: float = r.position.x + r.size.x * 0.5
+			var fr: Rect2 = frame.get_global_rect()
+			var rr: Rect2 = rail.get_global_rect()
+			var sm: Vector4 = SafeArea.margins(Vector2(v), 6.0)
+			var mid: float = (rr.position.x + fr.end.x) * 0.5 - (sm.x - sm.z) * 0.5   # 刘海只在一侧时, 安全区差的一半不算偏
 			if absf(mid - cx) > 2.0:
-				worst = "%dx%d 结算表中心 x=%.0f 真中心 %.0f 偏 %+.0f" % [v.x, v.y, mid, cx, mid - cx]
-			if r.position.y + r.size.y > float(v.y) + 1.0:
-				worst = "%dx%d 结算表底边 %.0f 超出视口高 %d" % [v.x, v.y, r.position.y + r.size.y, v.y]
+				worst = "%dx%d 结算屏(左栏+正文)中心 x=%.0f 真中心 %.0f 偏 %+.0f" % [v.x, v.y, mid, cx, mid - cx]
+			if fr.end.y > float(v.y) + 1.0:
+				worst = "%dx%d 结算屏正文底边 %.0f 超出视口高 %d" % [v.x, v.y, fr.end.y, v.y]
+			if fr.end.x < float(v.x) * 0.9:
+				worst = "%dx%d 结算屏正文右沿 %.0f —— 没跟着视口变宽(右边空了 %.0f)" % [v.x, v.y, fr.end.x, float(v.x) - fr.end.x]
 		sv.queue_free()
 		await get_tree().process_frame
-	_ok("★分母: 结算表在 3 个视口下都量到了", n_measured >= 3, "量到 %d 块" % n_measured)
-	_ok("⑥ 战后结算表居中于【真实视口】且不出下边界", worst == "", worst)
+	_ok("★分母: 结算屏在 3 个视口下都量到了", n_measured >= 3, "量到 %d 块" % n_measured)
+	_ok("⑥ 战后结算屏(左栏+正文)居中于【真实视口】、跟着视口变宽、不出下边界", worst == "", worst)
 
 
 ## 在指定视口尺寸下实例化一屏, 量真实 get_global_rect()。

@@ -7795,38 +7795,6 @@ func _on_dmg_stats_toggle() -> void:
 
 const _LANE_CN := {"top": "上路", "bottom": "下路", "final": "终极"}
 
-## 切页: 只显第 idx 页, 页体高度按当前页自适应(Control 不会自己撑高 → 手动扛 min height).
-func _stats_show_page(bodies: Array, btns: Array, idx: int) -> void:
-	for i in range(bodies.size()):
-		(bodies[i] as Control).visible = (i == idx)
-	for i in range(btns.size()):
-		(btns[i] as Button).add_theme_color_override("font_color", Color("#ffd93d") if i == idx else Color("#8b949e"))
-	_stats_fit_body(bodies, idx)
-
-## 切页后重排: Control 不会被子节点撑高 → 手动把 body 顶到本页尺寸, 再把 scroll 夹到「屏底剩余高度」以内.
-func _stats_fit_body(bodies: Array, idx: int) -> void:
-	await get_tree().process_frame
-	if idx < 0 or idx >= bodies.size(): return
-	var c: Control = bodies[idx]
-	if not is_instance_valid(c) or not is_instance_valid(c.get_parent()): return
-	var body: Control = c.get_parent()
-	body.custom_minimum_size = c.size
-	var scroll := body.get_parent()
-	if not (scroll is ScrollContainer): return
-	# ★★2026-08-02 结算页改成【居中卡片】后, 这里【绝不能再给面板设绝对坐标】——
-	#   旧版末尾会调 _center_stats_panel(panel) 把面板摆到写死的 y, 而它现在是
-	#   VBoxContainer 的子节点 ⇒ 两套定位打架, 实拍表现是【「返回主菜单」按钮画在表格中间】。
-	#   位置一律交给容器算, 这里只负责"页体多高、滚动区裁到多高"。
-	## ★★高度预算【不在这里算】: 内层 = 外层卡片预算 − 表以外的部分, 与 `_show_banner` 同源。
-	##   为何不在这里写 `vp.y - 320`(那就是那 56px), 见 `battle_hud.settle_fit_inner` 头注。
-	_hud.settle_fit_inner(scroll as ScrollContainer, c.size)
-
-## 结算表的一队一列 —— 实现搬到 battle_hud.gd(纯 UI 表格构建, 属 HUD 层)。
-## ★搬的理由不是好看: 留在这里会把上帝文件顶破 arch_budget(8600 行)。
-func _stats_column(header: String, units: Array, hc: Color) -> Control:
-	return _hud._stats_column(header, units, hc)
-
-
 ## 相机输入(滚轮缩放 / 双指捏合 / 拖动平移)。
 ##
 ## 历史(留着, 因为它解释了为什么这段是【独立函数】而不是内联在 _unhandled_input 里):
