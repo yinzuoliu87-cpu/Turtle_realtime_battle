@@ -843,3 +843,31 @@ grant execute on function public.finals_opponent(bigint, int, int, int) to authe
 --   周号写法: (extract(epoch from date_trunc('week', now() at time zone 'UTC'))::bigint) —— 与客户端 week_anchor_ts 一致(已核)。
 --   ★客户端 phase2_config.FINALS_SEAT_HOUR_UTC 必须等于 jobid 5 的首个小时(8)。
 -- ─────────────────────────────────────────────────────────────
+
+-- ═══ 垃圾匿名账号清理(2026-10-04 已上生产·cron jobid 9·每天 04:30 UTC) ═══
+-- 当天先手工删了 585 个(测试机/CI/探针脚本造的, 零真人; 保留手机上建的那 1 个)。根因是门禁冒烟没关后端(v0.19.533 已修)。
+-- 2026-10-04 用户「删，想办法处理，未来也可能有」:
+-- 每天清一次「匿名、没绑邮箱、14 天没登录、在任何数据表里都没有一行」的账号。
+-- 客户端拿到 user_not_found / refresh 失效会自动重新匿名注册(supabase.gd DEAD_REFRESH_CODES), 没数据的号删了不丢东西。
+create or replace function public.purge_junk_anon_users() returns integer
+language plpgsql security definer set search_path = public, auth as $$
+declare n integer;
+begin
+  delete from auth.users u
+  where u.is_anonymous and coalesce(u.email, '') = ''
+    and coalesce(u.last_sign_in_at, u.created_at) < now() - interval '14 days'
+    and not exists (select 1 from public.ghosts x where x.account_id = u.id)
+    and not exists (select 1 from public.gauntlet_ghosts x where x.account_id = u.id)
+    and not exists (select 1 from public.saves x where x.account_id = u.id)
+    and not exists (select 1 from public.standings x where x.account_id = u.id)
+    and not exists (select 1 from public.matches x where x.left_account = u.id or x.right_account = u.id)
+    and not exists (select 1 from public.finals_entrants x where x.account_id = u.id)
+    and not exists (select 1 from public.finals_pending x where x.account_id = u.id)
+    and not exists (select 1 from public.finals_scout x where x.account_id = u.id)
+    and not exists (select 1 from public.accounts x where x.account_id = u.id);
+  get diagnostics n = row_count;
+  return n;
+end $$;
+revoke all on function public.purge_junk_anon_users() from public, anon, authenticated;
+select cron.unschedule(jobid) from cron.job where jobname = 'purge_junk_anon_users';
+select cron.schedule('purge_junk_anon_users', '30 4 * * *', 'select public.purge_junk_anon_users()');
