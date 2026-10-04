@@ -74,11 +74,51 @@ var action_btns: Array = []        # 右侧动作，顺序与传入一致
 
 var _pal: Dictionary = DEEP
 var _width: float = 1280.0
+## 右侧动作离【栏的右沿】多远 —— 栏宽跟着视口变时, 它们照这个距离贴回右沿。
+var _right_off: Array = []
+
+
+## ══════════════════════════════════════════════════════════════════════
+##  ★★★栏宽 = 视口宽, 不是调用方传的设计宽(2026-10-04 手机实拍)
+## ══════════════════════════════════════════════════════════════════════
+## 2340×1080 的手机上(canvas_items + expand ⇒ 视口 1560×720), 周日对阵图的顶栏
+## 只铺到 1280 —— 右边一截是黑的。两个原因叠在一起:
+##   ① 调用方一律传 `"width": 1280`(或不传, 默认也是 1280) —— 那是**设计框**的宽,
+##      不是屏幕的宽。expand 模式下视口宽只会 ≥1280, 多出来的那截栏就没有了。
+##   ② 用了 `UIFrame.attach()` 的屏(背包/排行榜/战绩/设置/商店/训龟大师), 栏是
+##      1280×87 的非满铺节点 ⇒ 被**收进居中的设计框**, 于是宽屏上两边各缺一截。
+## ⇒ 栏自己对齐到**视口**: 宽 = 视口宽, 左沿 = 屏幕左沿(抵消父节点的水平偏移),
+##   右侧动作跟着贴右沿。**竖直方向不动**(仍跟着父节点 —— 方屏/4:3 上栏和内容一起居中)。
+## ★传进来的 `width` 留作**下限**(老调用点一个都不用改, 在 16:9 上逐字节不变)。
+## ★视口变了要再对一次(转屏/分屏): 与 UIFrame 接同一个 `size_changed`,
+##   **延后一拍**再量 —— 框的重新居中也挂在这个信号上, 先后顺序没有保证。
+func _fit_to_viewport() -> void:
+	if bar == null or not is_instance_valid(bar) or not bar.is_inside_tree():
+		return
+	var vw: float = bar.get_viewport_rect().size.x
+	var w: float = maxf(_width, vw)
+	var p := bar.get_parent()
+	var px: float = (p as Control).global_position.x if p is Control else 0.0
+	bar.position.x = -px
+	bar.size.x = w
+	for i in range(mini(action_btns.size(), _right_off.size())):
+		if float(_right_off[i]) <= 0.0 or not is_instance_valid(action_btns[i]):
+			continue
+		(action_btns[i] as Control).position.x = w - float(_right_off[i])
+
+
+func _fit_later() -> void:
+	call_deferred("_fit_to_viewport")
 
 
 func _init(host: Node, opts: Dictionary) -> void:
 	_pal = opts.get("palette", DEEP)
 	_width = float(opts.get("width", 1280.0))
+	## ★起手就按视口宽建(不是先建 1280 再拉): 右侧动作的初始位置据此算, 一次到位。
+	var _vp0: Viewport = host.get_viewport() if host is Node else null
+	var _w_design: float = _width
+	if _vp0 != null:
+		_width = maxf(_width, _vp0.get_visible_rect().size.x)
 
 	bar = Control.new()
 	bar.name = "TopBar"
@@ -180,6 +220,16 @@ func _init(host: Node, opts: Dictionary) -> void:
 		x -= ACT_GAP
 		bar.add_child(b)
 		action_btns.push_front(b)
+		_right_off.push_front(_width - b.position.x)
+	## ★左侧导航(left_actions)也在 action_btns 里, 但它们贴左沿 ⇒ 记 0 = 不跟右沿。
+	while _right_off.size() < action_btns.size():
+		_right_off.append(0.0)
+	_width = _w_design
+	_fit_to_viewport()
+	if _vp0 != null and not _vp0.size_changed.is_connected(_fit_later):
+		_vp0.size_changed.connect(_fit_later)
+	## 被 UIFrame 收编(换父节点)之后父节点的偏移变了 ⇒ 再对一次。
+	bar.tree_entered.connect(_fit_later)
 
 
 ## 追加一枚右侧动作（给“顶栏建完之后才知道要不要这个键”的屏）。
@@ -191,9 +241,11 @@ func add_right_action(txt: String, cb: Callable, o: Dictionary = {}) -> Button:
 		b.modulate = Color(1, 1, 1, 0.45)
 	if str(o.get("tooltip", "")) != "":
 		b.tooltip_text = str(o.get("tooltip", ""))
-	b.position = Vector2(_width - PAD_X - b.size.x, (BAR_H - TOUCH_MIN) / 2.0)
+	var bw: float = bar.size.x if bar != null else _width
+	b.position = Vector2(bw - PAD_X - b.size.x, (BAR_H - TOUCH_MIN) / 2.0)
 	bar.add_child(b)
 	action_btns.append(b)
+	_right_off.append(bw - b.position.x)
 	return b
 
 

@@ -65,6 +65,7 @@ frames_for () {
   case "$1" in
     verify_ios_ui) echo 4000 ;;
     verify_autopilot_finals) echo 1500 ;;   # 默认关 140 帧 + 开着等 400 帧(驾驶每 120 帧看一次)
+    verify_bracket_spectate) echo 4000 ;;   # 两种窗口尺寸 × 7 屏逐个实例化(各等 30 帧) ⇒ 500 帧中途被掐断
     # ★2026-08-15 新增的三个版式门禁: 都要【逐个实例化整屏场景 + 等入场 tween 落定】,
     #   500 帧只够跑完前一两屏 —— 表现是"没打 ALL PASS"(rc=0 / 致命报错 0), 极易误判成断言失败。
     #   verify_mainmenu_layout 自己还要等入场动画 settle, 帧不够会量到【半空中的坐标】,
