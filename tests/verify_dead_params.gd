@@ -129,20 +129,41 @@ func _scan() -> Array:
 	return dead
 
 
+## 台账文本 → 已排序的条目。★唯一的解析口(上面的行尾判据也走它)。
+func _parse_debt(txt: String) -> Array:
+	var out: Array = []
+	for l in txt.split("\n"):
+		var s: String = l.strip_edges()
+		if s != "" and not s.begins_with("#"):
+			out.append(s)
+	out.sort()
+	return out
+
+
 func _ready() -> void:
 	print("=== 死参数棘轮（只减不增）===")
 	var now: Array = _scan()
 
-	var debt: Array = []
-	if FileAccess.file_exists(DEBT_PATH):
-		for l in FileAccess.get_file_as_string(DEBT_PATH).split("\n"):
-			var s: String = l.strip_edges()
-			if s != "" and not s.begins_with("#"):
-				debt.append(s)
-	debt.sort()
+	var debt_txt: String = FileAccess.get_file_as_string(DEBT_PATH) if FileAccess.file_exists(DEBT_PATH) else ""
+	var debt: Array = _parse_debt(debt_txt)
 
 	_ok("★分母: 台账读到 %d 条" % debt.size(), debt.size() > 0,
 		"台账为空 ⇒ 下面的『没新增』是恒真式")
+	## ★★台账比对**对行尾必须不敏感**(2026-10-04 补·`docs/plans/20261002-文案落点BBCode普查.md` §6 点名)。
+	##   本仓 `core.autocrlf=true` ⇒ 新 worktree 检出来是 CRLF, CI 是 LF。`verify_elite_anim` 就栽在
+	##   「按行切、行尾多一个 CR」上: 新 worktree 必红、主仓绿。这一份今天靠 `strip_edges()` 扒掉了 CR,
+	##   所以**现在**不瞎 —— 这条把「现在」钉住: 同一份文本强制造出 LF 版与 CRLF 版, 过同一个解析口
+	##   (`_parse_debt`, 也就是上面真在用的那个), 两份台账必须逐条相同、条目里 0 个 CR。
+	##   哪天有人把 `strip_edges()` 换成别的(比如只去空格), CRLF 那一侧每条都多一个 CR ⇒ 当场红。
+	var d_lf: Array = _parse_debt(debt_txt.replace("\r\n", "\n"))
+	var d_crlf: Array = _parse_debt(debt_txt.replace("\r\n", "\n").replace("\n", "\r\n"))
+	var cr_in := 0
+	for x in d_crlf:
+		if str(x).contains("\r"): cr_in += 1
+	_ok("★台账比对与行尾无关: LF %d 条 / CRLF %d 条逐条相同、条目里 %d 个 CR(须 0)"
+		% [d_lf.size(), d_crlf.size(), cr_in],
+		d_lf.size() > 0 and d_lf == d_crlf and cr_in == 0,
+		"解析对行尾敏感 ⇒ 新 worktree(CRLF) 与 CI(LF) 读出两份不同的台账")
 
 	var added: Array = []
 	for x in now:
