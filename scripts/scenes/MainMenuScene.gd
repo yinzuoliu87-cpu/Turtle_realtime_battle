@@ -316,6 +316,7 @@ func _title() -> void:
 		else:
 			t.texture = load(static_path)
 			content_root.add_child(t)
+		t.name = "Logo"                                 # 门禁 verify_menu_toast 量提示条不压它
 		var end_top_y := LOGO_CY - 101.5                # center → 左上 y
 		var start_top_y := LOGO_CY - 180.0 - 101.5      # 起点在屏外上方(原 PoC: center-180)
 		t.position = Vector2(LEFT_CX - 180, start_top_y)
@@ -1717,6 +1718,9 @@ func _msg_gauntlet_block() -> String:
 ##   不如让这行字不再是唯一的通道: 锁现在是**画在按钮上的静态状态**
 ##   (灰框 + 🔒 角标, 见 `_build_page_buttons` 里 `battle_locked`),
 ##   提示退回它本来的角色 —— 解释为什么。
+## 主菜单提示条的左边界: 左上角 Logo 的右缘(Logo 约 x 70~410)再留一点。
+const TOAST_LEFT_PX := 430.0
+
 func _toast(msg: String) -> void:
 	var t := Label.new()
 	t.text = msg
@@ -1726,7 +1730,11 @@ func _toast(msg: String) -> void:
 	t.add_theme_constant_override("outline_size", 5)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var vw := get_viewport_rect().size.x
-	t.position = Vector2(vw / 2.0 - 320.0, 120.0); t.size = Vector2(640, 40)
+	## ★2026-10-03 周六实操台账 S11: 固定 640 宽居中, 长句(「✅ 已晋级决赛日 · 闯关赛到此为止(4-0) · 明天周日来打决赛日」)
+	##   溢出到左上角 Logo 上。⇒ 只占 Logo 右边那一段, 放不下就折行。
+	var left := TOAST_LEFT_PX
+	t.position = Vector2(left, 120.0); t.size = Vector2(maxf(320.0, vw - left - 30.0), 40)
+	t.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
 	t.z_index = 200
 	add_child(t)
 	var tw := create_tween()
