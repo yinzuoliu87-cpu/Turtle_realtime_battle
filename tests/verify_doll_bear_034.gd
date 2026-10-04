@@ -235,9 +235,11 @@ func _ready() -> void:
 		var b6: Array = [float(on1["hp"]), float(on2["hp"]), float(offside["hp"]), float(beyond["hp"])]
 		var n_spr0: int = _s._world.get_child_count()
 		_s._big_bear_attack(bear, on1)
-		## 姿势(起身 0.4 + 砸下 0.12)留在 process 上 —— 让出真帧让那段协程跑完
+		## 姿势(起身 0.4 + 砸下 0.12)是协程 —— ★2026-10-04 起对局协程 `await sim_stepped`(回放 S1),
+		##   只让帧不推 sim 它就不动 ⇒ 每轮推一步 sim(再让一帧给演出)
 		var w6 := 0
 		while w6 < 240 and ets._bear_waves.is_empty():
+			_s._sim_step(_s.SIM_DT, false, false)
 			await get_tree().process_frame
 			w6 += 1
 		_ok("⑥ ★分母: 冲击波起来了(在途 %d 条, 等了 %d 帧)" % [ets._bear_waves.size(), w6],
@@ -246,6 +248,7 @@ func _ready() -> void:
 		##   判据落在"波前每推进一段, 就多点出一排破土", 且这些破土**真的建进了 _world**。
 		var seg0: int = int((ets._bear_waves[0] as Dictionary).get("n_seg", -1)) if not ets._bear_waves.is_empty() else -1
 		var fx0: int = _s._anim_fx.size()
+		n_spr0 = _s._world.get_child_count()   # ★等波起来那几步 sim 里别的演出可能已经收掉了 ⇒ 基线在这里重取
 		for _ks in range(int(0.25 / _s.SIM_DT)):
 			_s._sim_step(_s.SIM_DT, false, false)
 		var seg1: int = int((ets._bear_waves[0] as Dictionary).get("n_seg", -1)) if not ets._bear_waves.is_empty() else -1

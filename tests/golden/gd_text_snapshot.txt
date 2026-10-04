@@ -899,22 +899,22 @@ scripts/scenes/TeamSelectScene.gd|text|选择你的统领
 scripts/scenes/TeamSelectScene.gd|text|龟谱没读出来 · 请重开一次
 scripts/scenes/TrainerConfigScene.gd|lit|主动
 scripts/scenes/TrainerConfigScene.gd|lit|冰川
+scripts/scenes/TrainerConfigScene.gd|lit|冷却一好就自动吹哨，唤来一种帮手，三者随机。护盾：全体友军获得 700 点临时生命，5 秒后逐渐消退。灵龟：召出一只灵体小龟，蓄力后打出贯穿 2000 码的气波，命中的敌人受到 100 点、加目标最大生命 15% 的真实伤害、被击飞，破甲 30% 持续 5 秒。狂暴：全体友军 4 秒内攻击力 +20%、每次出手 +20 点吸血，且不会死亡。冷却 14 秒。
+scripts/scenes/TrainerConfigScene.gd|lit|冷却一好就自动朝最近的敌人丢出药水(射程 2000 码)。落点 300 码内的友军获得 5 秒狂热：攻速 +30%，移速 +25%，龟能充能 +25%。冷却 16 秒。
+scripts/scenes/TrainerConfigScene.gd|lit|冷却一好就自动朝最近的敌人甩出钩索，勾住 2000 码内第一个敌人：眩晕 4 秒，一路拖到大师身边，期间它受到的伤害 +25%。冷却 20 秒；钩空了只冷却 10 秒。
+scripts/scenes/TrainerConfigScene.gd|lit|冷却一好就自动朝最近的敌人铺出一条 2000 码长的冰川，留存 6 秒。站在冰面上的敌人移速 -40%，受到的伤害 +20%。冷却 17 秒。
+scripts/scenes/TrainerConfigScene.gd|lit|冷却一好就自动标记 2000 码内最近的敌人。它下次死亡时不会真死，而是以 30% 最大生命复活、倒向我方，复活后 2.5 秒无敌，此后每秒损失 2% 最大生命。驯服来的龟能一直跟你打到决胜。冷却 60 秒；没标中只冷却 30 秒。
+scripts/scenes/TrainerConfigScene.gd|lit|冷却一好就自动锁定 2000 码内最近的敌人，持续 15 秒：它受到的伤害 +15%，而它周围 400 码内的友军会优先揍它 —— 这个范围跟着它走。冷却 30 秒；没锁中只冷却 15 秒。
 scripts/scenes/TrainerConfigScene.gd|lit|口哨
-scripts/scenes/TrainerConfigScene.gd|lit|吹哨唤来一种帮手，三者随机。护盾：全体友军获得 700 点临时生命，5 秒后逐渐消退。灵龟：召出一只灵体小龟，蓄力后打出贯穿 2000 码的气波，命中的敌人受到 100 点、加目标最大生命 15% 的真实伤害、被击飞，破甲 30% 持续 5 秒。狂暴：全体友军 4 秒内攻击力 +20%、每次出手 +20 点吸血，且不会死亡。冷却 14 秒。
 scripts/scenes/TrainerConfigScene.gd|lit|少女
 scripts/scenes/TrainerConfigScene.gd|lit|怒火药水
 scripts/scenes/TrainerConfigScene.gd|lit|技能　%d 门里只选 1 门 · 被动与主动不可兼得
 scripts/scenes/TrainerConfigScene.gd|lit|挑个模样
 scripts/scenes/TrainerConfigScene.gd|lit|普攻额外造成目标最大生命 2% 的魔法伤害。每次出手让自己攻速 +3%，整场不断累积、没有上限。层数攒到 10、25、50 时，身上会亮起共鸣。
-scripts/scenes/TrainerConfigScene.gd|lit|朝 700 码内选一点丢出药水。落点 300 码内的友军获得 5 秒狂热：攻速 +30%，移速 +25%，龟能充能 +25%。冷却 16 秒。
-scripts/scenes/TrainerConfigScene.gd|lit|朝指定方向甩出钩索，勾住 600 码内第一个敌人：眩晕 4 秒，一路拖到大师身边，期间它受到的伤害 +25%。冷却 20 秒；钩空了只冷却 10 秒。
-scripts/scenes/TrainerConfigScene.gd|lit|朝指定方向铺出一条 500 码长的冰川，留存 6 秒。站在冰面上的敌人移速 -40%，受到的伤害 +20%。冷却 17 秒。
 scripts/scenes/TrainerConfigScene.gd|lit|村民
-scripts/scenes/TrainerConfigScene.gd|lit|标记 600 码内一个敌人。它下次死亡时不会真死，而是以 30% 最大生命复活、倒向我方，复活后 2.5 秒无敌，此后每秒损失 2% 最大生命。驯服来的龟能一直跟你打到决胜。冷却 60 秒；没标中只冷却 30 秒。
 scripts/scenes/TrainerConfigScene.gd|lit|猎龟令
 scripts/scenes/TrainerConfigScene.gd|lit|被动
 scripts/scenes/TrainerConfigScene.gd|lit|钩锁
-scripts/scenes/TrainerConfigScene.gd|lit|锁定 600 码内一个敌人，持续 15 秒：它受到的伤害 +15%，而它周围 400 码内的友军会优先揍它 —— 这个范围跟着它走。冷却 30 秒；没锁中只冷却 15 秒。
 scripts/scenes/TrainerConfigScene.gd|lit|驯服
 scripts/scenes/TrainerConfigScene.gd|lit|魔法师
 scripts/scenes/TrainerConfigScene.gd|lit|魔法石
@@ -957,7 +957,7 @@ scripts/scenes/battle/battle_debug_arena.gd|lit|技%d
 scripts/scenes/battle/battle_debug_arena.gd|lit|技能
 scripts/scenes/battle/battle_debug_arena.gd|lit|技能 → %s
 scripts/scenes/battle/battle_debug_arena.gd|lit|摆放 %s (%s) · 共 %d 单位
-scripts/scenes/battle/battle_debug_arena.gd|lit|摆放 训龟大师·%s (%s) · 我方按 Q 放/敌方自动放 · 共 %d 单位
+scripts/scenes/battle/battle_debug_arena.gd|lit|摆放 训龟大师·%s (%s) · 双方自动放(U2) · 共 %d 单位
 scripts/scenes/battle/battle_debug_arena.gd|lit|敌方
 scripts/scenes/battle/battle_debug_arena.gd|lit|无敌:%s
 scripts/scenes/battle/battle_debug_arena.gd|lit|满龟能 %s · 友军技能开局即就绪+快速回充
@@ -991,7 +991,9 @@ scripts/scenes/battle/battle_hud.gd|lit|击杀
 scripts/scenes/battle/battle_hud.gd|lit|前往商店
 scripts/scenes/battle/battle_hud.gd|lit|剩余生命
 scripts/scenes/battle/battle_hud.gd|lit|合计
+scripts/scenes/battle/battle_hud.gd|lit|回放结束 —— 
 scripts/scenes/battle/battle_hud.gd|lit|大师
+scripts/scenes/battle/battle_hud.gd|lit|失败
 scripts/scenes/battle/battle_hud.gd|lit|完成新手教学
 scripts/scenes/battle/battle_hud.gd|lit|左队(友军)
 scripts/scenes/battle/battle_hud.gd|lit|我方
@@ -1016,6 +1018,7 @@ scripts/scenes/battle/battle_hud.gd|lit|生命已耗尽 · 本赛季结束
 scripts/scenes/battle/battle_hud.gd|lit|精英
 scripts/scenes/battle/battle_hud.gd|lit|练习赛 · 不计入赛季进度
 scripts/scenes/battle/battle_hud.gd|lit|继续
+scripts/scenes/battle/battle_hud.gd|lit|胜利
 scripts/scenes/battle/battle_hud.gd|lit|表演赛 · 不消耗生命
 scripts/scenes/battle/battle_hud.gd|lit|装备星级
 scripts/scenes/battle/battle_hud.gd|lit|认输
@@ -1024,6 +1027,7 @@ scripts/scenes/battle/battle_hud.gd|lit|赛季胜场
 scripts/scenes/battle/battle_hud.gd|lit|赛季胜场 +1
 scripts/scenes/battle/battle_hud.gd|lit|返回主菜单
 scripts/scenes/battle/battle_hud.gd|lit|返回菜单
+scripts/scenes/battle/battle_hud.gd|lit|这一场在本机重算对不上, 无法继续播放
 scripts/scenes/battle/battle_hud.gd|lit|闯关 %s · 不消耗生命
 scripts/scenes/battle/battle_hud.gd|lit|闯关 %s · 晋级决赛日
 scripts/scenes/battle/battle_hud.gd|lit|闯关 %s · 闯关赛出局
@@ -1035,6 +1039,7 @@ scripts/scenes/battle/battle_hud.gd|text|  阵亡
 scripts/scenes/battle/battle_hud.gd|text|← 手指横滑挑龟(共28只+小将+大师) →   点一格选笔刷 → 点战场连点连摆 · 点已摆的龟→出配置面板
 scripts/scenes/battle/battle_hud.gd|text|举白旗 · 这一场就算输了, 按下去收不回来
 scripts/scenes/battle/battle_hud.gd|text|友军
+scripts/scenes/battle/battle_hud.gd|text|回放
 scripts/scenes/battle/battle_hud.gd|text|失败
 scripts/scenes/battle/battle_hud.gd|text|战报
 scripts/scenes/battle/battle_hud.gd|text|战斗日志
@@ -1045,6 +1050,7 @@ scripts/scenes/battle/battle_hud.gd|text|点空地=摆(龟/小将) · 点单位=
 scripts/scenes/battle/battle_hud.gd|text|真要认输?
 scripts/scenes/battle/battle_hud.gd|text|结果已封存
 scripts/scenes/battle/battle_hud.gd|text|胜利
+scripts/scenes/battle/battle_hud.gd|text|退出回放
 scripts/scenes/battle/battle_hud.gd|text|阵容已上传 · 别人可能会打到你
 scripts/scenes/battle/battle_hud.gd|text|🛠 调试场
 scripts/scenes/battle/battle_hud.gd|tooltip_text|%s · %d 档
@@ -1350,6 +1356,16 @@ scripts/systems/equip/swordsman_system.gd|lit|剑
 scripts/systems/equip/synergy_system.gd|lit|剑
 scripts/systems/equip/synergy_system.gd|lit|食物
 scripts/systems/equip/timestop_system.gd|lit|+%d龟能
+scripts/systems/replay/replay_recorder.gd|lit|事件 %s 在本机没能发生
+scripts/systems/replay/replay_recorder.gd|lit|事件 %s(第 %d 步)没有发生
+scripts/systems/replay/replay_recorder.gd|lit|回放格式不认识
+scripts/systems/replay/replay_recorder.gd|lit|回放记录读不出来
+scripts/systems/replay/replay_recorder.gd|lit|开打时场上单位与录制时不同
+scripts/systems/replay/replay_recorder.gd|lit|录制那一局在第 %d 步已经结束, 本机还没结束
+scripts/systems/replay/replay_recorder.gd|lit|校验点 %d 对不上
+scripts/systems/replay/replay_recorder.gd|lit|校验点 %d: 一边在摆位一边不在
+scripts/systems/replay/replay_recorder.gd|lit|终局对不上
+scripts/systems/replay/replay_recorder.gd|lit|这场比赛是旧版本(%s)打的, 当前版本(%s)播不了
 scripts/systems/skills/candy_system.gd|lit|喂!
 scripts/systems/skills/candy_system.gd|lit|甜蜜掠夺 -
 scripts/systems/skills/candy_system.gd|lit|糖果炸弹

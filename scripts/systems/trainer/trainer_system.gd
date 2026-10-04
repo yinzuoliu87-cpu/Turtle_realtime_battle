@@ -102,60 +102,24 @@ var battle
 var _flights: Array = []
 var _wave_flights: Array = []   # 口哨②灵体气波的在途弹(逐帧推进·真 skillshot)
 
-## ★AI_TRAINER_LEFT=1: 让【我方】大师也交给 AI 托管(游走 + CD 好了自动放主动)。
-## 只给无头仿真用 —— 正式对局里我方大师是玩家操控的, AI 不接管。
-## 起因(2026-07-27 队列模拟): 原来只有右侧大师有 AI, 左侧全程站着不动、一个主动技都不放
-## → 左右两侧系统性不对称, 机器人互打的胜负数据作废, 随机分配的五选一技能对左侧也完全是摆设。
-## ★用 get_environment != "" 而不是 has_environment: 后者对"设了但为空"也返回 true,
-##   会让"关掉开关"的写法(set_environment(name, ""))静默失效 —— 探针第一版就栽在这。
-var _ai_left_trainer := OS.get_environment("AI_TRAINER_LEFT") != ""
+## ★★U2(母方案书 20260916 §4.4·用户 2026-09-16 拍板; 2026-10-03 回放方案书 Q2 授权落地):
+##   训龟大师「**不可移动、每周期自动放技能、不再由人操控**; 不可被打、没有血量、仍能攻击;
+##   只带一个技能、打最近的、敌我同规则; 保留赛前选择; 法术盘留作冷却 + 魔法石层数显示; 移除大师信息栏」。
+##   ⇒ 已删: 键盘/摇杆移动(`_trainer_input_vec` / `_trainer_input_tick` / `_trainer_move_by`)、
+##     按 Q / 圆盘施法(`_player_cast_hook*` 与整个 `battle_aim.gd`)、敌方 AI 游走(连同那条裸 `randf_range`)、
+##     `AI_TRAINER_LEFT`(两侧本来就同一套 AI 了)、`TRAINER_MOVE_SPD` / `TRAINER_HP`。
+##   回放的理由(20261003-跨设备回放 §2.7 / C2): 人操控的大师是**局内实时输入**, 且在 sim 步之外按帧施加
+##     ⇒ 实战不可复现。U2 一落地这一整类输入就不存在了。
 
 
 func _init(b) -> void:
 	battle = b
 
-func _trainer_input_vec() -> Vector2:
-	if battle._joystick != null and is_instance_valid(battle._joystick):
-		return battle._joystick.value
-	var v = Vector2.ZERO
-	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
-		v.x -= 1.0
-	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
-		v.x += 1.0
-	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
-		v.y -= 1.0
-	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
-		v.y += 1.0
-	return v.normalized() if v.length() > 1.0 else v
 
-
-## 找我方训龟大师(没有则 null)
-func _trainer_move_by(u: Dictionary, dir: Vector2, delta: float) -> void:
-	if battle._t < float(u.get("_cast_lock_until", 0.0)):
-		return   # 甩钩/施法前摇+飞行期间站定(锤石Q口径·用户2026-07-24)
-	if dir.length() < 0.001:
-		return
-	var spd: float = float(u.get("move_spd", battle.TRAINER_MOVE_SPD))
-	u["pos"] += dir * spd * delta
-	# ★clamp 进战场 —— 不夹的话摇杆一直推就飞出地图外了
-	u["pos"] = ArenaShape.clamp_in(u["pos"], battle.ARENA)
-	if absf(dir.x) > 0.05:
-		u["face_right"] = dir.x > 0.0
-
-
-## 摆位阶段能不能拖这个单位: 只拖我方(left)非蛋非召唤非训龟大师(用户2026-07-23 点6)。
+## 大师的攻击/施法 tick 现在该不该跑: 战斗结束/摆位/呈现/编辑期都不跑(用户2026-07-23 点6)。
 ## ★抽成纯函数便于门禁直接测(不用起 3D 场景)。
 func _trainer_ticks_active() -> bool:
 	return not battle._over and battle._dl_state != "place" and not battle._dl_sys._dl_is_present() and not battle._edit_mode
-
-
-func _trainer_input_tick(delta: float) -> void:
-	if not _trainer_ticks_active():
-		return
-	var u = battle._my_trainer()
-	if u == null:
-		return
-	_trainer_move_by(u, _trainer_input_vec(), delta)
 
 
 ## 训龟大师普攻: 站定扔石头, 抛物线飞向最近敌, 命中 1 物理(用户2026-07-22:「射程2000扔石头1物理」)。
@@ -257,7 +221,6 @@ func _cast_hook(trainer: Dictionary, dir: Vector2) -> bool:
 	var d: Vector2 = dir.normalized() if dir.length() > 0.01 else Vector2.RIGHT
 	trainer["_active_cd"] = battle.HOOK_CD                     # 出手即进 CD; 空放到底再返还
 	var full_t: float = battle.HOOK_WINDUP + battle.HOOK_RANGE / battle.HOOK_MISSILE_SPD
-	trainer["_cast_lock_until"] = battle._t + full_t           # 甩钩期站定(命中时提前解)
 	var hook: Sprite3D = _hook_head_node(trainer["pos"])
 	_flights.append({"src": trainer, "dir": d, "from": trainer["pos"],
 		"t": 0.0, "node": hook})
@@ -316,7 +279,6 @@ func _tick_hook_flights(delta: float) -> void:
 		var flown: float = (float(f["t"]) - battle.HOOK_WINDUP) * battle.HOOK_MISSILE_SPD
 		if flown >= battle.HOOK_RANGE:                         # ③ 飞满射程未命中 → 空放返还
 			src["_active_cd"] = battle.HOOK_CD_MISS
-			src["_cast_lock_until"] = battle._t
 			_hook_head_free(f)
 			continue
 		var p: Vector2 = (f["from"] as Vector2) + (f["dir"] as Vector2) * flown
@@ -332,7 +294,6 @@ func _tick_hook_flights(delta: float) -> void:
 		var v = _hook_hit_at(src, p)
 		if v != null:
 			_hook_grab(src, v)
-			src["_cast_lock_until"] = battle._t                # 命中即解锁(不用站到飞满)
 			_hook_hit_fx(p)
 			_hook_head_free(f)
 			continue
@@ -850,60 +811,23 @@ func _tick_hooks(delta: float) -> void:
 						u["pos"] += to.normalized() * tug_spd * delta
 						u["pos"] = ArenaShape.clamp_in(u["pos"], battle.ARENA)
 
-## 敌方(右侧/快照)训龟大师 AI: 像真人一样来回乱走 + 逮到机会甩钩锁(场外援助·用户2026-07-23 点3)。
-## 左侧大师由玩家操控(WASD 走 + Q 甩); 但 STRESS 无头对练时左侧也交给 AI ——
-## 否则钩锁在无头冒烟流程里从不触发, 等于没测到(照 CLAUDE.md「靠触发的东西冒烟必须真触发」)。
-func _tick_trainer_ai(delta: float) -> void:
+## 训龟大师自动施法(U2·**敌我同规则**): 冷却一好 → 朝【最近的敌人】放已装配的那一个主动技。
+##   节奏 = 各技能自己的冷却(D2「用各自冷却」)。不移动、不游走 —— 原敌方 AI 的随机游走已随 U2 删掉
+##   (那条游走用的还是裸全局 `randf_range`, 连 det 模式都不可复现: 20261003-跨设备回放 §2.4)。
+func _tick_trainer_ai(_delta: float) -> void:
 	if not _trainer_ticks_active():
 		return
 	for u in battle._units:
 		if not u.get("is_trainer", false) or not u.get("alive", false):
 			continue
-		if str(u.get("side", "")) == "left" and not battle._stress and not _ai_left_trainer:
-			continue   # 左侧=玩家操控, AI 不接管(无头压测/AI_TRAINER_LEFT 仿真除外)
-		_trainer_ai_step(u, delta)
+		_trainer_ai_step(u)
 
-func _trainer_ai_step(u: Dictionary, delta: float) -> void:
-	var is_left = str(u.get("side", "")) == "left"
-	# ① 乱走: 每隔一小段换一个随机游走点(限在自己半场后方, 不越中线冲进战场), 朝它半速晃
-	u["_ai_wander_cd"] = float(u.get("_ai_wander_cd", 0.0)) - delta
-	if float(u["_ai_wander_cd"]) <= 0.0 or not u.has("_ai_wander_to"):
-		u["_ai_wander_cd"] = battle._battle_rng.randf_range(0.8, 1.8)
-		var xmin: float = battle.ARENA.position.x if is_left else battle._arena_center.x + 60.0
-		var xmax: float = battle._arena_center.x - 60.0 if is_left else battle.ARENA.end.x
-		u["_ai_wander_to"] = Vector2(randf_range(xmin, xmax), randf_range(battle.ARENA.position.y + 50.0, battle.ARENA.end.y - 50.0))
-	var to: Vector2 = u["_ai_wander_to"] - u["pos"]
-	if to.length() > 12.0:
-		_trainer_move_by(u, to.normalized() * 0.6, delta)   # 半速晃(悠着点=真人感)
-	# ② 逮机会放主动: CD 好了 → 朝最近敌人方向放(钩锁在射程/线上则命中, 否则空放; 其余技能各自处理)
-	if float(u.get("_active_cd", 0.0)) <= 0.0:
-		var tgt = battle._targeting._nearest_enemy_for_trainer(u)
-		if tgt != null:
-			_cast_active(u, tgt["pos"] - u["pos"])
-
-## 玩家按 Q: 我方(左侧)大师朝【鼠标方向】甩钩锁(PC·学 LoL 锤石 Q·用户2026-07-23 点3)。
-func _player_cast_hook() -> void:
-	if not _trainer_ticks_active():
+func _trainer_ai_step(u: Dictionary) -> void:
+	if float(u.get("_active_cd", 0.0)) > 0.0 or str(u.get("_tr_active", "")) == "":
 		return
-	var tr = battle._my_trainer()
-	if tr == null:
-		return
-	var u: Dictionary = tr
-	var mp: Vector2 = battle.get_viewport().get_mouse_position() if battle.get_viewport() != null else Vector2.ZERO
-	var aim: Vector2 = battle._screen_to_field(mp) - u["pos"]
-	_cast_active(u, aim)
-
-## 移动端点圆盘: 我方大师朝【最近敌人】放主动(触屏没有鼠标方向, 自动瞄准; 拖动瞄准在 spell_disc 内处理)。
-func _player_cast_hook_auto() -> void:
-	if not _trainer_ticks_active():
-		return
-	var tr = battle._my_trainer()
-	if tr == null:
-		return
-	var u: Dictionary = tr
 	var tgt = battle._targeting._nearest_enemy_for_trainer(u)
-	var aim: Vector2 = (tgt["pos"] - u["pos"]) if tgt != null else (Vector2.LEFT if str(u.get("side","")) == "right" else Vector2.RIGHT)
-	_cast_active(u, aim)
+	if tgt != null:
+		_cast_active(u, tgt["pos"] - u["pos"])
 
 ## (已删 _hook_dramatize —— 钩锁 2026-07-30 改真 skillshot 后它就是死代码:
 ##  飞行/命中演出全在 _cast_hook + _tick_hook_flights 里(钩头节点逐帧更新位置, 不用 tween)。

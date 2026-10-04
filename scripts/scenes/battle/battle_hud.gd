@@ -1130,17 +1130,6 @@ func _build_log_panel() -> void:
 
 
 ## 日志开关: 显/隐面板; 打开时用累积的 _battle_log 重建文本.
-func _build_trainer_joystick() -> void:
-	if not (SafeArea.is_mobile() or OS.has_environment("TRAINER_JOY")):
-		return
-	if battle._joystick != null and is_instance_valid(battle._joystick):
-		return
-	battle._joystick = battle.VirtualJoystick.new()
-	var m: Vector4 = SafeArea.margins(Vector2(battle.get_viewport().get_visible_rect().size), 18.0)
-	battle._joystick.position = Vector2(m.x, float(battle.get_viewport().get_visible_rect().size.y) - battle.VirtualJoystick.RADIUS * 2.0 - m.w)
-	battle._ui_layer.add_child(battle._joystick)
-
-
 ## 双方各 spawn 一个训龟大师(用户2026-07-22 需求3: 己方玩家控制, 对面人机)。
 ## 站位: 各自基地【后方角落】—— 它射程 2000 够到全场, 不需要靠前; 放角落才像"场外监视者",
 ## 也不会挤进战线影响分离/避障。
@@ -1167,12 +1156,7 @@ func _build_spell_disc() -> void:
 		ipath = battle.HOOK_ICON
 	var icon: Texture2D = load(ipath) if ResourceLoader.exists(ipath) else null
 	battle._spell_disc = battle.SpellDisc.new()
-	battle._spell_disc.setup(icon, "Q", Callable(battle._trainer_sys, "_player_cast_hook_auto"), Callable(battle._aim, "_on_spell_aim"))   # 2026-07-26: 修好回调指向真owner(原 Callable(self=BattleHud,…) 指向不存在的方法·移动端圆盘一直没接上)
-	# ★能不能拖动瞄准由技能的 aim 字段决定(唯一判定在 BattleAim._aim_type_of)。
-	#   口哨 aim="none" → 圆盘退化成纯点击键: 按下不出方向轮盘, 松手即放。
-	#   用户 2026-07-30:「3种情况都是点击就放, 不应该有拖动」
-	battle._spell_disc.set_aimable(
-		sid != "" and str(battle.TRAINER_SKILLS.get(sid, {}).get("aim", "none")) != "none")
+	battle._spell_disc.setup(icon)   # ★U2: 只读(冷却 + 魔法石层数), 不再接施法回调
 	var vp: Vector2 = Vector2(battle.get_viewport().get_visible_rect().size)
 	var m: Vector4 = SafeArea.margins(vp, 18.0)
 	battle._spell_disc.position = Vector2(vp.x - battle.SpellDisc.R * 2.0 - m.z, vp.y - battle.SpellDisc.R * 2.0 - m.w)
@@ -1273,6 +1257,10 @@ func settle_fit_inner(inner: ScrollContainer, content: Vector2) -> void:
 
 func _show_banner(won: bool, _sealed_hint: bool = false) -> void:
 	if battle._settled:
+		return
+	if battle._replay.is_playing():   # 回放: 不出结算卡(它的按钮会去商店/主菜单/下一场), 只出回放自己的收尾
+		battle._settled = true
+		show_replay_end(won)
 		return
 	battle._settled = true
 	# 结算: 收掉投降确认框并禁用投降按钮(已经结算了, 没什么可投降的); 记一条日志.
@@ -2670,7 +2658,8 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	##   是反向验证(把初始值改成 -8 而断言照样绿)当场把它揪出来的。
 	##   今晚反复出现的同一个形状: **同一个值两个出处**, 只改一处等于没改。
 	panel.offset_left += PW + 40.0; panel.offset_right += PW + 40.0
-	var tw = battle._reg_tween()
+	## ★UI 滑入走真实时间(裸 tween): sim tween 按 sim 步喂(回放 S1), 战斗停着时面板会卡在屏外
+	var tw = battle.create_tween()
 	tw.tween_property(panel, "offset_left", -(PW + _sm), 0.22).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tw.parallel().tween_property(panel, "offset_right", -_sm, 0.22).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
@@ -2926,3 +2915,75 @@ func _st_merge_all(pages: Array, side: String) -> Array:
 	return out
 
 ## 📊 战中统计面板开关 (1:1 回合制 _on_dmg_stats_toggle)
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  回放(20261003-跨设备回放 S1): 顶部「回放」条 + 退出钮 / 对不上的提示 / 收尾
+#  ★只在 `battle._replay.is_playing()` 时建。录制那一局什么都不加(玩家无感)。
+# ══════════════════════════════════════════════════════════════════════
+const REPLAY_EXIT_SCENE := "res://scenes/Record.tscn"
+var _replay_bar: Control = null
+
+
+## 回放模式进场后第一步调(ReplayRecorder.pre_step)。投降钮藏起来 —— 回放里人什么都改不了。
+func build_replay_bar() -> void:
+	if battle._ui_layer == null or (_replay_bar != null and is_instance_valid(_replay_bar)):
+		return
+	if battle._surrender_btn != null and is_instance_valid(battle._surrender_btn):
+		battle._surrender_btn.visible = false
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 12)
+	var lb := Label.new()
+	lb.text = "回放"
+	lb.add_theme_font_size_override("font_size", 22)
+	lb.add_theme_color_override("font_color", Color("#ffd93d"))
+	hb.add_child(lb)
+	var bt := Button.new()
+	bt.text = "退出回放"
+	bt.add_theme_font_size_override("font_size", 18)
+	bt.pressed.connect(_replay_exit)
+	hb.add_child(bt)
+	var m: Vector4 = SafeArea.margins(Vector2(battle.get_viewport().get_visible_rect().size), 18.0)
+	hb.position = Vector2(m.x, m.y + 64.0)
+	battle._ui_layer.add_child(hb)
+	_replay_bar = hb
+
+
+## Q7(用户授权按推荐): 校验点对不上 ⇒ **停下提示**, 不许默默播一场和实战不同的比赛。
+func show_replay_mismatch() -> void:
+	_replay_notice("这一场在本机重算对不上, 无法继续播放", Color("#ff6b6b"))
+
+
+func show_replay_end(won: bool) -> void:
+	if battle._replay.diverged_at >= 0:
+		return   # 已经停下并提示过
+	_replay_notice("回放结束 —— " + ("胜利" if won else "失败"), Color("#ffd93d") if won else Color("#ff6b6b"))
+
+
+func _replay_notice(msg: String, col: Color) -> void:
+	if battle._ui_layer == null:
+		return
+	var cc := CenterContainer.new()
+	cc.set_anchors_preset(Control.PRESET_FULL_RECT)
+	cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 14)
+	var lb := Label.new()
+	lb.text = msg
+	lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lb.add_theme_font_size_override("font_size", 28)
+	lb.add_theme_color_override("font_color", col)
+	vb.add_child(lb)
+	var bt := Button.new()
+	bt.text = "退出回放"
+	bt.add_theme_font_size_override("font_size", 20)
+	bt.pressed.connect(_replay_exit)
+	vb.add_child(bt)
+	cc.add_child(vb)
+	battle._ui_layer.add_child(cc)
+
+
+## 离场即还原 GameState(主场景 `_exit_tree` 里调 `ReplayRecorder.end_play()`), 这里只管换场景。
+func _replay_exit() -> void:
+	if battle.get_tree() != null:
+		battle.get_tree().change_scene_to_file(REPLAY_EXIT_SCENE)

@@ -227,7 +227,7 @@ func _ready() -> void:
 	## ★分母: 表里必须正好 9 个场景 —— 少一个就是有人把场景删了而没人发现。
 	var scs: Array = SC.all()
 	_ok("分母 · 场景表读到 %d 个场景(与 verify_determinism_cross 同一份表)" % scs.size(),
-		scs.size() == 10, "%d 个" % scs.size())
+		scs.size() == 11, "%d 个" % scs.size())
 	for sc in scs:
 		var scd: Dictionary = sc
 		## ⑩ 龟壳复制那一条要多两个分母(可抄池 / 真的放过复制) —— 判别靠摆位里有没有 shell,

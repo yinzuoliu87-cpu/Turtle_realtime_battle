@@ -43,7 +43,12 @@ func _ready() -> void:
 	remove_child(s)                      # 与切场景同形: 摘下树, 还没释放
 	for _i in range(10):
 		await get_tree().process_frame
-	_ok("★★摘下树之后协程自己收场(原 bug: 每帧 get_tree() 为 null 报错)", _done)
+	## ★★2026-10-04 改口径(回放 S1): `_wait_sim` 现在 `await sim_stepped`(每个 sim 步末尾发),
+	##   不再 `await get_tree().process_frame`。摘下树 ⇒ `_process` 不跑 ⇒ 没有 sim 步 ⇒ 协程**根本不会醒**,
+	##   也就不可能再去碰 `get_tree()`(原 bug 的形状消失了, 而不是被一道闸挡住)。
+	##   被摘下的场景释放时, 挂在它信号上的协程随之丢弃 —— 不报错(致命正则兜着)。
+	##   ⇒ 判据从「它自己收场」改成「它不再醒」: 醒了才是危险的。
+	_ok("★★摘下树之后协程不再被唤醒(没有 sim 步; 原 bug: 醒来撞 get_tree()==null)", not _done)
 	s.queue_free()
 	await get_tree().process_frame
 	print("")

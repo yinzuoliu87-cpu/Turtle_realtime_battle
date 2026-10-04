@@ -43,6 +43,8 @@ func _make_team_column(side: String) -> VBoxContainer:
 			continue
 		if u.get("is_summon", false):
 			continue   # 召唤体不进框栏 (只主龟)
+		if u.get("is_trainer", false):
+			continue   # ★U2「移除掉训龟大师的信息栏」: 它没有血量, 头像栏里那一格只剩一条恒满的假血条
 		var frame = battle._hud._make_team_frame(u)
 		col.add_child(frame)
 	# 居中: VBox 内容会从 anchor 点往下排; 让它真正竖直居中需把它整体上移半高 → 用 pivot 不便,

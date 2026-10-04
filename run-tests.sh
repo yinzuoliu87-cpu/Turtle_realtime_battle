@@ -236,6 +236,8 @@ frames_for () {
     #   ★它**必须自己 pump 帧**(协程靠 `await process_frame` 醒), 所以帧数就是分母;
     #   掐断的表现是「没打 ALL PASS」而 rc=0, 不是某条 FAIL。
     verify_sim_step_rate) echo 3000 ;;
+    # 回放 S1: 录一整局(两路+认输) + 播一整局 + 四次反证重算, 每帧手喂 1 次 _process ⇒ 帧数≈总调用数
+    verify_replay_roundtrip) echo 120000 ;;
     # UI 双端适配: 10 屏 × 4 比例 = 40 次场景实例化, 每次等 150 帧让入场 tween 落定 → ≥6000 帧。
     #   ★等 150 帧不是拍脑袋: 主菜单左栏键从 x=-560 滑入(延迟 0.5+0.08i 秒), 90 帧会抓到滑一半,
     #   把"按钮跑到屏外"报成 bug(2026-08-01 实际误判过一次)。
@@ -304,6 +306,7 @@ frames_for () {
     verify_thorn_reflect) echo 3000 ;;
     verify_vfx_frames) echo 2000 ;;
     verify_salvo_trainer) echo 3000 ;;
+    verify_trainer_move) echo 4000 ;;   # U2: 逐步喂 25 游戏秒 sim(1500 步/帧) + 建场
     # 装备演出时钟帧率无关(2026-09-15): 判据本身就是【每喂 1~2 步 sim 真的等一帧】(帧号不走, 帧号去重就触发不了),
     #   060 伞 60fps 一遍 ≈600 帧 + 30fps 三遍 ≈900 帧 + 食物/药水/激光 16.5 秒 ≈500 帧 + 六次建场 ⇒ 给 4000。
     verify_equip_vfx_clock) echo 4000 ;;

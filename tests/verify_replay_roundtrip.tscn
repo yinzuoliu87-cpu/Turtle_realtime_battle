@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/verify_replay_roundtrip.gd" id="1_rr"]
+
+[node name="VerifyReplayRoundtrip" type="Node"]
+script = ExtResource("1_rr")

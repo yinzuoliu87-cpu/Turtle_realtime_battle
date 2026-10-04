@@ -1482,8 +1482,15 @@ func _unhandled_key_input(event: InputEvent) -> void:
 # ─── 局内经济 (用户 v0.9.9 — 1:1 PoC BattleScene 经济) ──────────
 
 ## 记一场对局 (BattleEnd 调) — 最新在前, 封顶 50
+## 这一局录下的回放 id(`ReplayRecorder.on_settle` 写, 下面 `record_match` 挂到战绩行上就清)。
+## ★只放内存: 它只活「结算 → 记战绩」这几行代码之间。
+var replay_pending_id: String = ""
+
 func record_match(result: String, lineup: Array, mode_str: String, turn_num: int) -> void:
 	match_history.insert(0, {"result": result, "lineup": lineup, "mode": mode_str, "turn": turn_num})
+	if replay_pending_id != "":
+		match_history[0]["replay_id"] = replay_pending_id   # 战绩页据此出「回放」按钮(S3)
+		replay_pending_id = ""
 	if match_history.size() > 50:
 		match_history.resize(50)
 	save()
