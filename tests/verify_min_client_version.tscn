@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/verify_min_client_version.gd" id="1_mv"]
+
+[node name="VerifyMinClientVersion" type="Node"]
+script = ExtResource("1_mv")

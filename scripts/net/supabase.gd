@@ -358,8 +358,10 @@ func refresh_session(refresh: String) -> void:
 ##   · `battles` 「第几场」—— D5 拍板的匹配硬条件是**双方总场次相同**
 ##   同键再传 = **覆盖**(upsert), 所以「每场都传」不会把池子撑爆: 一个人一周最多 N 行(N=他打的场数)。
 ##
-## ★上传失败**什么都不做**: 不重试、不回滚、不碰存档、不弹窗。
-##   网络层第一原则 —— 永远不能把游戏搞坏。本地池那步在这之前**已经**做完且一定成功。
+## ★上传失败**这一层**什么都不做: 不回滚、不弹窗。网络层第一原则 —— 永远不能把游戏搞坏。
+## ★★E7(2026-10-04): 「失败就丢」改成了**落盘队列 + 回读销单 + 退避重试**, 但那一层不在这里 ——
+##   在 `scripts/net/ghost_uploader.gd`(队列住在 `GameState.ghost_upload_pending`)。
+##   这一层只多了一件事: 调用方给了 `done` ⇒ 发完再**回读**那一行, 告诉它「服务端真的有了没有」。
 static var _uploads_ok: int = 0
 static var _uploads_try: int = 0
 
@@ -413,33 +415,106 @@ static func apply_upload_response(ok: bool, code: int) -> bool:
 	return good
 
 
-## 发一份快照。**发完就忘**; 没配后端 / 没身份 / 缺场次 = 什么都不做(连节点都不建)。
-static func upload_ghost_async(row: Dictionary) -> void:
+## 发一份快照。没配后端 / 没身份 / 缺场次 = 什么都不做(连节点都不建), 返回 false。
+## `done` 空 = 发完就忘(老调用点 / 门禁); 给了 ⇒ 发完**回读**, `done.call(confirmed: bool, code: int)`
+##   **每一条走掉的路恰好回调一次**(code = 插入那一下的 HTTP 码; 0 = 没发出去 / 没令牌)。
+static func upload_ghost_async(row: Dictionary, done: Callable = Callable()) -> bool:
 	if not enabled() or row.is_empty():
-		return
+		return false
 	var n = _spawn()
-	if n != null:
-		n.upload_ghost(row)
+	if n == null:
+		return false
+	n.upload_ghost(row, done)
+	return true
 
 
-func upload_ghost(row: Dictionary) -> void:
+func upload_ghost(row: Dictionary, done: Callable = Callable()) -> void:
+	_upload_snapshot_row("ghosts", row, done)
+
+
+## ghosts / gauntlet_ghosts 两张表共用的「发 + (可选)回读」。
+func _upload_snapshot_row(table: String, row: Dictionary, done: Callable) -> void:
 	if not enabled() or row.is_empty():
+		_snap_done(done, false, 0)
 		_bye()
 		return
 	if not await _await_token():
-		print("[SupabaseNet] 快照没传: 拿不到登录令牌(ghosts)")
+		print("[SupabaseNet] 快照没传: 拿不到登录令牌(%s)" % table)
 		apply_upload_response(false, 0)
+		_snap_done(done, false, 0)
 		_bye()
 		return
 	## ★`Prefer: resolution=merge-duplicates` = upsert。同键(同一个人·同一周·同一场次)
 	##   再传就覆盖 —— D5「每场都传」靠的就是这个, 否则第二次传会撞主键报 409。
-	var url := base_url().rstrip("/") + "/rest/v1/ghosts"
-	_http("POST", url, JSON.stringify(row),
+	var base := base_url().rstrip("/") + "/rest/v1/" + table
+	_http("POST", base, JSON.stringify(row),
 		func(res):
-			_log_upload_fail("ghosts", res)
+			_log_upload_fail(table, res)
+			var code := int(res.get("code", 0)) if bool(res.get("ok", false)) else 0
 			apply_upload_response(bool(res.get("ok", false)), int(res.get("code", 0)))
-			_bye(),
+			if not done.is_valid():
+				_bye()
+				return
+			## ★★2xx 不算传成(memory fb-200-ok-is-not-it-happened): RLS / 代理改写 body / return=minimal
+			##   都可能「回 2xx 而那一行不在或不是这一份」。销单的唯一判据是回读到**逐字相同**的快照。
+			var q := snapshot_readback_query(table, row)
+			if q == "":
+				_snap_done(done, false, code)
+				_bye()
+				return
+			_http("GET", base + "?" + q, "",
+				func(res2):
+					var good := snapshot_confirmed(bool(res2.get("ok", false)), int(res2.get("code", 0)),
+						str(res2.get("body", "")), row.get("snapshot", {}))
+					if not good:
+						print("[SupabaseNet] 快照回读不到(%s) code=%d" % [table, int(res2.get("code", 0))])
+					_snap_done(done, good, code)
+					_bye()),
 		"Prefer: resolution=merge-duplicates,return=minimal")
+
+
+static func _snap_done(done: Callable, confirmed: bool, code: int) -> void:
+	if done.is_valid():
+		done.call(confirmed, code)
+
+
+## 纯函数: 回读那一行要问的查询串(按主键)。账号必须是 uuid 形状 —— 它要拼进查询串。
+static func snapshot_readback_query(table: String, row: Dictionary) -> String:
+	var acc := str(row.get("account_id", ""))
+	var wk := int(row.get("season_week", 0))
+	if not is_uuid(acc) or wk <= 0:
+		return ""
+	if table == "ghosts" and int(row.get("battles", -1)) >= 0:
+		return "account_id=eq.%s&season_week=eq.%d&battles=eq.%d&select=snapshot" % [acc, wk, int(row["battles"])]
+	if table == "gauntlet_ghosts" and int(row.get("gw", -1)) >= 0 and int(row.get("gl", -1)) >= 0:
+		return "account_id=eq.%s&season_week=eq.%d&gw=eq.%d&gl=eq.%d&select=snapshot" % [
+			acc, wk, int(row["gw"]), int(row["gl"])]
+	return ""
+
+
+## 纯函数: 回读回包 → 服务端那一行的快照是不是**就是我发的这一份**。
+## ★比的是规范化之后的 JSON(键排序): jsonb 会重排键, 但值一个字都不该变。
+##   同键被别的上传覆盖成另一份 ⇒ 不算(那一份不是这张单子)。
+static func snapshot_confirmed(ok: bool, code: int, body: String, sent) -> bool:
+	if not ok or code < 200 or code >= 300 or not (sent is Dictionary) or (sent as Dictionary).is_empty():
+		return false
+	var j := JSON.new()
+	if j.parse(body) != OK or not (j.data is Array):
+		return false
+	var want := canonical_json(sent)
+	for r in (j.data as Array):
+		if r is Dictionary and (r as Dictionary).get("snapshot", null) is Dictionary \
+				and canonical_json((r as Dictionary)["snapshot"]) == want:
+			return true
+	return false
+
+
+## 走一遍 JSON 再按键排序输出 —— 两边都过同一道, 数字(int/float)的表示也就一致了。
+static func canonical_json(v) -> String:
+	var j := JSON.new()
+	if j.parse(JSON.stringify(v)) != OK:
+		return ""
+	return JSON.stringify(j.data, "", true)
 
 
 ## ★★2026-10-04 上传前先要有**有效的**登录令牌。
@@ -503,30 +578,19 @@ static func gauntlet_row_from_snapshot(snapshot: Dictionary, account_id: String,
 	}
 
 
-static func upload_gauntlet_async(row: Dictionary) -> void:
+## 形状与回调约定同 `upload_ghost_async`。
+static func upload_gauntlet_async(row: Dictionary, done: Callable = Callable()) -> bool:
 	if not enabled() or row.is_empty():
-		return
+		return false
 	var n = _spawn()
-	if n != null:
-		n.upload_gauntlet(row)
+	if n == null:
+		return false
+	n.upload_gauntlet(row, done)
+	return true
 
 
-func upload_gauntlet(row: Dictionary) -> void:
-	if not enabled() or row.is_empty():
-		_bye()
-		return
-	if not await _await_token():
-		print("[SupabaseNet] 快照没传: 拿不到登录令牌(gauntlet_ghosts)")
-		apply_upload_response(false, 0)
-		_bye()
-		return
-	var url := base_url().rstrip("/") + "/rest/v1/gauntlet_ghosts"
-	_http("POST", url, JSON.stringify(row),
-		func(res):
-			_log_upload_fail("gauntlet_ghosts", res)
-			apply_upload_response(bool(res.get("ok", false)), int(res.get("code", 0)))
-			_bye(),
-		"Prefer: resolution=merge-duplicates,return=minimal")
+func upload_gauntlet(row: Dictionary, done: Callable = Callable()) -> void:
+	_upload_snapshot_row("gauntlet_ghosts", row, done)
 
 
 ## 纯函数: 拉同标签对手的查询串。
@@ -1291,6 +1355,50 @@ static func _reset_for_test() -> void:
 	_state = ST_UNKNOWN
 	_notice = ""
 	_asked = 0
+	_min_client = ""
+	_update_hinted = false
+
+
+# ─────────────────────────────────────────────────────────────
+# E15 最低客户端版本(母方案书 §8.5 E15「客户端版本旧于服务端」)
+#   服务端 `service_status.min_client_version`(schema.sql §5)早就有了, 客户端原来一直不读。
+#   ★只**提示**、不拦: 方案书 E15 写的是「无设计」, 没有任何一处拍板过「旧版本不许打」;
+#     拦人是另一个决定(还要配商店跳转与停服文案), 不由这一层顺手做掉。
+# ─────────────────────────────────────────────────────────────
+## 服务端要求的最低版本("" = 还没问到 / 没要求)。
+static var _min_client: String = ""
+## 本进程已经提示过一次了(主菜单每秒轮询一次, 不能每秒弹一句)。
+static var _update_hinted := false
+const UPDATE_HINT := "有新版本，请更新"
+
+
+## 纯函数: 版本串 a 是否**严格低于** b。按「.」分段逐段比**整数**(0.19.10 > 0.19.9),
+##   段数不同时缺的段当 0(0.19 == 0.19.0)。任何一段不是纯数字 ⇒ 判 false(看不懂就不提示, 不吓人)。
+static func version_less(a: String, b: String) -> bool:
+	var pa := a.strip_edges().split(".")
+	var pb := b.strip_edges().split(".")
+	for p in pa + pb:
+		if not (p as String).is_valid_int() or int(p) < 0:
+			return false
+	for i in range(maxi(pa.size(), pb.size())):
+		var x := int(pa[i]) if i < pa.size() else 0
+		var y := int(pb[i]) if i < pb.size() else 0
+		if x != y:
+			return x < y
+	return false
+
+
+## 该不该提示「有新版本」。没配后端 / 没问到 / 服务端没要求 ⇒ false。
+static func update_available() -> bool:
+	return enabled() and _min_client != "" and version_less(str(ProjectSettings.get_setting("application/config/version", "")), _min_client)
+
+
+## 主菜单轮询用: 该提示且本进程还没提示过 ⇒ true(并记下已提示)。
+static func take_update_hint() -> bool:
+	if _update_hinted or not update_available():
+		return false
+	_update_hinted = true
+	return true
 
 
 # ─────────────────────────────────────────────────────────────
@@ -1320,9 +1428,12 @@ static func state_from_response(ok: bool, code: int, body: String) -> Dictionary
 	if not (row is Dictionary):
 		return {"state": ST_UNREACHABLE, "notice": ""}
 	var m = (row as Dictionary).get("maintenance", false)
+	## E15: 同一行里顺手带回「最低客户端版本」(列缺失 / null ⇒ "", 当作没要求)。
+	var mv = (row as Dictionary).get("min_client_version", "")
+	var minv := str(mv) if mv is String else ""
 	if bool(m):
-		return {"state": ST_MAINTENANCE, "notice": str((row as Dictionary).get("notice", ""))}
-	return {"state": ST_OK, "notice": ""}
+		return {"state": ST_MAINTENANCE, "notice": str((row as Dictionary).get("notice", "")), "min": minv}
+	return {"state": ST_OK, "notice": "", "min": minv}
 
 
 ## 把一次回包应用到全局状态上。返回新状态。
@@ -1330,6 +1441,9 @@ static func apply_status_response(ok: bool, code: int, body: String) -> String:
 	var r := state_from_response(ok, code, body)
 	_state = str(r["state"])
 	_notice = str(r["notice"])
+	## ★问不到时**保留上一次问到的**最低版本(不把「不知道」说成「没要求」, 也不凭空提示)。
+	if r.has("min"):
+		_min_client = str(r["min"])
 	_asked += 1
 	return _state
 

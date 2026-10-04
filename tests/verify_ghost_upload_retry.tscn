@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/verify_ghost_upload_retry.gd" id="1_gu"]
+
+[node name="VerifyGhostUploadRetry" type="Node"]
+script = ExtResource("1_gu")

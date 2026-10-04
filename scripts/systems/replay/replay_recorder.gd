@@ -83,8 +83,8 @@ const PLAY_READS_NOT_RECORDED := ["test_mode", "tutorial", "current_lane", "egg_
 ##   回放期间它们可能被别的路径真改了(例如续登录换了 refresh 令牌), 还原成旧值反而写坏。
 const BACKUP_SKIP := ["test_mode", "auth_refresh", "account_email", "install_uid", "cloud_rev",
 	"match_history", "finals_report_pending", "replay_pending_id",
-	## S2 上传队列: 播放时不许被覆盖(V5)。
-	"replay_upload_pending"]
+	## S2 上传队列: 播放时不许被覆盖(V5)。E7 快照上传队列同理。
+	"replay_upload_pending", "ghost_upload_pending"]
 const Uploader := preload("res://scripts/systems/replay/replay_uploader.gd")
 
 ## 待播的那一份: 播放入口写、战斗场 `_ready` 里 `start()` 读走。

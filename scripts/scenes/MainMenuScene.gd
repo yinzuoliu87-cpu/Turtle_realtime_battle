@@ -169,6 +169,7 @@ func _ready() -> void:
 	_BE.retry_finals_report()
 	## 回放 S2: 没回读确认传上去的周六录像补传一次(同上一句同一个理由; 判据全在 ReplayUploader 里)。
 	_RU.retry()
+	load("res://scripts/net/ghost_uploader.gd").retry()   # E7: 没回读确认的对手快照补传(判据全在 ghost_uploader 里)
 	## ★★★ 2026-09-29 【墙拆了】—— 用户「那就不用必须绑定吧」推翻了他 2026-09-24
 	##   那句「直接改为必须绑定账号吧」。`login_wall_on()` 现在**恒假**
 	##   (`phase2_config.WALL_BLOCKS = false`) ⇒ 下面这三行对玩家永远不成立,
@@ -1134,6 +1135,7 @@ var _sb_state_shown: String = ""
 ## D-1: 服务状态变了就重建赛程条(维护态要盖掉收盘倒计时)。
 ## ★判据是**状态变了**而不是"每秒都重建" —— 后者会让主菜单每秒扔一堆节点。
 func _sb_poll() -> void:
+	if _SB.take_update_hint(): _toast(_SB.UPDATE_HINT)   # E15: 服务端要求的最低版本高于本机 ⇒ 非阻塞提示一次
 	var s: String = _SB.service_state()
 	## ★★2026-10-03 周六实操 S16: 原来**只在服务状态变了才重画** ⇒ 倒计时停在打开主菜单那一刻
 	##   (22:36 与 22:49 两张截图都写「距收盘 24 分 18 秒」), 22:50 的「已封盘」也永远出不来。
