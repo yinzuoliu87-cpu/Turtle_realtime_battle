@@ -21,6 +21,20 @@ const TS_EQ_TIMER_FIELDS := ["aspd_until", "up_until", "vine_aspd_until", "emp_c
 ##   原来时停里不倒计时: 大师狂怒的移速半边(`haste_until`/`echarge_until` 早在表里, 同一个 buff 两半不同步)、
 ##   僵硬减益(同 `slow_until`)、钻石自动滚/赛博闪避冷却、041 涨潮(还原走 `_pending_shots`, 时停里照走)、财神梭哈免控。
 const TS_EXTRA_UNIT_TIMER_FIELDS := ["move_buff_until", "stiff_until", "roll_free_cd", "_ai_dodge_cd", "_ebb_until", "cc_immune_until"]
+## 【「上次发生时刻」戳】(`x = _t`, 再判 `_t - x >= CD` / 按 `_t - x` 推进度)·2026-10-04 方案书 20260916c §8.8 尾巴。
+##   与上面的到期时刻是**镜像**: 到期时刻往前挪(`v - delta`)让「还剩多久」变短; 起点戳往后挪(也是 `v - delta`)
+##   让「已经过了多久」变长 —— 两者都等价于「只为这一只单位推进了 delta 秒」。
+##   原来时停里 `_t` 冻住 ⇒ 携带者忍者冲一次就再也冲不了(`_t - _ninja_last_dash` 恒 0 < 0.4)。
+##   逐个核过(两套独立扫法对账, 清单见方案书 §8.8): 只收【单位自己 tick 时读】且【影响对局】的, 外加携带者自己的治疗飘字合并窗。
+##   _ninja_last_dash 忍者被动冲刺间隔 · roll_start 钻石滚动加速坡 · shell_last_dmg_t 暗影 6 秒无伤入隐 ·
+##   _awaken_t0 龟壳入场 10/20 秒觉醒 · _hunt_scan_t 猎人斩杀扫描节流 · anchor_swing_t 锚「末发也算持有充能」(冻住=攻速×2 一直不掉) ·
+##   dice_dash_seg_start 骰子冲刺分段超时 · phx_aim_t 凤凰停喷 0.4 秒重新对准 · _heal_acc_t/_heal_acc_start 治疗飘字合并窗(纯演出)
+## ⚠ 只挪已存在的键: 不存在时读者各有缺省(-99 / _t / 0), 凭空写一个会改语义。
+## ⚠ `_heal_acc_start` 以 `<= 0` 当「未开始」哨兵: 0 挪成负数仍 <= 0, 语义不变。
+const TS_SINCE_UNIT_FIELDS := ["_ninja_last_dash", "roll_start", "shell_last_dmg_t", "_awaken_t0", "_hunt_scan_t",
+	"anchor_swing_t", "dice_dash_seg_start", "phx_aim_t", "_heal_acc_t", "_heal_acc_start"]
+## 装备子状态里的起点戳: 066 鲸涎浓浆「本路第 11 秒喝药」与喝后体型曲线 · 068 气压罐「第 12 秒起每 12 秒」。
+const TS_SINCE_EQ_FIELDS := ["brew_t0", "brew_at_t", "can_t0"]
 
 ## ── 时停里的协程(2026-10-04·方案书 20260916c §8.7 #8) ──
 ## `_wait_sim` 量的是 `battle._t`, 而 `_t` 只在正常分支走 ⇒ 原来**携带者自己**的多段技/装备协程
@@ -116,6 +130,13 @@ func _ts_advance_unit_timers(u: Dictionary, delta: float) -> void:
 		for f2 in TS_EQ_TIMER_FIELDS:
 			if (est as Dictionary).has(f2) and float(est[f2]) > battle._t:
 				est[f2] = maxf(battle._t, float(est[f2]) - delta)
+		for f3 in TS_SINCE_EQ_FIELDS:
+			if (est as Dictionary).has(f3):
+				est[f3] = float(est[f3]) - delta
+	## ★「上次发生时刻」戳(见 TS_SINCE_UNIT_FIELDS): 不钳 —— 它们本就在过去, 往回挪就是「过去了更久」。
+	for f4 in TS_SINCE_UNIT_FIELDS:
+		if u.has(f4):
+			u[f4] = float(u[f4]) - delta
 
 func _unit_hourglass_star(u: Dictionary) -> int:   # 该单位所装沙漏最高星(0=无)
 	var best := 0
