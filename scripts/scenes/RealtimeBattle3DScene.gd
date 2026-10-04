@@ -806,6 +806,7 @@ var _deterministic := false                      # ★Phase2b: TURTLE_SEED 设�
 var _frame_sim_dt: float = 0.0
 ## ★回放 S1: 每个 sim 步末尾发一次。对局协程一律 `await` 它(不 await process_frame) ⇒ 一帧几步都逐步醒, 结果与帧率无关(20261003-跨设备回放 §4.1 ①A-b)。
 signal sim_stepped
+signal _lane_parked   ## 永不 emit: 上一路的协程醒来发现换路了, 就停在这里不再往下走(见 DualLaneFlow.lane_step)
 var _replay := ReplayRecorder.new(self)          # 回放录制/播放(scripts/systems/replay/replay_recorder.gd)
 var _sim_accum: float = 0.0                      # ★Phase4切片2: 交互游玩累加器·攒够 SIM_DT 就跑一步 sim(固定步长→帧率无关);余量给切片2b渲染插值
 var _render_alpha: float = 0.0                    # ★Phase4切片2b: 渲染插值分数 = _sim_accum/SIM_DT [0,1)。立绘在【上一步 pos↔当前 pos】间 lerp → 消固定步长在高帧率下的卡顿
@@ -1692,7 +1693,7 @@ func _wait_sim(secs: float, who = null) -> void:   # who=协程主人: 时停里
 	var t_end: float = _t + secs - _WAIT_EPS
 	var guard: int = 0
 	while _t < t_end and guard < 6000 and is_instance_valid(self) and is_inside_tree():   # 离场后不再有 sim 步 ⇒ 不再醒(台账 S8: 原来醒来就撞 get_tree()==null)
-		await sim_stepped
+		await _dl_sys.lane_step()
 		guard += 1
 		if who != null: t_end -= _timestop.carrier_credit(who, _sim_step_n)
 
@@ -3856,7 +3857,7 @@ func _bear_shockwave(u: Dictionary, tgt: Dictionary, _si: int) -> void:   # 大�
 	# 前摇: 起身高高举起(加速t²)+后仰 (0.4s) —— 纯姿势, 留在 process
 	var rt := 0.0
 	while rt < 0.4 and u.get("alive", false):
-		await sim_stepped
+		await _dl_sys.lane_step()
 		if _timestop.holds(u): continue   # 时停: 被定格的单位这一步不推进(携带者照常; 顿帧行为不变)
 		rt += _frame_sim_dt
 		var a: float = rt / 0.4
@@ -3866,7 +3867,7 @@ func _bear_shockwave(u: Dictionary, tgt: Dictionary, _si: int) -> void:   # 大�
 	# 猛砸下: 从高处加速砸到地下 (0.12s)
 	var st := 0.0
 	while st < 0.12 and u.get("alive", false):
-		await sim_stepped
+		await _dl_sys.lane_step()
 		if _timestop.holds(u): continue   # 时停: 被定格的单位这一步不推进(携带者照常; 顿帧行为不变)
 		st += _frame_sim_dt
 		u["_bear_voff"] = Vector3(0.0, lerpf(0.95, -0.22, st / 0.12), 0.0)   # 猛砸下: 直下(无横移)
@@ -4261,7 +4262,7 @@ func _summon_walking_bear(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   #
 	var guard := 0.0
 	var wt := 0.0
 	while is_instance_valid(bear) and tgt != null and tgt.get("alive", false):
-		await sim_stepped
+		await _dl_sys.lane_step()
 		if _timestop.holds(u): continue   # 时停: 被定格的单位这一步不推进(携带者照常; 顿帧行为不变)
 		var dt := _frame_sim_dt
 		guard += dt; wt += dt
@@ -4284,7 +4285,7 @@ func _summon_walking_bear(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   #
 		var kt := 0.0
 		var hit := false
 		while kt < 0.34 and is_instance_valid(bear):
-			await sim_stepped
+			await _dl_sys.lane_step()
 			if _timestop.holds(u): continue   # 时停: 被定格的单位这一步不推进(携带者照常; 顿帧行为不变)
 			kt += _frame_sim_dt
 			bear.frame = mini(4, int(kt / 0.06))
@@ -5588,7 +5589,7 @@ func _sk_basic_chiwave(u: Dictionary, tgt) -> void:            # 小龟·龟派�
 		u["no_move"] = true; u["no_basic"] = true
 		var _del: float = 0.0
 		while _del < _ddur and u.get("alive", false) and is_inside_tree():
-			await sim_stepped
+			await _dl_sys.lane_step()
 			if _timestop.holds(u): continue   # 时停: 被定格的单位这一步不推进(携带者照常; 顿帧行为不变)
 			_del += _frame_sim_dt
 			u["pos"] = _ds.lerp(_bp, clampf(_del / _ddur, 0.0, 1.0))
@@ -5725,7 +5726,7 @@ func _basic_slam_run(u: Dictionary, tgt: Dictionary, dir: Vector2, u_start: Vect
 	var flipped := false
 	var p := 0.0
 	while el < total and u.get("alive", false) and tgt.get("alive", false) and is_inside_tree():
-		await sim_stepped
+		await _dl_sys.lane_step()
 		if _timestop.holds(u): continue   # 时停: 被定格的单位这一步不推进(携带者照常; 顿帧行为不变)
 		el += _frame_sim_dt
 		if el < T_GRAB:                                     # ① 擒住: 敌拉到龟身前

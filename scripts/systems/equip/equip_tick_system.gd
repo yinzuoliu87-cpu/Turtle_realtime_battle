@@ -649,6 +649,21 @@ func schedule(delay: float, fn: Callable) -> void:
 	_bolt_q.append({"at": battle._t + maxf(0.0, delay), "fn": fn})
 
 
+## 【换路重置】由 `DualLaneFlow._dl_clear_units` 调。返回丢掉了几项(门禁/探针用)。
+## ★四张在途表里装的全是上一路的东西(旧单位字典 + 上一路的落点/波前), 而 tick 它们的
+##   `tick_delayed` 不分路 ⇒ 不清就接着结算: 大熊冲击波的波前扫的是 `_enemies_of(src)`,
+##   换路后那就是**下一路**的敌人(2026-10-04 换路纪元那一轮实测)。口径与 `_pending_shots`
+##   换路清空一致: 上一路已经结束, 它没落地的一律作废。
+## ★浪墙的网格节点已由换路兜底扫 `_world` 释放, 这里只丢登记(那张表本来也只管演出)。
+func reset_for_lane() -> int:
+	var n: int = _bolt_q.size() + _bear_waves.size() + _pulls.size() + _tide_walls.size()
+	_bolt_q.clear()
+	_bear_waves.clear()
+	_pulls.clear()
+	_tide_walls.clear()
+	return n
+
+
 ## ★★共享延时队列的【唯一入口】—— 由主场景 `_sim_step` 的 tick 群**无条件**每帧调。
 ##   原来 drain 挂在 `_tick_thunder` 里, 而那整块被 `if not u.equips.is_empty()` 门住
 ##   ⇒ **没人带装备就永远不排空**(026 门禁当场抓到: 队列剩 6 项)。
