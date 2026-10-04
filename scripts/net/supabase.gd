@@ -456,12 +456,15 @@ func _await_token() -> bool:
 	if token_fresh(int(Time.get_unix_time_from_system())):
 		return true
 	ensure_signed_in_async()
+	## 续期一结束(成功或失败)就判定 —— 不白等满 10 秒(失败时屏幕会一直转「正在连线」)。
 	for _i in range(600):
 		if not is_inside_tree():
 			return false
 		await get_tree().process_frame
 		if _token != "":
 			return true
+		if not _auth_inflight:
+			break
 	return _token != ""
 
 
@@ -1546,7 +1549,9 @@ static func fetch_opponent_async(week: int, bucket: int, round_no: int, seed: in
 		return
 	## ★与报名/看桶同一道闸: 只要「服务端认得出你是谁」。**不是** `sync_allowed`
 	##   (那是存档同步的闸, 要绑邮箱 —— 用错会让访客静默打不了, 这个洞犯过一次)。
-	if str(gs.account_id) == "" or _token == "":
+	## ★★2026-10-04: 没令牌不再直接放弃 —— 交给节点先续期再发(`_await_token`, 最多约 10 秒)。
+	##   令牌只活在内存, 冷启动后立刻点进对阵图那几秒是空的; 原来这里标「试过了」就结束, 对手拉不到。
+	if str(gs.account_id) == "":
 		_opp_tried = true
 		return
 	var n = _spawn()
@@ -1597,7 +1602,8 @@ static func report_finals_async(week: int, bucket: int, round_no: int,
 	if winner_side != 0 and winner_side != 1:
 		return
 	## ★与报名/看桶同一道闸：只要「服务端认得出你是谁」。**不是** `sync_allowed`。
-	if str(gs.account_id) == "" or _token == "":
+	## ★★2026-10-04: 没令牌时交给节点先续期再发(同 fetch_opponent), 不在这里放弃。
+	if str(gs.account_id) == "":
 		return
 	## ★同一场只报一次：服务端是 `on conflict do nothing`（先到先得），
 	##   客户端这边再挡一层是为了**不把重复请求当成正常流量**——
@@ -1619,7 +1625,7 @@ static func report_finals_async(week: int, bucket: int, round_no: int,
 
 func report_finals(week: int, bucket: int, round_no: int,
 		match_no: int, winner_side: int, seed_used: int) -> void:
-	if not enabled():
+	if not enabled() or not await _await_token():
 		_report_inflight = false
 		_bye()
 		return
@@ -1639,7 +1645,7 @@ func report_finals(week: int, bucket: int, round_no: int,
 
 
 func fetch_opponent(week: int, bucket: int, round_no: int, seed: int) -> void:
-	if not enabled():
+	if not enabled() or not await _await_token():
 		_opp_inflight = false
 		_opp_tried = true
 		_bye()

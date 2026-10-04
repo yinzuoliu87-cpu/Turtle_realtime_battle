@@ -918,8 +918,17 @@ func _t_opponent() -> void:
 	SB._opp_inflight = false
 	SB.fetch_opponent_async(777, 2, 3, 7)
 	await get_tree().process_frame
-	_ok("⑧ ★没 token 时不发请求", _reqs.size() == 0, str(_reqs.size()))
+	## ★★2026-10-04 改口径: 没 token 时**先续期**(冷启动那几秒原来直接放弃, 对手拉不到),
+	##   但**绝不**拿公共匿名钥匙去打 finals_opponent; 续期失败 ⇒ 标「问过了」, 屏幕不许一直转。
+	for _i in range(30):
+		await get_tree().process_frame
+	var _anon_rpc := 0
+	for _r in _reqs:
+		if str((_r as Dictionary).get("url", "")).ends_with("/rest/v1/rpc/finals_opponent"):
+			_anon_rpc += 1
+	_ok("⑧ ★没 token 时不拿公共钥匙去要对手(续期失败就不要)", _anon_rpc == 0, str(_reqs))
 	_ok("⑧ ★★但要标成「问过了」—— 不然屏幕永远转着「正在连线」", SB.opponent_tried())
+	SB._reset_auth_for_test()
 	SB._transport_for_test = Callable()
 	SB.opponent_clear()
 

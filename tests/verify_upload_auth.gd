@@ -52,7 +52,7 @@ func _ready() -> void:
 	gs.auth_refresh = "r1"
 	_ok("★分母: 后端真的打开了", SB.enabled())
 
-	for table in ["ghosts", "gauntlet_ghosts", "pull:ghosts", "pull:gauntlet_ghosts"]:
+	for table in ["ghosts", "gauntlet_ghosts", "pull:ghosts", "pull:gauntlet_ghosts", "rpc/finals_opponent", "rpc/finals_report"]:
 		SB._reset_auth_for_test()
 		gs.auth_refresh = "r1"
 		_reqs.clear()
@@ -63,7 +63,7 @@ func _ready() -> void:
 					"access_token": "tok-new", "refresh_token": "r2", "expires_in": 3600,
 					"user": {"id": "uid-me", "is_anonymous": true}})})
 			else:
-				cb.call({"ok": true, "code": 200 if str(m) == "GET" else 201, "body": "[]" if str(m) == "GET" else ""})
+				cb.call({"ok": true, "code": 200 if (str(m) == "GET" or str(u).find("/rpc/") >= 0) else 201, "body": "[]" if str(m) == "GET" else ("{\"ok\":true}" if str(u).find("/rpc/") >= 0 else "")})
 		_ok("[%s] ★分母: 起点令牌是空的(冷启动 / 过期)" % table, SB.access_token() == "")
 		if table == "ghosts":
 			SB.upload_ghost_async(SB.ghost_row_from_snapshot({"x": 1}, "uid-me", 1790553600, 3, "gate"))
@@ -71,8 +71,16 @@ func _ready() -> void:
 			SB.upload_gauntlet_async(SB.gauntlet_row_from_snapshot({"x": 1}, "uid-me", 1790553600, 1, 0, "gate"))
 		elif table == "pull:ghosts":
 			SB.pull_opponents_async(1790553600, 3, "uid-me")
-		else:
+		elif table == "pull:gauntlet_ghosts":
 			SB.pull_gauntlet_async(1790553600, 1, 0, "uid-me")
+		elif table == "rpc/finals_opponent":
+			SB.opponent_clear()
+			SB._opp_inflight = false
+			SB.fetch_opponent_async(1790553600, 0, 1, 3)
+		else:
+			SB.finals_report_clear()
+			SB._report_inflight = false
+			SB.report_finals_async(1790553600, 0, 1, 0, 0, 42)
 		for _i in range(60):
 			await get_tree().process_frame
 		var up := {}
