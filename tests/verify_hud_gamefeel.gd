@@ -29,6 +29,7 @@ extends Node
 
 const HUD := preload("res://scripts/scenes/battle/battle_hud.gd")
 const DSP := preload("res://scripts/scenes/battle/dmg_stats_panel.gd")
+const SSC := preload("res://scripts/scenes/battle/settle_screen.gd")
 const RP := preload("res://scripts/net/remote_pool.gd")
 const UIP := preload("res://scripts/util/ui_palette.gd")
 
@@ -76,10 +77,11 @@ const OK_EXACT := [
 ## 调试场/地图编辑器是**开发工具**, 不进玩家的包的判断路径(MAPEDIT / DEBUG_EDIT 开关)。
 const OK_IF_CONTAINS := ["笔刷"]
 
-## 结算战报表那 4 个数值列的表头。★这份名单**不是**我另抄一份口径 ——
-##   下面 ④ 会断言它与 `DmgStatsPanel.TABS` 的页签名【逐字一致】(单一出处)。
-## ★2026-10-04 用户「打出，抗住，这就很ai味」⇒ 改商业游戏通行叫法
-const WANT_HDR := ["伤害", "承伤", "治疗", "击杀"]
+## 结算战报表那 7 个数值列的表头 = **用户原话**(2026-10-04「打出，抗住，这就很ai味，不是商业游戏的感觉啊」
+##   「标准写法应该是造成总伤害，造成魔法伤害，造成物理伤害，受到伤害，治疗，护盾，击杀数这样啊」;
+##   物理排魔法前 = 商业游戏常见顺序)。★这里**故意**抄用户的原话而不读产品常量 —— 它是需求的尺子;
+##   下面 ④ 再断言产品 `SettleScreen.COLS` 与 `DmgStatsPanel.TABS` 都与它逐字一致。
+const WANT_HDR := ["造成总伤害", "造成物理伤害", "造成魔法伤害", "受到伤害", "治疗", "护盾", "击杀数"]
 
 var _n := 0
 var _fail := 0
@@ -315,32 +317,36 @@ func _ready() -> void:
 	print("── ④ 结算屏战报表的表头 ──")
 	var units: Array = [_mk("甲", 900, 500, 300, 100), _mk("乙", 200, 200, 0, 0, false)]
 	var col = hud._stats_column("我方", units, Color("#8ee6a0"))
-	_ok("④分母 表真的建出来了, 5 列 × (1 表头 + 2 行)",
-		col != null and (col as GridContainer).columns == 5 and col.get_child_count() == 15,
+	_ok("④分母 表真的建出来了, 8 列 × (1 表头 + 2 行)",
+		col != null and (col as GridContainer).columns == 8 and col.get_child_count() == 24,
 		"children=%d" % (col.get_child_count() if col != null else -1))
 	var hdr_txt: Array = []
 	var hdr_plated := 0
 	if col != null:
-		for i in range(1, 5):
+		for i in range(1, 8):
 			var cell: Node = col.get_child(i)
 			if cell is PanelContainer:
 				hdr_plated += 1
 			var ls := _all_labels(cell, [])
 			if ls.size() > 0:
-				hdr_txt.append(str((ls[0] as Label).text))
-	_ok("④分母 取到了 4 个数值列表头", hdr_txt.size() == 4, str(hdr_txt))
-	_ok("④★ 表头是 %s(主动语态短动词, 不是「造成伤害/承受伤害/治疗量」)" % str(WANT_HDR),
+				## 长列名在栏牌里折成两行(造成 / 总伤害) —— 去掉换行就是屏上读到的那个词
+				hdr_txt.append(str((ls[0] as Label).text).replace("\n", ""))
+	_ok("④分母 取到了 7 个数值列表头", hdr_txt.size() == 7, str(hdr_txt))
+	_ok("④★ 表头是用户定的 %s(商业游戏标准写法, 不是「打出/扛住」)" % str(WANT_HDR),
 		hdr_txt == WANT_HDR, str(hdr_txt))
+	_ok("④★ 产品的列名常量 SettleScreen.COLS 与用户原话逐字一致", SSC.COLS == WANT_HDR, str(SSC.COLS))
 	## 「一行金色裸字压着几列数字」= `<th>`+`<td>` 的长相 ⇒ 每个数值列表头必须包在栏牌里。
-	_ok("④★ 4 个表头都装在栏牌(PanelContainer)里, 不是裸 Label", hdr_plated == 4,
-		"带牌的 %d/4" % hdr_plated)
+	_ok("④★ 7 个表头都装在栏牌(PanelContainer)里, 不是裸 Label", hdr_plated == 7,
+		"带牌的 %d/7" % hdr_plated)
 	## 单一出处: 战中「战报」浮层的页签名与这张表的列名【逐字一致】。
 	var tab_names: Array = []
 	for pair in DSP.TABS:
 		tab_names.append(str((pair as Array)[1]))
 	_ok("④分母 战报浮层有 4 个页签名", tab_names.size() == 4, str(tab_names))
-	_ok("④★ 页签名前三个与表头前三个逐字一致(同一件事不许两种叫法)",
-		tab_names.slice(0, 3) == WANT_HDR.slice(0, 3), "%s vs %s" % [str(tab_names), str(WANT_HDR)])
+	## 浮层四页 = 造成(总)/受到/治疗/护盾 ⇒ 对表头的第 1/4/5/6 列(同一件事不许两种叫法)
+	var want_tabs: Array = [WANT_HDR[0], WANT_HDR[3], WANT_HDR[4], WANT_HDR[5]]
+	_ok("④★ 页签名与表头对应列逐字一致(同一件事不许两种叫法)",
+		tab_names == want_tabs, "%s vs %s" % [str(tab_names), str(want_tabs)])
 	## MVP 角标: 一张全是数字的表要能一眼看出"这场谁扛的"。
 	var mvp := 0
 	for l in _all_labels(col, []):

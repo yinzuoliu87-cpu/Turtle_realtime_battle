@@ -47,9 +47,10 @@ const TAB_ICON := "res://assets/sprites/stats/"
 ##    被动名词短语; 也**不是**被否过的"出伤/承伤"那种行话缩写。)
 ##   护盾这一页结算表里没有, 所以它没有对面。
 const TABS := [
-## ★2026-10-04 用户「打出，抗住，这就很ai味，不是商业游戏的感觉啊」⇒ 改用商业游戏通行叫法: 伤害 / 承伤 / 治疗 / 击杀(王者荣耀「输出/承伤/治疗」、LoL「造成/承受伤害」)。
-	["dealt", "伤害", "atk-icon.png"],
-	["taken", "承伤", "def-icon.png"],
+## ★2026-10-04 用户「打出，抗住，这就很ai味，不是商业游戏的感觉啊」「标准写法应该是造成总伤害，造成魔法伤害，
+##   造成物理伤害，受到伤害，治疗，护盾，击杀数这样啊」⇒ 页签名与结算表 `SettleScreen.COLS` 同名(门禁 verify_hud_gamefeel ④ 逐字对)。
+	["dealt", "造成总伤害", "atk-icon.png"],
+	["taken", "受到伤害", "def-icon.png"],
 	["heal", "治疗", "hp-icon.png"],
 	["shield", "护盾", "shield-icon.png"],
 ]

@@ -14,6 +14,8 @@ extends Node
 ##   ⑥ 每一页都到得了: 真点页签(推鼠标事件, 引擎自己命中) + 左右滑动; 竖着拖不翻页
 ##   ⑦ 召唤物多到一页放不下(每侧 14 行): 只有这时才能滚, 提示数字 = 真看不到的行数, 滚到底最后一行看得见
 ##   ⑧ 周日封存: 标题「结果已封存」+ 副标题; **各路胜负不画**(各路胜负加起来就是总胜负)
+##   ⑨ 7 个数值列(2026-10-04 用户定的列名)横向全部放得下; 物理 + 魔法 + 真实 == 造成总伤害
+##      —— 走真伤害入口记账再读表, 读写两边的类型键名对不上就红
 ##
 ## ★数据是合成的「双路 6v6」: 上路/下路两份快照, 合计每侧 8 行(3 统领 + 3 小将 + 龟蛋 + 训龟大师),
 ##   与方案书 §2.1 实测的真实对局同形(真实对局的实拍走 tests/_probe_settle_real.gd)。
@@ -62,11 +64,12 @@ func _ready() -> void:
 	get_tree().quit(1 if _fail > 0 else 0)
 
 
-## 一行快照(键名与产品 `_st_row` 一致)。
+## 一行快照(键名与产品 `_st_row` 一致)。造成伤害按 物理/魔法/真实 拆开, 三者之和 == d。
 func _row(id: String, nm: String, multi: bool, d: int, t: int, hl: int, k: int, summon := false) -> Dictionary:
 	return {"name": nm, "id": id, "is_summon": summon, "_st_multi": multi or summon, "rarity": "C",
 		"alive": d % 2 == 0, "hp": 0.0, "maxHp": 100.0,
-		"_st_dealt": d, "_st_taken": t, "_st_heal": hl, "_st_crit": 0, "_st_kills": k}
+		"_st_dealt": d, "_st_taken": t, "_st_heal": hl, "_st_crit": 0, "_st_kills": k,
+		"_st_shield": hl / 2, "_st_dealt_by_type": {"phy": d - d / 3 - d / 10, "mag": d / 3, "tru": d / 10}}
 
 
 ## 合成双路: 上路 = 2 统领 + 1 小将 + 龟蛋 + 大师; 下路 = 1 统领 + 2 小将 + 龟蛋 + 大师
@@ -129,6 +132,8 @@ func _run(v: Vector2i) -> void:
 	var vp: Vector2 = sc.get_viewport().get_visible_rect().size
 	_ok("★分母: 视口真的是 %dx%d" % [v.x, v.y], vp.is_equal_approx(Vector2(v)), str(vp))
 	var tag := "%d×%d" % [v.x, v.y]
+	if v.x == 1280:
+		_ledger(sc)
 
 	var scr = await _open(sc, _make_hist(0), false)
 	_ok("[%s] ★分母: 结算屏建出来了, 三页" % tag, scr != null and (scr.pages as Array).size() == 3)
@@ -175,19 +180,25 @@ func _run(v: Vector2i) -> void:
 				if pt < MIN_BODY_PT - 0.01:
 					small.append("「%s」%.1fpt" % [(l as Label).text, pt])
 		_ok("[%s] ② 第 %d 页 名字/数字 %d 个, 全部 ≥ %.0fpt" % [tag, pi + 1, nbody, MIN_BODY_PT],
-			nbody >= 8 * 5 and small.is_empty(), str(small.slice(0, 6)))
+			nbody >= 8 * 8 and small.is_empty(), str(small.slice(0, 6)))
 		var hsmall: Array = []
 		var g: Control = rows[0].get_parent() if not rows.is_empty() else null
 		if g != null:
-			for i in range(5):
+			for i in range(8):
 				for l in _labels_in(g.get_child(i)):
 					if float((l as Label).get_theme_font_size("font_size")) * PT_PER_PX < MIN_HEAD_PT:
 						hsmall.append((l as Label).text)
 		_ok("[%s] ② 第 %d 页 表头 ≥ %.0fpt" % [tag, pi + 1, MIN_HEAD_PT], g != null and hsmall.is_empty(), str(hsmall))
 		var hidden := 0
+		var cut: Array = []                 # ⑨ 横向: 每行最后一个数值格(击杀数)也得完整在可视区里
 		for r in rows:
 			if not _clip_of(r, vp).encloses((r as Control).get_global_rect()):
 				hidden += 1
+			var last: Control = (r as Node).get_parent().get_child((r as Node).get_index() + 7)
+			if not _clip_of(last, vp).encloses(last.get_global_rect()):
+				cut.append("格 %s 可视 %s 表 %s" % [str(last.get_global_rect()), str(_clip_of(last, vp)), str((g as Control).get_global_rect())])
+		_ok("[%s] ⑨ 第 %d 页 8 列(名字 + 7 个数值)横向全部放得下" % [tag, pi + 1],
+			g != null and (g as GridContainer).columns == 8 and cut.is_empty(), str(cut.slice(0, 2)))
 		var bar: VScrollBar = (scr._scrolls[pi - 1] as ScrollContainer).get_v_scroll_bar()
 		_ok("[%s] ③ 第 %d 页 8 行全部看得见、没有可滚的量(max %.0f ≤ page %.0f)" % [tag, pi + 1, bar.max_value, bar.page],
 			hidden == 0 and bar.max_value <= bar.page + 0.5, "看不到 %d 行" % hidden)
@@ -309,6 +320,48 @@ func _run(v: Vector2i) -> void:
 		await get_tree().process_frame
 
 
+## ⑨ 账: 走真伤害入口打 物理 / 魔法 / 真伤 / 持续伤害 各一下, 再经 `_st_row` → 合计 → 表格读出来,
+##   物理 + 魔法 + 真实 必须 == 造成总伤害, 且三列各自非零(分母: 类型键名读错的那一列会是 0)。
+func _ledger(sc) -> void:
+	sc._units.clear()
+	var c: Vector2 = sc.ARENA.position + sc.ARENA.size * 0.5
+	var us: Array = []
+	for k in range(2):
+		var u: Dictionary = sc._spawn._make_unit("green", "left" if k == 0 else "right", c + Vector2(-160.0 + 320.0 * k, 0.0))
+		u["maxHp"] = 900000.0; u["hp"] = 900000.0; u["shield"] = 0.0; u["flat_dr"] = 0.0
+		u["def"] = 0.0; u["mr"] = 0.0; u["base_def"] = 0.0; u["base_mr"] = 0.0
+		u["crit"] = 0.0; u["dodge_bonus"] = 0.0
+		sc._units.append(u)
+		us.append(u)
+	var att: Dictionary = us[0]
+	var tgt: Dictionary = us[1]
+	sc._damage.set_dtype("physical", tgt, false, true)
+	sc._damage._apply_damage_from(att, tgt, 100, Color.WHITE)
+	sc._damage.set_dtype("magic", tgt, false, true)
+	sc._damage._apply_damage_from(att, tgt, 70, Color.WHITE)
+	sc._damage._apply_damage_from(att, tgt, 30, Color.WHITE, 0.0, true)       # raw = 真伤
+	sc._damage._apply_damage(tgt, 20, Color.WHITE, att)                     # 持续伤害(dot 桶)
+	var row: Dictionary = sc._st_row(att)
+	var merged: Array = sc._hud._st_merge_all([{"lane": "top", "left": [row], "right": []},
+		{"lane": "bottom", "left": [row], "right": []}], "left")
+	for pair in [["单路", row, 1], ["合计两路", merged[0] if merged.size() == 1 else {}, 2]]:
+		var r: Dictionary = pair[1]
+		var sp: Array = SS.dealt_split(r)
+		var tot := int(r.get("_st_dealt", 0))
+		_ok("⑨ 账·%s: 物理 %d + 魔法 %d + 真实 %d == 造成总伤害 %d" % [pair[0], sp[0], sp[1], sp[2], tot],
+			tot == 220 * int(pair[2]) and sp[0] + sp[1] + sp[2] == tot, str([r.get("_st_phy"), r.get("_st_mag"), r.get("_st_tru")]))
+		_ok("⑨ 账·%s ★分母: 三列各自非零(物理 %d / 魔法 %d / 真实 %d)" % [pair[0], sp[0], sp[1], sp[2]],
+			sp[0] > 0 and sp[1] > 0 and sp[2] > 0)
+	## 表格那两格读出来的就是这两个数(不是另一条读法)
+	var g: GridContainer = SS.team_grid(sc, sc._hud, [row], "", Color.WHITE)
+	var sp0: Array = SS.dealt_split(row)
+	var got: Array = [str((g.get_child(10) as Label).text), str((g.get_child(11) as Label).text)]
+	var want: Array = [sc._hud.settle_cell_text(sp0[0]), sc._hud.settle_cell_text(sp0[1])]
+	_ok("⑨ 表格「造成物理伤害 / 造成魔法伤害」两格印的就是这两个数", got == want, "%s vs %s" % [str(got), str(want)])
+	g.free()
+	sc._units.clear()
+
+
 ## 推一次真实的鼠标「按下 → 移动 → 松开」, 让引擎自己做命中(页签)与本屏的滑动判定。
 func _click(from: Vector2, to: Vector2) -> void:
 	var vpt := get_viewport()
@@ -358,7 +411,7 @@ func _labels(grid: Node, row: Node) -> Array:
 			out.append(l)
 			break                       # 名字格里第一个 Label 是名字
 	var i: int = row.get_index()
-	for j in range(1, 5):
+	for j in range(1, 8):
 		var c = grid.get_child(i + j)
 		if c is Label:
 			out.append(c)

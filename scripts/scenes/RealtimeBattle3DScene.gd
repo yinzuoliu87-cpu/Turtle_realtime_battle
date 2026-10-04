@@ -7758,7 +7758,10 @@ func _st_name(u: Dictionary) -> String:
 ##   它们**不带路** —— 那样一只龟打完上路又打决胜时, 合计里仍然是同一行(这是要保住的行为)。
 ##   ⚠ 这个字段必须**存在行里**: `_st_row()` 对 plain row 幂等复制时读不到 `_isMinion`
 ##   (快照行没有那个字段), 现场重算会静默变成 false。
+## ★造成伤害按类型拆成三个【标量】(物理/魔法/真实) —— 快照行必须纯标量(verify_misc_guards),
+##   拆法只认 `SettleScreen.dealt_split` 这一处(桶的键名只在那里读)。
 func _st_row(u: Dictionary) -> Dictionary:
+	var sp: Array = _SETTLE_S.dealt_split(u)
 	return {
 		"name": _st_name(u), "is_summon": bool(u.get("is_summon", false)),
 		"id": str(u.get("id", "")),
@@ -7768,8 +7771,10 @@ func _st_row(u: Dictionary) -> Dictionary:
 		"hp": maxf(0.0, float(u.get("hp", 0))), "maxHp": float(u.get("maxHp", 0)),
 		"_st_dealt": int(u.get("_st_dealt", 0)), "_st_taken": int(u.get("_st_taken", 0)),
 		"_st_heal": int(u.get("_st_heal", 0)), "_st_crit": int(u.get("_st_crit", 0)),
-		"_st_kills": int(u.get("_st_kills", 0)),
+		"_st_kills": int(u.get("_st_kills", 0)), "_st_shield": int(u.get("_st_shield", 0)),
+		"_st_phy": int(sp[0]), "_st_mag": int(sp[1]), "_st_tru": int(sp[2]),
 	}
+const _SETTLE_S := preload("res://scripts/scenes/battle/settle_screen.gd")
 
 ## 本路打完 → 把当前 _units 的统计冻成快照存进 _st_lane_hist(供结算表翻页看前面战场).
 func _st_snapshot_lane(lane: String) -> void:
