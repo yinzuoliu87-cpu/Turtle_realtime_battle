@@ -33,7 +33,7 @@ const BE := preload("res://scripts/net/backend.gd")
 ## 队列上限。周六最多 6 场(4 胜或 3 负就停), 留一倍余量; 满了丢最旧的。
 const QUEUE_MAX := 12
 ## U7: 重放只活周六~周一。`week_anchor_ts` 是那周周一 00:00 UTC ⇒ 可见期截止 = 下周二 00:00 = +8 天。
-##   过了这一刻补上去也没人看得到(服务端 14 天清理只是兜底)。
+##   过了这一刻补上去也没人看得到(服务端每周二 00:00 UTC 清掉上周的(purge_old_matches)只是兜底)。
 const VISIBLE_SEC := 8 * 86400
 ## base64 后的录像上限(字节)。★必须与 `server/supabase/schema.sql` 的 `matches_replay_size`
 ##   约束同一个数 —— 门禁 V7 逐字对过; 客户端先挡, 不让一条注定被服务端拒的单子永远留着。
