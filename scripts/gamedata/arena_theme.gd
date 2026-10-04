@@ -67,7 +67,9 @@ const THEMES: Dictionary = {
 		"ambient_kind": "bubbles",
 	},
 	V1_DUSK: {
-		"fg_band_y": -0.68,   # 新剪影带草尖高, -0.54 会盖住下沿交战的龟(实拍 s7)
+		"fg_band_y": -0.46,   # 2026-10-04 单张分层剪影 fg_sea_band: 标定图实测每格 2px、顶行在屏幕 y≈333(-0.368 时 294) ⇒ 下沿 30 格在画面外; 远层要压住场地下沿一点才读得出(全落在黑底上=看不见)   # 旧: 新剪影带草尖高, -0.54 会盖住下沿交战的龟(实拍 s7)
+		"fg_band_px": 0.00475,   # 单张整幅(800 格 ≈ 3.8 单位宽), 每格 ≈ 2 屏幕像素
+		"fg_band_gain": 3.4,   # 贴图是灰度(近层 ~0.27 / 远层 ~0.9), 抬回剪影色量级: 近层 ≈ fg_band_col, 远层 ≈ 3 倍亮
 		"detritus_tint": Color(0.66, 0.64, 0.56, 1.0),   # 2026-10-04 再压: 小贝壳在灯光下发白, 和龟身高光抢眼
 		"ring_mod": {"dusk2_trunk": Color(0.74, 0.70, 0.68)},   # 树干在暗处(0.60 实拍几乎看不见)
 		"ring_per": 2,   # 巨树干一簇最多 2 棵: 7 棵挤成一堵墙(实拍), 参考是一棵棵分开站
@@ -123,7 +125,7 @@ const THEMES: Dictionary = {
 		"ring_density": 1.1,
 		"ring_h": [6.5, 9.0],   # 巨树干要顶出画面上沿(参考两侧树干比角色大好几倍)
 		"ring_avoid_bottom": true,
-		"fg_band": "fg_grass_band",   # 2026-10-03 重画: 镜头前一整排密高草剪影(参考底部那片黑草), 纯白剪影由 fg_band_col 着色
+		"fg_band": "fg_sea_band",   # 2026-10-04 重画: 两角大海带框边 + 下沿礁石/锚链 + 远处一排矮海带, 远/中/近三层灰度(原 fg_grass_band 是一排程序锯齿草)
 		## 地面碎件: 真实房间散着大量低对比小碎件(骨头/碎石/草屑)
 		"detritus": ["dusk3_debris_a", "dusk3_debris_b", "dusk2_debris_c", "dusk2_debris_e", "ink_tuft_a", "ink_tuft_b"],   # 2026-10-04: 碎骨换成小贝壳/藤壶石(我们的海), 留小石子 + 墨线小草
 		"detritus_n": 110,   # 180→110: 满地亮碎点和龟身高光抢眼(战斗中段实拍)
@@ -131,9 +133,9 @@ const THEMES: Dictionary = {
 		"detritus_edge_bias": 1.5,
 		## 周边一圈红烛(参考 Darkwood 房间沿边一圈红光)
 		"rim_lights": 18,
-		"rim_light_tex": "dusk3_lantern_a",   # 2026-10-04: 红烛→船灯
+		"rim_light_tex": "dusk3_lantern_b",   # 2026-10-04 再换: 粗木桩+缠绳+大船灯(lantern_a 是细杆小灯, 实拍读着比旧红烛细); 风格锚 = dusk3_lantern_a   # 红烛→船灯
 		"rim_light_real": 6,
-		"rim_light_h": 1.4,          # 第一版 0.55 实拍看不见(火盆是 1.28)
+		"rim_light_h": 1.65,          # 2026-10-04 1.4→1.65 + 换粗桩 lantern_b: 原细杆船灯 1.4 实拍比旧红烛(1.25·石墩粗)读着更细   # 第一版 0.55 实拍看不见(火盆是 1.28)
 		"rim_light_energy": 1.6,
 		"rim_light_range": 3.0,
 		"light_col": Color(1.0, 0.262, 0.180),
@@ -149,7 +151,9 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(1.0, 0.86, 0.42, 0.45),     # 林间萤光(慢·微上飘)
 	},
 	V2_REEF: {
-		"fg_band_y": -0.68,   # 新剪影带草尖高, -0.54 会盖住下沿交战的龟(实拍 s7)
+		"fg_band_y": -0.46,   # 2026-10-04 单张分层剪影 fg_sea_band: 标定图实测每格 2px、顶行在屏幕 y≈333(-0.368 时 294) ⇒ 下沿 30 格在画面外; 远层要压住场地下沿一点才读得出(全落在黑底上=看不见)   # 旧: 新剪影带草尖高, -0.54 会盖住下沿交战的龟(实拍 s7)
+		"fg_band_px": 0.00475,   # 单张整幅(800 格 ≈ 3.8 单位宽), 每格 ≈ 2 屏幕像素
+		"fg_band_gain": 3.4,   # 贴图是灰度(近层 ~0.27 / 远层 ~0.9), 抬回剪影色量级: 近层 ≈ fg_band_col, 远层 ≈ 3 倍亮
 		"ground_tileset_hsv": Vector3(0.467, 0.56, 0.37),   # V 0.44→0.37: 实拍中位 V0.69 而参考 0.57   # 地面目标色 = anchordeep_011 地面中位实测(H168 S0.50)
 		"ground_tileset_tint": Color(0.62, 0.78, 0.76),   # 图块原色(生成器的鲜绿/粉红崖边)压进主题色调
 		"ground_tileset": "tiles_reef",   # 画出来的地面+崖边(PixelLab Wang 图块)
@@ -204,7 +208,7 @@ const THEMES: Dictionary = {
 		"ring_density": 1.1,
 		"ring_h": [3.0, 5.2],
 		"ring_avoid_bottom": true,
-		"fg_band": "fg_grass_band",   # 2026-10-03 重画: 镜头前一整排密高草剪影(参考底部那片黑草), 纯白剪影由 fg_band_col 着色
+		"fg_band": "fg_sea_band",   # 2026-10-04 重画: 两角大海带框边 + 下沿礁石/锚链 + 远处一排矮海带, 远/中/近三层灰度(原 fg_grass_band 是一排程序锯齿草)
 		## 地面碎件: 贝壳/小骨/碎石
 		"detritus": ["reef2_pebbles_a", "reef2_pebbles_b", "reef2_pebbles_c", "reef2_pebbles_d", "reef2_pebbles_e", "ink_tuft_a"],   # anchordeep_011: 地上一串串石板蓝小卵石(2026-10-03 新画)
 		"detritus_n": 110,   # 2026-10-04 170→110: 交战区一地深蓝卵石, 和龟脚下的影子/描线混在一起
@@ -231,7 +235,9 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(0.55, 1.0, 0.75, 0.45),   # 水中浮游光点
 	},
 	V3_SHOAL: {
-		"fg_band_y": -0.68,   # 新剪影带草尖高, -0.54 会盖住下沿交战的龟(实拍 s7)
+		"fg_band_y": -0.46,   # 2026-10-04 单张分层剪影 fg_sea_band: 标定图实测每格 2px、顶行在屏幕 y≈333(-0.368 时 294) ⇒ 下沿 30 格在画面外; 远层要压住场地下沿一点才读得出(全落在黑底上=看不见)   # 旧: 新剪影带草尖高, -0.54 会盖住下沿交战的龟(实拍 s7)
+		"fg_band_px": 0.00475,   # 单张整幅(800 格 ≈ 3.8 单位宽), 每格 ≈ 2 屏幕像素
+		"fg_band_gain": 3.4,   # 贴图是灰度(近层 ~0.27 / 远层 ~0.9), 抬回剪影色量级: 近层 ≈ fg_band_col, 远层 ≈ 3 倍亮
 		"ring_per": 2,
 		"ring_h_of": {"shoal2_rubble_b": [1.4, 2.0]},
 		"ground_tileset_hsv": Vector3(0.750, 0.80, 0.55),   # S 0.62→0.80 H→270: 实拍 S0.56 而参考 S0.78 H282   # 地面目标色 = mixed_012 地面中位实测(H264 S0.62)
@@ -286,7 +292,7 @@ const THEMES: Dictionary = {
 		"ring_density": 0.9,
 		"ring_h": [6.5, 9.0],   # 巨树干要顶出画面上沿(参考两侧树干比角色大好几倍)
 		"ring_avoid_bottom": true,
-		"fg_band": "fg_grass_band",   # 2026-10-03 重画: 镜头前一整排密高草剪影(参考底部那片黑草), 纯白剪影由 fg_band_col 着色
+		"fg_band": "fg_sea_band",   # 2026-10-04 重画: 两角大海带框边 + 下沿礁石/锚链 + 远处一排矮海带, 远/中/近三层灰度(原 fg_grass_band 是一排程序锯齿草)
 		"detritus": ["shoal3_debris_a", "shoal3_debris_b", "shoal2_debris_b", "ink_tuft_a"],   # 2026-10-04: 粉碎骨换成碎珊瑚枝 / 小螺壳, 留小点
 		"detritus_n": 110,
 		"detritus_size": 0.75,
@@ -313,7 +319,9 @@ const THEMES: Dictionary = {
 		"ambient_col": Color(1.0, 0.45, 0.70, 0.45),
 	},
 	V4_STORM: {
-		"fg_band_y": -0.68,   # 新剪影带草尖高, -0.54 会盖住下沿交战的龟(实拍 s7)
+		"fg_band_y": -0.46,   # 2026-10-04 单张分层剪影 fg_sea_band: 标定图实测每格 2px、顶行在屏幕 y≈333(-0.368 时 294) ⇒ 下沿 30 格在画面外; 远层要压住场地下沿一点才读得出(全落在黑底上=看不见)   # 旧: 新剪影带草尖高, -0.54 会盖住下沿交战的龟(实拍 s7)
+		"fg_band_px": 0.00475,   # 单张整幅(800 格 ≈ 3.8 单位宽), 每格 ≈ 2 屏幕像素
+		"fg_band_gain": 3.4,   # 贴图是灰度(近层 ~0.27 / 远层 ~0.9), 抬回剪影色量级: 近层 ≈ fg_band_col, 远层 ≈ 3 倍亮
 		"ring_per": 2,
 		"ring_mod": {"storm2_trunk": Color(0.80, 0.74, 0.74)},
 		"ground_tileset_hsv": Vector3(0.158, 0.30, 0.34),   # 2026-10-04「看清每只龟」: S0.41→0.30 V0.42→0.34(同一把尺: 最坏一只 0.15→0.12)   # 地面目标色 = mixed_035 地面中位实测(H57 S0.41)
@@ -363,7 +371,7 @@ const THEMES: Dictionary = {
 		"ring_density": 1.1,
 		"ring_h": [6.5, 9.0],   # 巨树干要顶出画面上沿(参考两侧树干比角色大好几倍)
 		"ring_avoid_bottom": true,
-		"fg_band": "fg_grass_band",   # 2026-10-03 重画: 镜头前一整排密高草剪影(参考底部那片黑草), 纯白剪影由 fg_band_col 着色
+		"fg_band": "fg_sea_band",   # 2026-10-04 重画: 两角大海带框边 + 下沿礁石/锚链 + 远处一排矮海带, 远/中/近三层灰度(原 fg_grass_band 是一排程序锯齿草)
 		"detritus": ["storm2_debris_a", "storm2_debris_b", "storm2_debris_c", "storm2_debris_d", "storm2_debris_e", "ink_tuft_a"],   # mixed_035: 地上是短草芽/断枝/小石子(2026-10-03 新画)
 		"detritus_n": 170,
 		"detritus_size": 0.8,
@@ -377,7 +385,7 @@ const THEMES: Dictionary = {
 		"rim_lights": 14,   # 墓碑烛放大后 24 座排成一圈篱笆; mixed_035 一圈约 8~10 座
 		"rim_light_tex": "storm3_buoy_lamp",   # 2026-10-04: 墓碑烛→系泊桩船灯
 		"rim_light_real": 8,
-		"rim_light_h": 1.7,
+		"rim_light_h": 2.0,   # 2026-10-04 1.7→2.0: 系泊桩比旧墓碑烛(1.9)窄一圈, 同高读着细
 		"rim_light_energy": 2.6,
 		"rim_light_range": 4.0,
 		"light_col": Color(1.0, 0.16, 0.12),
