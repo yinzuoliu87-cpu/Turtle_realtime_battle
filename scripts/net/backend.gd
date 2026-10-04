@@ -1045,6 +1045,30 @@ static func report_finals_entry() -> void:
 ##    输入下都会改变结果吗"; 同 `login_wall_on` 那条纪律: 判据只留一处)。
 ## ★服务端 RPC 是 `on conflict do update` ⇒ 重复报安全; 真的补不上(桶已切)时
 ##   它回 `already_seated`, `finals_enter_ok` 判 false ⇒ 不会把标记写成"成功"。
+## ★★周六进场先传一份 0-0 快照(用户 2026-10-04 拍板「行」)。
+##   由来: 周六快照原来**打完一场才传**、按新战绩归档 ⇒ 0-0 这一格永远是空的 ⇒ 每个人第一把必配机器人。
+##   ⇒ 有资格打周六、还没开打(0-0)、本周还没传过 ⇒ 用此刻阵容(= 积分赛收尾阵容, 0-0 的人经济完全相同)传一份。
+##   之后进来的人第一把就能配到先来者的 0-0 真人阵容。当天第一个进来的人仍会回落机器人(不跨周用旧快照: 不公平)。
+## 返回: 这一次真的传了没有(门禁用)。
+static func ensure_gauntlet_entry_snapshot(now: int = 0) -> bool:
+	if GameState == null:
+		return false
+	var ts: int = now if now > 0 else int(_P2.now_utc())
+	if _P2.phase_at_utc(ts) != _P2.PHASE_GAUNTLET or not _P2.phase_mode_live(_P2.PHASE_GAUNTLET):
+		return false
+	var wk: int = int(GameState.week_anchor_ts)
+	if wk <= 0 or int(GameState.gauntlet_entry_week) == wk:
+		return false
+	if not GameState.gauntlet_eligible():
+		return false
+	if int(GameState.gauntlet_wins) != 0 or int(GameState.gauntlet_losses) != 0:
+		return false
+	upload_gauntlet_ghost(0, 0)
+	GameState.gauntlet_entry_week = wk
+	GameState.save()
+	return true
+
+
 static func ensure_finals_entry() -> void:
 	if GameState == null:
 		return

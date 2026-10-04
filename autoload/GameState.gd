@@ -922,6 +922,8 @@ var gauntlet_losses: int = 0        # 闯关赛战绩: 负
 ## ★只存本地存档(`_save_dict`), **不进 `cloud_payload`**: 它是「这台机器报过了吗」的
 ##   本地事实, 不是玩家进度; 换机器重报一次反而是对的(幂等)。
 var finals_entered_week: int = 0
+## 本周已上传过周六 0-0 进场快照的周锚点(每周只传一次; 见 Backend.ensure_gauntlet_entry_snapshot)
+var gauntlet_entry_week: int = 0
 ## ★★★决赛日进度(2026-09-26, 方案书 20260926-冠军四强头衔发放.md)。
 ##   这三个字段**只用来发冠军/四强头衔**, 是从服务端 feed 派生出来的事实。
 ##
@@ -1622,6 +1624,7 @@ func _save_dict() -> Dictionary:
 		"gauntlet_wins": gauntlet_wins,
 		"gauntlet_losses": gauntlet_losses,
 		"finals_entered_week": finals_entered_week,
+		"gauntlet_entry_week": gauntlet_entry_week,
 		"finals_pending_reveal": finals_pending_reveal,
 		"finals_report_pending": finals_report_pending,
 		"finals_deepest_round": finals_deepest_round,
@@ -1786,6 +1789,7 @@ func _apply_save_dict(data: Dictionary) -> void:
 	gauntlet_wins = int(data.get("gauntlet_wins", 0))
 	gauntlet_losses = int(data.get("gauntlet_losses", 0))
 	finals_entered_week = int(data.get("finals_entered_week", 0))
+	gauntlet_entry_week = int(data.get("gauntlet_entry_week", 0))
 	finals_pending_reveal = (data.get("finals_pending_reveal", {}) as Dictionary).duplicate(true)
 	finals_report_pending = (data.get("finals_report_pending", {}) as Dictionary).duplicate(true)
 	finals_deepest_round = int(data.get("finals_deepest_round", 0))

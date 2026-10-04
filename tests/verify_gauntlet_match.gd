@@ -57,6 +57,7 @@ func _ready() -> void:
 	_t_pool_pick(gs)
 	_t_row()
 	_t_bot_equipped(gs)
+	_t_entry_snapshot(gs)
 	print("")
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 闯关赛匹配" if _fail == 0 else "FAIL x%d" % _fail)
@@ -339,3 +340,29 @@ func _t_bot_equipped(gs) -> void:
 	_ok("⑥ ★★打了 24 场的人周六第一场的机器人带 %d 件装备(原 bug: 0 件)" % want, got == want and got > 0,
 		"实际 %d 件" % got)
 	_ok("⑥ 兜底: 场次比标签还小时取标签场数", BE.gauntlet_bot_battles(1, 3, 1) == 4)
+
+
+## ⑦ 周六进场先传 0-0 快照(用户 2026-10-04「行」): 否则 0-0 格永远空、人人第一把配机器人
+func _t_entry_snapshot(gs) -> void:
+	var keep := [gs.promoted, gs.gauntlet_wins, gs.gauntlet_losses, gs.gauntlet_entry_week, gs.week_anchor_ts]
+	var sat: int = P2.week_anchor_utc(int(Time.get_unix_time_from_system())) + 5 * 86400 + 12 * 3600
+	gs.week_anchor_ts = P2.week_anchor_utc(sat)
+	gs.promoted = true
+	gs.gauntlet_wins = 0
+	gs.gauntlet_losses = 0
+	gs.gauntlet_entry_week = 0
+	var u0: int = int(BE.gauntlet_uploads)
+	var did: bool = BE.ensure_gauntlet_entry_snapshot(sat)
+	_ok("⑦ ★★周六、有资格、0-0、本周没传过 ⇒ 传一份 0-0 快照", did and int(BE.gauntlet_uploads) == u0 + 1,
+		"传了=%s 计数 %d→%d" % [str(did), u0, int(BE.gauntlet_uploads)])
+	_ok("⑦ ★同一周第二次不传", not BE.ensure_gauntlet_entry_snapshot(sat))
+	gs.gauntlet_entry_week = 0
+	gs.gauntlet_wins = 1
+	_ok("⑦ ★已经开打(1-0)不传 —— 那之后按打完的战绩传", not BE.ensure_gauntlet_entry_snapshot(sat))
+	gs.gauntlet_wins = 0
+	gs.promoted = false
+	_ok("⑦ ★没资格打周六不传", not BE.ensure_gauntlet_entry_snapshot(sat))
+	gs.promoted = true
+	_ok("⑦ ★不是周六(周五)不传", not BE.ensure_gauntlet_entry_snapshot(sat - 86400))
+	gs.promoted = keep[0]; gs.gauntlet_wins = keep[1]; gs.gauntlet_losses = keep[2]
+	gs.gauntlet_entry_week = keep[3]; gs.week_anchor_ts = keep[4]
