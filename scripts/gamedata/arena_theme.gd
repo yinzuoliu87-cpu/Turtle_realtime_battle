@@ -34,7 +34,18 @@ const ALL: Array = [V1_DUSK, V2_REEF, V3_SHOAL, V4_STORM]
 
 ## ★当前生效的主题。改这一个值 = 换一整张地图。
 ## ⚠ 地形生成器 `tools/gen_arena_map.py` 也要跟着跑一次(它按主题换地面类型与岸线扰动)。
+## ★★2026-10-04 起**正式对局不读这个默认值**: 开局由 `choose_for_battle()` 按战斗种子改写(见文件尾)。
+##   `V0_BASE` 只剩开发工具(调试场/审阅台/EQDEMO/VFXLAB)与单测的默认。
 static var active: String = V0_BASE
+
+## ★★正式对局的地图池(用户 2026-10-04 拍板「每场随机一张」: 暗林/深礁/紫墟/赤林, V0_BASE 从正式对局退役)。
+## ★刻意不写成 `= DRAWN` / `= ALL`: 那两张表的意义是「判据逐层验哪几版」, 哪天加了第五版进 DRAWN 验画面,
+##   不等于它就该进玩家对局 —— 进不进池是**另一个**拍板(memory `fb-new-table-doesnt-inherit-old-rules`)。
+const MATCH_POOL: Array = [V1_DUSK, V2_REEF, V3_SHOAL, V4_STORM]
+
+## 强制指定主题(最高优先): 环境变量 `ARENA_THEME` 写进这里; 门禁要在**正式对局**里看某一张图也写它。
+## 空 = 不强制。⚠ 写了要还原(测试不许留下污染)。
+static var forced: String = ""
 
 
 ## 每一版的完整配置。★键名就是那九层, 缺一层判据会红。
@@ -616,17 +627,82 @@ const LAYOUT: Array = [
 ## 当前主题的配置。★找不到就**报错而不是静默兜底** —— 兜底会让"主题没生效"看起来像"主题生效了"。
 ## ★桌面预览用: 环境变量 ARENA_THEME=V1_DUSK 等只在**第一次取配置时**覆盖一次 active。
 ##   之后代码里对 active 的赋值照常生效(门禁里切主题的测试不受影响); 不设 ⇒ 什么都不变。
+## ★环境变量同时写进 `forced` ⇒ 正式对局开局选图时它也赢(`choose_for_battle`)。
 static var _env_checked: bool = false
 
+static func _check_env() -> void:
+	if _env_checked:
+		return
+	_env_checked = true
+	var _e: String = OS.get_environment("ARENA_THEME")
+	_e = {"V0_BASE": V0_BASE, "V1_DUSK": V1_DUSK, "V2_REEF": V2_REEF, "V3_SHOAL": V3_SHOAL, "V4_STORM": V4_STORM}.get(_e, _e)
+	if THEMES.has(_e):
+		active = _e
+		forced = _e
+
 static func cfg() -> Dictionary:
-	if not _env_checked:
-		_env_checked = true
-		var _e: String = OS.get_environment("ARENA_THEME")
-		_e = {"V1_DUSK": V1_DUSK, "V2_REEF": V2_REEF, "V3_SHOAL": V3_SHOAL, "V4_STORM": V4_STORM}.get(_e, _e)
-		if THEMES.has(_e):
-			active = _e
+	_check_env()
 	assert(THEMES.has(active), "ArenaTheme.active 不是已知主题: " + str(active))
 	return THEMES.get(active, THEMES[V1_DUSK])
+
+
+## ══════════════════════════════════════════════════════════════════════
+##  正式对局选图(用户 2026-10-04「每场随机一张」)
+## ══════════════════════════════════════════════════════════════════════
+## ★「随机」= **战斗种子的纯函数**, 不是 randf:
+##   ① 回放(S1/S2)播的是「种子 + 输入」⇒ 同一份录像必须重现同一张图。种子在、图就在, 不用往录像里加字段。
+##   ② **绝不从 `_battle_rng` 取数**: 那条流是模拟的, 取一个数后面整局都会变(确定性金标全红)。
+##      这里只读 `seed` 这个整数做哈希, 不碰流的状态。
+##   ③ 裸 randf/randomize 会让回放换图, 且被 rng_discipline 拦。
+## ★主题只改外观: 碰撞椭圆 `_obstacles` 四版共用一张表(主题只换贴图), 导航/地形 json 也只有一份 ——
+##   实测证据见 `tests/verify_arena_theme_pick.gd` ①(五张图同种子逐步指纹相同)。
+
+## 种子 → 地图池下标。纯整数运算, 跨平台逐位相同(不走 `hash()`: 那是引擎实现细节, 换版本可能变)。
+## 混合函数 = 两轮 xorshift-multiply(32 位), 乘积 < 2^59 不溢出 int64。
+## ★为什么要混合而不是 `seed % 4`: 测试/种子常量多是 77777、12345 这类手写数, 低位分布不保证均匀。
+static func pick_index(seed: int, n: int) -> int:
+	if n <= 0:
+		return 0
+	var x: int = (seed & 0xFFFFFFFF) ^ ((seed >> 32) & 0x1FFFFF)
+	x = ((x ^ (x >> 16)) * 0x45d9f3b) & 0xFFFFFFFF
+	x = ((x ^ (x >> 16)) * 0x45d9f3b) & 0xFFFFFFFF
+	x = x ^ (x >> 16)
+	return x % n
+
+
+static func theme_for_seed(seed: int) -> String:
+	return str(MATCH_POOL[pick_index(seed, MATCH_POOL.size())])
+
+
+## 上一次 `choose_for_battle` 写进 active 的值, 和写之前 active 是什么(开发工具场次要还原)。
+static var _picked: String = ""
+static var _pre_pick: String = V0_BASE
+
+## 开局选图 —— **唯一调用点**: `battle_world_builder._build_environment()` 第一行
+##   (种子已由 `_build_camera` 播好、`GameState.note_battle_seed` 登记、回放 `_replay.start()` 覆盖之后,
+##    任何一层场景建出来之前)。
+## formal = 正式对局(双路且不是调试场/特效台/地图编辑器)。
+## 优先级: forced(环境变量 / 门禁) > 正式对局按种子 > 其余(开发工具)保持 active 不动。
+## 返回这一场用的主题。
+static func choose_for_battle(seed: int, formal: bool) -> String:
+	_check_env()
+	var chosen := ""
+	if forced != "" and THEMES.has(forced):
+		chosen = forced
+	elif formal:
+		chosen = theme_for_seed(seed)
+	if chosen != "":
+		if _picked == "" or active != _picked:
+			_pre_pick = active        # 记下「选图之前」那张(连着几场正式对局只记第一次)
+		active = chosen
+		_picked = chosen
+		return active
+	## 开发工具场次: 上一场正式对局留下的选图不许带进来(调试场一直是它进场前的那张)。
+	##   ★只在 active 仍是那次选出来的值时才还原 —— 门禁手动设过 active 的就尊重它。
+	if _picked != "" and active == _picked:
+		active = _pre_pick
+	_picked = ""
+	return active
 
 
 static func cfg_of(name: String) -> Dictionary:

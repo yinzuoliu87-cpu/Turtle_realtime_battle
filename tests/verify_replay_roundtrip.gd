@@ -18,6 +18,9 @@ extends Node
 ##      反证: 从记录里删掉 `persistent_equipped`(那件装备真的在场上) ⇒ 必须对不上
 ##   V5 回放零副作用: 存档文件逐字节不变 / 战绩条数不变 / 不多录一份回放 / GameState 播完还原
 ##   V6 版本闸: 版本号不同 ⇒ `play()` 返回原因、不进战斗场、GameState 不动
+##   V7 地图一致(2026-10-04「每场随机一张」): 正式对局的地图由战斗种子决定 ⇒ 播放那一遍的
+##      `ArenaTheme.active` 必须与录制时同一张, 且不是 V0_BASE(已从正式对局退役)。
+##      反向: 选图改成裸 randi ⇒ 录与播各掷一次, 3/4 概率换图 ⇒ 这条红(2026-10-04 实测红, 方案书 docs/plans/20261003-四版完整地图.md §6)。
 ##   V1b 引擎帧不走也一致(2026-10-04 修「约 40 次红 1 次 · 第 360 步校验点 5」):
 ##      播放时从「建场」到「开打后 40 帧」**一帧都不让引擎走**(连着调 `_process`、中间不 await)
 ##      ⇒ 物理帧一个都不推进(分母断言: 物理帧计数前后相等)。
@@ -36,6 +39,7 @@ const RU := preload("res://scripts/systems/replay/replay_uploader.gd")
 const PAT_REC := [0.016, 0.004, 0.04, 0.0167, 0.025, 0.05, 0.009, 0.0333]
 const PAT_PLAY := [0.05, 0.0167, 0.004, 0.03, 0.012, 0.0167, 0.045, 0.02]
 const MAX_FRAMES := 30000
+const AT := preload("res://scripts/gamedata/arena_theme.gd")
 const EQ_ID := "p2eq_001"          # 录制方统领身上那件持久装备(V3 反证要删的就是它)
 
 var _fail := 0
@@ -172,6 +176,10 @@ func _ready() -> void:
 	_ok("★V2 两遍的演出随机种子不同(%d / %d)而指纹一致" % [int(rec_run["juice"]), int(play["juice"])],
 		int(rec_run["juice"]) != int(play["juice"]) and int(cmp[0]) == 0)
 	_ok("分母 · 回放那一遍一帧也跑过 0 步与 ≥2 步", int(play["min_pf"]) == 0 and int(play["max_pf"]) >= 2)
+	_ok("★★V7 回放那一遍的地图 == 录制时那张(%s / %s), 且是种子算出的那张" % [str(rec_run["theme"]), str(play["theme"])],
+		str(rec_run["theme"]) == str(play["theme"]) and str(play["theme"]) == AT.theme_for_seed(int(rec["seed"])),
+		"种子 %d → %s" % [int(rec["seed"]), AT.theme_for_seed(int(rec["seed"]))])
+	_ok("★V7 正式对局的地图不是 V0_BASE(已退役) —— 在四张池里", AT.MATCH_POOL.has(str(rec_run["theme"])), str(rec_run["theme"]))
 
 	# ── V1b: 建场 → 开打后 40 帧, 引擎一帧都不走(物理帧不推进) ──
 	print("=== 播(V1b): 从建场到开打后 40 帧, 引擎一帧都不走 ===")
@@ -300,7 +308,7 @@ func _run(pat: Array, as_player: bool, hold: bool = false) -> Dictionary:
 			done_frames += 1
 			if done_frames > 30:
 				break
-	var out := {"fps": fps, "juice": juice, "det": det, "state": str(s._dl_state),
+	var out := {"fps": fps, "juice": juice, "det": det, "state": str(s._dl_state), "theme": AT.active,
 		"div": int(s._replay.diverged_at), "why": str(s._replay.diverge_why),
 		"cps": int(s._replay.cp_checked), "finished": bool(s._replay.finished),
 		"min_pf": min_pf, "max_pf": max_pf, "dragged": dragged, "frames": i, "pf_a": pf_a, "pf_b": pf_b}

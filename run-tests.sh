@@ -237,6 +237,9 @@ frames_for () {
     #   掐断的表现是「没打 ALL PASS」而 rc=0, 不是某条 FAIL。
     verify_sim_step_rate) echo 3000 ;;
     # 回放 S1: 录一整局(两路+认输) + 播一整局 + 四次反证重算, 每帧手喂 1 次 _process ⇒ 帧数≈总调用数
+    # 每场随机一张图: 调试场 2 场景×5 张图(600/1000 步) + 正式双路 7 局×1500 帧 + 19 次只建场 ⇒ 约 2 万帧
+    #   (每步一帧·帧数即分母; 掐断的表现是「没打 ALL PASS」而 rc=0)
+    verify_arena_theme_pick) echo 40000 ;;
     verify_replay_roundtrip) echo 120000 ;;
     # 回放 S2(V7): 一局认输 + 主菜单实例化 + 九段各等 30 帧左右, 实测 217 帧(假传输同步回包, 与机器快慢无关); 给到 4000
     verify_replay_upload_retry) echo 4000 ;;

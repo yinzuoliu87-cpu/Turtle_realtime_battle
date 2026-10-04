@@ -1434,6 +1434,10 @@ func _build_camera() -> void:
 		battle._battle_rng.randomize()
 
 func _build_environment() -> void:
+	## ★★开局选图(用户 2026-10-04「每场随机一张」)。必须是建场的**第一步**: 往下每一层都读 ArenaTheme.cfg()。
+	##   种子此刻已定(`_build_camera` 播种 → `note_battle_seed` 登记 → 回放 `_replay.start()` 覆盖成录像里的种子)。
+	##   只读种子这个整数做哈希, 不从 `_battle_rng` 取数(取了模拟就变) —— 判据 `verify_arena_theme_pick`。
+	pick_arena_theme()
 	# 主光 (顶光偏前侧): 暖白, 给立绘/地面立体受光. shaded=false 立绘不吃光, 但地面/影/召唤体吃 → 仍出体积感.
 	var light = DirectionalLight3D.new()
 	light.name = "Sun"
@@ -1562,6 +1566,21 @@ func _build_environment() -> void:
 	var we = WorldEnvironment.new()
 	we.environment = env
 	battle._world.add_child(we)
+
+## 开局选图的**唯一**入口(`_build_environment` 第一行调; 门禁 `verify_arena_theme_pick` ④ 也直接调它量随机流状态)。
+## ★只读 `_battle_rng.seed` 这个整数, 不调 randi/randf —— 调了就从模拟随机流里拿走一个数。
+func pick_arena_theme() -> String:
+	return ArenaTheme.choose_for_battle(int(battle._battle_rng.seed), _is_formal_battle())
+
+
+## 这一场算不算**正式对局**(地图按种子随机): 双路对局(积分赛/周六/周日/教学都走双路), 且不是开发工具。
+## ★调试场(DEBUG_EDIT)/特效台(VFXLAB)/地图编辑器(MAPEDIT)不算 ⇒ 它们保持进场前的 active(默认 V0_BASE,
+##   环境变量 ARENA_THEME 仍可强制)。审阅台/EQDEMO 在双路下本来就被绕过, 不双路时自然不算。
+func _is_formal_battle() -> bool:
+	if battle.DEBUG_EDIT or OS.has_environment("VFXLAB") or OS.has_environment("MAPEDIT"):
+		return false
+	return bool(battle._is_dual_lane_mode())
+
 
 func _build_ground() -> void:
 	if OS.has_environment("VFXISO"): return   # 纯特效隔离: 不建地面/装饰(只留特效对比参考·弄完删env)
