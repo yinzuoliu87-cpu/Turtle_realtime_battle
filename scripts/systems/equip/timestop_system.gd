@@ -26,7 +26,7 @@ var _ts_charge_t := 0.0
 var _ts_charge_casters: Array = []
 var _ts_fired := false                    # 本战场一次(2026-09-16 用户拍板: 上路/下路/终极各一次) —— 换路由 reset_for_lane() 清
 var _ts_maxstar := 0                      # 生效沙漏星级(定时长 5/10/30 秒·用户2026-07-19: 1★ 4→5)
-var _ts_frozen_tweens: Array = []         # 时停期间被暂停的tween(结束resume)
+var _ts_frozen_tweens: Array = []         # 时停开始那一刻已存在的 sim tween: 时停期间 `_step_sim_tweens` 不喂它们(之后新建的照喂)
 var _ts_frozen_particles: Array = []      # 时停期间被暂停的GPUParticles3D(speed_scale归零, 结束还原)
 var _ts_overlay: CanvasLayer = null       # 时停灰世界叠加层(压暗褪色从携带者扩散; layer5=在UI下→只灰3D世界, 数字/血条保彩)
 var _ts_rect: ColorRect = null
@@ -162,11 +162,13 @@ func _end_timestop() -> void:
 	_ts_active = []
 	_ts_remaining = 0.0
 
-func _ts_begin_freeze() -> void:   # 暂停时停开始时在跑的所有VFX tween + 粒子(active之后新建的不在此列→照跑)
+func _ts_begin_freeze() -> void:   # 冻住时停开始时已有的所有VFX tween + 粒子(active之后新建的不在此列→照跑)
+	## ★回放 S1(20261003-跨设备回放 §4.1 ①A-a): sim tween 现在**一律 paused**、由 `_step_sim_tweens`
+	##   按 sim 步喂 ⇒ 这里不能再挑 `is_running()`(恒假, 一个都挑不到), 也不能 `play()` 回去
+	##   (那会让 SceneTree 按真实 delta 再推一遍)。改成登记名单, 由喂的那一侧跳过名单里的。
 	_ts_frozen_tweens = []
 	for t in battle._sim_tweens:
-		if t != null and t.is_valid() and t.is_running():
-			t.pause()
+		if t != null and t.is_valid():
 			_ts_frozen_tweens.append(t)
 	_ts_frozen_particles = []
 	_ts_freeze_particles_in(battle._world)
@@ -181,10 +183,7 @@ func _ts_freeze_particles_in(n: Node) -> void:
 			_ts_freeze_particles_in(c)
 
 func _ts_resume_freeze() -> void:
-	for t in _ts_frozen_tweens:
-		if t != null and t.is_valid():
-			t.play()
-	_ts_frozen_tweens = []
+	_ts_frozen_tweens = []   # 解冻 = 从名单上拿掉(它们本来就由 _step_sim_tweens 喂, 不 play())
 	for p in _ts_frozen_particles:
 		if is_instance_valid(p):
 			p.speed_scale = float(p.get_meta("_ts_spd", 1.0))

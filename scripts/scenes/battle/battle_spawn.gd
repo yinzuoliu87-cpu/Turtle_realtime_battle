@@ -323,13 +323,12 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		else:
 			st = [_mf, 105.0, 0.85, (70.0 if _mf else 400.0)]
 		sd = battle._hiding_sys._minion_sprite_dict(_me, not _mf)
-	elif is_trainer:   # 训龟大师: 500血/1攻/0双抗; 站着不动(速度0)·射程2000·扔石头1物理
+	elif is_trainer:   # 训龟大师(U2): 不可移动/不可被打/没有血量/1攻/0双抗·射程2000·扔石头1物理
+		## ★hp=1 只是**名义值**(单位字典到处按 hp/maxHp 取比例, 缺键会崩); 它不进任何血量统计、不建血条,
+		##   受到的一切伤害在 `_mitigate_incoming` 里为 0, `_kill` 也直接拒绝 ⇒ 这个数永远不会变。
 		d = {"name": "训龟大师", "rarity": "C", "crit": 0.0,
-			"hp": battle.TRAINER_HP, "atk": _trainer_atk_for(side), "def": 0.0, "mr": 0.0}
-		# ★move_spd 给真值但 no_move 仍为 true —— 两者不矛盾:
-		#   no_move 挡住的是【AI 自动追击】(_do_move)与【分离推挤】(_apply_separation_pass),
-		#   正是"场外监视者不该被战线卷进去"想要的; 玩家操控走的是下面 battle._trainer_sys._trainer_move_by 这条独立路径。
-		st = [false, battle.TRAINER_MOVE_SPD, battle.TRAINER_ATK_INTERVAL, battle.TRAINER_RANGE]   # [近战?, 移速, 攻击间隔, 射程]
+			"hp": 1.0, "atk": _trainer_atk_for(side), "def": 0.0, "mr": 0.0}
+		st = [false, 0.0, battle.TRAINER_ATK_INTERVAL, battle.TRAINER_RANGE]   # [近战?, 移速(U2: 不可移动), 攻击间隔, 射程]
 		var _appear: String = OS.get_environment("TRAINER_APPEAR") if OS.has_environment("TRAINER_APPEAR") else str(GameState.trainer_appearance)   # dev: TRAINER_APPEAR=mage 可强制预览某形象
 		if side != "left":
 			_appear = "default"   # 敌方大师用通用立绘(敌形象未跟踪)
@@ -414,7 +413,11 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 
 	# --- HP / 龟能 overlay (CanvasLayer 上, 每帧 unproject 定位) ---
 	var bar = battle._make_status_bar(side, battle._unit_level(side))
-	battle._ui_layer.add_child(bar["root"])
+	if is_trainer:   # ★U2「移除大师信息栏」: 不建头顶血条/龟能/等级(它没有血量)
+		bar["root"].free()
+		bar = {"root": null, "hp_bar": null, "en": null, "level_badge": null}
+	else:
+		battle._ui_layer.add_child(bar["root"])
 
 	var u = {
 		"id": id, "name": str(d.get("name", id)), "rarity": str(d.get("rarity", "C")), "side": side, "passive": d.get("passive", {}),
@@ -584,7 +587,6 @@ func _spawn_trainers() -> void:
 	for u in battle._units:
 		if u.get("is_trainer", false):
 			battle._trainer_sys._ms_restore_stacks(u)
-	battle._hud._build_trainer_joystick()
 	battle._hud._build_spell_disc()
 
 ## 校验装配的主动 id 合法(旧档/脏数据兜底为 hook)。

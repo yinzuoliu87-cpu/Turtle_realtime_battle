@@ -941,7 +941,7 @@ func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑007: 高举
 	var anim := 0.0
 	var hit: Array = []
 	while is_instance_valid(battle) and traveled < reach and is_instance_valid(qi) and is_instance_valid(self):
-		await battle.get_tree().process_frame
+		await battle.sim_stepped
 		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
 		if not u.get("alive", false): break
 		var dt: float = battle._frame_sim_dt
@@ -1297,7 +1297,7 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 	## ★起点跟着上面"往后收一步"走, 不能还写 -SWORD_SPAWN_BACK —— 否则冲刺第一帧会瞬移回去一格。
 	var start_along := -SWORD_BRACE_BACK
 	while is_instance_valid(battle) and traveled < reach and is_instance_valid(self):
-		await battle.get_tree().process_frame
+		await battle.sim_stepped
 		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
 		traveled += 650.0 * battle._frame_sim_dt   # 剑速(用户:慢点)
 		var front_along: float = start_along + traveled

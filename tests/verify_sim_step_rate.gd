@@ -65,12 +65,10 @@ const SC := preload("res://tests/_det_scenarios.gd")
 ##   谁把协程搬进 sim 队列、这一条不分叉了, 门禁会红, 逼你来删这一行。
 ## ⚠ 这些数是**本机(Windows)实测**。CI(Linux) 没验过 —— 如果 CI 上对不上,
 ##   那本身就是新信息(**别放宽台账**, 去看为什么)。
-const KNOWN_GAP := {
-	## k: [全部分叉步数, 结果字段分叉步数, 比对步数]
-	2: [294, 268, 300],
-	3: [196, 179, 200],
-	4: [147, 134, 150],
-}
+## ★★2026-10-04 台账清零(回放 S1·20261003-跨设备回放 §4.1 ①A-b):
+##   14 处对局协程从 `await get_tree().process_frame` 改成 `await battle.sim_stepped`
+##   (每个 sim 步末尾发一次) ⇒ 一帧几步, 协程就逐步醒几次、每次推进恰好 SIM_DT。
+##   改完实测 k=2/3/4 全部 0 分叉。**从此判据就是 0**, 不再有台账可退(KNOWN_GAP 已删)。
 
 var _fail := 0
 var _n := 0
@@ -270,26 +268,16 @@ func _ready() -> void:
 				first, dl.size(), maxi(sa.size(), sb.size()), " ;; ".join(dl).substr(0, 420)]
 			worst += "k=%d: 全部 %d/%d@%d · 其中【结果字段】%d/%d@%d  " % [
 				int(k), bad, n, first, int(r[3]), n, int(r[4])]
-		## ★正题的判据形状: 目标是 0 分叉; 现状是台账里那个数。两条一起:
-		##   ① 不许比台账**更差**(只减不增)
-		##   ② 台账里这一条**现在仍然在分叉** —— 不分叉了就把它从台账划掉
-		var led: Array = KNOWN_GAP.get(int(k), [0, 0, 0])
-		if bad == 0:
-			_ok("★一帧 %d 步 与 一帧 1 步 · 逐 sim 步指纹 0/%d 分叉" % [int(k), n], true,
-				"★★台账里 k=%d 记着 %d 步分叉 —— 现在 0 了, **把它从 KNOWN_GAP 里划掉**" % [int(k), int(led[0])])
-			_fail += 1
-			print("  [FAIL] ★台账过期: k=%d 已经不分叉了, 删掉 KNOWN_GAP 里那一行(台账只减不增, 不许当垃圾桶)" % int(k))
-		else:
-			print("  [台账] 一帧 %d 步 vs 一帧 1 步: 全部 %d/%d 步分叉(首个 sim 步 %d) · 其中**结果字段**(hp/存活/护盾/龟能) %d 步(首个 sim 步 %d)" % [
+		## ★正题: 一帧 k 步与一帧 1 步, 逐 sim 步指纹**必须 0 分叉**(台账 2026-10-04 已清零)。
+		if bad != 0:
+			print("  [分叉] 一帧 %d 步 vs 一帧 1 步: 全部 %d/%d 步分叉(首个 sim 步 %d) · 其中**结果字段**(hp/存活/护盾/龟能) %d 步(首个 sim 步 %d)" % [
 				int(k), bad, n, first, int(r[3]), int(r[4])])
 			print("      ", d)
-			_ok("★一帧 %d 步 与 一帧 1 步 · 分叉**只减不增**(实测 %d/%d · 台账 %d/%d; 结果字段 实测 %d · 台账 %d)" % [
-				int(k), bad, n, int(led[0]), int(led[2]), int(r[3]), int(led[1])],
-				bad <= int(led[0]) and int(r[3]) <= int(led[1]) and n == int(led[2]),
-				"比台账更差 = 有人又往协程里塞了一处按渲染帧推进的东西; 目标仍是 0(B2/B4 把协程搬进 sim 队列)")
+		_ok("★一帧 %d 步 与 一帧 1 步 · 逐 sim 步指纹 %d/%d 分叉(必须 0)" % [int(k), bad, n], bad == 0,
+			"有人又往对局协程里塞了一处按渲染帧推进的东西(await process_frame / get_process_delta_time)")
 
 	print("")
 	if worst != "": print("  分叉汇总: ", worst)
-	if _fail == 0: print("ALL PASS — 一帧多步/一帧1步 差距台账 %d 条(协程真在推进 · k 真生效 · 只减不增)" % _n)
+	if _fail == 0: print("ALL PASS — 一帧多步 与 一帧1步 逐步一致 %d 条(协程真在推进 · k 真生效 · 0 分叉)" % _n)
 	else: print("FAILED: %d / %d" % [_fail, _n])
 	get_tree().quit(1 if _fail > 0 else 0)

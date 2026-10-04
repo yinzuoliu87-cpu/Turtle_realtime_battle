@@ -1,30 +1,19 @@
 class_name SpellDisc
 extends Control
 
-## 法术圆盘 (用户2026-07-23; 2026-07-24 照 Wild Rift 加【按住拖动瞄准】): 右下角技能钮。
-## PC: 按 Q 朝鼠标(圆盘作冷却指示 + 可点/拖)。
-## 移动端(学 Wild Rift 锤石Q): 【按住】技能 → 出现方向轮盘(拖动改方向) + 战场技能指示器 → 【松手】释放。
-##   ·拖动超过死区 → 松手朝拖动方向施法; ·几乎没拖(轻点) → 自动瞄最近敌; ·拖回钮内 → 取消。
-## ★拆成独立 Control(自绘), 主场景注入图标/回调, 每帧喂 (cd比例, 剩余秒)。照 CLAUDE.md §5。
+## 法术圆盘(用户2026-07-23): 右下角技能钮。
+## ★★U2(母方案书 20260916 §4.4, 2026-10-03 落地): 训龟大师**不再由人操控**、每周期自动放技能
+##   ⇒ 圆盘改成**只读**: 只显示已装配技能的图标 + 冷却扇形/读秒 + 魔法石层数角标。
+##   原来的「按住拖动瞄准 / 轻点自动瞄 / PC 按 Q」三条施法入口连同 battle_aim.gd 一起删了
+##   (它们是局内实时输入, 让实战不可复现: 20261003-跨设备回放 §2.7)。
+##   mouse_filter = IGNORE: 点它什么都不发生, 也不挡住身后的镜头平移。
+## ★拆成独立 Control(自绘), 主场景注入图标, 每帧喂 (cd比例, 剩余秒)。照 CLAUDE.md §5。
 
 const R := 46.0
-const DEADZONE := 16.0        # 拖动小于这个距离 = 当作轻点(自动瞄准), 不算方向瞄准
 
 var _icon: Texture2D = null
 var _cd_frac: float = 0.0     # 0=就绪, 1=满冷却
 var _cd_secs: float = 0.0     # 剩余秒(显示用)
-var _key_hint: String = "Q"
-var _on_tap: Callable = Callable()    # 轻点(自动瞄准)
-var _on_aim: Callable = Callable()    # 瞄准过程: call(phase:String, dir:Vector2) phase=update/cast/cancel
-
-var _aiming: bool = false
-## ★这个技能【能不能拖动瞄准】(由 TRAINER_SKILLS 的 aim 字段决定, battle_hud 建盘时喂)。
-##   口哨 aim="none" —— 三种效果(临时血量/灵体小龟气波/狂暴)全都不吃方向, 小龟自己找最近的敌人,
-##   给它一个拖动轮盘是【假的可操作性】: 玩家拖了半天没有任何影响, 还得多一步松手。
-##   装了被动(sid=="")同理: 根本没有主动技可放。
-var _aimable: bool = true
-var _tap_armed: bool = false          # 不可瞄准的技能: 按下先武装, 松手才放(和轻点语义一致)
-var _aim_off: Vector2 = Vector2.ZERO  # 拖动偏移(相对圆盘中心·屏幕像素)
 
 ## 叠层角标(用户 2026-07-30:「魔法石，我希望图标上有层数显示」)。
 ## 0 = 不画 —— 开局没层数时不给圆盘加噪点。
@@ -39,24 +28,11 @@ var _tier: int = 0
 const TIER_RING := [
 	Color("#c86bff"), Color("#c86bff"), Color("#dd9bff"), Color("#ffd35c")]
 
-## 喂"能不能拖动瞄准"。默认 true(方向/点目标技); 口哨与被动喂 false → 退化成纯点击键。
-func set_aimable(v: bool) -> void:
-	if v == _aimable:
-		return
-	_aimable = v
-	if not v:
-		_aiming = false
-		_aim_off = Vector2.ZERO
-	queue_redraw()
-
-func setup(icon: Texture2D, hint: String, tap: Callable, aim: Callable = Callable()) -> void:
+func setup(icon: Texture2D) -> void:
 	_icon = icon
-	_key_hint = hint
-	_on_tap = tap
-	_on_aim = aim
 	custom_minimum_size = Vector2(R * 2.0, R * 2.0)
 	size = Vector2(R * 2.0, R * 2.0)
-	mouse_filter = Control.MOUSE_FILTER_STOP
+	mouse_filter = Control.MOUSE_FILTER_IGNORE   # 只读: 不接任何点击/拖动
 
 ## 每帧喂当前叠层。只在变化时重绘 —— set_cd 同理(圆盘是自绘 Control, 每帧 queue_redraw 是浪费)。
 func set_stacks(n: int) -> void:
@@ -81,69 +57,16 @@ func set_cd(frac: float, secs: float) -> void:
 		_cd_secs = secs
 		queue_redraw()
 
-func _gui_input(e: InputEvent) -> void:
-	var ready := _cd_frac <= 0.004
-	# 按下: 就绪时进入瞄准态
-	if (e is InputEventScreenTouch or e is InputEventMouseButton) and e.pressed:
-		if ready:
-			if _aimable:
-				_aiming = true
-				_aim_off = e.position - Vector2(R, R)
-				_emit_aim("update")
-			else:
-				_tap_armed = true          # 不可瞄准: 不进瞄准态(不出轮盘/不画战场方向带), 松手直接放
-			queue_redraw()
-			accept_event()
-		return
-	# 不可瞄准的技能: 松手就放。★放在拖动分支【之前】—— 否则手指抖一下产生 drag 事件也无所谓,
-	#   但顺序错了会让 _tap_armed 一直挂着。
-	if _tap_armed and (e is InputEventScreenTouch or e is InputEventMouseButton) and not e.pressed:
-		_tap_armed = false
-		if _on_tap.is_valid(): _on_tap.call()
-		queue_redraw()
-		accept_event()
-		return
-	# 拖动: 更新方向
-	if _aiming and (e is InputEventScreenDrag or e is InputEventMouseMotion):
-		_aim_off = e.position - Vector2(R, R)
-		_emit_aim("update")
-		queue_redraw()
-		accept_event()
-		return
-	# 松手: 按拖动距离决定 施法/自动瞄/取消
-	if _aiming and (e is InputEventScreenTouch or e is InputEventMouseButton) and not e.pressed:
-		_aiming = false
-		var d := _aim_off.length()
-		if d < DEADZONE:                       # 轻点 → 自动瞄准最近敌
-			_emit_aim("cancel")
-			if _on_tap.is_valid(): _on_tap.call()
-		else:                                  # 拖动过 → 朝拖动方向施法(送【原始拖动偏移】, 主场景按技能射程映射距离)
-			if _on_aim.is_valid(): _on_aim.call("cast", _aim_off)
-		_aim_off = Vector2.ZERO
-		queue_redraw()
-		accept_event()
-
-func _emit_aim(phase: String) -> void:
-	if _on_aim.is_valid():
-		_on_aim.call(phase, _aim_off)   # 送原始拖动偏移(主场景归一取方向 / 按幅度取距离)
-
 func _draw() -> void:
 	var c := Vector2(R, R)
 	var ready := _cd_frac <= 0.004
 	draw_circle(c, R, Color(0.10, 0.12, 0.18, 0.86))                       # 底盘
 	var border := Color(0.45, 0.85, 1.0, 0.95) if ready else Color(0.4, 0.46, 0.6, 0.9)
-	if _aiming or _tap_armed:
-		border = Color(1.0, 0.78, 0.35, 1.0)                              # 瞄准中/已按下=橙亮
 	draw_arc(c, R - 2.0, 0.0, TAU, 52, border, 3.0)
 	if _icon != null:                                                     # 技能图标
 		var isz := Vector2(R * 1.15, R * 1.15)
 		draw_texture_rect(_icon, Rect2(c - isz * 0.5, isz), false,
 			Color(1, 1, 1, 1.0 if ready else 0.5))
-	if _aiming:                                                           # 方向轮盘(拖动的把手 + 指向线)
-		var knob := c + _aim_off.limit_length(R * 1.4)
-		draw_line(c, knob, Color(1.0, 0.85, 0.4, 0.7), 3.0)
-		draw_circle(knob, 12.0, Color(1.0, 0.82, 0.4, 0.9))
-		draw_arc(knob, 12.0, 0.0, TAU, 20, Color(1, 1, 1, 0.9), 2.0)
 	if not ready:                                                         # 冷却扇形(顶部起顺时针扫暗)
 		var pts := PackedVector2Array([c])
 		var a0 := -PI * 0.5
@@ -156,11 +79,7 @@ func _draw() -> void:
 		var f := ThemeDB.fallback_font
 		draw_string(f, c + Vector2(0.0, 9.0), "%d" % int(ceil(_cd_secs)),
 			HORIZONTAL_ALIGNMENT_CENTER, R * 1.6, 28, Color(1, 1, 1, 0.96))
-	# ★不画键位提示(用户 2026-07-30:「不要显示Q」)。
-	#   本作主要跑手机(iOS/Android 出包·圆盘本身就是为触屏做的"按住拖动瞄准"),
-	#   触屏上"Q"没有任何意义; 装了【被动】时更是错的 —— 按 Q 什么也不会发生,
-	#   却摆着个键位提示暗示"这键能按"。_key_hint 字段与 setup() 签名保留(调用方不动),
-	#   只是不再绘制 —— 将来若要按平台区分, 在这里加 OS.has_feature("pc") 即可。
+	# ★不画键位提示(用户 2026-07-30:「不要显示Q」; U2 之后本来也没有键可按)。
 	if _stacks > 0:                                                       # 叠层角标(魔法石攻速层数)
 		if _stack_font == null:
 			_stack_font = load("res://assets/fonts/m6x11.ttf")             # 全局数字字体(与飘字/血条一致·像素风)

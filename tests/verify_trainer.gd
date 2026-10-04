@@ -57,7 +57,9 @@ func _ready() -> void:
 	var tr: Dictionary = trainers[0]
 
 	# ── ① 属性 ──
-	_ok("★500 生命", is_equal_approx(float(tr["maxHp"]), 500.0), "maxHp=%.1f" % float(tr["maxHp"]))
+	## ★U2(2026-09-16 拍板·2026-10-03 落地): 大师「不可被打、没有血量」—— 原「500 生命」作废。
+	##   单位字典里留一个名义 hp(各处按 hp/maxHp 取比例, 缺键会崩), 但**不建血条**、伤害恒 0、杀不死。
+	_ok("★U2 没有血量: 不建头顶信息栏(bar_root 为空)", not is_instance_valid(tr.get("bar_root", null)), str(tr.get("bar_root", null)))
 	_ok("★1 攻击力", is_equal_approx(float(tr["atk"]), 1.0), "atk=%.2f" % float(tr["atk"]))
 	_ok("★0 护甲", is_equal_approx(float(tr["def"]), 0.0), "def=%.2f" % float(tr["def"]))
 	_ok("★0 魔抗", is_equal_approx(float(tr["mr"]), 0.0), "mr=%.2f" % float(tr["mr"]))
@@ -65,14 +67,19 @@ func _ready() -> void:
 	#   我第一版写成 range → 读到 0 → 报了假 FAIL, 差点去"修"一个没坏的地方。
 	_ok("★射程 2000", float(tr.get("atk_range", 0.0)) >= 2000.0, "atk_range=%.0f" % float(tr.get("atk_range", 0.0)))
 
-	# ── ② 所有类型伤害降为 1(含真伤) ──
+	# ── ② U2: 所有类型伤害一律为 0(含真伤) —— 原「降为 1」作废 ──
 	#    直接问公共减伤函数: 两条伤害路径都过它, 一处正确即全覆盖。
 	var victim: Dictionary = tr
 	var cases := [[999.0, false, "普通(物理/魔法)"], [999.0, true, "真实伤害(raw)"], [1.0e9, true, "极大真伤"]]
 	for c in cases:
 		var got: float = s._mitigate_incoming(victim, float(c[0]), bool(c[1]), false)
-		_ok("★%s %.0f → 降为 1" % [str(c[2]), float(c[0])], got <= 1.0 + 1e-6, "实得 %.4f" % got)
-	# 对照: 普通单位【不该】被降为 1, 否则是把全场都改坏了
+		_ok("★%s %.0f → 0(不可被打)" % [str(c[2]), float(c[0])], got == 0.0, "实得 %.4f" % got)
+	## ★杀不死: 任何直接处决(_kill)都要被拒 —— 只挡伤害不挡 _kill 的话, 斩杀类效果照样能带走它
+	var hp_before: float = float(victim["hp"])
+	s._kill(victim, others[0] if others.size() > 0 else null)
+	_ok("★U2 直接 _kill 也杀不死(仍存活、hp 不变)", bool(victim.get("alive", false)) and float(victim["hp"]) == hp_before,
+		"alive=%s hp=%.1f" % [str(victim.get("alive", false)), float(victim["hp"])])
+	# 对照: 普通单位【不该】被降为 0, 否则是把全场都改坏了
 	if others.size() > 0:
 		var ov: Dictionary = others[0]
 		var og: float = s._mitigate_incoming(ov, 999.0, false, false)

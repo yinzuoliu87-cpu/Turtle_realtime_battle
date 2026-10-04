@@ -55,6 +55,13 @@ func _fix_pending_pivots() -> void:
 	_pivot_pending.clear()
 
 
+## 点掉呈现幕布 —— **人为输入, 改结果**: 它决定下一路在第几个 sim 步建场。
+## ★回放: 录下步号; 播放时人点不动(只认记录里那一下, 由 ReplayRecorder 在同一步重放)。
+func _dl_present_click() -> void:
+	if battle._replay.allow_input("present"):
+		_dl_present_advance()
+
+
 func _dl_present_advance() -> void:
 	var mode = battle._dl_state
 	_dl_clear_present_overlay()
@@ -106,7 +113,7 @@ func _dl_build_present_overlay(mode: String) -> void:
 	back.color = Color(0.03, 0.05, 0.09, 1.0)
 	back.set_anchors_preset(Control.PRESET_FULL_RECT)
 	back.mouse_filter = Control.MOUSE_FILTER_STOP
-	back.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed: _dl_present_advance())
+	back.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed: _dl_present_click())
 	battle._ui_layer.add_child(back)
 	battle._dl_present_root = back
 	var center = CenterContainer.new()
@@ -372,6 +379,10 @@ func _dl_enter_place() -> void:
 	if OS.has_environment("DL_AUTOFIGHT"):   # 测试开关: 跳过放置直接开打 (headless 跑通整局流程用)
 		_dl_start_fight()
 		return
+	## ★回放播放中: 不建「开打」钮、不挂引导/自动驾驶 —— 开打由 ReplayRecorder 在录制时那一步替人按
+	##   (连同录下的站位一起), 人在这一屏什么都改不了。
+	if battle._replay.is_playing():
+		return
 	battle._edit_drag_unit = null
 	if not is_instance_valid(battle._dl_go_btn):
 		battle._dl_go_btn = Button.new()
@@ -432,6 +443,9 @@ func _dl_enter_place() -> void:
 
 
 func _dl_start_fight() -> void:
+	## ★回放: 开打是改结果的输入(站位就在这一刻定死)。录 = 记步号 + 双方全部站位; 播 = 只认记录里那一下并写回站位。
+	if not battle._replay.allow_input("fight"):
+		return
 	battle._sd_t0 = battle._t          # ★每个战场各自计时(battle._t 跨路累加, 见 §SUDDEN)
 	battle._sd_stacks = 0
 	# ★魔法石攻速叠层【跨路保留】(用户 2026-07-30 拍板) —— 这里原本每路开打清零。
@@ -471,6 +485,8 @@ func _dl_fight_start_dramatize() -> void:
 	battle._splash_ring_bold(Vector2(battle._arena_center.x + half_w * 0.55, cy), Color(1.0, 0.42, 0.42), 150.0)
 
 func _dl_handle_place_input(event: InputEvent) -> void:
+	if battle._replay.is_playing():
+		return   # 回放: 站位以记录为准, 人拖不动
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			var hit = battle._edit_unit_at_screen(event.position)   # 只拖我方(left)非蛋非召唤

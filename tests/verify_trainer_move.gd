@@ -1,22 +1,27 @@
 extends Node
 
-## verify_trainer_move.gd — 训龟大师操控: PC 键盘 / 移动端摇杆 (用户 2026-07-22)
+## verify_trainer_move.gd — 训龟大师 U2: 不可移动、不由人操控、自动放技能、敌我同规则
 ##
-## 用户逐字:「这个不行，还是分pc和移动2版吧，移动要遥感，循规大师的移速为130，pc你看看怎么做」
-##   → 移动端 = 虚拟摇杆(推翻了我原先"不做摇杆"的建议)
-##   → PC = 我定的键盘 WASD/方向键(鼠标三种手势已排满: 拖=平移/点=选中/滚轮=缩放)
-##   → 移速 130
+## ★★这份门禁原来验的是「PC 键盘 / 移动端摇杆 移速 130」(用户 2026-07-22)。
+##   母方案书 `docs/plans/20260916-大轮赛制v2周赛制.md` U2(用户 2026-09-16 拍板, 原话):
+##   「训龟大师估计得调整为一个不能移动的形象和每个周期固定投放一个技能这样子，不再由人来操控」
+##   「射程提升到 2000 码，只带一个，最近的，保留，同规则，法术盘可以留冷却显示，还有魔法石来显示层数，
+##     大师现在改为不可被打，相当于一个装饰品了，不在拥有血量，但还是可以攻击，移除掉训龟大师的信息栏」
+##   2026-10-03 回放方案书(`20261003-跨设备回放.md` Q2, 用户授权按推荐)把它落地 ——
+##   人操控的大师是局内实时输入、且在 sim 步之外按帧施加, 实战因此不可复现。
+##   ⇒ 本门禁整份改成验 U2。原「移速 130 / 摇杆 / 键盘」那些断言的对象已经删了(不是回归)。
 ##
-## ★无头跑不了真键盘/真手指, 所以移动逻辑抽成 _trainer_move_by(u, dir, delta) 直接喂向量;
-##   摇杆本身则真建控件、真发 InputEvent 去验。
+## ★判据都量**真对象**(真战斗场 + 真 sim 步), 不验源码里有没有某个字符串 ——
+##   只有 ④「人为施法/移动入口不存在」是源码判据, 因为"不存在"量不出来。
 
-const RTScene := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
-const VirtualJoystick := preload("res://scripts/scenes/virtual_joystick.gd")
+const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 
 var _fail := 0
+var _n := 0
 
 
 func _ok(n: String, c: bool, d: String = "") -> void:
+	_n += 1
 	if c:
 		print("  [PASS] ", n, ("  " + d) if d != "" else "")
 	else:
@@ -26,222 +31,165 @@ func _ok(n: String, c: bool, d: String = "") -> void:
 
 func _ready() -> void:
 	await get_tree().process_frame
-	var s = RTScene.new()
-	get_tree().root.add_child(s)
-	for i in 8:
+	var gs = get_node_or_null("/root/GameState")
+	if gs != null:
+		gs.test_mode = true
+	RB.DEBUG_EDIT = true
+	var s = RB.new()
+	add_child(s)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	s.set_process(false)          # 自己逐步喂 sim, 一步不多一步不少
+	s._debug._edit_clear()
+	s._edit_dummy_killable = false
+	s._edit_dummy_hp = 40000.0
+	s._edit_trainer_active = "hook"
+	var tl: Dictionary = s._debug._edit_place_unit(s.TRAINER_ID, "left", Vector2(100.0, 360.0))
+	var tr: Dictionary = s._debug._edit_place_unit(s.TRAINER_ID, "right", Vector2(1500.0, 360.0))
+	s._debug._edit_place_unit("basic", "left", Vector2(500.0, 300.0))
+	s._debug._edit_place_unit("basic", "left", Vector2(520.0, 460.0))
+	var near_r: Dictionary = s._debug._edit_place_unit("basic", "right", Vector2(1000.0, 360.0))
+	s._debug._edit_place_unit("basic", "right", Vector2(1200.0, 200.0))
+	s._debug._edit_start_battle()
+	## 调试场重建了单位字典 ⇒ 重新从场上取
+	tl = _trainer(s, "left")
+	tr = _trainer(s, "right")
+	_ok("分母: 双方各有一个训龟大师在场", not tl.is_empty() and not tr.is_empty())
+	if tl.is_empty() or tr.is_empty():
+		_finish(s)
+		return
+
+	# ── ① 不可移动 ──
+	_ok("★① 移速字段 = 0(U2 不可移动)", float(tl.get("move_spd", -1.0)) == 0.0 and float(tr.get("move_spd", -1.0)) == 0.0,
+		"左 %.1f / 右 %.1f" % [float(tl.get("move_spd", -1.0)), float(tr.get("move_spd", -1.0))])
+	var p_l: Vector2 = tl["pos"]
+	var p_r: Vector2 = tr["pos"]
+	## 真按着方向键跑 —— 原来的键盘路径如果还在, 我方大师会走
+	var key := InputEventKey.new()
+	key.keycode = KEY_D
+	key.physical_keycode = KEY_D
+	key.pressed = true
+	Input.parse_input_event(key)
+	var casts_l := 0
+	var casts_r := 0
+	var dir_ok := 0
+	var dir_n := 0
+	var others_moved := false
+	var other0: Dictionary = _first_non_trainer(s, "left")
+	var o0: Vector2 = other0.get("pos", Vector2.ZERO)
+	for _i in range(60 * 25):   # 25 游戏秒: 钩锁冷却 20 秒(空放 10), 双方都至少放两次
+		var cd_l: float = float(tl.get("_active_cd", 0.0))
+		var cd_r: float = float(tr.get("_active_cd", 0.0))
+		var nf: int = s._trainer_sys._flights.size()
+		var want_l: Vector2 = _nearest_dir(s, tl)
+		var want_r: Vector2 = _nearest_dir(s, tr)
+		s._sim_step(s.SIM_DT, false, false)
 		await get_tree().process_frame
+		if cd_l <= 0.0 and float(tl.get("_active_cd", 0.0)) > 0.0:
+			casts_l += 1
+			dir_n += 1
+			if _last_flight_dir_close(s, tl, want_l, nf): dir_ok += 1
+		if cd_r <= 0.0 and float(tr.get("_active_cd", 0.0)) > 0.0:
+			casts_r += 1
+			dir_n += 1
+			if _last_flight_dir_close(s, tr, want_r, nf): dir_ok += 1
+		if not other0.is_empty() and (other0["pos"] as Vector2).distance_to(o0) > 1.0:
+			others_moved = true
+	key.pressed = false
+	Input.parse_input_event(key)
+	_ok("分母: 这 25 秒里战斗真的在推进(我方别的龟走动了)", others_moved)
+	_ok("★① 按住方向键 25 秒, 我方大师一码都没动", (tl["pos"] as Vector2) == p_l, "%s → %s" % [p_l, tl["pos"]])
+	_ok("★① 敌方大师也一码都没动(原 AI 随机游走已删)", (tr["pos"] as Vector2) == p_r, "%s → %s" % [p_r, tr["pos"]])
 
-	_test_speed(s)
-	_test_clamp(s)
-	_test_only_mine(s)
-	_test_input_sources(s)
-	await _test_joystick_widget()
+	# ── ② 自动放技能 · 敌我同规则 · 打最近的 ──
+	_ok("★② 我方大师自己放了主动技(不靠人按): %d 次 ≥ 2" % casts_l, casts_l >= 2)
+	_ok("★② 敌方大师同一套规则: %d 次 ≥ 2" % casts_r, casts_r >= 2)
+	_ok("★② 每一发都朝【最近的敌人】(%d/%d)" % [dir_ok, dir_n], dir_n > 0 and dir_ok == dir_n)
 
+	# ── ③ 不可被打 · 没有血量 · 不建信息栏 ──
+	for t in [tl, tr]:
+		var side: String = str(t.get("side", ""))
+		_ok("★③ %s 大师没有头顶信息栏(血条/龟能/等级)" % side, not is_instance_valid(t.get("bar_root", null)))
+		_ok("★③ %s 大师任何伤害(含真伤)都是 0" % side,
+			s._mitigate_incoming(t, 1.0e9, true, false) == 0.0 and s._mitigate_incoming(t, 999.0, false, false) == 0.0)
+		s._kill(t, near_r)
+		_ok("★③ %s 大师直接处决也杀不死" % side, bool(t.get("alive", false)))
+
+	# ── ③ 两侧头像栏里也没有大师那一格(U2「移除大师信息栏」) ──
+	s._hud._build_team_panels()
+	var frames_n := 0
+	var tr_frames := 0
+	for col in [s._team_panel_left, s._team_panel_right]:
+		if col == null or not is_instance_valid(col):
+			continue
+		for ch in col.get_children():
+			if str(ch.name).begins_with("Frame_"):
+				frames_n += 1
+				if str(ch.name) == "Frame_" + s.TRAINER_ID:
+					tr_frames += 1
+	_ok("★③ 头像栏里没有训龟大师(分母: 头像框 %d 个)" % frames_n, frames_n > 0 and tr_frames == 0, "大师框 %d 个" % tr_frames)
+
+	# ── ③b 仍能攻击: 扔石头那条线还在 ──
+	var rocks := 0
+	for u in s._units:
+		if not u.get("is_trainer", false) and float(u.get("_st_taken", 0.0)) > 0.0:
+			rocks += 1
+	_ok("★③b 仍能攻击(场上有单位挨过打: %d 个)" % rocks, rocks > 0)
+
+	# ── ④ 人为操控入口不存在(源码判据: "不存在"量不出来) ──
+	var ts_src: String = FileAccess.get_file_as_string("res://scripts/systems/trainer/trainer_system.gd")
+	var rb_src: String = FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd")
+	_ok("★④ 训龟大师系统里没有读键盘/摇杆的代码", not ts_src.contains("Input.is_key_pressed") and not ts_src.contains("_joystick"))
+	_ok("★④ 战斗场没有 Q 键施法", not rb_src.contains("KEY_Q"))
+	_ok("★④ 摇杆与瞄准子系统文件已删", not FileAccess.file_exists("res://scripts/scenes/virtual_joystick.gd")
+		and not FileAccess.file_exists("res://scripts/scenes/battle/battle_aim.gd"))
+
+	# ── ⑤ 法术盘留作只读显示 ──
+	var disc = s._spell_disc
+	_ok("★⑤ 法术盘还在(冷却 + 魔法石层数显示)", disc != null and is_instance_valid(disc))
+	if disc != null and is_instance_valid(disc):
+		_ok("★⑤ 法术盘只读: 不接任何点击(mouse_filter = IGNORE)", disc.mouse_filter == Control.MOUSE_FILTER_IGNORE)
+		_ok("★⑤ 法术盘没有施法回调", not disc.has_method("_gui_input") and not ("_on_tap" in disc))
+	_finish(s)
+
+
+func _finish(s) -> void:
 	s.queue_free()
-	print("ALL PASS — 训龟大师操控(PC键盘/移动摇杆/移速130)" if _fail == 0 else "FAILED: %d" % _fail)
+	await get_tree().process_frame
+	print("")
+	print("ALL PASS — 训龟大师 U2(不可移动/自动施法/敌我同规则/不可被打/只读法术盘) %d 条" % _n if _fail == 0 else "FAILED: %d / %d" % [_fail, _n])
 	get_tree().quit(0 if _fail == 0 else 1)
 
 
-## ① 移速正好 130, 且摇杆半推 = 半速
-func _test_speed(s) -> void:
-	var u = s._my_trainer()
-	_ok("找得到我方训龟大师", u != null)
-	if u == null:
-		return
-	_ok("★移速字段是 130", is_equal_approx(float(u["move_spd"]), 130.0), "move_spd=%.1f" % float(u["move_spd"]))
-	# 放到场地中间再测, 免得被边界 clamp 干扰
-	u["pos"] = Vector2(900.0, 500.0)
-	var p0: Vector2 = u["pos"]
-	s._trainer_sys._trainer_move_by(u, Vector2.RIGHT, 1.0)
-	var moved: float = u["pos"].distance_to(p0)
-	print("  [实测] 满推 1 秒移动 %.1f 码" % moved)
-	_ok("★满推 1 秒走 130 码", is_equal_approx(moved, 130.0), "%.2f" % moved)
-	# 摇杆可以半推 —— 长度 0.5 的向量应当只走一半
-	u["pos"] = Vector2(900.0, 500.0)
-	s._trainer_sys._trainer_move_by(u, Vector2.RIGHT * 0.5, 1.0)
-	var half: float = u["pos"].distance_to(Vector2(900.0, 500.0))
-	print("  [实测] 半推 1 秒移动 %.1f 码" % half)
-	_ok("★摇杆半推 = 半速(不是一律满速)", is_equal_approx(half, 65.0), "%.2f" % half)
-	# 零向量不该动(死区/没输入)
-	u["pos"] = Vector2(900.0, 500.0)
-	s._trainer_sys._trainer_move_by(u, Vector2.ZERO, 1.0)
-	_ok("没有输入时不动", u["pos"].is_equal_approx(Vector2(900.0, 500.0)))
-	# 朝向跟着走
-	s._trainer_sys._trainer_move_by(u, Vector2.LEFT, 0.1)
-	_ok("向左走时朝左", not bool(u.get("face_right", true)))
-	s._trainer_sys._trainer_move_by(u, Vector2.RIGHT, 0.1)
-	_ok("向右走时朝右", bool(u.get("face_right", false)))
-
-
-## ② 一直推也不能飞出战场
-func _test_clamp(s) -> void:
-	var u = s._my_trainer()
-	if u == null:
-		return
-	for i in 200:
-		s._trainer_sys._trainer_move_by(u, Vector2(1.0, 1.0).normalized(), 0.5)
-	var a: Rect2 = RTScene.ARENA
-	print("  [实测] 狂推 200 次后位置 %s ; 战场 %s" % [u["pos"], a])
-	_ok("★推到天涯也留在战场内(否则会走出地图)",
-		u["pos"].x <= a.end.x + 0.01 and u["pos"].y <= a.end.y + 0.01
-		and u["pos"].x >= a.position.x - 0.01 and u["pos"].y >= a.position.y - 0.01,
-		"%s" % u["pos"])
-
-
-## ③ 只操控我方那个, 碰不到对面的人机
-func _test_only_mine(s) -> void:
-	var mine = s._my_trainer()
-	var foe = null
+func _trainer(s, side: String) -> Dictionary:
 	for u in s._units:
-		if u.get("is_trainer", false) and str(u.get("side", "")) == "right":
-			foe = u
-	_ok("场上有对面的训龟大师", foe != null)
-	if mine == null or foe == null:
-		return
-	_ok("★_my_trainer 拿到的是我方(left)", str(mine.get("side", "")) == "left", str(mine.get("side", "")))
-	# ★把敌方那个挪到数组【最前面】再问一次 —— 否则这条是【靠 spawn 顺序巧合】通过的:
-	#   左边那个恰好先 spawn, 于是"返回第一个训龟大师"也能蒙对。
-	#   2026-07-22 反向验证抓到: 去掉 side=="left" 判断照样全绿。
-	var order: Array = s._units.duplicate()
-	s._units.erase(foe)
-	s._units.insert(0, foe)
-	var mine2 = s._my_trainer()
-	print("  [实测] 把敌方训龟大师挪到数组首位后, _my_trainer 返回的是 %s 方"
-		% (str(mine2.get("side", "")) if mine2 != null else "null"))
-	_ok("★★换成敌方在前也仍然拿到我方(证明是真按阵营判, 不是取第一个)",
-		mine2 != null and str(mine2.get("side", "")) == "left",
-		"拿到了 %s" % (str(mine2.get("side", "")) if mine2 != null else "null"))
-	s._units = order
-	var foe_p0: Vector2 = foe["pos"]
-	for i in 10:
-		s._trainer_sys._trainer_input_tick(0.1)
-	print("  [实测] 连跑 10 次输入 tick 后, 敌方训龟大师位移 %.4f" % foe["pos"].distance_to(foe_p0))
-	_ok("★玩家输入动不了对面那个(它是人机)", foe["pos"].is_equal_approx(foe_p0))
+		if u.get("is_trainer", false) and str(u.get("side", "")) == side:
+			return u
+	return {}
 
 
-## ④ 两条输入源: 有摇杆读摇杆, 没摇杆读键盘
-func _test_input_sources(s) -> void:
-	_ok("PC(无摇杆)且没按键时输入为零", s._trainer_sys._trainer_input_vec().is_equal_approx(Vector2.ZERO),
-		"%s" % s._trainer_sys._trainer_input_vec())
-	# 挂一个摇杆上去 → 输入源必须切到摇杆
-	var joy := VirtualJoystick.new()
-	s.add_child(joy)
-	s._joystick = joy
-	joy.value = Vector2(0.5, -0.25)
-	var got: Vector2 = s._trainer_sys._trainer_input_vec()
-	print("  [实测] 摇杆 value=%s → _trainer_input_vec()=%s" % [joy.value, got])
-	_ok("★有摇杆时读摇杆(移动端这条路)", got.is_equal_approx(Vector2(0.5, -0.25)))
-	s._joystick = null
-	joy.queue_free()
-	# 结构: PC 那条分支必须真读键盘, 不能是空壳
-	var src := FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd") + "
-" + FileAccess.get_file_as_string("res://scripts/systems/trainer/trainer_system.gd")   # 2026-07-25: 训龟大师技能已抽到 trainer/
-	var body := _code_only(_func_body(src, "_trainer_input_vec"))
-	var n_keys := 0
-	for k in ["KEY_A", "KEY_D", "KEY_W", "KEY_S", "KEY_LEFT", "KEY_RIGHT", "KEY_UP", "KEY_DOWN"]:
-		if body.contains(k):
-			n_keys += 1
-	print("  [分母] PC 分支里认的按键 %d 个(WASD + 四方向)" % n_keys)
-	_ok("★PC 走键盘 WASD + 方向键", n_keys == 8, "只认了 %d 个" % n_keys)
+func _first_non_trainer(s, side: String) -> Dictionary:
+	for u in s._units:
+		if not u.get("is_trainer", false) and str(u.get("side", "")) == side:
+			return u
+	return {}
 
 
-## ⑤ 摇杆控件本身
-func _test_joystick_widget() -> void:
-	var joy := VirtualJoystick.new()
-	add_child(joy)
-	await get_tree().process_frame
-	_ok("★摇杆 mouse_filter=STOP(吃掉本区域事件, 不抢镜头平移)",
-		joy.mouse_filter == Control.MOUSE_FILTER_STOP,
-		"mouse_filter=%d" % joy.mouse_filter)
-	_ok("摇杆有尺寸(0 尺寸=摸不到)", joy.size.x > 10.0 and joy.size.y > 10.0, "%s" % joy.size)
-
-	# 真发触屏事件: 按在中心 → 死区内 → 不该输出
-	var c: Vector2 = joy.size * 0.5
-	var t := InputEventScreenTouch.new()
-	t.index = 0
-	t.pressed = true
-	t.position = c
-	joy._gui_input(t)
-	_ok("按在正中心不输出", joy.value.is_equal_approx(Vector2.ZERO), "%s" % joy.value)
-	# ★真正测死区: 要按在【偏离中心但仍在死区内】的位置。
-	#   只按正中心测的是"零距离"不是死区 —— 2026-07-22 反向验证抓到: 把死区判断换成
-	#   `r > 0.0 ? ... : ZERO` 照样全绿, 因为正中心 r 恰好是 0。
-	var inside: float = VirtualJoystick.RADIUS * VirtualJoystick.DEADZONE * 0.5   # 死区内的一半处
-	var d0 := InputEventScreenDrag.new()
-	d0.index = 0
-	d0.position = c + Vector2(inside, 0.0)
-	joy._gui_input(d0)
-	print("  [实测] 偏离中心 %.1f px(死区 %.1f px 内) → value=%s" % [inside, VirtualJoystick.RADIUS * VirtualJoystick.DEADZONE, joy.value])
-	_ok("★★死区内的微小位移不输出(防手指微抖导致人物慢慢漂)",
-		joy.value.is_equal_approx(Vector2.ZERO), "%s" % joy.value)
-	# 死区外一点点就该有输出, 否则死区太大等于摇杆不灵
-	var d1 := InputEventScreenDrag.new()
-	d1.index = 0
-	d1.position = c + Vector2(VirtualJoystick.RADIUS * (VirtualJoystick.DEADZONE + 0.15), 0.0)
-	joy._gui_input(d1)
-	_ok("★刚出死区就有输出(死区不能大到让摇杆变迟钝)", joy.value.length() > 0.0, "%s" % joy.value)
-	# 拖到右边缘 → 满推向右
-	var d := InputEventScreenDrag.new()
-	d.index = 0
-	d.position = c + Vector2(VirtualJoystick.RADIUS, 0.0)
-	joy._gui_input(d)
-	print("  [实测] 拖到右边缘 → value=%s (长度 %.3f)" % [joy.value, joy.value.length()])
-	_ok("★拖到边缘 = 满推", is_equal_approx(joy.value.length(), 1.0), "长度 %.3f" % joy.value.length())
-	_ok("★方向正确(向右)", joy.value.x > 0.9)
-	# 拉过头也不该超过 1(否则会超速)
-	d.position = c + Vector2(VirtualJoystick.RADIUS * 5.0, 0.0)
-	joy._gui_input(d)
-	_ok("★拉出底盘也不超过满推(否则会超速)", joy.value.length() <= 1.0 + 1e-5,
-		"长度 %.3f" % joy.value.length())
-	# 第二根手指落在摇杆上要被忽略(防两指各拉一次)
-	var t2 := InputEventScreenTouch.new()
-	t2.index = 1
-	t2.pressed = true
-	t2.position = c + Vector2(0.0, VirtualJoystick.RADIUS)
-	var before: Vector2 = joy.value
-	joy._gui_input(t2)
-	_ok("★第二根手指被忽略(防两指各拉一次=速度翻倍)", joy.value.is_equal_approx(before),
-		"被第二根手指改成了 %s" % joy.value)
-	# 抬手归零
-	var up := InputEventScreenTouch.new()
-	up.index = 0
-	up.pressed = false
-	up.position = d.position
-	joy._gui_input(up)
-	_ok("★抬手后归零(否则会一直往那个方向漂)", joy.value.is_equal_approx(Vector2.ZERO), "%s" % joy.value)
-	joy.queue_free()
+## 用产品自己的选靶函数(不手抄一份): 大师「打最近的」就是它。
+func _nearest_dir(s, t: Dictionary) -> Vector2:
+	var tgt = s._targeting._nearest_enemy_for_trainer(t)
+	return ((tgt["pos"] as Vector2) - (t["pos"] as Vector2)).normalized() if tgt != null else Vector2.ZERO
 
 
-func _func_body(src: String, fname: String) -> String:
-	var head := "\nfunc %s(" % fname
-	var i := src.find(head)
-	if i < 0:
-		return ""
-	var start := i + 1
-	var j := src.find("\nfunc ", start)
-	if j < 0:
-		j = src.length()
-	return src.substr(start, j - start)
-
-
-func _strip_comment(line: String) -> String:
-	var in_q := false
-	var q := ""
-	for i in line.length():
-		var ch := line[i]
-		if in_q:
-			if ch == q and (i == 0 or line[i - 1] != "\\"):
-				in_q = false
-		elif ch == "\"" or ch == "'":
-			in_q = true
-			q = ch
-		elif ch == "#":
-			return line.substr(0, i)
-	return line
-
-
-func _code_only(block: String) -> String:
-	var out := ""
-	for l in block.split("\n"):
-		out += _strip_comment(str(l)) + "\n"
-	return out
+## 这一步刚甩出去的那一发(同一步里别的钩子可能刚好收回 ⇒ 不能按数组长度判, 按"刚出手 t≈0"找)。
+func _last_flight_dir_close(s, t: Dictionary, want: Vector2, _n_before: int) -> bool:
+	for f in s._trainer_sys._flights:
+		if is_same(f.get("src", null), t) and float(f.get("t", 99.0)) <= s.SIM_DT + 1.0e-6:
+			if want == Vector2.ZERO:
+				return false
+			var ok: bool = (f["dir"] as Vector2).dot(want) > 0.999
+			if not ok:
+				print("    [方向] %s 大师 出手 %s / 最近敌 %s" % [str(t.get("side", "")), f["dir"], want])
+			return ok
+	print("    [方向] %s 大师 这一步没找到刚出手的钩子" % str(t.get("side", "")))
+	return false

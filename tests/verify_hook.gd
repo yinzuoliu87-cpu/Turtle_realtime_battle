@@ -1,7 +1,7 @@
 extends Node
 
 ## verify_hook.gd — 法术圆盘·钩锁 核心机制门禁 (用户 2026-07-23; 2026-07-24 照锤石Q返工手感)
-## 规则(仔细照 Wild Rift 锤石Q): 大师朝方向甩钩(射程600)→ 眩晕4秒(吃韧性)
+## 规则(仔细照 Wild Rift 锤石Q): 大师朝方向甩钩(射程600; ★U2 起 2000·冷却好了自动朝最近敌人甩)→ 眩晕4秒(吃韧性)
 ##   + 4秒内【一段段拽】(非匀速·每0.6s拽一下·每下42码) + 期间受伤×1.25; 命中CD20 / 空放CD只10(返还10)。
 ##
 ## ★★2026-07-30 重做成【真 skillshot】。改前是【出手瞬间就判定命中】的假 skillshot:
@@ -31,10 +31,10 @@ func _ready() -> void:
 	var b = Battle.new()
 	b._t = 0.0
 
-	# ═══ ① _hook_first_target: 射程600 + 线上 + 不选大师 ═══
+	# ═══ ① _hook_first_target: 射程(HOOK_RANGE·U2 起 2000) + 线上 + 不选大师 ═══
 	var L := _mk("left", 0.0, 0.0, {"is_trainer": true})
 	var near := _mk("right", 300.0, 0.0)     # 正东 300, 在射程+线上 → 该被钩
-	var far  := _mk("right", 900.0, 0.0)     # 正东 900 > 600 → 不钩
+	var far  := _mk("right", b.HOOK_RANGE + 300.0, 0.0)     # 正东 射程+300 → 不钩
 	var off  := _mk("right", 300.0, 200.0)   # 偏离直线 200 > 带宽80 → 不钩
 	var enTr := _mk("right", 200.0, 0.0, {"is_trainer": true})   # 敌方大师(线上更近)→ 定向不选
 	b._units = [L, near, far, off, enTr]
@@ -42,7 +42,10 @@ func _ready() -> void:
 	var t1 = b._trainer_sys._hook_first_target(L, Vector2(1, 0))
 	_ok("★钩锁选中射程内线上最近敌", t1 != null and is_same(t1, near))
 	_ok("★钩锁不选敌方大师(点4规则同源)", t1 == null or not is_same(t1, enTr))
-	_ok("射程外(>600)不钩", not is_same(b._trainer_sys._hook_first_target(L, Vector2(1, 0)), far))
+	_ok("射程外(>HOOK_RANGE)不钩", not is_same(b._trainer_sys._hook_first_target(L, Vector2(1, 0)), far))
+	b._units = [L, far]
+	_ok("★射程外(>HOOK_RANGE)且线上只有它→也不钩", b._trainer_sys._hook_first_target(L, Vector2(1, 0)) == null)
+	b._units = [L, near, far, off, enTr]
 	_ok("偏离直线(perp>80)不钩", b._trainer_sys._hook_first_target(L, Vector2(0, 1)) == null or not is_same(b._trainer_sys._hook_first_target(L, Vector2(0, 1)), off))
 	_ok("身后的敌不钩(along<0)", b._trainer_sys._hook_first_target(L, Vector2(-1, 0)) == null)
 
@@ -84,7 +87,6 @@ func _ready() -> void:
 	fly.call(b, 0.35 + 300.0 / 570.0 + 0.10)
 	_ok("★站着不动→被钩住(_hooked_by 是那个大师)", is_same(e2.get("_hooked_by", null), L2))
 	_ok("★命中后飞行结束(钩子已回收)", b._trainer_sys._flights.is_empty())
-	_ok("★命中→提前解除甩钩站定", float(L2.get("_cast_lock_until", 9e9)) <= b._t + 0.001)
 
 	# ── ③-c ★★核心: 出手后【走开】必须躲得掉 ──
 	var L4 := _mk("left", 0.0, 0.0, {"is_trainer": true})
@@ -95,7 +97,7 @@ func _ready() -> void:
 	b._trainer_sys._cast_hook(L4, Vector2(1, 0))
 	fly.call(b, 0.35 + 0.10)              # 前摇过 + 刚出手一点
 	e4["pos"] = Vector2(300.0, 400.0)      # ★目标横向闪开(远超 HOOK_HIT_R=70)
-	fly.call(b, 300.0 / 570.0 + 0.60)     # 让钩子飞满射程
+	fly.call(b, b.HOOK_RANGE / b.HOOK_MISSILE_SPD + 0.20)     # 让钩子飞满射程
 	_ok("★★飞行中走开→躲掉了(没有 _hooked_by)", not e4.has("_hooked_by"),
 		"实际 %s" % str(e4.get("_hooked_by", null)))
 	_ok("★躲掉后按空放返还 CD=10", abs(float(L4.get("_active_cd", 0.0)) - 10.0) < 0.01,
@@ -123,7 +125,7 @@ func _ready() -> void:
 	_ok("★空放也返回true(放出去了)", b._trainer_sys._cast_hook(L3, Vector2(1, 0)) == true)
 	_ok("★空放【出手瞬间】CD 仍是 20(还没飞完, 不知道会不会中)",
 		abs(float(L3.get("_active_cd", 0.0)) - 20.0) < 0.01, "%.1f" % float(L3.get("_active_cd", 0.0)))
-	fly.call(b, 0.35 + 600.0 / 570.0 + 0.10)
+	fly.call(b, 0.35 + b.HOOK_RANGE / b.HOOK_MISSILE_SPD + 0.10)
 	_ok("★飞满射程未命中→返还成 CD=10", abs(float(L3.get("_active_cd", 0.0)) - 10.0) < 0.01,
 		"%.1f" % float(L3.get("_active_cd", 0.0)))
 
@@ -182,9 +184,10 @@ func _ready() -> void:
 	if Battle is GDScript:
 		src = (Battle as GDScript).source_code + "
 " + FileAccess.get_file_as_string("res://scripts/systems/trainer/trainer_system.gd")   # 2026-07-25: 大师技能已抽到 trainer/
-	_ok("★Q键接了 _player_cast_hook", src.contains("_player_cast_hook") and src.contains("KEY_Q"))
+	## ★U2(2026-10-03 落地): 大师不再由人操控 ⇒ 人为施法入口必须**不存在**(按 Q / 圆盘回调都删了)
+	_ok("★U2 没有人为施法入口(无 _player_cast_hook / KEY_Q)", not src.contains("func _player_cast_hook") and not src.contains("keycode == KEY_Q"))
 	_ok("★sim 主循环挂了 _tick_hooks(2026-07-25 Phase4: 在 _sim_step·_process/累加器调 _sim_step)", src.contains("_tick_hooks(dt)") and src.contains("_sim_step(SIM_DT"))
-	_ok("★敌方大师 AI 放主动已接线(_cast_active分派)", src.contains("_tick_trainer_ai") and src.contains("_cast_active(u,"))
+	_ok("★大师 AI 放主动已接线(_cast_active分派·U2 敌我同规则)", src.contains("_tick_trainer_ai") and src.contains("_cast_active(u,"))
 	_ok("★装配分派入口 _cast_active 存在", src.contains("func _cast_active") and src.contains('"fury_potion":') and src.contains('"glacier":'))
 	_ok("★受伤放大接进 _mitigate_incoming", src.contains("hook_vuln_until"))
 

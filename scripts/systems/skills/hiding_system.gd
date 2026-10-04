@@ -40,20 +40,6 @@ func _minion_sprite_dict(is_elite: bool, is_back: bool) -> Dictionary:
 	return {"tex": tex, "frames": 1, "fps": 1.0, "frame_h": th, "hframes": 1, "vframes": 1, "loop": false}
 
 # 龟蛋立绘字典 (pets/egg.png = 单蛋 3帧 idle 动画横排 79×80, 修: 原当 frames:1 显成"3蛋并排")
-# ============================================================================
-#  🎮 训龟大师操控 (用户 2026-07-22:「还是分pc和移动2版吧, 移动要遥感」)
-# ============================================================================
-# PC   = 键盘 WASD / 方向键 —— 鼠标三种手势已排满(拖=平移 / 点=选中 / 滚轮=缩放),
-#        键盘是唯一还空着的通道; 且与摇杆同属"连续直接控制", 两端手感一致。
-#        战斗场只占用了 R(重开) 与 ESC(关面板/退场), WASD 与方向键全空。
-# 移动端 = 左下角虚拟摇杆(VirtualJoystick, mouse_filter=STOP 吃掉本区域事件, 不抢镜头平移)。
-#
-# ★只操控【我方(left)】那一个; 对面那个是人机, 玩家的输入碰不到它。
-# ★移动本身随暂停一起停 —— 这是玩法动作, 不是观察操作(与"暂停仍可拖镜头/光标仍跟手"不同)。
-#   主场景是 PAUSABLE, _process 停跑即天然满足, 不用额外判断。
-
-
-## 本帧的移动输入。移动端读摇杆, PC 读键盘; 返回长度 0..1 的方向量。
 # ═════ 小将主动技(用户2026-07-18): 近战人体浪板 / 远程追踪火箭筒 (各120龟能·射程2000) ═════
 func _sk_minion_rocket(u: Dictionary, tgt) -> void:   # 远程小将·追踪火箭筒: 蓄力1.5s(枪口聚能)→枪口喷火发射→定向慢速追踪导弹(尾焰)→命中核爆(400码4A物理+4s50%治疗削减)
 	if tgt == null or not tgt.get("alive", false): return
@@ -100,7 +86,7 @@ func _minion_rocket_fly(u: Dictionary, tref: Dictionary, from: Vector2) -> void:
 	var trailc: float = 0.0
 	var puls: float = 0.0
 	while is_instance_valid(battle) and flew < 2400.0 and is_instance_valid(miss) and battle.is_inside_tree():
-		await battle.get_tree().process_frame
+		await battle.sim_stepped
 		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
 		if battle._over: break
 		if battle._hitstop > 0.0 or (not battle._timestop._ts_active.is_empty() and not battle._arr_has_unit(battle._timestop._ts_active, u)): continue   # 时停: 只冻非active单位; 携带沙漏的自己要照常落地(否则_slam永不解锁=卡空中·用户2026-07-19)   # 顿帧/时停期悬停
@@ -337,7 +323,7 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己�
 	var h0: float = float(u.get("height", 0.0))           # 从空中悬停高度俯冲下来
 	var d = 0.0
 	while is_instance_valid(battle) and d < 0.3 and u.get("alive", false):             # 0.3s从空中俯冲扑到目标身上(边冲边下落·减速40%·用户2026-07-18)
-		await battle.get_tree().process_frame
+		await battle.sim_stepped
 		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
 		if battle._over: break
 		if battle._hitstop > 0.0 or (not battle._timestop._ts_active.is_empty() and not battle._arr_has_unit(battle._timestop._ts_active, u)): continue   # 时停: 只冻非active单位; 携带沙漏的自己要照常落地(否则_slam永不解锁=卡空中·用户2026-07-19)
@@ -361,7 +347,7 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己�
 	var sd = 0.0
 	var slide_dur = 0.833   # 滑行减速40%(0.5→0.833s·同距离更慢·用户2026-07-18)
 	while is_instance_valid(battle) and sd < slide_dur and u.get("alive", false) and tref.get("alive", false):
-		await battle.get_tree().process_frame
+		await battle.sim_stepped
 		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
 		if battle._over: break
 		if battle._hitstop > 0.0 or (not battle._timestop._ts_active.is_empty() and not battle._arr_has_unit(battle._timestop._ts_active, u)): continue   # 时停: 只冻非active单位; 携带沙漏的自己要照常落地(否则_slam永不解锁=卡空中·用户2026-07-19)

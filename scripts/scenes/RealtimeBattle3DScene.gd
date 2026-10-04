@@ -316,9 +316,8 @@ const DEFAULT_BASIC := {"phys": BasicConsts.DEFAULT_BASIC_COEF, "hits": 1}   # �
 #  2.5D 坐标 / 渲染常量
 # ============================================================================
 const AVATAR_DIR := "res://assets/sprites/avatars/"   # 头像兜底 (全身图缺失才退回)
-# ══ 训龟大师(用户 2026-07-22 需求3) ══ 场外监视者: 不被索敌/不计团灭/万物伤害降为1
+# ══ 训龟大师(用户 2026-07-22 需求3; U2 2026-09-16 拍板) ══ 场外监视者: 不可移动/不由人操控/自动放技能/不可被打/无血量/不计团灭
 const TRAINER_ID := "__trainer__"
-const TRAINER_HP := 500.0
 const TRAINER_ATK := 1.0
 ## (原 TRAINER_ATK_MAGIC_STONE := 10.0 已删 —— 用户 2026-07-31 拍板「魔法石不再提供攻击力倍率」,
 ##  删掉而不是设成 1.0: 零读者的死常量正是本项目栽过的坑。魔法石的收益现在只在
@@ -336,9 +335,8 @@ const TRAINER_ATK := 1.0
 const MS_MAXHP_PCT := 0.02
 const TRAINER_RANGE := 2000.0
 const TRAINER_ATK_INTERVAL := 1.5
-const TRAINER_MOVE_SPD := 130.0                       # 移速(码/秒), 用户 2026-07-22 拍板
 # ★钩锁技能(点3·法术圆盘第一个技能, 用户2026-07-23): 参考 LoL 锤石Q。
-const HOOK_RANGE := 600.0        # 射程(码)
+const HOOK_RANGE := 2000.0       # 射程(码)·U2/D1「射程全部提升到 2000」(大师站后排不动, 原 600 够不到对面)
 const HOOK_CD := 20.0            # 冷却(秒)
 const HOOK_CD_MISS := 10.0       # 空放(没钩到人)→只冷却10秒(返还10秒)
 const HOOK_STUN := 4.0           # 钩住眩晕(秒, 吃韧性)
@@ -353,7 +351,7 @@ const HOOK_HIT_R := 70.0         # ★钩头【飞行中】的碰撞半径(码) 
 const HOOK_TUG_DIST := 70.0      # 每一下拽把目标朝大师拽近的距离(码·4下×70=280码)
 const HOOK_VULN_MULT := 1.25     # 被钩4秒内受到伤害 ×1.25  ★真事实源: _mitigate_incoming 读它(2026-07-30 修好前那里是硬编码 1.25, 本常量【游戏代码零读者】)
 const WHISTLE_SHRED_MULT := 0.7   # 口哨②灵体气波削甲: 护甲 ×0.7 (-30%)
-const GLACIER_LEN := 500.0       # 冰川长度(码)
+const GLACIER_LEN := 2000.0      # 冰川长度(码) = 射程·U2/D1 原 500 → 2000
 const GLACIER_WIDTH := 90.0      # 冰川判定带宽(码·文案没写这一项)
 const GLACIER_SEC := 6.0         # 冰川持续(秒)
 const GLACIER_VULN_MULT := 1.2   # 站冰川上受到伤害 ×1.2  ★同上: 原来也是硬编码在 _mitigate_incoming, 连常量都没有
@@ -362,15 +360,15 @@ const GLACIER_VULN_MULT := 1.2   # 站冰川上受到伤害 ×1.2  ★同上: �
 # id → {名/圆盘图标/冷却}。大师单位带 _tr_active(装配的主动 id) + 通用 _active_cd(所有主动共用一个冷却字段)。
 # 施放统一走 _trainer_sys._cast_active(u, aim), 按 _tr_active 分派到各技能。圆盘显示已装配技能的图标+冷却。
 const TRAINER_SKILLS := {
-	"hook":        {"name": "钩锁",   "icon": "res://assets/sprites/vfx/hook-skill-icon.png",   "cd": 20.0, "range": 600.0, "aim": "dir"},
-	"fury_potion": {"name": "怒火药水", "icon": "res://assets/sprites/vfx/fury-potion-icon.png",  "cd": 16.0, "range": 700.0, "aim": "point"},
+	"hook":        {"name": "钩锁",   "icon": "res://assets/sprites/vfx/hook-skill-icon.png",   "cd": 20.0, "range": 2000.0, "aim": "dir"},
+	"fury_potion": {"name": "怒火药水", "icon": "res://assets/sprites/vfx/fury-potion-icon.png",  "cd": 16.0, "range": 2000.0, "aim": "point"},
 	"whistle":     {"name": "口哨",   "icon": "res://assets/sprites/vfx/whistle-icon.png",      "cd": 14.0, "range": 0.0,   "aim": "none"},
-	"glacier":     {"name": "冰川",   "icon": "res://assets/sprites/vfx/glacier-icon.png",      "cd": 17.0, "range": 500.0, "aim": "dir"},
+	"glacier":     {"name": "冰川",   "icon": "res://assets/sprites/vfx/glacier-icon.png",      "cd": 17.0, "range": 2000.0, "aim": "dir"},
 	# ★aim:"target" 是【新增的第四种瞄准模式】(原来只有 dir 方向 / point 落点 / none 无需瞄准)。
 	#   用户 2026-07-28:「这个不是直线发射吧，而是像 lol 安妮的 Q 一样弹道锁头」——
 	#   即指定一个【敌方单位】, 弹道自动跟到它身上, 不会因为它走开而落空。
-	"hunt_order":  {"name": "猎龟令", "icon": "res://assets/sprites/vfx/hunt-order-icon.png",   "cd": 30.0, "range": 600.0, "aim": "target"},
-	"tame":        {"name": "驯服",   "icon": "res://assets/sprites/vfx/tame-icon.png",         "cd": 60.0, "range": 600.0, "aim": "target"},
+	"hunt_order":  {"name": "猎龟令", "icon": "res://assets/sprites/vfx/hunt-order-icon.png",   "cd": 30.0, "range": 2000.0, "aim": "target"},
+	"tame":        {"name": "驯服",   "icon": "res://assets/sprites/vfx/tame-icon.png",         "cd": 60.0, "range": 2000.0, "aim": "target"},
 }
 
 # ── 猎龟令(用户 2026-07-28) ──
@@ -394,7 +392,6 @@ const TAME_REVIVE_PCT := 0.30     # 死后按 30% 最大生命重生
 const TAME_REVIVE_SEC := 2.5      # 重生演出时长(期间无敌不可选中)
 const TAME_DECAY_PCT := 0.02      # 归顺后每秒损失 2% 最大生命
 const TAME_MISSILE_SPD := 1200.0
-const VirtualJoystick := preload("res://scripts/scenes/virtual_joystick.gd")
 const SpellDisc := preload("res://scripts/scenes/spell_disc.gd")
 const HOOK_ICON := "res://assets/sprites/vfx/hook-skill-icon.png"   # 圆盘技能图标(精修·带链条+青芒宝石); 飞行弹体仍用 trainer-hook.png
 ## 立绘: 用户要「像素风的冒险家」, 形象未定 —— 有真图就用, 没有则退回占位并 warning。
@@ -482,8 +479,7 @@ const ACTION_RUN := {
 	"__minion_back__": ["pets/animations/ranged/run.png", 12.0],
 	"_summon_wraith": ["pets/animations/wraith/run.png", 10.0],
 	# 训龟大师(2026-07-23): 走路循环。id 是 __trainer__, _anim_key 直接返回 id → 走到这里。
-	#   移动由玩家 _trainer_sys._trainer_move_by 驱动, 但立绘照样流经 _render._update_run_anim(在 for u in _units 里),
-	#   靠"帧间位移>0.8"自动切走路/停回 idle —— 不用另写触发。
+	#   ★U2(2026-10-03 落地)之后大师不可移动 ⇒ 走路帧不会再被触发(按帧间位移切); 表项留着, 删了要连动画选帧一起改。
 	"__trainer__": ["pets/animations/trainer/run.png", 8.0],
 	"_summon_axe": ["vfx/eq096-axe-wood-walk.png", 13.33],   # 096 斧头召唤物·兜底(按形态的真表见 AxeArt, 召唤时预置 run_sd)
 }
@@ -593,7 +589,6 @@ var _cam: Camera3D
 var _ui_layer: CanvasLayer                # 血条/龟能 overlay + 标题 + 结算 (贴在 3D 之上)
 var _vfxiso := false                      # 纯特效隔离模式(VFXISO env): 黑底+无地面+藏单位立绘/UI, 只留特效对比参考
 var _render := BattleRender.new(self)   # 战斗渲染/动画显示层(每帧插值/世界变换/跑动画/覆盖/dot飘字/相机抖/技能文案·纯视觉不改战斗态)(2026-07-26 抽出)
-var _aim := BattleAim.new(self)   # 训龟大师战场瞄准子系统(圆盘/按住Q输入 + 按技能类型指示器·状态仍挂本场景)(2026-07-26 抽出还债)
 var _targeting := BattleTargeting.new(self)   # 目标选择/敌我查询(最近敌/获取目标/敌方/友方/可选目标·纯确定性查询无RNG)(2026-07-26 抽出)
 var _damage := BattleDamage.new(self)   # 战斗结算: 两伤害路(_apply_damage DoT/真伤 + _apply_damage_from 普攻/技能·§3.3)+治疗/护盾/buff/眩晕/击退/DoT机制(含crit/dodge RNG·确定性核心)(2026-07-26 抽出)
 var _ballistics := BattleBallistics.new(self)   # 弹道: 发射(_fire_*各弹种)+逐帧推进(_step_projectiles/_step_pending_shots/_step_homing_arrow)+霰弹弹珠·几何确定性无RNG(2026-07-26 抽出)
@@ -612,12 +607,7 @@ var _glacier_zones: Array = []            # 冰川带(训龟大师·用户2026-0
 
 # --- 暂停 + 战斗日志 (R2b, 用户 2026-07-11) ---
 const TutorialGuide := preload("res://scripts/scenes/TutorialGuide.gd")
-var _joystick: Control = null             # 移动端虚拟摇杆(PC 上为 null → 走键盘)
-var _spell_disc: SpellDisc = null         # 法术圆盘(点3): 钩锁钮·右下角·显CD; PC按Q, 移动端点它施法
-var _disc_aiming: bool = false            # 移动端正按住圆盘拖动瞄准中(Wild Rift 式·用户2026-07-24)
-var _disc_aim_dir: Vector2 = Vector2.ZERO # 当前瞄准方向(战场系·单位向量)
-var _aim_ind: Dictionary = {}             # R2 瞄准指示器持久节点(band/ring/land/tgt·按技能类型建·瞄准结束清)
-var _q_aiming: bool = false               # R2 PC 按住 Q 瞄准中(松开释放·指示器跟随鼠标)
+var _spell_disc: SpellDisc = null         # 法术圆盘: 右下角·**只读**(U2: 冷却 + 魔法石层数显示, 不再能点/拖施法)
 var _tutorial: Node = null                # 新手引导实例(GameState.tutorial 才建); null=不在教程里
 var _tut_place_shown: bool = false        # 教学 match1: 摆位引导只挂一次(首路), 别每路都弹
 var _surrender_panel: Control = null      # 投降确认浮层(取消/确认认输), 默认隐; 取代原暂停浮层(用户2026-07-30)
@@ -808,12 +798,15 @@ const SIM_DT := 1.0 / 60.0                       # 固定 sim 步长(交互累�
 var _sim_step_n: int = 0                         # sim 步号(每步 +1)。★「同一刻」类判定按它去重, 不按引擎帧号 —— 30fps 一帧跑两步 sim
 var _deterministic := false                      # ★Phase2b: TURTLE_SEED 设时=true → det模式每帧恰1个SIM_DT步(同种子同帧序→可复现回放/验证)
 ## ★B 阶段(确定性): 这一【引擎帧】里 sim 推进了多少秒 = 本帧跑的 sim 步数 × SIM_DT。
-##   协程(await process_frame)里推位移/计时一律读它, **不要读 `get_process_delta_time()`** ——
+##   协程(`await sim_stepped`)里推位移/计时一律读它, **不要读 `get_process_delta_time()`** ——
 ##   后者是未钳制的真实帧 delta(CLAUDE.md §3.5), 拿它推进会让结算落在随机的 sim 步上:
 ##   探针实测忍者冲刺(ninja_system.gd:131)同种子两遍, x 落点 638.98 vs 639.01, 之后整局分叉。
 ##   det 模式恒等于 SIM_DT; 交互模式随本帧步数 0/1/2… 变化, 但**总量 = Σ钳制delta**(速度不变)。
 ##   ⚠ 它永不为"战斗结束就冻住": `_sim_step` 照跑 ⇒ 靠它推进的协程不会卡死(拿 `_t` 差值做会卡)。
 var _frame_sim_dt: float = 0.0
+## ★回放 S1: 每个 sim 步末尾发一次。对局协程一律 `await` 它(不 await process_frame) ⇒ 一帧几步都逐步醒, 结果与帧率无关(20261003-跨设备回放 §4.1 ①A-b)。
+signal sim_stepped
+var _replay := ReplayRecorder.new(self)          # 回放录制/播放(scripts/systems/replay/replay_recorder.gd)
 var _sim_accum: float = 0.0                      # ★Phase4切片2: 交互游玩累加器·攒够 SIM_DT 就跑一步 sim(固定步长→帧率无关);余量给切片2b渲染插值
 var _render_alpha: float = 0.0                    # ★Phase4切片2b: 渲染插值分数 = _sim_accum/SIM_DT [0,1)。立绘在【上一步 pos↔当前 pos】间 lerp → 消固定步长在高帧率下的卡顿
 
@@ -915,7 +908,7 @@ func _ready() -> void:
 			set_process(false)
 			return
 	_world_builder._build_viewport()
-	_world_builder._build_camera(); _battle_rng.seed = GameState.note_battle_seed(_battle_rng.seed)   # ★sim 种子就是在 _build_camera 末尾播的(TURTLE_SEED 设了用它·否则 randomize) ⇒ 紧跟着登记, 并把规范化后的值回写(理由/诚实边界全在 GameState.note_battle_seed 头注)。★写在同一行是为了不顶破 arch_budget 对本文件的 8770 行冻结
+	_world_builder._build_camera(); _battle_rng.seed = GameState.note_battle_seed(_battle_rng.seed); _replay.start()   # ★sim 种子就是在 _build_camera 末尾播的(TURTLE_SEED 设了用它·否则 randomize) ⇒ 紧跟着登记, 并把规范化后的值回写(理由/诚实边界全在 GameState.note_battle_seed 头注)。★写在同一行是为了不顶破 arch_budget 对本文件的 8770 行冻结
 	_world_builder._build_environment()
 	_world_builder._build_ground()
 	_snapshot_world_permanent()   # 建场完成→记下常驻节点, 供换路兜底清场
@@ -1220,7 +1213,7 @@ func _hide_surrender_confirm() -> void:
 ##   (单路见 _check_over: 7353-7357; 双路见 dual_lane_flow._dl_finish: 726-733)。
 ##   双路还要额外置 _dl_state="done", 所以双路直接走 _dl_finish(false) 复用它, 别自己拼。
 func _do_surrender() -> void:
-	if _settled or _over:
+	if _settled or _over or not _replay.allow_input("surrender"):   # 回放: 录下步号 / 播放时只认记录里那一下
 		return
 	_hide_surrender_confirm()
 	_log("[color=#ff6b6b]🏳 认输 —— 本场判负[/color]")
@@ -1690,8 +1683,8 @@ func _wait_sim(secs: float) -> void:
 	const _WAIT_EPS := 1.0e-6
 	var t_end: float = _t + secs - _WAIT_EPS
 	var guard: int = 0
-	while _t < t_end and guard < 6000 and is_instance_valid(self) and is_inside_tree():   # 离场后 get_tree() 为空(台账 S8)
-		await get_tree().process_frame
+	while _t < t_end and guard < 6000 and is_instance_valid(self) and is_inside_tree():   # 离场后不再有 sim 步 ⇒ 不再醒(台账 S8: 原来醒来就撞 get_tree()==null)
+		await sim_stepped
 		guard += 1
 
 func _my_trainer():
@@ -1701,8 +1694,7 @@ func _my_trainer():
 	return null
 
 
-## 按方向量移动。抽出来是为了【可测】—— 无头跑不了真键盘/真手指, 但能直接喂向量。
-## dir 长度 0..1(摇杆可以是半推), 所以速度是 130 × 拉杆比例。
+## 摆位阶段能不能拖这个单位: 只拖我方(left)非蛋非召唤非训龟大师(用户2026-07-23 点6)。
 func _can_place_drag(hit) -> bool:
 	return hit != null and str(hit.get("side", "")) == "left" \
 		and not hit.get("_isEgg", false) and not hit.get("is_summon", false) \
@@ -1714,8 +1706,7 @@ func _cast_fury_potion(trainer: Dictionary, aim: Vector2) -> bool:
 	if float(trainer.get("_active_cd", 0.0)) > 0.0:
 		return false
 	trainer["_active_cd"] = float(TRAINER_SKILLS["fury_potion"]["cd"])
-	var pt: Vector2 = trainer["pos"] + aim.limit_length(700.0)          # 落点(射程700内)
-	trainer["_cast_lock_until"] = _t + HOOK_WINDUP                      # 丢药水时短暂站定
+	var pt: Vector2 = trainer["pos"] + aim.limit_length(float(TRAINER_SKILLS["fury_potion"]["range"]))   # 落点(射程内·U2 2000)
 	var tt: Dictionary = trainer
 	var throw_t: float = HOOK_WINDUP + trainer["pos"].distance_to(pt) / 800.0   # 前摇 + 抛出飞行
 	_pending_shots.append({"delay": throw_t, "src": trainer, "fn": func() -> void:
@@ -1754,7 +1745,6 @@ func _cast_glacier(trainer: Dictionary, aim: Vector2) -> bool:
 		return false
 	trainer["_active_cd"] = float(TRAINER_SKILLS["glacier"]["cd"])
 	var dir: Vector2 = aim.normalized() if aim.length() > 0.01 else Vector2.RIGHT
-	trainer["_cast_lock_until"] = _t + HOOK_WINDUP
 	_glacier_zones.append({
 		"from": trainer["pos"], "dir": dir, "len": GLACIER_LEN, "width": GLACIER_WIDTH,
 		"until": _t + GLACIER_SEC, "side": str(trainer.get("side", "")),
@@ -1770,7 +1760,7 @@ func _valid_active(sid) -> String:
 	return s if TRAINER_SKILLS.has(s) else "hook"
 
 
-## 法术圆盘(点3): 右下角钩锁钮。PC 端主要靠按 Q(朝鼠标), 圆盘作冷却指示; 移动端点它施法(自动瞄最近敌)。
+## 训龟大师占位立绘(没有真图时用)。
 func _make_trainer_placeholder_tex() -> ImageTexture:
 	# ★尺寸/比例: 游戏按【帧高】把立绘归一到 TARGET_BODY_H(2米), 所以本体必须【填满整帧】,
 	#   否则会被压成细条。初版 24×48 而身子只占中间 14px 宽 → 屏幕上只有 15×44 的一根竖条
@@ -2161,7 +2151,6 @@ func _process(delta: float) -> void:
 	# ★确定性模式(TURTLE_SEED 设): 用固定步长 SIM_DT → 同种子+同帧序=可复现回放/验证(不受帧率抖动影响)。
 	#   交互游玩(无种子): 钳制真实delta防死亡螺旋(2026-07-18)—— 手感/行为与原来完全一致·零风险。
 	var rd: float = minf(delta, 0.1)   # 钳制真实帧delta(防hitch·2026-07-18): 给 INPUT/render; sim 走固定步长累加器
-	_trainer_sys._trainer_input_tick(rd)   # INPUT(每帧读一次): 训龟大师 PC键盘/移动端摇杆(用户2026-07-22)
 	if _audit and _t >= _audit_next:
 		_audit_next = _t + 1.0
 		_audit_tick()
@@ -2185,7 +2174,7 @@ func _process(delta: float) -> void:
 		_frame_sim_dt = SIM_DT   # B 阶段: det 模式恒 1 步/帧
 		_render_alpha = 0.0   # det/headless: 无渲染·不插值
 	else:
-		_advance_sim_accum(rd)   # ★切片2: 交互累加器抽成可测种子(verify_interactive_determinism 直接驱动·证帧率无关)
+		_advance_sim_accum(rd * _replay.time_mult())   # ★切片2: 交互累加器(verify_interactive_determinism 直接驱动·证帧率无关); 回放摆位期快进
 	# 演出每帧一次(真实时间·立绘动画/相机随真实帧走→平滑)。frozen/in_ts 用 sim 后最新态。
 	var r_frozen: bool = _hitstop > 0.0
 	var r_in_ts: bool = not _timestop._ts_active.is_empty()
@@ -2210,6 +2199,7 @@ func _advance_sim_accum(rd: float) -> void:
 
 ## Phase4: 纯模拟推进(决定战斗结果·可被累加器按固定步长跑 N 次/帧)。frozen/in_ts 由调用方在 sim 前捕获传入。
 func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
+	if _replay.pre_step(): frozen = _hitstop > 0.0; in_ts = not _timestop._ts_active.is_empty()   # 回放: 校验点 + 按步号重放输入; 重放了输入(开打会顿帧)就像录制时那样在步前重新取 frozen/in_ts
 	_sim_step_n += 1
 	## ★B 阶段: 这里也要发布一次 —— 调试台/门禁有**直接调 `_sim_step()` 推 sim** 的(不经 `_process`),
 	##   只在 `_process` 里发布的话它们那条路上 `_frame_sim_dt` 恒为 0 ⇒ 靠它推进的协程永远不动。
@@ -2311,7 +2301,8 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 			_gold_vfx.tick(dt)                       # 金弹演出自推进(不用 tween, §3.5)
 			_incense_vfx.tick(dt)                    # 093 香火石演出自推进(同上)
 			_check_end()
-	_step_sim_tweens(dt)   # B 阶段: det 模式把演出 tween 从真实帧 delta 搬到 sim 固定步长(见函数头注)
+	_step_sim_tweens(dt)   # 演出 tween 按 sim 固定步长喂(两种模式都是; 见函数头注)
+	sim_stepped.emit()
 
 ## Phase4: 纯演出(立绘帧动画/相机/overlay·每帧一次)。frozen/in_ts 与 _sim_step 用同一份(sim前捕获)。
 const _TS_TIMER_FIELDS := [
@@ -2374,19 +2365,15 @@ const _TS_TIMER_FIELDS := [
 ## ★时停期间不喂: 非 det 模式下 `_ts_begin_freeze` 会把在跑的 tween 全 `pause()`,
 ##   det 模式下它们本来就是 paused, 那条收不到 ⇒ 在这里对齐(时停里整体不推进)。
 func _step_sim_tweens(dt: float) -> void:
-	if not _deterministic:
-		return
-	if not _timestop._ts_active.is_empty():
-		return
+	var ts_on: bool = not _timestop._ts_active.is_empty()
 	for tw in _sim_tweens.duplicate():   # duplicate: 回调里可能再建 tween 并 append, 边遍历边改会漏/错
-		if tw != null and tw.is_valid():
+		if tw != null and tw.is_valid() and not (ts_on and tw in _timestop._ts_frozen_tweens):
 			tw.custom_step(dt)
 
 # VFX tween 注册(时停暂停非active产生的用). 见 create_tween→_reg_tween 替换.
 func _reg_tween() -> Tween:
 	var t := create_tween()
-	if _deterministic:
-		t.pause()   # B 阶段: det 模式不让 SceneTree 按真实 delta 推它, 改由 _step_sim_tweens 按 sim 步喂
+	t.pause()   # 不让 SceneTree 按真实 delta 推它, 改由 _step_sim_tweens 按 sim 步喂(回放 S1: 交互模式也一样)
 	_sim_tweens.append(t)
 	if _sim_tweens.size() > 512:
 		_sim_tweens = _sim_tweens.filter(func(x): return x != null and x.is_valid())
@@ -3263,6 +3250,7 @@ func _stress_start() -> void:
 ## ⚠ 这条只影响 STRESS 无头压测的【退出阶段】，不影响对局逻辑 —— 但它会让人误判成
 ##   "我刚改的东西把压测跑崩了"，所以补掉。
 func _exit_tree() -> void:
+	if _replay.is_playing(): ReplayRecorder.end_play()   # 回放: 不论从哪条路离场, GameState 都还原成播之前那一份
 	if _wd != null:
 		_stress = false
 		_wd_on = false                       # 让看门狗的 while 自己退出(它每秒醒一次)
@@ -3857,7 +3845,7 @@ func _bear_shockwave(u: Dictionary, tgt: Dictionary, _si: int) -> void:   # 大�
 	# 前摇: 起身高高举起(加速t²)+后仰 (0.4s) —— 纯姿势, 留在 process
 	var rt := 0.0
 	while rt < 0.4 and u.get("alive", false):
-		await get_tree().process_frame
+		await sim_stepped
 		rt += _frame_sim_dt
 		var a: float = rt / 0.4
 		u["_bear_voff"] = Vector3(0.0, a * a * 0.95, 0.0)   # 起身: 直上举高(无横移=不左右滑)
@@ -3866,7 +3854,7 @@ func _bear_shockwave(u: Dictionary, tgt: Dictionary, _si: int) -> void:   # 大�
 	# 猛砸下: 从高处加速砸到地下 (0.12s)
 	var st := 0.0
 	while st < 0.12 and u.get("alive", false):
-		await get_tree().process_frame
+		await sim_stepped
 		st += _frame_sim_dt
 		u["_bear_voff"] = Vector3(0.0, lerpf(0.95, -0.22, st / 0.12), 0.0)   # 猛砸下: 直下(无横移)
 	# === 砸地瞬间: 落地压扁 + 大震屏 + 顿帧 + 尘, 冲击波起 ===
@@ -4260,7 +4248,7 @@ func _summon_walking_bear(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   #
 	var guard := 0.0
 	var wt := 0.0
 	while is_instance_valid(bear) and tgt != null and tgt.get("alive", false):
-		await get_tree().process_frame
+		await sim_stepped
 		var dt := _frame_sim_dt
 		guard += dt; wt += dt
 		bear.frame = int(wt * 10.0) % 7             # 走路循环 10fps
@@ -4282,7 +4270,7 @@ func _summon_walking_bear(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   #
 		var kt := 0.0
 		var hit := false
 		while kt < 0.34 and is_instance_valid(bear):
-			await get_tree().process_frame
+			await sim_stepped
 			kt += _frame_sim_dt
 			bear.frame = mini(4, int(kt / 0.06))
 			if not hit and bear.frame >= 3:
@@ -4478,7 +4466,7 @@ func _mitigate_incoming(u: Dictionary, dmg: float, raw: bool, is_self: bool = fa
 	if _t < float(u.get("_tame_invuln_until", 0.0)):
 		return 0.0                                   # ★驯服重生演出期(2.5秒)无敌(用户 2026-07-28 B7)
 	if u.get("is_trainer", false):
-		return minf(d, 1.0)
+		return 0.0                                   # ★U2: 大师不可被打、没有血量 —— 任何伤害(含真伤)一律为 0
 	# ★"受到的任何攻击(含真实伤害)降为 1" 的通用闸(用户2026-08-01 给亡灵骷髅 032 用)。
 	#   与大师同一条口径、同一个位置 —— 放这儿是因为本函数是【两条伤害路径唯一的共用收口】,
 	#   在别处拦只会拦住其中一条(CLAUDE.md §3.3 那类"只在某种伤害下出现的诡异行为")。
@@ -4526,7 +4514,7 @@ func _dash_to(u: Dictionary, tgt: Dictionary, gap: float) -> void:
 	u["pos"] = ArenaShape.clamp_in(u["pos"], ARENA)
 
 func _kill(u: Dictionary, killer = null) -> void:
-	if u.get("_dead_done", false):
+	if u.get("_dead_done", false) or u.get("is_trainer", false):   # ★U2: 大师没有血量 ⇒ 任何直接处决也杀不死它
 		return   # 死亡已完整处理过→不重入(防死亡链重入无限递归卡死·用户2026-07-19卡死猎手: 053霰弹击杀 egg/minion 冻死)
 	# 人头归属改写(用户2026-07-22): 被侵入者打死的人算侵入它的赛博龟, 赛博自己已死也照算。
 	#   放在函数最前 → 后面所有用 killer 的地方(击杀数/on-kill装备/日志)一次性全对。
@@ -5585,7 +5573,7 @@ func _sk_basic_chiwave(u: Dictionary, tgt) -> void:            # 小龟·龟派�
 		u["no_move"] = true; u["no_basic"] = true
 		var _del: float = 0.0
 		while _del < _ddur and u.get("alive", false) and is_inside_tree():
-			await get_tree().process_frame
+			await sim_stepped
 			_del += _frame_sim_dt
 			u["pos"] = _ds.lerp(_bp, clampf(_del / _ddur, 0.0, 1.0))
 		u["pos"] = _bp
@@ -5721,7 +5709,7 @@ func _basic_slam_run(u: Dictionary, tgt: Dictionary, dir: Vector2, u_start: Vect
 	var flipped := false
 	var p := 0.0
 	while el < total and u.get("alive", false) and tgt.get("alive", false) and is_inside_tree():
-		await get_tree().process_frame
+		await sim_stepped
 		el += _frame_sim_dt
 		if el < T_GRAB:                                     # ① 擒住: 敌拉到龟身前
 			p = el / T_GRAB
@@ -7513,6 +7501,7 @@ func _check_end() -> void:
 
 # 赛季结算 (1:1 搬自 2D RealtimeBattleScene._settle_season): 闭环把胜负喂回 GameState 养成
 func _settle_season(won: bool) -> void:
+	if _replay.on_settle(won): _had_season = false; return   # 回放: 录制那一局在此落盘; 播放时一切结算副作用跳过(V5)
 	var gs = get_node_or_null("/root/GameState")
 	# ★新手教程沙盒(用户2026-07-23「不获得任何奖励」): 不喂赛季。放最前面 —— 下方 season_total_battles++/coins+= 全在这行之后, 一个都到不了。
 	if gs != null and bool(gs.get("tutorial_active")):
@@ -7927,12 +7916,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			_map_ed_paint(event.position)
 		elif event is InputEventMouseMotion and (event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
 			_map_ed_paint(event.position)
-		return
-	if event is InputEventKey and event.keycode == KEY_Q and not event.echo:
-		if event.pressed:
-			_aim._begin_q_aim()     # 按住 Q → 进入瞄准(指示器跟随鼠标·仅有主动技时·用户2026-07-26)
-		else:
-			_aim._end_q_aim_and_cast()   # 松开 Q → 朝鼠标方向释放
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_R:

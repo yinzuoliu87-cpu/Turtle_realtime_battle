@@ -10,12 +10,12 @@ const TopBar = preload("res://scripts/util/top_bar.gd")
 ## 全部技能池(被动 + 主动·**N 选 1**, N 就是本数组长度)。icon 供卡片显示; kind 显示"被动/主动"。
 const SKILLS := [
 	{"id": "magic_stone", "kind": "被动", "name": "魔法石", "icon": "res://assets/sprites/vfx/magic-stone-icon.png", "desc": "普攻额外造成目标最大生命 2% 的魔法伤害。每次出手让自己攻速 +3%，整场不断累积、没有上限。层数攒到 10、25、50 时，身上会亮起共鸣。"},
-	{"id": "hook", "kind": "主动", "name": "钩锁", "icon": "res://assets/sprites/vfx/hook-skill-icon.png", "desc": "朝指定方向甩出钩索，勾住 600 码内第一个敌人：眩晕 4 秒，一路拖到大师身边，期间它受到的伤害 +25%。冷却 20 秒；钩空了只冷却 10 秒。"},
-	{"id": "fury_potion", "kind": "主动", "name": "怒火药水", "icon": "res://assets/sprites/vfx/fury-potion-icon.png", "desc": "朝 700 码内选一点丢出药水。落点 300 码内的友军获得 5 秒狂热：攻速 +30%，移速 +25%，龟能充能 +25%。冷却 16 秒。"},
-	{"id": "whistle", "kind": "主动", "name": "口哨", "icon": "res://assets/sprites/vfx/whistle-icon.png", "desc": "吹哨唤来一种帮手，三者随机。护盾：全体友军获得 700 点临时生命，5 秒后逐渐消退。灵龟：召出一只灵体小龟，蓄力后打出贯穿 2000 码的气波，命中的敌人受到 100 点、加目标最大生命 15% 的真实伤害、被击飞，破甲 30% 持续 5 秒。狂暴：全体友军 4 秒内攻击力 +20%、每次出手 +20 点吸血，且不会死亡。冷却 14 秒。"},
-	{"id": "glacier", "kind": "主动", "name": "冰川", "icon": "res://assets/sprites/vfx/glacier-icon.png", "desc": "朝指定方向铺出一条 500 码长的冰川，留存 6 秒。站在冰面上的敌人移速 -40%，受到的伤害 +20%。冷却 17 秒。"},
-	{"id": "hunt_order", "kind": "主动", "name": "猎龟令", "icon": "res://assets/sprites/vfx/hunt-order-icon.png", "desc": "锁定 600 码内一个敌人，持续 15 秒：它受到的伤害 +15%，而它周围 400 码内的友军会优先揍它 —— 这个范围跟着它走。冷却 30 秒；没锁中只冷却 15 秒。"},
-	{"id": "tame", "kind": "主动", "name": "驯服", "icon": "res://assets/sprites/vfx/tame-icon.png", "desc": "标记 600 码内一个敌人。它下次死亡时不会真死，而是以 30% 最大生命复活、倒向我方，复活后 2.5 秒无敌，此后每秒损失 2% 最大生命。驯服来的龟能一直跟你打到决胜。冷却 60 秒；没标中只冷却 30 秒。"},
+	{"id": "hook", "kind": "主动", "name": "钩锁", "icon": "res://assets/sprites/vfx/hook-skill-icon.png", "desc": "冷却一好就自动朝最近的敌人甩出钩索，勾住 2000 码内第一个敌人：眩晕 4 秒，一路拖到大师身边，期间它受到的伤害 +25%。冷却 20 秒；钩空了只冷却 10 秒。"},
+	{"id": "fury_potion", "kind": "主动", "name": "怒火药水", "icon": "res://assets/sprites/vfx/fury-potion-icon.png", "desc": "冷却一好就自动朝最近的敌人丢出药水(射程 2000 码)。落点 300 码内的友军获得 5 秒狂热：攻速 +30%，移速 +25%，龟能充能 +25%。冷却 16 秒。"},
+	{"id": "whistle", "kind": "主动", "name": "口哨", "icon": "res://assets/sprites/vfx/whistle-icon.png", "desc": "冷却一好就自动吹哨，唤来一种帮手，三者随机。护盾：全体友军获得 700 点临时生命，5 秒后逐渐消退。灵龟：召出一只灵体小龟，蓄力后打出贯穿 2000 码的气波，命中的敌人受到 100 点、加目标最大生命 15% 的真实伤害、被击飞，破甲 30% 持续 5 秒。狂暴：全体友军 4 秒内攻击力 +20%、每次出手 +20 点吸血，且不会死亡。冷却 14 秒。"},
+	{"id": "glacier", "kind": "主动", "name": "冰川", "icon": "res://assets/sprites/vfx/glacier-icon.png", "desc": "冷却一好就自动朝最近的敌人铺出一条 2000 码长的冰川，留存 6 秒。站在冰面上的敌人移速 -40%，受到的伤害 +20%。冷却 17 秒。"},
+	{"id": "hunt_order", "kind": "主动", "name": "猎龟令", "icon": "res://assets/sprites/vfx/hunt-order-icon.png", "desc": "冷却一好就自动锁定 2000 码内最近的敌人，持续 15 秒：它受到的伤害 +15%，而它周围 400 码内的友军会优先揍它 —— 这个范围跟着它走。冷却 30 秒；没锁中只冷却 15 秒。"},
+	{"id": "tame", "kind": "主动", "name": "驯服", "icon": "res://assets/sprites/vfx/tame-icon.png", "desc": "冷却一好就自动标记 2000 码内最近的敌人。它下次死亡时不会真死，而是以 30% 最大生命复活、倒向我方，复活后 2.5 秒无敌，此后每秒损失 2% 最大生命。驯服来的龟能一直跟你打到决胜。冷却 60 秒；没标中只冷却 30 秒。"},
 ]
 ## 三形象(2026-07-26 定稿·PixelLab)。sprite = 南向立绘, 用于选择卡缩略 + 大预览。
 const APPEARANCES := [

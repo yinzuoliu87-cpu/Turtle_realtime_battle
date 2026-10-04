@@ -409,8 +409,10 @@ func _t_holo_pulse_capture() -> void:
 	var souls: Array = got.get("souls", [])
 	_ok("★分母: 亡灵之魂真的建出来了(%d 缕)" % souls.size(), souls.size() == 1)
 	var running := 0
+	## ★2026-10-04(回放 S1): sim tween 现在**一律 paused**、由 `_step_sim_tweens` 按 sim 步喂 ⇒
+	##   `is_running()` 恒假, 拿它数等于数 0。改数「还活着(没放完)」的。
 	for tw in _s._sim_tweens:
-		if tw != null and tw.is_valid() and tw.is_running():
+		if tw != null and tw.is_valid():
 			running += 1
 	## ★宿主【立刻】全部释放: 数据块要飞 0.3 秒、魂要飞 0.45 秒, 此刻 tween 都还在跑
 	fin.vfx_holo.end_plant(hx)
@@ -423,6 +425,7 @@ func _t_holo_pulse_capture() -> void:
 		running >= 3 and not is_instance_valid(stream))
 	var t1 := Time.get_ticks_msec()
 	while Time.get_ticks_msec() - t1 < 700:
+		_s._sim_step(_s.SIM_DT, false, false)   # sim tween 只吃 sim 步(回放 S1) ⇒ 推 sim 才会跑过宿主释放的时刻
 		await get_tree().process_frame
 	OS.remove_logger(tap)
 	_ok("★分母: Logger 真的接得到引擎输出(自检警告 %d 条)" % tap.probe, tap.probe >= 1)

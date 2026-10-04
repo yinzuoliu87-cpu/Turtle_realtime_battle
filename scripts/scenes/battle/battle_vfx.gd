@@ -335,6 +335,9 @@ func _float_text(pos2d: Vector2, text: String, col: Color, is_crit: bool = false
 		var tw = battle.create_tween()
 		tw.tween_method(battle._dmg_float_step.bind(fly, base_pos, jump_x, jump_y, hold_end, hold_scale, pop_size, total_dur, fade_start), 0.0, total_dur, total_dur)
 		tw.tween_callback(fly.queue_free)
+		## ★换路兜底清场(UI_TRANSIENT_GROUP)会提前释放 fly, 而这条 tween 绑在 battle 上照跑 ⇒
+		##   下一帧 `_dmg_float_step(…, fly 已释放, …)` 报 "Cannot convert argument 2"。fly 离树就把它停掉。
+		fly.tree_exiting.connect(tw.kill)
 	else:
 		# 治疗/护盾/名: pop1.2 → 缓升50px(sine) → 1.5s淡出 (1:1 PoC label路径)
 		var lsy = base_pos.y - 15.0

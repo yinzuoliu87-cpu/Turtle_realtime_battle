@@ -35,11 +35,6 @@ func _update_spell_disc() -> void:
 	var stacks: int = int(u.get("_ms_stacks", 0)) if str(u.get("_tr_passive", "")) == "magic_stone" else 0
 	battle._spell_disc.set_stacks(stacks)
 	battle._spell_disc.set_tier(battle._trainer_sys._ms_tier(stacks))   # 角标环色随阈值档位(紫→亮紫→金)
-	battle._aim._update_q_aim()             # PC 按住 Q 瞄准: 刷新方向 + 亮 _disc_aiming
-	if battle._disc_aiming:
-		battle._aim._draw_aim_indicator()   # 拖动/按住Q 瞄准中: 战场上画方向指示器
-	elif not battle._aim_ind.is_empty():
-		battle._aim._clear_aim_indicator()  # 瞄准结束: 清掉指示器节点
 
 ## 移动端【按住圆盘拖动瞄准】回调(Wild Rift 式·用户2026-07-24)。phase: update=拖动中 / cast=松手施法 / cancel=取消。
 ## screen_dir=圆盘上拖动的屏幕方向; 2.5D 俯视下近似当作战场方向。

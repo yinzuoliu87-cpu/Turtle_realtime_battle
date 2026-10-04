@@ -17,12 +17,12 @@ const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 
 # ── 需求字面值 ──
 const WANT_HUNT_CD := 30.0
-const WANT_HUNT_RANGE := 600.0
+const WANT_HUNT_RANGE := 2000.0   # ★U2/D1(用户 2026-09-16「射程全部提升到 2000」): 原需求字面 600
 const WANT_HUNT_SEC := 15.0
 const WANT_HUNT_TAUNT_R := 400.0
 const WANT_HUNT_VULN := 1.15        # 受到 15% 额外伤害
 const WANT_TAME_CD := 60.0
-const WANT_TAME_RANGE := 600.0
+const WANT_TAME_RANGE := 2000.0   # ★U2/D1: 原需求字面 600
 const WANT_TAME_REVIVE := 0.30      # 30% 最大生命重生
 const WANT_TAME_INVULN := 2.5       # 重生演出 2.5 秒
 const WANT_TAME_DECAY := 0.02       # 每秒 2% 最大生命
