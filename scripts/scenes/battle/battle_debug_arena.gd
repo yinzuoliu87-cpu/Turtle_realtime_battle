@@ -429,8 +429,26 @@ func _edit_open_equip_grid() -> void:
 func _edit_select_unit(u) -> void:
 	battle._edit_sel_unit = u
 	_edit_refresh_equip_panel()
+	## ★2026-10-04「调试场现在根本选不到装备」: 选中单位后配装行加在左面板滚动区最底下, 屏幕上看不到它在哪 ⇒
+	##   选中那一刻把滚动区滚到配装区, 「➕ 加装备」直接露出来。
+	if u != null:
+		_scroll_to_equip_row()
 	if u != null:
 		_edit_set_status("选中 %s · 加装备/删除" % str(battle._data_by_id.get(u.get("id", ""), {}).get("name", "")))
+
+## 把左面板滚到配装区最底(「➕ 加装备」那一行)。等两帧: 容器重排本身是延迟的, 当帧滚会滚到旧高度。
+func _scroll_to_equip_row() -> void:
+	var sc = battle._edit_body_sc
+	if sc == null or not is_instance_valid(sc):
+		return
+	await battle.get_tree().process_frame
+	await battle.get_tree().process_frame
+	if not is_instance_valid(sc) or battle._edit_equip_box == null or not is_instance_valid(battle._edit_equip_box):
+		return
+	var kids: Array = battle._edit_equip_box.get_children()
+	if not kids.is_empty():
+		sc.ensure_control_visible(kids[kids.size() - 1])
+
 
 func _edit_refresh_equip_panel() -> void:
 	if battle._edit_equip_box == null: return

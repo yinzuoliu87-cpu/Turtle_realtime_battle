@@ -1450,6 +1450,10 @@ func _stats_column(header: String, units: Array, hc: Color) -> Control:
 	return SettleScreenS.team_grid(battle, self, units, header, hc)
 
 
+## 调试场底部常驻笔刷栏的高度(不含安全区)。左侧面板要据此给它让位, 两处共用这一个数。
+const BRUSH_BAR_H := 94.0
+
+
 func _build_edit_palette() -> void:
 	var ids: Array = battle.STATS.keys()
 	if not ids.is_empty() and not ids.has(battle._edit_pick_id):
@@ -1489,7 +1493,10 @@ func _build_edit_palette() -> void:
 	_body_sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	var _evp: Vector2 = Vector2(battle.get_viewport().get_visible_rect().size)
 	var _em: Vector4 = SafeArea.margins(_evp, 18.0)
-	_body_sc.custom_minimum_size = Vector2(0, clampf(_evp.y - _em.y - _em.w - 130.0, 200.0, 640.0))   # 体高上限=可用高−标题/位置留白 → 面板永远在屏内
+	## ★★2026-10-04 用户「调试场现在根本选不到装备」: 原来只减了标题/位置留白(130), 没减底部常驻笔刷栏(94+安全区) ⇒
+	##   720 高时面板底边压进笔刷栏约 60px, 选中单位后「➕ 加装备」那一行正好被笔刷栏盖住、点不到(探针: 那一点命中的是 DebugBrushBar)。
+	##   ⇒ 体高上限再扣掉笔刷栏高度 + 间隙, 面板底边永远停在笔刷栏上方; 内容多了就在面板里滚。
+	_body_sc.custom_minimum_size = Vector2(0, clampf(_evp.y - _em.y - _em.w - 130.0 - BRUSH_BAR_H - 12.0, 160.0, 640.0))
 	vb.add_child(_body_sc)
 	battle._edit_body_sc = _body_sc
 	battle._edit_body = VBoxContainer.new(); battle._edit_body.add_theme_constant_override("separation", 10); _body_sc.add_child(battle._edit_body)
@@ -1573,7 +1580,7 @@ func _build_brush_bar() -> void:
 	bar.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	var _bsb: float = SafeArea.margins(Vector2(battle.get_viewport().get_visible_rect().size), 10.0).w   # 安全区下边距(手机 home 手势条区·用户2026-07-27:「底部怎么滑·横滑撞手势条」)
 	bar.offset_bottom = -_bsb          # 整条抬到安全区内 → 横滑不再撞底部 home 手势条
-	bar.offset_top = -94.0 - _bsb      # 顶边随之上移
+	bar.offset_top = -BRUSH_BAR_H - _bsb      # 顶边随之上移
 	battle._ui_layer.add_child(bar)
 	battle._edit_brush_bar = bar
 	var root = VBoxContainer.new(); root.add_theme_constant_override("separation", 3); bar.add_child(root)
