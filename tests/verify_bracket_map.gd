@@ -83,6 +83,13 @@ func _t_opponent_gate() -> void:
 	_ok("⑥ ★★★只给我自己那一场去问服务端", _map.should_fetch_opponent(1, 1))
 	_ok("⑥ ★★★**替别人点不许去问** —— 每人每轮只有一次机会, 烧掉就没了",
 		not _map.should_fetch_opponent(1, 0))
+	## ★★2026-10-04 周日实操: 打完、封存期间同一场能无限重打 ⇒ 每局再发一次轮次币
+	var _keep_pr: Dictionary = (GameState.finals_pending_reveal as Dictionary).duplicate(true)
+	GameState.finals_pending_reveal = {"round": 1, "match": 1}
+	_ok("⑥ ★★★打完了、等揭晓的那一场不许再开(否则无限重打刷币)", not _map.should_fetch_opponent(1, 1))
+	GameState.finals_pending_reveal = {"round": 1, "match": 0}
+	_ok("⑥ 对照: 待揭晓的是别的场 ⇒ 我这一场照常能开", _map.should_fetch_opponent(1, 1))
+	GameState.finals_pending_reveal = _keep_pr
 
 	## 已翻面的场次不该问(服务端也只认当前轮)
 	await _mk({"size": 4, "round": 2, "me": 1, "names": NAMES.slice(0, 4),

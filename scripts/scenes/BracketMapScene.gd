@@ -898,7 +898,21 @@ func should_fetch_opponent(r: int, m: int) -> bool:
 		return false                  # 已翻面的场次不用问，轮空/未开打也问不出东西
 	if r != int(cur().get("round", 1)):
 		return false                  # 服务端只认当前轮，问了也是 wrong_round
+	## ★★2026-10-04 周日实操: 打完自己这一场、结果封存期间(要等下一轮开播才翻面),
+	##   这一格仍是 ST_LIVE、照样能点 ⇒ 同一场能无限重打, 每打一局都再发一次轮次币 + 经验
+	##   (实测 4 分钟重开十几次, 一个号刷到 904 币; 服务端 finals_report 只认第一次, 胜负改不了, 漏洞在钱)。
+	##   判据 = 「待揭晓」那一场 —— 它在上报那一刻写下、揭晓时清掉, 正好覆盖封存期。
+	if played_awaiting_reveal(r, m):
+		return false
 	return my_opponent_seed(r, m) >= 0
+
+
+## 这一场我已经打完、正在等揭晓。
+func played_awaiting_reveal(r: int, m: int) -> bool:
+	var p = GameState.get("finals_pending_reveal") if GameState != null else null
+	if not (p is Dictionary) or (p as Dictionary).is_empty():
+		return false
+	return int(p.get("round", -1)) == r and int(p.get("match", -1)) == m
 
 
 ## 这一侧是不是我。
