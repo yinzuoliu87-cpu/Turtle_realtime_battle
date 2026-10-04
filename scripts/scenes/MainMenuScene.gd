@@ -16,6 +16,7 @@ const _P2C := preload("res://scripts/gamedata/phase2_config.gd")
 ## D-1: 服务状态三态(没配 / 正常 / 维护中 / 连不上)。维护态要盖掉赛程显示, 见 `_week_close_block`。
 const _SB := preload("res://scripts/net/supabase.gd")
 const _BE := preload("res://scripts/net/backend.gd")
+const _RU := preload("res://scripts/systems/replay/replay_uploader.gd")
 ## 拆墙之后那句非阻塞提示要把人送到【绑定屏】去, 而那一屏的代码在设置页那侧
 ## ⇒ 跨场景传一个 static 布尔 `open_bind_on_entry`。
 ## ★不在这边再建一份绑定 UI: 抄一份就要把昵称那一行和验证码状态机抄第二遍
@@ -166,6 +167,8 @@ func _ready() -> void:
 	##   「那一刻可能没网, 而那一刻只有一次」。漏报会让那一场只能靠 960 秒宽限兜,
 	##   **可能把错的人送进下一轮**(2026-09-27)。
 	_BE.retry_finals_report()
+	## 回放 S2: 没回读确认传上去的周六录像补传一次(同上一句同一个理由; 判据全在 ReplayUploader 里)。
+	_RU.retry()
 	## ★★★ 2026-09-29 【墙拆了】—— 用户「那就不用必须绑定吧」推翻了他 2026-09-24
 	##   那句「直接改为必须绑定账号吧」。`login_wall_on()` 现在**恒假**
 	##   (`phase2_config.WALL_BLOCKS = false`) ⇒ 下面这三行对玩家永远不成立,

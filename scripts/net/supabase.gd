@@ -1932,3 +1932,87 @@ func enter_finals(body: Dictionary) -> void:
 					gs2.save()
 			_bye(),
 		"Content-Type: application/json")
+
+
+# ═════════════════════════════════════════════════════════════
+# 跨设备回放 S2(2026-10-04): 一局录像写进 `matches`, **回读确认**才算传成
+#   方案书 docs/plans/20261003-跨设备回放.md §4.6 / V7。队列与重试在
+#   `scripts/systems/replay/replay_uploader.gd`; 这里只管「发 + 回读」这一次。
+# ═════════════════════════════════════════════════════════════
+
+## `match_id` 只认 uuid 的形状 —— 它要拼进回读的查询串, 别的字符一律不放行。
+static func is_uuid(s: String) -> bool:
+	var re := RegEx.new()
+	re.compile("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+	return re.search(s) != null
+
+
+## 纯函数: 回读那一行要问的查询串。★连 `replay` 一起取回来 —— 判据是「服务端那一份
+##   与我发的逐字相同」, 不只是「有这么一行」(被截断的录像回读得到, 但播不了)。
+static func match_readback_query(match_id: String) -> String:
+	if not is_uuid(match_id):
+		return ""
+	return "match_id=eq.%s&select=match_id,replay" % match_id
+
+
+## 纯函数: 回读回包 → 这一行**真的在服务端、且录像逐字相同**吗。
+## ★★这是销单的唯一判据(memory fb-200-ok-is-not-it-happened): 插入那一下回 201 不算 ——
+##   RLS 拒掉、`return=minimal` 吞掉、代理改写 body(memory fb-local-proxy-corrupts-post-body)
+##   都可能「回 2xx 而那一行不在」。
+static func match_confirmed(ok: bool, code: int, body: String, match_id: String, replay_b64: String) -> bool:
+	if not ok or code < 200 or code >= 300 or match_id == "" or replay_b64 == "":
+		return false
+	var j := JSON.new()
+	if j.parse(body) != OK or not (j.data is Array):
+		return false
+	for r in (j.data as Array):
+		if r is Dictionary and str((r as Dictionary).get("match_id", "")) == match_id \
+				and str((r as Dictionary).get("replay", "")) == replay_b64:
+			return true
+	return false
+
+
+## 发一行录像。返回 false = 连节点都没建(没配后端 / 行不完整), 调用方别把它记成「在路上」。
+## `done.call(match_id: String, confirmed: bool)` —— **每一条走掉的路都会回调一次**。
+static func upload_match_async(row: Dictionary, done: Callable) -> bool:
+	if not enabled() or not is_uuid(str(row.get("match_id", ""))) or str(row.get("replay", "")) == "":
+		return false
+	var n = _spawn()
+	if n == null:
+		return false
+	n.upload_match(row, done)
+	return true
+
+
+func upload_match(row: Dictionary, done: Callable) -> void:
+	var mid := str(row.get("match_id", ""))
+	## ★★没有**这个账号的**令牌就不发: 退回公共匿名钥匙去写只会被 RLS 拒(401 / 42501),
+	##   而且那是「看起来发过了」的一次空转(见 `_await_token` 头注, 2026-10-04 查实)。
+	if not enabled() or not await _await_token():
+		print("[SupabaseNet] 录像没传: 拿不到登录令牌(matches)")
+		done.call(mid, false)
+		_bye()
+		return
+	var gs = _gs()
+	var acc: String = str(gs.account_id) if gs != null else ""
+	if acc == "" or str(row.get("left_account", "")) != acc:
+		## 行是按「现在这个号」拼的; 拼完到发出之间换了号 ⇒ RLS 必拒, 不发。
+		print("[SupabaseNet] 录像没传: 账号对不上(matches)")
+		done.call(mid, false)
+		_bye()
+		return
+	var base := base_url().rstrip("/") + "/rest/v1/matches"
+	## ★插入的回包**不看**: 2xx 不算数(见 `match_confirmed`); 409(上次其实已经插进去了、
+	##   只是回包丢了)也不算失败 —— 两种情况都交给下面那次回读裁决。
+	_http("POST", base, JSON.stringify(row),
+		func(res):
+			_log_upload_fail("matches", res)
+			_http("GET", base + "?" + match_readback_query(mid), "",
+				func(res2):
+					var good := match_confirmed(bool(res2.get("ok", false)), int(res2.get("code", 0)),
+						str(res2.get("body", "")), mid, str(row.get("replay", "")))
+					if not good:
+						print("[SupabaseNet] 录像回读不到(matches) code=%d" % int(res2.get("code", 0)))
+					done.call(mid, good)
+					_bye()),
+		"Prefer: return=minimal")
