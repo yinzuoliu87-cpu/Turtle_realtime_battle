@@ -38,8 +38,10 @@ var lane_epoch: int = 0
 ## 等一个 sim 步; 这一步里换了路 ⇒ 永不返回(调用方那条协程就此作废)。
 func lane_step() -> void:
 	var ep: int = lane_epoch
+	var _tl: Array = battle._equip_sys.tally.capture()   # ④ 装备统计: 多段技/演出协程跨步后切回自己的装备上下文
 	await battle.sim_stepped
 	if not is_instance_valid(battle): return   ## await 回来战斗可能已释放
+	battle._equip_sys.tally.use(_tl)
 	if ep != lane_epoch:
 		await battle._lane_parked
 
@@ -494,6 +496,7 @@ func _dl_start_fight() -> void:
 	#     verify_trainer_magicstone ⑦ 组焊死这条, 谁再加回清零就红。
 	battle._edit_drag_unit = null
 	battle._dl_state = "fight"
+	fence_down.clear()   # ★每路开打: 破罩幂等账归零(罩子本身由 _reset_domes / 新蛋复原)
 	if is_instance_valid(battle._dl_go_btn): battle._dl_go_btn.visible = false
 	if is_instance_valid(battle._dl_place_hint): battle._dl_place_hint.visible = false
 	## ★教学「摆位」第三步等的就是这个动作(`tutorial-steps.json` place[2] 的 advanceOn: fight_started)。
@@ -801,8 +804,18 @@ func _dl_flash_screen(col: Color, dur: float) -> void:
 	tw.tween_callback(r.queue_free)
 
 
-func _dl_drop_fence(side_lr: String) -> void:   # 该方蛋围栏消失(可被自由索敌); 定局路(终极/横扫)暴露蛋挂 ×5承伤+自损
-	var final_buff: bool = _dl_is_decider(side_lr)   # 定局路: 蛋挂×5+自损→快速打碎收尾(用户2026-07-12「将终极战场buff给到蛋上，打碎蛋再结束」)
+## 本路已破罩的一方 {side_lr: true}。★幂等账: 同一方只破一次(双抗只扣一次 EGG_FENCE_RES、只建一条塌缩 tween)。
+## 每路开打(_dl_start_fight)清空 —— 下一路罩子由 _reset_domes / 新蛋复原, 账也得跟着归零。
+var fence_down: Dictionary = {}
+
+## decider_side: 按哪一方的团灭判「本路是不是定局路」。默认 = 本方(第一个团灭的那方)。
+##   第二方团灭传第一方 —— 用户 2026-10-04 拍板 U3-1「要吃」: 定局路上第二方的蛋同样挂 ×5 承伤 + 自损;
+##   路是不是定局由【先团灭的那一方】定(同一条路不会因为谁后灭而改判)。
+func _dl_drop_fence(side_lr: String, decider_side: String = "") -> void:   # 该方蛋围栏消失(可被自由索敌); 定局路(终极/横扫)暴露蛋挂 ×5承伤+自损
+	if fence_down.has(side_lr):
+		return
+	fence_down[side_lr] = true
+	var final_buff: bool = _dl_is_decider(side_lr if decider_side == "" else decider_side)   # 定局路: 蛋挂×5+自损→快速打碎收尾(用户2026-07-12「将终极战场buff给到蛋上，打碎蛋再结束」)
 	for u in battle._units:
 		if u.get("_isEgg", false) and str(u.get("egg_side_lr", "")) == side_lr:
 			u["_egg_fence"] = false
@@ -838,18 +851,28 @@ func _dl_flow_check() -> void:
 				_dl_egg_break_dramatize(es)   # ★蛋破演出(原来是直接跳胜负横幅, 整场最高潮却零过场)
 				_dl_finish(es == "right")   # 蛋破=立即结束整场(用户2026-07-12「蛋被打碎立马结束」); 右蛋破→我方(左)赢
 				return
-	var la = _dl_side_alive("left")
-	var ra = _dl_side_alive("right")
-	if battle._dl_state == "fight":
-		if la == 0 or ra == 0:
-			battle._dl_wiped_side = "left" if la == 0 else "right"
-			_dl_wipe_dramatize(battle._dl_wiped_side)   # ★团灭演出(原来这一刻只有穹顶塌缩, 毫无冲击力)
-			_dl_drop_fence(battle._dl_wiped_side)   # 内部按定局判定给蛋挂终极buff(×5承伤+自损)
-			var decider: bool = _dl_is_decider(battle._dl_wiped_side)   # 终极路 或 横扫定胜负那一路 = 定局路
-			battle._dl_window_until = (1.0e18 if decider else battle._t + 10.0)   # 定局→无限(打碎蛋才结束·自损保证≤10s必碎); 非定局→10s累计后本路结束
-			battle._dl_state = "eggwindow"
-			if OS.has_environment("XDBG"): print("XDBG_DL wiped=", battle._dl_wiped_side, " decider=", decider, " t=", battle._t, " → eggwindow")
-	elif battle._dl_state == "eggwindow":
+	## ★★团灭判定 —— 唯一出处(用户 2026-10-04 ③「一方团灭后罩子破裂，如果另一方因为某种原因团灭了那罩子也要破裂」)。
+	##   改前: 第一方团灭后状态切 eggwindow, 而 eggwindow 分支只看计时 ⇒ 第二方之后再团灭(DoT/反伤/同归于尽/
+	##   召唤物最后死…)罩子永远不破; 同帧双灭只处理左边。探针实测第二方: 存活 0 / 围栏 true / 双抗 335 / 穹顶 1.90。
+	##   现在逐方看: 谁存活归零谁就破罩(fence_down 幂等), 与死法无关 —— 不在任何一种死法后面补刀。
+	##   第一个团灭的那一方仍是本路败方(演出/定局 buff/破蛋窗口只属于它), 同帧双灭仍判左(与改前相同)。
+	if battle._dl_state == "fight" or battle._dl_state == "eggwindow":
+		var alive_by_side: Dictionary = {"left": _dl_side_alive("left"), "right": _dl_side_alive("right")}
+		for side_lr in ["left", "right"]:
+			if int(alive_by_side[side_lr]) > 0 or fence_down.has(side_lr):
+				continue
+			var first_wipe: bool = battle._dl_state == "fight"
+			if first_wipe:
+				battle._dl_wiped_side = side_lr
+				_dl_wipe_dramatize(side_lr)   # ★团灭演出(原来这一刻只有穹顶塌缩, 毫无冲击力)
+			_dl_drop_fence(side_lr, "" if first_wipe else battle._dl_wiped_side)   # 内部按定局判定给蛋挂终极buff(×5承伤+自损); 第二方同样吃(U3-1), 定局与否按第一方判
+			if first_wipe:
+				var decider: bool = _dl_is_decider(side_lr)   # 终极路 或 横扫定胜负那一路 = 定局路
+				battle._dl_window_until = (1.0e18 if decider else battle._t + 10.0)   # 定局→无限(打碎蛋才结束·自损保证≤10s必碎); 非定局→10s累计后本路结束
+				battle._dl_state = "eggwindow"
+				if OS.has_environment("XDBG"): print("XDBG_DL wiped=", side_lr, " decider=", decider, " t=", battle._t, " → eggwindow")
+			elif OS.has_environment("XDBG"): print("XDBG_DL second wipe=", side_lr, " t=", battle._t, " → fence down")
+	if battle._dl_state == "eggwindow":   # 本帧刚进 eggwindow 时 _dl_window_until = t+10(或无限) ⇒ 不会同帧结束, 与改前 elif 等价
 		if battle._t >= battle._dl_window_until:
 			battle._dl_pending_loser = battle._dl_wiped_side
 			_dl_enter_present("lane_settle")   # 结算5秒→再推进(用户2026-07-12)

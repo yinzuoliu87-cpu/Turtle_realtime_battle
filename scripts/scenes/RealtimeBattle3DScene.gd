@@ -2219,6 +2219,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 	_adf_ct = 0   # 每帧(每步)重置伤害调用计数(_damage._apply_damage_from 帧内爆炸=死亡链无限级联→自身截断防卡死)
 	_cur_eq_item = ""   # ★每帧重置"当前装备效果来源"(同 _adf_ct 的模式) —— 不清会让下一帧
 						#   非装备来源的护盾/治疗被误判成"盾装备给的"而白拿 20% 圣光护盾
+	_equip_sys.tally.reset()   # ④ 装备统计的归因上下文同样每步清(防漏 pop 串到下一步)
 	_sd_tick()   # §SUDDEN 战场决胜(40s起治疗-50% + 每5s +25%增伤)
 	## ★摆位/呈现期不推进战斗(第4条「召唤物没开打就攻击」): 单位tick早有这道闸, 而羁绊tick(炮台/触手)/tick_global(批④召唤物)/大师AI 都在闸外 ⇒ 同一个条件门住, 下方复用同一个变量
 	var _fight_on: bool = not _edit_mode and _dl_state != "place" and not _dl_sys._dl_is_present()   # ★不看 _over: 在途效果(猛砸倒计时/引爆)不该被"战斗已判定"掐断, 同本文件靶向器那段先例
@@ -2380,11 +2381,14 @@ func _step_sim_tweens(dt: float) -> void:
 	var ts_on: bool = not _timestop._ts_active.is_empty()
 	for tw in _sim_tweens.duplicate():   # duplicate: 回调里可能再建 tween 并 append, 边遍历边改会漏/错
 		if tw != null and tw.is_valid() and not (ts_on and tw in _timestop._ts_frozen_tweens):
+			_equip_sys.tally.use(tw.get_meta("_tl", null))   # ④ 演出链末尾的结算回调记回建 tween 时的装备
 			tw.custom_step(dt)
+	_equip_sys.tally.use(null)
 
 # VFX tween 注册(时停暂停非active产生的用). 见 create_tween→_reg_tween 替换.
 func _reg_tween() -> Tween:
 	var t := create_tween()
+	t.set_meta("_tl", _equip_sys.tally.capture())   # ④ 装备统计: 记下建 tween 时的装备上下文
 	t.pause()   # 不让 SceneTree 按真实 delta 推它, 改由 _step_sim_tweens 按 sim 步喂(回放 S1: 交互模式也一样)
 	_sim_tweens.append(t)
 	if _sim_tweens.size() > 512:
@@ -2618,7 +2622,9 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 					elif _cast_skill(u, tgt, stype):
 						u["skill_cd"][stype] = _skill_cd(u, stype)
 						u["skill_gcd_until"] = _t + SKILL_GCD
+						var _tl0: Array = _equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原
 						_equip_sys._eq_on_cast(u, tgt)
+						_equip_sys.tally.pop(_tl0)
 						if u["id"] == "space" and float(u.get("star_energy", 0.0)) > 0.0:   # 星能: 施法后追加12%当前星能真伤(用户2026-07-16: 30%→12%)
 							_damage._apply_damage_from(u, tgt, int(u["star_energy"] * StarSystem.ENERGY_TRUE_PCT), Color("#ffffff"), 0.0, true)
 						if u["id"] == "shell":                   # 潜影: 自己放技能→破隐(下次普攻附破隐bonus)
@@ -2741,6 +2747,7 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 			if float(dot["_acc"]) >= 1.0:
 				var _cd_dmg: int = int(floor(float(dot["_acc"])))
 				dot["_acc"] = float(dot["_acc"]) - float(_cd_dmg)
+				_equip_sys.tally.dot_flat = dot; _equip_sys.tally.dot_u = u   # ④ flat DoT 施加时打过来源标
 				_damage._apply_damage(u, _cd_dmg, Color(UIPalette.TRUE_DMG), dot.get("src", null), "tru", false, true, true)   # col 实际被 dot_accum 按桶色覆盖(tru=白); 这里给白只为不误导
 				if not u["alive"]:
 					return
@@ -2823,6 +2830,7 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 	_tick_periodic_passive(u, delta)
 	# 装备周期 tick (每 2.5 秒, EQ_TICK) — A类回合节拍效果
 	if not u.get("equips", []).is_empty():
+		var _tl_eq: Array = _equip_sys.tally.capture()   # ④ 下面每个装备 tick 自己切上下文, 整块结束还原
 		_equip_sys._eq_tick(u, delta)
 		_equip_tick_sys._tick_doll(u, delta)
 		_equip_tick_sys._tick_rustblade(u, delta)
@@ -2845,6 +2853,7 @@ func _tick_effects(u: Dictionary, delta: float) -> void:
 		_equip_tick_sys._tick_anchor(u, delta)      # 017沉锚: 每0.25秒回血(用户2026-08-01, 原挂 on-hurt)
 		_equip_tick_sys._tick_targeter(u, delta)    # 055靶向器: 首次累计400伤害→挂钩索炸弹(用户2026-08-01)
 		_equip_tick_sys._tick_hotspring(u, delta)   # 036温泉蛋: 每秒回血 = 定额 + %最大生命(用户2026-08-31)
+		_equip_sys.tally.pop(_tl_eq)
 
 func _separation(u: Dictionary) -> Vector2:
 	var push := Vector2.ZERO
@@ -2870,7 +2879,9 @@ func _separation(u: Dictionary) -> Vector2:
 func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 	_anticipate(u)                  # Phase4: 普攻预备(缩)+挥出(伸) 前后摇形变
 	_vfx._play_action(u, "attack")       # 有动作帧的龟(basic/ghost/ninja)播普攻动画, 其余靠 juice 形变
+	var _tl0: Array = _equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原
 	_equip_sys._eq_on_basic_attack(u, tgt)   # 普攻计数装备(不算多段)
+	_equip_sys.tally.pop(_tl0)
 		## ⚠ 这里原来写着"008每5次普攻射珊瑚刺" —— **早就不是了**: 那个计数器 2026-07-19 已删,
 		##   008 现在走 `_tick_coral` 的**每 9 秒**。过期注释比没注释更糟, 我自己就被它带偏过一次。
 	_swordsman.on_basic_attack(u, tgt)       # 剑士: 排 1/1/2 次追打(★追打自己不走这里, 防自递归与赌神连击互喂)
@@ -4600,7 +4611,9 @@ func _kill(u: Dictionary, killer = null) -> void:
 		return
 	if killer != null and killer.get("alive", false):
 		_equip_sys._eq_on_kill(killer, u)             # on-kill: 击杀者装备 (暴君之牙处决回血 等)
+	var _tl0: Array = _equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原
 	_equip_sys._eq_on_death(u, killer)                # on-death: 阵亡者装备 (复活海螺变虫 / 齿轮折币 / 玩偶熊)
+	_equip_sys.tally.pop(_tl0)
 	_shield_syn.on_enemy_died(u)                      # 盾羁绊【收殓】: 最近的携带盾者获得死者 30% 最大生命的护盾
 	_potion_syn.on_death(u)                           # 药水羁绊【猎获】: 死的是猎物 → 那一方全队攻击力永久 +22/38
 	_spirit_syn.on_death(u)                           # 灵物羁绊【亡灵】: 友方阵亡 → 原地召唤亡魂(继承 20/38/65/100%)
@@ -6611,7 +6624,7 @@ func _recalc_stats(u: Dictionary) -> void:
 # flat DoT (诅咒等). dps=每秒落血; 真伤穿护盾. 灼烧/中毒/流血改走 _damage._apply_dot_stacks 层数模型.
 func _add_dot(u: Dictionary, tag: String, dps: float, sec: float, src = null) -> void:
 	# src: 施加者。原先不存 → 诅咒伤害永远无主(不进统计、不吃施加者穿甲)。2026-07-22 补。
-	u["dots"].append({"tag": tag, "dps": dps, "until": _t + sec, "src": src, "_acc": 0.0})
+	u["dots"].append(_equip_sys.tally.tag({"tag": tag, "dps": dps, "until": _t + sec, "src": src, "_acc": 0.0}, src))   # ④ 装备上下文里施加的打来源标
 
 func _default_burn_stacks(attacker: Dictionary) -> int:
 	return maxi(1, roundi(float(attacker.get("atk", 0.0)) * 0.67))
@@ -6635,6 +6648,7 @@ func _tick_dot_stacks(u: Dictionary) -> void:
 			continue
 		var dmg: int = 0
 		var new_val: int = 0
+		_equip_sys.tally.dot_type = type; _equip_sys.tally.dot_u = u   # ④ 这一跳按层数份额记给施加它的装备
 		match type:
 			"burn":
 				dmg = stacks + roundi(max_hp * stacks * CombatMath.STACK_DOT_MAXHP_PCT)
@@ -7771,7 +7785,7 @@ func _st_name(u: Dictionary) -> String:
 ##   拆法只认 `SettleScreen.dealt_split` 这一处(桶的键名只在那里读)。
 func _st_row(u: Dictionary) -> Dictionary:
 	var sp: Array = _SETTLE_S.dealt_split(u)
-	return {
+	var row: Dictionary = {
 		"name": _st_name(u), "is_summon": bool(u.get("is_summon", false)),
 		"id": str(u.get("id", "")),
 		"_st_multi": bool(u.get("_st_multi",
@@ -7783,6 +7797,8 @@ func _st_row(u: Dictionary) -> Dictionary:
 		"_st_kills": int(u.get("_st_kills", 0)), "_st_shield": int(u.get("_st_shield", 0)),
 		"_st_phy": int(sp[0]), "_st_mag": int(sp[1]), "_st_tru": int(sp[2]),
 	}
+	row.merge(EquipTally.row_fields(u))   # ④ 每件装备的本局统计, 摊平成纯标量键 `_st_eq|<装备id>|<phy/mag/tru/heal/shield>`
+	return row
 const _SETTLE_S := preload("res://scripts/scenes/battle/settle_screen.gd")
 
 ## 本路打完 → 把当前 _units 的统计冻成快照存进 _st_lane_hist(供结算表翻页看前面战场).

@@ -163,6 +163,7 @@ func tick(delta: float) -> void:
 
 ## 每帧逐单位推进
 func tick_unit(u: Dictionary, delta: float) -> void:
+	battle._equip_sys.tally.use_b4(u, self)   # ④ 装备统计: 本系统的每单位 tick 不分件 ⇒ 记给这只龟身上属于本系统的那件(主场景 tick 块末尾还原)
 	if not (u is Dictionary) or not u.get("alive", false):
 		return
 	var s85: int = _star_of(u, PIEZO)

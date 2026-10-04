@@ -38,6 +38,8 @@ func _push_proj(d: Dictionary) -> void:
 	if not d.has("is_crit"):
 		d["is_crit"] = battle._last_atk_crit
 	d["_crit_rolled"] = d["is_crit"]   # 独立副本, 只给门禁对账用(还原用 is_crit)
+	if not d.has("_tl"):
+		d["_tl"] = battle._equip_sys.tally.capture()   # ④ 装备统计: 发射那一刻是哪件装备的上下文, 落地时切回去
 	battle._projectiles.append(d)
 
 func _fire_trainer_rock(u: Dictionary, tgt: Dictionary, ms_onhit: bool = false) -> void:
@@ -193,7 +195,9 @@ func _step_projectiles(delta: float) -> void:
 		return
 	var ts_on: bool = not battle._timestop._ts_active.is_empty()
 	var keep: Array = []
+	var _tl0: Array = battle._equip_sys.tally.capture()   # ④ 每发弹切到它发射时的装备上下文, 循环完还原
 	for pr in battle._projectiles:
+		battle._equip_sys.tally.use(pr.get("_tl", null))
 		## ★2026-09-06 从 `Sprite3D` 放宽到 `Node3D`：001 飞斩剑气改成 LoL 式束身后
 		##   是 `MeshInstance3D`(quad + 滚动 shader)，不再是 Sprite3D。
 		##   本循环里用到的全是 `Node3D` 的东西(position / global_transform / queue_free)，
@@ -383,6 +387,7 @@ func _step_projectiles(delta: float) -> void:
 					battle._damage._apply_damage_from(pr["src"], tgt, int(pr["star_true"]), Color("#ffffff"), 0.0, true)   # 星能追加真伤(白字·附普攻命中同帧·用户2026-07-16)
 			continue
 		keep.append(pr)
+	battle._equip_sys.tally.pop(_tl0)
 	battle._projectiles = keep
 
 # 依次射出的子弹: 每帧减 delay, 到点 call 回调(回调内部再选目标+射线+伤害, 死亡守卫在回调里判)
@@ -391,6 +396,7 @@ func _step_pending_shots(delta: float) -> void:
 	if not _scene_live():
 		return
 	var ts_on: bool = not battle._timestop._ts_active.is_empty()
+	var _tl0: Array = battle._equip_sys.tally.capture()   # ④ 到点的条目切回它入队时的装备上下文(盖章见 EquipTally._flush), 循环完还原
 	for i in range(battle._pending_shots.size() - 1, -1, -1):
 		var s: Dictionary = battle._pending_shots[i]
 		if ts_on and not battle._arr_has_unit(battle._timestop._ts_active, s.get("src")):   # is_same引用比较(Array.has对字典是深比较=053卡死同族; 上轮扫雷因它不是裸标识符而漏网)
@@ -400,10 +406,13 @@ func _step_pending_shots(delta: float) -> void:
 			battle._pending_shots.remove_at(i)
 			var fn = s["fn"]
 			if fn is Callable and fn.is_valid():
+				battle._equip_sys.tally.use(s.get("_tl", null))
 				fn.call()
+				battle._equip_sys.tally.use(_tl0)
 			else:
 				## 静默丢弃点(探针·2026-08-22): 回调失效 ⇒ 演出照演、结算永不发生。
 				_ps_drop_invalid += 1
+	battle._equip_sys.tally.pop(_tl0)
 
 # 排队 count 发子弹, 每发间隔 interval 秒, 逐发 call fn (fn 内部自选目标, 支持死亡守卫)
 func _shotgun_pellet(from2d: Vector2, to2d: Vector2, col: Color, dur: float = 0.42, on_land: Callable = Callable()) -> void:

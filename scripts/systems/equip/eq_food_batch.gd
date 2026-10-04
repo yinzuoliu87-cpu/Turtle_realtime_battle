@@ -68,6 +68,7 @@ func tick_global(delta: float) -> void:
 
 
 func tick_unit(u: Dictionary, delta: float) -> void:
+	battle._equip_sys.tally.use_first_of(u, EquipTally.FOOD_IDS)   # ④ 装备统计: 本系统的每单位 tick 不分件 ⇒ 记给这只龟身上属于本系统的那件(主场景 tick 块末尾还原)
 	if not u.get("alive", false):
 		return
 	for e in u.get("equips", []):

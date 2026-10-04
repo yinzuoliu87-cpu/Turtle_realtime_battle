@@ -224,7 +224,9 @@ func _spawn_teams() -> void:
 		for _fu in battle._units:
 			if _fu["side"] == "left" and not _fu.get("equips", []).is_empty():
 				_fu["hp"] = _fu["maxHp"] * 0.4
+				var _tl0: Array = battle._equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原
 				battle._equip_sys._eq_check_hp_threshold(_fu)
+				battle._equip_sys.tally.pop(_tl0)
 	_spawn_trainers()         # 双方场外监视者(用户2026-07-22 需求3)
 	battle._hud._build_team_panels()      # 局内 UI: 左右队头像框栏 (主龟; 召唤体不进) — 须在 equips 注入之后
 
@@ -916,6 +918,7 @@ func _spawn_summon(owner: Dictionary, kind: String, hp: float, atk: float, behav
 		"flash_t": 0.0, "hitsq_t": 0.0, "land_t": 0.0, "swing_t": 0.0, "windup_t": 0.0,
 		"bob_phase": randf() * TAU,
 	}
+	battle._equip_sys.tally.tag(su, owner)   # ④ 装备上下文里召出来的召唤物: 它之后造成的伤害记给那件装备
 	battle._units.append(su)
 	return su
 
