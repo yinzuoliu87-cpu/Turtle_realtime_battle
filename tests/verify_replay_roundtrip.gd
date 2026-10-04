@@ -14,8 +14,11 @@ extends Node
 ##   V1 实战可复现: 逐步指纹一致 + 产品自己的校验点一个不差 + 终局一致
 ##      反证: 种子改一位 / 一个站位挪 40 码 / 删掉那条认输 ⇒ 都必须停下(diverged_at ≥ 0)
 ##   V2 指纹不吃演出随机: 两遍的 `_juice_rng` 种子不同(分母), 指纹照样一致
-##   V3 录制字段完整: 播之前把 GameState 改成另一份合法阵容 ⇒ 仍一致;
-##      反证: 从记录里删掉 `persistent_equipped`(那件装备真的在场上) ⇒ 必须对不上
+##   V3 录制字段完整: 播之前把 GameState 改成另一份合法阵容, 并且**所有不在 STATE_KEYS 里的变量**都换成另一份 ⇒ 仍一致;
+##      反证: 从记录里删掉 `persistent_equipped`(那件装备真的在场上) / `season_level` ⇒ 必须对不上
+##   V3b 录像瘦身(2026-10-04): 录像 state 的键 ⊆ STATE_KEYS; 一串已知敏感字段(币/邮箱/令牌/设备 id/昵称/背包/装备池/
+##      赛季战绩……)一个都不在录像里 —— 分母: 录制那一刻 GameState 里它们**都有值**; 未上场统领的持久装备不在录像里
+##      (分母: GameState 里有); 判据函数自检: 往录像里塞回一个币 ⇒ 判据必须报出来。
 ##   V5 回放零副作用: 存档文件逐字节不变 / 战绩条数不变 / 不多录一份回放 / GameState 播完还原
 ##   V6 版本闸: 版本号不同 ⇒ `play()` 返回原因、不进战斗场、GameState 不动
 ##   V1b 引擎帧不走也一致(2026-10-04 修「约 40 次红 1 次 · 第 360 步校验点 5」):
@@ -31,12 +34,23 @@ extends Node
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const Backend := preload("res://scripts/net/backend.gd")
 const RU := preload("res://scripts/systems/replay/replay_uploader.gd")
+const TRACE := preload("res://tests/_gs_read_trace.gd")
 
 ## 两组不同的帧长序列(秒)。都含「一帧 0 步」(0.004)与「一帧 2~3 步」(0.04/0.05)。
 const PAT_REC := [0.016, 0.004, 0.04, 0.0167, 0.025, 0.05, 0.009, 0.0333]
 const PAT_PLAY := [0.05, 0.0167, 0.004, 0.03, 0.012, 0.0167, 0.045, 0.02]
 const MAX_FRAMES := 30000
 const EQ_ID := "p2eq_001"          # 录制方统领身上那件持久装备(V3 反证要删的就是它)
+## V3b: 录像里**绝不许**出现的 GameState 变量(录制时都摆上值, 当分母)。不是 STATE_KEYS 的反面清单 ——
+##   判据主体是「键 ⊆ STATE_KEYS」, 这张只是把最要紧的几样点名, 让报错一眼看得懂。
+const SENSITIVE := {
+	"coins": 12345, "meta_deepsea_coins": 678, "account_email": "rec@example.invalid", "auth_refresh": "r-secret",
+	"install_uid": "inst-secret", "nickname": "录制者", "inventory": ["p2eq_010"],
+	"persistent_bench": [{"id": "p2eq_022", "star": 2}], "equip_pool": {"p2eq_030": 2},
+	"season_wins": 9, "gauntlet_wins": 3, "gauntlet_losses": 1, "titles": ["t1"], "hearts": 2,
+	"recent_ghost_ids": ["bot_3_1"],
+}
+const UNFIELDED := "ninja"         # 不在阵上的龟: 它的持久装备不许进录像
 
 var _fail := 0
 var _n := 0
@@ -69,7 +83,13 @@ func _setup_gs(gs) -> void:
 			{"kind": "minion", "role": "back", "equips": []},
 		],
 	}
-	gs.persistent_equipped = {"basic": [{"id": EQ_ID, "star": 3}]}
+	gs.persistent_equipped = {"basic": [{"id": EQ_ID, "star": 3}], UNFIELDED: [{"id": "p2eq_065", "star": 3}]}
+	for k in SENSITIVE:
+		var v = SENSITIVE[k]
+		if v is Array:
+			(gs.get(k) as Array).assign(v)       # inventory 是 Array[String](带类型), 直接 set 一个无类型数组会被拒
+		else:
+			gs.set(k, v.duplicate(true) if v is Dictionary else v)
 	gs.season_level = 4
 	gs.trainer_skill = "hook"
 	var rng := RandomNumberGenerator.new()
@@ -95,10 +115,65 @@ func _tamper_gs(gs) -> void:
 	gs.dual_ghost = Backend.make_bot(20, rng)
 	gs.week_phase = "ranked"
 	gs.dual_active = true
+	## ★V3 加强(2026-10-04 录像瘦身): 不在 STATE_KEYS 里的变量**全部**换成另一份 —— 看回放的那台设备
+	##   上它们是什么值都不许影响结果。局内临时的几个摆成「上一局打完留下的」样子(泛型扰动对空容器无效)。
+	var n := 0
+	for p in gs.get_property_list():
+		if (int(p.get("usage", 0)) & PROPERTY_USAGE_SCRIPT_VARIABLE) == 0:
+			continue
+		var k := str(p.get("name", ""))
+		## BACKUP_SKIP(令牌/设备身份/战绩/补报单/上传队列)播放前后都不碰, V5 要量它们「播完不变」, 这里也不扰动
+		if k in ReplayRecorder.STATE_KEYS or k in ReplayRecorder.BACKUP_SKIP:
+			continue
+		var pv = _perturb(gs.get(k))
+		if pv != null:
+			gs.set(k, pv)
+			n += 1
+	gs.current_lane = "bottom"
+	gs.egg_hp = {"left": 77, "right": 88}
+	gs.lane_results = {"top": "right"}
+	gs.dual_survivors = {"left": ["basic"], "right": []}
+	gs.dual_ms_stacks = {"left": 9, "right": 9}
+	gs.foe_loadouts = {"basic": 2}
+	gs.perf_lite = not bool(gs.perf_lite)
+	gs.tutorial = true
+	_perturbed = n
+
+
+var _perturbed := 0
+
+
+## 泛型扰动: 换成同类型的另一个值(非空容器 → 空; 空容器/对象 → 不动)。
+static func _perturb(v):
+	match typeof(v):
+		TYPE_BOOL: return not v
+		TYPE_INT: return v + 7
+		TYPE_FLOAT: return v + 0.37
+		TYPE_STRING: return v + "_v"
+		TYPE_ARRAY: return [] if not (v as Array).is_empty() else null
+		TYPE_DICTIONARY: return {} if not (v as Dictionary).is_empty() else null
+	return null
+
+
+## V3b 判据: 录像 state 里的违规键(表外 / 敏感 / 未上场统领的装备)。空数组 = 干净。
+static func _leaks(st: Dictionary) -> Array:
+	var bad: Array = []
+	for k in st:
+		if not str(k) in ReplayRecorder.STATE_KEYS:
+			bad.append("表外:" + str(k))
+	for k in SENSITIVE:
+		if st.has(k):
+			bad.append("敏感:" + str(k))
+	if (st.get("persistent_equipped", {}) as Dictionary).has(UNFIELDED):
+		bad.append("未上场装备:" + UNFIELDED)
+	return bad
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	## ★手跑也不许打真网络: project.godot 里填着真 Supabase 地址; 空白串 = 后端整层停用(与 run-tests.sh 同)
+	OS.set_environment("TURTLE_SUPABASE", " ")
+	OS.set_environment("TURTLE_BACKEND", " ")
 	await get_tree().process_frame
 	var gs = get_node_or_null("/root/GameState")
 	OS.set_environment("TURTLE_SEED", "")       # ★交互模式: 不许 det
@@ -131,6 +206,32 @@ func _ready() -> void:
 	print("  [量] 一局记录 %d 字节(deflate 后) · 事件 %d 条 · 校验点 %d 个 · 结束步 %d" % [
 		raw_size, (rec["events"] as Array).size(), (rec["cps"] as Array).size(), int(rec["end"]["s"])])
 
+	# ── V3b 录像瘦身: 录像里只有 STATE_KEYS, 敏感字段一个都没有 ──
+	var full: Dictionary = rec.duplicate(true)
+	full["state"] = ReplayRecorder.capture_all()
+	var rst: Dictionary = rec["state"]
+	print("  [量] 录像 state %d 个键 · 瘦身前(整份 GameState)%d 个键 —— 整局记录 %d 字节 vs 瘦身前 %d 字节" % [
+		rst.size(), (full["state"] as Dictionary).size(), raw_size, ReplayRecorder.encode(full).size()])
+	var den := 0
+	for k in SENSITIVE:
+		var gv = gs.get(k)
+		if gv != null and str(gv) != "" and str(gv) != "0" and str(gv) != "[]" and str(gv) != "{ }" and str(gv) != "{}":
+			den += 1
+	_ok("分母 · 录制那一刻 %d/%d 个敏感字段在 GameState 里都有值、未上场的 %s 身上有装备" % [den, SENSITIVE.size(), UNFIELDED],
+		den == SENSITIVE.size() and (gs.persistent_equipped as Dictionary).has(UNFIELDED))
+	var leaks: Array = _leaks(rst)
+	_ok("★★V3b 录像 state 只有 STATE_KEYS 里的键、没有敏感字段、没有未上场统领的装备", leaks.is_empty(), str(leaks))
+	_ok("★V3b 上传那一份同样干净", _leaks(RU.for_upload(rec)["state"]).is_empty(), str(_leaks(RU.for_upload(rec)["state"])))
+	_ok("分母 · 上场统领的装备还在录像里(裁的是未上场的, 不是全裁)",
+		(rst.get("persistent_equipped", {}) as Dictionary).has("basic"))
+	var doctored: Dictionary = rst.duplicate(true)
+	doctored["coins"] = 12345
+	_ok("★V3b 判据自检: 往录像里塞回一个「币」⇒ 判据报出来", not _leaks(doctored).is_empty(), str(_leaks(doctored)))
+	var old_style: Dictionary = rec.duplicate(true)
+	old_style["state"] = ReplayRecorder.capture_all()
+	_ok("★V3b 瘦身之前录的老录像(整份存档)上传时也按表裁干净", _leaks(RU.for_upload(old_style)["state"]).is_empty()
+		and not _leaks(old_style["state"]).is_empty(), str(_leaks(RU.for_upload(old_style)["state"])))
+
 	# ── V5 基线: 播之前的存档 / 战绩 / 回放目录 ──
 	var save0: PackedByteArray = FileAccess.get_file_as_bytes(GameState.SAVE_PATH)
 	_ok("分母 · 录制那一局真的写过存档(否则 V5 的「字节不变」是空检查)", save0.size() > 0, "%d 字节" % save0.size())
@@ -153,7 +254,8 @@ func _ready() -> void:
 
 	# ── V3: 播之前把 GameState 改成另一份 ──
 	_tamper_gs(gs)
-	var tampered: Dictionary = ReplayRecorder.capture_state()
+	var tampered: Dictionary = ReplayRecorder.capture_all()
+	_ok("分母 · V3 播之前把 %d 个表外变量换成了另一份(≥70; 其余是空容器/对象, 泛型扰动不了)" % _perturbed, _perturbed >= 70)
 	var tm0: bool = bool(gs.test_mode)
 
 	print("=== 播: GameState 已改成另一份, 换一组帧长重算(播上传用的那一份) ===")
@@ -186,7 +288,7 @@ func _ready() -> void:
 		int(cmp_h[0]) == 0 and int(cmp_h[1]) >= int(rec["end"]["s"]) / 2, str(cmp_h[3]))
 
 	# ── V5 回放零副作用 ──
-	_ok("★V5 播完 GameState 还原成播之前那一份(篡改后的那份)", _same(ReplayRecorder.capture_state(), tampered))
+	_ok("★V5 播完 GameState 还原成播之前那一份(篡改后的那份)", _same(ReplayRecorder.capture_all(), tampered))
 	_ok("★V5 test_mode 还原(%s)" % str(gs.test_mode), bool(gs.test_mode) == tm0)
 	_ok("★V5 存档文件逐字节不变", FileAccess.get_file_as_bytes(GameState.SAVE_PATH) == save0)
 	_ok("★V5 战绩条数不变(%d)" % (gs.match_history as Array).size(), (gs.match_history as Array).size() == hist_n0)
@@ -198,7 +300,31 @@ func _ready() -> void:
 	old["client_version"] = "0.0.1"
 	var why: String = ReplayRecorder.play(null, old)
 	_ok("★V6 版本号不同 ⇒ 不播并说明原因", why != "" and why.contains("版本"), why)
-	_ok("★V6 不播时没挂上待播、GameState 没被动", ReplayRecorder.pending_play.is_empty() and _same(ReplayRecorder.capture_state(), tampered))
+	_ok("★V6 不播时没挂上待播、GameState 没被动", ReplayRecorder.pending_play.is_empty() and _same(ReplayRecorder.capture_all(), tampered))
+
+	# ── V3c 回放那一遍实际读了 GameState 的哪些变量(运行时给每个变量补 getter 记读)──
+	##   必须 ⊆ STATE_KEYS ∪ PLAY_READS_NOT_RECORDED。这是 STATE_KEYS 的**来源**(方案书 §9.5), 每次门禁重新量一遍。
+	print("=== V3c: 量回放读了哪些 GameState 变量 ===")
+	var tr = TRACE.new()
+	var terr: String = tr.install(gs)
+	_ok("分母 · 读记录器装上了(补 getter 的变量 %d 个)" % tr.var_names.size(), terr == "" and tr.var_names.size() >= 100, terr)
+	ReplayRecorder.begin_play(up_rec)
+	tr.begin(gs)
+	var tp: Dictionary = await _run(PAT_PLAY, false, false, tr, gs)
+	tr.uninstall(gs)
+	var reads: Dictionary = tp.get("reads", {})
+	var rk: Array = reads.keys()
+	rk.sort()
+	print("  [量] 回放那一遍读过 %d 个 GameState 变量: %s" % [rk.size(), str(rk)])
+	var unrec: Array = []
+	for k in rk:
+		if not k in ReplayRecorder.STATE_KEYS and not k in ReplayRecorder.PLAY_READS_NOT_RECORDED:
+			unrec.append(k)
+	_ok("分母 · 装着读记录器那一遍也播完了、没分叉(diverged_at=%d)" % int(tp["div"]), int(tp["div"]) < 0 and bool(tp["finished"]))
+	_ok("分母 · 读记录器真的记到了(≥12 个, 且含 persistent_equipped / dual_ghost / season_level)",
+		rk.size() >= 12 and reads.has("persistent_equipped") and reads.has("dual_ghost") and reads.has("season_level"), str(rk.size()))
+	_ok("★★V3c 回放读到的 GameState 变量全在 STATE_KEYS ∪ PLAY_READS_NOT_RECORDED 里", unrec.is_empty(),
+		"表外被读: " + str(unrec))
 
 	# ── 反证: 每一条都必须让播放停下 ──
 	print("=== 反证(每条都必须停下) ===")
@@ -224,6 +350,9 @@ func _ready() -> void:
 	var r4: Dictionary = rec.duplicate(true)
 	(r4["state"] as Dictionary).erase("persistent_equipped")
 	await _reverse("V3 记录里删掉 persistent_equipped(那件装备真的在场上)", r4)
+	var r5: Dictionary = rec.duplicate(true)
+	(r5["state"] as Dictionary).erase("season_level")
+	await _reverse("V3 记录里删掉 season_level(本机是 9, 录制时是 4)", r5)
 	_finish()
 
 
@@ -235,7 +364,7 @@ func _reverse(name: String, r: Dictionary) -> void:
 
 ## 跑一局。rec=true 时扮演玩家(点幕布/拖站位/按开打/第二路打一会儿认输)。
 ## hold=true(V1b): 从第一路预览期到开打后 40 帧不 await 引擎帧 ⇒ 这段里物理帧一个都不走。
-func _run(pat: Array, as_player: bool, hold: bool = false) -> Dictionary:
+func _run(pat: Array, as_player: bool, hold: bool = false, tr = null, gs = null) -> Dictionary:
 	var s = RB.new()
 	add_child(s)
 	s.set_process(false)          # 帧长由我喂(交互模式的累加器照常工作, 只是帧切法受控)
@@ -304,6 +433,8 @@ func _run(pat: Array, as_player: bool, hold: bool = false) -> Dictionary:
 		"div": int(s._replay.diverged_at), "why": str(s._replay.diverge_why),
 		"cps": int(s._replay.cp_checked), "finished": bool(s._replay.finished),
 		"min_pf": min_pf, "max_pf": max_pf, "dragged": dragged, "frames": i, "pf_a": pf_a, "pf_b": pf_b}
+	if tr != null:
+		out["reads"] = tr.end(gs)          # V3c: 窗口 = 建场 → 打完(不含离场还原)
 	for _g in range(10):
 		await get_tree().process_frame
 	s.queue_free()

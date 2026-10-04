@@ -42,7 +42,8 @@ const REPLAY_MAX_B64 := 65536
 ##   `matches` 任何登录用户都读得到 ⇒ 原样传 `dual_ghost.is_bot = true` / `ghost_id = "bot_…"` 就是露馅。
 ##   ★战斗场一个都不读(全仓 grep 过; 读者只有匹配屏), 而 V1 门禁播的正是摘过的这一份 ⇒ 摘了照样逐步一致。
 const GHOST_STRIP := ["is_bot", "ghost_id"]
-const STATE_STRIP := ["recent_ghost_ids"]
+## (原 STATE_STRIP = ["recent_ghost_ids"]: 2026-10-04 录像瘦身后录像里只剩 `ReplayRecorder.STATE_KEYS`,
+##   recent_ghost_ids 本来就不在里面; 上传前再按同一张表裁一遍, 管住瘦身之前录下、还在队列里的老录像。)
 
 ## 正在路上的 id(进程内)。同一条不并发发两次(主菜单来回进出会重入)。
 static var _inflight: Dictionary = {}
@@ -193,14 +194,20 @@ static func upload_b64(rec: Dictionary) -> String:
 	return Marshalls.raw_to_base64(ReplayRecorder.encode(for_upload(rec)))
 
 
-## 录像摘掉 `GHOST_STRIP` / `STATE_STRIP` 之后的副本。原件不动。
+## 上传用的副本: state 只留 `ReplayRecorder.STATE_KEYS`(持久装备只留上场统领的) + 对手快照摘掉 `GHOST_STRIP`。原件不动。
+##   ★按表再裁一遍不是多余: 2026-10-04 瘦身之前录的录像装着几乎整份存档, 可能还在上传队列里。
 static func for_upload(rec: Dictionary) -> Dictionary:
 	var r: Dictionary = rec.duplicate(true)
-	var st: Dictionary = r.get("state", {})
-	for k in STATE_STRIP:
-		st.erase(k)
+	var st0: Dictionary = r.get("state", {})
+	var st := {}
+	for k in ReplayRecorder.STATE_KEYS:
+		if st0.has(k):
+			st[k] = st0[k]
+	if st.get("persistent_equipped", null) is Dictionary:
+		st["persistent_equipped"] = ReplayRecorder._fielded_equips(st["persistent_equipped"], st)
 	if st.get("dual_ghost", null) is Dictionary:
 		st["dual_ghost"] = strip_ghost(st["dual_ghost"])
+	r["state"] = st
 	return r
 
 

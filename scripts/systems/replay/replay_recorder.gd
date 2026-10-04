@@ -8,9 +8,15 @@ extends RefCounted
 ## ══════════════════════════════════════════════════════════════════════
 ##   v / client_version    格式版本 / `config/version`(播放前比, 不等就不播 —— §4.4)
 ##   seed                  `_battle_rng` 的种子(已经 `GameState.note_battle_seed` 规范化)
-##   state                 开局那一刻 GameState 的**全部**脚本变量(去掉 STATE_DENY 里那几个)
-##                         ★不列白名单: 白名单天生会漏(memory fb-recursive-scan-not-structured-walk)。
-##                           漏没漏由门禁 V3 量: 播之前把 GameState 改成另一份, 结果仍须一致。
+##   state                 开局那一刻 GameState 里**重放这一场真正要的**那几个变量(`STATE_KEYS`, 2026-10-04 瘦身)
+##                         ★这张表不是凭印象列的, 是**量**出来的(方案书 §9.5):
+##                           ① 量「回放那一遍实际读了 GameState 的哪些变量」(运行时给每个变量补 getter 记读,
+##                              `tests/_gs_read_trace.gd` + `tests/_probe_replay_gs_reads.gd`, 4 种阵容并集 24 个)
+##                              + 静态扫战斗侧 `GameState.<变量>` 补上没走到的读者(gambler_wheel_stacks);
+##                           ② 对这 25 个逐个变异(`tests/_probe_replay_field_mut.gd`): 录像里拿掉 F、本机 F 换成
+##                              另一台设备的值 ⇒ 分叉的进表, 不分叉的不进。
+##                         门禁(`verify_replay_roundtrip` V3): 播之前把**所有**不在表里的变量都换成另一份, 仍逐步一致;
+##                           录像里不许出现表外的键(币/邮箱/账号/背包/装备池……), 配分母断言。
 ##   events                局内【改结果的】人为输入, 按 sim 步号:
 ##                           fight     开打(带那一刻双方全部单位的站位)
 ##                           present   点掉呈现幕布(它决定下一路在哪一步建场)
@@ -39,9 +45,44 @@ const SAVE_DIR := "user://replays/"
 const BATTLE_SCENE := "res://scenes/RealtimeBattle3D.tscn"
 ## 不进记录的 GameState 变量。★只放【与对局无关且不该外传】的 —— 每加一个都要想清楚
 ##   "战斗场读不读它"; 读的话 V3(篡改法)会红。
-const STATE_DENY := ["test_mode", "auth_refresh", "account_email", "install_uid", "cloud_rev",
+## ★录像里装的 GameState 变量 —— **全部**(`capture_state` 只取这些)。每一个都写了「怎么量出来的」:
+##   「必需」= 逐字段变异实测: 录像里拿掉它、本机换成另一台设备的值 ⇒ 重放分叉(分叉步号在括号里)。
+##   ⚠ 「不分叉」不等于「没用」: incense_charge 第一次量(录制方 3 / 看的人 0)不分叉, 前提造到 3999(差 1 满一刻)才分叉。
+##     ⇒ 一个字段要拿出去, 判据是「回放那一遍根本没读它」(读记录), 而不是「这一局改了它没看出来」。
+const STATE_KEYS := [
+	"dual_active",          # 必需(第 60 步): 不为真就不走双路
+	"dual_lineup",          # 必需(347 开打时单位不同): 我方分路/槽位/小将装备
+	"season_leaders",       # 必需(347): 三统领 id(dual_lineup 按 slot 读它)
+	"persistent_equipped",  # 必需(360): 统领身上的装备 ★只留上场统领那几把(见 _fielded_equips) —— 未上场的装备池不进录像
+	"loadouts",             # 必需(360): 每只龟选的技能(敌方复制技能时也按 id 查, 不按上场裁)
+	"season_level",         # 必需(360): 等级 ⇒ 属性
+	"candy_temp_levels",    # 必需(360): 糖果临时等级
+	"debug_level",          # 必需(360): >0 强制全体等级(正式版 0; 看的人那台若开着就会分叉)
+	"trainer_skill",        # 必需(480): 大师技能(U2 后自动放)
+	"gambler_wheel_stacks", # 必需(360): 赌神命运之轮跨场累积(★回放那一遍没读到它 —— 是静态扫补进来的, 选了命运之轮才读)
+	"chest_treasure_value", # 必需(2640): 宝箱财宝值(开箱阈值)
+	"chest_treasures_won",  # 必需(2640): 已开战利品开局回装
+	"incense_marks",        # 必需(420): 093 香火石刻痕
+	"incense_charge",       # 必需(终局): 093 充能(见上面的 ⚠)
+	"dual_ghost",           # 必需(347): 对手快照(上传那份再摘机器人标记, 见 replay_uploader.GHOST_STRIP)
+	"trainer_appearance",   # 不改 sim(实测拿掉不分叉), 但它是**画面**: 不录的话看的人看到的是自己的大师形象
+]
+## 回放那一遍读了、但**不进录像**的(实测拿掉都不分叉 + 读代码确认原因):
+##   test_mode / tutorial      播放入口自己设(test_mode=true 不落盘; tutorial=false 回放不挂教学引导)
+##   current_lane / egg_hp / lane_results / dual_survivors / dual_ms_stacks / foe_loadouts
+##                             战斗场开局自己初始化(foe_loadouts 从 dual_ghost 取)
+##   perf_lite                 看的人那台设备的画质设置
+## ★门禁 `verify_replay_roundtrip` V3c 每次都**重新量**一遍「回放读了哪些」, 必须 ⊆ STATE_KEYS ∪ 本表 ——
+##   以后谁在战斗里新读一个 GameState 变量, 门禁当场红, 逼着回答「它进不进录像」。
+const PLAY_READS_NOT_RECORDED := ["test_mode", "tutorial", "current_lane", "egg_hp", "lane_results",
+	"dual_survivors", "dual_ms_stacks", "foe_loadouts", "perf_lite"]
+## 其余约 100 个变量回放那一遍**一次都没读**(币/邮箱/昵称/账号/背包/装备池/赛季战绩/宝箱以外的进度……)。
+
+## 播放前备份 / 退出还原时**不碰**的变量(令牌 / 设备身份 / 战绩 / 补报单 / 上传队列):
+##   回放期间它们可能被别的路径真改了(例如续登录换了 refresh 令牌), 还原成旧值反而写坏。
+const BACKUP_SKIP := ["test_mode", "auth_refresh", "account_email", "install_uid", "cloud_rev",
 	"match_history", "finals_report_pending", "replay_pending_id",
-	## S2 上传队列: 不进记录(否则每份录像都背着前几份的单子), 播放时也不许被记录覆盖(V5)。
+	## S2 上传队列: 播放时不许被覆盖(V5)。
 	"replay_upload_pending"]
 const Uploader := preload("res://scripts/systems/replay/replay_uploader.gd")
 
@@ -302,7 +343,43 @@ static func digest(b) -> String:
 
 # ─────────────────────────────── GameState ───────────────────────────────
 
+## 录像用: 只取 `STATE_KEYS`(持久装备只留上场统领的)。
 static func capture_state() -> Dictionary:
+	var out := {}
+	if GameState == null:
+		return out
+	for n in STATE_KEYS:
+		var v = GameState.get(n)
+		if v == null or not _plain(v):
+			continue
+		out[n] = v.duplicate(true) if (v is Array or v is Dictionary) else v
+	if out.get("persistent_equipped", null) is Dictionary:
+		out["persistent_equipped"] = _fielded_equips(out["persistent_equipped"], out)
+	return out
+
+
+## 持久装备只留**上场统领**的(season_leaders ∪ 分路里的统领 id)。
+##   战斗场读它的只有 `_inject_equipment`: 逐个非召唤单位按 id 取 ⇒ 不在场上的龟一件都不会被读。
+static func _fielded_equips(pe: Dictionary, st: Dictionary) -> Dictionary:
+	var on := {}
+	for id in st.get("season_leaders", []):
+		on[str(id)] = true
+	var dl = st.get("dual_lineup", {})
+	if dl is Dictionary:
+		for lane in dl:
+			if dl[lane] is Array:
+				for e in dl[lane]:
+					if e is Dictionary and str((e as Dictionary).get("kind", "")) == "leader":
+						on[str((e as Dictionary).get("id", ""))] = true
+	var out := {}
+	for k in pe:
+		if on.has(str(k)):
+			out[k] = pe[k]
+	return out
+
+
+## 备份用: GameState 全部脚本变量(去掉 BACKUP_SKIP)。
+static func capture_all() -> Dictionary:
 	var out := {}
 	if GameState == null:
 		return out
@@ -310,7 +387,7 @@ static func capture_state() -> Dictionary:
 		if (int(p.get("usage", 0)) & PROPERTY_USAGE_SCRIPT_VARIABLE) == 0:
 			continue
 		var n := str(p.get("name", ""))
-		if n in STATE_DENY:
+		if n in BACKUP_SKIP:
 			continue
 		var v = GameState.get(n)
 		if not _plain(v):
@@ -319,8 +396,11 @@ static func capture_state() -> Dictionary:
 	return out
 
 
+## 只写 `STATE_KEYS` 里的(★录像是别人传上来的数据: 表外的键一律不认, 不让一份录像改写看的人的币/账号/背包)。
 static func apply_state(st: Dictionary) -> void:
 	for n in st:
+		if not str(n) in STATE_KEYS:
+			continue
 		var v = st[n]
 		GameState.set(str(n), v.duplicate(true) if (v is Array or v is Dictionary) else v)
 
@@ -402,10 +482,11 @@ static func play(tree: SceneTree, r: Dictionary) -> String:
 ## 只做「备份 GameState → 写入记录 → 挂上待播」, 不换场景(门禁直接实例化战斗场用)。
 static func begin_play(r: Dictionary) -> void:
 	if not _has_backup:
-		_backup = capture_state()
+		_backup = capture_all()
 		_backup_test_mode = bool(GameState.test_mode)
 		_has_backup = true
 	GameState.test_mode = true          # 回放期间任何 save() 都空转(V5)
+	GameState.tutorial = false          # 回放不挂教学引导(战斗场 _ready 看它; 不进录像)
 	apply_state(r.get("state", {}))
 	pending_play = r
 
@@ -415,7 +496,9 @@ static func end_play() -> void:
 	pending_play = {}
 	if not _has_backup:
 		return
-	apply_state(_backup)
+	for n in _backup:
+		var v = _backup[n]
+		GameState.set(str(n), v.duplicate(true) if (v is Array or v is Dictionary) else v)
 	GameState.test_mode = _backup_test_mode
 	_backup = {}
 	_has_backup = false

@@ -165,7 +165,15 @@ create policy matches_write_own on public.matches
 --    内容：一局「重算所需的全部输入」—— Godot `var_to_bytes` + deflate 的二进制，再 base64。
 --      ★不用 jsonb：JSON 往返会改浮点末位（实测 0.30000000000000004 → 0.3），站位差一位第一步就分叉。
 --      ★不用 bytea：PostgREST 写 bytea 要 `\x` 十六进制，体积翻倍；base64 文本最省事。
---    一局实测约 2.5 KB（base64 后约 3.4 KB）。上限 64 KB 是二十倍余量，
+--    ★录像里有什么（2026-10-04 瘦身，方案书 docs/plans/20261003-跨设备回放.md §9.5）：matches 任何登录用户都读得到，
+--      所以录像只装**重放这一场必需的**：v / client_version / seed / events（开打站位·点幕布·认输，按 sim 步号）/
+--      cps（每 60 步一个 16 位校验摘要）/ end，以及 state = 开局那一刻 GameState 的 16 个变量（`ReplayRecorder.STATE_KEYS`）：
+--      分路与三统领、**上场统领的**持久装备、技能选择、等级 / 糖果临时等级 / debug_level、大师技能与形象、
+--      赌神命运之轮层数、宝箱财宝值与已开战利品、093 香火石刻痕与充能、dual_active、对手快照 dual_ghost（摘掉 is_bot / ghost_id）。
+--      **不含**：币、邮箱、令牌、安装 id、昵称、背包 / 装备池、未上场统领的装备、赛季战绩、补报单（瘦身前这些全在里面）。
+--      为什么是这 16 个：运行时量「回放那一遍读了 GameState 哪些变量」(24 个) + 逐字段变异（拿掉 ⇒ 重放分叉的才进），
+--      门禁 verify_replay_roundtrip V3 / V3b / V3c 每次重新量。left_snapshot / right_snapshot 两列是对战快照（ghosts 表同一形状）。
+--    一局实测：瘦身前约 2.5~2.8 KB、瘦身后约 1.6 KB（deflate 后；base64 再乘 4/3）。上限 64 KB 是二十倍以上余量，
 --      ★必须与客户端 `replay_uploader.gd` 的 `REPLAY_MAX_B64` 同一个数（门禁 verify_replay_upload_retry 逐字对）。
 --    客户端写法：POST 时自带 `match_id`（uuid v4，= 本地录像 id），写完**按 match_id 回读、逐字比对 replay**
 --      才算传成（插入回 201 不算）——所以这张表的读策略（matches_read_all）是 S2 的前提，别收窄成「只读别人的」。
