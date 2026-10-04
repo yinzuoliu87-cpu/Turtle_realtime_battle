@@ -167,12 +167,19 @@ func _shop_selfshot() -> void:
 	get_tree().quit()
 
 ## 从 GameState 恢复货架。成功返回 true; 货架不存在/已过期(打过新战斗)返回 false。
+## ★上了锁(meta_shop_locked)就**不看**场次戳 —— 打完多少场都恢复原货架(云顶的锁)。
+##   恢复后把戳补成当前场次: 否则解锁那一刻再进店, 戳还是旧的 ⇒ **立刻**换货,
+##   而云顶的解锁是「下一回合才刷」, 不是「解锁即刷」。
 func _restore_offer() -> bool:
-	if int(GameState.meta_shop_battles) != int(GameState.season_total_battles):
+	var _locked: bool = bool(GameState.meta_shop_locked)
+	if not _locked and int(GameState.meta_shop_battles) != int(GameState.season_total_battles):
 		return false      # 打过新的一场 → 该换货了
 	var saved: Array = GameState.meta_shop_offer
 	if saved.is_empty():
 		return false
+	if _locked and int(GameState.meta_shop_battles) != int(GameState.season_total_battles):
+		GameState.meta_shop_battles = int(GameState.season_total_battles)
+		GameState.save()
 	_offer = []
 	for row in saved:
 		if row == null:
@@ -568,6 +575,7 @@ func _rebuild() -> void:
 	rf.disabled = not _rf_afford
 	rf.modulate = Color(1, 1, 1, 1) if _rf_afford else Color(1, 1, 1, 0.42)
 	rf.pressed.connect(_on_refresh); _skin_button(rf); add_child(rf)
+	_build_lock_button(rf.position + Vector2(rf.size.x + LOCK_GAP, 0.0), rf.size.y)
 
 	_build_synergy_bar()    # ★羁绊总览: 当前激活了哪些 + 距下一档还差几件(2026-08-12 用户点名)
 	_build_detail_panel()   # ★右侧常驻详情面板(本次重设计的核心: 描述不再藏在 tooltip 里)
@@ -1589,6 +1597,51 @@ func _on_buy(idx: int) -> void:
 	else:
 		_toast("买下「%s」· 进背包了" % _nm)
 
+## ── 货架锁(用户 2026-10-04 · 学云顶) ─────────────────────────────────
+## 「换一批」右边一颗方钮, 图标复用 `icon-lock.png`(不新画: 背包页/对阵图同一张)。
+## ★没有「开着的锁」那张图 ⇒ 两态靠**整颗按钮的亮暗 + 金边**区分:
+##   未锁 = 图标压暗(半透) + 普通冷色皮 + 字「锁货」; 已锁 = 图标全亮 + 金色主按钮皮 + 字「已锁」。
+## ★字是必须的: 只有一把锁的图标, 光看图标分不出"点了会锁"还是"现在锁着"。
+const LOCK_ICON := preload("res://assets/sprites/ui/icon-lock.png")
+const LOCK_GAP := 12.0
+## ★宽 200 不是随手定的: verify_ui_consistency 的「热区不足」判据是 短边 < 81px(44pt) **且** 长边 < 200px。
+##   高度要跟「换一批」(76)对齐一行, 只能靠长边 ≥ 200 过线(「换一批」240×76 也是这么过的)。
+const LOCK_W := 200.0
+var _lock_btn: Button = null
+
+func _build_lock_button(pos: Vector2, h: float) -> void:
+	var locked: bool = bool(GameState.meta_shop_locked)
+	var lb := Button.new()
+	lb.name = "ShopLockBtn"
+	lb.text = "已锁" if locked else "锁货"
+	lb.add_theme_font_size_override("font_size", 20)
+	lb.position = pos; lb.size = Vector2(LOCK_W, h)
+	lb.icon = LOCK_ICON
+	lb.expand_icon = true
+	lb.add_theme_constant_override("icon_max_width", 32)
+	## 图标在左、字在右, 一行排开(竖排时 76 高的皮框上下边带会压住图标和字 —— 实拍过)
+	lb.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	lb.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	lb.tooltip_text = "已锁: 打完下一场也不换货, 再点一下解锁" if locked else "锁住这批货: 打完下一场不自动换"
+	_skin_button(lb, locked)
+	## 未锁时图标压暗(按钮本身不 disabled —— 它随时都能点)
+	lb.add_theme_color_override("icon_normal_color", Color(1, 1, 1, 1) if locked else Color(1, 1, 1, 0.45))
+	lb.add_theme_color_override("icon_hover_color", Color(1, 1, 1, 1) if locked else Color(1, 1, 1, 0.7))
+	lb.add_theme_color_override("icon_pressed_color", Color(1, 1, 1, 1))
+	lb.pressed.connect(_on_toggle_lock)
+	add_child(lb)
+	_lock_btn = lb
+
+
+func _on_toggle_lock() -> void:
+	GameState.meta_shop_locked = not bool(GameState.meta_shop_locked)
+	## 锁的那一刻把戳对齐当前场次(货架就是本场次的货; 防一份旧戳在解锁后被当成"该换了")
+	GameState.meta_shop_battles = int(GameState.season_total_battles)
+	GameState.save()
+	_rebuild()   # ★先重建再提示 —— _rebuild 会清掉全部子节点(提示也在其中)
+	_toast("锁住了 · 打完下一场也不换货" if GameState.meta_shop_locked else "解锁了 · 打完下一场换新货")
+
+
 func _on_refresh() -> void:
 	if int(GameState.meta_deepsea_coins) < REFRESH_COST:
 		## ★同 `_on_buy`: 原来是裸 return。而「换一批」那颗按钮**一直是亮的**
@@ -1597,6 +1650,10 @@ func _on_refresh() -> void:
 		_toast("深海币不够 · 换一批要 %d" % REFRESH_COST)
 		return
 	GameState.meta_deepsea_coins -= REFRESH_COST
+	## ★锁着也能换一批, 而且**换完自动解锁** —— 照云顶(tft.ninja「The Shop」: 锁住的商店
+	##   一直锁到你手动解锁、**或者你刷新**为止; 刷新会顺带解锁)。理由: 锁的是「这批货」,
+	##   你亲手把这批货换掉了, 锁就没有对象了。方案书 §⑤ 未决点 U5-1 记着, 用户要反过来改这一行。
+	GameState.meta_shop_locked = false
 	_roll()
 	GameState.save()
 	_rebuild()

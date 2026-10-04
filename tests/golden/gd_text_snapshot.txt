@@ -880,11 +880,13 @@ scripts/scenes/ShopScene.gd|lit|斧头
 scripts/scenes/ShopScene.gd|lit|深海币不够 · 买一次经验要 %d
 scripts/scenes/ShopScene.gd|lit|深海币不够 · 换一批要 %d
 scripts/scenes/ShopScene.gd|lit|精英小将
+scripts/scenes/ShopScene.gd|lit|解锁了 · 打完下一场换新货
 scripts/scenes/ShopScene.gd|lit|近战小将
 scripts/scenes/ShopScene.gd|lit|还差 %d 枚深海币 ·「%s」要 %d
 scripts/scenes/ShopScene.gd|lit|还没选龟
 scripts/scenes/ShopScene.gd|lit|这件
 scripts/scenes/ShopScene.gd|lit|远程小将
+scripts/scenes/ShopScene.gd|lit|锁住了 · 打完下一场也不换货
 scripts/scenes/ShopScene.gd|lit|🎒 背包
 scripts/scenes/ShopScene.gd|text|%d 深海币%s
 scripts/scenes/ShopScene.gd|text|%d 费 %d%%
@@ -901,6 +903,7 @@ scripts/scenes/ShopScene.gd|text|回 🎒 背包装上或卖掉
 scripts/scenes/ShopScene.gd|text|属性
 scripts/scenes/ShopScene.gd|text|已入袋
 scripts/scenes/ShopScene.gd|text|已满级
+scripts/scenes/ShopScene.gd|text|已锁
 scripts/scenes/ShopScene.gd|text|换一批  %d
 scripts/scenes/ShopScene.gd|text|收起
 scripts/scenes/ShopScene.gd|text|空的, 上面挑几件带走
@@ -913,10 +916,13 @@ scripts/scenes/ShopScene.gd|text|还差 %d 枚深海币
 scripts/scenes/ShopScene.gd|text|还有 %d 件, 去背包页看全部
 scripts/scenes/ShopScene.gd|text|还没点兵, 先去选龟那边排一路人马
 scripts/scenes/ShopScene.gd|text|这件不加属性，只有效果
+scripts/scenes/ShopScene.gd|text|锁货
 scripts/scenes/ShopScene.gd|text|🎒 我的背包  %d 件
 scripts/scenes/ShopScene.gd|text|🐢 出战阵容  已装 %d/%d
 scripts/scenes/ShopScene.gd|text|🐢 出战阵容 · 身上带着的
 scripts/scenes/ShopScene.gd|text|🔒 摊子还没摆开\n\n打完这一大轮的头一场, 老板才出摊
+scripts/scenes/ShopScene.gd|tooltip_text|已锁: 打完下一场也不换货, 再点一下解锁
+scripts/scenes/ShopScene.gd|tooltip_text|锁住这批货: 打完下一场不自动换
 scripts/scenes/TeamSelectScene.gd|lit|%s 不能被替换
 scripts/scenes/TeamSelectScene.gd|lit|%s 只能拖到空格
 scripts/scenes/TeamSelectScene.gd|lit|三只满了 · 先撤下一只

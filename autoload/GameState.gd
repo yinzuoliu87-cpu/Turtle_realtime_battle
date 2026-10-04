@@ -924,6 +924,11 @@ var meta_deepsea_coins: int = 0                       # 局外深海币 (独立�
 var meta_shop_offer: Array = []
 ## 掷这批货时的 season_total_battles。打完新的一场(该值变化)才自动换新货架, 否则一直保留。
 var meta_shop_battles: int = -1
+## ★货架锁(用户 2026-10-04「每局打完商店会自动刷新，需要加个锁定键防止被自动刷新走」·「对的，学云顶的」)。
+##   true ⇒ 打完新的一场**不自动换货**, 直到玩家手动解锁(云顶: 锁一直锁着, 跨多场都锁)。
+##   手动「换一批」照样能换, 换完自动解锁(云顶同款: 刷新 = 换掉了被锁的那批货)。新赛季 / 清档解锁(货架本身都作废了)。
+##   方案书 docs/plans/20261004-五件新需求.md §⑤。
+var meta_shop_locked: bool = false
 var season_id: int = 1                                # 第几大轮赛季 (★一个自然周一轮, 切轮全重置)
 var season_start_ts: int = 0                          # 本赛季开始 unix 时间戳 = 本周一 00:00 UTC (0=未初始化)
 var hearts: int = _P2.HEARTS_MAX                      # 命数 (输-1, 0=淘汰; 上限的事实源 = phase2_config.HEARTS_MAX)
@@ -1657,6 +1662,7 @@ func _save_dict() -> Dictionary:
 		"meta_deepsea_coins": meta_deepsea_coins,
 		"meta_shop_offer": meta_shop_offer,
 		"meta_shop_battles": meta_shop_battles,
+		"meta_shop_locked": meta_shop_locked,
 		"install_uid": install_uid,      # 本机随机安装标识(见 get_install_uid 的长注释)
 		"account_id": account_id,        # D-3 服务端账号(身份, 不随赛季变)
 		"account_email": account_email,
@@ -1825,6 +1831,7 @@ func _apply_save_dict(data: Dictionary) -> void:
 	meta_deepsea_coins = int(data.get("meta_deepsea_coins", 0))
 	meta_shop_offer = data.get("meta_shop_offer", [])
 	meta_shop_battles = int(data.get("meta_shop_battles", -1))
+	meta_shop_locked = bool(data.get("meta_shop_locked", false))
 	install_uid = str(data.get("install_uid", ""))
 	account_id = str(data.get("account_id", ""))
 	account_email = str(data.get("account_email", ""))
@@ -2016,6 +2023,7 @@ func reset_save() -> void:
 	meta_deepsea_coins = 0
 	meta_shop_offer = []
 	meta_shop_battles = -1
+	meta_shop_locked = false
 	season_id = 1
 	season_start_ts = 0
 	hearts = _P2.HEARTS_MAX
@@ -2542,6 +2550,7 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	hearts = _P2.HEARTS_MAX
 	meta_shop_offer = []      # 新赛季货架作废(否则会带着上赛季的货开局)
 	meta_shop_battles = -1
+	meta_shop_locked = false   # 新赛季货架都作废了, 锁也跟着解(锁的对象不存在了)
 	season_total_battles = 0
 	season_eggs_killed = 0
 	season_wins = 0
