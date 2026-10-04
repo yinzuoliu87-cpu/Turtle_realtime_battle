@@ -4,8 +4,10 @@ extends Node
 ## ══════════════════════════════════════════════════════════════════
 ##  ★由来: 用户实测「战斗结束后如果名单很多, 根本点不到回到主菜单的按钮」
 ## ══════════════════════════════════════════════════════════════════
-## 结算卡是 `CenterContainer > PanelContainer > VBoxContainer`, 按钮行加在
-## 【数据表下面】。而数据表那个 ScrollContainer **没有任何高度上限** ——
+## (2026-08-10 当时) 结算卡是 `CenterContainer > PanelContainer > VBoxContainer`, 按钮行加在
+## 【数据表下面】。★2026-10-04 起结算屏是三页(settle_screen.gd): 左栏页签 + 金属框正文,
+## 按钮行在页体外面; 本门禁的判据(按钮完整在屏内 / 引擎命中测试 / 提示行数对得上)照旧,
+## 只是「找结算卡」改成找 `SettleScreen` 里的 `SettleFrame`, 长名单改在【我方页】上量。而数据表那个 ScrollContainer **没有任何高度上限** ——
 ## 名单一长, 整张卡就比视口还高; CenterContainer 居中它 ⇒ **上下两头都溢出屏幕**,
 ## 按钮行正好在下面那一头 ⇒ 点不到, 玩家被卡死在结算屏(只能杀进程)。
 ##
@@ -21,6 +23,8 @@ extends Node
 const SCENE := "res://scenes/RealtimeBattle3D.tscn"
 ## 副标题那句话的**唯一出处** —— 测试不许自己拼那几个字(拼一遍就是抄第二份)。
 const P2C := preload("res://scripts/gamedata/phase2_config.gd")
+## 结算屏本体(三页)。提示行的格式串从它那里取。
+const SS := preload("res://scripts/scenes/battle/settle_screen.gd")
 
 var _n := 0
 var _fail := 0
@@ -106,6 +110,12 @@ func _ready() -> void:
 		btns.size() >= 1, "btns=%d" % btns.size())
 
 	var shell: Control = _find_shell(sc._ui_layer)
+	## ★长名单在【我方页】上 —— 默认停在「战果」页(那一页没有表), 不翻过去量的就不是长名单。
+	var scr0 = sc._hud._settle
+	if scr0 != null:
+		scr0.show_page(1)
+		for _i in range(6):
+			await get_tree().process_frame
 	var outside: Array = []
 	for b in btns:
 		var r: Rect2 = (b as Control).get_global_rect()
@@ -118,9 +128,17 @@ func _ready() -> void:
 	# 卡片本体也不该比视口高 —— 高了就说明没有任何高度约束
 	if shell != null:
 		var sr: Rect2 = shell.get_global_rect()
-		_ok("★分母: 结算卡真的很高(%.0f px) —— 不够高说明名单没塞进去" % sr.size.y,
-			sr.size.y > 260.0, "卡高 %.0f" % sr.size.y)
-		_ok("★★结算卡整体不超出视口高度(超出 ⇒ 上下两头够不到)",
+		var nrow: int = 0
+		var grids0: Array = []
+		_collect_cls(shell, "GridContainer", grids0)
+		for g in grids0:
+			if (g as Control).is_visible_in_tree():
+				for ch in (g as Node).get_children():
+					if ch is HBoxContainer:
+						nrow += 1
+		_ok("★分母: 我方页上真的排着 %d 行 —— 不够长说明名单没塞进去" % nrow,
+			nrow >= 14, "行 %d" % nrow)
+		_ok("★★结算屏正文框整体不超出视口(超出 ⇒ 上下两头够不到)",
 			sr.position.y >= -1.0 and sr.end.y <= vp.y + 1.0,
 			"卡 %s / 视口高 %.0f" % [str(sr), vp.y])
 
@@ -135,7 +153,7 @@ func _ready() -> void:
 	##   把它们一起算进来会造出一堆假阳性(第一版就是这么红的)。
 	var card_btns: Array = []
 	if shell != null:
-		_collect_buttons(shell, card_btns)
+		_collect_buttons(_screen_of(shell), card_btns)     ## 整屏: 左栏页签也要点得到
 	_ok("★分母: 结算卡内找到 %d 个按钮" % card_btns.size(), card_btns.size() >= 1)
 	var unclickable: Array = []
 	for b in card_btns:
@@ -261,12 +279,12 @@ func _ready() -> void:
 ##   而全屏一根滚动条 / 一句提示都没有。
 ##
 ## 判据三条, 都量真实节点:
-##   A. 两处预算同源 ⇒ 外层卡片永远没有可滚的量
-##      (等价于「内层 ≤ 外层 − 表以外的部分」, 而**不是**断言某个常量等于某个数)
+##   A. (2026-10-04 三页之后) 没有外层滚动区了 ⇒ 改成: 三页的内容任何行数下都放得进页体,
+##      正文框不出视口 —— 只有队伍表自己会滚(而它滚的时候有提示, 见 B)
 ##   B. 穷举 R=7..16: 不存在「有行看不到而屏上没有任何提示」的那一档
 ##   C. 分母: 扇描里真的出现过「有行看不到」, 也出现过「全看得到」
 ##
-## ★提示的文字不在这里抄第二份: 拿 `BattleHud.SETTLE_MORE_FMT` 自己算
+## ★提示的文字不在这里抄第二份: 拿 `SS.MORE_FMT`(settle_screen.gd)自己算
 ##   (memory [[fb-hand-rolled-copies-drift]]).
 func _scan_budget() -> void:
 	print("  ── ⑪ BUDGET_SAME_SOURCE: 穷举行数, 不许有「溢出了而屏上没提示」的档 ──")
@@ -280,7 +298,6 @@ func _scan_budget() -> void:
 	await get_tree().process_frame
 	var base: int = sc2._ui_layer.get_child_count()
 	var vp: Vector2 = sc2.get_viewport().get_visible_rect().size
-	var pre: String = BattleHud.SETTLE_MORE_FMT.split("%d")[0]     # 「▼ 还有 」—— 派生出来的, 不是我又抄一份
 	var built: int = 0
 	var n_over: int = 0
 	var n_clean: int = 0
@@ -315,68 +332,78 @@ func _scan_budget() -> void:
 			await get_tree().process_frame
 
 		var shell: Control = _find_shell(sc2._ui_layer)
-		if shell == null:
-			continue
-		var scrolls: Array = []
-		_collect_cls(shell, "ScrollContainer", scrolls)
-		if scrolls.size() < 2:
+		var scr = sc2._hud._settle
+		if shell == null or scr == null:
 			continue
 		built += 1
-		# ── A. 外层卡片还有可滚的量吗 ──
-		var obar: VScrollBar = (scrolls[0] as ScrollContainer).get_v_scroll_bar()
-		var oscrollable: float = maxf(0.0, obar.max_value - obar.page)
-		if oscrollable > 1.5:
-			outer_bad.append("R=%d 外层还剩 %.0fpx 可滚(而它是 SHOW_NEVER, 永远不画条)" % [r, oscrollable])
-		# ── B/C. 有几行看不到 ──
-		var rows: Array = []
-		var grids: Array = []
-		_collect_cls(shell, "GridContainer", grids)
-		for g in grids:
-			if not (g as Control).is_visible_in_tree():
-				continue
-			for ch in (g as Node).get_children():
-				if ch is HBoxContainer:
-					rows.append(ch)
+		# ── A. 页体放得下页内容(放不下 = 被 clip 静默裁掉), 正文框不出视口 ──
+		var body: Control = (scr.pages[0] as Control).get_parent()
+		for pg in scr.pages:
+			var need: float = (pg as Control).get_combined_minimum_size().y
+			if need > body.size.y + 0.5:
+				outer_bad.append("R=%d 第 %s 页最小高 %.0f > 页体 %.0f" % [r, str(pg.name), need, body.size.y])
+		var fr: Rect2 = shell.get_global_rect()
+		if fr.position.y < -0.5 or fr.end.y > vp.y + 0.5:
+			outer_bad.append("R=%d 正文框 %s 出了视口" % [r, str(fr)])
+		var oscrollable: float = 0.0
 		var hidden: int = 0
-		for rr in rows:
-			if not _clip_of(rr, vp).encloses((rr as Control).get_global_rect()):
-				hidden += 1
-		# ── 屏上那些真看得见的提示 ──
-		var want: String = BattleHud.SETTLE_MORE_FMT % hidden
-		var seen_exact: bool = false
-		var seen_any: String = ""
-		for l in _visible_labels(shell, vp):
-			if str(l) == want:
-				seen_exact = true
-			if str(l).begins_with(pre):
-				seen_any = str(l)
+		var rows: Array = []
+		# ── B/C. 我方 / 敌方两页各量一遍: 有几行看不到, 屏上那句提示对不对 ──
+		for pi in [1, 2]:
+			scr.show_page(pi)
+			for _i in range(6):
+				await get_tree().process_frame
+			var prow: Array = []
+			var grids: Array = []
+			_collect_cls(scr.pages[pi], "GridContainer", grids)
+			for g in grids:
+				if not (g as Control).is_visible_in_tree():
+					continue
+				for ch in (g as Node).get_children():
+					if ch is HBoxContainer:
+						prow.append(ch)
+			var ph: int = 0
+			for rr in prow:
+				if not _clip_of(rr, vp).encloses((rr as Control).get_global_rect()):
+					ph += 1
+			rows += prow
+			var want: String = SS.MORE_FMT % ph
+			var pre: String = SS.MORE_FMT.split("%d")[0]     # 「▼ 还有 」—— 派生出来的, 不是我又抄一份
+			var seen_exact: bool = false
+			var seen_any: String = ""
+			for l in _visible_labels(shell, vp):
+				if str(l) == want:
+					seen_exact = true
+				if str(l).begins_with(pre):
+					seen_any = str(l)
+			if ph > 0:
+				hidden += ph
+				if seen_any == "":
+					silent.append("R=%d 页%d 共 %d 行·看不到 %d 行, 屏上一句提示没有" % [r, pi, prow.size(), ph])
+				elif not seen_exact:
+					wrong_n.append("R=%d 页%d 该写「%s」屏上写的是「%s」" % [r, pi, want, seen_any])
+			elif seen_any != "":
+				wrong_n.append("R=%d 页%d 全看得到, 却还写着「%s」" % [r, pi, seen_any])
 		if hidden > 0:
 			n_over += 1
-			if seen_any == "":
-				silent.append("R=%d 共 %d 行·看不到 %d 行, 屏上一句提示没有" % [r, rows.size(), hidden])
-			elif not seen_exact:
-				wrong_n.append("R=%d 该写「%s」屏上写的是「%s」" % [r, want, seen_any])
 		else:
 			n_clean += 1
-			if seen_any != "":
-				wrong_n.append("R=%d 全看得到, 却还写着「%s」" % [r, seen_any])
 		# ── 按钮还完整在屏内吗 ──
 		var bs: Array = []
-		_collect_buttons(shell, bs)
+		_collect_buttons(_screen_of(shell), bs)
 		for b in bs:
 			var br: Rect2 = (b as Control).get_global_rect()
 			if br.position.y < 0.0 or br.end.y > vp.y or br.position.x < 0.0 or br.end.x > vp.x:
 				btn_out.append("R=%d '%s' @%s" % [r, str((b as Button).text), str(br)])
-		print("     R=%2d 行=%2d 卡片最小高=%4.0f 外层可滚=%3.0f 看不到=%2d 提示=%s"
-			% [r, rows.size(), (scrolls[0] as ScrollContainer).get_children()[0].get_combined_minimum_size().y,
-			   oscrollable, hidden, (seen_any if seen_any != "" else "-")])
+		print("     R=%2d 两页行=%2d 页体高=%4.0f 看不到=%2d 提示=%s"
+			% [r, rows.size(), body.size.y, hidden, scr.more_hint.text])
 
 	_ok("⑪ ★分母: 10 档里都把结算卡建出来了", built == 10, "built=%d" % built)
 	_ok("⑪ ★分母: 扇描里真的出现过「有行看不到」(0 次 ⇒ 下面那条是空检查)",
 		n_over > 0, "看不到行的档=%d" % n_over)
 	_ok("⑪ ★分母: 也出现过「全看得到」的档(提示不是恒亮的)",
 		n_clean > 0, "全看得到的档=%d" % n_clean)
-	_ok("⑪ ★★两处预算同源: 任何行数下外层卡片都没有可滚的量",
+	_ok("⑪ ★★任何行数下: 三页的内容都放得进页体, 正文框不出视口(只有队伍表自己会滚)",
 		outer_bad.is_empty(), str(outer_bad))
 	_ok("⑪ ★★★不存在「有行看不到而屏上没有任何提示」的那一档",
 		silent.is_empty(), str(silent))
@@ -429,17 +456,24 @@ func _collect_buttons(n: Node, out: Array) -> void:
 		_collect_buttons(c, out)
 
 
-## 结算卡 = CenterContainer 下面那个 PanelContainer。
+## 结算屏正文 = 最后建的那个 `SettleScreen` 里的金属框 `SettleFrame`(左栏页签 + 它 = 整屏)。
+## ★取【最后一个】: 本测试会连建好几张, 旧的还躺在树上。
 func _find_shell(n: Node) -> Control:
-	if n is CenterContainer:
-		for c in n.get_children():
-			if c is PanelContainer:
-				return c as Control
+	var found: Control = null
 	for c in n.get_children():
-		var r: Control = _find_shell(c)
-		if r != null:
-			return r
-	return null
+		if str(c.name).begins_with("SettleScreen"):
+			var f = c.find_child("SettleFrame", true, false)
+			if f != null:
+				found = f
+	return found
+
+## 金属框往上找到整屏根(SettleScreen) —— 页签在左栏, 不在框里。
+func _screen_of(c: Node) -> Node:
+	var p: Node = c
+	while p != null and not str(p.name).begins_with("SettleScreen"):
+		p = p.get_parent()
+	return p if p != null else c
+
 
 ## 把整棵树上所有 Label 的文字收成一张平表。
 ## ★为什么不按节点名/路径找: 名字是我起的, 拿它当判据等于「我说是就是」;

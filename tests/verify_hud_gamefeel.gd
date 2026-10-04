@@ -32,11 +32,13 @@ const DSP := preload("res://scripts/scenes/battle/dmg_stats_panel.gd")
 const RP := preload("res://scripts/net/remote_pool.gd")
 const UIP := preload("res://scripts/util/ui_palette.gd")
 
-## 扫的三个文件 = 本轮改过的三块屏。
+## 扫的文件 = 本轮改过的三块屏(结算屏 2026-10-04 起分在两个文件里)。
 const FILES := [
 	"res://scripts/scenes/battle/battle_hud.gd",
 	"res://scripts/scenes/battle/dmg_stats_panel.gd",
 	"res://scripts/scenes/battle/info_panel.gd",
+	## 2026-10-04 结算屏拆成三页后, 那一屏的字住在这里(同一块屏, 换了文件不许出视野)
+	"res://scripts/scenes/battle/settle_screen.gd",
 ]
 
 ## ★后台/报表用语黑名单。每一条都写清**为什么它是后台词**, 不写理由的词不许加进来

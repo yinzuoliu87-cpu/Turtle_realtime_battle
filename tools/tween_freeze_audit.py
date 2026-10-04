@@ -58,8 +58,12 @@ ALLOW = {
         5, "时停【自己】的演出：解除时的反色闪与回色 / 停摆钟脉动与淡出 / 蓄力沙漏虚影。"
             "冻了就等于时停没有画面"),
     "scripts/scenes/battle/battle_hud.gd": (
-        5, "UI 层（HUD 面板动效），不在 `_world` 里。第 5 处 = 单位详情面板滑入（2026-10-04 从 `_reg_tween` 改回裸 tween："
-           "sim tween 从此按 sim 步喂, 战斗停着时面板会卡在屏外）"),
+        3, "UI 层（HUD 面板动效），不在 `_world` 里。含单位详情面板滑入（2026-10-04 从 `_reg_tween` 改回裸 tween："
+           "sim tween 从此按 sim 步喂, 战斗停着时面板会卡在屏外）。"
+           "5 → 3（2026-10-04）: 结算屏的暗幕淡入与胜负大字弹出随结算屏搬到 settle_screen.gd"),
+    "scripts/scenes/battle/settle_screen.gd": (
+        2, "战后结算屏（UI 层，不在 `_world` 里）：暗幕淡入 + 胜负大字弹出。"
+           "结算时战斗已经结束，冻它只会让结算屏卡在半透明"),
     "scripts/scenes/battle/battle_vfx.gd": (
         3, "飘字（伤害/治疗数字，CanvasLayer）。时停期间只有携带者能动，"
            "它打出的数字该正常飞；灰世界叠加层本来就压在 UI 之下（`layer = 5`）"),

@@ -24,6 +24,8 @@ const _P2C_HUD := preload("res://scripts/gamedata/phase2_config.gd")   # A5: 结
 #   点下去才发现是空的。常量让门禁能 ResourceLoader.exists() 真去查这个场景在不在。
 const SHOP_SCENE := "res://scenes/Shop.tscn"
 const SHOP_BTN_TEXT := "前往商店"
+## 战后结算屏(三页)的本体 —— 2026-10-04 从本文件拆出去(本文件离 3000 行上限只差几行)
+const SettleScreenS := preload("res://scripts/scenes/battle/settle_screen.gd")
 
 ## 第二行资源条的节点引用 —— 每帧按下标对位改数, 不重建节点。
 ## ★存在 hud 这个 RefCounted 上而不是主战斗文件里: 主文件有 arch_budget 冻结的行数台账,
@@ -33,9 +35,8 @@ var _info_res_rows: Array = []
 ## 结算卡那个 VBox(标题~战报) 与战报表底下那行提示。
 ## ★为什么存引用而不每次现找: `settle_inner_avail` 要拿卡片最小高当减数,
 ##   现找就得再写一遗“怎么从滚动容器走到卡片”的树结构知识 —— 那就是第二份副本。
-var _settle_card: Control = null
-var _settle_more_hint: Label = null
-var _settle_more_scroll: ScrollContainer = null
+## 当前这一屏结算(settle_screen.gd 的实例)。门禁/探针从这里拿页与按钮。
+var _settle: Control = null
 
 
 ## 被动技能 id → 圆盘图标。
@@ -1206,55 +1207,6 @@ func _banner_sealed() -> bool:
 	return p is Dictionary and not (p as Dictionary).is_empty()
 
 
-## ====================================================================
-##  ★★★结算屏高度预算 —— 【唯一事实源】(2026-09-29)
-## ====================================================================
-## 用户原话:「每场打完后结算界面能下滑吗, 不能啊, 有很多单位看不到啊」。
-##
-## 根因是**算术错, 不是设计权衡**: 同一屏的高度被两处各算了一份, 差 56px ——
-##   · 外层卡片滚动区(`_show_banner`) = 视口 − 卡片内边距 − 按钮行 − 安全区 − 呼吸 = 536
-##   · 内层战报(`_stats_fit_body`)    = 视口 − 320                                = 400
-##   而卡片里【表以外的部分】实测 192(标题/副标题/间距/面板边)
-##   ⇒ 内层最多只能 536 − 192 = **344**, 代码却给到 400。
-## 探针实测(1560×720·每侧 R 只龟·`tests/_probe_settle_budget.gd`):
-##   R=12 卡片 516 不溢出 | R=13 **541 溢出 +5** | R=14 566 **+30·2 行看不到·0 根滚动条**
-##   | R=15 591 +55·4 行看不到 | R=16 592 **+56**(内层撞到 400 上限·逐位对上那 56)
-## ★那行注释当时还在算「按钮 46」, 而按钮 2026-08-12 就搬到滚动区【外面】了;
-##   它也从没算过九宫格卡片的 62px 内边距与 SafeArea。
-##
-## ⇒ 现在**只有一处算预算**: 外层由 `settle_outer_budget()` 出, 内层 = 外层 − 表以外的部分,
-##   而「表以外的部分」是**量出来的**(卡片最小高 − 内层当前占的那份), 不是第二个手写常量。
-##   memory [[fb-hand-rolled-copies-drift]]: 手抄的副本必然落后。
-const SETTLE_SHELL_PAD := 62.0     # 卡片上下内边距: 九宫格金属框 30+32(见 _settle_shell_style)
-const SETTLE_BTN_ROW := 70.0       # 按钮行 —— 它在滚动区【外面】, 所以要从预算里扣掉
-const SETTLE_BREATH := 40.0        # 一点呼吸, 别让卡贴着安全区边
-
-## 结算卡外层滚动区能有多高。★这是这一屏高度的唯一出处。
-static func settle_outer_budget(vp: Vector2) -> float:
-	var sm: Vector4 = SafeArea.margins(vp, 6.0)
-	return maxf(180.0, vp.y - SETTLE_SHELL_PAD - SETTLE_BTN_ROW - sm.y - sm.w - SETTLE_BREATH)
-
-
-## 内层战报的可用高 = 外层预算 − 卡片里【表以外的部分】。
-## ★"表以外的部分" = 卡片最小高 − 内层滚动区当前占的那一份 ⇒ 与内层多高无关(不会自激)。
-##   也【不写死 192】: 多一行副标题/多一行提示它就变, 写死就是又抄了一份。
-func settle_inner_avail(inner: ScrollContainer) -> float:
-	var budget: float = settle_outer_budget(battle.get_viewport().get_visible_rect().size)
-	if _settle_card == null or not is_instance_valid(_settle_card) or not is_instance_valid(inner):
-		return budget
-	var chrome: float = _settle_card.get_combined_minimum_size().y - inner.custom_minimum_size.y
-	## ★地板取 0 不取 120: 极矮视口下宁可表收成一条, 也不许卡片溢出把按钮顶出屏
-	##   (用户 2026-08-12 实测过的那个「手机上钮点不到」)。
-	return maxf(0.0, budget - chrome)
-
-
-## 把内层战报夹到预算内。★`_stats_fit_body` 只调这里, 不再自己算高度。
-func settle_fit_inner(inner: ScrollContainer, content: Vector2) -> void:
-	if not is_instance_valid(inner):
-		return
-	inner.custom_minimum_size = Vector2(content.x, minf(content.y, settle_inner_avail(inner)))
-
-
 func _show_banner(won: bool, _sealed_hint: bool = false) -> void:
 	if battle._settled:
 		return
@@ -1297,201 +1249,56 @@ func _show_banner(won: bool, _sealed_hint: bool = false) -> void:
 	if a != null:
 		a.stop_bgm()
 	var gs = battle.get_node_or_null("/root/GameState")
-	var accent = Color("#ffd93d") if won else Color("#ff6b6b")
-	# ★2026-07-21 修: 原来这里【全部写死 1280×720 + 绝对 y 坐标】, 只有正好 1280×720 才对,
-	#   手机上(分辨率不同)大字会跑偏甚至出屏。改成锚点自适应 —— 任何分辨率都居中。
-	#   (用户问「结算的页面你放在屏幕中间了吗」时查出来的: 本路结算幕用 CenterContainer 是对的,
-	#    但这个【最终胜负横幅】是另一套写死坐标的代码。)
-	# ═══════════════════════════════════════════════════════════════════════
-	# ★★2026-08-02 整页重做(用户:「整个结算页也需要重做, UI什么的, 文字都非常口语化,
-	#   玩家压根不知道在说什么」)。
-	#
-	# 旧版的两个毛病:
-	#   ① 文案: `+12 深海币    命 5/8    胜场 3    Lv.4` —— 四项用【空格】挤成一行、
-	#      没有标签层级、"命"是口语; 还有 `(练习赛 · 无赛季奖励)` `(失一命)` `去商店 逛逛`
-	#      这类括号口语, 读起来像开发者备注不像游戏界面。
-	#   ② 布局: 标题/比分/奖励/按钮/统计表【五行各自按屏高比例硬摆】(0.34/0.455/0.505/0.575/0.61),
-	#      行距靠手调, 换个分辨率就得重调; 而且【按钮排在数据表上面】, 阅读顺序是反的。
-	#
-	# 现在: 整页是【一张居中的卡片】(CenterContainer + VBoxContainer) ——
-	#   结果标题 → 一句后果说明 → 战果比分 → 数据块 → 战斗数据表 → 主按钮。
-	#   垂直居中由容器算, 不再有一个比例常量; 任何分辨率自动成立(iPad 的 1280×960 也是)。
-	# ═══════════════════════════════════════════════════════════════════════
-	var dim = ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.0)                    # 从全透明淡入
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)   # ★锚点铺满, 不写死尺寸
-	dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	battle._ui_layer.add_child(dim)
-	var dtw = battle.create_tween()
-	dtw.tween_property(dim, "color:a", 0.72, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-
-	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 自己不吃点击, 让按钮收到(见 ui_frame 的同款教训)
-	battle._ui_layer.add_child(center)
-	# ★整张卡有自己的底: 不然标题/后果/数据块是【浮在战场上的散件】, 和下面那块有边框的
-	#   数据表分成两坨。一个底把它们收成一张"结算单"。
-	var shell := PanelContainer.new()
-	shell.add_theme_stylebox_override("panel", _settle_shell_style())
-	center.add_child(shell)
-	## ★★结算页的按钮【必须永远够得着】(用户 2026-08-12 实测:「结算时数量单位过多还是会
-	##   导致按钮被挤下去, 我手机是钮点不到」)。
-	##   CenterContainer 按子节点最小尺寸居中 ⇒ 卡片一超视口就上下一起溢出, 按钮掉出屏幕。
-	##   ⇒ 「标题~数据表」进一个**高度封顶的滚动区**, 按钮行放在滚动区【外面】。
-	##   预算按视口算并扣安全区(手机刘海/手势条), 不写死像素。
-	var outer := VBoxContainer.new()
-	outer.add_theme_constant_override("separation", 12)
-	shell.add_child(outer)
-	var vp: Vector2 = battle.get_viewport().get_visible_rect().size
-	## 高度预算见本文件 `settle_outer_budget()` —— 那里是这一屏高度的**唯一出处**,
-	## 内层战报的预算由它减出来(2026-09-29 之前两处各算一份, 差 56px ⇒ 卡片静默溢出)。
-	var scroll_max: float = settle_outer_budget(vp)
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	## ★滚动条【不占位】: 默认的 AUTO 会给竖条预留宽度, 结算卡因此整体左移几像素,
-	##   verify_ui_layout ⑥「居中于真实视口」当场红(实测偏 -5)。
-	##   SHOW_NEVER 只是不画条, 拖动/滚轮照样能滚 —— 与出战页选龟网格同一套做法。
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
-	scroll.custom_minimum_size = Vector2(0, 0)
-	scroll.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	outer.add_child(scroll)
-	var card := VBoxContainer.new()
-	card.add_theme_constant_override("separation", 12)
-	card.alignment = BoxContainer.ALIGNMENT_CENTER
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(card)
-	## ★存下卡片 —— `settle_inner_avail()` 要拿它的最小高减出内层的预算。
-	_settle_card = card
-	## 内容比预算矮就按内容高(卡片不至于凭空拉长); 高了就封顶并内部滚动。
-	## ★★必须【延迟求值】: `set_deferred("custom_minimum_size", <算式>)` 只延迟**赋值**,
-	##   算式在这一行就求完了 —— 那时 card 还是空的, 于是恒得 120, 卡片被压成一小条
-	##   (verify_result_reachable 的「结算卡真的很高」分母当场红, 实测卡高 224)。
-	##   用 lambda + call_deferred 才是延迟【求值】。
-	var _fit_scroll := func() -> void:
-		if is_instance_valid(scroll) and is_instance_valid(card):
-			scroll.custom_minimum_size = Vector2(0,
-				minf(scroll_max, maxf(120.0, card.get_combined_minimum_size().y)))
-	_fit_scroll.call_deferred()
-	## ★★算【一次】不够 —— 数据表会在下一帧自己缩(2026-08-19 实拍量出来的)。
-	##   `_build_stats_panel` 里那个内层 ScrollContainer 建出来时 custom_minimum_size.y
-	##   是个**与内容无关的常数** `clampf(vp.y-440,140,400)`(720 视口 = 280);
-	##   真正按内容收到 147 的是 `_stats_fit_body`, 而它开头 `await process_frame`
-	##   ⇒ **比 call_deferred 晚一帧**。于是这里量到的卡高含着 280-147=133 的虚高,
-	##   而 custom_minimum_size 一旦定死就不会自己回落 ⇒ 数据表和按钮之间空出 133px。
-	##   实测(1560×720·5 行名单): 滚动区 472 / 内容 339 ⇒ 差 **133**, 与上式逐位对得上。
-	##   ⇒ 改成【事件驱动】: 卡片最小高一变就重算, 不猜"等几帧/等几毫秒"。
-	##   ★不会自激: `_fit_scroll` 改的是 scroll 的最小高, 而 card 是 scroll 的**子节点**,
-	##     父的最小高变了不会回头改子的最小高(实测卡片 339 待在 472 的滚动区里没被拉伸)。
-	##   ★不能改成 `await` 让本函数变协程 —— 门禁(verify_result_reachable)是
-	##     "调 _show_banner 然后立刻量矩形", 变协程会让它量到一张还没建出来的卡。
-	if not card.minimum_size_changed.is_connected(_fit_scroll):
-		card.minimum_size_changed.connect(_fit_scroll)
-
-	# ── ① 结果标题
-	var big = Label.new()
-	## ★★★2026-09-27 结果封存(原稿 §五.5「结算结果不随撮合下发…统一至开播时刻全服解锁」)。
-	##   周日是**双方各自在本机打对方的快照** —— 那是两场不同的战斗, 两边都可能算出自己赢。
-	##   这一行 `胜利/失败` 就是用户 2026-09-26 看到的**「两边都赢」**的出处。
-	## ⇒ 封存时不宣布胜负, 由对阵图在轮次推进后揭晓(那是唯一权威: `finals_view` 的 `done`)。
-	## ★判据放在**这里一处**(`_banner_sealed()`), 三个调用点(双路 _dl_finish / 投降 /
-	##   单路结束)自动吃到 —— 各判一次必然有一处落后。
-	big.text = ("结果已封存" if _banner_sealed() else ("胜利" if won else "失败"))
-	big.add_theme_font_size_override("font_size", 54)
-	big.add_theme_color_override("font_color", accent)
-	big.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	card.add_child(big)
-	## ★★封存时补一行副标题 —— 只写「结果已封存」四个字, 玩家不知道在等什么、去哪看。
-	##   文案在 `phase2_config.finals_sealed_sub()`(纯函数, 门禁能穷举),
-	##   这里只负责画; 屏幕与门禁读的是同一个答案。
-	if _banner_sealed():
-		var sub := Label.new()
-		sub.text = battle.Phase2Cfg.finals_sealed_sub()
-		sub.add_theme_font_size_override("font_size", 16)
-		sub.add_theme_color_override("font_color", Color("#9fb3c8"))
-		sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		card.add_child(sub)
-	big.pivot_offset = Vector2(big.size.x * 0.5, 30.0)
-	big.scale = Vector2(1.7, 1.7)
-	big.modulate.a = 0.0
-	var btw = battle.create_tween()
-	btw.set_parallel(true)
-	btw.tween_property(big, "scale", Vector2.ONE, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT).set_delay(0.12)
-	btw.tween_property(big, "modulate:a", 1.0, 0.30).set_delay(0.12)
-
-	# ── ② 一句【后果说明】: 玩家最想知道的是"这一场对我意味着什么"
-	var sub := Label.new()
-	sub.text = _result_subtitle(won, gs)
-	sub.add_theme_font_size_override("font_size", 17)
-	sub.add_theme_color_override("font_color", Color("#93a4b8"))
-	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	card.add_child(sub)
-	_banner_fade_in(sub, 0.26)
-
-	# ── ②b 阵容上传成功的【一次性正反馈】(用户 2026-08-27:「正反馈可以」)
-	#   只在成功时出现; 失败/断网什么都不显示 —— 玩家的体验与"没有这个功能"一模一样。
-	#   ★为什么要轮询而不是直接判: 上传是异步的, 响应往往【晚于结算屏建好】才回来。
-	#   ★为什么用 Timer 【子节点】而不是 `get_tree().create_timer()`:
-	#     后者是 SceneTreeTimer, **本场景释放了它照样会响**, 接闭包就是野捕获
-	#     (tools/tree_timer_audit.py 专门管这条)。挂成子节点则随场景一起没。
-	_attach_upload_flash(card)
-
-	# ── ③ 战果比分(双路才有)
-
-	if battle._is_dual_lane_mode() and gs != null and gs.get("lane_results") is Dictionary and not (gs.get("lane_results") as Dictionary).is_empty():
-		var score = Label.new()
-		score.text = battle._dl_sys._dl_record_line()
-		score.add_theme_font_size_override("font_size", 22)
-		score.add_theme_color_override("font_color", Color("#cfe6ff"))
-		score.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		card.add_child(score)
-		_banner_fade_in(score, 0.34)
-
-	# ── ④ 数据块: 标签(小字灰) + 数值(大字亮), 一项一块, 不再用空格挤成一行
-	var chips := _build_reward_chips(gs)
-	if chips != null:
-		card.add_child(chips)
-		_banner_fade_in(chips, 0.42)
-
-	# ── ⑤ 战斗数据表
-	var stats := _build_stats_panel()
-	if stats != null:
-		card.add_child(stats)
-		_banner_fade_in(stats, 0.50)
-
-	# ── ⑥ 主按钮(★排在数据【下面】—— 旧版排在上面, 阅读顺序是反的)
-	var btn_row = HBoxContainer.new()
-	btn_row.add_theme_constant_override("separation", 28)
-	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	## ★挂在 `outer` 而不是 `card` —— card 在滚动区里, 挂那儿就会被内容顶出可视范围。
-	outer.add_child(btn_row)
-	# ★教学模式: 结算按钮走导演(战斗1打完→商店, 战斗2打完→结束回菜单), 而不是直接返回菜单。
+	## ═══════════════════════════════════════════════════════════════════════
+	##  ★★★2026-10-04 结算屏改成【三页】(战果 / 我方 / 敌方) —— 本体在 settle_screen.gd
+	## ═══════════════════════════════════════════════════════════════════════
+	## 用户反问「为什么一页这么小, 为什么只有1页」→ 方案书 docs/plans/20261004-结算屏重做.md。
+	## 旧版(2026-08-02 起)是一张居中卡片: 标题→后果→比分→奖励→两队战报→按钮 全竖在一列,
+	##   表格排最后分高度只剩屏高 23%、两队并排字放不大(13px = 手机 7pt)。
+	## 历次决定照旧保留: 4 列与列名 / 零值「·」/ MVP 按单位认 / 按钮在滚动区外永远点得到 /
+	##   淘汰不给商店 / 教学走导演 / 周日封存 / 上传正反馈 —— 逐条见 settle_screen.gd 与本函数下文。
+	## ★仍然【同步】建完(不 await): 门禁是「调 _show_banner 然后立刻量矩形」。
+	var scr: Control = SettleScreenS.new()
+	scr.name = "SettleScreen"
+	battle._ui_layer.add_child(scr)            # 先入树 —— build 要读真实视口与安全区
+	scr.build(battle, self, won, _banner_sealed())
+	_settle = scr
 	SimFinalsPilot.attach_result(battle)   # 模拟窗口周日自动驾驶: 决赛日那一局结算后自己回主菜单
+	_settle_buttons(scr.btn_row)
+
+
+## 结算屏的主按钮(右下角那一排)。★文字与去向的规矩都在这里, 版式在 settle_screen.gd。
+func _settle_buttons(btn_row: HBoxContainer) -> void:
+	var shop_tint := Color("#ffd27a")
+	var shop_fc := Color("#ffe7a0")
+	var menu_tint := Color("#c9d3de")
+	var menu_fc := Color("#e8f0f6")
+	# ★教学模式: 结算按钮走导演(战斗1打完→商店, 战斗2打完→结束回菜单), 而不是直接返回菜单。
 	var _td = battle.get_node_or_null("/root/TutorialDirector")
 	if _td != null and _td.is_active():
 		# ★文字用 _peek_next【只读】—— 用 next_scene_after 会在【建按钮时】就推进 stage,
 		#   导致战斗1一结算 stage 就跳到 shop, 玩家还没点。点了才 next_scene_after 真推进。
 		var _peek: String = _td._peek_next("battle")
 		var _label: String = "前往商店" if _peek.ends_with("Shop.tscn") else ("完成新手教学" if _peek.ends_with("MainMenu.tscn") else "继续")
-		btn_row.add_child(battle._make_result_btn(_label, Color("#ffc23c"), Color("#3a1f00"),
-			func() -> void: battle.get_tree().change_scene_to_file(_td.next_scene_after("battle"))))
-	else:
-		# ★★2026-08-02 补【前往商店】主按钮。
-		#   自走棋的核心节奏是「打 → 买 → 再打」, 而原来结算页【只有返回主菜单】——
-		#   玩家得自己想起来去商店、再自己回主菜单点开始战斗, 循环是断的。
-		#   ★有意思的是【教学模式早就有正确做法】(上面那个分支会给"前往商店"),
-		#     只是正式对局没用上。这里把它变成常规流程。
-		#   ⚠ 赛季淘汰时【商店是锁的】(GameState.is_eliminated() → 锁匹配+商店,
-		#     见 MainMenuScene.gd:169/739/770, 用户 2026-07-24 拍板"淘汰锁定"),
-		#     所以淘汰后不给这个按钮 —— 否则点进去是个锁死的页面。
-		var _gs2 = battle.get_node_or_null("/root/GameState")
-		var _elim: bool = _gs2 != null and _gs2.is_eliminated()
-		if not _elim:
-			btn_row.add_child(battle._make_result_btn(SHOP_BTN_TEXT, Color("#ffc23c"), Color("#3a1f00"),
-				func() -> void: battle.get_tree().change_scene_to_file(SHOP_SCENE)))
-		btn_row.add_child(battle._make_result_btn("返回主菜单", Color("#5aa0d8"), Color("#04121e"),
-			func() -> void: battle.get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")))
-	_banner_fade_in(btn_row, 0.58)
+		var tb: Button = battle._make_result_btn(_label, shop_tint, shop_fc,
+			func() -> void: battle.get_tree().change_scene_to_file(_td.next_scene_after("battle")))
+		SettleScreenS.dress_btn(tb, shop_tint, shop_fc)
+		btn_row.add_child(tb)
+		return
+	# ★★2026-08-02 补【前往商店】主按钮: 自走棋的核心节奏是「打 → 买 → 再打」。
+	#   ⚠ 赛季淘汰时【商店是锁的】(GameState.is_eliminated() → 锁匹配+商店,
+	#     见 MainMenuScene.gd, 用户 2026-07-24 拍板"淘汰锁定"), 所以淘汰后不给这个按钮。
+	var _gs2 = battle.get_node_or_null("/root/GameState")
+	var _elim: bool = _gs2 != null and _gs2.is_eliminated()
+	if not _elim:
+		var sb: Button = battle._make_result_btn(SHOP_BTN_TEXT, shop_tint, shop_fc,
+			func() -> void: battle.get_tree().change_scene_to_file(SHOP_SCENE))
+		SettleScreenS.dress_btn(sb, shop_tint, shop_fc)
+		btn_row.add_child(sb)
+	var mb: Button = battle._make_result_btn("返回主菜单", menu_tint, menu_fc,
+		func() -> void: battle.get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
+	SettleScreenS.dress_btn(mb, menu_tint, menu_fc)
+	btn_row.add_child(mb)
 
 
 ## 结果标题下面那一句 —— 说【这一场对玩家意味着什么】, 而不是罗列数字。
@@ -1521,37 +1328,8 @@ func _result_subtitle(won: bool, gs) -> String:
 	return "赛季胜场 +1" if won else "消耗 1 点生命"
 
 
-## 结算卡那张【底】的皮。
-##
-## ★★2026-09-28 从"圆角卡片"换成九宫格金属框。原来是
-##   `圆角 14 + 2px 亮边 + 半透明深底` —— 逐项都是网页卡片:
-##   `border-radius:14px` / `border:2px solid` / `background:rgba(...)`。
-##   而**每打完一场都会看到这一屏**, 它是全游戏被看次数最多的一块底板。
-##   战斗信息面板 2026-08-16 就换成 `battlehud/panel-frame.png` 了(深蓝金属 + 青内沿
-##   + 四角铜铆钉), 结算屏是一直漏着的那一处。
-## ★抽成函数【不只是为了好看】: `_show_banner` 已经 241 行、离 `arch_budget` 的
-##   单函数上限 250 只剩 9 行 —— 在那里面就地加注释会当场把门禁顶红。
-##   抽出来之后 `_show_banner` 反而少了 7 行(还了点债)。
-## ★内边距: 框艺术约 14px 厚, 所以上下给到 30/32、左右仍 34(原来是 22/24, 会压住铆钉)。
-##   贴图缺失时返回的是那份 `StyleBoxFlat` 兜底, 它的边距按 2px 细边给 —— 两套各自成立。
-func _settle_shell_style() -> StyleBox:
-	var fb := StyleBoxFlat.new()
-	fb.bg_color = Color(0.035, 0.055, 0.085, 0.90)
-	fb.border_color = Color(0.28, 0.44, 0.62, 0.50)
-	fb.set_border_width_all(2)
-	fb.set_corner_radius_all(0)                   # 直角: 像素风的框不该有抗锯齿圆角
-	fb.content_margin_left = 34; fb.content_margin_right = 34
-	fb.content_margin_top = 22; fb.content_margin_bottom = 24
-	var sb := UISkin.nine("panel-frame.png", 20, fb)
-	if sb is StyleBoxTexture:
-		var st := sb as StyleBoxTexture
-		st.content_margin_left = 34; st.content_margin_right = 34
-		st.content_margin_top = 30; st.content_margin_bottom = 32
-	return sb
-
-
 ## 数据块一排: 每块 = 标签(小字灰) + 数值(大字亮)。练习赛没有赛季数据 → 返回 null 不占位。
-func _build_reward_chips(gs) -> Control:
+func _build_reward_chips(gs, cap_fs: int = 13, val_fs: int = 24) -> Control:
 	if not battle._had_season or gs == null:
 		return null
 	var lv: int = int(gs.get("season_level")) if gs.get("season_level") != null else 1
@@ -1606,13 +1384,13 @@ func _build_reward_chips(gs) -> Control:
 		col.add_theme_constant_override("separation", 1)
 		var cap := Label.new()
 		cap.text = str(it[0])
-		cap.add_theme_font_size_override("font_size", 13)
+		cap.add_theme_font_size_override("font_size", cap_fs)
 		cap.add_theme_color_override("font_color", Color("#7d8b9c"))
 		cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		col.add_child(cap)
 		var val := Label.new()
 		val.text = str(it[1])
-		val.add_theme_font_size_override("font_size", 24)
+		val.add_theme_font_size_override("font_size", val_fs)
 		val.add_theme_color_override("font_color", it[2])
 		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		col.add_child(val)
@@ -1626,46 +1404,6 @@ func _banner_fade_in(c: Control, delay: float) -> void:
 	var tw = battle.create_tween()
 	tw.tween_interval(delay)
 	tw.tween_property(c, "modulate:a", 1.0, 0.28).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-
-
-## 结算按钮 (再战/返回菜单) — 圆角实色底 + 深字 + hover/pressed 态.
-# ══════════════════════════════════════════════════════════════
-# 结算统计表 (1:1 回合制 BattleEndScene._stats_table 7 列样式) — 双队并排, 召唤体单列一行
-# ══════════════════════════════════════════════════════════════
-## ★★2026-08-02 修(用户:「战斗结束后的总结画面，手机上ui偏移还是没解决吗」):
-##   原来是 `Vector2(640.0 - panel.size.x*0.5, 438.0)` —— 640 是【写死的 1280 的一半】,
-##   438 是【写死的像素 y】。探针实测 1560×720 手机视口下面板中心仍停在 x=640,
-##   而真中心是 780 ⇒ 整块结算表【左偏 140 像素】。
-##   (2026-07-21 修过一次结算 UI, 修的是【胜负横幅】那套 —— 横幅改成锚点了, 这块没在里面。
-##    "同一屏两套定位代码, 只修了看得见的那套" 是这个 bug 能活到今天的原因。)
-## ★y 同样改成【按屏幕高度的比例】(438/720 = 0.6083), 否则 iPad 的 960 高视口上表会浮在上半屏。
-##   仍然不做"放不下就上顶": 那会盖住上方的「返回菜单」钮; 放不下由页体内部滚动兜(见 _stats_fit_body)。
-## 一队 5 列表: 龟 / 造成伤害 / 承受伤害 / 治疗量 / 击杀; 金表头 / 稀有度点 / 存活白·阵亡灰(阵亡).
-## 把一个表头 Label 装进一块【金属栏牌】。
-##
-## ★由来: 结算屏那张表原来是"一行金色裸字 + 下面几列数字" —— 那就是 HTML 表格的
-##   `<th>` + `<td>`, 是这一屏最像后台 dashboard 的地方。栏牌让它读成"这一栏叫什么"。
-## ★宽度契约: 调用方给 Label 64, 这里左右各 4 ⇒ 正好 72 = 数值格的宽度(见调用点注释)。
-## ★没贴图就退回那块半透底(`ResourceLoader.exists()` 对没 `.import` 的 PNG 静默返回 false)。
-func _hdr_plate(l: Label) -> Control:
-	var box := PanelContainer.new()
-	var fb := StyleBoxFlat.new()
-	fb.bg_color = Color(0.16, 0.20, 0.27, 0.55)
-	fb.set_border_width_all(0)                    # 不描边: 1px 描边矩形就是 CSS `border:1px solid`
-	fb.set_corner_radius_all(0)
-	fb.content_margin_left = 4; fb.content_margin_right = 4
-	fb.content_margin_top = 1; fb.content_margin_bottom = 1
-	var sb := UISkin.nine("chip-frame.png", 7, fb)
-	if sb is StyleBoxTexture:
-		var st := sb as StyleBoxTexture
-		st.modulate_color = Color(0.86, 0.80, 0.62)   # 偏金的签牌, 与金色表头字同调
-		st.content_margin_left = 4; st.content_margin_right = 4
-		st.content_margin_top = 1; st.content_margin_bottom = 1
-	box.add_theme_stylebox_override("panel", sb)
-	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_child(l)
-	return box
 
 
 ## ════════════════════════════════════════════════════════════════════
@@ -1706,320 +1444,10 @@ func settle_cell_text(v: int) -> String:
 	return SETTLE_ZERO_MARK if v == 0 else str(v)
 
 
+## 一队一张战报表 —— 实现在 settle_screen.gd(结算屏的一部分)。这里留一个入口:
+## 门禁(verify_hud_gamefeel ④)拿替身 battle 直接建一张来数表头与 MVP。
 func _stats_column(header: String, units: Array, hc: Color) -> Control:
-	var grid := GridContainer.new()
-	grid.columns = 5
-	grid.add_theme_constant_override("h_separation", 10)
-	grid.add_theme_constant_override("v_separation", 5)
-	# ★★2026-08-02 用户定: 去掉「暴击」与「剩余血量」, 保留「承受伤害」。
-	#   「受伤」本来就是承受伤害(_st_taken 在两条伤害路径里累加的都是实扣血量),
-	#   只是名字容易读成"受伤状态" —— 改名【承伤】, 不是新增一列。
-	#   ★数据字段 _st_crit 保留(battle_damage 仍在累加、_st_merge_all 仍在合并),
-	#     只是不再显示 —— 删字段会连带动到战中统计面板与合计页, 收益为零。
-	# ★★表头用【全称】(用户 2026-08-02:「文字都非常口语化, 玩家压根不知道在说什么」)。
-	#   "出伤/承伤" 是开发者行话缩写, 玩家看不懂; 列宽相应放宽。
-	## ★★★2026-09-28 表头换成【主动语态的短动词】(用户:「文字语言也是 ai 味」)。
-	##   改前: `造成伤害 / 承受伤害 / 治疗量 / 击杀` —— 前三个都是**规格书的写法**:
-	##     "造成…" "承受…" 是被动语态的名词短语, "治疗量"的"量"是统计口径词。
-	##     一排这样的词 + 一格一个数字 = 报表, 而这一屏该是一份**战报**。
-	##   改后: `打出 / 扛住 / 治疗 / 击杀` —— 主语是玩家的龟, 说它**干了什么**。
-	##   ★「扛住」不是我现编的: 本函数下面 MVP 那段注释里本来就写着「标出"这场谁扛的"
-	##     才让数据变成信息」—— 这个仓库自己的话就是"扛"。
-	##   ⚠ **不能退回「出伤 / 承伤」**: 2026-08-02 用户当场否过, 那是开发者行话缩写。
-	##     "打出/扛住"是日常口语动词, 不是缩写 —— 两回事。
-	##   ★门禁核实过: `grep -rn '"造成伤害"' tests/ tools/` 只命中装备文案那边的用例,
-	##     **没有任何断言抄这张表的表头**(所以这次改词不欠测试侧的同步)。
-	var hdrs := [header, "打出", "扛住", "治疗", "击杀"]
-	## 表头带一层【金属签底】—— 一行金色裸字压着几列数字就是 `<th>` + 数据行的长相,
-	## 也正是这一屏最像 dashboard 的地方。签底把"表头"变成"栏牌"。
-	## ★只有数值那 4 列有签底, 第 0 列(队名)不加 —— 它下面是名字不是数字, 也不需要对齐锚。
-	for i in range(5):
-		var l := Label.new()
-		l.text = hdrs[i]
-		l.add_theme_font_size_override("font_size", UIPalette.F_BODY)
-		l.add_theme_color_override("font_color", hc if i == 0 else Color("#ffd93d"))   # 金表头(回合制)
-		if i == 0:
-			l.custom_minimum_size = Vector2(126, 0)
-			grid.add_child(l)
-			continue
-		## ★64 + 签底左右内边距 4+4 = **72**, 与下面数值格的 72 逐位对齐 ——
-		##   栏牌比数值列宽就会把列挤开, 窄就会看出错位。这个数是算出来的不是试出来的。
-		l.custom_minimum_size = Vector2(64, 0)
-		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		grid.add_child(_hdr_plate(l))
-	# ★★MVP: 本队【造成伤害最高】的那只(不含召唤体)。一张全是数字的表, 玩家扫一眼
-	#   得不出任何结论; 标出"这场谁扛的"才让数据变成信息。
-	var mvp_dmg: int = 0
-	var mvp_name: String = ""
-	for u in units:
-		if u.get("is_summon", false):
-			continue
-		var d: int = int(u.get("_st_dealt", 0))
-		if d > mvp_dmg:
-			mvp_dmg = d; mvp_name = battle._st_name(u)
-	## ★ 先算出 MVP 那一行的**下标**(而不是名字)。
-	var _mvp_i: int = _st_mvp_index(units)
-	var u_i: int = -1
-	for u in units:
-		u_i += 1
-		var dead: bool = not u.get("alive", true)
-		var is_sm: bool = u.get("is_summon", false)
-		## ★★ 2026-09-29: 原来拿**名字**认 MVP ⇒ 同名的两只会**一起**挂角标。
-		##   而对手恒为 6 只同名小将(快照空壳那条)⇒ 敌方这一侧几乎每场必中。
-		##   ⇒ 改成按**单位**认: `_st_mvp_index(rows)` 返回那一行的下标。
-		##   ⚠ 单位字典不能做 key / 不能用 `==`(CLAUDE.md §3.2) ⇒ 走下标。
-		var is_mvp: bool = mvp_dmg > 0 and not is_sm and _mvp_i >= 0 and u_i == _mvp_i
-		# col0: 稀有度色点 + 名(阵亡后缀)
-		var name_cell := HBoxContainer.new()
-		name_cell.add_theme_constant_override("separation", 5)
-		name_cell.custom_minimum_size = Vector2(126, 0)
-		var dot := ColorRect.new()
-		dot.custom_minimum_size = Vector2(8, 8)
-		dot.color = Color("#7a8a96") if is_sm else battle._pet_rarity_color(str(u.get("rarity", "C")))
-		dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		name_cell.add_child(dot)
-		var nml := Label.new()
-		nml.text = ("└ " if is_sm else "") + battle._st_name(u) + ("  阵亡" if dead else "")
-		nml.add_theme_font_size_override("font_size", 13)
-		nml.add_theme_color_override("font_color", Color("#888888") if dead else (Color("#cdd9c2") if is_sm else Color("#ffffff")))
-		name_cell.add_child(nml)
-		if is_mvp:
-			var tag := Label.new()
-			tag.text = "MVP"
-			tag.add_theme_font_size_override("font_size", UIPalette.F_MICRO)
-			tag.add_theme_color_override("font_color", Color("#ffd93d"))
-			tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			name_cell.add_child(tag)
-		grid.add_child(name_cell)
-		var raw := [int(u.get("_st_dealt", 0)), int(u.get("_st_taken", 0)), int(u.get("_st_heal", 0)), int(u.get("_st_kills", 0))]
-		for i in range(4):
-			var l := Label.new()
-			## ★★★ 2026-10-02 零值不印数字 —— 见本文件 `SETTLE_ZERO_MARK` 头注。
-			l.text = settle_cell_text(raw[i])
-			l.add_theme_font_size_override("font_size", 13)
-			## 零值那一格再压一档灰: 它不是"数据", 是"这一格没有内容"。
-			if raw[i] == 0:
-				l.add_theme_color_override("font_color", Color("#4e5b68"))
-			else:
-				l.add_theme_color_override("font_color", Color("#888888") if dead else (Color("#ffd93d") if is_mvp else Color("#e8f0f6")))
-			l.custom_minimum_size = Vector2(72, 0)
-			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-			grid.add_child(l)
-	return grid
-
-## 返回战斗数据表面板(调用方决定放哪)。★2026-08-02 改成返回值 ——
-## 旧版自己 add_child 到 _ui_layer 再摆绝对坐标, 结算页因此必须用比例硬摆五行。
-## 现在它是结算卡片里的一个子节点, 位置由容器算。
-func _build_stats_panel() -> Control:
-	# 结算页要含【前面战场】的总结, 不能只有当前这一路(用户2026-07-19): 已结束的路走 battle._st_lane_hist 快照,
-	# 当前路直接读活的 battle._units; 三路以上信息量太大 → 做成分页(默认停在「合计」).
-	var pages: Array = []            # [{lane, title, left:[row], right:[row]}]
-	for snap in battle._st_lane_hist:
-		pages.append({"lane": snap["lane"], "title": battle._LANE_CN.get(snap["lane"], str(snap["lane"])),
-			"left": snap["left"], "right": snap["right"]})
-	var cur = {"lane": "cur", "title": "", "left": [], "right": []}
-	for u in battle._units:
-		# ★同上: 按【有效阵营】归栏 —— 归顺的龟在打原队, 战绩该记在我方这一列。
-		#   (这是"同一语义两处各写各的"的第四处。全工程判敌我一律走 battle._eff_side。)
-		var sd = battle._eff_side(u)
-		if sd == "left" or sd == "right":
-			(cur[sd] as Array).append(battle._st_row(u))
-	if not ((cur["left"] as Array).is_empty() and (cur["right"] as Array).is_empty()):
-		var cl = str(GameState.current_lane) if GameState != null else ""
-		cur["title"] = battle._LANE_CN.get(cl, "本场") if not pages.is_empty() else "本场"
-		pages.append(cur)
-	if pages.is_empty():
-		return null
-	if pages.size() > 1:             # 只有一路就没有「合计」的必要
-		pages.append({"lane": "all", "title": "合计",
-			"left": _st_merge_all(pages, "left"), "right": _st_merge_all(pages, "right")})
-
-	var panel = PanelContainer.new()
-	var sb = StyleBoxFlat.new()
-	# ★它现在嵌在结算卡里 —— 再来一圈 2px 亮边就是"框中框"。改成淡底 + 极细边做分区。
-	sb.bg_color = Color(0.09, 0.13, 0.19, 0.55)
-	## ★★2026-09-28 去掉那圈 1px 描边 + 改直角。
-	##   `圆角 8 + 1px 半透明描边 + 半透明底` = CSS `border-radius / border:1px solid / rgba()`
-	##   —— 这正是 `verify_info_panel_fits` 那条"网页盒"判据抓的形状(四边描边 + 底半透),
-	##   只不过那条判据只扫战斗信息面板, **结算屏在它视野外**。
-	##   分区不靠描边靠底色差(淡底本身已经把这块从卡片上分出来了)。
-	sb.border_color = Color(0.30, 0.48, 0.66, 0.28)
-	sb.set_border_width_all(0)
-	sb.set_corner_radius_all(0)
-	sb.content_margin_left = 18; sb.content_margin_right = 18
-	sb.content_margin_top = 12; sb.content_margin_bottom = 14
-	panel.add_theme_stylebox_override("panel", sb)
-	var vb = VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 8)
-	panel.add_child(vb)
-	var title = Label.new()
-	## ★2026-09-28「战斗数据」→「战报」。"数据"是后台词(dashboard 那味), 而这块东西
-	##   就是一份战报; 右上角那个键的 tooltip 与战中浮层的名牌同日改成同一个词 ——
-	##   原来三处叫三个名字(无标题 / 伤害统计 / 战斗数据), 指的却是同一件事。
-	title.text = "战报"
-	title.add_theme_font_size_override("font_size", 20)
-	title.add_theme_color_override("font_color", Color("#cfe6ff"))
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(title)
-
-	# 页体: 每页一个 HBox(我方|敌方), 同时只显一个; 外面套 ScrollContainer —— 合计页行数可能超屏底
-	var scroll = ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	## ══════════════════════════════════════════════════════════════
-	##  ★★2026-08-10 给数据表钳一个高度上限 —— 不钳的话按钮会被顶出屏幕
-	## ══════════════════════════════════════════════════════════════
-	## 用户实测「名单很多时点不到回主菜单」。这里是第二个成因(另一个见 `_show_banner`
-	## 里收统计面板那段): 这个 ScrollContainer **原来没有任何高度约束**, 名单越长它越高,
-	## 整张结算卡跟着长; 卡片由 CenterContainer 居中 ⇒ 太高时**上下两头一起溢出屏幕**,
-	## 而按钮行正好在下面那一头。
-	## 探针实测(1280×720 视口): 9 个单位 → 卡高 443 ✅; **25 个单位 → 卡高 643**,
-	## 已经吃掉 720 的九成, 再多就必然把按钮推出去。
-	## ⇒ 上限 = 视口高 − 其余部分(标题/后果句/奖励块/按钮行/边距)所需, 钳进 [140, 420]。
-	##   同 Inspector 面板那处的做法(本文件 `_body_sc`), 也同图鉴详情框。
-	## ★★初始高 0 —— 真正的高度下一帧由 `settle_fit_inner()` 给(它从外层预算里减)。
-	##   这里原本写的是 `clampf(vp.y - 440, 140, 400)` —— 与外层预算**毫无关系**的第二份
-	##   手写常量。只要它还在, “两处预算同源”就是假的(第三处。2026-09-29)。
-	scroll.custom_minimum_size = Vector2(0, 0)
-	scroll.size_flags_vertical = Control.SIZE_FILL
-	var body = Control.new()
-	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(body)
-	var bodies: Array = []
-	for pg in pages:
-		var cols = HBoxContainer.new()
-		cols.add_theme_constant_override("separation", 28)
-		cols.add_child(_stats_column("我方", pg["left"], Color("#7ec8ff")))
-		# ★竖分隔: 两队并排时数字会连成一片, 分不清左边最后一列和右边第一列
-		var sep := ColorRect.new()
-		sep.color = Color(0.30, 0.48, 0.66, 0.30)
-		sep.custom_minimum_size = Vector2(1, 0)
-		sep.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		cols.add_child(sep)
-		## ★2026-09-28「对方」→「敌方」: 同一件事这个游戏里有三种叫法 ——
-		##   结算表「我方/对方」、战中战报浮层「我方/敌方」、信息面板副标题「友军/敌方」。
-		##   本轮把前两处统一到【我方/敌方】(信息面板那处的"友军"没动 —— 它是一个单位的
-		##   归属标签, 不是两栏对照, 换了反而和这两处的语境混起来; 登记在案)。
-		cols.add_child(_stats_column("敌方", pg["right"], Color("#ff9a9a")))
-		cols.visible = false
-		body.add_child(cols)
-		bodies.append(cols)
-
-	# 页签(单路时不显): 点了切页 + 高亮
-	var tab_btns: Array = []
-	if pages.size() > 1:
-		var tabs = HBoxContainer.new()
-		tabs.add_theme_constant_override("separation", 6)
-		tabs.alignment = BoxContainer.ALIGNMENT_CENTER
-		vb.add_child(tabs)
-		for i in range(pages.size()):
-			var b = Button.new()
-			b.text = str(pages[i]["title"])
-			b.add_theme_font_size_override("font_size", UIPalette.F_BODY)
-			b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-			b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-			var idx = i
-			b.pressed.connect(func() -> void: battle._stats_show_page(bodies, tab_btns, idx))
-			tabs.add_child(b)
-			tab_btns.append(b)
-	vb.add_child(scroll)
-	## ── 表底下那一行「下面还有几只」(见 `_settle_refresh_more` 头注) ──
-	var more := Label.new()
-	more.name = "SettleMoreHint"
-	more.add_theme_font_size_override("font_size", 13)
-	more.add_theme_color_override("font_color", Color("#ffd93d"))
-	more.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	## ★高度**永远占位**, 只换字: 它是 `settle_inner_avail` 里那个减数的一部分,
-	##   一出现才占位的话卡片当场比预算高出这一行 ⇒ 又溢出了。
-	more.custom_minimum_size = Vector2(0, 20)
-	more.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vb.add_child(more)
-	_settle_more_hint = more
-	_settle_more_scroll = scroll
-	## ★事件驱动, 不猜“等几帧”: `changed` 在 max/page 变了时发(= 溢出与否变了),
-	##   `value_changed` 在玩家滑动时发(滑到底就该把提示收掉)。
-	##   包一层 `call_deferred`: 两个信号都在布局过程中发, 直接量矩形会量到上一帧的。
-	var _bar := scroll.get_v_scroll_bar()
-	_bar.changed.connect(func() -> void: _settle_refresh_more.call_deferred())
-	_bar.value_changed.connect(func(_v: float) -> void: _settle_refresh_more.call_deferred())
-	## 再加一道: 滚动区自己被重排了(切页/换分辨率) —— max/page 可能一个字没变,
-	##   那两个信号就不会发, 而行数已经变了。
-	scroll.resized.connect(func() -> void: _settle_refresh_more.call_deferred())
-	battle._stats_show_page(bodies, tab_btns, pages.size() - 1)   # 默认落在最后一页(多路=合计 / 单路=本场)
-	return panel
-
-## ====================================================================
-##  ★★★「还有更多」—— 战报表底下那一行 (2026-09-29)
-## ====================================================================
-## 用户原话:「每场打完后结算界面能下滑吗, 不能啊, 有很多单位看不到啊」。
-## ★注意这句话里的事实: 表**能**滑(拖动/滚轮都行), 屏幕上却一个字都没说。
-##   唯一那根滚动条宽 **8 逼辑像素**, 720 高的视口映到手机上就是 **4.3pt**
-##   (HIG 最小靶 44pt) —— 等于没有; 而外层那个是 `SCROLL_MODE_SHOW_NEVER`, 永远不画条。
-##
-## ★参考 244 张同品类结算/名单截图: **全样本没有一屏是「溢出了而什么提示都没有」**。
-##   常见两种做法: 露半行(Arknights / CATS / Disney Heroes / Looney Tunes / Valkyrie)
-##   或 写字+箭头(Dota Underlords「SCROLL TO READ MORE」)。
-## ⇒ 这里选【写字+箭头, 并且带上数量】, 理由三条:
-##   ① 行高只有 25px, 露半行 = 12px 的半截名字 —— 在 4~5pt 当量下读不出"下面还有东西";
-##   ② 玩家抱怨的原话就是"有很多单位看不到" —— **数量本身就是答案**, 露半行给不了;
-##   ③ 它是一个 Label, 门禁能量"屏幕上真的有这句话、数字还对得上", 而不是量像素猜。
-## ⚠ 没改成"给外层预留条宽": 那会把卡挤偏, `verify_ui_layout` ⑥「居中于真实视口」
-##   当场红(实测偏 -5) —— 那条判据本身是对的, 不动它。
-##
-## ★抽成常量【不是为了复用】: 门禁要能拿同一份格式串算出"屏上该写的那句话",
-##   测试自己拼一遗就是抄第二份(memory [[fb-hand-rolled-copies-drift]])。
-const SETTLE_MORE_FMT := "▼ 还有 %d 只在下面 · 可上下滑动"
-
-
-## 量一遍【玩家真正看得见的那一块】下面还压着几行, 把数字写到提示行上。
-## 没行被压 ⇒ 清空那一行(而不是隐起来, 见 `custom_minimum_size` 那条注)。
-func _settle_refresh_more() -> void:
-	if _settle_more_hint == null or not is_instance_valid(_settle_more_hint):
-		return
-	if _settle_more_scroll == null or not is_instance_valid(_settle_more_scroll):
-		return
-	var kids: Array = _settle_more_scroll.get_children()      # 滚动条是 internal 子节点, 不在里面
-	if kids.is_empty() or not (kids[0] is Control):
-		return
-	var content: Control = kids[0]
-	var bar: VScrollBar = _settle_more_scroll.get_v_scroll_bar()
-	var fold: float = bar.value + bar.page                    # 可视窗口的下沿(内容坐标)
-	var below: int = 0
-	for g in _settle_grids():
-		for ch in (g as Node).get_children():
-			if not (ch is HBoxContainer):
-				continue                                          # 表头那一行是 Label/栅牌, 不是龟
-			if _settle_local_bottom(ch as Control, content) > fold + 0.5:
-				below += 1
-	_settle_more_hint.text = (SETTLE_MORE_FMT % below) if below > 0 else ""
-
-
-## 某一行的下沿在【内容坐标】里的 y。
-## ★★为何不用 `get_global_rect()` 去比 clip 矩形(第一版就是那么写的, 当场量错):
-##   那条链(CenterContainer→卡→外层滚动区→面板→内层滚动区)的排版是**跨帧级联**的,
-##   信号发出来那一刻祖先的矩形还是上一轮的 ⇒ 量出来“每一行都在下面”
-##   (探针实测: R=7 全 14 行都看得全, 却报「还有 14 只在下面」)。
-##   局部 `position` 是**纯排版值**、与滚动偏移无关; 拿它跟滚动条自己的
-##   `value + page` 比, 两边都是同一套内容坐标, 才对得上。
-##   memory [[fb-gate-tautological-when-it-spans-a-frame]] 的反面: 跨帧的尺子量出来的是假数。
-func _settle_local_bottom(row: Control, content: Control) -> float:
-	var y: float = row.size.y
-	var p: Node = row
-	while p != null and p != content and p is Control:
-		y += (p as Control).position.y
-		p = p.get_parent()
-	return y
-
-
-func _settle_grids() -> Array:
-	var out: Array = []
-	var st: Array = [_settle_more_scroll]
-	while not st.is_empty():
-		var n = st.pop_back()
-		if n is GridContainer and (n as Control).is_visible_in_tree():
-			out.append(n)
-		for c in (n as Node).get_children():
-			st.append(c)
-	return out
+	return SettleScreenS.team_grid(battle, self, units, header, hc)
 
 
 func _build_edit_palette() -> void:
