@@ -51,8 +51,8 @@ func _ready() -> void:
 			await get_tree().process_frame
 		s._deterministic = true
 		s.set_process(false)
-		var ctl: Array = await _run("")
-		var got: Array = await _run(str(iid))
+		var ctl: Array = await _run("", str(iid))
+		var got: Array = await _run(str(iid), str(iid))
 		var t: Dictionary = got[0]
 		var r: Dictionary = t.get(iid, {})
 		print("[COV] %s|%s|%d|%d|%d|%d|%d|%d|%d|%d" % [iid, names.get(iid, "?"),
@@ -74,7 +74,7 @@ func _mk(id: String, side: String, pos: Vector2) -> Dictionary:
 
 
 ## 返回 [携带者的 _st_eq(含召唤物/队友身上意外记到的合并), 我方造成合计, 我方回血合计, 我方获盾合计]
-func _run(iid: String) -> Array:
+func _run(iid: String, setup: String = "") -> Array:
 	s._battle_rng.seed = 20261004
 	s._dl_sys._dl_clear_units()
 	await get_tree().process_frame
@@ -100,6 +100,14 @@ func _run(iid: String) -> Array:
 	u["equips"] = [] if iid == "" else [{"id": iid, "star": 3}]
 	u["eq_state"] = {} if iid == "" else {iid: {}}
 	s._equip_sys._stats._eq_apply_all_stats()
+	## ★携带者射程 +400: 脆皮敌一死, 携带者(不许移动)够不着剩下的敌人 ⇒ 普攻在第 ~8 秒就停了,
+	##   「每 N 秒强化下几次普攻」(093) 这类一次都触发不到(第一版覆盖表因此假 0)。
+	##   只加携带者: 敌人也加的话四个一起打携带者, 8 秒就死, 后面的周期效果同样触发不到。
+	u["range_add"] = float(u.get("range_add", 0.0)) + 400.0
+	## 按件补触发条件(对照组同样补, Δ 才可比): 062 要先闪避才蓄力 ⇒ 给携带者 40% 闪避
+	if setup == "p2eq_062":
+		(u["buffs"] as Array).append({"stat": "dodge", "amount": 0.4, "pct": false, "until": 1.0e9, "src_eq": "probe"})
+		s._recalc_stats(u)
 	for k in range(1500):
 		s._sim_step(DT, false, false)
 		if k % 4 == 0:
@@ -127,5 +135,7 @@ func _run(iid: String) -> Array:
 				for kk in (t[k2] as Dictionary).keys():
 					r[kk] = float(r.get(kk, 0.0)) + float(t[k2][kk])
 				tally[k2] = r
+	if iid != "" and OS.get_environment("EQ_DBG") != "":
+		print("[COV]   dbg eq_state=", str(u.get("eq_state", {}).get(iid, {})).left(300), " dodge=", u.get("dodge_bonus", 0.0))
 	s._over = true
 	return [tally, dealt, heal, sh]

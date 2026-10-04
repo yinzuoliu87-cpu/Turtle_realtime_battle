@@ -613,7 +613,9 @@ func _tick_volleys(delta: float) -> void:
 		while float(v["t_next"]) <= 0.0 and int(v["shots_left"]) > 0:
 			v["shots_left"] = int(v["shots_left"]) - 1
 			v["t_next"] = float(v["t_next"]) + VOLLEY_IV
+			var _tp: Array = battle._equip_sys.tally.push(src, "p2eq_076")   # ④ 装备统计: 连射在全局在途表里推进 ⇒ 每发切到「携带者 · 076」
 			volley_shot(src, int(v["si"]))
+			battle._equip_sys.tally.pop(_tp)
 			_volley_mirror_drop(src, 1)                 # 读数镜像逐发递减(打空/没目标也算射出这一发)
 		if int(v["shots_left"]) > 0:
 			keep.append(v)

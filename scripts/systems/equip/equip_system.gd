@@ -165,7 +165,7 @@ func _eq_on_basic_attack(u: Dictionary, tgt = null) -> void:   # 每普攻(不�
 					b39["bamboo_charges"] = int(b39["bamboo_charges"]) - 1
 					var si39: int = _eq_si(int(e.get("star", 1)))
 					# 回血+永久成长延到绿球落回自己身上才生效(竹叶龟同款)
-					battle._spawn_bamboo_arrow(u, t39, [25, 30, 35][si39] + int(u["maxHp"] / battle.HP_MULT * BAMBOO_ARROW_MAXHP_PCT), [50.0, 70.0, 90.0][si39])
+					battle._spawn_bamboo_arrow(u, t39, [25, 30, 35][si39] + int(u["maxHp"] * BAMBOO_ARROW_MAXHP_PCT), [50.0, 70.0, 90.0][si39])
 			u["eq_state"]["p2eq_039"] = b39
 		if str(e["id"]) == "p2eq_027" and tgt != null and tgt is Dictionary and tgt.get("alive", false):   # 电棍: 就绪→本次普攻消耗1层附魔法伤+眩晕(用户2026-07-03)
 			var bst: Dictionary = u["eq_state"].get("p2eq_027", {})
@@ -828,7 +828,7 @@ func _eq_dumbbell_routine(u: Dictionary, si: int) -> void:
 	var t = battle._targeting._nearest_enemy(u)
 	if t == null: return
 	battle._anticipate(u); battle._shake(battle.JUICE_SHAKE_HEAVY)   # 投掷起手(瞬间形变, 不再是 1.25 秒站桩)
-	var dmg: int = maxi(1, int(u["maxHp"] / battle.HP_MULT * [0.05, 0.07, 0.10][si]))
+	var dmg: int = maxi(1, int(u["maxHp"] * [0.05, 0.07, 0.10][si]))
 	battle._throw_dumbbell(u, t, dmg)
 
 func _eq_fuel_throw(u: Dictionary, si: int) -> void:   # 余烬燃油瓶022: 每8秒→短蓄力→抛物线掷出火瓶(翻滚·余烬拖尾)→碎裂溅火+灼烧+真火5秒
@@ -1449,7 +1449,7 @@ const DART_BLEED_COEF := 0.1       # 飞镖命中施加的流血层数 = ×ATK
 ## 【003 锋利鲨齿】每段伤害命中后向目标周围溅射。
 const SHARKTOOTH_SPLASH_R := 200.0 # 溅射半径(码)·判定与冲击环同一个数
 ## 【039 竹制弓箭】强化竹箭与它带回的生命球。
-## ★这个百分比乘的是 `maxHp / HP_MULT`(CLAUDE.md §3.1) —— 只抽百分比, 不动那个除法。
+## ★这个百分比乘的是【真实 maxHp】(屏幕上那个数), **不除 HP_MULT** —— 用户 2026-10-04「肯定是代码去掉除以3啊」(CLAUDE.md §3.1)。
 const BAMBOO_ARROW_MAXHP_PCT := 0.06
 const DART_KNOCKUP_SEC := 1.0      # 强化那一击把目标击飞 1 秒(= 位移 + 同时长 stun)
 ## ⚠ 这个数【不产生位移】: 它传给 `_knockback` 的第三参, 而那个参数在 battle_damage.gd 里

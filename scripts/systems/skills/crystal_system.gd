@@ -256,8 +256,10 @@ func tick(delta: float) -> void:
 		var t: float = clampf(float(sw["el"]) / SWEEP_SEC, 0.0, 1.0)
 		## Godot TRANS_CUBIC / EASE_IN_OUT 的原式 —— 不近似, 保证观感不变
 		var k: float = 4.0 * t * t * t if t < 0.5 else 1.0 - pow(-2.0 * t + 2.0, 3.0) / 2.0
+		var _tp: Array = battle._equip_sys.tally.push(sw["u"], "p2eq_031")   # ④ 装备统计: 扫射只有 031 会发起, 在本表里逐帧推进
 		_crystal_sweep_step(float(sw["a0"]) + SWEEP_ARC_RAD * k, sw["u"], int(sw["si"]),
 			float(sw["reach"]), sw["state"], im2, sw["imesh"], sw["mat"])
+		battle._equip_sys.tally.pop(_tp)
 		if t >= 1.0:
 			_sweeps.remove_at(i)
 			im2.queue_free()

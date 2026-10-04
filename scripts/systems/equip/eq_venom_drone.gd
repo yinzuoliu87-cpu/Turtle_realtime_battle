@@ -323,11 +323,13 @@ func _apply_fog_field() -> void:
 		var stacks: int = POISON_STACKS[clampi(si, 0, 2)]
 		# ★AOE 语义走 _enemies_of 不走 _pick_enemies_of: 毒雾是"范围扫到谁算谁"
 		#   (battle_targeting.gd §PICK-TARGET 的用法铁律: 定向选靶才用 _pick_)。
+		var _tp: Array = battle._equip_sys.tally.push(owner, IID)   # ④ 装备统计: 毒雾在全局表里 ⇒ 加进去的中毒层算「携带者 · 092」的份额
 		for e in battle._targeting._enemies_of(owner):
 			if not _in_any_fog(arr, e["pos"]):
 				continue
 			battle._damage._apply_dot_stacks(e, "poison", stacks, owner)
 			add_vslow(e, 1)
+		battle._equip_sys.tally.pop(_tp)
 
 
 ## 这一拍没被任何毒雾碰到的: 空闲累计 +0.25 秒; 满 1.5 秒后**每拍掉一层**。

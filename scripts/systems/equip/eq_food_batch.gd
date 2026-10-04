@@ -412,9 +412,11 @@ func _cream_grant_all(u: Dictionary, si: int, stt: Dictionary) -> void:
 		#   两只不同星级的携带者都带 071 时, 破盾时用的是【最后一次 grant 的那个 si】。
 		#   这是共用基建的行为, 不在这里另造一套多来源记账 —— 记一笔, 不当 bug 查。
 		battle._spec.grant(o, KEY_CREAM, amt, {
-			"on_break": func(uu, _k, reason): _cream_on_break(uu, si, str(reason)),
+			"on_break": func(uu, _k, reason): _cream_on_break(uu, si, str(reason), u),
 		})
 		o["_cream_given"] = float(o.get("_cream_given", 0.0)) + amt   # 同步证据
+		## ④ 装备统计: 奶油盾是 SpecialBalance 余额、不走 `_grant_shield`(所以 on_shield 记不到) ⇒ 这里按发放量直接记给「携带者 · 071」
+		battle._equip_sys.tally.credit(u, "p2eq_071", "shield", amt)
 		## ★★每一个拿到盾的友军都要有壳(2026-08-11 修)。
 		##   改之前壳只建一个、而且建在**携带者**身上(下面那行 `cream_shell_make(u)`) ⇒
 		##   友军拿到了盾、身上却什么都没有 ⇒ 用户实拍:「全队奶油护盾完全没表达」。
@@ -430,11 +432,13 @@ func _cream_grant_all(u: Dictionary, si: int, stt: Dictionary) -> void:
 ## 奶油护盾被打破 → 300 码 AOE + 给【持有者】整路加成。
 ## ★reason: "damage"(被打光) / "decay"(自然衰减完·本件不衰减所以不会走) / "clear"(撤场·不算破)
 ## (装备 "p2eq_071" —— tooltip_number_audit 的就近锚点)
-func _cream_on_break(holder: Dictionary, si: int, reason: String) -> void:
+func _cream_on_break(holder: Dictionary, si: int, reason: String, carrier = null) -> void:
 	if reason == "clear" or not holder.get("alive", false):
 		return
 	holder["_cream_broke_n"] = int(holder.get("_cream_broke_n", 0)) + 1   # 同步触发证据
 	var dmg: float = [70.0, 100.0, 150.0][si]   # 300 码内敌人 70/100/150 魔法伤害
+	## ④ 装备统计: 破盾回调发生在【对方的】伤害结算里 ⇒ 切到「发盾的携带者 · 071」(伤害源仍是持有者, 不改结算)
+	var _tp: Array = battle._equip_sys.tally.push_for(holder, carrier if carrier is Dictionary else holder, "p2eq_071")
 	for o in battle._targeting._enemies_of(holder):
 		if not o.get("alive", false):
 			continue
@@ -442,6 +446,7 @@ func _cream_on_break(holder: Dictionary, si: int, reason: String) -> void:
 			continue
 		battle._damage._apply_damage_from(holder, o,
 			battle._resolve_dmg(holder, dmg, o, true), Color("#fff0c8"), 0.0, false, true)
+	battle._equip_sys.tally.pop(_tp)
 	# 三样加成【持续整路】: 双抗写 base_(不是 buff, buff 会到期), 攻速走 aspd_perm, 射程走 range_add
 	holder["base_def"] = float(holder.get("base_def", 0.0)) + CREAM_RESIST
 	holder["base_mr"] = float(holder.get("base_mr", 0.0)) + CREAM_RESIST

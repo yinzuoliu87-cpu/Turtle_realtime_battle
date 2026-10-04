@@ -48,6 +48,16 @@ var battle
 func _init(b) -> void:
 	battle = b
 
+## 换路: 丢掉上一路的「机甲组装中、此侧仍算存活」桥接时刻(由 `_dl_clear_units` 调)。
+## ★`_mech_incoming` 按【阵营】记到期时刻、而 `_t` 跨路累加不重置(CLAUDE.md §3.4) ⇒
+##   上一路赛博在收官前 3 秒内阵亡, 不清的话下一路开场这一侧团灭也会被判「还活着」最多 3 游戏秒。
+##   那台机甲属于上一路, 换路后根本不会出现。返回清掉的条数(门禁分母)。
+func reset_for_lane() -> int:
+	var n: int = battle._mech_incoming.size()
+	battle._mech_incoming.clear()
+	return n
+
+
 func _sk_cyber_cannon(u: Dictionary, tgt) -> void:              # 赛博龟·能量大炮(用户#15: 对一条直线蓄力后发长激光能量射线·线上敌各1A物理+0.1A×浮游炮数真伤·炮越多越猛)
 	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return

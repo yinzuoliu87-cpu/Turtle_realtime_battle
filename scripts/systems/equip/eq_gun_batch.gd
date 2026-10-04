@@ -860,6 +860,8 @@ func _spawn_heli(owner: Dictionary, si: int, crash_phys: float) -> void:
 func _tick_helis(delta: float) -> void:
 	for i in range(_helis.size() - 1, -1, -1):
 		var h: Dictionary = _helis[i]
+		## ④ 装备统计: 直升机不是单位(全局表) ⇒ 这一架的推进切到「携带者 · 080」; 它入队的机炮/炸弹靠 _flush 盖章
+		var _tp: Array = battle._equip_sys.tally.push(h.get("owner", null), "p2eq_080")
 		match str(h.get("state", "patrol")):
 			"patrol", "doom":
 				_heli_patrol(h, delta)
@@ -878,6 +880,7 @@ func _tick_helis(delta: float) -> void:
 			h["doom_t"] = float(h.get("doom_t", 0.0)) + delta
 			if float(h["doom_t"]) >= DOOM_SEC:
 				_heli_begin_crash(h)
+		battle._equip_sys.tally.pop(_tp)
 		if str(h.get("state", "")) == "dead":
 			vfx.heli_free(h)
 			_helis.remove_at(i)
