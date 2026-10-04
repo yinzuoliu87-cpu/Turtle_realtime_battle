@@ -86,6 +86,9 @@ func _ready() -> void:
 			if im.is_compressed():
 				im.decompress()
 			## 3×3 邻域里有亮暖色像素即算坐在火上(重心可能落在两颗火苗像素之间)
+			## ★2026-10-04 主题给了自己的光源色域(flame_rgb, 深礁是冷绿藻灯)就按它判, 两侧各放宽 0.05;
+			##   不给 ⇒ 原暖色判据(r>0.8 且 b<0.5)逐字不变。
+			var fr: Dictionary = AT.cfg_of(str(th)).get("flame_rgb", {})
 			var hit := false
 			for dy in range(-1, 2):
 				for dx in range(-1, 2):
@@ -93,7 +96,10 @@ func _ready() -> void:
 					var iy: int = int(floor(px.y)) + dy
 					if ix >= 0 and iy >= 0 and ix < im.get_width() and iy < im.get_height():
 						var c: Color = im.get_pixel(ix, iy)
-						if c.a > 0.5 and c.r > 0.8 and c.b < 0.5:
+						if fr.is_empty():
+							if c.a > 0.5 and c.r > 0.8 and c.b < 0.5:
+								hit = true
+						elif c.a > 0.5 and _in(c.r, fr["r"]) and _in(c.g, fr["g"]) and _in(c.b, fr["b"]):
 							hit = true
 			if not hit:
 				off.append("%s 像素(%.1f,%.1f)不是火" % [(f as Sprite3D).texture.resource_path.get_file(), px.x, px.y])
@@ -110,6 +116,11 @@ func _ready() -> void:
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 主题氛围粒子" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
+
+
+## 色域判断(放宽 0.05): v 落在 (lo-0.05, hi+0.05) 里
+func _in(v: float, rng: Array) -> bool:
+	return v > float(rng[0]) - 0.05 and v < float(rng[1]) + 0.05
 
 
 ## 世界点 → 公告板精灵贴图像素(独立实现, 不调产品的换算)
