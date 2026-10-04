@@ -86,8 +86,8 @@ const THEMES: Dictionary = {
 		"ring_lanterns": 0,   # 撤: 悬在黑里的红光没有挂点, 读作乱飞(用户 2026-10-03); 红光只留插地火把
 		"ring_lantern_col": Color(1.0, 0.08, 0.10, 0.95),
 		"wall_h": 0.35,   # 海岸竖面压成矮边(高墙沿格子成一排台阶方块)
-		"lamp_tex": "dusk3_lantern_a",   # 2026-10-04 换: 浮木桩上挂的旧船灯(原「石墩红烛」是照搬参考的祭祀题材)
-		"lamp_h": 1.5,
+		"lamp_tex": "dusk3_lantern_b",   # 2026-10-04 再换 a→b: 场内三盏原是细杆小灯 lantern_a(1.5 米), 实拍读不清; 与周边船灯同一粗桩款   # 2026-10-04 换: 浮木桩上挂的旧船灯(原「石墩红烛」是照搬参考的祭祀题材)
+		"lamp_h": 1.75,   # 1.5→1.75: 粗桩款配周边那圈(1.65)略高一点, 场内是主光源
 		"field_tufts": ["dusk2_grass_a", "dusk2_grass_b", "dusk2_grass_c"],   # 2026-10-03 重画: 粗黑描线+三层明暗的大草丛(mixed_034)
 		"field_tufts_clusters": 9,
 		"field_piles": ["dusk3_anchor_a", "dusk3_shell_a", "dusk3_wreck_a", "dusk2_stones_a", "dusk2_stones_b"],   # 2026-10-04 换: 海草缠锚 / 龟壳化石 / 沉船木板 + 叠石(原骷髅堆/红木十字是照搬参考题材)
@@ -154,6 +154,7 @@ const THEMES: Dictionary = {
 		"fg_band_y": -0.46,   # 2026-10-04 单张分层剪影 fg_sea_band: 标定图实测每格 2px、顶行在屏幕 y≈333(-0.368 时 294) ⇒ 下沿 30 格在画面外; 远层要压住场地下沿一点才读得出(全落在黑底上=看不见)   # 旧: 新剪影带草尖高, -0.54 会盖住下沿交战的龟(实拍 s7)
 		"fg_band_px": 0.00475,   # 单张整幅(800 格 ≈ 3.8 单位宽), 每格 ≈ 2 屏幕像素
 		"fg_band_gain": 3.4,   # 贴图是灰度(近层 ~0.27 / 远层 ~0.9), 抬回剪影色量级: 近层 ≈ fg_band_col, 远层 ≈ 3 倍亮
+		"fg_band_layer_gain": [1.0, 1.8, 1.7],   # 2026-10-04 [近,中,远]: 主题色近黑, 远层实拍中位亮度只有 22/255、中层 0 ⇒ 三层读成一坨; 单独提中/远两层
 		"ground_tileset_hsv": Vector3(0.467, 0.56, 0.37),   # V 0.44→0.37: 实拍中位 V0.69 而参考 0.57   # 地面目标色 = anchordeep_011 地面中位实测(H168 S0.50)
 		"ground_tileset_tint": Color(0.62, 0.78, 0.76),   # 图块原色(生成器的鲜绿/粉红崖边)压进主题色调
 		"ground_tileset": "tiles_reef",   # 画出来的地面+崖边(PixelLab Wang 图块)
