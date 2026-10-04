@@ -867,7 +867,12 @@ static func _load_seed() -> Dictionary:
 		return parsed
 	return {POOL_KEY: {}}
 
-const SEED_VER := 13  # ★★2026-09-26 v13: **快照内容一条没变**(还是 v12 那 396 支),
+const SEED_VER := 14  # ★★2026-10-04 v14: **种子文件一个字节没动**, 升版只为一件事:
+                      #   陪练入池时改成**真人对手的形状**(`seed_as_human`, 用户 2026-10-04
+                      #   「不能让玩家知道是机器人」)。老存档池里那 396 条是旧形状
+                      #   (带 `_strategy` / `season_level`、`profile.id` = `COHxx`、缺 hearts 等),
+                      #   不升版它们永远留在池里 ⇒ 必须清掉重并。
+                      # ★★2026-09-26 v13: **快照内容一条没变**(还是 v12 那 396 支),
                       #   升版只为一件事: 种子文件的**分桶键**从「档」换成「场次」
                       #   (`brackets` → `by_battles`, 见 `POOL_KEY` / 方案书
                       #   `docs/plans/20260926-删掉9档进度档.md`)。
@@ -912,7 +917,19 @@ static func _ensure_seeded(pool: Dictionary) -> void:
 				have_seed = true
 				break
 		if have_seed: break
+	var sid := _seed_season_id()
 	if have_seed and int(pool.get("_seed_ver", 0)) >= SEED_VER:
+		## ★换赛季了: 陪练的 `profile.id` 里那一段赛季号要跟着换(真人对手都是本周的)。
+		##   **就地**重盖、桶序不动 —— 清掉重并会让 396 条陪练整批 `push_front` 压到
+		##   真人快照前面, 而「桶序第一个 = 最新那份」是匹配取人的顺序(D10)。
+		if int(pool.get(SEED_SEASON_KEY, -1)) != sid:
+			for b in buckets.keys():
+				var arr: Array = buckets[b]
+				for i in range(arr.size()):
+					if is_sparring(arr[i]):
+						arr[i] = seed_as_human(arr[i] as Dictionary, sid)
+			pool[SEED_SEASON_KEY] = sid
+			save_pool(pool)
 		return
 	for b in buckets.keys():                       # 清旧版seed_(玩家真ghost保留)
 		var keep: Array = []
@@ -923,9 +940,139 @@ static func _ensure_seeded(pool: Dictionary) -> void:
 	var seed := _load_seed()
 	for b in seed.get(POOL_KEY, {}).keys():
 		for g in seed[POOL_KEY][b]:
-			pool_add(pool, g)
+			if g is Dictionary:
+				pool_add(pool, seed_as_human(g as Dictionary, sid))
 	pool["_seed_ver"] = SEED_VER
+	pool[SEED_SEASON_KEY] = sid
 	save_pool(pool)                                 # 升级立即落盘(否则要等下次upload才存)
+
+
+## 池子里的陪练是按哪个赛季盖的 `profile.id`(见 `seed_as_human`)。与 `_seed_ver` 同住池子顶层,
+##   `int` 值 ⇒ 各处遍历池子时被 `is Dictionary` / `POOL_KEY` 跳过, 与 `_seed_ver` 同一档。
+const SEED_SEASON_KEY := "_seed_season"
+
+
+static func _seed_season_id() -> int:
+	return int(GameState.season_id) if GameState != null else 1
+
+
+## 内置陪练 → **真人对手的形状**。入池那一刻转(`_ensure_seeded`), 文件不动。
+##
+## ★★用户 2026-10-04「不能让玩家知道是机器人，以及对手的场次一定要相同」。
+##   v0.19.529 把 `make_bot` 做成了与真人同形, 而种子池这几百支**也不是真人**(队列模拟跑出来的),
+##   冷启动/断网时它们就是玩家遇到的全部对手, 原样进录像(`var_to_bytes`)与 `matches.right_snapshot`。
+##   门禁 `verify_bot_snapshot_shape` 的陪练那一段量出来的差异(改之前, 396 支逐条比):
+##     · 多键: `_strategy`(队列模拟的买法流派) / `season_level` —— 真人快照里没有
+##     · 缺键: `season_wins` / `hearts` / `season_sweeps` / `origin`
+##     · 值域: `profile.id` 是 `COH0-49` 这种内部号(真人是 `g_<uid>_<赛季>_<三龟>_b<场次>`);
+##       名字 17 个不是玩家起得出来的(`nickname_valid` 不过); 同一个「人」每个场次换一个名字;
+##       小将 `equips: []` 589 处、`equipped` 空数组 82 处(真人上传时**不写**空的);
+##       `pet_levels` 有 2(真人恒 1); `season_eggs_killed` 恒 0。
+## ★★战斗强度**一点不动**: 战斗场读的是 `leaders / lane_assign / minions / equipped / loadouts /
+##   trainer_skill / chest_*`(全仓 grep `dual_ghost` 的读者), 这些原样搬; 只删了**空**装备数组
+##   (`_dual_foe_lane` 对空数组与缺键走同一条: 敌方 `_dl_spec_equips` 都返回 `[]`)。
+##   `pet_levels` 战斗侧没人读(见 `make_bot` 头注)。门禁拿**战斗场自己的** `_dual_foe_lane`
+##   把 396 支原样/转换后各读一遍, 逐字相同。
+## ★`_strategy` / `season_level` 只删在**池子里这一份**: 种子文件原样保留, 量 bot 强度曲线的
+##   `tools/bot_level_fit_audit.py`、`verify_seed_battles_gear`、流派报表都读文件, 不读池子。
+## ★`ghost_id` 保留 `seed_` 前缀: 那是 `is_sparring` 的唯一判据(陪练不上榜 / 匹配记账分真人陪练 /
+##   升版清旧种子), 而它只在本机 —— 出站两条路都过 `ReplayUploader.GHOST_STRIP` 摘掉(与 `is_bot` 同)。
+## ★同一个「人」(ghost_id 去掉 `_b<场次>`)各场次: uid / 名字相同, 胜场随场次不减 ——
+##   全部由这个人的 id 做种子确定性生成, 换机器/重开都一样。
+## ★幂等: 对已经转过的再转一次, 只会换赛季号(换赛季时 `_ensure_seeded` 就靠这个就地重盖)。
+static func seed_as_human(g: Dictionary, season_id: int) -> Dictionary:
+	var gid := str(g.get("ghost_id", ""))
+	var battles := maxi(0, int(g.get("season_total_battles", 0)))
+	var leaders: Array = []
+	for x in (g.get("leaders", []) as Array):
+		leaders.append(str(x))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(seed_person_of(gid))
+	var fake_uid := "%06x%06x" % [rng.randi() % 0x1000000, rng.randi() % 0x1000000]
+	var nick: String = _P2.nickname_suggest_at(rng.randi(), rng.randi())
+	var rec := _seed_record(battles, rng)
+	var sorted_ldr: Array = leaders.duplicate()
+	sorted_ldr.sort()
+	var pid_str := "g_%s_%d_%s_b%d" % [fake_uid, season_id, "-".join(PackedStringArray(sorted_ldr)), battles]
+	## 分路 / 小将: 与 `build_ghost_snapshot` 同序同键; 小将只在**有**装备时写 `equips`。
+	var src_la: Dictionary = g.get("lane_assign", {}) if g.get("lane_assign") is Dictionary else {}
+	var src_mn: Dictionary = g.get("minions", {}) if g.get("minions") is Dictionary else {}
+	var lane_assign := {"top": [], "bottom": []}
+	var minions := {"top": [], "bottom": []}
+	for lk in ["top", "bottom"]:
+		if src_la.get(lk) is Array:
+			lane_assign[lk] = (src_la[lk] as Array).duplicate(true)
+		if src_mn.get(lk) is Array:
+			for m in (src_mn[lk] as Array):
+				if not (m is Dictionary):
+					continue
+				var md: Dictionary = m
+				var m2 := {"role": md.get("role", "front"), "elite": md.get("elite", false)}
+				var meq = md.get("equips", null)
+				if meq is Array and not (meq as Array).is_empty():
+					m2["equips"] = (meq as Array).duplicate(true)
+				(minions[lk] as Array).append(m2)
+	## 统领装备 / 等级: 按统领序, 只收非空的(同 `build_ghost_snapshot`)。
+	var src_eq: Dictionary = g.get("equipped", {}) if g.get("equipped") is Dictionary else {}
+	var equipped := {}
+	var levels := {}
+	for pid in leaders:
+		var eqs = src_eq.get(pid, null)
+		if eqs is Array and not (eqs as Array).is_empty():
+			equipped[pid] = (eqs as Array).duplicate(true)
+		levels[pid] = 1               # 真人恒 1(`get_pet_level` 默认); 战斗侧不读
+	var prof_src: Dictionary = g.get("profile", {}) if g.get("profile") is Dictionary else {}
+	var avatar := str(prof_src.get("avatar", leaders[0] if not leaders.is_empty() else "basic"))
+	var snap := {
+		"schema_ver": SCHEMA_VER,
+		"ghost_id": gid,
+		"is_bot": false,
+		"profile": {"name": nick, "avatar": avatar, "id": pid_str},
+		"leaders": leaders,
+		"lane_assign": lane_assign,
+		"minions": minions,
+		"loadouts": (g.get("loadouts", {}) as Dictionary).duplicate(true) if g.get("loadouts") is Dictionary else {},
+		"equipped": equipped,
+		"pet_levels": levels,
+		"trainer_skill": str(g.get("trainer_skill", "")),
+		"season_total_battles": battles,
+		"season_eggs_killed": int(rec["wins"]),
+		"season_wins": int(rec["wins"]),
+		"hearts": int(rec["hearts"]),
+		"season_sweeps": int(rec["sweeps"]),
+		"chest_treasures_won": (g.get("chest_treasures_won", []) as Array).duplicate(true) if g.get("chest_treasures_won") is Array else [],
+		"chest_treasure_value": float(g.get("chest_treasure_value", 0.0)),
+		ORIGIN_KEY: ORIGIN_REMOTE,
+	}
+	## 与真人对手同一个 JSON 往返(数字一律 float)。
+	return JSON.parse_string(JSON.stringify(snap))
+
+
+## 陪练的「这个人」= ghost_id 去掉末尾的 `_b<场次>`(同一只队列机器人在各场次的快照)。
+static func seed_person_of(gid: String) -> String:
+	var i := gid.rfind("_b")
+	if i > 0 and gid.substr(i + 2).is_valid_int():
+		return gid.substr(0, i)
+	return gid
+
+
+## 陪练的赛季战绩 —— 逐场走, 所以同一个人(同一个种子)场次越多胜场只增不减。
+## ★规则同 `_bot_season_record`: 输一场掉一命, 剩最后一命时不再输(0 命打不了积分赛);
+##   胜场 = 碎蛋数; 横扫 ≤ 胜场。每场固定抽两次随机数 ⇒ 前缀一致。
+static func _seed_record(battles: int, rng: RandomNumberGenerator) -> Dictionary:
+	var w := 0
+	var l := 0
+	var sweeps := 0
+	for i in range(battles):
+		var r_win := rng.randf()
+		var r_sweep := rng.randf()
+		if l >= int(_P2.HEARTS_MAX) - 1 or r_win < 0.5:
+			w += 1
+			if r_sweep < 0.5:
+				sweeps += 1
+		else:
+			l += 1
+	return {"wins": w, "hearts": int(_P2.HEARTS_MAX) - l, "sweeps": sweeps}
 
 ## ★headless(测试/仿真/导出) 绝不写玩家真实池 —— 与 GameState.test_mode 同一条纪律(GameState.gd:570)。
 ## 起因(2026-07-27): GameState.save() 早有这个守卫, save_pool 一直没有 → 任何跑战斗的测试赢一把就
