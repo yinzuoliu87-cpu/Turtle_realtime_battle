@@ -124,7 +124,7 @@ func _ready() -> void:
 	_ok("① 主菜单赛程条恰好一格标「今」, 且是闯关赛那格",
 		(m1[0] as Array).size() == 1 and str((m1[0] as Array)[0]).begins_with(str(P2.PHASE_LABEL[P2.PHASE_GAUNTLET])),
 		str(m1[0]))
-	_ok("① 主菜单角落有「测试时间 周六 15:00 UTC」", str(m1[1]) == "测试时间 周六 15:00 UTC", "'%s'" % str(m1[1]))
+	_ok("① 主菜单角落有「测试时间 周六 15:00 UTC · 不联网」", str(m1[1]) == "测试时间 周六 15:00 UTC · 不联网", "'%s'" % str(m1[1]))
 
 	# ── ② sun 08:05 ──
 	print("── ② TURTLE_FAKE_NOW=sun 08:05 ⇒ 决赛日 ──")
@@ -172,7 +172,7 @@ func _ready() -> void:
 	OS.unset_environment("SHIP")
 	## 源码那半: release 导出包里 is_debug_build() = false —— 无头门禁跑不出 release 模板,
 	##   只能钉住判据就是它, 而且不认 DEVTOOLS(那个能让 release 包里出现调试场)。
-	var src: String = FileAccess.get_file_as_string("res://scripts/gamedata/phase2_config.gd").replace("", "")
+	var src: String = FileAccess.get_file_as_string("res://scripts/gamedata/phase2_config.gd").replace(char(13), "")
 	var i0: int = src.find("static func time_travel_allowed() -> bool:")
 	var body: String = src.substr(i0, src.find("\n\n", i0) - i0) if i0 >= 0 else ""
 	_ok("④ ★分母: 切到了 time_travel_allowed 的函数体", body.length() > 40, "%d 字" % body.length())
@@ -245,6 +245,39 @@ func _ready() -> void:
 	_ok("⑥ 非法写法一律 -1(按真实时间走)", bad.is_empty(), str(bad))
 	_boot_with_env("garbage")
 	_ok("⑥ 环境变量写坏 ⇒ 不穿越", not P2.travel_active())
+
+	# ── ⑦ 不许穿出本周 ──
+	print("── ⑦ 只许在本周(UTC 周一 00:00 ~ 下周一 00:00)内穿越 ──")
+	var r7: int = _real()
+	var mon0: int = P2.week_anchor_utc(r7)
+	var next_wk: String = Time.get_datetime_string_from_unix_time(mon0 + 7 * 86400 + 15 * 3600) + "Z"
+	var last_wk: String = Time.get_datetime_string_from_unix_time(mon0 - 86400 + 15 * 3600) + "Z"
+	var this_wk: String = Time.get_datetime_string_from_unix_time(mon0 + 5 * 86400 + 15 * 3600) + "Z"
+	_ok("⑦ ★分母: 三个 ISO 写法都解析得出来", P2.parse_fake_now(next_wk, r7) > 0
+		and P2.parse_fake_now(last_wk, r7) > 0 and P2.parse_fake_now(this_wk, r7) > 0, "%s / %s / %s" % [next_wk, last_wk, this_wk])
+	_boot_with_env(next_wk)
+	_ok("⑦ 环境变量写下周的日期 ⇒ 拒绝(不穿越)", not P2.travel_active(), next_wk)
+	_boot_with_env(last_wk)
+	_ok("⑦ 环境变量写上周的日期 ⇒ 拒绝", not P2.travel_active(), last_wk)
+	_boot_with_env(this_wk)
+	_ok("⑦ ★分母: 本周的完整日期 ⇒ 照常穿越(拒绝不是一刀切)", P2.travel_active()
+		and P2.phase_at_utc(P2.now_utc()) == P2.PHASE_GAUNTLET, this_wk)
+	P2.travel_reset()
+	_ok("⑦ travel_to 下周一 00:00 ⇒ 拒绝", not P2.travel_to(mon0 + 7 * 86400) and not P2.travel_active())
+	_ok("⑦ travel_to 本周一 00:00 前一秒 ⇒ 拒绝", not P2.travel_to(mon0 - 1) and not P2.travel_active())
+	_ok("⑦ ★边界: 本周一 00:00 整 ⇒ 允许", P2.travel_to(mon0) and P2.travel_active())
+	P2.travel_reset()
+	var days_ok := 0
+	for wd7 in range(1, 8):
+		if P2.travel_to_weekday(wd7, 0, 0) and P2.week_anchor_utc(P2.now_utc()) == mon0:
+			days_ok += 1
+	_ok("⑦ 弹层能选的周一~周日 00:00 全都落在本周、全都允许", days_ok == 7, "%d/7" % days_ok)
+	P2.travel_reset()
+	## 假时间随真实流逝走出本周 ⇒ 自动回到真实时间
+	P2.travel_offset_sec = (mon0 + 7 * 86400 + 5) - _real()
+	P2._travel_env_read = true
+	_ok("⑦ 假时间走出了本周 ⇒ 自动回到真实时间(不滚进下一周)", not P2.travel_active()
+		and P2.travel_offset_sec == 0 and abs(P2.now_utc() - _real()) <= 1, "offset=%d" % P2.travel_offset_sec)
 
 	# ── 还原 ──
 	P2.now_override_ts = k_ovr

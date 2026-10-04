@@ -231,6 +231,10 @@ static func _on_done(k: String, confirmed: bool, code: int) -> void:
 			q.remove_at(idx)
 			gs.save()
 		return
+	## 测试时间里被出口拦下(`SupabaseNet._http`) = 根本没发: 单子留着, 也不记失败/不退避 ——
+	##   否则在假时间里多开几次主菜单, 回到真实时间后要白等最长 30 分钟才补发。
+	if code == SB.BLOCKED_CODE:
+		return
 	var f := int(_fails.get(k, 0)) + 1
 	_fails[k] = f
 	var wait := minf(BACKOFF_CAP, BACKOFF_BASE * pow(2.0, f - 1)) * _jitter.randf_range(0.5, 1.0)

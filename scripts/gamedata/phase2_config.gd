@@ -505,12 +505,26 @@ static func _travel_offset(real: int) -> int:
 		var raw: String = OS.get_environment(TRAVEL_ENV).strip_edges()
 		if raw != "":
 			var ts: int = parse_fake_now(raw, real)
-			if ts > 0:
+			if ts <= 0:
+				push_warning("[Phase2Config] %s=%s 解析失败(要 2026-10-10T15:00Z 或 sat 15:00), 按真实时间走" % [TRAVEL_ENV, raw])
+			elif _travel_accept(ts, real, "%s=%s" % [TRAVEL_ENV, raw]):
 				travel_offset_sec = ts - real
 				print("[Phase2Config] 时间穿越: %s=%s ⇒ %s" % [TRAVEL_ENV, raw, travel_label(ts)])
-			else:
-				push_warning("[Phase2Config] %s=%s 解析失败(要 2026-10-10T15:00Z 或 sat 15:00), 按真实时间走" % [TRAVEL_ENV, raw])
+	## ★假时间随真实流逝走出了本周(例: 周一真实时间穿到周日 23:50, 十分钟后) ⇒ 自动回到真实时间。
+	##   不让它滚进下一周 —— 理由同 `_travel_accept`。
+	if travel_offset_sec != 0 and week_anchor_utc(real + travel_offset_sec) != week_anchor_utc(real):
+		push_warning("[Phase2Config] 测试时间走出了本周, 自动回到真实时间")
+		travel_offset_sec = 0
 	return travel_offset_sec
+
+## ★★不许穿出**本周**(真实时间所在的 UTC 周一 00:00 ~ 下周一 00:00)。2026-10-04 主会话出于安全定的
+##   (用户可推翻): 跨周 ⇒ `ensure_season()` 滚一轮清掉本地命/币/阵容, 回到真实时间又滚一轮;
+##   而且客户端会拿**假周号**去问服务器。简写(`sat 15:00`)天然落在本周; 这条挡的是 ISO 全日期写法。
+static func _travel_accept(ts: int, real: int, what: String) -> bool:
+	if week_anchor_utc(ts) == week_anchor_utc(real):
+		return true
+	push_warning("[Phase2Config] %s 不在本周(UTC 周一 00:00 起), 拒绝穿越 —— 只许在本周内穿越" % what)
+	return false
 
 ## 现在是不是假时间(开发包里穿越了)。正式包恒 false。
 static func travel_active() -> bool:
@@ -551,6 +565,8 @@ static func parse_fake_now(raw: String, real: int) -> int:
 static func travel_to(ts: int) -> bool:
 	if not time_travel_allowed() or ts <= 0:
 		return false
+	if not _travel_accept(ts, int(Time.get_unix_time_from_system()), travel_label(ts)):
+		return false
 	_travel_env_read = true
 	travel_offset_sec = ts - int(Time.get_unix_time_from_system())
 	return true
@@ -571,10 +587,14 @@ static func travel_label(ts: int) -> String:
 		int(d.get("hour", 0)), int(d.get("minute", 0))]
 
 ## 主菜单角标要显示的字: 没穿越 ⇒ ""(角标不建)。
+## ★「不联网」: 测试时间里所有**写**服务器的请求都在 `SupabaseNet._http` 出口被拦下(读照常)。
 static func travel_badge_text() -> String:
 	if not travel_active():
 		return ""
-	return travel_label(now_utc())
+	return travel_label(now_utc()) + TRAVEL_OFFLINE_SUFFIX
+
+## 角标尾巴。门禁按它断言, 两边不各写一份。
+const TRAVEL_OFFLINE_SUFFIX := " · 不联网"
 
 ## unix 秒 → 星期几(1=周一 … 7=周日, ISO 口径)。
 ## ★Godot 的 `get_datetime_dict_from_unix_time` 返回的 `weekday` 是 0=周日,

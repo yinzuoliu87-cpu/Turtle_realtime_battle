@@ -154,6 +154,7 @@ scripts/gamedata/minion_codex.gd|lit|铁锤
 scripts/gamedata/minion_codex.gd|lit|锁上 2000 码内的敌人，蓄力 1.5 秒后发射一枚慢速追踪导弹，命中处核爆：400 码范围内造成 [color=#ff9f43]4×攻击力[/color] 物理伤害，并使命中的敌人受到的治疗降低 50%，持续 4 秒。
 scripts/gamedata/minion_codex.gd|lit|长手刃 · 普攻
 scripts/gamedata/minion_codex.gd|lit|顶上统领位 · 近战
+scripts/gamedata/phase2_config.gd|lit| · 不联网
 scripts/gamedata/phase2_config.gd|lit|\n不绑也能玩 —— 只是换了手机接不回来；邮箱和名字以后随时能改。
 scripts/gamedata/phase2_config.gd|lit|\n收不到验证码？看看垃圾邮件，或回上一步换个邮箱重发。
 scripts/gamedata/phase2_config.gd|lit|一
