@@ -1651,9 +1651,20 @@ func _build_foreground_band() -> void:   # ★不收 root: 它挂在相机上, �
 	##   (两角大海带框边、中段压低让出视线、远/中/近三层), 两张叠着会把构图叠乱 ⇒ 只铺一张。
 	##   贴图是**灰度**: 灰度 = 层深(远亮近暗), 颜色仍由 fg_band_col 给, `fg_band_gain` 把灰度抬回剪影色量级。
 	##   1280×720 实测 1 世界单位 ≈ 421px(竖向 fov 40°·z=-2.35) ⇒ px 0.00475 ≈ 每格 2 屏幕像素, 800 格宽 ≈ 3.8 单位(宽屏手机也盖得住)。
+	## ★★2026-10-04 两角海带丛整体下压 45 格(贴图本身改了, 不是参数): 探针 `tests/_probe_fg_corner`
+	##   把龟摆到可活动椭圆底部左/右弧上逐角度量「立绘被前景盖住的像素比例」——
+	##   原图在 130°~145° 盖住 54%~86%(左)/ 31%~68%(右, 镜像), 下压后最坏 6.5%(只擦到脚)。
 	var _one: bool = cfg.has("fg_band_px")
 	var n := 1 if _one else 2
 	var _gain: float = float(cfg.get("fg_band_gain", 1.0))
+	## ★2026-10-04 `fg_band_layer_gain` = [近, 中, 远] 各层单独增益(主题给; 不给 ⇒ 贴图原样, 一个像素不变)。
+	##   由来: 深礁主题色接近黑, 远层(灰度 ~0.66~0.94)乘出来实拍中位亮度只有 22/255、
+	##   中层被暗角压到 0 ⇒ 三层读成一坨。modulate 是乘法、对三层一视同仁, 拉不开层次 ⇒ 改贴图灰度。
+	var _lg: Array = cfg.get("fg_band_layer_gain", [])
+	if _lg.size() == 3:
+		var _lifted: Array = _fg_band_layer_lift(tex, _lg)
+		tex = _lifted[0]
+		_gain *= float(_lifted[1])
 	for i in range(n):
 		var q := Sprite3D.new()
 		q.texture = tex
@@ -1678,6 +1689,39 @@ func _build_foreground_band() -> void:   # ★不收 root: 它挂在相机上, �
 		q.modulate = Color(_fc.r * _m, _fc.g * _m, _fc.b * _m)
 		q.sorting_offset = 8.0                              # 压在所有东西前面
 		battle._cam.add_child(q)
+
+
+## 前景剪影带的分层增益: 灰度贴图按层(近 < FG_LAYER_MID_FROM ≤ 中 < FG_LAYER_FAR_FROM ≤ 远)各乘一个系数。
+## ★为了不削顶(远层最亮格 240 × 2 会溢出 255): 贴图里除以最大系数 K, 再把 K 还给 modulate ⇒ 返回 [新贴图, K]。
+## 阈值按 fg_sea_band 的实际灰阶定: 近 56/68/69 · 中 82~134 · 远 157~240(三层之间有空档)。
+const FG_LAYER_MID_FROM := 75
+const FG_LAYER_FAR_FROM := 150
+
+func _fg_band_layer_lift(tex: Texture2D, lg: Array) -> Array:
+	var img: Image = tex.get_image()
+	if img == null:
+		push_warning("[fg_band] 取不到贴图像素, 分层增益不生效")
+		return [tex, 1.0]
+	if img.is_compressed():
+		img.decompress()
+	img.clear_mipmaps()
+	img.convert(Image.FORMAT_RGBA8)
+	var k_near: float = float(lg[0])
+	var k_mid: float = float(lg[1])
+	var k_far: float = float(lg[2])
+	var kmax: float = maxf(k_near, maxf(k_mid, k_far))
+	var d: PackedByteArray = img.get_data()
+	for i in range(0, d.size(), 4):
+		if d[i + 3] == 0:
+			continue
+		var g: int = d[i]
+		var k: float = k_near if g < FG_LAYER_MID_FROM else (k_mid if g < FG_LAYER_FAR_FROM else k_far)
+		var v: int = clampi(int(round(float(g) * k / kmax)), 0, 255)
+		d[i] = v
+		d[i + 1] = v
+		d[i + 2] = v
+	var out := Image.create_from_data(img.get_width(), img.get_height(), false, Image.FORMAT_RGBA8, d)
+	return [ImageTexture.create_from_image(out), kmax]
 
 
 func _build_theme_decorations(root: Node3D) -> void:
