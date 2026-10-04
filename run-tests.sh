@@ -495,7 +495,10 @@ QUIET=1 APPDATA="$GATE_APPDATA" XDG_DATA_HOME="$GATE_APPDATA" "$GODOT" --headles
 # ★冒烟(80 秒)与测试池【同时】跑 —— 它是完全独立的进程, 与自证测试零共享状态,
 #   排在后面串行等 = 白白多花 80 秒。判定逻辑在下面的冒烟段, 一个字没改。
 #   必须用 SHIP=1: 否则 _review_demo() 为真 → 假人永不死 → 战斗永不结束 → 结算路径根本没测到。
-( SHIP=1 QUIET=1 APPDATA="$GATE_APPDATA" "$GODOT" --headless --audio-driver Dummy --path "$DIR" res://tests/smoke_scenes.tscn \
+# ★★★2026-10-04: 这一行原来**没带** TURTLE_BACKEND/TURTLE_SUPABASE=" " ⇒ 冒烟进主菜单时用全新存档匿名登录**生产库**,
+#   每跑一次门禁就在线上 auth.users 里造一个垃圾账号(本机 + CI 每次都造; 9-27 起每天 25~125 个, 实测零真人)。
+#   测试池那一行早就带了, 冒烟这一行漏了。判据: tools/gate_offline_audit.py。
+( SHIP=1 TURTLE_BACKEND=" " TURTLE_SUPABASE=" " QUIET=1 APPDATA="$GATE_APPDATA" XDG_DATA_HOME="$GATE_APPDATA" "$GODOT" --headless --audio-driver Dummy --path "$DIR" res://tests/smoke_scenes.tscn \
     --quit-after 40000 > "$RAW/smoke.log" 2>&1; echo $? > "$RAW/smoke.rc" ) &
 SMOKE_PID=$!
 
@@ -841,6 +844,7 @@ run_audit "tools/tween_freeze_audit.py" "ALL OK" "tween_freeze (战斗世界侧�
 run_audit "tools/tween_capture_audit.py" "ALL OK" "tween_capture (演出 tween 的 lambda 捕获了可能被释放的节点·台账只减不增)"
 run_audit "tools/nine_bracket_audit.py" "ALL PASS" "nine_bracket (9 档进度档已彻底删除·匹配只认同场次·同名的周日对阵图不许误伤)"
 run_audit "tools/freed_is_order_audit.py" "ALL OK" "freed_is_order (先 is_instance_valid 再 is·对已释放对象 is 会报错并中断函数)"
+run_audit "tools/gate_offline_audit.py" "ALL OK" "gate_offline (门禁里每个起 Godot 跑场景的命令都必须关掉后端·不许打生产库)"
 
 echo ""
 if [ "$FAIL" -eq 0 ]; then
