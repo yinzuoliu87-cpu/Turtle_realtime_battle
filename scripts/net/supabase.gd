@@ -449,6 +449,11 @@ func _upload_snapshot_row(table: String, row: Dictionary, done: Callable) -> voi
 	var base := base_url().rstrip("/") + "/rest/v1/" + table
 	_http("POST", base, JSON.stringify(row),
 		func(res):
+			## 测试时间里被出口拦下: 没发出去, 也不回读、不记上传失败 —— 单子原样留着等回到真实时间。
+			if bool(res.get("blocked", false)):
+				_snap_done(done, false, BLOCKED_CODE)
+				_bye()
+				return
 			_log_upload_fail(table, res)
 			var code := int(res.get("code", 0)) if bool(res.get("ok", false)) else 0
 			apply_upload_response(bool(res.get("ok", false)), int(res.get("code", 0)))
@@ -1513,7 +1518,49 @@ func _headers(extra: String = "") -> PackedStringArray:
 	return h
 
 
+## ══════════════════════════════════════════════════════════════════════
+##  【时间穿越期间不写服务器】(2026-10-04) —— 全仓所有 Supabase 请求的唯一出口就是下面这个 `_http`
+## ══════════════════════════════════════════════════════════════════════
+## ★为什么: iOS 测试包是 `--export-debug`(`ios-build.yml:66`) ⇒ 测试者手上的包**有**时间穿越,
+##   而它连的是**正式服**。假周六打完一局 = 往生产快照池/决赛表写一行带假相位的真数据,
+##   别的真玩家会匹配到它、`finals_seat` 会把它当真分组。
+## ★拦在**出口**, 不在每个写入口前面各加一个 if —— 漏一个就是一条生产写入, 而写入口还会继续加。
+## ★只拦写: 读(拉对手 / 排行榜 / `finals_view` / 服务状态 / 回读)照常发。
+##   身份(`/auth/v1/`: 匿名登录 / 续期 / 邮箱验证码)也照常 —— 那与时间无关, 拦了连读都读不了。
+## ★被拦下的请求回 `{ok:false, code:0, blocked:true}` —— 与「没网」同形状 ⇒ 每条上传路径原本就把它
+##   当成「还没发出去」留着(快照/回放队列不销单、存档保持 dirty、决赛报名/战报不记成功),
+##   回到真实时间后照常补发。快照队列另外认 `BLOCKED_CODE`, 不为这次「没发」记退避。
+## 判定成「读」的 RPC。★白名单而不是黑名单: 新加的 RPC 默认算写(漏登记的代价是假时间里读不到, 不是写进生产)。
+##   ⚠ `finals_opponent` **不是**读 —— 它往 `finals_scout` 插一行(每人每轮只能问一个种子), 所以不在这里。
+const READ_RPCS := ["finals_view"]
+## 快照上传被时间穿越拦下时交给回调的 code(区别于没网的 0)。
+const BLOCKED_CODE := -1
+## 本进程里被拦下的写请求条数(观测量 / 门禁分母)。
+static var travel_blocked_count: int = 0
+
+## 纯函数: 这个请求会不会**写**服务器。
+static func is_write_request(method: String, url: String) -> bool:
+	if method.to_upper() == "GET":
+		return false
+	if url.find("/auth/v1/") >= 0:
+		return false
+	var i := url.find("/rest/v1/rpc/")
+	if i >= 0:
+		var rpc := url.substr(i + "/rest/v1/rpc/".length()).split("?")[0]
+		return not READ_RPCS.has(rpc)
+	return true
+
+## 时间穿越中 + 写请求 ⇒ 不发。
+static func travel_blocks(method: String, url: String) -> bool:
+	return _P2S.travel_active() and is_write_request(method, url)
+
+
 func _http(method: String, url: String, body: String, cb: Callable, extra: String = "") -> void:
+	if travel_blocks(method, url):
+		travel_blocked_count += 1
+		print("[SupabaseNet] 测试时间中, 写请求不发(回到真实时间后补): %s %s" % [method, url.get_slice("?", 0)])
+		cb.call({"ok": false, "code": 0, "body": "", "blocked": true})
+		return
 	if _transport.is_valid():
 		_transport.call(method, url, _headers(extra), body, cb)
 		return

@@ -763,6 +763,7 @@ func _right_column(now: int = 0) -> void:
 	_slide_in(help_tile, 2)
 	_status_row(now)       # 赛季状态压成一行(原来是 560×398 的表格卡)
 	_version_stamp()
+	_travel_badge()
 
 
 ## 右下角版本号 —— 版本号最大的实际价值就是【测试者报 bug 时能说清是哪个版本】。
@@ -786,6 +787,29 @@ func _version_stamp() -> void:
 	l.size = Vector2(200, 22)
 	l.custom_minimum_size = Vector2(200, 22)
 	l.position = Vector2(W - WALL - 200, H - WALL - 22)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	content_root.add_child(l)
+
+
+## 【开发包时间穿越】角标的节点名 —— 门禁 `verify_time_travel` 按名字找它。
+const TRAVEL_BADGE_NAME := "DevClockBadge"
+
+## 开发包里一旦穿越了, 右下角版本号上方挂一行「测试时间 周六 15:00 UTC」(2026-10-04)。
+## ★为什么必须有: 主菜单整屏(赛程条「今」、倒计时、能不能开打)都会跟着假时间变,
+##   不挂这一行的话测试者截图报 bug 时**看不出那是假时间**, 会当成真赛程的 bug。
+## ★没穿越 / 正式包 ⇒ `travel_badge_text()` 返回 "" ⇒ 一个节点都不建(玩家路径一字不动)。
+## ★字从 `_P2C.travel_badge_text()` 取, 本屏不另外读钟(`_P2C.now_utc()` 在本文件只许出现在 `_now_ts()` 里)。
+func _travel_badge() -> void:
+	var t: String = _P2C.travel_badge_text()
+	if t == "":
+		return
+	var l := _menu_label(t, FONT_VERSION, Color("#ffb347"))
+	l.name = TRAVEL_BADGE_NAME
+	l.set_anchors_preset(Control.PRESET_TOP_LEFT)   # 同 `_version_stamp`: 先掰回锚点再设 size
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	l.size = Vector2(300, 22)
+	l.custom_minimum_size = Vector2(300, 22)
+	l.position = Vector2(W - WALL - 300, H - WALL - 22 - 24)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	content_root.add_child(l)
 
@@ -1146,7 +1170,8 @@ func _tile_press(holder: Control, cb: Callable) -> void:
 ## ★★E2/E4 的唯一 UI 落点: 赛程判定全程按 UTC(phase2_config 里那几个纯函数),
 ##   本地时区**只在 `_local_dict` 里做一次显示层换算**, 换算结果一个字节都不回流到判定。
 ##   门禁 verify_week_season ⑥ 焊死了这条: 判定层源码里不许出现本地时间 API。
-const _WD_CN := ["一", "二", "三", "四", "五", "六", "日"]
+## ★2026-10-04 收进 `phase2_config.WEEKDAY_CN`(时间穿越角标也要用同一份)。
+const _WD_CN := _P2C.WEEKDAY_CN
 
 ## 赛程条的外框。★留引用是为了服务状态变化时能把它换掉(见 `_sb_poll`)。
 var _week_box: Control = null

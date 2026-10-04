@@ -245,6 +245,13 @@ func _bye() -> void:
 
 
 func _http(method: String, url: String, body: String, cb: Callable) -> void:
+	## ★测试时间(开发包时间穿越)里不写服务器 —— 同 `SupabaseNet._http` 那段头注; 本层只有 POST /ghost 一条写。
+	##   (旧后端协议, 正式包 `backend_url` 为空 ⇒ 现网无人应答; 照样拦, 免得哪天配上地址就漏了。)
+	if method != "GET" and _P2.travel_active():
+		if cb.is_valid():
+			cb.call({"ok": false, "code": 0, "body": "", "blocked": true})
+		_bye()
+		return
 	if _transport.is_valid():
 		_transport.call(method, url, body, cb)
 		return

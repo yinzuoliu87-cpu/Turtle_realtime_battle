@@ -453,9 +453,148 @@ static func phase_pending_note(phase: String) -> String:
 ## ⚠ 只认 **> 0**: unix 0 (1970-01-01) 不是任何人想钉的时刻, 而"0 = 关"是上面三个先例的口径。
 static var now_override_ts: int = 0
 
-## 「现在」的 unix 秒(UTC)。`now_override_ts == 0` ⇒ 真实系统时钟。
+## 「现在」的 unix 秒(UTC)。优先级: `now_override_ts`(门禁钉死) > 开发包时间穿越 > 真实系统时钟。
+## ★两个开关都关着时**逐字节等价**于 `int(Time.get_unix_time_from_system())`(穿越偏移恒 0)。
 static func now_utc() -> int:
-	return now_override_ts if now_override_ts > 0 else int(Time.get_unix_time_from_system())
+	if now_override_ts > 0:
+		return now_override_ts
+	var real: int = int(Time.get_unix_time_from_system())
+	return real + _travel_offset(real)
+
+## ══════════════════════════════════════════════════════════════════════
+##  【开发包时间穿越】测赛程不用等日子 (2026-10-04)
+## ══════════════════════════════════════════════════════════════════════
+## 用户 2026-10-04:「由于现在我们规定好了每周的哪些天是哪些比赛, 那测试的话我们只能等到
+##   对应日期, 还是我们有什么更好的办法」。方案书 docs/plans/20261004-时间穿越测试.md。
+##
+## ★与 `now_override_ts` 的区别: 那个是**冻住**(门禁用, 时间不走); 这个是
+##   「假起点 + 真实流逝」—— 存的是一个**偏移**, 时钟照常往前走(倒计时会走、收盘会到点)。
+## ★两个入口, 落到同一个偏移上:
+##   · 环境变量 `TURTLE_FAKE_NOW`(桌面): `2026-10-10T15:00Z` 或 `sat 15:00`(本周那天的 UTC 时刻)。
+##     **只在第一次读时钟时读一次** —— 之后被「恢复真实时间」清掉就不会再从环境变量冒回来。
+##   · 设置页「测试时间」(手机/桌面都能用): `travel_to_weekday()` / `travel_reset()`。
+## ★★正式包绝不生效: 判据 `time_travel_allowed()` 复用项目现成的「是不是正式包」口径 ——
+##   `OS.is_debug_build()`(release 导出模板下为 false)+ `SHIP` 环境变量强制按正式包语义
+##   (同 `RealtimeBattle3DScene._review_demo()`)。**每次读时钟都判一次**, 不是只在设偏移时判。
+##   ⚠ 不认 `DEVTOOLS`: 那个能让 release 包里出现调试场按钮, 而改时钟比进调试场危险得多
+##     (它会让客户端往服务器报假时刻 —— 见方案书「已知风险」)。
+## ⚠ 只改客户端。服务端的分组/推进(p_week、pg_cron)照真实时间走 —— 测那部分要在内测服手动触发。
+const TRAVEL_ENV := "TURTLE_FAKE_NOW"
+## 当前穿越偏移(秒, 假时刻 − 真实时刻)。0 = 没穿越。
+static var travel_offset_sec: int = 0
+## 环境变量读过没有(只读一次, 见上)。
+static var _travel_env_read: bool = false
+
+## 中文星期(ISO 1~7 → 下标 0~6)。主菜单赛程条与穿越角标共用这一份。
+const WEEKDAY_CN := ["一", "二", "三", "四", "五", "六", "日"]
+## 简写里认的星期几(英文三字母 / 中文「周X」)。
+const _TRAVEL_WD := {
+	"mon": 1, "tue": 2, "wed": 3, "thu": 4, "fri": 5, "sat": 6, "sun": 7,
+	"周一": 1, "周二": 2, "周三": 3, "周四": 4, "周五": 5, "周六": 6, "周日": 7,
+}
+
+## 这个包允许时间穿越吗。★正式包(release 导出) / `SHIP` 环境变量 ⇒ 恒 false。
+static func time_travel_allowed() -> bool:
+	return OS.is_debug_build() and not OS.has_environment("SHIP")
+
+static func _travel_offset(real: int) -> int:
+	if not time_travel_allowed():
+		return 0
+	if not _travel_env_read:
+		_travel_env_read = true
+		var raw: String = OS.get_environment(TRAVEL_ENV).strip_edges()
+		if raw != "":
+			var ts: int = parse_fake_now(raw, real)
+			if ts <= 0:
+				push_warning("[Phase2Config] %s=%s 解析失败(要 2026-10-10T15:00Z 或 sat 15:00), 按真实时间走" % [TRAVEL_ENV, raw])
+			elif _travel_accept(ts, real, "%s=%s" % [TRAVEL_ENV, raw]):
+				travel_offset_sec = ts - real
+				print("[Phase2Config] 时间穿越: %s=%s ⇒ %s" % [TRAVEL_ENV, raw, travel_label(ts)])
+	## ★假时间随真实流逝走出了本周(例: 周一真实时间穿到周日 23:50, 十分钟后) ⇒ 自动回到真实时间。
+	##   不让它滚进下一周 —— 理由同 `_travel_accept`。
+	if travel_offset_sec != 0 and week_anchor_utc(real + travel_offset_sec) != week_anchor_utc(real):
+		push_warning("[Phase2Config] 测试时间走出了本周, 自动回到真实时间")
+		travel_offset_sec = 0
+	return travel_offset_sec
+
+## ★★不许穿出**本周**(真实时间所在的 UTC 周一 00:00 ~ 下周一 00:00)。2026-10-04 主会话出于安全定的
+##   (用户可推翻): 跨周 ⇒ `ensure_season()` 滚一轮清掉本地命/币/阵容, 回到真实时间又滚一轮;
+##   而且客户端会拿**假周号**去问服务器。简写(`sat 15:00`)天然落在本周; 这条挡的是 ISO 全日期写法。
+static func _travel_accept(ts: int, real: int, what: String) -> bool:
+	if week_anchor_utc(ts) == week_anchor_utc(real):
+		return true
+	push_warning("[Phase2Config] %s 不在本周(UTC 周一 00:00 起), 拒绝穿越 —— 只许在本周内穿越" % what)
+	return false
+
+## 现在是不是假时间(开发包里穿越了)。正式包恒 false。
+static func travel_active() -> bool:
+	return _travel_offset(int(Time.get_unix_time_from_system())) != 0
+
+## 本周(真实时间所在那一周)第 wd 天(ISO 1~7)的 UTC h:m。
+static func week_day_at(real: int, wd: int, h: int, m: int) -> int:
+	return week_anchor_utc(real) + (wd - 1) * 86400 + h * 3600 + m * 60
+
+## 把 `TURTLE_FAKE_NOW` 的写法解析成 unix 秒(UTC)。解析不了返回 -1。
+##   · `2026-10-10T15:00Z` / `2026-10-10 15:00` / 带秒 `...15:00:30Z`
+##   · `sat 15:00` / `周六 15:00` = **本周**(按真实时间 `real` 所在那一周)那天的 UTC 时刻
+static func parse_fake_now(raw: String, real: int) -> int:
+	var s: String = raw.strip_edges()
+	var iso := RegEx.create_from_string("^(\\d{4})-(\\d{1,2})-(\\d{1,2})[T ](\\d{1,2}):(\\d{2})(?::(\\d{2}))?Z?$")
+	var mm := iso.search(s)
+	if mm != null:
+		var h: int = int(mm.get_string(4))
+		var mi: int = int(mm.get_string(5))
+		var se: int = int(mm.get_string(6)) if mm.get_string(6) != "" else 0
+		if h > 23 or mi > 59 or se > 59:
+			return -1
+		return int(Time.get_unix_time_from_datetime_dict({
+			"year": int(mm.get_string(1)), "month": int(mm.get_string(2)), "day": int(mm.get_string(3)),
+			"hour": h, "minute": mi, "second": se}))
+	var short := RegEx.create_from_string("^(\\S+)\\s+(\\d{1,2}):(\\d{2})$")
+	var ms := short.search(s)
+	if ms != null:
+		var key: String = ms.get_string(1).to_lower()
+		var h2: int = int(ms.get_string(2))
+		var m2: int = int(ms.get_string(3))
+		if not _TRAVEL_WD.has(key) or h2 > 23 or m2 > 59:
+			return -1
+		return week_day_at(real, int(_TRAVEL_WD[key]), h2, m2)
+	return -1
+
+## 穿越到 `ts`(unix 秒, UTC), 之后从那一刻起照真实流逝往前走。正式包里什么都不做, 返回 false。
+static func travel_to(ts: int) -> bool:
+	if not time_travel_allowed() or ts <= 0:
+		return false
+	if not _travel_accept(ts, int(Time.get_unix_time_from_system()), travel_label(ts)):
+		return false
+	_travel_env_read = true
+	travel_offset_sec = ts - int(Time.get_unix_time_from_system())
+	return true
+
+## 设置页那一屏用的: 穿越到本周第 wd 天的 UTC h:m。
+static func travel_to_weekday(wd: int, h: int, m: int) -> bool:
+	return travel_to(week_day_at(int(Time.get_unix_time_from_system()), wd, h, m))
+
+## 「恢复真实时间」。★同时把环境变量标成读过 —— 否则清完下一次读时钟它又冒回来。
+static func travel_reset() -> void:
+	_travel_env_read = true
+	travel_offset_sec = 0
+
+## 「测试时间 周六 15:00 UTC」—— 主菜单角标与设置页共用。
+static func travel_label(ts: int) -> String:
+	var d: Dictionary = Time.get_datetime_dict_from_unix_time(ts)
+	return "测试时间 周%s %02d:%02d UTC" % [WEEKDAY_CN[iso_weekday_utc(ts) - 1],
+		int(d.get("hour", 0)), int(d.get("minute", 0))]
+
+## 主菜单角标要显示的字: 没穿越 ⇒ ""(角标不建)。
+## ★「不联网」: 测试时间里所有**写**服务器的请求都在 `SupabaseNet._http` 出口被拦下(读照常)。
+static func travel_badge_text() -> String:
+	if not travel_active():
+		return ""
+	return travel_label(now_utc()) + TRAVEL_OFFLINE_SUFFIX
+
+## 角标尾巴。门禁按它断言, 两边不各写一份。
+const TRAVEL_OFFLINE_SUFFIX := " · 不联网"
 
 ## unix 秒 → 星期几(1=周一 … 7=周日, ISO 口径)。
 ## ★Godot 的 `get_datetime_dict_from_unix_time` 返回的 `weekday` 是 0=周日,

@@ -2082,7 +2082,9 @@ func reset_save() -> void:
 ## 启动时确保赛季已初始化 / 已跨周则滚下一大轮。**一大轮 = 一个自然周**(UTC 周一 00:00 换周)。
 ## 三条分支各自有理由, 都写在函数里了 —— 尤其分支②(老存档迁移)不许简化成"当过期处理"。
 func ensure_season() -> void:
-	var now: int = int(Time.get_unix_time_from_system())
+	## ★2026-10-04 走全局时间缝 `_P2.now_utc()`: 开发包时间穿越跨周时, 滚轮与赛程判定必须看同一个「现在」
+	##   (否则相位说下周六、周锚点还停在本周)。两个开关都关着时逐字节等价于原来的系统钟。
+	var now: int = int(_P2.now_utc())
 	var anchor: int = _P2.week_anchor_utc(now)
 	## ① 全新存档: 落在当前这一周, 不算"滚了一轮"
 	if season_start_ts == 0:
@@ -2128,7 +2130,7 @@ func ensure_season() -> void:
 func is_season_expired() -> bool:
 	if week_anchor_ts == 0:
 		return false
-	return _P2.week_anchor_utc(int(Time.get_unix_time_from_system())) != week_anchor_ts
+	return _P2.week_anchor_utc(int(_P2.now_utc())) != week_anchor_ts
 
 ## 0 命 = 本大轮淘汰出局。
 ##
@@ -2536,7 +2538,7 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	## ★新赛季从**本周一 00:00** 起算, 不是从"玩家开游戏那一刻"起算 ——
 	##   一大轮 = 一个自然周(见 `_P2.week_anchor_utc`)。写成"当前时刻"的话,
 	##   周三才开一次游戏就把赛季起点定在周三, 赛程条与倒计时立刻和星期几错位。
-	season_start_ts = _P2.week_anchor_utc(int(Time.get_unix_time_from_system()))
+	season_start_ts = _P2.week_anchor_utc(int(_P2.now_utc()))
 	hearts = _P2.HEARTS_MAX
 	meta_shop_offer = []      # 新赛季货架作废(否则会带着上赛季的货开局)
 	meta_shop_battles = -1
@@ -2552,7 +2554,7 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	##   会把它当成"老存档待迁移"(见那边分支②)而**再也滚不了轮**: 补个锚点就返回,
 	##   下周一也不会换。这正是它从 A2 落地起一直是**死字段**的原因 ——
 	##   写进存档、读出存档, 但没有任何判定读它。
-	week_anchor_ts = _P2.week_anchor_utc(int(Time.get_unix_time_from_system()))
+	week_anchor_ts = _P2.week_anchor_utc(int(_P2.now_utc()))
 	gauntlet_wins = 0
 	gauntlet_losses = 0
 	promoted = false

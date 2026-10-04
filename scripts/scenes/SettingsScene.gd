@@ -98,8 +98,15 @@ func _ready() -> void:
 	#   门禁 verify_menu 也跟着搬(它验的是"调试入口不泄漏给玩家", 不是"这行代码在哪个文件")。
 	#   ★正式包里没这个键 ⇒ 下面的重置自动往上收, 不留空洞(原来这里是 580/640 两个写死的数)。
 	var dev := OS.is_debug_build() or OS.has_environment("DEVTOOLS")
+	## 「测试时间」(开发包时间穿越, 2026-10-04) —— 与调试场并排一行, 不加竖向高度
+	##   (加一行会把重置键往下推, 账号行四行时撞底部提示)。★判据比调试场更严:
+	##   `_P2C.time_travel_allowed()` 不认 DEVTOOLS(见 phase2_config 那段头注)。
+	var tt := _P2C.time_travel_allowed()
 	if dev:
-		_text_button(W / 2.0, y + _BTN_H / 2.0, "🛠 调试场", _open_debug_arena)
+		_text_button(W / 2.0 - (140.0 if tt else 0.0), y + _BTN_H / 2.0, "🛠 调试场", _open_debug_arena)
+	if tt:
+		_text_button(W / 2.0 + (140.0 if dev else 0.0), y + _BTN_H / 2.0, "测试时间", _open_time_travel)
+	if dev or tt:
 		y += _BTN_H + _GAP_BLOCK
 
 	# 重置存档 — ⚠ 破坏性 → 二次确认
@@ -1217,6 +1224,17 @@ func _email_poll() -> void:
 # ─── 🛠 调试场 (自由摆位测试场; 开发工具, 正式包不出现) ───
 ## 2026-09-17 从 MainMenuScene 整体搬来 —— 行为一字未改, 只换了入口所在的屏。
 const _RB_DEBUG := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
+
+# ─── 测试时间 (开发包时间穿越; 正式包不出现) ───
+## 方案书 docs/plans/20261004-时间穿越测试.md。逻辑全在 `phase2_config`, 弹层在 `settings/time_travel_panel.gd`。
+const _TT_PANEL := preload("res://scripts/scenes/settings/time_travel_panel.gd")
+var tt_panel = null
+
+func _open_time_travel() -> void:
+	if tt_panel == null:
+		tt_panel = _TT_PANEL.new(self)
+	tt_panel.open()
+
 
 func _open_debug_arena() -> void:
 	_RB_DEBUG.DEBUG_EDIT = true    # 调试场=自由摆位编辑器(左键摆龟/拖拽/右键删/装备笔刷/开始暂停·用户2026-07-12恢复)
