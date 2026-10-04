@@ -194,6 +194,11 @@ func _ready() -> void:
 ##   射程改 2000 后气波要飞 6.67 秒, 小龟只陪 0.53 秒 = 8%,
 ##   剩下 6.14 秒画面上只剩一颗孤零零的波、召唤者早没了。
 ##
+## ★★★2026-10-04 改尺子: 原来用【墙钟】, 理由是「寿命是 tween 驱动, tween 走未钳制 delta」。
+##   v0.19.528(回放 S1)起登记的补间改成**每个战斗步推进一次** ⇒ 寿命按【游戏时间】算, 墙钟那条前提不成立了。
+##   CI 上当场红: 慢机器上游戏时间落后于墙钟, 量到 6.36 秒(本地每帧≈1步, 所以本地永远绿)。
+##   ⇒ 打开 `_deterministic`(每帧恰好 1 步 SIM_DT), 数步数 × SIM_DT = 游戏秒数, 与机器快慢无关。
+## (以下是 2026-07-30 的旧理由, 留着备查:)
 ## ★★用【墙钟】量, 不用帧数也不用战斗时钟 _t:
 ##   · 帧数不行 —— 无头帧率远高于窗口(实测窗口 ~156fps), 同样的时间帧数差好几倍;
 ##     我 2026-07-30 抓图就栽在这: 按帧数判时机, 75 帧只有 0.42 秒、蓄力都没结束。
@@ -208,25 +213,27 @@ func _spirit_life(s, ts, tr: Dictionary) -> void:
 			(c as Node).queue_free()
 	await get_tree().process_frame
 	_chk("⑥ ★分母: 起量前场上没有残留小龟", not _has(s, "spirit-turtle.png"))
+	var _det0: bool = s._deterministic
+	s._deterministic = true
 	ts._whistle_spirit_wave(tr)
-	var t0: int = Time.get_ticks_msec()
 	var born := -1.0
 	var gone := -1.0
 	var w := 0
 	while w < 20000 and gone < 0.0:
 		await get_tree().process_frame
 		w += 1
-		var el: float = float(Time.get_ticks_msec() - t0) / 1000.0
+		var el: float = float(w) * s.SIM_DT
 		if _has(s, "spirit-turtle.png"):
 			if born < 0.0:
 				born = el
 		elif born >= 0.0:
 			gone = el
+	s._deterministic = _det0
 	var life: float = gone - born
 	print("     出现 %.2fs → 消失 %.2fs = 活 %.2f 秒 (等了 %d 帧)" % [born, gone, life, w])
 	print("     气波飞 %.2f 秒 → 小龟陪完 %.0f%%(原来只有 8%%)" % [
 		ts.WAVE_RANGE / ts.WAVE_SPD, life / (ts.WAVE_RANGE / ts.WAVE_SPD) * 100.0])
-	_chk("⑥ ★★小龟在屏幕上活 %.1f 秒(墙钟实测)" % WANT_SPIRIT_LIFE,
+	_chk("⑥ ★★小龟在屏幕上活 %.1f 秒(游戏时间实测)" % WANT_SPIRIT_LIFE,
 		absf(life - WANT_SPIRIT_LIFE) < 0.4, "实测 %.2f" % life)
 	# 结构: 停留段必须【由总时长减出来】, 不许另写一个数(改总时长时会漏改)
 	var src := FileAccess.get_file_as_string("res://scripts/systems/trainer/trainer_system.gd")
