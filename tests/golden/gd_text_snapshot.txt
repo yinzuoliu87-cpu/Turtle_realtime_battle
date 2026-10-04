@@ -987,6 +987,7 @@ scripts/scenes/battle/battle_hud.gd|lit|▼ 还有 %d 只在下面 · 可上下�
 scripts/scenes/battle/battle_hud.gd|lit|倍速
 scripts/scenes/battle/battle_hud.gd|lit|假人HP
 scripts/scenes/battle/battle_hud.gd|lit|再打
+scripts/scenes/battle/battle_hud.gd|lit|决赛日 · 不消耗生命 · 胜负在下一轮开播时揭晓
 scripts/scenes/battle/battle_hud.gd|lit|击杀
 scripts/scenes/battle/battle_hud.gd|lit|前往商店
 scripts/scenes/battle/battle_hud.gd|lit|剩余生命

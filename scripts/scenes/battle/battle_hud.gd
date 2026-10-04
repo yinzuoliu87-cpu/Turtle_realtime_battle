@@ -1521,6 +1521,11 @@ func _result_subtitle(won: bool, gs) -> String:
 		if _st == _P2C_HUD.GAUNTLET_OUT:
 			return "闯关 %s · 闯关赛出局" % _gl
 		return "闯关 %s · 不消耗生命" % _gl
+	## ★★2026-10-04 周日实操连带: v0.19.525 让决赛局真的按决赛日结算之后, 这里没有决赛那一支 ⇒
+	##   落到积分赛那句「赛季胜场 +1 / 消耗 1 点生命」—— 周日不掉命, 胜负也要等揭晓, 两句都是假的。
+	##   (之前一直走的是闯关赛那一支, 所以这个缺口从没露出来过。) 排在「生命已耗尽」前面: 0 命的晋级者周日照常打。
+	if str(battle._last_settle_kind) == _P2C_HUD.SETTLE_FINALS:
+		return "决赛日 · 不消耗生命 · 胜负在下一轮开播时揭晓"
 	if gs.is_eliminated():
 		return "生命已耗尽 · 本赛季结束"
 	if battle._last_was_exhibition:

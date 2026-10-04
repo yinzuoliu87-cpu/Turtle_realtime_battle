@@ -274,6 +274,15 @@ func _t_real_settle() -> void:
 	scene._settle_season(false)          # 1-2 → 输 → 1-3 出局
 	var sub2: String = scene._hud._result_subtitle(false, GameState)
 	_ok("③ ★★打到出局那场写「闯关赛出局」", sub2.find("出局") >= 0, sub2)
+	## ★★2026-10-04: 周日结算屏副标题。决赛局按决赛日结算后, 原来会落到积分赛那句「消耗 1 点生命」。
+	GameState.week_phase = P2C.PHASE_FINALS
+	GameState.lane_results = {"top": "lost"}
+	GameState.hearts = 0
+	scene._settle_season(false)
+	var sub3: String = scene._hud._result_subtitle(false, GameState)
+	_ok("③ ★分母: 这一局确实按决赛日结算", str(scene._last_settle_kind) == P2C.SETTLE_FINALS, str(scene._last_settle_kind))
+	_ok("③ ★★周日输了(连 0 命的晋级者)不写「消耗 1 点生命」/「生命已耗尽」/「赛季胜场」, 写决赛日",
+		sub3.find("生命已耗尽") < 0 and sub3.find("消耗 1 点生命") < 0 and sub3.find("赛季胜场") < 0 and sub3.find("决赛日") >= 0, sub3)
 	GameState.week_phase = P2C.PHASE_RANKED
 	GameState.hearts = 5
 	scene._settle_season(false)
