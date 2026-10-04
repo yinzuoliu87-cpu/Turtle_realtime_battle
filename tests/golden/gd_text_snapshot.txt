@@ -1375,7 +1375,7 @@ scripts/systems/equip/swordsman_system.gd|lit|剑
 scripts/systems/equip/synergy_system.gd|lit|剑
 scripts/systems/equip/synergy_system.gd|lit|食物
 scripts/systems/equip/timestop_system.gd|lit|+%d龟能
-scripts/systems/replay/replay_fetcher.gd|lit|服务器上找不到这场回放（回放只保留两周）
+scripts/systems/replay/replay_fetcher.gd|lit|服务器上找不到这场回放（每周二清掉上周的回放）
 scripts/systems/replay/replay_fetcher.gd|lit|服务器这会儿出了点问题（%d），稍后再试
 scripts/systems/replay/replay_fetcher.gd|lit|等了太久服务器都没回音，稍后再试
 scripts/systems/replay/replay_fetcher.gd|lit|账号还没连上服务器，检查一下网络再试

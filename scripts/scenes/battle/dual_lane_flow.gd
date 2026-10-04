@@ -982,6 +982,7 @@ func _eq_carry_reapply(u: Dictionary, iid: String, si: int, stt: Dictionary) -> 
 # 清当前路所有单位/弹道/特效节点 → 供重开下一路
 func _dl_clear_units() -> void:
 	_dl_save_eq_carry()   # ★必须在清 battle._units 之前 —— 清完就没得抄了
+	battle._equip_sys._axe.reset_for_lane()   # 096 斧头的蓄力/余烬之光/插地/在途镖: 由斧头系统自己收(同样要在清 _units 之前)
 	for u in battle._units:
 		for k in ["sprite", "shadow", "contact", "ring", "flame_sector"]:   # +flame_sector: 凤凰喷火扇形常驻MeshInstance3D·换路不清会残留下半场(用户2026-07-18"换到下半场没清掉")
 			var n = u.get(k, null)
@@ -1060,6 +1061,7 @@ func _dl_finish(won: bool) -> void:
 	if OS.has_environment("XDBG"): print("XDBG_DL finish won=", won, " t=", battle._t, " egg_hp=", (GameState.egg_hp if GameState != null else {}))
 	battle._over = true
 	battle._dl_state = "done"
+	battle._equip_sys._axe.reset_for_lane()   # 096 整场结束: 斧头挂的减伤/吸血/定身一并收掉(第十批 E2)
 	battle._settle_season(won)    # 结果喂赛季(命/币/胜场/XP/糖果罐/ghost上传), 守卫一次性
 	battle._hud._show_banner(won)
 

@@ -62,6 +62,8 @@ var _rp_busy := ""
 ## 最近一次「点回放」的结果(门禁读: 原因码 / 那句话)。
 var last_replay_code := ""
 var last_replay_msg := ""
+## 进这一屏时清掉的本机回放缓存 id(门禁读)。
+var pruned_replays: Array = []
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -69,6 +71,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 
 func _ready() -> void:
+	## 本机回放缓存清理(删「不在战绩里 + 比上周一还旧 + 不在上传队列」的, 规则见 `ReplayFetcher.prune_cache`)。
+	pruned_replays = ReplayFetcher.prune_cache(ReplayFetcher.P2C.now_utc())
 	_bg()
 
 	# 标题 @ (W/2, 50), 36px #ffd93d stroke #1a1a2e 厚5
@@ -185,7 +189,9 @@ func _ready() -> void:
 		e2.add_theme_color_override("font_color", Color("#77889a"))
 		eb.add_child(e2)
 	else:
-		var now := int(Time.get_unix_time_from_system())
+		## ★时钟走 `Phase2Config.now_utc()`(全项目唯一一条可注入的时钟; 默认 = 系统时钟) ——
+		##   回放按钮的可见期按周界判(周二 00:00 UTC 清上周的), 门禁要能把「现在」钉在周一 23:59 / 周二 00:00。
+		var now: int = ReplayFetcher.P2C.now_utc()
 		var any_rp := false
 		for i in range(n):
 			any_rp = any_rp or ReplayFetcher.has_replay(GameState.match_history[i], now)
