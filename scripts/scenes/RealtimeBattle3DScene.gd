@@ -1662,6 +1662,14 @@ func _next_cast_tok() -> int:
 	_cast_tok += 1
 	return _cast_tok
 
+## 无战斗目标时朝向随移动方向(阈值 0.3 码/步, 与原渲染那份同)。★sim 自己的: `_face_x` 只在这里写。
+func _face_by_motion() -> void:
+	for u in _units:
+		var px: float = (u["pos"] as Vector2).x
+		if u["alive"] and not bool(u.get("_has_target", false)) and absf(px - float(u.get("_face_x", px))) > 0.3:
+			u["face_right"] = px > float(u.get("_face_x", px))
+		u["_face_x"] = px
+
 ## Phase4切片2b: 每个 sim 步【之前】存 pos/height → 渲染时在 prev↔当前 间按 _render_alpha 插值(消固定步长卡顿)。
 func _snapshot_render_prev() -> void:
 	for u in _units:
@@ -2302,6 +2310,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 			_incense_vfx.tick(dt)                    # 093 香火石演出自推进(同上)
 			_check_end()
 	_step_sim_tweens(dt)   # 演出 tween 按 sim 固定步长喂(两种模式都是; 见函数头注)
+	_face_by_motion()      # 无目标时朝向随本步位移(原在渲染里按帧写 ⇒ sim 兜底分支读到的值随渲染频率变)
 	sim_stepped.emit()
 
 ## Phase4: 纯演出(立绘帧动画/相机/overlay·每帧一次)。frozen/in_ts 与 _sim_step 用同一份(sim前捕获)。

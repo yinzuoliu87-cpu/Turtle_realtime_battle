@@ -8,6 +8,27 @@ extends RefCounted
 ##   `verify_battle_skill_text_bb` 会回读源码对账, 那边改了这里不跟就红。
 const SKILL_TEXT_FS := 13
 
+## ★渲染这一层【允许写】的单位字典键(2026-10-04 立, 门禁 `verify_render_writeback`)。
+## 渲染按真实帧跑、sim 按固定步长跑 ⇒ 渲染写、sim 读的字段会让对局结果随帧率/渲染节奏变
+## (回放跨设备分叉的一整类; 第一例是 face_right, 见方案书 20261003-跨设备回放 §9.6)。
+## 规矩: 渲染(`_render_step` 及它调到的一切)往单位字典写的键, 必须在这张表里;
+##   表里的键 sim 不许拿来改结果 —— 门禁三道: ①量渲染实际写了哪些键 ⊆ 本表 ②换渲染节奏 sim 状态逐步一致
+##   ③这些键在 sim 步之前全换成垃圾值, sim 状态仍逐步一致。
+## 分组: 动画帧/动作(anim_*) · 形变计时(juice: flash/hitsq/land/swing/windup/lunge/atk_voff) ·
+##   跑步动画累计(_run_*) · 血条资源镜像(_auraEnergy/_lavaRage/_starEnergy/bubbleStore/_stoneDefGained/_initDef, 读者只有 hp_bar/skill_text) ·
+##   大熊动画状态机(bear_anim/bear_anim_t/_bear_sheet/_bear_pp, `_tick_bear_anim` 在渲染里跑) ·
+##   训龟大师 4 方向走路动画(_tr_*) · 斧头跑步表(run_sd) · 演出精灵登记(_hhot_owner/_mark_spr/_phase_ai_t:
+##   sim 侧只用来判「精灵已经有了就不再建」, 不进结果)。
+const RENDER_OWNED_KEYS := [
+	"anim_action", "anim_t", "anim_sd",
+	"flash_t", "hitsq_t", "land_t", "swing_t", "windup_t", "_lunge_t", "_lunge_amp", "_atk_voff",
+	"_run_acc", "_run_acc_t", "_run_last_pos", "run_sd",
+	"_tr_move_dir", "_tr_move_acc", "_tr_last_pos", "_tr_move_t", "_tr_speed", "_tr_face", "_tr_anim_t",
+	"_hhot_owner", "_mark_spr", "_phase_ai_t",
+	"_auraEnergy", "_lavaRage", "_starEnergy", "bubbleStore", "_stoneDefGained", "_initDef",
+	"bear_anim", "bear_anim_t", "_bear_sheet", "_bear_pp",
+]
+
 var battle
 
 func _init(b) -> void:
@@ -500,12 +521,10 @@ func _update_world_transforms() -> void:
 		#   battle._render_alpha=0(det模式/正好整步)时 = 当前 pos, 与不插值一致。朝向/last_x 仍用真 pos(朝向不卡)。
 		var _rpos: Vector2 = (u.get("_prev_pos", u["pos"]) as Vector2).lerp(u["pos"] as Vector2, battle._render_alpha)
 		var _rh: float = lerpf(float(u.get("_prev_height", u.get("height", 0.0))), float(u.get("height", 0.0)), battle._render_alpha)
-		# 朝向: 有战斗目标→由_tick_unit锁定朝敌(死区防抖); 无目标→才随移动方向(立绘默认朝左→flip_h=true朝右); 初始左队朝右/右队朝左
-		var _px: float = u["pos"].x
-		var _dx: float = _px - float(u.get("last_x", _px))
-		if not bool(u.get("_has_target", false)) and absf(_dx) > 0.3:
-			u["face_right"] = _dx > 0.0
-		u["last_x"] = _px
+		# 朝向: 有战斗目标→由_tick_unit锁定朝敌(死区防抖); 无目标→随移动方向(battle._face_by_motion, sim 步末尾); 初始左队朝右/右队朝左
+		# ★渲染这里【只读】face_right(2026-10-04): 原来在这里按渲染帧位移写它, 而 sim 的兜底分支
+		#   (hiding_system 小将火箭 / headless_system 镰刀, 目标向量退化时)读它 ⇒ sim 结果跟渲染频率挂钩。
+		#   约定见文件头 RENDER_OWNED_KEYS; 门禁 verify_render_writeback。
 		if u.get("is_trainer", false) and str(u.get("_appearance", "")) != "" and str(u.get("_appearance", "")) != "default":
 			spr.flip_h = false   # 大师真4方向(帧表已含左右)·不镜像; 兜底单帧形象仍走下面翻转
 		else:

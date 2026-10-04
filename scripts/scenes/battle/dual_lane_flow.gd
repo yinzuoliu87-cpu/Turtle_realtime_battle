@@ -446,6 +446,9 @@ func _dl_start_fight() -> void:
 	## ★回放: 开打是改结果的输入(站位就在这一刻定死)。录 = 记步号 + 双方全部站位; 播 = 只认记录里那一下并写回站位。
 	if not battle._replay.allow_input("fight"):
 		return
+	## ★开打这一刻朝向归位: 摆位期拖动的**过程**不进对局(回放只写回终点站位), 拖的方向不许留在 face_right 里。
+	for _fu in battle._units:
+		_fu["face_right"] = str(_fu.get("side", "")) == "left"; _fu["_face_x"] = (_fu["pos"] as Vector2).x
 	battle._sd_t0 = battle._t          # ★每个战场各自计时(battle._t 跨路累加, 见 §SUDDEN)
 	battle._sd_stacks = 0
 	# ★魔法石攻速叠层【跨路保留】(用户 2026-07-30 拍板) —— 这里原本每路开打清零。
