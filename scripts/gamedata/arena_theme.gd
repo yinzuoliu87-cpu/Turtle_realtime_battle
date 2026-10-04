@@ -68,10 +68,10 @@ const THEMES: Dictionary = {
 	},
 	V1_DUSK: {
 		"fg_band_y": -0.68,   # 新剪影带草尖高, -0.54 会盖住下沿交战的龟(实拍 s7)
-		"detritus_tint": Color(0.86, 0.84, 0.74, 1.0),   # 碎骨压一点: 纯白在暗地面上读作噪点
+		"detritus_tint": Color(0.66, 0.64, 0.56, 1.0),   # 2026-10-04 再压: 小贝壳在灯光下发白, 和龟身高光抢眼
 		"ring_mod": {"dusk2_trunk": Color(0.74, 0.70, 0.68)},   # 树干在暗处(0.60 实拍几乎看不见)
 		"ring_per": 2,   # 巨树干一簇最多 2 棵: 7 棵挤成一堵墙(实拍), 参考是一棵棵分开站
-		"ground_tileset_hsv": Vector3(0.156, 0.43, 0.76),   # V 0.66→0.76: 实拍中位 V0.49 而参考 0.58(2026-10-03 量)   # 地面目标色 = mixed_034 地面中位实测(H56 S0.43)
+		"ground_tileset_hsv": Vector3(0.156, 0.30, 0.62),   # 2026-10-04「看清每只龟」: S0.43→0.30 V0.76→0.62(量: 龟立绘像素与地面 ΔE<15 的占比, 最坏一只 0.32→0.15; 深礁试过同样压暗反而变差 0.23→0.26, 已撤)   # V 0.66→0.76: 实拍中位 V0.49 而参考 0.58(2026-10-03 量)   # 地面目标色 = mixed_034 地面中位实测(H56 S0.43)
 		"ground_tileset_tint": Color(0.70, 0.66, 0.42),   # 图块原色(生成器的鲜绿/粉红崖边)压进主题色调
 		"ground_tileset": "tiles_dusk",   # 画出来的地面+崖边(PixelLab Wang 图块)
 		"use_layout": true,   # 场内物件按 LAYOUT 设计布局摆
@@ -84,11 +84,11 @@ const THEMES: Dictionary = {
 		"ring_lanterns": 0,   # 撤: 悬在黑里的红光没有挂点, 读作乱飞(用户 2026-10-03); 红光只留插地火把
 		"ring_lantern_col": Color(1.0, 0.08, 0.10, 0.95),
 		"wall_h": 0.35,   # 海岸竖面压成矮边(高墙沿格子成一排台阶方块)
-		"lamp_tex": "dusk2_candle_b",   # 2026-10-03 重画: 红蜡烛立在刻纹石墩上(mixed_034/035 的光源物)
-		"lamp_h": 1.3,
+		"lamp_tex": "dusk3_lantern_a",   # 2026-10-04 换: 浮木桩上挂的旧船灯(原「石墩红烛」是照搬参考的祭祀题材)
+		"lamp_h": 1.5,
 		"field_tufts": ["dusk2_grass_a", "dusk2_grass_b", "dusk2_grass_c"],   # 2026-10-03 重画: 粗黑描线+三层明暗的大草丛(mixed_034)
 		"field_tufts_clusters": 9,
-		"field_piles": ["dusk2_skulls_a", "dusk2_skulls_b", "dusk2_stones_a", "dusk2_stones_b", "dusk2_cross_a", "dusk2_cross_b"],   # mixed_034: 骷髅堆 / 叠石 / 红木十字
+		"field_piles": ["dusk3_anchor_a", "dusk3_shell_a", "dusk3_wreck_a", "dusk2_stones_a", "dusk2_stones_b"],   # 2026-10-04 换: 海草缠锚 / 龟壳化石 / 沉船木板 + 叠石(原骷髅堆/红木十字是照搬参考题材)
 		"field_piles_clusters": 10,
 		"field_piles_h": [1.1, 1.6],
 		"field_tufts_h": [1.6, 2.4],
@@ -125,15 +125,15 @@ const THEMES: Dictionary = {
 		"ring_avoid_bottom": true,
 		"fg_band": "fg_grass_band",   # 2026-10-03 重画: 镜头前一整排密高草剪影(参考底部那片黑草), 纯白剪影由 fg_band_col 着色
 		## 地面碎件: 真实房间散着大量低对比小碎件(骨头/碎石/草屑)
-		"detritus": ["dusk2_debris_a", "dusk2_debris_b", "dusk2_debris_c", "dusk2_debris_d", "dusk2_debris_e", "ink_tuft_a", "ink_tuft_b"],   # mixed_034: 地上散着一地米白碎骨/小石子(2026-10-03 新画) + 墨线小草
-		"detritus_n": 180,
+		"detritus": ["dusk3_debris_a", "dusk3_debris_b", "dusk2_debris_c", "dusk2_debris_e", "ink_tuft_a", "ink_tuft_b"],   # 2026-10-04: 碎骨换成小贝壳/藤壶石(我们的海), 留小石子 + 墨线小草
+		"detritus_n": 110,   # 180→110: 满地亮碎点和龟身高光抢眼(战斗中段实拍)
 		"detritus_size": 0.8,
 		"detritus_edge_bias": 1.5,
 		## 周边一圈红烛(参考 Darkwood 房间沿边一圈红光)
 		"rim_lights": 18,
-		"rim_light_tex": "dusk2_candle_a",
+		"rim_light_tex": "dusk3_lantern_a",   # 2026-10-04: 红烛→船灯
 		"rim_light_real": 6,
-		"rim_light_h": 1.25,          # 第一版 0.55 实拍看不见(火盆是 1.28)
+		"rim_light_h": 1.4,          # 第一版 0.55 实拍看不见(火盆是 1.28)
 		"rim_light_energy": 1.6,
 		"rim_light_range": 3.0,
 		"light_col": Color(1.0, 0.262, 0.180),
@@ -164,7 +164,7 @@ const THEMES: Dictionary = {
 		"lamp_tex": "reef2_lamp_a",   # 2026-10-03 重画: 螺壳托着发光珍珠(anchordeep 顶部那几团白光的来源物)
 		"lamp_h": 1.3,
 		"field_tufts": ["reef2_kelp_a", "reef2_kelp_b"],   # 2026-10-03 重画: 橄榄绿带斑点的海草丛(anchordeep_011)
-		"field_piles": ["reef2_rocks_a", "reef2_rocks_b", "reef2_coral_a", "reef2_coral_b"],   # anchordeep_011: 石板蓝圆石堆 / 长眼睛的珊瑚塔
+		"field_piles": ["reef2_rocks_a", "reef2_rocks_b", "reef3_coral_a", "reef3_shell_coins"],   # 2026-10-04: 长眼睛珊瑚塔(照搬 Anchordeep 造型)换成管珊瑚塔 / 长满海葵、夹着深海币的龟壳化石
 		"field_piles_clusters": 7,
 		"field_piles_h": [0.75, 1.05],   # 礁石放到 1.1~1.6 会盖住正在打的龟(装饰物不挡路, 单位会走进去)
 		"field_tufts_mod": Color(0.86, 0.90, 0.82),   # 新海草比参考略亮略黄, 轻压
@@ -198,8 +198,8 @@ const THEMES: Dictionary = {
 		"edge_tufts_r": [0.93, 1.01],
 		"edge_tufts_h": [0.7, 1.3],
 		## 框边: 暗色高海草(参考里平台四周一圈海草剪影)
-		"ring_props": ["reef2_kelp_a", "reef2_kelp_b", "reef2_kelp_a", "reef2_rocks_b", "reef2_coral_a", "reef2_clam_a", "reef2_clam_b"],   # anchordeep_011: 高海草墙夹着石堆/珊瑚塔, 上沿是发光的大珍珠贝
-		"ring_h_of": {"reef2_rocks_b": [1.5, 2.2], "reef2_coral_a": [2.0, 2.8], "reef2_clam_a": [1.6, 2.2], "reef2_clam_b": [1.5, 2.0]},
+		"ring_props": ["reef2_kelp_a", "reef2_kelp_b", "reef2_kelp_a", "reef2_rocks_b", "reef3_coral_a", "reef2_clam_a", "reef2_clam_b"],   # anchordeep_011: 高海草墙夹着石堆/珊瑚塔, 上沿是发光的大珍珠贝
+		"ring_h_of": {"reef2_rocks_b": [1.5, 2.2], "reef3_coral_a": [2.0, 2.8], "reef2_clam_a": [1.6, 2.2], "reef2_clam_b": [1.5, 2.0]},
 		"ring_glow_of": {"reef2_clam_a": Color(0.80, 0.92, 1.0, 0.30)},   # 珍珠是发光的(anchordeep_011 上沿那几团白光)
 		"ring_density": 1.1,
 		"ring_h": [3.0, 5.2],
@@ -207,7 +207,7 @@ const THEMES: Dictionary = {
 		"fg_band": "fg_grass_band",   # 2026-10-03 重画: 镜头前一整排密高草剪影(参考底部那片黑草), 纯白剪影由 fg_band_col 着色
 		## 地面碎件: 贝壳/小骨/碎石
 		"detritus": ["reef2_pebbles_a", "reef2_pebbles_b", "reef2_pebbles_c", "reef2_pebbles_d", "reef2_pebbles_e", "ink_tuft_a"],   # anchordeep_011: 地上一串串石板蓝小卵石(2026-10-03 新画)
-		"detritus_n": 170,
+		"detritus_n": 110,   # 2026-10-04 170→110: 交战区一地深蓝卵石, 和龟脚下的影子/描线混在一起
 		"detritus_edge_bias": 2.0,
 		"detritus_tint": Color(0.50, 0.56, 0.72, 1.0),   # 卵石吃光后发白; 参考是深藏青
 		"detritus_size": 0.7,
@@ -258,7 +258,7 @@ const THEMES: Dictionary = {
 		"field_tufts_clusters": 9,
 		"field_tufts_h": [1.6, 2.4],
 		"field_tufts_mod": Color(1, 1, 1),   # 新素材本身就是参考色
-		"field_piles": ["shoal2_skulls_a", "shoal2_skulls_b", "shoal2_rubble_a", "shoal2_rubble_b"],   # mixed_012: 粉骷髅堆 / 品红碎石堆
+		"field_piles": ["shoal3_coral_altar", "shoal3_coins", "shoal2_rubble_a", "shoal2_rubble_b"],   # 2026-10-04: 粉骷髅堆换成龟纹石台长珊瑚 / 砗磲里溢出的深海币 + 品红碎石堆
 		"field_piles_clusters": 13,
 		"field_piles_h": [1.1, 1.6],
 		"field_piles_mod": Color(1, 1, 1),
@@ -287,11 +287,11 @@ const THEMES: Dictionary = {
 		"ring_h": [6.5, 9.0],   # 巨树干要顶出画面上沿(参考两侧树干比角色大好几倍)
 		"ring_avoid_bottom": true,
 		"fg_band": "fg_grass_band",   # 2026-10-03 重画: 镜头前一整排密高草剪影(参考底部那片黑草), 纯白剪影由 fg_band_col 着色
-		"detritus": ["shoal2_debris_a", "shoal2_debris_b", "shoal2_debris_c", "shoal2_debris_d", "shoal2_debris_e", "ink_tuft_a"],   # mixed_012: 地上散着粉色碎骨/小点(2026-10-03 新画)
-		"detritus_n": 170,
+		"detritus": ["shoal3_debris_a", "shoal3_debris_b", "shoal2_debris_b", "ink_tuft_a"],   # 2026-10-04: 粉碎骨换成碎珊瑚枝 / 小螺壳, 留小点
+		"detritus_n": 110,
 		"detritus_size": 0.75,
 		"detritus_edge_bias": 1.6,
-		"detritus_tint": Color(0.92, 0.86, 0.95, 1.0),
+		"detritus_tint": Color(0.75, 0.70, 0.80, 1.0),   # 2026-10-04: 碎珊瑚/小螺压暗, 别跟龟抢
 		## 周边一圈红光(参考紫色地牢沿边是红色光源)
 		"rim_lights": 16,
 		"rim_light_tex": "shoal2_brazier_a",
@@ -316,7 +316,7 @@ const THEMES: Dictionary = {
 		"fg_band_y": -0.68,   # 新剪影带草尖高, -0.54 会盖住下沿交战的龟(实拍 s7)
 		"ring_per": 2,
 		"ring_mod": {"storm2_trunk": Color(0.80, 0.74, 0.74)},
-		"ground_tileset_hsv": Vector3(0.158, 0.41, 0.42),   # 地面目标色 = mixed_035 地面中位实测(H57 S0.41)
+		"ground_tileset_hsv": Vector3(0.158, 0.30, 0.34),   # 2026-10-04「看清每只龟」: S0.41→0.30 V0.42→0.34(同一把尺: 最坏一只 0.15→0.12)   # 地面目标色 = mixed_035 地面中位实测(H57 S0.41)
 		"ground_tileset": "tiles_storm",   # 画出来的地面+崖边(PixelLab Wang 图块)
 		"ground_tileset_tint": Color(0.82, 0.78, 0.55),
 		"use_layout": true,   # 场内物件按 LAYOUT 设计布局摆
@@ -329,12 +329,12 @@ const THEMES: Dictionary = {
 		"ring_lanterns": 0,   # 撤: 悬在黑里的红光没有挂点, 读作乱飞(用户 2026-10-03); 红光只留插地火把
 		"ring_lantern_col": Color(1.0, 0.05, 0.06, 0.95),
 		"wall_h": 0.35,   # 海岸竖面压成矮边(高墙沿格子成一排台阶方块)
-		"lamp_tex": "storm2_grave_b",   # 2026-10-03 重画: 淌蜡的红烛压在刻倒十字的墓碑上(mixed_035 四周那一圈)
-		"lamp_h": 1.5,
+		"lamp_tex": "storm3_buoy_lamp",   # 2026-10-04: 墓碑烛(照搬参考)换成系泊桩挂红船灯 + 红白浮标
+		"lamp_h": 1.7,
 		"field_tufts": ["storm2_grass_a", "storm2_grass_b", "storm2_grass_c"],   # 2026-10-03 重画: 鲜绿高草丛(mixed_035 边沿)
 		"field_tufts_clusters": 8,
 		"field_tufts_mod": Color(1, 1, 1),
-		"field_piles": ["storm2_logs_a", "storm2_logs_b", "storm2_stakes_a", "storm2_stakes_b"],   # mixed_035: 捆柴堆 / 木桩 X 架
+		"field_piles": ["storm2_logs_a", "storm2_logs_b", "storm3_net_a", "storm3_traps_a"],   # 2026-10-04: 木桩 X 架/十字桩换成挂浮子的渔网 / 捕虾笼, 留捆柴堆
 		"field_piles_clusters": 8,
 		"field_piles_h": [1.1, 1.6],
 		"field_piles_mod": Color(1, 1, 1),
@@ -375,9 +375,9 @@ const THEMES: Dictionary = {
 		"edge_tufts_h": [0.8, 1.4],
 		## 比 V1 更多更亮的红光(参考 mixed_035 整个房间被红光浸着)
 		"rim_lights": 14,   # 墓碑烛放大后 24 座排成一圈篱笆; mixed_035 一圈约 8~10 座
-		"rim_light_tex": "storm2_grave_a",
+		"rim_light_tex": "storm3_buoy_lamp",   # 2026-10-04: 墓碑烛→系泊桩船灯
 		"rim_light_real": 8,
-		"rim_light_h": 1.9,   # mixed_035: 墓碑烛比角色还高
+		"rim_light_h": 1.7,
 		"rim_light_energy": 2.6,
 		"rim_light_range": 4.0,
 		"light_col": Color(1.0, 0.16, 0.12),
@@ -410,6 +410,8 @@ const REQUIRED_KEYS: Array = [
 ## 依据: 咩咩每间房的物件是有构图的(四角成簇 / 边上框住 / 中间留战斗区), 不是随机撒点。
 ##   用户 2026-10-03:「人家是用代码解决的吗」—— 之前 field_tufts/field_piles 按半径随机撒, 一看就是程序生成。
 ## ★左右两侧 |u|>0.5 的已乘 0.84: 实拍角上的簇一半压在两侧 HUD 面板底下。
+## ★2026-10-04「看清每只龟」: 交战区里那 4 件(|u|,|v|<0.45)一律改成矮物件堆(≤0.95 米)。
+##   原来有两丛 1.5~1.6 米高草长在场中, 比龟高出一截, 龟走进去就被盖住。
 ## 每行 [u, v, 种类, 高(米)]: u/v = 战场椭圆归一化坐标(右/下为正); 种类 t = 草丛(field_tufts), p = 物件堆(field_piles)。
 const LAYOUT: Array = [
 	[-0.62, -0.60, "p", 1.9],
@@ -436,10 +438,10 @@ const LAYOUT: Array = [
 	[-0.76, 0.12, "t", 1.9],
 	[0.78, 0.06, "t", 2.1],
 	[0.76, -0.12, "t", 1.8],
-	[-0.30, 0.38, "p", 1.4],
-	[0.34, -0.32, "t", 1.6],
-	[0.28, 0.44, "p", 1.2],
-	[-0.36, -0.36, "t", 1.5]
+	[-0.30, 0.38, "p", 0.95],
+	[0.34, -0.32, "p", 0.9],
+	[0.28, 0.44, "p", 0.9],
+	[-0.36, -0.36, "p", 0.9]
 ]
 
 
