@@ -61,7 +61,9 @@ func _b4_on_spawn_all() -> void:
 			u["_b4_eq"] = true   # 每帧 tick_unit 的常驻守卫(不遍历 equips, 见 EquipSystem._eq_tick)
 			var sys = battle._equip_sys._b4(eid)
 			if sys != null:
+				var _tl0: Array = battle._equip_sys.tally.push(u, eid)   # ④ 登场召出来的东西(手枪/炮台/直升机/碑…)盖上这件装备的章
 				sys.on_spawn(u, eid, clampi(int((e as Dictionary).get("star", 1)), 1, 3) - 1)
+				battle._equip_sys.tally.pop(_tl0)
 
 
 # 单件逐星属性 → 实时单位字段 (复用 battle.EquipStats.STATS; 字段口径换到实时引擎).

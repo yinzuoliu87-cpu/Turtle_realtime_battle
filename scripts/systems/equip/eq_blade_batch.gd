@@ -254,6 +254,7 @@ func tick_ts(delta: float, holders: Array) -> void:
 
 ## 每帧逐单位推进(守卫是常驻字段 `_b4_eq`, 在 EQ_TICK 闸之前 ⇒ 每帧精度)
 func tick_unit(u: Dictionary, delta: float) -> void:
+	battle._equip_sys.tally.use_b4(u, self)   # ④ 装备统计: 本系统的每单位 tick 不分件 ⇒ 记给这只龟身上属于本系统的那件(主场景 tick 块末尾还原)
 	if u.has("_b81_si"):
 		_t081(u, delta)
 	if u.has("_b83_si"):

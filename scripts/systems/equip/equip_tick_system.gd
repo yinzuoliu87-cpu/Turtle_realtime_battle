@@ -49,8 +49,10 @@ func _init(b) -> void:
 
 # 数据驱动基础技能: 按 spec 算物/魔/真伤(含加成项)分段打出 + 附带/特殊机制 (1:1 原始 skillPool[0])
 func _tick_doll(u: Dictionary, delta: float) -> void:   # 玩偶小熊: 每4s派小熊+攒层; 满层→蓄力→召大熊(不与末只小熊同帧)
+	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	var es: Dictionary = u.get("eq_state", {})
 	if not es.has("p2eq_034"): return
+	battle._equip_sys.tally.push(u, "p2eq_034")   # ④ 这一段是这件装备的效果
 	var stt: Dictionary = es["p2eq_034"]
 	if bool(stt.get("bear_done", false)) or bool(stt.get("bear_charging", false)): return
 	var si: int = int(stt.get("doll_si", 0))
@@ -117,9 +119,11 @@ func _tick_bear_anim(u: Dictionary, delta: float) -> void:   # 大熊状态机: 
 		u["_bear_voff"] = voff
 
 func _tick_fortress(u: Dictionary, delta: float) -> void:   # 深海堡垒甲p2eq_014: 硬化满25层(harden_cap·见 equip_stats_apply)后每8秒汲取全体敌(魔伤0.8/1/2.5×(护甲+魔抗))+每敌回血 50/100/250+已损5%; 满层瞬间立即首次; 每件独立
+	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_014": continue
+		battle._equip_sys.tally.push(u, "p2eq_014")   # ④ 这一段是这件装备的效果
 		var stt: Dictionary = u["eq_state"].get("p2eq_014", {})
 		if int(stt.get("harden_stacks", 0)) < int(stt.get("harden_cap", FORTRESS_CAP)):
 			e["fortress_t"] = FORTRESS_IV   # 未叠满→预置一整个周期(叠满瞬间立即首次汲取)
@@ -153,9 +157,11 @@ func _tick_fortress(u: Dictionary, delta: float) -> void:   # 深海堡垒甲p2e
 			battle._damage._heal(u, heal_flat + maxf(0.0, u["maxHp"] - u["hp"]) * FORTRESS_HEAL_LOST)   # 已损生命 6% → 5%
 
 func _tick_ironwall(u: Dictionary, delta: float) -> void:   # 铁壁盾p2eq_016: 每5秒放一个总护盾池(100/250/400 + 携带者8%最大生命)由全队(含自己)均分(用户2026-07-19; 原每人固定15/20/25); 每件独立
+	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_016": continue
+		battle._equip_sys.tally.push(u, "p2eq_016")   # ④ 这一段是这件装备的效果
 		e["ironwall_t"] = float(e.get("ironwall_t", 0.0)) + delta
 		if float(e["ironwall_t"]) < IRONWALL_IV: continue
 		e["ironwall_t"] = 0.0
@@ -212,10 +218,12 @@ const ANCHOR_ACC_PER_CHARGE := 250.0   # 累积治疗满这么多 → +1 沉锚�
 ##   ★只按【实际回进去的血】攒充能(满血空奶不攒·用户2026-07-19) —— 改成定时后这条更要紧,
 ##   否则全队满血时每 0.25 秒都白攒一次, 充能会自己涨满。
 func _tick_anchor(u: Dictionary, delta: float) -> void:
+	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
 	if not u.get("alive", false): return
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_017": continue
+		battle._equip_sys.tally.push(u, "p2eq_017")   # ④ 这一段是这件装备的效果
 		e["anchor_t"] = float(e.get("anchor_t", 0.0)) + delta
 		if float(e["anchor_t"]) < ANCHOR_IV: continue
 		e["anchor_t"] = 0.0
@@ -254,10 +262,12 @@ const HOTSPRING_PCT := [0.003, 0.008, 0.012]    # ×最大生命
 ##   不是这条回血(见 docs/plans/20260801-装备批次13条.md §4·C, 已按代码事实落实)。
 ## ★每秒回血【不】攒孵化进度: 孵化只吃"造成/承受伤害/敌我死亡", 让站桩回血也攒进度等于自己给自己充能。
 func _tick_hotspring(u: Dictionary, delta: float) -> void:
+	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
 	if not u.get("alive", false): return
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_036": continue
+		battle._equip_sys.tally.push(u, "p2eq_036")   # ④ 这一段是这件装备的效果
 		e["hotspring_t"] = float(e.get("hotspring_t", 0.0)) + delta
 		if float(e["hotspring_t"]) < HOTSPRING_IV: continue
 		e["hotspring_t"] = 0.0
@@ -278,10 +288,12 @@ func _tick_hotspring(u: Dictionary, delta: float) -> void:
 ##   不另起一个自己的累加器 —— 多一个累加器就多一处会和面板对不上的地方, 且新累加器必须两条
 ##   伤害路径都挂钩(CLAUDE.md §3.3), 漏一条就变成"某些伤害不算数"。
 func _tick_targeter(u: Dictionary, _delta: float) -> void:
+	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
 	if not u.get("alive", false): return
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_055": continue
+		battle._equip_sys.tally.push(u, "p2eq_055")   # ④ 这一段是这件装备的效果
 		# ★★"每件独立": 触发标记存在【装备条目 e】上, 不是 u["eq_state"]["p2eq_055"]。
 		#   后者是按【装备 id】的槽 —— 带两件靶向器时两件共用一个标记, 第一件放完置 true,
 		#   第二件永远被跳过 = 第二件完全不生效(探针实测: 带两件的挂弹数与带一件一样都是 1)。
@@ -296,10 +308,12 @@ func _tick_targeter(u: Dictionary, _delta: float) -> void:
 			battle._hookbomb_sys._hb_attach(u, o, si)
 
 func _tick_thunder(u: Dictionary, delta: float) -> void:
+	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	## (延时队列的排空已移到 tick_delayed —— 那条无条件每帧调)
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_025": continue
+		battle._equip_sys.tally.push(u, "p2eq_025")   # ④ 这一段是这件装备的效果
 		e["thunder_t"] = float(e.get("thunder_t", 0.0)) + delta
 		if float(e["thunder_t"]) < THUNDER_IV: continue
 		e["thunder_t"] = 0.0
@@ -316,7 +330,7 @@ func _tick_thunder(u: Dictionary, delta: float) -> void:
 		##   名字不会出现在函数体里, 证据链会断(它当场把选靶那条报成对不上)。
 		for d in range([1, 2, 3][si]):                # 道间错峰
 			_bolt_q.append({"at": battle._t + float(d) * BOLT_GAP, "u": u,
-				"kind": "bolt", "o": null})
+				"kind": "bolt", "o": null, "_tl": battle._equip_sys.tally.capture()})
 
 # 029 冰封水母(布隆大招式): 每12秒→自身上盾→砸地→朝最近敌生成冰道(500x90)→命中魔法伤+击飞0.6s+冰封2.5s
 ## ★029 冰封水母的「每 12 秒」驱动 `_tick_ice_fissure` 已整体删除(2026-08-12):
@@ -354,10 +368,12 @@ func reset_match() -> void:
 
 
 func _tick_gear(u: Dictionary, delta: float) -> void:   # 黄铜齿轮035(用户2026-07-18改: 随时间铸币·每6秒左队携带者直接+1/2/3深海币+飘字·跟死亡无关·原"攒齿轮层战斗结束折币"改掉)
+	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
 	if str(u.get("side", "")) != "left": return   # 深海币=玩家侧meta货币, 只玩家(左队)携带者产币
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_035": continue
+		battle._equip_sys.tally.push(u, "p2eq_035")   # ④ 这一段是这件装备的效果
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
 		var stt: Dictionary = u["eq_state"].get("p2eq_035", {})
 		stt["gear_t"] = float(stt.get("gear_t", 0.0)) + delta
@@ -371,9 +387,11 @@ func _tick_gear(u: Dictionary, delta: float) -> void:   # 黄铜齿轮035(用户
 		u["eq_state"]["p2eq_035"] = stt
 
 func _tick_shell(u: Dictionary, delta: float) -> void:   # 守护贝壳p2eq_018: 每8秒自回(30/45/60+5/9/15%maxHP)生命(受治疗增幅); 每件独立(用户2026-07-02, 原2.5s)
+	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_018": continue
+		battle._equip_sys.tally.push(u, "p2eq_018")   # ④ 这一段是这件装备的效果
 		e["shell_t"] = float(e.get("shell_t", 0.0)) + delta
 		if float(e["shell_t"]) < SHELL_IV: continue
 		e["shell_t"] = 0.0
@@ -382,9 +400,11 @@ func _tick_shell(u: Dictionary, delta: float) -> void:   # 守护贝壳p2eq_018:
 		battle._shell_sys._shell_guard_fx(u)   # 半壳合拢护罩演出(用户2026-07-19)
 
 func _tick_anemone(u: Dictionary, delta: float) -> void:   # 海葵药膏p2eq_019: 每7秒奶自己+最低血友军(30/45/60+12/14/18%目标已损血)×海葵增幅; 累计200/180/150治疗+1海葵层(治疗&盾强度+8/9/10%/层); 每件独立(用户2026-07-02,原2.5s)
+	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_019": continue
+		battle._equip_sys.tally.push(u, "p2eq_019")   # ④ 这一段是这件装备的效果
 		e["anemone_t"] = float(e.get("anemone_t", 0.0)) + delta
 		if float(e["anemone_t"]) < ANEMONE_IV: continue
 		e["anemone_t"] = 0.0
@@ -418,9 +438,11 @@ func _tick_anemone(u: Dictionary, delta: float) -> void:   # 海葵药膏p2eq_01
 		u["eq_state"]["p2eq_019"] = stt
 
 func _tick_dumbbell(u: Dictionary, delta: float) -> void:   # 哑铃p2eq_020: 每8秒一套(原地锻炼锁攻锁充能→+锻炼层→蓄力掷哑铃击退); 每件独立
+	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_020": continue
+		battle._equip_sys.tally.push(u, "p2eq_020")   # ④ 这一段是这件装备的效果
 		e["dumbbell_t"] = float(e.get("dumbbell_t", 0.0)) + delta
 		if float(e["dumbbell_t"]) < DUMBBELL_IV: continue   # 每10秒→每8秒(用户2026-07-19)
 		e["dumbbell_t"] = 0.0
@@ -429,9 +451,11 @@ func _tick_dumbbell(u: Dictionary, delta: float) -> void:   # 哑铃p2eq_020: �
 
 # 027 电棍: 每3s就绪→下次普攻消耗1层(附魔法伤+眩晕); 就绪时身上冒电光
 func _tick_baton(u: Dictionary, delta: float) -> void:
+	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_027": continue
+		battle._equip_sys.tally.push(u, "p2eq_027")   # ④ 这一段是这件装备的效果
 		var bst: Dictionary = u["eq_state"].get("p2eq_027", {})
 		if int(bst.get("baton_charges", 0)) <= 0:
 			bst["baton_ready"] = false; u["eq_state"]["p2eq_027"] = bst; continue
@@ -447,9 +471,11 @@ func _tick_baton(u: Dictionary, delta: float) -> void:
 		u["eq_state"]["p2eq_027"] = bst
 
 func _tick_barnacle(u: Dictionary, delta: float) -> void:   # 守护贝母p2eq_021: 持续绿色绑定线连全队最高攻友军; 每5秒重连并为自己+该友军 +10龟能+10%攻速(叠加/本场/每场重置); 每件独立
+	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_021": continue
+		battle._equip_sys.tally.push(u, "p2eq_021")   # ④ 这一段是这件装备的效果
 		var stt: Dictionary = u["eq_state"].get("p2eq_021", {})
 		e["barnacle_t"] = float(e.get("barnacle_t", 0.0)) + delta
 		if stt.get("link_target", null) == null or float(e["barnacle_t"]) >= BARNACLE_IV:   # 首次立即连 + 每5秒重连+给buff
@@ -476,9 +502,11 @@ func _tick_barnacle(u: Dictionary, delta: float) -> void:   # 守护贝母p2eq_0
 		break   # 只处理一件(共享绑定线)
 
 func _tick_jelly(u: Dictionary, delta: float) -> void:   # 海藻p2eq_012: 每4s自护盾(用户2026-07-02, 原走2.5s周期); 每件独立计时
+	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_012": continue
+		battle._equip_sys.tally.push(u, "p2eq_012")   # ④ 这一段是这件装备的效果
 		e["jelly_t"] = float(e.get("jelly_t", 0.0)) + delta
 		if float(e["jelly_t"]) < JELLY_IV: continue
 		e["jelly_t"] = 0.0
@@ -487,10 +515,12 @@ func _tick_jelly(u: Dictionary, delta: float) -> void:   # 海藻p2eq_012: 每4s
 		battle._damage._grant_shield(u, [40.0, 60.0, 90.0][si] + u["maxHp"] * JELLY_MAXHP_PCT, BattleDamage.COMMON_SHIELD_SEC)   # 用户2026-07-19: 30/40/55 → 40/60/90 + 4%最大生命; 通用护盾=4秒(恰好接上下一轮 JELLY_IV=4s·不断层也不无限叠)
 
 func _tick_rustblade(u: Dictionary, delta: float) -> void:   # 木制长剑p2eq_001: 每3s就绪, 射程2000(全场)内最近敌即甩飞斩剑气; 每件独立(多件各自触发)
+	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
 	var t = null; var got = false; var rng: float = RUST_RANGE   # 全场覆盖(用户2026-07-19: 近战→远程「裂空飞斩」)
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_001": continue
+		battle._equip_sys.tally.push(u, "p2eq_001")   # ④ 这一段是这件装备的效果
 		e["rust_t"] = float(e.get("rust_t", 0.0)) + delta   # 计时存装备条目→每副本独立就绪
 		if float(e["rust_t"]) < RUST_IV: continue           # 该件未就绪(每3s就绪一次)
 		if not got:                                          # 目标懒求(多件共用同一最近敌)
@@ -503,9 +533,11 @@ func _tick_rustblade(u: Dictionary, delta: float) -> void:   # 木制长剑p2eq_
 
 
 func _tick_coral(u: Dictionary, delta: float) -> void:   # 双穿珊瑚刺p2eq_008: 每9秒对最远敌射珊瑚尖刺(用户2026-07-19: 6→9); 命中才结算; 每件独立
+	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_008": continue
+		battle._equip_sys.tally.push(u, "p2eq_008")   # ④ 这一段是这件装备的效果
 		e["coral_t"] = float(e.get("coral_t", 0.0)) + delta
 		if float(e["coral_t"]) < CORAL_IV: continue
 		var far = null; var fd = -1.0
@@ -517,9 +549,11 @@ func _tick_coral(u: Dictionary, delta: float) -> void:   # 双穿珊瑚刺p2eq_0
 		battle._ballistics._fire_coral_spike(u, far, battle._equip_sys._eq_si(int(e.get("star", 1))))
 
 func _tick_broadsword(u: Dictionary, delta: float) -> void:   # 锈蚀阔剑p2eq_007: 每6秒触发(用户); 每件独立
+	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_007": continue
+		battle._equip_sys.tally.push(u, "p2eq_007")   # ④ 这一段是这件装备的效果
 		e["bsw_t"] = float(e.get("bsw_t", 0.0)) + delta
 		if float(e["bsw_t"]) < BROADSWORD_IV: continue
 		if battle._targeting._nearest_enemy(u) == null: continue
@@ -527,9 +561,11 @@ func _tick_broadsword(u: Dictionary, delta: float) -> void:   # 锈蚀阔剑p2eq
 		battle._equip_sys._eq_broadsword(u, battle._equip_sys._eq_si(int(e.get("star", 1))))
 
 func _tick_sword_storm(u: Dictionary, delta: float) -> void:   # 千刃风暴p2eq_006: 每7秒触发; 每件独立计时
+	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_006": continue
+		battle._equip_sys.tally.push(u, "p2eq_006")   # ④ 这一段是这件装备的效果
 		e["storm_t"] = float(e.get("storm_t", 0.0)) + delta
 		if float(e["storm_t"]) < SWORD_STORM_IV: continue
 		if battle._targeting._nearest_enemy(u) == null: continue
@@ -537,9 +573,11 @@ func _tick_sword_storm(u: Dictionary, delta: float) -> void:   # 千刃风暴p2e
 		battle._equip_sys._eq_sword_storm(u, battle._equip_sys._eq_si(int(e.get("star", 1))))
 
 func _tick_laser(u: Dictionary, delta: float) -> void:   # 激光长刃p2eq_010: 独立计时器(按携带者攻速)每次扇形斩(用户)
+	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_010": continue
+		battle._equip_sys.tally.push(u, "p2eq_010")   # ④ 这一段是这件装备的效果
 		e["laser_t"] = float(e.get("laser_t", 0.0)) + delta
 		if float(e["laser_t"]) < maxf(0.3, float(u.get("atk_interval", 1.0))): continue
 		var t = battle._targeting._nearest_enemy(u)
@@ -612,7 +650,7 @@ func _tick_thunder_bolt(u: Dictionary) -> void:
 	battle._lightning_sys._lightning_strike(o["pos"], Color("#8fd4ff"), 4.6)   # 大雷(中心≈2.2=飘字高度)
 	## ★伤害落在闪电动画中段 —— 同样改游戏钟队列, 不用 tween。
 	_bolt_q.append({"at": battle._t + BOLT_HIT_DELAY, "u": u,
-		"kind": "hit", "o": o})
+		"kind": "hit", "o": o, "_tl": battle._equip_sys.tally.capture()})
 
 func _tick_thunder_hit(u: Dictionary, o: Dictionary) -> void:
 	if not (u.get("alive", false) and o.get("alive", false)): return
@@ -624,11 +662,13 @@ func _drain_bolts() -> void:
 	if _bolt_q.is_empty():
 		return
 	var i: int = _bolt_q.size() - 1
+	var _tl0: Array = battle._equip_sys.tally.capture()
 	while i >= 0:
 		var it: Dictionary = _bolt_q[i]
 		if battle._t < float(it["at"]):
 			i -= 1; continue
 		_bolt_q.remove_at(i)
+		battle._equip_sys.tally.use(it.get("_tl", null))   # ④ 切回入队时的装备上下文
 		## 通用项: 直接存了一个 Callable
 		if it.has("fn"):
 			var fn: Callable = it["fn"]
@@ -641,12 +681,13 @@ func _drain_bolts() -> void:
 		else:
 			_tick_thunder_hit(it["u"], it["o"])
 		i -= 1
+	battle._equip_sys.tally.pop(_tl0)
 
 
 ## ★共享原语: 延时 `delay` 秒(**游戏钟**)后调 `fn` —— 代替 `tween_interval`+`tween_callback`。
 ## 排进来的项由 `_drain_bolts()` 每帧按 `battle._t` 结算。
 func schedule(delay: float, fn: Callable) -> void:
-	_bolt_q.append({"at": battle._t + maxf(0.0, delay), "fn": fn})
+	_bolt_q.append({"at": battle._t + maxf(0.0, delay), "fn": fn, "_tl": battle._equip_sys.tally.capture()})   # ④ 入队时的装备上下文, 到点切回去
 
 
 ## 【换路重置】由 `DualLaneFlow._dl_clear_units` 调。返回丢掉了几项(门禁/探针用)。
@@ -910,7 +951,15 @@ func tick_hots(u: Dictionary, dt: float) -> void:
 		if battle._t < float(h.get("until", 0.0)):
 			rate_sum += float(h.get("rate", 0.0))
 	if rate_sum > 0.0:
+		var _hb: float = float(u["hp"])
+		var _tl0: Array = battle._equip_sys.tally.push(null, "")   # 多件摊付合成一次治疗(行为不变) ⇒ 不走上下文, 下面按速率份额记账
 		battle._damage._heal(u, rate_sum * dt, true)
+		battle._equip_sys.tally.pop(_tl0)
+		var _got: float = float(u["hp"]) - _hb
+		for owner in hots.keys():   # ④ 装备统计: 实际回血按各件速率份额分(装备 id 就是这张表的键)
+			var h2: Dictionary = hots[owner]
+			if battle._t < float(h2.get("until", 0.0)):
+				battle._equip_sys.tally.credit(u, str(owner), "heal", _got * float(h2.get("rate", 0.0)) / rate_sum)
 	hot_bar_mirror(u)
 
 

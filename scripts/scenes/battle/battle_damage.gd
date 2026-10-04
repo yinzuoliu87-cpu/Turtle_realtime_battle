@@ -142,6 +142,7 @@ func _record_buckets(src, u: Dictionary, dmg: int, bkt: String, was_crit: bool) 
 			src["_st_crit"] = int(src.get("_st_crit", 0)) + 1
 	u["_st_taken"] = int(u.get("_st_taken", 0)) + dmg
 	battle._st_add_type(u, "_st_taken_by_type", bkt, dmg)
+	battle._equip_sys.tally.on_damage(src, u, dmg, bkt)   # ④ 装备统计: 两条伤害路都经过这里(CLAUDE.md §3.3), 记一处=两条都记
 
 
 ## 【额外真伤】记账: 墨迹 / 金弹·火控 / 腐蚀这类「在名义伤害之外另加进扣血」的真伤, 统一走这里。
@@ -156,6 +157,7 @@ func _record_extra_true(src, u: Dictionary, amt: int) -> void:
 	if src is Dictionary and src.has("side") and not is_same(src, u):
 		src["_st_dealt"] = int(src.get("_st_dealt", 0)) + amt
 		battle._st_add_type(src, "_st_dealt_by_type", "tru", amt)
+	battle._equip_sys.tally.on_damage(src, u, amt, "tru")   # ④ 装备统计: 额外真伤(金弹/腐蚀/墨迹)同口径进账
 
 
 ## ★`_col` 的下划线 = **它不生效**，2026-09-05 起。
@@ -223,8 +225,10 @@ func _apply_damage(u: Dictionary, dmg: int, _col: Color, src = null, bucket: Str
 	##   2026-07-19 那次修只修了一半(补了 `_st_dealt`, 但条件用了 alive)。
 	##   ⇒ 改调共用函数, 与另一条路同源。was_crit 恒 false: 这条路是 DoT/真伤, 本就不暴击。
 	##   门禁 `verify_dmg_paths_agree` ① 守这条(修之前它是红的)。
+	battle._equip_sys.tally.dot_mode = dot_accum   # ④ DoT 一跳: 按层数份额分给施加它的装备(见 equip_tally.gd ③)
 	_record_buckets(src, u, dmg, bucket, false)
 	_record_extra_true(src, u, int(round(_cor_true_dot)))   # 腐蚀转的真伤也进账(D3)
+	battle._equip_sys.tally.dot_mode = false
 	# ★DOT 累积模式(点1): 不跳小飘字, 累加进头顶【按伤害类型桶】的常驻数字(灼烧+中毒同 mag 桶)。
 	if dot_accum:
 		_dot_accumulate(u, bucket, dmg)
@@ -282,14 +286,18 @@ func _apply_damage(u: Dictionary, dmg: int, _col: Color, src = null, bucket: Str
 	#   不给 `_eq_on_target` 补全路, 是因为它还挂着 013/014 硬化层与 015 荆棘反伤等已上线装备,
 	#   让它们从每一跳灼烧触发是【行为变更】。
 	if u.get("_b4_eq", false):
+		var _tl0: Array = battle._equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原
 		battle._equip_sys._b4_on_damaged_any(u, src, dmg)
+		battle._equip_sys.tally.pop(_tl0)
 	# ★★2026-08-06 补: 这条路(DoT/真伤)原先【完全没有 HP 阈值检查】——
 	#   `_eq_check_hp_threshold` 与血线只挂在 _apply_damage_from(普攻/技能)上。
 	#   后果: 044 深海项链 / 045 珍珠耳环 的"首次<50%保命"在被**灼烧/中毒/流血/诅咒/真伤**
 	#   打到半血时【不触发】, 要等再挨一次普攻才补上。这是 CLAUDE.md §3.3 那一类的既有 bug。
 	#   (我加多条血线时先只接了一条路, 自己又踩了一次同样的坑, 所以两条一起补。)
 	if u["alive"]:
+		var _tl1: Array = battle._equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原
 		battle._equip_sys._eq_check_hp_threshold(u)
+		battle._equip_sys.tally.pop(_tl1)
 		battle._hpl.check(u)
 	if u["hp"] <= 0.0 and u["alive"]:
 		# ★带上 src: 原为 battle._kill(u) 无凶手 → DOT 击杀【不算击杀数】, 且暴君之牙处决回血这类
@@ -338,7 +346,10 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 	# no_dodge: 吸取类必中(用户2026-07-22「吸取不可以被闪避或暴击」)
 	if not no_dodge and u.get("dodge_bonus", 0.0) > 0.0 and not src.get("eq_cannot_be_dodged", false) and battle._battle_rng.randf() < u["dodge_bonus"]:
 		battle._vfx._float_text(u["pos"] + Vector2(0, -40), "闪避", battle._VC.color_of("dodge-num"))   # 走飘字色表, 不再手抄 #a0e8ff
+		var _tl0: Array = battle._equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原
+		battle._equip_sys.tally.use_first_of(u, ["p2eq_046"])   # 闪避钩里出东西的只有 046 的护盾
 		battle._equip_sys._eq_on_dodge(u)          # on-dodge 钩子 (幽灵墨鱼046: 闪避→永久护盾)
+		battle._equip_sys.tally.pop(_tl0)
 		battle._spirit_syn.on_dodge(u)             # 灵物【闪避追击】: 触手立即追击 1 次(25% 伤害, 每周期上限队伍共用)
 		return
 	# 小龟·不屈: 造成的任何伤害按目标稀有度增伤 (总闸→普攻/技能/真伤/固定伤全覆盖, 只算一次)
@@ -527,7 +538,9 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 	# (反伤已合并到上方通用块, 删除重复的第二处石头反伤)
 	_post_hit_hooks(src, u, dmg, basic, was_crit, _bkt, from_equip)   # 装备事件钩子: on-hit / on-target / 宝箱战利品 / U3 装备伤害(见函数头注)
 	if u["alive"]:
+		var _tl1: Array = battle._equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原
 		battle._equip_sys._eq_check_hp_threshold(u)          # HP阈值: 首次<50% (深海项链/珍珠耳环)
+		battle._equip_sys.tally.pop(_tl1)
 		battle._hpl.check(u)                                 # ★多条血线(069 三块糕 80/55/30% · 064 <35%); 与上面那条 50% 线并存
 		if str(u.get("id", "")) == "fortune" and not u.get("_lowhp_fired", false) and u["hp"] <= u["maxHp"] * FortuneSystem.LOWHP_PCT:
 			battle._fortune_sys._fortune_lowhp_burst(u)       # 财神【通用被动】(用户2026-07-28): 首次跌破20%血 → 立得70龟能(不论带哪个技能)
@@ -544,7 +557,9 @@ func _post_hit_hooks(src: Dictionary, u: Dictionary, dmg: int, basic: bool, was_
 	# 装备事件钩子 (on-hit 攻击方 / on-target 防守方 / HP阈值) — 装备自身造的段不再回钩
 	if not from_equip:
 		if src["alive"] and u["alive"]:
+			var _tl0: Array = battle._equip_sys.tally.capture()   # ④ _eq_on_hit 循环里有中途 return(002/023/026 非普攻闸), 在调用方还原归因上下文
 			battle._equip_sys._eq_on_hit(src, u, dmg, basic, was_crit) # on-hit: 攻击者装备(★was_crit 是掷骰当时的快照, 别让它自己读全局: 中间的反伤/熔岩盾/雷盾会改写) (流血/灼烧/连锁/追击/穿透/标记 等; basic 闸【普攻】类)
+			battle._equip_sys.tally.pop(_tl0)
 			battle._bow_syn.on_hit(src, u)                   # 弓箭【处决】: 全队(用户2026-08-03改), 斩杀线按各自暴击率
 			battle._potion_syn.try_behead(src, u)            # 药水顶档【斩首】: 攻击猎物且其 <20% 血 → 直接处决
 			battle._gadget_syn.on_hit(src, u)                # 奇械【冰封】掷骰冻结 + 【僵硬】叠 1 层
@@ -552,7 +567,9 @@ func _post_hit_hooks(src: Dictionary, u: Dictionary, dmg: int, basic: bool, was_
 			battle._equip_sys._gremlin.on_hit(src, basic)                # 古灵精怪枪: 携带者每次【普攻】自伤 1%最大生命(真实·能打死自己)
 			battle._equip_sys._axe.on_hit(src, u, basic)      # 096 小木斧·被动2: 斧头普攻窃取目标 10% 护盾转普通护盾给自己
 		if u["alive"]:
+			var _tl0: Array = battle._equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原
 			battle._equip_sys._eq_on_target(u, src, dmg)     # on-target: 防守者装备 (硬化层/冰封反制 等)
+			battle._equip_sys.tally.pop(_tl0)
 			# 批④(2026-08-06) 后 17 件里吃【法术伤害】的那几件走这条钩。
 			# ★守卫从 `_b3_gadget`(085/086 旧效果专用)换成批④统一的 `_b4_eq` ——
 			#   085/086 已整条重做, 旧标记随之作废(见 EquipStatsApply._b4_on_spawn_all)。
@@ -578,7 +595,9 @@ func _post_hit_hooks(src: Dictionary, u: Dictionary, dmg: int, basic: bool, was_
 					_apply_damage_from(src, u, maxi(1, int(float(src["atk"]))), Color("#ffe94d"), 0.0, true, true)
 					battle._skill_ring(u["pos"], Color(1.0, 0.92, 0.3, 0.6), 40.0)
 	elif u["alive"]:
+		var _tl2: Array = battle._equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原
 		battle._equip_sys._b4_on_damaged_equip(u, src, dmg)
+		battle._equip_sys.tally.pop(_tl2)
 
 # DoT 落血 (穿护盾, 不弹字防刷屏; 血条体现)
 ## ⚠★第三个参数**从来不被读**(2026-08-20 核实)。击飞位移实际来自 `battle.KNOCK_PUSH * push_mult`,
@@ -716,6 +735,8 @@ func _grant_shield(u: Dictionary, amt: float, dur: float = 0.0) -> void:
 		u["shield_timed"] = minf(float(u.get("shield_timed", 0.0)) + amt, float(u["shield"]))
 	var got = int(u["shield"] - sb)
 	u["_st_shield"] = float(u.get("_st_shield", 0)) + got   # §STATS: 实际获盾(同 _st_heal: 累计用 float, 否则每次调用丢掉小数)
+	if not _holy_busy:
+		battle._equip_sys.tally.on_shield(u, float(got))   # ④ 装备统计: 同 _st_shield 口径; 盾羁绊 9 档圣光转化那份是羁绊给的, 不记
 	if got >= 8:                             # #1 护盾飘字 "+N 盾" (浅蓝); 门槛过滤每帧微盾被动防刷屏
 		battle._vfx._float_text(u["pos"] + Vector2(0, -52), "+%d 盾" % got, battle._VC.color_of("shield-num"), false, "shield")   # 走飘字色表, 不再手抄 #ffffff
 	## ★★两轮用户意见否的是同一个东西:
@@ -785,6 +806,7 @@ func _heal(u: Dictionary, amt: float, silent: bool = false) -> float:   # 返回
 	##   2026-09-14 实测: 8 秒真实回复 850 点, 账上记成 480。
 	##   读取侧(battle_hud / dmg_stats_panel / 主场景快照)本来就全都套了 `int()`, 所以只改累计。
 	u["_st_heal"] = float(u.get("_st_heal", 0)) + (u["hp"] - hb)   # §STATS: 实际回复(超过满血不计)
+	battle._equip_sys.tally.on_heal(u, float(u["hp"] - hb))   # ④ 装备统计: 同 _st_heal 口径(实际回血)
 	var _osc: float = float(u.get("overheal2shield_cap", 0.0))   # 饮血护符坠(011): 溢出治疗(超过满血部分)转血护盾, 累积上限
 	if _osc > 0.0:
 		var _ovf: float = amt - float(u["hp"] - hb)   # 请求治疗量 - 实际回复 = 溢出
@@ -905,6 +927,7 @@ func _apply_dot_stacks(u: Dictionary, type: String, stacks: int, src = null) -> 
 		if passive is Dictionary and passive.get("burnImmune", false):
 			return
 	var ds: Dictionary = u["dot_stacks"]
+	battle._equip_sys.tally.on_dot_add(u, type, stacks, int(ds.get(type, 0)), src)   # ④ 记下这几层是谁(哪件装备)加的
 	ds[type] = int(ds.get(type, 0)) + stacks
 	if src != null:
 		u["dot_src"][type] = src

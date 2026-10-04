@@ -145,7 +145,9 @@ func add_mana(u: Dictionary, n: float) -> void:
 ## 所以"触发这件法器的效果"是字面意义上的同一件事，不会出现两套行为。
 func _fire(u: Dictionary, iid: String, star: int) -> void:
 	u["_staff_busy"] = true         # 期间产生的伤害不再涨法力（防自激循环）
+	var _tl0: Array = battle._equip_sys.tally.push(u, iid)   # ④ 装备统计: 法力满放主动 = 这件装备的效果
 	battle._equip_sys.fire_equip_effect(u, iid, star)
+	battle._equip_sys.tally.pop(_tl0)
 	u["_staff_busy"] = false
 	# ★演出(批 B3): 法力条【玩家没有任何途径看到进度】—— 只会突然看到某件装备效果放了。
 	#   U3 用户未拍板 ⇒ 按方案书建议 C: 先只做"响了"这一下的闪光, 进度条另议。

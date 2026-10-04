@@ -136,7 +136,9 @@ func _phoenix_flame_cone(u: Dictionary, tgt: Dictionary) -> void:
 		##   (`elif u["id"] == "phoenix"`)就分支去喷火了, **一次都没走到 `_basic_attack`**。
 		##   ⇒ 同函数里的 008 珊瑚刺 / 017 不沉之锚 / 027 电棍 在凤凰身上也一并复活。
 		##   顺序: 放在伤害之后, 与上面 `_eq_on_hit` 同一条纪律(读得到这一跳的账)。
+		var _tl0: Array = battle._equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原
 		battle._equip_sys._eq_on_basic_attack(u, nearest)
+		battle._equip_sys.tally.pop(_tl0)
 		u["_phx_onhit_n"] = int(u.get("_phx_onhit_n", 0)) + 1   # 同步触发证据(门禁数它)
 		u["_phx_basic_n"] = int(u.get("_phx_basic_n", 0)) + 1   # 普攻计数钩子的独立证据(门禁数它)
 

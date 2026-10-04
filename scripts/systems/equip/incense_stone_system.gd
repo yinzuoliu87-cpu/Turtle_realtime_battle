@@ -131,6 +131,7 @@ func on_spawn(u: Dictionary, eid: String, _si: int) -> void:
 #  每帧: 攒充能 → 刻痕; 主动计时 → 强化下 4 次普攻
 # ══════════════════════════════════════════════════════════════════
 func tick_unit(u: Dictionary, delta: float) -> void:
+	battle._equip_sys.tally.use_b4(u, self)   # ④ 装备统计: 本系统的每单位 tick 不分件 ⇒ 记给这只龟身上属于本系统的那件(主场景 tick 块末尾还原)
 	if not u.get("alive", false):
 		return
 	var stt = u.get("eq_state", {}).get(EID, null)

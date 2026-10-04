@@ -311,6 +311,7 @@ func tick(delta: float) -> void:
 ## 每帧【逐单位】推进: 只有 078 用(左右管的 2 秒交替要秒级精度)。
 ## ★守卫是常驻字段 `_g078_si`(on_spawn 写), 不遍历 equips —— 这是全 95 件装备的公共热路径。
 func tick_unit(u: Dictionary, delta: float) -> void:
+	battle._equip_sys.tally.use_b4(u, self)   # ④ 装备统计: 本系统的每单位 tick 不分件 ⇒ 记给这只龟身上属于本系统的那件(主场景 tick 块末尾还原)
 	if not u.has("_g078_si"):
 		return
 	if not u.get("alive", false):

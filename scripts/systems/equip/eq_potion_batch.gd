@@ -73,6 +73,7 @@ func tick_global(delta: float) -> void:
 
 ## ★守卫是【常驻字段】而不是遍历 equips ⇒ 不带这四件的单位在 `_eq_tick` 里只多一次 dict.get。
 func tick_unit(u: Dictionary, delta: float) -> void:
+	battle._equip_sys.tally.use_first_of(u, EquipTally.POTION_IDS)   # ④ 装备统计: 本系统的每单位 tick 不分件 ⇒ 记给这只龟身上属于本系统的那件(主场景 tick 块末尾还原)
 	if not u.get("alive", false):
 		return
 	for e in u.get("equips", []):

@@ -39,6 +39,7 @@ var _gremlin: GremlinGun
 var _axe: AxeSystem
 ## 011 饮血护符坠(2026-09-10 重做): 连斩本体 + 斩痕演出。单独成文件 —— 见 eq_blood_combo.gd 文件头。
 var _blood_sys: EqBloodCombo
+var tally: EquipTally
 
 func _init(b) -> void:
 	battle = b
@@ -57,7 +58,7 @@ func _init(b) -> void:
 	_arcane_sys = EqArcaneBatch.new(b)
 	_blood_sys = EqBloodCombo.new(b)
 	_relic_sys = EqRelicBatch.new(b)
-	_incense = IncenseStoneSystem.new(b)
+	_incense = IncenseStoneSystem.new(b); tally = EquipTally.new(b)
 
 
 ## 批④ 的六个批系统, 按【本批装备 id → 系统】路由。派发点全都先查这张表再调统一钩子。
@@ -114,7 +115,7 @@ func _b4_on_damaged_any(u: Dictionary, src, dmg: int) -> void:
 		var iid: String = str((e as Dictionary).get("id", ""))
 		var sys = _b4(iid)
 		if sys != null:
-			sys.on_damaged(u, src, float(dmg), iid, _eq_si(int((e as Dictionary).get("star", 1))))
+			tally.use([u, iid]); sys.on_damaged(u, src, float(dmg), iid, _eq_si(int((e as Dictionary).get("star", 1))))
 	u["_b4_dot"] = false
 
 ## ★U3(用户 2026-09-15「被装备打到应该算吧」): 敌方装备打出的一段伤害(`from_equip = true`)也算「受到攻击」。
@@ -135,11 +136,12 @@ func _b4_on_damaged_equip(u: Dictionary, src, dmg: int) -> void:
 			continue
 		var sys = _b4(iid)
 		if sys != null:
-			sys.on_damaged(u, src, float(dmg), iid, _eq_si(int((e as Dictionary).get("star", 1))))
+			tally.use([u, iid]); sys.on_damaged(u, src, float(dmg), iid, _eq_si(int((e as Dictionary).get("star", 1))))
 
 func _eq_on_basic_attack(u: Dictionary, tgt = null) -> void:   # 每普攻(不算多段): 008珊瑚刺计数 / 017不沉之锚普攻消耗充能锚击
 	if u.get("equips", []).is_empty(): return
 	for e in u["equips"]:
+		tally.use([u, str(e["id"])])   # ④ 装备统计: 这一圈是这件装备的普攻钩
 		if str(e["id"]) == "p2eq_017":   # 不沉之锚: 每次普攻消耗1沉锚充能→击飞最前敌+眩晕(用户2026-07-02)
 			var ast: Dictionary = u["eq_state"].get("p2eq_017", {})
 			if int(ast.get("anchor_charges", 0)) > 0:
@@ -399,9 +401,9 @@ func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
 					continue
 				# ★盾羁绊 9 档要认"这次护盾/治疗是哪件装备给的"(_holy_convert 读 _cur_eq_item,
 				#   且它自己只认【盾类】装备)。原来这条路没标 → 藤编圆盾 081 拿不到圣光转化。
-				battle._cur_eq_item = iid
+				battle._cur_eq_item = iid; var _tp: Array = tally.push(u, iid)
 				fire_equip_effect(u, iid, int(e2.get("star", 1)), stt)
-				battle._cur_eq_item = ""   # 用完立刻清: 不清会让紧随其后的护盾/治疗被误判成这件装备给的
+				battle._cur_eq_item = ""; tally.pop(_tp)   # ④ 装备统计 · 用完立刻清: 不清会让紧随其后的护盾/治疗被误判成这件装备给的
 		u["eq_state"][iid] = stt
 
 # 涟漪回血特效(AI生成动画): 青绿涟漪水波躺平贴地, 帧播一次扩散淡出. 用于涟漪药剂042每个受益友军
@@ -1550,7 +1552,7 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false,
 	var was_crit: bool = bool(crit) if crit != null else bool(battle._last_atk_crit)
 	for e in src["equips"]:
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
-		battle._cur_eq_item = iid   # 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
+		battle._cur_eq_item = iid; tally.push(src, iid)   # ④ 装备统计 · 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
 		var stt: Dictionary = src["eq_state"].get(iid, {})
 		# ── 批④(2026-08-06) 统一路由: 放在 match 之前而不是当成 match 的一条臂 ──
 		#    十七件分属六个系统, 写成 match 臂就要把十七个 id 抄进【每一个钩子】的 match 里
@@ -2236,7 +2238,7 @@ func _eq_on_target(u: Dictionary, src: Dictionary, dmg: int) -> void:
 		return
 	for e in u["equips"]:
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
-		battle._cur_eq_item = iid   # 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
+		battle._cur_eq_item = iid; tally.push(u, iid)   # ④ 装备统计 · 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
 		var stt: Dictionary = u["eq_state"].get(iid, {})
 		# ── 批④(2026-08-06) 统一路由(理由同 _eq_on_hit: 十七件六个系统, 不抄进每个 match) ──
 		#    ★这条钩子挂在【两条伤害路径】上(CLAUDE.md §3.3), 所以 081 的充能条 / 082 的护心反伤 /
@@ -2335,7 +2337,7 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 		return
 	for e in u["equips"]:
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
-		battle._cur_eq_item = iid   # 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
+		battle._cur_eq_item = iid; tally.push(u, iid)   # ④ 装备统计 · 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
 		if battle._stress or battle._wd_on: battle._dbg_op = "eqcast:" + iid   # 卡死猎手: 定位是哪件装备on-cast卡住(用户2026-07-19)
 		match iid:
 			"p2eq_027":   # 电棍: 电击已移到 _eq_on_basic_attack(普攻命中消耗1层, 用户2026-07-03); on_cast不处理
@@ -2502,7 +2504,7 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 		_axe._fin.undead_on_death(u)
 	for e in u.get("equips", []):
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
-		battle._cur_eq_item = iid   # 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
+		battle._cur_eq_item = iid; tally.push(u, iid)   # ④ 装备统计 · 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
 		var stt: Dictionary = u["eq_state"].get(iid, {})
 		# ── 批④(2026-08-06) 统一路由 —— 094 祖龟碑在这里立碑; 077/080 在这里改召唤物的状态 ──
 		var _b4d = _b4(iid)
@@ -2575,7 +2577,7 @@ func _eq_check_hp_threshold(u: Dictionary) -> void:
 	var fired := false
 	for e in u.get("equips", []):
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
-		battle._cur_eq_item = iid   # 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
+		battle._cur_eq_item = iid; tally.push(u, iid)   # ④ 装备统计 · 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
 		match iid:
 			"p2eq_044":   # 深海项链: 首次<50%触发, 【16秒内】回复 40/85/130% maxHp(2026-08-01 定 6秒/20-40-80; 2026-09-14 用户两次上调)
 				_eq_start_hot(u, u["maxHp"] * [0.40, 0.85, 1.30][si], NECKLACE_HOT_SEC); fired = true   # 用户2026-09-14: 20/40/80 → 25/50/85 → 40/85/130
@@ -2672,7 +2674,7 @@ func _eq_tick(u: Dictionary, delta: float) -> void:
 	u["eq_timer"] = 0.0
 	for e in u["equips"]:
 		var iid: String = str(e["id"]); var si: int = _eq_si(int(e.get("star", 1)))
-		battle._cur_eq_item = iid   # 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
+		battle._cur_eq_item = iid; tally.push(u, iid)   # ④ 装备统计 · 盾羁绊9档要认"这次护盾/治疗是哪件装备给的"(用完在函数末尾清)
 		var stt: Dictionary = u["eq_state"].get(iid, {})
 		match iid:
 			"p2eq_001":   # 木制长剑: 移到每帧 _tick_rustblade (每3s就绪 + 2000码(全场)射程内有敌即劈·用户2026-07-19 近战→远程剑气); 周期tick不处理

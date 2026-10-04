@@ -141,6 +141,7 @@ const SCUTE_CATCHUP_CAP := 8
 ## 每帧逐单位推进。★守卫是 `_b4_eq`(EquipStatsApply 写)+ 本函数的 `_best_si` ——
 ##   `_eq_tick` 把它放在 EQ_TICK(2.5 秒)闸【之前】, 所以这里拿得到每帧精度。
 func tick_unit(u: Dictionary, delta: float) -> void:
+	battle._equip_sys.tally.use_b4(u, self)   # ④ 装备统计: 本系统的每单位 tick 不分件 ⇒ 记给这只龟身上属于本系统的那件(主场景 tick 块末尾还原)
 	if not (u is Dictionary) or not u.get("alive", false):
 		return
 	var si: int = _best_si(u, "p2eq_091")

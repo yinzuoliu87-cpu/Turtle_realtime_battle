@@ -2342,6 +2342,9 @@ func _st_merge_all(pages: Array, side: String) -> Array:
 				var rr: Dictionary = battle._st_row(r)       # 幂等: 旧行没有类型三列也补齐
 				for f in ["_st_dealt", "_st_taken", "_st_heal", "_st_crit", "_st_kills", "_st_shield", "_st_phy", "_st_mag", "_st_tru"]:
 					a[f] = int(a.get(f, 0)) + int(rr.get(f, 0))
+				for f in rr.keys():   # ④ 每件装备的统计键(`_st_eq|…`)同样按路累加 = 本局
+					if str(f).begins_with(EquipTally.ROW_PREFIX):
+						a[f] = int(a.get(f, 0)) + int(rr[f])
 				a["alive"] = r["alive"]; a["hp"] = r["hp"]; a["maxHp"] = r["maxHp"]   # 血量取最后一路
 	var out: Array = []
 	for k in order:
