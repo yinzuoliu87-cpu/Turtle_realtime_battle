@@ -1656,7 +1656,8 @@ func _build_foreground_band() -> void:   # ★不收 root: 它挂在相机上, �
 		q.billboard = BaseMaterial3D.BILLBOARD_DISABLED
 		q.pixel_size = 0.0055 * rng.randf_range(0.96, 1.10)
 		## 相机局部坐标: x 横向铺三段(互相重叠), y 压在画面下沿, z 最近。
-		q.position = Vector3((float(i) - 0.5) * 1.05, -0.54 + rng.randf_range(-0.03, 0.03), -2.35)
+		## ★fg_band_y: 草尖高的剪影带(2026-10-03 fg_grass_band)放在 -0.54 会盖住下沿交战的龟 ⇒ 主题可往下压。
+		q.position = Vector3((float(i) - 0.5) * 1.05, float(cfg.get("fg_band_y", -0.54)) + rng.randf_range(-0.03, 0.03), -2.35)
 		var sx: float = (-1.0 if i == 1 else 1.0)          # 中段镜像, 破平铺感
 		q.scale = Vector3(sx, 1.0, 1.0)
 		## ★压暗: 前景是**剪影**不是主角(咩咩的前景草带实测比场内暗一大截)。
@@ -1692,6 +1693,9 @@ func _build_theme_decorations(root: Node3D) -> void:
 	var dens: float = float(cfg.get("ring_density", 1.0))
 	var clusters: int = int(round(11.0 * dens))          # 簇数
 	var per: int = 7                                     # 每簇件数上限 ⇒ 约 70~90 件, 对齐参考中位 79
+	## ★主题可压每簇件数(ring_per): 巨树干一簇 7 棵挤成一堵墙, 参考里是一棵棵分开站的。
+	var per_min: int = mini(3, int(cfg.get("ring_per", per)))
+	per = int(cfg.get("ring_per", per))
 	for i in range(clusters):
 		## 簇心: 环上均匀取角, 再加抖动; 半径 1.04~1.30 倍 ⇒ 落在岛外的海面/岸上
 		## ★★角度**偏向上下**而不是环上均匀: 实测 ARENA 投到 1280×720 后
@@ -1713,7 +1717,7 @@ func _build_theme_decorations(root: Node3D) -> void:
 			continue
 		var cxp: float = c.x + cos(th) * rx * rr
 		var cyp: float = c.y + sin(th) * ry * rr
-		var n: int = rng.randi_range(3, per)
+		var n: int = rng.randi_range(per_min, per)
 		for _j in range(n):
 			## 簇内散布: 半径很小才成"组"; 大了就又摊成均匀
 			var a2: float = rng.randf_range(0.0, TAU)
