@@ -749,6 +749,7 @@ scripts/scenes/RecordScene.gd|lit|出战
 scripts/scenes/RecordScene.gd|lit|切磋
 scripts/scenes/RecordScene.gd|lit|刚刚
 scripts/scenes/RecordScene.gd|lit|前天
+scripts/scenes/RecordScene.gd|lit|回放
 scripts/scenes/RecordScene.gd|lit|实时
 scripts/scenes/RecordScene.gd|lit|战绩
 scripts/scenes/RecordScene.gd|lit|指定首领
@@ -757,6 +758,7 @@ scripts/scenes/RecordScene.gd|lit|昨天
 scripts/scenes/RecordScene.gd|lit|测试
 scripts/scenes/RecordScene.gd|lit|深海闯关
 scripts/scenes/RecordScene.gd|lit|胜率
+scripts/scenes/RecordScene.gd|lit|读取中
 scripts/scenes/RecordScene.gd|lit|赢
 scripts/scenes/RecordScene.gd|lit|输
 scripts/scenes/RecordScene.gd|lit|还没站稳就倒了
@@ -1359,6 +1361,13 @@ scripts/systems/equip/swordsman_system.gd|lit|剑
 scripts/systems/equip/synergy_system.gd|lit|剑
 scripts/systems/equip/synergy_system.gd|lit|食物
 scripts/systems/equip/timestop_system.gd|lit|+%d龟能
+scripts/systems/replay/replay_fetcher.gd|lit|服务器上找不到这场回放（回放只保留两周）
+scripts/systems/replay/replay_fetcher.gd|lit|服务器这会儿出了点问题（%d），稍后再试
+scripts/systems/replay/replay_fetcher.gd|lit|等了太久服务器都没回音，稍后再试
+scripts/systems/replay/replay_fetcher.gd|lit|账号还没连上服务器，检查一下网络再试
+scripts/systems/replay/replay_fetcher.gd|lit|这个版本没接服务器，只能看在这台设备上打的比赛
+scripts/systems/replay/replay_fetcher.gd|lit|这场回放的数据坏了，播不了
+scripts/systems/replay/replay_fetcher.gd|lit|连不上服务器，检查一下网络再试
 scripts/systems/replay/replay_recorder.gd|lit|事件 %s 在本机没能发生
 scripts/systems/replay/replay_recorder.gd|lit|事件 %s(第 %d 步)没有发生
 scripts/systems/replay/replay_recorder.gd|lit|回放格式不认识

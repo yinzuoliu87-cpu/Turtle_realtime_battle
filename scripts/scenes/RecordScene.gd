@@ -43,6 +43,26 @@ const STAMP_W := 52.0
 const TIME_W := 56.0
 const PHRASE_W := 168.0
 
+## ══ 回放入口(跨设备回放 S3, docs/plans/20261003-跨设备回放.md) ══
+## ★有录像的那一行**整条就是按钮**(与 `BracketMapScene.gd` 头注「每一场对局自己就是按钮」同一个做法),
+##   右端一块签牌写「回放」告诉人能点。为什么不是行尾一个小按钮: 触控下限 81px(=44pt,
+##   `verify_ui_consistency` 的 tap 判据), 而这一行内高只有 48 —— 小按钮要么不达标、要么把行撑高一截。
+##   整行当热区: 宽 ≥200, 手机上随便一按就中。
+## ★没有录像的行**不出签牌、不能点**(不放死按钮); 判据全在 `ReplayFetcher.has_replay`。
+## ★签牌宽度钉死(REPLAY_W), 而且只要列表里**有一行**带回放, 其余行都留同宽的空位 ——
+##   否则带签牌的那几条比别的长一截, 整列右边缘参差(与 TIME_W/PHRASE_W 钉宽同一个理由)。
+const ReplayFetcher := preload("res://scripts/systems/replay/replay_fetcher.gd")
+const REPLAY_W := 76.0
+const REPLAY_LABEL := "回放"
+const REPLAY_BUSY := "读取中"
+## 列表小标题 —— 取回放失败时那句话借它的位置说(就在列表正上方, 不挤动列表)。
+var _list_title: Label = null
+## 正在取的那一行(""= 没有)。取的时候所有回放行都不能再点, 回调回来一定复原。
+var _rp_busy := ""
+## 最近一次「点回放」的结果(门禁读: 原因码 / 那句话)。
+var last_replay_code := ""
+var last_replay_msg := ""
+
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):   # ESC 返回主菜单 (与图鉴一致)
@@ -125,6 +145,7 @@ func _ready() -> void:
 	##   看着像没对齐。整块列表居中了, 它的标题就得跟着居中。
 	lh.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	root.add_child(lh)
+	_list_title = lh
 
 	# ── 对局列表 (最多 20), 滚动 ──
 	## ★高度 430 → 450: 战报条从 54 长到 68(头像放大), 不补就只剩 5 条露在外面。
@@ -164,8 +185,12 @@ func _ready() -> void:
 		e2.add_theme_color_override("font_color", Color("#77889a"))
 		eb.add_child(e2)
 	else:
+		var now := int(Time.get_unix_time_from_system())
+		var any_rp := false
 		for i in range(n):
-			list.add_child(_match_row(GameState.match_history[i]))
+			any_rp = any_rp or ReplayFetcher.has_replay(GameState.match_history[i], now)
+		for i in range(n):
+			list.add_child(_match_row(GameState.match_history[i], any_rp, now))
 
 
 # 总览统计块: 数值 30px bold + 标签 12px #9ab
@@ -212,7 +237,7 @@ func _stat(label: String, value: String, color: String) -> Control:
 ##     ② 牌底那块金属板的 modulate: 赢**暖金**(铆钉发亮) / 输**冷灰**(整块压暗)
 ##     ③ 出战阵容的头像: 赢**全亮** / 输**压暗**(连底色一起暗)
 ##     ④ 那句话本身: 「28 秒拿下」 / 「撑了 28 秒」
-func _match_row(m: Dictionary) -> Control:
+func _match_row(m: Dictionary, any_rp: bool = false, now: int = 0) -> Control:
 	var won: bool = m.get("result", "") == "win"
 	var pc := PanelContainer.new()
 	## 贴图缺失时的兜底: 直角 + **实心**底(a=1.0) + 只描左边那条胜负色。
@@ -291,7 +316,97 @@ func _match_row(m: Dictionary) -> Control:
 	line.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	phrase.add_child(line)
+
+	if ReplayFetcher.has_replay(m, now):
+		hb.add_child(_replay_chip(won))
+		_replay_hit(pc, str(m.get("replay_id", "")))
+	elif any_rp:
+		var gap := Control.new()           # 同宽空位: 整列右边缘对齐(见 REPLAY_W 头注)
+		gap.custom_minimum_size = Vector2(REPLAY_W, 0)
+		gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hb.add_child(gap)
 	return pc
+
+
+## 行尾那块「回放」签牌。★不是按钮(不收点击), 只是告诉人「这一行能点」——
+##   点击由盖在整行上的那层透明按钮收(`_replay_hit`)。皮用 `chip-frame.png`(与 `UISkin.button`
+##   小按钮同一张签牌), 颜色跟着这一行的胜负走(赢暖金 / 输冷灰, 与牌底同一套 modulate)。
+func _replay_chip(won: bool) -> Control:
+	var chip := PanelContainer.new()
+	chip.name = "ReplayChip"
+	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chip.custom_minimum_size = Vector2(REPLAY_W, 0)
+	chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var fb := StyleBoxFlat.new()
+	fb.bg_color = Color("#3a2f18") if won else Color("#26313d")
+	fb.set_corner_radius_all(0)
+	var sb := UISkin.nine("chip-frame.png", 7, fb)
+	if sb is StyleBoxTexture:
+		(sb as StyleBoxTexture).modulate_color = Color(1.25, 1.05, 0.62) if won else Color(0.74, 0.84, 0.98)
+	sb.content_margin_left = 10; sb.content_margin_right = 10
+	sb.content_margin_top = 8; sb.content_margin_bottom = 8
+	chip.add_theme_stylebox_override("panel", sb)
+	var l := Label.new()
+	l.name = "ReplayChipText"
+	l.text = REPLAY_LABEL
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.add_theme_font_size_override("font_size", 13)
+	l.add_theme_color_override("font_color", Color("#ffe3a0") if won else Color("#c9d6e4"))
+	chip.add_child(l)
+	return chip
+
+
+## 盖在整行上的透明按钮(PanelContainer 把它铺满内容区, 与那一行的 HBox 同一块)。
+func _replay_hit(pc: PanelContainer, id: String) -> void:
+	var bt := Button.new()
+	bt.name = "ReplayBtn"
+	bt.set_meta("replay_id", id)
+	bt.focus_mode = Control.FOCUS_NONE
+	bt.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	for st in ["normal", "hover", "pressed", "focus", "disabled"]:
+		bt.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	## 按下 / 悬停的反馈打在整行牌子上(按钮本身是透明的)
+	bt.mouse_entered.connect(func() -> void: pc.modulate = Color(1.12, 1.12, 1.12))
+	bt.mouse_exited.connect(func() -> void: pc.modulate = Color.WHITE)
+	bt.pressed.connect(_on_replay_pressed.bind(id))
+	pc.add_child(bt)
+
+
+func _on_replay_pressed(id: String) -> void:
+	if _rp_busy != "":
+		return
+	_rp_busy = id
+	_set_replay_busy(id, true)
+	if _list_title != null:
+		_list_title.text = "最近对局"
+		_list_title.add_theme_color_override("font_color", Color("#58d3ff"))
+	ReplayFetcher.open(get_tree(), id, _on_replay_done)
+
+
+## `ReplayFetcher.open` 的回调, 恰好一次。code == "" ⇒ 已经换到战斗场了。
+func _on_replay_done(code: String, msg: String) -> void:
+	last_replay_code = code
+	last_replay_msg = msg
+	var id := _rp_busy
+	_rp_busy = ""
+	if code == "":
+		return
+	_set_replay_busy(id, false)
+	if _list_title != null:
+		_list_title.text = msg
+		_list_title.add_theme_color_override("font_color", Color("#ff9b7a"))
+
+
+## 取的时候: 所有回放行都点不了; 被点的那一行签牌写「读取中」。复原时全部放开。
+func _set_replay_busy(id: String, busy: bool) -> void:
+	for b in find_children("ReplayBtn", "Button", true, false):
+		(b as Button).disabled = busy
+		var mine: bool = str((b as Button).get_meta("replay_id", "")) == id
+		var row := (b as Button).get_parent()
+		var t := row.find_child("ReplayChipText", true, false) as Label if row != null else null
+		if t != null and mine:
+			t.text = REPLAY_BUSY if busy else REPLAY_LABEL
 
 
 ## 胜负印章 —— 形态差异①(**有牌 / 没牌**), 颜色只是附带。

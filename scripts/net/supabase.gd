@@ -2016,3 +2016,95 @@ func upload_match(row: Dictionary, done: Callable) -> void:
 					done.call(mid, good)
 					_bye()),
 		"Prefer: return=minimal")
+
+
+# ═════════════════════════════════════════════════════════════
+# 跨设备回放 S3(2026-10-04): 按 match_id 把那一行的录像**取回来**(看回放用)
+#   方案书 docs/plans/20261003-跨设备回放.md S3。拿到之后怎么解、怎么播在
+#   `scripts/systems/replay/replay_fetcher.gd`; 这里只管「取 + 判回包」这一次。
+# ═════════════════════════════════════════════════════════════
+
+## 取录像的总时限(秒, 墙钟)。★「点了回放之后一直转」是这一屏最怕的形状
+##   (memory: 永远显示「正在连线」的那一屏) ⇒ 不论卡在续登录还是卡在请求上, 到点**必定回调一次**。
+##   15 = 续登录最多约 10 秒(`_await_token`) + 一次请求的 `TIMEOUT_SEC` 6 秒里留的余量。
+const MATCH_FETCH_TIMEOUT_SEC := 15.0
+## 只给门禁用: > 0 时替代上面那个(门禁不该真等 15 秒)。
+static var match_fetch_timeout_for_test := 0.0
+
+
+## 纯函数: 取那一行要问的查询串。只要 `replay` 一列 —— 版本号在录像里, 解出来由
+##   `ReplayRecorder.play` 统一比(只有一处判据, 不在列上再比一遍)。
+static func match_fetch_query(match_id: String) -> String:
+	if not is_uuid(match_id):
+		return ""
+	return "match_id=eq.%s&select=match_id,replay" % match_id
+
+
+## 纯函数: 一次取回的回包 → {"err": 原因码, "b64": 录像, "code": HTTP 码}。
+##   原因码: "" 取到了 / "offline" 请求没出去或没回来 / "server" 服务端非 2xx 或回了不是 JSON 数组 /
+##          "missing" 没有这一行(到期被清了或从没传上来) / "corrupt" 有这一行但录像列是空的。
+## ★每一种都要给玩家**不同的一句话**(见 replay_fetcher.gd 的 MSG) —— 归成一句「出错了」等于没说。
+static func parse_fetched_match(ok: bool, code: int, body: String, match_id: String) -> Dictionary:
+	if not ok:
+		return {"err": "offline", "code": code}
+	if code < 200 or code >= 300:
+		return {"err": "server", "code": code}
+	var j := JSON.new()
+	if j.parse(body) != OK or not (j.data is Array):
+		return {"err": "server", "code": code}
+	for r in (j.data as Array):
+		if r is Dictionary and str((r as Dictionary).get("match_id", "")) == match_id:
+			var b = (r as Dictionary).get("replay", null)
+			if b is String and (b as String) != "":
+				return {"err": "", "b64": b, "code": code}
+			return {"err": "corrupt", "code": code}
+	return {"err": "missing", "code": code}
+
+
+## 取一行录像。返回 false = 连节点都没建(没配后端 / id 不是 uuid), 调用方自己出提示。
+## `done.call(res: Dictionary)`(形状同 `parse_fetched_match`, 另有 "no_token" / "timeout")——
+##   **每一条走掉的路恰好回调一次**; 调用方已经离场(`done` 失效)就不回调。
+static func fetch_match_async(match_id: String, done: Callable) -> bool:
+	if not enabled() or not is_uuid(match_id):
+		return false
+	var n = _spawn()
+	if n == null:
+		return false
+	n.fetch_match(match_id, done)
+	return true
+
+
+func fetch_match(match_id: String, done: Callable) -> void:
+	var st := {"done": false}
+	var fin := func(res: Dictionary) -> void:
+		if bool(st["done"]):
+			return
+		st["done"] = true
+		if done.is_valid():
+			done.call(res)
+	## ★看门狗挂在**本节点自己身上**(Timer 子节点), 不用 `get_tree().create_timer` ——
+	##   后者活得比本节点久, 闭包捕获的东西先没了就喷 Lambda capture(tools/tree_timer_audit.py)。
+	var tm := Timer.new()
+	tm.one_shot = true
+	tm.wait_time = match_fetch_timeout_for_test if match_fetch_timeout_for_test > 0.0 else MATCH_FETCH_TIMEOUT_SEC
+	add_child(tm)
+	tm.timeout.connect(func() -> void: fin.call({"err": "timeout", "code": 0}))
+	tm.start()
+	## ★★不拿公共匿名钥匙去读: `matches` 的读策略是 `auth.uid() is not null`,
+	##   匿名钥匙读回来是 0 行 ⇒ 会被误报成「服务器上没有这场」(与 S2 上传同一个理由)。
+	if not await _await_token():
+		fin.call({"err": "no_token", "code": 0})
+		_bye()
+		return
+	if bool(st["done"]):
+		_bye()                 # 看门狗已经替它回过话了; 别再发请求
+		return
+	var url := base_url().rstrip("/") + "/rest/v1/matches?" + match_fetch_query(match_id)
+	_http("GET", url, "",
+		func(res):
+			var r := parse_fetched_match(bool(res.get("ok", false)), int(res.get("code", 0)),
+				str(res.get("body", "")), match_id)
+			if str(r.get("err", "")) != "":
+				print("[SupabaseNet] 录像没取到(matches) %s code=%d" % [str(r["err"]), int(r.get("code", 0))])
+			fin.call(r)
+			_bye())

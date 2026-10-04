@@ -1434,6 +1434,16 @@ func _ready() -> void:
 			for mi in range(6):
 				synth.append({"result": "win" if mi % 2 == 0 else "lose",
 					"lineup": ["basic", "fire"], "mode": "实时", "turn": 30 + mi})
+			## ★回放 S3(2026-10-04): 第一行挂一个本机有录像的回放 id ⇒ 战绩页上的「回放」入口
+			##   (整行热区 + 行尾签牌)也被这四条判据量到 —— 不挂的话量的是一块没有入口的屏。
+			##   录像文件只要「在」就出入口(判据 `ReplayFetcher.has_replay`), 内容不读。
+			var rp_id := "00000000-0000-4000-8000-0000000000a1"
+			DirAccess.make_dir_recursive_absolute("user://replays/")
+			var rpf := FileAccess.open("user://replays/%s.rpl" % rp_id, FileAccess.WRITE)
+			if rpf != null:
+				rpf.store_buffer(PackedByteArray([0x78, 0x9c]))
+				rpf.close()
+			synth[0]["replay_id"] = rp_id
 			gs.match_history = synth
 		# ★商店货架已在 ShopScene 里钉死(test_mode ⇒ _rng.seed 固定, 不 randomize)。
 		#   之前试 `seed(20260818)` 没用是因为**那是全局 RNG, 而商店有自己的 RandomNumberGenerator** ——
@@ -1506,6 +1516,10 @@ func _ready() -> void:
 					_stk.append(_c)
 			_ok("★★分母 登录墙: 墙那句话「%s」真的在屏幕上" % _head, _found,
 				"找不到 = 量的是另一块屏(控件数挡不住这一类)")
+		## ★回放 S3 的分母: 战绩页上「回放」入口真的建出来了(不然下面四条量的是没有入口的屏)。
+		if str(scn) == "Record":
+			var _rpb: Array = inst.find_children("ReplayBtn", "Button", true, false)
+			_ok("★分母 Record: 「回放」入口真的在屏幕上(%d 个)" % _rpb.size(), _rpb.size() == 1)
 		_ok("%s 网页盒 ≤ %d" % [str(scn), int(b["web"])], int(d["web"]) <= int(b["web"]),
 			"实测 %d" % int(d["web"]))
 		_ok("%s 圆角盒 ≤ %d" % [str(scn), int(b["round"])], int(d["round"]) <= int(b["round"]),
