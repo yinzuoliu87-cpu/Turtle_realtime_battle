@@ -1085,10 +1085,10 @@ scripts/scenes/battle/battle_vfx_lab.gd|lit|召唤物:
 scripts/scenes/battle/battle_vfx_lab.gd|lit|携带者
 scripts/scenes/battle/battle_vfx_lab.gd|lit|枪
 scripts/scenes/battle/battle_vfx_lab.gd|lit|盾
+scripts/scenes/battle/dmg_stats_panel.gd|lit|伤害
 scripts/scenes/battle/dmg_stats_panel.gd|lit|我方
 scripts/scenes/battle/dmg_stats_panel.gd|lit|战报
-scripts/scenes/battle/dmg_stats_panel.gd|lit|打出
-scripts/scenes/battle/dmg_stats_panel.gd|lit|扛住
+scripts/scenes/battle/dmg_stats_panel.gd|lit|承伤
 scripts/scenes/battle/dmg_stats_panel.gd|lit|护盾
 scripts/scenes/battle/dmg_stats_panel.gd|lit|敌方
 scripts/scenes/battle/dmg_stats_panel.gd|lit|治疗
@@ -1199,6 +1199,8 @@ scripts/scenes/battle/review_console.gd|lit|关
 scripts/scenes/battle/review_console.gd|lit|技%d%s
 scripts/scenes/battle/settle_screen.gd|lit|← 滑动翻页 →
 scripts/scenes/battle/settle_screen.gd|lit|▼ 还有 %d 只在下面 · 可上下滑动
+scripts/scenes/battle/settle_screen.gd|lit|伤害
+scripts/scenes/battle/settle_screen.gd|lit|伤害 %d
 scripts/scenes/battle/settle_screen.gd|lit|击杀
 scripts/scenes/battle/settle_screen.gd|lit|合计
 scripts/scenes/battle/settle_screen.gd|lit|失败
@@ -1206,9 +1208,7 @@ scripts/scenes/battle/settle_screen.gd|lit|已封存
 scripts/scenes/battle/settle_screen.gd|lit|平
 scripts/scenes/battle/settle_screen.gd|lit|我方
 scripts/scenes/battle/settle_screen.gd|lit|战果
-scripts/scenes/battle/settle_screen.gd|lit|打出
-scripts/scenes/battle/settle_screen.gd|lit|打出 %d
-scripts/scenes/battle/settle_screen.gd|lit|扛住
+scripts/scenes/battle/settle_screen.gd|lit|承伤
 scripts/scenes/battle/settle_screen.gd|lit|敌方
 scripts/scenes/battle/settle_screen.gd|lit|本场
 scripts/scenes/battle/settle_screen.gd|lit|本场 MVP

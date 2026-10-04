@@ -310,7 +310,7 @@ func _page_result(won: bool, sealed: bool, gs, views: Array) -> Control:
 		var nm := _lbl(battle._st_name(r), F_TEAM - 4, Color("#ffffff"))
 		nm.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		mv.add_child(nm)
-		var dl := _lbl("打出 %d" % int(r.get("_st_dealt", 0)), F_TEAM - 4, COL_GOLD)
+		var dl := _lbl("伤害 %d" % int(r.get("_st_dealt", 0)), F_TEAM - 4, COL_GOLD)
 		dl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		mv.add_child(dl)
 		v.add_child(mv)
@@ -400,7 +400,7 @@ static func team_grid(b, h, rows: Array, header: String, hc: Color) -> GridConta
 	grid.columns = 5
 	grid.add_theme_constant_override("h_separation", 18)
 	grid.add_theme_constant_override("v_separation", 6)
-	var hdrs := [header, "打出", "扛住", "治疗", "击杀"]
+	var hdrs := [header, "伤害", "承伤", "治疗", "击杀"]
 	for i in range(5):
 		var l := _lbl(str(hdrs[i]), F_HEAD, hc if i == 0 else COL_GOLD,
 			HORIZONTAL_ALIGNMENT_LEFT if i == 0 else HORIZONTAL_ALIGNMENT_RIGHT)

@@ -57,7 +57,8 @@ REGISTRAR = ("scripts/scenes/RealtimeBattle3DScene.gd", "_reg_tween")
 # ── 棘轮基线（2026-10-04 冻结，A/B 两套实现对过账）──  文件 → 裸 create_tween 处数
 # ★只减不增：修掉一处就把数字改小；数字变大 = 有人新写了一条走真实钟的 tween。
 BASELINE = {
-    "scripts/scenes/battle/battle_hud.gd": 5,       # HUD 面板动效(UI 层)
+    "scripts/scenes/battle/battle_hud.gd": 3,       # HUD 面板动效(UI 层)·2026-10-04 5→3: 结算屏两处随结算屏搬到 settle_screen.gd
+    "scripts/scenes/battle/settle_screen.gd": 2,    # 结算屏暗幕淡入 + 胜负大字弹出(UI 层·战斗已结束·理由见 tween_freeze_audit ALLOW)
     "scripts/scenes/battle/battle_vfx.gd": 3,       # 飘字(CanvasLayer)
     "scripts/scenes/battle/dual_lane_flow.gd": 4,   # 换路转场 UI(跨路存活, 不能进 _sim_tweens 被连坐清掉)
     "scripts/scenes/hp_bar.gd": 3,                  # 血条拖尾/横抖/白闪
