@@ -80,6 +80,11 @@ const LINE_W_DIM := 2.0                # 连线: 还没决出 = 细
 const GUTTER := 30.0
 
 var _bucket: Dictionary = {}           # 上午: 我自己那个桶
+## 观赛: 本周**所有组**(服务端 `finals_week_view`)。被喂过就用喂进来的这份, 否则读网络缓存。
+var _week: Dictionary = {}
+var _spec_idx := 0                     # 观赛时正在看第几组(下标, 不是组号)
+var _spec_bar: HBoxContainer = null
+var _spec_lb: Label = null
 var _finals: Dictionary = {}           # 晚上: 桶冠军的签表(上午是空的)
 var _view: String = _L.VIEW_BUCKET     # 现在看的是哪一张
 var _now_override := 0                 # ★只给门禁喂已知时刻; 产品不传
@@ -123,7 +128,10 @@ func _ready() -> void:
 	_top_bar = TopBar.new(self, {
 		"title": "周日 · 决赛日",
 		"palette": TopBar.DEEP,
-		"safe": sm,
+		## ★原来传的是 `"safe": sm` —— TopBar 根本不认这个键(它读 safe_left / safe_right),
+		##   于是这一屏的返回键从来没让过刘海。2026-10-04 顶栏宽度那次一起查出来的。
+		"safe_left": sm.x,
+		"safe_right": sm.z,
 		"on_back": func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"),
 	})
 
@@ -151,6 +159,28 @@ func _ready() -> void:
 		ul.size = Vector2(132.0 - 12.0, 4.0)
 		b.add_child(ul)
 		_tabs.add_child(b)
+
+	## ★观赛那一行(2026-10-04): 没晋级的人看别人那一组时, 页签右边说清「只能看」+ 换组。
+	##   皮走同一个 UISkin.button(木框), 不另造。只在【观赛】这一种状态下可见。
+	_spec_bar = HBoxContainer.new()
+	_spec_bar.add_theme_constant_override("separation", 10)
+	_spec_bar.visible = false
+	add_child(_spec_bar)
+	for spec in [["上一组", -1], ["下一组", 1]]:
+		var sb2 := Button.new()
+		sb2.text = str(spec[0])
+		sb2.custom_minimum_size = Vector2(132, 81)
+		var step: int = int(spec[1])
+		sb2.pressed.connect(func(): _spec_step(step))
+		UISkin.button(sb2)
+		_spec_bar.add_child(sb2)
+	_spec_lb = Label.new()
+	_spec_lb.custom_minimum_size = Vector2(0, 81)
+	_spec_lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_spec_lb.add_theme_font_size_override("font_size", 17)
+	_spec_lb.add_theme_color_override("font_color", TXT)
+	_spec_bar.add_child(_spec_lb)
+	_spec_bar.move_child(_spec_lb, 1)
 
 	## 签表还没形成时说人话的那一行(不是画一张空图)
 	## ★先建框、后建字 —— 加入顺序就是绘制顺序, 反了字会被框盖住。
@@ -205,6 +235,17 @@ func _ready() -> void:
 ## 只喂一张（老调用点/门禁用）。
 func set_bucket(d: Dictionary) -> void:
 	set_data(d, {})
+
+
+## 喂本周所有组(观赛 / 冠军页)。形状 = `supabase.parse_finals_week()` 的产物 `{"buckets": [...]}`。
+## ★只给门禁/调试台用; 产品自己联网时读 `_SB.finals_week_cached()`。
+func set_week(w: Dictionary) -> void:
+	_injected = true
+	if _poll != null:
+		_poll.stop()
+	_week = w.duplicate(true)
+	if is_inside_tree():
+		_rebuild()
 
 
 ## 喂两张。★`finals` 为空 = 签表还没形成（上午就是这样），不是"出错了"。
@@ -329,8 +370,15 @@ func _clock() -> int:
 
 
 ## 现在这一张的数据。★全屏所有判据都从这里取 —— 切 Tab 只换它, 其余一行不动。
+## ★观赛(2026-10-04): 「我这一组」页签在【观赛】那一档换成**正在看的那一组** ——
+##   判据就是 `_bucket_kind()`(页签字、正文、画哪张图三者同一份判断)。
+##   那一组的 `me` 一律是 -1 ⇒ `can_open` / `should_fetch_opponent` 全是假 ⇒ 只能看、点不动。
 func cur() -> Dictionary:
-	return _finals if _view == _L.VIEW_FINALS else _bucket
+	if _view == _L.VIEW_FINALS:
+		return _finals
+	if int(_bucket.get("size", 0)) <= 1 and _bucket_kind() == EK_SPECTATE:
+		return _spectate_bucket()
+	return _bucket
 
 
 func set_view(v: String) -> void:
@@ -472,6 +520,7 @@ func _rebuild() -> void:
 	if _bg != null:
 		_bg.size = vp0                 # ★视口变了要跟上, 否则又露出瓷砖底
 	_sync_tabs()
+	_sync_spec()
 	var n := int(cur().get("size", 0))
 	if n <= 1:
 		## ★★不是画一张空图 —— 说清楚在等什么, 还剩多久。
@@ -479,7 +528,9 @@ func _rebuild() -> void:
 		if _empty_lb != null:
 			_empty_lb.text = _empty_text()
 			var bw: float = minf(660.0, vp0.x - 80.0)
-			var bh := 126.0
+			## ★冠军页一组一行(2026-10-04) ⇒ 框高跟着行数走; 一行的老样子仍是 126。
+			var nl: int = _empty_lb.text.count("\n") + 1
+			var bh: float = maxf(126.0, 56.0 + float(nl) * 34.0)
 			var bp := Vector2((vp0.x - bw) * 0.5, vp0.y * 0.5 - bh * 0.5 + 30.0)
 			if _empty_box != null:
 				_empty_box.position = bp
@@ -568,6 +619,9 @@ const EK_NOT_SEATED := "not_seated"      # 报了名, 但还没到周日分组�
 const EK_FINALS_SOON := "finals_soon"    # 冠军赛还没集结(CROSS_BUCKET_LIVE 之后才走到)
 const EK_FINALS_LOCAL := "finals_local"  # 跨组总决赛没上线 ⇒ 各组自己评冠军
 const EK_NO_GROUP := "no_group"          # 确实没有我这一组(没晋级)
+## ★2026-10-04 加的两档 —— 它们**不是空态**(会画图), 但「我这一组」页签的字要从同一份判断里出:
+const EK_SEATED := "seated"              # 我有组(分好了) ⇒ 画我那一组
+const EK_SPECTATE := "spectate"          # 没晋级, 但服务端给得出本周各组 ⇒ 观赛(只能看)
 
 
 ## 空态判断与措辞共用的那一份数据: 自己联网时取缓存, 被喂过就用喂进来的那张。
@@ -575,8 +629,36 @@ func _feed_view() -> Dictionary:
 	return _bucket if _injected else (_SB.finals_cached() as Dictionary)
 
 
+## 「我这一组」那一页是哪一种状态。★★页签的字(`bucket_tab_suffix`)、正文(`_empty_text`)、
+##   画哪张图(`cur()`)**三者都从这一个函数出** —— 2026-10-04 手机实拍: 页签写「还没分」、
+##   正文写「本周没有你这一组 · 晋级才进得来」, 两处各判各的, 对没晋级的人说了两件不同的事。
+## ★与页签选中哪一张无关(页签上的字两张都要显示)。
+func _bucket_kind() -> String:
+	if int(_bucket.get("size", 0)) > 1:
+		return EK_SEATED
+	var k := _feed_kind()
+	if k != "":
+		return k
+	if not _spectate_list().is_empty():
+		return EK_SPECTATE
+	return EK_NO_GROUP
+
+
 ## 现在是哪一种空态。★★门禁量这个, **不量屏幕字面量**(见上面那段的由来)。
+## ★冠军页(跨组总决赛没上线时)不看「我有没有组」—— 冠军是全服的事, 没晋级的人也该看得到。
 func _empty_kind() -> String:
+	if _view == _L.VIEW_FINALS and not CROSS_BUCKET_LIVE:
+		if not _injected and not _SB.finals_tried():
+			return EK_WAIT
+		return EK_FINALS_LOCAL
+	if _view == _L.VIEW_FINALS:
+		var fk := _feed_kind()
+		return fk if fk != "" else EK_FINALS_SOON
+	return _bucket_kind()
+
+
+## 「问名册」这件事本身走到哪一步了: 还没回音 / 问不到 / 还没分组 / 人太少; `""` = 都不是。
+func _feed_kind() -> String:
 	## ★自己联网取数时: **还没问到回音**跟**问到了但没有我这一组**要分开说。
 	##   混成一句的话, 网络慢的人会以为自己没进决赛日。
 	if not _injected and not _SB.finals_tried():
@@ -599,22 +681,173 @@ func _empty_kind() -> String:
 		if _P2C.finals_before_seating(_clock()):
 			return EK_NOT_SEATED
 		return EK_TOO_FEW
-	if _view == _L.VIEW_FINALS:
-		## ★★★2026-09-26: 跨组总决赛是 **F 阶段**, 一行都没做 ——
-		##   服务端只有 `finals_buckets/entrants/results/scout/pending`, 没有任何
-		##   「各组冠军汇总」; 客户端 `_finals` 只有老调用点 `set_data()`(门禁用)会写,
-		##   联网那条路 `_on_poll` **只写 `_bucket`**。
-		##   ⇒ 原来这里一小时一小时地倒计时, 而那个东西永远不会来。
-		##   ⇒ 上线那天把 `CROSS_BUCKET_LIVE` 翻成 true, 倒计时那两句就回来
-		##     (memory fb-branch-to-an-unbuilt-mode-is-a-backdoor: 让「没上线」是可读状态)。
-		## ★写成 if/else 而**不是** `if not CROSS_BUCKET_LIVE: return …` ——
-		##   后者会让上线那一支变成死代码, `tools/const_branch_audit.py` 当场判红
-		##   (恒真常量分支 + return 吞掉同函数后续代码), 而那条审计器是对的。
-		if CROSS_BUCKET_LIVE:
-			return EK_FINALS_SOON
-		else:
-			return EK_FINALS_LOCAL
-	return EK_NO_GROUP
+	## ★★★2026-09-26: 跨组总决赛是 **F 阶段**, 一行都没做 —— 没上线时冠军页走 EK_FINALS_LOCAL
+	##   (见 `_empty_kind()`; 原来这里一小时一小时地倒计时一个永远不会来的东西)。
+	##   上线那天把 `CROSS_BUCKET_LIVE` 翻成 true, 倒计时那两句就回来。
+	## ★`_empty_kind()` 里写成 `_view == FINALS and not CROSS_BUCKET_LIVE` 而**不是**
+	##   `if not CROSS_BUCKET_LIVE: return …` —— 后者是恒真常量分支 + return,
+	##   `tools/const_branch_audit.py` 当场判红(会吞掉上线那一支), 而那条审计器是对的。
+	return ""
+
+
+## 「我这一组」页签名字后面缀什么。★输入就是 `_bucket_kind()` —— 页签与正文同一份判断。
+## ★2026-10-04 用户: 不再有「还没分」(它把「没晋级」和「还没到分组时间」说成同一件事)。
+static func bucket_tab_suffix(kind: String) -> String:
+	match kind:
+		EK_SEATED:
+			return ""
+		EK_NO_GROUP, EK_SPECTATE:
+			return " · 未晋级"
+		EK_NOT_SEATED:
+			return " · 等分组"
+		EK_TOO_FEW:
+			return " · 未开赛"
+		EK_UNREACHABLE:
+			return " · 连不上"
+	return " · 查询中"
+
+
+## 观赛能看的组(服务端 `finals_week_view` 的产物里的 `buckets`)。没上线 / 没问到 ⇒ 空。
+func _week_view() -> Dictionary:
+	return _week if _injected else (_SB.finals_week_cached() as Dictionary)
+
+
+func _spectate_list() -> Array:
+	var out: Array = []
+	var bs = _week_view().get("buckets", [])
+	if bs is Array:
+		for b in bs:
+			if b is Dictionary and int((b as Dictionary).get("size", 0)) > 1:
+				out.append(b)
+	return out
+
+
+## 正在看的那一组。★`me` 强制 -1: 观众永远不是这一组的选手(点不动、不记进度、不问对手)。
+func _spectate_bucket() -> Dictionary:
+	var lst := _spectate_list()
+	if lst.is_empty():
+		return {}
+	_spec_idx = clampi(_spec_idx, 0, lst.size() - 1)
+	var b: Dictionary = (lst[_spec_idx] as Dictionary).duplicate(true)
+	b["me"] = -1
+	return b
+
+
+func _spec_step(d: int) -> void:
+	var n := _spectate_list().size()
+	if n <= 1:
+		return
+	_spec_idx = posmod(_spec_idx + d, n)
+	_rebuild()
+
+
+## 观赛那一行。★只在「我这一组」页签 + 观赛那一档可见; 一组时不给换组按钮。
+func _sync_spec() -> void:
+	if _spec_bar == null:
+		return
+	var on: bool = _view == _L.VIEW_BUCKET and _bucket_kind() == EK_SPECTATE
+	_spec_bar.visible = on
+	if not on:
+		return
+	var lst := _spectate_list()
+	var sb: Dictionary = _spectate_bucket()
+	var grp := int(sb.get("bucket", _spec_idx)) + 1
+	_spec_lb.text = ("你本周未晋级 · 只能看 · 第 %d 组" % grp) + (
+		"  (%d/%d)" % [_spec_idx + 1, lst.size()] if lst.size() > 1 else "")
+	for i in [0, 2]:
+		var bb := _spec_bar.get_child(i) as Button
+		bb.visible = lst.size() > 1
+		_fit_tab(bb)
+	var tw: float = _tabs.get_combined_minimum_size().x if _tabs != null else 300.0
+	_spec_bar.position = Vector2(_tabs.position.x + tw + 24.0, _tabs.position.y)
+
+
+## ══════════════════════════════════════════════════════════════════════
+##  冠军页(跨组总决赛没上线时) —— 各组冠军汇总(2026-10-04)
+## ══════════════════════════════════════════════════════════════════════
+## 原来这一页写「冠军赛 · 未开赛」+「你这一组的冠军就是本周冠军」—— 决赛 08:24 就打完了,
+## 而且对没晋级的人说「你这一组」。⇒ 页签改叫「本周冠军」, 正文列出各组冠军。
+const CH_NONE := "none"          # 一组都还没决出
+const CH_PARTIAL := "partial"    # 决出了一部分
+const CH_ALL := "all"            # 全部决出
+
+
+## 这一组的冠军是几号种子; -1 = 决赛还没翻面。★推导走 `bracket.occupant_seed`(与对阵图同一份)。
+static func champion_seed(b: Dictionary) -> int:
+	var n := int(b.get("size", 0))
+	if n <= 1:
+		return -1
+	var total := _B.rounds_for(n)
+	var done: Dictionary = b.get("done", {}) if b.get("done", {}) is Dictionary else {}
+	var w := int(done.get("%d-0" % total, -1))
+	if w < 0:
+		return -1
+	var sd := _B.occupant_seed(total, 0, w, n, done)
+	return sd if sd >= 0 else -1
+
+
+## 冠军汇总。**纯函数**: 喂若干组就能验。`complete` = 这份名单是不是**全服所有组**
+## (观赛接口没上线时只有我自己那一组, 那时不许说「全部决出」)。
+## 返回 {"state", "decided", "total", "complete", "lines": ["第 1 组冠军 · 名字 #ID", ...]}
+static func champion_summary(buckets: Array, complete: bool) -> Dictionary:
+	var lines: Array = []
+	var total := 0
+	for b in buckets:
+		if not (b is Dictionary) or int((b as Dictionary).get("size", 0)) <= 1:
+			continue
+		total += 1
+		var sd := champion_seed(b)
+		if sd < 0:
+			continue
+		var names: Array = b.get("names", []) if b.get("names", []) is Array else []
+		var tags: Array = b.get("tags", []) if b.get("tags", []) is Array else []
+		var nm := str(names[sd]) if sd < names.size() else "神秘龟"
+		## ★冠军一律带 #玩家ID(用户 2026-10-04「名字 + #ID」): 这是全服名单, 不是一组里比重名。
+		var tg := str(tags[sd]) if sd < tags.size() else ""
+		lines.append("第 %d 组冠军 · %s%s" % [int(b.get("bucket", total - 1)) + 1, nm,
+			(" " + tg) if tg != "" else ""])
+	var st := CH_NONE
+	if total > 0 and lines.size() == total:
+		st = CH_ALL
+	elif not lines.is_empty():
+		st = CH_PARTIAL
+	return {"state": st, "decided": lines.size(), "total": total, "complete": complete,
+		"lines": lines}
+
+
+## 冠军汇总 → 屏幕上的字。★这里一个条件都不判状态之外的东西。
+static func champion_text(cs: Dictionary) -> String:
+	var lines: Array = cs.get("lines", [])
+	var head := ""
+	var total := int(cs.get("total", 0))
+	if total <= 0:
+		return "各组冠军决出后在这里公布"
+	if not bool(cs.get("complete", false)):
+		head = "已决出的冠军" if not lines.is_empty() else "决赛进行中 · 冠军还没决出"
+	else:
+		match str(cs.get("state", CH_NONE)):
+			CH_ALL:
+				head = "本周冠军已全部决出 · 共 %d 组" % total
+			CH_PARTIAL:
+				head = "决赛进行中 · 已决出 %d/%d 组" % [int(cs.get("decided", 0)), total]
+			_:
+				head = "决赛进行中 · 各组冠军还没决出"
+	## 太多组就收尾一行, 不让框顶出屏幕(10 人规模下最多 3 组, 这是防将来)。
+	var show: Array = lines.slice(0, 8)
+	if lines.size() > show.size():
+		show.append("…还有 %d 组" % (lines.size() - show.size()))
+	var parts := PackedStringArray([head])
+	for ln in show:
+		parts.append(str(ln))
+	return "\n".join(parts)
+
+
+## 冠军页用哪几组: 观赛接口上线了 ⇒ 全服所有组; 没上线 ⇒ 只有我自己那一组(若有)。
+func _champ_buckets() -> Array:
+	var wv := _week_view()
+	if wv.has("buckets"):
+		return wv.get("buckets", []) as Array
+	return [_bucket] if int(_bucket.get("size", 0)) > 1 else []
 
 
 ## 空态图标 —— 分类 → `assets/sprites/ui/` 里**现成**的像素图标。
@@ -655,15 +888,20 @@ func _empty_text() -> String:
 			return "冠军赛正在集结 · 等各组决出自己的冠军"
 		EK_FINALS_LOCAL:
 			## ★★★只说**现在按什么算**, 不把内部进度顶在玩家脸上(2026-09-28)。
-			##   原来这句话缀着「跨组总决赛还没做出来」—— 一句**开发状态**,
-			##   而且是被 `verify_bracket_map` ⑤ 的判据**要求**必须在的
-			##   (那条判据已同一次改成量分类, 见上)。
-			return "本周按各组自己算冠军 · 你这一组的冠军就是本周冠军"
+			## ★★2026-10-04: 原来是「本周按各组自己算冠军 · 你这一组的冠军就是本周冠军」——
+			##   决赛早就打完了还不报冠军, 而且对没晋级的人说「你这一组」。⇒ 直接列各组冠军。
+			return champion_text(champion_summary(_champ_buckets(), _week_view().has("buckets")))
+		EK_SEATED:
+			return "正在摆你这一组的对阵"
+		EK_SPECTATE:
+			return "你本周未晋级 · 本周各组的对阵只能看"
 	return "本周没有你这一组 · 周六闯关赛晋级才进得来"
 
 
 ## 两个 Tab 的样子：当前那张高亮；**还没形成的那张不禁用**（要让人点进去看倒计时），
-## 但名字后面缀一个「·未开」，免得点进去才发现是空的。
+## 但名字后面缀一句状态，免得点进去才发现是空的。
+## ★2026-10-04: 「我这一组」的后缀从 `_bucket_kind()` 出(与正文同一份判断);
+##   跨组总决赛没上线时第二张叫「本周冠军」(原来叫「冠军赛 · 未开赛」—— 那场赛根本不存在)。
 func _sync_tabs() -> void:
 	if _tabs == null:
 		return
@@ -671,8 +909,8 @@ func _sync_tabs() -> void:
 	if kids.size() < 2:
 		return
 	var names := [
-		"我这一组" + ("" if int(_bucket.get("size", 0)) > 1 else " · 还没分"),
-		"冠军赛" + ("" if int(_finals.get("size", 0)) > 1 else " · 未开赛"),
+		"我这一组" + bucket_tab_suffix(_bucket_kind()),
+		finals_tab_text(int(_finals.get("size", 0))),
 	]
 	var views := [_L.VIEW_BUCKET, _L.VIEW_FINALS]
 	for i in range(2):
@@ -686,6 +924,11 @@ func _sync_tabs() -> void:
 		if ul != null:
 			ul.size.x = b.custom_minimum_size.x - 12.0
 			ul.color = ACCENT if on else Color("#222c3e")
+
+
+## 第二张页签叫什么。★跨组总决赛上线前后是两件事: 上线了才有「冠军赛」这场比赛。
+static func finals_tab_text(finals_size: int) -> String:
+	return ("冠军赛" + ("" if finals_size > 1 else " · 未开赛")) if CROSS_BUCKET_LIVE else "本周冠军"
 
 
 ## 页签宽度**按字量**, 不拍脑袋。
@@ -1302,6 +1545,8 @@ func _start_feed() -> void:
 func _pull() -> void:
 	_fetch_left = REFRESH_SEC
 	_SB.fetch_finals_async(_P2C.week_anchor_utc(_clock()), -1)
+	## ★观赛 / 冠军页: 本周所有组。服务端没部署时回 404 ⇒ 缓存里没有 buckets ⇒ 屏幕照旧, 不报错。
+	_SB.fetch_finals_week_async(_P2C.week_anchor_utc(_clock()))
 
 
 # ─────────────────────────────────────────────────────────────
@@ -1428,8 +1673,10 @@ func _on_poll() -> void:
 	##   优先级高于"还能买多久"，所以下面那句有内容时会盖掉这一句。
 	if _shop_row != null:
 		var now_l := _clock()
+		## ★看的是**我那一组**(`_bucket`), 不是 `cur()` —— 观赛时 `cur()` 是别人那一组,
+		##   拿它判「有组」会对没晋级的人念「本轮备战已结束 · 等开打」。
 		var st := shop_tip(_SB.finals_shop_open_now(now_l), _SB.finals_shop_left_now(now_l),
-			int(cur().get("size", 0)) > 1)
+			int(_bucket.get("size", 0)) > 1)
 		_shop_row.text = st
 		_shop_row.visible = st != ""
 		if st != "":
@@ -1451,7 +1698,7 @@ func _on_poll() -> void:
 	## ★比一个「指纹」而不是逐字段比: 只比 size 会漏掉翻面, 只比 round 会漏掉
 	##   **同一轮里陆续出结果**(一个桶里那几场不是同时结束的) ⇒ 半张图要等到下一轮才亮。
 	var sig := "%d/%d/%d" % [int(v.get("size", 0)), int(v.get("round", 0)),
-		(v.get("done", {}) as Dictionary).size()]
+		(v.get("done", {}) as Dictionary).size()] + week_sig(_SB.finals_week_cached())
 	## ★空了也要重画(比如服务端说「你没报名」) —— 只在"有数据且变了"时重画,
 	##   就会把开屏那句「正在连线」永远留在屏幕上。
 	if sig != _last_sig:
@@ -1460,6 +1707,21 @@ func _on_poll() -> void:
 		_record_progress()             # ★权威结果到手 ⇒ 记进度 + 对头衔账(见那个函数的头注)
 		_rebuild()
 	_sync_tip()
+
+
+## 观赛那份数据的指纹: 组数 / 各组轮次 / 已翻面场数 / 收盘数。★任何一组翻面都要重画。
+static func week_sig(w: Dictionary) -> String:
+	var bs = w.get("buckets", null)
+	if not (bs is Array):
+		return "|-"
+	var r := 0
+	var d := 0
+	var c := 0
+	for b in bs:
+		r += int((b as Dictionary).get("round", 0))
+		d += ((b as Dictionary).get("done", {}) as Dictionary).size()
+		c += 1 if bool((b as Dictionary).get("closed", false)) else 0
+	return "|%d/%d/%d/%d" % [(bs as Array).size(), r, d, c]
 
 
 ## 倒计时的写法。★用户 2026-10-04 拍板「改成『8 分 43 秒后』」:

@@ -491,6 +491,48 @@ revoke execute on function public.finals_view(bigint, int) from anon;
 grant execute on function public.finals_view(bigint, int) to authenticated;
 
 -- ─────────────────────────────────────────────────────────────
+-- 观赛读接口 (2026-10-04)：本周**所有组**的对阵与【已翻面】结果，任何登录用户都能读
+--
+-- ★为什么要有它：`finals_view(week, -1)` 只回「我那个组」，没晋级的人拿到 `not_entered`，
+--   整个周日只看得到一把锁。原案 D13「观赛四块全做」；`finals_buckets` 的读策略本来就写着
+--   「观赛是公开的」。冠军页也要它：各组冠军汇总，客户端原来只有自己那一组。
+-- ★★不剧透与 `finals_view` 同一条规矩、一字不差：`b.closed or r.round < b.round`。
+--   当前轮的胜负**根本不下发**（客户端 `_bucket_from` 照同一条再筛一遍，第二道锁）。
+-- ★只下发 名字 / account_id（客户端据此现算 #玩家ID，算法只在 phase2_config.player_tag 一份）/ 结果。
+--   **不碰 `snapshot` 列**（阵容只能经 `finals_opponent` 每人每轮问一次，见 2026-09-25 收掉 finals_e_read 那段）。
+--   account_id 的暴露面与 `finals_view(week, <任意组号>)` 现状相同，没有新增。
+-- ★没部署之前客户端拿到 404，按「这条路暂时没有」处理，屏幕退回「未晋级」，不报错。
+-- ─────────────────────────────────────────────────────────────
+create or replace function public.finals_week_view(p_week bigint)
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare bs jsonb;
+begin
+  if auth.uid() is null then
+    return jsonb_build_object('ok', false, 'reason', 'not_signed_in');
+  end if;
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'bucket', b.bucket_no, 'n', b.n, 'round', b.round, 'closed', b.closed,
+           'entrants', (select coalesce(jsonb_agg(jsonb_build_object(
+                           'seed', e.seed, 'name', e.name, 'account_id', e.account_id)
+                         order by e.seed), '[]'::jsonb)
+                          from public.finals_entrants e
+                         where e.season_week = p_week and e.bucket_no = b.bucket_no),
+           'done', (select coalesce(jsonb_object_agg(r.round || '-' || r.match_no, r.winner_side), '{}'::jsonb)
+                      from public.finals_results r
+                     where r.season_week = p_week and r.bucket_no = b.bucket_no
+                       and (b.closed or r.round < b.round)))
+         order by b.bucket_no), '[]'::jsonb)
+    into bs from public.finals_buckets b
+   where b.season_week = p_week;
+  return jsonb_build_object('ok', true, 'week', p_week,
+    'now', extract(epoch from now())::bigint, 'buckets', bs);
+end $$;
+
+revoke all on function public.finals_week_view(bigint) from public;
+revoke execute on function public.finals_week_view(bigint) from anon;
+grant execute on function public.finals_week_view(bigint) to authenticated;
+
+-- ─────────────────────────────────────────────────────────────
 -- 赛程推进器：本轮时间到了 **且** 本轮该打的都打完了 → 进下一轮
 -- ★由 pg_cron 每分钟叫一次。离线版没有"收盘"这个事件，
 --   而 pg_cron 就是把"到点了"这件事做成真事件的最便宜办法。

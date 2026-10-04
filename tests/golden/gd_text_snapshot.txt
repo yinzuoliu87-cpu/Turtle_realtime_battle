@@ -483,29 +483,44 @@ scripts/net/supabase.gd|lit|验证失败（%d）
 scripts/net/supabase.gd|lit|验证码不对，或者已经过期了（重新发一次）
 scripts/net/supabase.gd|lit|验证码发到 %s 了，查收一下（也看看垃圾邮件）
 scripts/scenes/BracketMapScene.gd|lit| · 未开赛
-scripts/scenes/BracketMapScene.gd|lit| · 还没分
+scripts/scenes/BracketMapScene.gd|lit| · 未晋级
+scripts/scenes/BracketMapScene.gd|lit| · 查询中
+scripts/scenes/BracketMapScene.gd|lit| · 等分组
+scripts/scenes/BracketMapScene.gd|lit| · 连不上
 scripts/scenes/BracketMapScene.gd|lit|%d 分 %d 秒
 scripts/scenes/BracketMapScene.gd|lit|%d 秒
+scripts/scenes/BracketMapScene.gd|lit|…还有 %d 组
+scripts/scenes/BracketMapScene.gd|lit|上一组
+scripts/scenes/BracketMapScene.gd|lit|下一组
 scripts/scenes/BracketMapScene.gd|lit|你
 scripts/scenes/BracketMapScene.gd|lit|你不在这一组里 · 只能看别人打
+scripts/scenes/BracketMapScene.gd|lit|你本周未晋级 · 本周各组的对阵只能看
 scripts/scenes/BracketMapScene.gd|lit|冠
 scripts/scenes/BracketMapScene.gd|lit|冠军赛
 scripts/scenes/BracketMapScene.gd|lit|冠军赛 %d 小时 %d 分后开播 · 先等各组决出自己的冠军
 scripts/scenes/BracketMapScene.gd|lit|冠军赛正在集结 · 等各组决出自己的冠军
+scripts/scenes/BracketMapScene.gd|lit|决赛进行中 · 冠军还没决出
+scripts/scenes/BracketMapScene.gd|lit|决赛进行中 · 各组冠军还没决出
+scripts/scenes/BracketMapScene.gd|lit|决赛进行中 · 已决出 %d/%d 组
+scripts/scenes/BracketMapScene.gd|lit|各组冠军决出后在这里公布
 scripts/scenes/BracketMapScene.gd|lit|周日 · 决赛日
 scripts/scenes/BracketMapScene.gd|lit|备战购物 · 还剩 %s
 scripts/scenes/BracketMapScene.gd|lit|对手
 scripts/scenes/BracketMapScene.gd|lit|对手没留下阵容 · 这一场算他弃权
 scripts/scenes/BracketMapScene.gd|lit|对手阵容已就位 · %s
+scripts/scenes/BracketMapScene.gd|lit|已决出的冠军
 scripts/scenes/BracketMapScene.gd|lit|待定
 scripts/scenes/BracketMapScene.gd|lit|我这一组
 scripts/scenes/BracketMapScene.gd|lit|暂时看不到对手阵容 · 过两秒再点一次
+scripts/scenes/BracketMapScene.gd|lit|本周冠军
+scripts/scenes/BracketMapScene.gd|lit|本周冠军已全部决出 · 共 %d 组
 scripts/scenes/BracketMapScene.gd|lit|本周只有 %d 人晋级 · 人太少, 决赛日没开起来; 你的晋级算数, 下周再来
-scripts/scenes/BracketMapScene.gd|lit|本周按各组自己算冠军 · 你这一组的冠军就是本周冠军
 scripts/scenes/BracketMapScene.gd|lit|本周没有你这一组 · 周六闯关赛晋级才进得来
 scripts/scenes/BracketMapScene.gd|lit|本轮备战已结束 · 等开打
+scripts/scenes/BracketMapScene.gd|lit|正在摆你这一组的对阵
 scripts/scenes/BracketMapScene.gd|lit|正在翻本周的名册 · 看看你分在哪一组
 scripts/scenes/BracketMapScene.gd|lit|神秘龟
+scripts/scenes/BracketMapScene.gd|lit|第 %d 组冠军 · %s%s
 scripts/scenes/BracketMapScene.gd|lit|轮空
 scripts/scenes/BracketMapScene.gd|lit|还没分组 · 本地 %s 自动分组开打, 到时候这里会出现你的对阵
 scripts/scenes/BracketMapScene.gd|lit|这一轮你已经看过 %d 号了 · 一轮只能看一个对手
@@ -513,6 +528,7 @@ scripts/scenes/BracketMapScene.gd|lit|这一轮已经翻篇了 · 刷新一下�
 scripts/scenes/BracketMapScene.gd|lit|连不上服务器 · 你这一组还没看到, 每 30 秒自己再看一次
 scripts/scenes/BracketMapScene.gd|lit|连不上服务器 · 过两秒再点一次
 scripts/scenes/BracketMapScene.gd|text|下一轮 %s后开播
+scripts/scenes/BracketMapScene.gd|text|你本周未晋级 · 只能看 · 第 %d 组
 scripts/scenes/BracketMapScene.gd|text|回到我
 scripts/scenes/BracketMapScene.gd|tooltip_text|上场开打
 scripts/scenes/BracketMapScene.gd|tooltip_text|开播

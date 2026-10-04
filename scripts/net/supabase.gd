@@ -1940,7 +1940,12 @@ static func parse_finals(ok: bool, code: int, body: String, my_account: String,
 			return {"reason": "too_few",
 				"entered": int((_p.data as Dictionary).get("entered", 0))}
 		return {}
-	var d: Dictionary = _p.data
+	return _bucket_from(_p.data, my_account, recv_at)
+
+
+## 服务端一个组的字典 → 对阵图要的形状。★`finals_view`(我这一组) 与 `finals_week_view`(观赛·本周所有组)
+##   **共用这一份** —— 两条路各写一份翻译, 抄一次就永远落后一次(memory fb-hand-rolled-copies-drift)。
+static func _bucket_from(d: Dictionary, my_account: String, recv_at: int) -> Dictionary:
 	var n := int(d.get("n", 0))
 	if n <= 0:
 		return {}
@@ -1965,9 +1970,18 @@ static func parse_finals(ok: bool, code: int, body: String, my_account: String,
 		if my_account != "" and str(ed.get("account_id", "")) == my_account:
 			me = sd
 	## `done` 的值过一遍 int() —— JSON 解出来是浮点, 直接当 side 用会在比较时出错
+	## ★★第二道锁(2026-10-04 观赛): 服务端只下发「已翻面」的轮次(`closed or round < 当前轮`),
+	##   这里照同一条规矩再筛一遍 —— 观赛把**所有组**的结果都摆到每个人眼前,
+	##   服务端哪天写错一行, 漏出去的就不是一个人的一场, 而是全服每一组的当前轮。
+	##   对守规矩的回包这一段是空操作(门禁 `verify_bracket_spectate` 两头都量)。
+	var rnd := maxi(1, int(d.get("round", 1)))
+	var closed := bool(d.get("closed", false))
+	var raw_done: Dictionary = d.get("done", {}) if d.get("done", {}) is Dictionary else {}
 	var done: Dictionary = {}
-	for k in (d.get("done", {}) as Dictionary):
-		done[str(k)] = int((d.get("done", {}) as Dictionary)[k])
+	for k in raw_done:
+		if not closed and int(str(k).get_slice("-", 0)) >= rnd:
+			continue
+		done[str(k)] = int(raw_done[k])
 	## ★倒计时用**服务端的时间差**, 不用本机绝对时钟 —— 设备时钟不对时倒计时照样准
 	var srv_now := int(d.get("now", 0))
 	var nxt := int(d.get("next_at", 0))
@@ -1976,14 +1990,98 @@ static func parse_finals(ok: bool, code: int, body: String, my_account: String,
 	##   **真正的桶号只有回包里有**。而 `finals_opponent` 必须传准确的桶号 ——
 	##   没有它就只能再往返一次去问, 那会出现「查到桶号、桶却没了」的中间态
 	##   (服务端当初把这两件事并进一次往返, 正是为了避开它)。
-	return {"size": n, "round": maxi(1, int(d.get("round", 1))), "done": done,
-		"names": names, "tags": tags, "me": me, "closed": bool(d.get("closed", false)),
+	return {"size": n, "round": rnd, "done": done,
+		"names": names, "tags": tags, "me": me, "closed": closed,
 		"left": left, "recv_at": recv_at, "bucket": int(d.get("bucket", -1)),
 		## ★E-B7 备战购物窗要的两个数。**都用服务端的** ——
 		##   `round_at` 是本轮开始时刻，`srv_now` 是收包那一刻服务端的钟。
 		##   有了这两个，本机只需要算**过了多久**（时间差），不必相信本机的绝对时钟
 		##   （与上面 `left` 同一条纪律：本机时钟偏了也不影响，只要它走得不快不慢）。
 		"round_at": int(d.get("round_at", 0)), "srv_now": int(d.get("now", 0))}
+
+
+# ─────────────────────────────────────────────────────────────
+# 观赛 · 本周所有组(2026-10-04, 用户「改」)
+#
+# ★为什么要有这条: `finals_view(week, -1)` 只回「我那个组」; 没晋级的人回 `not_entered`,
+#   整个周日只看得到一把锁。原案 D13「观赛四块全做」, 而周日对阵本来就是公开的
+#   (`finals_buckets` 的读策略写着「观赛是公开的」)。
+# ★服务端 RPC `finals_week_view(p_week)`: 本周每个组的 {bucket, n, round, closed, entrants(seed/name/account_id),
+#   done(只含已翻面)}。**不含快照/阵容**。SQL 在 schema.sql 同名函数处。
+# ★★没上线时(404 / 函数不存在) 一律当「这条路暂时没有」—— 屏幕退回「未晋级」那一把锁,
+#   不报错、不弹窗; 上线那一刻下一次轮询就自动变成观赛, 客户端不用再发版。
+# ─────────────────────────────────────────────────────────────
+static var _finals_week: Dictionary = {}
+static var _finals_week_inflight := false
+
+
+static func finals_week_cached() -> Dictionary:
+	return _finals_week
+
+
+static func finals_week_clear() -> void:
+	_finals_week = {}
+	_finals_week_inflight = false
+
+
+static func fetch_finals_week_async(week: int) -> void:
+	var gs = _gs()
+	if gs == null or _finals_week_inflight:
+		return
+	## 闸与 `fetch_finals_async` 同一条: 服务端认得出你是谁才去问(`auth.uid() is null` 它也拦)。
+	if str(gs.account_id) == "" or _token == "":
+		return
+	var n = _spawn()
+	if n != null:
+		_finals_week_inflight = true
+		n.fetch_finals_week(week)
+
+
+func fetch_finals_week(week: int) -> void:
+	if not enabled():
+		_finals_week_inflight = false
+		_bye()
+		return
+	var gs = _gs()
+	var mine := str(gs.account_id) if gs != null else ""
+	_http("POST", base_url().rstrip("/") + "/rest/v1/rpc/finals_week_view",
+		JSON.stringify({"p_week": week}),
+		func(res):
+			_finals_week_inflight = false
+			var pw: Dictionary = parse_finals_week(bool(res.get("ok", false)), int(res.get("code", 0)),
+				str(res.get("body", "")), mine, int(Time.get_unix_time_from_system()))
+			## ★同 `fetch_finals`: 问不到就别抹掉上一份好数据(网络抖一下观赛图不许消失)。
+			if pw.has("buckets") or _finals_week.is_empty():
+				_finals_week = pw
+			_bye(),
+		"Content-Type: application/json")
+
+
+## 回包 → `{"buckets": [与 parse_finals 同形状的组, 按组号排], "srv_now"}`; 拿不到 → `{"reason": ...}`(没有 buckets 键)。
+## ★**纯函数**, 门禁直接喂回包字符串。
+## ★404 / 函数不存在(服务端还没部署这条 RPC) ⇒ `reason = "unavailable"`, 不是「问不到」——
+##   前者不会自己好, 屏幕不该说「每 30 秒再看一次」。
+static func parse_finals_week(ok: bool, code: int, body: String, my_account: String,
+		recv_at: int) -> Dictionary:
+	if code == 404:
+		return {"reason": "unavailable"}
+	if not ok or code < 200 or code >= 300:
+		return {"reason": UNREACHABLE}
+	var _p := JSON.new()
+	if _p.parse(body) != OK or not (_p.data is Dictionary):
+		return {"reason": UNREACHABLE}
+	var d: Dictionary = _p.data
+	if not bool(d.get("ok", false)):
+		return {"reason": str(d.get("reason", "unavailable"))}
+	var out: Array = []
+	for b in (d.get("buckets", []) if d.get("buckets", []) is Array else []):
+		if not (b is Dictionary):
+			continue
+		var one: Dictionary = _bucket_from(b, my_account, recv_at)
+		if int(one.get("size", 0)) > 1:
+			out.append(one)
+	out.sort_custom(func(x, y): return int(x.get("bucket", 0)) < int(y.get("bucket", 0)))
+	return {"buckets": out, "srv_now": int(d.get("now", 0)), "recv_at": recv_at}
 
 
 ## 收到回包时还剩几秒 → 现在还剩几秒。★用的是「收包时剩多少」减「本机过了多久」,
