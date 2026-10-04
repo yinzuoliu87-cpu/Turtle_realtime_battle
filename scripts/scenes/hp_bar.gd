@@ -216,19 +216,14 @@ func _draw() -> void:
 	cursor += _seg(x, cursor, w, _aura, _AURA, _AURA, 0.6)
 	cursor += _seg(x, cursor, w, _bubble, _BUBBLE, _BUBBLE, 0.55)
 	cursor += _seg(x, cursor, w, _anem, _ANEM, _ANEM, 0.7)
-	# 刻度 100/500 (在 fill 之上; drawFrame:333-352)
-	var minor_px := (100.0 / _bm) * w
-	if minor_px >= w * 0.02:
-		var v := 100.0
-		while v < _bm:
-			var tx := roundf(x + (v / _bm) * w)
-			draw_rect(Rect2(tx, 0, 1.0, maxf(2.0, ceilf(h / 2.0))), Color(0, 0, 0, 0.35))
-			v += 100.0
-		var v2 := 500.0
-		while v2 < _bm:
-			var tx2 := roundf(x + (v2 / _bm) * w)
-			draw_rect(Rect2(tx2, 0, 1.0, h), Color(0, 0, 0, 0.6))
-			v2 += 500.0
+	# 刻度: 小 TICK_MINOR / 大 TICK_MAJOR (在 fill 之上; drawFrame:333-352)。位置全由 tick_values 算。
+	var tk := tick_values(_bm, w)
+	for v in tk["minor"]:
+		var tx := roundf(x + (float(v) / _bm) * w)
+		draw_rect(Rect2(tx, 0, 1.0, maxf(2.0, ceilf(h / 2.0))), Color(0, 0, 0, 0.35))
+	for v2 in tk["major"]:
+		var tx2 := roundf(x + (float(v2) / _bm) * w)
+		draw_rect(Rect2(tx2, 0, 1.0, h), Color(0, 0, 0, 0.6))
 	# 60ms 白闪
 	if _flash_a > 0.0 and hp_w > 0.0:
 		draw_rect(Rect2(x, 0, hp_w, h), Color(1, 1, 1, _flash_a))
@@ -244,6 +239,39 @@ func _draw() -> void:
 			flc.a = sb["fa"]
 			draw_rect(Rect2(x, srow, fw2, _SPECIAL_H), flc)
 		srow += _SPECIAL_H + 1.0
+
+
+## ── 血条刻度(用户 2026-10-04「改为1000大刻度，100小刻度」; 原来是 100 小 / 500 大) ──
+## 方案书 docs/plans/20261004-五件新需求.md §②。
+const TICK_MINOR := 100.0
+const TICK_MAJOR := 1000.0
+## 一组刻度的最小间距 = 条宽的这个比例。**沿用改前的判据**(改前写在 _draw 里的 `minor_px >= w*0.02`):
+##   88px 的条上 ≈ 1.76px ⇒ 小刻度在 barMax ≤ 5000 时画, 再高就收起来(否则糊成一片)。
+const TICK_MIN_FRAC := 0.02
+
+## 刻度位置(血量值, 不是像素)。→ {"major": [...], "minor": [...]}。纯函数, 门禁直接调。
+## ★大、小刻度**各自**过密度闸 —— 改前两者挂在同一个 if 下, 于是 barMax > 5000 时
+##   连 500 一格的大刻度也一起消失(1 万血的龟条上一道刻度都没有)。
+##   现在小刻度太密只收小刻度, 大刻度照画(1000 一格要到 barMax > 50000 才会被收)。
+## ★小刻度**跳过**大刻度所在的位置(原来两道叠画在同一像素上, 数量上是重复计数)。
+static func tick_values(bm: float, w: float) -> Dictionary:
+	var major: Array = []
+	var minor: Array = []
+	if bm <= 0.0 or w <= 0.0:
+		return {"major": major, "minor": minor}
+	var min_px: float = w * TICK_MIN_FRAC
+	if (TICK_MAJOR / bm) * w >= min_px:
+		var v2 := TICK_MAJOR
+		while v2 < bm:
+			major.append(v2)
+			v2 += TICK_MAJOR
+	if (TICK_MINOR / bm) * w >= min_px:
+		var k := 1
+		while TICK_MINOR * k < bm:
+			if k % int(TICK_MAJOR / TICK_MINOR) != 0:
+				minor.append(TICK_MINOR * k)
+			k += 1
+	return {"major": major, "minor": minor}
 
 
 ## 逐行渐变 (fillBand:401-419): r=0&h>=3 → gloss(light→白.55); else lerp(light,dark,(r-1)/(h-2))
