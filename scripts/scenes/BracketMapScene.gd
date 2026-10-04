@@ -1321,10 +1321,22 @@ func _try_start_match() -> bool:
 		"avatar": str((snap.get("leaders", []) as Array)[0]) if not (snap.get("leaders", []) as Array).is_empty() else "basic",
 		"id": "#%d" % int(res.get("seed", -1)),
 	}
-	GameState.finals_match = {"bucket": int(cur().get("bucket", -1)),
-		"round": r, "match": m, "side": side}
+	stamp_finals_match(GameState, int(cur().get("bucket", -1)), r, m, side, _clock())
 	get_tree().change_scene_to_file("res://scenes/RealtimeBattle3D.tscn")
 	return true
+
+
+## 把这一局标成决赛场, 并把【开局这一刻的赛程阶段】钉进存档。
+## ★★2026-10-04 周日实操抓到: 原来这里只写 `finals_match`、不写 `week_phase`。
+##   `week_phase` 全仓只有选队界面那一处在写(TeamSelectScene: 阶段属于开局那一刻),
+##   而周日是【对阵图 → 直接开战】, 根本不经过选队 ⇒ 存档里还是周六写进去的 "gauntlet"
+##   ⇒ 结算按【闯关赛】走: 闯关战绩 4-0 被记成 5-0、又按 5-0 传了一份闯关快照、
+##   副标题写「闯关 5-0 · 晋级决赛日」、对称轮次币没发。对阵图本身没坏(结果在分支前就报了)。
+## ★抽成静态函数而不是就地两行: 门禁要能走【产品自己这一步】再去量结算口径,
+##   不是自己喂一个 week_phase 再测(那正是这个洞一直没红的原因, memory fb-read-a-field-nobody-writes)。
+static func stamp_finals_match(gs, bucket: int, r: int, m: int, side: int, now_utc: int) -> void:
+	gs.finals_match = {"bucket": bucket, "round": r, "match": m, "side": side}
+	gs.week_phase = _P2C.phase_at_utc(now_utc)
 
 
 ## 备战购物窗那一行该说什么。`""` = 这一行根本不出现。
