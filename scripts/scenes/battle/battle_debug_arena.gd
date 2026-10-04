@@ -442,7 +442,9 @@ func _scroll_to_equip_row() -> void:
 	if sc == null or not is_instance_valid(sc):
 		return
 	await battle.get_tree().process_frame
+	if not is_instance_valid(battle): return
 	await battle.get_tree().process_frame
+	if not is_instance_valid(battle): return
 	if not is_instance_valid(sc) or battle._edit_equip_box == null or not is_instance_valid(battle._edit_equip_box):
 		return
 	var kids: Array = battle._edit_equip_box.get_children()
