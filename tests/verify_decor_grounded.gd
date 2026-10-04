@@ -49,6 +49,10 @@ func _ready() -> void:
 			var worst_tex := ""
 			for sp in sprites:
 				var p: Vector3 = (sp as Node3D).global_position
+				## ★吊在树干上的灯/光晕(meta host): 节点在半空, 公告板的「上」朝后倾, 投到地面会往后跑 ——
+				##   它的落地点是宿主树干的脚(「底板压在树皮上」由 verify_arena_layers_drawn 逐盏验)。
+				if (sp as Node).has_meta("host") and is_instance_valid((sp as Node).get_meta("host")):
+					p = ((sp as Node).get_meta("host") as Node3D).global_position
 				var r: float = Vector2((p.x - c3.x) / hx, (p.z - c3.z) / hz).length()
 				if r > worst:
 					worst = r

@@ -72,7 +72,7 @@ const THEMES: Dictionary = {
 		"fg_band_px": 0.00475,   # 单张整幅(800 格 ≈ 3.8 单位宽), 每格 ≈ 2 屏幕像素
 		"fg_band_gain": 3.4,   # 贴图是灰度(近层 ~0.27 / 远层 ~0.9), 抬回剪影色量级: 近层 ≈ fg_band_col, 远层 ≈ 3 倍亮
 		"detritus_tint": Color(0.66, 0.64, 0.56, 1.0),   # 2026-10-04 再压: 小贝壳在灯光下发白, 和龟身高光抢眼
-		"ring_mod": {"dusk2_trunk": Color(0.74, 0.70, 0.68)},   # 树干在暗处(0.60 实拍几乎看不见)
+		"ring_mod": {"dusk2_trunk": Color(0.74, 0.70, 0.68), "dusk4_trunk_b": Color(0.74, 0.70, 0.68), "dusk4_trunk_c": Color(0.74, 0.70, 0.68)},   # 树干在暗处(0.60 实拍几乎看不见)
 		"ring_per": 2,   # 巨树干一簇最多 2 棵: 7 棵挤成一堵墙(实拍), 参考是一棵棵分开站
 		"ground_tileset_hsv": Vector3(0.156, 0.30, 0.62),   # 2026-10-04「看清每只龟」: S0.43→0.30 V0.76→0.62(量: 龟立绘像素与地面 ΔE<15 的占比, 最坏一只 0.32→0.15; 深礁试过同样压暗反而变差 0.23→0.26, 已撤)   # V 0.66→0.76: 实拍中位 V0.49 而参考 0.58(2026-10-03 量)   # 地面目标色 = mixed_034 地面中位实测(H56 S0.43)
 		"ground_tileset_tint": Color(0.70, 0.66, 0.42),   # 图块原色(生成器的鲜绿/粉红崖边)压进主题色调
@@ -91,7 +91,7 @@ const THEMES: Dictionary = {
 		"lamp_h": 1.75,   # 1.5→1.75: 粗桩款配周边那圈(1.65)略高一点, 场内是主光源
 		"field_tufts": ["dusk2_grass_a", "dusk2_grass_b", "dusk2_grass_c"],   # 2026-10-03 重画: 粗黑描线+三层明暗的大草丛(mixed_034)
 		"field_tufts_clusters": 9,
-		"field_piles": ["dusk3_anchor_a", "dusk3_shell_a", "dusk3_wreck_a", "dusk2_stones_a", "dusk2_stones_b"],   # 2026-10-04 换: 海草缠锚 / 龟壳化石 / 沉船木板 + 叠石(原骷髅堆/红木十字是照搬参考题材)
+		"field_piles": ["dusk3_anchor_a", "dusk3_shell_a", "dusk3_wreck_a", "dusk2_stones_a", "dusk2_stones_b", "dusk4_mush_a", "dusk4_mush_b"],   # 2026-10-04 +藤壶菌丛两款(新类别: 蘑菇)   # 2026-10-04 换: 海草缠锚 / 龟壳化石 / 沉船木板 + 叠石(原骷髅堆/红木十字是照搬参考题材)
 		"field_piles_clusters": 10,
 		"field_piles_h": [1.1, 1.6],
 		"field_tufts_h": [1.6, 2.4],
@@ -122,7 +122,7 @@ const THEMES: Dictionary = {
 		"edge_tufts_r": [0.93, 1.01],   # 贴着平台边沿一圈密草, 盖住格子台阶(参考边沿是草边)
 		"edge_tufts_h": [0.8, 1.4],
 		## 框边: 比角色大好几倍的暗色树干剪影(参考 mixed_033~035 左右两侧)
-		"ring_props": ["dusk2_trunk"],   # 2026-10-03 重画: 粗描线红褐巨树干(mixed_034 两侧框边)
+		"ring_props": ["dusk2_trunk", "dusk4_trunk_b", "dusk4_trunk_c"],   # 2026-10-04 +断顶树干/挂藤树干: 一圈 20 来棵同一张图, 看得出是复制的   # 2026-10-03 重画: 粗描线红褐巨树干(mixed_034 两侧框边)
 		"ring_density": 1.1,
 		"ring_h": [6.5, 9.0],   # 巨树干要顶出画面上沿(参考两侧树干比角色大好几倍)
 		"ring_avoid_bottom": true,
@@ -134,6 +134,8 @@ const THEMES: Dictionary = {
 		"detritus_edge_bias": 1.5,
 		## 周边一圈红烛(参考 Darkwood 房间沿边一圈红光)
 		"rim_lights": 18,
+		"rim_light_tex_alt": ["dusk4_float_a", "dusk4_float_b"],   # 2026-10-04 一圈 18 盏同一张船灯 ⇒ 轮流换浮木桩挂玻璃浮球灯(两款)
+		"rim_light_h_of": {"dusk4_float_a": 1.45, "dusk4_float_b": 1.6},
 		"rim_light_tex": "dusk3_lantern_b",   # 2026-10-04 再换: 粗木桩+缠绳+大船灯(lantern_a 是细杆小灯, 实拍读着比旧红烛细); 风格锚 = dusk3_lantern_a   # 红烛→船灯
 		"rim_light_real": 6,
 		"rim_light_h": 1.65,          # 2026-10-04 1.4→1.65 + 换粗桩 lantern_b: 原细杆船灯 1.4 实拍比旧红烛(1.25·石墩粗)读着更细   # 第一版 0.55 实拍看不见(火盆是 1.28)
@@ -141,15 +143,33 @@ const THEMES: Dictionary = {
 		"rim_light_range": 3.0,
 		"light_col": Color(1.0, 0.262, 0.180),
 		"light_energy": 1.0,
-		"light_fixture": "dusk_candle",
-		"obstacles": ["dusk_boulder"],
-		"mid_props": ["dusk_trunk_silhouette"],
+		"light_fixture": "dusk3_lantern_b",   # 2026-10-04 改成真在用的灯具名(原 dusk_candle 是一版没接线的旧名)
+		## ⑤挡路障碍(2026-10-04): 中央大礁 → 缠锚链的老树桩, 两侧矮墙 → 长藤壶的倒木(两款)。footprint 不动, 只换外观。
+		"obstacles": ["dusk4_stump", "dusk4_log_a", "dusk4_log_b"],
+		"obstacle_tex": {"reef_big": "dusk4_stump", "reef_wall": ["dusk4_log_a", "dusk4_log_b"]},
+		"obstacle_mod": Color(0.86, 0.84, 0.80),
+		## ⑥中景(2026-10-04): 平台上沿一圈暗色灌木团, 站在巨树干身后(mixed_033/034 平台外两角)。
+		"mid_props": ["dusk4_bush_a", "dusk4_bush_b", "dusk4_bush_c"],
+		"mid_n": 9,
+		"mid_h": [2.0, 2.8],
+		"mid_r": [1.02, 1.10],
+		"mid_mod": Color(0.62, 0.66, 0.60),
+		## ⑧灯光(2026-10-04): 钉在巨树干上的吊灯(宿主 = 下面这几种树干; 不许悬空)
+		"hang_lamp_tex": ["dusk4_hang_lamp_a", "dusk4_hang_lamp_b"],
+		"hang_lamps": 5,
+		"hang_on": ["dusk2_trunk", "dusk4_trunk_b", "dusk4_trunk_c"],
+		"hang_at": [0.30, 0.40],
+		"hang_lamp_h": 1.3,   # 0.9 实拍只有 20px 一个暗点(树干在 6.5~9 米, 灯小了就读不出)
+		"hang_light_energy": 1.2,
+		"hang_light_range": 2.6,
+		## ⑨氛围(2026-10-04): 只留灯旁火星(删掉满场上飘气泡/冰蓝辉光)
+		"ambient_lamp_embers": true,
 		"bg_kind": "into_black",
 		"bg_top": Color(0.010, 0.016, 0.012),
 		"bg_horizon": Color(0.040, 0.056, 0.040),
 		"sun_col": Color(1.0, 0.96, 0.86), "sun_energy": 1.0,
-		"ambient_kind": "embers",
-		"ambient_col": Color(1.0, 0.86, 0.42, 0.45),     # 林间萤光(慢·微上飘)
+		"ambient_kind": "lamp_embers",
+		"ambient_col": Color(1.0, 0.55, 0.22, 0.85),     # 2026-10-04 灯旁火星(原「林间萤光」是满场撒的气泡层改色, 已删)
 	},
 	V2_REEF: {
 		"fg_band_y": -0.46,   # 2026-10-04 单张分层剪影 fg_sea_band: 标定图实测每格 2px、顶行在屏幕 y≈333(-0.368 时 294) ⇒ 下沿 30 格在画面外; 远层要压住场地下沿一点才读得出(全落在黑底上=看不见)   # 旧: 新剪影带草尖高, -0.54 会盖住下沿交战的龟(实拍 s7)
@@ -416,6 +436,31 @@ const REQUIRED_KEYS: Array = [
 	"light_fixture",                             # ⑧灯光(带灯具)
 	"ambient_kind",                              # ⑨氛围粒子
 ]
+
+
+## ★★已经【真的画出来】的版(不只是配置齐) —— 判据 `verify_arena_layers_drawn` /
+##   `verify_arena_variety` / `verify_island_ambient` 只对这里列出的版逐层验。
+## ★用户 2026-10-03 拍板「先把暗林一版做到位再复制」⇒ 现在只有暗林。
+##   别为了让清单变长把没做的版塞进来: 塞进来门禁当场红, 那正是它的用处。
+const DRAWN: Array = [V1_DUSK]
+
+## 物件【类别】表(素材名 → 类)。判据 `verify_arena_variety` 按它数「一屏几类」与「同一张图重复多少」。
+## ★参考(咩咩地牢, 人工归类 23 张): 一屏 7~8 类 —— 石板碎石 / 蘑菇 / 蜡烛 / 草簇 / 墓标 / 骨头 / 宝箱门 / 背景墙
+##   (`docs/plans/ref/20261002-咩咩启示录地图参考.md` §7.5)。我们的类换成自己的世界观(海/龟/船), 不照搬题材。
+## ★场上出现了**不在这张表里**的主题素材 ⇒ 判据红(「没分到类」单独一个桶, 不许静默落进别的类)。
+## ★类名用英文键(不是给玩家看的字): grass 草丛 / stones 叠石 / relic 沉船遗物 / lamp 灯具 /
+##   trunk 巨树干 / mushroom 藤壶菌丛 / bush 灌木团 / deadwood 倒木树桩。中文字面量会进玩家文案快照(text_golden)。
+const PROP_CLASS: Dictionary = {
+	"dusk2_grass_a": "grass", "dusk2_grass_b": "grass", "dusk2_grass_c": "grass",
+	"dusk2_stones_a": "stones", "dusk2_stones_b": "stones",
+	"dusk3_anchor_a": "relic", "dusk3_shell_a": "relic", "dusk3_wreck_a": "relic",
+	"dusk3_lantern_b": "lamp", "dusk4_float_a": "lamp", "dusk4_float_b": "lamp",
+	"dusk4_hang_lamp_a": "lamp", "dusk4_hang_lamp_b": "lamp",
+	"dusk2_trunk": "trunk", "dusk4_trunk_b": "trunk", "dusk4_trunk_c": "trunk",
+	"dusk4_mush_a": "mushroom", "dusk4_mush_b": "mushroom",
+	"dusk4_bush_a": "bush", "dusk4_bush_b": "bush", "dusk4_bush_c": "bush",
+	"dusk4_stump": "deadwood", "dusk4_log_a": "deadwood", "dusk4_log_b": "deadwood",
+}
 
 
 ## ★★场内物件的**设计布局**(四版共用一张构图, 各版换各自素材)。

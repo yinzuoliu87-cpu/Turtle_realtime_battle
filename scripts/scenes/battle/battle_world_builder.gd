@@ -173,6 +173,10 @@ static func tile_material(ti: int, ws: float, cx: float, cy: float) -> Material:
 
 var battle
 
+## 火源登记(主题氛围粒子用): 场内灯 / 周边光点 / 吊灯的精灵。火星**只从这些灯具身上冒**,
+## 不满场撒 —— 粒子要有因(方案书 §4.5-2)。读它的是 `_build_theme_ambient`。
+var _flames: Array = []
+
 ## ★2026-07-27 修 nav RID 泄漏: NavigationServer2D.map_create()/region_create() 建的是【服务器 RID】,
 ## 不归任何节点所有 → 战斗场景 queue_free() 释放不掉, 必须显式 free_rid()。
 ## 全仓库原来一处 free_rid 都没有, 战斗场景也没有 _exit_tree/PREDELETE → 每建一个战斗场景
@@ -712,6 +716,7 @@ func _edge_band_mesh(loops: Array, tex: Texture2D) -> MeshInstance3D:
 ## 场内暖色点光源。返回建出来的节点（调用方登记/清场用）。
 func build_field_lamps() -> Array:
 	var made: Array = []
+	_flames = []   # ★本函数(含周边光点)每次重建都重登记火源(MAPEDIT 刷格会重调)
 	var root := Node3D.new()
 	root.name = "FieldLamps"
 	battle._world.add_child(root)
@@ -753,6 +758,7 @@ func build_field_lamps() -> Array:
 			s.position = battle._world_pos(px, _lh * 0.5)
 			root.add_child(s)
 			made.append(s)
+			_flames.append(s)
 			if ArenaTheme.cfg().has("rim_halo_col"):
 				var _hz = _rim_halo(px, ArenaTheme.cfg()["rim_halo_col"], float(ArenaTheme.cfg().get("rim_halo_size", 2.0)) * 1.6)
 				root.add_child(_hz)
@@ -807,10 +813,22 @@ func _build_rim_lights() -> Array:
 		var rr: float = rng.randf_range(float(_rr[0]), float(_rr[1]))
 		var p := Vector2(c.x + cos(th) * A.size.x * 0.5 * rr, c.y + sin(th) * A.size.y * 0.5 * rr)
 		## ★探针: 光点 24 个节点都建了, 实拍看不见 —— 0.55 米只有火盆(1.28 米)的四成, 压不过亮地面。
-		var s = battle._map_billboard(path, p, float(cfg.get("rim_light_h", 0.55)))
+		## ★2026-10-04 主题可给第二/三种灯具(rim_light_tex_alt), 轮流摆: 18 盏同一张图一眼看得出是复制的。
+		##   高度按素材名单给(rim_light_h_of), 没写的用 rim_light_h。base 不给 ⇒ 一种灯, 原样。
+		var _path_i: String = path
+		var _alts: Array = cfg.get("rim_light_tex_alt", [])
+		var _h_i: float = float(cfg.get("rim_light_h", 0.55))
+		if not _alts.is_empty() and i % (_alts.size() + 1) != 0:
+			var _an: String = str(_alts[(i % (_alts.size() + 1)) - 1])
+			var _ap: String = "res://assets/sprites/map/themes/%s.png" % _an
+			if ResourceLoader.exists(_ap):
+				_path_i = _ap
+				_h_i = float((cfg.get("rim_light_h_of", {}) as Dictionary).get(_an, _h_i))
+		var s = battle._map_billboard(_path_i, p, _h_i)
 		## ★参考(mixed_033/034/035)里的光是**饱和的红**、带一圈地面光晕; 我们的烛火是黄的 ⇒ 着色 + 地面光晕。
 		s.modulate = cfg.get("rim_light_mod", Color(1, 1, 1))
 		root.add_child(s)
+		_flames.append(s)
 		if cfg.has("rim_halo_col"):
 			root.add_child(_rim_halo(p, cfg["rim_halo_col"], float(cfg.get("rim_halo_size", 2.0))))
 		if i % maxi(1, n / maxi(1, n_real)) == 0:
@@ -1264,7 +1282,14 @@ func _build_tilemap_decor() -> void:
 	##   `verify_arena_density` 的分母断言「找得到 ThemeRing 容器吗」把它抓出来的。
 	##   ★同一个坑今晚踩了两次 ⇒ 以后往世界里加层, **第一件事是确认这条路跑不跑**。
 	_build_theme_decorations(root)
-	_build_tilemap_ambient(root)
+	## ★2026-10-04 主题: 中景灌木团 + 挂在巨树干上的吊灯 + 灯旁火星。base 不给 ⇒ 三个都一件不加。
+	_build_theme_midground(root)
+	_build_hang_lamps(root)
+	## ★主题不画那层冰蓝上飘辉光(100 粒·满场·缓上飘 = 水下气泡的另一副面孔), 换成灯旁火星。base 照旧。
+	if bool(_tc.get("no_base_midground", false)):
+		_build_theme_ambient(root)
+	else:
+		_build_tilemap_ambient(root)
 
 
 ## ═══ P2 · 中景地标 (用户 2026-07-30「地图再度需要提升」· 拍板 U7 顺序 P1→P2→P4→P3) ═══
@@ -1575,18 +1600,40 @@ func _build_map_props() -> void:
 		{"c": c + Vector2(-235.0, -198.0), "rx": 45.0, "ry": 20.0, "img": "reef_wall", "h": 1.5},  # 上墙(左偏·视觉半宽42)
 		{"c": c + Vector2(235.0, 198.0), "rx": 45.0, "ry": 20.0, "img": "reef_wall", "h": 1.5},     # 下墙(右偏)
 	]
+	## ★主题换障碍的**外观**(obstacle_tex = {原图名: 主题素材名 | [素材名...]}), 不换 footprint:
+	##   碰撞椭圆 rx/ry 是 2026-07-21 按「视觉半宽」标定的玩法尺寸 ⇒ 主题素材按**同一视觉半宽**反推高度,
+	##   看起来多宽就挡多宽。base 不给 ⇒ 原礁石, 一个像素不动。
+	var _otex: Dictionary = ArenaTheme.cfg().get("obstacle_tex", {})
+	var _oi := 0
 	for ob in battle._obstacles:
-		root.add_child(battle._map_billboard("res://assets/sprites/map/%s.png" % str(ob["img"]), ob["c"], float(ob["h"])))
+		var _on: String = str(ob["img"])
+		if _otex.has(_on):
+			root.add_child(_theme_obstacle(ob, _otex[_on], _oi))
+			_oi += 1
+		else:
+			root.add_child(battle._map_billboard("res://assets/sprites/map/%s.png" % _on, ob["c"], float(ob["h"])))
 	# 基地穹顶围栏(加性发光, 罩蛋) — 两端基地
 	for pair in [["left", battle.ARENA.position.x + 70.0], ["right", battle.ARENA.end.x - 70.0]]:
 		var dome = battle._map_billboard("res://assets/sprites/map/base_dome.png", Vector2(float(pair[1]), c.y), 3.0, true)
 		dome.scale = Vector3(1.9, 1.9, 1.9)   # 罩大盖住蛋
 		root.add_child(dome)
 		battle._base_domes[str(pair[0])] = dome
-	_build_theme_decorations(root)
+	## ★★2026-10-04 真对局(双路)走的是**这条**路, 而调试场/门禁走的是 `_build_tilemap_decor` ——
+	##   主题在这里漏了三样(实拍 v0.19.524 暗林双路对局):
+	##     ① 主题环建了**第二遍**(tilemap 那条已经建过 ThemeRing, 同种子同位置叠两层)
+	##     ② 顶上 4 道水面光柱照画(用户 2026-10-03「还有顶上那4个光柱？」指的就是这 4 道 ——
+	##        远景那 6 道当时关了, 这 4 道在另一条路上, 门禁只量调试场所以一直没抓到)
+	##     ③ 满场往上飘的气泡照画(方案书 §4.5-2 点名要删的那个)
+	##   ⇒ 主题: 环已存在就不重建; 光柱/气泡不画(只删错的)。base 三行照旧, 一个像素不动。
+	var _themed: bool = bool(ArenaTheme.cfg().get("no_base_midground", false))
+	if not (_themed and battle._world.find_child("ThemeRing", true, false) != null):
+		_build_theme_decorations(root)
 	# 珊瑚/海草/礁石 铺边框住战场+填空地(纯装饰无footprint)
-	_build_lightshafts(root)   # 水面光柱(加性发光, 深海氛围)
-	_build_bubbles(root)       # 漂浮气泡颗粒
+	if not _themed:
+		_build_lightshafts(root)   # 水面光柱(加性发光, 深海氛围)
+		_build_bubbles(root)       # 漂浮气泡颗粒
+	elif battle._world.find_child("ThemeAmbient", true, false) == null:
+		_build_theme_ambient(root)
 
 # 装饰景物: 珊瑚/海草/礁石 沿上下边框+四角+基地周围铺 (纯装饰, 无导航footprint, 不挡移动). 固定布局(可复现).
 # 装饰景物: 珊瑚/海草/礁石 沿上下边框+四角+基地周围铺 (纯装饰, 无导航footprint, 不挡移动). 固定布局(可复现).
@@ -1688,6 +1735,7 @@ func _build_foreground_band() -> void:   # ★不收 root: 它挂在相机上, �
 		var _m: float = bl / 0.40 * _gain
 		q.modulate = Color(_fc.r * _m, _fc.g * _m, _fc.b * _m)
 		q.sorting_offset = 8.0                              # 压在所有东西前面
+		q.set_meta("fg_band", img)                          # 打标: 判据按它认前景带(分层增益后贴图换成 ImageTexture, 没有路径可认)
 		battle._cam.add_child(q)
 
 
@@ -1804,6 +1852,332 @@ func _build_theme_decorations(root: Node3D) -> void:
 			var _rg: Dictionary = cfg.get("ring_glow_of", {})
 			if _rg.has(img):
 				ring_root.add_child(_glow_puff(Vector2(px, py), _rg[img] as Color, h * sc))
+
+
+## ═══ 2026-10-04 主题剩下的四层: 挡路障碍外观 / 中景灌木团 / 吊灯 / 灯旁火星 ═══
+## 方案书 `docs/plans/20261003-四版完整地图.md` §4.4 第 4 条「把主题真的画出来」。
+## ★每一层挂**具名容器**(ThemeObstacle / ThemeMid / ThemeHangLamps / ThemeAmbient),
+##   判据 `verify_arena_layers_drawn` / `verify_island_ambient` 只量这些容器(memory `fb-new-layer-must-prove-its-path-runs`)。
+## ★base 一律不给对应的键 ⇒ 每个函数开头就 return, 一件不加。
+
+const THEME_TEX := "res://assets/sprites/map/themes/%s.png"
+var _img_cache: Dictionary = {}
+var _flame_cache: Dictionary = {}
+
+
+func _tex_img(tex: Texture2D) -> Image:
+	if tex == null:
+		return null
+	var k: String = tex.resource_path
+	if k != "" and _img_cache.has(k):
+		return _img_cache[k]
+	var im: Image = tex.get_image()
+	if im == null:
+		return null
+	if im.is_compressed():
+		im.decompress()
+	if k != "":
+		_img_cache[k] = im
+	return im
+
+
+func _cam_basis() -> Basis:
+	if battle._cam == null:
+		return Basis()
+	return battle._cam.global_transform.basis if battle._cam.is_inside_tree() else battle._cam.transform.basis
+
+
+## 公告板精灵上第 (px, py) 个贴图像素在世界里的位置(Sprite3D 默认 centered; 公告板的轴 = 相机的右/上)。
+## ★Sprite3D 的 offset 以像素计、y 向上: 贴图第 py 行落在本地 y = offset.y + h/2 - py。
+func sprite_px_world(s: Sprite3D, px: float, py: float) -> Vector3:
+	var w: float = float(s.texture.get_width())
+	var h: float = float(s.texture.get_height())
+	var lx: float = s.offset.x + px - w * 0.5
+	var ly: float = s.offset.y + h * 0.5 - py
+	var b: Basis = _cam_basis()
+	var o: Vector3 = s.global_position if s.is_inside_tree() else s.position
+	return o + (b.x * lx * s.scale.x + b.y * ly * s.scale.y) * s.pixel_size
+
+
+## 灯具贴图里「火」的像素重心(亮暖色像素)。找不到 ⇒ (-1,-1), 调用方跳过(火星必须有火源)。
+func _flame_px(tex: Texture2D) -> Vector2:
+	if tex == null:
+		return Vector2(-1, -1)
+	var k: String = tex.resource_path
+	if _flame_cache.has(k):
+		return _flame_cache[k]
+	var im: Image = _tex_img(tex)
+	var out := Vector2(-1, -1)
+	if im != null:
+		var sx := 0.0
+		var sy := 0.0
+		var n := 0
+		for y in range(im.get_height()):
+			for x in range(im.get_width()):
+				var c: Color = im.get_pixel(x, y)
+				if c.a > 0.5 and c.r > 0.85 and c.g > 0.30 and c.g < 0.85 and c.b < 0.45:
+					sx += float(x) + 0.5
+					sy += float(y) + 0.5
+					n += 1
+		if n > 0:
+			out = Vector2(sx / float(n), sy / float(n))
+	_flame_cache[k] = out
+	return out
+
+
+## 挡路障碍换外观: 按**原图的视觉宽**反推主题素材的高度 ⇒ 看起来多宽就挡多宽(footprint 一个数不动)。
+func _theme_obstacle(ob: Dictionary, spec, idx: int) -> Node3D:
+	var cfg: Dictionary = ArenaTheme.cfg()
+	var nm: String = str(spec[idx % (spec as Array).size()]) if spec is Array else str(spec)
+	var path: String = THEME_TEX % nm
+	var base_path: String = "res://assets/sprites/map/%s.png" % str(ob["img"])
+	var base_tex: Texture2D = load(base_path) if ResourceLoader.exists(base_path) else null
+	var tex: Texture2D = load(path) if ResourceLoader.exists(path) else null
+	var holder := Node3D.new()
+	holder.name = "ThemeObstacle"
+	if tex == null or base_tex == null:
+		push_warning("[theme_obstacle] 素材缺失: %s —— 退回原礁石(不做静默替换)" % path)
+		holder.add_child(battle._map_billboard(base_path, ob["c"], float(ob["h"])))
+		return holder
+	## 原图视觉宽(米) = 图宽 × (h ÷ 图高); 主题素材已裁到包围盒 ⇒ 同宽 = 同 footprint 口径
+	var vis_w: float = float(base_tex.get_width()) * float(ob["h"]) / float(base_tex.get_height())
+	var h: float = vis_w * float(tex.get_height()) / float(tex.get_width())
+	var _ps: float = float(cfg.get("prop_shadow", 0.0))
+	if _ps > 0.0:
+		holder.add_child(_contact_shadow(ob["c"], _ps, vis_w * 1.1))
+	var s: Sprite3D = battle._map_billboard(path, ob["c"], h)
+	s.modulate = cfg.get("obstacle_mod", Color(1, 1, 1))
+	s.set_meta("vis_w", vis_w)
+	holder.add_child(s)
+	return holder
+
+
+## 中景: 平台**上沿**一圈暗色灌木团, 站在边沿上、在巨树干身后(参考 mixed_033/034 平台外两角的暗绿灌木团)。
+## ★只摆上半圈(屏幕上方 = 离镜头远): 下半圈的大件会挡住身后的龟(2026-10-04 实拍教训)。
+## ★不摆到岛外黑海面上: 半径 ≤ mid_r 上限(用户 2026-10-03「装饰物乱飞到上面」)。
+func _build_theme_midground(root: Node3D) -> void:
+	var cfg: Dictionary = ArenaTheme.cfg()
+	var names: Array = cfg.get("mid_props", [])
+	var n: int = int(cfg.get("mid_n", 0))
+	if n <= 0 or names.is_empty():
+		return
+	var paths: Array = []
+	for nm in names:
+		if ResourceLoader.exists(THEME_TEX % str(nm)):
+			paths.append(THEME_TEX % str(nm))
+	if paths.is_empty():
+		push_warning("[theme_mid] 中景素材一张都没有 —— 不铺")
+		return
+	var mid := Node3D.new()
+	mid.name = "ThemeMid"
+	root.add_child(mid)
+	var A: Rect2 = battle.ARENA
+	var c: Vector2 = A.position + A.size * 0.5
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261009
+	var arc: Array = cfg.get("mid_arc", [205.0, 335.0])
+	var rr_lim: Array = cfg.get("mid_r", [1.02, 1.10])
+	var hr: Array = cfg.get("mid_h", [2.0, 2.8])
+	var _ps: float = float(cfg.get("prop_shadow", 0.0))
+	for i in range(n):
+		var th: float = deg_to_rad(lerpf(float(arc[0]), float(arc[1]), (float(i) + rng.randf_range(0.25, 0.75)) / float(n)))
+		var rr: float = rng.randf_range(float(rr_lim[0]), float(rr_lim[1]))
+		var p := Vector2(c.x + cos(th) * A.size.x * 0.5 * rr, c.y + sin(th) * A.size.y * 0.5 * rr)
+		var s: Sprite3D = battle._map_billboard(str(paths[i % paths.size()]), p, rng.randf_range(float(hr[0]), float(hr[1])))
+		if rng.randf() < 0.5:
+			s.scale = Vector3(-1.0, 1.0, 1.0)
+		s.modulate = cfg.get("mid_mod", Color(1, 1, 1))
+		mid.add_child(s)
+		if _ps > 0.0 and s.texture != null:
+			mid.add_child(_contact_shadow(p, _ps, s.pixel_size * float(s.texture.get_width()) * 0.9))
+
+
+## 吊灯: 铁支架**钉在巨树干上**挂一盏船灯(参考 Darkwood 的红光挂在平台外的暗林里)。
+## ★★2026-10-03 第一版「悬在黑里的红光」被用户指为乱飞(没有挂点) ⇒ 撤了。这版每盏都有宿主树干:
+##   支架底板的像素 = 宿主树干那一行**最靠屏幕右侧的不透明像素**往里收 2 格 —— 判据逐盏验「底板压在树皮上」。
+## ★不镜像: 永远挂在树干的屏幕右侧, 支架底板在灯图的左沿(素材朝向), 镜像就成了「灯挂在空中、支架朝外」。
+func _build_hang_lamps(root: Node3D) -> void:
+	var cfg: Dictionary = ArenaTheme.cfg()
+	var texs: Array = cfg.get("hang_lamp_tex", [])
+	var n: int = int(cfg.get("hang_lamps", 0))
+	var hosts: Array = cfg.get("hang_on", [])
+	if n <= 0 or texs.is_empty() or hosts.is_empty():
+		return
+	var ring: Node = root.find_child("ThemeRing", true, false)
+	if ring == null:
+		push_warning("[hang_lamps] 找不到 ThemeRing —— 没有树干可挂, 不挂(不许悬空)")
+		return
+	var cz: float = battle._world_pos(battle.ARENA.position + battle.ARENA.size * 0.5, 0.0).z
+	var cand: Array = []
+	for t in ring.get_children():
+		if t is Sprite3D and t.texture != null and t.global_position.z < cz \
+				and hosts.has(t.texture.resource_path.get_file().get_basename()):
+			cand.append(t)
+	if cand.is_empty():
+		push_warning("[hang_lamps] 上半圈没有可挂的树干")
+		return
+	cand.sort_custom(func(a, b): return a.global_position.x < b.global_position.x)
+	var hang := Node3D.new()
+	hang.name = "ThemeHangLamps"
+	root.add_child(hang)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261010
+	var at: Array = cfg.get("hang_at", [0.30, 0.40])
+	var lamp_h: float = float(cfg.get("hang_lamp_h", 0.9))
+	var b: Basis = _cam_basis()
+	var k_n: int = mini(n, cand.size())
+	for k in range(k_n):
+		var t: Sprite3D = cand[int(round(float(k) * float(cand.size() - 1) / float(maxi(1, k_n - 1))))]
+		var im: Image = _tex_img(t.texture)
+		if im == null:
+			continue
+		var row: int = clampi(int(float(im.get_height()) * (1.0 - rng.randf_range(float(at[0]), float(at[1])))), 0, im.get_height() - 1)
+		var xmin := -1
+		var xmax := -1
+		for x in range(im.get_width()):
+			if im.get_pixel(x, row).a > 0.5:
+				if xmin < 0:
+					xmin = x
+				xmax = x
+		if xmin < 0:
+			continue
+		## 屏幕右侧那一格: 没镜像取 xmax; 镜像(scale.x<0)后 xmin 才在右边。往树干里收 2 格, 底板压在树皮上。
+		var edge_px: float = (float(xmax) - 1.5) if t.scale.x > 0.0 else (float(xmin) + 2.5)
+		var edge_w: Vector3 = sprite_px_world(t, edge_px, float(row) + 0.5)
+		var lt_path: String = THEME_TEX % str(texs[k % texs.size()])
+		if not ResourceLoader.exists(lt_path):
+			continue
+		var lt: Texture2D = load(lt_path)
+		var lim: Image = _tex_img(lt)
+		## 支架底板 = 灯图最左一列的不透明像素(纵向取中)
+		var pl_x := -1
+		var ys: Array = []
+		for x in range(lim.get_width()):
+			for y in range(lim.get_height()):
+				if lim.get_pixel(x, y).a > 0.5:
+					ys.append(y)
+			if not ys.is_empty():
+				pl_x = x
+				break
+		if pl_x < 0:
+			continue
+		var pl_y: float = (float(ys[0]) + float(ys[ys.size() - 1])) * 0.5 + 0.5
+		var s := Sprite3D.new()
+		s.name = "HangLamp"
+		s.texture = lt
+		s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		s.shaded = false
+		s.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
+		s.pixel_size = lamp_h / float(lt.get_height())
+		var lx: float = float(pl_x) + 0.5 - float(lt.get_width()) * 0.5
+		var ly: float = float(lt.get_height()) * 0.5 - pl_y
+		s.position = edge_w - (b.x * lx + b.y * ly) * s.pixel_size + b.z * 0.06   # 往镜头挪一点, 画在树干前面
+		s.set_meta("host", t)
+		s.set_meta("plate_px", Vector2(float(pl_x) + 0.5, pl_y))
+		hang.add_child(s)
+		_flames.append(s)
+		var fp: Vector2 = _flame_px(lt)
+		if fp.x >= 0.0:
+			var L := OmniLight3D.new()
+			L.light_color = cfg.get("light_col", LAMP_COL)
+			L.light_energy = float(cfg.get("hang_light_energy", 1.2))
+			L.omni_range = float(cfg.get("hang_light_range", 2.6))
+			L.shadow_enabled = false
+			hang.add_child(L)
+			L.global_position = sprite_px_world(s, fp.x, fp.y)
+			## 灯罩外一圈加性光晕: 点光只照得亮树皮, 暗底上看不出「这里有一盏灯」(第一版实拍只有 20px 的暗点)
+			var gl := Sprite3D.new()
+			gl.name = "HangGlow"
+			var gg := Gradient.new()
+			var lc: Color = cfg.get("light_col", LAMP_COL)
+			gg.set_color(0, Color(lc.r, lc.g, lc.b, 0.55))
+			gg.set_color(1, Color(lc.r, lc.g, lc.b, 0.0))
+			var gt := GradientTexture2D.new()
+			gt.gradient = gg
+			gt.fill = GradientTexture2D.FILL_RADIAL
+			gt.fill_from = Vector2(0.5, 0.5)
+			gt.fill_to = Vector2(1.0, 0.5)
+			gt.width = 64
+			gt.height = 64
+			var gm := StandardMaterial3D.new()
+			gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			gm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+			gm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+			gm.albedo_texture = gt
+			gm.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+			gl.texture = gt
+			gl.material_override = gm
+			gl.pixel_size = lamp_h * 1.6 / 64.0
+			gl.set_meta("host", t)   # 光晕跟灯一样吊在宿主树干上(落地点 = 宿主的脚)
+			hang.add_child(gl)
+			gl.global_position = L.global_position + b.z * 0.03
+
+
+## 主题氛围粒子 = **灯旁火星**: 每个登记过的火源冒几颗短命火星, 不满场撒。
+## ★为什么是这样(方案书 §4.5-2「动态只删错的, 不凭空造新动态」):
+##   删掉的是满场往上飘的气泡 + 冰蓝辉光(水下的东西); 留下的只有「火上方有火星」这一条**有因**的动态,
+##   每颗只活约 1 秒、升不过半米 —— 不会读成「气泡往上飘」。参数没有视频标定过, 只取量级。
+## ★不开(ambient_lamp_embers 不给)的主题只建一个空容器: 「删掉错的」对四版都成立, 「加火星」只给已做到位的暗林。
+func _build_theme_ambient(root: Node3D) -> void:
+	var cfg: Dictionary = ArenaTheme.cfg()
+	var amb := Node3D.new()
+	amb.name = "ThemeAmbient"
+	root.add_child(amb)
+	if not bool(cfg.get("ambient_lamp_embers", false)):
+		return
+	var col: Color = cfg.get("ambient_col", Color(1.0, 0.55, 0.25, 0.8))
+	var g := Gradient.new()
+	g.set_color(0, Color(col.r, col.g, col.b, col.a))
+	g.set_color(1, Color(col.r, col.g * 0.5, col.b * 0.3, 0.0))
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	mat.vertex_color_use_as_albedo = true
+	## ★BILLBOARD_PARTICLES 才吃每颗粒子的 scale; 用 ENABLED 会丢掉 scale ⇒ 每颗都是 1 米大的方块(第一版实拍)。
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	var dot := GradientTexture2D.new()          # 圆点(中心实·边缘透), 不是方块
+	var dg := Gradient.new()
+	dg.set_color(0, Color(1, 1, 1, 1))
+	dg.set_color(1, Color(1, 1, 1, 0))
+	dg.add_point(0.45, Color(1, 1, 1, 0.9))
+	dot.gradient = dg
+	dot.fill = GradientTexture2D.FILL_RADIAL
+	dot.fill_from = Vector2(0.5, 0.5)
+	dot.fill_to = Vector2(1.0, 0.5)
+	dot.width = 16
+	dot.height = 16
+	mat.albedo_texture = dot
+	for f in _flames:
+		if not is_instance_valid(f) or not (f is Sprite3D) or f.texture == null:
+			continue
+		var fp: Vector2 = _flame_px(f.texture)
+		if fp.x < 0.0:
+			continue
+		var e := CPUParticles3D.new()
+		e.name = "Embers"
+		e.amount = int(cfg.get("ember_amount", 3))
+		e.lifetime = 1.1
+		e.local_coords = false
+		e.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+		e.emission_sphere_radius = 0.06
+		e.direction = Vector3(0, 1, 0)
+		e.spread = 25.0
+		e.initial_velocity_min = 0.12
+		e.initial_velocity_max = 0.32
+		e.gravity = Vector3(0, 0.10, 0)
+		e.scale_amount_min = 0.6
+		e.scale_amount_max = 1.0
+		e.color_ramp = g
+		var q := QuadMesh.new()
+		q.size = Vector2(0.07, 0.07)   # 一颗火星 ≈ 7 厘米 ≈ 屏上 2~3 像素
+		e.mesh = q
+		e.material_override = mat
+		e.set_meta("flame", f)
+		amb.add_child(e)
+		e.global_position = sprite_px_world(f, fp.x, fp.y)
 
 
 func _build_decorations(root: Node3D) -> void:
@@ -2213,6 +2587,7 @@ func _build_lightshafts(root: Node3D) -> void:
 	var shafts = [[cx-520.0, 0.26], [cx-150.0, 0.34], [cx+250.0, 0.24], [cx+560.0, 0.3]]
 	for sh in shafts:
 		var spr = Sprite3D.new()
+		spr.set_meta("light_shaft", true)   # 打标: 判据 verify_arena_layers_drawn 数「主题里 0 道」(只是元数据, 画面不变)
 		spr.texture = tex
 		spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		spr.shaded = false
@@ -2238,44 +2613,14 @@ func _build_bubbles(root: Node3D) -> void:
 	p.lifetime = 9.0
 	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
 	p.emission_box_extents = Vector3(battle.ARENA.size.x * battle.WS * 0.5, 0.3, battle.ARENA.size.y * battle.WS * 0.5)
-	## ★★★2026-10-03 氛围粒子按主题。
-	##   原来这一层是**气泡**: 向上飘(`direction (0,1,0)` + `gravity +0.28`), 注释原文
-	##   「缓缓上升的小圆点, 满场飘 → **深海**有生气」—— 只在"镜头在水下"时成立。
-	##   而四版是**海上孤岛**: 向上飘的气泡在岛上是错的。
-	##   用户 2026-10-02:「还有地图上这些**气泡**，灯光，背景等**全部重做**」。
-	##
-	## ★四版各自的运动是**有因**的, 不是随手换个方向:
-	##     dusk  横飘的沙尘 —— 黄昏的风       · reef  烛台附近的火星(微微上飘)
-	##     shoal 水面反光点(几乎不动)          · storm 斜雨线(统一方向·快)
-	## ⚠ 频率/速度/生命周期这些**动态**参数, 我手上只有静态截图量不出来
-	##   (方案书风险 7)。所以这里只做**方向与速度的量级**对题, 不假装标定过曲线。
-	var _ak: String = str(ArenaTheme.cfg().get("ambient_kind", "bubbles"))
-	match _ak:
-		"drift_dust":                     # 黄昏: 横飘的沙尘
-			p.direction = Vector3(1, 0.15, 0)
-			p.gravity = Vector3(0.22, 0.02, 0)
-			p.initial_velocity_min = 0.35
-			p.initial_velocity_max = 0.9
-		"embers":                         # 夜礁: 火星(慢·微上飘)
-			p.direction = Vector3(0, 1, 0)
-			p.gravity = Vector3(0.03, 0.12, 0)
-			p.initial_velocity_min = 0.08
-			p.initial_velocity_max = 0.3
-		"sun_glints":                     # 白昼: 水面反光点(几乎不动)
-			p.direction = Vector3(0, 1, 0)
-			p.gravity = Vector3(0, 0.01, 0)
-			p.initial_velocity_min = 0.02
-			p.initial_velocity_max = 0.08
-		"rain_streaks":                   # 风暴: 斜雨(快·统一方向·往下)
-			p.direction = Vector3(0.45, -1, 0)
-			p.gravity = Vector3(0.9, -3.2, 0)
-			p.initial_velocity_min = 2.2
-			p.initial_velocity_max = 3.6
-		_:                                # `base`(现状·已验收): 气泡, **逐值不变**
-			p.direction = Vector3(0, 1, 0)
-			p.gravity = Vector3(0, 0.28, 0)
-			p.initial_velocity_min = 0.2
-			p.initial_velocity_max = 0.55
+	## ★★2026-10-04 这一层**只属于 base**(现状·已验收): 主题在 `_build_map_props` 里根本不进这里
+	##   (满场往上飘的气泡在岛上是错的, 方案书 §4.5-2 点名要删)。主题的氛围粒子在 `_build_theme_ambient`。
+	##   原来这里有一张按 ambient_kind 分支的表(沙尘/火星/反光/斜雨), 四版都不再走到这里 ⇒ 删掉, 免得读着像还在生效。
+	##   base 的四个值**逐值不变**。
+	p.direction = Vector3(0, 1, 0)
+	p.gravity = Vector3(0, 0.28, 0)
+	p.initial_velocity_min = 0.2
+	p.initial_velocity_max = 0.55
 	p.scale_amount_min = 0.018
 	p.scale_amount_max = 0.05
 	var bm = StandardMaterial3D.new()
