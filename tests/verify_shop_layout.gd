@@ -1416,12 +1416,12 @@ func _check_maxlevel_xp() -> void:
 ## ★由来(2026-09-29 台账 ⑮): 「商店买不起是一句 `return`，零反馈；买成功的唯一反馈是
 ##   `_rebuild()` 整屏重画(卡凭空消失、钱数变一下)」。
 ##   探针实测三条路**全部** `_toast_node = <null>`: `_on_buy` 买不起 / `_on_buy` 成交 /
-##   `_on_refresh` 币不够。而「换一批」那颗按钮在 coins=0 时 `disabled=false` ——
+##   `_on_refresh` 币不够。而「刷新」那颗按钮在 coins=0 时 `disabled=false` ——
 ##   点得下去、什么也不发生, 与满级那颗死按钮**同一个形状**。
 ##
 ## ★★两样一起量:【屏幕上多出来的那句话】+【状态有没有真的变】。
 ##   只看提示会被"提示出来了但钱没扣"骗过去; 只看状态会把"零反馈"判成通过。
-## ★顺序是**按币量从少到多**排的: 换一批(要 0~1 币) → 买不起(price-1) → 成交(price+50)。
+## ★顺序是**按币量从少到多**排的: 刷新(要 0~1 币) → 买不起(price-1) → 成交(price+50)。
 ##   顺序反了"买不起"那两条就变成空检查(钱够了当然买得起)。
 func _check_buy_feedback() -> void:
 	print("")
@@ -1453,12 +1453,12 @@ func _check_buy_feedback() -> void:
 	var price: int = int(sc3._price(edef3))
 	var nm: String = str(edef3.get("name", ""))
 
-	# ── ① 换一批买不起: 按钮长得像死的 + 点了说为什么 + 货架一件没换 ──
+	# ── ① 刷新买不起: 按钮长得像死的 + 点了说为什么 + 货架一件没换 ──
 	var rf: Button = null
 	var bts: Array = []
 	_collect_buttons(sc3, bts)
 	for b in bts:
-		if str((b as Button).text).find("换一批") >= 0:
+		if str((b as Button).text).find("刷新") >= 0:
 			rf = b
 	var before_ids: Array = []
 	for it in sc3._offer:
@@ -1468,18 +1468,18 @@ func _check_buy_feedback() -> void:
 		await get_tree().process_frame
 	var msg2 := ""
 	for l in _labels_in(sc3):
-		if str((l as Label).text).find("换一批要") >= 0:
+		if str((l as Label).text).find("刷新要") >= 0:
 			msg2 = str((l as Label).text)
 	var after_ids: Array = []
 	for it in sc3._offer:
 		after_ids.append("" if it == null else str((it as Dictionary).get("id", "")))
-	print("     换一批买不起(币 0): 按钮 disabled=%s alpha=%.2f 屏上「%s」 货架变了=%s"
+	print("     刷新买不起(币 0): 按钮 disabled=%s alpha=%.2f 屏上「%s」 货架变了=%s"
 		% [str(rf != null and rf.disabled), rf.modulate.a if rf != null else -1.0, msg2,
 		   str(before_ids != after_ids)])
-	_chk("BUY_FEEDBACK ① ★分母: 找到「换一批」按钮", rf != null)
-	_chk("BUY_FEEDBACK ① 币不够时「换一批」disabled 且整颗压暗(价钱那枚币图标是子节点, 不吃 disabled)",
+	_chk("BUY_FEEDBACK ① ★分母: 找到「刷新」按钮", rf != null)
+	_chk("BUY_FEEDBACK ① 币不够时「刷新」disabled 且整颗压暗(价钱那枚币图标是子节点, 不吃 disabled)",
 		rf != null and rf.disabled and rf.modulate.a < 0.6)
-	_chk("BUY_FEEDBACK ① 点它 → 屏上说清换一批要多少钱(「%s」里含 %d)" % [msg2, int(SHOP_GD.REFRESH_COST)],
+	_chk("BUY_FEEDBACK ① 点它 → 屏上说清刷新要多少钱(「%s」里含 %d)" % [msg2, int(SHOP_GD.REFRESH_COST)],
 		msg2 != "" and msg2.find(str(int(SHOP_GD.REFRESH_COST))) >= 0)
 	_chk("BUY_FEEDBACK ① ★分母: 货架一件没换(不成交就不许偷偷重掷)", before_ids == after_ids)
 
@@ -1541,8 +1541,8 @@ func _check_buy_feedback() -> void:
 		and (sc3._toast_node as Node).is_inside_tree())
 
 	# ── ④ 提示不许盖住任何按钮 + 不许伸出 720 ──
-	## ★由来: 提示原来摆在 y 430..474, 而「换一批」按钮就在 448..524 ——
-	##   一句"深海币不够 · 换一批要 2"**盖住它解释的那颗按钮的上沿 26px**。
+	## ★由来: 提示原来摆在 y 430..474, 而「刷新」按钮就在 448..524 ——
+	##   一句"深海币不够 · 刷新要 2"**盖住它解释的那颗按钮的上沿 26px**。
 	##   提示越常出现, 这条越要紧, 所以焊住。(弹层 z=20 被压住是故意的, 不算。)
 	if sc3._toast_node != null and is_instance_valid(sc3._toast_node):
 		var tr: Rect2 = Rect2((sc3._toast_node as Control).position, (sc3._toast_node as Control).size)

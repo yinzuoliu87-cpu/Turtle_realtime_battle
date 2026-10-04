@@ -12,12 +12,12 @@ extends Node
 ##   换货 = 哨兵被覆盖 —— 与掷出什么无关。
 ##
 ## 断言(L = lock):
-##   L0  分母: 商店真的开了(货架 10 格) + 锁钮存在、未锁态文案「锁货」、与「换一批」同一行不重叠
+##   L0  分母: 商店真的开了(货架 10 格) + 锁钮存在、未锁态文案「锁货」、与「刷新」同一行不重叠
 ##   L1  对照: **不锁** + 打完一场 → 哨兵被换掉(证明这套判据能看见换货)
 ##   L2  ★锁上 + 打完一场 → 货架逐字节不变; 再打一场 → 仍不变
 ##   L3  ★锁上时按钮文案「已锁」
 ##   L4  ★重启保留: _save_dict → JSON → _apply_save_dict 往返后仍是锁着的
-##   L5  ★锁着手动「换一批」仍可换(扣 2 币) + 换完**自动解锁**(云顶: 刷新顺带解锁, tft.ninja「The Shop」)
+##   L5  ★锁着手动「刷新」仍可换(扣 2 币) + 换完**自动解锁**(云顶: 刷新顺带解锁, tft.ninja「The Shop」)
 ##   L6  ★解锁当下不换货(云顶: 解锁不等于刷新); 解锁后打完下一场 → 换货
 ##   L7  新赛季 / 清档都解锁
 
@@ -83,7 +83,7 @@ func _find(n: Node, nm: String) -> Node:
 
 
 func _find_refresh(n: Node) -> Button:
-	if n is Button and str((n as Button).text).begins_with("换一批"):
+	if n is Button and str((n as Button).text).begins_with("刷新"):
 		return n
 	for c in n.get_children():
 		var r = _find_refresh(c)
@@ -112,10 +112,10 @@ func _ready() -> void:
 	var lb := _find(sc, "ShopLockBtn") as Button
 	var rf := _find_refresh(sc)
 	_ok("L0 锁钮存在", lb != null)
-	_ok("L0 「换一批」存在", rf != null)
+	_ok("L0 「刷新」存在", rf != null)
 	if lb != null and rf != null:
-		_ok("L0 未锁态文案「锁货」", lb.text == "锁货", lb.text)
-		_ok("L0 锁钮与「换一批」同一行、贴在它右边、不重叠",
+		_ok("L0 未锁态文案「锁货」", lb.text == "锁定", lb.text)
+		_ok("L0 锁钮与「刷新」同一行、贴在它右边、不重叠",
 			absf(lb.position.y - rf.position.y) < 0.5 and lb.position.x >= rf.position.x + rf.size.x
 			and lb.position.x + lb.size.x <= SHOP_GD.PANEL_X,
 			"rf=%s+%s lb=%s+%s" % [rf.position, rf.size, lb.position, lb.size])
@@ -138,7 +138,7 @@ func _ready() -> void:
 	sc._on_toggle_lock()
 	_ok("L3 点锁钮 → meta_shop_locked = true", bool(gs.meta_shop_locked))
 	lb = sc._lock_btn   # ★不按名字找: _rebuild 只 queue_free 旧钮, 这一帧旧钮还挂在树上
-	_ok("L3 已锁态文案「已锁」", lb != null and lb.text == "已锁", lb.text if lb != null else "null")
+	_ok("L3 已锁态文案「已锁」", lb != null and lb.text == "已锁定", lb.text if lb != null else "null")
 	_leave(sc)
 	s0 = _shelf()
 	_ok("L2 前提: 锁的就是哨兵货架", s0 == JSON.stringify(SENTINEL))
@@ -159,12 +159,12 @@ func _ready() -> void:
 	_ok("★L4 存档往返(_save_dict→JSON→_apply_save_dict)后仍锁着", bool(gs.meta_shop_locked))
 	_ok("★L4 存档往返后货架逐字节不变", _shelf() == s0)
 
-	# ── L5 锁着手动换一批 ──
+	# ── L5 锁着手动刷新 ──
 	sc = await _enter()
 	var c0: int = int(gs.meta_deepsea_coins)
 	sc._on_refresh()
-	_ok("★L5 锁着手动「换一批」照样换货", _shelf() != s0)
-	_ok("L5 换一批照常扣 %d 币" % SHOP_GD.REFRESH_COST, int(gs.meta_deepsea_coins) == c0 - SHOP_GD.REFRESH_COST,
+	_ok("★L5 锁着手动「刷新」照样换货", _shelf() != s0)
+	_ok("L5 刷新照常扣 %d 币" % SHOP_GD.REFRESH_COST, int(gs.meta_deepsea_coins) == c0 - SHOP_GD.REFRESH_COST,
 		"%d → %d" % [c0, int(gs.meta_deepsea_coins)])
 	_ok("★L5 换完自动解锁(云顶: 刷新顺带解锁)", not bool(gs.meta_shop_locked))
 	_leave(sc)

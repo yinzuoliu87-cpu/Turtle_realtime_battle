@@ -558,10 +558,11 @@ func _rebuild() -> void:
 		var row := i / 5
 		add_child(_card(i, Vector2(GRID_X + col * (SLOT_W + GRID_GAP_X), GRID_Y + row * (SLOT_H + GRID_GAP_Y))))
 
-	## ★「刷新 -2」→「换一批 2」: 「刷新」是浏览器的词, 「-2」是账本的写法。
+	## ★★2026-10-04 用户「用商业游戏的词行吗，刷新和锁定」⇒ 改回「刷新」(云顶/酒馆战棋通行叫法), 锁货→「锁定」。
+	## (旧注: 「刷新 -2」→「换一批 2」: 「刷新」是浏览器的词, 「-2」是账本的写法。)
 	##   摊主的说法是"给我换一批货"; 价钱由按钮上那枚深海币图标讲(`_coin_button_icon`),
 	##   不需要再打一个负号 —— 图标本身就说明这 2 是要付出去的。
-	var rf := Button.new(); rf.text = "换一批  %d" % REFRESH_COST
+	var rf := Button.new(); rf.text = "刷新  %d" % REFRESH_COST
 	rf.add_theme_font_size_override("font_size", 22)
 	# 纵向节奏: 卡区止于 420 → 刷新 448(隔 28) → 底部按钮 552(隔 28) → 收于 648, 页底留 72
 	rf.position = Vector2(GRID_X + 250, 448); rf.size = Vector2(240, 76)
@@ -1561,7 +1562,7 @@ func _on_buy(idx: int) -> void:
 	if not GameState.pool_take(_eid, 1):
 		## ★这一条**不是**到不了的分支: 货架是异步持久化的, 同一件被别的路径抽空时
 		##   摊上那张卡还挂着。玩家点下去钱没扣、货没来, 必须有人告诉他为什么。
-		_toast("「%s」刚被人抢走了 · 换一批看看" % _nm)
+		_toast("「%s」刚被人抢走了 · 刷新看看" % _nm)
 		return
 	GameState.meta_deepsea_coins -= price
 	## ★096 小木斧(方案书未决点 ⑧, 用户 2026-08-31 亲自纠正过我): **只能拥有一把**。
@@ -1613,7 +1614,7 @@ func _build_lock_button(pos: Vector2, h: float) -> void:
 	var locked: bool = bool(GameState.meta_shop_locked)
 	var lb := Button.new()
 	lb.name = "ShopLockBtn"
-	lb.text = "已锁" if locked else "锁货"
+	lb.text = "已锁定" if locked else "锁定"
 	lb.add_theme_font_size_override("font_size", 20)
 	lb.position = pos; lb.size = Vector2(LOCK_W, h)
 	lb.icon = LOCK_ICON
@@ -1622,7 +1623,7 @@ func _build_lock_button(pos: Vector2, h: float) -> void:
 	## 图标在左、字在右, 一行排开(竖排时 76 高的皮框上下边带会压住图标和字 —— 实拍过)
 	lb.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	lb.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	lb.tooltip_text = "已锁: 打完下一场也不换货, 再点一下解锁" if locked else "锁住这批货: 打完下一场不自动换"
+	lb.tooltip_text = "已锁定: 打完下一场也不刷新, 再点一下解锁" if locked else "锁定商店: 打完下一场不自动刷新"
 	_skin_button(lb, locked)
 	## 未锁时图标压暗(按钮本身不 disabled —— 它随时都能点)
 	lb.add_theme_color_override("icon_normal_color", Color(1, 1, 1, 1) if locked else Color(1, 1, 1, 0.45))
@@ -1647,7 +1648,7 @@ func _on_refresh() -> void:
 		## ★同 `_on_buy`: 原来是裸 return。而「换一批」那颗按钮**一直是亮的**
 		##   (实测 coins=0 时 `disabled=false`) ⇒ 玩家点得下去、什么也不发生。
 		##   这是满级买经验那颗死按钮的同一个形状: 死按钮要长得像死的 + 点了要说为什么。
-		_toast("深海币不够 · 换一批要 %d" % REFRESH_COST)
+		_toast("深海币不够 · 刷新要 %d" % REFRESH_COST)
 		return
 	GameState.meta_deepsea_coins -= REFRESH_COST
 	## ★锁着也能换一批, 而且**换完自动解锁** —— 照云顶(tft.ninja「The Shop」: 锁住的商店

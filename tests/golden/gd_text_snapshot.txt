@@ -871,14 +871,14 @@ scripts/scenes/SettingsScene.gd|text|邮箱绑好了
 scripts/scenes/SettingsScene.gd|text|验证码已发到 %s
 scripts/scenes/ShopScene.gd|lit|  能进化了
 scripts/scenes/ShopScene.gd|lit|[color=#5b7a92]这件的门道, 摊主自己也讲不明白[/color]
-scripts/scenes/ShopScene.gd|lit|「%s」刚被人抢走了 · 换一批看看
+scripts/scenes/ShopScene.gd|lit|「%s」刚被人抢走了 · 刷新看看
 scripts/scenes/ShopScene.gd|lit|买下「%s」· 凑齐 3 件, 合成 ★%d 了
 scripts/scenes/ShopScene.gd|lit|买下「%s」· 进背包了
 scripts/scenes/ShopScene.gd|lit|已经是最高等级 Lv%d · 经验用不上了
 scripts/scenes/ShopScene.gd|lit|已经有一把「%s」了 · 这一笔化成 +%d 砍伐经验
 scripts/scenes/ShopScene.gd|lit|斧头
 scripts/scenes/ShopScene.gd|lit|深海币不够 · 买一次经验要 %d
-scripts/scenes/ShopScene.gd|lit|深海币不够 · 换一批要 %d
+scripts/scenes/ShopScene.gd|lit|深海币不够 · 刷新要 %d
 scripts/scenes/ShopScene.gd|lit|精英小将
 scripts/scenes/ShopScene.gd|lit|解锁了 · 打完下一场换新货
 scripts/scenes/ShopScene.gd|lit|近战小将
@@ -897,14 +897,14 @@ scripts/scenes/ShopScene.gd|text|下
 scripts/scenes/ShopScene.gd|text|买下  %d
 scripts/scenes/ShopScene.gd|text|买经验 +%d
 scripts/scenes/ShopScene.gd|text|今日货源
+scripts/scenes/ShopScene.gd|text|刷新  %d
 scripts/scenes/ShopScene.gd|text|另外还有 %d 项
 scripts/scenes/ShopScene.gd|text|同类装备凑够 3 件, 羁绊才会亮
 scripts/scenes/ShopScene.gd|text|回 🎒 背包装上或卖掉
 scripts/scenes/ShopScene.gd|text|属性
 scripts/scenes/ShopScene.gd|text|已入袋
 scripts/scenes/ShopScene.gd|text|已满级
-scripts/scenes/ShopScene.gd|text|已锁
-scripts/scenes/ShopScene.gd|text|换一批  %d
+scripts/scenes/ShopScene.gd|text|已锁定
 scripts/scenes/ShopScene.gd|text|收起
 scripts/scenes/ShopScene.gd|text|空的, 上面挑几件带走
 scripts/scenes/ShopScene.gd|text|等级已满
@@ -916,13 +916,13 @@ scripts/scenes/ShopScene.gd|text|还差 %d 枚深海币
 scripts/scenes/ShopScene.gd|text|还有 %d 件, 去背包页看全部
 scripts/scenes/ShopScene.gd|text|还没点兵, 先去选龟那边排一路人马
 scripts/scenes/ShopScene.gd|text|这件不加属性，只有效果
-scripts/scenes/ShopScene.gd|text|锁货
+scripts/scenes/ShopScene.gd|text|锁定
 scripts/scenes/ShopScene.gd|text|🎒 我的背包  %d 件
 scripts/scenes/ShopScene.gd|text|🐢 出战阵容  已装 %d/%d
 scripts/scenes/ShopScene.gd|text|🐢 出战阵容 · 身上带着的
 scripts/scenes/ShopScene.gd|text|🔒 摊子还没摆开\n\n打完这一大轮的头一场, 老板才出摊
-scripts/scenes/ShopScene.gd|tooltip_text|已锁: 打完下一场也不换货, 再点一下解锁
-scripts/scenes/ShopScene.gd|tooltip_text|锁住这批货: 打完下一场不自动换
+scripts/scenes/ShopScene.gd|tooltip_text|已锁定: 打完下一场也不刷新, 再点一下解锁
+scripts/scenes/ShopScene.gd|tooltip_text|锁定商店: 打完下一场不自动刷新
 scripts/scenes/TeamSelectScene.gd|lit|%s 不能被替换
 scripts/scenes/TeamSelectScene.gd|lit|%s 只能拖到空格
 scripts/scenes/TeamSelectScene.gd|lit|三只满了 · 先撤下一只
