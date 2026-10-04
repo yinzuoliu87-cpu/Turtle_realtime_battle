@@ -1397,20 +1397,28 @@ func _make_links(n: int, total: int) -> void:
 			var b: Rect2 = _L.node_rect(n, r - 1, m * 2 + 1)
 			if me_rect.size == Vector2.ZERO or a.size == Vector2.ZERO:
 				continue
-			## 来源在本场的左边还是右边 —— 镜像布局两侧相反
-			var from_left: bool = a.position.x < me_rect.position.x
-			var src_x: float = a.end.x if from_left else a.position.x
-			var dst_x: float = me_rect.position.x if from_left else me_rect.end.x
-			var mid_x: float = (src_x + dst_x) * 0.5
-			var ay: float = a.position.y + a.size.y * 0.5
-			var by: float = b.position.y + b.size.y * 0.5
-			var my: float = me_rect.position.y + me_rect.size.y * 0.5
 			## `a` 喂本场的 0 侧、`b` 喂 1 侧 —— 与 `bracket.occupant_seed` 的
 			## `src_m = m * 2 + side` 同一条口径(反了会把两条线的明暗对调)。
 			var lit_a: bool = int(competitor(r, m, 0).get("seed", -1)) >= 0
 			var lit_b: bool = int(competitor(r, m, 1).get("seed", -1)) >= 0
 			var mine_a: bool = _is_me_side(r, m, 0)
 			var mine_b: bool = _is_me_side(r, m, 1)
+			var my: float = me_rect.position.y + me_rect.size.y * 0.5
+			## ★2026-10-04 用户真机截图: 决赛在中间、两场半决赛一左一右(镜像布局),
+			##   原来按 `a` 的方位算一次就当两条来源同侧 ⇒ 右边半决赛那条线画到了左边(与左边那条重叠), 右边一根线都没有。
+			##   ⇒ 两个来源**各自**判方位: 同侧走「两横一竖再一横」的括号形, 分居两侧就各画一条直通。
+			var a_left: bool = a.position.x < me_rect.position.x
+			var b_left: bool = b.size != Vector2.ZERO and b.position.x < me_rect.position.x
+			if b.size != Vector2.ZERO and a_left != b_left:
+				_link_one(a, me_rect, my, lit_a, mine_a, is_my_match(r, m))
+				_link_one(b, me_rect, my, lit_b, mine_b, is_my_match(r, m))
+				continue
+			var from_left: bool = a_left
+			var src_x: float = a.end.x if from_left else a.position.x
+			var dst_x: float = me_rect.position.x if from_left else me_rect.end.x
+			var mid_x: float = (src_x + dst_x) * 0.5
+			var ay: float = a.position.y + a.size.y * 0.5
+			var by: float = b.position.y + b.size.y * 0.5
 			_h_line(src_x, mid_x, ay, lit_a, mine_a)
 			_h_line(src_x, mid_x, by, lit_b, mine_b)
 			_v_line(mid_x, ay, by, lit_a and lit_b, mine_a or mine_b)
@@ -1422,6 +1430,21 @@ func _make_links(n: int, total: int) -> void:
 				var room: float = absf(dst_x - mid_x)
 				_arrow(_canvas, dst_x, my, from_left,
 					_link_col(true, is_my_match(r, m)), clampi(int(room / 3.0), 2, 4))
+
+
+## 一条来源 → 本场的直通连线(镜像布局里两个来源分居两侧时用): 横 → 竖 → 横 + 箭头。
+func _link_one(src: Rect2, dst: Rect2, my: float, lit: bool, mine_src: bool, mine_dst: bool) -> void:
+	var from_left: bool = src.position.x < dst.position.x
+	var src_x: float = src.end.x if from_left else src.position.x
+	var dst_x: float = dst.position.x if from_left else dst.end.x
+	var mid_x: float = (src_x + dst_x) * 0.5
+	var sy: float = src.position.y + src.size.y * 0.5
+	_h_line(src_x, mid_x, sy, lit, mine_src)
+	_v_line(mid_x, sy, my, lit, mine_src)
+	_h_line(mid_x, dst_x, my, lit, mine_src or mine_dst)
+	if lit:
+		var room: float = absf(dst_x - mid_x)
+		_arrow(_canvas, dst_x, my, from_left, _link_col(true, mine_src or mine_dst), clampi(int(room / 3.0), 2, 4))
 
 
 ## 连线的颜色: 亮/暗两档 × 是不是我走的那条。
