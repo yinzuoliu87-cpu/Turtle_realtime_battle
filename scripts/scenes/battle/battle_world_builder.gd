@@ -1646,7 +1646,14 @@ func _build_foreground_band() -> void:   # ★不收 root: 它挂在相机上, �
 	##   最终成图是 1280×720(从 1280×1280 视口裁出) ⇒ 可见区纵向约 y∈[280,1000]。
 	##   ⇒ 要把带压在可见区下沿 ⇒ 屏幕 y≈960 ⇒ 偏离中心 320px ⇒ local y ≈ -0.43。
 	## ★宽度同理: 贴图 400px 宽, 要铺满 1280px 的 1.3 倍 ⇒ 2.22 世界单位 ⇒ pixel_size ≈ 0.0055。
-	var n := 2
+	## ★★2026-10-04 `fg_band_px`(主题给) ⇒ **单张整幅**分层剪影(fg_sea_band):
+	##   旧图是两张 400px 锯齿草带左右各铺一张、中段重叠; 新图是**画好构图**的一整幅
+	##   (两角大海带框边、中段压低让出视线、远/中/近三层), 两张叠着会把构图叠乱 ⇒ 只铺一张。
+	##   贴图是**灰度**: 灰度 = 层深(远亮近暗), 颜色仍由 fg_band_col 给, `fg_band_gain` 把灰度抬回剪影色量级。
+	##   1280×720 实测 1 世界单位 ≈ 421px(竖向 fov 40°·z=-2.35) ⇒ px 0.00475 ≈ 每格 2 屏幕像素, 800 格宽 ≈ 3.8 单位(宽屏手机也盖得住)。
+	var _one: bool = cfg.has("fg_band_px")
+	var n := 1 if _one else 2
+	var _gain: float = float(cfg.get("fg_band_gain", 1.0))
 	for i in range(n):
 		var q := Sprite3D.new()
 		q.texture = tex
@@ -1654,19 +1661,21 @@ func _build_foreground_band() -> void:   # ★不收 root: 它挂在相机上, �
 		q.shaded = false
 		q.transparent = true
 		q.billboard = BaseMaterial3D.BILLBOARD_DISABLED
-		q.pixel_size = 0.0055 * rng.randf_range(0.96, 1.10)
+		q.pixel_size = float(cfg["fg_band_px"]) if _one else 0.0055 * rng.randf_range(0.96, 1.10)
 		## 相机局部坐标: x 横向铺三段(互相重叠), y 压在画面下沿, z 最近。
 		## ★fg_band_y: 草尖高的剪影带(2026-10-03 fg_grass_band)放在 -0.54 会盖住下沿交战的龟 ⇒ 主题可往下压。
-		q.position = Vector3((float(i) - 0.5) * 1.05, float(cfg.get("fg_band_y", -0.54)) + rng.randf_range(-0.03, 0.03), -2.35)
+		var _x: float = 0.0 if _one else (float(i) - 0.5) * 1.05
+		var _jy: float = 0.0 if _one else rng.randf_range(-0.03, 0.03)
+		q.position = Vector3(_x, float(cfg.get("fg_band_y", -0.54)) + _jy, -2.35)
 		var sx: float = (-1.0 if i == 1 else 1.0)          # 中段镜像, 破平铺感
 		q.scale = Vector3(sx, 1.0, 1.0)
 		## ★压暗: 前景是**剪影**不是主角(咩咩的前景草带实测比场内暗一大截)。
-		var bl: float = rng.randf_range(0.34, 0.46)
-		q.modulate = Color(bl, bl * 0.98, bl * 1.04)
+		var bl: float = 0.40 if _one else rng.randf_range(0.34, 0.46)
 		## ★贴图已清成纯白剪影(原图是靛蓝 + 品红噪点 + 白高光, 四版共用 ⇒ 暗林前景是蓝紫带亮点);
 		##   颜色由主题给(fg_band_col), 小幅明暗抖动保留。
 		var _fc: Color = cfg.get("fg_band_col", Color(0.06, 0.06, 0.09))
-		q.modulate = Color(_fc.r * bl / 0.40, _fc.g * bl / 0.40, _fc.b * bl / 0.40)
+		var _m: float = bl / 0.40 * _gain
+		q.modulate = Color(_fc.r * _m, _fc.g * _m, _fc.b * _m)
 		q.sorting_offset = 8.0                              # 压在所有东西前面
 		battle._cam.add_child(q)
 

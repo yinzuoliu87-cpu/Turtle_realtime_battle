@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b48cuftx6r8ka"
-path="res://.godot/imported/fg_grass_band.png-d840b48fdae0738f4b652f2fad24f6ff.ctex"
+uid="uid://drf08sdfg70rc"
+path="res://.godot/imported/dusk3_lantern_b.png-6b761633906b8c670c223714f8293a82.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/map/themes/fg_grass_band.png"
-dest_files=["res://.godot/imported/fg_grass_band.png-d840b48fdae0738f4b652f2fad24f6ff.ctex"]
+source_file="res://assets/sprites/map/themes/dusk3_lantern_b.png"
+dest_files=["res://.godot/imported/dusk3_lantern_b.png-6b761633906b8c670c223714f8293a82.ctex"]
 
 [params]
 
