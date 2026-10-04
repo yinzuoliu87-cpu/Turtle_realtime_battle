@@ -15,7 +15,7 @@ extends Node
 ##
 ## ══ 这条门禁量的是什么 ══
 ## 走**真控件树**(`get_global_rect()` 那一侧的真对象), 不读常量、不模拟公式:
-##   ① 分母: 表里确实有 N 行 x 4 个数值格, 且 N>0
+##   ① 分母: 表里确实有 N 行 x 7 个数值格(2026-10-04 起 7 列), 且 N>0
 ##   ② 分母: 这批数据里【零值格】和【非零格】**两种都有**(缺一种这条就是空检查)
 ##   ③ 没有任何一个数值格印着 "0"
 ##   ④ 零值格印的就是 `BattleHud.SETTLE_ZERO_MARK`(与产品同一个常量, 不自己拼)
@@ -27,6 +27,7 @@ extends Node
 ## 跑法: bash godot-quiet.sh res://tests/verify_settle_density.tscn --quit-after 1500
 
 const SCENE := "res://scenes/RealtimeBattle3D.tscn"
+const SSD := preload("res://scripts/scenes/battle/settle_screen.gd")
 
 var _n := 0
 var _fail := 0
@@ -64,11 +65,14 @@ func _ready() -> void:
 			if k % 2 == 0:
 				## 偶数只: 四项全 0 (= 一只什么都没干的龟, 真对局里到处都是)
 				u["_st_dealt"] = 0; u["_st_taken"] = 0; u["_st_heal"] = 0; u["_st_kills"] = 0
+				u["_st_shield"] = 0; u["_st_dealt_by_type"] = {}
 			else:
 				u["_st_dealt"] = 1000 + 137 * k
 				u["_st_taken"] = 500 + 91 * k
 				u["_st_heal"] = 40 * k
 				u["_st_kills"] = 1 + k % 3
+				u["_st_shield"] = 30 * k
+				u["_st_dealt_by_type"] = {"phy": 700 + 137 * k, "mag": 200, "tru": 100}
 			if not sc._arr_has_unit(sc._units, u):
 				sc._units.append(u)
 			made += 1
@@ -90,8 +94,9 @@ func _ready() -> void:
 		if sd != "left" and sd != "right":
 			continue
 		var row: Dictionary = sc._st_row(u)
-		for key in ["_st_dealt", "_st_taken", "_st_heal", "_st_kills"]:
-			var v: int = int(row.get(key, 0))
+		var sp: Array = SSD.dealt_split(row)
+		for v in [int(row.get("_st_dealt", 0)), int(sp[0]), int(sp[1]), int(row.get("_st_taken", 0)),
+				int(row.get("_st_heal", 0)), int(row.get("_st_shield", 0)), int(row.get("_st_kills", 0))]:
 			if v == 0:
 				want_zero += 1
 			else:
@@ -115,7 +120,7 @@ func _ready() -> void:
 		for _i in range(4):
 			await get_tree().process_frame
 		_find_grids(sc._ui_layer, grids)
-	var cells: Array = []                # 只收【数值格】那 4 个 Label
+	var cells: Array = []                # 只收【数值格】那 7 个 Label
 	var rows := 0
 	for g in grids:
 		var kids: Array = (g as Node).get_children()
@@ -123,15 +128,15 @@ func _ready() -> void:
 		while i < kids.size():
 			if kids[i] is HBoxContainer:
 				rows += 1
-				for j in range(1, 5):
+				for j in range(1, 8):
 					if i + j < kids.size() and kids[i + j] is Label:
 						cells.append(kids[i + j])
-				i += 5
+				i += 8
 				continue
 			i += 1
-	_ok("① 分母: 真控件树里找到 %d 行 x 4 = %d 个数值格, 且与数据侧对得上(%d)"
+	_ok("① 分母: 真控件树里找到 %d 行 x 7 = %d 个数值格, 且与数据侧对得上(%d)"
 		% [rows, cells.size(), want_zero + want_num],
-		rows > 0 and cells.size() == rows * 4 and cells.size() == want_zero + want_num,
+		rows > 0 and cells.size() == rows * 7 and cells.size() == want_zero + want_num,
 		"rows=%d cells=%d want=%d grids=%d" % [rows, cells.size(), want_zero + want_num, grids.size()])
 
 	var mark: String = sc._hud.SETTLE_ZERO_MARK
@@ -172,10 +177,10 @@ func _ready() -> void:
 	get_tree().quit(1 if _fail > 0 else 0)
 
 
-## 结算表那几个 GridContainer(columns==5)。递归找, 不假设树的层级
+## 结算表那几个 GridContainer(columns==8)。递归找, 不假设树的层级
 ## (memory [[fb-recursive-scan-not-structured-walk]]: 别按我以为的层级走)。
 func _find_grids(n: Node, acc: Array) -> void:
-	if n is GridContainer and (n as GridContainer).columns == 5 and (n as Control).is_visible_in_tree():
+	if n is GridContainer and (n as GridContainer).columns == 8 and (n as Control).is_visible_in_tree():
 		acc.append(n)
 	for ch in n.get_children():
 		_find_grids(ch, acc)

@@ -49,11 +49,15 @@ const TAB_H := 88.0                    # ≥ 81 = 44pt 触控线
 const SEG_SIZE := Vector2(118, 81)
 const BTN_SIZE := Vector2(240, 84)
 const ROW_H := 42.0                    # 头像 40 + 2px 呼吸(8 行 + 表头正好落在页体里, 见门禁 verify_settle_pages)
-const NAME_W := 320.0
-const NUM_W := 124.0
+const NAME_W := 228.0
+const NUM_W := 92.0                    # 7 个数值列(2026-10-04): 228 + 7×(92+8) = 928 ≤ 1280 宽时页体可视 936
 const SWIPE_MIN := 110.0               # 横向移动超过这么多(逻辑 px)才算翻页
 
 const PAGE_NAMES := ["战果", "我方", "敌方"]
+## 队伍表的 7 个数值列(用户 2026-10-04 原话:「标准写法应该是造成总伤害，造成魔法伤害，造成物理伤害，
+##   受到伤害，治疗，护盾，击杀数这样啊」; 物理排在魔法前面 = 商业游戏的常见顺序)。
+## ★这是列名的【唯一出处】: 表头、`DmgStatsPanel.TABS`、门禁都读它。真实伤害只进「造成总伤害」, 不单列。
+const COLS := ["造成总伤害", "造成物理伤害", "造成魔法伤害", "受到伤害", "治疗", "护盾", "击杀数"]
 ## 表底「下面还有几只」—— 只有召唤物多到一页放不下时才出现(见 `_refresh_more`)。
 ## ★抽成常量: 门禁拿同一份格式串算「屏上该写的那句」, 不在测试里抄第二份。
 const MORE_FMT := "▼ 还有 %d 只在下面 · 可上下滑动"
@@ -310,7 +314,7 @@ func _page_result(won: bool, sealed: bool, gs, views: Array) -> Control:
 		var nm := _lbl(battle._st_name(r), F_TEAM - 4, Color("#ffffff"))
 		nm.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		mv.add_child(nm)
-		var dl := _lbl("伤害 %d" % int(r.get("_st_dealt", 0)), F_TEAM - 4, COL_GOLD)
+		var dl := _lbl("造成伤害 %d" % int(r.get("_st_dealt", 0)), F_TEAM - 4, COL_GOLD)
 		dl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		mv.add_child(dl)
 		v.add_child(mv)
@@ -390,20 +394,21 @@ func _page_team(team: int, title: String, hc: Color, views: Array, side: String)
 	return v
 
 
-## 一队一张表: 5 列(名字 / 打出 / 扛住 / 治疗 / 击杀)。
-## ★列名是用户定过的(2026-08-02 去掉暴击与剩余血量; 2026-09-28 改成主动语态短动词,
-##   **不能退回「出伤 / 承伤」**); 零值印「·」(2026-10-02); MVP 按单位认(2026-09-29, 走 `_st_mvp_index`)。
-## ★结构契约(门禁按它数格子): 表头 = 1 个 Label + 4 块栏牌; 每行 = 名字格(HBoxContainer) + 4 个数值 Label。
+## 一队一张表: 8 列(名字 + `COLS` 那 7 个数值列)。
+## ★列名是用户定的(2026-10-04 改成商业游戏的标准写法, 见 `COLS`); 零值印「·」(2026-10-02);
+##   MVP 按单位认(2026-09-29, 走 `_st_mvp_index`)。长列名表头折成两行(造成 / 总伤害), 屏上文字去掉换行 == `COLS`。
+## ★结构契约(门禁按它数格子): 表头 = 1 个 Label + 7 块栏牌; 每行 = 名字格(HBoxContainer) + 7 个数值 Label。
 ## static: `battle_hud._stats_column()` 委托到这里, 测试可以拿替身 battle 直接建一张。
 static func team_grid(b, h, rows: Array, header: String, hc: Color) -> GridContainer:
 	var grid := GridContainer.new()
-	grid.columns = 5
-	grid.add_theme_constant_override("h_separation", 18)
+	grid.columns = 1 + COLS.size()
+	grid.add_theme_constant_override("h_separation", 8)
 	grid.add_theme_constant_override("v_separation", 6)
-	var hdrs := [header, "伤害", "承伤", "治疗", "击杀"]
-	for i in range(5):
-		var l := _lbl(str(hdrs[i]), F_HEAD, hc if i == 0 else COL_GOLD,
+	var hdrs := [header] + COLS
+	for i in range(hdrs.size()):
+		var l := _lbl(hdr_text(str(hdrs[i])) if i > 0 else str(hdrs[i]), F_HEAD, hc if i == 0 else COL_GOLD,
 			HORIZONTAL_ALIGNMENT_LEFT if i == 0 else HORIZONTAL_ALIGNMENT_RIGHT)
+		l.add_theme_constant_override("line_spacing", -4)   # 两行的表头(造成 / 总伤害)收紧行距, 8 行仍不用滚
 		if i == 0:
 			l.custom_minimum_size = Vector2(NAME_W, 0)
 			grid.add_child(l)
@@ -435,8 +440,10 @@ static func team_grid(b, h, rows: Array, header: String, hc: Color) -> GridConta
 			tg.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			cell.add_child(tg)
 		grid.add_child(cell)
-		var raw := [int(u.get("_st_dealt", 0)), int(u.get("_st_taken", 0)), int(u.get("_st_heal", 0)), int(u.get("_st_kills", 0))]
-		for i in range(4):
+		var sp: Array = dealt_split(u)
+		var raw := [int(u.get("_st_dealt", 0)), sp[0], sp[1], int(u.get("_st_taken", 0)),
+			int(u.get("_st_heal", 0)), int(u.get("_st_shield", 0)), int(u.get("_st_kills", 0))]
+		for i in range(raw.size()):
 			var c := _lbl(h.settle_cell_text(raw[i]), F_NUM,
 				COL_ZERO if raw[i] == 0 else (Color("#888888") if dead else (COL_GOLD if is_mvp else Color("#e8f0f6"))),
 				HORIZONTAL_ALIGNMENT_RIGHT)
@@ -444,6 +451,22 @@ static func team_grid(b, h, rows: Array, header: String, hc: Color) -> GridConta
 			c.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			grid.add_child(c)
 	return grid
+
+
+## 造成伤害按类型拆开: [物理, 魔法, 真实]。键名与 `battle_damage._record_buckets` 写的桶一致
+##   (phy / mag / tru; 持续伤害走 `_apply_damage` 默认的 dot 桶, 与真伤同列 —— 同 `DmgStatsPanel` 的分段条)。
+## ★三者之和 == `_st_dealt`(门禁 verify_settle_pages 走真伤害入口对这笔账)。
+## 快照行(`_st_row`)已经拆好成 `_st_phy/_st_mag/_st_tru` 三个标量 ⇒ 直接读; 活单位读分桶字典。
+static func dealt_split(u: Dictionary) -> Array:
+	if u.has("_st_phy"):
+		return [int(u["_st_phy"]), int(u.get("_st_mag", 0)), int(u.get("_st_tru", 0))]
+	var bt: Dictionary = u.get("_st_dealt_by_type", {})
+	return [int(bt.get("phy", 0)), int(bt.get("mag", 0)), int(bt.get("tru", 0)) + int(bt.get("dot", 0))]
+
+
+## 表头文字: 超过 4 个字的折成两行(「造成」/「总伤害」), 栏宽 92 放得下 4 个 20px 的字。
+static func hdr_text(s: String) -> String:
+	return s.substr(0, 2) + "\n" + s.substr(2) if s.length() > 4 else s
 
 
 ## 单位头像: 统领用 avatars/<id>, 没有就退回全身图; 小将统一 minion; 召唤体不画(留空位对齐)。
