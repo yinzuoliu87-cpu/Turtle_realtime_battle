@@ -868,10 +868,12 @@ static func nickname_error(raw: String) -> String:
 ## ★★2026-10-04 换形(用户「换成随机像人的昵称」): 原来是「龟主-xxxxx」短码 ——
 ##   一眼就是没起名的号(周日实况 6 个真人号全叫这个)。现在从**预填名生成器**
 ##   (`nickname_suggest_at`, 机器人也用它)里按哈希挑一个 ⇒ 同一个号永远同一个名字。
-## ★★老玩家迁移**不用写任何迁移代码**: 默认名从来**不落盘** —— 存档里 `nickname == ""`
-##   就是「没自己起过名」, 显示时才现算。⇒ 那批人下次开游戏自动换成新名;
+## ★★这里只是**生成器**(纯函数)。玩家真正显示的默认名由 `GameState.default_nickname()`
+##   第一次调用时生成并存进**独立字段** `nickname_default`(用户 2026-10-04 拍板), 之后不再变 ——
+##   池子(pets.json)增改也不会把它换掉。
+## ★★老玩家: 存档里 `nickname == ""` 就是「没自己起过名」⇒ 下次开游戏生成新名并冻结;
 ##   自己起过名的(`nickname` 非空, 哪怕起的就是「龟主-xxxxx」)一个字都不碰。
-## ⚠ 别在任何地方把它写回 `GameState.nickname` —— 写了就分不清「默认」和「自己起的」。
+## ⚠ 别把默认名写进 `GameState.nickname` —— 写了就分不清「默认」和「自己起的」。
 static func nickname_fallback(account_id: String) -> String:
 	if account_id == "":
 		return NICK_LAST_RESORT

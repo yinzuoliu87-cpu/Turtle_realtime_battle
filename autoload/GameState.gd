@@ -54,6 +54,14 @@ var account_id: String = ""        # Supabase 账号 uuid ("" = 还没登录过 
 ##     大轮切换不清、**清档也不清**。清了的话玩家清一次档就变回兜底短码,
 ##     而服务器上还是同一个账号 —— 名字对不上。`verify_nickname` 两条分别守着。
 var nickname: String = ""
+## ★★默认名(用户 2026-10-04 拍板「默认昵称首次显示时写进存档」)。
+##   第一次要显示默认名时按种子生成一次、立刻落盘, 之后一直用存下来的 ——
+##   否则 pets.json 增删龟/被动(= 昵称池变了)会把所有没起名的人悄悄换个名字。
+##   ⚠ **单独一个字段, 绝不写进 `nickname`**: `nickname == ""` 是「玩家没自己起过名」的
+##     唯一判据, 写进去就再也分不清了。
+##   ★身份类, 与 `nickname` 同一条线: 进云存档(不在 DEVICE_LOCAL_KEYS)、清档不清、切轮不动。
+##     换设备找回账号 ⇒ 云存档带回来; 云存档里没有(老客户端推的) ⇒ 空 ⇒ 按账号种子重新生成。
+var nickname_default: String = ""
 var account_email: String = ""     # 补绑的邮箱 ("" = 匿名账号, 换设备会丢档)
 ## D-3c 登录续期用的 refresh_token。★**设备本地**: 不上云、清档保留、切轮不动。
 ##   原来这个值被整个扔掉 ⇒ 重开 App 之后再也拿不到 token(2026-09-21 查实)。
@@ -68,6 +76,21 @@ var cloud_rev: int = 0
 ## 取本机安装标识, 没有就现生成一个并落盘。
 ## ★用 crypto 随机而不是 randi(): 后者受 `TURTLE_SEED` 之类的播种影响,
 ##   播了种的两台机器会生成**同一个 uid** —— 那就等于没加这一维。
+## 没自己起名时显示的那个名字。★第一次调用时生成并**落盘**, 之后永远返回存下来的那个。
+## ★种子 = 账号优先、没账号用安装号(`nickname_seed`)。连种子都没有时给兜底名但**不冻结** ——
+##   冻结一个人人相同的兜底名, 等于让这台机器永远叫那个名字。
+func default_nickname() -> String:
+	var cur := _P2.nickname_clean(nickname_default)
+	if _P2.nickname_valid(cur):
+		return cur
+	var sd: String = _P2.nickname_seed(str(account_id), str(install_uid))
+	if sd == "":
+		return _P2.nickname_fallback("")
+	nickname_default = _P2.nickname_fallback(sd)
+	save()
+	return nickname_default
+
+
 func get_install_uid() -> String:
 	if install_uid != "":
 		return install_uid
@@ -1634,6 +1657,7 @@ func _save_dict() -> Dictionary:
 		"account_id": account_id,        # D-3 服务端账号(身份, 不随赛季变)
 		"account_email": account_email,
 		"nickname": nickname,  # 补绑的邮箱("" = 匿名, 换设备丢档)
+		"nickname_default": nickname_default,   # 首次显示时冻结的默认名(随云存档走)
 		"auth_refresh": auth_refresh,    # D-3c 登录续期令牌(设备本地, 不上云)
 		"season_id": season_id,
 		"season_start_ts": season_start_ts,
@@ -1800,6 +1824,7 @@ func _apply_save_dict(data: Dictionary) -> void:
 	account_id = str(data.get("account_id", ""))
 	account_email = str(data.get("account_email", ""))
 	nickname = str(data.get("nickname", ""))
+	nickname_default = str(data.get("nickname_default", ""))
 	auth_refresh = str(data.get("auth_refresh", ""))
 	cloud_rev = int(data.get("cloud_rev", 0))
 	season_id = int(data.get("season_id", 1))
@@ -1971,6 +1996,7 @@ func reset_save() -> void:
 	var _keep_mail := account_email
 	## ★昵称同理: 清的是「这局游戏」, 不是「你是谁」
 	var _keep_nick := nickname
+	var _keep_nick_def := nickname_default
 	var _keep_refresh := auth_refresh   # D-3c: 清档清的是「这局游戏」不是「这台设备的登录」
 	var _keep_rev := cloud_rev
 	best_dungeon_stage = 0
@@ -2039,6 +2065,7 @@ func reset_save() -> void:
 	account_id = _keep_acc
 	account_email = _keep_mail
 	nickname = _keep_nick
+	nickname_default = _keep_nick_def
 	auth_refresh = _keep_refresh
 	cloud_rev = _keep_rev
 	save()

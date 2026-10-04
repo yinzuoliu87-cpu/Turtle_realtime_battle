@@ -1454,10 +1454,12 @@ static func retry_finals_report() -> void:
 static func player_display_name() -> String:
 	if GameState == null:
 		return "?"
-	## ★种子账号优先、没账号用安装号(`nickname_seed` 头注)。读 `install_uid` 字段而不调
-	##   `get_install_uid()`: 后者在空时会生成并 `save()`, 显示名不该有写盘副作用。
-	return _P2.display_name(str(GameState.nickname),
-		_P2.nickname_seed(str(GameState.account_id), str(GameState.install_uid)))
+	## ★自己起过名 ⇒ 用它; 没起过 ⇒ `GameState.default_nickname()`(首次生成并落盘, 之后不变 ——
+	##   用户 2026-10-04 拍板, 防昵称池变化把默认名换掉)。判据与 `_P2.display_name` 同一条。
+	var s := _P2.nickname_clean(str(GameState.nickname))
+	if s.length() >= _P2.NICK_MIN:
+		return s
+	return str(GameState.default_nickname())
 
 
 ## 在本地池里找【同标签且新鲜】的一份快照。找不到返回 null(回落交给上面那个函数)。

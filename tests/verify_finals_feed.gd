@@ -790,10 +790,15 @@ func _t_enter() -> void:
 			and str(r.get("body", "")).length() > 120, "%d 字节" % str(r.get("body", "")).length())
 
 	## 名字: 两个号必须不一样 —— 一桶 32 个同名的对阵图没法看
+	## ★2026-10-04 起默认名首次显示即冻结进 `nickname_default` ⇒ 两个号各是一份存档, 各自从空开始
+	var _nd0 := str(GameState.nickname_default)
+	GameState.nickname_default = ""
 	var n1 := str(BK.player_display_name())
 	GameState.account_id = "uid-other-9999"
+	GameState.nickname_default = ""
 	var n2 := str(BK.player_display_name())
 	GameState.account_id = "uid-me-1234"
+	GameState.nickname_default = _nd0
 	_ok("⑦ ★★两个号的显示名不一样(否则对阵图上全是同一个名字)", n1 != n2, "%s vs %s" % [n1, n2])
 	_ok("⑦ ★分母: 名字不是空的", n1.length() >= 3 and n2.length() >= 3, "%s / %s" % [n1, n2])
 	## ★2026-10-04: 没起名的号不再是「龟主-xxxxx」短码, 而是生成器里按账号哈希挑的像人的名字
