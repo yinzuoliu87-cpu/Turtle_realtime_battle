@@ -141,7 +141,7 @@ func _eq_blood_combo(u: Dictionary, si: int) -> void:
 			BLOOD_SLASH_W)
 		battle._damage._apply_damage_from(u, o, blood_hit_dmg(u, si, o, k),
 			Color("#ff8aa0"), 0.33, false, true)
-		await battle._wait_sim(BLOOD_BEAT)   # 一段一段: 每 0.3s 一刀
+		await battle._wait_sim(BLOOD_BEAT, u)   # 一段一段: 每 0.3s 一刀
 		if not is_instance_valid(battle): return   ## await 回来 battle 可能已被 queue_free(战斗结束)
 	if not is_instance_valid(self): return
 	var shg: int = int(u["shield"] - sh0)   # 连斩吸血溢出转的盾, 结尾汇总一次

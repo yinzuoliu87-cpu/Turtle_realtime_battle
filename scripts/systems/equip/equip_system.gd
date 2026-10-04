@@ -833,7 +833,7 @@ func _eq_fuel_throw(u: Dictionary, si: int) -> void:   # 余烬燃油瓶022: 每
 	if not u.get("alive", false): return
 	if battle._targeting._nearest_enemy(u) == null: return
 	battle._anticipate(u)   # 短蓄力
-	await battle._wait_sim(0.3)
+	await battle._wait_sim(0.3, u)
 	if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
 	if not is_instance_valid(self) or not u.get("alive", false): return
 	var t = battle._targeting._nearest_enemy(u)
@@ -897,7 +897,7 @@ func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑007: 高举
 	battle._world.add_child(sword)
 	var gt: Tween = battle._reg_tween()
 	gt.tween_property(sword, "modulate:a", 1.0, 0.22)
-	await battle._wait_sim(0.55)
+	await battle._wait_sim(0.55, u)
 	if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
 	if not u.get("alive", false):
 		if is_instance_valid(sword): sword.queue_free()
@@ -907,7 +907,7 @@ func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑007: 高举
 	#    ★走 `_wait_sim` 不走 tween —— tween 走未钳制真实 delta, 与实拍的游戏时钟对不上
 	#    (v0.19.345 在 006 上量出来过: 0.15 秒的转向实拍只占 24ms)。
 	for step in range(1, BSW_CHOP_ARC + 1):
-		await battle._wait_sim(BSW_CHOP_STEP)
+		await battle._wait_sim(BSW_CHOP_STEP, u)
 		if not is_instance_valid(battle): return
 		if not is_instance_valid(sword): break
 		var k: float = float(step) / float(BSW_CHOP_ARC)
@@ -943,6 +943,7 @@ func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑007: 高举
 	while is_instance_valid(battle) and traveled < reach and is_instance_valid(qi) and is_instance_valid(self):
 		await battle.sim_stepped
 		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
+		if battle._timestop.holds(u): continue   # 时停: 被定格的单位这一步不推进(携带者照常; 顿帧行为不变)
 		if not is_instance_valid(qi): break   ## ★2026-10-04: 换路/清场会在 await 期间释放剑气节点 ⇒ 回来写 qi.position 报 SCRIPT ERROR(回放 agent 实测赌神带 p2eq_030)
 		if not u.get("alive", false): break
 		var dt: float = battle._frame_sim_dt
@@ -1201,7 +1202,7 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 				return
 			slr.frame = clampi(int(f), 0, GROUND_SLIT_FRAMES - 1),
 			0.0, float(GROUND_SLIT_FRAMES), 0.40)
-	await battle._wait_sim(0.45)
+	await battle._wait_sim(0.45, u)
 	if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
 	if not u.get("alive", false): return
 	var swords: Array = []
@@ -1235,7 +1236,7 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 			float(SWORD_TIP_ROW + 1), float(SWORD_CELL), 0.30)
 		swords.append(sp)
 	_close_slits(slits)   # 缝在剑升起来之后合上 —— 有开就要有合, 不能一直裂着
-	await battle._wait_sim(0.42)   # 等一排剑生成完
+	await battle._wait_sim(0.42, u)   # 等一排剑生成完
 	if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
 	if not u.get("alive", false): return
 	## ★★"预备"改成【整排往后收一步再冲】 —— 位移, 不是缩放。
@@ -1250,7 +1251,7 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 			tw2.tween_property(spr, "position",
 				battle._world_pos(anchor - dir * SWORD_BRACE_BACK + perp * boff, 0.0), 0.16
 				).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	await battle._wait_sim(0.34)
+	await battle._wait_sim(0.34, u)
 	if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
 	if not u.get("alive", false): return
 	## ★★【转平 = 发射】(2026-09-08 用户拍板)。用户看完上一版实拍问「剑飞的时候是竖着的？」
@@ -1282,13 +1283,13 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 				).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	## 逐格转, **走游戏时钟**(见 SWORD_TURN_STEP 头注)。第 0 格上面已经摆好了。
 	for step in range(1, absi(arc) + 1):
-		await battle._wait_sim(SWORD_TURN_STEP)
+		await battle._wait_sim(SWORD_TURN_STEP, u)
 		if not is_instance_valid(battle): return
 		if not u.get("alive", false): return
 		for spr4 in swords:
 			if is_instance_valid(spr4):
 				sword_turn(spr4, SWORD_UP_FRAME, arc, float(step) / float(maxi(1, absi(arc))))
-	await battle._wait_sim(SWORD_TURN_STEP)   # 转到位再停一格, 让"刃朝前"这一下看得见
+	await battle._wait_sim(SWORD_TURN_STEP, u)   # 转到位再停一格, 让"刃朝前"这一下看得见
 	if not is_instance_valid(battle): return
 	if not u.get("alive", false): return
 	battle._shake(battle.JUICE_SHAKE_HEAVY)
@@ -1300,6 +1301,7 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 	while is_instance_valid(battle) and traveled < reach and is_instance_valid(self):
 		await battle.sim_stepped
 		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
+		if battle._timestop.holds(u): continue   # 时停: 被定格的单位这一步不推进(携带者照常; 顿帧行为不变)
 		traveled += 650.0 * battle._frame_sim_dt   # 剑速(用户:慢点)
 		var front_along: float = start_along + traveled
 		for i in range(swords.size()):
@@ -1904,7 +1906,7 @@ func _eq_laser_sweep(u: Dictionary, tgt: Dictionary, si: int) -> void:
 	for fi in range(LASER_SLASH_FRAMES):
 		if is_instance_valid(slash):
 			slash.frame = fi * LASER_DIRS + dirf
-		await battle._wait_sim(LASER_SLASH_STEP)
+		await battle._wait_sim(LASER_SLASH_STEP, u)
 		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
 	if is_instance_valid(slash): slash.queue_free()
 	## ③ 只命中 1 人 ⇒ 追加竖劈冲击波(文案原话)。
@@ -1967,7 +1969,7 @@ func _eq_laser_chop(u: Dictionary, si: int, org: Vector2, dir: Vector2, dirf: in
 				Color("#9bf0ff"), 0.0, false, true)
 			battle._damage._knockback(u, o, 0.0, 0.2, 0.0)
 		step_i += 1
-		await battle._wait_sim(LASER_CHOP_STEP)
+		await battle._wait_sim(LASER_CHOP_STEP, u)
 		if not is_instance_valid(battle): return
 	if is_instance_valid(blade): blade.queue_free()
 	if is_instance_valid(wave): wave.queue_free()   # 有开就有合: 一个都不许留在场上
@@ -2052,7 +2054,7 @@ func _eq_wide_blade(src: Dictionary, tgt: Dictionary, si: int) -> void:   # 宽�
 	for gi in range(MOON_TEL_STEPS):
 		if is_instance_valid(tel):
 			tel.modulate.a = _moon_tel_alpha(float(gi) / float(MOON_TEL_STEPS))
-		await battle._wait_sim(MOON_TEL_STEP)
+		await battle._wait_sim(MOON_TEL_STEP, src)
 		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
 	if not src.get("alive", false):
 		if is_instance_valid(tel): tel.queue_free()
@@ -2087,7 +2089,7 @@ func _eq_wide_blade(src: Dictionary, tgt: Dictionary, si: int) -> void:   # 宽�
 			tel.modulate.a = (MOON_TEL_A + MOON_TEL_SWING) * fade
 			if fade <= 0.0:
 				tel.queue_free()
-		await battle._wait_sim(MOON_SLASH_STEP)
+		await battle._wait_sim(MOON_SLASH_STEP, src)
 		if not is_instance_valid(battle): return
 	if is_instance_valid(moon): moon.queue_free()
 	if is_instance_valid(tel): tel.queue_free()   # 有开就有合: 预警一定收掉
@@ -2138,7 +2140,7 @@ func _eq_fire_coral_active(src: Dictionary, si: int) -> void:
 		for o in es: cen += o["pos"]
 		dir = (cen / float(es.size()) - src["pos"]).normalized()
 	battle._anticipate(src); battle._shake(battle.JUICE_SHAKE_HEAVY)   # 蓄力
-	await battle._wait_sim(CORAL_WINDUP)
+	await battle._wait_sim(CORAL_WINDUP, src)
 	if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free)
 	if not is_instance_valid(self) or not src.get("alive", false): return
 	var origin: Vector2 = src["pos"]
@@ -2147,7 +2149,7 @@ func _eq_fire_coral_active(src: Dictionary, si: int) -> void:
 	var hit: Array = []
 	var traveled := 0.0
 	while is_instance_valid(battle) and is_instance_valid(self) and traveled < CORAL_TRAVEL:
-		await battle._wait_sim(battle.SIM_DT)
+		await battle._wait_sim(battle.SIM_DT, src)
 		if not is_instance_valid(battle) or not is_instance_valid(self): break
 		traveled += CORAL_SPEED * battle.SIM_DT      # ★走游戏钟, 不用未钳制的真实 delta
 		_fire_coral_place(pool, origin, dir, traveled, t0)
