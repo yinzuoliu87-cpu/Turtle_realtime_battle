@@ -1232,12 +1232,11 @@ static func upload_gauntlet_ghost(gw: int, gl: int) -> void:
 	snap["gl_ts"] = int(Time.get_unix_time_from_system())
 	gauntlet_uploads += 1
 	upload_ghost(snap)                 ## 老通道: 进本地池(+ 旧后端, 现在是 no-op)
-	var SB3 = load("res://scripts/net/supabase.gd")
-	if SB3 != null:
-		var row: Dictionary = SB3.gauntlet_row_from_snapshot(
-			snap, str(GameState.account_id), int(GameState.week_anchor_ts),
-			gw, gl, str(ProjectSettings.get_setting("application/config/version", "")))
-		SB3.upload_gauntlet_async(row)
+	## ★E7: 同积分赛那一份, 进落盘队列, 回读确认才销单(`ghost_uploader.gd`)。
+	var GU3 = load("res://scripts/net/ghost_uploader.gd")
+	if GU3 != null:
+		GU3.enqueue_gauntlet(snap, int(GameState.week_anchor_ts), gw, gl,
+			str(ProjectSettings.get_setting("application/config/version", "")))
 
 
 ## 周日决赛日报到。★只有**这一场把我打成「晋级」**时才报 ——
@@ -1620,15 +1619,14 @@ static func upload_ghost(snapshot: Dictionary) -> void:
 	##   · `season_week`  哪一周 —— 用 `GameState.week_anchor_ts`(周锚点, 与赛程判定同一口径)
 	##   · `battles`      第几场 —— 快照里的 `season_total_battles`
 	##   ⚠ 少任何一维都会让两个人在服务端**静默互相覆盖**(memory `fb-id-without-owner-dimension`)。
-	var SB = load("res://scripts/net/supabase.gd")
-	if SB != null:
-		var row: Dictionary = SB.ghost_row_from_snapshot(
-			snapshot,
-			str(GameState.account_id),
-			int(GameState.week_anchor_ts),
+	## ★★E7(2026-10-04): 不再发完就忘 —— 先进**落盘队列**, 回读确认才销单(`ghost_uploader.gd` 头注)。
+	##   行在发的那一刻用 `SupabaseNet.ghost_row_from_snapshot` 拼; 周号/场次/版本取**此刻**的, 跟着单子走。
+	##   账号没有也照样排队(发的时候用当时的账号) —— 原来 row 为空就直接不传了, 新装头几秒打完的那场就丢了。
+	var GU = load("res://scripts/net/ghost_uploader.gd")
+	if GU != null:
+		GU.enqueue_ladder(snapshot, int(GameState.week_anchor_ts),
 			int(snapshot.get("season_total_battles", -1)),
 			str(ProjectSettings.get_setting("application/config/version", "")))
-		SB.upload_ghost_async(row)      # row 为空(缺身份/缺场次) 时它自己 return
 
 ## 从玩家刚打的这局序列化成 ghost 快照 (上传自己用). ghost_id/profile 调用方给.
 ##

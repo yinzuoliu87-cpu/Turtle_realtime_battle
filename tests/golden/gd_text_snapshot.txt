@@ -448,6 +448,7 @@ scripts/net/remote_pool.gd|lit|（部署不存在）
 scripts/net/supabase.gd|lit|发得太频繁了，等几分钟再试
 scripts/net/supabase.gd|lit|发送失败（%d），稍后再试
 scripts/net/supabase.gd|lit|把邮件里那串数字填进来
+scripts/net/supabase.gd|lit|有新版本，请更新
 scripts/net/supabase.gd|lit|服务器没给账号，取回失败
 scripts/net/supabase.gd|lit|服务器返回的是另一个账号，没有绑成功（没动你的进度）
 scripts/net/supabase.gd|lit|本机还没有账号（正在连服务器），过两秒重新发一次验证码
