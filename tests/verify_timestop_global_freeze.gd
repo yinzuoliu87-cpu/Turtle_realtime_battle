@@ -117,11 +117,11 @@ func _fp(v, depth: int) -> float:
 
 
 ## 扫 battle 的每一个系统对象, 逐字段摘指纹。返回 {"<对象>.<字段>": 指纹}。
-func _snap() -> Dictionary:
+func _snap(skip: Array = []) -> Dictionary:
 	var out: Dictionary = {}
 	for p in _s.get_property_list():
 		var pn: String = str(p.get("name", ""))
-		if not pn.begins_with("_") or ALLOW.has(pn):
+		if not pn.begins_with("_") or ALLOW.has(pn) or skip.has(pn):
 			continue
 		var obj = _s.get(pn)
 		if not (obj is RefCounted):
@@ -174,11 +174,11 @@ func _flat(v, path: String, depth: int, out: Dictionary) -> void:
 			_flat(d[ks[i]], "%s.%s" % [path, str(ks[i])], depth + 1, out)
 
 
-func _snap_raw() -> Dictionary:
+func _snap_raw(skip: Array = []) -> Dictionary:
 	var out: Dictionary = {}
 	for p in _s.get_property_list():
 		var pn: String = str(p.get("name", ""))
-		if not pn.begins_with("_") or ALLOW.has(pn):
+		if not pn.begins_with("_") or ALLOW.has(pn) or skip.has(pn):
 			continue
 		var obj = _s.get(pn)
 		if not (obj is RefCounted):
@@ -258,6 +258,7 @@ func _ready() -> void:
 	## ★不把 `_battle_rng` 塞进 ALLOW: 那是**放松判据**(以后真有"时停里偷偷掷骰"的 bug 也不会红)。
 	##   改成【让携带者在窗口内本就不该掷骰】—— `_battle_rng` 留在禁止集里, 判据保持满齿。
 	## ⚠ 代价: 本用例不再覆盖"携带者边施法边冻结"那一路。那需要"变几次 == 施法几次"的判据, 另案。
+	var _carrier_skills0: Array = (carrier.get("active_skills", []) as Array).duplicate()   # 第二段要还给它(见文件末尾)
 	var _gold_ctl: float = float(carrier.get("gold", 0.0))
 	_s._fortune_sys._sk_fortune_dice(carrier)   # 控制组: 真放一次, 证明【金币涨了】确实等价于【施过法】
 	_ok("★分母⑥: 金币增量能当施法计数(控制组真放一次骰子 → +%.0f 金)"
@@ -358,9 +359,67 @@ func _ready() -> void:
 		dur.is_empty(),
 		"这些还在动: %s —— 白名单在本文件顶部 ALLOW, 加之前必须写清为什么它该动" % str(dur.slice(0, 8)))
 
+	await _phase_carrier_casts(carrier, ts, _carrier_skills0)
+
 	print("")
 	if _fail == 0:
 		print("ALL PASS (%d 条)" % _n)
 	else:
 		print("FAIL x%d / %d 条" % [_fail, _n])
 	get_tree().quit()
+
+
+## ══════════════════════════════════════════════════════════════════
+##  第二段: 携带者【边施法边冻结】(2026-10-04 补·方案书 20260916c §8.6「已知缺口」)
+## ══════════════════════════════════════════════════════════════════
+## 第一段为了让 `_battle_rng` 留在禁止集里, 把携带者的 active 摘掉了 —— 代价是这条门禁
+## 从此**不再覆盖**时停文案写死的那一路:「active 携带者照常施法, 伤害即时结算」。
+## 两头都可能坏而第一段都看不见:
+##   · 携带者在时停里**放不出技**(冷却/施法被时停一起冻住)—— 文案承诺落空;
+##   · 冻结的世界里**有别人在偷偷掷骰**, 恰好混在携带者的合法掷骰里。
+## ⇒ 判据写成方案书说的形状:「`_battle_rng` 变的次数 == 窗口内施法次数」, 两边都有分母,
+##   而且按**步**对齐(不是只比总数): 每一个 `_battle_rng` 变了的 sim 步, 必须恰好是携带者施法的那一步。
+##   `_battle_rng` 只在这一段被单独拿出来逐步对账, 其余全部系统状态仍然一个字段都不许变。
+## ★`_deterministic = true`: 每帧恰好一步 SIM_DT ⇒ "第 k 帧" == "第 k 个 sim 步", 与机器快慢无关
+##   (CLAUDE.md「最省事的那一招」)。不开的话一帧可能跑 0~8 步, 两个观测量会在同一帧里混成一团。
+## ★施法的观测量仍是**金币增量**(第一段 ⑥ 控制组已证明它等价于"放过一次骰子")。
+func _phase_carrier_casts(carrier: Dictionary, ts, skills0: Array) -> void:
+	print("  ── 第二段: 携带者边施法边冻结(原 active = %s) ──" % str(skills0))
+	_s._deterministic = true
+	ts._ts_remaining = maxf(float(ts._ts_remaining), 9.0)   # 窗口 360 步 = 6 秒, 必须整段都在时停里
+	carrier["active_skills"] = ["fortuneDice"]
+	carrier["skill_cd"] = {"fortuneDice": 0.0}   # 就绪 ⇒ 窗口一开就放第一发
+	carrier["skill_idx"] = 0
+	carrier["_goldtimer"] = -1.0e9                # 被动掷金仍按住(它也掷骰, 不是"施法")
+	await _wait(2)
+	var c0: Dictionary = _snap(["_battle_rng"])
+	var rng_steps: Array = []
+	var cast_steps: Array = []
+	var st_prev: int = int(_s._battle_rng.state)
+	var g_prev: float = float(carrier.get("gold", 0.0))
+	var ts_all := true
+	for k in range(360):
+		await get_tree().process_frame
+		if (ts._ts_active as Array).is_empty():
+			ts_all = false
+		var st: int = int(_s._battle_rng.state)
+		var g: float = float(carrier.get("gold", 0.0))
+		if st != st_prev:
+			rng_steps.append(k)
+		if g > g_prev + 0.001:
+			cast_steps.append(k)
+		st_prev = st
+		g_prev = g
+	var c1: Dictionary = _snap(["_battle_rng"])
+	var dur2: Array = _diff(c0, c1)
+	_ok("★分母⑧: 第二段 360 步整段都在时停里(剩 %.1f 秒)" % float(ts._ts_remaining), ts_all,
+		"时停中途结束了 ⇒ 后面那几步是在正常时间里取的, 判据读错")
+	_ok("★分母⑨: 携带者在时停里**真的施法了** %d 次(须 ≥ 2, 施法步 %s)" % [cast_steps.size(), str(cast_steps)],
+		cast_steps.size() >= 2,
+		"放不出技 ⇒ 要么时停把携带者的施法也冻住了(文案「照常施法」落空), 要么下面那条是空检查")
+	_ok("★★⑩ `_battle_rng` 变的步 == 携带者施法的步(变 %d 次 %s / 施法 %d 次)"
+		% [rng_steps.size(), str(rng_steps), cast_steps.size()],
+		rng_steps == cast_steps,
+		"多出来的那几步 = 冻结的世界里有人在掷骰; 少了 = 施法没走受控 PRNG")
+	_ok("★★⑪ 携带者边施法, 其余全部系统状态仍一个字段都不变(实测 %d 个变了)" % dur2.size(),
+		dur2.is_empty(), "这些在动: %s" % str(dur2.slice(0, 8)))
