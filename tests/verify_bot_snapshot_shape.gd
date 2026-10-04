@@ -12,6 +12,9 @@ extends Node
 ## ★比法: 递归逐层取「路径 → 类型」全集, 两个方向都比。动态键(龟 id)折成 `*`, 数组折成 `[]`
 ##   —— 折法按**值**判(这个键是不是龟 id), 不按我以为的路径白名单判。
 ## ★分母: 真人快照里每个容器都必须非空(否则递归根本没走到下一层), 唯一例外写明理由。
+## ★★内置陪练(`data/ghost_seed.json`, 396 支)也不是真人 —— 文件 → `_ensure_seeded` → `find_opponent`
+##   逐支取出来, 每一支都与真人对手比(键/类型/值域/同一个人跨场次连贯), 并且**战斗强度不变**:
+##   原样与转换后交给战斗场自己的 `_dual_foe_lane` 读, 逐字相同。见 `_check_seeds`。
 
 const BE := preload("res://scripts/net/backend.gd")
 const SB := preload("res://scripts/net/supabase.gd")
@@ -19,6 +22,7 @@ const RP := preload("res://scripts/net/remote_pool.gd")
 const RU := preload("res://scripts/systems/replay/replay_uploader.gd")
 const TC := preload("res://scripts/scenes/TrainerConfigScene.gd")
 const P2 := preload("res://scripts/gamedata/phase2_config.gd")
+const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 
 ## 真人快照里**允许是空**的容器(以及为什么)。不在这里的空容器 = 分母不够 = 红。
 const EMPTY_OK := {
@@ -246,6 +250,8 @@ func _ready() -> void:
 		BE.owner_tag_of_id(str((bot["profile"] as Dictionary)["id"])) != ""
 			and BE.owner_tag_of_id(str((human["profile"] as Dictionary)["id"])) != "",
 		"%s / %s" % [(bot["profile"] as Dictionary)["id"], (human["profile"] as Dictionary)["id"]])
+	## ── 内置陪练(data/ghost_seed.json) —— 它们也不是真人 ──
+	cmp_n += _check_seeds(human, skill_ids)
 	print("")
 	print("  比过的「路径 : 类型」共 %d 条" % cmp_n)
 	_finish()
@@ -293,3 +299,244 @@ func _finish() -> void:
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 机器人快照看不出区别" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
+
+
+## ══ 内置陪练(data/ghost_seed.json)══════════════════════════════════════════
+## 种子池那几百支也不是真人(队列模拟跑出来的), 而它们在冷启动/断网时**就是**玩家遇到的全部对手。
+## ★走产品自己的路: 文件 → `_ensure_seeded`(`load_pool` 调的同一个) → `find_opponent` 同场次命中,
+##   一支一支地取(把取到的放进 exclude 再取), 直到回落成机器人 ⇒ 每个桶里**能被抽到的**全部过一遍。
+## ★分母: 文件里有几条, 就必须从匹配那条路上取到几条(取不到的那几条压根没被比)。
+## ★战斗强度不许变: 同一支种子, 原样(文件里那份)与转换后那份交给**战斗场自己的** `_dual_foe_lane`
+##   与敌方大师/宝箱读的那几个字段, 结果逐字相同。
+func _check_seeds(human: Dictionary, skill_ids: Dictionary) -> int:
+	print("")
+	print("  —— 内置陪练: 文件 → _ensure_seeded → find_opponent 同场次逐支取 → 与真人逐条比 ——")
+	var raw_by_id := {}
+	var raw_n := 0
+	var raw = JSON.parse_string(FileAccess.get_file_as_string(BE.SEED_PATH))
+	if raw is Dictionary and (raw as Dictionary).get(BE.POOL_KEY) is Dictionary:
+		for b in (raw[BE.POOL_KEY] as Dictionary).keys():
+			for g in (raw[BE.POOL_KEY][b] as Array):
+				raw_by_id[str((g as Dictionary).get("ghost_id", ""))] = g
+				raw_n += 1
+	_ok("★分母: 种子文件读到 ≥ 300 条", raw_n >= 300, "%d 条" % raw_n)
+
+	var spool := {BE.POOL_KEY: {}}
+	BE._ensure_seeded(spool)
+	BE.pool_override = spool
+	var got: Array = []
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	for b in (spool[BE.POOL_KEY] as Dictionary).keys():
+		var n := int(b)
+		var excl: Array = []
+		while excl.size() < 1000:
+			var opp: Dictionary = BE.find_opponent(n, excl, rng)
+			if bool(opp.get("is_bot", false)) or not BE.is_sparring(opp):
+				break
+			excl.append(str(opp.get("ghost_id", "")))
+			got.append(opp)
+	BE.pool_override = {}
+	_ok("★分母: 匹配那条路上取到的陪练 = 文件里的条数(每一条都被比过)", got.size() == raw_n,
+		"取到 %d / 文件 %d" % [got.size(), raw_n])
+
+	var hs := {}
+	var he: Array = []
+	_shape(human, "", hs, he)
+	var hf := _flat(hs)
+	var h_top: Array = human.keys()
+	h_top.sort()
+	var h_prof: Array = (human.get("profile", {}) as Dictionary).keys()
+	h_prof.sort()
+	var h_out: Array = RU.strip_ghost(human).keys()
+	h_out.sort()
+	var union := {}
+	var problems := {}          ## 毛病 → 条数(打印全表)
+	var proj_bad: Array = []
+	var proj_n := 0
+	var by_person := {}         ## 同一个「人」的各场次: 名字 / 身份 / 胜场要连贯
+	var sid := int(GameState.season_id)
+	var rb = RB.new()
+	var _digits := RegEx.create_from_string("[0-9.]+")
+	var dg0 = GameState.dual_ghost
+	var flo0 = GameState.foe_loadouts
+	for sd in got:
+		var s: Dictionary = sd
+		var n := int(s.get("season_total_battles", -1))
+		var ss := {}
+		var se: Array = []
+		_shape(s, "", ss, se)
+		var sf := _flat(ss)
+		for k in sf.keys():
+			union[k] = true
+			if not hf.has(k):
+				_tally(problems, "陪练有、真人没有: " + str(k))
+		var top: Array = s.keys()
+		top.sort()
+		for k in h_top:
+			if not top.has(k):
+				_tally(problems, "真人有、陪练没有(顶层键): " + str(k))
+		var prof: Array = (s.get("profile", {}) as Dictionary).keys()
+		prof.sort()
+		if prof != h_prof:
+			_tally(problems, "profile 键集合不同: %s" % str(prof))
+		var out: Array = RU.strip_ghost(s).keys()
+		out.sort()
+		if out != h_out:
+			_tally(problems, "出站那一份(strip_ghost 后)顶层键集合与真人不同")
+		var why := _value_problem(s, n, -1, -1, skill_ids)
+		if why != "":
+			_tally(problems, "值域: " + _digits.sub(why, "#", true))
+		## 空装备数组: 真人上传时**不写**(`build_ghost_snapshot` 只收非空的)。
+		for pid in (s.get("equipped", {}) as Dictionary).keys():
+			if ((s["equipped"] as Dictionary)[pid] as Array).is_empty():
+				_tally(problems, "值域: equipped 里有空数组(真人不产)")
+		for lk in (s.get("minions", {}) as Dictionary).keys():
+			for m in (s["minions"][lk] as Array):
+				if (m as Dictionary).has("equips") and ((m as Dictionary)["equips"] as Array).is_empty():
+					_tally(problems, "值域: 小将 equips 是空数组(真人不产)")
+		var prf: Dictionary = s.get("profile", {})
+		var nm := str(prf.get("name", ""))
+		if not P2.nickname_valid(nm) or P2.nickname_clean(nm) != nm:
+			_tally(problems, "值域: 名字不是玩家能起的名字(nickname_valid)")
+		var pidv := str(prf.get("id", ""))
+		if not pidv.ends_with("_b%d" % n) or BE.owner_tag_of_id(pidv) == "" \
+				or not pidv.begins_with(BE.owner_tag_of_id(pidv)) \
+				or BE.owner_tag_of_id(pidv).get_slice("_", 2) != str(sid):
+			_tally(problems, "值域: profile.id 不是「g_<uid>_<本赛季>_<三龟>_b<场次>」")
+		var person := str(s.get("ghost_id", "")).get_slice("_b", 0)
+		if not by_person.has(person):
+			by_person[person] = []
+		(by_person[person] as Array).append(s)
+		## ── 战斗强度: 原样 vs 转换后, 交给战斗场自己的读法 ──
+		var r0 = raw_by_id.get(str(s.get("ghost_id", "")), null)
+		if r0 == null:
+			proj_bad.append("%s 在文件里找不到" % str(s.get("ghost_id", "")))
+			continue
+		var p_raw := _battle_view(rb, r0)
+		var p_new := _battle_view(rb, s)
+		proj_n += 1
+		if p_raw != p_new:
+			if proj_bad.is_empty():
+				print("     战斗视图不同(第一条): 原样 ", p_raw)
+				print("                          转换 ", p_new)
+			proj_bad.append(str(s.get("ghost_id", "")))
+	GameState.dual_ghost = dg0
+	GameState.foe_loadouts = flo0
+	rb.free()
+	var miss_union: Array = []
+	for k in hf.keys():
+		if not union.has(k):
+			miss_union.append(k)
+	miss_union.sort()
+	for k in miss_union:
+		_tally(problems, "真人有、全体陪练都没有: " + str(k))
+	## 同一个人: 名字/身份不变, 场次越多胜场不减。
+	var multi := 0
+	for person in by_person.keys():
+		var arr: Array = by_person[person]
+		if arr.size() < 2:
+			continue
+		multi += 1
+		arr.sort_custom(func(a, c) -> bool: return int(a["season_total_battles"]) < int(c["season_total_battles"]))
+		for i in range(1, arr.size()):
+			var a0: Dictionary = arr[i - 1]
+			var a1: Dictionary = arr[i]
+			if str(a0["profile"]["name"]) != str(a1["profile"]["name"]):
+				_tally(problems, "同一个人不同场次名字变了")
+			if BE.owner_tag_of_id(str(a0["profile"]["id"])) != BE.owner_tag_of_id(str(a1["profile"]["id"])):
+				_tally(problems, "同一个人不同场次身份(uid)变了")
+			if int(a1.get("season_wins", 0)) < int(a0.get("season_wins", 0)):
+				_tally(problems, "同一个人场次多了胜场反而少了")
+	var keys: Array = problems.keys()
+	keys.sort()
+	print("  —— 陪练 %d 支 × 真人 %d 条「路径 : 类型」; 差异表(毛病 : 条数) ——" % [got.size(), hf.size()])
+	for k in keys:
+		print("     %s  ×%d" % [k, int(problems[k])])
+	if keys.is_empty():
+		print("     (无)")
+	_ok("★分母: 陪练里有同一个人打了多个场次的(连贯性检查真的比过)", multi >= 10, "%d 人" % multi)
+	_ok("★★陪练 %d 支: 键/类型/值域与真人对手无差异" % got.size(), keys.is_empty(), "%d 种毛病" % keys.size())
+	_ok("★分母: 战斗强度比过的陪练条数 = 取到的条数", proj_n == got.size() and proj_n > 0,
+		"%d / %d" % [proj_n, got.size()])
+	_ok("★★战斗强度不变: 原样 vs 转换后, 战斗场读出来的两路阵容/装备/技能/大师/宝箱逐字相同",
+		proj_bad.is_empty(), str(proj_bad.slice(0, 5)))
+
+	## ── 老存档: 池里躺着上一版(原样形状)的陪练 + 一条真人 ⇒ 升版后陪练换成新形状, 真人留着 ──
+	var any_raw: Dictionary = raw_by_id.values()[0]
+	var nb := str(int(any_raw["season_total_battles"]))
+	var old_pool := {BE.POOL_KEY: {nb: [any_raw.duplicate(true), human.duplicate(true)]}, "_seed_ver": BE.SEED_VER - 1}
+	BE._ensure_seeded(old_pool)
+	var left_old := 0
+	var human_kept := false
+	var n_all := 0
+	for b in (old_pool[BE.POOL_KEY] as Dictionary).keys():
+		for g in (old_pool[BE.POOL_KEY][b] as Array):
+			n_all += 1
+			if (g as Dictionary).has("_strategy") or (g as Dictionary).has("season_level"):
+				left_old += 1
+			if str((g as Dictionary).get("ghost_id", "")) == str(human.get("ghost_id", "")):
+				human_kept = true
+	_ok("★老存档升版: 旧形状陪练 0 条留下、真人快照还在、新陪练并进来", left_old == 0 and human_kept and n_all == raw_n + 1,
+		"旧形状 %d / 真人在 %s / 共 %d 条" % [left_old, str(human_kept), n_all])
+
+	## ── 换赛季: 陪练的 profile.id 跟着换赛季号, 桶序一个不动(不许整批压到真人前面) ──
+	var order0 := {}
+	for b in (spool[BE.POOL_KEY] as Dictionary).keys():
+		var ids: Array = []
+		for g in (spool[BE.POOL_KEY][b] as Array):
+			ids.append(str((g as Dictionary).get("ghost_id", "")))
+		order0[b] = ids
+	var sid0 := int(GameState.season_id)
+	GameState.season_id = sid0 + 1
+	BE._ensure_seeded(spool)
+	var stale := 0
+	var moved := 0
+	var seen_n := 0
+	for b in (spool[BE.POOL_KEY] as Dictionary).keys():
+		var ids2: Array = []
+		for g in (spool[BE.POOL_KEY][b] as Array):
+			seen_n += 1
+			ids2.append(str((g as Dictionary).get("ghost_id", "")))
+			if BE.owner_tag_of_id(str(g["profile"]["id"])).get_slice("_", 2) != str(sid0 + 1):
+				stale += 1
+		if ids2 != order0.get(b, []):
+			moved += 1
+	GameState.season_id = sid0
+	_ok("★换赛季: %d 条陪练的 profile.id 全换成新赛季号, 桶序不变" % seen_n,
+		seen_n == raw_n and stale == 0 and moved == 0, "旧赛季号 %d 条 / 桶序变了 %d 个桶" % [stale, moved])
+	return got.size()
+
+
+func _tally(d: Dictionary, k: String) -> void:
+	d[k] = int(d.get(k, 0)) + 1
+
+
+## 战斗场从对手快照里读出来的全部东西(读法用战斗场自己的函数, 不另写一份):
+##   两路规格(统领+装备 / 小将+装备, `_dual_foe_lane`) / 技能选择(`foe_loadouts`) /
+##   敌方大师技能(`battle_spawn` 读 trainer_skill) / 宝箱进度(`battle_spawn` 读那两个键) / 统领名单。
+func _battle_view(rb, g) -> String:
+	GameState.dual_ghost = (g as Dictionary).duplicate(true)
+	var top := _effective_specs(rb._dual_foe_lane("top"))
+	var bot := _effective_specs(rb._dual_foe_lane("bottom"))
+	var d: Dictionary = g
+	return JSON.stringify([top, bot, GameState.foe_loadouts, str(d.get("trainer_skill", "")),
+		d.get("chest_treasures_won", []) if d.has("chest_treasures_won") else [],
+		float(d.get("chest_treasure_value", 0.0)), d.get("leaders", [])], "", true)
+
+
+## 敌方规格里的 `equips` 落到战斗里**实际生效**的那一份。
+## ★`_dual_foe_lane` 原样搬快照: 文件里统领的 `equipped` 是空数组时它写 `equips: []`, 缺键时不写。
+##   而这份规格的三个下游读者对两者给的是同一个结果, 所以这里按读者的口径折一次:
+##     · `battle_spawn._spawn_lane_side`: 只在 `equips` **非空**时转 `_dl_equips`; 敌方没有 `_dl_equips`
+##       时 `_inject_equipment` 给空表(`persistent_equipped` 只给左方)
+##     · `dual_lane_flow._dl_spec_equips(spec, false)`(布阵预览): `equips` 在就用它, 否则 `[]`
+##     · `synergy_system._roster_equip_ids`(敌方羁绊): `get("equips", [])`
+##   ⇒ 「生效的装备」= `get("equips", [])`。除此之外规格逐字比。
+func _effective_specs(specs: Array) -> Array:
+	var out: Array = []
+	for sp in specs:
+		var c: Dictionary = (sp as Dictionary).duplicate(true)
+		c["equips"] = c.get("equips", []) if c.get("equips") is Array else []
+		out.append(c)
+	return out
