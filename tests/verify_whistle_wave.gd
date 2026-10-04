@@ -103,13 +103,16 @@ func _ready() -> void:
 	var fired_at: float = -1.0
 	for step in range(400):
 		s._t = t0 + float(step + 1) * (1.0 / 60.0)
+		var _hp_pre: Array = [float(foes[0]["hp"]), float(foes[1]["hp"]), float(foes[2]["hp"])]
 		ts._tick_wave_flights(1.0 / 60.0)
 		if fired_at < 0.0 and _has(s, "spirit-wave.png"):
 			fired_at = (s._t - t0) + pre_elapsed     # ★从**施放那一刻**起算
 		for k in range(3):
 			if int(foes[k].get("_wave_hit_n", 0)) > 0 and not seen.has(k):
 				seen.append(k)
-				var dealt: float = 4000.0 - float(foes[k]["hp"])
+				## ★★2026-10-04 CI 红: 原来量「4000 - 现血量」—— 合成敌挂在活场景里, 前面那次 await
+				##   在慢机器上跑 4 步 sim, 场上单位先打了第一个一下 ⇒ 被算进气波伤害。改量**这一跳**前后的差。
+				var dealt: float = float(_hp_pre[k]) - float(foes[k]["hp"])
 				print("     t=%.2fs 第%d个(%.0f码) 命中: 扣 %.0f (需求 %d)" % [
 					s._t - t0, k + 1, 300.0 + 300.0 * float(k), dealt, want_dmg])
 				_chk("③ 第%d个 扣 %d(=%.0f+%.0f%%最大生命·真伤穿满减伤)" % [k + 1, want_dmg, WANT_FLAT, WANT_MAXHP_PCT * 100.0],
