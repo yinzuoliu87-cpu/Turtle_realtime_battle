@@ -82,6 +82,26 @@ def sql(q):
 
 
 # ── 客户端通道(就是游戏里走的那条: anon key + 用户令牌) ──
+## ★2026-10-04: 每次跑探针都在生产库造 2~3 个匿名号且从不删 ⇒ 累计几十个垃圾账号。
+##   这里记下本次造的每个号, 进程退出(含 sys.exit / 异常)时统一删掉。
+import atexit
+_CREATED_USERS = []
+
+
+def _cleanup_users():
+    ids = [u for u in _CREATED_USERS if re.fullmatch(r"[0-9a-f-]{36}", u)]
+    if not ids:
+        return
+    try:
+        sql("delete from auth.users where id in (%s)" % ",".join("'%s'" % u for u in ids))
+        print("  (收尾: 删掉本次造的 %d 个测试号)" % len(ids))
+    except Exception as e:
+        print("  ⚠ 收尾删测试号失败: %s —— 每天 04:30 UTC 的 purge_junk_anon_users 会兜底" % e)
+
+
+atexit.register(_cleanup_users)
+
+
 def req(method, path, body=None, tok=None):
     h = {"apikey": KEY, "Content-Type": "application/json",
          "Authorization": "Bearer " + (tok or KEY)}
@@ -125,6 +145,16 @@ print("=== 周日决赛日 · 赛程推进 · 真服务器端到端 ===")
 # ─────────────────────────────────────────────────────────────
 # 造场子: 两个匿名号当四个参赛者(主键含 seed, 同一个号可以坐两个位子)
 # ─────────────────────────────────────────────────────────────
+_req_raw = req
+
+
+def req(method, path, body=None, tok=None):
+    st, d = _req_raw(method, path, body, tok)
+    if path == "/auth/v1/signup" and isinstance(d, dict) and isinstance(d.get("user"), dict):
+        _CREATED_USERS.append(str(d["user"].get("id", "")))
+    return st, d
+
+
 st, a = req("POST", "/auth/v1/signup", {})
 st2, b = req("POST", "/auth/v1/signup", {})
 if not (isinstance(a, dict) and a.get("access_token")):
