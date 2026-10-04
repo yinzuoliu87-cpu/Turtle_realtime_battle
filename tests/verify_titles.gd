@@ -220,6 +220,21 @@ func _t_real_entry() -> void:
 		P2C.title_has(GameState.titles, P2C.TITLE_FINALS_DAY, int(GameState.week_anchor_ts)),
 		str(GameState.titles))
 	_ok("③ ★分母: 现在两条(两档各一个)", GameState.titles.size() == 2, str(GameState.titles))
+	## ③b 回收(用户 2026-10-04「只回收本周的」): 本周错发的「进决赛日」在不是 4 胜晋级时收回, 上周的不动
+	var wk: int = int(GameState.week_anchor_ts)
+	GameState.titles = [P2C.title_row(P2C.TITLE_FINALS_DAY, wk), P2C.title_row(P2C.TITLE_FINALS_DAY, wk - 604800)]
+	GameState.gauntlet_wins = 3
+	GameState.gauntlet_losses = 3
+	GameState.ensure_season()
+	await get_tree().process_frame
+	_ok("③b ★★本周 3-3 出局 ⇒ 本周那条「进决赛日」收回", not P2C.title_has(GameState.titles, P2C.TITLE_FINALS_DAY, wk), str(GameState.titles))
+	_ok("③b ★★上周那条不动(上周战绩已清, 判不了)", P2C.title_has(GameState.titles, P2C.TITLE_FINALS_DAY, wk - 604800), str(GameState.titles))
+	GameState.titles = [P2C.title_row(P2C.TITLE_FINALS_DAY, wk)]
+	GameState.gauntlet_wins = 4
+	GameState.gauntlet_losses = 1
+	GameState.ensure_season()
+	await get_tree().process_frame
+	_ok("③b ★分母: 本周真晋级(4-1)的不收", P2C.title_has(GameState.titles, P2C.TITLE_FINALS_DAY, wk), str(GameState.titles))
 
 
 # ─────────────────────────────────────────────────────────────

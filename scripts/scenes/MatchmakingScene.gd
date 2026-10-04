@@ -266,11 +266,9 @@ func _on_cancel() -> void:
 
 
 ## 对手资料卡 = 抽到的 ghost 快照 profile (头像取其首领 / 名+ID); profile 缺字段时随机兜底 (老 bot 也有 profile).
-const BOT_TAG := "陪练机器人"
-
-## 卡片 ID 那一行写什么(门禁 verify_bot_card_honest 直接调它, 不抄一份)。
+## 卡片 ID 那一行写什么(门禁 verify_bot_card_honest 直接调它, 不抄一份)。真人与机器人同一个格式。
 static func card_id_text(prof: Dictionary) -> String:
-	return BOT_TAG if bool(prof.get("bot", false)) else "ID %s" % str(prof.get("id", ""))
+	return "ID %s" % str(prof.get("id", ""))
 
 
 func _opponent_from_ghost(ghost: Dictionary) -> Dictionary:
@@ -284,10 +282,8 @@ func _opponent_from_ghost(ghost: Dictionary) -> Dictionary:
 	var nm := str(prof.get("name", ""))
 	if nm == "":
 		nm = FAKE_NAMES[randi() % FAKE_NAMES.size()]
-	## ★★2026-10-03 周六实操台账 S14: 机器人卡上印着「海域守卫 ID #451562」—— 编出来的玩家号让它冒充真人。
-	##   方案书 R2:「个位数人口下几乎必落到机器人 ⇒ 要在 UI 上说实话」。⇒ 机器人不给假 ID, 写明是陪练。
-	if ghost is Dictionary and bool(ghost.get("is_bot", false)):
-		return {"name": nm, "avatar": avatar, "id": "", "bot": true}
+	## ★★2026-10-04 用户拍板:「不能让玩家知道是机器人」—— 推翻方案书 R2「说实话」与 v0.19.518 的「陪练机器人」标签。
+	##   机器人与真人走**同一条**取名/取号路径, 卡片上没有任何可区分的东西(门禁 verify_bot_card_honest 守)。
 	return {"name": nm, "avatar": avatar, "id": _display_id(str(prof.get("id", "")))}
 
 

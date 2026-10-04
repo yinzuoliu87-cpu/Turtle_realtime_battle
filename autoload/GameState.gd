@@ -768,6 +768,13 @@ func sync_titles() -> int:
 	if str(gauntlet_state()) == _P2.GAUNTLET_IN:
 		if award_title(_P2.TITLE_FINALS_DAY):
 			got += 1
+	## ★★回收(用户 2026-10-04「只回收本周的」): 旧规则按 promoted 错发出去的「进决赛日」,
+	##   只收**本周**那一条 —— 本周的周六战绩还在存档里, 判得准; 更早的周六战绩已清, 判不了, 不动。
+	##   周日仍是 IN 的人不受影响; 换周后旧周那条 week 不等于新周锚点, 也不受影响。
+	elif int(week_anchor_ts) > 0 and _P2.title_has(titles, _P2.TITLE_FINALS_DAY, int(week_anchor_ts)):
+		titles = titles.filter(func(r): return not (r is Dictionary
+			and str((r as Dictionary).get("id", "")) == _P2.TITLE_FINALS_DAY
+			and int((r as Dictionary).get("week", -1)) == int(week_anchor_ts)))
 	## ★★★2026-09-26 冠军/四强也走这一个入口(原来它们**没有任何发放路径** ——
 	##   常量/标签/显示顺序/`title_earnable` 全齐, 而 `award_title` 全仓只有上面两个调用点)。
 	## ★依据是从服务端 feed 派生的三个字段(见它们的声明处), 不是本地 `won`。

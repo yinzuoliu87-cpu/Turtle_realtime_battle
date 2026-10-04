@@ -364,7 +364,10 @@ static func make_bot(battles: int, rng: RandomNumberGenerator) -> Dictionary:
 		"schema_ver": SCHEMA_VER,
 		"ghost_id": "bot_%d_%d" % [battles, rng.randi() % 1000000],
 		"is_bot": true,
-		"profile": {"name": "海域守卫", "avatar": str(leaders[0]) if leaders.size() > 0 else "basic", "id": "BOT"},
+		## ★★用户 2026-10-04「不能让玩家知道是机器人」: 原来全体机器人同名「海域守卫」、同号(hash("BOT") 恒为 #451562),
+		##   打两场就认得出。⇒ 名字用**真人注册时的预填名生成器**(「石头统领」这类), 不用「龟主-xxxxx」兜底名
+		##   (用户 2026-10-04:「龟主-32c6c这是真人会用的名字？」); 号码每个不同。
+		"profile": {"name": _P2.nickname_suggest_at(rng.randi(), rng.randi()), "avatar": str(leaders[0]) if leaders.size() > 0 else "basic", "id": "#%06d" % (rng.randi() % 1000000)},
 		"leaders": leaders,
 		"lane_assign": lane_assign,
 		"minions": minions,

@@ -429,7 +429,6 @@ scripts/gamedata/vfxlab_cases.gd|lit|远程→近战: 视觉上主要是'贴脸�
 scripts/gamedata/vfxlab_cases.gd|lit|遗物
 scripts/gamedata/vfxlab_cases.gd|lit|靠命中触发 ⇒ attacker 必开。★★2026-09-14 订正三处: ①`ui` → `bars` —— `ui: true` 会把**飘字连同整层 UI 一起关掉**, 而这件「满 20 层转真实伤害」的读法**正是飘字变色**(蓝→白), 配 ui 等于把要看的东西关了(第四批栽过同一个坑)。②`dur` 12 → 24 + `aspd` 2.0: 每击叠 2 层, 12 秒攒不到 20 层, **满层转真伤那一下一帧都拍不到**。③敌人 40 万血, 不然它先被打死。
 scripts/gamedata/vfxlab_cases.gd|lit|食物
-scripts/net/backend.gd|lit|海域守卫
 scripts/net/backend.gd|lit|玩家阵容
 scripts/net/remote_pool.gd|lit|%s 带了 %d 件装备(上限 %d)
 scripts/net/remote_pool.gd|lit|%s 的 equipped 不是 Array
@@ -667,7 +666,6 @@ scripts/scenes/MatchmakingScene.gd|lit|稳健型选手
 scripts/scenes/MatchmakingScene.gd|lit|老司机带带我
 scripts/scenes/MatchmakingScene.gd|lit|萌新龟龟
 scripts/scenes/MatchmakingScene.gd|lit|退役龟皇
-scripts/scenes/MatchmakingScene.gd|lit|陪练机器人
 scripts/scenes/MatchmakingScene.gd|lit|龟界传说
 scripts/scenes/MatchmakingScene.gd|lit|龟速前进
 scripts/scenes/MatchmakingScene.gd|lit|龟龟不下班
