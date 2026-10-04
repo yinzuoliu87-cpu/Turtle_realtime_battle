@@ -11,6 +11,10 @@ var _info_eq_readouts: Array = []
 ## 上一次接管过的装备容器实例 id。面板每次打开都会新建容器 ⇒ id 变了就说明是新面板,
 ## 要用本文件的 `_info_equip_section` 重铺一次(见 _refresh_info_panel 里的说明)。
 var _info_eq_box_iid: int = 0
+## 描述框里「装备本局统计」那一块(只在打开的是装备时非 null) + 它对应的携带者/装备 id
+var _eq_stats_lbl: Label = null
+var _eq_stats_unit = null
+var _eq_stats_eid: String = ""
 
 func _init(b) -> void:
 	battle = b
@@ -252,6 +256,7 @@ func _refresh_info_panel() -> void:
 				var etx := _equip_readout_text(ud, str((ent2 as Dictionary).get("eid", "")))
 				if elb.text != etx:
 					elb.text = etx
+	_refresh_eq_stats()
 
 
 # 面板内非按钮控件设 IGNORE → 触摸透传到 ScrollContainer(手机可竖滑·2026-07-18); 关闭按钮(Button)保留可点
@@ -908,6 +913,50 @@ func _info_equip_slots(vb: VBoxContainer, u: Dictionary) -> void:
 		slot.gui_input.connect(func(ev: InputEvent) -> void:
 			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 				_show_detail(battle._info_panel, "eq:" + eid, d_title, d_body, {}, u))
+
+
+## 装备本局统计文字(数据源 `u["_st_eq"][eid]`, 由 EquipTally 记账)。口径与结算页同一套词:
+## 「造成伤害 N」(两种以上伤害类型非零时括号里拆开) /「治疗 N」/「护盾 N」, 每行一项、只列非零;
+## 全零返回 ""(调用方据此整块隐藏)。
+static func eq_stats_text(u: Dictionary, eid: String) -> String:
+	var all = u.get("_st_eq", {})
+	var st = (all as Dictionary).get(eid, {}) if all is Dictionary else {}
+	if not (st is Dictionary):
+		return ""
+	var dmg := {"物理": int(round(float(st.get("phy", 0.0)))),
+		"魔法": int(round(float(st.get("mag", 0.0)))), "真实": int(round(float(st.get("tru", 0.0))))}
+	var lines: Array = []
+	var total: int = 0
+	var split: Array = []
+	for k in dmg:
+		total += int(dmg[k])
+		if int(dmg[k]) > 0:
+			split.append("%s %d" % [k, int(dmg[k])])
+	if total > 0:
+		lines.append("造成伤害 %d" % total + ("（%s）" % " · ".join(split) if split.size() >= 2 else ""))
+	var heal: int = int(round(float(st.get("heal", 0.0))))
+	if heal > 0:
+		lines.append("治疗 %d" % heal)
+	var shield: int = int(round(float(st.get("shield", 0.0))))
+	if shield > 0:
+		lines.append("护盾 %d" % shield)
+	return "\n".join(lines)
+
+
+## 描述框开着且是装备时, 每帧把统计改成最新(只改文字不重建); 由显隐变化时重算框高。
+func _refresh_eq_stats() -> void:
+	if _eq_stats_lbl == null or not is_instance_valid(_eq_stats_lbl) or not (_eq_stats_unit is Dictionary):
+		return
+	var tx := eq_stats_text(_eq_stats_unit, _eq_stats_eid)
+	if _eq_stats_lbl.text == tx:
+		return
+	var was: bool = _eq_stats_lbl.visible
+	_eq_stats_lbl.text = tx
+	_eq_stats_lbl.visible = tx != ""
+	if was != _eq_stats_lbl.visible:
+		var ov = _eq_stats_lbl.get_parent().get_parent().get_parent()   # Body → Box → DetailOverlay
+		if ov is Control:
+			_fit_detail_box(ov)
 
 
 func _equip_readout_text(u: Dictionary, eid: String) -> String:
@@ -1625,6 +1674,22 @@ func _show_detail(host_panel: Control, key: String, title: String, body: String,
 	dt.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	dt.text = body
 	vb.add_child(dt)
+	## ★装备本局统计(用户 2026-10-04「点击装备图标展示装备效果时贴在描述的下面，你可以学学lol」):
+	##   紧贴描述下方一块小字, 只列非零行; 全零整块隐藏(不印「0」)。之后由 _refresh_eq_stats 每帧改字。
+	_eq_stats_lbl = null
+	if key.begins_with("eq:"):
+		var sl = Label.new()
+		sl.name = "EqStats"
+		sl.add_theme_font_size_override("font_size", UIPalette.F_SUB)
+		sl.add_theme_color_override("font_color", Color("#8fa4bb"))
+		sl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		sl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vb.add_child(sl)
+		_eq_stats_lbl = sl
+		_eq_stats_eid = key.substr(3)
+		_eq_stats_unit = unit
+		sl.text = eq_stats_text(unit, _eq_stats_eid)
+		sl.visible = sl.text != ""
 	## ★★把【屏上这个描述框】登记回 `_info_skill_lbls` —— 这里是全仓唯一知道
 	##   "当前描述框是哪个节点"的地方, 所以登记只能发生在这里。
 	##   · key 对上的那一条拿到 dt ⇒ 每帧刷新写它 ⇒ 屏幕上的伤害数字跟着属性变;

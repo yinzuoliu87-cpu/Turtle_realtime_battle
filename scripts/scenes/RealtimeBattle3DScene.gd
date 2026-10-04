@@ -2249,8 +2249,8 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 		_food_syn.tick(dt)    # 食物: 每 2.5 秒每件食物为携带者永久 +最大生命
 		_spirit_syn.tick(dt)  # 灵物: 触手拍击层数(每 SLAP_PERIOD=5 秒 +1, 闪避再 +1) + 空闲时消费 1 层拍一次
 		_spec.tick(dt)        # ★特殊余额: 线性衰减 + 耗尽回调(自然衰减完也算"被打破")
-		_equip_sys.tick_global(dt)   # ★装备的【全局】在途表(弧形波/箭雨/连射 + 批④ 的召唤物·区域·碑)
-									 #   —— 与"某只龟身上有没有装备"无关: 携带者死后碑/直升机/炮台还要继续动
+		if not frozen: _equip_sys.tick_global(dt)   # ★装备【全局】在途表(弧形波/箭雨/连射 + 批④召唤物·区域·碑): 携带者死后碑/直升机/炮台还要继续动
+									 #   ★U9(用户2026-10-04「也停」): 顿帧里与游戏钟一起定格 —— 否则 080「阵亡后飞 10 秒」按游戏钟只过约 6.3 秒就坠机
 		_relic_syn.tick(dt)   # 遗物: 远古之力累积(每 2.5 秒) + 觉醒判定
 		_tentacle_vfx.tick(dt)  # 触手拍击: 每帧重算网格(甩动)
 		_trainer_sys._tick_trainer_attacks(dt) # 训龟大师普攻: 站定扔石头抛物线弹道(用户2026-07-23)
@@ -2513,7 +2513,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 			_shake(JUICE_SHAKE_HEAVY)
 			_vfx._impact_particles(u["pos"], 0.0)
 			# ★★真实落地事件 → 通知装备系统(090 猛砸靠它结算)。
-			#   为什么不能靠倒计时: `_equip_sys.tick_global` 在本函数【上方】无条件执行,
+			#   为什么不能靠倒计时: `_equip_sys.tick_global` 在本函数【上方】执行(U9 后顿帧里已停, 但时停里仍有补推),
 			#   而这段 airborne 积分被 `if frozen / elif in_ts / else` 门控着 ⇒
 			#   顿帧/时停期间跳跃冻结、倒计时照跑, 砸落会提前(实测早 3.59 米)。
 			#   落地事件是【同一个物理量】的事件, 不存在两个时钟对不上的问题。
