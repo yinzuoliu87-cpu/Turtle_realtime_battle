@@ -245,7 +245,8 @@ func _record_progress() -> void:
 		return                        # 没有桶 / 我不在桶里(纯观众) ⇒ 一个字都不记
 	var pr: Dictionary = _B.my_progress(me, n, _bucket.get("done", {}) as Dictionary)
 	var changed: bool = GameState.record_finals_progress(
-		int(pr.get("deepest", 0)), int(pr.get("total", 0)), bool(pr.get("champion", false)))
+		int(pr.get("deepest", 0)), int(pr.get("total", 0)), bool(pr.get("champion", false)),
+		bool(pr.get("runner_up", false)))
 	if _reveal_sealed():
 		changed = true
 	## ★头衔在 `sync_titles()` 里发(与满配额/进决赛日同一个入口) —— 这里不自己发。

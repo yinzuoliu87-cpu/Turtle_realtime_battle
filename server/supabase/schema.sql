@@ -193,7 +193,7 @@ create table if not exists public.standings (
   hearts      int    not null default 8,
   sweeps      int    not null default 0,
   promoted    boolean not null default false,
-  title       text,                          -- D12 四档：冠军 / 四强 / 进决赛日 / 积分赛满配额
+  title       text,                          -- D12 头衔：冠军 / 亚军(2026-10-04 加) / 四强 / 进决赛日 / 积分赛满配额。自由文本无约束、现无人写 ⇒ 加档不需迁移
   updated_at  timestamptz not null default now(),
   primary key (season_week, account_id)
 );

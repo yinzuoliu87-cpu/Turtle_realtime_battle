@@ -796,9 +796,9 @@ func _t_enter() -> void:
 	GameState.account_id = "uid-me-1234"
 	_ok("⑦ ★★两个号的显示名不一样(否则对阵图上全是同一个名字)", n1 != n2, "%s vs %s" % [n1, n2])
 	_ok("⑦ ★分母: 名字不是空的", n1.length() >= 3 and n2.length() >= 3, "%s / %s" % [n1, n2])
-	## ★★登记缺口: 这**不是**真昵称, 是账号短码凑的
-	_ok("⑦ ★登记缺口: 项目还没有「玩家昵称」⇒ 现在用的是账号短码(见 backend.player_display_name)",
-		n1.begins_with("龟主-"), n1)
+	## ★2026-10-04: 没起名的号不再是「龟主-xxxxx」短码, 而是生成器里按账号哈希挑的像人的名字
+	_ok("⑦ ★没起名的号报名时带的是像人的默认名(不是「龟主-」短码)",
+		not n1.begins_with("龟主-") and P2C.nickname_valid(n1), n1)
 
 	## 匿名号不发(与存档同步同一条承诺)
 	GameState.account_email = ""

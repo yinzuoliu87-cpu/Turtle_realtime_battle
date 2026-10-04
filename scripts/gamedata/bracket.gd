@@ -217,7 +217,8 @@ static func my_side_in(me: int, r: int, m: int, n: int, done: Dictionary) -> int
 
 ## 「我这一周在决赛日走到哪儿了」—— 发冠军/四强头衔的**唯一依据**。
 ##
-## 返回 `{"total": 共几轮, "deepest": 我被排进的最深那一轮(0 = 没进), "champion": 赢下决赛没有}`
+## 返回 `{"total": 共几轮, "deepest": 我被排进的最深那一轮(0 = 没进), "champion": 赢下决赛没有,
+##        "runner_up": 决赛已翻面且我输了没有}`
 ##
 ## ★★`deepest` 取的是「**被排进**」不是「打过」—— 原稿「四强 = 打进四强」问的是名次,
 ##   而被排进倒数第二轮就已经是前 4 名了(那一轮正好 4 个人)。
@@ -227,7 +228,7 @@ static func my_side_in(me: int, r: int, m: int, n: int, done: Dictionary) -> int
 ##   `done["<总轮数>-0"]` 一个桶里只有一个值, 那才是权威。
 static func my_progress(me: int, n: int, done: Dictionary) -> Dictionary:
 	var total := rounds_for(n)
-	var out := {"total": total, "deepest": 0, "champion": false}
+	var out := {"total": total, "deepest": 0, "champion": false, "runner_up": false}
 	## ★`me < 0` 这一半是**防御性, 不承重**(2026-09-26 反向验证查实): 把它拿掉
 	##   一条断言都不红 —— `my_side_in()` 自己第一行就挡 `me < 0`, 于是循环里
 	##   一次都不会命中, `deepest` 照旧是 0。留着是把「纯观众没有名次」写在明面上。
@@ -245,6 +246,11 @@ static func my_progress(me: int, n: int, done: Dictionary) -> Dictionary:
 	if fs >= 0:
 		var w = done.get("%d-0" % total, -1)
 		out["champion"] = int(w) == fs
+		## ★★亚军(2026-10-04) = 我坐在决赛那一场里 **且** 决赛已翻面 **且** 赢的是对面那一侧。
+		##   三条缺一不可: 「被排进决赛」本身不是亚军(决赛还没打 / 还没翻面时 w = -1)。
+		##   决赛是哪一轮由 `rounds_for(n)` 决定(2 人桶第 1 轮、3~4 人第 2 轮、5~8 人第 3 轮…),
+		##   轮空不影响: 轮空的人照样经 `my_side_in` 的递归被排进后面的轮次。
+		out["runner_up"] = int(w) >= 0 and int(w) != fs
 	return out
 
 

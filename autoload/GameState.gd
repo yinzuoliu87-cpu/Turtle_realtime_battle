@@ -786,6 +786,14 @@ func sync_titles() -> int:
 	if bool(finals_champion):
 		if award_title(_P2.TITLE_CHAMPION):
 			got += 1
+	## ★★亚军(用户 2026-10-04「加『亚军』头衔」): 决赛翻面且输的是我。
+	##   ★与四强**累加**(四强那条上面已经发了, 这里不收回) —— 与冠军同时拿四强同一条规矩,
+	##     D12 原话「存成一个可累加的列表」。
+	##   ★`not finals_champion` 是防御: 一个桶决赛只有一个 `done` 值, 两个旗不会同时真;
+	##     真同时真了(坏存档)宁可只认冠军, 也不许一个人同周既冠又亚。
+	elif bool(finals_runner_up):
+		if award_title(_P2.TITLE_RUNNER_UP):
+			got += 1
 	return got
 
 
@@ -796,7 +804,7 @@ func sync_titles() -> int:
 ## ★为什么只增: feed **故意不下发当前轮**的结果 ⇒ 同一个桶越到后面 `done` 越全,
 ##   `deepest` 只会往上走。真拿到一个更小的值, 那是「这次拉到的 feed 更旧」
 ##   (比如切桶视图、或者请求乱序), 不是「我退赛了」。
-func record_finals_progress(deepest: int, total: int, champion: bool) -> bool:
+func record_finals_progress(deepest: int, total: int, champion: bool, runner_up: bool = false) -> bool:
 	var changed := false
 	if deepest > int(finals_deepest_round):
 		finals_deepest_round = deepest
@@ -806,6 +814,9 @@ func record_finals_progress(deepest: int, total: int, champion: bool) -> bool:
 		changed = true
 	if champion and not bool(finals_champion):
 		finals_champion = true
+		changed = true
+	if runner_up and not bool(finals_runner_up):
+		finals_runner_up = true
 		changed = true
 	return changed
 
@@ -951,6 +962,7 @@ var finals_report_pending: Dictionary = {}
 var finals_deepest_round: int = 0   # 我被排进的最深那一轮(1 起; 0 = 没进决赛日)
 var finals_rounds_total: int = 0    # 我那个桶一共几轮(0 = 还不知道)
 var finals_champion: bool = false   # 服务端说我赢下了决赛
+var finals_runner_up: bool = false  # 服务端说我输掉了决赛(亚军 · 2026-10-04)
 ## ★★头衔(E-B5 · D12 四档): 一条 `{id, week}`。
 ##   **跨大轮保留、清档也不清** —— 这是玩家唯一的永久资产
 ##   (先例: `install_uid` / `account_id` 也是"清的是这局游戏, 不是你是谁")。
@@ -1645,6 +1657,7 @@ func _save_dict() -> Dictionary:
 		"finals_deepest_round": finals_deepest_round,
 		"finals_rounds_total": finals_rounds_total,
 		"finals_champion": finals_champion,
+		"finals_runner_up": finals_runner_up,
 		"promoted": promoted,
 		"titles": titles,
 		"incense_marks": incense_marks,   # 093 香火石: 赛季级刻痕池
@@ -1812,6 +1825,7 @@ func _apply_save_dict(data: Dictionary) -> void:
 	finals_deepest_round = int(data.get("finals_deepest_round", 0))
 	finals_rounds_total = int(data.get("finals_rounds_total", 0))
 	finals_champion = bool(data.get("finals_champion", false))
+	finals_runner_up = bool(data.get("finals_runner_up", false))
 	week_phase = str(data.get("week_phase", ""))
 	promoted = bool(data.get("promoted", false))
 	titles = (data.get("titles", []) as Array).duplicate(true)
@@ -1991,6 +2005,7 @@ func reset_save() -> void:
 	finals_deepest_round = 0
 	finals_rounds_total = 0
 	finals_champion = false
+	finals_runner_up = false
 	incense_marks = 0                 # 093 香火石: 刻痕随大轮(赛季)清零 —— 用户「一大轮重置」
 	incense_charge = 0                # 同上: 充能与刻痕同一条线, 一起重置
 	season_level = 1
@@ -2514,6 +2529,7 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	finals_deepest_round = 0
 	finals_rounds_total = 0
 	finals_champion = false
+	finals_runner_up = false
 	incense_marks = 0                 # 093 香火石: 刻痕随大轮(赛季)清零 —— 用户「一大轮重置」
 	incense_charge = 0                # 同上: 充能与刻痕同一条线, 一起重置
 	season_level = 1
