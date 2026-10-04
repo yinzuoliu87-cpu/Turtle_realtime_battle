@@ -387,6 +387,11 @@ chk("⑯ ★收尾: 甲重新报到(下面几段的前提)", isinstance(d, dict)
 st, d = req("POST", "/rest/v1/rpc/finals_enter",
             {"p_week": WEEK, "p_name": "乙", "p_snapshot": {"pets": [2]}, "p_gw": 6, "p_gl": 2}, TB)
 chk("⑯ 另一个号也收了", isinstance(d, dict) and d.get("ok") is True, str(d)[:140])
+## ★2026-10-04: 报了名、本周还一个桶都没有 ⇒ 是「还没分组」, 不是「人太少」
+##   (原来回 too_few ⇒ 周日早上每个晋级的人都被劝「下周再来」)
+st, d = req("POST", "/rest/v1/rpc/finals_view", {"p_week": WEEK, "p_bucket": -1}, TA)
+chk("⑯ ★★报了名、还没分桶 ⇒ reason = not_seated(不是 too_few)",
+    isinstance(d, dict) and d.get("reason") == "not_seated" and int(d.get("entered", 0)) == 2, str(d)[:140])
 st, rows = req("GET", "/rest/v1/finals_pending?season_week=eq.%d&select=*" % WEEK, None, TA)
 chk("⑯ ★★只看得见**自己**那一行(「谁报名了」本身就是情报)",
     isinstance(rows, list) and len(rows) == 1 and str(rows[0].get("name")) == "甲",

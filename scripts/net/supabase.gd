@@ -1771,6 +1771,10 @@ static func parse_finals(ok: bool, code: int, body: String, my_account: String,
 		##   ⇒ 只有这一个理由要带出来; 其余(没报名 / 没登录 / 坏正文)照旧回 `{}`,
 		##     「屏幕上说人话、不画半张图」那条老判据一字不动。
 		##   ★不带 `size` 键 ⇒ `int(v.get("size", 0))` 仍是 0, 画图那侧的判断不受影响。
+		## ★2026-10-04: 服务端新增 `not_seated`(本周一个桶都还没有 = 还没到分组时间), 同样要带出来。
+		if str((_p.data as Dictionary).get("reason", "")) == "not_seated":
+			return {"reason": "not_seated",
+				"entered": int((_p.data as Dictionary).get("entered", 0))}
 		if str((_p.data as Dictionary).get("reason", "")) == "too_few":
 			return {"reason": "too_few",
 				"entered": int((_p.data as Dictionary).get("entered", 0))}

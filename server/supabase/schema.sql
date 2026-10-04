@@ -419,6 +419,12 @@ begin
       --   ⇒ 报过名就回 `too_few` 并带上**本周报名人数**, 让客户端能说人话。
       if exists (select 1 from public.finals_pending
                   where season_week = p_week and account_id = auth.uid()) then
+        -- ★2026-10-04: 本周还一个桶都没有 = 还没到分组时间(finals_seat 周日 08:00 UTC 起跑), 不是人太少。
+        --   原来这里一律回 too_few ⇒ 周日早上每个晋级的人都被劝「人太少、下周再来」。
+        if not exists (select 1 from public.finals_buckets where season_week = p_week) then
+          return jsonb_build_object('ok', false, 'reason', 'not_seated',
+            'entered', (select count(*) from public.finals_pending where season_week = p_week));
+        end if;
         return jsonb_build_object('ok', false, 'reason', 'too_few',
           'entered', (select count(*) from public.finals_pending where season_week = p_week));
       end if;
