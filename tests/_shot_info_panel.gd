@@ -204,9 +204,23 @@ func _ready() -> void:
 				if str((_e as Dictionary).get("id", "")) == eid:
 					edef = _e as Dictionary
 					break
-			s._info_sys._show_detail(s._info_panel, "eq:" + eid,
-				"%s %s" % [str(edef.get("name", eid)), "★★★"],
-				str(edef.get("effectDesc1", "")), {}, u)
+			## SHOT_EQSTATS=1: 给第一件填一份本局统计, 走【真点击】第一个装备槽, 拍「描述下方的统计块」(2026-10-04 ①)
+			if OS.has_environment("SHOT_EQSTATS"):
+				var e0id := str(((u.get("equips", []) as Array)[0] as Dictionary).get("id", ""))
+				u["_st_eq"] = {e0id: {"phy": 1834.0, "mag": 0.0, "tru": 412.0, "heal": 0.0, "shield": 650.0}}
+				var q5: Array = [s._info_equip_box]
+				while not q5.is_empty():
+					var n5: Node = q5.pop_front()
+					if n5 is PanelContainer and not (n5 as Control).gui_input.get_connections().is_empty():
+						var ev5 := InputEventMouseButton.new()
+						ev5.button_index = MOUSE_BUTTON_LEFT; ev5.pressed = true
+						(n5 as Control).gui_input.emit(ev5)
+						break
+					q5.append_array(n5.get_children())
+			else:
+				s._info_sys._show_detail(s._info_panel, "eq:" + eid,
+					"%s %s" % [str(edef.get("name", eid)), "★★★"],
+					str(edef.get("effectDesc1", "")), {}, u)
 		elif which == "more":
 			## ★走产品那一份(`_more_stats_text`, 带行首图标) —— 原来这里手抄了一份只拼字的, 拍不到图标。
 			var mtxt: String = s._info_sys._more_stats_text(u)
