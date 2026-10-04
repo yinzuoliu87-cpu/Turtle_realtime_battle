@@ -29,7 +29,7 @@ const BK := preload("res://scripts/net/backend.gd")
 
 var _n := 0
 var _fail := 0
-const KEYS := ["nickname", "account_id", "account_email", "install_uid", "season_id",
+const KEYS := ["nickname", "nickname_default", "account_id", "account_email", "install_uid", "season_id",
 	"season_leaders", "ranked_used", "week_anchor_ts", "titles"]
 var _bak := {}
 
@@ -53,6 +53,8 @@ func _ready() -> void:
 	_t_fallback()
 	_t_one_source()
 	_t_survive_resets()
+	_t_default_name()
+	await _t_frozen_default()
 	for k in KEYS:
 		GameState.set(k, _bak[k])
 	print("")
@@ -176,3 +178,223 @@ func _t_survive_resets() -> void:
 	var payload: Dictionary = GameState.cloud_payload()
 	_ok("④ ★昵称进了存档载荷(不然重开游戏就没了)",
 		str(payload.get("nickname", "")) == "阿龟大王", str(payload.get("nickname")))
+
+
+# ─────────────────────────────────────────────────────────────
+# ⑤ ★★★默认名像真人(用户 2026-10-04「换成随机像人的昵称」)
+#
+# 原来没起名的号显示「龟主-xxxxx」(周日实况 6 个真人号全是这个)。
+# 现在从预填名生成器 `nickname_suggest_at`(机器人也用它)里按种子哈希挑一个。
+# ★三件事: ① 不是「龟主-」格式且合法、出自生成器池 ② 稳定 —— 存档写盘再读回来还是同一个
+#   ③ 默认名**不落盘**(`nickname` 仍是 "") —— 这正是「默认 vs 自己起的」能分清的依据,
+#   也是老玩家不用迁移代码就自动换名的原因; 自己起过名的(哪怕起的就是「龟主-…」)一个字不动。
+# ─────────────────────────────────────────────────────────────
+const _OLD_HEAD := "龟主-"
+const _PROBE := "user://_verify_nickname_reopen.json"
+
+func _pool() -> Dictionary:
+	var pool := {}
+	for i in range(P2C.nickname_stems().size()):
+		for j in range(P2C.NICK_HEADS.size()):
+			pool[P2C.nickname_suggest_at(i, j)] = true
+	return pool
+
+
+## 真开机那条路: 存档字典 → JSON 写盘 → `_read_save_file` 读回 → `_apply_save_dict`。
+func _reopen() -> void:
+	var f := FileAccess.open(_PROBE, FileAccess.WRITE)
+	f.store_string(JSON.stringify(GameState._save_dict(), "  "))
+	f.close()
+	GameState.nickname = "<没读回来>"
+	GameState.nickname_default = "<没读回来>"
+	GameState.account_id = "<没读回来>"
+	GameState.install_uid = "<没读回来>"
+	var d = GameState._read_save_file(_PROBE)
+	if d is Dictionary:
+		GameState._apply_save_dict(d)
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(_PROBE))
+
+
+func _t_default_name() -> void:
+	print("── ⑤ 默认名像真人 ──")
+	var pool := _pool()
+	_ok("⑤ ★分母: 生成器池非空", pool.size() >= 100, "%d 个" % pool.size())
+
+	## ① 一批账号: 没有一个是「龟主-」, 全合法, 全出自生成器池, 不全同名
+	var bad: Array = []
+	var seen := {}
+	for i in range(200):
+		var nm := str(P2C.nickname_fallback("acct-%d-%s" % [i, str(i * 7919).sha256_text().substr(0, 8)]))
+		seen[nm] = true
+		if nm.begins_with(_OLD_HEAD) or not P2C.nickname_valid(nm) or not pool.has(nm):
+			bad.append(nm)
+	_ok("⑤ ★★★200 个账号的默认名: 没有「龟主-」、全过 nickname_valid、全出自生成器池",
+		bad.is_empty(), str(bad.slice(0, 5)))
+	_ok("⑤ ★分母: 默认名是散开的(不是全员同一个名字)", seen.size() >= 100, "%d 种" % seen.size())
+
+	## ② 全新存档(真入口: 清空身份 → 本机安装号 → 统一出处)
+	GameState.nickname = ""
+	GameState.nickname_default = ""
+	GameState.account_id = ""
+	GameState.install_uid = ""
+	var uid := str(GameState.get_install_uid())
+	_ok("⑤ ★分母: 新装机拿到了安装号", uid.length() == 12, uid)
+	var n0 := str(BK.player_display_name())
+	print("     新存档(只有安装号)的默认名: 「%s」" % n0)
+	_ok("⑤ ★★★新存档默认名不是「龟主-」格式且合法",
+		not n0.begins_with(_OLD_HEAD) and P2C.nickname_valid(n0) and pool.has(n0), n0)
+	_reopen()
+	_ok("⑤ ★分母: 读回来的确实是那份存档(安装号对得上)", str(GameState.install_uid) == uid,
+		str(GameState.install_uid))
+	_ok("⑤ ★★★重开之后默认名不变", str(BK.player_display_name()) == n0,
+		"%s → %s" % [n0, BK.player_display_name()])
+	## 还没账号的两台新机器不许同名(只认账号的话, 所有离线新人都是同一个兜底名)
+	var offline := {}
+	for u in ["0de247d8b100", "9a1c33e07f42", "5b6e0c2d9a18", "c4f81e2b7d63"]:
+		GameState.install_uid = u
+		GameState.nickname_default = ""     # 每台都是新机器: 还没冻结过默认名
+		offline[str(BK.player_display_name())] = true
+	GameState.install_uid = uid
+	_ok("⑤ ★★没账号时按安装号散开(4 台新机器 ≥ 3 个不同名字)", offline.size() >= 3, str(offline.keys()))
+
+	GameState.nickname_default = ""
+	var n0b := str(BK.player_display_name())
+	## 已冻结的默认名, 之后拿到账号也不换(首启静默登录不该让名字跳一下)
+	GameState.account_id = "e0a790fd-1111-2222-3333-444455556666"
+	_ok("⑤ ★已冻结的默认名: 拿到账号之后不变", str(BK.player_display_name()) == n0b,
+		"%s → %s" % [n0b, BK.player_display_name()])
+	## 换设备找回账号、云存档里没有默认名(老客户端推的) ⇒ 按账号种子生成, 重开也不变
+	GameState.nickname_default = ""
+	var n1 := str(BK.player_display_name())
+	print("     有账号之后的默认名: 「%s」" % n1)
+	_ok("⑤ ★★有账号的默认名也不是「龟主-」且合法",
+		not n1.begins_with(_OLD_HEAD) and P2C.nickname_valid(n1) and pool.has(n1), n1)
+	_reopen()
+	_ok("⑤ ★★★有账号: 重开之后默认名不变", str(BK.player_display_name()) == n1,
+		"%s → %s" % [n1, BK.player_display_name()])
+	GameState.install_uid = "ffffffffffff"
+	GameState.nickname_default = ""
+	_ok("⑤ ★账号优先: 换一台机器(安装号不同)找回同一个号, 名字还是那个",
+		str(BK.player_display_name()) == n1, str(BK.player_display_name()))
+
+	## ③ 默认名不落盘 —— 「默认 vs 自己起的」靠的就是 nickname == ""
+	_ok("⑤ ★★★显示过默认名之后 `nickname` 仍是空(没被写回, 否则就分不清是不是自己起的)",
+		str(GameState.nickname) == "", "「%s」" % GameState.nickname)
+	_ok("⑤ ★存档里也没有它", str(GameState._save_dict().get("nickname", "x")) == "",
+		str(GameState._save_dict().get("nickname")))
+
+	## 老玩家: 自己起过名的不动 —— 哪怕起的就是旧格式
+	GameState.nickname = "龟主-ab12c"
+	_ok("⑤ ★★★自己起过的名字(哪怕是「龟主-ab12c」)原样保留",
+		str(BK.player_display_name()) == "龟主-ab12c", str(BK.player_display_name()))
+	_reopen()
+	_ok("⑤ ★分母: 重开之后也还是它", str(BK.player_display_name()) == "龟主-ab12c",
+		str(BK.player_display_name()))
+	GameState.nickname = ""
+
+
+# ─────────────────────────────────────────────────────────────
+# ⑥ ★★★默认名首次显示时冻结进存档(用户 2026-10-04 拍板)
+#
+# 生成器是「哈希 mod 池子大小」, 池子跟着 pets.json 走 ⇒ 加一只龟所有没起名的人都会换名。
+# ⇒ 第一次显示时把名字存进**独立字段** `nickname_default` 并落盘, 之后一直用它。
+#   ① 真落盘(从磁盘读回来看)  ② 换池子之后已存的不变、没存过的按新池生成
+#   ③ 自己起的名不受影响  ④ 绑定邮箱那屏预填的就是存下来的这个
+# ─────────────────────────────────────────────────────────────
+const _FAKE_PET := {"name": "门禁专用乌龟", "passive": {"name": "门禁被动"}}
+
+func _t_frozen_default() -> void:
+	print("── ⑥ 默认名冻结进存档 ──")
+	GameState.nickname = ""
+	GameState.install_uid = "0de247d8b100"
+
+	## ① 真落盘: 临时开闸让 save() 真写 user://, 再从磁盘读回来。原存档逐字节备份、量完还原。
+	var path: String = GameState.SAVE_PATH
+	var had := FileAccess.file_exists(path)
+	var orig := FileAccess.get_file_as_bytes(path) if had else PackedByteArray()
+	GameState.nickname_default = ""
+	GameState.account_id = "acct-disk-0001"
+	GameState.test_mode = false
+	var nm := str(BK.player_display_name())
+	GameState.test_mode = true
+	var d = GameState._read_save_file(path)
+	var disk_def := str((d as Dictionary).get("nickname_default", "<无>")) if d is Dictionary else "<读不出>"
+	var disk_nick := str((d as Dictionary).get("nickname", "<无>")) if d is Dictionary else "<读不出>"
+	if had:
+		var f := FileAccess.open(path, FileAccess.WRITE)
+		f.store_buffer(orig)
+		f.close()
+	else:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	_ok("⑥① ★★★第一次显示后, 默认名已经落盘(从磁盘读回来就是它)", disk_def == nm, "盘上「%s」 显示「%s」" % [disk_def, nm])
+	_ok("⑥① ★★落的是独立字段, `nickname` 在盘上仍是空(「没自己起过名」的判据没被破坏)",
+		disk_nick == "", "「%s」" % disk_nick)
+	_ok("⑥① ★分母: 存档还原了", (not had and not FileAccess.file_exists(path))
+		or (had and FileAccess.get_file_as_bytes(path) == orig))
+
+	## ② 换池子。先找一个「池子一变生成结果就变」的账号 —— 不然「没变」是空检查。
+	var acct := ""
+	var before := ""
+	var after := ""
+	DataRegistry.all_pets.insert(0, _FAKE_PET)
+	var shifted := {}
+	for i in range(40):
+		var a := "acct-pool-%d" % i
+		shifted[a] = str(P2C.nickname_fallback(a))
+	DataRegistry.all_pets.remove_at(0)
+	for i in range(40):
+		var a := "acct-pool-%d" % i
+		if str(P2C.nickname_fallback(a)) != str(shifted[a]):
+			acct = a
+			break
+	_ok("⑥② ★分母: 找到一个池子一变生成结果就变的账号", acct != "", acct)
+	GameState.account_id = acct
+	GameState.nickname_default = ""
+	before = str(BK.player_display_name())          # 旧池下第一次显示 ⇒ 冻结
+	DataRegistry.all_pets.insert(0, _FAKE_PET)       # ★池子变了(模拟 pets.json 加了一只龟)
+	var gen_now := str(P2C.nickname_fallback(acct))
+	var shown_now := str(BK.player_display_name())
+	_ok("⑥② ★分母: 新池下生成器给这个账号的确实是另一个名字", gen_now != before, "%s → %s" % [before, gen_now])
+	_ok("⑥② ★★★池子变了, 已存的默认名**不变**", shown_now == before, "%s → %s" % [before, shown_now])
+	_reopen()
+	_ok("⑥② ★★重开之后也还是它", str(BK.player_display_name()) == before, str(BK.player_display_name()))
+	GameState.nickname_default = ""                  # 没存过的新档
+	after = str(BK.player_display_name())
+	_ok("⑥② ★★没存过的新档按新池生成", after == gen_now, "%s (新池应为 %s)" % [after, gen_now])
+
+	## ③ 自己起的名字: 池子怎么变都不碰
+	GameState.nickname = "阿龟大王"
+	_ok("⑥③ ★★自己起的名字不受影响", str(BK.player_display_name()) == "阿龟大王", str(BK.player_display_name()))
+	_ok("⑥③ ★默认名字段也没被它覆盖(起名与默认名两不相干)", str(GameState.nickname_default) == after,
+		str(GameState.nickname_default))
+	DataRegistry.all_pets.remove_at(0)
+	_ok("⑥ ★分母: 注入的假龟已撤掉", DataRegistry.all_pets.is_empty()
+		or str((DataRegistry.all_pets[0] as Dictionary).get("name", "")) != str(_FAKE_PET["name"]))
+
+	## 云存档: 字段跟着云存档走(换设备找回账号带得回来); 老客户端推的(没这个键) ⇒ 按账号种子重新生成
+	GameState.nickname = ""
+	GameState.nickname_default = before
+	var cp: Dictionary = GameState.cloud_payload()
+	_ok("⑥ ★★默认名进了云存档载荷", str(cp.get("nickname_default", "<无>")) == before, str(cp.get("nickname_default", "<无>")))
+	GameState.nickname_default = "别的机器上的名字"
+	GameState.apply_cloud_payload(cp, int(GameState.cloud_rev))
+	_ok("⑥ ★★新设备取回云存档 ⇒ 默认名就是云端那个", str(BK.player_display_name()) == before, str(BK.player_display_name()))
+	var old_cp: Dictionary = cp.duplicate(true)
+	old_cp.erase("nickname_default")
+	GameState.apply_cloud_payload(old_cp, int(GameState.cloud_rev))
+	_ok("⑥ ★云端没有这个键(老客户端) ⇒ 按账号种子生成", str(BK.player_display_name()) == str(P2C.nickname_fallback(str(GameState.account_id))),
+		"%s / %s" % [BK.player_display_name(), P2C.nickname_fallback(str(GameState.account_id))])
+
+	## ④ 绑定邮箱那屏的预填 = 存下来的默认名(走真屏幕)
+	GameState.nickname = ""
+	GameState.nickname_default = before
+	var inst = (load("res://scenes/Settings.tscn") as PackedScene).instantiate()
+	add_child(inst)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	inst._open_email_dialog(inst._SB_ACC.FLOW_BIND)
+	await get_tree().process_frame
+	var pre := str(inst._nick_edit.text) if inst._nick_edit != null else "<没框>"
+	_ok("⑥④ ★★★绑定邮箱那屏预填的就是存下来的默认名", pre == before, "预填「%s」 存的「%s」" % [pre, before])
+	inst.queue_free()
+	await get_tree().process_frame

@@ -714,6 +714,11 @@ const NO_DRAW := true                    # 无平局 (回合交替→总有先�
 #    判据也照样有门禁守 —— 让「没上线」是个可读状态, 而不是一段悄悄不执行的代码。
 # ═══════════════════════════════════════════════════════════════
 const TITLE_CHAMPION := "champion"        # 冠军: 周日夺冠
+## ★★亚军(用户 2026-10-04「加『亚军』头衔」): 决赛那一场的输家。
+##   原稿 §奖励 原话就是「冠军/亚军/四强/…逐档」, D12 当时只落了四档。
+##   依据与冠军同源: 服务端 feed 里决赛那一格的 `done`(见 `Bracket.my_progress`)。
+##   ★累加不顶替(D12「可累加的列表」+ 冠军本来就同时拿四强): 亚军同时保留四强。
+const TITLE_RUNNER_UP := "runner_up"      # 亚军: 周日决赛告负
 const TITLE_SEMIFINAL := "semifinal"      # 四强: 周日打进四强
 const TITLE_FINALS_DAY := "finals_day"    # 进决赛日: 周六闯关赛晋级
 const TITLE_FULL_QUOTA := "full_quota"    # 积分赛满配额: 本周 24 场打满
@@ -721,6 +726,7 @@ const TITLE_FULL_QUOTA := "full_quota"    # 积分赛满配额: 本周 24 场打
 ## 显示名。★一个来源 —— 主菜单/排行榜/结算都从这儿取。
 const TITLE_LABEL := {
 	TITLE_CHAMPION: "冠军",
+	TITLE_RUNNER_UP: "亚军",
 	TITLE_SEMIFINAL: "四强",
 	TITLE_FINALS_DAY: "进决赛日",
 	TITLE_FULL_QUOTA: "满配额",
@@ -728,7 +734,7 @@ const TITLE_LABEL := {
 
 ## 展示顺序(含金量从高到低)。★不靠字典键序 —— Godot 字典有序但那是**插入序**,
 ##   谁手滑调一下常量位置显示就跟着变, 而这是**产品决定**不是实现细节。
-const TITLE_ORDER := [TITLE_CHAMPION, TITLE_SEMIFINAL, TITLE_FINALS_DAY, TITLE_FULL_QUOTA]
+const TITLE_ORDER := [TITLE_CHAMPION, TITLE_RUNNER_UP, TITLE_SEMIFINAL, TITLE_FINALS_DAY, TITLE_FULL_QUOTA]
 
 ## ══════════════════════════════════════════════════════════════════════
 ##  周日「结果封存」那一屏说什么(原稿 §五.5)
@@ -745,7 +751,7 @@ static func finals_sealed_sub() -> String:
 
 ## 这一档现在拿得到吗。★冠军/四强要周日玩法上线 —— 与门那一套同一条闸。
 static func title_earnable(tid: String) -> bool:
-	if tid == TITLE_CHAMPION or tid == TITLE_SEMIFINAL:
+	if tid == TITLE_CHAMPION or tid == TITLE_RUNNER_UP or tid == TITLE_SEMIFINAL:
 		return phase_mode_live(PHASE_FINALS)
 	return tid == TITLE_FINALS_DAY or tid == TITLE_FULL_QUOTA
 
@@ -859,10 +865,32 @@ static func nickname_error(raw: String) -> String:
 ## 没设昵称时显示什么。★确定性: 同一个账号每次算出来都一样。
 ##   取**哈希**不取前缀 —— id 有公共前缀时取前缀会让所有人重名
 ##   (2026-09-24 门禁当场拓出来的)。
+## ★★2026-10-04 换形(用户「换成随机像人的昵称」): 原来是「龟主-xxxxx」短码 ——
+##   一眼就是没起名的号(周日实况 6 个真人号全叫这个)。现在从**预填名生成器**
+##   (`nickname_suggest_at`, 机器人也用它)里按哈希挑一个 ⇒ 同一个号永远同一个名字。
+## ★★这里只是**生成器**(纯函数)。玩家真正显示的默认名由 `GameState.default_nickname()`
+##   第一次调用时生成并存进**独立字段** `nickname_default`(用户 2026-10-04 拍板), 之后不再变 ——
+##   池子(pets.json)增改也不会把它换掉。
+## ★★老玩家: 存档里 `nickname == ""` 就是「没自己起过名」⇒ 下次开游戏生成新名并冻结;
+##   自己起过名的(`nickname` 非空, 哪怕起的就是「龟主-xxxxx」)一个字都不碰。
+## ⚠ 别把默认名写进 `GameState.nickname` —— 写了就分不清「默认」和「自己起的」。
 static func nickname_fallback(account_id: String) -> String:
 	if account_id == "":
-		return "龟主-0000"
-	return "龟主-" + account_id.sha256_text().substr(0, 5)
+		return NICK_LAST_RESORT
+	var h := account_id.sha256_text()
+	## 两段互不重叠的哈希分别挑定语/名头。★`hex_to_int` 读 7 位(28 bit)不会溢出成负数。
+	return nickname_suggest_at(h.substr(0, 7).hex_to_int(), h.substr(7, 7).hex_to_int())
+
+
+## 连种子都没有(既没账号也没安装号)时的名字。★不能再走 `nickname_suggest_at` ——
+##   它自己的兜底就是回到这里, 走了会互相递归。
+const NICK_LAST_RESORT := "小龟主"
+
+
+## 默认名用哪个种子。★账号优先(换设备找回账号 ⇒ 名字跟着账号走, 服务端那份对得上);
+##   还没拿到账号(首启离线 / 没配后端)时用**本机安装号**, 免得所有离线新人同名。
+static func nickname_seed(account_id: String, install_uid: String) -> String:
+	return account_id if account_id != "" else install_uid
 
 
 ## 最终显示名: 有昵称用昵称, 没有用兜底。**所有要显示玩家名字的地方都调它。**

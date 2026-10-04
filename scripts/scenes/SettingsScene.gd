@@ -887,7 +887,12 @@ func _wall_build_step1(box: Control, flow: String) -> void:
 		##   用虚拟键盘打中文 —— 而中文键盘带候选条, 正是把下面那些钮盖住的
 		##   那一档高度(见 `_email_relayout` 头注)。
 		## ★已经有名字的人**不覆盖**: 老玩家升级过来会被墙挡一次, 名字得留住。
+		## ★★2026-10-04: 没起过名的人预填**他现在榜上那个默认名**(不再另抽一个随机名) ——
+		##   默认名已经是像人的名字了(`nickname_fallback`), 绑邮箱这一步不该悄悄给他换个名。
+		##   想换的照旧点「换一个」。
 		_nick_edit.text = _P2C.nickname_clean(str(GameState.nickname))
+		if not _P2C.nickname_valid(_nick_edit.text):
+			_nick_edit.text = str(preload("res://scripts/net/backend.gd").player_display_name())
 		if not _P2C.nickname_valid(_nick_edit.text):
 			_nick_edit.text = _P2C.nickname_suggest()
 		_nick_edit.max_length = _P2C.NICK_MAX * 2   # ★按**规范化后**判长度, 这里只防手滑贴一长串

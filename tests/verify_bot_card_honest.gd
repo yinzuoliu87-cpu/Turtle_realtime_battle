@@ -50,8 +50,9 @@ func _ready() -> void:
 	var pb2: Dictionary = mm._opponent_from_ghost(bot2)
 	_ok("★★两个机器人名字不同、号码不同(原 bug: 全体同名同号)", str(pb.get("name")) != str(pb2.get("name")) and str(pb.get("id")) != str(pb2.get("id")), "%s %s / %s %s" % [pb.get("name"), pb.get("id"), pb2.get("name"), pb2.get("id")])
 	## 用户 2026-10-04:「龟主-32c6c这是真人会用的名字？」—— 兜底名一看就是没起名的号, 机器人不许用它
-	var fb: String = BE._P2.nickname_fallback("e0a790fd-1111-2222-3333-444455556666")
-	var fb_head: String = fb.split("-")[0] + "-"
+	## ★2026-10-04 起兜底名本身也换成了生成器里的名字 ⇒ 不能再从 nickname_fallback 现切前缀
+	##   (切出来的是「石头统领-」这种永远匹配不上的串 = 恒真)。旧格式写死在这里。
+	var fb_head: String = "龟主-"
 	_ok("★★机器人不用「龟主-xxxxx」兜底名", str(pb.get("name")).find(fb_head) < 0 and str(pb2.get("name")).find(fb_head) < 0, "%s / %s" % [pb.get("name"), pb2.get("name")])
 	var pool := {}
 	for i in range(BE._P2.nickname_stems().size()):
