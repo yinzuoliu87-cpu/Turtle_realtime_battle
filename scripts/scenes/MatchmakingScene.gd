@@ -284,21 +284,27 @@ func _opponent_from_ghost(ghost: Dictionary) -> Dictionary:
 		nm = FAKE_NAMES[randi() % FAKE_NAMES.size()]
 	## ★★2026-10-04 用户拍板:「不能让玩家知道是机器人」—— 推翻方案书 R2「说实话」与 v0.19.518 的「陪练机器人」标签。
 	##   机器人与真人走**同一条**取名/取号路径, 卡片上没有任何可区分的东西(门禁 verify_bot_card_honest 守)。
-	return {"name": nm, "avatar": avatar, "id": _display_id(str(prof.get("id", "")))}
+	## ★2026-10-04 玩家 ID: 先读快照自带的 `tag`, 老快照从「谁」那一维现算(`Backend.profile_tag`)。
+	return {"name": nm, "avatar": avatar, "id": _display_id(Backend.profile_tag(prof))}
 
 
 ## 玩家看得懂的 ID。
 ##
-## ★由来(2026-08-19 实拍): VS 卡上印着「ID autoplay-b2_COH7」—— 后端内部串直接怼玩家脸上,
-##   而同屏自己那张写的是「#195060」。原来只挡了 `""` 和 `"BOT"` 两种, 挡不住别的内部串。
-## ★改成**白名单**: 只有已经长成 `#6位数字` 的才原样用, 其余一律折算。
-##   折算用 hash 而不是 randi ⇒ **同一个对手每次显示同一个号**(randi 会让同一支队伍每场换号)。
+## ★由来(2026-08-19 实拍): VS 卡上印着「ID autoplay-b2_COH7」—— 后端内部串直接怼玩家脸上。
+## ★白名单: 只有已经长成玩家 ID 形状(`_P2.tag_valid`)的才原样用 ——
+##   卡片上永远只有**一种**长相(2026-10-04 起是 `#` + 6 位字母数字, 见 `_P2.player_tag`)。
+##   入参来自 `Backend.profile_tag` / `Backend.my_tag`, 它们只会给合法形状或 ""
+##   (「内部串折算成号」那一步只在 `profile_tag` 里有一份; 这里原来还留着一份副本,
+##    反向验证时把副本改坏门禁也不红 —— 它根本走不到, 删了)。
 func _display_id(raw: String) -> String:
-	if raw.length() == 7 and raw.begins_with("#") and raw.substr(1).is_valid_int():
+	if _P2C_MM.tag_valid(raw):
 		return raw
-	if raw == "":
-		return "#%06d" % (randi() % 1000000)
-	return "#%06d" % (absi(hash(raw)) % 1000000)
+	## 连身份都没有的快照(畸形 / 手造): 随一个同形状的号, 别露出空白或第二种格式。
+	return _P2C_MM.player_tag("anon:%d" % _id_rng.randi())
+
+
+## `_display_id` 兜底用的随机源(裸全局 randi 会被 `tools/rng_discipline.py` 判红)。
+static var _id_rng := RandomNumberGenerator.new()
 
 
 ## 我方资料卡: 头像取本场锁定的首领 (season_leaders[0]), 否则随机.
@@ -309,9 +315,9 @@ func _player_profile() -> Dictionary:
 		pid = str(leaders[0])
 	elif not DataRegistry.launch_pets.is_empty():
 		pid = str(DataRegistry.launch_pets[randi() % DataRegistry.launch_pets.size()].get("id", "basic"))
-	## ★自己的 ID 也别每场重摇 —— 原来是 randi(), 同一个玩家每场看到一个新号,
-	##   而"ID"这个词在玩家眼里就是"我的号码"。按存档里的稳定量折算。
-	return {"name": "你", "avatar": pid, "id": _display_id("me_%d" % int(GameState.season_id))}
+	## ★自己的 ID = 我的玩家 ID(`Backend.my_tag`, 设置页那一串)。
+	##   原来是 `_display_id("me_<赛季号>")` —— 同一赛季**所有人**的「我」都是同一个号。
+	return {"name": "你", "avatar": pid, "id": _display_id(Backend.my_tag())}
 
 
 func _bg() -> void:

@@ -894,6 +894,66 @@ static func nickname_seed(account_id: String, install_uid: String) -> String:
 	return account_id if account_id != "" else install_uid
 
 
+# ═══════════════════════════════════════════════════════════════
+#  玩家 ID —— 「名字可以重, ID 分得开」(用户 2026-10-04「行啊，做做看，别搞出ai味的就行」)
+#
+#  ★名字不唯一(池子 336 个, 而且玩家能自己改), 同名的两个人靠这串短码区分 ——
+#    Clash Royale 的 `#2PP` 玩家标签就是这个做法。**它只管"看得出是两个人"**,
+#    真正的身份仍然是 account_id(主键 / 去重 / 匹配记账一律用它, 不用这串)。
+#  ★形状 `#` + 6 位, 字母表 28 个: 数字 2~9 + 大写辅音(去掉全部元音 A E I O U, 再去掉 L)。
+#    · 0/O、1/I/L 在小字号里分不清 ⇒ 都不要(Crockford base32 的思路, 再严一点)
+#    · 元音全去掉 ⇒ 拼不出单词(`#FAKE22` / `#DEAD..` 这种巧合); Clash Royale 的标签字母表也没有元音
+#    ⇒ 28^6 ≈ 4.82 亿种。为什么不用纯 6 位数字(老卡片上那种 `#195060`):
+#    10^6 = 100 万种, 1 万个账号按生日碰撞要撞出约 **50 对**(n²/2N), 而这里约 **0.10 对**。
+#  ★撞了会怎样: 两个人显示同一串 —— 只是看起来像, 什么都不会合并
+#    (没有任何代码拿这串当键)。同名又同号的概率再乘 1/336。
+#  ★纯函数、确定性: 同一个身份串在任何设备上算出同一个号, 不存盘、不上传 account_id 本身
+#    (sha256 单向, 从号推不回账号)。
+# ═══════════════════════════════════════════════════════════════
+const TAG_ALPHABET := "23456789BCDFGHJKMNPQRSTVWXYZ"
+const TAG_LEN := 6
+## 加盐: 与 `nickname_fallback` 用的同一个 account_id 摘要分开(否则名字与号码相关联)。
+const TAG_SALT := "turtle-id:"
+
+
+## 身份串 → `#XXXXXX`。空串返回 ""(调用方自己决定没有身份时显示什么)。
+static func player_tag(identity: String) -> String:
+	if identity == "":
+		return ""
+	var h := (TAG_SALT + identity).sha256_text()
+	## 48 bit(12 位十六进制) 远大于 28^6 ≈ 2^28.8 ⇒ 取模偏差可忽略; 不会溢出成负数。
+	var v: int = h.substr(0, 12).hex_to_int()
+	var out := ""
+	for i in range(TAG_LEN):
+		out = TAG_ALPHABET[v % TAG_ALPHABET.length()] + out
+		v /= TAG_ALPHABET.length()
+	return "#" + out
+
+
+## 是不是一串合法的玩家 ID(`#` + 6 位、全在字母表里)。
+static func tag_valid(s: String) -> bool:
+	if s.length() != TAG_LEN + 1 or not s.begins_with("#"):
+		return false
+	for i in range(1, s.length()):
+		if TAG_ALPHABET.find(s[i]) < 0:
+			return false
+	return true
+
+
+## 「这串名字里哪些需要带上 ID 才分得开」—— 出现两次及以上的那些名字。
+## ★界面只在**真的重名**时才把号码摆出来(排行榜 / 对阵图), 不往每个名字后面贴 #号。
+static func names_needing_tag(names: Array) -> Dictionary:
+	var cnt := {}
+	for n in names:
+		var k := str(n)
+		cnt[k] = int(cnt.get(k, 0)) + 1
+	var out := {}
+	for k in cnt.keys():
+		if int(cnt[k]) >= 2:
+			out[k] = true
+	return out
+
+
 ## 最终显示名: 有昵称用昵称, 没有用兜底。**所有要显示玩家名字的地方都调它。**
 static func display_name(nick: String, account_id: String) -> String:
 	var s := nickname_clean(nick)

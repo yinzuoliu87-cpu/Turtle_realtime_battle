@@ -790,6 +790,10 @@ func _state_colors(st: String) -> Array:
 ## 名字太长就截断。★不能用 `clip_text`: 那会被 `verify_ui_consistency` 判成
 ##   「被 clip_text 截断的文字」(它是对的 —— 硬裁出来的半个字读不出来)。
 ##   ⇒ 在**文字层**截, 留一个省略号。13px 的汉字≈13px 宽, 除得到能放几个。
+## 对阵格里「 #XXXXXX」那一段大约占多宽(13px 字, 西文约 0.6 个字宽)。
+const TAG_PX := 64.0
+
+
 func _fit_name(nm: String, px: float, tick: bool) -> String:
 	var avail: float = px - (16.0 if tick else 0.0)
 	var maxc: int = int(avail / 13.0)
@@ -863,7 +867,13 @@ func competitor(r: int, m: int, side: int) -> Dictionary:
 		return {"name": "轮空", "seed": -1, "bye": true}
 	if sd < 0:
 		return {"name": "待定", "seed": -1, "bye": false}
-	return {"name": str(names[sd]) if sd < names.size() else "神秘龟", "seed": sd, "bye": false}
+	var nm := str(names[sd]) if sd < names.size() else "神秘龟"
+	## ★玩家 ID 只在**本组里真有人重名**时才带出来(名字允许重复 · 2026-10-04), 不往每格都贴号。
+	var tags: Array = cur().get("tags", []) if cur().get("tags") is Array else []
+	var tg := str(tags[sd]) if sd < tags.size() else ""
+	if tg != "" and not _P2C.names_needing_tag(names).has(nm):
+		tg = ""
+	return {"name": nm, "seed": sd, "bye": false, "tag": tg}
 
 
 ## 本轮这一场里，**我的对手**是几号种子。`-1` = 拿不到。
@@ -1043,7 +1053,12 @@ func _make_node(r: int, m: int) -> Control:
 		lb.add_theme_color_override("font_color", col)
 		## ★「✓ 」前缀**必须留在最前面**: `verify_bracket_map` ① 数的是
 		##   `begins_with("✓")` 的 Label 条数(它正是"已翻面才标胜者"那条判据的分母)。
-		lb.text = ("✓ " if tick else "") + _fit_name(nm, name_w, tick)
+		## 重名时名字后面跟一个小号 ID; 截短只截名字那一段, 号码整串保留(截掉一半的号等于没有)。
+		var tg := str(c.get("tag", ""))
+		if tg != "":
+			lb.text = ("✓ " if tick else "") + _fit_name(nm, name_w - TAG_PX, tick) + " " + tg
+		else:
+			lb.text = ("✓ " if tick else "") + _fit_name(nm, name_w, tick)
 		lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		holder.add_child(lb)
 

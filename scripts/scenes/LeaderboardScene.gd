@@ -74,6 +74,12 @@ const NAME_W := 410.0
 const YOU_W := 36.0
 const YOU_H := 24.0
 const YOU_GAP := 12.0
+## 玩家 ID(`#XXXXXX`)那一小格。★只在**重名**的行上出现(2026-10-04 · 名字允许重复,
+##   同名的两个人靠它分开); 不重名的行一个字都不多。字小一号、走名次那个灰。
+const TAG_W := 82.0
+const TAG_FS := 14
+## 这一榜里重名的名字(`_P2.names_needing_tag` 算的) —— `_draw_row` 读它决定要不要摆 ID。
+var _dup_names: Dictionary = {}
 ## 成绩三格: 每格 = 图标 22 + 空 4 + 数字 44, 格距 12 ⇒ 500 / 582 / 664, 末格右沿 734。
 const STAT_X0 := PAD + 478.0
 const STAT_CELL := 82.0
@@ -211,6 +217,11 @@ func _ready() -> void:
 	print("[LB] rows=%d cap=%d body_h=%.0f" % [rows.size(), cap, body_h])   # 分母: 0 行 = 空检查
 	var self_idx := _self_index(rows)
 	var shown := _pick_rows(rows, cap, self_idx)
+	## ★重名按**全量** rows 判, 不按画出来的那几行 —— 第 3 名和第 40 名同名, 第 3 名照样该带号。
+	var _all_names: Array = []
+	for rr in rows:
+		_all_names.append(str((rr as Dictionary).get("name", "")))
+	_dup_names = Backend._P2.names_needing_tag(_all_names)
 
 	var y := ROW_TOP
 	for item in shown:
@@ -379,6 +390,10 @@ func _draw_row(parent: Control, y: float, idx: int, r: Dictionary) -> void:
 	_rank_badge(parent, y, rank, 1.0, podium)
 	## 自己那行要先给「你」签牌让出位置 —— 名字字块和签牌叠在一起会踩全局的"两段文字压在一起"。
 	var nw: float = (NAME_W - YOU_W - YOU_GAP) if is_self else NAME_W
+	var tag_s := str(r.get("tag", ""))
+	var show_tag: bool = tag_s != "" and _dup_names.has(str(r.get("name", "?")))
+	if show_tag:
+		nw -= TAG_W
 	var nm := _cell(parent, str(r.get("name", "?")), NAME_X, y, nw, 18,
 		Color(COL_SELF if is_self else COL_ROW), HORIZONTAL_ALIGNMENT_LEFT)
 	## ghost 名来自玩家自定义 profile, 长度不受控 —— 截断加省略号, 别让它糊到成绩列上。
@@ -386,6 +401,12 @@ func _draw_row(parent: Control, y: float, idx: int, r: Dictionary) -> void:
 	nm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	if is_self:
 		_you_tag(parent, nm, y)
+	if show_tag:
+		## 紧跟在名字(自己那行是「你」签)后面, 底线对齐名字。
+		var tx: float = NAME_X + _text_w(nm) + 8.0 + ((YOU_W + YOU_GAP) if is_self else 0.0)
+		var tl := _cell(parent, tag_s, tx, y + 1.0, TAG_W, TAG_FS, Color(COL_RANK),
+			HORIZONTAL_ALIGNMENT_LEFT)
+		tl.name = "RowTag"
 	var vals: Array = [int(r.get("wins", 0)), int(r.get("hearts", 0)), int(r.get("sweeps", 0))]
 	for i in range(3):
 		_stat_cell(parent, y, i, int(vals[i]), is_self)
@@ -459,12 +480,18 @@ func _rank_badge(parent: Control, y: float, rank: int, k: float, podium: bool) -
 
 ## 「你」金签牌, 贴在自己名字**后面**。位置按字块真实宽度算 —— 摆死一个 x 会在短名字后
 ## 留一大段空, 在长名字上又叠上去。
-func _you_tag(parent: Control, nm: Label, y: float) -> void:
+## 名字那一格里字真正占了多宽(截断了就是格宽)。
+func _text_w(nm: Label) -> float:
 	var tw: float = nm.size.x
 	var f: Font = nm.get_theme_font("font")
 	if f != null:
 		tw = minf(tw, f.get_string_size(nm.text, HORIZONTAL_ALIGNMENT_LEFT, -1,
 			nm.get_theme_font_size("font_size")).x)
+	return tw
+
+
+func _you_tag(parent: Control, nm: Label, y: float) -> void:
+	var tw: float = _text_w(nm)
 	var tag := Panel.new()
 	var fb := StyleBoxFlat.new()
 	fb.bg_color = Color(0.16, 0.13, 0.05, 1.0)      # 直角不描边, 理由同 _row_band
