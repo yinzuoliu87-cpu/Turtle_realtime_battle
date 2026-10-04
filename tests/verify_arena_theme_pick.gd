@@ -145,8 +145,9 @@ func _setup_gs() -> void:
 
 
 ## 建一场正式对局。frames=0 ⇒ 只建场不打(量选图用)。
-func _run_formal(seed_v: int, frames: int) -> Dictionary:
+func _run_formal(seed_v: int, frames: int, tutorial: bool = false) -> Dictionary:
 	_setup_gs()
+	GameState.tutorial_active = tutorial
 	RB.DEBUG_EDIT = false
 	OS.set_environment("TURTLE_SEED", str(seed_v))
 	var s = RB.new()
@@ -155,6 +156,8 @@ func _run_formal(seed_v: int, frames: int) -> Dictionary:
 	await get_tree().process_frame
 	var theme: String = AT.active
 	var formal: bool = bool(s._world_builder._is_formal_battle())
+	var tut: bool = bool(s._world_builder._is_tutorial_battle())
+	var tut_gs: bool = bool(GameState.tutorial_active)
 	var tr: Array = []
 	var st_frames := 0
 	var last := ""
@@ -184,7 +187,8 @@ func _run_formal(seed_v: int, frames: int) -> Dictionary:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	OS.set_environment("TURTLE_SEED", "")
-	return {"tr": tr, "theme": theme, "props": props, "ring": ring, "formal": formal,
+	GameState.tutorial_active = false
+	return {"tr": tr, "theme": theme, "props": props, "ring": ring, "formal": formal, "tut": tut, "tut_gs": tut_gs,
 		"fought": fought, "taken": taken}
 
 
@@ -330,6 +334,30 @@ func _ready() -> void:
 	_ok("分母 · 这 8 个种子覆盖到 ≥3 张不同的图(否则 ② 量不出随机)", seen.size() >= 3, str(seen.keys()))
 
 	# ═══ ③ 开发工具不被弄坏 ═══
+	# ═══ ⑥ 教学战斗固定暗林(用户 2026-10-04 拍板「可以」) ═══
+	print("=== ⑥ 教学固定暗林 ===")
+	var tut_ok := true
+	var tut_in := true
+	var real_seen := {}
+	var real_ok := true
+	var tdet := ""
+	for sd in [11, 222, 3333, 44444, 555555, 77777777]:
+		var t: Dictionary = await _run_formal(sd, 0, true)
+		var r: Dictionary = await _run_formal(sd, 0, false)
+		tut_ok = tut_ok and str(t["theme"]) == AT.V1_DUSK
+		tut_in = tut_in and bool(t["tut"]) and bool(t["tut_gs"]) and not bool(t["formal"])
+		real_ok = real_ok and str(r["theme"]) == AT.theme_for_seed(sd) and bool(r["formal"]) and not bool(r["tut"])
+		real_seen[str(r["theme"])] = true
+		tdet += "%d→教学 %s / 正式 %s  " % [sd, t["theme"], r["theme"]]
+	_ok("分母 · 教学那 6 场建场时真的在教学状态(tutorial_active=true · 产品判成教学 · 不算正式对局)", tut_in, tdet)
+	_ok("★★⑥ 教学战斗 6 个种子一律是暗林 V1_DUSK", tut_ok, tdet)
+	_ok("★⑥ 同样 6 个种子的正式对局照旧按种子随机(等于种子算出的那张)", real_ok, tdet)
+	_ok("⑥ 分母: 这 6 个种子的正式对局覆盖到 ≥3 张图(否则「教学恒为暗林」量不出区别)", real_seen.size() >= 3, str(real_seen.keys()))
+	AT.forced = AT.V4_STORM
+	var tf: Dictionary = await _run_formal(11, 0, true)
+	AT.forced = ""
+	_ok("⑥ 强制指定在教学里也赢(ARENA_THEME / forced 优先级最高)", str(tf["theme"]) == AT.V4_STORM and bool(tf["tut"]), str(tf["theme"]))
+
 	print("=== ③ 开发工具 ===")
 	var dbg: Dictionary = await _run_debug(scs[0], AT.active)   # 不手动改: 用上一场正式对局留下的值进调试场
 	_ok("★③ 正式对局之后进调试场 ⇒ 回到进场前那张(V0_BASE), 不带上一场的选图", str(dbg["theme"]) == AT.V0_BASE, str(dbg["theme"]))

@@ -1570,14 +1570,27 @@ func _build_environment() -> void:
 ## 开局选图的**唯一**入口(`_build_environment` 第一行调; 门禁 `verify_arena_theme_pick` ④ 也直接调它量随机流状态)。
 ## ★只读 `_battle_rng.seed` 这个整数, 不调 randi/randf —— 调了就从模拟随机流里拿走一个数。
 func pick_arena_theme() -> String:
-	return ArenaTheme.choose_for_battle(int(battle._battle_rng.seed), _is_formal_battle())
+	return ArenaTheme.choose_for_battle(int(battle._battle_rng.seed), _is_formal_battle(), _is_tutorial_battle())
 
 
-## 这一场算不算**正式对局**(地图按种子随机): 双路对局(积分赛/周六/周日/教学都走双路), 且不是开发工具。
+func _is_dev_tool_battle() -> bool:
+	return battle.DEBUG_EDIT or OS.has_environment("VFXLAB") or OS.has_environment("MAPEDIT")
+
+
+## 这一场是不是**教学战斗**(GameState.tutorial_active 且走双路)。
+## ★用户 2026-10-04 拍板(「可以」): 教学固定暗林一张, 不跟正式对局随机。
+func _is_tutorial_battle() -> bool:
+	if _is_dev_tool_battle() or GameState == null:
+		return false
+	return bool(battle._is_dual_lane_mode()) and bool(GameState.get("tutorial_active"))
+
+
+## 这一场算不算**正式对局**(地图按种子随机): 双路对局(积分赛/周六/周日), 且不是教学、不是开发工具。
 ## ★调试场(DEBUG_EDIT)/特效台(VFXLAB)/地图编辑器(MAPEDIT)不算 ⇒ 它们保持进场前的 active(默认 V0_BASE,
 ##   环境变量 ARENA_THEME 仍可强制)。审阅台/EQDEMO 在双路下本来就被绕过, 不双路时自然不算。
+## ★教学也走双路, 但不算(固定 ArenaTheme.TUTORIAL_THEME, 见 `_is_tutorial_battle`)。
 func _is_formal_battle() -> bool:
-	if battle.DEBUG_EDIT or OS.has_environment("VFXLAB") or OS.has_environment("MAPEDIT"):
+	if _is_dev_tool_battle() or _is_tutorial_battle():
 		return false
 	return bool(battle._is_dual_lane_mode())
 

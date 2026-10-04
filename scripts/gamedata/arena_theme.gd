@@ -43,6 +43,9 @@ static var active: String = V0_BASE
 ##   不等于它就该进玩家对局 —— 进不进池是**另一个**拍板(memory `fb-new-table-doesnt-inherit-old-rules`)。
 const MATCH_POOL: Array = [V1_DUSK, V2_REEF, V3_SHOAL, V4_STORM]
 
+## ★教学战斗固定这一张(用户 2026-10-04 拍板「可以」: 教学不随机, 固定暗林)。
+const TUTORIAL_THEME: String = V1_DUSK
+
 ## 强制指定主题(最高优先): 环境变量 `ARENA_THEME` 写进这里; 门禁要在**正式对局**里看某一张图也写它。
 ## 空 = 不强制。⚠ 写了要还原(测试不许留下污染)。
 static var forced: String = ""
@@ -682,13 +685,16 @@ static var _pre_pick: String = V0_BASE
 ##   (种子已由 `_build_camera` 播好、`GameState.note_battle_seed` 登记、回放 `_replay.start()` 覆盖之后,
 ##    任何一层场景建出来之前)。
 ## formal = 正式对局(双路且不是调试场/特效台/地图编辑器)。
-## 优先级: forced(环境变量 / 门禁) > 正式对局按种子 > 其余(开发工具)保持 active 不动。
+## tutorial = 教学战斗(固定 TUTORIAL_THEME)。
+## 优先级: forced(环境变量 / 门禁) > 教学固定暗林 > 正式对局按种子 > 其余(开发工具)保持 active 不动。
 ## 返回这一场用的主题。
-static func choose_for_battle(seed: int, formal: bool) -> String:
+static func choose_for_battle(seed: int, formal: bool, tutorial: bool = false) -> String:
 	_check_env()
 	var chosen := ""
 	if forced != "" and THEMES.has(forced):
 		chosen = forced
+	elif tutorial:
+		chosen = TUTORIAL_THEME
 	elif formal:
 		chosen = theme_for_seed(seed)
 	if chosen != "":
