@@ -66,6 +66,7 @@ const STATE_KEYS := [
 	"incense_charge",       # 必需(终局): 093 充能(见上面的 ⚠)
 	"dual_ghost",           # 必需(347): 对手快照(上传那份再摘机器人标记, 见 replay_uploader.GHOST_STRIP)
 	"trainer_appearance",   # 不改 sim(实测拿掉不分叉), 但它是**画面**: 不录的话看的人看到的是自己的大师形象
+	"tutorial_active",      # 必需(选图): v0.19.533 起教学固定暗林、正式对局按种子随机 ⇒ 不录的话看的人那台若在教学中就放成另一张图(合批门禁 V7 实测: 录 shoal 放 dusk)
 ]
 ## 回放那一遍读了、但**不进录像**的(实测拿掉都不分叉 + 读代码确认原因):
 ##   test_mode / tutorial      播放入口自己设(test_mode=true 不落盘; tutorial=false 回放不挂教学引导)

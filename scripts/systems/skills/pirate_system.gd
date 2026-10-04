@@ -124,7 +124,8 @@ func _sk_pirate_volley(u: Dictionary, tgt) -> void:              # 海盗龟·�
 				if o.get("alive", false): cand.append(o)
 			if cand.is_empty(): return
 			var aim: Dictionary = cand[battle._battle_rng.randi() % cand.size()]   # 随机敌
-			var land: Vector2 = aim["pos"] + Vector2(randf_range(-32.0, 32.0), randf_range(-32.0, 32.0))   # 落点略散=炮击手感
+			## ★2026-10-04: 落点决定谁吃伤害 ⇒ 必须走战斗随机流(原来是全局 randf_range ⇒ 同一场重放会分岔, 回放 agent 实测海盗阵容 3 次分岔 2 次)
+			var land: Vector2 = aim["pos"] + Vector2(battle._battle_rng.randf_range(-32.0, 32.0), battle._battle_rng.randf_range(-32.0, 32.0))   # 落点略散=炮击手感
 			_pirate_ship_muzzle(ship2d, ship_h)                # 船炮口闪
 			_pirate_cannonball(ship2d, ship_h, land, func() -> void:   # 炮弹到点才结算(命中才跳)
 				battle._burst_vfx("res://assets/sprites/vfx/cannon-blast.png", land, 230.0, 0.3)

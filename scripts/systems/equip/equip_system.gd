@@ -943,6 +943,7 @@ func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑007: 高举
 	while is_instance_valid(battle) and traveled < reach and is_instance_valid(qi) and is_instance_valid(self):
 		await battle.sim_stepped
 		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
+		if not is_instance_valid(qi): break   ## ★2026-10-04: 换路/清场会在 await 期间释放剑气节点 ⇒ 回来写 qi.position 报 SCRIPT ERROR(回放 agent 实测赌神带 p2eq_030)
 		if not u.get("alive", false): break
 		var dt: float = battle._frame_sim_dt
 		traveled += 820.0 * dt
