@@ -128,6 +128,13 @@ func _ready() -> void:
 
 	print("")
 	print("  (共 %d 条断言)" % _n)
+	## ⑦ 场内布局: 下半部(v>0.3)的物件 ≤1.1 米 —— 离镜头近的物件挡住身后的龟(2026-10-04 实测右下角 2.2 米草把龟整只盖住)
+	var _tall := []
+	for _row in AT.LAYOUT:
+		if float(_row[1]) > 0.3 and float(_row[3]) > 1.1:
+			_tall.append(_row)
+	_ok("⑦ ★分母: 布局表有下半部的物件", AT.LAYOUT.filter(func(r): return float(r[1]) > 0.3).size() > 0)
+	_ok("⑦ ★★下半部没有高于 1.1 米的物件(会挡住身后的龟)", _tall.is_empty(), str(_tall))
 	print("ALL PASS — 四版完整地图" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
 
