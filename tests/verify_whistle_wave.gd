@@ -61,6 +61,10 @@ func _ready() -> void:
 		ts.WAVE_WINDUP, ts.WAVE_SPD, ts.WAVE_RANGE / ts.WAVE_SPD])
 	_chk("① 有蓄力段(>0·用户:「不要蓄力放的吗」)", ts.WAVE_WINDUP > 0.05)
 
+	## ★★2026-10-04 CI 第二次红: 量单跳前后差之后仍扣 875(=700×1.25) ——
+	##   await 那几步里场上活单位给第一个合成敌挂了「易伤 +25%」。②~④ 是手动逐步推气波, 根本不需要活战斗;
+	##   ⇒ 这一段把场景自己的 _process 停掉, 合成敌与世界隔离。⑥ 量寿命要游戏时间走, 进 ⑥ 前再打开。
+	s.process_mode = Node.PROCESS_MODE_DISABLED
 	# ── ② 造三个干净合成敌: 带满减伤(真伤该穿透) ──
 	# ★用合成单位而不是场上随机敌 —— memory fb-ci-vs-local-divergence:
 	#   随机 spawn 的敌可能带盾/减伤/按 id 的分支 → CI 偶发红。
@@ -187,6 +191,7 @@ func _ready() -> void:
 	_chk("⑤ 气波尺寸走常量 WAVE_D_M(不再是 (150*WS)/128 那个魔数=3.60m 盖住小龟)",
 		src.contains("WAVE_D_M / float(") and not src.contains("(150.0 * battle.WS) / 128.0"))
 
+	s.process_mode = Node.PROCESS_MODE_INHERIT
 	await _spirit_life(s, ts, tr)
 	_done(s)
 
