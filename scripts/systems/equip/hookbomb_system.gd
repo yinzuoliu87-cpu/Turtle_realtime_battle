@@ -189,9 +189,11 @@ func _hb_tick(o: Dictionary, delta: float) -> void:
 	##   减甲/增伤/减伤/虚化, **不掷暴击** —— 这两段本来就没有暴击, 用 `_resolve_dmg`
 	##   会平白多出一层随机。
 	battle._damage.set_dtype("physical", o, null, true)
+	var _tp: Array = battle._equip_sys.tally.push(src, "p2eq_055")   # ④ 装备统计: 炸弹挂在敌人身上自己跳 ⇒ 记给「挂弹者 · 055」
 	battle._damage._apply_damage_from(src, o,
 		maxi(1, battle._phys_after_armor(src, float(o["maxHp"]) * pct, o)),
 		Color("#ff8a3c"), 0.0, false, true, false, false, true)
+	battle._equip_sys.tally.pop(_tp)
 	# ★累计【实际扣掉的血】而不是名义伤害 —— 有护盾/减伤时两者不等, 显示实际的才不骗人。
 	o["hookbomb_total"] = float(o.get("hookbomb_total", 0.0)) + maxf(0.0, hp0 - float(o["hp"]))
 	_hb_counter_refresh(o)
@@ -273,7 +275,9 @@ func _hb_blast(carrier: Dictionary, list: Array, si: int, epi: Vector2) -> int:
 		#   我少写一个 false, no_popup 落到了 no_dodge 上 ⇒ 通用红字根本没关, 和自发飘字【双份】
 		#   (实拍: 4 个目标出了 5 个数字、大小还不一样)。
 		battle._damage.set_dtype("physical", o, null, true)
+		var _tp: Array = battle._equip_sys.tally.push(carrier, "p2eq_055")   # ④ 装备统计: 引爆走自己的延时表 ⇒ 记给「挂弹者 · 055」
 		battle._damage._apply_damage_from(carrier, o, dmg, Color("#ff5a2a"), 0.0, false, true, false, false, true)
+		battle._equip_sys.tally.pop(_tp)
 		var ang: float = TAU * float(oi) / maxf(1.0, float(list.size())) - PI * 0.5
 		var off := Vector2(cos(ang), sin(ang)) * 108.0 + Vector2(0.0, -30.0)   # ★108: 62 挡不住大字号的 800 互相压
 		var pp: Vector2 = (o["pos"] as Vector2) + off

@@ -161,6 +161,9 @@ func _riposte(u: Dictionary, src) -> void:
 	var _from: Vector2 = Vector2(u.get("pos", Vector2.ZERO))
 	var _to: Vector2 = Vector2((src as Dictionary).get("pos", Vector2.ZERO))
 	var _fly: float = HolyShieldVfx.bolt_flight(_from, _to)
+	## ④ 装备统计: 反击是 095 文案里的效果 ⇒ 身上带 095 才记给它(圣盾值也可能来自羁绊收殓/9 档转化, 那不是这件装备的账);
+	##   入队的光弹靠下面 pop 时的 _flush 盖章, 到达时记回来
+	var _tp: Array = battle._equip_sys.tally.push(u if holy_count(u) > 0 else null, HOLY_ITEM if holy_count(u) > 0 else "")
 	battle._queue_shots(1, 0.0, func() -> void:
 		if not (src is Dictionary) or not (src as Dictionary).get("alive", false):
 			return
@@ -169,6 +172,7 @@ func _riposte(u: Dictionary, src) -> void:
 		battle._damage._apply_damage_from(u, src, int(RIPOSTE_FLAT), Color("#ffe9a8"), 0.0, true, true)
 		if _holy_vfx != null:
 			_holy_vfx.riposte_hit(src), u, "", Callable(), _fly)
+	battle._equip_sys.tally.pop(_tp)
 	## 演出: 罩子涟漪 + 光弹起飞(下一行), 伤害在光弹到达时才出。
 	##   重做前这条反击**一点演出都没有**(探针实测它一直在触发, 画面上只有敌人头上一个 "2")。
 	##   ⚠ 这一行只画不算; 放在结算之后, 保证"看到光矢 = 伤害已经打出去了"。
@@ -214,7 +218,9 @@ func tick(delta: float) -> void:
 		##   用户 2026-08-09:「又是程序生成的环？哪个商业游戏是你这么做啊」。
 		##   通用环本身不动(它封着 44 个给盾点), 只在这里声明"这一下我自己画"。
 		u["_own_grant_vfx"] = true
+		var _tp: Array = battle._equip_sys.tally.push(u, HOLY_ITEM)   # ④ 装备统计: 全局 3 秒节拍没有单位上下文 ⇒ 这一份盾记给「携带者 · 095」
 		battle._damage._grant_shield(u, amt)
+		battle._equip_sys.tally.pop(_tp)
 		## ★★圣盾值【单独记账】(2026-08-12): 在此之前它直接并进通用 `shield`, 而
 		##   `_holyShieldVal`(血条白黄段与持有球罩共用的字段)**全仓库没有任何地方写** ——
 		##   于是血条那条"圣盾段"一直是 0、也没人发现。现在这里记上, 两个消费方才有数可读。

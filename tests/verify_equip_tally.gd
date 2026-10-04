@@ -149,12 +149,19 @@ func _ready() -> void:
 	##   所以挑魔法/真伤的装备 —— 敌人在这个桶里的承伤只可能来自这件装备。物理那一路由 A1/B1 的合成段守。
 	for case in [["p2eq_004", "mag", "周期弹道(魔法)·fire_equip_effect"], ["p2eq_025", "tru", "延时雷队列·真伤"],
 			["p2eq_058", "summon", "召唤物炮台(登场召唤)"], ["p2eq_012", "shield", "周期自护盾·装备 tick"],
-			["p2eq_042", "heal", "群体治疗"], ["p2eq_044", "heal", "半血持续回复(多件摊付按份额拆)"]]:
+			["p2eq_042", "heal", "群体治疗"], ["p2eq_044", "heal", "半血持续回复(多件摊付按份额拆)"],
+			## 2026-10-04 第二轮: 由【全局表里的常驻物】驱动、没有单位上下文的几件(原来记 0)
+			## ★080 只对魔法桶(炸弹那一段): 物理桶里混着小龟本体不归装备的物理(同上方注释);
+			##   且只放一条 —— 直升机在全局表里, 不随 `_dl_clear_units` 撤, 第二条会撞上第一条那架接着炸
+			["p2eq_080", "mag", "直升机(全局表·非单位)地毯轰炸(延时队列盖章)"],
+			["p2eq_095", "shield", "圣光护盾(全局 3 秒节拍)"],
+			["p2eq_071", "cream", "奶油盾(SpecialBalance 余额·不走 _grant_shield)"]]:
 		await _real(str(case[0]), str(case[1]), str(case[2]))
+	await _tick_owned()
 
 	print("")
 	print("断言 %d 条" % _n)
-	if _fail == 0 and _n >= 17:
+	if _fail == 0 and _n >= 28:
 		print("ALL PASS — 装备账: 两条伤害路/治疗/护盾/DoT份额/延时队列/召唤物 都对得上; 换路按本局累加")
 	else:
 		print("FAIL x%d (断言 %d)" % [_fail, _n])
@@ -192,7 +199,13 @@ func _real(iid: String, kind: String, label: String) -> void:
 		if x.get("is_summon", false) and is_same(x.get("summon_owner", null), u):
 			sm = x
 	match kind:
-		"mag", "tru":
+		"cream":
+			var given := 0.0
+			for x in [u, al]:
+				given += float(x.get("_cream_given", 0.0))
+			_ok("E %s %s: 装备账护盾 == 全队 Σ_cream_given(分母 > 0)" % [iid, label], given > 0.0 and _near(_eqv(u, iid, "shield"), given),
+				"账 %.0f / 发放 %.0f" % [_eqv(u, iid, "shield"), given])
+		"mag", "tru", "phy":
 			var tb := 0.0
 			for e in es:
 				tb += float((e.get("_st_taken_by_type", {}) as Dictionary).get(kind, 0))
@@ -235,3 +248,63 @@ func _stage(iid: String, mute: bool) -> Array:
 	u["eq_state"] = {} if iid == "" else {iid: {}}
 	s._equip_sys._stats._eq_apply_all_stats()
 	return [u, al, es]
+
+
+func _taken_all(es: Array) -> float:
+	var t := 0.0
+	for x in es:
+		t += float((x as Dictionary).get("_st_taken", 0))
+	return t
+
+
+## ── F. 全局表/常驻物驱动的件(2026-10-04 第二轮接上): 结算函数走真入口直调, 进去之前先把上下文清成「无」——
+##   ⇒ 记到的账只可能来自结算函数自己切的上下文(原来这些件就是因为「全局 tick 没有携带者上下文」才记 0)。
+##   每条都是对账: 装备账增量 == 目标单位级 `_st_taken` 增量, 且分母 > 0。
+func _tick_owned() -> void:
+	print("")
+	var st: Array = await _stage("", true)
+	var u: Dictionary = st[0]
+	var al: Dictionary = st[1]
+	var e: Dictionary = st[2][0]
+	u["eq_state"] = {}
+	al["pos"] = e["pos"]   # 碑的友军护盾要在圈里
+	var tl = s._equip_sys.tally
+	var cases: Array = [
+		["p2eq_088", "mag", "潮汐碑一跳(碑在全局表)", func() -> void:
+			s._equip_sys._arcane_sys._stele_settle({"src": u, "si": 2, "pos": e["pos"], "dmg": 40.0, "shd": 55.0})],
+		["p2eq_089", "mag", "符纸一跳(符纸在全局表)", func() -> void:
+			s._equip_sys._arcane_sys._talisman_settle({"src": u, "tgt": e, "si": 2, "per": 66.0})],
+		["p2eq_094", "mag", "祖龟碑石雷落地(携带者已阵亡)", func() -> void:
+			s._equip_sys._relic_sys.stele_bolt_land({"carrier": u, "tgt": e, "si": 2})],
+		["p2eq_055", "phy", "钩索炸弹每秒一跳(挂在敌人身上)", func() -> void:
+			e["hookbomb_pct"] = 0.0001
+			e["hookbomb_src"] = u
+			e["hookbomb_t"] = 0.0
+			s._hookbomb_sys._hb_tick(e, 1.0)
+			e["hookbomb_pct"] = 0.0
+			e["hookbomb_src"] = null],
+		["p2eq_038", "mag", "电磁波命中(波在全局在途表)", func() -> void:
+			s._equip_sys._sigwave._apply(u, e, 120.0)],
+		["p2eq_084", "phy", "十字斩横斩(本系统分段时刻表)", func() -> void:
+			u["pos"] = (e["pos"] as Vector2) - Vector2(80, 0)
+			s._equip_sys._blade_sys.cross_slash_hit(u, Vector2.RIGHT, 2, 1)],
+	]
+	for c in cases:
+		var iid: String = str(c[0])
+		var key: String = str(c[1])
+		var t0: float = _taken_all(st[2])
+		var a0: float = _eqv(u, iid, key)
+		tl.use(null)
+		(c[3] as Callable).call()
+		var d: float = _taken_all(st[2]) - t0   # AOE(碑/十字斩)会扫到不止一个敌人 ⇒ 对 Σ敌人
+		var got: float = _eqv(u, iid, key) - a0
+		_ok("F %s %s: 上下文清空后直调结算, 装备账[%s] == 目标承伤增量(分母 > 0)" % [iid, str(c[2]), key], d > 0.0 and _near(got, d),
+			"账 %.0f / 承伤 %.0f" % [got, d])
+	_ok("F p2eq_088 碑内友军护盾也记给立碑者(分母 > 0)", _eqv(u, "p2eq_088", "shield") > 0.0, "%.0f" % _eqv(u, "p2eq_088", "shield"))
+	var sh0: float = _eqv(u, "p2eq_064", "shield")
+	u["_bladder_si"] = 1
+	tl.use(null)
+	s._equip_sys._spirit_sys._ghost_grant(u, 1)
+	_ok("F p2eq_064 幽灵护盾(SpecialBalance 余额): 装备账 == 发放量 maxHp×80%(分母 > 0)",
+		float(u["maxHp"]) > 0.0 and _near(_eqv(u, "p2eq_064", "shield") - sh0, float(u["maxHp"]) * 0.80),
+		"账 %.0f / maxHp %.0f" % [_eqv(u, "p2eq_064", "shield") - sh0, float(u["maxHp"])])

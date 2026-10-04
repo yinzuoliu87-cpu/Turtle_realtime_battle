@@ -74,7 +74,9 @@ func tick_owner(u: Dictionary, delta: float) -> void:
 		u["_axe_pending"] = false
 		summon(u)
 	if u.has("_axe_ref"):
+		var _tp: Array = battle._equip_sys.tally.push(u, "p2eq_096")   # ④ 装备统计: 斧头主动的回血/护盾记给「携带者 · 096」(斧头自己打的伤害靠召唤物标)
 		tick(u, delta)
+		battle._equip_sys.tally.pop(_tp)
 
 
 ## 【全局】每个模拟步推进(由 `EquipSystem.tick_global` 调, 与"谁带着小木斧、斧头死没死"无关):

@@ -844,6 +844,7 @@ func cross_slash_hit(u: Dictionary, dir: Vector2, sx: int, seg: int) -> int:
 	var sc: float = ([0.6, 0.9, 1.4][sx] if seg == 1 else [0.7, 1.1, 1.7][sx])
 	var n: int = 0
 	_last_hit_pos.clear()
+	var _tp: Array = battle._equip_sys.tally.push(u, "p2eq_084")   # ④ 装备统计: 十字斩走自己的分段时刻表 ⇒ 记给「携带者 · 084」
 	for o in battle._targeting._enemies_of(u):
 		if not (o is Dictionary) or not (o as Dictionary).get("alive", false):
 			continue
@@ -858,6 +859,7 @@ func cross_slash_hit(u: Dictionary, dir: Vector2, sx: int, seg: int) -> int:
 		##   实拍看到旧写法(龟身前 90 码)在近战距离下正好盖住施法者, 读成"自己炸了"。
 		_last_hit_pos.append((o as Dictionary)["pos"] as Vector2)
 		n += 1
+	battle._equip_sys.tally.pop(_tp)
 	vfx.cross_slash(u, dir, seg)
 	## ★挥剑与刀光在**同一行**发起 ⇒ 同一条时钟、同一个圆心。
 	##   分开发起就是两条时间线, 本仓踩过"两条时钟必然丢事件"。
@@ -886,6 +888,7 @@ func _step_waves(delta: float, only: Array = []) -> void:
 			var dir: Vector2 = w["dir"]
 			var org: Vector2 = w["from"]
 			var perp: Vector2 = Vector2(-dir.y, dir.x)
+			var _tp: Array = battle._equip_sys.tally.push(u, "p2eq_084")   # ④ 装备统计: 横波/竖波在本系统的在途表里推进
 			for o in battle._targeting._enemies_of(u):
 				if not (o is Dictionary) or not (o as Dictionary).get("alive", false):
 					continue
@@ -899,6 +902,7 @@ func _step_waves(delta: float, only: Array = []) -> void:
 				(w["hit"] as Array).append(o)
 				var d: int = battle._resolve_dmg(u, flat + float(u.get("atk", 0.0)) * sc, o, false)
 				battle._damage._apply_damage_from(u, o, d, Color("#bcd8ff"), 0.0, false, true)
+			battle._equip_sys.tally.pop(_tp)
 		if trav < WAVE_RANGE:
 			keep.append(w)
 	_waves = keep

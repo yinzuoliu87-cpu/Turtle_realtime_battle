@@ -383,6 +383,8 @@ func _stele_settle(st: Dictionary) -> void:
 		return
 	var c: Vector2 = st["pos"]
 	var r2: float = STELE_RADIUS * STELE_RADIUS
+	## ④ 装备统计: 碑是全局表里的常驻物(没有单位上下文) ⇒ 每跳切到「立碑者 · 088」, 函数末尾还原
+	var _tp: Array = battle._equip_sys.tally.push(src, "p2eq_088")
 	for o in battle._targeting._enemies_of(src):
 		if not o.get("alive", false):
 			continue
@@ -402,6 +404,7 @@ func _stele_settle(st: Dictionary) -> void:
 			continue
 		battle._damage._grant_shield(a, float(st["shd"]))
 	battle._cur_eq_item = ""
+	battle._equip_sys.tally.pop(_tp)
 	var stt: Dictionary = (src as Dictionary)["eq_state"].get("p2eq_088", {})
 	stt["stele_ticks"] = int(stt.get("stele_ticks", 0)) + 1   # 同步跳数证据(门禁数它, 不等演出)
 	(src as Dictionary)["eq_state"]["p2eq_088"] = stt
@@ -513,8 +516,10 @@ func _talisman_settle(tl: Dictionary) -> void:
 	var tgt = tl.get("tgt", null)
 	if not (src is Dictionary) or not (tgt is Dictionary) or not (tgt as Dictionary).get("alive", false):
 		return
+	var _tp: Array = battle._equip_sys.tally.push(src, "p2eq_089")   # ④ 装备统计: 符纸是全局表里的常驻物, 每跳切到「贴符者 · 089」
 	battle._damage._apply_damage_from(src, tgt,
 		_magic_after_mr(src, float(tl["per"]), tgt), COL_MOON, 0.0, false, true)
+	battle._equip_sys.tally.pop(_tp)
 	_shred_mr(tgt, TALISMAN_MR_PER_TICK)
 	var stt: Dictionary = (src as Dictionary)["eq_state"].get("p2eq_089", {})
 	stt["moon_ticks"] = int(stt.get("moon_ticks", 0)) + 1   # 同步跳数证据(门禁数它)

@@ -377,7 +377,9 @@ func stele_bolt_land(b: Dictionary) -> int:
 		return 0
 	var si: int = clampi(int(b.get("si", 0)), 0, 2)
 	var dmg: int = battle._resolve_dmg(carrier, stele_bolt_base(si), tgt, true)
+	var _tp: Array = battle._equip_sys.tally.push(carrier, "p2eq_094")   # ④ 装备统计: 碑/石块在全局表里, 携带者已阵亡 ⇒ 落地这一下记给「立碑者 · 094」
 	battle._damage._apply_damage_from(carrier, tgt, dmg, BOLT_COL, 0.0, false, true)
+	battle._equip_sys.tally.pop(_tp)
 	# 同步的落地证据(供门禁)。★不是"看演出多了几个节点"那种假断言 ——
 	#   `_kill` 里别的死亡效果也会建节点, 那种断言反向验证时不会红。
 	b["landed"] = int(b.get("landed", 0)) + 1

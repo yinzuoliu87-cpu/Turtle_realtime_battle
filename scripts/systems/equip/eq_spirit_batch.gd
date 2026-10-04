@@ -468,6 +468,7 @@ func _ghost_grant(u: Dictionary, si: int) -> void:
 		"decay_sec": GHOST_DECAY,
 		"on_break": func(uu, _k, _reason): _ghost_break(uu, si),
 	})
+	battle._equip_sys.tally.credit(u, "p2eq_064", "shield", amt)   # ④ 装备统计: 幽灵护盾是 SpecialBalance 余额、不走 `_grant_shield` ⇒ 按发放量直接记
 	stt = u["eq_state"].get("p2eq_064", {})
 	## ★★颜色从 (0.72, 0.86, 1.00) 推深到 (0.30, 0.62, 1.00)。
 	##   原色饱和度只有 0.28 —— **对黑底来说就是白**。A/B 实测(2026-08-11):
@@ -504,7 +505,9 @@ func _ghost_break(u: Dictionary, _star_i: int) -> void:
 			continue
 		if float((o["pos"] as Vector2).distance_to(u["pos"])) > GHOST_BURST_R:
 			continue
+		var _tp: Array = battle._equip_sys.tally.push(u, "p2eq_064")   # ④ 装备统计: 破盾可能发生在对方的伤害结算里 ⇒ 诅咒 DoT 条目打「携带者 · 064」的标
 		battle._damage._add_curse(o, GHOST_CURSE_SEC, u)
+		battle._equip_sys.tally.pop(_tp)
 		n += 1
 	u["_ghost_burst_n"] = int(u.get("_ghost_burst_n", 0)) + 1
 	u["_ghost_cursed_n"] = int(u.get("_ghost_cursed_n", 0)) + n

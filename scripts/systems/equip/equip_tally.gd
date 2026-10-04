@@ -51,9 +51,19 @@ func _init(b) -> void:
 ## 进入「某携带者的某件装备」上下文。返回旧上下文, 交给 pop() 还原(可嵌套)。
 func push(owner, iid: String) -> Array:
 	_flush()
-	var prev: Array = [_owner, _iid]
+	var prev: Array = [_owner, _iid, _as]
 	_owner = owner
 	_iid = iid
+	_as = null
+	return prev
+
+
+## 同 push, 但伤害源不是携带者本人: `src` 打出的伤害也记给 [owner, iid]。
+## 例: 071 奶油盾发在队友身上, 盾破的 AOE 以【持有者】为伤害源(结算不改), 账却属于发盾的携带者。
+var _as = null
+func push_for(src, owner, iid: String) -> Array:
+	var prev: Array = push(owner, iid)
+	_as = src
 	return prev
 
 
@@ -61,11 +71,13 @@ func pop(prev: Array) -> void:
 	_flush()
 	_owner = prev[0]
 	_iid = str(prev[1])
+	_as = prev[2] if prev.size() > 2 else null
 
 
 ## 直接切到某个捕获下来的上下文(延时队列/弹道落地时用; 不是 [owner, iid] 就切成「无」)。
 func use(tl) -> void:
 	_flush()
+	_as = null
 	if tl is Array and (tl as Array).size() == 2:
 		_owner = tl[0]
 		_iid = str(tl[1])
@@ -120,6 +132,7 @@ func _flush() -> void:
 func reset() -> void:
 	_owner = null
 	_iid = ""
+	_as = null
 	_flush()
 	dot_mode = false
 	dot_type = ""
@@ -130,9 +143,11 @@ func reset() -> void:
 ## 给召唤物/flat DoT 条目打来源标(在装备上下文里创建的才打)。返回原对象, 便于就地包一层。
 ## who: 召唤者/施加者 —— 只有它就是上下文里的携带者时才打(别人在这一刻召的东西不算这件装备的)。
 ## ★058 炮台 / 032 骷髅由主场景登场时直调召唤(不在任何装备上下文里) ⇒ 按召唤物种类认领。
-const KIND_EQ := {"turret": "p2eq_058", "skeleton": "p2eq_032"}
+## ★096 斧头由 `AxeSystem.tick_owner` 在批系统的每单位 tick 里召出(那里的上下文是「该龟身上本批第一件」, 不一定是 096)
+##   ⇒ 按种类认领【优先于】上下文(炮台/骷髅原来也是认到同一个 id, 顺序对它们没有影响)。
+const KIND_EQ := {"turret": "p2eq_058", "skeleton": "p2eq_032", "axe": "p2eq_096"}
 func tag(d: Dictionary, who = null) -> Dictionary:
-	if _iid == "" and who is Dictionary and KIND_EQ.has(str(d.get("summon_kind", ""))):
+	if who is Dictionary and KIND_EQ.has(str(d.get("summon_kind", ""))):
 		d["_eq_src"] = KIND_EQ[str(d["summon_kind"])]
 		d["_eq_owner"] = who
 		return d
@@ -147,7 +162,7 @@ func tag(d: Dictionary, who = null) -> Dictionary:
 ## 这一笔该记给谁: [携带者, iid] 或 []。
 func _attrib(src) -> Array:
 	var ctx_ok: bool = _iid != "" and _owner is Dictionary
-	if ctx_ok and (src == null or is_same(src, _owner)):
+	if ctx_ok and (src == null or is_same(src, _owner) or (_as != null and is_same(src, _as))):
 		return [_owner, _iid]
 	if src is Dictionary and str((src as Dictionary).get("_eq_src", "")) != "" and (src as Dictionary).get("_eq_owner", null) is Dictionary:
 		return [src["_eq_owner"], str(src["_eq_src"])]

@@ -1043,6 +1043,7 @@ func _dl_clear_units() -> void:
 	lane_epoch += 1   # ★换路纪元: 上一路还在途的多段技协程醒来就停(见 lane_step)
 	battle._equip_tick_sys.reset_for_lane()   # 装备延时队列/大熊冲击波/拉回: 上一路的在途项一律丢弃(同 _pending_shots)
 	battle._equip_sys._axe.reset_for_lane()   # 096 斧头的蓄力/余烬之光/插地/在途镖: 由斧头系统自己收(同样要在清 _units 之前)
+	battle._cyber_sys.reset_for_lane()   # 赛博「机甲组装中仍算存活」的按阵营到期时刻: 上一路的不许带进下一路
 	for u in battle._units:
 		for k in ["sprite", "shadow", "contact", "ring", "flame_sector"]:   # +flame_sector: 凤凰喷火扇形常驻MeshInstance3D·换路不清会残留下半场(用户2026-07-18"换到下半场没清掉")
 			var n = u.get(k, null)

@@ -191,9 +191,17 @@ func _t_switch() -> void:
 	for u in carriers:
 		dealt0.append(int(u.get("_st_dealt", 0)))
 	var ep0: int = _s._dl_sys.lane_epoch
+	## 赛博机甲桥接: 上一路赛博在收官前一刻阵亡 ⇒ 此侧「仍算存活」到 _t+3。
+	##   ★直接写字段而不调 `_cyber_assemble_mech`: 后者会排激光/机甲演出与延时项, 污染本测试「换路后一滴血没掉」那几条分母。
+	##   写法与 cyber_system 那唯一一处写入同形(按阵营 = _t + 3.0)。
+	_s._mech_incoming["left"] = float(_s._t) + 3.0
+	var mech0: float = float(_s._mech_incoming.get("left", 0.0))
+	_ok("★分母: 换路前赛博桥接时刻在未来(%.2f > _t %.2f)" % [mech0, float(_s._t)], mech0 > float(_s._t))
 
 	## ── 换路(真入口) ──
 	_s._dl_sys._dl_clear_units()
+	_ok("赛博「机甲组装中仍算存活」的按阵营到期时刻换路清空(否则下一路开场最多 3 秒判不了团灭)",
+		_s._mech_incoming.is_empty(), str(_s._mech_incoming))
 	_ok("换路纪元 +1(%d → %d)" % [ep0, _s._dl_sys.lane_epoch], _s._dl_sys.lane_epoch == ep0 + 1)
 	_ok("装备延时表清空(冲击波 %d 条 / 延时项 %d 条)" % [_s._equip_tick_sys._bear_waves.size(), _s._equip_tick_sys._bolt_q.size()],
 		_s._equip_tick_sys._bear_waves.is_empty() and _s._equip_tick_sys._bolt_q.is_empty())
