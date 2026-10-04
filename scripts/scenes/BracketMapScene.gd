@@ -103,6 +103,7 @@ signal match_opened(r: int, m: int)
 
 
 func _ready() -> void:
+	SimFinalsPilot.attach_bracket(self)   # 模拟窗口周日自动驾驶(只在 SIM_AUTOPILOT 开着时)
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	## ★必须**真盖住**全局 `PersistentBg`(layer -100 的深绿瓷砖) —— 那一层是给
 	##   场景切换空隙用的, 各屏都得自己铺不透明底。只设 anchors 拿不到尺寸(实拍抓到:

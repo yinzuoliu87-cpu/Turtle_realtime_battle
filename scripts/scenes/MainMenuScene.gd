@@ -113,6 +113,7 @@ var _bg_is_crowd := false   # true=28龟群像(铺满视口) / false=旧平铺�
 
 
 func _ready() -> void:
+	SimFinalsPilot.attach_menu(self)   # 模拟窗口周日自动驾驶(只在 SIM_AUTOPILOT 开着时; 见 autopilot_finals.gd)
 	if OS.has_environment("PH_DEMO"):   # dev: 模拟大轮开局(未打第一场) → 看商店键灰锁
 		GameState.season_total_battles = 0
 	await get_tree().process_frame

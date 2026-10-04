@@ -1478,6 +1478,7 @@ func _show_banner(won: bool, _sealed_hint: bool = false) -> void:
 	## ★挂在 `outer` 而不是 `card` —— card 在滚动区里, 挂那儿就会被内容顶出可视范围。
 	outer.add_child(btn_row)
 	# ★教学模式: 结算按钮走导演(战斗1打完→商店, 战斗2打完→结束回菜单), 而不是直接返回菜单。
+	SimFinalsPilot.attach_result(battle)   # 模拟窗口周日自动驾驶: 决赛日那一局结算后自己回主菜单
 	var _td = battle.get_node_or_null("/root/TutorialDirector")
 	if _td != null and _td.is_active():
 		# ★文字用 _peek_next【只读】—— 用 next_scene_after 会在【建按钮时】就推进 stage,
