@@ -101,7 +101,7 @@ func _two_head_cannon(u: Dictionary, from2d: Vector2, dir: Vector2) -> void:
 	var pos = from2d
 	var hit = null
 	while is_instance_valid(battle) and traveled < 2000.0 and u.get("alive", false) and battle.is_inside_tree():
-		await battle.sim_stepped
+		await battle._dl_sys.lane_step()
 		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
 		if battle._timestop.holds(u): continue   # 时停: 被定格的单位这一步不推进(携带者照常; 顿帧行为不变)
 		traveled = minf(2000.0, traveled + 760.0 * battle._frame_sim_dt)

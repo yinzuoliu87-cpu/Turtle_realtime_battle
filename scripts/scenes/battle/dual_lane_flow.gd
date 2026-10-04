@@ -12,6 +12,41 @@ var battle
 func _init(b) -> void:
 	battle = b
 
+
+# ══════════════════════════════════════════════════════════════════════
+#  换路纪元(lane epoch) —— 多段技协程不许活过换路
+# ══════════════════════════════════════════════════════════════════════
+## ★由来(2026-10-04): `_eq_sword_storm` 只看 `u.alive`, 而换路时旧单位字典从不被标死,
+##   于是上一路放出的千刃风暴在下一路接着打 `_enemies_of(u)` —— 探针量到新路敌人吃了 136 伤害
+##   (不带千刃风暴 = 0)。饮血连斩 / 大熊蓄力召熊 / 大熊冲击波 是同一个形状。
+## ★修法: 全部「跨 sim 步」的挂起点只有两种 —— `battle._wait_sim()` 和直接 `await sim_stepped`,
+##   两者现在都经过下面这一个 `lane_step()`。醒来发现纪元变了 ⇒ 停在一个永不 emit 的信号上,
+##   协程后面那段(伤害 / 召唤 / 写状态)就再也不会执行。不用逐处补判断, 新协程照旧写
+##   `_wait_sim(...)` 就自动受保护; 直接等 sim 步的一律改等 `battle._dl_sys.lane_step()`
+##   (`tools` 里没有审计器守这一条 —— 守它的是 tests/verify_lane_coroutine_epoch 的源码断言)。
+## ★为什么是「停住」而不是「返回」: 返回只能让 `_wait_sim` 自己提前结束, 调用方照样往下走
+##   (那正是 bug 本身); 停住才等于整条协程链作废。停住的协程由信号连接持有,
+##   战斗节点释放时一并回收(每路最多几条, 不随时间增长)。
+## ★为什么不改成「换路时把旧单位字典标 alive=false」: 好几条协程根本不看 alive
+##   (`_bsw_scrape` / `_close_slits` / `coral_burst` / `_blood_slash_play`), 而且旧字典
+##   还被结算快照 / 幸存名单读着 —— 改它的爆炸半径比加一道纪元大得多。
+## ★tween 那一族(`await tw.finished` / 演出链末尾的结算回调)不需要这道闸:
+##   换路时 `_dl_clear_units` 把 `_sim_tweens` 全部 kill, 被 kill 的 tween 永不发 finished、
+##   回调永不再调 ⇒ 它们本来就在换路那一刻作废了(这是对的: 上一路已经结束)。
+var lane_epoch: int = 0
+
+## 等一个 sim 步; 这一步里换了路 ⇒ 永不返回(调用方那条协程就此作废)。
+func lane_step() -> void:
+	var ep: int = lane_epoch
+	await battle.sim_stepped
+	if not is_instance_valid(battle): return   ## await 回来战斗可能已释放
+	if ep != lane_epoch:
+		await battle._lane_parked
+
+## 现在有几条上一路的协程停在闸上(门禁的分母用)。
+func parked_count() -> int:
+	return battle.get_signal_connection_list("_lane_parked").size()
+
 # ── 场内放置阶段 (每战场开打前: 拖我方单位到你半场任意位置) ──
 func _dl_is_present() -> bool:
 	return battle._dl_state == "overview" or battle._dl_state == "preview" or battle._dl_state == "lane_settle"
@@ -982,6 +1017,8 @@ func _eq_carry_reapply(u: Dictionary, iid: String, si: int, stt: Dictionary) -> 
 # 清当前路所有单位/弹道/特效节点 → 供重开下一路
 func _dl_clear_units() -> void:
 	_dl_save_eq_carry()   # ★必须在清 battle._units 之前 —— 清完就没得抄了
+	lane_epoch += 1   # ★换路纪元: 上一路还在途的多段技协程醒来就停(见 lane_step)
+	battle._equip_tick_sys.reset_for_lane()   # 装备延时队列/大熊冲击波/拉回: 上一路的在途项一律丢弃(同 _pending_shots)
 	battle._equip_sys._axe.reset_for_lane()   # 096 斧头的蓄力/余烬之光/插地/在途镖: 由斧头系统自己收(同样要在清 _units 之前)
 	for u in battle._units:
 		for k in ["sprite", "shadow", "contact", "ring", "flame_sector"]:   # +flame_sector: 凤凰喷火扇形常驻MeshInstance3D·换路不清会残留下半场(用户2026-07-18"换到下半场没清掉")

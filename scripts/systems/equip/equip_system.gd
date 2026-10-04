@@ -941,7 +941,7 @@ func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑007: 高举
 	var anim := 0.0
 	var hit: Array = []
 	while is_instance_valid(battle) and traveled < reach and is_instance_valid(qi) and is_instance_valid(self):
-		await battle.sim_stepped
+		await battle._dl_sys.lane_step()
 		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
 		if battle._timestop.holds(u): continue   # 时停: 被定格的单位这一步不推进(携带者照常; 顿帧行为不变)
 		if not is_instance_valid(qi): break   ## ★2026-10-04: 换路/清场会在 await 期间释放剑气节点 ⇒ 回来写 qi.position 报 SCRIPT ERROR(回放 agent 实测赌神带 p2eq_030)
@@ -1304,7 +1304,7 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 	## ★起点跟着上面"往后收一步"走, 不能还写 -SWORD_SPAWN_BACK —— 否则冲刺第一帧会瞬移回去一格。
 	var start_along := -SWORD_BRACE_BACK
 	while is_instance_valid(battle) and traveled < reach and is_instance_valid(self):
-		await battle.sim_stepped
+		await battle._dl_sys.lane_step()
 		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 queue_free), 回来必须重新确认
 		if battle._timestop.holds(u): continue   # 时停: 被定格的单位这一步不推进(携带者照常; 顿帧行为不变)
 		traveled += 650.0 * battle._frame_sim_dt   # 剑速(用户:慢点)
