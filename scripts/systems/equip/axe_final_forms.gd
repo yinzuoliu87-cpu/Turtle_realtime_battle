@@ -636,20 +636,7 @@ func tick_active(ax: Dictionary, _delta: float) -> int:
 	# ── 全息斧: 插地 4 秒, 每 0.5 秒法阵一跳 ──
 	if ax.has("_holo_until"):
 		if float(battle._t) >= float(ax["_holo_until"]):
-			ax.erase("_holo_until")
-			ax.erase("_holo_next")
-			## ★减伤**必须还原** —— 不还原就是个永久 30% 减伤的怪物(被动6踩过同一个坑)
-			if ax.has("_holo_dr_bak"):
-				ax["damage_reduction"] = float(ax["_holo_dr_bak"])
-				ax.erase("_holo_dr_bak")
-			## ★不许走也要还原(插地期间的 no_move, 同上)
-			if ax.has("_holo_nm_bak"):
-				ax["no_move"] = bool(ax["_holo_nm_bak"])
-				ax.erase("_holo_nm_bak")
-			## 演出: 法阵与护罩在到期这一步释放(收拢的最后一帧落在上一步), 斧头拔出来回待机
-			vfx_holo.end_plant(ax)
-			if str(ax.get("anim_action", "")) == "axe_plant":
-				_idle(ax)
+			_end_holo(ax)
 		else:
 			if float(battle._t) >= float(ax.get("_holo_next", 0.0)):
 				holo_aura_tick(ax)             # 结算 + 这一跳的演出(脉冲从第 0 帧起, 见函数末尾)
@@ -657,6 +644,46 @@ func tick_active(ax: Dictionary, _delta: float) -> int:
 				n += 1
 			vfx_holo.plant_step(ax)
 			_keep_plant(ax)
+	return n
+
+
+## 全息斧插地结束: 到期(tick_active)与换路 / 战斗结束(end_all)走同一个出口。
+func _end_holo(ax: Dictionary) -> void:
+	ax.erase("_holo_until")
+	ax.erase("_holo_next")
+	## ★减伤**必须还原** —— 不还原就是个永久 30% 减伤的怪物(被动6踩过同一个坑)
+	if ax.has("_holo_dr_bak"):
+		ax["damage_reduction"] = float(ax["_holo_dr_bak"])
+		ax.erase("_holo_dr_bak")
+	## ★不许走也要还原(插地期间的 no_move, 同上)
+	if ax.has("_holo_nm_bak"):
+		ax["no_move"] = bool(ax["_holo_nm_bak"])
+		ax.erase("_holo_nm_bak")
+	## 演出: 法阵与护罩在到期这一步释放(收拢的最后一帧落在上一步), 斧头拔出来回待机
+	vfx_holo.end_plant(ax)
+	if str(ax.get("anim_action", "")) == "axe_plant":
+		_idle(ax)
+
+
+## 换路 / 战斗结束(AxeSystem.reset_for_lane): 收掉这把斧头身上所有造物主动挂的临时状态。
+## ★余烬之光: 清空到期串再走 `_ember_apply` —— 与自然到期同一个还原出口(按差量减回施放前的值)。
+func end_all(ax: Dictionary) -> void:
+	if ax.has("_holo_until"):
+		_end_holo(ax)
+	ax.erase("_seraph_until")
+	ax.erase("_seraph_left")
+	ax.erase("_seraph_next")
+	if ax.has("_ember_lights"):
+		ax["_ember_lights"] = []
+		_ember_apply(ax)
+
+
+## 在途回旋镖全部作废(换路 / 战斗结束)。返回收掉几把。
+func clear_boomerangs() -> int:
+	var n: int = _booms.size()
+	for rec in _booms:
+		seraph_vfx.boom_free(rec.get("node", null))
+	_booms = []
 	return n
 
 

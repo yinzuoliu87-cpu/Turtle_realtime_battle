@@ -83,6 +83,53 @@ func tick_owner(u: Dictionary, delta: float) -> void:
 ##   也不按携带者调(两个携带者就推两遍)。时停期间 tick_global 整块不跑 ⇒ 在途镖天然冻住。
 func tick_global(delta: float) -> void:
 	_fin.tick_boomerangs(delta)
+	tick_orphans(delta)
+
+
+## 【全局】推进**携带者已经阵亡**的斧头(第十批 E2 · 用户 2026-10-04 拍板 V6「斧头独立存在」)。
+## ★根因: 斧头的每帧推进(攒龟能 / 蓄力 / 造物主动 / 余烬之光到期 / 亡灵重生)原来**只**由
+##   携带者的 `tick_owner` 驱动, 而主循环跳过死亡单位 ⇒ 携带者一死, 斧头整条停摆:
+##   蓄力中阵亡就永远站着蓄(禁普攻 / 禁移动 / 70% 减伤), 余烬之光的减伤与吸血永远不到期。
+## ★为什么只补「孤儿」而不是改成所有斧头都在这里推: 携带者活着时的推进时序**一个字不动**
+##   (同一步里谁先谁后会改变对局结果); 只把原来**根本没人推**的那部分接上。
+##   携带者活着 ⇒ 这里跳过(不双推); 携带者死了 ⇒ 由这里推, 直到战斗结束(`_over`)。
+## ★`_over` 闸与携带者那条路同口径(主循环的单位 tick 也在 `not _over` 里);
+##   时停期间 tick_global 整块不跑 ⇒ 孤儿斧头与其它场上造物一起冻住。
+## ★判「孤儿」只认 `summon_owner` 是一只死掉的单位 —— 门禁手搓的探针斧头没有 summon_owner, 不归这里管。
+## 返回这一步推了几把(门禁拿它当分母)。
+func tick_orphans(delta: float) -> int:
+	if battle._over:
+		return 0
+	var n := 0
+	for ax in battle._units.duplicate():
+		if not (ax is Dictionary) or not ax.get("_eq_axe", false):
+			continue
+		var ow = ax.get("summon_owner", null)
+		if not (ow is Dictionary) or (ow as Dictionary).get("alive", false):
+			continue
+		tick_axe(ax, delta)
+		n += 1
+	return n
+
+
+## 换路 / 战斗结束: 把每把斧头身上**由斧头自己的招式**挂上的临时状态全部收掉
+## (蓄力的禁普攻·禁移动·70% 减伤 / 余烬之光的减伤·吸血·免控 / 全息插地的减伤·定身 / 炽天使甩镖 / 在途回旋镖)。
+## ★由斧头系统自己出 reset(memory per-lane-state-must-reset-in-owner): 字段散在两个文件里,
+##   让换路代码逐个手清, 加一个字段就漏一次(时停那次就是这么漏的)。
+## 调用方: `DualLaneFlow._dl_clear_units`(换路, 必须在清 `_units` 之前) / `_dl_finish`(整场结束)。
+## 返回收掉了几把(门禁拿它当分母)。
+func reset_for_lane() -> int:
+	var n := 0
+	for ax in battle._units:
+		if not (ax is Dictionary) or not ax.get("_eq_axe", false):
+			continue
+		if _pas.is_charging(ax):
+			_pas._end_charge(ax)
+		_fin.end_all(ax)
+		ax["_axe_charge_anim"] = false
+		n += 1
+	_fin.clear_boomerangs()
+	return n
 
 
 ## 登场召唤斧头。照 058 炮台的 `_spawn_summon` 底座。
@@ -229,6 +276,11 @@ func tick(u: Dictionary, _delta: float) -> void:
 	var ax = u.get("_axe_ref", null)
 	if not (ax is Dictionary):
 		return
+	tick_axe(ax, _delta)
+
+
+## 推进一把斧头一步。★携带者活着由 `tick`(携带者那条路)调, 死了由 `tick_orphans` 调 —— 同一份逻辑。
+func tick_axe(ax: Dictionary, _delta: float) -> void:
 	## ★★亡灵之斧的重生必须在「死了就 return」之【前】判(第十批 E3)。
 	##   原来重生检查排在下面, 斧头一死这里就 return ⇒ 排好了重生时刻却永远站不起来(探针: 4 秒后仍死着),
 	##   而门禁直接调 undead_tick_revive, 所以一直绿。
