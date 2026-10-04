@@ -241,19 +241,22 @@ create policy status_read_anon on public.service_status
 -- 写：同样只留给 service_role（没有 insert/update 策略）
 
 -- ─────────────────────────────────────────────────────────────
--- 6. 重放到期自动删（U7：到期自动删，不靠手动）
---    ⚠ pg_cron 要先在 Dashboard → Database → Extensions 里启用。
---    口径：只保留**本周与上周**的对局。重放只在周六/周日/周一可看，
---    而周一过完就该没了 —— 留两周是给时区与边界留余量，不是放宽策略。
+-- 6. 重放到期自动删（U7：「周一过完就没了」，到期自动删，不靠手动）
+--    口径：每周二 00:00 UTC 删掉「本周一 00:00 UTC 之前」的全部对局
+--    （用户 2026-10-04：「照你原来定的，周二 0 点删」）。
+--    ⇒ 服务端任何时刻留着的只有「本周的」+「（还没到本周二时）上周的」：
+--      上周六/周日/周一打的，周一一整天还看得到，周二 0 点一起清掉。
+--    `date_trunc('week', …)` 在 Postgres 里是 ISO 周 = 周一 00:00；先转成 UTC 再截，
+--      截完再标回 UTC ⇒ 与库的时区设置无关。
+--    客户端同一条口径：`scripts/systems/replay/replay_fetcher.gd` `server_keeps()`
+--      （本机没有录像时，服务端已清掉的那一场不出「回放」按钮）。
 -- ─────────────────────────────────────────────────────────────
 create or replace function public.purge_old_matches() returns void
 language sql security definer as $$
-  delete from public.matches where created_at < now() - interval '14 days';
+  delete from public.matches where created_at < date_trunc('week', now() at time zone 'UTC') at time zone 'UTC';
 $$;
-
--- 在 Dashboard 里执行一次（本文件不自动建任务，免得重复执行时报错）：
---   select cron.schedule('purge-matches', '0 1 * * 1', 'select public.purge_old_matches()');
--- 周一 01:00 UTC 跑 —— 在换轮（周一 00:00 UTC）之后。
+revoke all on function public.purge_old_matches() from public, anon, authenticated;
+-- 2026-10-04 已上生产：cron jobid 11 'purge_old_matches' '0 0 * * 2'
 
 -- ═════════════════════════════════════════════════════════════════════
 -- D-7 存档同步（2026-09-21 用户拍板「需要存档同步的」）
