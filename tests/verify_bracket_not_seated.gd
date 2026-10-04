@@ -48,6 +48,17 @@ func _ready() -> void:
 	_ok("★★回包解析把 not_seated 带出来(不吞成空字典)", str(pv.get("reason", "")) == "not_seated" and int(pv.get("entered", 0)) == 6, str(pv))
 	var after := _say(sun0 + 10 * 3600)             # 10:00 UTC, 分组早就跑过了
 	_ok("★分母: 分组之后真没开起来时仍然说「人太少」", after.find("人太少") >= 0, after)
+	## ★2026-10-04 用户拍板「改成『8 分 43 秒后』」: 原来 `8:43` 读起来像钟点。
+	_ok("倒计时 523 秒 ⇒ 「8 分 43 秒」", MAP.countdown_text(523) == "8 分 43 秒", MAP.countdown_text(523))
+	_ok("不足 1 分钟只写秒", MAP.countdown_text(43) == "43 秒", MAP.countdown_text(43))
+	var _sh := str(MAP.shop_tip(true, 523, true))
+	_ok("★备战购物那一行也不再是 m:ss", _sh.find(":") < 0 and _sh.find("8 分 43 秒") >= 0, _sh)
+	var _src := FileAccess.get_file_as_string("res://scripts/scenes/BracketMapScene.gd")
+	var _i0 := _src.find("func _sync_tip")
+	var _i1 := _src.find("\nfunc ", _i0 + 10)
+	var _body := _src.substr(_i0, (_i1 if _i1 > 0 else _src.length()) - _i0)
+	_ok("★分母: 找到 _sync_tip", _i0 >= 0 and _body.length() > 50)
+	_ok("★★对阵图顶上那行走 countdown_text, 不再拼 %d:%02d", _body.find("countdown_text(") >= 0 and _body.find("%d:%02d") < 0)
 	print("")
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 分组前不劝退" if _fail == 0 else "FAIL x%d" % _fail)

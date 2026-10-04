@@ -1364,7 +1364,7 @@ static func shop_tip(shop_open: bool, left_sec: int, has_bucket: bool) -> String
 	if not has_bucket:
 		return ""
 	if shop_open:
-		return "备战购物 · 还剩 %d:%02d" % [left_sec / 60, left_sec % 60]
+		return "备战购物 · 还剩 %s" % countdown_text(left_sec)
 	return "本轮备战已结束 · 等开打"
 
 
@@ -1437,6 +1437,15 @@ func _on_poll() -> void:
 	_sync_tip()
 
 
+## 倒计时的写法。★用户 2026-10-04 拍板「改成『8 分 43 秒后』」:
+##   原来写 `8:43` —— 意思是 8 分 43 秒, 读起来却像 8 点 43 分。不足 1 分钟只写秒。
+static func countdown_text(sec: int) -> String:
+	var s: int = maxi(0, sec)
+	if s < 60:
+		return "%d 秒" % s
+	return "%d 分 %d 秒" % [s / 60, s % 60]
+
+
 ## 顶上那行「下一轮 X 分 Y 秒后开」。★秒数来自**服务端的时间差**, 不看本机时钟绝对值。
 func _sync_tip() -> void:
 	if _tip == null:
@@ -1446,7 +1455,7 @@ func _sync_tip() -> void:
 		_tip.visible = false
 		return
 	_tip.visible = true
-	_tip.text = "下一轮 %d:%02d 后开播" % [left / 60, left % 60]
+	_tip.text = "下一轮 %s后开播" % countdown_text(left)
 	var vp: Vector2 = get_viewport().get_visible_rect().size
 	_tip.size.x = vp.x
 	_tip.position = Vector2(0.0, 150.0)

@@ -467,6 +467,8 @@ scripts/net/supabase.gd|lit|验证码不对，或者已经过期了（重新发�
 scripts/net/supabase.gd|lit|验证码发到 %s 了，查收一下（也看看垃圾邮件）
 scripts/scenes/BracketMapScene.gd|lit| · 未开赛
 scripts/scenes/BracketMapScene.gd|lit| · 还没分
+scripts/scenes/BracketMapScene.gd|lit|%d 分 %d 秒
+scripts/scenes/BracketMapScene.gd|lit|%d 秒
 scripts/scenes/BracketMapScene.gd|lit|你
 scripts/scenes/BracketMapScene.gd|lit|你不在这一组里 · 只能看别人打
 scripts/scenes/BracketMapScene.gd|lit|冠
@@ -474,7 +476,7 @@ scripts/scenes/BracketMapScene.gd|lit|冠军赛
 scripts/scenes/BracketMapScene.gd|lit|冠军赛 %d 小时 %d 分后开播 · 先等各组决出自己的冠军
 scripts/scenes/BracketMapScene.gd|lit|冠军赛正在集结 · 等各组决出自己的冠军
 scripts/scenes/BracketMapScene.gd|lit|周日 · 决赛日
-scripts/scenes/BracketMapScene.gd|lit|备战购物 · 还剩 %d:%02d
+scripts/scenes/BracketMapScene.gd|lit|备战购物 · 还剩 %s
 scripts/scenes/BracketMapScene.gd|lit|对手
 scripts/scenes/BracketMapScene.gd|lit|对手没留下阵容 · 这一场算他弃权
 scripts/scenes/BracketMapScene.gd|lit|对手阵容已就位 · %s
@@ -493,7 +495,7 @@ scripts/scenes/BracketMapScene.gd|lit|这一轮你已经看过 %d 号了 · 一�
 scripts/scenes/BracketMapScene.gd|lit|这一轮已经翻篇了 · 刷新一下看看新的对阵
 scripts/scenes/BracketMapScene.gd|lit|连不上服务器 · 你这一组还没看到, 每 30 秒自己再看一次
 scripts/scenes/BracketMapScene.gd|lit|连不上服务器 · 过两秒再点一次
-scripts/scenes/BracketMapScene.gd|text|下一轮 %d:%02d 后开播
+scripts/scenes/BracketMapScene.gd|text|下一轮 %s后开播
 scripts/scenes/BracketMapScene.gd|text|回到我
 scripts/scenes/BracketMapScene.gd|tooltip_text|上场开打
 scripts/scenes/BracketMapScene.gd|tooltip_text|开播

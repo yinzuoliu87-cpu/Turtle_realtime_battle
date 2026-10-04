@@ -175,7 +175,7 @@ func _t_shop_wiring() -> void:
 	var MAP := preload("res://scripts/scenes/BracketMapScene.gd")
 	var t_open := MAP.shop_tip(true, 125, true)
 	_ok("②' 开着 ⇒ 说**还剩多久**(没有倒计时这一行就没价值)",
-		t_open.find("2:05") >= 0, t_open)
+		t_open.find("2 分 5 秒") >= 0, t_open)
 	var t_shut := MAP.shop_tip(false, 0, true)
 	_ok("②' 关了 ⇒ 说清在等什么(不是干巴巴一句「不能买」)",
 		t_shut.find("等开打") >= 0, t_shut)
