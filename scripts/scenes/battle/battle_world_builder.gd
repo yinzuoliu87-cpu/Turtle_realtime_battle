@@ -2738,8 +2738,18 @@ func _build_navmesh() -> void:
 	_own_nav_map = battle._nav_map          # ★本地留一份: PREDELETE 时 battle 可能已失效
 	NavigationServer2D.map_set_cell_size(battle._nav_map, 1.0)
 	NavigationServer2D.map_set_active(battle._nav_map, true)
+	## ★★寻路图必须【同步】生效(2026-10-04 修回放「约 40 次红 1 次 · 第 360 步校验点 5」)。
+	##   Godot 4.6 默认 map / region 都是**异步迭代**: 下面那行 `map_force_update` 对异步图是空操作,
+	##   新图要等下一个**物理帧**同步之后 `map_get_path` 才有路 —— 之前一律返回空 ⇒ `_nav_dir` 走直线。
+	##   物理帧按**墙钟**走, 不按 sim 步走 ⇒ 开打头几步「直奔还是绕障」取决于建场到开打那几帧真实花了多久:
+	##   回放摆位期 8 倍速快进, 建场到开打只隔约 5 帧, 机器快到这 5 帧不满 1/60 秒就分叉。
+	##   探针(tests/_probe_nav_sync.gd, --fixed-fps 1000): 默认 ⇒ 建完 6 帧内 iter=0 / path=0;
+	##   map+region 关异步后 ⇒ `map_force_update` 当场 iter=1 / path=11。
+	##   ⇒ 两个都关异步, 建完当场可用, 与帧率/墙钟无关。门禁: verify_replay_roundtrip V1b。
+	NavigationServer2D.map_set_use_async_iterations(battle._nav_map, false)
 	battle._nav_region = NavigationServer2D.region_create()
 	_own_nav_region = battle._nav_region
+	NavigationServer2D.region_set_use_async_iterations(battle._nav_region, false)
 	NavigationServer2D.region_set_map(battle._nav_region, battle._nav_map)
 	NavigationServer2D.region_set_enabled(battle._nav_region, true)
 	var poly = NavigationPolygon.new()
