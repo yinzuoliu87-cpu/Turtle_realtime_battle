@@ -90,7 +90,7 @@ const SEP_RADIUS := 92.0                    # 单位软分离半径 (像素口�
 const EGG_FENCE_RES := 200.0    # 围栏未破时蛋额外获得的双抗(原 80)
 const EGG_SELFLOSS_IV := 1.0    # 决胜期自损间隔秒(原 2.5)
 const EGG_SELFLOSS_PCT := 0.05  # 每次自损占最大生命比例(原 0.25) → 净速率 10%/秒 → 5%/秒
-const HP_MULT := 3.0                       # base↔final比率: 龟/装备hp已写最终值; 仅召唤raw值(×)与装备%回收(maxHp/)用它
+const HP_MULT := 3.0                       # base↔final比率: 龟/装备hp已写最终值; 仅召唤raw值(×)用它。装备「X%最大生命」按真实maxHp算、不除它(用户2026-10-04)
 const RAGE_MAX := 100.0                    # 怒气满 (熔岩变身)
 const STACK_DOT_TICK := 1.0                # 各类层数 DoT 每秒结算一次
 const BUFF_SEC := 5.0                      # buff/控制/DoT 通用秒数 (规格 "N秒", 待 F5 调)
@@ -6584,7 +6584,7 @@ func _recalc_stats(u: Dictionary) -> void:
 			acc[s][1] += b["amount"]
 	u["atk"] = maxf(0.0, u["base_atk"] * (1.0 + acc["atk"][0]) + acc["atk"][1])
 	if float(u.get("hammer_pct", 0.0)) > 0.0:
-		u["atk"] += u["maxHp"] / HP_MULT * float(u["hammer_pct"])   # 重击锤(047): ATK随maxHp动态成长
+		u["atk"] += u["maxHp"] * float(u["hammer_pct"])   # 重击锤(047): ATK随真实maxHp动态成长(不除HP_MULT·用户2026-10-04)
 	# ★剑【血祭】(羁绊·用户 2026-08-03 定): 本体每损失 1% 生命 → +0.1/0.3/0.5% 攻击力。
 	#   · 按【本体自己】的血量, 不是全队平均 —— 残血反打这件事要发生在那只残血的龟身上, 玩家看得见因果。
 	#   · 是【百分比】不是固定值: 剩 1% 血时 +9.9/29.7/49.5% 攻击力。

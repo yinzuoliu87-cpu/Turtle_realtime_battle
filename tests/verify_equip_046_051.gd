@@ -129,9 +129,9 @@ func _ready() -> void:
 			absf(float(c1["shield"]) - sh1 - EXP_GHOST_SHIELD[si]) < 0.5)
 
 	# ══════════════ 047 重击锤: ATK = maxHp × 4/6/15%, 且动态 ══════════════
-	## ★★这一节量的是「ATK 的那一份增量确实来自 maxHp, 且口径是 maxHp / HP_MULT」。
-	##   那个除法是**本仓装备百分比回收的标准口径**(CLAUDE.md §3.1), 不是多除的一次 ——
-	##   详见下面那段订正。
+	## ★★这一节量的是「ATK 的那一份增量确实来自 maxHp, 且口径是【真实 maxHp】」。
+	##   2026-10-04 用户拍板「肯定是代码去掉除以3啊」: 原来的 maxHp / HP_MULT 是早期 ×3 缩放遗留,
+	##   实发只有文案的 1/3 —— 已删掉那个除法(CLAUDE.md §3.1 同步改)。
 	## ★口径: 不拿手设的 atk 当基线(`_recalc_stats` 会整个重算)。改成
 	##   「同一只单位, hammer_pct=0 recalc 一次 → 设成 X recalc 一次」, 差值就是它的贡献。
 	for si in [0, 2]:
@@ -148,30 +148,17 @@ func _ready() -> void:
 		_s._recalc_stats(c2)
 		var from_hp: float = float(c2["atk"]) - atk0
 		var want_final: float = mhp * EXP_HAMMER_PCT[si]
-		var want_div: float = mhp / _s.HP_MULT * EXP_HAMMER_PCT[si]
 		_ok("② ★分母(%d 星): maxHp %.0f · hammer_pct 0 → %.2f 时 ATK %.1f → %.1f"
 			% [si + 1, mhp, EXP_HAMMER_PCT[si], atk0, float(c2["atk"])],
 			from_hp > 0.0, "若为 0 = hammer_pct 根本没被 _recalc_stats 读到")
-		## ★★★【2026-09-14 订正: 这**不是**缺陷, 是本仓既定口径】
-		##   我最初把它判成「实发只有文案的 1/3」并登记成未决。**判错了** ——
-		##   `maxHp / HP_MULT × pct` 正是本仓「装备百分比回收」的标准口径:
-		##     · CLAUDE.md §3.1: 「HP_MULT 只能用于: 召唤物 raw 值(×)、**装备百分比回收(maxHp /)**」
-		##     · shield_synergy_system.gd:27: 「冲击波伤害口径: maxHp / HP_MULT × pct(**要除 HP_MULT**)」,
-		##       下面还记着一次事故: 有人写成 maxHp × pct, 「与伤害口径差了整整 3 倍」
-		##     · equip_system.gd(039 竹箭): 「这个百分比乘的是 maxHp / HP_MULT —— **只抽百分比, 不动那个除法**」
-		##   ⇒ 047 与 039 / 盾羁绊冲击波走的是同一条口径, 代码是对的。
-		##   ★我犯的错是**没拿已知答案的样本校准尺子**就下结论(memory fb-verify-check-can-fail
-		##     的那条「★★新尺子先拿已知答案的样本量一遍」)。
-		##   ★仍然成立的半条(但性质不同, 也不是 047 一件的事):
-		##     玩家读文案「15% 自身最大生命值」会对着血条上的数去算, 得到实际的 3 倍。
-		##     这是**全仓所有「X% 最大生命值」装备共有的文案口径问题**(039 / 盾羁绊 / 020 同样),
-		##     要改是统一改文案口径, 属另一件事。
-		##   ⇒ 本条断言保留: 它钉住的是「口径是 maxHp/HP_MULT」这件事, 谁哪天顺手把除法删了会当场红。
-		_ok("② ★★★%d 星实发 %.1f = maxHp ÷ HP_MULT × %.0f%%(本仓标准口径; 折屏幕 maxHp 的 %.2f%%, 文案写 %.0f%%)"
-			% [si + 1, from_hp, EXP_HAMMER_PCT[si] * 100.0,
-			   100.0 * EXP_HAMMER_PCT[si] / _s.HP_MULT, EXP_HAMMER_PCT[si] * 100.0],
-			absf(from_hp - want_div) < 1.0,
-			"口径 = maxHp/HP_MULT×pct(本仓标准); 若按屏幕上的 maxHp 直算会是 %.1f" % want_final)
+		## ★★★【2026-10-04 再订正】2026-09-14 那次把「maxHp / HP_MULT」订正成"本仓标准口径"、
+		##   并让本条钉住那个除法 —— 用户拍板那才是缺陷:「肯定是代码去掉除以3啊」。
+		##   文案「4/6/15% 自身最大生命值」一直是对的, 改的是代码; 期望值 = 真实 maxHp × 文案百分比。
+		##   (同批改掉的还有 039 竹箭 / 020 哑铃 / 盾羁绊冲击波, 见 verify_eq_maxhp_pct_basis)
+		_ok("② ★★★%d 星实发 %.1f = 真实 maxHp × %.0f%%(文案值)"
+			% [si + 1, from_hp, EXP_HAMMER_PCT[si] * 100.0],
+			absf(from_hp - want_final) < 1.0,
+			"期望 %.1f; 若是它的 1/3 就是又除了 HP_MULT" % want_final)
 		## ★★「**动态**成长」: maxHp 翻倍, hammer 那一份必须跟着翻倍
 		var before: float = float(c2["atk"])
 		c2["maxHp"] = mhp * 2.0

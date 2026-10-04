@@ -24,10 +24,10 @@ extends RefCounted
 ##   基础龟（944 血）挨 400 → 打 25 真伤；不沉之锚 3★（+4000 血）挨 400 → 打 132 真伤。
 ##   ⇒ 这条效果**天然偏向肉龟**，与盾的主题一致，但它不是"人人平等"的。
 ##
-## ★冲击波伤害口径：`maxHp / HP_MULT × pct`（**要除 HP_MULT**）。
-##   先例是哑铃 `equip_system.gd:428`，也是 CLAUDE.md §3.1 说的"装备百分比回收"。
+## ★冲击波伤害口径：`maxHp × pct`（**真实 maxHp，不除 HP_MULT**·用户 2026-10-04「肯定是代码去掉除以3啊」）。
+##   以前这里写「要除 HP_MULT」，实发只有文案的 1/3；CLAUDE.md §3.1 已改：装备 % 最大生命一律按真实 maxHp。
 ##   ★护盾不再按最大生命算 —— 2026-08-03 用户改成【冲击波伤害的 20%】。
-##   原写法「伤害 = maxHp/HP_MULT×pct，护盾 = maxHp×pct」差了整整 3 倍，
+##   (更早)原写法「伤害 = maxHp/HP_MULT×pct，护盾 = maxHp×pct」差了整整 3 倍，
 ##   而文案写的是"等量" ⇒ 玩家看到的和实际拿到的对不上，且**看不出来**（刻度差，不是笔误）。
 ##   按伤害算之后文案与实装天然一致。
 
@@ -124,8 +124,8 @@ func _shockwave(u: Dictionary, tier: int):
 	var t = battle._targeting._nearest_enemy(u)
 	if not (t is Dictionary) or not (t as Dictionary).get("alive", false):
 		return null               # ★没打出去就没有护盾 —— 护盾现在是【伤害的副产品】(见下)
-	# ★除 HP_MULT: "自身 X% 最大生命 → 打给别人的伤害"(先例 equip_system.gd:428 哑铃)
-	var dmg: int = maxi(1, int(float(u.get("maxHp", 0.0)) / battle.HP_MULT * pct))
+	# ★不除 HP_MULT: "自身 X% 最大生命" 就是屏幕上那个 maxHp 的 X%(用户 2026-10-04「肯定是代码去掉除以3啊」)
+	var dmg: int = maxi(1, int(float(u.get("maxHp", 0.0)) * pct))
 	battle._damage._apply_damage_from(u, t, dmg, Color("#ffd93d"), 0.0, true)   # raw=true → 真实伤害
 	# ★★2026-08-03 用户改: 护盾从「等量最大生命百分比」改成【冲击波伤害的 20%】。
 	#   原写法 `maxHp × pct` 与伤害 `maxHp / HP_MULT × pct` 差了整整 HP_MULT(=3) 倍 ——
