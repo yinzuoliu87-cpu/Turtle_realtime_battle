@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/verify_theme_decor_census.gd" id="1_tdc"]
+
+[node name="VerifyThemeDecorCensus" type="Node"]
+script = ExtResource("1_tdc")

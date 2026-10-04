@@ -64,7 +64,7 @@ func _fp(scene) -> String:
 
 ## pairs = [[turtle_id, side, x, y, [装备 id...]], ...]
 ## 返回 [逐步指纹数组, det模式?, 最多同时在跑的tween数, 全场累计承伤]
-func _trace(pairs: Array, frames: int, loadouts: Dictionary = {}) -> Array:
+func _trace(pairs: Array, frames: int, loadouts: Dictionary = {}, cast_probe: bool = false) -> Array:
 	RB.DEBUG_EDIT = true
 	var s = RB.new()
 	add_child(s)
@@ -115,10 +115,28 @@ func _trace(pairs: Array, frames: int, loadouts: Dictionary = {}) -> Array:
 	var tw_max := 0
 	var copy_casts := 0
 	var cd_prev := -1.0
+	## ★`cast_probe` 场景的分母(⑫⑬): 每只左队单位放了几次主动技。数的是产品自己写的
+	##   `skill_cd[技]` **抬头**(放技成功后冷却被写满) —— 与上面龟壳那条同一个口径, 不是我插的标记。
+	var casts := {}     # "序号:id" → 次数
+	var cd_last := {}   # "序号:id:技" → 上一步的冷却
 	for _i in range(frames):
 		await get_tree().process_frame
 		tr.append(_fp(s))
 		tw_max = maxi(tw_max, s._sim_tweens.size())
+		if cast_probe:
+			var ui := 0
+			for u4 in s._units:
+				var uk: String = "%d:%s" % [ui, str(u4.get("id", "?"))]
+				ui += 1
+				if str(u4.get("side", "")) != "left": continue
+				if not casts.has(uk): casts[uk] = 0
+				var cds = u4.get("skill_cd", {})
+				if not (cds is Dictionary): continue
+				for sk in (cds as Dictionary):
+					var ck: String = uk + ":" + str(sk)
+					var cv: float = float((cds as Dictionary)[sk])
+					if cd_last.has(ck) and cv > float(cd_last[ck]) + 0.001: casts[uk] = int(casts[uk]) + 1
+					cd_last[ck] = cv
 		if has_shell:
 			for u3 in s._units:
 				if str(u3.get("id", "")) != "shell" or str(u3.get("side", "")) != "left": continue
@@ -132,14 +150,15 @@ func _trace(pairs: Array, frames: int, loadouts: Dictionary = {}) -> Array:
 	s.queue_free()
 	await get_tree().process_frame
 	await get_tree().process_frame
-	return [tr, det, tw_max, taken, pool_n, copy_casts]
+	return [tr, det, tw_max, taken, pool_n, copy_casts, casts]
 
 
 ## 同种子跑两遍 → 逐步比对。返回 [分叉步数, 比对步数, 首个分叉步, A的trace, 附注]
-func _two_runs(pairs: Array, frames: int, sd: String, loadouts: Dictionary = {}) -> Array:
+func _two_runs(pairs: Array, frames: int, sd: String, loadouts: Dictionary = {},
+		cast_probe: bool = false) -> Array:
 	OS.set_environment("TURTLE_SEED", sd)
-	var a: Array = await _trace(pairs, frames, loadouts)
-	var b: Array = await _trace(pairs, frames, loadouts)
+	var a: Array = await _trace(pairs, frames, loadouts, cast_probe)
+	var b: Array = await _trace(pairs, frames, loadouts, cast_probe)
 	OS.set_environment("TURTLE_SEED", "")
 	var ta: Array = a[0]
 	var tb: Array = b[0]
@@ -156,12 +175,12 @@ func _two_runs(pairs: Array, frames: int, sd: String, loadouts: Dictionary = {})
 	var note := "det=%s 比对步数=%d tween峰值=%d 全场承伤=%.0f 不同指纹=%d 可抄池=%d 复制施放=%d" % [
 		str(a[1]), n, int(a[2]), float(a[3]), uniq.size(), int(a[4]), int(a[5])]
 	return [bad, n, first, ta, note, int(a[2]), float(a[3]), uniq.size(), tb,
-		int(a[4]), int(a[5]), int(b[4]), int(b[5])]
+		int(a[4]), int(a[5]), int(b[4]), int(b[5]), a[6], b[6]]
 
 
 func _scenario(tag: String, pairs: Array, frames: int, sd: String, loadouts: Dictionary = {},
-		copy_probe: bool = false) -> void:
-	var r: Array = await _two_runs(pairs, frames, sd, loadouts)
+		copy_probe: bool = false, cast_probe: bool = false) -> void:
+	var r: Array = await _two_runs(pairs, frames, sd, loadouts, cast_probe)
 	var bad: int = int(r[0])
 	var n: int = int(r[1])
 	var first: int = int(r[2])
@@ -184,6 +203,17 @@ func _scenario(tag: String, pairs: Array, frames: int, sd: String, loadouts: Dic
 		_ok("分母 · %s · 两遍都真的放过【复制】(A %d 次 / B %d 次, 都须 ≥ 1)" % [tag, int(r[10]), int(r[12])],
 			int(r[10]) >= 1 and int(r[12]) >= 1,
 			"数的是 skill_cd[\"shellCopy\"] 抬头(RealtimeBattle3DScene.gd:2618 写的), 不是我插的标记")
+	## ★★`cast_probe`(⑫⑬ 补覆盖那两条)的分母: 左队**每一只**两遍都真的放过主动技。
+	##   不放技 = 那只龟只是站着普攻, 它的技能系统照样没被量到 —— 补覆盖就成了空跑。
+	if cast_probe:
+		var ca: Dictionary = r[13]
+		var cb: Dictionary = r[14]
+		var silent: Array = []
+		for k in ca:
+			if int(ca[k]) < 1 or int(cb.get(k, 0)) < 1: silent.append("%s(A%d/B%d)" % [k, int(ca[k]), int(cb.get(k, 0))])
+		_ok("分母 · %s · 左队 %d 只两遍都真的放过主动技(A %s)" % [tag, ca.size(), str(ca)],
+			ca.size() >= 5 and silent.is_empty(),
+			"没放过技的: %s —— 数的是产品写的 skill_cd 抬头" % str(silent))
 	# ★正题
 	var d := ""
 	if first >= 0:
@@ -227,7 +257,30 @@ func _ready() -> void:
 	## ★分母: 表里必须正好 9 个场景 —— 少一个就是有人把场景删了而没人发现。
 	var scs: Array = SC.all()
 	_ok("分母 · 场景表读到 %d 个场景(与 verify_determinism_cross 同一份表)" % scs.size(),
-		scs.size() == 11, "%d 个" % scs.size())
+		scs.size() == 13, "%d 个" % scs.size())
+	## ★★28 龟覆盖(2026-10-04 加): pets.json 里的**每一只**龟至少在一个场景里出场。
+	##   在这之前 10 只从没出现过(angel/ice/ghost/candy/line/phoenix/lava/chest/space/headless),
+	##   而没有任何判据会因此红 —— 下一只新龟加进来时同样会静静地漏掉。
+	##   名单取**产品自己的数据**(DataRegistry 读的同一份 pets.json), 不在这里手抄。
+	var pet_ids: Array = []
+	var pf := FileAccess.open("res://data/pets.json", FileAccess.READ)
+	if pf != null:
+		var pj = JSON.parse_string(pf.get_as_text())
+		pf.close()
+		var plist: Array = pj if pj is Array else ((pj as Dictionary).get("pets", []) if pj is Dictionary else [])
+		for pe in plist:
+			if pe is Dictionary and (pe as Dictionary).has("id"): pet_ids.append(str((pe as Dictionary)["id"]))
+	var seen_ids := {}
+	for sc0 in scs:
+		for p1 in ((sc0 as Dictionary)["pairs"] as Array):
+			seen_ids[str((p1 as Array)[0])] = true
+	var uncovered: Array = []
+	for pid0 in pet_ids:
+		if not seen_ids.has(pid0): uncovered.append(pid0)
+	_ok("分母 · pets.json 读到 %d 只龟(读不到 = 下一条是空检查)" % pet_ids.size(), pet_ids.size() >= 28,
+		"%d 只" % pet_ids.size())
+	_ok("★28 龟覆盖 · 每只龟至少在一个确定性场景里出场(缺 %d 只)" % uncovered.size(),
+		uncovered.is_empty(), "从没出场: %s" % str(uncovered))
 	for sc in scs:
 		var scd: Dictionary = sc
 		## ⑩ 龟壳复制那一条要多两个分母(可抄池 / 真的放过复制) —— 判别靠摆位里有没有 shell,
@@ -236,7 +289,8 @@ func _ready() -> void:
 		for p0 in (scd["pairs"] as Array):
 			if str((p0 as Array)[0]) == "shell": cp = true
 		await _scenario(str(scd["tag"]), scd["pairs"] as Array, int(scd["frames"]),
-			str(scd["seed"]), scd.get("loadouts", {}) as Dictionary, cp)
+			str(scd["seed"]), scd.get("loadouts", {}) as Dictionary, cp,
+			bool(scd.get("cast_probe", false)))
 
 	# ⑩ 反证(非恒真式): 换种子 → 逐步指纹序列必须不同; 否则说明结果根本不吃 _battle_rng
 	## ★与场景 ② 同一套摆位(共用表里取) —— 唯一的变量只能是种子

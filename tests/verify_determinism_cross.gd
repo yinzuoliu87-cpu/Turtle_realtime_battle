@@ -47,7 +47,7 @@ extends Node
 ## · **ARM 没验**: 玩家跑 iOS(ARM64), 而 CI 只出 IPA、不跑测试。本门禁证明的是
 ##   「Windows/MSVC ↔ Linux/glibc 一致」。ARM 要么上 macOS/ARM runner,
 ##   要么做成「首次上线时用真机跑一次并把摘要回传」。**在那之前不许声称跨设备确定**。
-## · 只覆盖这 11 个场景。场景外的技能/装备没被这条尺子量过。
+## · 只覆盖这 13 个场景(2026-10-04 ⑫⑬ 补齐 28 龟: 每只龟至少出场一次)。场景外的技能/装备没被这条尺子量过。
 ##
 ## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_determinism_cross.tscn --quit-after 12000
 
@@ -190,7 +190,7 @@ func _ready() -> void:
 
 	var scs: Array = SC.all()
 	_ok("★分母: 场景表读到 %d 个场景(与 verify_determinism_b 同一份表)" % scs.size(),
-		scs.size() == 11, "%d 个" % scs.size())
+		scs.size() == 13, "%d 个" % scs.size())
 
 	var golden: Dictionary = _load_golden()
 	var missing: Array = []
@@ -292,9 +292,37 @@ func _load_golden() -> Dictionary:
 	var f := FileAccess.open(GOLDEN_PATH, FileAccess.READ)
 	if f == null:
 		return {}
-	var p = JSON.parse_string(f.get_as_text())
+	var txt: String = f.get_as_text()
 	f.close()
+	_check_golden_eol(txt)
+	return _parse_golden(txt)
+
+
+## 金标文本 → {tag: 摘要}。★唯一的解析口, 下面那条行尾判据也走它(判的就是门禁真用的那个解析)。
+func _parse_golden(txt: String) -> Dictionary:
+	var p = JSON.parse_string(txt)
 	return p if p is Dictionary else {}
+
+
+## ★★金标比对**对行尾必须不敏感**(2026-10-04 补·`docs/plans/20261002-文案落点BBCode普查.md` §6 点名)。
+##   本仓 `core.autocrlf=true` ⇒ 新 clone / 新 worktree 检出来是 CRLF, CI(Linux) 与 Godot 写的是 LF。
+##   `verify_elite_anim` 就栽在这上面: 按行切、行尾多一个 CR ⇒ 新 worktree 必红、主仓绿。
+##   这一份今天走 JSON 解析(空白不敏感), 所以**现在**不瞎 —— 这条判据把「现在」钉住:
+##   哪天有人把解析换成按行切(比如为了逐行报 diff), CRLF 那一侧会读出带 CR 的键/值, 当场红。
+##   ★不靠"我看过 JSON 不在乎空白": 同一份文本**强制**造出 LF 版与 CRLF 版, 过同一个解析口, 结果必须逐键相同。
+func _check_golden_eol(txt: String) -> void:
+	var lf: String = txt.replace("\r\n", "\n")
+	var crlf: String = lf.replace("\n", "\r\n")
+	var a: Dictionary = _parse_golden(lf)
+	var b: Dictionary = _parse_golden(crlf)
+	var same: bool = a.size() == b.size()
+	var cr_in := 0
+	for k in b:
+		if str(k).contains("\r") or str(b[k]).contains("\r"): cr_in += 1
+		if not a.has(k) or str(a[k]) != str(b[k]): same = false
+	_ok("★分母: 金标 LF 版解析出 %d 条(0 条 = 下一条恒真)" % a.size(), a.size() >= 13, "%d 条" % a.size())
+	_ok("★金标比对与行尾无关: LF / CRLF 两种行尾过同一个解析口 ⇒ 逐键相同、键值里 0 个 CR(实测 %d 个)"
+		% cr_in, same and cr_in == 0, "LF %d 条 / CRLF %d 条 —— 解析对行尾敏感 ⇒ 新 worktree(CRLF) 与 CI(LF) 会读出两份不同的金标" % [a.size(), b.size()])
 
 
 ## 摘要对不上时, 报**第一个分叉步**与那一步里不同的段 —— 只说"摘要不同"等于没说。

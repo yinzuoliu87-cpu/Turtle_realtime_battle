@@ -849,6 +849,8 @@ run_audit "tools/vfx_discipline_audit.py" "ALL OK" "vfx_discipline (像素贴图
 run_audit "tools/stat_icon_audit.py" "ALL OK" "stat_icon (每个属性都有图标 / 色数 / 尺寸 / import)"
 run_audit "tools/tween_freeze_audit.py" "ALL OK" "tween_freeze (战斗世界侧的演出 tween 必须走 _reg_tween·否则时停冻不住)"
 run_audit "tools/tween_capture_audit.py" "ALL OK" "tween_capture (演出 tween 的 lambda 捕获了可能被释放的节点·台账只减不增)"
+run_audit "tools/battle_tween_audit.py" "ALL OK" "battle_tween (战斗路径裸 create_tween 不经 _reg_tween·确定性棘轮只减不增·A/B 两套实现对账)"
+run_audit "tools/menu_crowd_sync_audit.py" "ALL OK" "menu_crowd_sync (主菜单群像背景 == 生成器现在的产物·加龟/换立绘忘了重跑就红)"
 run_audit "tools/nine_bracket_audit.py" "ALL PASS" "nine_bracket (9 档进度档已彻底删除·匹配只认同场次·同名的周日对阵图不许误伤)"
 run_audit "tools/freed_is_order_audit.py" "ALL OK" "freed_is_order (先 is_instance_valid 再 is·对已释放对象 is 会报错并中断函数)"
 run_audit "tools/gate_offline_audit.py" "ALL OK" "gate_offline (门禁里每个起 Godot 跑场景的命令都必须关掉后端·不许打生产库)"
