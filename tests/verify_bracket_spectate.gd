@@ -306,15 +306,23 @@ func _t_spectate() -> void:
 		"✓ 条数 = %d" % _count_ticks(m._canvas))
 	_ok("③ ★★阵容快照没进缓存", str(SB.finals_week_cached()).find("snapshot") < 0
 		and str(SB.finals_week_cached()).find("leaders") < 0)
+	## ★2026-10-04 周末看回放: 观众能点**已翻面**的格子看回放(REPLAY_LIVE), 但**永远不会替人去问对手**。
+	##   原判据「一场都点不动」拆成两条: 问对手 0 场 / 可点 == 已翻面那几场(当前轮仍点不开)。
 	var clickable := 0
+	var fetchable := 0
 	var nmatch := 0
 	for r in range(1, 3):
 		for mm in range(preload("res://scripts/gamedata/bracket.gd").matches_in_round(4, r)):
 			nmatch += 1
-			if m.can_open(r, mm) or m.should_fetch_opponent(r, mm):
+			if m.should_fetch_opponent(r, mm):
+				fetchable += 1
+			if m.can_open(r, mm) and m.match_state(r, mm) != m.ST_DONE:
 				clickable += 1
-	_ok("③ ★★只读: %d 场一场都点不动(不会替人去问对手)" % nmatch, nmatch == 3 and clickable == 0,
-		"可点 %d" % clickable)
+	_ok("③ ★★只读: %d 场一场都不会替人去问对手" % nmatch, nmatch == 3 and fetchable == 0,
+		"会问 %d" % fetchable)
+	_ok("③ ★★观众能点的只有已翻面的(看回放), 当前轮一格都点不开", clickable == 0
+		and m.can_open(1, 0) == m.REPLAY_LIVE and m.can_open(1, 1) == m.REPLAY_LIVE and not m.can_open(2, 0),
+		"非翻面可点 %d" % clickable)
 	_ok("③ 观众不显示「备战购物」那一行", m._shop_row == null or not m._shop_row.visible,
 		str(m._shop_row.text) if m._shop_row != null else "")
 	m._spec_step(1)

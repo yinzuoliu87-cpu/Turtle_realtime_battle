@@ -1523,6 +1523,10 @@ func _week_close_block(now: int) -> Control:
 	else:
 		head = "距收盘 %s" % _left_text(left)
 		sub = "本地 %s" % _local_stamp(now + left)
+	## ★周六(闯关赛上线时)这一块是赛况板的门: 收盘前、封盘、收盘后都开着(收盘后正是看全场结果的时候)。
+	if ph == _P2C.PHASE_GAUNTLET and _P2C.phase_mode_live(_P2C.PHASE_GAUNTLET) \
+			and kind in [BK_COUNTDOWN, BK_LOCKED, BK_CLOSED_TODAY]:
+		return _gauntlet_board_entry(head, sub)
 	return _close_block_labels(head, sub)
 
 
@@ -1534,12 +1538,68 @@ const BRACKET_SCENE := "BracketMap"
 ## 周日决赛日的门。★一整块都能按 —— 那一格本来就只有两行字, 做成"字旁边一个小按钮"
 ##   反而更难点中(触控下限 81px 是全项目同一条线)。
 func _finals_entry() -> Control:
-	var b := Button.new()
-	b.custom_minimum_size = Vector2(150, 81)
 	## ★★2026-09-27 去掉行尾的「→」。它跟上面状态行那个「›」是同一族:
 	##   网页的「更多 →」写法 —— 用一个箭头告诉人"这里可以点"。
 	##   这一整块本来就是一个 150×81 的按钮(触控下限), 不需要箭头来交代。
-	b.text = "决赛日\n看对阵图"
+	return _door("决赛日\n看对阵图", _open_bracket_map)
+
+
+## 周六赛况板那扇门(周末看回放 2026-10-04, docs/plans/20261004-周末看回放.md)。
+## ★与周日「看对阵图」**同一扇门**(`_door`: 同一张 `ui/panel-wide.png`、同一个尺寸) —— 不另造一种长相。
+## ★原来那两行(倒计时 / 收盘时刻或「明天决赛日 · 几点开打」)**一字不动**, 第三行说点进去看什么 ——
+##   第一版把第二行让给了「全场赛况」, `verify_week_strip` ⑥ 当场红: 周六收盘后那句「明天决赛日 · 本地 X 开打」没了。
+##   ⇒ 不是把字塞进 Button.text(Button 不按内容长宽), 而是**一块贴着内容的牌子 + 盖一层透明按钮**
+##   (与战绩页回放行同一个做法)。牌子皮与周日那扇门同一张 `ui/panel-wide.png`, 高度同为 81(触控下限)。
+const GAUNTLET_BOARD_SCENE := "GauntletBoard"
+const GAUNTLET_BOARD_LINE := "全场赛况"
+
+
+func _gauntlet_board_entry(head: String, sub: String) -> Control:
+	var pc := PanelContainer.new()
+	pc.name = "GauntletBoardPlate"
+	pc.custom_minimum_size = Vector2(150, 81)
+	pc.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var fsb := StyleBoxFlat.new()
+	fsb.bg_color = Color(0.05, 0.16, 0.15, 0.94)
+	fsb.set_border_width_all(0)
+	fsb.set_corner_radius_all(0)
+	var skin: StyleBox = UISkin.nine("ui/panel-wide.png", 8, fsb)
+	skin.content_margin_left = 10; skin.content_margin_right = 10
+	skin.content_margin_top = 4; skin.content_margin_bottom = 4
+	pc.add_theme_stylebox_override("panel", skin)
+	var v: Control = _close_block_labels(head, sub)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var go := Label.new()
+	go.text = GAUNTLET_BOARD_LINE
+	go.add_theme_font_size_override("font_size", 14)
+	go.add_theme_color_override("font_color", Color("#4ff0d0"))
+	go.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	v.add_child(go)
+	pc.add_child(v)
+	var b := Button.new()
+	b.name = "GauntletBoardDoor"
+	b.flat = true
+	b.focus_mode = Control.FOCUS_NONE
+	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	for st in ["normal", "hover", "pressed", "focus", "disabled"]:
+		b.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	## 按下 / 悬停的反馈打在整块牌子上(与 `_door` 同一组系数)
+	b.mouse_entered.connect(func() -> void: pc.self_modulate = Color(1.22, 1.22, 1.22))
+	b.mouse_exited.connect(func() -> void: pc.self_modulate = Color.WHITE)
+	b.pressed.connect(_open_gauntlet_board)
+	pc.add_child(b)
+	return pc
+
+
+func _open_gauntlet_board() -> void:
+	_go(GAUNTLET_BOARD_SCENE)
+
+
+## 赛程条右端那扇门(周日对阵图 / 周六赛况板共用)。
+func _door(text: String, cb: Callable) -> Button:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(150, 81)
+	b.text = text
 	b.add_theme_font_size_override("font_size", 15)
 	b.add_theme_color_override("font_color", Color("#4ff0d0"))
 	## ★★2026-09-27 上皮。原来它用的是 **Godot 默认皮**(圆角纯灰), 与全屏其它按钮完全两个味。
@@ -1589,7 +1649,7 @@ func _finals_entry() -> Control:
 	b.add_theme_stylebox_override("hover", fhov)
 	b.add_theme_stylebox_override("pressed", fprs)
 	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	b.pressed.connect(_open_bracket_map)
+	b.pressed.connect(cb)
 	return b
 
 

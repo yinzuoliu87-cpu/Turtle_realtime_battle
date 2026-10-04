@@ -519,6 +519,7 @@ scripts/scenes/BracketMapScene.gd|lit|本周没有你这一组 · 周六闯关�
 scripts/scenes/BracketMapScene.gd|lit|本轮备战已结束 · 等开打
 scripts/scenes/BracketMapScene.gd|lit|正在摆你这一组的对阵
 scripts/scenes/BracketMapScene.gd|lit|正在翻本周的名册 · 看看你分在哪一组
+scripts/scenes/BracketMapScene.gd|lit|正在读取这一场…
 scripts/scenes/BracketMapScene.gd|lit|神秘龟
 scripts/scenes/BracketMapScene.gd|lit|第 %d 组冠军 · %s%s
 scripts/scenes/BracketMapScene.gd|lit|轮空
@@ -531,7 +532,7 @@ scripts/scenes/BracketMapScene.gd|text|下一轮 %s后开播
 scripts/scenes/BracketMapScene.gd|text|你本周未晋级 · 只能看 · 第 %d 组
 scripts/scenes/BracketMapScene.gd|text|回到我
 scripts/scenes/BracketMapScene.gd|tooltip_text|上场开打
-scripts/scenes/BracketMapScene.gd|tooltip_text|开播
+scripts/scenes/BracketMapScene.gd|tooltip_text|重看这一场
 scripts/scenes/CodexScene.gd|lit|+%d 龟币
 scripts/scenes/CodexScene.gd|lit|× 关闭
 scripts/scenes/CodexScene.gd|lit|全体等级 (战斗内强制两队同档)
@@ -563,6 +564,26 @@ scripts/scenes/CodexScene.gd|text|✓ %d 龟 / %d 装备 / %d 羁绊 / %d 状态
 scripts/scenes/CodexScene.gd|text|❌ DataRegistry 未加载
 scripts/scenes/CodexScene.gd|text|龟币: %d   龟种: %d\n等级分布: %s\n战斗: %s
 scripts/scenes/CodexScene.gd|text|🛠 调试面板
+scripts/scenes/GauntletBoardScene.gd|lit| · 已收盘
+scripts/scenes/GauntletBoardScene.gd|lit|%d 分钟前
+scripts/scenes/GauntletBoardScene.gd|lit|%d 天前
+scripts/scenes/GauntletBoardScene.gd|lit|%d 小时前
+scripts/scenes/GauntletBoardScene.gd|lit|刚刚
+scripts/scenes/GauntletBoardScene.gd|lit|周六赛况
+scripts/scenes/GauntletBoardScene.gd|lit|回放
+scripts/scenes/GauntletBoardScene.gd|lit|对
+scripts/scenes/GauntletBoardScene.gd|lit|战绩榜
+scripts/scenes/GauntletBoardScene.gd|lit|最近打完的对局
+scripts/scenes/GauntletBoardScene.gd|lit|本周闯关赛 · %d 人 · %d 场%s
+scripts/scenes/GauntletBoardScene.gd|lit|本周闯关赛还没有打完的对局
+scripts/scenes/GauntletBoardScene.gd|lit|正在取本周闯关赛况…
+scripts/scenes/GauntletBoardScene.gd|lit|看全部
+scripts/scenes/GauntletBoardScene.gd|lit|读取中
+scripts/scenes/GauntletBoardScene.gd|lit|赛况暂无
+scripts/scenes/GauntletBoardScene.gd|lit|赢
+scripts/scenes/GauntletBoardScene.gd|lit|这个版本没接服务器，看不到全场赛况
+scripts/scenes/GauntletBoardScene.gd|lit|（我）
+scripts/scenes/GauntletBoardScene.gd|text|%s 今天的对局
 scripts/scenes/InventoryScene.gd|lit|  这件不加属性，只有效果
 scripts/scenes/InventoryScene.gd|lit|[color=#8fa6bb]这件不加属性，只有效果[/color]
 scripts/scenes/InventoryScene.gd|lit|[color=#8fa6bb]这件只加属性，不带效果[/color]
@@ -641,10 +662,12 @@ scripts/scenes/MainMenuScene.gd|lit|今日已收盘
 scripts/scenes/MainMenuScene.gd|lit|休赛日
 scripts/scenes/MainMenuScene.gd|lit|但你已晋级, 周六闯关赛见
 scripts/scenes/MainMenuScene.gd|lit|但你已过晋级线, 周六闯关赛见
+scripts/scenes/MainMenuScene.gd|lit|全场赛况
 scripts/scenes/MainMenuScene.gd|lit|决赛日
 scripts/scenes/MainMenuScene.gd|lit|决赛日 · 去看对阵图
 scripts/scenes/MainMenuScene.gd|lit|决赛日 · 本周没晋级
 scripts/scenes/MainMenuScene.gd|lit|决赛日 · 闯关赛止步 %s
+scripts/scenes/MainMenuScene.gd|lit|决赛日\n看对阵图
 scripts/scenes/MainMenuScene.gd|lit|周
 scripts/scenes/MainMenuScene.gd|lit|周%s %02d:%02d 收盘
 scripts/scenes/MainMenuScene.gd|lit|周二开赛 · 本日维护
@@ -684,7 +707,6 @@ scripts/scenes/MainMenuScene.gd|lit|🔒 本周没晋级 · 积分赛命用完�
 scripts/scenes/MainMenuScene.gd|lit|🔒 本大轮打完第一场才开店
 scripts/scenes/MainMenuScene.gd|text| 今
 scripts/scenes/MainMenuScene.gd|text|先下场练练
-scripts/scenes/MainMenuScene.gd|text|决赛日\n看对阵图
 scripts/scenes/MainMenuScene.gd|text|开打
 scripts/scenes/MainMenuScene.gd|text|斗龟场
 scripts/scenes/MainMenuScene.gd|text|来一场热身局, 我教你挑龟、摆阵
@@ -1039,9 +1061,7 @@ scripts/scenes/battle/battle_hud.gd|lit|再打
 scripts/scenes/battle/battle_hud.gd|lit|决赛日 · 不消耗生命 · 胜负在下一轮开播时揭晓
 scripts/scenes/battle/battle_hud.gd|lit|前往商店
 scripts/scenes/battle/battle_hud.gd|lit|剩余生命
-scripts/scenes/battle/battle_hud.gd|lit|回放结束 —— 
 scripts/scenes/battle/battle_hud.gd|lit|大师
-scripts/scenes/battle/battle_hud.gd|lit|失败
 scripts/scenes/battle/battle_hud.gd|lit|完成新手教学
 scripts/scenes/battle/battle_hud.gd|lit|左队(友军)
 scripts/scenes/battle/battle_hud.gd|lit|战报
@@ -1060,7 +1080,6 @@ scripts/scenes/battle/battle_hud.gd|lit|生命已耗尽 · 本赛季结束
 scripts/scenes/battle/battle_hud.gd|lit|精英
 scripts/scenes/battle/battle_hud.gd|lit|练习赛 · 不计入赛季进度
 scripts/scenes/battle/battle_hud.gd|lit|继续
-scripts/scenes/battle/battle_hud.gd|lit|胜利
 scripts/scenes/battle/battle_hud.gd|lit|表演赛 · 不消耗生命
 scripts/scenes/battle/battle_hud.gd|lit|装备星级
 scripts/scenes/battle/battle_hud.gd|lit|认输
@@ -1431,22 +1450,34 @@ scripts/systems/equip/swordsman_system.gd|lit|剑
 scripts/systems/equip/synergy_system.gd|lit|剑
 scripts/systems/equip/synergy_system.gd|lit|食物
 scripts/systems/equip/timestop_system.gd|lit|+%d龟能
+scripts/systems/replay/gauntlet_board.gd|lit|在打
+scripts/systems/replay/gauntlet_board.gd|lit|已出局
+scripts/systems/replay/gauntlet_board.gd|lit|已晋级
 scripts/systems/replay/replay_fetcher.gd|lit|服务器上找不到这场回放（每周二清掉上周的回放）
 scripts/systems/replay/replay_fetcher.gd|lit|服务器这会儿出了点问题（%d），稍后再试
 scripts/systems/replay/replay_fetcher.gd|lit|等了太久服务器都没回音，稍后再试
 scripts/systems/replay/replay_fetcher.gd|lit|账号还没连上服务器，检查一下网络再试
+scripts/systems/replay/replay_fetcher.gd|lit|这一场没有留下回放
+scripts/systems/replay/replay_fetcher.gd|lit|这一场还没揭晓，揭晓之后再来看
+scripts/systems/replay/replay_fetcher.gd|lit|这一场还没有结果
+scripts/systems/replay/replay_fetcher.gd|lit|这一组已经不在了
 scripts/systems/replay/replay_fetcher.gd|lit|这个版本没接服务器，只能看在这台设备上打的比赛
 scripts/systems/replay/replay_fetcher.gd|lit|这场回放的数据坏了，播不了
+scripts/systems/replay/replay_fetcher.gd|lit|这场的回放还没开放
 scripts/systems/replay/replay_fetcher.gd|lit|连不上服务器，检查一下网络再试
 scripts/systems/replay/replay_recorder.gd|lit|事件 %s 在本机没能发生
 scripts/systems/replay/replay_recorder.gd|lit|事件 %s(第 %d 步)没有发生
 scripts/systems/replay/replay_recorder.gd|lit|回放格式不认识
+scripts/systems/replay/replay_recorder.gd|lit|回放结束 —— 
+scripts/systems/replay/replay_recorder.gd|lit|回放结束 —— %s 赢了
 scripts/systems/replay/replay_recorder.gd|lit|回放记录读不出来
+scripts/systems/replay/replay_recorder.gd|lit|失败
 scripts/systems/replay/replay_recorder.gd|lit|开打时场上单位与录制时不同
 scripts/systems/replay/replay_recorder.gd|lit|录制那一局在第 %d 步已经结束, 本机还没结束
 scripts/systems/replay/replay_recorder.gd|lit|校验点 %d 对不上
 scripts/systems/replay/replay_recorder.gd|lit|校验点 %d: 一边在摆位一边不在
 scripts/systems/replay/replay_recorder.gd|lit|终局对不上
+scripts/systems/replay/replay_recorder.gd|lit|胜利
 scripts/systems/replay/replay_recorder.gd|lit|这场比赛是旧版本(%s)打的, 当前版本(%s)播不了
 scripts/systems/skills/candy_system.gd|lit|喂!
 scripts/systems/skills/candy_system.gd|lit|甜蜜掠夺 -

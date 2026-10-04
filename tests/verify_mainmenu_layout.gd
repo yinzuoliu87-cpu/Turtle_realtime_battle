@@ -486,7 +486,9 @@ func _ready() -> void:
 		##                 原来只有前两档 ⇒ 翻开关那天「建不出文字」+「没倒计时」两条假红。
 		"周一休赛": [1789344000, "note"],
 		"周四积分赛": [1789603200, "countdown"],
-		"周六闯关赛": [1789776000, "countdown"],
+		## ★★2026-10-04 周末看回放: 周六那一格变成**赛况板的门**, 门上第一行仍是倒计时
+		##   (docs/plans/20261004-周末看回放.md)。原来是 "countdown" 两行字。
+		"周六闯关赛": [1789776000, "board_door"],
 		## ★★2026-09-25 用户「周日要打开」 ⇒ PHASE_MODE_LIVE[FINALS] 翻成 true,
 		##   周日那格不再挂「还没上线」, 改成照常倒计时(与周六同)。
 		##   下一个阶段上线时还是手动同步这一列 —— 故意不写成
@@ -507,7 +509,7 @@ func _ready() -> void:
 					btxt.append(str((bc as Label).text).strip_edges())
 		var bj := " / ".join(PackedStringArray(btxt))
 		var want_note: String = _P2M.phase_pending_note(_P2M.phase_at_utc(ts_d))
-		if want_kind == "door":
+		if want_kind == "door" or want_kind == "board_door":
 			## ★★★周日决赛日上线之后这一格是**门**不是字。判据卡三件:
 			##   ① 真的建出了一个能按的 Button(不是摆一行字冒充)
 			##   ② 上面写着通到哪(玩家得看得懂按下去会发生什么)
@@ -528,8 +530,15 @@ func _ready() -> void:
 				"Button %d 个 / 文字 %s" % [btns.size(), bj])
 			if btns.size() >= 1:
 				var bt: Button = btns[0]
-				_ok("⑬c ★%s: 门上写着通到哪(玩家看得懂)" % dn,
-					str(bt.text).find("对阵图") >= 0, str(bt.text).replace("\n", "⏎"))
+				if want_kind == "board_door":
+					## 周六: 门上第一行**照常给倒计时**(原 "countdown" 那条判据搬到门上), 第二行说通到哪
+					## 门是「牌子 + 透明按钮」, 字在牌子上的 Label 里(bj)
+					_ok("⑬c ★%s: 门上照常给倒计时" % dn,
+						bj.find("距收盘") >= 0 or bj.find("已封盘") >= 0, bj)
+					_ok("⑬c ★%s: 门上写着通到哪(全场赛况)" % dn, bj.find("全场赛况") >= 0, bj)
+				else:
+					_ok("⑬c ★%s: 门上写着通到哪(玩家看得懂)" % dn,
+						str(bt.text).find("对阵图") >= 0, str(bt.text).replace("\n", "⏎"))
 				_ok("⑬c ★★%s: 门**接了处理函数**(有按钮 ≠ 按了有用)" % dn,
 					bt.pressed.get_connections().size() >= 1,
 					"连了 %d 个" % bt.pressed.get_connections().size())

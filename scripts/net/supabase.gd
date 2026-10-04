@@ -1532,7 +1532,7 @@ func _headers(extra: String = "") -> PackedStringArray:
 ##   回到真实时间后照常补发。快照队列另外认 `BLOCKED_CODE`, 不为这次「没发」记退避。
 ## 判定成「读」的 RPC。★白名单而不是黑名单: 新加的 RPC 默认算写(漏登记的代价是假时间里读不到, 不是写进生产)。
 ##   ⚠ `finals_opponent` **不是**读 —— 它往 `finals_scout` 插一行(每人每轮只能问一个种子), 所以不在这里。
-const READ_RPCS := ["finals_view"]
+const READ_RPCS := ["finals_view", "finals_replay"]
 ## 快照上传被时间穿越拦下时交给回调的 code(区别于没网的 0)。
 const BLOCKED_CODE := -1
 ## 本进程里被拦下的写请求条数(观测量 / 门禁分母)。
@@ -2373,3 +2373,131 @@ func fetch_match(match_id: String, done: Callable) -> void:
 				print("[SupabaseNet] 录像没取到(matches) %s code=%d" % [str(r["err"]), int(r.get("code", 0))])
 			fin.call(r)
 			_bye())
+
+
+# ═════════════════════════════════════════════════════════════
+# 周末看回放(2026-10-04, docs/plans/20261004-周末看回放.md)
+#   ① 周六赛况板: 读本周所有闯关录像行的【摘要】(不取阵容 / 不取录像本体)
+#   ② 周日对阵图: 按 (周, 组, 轮, 场) 取**裁判采纳的那一份**录像(服务端 `finals_replay()`)
+# ═════════════════════════════════════════════════════════════
+
+## 赛况板一次最多取几行(≈166 人 × 6 场)。更多要分页(方案书 R7)。
+const BOARD_LIMIT := 1000
+
+
+## 纯函数: 赛况板要问的查询串。★只取 `profile`(名字 / 头像 / #ID)与对手的战绩标签,
+##   **不取** left/right_snapshot 整列(阵容)、不取 `replay`(录像本体, 点开那一场才按 match_id 取)、
+##   不取 left_account(赛况板按 #ID 认人, 用不着账号)。
+static func gauntlet_board_query(season_week: int) -> String:
+	if season_week <= 0:
+		return ""
+	return ("phase=eq.gauntlet&season_week=eq.%d&select=match_id,created_at,result,"
+		+ "lp:left_snapshot->profile,rp:right_snapshot->profile,"
+		+ "rw:right_snapshot->gl_w,rl:right_snapshot->gl_l"
+		+ "&order=created_at.desc&limit=%d") % [season_week, BOARD_LIMIT]
+
+
+## 纯函数: 回包 → {"rows": [...]}; 拿不到 → {"reason": "offline" / "server" / "unavailable"}(没有 rows 键)。
+##   404 = 表或列不认识(服务端还没部署 / 改过名) ⇒ "unavailable", 屏幕说「暂无」, 不说「网络不好」。
+static func parse_gauntlet_board(ok: bool, code: int, body: String) -> Dictionary:
+	if not ok:
+		return {"reason": "offline"}
+	if code == 404:
+		return {"reason": "unavailable"}
+	if code < 200 or code >= 300:
+		return {"reason": "server"}
+	var j := JSON.new()
+	if j.parse(body) != OK or not (j.data is Array):
+		return {"reason": "server"}
+	var out: Array = []
+	for r in (j.data as Array):
+		if r is Dictionary and is_uuid(str((r as Dictionary).get("match_id", ""))):
+			out.append(r)
+	return {"rows": out}
+
+
+## 取赛况板。返回 false = 连节点都没建(没配后端)。`done.call(res)` 恰好一次(形状同 `parse_gauntlet_board`,
+##   另有 "no_token" / "timeout")。调用方离场(`done` 失效)就不回调。
+static func fetch_gauntlet_board_async(season_week: int, done: Callable) -> bool:
+	if not enabled() or season_week <= 0:
+		return false
+	var n = _spawn()
+	if n == null:
+		return false
+	n._get_once("/rest/v1/matches?" + gauntlet_board_query(season_week), "GET", "", done,
+		func(res: Dictionary) -> Dictionary:
+			return parse_gauntlet_board(bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", ""))))
+	return true
+
+
+## 纯函数: `finals_replay` 的请求体。键名与服务端对不上是这类接口最常见的死法, 门禁直接验它。
+static func finals_replay_body(week: int, bucket: int, round_no: int, match_no: int) -> Dictionary:
+	return {"p_week": week, "p_bucket": bucket, "p_round": round_no, "p_match": match_no}
+
+
+## 纯函数: `finals_replay` 回包 → {"err": "", "b64", "match_id"} 或 {"err": 原因码}。
+##   原因码: offline / server / unavailable(函数没部署: 404) / not_revealed / no_result / no_replay / no_bucket / corrupt。
+static func parse_finals_replay(ok: bool, code: int, body: String) -> Dictionary:
+	if not ok:
+		return {"err": "offline", "code": code}
+	if code == 404:
+		return {"err": "unavailable", "code": code}
+	if code < 200 or code >= 300:
+		return {"err": "server", "code": code}
+	var j := JSON.new()
+	if j.parse(body) != OK or not (j.data is Dictionary):
+		return {"err": "server", "code": code}
+	var d: Dictionary = j.data
+	if not bool(d.get("ok", false)):
+		var why := str(d.get("reason", "server"))
+		return {"err": why if why != "" else "server", "code": code}
+	var mid := str(d.get("match_id", ""))
+	var b = d.get("replay", null)
+	if not is_uuid(mid) or not (b is String) or (b as String) == "":
+		return {"err": "corrupt", "code": code}
+	return {"err": "", "b64": b, "match_id": mid, "code": code}
+
+
+static func fetch_finals_replay_async(week: int, bucket: int, round_no: int, match_no: int,
+		done: Callable) -> bool:
+	if not enabled() or week <= 0 or bucket < 0 or round_no < 1 or match_no < 0:
+		return false
+	var n = _spawn()
+	if n == null:
+		return false
+	n._get_once("/rest/v1/rpc/finals_replay", "POST",
+		JSON.stringify(finals_replay_body(week, bucket, round_no, match_no)), done,
+		func(res: Dictionary) -> Dictionary:
+			return parse_finals_replay(bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", ""))))
+	return true
+
+
+## 一次带登录令牌的读(GET 或只读 RPC): 先等令牌, 看门狗兜底, 回调**恰好一次**(与 `fetch_match` 同一个形状)。
+## `parse` 把原始回包 `{ok, code, body}` 翻成调用方要的字典。
+func _get_once(path: String, method: String, body: String, done: Callable, parse: Callable) -> void:
+	var st := {"done": false}
+	var fin := func(res: Dictionary) -> void:
+		if bool(st["done"]):
+			return
+		st["done"] = true
+		if done.is_valid():
+			done.call(res)
+	var tm := Timer.new()
+	tm.one_shot = true
+	tm.wait_time = match_fetch_timeout_for_test if match_fetch_timeout_for_test > 0.0 else MATCH_FETCH_TIMEOUT_SEC
+	add_child(tm)
+	tm.timeout.connect(func() -> void: fin.call({"err": "timeout", "reason": "timeout", "code": 0}))
+	tm.start()
+	## ★不拿公共匿名钥匙去读: 两条读都要 `auth.uid() is not null`(匿名钥匙读回来是 0 行 / not_signed_in)。
+	if not await _await_token():
+		fin.call({"err": "no_token", "reason": "no_token", "code": 0})
+		_bye()
+		return
+	if bool(st["done"]):
+		_bye()
+		return
+	_http(method, base_url().rstrip("/") + path, body,
+		func(res):
+			fin.call(parse.call(res))
+			_bye(),
+		"Content-Type: application/json" if method == "POST" else "")

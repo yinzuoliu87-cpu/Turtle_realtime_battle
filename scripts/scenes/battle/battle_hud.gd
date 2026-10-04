@@ -2358,7 +2358,7 @@ func _st_merge_all(pages: Array, side: String) -> Array:
 #  回放(20261003-跨设备回放 S1): 顶部「回放」条 + 退出钮 / 对不上的提示 / 收尾
 #  ★只在 `battle._replay.is_playing()` 时建。录制那一局什么都不加(玩家无感)。
 # ══════════════════════════════════════════════════════════════════════
-const REPLAY_EXIT_SCENE := "res://scenes/Record.tscn"
+## 看完回哪一页: 由播放入口定(`ReplayRecorder.exit_scene()`, 没给就是战绩页)。周末看回放(20261004)起赛况板 / 对阵图也能播。
 var _replay_bar: Control = null
 
 
@@ -2394,7 +2394,7 @@ func show_replay_mismatch() -> void:
 func show_replay_end(won: bool) -> void:
 	if battle._replay.diverged_at >= 0:
 		return   # 已经停下并提示过
-	_replay_notice("回放结束 —— " + ("胜利" if won else "失败"), Color("#ffd93d") if won else Color("#ff6b6b"))
+	_replay_notice(ReplayRecorder.end_caption(won), Color("#ffd93d") if won else Color("#ff6b6b"))
 
 
 func _replay_notice(msg: String, col: Color) -> void:
@@ -2423,4 +2423,4 @@ func _replay_notice(msg: String, col: Color) -> void:
 ## 离场即还原 GameState(主场景 `_exit_tree` 里调 `ReplayRecorder.end_play()`), 这里只管换场景。
 func _replay_exit() -> void:
 	if battle.get_tree() != null:
-		battle.get_tree().change_scene_to_file(REPLAY_EXIT_SCENE)
+		battle.get_tree().change_scene_to_file(ReplayRecorder.exit_scene())

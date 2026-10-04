@@ -189,6 +189,24 @@ alter table public.matches add constraint matches_replay_size
              and replay ~ '^[A-Za-z0-9+/]+={0,2}$'));
 
 -- ─────────────────────────────────────────────────────────────
+-- 3c. 周末看回放（2026-10-04，方案书 docs/plans/20261004-周末看回放.md）—— ★待用户审后上线
+--    · 周六赛况板**不需要新 SQL**：客户端直接读 phase='gauntlet' 的行（只取 profile 与战绩标签，
+--      见 supabase.gd `gauntlet_board_query`），走上面的 matches_read_all。
+--    · 周日的录像（phase='finals'）不能让人直连读：`result.won` 就是这一场的胜负，
+--      当前轮还没揭晓时读得到 = 剧透（与 finals_results「客户端一律不给直接读」同一条规矩）。
+--      ⇒ 读策略收窄：决赛那几行**只有上传者自己**读得到（S2 上传后要按 match_id 回读自己那一行）；
+--        别人看决赛录像只走下面的 `finals_replay()`（只给已揭晓的场次）。
+--    · 客户端另有一道闸：决赛录像在那一场揭晓之前**根本不上传**（replay_uploader.finals_upload_ready），
+--      所以这条策略上线之前也不剧透；它是数据层的第二道锁。
+-- ─────────────────────────────────────────────────────────────
+drop policy if exists matches_read_all on public.matches;
+create policy matches_read_all on public.matches
+  for select using (auth.uid() is not null and (phase <> 'finals' or left_account = auth.uid()));
+
+-- 决赛录像按 (周, 种子) 找（finals_replay 用；部分索引只管决赛那几行）
+create index if not exists matches_finals_idx on public.matches (season_week, seed) where phase = 'finals';
+
+-- ─────────────────────────────────────────────────────────────
 -- 4. standings —— 周榜与头衔
 --    ★**客户端不许直接写**：排名与头衔是可作弊的。写入走 Edge Function（service_role），
 --      它复用 server/rules.mjs 做账目校验（D7 第一步：客户端算 + 服务端校验与抽检）。
@@ -800,6 +818,64 @@ end $$;
 revoke all on function public.finals_report(bigint, int, int, int, int, bigint) from public;
 revoke execute on function public.finals_report(bigint, int, int, int, int, bigint) from anon;
 grant execute on function public.finals_report(bigint, int, int, int, int, bigint) to authenticated;
+
+-- ─────────────────────────────────────────────────────────────
+-- ③b 看回放（周末看回放 2026-10-04, docs/plans/20261004-周末看回放.md）—— ★待用户审后上线
+--
+-- ★给谁：任何登录用户（观赛是公开的；没晋级的人也能点已揭晓的格子）。
+-- ★只给**已揭晓**的场次：与 `finals_view` 同一条规矩、一字不差 —— `b.closed or p_round < b.round`。
+-- ★只给**裁判采纳的那一份**：周日一场双方各在本机打对方的快照, 两边都可能上传录像；
+--   `finals_report` 先到先得, 存下的 `seed_used` 就是**先报那一方**那一局的种子
+--   （客户端报的是 `GameState.battle_seed`, 录像里的 `seed` 是同一个数, 门禁 verify_weekend_replay 核过）。
+--   ⇒ 按 (周, 组, 轮, 场) + `seed = seed_used` 认出来, 不必给 finals_results 加「谁报的」列。
+--   超时补判(finals_advance)的场次 seed_used 可能是 0 ⇒ 没有录像, 回 no_replay。
+-- ★上传者必须真是这个组的人（防有人往 matches 里塞一行同坐标同种子的假录像来冒充）。
+-- ★没部署之前客户端拿到 404 ⇒ 那一格点了说「这场的回放还没开放」, 不报错。
+-- ─────────────────────────────────────────────────────────────
+create or replace function public.finals_replay(p_week bigint, p_bucket int, p_round int, p_match int)
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare b record; sd bigint; mid uuid; rp text;
+begin
+  if auth.uid() is null then
+    return jsonb_build_object('ok', false, 'reason', 'not_signed_in');
+  end if;
+  select * into b from public.finals_buckets
+   where season_week = p_week and bucket_no = p_bucket;
+  if not found then
+    return jsonb_build_object('ok', false, 'reason', 'no_bucket');
+  end if;
+  if not (b.closed or p_round < b.round) then
+    return jsonb_build_object('ok', false, 'reason', 'not_revealed');
+  end if;
+  select r.seed_used into sd from public.finals_results r
+   where r.season_week = p_week and r.bucket_no = p_bucket
+     and r.round = p_round and r.match_no = p_match;
+  if not found then
+    return jsonb_build_object('ok', false, 'reason', 'no_result');
+  end if;
+  if coalesce(sd, 0) = 0 then
+    return jsonb_build_object('ok', false, 'reason', 'no_replay');
+  end if;
+  select m.match_id, m.replay into mid, rp from public.matches m
+   where m.season_week = p_week and m.phase = 'finals' and m.seed = sd
+     and m.replay is not null
+     and m.result->>'fb' = p_bucket::text
+     and m.result->>'fr' = p_round::text
+     and m.result->>'fm' = p_match::text
+     and exists (select 1 from public.finals_entrants e
+                  where e.season_week = p_week and e.bucket_no = p_bucket
+                    and e.account_id = m.left_account)
+   order by m.created_at
+   limit 1;
+  if mid is null then
+    return jsonb_build_object('ok', false, 'reason', 'no_replay');
+  end if;
+  return jsonb_build_object('ok', true, 'match_id', mid, 'replay', rp);
+end $$;
+
+revoke all on function public.finals_replay(bigint, int, int, int) from public;
+revoke execute on function public.finals_replay(bigint, int, int, int) from anon;
+grant execute on function public.finals_replay(bigint, int, int, int) to authenticated;
 
 -- ─────────────────────────────────────────────────────────────
 -- ④ 对手快照（E-B4 快照代打, 2026-09-25）
