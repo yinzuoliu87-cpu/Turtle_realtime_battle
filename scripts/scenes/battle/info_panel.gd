@@ -49,11 +49,19 @@ func _make_team_column(side: String) -> VBoxContainer:
 			continue   # 召唤体不进框栏 (只主龟)
 		if u.get("is_trainer", false):
 			continue   # ★U2「移除掉训龟大师的信息栏」: 它没有血量, 头像栏里那一格只剩一条恒满的假血条
+		if is_egg_unit(u):
+			continue   # ★2026-10-05 用户:「龟蛋和训龟大师的信息栏都去掉了吗」—— 当时只去了大师。蛋血已在顶部 PK 条下的副条
+			#   (`battle_hud._pk_egg_row`, 双方蛋血对比)和蛋自己头顶的血条上, 这一格是重复信息; 蛋没有技能/装备可看。
 		var frame = battle._hud._make_team_frame(u)
 		col.add_child(frame)
 	# 居中: VBox 内容会从 anchor 点往下排; 让它真正竖直居中需把它整体上移半高 → 用 pivot 不便,
 	#   改用一个外层 wrapper 也可, 但框少(1-3)时贴边竖直居中已够好 (CENTER_LEFT/RIGHT anchor=屏幕中线).
 	return col
+
+## 龟蛋的判据(唯一一处): 单位字典上的标记是 `_isEgg`(spawn 时写), **不是** `egg`(那是 spawn spec 的键,
+##   单位上没有 —— battle_hud.gd 头注记过一次按 `egg` 排除而全部落空的事)。门禁 verify_replay_controls 读它。
+static func is_egg_unit(u: Dictionary) -> bool:
+	return bool(u.get("_isEgg", false))
 
 # 单个头像框: 头像 + 名 + 等级牌 + 迷你血条; 整框可点 → 弹详情面板.
 # ----------------------------------------------------------------------------

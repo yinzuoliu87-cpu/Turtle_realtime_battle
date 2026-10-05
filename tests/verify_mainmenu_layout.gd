@@ -87,9 +87,10 @@ func _ready() -> void:
 	for c in page_box.get_children():
 		if c is Control and (c as Control).visible:
 			stack.append(c)
-	print("  左栏按钮栈 %d 个 (★分母: 应为 6 = 英雄 + 2×2 + 训龟大师)" % stack.size())
-	_ok("★分母: 左栏按钮栈 = 6 个", stack.size() == 6, "%d 个" % stack.size())
-	if stack.size() != 6:
+	## ★2026-10-05 6 → 7: 排行榜那一行对半分出「战绩」入口(回放体验打磨, MainMenuScene.RECORD_ENTRY_NAME)。
+	print("  左栏按钮栈 %d 个 (★分母: 应为 7 = 左栏 4 行(排行榜|战绩 同一行) + 训龟大师 + 英雄)" % stack.size())
+	_ok("★分母: 左栏按钮栈 = 7 个", stack.size() == 7, "%d 个" % stack.size())
+	if stack.size() != 7:
 		_done(); return
 
 	# ── ① 谁也别超出 1280×720 ──
@@ -204,7 +205,23 @@ func _ready() -> void:
 			continue
 		entries.append((c as Control).get_global_rect())
 	entries.sort_custom(func(a, b): return (a as Rect2).position.y < (b as Rect2).position.y)
-	_ok("⑥ ★分母: 左栏入口 = 4 个", entries.size() == 4, "%d 个" % entries.size())
+	## ★2026-10-05: 第 4 行对半分成「排行榜 | 战绩」(两块同一行) ⇒ 同一行的并成一个矩形再量;
+	##   并之前先量这两块: 等高、首尾相接、合起来恰好是整行宽(不重叠也不留缝)。
+	var merged: Array = []
+	var halves := 0
+	for r in entries:
+		var rr: Rect2 = r
+		if not merged.is_empty() and absf((merged[-1] as Rect2).position.y - rr.position.y) <= 1.0:
+			var prev: Rect2 = merged[-1]
+			halves += 1
+			_ok("⑥ 同一行两块等高、首尾相接", absf(prev.size.y - rr.size.y) <= 1.0 and absf(prev.end.x - rr.position.x) <= 1.0,
+				"%s | %s" % [str(prev), str(rr)])
+			merged[-1] = prev.merge(rr)
+		else:
+			merged.append(rr)
+	_ok("⑥ 分母: 恰好一行是对半分的(排行榜 | 战绩)", halves == 1, "%d" % halves)
+	entries = merged
+	_ok("⑥ ★分母: 左栏入口 = 4 行", entries.size() == 4, "%d 行" % entries.size())
 	if entries.size() == 4:
 		var hs: Array = []
 		var gaps: Array = []

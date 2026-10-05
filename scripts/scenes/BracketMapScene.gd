@@ -1634,7 +1634,9 @@ func open_replay(r: int, m: int) -> void:
 	var wk: int = _P2C.week_anchor_utc(_clock())
 	last_replay_ask = {"week": wk, "bucket": bk, "round": r, "match": m}
 	_show_replay_msg("正在读取这一场…", ACCENT)
-	_RF.open_finals(get_tree(), wk, bk, r, m, _on_replay_done, SELF_SCENE, {"l": wn, "r": wn})
+	## 2026-10-05: 多带这一场的两个人(`pair`)⇒ 回放铭牌能写出「谁 对 谁」(录像方是谁由录像里的对手快照认出来, 见 `ReplayRecorder.side_names`)。
+	var pair := [str(competitor(r, m, 0).get("name", "")), str(competitor(r, m, 1).get("name", ""))]
+	_RF.open_finals(get_tree(), wk, bk, r, m, _on_replay_done, SELF_SCENE, {"l": wn, "r": wn, "pair": pair})
 
 
 func _on_replay_done(code: String, msg: String) -> void:

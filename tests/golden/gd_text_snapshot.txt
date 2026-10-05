@@ -675,6 +675,7 @@ scripts/scenes/MainMenuScene.gd|lit|商店
 scripts/scenes/MainMenuScene.gd|lit|图鉴
 scripts/scenes/MainMenuScene.gd|lit|已封盘
 scripts/scenes/MainMenuScene.gd|lit|开始战斗
+scripts/scenes/MainMenuScene.gd|lit|战绩
 scripts/scenes/MainMenuScene.gd|lit|战绩  %s
 scripts/scenes/MainMenuScene.gd|lit|打完第一场才开店
 scripts/scenes/MainMenuScene.gd|lit|排行榜
@@ -745,6 +746,7 @@ scripts/scenes/RealtimeBattle3DScene.gd|lit|⚔ 决胜阶段: 治疗效果 -50%,
 scripts/scenes/RealtimeBattle3DScene.gd|lit|上路
 scripts/scenes/RealtimeBattle3DScene.gd|lit|下路
 scripts/scenes/RealtimeBattle3DScene.gd|lit|冰川
+scripts/scenes/RealtimeBattle3DScene.gd|lit|决胜
 scripts/scenes/RealtimeBattle3DScene.gd|lit|决胜!
 scripts/scenes/RealtimeBattle3DScene.gd|lit|凤凰雕像
 scripts/scenes/RealtimeBattle3DScene.gd|lit|口哨
@@ -785,7 +787,6 @@ scripts/scenes/RealtimeBattle3DScene.gd|lit|短刃
 scripts/scenes/RealtimeBattle3DScene.gd|lit|石头
 scripts/scenes/RealtimeBattle3DScene.gd|lit|砸击的范围与射程 ×2
 scripts/scenes/RealtimeBattle3DScene.gd|lit|砸击额外 +100% 护甲与 +100% 魔抗
-scripts/scenes/RealtimeBattle3DScene.gd|lit|终极
 scripts/scenes/RealtimeBattle3DScene.gd|lit|自身造成的所有伤害转为真实伤害
 scripts/scenes/RealtimeBattle3DScene.gd|lit|血筛子
 scripts/scenes/RealtimeBattle3DScene.gd|lit|观测:stun_chain
@@ -956,7 +957,6 @@ scripts/scenes/TeamSelectScene.gd|lit|糖果炸弹位
 scripts/scenes/TeamSelectScene.gd|lit|这一轮的三只龟定了 · 还能换招, 换不了龟
 scripts/scenes/TeamSelectScene.gd|lit|这一轮的龟定了 · 下个赛季才能重挑
 scripts/scenes/TeamSelectScene.gd|lit|随从位
-scripts/scenes/TeamSelectScene.gd|text|上阵的龟还没戴同类装备
 scripts/scenes/TeamSelectScene.gd|text|全部
 scripts/scenes/TeamSelectScene.gd|text|就这三只 · 出战
 scripts/scenes/TeamSelectScene.gd|text|已封盘 · 收盘前 %d 分钟不再开新局
@@ -964,7 +964,8 @@ scripts/scenes/TeamSelectScene.gd|text|带它们出战
 scripts/scenes/TeamSelectScene.gd|text|挑 3 只龟上阵
 scripts/scenes/TeamSelectScene.gd|text|撤下
 scripts/scenes/TeamSelectScene.gd|text|沿用上次
-scripts/scenes/TeamSelectScene.gd|text|类型羁绊
+scripts/scenes/TeamSelectScene.gd|text|羁绊
+scripts/scenes/TeamSelectScene.gd|text|装备还没凑成同类
 scripts/scenes/TeamSelectScene.gd|text|返回
 scripts/scenes/TeamSelectScene.gd|text|还差 %d 只
 scripts/scenes/TeamSelectScene.gd|text|选择你的统领
@@ -1088,7 +1089,6 @@ scripts/scenes/battle/battle_hud.gd|lit|赛季胜场
 scripts/scenes/battle/battle_hud.gd|lit|赛季胜场 +1
 scripts/scenes/battle/battle_hud.gd|lit|返回主菜单
 scripts/scenes/battle/battle_hud.gd|lit|返回菜单
-scripts/scenes/battle/battle_hud.gd|lit|这一场在本机重算对不上, 无法继续播放
 scripts/scenes/battle/battle_hud.gd|lit|闯关 %s · 不消耗生命
 scripts/scenes/battle/battle_hud.gd|lit|闯关 %s · 晋级决赛日
 scripts/scenes/battle/battle_hud.gd|lit|闯关 %s · 闯关赛出局
@@ -1099,14 +1099,12 @@ scripts/scenes/battle/battle_hud.gd|lit|🔁 再来一把
 scripts/scenes/battle/battle_hud.gd|text|← 手指横滑挑龟(共28只+小将+大师) →   点一格选笔刷 → 点战场连点连摆 · 点已摆的龟→出配置面板
 scripts/scenes/battle/battle_hud.gd|text|举白旗 · 这一场就算输了, 按下去收不回来
 scripts/scenes/battle/battle_hud.gd|text|友军
-scripts/scenes/battle/battle_hud.gd|text|回放
 scripts/scenes/battle/battle_hud.gd|text|战斗日志
 scripts/scenes/battle/battle_hud.gd|text|打到这里的战报和奖励照算, 不会白打
 scripts/scenes/battle/battle_hud.gd|text|敌方
 scripts/scenes/battle/battle_hud.gd|text|日志
 scripts/scenes/battle/battle_hud.gd|text|点空地=摆(龟/小将) · 点单位=选中配装 · 拖拽=挪位 · 满龟能开→秒放技看效果
 scripts/scenes/battle/battle_hud.gd|text|真要认输?
-scripts/scenes/battle/battle_hud.gd|text|退出回放
 scripts/scenes/battle/battle_hud.gd|text|阵容已上传 · 别人可能会打到你
 scripts/scenes/battle/battle_hud.gd|text|🛠 调试场
 scripts/scenes/battle/battle_hud.gd|tooltip_text|%s · %d 档
@@ -1143,13 +1141,9 @@ scripts/scenes/battle/dmg_stats_panel.gd|lit|护盾
 scripts/scenes/battle/dmg_stats_panel.gd|lit|敌方
 scripts/scenes/battle/dmg_stats_panel.gd|lit|治疗
 scripts/scenes/battle/dmg_stats_panel.gd|lit|造成总伤害
-scripts/scenes/battle/dual_lane_flow.gd|lit|  ·  ⚔决胜 +%d%%增伤 · 治疗-50%%
-scripts/scenes/battle/dual_lane_flow.gd|lit|  ·  破蛋(决胜)
+scripts/scenes/battle/dual_lane_flow.gd|lit|  ·  加时 +%d%%增伤 · 治疗-50%%
+scripts/scenes/battle/dual_lane_flow.gd|lit|  ·  破蛋定胜负
 scripts/scenes/battle/dual_lane_flow.gd|lit|  ·  破蛋还剩 %.0fs
-scripts/scenes/battle/dual_lane_flow.gd|lit|上半场
-scripts/scenes/battle/dual_lane_flow.gd|lit|上路
-scripts/scenes/battle/dual_lane_flow.gd|lit|下半场
-scripts/scenes/battle/dual_lane_flow.gd|lit|下路
 scripts/scenes/battle/dual_lane_flow.gd|lit|全军覆没
 scripts/scenes/battle/dual_lane_flow.gd|lit|击碎敌蛋
 scripts/scenes/battle/dual_lane_flow.gd|lit|各路战果    我方 %d : %d 对方
@@ -1159,21 +1153,19 @@ scripts/scenes/battle/dual_lane_flow.gd|lit|开 战
 scripts/scenes/battle/dual_lane_flow.gd|lit|我方
 scripts/scenes/battle/dual_lane_flow.gd|lit|敌军覆没
 scripts/scenes/battle/dual_lane_flow.gd|lit|精英小将
-scripts/scenes/battle/dual_lane_flow.gd|lit|终极
-scripts/scenes/battle/dual_lane_flow.gd|lit|终极战场
 scripts/scenes/battle/dual_lane_flow.gd|lit|结算
 scripts/scenes/battle/dual_lane_flow.gd|lit|龟蛋破碎
-scripts/scenes/battle/dual_lane_flow.gd|text|▶  开  打
-scripts/scenes/battle/dual_lane_flow.gd|text|⚔  三路开战
-scripts/scenes/battle/dual_lane_flow.gd|text|【%s战场】 结算
-scripts/scenes/battle/dual_lane_flow.gd|text|【%s战场】 马上开打
+scripts/scenes/battle/dual_lane_flow.gd|text|%s  战果
+scripts/scenes/battle/dual_lane_flow.gd|text|%s  马上开打
+scripts/scenes/battle/dual_lane_flow.gd|text|三路开战
 scripts/scenes/battle/dual_lane_flow.gd|text|上下路幸存者对决
-scripts/scenes/battle/dual_lane_flow.gd|text|拖我方的龟在自己半场摆好站位 → 点「开打」
+scripts/scenes/battle/dual_lane_flow.gd|text|开打
+scripts/scenes/battle/dual_lane_flow.gd|text|拖动布阵，准备好后开打
+scripts/scenes/battle/dual_lane_flow.gd|text|拿下本路
+scripts/scenes/battle/dual_lane_flow.gd|text|本路失守
+scripts/scenes/battle/dual_lane_flow.gd|text|点击继续
 scripts/scenes/battle/dual_lane_flow.gd|text|蛋血  我方 %d  ·  对方 %d
 scripts/scenes/battle/dual_lane_flow.gd|text|（无装备）
-scripts/scenes/battle/dual_lane_flow.gd|text|（点一下接着来 · 不点也一样）
-scripts/scenes/battle/dual_lane_flow.gd|text|🏆 我方拿下本路！
-scripts/scenes/battle/dual_lane_flow.gd|text|💀 本路失守
 scripts/scenes/battle/incense_vfx.gd|lit|香火 +%d
 scripts/scenes/battle/incense_vfx.gd|lit|香火 满
 scripts/scenes/battle/info_panel.gd|lit|  ·  攒满了, 随时能放\n
@@ -1249,6 +1241,22 @@ scripts/scenes/battle/info_panel.gd|text|生命  %d / %d
 scripts/scenes/battle/info_panel.gd|text|被动 · 
 scripts/scenes/battle/info_panel.gd|text|装备：
 scripts/scenes/battle/info_panel.gd|text|详细
+scripts/scenes/battle/replay_controls.gd|lit|%s  对  %s
+scripts/scenes/battle/replay_controls.gd|lit|全场 
+scripts/scenes/battle/replay_controls.gd|lit|回放
+scripts/scenes/battle/replay_controls.gd|lit|回放中断
+scripts/scenes/battle/replay_controls.gd|lit|已暂停
+scripts/scenes/battle/replay_controls.gd|lit|暂停
+scripts/scenes/battle/replay_controls.gd|lit|返回
+scripts/scenes/battle/replay_controls.gd|lit|返回对阵图
+scripts/scenes/battle/replay_controls.gd|lit|返回战绩
+scripts/scenes/battle/replay_controls.gd|lit|返回赛况
+scripts/scenes/battle/replay_controls.gd|lit|这场回放出了点问题，没法继续往下播
+scripts/scenes/battle/replay_controls.gd|lit|退出回放
+scripts/scenes/battle/replay_controls.gd|text|%d 倍速
+scripts/scenes/battle/replay_controls.gd|text|再看一遍
+scripts/scenes/battle/replay_controls.gd|text|暂停
+scripts/scenes/battle/replay_controls.gd|text|继续
 scripts/scenes/battle/review_console.gd|lit|◀装
 scripts/scenes/battle/review_console.gd|lit|◀龟
 scripts/scenes/battle/review_console.gd|lit|关
@@ -1470,11 +1478,10 @@ scripts/systems/replay/replay_fetcher.gd|lit|这个版本没接服务器，只�
 scripts/systems/replay/replay_fetcher.gd|lit|这场回放的数据坏了，播不了
 scripts/systems/replay/replay_fetcher.gd|lit|这场的回放还没开放
 scripts/systems/replay/replay_fetcher.gd|lit|连不上服务器，检查一下网络再试
+scripts/systems/replay/replay_recorder.gd|lit|%s 获胜
 scripts/systems/replay/replay_recorder.gd|lit|事件 %s 在本机没能发生
 scripts/systems/replay/replay_recorder.gd|lit|事件 %s(第 %d 步)没有发生
 scripts/systems/replay/replay_recorder.gd|lit|回放格式不认识
-scripts/systems/replay/replay_recorder.gd|lit|回放结束 —— 
-scripts/systems/replay/replay_recorder.gd|lit|回放结束 —— %s 赢了
 scripts/systems/replay/replay_recorder.gd|lit|回放记录读不出来
 scripts/systems/replay/replay_recorder.gd|lit|失败
 scripts/systems/replay/replay_recorder.gd|lit|开打时场上单位与录制时不同

@@ -39,6 +39,9 @@ const WEEK_SEC := 7 * 86400
 ## 单子上的对局种类(= `matches.phase`)。
 const PH_GAUNTLET := "gauntlet"
 const PH_FINALS := "finals"
+## 2026-10-05 用户改 Q3: 积分赛也录也传。服务端 `matches.phase` 没有约束 ⇒ 不用改表;
+##   周六赛况板只查 `phase=eq.gauntlet`(`SupabaseNet.gauntlet_board_query`) ⇒ 积分赛的行混不进去。
+const PH_RANKED := "ranked"
 ## base64 后的录像上限(字节)。★必须与 `server/supabase/schema.sql` 的 `matches_replay_size`
 ##   约束同一个数 —— 门禁 V7 逐字对过; 客户端先挡, 不让一条注定被服务端拒的单子永远留着。
 const REPLAY_MAX_B64 := 65536
@@ -79,10 +82,12 @@ static func enqueue(id: String) -> void:
 		e["ph"] = PH_FINALS
 		e["fk"] = {"b": int(fm.get("bucket", -1)), "r": int(fm.get("round", -1)),
 			"m": int(fm.get("match", -1)), "s": int(fm.get("side", -1))}
-	else:
+	elif ReplayRecorder.current_settle_kind() == ReplayRecorder.Phase2Cfg.SETTLE_GAUNTLET:
 		e["ph"] = PH_GAUNTLET
 		e["gw0"] = int(GameState.gauntlet_wins)
 		e["gl0"] = int(GameState.gauntlet_losses)
+	else:
+		e["ph"] = PH_RANKED          # 积分赛 / 表演赛: 不带闯关战绩
 	q.append(e)
 	while q.size() > QUEUE_MAX:
 		var gone: Dictionary = q.pop_front()
