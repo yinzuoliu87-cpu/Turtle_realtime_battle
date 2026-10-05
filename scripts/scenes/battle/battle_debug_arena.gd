@@ -4,6 +4,8 @@ extends RefCounted
 ## 类内名不变;外部名加 battle.
 
 var battle
+## 调试场按下那一刻的屏幕坐标(判「点」还是「拖」用)。
+var _edit_press_at: Vector2 = Vector2.ZERO
 
 func _init(b) -> void:
 	battle = b
@@ -22,6 +24,7 @@ func _edit_handle_mouse_button(ev: InputEventMouseButton) -> void:
 	if ev.pressed:
 		# 按下: 若命中已有单位 → 准备拖拽; 否则记录, 松手时摆放.
 		battle._edit_drag_moved = false
+		_edit_press_at = screen
 		battle._edit_drag_unit = battle._edit_unit_at_screen(screen)
 	else:
 		# 松手: 拖拽了 → 已实时挪好, 不再摆放; 否则点空地 → 摆放新单位.
@@ -40,6 +43,12 @@ func _edit_handle_mouse_motion(ev: InputEventMouseMotion) -> void:
 		return
 	if not (Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)):
 		battle._edit_drag_unit = null
+		return
+	## ★手机上点不中单位(用户 2026-10-05「手机上调试场点不了装备」): 原来**任何**一次移动都算拖 ⇒
+	##   手指点一下几乎必带几像素抖动(模拟鼠标照发 MouseMotion) ⇒ 松手判成「拖过了」⇒ 不选中 ⇒
+	##   「➕ 加装备」那一行根本不出现。鼠标点击零位移, 所以桌面永远好的。
+	##   ⇒ 与镜头平移同一个阈值 `PAN_THRESHOLD`: 离按下点超过它才算拖。
+	if not battle._edit_drag_moved and ev.position.distance_to(_edit_press_at) <= battle.PAN_THRESHOLD:
 		return
 	battle._edit_drag_moved = true
 	var fp = battle._screen_to_field(ev.position)

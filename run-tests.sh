@@ -64,6 +64,7 @@ PASS=0; FAIL=0
 frames_for () {
   case "$1" in
     verify_ios_ui) echo 4000 ;;
+    verify_debug_equip_pick) echo 1200 ;;   # 鼠标一遍 + 触屏两种比例各一遍(2026-10-05), 实测 ~350 帧
     verify_autopilot_finals) echo 1500 ;;   # 默认关 140 帧 + 开着等 400 帧(驾驶每 120 帧看一次)
     verify_bracket_spectate) echo 4000 ;;   # 两种窗口尺寸 × 7 屏逐个实例化(各等 30 帧) ⇒ 500 帧中途被掐断
     # ★2026-08-15 新增的三个版式门禁: 都要【逐个实例化整屏场景 + 等入场 tween 落定】,
