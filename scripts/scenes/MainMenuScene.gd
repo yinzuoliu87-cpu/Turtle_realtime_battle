@@ -111,8 +111,7 @@ const FONT_VERSION := 16
 
 var page_box: Control       # 当前页按钮容器
 var content_root: Control   # 内容层 (1280×720 设计框, 居中于真实视口); 背景另铺满全窗口
-var _bg_tile: TextureRect   # 背景图 (resize 时重设尺寸)
-var _bg_is_crowd := false   # true=28龟群像(铺满视口) / false=旧平铺纹理(要+512给漂移)
+var _bg_tile: MenuArenaBackdrop   # 背景 = 擂台场景 (resize 时重新铺满)
 
 
 func _ready() -> void:
@@ -228,9 +227,8 @@ func _on_menu_resize() -> void:
 	_center_content()
 	var vp := get_viewport_rect().size
 	if is_instance_valid(_bg_tile):
-		## 群像是【一张图】按 COVERED 填满视口; 只有平铺才需要比屏幕大一格(512)给漂移留量。
-		## 原来无条件 +512 —— 换成群像后会把图放大到超出视口, 右下角内容被推出画面。
-		_bg_tile.size = vp if _bg_is_crowd else Vector2(vp.x + 512, vp.y + 512)
+		## 擂台场景自己按 COVERED 铺满视口、居中裁边(原来平铺纹理要 +512 给漂移留量, 现在不用了)。
+		_bg_tile.fit(vp)
 
 
 # 不再 _exit_tree 还原 KEEP: 项目级 aspect 已是 EXPAND(全场景统一), 离场不翻转 → 场景切换丝滑。
@@ -244,49 +242,26 @@ func _bg() -> void:
 	var base := ColorRect.new(); base.set_anchors_preset(Control.PRESET_FULL_RECT)
 	base.color = Color("#1a3a2a")   # 深绿底 — 用 PoC 字面色值, 不四舍五入
 	add_child(base)
-	# ★2026-09-17 背景换成【28 只龟的群像】(menu-bg-crowd.png)。
-	#   原来是 menu-bg-tile.png 平铺装备暗纹 + 25s 漂移 —— 一张淡到几乎看不见的纹理,
-	#   等于把屏幕上最大的一块画布浪费掉了。而实拍参考里 Fuga / Zombie Rollerz 的做法是
-	#   【让角色自己铺满整屏当背景】, 这个游戏正好有 28 只龟。
-	#   图由 tools/build_menu_crowd_bg.py 从 data/pets.json 的第 0 帧合成(五层纵深 + 左侧压暗),
-	#   不是手画的 —— 加龟/换立绘重跑一次就同步。
-	#   ⚠ 不再漂移: 平铺纹理漂移看不出接缝, 而群像有具体内容, 一动就穿帮。
-	if ResourceLoader.exists("res://assets/sprites/menu/menu-bg-crowd.png"):
-		var crowd := TextureRect.new()
-		crowd.texture = load("res://assets/sprites/menu/menu-bg-crowd.png")
-		crowd.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		# COVERED: 非 16:9 视口下【填满 + 居中裁切】, 不留黑边也不拉变形
-		crowd.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		crowd.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST   # 像素风, 放大不许插值糊掉
-		crowd.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		crowd.size = vp
-		crowd.position = Vector2.ZERO
-		add_child(crowd)
-		_bg_tile = crowd
-		_bg_is_crowd = true
-	elif ResourceLoader.exists("res://assets/sprites/menu/menu-bg-tile.png"):
-		# 回退: 群像图没导入时仍走原来的平铺, 免得整屏纯色
-		var tile := TextureRect.new()
-		tile.texture = PreloadCache.menu_bg_tile_tex()
-		tile.stretch_mode = TextureRect.STRETCH_TILE
-		tile.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
-		tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		tile.size = Vector2(vp.x + 512, vp.y + 512)
-		tile.position = Vector2(-512, -512)
-		add_child(tile)
-		_bg_tile = tile
+	# ★★2026-10-05 背景换成【擂台 + 看台】(方案书 20260917-主菜单版式重做 R1 / R1-a / R1-b)。
+	#   原来是 28 只龟第 0 帧拼的群像墙(menu-bg-crowd.png) —— 用户先拍板「擂台 + 看台」,
+	#   又定了「尽量不要复用」「不能用现有的龟立绘」⇒ 场馆、观众、角斗龟、火盆、旗全是新画的,
+	#   由 tools/build_menu_arena_bg.py 分层烘好, MenuArenaBackdrop 拼起来并让观众/火/旗/主角动。
+	#   (群像图没删: 登录墙 `login_wall_art.gd` 还在用它。)
+	_bg_tile = MenuArenaBackdrop.new()
+	add_child(_bg_tile)
+	_bg_tile.fit(vp)
+	## (原来这里还有一条「群像图没导入就退回平铺」的分支: 场景是代码 + 生成常量表拼的,
+	##  不存在"没导入"这一态 ⇒ 那条分支恒走不到, 删了。其他屏的平铺底照旧在 PreloadCache 里。)
 	# ::after 暗渐变遮罩 (顶 alpha.15 → 底 .40), 压暗背景
 	# 显式设 offsets+colors (别用 set_color/add_point — Gradient 默认 offset1 是白点, 会漏成底部白光)
 	var grad := Gradient.new()
 	grad.offsets = PackedFloat32Array([0.0, 0.6, 1.0])
-	## ★用群像背景时遮罩要减半: 那张图在生成阶段就已经压暗(×0.62)+暗角了,
-	##   再叠原来给【平铺纹理】调的 0.15~0.40, 整屏黑成一团、龟全看不见。
-	##   (平铺那条回退路仍走原值, 免得它跟着一起变。)
-	var _soft := _bg_is_crowd
+	## ★遮罩只用原来的一半(0.06~0.22, 不是给平铺纹理调的 0.15~0.40): 场景图在烘焙阶段
+	##   已经去饱和/左侧压暗/暗角过了, 再按旧值叠一层整屏黑成一团、看台上的龟全看不见。
 	grad.colors = PackedColorArray([
-		Color(8.0 / 255.0, 12.0 / 255.0, 20.0 / 255.0, 0.06 if _soft else 0.15),
-		Color(8.0 / 255.0, 12.0 / 255.0, 20.0 / 255.0, 0.10 if _soft else 0.25),
-		Color(8.0 / 255.0, 12.0 / 255.0, 20.0 / 255.0, 0.22 if _soft else 0.40),
+		Color(8.0 / 255.0, 12.0 / 255.0, 20.0 / 255.0, 0.06),
+		Color(8.0 / 255.0, 12.0 / 255.0, 20.0 / 255.0, 0.10),
+		Color(8.0 / 255.0, 12.0 / 255.0, 20.0 / 255.0, 0.22),
 	])
 	var gt := GradientTexture2D.new()
 	gt.gradient = grad; gt.fill_from = Vector2(0, 0); gt.fill_to = Vector2(0, 1); gt.width = 8; gt.height = 128
@@ -429,6 +404,10 @@ func _build_page_buttons(now: int = 0) -> void:
 	##   而那一行还压在 LOGO 上 —— 一个状态不该只在瞬时提示里存在。
 	if battle_locked:
 		_add_lock_badge(hero, HERO_SIZE)
+	else:
+		## R2(用户拍板): 主 CTA 保留木框, 靠【呼吸光晕 + 金边】拉开量级 —— 不换纯色实心块。
+		##   锁着时不挂: 灰框配金光是在说「快点我」, 而点了只会被拦。
+		MenuCtaGlow.attach(hero, HERO_SIZE)
 	_slide_in(hero, 5)
 
 
