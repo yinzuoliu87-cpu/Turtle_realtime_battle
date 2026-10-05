@@ -13,15 +13,18 @@
                                                      btn-plank.png  (整块, 训龟大师次级键九宫格)
   src/chip.png    128×40  暗木 + 黄铜包边 + 左端币槽 → chip.png ×2(货币底座九宫格)
   src/brass.png    64×64  黄铜铆钉牌                  → brass.png(周末的门) / brass-frame.png(中间挖空 = 「今天」那一格的铜边框)
-  src/ribbon.png  192×40  绯红绶带 + 金边 + 燕尾     → ribbon.png(状态区标题条, 抽掉中段 8 行 ⇒ 28 高; 中段改成只有竖向明暗,
+  src/ribbon.png  192×40  绯红绶带 + 金边 + 燕尾     → (第四轮已下线) ribbon.png(状态区标题条, 抽掉中段 8 行 ⇒ 28 高; 中段改成只有竖向明暗,
                                                      去掉 PixelLab 画的径向高光 = 「渐变胶囊」那种 AI 味)
   src/plaque.png  192×48  单块窄木牌 + 四角铜钉     → (第三轮已下线; 原来烘 plaque.png 给左栏每行一块短牌)
 
 2026-10-05 第三轮「大厅骨架」(对标 6 张手游主大厅, 方案书 20260917 第三轮)新增, 同样是 PixelLab 本次新生成:
-  src/card.png     192×64  铭牌木板 + 左端黄铜圆环    → card.png(左上玩家信息卡, ×2 像素, 圆环里放头像)
-  src/avatar.png    48×48  龟壳纹章铜徽章             → avatar.png(玩家卡头像槽, 原样)
+  src/card.png     192×64  铭牌木板 + 左端黄铜圆环    → card.png(左上玩家信息卡, ×2 像素; 圆环抹成木面, 那一格放等级徽章)
+  src/avatar.png    48×48  (2026-10-05 下线: 本作没有头像系统, 人人同一个龟壳 = 占位; 原件留作历史)
   src/sqbtn.png     64×64  方木块 + 四角铜包角        → sqbtn.png(左列方形图标键, ×2 像素九宫格)
   src/modecard.png 160×96  木告示牌 + 铜包角 + 顶铜条 → modecard.png(「今天」模式卡; 中段那团径向亮斑压平 = AI 味)
+  (无原件)                                           → lvbadge.png(玩家卡最左的大等级徽章: 黄铜盾 + 绯红盾面, 按像素直接画)
+  (无原件)                                           → xpbar.png / xpbar-fill.png(经验条: 黄铜包边的暗槽 + 龟绿填充, 按像素直接画;
+                                                     暗槽同时是开始战斗上方那条「♥ 命 · 本周对战」计数条的底)
   (无原件)                                           → cta-face.png(主 CTA 的亮黄面, 本脚本按像素直接画:
                                                      木框保留(R2), 只把框里那块面换成全屏唯一的饱和亮黄)
 
@@ -104,6 +107,90 @@ def cta_face():
     return up(im, 2)                                                   # 128×64
 
 
+OUTL = (40, 20, 6, 255)
+
+
+def lv_badge():
+    """等级徽章(34×38 画布 ×2 = 68×76): 一圈深棕描边 + 两像素黄铜盾沿(左上亮 / 右下暗) + 绯红盾面(顶亮底暗)。
+    形状 = 平顶切角 + 直边 + 下半收成尖底的盾。数字由游戏里叠字(大号描边字), 这里只画底。"""
+    W, H = 34, 38
+    im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    p = im.load()
+
+    def half_w(y):
+        # 每一行盾的半宽(中心 17)。顶两行切角, 中段直边, 下 16 行收尖。
+        if y == 0:
+            return 13
+        if y == 1:
+            return 15
+        if y < 22:
+            return 16
+        k = y - 21                                  # 1..16
+        return max(1, 16 - int(round(k * k / 16.0)))
+    inside = {}
+    for y in range(H):
+        hw = half_w(y)
+        for x in range(17 - hw, 17 + hw):
+            inside[(x, y)] = True
+
+    def d_edge(x, y):
+        for r in range(1, 6):
+            for dx, dy in ((r, 0), (-r, 0), (0, r), (0, -r)):
+                if (x + dx, y + dy) not in inside:
+                    return r
+        return 6
+    HI, BR, MD, DK = (255, 226, 140, 255), (226, 172, 64, 255), (186, 128, 38, 255), (128, 80, 22, 255)
+    F_HI, F_MD, F_LO = (168, 46, 36, 255), (132, 30, 26, 255), (96, 20, 18, 255)
+    for (x, y) in inside:
+        d = d_edge(x, y)
+        if d == 1:
+            p[x, y] = OUTL
+        elif d <= 3:
+            lit = (x + y) < 30                      # 左上受光
+            p[x, y] = (HI if d == 2 else BR) if lit else (MD if d == 2 else DK)
+        elif d == 4:
+            p[x, y] = OUTL                          # 盾沿与盾面之间一道细暗线
+        else:
+            p[x, y] = F_HI if y < 10 else (F_MD if y < 24 else F_LO)
+    for (x, y) in ((8, 5), (9, 5), (8, 6)):         # 盾面左上一点高光(像素笔触)
+        if (x, y) in inside and d_edge(x, y) > 4:
+            p[x, y] = (204, 84, 66, 255)
+    return up(im, 2)
+
+
+def xp_track():
+    """暗槽(24×13 ×2 = 48×26, 九宫格): 深棕描边 + 一像素黄铜沿 + 凹进去的暗木底(顶一行更暗 = 内阴影)。"""
+    W, H = 24, 13
+    im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    p = im.load()
+    for y in range(H):
+        for x in range(W):
+            if (x in (0, W - 1) and y in (0, H - 1)):
+                continue
+            if x == 0 or y == 0 or x == W - 1 or y == H - 1:
+                p[x, y] = OUTL
+            elif x == 1 or y == 1:
+                p[x, y] = (232, 180, 76, 255)
+            elif x == W - 2 or y == H - 2:
+                p[x, y] = (150, 98, 30, 255)
+            elif y == 2:
+                p[x, y] = (18, 10, 6, 255)
+            else:
+                p[x, y] = (40, 24, 14, 255)
+    return up(im, 2)
+
+
+def xp_fill():
+    """填充(8×9 ×2 = 16×18, 九宫格): 龟绿, 顶一行亮 / 底两行暗(像素明暗, 不是渐变)。"""
+    W, H = 8, 9
+    im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    p = im.load()
+    for y in range(H):
+        for x in range(W):
+            p[x, y] = (178, 240, 150, 255) if y == 0 else ((92, 198, 84, 255) if y < H - 2 else (44, 132, 56, 255))
+    return up(im, 2)
+
+
 def main():
     out = {}
     plank = Image.open(os.path.join(SRC, "plank.png")).convert("RGBA")
@@ -122,19 +209,7 @@ def main():
             fp[x, y] = (0, 0, 0, 0)
     out["brass-frame.png"] = fr
 
-    rib = Image.open(os.path.join(SRC, "ribbon.png")).convert("RGBA")
-    p = rib.load()
-    col = [p[96, y] for y in range(rib.height)]
-    for x in range(30, 162):                                            # 中段只留竖向明暗
-        for y in range(rib.height):
-            if p[x, y][3] > 0 and col[y][3] > 0:
-                p[x, y] = col[y]
-    rib = rib.crop((0, 2, 192, 38))                                     # 192×36
-    rows = [r for r in range(rib.height) if not (12 <= r < 20)]         # 抽掉中段 8 行 ⇒ 28 高(更细更轻)
-    small = Image.new("RGBA", (rib.width, len(rows)))
-    for i, r in enumerate(rows):
-        small.paste(rib.crop((0, r, rib.width, r + 1)), (0, i))
-    out["ribbon.png"] = small
+    ## (ribbon.png 绯红绶带 2026-10-05 第四轮下线: 玩家卡不再有「第 N 大轮 · Lv X」那条绶带, 原件 src/ribbon.png 留作历史)
 
     ## (plaque.png 左栏短木牌 2026-10-05 第三轮下线: 左栏换成方形图标键 sqbtn.png, 原件 src/plaque.png 留作历史)
 
@@ -144,13 +219,17 @@ def main():
     ##   竖向在**圆环下面的木面**(第 90 行)插 18 行 ⇒ 130 高, 木面 16..111 装得下昵称 22 号 + 三行 17 号,
     ##   战绩那行不再压到底边的铜线上(上一版实拍「战绩-还没上过场」那道横线就是底边铜线从字缝里露出来)。
     cw = widen(up(card.crop(card.getbbox()), 2), 112, 40, 456)
-    rows = list(range(0, 90)) + [90] * 18 + list(range(90, cw.height))
+    rows = list(range(0, 90)) + [92] * 18 + list(range(90, cw.height))   # 插第 92 行: 第 90 行有一粒暗点, 插 18 遍成了一道竖痕
     ct = Image.new("RGBA", (cw.width, len(rows)))
     for i, r in enumerate(rows):
         ct.paste(cw.crop((0, r, cw.width, r + 1)), (0, i))
+    ## 2026-10-05 第四轮: 圆环(原来放头像)抹成木面 —— 本作没有头像系统, 那一格换成等级徽章(lv_badge)。
+    ##   取卡中段同一行高的木面整块盖上(木纹是横纹, 同一行搬过来接得上)。
+    ct.paste(ct.crop((214, 14, 214 + 92, 114)), (10, 14))
     out["card.png"] = ct                                               # 456×130
-    av = Image.open(os.path.join(SRC, "avatar.png")).convert("RGBA")
-    out["avatar.png"] = av.crop(av.getbbox())                          # 40×40
+    out["lvbadge.png"] = lv_badge()                                    # 68×76
+    out["xpbar.png"] = xp_track()                                      # 48×26
+    out["xpbar-fill.png"] = xp_fill()                                  # 16×18
     sq = Image.open(os.path.join(SRC, "sqbtn.png")).convert("RGBA")
     out["sqbtn.png"] = up(sq.crop(sq.getbbox()), 2)                    # 112×114
 

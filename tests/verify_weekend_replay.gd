@@ -675,7 +675,7 @@ func _t_bracket() -> void:
 	_ok("⑤ 分母: 选手视角, 我是 0 号", int(m2.cur().get("me", -1)) == 0)
 	_exhaust(m2, "选手")
 	_ok("⑤ 我这一场(2-0, 当前轮)仍是上场开打, 不是看回放", m2.should_fetch_opponent(2, 0)
-		and _btn_at(m2, 2, 0) != null and str(_btn_at(m2, 2, 0).tooltip_text) == "上场开打")
+		and _btn_at(m2, 2, 0) != null and str(_btn_at(m2, 2, 0).tooltip_text) == "开始对战")
 	_ok("⑤ 已翻面的格子提示「重看这一场」(不写「回放」: 对阵图用词规矩④)",
 		_btn_at(m2, 1, 2) != null and str(_btn_at(m2, 1, 2).tooltip_text) == "重看这一场")
 	m2.queue_free()
@@ -698,7 +698,7 @@ func _t_mainmenu_door() -> void:
 	var d2: Button = blk2.find_child("GauntletBoardDoor", true, false) as Button if blk2 is Node else null
 	var t2 := _labels_text(blk2) if blk2 is Node else ""
 	_ok("⑥ 周六收盘后也还是门(正是看结果的时候), 原来那两行一字不少",
-		d2 != null and t2.find("今日已收盘") >= 0 and t2.find("明天决赛日") >= 0 and t2.find("全场赛况") >= 0, t2)
+		d2 != null and t2.find("今日已截止") >= 0 and t2.find("明天决赛日") >= 0 and t2.find("全场赛况") >= 0, t2)
 	if blk2 is Node:
 		(blk2 as Node).free()
 	var nd = mm._week_close_block(wed)
@@ -712,7 +712,7 @@ func _t_mainmenu_door() -> void:
 		return
 	var tx := _labels_text(blk)
 	_ok("⑥ 门上仍是收盘倒计时 + 收盘时刻, 再加一行「全场赛况」",
-		tx.find("距收盘") >= 0 and tx.find("本地") >= 0 and tx.find("全场赛况") >= 0, tx)
+		tx.find("距截止") >= 0 and tx.find("本地") >= 0 and tx.find("全场赛况") >= 0, tx)
 	_ok("⑥ 牌子高度 = 周日那扇门(触控下限 81)", (blk as Control).custom_minimum_size.y >= 81.0)
 	var conns: Array = []
 	for c in door.pressed.get_connections():

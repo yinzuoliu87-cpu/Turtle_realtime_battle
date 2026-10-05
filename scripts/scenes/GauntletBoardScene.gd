@@ -149,7 +149,7 @@ func _set_status(code: String) -> void:
 			if gn == 0:
 				t = "本周闯关赛还没有打完的对局"
 			else:
-				t = "本周闯关赛 · %d 人 · %d 场%s" % [pn, gn, " · 已收盘" if _closed else ""]
+				t = "本周闯关赛 · %d 人 · %d 场%s" % [pn, gn, " · 已截止" if _closed else ""]
 			c = Color("#9fb0c4")
 		"unavailable":
 			t = "赛况暂无"

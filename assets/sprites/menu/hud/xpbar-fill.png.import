@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ct60tu4h5v15p"
-path="res://.godot/imported/icon-record.png-9344cc2fed4854d170ca89fdee416208.ctex"
+uid="uid://cxfoohvc4l4cs"
+path="res://.godot/imported/xpbar-fill.png-0561ac2fcc8fb51502cdb3513196ff4c.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/menu/icon-record.png"
-dest_files=["res://.godot/imported/icon-record.png-9344cc2fed4854d170ca89fdee416208.ctex"]
+source_file="res://assets/sprites/menu/hud/xpbar-fill.png"
+dest_files=["res://.godot/imported/xpbar-fill.png-0561ac2fcc8fb51502cdb3513196ff4c.ctex"]
 
 [params]
 

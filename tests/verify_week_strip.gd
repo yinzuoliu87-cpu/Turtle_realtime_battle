@@ -280,12 +280,14 @@ func _one_clock(packed) -> void:
 		var want_l2: String = str(mm._phase_status_line(ts))
 		if want_l2 != "":
 			phase_lines += 1
-			var two = mm.find_child(mm.STATUS_TWO_LINE, true, false)
-			_ok("%s ★分母: 状态行那个具名容器在" % tag, two != null)
+			## 2026-10-05 第四轮: 周六/周日的当天读数住在「今天」模式卡第二行(去掉与卡标题重复的赛制名)。
+			var two = mm.find_child(mm.MODE_CARD_NAME, true, false)
+			_ok("%s ★分母: 模式卡在" % tag, two != null)
 			if two != null:
 				var ls: Array = _texts(two)
-				_ok("%s ★★★c) 状态行 L2 == `_phase_status_line(注入时刻)`" % tag,
-					ls.has(want_l2), "想要「%s」, 屏上 %s" % [want_l2, str(ls)])
+				var want_c: String = str(mm.mode_card_lines(ts)[1])
+				_ok("%s ★★★c) 模式卡第二行 == `_phase_status_line(注入时刻)` 的后半句" % tag,
+					want_c != "" and want_l2.ends_with(want_c) and ls.has(want_c), "想要「%s」, 屏上 %s" % [want_l2, str(ls)])
 
 		## ════ ⑦ 中间档九宫格接线 —— **素材画好了 ≠ 接上了** ════
 		## 2026-09-28 接三处: 条子外框 `panel-wide-flat` / 今天那格 `panel-wide-on`
@@ -446,7 +448,7 @@ func _ticks(packed) -> void:
 	var a: Array = _strip_texts(mm)
 	var has_cd := false
 	for s in a:
-		if str(s).begins_with("距收盘"):
+		if str(s).begins_with("距截止"):
 			has_cd = true
 	_ok("⑥ ★分母: 22:30 显示倒计时", has_cd, str(a))
 	mm.strip_now_override = sat + 22 * 3600 + 40 * 60      # 过了 10 分钟
@@ -456,21 +458,21 @@ func _ticks(packed) -> void:
 	var b: Array = _strip_texts(mm)
 	var cd_b := ""
 	for s in b:
-		if str(s).begins_with("距收盘"):
+		if str(s).begins_with("距截止"):
 			cd_b = str(s)
 	_ok("⑥ ★★过了 10 分钟倒计时跟着变(原 bug: 停在打开那一刻)", cd_b != "" and not a.has(cd_b), "%s → %s" % [str(a), str(b)])
 	mm.strip_now_override = sat + 22 * 3600 + 55 * 60      # 22:55 已过封盘线
 	mm._sb_poll()
 	for _i in range(4):
 		await get_tree().process_frame
-	_ok("⑥ ★★22:50 之后显示「已封盘」", _strip_texts(mm).has("已封盘"), str(_strip_texts(mm)))
+	_ok("⑥ ★★22:50 之后显示「已封盘」", _strip_texts(mm).has("已截止"), str(_strip_texts(mm)))
 	mm.strip_now_override = sat + 23 * 3600 + 5 * 60       # 23:05 已收盘
 	mm._sb_poll()
 	for _i in range(4):
 		await get_tree().process_frame
 	var c: Array = _strip_texts(mm)
 	## ★2026-10-03 实拍: 周六收盘后写着「休赛日 · 周二开赛 · 本日维护」, 而明天是决赛日
-	_ok("⑥ ★★周六 23:00 收盘后写「今日已收盘」并说明天是决赛日(不是休赛日)", c.has("今日已收盘") and not c.has("休赛日") and str(c).find("明天决赛日 · 本地 %s 开打" % mm._local_hhmm(mm._utc_today_at(sat + 86400, int(P2.FINALS_SEAT_HOUR_UTC)))) >= 0, str(c))
+	_ok("⑥ ★★周六 23:00 收盘后写「今日已收盘」并说明天是决赛日(不是休赛日)", c.has("今日已截止") and not c.has("休赛日") and str(c).find("明天决赛日 · %s 开赛" % mm._local_hhmm(mm._utc_today_at(sat + 86400, int(P2.FINALS_SEAT_HOUR_UTC)))) >= 0, str(c))
 	mm.strip_now_override = SUN0 + 5 * 86400 + 23 * 3600 + 5 * 60   # 周五 23:05
 	mm._sb_poll()
 	for _i in range(4):

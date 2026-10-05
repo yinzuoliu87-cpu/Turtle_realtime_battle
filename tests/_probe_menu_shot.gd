@@ -15,10 +15,14 @@ func _ready() -> void:
 		gs.hearts = 6
 		gs.season_total_battles = 7
 		gs.season_level = 3
+		gs.season_xp = 6                         # 经验条拍到「半条」(Lv3 → 4 要 10), 不是空条也不是满条
 		gs.meta_deepsea_coins = 42
 		gs.ranked_used = 7
 		gs.week_phase = "ranked"
 	var scene = MENU.new()
+	## MENU_SHOT_TS=<unix> 钉住时钟(拍周六/周日那一屏用)
+	if OS.has_environment("MENU_SHOT_TS"):
+		scene.clock_override_ts = int(OS.get_environment("MENU_SHOT_TS"))
 	add_child(scene)
 	var wait: int = int(OS.get_environment("SHOT_WAIT")) if OS.has_environment("SHOT_WAIT") else 420
 	for _i in range(wait):

@@ -51,11 +51,11 @@ const SAT := 1789776000    # 2026-09-19 周六 00:00
 const SUN := 1789862400    # 2026-09-20 周日 00:00
 const WD := ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
 
-## 状态行那个 Label 的框宽 = `MainMenuScene.LEFT_W - 8`。★不抄数字, 从产品的常量算。
-var ROW_BOX_W: float = float(MENU.LEFT_W) - 8.0
-## 两行版式的字号 —— ★从产品的常量取, 不抄数字(抄一次就永远落后一次)。
-var ROW_FONT: int = int(MENU.STATUS_L1_FONT)    # L1 身份行
-var L2_FONT: int = int(MENU.STATUS_L2_FONT)     # L2 今天行(相位读数就在这一行)
+## ★2026-10-05 第四轮: 周六/周日的当天读数住进「今天」模式卡第二行(去掉与卡标题重复的赛制名)。
+##   框宽 = 模式卡第二行的宽(`MODE_SIZE.x - 36`), 字号 = `MODE_RULE_FONT`。★不抄数字, 从产品的常量算。
+var ROW_BOX_W: float = float(MENU.MODE_SIZE.x) - 36.0
+var ROW_FONT: int = int(MENU.MODE_RULE_FONT)
+var L2_FONT: int = int(MENU.MODE_RULE_FONT)
 
 var _n := 0
 var _fail := 0
@@ -386,8 +386,16 @@ func _t_sunday_row() -> void:
 		"「%s」/「%s」/「%s」" % [s_in, s_try, s_no])
 	_ok("③ ★三态两两不同(有一对一样 = 那一维白分了)",
 		s_in != s_try and s_try != s_no and s_in != s_no)
-	_ok("③ ★进了决赛日的人要**指路**(那一场在赛程条周日那一格的对阵图门后面, 不在「开始战斗」后)",
-		s_in.find("对阵图") >= 0, s_in)
+	## 指路那一句住在同一张模式卡的倒计时行(「查看对阵图 »」), 读数这一行只说「已晋级」—— 一张卡上不说两遍。
+	_gs.promoted = true
+	_gs.gauntlet_wins = 4
+	_gs.gauntlet_losses = 1
+	var sun_card: String = " | ".join(PackedStringArray(m.mode_card_lines(SUN + NOON)))
+	_gs.promoted = false
+	_gs.gauntlet_wins = 0
+	_gs.gauntlet_losses = 0
+	_ok("③ ★进了决赛日的人要**指路**(模式卡上有对阵图的去处, 不在「开始战斗」后)",
+		s_in.find("已晋级") >= 0 and sun_card.find("对阵图") >= 0, "%s / %s" % [s_in, sun_card])
 	_ok("③ ★★打过闯关赛没打进的人: **不许说他「没晋级」**(周一~五刚夸过他已过晋级线) —— " \
 			+ "与 `finals_block_msg(false, true)` 同一个口径",
 		s_try.find("没晋级") < 0, s_try)
@@ -418,7 +426,8 @@ func _t_sunday_row() -> void:
 	##     两层都要: 纯函数这层能穷举所有战绩组合, 真渲染那层才证明产品真的这么画。
 	var f = m._bold_font()
 	var over: Array = []
-	for s in [s_in, s_try, s_no]:
+	for s0 in [s_in, s_try, s_no]:
+		var s: String = MENU._strip_phase_head(str(s0), "决赛日")
 		var w: float = f.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, L2_FONT).x
 		print("     周日相位段 ink %6.1f / 框 %.0f  「%s」" % [w, ROW_BOX_W, s])
 		if w > ROW_BOX_W:
@@ -435,7 +444,7 @@ func _t_sunday_row() -> void:
 		for gl in range(0, int(P2.GAUNTLET_LOSSES_OUT) + 1):
 			_gs.gauntlet_wins = gw
 			_gs.gauntlet_losses = gl
-			var sl: String = str(m._phase_status_line(sat_ts))
+			var sl: String = MENU._strip_phase_head(str(m._phase_status_line(sat_ts)), "闯关赛")
 			var sw: float = f.get_string_size(sl, HORIZONTAL_ALIGNMENT_LEFT, -1, L2_FONT).x
 			widest = maxf(widest, sw)
 			if sw > ROW_BOX_W:
@@ -482,13 +491,12 @@ func _find_row_texts(n: Node, out: Array) -> void:
 		_find_row_texts(c, out)
 
 
-## 按**节点名**把「两行状态」那一块抓出来(`MainMenuScene.STATUS_TWO_LINE`)。
-## ★不按"第几个子节点"定位 —— 那种抓法一加节点就漂, 而且漂了还是绿的。
-func _two_line_block(n: Node) -> Node:
-	if str(n.name) == str(MENU.STATUS_TWO_LINE):
+## 按**节点名**抓一块(名字从产品常量取)。★不按"第几个子节点"定位 —— 那种抓法一加节点就漂, 而且漂了还是绿的。
+func _named(n: Node, nm: String) -> Node:
+	if str(n.name) == nm:
 		return n
 	for c in n.get_children():
-		var r: Node = _two_line_block(c)
+		var r: Node = _named(c, nm)
 		if r != null:
 			return r
 	return null
@@ -528,42 +536,55 @@ func _t_real_render() -> void:
 		## ★等布局落定: `Control` 的最小尺寸是**延迟**算的, 拍早了量到的是 box 不是 ink。
 		for _i in range(24):
 			await get_tree().process_frame
-		var blk: Node = _two_line_block(mm)
-		if blk == null:
-			_ok("④ ★分母(%s): 场景树里找得到 `%s` 那一块" % [WD[d], str(MENU.STATUS_TWO_LINE)], false)
+		## 2026-10-05 第四轮: L1 = 玩家卡里的「第 N 大轮」那一行; L2 = 今天的读数 ——
+		##   吃配额的日子在开始战斗上方的计数条(`TODAY_COUNTER_NAME`), 周六/周日在模式卡(赛制名 + 第二行)。
+		var card_n: Node = _named(mm, str(MENU.CARD_NAME))
+		var cnt_n: Node = _named(mm, str(MENU.TODAY_COUNTER_NAME))
+		var mode_n: Node = _named(mm, str(MENU.MODE_CARD_NAME))
+		if card_n == null or mode_n == null:
+			_ok("④ ★分母(%s): 场景树里找得到玩家卡与模式卡" % WD[d], false)
 			mm.queue_free()
 			await get_tree().process_frame
 			continue
 		built += 1
-		var holder: Control = blk.get_parent() as Control
-		var hr: Rect2 = holder.get_global_rect()
-		var t1: Array = []
-		_find_row_texts(blk, t1)
-		got[WD[d]] = str(t1[0]) if t1.size() > 0 else ""
-		## L2 = 这一块里**不含「大轮」**的那段字
-		var labs2: Array = []
-		_all_labels(blk, labs2)
+		var sl_n: Node = _named(card_n, str(MENU.SEASON_LINE_NAME))
+		got[WD[d]] = str((sl_n as Label).text) if sl_n is Label else ""
 		var l2t := ""
-		for lb in labs2:
-			var tx: String = str((lb as Label).text)
-			if tx.find("大轮") < 0 and tx.strip_edges() != "":
-				l2t = tx
-				break
+		var holders: Array = [card_n, mode_n]
+		if cnt_n != null:
+			holders.append(cnt_n)
+			var tc: Array = []
+			_all_labels(cnt_n, tc)
+			var parts: Array = []
+			for lb in tc:
+				parts.append(str((lb as Label).text))
+			l2t = "   ".join(PackedStringArray(parts))
+		else:
+			var mt_n: Node = _named(mode_n, "ModeTitle")
+			var mr_n: Node = _named(mode_n, "ModeRule")
+			if mt_n is Label and mr_n is Label:
+				l2t = "%s %s" % [(mt_n as Label).text, (mr_n as Label).text]
 		l2[WD[d]] = l2t
-		## ★★★几何: holder 里**每一个** Label(含战绩那行)的矩形都必须还在 holder 里面。
-		##   顶穿 111px 那件事在这里现形 —— 它是 x 方向长出去; 两行版式还会在 y 方向被卡。
+		## ★★★几何: 每一块里**每一个** Label 的矩形都必须还在那一块里面(字比框宽时 Label 照样长出去、不报错)。
 		var labs: Array = []
-		_all_labels(holder, labs)
 		var widest := 0.0
-		for lb2 in labs:
-			var lr: Rect2 = (lb2 as Control).get_global_rect()
-			widest = maxf(widest, (lb2 as Control).get_combined_minimum_size().x)
-			if not hr.encloses(lr):
-				spill.append("%s 「%s」rect x %.0f..%.0f y %.0f..%.0f / holder x %.0f..%.0f y %.0f..%.0f" % [
-					WD[d], str((lb2 as Label).text).substr(0, 24),
-					lr.position.x, lr.end.x, lr.position.y, lr.end.y,
-					hr.position.x, hr.end.x, hr.position.y, hr.end.y])
-		_ok("④ ★分母(%s): 那一块里真的有 Label(0 个 = 下面全是空检查)" % WD[d],
+		var hr := Rect2()
+		for h_n in holders:
+			var hr_h: Rect2 = (h_n as Control).get_global_rect()
+			var labs_h: Array = []
+			_all_labels(h_n, labs_h)
+			labs.append_array(labs_h)
+			for lb2 in labs_h:
+				var lr: Rect2 = (lb2 as Control).get_global_rect()
+				widest = maxf(widest, (lb2 as Control).get_combined_minimum_size().x)
+				if not hr_h.encloses(lr):
+					spill.append("%s 「%s」rect x %.0f..%.0f y %.0f..%.0f / %s x %.0f..%.0f y %.0f..%.0f" % [
+						WD[d], str((lb2 as Label).text).substr(0, 24),
+						lr.position.x, lr.end.x, lr.position.y, lr.end.y, str(h_n.name),
+						hr_h.position.x, hr_h.end.x, hr_h.position.y, hr_h.end.y])
+			if h_n == mode_n:
+				hr = hr_h
+		_ok("④ ★分母(%s): 那几块里真的有 Label(0 个 = 下面全是空检查)" % WD[d],
 			labs.size() >= 3, "%d 个" % labs.size())
 		## ★★「尺子是活的」: 框宽与 ink 宽**两个数都打出来**, 不许只打 PASS。
 		print("     %-4s %-7.0f %-7.0f  L1「%s」 / L2「%s」" % [
@@ -601,7 +622,7 @@ func _t_real_render() -> void:
 		str(l2.get("周一", "")) == str(l2.get("周五", ""))
 			and str(l2.get("周二", "")) == str(l2.get("周四", "")), str(l2))
 	_ok("④ ★周四(积分赛)那一行摆的是命 + 本周配额",
-		str(l2.get("周四", "")).find("本周 %d/%d" % [
+		str(l2.get("周四", "")).find("本周对战 %d/%d" % [
 			int(_gs.ranked_used), int(P2.RANKED_QUOTA)]) >= 0, str(l2.get("周四", "")))
 	_ok("④ ★周四那一行也摆着命", str(l2.get("周四", "")).find("♥") >= 0, str(l2.get("周四", "")))
 	_ok("④ ★周六那一行是闯关赛读数", str(l2.get("周六", "")).find("闯关赛") >= 0,

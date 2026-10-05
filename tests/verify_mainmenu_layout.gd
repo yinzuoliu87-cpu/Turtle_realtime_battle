@@ -98,9 +98,9 @@ func _ready() -> void:
 	for c in page_box.get_children():
 		if c is Control and (c as Control).visible:
 			stack.append(c)
-	print("  page_box 栈 %d 个 (★分母: 应为 7 = 左列 5 颗方键 + 训龟大师 + 开始战斗)" % stack.size())
-	_ok("★分母: page_box 栈 = 7 个", stack.size() == 7, "%d 个" % stack.size())
-	if stack.size() != 7:
+	print("  page_box 栈 %d 个 (★分母: 应为 6 = 左列 4 颗方键 + 训龟大师 + 开始战斗)" % stack.size())
+	_ok("★分母: page_box 栈 = 6 个", stack.size() == 6, "%d 个" % stack.size())
+	if stack.size() != 6:
 		_done(); return
 
 	# ── ① 谁也别超出 1280×720(只量看得见的; 弹层的内容在 ⓕ 打开后单独量) ──
@@ -123,7 +123,7 @@ func _ready() -> void:
 	# ── ② ★任意两个可点控件不许重叠 (重叠 = 点 A 点到 B) ──
 	var taps: Array = _tappables(_menu)
 	print("  可点控件 %d 个 (★分母)" % taps.size())
-	_ok("★分母: 可点控件 ≥ 11(5 方键 + 训龟大师 + 开始战斗 + 玩家卡 + 模式卡 + ? + ⚙)", taps.size() >= 11, "%d 个" % taps.size())
+	_ok("★分母: 可点控件 ≥ 10(4 方键 + 训龟大师 + 开始战斗 + 玩家卡 + 模式卡 + ? + ⚙)", taps.size() >= 10, "%d 个" % taps.size())
 	var clash: Array = []
 	for i in range(taps.size()):
 		for j in range(i + 1, taps.size()):
@@ -178,9 +178,6 @@ func _ready() -> void:
 				if pr.encloses(cr.grow(-1.0)):
 					plate_ok = true
 		_ok("ⓐ ★是一整张卡: 有一块贴图底板盖满整张卡", plate_ok)
-		var av: Node = _find_named(card, "Avatar")
-		_ok("ⓐ ★头像槽在卡里(有贴图, 在卡的左端)", av is TextureRect and (av as TextureRect).texture != null
-			and (av as Control).get_global_rect().get_center().x < cr.position.x + cr.size.x * 0.25)
 		var ctxt: Array = []
 		for n_a in _walk(card):
 			if n_a is Label and str((n_a as Label).text).strip_edges() != "" and not ctxt.has(str((n_a as Label).text)):
@@ -192,33 +189,64 @@ func _ready() -> void:
 		var want_tag: String = str(BE_M.my_tag())
 		_ok("ⓐ ★昵称 == Backend.player_display_name()", want_name != "" and ctxt.has(want_name), "要「%s」" % want_name)
 		_ok("ⓐ ★玩家 ID == Backend.my_tag()", want_tag != "" and cj.find(want_tag) >= 0, "要「%s」" % want_tag)
-		_ok("ⓐ ★大轮 · Lv 在卡里", cj.find("大轮") >= 0 and cj.find("Lv") >= 0, cj)
-		var today_a := str(_menu._phase_status_line(_menu._now_ts()))
-		if today_a == "":
-			_ok("ⓐ ★本周 x/%d 在卡里(积分赛口径)" % int(_P2A.RANKED_QUOTA),
-				cj.find("本周") >= 0 and cj.find("/%d" % int(_P2A.RANKED_QUOTA)) >= 0, cj)
-		else:
-			_ok("ⓐ ★今天的读数在卡里「%s」" % today_a, cj.find(today_a) >= 0, cj)
-		_ok("ⓐ ★战绩在卡里", cj.find("战绩") >= 0, cj)
-		_ok("ⓐ ★整张卡可点(→战绩)", taps.has(card))
-		## ⓐ2 返工(主会话看图): 字太小 / 「战绩-还没上过场」那道横线 / 卡又宽又空
+		## ⓐ 2026-10-05 第四轮(标准写法): [大等级徽章] 昵称 #ID / 经验条 x/y / 第 N 大轮。没有头像、没有战绩行、没有命与本周。
+		_ok("ⓐ ★没有头像(本作没有头像系统, 龟壳是占位)", _find_named(card, "Avatar") == null)
+		var bdg: Node = _find_named(card, str(MENU_S.LV_BADGE_NAME))
+		var lvn: Label = _find_named(card, str(MENU_S.LV_TEXT_NAME)) as Label
+		_ok("ⓐ ★分母: 等级徽章 + 徽章上的数字都在", bdg is TextureRect and (bdg as TextureRect).texture != null and lvn != null)
+		var gs_a = get_node("/root/GameState")
+		if bdg is TextureRect and lvn != null:
+			var br_a: Rect2 = (bdg as Control).get_global_rect()
+			_ok("ⓐ ★徽章在卡的最左端(中心 x 在卡左 1/4)", br_a.get_center().x < cr.position.x + cr.size.x * 0.25, str(br_a))
+			_ok("ⓐ ★徽章上的数字 == season_level(%d)" % int(gs_a.season_level), lvn.text == str(int(gs_a.season_level)), "「%s」" % lvn.text)
+			_ok("ⓐ ★数字是大字(≥ 30 号) 且压在徽章上", lvn.get_theme_font_size("font_size") >= 30
+				and br_a.encloses(lvn.get_global_rect()), "%d" % lvn.get_theme_font_size("font_size"))
+		var bar_a: TextureProgressBar = _find_named(card, str(MENU_S.XP_BAR_NAME)) as TextureProgressBar
+		var xpt_a: Label = _find_named(card, str(MENU_S.XP_TEXT_NAME)) as Label
+		_ok("ⓐ ★分母: 经验条 + 条上的字都在", bar_a != null and xpt_a != null)
+		if bar_a != null and xpt_a != null:
+			var need_a: int = int(_P2A.xp_to_next(int(gs_a.season_level)))
+			_ok("ⓐ ★经验条 value/max == season_xp/xp_to_next(%d/%d)" % [int(gs_a.season_xp), need_a],
+				int(bar_a.value) == int(gs_a.season_xp) and int(bar_a.max_value) == need_a, "%.0f/%.0f" % [bar_a.value, bar_a.max_value])
+			_ok("ⓐ ★条上写着「%d/%d」" % [int(gs_a.season_xp), need_a], xpt_a.text == "%d/%d" % [int(gs_a.season_xp), need_a], "「%s」" % xpt_a.text)
+			_ok("ⓐ ★条上的字压在条上", bar_a.get_global_rect().grow(6.0).encloses(xpt_a.get_global_rect()), "")
+			if bdg is Control:
+				var gx: float = bar_a.get_global_rect().position.x - (bdg as Control).get_global_rect().end.x
+				_ok("ⓐ ★经验条从徽章右边起(间距 0..24, 读成「2 [42/50]」)", gx >= 0.0 and gx <= 24.0, "%.0f" % gx)
+			## 满级: 写「满级」、整条填满(走产品自己的 xp_readout, 临时改等级再还原)
+			var lv0: int = int(gs_a.season_level)
+			gs_a.season_level = int(_P2A.MAX_LEVEL)
+			var mx: Array = _menu.xp_readout()
+			gs_a.season_level = lv0
+			_ok("ⓐ ★满级 ⇒ 写「满级」且整条填满", str(mx[2]) == "满级" and int(mx[0]) == int(mx[1]) and int(mx[1]) > 0, str(mx))
+		var nm_a: Label = _find_named(card, "Nickname") as Label
+		var tg_a: Label = _find_named(card, "PlayerTag") as Label
+		if nm_a != null and tg_a != null:
+			_ok("ⓐ ★ID 写成「#XXXX」、不带「ID」二字", tg_a.text.begins_with("#") and not tg_a.text.begins_with("##") and tg_a.text.find("ID") < 0, "「%s」" % tg_a.text)
+			_ok("ⓐ ★ID 紧跟昵称同一行、字比昵称小", absf(tg_a.get_global_rect().get_center().y - nm_a.get_global_rect().get_center().y) <= 6.0
+				and tg_a.get_theme_font_size("font_size") < nm_a.get_theme_font_size("font_size"), "")
+		var sl_a: Label = _find_named(card, str(MENU_S.SEASON_LINE_NAME)) as Label
+		_ok("ⓐ ★「第 %d 大轮」小字一行在经验条下面" % int(gs_a.season_id), sl_a != null and sl_a.text == "第 %d 大轮" % int(gs_a.season_id)
+			and bar_a != null and sl_a.get_global_rect().position.y >= bar_a.get_global_rect().end.y, "")
+		_ok("ⓐ ★卡里没有战绩行(战绩 / 胜负 / 还没上过场)", cj.find("战绩") < 0 and cj.find("胜") < 0 and cj.find("还没上过场") < 0, cj)
+		_ok("ⓐ ★卡里没有命与本周(挪到开始战斗上方)", cj.find("♥") < 0 and cj.find("本周") < 0, cj)
+		_ok("ⓐ ★卡里没有「Lv」字样(等级就是徽章上的数字)", cj.find("Lv") < 0, cj)
+		_ok("ⓐ ★整张卡可点", taps.has(card))
 		var fnt_bad: Array = []
 		var ink_end := 0.0
-		var nick_fs := 0
 		for n_a in _walk(card):
 			if not (n_a is Label) or str((n_a as Label).text).strip_edges() == "":
 				continue
 			var la: Label = n_a
 			var fs_a: int = la.get_theme_font_size("font_size")
-			if str(la.name) == "Nickname":
-				nick_fs = fs_a
-			elif fs_a < 17:
+			if fs_a < 17:
 				fnt_bad.append("「%s」%d" % [la.text.substr(0, 8), fs_a])
 			var fa: Font = la.get_theme_font("font")
 			var ink_w: float = fa.get_string_size(la.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs_a).x if fa != null else 0.0
-			ink_end = maxf(ink_end, la.get_global_rect().position.x + ink_w)
-		## 「战绩-还没上过场」那道横线的真因: 战绩那行压在卡底边的铜线上, 铜线从字缝里露出来。
-		##   ⇒ 每行字的墨迹(竖向居中, 高≈字号)都要落在卡底边那圈木框(18px)之上。
+			if la.horizontal_alignment == HORIZONTAL_ALIGNMENT_LEFT:
+				ink_end = maxf(ink_end, la.get_global_rect().position.x + ink_w)
+		if bar_a != null:
+			ink_end = maxf(ink_end, bar_a.get_global_rect().end.x)
 		var low: Array = []
 		for n_l in _walk(card):
 			if n_l is Label and str((n_l as Label).text).strip_edges() != "":
@@ -227,24 +255,21 @@ func _ready() -> void:
 				if ink_bot > cr.end.y - 18.0:
 					low.append("「%s」%.0f" % [(n_l as Label).text.substr(0, 6), ink_bot])
 		_ok("ⓐ2 ★每行字都落在卡底边铜线之上(墨迹底 ≤ 卡底 − 18)", low.is_empty(), "%s / 卡底 %.0f" % [str(low), cr.end.y])
-		_ok("ⓐ2 ★昵称 ≥ 22 号", nick_fs >= 22, "%d" % nick_fs)
-		_ok("ⓐ2 ★卡里其余各行 ≥ 17 号", fnt_bad.is_empty(), str(fnt_bad))
-		## 「战绩」与读数之间那道横线: 同一段字里的空格被画成了线/点 ⇒ 拆成两段, 中间是真空白(≥ 6px), 读数里不带「-·」打头
-		var rh_a: Label = _find_named(card, "RecordHead") as Label
-		var rt_a: Label = _find_named(card, "RecordText") as Label
-		var gap_a := -1.0
-		if rh_a != null and rt_a != null:
-			var fh: Font = rh_a.get_theme_font("font")
-			gap_a = rt_a.get_global_rect().position.x - (rh_a.get_global_rect().position.x
-				+ fh.get_string_size(rh_a.text, HORIZONTAL_ALIGNMENT_LEFT, -1, rh_a.get_theme_font_size("font_size")).x)
-		_ok("ⓐ2 ★「战绩」与读数是两段字、中间真空白 ≥ 6px(不靠空格, 空格实拍画成了横线)", rh_a != null and rt_a != null
-			and rh_a.text == "战绩" and gap_a >= 6.0 and not rt_a.text.begins_with("-") and not rt_a.text.begins_with("·") and not rt_a.text.begins_with(" "),
-			"间隔 %.0f" % gap_a)
-		var rib_a: Node = _find_named(card, str(MENU_S.STATUS_RIBBON_NAME))
-		if rib_a is Control:
-			ink_end = maxf(ink_end, (rib_a as Control).get_global_rect().end.x)   # 绶带也是内容
-		_ok("ⓐ2 ★卡宽贴合内容(最长那行字/绶带的右端到卡右沿 ≤ 40px)", ink_end > 0.0 and cr.end.x - ink_end <= 40.0,
+		_ok("ⓐ2 ★卡里各行 ≥ 17 号", fnt_bad.is_empty(), str(fnt_bad))
+		_ok("ⓐ2 ★卡宽贴合内容(最长那行字/经验条的右端到卡右沿 ≤ 40px)", ink_end > 0.0 and cr.end.x - ink_end <= 40.0,
 			"字到 %.0f / 卡到 %.0f" % [ink_end, cr.end.x])
+		## ★真点一下整张卡 ⇒ 进战绩页(左列不再单设战绩键, 这是唯一入口)
+		var ctap: BaseButton = null
+		for n_t in _walk(card):
+			if n_t is BaseButton:
+				ctap = n_t
+		var went := ""
+		if ctap != null:
+			for cn in ctap.pressed.get_connections():
+				var cb_t: Callable = cn["callable"]
+				if cb_t.get_method() == "_open_record":
+					went = "_open_record"
+		_ok("ⓐ ★点玩家卡接的是 _open_record(→ Record)", went == "_open_record", went)
 		## Logo 不再占左上角
 		var logo: Control = _find_named(_menu, "Logo") as Control
 		_ok("ⓐ ★分母: Logo 在场", logo != null)
@@ -293,13 +318,13 @@ func _ready() -> void:
 	# ── ⓒ ★左侧 = 一列方形图标键(图标在上、字在下, 带红点槽) ──
 	var squares: Array = []
 	for c in stack:
-		if str(c.name).begins_with(str(MENU_S.SQ_NAME_PREFIX)) or str(c.name) == str(MENU_S.RECORD_ENTRY_NAME):
+		if str(c.name).begins_with(str(MENU_S.SQ_NAME_PREFIX)):
 			squares.append(c)
 	squares.sort_custom(func(a, b): return (a as Control).global_position.y < (b as Control).global_position.y)
 	var sq_names: Array = []
 	for c in squares:
 		sq_names.append(_sq_label(c))
-	_ok("ⓒ ★分母: 左列 5 颗方键 = 背包/商店/图鉴/排行榜/战绩", sq_names == ["背包", str(MENU_S.SHOP_LABEL), "图鉴", "排行榜", "战绩"], str(sq_names))
+	_ok("ⓒ ★分母: 左列 4 颗方键 = 背包/商店/图鉴/排行榜(没有战绩: 整张玩家卡就是战绩入口)", sq_names == ["背包", str(MENU_S.SHOP_LABEL), "图鉴", "排行榜"], str(sq_names))
 	var not_sq: Array = []
 	var lefts: Array = []
 	var gaps_c: Array = []
@@ -330,13 +355,18 @@ func _ready() -> void:
 			var br_c: Rect2 = (bd_c as Control).get_global_rect()
 			if br_c.get_center().x > r_c.get_center().x and br_c.get_center().y < r_c.get_center().y:
 				badge_ok += 1
-	_ok("ⓒ ★五颗都是正方形(宽高差 ≤1)", squares.size() == 5 and not_sq.is_empty(), str(not_sq))
-	_ok("ⓒ ★五颗共用一条左沿(极差 ≤1)、贴左边(≤ 32)", lefts.size() == 5 and lefts.max() - lefts.min() <= 1.0 and lefts.min() <= 32.0, str(lefts))
-	_ok("ⓒ ★竖排等距(间距极差 ≤1, 不重叠)", gaps_c.size() == 4 and gaps_c.max() - gaps_c.min() <= 1.0 and gaps_c.min() >= 0.0, str(gaps_c))
-	_ok("ⓒ ★五颗都是图标在上、字在下", icon_ok == 5, "%d / 5" % icon_ok)
-	_ok("ⓒ ★五颗都用方木块底(sqbtn.png)", skin_ok == 5, "%d / 5" % skin_ok)
-	_ok("ⓒ ★五颗都带红点槽(右上角, 默认藏着)", badge_ok == 5, "%d / 5" % badge_ok)
-	if card != null and squares.size() == 5:
+	_ok("ⓒ ★四颗都是正方形(宽高差 ≤1)", squares.size() == 4 and not_sq.is_empty(), str(not_sq))
+	_ok("ⓒ ★四颗共用一条左沿(极差 ≤1)、贴左边(≤ 32)", lefts.size() == 4 and lefts.max() - lefts.min() <= 1.0 and lefts.min() <= 32.0, str(lefts))
+	_ok("ⓒ ★竖排等距(间距极差 ≤1, 不重叠)", gaps_c.size() == 3 and gaps_c.max() - gaps_c.min() <= 1.0 and gaps_c.min() >= 0.0, str(gaps_c))
+	_ok("ⓒ ★四颗都是图标在上、字在下", icon_ok == 4, "%d / 4" % icon_ok)
+	_ok("ⓒ ★四颗都用方木块底(sqbtn.png)", skin_ok == 4, "%d / 4" % skin_ok)
+	_ok("ⓒ ★四颗都带红点槽(右上角, 默认藏着)", badge_ok == 4, "%d / 4" % badge_ok)
+	var rec_sq: Array = []
+	for t_c in taps:
+		if _tag(t_c).find("战绩") >= 0:
+			rec_sq.append(_tag(t_c))
+	_ok("ⓒ ★主屏上没有单独的「战绩」键", rec_sq.is_empty(), str(rec_sq))
+	if card != null and squares.size() == 4:
 		_ok("ⓒ 方键列在玩家卡下面(不压卡)", (squares[0] as Control).get_global_rect().position.y >= card.get_global_rect().end.y, "")
 
 	# ── ⓓ ★右下 = 开始战斗: 最大, 而且是全屏唯一的实心亮黄 ──
@@ -389,8 +419,44 @@ func _ready() -> void:
 		## 训龟大师: 明显低一档, 贴在主 CTA 正上方、右沿同轴, 换一种皮
 		var tr: Rect2 = trainer.get_global_rect()
 		_ok("ⓓ ★训龟大师与主 CTA 右沿同轴 (差 ≤2px)", absf(tr.end.x - hr.end.x) <= 2.0, "差 %.1f" % (tr.end.x - hr.end.x))
-		_ok("ⓓ ★训龟大师贴在主 CTA 正上方 (间距 4..12px)", hr.position.y - tr.end.y >= 4.0 and hr.position.y - tr.end.y <= 12.0,
-			"间距 %.0f" % (hr.position.y - tr.end.y))
+		## 有计数条的日子: 训龟大师 / 计数条 / 开始战斗 三层; 没有(周六/周日): 训龟大师直接贴着开始战斗。
+		var cnt: Control = _find_named(_menu, str(MENU_S.TODAY_COUNTER_NAME)) as Control
+		var below_t: float = cnt.get_global_rect().position.y if cnt != null else hr.position.y
+		_ok("ⓓ ★训龟大师贴在%s正上方 (间距 4..12px)" % ("计数条" if cnt != null else "主 CTA "), below_t - tr.end.y >= 4.0 and below_t - tr.end.y <= 12.0,
+			"间距 %.0f" % (below_t - tr.end.y))
+		# ── ⓖ ★开始战斗正上方 = 今天在动的两个数(荒野乱斗 PLAY 上面那条计数); 只在吃命/配额的日子 ──
+		var want_g: Array = _menu.today_counter_texts(int(_menu._now_ts()))
+		var gs_g = get_node("/root/GameState")
+		_ok("ⓖ ★计数条在不在 == 今天吃不吃命/配额(_phase_status_line 为空)", (cnt != null) == (str(_menu._phase_status_line(int(_menu._now_ts()))) == ""), "")
+		if cnt != null:
+			var cr_g: Rect2 = cnt.get_global_rect()
+			var ctx_g: Array = []
+			for n_g in _walk(cnt):
+				if n_g is Label:
+					ctx_g.append(str((n_g as Label).text))
+			print("  ⓖ 计数条 @(%.0f,%.0f) %.0f×%.0f  %s" % [cr_g.position.x, cr_g.position.y, cr_g.size.x, cr_g.size.y, str(ctx_g)])
+			_ok("ⓖ ★计数条贴在开始战斗正上方(间距 0..10 · 水平中心在主 CTA 里)", hr.position.y - cr_g.end.y >= 0.0 and hr.position.y - cr_g.end.y <= 10.0
+				and cr_g.get_center().x > hr.position.x and cr_g.get_center().x < hr.end.x, str(cr_g))
+			_ok("ⓖ ★命 == ♥ %d/%d" % [int(gs_g.hearts), int(_P2A.HEARTS_MAX)], ctx_g.has("♥ %d/%d" % [int(gs_g.hearts), int(_P2A.HEARTS_MAX)]), str(ctx_g))
+			_ok("ⓖ ★本周 == 本周对战 %d/%d" % [int(gs_g.ranked_used), int(_P2A.RANKED_QUOTA)],
+				ctx_g.has("本周对战 %d/%d" % [int(gs_g.ranked_used), int(_P2A.RANKED_QUOTA)]), str(ctx_g))
+			_ok("ⓖ ★计数条整条在屏内、不压训龟大师", Rect2(0, 0, W, H).encloses(cr_g) and not cr_g.intersects(tr), "")
+		## 周六/周日: 喂已知日期给产品函数 —— 计数条不建, 模式卡第二行 == 当天读数(去掉与标题重复的赛制名)
+		var wk_bad: Array = []
+		var wk_n := 0
+		for d_g in [6, 0]:
+			var ts_g: int = 1789862400 + d_g * 86400 + 12 * 3600
+			var st_g: String = str(_menu._phase_status_line(ts_g))
+			var ln_g: Array = _menu.mode_card_lines(ts_g)
+			if st_g == "":
+				continue
+			wk_n += 1
+			if not _menu.today_counter_texts(ts_g).is_empty():
+				wk_bad.append("%d: 周末还建计数条" % d_g)
+			if str(ln_g[1]) == "" or not st_g.ends_with(str(ln_g[1])):
+				wk_bad.append("%d: 卡第二行「%s」不是当天读数「%s」" % [d_g, str(ln_g[1]), st_g])
+		_ok("ⓖ ★分母: 周六周日两天都有当天读数", wk_n == 2, "%d" % wk_n)
+		_ok("ⓖ ★周六/周日: 没有计数条、模式卡第二行 == 当天读数", wk_bad.is_empty(), str(wk_bad))
 		_ok("ⓓ ★主 CTA 面积 ≥ 训龟大师 1.8 倍", (hr.size.x * hr.size.y) >= (tr.size.x * tr.size.y) * 1.8,
 			"%.2f 倍" % ((hr.size.x * hr.size.y) / maxf(1.0, tr.size.x * tr.size.y)))
 		var t_tex := ""
@@ -649,11 +715,11 @@ func _ready() -> void:
 		##   (门禁替 bug 站岗)。改成按收盘前/后分开判, 维护只认真正的维护态「维护中」。
 		if _P2M.close_left_sec(now_ts) < 0:
 			_ok("⑬b ★今天是闯关赛(已上线)、已过收盘 → 「今日已收盘」并说明天",
-				joined.find("今日已收盘") >= 0 and joined.find("明天") >= 0 and joined.find("休赛日") < 0
+				joined.find("今日已截止") >= 0 and joined.find("明天") >= 0 and joined.find("休赛日") < 0
 				or joined.find("维护中") >= 0, str(strip_txt))
 		else:
 			_ok("⑬b ★今天是闯关赛(已上线) → 收盘块给的是倒计时或封盘提示",
-				joined.find("距收盘") >= 0 or joined.find("已封盘") >= 0
+				joined.find("距截止") >= 0 or joined.find("已截止") >= 0
 				or joined.find("维护中") >= 0, str(strip_txt))
 	else:
 		## 积分赛那几天照旧: 要么在倒计时, 要么已进封盘窗口(收盘前 10 分钟)
@@ -661,11 +727,11 @@ func _ready() -> void:
 		##   (门禁替 bug 站岗)。改成按收盘前/后分开判, 维护只认真正的维护态「维护中」。
 		if _P2M.close_left_sec(now_ts) < 0:
 			_ok("⑬b ★今天是积分赛、已过收盘 → 「今日已收盘」并说明天",
-				joined.find("今日已收盘") >= 0 and joined.find("明天") >= 0 and joined.find("休赛日") < 0
+				joined.find("今日已截止") >= 0 and joined.find("明天") >= 0 and joined.find("休赛日") < 0
 				or joined.find("维护中") >= 0, str(strip_txt))
 		else:
 			_ok("⑬b ★今天是积分赛 → 收盘块给的是倒计时或封盘提示",
-				joined.find("距收盘") >= 0 or joined.find("已封盘") >= 0
+				joined.find("距截止") >= 0 or joined.find("已截止") >= 0
 				or joined.find("维护中") >= 0, str(strip_txt))
 
 	# ── ⑬c ★**四个阶段各喂一个已知日期**, 别只量"今天"那一格 ──
@@ -736,7 +802,7 @@ func _ready() -> void:
 					## 周六: 门上第一行**照常给倒计时**(原 "countdown" 那条判据搬到门上), 第二行说通到哪
 					## 门是「牌子 + 透明按钮」, 字在牌子上的 Label 里(bj)
 					_ok("⑬c ★%s: 门上照常给倒计时" % dn,
-						bj.find("距收盘") >= 0 or bj.find("已封盘") >= 0, bj)
+						bj.find("距截止") >= 0 or bj.find("已截止") >= 0, bj)
 					_ok("⑬c ★%s: 门上写着通到哪(全场赛况)" % dn, bj.find("全场赛况") >= 0, bj)
 				else:
 					_ok("⑬c ★%s: 门上写着通到哪(玩家看得懂)" % dn,
@@ -777,7 +843,7 @@ func _ready() -> void:
 			## 玩法已上线的阶段: 积分赛(周五 23:00 收盘)与闯关赛(周六 23:00 收盘)
 			## 都有收盘概念 ⇒ 必须给倒计时或封盘提示, 不许是别的话。
 			_ok("⑬c ★%s: 照常给倒计时" % dn,
-				bj.find("距收盘") >= 0 or bj.find("已封盘") >= 0, bj)
+				bj.find("距截止") >= 0 or bj.find("已截止") >= 0, bj)
 		blk.queue_free()
 
 	# ── ⑬e ★BK_PENDING 的【兜底那一句】也不许把开发状态说给玩家听 (2026-09-28) ──
@@ -1224,6 +1290,28 @@ func _ready() -> void:
 		await get_tree().process_frame
 		_menu._build_page_buttons(0)
 		await get_tree().process_frame
+
+	# ── ⓐ3 ★真点一下玩家卡 ⇒ 真进了战绩页(最后做: 换场景之后主菜单就没了) ──
+	var card_t: Control = _find_named(_menu, str(MENU_S.CARD_NAME)) as Control
+	var tap_t: BaseButton = null
+	if card_t != null:
+		for n_t in _walk(card_t):
+			if n_t is BaseButton:
+				tap_t = n_t
+	_ok("ⓐ3 ★分母: 玩家卡上有可点的按钮", tap_t != null)
+	if tap_t != null:
+		get_tree().current_scene = _menu
+		tap_t.pressed.emit()
+		var rec_ok := false
+		for _i_t in range(30):
+			await get_tree().process_frame
+			var cs: Node = get_tree().current_scene
+			if cs != null and str(cs.scene_file_path).ends_with("/Record.tscn"):
+				rec_ok = true
+				break
+		_ok("ⓐ3 ★★点玩家卡 ⇒ 当前场景真换成了战绩页(Record.tscn)", rec_ok,
+			str(get_tree().current_scene.scene_file_path) if get_tree().current_scene != null else "null")
+		_menu = null
 
 	_done()
 

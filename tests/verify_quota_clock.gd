@@ -113,20 +113,15 @@ func _repaint_entries(scene: Node, ts: int) -> String:
 
 ## 走**产品自己的** `_status_row(ts)` 画一次状态行, 返回 [L1, L2]。
 func _status_lines(scene: Node, ts: int) -> Array:
+	## 2026-10-05 第四轮: `_status_row` 建玩家卡 + (吃配额的日子)开始战斗上方的计数条 ⇒ 收它新建的全部节点的字。
 	var before: Array = scene.content_root.get_children()
 	scene._status_row(ts)
-	var holder: Node = null
+	var tl: Array = []
 	for ch in scene.content_root.get_children():
 		if not before.has(ch):
-			holder = ch
-	if holder == null:
-		return []
-	var two: Node = holder.find_child(str(MENU.STATUS_TWO_LINE), true, false)
-	var tl: Array = []
-	if two != null:
-		_texts(two, tl)
-	scene.content_root.remove_child(holder)
-	holder.free()
+			_texts(ch, tl)
+			scene.content_root.remove_child(ch)
+			ch.free()
 	return tl
 
 
@@ -236,13 +231,15 @@ func _ready() -> void:
 			continue
 		var strip: Node = scene.content_root.find_child("WeekStrip", true, false)
 		var shop_txt: String = _shop_line(scene)
-		var two: Node = scene.content_root.find_child(str(MENU.STATUS_TWO_LINE), true, false)
+		## 「今天」读数: 吃配额的日子在开始战斗上方的计数条; 周六/周日在模式卡里(2026-10-05 第四轮)。
+		var two: Node = scene.content_root.find_child(str(MENU.TODAY_COUNTER_NAME), true, false)
+		if two == null:
+			two = scene.content_root.find_child(str(MENU.MODE_CARD_NAME), true, false)
 		var l2 := ""
 		if two != null:
 			var tl: Array = []
 			_texts(two, tl)
-			if tl.size() >= 2:
-				l2 = str(tl[1])
+			l2 = " | ".join(PackedStringArray(tl))
 		_ok("② [%s] ★分母: 三处读数都画出来了(状态行 L2 / 赛程条 / 商店那一行)" % tag,
 			l2 != "" and strip != null and shop_txt != "",
 			"L2=「%s」 strip=%s 商店=「%s」" % [l2, str(strip != null), shop_txt])

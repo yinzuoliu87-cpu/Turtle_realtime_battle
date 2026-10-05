@@ -390,8 +390,10 @@ func _t_menu_entry() -> void:
 	while Time.get_ticks_msec() - t0 < 1500:
 		await get_tree().process_frame
 	Engine.time_scale = 1.0
-	var ent := mm.find_child(MM.RECORD_ENTRY_NAME, true, false) as Control
-	_ok("⑤ ★左栏有「战绩」入口", ent != null)
+	## ★2026-10-05 第四轮: 左栏不再单设「战绩」键(用户:「点击整个卡那就不要战绩单独给按钮啊」),
+	##   整张左上玩家卡就是战绩入口。
+	var ent := mm.find_child(MM.CARD_NAME, true, false) as Control
+	_ok("⑤ ★左上玩家卡(战绩入口)在场", ent != null)
 	if ent == null:
 		mm.queue_free()
 		return
@@ -399,11 +401,7 @@ func _t_menu_entry() -> void:
 	## ★2026-10-05 第三轮: 左栏从「排行榜 | 战绩」对半一行(宽 191)换成方形图标键(88×88) ⇒ 宽 ≥150 那条没有对象了,
 	##   守的仍是触控线: 短边 ≥ 81(=44pt), 并且是方的(图标在上、字在下)。
 	_ok("⑤ 入口 ≥ 触控线(短边 ≥ 81)", minf(r.size.x, r.size.y) >= 81.0, str(r))
-	var lb_ok := false
-	for l in ent.find_children("*", "Label", true, false):
-		if (l as Label).text.contains("战绩"):
-			lb_ok = true
-	_ok("⑤ 入口上写着「战绩」", lb_ok)
+	_ok("⑤ 左栏没有单独的「战绩」键", mm.find_child(str(MM.SQ_NAME_PREFIX) + "战绩", true, false) == null)
 	var bt: Button = null
 	for c in ent.find_children("*", "Button", true, false):
 		bt = c

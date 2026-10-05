@@ -1432,7 +1432,7 @@ func _lockout_toast() -> void:
 	lab.name = "LockoutToast"
 	## ★去掉 ⏳ —— 它在打包字体里是彩色 emoji, 与黄字黑描边的 toast 不是一套语言。
 	##   「已封盘/收盘」是本项目的固定说法(主菜单赛程条同词), 这两个词不动。
-	lab.text = "已封盘 · 收盘前 %d 分钟不再开新局" % int(_P2C.CLOSE_LOCKOUT_SEC / 60)
+	lab.text = "已截止 · 截止前 %d 分钟停止匹配" % int(_P2C.CLOSE_LOCKOUT_SEC / 60)
 	lab.add_theme_font_size_override("font_size", 24)
 	lab.add_theme_color_override("font_color", Color("#ffd93d"))
 	lab.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))

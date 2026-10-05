@@ -164,11 +164,11 @@ scripts/gamedata/phase2_config.gd|lit|二
 scripts/gamedata/phase2_config.gd|lit|五
 scripts/gamedata/phase2_config.gd|lit|亚军
 scripts/gamedata/phase2_config.gd|lit|休赛
-scripts/gamedata/phase2_config.gd|lit|休赛日 · 按积分赛的规矩打 · 这天打的算本周场次
+scripts/gamedata/phase2_config.gd|lit|休赛日 · 规则同积分赛 · 计入本周场次
 scripts/gamedata/phase2_config.gd|lit|六
 scripts/gamedata/phase2_config.gd|lit|冠军
 scripts/gamedata/phase2_config.gd|lit|决赛日
-scripts/gamedata/phase2_config.gd|lit|双方同时开打 · 结果统一在本轮开播时揭晓\n去【决赛日 → 看对阵图】等翻面
+scripts/gamedata/phase2_config.gd|lit|双方同时开赛 · 结果统一在本轮开播时揭晓\n去【决赛日 → 看对阵图】等翻面
 scripts/gamedata/phase2_config.gd|lit|名字太短了 —— 至少 %d 个字
 scripts/gamedata/phase2_config.gd|lit|名字太长了 —— 最多 %d 个字(现在 %d 个)
 scripts/gamedata/phase2_config.gd|lit|周一
@@ -197,7 +197,7 @@ scripts/gamedata/phase2_config.gd|lit|积分赛
 scripts/gamedata/phase2_config.gd|lit|绑上邮箱，换手机或重装都能把进度接回来。
 scripts/gamedata/phase2_config.gd|lit|绑定邮箱，换手机也接得回来
 scripts/gamedata/phase2_config.gd|lit|统领
-scripts/gamedata/phase2_config.gd|lit|这天按积分赛的规矩打
+scripts/gamedata/phase2_config.gd|lit|规则同积分赛
 scripts/gamedata/phase2_config.gd|lit|进决赛日
 scripts/gamedata/phase2_config.gd|lit|进度没备份 · 绑定邮箱
 scripts/gamedata/phase2_config.gd|lit|闪电
@@ -516,14 +516,14 @@ scripts/scenes/BracketMapScene.gd|lit|本周冠军
 scripts/scenes/BracketMapScene.gd|lit|本周冠军已全部决出 · 共 %d 组
 scripts/scenes/BracketMapScene.gd|lit|本周只有 %d 人晋级 · 人太少, 决赛日没开起来; 你的晋级算数, 下周再来
 scripts/scenes/BracketMapScene.gd|lit|本周没有你这一组 · 周六闯关赛晋级才进得来
-scripts/scenes/BracketMapScene.gd|lit|本轮备战已结束 · 等开打
+scripts/scenes/BracketMapScene.gd|lit|本轮备战已结束 · 等待开赛
 scripts/scenes/BracketMapScene.gd|lit|正在摆你这一组的对阵
 scripts/scenes/BracketMapScene.gd|lit|正在翻本周的名册 · 看看你分在哪一组
 scripts/scenes/BracketMapScene.gd|lit|正在读取这一场…
 scripts/scenes/BracketMapScene.gd|lit|神秘龟
 scripts/scenes/BracketMapScene.gd|lit|第 %d 组冠军 · %s%s
 scripts/scenes/BracketMapScene.gd|lit|轮空
-scripts/scenes/BracketMapScene.gd|lit|还没分组 · 本地 %s 自动分组开打, 到时候这里会出现你的对阵
+scripts/scenes/BracketMapScene.gd|lit|还没分组 · %s 自动分组开赛, 到时候这里会出现你的对阵
 scripts/scenes/BracketMapScene.gd|lit|这一轮你已经看过 %d 号了 · 一轮只能看一个对手
 scripts/scenes/BracketMapScene.gd|lit|这一轮已经翻篇了 · 刷新一下看看新的对阵
 scripts/scenes/BracketMapScene.gd|lit|连不上服务器 · 你这一组还没看到, 每 30 秒自己再看一次
@@ -531,7 +531,7 @@ scripts/scenes/BracketMapScene.gd|lit|连不上服务器 · 过两秒再点一�
 scripts/scenes/BracketMapScene.gd|text|下一轮 %s后开播
 scripts/scenes/BracketMapScene.gd|text|你本周未晋级 · 只能看 · 第 %d 组
 scripts/scenes/BracketMapScene.gd|text|回到我
-scripts/scenes/BracketMapScene.gd|tooltip_text|上场开打
+scripts/scenes/BracketMapScene.gd|tooltip_text|开始对战
 scripts/scenes/BracketMapScene.gd|tooltip_text|重看这一场
 scripts/scenes/CodexScene.gd|lit|+%d 龟币
 scripts/scenes/CodexScene.gd|lit|× 关闭
@@ -564,7 +564,7 @@ scripts/scenes/CodexScene.gd|text|✓ %d 龟 / %d 装备 / %d 羁绊 / %d 状态
 scripts/scenes/CodexScene.gd|text|❌ DataRegistry 未加载
 scripts/scenes/CodexScene.gd|text|龟币: %d   龟种: %d\n等级分布: %s\n战斗: %s
 scripts/scenes/CodexScene.gd|text|🛠 调试面板
-scripts/scenes/GauntletBoardScene.gd|lit| · 已收盘
+scripts/scenes/GauntletBoardScene.gd|lit| · 已截止
 scripts/scenes/GauntletBoardScene.gd|lit|%d 分钟前
 scripts/scenes/GauntletBoardScene.gd|lit|%d 天前
 scripts/scenes/GauntletBoardScene.gd|lit|%d 小时前
@@ -638,12 +638,12 @@ scripts/scenes/InventoryScene.gd|tooltip_text|从糖果罐里开出来的临时�
 scripts/scenes/InventoryScene.gd|tooltip_text|全队装备已满 %d / %d · 升赛季等级可再装
 scripts/scenes/InventoryScene.gd|tooltip_text|点一下 → 底下出现「卸下」键
 scripts/scenes/InventoryScene.gd|tooltip_text|点一下换站位 —— 前排贴上去挥砍, 后排站远了射击
-scripts/scenes/LeaderboardScene.gd|lit|（对手还没读到 —— 下一场开打时去取一次）
+scripts/scenes/LeaderboardScene.gd|lit|（对手还没读到 —— 下一场开始时去取一次）
 scripts/scenes/LeaderboardScene.gd|lit|（榜上暂时只有你 —— 打完一场, 对手就会上来）
 scripts/scenes/LeaderboardScene.gd|lit|（榜上暂时只有你）
 scripts/scenes/LeaderboardScene.gd|lit|（每场打完自动上榜）
 scripts/scenes/LeaderboardScene.gd|lit|（赢下第一场就能上分 —— 你本赛季还是 0 胜）
-scripts/scenes/LeaderboardScene.gd|lit|（连不上服务器 · 对手还没读到 —— 下一场开打时会自己再试）
+scripts/scenes/LeaderboardScene.gd|lit|（连不上服务器 · 对手还没读到 —— 下一场开始时会自己再试）
 scripts/scenes/LeaderboardScene.gd|lit|🏆 本周排行
 scripts/scenes/LeaderboardScene.gd|text|你
 scripts/scenes/LeaderboardScene.gd|text|本周共 %d 人上榜
@@ -651,58 +651,56 @@ scripts/scenes/MainMenuScene.gd|lit| · 没打的 %d 场化成 深海币 +%d · 
 scripts/scenes/MainMenuScene.gd|lit|%d 分 %02d 秒
 scripts/scenes/MainMenuScene.gd|lit|%d 天 %d 小时
 scripts/scenes/MainMenuScene.gd|lit|%d 小时 %d 分
-scripts/scenes/MainMenuScene.gd|lit|%d 胜 %d 负
-scripts/scenes/MainMenuScene.gd|lit|♥ %d/%d   本周 %d/%d
-scripts/scenes/MainMenuScene.gd|lit|✅ 已晋级决赛日 · 闯关赛到此为止(%s) · 明天周日来打决赛日
-scripts/scenes/MainMenuScene.gd|lit|今日已收盘
+scripts/scenes/MainMenuScene.gd|lit|%s 开赛
+scripts/scenes/MainMenuScene.gd|lit|✅ 已晋级决赛日 · 闯关赛到此为止(%s) · 明天周日参加决赛日
+scripts/scenes/MainMenuScene.gd|lit|今日已截止
 scripts/scenes/MainMenuScene.gd|lit|休赛日
 scripts/scenes/MainMenuScene.gd|lit|但你已晋级, 周六闯关赛见
 scripts/scenes/MainMenuScene.gd|lit|但你已过晋级线, 周六闯关赛见
 scripts/scenes/MainMenuScene.gd|lit|全场赛况
 scripts/scenes/MainMenuScene.gd|lit|决赛日
-scripts/scenes/MainMenuScene.gd|lit|决赛日 · 去看对阵图
+scripts/scenes/MainMenuScene.gd|lit|决赛日 · 已晋级
 scripts/scenes/MainMenuScene.gd|lit|决赛日 · 本周没晋级
 scripts/scenes/MainMenuScene.gd|lit|决赛日 · 闯关赛止步 %s
 scripts/scenes/MainMenuScene.gd|lit|决赛日\n看对阵图
-scripts/scenes/MainMenuScene.gd|lit|周%s %02d:%02d 收盘
+scripts/scenes/MainMenuScene.gd|lit|周%s %02d:%02d 截止
 scripts/scenes/MainMenuScene.gd|lit|周%s %s · %s
 scripts/scenes/MainMenuScene.gd|lit|周二开赛 · 本日维护
 scripts/scenes/MainMenuScene.gd|lit|商店
 scripts/scenes/MainMenuScene.gd|lit|图鉴
-scripts/scenes/MainMenuScene.gd|lit|已封盘
-scripts/scenes/MainMenuScene.gd|lit|已封盘 · 收盘前不开新局
+scripts/scenes/MainMenuScene.gd|lit|已截止
+scripts/scenes/MainMenuScene.gd|lit|已截止 · 停止匹配
 scripts/scenes/MainMenuScene.gd|lit|开始战斗
-scripts/scenes/MainMenuScene.gd|lit|战绩
+scripts/scenes/MainMenuScene.gd|lit|截止前 %d 分钟停止匹配
 scripts/scenes/MainMenuScene.gd|lit|打完第一场才开店
-scripts/scenes/MainMenuScene.gd|lit|按积分赛的规矩打, 算本周场次
 scripts/scenes/MainMenuScene.gd|lit|排行榜
-scripts/scenes/MainMenuScene.gd|lit|收盘前 %d 分钟起不开新局
 scripts/scenes/MainMenuScene.gd|lit|收起
 scripts/scenes/MainMenuScene.gd|lit|明天%s
-scripts/scenes/MainMenuScene.gd|lit|明天决赛日 · 本地 %s 开打
+scripts/scenes/MainMenuScene.gd|lit|明天决赛日 · %s 开赛
 scripts/scenes/MainMenuScene.gd|lit|本周 %d 场已打满
+scripts/scenes/MainMenuScene.gd|lit|本周对战 %d/%d
 scripts/scenes/MainMenuScene.gd|lit|本周赛程
 scripts/scenes/MainMenuScene.gd|lit|本地 %s
-scripts/scenes/MainMenuScene.gd|lit|本地 %s 开打
 scripts/scenes/MainMenuScene.gd|lit|本大轮已出局
-scripts/scenes/MainMenuScene.gd|lit|每周最多 %d 场 · 周五收盘
-scripts/scenes/MainMenuScene.gd|lit|点开本周赛程 · 看对阵图
+scripts/scenes/MainMenuScene.gd|lit|查看对阵图 »
+scripts/scenes/MainMenuScene.gd|lit|每周最多 %d 场 · 周五截止
+scripts/scenes/MainMenuScene.gd|lit|满级
 scripts/scenes/MainMenuScene.gd|lit|版本维护, 稍后回来
-scripts/scenes/MainMenuScene.gd|lit|积分赛打够 %d 胜才能来
-scripts/scenes/MainMenuScene.gd|lit|第 %d 大轮 · Lv %d
+scripts/scenes/MainMenuScene.gd|lit|积分赛 %d 胜可参加
+scripts/scenes/MainMenuScene.gd|lit|第 %d 大轮
 scripts/scenes/MainMenuScene.gd|lit|维护中
 scripts/scenes/MainMenuScene.gd|lit|背包
+scripts/scenes/MainMenuScene.gd|lit|规则同积分赛
+scripts/scenes/MainMenuScene.gd|lit|规则同积分赛，计入本周场次
 scripts/scenes/MainMenuScene.gd|lit|训龟大师
 scripts/scenes/MainMenuScene.gd|lit|赛程 »
-scripts/scenes/MainMenuScene.gd|lit|距%s %s
-scripts/scenes/MainMenuScene.gd|lit|距收盘 %s
-scripts/scenes/MainMenuScene.gd|lit|还没上过场
-scripts/scenes/MainMenuScene.gd|lit|这天按积分赛的规矩打
+scripts/scenes/MainMenuScene.gd|lit|距%s开始 %s
+scripts/scenes/MainMenuScene.gd|lit|距截止 %s
 scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 再赢 %d 场晋级 / 再输 %d 场出局%s
 scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 已出局%s
 scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 已晋级决赛日%s
 scripts/scenes/MainMenuScene.gd|lit|闯关赛 · 本周没晋级
-scripts/scenes/MainMenuScene.gd|lit|闯关赛晋级的人来打决赛
+scripts/scenes/MainMenuScene.gd|lit|闯关赛晋级玩家参赛
 scripts/scenes/MainMenuScene.gd|lit|💀 本大轮已出局 · %s
 scripts/scenes/MainMenuScene.gd|lit|💀 本大轮已出局 · 下周一开新的一轮
 scripts/scenes/MainMenuScene.gd|lit|💀 闯关赛已出局(%s) · 下周一开新的一轮
@@ -860,7 +858,7 @@ scripts/scenes/SettingsScene.gd|lit|用邮箱取回
 scripts/scenes/SettingsScene.gd|lit|用邮箱取回账号
 scripts/scenes/SettingsScene.gd|lit|画质「低」
 scripts/scenes/SettingsScene.gd|lit|画质「高」
-scripts/scenes/SettingsScene.gd|lit|画质换成「%s」了%s · 下一场开打时生效
+scripts/scenes/SettingsScene.gd|lit|画质换成「%s」了%s · 下一场开始时生效
 scripts/scenes/SettingsScene.gd|lit|画面「全屏」
 scripts/scenes/SettingsScene.gd|lit|画面「窗口」
 scripts/scenes/SettingsScene.gd|lit|确认
@@ -964,7 +962,7 @@ scripts/scenes/TeamSelectScene.gd|lit|这一轮的龟定了 · 下个赛季才�
 scripts/scenes/TeamSelectScene.gd|lit|随从位
 scripts/scenes/TeamSelectScene.gd|text|全部
 scripts/scenes/TeamSelectScene.gd|text|就这三只 · 出战
-scripts/scenes/TeamSelectScene.gd|text|已封盘 · 收盘前 %d 分钟不再开新局
+scripts/scenes/TeamSelectScene.gd|text|已截止 · 截止前 %d 分钟停止匹配
 scripts/scenes/TeamSelectScene.gd|text|带它们出战
 scripts/scenes/TeamSelectScene.gd|text|挑 3 只龟上阵
 scripts/scenes/TeamSelectScene.gd|text|撤下

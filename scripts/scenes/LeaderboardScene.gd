@@ -142,8 +142,8 @@ const COL_RANK := "#7f93a6"
 ##     (`SettingsScene.gd:103` / `remote_pool.gd:182`: 常驻的"离线"标记是反的 ——
 ##      它等于告诉玩家"你是残缺状态, 去修"。所以这一档只陈述事实, 不解释原因。)
 const HINT_ONLY_YOU_OK := "（榜上暂时只有你 —— 打完一场, 对手就会上来）"
-const HINT_ONLY_YOU_FAIL := "（连不上服务器 · 对手还没读到 —— 下一场开打时会自己再试）"
-const HINT_ONLY_YOU_UNKNOWN := "（对手还没读到 —— 下一场开打时去取一次）"
+const HINT_ONLY_YOU_FAIL := "（连不上服务器 · 对手还没读到 —— 下一场开始时会自己再试）"
+const HINT_ONLY_YOU_UNKNOWN := "（对手还没读到 —— 下一场开始时去取一次）"
 const HINT_ONLY_YOU_OFF := "（榜上暂时只有你）"
 const HINT_FIRST_WIN := "（赢下第一场就能上分 —— 你本赛季还是 0 胜）"
 const HINT_AUTO := "（每场打完自动上榜）"
