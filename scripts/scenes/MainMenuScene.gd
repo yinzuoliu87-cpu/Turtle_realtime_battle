@@ -69,7 +69,7 @@ const LV_TEXT_NAME := "LevelNum"            # 徽章上的等级数字
 const LV_BADGE_SIZE := Vector2(68.0, 76.0)  # lvbadge.png 原尺寸 1:1
 const LV_BADGE_POS := Vector2(20.0, 26.0)   # 卡内: 左端木面竖向居中(26..102)
 const LV_FONT := 34
-const CARD_L0_Y := 14.0                     # 昵称 + #ID: 22 号字墨迹 ~18..41
+const CARD_L0_Y := 18.0                     # 昵称 + #ID(原 14: 字块顶压进卡顶边带 3px, CI 量出)
 const CARD_L0_FONT := 22
 const CARD_TAG_FONT := 17
 const XP_BAR_NAME := "XpBar"                # 经验条(TextureProgressBar, value/max = season_xp/xp_to_next)
@@ -116,8 +116,8 @@ const HERO_FACE_NAME := "HeroFace"
 ## ★返工(照荒野乱斗 PLAY 旁那块活动卡): 与开始战斗**同底沿、高度接近、间距 12** ⇒ 读成一组。
 ##   两只角斗龟的脚原来落在 y=608, 卡顶要到 584 ⇒ 生成器把龟的脚底线 FOOT_Y 151 → 144(抬 28px),
 ##   龟仍完整露出(verify_mainmenu_layout ⑮e 量真框)。
-const MODE_SIZE := Vector2(320.0, 108.0)
-const MODE_POS := Vector2(HERO_POS.x - 12.0 - 320.0, HERO_POS.y + HERO_SIZE.y - 108.0)   # 452..772 × 584..692
+const MODE_SIZE := Vector2(320.0, 112.0)   # 原 108: 标题/倒计时字块压进上下边带(CI 量出 +2/+6); 112 = 顶沿正好贴角斗龟脚底(再高就盖住龟)
+const MODE_POS := Vector2(HERO_POS.x - 12.0 - 320.0, HERO_POS.y + HERO_SIZE.y - 112.0)   # 452..772 × 584..692
 const MODE_CARD_NAME := "ModeCard"
 const MODE_TITLE_FONT := 30                  # 今天的赛制(≥26)
 const MODE_RULE_FONT := 17                   # 一句规矩(≥17)
@@ -1428,14 +1428,14 @@ func _mode_card(now: int) -> void:
 	holder.add_child(plate)
 	## 三行字(返工: 「太小太弱」): 赛制名 30 号最大; 规矩 17 号; 倒计时**单独一行、亮色 + 一条压暗底带**。
 	##   右上角「赛程 »」告诉人这块能点(原来那行小字「本周赛程」读起来像标签, 不像入口)。
-	var title := _place_outlined(str(lines[0]), MODE_TITLE_FONT, Color("#ffe9a8"), Vector2(18.0, 9.0), Vector2(180.0, 40.0))
+	var title := _place_outlined(str(lines[0]), MODE_TITLE_FONT, Color("#ffe9a8"), Vector2(18.0, 13.0), Vector2(180.0, 40.0))
 	title.name = "ModeTitle"
 	holder.add_child(title)
-	var cap := _place_outlined("赛程 »", 18, Color("#ffd99a"), Vector2(MODE_SIZE.x - 18.0 - 100.0, 15.0), Vector2(100.0, 28.0))
+	var cap := _place_outlined("赛程 »", 18, Color("#ffd99a"), Vector2(MODE_SIZE.x - 18.0 - 100.0, 19.0), Vector2(100.0, 28.0))
 	cap.name = "ModeHint"
 	cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	holder.add_child(cap)
-	var rule := _place_outlined(str(lines[1]), MODE_RULE_FONT, Color("#ecd9b0"), Vector2(18.0, 48.0), Vector2(rule_w, 26.0 + grow))
+	var rule := _place_outlined(str(lines[1]), MODE_RULE_FONT, Color("#ecd9b0"), Vector2(18.0, 49.0), Vector2(rule_w, 26.0 + grow))
 	rule.name = "ModeRule"
 	if extra_rows > 0:
 		rule.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
@@ -1443,11 +1443,11 @@ func _mode_card(now: int) -> void:
 	var band := ColorRect.new()
 	band.name = "CountdownBand"
 	band.color = Color(0.0, 0.0, 0.0, 0.30)
-	band.position = Vector2(12.0, 75.0 + grow)
+	band.position = Vector2(12.0, 76.0 + grow)
 	band.size = Vector2(MODE_SIZE.x - 24.0, 24.0)
 	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(band)
-	var cd := _place_outlined(str(lines[2]), MODE_CD_FONT, Color("#ffc94a"), Vector2(18.0, 74.0 + grow), Vector2(MODE_SIZE.x - 36.0, 26.0))
+	var cd := _place_outlined(str(lines[2]), MODE_CD_FONT, Color("#ffc94a"), Vector2(18.0, 75.0 + grow), Vector2(MODE_SIZE.x - 36.0, 26.0))
 	cd.name = "ModeCountdown"
 	holder.add_child(cd)
 	var btn := Button.new()
