@@ -347,7 +347,7 @@ const PHASE_MODE_LIVE := {
 ##   ⇒ 这里只留**陈述现状**的话。两句的后半句故意一字不差
 ##     (「按积分赛的规矩打」), 那是两天共同的那条信息。
 const PHASE_PENDING_NOTE := {
-	PHASE_REST: "休赛日 · 规则同积分赛 · 计入本周场次",
+	PHASE_REST: "休赛日 · 不开放对战",
 	PHASE_FINALS: "规则同积分赛",
 }
 

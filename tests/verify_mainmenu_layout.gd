@@ -69,6 +69,12 @@ func _ready() -> void:
 	if packed == null:
 		print("  [FAIL] 载不到 MainMenu.tscn"); get_tree().quit(1); return
 	_menu = packed.instantiate()
+	## ★周一休赛(2026-10-05 起「开始战斗」周一锁住、不发光) ⇒ 本文件量的是「能打的那一屏」;
+	##   真实今天是周一时把钟钉到次日(周二)同一时刻。其余六天行为不变。
+	var _p2c0 = load("res://scripts/gamedata/phase2_config.gd")
+	var _now0: int = int(_p2c0.now_utc())
+	if str(_p2c0.phase_at_utc(_now0)) == str(_p2c0.PHASE_REST):
+		_menu.clock_override_ts = _now0 + 86400
 	get_tree().root.add_child(_menu)
 	# 无头视口是方形的 —— 强制按真机 1280×720 口径量, 否则根 Control 会被撑成 1280×1280。
 	if _menu is Control:
@@ -660,7 +666,8 @@ func _ready() -> void:
 	#      `phase_pending_note()` 是 UI 与门禁共用的那一个答案(七天全量在 verify_week_season ⑦)。
 	#    ★任何一天跑都成立: 周二~周五 → 要有倒计时/封盘; 周一六日 → 要有那句「开发中」。
 	var _P2M := preload("res://scripts/gamedata/phase2_config.gd")
-	var now_ts: int = int(Time.get_unix_time_from_system())
+	## ★跟主菜单同一个钟(周一时本文件把钟钉到周二, 见开头)。
+	var now_ts: int = int(_menu.clock_override_ts) if int(_menu.clock_override_ts) > 0 else int(Time.get_unix_time_from_system())
 	var today_ph: String = _P2M.phase_at_utc(now_ts)
 	var note_today: String = _P2M.phase_pending_note(today_ph)
 	if note_today != "":
@@ -675,8 +682,10 @@ func _ready() -> void:
 		##   而且**说清了今天按谁的规矩打**。后者用 `PHASE_LABEL` 那张表取,
 		##   **不在门禁里抄一份字面量** —— 抄了就又变成一份会落后的副本。
 		var _rk_name: String = str(_P2M.PHASE_LABEL.get(_P2M.PHASE_RANKED, ""))
-		_ok("⑬b ★分母: 那句话是产品纯函数给的, 且说清了今天按谁的规矩打",
-			_rk_name != "" and note_today.find(_rk_name) >= 0,
+		## ★2026-10-05 周一休赛不开放对战(用户「周一哪来的比赛」) ⇒ 周一那句要说清「不开放对战」。
+		var _need: String = "不开放对战" if today_ph == _P2M.PHASE_REST else _rk_name
+		_ok("⑬b ★分母: 那句话是产品纯函数给的, 且说清了今天能不能打 / 按谁的规矩打",
+			_need != "" and note_today.find(_need) >= 0,
 			"规矩名「%s」/ 那句话「%s」" % [_rk_name, note_today])
 		## ★同时守住: 屏幕上**不许**出现开发状态词。
 		##   (原判据是「必须含开发中」, 现在是「不许含」—— 方向反过来了,
@@ -823,9 +832,10 @@ func _ready() -> void:
 			##   (见 `phase2_config.PHASE_PENDING_NOTE` 头注 2026-09-27 那段)。
 			##   判据不许把那几个词焊回去 —— 否则它会替那个缺陷站岗。
 			## ★只换 needle 是半条: 换完还得守住"别人再把开发状态词加回来" ⇒ 多一条。
-			_ok("⑬c ★%s: 条子上必须说清这天按【哪个赛制】的规矩打" % dn,
-				bj.find(str(_P2M.PHASE_LABEL[_P2M.PHASE_RANKED])) >= 0,
-				"要出现「%s」· 条子上是「%s」" % [str(_P2M.PHASE_LABEL[_P2M.PHASE_RANKED]), bj])
+			## ★2026-10-05: 挂提示的那天(周一休赛)不开放对战 ⇒ 条子上必须直说「不开放对战」。
+			_ok("⑬c ★%s: 条子上必须说清这天不开放对战" % dn,
+				bj.find("不开放对战") >= 0,
+				"要出现「不开放对战」· 条子上是「%s」" % bj)
 			var devnote: Array = []
 			for w in ["开发中", "暂按", "待做", "TODO", "占位", "未实现"]:
 				if bj.find(str(w)) >= 0:

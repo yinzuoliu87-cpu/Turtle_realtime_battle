@@ -291,9 +291,12 @@ func _t_ahead_seven_days() -> void:
 				_ok("② ★%s/%s ★分母: 真入口没飘出那行字(演出没走到 = 下面全是空检查)" % [grp, WD[d]], false)
 				continue
 			print("     %-4s %s %-8s 「%s」" % [grp, WD[d], P2.phase_at_utc(ts), toast])
-			if d <= 4:
+			## ★2026-10-05 周一休赛不开放对战(用户「周一哪来的比赛」) ⇒ 周一说休赛, 周二~周五四天说晋级/下周一。
+			if d == 0:
+				_ok("② ★%s/周一: 拦截说的是「今日休赛」" % grp, toast.find("休赛") >= 0, toast)
+			elif d <= 4:
 				said.append(toast)
-		_ok("② ★分母(%s): 周一~周五五天都拿到了那句话" % grp, said.size() == 5, "%d 句" % said.size())
+		_ok("② ★分母(%s): 周二~周五四天都拿到了那句话" % grp, said.size() == 4, "%d 句" % said.size())
 		var ok_ahead := 0
 		var ok_next_week := 0
 		for s in said:
@@ -302,11 +305,11 @@ func _t_ahead_seven_days() -> void:
 			if str(s).find("下周一") >= 0 and str(s).find("闯关赛") < 0:
 				ok_next_week += 1
 		if grp == "过线":
-			_ok("② ★★★过了晋级线的人, **周一~周五五天**都要被指向周六闯关赛, 一天都不许说「下周一」",
-				ok_ahead == 5, "5 天里只有 %d 天说对" % ok_ahead)
+			_ok("② ★★★过了晋级线的人, **周二~周五四天**都要被指向周六闯关赛, 一天都不许说「下周一」",
+				ok_ahead == 4, "4 天里只有 %d 天说对" % ok_ahead)
 		else:
-			_ok("② ★分母: 差一场没过线的人, 五天都必须说「下周一」且**不许**提闯关赛(他周六打不了)",
-				ok_next_week == 5, "5 天里只有 %d 天说对" % ok_next_week)
+			_ok("② ★分母: 差一场没过线的人, 四天都必须说「下周一」且**不许**提闯关赛(他周六打不了)",
+				ok_next_week == 4, "4 天里只有 %d 天说对" % ok_next_week)
 
 	## ★★另一条真入口: 商店那一把锁走 `_msg_quota_full()`。两个入口共用同一句话,
 	##   只验一个入口 = 另一个改坏了没人红(它们 2026-09-17 之前就是各写一份的)。

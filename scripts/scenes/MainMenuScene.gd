@@ -1335,7 +1335,7 @@ const WEEK_DIM_NAME := "WeekPopupDim"
 func _phase_rule(ph: String) -> String:
 	match ph:
 		_P2C.PHASE_REST:
-			return "规则同积分赛，计入本周场次"
+			return "本日不开放对战"
 		_P2C.PHASE_GAUNTLET:
 			return "积分赛 %d 胜可参加" % int(_P2C.PROMOTE_WINS)
 		_P2C.PHASE_FINALS:
@@ -2347,6 +2347,10 @@ func _battle_block_msg(now: int = 0) -> String:
 	## ★兜底同样走 `_now_ts()`(2026-09-28): 否则这里就是本文件的第三条时钟。
 	##   产品路径(`_start_battle_flow`)本来就传 `_now_ts()` ∴ 行为逐字节不变。
 	var ts: int = now if now > 0 else _now_ts()
+	## ★周一休赛(用户原稿: 周一 = 休赛期·发奖/终榜公示; 2026-10-05「周一哪来的比赛」)。
+	##   原来周一照常能打积分赛且计入本周场次 —— 实现漏洞, 不是设计。
+	if _P2C.phase_at_utc(ts) == _P2C.PHASE_REST:
+		return "🔒 今日休赛，积分赛周二开始"
 	if _P2C.phase_at_utc(ts) == _P2C.PHASE_GAUNTLET \
 			and _P2C.phase_mode_live(_P2C.PHASE_GAUNTLET):
 		return _msg_gauntlet_block()

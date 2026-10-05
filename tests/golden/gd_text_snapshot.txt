@@ -164,7 +164,7 @@ scripts/gamedata/phase2_config.gd|lit|二
 scripts/gamedata/phase2_config.gd|lit|五
 scripts/gamedata/phase2_config.gd|lit|亚军
 scripts/gamedata/phase2_config.gd|lit|休赛
-scripts/gamedata/phase2_config.gd|lit|休赛日 · 规则同积分赛 · 计入本周场次
+scripts/gamedata/phase2_config.gd|lit|休赛日 · 不开放对战
 scripts/gamedata/phase2_config.gd|lit|六
 scripts/gamedata/phase2_config.gd|lit|冠军
 scripts/gamedata/phase2_config.gd|lit|决赛日
@@ -681,6 +681,7 @@ scripts/scenes/MainMenuScene.gd|lit|本周对战 %d/%d
 scripts/scenes/MainMenuScene.gd|lit|本周赛程
 scripts/scenes/MainMenuScene.gd|lit|本地 %s
 scripts/scenes/MainMenuScene.gd|lit|本大轮已出局
+scripts/scenes/MainMenuScene.gd|lit|本日不开放对战
 scripts/scenes/MainMenuScene.gd|lit|查看对阵图 »
 scripts/scenes/MainMenuScene.gd|lit|每周最多 %d 场 · 周五截止
 scripts/scenes/MainMenuScene.gd|lit|满级
@@ -690,7 +691,6 @@ scripts/scenes/MainMenuScene.gd|lit|第 %d 大轮
 scripts/scenes/MainMenuScene.gd|lit|维护中
 scripts/scenes/MainMenuScene.gd|lit|背包
 scripts/scenes/MainMenuScene.gd|lit|规则同积分赛
-scripts/scenes/MainMenuScene.gd|lit|规则同积分赛，计入本周场次
 scripts/scenes/MainMenuScene.gd|lit|训龟大师
 scripts/scenes/MainMenuScene.gd|lit|赛程 »
 scripts/scenes/MainMenuScene.gd|lit|距%s开始 %s
@@ -706,6 +706,7 @@ scripts/scenes/MainMenuScene.gd|lit|💀 本大轮已出局 · 下周一开新�
 scripts/scenes/MainMenuScene.gd|lit|💀 闯关赛已出局(%s) · 下周一开新的一轮
 scripts/scenes/MainMenuScene.gd|lit|📋 本周配额 %d 场已打满 · %s
 scripts/scenes/MainMenuScene.gd|lit|📋 本周配额 %d 场已打满 · 下周一开新的一轮
+scripts/scenes/MainMenuScene.gd|lit|🔒 今日休赛，积分赛周二开始
 scripts/scenes/MainMenuScene.gd|lit|🔒 完成本大轮首场对战后解锁商店
 scripts/scenes/MainMenuScene.gd|lit|🔒 本周没晋级 · 下周一开新的一轮, 积分赛打够 %d 胜就能来
 scripts/scenes/MainMenuScene.gd|lit|🔒 本周没晋级 · 积分赛命用完了 · 下周一开新的一轮
