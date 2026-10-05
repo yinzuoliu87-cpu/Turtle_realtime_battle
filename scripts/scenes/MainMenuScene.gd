@@ -2,7 +2,7 @@ extends Control
 
 ## MainMenuScene — 主菜单, 1:1 PoC MainMenuScene.ts 布局.
 ## 设计台 1280×720. 标题menu-title图@(240,130) / 左栏btn-frame按钮(360×87)中心x=240 /
-## 右上货币芯片(裸图标+数字) + 4个frame-square磁贴(图鉴/教程/排行榜/战绩, 仅图标).
+## 右上货币芯片(裸图标+数字) + 左列 4 颗方键(背包/商店/图鉴/排行榜).
 
 ## 商店按钮的文字。★它同时是【商店锁的判别式】(下面 `str(s[0]) == SHOP_LABEL`) ——
 ##   所以必须是一个常量, 不能两处各写一遍字面量: 改了按钮名字而漏改判别式,
@@ -36,7 +36,7 @@ const WALL := 16
 ## 参考固定成 6 张**手游主大厅**截图(docs/plans/ref/20261005-手游大厅/, 出处 sources.tsv):
 ##   荒野乱斗 ×2 / 英雄联盟手游 / 使命召唤手游 / 刀塔霸业 / 皇室战争(竖屏, 只看布局逻辑)。
 ## 只取**布局骨架**, 不学任何一家的画风与形状(皮仍是本作的像素木头 + 黄铜):
-##   左上   玩家信息卡(头像 + 昵称 + ID + 大轮·Lv + 今天的数 + 战绩)   ← 荒野乱斗/使命召唤/英雄联盟手游 三家同位
+##   左上   玩家信息卡(等级徽章 + 昵称 #ID + 经验条 + 大轮)   ← 荒野乱斗/使命召唤/英雄联盟手游 三家同位
 ##   右上   两种货币一行 + ? / ⚙ 小图标键                              ← 五张横屏全在右上
 ##   左侧   一列方形图标键(图标在上、字在下, 带红点槽)                 ← 荒野乱斗两张
 ##   中间   擂台与两只角斗龟(不许压)                                   ← 每一张中间都是角色本身
@@ -46,45 +46,55 @@ const WALL := 16
 ##   Logo 占着它就只能把玩家信息挤成散字(上一版的样子)。顶部居中在荒野乱斗/使命召唤里
 ##   也只放小件, 而它正好压在擂台的拱顶上方, 像挂在场馆门楣上的招牌 —— 不跟任何入口抢位置。
 
-## ── 左上: 玩家信息卡 ──
-## ★文字栏宽跟着内容收(返工: 「卡片又宽又空」), LEFT_W 只是**上限**: 周六那句
-##   「闯关赛 2-1 · 再赢 2 场晋级 / 再输 2 场出局」17 号字实测 ink 最宽 ~322,
-##   `verify_gauntlet_ahead ③④` 按 `LEFT_W - 8` 当框量(从产品常量取)。
-## ★卡不许比开始战斗大(开始战斗是最大的按钮) ⇒ 最宽那天卡 ~454×130 = 59020 < 主 CTA 480×124 = 59520。
-## ★卡高 112 = card.png 原高(×2 像素) ⇒ 竖向 1:1 不拉伸。四段字逐段排(见 `_status_row`)。
+## ── 左上: 玩家信息卡(2026-10-05 第四轮: 照皇室战争/英雄联盟手游的标准写法) ──
+## 用户:「按标准写法怎么写啊，商业游戏怎么写啊」「头像？我们有头像吗？」
+## ⇒ 卡里只放四样东西, 每样一件事:
+##   [大等级徽章]  昵称 #ID
+##                [===经验条 x/y===]
+##                第 N 大轮
+##   · 等级徽章 = 大轮等级(season_level)。占原来头像那一格 —— 本作**没有头像系统**, 人人同一个龟壳 = 占位, 删了。
+##     徽章紧贴经验条左端, 读成皇室战争那种「2 [42/50]」。
+##   · ID 紧跟昵称、小号冷灰、不带「ID」二字(皇室战争 #2PP 那种写法)。
+##   · 战绩行删了(整卡点进战绩页; 左列也不再单设「战绩」键)。
+##   · 命与本周场次挪到开始战斗正上方(荒野乱斗 PLAY 上面那条计数), 周六/周日的读数进模式卡。
 const LEFT_W := 340.0                       # 玩家卡文字栏宽(上限)
 const CARD_POS := Vector2(16.0, 6.0)
-const CARD_TEXT_X := 104.0                  # 文字栏左沿 = 头像圆环右边(card.png ×2 后环占 0..96)
-const CARD_H := 130.0                       # = card.png 原高, 竖向 1:1(木面 16..111, 底边铜线在 112 以下)
+const CARD_TEXT_X := 104.0                  # 文字栏左沿 = 等级徽章右边
+const CARD_H := 130.0                       # = card.png 高, 竖向 1:1(木面 16..111, 底边铜线在 112 以下)
 const CARD_PAD_R := 20.0                    # 文字栏右边到卡右沿(右端铜钉 + 描边余量)
-const CARD_TAG_GAP := 10.0                  # 昵称与 ID 之间
-const CARD_REC_INDENT := 28.0               # 战绩行: 图标 22 + 6
-const CARD_REC_GAP := 10.0                  # 「战绩」与读数之间的真空白
+const CARD_TAG_GAP := 8.0                   # 昵称与 #ID 之间
 const CARD_NAME := "PlayerCard"
-const AVATAR_CENTER := Vector2(56.0, 56.0)  # card.png ×2 后圆环圆心(原件 31,32 − 裁边 3,4 再 ×2; 插的行在圆环下面, 不动它)
-const AVATAR_SIZE := 40.0                   # avatar.png 原尺寸 1:1(环内径 ×2 后约 44)
-## ★★状态行仍是【两行】(2026-09-28 拆的, 理由见 `_status_row` 头注), 现在住在玩家卡里。
-##   这个名字同时是**那两行文字的容器节点名**, 三份门禁按它抓(verify_mainmenu_layout / quota_clock / gauntlet_ahead)。
-const STATUS_TWO_LINE := "StatusTwoLine"
-## 卡内四段的顶沿与字号。★四段的**墨迹**都要落在木面 16..111 里(字框可以互相叠, 墨迹不能压到铜线) ⇒ 改一个就要重算全部。
-## ★字号下限(返工): 昵称 ≥22, 其余三行 ≥17 —— 原来 18/16 在手机上太小。
-const CARD_L0_Y := 13.0                     # 昵称 + ID: 22 号字墨迹 ~18..40
-const STATUS_L1_Y := 42.0                   # 身份行(压在绶带上) 42..68
-const STATUS_L2_Y := 66.0                   # 今天行: 17 号字框 66..91, 墨迹 ~70..87
-const STATUS_L3_Y := 88.0                   # 战绩行: 字框 88..113, 墨迹 ~92..109(< 112 铜线)
-const STATUS_L3_H := 25.0                   # 战绩行字框高(写死, 不跟卡高走 —— 跟卡高走的话字被居中到铜线上)
+const LV_BADGE_NAME := "LevelBadge"         # 大等级徽章(menu/hud/lvbadge.png, 黄铜盾)
+const LV_TEXT_NAME := "LevelNum"            # 徽章上的等级数字
+const LV_BADGE_SIZE := Vector2(68.0, 76.0)  # lvbadge.png 原尺寸 1:1
+const LV_BADGE_POS := Vector2(20.0, 26.0)   # 卡内: 左端木面竖向居中(26..102)
+const LV_FONT := 34
+const CARD_L0_Y := 14.0                     # 昵称 + #ID: 22 号字墨迹 ~18..41
 const CARD_L0_FONT := 22
 const CARD_TAG_FONT := 17
-const STATUS_L1_FONT := 17                  # 身份行(绶带上)
-## ★L2 与战绩行同一档字号(都是卡里的次级读数); 卡宽让给主 CTA 之后两行都是 16。
-const STATUS_L2_FONT := 17                  # 今天行(verify_gauntlet_ahead 按它量字宽)
-const STATUS_L3_FONT := 17                  # 战绩行
-const STATUS_RIBBON_NAME := "StatusRibbon"
-const STATUS_RIBBON_SIZE := Vector2(250.0, 26.0)
+const XP_BAR_NAME := "XpBar"                # 经验条(TextureProgressBar, value/max = season_xp/xp_to_next)
+const XP_TEXT_NAME := "XpText"              # 条上的「x/y」/「满级」
+const XP_Y := 50.0
+const XP_H := 26.0
+const XP_MIN_W := 220.0
+const XP_FONT := 17
+const XP_MAX_TEXT := "满级"
+const SEASON_LINE_NAME := "SeasonLine"      # 「第 N 大轮」小字一行(经验条下面)
+const SEASON_Y := 82.0                      # 17 号字框 82..107, 墨迹 ~86..103(< 112 铜线)
+const SEASON_FONT := 17
+
+## ── 开始战斗正上方: 今天在动的两个数(荒野乱斗 PLAY 上面那条计数) ──
+## ★只在吃命/吃配额的日子建(= `_phase_status_line()` 返回空串的那几天);
+##   周六/周日这两个数整天不动, 摆着只会误导 —— 那两天的读数进模式卡。
+const TODAY_COUNTER_NAME := "TodayCounter"
+const COUNTER_H := 32.0
+const COUNTER_GAP := 6.0                    # 计数条与开始战斗之间
+const COUNTER_FONT := 18
+const COUNTER_PAD := 14.0
 const SOLID_OUTLINE := 6
 
 ## ── 左侧: 一列方形图标键 ──
-## ★88 不是 81: 触摸线 81(=44pt), 图标 44 + 字 20 + 上下留白要装进去; 5 × 88 + 4 × 8 = 472 ⇒ 144..616,
+## ★88 不是 81: 触摸线 81(=44pt), 图标 44 + 字 20 + 上下留白要装进去; 4 × 88 + 3 × 8 = 376 ⇒ 144..520,
 ##   上面是玩家卡(底 136), 下面空着 —— 左下角正是擂台阴影最深处, 不压任何东西。
 const SQ := 88.0
 const SQ_GAP := 8.0
@@ -95,7 +105,6 @@ const SQ_FONT := 19
 const SQ_NAME_PREFIX := "Sq_"               # 每颗方键的节点名 = 前缀 + 入口名(门禁按名字找, 不按下标)
 const BADGE_NAME := "Badge"                 # 红点槽(默认藏着, 有事时由入口自己点亮)
 const LOCK_REASON_NAME := "LockReason"      # 商店锁的短理由(方键右边常驻一行)
-const RECORD_ENTRY_NAME := "RecordEntry"    # 「战绩」方键(门禁 verify_replay_controls 按它找)
 
 ## ── 右下: 开始战斗 + 模式卡 + 训龟大师 ──
 ## ★主 CTA 440×120: 木框保留(R2), 框里那块面换成**全屏唯一的饱和亮黄**(menu/hud/cta-face.png)。
@@ -117,6 +126,8 @@ const MODE_CD_FONT := 19                     # 倒计时(单独一行、亮色)
 ## ★宽 280 不是 240: 铁箍木板两端的箍在 240 宽下压到字(verify_ui_consistency「文字压边带」实测 +14)。
 const TRAINER_SIZE := Vector2(280.0, 82.0)   # ★82 不是 78: 触摸线 81 视口像素(=44pt)
 const TRAINER_POS := Vector2(W - WALL - 280.0, HERO_POS.y - 8.0 - 82.0)
+## 有计数条的日子, 训龟大师让到计数条上面(训龟大师 / 计数条 / 开始战斗 三层同一条右栏)。
+const TRAINER_POS_UP := Vector2(TRAINER_POS.x, HERO_POS.y - COUNTER_GAP - COUNTER_H - 8.0 - 82.0)
 const RIGHT_EDGE := float(W - WALL)          # 右栏共用右沿: 货币/?⚙/训龟大师/开始战斗
 
 ## ── 右上: 货币一行 + ? / ⚙ 小图标键 ──
@@ -430,7 +441,7 @@ func _sq_y(i: int) -> float:
 
 
 ## 建主菜单的可点元素 (2026-10-05 第三轮「手游大厅骨架」, 见文件头):
-##   左列  背包 / 商店 / 图鉴 / 排行榜 / 战绩   —— 方形图标键, 图标在上、字在下, 带红点槽
+##   左列  背包 / 商店 / 图鉴 / 排行榜   —— 方形图标键, 图标在上、字在下, 带红点槽
 ##   右下  训龟大师(铁箍木板, 小一档) + 开始战斗(木框 + 亮黄面, 全屏最大)
 ## ★`now` = 本屏那一刻(`_ready` 传)。**商店锁就指这一刻** —— 不传的话
 ##   `ranked_quota_full()` 兜底去读真实系统钟, 于是本屏就有两条钟
@@ -446,14 +457,13 @@ func _build_page_buttons(now: int = 0) -> void:
 	var shop_locked := _shop_block_msg(ts) != ""
 	var battle_locked := _battle_block_msg(ts) != ""
 	var mic := "res://assets/sprites/menu/"
-	## ★「战绩」是第五颗(2026-10-05 回放体验那轮加的入口; 左列竖排之后不用再跟排行榜对半分一行)。
-	##   图标 `menu/icon-record.png` 是给战绩画的那张。玩家卡整块也照旧点得进战绩(老玩家的肌肉记忆不拆)。
+	## ★2026-10-05 第四轮删掉第五颗「战绩」: 整张玩家卡就点进战绩页, 再单设一颗是同一个入口摆两遍
+	##   (用户:「点击整个卡那就不要战绩单独给按钮啊」)。
 	var subs: Array = [
 		["背包", func(): _go("Inventory"), mic + "ic-bag.png", false],
 		[SHOP_LABEL, func(): _open_shop(), mic + "ic-shop.png", shop_locked],
 		["图鉴", func(): _go("Codex"), mic + "ic-codex.png", false],
 		["排行榜", func(): _go("Leaderboard"), mic + "ic-trophy.png", false],
-		["战绩", func(): _go("Record"), mic + "icon-record.png", false],
 	]
 	## 锁着的那颗右边常驻一行短原因(不点也看得见) —— 只有商店有锁, 所以只给它传。
 	var shop_reason := _shop_lock_reason(ts)
@@ -461,8 +471,6 @@ func _build_page_buttons(now: int = 0) -> void:
 		var sN: Array = subs[i]
 		var e := _square_entry(str(sN[0]), sN[1], str(sN[2]), bool(sN[3]),
 			shop_reason if str(sN[0]) == SHOP_LABEL else "")
-		if str(sN[0]) == "战绩":
-			e.name = RECORD_ENTRY_NAME
 		e.position = Vector2(SQ_X, _sq_y(i))
 		page_box.add_child(e)
 		_slide_in_left(e, i)
@@ -470,7 +478,8 @@ func _build_page_buttons(now: int = 0) -> void:
 	#    它跟「开始战斗」是同一件事的两步(配大师 → 出战), 放一起讲得通。
 	## ★★2026-09-27 文字里不带 emoji(用户:「全是 ai 味和网页味」): 系统彩色 emoji 贴在像素木牌上是两种画法。
 	var tb := _plank_button("训龟大师", func(): _go("TrainerConfig"), TRAINER_SIZE)
-	tb.position = TRAINER_POS
+	## 有计数条的日子(吃命/配额)它让到计数条上面; 周六/周日没有计数条, 照旧贴着开始战斗。
+	tb.position = TRAINER_POS_UP if not today_counter_texts(ts).is_empty() else TRAINER_POS
 	page_box.add_child(tb)
 	_slide_in(tb, 4)
 	# ── 开始战斗: 右下角主 CTA —— 全屏最大, 也是全屏唯一一块实心亮色 ──
@@ -494,7 +503,7 @@ func _build_page_buttons(now: int = 0) -> void:
 ## ★y 是**算出来的空地**: 底沿 386+81 = 467, 训龟大师顶沿 `TRAINER_POS.y` = 478 ⇒ 留 11px;
 ##   左沿 756 在两只角斗龟右边(龟的右沿 732), 不压主角。
 const NUDGE_SIZE := Vector2(508.0, 81.0)
-const NUDGE_POS := Vector2(W - WALL - 508.0, 386.0)
+const NUDGE_POS := Vector2(W - WALL - 508.0, 346.0)   # 底沿 427 < 训龟大师上移后的顶沿 440
 
 
 ## 【拆墙的配件】没绑邮箱的人在主菜单上看到的那一句。
@@ -1021,7 +1030,7 @@ func _finals_status_line(now: int = 0) -> String:
 	if not _P2C.phase_mode_live(_P2C.PHASE_FINALS):
 		return ""
 	if GameState.gauntlet_state() == _P2C.GAUNTLET_IN:
-		return "决赛日 · 去看对阵图"
+		return "决赛日 · 已晋级"
 	var lab: String = _P2C.gauntlet_label(
 		int(GameState.gauntlet_wins), int(GameState.gauntlet_losses))
 	if GameState.gauntlet_eligible():
@@ -1052,86 +1061,56 @@ func _phase_status_line(now: int = 0) -> String:
 
 
 ## ══════════════════════════════════════════════════════════════════════
-##  ★★★状态行是**两行**(2026-09-28) —— 一行装不下, 而且是量出来的不是看出来的
+##  左上玩家卡 + 开始战斗上方的计数条(2026-10-05 第四轮, 照手游大厅的标准写法)
 ## ══════════════════════════════════════════════════════════════════════
-## 周六那句实测 `第 1 大轮 · Lv 1   闯关赛 2-1 · 再赢 2 场晋级 / 再输 2 场出局`
-## = **ink 485px**, 而框只有 `LEFT_W - 8` = **374px** ⇒ **顶穿控件 111px**
-## (真渲染量到的 Label rect 是 x 51..538, 而 holder 右沿在 430)。
-## 从 2026-09-22 周六那条读数上线时就在, 一直没红 —— 因为**它一周只渲染一天**,
-## 而 `verify_ui_consistency` / `verify_mainmenu_layout` 扫的都是「今天」那一屏。
-##
-## ★为什么不削词: 量过 16 个更短的写法, 装得进 374 的**都要削掉「再赢/再输」的后果**
-##   (最短可读的 407 仍然超; 降到 371 就只剩「再赢 2 / 再输 2」, 丢了晋级/出局这件事)。
-##   那句话的信息量是拍板过的 —— 「再输两场就出局」正是闯关赛每一场的分量。
-## ★为什么不加宽左栏: `LEFT_W` 同时定着四个入口、赛程条的对齐带与右栏的镜像,
-##   动它就是动整屏版式。两行只动这一行自己。
-##
-## ★★★竖向一分都涨不了 —— 剖面(实测, `tests/_probe_satrow.gd`):
-##     LOGO 底沿  205.5      ← 上面只剩 4.5px
-##     状态行     210..291   (= STATUS_Y + ROW_H)
-##     四个入口   299..623
-##     赛程条     周日被「看对阵图」按钮撑到 95 高 ⇒ 顶沿 **624**
-##   ⇒ 栈底与条顶只差 **1px**: `MENU_Y` 往下挪一格整屏就溢出(那条 2026-09-27 刚修过)。
-##   ⇒ 三段文字必须塞进原来的 81px: 27(18号) + 25(17号) + 25(17号) = 77, 上下各留 2。
-##
-## ⚠ `Control` 会把自己夹到 `get_combined_minimum_size()` ⇒ 给 Label 设 box **只是下限**:
-##   字比 box 宽时它照样长出去(顶穿就是这么来的, 一个错都不报)。
-##   所以门禁量的是**真实 rect 包不包得住 holder**, 不是"我设了多大的 box"。
-##   (同一个坑 2026-09-28 在训龟大师那屏也栽过: 以为是"名字换行", 真因是内容最小高 102 > 94。)
-##
-## 三段各说一件事:
-##   L1 身份 `第 N 大轮 · Lv X`                 ← 七天一个字不变
-##   L2 今天 `♥ a/8   本周 n/24` | 闯关赛… | 决赛日…  ← `_phase_status_line()` 分派
-##   L3 战绩 `[纹章] 战绩  x 胜 y 负`
-## ★★★命与本周场次进 **L2 而不是 L1** —— 它们是「今天在动的数」, 而周六周日**都不动**
-##   (`phase_uses_ranked_quota(GAUNTLET/FINALS)=false`; `finals_*` 一个字都不碰 `hearts`)。
-##   摆在 L1 就得给 L1 加一个"今天是不是积分赛"的分支, 而那个分支一周只走两天 ——
-##   本文件刚因为"一周只走一天的代码"栽过两次。⇒ **L1 无条件、七天同字**, 一个分支都不要。
+## 原来这里是一张塞了四段字的卡(头像 + 昵称 ID + 绶带「第 N 大轮 · Lv X」+ ♥/本周 + 战绩行)。
+## 用户:「按标准写法怎么写啊，商业游戏怎么写啊」「头像？我们有头像吗？」⇒ 拆成各归其位:
+##   玩家卡   = [等级徽章] 昵称 #ID / 经验条 x/y / 第 N 大轮     ← 皇室战争 / 英雄联盟手游 左上那一格
+##   计数条   = ♥ 命   本周对战 n/配额   贴在开始战斗正上方     ← 荒野乱斗 PLAY 上面那条
+##   周六周日 = 那两个数整天不动 ⇒ 不建计数条, 当天读数进模式卡(`mode_card_lines` 第二行)
 ## ★`now` = 本屏那一刻; 0 时才自己问一次(单独被门禁/实拍调用时)。
 func _status_row(now: int = 0) -> void:
-	## ★2026-10-05 第三轮: 状态行变成【左上玩家信息卡】(参考里「你是谁」那一格)。
-	##   一整张卡, 不是散字: 头像槽 + 昵称/ID + 身份行(绶带) + 今天行 + 战绩行。整卡可点 → 战绩。
-	## L1 身份 —— 七天不变, 没有任何分支。
-	var id_txt := "第 %d 大轮 · Lv %d" % [
-		int(GameState.season_id), int(GameState.season_level)]
-	## L2 今天 ——★★走 `_now_ts()`: 不传参的话这一行读的是真实时钟, 于是**一周只有一天**
-	##   会被门禁执行到(见 `_phase_status_line` 头注)。
-	var today_txt: String = _phase_status_line(now if now > 0 else _now_ts())
-	if today_txt == "":
-		## 积分赛/休赛那几天: 命与本周场次**就是**今天在动的那两个数。
-		## ★满命读常量 —— 原来写死成 `/8`, 而 2026-09-30 满命改成 6 之后
-		##   主菜单会显示「♥ 6/8」。实拍才照出来的 —— 我那条 HEARTS_ONE_SOURCE
-		##   逐行扫, 而这句的格式串与 `GameState.hearts` **分在两行** ⇒ 它没看见。
-		today_txt = "♥ %d/%d   本周 %d/%d" % [
-			int(GameState.hearts), int(_P2C.HEARTS_MAX),
-			int(GameState.ranked_used), int(_P2C.RANKED_QUOTA)]
-	var wN: int = GameState.battles_won
-	var tN: int = GameState.battles_total
-	## ★★空态文案 2026-09-27 改: 「暂无战绩」是后台/电商的那句「暂无数据」——
-	##   改成一句**有人味、且在催你去打**的话。
-	var rec := "%d 胜 %d 负" % [wN, maxi(0, tN - wN)] if tN > 0 else "还没上过场"
-	## ★E-B5 头衔: 只挂**最高一档**(完整列表在战绩屏)。没有头衔时一个字都不加。
-	var top_title: String = _P2C.title_top(GameState.titles)
-	if top_title != "":
-		rec = "%s · %s" % [rec, top_title]
+	var ts: int = now if now > 0 else _now_ts()
+	_player_card()
+	_today_counter(ts)
 
-	## ★卡宽**跟着内容收**(返工: 「卡片又宽又空」): 先量四行字的真实宽, 取最宽那行(下限 = 绶带宽,
-	##   上限 = LEFT_W), 卡与每行字框都用这个宽 —— 门禁量「字框都在卡里」照旧成立。
-	##   先问 ID 再问名字: `my_tag()` 会顺手把安装号建出来, 而默认昵称的种子就是安装号 ——
+
+## 经验条的读数: [当前, 本级所需, 条上的字]。满级 ⇒ [1, 1, 「满级」](整条填满)。
+## ★两个数都问唯一出处: `GameState.season_xp` / `phase2_config.xp_to_next(season_level)`(升级判据 `add_season_xp` 用的同一个)。
+func xp_readout() -> Array:
+	var lv: int = int(GameState.season_level)
+	if lv >= int(_P2C.MAX_LEVEL):
+		return [1, 1, XP_MAX_TEXT]
+	var need: int = maxi(1, int(_P2C.xp_to_next(lv)))
+	var cur: int = clampi(int(GameState.season_xp), 0, need)
+	return [cur, need, "%d/%d" % [cur, need]]
+
+
+## 计数条那一行字: [命, 本周]。空数组 = 今天不吃命/配额(周六/周日), 不建计数条。
+## ★满命/配额读常量 —— 原来写死成 `/8`, 2026-09-30 满命改成 6 之后就显示过「♥ 6/8」。
+func today_counter_texts(now: int) -> Array:
+	if _phase_status_line(now) != "":
+		return []
+	return ["♥ %d/%d" % [int(GameState.hearts), int(_P2C.HEARTS_MAX)],
+		"本周对战 %d/%d" % [int(GameState.ranked_used), int(_P2C.RANKED_QUOTA)]]
+
+
+func _player_card() -> void:
+	## 先问 ID 再问名字: `my_tag()` 会顺手把安装号建出来, 而默认昵称的种子就是安装号 ——
 	##   反过来的话全新安装第一屏拿到的是没种子的兜底名, 下一屏才换成真默认名(门禁实测抓到过)。
 	var tag_s := str(_BE.my_tag())
 	var name_s := str(_BE.player_display_name())
+	## `my_tag()` 自己就带「#」(#XXXXXX) ⇒ 原样摆, 不再加前缀。
+	var tag_txt := tag_s
+	var season_txt := "第 %d 大轮" % int(GameState.season_id)
+	var xp: Array = xp_readout()
 	var bf := _bold_font()
 	var name_w: float = bf.get_string_size(name_s, HORIZONTAL_ALIGNMENT_LEFT, -1, CARD_L0_FONT).x
-	var tag_txt := ("ID %s" % tag_s) if tag_s != "" else ""
-	var rec_txt := rec
-	var rec_head_w: float = bf.get_string_size("战绩", HORIZONTAL_ALIGNMENT_LEFT, -1, STATUS_L3_FONT).x
-	## 绶带宽 = 身份行字宽 + 两端燕尾(各 ~20), 不再写死 250 —— 写死的话它就是整张卡最宽的东西, 卡收不窄。
-	var rib_w: float = ceilf(bf.get_string_size(id_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, STATUS_L1_FONT).x) + 44.0
-	var tw: float = maxf(rib_w - 4.0, name_w + CARD_TAG_GAP + bf.get_string_size(tag_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, CARD_TAG_FONT).x)
-	tw = maxf(tw, bf.get_string_size(today_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, STATUS_L2_FONT).x)
-	tw = maxf(tw, CARD_REC_INDENT + rec_head_w + CARD_REC_GAP + bf.get_string_size(rec_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, STATUS_L3_FONT).x)
-	tw = minf(ceilf(tw) + 14.0, LEFT_W)   # +14: 量的是字形宽, 实心描边两边各多出几像素(实拍 ID 末字顶到右端铜钉)
+	var tag_w: float = bf.get_string_size(tag_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, CARD_TAG_FONT).x
+	## ★卡宽跟着内容收: 取「昵称 #ID」/ 经验条下限 / 大轮那行 里最宽的, 上限 LEFT_W。
+	var tw: float = maxf(XP_MIN_W, name_w + CARD_TAG_GAP + tag_w + 8.0)
+	tw = maxf(tw, bf.get_string_size(season_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, SEASON_FONT).x + 8.0)
+	tw = minf(ceilf(tw), LEFT_W)
 	var card_size := Vector2(CARD_TEXT_X + tw + CARD_PAD_R, CARD_H)
 
 	var holder := Control.new()
@@ -1139,23 +1118,26 @@ func _status_row(now: int = 0) -> void:
 	holder.position = CARD_POS
 	holder.custom_minimum_size = card_size
 	holder.size = card_size
-	## 卡底: 铭牌木板 + 左端黄铜圆环(menu/hud/card.png, PixelLab 新生成, ×2 像素, 烘成最宽那一档)。
-	##   左边距 112 把圆环整块留在左角里; 中段只横向压缩(木纹是横纹, 压不糊), 竖向 1:1。
+	## 卡底: 铭牌木板(menu/hud/card.png; 左端原来的头像圆环已抹成木面, 那一格放等级徽章)。
 	var plate := _nine_rect("card.png", Vector4(112, 16, 40, 16), Rect2(Vector2.ZERO, card_size))
 	holder.add_child(plate)
-	## 头像槽: 龟壳铜徽章(menu/hud/avatar.png)。将来有自选头像时换这一张, 位置不动。
-	var av := TextureRect.new()
-	av.name = "Avatar"
-	av.texture = load(HUD + "avatar.png")
-	av.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	av.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	av.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	av.size = Vector2(AVATAR_SIZE, AVATAR_SIZE)
-	av.position = AVATAR_CENTER - Vector2(AVATAR_SIZE, AVATAR_SIZE) / 2.0
-	av.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.add_child(av)
-	## L0 昵称 + ID。★两个都问唯一出处(`Backend.player_display_name()` / `Backend.my_tag()`), 不在这里拼。
-	##   ID 冷灰、紧跟昵称 —— 它是「分得开同名的人」用的, 不是主读数(与设置页同一口径)。
+	## 大等级徽章: 黄铜盾(menu/hud/lvbadge.png, 原尺寸 1:1) + 大号等级数字。
+	var badge := TextureRect.new()
+	badge.name = LV_BADGE_NAME
+	badge.texture = load(HUD + "lvbadge.png")
+	badge.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	badge.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	badge.size = LV_BADGE_SIZE
+	badge.position = LV_BADGE_POS
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(badge)
+	## 数字落在盾面上半(盾尖往下收, 视觉重心偏上): 框 = 盾宽 × 盾面直边那段。
+	var lv := _place_outlined(str(int(GameState.season_level)), LV_FONT, Color("#fff4d6"),
+		LV_BADGE_POS + Vector2(0.0, 10.0), Vector2(LV_BADGE_SIZE.x, 44.0))
+	lv.name = LV_TEXT_NAME
+	lv.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	holder.add_child(lv)
+	## 第一行: 昵称(大) + #ID(小号冷灰, 紧跟昵称)。★两个都问唯一出处, 不在这里拼。
 	var nm := _place_outlined(name_s, CARD_L0_FONT, Color("#fff4d6"),
 		Vector2(CARD_TEXT_X, CARD_L0_Y), Vector2(minf(name_w + 4.0, tw), 31.0))
 	nm.name = "Nickname"
@@ -1166,49 +1148,38 @@ func _status_row(now: int = 0) -> void:
 			Vector2(tx, CARD_L0_Y + 4.0), Vector2(maxf(CARD_TEXT_X + tw - tx, 1.0), 25.0))
 		tg.name = "PlayerTag"
 		holder.add_child(tg)
-	## ★两行(L1 身份 / L2 今天)装进一个**具名容器**: 门禁按 `STATUS_TWO_LINE` 抓它, 再逐个 Label 量
-	##   "rect 有没有长出 holder"。容器自己不吃鼠标, 整块的点击仍由下面那个 Button 接。
-	var two := Control.new()
-	two.name = STATUS_TWO_LINE
-	two.position = Vector2(CARD_TEXT_X, 0.0)
-	two.size = Vector2(tw, CARD_H)
-	two.custom_minimum_size = two.size
-	two.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var rib := _nine_rect("ribbon.png", Vector4(28, 6, 28, 6),
-		Rect2(Vector2(CARD_TEXT_X - 4.0, STATUS_L1_Y), Vector2(rib_w, STATUS_RIBBON_SIZE.y)))
-	rib.name = STATUS_RIBBON_NAME
-	holder.add_child(rib)
-	var l1 := _make_stroked_label(id_txt, STATUS_L1_FONT, Color("#fff1c8"), Color(0.16, 0.03, 0.03, 0.95))
-	l1.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	l1.position = Vector2(-3.0, STATUS_L1_Y + 1.0)    # 绶带左沿 −4, 4 个描边副本往左上偏 1px
-	l1.size = Vector2(rib_w, STATUS_RIBBON_SIZE.y) - Vector2(2.0, 2.0)
-	l1.custom_minimum_size = l1.size
-	two.add_child(l1)
-	two.add_child(_place_outlined(today_txt, STATUS_L2_FONT, Color("#ffe9a8"),
-		Vector2(0.0, STATUS_L2_Y), Vector2(tw, STATUS_L3_Y - STATUS_L2_Y)))
-	holder.add_child(two)
-	## L3 战绩: 像素纹章图标 `menu/icon-record.png`(给战绩画的那张) + 暖羊皮纸色字。
-	## ★「战绩」与读数拆成**两段字、中间留 10px 真空白**: 原来同一段里用空格隔开, 实拍那个空格画成了一道
-	##   横线 / 一个点(「战绩-还没上过场」, 返工那轮主会话看图指出的; 改成一个空格之后实拍仍是一个点)。
-	var rec_ic := TextureRect.new()
-	rec_ic.texture = load("res://assets/sprites/menu/icon-record.png")
-	rec_ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	rec_ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	rec_ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	rec_ic.size = Vector2(22, 22)
-	rec_ic.position = Vector2(CARD_TEXT_X, STATUS_L3_Y + 2.0)
-	rec_ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.add_child(rec_ic)
-	var rh := _place_outlined("战绩", STATUS_L3_FONT, Color("#ecd9b0"),
-		Vector2(CARD_TEXT_X + CARD_REC_INDENT, STATUS_L3_Y), Vector2(rec_head_w + 2.0, STATUS_L3_H))
-	rh.name = "RecordHead"
-	holder.add_child(rh)
-	var rx: float = CARD_REC_INDENT + rec_head_w + CARD_REC_GAP
-	var rl := _place_outlined(rec_txt, STATUS_L3_FONT, Color("#ecd9b0"),
-		Vector2(CARD_TEXT_X + rx, STATUS_L3_Y), Vector2(maxf(tw - rx, 1.0), STATUS_L3_H))
-	rl.name = "RecordText"
-	holder.add_child(rl)
+	## 第二行: 经验条。暗槽(九宫格) + 里面一根 TextureProgressBar(value/max 就是读数本身) + 条上「x/y」。
+	var bar_r := Rect2(Vector2(CARD_TEXT_X, XP_Y), Vector2(tw, XP_H))
+	holder.add_child(_nine_rect("xpbar.png", Vector4(8, 8, 8, 8), bar_r))
+	var bar := TextureProgressBar.new()
+	bar.name = XP_BAR_NAME
+	bar.texture_progress = load(HUD + "xpbar-fill.png")
+	bar.nine_patch_stretch = true
+	bar.stretch_margin_left = 4
+	bar.stretch_margin_right = 4
+	bar.stretch_margin_top = 4
+	bar.stretch_margin_bottom = 4
+	bar.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	bar.position = bar_r.position + Vector2(4.0, 4.0)
+	bar.size = bar_r.size - Vector2(8.0, 8.0)
+	bar.min_value = 0.0
+	bar.max_value = float(xp[1])
+	bar.step = 0.0
+	bar.value = float(xp[0])
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(bar)
+	var xt := _place_outlined(str(xp[2]), XP_FONT, Color("#ffffff"), bar_r.position, bar_r.size)
+	xt.name = XP_TEXT_NAME
+	xt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	holder.add_child(xt)
+	## 第三行: 大轮(小字)。「大轮」是本作的赛季叫法, 不改。
+	var sl := _place_outlined(season_txt, SEASON_FONT, Color("#ecd9b0"),
+		Vector2(CARD_TEXT_X, SEASON_Y), Vector2(tw, 25.0))
+	sl.name = SEASON_LINE_NAME
+	holder.add_child(sl)
+	## 整卡可点 → 战绩(左列不再单设战绩键; 用户:「点击整个卡那就不要战绩单独给按钮啊」)。
 	var btn := Button.new()
+	btn.name = "CardTap"
 	btn.flat = true
 	btn.focus_mode = Control.FOCUS_NONE
 	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -1217,10 +1188,44 @@ func _status_row(now: int = 0) -> void:
 	## 悬停 = 卡底提亮(与左列方键同一种反馈)
 	btn.mouse_entered.connect(func(): holder.create_tween().tween_property(plate, "modulate", Color(1.2, 1.15, 1.08), UIPalette.T_TAP))
 	btn.mouse_exited.connect(func(): holder.create_tween().tween_property(plate, "modulate", Color.WHITE, UIPalette.T_TAP))
-	btn.pressed.connect(func(): _go("Record"))
+	btn.pressed.connect(_open_record)
 	content_root.add_child(holder)
 	_slide_in_left(holder, 0)
 
+
+## 点玩家卡 → 战绩页。★具名方法(门禁量得到接线), 不是闭包。
+func _open_record() -> void:
+	_go("Record")
+
+
+## 开始战斗正上方的计数条: `♥ a/b   本周对战 n/q`, 居中压在主 CTA 上沿之上。
+## ★底 = 经验条同一张暗槽(xpbar.png): 一屏只有一种「读数槽」。
+func _today_counter(now: int) -> void:
+	var tx: Array = today_counter_texts(now)
+	if tx.is_empty():
+		return
+	var bf := _bold_font()
+	var w0: float = ceilf(bf.get_string_size(str(tx[0]), HORIZONTAL_ALIGNMENT_LEFT, -1, COUNTER_FONT).x) + 6.0
+	var w1: float = ceilf(bf.get_string_size(str(tx[1]), HORIZONTAL_ALIGNMENT_LEFT, -1, COUNTER_FONT).x) + 6.0
+	var gap := 22.0
+	var w: float = COUNTER_PAD * 2.0 + w0 + gap + w1
+	var holder := Control.new()
+	holder.name = TODAY_COUNTER_NAME
+	holder.size = Vector2(w, COUNTER_H)
+	holder.custom_minimum_size = holder.size
+	holder.position = Vector2(HERO_POS.x + (HERO_SIZE.x - w) / 2.0, HERO_POS.y - COUNTER_GAP - COUNTER_H)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(_nine_rect("xpbar.png", Vector4(8, 8, 8, 8), Rect2(Vector2.ZERO, holder.size)))
+	var lh := _place_outlined(str(tx[0]), COUNTER_FONT, Color("#ffb4a2"),
+		Vector2(COUNTER_PAD, 3.0), Vector2(w0, COUNTER_H - 6.0))
+	lh.name = "CounterHearts"
+	holder.add_child(lh)
+	var lq := _place_outlined(str(tx[1]), COUNTER_FONT, Color("#ffe9a8"),
+		Vector2(COUNTER_PAD + w0 + gap, 3.0), Vector2(w1, COUNTER_H - 6.0))
+	lq.name = "CounterQuota"
+	holder.add_child(lq)
+	content_root.add_child(holder)
+	_slide_in(holder, 5)
 
 ## 右栏卡片入场: 从右(贴墙外)滑入 + 淡入. PoC delay 850+60*idx, dur420.
 func _slide_in(holder: Control, idx: int) -> void:
@@ -1330,12 +1335,12 @@ const WEEK_DIM_NAME := "WeekPopupDim"
 func _phase_rule(ph: String) -> String:
 	match ph:
 		_P2C.PHASE_REST:
-			return "按积分赛的规矩打, 算本周场次"
+			return "规则同积分赛，计入本周场次"
 		_P2C.PHASE_GAUNTLET:
-			return "积分赛打够 %d 胜才能来" % int(_P2C.PROMOTE_WINS)
+			return "积分赛 %d 胜可参加" % int(_P2C.PROMOTE_WINS)
 		_P2C.PHASE_FINALS:
-			return "闯关赛晋级的人来打决赛"
-	return "每周最多 %d 场 · 周五收盘" % int(_P2C.RANKED_QUOTA)
+			return "闯关赛晋级玩家参赛"
+	return "每周最多 %d 场 · 周五截止" % int(_P2C.RANKED_QUOTA)
 
 
 ## 下一个阶段从哪一刻开始(UTC 零点)。★只问 `phase_at_utc`, 不另写一张星期表。
@@ -1361,22 +1366,40 @@ func _mode_countdown(now: int) -> String:
 		BK_MAINTENANCE:
 			return "维护中"
 		BK_COUNTDOWN:
-			return "距收盘 %s" % _left_text(left)
+			return "距截止 %s" % _left_text(left)
 		BK_LOCKED:
-			return "已封盘 · 收盘前不开新局"
+			return "已截止 · 停止匹配"
 		BK_CLOSED_TODAY:
-			return "今日已收盘"
+			return "今日已截止"
 		BK_BRACKET_DOOR:
 			## 决赛日那一场在对阵图里, 门在本周赛程里 —— 这一行就是指路。
-			return "点开本周赛程 · 看对阵图"
+			return "查看对阵图 »"
 	var nxt: int = _next_phase_start(now)
-	return "距%s %s" % [str(_P2C.PHASE_LABEL.get(_P2C.phase_at_utc(nxt), "")), _left_text(nxt - now)]
+	return "距%s开始 %s" % [str(_P2C.PHASE_LABEL.get(_P2C.phase_at_utc(nxt), "")), _left_text(nxt - now)]
 
 
-## 模式卡三行字: [今天的赛制, 一句规矩, 倒计时]。门禁直接喂时间戳调它。
+## 模式卡三行字: [今天的赛制, 第二行, 倒计时]。门禁直接喂时间戳调它。
+## ★第二行: 平日 = 一句规则; 周六/周日 = 玩家自己今天的读数(`_phase_status_line`, 闯关赛战绩 / 决赛日去向)。
+##   那两天命与本周场次整天不动, 开始战斗上方不建计数条 ⇒ 今天在动的那件事就写在这张卡上。
+##   读数开头的赛制名(「闯关赛」/「决赛日」)与卡的标题重复 ⇒ 去掉, 只留后半句。
 func mode_card_lines(now: int) -> Array:
 	var ph: String = _P2C.phase_at_utc(now)
-	return [str(_P2C.PHASE_LABEL.get(ph, ph)), _phase_rule(ph), _mode_countdown(now)]
+	var title := str(_P2C.PHASE_LABEL.get(ph, ph))
+	var second := _phase_rule(ph)
+	var st: String = _phase_status_line(now)
+	if st != "":
+		second = _strip_phase_head(st, title)
+	return [title, second, _mode_countdown(now)]
+
+
+## 「闯关赛 2-1 · 再赢…」→「2-1 · 再赢…」; 「决赛日 · 已晋级」→「已晋级」。
+static func _strip_phase_head(line: String, title: String) -> String:
+	var s := line
+	if title != "" and s.begins_with(title):
+		s = s.substr(title.length()).strip_edges()
+	if s.begins_with("·"):
+		s = s.substr(1).strip_edges()
+	return s if s != "" else line
 
 
 ## 建 / 重建模式卡。★`now` 由调用方给(首屏 = `_ready` 那一刻; 每秒轮询 = `_strip_now()`), 自己不读钟。
@@ -1384,14 +1407,22 @@ func _mode_card(now: int) -> void:
 	if is_instance_valid(_mode_box):
 		_mode_box.queue_free()
 	var lines: Array = mode_card_lines(now)
+	## ★第二行(周六/周日是玩家今天的读数)装不下一行就折行, 卡**往上**长(底沿永远与开始战斗对齐)。
+	##   平常的读数都装得下(「2-1 · 再赢 2 场晋级 / 再输 2 场出局」17 号 ~265 < 284);
+	##   只有晋级者带「没打的 N 场化成…」那条长尾时才会长高。
+	var rule_w: float = MODE_SIZE.x - 36.0
+	var ink: float = _bold_font().get_string_size(str(lines[1]), HORIZONTAL_ALIGNMENT_LEFT, -1, MODE_RULE_FONT).x
+	var extra_rows: int = maxi(0, int(ceil(ink / rule_w)) - 1)
+	var grow: float = 24.0 * float(extra_rows)
+	var msz := MODE_SIZE + Vector2(0.0, grow)
 	var holder := Control.new()
 	holder.name = MODE_CARD_NAME
-	holder.position = MODE_POS
-	holder.size = MODE_SIZE
-	holder.custom_minimum_size = MODE_SIZE
-	holder.pivot_offset = MODE_SIZE / 2.0
+	holder.position = MODE_POS - Vector2(0.0, grow)
+	holder.size = msz
+	holder.custom_minimum_size = msz
+	holder.pivot_offset = msz / 2.0
 	## 卡底: 木告示牌 + 铜包角 + 顶铜条(menu/hud/modecard.png, PixelLab 新生成)。中段 TILE, 木纹不拉糊。
-	var plate := _nine_rect("modecard.png", Vector4(20, 18, 20, 18), Rect2(Vector2.ZERO, MODE_SIZE))
+	var plate := _nine_rect("modecard.png", Vector4(20, 18, 20, 18), Rect2(Vector2.ZERO, msz))
 	plate.axis_stretch_horizontal = NinePatchRect.AXIS_STRETCH_MODE_TILE
 	plate.axis_stretch_vertical = NinePatchRect.AXIS_STRETCH_MODE_TILE
 	holder.add_child(plate)
@@ -1404,17 +1435,19 @@ func _mode_card(now: int) -> void:
 	cap.name = "ModeHint"
 	cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	holder.add_child(cap)
-	var rule := _place_outlined(str(lines[1]), MODE_RULE_FONT, Color("#ecd9b0"), Vector2(18.0, 48.0), Vector2(MODE_SIZE.x - 36.0, 26.0))
+	var rule := _place_outlined(str(lines[1]), MODE_RULE_FONT, Color("#ecd9b0"), Vector2(18.0, 48.0), Vector2(rule_w, 26.0 + grow))
 	rule.name = "ModeRule"
+	if extra_rows > 0:
+		rule.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
 	holder.add_child(rule)
 	var band := ColorRect.new()
 	band.name = "CountdownBand"
 	band.color = Color(0.0, 0.0, 0.0, 0.30)
-	band.position = Vector2(12.0, 75.0)
+	band.position = Vector2(12.0, 75.0 + grow)
 	band.size = Vector2(MODE_SIZE.x - 24.0, 24.0)
 	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(band)
-	var cd := _place_outlined(str(lines[2]), MODE_CD_FONT, Color("#ffc94a"), Vector2(18.0, 74.0), Vector2(MODE_SIZE.x - 36.0, 26.0))
+	var cd := _place_outlined(str(lines[2]), MODE_CD_FONT, Color("#ffc94a"), Vector2(18.0, 74.0 + grow), Vector2(MODE_SIZE.x - 36.0, 26.0))
 	cd.name = "ModeCountdown"
 	holder.add_child(cd)
 	var btn := Button.new()
@@ -1856,28 +1889,28 @@ func _week_close_block(now: int) -> Control:
 		##   只剩这条兜底一直没跟上), 后半句一字不差 —— 那是两处共同的那条信息。
 		## ★仍写字面量而不是去读那张表: 这一支的前提正是"那张表里查不到这个阶段"。
 		if sub == "":
-			sub = "这天按积分赛的规矩打"
+			sub = "规则同积分赛"
 		return _close_block_labels(head, sub)
 	if kind == BK_NO_CLOSE:
 		if ph == _P2C.PHASE_FINALS:
 			head = "决赛日"
-			sub = "本地 %s 开打" % _local_hhmm(_utc_today_at(now, int(_P2C.FINALS_SEAT_HOUR_UTC)))
+			sub = "%s 开赛" % _local_hhmm(_utc_today_at(now, int(_P2C.FINALS_SEAT_HOUR_UTC)))
 		else:
 			head = "休赛日"
 			sub = "周二开赛 · 本日维护"
 	elif kind == BK_CLOSED_TODAY:
-		head = "今日已收盘"
+		head = "今日已截止"
 		var _tmr: int = now + 86400
 		var _tph: String = _P2C.phase_at_utc(_tmr)
 		if _tph == _P2C.PHASE_FINALS:
-			sub = "明天决赛日 · 本地 %s 开打" % _local_hhmm(_utc_today_at(_tmr, int(_P2C.FINALS_SEAT_HOUR_UTC)))
+			sub = "明天决赛日 · %s 开赛" % _local_hhmm(_utc_today_at(_tmr, int(_P2C.FINALS_SEAT_HOUR_UTC)))
 		else:
 			sub = "明天%s" % str(_P2C.PHASE_LABEL.get(_tph, ""))
 	elif kind == BK_LOCKED:
-		head = "已封盘"
-		sub = "收盘前 %d 分钟起不开新局" % int(_P2C.CLOSE_LOCKOUT_SEC / 60)
+		head = "已截止"
+		sub = "截止前 %d 分钟停止匹配" % int(_P2C.CLOSE_LOCKOUT_SEC / 60)
 	else:
-		head = "距收盘 %s" % _left_text(left)
+		head = "距截止 %s" % _left_text(left)
 		sub = "本地 %s" % _local_stamp(now + left)
 	## ★周六(闯关赛上线时)这一块是赛况板的门: 收盘前、封盘、收盘后都开着(收盘后正是看全场结果的时候)。
 	if ph == _P2C.PHASE_GAUNTLET and _P2C.phase_mode_live(_P2C.PHASE_GAUNTLET) \
@@ -2072,7 +2105,7 @@ func _local_stamp(utc_ts: int) -> String:
 	var d := _local_dict(utc_ts)
 	var w: int = int(d.get("weekday", 0))
 	var wi := 7 if w == 0 else w
-	return "周%s %02d:%02d 收盘" % [_WD_CN[wi - 1], int(d.get("hour", 0)), int(d.get("minute", 0))]
+	return "周%s %02d:%02d 截止" % [_WD_CN[wi - 1], int(d.get("hour", 0)), int(d.get("minute", 0))]
 
 
 func _local_hhmm(utc_ts: int) -> String:
@@ -2248,7 +2281,7 @@ func _msg_gauntlet_block() -> String:
 			_P2C.PROMOTE_WINS)
 	var st: String = GameState.gauntlet_state()
 	if st == _P2C.GAUNTLET_IN:
-		return "✅ 已晋级决赛日 · 闯关赛到此为止(%s) · 明天周日来打决赛日" % _P2C.gauntlet_label(
+		return "✅ 已晋级决赛日 · 闯关赛到此为止(%s) · 明天周日参加决赛日" % _P2C.gauntlet_label(
 			int(GameState.gauntlet_wins), int(GameState.gauntlet_losses))
 	if st == _P2C.GAUNTLET_OUT:
 		return "💀 闯关赛已出局(%s) · 下周一开新的一轮" % _P2C.gauntlet_label(

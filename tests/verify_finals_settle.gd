@@ -178,7 +178,7 @@ func _t_shop_wiring() -> void:
 		t_open.find("2 分 5 秒") >= 0, t_open)
 	var t_shut := MAP.shop_tip(false, 0, true)
 	_ok("②' 关了 ⇒ 说清在等什么(不是干巴巴一句「不能买」)",
-		t_shut.find("等开打") >= 0, t_shut)
+		t_shut.find("等待开赛") >= 0, t_shut)
 	_ok("②' ★★没桶 ⇒ 这一行**根本不出现**(空串), 不是显示一句废话",
 		MAP.shop_tip(true, 100, false) == "", MAP.shop_tip(true, 100, false))
 	_ok("②' ★三种状态说的不是同一句话", t_open != t_shut)

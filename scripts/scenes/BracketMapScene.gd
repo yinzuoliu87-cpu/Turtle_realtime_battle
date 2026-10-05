@@ -885,7 +885,7 @@ func _empty_text() -> String:
 		EK_UNREACHABLE:
 			return "连不上服务器 · 你这一组还没看到, 每 30 秒自己再看一次"
 		EK_NOT_SEATED:
-			return "还没分组 · 本地 %s 自动分组开打, 到时候这里会出现你的对阵" % _P2C.local_hhmm(
+			return "还没分组 · %s 自动分组开赛, 到时候这里会出现你的对阵" % _P2C.local_hhmm(
 				_P2C.week_anchor_utc(_clock()) + 6 * 86400 + int(_P2C.FINALS_SEAT_HOUR_UTC) * 3600)
 		EK_TOO_FEW:
 			return "本周只有 %d 人晋级 · 人太少, 决赛日没开起来; 你的晋级算数, 下周再来" % int(_feed_view().get("entered", 0))
@@ -1379,7 +1379,7 @@ func _make_node(r: int, m: int) -> Control:
 		## ★★用词分两种(2026-09-27): `can_open` 现在**只对我自己的当前轮**为真
 		##   (见 `can_open` 的头注), 点下去是**我上场打**, 不是看别人 ⇒ 写「开播」是错的。
 		##   重放那条路上线之后才是真的"开播看回放"(文件头 ★④: 不许写「直播」「回放」)。
-		btn.tooltip_text = "上场开打" if should_fetch_opponent(r, m) else "重看这一场"
+		btn.tooltip_text = "开始对战" if should_fetch_opponent(r, m) else "重看这一场"
 		btn.set_meta("rm", Vector2i(r, m))     # 门禁按格子找按钮(手指点的就是它)
 		btn.pressed.connect(func(): match_opened.emit(r, m))
 		holder.add_child(btn)
@@ -1723,7 +1723,7 @@ static func shop_tip(shop_open: bool, left_sec: int, has_bucket: bool) -> String
 		return ""
 	if shop_open:
 		return "备战购物 · 还剩 %s" % countdown_text(left_sec)
-	return "本轮备战已结束 · 等开打"
+	return "本轮备战已结束 · 等待开赛"
 
 
 ## 对手快照这一步该跟玩家说什么。★**纯函数**：喂一份 `opponent_cached()` 的产物

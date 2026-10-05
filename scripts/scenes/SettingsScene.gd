@@ -1291,7 +1291,7 @@ func _toggle_perf() -> void:
 		_perf_btn.text = _perf_label()
 	## 按钮上只剩"高/低", 于是把"低=更流畅"这条信息挪到 toast 里, 不然玩家不知道调它图什么。
 	## ★2026-09-28 换成说人话的版本: 「已设为」是设置面板的腔调, 玩家听的是"下一场就不卡了"。
-	_toast("画质换成「%s」了%s · 下一场开打时生效" % [
+	_toast("画质换成「%s」了%s · 下一场开始时生效" % [
 		"低" if GameState.perf_lite else "高",
 		"，手机会跑得更顺" if GameState.perf_lite else ""])
 

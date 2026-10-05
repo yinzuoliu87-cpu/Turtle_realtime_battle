@@ -347,8 +347,8 @@ const PHASE_MODE_LIVE := {
 ##   ⇒ 这里只留**陈述现状**的话。两句的后半句故意一字不差
 ##     (「按积分赛的规矩打」), 那是两天共同的那条信息。
 const PHASE_PENDING_NOTE := {
-	PHASE_REST: "休赛日 · 按积分赛的规矩打 · 这天打的算本周场次",
-	PHASE_FINALS: "这天按积分赛的规矩打",
+	PHASE_REST: "休赛日 · 规则同积分赛 · 计入本周场次",
+	PHASE_FINALS: "规则同积分赛",
 }
 
 ## 这个阶段的玩法上线了没有。
@@ -416,7 +416,7 @@ static func phase_pending_note(phase: String) -> String:
 		return ""
 	## ★兜底那句与表里的同一个口径: **只说现在按什么规矩打**, 不报开发进度
 	##   (见 PHASE_PENDING_NOTE 头注 2026-09-27 那段)。
-	return str(PHASE_PENDING_NOTE.get(phase, "这天按积分赛的规矩打"))
+	return str(PHASE_PENDING_NOTE.get(phase, "规则同积分赛"))
 
 ## ══════════════════════════════════════════════════════════════════════
 ##  【门禁注入点】把「现在」钉死 —— 纯静态时间缝 (2026-09-27)
@@ -973,7 +973,7 @@ const TITLE_ORDER := [TITLE_CHAMPION, TITLE_RUNNER_UP, TITLE_SEMIFINAL, TITLE_FI
 ## ★不承诺具体秒数: 揭晓时刻由服务端的轮次推进决定(`finals_round_sec`),
 ##   客户端说死一个数就会变成"说了做不到的事"。
 static func finals_sealed_sub() -> String:
-	return "双方同时开打 · 结果统一在本轮开播时揭晓\n去【决赛日 → 看对阵图】等翻面"
+	return "双方同时开赛 · 结果统一在本轮开播时揭晓\n去【决赛日 → 看对阵图】等翻面"
 
 
 ## 这一档现在拿得到吗。★冠军/四强要周日玩法上线 —— 与门那一套同一条闸。
