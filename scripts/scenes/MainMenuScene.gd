@@ -2128,7 +2128,7 @@ func _shop_block_msg(ts: int) -> String:
 		SHOP_LOCK_QUOTA:
 			return _msg_quota_full()
 		SHOP_LOCK_FIRST:
-			return "🔒 本大轮打完第一场才开店"
+			return "🔒 完成本大轮首场对战后解锁商店"
 	return ""
 
 
@@ -2159,9 +2159,9 @@ func _shop_lock_reason(ts: int) -> String:
 		SHOP_LOCK_OUT:
 			return "本大轮已出局"
 		SHOP_LOCK_QUOTA:
-			return "本周 %d 场已打满" % int(_P2C.RANKED_QUOTA)
+			return "本周场次已用完"
 		SHOP_LOCK_FIRST:
-			return "打完第一场才开店"
+			return "首场对战后解锁"
 	return ""
 
 

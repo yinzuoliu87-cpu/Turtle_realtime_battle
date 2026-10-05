@@ -673,14 +673,13 @@ scripts/scenes/MainMenuScene.gd|lit|已封盘
 scripts/scenes/MainMenuScene.gd|lit|已封盘 · 收盘前不开新局
 scripts/scenes/MainMenuScene.gd|lit|开始战斗
 scripts/scenes/MainMenuScene.gd|lit|战绩
-scripts/scenes/MainMenuScene.gd|lit|打完第一场才开店
 scripts/scenes/MainMenuScene.gd|lit|按积分赛的规矩打, 算本周场次
 scripts/scenes/MainMenuScene.gd|lit|排行榜
 scripts/scenes/MainMenuScene.gd|lit|收盘前 %d 分钟起不开新局
 scripts/scenes/MainMenuScene.gd|lit|收起
 scripts/scenes/MainMenuScene.gd|lit|明天%s
 scripts/scenes/MainMenuScene.gd|lit|明天决赛日 · 本地 %s 开打
-scripts/scenes/MainMenuScene.gd|lit|本周 %d 场已打满
+scripts/scenes/MainMenuScene.gd|lit|本周场次已用完
 scripts/scenes/MainMenuScene.gd|lit|本周赛程
 scripts/scenes/MainMenuScene.gd|lit|本地 %s
 scripts/scenes/MainMenuScene.gd|lit|本地 %s 开打
@@ -703,14 +702,15 @@ scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 已出局%s
 scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 已晋级决赛日%s
 scripts/scenes/MainMenuScene.gd|lit|闯关赛 · 本周没晋级
 scripts/scenes/MainMenuScene.gd|lit|闯关赛晋级的人来打决赛
+scripts/scenes/MainMenuScene.gd|lit|首场对战后解锁
 scripts/scenes/MainMenuScene.gd|lit|💀 本大轮已出局 · %s
 scripts/scenes/MainMenuScene.gd|lit|💀 本大轮已出局 · 下周一开新的一轮
 scripts/scenes/MainMenuScene.gd|lit|💀 闯关赛已出局(%s) · 下周一开新的一轮
 scripts/scenes/MainMenuScene.gd|lit|📋 本周配额 %d 场已打满 · %s
 scripts/scenes/MainMenuScene.gd|lit|📋 本周配额 %d 场已打满 · 下周一开新的一轮
+scripts/scenes/MainMenuScene.gd|lit|🔒 完成本大轮首场对战后解锁商店
 scripts/scenes/MainMenuScene.gd|lit|🔒 本周没晋级 · 下周一开新的一轮, 积分赛打够 %d 胜就能来
 scripts/scenes/MainMenuScene.gd|lit|🔒 本周没晋级 · 积分赛命用完了 · 下周一开新的一轮
-scripts/scenes/MainMenuScene.gd|lit|🔒 本大轮打完第一场才开店
 scripts/scenes/MainMenuScene.gd|text| 今
 scripts/scenes/MainMenuScene.gd|text|先下场练练
 scripts/scenes/MainMenuScene.gd|text|开打
