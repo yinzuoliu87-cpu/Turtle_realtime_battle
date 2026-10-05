@@ -67,12 +67,12 @@ const STATUS_TWO_LINE := "StatusTwoLine"
 ##   (剖面见 `_status_row()` 头注), 三段必须塞进原来的 ROW_H=81 里, 数字改一个就要重算全部。
 ##   眼睛看不出"差 1px 就顶穿", 所以把它们摆成一张表, 旁边写清各自的实测行高。
 const STATUS_L1_Y := 1.0                    # 身份行: 18 号字实测行高 27 ⇒ 占 0..29(含 ±1 描边)
-const STATUS_L2_Y := 29.0                   # 今天行: 17 号字实测行高 25 ⇒ 占 28..55
-const STATUS_L3_Y := 54.0                   # 战绩行: 17 号字 ⇒ 占 53..80, 底下还剩 1px
-const STATUS_L1_FONT := 18                  # 身份行
+const STATUS_L2_Y := 35.0                   # 今天行: 17 号字实测行高 25 ⇒ 占 28..55
+const STATUS_L3_Y := 58.0                   # 战绩行: 17 号字 ⇒ 占 53..80, 底下还剩 1px
+const STATUS_L1_FONT := 21                  # 身份行
 ## ★L2 与 L3 **共用**这一个字号(17): 它们是同一档「次级读数」, 不许各写一个 17 ——
 ##   同一个数存两份, 改一处漏一处(memory `fb-hand-rolled-copies-drift`)。
-const STATUS_L2_FONT := 17                  # 今天行 + 战绩行
+const STATUS_L2_FONT := 19                  # 今天行 + 战绩行
 const MENU_Y := 299.0                       # 四个次级入口 顶沿
 const MENU_N := 4
 const HERO_SIZE := Vector2(508.0, 158.0)    # 主 CTA: 全屏唯一大木框, 右下角
@@ -80,7 +80,8 @@ const HERO_POS := Vector2(732.0, 462.0)
 ## 训龟大师【明显更窄】并与主 CTA 右沿对齐 —— 第一版两个框同宽 472, 实拍出来分不出主次,
 ## 而参考里主 CTA 永远是压倒性的(Zookeeper World 的绿 PLAY / Fuga 的橙高亮条)。
 const TRAINER_SIZE := Vector2(340.0, 82.0)   # ★82 不是 78: 触摸线 81 视口像素(=44pt), 78 差 3px 门禁当场红
-const TRAINER_POS := Vector2(900.0, 344.0)  # 900+340 = 1240 = 732+508, 右沿同轴; 与主 CTA 留 36px
+## 2026-10-05 UI 草稿: 与主 CTA 只留 6px, 贴成一组(原来留 36px, 训龟大师像飘在半空)。
+const TRAINER_POS := Vector2(900.0, 374.0)  # 900+340 = 1240 = 732+508, 右沿同轴
 ## ★★★赛程条是**贴底对齐**的, 不是写死顶沿(2026-09-27 修)。
 ##   起因: 周日那一格放的是「决赛日 看对阵图」按钮, 它高 **81**(触控下限 44pt = 81 视口像素,
 ##   比 STRIP_H 的 68 还高) ⇒ 整条被撑到 95, 而写死 `y = 636` 让底边落在 **731 > 720**,
@@ -105,8 +106,18 @@ const STRIP_TODAY_PAD := 9.0
 ## 改成与网格同高 82 (3.66:1), 并按网格自己的 14px 节奏紧贴其下 —— 归队, 不再单飞。
 
 ## 字号层级 (原来 hero27 / 面板标题25 / 次级22 / 行20 —— 主次只差 5 号, 分不出层)
-const FONT_HERO := 30
+const FONT_HERO := 46                       # 2026-10-05 UI 草稿: 30 → 46, 字占按钮高 ~30%(原 19%)
 const FONT_BTN := 22
+
+## ── 2026-10-05 UI 草稿: 一套「像素木头 + 金属包边」 ──────────────────────────────
+## 件全在 assets/sprites/menu/hud/(PixelLab 新生成, 原件 src/, 烘焙 tools/build_menu_hud.py)。
+## 沿用的旧件只有: menu/frame-rect.png(主 CTA 木框, R2 拍板保留) / menu/frame-square.png(?/⚙ 磁贴)。
+const HUD := "res://assets/sprites/menu/hud/"
+## 左栏挂旗底板: 旗顶由状态区绶带压住(绶带当旗杆), 下沿藏在赛程条后面。
+const BANNER_RECT := Rect2(30.0, 214.0, 416.0, 426.0)
+const BANNER_ALPHA := 0.86
+const RIBBON_RECT := Rect2(19.0, 205.0, 440.0, 36.0)   # 状态区标题绶带(两端燕尾探出挂旗)
+const CHIP_W := 176.0                                  # 货币牌宽(高 56, 外框仍按 85 排位)
 const FONT_VERSION := 16
 
 var page_box: Control       # 当前页按钮容器
@@ -143,6 +154,7 @@ func _ready() -> void:
 	##   memory `fb-second-clock-drops-events`。
 	## ★两个 override 都是 0 时行为**逐字节不变**(玩家路径一字未动)。
 	var paint_ts: int = _now_ts()
+	_left_banner()   # 左栏底板(挂旗)要在 LOGO 之前建: 旗顶藏在 LOGO 后面
 	_title()
 	_right_column(paint_ts)
 	## ★★D-3: 建服务端身份。**必须在登录墙之前** —— v0.19.440 上墙之后这一句原本在
@@ -315,6 +327,58 @@ func _title() -> void:
 		l.add_theme_color_override("font_color", Color("#ffd93d")); l.position = Vector2(LEFT_CX - 150, 90); content_root.add_child(l)
 
 
+## 九宫格贴图块(像素件一律最近邻, 不许插值糊掉)。margins = 左/上/右/下(贴图像素)。
+func _nine_rect(file: String, margins: Vector4, rect: Rect2) -> NinePatchRect:
+	var n := NinePatchRect.new()
+	n.texture = load(HUD + file)
+	n.patch_margin_left = int(margins.x); n.patch_margin_top = int(margins.y)
+	n.patch_margin_right = int(margins.z); n.patch_margin_bottom = int(margins.w)
+	n.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	n.position = rect.position
+	n.size = rect.size
+	n.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return n
+
+
+## 左栏底板: 一面酒红挂旗(半透, 看台还能透出来一点)。
+## 原来左栏五行字直接压在观众身上, 没有底, 「打完第一场才开店」那行小字读不出来。
+func _left_banner() -> void:
+	var b := _nine_rect("banner.png", Vector4(28, 44, 28, 8), BANNER_RECT)
+	b.name = "LeftBanner"
+	b.modulate.a = BANNER_ALPHA
+	content_root.add_child(b)
+
+
+## 次级键: 铁箍木板(不带金边、不发光)。与主 CTA 的金边木框 + 呼吸光晕是两种材质 ——
+## 主次靠材质分, 不只靠大小。
+func _plank_button(label: String, cb: Callable, size: Vector2) -> Control:
+	var holder := Control.new()
+	holder.custom_minimum_size = size
+	holder.size = size
+	holder.pivot_offset = size / 2.0
+	var plank := _nine_rect("btn-plank.png", Vector4(40, 14, 40, 14), Rect2(Vector2.ZERO, size))
+	holder.add_child(plank)
+	var lbl := _menu_label(label, 26, Color("#ffe9a8"))
+	lbl.add_theme_color_override("font_outline_color", Color("#1e0f04"))
+	lbl.add_theme_constant_override("outline_size", 8)
+	holder.add_child(lbl)
+	var btn := Button.new()
+	btn.flat = true
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	btn.set_anchors_preset(Control.PRESET_FULL_RECT)
+	holder.add_child(btn)
+	btn.mouse_entered.connect(func() -> void:
+		holder.scale = Vector2(1.03, 1.03); plank.modulate = Color(1.18, 1.12, 1.0))
+	btn.mouse_exited.connect(func() -> void:
+		holder.scale = Vector2.ONE; plank.modulate = Color.WHITE)
+	btn.button_down.connect(func() -> void: holder.scale = Vector2(0.97, 0.97))
+	btn.pressed.connect(func() -> void:
+		holder.scale = Vector2.ONE
+		cb.call())
+	return holder
+
+
 # ─── 左栏按钮页 (实时版: 单一干净主菜单, 无子页过场) ───
 ## 实时版重做: 去掉回合制残留的多页(online/local)+过场飞出/飞入逻辑.
 ##   主菜单就一组清晰按钮(各自从左滑入入场), 点击直接 _go 切场景, 不再有页间过场.
@@ -388,7 +452,7 @@ func _build_page_buttons(now: int = 0) -> void:
 	##    到 NotoEmoji 或系统 emoji 字体画出来的, 与像素风无关。)
 	## ★不换成别的图标: 仓里没有"训龟大师"的图标素材, 拿别件的顶替是本项目的铁律禁区。
 	##   木牌上只留字, 反而更像市面上的像素游戏。
-	var tb := _frame_button("训龟大师", func(): _go("TrainerConfig"), false, TRAINER_SIZE, FONT_BTN, "")
+	var tb := _plank_button("训龟大师", func(): _go("TrainerConfig"), TRAINER_SIZE)
 	tb.position = TRAINER_POS
 	page_box.add_child(tb)
 	_slide_in(tb, 4)
@@ -397,7 +461,7 @@ func _build_page_buttons(now: int = 0) -> void:
 	## ★同上: 去掉「⚔」。这个字符在本项目的字体链里是**单色 emoji 兜底**画的,
 	##   实拍是一对细线条的交叉剑 —— 旁边整块木牌都是 3~4px 的像素笔触, 它是唯一的矢量线条。
 	##   全屏唯一的主 CTA 上, 一行大金字比一个外来字形更立得住。
-	var hero := _frame_button("开始战斗", func(): _start_battle_flow(), false, HERO_SIZE, FONT_HERO, "", battle_locked)
+	var hero := _frame_button("开始战斗", func(): _start_battle_flow(), false, HERO_SIZE, FONT_HERO, "", battle_locked, true)
 	hero.position = HERO_POS
 	page_box.add_child(hero)
 	## ★锁要**看得见地静态存在**: 灰框 + 🔒 角标。原来只有"点下去飘一行 1.9 秒的字",
@@ -503,7 +567,7 @@ func _text_entry(label: String, cb: Callable, icon_path: String, locked: bool, r
 		Vector2(tx, lb_y), Vector2(w - tx - 8.0, 42))
 	holder.add_child(lb)
 	if with_reason:
-		var rs := _place_stroked(reason, 17, Color("#d9c9a3"),
+		var rs := _place_stroked(reason, 17, Color("#f4ddb0"),
 			Vector2(tx, ROW_H / 2.0 + 10.0), Vector2(w - tx - 8.0, 26))
 		rs.name = LOCK_REASON_NAME
 		rs.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -586,7 +650,7 @@ func _add_lock_badge(holder: Control, size: Vector2) -> void:
 ## btn-frame.png 金色边框按钮 (NinePatchRect 9宫格保证渲染 + 透明Button点击 + 文字)
 ## `size` 2026-09-17 从"默认 360×87"改成【必填】: 版式重做后只剩训龟大师与主 CTA 两个木框,
 ## 两处都显式传尺寸, 那对默认常量(BTN_W/BTN_H)就再没人读了 —— 与其留着烂掉不如删。
-func _frame_button(label: String, cb: Callable, disabled: bool, size: Vector2, font_size: int = 22, icon_path: String = "", locked: bool = false) -> Control:
+func _frame_button(label: String, cb: Callable, disabled: bool, size: Vector2, font_size: int = 22, icon_path: String = "", locked: bool = false, primary: bool = false) -> Control:
 	var holder := Control.new()
 	holder.custom_minimum_size = size
 	holder.size = size
@@ -616,7 +680,21 @@ func _frame_button(label: String, cb: Callable, disabled: bool, size: Vector2, f
 	# 文字 = 1:1 PoC addDomText: 22px 雅黑Bold, 填充#3a1f00, "描边"实为 4 方向 text-shadow(±1px 金#ffe4a0)
 	#   (dom-text.ts:43-48 — 非 outline 轮廓扩张! 故不能用 Godot outline_size, 要 4 个偏移金副本)
 	var fill := Color("#8b7755") if (disabled or locked) else Color("#3a1f00")
-	var lbl := _make_stroked_label(label, font_size, fill, Color("#ffe4a0"))
+	var lbl: Control
+	if primary:
+		## 主 CTA 的字(2026-10-05 UI 草稿): 原来是深棕字 + 1px 金影压在棕木上, 对比太低、字也小。
+		## 改成亮金字 + 粗深棕描边 + 下投影 —— 全屏唯一一处这种字, 与木框金边 + 呼吸光晕一起拉开量级。
+		var pl := _menu_label(label, font_size,
+			Color("#8d8577") if (disabled or locked) else Color("#ffe27a"))
+		pl.add_theme_color_override("font_outline_color", Color("#2a1203"))
+		pl.add_theme_constant_override("outline_size", 12)
+		pl.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.55))
+		pl.add_theme_constant_override("shadow_offset_x", 0)
+		pl.add_theme_constant_override("shadow_offset_y", 5)
+		pl.add_theme_constant_override("shadow_outline_size", 12)
+		lbl = pl
+	else:
+		lbl = _make_stroked_label(label, font_size, fill, Color("#ffe4a0"))
 	holder.add_child(lbl)
 	# 左侧 64px 图标(用户2026-07-18: 图标化+协调) — 文字移到图标右侧区居中(避让, 不遮)
 	if icon_path != "" and ResourceLoader.exists(icon_path):
@@ -736,19 +814,19 @@ func _right_column(now: int = 0) -> void:
 	##   right = 龟币 (main-site currency), left = 深海币 (the in-run currency, moved out of
 	##   the season panel below - it used to be a text row there, a different style entirely).
 	var coin := _coin_frame()                                  # 龟币: value<0 => GameState.coins
-	coin.position = Vector2(W - WALL - 152, 30)
+	coin.position = Vector2(W - WALL - CHIP_W, 30)
 	content_root.add_child(coin)
 	_slide_in(coin, 0)
 	var dsea := _coin_frame(int(GameState.meta_deepsea_coins),
 		"res://assets/sprites/menu/ic-deepsea.png", Color(0, 0, 0, -1.0))   # a<0 = keep original colours
-	dsea.position = Vector2(W - WALL - 152 - 12 - 152, 30)
+	dsea.position = Vector2(W - WALL - CHIP_W - 10 - CHIP_W, 30)
 	content_root.add_child(dsea)
 	_slide_in(dsea, 0)
 	# 磁贴 62 → 82: 62px 在手机上只有 34pt, 低于 iOS HIG 的 44pt(=本项目 81 视口像素, 见 tests/_probe_ui_layout.gd)。
 	# 82 同时更贴近旁边 85 高的龟币框, 三者读起来才是一排。
 	var usz := 82.0
 	var uy := 30.0 + (85.0 - usz) / 2.0                       # 与龟币框竖直居中对齐
-	var set_x := float(W - WALL - 152 - 12 - 152) - 14.0 - usz   # A5: 让开第二个货币芯片
+	var set_x := float(W - WALL - CHIP_W - 10 - CHIP_W) - 16.0 - usz   # A5: 让开第二个货币芯片
 	var help_x := set_x - 10.0 - usz
 	var set_tile := _tile("", "⚙", func(): _go("Settings"), Vector2(set_x, uy), "", usz)
 	content_root.add_child(set_tile)
@@ -817,7 +895,10 @@ func _travel_badge() -> void:
 ## value < 0 => GameState.coins (龟币). icon_path "" => the old green coin.png.
 func _coin_frame(value: int = -1, icon_path: String = "", tint: Color = Color(0.122, 0.561, 0.247)) -> Control:
 	var coin := Control.new()
-	coin.custom_minimum_size = Vector2(152, 85); coin.size = Vector2(152, 85)
+	coin.custom_minimum_size = Vector2(CHIP_W, 85); coin.size = Vector2(CHIP_W, 85)
+	## 2026-10-05 UI 草稿: 货币要有底座 —— 一块暗木 + 黄铜包边的小牌(PixelLab 新生成, menu/hud/chip.png),
+	##   左端是币槽, 图标落进槽里。不是按钮材质(按钮是金边木框/铁箍木板), 不会被读成按钮。
+	coin.add_child(_nine_rect("chip.png", Vector4(56, 16, 20, 16), Rect2(0, 14.5, CHIP_W, 56)))
 	## P0-2(方案书 20260917 主菜单版式重做): 货币区【不套任何按钮材质】。
 	##   原来这里垫一张 menu/frame-coin 贴图 —— 与按钮同一族木框, 两个芯片看着像两个按钮。
 	##   参考的 18 款里没有一款给货币套框: 一律裸图标 + 描边数字。
@@ -838,9 +919,10 @@ func _coin_frame(value: int = -1, icon_path: String = "", tint: Color = Color(0.
 					cimg.set_pixel(xx, yy, Color(green.r, green.g, green.b, px.a))
 		var ci := TextureRect.new(); ci.texture = ImageTexture.create_from_image(cimg)
 		ci.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; ci.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		ci.size = Vector2(36, 36); ci.position = Vector2(76 - 39.5 - 18, 42 - 18); coin.add_child(ci)
+		ci.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		ci.size = Vector2(34, 34); ci.position = Vector2(36 - 17, 42.5 - 17); coin.add_child(ci)
 	var cl := Label.new(); cl.text = "%d" % (GameState.coins if value < 0 else value)
-	cl.position = Vector2(79, 0); cl.size = Vector2(73, 85)
+	cl.position = Vector2(64, 0); cl.size = Vector2(CHIP_W - 64 - 20, 85)
 	cl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT; cl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	## 没了木底, 深绿字直接压在背景上读不出来 ⇒ 改亮字 + 黑描边(同 _tile 的数字)。
 	cl.add_theme_font_size_override("font_size", 26); cl.add_theme_color_override("font_color", Color("#fff4d6"))
@@ -1031,10 +1113,19 @@ func _status_row(now: int = 0) -> void:
 	two.size = Vector2(LEFT_W, ROW_H)
 	two.custom_minimum_size = Vector2(LEFT_W, ROW_H)
 	two.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	two.add_child(_place_stroked(id_txt, STATUS_L1_FONT, Color("#ffe9a8"),
-		Vector2(4, STATUS_L1_Y), Vector2(LEFT_W - 8, 26)))
+	## 2026-10-05 UI 草稿: 身份行压在一条绯红绶带上(层级第一), 今天的两个数次之, 战绩最轻。
+	##   绶带挂在 content_root 上(两端燕尾要探出挂旗), 不进 holder。
+	var rib := _nine_rect("ribbon.png", Vector4(28, 6, 28, 6), RIBBON_RECT)
+	rib.name = "StatusRibbon"
+	content_root.add_child(rib)
+	var l1 := _make_stroked_label(id_txt, STATUS_L1_FONT, Color("#ffeec0"), Color(0.16, 0.03, 0.03, 0.95))
+	l1.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	l1.position = Vector2(RIBBON_RECT.position.x - LEFT_X, RIBBON_RECT.position.y - STATUS_Y - 1.0)
+	l1.size = Vector2(RIBBON_RECT.size.x, RIBBON_RECT.size.y)
+	l1.custom_minimum_size = l1.size
+	two.add_child(l1)
 	two.add_child(_place_stroked(today_txt, STATUS_L2_FONT, Color("#ffe9a8"),
-		Vector2(4, STATUS_L2_Y), Vector2(LEFT_W - 8, 25)))
+		Vector2(14, STATUS_L2_Y), Vector2(LEFT_W - 22, 25)))
 	holder.add_child(two)
 	## ★★2026-09-27 去掉行尾那个 › —— 网页的「更多 ›」写法
 	##   (用户 2026-09-27:「一点也看不出来游戏的味道, 全是 ai 味和网页味」)。
@@ -1048,7 +1139,7 @@ func _status_row(now: int = 0) -> void:
 	## ★不是拿别件素材顶替: 这张图的文件名就叫 `icon-record`, 是**给战绩画的**,
 	##   而且全仓 grep 下来一个调用点都没有(画好了没人用), 这里是它的正主。
 	## ★图标 24px 与 17 号字同高一档; 文字左沿随之从 4 推到 32。
-	var _rec_ic_x := 4.0
+	var _rec_ic_x := 14.0
 	var _rec_tx := 4.0
 	if ResourceLoader.exists("res://assets/sprites/menu/icon-record.png"):
 		var rec_ic := TextureRect.new()
@@ -1284,9 +1375,17 @@ func _week_strip(paint_now: int = 0) -> void:
 	##   texture_margin(8) 当 content_margin ⇒ 上下各 +1 ⇒ 条子长高 2px。
 	##   而**周日**那天条高 = 门按钮 81 + 上下 margin, 顶沿 = 719 − 条高,
 	##   实测顶沿与左栏栈底只差 **1px** ⇒ 多 2px 当场压住入口(门禁 ④ 那条)。
-	var frame: StyleBox = UISkin.nine("ui/panel-wide-flat.png", 8, sb)
-	frame.content_margin_left = 12; frame.content_margin_right = 12
+	## ★★2026-10-05 UI 草稿: 冷色藏青金属框 → 铁箍木板(menu/hud/strip-plank.png, PixelLab 新生成)。
+	##   原来那块藏青底 + 细边在暖色擂台上就是一个网页控件; 现在与左栏挂旗、货币牌、训龟大师木板同一套材质。
+	##   两端铁箍占 22px ⇒ 左右内边距 12 → 26(七格 + 收盘块仍放得下, 收盘块吃剩余宽度)。
+	var frame := StyleBoxTexture.new()
+	frame.texture = load(HUD + "strip-plank.png")
+	frame.texture_margin_left = 22; frame.texture_margin_right = 22
+	frame.texture_margin_top = 14; frame.texture_margin_bottom = 14
+	frame.content_margin_left = 26; frame.content_margin_right = 26
 	frame.content_margin_top = 7; frame.content_margin_bottom = 7
+	frame.modulate_color = Color(0.80, 0.72, 0.64)   # 木板压暗一档, 字才浮得出来
+	box.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	box.add_theme_stylebox_override("panel", frame)
 	content_root.add_child(box)
 	_week_box = box          # D-1: 服务状态变了要能把它换掉
@@ -1340,7 +1439,7 @@ func _week_day_cell(wd: int, today: int) -> Control:
 	## ⚠ 贴图不在就退回原来的金底(`cs`) —— `UISkin.nine` 自带这一手。
 	var skin: StyleBox = cs
 	if is_today:
-		skin = UISkin.nine("ui/panel-wide-on.png", 8, cs)
+		skin = UISkin.nine("menu/hud/brass.png", 14, cs)   # 2026-10-05 UI 草稿: 今天 = 一块黄铜铆钉牌
 		skin.content_margin_left = 6; skin.content_margin_right = 6
 		skin.content_margin_top = STRIP_TODAY_PAD
 		skin.content_margin_bottom = STRIP_TODAY_PAD
@@ -1353,16 +1452,20 @@ func _week_day_cell(wd: int, today: int) -> Control:
 	v.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	cell.add_child(v)
 	var d := Label.new(); d.text = _WD_CN[wd - 1]
-	d.add_theme_font_size_override("font_size", 15)
-	d.add_theme_color_override("font_color", Color("#ffd93d") if is_today else Color("#c6d2e0"))
+	d.add_theme_font_size_override("font_size", 17)
+	d.add_theme_color_override("font_color", Color("#3a1f00") if is_today else Color("#f3dcae"))
+	if not is_today:
+		d.add_theme_color_override("font_outline_color", Color("#1e0f04")); d.add_theme_constant_override("outline_size", 4)
 	d.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(d)
 	var n := Label.new()
 	## ★今天那格在名字后缀一个「今」——横条的格子只有 92px 宽, 光靠金边在缩略/小屏上读不出来;
 	##   顺带让门禁能量到"恰好一天是今天"(竖排那版有「今天」标签, 改横条时漏掉了)。
 	n.text = (str(_P2C.PHASE_LABEL.get(ph, ph)) + " 今") if is_today else str(_P2C.PHASE_LABEL.get(ph, ph))
-	n.add_theme_font_size_override("font_size", 14)
-	n.add_theme_color_override("font_color", Color("#ffe9a8") if is_today else Color("#9fb0c4"))
+	n.add_theme_font_size_override("font_size", 15)
+	n.add_theme_color_override("font_color", Color("#2a1400") if is_today else Color("#dcbf8e"))
+	if not is_today:
+		n.add_theme_color_override("font_outline_color", Color("#1e0f04")); n.add_theme_constant_override("outline_size", 4)
 	n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(n)
 	## ★★2026-10-04 台账 S15(两轮实操都记了「点别的天什么都不会发生」):
@@ -1370,7 +1473,7 @@ func _week_day_cell(wd: int, today: int) -> Control:
 	##   飘一行「那天是什么、谁能打」。不切页 —— 主菜单没有"别的天"的内容可切。
 	## ★触摸线: 格高吃 ROW_H(81), 与全屏所有靶子同一条线; 条子因此恒为周日那天的高度(95),
 	##   顶沿由 `resized` 那段贴底算出, 不是新的写死坐标。
-	cell.custom_minimum_size = Vector2(92, ROW_H)
+	cell.custom_minimum_size = Vector2(84, ROW_H)
 	var tap := Button.new()
 	tap.name = DAY_TAP_PREFIX + str(wd)
 	tap.flat = true
@@ -1560,7 +1663,7 @@ func _gauntlet_board_entry(head: String, sub: String) -> Control:
 	fsb.bg_color = Color(0.05, 0.16, 0.15, 0.94)
 	fsb.set_border_width_all(0)
 	fsb.set_corner_radius_all(0)
-	var skin: StyleBox = UISkin.nine("ui/panel-wide.png", 8, fsb)
+	var skin: StyleBox = UISkin.nine("menu/hud/brass.png", 14, fsb)   # 2026-10-05 UI 草稿: 黄铜门牌
 	skin.content_margin_left = 10; skin.content_margin_right = 10
 	skin.content_margin_top = 4; skin.content_margin_bottom = 4
 	pc.add_theme_stylebox_override("panel", skin)
@@ -1569,7 +1672,7 @@ func _gauntlet_board_entry(head: String, sub: String) -> Control:
 	var go := Label.new()
 	go.text = GAUNTLET_BOARD_LINE
 	go.add_theme_font_size_override("font_size", 14)
-	go.add_theme_color_override("font_color", Color("#4ff0d0"))
+	go.add_theme_color_override("font_color", Color("#5a1a08"))
 	go.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	v.add_child(go)
 	pc.add_child(v)
@@ -1598,7 +1701,8 @@ func _door(text: String, cb: Callable) -> Button:
 	b.custom_minimum_size = Vector2(150, 81)
 	b.text = text
 	b.add_theme_font_size_override("font_size", 15)
-	b.add_theme_color_override("font_color", Color("#4ff0d0"))
+	b.add_theme_color_override("font_color", Color("#2a1400"))
+	b.add_theme_color_override("font_hover_color", Color("#2a1400"))
 	## ★★2026-09-27 上皮。原来它用的是 **Godot 默认皮**(圆角纯灰), 与全屏其它按钮完全两个味。
 	##   `verify_ui_consistency` 的第 3 条判据一直在守这个, 但它**一周只在周日露面**
 	##   —— 今天(UTC 周日)才第一次被抓到。又一条「判据挂在星期几上」:
@@ -1631,7 +1735,7 @@ func _door(text: String, cb: Callable) -> Button:
 	## ★竖向预算(实测 `tests/_probe_mmprofile.gd`): 这张图 band = **7**,
 	##   门 150×81 ⇒ 内容区 67px, 两行 15 号字 45px 居中 ⇒ 上下各余 11px。
 	##   (frame-rect 那张 27×2=54 ⇒ 内容区只剩 27, 装不下 —— 差得就是这么远。)
-	var fnine: StyleBox = UISkin.nine("ui/panel-wide.png", 8, fsb)
+	var fnine: StyleBox = UISkin.nine("menu/hud/brass.png", 14, fsb)   # 2026-10-05 UI 草稿: 黄铜门牌
 	b.add_theme_stylebox_override("normal", fnine)
 	## 三态: 贴图在就用 modulate 提亮/压暗(与 `UISkin.button` 同一招、同一组系数);
 	##   贴图缺了 `UISkin.nine` 退回 fsb, 这里就走原来的换底色。
@@ -1666,11 +1770,13 @@ func _close_block_labels(head: String, sub: String) -> Control:
 	var a := Label.new(); a.text = head
 	a.add_theme_font_size_override("font_size", 16)
 	a.add_theme_color_override("font_color", Color("#ffd93d"))
+	a.add_theme_color_override("font_outline_color", Color("#1e0f04")); a.add_theme_constant_override("outline_size", 5)
 	a.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	v.add_child(a)
 	var b := Label.new(); b.text = sub
-	b.add_theme_font_size_override("font_size", 13)
-	b.add_theme_color_override("font_color", Color("#9fb0c4"))
+	b.add_theme_font_size_override("font_size", 14)
+	b.add_theme_color_override("font_color", Color("#ecd5a8"))
+	b.add_theme_color_override("font_outline_color", Color("#1e0f04")); b.add_theme_constant_override("outline_size", 4)
 	b.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	v.add_child(b)
 	return v
