@@ -1,0 +1,113 @@
+name: Weekly DB backup
+
+# 生产 Supabase 数据库每周备份。方案书 docs/plans/20260916-大轮赛制v2周赛制.md I1「每周备份」推荐 (a)。
+# 免费档 Supabase 不带备份 ⇒ 自己导。操作指南(给非程序员): docs/运维-数据库备份.md
+#
+# ★为什么用 supabase CLI 的 `supabase db dump` 而不是裸 pg_dump:
+#   · 裸 pg_dump 的版本必须 >= 服务器 Postgres 版本, ubuntu 自带的 postgresql-client
+#     常常比 Supabase 的服务器旧 ⇒ 直接报 "server version mismatch" 中止。
+#     CLI 用与服务器匹配的 pg_dump(Docker 镜像), 没有这个坑。
+#   · CLI 会排除 Supabase 自己管的 schema(auth 内部表结构/storage/扩展等), 导出来的东西
+#     能直接还原到一个新 Supabase 项目里; 裸 pg_dump 全量导出, 还原时会撞一堆权限/已存在错误。
+#   · 这是 Supabase 官方文档给的 GitHub Actions 备份写法(roles / schema / data 三份)。
+#
+# ★为什么备份放「加密的 Actions artifact」而不是提交进仓库:
+#   · 本仓库是【公开的】, 备份里有玩家数据(邮箱、存档) ⇒ 绝不能 commit。
+#   · ⚠ 公开仓库的 artifact【任何登录 GitHub 的人都能下载】⇒ 光放 artifact 也不安全,
+#     所以打包时用 7z AES-256 加密(连文件名一起加密), 密码是另一个 secret BACKUP_PASSWORD。
+#     没密码拿到 artifact 也只是一坨乱码。
+#   · artifact 保留 90 天(公开仓库上限) ⇒ 滚动保留约 13 份周备份, 不用自己清理。
+#
+# ★密钥纪律: 全文件不许 set -x、不许 echo 连接串。GitHub 会自动遮蔽 secret 原文,
+#   这里另外把连接串里的【密码】单独登记遮蔽(防止它以 URL 解码后的形态出现在报错里)。
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'   # 每周一 03:00 UTC(北京时间周一 11:00)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      BACKUP_PASSWORD: ${{ secrets.BACKUP_PASSWORD }}
+    steps:
+      - name: Check secrets exist
+        shell: bash
+        run: |
+          missing=0
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error title=缺少 SUPABASE_DB_URL::没有配置数据库连接串。去仓库 Settings → Secrets and variables → Actions → New repository secret, 名字填 SUPABASE_DB_URL, 值填 Supabase 后台 Connect → Session pooler 的 URI(把 [YOUR-PASSWORD] 换成数据库密码)。详见 docs/运维-数据库备份.md"
+            missing=1
+          fi
+          if [ -z "$BACKUP_PASSWORD" ]; then
+            echo "::error title=缺少 BACKUP_PASSWORD::没有配置备份加密密码。同一个页面再加一个 secret, 名字填 BACKUP_PASSWORD, 值是你自己定的长密码(解压备份时要用, 务必另外记下来)。详见 docs/运维-数据库备份.md"
+            missing=1
+          fi
+          if [ "$missing" = 1 ]; then
+            echo "备份没有执行: 缺少必需的 secret(见上方红色报错)。"
+            exit 1
+          fi
+          # 把连接串里的密码单独遮蔽(原文与 URL 解码后的形态都登记)
+          pw="$(python3 -c 'import os,urllib.parse as u; p=u.urlsplit(os.environ["SUPABASE_DB_URL"]).password or ""; print(p)')"
+          if [ -n "$pw" ]; then
+            echo "::add-mask::$pw"
+            pw_dec="$(PW="$pw" python3 -c 'import os,urllib.parse as u; print(u.unquote(os.environ["PW"]))')"
+            echo "::add-mask::$pw_dec"
+          else
+            echo "::error title=连接串里没有密码::SUPABASE_DB_URL 里读不到密码。请确认已把 [YOUR-PASSWORD] 换成真实的数据库密码。"
+            exit 1
+          fi
+          echo "secrets 齐全。"
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Dump database (roles / schema / data)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p backup
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f backup/roles.sql --role-only
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f backup/schema.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f backup/data.sql --use-copy --data-only
+          # 空文件 = 没备份到东西, 不许绿
+          for f in roles schema data; do
+            if [ ! -s "backup/$f.sql" ]; then
+              echo "::error title=备份为空::backup/$f.sql 是空的, 本次备份无效。"
+              exit 1
+            fi
+          done
+          if ! grep -q "CREATE TABLE" backup/schema.sql; then
+            echo "::error title=表结构缺失::schema.sql 里一张表都没有, 本次备份无效。"
+            exit 1
+          fi
+          ls -l backup
+
+      - name: Encrypt (7z AES-256)
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v 7z >/dev/null 2>&1 || sudo apt-get install -y p7zip-full >/dev/null
+          stamp="$(date -u +%Y%m%d)"
+          echo "STAMP=$stamp" >> "$GITHUB_ENV"
+          7z a -t7z -mhe=on -mx=9 -p"$BACKUP_PASSWORD" "db-backup-$stamp.7z" ./backup/* >/dev/null
+          rm -rf backup
+          ls -l "db-backup-$stamp.7z"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ env.STAMP }}
+          path: db-backup-${{ env.STAMP }}.7z
+          retention-days: 90
+          if-no-files-found: error
