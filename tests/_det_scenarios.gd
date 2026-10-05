@@ -245,6 +245,36 @@ static func all() -> Array:
 	]
 
 
+## 全场快照(逐步指纹) —— `verify_determinism_b` 与 `verify_determinism_cross` **共用这一个**。
+## (原来两边各手抄一份 `%.3f:%.2f…`, 头注说「两处必须一致」, 而钉住它的「字段清单」断言其实不存在。)
+## ★★浮点走 `ReplayRecorder.exact()`(位模式), 不走 `%.Nf`(2026-10-05):
+##   ⑬ 在 CI 红, 逐步对比 Windows / Linux 两边 1000 步**位模式逐位相同**, 只有第 550 步的格式化串不同:
+##   右队 basic 的 x = 1274.125(恰好是 .5 的二进制精确值), Windows 印 1274.13、glibc 印 1274.12。
+##   台账里那条「③ 石头龟 x 658.13/658.12」也是这一个形状(658.125), 不是 libm。
+##   ⇒ `%.Nf` 既会**假报**(舍入方向随平台), 又会**漏报**(一个 ulp 的真分叉被截掉); 位模式两头都堵上。
+static func fp(scene) -> String:
+	var parts: Array = []
+	var i := 0
+	for u in scene._units:
+		## ★除了血/位置/存活/盾, 还要记【金币 / 龟能 / 棱镜色】——
+		##   它们同样是对局结果, 而且是 `_juice_rng`(每局 randomize) 的三个真实落点:
+		##   财神每 3 秒 +4~7 金、无人机开火抖动、彩虹棱镜开局定色。不记 = 判据看不见那一类。
+		##   ⚠ 只记**对局**字段: 纯演出的随机(火星位置/雾云)照旧不进指纹, 否则演出一抖就假红。
+		var p: Vector2 = u.get("pos", Vector2())
+		parts.append("%d/%s/%s:%s:%s:%s:%d:%s:%s:%s:%d:%s" % [
+			i, str(u.get("id", "?")), str(u.get("side", "?")),
+			ReplayRecorder.exact(float(u.get("hp", 0.0))),
+			ReplayRecorder.exact(p.x), ReplayRecorder.exact(p.y),
+			1 if bool(u.get("alive", false)) else 0,
+			ReplayRecorder.exact(float(u.get("shield", 0.0))),
+			ReplayRecorder.exact(float(u.get("gold", 0.0))),
+			ReplayRecorder.exact(float(u.get("energy", 0.0))),
+			int(u.get("prism_color", -1)),
+			ReplayRecorder.exact(float(u.get("crit", 0.0)))])
+		i += 1
+	return "|".join(parts)
+
+
 ## 反证用的那一局(换种子必须出不同指纹)。★与 ② 同一套摆位 —— 唯一的变量只能是种子。
 static func counter_proof_pairs() -> Array:
 	return (all()[1] as Dictionary)["pairs"]

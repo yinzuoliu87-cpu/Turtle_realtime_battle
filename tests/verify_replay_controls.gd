@@ -303,10 +303,14 @@ func _t_controls_and_card(base: Dictionary) -> void:
 	_ok("④ 结算屏没出来(回放不走结算)", b.find_child("SettleScreen", true, false) == null)
 	_ok("④ 分母: 操作条收起", not (_named(bar, "ReplayStrip") as Control).visible)
 	## 再看一遍
+	## ★不在闭包里捕获 b(它马上被换场景释放 ⇒ 「Lambda capture was freed」): 比实例号。
+	## ★★实例号必须在按钮【之前】取(2026-10-05 修 CI rc=134 段错误): 原来放在 `await _frames(3)` 之后,
+	##   那时旧战斗场已被换场景释放, `b.get_instance_id()` 是对已释放对象调方法 —— 引擎**不报错**,
+	##   读的是释放掉的内存(探针: is_instance_valid(b)=false 时照样返回一个数), 内存被复用了就 signal 11。
+	##   本地几乎不出; WSL 里同版本 Linux Godot `--max-fps 15` 并行 10 份, 5 份崩, 全崩在这一行。
+	var b_id: int = b.get_instance_id()
 	ag.pressed.emit()
 	await _frames(3)
-	## ★不在闭包里捕获 b(它马上被换场景释放 ⇒ 「Lambda capture was freed」): 比实例号。
-	var b_id: int = b.get_instance_id()
 	var b2 = await _wait_scene(func(n): return _is_battle(n) and n.get_instance_id() != b_id)
 	_ok("④ ★「再看一遍」⇒ 新的战斗场、仍在播、同一份录像、从头开始",
 		b2 != null and b2._replay.is_playing() and str(b2._replay.rec.get("id", "")) == _id and int(b2._sim_step_n) < 30,

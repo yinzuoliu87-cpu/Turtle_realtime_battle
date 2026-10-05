@@ -40,26 +40,7 @@ func _ok(name: String, cond: bool, detail: String = "") -> void:
 
 ## 全场快照: 按 _units 下标排(不排序 —— 生成顺序本身也是确定性的一部分)。
 func _fp(scene) -> String:
-	var parts: Array = []
-	var i := 0
-	for u in scene._units:
-		## ★除了血/位置/存活/盾, 还要记【金币 / 龟能 / 棱镜色】——
-		##   它们同样是对局结果, 而且是 `_juice_rng`(每局 randomize) 的三个真实落点:
-		##   财神每 3 秒 +4~7 金、无人机开火抖动、彩虹棱镜开局定色。不记 = 判据看不见那一类。
-		##   ⚠ 只记**对局**字段: 纯演出的随机(火星位置/雾云)照旧不进指纹, 否则演出一抖就假红。
-		parts.append("%d/%s/%s:%.3f:%.2f:%.2f:%d:%.2f:%.1f:%.2f:%d:%.4f" % [
-			i, str(u.get("id", "?")), str(u.get("side", "?")),
-			float(u.get("hp", 0.0)),
-			float((u.get("pos", Vector2()) as Vector2).x),
-			float((u.get("pos", Vector2()) as Vector2).y),
-			1 if bool(u.get("alive", false)) else 0,
-			float(u.get("shield", 0.0)),
-			float(u.get("gold", 0.0)),
-			float(u.get("energy", 0.0)),
-			int(u.get("prism_color", -1)),
-			float(u.get("crit", 0.0))])
-		i += 1
-	return "|".join(parts)
+	return SC.fp(scene)   # ★两个门禁共用一份(见 `_det_scenarios.fp` 头注: 位模式, 不走 %.Nf)
 
 
 ## pairs = [[turtle_id, side, x, y, [装备 id...]], ...]
