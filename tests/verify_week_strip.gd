@@ -284,9 +284,11 @@ func _one_clock(packed) -> void:
 		## / 决赛日那扇门 `panel-wide`。
 		## ★判据不是「我插了一行」 —— 而是**屏幕上那三个控件真挂着那张图**,
 		##   外加**字块落在九宫格边框里面**(memory `fb-gate-must-measure-requirement-not-my-hook`)。
+		## ★★2026-10-05 UI 重做: 皮换成新画的铁箍木板 / 今天那格换成铜边框(用户「木纹不要拉糊」
+		##   「今天那格跟其余六格同一套明暗, 用铜边框标出来」)。贴图名**问产品自己的常量**, 不抄字面量。
 		var obx := _nine(box, "panel")
-		_ok("%s ⑦a 条子外框挂着 `panel-wide-flat.png`(一个框, 不是七个)" % tag,
-			_tex_name(obx) == "panel-wide-flat.png", "实测「%s」" % _tex_name(obx))
+		_ok("%s ⑦a 条子外框挂着 `%s`(一个框, 不是七个)" % [tag, str(mm.STRIP_TEX)],
+			_tex_name(obx) == str(mm.STRIP_TEX), "实测「%s」" % _tex_name(obx))
 		var nined := 0
 		var today_tex := ""
 		var pad_ok := true
@@ -325,8 +327,8 @@ func _one_clock(packed) -> void:
 				pad_ok = false
 		_ok("%s ⑦b **恰好一格**套九宫格(七格全套=表格, 上一轮四版对照实拍否掉过)" % tag,
 			nined == 1, "实测 %d 格" % nined)
-		_ok("%s ⑦b 套的就是【今天】那格, 用的是 `panel-wide-on.png`" % tag,
-			today_tex == "panel-wide-on.png", "实测「%s」" % today_tex)
+		_ok("%s ⑦b 套的就是【今天】那格, 用的是 `%s`" % [tag, str(mm.STRIP_TODAY_TEX)],
+			today_tex == str(mm.STRIP_TODAY_TEX), "实测「%s」" % today_tex)
 		_ok("%s ⑦c 亮牌上那两行字落在九宫格边框**里面**" % tag, pad_ok, pad_txt)
 
 		## ⑦d 几何 —— **七天都跑**。`verify_mainmenu_layout ④` 只量【真实今天】那一屏,
@@ -362,8 +364,8 @@ func _one_clock(packed) -> void:
 			_ok("%s ⑦e ★分母: 门在场(不在 ⇒ 下两条是空检查)" % tag, door != null)
 			if door != null:
 				var dn := _nine(door, "normal")
-				_ok("%s ⑦e 门挂着 `panel-wide.png`" % tag,
-					_tex_name(dn) == "panel-wide.png", "实测「%s」" % _tex_name(dn))
+				_ok("%s ⑦e 门挂着 `brass.png`(黄铜门牌, 2026-10-05 UI 重做)" % tag,
+					_tex_name(dn) == "brass.png", "实测「%s」" % _tex_name(dn))
 				## ★★不许退回 `UISkin.button()`: 它的 big 判据(短边≥56 且面积≥5000)
 				##   会让 150×81 去挑 `menu/frame-rect.png`, 而那张**边带 27**,
 				##   上下 55 装不下两行 15 号字 ⇒ 「文字压边带」当场 +1(棘轮只降不升)。
