@@ -95,10 +95,16 @@ func _ready() -> void:
 
 	# ── ① 谁也别超出 1280×720 ──
 	var oob: Array = []
+	## ★擂台背景(2026-10-05)是一张 390×180 的原生画布按 ×4 放大、**居中裁边**铺满视口 ——
+	##   画布里的层本来就伸出屏幕两侧(1280 宽下左右各裁 140px)。它们不是控件, 是被裁掉的画。
+	##   ⇒ 背景子树不算越界; 但「背景自己裁边 + 盖满视口」由 ⑮b 单独断言(不是放过, 是换了量法)。
+	var bd_node: Node = _find_named(_menu, "ArenaBackdrop")
 	for c in all:
 		var r: Rect2 = (c as Control).get_global_rect()
 		if r.size.x >= W - 1.0 and r.size.y >= H - 1.0:
 			continue                                     # 背景/遮罩本就该铺满
+		if bd_node != null and (bd_node as Node).is_ancestor_of(c):
+			continue
 		if r.position.x < -0.5 or r.position.y < -0.5 or r.end.x > W + 0.5 or r.end.y > H + 0.5:
 			oob.append("%s @(%.0f,%.0f) %.0f×%.0f" % [c.get_class(), r.position.x, r.position.y, r.size.x, r.size.y])
 	_ok("① 所有控件都在 %.0f×%.0f 内" % [W, H], oob.is_empty(), "越界 %d 个" % oob.size())
@@ -767,6 +773,150 @@ func _ready() -> void:
 	_ok("⑬z ★分母: 扫到了按钮族木框(frame-rect)", n_btn_frame > 0, "TextureRect %d 张, frame-rect %d" % [tex_paths.size(), n_btn_frame])
 	_ok("⑬z ★货币芯片不再垫按钮族木框(frame-coin 零引用)", n_coin_frame == 0, "frame-coin %d 张" % n_coin_frame)
 
+	# ── ⑮ ★擂台背景 + 主 CTA 呼吸光晕 (2026-10-05 · 方案书 20260917 R1 / R1-a / R1-b / R2) ──
+	#
+	# 由来: 背景从「28 只龟立绘拼的群像墙」换成「擂台 + 看台」场景, 会动; 主 CTA 加呼吸光晕 + 金边。
+	#   用户的三句话是这一节的判据来源(逐字): R1「擂台 + 看台」/ R1-a「尽量不要复用好吗」/
+	#   R1-b「不能用现有的龟立绘」/ R2「保留木框 + 呼吸光晕/金边」。
+	# ★旧版式的判据(群像墙那几条)没有放宽, 是换掉: 那张图不在了, 量它等于量空气。
+	# ★「会动」不看节点在不在, 看**状态真的变了** —— 直接喂确定的 dt 推 `step()`(帧率跟机器挂钩, 钟不该),
+	#   另配一条「真入口的 _process 也在推钟」, 防止只有测试在喂、产品里是一张静图。
+	var bds_15: Array = []
+	for n_b_15 in _walk(_menu):
+		if n_b_15 is MenuArenaBackdrop:
+			bds_15.append(n_b_15)
+	_ok("⑮a ★分母: 场景里恰有 1 个擂台背景(MenuArenaBackdrop)", bds_15.size() == 1, "%d 个" % bds_15.size())
+	if bds_15.size() == 1:
+		var bd_15: MenuArenaBackdrop = bds_15[0]
+		var vr_15 := Rect2(Vector2.ZERO, Vector2(W, H))
+		## ⑮b 盖满视口 + 自己裁边(① 不再逐层量背景, 前提就是这两条)
+		var bd_r_15 := bd_15.get_global_rect()
+		var stage_15: Control = bd_15.get_node_or_null("Stage")
+		_ok("⑮b ★分母: 背景里有那块原生画布(Stage)", stage_15 != null)
+		_ok("⑮b 背景控件盖满视口", bd_r_15.encloses(vr_15), str(bd_r_15))
+		_ok("⑮b 背景裁边(clip_contents) —— 伸出屏外的画不许漏到别的层上", bd_15.clip_contents)
+		if stage_15 != null:
+			var st_r_15: Rect2 = stage_15.get_global_transform() * Rect2(Vector2.ZERO, stage_15.size)
+			_ok("⑮b ★放大后的原生画布盖满视口(不留底色边)", st_r_15.encloses(vr_15), str(st_r_15))
+			_ok("⑮b 等比放大(横竖同一倍率, 像素不变形)", absf(stage_15.scale.x - stage_15.scale.y) < 0.001,
+				str(stage_15.scale))
+		## ⑮c R1-a / R1-b: 背景里每一张贴图都是 arena/ 下新烘的, 一张旧图都没有
+		var tps_15: Array = bd_15.texture_paths()
+		var foreign_15: Array = []
+		for tp_15 in tps_15:
+			var sp_15 := str(tp_15)
+			if not sp_15.begins_with("res://assets/sprites/menu/arena/baked/") \
+					or sp_15.find("/pets/") >= 0 or sp_15.find("/map/") >= 0 or sp_15.find("menu-bg-crowd") >= 0:
+				foreign_15.append(sp_15)
+		_ok("⑮c ★分母: 背景用到的贴图 ≥ 20 张(看台/灯/火/旗/主角分层)", tps_15.size() >= 20, "%d 张" % tps_15.size())
+		_ok("⑮c ★★R1-a/R1-b 背景只用新画的素材(不许出现龟立绘/地图件/旧群像)", foreign_15.is_empty(),
+			str(foreign_15.slice(0, 3)))
+		var crowd_on_screen_15 := 0
+		for n_t2_15 in _walk(_menu):
+			if n_t2_15 is TextureRect and (n_t2_15 as TextureRect).texture != null \
+					and str((n_t2_15 as TextureRect).texture.resource_path).find("menu-bg-crowd") >= 0:
+				crowd_on_screen_15 += 1
+		_ok("⑮c 旧群像墙不在主菜单上了", crowd_on_screen_15 == 0, "%d 张" % crowd_on_screen_15)
+		## ⑮d' 真入口在推钟(入场那几秒 _process 已经跑过)
+		var lite_15: bool = bool(get_node("/root/GameState").perf_lite)
+		var s_real_15: Dictionary = bd_15.debug_state()
+		_ok("⑮d' ★真入口: 背景的 _process 开着(低画质才关)", bd_15.is_processing() == (not lite_15),
+			"processing=%s perf_lite=%s" % [str(bd_15.is_processing()), str(lite_15)])
+		_ok("⑮d' ★真入口: 背景的钟已经被 _process 推过(不是只有测试在喂)", float(s_real_15["t"]) > 0.0,
+			"t=%.3f" % float(s_real_15["t"]))
+		## ⑮d 会动: 喂 6 秒(> 一个出手循环 3.4 秒), 每 0.05 秒采一次
+		var s0_15: Dictionary = bd_15.debug_state()
+		var n_crowd_15: int = (s0_15["crowd_y"] as Array).size()
+		var crowd_seen_15: Array = []
+		for _i_15 in range(n_crowd_15):
+			crowd_seen_15.append({})
+		var flame_seen_15: Array = [{}, {}]
+		var la_lo_15: Array = []
+		var la_hi_15: Array = []
+		for _i_15 in range((s0_15["light_a"] as Array).size()):
+			la_lo_15.append(1.0)
+			la_hi_15.append(0.0)
+		var poses_15 := {}
+		var dposes_15 := {}
+		var steps_15 := 120
+		for _k_15 in range(steps_15):
+			bd_15.step(0.05)
+			var st_15: Dictionary = bd_15.debug_state()
+			for i_15 in range(n_crowd_15):
+				(crowd_seen_15[i_15] as Dictionary)[float(st_15["crowd_y"][i_15])] = true
+			for i_15 in range(mini(2, (st_15["flame_idx"] as Array).size())):
+				(flame_seen_15[i_15] as Dictionary)[int(st_15["flame_idx"][i_15])] = true
+			for i_15 in range(la_lo_15.size()):
+				la_lo_15[i_15] = minf(float(la_lo_15[i_15]), float(st_15["light_a"][i_15]))
+				la_hi_15[i_15] = maxf(float(la_hi_15[i_15]), float(st_15["light_a"][i_15]))
+			poses_15[str(st_15["atk_pose"])] = true
+			dposes_15[str(st_15["def_pose"])] = true
+		var s1_15: Dictionary = bd_15.debug_state()
+		var hopping_15 := 0
+		for d_15 in crowd_seen_15:
+			if (d_15 as Dictionary).has(0.0) and (d_15 as Dictionary).has(-1.0):
+				hopping_15 += 1
+		_ok("⑮d ★分母: 看台分层 ≥ 10 层", n_crowd_15 >= 10, "%d 层" % n_crowd_15)
+		_ok("⑮d ★看台观众在蹦: ≥ 80%% 的层 6 秒内都到过「原位」和「上 1 格」", hopping_15 * 5 >= n_crowd_15 * 4,
+			"%d / %d 层" % [hopping_15, n_crowd_15])
+		_ok("⑮d ★两个火盆都在换帧(各 ≥ 3 种帧)", (flame_seen_15[0] as Dictionary).size() >= 3 and (flame_seen_15[1] as Dictionary).size() >= 3,
+			"%d / %d 种" % [(flame_seen_15[0] as Dictionary).size(), (flame_seen_15[1] as Dictionary).size()])
+		var flat_lights_15 := 0
+		for i_15 in range(la_lo_15.size()):
+			if float(la_hi_15[i_15]) - float(la_lo_15[i_15]) < 0.10:
+				flat_lights_15 += 1
+		_ok("⑮d ★分母: 顶沿灯分组 ≥ 2", la_lo_15.size() >= 2, "%d 组" % la_lo_15.size())
+		_ok("⑮d 顶沿的灯每组都在明暗(幅度 ≥ 0.10)", flat_lights_15 == 0, "不动的 %d 组" % flat_lights_15)
+		_ok("⑮d 旗子的摆动钟在走", float(s1_15["banner_t"]) - float(s0_15["banner_t"]) > 5.0,
+			"%.2f → %.2f" % [float(s0_15["banner_t"]), float(s1_15["banner_t"])])
+		_ok("⑮d ★进攻方三个姿势都出现过(架势/蓄力/突刺)", poses_15.has("stance") and poses_15.has("windup") and poses_15.has("thrust"),
+			str(poses_15.keys()))
+		_ok("⑮d ★防守方两个姿势都出现过(架盾/顶盾)", dposes_15.has("guard") and dposes_15.has("brace"), str(dposes_15.keys()))
+		## ⑮e 主角是这张图的焦点 —— 不许被任何可点控件、赛程条盖住, 也不许出屏
+		var frs_15: Array = bd_15.fighter_rects()
+		_ok("⑮e ★分母: 量到两只角斗龟的框", frs_15.size() == 2, "%d 个" % frs_15.size())
+		var covered_15: Array = []
+		var strip_c_15: Control = _find_strip(content)
+		for fr_15 in frs_15:
+			var fr2_15: Rect2 = fr_15
+			if not vr_15.encloses(fr2_15):
+				covered_15.append("出屏 %s" % str(fr2_15))
+			for tp2_15 in _tappables(_menu):
+				var tr2_15: Rect2 = (tp2_15 as Control).get_global_rect()
+				if tr2_15.intersects(fr2_15):
+					covered_15.append("%s 盖住 %s" % [_tag(tp2_15), str(fr2_15)])
+			if strip_c_15 != null and strip_c_15.get_global_rect().intersects(fr2_15):
+				covered_15.append("赛程条盖住 %s" % str(fr2_15))
+		_ok("⑮e ★两只角斗龟完整露出(不压按钮/赛程条, 不出屏)", covered_15.is_empty(), str(covered_15.slice(0, 3)))
+	## ⑮f R2: 主 CTA 的呼吸光晕 —— 全屏恰一个, 挂在「开始战斗」上, 真在呼吸, 金边在木框外沿
+	var glows_15: Array = []
+	for n_g_15 in _walk(_menu):
+		if n_g_15 is MenuCtaGlow:
+			glows_15.append(n_g_15)
+	_ok("⑮f ★全屏恰 1 个呼吸光晕(主 CTA 的材质独一份)", glows_15.size() == 1, "%d 个" % glows_15.size())
+	if glows_15.size() == 1:
+		var gl_15: MenuCtaGlow = glows_15[0]
+		var hero_h_15 := _entry_holder(page_box, "开始战斗")
+		_ok("⑮f ★光晕挂在「开始战斗」那颗键上(不是训龟大师)", hero_h_15 != null and hero_h_15.is_ancestor_of(gl_15))
+		if hero_h_15 != null:
+			var hr2_15 := hero_h_15.get_global_rect()
+			var gr2_15 := gl_15.get_global_rect()
+			_ok("⑮f 金边在木框外沿一圈(光晕框包住按钮且四边都外扩)", gr2_15.encloses(hr2_15)
+				and gr2_15.position.x < hr2_15.position.x and gr2_15.end.x > hr2_15.end.x
+				and gr2_15.position.y < hr2_15.position.y and gr2_15.end.y > hr2_15.end.y, "%s vs %s" % [str(gr2_15), str(hr2_15)])
+			_ok("⑮f 光晕垫在木框底下(不盖住字)", hero_h_15.get_children().find(gl_15) == 0)
+		_ok("⑮f 叠加混合(发光, 不是一块不透明金色色块)", gl_15.material is CanvasItemMaterial
+			and (gl_15.material as CanvasItemMaterial).blend_mode == CanvasItemMaterial.BLEND_MODE_ADD)
+		var a_lo_15 := 9.0
+		var a_hi_15 := -9.0
+		for _k_15 in range(60):
+			gl_15.step(0.05)
+			a_lo_15 = minf(a_lo_15, gl_15.modulate.a)
+			a_hi_15 = maxf(a_hi_15, gl_15.modulate.a)
+		_ok("⑮f ★在呼吸: 3 秒内透明度起伏 ≥ 0.4", a_hi_15 - a_lo_15 >= 0.4, "%.2f ~ %.2f" % [a_lo_15, a_hi_15])
+		_ok("⑮f ★真入口: 光晕的 _process 开着(低画质才关)",
+			gl_15.is_processing() == (not bool(get_node("/root/GameState").perf_lite)))
+
 	# ── ⑭ ★★PLAY_LOCK_SAME_SOURCE: 画在按钮上的锁 == 那扇门自己的判据 ──
 	#
 	# 由来 (2026-09-29 台账 ④·真手点出来的): 打满 24 场之后同一屏上
@@ -840,6 +990,13 @@ func _ready() -> void:
 				seen_reason += 1
 			else:
 				_ok("⑭b [%s] 商店没锁 ⇒ 不显示理由" % str(cs[0]), rs_txt == "", rs_txt)
+			## ⑮g ★R2 的光晕只挂在【能点】的主 CTA 上: 锁着(灰框)时不许发光 —— 灰框配金光是在说「快点我」。
+			var hg_n := 0
+			for n_g2 in _walk(_entry_holder(page_box, "开始战斗")):
+				if n_g2 is MenuCtaGlow:
+					hg_n += 1
+			_ok("⑮g ★[%s] 主 CTA 光晕 有/无 == 开打 没锁/锁着" % str(cs[0]), (hg_n == 1) == (not paint_play),
+				"光晕 %d 个, 开打锁=%s" % [hg_n, str(paint_play)])
 			seen_play["locked" if paint_play else "open"] += 1
 			seen_shop["locked" if paint_shop else "open"] += 1
 		print("  ⑭ [分母] 开打 锁上 %d 格 / 没锁 %d 格; 商店 锁上 %d 格 / 没锁 %d 格" % [
