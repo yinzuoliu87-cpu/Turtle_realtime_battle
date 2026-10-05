@@ -376,18 +376,28 @@ func _apply_positions(ps: Array) -> bool:
 # ─────────────────────────────── 指纹 ───────────────────────────────
 
 ## 全场对局状态(与 verify_determinism_b 同一组字段: 不含纯演出)。
+## ★★浮点一律走 `exact()`(位模式), 不许 `%.2f`(2026-10-05):
+##   `%.Nf` 落到各平台自己的 printf, 而**恰好是 .5 的二进制精确值**两家舍入方向不同 ——
+##   实测同一个 x = 1274.125(位模式逐位相同), Windows 印「1274.13」、Linux/glibc 印「1274.12」。
+##   ⇒ 状态完全一致, 指纹却不同 ⇒ 跨设备回放会**假报分叉**(verify_determinism_cross ⑬ 就是这么红的)。
 static func fingerprint(b) -> String:
-	var parts: Array = ["t=%.4f" % float(b._t), str(b._dl_state)]
+	var parts: Array = ["t=" + exact(float(b._t)), str(b._dl_state)]
 	var i := 0
 	for u in b._units:
 		var p: Vector2 = u.get("pos", Vector2())
-		parts.append("%d/%s/%s:%.3f:%.2f:%.2f:%d:%.2f:%.2f" % [
+		parts.append("%d/%s/%s:%s:%s:%s:%d:%s:%s" % [
 			i, str(u.get("id", "?")), str(u.get("side", "?")),
-			float(u.get("hp", 0.0)), p.x, p.y,
+			exact(float(u.get("hp", 0.0))), exact(p.x), exact(p.y),
 			1 if bool(u.get("alive", false)) else 0,
-			float(u.get("shield", 0.0)), float(u.get("energy", 0.0))])
+			exact(float(u.get("shield", 0.0))), exact(float(u.get("energy", 0.0)))])
 		i += 1
 	return "|".join(parts)
+
+
+## 浮点 → 与平台无关的字符串: float64 的 8 个字节(小端; x86/ARM64 都是小端)转十六进制。
+## ★不经 printf ⇒ 没有「.5 往哪边舍」这一维; 而且比 `%.2f` 更严 —— 差一个 ulp 也看得见。
+static func exact(v: float) -> String:
+	return PackedFloat64Array([v]).to_byte_array().hex_encode()
 
 
 static func digest(b) -> String:

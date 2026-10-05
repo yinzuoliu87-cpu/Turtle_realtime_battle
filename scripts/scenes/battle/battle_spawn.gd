@@ -312,7 +312,12 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 	if is_minion:   # 深海小将: 非龟, 自带立绘/数值(750血·45攻·双抗7 ×1.05^级; 前排挥砍范围70/后排射击400), 无技能被动
 		var _mf: bool = str(spec.get("role", "front")) == "front"
 		var _me: bool = bool(spec.get("elite", false))
-		var _mm: float = pow(1.05, maxf(0.0, float(int(spec.get("level", 1)) - 1)))
+		## ★等级复利用连乘, 不用 `pow`(2026-10-05): `pow` 是各平台 libm 自己的近似, Windows(MSVC) 与
+		##   Linux(glibc) 末位不同 —— 探针实测同一只小将开局 hp 469946.8475140407 / 469946.8475140425,
+		##   第 0 步就分叉(verify_determinism_cross ⑥)。`*` 是 IEEE-754 保证逐位一致的。
+		var _mm: float = 1.0
+		for _lv_i in range(maxi(0, int(spec.get("level", 1)) - 1)):
+			_mm *= 1.05
 		if _me:   # 精英小将定制属性(用户2026-07-18): 1000HP/50ATK/16DEF/20MR (HP/ATK随等级复利·双抗定值)
 			d = {"name": "精英小将", "rarity": "C", "crit": 0.0,
 				"hp": 1000.0 * _mm, "atk": 50.0 * _mm, "def": 16.0, "mr": 20.0}

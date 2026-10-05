@@ -70,12 +70,18 @@ const GOLDEN_PATH := "res://tests/golden/determinism_cross.json"
 ##   · 差的是**一个浮点末位**: 石头龟的 x, 本地 658.13 / CI 658.12;
 ##     血量/护盾/暴击/其余 7 只单位**全部相同** ⇒ 不是逻辑分叉, 是数值精度
 ##
+## ★★★2026-10-05 结案、台账清零: 那「一个浮点末位」**根本不是 sim 分叉, 是指纹的格式化**。
+##   658.125 / 1274.125 这类**恰好是 .5 的二进制精确值**, `%.2f` 交给各平台 printf 舍入 ——
+##   Windows 往远离零舍(658.13), glibc 银行家舍入(658.12)。探针(位模式逐步写盘, WSL 里跑
+##   同版本 Linux Godot 对比)实测: ③ 600 步、⑬ 1000 步, 九个字段的**位模式两边逐位相同**,
+##   只有格式化后的串不同(③ 101 步、⑬ 1 步: 右队 basic x = 1274.125)。
+##   ⇒ 指纹改走位模式(`_det_scenarios.fp`), 金标随之重生; 台账这一条划掉。
+##   「三件同时在场才飘」也就说得通了: 只是那个组合恰好把某个坐标走到了 .xx5。
+##
 ## ⚠ **它不阻塞周日的玩法**: v0.19.450 起周日打完不当场宣布胜负, 权威只有服务端的
 ##   对阵结果, 客户端算出什么都不作数。确定性是**重放**(C 阶段)才要的 ——
 ##   重放若按「种子 + 阵容」重算, 两台机器必须得出同一份画面。
 const KNOWN_DIVERGE := {
-	"③ 3v3 满装备(每只 3 件 3★)":
-		"一个浮点末位(石头龟 x 658.13/658.12, 第 271 步); 另外 8 个场景逐位相同",
 }
 
 var _ledger_seen: Array = []
@@ -102,22 +108,7 @@ const FP_FIELDS := ["hp", "pos.x", "pos.y", "alive", "shield", "gold", "energy",
 	"prism_color", "crit"]
 
 func _fp(scene) -> String:
-	var parts: Array = []
-	var i := 0
-	for u in scene._units:
-		parts.append("%d/%s/%s:%.3f:%.2f:%.2f:%d:%.2f:%.1f:%.2f:%d:%.4f" % [
-			i, str(u.get("id", "?")), str(u.get("side", "?")),
-			float(u.get("hp", 0.0)),
-			float((u.get("pos", Vector2()) as Vector2).x),
-			float((u.get("pos", Vector2()) as Vector2).y),
-			1 if bool(u.get("alive", false)) else 0,
-			float(u.get("shield", 0.0)),
-			float(u.get("gold", 0.0)),
-			float(u.get("energy", 0.0)),
-			int(u.get("prism_color", -1)),
-			float(u.get("crit", 0.0))])
-		i += 1
-	return "|".join(parts)
+	return SC.fp(scene)   # ★两个门禁共用一份(见 `_det_scenarios.fp` 头注: 位模式, 不走 %.Nf)
 
 
 ## 跑一个场景 → 返回 [摘要, 逐步指纹数组, 不同指纹数, 累计承伤]

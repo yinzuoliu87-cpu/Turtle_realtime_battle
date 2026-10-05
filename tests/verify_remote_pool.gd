@@ -208,15 +208,32 @@ func _ready() -> void:
 	var rp := RemotePool.new()
 	add_child(rp)
 
-	## V1 的真判据: **匹配路径不等网络**。先量 find_opponent 的墙钟。
-	var t0 := Time.get_ticks_msec()
-	var opp := Backend.find_opponent(3, [], RandomNumberGenerator.new())
-	var dt := Time.get_ticks_msec() - t0
+	## V1 的真判据: **匹配路径不等网络**。
+	## ★★2026-10-05 改尺子: 原来是绝对墙钟 `dt < 500 ms` —— CI 实测 624 ms 红、本地 85 ms 绿。
+	##   探针(tests 外临时探针·分段计时)量出本机 find_opponent ≈ 76 ms, 其中 load_pool(读盘+JSON+并种子)
+	##   ≈ 75 ms, 网络那两行(pull_async + pull_opponents_async)合计 < 1 ms ⇒ 624 ms 全是 CPU,
+	##   CI 慢 ~7 倍(与 CLAUDE.md「机器参照 ×7.09」一致), 不是在等网络。
+	##   ⇒ 同进程拿【网络层停用】那一遍当参照: 「等网络」的形状是开了网络层之后多出来的那一截。
+	##   两边各量 3 次取最小(去掉首调冷启动/GC 噪声), 判 开/关 ≤ 1.5 倍; 外加一道宽松硬顶(超时的一半)。
+	var dt_on := 1 << 30
+	var dt_off := 1 << 30
+	var opp: Dictionary = {}
+	for _k in range(3):
+		OS.unset_environment(RemotePool.ENV_KEY)
+		var t_off := Time.get_ticks_usec()
+		Backend.find_opponent(3, [], RandomNumberGenerator.new())
+		dt_off = mini(dt_off, Time.get_ticks_usec() - t_off)
+		OS.set_environment(RemotePool.ENV_KEY, DEAD_URL)
+		var t_on := Time.get_ticks_usec()
+		opp = Backend.find_opponent(3, [], RandomNumberGenerator.new())
+		dt_on = mini(dt_on, Time.get_ticks_usec() - t_on)
+	_ok("★分母: 量的那几遍网络层真的是开着的", RemotePool.enabled())
 	_ok("★★V1 断网时仍能找到对手(离线不退化·硬指标)",
-		opp is Dictionary and not (opp as Dictionary).is_empty(),
-		"对手 %s" % str((opp as Dictionary).get("ghost_id", "?")))
-	_ok("★★V1 匹配【一步都不等网络】: 耗时 %d ms ≪ 超时 %d ms" % [dt, int(RemotePool.TIMEOUT_SEC * 1000)],
-		dt < 500, "实测 %d ms" % dt)
+		not opp.is_empty(), "对手 %s" % str(opp.get("ghost_id", "?")))
+	var ratio := float(dt_on) / float(maxi(dt_off, 1))
+	_ok("★★V1 匹配【一步都不等网络】: 开网络层 %.1f ms / 关网络层 %.1f ms = ×%.2f ≤ ×1.5, 且 ≪ 超时 %d ms" % [
+		dt_on / 1000.0, dt_off / 1000.0, ratio, int(RemotePool.TIMEOUT_SEC * 1000)],
+		ratio <= 1.5 and dt_on < int(RemotePool.TIMEOUT_SEC * 1000) * 500, "开 %d us / 关 %d us" % [dt_on, dt_off])
 
 	## V5: 让上传和拉取都真的失败一次, 断言存档与池子【一个字节都没变】。
 	var save_before := _read("user://save.json")
