@@ -673,7 +673,6 @@ scripts/scenes/MainMenuScene.gd|lit|已封盘
 scripts/scenes/MainMenuScene.gd|lit|已封盘 · 收盘前不开新局
 scripts/scenes/MainMenuScene.gd|lit|开始战斗
 scripts/scenes/MainMenuScene.gd|lit|战绩
-scripts/scenes/MainMenuScene.gd|lit|战绩  %s
 scripts/scenes/MainMenuScene.gd|lit|打完第一场才开店
 scripts/scenes/MainMenuScene.gd|lit|按积分赛的规矩打, 算本周场次
 scripts/scenes/MainMenuScene.gd|lit|排行榜
@@ -694,6 +693,7 @@ scripts/scenes/MainMenuScene.gd|lit|第 %d 大轮 · Lv %d
 scripts/scenes/MainMenuScene.gd|lit|维护中
 scripts/scenes/MainMenuScene.gd|lit|背包
 scripts/scenes/MainMenuScene.gd|lit|训龟大师
+scripts/scenes/MainMenuScene.gd|lit|赛程 ▸
 scripts/scenes/MainMenuScene.gd|lit|距%s %s
 scripts/scenes/MainMenuScene.gd|lit|距收盘 %s
 scripts/scenes/MainMenuScene.gd|lit|还没上过场

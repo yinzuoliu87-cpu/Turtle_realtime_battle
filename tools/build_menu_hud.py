@@ -140,7 +140,15 @@ def main():
 
     card = Image.open(os.path.join(SRC, "card.png")).convert("RGBA")
     ## 卡宽 462 = 主菜单 CARD_SIZE.x: 直接烘成成品宽, 游戏里 1:1 贴, 中段不 TILE 不拉伸(TILE 实拍有一道竖接缝)
-    out["card.png"] = widen(up(card.crop(card.getbbox()), 2), 112, 40, 462)   # 462×112
+    ## 第三轮返工: 卡宽跟着内容收(游戏里九宫格只横向压中段木纹), 这里烘最宽那一档 456;
+    ##   竖向在**圆环下面的木面**(第 90 行)插 18 行 ⇒ 130 高, 木面 16..111 装得下昵称 22 号 + 三行 17 号,
+    ##   战绩那行不再压到底边的铜线上(上一版实拍「战绩-还没上过场」那道横线就是底边铜线从字缝里露出来)。
+    cw = widen(up(card.crop(card.getbbox()), 2), 112, 40, 456)
+    rows = list(range(0, 90)) + [90] * 18 + list(range(90, cw.height))
+    ct = Image.new("RGBA", (cw.width, len(rows)))
+    for i, r in enumerate(rows):
+        ct.paste(cw.crop((0, r, cw.width, r + 1)), (0, i))
+    out["card.png"] = ct                                               # 456×130
     av = Image.open(os.path.join(SRC, "avatar.png")).convert("RGBA")
     out["avatar.png"] = av.crop(av.getbbox())                          # 40×40
     sq = Image.open(os.path.join(SRC, "sqbtn.png")).convert("RGBA")
@@ -158,13 +166,13 @@ def main():
         for x in range(12, 136):
             if mp[x, y][3] > 0:
                 mp[x, y] = face
-    rows = list(range(0, 42)) + list(range(40, 42)) + list(range(42, mc.height))   # 竖向插 2 行木面 ⇒ 86 高
+    rows = list(range(0, 42)) + [42] * 24 + list(range(42, mc.height))   # 竖向插 24 行平木面 ⇒ 108 高(与开始战斗同一档高度)
     tall = Image.new("RGBA", (mc.width, len(rows)))
     for i, r in enumerate(rows):
         tall.paste(mc.crop((0, r, mc.width, r + 1)), (0, i))
     ## 横向接长到 300(= 主菜单 MODE_SIZE, 1:1): 顶铜条只能有一块且居中 ⇒ 左角 | 填充 | 铜条 | 填充 | 右角,
     ##   填充取铜条左边那段素木(28..42), 正反交替拼。
-    W = 300
+    W = 320
     left, head, right = tall.crop((0, 0, 28, tall.height)), tall.crop((42, 0, 106, tall.height)), tall.crop((tall.width - 28, 0, tall.width, tall.height))
     fill = tall.crop((28, 0, 42, tall.height))
     room = W - left.width - head.width - right.width
@@ -177,7 +185,7 @@ def main():
     mcw = Image.new("RGBA", (W, tall.height)); x = 0
     for part in (left, band(room // 2), head, band(room - room // 2), right):
         mcw.paste(part, (x, 0)); x += part.width
-    out["modecard.png"] = mcw                                          # 300×86
+    out["modecard.png"] = mcw                                          # 320×108
 
     out["cta-face.png"] = cta_face()
 

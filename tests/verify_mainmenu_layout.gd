@@ -201,6 +201,50 @@ func _ready() -> void:
 			_ok("ⓐ ★今天的读数在卡里「%s」" % today_a, cj.find(today_a) >= 0, cj)
 		_ok("ⓐ ★战绩在卡里", cj.find("战绩") >= 0, cj)
 		_ok("ⓐ ★整张卡可点(→战绩)", taps.has(card))
+		## ⓐ2 返工(主会话看图): 字太小 / 「战绩-还没上过场」那道横线 / 卡又宽又空
+		var fnt_bad: Array = []
+		var ink_end := 0.0
+		var nick_fs := 0
+		for n_a in _walk(card):
+			if not (n_a is Label) or str((n_a as Label).text).strip_edges() == "":
+				continue
+			var la: Label = n_a
+			var fs_a: int = la.get_theme_font_size("font_size")
+			if str(la.name) == "Nickname":
+				nick_fs = fs_a
+			elif fs_a < 17:
+				fnt_bad.append("「%s」%d" % [la.text.substr(0, 8), fs_a])
+			var fa: Font = la.get_theme_font("font")
+			var ink_w: float = fa.get_string_size(la.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs_a).x if fa != null else 0.0
+			ink_end = maxf(ink_end, la.get_global_rect().position.x + ink_w)
+		## 「战绩-还没上过场」那道横线的真因: 战绩那行压在卡底边的铜线上, 铜线从字缝里露出来。
+		##   ⇒ 每行字的墨迹(竖向居中, 高≈字号)都要落在卡底边那圈木框(18px)之上。
+		var low: Array = []
+		for n_l in _walk(card):
+			if n_l is Label and str((n_l as Label).text).strip_edges() != "":
+				var lr_l: Rect2 = (n_l as Control).get_global_rect()
+				var ink_bot: float = lr_l.get_center().y + float((n_l as Label).get_theme_font_size("font_size")) * 0.5
+				if ink_bot > cr.end.y - 18.0:
+					low.append("「%s」%.0f" % [(n_l as Label).text.substr(0, 6), ink_bot])
+		_ok("ⓐ2 ★每行字都落在卡底边铜线之上(墨迹底 ≤ 卡底 − 18)", low.is_empty(), "%s / 卡底 %.0f" % [str(low), cr.end.y])
+		_ok("ⓐ2 ★昵称 ≥ 22 号", nick_fs >= 22, "%d" % nick_fs)
+		_ok("ⓐ2 ★卡里其余各行 ≥ 17 号", fnt_bad.is_empty(), str(fnt_bad))
+		## 「战绩」与读数之间那道横线: 同一段字里的空格被画成了线/点 ⇒ 拆成两段, 中间是真空白(≥ 6px), 读数里不带「-·」打头
+		var rh_a: Label = _find_named(card, "RecordHead") as Label
+		var rt_a: Label = _find_named(card, "RecordText") as Label
+		var gap_a := -1.0
+		if rh_a != null and rt_a != null:
+			var fh: Font = rh_a.get_theme_font("font")
+			gap_a = rt_a.get_global_rect().position.x - (rh_a.get_global_rect().position.x
+				+ fh.get_string_size(rh_a.text, HORIZONTAL_ALIGNMENT_LEFT, -1, rh_a.get_theme_font_size("font_size")).x)
+		_ok("ⓐ2 ★「战绩」与读数是两段字、中间真空白 ≥ 6px(不靠空格, 空格实拍画成了横线)", rh_a != null and rt_a != null
+			and rh_a.text == "战绩" and gap_a >= 6.0 and not rt_a.text.begins_with("-") and not rt_a.text.begins_with("·") and not rt_a.text.begins_with(" "),
+			"间隔 %.0f" % gap_a)
+		var rib_a: Node = _find_named(card, str(MENU_S.STATUS_RIBBON_NAME))
+		if rib_a is Control:
+			ink_end = maxf(ink_end, (rib_a as Control).get_global_rect().end.x)   # 绶带也是内容
+		_ok("ⓐ2 ★卡宽贴合内容(最长那行字/绶带的右端到卡右沿 ≤ 40px)", ink_end > 0.0 and cr.end.x - ink_end <= 40.0,
+			"字到 %.0f / 卡到 %.0f" % [ink_end, cr.end.x])
 		## Logo 不再占左上角
 		var logo: Control = _find_named(_menu, "Logo") as Control
 		_ok("ⓐ ★分母: Logo 在场", logo != null)
@@ -364,7 +408,24 @@ func _ready() -> void:
 		if mode != null:
 			var mr: Rect2 = mode.get_global_rect()
 			print("  ⓔ 模式卡 @(%.0f,%.0f) %.0f×%.0f" % [mr.position.x, mr.position.y, mr.size.x, mr.size.y])
-			_ok("ⓔ ★模式卡在开始战斗左边(右沿 ≤ 主 CTA 左沿 · 间距 ≤ 24)", mr.end.x <= hr.position.x and hr.position.x - mr.end.x <= 24.0, str(mr))
+			_ok("ⓔ ★模式卡在开始战斗左边、读成一组(右沿 ≤ 主 CTA 左沿 · 间距 ≤ 12)", mr.end.x <= hr.position.x and hr.position.x - mr.end.x <= 12.0, str(mr))
+			_ok("ⓔ ★模式卡高度接近开始战斗(≥ 85%)", mr.size.y >= hr.size.y * 0.85, "%.0f / %.0f" % [mr.size.y, hr.size.y])
+			var mt: Label = _find_named(mode, "ModeTitle") as Label
+			var mrl: Label = _find_named(mode, "ModeRule") as Label
+			var mcd: Label = _find_named(mode, "ModeCountdown") as Label
+			_ok("ⓔ ★分母: 赛制 / 规矩 / 倒计时三行都在", mt != null and mrl != null and mcd != null)
+			if mt != null and mrl != null and mcd != null:
+				_ok("ⓔ ★赛制名大字(≥ 26 号)", mt.get_theme_font_size("font_size") >= 26, "%d" % mt.get_theme_font_size("font_size"))
+				_ok("ⓔ ★规矩 ≥ 17 号", mrl.get_theme_font_size("font_size") >= 17, "%d" % mrl.get_theme_font_size("font_size"))
+				_ok("ⓔ ★倒计时单独一行(在规矩下面、不同一行) 且 ≥ 17 号", mcd.get_global_rect().position.y >= mrl.get_global_rect().get_center().y
+					and mcd.get_theme_font_size("font_size") >= 17, "")
+				_ok("ⓔ ★倒计时高亮(字色与规矩那行不同)", mcd.get_theme_color("font_color") != mrl.get_theme_color("font_color"), "")
+			var hint_ok := false
+			for n_h in _walk(mode):
+				if n_h is Label and str((n_h as Label).text).find("▸") >= 0 \
+						and (n_h as Control).get_global_rect().end.x >= mr.end.x - 30.0:
+					hint_ok = true
+			_ok("ⓔ ★右边有「▸」提示能点(贴着卡右沿)", hint_ok)
 			_ok("ⓔ ★与开始战斗底沿对齐(差 ≤2)", absf(mr.end.y - hr.end.y) <= 2.0, "%.0f / %.0f" % [mr.end.y, hr.end.y])
 			_ok("ⓔ ★模式卡比开始战斗小", mr.size.x * mr.size.y < hr.size.x * hr.size.y, "")
 			var mtxt: Array = []
@@ -399,6 +460,9 @@ func _ready() -> void:
 	if pop != null and strip != null and mode != null:
 		_ok("ⓕ ★赛程条住在弹层里(不再贴底常驻)", pop.is_ancestor_of(strip))
 		_ok("ⓕ ★平时弹层藏着(主屏上看不见赛程条)", not pop.is_visible_in_tree() and not strip.is_visible_in_tree())
+		## ★压暗色块量它**自己的** visible(弹层藏着时 is_visible_in_tree 恒假 = 空检查; 变异 N15 第一版就是这么漏的)。
+		var dim0: Node = _find_named(pop, str(MENU_S.WEEK_DIM_NAME))
+		_ok("ⓕ2 ★平时压暗色块自己也藏着(不当一块铺满屏的拦截层)", dim0 is Control and not (dim0 as Control).visible)
 		var wide_vis: Array = []
 		for c in all:
 			if c is PanelContainer and (c as Control).get_global_rect().size.x >= W * 0.5:
@@ -436,6 +500,31 @@ func _ready() -> void:
 				cb_btn.pressed.emit()
 				await get_tree().process_frame
 				_ok("ⓕ ★按「收起」⇒ 弹层藏回去", not pop.is_visible_in_tree())
+			## ⓕ2 返工: 表头一行(标题左、收起右, 紧贴条子上沿) + 点压暗处也能关
+			var ttl: Control = _find_named(pop, "WeekPopupTitle") as Control
+			_ok("ⓕ2 ★分母: 弹层标题在场", ttl != null and close_b != null)
+			if ttl != null and close_b != null:
+				var tr2: Rect2 = ttl.get_global_rect()
+				var cr2: Rect2 = (close_b as Control).get_global_rect()
+				_ok("ⓕ2 ★标题与「收起」同一行(竖向中心差 ≤ 4)", absf(tr2.get_center().y - cr2.get_center().y) <= 4.0, "%s / %s" % [str(tr2), str(cr2)])
+				_ok("ⓕ2 ★标题在左端、「收起」在右端(各对齐条子左右沿 ≤ 8)", absf(tr2.position.x - srf.position.x) <= 8.0 and absf(cr2.end.x - srf.end.x) <= 8.0,
+					"条 %s" % str(srf))
+				_ok("ⓕ2 ★表头紧贴条子上沿(间距 0..8)", srf.position.y - cr2.end.y >= 0.0 and srf.position.y - cr2.end.y <= 8.0, "%.0f" % (srf.position.y - cr2.end.y))
+			var dim: Control = _find_named(pop, str(MENU_S.WEEK_DIM_NAME)) as Control
+			_ok("ⓕ2 ★分母: 压暗色块在场", dim != null)
+			if dim != null:
+				mtap.pressed.emit()
+				await get_tree().process_frame
+				var dr: Rect2 = dim.get_global_rect()
+				_ok("ⓕ2 ★压暗盖住宽屏两侧(左右各外扩 ≥ 140)", dr.position.x <= -140.0 and dr.end.x >= W + 140.0 and dr.position.y <= 0.0 and dr.end.y >= H, str(dr))
+				_ok("ⓕ2 ★压暗处吃点击(不是摆设)", dim.mouse_filter == Control.MOUSE_FILTER_STOP and dim.is_visible_in_tree())
+				var ev := InputEventMouseButton.new()
+				ev.button_index = MOUSE_BUTTON_LEFT
+				ev.pressed = true
+				ev.position = Vector2(30.0, 30.0)
+				dim.gui_input.emit(ev)
+				await get_tree().process_frame
+				_ok("ⓕ2 ★★点弹层外面的压暗处 ⇒ 弹层关上", not pop.is_visible_in_tree())
 
 	# ── ⑧ ★主 CTA 的字号仍要压过次级入口 ──
 	var f_hero := _font_of(content, "开始战斗")
@@ -461,6 +550,7 @@ func _ready() -> void:
 			if (t9 as Control).get_global_rect().intersects(vrect.grow(-2.0)):
 				vcov.append(_tag(t9))
 		_ok("⑨ ★版本号不被任何可点元素盖住(右下角现在是主 CTA)", vcov.is_empty(), str(vcov))
+		_ok("⑨ ★版本号整行在屏内(底沿离屏底 ≥ 2px, 不贴边被切)", vrect.end.y <= H - 2.0, "底沿 %.0f" % vrect.end.y)
 
 	# ── ⑬ ★赛程条的内容: 七天齐全 + 四个阶段名 + 恰好一天标「今天」──
 	#    2026-09-18 改口径: 原来这条量的是「左右两栏【中间】那条空档里有没有赛程条」,

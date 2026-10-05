@@ -340,21 +340,21 @@ const LAYOUT := {
 			"stance": {
 				"tex": "res://assets/sprites/menu/arena/baked/fighter_atk_stance.png",
 				"x": 146,
-				"y": 115,
+				"y": 108,
 				"w": 38,
 				"h": 36
 			},
 			"windup": {
 				"tex": "res://assets/sprites/menu/arena/baked/fighter_atk_windup.png",
 				"x": 151,
-				"y": 113,
+				"y": 106,
 				"w": 27,
 				"h": 38
 			},
 			"thrust": {
 				"tex": "res://assets/sprites/menu/arena/baked/fighter_atk_thrust.png",
 				"x": 146,
-				"y": 113,
+				"y": 106,
 				"w": 38,
 				"h": 38
 			}
@@ -363,14 +363,14 @@ const LAYOUT := {
 			"guard": {
 				"tex": "res://assets/sprites/menu/arena/baked/fighter_def_guard.png",
 				"x": 183,
-				"y": 116,
+				"y": 109,
 				"w": 32,
 				"h": 35
 			},
 			"brace": {
 				"tex": "res://assets/sprites/menu/arena/baked/fighter_def_brace.png",
 				"x": 182,
-				"y": 121,
+				"y": 114,
 				"w": 33,
 				"h": 30
 			}

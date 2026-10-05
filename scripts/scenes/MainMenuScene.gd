@@ -47,41 +47,49 @@ const WALL := 16
 ##   也只放小件, 而它正好压在擂台的拱顶上方, 像挂在场馆门楣上的招牌 —— 不跟任何入口抢位置。
 
 ## ── 左上: 玩家信息卡 ──
-## ★宽度不是拍的: 文字栏 = LEFT_W(350) —— 周六那句「闯关赛 2-1 · 再赢 2 场晋级 / 再输 2 场出局」
-##   16 号字实测 ink 最宽 ~330, `verify_gauntlet_ahead ③④` 按 `LEFT_W - 8` 当框量(从产品常量取)。
-## ★卡不许比开始战斗大(用户: 开始战斗是最大的按钮) ⇒ 卡 462×112 = 51744 < 主 CTA 440×120 = 52800。
+## ★文字栏宽跟着内容收(返工: 「卡片又宽又空」), LEFT_W 只是**上限**: 周六那句
+##   「闯关赛 2-1 · 再赢 2 场晋级 / 再输 2 场出局」17 号字实测 ink 最宽 ~322,
+##   `verify_gauntlet_ahead ③④` 按 `LEFT_W - 8` 当框量(从产品常量取)。
+## ★卡不许比开始战斗大(开始战斗是最大的按钮) ⇒ 最宽那天卡 ~454×130 = 59020 < 主 CTA 480×124 = 59520。
 ## ★卡高 112 = card.png 原高(×2 像素) ⇒ 竖向 1:1 不拉伸。四段字逐段排(见 `_status_row`)。
-const LEFT_W := 350.0                       # 玩家卡文字栏宽
-const CARD_POS := Vector2(16.0, 8.0)
+const LEFT_W := 340.0                       # 玩家卡文字栏宽(上限)
+const CARD_POS := Vector2(16.0, 6.0)
 const CARD_TEXT_X := 104.0                  # 文字栏左沿 = 头像圆环右边(card.png ×2 后环占 0..96)
-const CARD_SIZE := Vector2(CARD_TEXT_X + LEFT_W + 8.0, 112.0)   # 462 × 112
+const CARD_H := 130.0                       # = card.png 原高, 竖向 1:1(木面 16..111, 底边铜线在 112 以下)
+const CARD_PAD_R := 20.0                    # 文字栏右边到卡右沿(右端铜钉 + 描边余量)
+const CARD_TAG_GAP := 10.0                  # 昵称与 ID 之间
+const CARD_REC_INDENT := 28.0               # 战绩行: 图标 22 + 6
+const CARD_REC_GAP := 10.0                  # 「战绩」与读数之间的真空白
 const CARD_NAME := "PlayerCard"
-const AVATAR_CENTER := Vector2(56.0, 56.0)  # card.png ×2 后圆环圆心(原件 31,32 − 裁边 3,4 再 ×2)
+const AVATAR_CENTER := Vector2(56.0, 56.0)  # card.png ×2 后圆环圆心(原件 31,32 − 裁边 3,4 再 ×2; 插的行在圆环下面, 不动它)
 const AVATAR_SIZE := 40.0                   # avatar.png 原尺寸 1:1(环内径 ×2 后约 44)
 ## ★★状态行仍是【两行】(2026-09-28 拆的, 理由见 `_status_row` 头注), 现在住在玩家卡里。
 ##   这个名字同时是**那两行文字的容器节点名**, 三份门禁按它抓(verify_mainmenu_layout / quota_clock / gauntlet_ahead)。
 const STATUS_TWO_LINE := "StatusTwoLine"
-## 卡内四段的顶沿与字号。★竖向一共 112, 四段实测行高 26 + 26 + 27 + 24 = 103 ⇒ 改一个就要重算全部。
-const CARD_L0_Y := 6.0                      # 昵称 + ID(卡顶铜边约 6px, 字从它下面起)
-const STATUS_L1_Y := 32.0                   # 身份行(压在绶带上) 32..58
-const STATUS_L2_Y := 59.0                   # 今天行: 16 号字实测行高 24 ⇒ 59..83
-const STATUS_L3_Y := 84.0                   # 战绩行 84..108
-const CARD_L0_FONT := 18
+## 卡内四段的顶沿与字号。★四段的**墨迹**都要落在木面 16..111 里(字框可以互相叠, 墨迹不能压到铜线) ⇒ 改一个就要重算全部。
+## ★字号下限(返工): 昵称 ≥22, 其余三行 ≥17 —— 原来 18/16 在手机上太小。
+const CARD_L0_Y := 13.0                     # 昵称 + ID: 22 号字墨迹 ~18..40
+const STATUS_L1_Y := 42.0                   # 身份行(压在绶带上) 42..68
+const STATUS_L2_Y := 66.0                   # 今天行: 17 号字框 66..91, 墨迹 ~70..87
+const STATUS_L3_Y := 88.0                   # 战绩行: 字框 88..113, 墨迹 ~92..109(< 112 铜线)
+const STATUS_L3_H := 25.0                   # 战绩行字框高(写死, 不跟卡高走 —— 跟卡高走的话字被居中到铜线上)
+const CARD_L0_FONT := 22
+const CARD_TAG_FONT := 17
 const STATUS_L1_FONT := 17                  # 身份行(绶带上)
 ## ★L2 与战绩行同一档字号(都是卡里的次级读数); 卡宽让给主 CTA 之后两行都是 16。
-const STATUS_L2_FONT := 16                  # 今天行(verify_gauntlet_ahead 按它量字宽)
-const STATUS_L3_FONT := 16                  # 战绩行
+const STATUS_L2_FONT := 17                  # 今天行(verify_gauntlet_ahead 按它量字宽)
+const STATUS_L3_FONT := 17                  # 战绩行
 const STATUS_RIBBON_NAME := "StatusRibbon"
 const STATUS_RIBBON_SIZE := Vector2(250.0, 26.0)
 const SOLID_OUTLINE := 6
 
 ## ── 左侧: 一列方形图标键 ──
-## ★88 不是 81: 触摸线 81(=44pt), 图标 44 + 字 20 + 上下留白要装进去; 5 × 88 + 4 × 8 = 472 ⇒ 136..608,
-##   上面是玩家卡(底 120), 下面空着 —— 左下角正是擂台阴影最深处, 不压任何东西。
+## ★88 不是 81: 触摸线 81(=44pt), 图标 44 + 字 20 + 上下留白要装进去; 5 × 88 + 4 × 8 = 472 ⇒ 144..616,
+##   上面是玩家卡(底 136), 下面空着 —— 左下角正是擂台阴影最深处, 不压任何东西。
 const SQ := 88.0
 const SQ_GAP := 8.0
 const SQ_X := 16.0
-const SQ_Y0 := 136.0
+const SQ_Y0 := 144.0
 const SQ_ICON := 44.0
 const SQ_FONT := 19
 const SQ_NAME_PREFIX := "Sq_"               # 每颗方键的节点名 = 前缀 + 入口名(门禁按名字找, 不按下标)
@@ -92,18 +100,23 @@ const RECORD_ENTRY_NAME := "RecordEntry"    # 「战绩」方键(门禁 verify_r
 ## ── 右下: 开始战斗 + 模式卡 + 训龟大师 ──
 ## ★主 CTA 440×120: 木框保留(R2), 框里那块面换成**全屏唯一的饱和亮黄**(menu/hud/cta-face.png)。
 ##   比例 3.7:1 —— frame-rect 原件 4.1:1, 压得再方就会把四角铜钉压扁。底沿 696: 下面 24px 留给版本号。
-const HERO_SIZE := Vector2(440.0, 120.0)
-const HERO_POS := Vector2(W - WALL - 440.0, 576.0)    # 824..1264 × 576..696
-const HERO_FACE_INSET := Vector2(16.0, 18.0)           # frame-rect 木框边在 440×120 下的实宽(原件 24px × 0.66 / × 0.75)
+const HERO_SIZE := Vector2(480.0, 124.0)
+const HERO_POS := Vector2(W - WALL - 480.0, 568.0)    # 784..1264 × 568..692(下面 28px 给版本号, 整行在屏内)
+const HERO_FACE_INSET := Vector2(17.0, 18.0)           # frame-rect 木框边在 480×124 下的实宽(原件 24px × 0.72 / × 0.77)
 const HERO_FACE_NAME := "HeroFace"
-## ★模式卡顶沿 610: 两只角斗龟的框底在 y=608(fighter_rects 实测 x 440..732), 卡再往上就压到龟。
-const MODE_SIZE := Vector2(300.0, 86.0)
-const MODE_POS := Vector2(HERO_POS.x - 12.0 - 300.0, 610.0)   # 512..812 × 610..696, 底沿与主 CTA 齐
+## ★返工(照荒野乱斗 PLAY 旁那块活动卡): 与开始战斗**同底沿、高度接近、间距 12** ⇒ 读成一组。
+##   两只角斗龟的脚原来落在 y=608, 卡顶要到 584 ⇒ 生成器把龟的脚底线 FOOT_Y 151 → 144(抬 28px),
+##   龟仍完整露出(verify_mainmenu_layout ⑮e 量真框)。
+const MODE_SIZE := Vector2(320.0, 108.0)
+const MODE_POS := Vector2(HERO_POS.x - 12.0 - 320.0, HERO_POS.y + HERO_SIZE.y - 108.0)   # 452..772 × 584..692
 const MODE_CARD_NAME := "ModeCard"
+const MODE_TITLE_FONT := 30                  # 今天的赛制(≥26)
+const MODE_RULE_FONT := 17                   # 一句规矩(≥17)
+const MODE_CD_FONT := 19                     # 倒计时(单独一行、亮色)
 ## 训龟大师: 明显比主 CTA 小一档、换一种皮(铁箍木板), 贴在主 CTA 正上方、右沿同轴。
 ## ★宽 280 不是 240: 铁箍木板两端的箍在 240 宽下压到字(verify_ui_consistency「文字压边带」实测 +14)。
 const TRAINER_SIZE := Vector2(280.0, 82.0)   # ★82 不是 78: 触摸线 81 视口像素(=44pt)
-const TRAINER_POS := Vector2(W - WALL - 280.0, 576.0 - 8.0 - 82.0)
+const TRAINER_POS := Vector2(W - WALL - 280.0, HERO_POS.y - 8.0 - 82.0)
 const RIGHT_EDGE := float(W - WALL)          # 右栏共用右沿: 货币/?⚙/训龟大师/开始战斗
 
 ## ── 右上: 货币一行 + ? / ⚙ 小图标键 ──
@@ -478,10 +491,10 @@ func _build_page_buttons(now: int = 0) -> void:
 ## 【非阻塞提示】位置与大小。
 ## ★右沿与右栏同轴(右栏那一叠从上到下: 提示 → 训龟大师 → 开始战斗),
 ##   高 = `ROW_H`(81 视口像素 = 44pt), 与全屏所有靶子同一条触摸线。
-## ★y 是**算出来的空地**: 底沿 396+81 = 477, 训龟大师顶沿 `TRAINER_POS.y` = 486 ⇒ 留 9px;
+## ★y 是**算出来的空地**: 底沿 386+81 = 467, 训龟大师顶沿 `TRAINER_POS.y` = 478 ⇒ 留 11px;
 ##   左沿 756 在两只角斗龟右边(龟的右沿 732), 不压主角。
 const NUDGE_SIZE := Vector2(508.0, 81.0)
-const NUDGE_POS := Vector2(W - WALL - 508.0, 396.0)
+const NUDGE_POS := Vector2(W - WALL - 508.0, 386.0)
 
 
 ## 【拆墙的配件】没绑邮箱的人在主菜单上看到的那一句。
@@ -867,8 +880,8 @@ func _version_stamp() -> void:
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	l.size = Vector2(200, 24)
 	l.custom_minimum_size = Vector2(200, 24)
-	## 2026-10-05 第三轮: 右下角是主 CTA(底 696) ⇒ 版本号落在它正下方那 24px 里, 仍贴右下角、仍读得清。
-	l.position = Vector2(W - WALL - 200, H - 24)
+	## 2026-10-05 第三轮: 右下角是主 CTA(底 692) ⇒ 版本号落在它正下方, 底边留 3px —— 整行字都在屏内(返工: 原来贴着 720 被切)。
+	l.position = Vector2(W - WALL - 200, H - 27)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	content_root.add_child(l)
 
@@ -891,7 +904,7 @@ func _travel_badge() -> void:
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	l.size = Vector2(300, 24)
 	l.custom_minimum_size = Vector2(300, 24)
-	l.position = Vector2(W - WALL - 200 - 12 - 300, H - 24)   # 版本号左边同一行(主 CTA 底下)
+	l.position = Vector2(W - WALL - 200 - 12 - 300, H - 27)   # 版本号左边同一行(主 CTA 底下)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	content_root.add_child(l)
 
@@ -1102,15 +1115,33 @@ func _status_row(now: int = 0) -> void:
 	if top_title != "":
 		rec = "%s · %s" % [rec, top_title]
 
+	## ★卡宽**跟着内容收**(返工: 「卡片又宽又空」): 先量四行字的真实宽, 取最宽那行(下限 = 绶带宽,
+	##   上限 = LEFT_W), 卡与每行字框都用这个宽 —— 门禁量「字框都在卡里」照旧成立。
+	##   先问 ID 再问名字: `my_tag()` 会顺手把安装号建出来, 而默认昵称的种子就是安装号 ——
+	##   反过来的话全新安装第一屏拿到的是没种子的兜底名, 下一屏才换成真默认名(门禁实测抓到过)。
+	var tag_s := str(_BE.my_tag())
+	var name_s := str(_BE.player_display_name())
+	var bf := _bold_font()
+	var name_w: float = bf.get_string_size(name_s, HORIZONTAL_ALIGNMENT_LEFT, -1, CARD_L0_FONT).x
+	var tag_txt := ("ID %s" % tag_s) if tag_s != "" else ""
+	var rec_txt := rec
+	var rec_head_w: float = bf.get_string_size("战绩", HORIZONTAL_ALIGNMENT_LEFT, -1, STATUS_L3_FONT).x
+	## 绶带宽 = 身份行字宽 + 两端燕尾(各 ~20), 不再写死 250 —— 写死的话它就是整张卡最宽的东西, 卡收不窄。
+	var rib_w: float = ceilf(bf.get_string_size(id_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, STATUS_L1_FONT).x) + 44.0
+	var tw: float = maxf(rib_w - 4.0, name_w + CARD_TAG_GAP + bf.get_string_size(tag_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, CARD_TAG_FONT).x)
+	tw = maxf(tw, bf.get_string_size(today_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, STATUS_L2_FONT).x)
+	tw = maxf(tw, CARD_REC_INDENT + rec_head_w + CARD_REC_GAP + bf.get_string_size(rec_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, STATUS_L3_FONT).x)
+	tw = minf(ceilf(tw) + 14.0, LEFT_W)   # +14: 量的是字形宽, 实心描边两边各多出几像素(实拍 ID 末字顶到右端铜钉)
+	var card_size := Vector2(CARD_TEXT_X + tw + CARD_PAD_R, CARD_H)
+
 	var holder := Control.new()
 	holder.name = CARD_NAME
 	holder.position = CARD_POS
-	holder.custom_minimum_size = CARD_SIZE
-	holder.size = CARD_SIZE
-	## 卡底: 铭牌木板 + 左端黄铜圆环(menu/hud/card.png, PixelLab 新生成, ×2 像素)。
-	##   左边距 104 把圆环整块留在左角里不拉伸; 中段横向 TILE(木纹不拉糊, 同赛程条那条规矩)。
-	var plate := _nine_rect("card.png", Vector4(104, 16, 16, 16), Rect2(Vector2.ZERO, CARD_SIZE))
-	plate.axis_stretch_horizontal = NinePatchRect.AXIS_STRETCH_MODE_TILE
+	holder.custom_minimum_size = card_size
+	holder.size = card_size
+	## 卡底: 铭牌木板 + 左端黄铜圆环(menu/hud/card.png, PixelLab 新生成, ×2 像素, 烘成最宽那一档)。
+	##   左边距 112 把圆环整块留在左角里; 中段只横向压缩(木纹是横纹, 压不糊), 竖向 1:1。
+	var plate := _nine_rect("card.png", Vector4(112, 16, 40, 16), Rect2(Vector2.ZERO, card_size))
 	holder.add_child(plate)
 	## 头像槽: 龟壳铜徽章(menu/hud/avatar.png)。将来有自选头像时换这一张, 位置不动。
 	var av := TextureRect.new()
@@ -1124,20 +1155,15 @@ func _status_row(now: int = 0) -> void:
 	av.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(av)
 	## L0 昵称 + ID。★两个都问唯一出处(`Backend.player_display_name()` / `Backend.my_tag()`), 不在这里拼。
-	##   ID 用小一号的冷灰 —— 它是「分得开同名的人」用的, 不是主读数(与设置页同一口径)。
-	## ★先问 ID 再问名字: `my_tag()` 会顺手把安装号建出来, 而默认昵称的种子就是安装号 ——
-	##   反过来的话全新安装第一屏拿到的是没种子的兜底名, 下一屏才换成真默认名(门禁实测抓到过)。
-	var tag_s := str(_BE.my_tag())
-	var nm := _place_outlined(str(_BE.player_display_name()), CARD_L0_FONT, Color("#fff4d6"),
-		Vector2(CARD_TEXT_X, CARD_L0_Y), Vector2(200.0, 26.0))
+	##   ID 冷灰、紧跟昵称 —— 它是「分得开同名的人」用的, 不是主读数(与设置页同一口径)。
+	var nm := _place_outlined(name_s, CARD_L0_FONT, Color("#fff4d6"),
+		Vector2(CARD_TEXT_X, CARD_L0_Y), Vector2(minf(name_w + 4.0, tw), 31.0))
 	nm.name = "Nickname"
 	holder.add_child(nm)
-	if tag_s != "":
-		## 紧跟在昵称后面(量昵称的真实字宽, 不写死一个 x —— 名字长短不一)。
-		var nm_w: float = _bold_font().get_string_size(nm.text, HORIZONTAL_ALIGNMENT_LEFT, -1, CARD_L0_FONT).x
-		var tx: float = CARD_TEXT_X + minf(nm_w, 200.0) + 12.0
-		var tg := _place_outlined("ID %s" % tag_s, 14, Color("#b8c4cf"),
-			Vector2(tx, CARD_L0_Y + 3.0), Vector2(CARD_TEXT_X + LEFT_W - 8.0 - tx, 22.0))
+	if tag_txt != "":
+		var tx: float = CARD_TEXT_X + minf(name_w, tw) + CARD_TAG_GAP
+		var tg := _place_outlined(tag_txt, CARD_TAG_FONT, Color("#b8c4cf"),
+			Vector2(tx, CARD_L0_Y + 4.0), Vector2(maxf(CARD_TEXT_X + tw - tx, 1.0), 25.0))
 		tg.name = "PlayerTag"
 		holder.add_child(tg)
 	## ★两行(L1 身份 / L2 今天)装进一个**具名容器**: 门禁按 `STATUS_TWO_LINE` 抓它, 再逐个 Label 量
@@ -1145,34 +1171,43 @@ func _status_row(now: int = 0) -> void:
 	var two := Control.new()
 	two.name = STATUS_TWO_LINE
 	two.position = Vector2(CARD_TEXT_X, 0.0)
-	two.size = Vector2(LEFT_W, CARD_SIZE.y)
+	two.size = Vector2(tw, CARD_H)
 	two.custom_minimum_size = two.size
 	two.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var rib := _nine_rect("ribbon.png", Vector4(28, 6, 28, 6),
-		Rect2(Vector2(CARD_TEXT_X - 4.0, STATUS_L1_Y), STATUS_RIBBON_SIZE))
+		Rect2(Vector2(CARD_TEXT_X - 4.0, STATUS_L1_Y), Vector2(rib_w, STATUS_RIBBON_SIZE.y)))
 	rib.name = STATUS_RIBBON_NAME
 	holder.add_child(rib)
 	var l1 := _make_stroked_label(id_txt, STATUS_L1_FONT, Color("#fff1c8"), Color(0.16, 0.03, 0.03, 0.95))
 	l1.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	l1.position = Vector2(-3.0, STATUS_L1_Y + 1.0)    # 绶带左沿 −4, 4 个描边副本往左上偏 1px
-	l1.size = STATUS_RIBBON_SIZE - Vector2(2.0, 2.0)
+	l1.size = Vector2(rib_w, STATUS_RIBBON_SIZE.y) - Vector2(2.0, 2.0)
 	l1.custom_minimum_size = l1.size
 	two.add_child(l1)
 	two.add_child(_place_outlined(today_txt, STATUS_L2_FONT, Color("#ffe9a8"),
-		Vector2(0.0, STATUS_L2_Y), Vector2(LEFT_W - 8.0, STATUS_L3_Y - STATUS_L2_Y)))
+		Vector2(0.0, STATUS_L2_Y), Vector2(tw, STATUS_L3_Y - STATUS_L2_Y)))
 	holder.add_child(two)
 	## L3 战绩: 像素纹章图标 `menu/icon-record.png`(给战绩画的那张) + 暖羊皮纸色字。
+	## ★「战绩」与读数拆成**两段字、中间留 10px 真空白**: 原来同一段里用空格隔开, 实拍那个空格画成了一道
+	##   横线 / 一个点(「战绩-还没上过场」, 返工那轮主会话看图指出的; 改成一个空格之后实拍仍是一个点)。
 	var rec_ic := TextureRect.new()
 	rec_ic.texture = load("res://assets/sprites/menu/icon-record.png")
 	rec_ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	rec_ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	rec_ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	rec_ic.size = Vector2(22, 22)
-	rec_ic.position = Vector2(CARD_TEXT_X, STATUS_L3_Y + 1.0)
+	rec_ic.position = Vector2(CARD_TEXT_X, STATUS_L3_Y + 2.0)
 	rec_ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(rec_ic)
-	holder.add_child(_place_outlined("战绩  %s" % rec, STATUS_L3_FONT, Color("#ecd9b0"),
-		Vector2(CARD_TEXT_X + 28.0, STATUS_L3_Y), Vector2(LEFT_W - 36.0, CARD_SIZE.y - 3.0 - STATUS_L3_Y)))
+	var rh := _place_outlined("战绩", STATUS_L3_FONT, Color("#ecd9b0"),
+		Vector2(CARD_TEXT_X + CARD_REC_INDENT, STATUS_L3_Y), Vector2(rec_head_w + 2.0, STATUS_L3_H))
+	rh.name = "RecordHead"
+	holder.add_child(rh)
+	var rx: float = CARD_REC_INDENT + rec_head_w + CARD_REC_GAP
+	var rl := _place_outlined(rec_txt, STATUS_L3_FONT, Color("#ecd9b0"),
+		Vector2(CARD_TEXT_X + rx, STATUS_L3_Y), Vector2(maxf(tw - rx, 1.0), STATUS_L3_H))
+	rl.name = "RecordText"
+	holder.add_child(rl)
 	var btn := Button.new()
 	btn.flat = true
 	btn.focus_mode = Control.FOCUS_NONE
@@ -1286,6 +1321,8 @@ func _tile_press(holder: Control, cb: Callable) -> void:
 ## ★赛程判定与数据一个字都没动, 只换了「摆在哪」: 模式卡的三行字全是现成的纯函数/常量拼出来的。
 var _mode_box: Control = null
 var _week_pop: Control = null
+var _week_dim: ColorRect = null
+const WEEK_DIM_NAME := "WeekPopupDim"
 
 
 ## 这个阶段的一句规矩(不带星期几、不带阶段名)。★数字一律读规则常量。
@@ -1358,16 +1395,26 @@ func _mode_card(now: int) -> void:
 	plate.axis_stretch_horizontal = NinePatchRect.AXIS_STRETCH_MODE_TILE
 	plate.axis_stretch_vertical = NinePatchRect.AXIS_STRETCH_MODE_TILE
 	holder.add_child(plate)
-	var title := _place_outlined(str(lines[0]), 22, Color("#ffe9a8"), Vector2(18.0, 8.0), Vector2(150.0, 28.0))
+	## 三行字(返工: 「太小太弱」): 赛制名 30 号最大; 规矩 17 号; 倒计时**单独一行、亮色 + 一条压暗底带**。
+	##   右上角「赛程 ▸」告诉人这块能点(原来那行小字「本周赛程」读起来像标签, 不像入口)。
+	var title := _place_outlined(str(lines[0]), MODE_TITLE_FONT, Color("#ffe9a8"), Vector2(18.0, 9.0), Vector2(180.0, 40.0))
 	title.name = "ModeTitle"
 	holder.add_child(title)
-	var cap := _place_outlined("本周赛程", 14, Color("#d9c49a"), Vector2(MODE_SIZE.x - 18.0 - 80.0, 13.0), Vector2(80.0, 22.0))
+	var cap := _place_outlined("赛程 ▸", 18, Color("#ffd99a"), Vector2(MODE_SIZE.x - 18.0 - 100.0, 15.0), Vector2(100.0, 28.0))
+	cap.name = "ModeHint"
 	cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	holder.add_child(cap)
-	var rule := _place_outlined(str(lines[1]), 15, Color("#ecd9b0"), Vector2(18.0, 35.0), Vector2(MODE_SIZE.x - 36.0, 20.0))
+	var rule := _place_outlined(str(lines[1]), MODE_RULE_FONT, Color("#ecd9b0"), Vector2(18.0, 48.0), Vector2(MODE_SIZE.x - 36.0, 26.0))
 	rule.name = "ModeRule"
 	holder.add_child(rule)
-	var cd := _place_outlined(str(lines[2]), 15, Color("#ffcf8a"), Vector2(18.0, 55.0), Vector2(MODE_SIZE.x - 36.0, 20.0))
+	var band := ColorRect.new()
+	band.name = "CountdownBand"
+	band.color = Color(0.0, 0.0, 0.0, 0.30)
+	band.position = Vector2(12.0, 75.0)
+	band.size = Vector2(MODE_SIZE.x - 24.0, 24.0)
+	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(band)
+	var cd := _place_outlined(str(lines[2]), MODE_CD_FONT, Color("#ffc94a"), Vector2(18.0, 74.0), Vector2(MODE_SIZE.x - 36.0, 26.0))
 	cd.name = "ModeCountdown"
 	holder.add_child(cd)
 	var btn := Button.new()
@@ -1388,43 +1435,64 @@ func _mode_card(now: int) -> void:
 
 
 ## 本周赛程弹层的壳: 压暗遮罩 + 标题 + 「收起」+ 赛程条(`_week_strip` 往里放)。默认藏着。
-## ★遮罩不是 Button(点哪都关): 点空白处由弹层自己的 gui_input 接 —— 不然它会被当成一个盖满全屏的「按钮」。
+## ★遮罩不是 Button(点哪都关): 点压暗处由色块自己的 gui_input 接 —— 不然它会被当成一个盖满全屏的「按钮」。
 func _week_popup(paint_now: int) -> void:
 	_week_pop = Control.new()
 	_week_pop.name = WEEK_POPUP_NAME
 	_week_pop.size = Vector2(W, H)
 	_week_pop.visible = false
-	## 吃点击的是弹层自己(设计框 1280×720, 点空白处就关); 压暗色块只管画, 不挡鼠标 ——
-	##   否则藏着的时候它也是一块「铺满视口又 STOP」的东西(verify_ui_layout ④ 按节点自己的 visible 量)。
-	_week_pop.mouse_filter = Control.MOUSE_FILTER_STOP
-	_week_pop.gui_input.connect(_on_pop_dim_input)
-	var dim := ColorRect.new()
-	dim.color = Color(0.03, 0.02, 0.01, 0.66)
-	dim.position = Vector2(-1000.0, -1000.0)            # 比设计框大一圈: 宽屏(1560)两侧也要压暗
-	dim.size = Vector2(W + 2000.0, H + 2000.0)
-	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_week_pop.add_child(dim)
+	_week_pop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	## 压暗色块**比设计框大一圈**(宽屏 1560 两侧也要压暗), 点它 = 关(返工: 点弹层外面也要能关)。
+	## ★它只在弹层打开时 visible —— 藏着的时候它不能是一块「铺满视口又 STOP」的东西
+	##   (verify_ui_layout ④ 按节点自己的 visible 量)。
+	_week_dim = ColorRect.new()
+	_week_dim.name = WEEK_DIM_NAME
+	_week_dim.color = Color(0.03, 0.02, 0.01, 0.66)
+	_week_dim.position = Vector2(-1000.0, -1000.0)
+	_week_dim.size = Vector2(W + 2000.0, H + 2000.0)
+	_week_dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	_week_dim.visible = false
+	_week_dim.gui_input.connect(_on_pop_dim_input)
+	_week_pop.add_child(_week_dim)
+	## 表头一行(返工): 标题在左、「收起」在右, 同一行, 紧贴在条子上沿(留 4px)。
 	var sx: float = (W - STRIP_W) / 2.0
-	var top: float = POP_CY - 48.0
-	var head := _place_outlined("本周赛程", 26, Color("#ffe9a8"), Vector2(sx + 4.0, top - 50.0), Vector2(300.0, 40.0))
+	var row_y: float = POP_CY - 48.0 - 4.0 - 82.0
+	var head := _place_outlined("本周赛程", 26, Color("#ffe9a8"), Vector2(sx + 4.0, row_y + 21.0), Vector2(300.0, 40.0))
+	head.name = "WeekPopupTitle"
 	_week_pop.add_child(head)
 	var close := _plank_button("收起", _close_week_popup, Vector2(140.0, 82.0))
 	close.name = "WeekPopupClose"
-	close.position = Vector2(sx + STRIP_W - 140.0, top - 8.0 - 82.0)
+	close.position = Vector2(sx + STRIP_W - 140.0, row_y)
 	_week_pop.add_child(close)
 	content_root.add_child(_week_pop)
 	_week_strip(paint_now)
+
+
+## 弹层表头跟着条子的**真实**宽高走(条子宽由内容决定, 收盘块长了会撑宽): 标题左端对齐条子左沿,
+## 「收起」右端对齐条子右沿, 两者同一行、贴在条子上沿上面 4px。
+func _layout_pop_header(box: Control) -> void:
+	if not is_instance_valid(_week_pop):
+		return
+	var r := Rect2(box.position, box.size)
+	var close := _week_pop.get_node_or_null("WeekPopupClose") as Control
+	var head := _week_pop.get_node_or_null("WeekPopupTitle") as Control
+	if close != null:
+		close.position = Vector2(r.end.x - close.size.x, r.position.y - 4.0 - close.size.y)
+	if head != null and close != null:
+		head.position = Vector2(r.position.x + 4.0, close.position.y + (close.size.y - head.size.y) / 2.0)
 
 
 func _open_week_popup() -> void:
 	if is_instance_valid(_week_pop):
 		content_root.move_child(_week_pop, -1)
 		_week_pop.visible = true
+		_week_dim.visible = true
 
 
 func _close_week_popup() -> void:
 	if is_instance_valid(_week_pop):
 		_week_pop.visible = false
+		_week_dim.visible = false
 
 
 func _on_pop_dim_input(ev: InputEvent) -> void:
@@ -1542,7 +1610,8 @@ func _week_strip(paint_now: int = 0) -> void:
 	##   不写死坐标(原来写死 y=636 那次, 周日被撑高后掉出屏幕)。
 	box.resized.connect(func() -> void:
 		if is_instance_valid(box):
-			box.position.y = POP_CY - box.size.y / 2.0)
+			box.position = Vector2((W - box.size.x) / 2.0, POP_CY - box.size.y / 2.0)
+			_layout_pop_header(box))
 	var sb := StyleBoxFlat.new()
 	## ★不描边 + 底色更实: verify_ui_consistency 的「网页盒」= 四边有边框 + 底半透明
 	##   = CSS border+rgba 的长相(用户 2026-08-15「去掉 ai 味」时建的判据)。
