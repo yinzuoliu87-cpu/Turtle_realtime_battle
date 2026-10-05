@@ -693,7 +693,7 @@ scripts/scenes/MainMenuScene.gd|lit|第 %d 大轮 · Lv %d
 scripts/scenes/MainMenuScene.gd|lit|维护中
 scripts/scenes/MainMenuScene.gd|lit|背包
 scripts/scenes/MainMenuScene.gd|lit|训龟大师
-scripts/scenes/MainMenuScene.gd|lit|赛程 ▸
+scripts/scenes/MainMenuScene.gd|lit|赛程 »
 scripts/scenes/MainMenuScene.gd|lit|距%s %s
 scripts/scenes/MainMenuScene.gd|lit|距收盘 %s
 scripts/scenes/MainMenuScene.gd|lit|还没上过场

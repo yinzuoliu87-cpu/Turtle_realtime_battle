@@ -422,10 +422,10 @@ func _ready() -> void:
 				_ok("ⓔ ★倒计时高亮(字色与规矩那行不同)", mcd.get_theme_color("font_color") != mrl.get_theme_color("font_color"), "")
 			var hint_ok := false
 			for n_h in _walk(mode):
-				if n_h is Label and str((n_h as Label).text).find("▸") >= 0 \
+				if n_h is Label and str((n_h as Label).text).find("»") >= 0 \
 						and (n_h as Control).get_global_rect().end.x >= mr.end.x - 30.0:
 					hint_ok = true
-			_ok("ⓔ ★右边有「▸」提示能点(贴着卡右沿)", hint_ok)
+			_ok("ⓔ ★右边有「»」提示能点(贴着卡右沿)", hint_ok)
 			_ok("ⓔ ★与开始战斗底沿对齐(差 ≤2)", absf(mr.end.y - hr.end.y) <= 2.0, "%.0f / %.0f" % [mr.end.y, hr.end.y])
 			_ok("ⓔ ★模式卡比开始战斗小", mr.size.x * mr.size.y < hr.size.x * hr.size.y, "")
 			var mtxt: Array = []

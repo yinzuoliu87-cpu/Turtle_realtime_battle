@@ -1396,11 +1396,11 @@ func _mode_card(now: int) -> void:
 	plate.axis_stretch_vertical = NinePatchRect.AXIS_STRETCH_MODE_TILE
 	holder.add_child(plate)
 	## 三行字(返工: 「太小太弱」): 赛制名 30 号最大; 规矩 17 号; 倒计时**单独一行、亮色 + 一条压暗底带**。
-	##   右上角「赛程 ▸」告诉人这块能点(原来那行小字「本周赛程」读起来像标签, 不像入口)。
+	##   右上角「赛程 »」告诉人这块能点(原来那行小字「本周赛程」读起来像标签, 不像入口)。
 	var title := _place_outlined(str(lines[0]), MODE_TITLE_FONT, Color("#ffe9a8"), Vector2(18.0, 9.0), Vector2(180.0, 40.0))
 	title.name = "ModeTitle"
 	holder.add_child(title)
-	var cap := _place_outlined("赛程 ▸", 18, Color("#ffd99a"), Vector2(MODE_SIZE.x - 18.0 - 100.0, 15.0), Vector2(100.0, 28.0))
+	var cap := _place_outlined("赛程 »", 18, Color("#ffd99a"), Vector2(MODE_SIZE.x - 18.0 - 100.0, 15.0), Vector2(100.0, 28.0))
 	cap.name = "ModeHint"
 	cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	holder.add_child(cap)
