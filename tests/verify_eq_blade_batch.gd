@@ -84,6 +84,10 @@ func _equip(u: Dictionary, iid: String, star: int) -> Dictionary:
 ## 走【真登场钩】: EquipStatsApply._b4_on_spawn_all()(它也负责点亮 `_b4_eq` 常驻守卫)
 func _spawn_all() -> void:
 	_s._equip_sys._stats._b4_on_spawn_all()
+	## 本测试手拨 _s._t 累计到 ~38 秒, 离决胜线(SD_START=40)只差一点, CI 慢机器上背景循环一推就过线 ⇒
+	##   全场 +25% 增伤混进充能读数(实测 CI: 800→1000)。每节开场按「新战场开打」把决胜计时归零。
+	_s._sd_t0 = float(_s._t)
+	_s._sd_stacks = 0
 
 
 func _blade():
