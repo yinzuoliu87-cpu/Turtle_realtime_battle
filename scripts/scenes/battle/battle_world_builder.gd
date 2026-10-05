@@ -101,7 +101,7 @@ static func theme_tile_col(ti: int) -> Color:
 
 
 static func tile_material(ti: int, ws: float, cx: float, cy: float) -> Material:
-	var f: Dictionary = MapField.get_field(MAP_PATH, ws, cx, cy)
+	var f: Dictionary = MapField.get_field(MAP_PATH, ws, cx, cy, bool(ArenaTheme.cfg().get("outer_sea", false)))
 	var sm := ShaderMaterial.new()
 	sm.shader = SH_WATER if ti == 1 else SH_LAND
 	sm.set_shader_parameter("detail_tex", tile_detail_tex(ti))
@@ -152,6 +152,13 @@ static func tile_material(ti: int, ws: float, cx: float, cy: float) -> Material:
 		##   那两个阈值是拿一张**亮场**截图标定的(表里 174/59.7% ≈ raw_04 的 175/56.9%),
 		##   暗场景本来就达不到。我差点为了凑这个数把调色板一路改坏
 		##   (memory `fb-calibrate-the-ruler-before-trusting-it`)。
+		## ★2026-10-05 镜头可达范围: 主题的格子海不再往板沿压到近黑, 与外海(ArenaOuter)同色接上。base 不给 ⇒ 0.18 原值。
+		if ArenaTheme.cfg().has("sea_edge_floor"):
+			sm.set_shader_parameter("edge_floor", float(ArenaTheme.cfg()["sea_edge_floor"]))
+		if ArenaTheme.cfg().has("sea_crest_deep"):
+			sm.set_shader_parameter("crest_deep", float(ArenaTheme.cfg()["sea_crest_deep"]))
+		if ArenaTheme.cfg().has("sea_wave_style"):
+			sm.set_shader_parameter("wave_style", int(ArenaTheme.cfg()["sea_wave_style"]))
 		sm.set_shader_parameter("crest_col", wc.lightened(0.55))
 		sm.set_shader_parameter("foam_col", wc.lightened(0.82))
 		sm.set_shader_parameter("shore_land_col", theme_tile_col(0).darkened(0.18))
@@ -254,6 +261,8 @@ func _build_viewport() -> void:
 # ═══ 新地图 tile 系统 (MultiMesh 方块地面 · 数据驱动 map.json · 纯视觉不改玩法) ═══
 # 5类型: 0 grass主地面 / 1 water水凹 / 2 stone石台凸 / 3 sand浅滩 / 4 void空(不渲染)
 func _build_tilemap_ground() -> void:
+	## ★2026-10-05 外海铺到镜头看得见的最远处(主题才有; 用户「镜头是可以移动缩放的啊，有一堆问题啊」)。
+	ArenaOuter.build_outer_sea(battle)
 	if battle._load_tilemap():                 # 优先数据驱动 map.json
 		if not OS.has_environment("MAPEDIT"): _build_tilemap_decor()   # 装饰: 正式对局/TILEMAP都加, 仅编辑器不加(免遮挡刷格)
 		return
@@ -1780,6 +1789,18 @@ func _build_foreground_band() -> void:   # ★不收 root: 它挂在相机上, �
 		q.sorting_offset = 8.0                              # 压在所有东西前面
 		q.set_meta("fg_band", img)                          # 打标: 判据按它认前景带(分层增益后贴图换成 ImageTexture, 没有路径可认)
 		battle._cam.add_child(q)
+		## ★2026-10-05 镜头可达范围: 单张整幅宽 3.8 单位, 而 20:9(2.22) 手机在 z=-2.35 处可见宽就是 3.80 ——
+		##   再宽一点的屏(21:9 = 2.33)两边就露出带子的断头。左右各补一张**镜像**(镜像 ⇒ 接缝两侧是同一列像素, 无缝),
+		##   ≤2.17 的屏上它们完全在画面外 ⇒ 默认画面一个像素不变。判据 `verify_cam_extent` ④。
+		if _one:
+			var bw: float = float(tex.get_width()) * q.pixel_size
+			for sgn in [-1.0, 1.0]:
+				var fl: Sprite3D = q.duplicate()
+				fl.position = q.position + Vector3(sgn * bw, 0.0, 0.0)
+				fl.scale = Vector3(-q.scale.x, 1.0, 1.0)
+				fl.set_meta("fg_band", img)
+				fl.set_meta("fg_band_flank", true)
+				battle._cam.add_child(fl)
 
 
 ## 前景剪影带的分层增益: 灰度贴图按层(近 < FG_LAYER_MID_FROM ≤ 中 < FG_LAYER_FAR_FROM ≤ 远)各乘一个系数。

@@ -51,10 +51,17 @@ uniform float tex_scale = 0.32;
 uniform float depth_steps = 4.0;    // placeholder
 // 岸线切角用的陆色(取淤泥/石的中间调 —— 岸边多半是这两种)
 uniform vec4 shore_land_col : source_color = vec4(0.135, 0.175, 0.29, 1.0);    // 水深量化成几级(级数少=像素画; 多=糊成渐变)
+// ★2026-10-05 镜头可达范围(scripts/scenes/battle/arena_outer.gd): 外海大平面用同一个材质, 只是恒为深水;
+//   板沿压暗下限 edge_floor 默认 0.18 = 原字面值(base 逐值不变), 主题给 1.0 ⇒ 格子海与外海接缝处同色。
+uniform bool outer_mode = false;
+uniform float edge_floor = 0.18;
+// 深水里浪尖的保留量: 默认 0.25 = 原式 (1 - depth*0.75) 逐值不变; 主题给 1.0 ⇒ 外海深水也有浪尖, 读得出是水面而不是一块平涂。
+uniform float crest_deep = 0.25;
+uniform int wave_style = 0;
 
 void fragment() {
 	vec2 wp = world_xz(INV_VIEW_MATRIX, VERTEX);
-	float d = shore_sdf(wp);                       // >0 在水里, 单位=格
+	float d = outer_mode ? 99.0 : shore_sdf(wp);   // >0 在水里, 单位=格 (外海: 恒为深水)
 
 	// ── 浅→深: 按离岸距离分级 + 抖动 ────────────────────────────────
 	// ★分级而不是平滑: 平滑渐变在这套低色数配色下必出条带; 分 4 级再抖动才是像素画的做法。
@@ -74,9 +81,18 @@ void fragment() {
 	// ★改前是 `mix(c, shallow_col, w*0.30)` —— 把【整条带】往亮里推(shallow 那时就是高光色),
 	//   所以水面没有"浪尖"只有"整片亮"。现在 pow 收窄成真正的尖: w=1 附近才上高光。
 	float crest = pow(w, 4.0);
+	// ★2026-10-05 wave_style=1(主题): 上面那两条正弦叠出来是**规则的圆斑点阵**, 在一小圈潟湖里不显,
+	//   铺满外海(拉远时占半屏)就成了一张波点布。换成「被低频扭弯的细浪线 + 断续」, 再按屏幕像素抖动分级
+	//   (像素画的水面是一道道短浪痕, 不是渐变斑)。base 默认 0 ⇒ 走上面原式, 逐值不变。
+	if (wave_style == 1) {
+		float ph = wp.y * 1.55 + sin(wp.x * 0.52 + wp.y * 0.23) * 1.7 + TIME * 0.75;
+		float line = pow(sin(ph) * 0.5 + 0.5, 9.0);
+		float brk = smoothstep(0.35, 0.85, sin(wp.x * 0.81 + 1.9 * sin(wp.y * 0.43) - TIME * 0.28) * 0.5 + 0.5);
+		crest = dither_steps(line * brk, 2.0, FRAGCOORD.xy);
+	}
 	// ★2026-09-20: 0.55→0.30 —— 浪尖/泡沫的强度是当初对着**亮水体**标定的,
 	//   水体压暗后同样强度的对比度翻倍 ⇒ 岸线变成一条发光描边环。
-	c = mix(c, crest_col.rgb, crest * 0.30 * (1.0 - depth * 0.75));
+	c = mix(c, crest_col.rgb, crest * 0.30 * (1.0 - depth * (1.0 - crest_deep)));
 
 	// ── 岸线泡沫 ──────────────────────────────────────────────────
 	// 一条沿岸线的亮带, 宽度被一个低频正弦揉过 → 不是死板的等距轮廓线。
@@ -114,10 +130,10 @@ void fragment() {
 
 	// ── 岛缘压暗: 越靠板子外沿越暗(照不到光) ────────────────────
 	// 同样过抖动分级, 免得出现一圈羽化的模糊晕。
-	float ef = dither_steps(smoothstep(0.02, 0.60, edge_fade(wp)), 4.0, FRAGCOORD.xy);
+	float ef = outer_mode ? 1.0 : dither_steps(smoothstep(0.02, 0.60, edge_fade(wp)), 4.0, FRAGCOORD.xy);
 	// ★系数 0.18 而不是 0.34: 场景开着雾, 而【雾是叠加的】——
 	// 乘性压暗会被雾底冲淡, 探针实测 0.34 只做到 13% 的实际压暗(30→26)。
-	c *= mix(0.18, 1.0, ef);
+	c *= mix(edge_floor, 1.0, ef);
 
 	ALBEDO = c;
 	// ★自发光按【泡沫之前】的颜色算 —— 否则泡沫会被二次放大成光晕。
