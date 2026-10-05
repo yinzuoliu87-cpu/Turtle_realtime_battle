@@ -7215,6 +7215,8 @@ func _apply_cam_zoom() -> void:
 	if _cam == null or not is_instance_valid(_cam):
 		return
 	_cam_zoom = clampf(_cam_zoom, CAM_ZOOM_MIN, CAM_ZOOM_MAX)
+	var pl: Vector2 = ArenaOuter.pan_limits(self)   # ★平移上限随缩放/画幅收(用户 2026-10-05), 缩放时也要重夹
+	_cam_pan = Vector3(clampf(_cam_pan.x, -pl.x, pl.x), 0.0, clampf(_cam_pan.z, -pl.y, pl.y))
 	# ★缩放锚点要跟着平移走(CAM_TARGET + _cam_pan) —— 否则拉近后平移到边角再缩放,
 	#   视野会被"吸"回战场原点, 手感很怪(用户 2026-07-21 要的视角移动)。
 	var anchor: Vector3 = CAM_TARGET + _cam_pan
@@ -7240,11 +7242,7 @@ func _cam_pan_by(dx: float, dy: float) -> void:
 	var k: float = 0.021 / maxf(0.2, _cam_zoom)
 	_cam_pan -= right * (dx * k)
 	_cam_pan += ground_up * (dy * k)
-	# clamp 到方形范围, 防止拖到看不见战场
-	_cam_pan.x = clampf(_cam_pan.x, -PAN_LIMIT, PAN_LIMIT)
-	_cam_pan.z = clampf(_cam_pan.z, -PAN_LIMIT, PAN_LIMIT)
-	_cam_pan.y = 0.0
-	_apply_cam_zoom()   # 平移并进 _cam_zoom_base, 由它统一落到 _cam.position
+	_apply_cam_zoom()   # 平移并进 _cam_zoom_base 并在那里夹紧(ArenaOuter.pan_limits ≤ PAN_LIMIT), 由它统一落到 _cam.position
 
 ## 视角复位(双击/换路时用)
 func _cam_pan_reset() -> void:

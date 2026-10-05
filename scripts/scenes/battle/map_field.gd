@@ -29,8 +29,12 @@ static var _cache_size := Vector2.ONE
 ## 取(或烘)当前地图的距离场。返回 {tex, org, size}: org/size 是【世界坐标·米】的包围盒,
 ## shader 里 uv = (world_xz - org) / size。
 ## ws/cx/cy 由调用方给(主场景的 WS 与 ARENA 中心) —— 本类不反向依赖主场景。
-static func get_field(map_path: String, ws: float, cx: float, cy: float) -> Dictionary:
-	if _cache_key == map_path and _cache_tex != null:
+## ★void_as_water(2026-10-05 镜头可达范围): 主题的海外面还有外海(ArenaOuter), 板子外沿(void)不是「岸」。
+##   按默认把 void 当陆 ⇒ 格子海最外一圈被当成岸线: 泡沫 + 陆色切角, 拉远时描出一圈格子台阶(实拍)。
+##   base 不传 ⇒ false ⇒ 与原来逐值相同。
+static func get_field(map_path: String, ws: float, cx: float, cy: float, void_as_water: bool = false) -> Dictionary:
+	var key: String = map_path + ("|void_as_water" if void_as_water else "")
+	if _cache_key == key and _cache_tex != null:
 		return {"tex": _cache_tex, "org": _cache_org, "size": _cache_size}
 	var meta: Dictionary = _load(map_path)
 	if meta.is_empty():
@@ -38,7 +42,7 @@ static func get_field(map_path: String, ws: float, cx: float, cy: float) -> Dict
 	var w: int = int(meta["w"])
 	var h: int = int(meta["h"])
 	var grid: Array = meta["grid"]
-	var d: Array = _chamfer(grid, w, h)
+	var d: Array = _chamfer(grid, w, h, void_as_water)
 	# G 通道 = 到【板子外沿(void)】的距离。用来给岛缘做压暗 ——
 	# ★改前板子就那么硬生生停在黑色里, 是画面上最"没做完"的信号:
 	#   现实里没有哪块地会在半空中被裁一刀, 边上总该更暗(照不到光)。
@@ -50,7 +54,7 @@ static func get_field(map_path: String, ws: float, cx: float, cy: float) -> Dict
 			var e: float = clampf(float(dv[r][c]), 0.0, FIELD_R) / FIELD_R
 			img.set_pixel(c, r, Color(0.5 + v / (2.0 * FIELD_R), e, 0.0, 1.0))
 	_cache_tex = ImageTexture.create_from_image(img)
-	_cache_key = map_path
+	_cache_key = key
 	var tile: float = float(meta["tile"])
 	# 格心在 origin + (i+0.5)*tile。贴图的 texel 中心对应格心, 所以包围盒要按【格心】给,
 	# 即从第 0 格心到第 w-1 格心, 再各外扩半格 —— 正好等于 origin .. origin+w*tile。
@@ -116,27 +120,31 @@ static func _load(p: String) -> Dictionary:
 
 ## 两遍 chamfer: 先算"到水的距离", 再算"到陆的距离", 相减得有符号场。
 ## 权重 1 / 1.414 —— 带对角才是近似欧氏, 只走四邻会得到菱形距离(岸线出 45° 折角)。
-static func _chamfer(grid: Array, w: int, h: int) -> Array:
-	var to_water := _dist_to(grid, w, h, true)
-	var to_land := _dist_to(grid, w, h, false)
+static func _chamfer(grid: Array, w: int, h: int, void_as_water: bool = false) -> Array:
+	var to_water := _dist_to(grid, w, h, true, void_as_water)
+	var to_land := _dist_to(grid, w, h, false, void_as_water)
 	var out: Array = []
 	for r in range(h):
 		var row: Array = []
 		for c in range(w):
 			# 水格: 到陆的距离为正(越深越大); 陆格: 到水的距离取负
-			row.append(float(to_land[r][c]) if int(grid[r][c]) == WATER else -float(to_water[r][c]))
+			row.append(float(to_land[r][c]) if _is_water(int(grid[r][c]), void_as_water) else -float(to_water[r][c]))
 		out.append(row)
 	return out
 
 
 ## 到"某类格子"的 chamfer 距离(格)。want_water=true → 到最近水格的距离。
-static func _dist_to(grid: Array, w: int, h: int, want_water: bool) -> Array:
+static func _is_water(v: int, void_as_water: bool) -> bool:
+	return v == WATER or (void_as_water and v == 4)
+
+
+static func _dist_to(grid: Array, w: int, h: int, want_water: bool, void_as_water: bool = false) -> Array:
 	var BIG := 9999.0
 	var d: Array = []
 	for r in range(h):
 		var row: Array = []
 		for c in range(w):
-			var is_w: bool = int(grid[r][c]) == WATER
+			var is_w: bool = _is_water(int(grid[r][c]), void_as_water)
 			row.append(0.0 if (is_w == want_water) else BIG)
 		d.append(row)
 	var D1 := 1.0

@@ -94,6 +94,7 @@ func _ready() -> void:
 	const BASE_MUST_NOT_SET: Array = [
 		"bg_top", "bg_horizon",      # 远景三层 + 远地形 + 天际光斑的五个原色不在一条线上
 		"wall_col",                  # 海岸线竖面 WALL_COL_LIT
+		"outer_sea", "sea_edge_floor", "sea_crest_deep", "sea_wave_style",   # 2026-10-05 镜头可达范围: 外海 / 板沿压暗下限 0.18 / 深水浪尖 0.25 / 圆斑波纹
 		"edge_dark",                 # 岛缘压暗下限 0.18
 		"ambient_col",               # 氛围粒子 Color(1,1,1,0.55)
 		"fog_col",                   # 雾色 Color(0.035,0.105,0.150)
