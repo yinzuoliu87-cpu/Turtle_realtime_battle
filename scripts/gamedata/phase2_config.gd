@@ -453,13 +453,100 @@ static func phase_pending_note(phase: String) -> String:
 ## ⚠ 只认 **> 0**: unix 0 (1970-01-01) 不是任何人想钉的时刻, 而"0 = 关"是上面三个先例的口径。
 static var now_override_ts: int = 0
 
-## 「现在」的 unix 秒(UTC)。优先级: `now_override_ts`(门禁钉死) > 开发包时间穿越 > 真实系统时钟。
-## ★两个开关都关着时**逐字节等价**于 `int(Time.get_unix_time_from_system())`(穿越偏移恒 0)。
+## 「现在」的 unix 秒(UTC)。优先级: `now_override_ts`(门禁钉死) > 开发包时间穿越 > 本机时钟 + 服务器偏移。
+## ★三者都没有(没钉、没穿越、从没连上过服务器)时**逐字节等价**于 `int(Time.get_unix_time_from_system())`。
 static func now_utc() -> int:
 	if now_override_ts > 0:
 		return now_override_ts
 	var real: int = int(Time.get_unix_time_from_system())
-	return real + _travel_offset(real)
+	var tr: int = _travel_offset(real)
+	if tr != 0:
+		return real + tr
+	return real + server_offset()
+
+## ══════════════════════════════════════════════════════════════════════
+##  【服务器时钟偏移】周赛程跟服务器时间走, 不信手机时钟 (2026-10-05, 方案书 20260916 §8 E1 / Q2 选 b)
+## ══════════════════════════════════════════════════════════════════════
+## 原来: 滚周 / 周六周日开门全看本机钟 ⇒ 把手机时间往后拨就能提前进周六、换周。
+## 现在: `now_utc()` = 本机时钟 + 偏移; 偏移 = 服务器时刻 − 收包那一刻的本机时刻,
+##   每次**真收到**服务器回包(HTTP `Date` 头, 见 `SupabaseNet._http`)就记一次, 并落盘。
+##   · 没网 ⇒ 用上次落盘的偏移(改了手机钟照样被纠正回来)
+##   · 从没连上过 ⇒ 偏移 0 = 本机时钟(与原来逐字节相同)
+## ★只存**偏移**不存时刻: 本机钟照常走, 倒计时照常走; 改本机钟只改「本机钟」那一项, 偏移不变
+##   ⇒ 改钟之后到下一次联网之间, 纠正后的时间**就是错的** —— 这正是要的: 改钟不生效。
+##   ⚠ 反过来: 玩家改完钟**从此再不联网**, 用的是改钟之前测的偏移 ⇒ 时间被拨歪(那是他自己拨的)。
+##   而他一联网第一包就重新测准。
+## ★±`SERVER_OFFSET_DEADBAND` 秒内当 0: `Date` 头只有秒级精度 + 往返延迟, 钟准的手机不该被抖 ±1 秒。
+const SERVER_CLOCK_PATH := "user://server_clock.cfg"
+const SERVER_OFFSET_DEADBAND := 2
+## 当前偏移(秒, 服务器 − 本机)。
+static var server_offset_sec: int = 0
+## 有没有测到过(本进程或落盘)。false ⇒ 从没连上过。
+static var server_offset_known: bool = false
+static var _server_clock_loaded: bool = false
+
+static func server_offset() -> int:
+	if not _server_clock_loaded:
+		_server_clock_loaded = true
+		var cf := ConfigFile.new()
+		if cf.load(SERVER_CLOCK_PATH) == OK:
+			server_offset_sec = int(cf.get_value("clock", "offset", 0))
+			server_offset_known = true
+	return server_offset_sec
+
+## 收到一次服务器时刻 `srv_ts`(unix 秒) 时本机是 `device_ts` ⇒ 记偏移。变了才落盘。
+static func note_server_time(srv_ts: int, device_ts: int) -> void:
+	if srv_ts <= 0 or device_ts <= 0:
+		return
+	var off: int = srv_ts - device_ts
+	if absi(off) <= SERVER_OFFSET_DEADBAND:
+		off = 0
+	server_offset()
+	if server_offset_known and off == server_offset_sec:
+		return
+	server_offset_sec = off
+	server_offset_known = true
+	var cf := ConfigFile.new()
+	cf.set_value("clock", "offset", off)
+	cf.set_value("clock", "measured_at", srv_ts)
+	cf.save(SERVER_CLOCK_PATH)
+
+## 门禁用: 清掉内存与落盘(回到「从没连上过」)。
+static func server_clock_reset() -> void:
+	server_offset_sec = 0
+	server_offset_known = false
+	_server_clock_loaded = true
+	if FileAccess.file_exists(SERVER_CLOCK_PATH):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(SERVER_CLOCK_PATH))
+
+## 门禁用: 下一次读时从盘上重新载入(模拟重开游戏)。
+static func server_clock_forget_memory() -> void:
+	server_offset_sec = 0
+	server_offset_known = false
+	_server_clock_loaded = false
+
+const _HTTP_MONTHS := {"jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
+	"jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12}
+
+## HTTP `Date` 头(`Mon, 05 Oct 2026 08:19:12 GMT`, RFC 7231 IMF-fixdate) → unix 秒。解析不了 ⇒ -1。
+static func parse_http_date(v: String) -> int:
+	var re := RegEx.create_from_string("(\\d{1,2}) ([A-Za-z]{3}) (\\d{4}) (\\d{2}):(\\d{2}):(\\d{2}) GMT")
+	var m := re.search(v)
+	if m == null:
+		return -1
+	var mon: String = m.get_string(2).to_lower()
+	if not _HTTP_MONTHS.has(mon):
+		return -1
+	return int(Time.get_unix_time_from_datetime_dict({
+		"year": int(m.get_string(3)), "month": int(_HTTP_MONTHS[mon]), "day": int(m.get_string(1)),
+		"hour": int(m.get_string(4)), "minute": int(m.get_string(5)), "second": int(m.get_string(6))}))
+
+## 响应头数组里找 `Date:` → unix 秒; 没有 ⇒ -1。
+static func server_ts_from_headers(headers: PackedStringArray) -> int:
+	for h in headers:
+		if h.to_lower().begins_with("date:"):
+			return parse_http_date(h.substr(5).strip_edges())
+	return -1
 
 ## ══════════════════════════════════════════════════════════════════════
 ##  【开发包时间穿越】测赛程不用等日子 (2026-10-04)

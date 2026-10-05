@@ -1468,7 +1468,10 @@ func _build_edit_palette() -> void:
 	sb.content_margin_left = 16; sb.content_margin_right = 16
 	sb.content_margin_top = 14; sb.content_margin_bottom = 14
 	panel.add_theme_stylebox_override("panel", sb)
-	panel.position = Vector2(16, 52)
+	## ★刘海/灵动岛避让(2026-10-05): 横屏 iPhone 左右各有 ~100 逻辑像素的不安全区, 原来写死 x=16 ⇒ 面板左边一截压在刘海那条里。
+	##   桌面/没报安全区 ⇒ insets 全 0 ⇒ 与原来逐字相同。
+	var _pin: Vector4 = SafeArea.insets(Vector2(battle.get_viewport().get_visible_rect().size))
+	panel.position = Vector2(16.0 + _pin.x, 52.0 + _pin.y)
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	battle._ui_layer.add_child(panel)
 	battle._edit_palette = panel
@@ -1580,6 +1583,9 @@ func _build_brush_bar() -> void:
 	bar.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	var _bsb: float = SafeArea.margins(Vector2(battle.get_viewport().get_visible_rect().size), 10.0).w   # 安全区下边距(手机 home 手势条区·用户2026-07-27:「底部怎么滑·横滑撞手势条」)
 	bar.offset_bottom = -_bsb          # 整条抬到安全区内 → 横滑不再撞底部 home 手势条
+	var _bin: Vector4 = SafeArea.insets(Vector2(battle.get_viewport().get_visible_rect().size))
+	bar.offset_left = _bin.x           # 左右也让开刘海(桌面为 0)
+	bar.offset_right = -_bin.z
 	bar.offset_top = -BRUSH_BAR_H - _bsb      # 顶边随之上移
 	battle._ui_layer.add_child(bar)
 	battle._edit_brush_bar = bar

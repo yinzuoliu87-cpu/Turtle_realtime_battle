@@ -1555,6 +1555,19 @@ static func travel_blocks(method: String, url: String) -> bool:
 	return _P2S.travel_active() and is_write_request(method, url)
 
 
+## ★服务器时钟偏移(2026-10-05): 每个**真到了服务器**的回包都带 HTTP `Date` 头 ⇒ 记一次偏移,
+##   周赛程(`_P2S.now_utc()`)从此跟服务器时间走。传输失败 / 没有 `Date` 头 ⇒ 不动(保留上次的)。
+static func _note_server_clock(res: Dictionary) -> void:
+	if not bool(res.get("ok", false)) or int(res.get("code", 0)) <= 0:
+		return
+	var hs = res.get("headers", PackedStringArray())
+	if not (hs is PackedStringArray or hs is Array):
+		return
+	var srv: int = _P2S.server_ts_from_headers(PackedStringArray(hs))
+	if srv > 0:
+		_P2S.note_server_time(srv, int(Time.get_unix_time_from_system()))
+
+
 func _http(method: String, url: String, body: String, cb: Callable, extra: String = "") -> void:
 	if travel_blocks(method, url):
 		travel_blocked_count += 1
@@ -1562,7 +1575,9 @@ func _http(method: String, url: String, body: String, cb: Callable, extra: Strin
 		cb.call({"ok": false, "code": 0, "body": "", "blocked": true})
 		return
 	if _transport.is_valid():
-		_transport.call(method, url, _headers(extra), body, cb)
+		_transport.call(method, url, _headers(extra), body, func(res):
+			_note_server_clock(res)
+			cb.call(res))
 		return
 	## ★`is_inside_tree()` 必须判: HTTPRequest 不在树上时 `request()` 直接报错
 	##   (旧后端那层踩过, 见 remote_pool 的同位置注释)。
@@ -1574,7 +1589,9 @@ func _http(method: String, url: String, body: String, cb: Callable, extra: Strin
 	add_child(req)
 	req.request_completed.connect(func(result: int, code: int, _h: PackedStringArray, data: PackedByteArray):
 		var okk: bool = (result == HTTPRequest.RESULT_SUCCESS)
-		cb.call({"ok": okk, "code": code, "body": data.get_string_from_utf8()})
+		var res := {"ok": okk, "code": code, "body": data.get_string_from_utf8(), "headers": _h}
+		_note_server_clock(res)
+		cb.call(res)
 		req.queue_free())
 	var err := req.request(url, _headers(extra), _method_of(method), body)
 	if err != OK:
