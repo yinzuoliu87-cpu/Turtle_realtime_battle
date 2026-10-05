@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://brqy6fytx5ix3"
-path="res://.godot/imported/banner.png-aedfb623426347e7c31d5932bcaf519f.ctex"
+uid="uid://da5b4gw6korxn"
+path="res://.godot/imported/BackpackBattles-menu.jpg-c315e9927c30d7575c52e2901797e942.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/menu/hud/banner.png"
-dest_files=["res://.godot/imported/banner.png-aedfb623426347e7c31d5932bcaf519f.ctex"]
+source_file="res://docs/plans/ref/20261005-像素UI/BackpackBattles-menu.jpg"
+dest_files=["res://.godot/imported/BackpackBattles-menu.jpg-c315e9927c30d7575c52e2901797e942.ctex"]
 
 [params]
 

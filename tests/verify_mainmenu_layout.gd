@@ -194,9 +194,25 @@ func _ready() -> void:
 			hr.size.x, hr.size.y, hr.position.x, hr.position.y])
 		_ok("⑤ ★训龟大师与主 CTA 右沿同轴 (差 ≤2px)", absf(tr.end.x - hr.end.x) <= 2.0,
 			"差 %.1f" % (tr.end.x - hr.end.x))
-		_ok("⑤ ★训龟大师在主 CTA 正上方且不粘连 (间距 16..64px)",
-			hr.position.y - tr.end.y >= 16.0 and hr.position.y - tr.end.y <= 64.0,
+		## ★2026-10-05 UI 重做换判据(不是放宽): 原来要求「不粘连 16..64」, 那一版训龟大师离主 CTA 36px,
+		##   实拍是「飘在半空、主次关系看不出」。新版式是**贴成一组**: 6px 缝, 主次靠材质分
+		##   (主 CTA 金边木框 + 呼吸光晕 / 训龟大师铁箍木板)。⇒ 间距必须落在 4..12 —— 拉开或压住都红。
+		_ok("⑤ ★训龟大师贴在主 CTA 正上方成一组 (间距 4..12px)",
+			hr.position.y - tr.end.y >= 4.0 and hr.position.y - tr.end.y <= 12.0,
 			"间距 %.0f" % (hr.position.y - tr.end.y))
+		## ⑤b 主次靠【材质】分: 训龟大师用的是另一张皮(不是主 CTA 那张金边木框)。
+		var t_tex := ""
+		var h_tex := ""
+		for n5 in _walk(trainer):
+			if n5 is NinePatchRect and (n5 as NinePatchRect).texture != null:
+				t_tex = str((n5 as NinePatchRect).texture.resource_path).get_file()
+			elif n5 is TextureRect and not (n5 is MenuCtaGlow) and (n5 as TextureRect).texture != null and t_tex == "":
+				t_tex = str((n5 as TextureRect).texture.resource_path).get_file()
+		for n5 in _walk(hero):
+			if n5 is TextureRect and not (n5 is MenuCtaGlow) and (n5 as TextureRect).texture != null and h_tex == "":
+				h_tex = str((n5 as TextureRect).texture.resource_path).get_file()
+		_ok("⑤b ★训龟大师与主 CTA 不是同一张皮(只差大小 = 主次分不开)", t_tex != "" and h_tex != "" and t_tex != h_tex,
+			"训龟大师「%s」 / 主 CTA「%s」" % [t_tex, h_tex])
 		_ok("⑤ ★主 CTA 面积明显大于训龟大师 (≥ 1.8 倍)",
 			(hr.size.x * hr.size.y) >= (tr.size.x * tr.size.y) * 1.8,
 			"%.2f 倍" % ((hr.size.x * hr.size.y) / maxf(1.0, tr.size.x * tr.size.y)))
@@ -334,6 +350,196 @@ func _ready() -> void:
 		if rec_hit:
 			break
 	_ok("⑦ ★战绩仍然可点(没因为删信息板而丢掉入口)", rec_hit)
+
+	# ── ⑯ ★左栏 / 状态区 / 赛程条的新版式(2026-10-05 UI 重做) ──
+	#    用户否掉草稿那面整块挂旗(「太重, 像个弹窗」), 定了: 每行一块短窄木牌、牌间露出看台;
+	#    状态区绶带更小更轻、跟左栏一起滑入; 赛程条字大对比高、「今」不填实心、木纹不拉糊。
+	#    ★每条都量产品自己的节点, 名字从产品常量取。
+	var rows16: Array = []
+	for c in stack:
+		if c != trainer and c != hero:
+			rows16.append(c)
+	var plaques: Array = []
+	var plaque_miss: Array = []
+	for c in rows16:
+		var found: Array = []
+		for n16 in _walk(c):
+			if str(n16.name) == str(MENU_S.ROW_PLAQUE_NAME):
+				found.append(n16)
+		if found.size() != 1:
+			plaque_miss.append("%s:%d" % [_tag(c), found.size()])
+		else:
+			plaques.append([c, found[0]])
+	_ok("⑯a ★分母: 左栏 5 个入口(背包/商店/图鉴/排行榜/战绩)每个恰好一块木牌", rows16.size() == 5 and plaque_miss.is_empty(),
+		"入口 %d 个 · 不对的 %s" % [rows16.size(), str(plaque_miss)])
+	var fat: Array = []
+	for pr in plaques:
+		var hr16: Rect2 = (pr[0] as Control).get_global_rect()
+		var pr16: Rect2 = (pr[1] as Control).get_global_rect()
+		var tex16: Texture2D = (pr[1] as NinePatchRect).texture if pr[1] is NinePatchRect else null
+		## 窄: 高 ≤ 50 且 = 贴图原高(竖向不拉伸); 短: 比左栏宽至少窄 1/4(不是一条横贯左栏的底板)
+		if tex16 == null or pr16.size.y > 50.0 or absf(pr16.size.y - float(tex16.get_height())) > 0.5 \
+				or pr16.size.x > MENU_S.LEFT_W * 0.75 or pr16.size.x > hr16.size.x:
+			fat.append("%s 牌 %.0f×%.0f / 行 %.0f×%.0f / 贴图高 %s" % [_tag(pr[0]), pr16.size.x, pr16.size.y,
+				hr16.size.x, hr16.size.y, str(tex16.get_height()) if tex16 != null else "无"])
+	_ok("⑯b ★木牌短而窄(高 ≤50 且 = 贴图原高 · 宽 ≤ 左栏宽 3/4 且不出本行)", not plaques.is_empty() and fat.is_empty(), str(fat))
+	## ⑯c 牌与牌之间露出看台: 按行(顶沿)归并后, 相邻两行木牌的竖向空隙 ≥ 24px
+	var row_spans: Dictionary = {}
+	for pr in plaques:
+		var r16: Rect2 = (pr[1] as Control).get_global_rect()
+		var key16 := int(round((pr[0] as Control).get_global_rect().position.y))
+		if row_spans.has(key16):
+			var o16: Vector2 = row_spans[key16]
+			row_spans[key16] = Vector2(minf(o16.x, r16.position.y), maxf(o16.y, r16.end.y))
+		else:
+			row_spans[key16] = Vector2(r16.position.y, r16.end.y)
+	var ks: Array = row_spans.keys()
+	ks.sort()
+	var min_gap := INF
+	for i16 in range(1, ks.size()):
+		min_gap = minf(min_gap, (row_spans[ks[i16]] as Vector2).x - (row_spans[ks[i16 - 1]] as Vector2).y)
+	_ok("⑯c ★木牌之间露出背景(相邻两行木牌空隙 ≥ 24px · 量了 %d 行)" % ks.size(), ks.size() == 4 and min_gap >= 24.0,
+		"最小空隙 %.0f" % min_gap)
+	## ⑯d 左栏**没有整块底板**: 任何画东西的控件(贴图/九宫格/色块/面板)盖住左栏区域一半以上都红。
+	var col16 := Rect2(MENU_S.LEFT_X, MENU_S.STATUS_Y, MENU_S.LEFT_W, float(_menu._menu_bottom()) - MENU_S.STATUS_Y)
+	var slabs: Array = []
+	var painters16 := 0
+	for c in all:
+		if bd_node != null and ((bd_node as Node).is_ancestor_of(c) or c == bd_node):
+			continue
+		var paints: bool = c is TextureRect or c is NinePatchRect or c is Panel or c is PanelContainer \
+			or (c is ColorRect and (c as ColorRect).color.a > 0.02)
+		if not paints:
+			continue
+		var r16: Rect2 = (c as Control).get_global_rect()
+		if r16.size.x >= W - 1.0 and r16.size.y >= H - 1.0:
+			continue
+		var it16: Rect2 = r16.intersection(col16)
+		if it16.size.x * it16.size.y > 0.0:
+			painters16 += 1
+		if it16.size.x * it16.size.y >= col16.size.x * col16.size.y * 0.5:
+			slabs.append("%s %s @(%.0f,%.0f) %.0f×%.0f" % [c.get_class(), str(c.name), r16.position.x, r16.position.y,
+				r16.size.x, r16.size.y])
+	_ok("⑯d ★分母: 左栏区域里量到了画东西的控件(木牌/图标)", painters16 >= 5, "%d 个" % painters16)
+	_ok("⑯d ★左栏没有整块底板(草稿那面挂旗「像个弹窗」被否)", slabs.is_empty(), str(slabs))
+	## ⑯e 状态区绶带: 在状态行 holder 里面(跟左栏一起滑入), 小而细
+	var rib16: Node = _find_named(_menu, str(MENU_S.STATUS_RIBBON_NAME))
+	var st_holder: Node = two_blk.get_parent() if two_blk != null else null
+	_ok("⑯e ★分母: 绶带在场", rib16 != null)
+	if rib16 != null:
+		var rr16: Rect2 = (rib16 as Control).get_global_rect()
+		_ok("⑯e ★绶带挂在状态行里(跟左栏一起滑入, 不是另起一层)", st_holder != null and (st_holder as Node).is_ancestor_of(rib16),
+			"父 %s" % str(rib16.get_parent().name))
+		_ok("⑯e ★绶带小而细(高 ≤ 32 · 宽 ≤ 左栏宽 3/4)", rr16.size.y <= 32.0 and rr16.size.x <= MENU_S.LEFT_W * 0.75,
+			"%.0f×%.0f" % [rr16.size.x, rr16.size.y])
+	## ⑯f 状态区下两行(没有底板)必须实心描边 + 够大。绶带上那行(身份行)不归这条管 ⇒ 按 y 排除绶带那一截。
+	var weak16: Array = []
+	var n_lines16 := 0
+	if st_holder != null:
+		var rib_bot: float = (rib16 as Control).get_global_rect().end.y if rib16 != null else -1.0e9
+		for n16 in _walk(st_holder):
+			if not (n16 is Label) or str((n16 as Label).text).strip_edges() == "":
+				continue
+			var lb16: Label = n16
+			if lb16.get_global_rect().get_center().y <= rib_bot:
+				continue
+			n_lines16 += 1
+			var fs16: int = lb16.get_theme_font_size("font_size")
+			var ol16: int = lb16.get_theme_constant("outline_size")
+			if fs16 < 18 or ol16 < 4:
+				weak16.append("「%s」字 %d 描边 %d" % [lb16.text.substr(0, 10), fs16, ol16])
+	_ok("⑯f ★状态区下两行字 ≥18 号且实心描边 ≥4(没有底板, 靠描边读出来 · 量了 %d 段)" % n_lines16,
+		n_lines16 >= 2 and weak16.is_empty(), str(weak16))
+	## ⑯g 赛程条木纹不拉伸: 中段两个方向都 TILE, 且贴图比条子宽(横向是原像素裁出来的, 不缩放), 竖向 1:1
+	if strip != null:
+		var sb16: StyleBox = (strip as Control).get_theme_stylebox("panel")
+		var tile16 := false
+		var tw16 := 0
+		var vc16 := -1.0
+		var bc16 := -2.0
+		if sb16 is StyleBoxTexture and (sb16 as StyleBoxTexture).texture != null:
+			var st16: StyleBoxTexture = sb16
+			tile16 = st16.axis_stretch_horizontal == StyleBoxTexture.AXIS_STRETCH_MODE_TILE \
+				and st16.axis_stretch_vertical == StyleBoxTexture.AXIS_STRETCH_MODE_TILE
+			tw16 = st16.texture.get_width()
+			vc16 = float(st16.texture.get_height()) - st16.texture_margin_top - st16.texture_margin_bottom
+			bc16 = (strip as Control).size.y - st16.texture_margin_top - st16.texture_margin_bottom
+		_ok("⑯g ★赛程条木纹不拉伸(中段 TILE · 贴图宽 ≥ 条子宽)", tile16 and float(tw16) >= (strip as Control).size.x,
+			"TILE=%s 贴图宽 %d 条宽 %.0f" % [str(tile16), tw16, (strip as Control).size.x])
+		_ok("⑯g ★赛程条竖向 1:1(贴图中段高 == 条子中段高)", absf(vc16 - bc16) <= 0.5, "贴图 %.0f / 条子 %.0f" % [vc16, bc16])
+	## ⑯h 「今」那一格不填实心: 皮的中心像素透明, 且字色与其余六格一样(同一套明暗)
+	var today_cell: Control = null
+	var other_cols: Dictionary = {}
+	var today_cols: Dictionary = {}
+	if strip != null:
+		for n16 in _walk(strip):
+			if not (n16 is PanelContainer) or n16 == strip:
+				continue
+			var labs: Array = []
+			for m16 in _walk(n16):
+				if m16 is Label:
+					labs.append(m16)
+			if labs.size() < 2:
+				continue
+			var is_t: bool = str((labs[1] as Label).text).ends_with(" 今")
+			for l16 in labs:
+				var ck := str((l16 as Label).get_theme_color("font_color"))
+				if is_t:
+					today_cols[ck] = true
+				else:
+					other_cols[ck] = true
+			if is_t:
+				today_cell = n16
+	_ok("⑯h ★分母: 找到「今」那一格", today_cell != null)
+	if today_cell != null:
+		var tsb: StyleBox = today_cell.get_theme_stylebox("panel")
+		var hollow := false
+		if tsb is StyleBoxTexture and (tsb as StyleBoxTexture).texture != null:
+			var img16: Image = (tsb as StyleBoxTexture).texture.get_image()
+			hollow = img16.get_pixel(img16.get_width() / 2, img16.get_height() / 2).a < 0.05
+		elif tsb is StyleBoxFlat:
+			hollow = (tsb as StyleBoxFlat).bg_color.a < 0.05
+		_ok("⑯h ★「今」那格不填实心底(只有一圈边框)", hollow, str(tsb))
+		var same16 := true
+		for k16 in today_cols.keys():
+			if not other_cols.has(k16):
+				same16 = false
+		_ok("⑯h ★「今」那格的字色与其余六格同一套", not today_cols.is_empty() and not other_cols.is_empty() and same16,
+			"今 %s / 其余 %s" % [str(today_cols.keys()), str(other_cols.keys())])
+
+	# ── ⑰ ★版式骨架: 对齐线(2026-10-05 对标 16 款像素/木质游戏后加) ──
+	#    Into the Breach / Wildfrost / Loop Hero 的竖排菜单 = 等宽条 + 共用左沿;
+	#    Kingdom Rush / Darkest Dungeon 的右上 HUD 与右下主按钮收在同一条右边距上。
+	#    ⇒ 左栏: 五块木牌一样宽, 四行共用一条左沿, 状态区绶带也落在这条左沿上;
+	#      右栏: 两块货币牌、训龟大师、开始战斗共用一条右沿。
+	var p_lefts: Array = []
+	var p_widths: Array = []
+	for pr in plaques:
+		var r17: Rect2 = (pr[1] as Control).get_global_rect()
+		p_widths.append(r17.size.x)
+		if r17.position.x < MENU_S.LEFT_X + MENU_S.LEFT_W * 0.5:
+			p_lefts.append(r17.position.x)
+	_ok("⑰a ★分母: 第一列量到 4 块木牌、共 5 块", p_lefts.size() == 4 and p_widths.size() == 5,
+		"第一列 %d / 共 %d" % [p_lefts.size(), p_widths.size()])
+	if p_widths.size() == 5 and p_lefts.size() == 4:
+		_ok("⑰a ★五块木牌等宽(极差 ≤1px · 宽度跟着字走 = 右沿参差)", p_widths.max() - p_widths.min() <= 1.0,
+			"宽 %s" % str(p_widths))
+		_ok("⑰a ★第一列四块木牌共用一条左沿(极差 ≤1px)", p_lefts.max() - p_lefts.min() <= 1.0, "左沿 %s" % str(p_lefts))
+		if rib16 != null:
+			var rl17: float = (rib16 as Control).get_global_rect().position.x
+			_ok("⑰a ★状态区绶带也落在木牌那条左沿上(差 ≤2px)", absf(rl17 - float(p_lefts.min())) <= 2.0,
+				"绶带 %.0f / 木牌 %.0f" % [rl17, float(p_lefts.min())])
+	var chips17: Array = []
+	for n17 in _walk(content):
+		if n17 is NinePatchRect and (n17 as NinePatchRect).texture != null \
+				and str((n17 as NinePatchRect).texture.resource_path).get_file() == "chip.png":
+			chips17.append((n17 as Control).get_global_rect())
+	_ok("⑰b ★分母: 两块货币牌在场", chips17.size() == 2, "%d 块" % chips17.size())
+	if chips17.size() == 2 and hero != null and trainer != null:
+		var cr17: float = maxf((chips17[0] as Rect2).end.x, (chips17[1] as Rect2).end.x)
+		var hr17: float = hero.get_global_rect().end.x
+		_ok("⑰b ★右栏一条右沿: 货币牌右沿 == 开始战斗右沿(差 ≤2px)", absf(cr17 - hr17) <= 2.0,
+			"货币 %.0f / 主 CTA %.0f" % [cr17, hr17])
 
 	# ── ⑧ ★主 CTA 的字号仍要压过次级入口 ──
 	var f_hero := _font_of(content, "开始战斗")
@@ -987,6 +1193,16 @@ func _ready() -> void:
 			if judge_shop:
 				_ok("⑭b ★[%s] 商店锁着 ⇒ 理由常驻显示在那一行" % str(cs[0]),
 					rs_txt != "" and rs_txt == rs_want, "屏幕=「%s」 期望=「%s」" % [rs_txt, rs_want])
+				## ⑭c ★理由那行**读得清**(2026-10-05 UI 重做): 它不在木牌上, 直接压在看台上 ⇒
+				##   必须 ≥17 号字且实心描边 ≥4(原来 4 个 ±1 偏移副本, 实拍在看台上读不出)。
+				var rs_lab: Label = null
+				for n_r in _walk(shop_h):
+					if str(n_r.name) == str(MENU_S.LOCK_REASON_NAME) and n_r is Label:
+						rs_lab = n_r
+				_ok("⑭c ★[%s] 锁理由 ≥17 号字 + 实心描边 ≥4" % str(cs[0]),
+					rs_lab != null and rs_lab.get_theme_font_size("font_size") >= 17 and rs_lab.get_theme_constant("outline_size") >= 4,
+					"字 %s 描边 %s" % [str(rs_lab.get_theme_font_size("font_size")) if rs_lab != null else "-",
+						str(rs_lab.get_theme_constant("outline_size")) if rs_lab != null else "-"])
 				seen_reason += 1
 			else:
 				_ok("⑭b [%s] 商店没锁 ⇒ 不显示理由" % str(cs[0]), rs_txt == "", rs_txt)
