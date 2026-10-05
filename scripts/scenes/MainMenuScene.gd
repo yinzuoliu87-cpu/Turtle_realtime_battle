@@ -382,15 +382,27 @@ func _build_page_buttons(now: int = 0) -> void:
 		["图鉴", func(): _go("Codex"), mic + "ic-codex.png", false],
 		["排行榜", func(): _go("Leaderboard"), mic + "ic-trophy.png", false],
 	]
+	## ★★2026-10-05「战绩」入口(回放体验打磨, 用户 v0.19.541 那轮不知道战绩在左上状态块里 —— 回放就挂在战绩页)。
+	##   左栏竖向一分都涨不了(4×81 正好落到赛程条上沿 623 < 636), 第 5 行放不下 ⇒
+	##   **排行榜这一行对半分成「排行榜 | 战绩」**: 两个都是「看成绩」的入口, 并排读得通;
+	##   每半 191×81, 仍过 44pt 触摸线。图标用给战绩画的那张 `menu/icon-record.png`(状态行在用同一张)。
+	##   状态块那一行照旧可点(老玩家的肌肉记忆不拆)。
 	## 锁着的那行底下常驻一行短原因(不点也看得见) —— 只有商店有锁, 所以只给它传。
 	var shop_reason := _shop_lock_reason(ts)
 	for i in range(subs.size()):
 		var sN: Array = subs[i]
+		var half: bool = str(sN[0]) == "排行榜"
 		var e := _text_entry(str(sN[0]), sN[1], str(sN[2]), bool(sN[3]),
-			shop_reason if str(sN[0]) == SHOP_LABEL else "")
+			shop_reason if str(sN[0]) == SHOP_LABEL else "", LEFT_W * 0.5 if half else LEFT_W)
 		e.position = Vector2(LEFT_X, _menu_row_y(i))
 		page_box.add_child(e)
 		_slide_in_left(e, i)
+		if half:
+			var re := _text_entry("战绩", func(): _go("Record"), mic + "icon-record.png", false, "", LEFT_W * 0.5)
+			re.name = RECORD_ENTRY_NAME
+			re.position = Vector2(LEFT_X + LEFT_W * 0.5, _menu_row_y(i))
+			page_box.add_child(re)
+			_slide_in_left(re, i)
 	# ── 训龟大师: 挪到右栏、贴在主 CTA 正上方 ──
 	#    它跟「开始战斗」是同一件事的两步(配大师 → 出战), 放一起比塞在左栏列表里更讲得通;
 	#    直接原因则是竖向预算: 左栏 5×81 放不下(见文件头"触摸线"那段)。
@@ -452,6 +464,10 @@ func _bind_nudge() -> void:
 	_slide_in(b, 3)
 
 
+## 左栏「战绩」入口的节点名(门禁 verify_replay_controls 按它找)。
+const RECORD_ENTRY_NAME := "RecordEntry"
+
+
 ## 提示那一块的节点名 —— 门禁按它找得到这一块(不靠数字下标, 也不靠抄一份文案)。
 const NUDGE_NAME := "BindNudge"
 
@@ -475,13 +491,13 @@ const LOCK_REASON_NAME := "LockReason"
 ##   但【可点区域仍然是整行 LEFT_W×ROW_H】—— 视觉轻、手指目标不小, 两件事不能混为一谈。
 ## 悬停时: 左侧 ◆ 淡入 + 文字右移 6px + 一层金色底光, 代替原来那个木框。
 ## `reason` 非空且 locked ⇒ 主文字上移, 底下常驻一行小字写锁的理由(节点名 LOCK_REASON_NAME)。
-func _text_entry(label: String, cb: Callable, icon_path: String, locked: bool, reason: String = "") -> Control:
+func _text_entry(label: String, cb: Callable, icon_path: String, locked: bool, reason: String = "", w: float = LEFT_W) -> Control:
 	var holder := Control.new()
-	holder.custom_minimum_size = Vector2(LEFT_W, ROW_H)
-	holder.size = Vector2(LEFT_W, ROW_H)
+	holder.custom_minimum_size = Vector2(w, ROW_H)
+	holder.size = Vector2(w, ROW_H)
 	var glow := ColorRect.new()                     # 悬停底光(默认全透明), 放最底层
 	glow.color = Color(1.0, 0.85, 0.24, 0.0)
-	glow.size = Vector2(LEFT_W, ROW_H)
+	glow.size = Vector2(w, ROW_H)
 	glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(glow)
 	var dia := _place_stroked("◆", 18, Color("#ffd93d"), Vector2(0, ROW_H / 2.0 - 14), Vector2(26, 28))
@@ -505,11 +521,11 @@ func _text_entry(label: String, cb: Callable, icon_path: String, locked: bool, r
 	var with_reason: bool = locked and reason != ""
 	var lb_y: float = ROW_H / 2.0 - (32.0 if with_reason else 21.0)
 	var lb := _place_stroked(("🔒 " if locked else "") + label, 26, col,
-		Vector2(tx, lb_y), Vector2(LEFT_W - tx - 8.0, 42))
+		Vector2(tx, lb_y), Vector2(w - tx - 8.0, 42))
 	holder.add_child(lb)
 	if with_reason:
 		var rs := _place_stroked(reason, 17, Color("#d9c9a3"),
-			Vector2(tx, ROW_H / 2.0 + 10.0), Vector2(LEFT_W - tx - 8.0, 26))
+			Vector2(tx, ROW_H / 2.0 + 10.0), Vector2(w - tx - 8.0, 26))
 		rs.name = LOCK_REASON_NAME
 		rs.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		holder.add_child(rs)
@@ -1016,7 +1032,9 @@ func _status_row(now: int = 0) -> void:
 	##     再来一句"暂无"就是拿空状态占屏幕。
 	var top_title: String = _P2C.title_top(GameState.titles)
 	if top_title != "":
-		rec = "%s · 🏅 %s" % [rec, top_title]
+		## ★2026-10-05 去掉「🏅」: 它走系统彩色 emoji 字体, 贴在这一行像素图标(icon-record)旁边是两套画法。
+		##   头衔两个字本身就说清了, 不再挂图标。
+		rec = "%s · %s" % [rec, top_title]
 
 	var holder := Control.new()
 	holder.position = Vector2(LEFT_X, STATUS_Y)

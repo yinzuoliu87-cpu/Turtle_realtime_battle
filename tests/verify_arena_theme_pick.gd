@@ -123,7 +123,7 @@ func _setup_gs() -> void:
 	gs.reset_dual_lane()
 	gs.test_mode = true
 	gs.tutorial_active = false
-	gs.week_phase = "ranked"               # 积分赛(不录回放: 不往 user:// 写东西)
+	gs.week_phase = "ranked"               # 积分赛(★2026-10-05 起积分赛也录回放 —— 会往本测试自己那份 user:// 写一份录像, 不影响判据)
 	gs.season_leaders = ["basic", "stone", "dice"]
 	gs.left_team.assign(gs.season_leaders)
 	gs.dual_lineup = {

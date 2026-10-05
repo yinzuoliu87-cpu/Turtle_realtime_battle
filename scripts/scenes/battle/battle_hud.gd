@@ -2370,61 +2370,31 @@ var _replay_bar: Control = null
 
 
 ## 回放模式进场后第一步调(ReplayRecorder.pre_step)。投降钮藏起来 —— 回放里人什么都改不了。
+## 2026-10-05 回放体验打磨: 铭牌 / 操作条(暂停·倍速·进度·退出)/ 收尾卡 全在 `replay_controls.gd`,
+##   `_replay_bar` 指向它的根节点(门禁从这里往下按节点名找按钮)。
+var _replay_ui: ReplayControls = null
+
+
 func build_replay_bar() -> void:
 	if battle._ui_layer == null or (_replay_bar != null and is_instance_valid(_replay_bar)):
 		return
 	if battle._surrender_btn != null and is_instance_valid(battle._surrender_btn):
 		battle._surrender_btn.visible = false
-	var hb := HBoxContainer.new()
-	hb.add_theme_constant_override("separation", 12)
-	var lb := Label.new()
-	lb.text = "回放"
-	lb.add_theme_font_size_override("font_size", 22)
-	lb.add_theme_color_override("font_color", Color("#ffd93d"))
-	hb.add_child(lb)
-	var bt := Button.new()
-	bt.text = "退出回放"
-	bt.add_theme_font_size_override("font_size", 18)
-	bt.pressed.connect(_replay_exit)
-	hb.add_child(bt)
-	var m: Vector4 = SafeArea.margins(Vector2(battle.get_viewport().get_visible_rect().size), 18.0)
-	hb.position = Vector2(m.x, m.y + 64.0)
-	battle._ui_layer.add_child(hb)
-	_replay_bar = hb
+	_replay_ui = ReplayControls.new(battle)
+	_replay_bar = _replay_ui.build()
 
 
 ## Q7(用户授权按推荐): 校验点对不上 ⇒ **停下提示**, 不许默默播一场和实战不同的比赛。
 func show_replay_mismatch() -> void:
-	_replay_notice("这一场在本机重算对不上, 无法继续播放", Color("#ff6b6b"))
+	if _replay_ui != null:
+		_replay_ui.show_mismatch()
 
 
 func show_replay_end(won: bool) -> void:
 	if battle._replay.diverged_at >= 0:
 		return   # 已经停下并提示过
-	_replay_notice(ReplayRecorder.end_caption(won), Color("#ffd93d") if won else Color("#ff6b6b"))
-
-
-func _replay_notice(msg: String, col: Color) -> void:
-	if battle._ui_layer == null:
-		return
-	var cc := CenterContainer.new()
-	cc.set_anchors_preset(Control.PRESET_FULL_RECT)
-	cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 14)
-	var lb := Label.new()
-	lb.text = msg
-	lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lb.add_theme_font_size_override("font_size", 28)
-	lb.add_theme_color_override("font_color", col)
-	vb.add_child(lb)
-	var bt := Button.new()
-	bt.text = "退出回放"
-	bt.add_theme_font_size_override("font_size", 20)
-	bt.pressed.connect(_replay_exit)
-	vb.add_child(bt)
-	cc.add_child(vb)
-	battle._ui_layer.add_child(cc)
+	if _replay_ui != null:
+		_replay_ui.show_end(won)
 
 
 ## 离场即还原 GameState(主场景 `_exit_tree` 里调 `ReplayRecorder.end_play()`), 这里只管换场景。

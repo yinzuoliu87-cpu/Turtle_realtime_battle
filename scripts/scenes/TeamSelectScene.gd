@@ -721,6 +721,7 @@ func _build_ui() -> void:
 	_place_clamped(_last_btn, "last")
 	_grow_to_touch(_last_btn)
 	_last_btn.pressed.connect(_on_restore_last)
+	_space_top_pair(clear, _last_btn)
 	_ent_top = [back, clear, _last_btn]
 
 	# 实时 3v3：去掉回合制「前排/后排」标签 (自由走位下定位无意义)
@@ -813,6 +814,32 @@ func _play_entrance() -> void:
 	tw.tween_property(_ent_scroll, "modulate:a", 1.0, 0.14).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 
+## ★2026-10-05(主会话实玩): 「撤下」「沿用上次」两块牌子贴在一起、字快顶到牌边 ——
+##   RL 里两块只隔 10 设计单位, 各自绕中心撑到触控线(81)之后就**互相挨上**了; 而「沿用上次」四个字
+##   22 号 ≈ 88px, 牌子 94×0.947 ≈ 89px, 字就压在边上。
+##   ⇒ 牌子宽 = 字宽 + 两边各 16, 右沿钉住原位; 「撤下」往左让, 两块之间留 14。
+##   (文字位置是背景烤死的顶栏木板, 只在木板范围内左右挪, 不动 y。)
+const TOP_PAIR_GAP := 14.0
+var _syn_inner_w := 140.0   # 羁绊羊皮纸的可用宽(建区时按实测宽算, 折行用)
+const TOP_CHIP_PAD := 16.0
+
+
+func _space_top_pair(left: Button, right: Button) -> void:
+	for b in [left, right]:
+		var f: Font = b.get_theme_font("font")
+		var fs: int = b.get_theme_font_size("font_size")
+		var tw: float = f.get_string_size(b.text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs).x if f != null else 0.0
+		var w: float = maxf(b.size.x, ceilf(tw + TOP_CHIP_PAD * 2.0))
+		if w > b.size.x:
+			var right_edge: float = b.position.x + b.size.x
+			b.size.x = w
+			b.custom_minimum_size.x = w
+			b.position.x = right_edge - w
+	var want_x: float = right.position.x - TOP_PAIR_GAP - left.size.x
+	if left.position.x > want_x:
+		left.position.x = want_x
+
+
 func _build_synergy_region() -> void:
 	# PoC #ts-rg-synergy: 透明 (坐在画好的羊皮纸上), 标题深色 #4a2f12
 	var panel := PanelContainer.new()
@@ -823,6 +850,7 @@ func _build_synergy_region() -> void:
 	##   (实拍确认过: 第三个 chip 掉在纸外)。取 0.50 ≈ 158px, 留一点边距。
 	##   —— 这是方案书 20260812-羁绊显示 §5 的风险 R1, 实拍后按实测值堵上。
 	panel.size.x = panel.size.x * 0.50
+	_syn_inner_w = panel.size.x - float(_sp(10)) * 2.0
 	var sb := StyleBoxEmpty.new()
 	sb.content_margin_left = _sp(10); sb.content_margin_right = _sp(10)
 	sb.content_margin_top = _sp(8); sb.content_margin_bottom = _sp(8)
@@ -832,10 +860,12 @@ func _build_synergy_region() -> void:
 	vb.add_theme_constant_override("separation", _sp(6))
 	panel.add_child(vb)
 
+	## ★2026-10-05: 标题 13 号 → 20 号、字色压深; 「类型羁绊」→「羁绊」(「类型」是数据表字段名, 背包那边 2026-09 已改过)。
+	##   原来在手机上只有 7pt, 羊皮纸上浅褐字几乎读不出。
 	var t := Label.new()
-	t.text = "类型羁绊"
-	t.add_theme_font_size_override("font_size", _sf(13))
-	t.add_theme_color_override("font_color", Color("#4a2f12"))
+	t.text = "羁绊"
+	t.add_theme_font_size_override("font_size", _sf(20))
+	t.add_theme_color_override("font_color", Color("#2e1a04"))
 	vb.add_child(t)
 
 	# PoC .synergy-chips: flex-wrap gap:8 (index.html:495) → HFlowContainer 自动换行
@@ -861,9 +891,13 @@ func _refresh_synergy_chips() -> void:
 	var rows: Array = GameState.synergy_rows()
 	if rows.is_empty():
 		var none := Label.new()
-		none.text = "上阵的龟还没戴同类装备"
-		none.add_theme_font_size_override("font_size", _sf(11))
-		none.add_theme_color_override("font_color", Color("#6b5333"))
+		## 2026-10-05: 原句「上阵的龟还没戴同类装备」放大字号后在 16:9 上折成「…同类装 / 备」(孤字一行) ⇒ 缩成 8 个字。
+		none.text = "装备还没凑成同类"
+		## 11 号 → 17 号、换深一档, 纸只有约 120~158px 宽 ⇒ 仍开自动折行兜底(不折行会冲出纸面)。
+		none.add_theme_font_size_override("font_size", _sf(17))
+		none.add_theme_color_override("font_color", Color("#3a2408"))
+		none.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		none.custom_minimum_size.x = maxf(60.0, _syn_inner_w)
 		_synergy_box.add_child(none)
 		return
 	for r in rows:
@@ -888,7 +922,7 @@ func _refresh_synergy_chips() -> void:
 		chip.text = Phase2Types.icon_bb(typ, SYN_CHIP_ICON_PX) + plain
 		## ★`RichTextLabel` 认的键是 `normal_font_size`, **不是** `Label` 的 `font_size`
 		##   (照抄 Label 那一行会静默无效 —— 不报错, 只是字号没变)。
-		chip.add_theme_font_size_override("normal_font_size", _sf(13))
+		chip.add_theme_font_size_override("normal_font_size", _sf(15))
 		## ★羊皮纸底实测 rgb(132,96,56) —— 亮色/金色在上面根本读不出来(第一版就是这么翻的车)。
 		##   改成深褐系: 已激活用标题同款深褐(最跳), 未激活浅一档(在, 但不抢眼)。
 		chip.add_theme_color_override("default_color",
@@ -897,7 +931,7 @@ func _refresh_synergy_chips() -> void:
 		##   `RichTextLabel` 的最小宽是 **0** ⇒ 照抄 Label 的写法会让所有 chip 挤成一条竖线。
 		##   ⇒ 拿控件**自己的**主题字体量一遍(不硬编码), 再加上图标那 16px 与 2px 余量。
 		var _cf: Font = chip.get_theme_font("normal_font")
-		var _cfs: int = _sf(13)
+		var _cfs: int = _sf(15)
 		var _tw: float = (_cf.get_string_size(plain, HORIZONTAL_ALIGNMENT_LEFT, -1.0, _cfs).x
 			if _cf != null else float(plain.length()) * float(_cfs)) \
 			+ float(Phase2Types.icon_bb_px(typ, SYN_CHIP_ICON_PX)) + 2.0
@@ -934,7 +968,11 @@ func _build_grid_region() -> void:
 		#   加到 52×52(28pt): 竖排 7 个共 400px, 网格区放得下; 再大就要重排整屏了。
 		## ★用实际像素不过 _sp —— 上次写 _sp(52) 缩放后只剩 40px, 等于没修到。
 		b.custom_minimum_size = Vector2(81.0, 81.0)
-		b.add_theme_font_size_override("font_size", _sf(13))
+		## ★2026-10-05: 13 号(手机上 ~6pt)+ 70% 透明白 ⇒ 81px 的格子里只有一粒小字, 几乎读不出。
+		##   ⇒ 22 号 + 带黑描边的实色字(与左右栏单位卡的字同一套处理)。
+		b.add_theme_font_size_override("font_size", _sf(22))
+		b.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+		b.add_theme_constant_override("outline_size", 4)
 		_style_rarity_btn(b, false)
 		var key: String = r
 		b.pressed.connect(func() -> void:
@@ -991,7 +1029,7 @@ func _style_rarity_btn(b: Button, active: bool) -> void:
 		sb.bg_color = Color(1, 216.0/255, 107.0/255, 0.06)
 		sb.border_color = Color(1, 216.0/255, 107.0/255, 0.25)
 		sb.set_border_width_all(1)
-		b.add_theme_color_override("font_color", Color(1, 1, 1, 0.7))
+		b.add_theme_color_override("font_color", Color("#f1e4c4"))
 		b.add_theme_color_override("font_hover_color", Color("#ffd86b"))
 		b.add_theme_color_override("font_pressed_color", Color("#ffd86b"))
 	## ★换金属签牌(跨屏统一): 半透明底 + 1px 描边 + 圆角 = 典型"网页盒",

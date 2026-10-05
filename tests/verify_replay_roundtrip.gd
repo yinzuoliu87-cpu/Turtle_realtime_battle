@@ -73,7 +73,7 @@ func _setup_gs(gs) -> void:
 	gs.reset_dual_lane()
 	gs.test_mode = false                     # ★V5 要量真存档: 门禁每个测试一份独立 user://
 	gs.tutorial_active = false
-	gs.week_phase = "gauntlet"               # 周六闯关赛 —— Q3: 先只录周六
+	gs.week_phase = "gauntlet"               # 周六闯关赛(Q3 2026-10-05 用户改: 积分赛也录, 见 verify_replay_controls ①)
 	gs.season_leaders = ["basic", "stone", "bamboo"]
 	gs.left_team.assign(gs.season_leaders)
 	gs.dual_lineup = {

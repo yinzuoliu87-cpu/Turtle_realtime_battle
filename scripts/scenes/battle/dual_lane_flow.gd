@@ -6,6 +6,7 @@ extends RefCounted
 ## 能渲染 BBCode 的 tooltip 宿主(背包 2026-07-22 起就在用的那一份) —— 对阵预览里那个
 ## 44×44 装备格的 tooltip 正文带颜色与内联属性图标, 不挂它就是纯 Label 原样印标记。
 const RichTooltip = preload("res://scripts/scenes/rich_tooltip.gd")
+const SettleScreenS := preload("res://scripts/scenes/battle/settle_screen.gd")
 
 var battle
 
@@ -157,19 +158,23 @@ func _dl_build_present_overlay(mode: String) -> void:
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	back.add_child(center)
 	var panel = PanelContainer.new()
+	panel.name = "PresentPanel"
 	# 撑大呈现面板(用户2026-07-12「预览这么小」), 但按视口收口 ——
 	#   原来死写 980x560, 窄屏(手机竖屏/小窗)直接顶出屏幕外, 卡片被裁掉看不全。
 	var _vp: Vector2 = battle.get_viewport().get_visible_rect().size   # ★Node3D 没有 get_viewport_rect()
 	panel.custom_minimum_size = Vector2(minf(980.0, _vp.x - 48.0), minf(560.0, _vp.y - 48.0))
-	var sb = StyleBoxFlat.new()
-	sb.bg_color = Color(0.05, 0.09, 0.14, 0.98); sb.border_color = Color("#ffd93d"); sb.set_border_width_all(3); sb.set_corner_radius_all(18)
+	## ★2026-10-05(回放体验打磨 · 主会话实玩): 原来是 StyleBoxFlat 圆角 18 + 3px 黄边 + 纯黑底 = 网页卡片。
+	##   换成战斗信息面板 / 结算屏同一张九宫格金属框(`SettleScreen.frame_style()`), 不新增素材。
+	var sb: StyleBox = SettleScreenS.frame_style().duplicate()
 	sb.content_margin_left = 46; sb.content_margin_right = 46; sb.content_margin_top = 36; sb.content_margin_bottom = 36
 	panel.add_theme_stylebox_override("panel", sb)
 	center.add_child(panel)
 	var vb = VBoxContainer.new(); vb.add_theme_constant_override("separation", 24); vb.alignment = BoxContainer.ALIGNMENT_CENTER; panel.add_child(vb)
 	var cur_lane = str(GameState.current_lane) if GameState != null else "top"
-	var lane_cn: Dictionary = {"top": "上路", "bottom": "下路", "final": "终极", "done": "结算"}
+	## ★路名只有一个出处 `battle._LANE_CN`(上路 / 下路 / 决胜) —— 原来这里写「终极」、顶上写「上半场/终极战场」, 同一件事三个叫法。
+	var lane_cn: Dictionary = battle._LANE_CN
 	var title = Label.new()
+	title.name = "PresentTitle"
 	title.add_theme_font_size_override("font_size", 42); title.add_theme_color_override("font_color", Color("#ffd93d"))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(title)
@@ -180,21 +185,22 @@ func _dl_build_present_overlay(mode: String) -> void:
 		##      读起来像教学提示。用户 2026-09-29 当场指出:「任何别人的商业游戏会这样子写吗」—— 不会。
 		##   ★两次的共同病因: **拿标题去解释屏幕上已经看得见的东西**。
 		##      三路对手就摆在下面, 标题该说的是【此刻发生什么】, 不是【你得做什么】。
-		title.text = "⚔  三路开战"
+		## v3(2026-10-05): 去掉「⚔」—— 它在本项目字体链里是单色 emoji 兜底画的细线条, 贴在像素框上是两套画法。
+		title.text = "三路开战"
 		for ln in ["top", "bottom", "final"]:
 			vb.add_child(_dl_overview_lane_row(ln, str(lane_cn.get(ln, ln))))
 	elif mode == "preview":
 		## ★原文案 "对阵预览" —— 「预览」是编辑器/网页词。这一幕的两列阵容+VS 本身就说清了
 		##   "谁对谁", 标题该说的是【接下来要发生什么】。
-		title.text = "【%s战场】 马上开打" % lane_cn.get(cur_lane, cur_lane)
+		title.text = "%s  马上开打" % lane_cn.get(cur_lane, cur_lane)
 		vb.add_child(_dl_matchup_row(cur_lane))
 	elif mode == "lane_settle":
 		var win_lr = "right" if battle._dl_pending_loser == "left" else "left"
-		title.text = "【%s战场】 结算" % lane_cn.get(cur_lane, cur_lane)
+		title.text = "%s  战果" % lane_cn.get(cur_lane, cur_lane)
 		var r = Label.new(); r.add_theme_font_size_override("font_size", 26)
 		r.add_theme_color_override("font_color", Color("#9ae6b0") if win_lr == "left" else Color("#ff9b9b"))
 		r.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		r.text = "🏆 我方拿下本路！" if win_lr == "left" else "💀 本路失守"
+		r.text = "拿下本路" if win_lr == "left" else "本路失守"
 		vb.add_child(r)
 		var rec = Label.new(); rec.add_theme_font_size_override("font_size", 19); rec.add_theme_color_override("font_color", Color("#ffe9a8"))
 		rec.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -211,8 +217,12 @@ func _dl_build_present_overlay(mode: String) -> void:
 	##   「点击」也是网页动词。两个可能的行为都还在, 只是不再报数。
 	## ⚠ 别把后半句写成"自己开打": 这行 hint 三幕共用(overview/preview/lane_settle),
 	##   而 lane_settle 那幕点下去是【进结算】不是开打 —— 写死"开打"就有一幕是假的。
-	hint.text = "（点一下接着来 · 不点也一样）"
-	vb.add_child(hint)
+	## ★v2(2026-10-05): 「（点一下接着来 · 不点也一样）」读起来像在跟玩家解释机制 —— 商业游戏就写「点击继续」。
+	##   回放里点了也没用(只认录像里那一下) ⇒ 回放不出这一行。
+	hint.name = "PresentHint"
+	hint.text = "点击继续"
+	if not battle._replay.is_playing():
+		vb.add_child(hint)
 	_dl_stagger_in(vb)
 
 
@@ -267,17 +277,26 @@ func _dl_record_line(extra_lane: String = "", extra_winner: String = "") -> Stri
 # 对阵预览一行: [我方阵容列]  VS  [对方阵容列] (各带头像/等级/名字/装备图+星级)
 func _dl_matchup_row(lane: String) -> Control:
 	var row = HBoxContainer.new(); row.add_theme_constant_override("separation", 44); row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_child(_dl_side_column(_dl_lane_specs(lane), true, "我方", Color("#9ae6b0")))
+	## 回放里看别人的录像时「我方」是录像方, 对看的人是错话 ⇒ 知道名字就写名字(ReplayRecorder.side_names)。
+	var hdr := _side_headers()
+	row.add_child(_dl_side_column(_dl_lane_specs(lane), true, str(hdr["l"]), Color("#9ae6b0")))
 	var vs = Label.new(); vs.text = "VS"; vs.add_theme_font_size_override("font_size", 56); vs.add_theme_color_override("font_color", Color("#ffd93d")); vs.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(vs)
-	row.add_child(_dl_side_column(_dl_foe_specs(lane), false, "对方", Color("#ff9b9b")))
+	row.add_child(_dl_side_column(_dl_foe_specs(lane), false, str(hdr["r"]), Color("#ff9b9b")))
 	return row
+
+
+func _side_headers() -> Dictionary:
+	if not battle._replay.is_playing() or ReplayRecorder.play_names.is_empty():
+		return {"l": "我方", "r": "对方"}
+	var nm: Dictionary = ReplayRecorder.side_names(battle._replay.rec)
+	return {"l": str(nm["l"]) if str(nm["l"]) != "" else "我方", "r": str(nm["r"]) if str(nm["r"]) != "" else "对方"}
 
 # 总览一路: 【上路】 [我方小头像…] vs [对方小头像…]
 # 总览一路: 【上路】 [我方小头像…] vs [对方小头像…]
 func _dl_overview_lane_row(lane: String, cn: String) -> Control:
 	var row = HBoxContainer.new(); row.add_theme_constant_override("separation", 18); row.alignment = BoxContainer.ALIGNMENT_CENTER
-	var tag = Label.new(); tag.text = "【%s】" % cn; tag.add_theme_font_size_override("font_size", 26); tag.add_theme_color_override("font_color", Color("#cfe6ff"))
+	var tag = Label.new(); tag.text = cn; tag.add_theme_font_size_override("font_size", 26); tag.add_theme_color_override("font_color", Color("#cfe6ff"))
 	tag.custom_minimum_size = Vector2(108, 0); row.add_child(tag)
 	if lane == "final":
 		var fl = Label.new(); fl.text = "上下路幸存者对决"; fl.add_theme_font_size_override("font_size", 22); fl.add_theme_color_override("font_color", Color("#9fb4c8"))
@@ -311,10 +330,12 @@ func _dl_side_column(specs: Array, is_mine: bool, header: String, col: Color) ->
 func _dl_unit_card(spec, is_mine: bool) -> Control:
 	var card = PanelContainer.new()
 	card.custom_minimum_size = Vector2(320, 0)
-	var csb = StyleBoxFlat.new(); csb.bg_color = Color(0.08, 0.12, 0.18, 0.9); csb.set_corner_radius_all(10)
+	var csb = StyleBoxFlat.new(); csb.bg_color = Color(0.08, 0.12, 0.18, 0.9)
 	csb.set_border_width_all(1); csb.border_color = Color(1, 1, 1, 0.08)
-	csb.content_margin_left = 12; csb.content_margin_right = 16; csb.content_margin_top = 9; csb.content_margin_bottom = 9
-	card.add_theme_stylebox_override("panel", csb)
+	## ★2026-10-05: 圆角 10 的半透明块 → 槽框九宫格(与左右栏单位卡同一族皮), 压暗一档免得抢标题。
+	var cst: StyleBox = UISkin.slot(csb, Color(0.80, 0.86, 0.95))
+	cst.content_margin_left = 14; cst.content_margin_right = 18; cst.content_margin_top = 11; cst.content_margin_bottom = 11
+	card.add_theme_stylebox_override("panel", cst)
 	var hb = HBoxContainer.new(); hb.add_theme_constant_override("separation", 14); card.add_child(hb)
 	hb.add_child(_dl_avatar_node(spec, 84))
 	var info = VBoxContainer.new(); info.add_theme_constant_override("separation", 5); info.alignment = BoxContainer.ALIGNMENT_CENTER; hb.add_child(info)
@@ -347,14 +368,14 @@ func _dl_avatar_node(spec, sz: int) -> Control:
 		if str(spec.get("kind", "")) == "minion" or spec.has("role"): is_minion = true
 		else: id = str(spec.get("id", spec.get("kind", "")))
 	bsb.border_color = Color("#8b949e") if is_minion else battle._pet_rarity_color(str(battle._data_by_id.get(id, {}).get("rarity", "C")))
-	box.add_theme_stylebox_override("panel", bsb)
+	box.add_theme_stylebox_override("panel", UISkin.slot(bsb, UISkin.tint_of(bsb.border_color)))   # 2026-10-05: 圆角色块 → 槽框(稀有度色走 modulate)
 	var path = (battle.SPRITE_DIR + "pets/minion.png") if is_minion else (battle.SPRITE_DIR + "avatars/" + id + ".png")
 	if not ResourceLoader.exists(path) and not is_minion:
 		path = battle.SPRITE_DIR + "pets/" + id + ".png"   # 无头像退回全身图
 	if ResourceLoader.exists(path):
 		var tex = TextureRect.new(); tex.texture = load(path)
 		tex.set_anchors_preset(Control.PRESET_FULL_RECT)
-		tex.offset_left = 3; tex.offset_top = 3; tex.offset_right = -3; tex.offset_bottom = -3
+		tex.offset_left = 7; tex.offset_top = 7; tex.offset_right = -7; tex.offset_bottom = -7
 		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -423,9 +444,11 @@ func _dl_enter_place() -> void:
 	battle._edit_drag_unit = null
 	if not is_instance_valid(battle._dl_go_btn):
 		battle._dl_go_btn = Button.new()
-		battle._dl_go_btn.text = "▶  开  打"
-		battle._dl_go_btn.add_theme_font_size_override("font_size", 28)
-		battle._dl_go_btn.custom_minimum_size = Vector2(220, 62)
+		## ★2026-10-05: 原来是「▶  开  打」+ Godot 默认深色方块。换成结算屏主按钮同一块木牌(`SettleScreen.dress_btn` → `UISkin.button`),
+		##   字去掉「▶」(字体链里的兜底字形)和字间空格。
+		battle._dl_go_btn.name = "GoBtn"
+		battle._dl_go_btn.text = "开打"
+		SettleScreenS.dress_btn(battle._dl_go_btn, Color("#ffd27a"), Color("#ffe7a0"))
 		battle._dl_go_btn.pressed.connect(_dl_start_fight)
 		if battle._ui_layer != null:
 			battle._ui_layer.add_child(battle._dl_go_btn)
@@ -437,14 +460,15 @@ func _dl_enter_place() -> void:
 		if battle._ui_layer != null:
 			battle._ui_layer.add_child(battle._dl_place_hint)
 	var vp: Vector2 = battle.get_viewport().get_visible_rect().size
-	battle._dl_go_btn.position = Vector2(vp.x * 0.5 - 110.0, vp.y - 100.0)
-	battle._dl_place_hint.position = Vector2(vp.x * 0.5 - 230.0, vp.y - 136.0)
+	battle._dl_go_btn.position = Vector2(vp.x * 0.5 - SettleScreenS.BTN_SIZE.x * 0.5, vp.y - 104.0)
+	battle._dl_place_hint.position = Vector2(vp.x * 0.5 - 230.0, vp.y - 140.0)
 	battle._dl_place_hint.size = Vector2(460, 24)
 	## ★原文案 "【放置】拖我方单位到你半场(左侧)任意位置 → 点「开打」" —— 三处网页/编辑器味:
 	##   ① 「【放置】」是编辑器模式名(玩家不在"模式"里, 他就是在摆龟)
 	##   ② 「(左侧)」是坐标注释 —— 自己那半场眼睛看得见, 而且 _dl_clamp_place 本来就拦着过不了中线
 	##   ③ 「单位」是 unit 直译, 场上就是龟
-	battle._dl_place_hint.text = "拖我方的龟在自己半场摆好站位 → 点「开打」"
+	## v2(2026-10-05): 「拖我方的龟在自己半场摆好站位 → 点「开打」」带箭头 + 引号按钮名 = 说明书口吻。
+	battle._dl_place_hint.text = "拖动布阵，准备好后开打"
 	battle._dl_go_btn.visible = true
 	battle._dl_place_hint.visible = true
 	## ★自动驾驶(`SIM_AUTOPILOT=1`): 停 `DWELL_PLACE` 帧让人看清双方站位,
@@ -1132,16 +1156,17 @@ func _dl_update_hud() -> void:   # 双路 HUD: 当前路 + 破蛋窗口计时 + 
 	##   像两条血条却没有任何标签区分。所以这里只留【路名 + 破蛋窗口计时 + 决胜档位】——
 	##   那三项是文字才说得清的, 血量交给条。
 	var lane = str(GameState.current_lane) if GameState != null else "top"
-	var lane_cn: String = {"top": "上半场", "bottom": "下半场", "final": "终极战场", "done": "结算"}.get(lane, lane)
+	var lane_cn: String = str(battle._LANE_CN.get(lane, "结算" if lane == "done" else lane))   # 唯一出处(2026-10-05 统一: 原来写「上半场/终极战场」)
 	var st = ""
 	if battle._dl_state == "eggwindow":
 		var rem = battle._dl_window_until - battle._t
 		## ★原文案 "破蛋窗口 %.0fs" —— 「窗口」是 time-window 直译。玩家要知道的是
 		##   【还剩多久】, 那就直说"还剩"。(状态名 eggwindow / 本函数注释里的"破蛋窗口"
 		##   是代码侧词汇, 不上屏, 保持不动。)
-		st = ("  ·  破蛋还剩 %.0fs" % maxf(0.0, rem)) if rem < 1.0e17 else "  ·  破蛋(决胜)"
+		st = ("  ·  破蛋还剩 %.0fs" % maxf(0.0, rem)) if rem < 1.0e17 else "  ·  破蛋定胜负"
 	if battle._sd_stacks > 0:   # §SUDDEN 决胜档位: 不显玩家会莫名其妙"怎么突然打得动了/奶不住了"
-		st += "  ·  ⚔决胜 +%d%%增伤 · 治疗-50%%" % int(battle._sd_amp() * 100.0)
-	battle._dl_hud.text = "【%s】%s" % [lane_cn, st]
+		## 2026-10-05: 第三路叫「决胜」之后, 这一档改叫「加时」(两件事不能同名); 去掉 ⚔ 兜底字形。
+		st += "  ·  加时 +%d%%增伤 · 治疗-50%%" % int(battle._sd_amp() * 100.0)
+	battle._dl_hud.text = "%s%s" % [lane_cn, st]
 
 ## 匹配对手快照的首领 id (Matchmaking 写 GameState.dual_ghost). 过滤到 STATS 已知龟, 上限 3.

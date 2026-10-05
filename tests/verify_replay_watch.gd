@@ -113,7 +113,7 @@ func _setup_gs() -> void:
 	_gs.reset_dual_lane()
 	_gs.test_mode = false                  # ★④ 要量真存档: 门禁每个测试一份独立 user://
 	_gs.tutorial_active = false
-	_gs.week_phase = "gauntlet"            # 只录周六
+	_gs.week_phase = "gauntlet"            # 周六(2026-10-05 起积分赛也录; 这里沿用周六)
 	_gs.season_leaders = ["basic", "stone", "bamboo"]
 	_gs.left_team.assign(_gs.season_leaders)
 	_gs.dual_lineup = {
@@ -362,10 +362,9 @@ func _play_and_exit(tag: String, full: bool) -> Dictionary:
 	await _frames(2)
 	var bar = b._hud._replay_bar
 	var exit_btn: Button = null
+	## 2026-10-05 回放体验打磨: 回放条改成铭牌 + 底部操作条, 退出钮按节点名找(不按「第几个子节点」)。
 	if bar != null and is_instance_valid(bar):
-		for c in (bar as Node).get_children():
-			if c is Button:
-				exit_btn = c
+		exit_btn = (bar as Node).find_child(ReplayControls.N_EXIT, true, false) as Button
 	_ok("%s 分母: 回放条上有「退出回放」" % tag, exit_btn != null and exit_btn.text == "退出回放")
 	if exit_btn != null:
 		exit_btn.pressed.emit()            # 真入口: 人按「退出回放」

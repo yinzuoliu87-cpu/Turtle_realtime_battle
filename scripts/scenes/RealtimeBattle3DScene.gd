@@ -7821,7 +7821,7 @@ func _on_dmg_stats_toggle() -> void:
 
 
 
-const _LANE_CN := {"top": "上路", "bottom": "下路", "final": "终极"}
+const _LANE_CN := {"top": "上路", "bottom": "下路", "final": "决胜"}   # ★路名唯一出处(2026-10-05 统一成 上路/下路/决胜)
 
 ## 相机输入(滚轮缩放 / 双指捏合 / 拖动平移)。
 ##

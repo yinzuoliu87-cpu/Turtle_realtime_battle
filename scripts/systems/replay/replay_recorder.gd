@@ -141,15 +141,24 @@ func start() -> void:
 ## 这一局录不录。Q3(用户授权按推荐): 先只录周六闯关赛;
 ## 2026-10-04 周末看回放(docs/plans/20261004-周末看回放.md): **周日决赛场也录** —— 对阵图点已揭晓那一格要看它。
 ##   决赛场的身份是 `finals_match`(对阵图开打时盖章, 结算尾部才清; `on_settle` 在它之前跑)。
+## ★★2026-10-05 用户改 Q3:「积分赛也录」(docs/plans/20261005-回放体验打磨.md · 主会话实玩: 打完一局积分赛,
+##   战绩页没有「回放」、服务端也没收到 —— 原来只录周六/周日)。原话目标:「理想效果是我能在其他设备上看到比赛回放」
+##   ⇒ 自己打的每一局正式对局都录: 积分赛(周一~周五 + 休赛日按积分赛算)、表演赛(淘汰后的积分赛)、周六、周日。
+##   不录: 教学(沙盒、不计成绩)、非双路对局(调试场 / 审阅台等开发入口)、周日没有对阵坐标的那种(不是决赛场)。
 static func should_record() -> bool:
 	if GameState == null or not bool(GameState.dual_active) or bool(GameState.get("tutorial_active")):
 		return false
-	var ph := str(GameState.week_phase)
-	var sk := Phase2Cfg.settle_kind(ph, Phase2Cfg.phase_mode_live(ph))
+	var sk := current_settle_kind()
 	if sk == Phase2Cfg.SETTLE_FINALS:
 		var fm = GameState.get("finals_match")
 		return fm is Dictionary and not (fm as Dictionary).is_empty()
-	return sk == Phase2Cfg.SETTLE_GAUNTLET
+	return sk == Phase2Cfg.SETTLE_GAUNTLET or sk == Phase2Cfg.SETTLE_RANKED
+
+
+## 这一局按哪一种结算(与 `_settle_season` 同一个判据: `settle_kind(week_phase, phase_mode_live)`)。
+static func current_settle_kind() -> String:
+	var ph := str(GameState.week_phase)
+	return Phase2Cfg.settle_kind(ph, Phase2Cfg.phase_mode_live(ph))
 
 
 static func client_version() -> String:
@@ -162,10 +171,47 @@ func is_playing() -> bool:
 
 ## 播放时 sim 推进倍率: 摆位阶段快进(那段只是录制者在想怎么摆, 对局结果与它无关 ——
 ## 步数照样一步不少地跑, 只是一帧多跑几步; 协程/补间都已挂在 sim 步上, 一帧几步不改结果)。
+## 2026-10-05 回放体验打磨(docs/plans/20261005-回放体验打磨.md): 看的人能**暂停 / 2 倍 / 4 倍**。
+##   ★倍速只改「这一帧跑几步」, 不改步长 SIM_DT ⇒ 每一步算的东西与 1 倍逐位相同(校验点照比);
+##   暂停 = 这一帧一步都不跑(累加器不进账, 恢复时不会一口气补跑)。
 func time_mult() -> float:
-	if mode == "play" and str(battle._dl_state) == "place":
-		return 8.0
-	return 1.0
+	if mode != "play":
+		return 1.0
+	if paused:
+		return 0.0
+	if str(battle._dl_state) == "place":
+		return maxf(8.0, speed)
+	return speed
+
+
+## 看的人选的倍速(1 / 2 / 4)与暂停。只在播放时有意义; 录制那一局永远是 1。
+##   倍速记在静态变量里: 「再看一遍」/ 看下一场时沿用上一次选的(与市面上回放器一致), 暂停不沿用。
+const SPEEDS := [1.0, 2.0, 4.0]
+static var _pref_speed := 1.0
+var speed := _pref_speed
+var paused := false
+
+
+## 倍速轮换 1 → 2 → 4 → 1, 返回新倍速。
+func cycle_speed() -> float:
+	var i := SPEEDS.find(speed)
+	speed = float(SPEEDS[(i + 1) % SPEEDS.size()])
+	_pref_speed = speed
+	return speed
+
+
+## 这一场一共多少 sim 步(录制那一局结算时的步号; 读不到 = -1)。进度条与「全场时长」用它。
+func total_steps() -> int:
+	return int((rec.get("end", {}) as Dictionary).get("s", -1))
+
+
+## 每一路开打的步号(进度条上的刻度: 上路 / 下路 / 终极)。
+func fight_steps() -> Array:
+	var out: Array = []
+	for e in rec.get("events", []):
+		if e is Dictionary and str((e as Dictionary).get("k", "")) == "fight":
+			out.append(int((e as Dictionary).get("s", 0)))
+	return out
 
 
 # ─────────────────────────────── 每步 ───────────────────────────────
@@ -476,6 +522,8 @@ static func new_id() -> String:
 static var return_scene := ""
 ## 回放结束那句话里的双方名字 {"l": 录像方, "r": 对手}。空 = 照旧说「胜利 / 失败」(那是看自己的录像)。
 static var play_names: Dictionary = {}
+## 看的人自己的名字(`play()` 进场前取; 门禁直接 begin_play 时为空 ⇒ 铭牌左边留空)。
+static var viewer_name := ""
 const DEFAULT_EXIT_SCENE := "res://scenes/Record.tscn"
 
 
@@ -483,12 +531,48 @@ static func exit_scene() -> String:
 	return return_scene if return_scene != "" else DEFAULT_EXIT_SCENE
 
 
-## 回放结束那一句。看别人的录像时「胜利」是录像方的视角, 对旁观者是错话 ⇒ 有名字就说谁赢了。
+## 回放结束那一句(收尾卡的大标题)。看别人的录像时「胜利」是录像方的视角, 对旁观者是错话 ⇒ 有名字就说谁赢了。
 static func end_caption(won: bool) -> String:
 	var who := str(play_names.get("l" if won else "r", ""))
 	if who != "":
-		return "回放结束 —— %s 赢了" % who
-	return "回放结束 —— " + ("胜利" if won else "失败")
+		return "%s 获胜" % who
+	return "胜利" if won else "失败"
+
+
+## 回放里左右两边各是谁 {"l": 录像方, "r": 对手}(不知道就是 "")。回放条与开打前的阵容牌用它。
+##   · 赛况板传了 l / r(两个不同的名字)⇒ 直接用。
+##   · 对阵图只知道这一场的两个人 `pair`, 不知道谁是录像方 ⇒ 对手 = 录像里那份对手快照的名字, 录像方 = 另一个。
+##   · 什么都没传 = 战绩页看自己的录像 ⇒ 录像方 = 我。
+static func side_names(r: Dictionary, me: String = "") -> Dictionary:
+	var g = (r.get("state", {}) as Dictionary).get("dual_ghost", {})
+	var foe := ""
+	if g is Dictionary and (g as Dictionary).get("profile", null) is Dictionary:
+		foe = str(((g as Dictionary)["profile"] as Dictionary).get("name", ""))
+	var l := str(play_names.get("l", ""))
+	var rr := str(play_names.get("r", ""))
+	if l != "" and rr != "" and l != rr:
+		return {"l": l, "r": rr}
+	var pair = play_names.get("pair", [])
+	if pair is Array and (pair as Array).size() == 2:
+		if foe == str(pair[0]):
+			return {"l": str(pair[1]), "r": foe}
+		if foe == str(pair[1]):
+			return {"l": str(pair[0]), "r": foe}
+		return {"l": "", "r": ""}
+	if play_names.is_empty():
+		return {"l": me, "r": foe}
+	return {"l": "", "r": foe}
+
+
+## 「再看一遍」: 从头再播同一份。见 `end_play` 里那一段。
+static var _again: Dictionary = {}
+
+
+static func play_again(tree: SceneTree, r: Dictionary) -> void:
+	if r.is_empty() or tree == null:
+		return
+	_again = r
+	tree.change_scene_to_file(BATTLE_SCENE)
 
 
 ## 播一份记录。返回 "" = 已进战斗场; 否则是不能播的原因(V6: 版本不同就不进战斗场)。
@@ -502,6 +586,9 @@ static func play(tree: SceneTree, r: Dictionary, back: String = "", names: Dicti
 		return "回放格式不认识"
 	return_scene = back
 	play_names = names.duplicate()
+	## 看的人自己的名字(看自己的录像时铭牌左边写它)。★在 begin_play 之前读:
+	##   回放那一遍读到的 GameState 变量必须 ⊆ STATE_KEYS ∪ PLAY_READS_NOT_RECORDED(roundtrip V3c), 昵称不该进那张表。
+	viewer_name = Uploader.BE.player_display_name()
 	begin_play(r)
 	if tree != null:
 		tree.change_scene_to_file(BATTLE_SCENE)
@@ -531,3 +618,9 @@ static func end_play() -> void:
 	GameState.test_mode = _backup_test_mode
 	_backup = {}
 	_has_backup = false
+	## 「再看一遍」: 旧战斗场离树(这里)先于新战斗场 `_ready` ⇒ 先还原成播之前那一份, 再按原样重新挂上待播。
+	##   ★不能在离场之前就 `begin_play`: 离场这一下会把 `pending_play` 清掉、把 GameState 还原, 新场就成了一局普通对战。
+	if not _again.is_empty():
+		var r := _again
+		_again = {}
+		begin_play(r)
