@@ -76,6 +76,9 @@ def main():
         # ① 排布常量
         want_gd = open(tmp_gd, "rb").read()
         have_gd = open(repo_gd, "rb").read() if os.path.exists(repo_gd) else b""
+        # 本机 git autocrlf=true 签出成 CRLF, CI 签出是 LF —— 只比内容不比行尾
+        want_gd = want_gd.replace(b"\r\n", b"\n")
+        have_gd = have_gd.replace(b"\r\n", b"\n")
         if want_gd != have_gd:
             bad.append("[FAIL] %s 与生成器现在写出的不一致(%d vs %d 字节)" % (
                 os.path.relpath(repo_gd, ROOT), len(have_gd), len(want_gd)))
