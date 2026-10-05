@@ -223,6 +223,14 @@ func _one_clock(packed) -> void:
 		for _i in range(6):
 			await get_tree().process_frame
 		var tag: String = WD_LONG[iso - 1]
+		## ★2026-10-05 第三轮: 赛程条收进了「今天」模式卡后面的弹层(默认藏着) ⇒ 量几何前先**真按一下模式卡**
+		##   (走它自己那颗按钮的 pressed), 量的是玩家点开之后看到的那一条。
+		var mtap = mm.find_child("ModeTap", true, false)
+		_ok("%s ★分母: 模式卡上有那颗按钮" % tag, mtap is BaseButton)
+		if mtap is BaseButton:
+			(mtap as BaseButton).pressed.emit()
+		for _j in range(4):
+			await get_tree().process_frame
 		_ok("%s ★分母: `_now_ts()` 拿到的就是注入的那一刻" % tag,
 			int(mm._now_ts()) == ts, "_now_ts=%d want=%d" % [int(mm._now_ts()), ts])
 
@@ -331,24 +339,14 @@ func _one_clock(packed) -> void:
 			today_tex == str(mm.STRIP_TODAY_TEX), "实测「%s」" % today_tex)
 		_ok("%s ⑦c 亮牌上那两行字落在九宫格边框**里面**" % tag, pad_ok, pad_txt)
 
-		## ⑦d 几何 —— **七天都跑**。`verify_mainmenu_layout ④` 只量【真实今天】那一屏,
-		##   而**周日**条子被 81px 的门撑到 95 高、顶沿与左栏栈底实测只差 **1px**:
-		##   条子的 content_margin 多给 1 就压住入口, 而那一天一周只来一次。
-		var pb: Control = mm.get("page_box")
-		var stack_bot := -1.0e9
-		if pb != null:
-			for c4 in pb.get_children():
-				if c4 is Control and (c4 as Control).visible:
-					stack_bot = maxf(stack_bot, (c4 as Control).get_global_rect().end.y)
+		## ⑦d 几何 —— **七天都跑**(周日条子被 81px 的门撑高, 那一天一周只来一次)。
+		##   ★2026-10-05 第三轮换判据(不是放宽): 条子不再贴底常驻, 而是点开模式卡才弹出来、盖在入口上面 ——
+		##   「不压住左栏入口」那条没有对象了。现在守的是: 点开之后**真看得见**、整条在屏内、仍是一条。
 		var sr2: Rect2 = box.get_global_rect()
-		_ok("%s ⑦d ★分母: 量到了左栏栈底(量不到 ⇒ 下一条是空检查)" % tag,
-			stack_bot > 0.0, "栈底 %.0f" % stack_bot)
-		_ok("%s ⑦d 条子不压住左栏入口(顶沿 ≥ 栈底−2)" % tag,
-			sr2.position.y >= stack_bot - 2.0,
-			"条顶 %.0f vs 栈底 %.0f" % [sr2.position.y, stack_bot])
-		_ok("%s ⑦d 条子没掉出屏幕(底沿 ≤ 720) 且仍是【条】(高 ≤ 96)" % tag,
-			sr2.end.y <= 720.0 and sr2.size.y <= 96.0,
-			"底沿 %.0f 高 %.0f" % [sr2.end.y, sr2.size.y])
+		_ok("%s ⑦d ★点开模式卡之后条子看得见(弹层真打开了)" % tag, (box as Control).is_visible_in_tree())
+		_ok("%s ⑦d 条子整条在屏内(1280×720) 且仍是【条】(高 ≤ 96)" % tag,
+			sr2.position.x >= 0.0 and sr2.position.y >= 0.0 and sr2.end.x <= 1280.0 and sr2.end.y <= 720.0 and sr2.size.y <= 96.0,
+			"%s" % str(sr2))
 
 		## ⑦e 决赛日那扇门 —— 只有周日在场
 		if iso == 7:

@@ -26,6 +26,13 @@ func _ready() -> void:
 	add_child(scene)
 	for _i in range(420):                        # 入场动画要等落位(140 帧不够, 420 才干净)
 		await RenderingServer.frame_post_draw
+	## SHOT_POPUP=1: 真按一下右下角「今天」模式卡(走它自己那颗按钮的 pressed), 拍弹出来的本周赛程。
+	if OS.get_environment("SHOT_POPUP") == "1":
+		var tap = scene.find_child("ModeTap", true, false)
+		if tap is BaseButton:
+			(tap as BaseButton).pressed.emit()
+		for _i in range(30):
+			await RenderingServer.frame_post_draw
 	var pre: String = OS.get_environment("SHOT_OUT")
 	var n: int = int(OS.get_environment("SHOT_N")) if OS.has_environment("SHOT_N") else 1
 	var gap: int = int(OS.get_environment("SHOT_GAP")) if OS.has_environment("SHOT_GAP") else 20
