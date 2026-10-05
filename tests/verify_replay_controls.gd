@@ -396,7 +396,9 @@ func _t_menu_entry() -> void:
 		mm.queue_free()
 		return
 	var r := ent.get_global_rect()
-	_ok("⑤ 入口 ≥ 触控线(高 ≥ 81, 宽 ≥ 150)", r.size.y >= 81.0 and r.size.x >= 150.0, str(r))
+	## ★2026-10-05 第三轮: 左栏从「排行榜 | 战绩」对半一行(宽 191)换成方形图标键(88×88) ⇒ 宽 ≥150 那条没有对象了,
+	##   守的仍是触控线: 短边 ≥ 81(=44pt), 并且是方的(图标在上、字在下)。
+	_ok("⑤ 入口 ≥ 触控线(短边 ≥ 81)", minf(r.size.x, r.size.y) >= 81.0, str(r))
 	var lb_ok := false
 	for l in ent.find_children("*", "Label", true, false):
 		if (l as Label).text.contains("战绩"):

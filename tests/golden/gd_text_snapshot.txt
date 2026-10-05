@@ -652,10 +652,6 @@ scripts/scenes/MainMenuScene.gd|lit|%d 分 %02d 秒
 scripts/scenes/MainMenuScene.gd|lit|%d 天 %d 小时
 scripts/scenes/MainMenuScene.gd|lit|%d 小时 %d 分
 scripts/scenes/MainMenuScene.gd|lit|%d 胜 %d 负
-scripts/scenes/MainMenuScene.gd|lit|%s 休赛 · 按积分赛的规矩打, 算本周场次
-scripts/scenes/MainMenuScene.gd|lit|%s 决赛日 · 闯关赛晋级的人来打决赛
-scripts/scenes/MainMenuScene.gd|lit|%s 积分赛 · 每周最多 %d 场 · 周五收盘
-scripts/scenes/MainMenuScene.gd|lit|%s 闯关赛 · 积分赛打够 %d 胜才能来
 scripts/scenes/MainMenuScene.gd|lit|♥ %d/%d   本周 %d/%d
 scripts/scenes/MainMenuScene.gd|lit|✅ 已晋级决赛日 · 闯关赛到此为止(%s) · 明天周日来打决赛日
 scripts/scenes/MainMenuScene.gd|lit|今日已收盘
@@ -668,29 +664,37 @@ scripts/scenes/MainMenuScene.gd|lit|决赛日 · 去看对阵图
 scripts/scenes/MainMenuScene.gd|lit|决赛日 · 本周没晋级
 scripts/scenes/MainMenuScene.gd|lit|决赛日 · 闯关赛止步 %s
 scripts/scenes/MainMenuScene.gd|lit|决赛日\n看对阵图
-scripts/scenes/MainMenuScene.gd|lit|周
 scripts/scenes/MainMenuScene.gd|lit|周%s %02d:%02d 收盘
+scripts/scenes/MainMenuScene.gd|lit|周%s %s · %s
 scripts/scenes/MainMenuScene.gd|lit|周二开赛 · 本日维护
 scripts/scenes/MainMenuScene.gd|lit|商店
 scripts/scenes/MainMenuScene.gd|lit|图鉴
 scripts/scenes/MainMenuScene.gd|lit|已封盘
+scripts/scenes/MainMenuScene.gd|lit|已封盘 · 收盘前不开新局
 scripts/scenes/MainMenuScene.gd|lit|开始战斗
 scripts/scenes/MainMenuScene.gd|lit|战绩
-scripts/scenes/MainMenuScene.gd|lit|战绩  %s
 scripts/scenes/MainMenuScene.gd|lit|打完第一场才开店
+scripts/scenes/MainMenuScene.gd|lit|按积分赛的规矩打, 算本周场次
 scripts/scenes/MainMenuScene.gd|lit|排行榜
 scripts/scenes/MainMenuScene.gd|lit|收盘前 %d 分钟起不开新局
+scripts/scenes/MainMenuScene.gd|lit|收起
 scripts/scenes/MainMenuScene.gd|lit|明天%s
 scripts/scenes/MainMenuScene.gd|lit|明天决赛日 · 本地 %s 开打
 scripts/scenes/MainMenuScene.gd|lit|本周 %d 场已打满
+scripts/scenes/MainMenuScene.gd|lit|本周赛程
 scripts/scenes/MainMenuScene.gd|lit|本地 %s
 scripts/scenes/MainMenuScene.gd|lit|本地 %s 开打
 scripts/scenes/MainMenuScene.gd|lit|本大轮已出局
+scripts/scenes/MainMenuScene.gd|lit|每周最多 %d 场 · 周五收盘
+scripts/scenes/MainMenuScene.gd|lit|点开本周赛程 · 看对阵图
 scripts/scenes/MainMenuScene.gd|lit|版本维护, 稍后回来
+scripts/scenes/MainMenuScene.gd|lit|积分赛打够 %d 胜才能来
 scripts/scenes/MainMenuScene.gd|lit|第 %d 大轮 · Lv %d
 scripts/scenes/MainMenuScene.gd|lit|维护中
 scripts/scenes/MainMenuScene.gd|lit|背包
 scripts/scenes/MainMenuScene.gd|lit|训龟大师
+scripts/scenes/MainMenuScene.gd|lit|赛程 ▸
+scripts/scenes/MainMenuScene.gd|lit|距%s %s
 scripts/scenes/MainMenuScene.gd|lit|距收盘 %s
 scripts/scenes/MainMenuScene.gd|lit|还没上过场
 scripts/scenes/MainMenuScene.gd|lit|这天按积分赛的规矩打
@@ -698,6 +702,7 @@ scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 再赢 %d 场晋级 / 再输
 scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 已出局%s
 scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 已晋级决赛日%s
 scripts/scenes/MainMenuScene.gd|lit|闯关赛 · 本周没晋级
+scripts/scenes/MainMenuScene.gd|lit|闯关赛晋级的人来打决赛
 scripts/scenes/MainMenuScene.gd|lit|💀 本大轮已出局 · %s
 scripts/scenes/MainMenuScene.gd|lit|💀 本大轮已出局 · 下周一开新的一轮
 scripts/scenes/MainMenuScene.gd|lit|💀 闯关赛已出局(%s) · 下周一开新的一轮

@@ -11,7 +11,7 @@ extends Node
 ##
 ##     钉住周六(配额 24/24, 已晋级, 闯关 1-1) 实测:
 ##       状态行 L2 画的是「闯关赛 1-1 · 再赢 3 场晋级 / 再输 2 场出局」  ← 走 `_now_ts()`
-##       商店那一行画的是「🔒 商店」                                      ← 走真实的周二
+##       商店那一行画的是「🔒 商店」(现在是方键角标 🔒)                    ← 走真实的周二
 ##       而 `_open_shop()` 自己的判据 `ranked_quota_full(_now_ts())` = false
 ##     ⇒ **锁画在屏幕上, 而那扇门是开的**。10 个构造时刻里 5 个两种写法答案相反。
 ##
@@ -82,14 +82,17 @@ func _texts(n: Node, out: Array) -> void:
 		_texts(c, out)
 
 
-## 从 page_box 里读出【商店那一行画出来的字】。"" = 没找到(分母断言用)。
+## 从 page_box 里读出【商店那颗键上画出来的所有字】(拼成一串)。"" = 没找到(分母断言用)。
+## ★2026-10-05 第三轮: 商店从「🔒 商店」一行字变成方形图标键 —— 锁是键右上角的 🔒 角标、
+##   理由是键右边那一行。所以按**整颗键的子树**收字, 不再找"含商店两个字的那一个 Label"。
 func _shop_line(scene: Node) -> String:
-	var all: Array = []
-	if scene.page_box != null:
-		_texts(scene.page_box, all)
-	for s in all:
-		if str(s).find(str(MENU.SHOP_LABEL)) >= 0:
-			return str(s)
+	if scene.page_box == null:
+		return ""
+	for holder in scene.page_box.get_children():
+		var all: Array = []
+		_texts(holder, all)
+		if all.has(str(MENU.SHOP_LABEL)):
+			return " ".join(PackedStringArray(all))
 	return ""
 
 
