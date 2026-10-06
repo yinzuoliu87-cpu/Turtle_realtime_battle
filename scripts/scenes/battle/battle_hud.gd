@@ -1333,7 +1333,10 @@ func _build_reward_chips(gs, cap_fs: int = 13, val_fs: int = 24) -> Control:
 	if not battle._had_season or gs == null:
 		return null
 	var lv: int = int(gs.get("season_level")) if gs.get("season_level") != null else 1
-	var items: Array = [["深海币", "+%d" % battle._last_reward, Color("#ffd93d")]]
+	var items: Array = []
+	## ★出局那一局不发币(见 RealtimeBattle3DScene 结算), 结算屏也不放「深海币 +0」这一格。
+	if not (gs.has_method("is_eliminated") and gs.is_eliminated()):
+		items.append(["深海币", "+%d" % battle._last_reward, Color("#ffd93d")])
 	if not battle._last_was_exhibition:
 		items.append(["剩余生命", "%d / %d" % [int(gs.hearts), int(_P2C_HUD.HEARTS_MAX)], Color("#ff8a8a") if int(gs.hearts) <= 2 else Color("#e8f0f6")])
 	items.append(["赛季胜场", "%d" % int(gs.season_wins), Color("#e8f0f6")])

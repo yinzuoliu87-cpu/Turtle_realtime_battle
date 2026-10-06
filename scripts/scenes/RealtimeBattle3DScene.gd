@@ -7682,6 +7682,10 @@ func _settle_season(won: bool) -> void:
 	_food_syn.reset_match()      # 食物成长: 以【场】重置(用户 2026-08-04) —— 跨路保留, 换场清零
 	_potion_syn.reset_match()    # 药水战利品: 同上
 	_relic_syn.reset_match()     # 遗物远古之力: 同上
+	## ★2026-10-06 用户「可以不发」: 被打出局的那一局不发深海币(含战斗内铸币)。
+	##   出局后商店锁住、深海币周一清零 ⇒ 这笔钱一枚都花不出去, 发了只是假账(60 人实操台账)。
+	if gs.is_eliminated():
+		_last_reward = 0
 	gs.meta_deepsea_coins += _last_reward
 	# #7 战绩同步: 实时战斗原来不写战绩 → RecordScene 永远空。这里补记本场(总场/胜计数 + match_history 一条)。
 	gs.battles_total += 1
