@@ -109,7 +109,7 @@ const BASE: Dictionary = {
 	##     与本文件第 268 行记的"28 张龟卡头像全被报成压边带 3px"是同一类)。
 	##     以前基线 1 容忍的就是龟币那一个; 现在多了深海币芯片(用户要求两种货币并排显示),
 	##     所以是 2。★要真正解决得让判据量【图标 vs 框贴图的实际内容区】而不是控件矩形 —— 未做。
-	"MainMenu": {"web": 0, "round": 0, "frame": 1, "tap": 0},   # frame 1 = 训龟大师铁箍木板(横向端花 37px 被当成竖向边带的量尺假象); 2026-10-05 玩家卡/模式卡两处真压边已修
+	"MainMenu": {"web": 0, "round": 0, "frame": 0, "tap": 0},   # frame 1→0(2026-10-06): 九宫格边越过切口改量切口条内描边后, 训龟大师铁箍木板那条量尺假象(横向端花 37px 当竖向边带)消失; 方键 4 字 4 图标实测 0
 	"Inventory": {"web": 10, "round": 19, "frame": 0, "tap": 11},
 	"Codex": {"web": 0, "round": 0, "frame": 0, "tap": 0},
 	## ★★2026-09-27 61 → 32: 稀有度小签(S/A/B/C/SS/SSS)改**直角**, 一个函数掉 29 个
@@ -517,6 +517,53 @@ func _wired_from_outside(c: Control) -> bool:
 	return false
 
 
+## 九宫格「切口条」里的边: 沿贴图中线, 在四条切口条(左/右/上/下)里各找**最暗**的那道线
+##   (像素框的内描边; 同样暗时取最靠里的), 边 = 从外沿到那道线(含)。返回 (横向边, 竖向边) 各取两侧较大者。
+## ★只给 `_band_of` 量越过切口的那种框兜底用(见调用点), 结果天然 ≤ 切口。
+func _nine_outline_band(np: NinePatchRect) -> Vector2:
+	var img := np.texture.get_image()
+	if img == null:
+		return Vector2.ZERO
+	var w := img.get_width()
+	var h := img.get_height()
+	var cx := w / 2
+	var cy := h / 2
+	var res := Vector2.ZERO
+	## [起点(切口线), 终点(外沿), 是否横向]
+	var sides := [
+		[mini(np.patch_margin_left, cx) - 1, 0, true],
+		[w - mini(np.patch_margin_right, cx), w - 1, true],
+		[mini(np.patch_margin_top, cy) - 1, 0, false],
+		[h - mini(np.patch_margin_bottom, cy), h - 1, false],
+	]
+	for s in sides:
+		var a: int = int(s[0])
+		var b: int = int(s[1])
+		var horiz: bool = bool(s[2])
+		var step: int = -1 if b < a else 1
+		var best_l := 9.0
+		var best_i := -1
+		var i := a
+		while true:
+			var px: Color = img.get_pixel(i, cy) if horiz else img.get_pixel(cx, i)
+			if px.a >= 0.04:
+				var lum: float = 0.299 * px.r + 0.587 * px.g + 0.114 * px.b
+				if lum < best_l - 0.001:
+					best_l = lum
+					best_i = i
+			if i == b:
+				break
+			i += step
+		if best_i < 0:
+			continue
+		var band: float = float(best_i + 1) if step < 0 else float((w if horiz else h) - best_i)
+		if horiz:
+			res.x = maxf(res.x, band)
+		else:
+			res.y = maxf(res.y, band)
+	return res
+
+
 ## 【这个框管得着这段字吗】—— 「压边带」第 11 条判据的**配对**规则。
 ##
 ## ★★由来(2026-09-28, 探针 `tests/_probe_settings_frame.gd` 实测): 原来的配对只有一句
@@ -632,7 +679,24 @@ func _audit(root: Node) -> Dictionary:
 				framed.append([c.get_global_rect(), _band_of(_ft) * _sx, 0.0, n])
 			if n is NinePatchRect and (n as NinePatchRect).texture != null:
 				var np := n as NinePatchRect
-				framed.append([c.get_global_rect(), _band_of(np.texture), _band_of(np.texture), n])
+				## ★★2026-10-06 九宫格的边**只可能**画在切口(patch margin)里 —— 切口以内是被拉伸/平铺的芯子。
+				##   `_band_of` 从贴图正中往外扫, 遇到的第一道色变若已经**越过切口**, 那就是芯子里的花纹
+				##   (主菜单方键 `sqbtn.png` 是三块木板拼的, 扫到第 49 行的板缝), 不是边。
+				##   旧口径下这种框在 88px 方键上「内框 ≤0 ⇒ 跳过」= 一直没人量; 方键改 100px 后内框剩 2px
+				##   ⇒ 4 个字 + 4 个图标全报 +31~34(实拍字和图标都稳稳在框里)。
+				##   ⇒ 只在「量到的边越过切口」那一轴改量**切口条里最暗的那道描边**(像素框的内描边), 其余照旧。
+				var _b9: float = _band_of(np.texture)
+				var _bx9: float = _b9
+				var _by9: float = _b9
+				var _mx9: float = maxf(float(np.patch_margin_left), float(np.patch_margin_right))
+				var _my9: float = maxf(float(np.patch_margin_top), float(np.patch_margin_bottom))
+				if (_mx9 > 0.0 and _b9 > _mx9) or (_my9 > 0.0 and _b9 > _my9):
+					var _ob: Vector2 = _nine_outline_band(np)
+					if _mx9 > 0.0 and _b9 > _mx9:
+						_bx9 = _ob.x
+					if _my9 > 0.0 and _b9 > _my9:
+						_by9 = _ob.y
+				framed.append([c.get_global_rect(), _bx9, _by9, n])
 				var mv: float = np.patch_margin_top + np.patch_margin_bottom
 				var mh: float = np.patch_margin_left + np.patch_margin_right
 				if np.size.y > 0.0 and (np.size.y <= mv or np.size.x <= mh):

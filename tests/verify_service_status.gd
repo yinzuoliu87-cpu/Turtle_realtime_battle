@@ -184,7 +184,7 @@ func _t_real_menu() -> void:
 		'[{"id":1,"maintenance":true,"notice":"%s"}]' % NOTICE)
 	_chk("④ ★分母: 量之前状态确实还是维护态(前提没被轮询冲掉)",
 		SB.service_state() == SB.ST_MAINTENANCE, SB.service_state())
-	m1.rebuild_week_strip()
+	m1.rebuild_week_page()
 	await get_tree().process_frame
 	var n_lab: int = _n_labels(m1)
 	_chk("④ ★分母: 主菜单真的建出了 Label(N=0 的话下面是空检查)", n_lab > 0, "%d 个" % n_lab)

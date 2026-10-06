@@ -114,8 +114,27 @@ func _find_blocker(root: Node, btn: Control) -> String:
 			continue                                  # 只是蹭到边不算; 盖掉四分之一以上才算遮住
 		if not _draws_above(c, btn):
 			continue
+		## ★2026-10-06: 相邻小键的**触摸外扩区**互相搭边不算「被面板盖住」。
+		##   主菜单右上 ?/⚙: 看得见的键 50px、间距 8px, 点击区按触摸线 81px 居中外扩 ⇒ 两块点击区
+		##   按设计重叠 23px(28% > 25%)。那不是一块面板, 是另一颗键自己的点击区。
+		##   认法: 遮挡者 = 一颗键的点击区(它自己是 Button, 或它里面有一颗铺满它的 Button)
+		##   且与被遮者同一量级(面积 ≤ 2 倍) —— 满屏遮罩/弹层(哪怕铺了一颗关闭用的 Button)照样红。
+		##   「看得见的键不许重叠」由 verify_mainmenu_layout ② 守。
+		if _is_tap_holder(c) and c.size.x * c.size.y <= barea * 2.0:
+			continue
 		return "%s%s" % [c.name, ("/" + str((c as Button).text).left(6)) if c is Button else ""]
 	return ""
+
+## c 是不是「一颗键的点击区」: 自己是 BaseButton, 或者某个后代 BaseButton 铺满了它(±1px)。
+func _is_tap_holder(c: Control) -> bool:
+	if c is BaseButton:
+		return true
+	var cr: Rect2 = c.get_global_rect()
+	for b in c.find_children("*", "BaseButton", true, false):
+		var r: Rect2 = (b as Control).get_global_rect()
+		if absf(r.position.x - cr.position.x) <= 1.0 and absf(r.position.y - cr.position.y) <= 1.0 				and absf(r.size.x - cr.size.x) <= 1.0 and absf(r.size.y - cr.size.y) <= 1.0:
+			return true
+	return false
 
 ## a 是否画在 b 上面: 先比 z_index, 同 z 再比【共同父节点下的子索引】(Godot 后加的画在上面).
 func _draws_above(a: Control, b: Control) -> bool:

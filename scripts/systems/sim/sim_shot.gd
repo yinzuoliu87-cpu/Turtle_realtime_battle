@@ -16,6 +16,9 @@ static func enabled() -> bool:
 
 ## 唯一入口: `GameState._ready()` 一行接入(autoload 常驻, 换场景不丢)。
 static func attach(host: Node) -> Node:
+	## 模拟玩家整条流程的驱动(`SIM_DRIVER=1` 才建; 见 sim_driver.gd 头注)。借这一处接入 ——
+	##   它也要挂在 autoload 下、跨场景常驻, 与自拍同一个宿主; 不带开关时它自己第一行就返回。
+	load("res://scripts/systems/sim/sim_driver.gd").attach(host)
 	if not enabled():
 		return null
 	var n := SimShot.new()

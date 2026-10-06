@@ -67,10 +67,16 @@ func _menu_probe() -> Array:
 		await get_tree().process_frame
 	var txt: Array = []
 	_collect_text(menu, txt)
+	## 2026-10-06: 赛程从七格横条(「闯关赛 今」那种字)换成弹层里的四张阶段卡 ——
+	##   「今」不再是字, 是今天那张卡外面那圈金边(卡下的 `TodayFrame`)。
+	##   ⇒ 数**带金边的卡**, 返回它们的标题(`CardTitle`), 判据照旧「恰好一张 + 是哪一阶段」。
 	var todays: Array = []
-	for t in txt:
-		if str(t).ends_with(" 今"):
-			todays.append(str(t))
+	var cards: Node = menu.find_child(str(MM.WEEK_CARDS_NAME), true, false)
+	if cards != null:
+		for card in cards.find_children(str(MM.WEEK_CARD_PREFIX) + "*", "", true, false):
+			if card.get_node_or_null("TodayFrame") != null:
+				var tt: Node = card.find_child("CardTitle", true, false)
+				todays.append(str((tt as Label).text) if tt is Label else str(card.name))
 	var badge: Node = menu.find_child(MM.TRAVEL_BADGE_NAME, true, false)
 	var btxt: String = str((badge as Label).text) if badge is Label else ""
 	var total: int = txt.size()

@@ -26,8 +26,8 @@ func _ready() -> void:
 	add_child(mm)
 	for _i in range(150):                 # 等 Logo 入场 tween 落定
 		await get_tree().process_frame
-	var logo = mm.find_child("Logo", true, false)
-	_ok("★分母: 找得到 Logo 节点", logo is Control)
+	var logo = mm.find_child("PlayerCard", true, false)   # 2026-10-06 Logo 已去掉, 左上占位的是玩家卡
+	_ok("★分母: 找得到玩家卡节点", logo is Control)
 	if not (logo is Control):
 		_done(mm)
 		return
@@ -45,8 +45,8 @@ func _ready() -> void:
 		return
 	var lr: Rect2 = (logo as Control).get_global_rect()
 	var tr: Rect2 = toast.get_global_rect()
-	_ok("★分母: Logo 有真实尺寸(没在屏外)", lr.size.x > 100 and lr.position.x >= 0, str(lr))
-	_ok("★★提示条与 Logo 不相交(原 bug: ✅ 骑在 Logo 右下角)", not lr.intersects(tr), "logo=%s toast=%s" % [str(lr), str(tr)])
+	_ok("★分母: 玩家卡有真实尺寸(没在屏外)", lr.size.x > 100 and lr.position.x >= 0, str(lr))
+	_ok("★★提示条与左上玩家卡不相交(原 bug: ✅ 骑在左上 Logo 右下角)", not lr.intersects(tr), "logo=%s toast=%s" % [str(lr), str(tr)])
 	_done(mm)
 
 

@@ -1215,19 +1215,22 @@ func _sunday_ts() -> int:
 	return t
 
 
-## 真开一次主菜单, 问「周日那一格」建出来的是按钮还是标签。
+## 真开一次主菜单, 问「周日那张赛程卡」上建出来的有没有对阵图那扇门。
+## ★2026-10-06 赛程从七格横条换成整页四张卡: 门挂在决赛日那张卡上(`week_card_info` → `_week_card`)。
+##   建**真卡**再找按钮, 不只问数据 —— 要证明产品真的按判定画出了门。
 func _menu_block_kind(sun: int) -> String:
 	var menu = MENU.new()
 	add_child(menu)
 	await get_tree().process_frame
-	var blk = menu._week_close_block(sun)
-	var kind := "button" if (blk is Button) else "labels"
+	var card: Node = menu._week_card(menu.week_card_info(P2C.PHASE_FINALS, sun))
+	var kind := "button" if (card.find_child("BracketDoor", true, false) is Button) else "labels"
+	card.free()
 	menu.queue_free()
 	return kind
 
 
 ## 门按钮 `pressed` 连的那个方法叫什么。★直接建那个控件(`_finals_entry`),
-##   不经过 `_week_close_block` —— 后者要等决赛日玩法上线才会走到这一支,
+##   不经过赛程卡 —— 卡上要等决赛日玩法上线才会走到这一支,
 ##   而"接线对不对"跟"今天星期几"无关。
 ## ★不 emit: emit 会真的切场景, 把门禁自己的场景树拆掉。
 func _door_method() -> String:

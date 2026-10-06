@@ -96,6 +96,19 @@ func _shop_line(scene: Node) -> String:
 	return ""
 
 
+## 商店那颗键上**画没画锁**。2026-10-06: 锁从系统表情「🔒」Label 换成像素锁 TextureRect
+##   (名字固定 `MainMenuScene.LOCK_ICON_NAME`) ⇒ 按名字在商店那颗键的子树里找, 不再找字。
+func _shop_locked(scene: Node) -> bool:
+	if scene.page_box == null:
+		return false
+	for holder in scene.page_box.get_children():
+		var all: Array = []
+		_texts(holder, all)
+		if all.has(str(MENU.SHOP_LABEL)):
+			return holder.find_child(str(MENU.LOCK_ICON_NAME), true, false) != null
+	return false
+
+
 ## 只留【配额】这一条上锁理由: 满命(非淘汰) + 已打过第一场。
 func _isolate_quota_reason() -> void:
 	_gs.hearts = 8
@@ -229,7 +242,7 @@ func _ready() -> void:
 		if not built:
 			scene.queue_free()
 			continue
-		var strip: Node = scene.content_root.find_child("WeekStrip", true, false)
+		var strip: Node = scene.content_root.find_child(str(MENU.WEEK_CARDS_NAME), true, false)   # 赛程页四张卡(2026-10-06 从七格横条换成整页)
 		var shop_txt: String = _shop_line(scene)
 		## 「今天」读数: 吃配额的日子在开始战斗上方的计数条; 周六/周日在模式卡里(2026-10-05 第四轮)。
 		var two: Node = scene.content_root.find_child(str(MENU.TODAY_COUNTER_NAME), true, false)
@@ -251,9 +264,9 @@ func _ready() -> void:
 		# ── ② 屏幕说的「今天」 vs 商店锁按的「今天」 ──
 		_ok("② [%s] 状态行 L2 说的就是钉住那一天" % tag,
 			l2.find(want_word) >= 0, "要有「%s」· 实际「%s」" % [want_word, l2])
-		var painted_lock: bool = shop_txt.find("🔒") >= 0
+		var painted_lock: bool = _shop_locked(scene)
 		var entry_says: bool = _gs.ranked_quota_full(pin)
-		_ok("② [%s] ★★画出来的 🔒 = _open_shop() 真正的判据(一屏不许两条钟)" % tag,
+		_ok("② [%s] ★★画出来的锁 = _open_shop() 真正的判据(一屏不许两条钟)" % tag,
 			painted_lock == entry_says,
 			"画出来「%s」(锁=%s) · ranked_quota_full(钉住那刻)=%s" % [
 				shop_txt, str(painted_lock), str(entry_says)])
@@ -312,7 +325,7 @@ func _ready() -> void:
 		for e in edges:
 			var tag2: String = str(e[0])
 			var t: int = int(e[1])
-			var painted: bool = _repaint_entries(scene_b, t).find("🔒") >= 0
+			var painted: bool = _repaint_entries(scene_b, t) != "" and _shop_locked(scene_b)
 			var says: bool = _gs.ranked_quota_full(t)
 			asked += 1
 			answers.append(says)

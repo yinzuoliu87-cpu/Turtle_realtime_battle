@@ -693,27 +693,29 @@ func _t_mainmenu_door() -> void:
 	var sat := mon + 5 * 86400 + 12 * 3600
 	var wed := mon + 2 * 86400 + 12 * 3600
 	_ok("⑥ 分母: 那一刻是周六闯关赛", P2C.phase_at_utc(sat) == P2C.PHASE_GAUNTLET)
+	## ★2026-10-06 赛程从七格横条换成整页四张卡: 那扇门挂在**闯关赛那张卡**上。
+	##   建真卡(`_week_card(week_card_info(...))`)再找按钮 —— 量的是画出来的东西, 不只问数据。
 	var close_sat := P2C.gauntlet_close_ts(mon) + 600
-	var blk2 = mm._week_close_block(close_sat)
-	var d2: Button = blk2.find_child("GauntletBoardDoor", true, false) as Button if blk2 is Node else null
-	var t2 := _labels_text(blk2) if blk2 is Node else ""
-	_ok("⑥ 周六收盘后也还是门(正是看结果的时候), 原来那两行一字不少",
-		d2 != null and t2.find("今日已截止") >= 0 and t2.find("明天决赛日") >= 0 and t2.find("全场赛况") >= 0, t2)
-	if blk2 is Node:
-		(blk2 as Node).free()
-	var nd = mm._week_close_block(wed)
-	_ok("⑥ 平日(周三)不是门", nd is Node and (nd as Node).find_child("GauntletBoardDoor", true, false) == null)
-	if nd is Node:
-		(nd as Node).free()
-	var blk = mm._week_close_block(sat)
-	var door: Button = blk.find_child("GauntletBoardDoor", true, false) as Button if blk is Node else null
-	_ok("⑥ ★周六: 那一块是门(有按钮)", door != null, str(blk))
+	var blk2: Node = mm._week_card(mm.week_card_info(P2C.PHASE_GAUNTLET, close_sat))
+	var d2: Button = blk2.find_child("GauntletBoardDoor", true, false) as Button
+	var t2 := _labels_text(blk2)
+	var fin2: Dictionary = mm.week_card_info(P2C.PHASE_FINALS, close_sat)
+	_ok("⑥ 周六收盘后也还是门(正是看结果的时候), 卡上写「今日已截止」、决赛日那张写明天的开始时刻",
+		d2 != null and t2.find("今日已截止") >= 0 and t2.find("全场赛况") >= 0 and str(fin2["time"]).ends_with("开始"),
+		"%s · 决赛日那张「%s」" % [t2, str(fin2["time"])])
+	blk2.free()
+	var nd: Node = mm._week_card(mm.week_card_info(P2C.PHASE_GAUNTLET, wed))
+	_ok("⑥ 平日(周三)不是门", nd.find_child("GauntletBoardDoor", true, false) == null)
+	nd.free()
+	var blk: Node = mm._week_card(mm.week_card_info(P2C.PHASE_GAUNTLET, sat))
+	var door: Button = blk.find_child("GauntletBoardDoor", true, false) as Button
+	_ok("⑥ ★周六: 闯关赛那张卡上有门(按钮)", door != null, str(blk))
 	if door == null:
 		return
 	var tx := _labels_text(blk)
-	_ok("⑥ 门上仍是收盘倒计时 + 收盘时刻, 再加一行「全场赛况」",
-		tx.find("距截止") >= 0 and tx.find("本地") >= 0 and tx.find("全场赛况") >= 0, tx)
-	_ok("⑥ 牌子高度 = 周日那扇门(触控下限 81)", (blk as Control).custom_minimum_size.y >= 81.0)
+	_ok("⑥ 卡上仍是截止倒计时 + 本地截止时刻, 门上写「全场赛况」",
+		tx.find("距截止") >= 0 and tx.find("截止") >= 0 and str(door.text) == "全场赛况", tx)
+	_ok("⑥ 门高度 = 周日那扇门(触控下限 81)", door.custom_minimum_size.y >= 81.0)
 	var conns: Array = []
 	for c in door.pressed.get_connections():
 		conns.append(str((c["callable"] as Callable).get_method()))

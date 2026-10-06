@@ -13,7 +13,7 @@ const SHOP_LABEL := "商店"
 
 ## A5: 配额上限从常量取, 不写死 —— 写死就是把参数抄两份。
 const _P2C := preload("res://scripts/gamedata/phase2_config.gd")
-## D-1: 服务状态三态(没配 / 正常 / 维护中 / 连不上)。维护态要盖掉赛程显示, 见 `_week_close_block`。
+## D-1: 服务状态三态(没配 / 正常 / 维护中 / 连不上)。维护态要盖掉赛程页的倒计时, 见 `week_card_info`。
 const _SB := preload("res://scripts/net/supabase.gd")
 const _BE := preload("res://scripts/net/backend.gd")
 const _RU := preload("res://scripts/systems/replay/replay_uploader.gd")
@@ -64,6 +64,9 @@ const CARD_H := 130.0                       # = card.png 高, 竖向 1:1(木面 
 const CARD_PAD_R := 20.0                    # 文字栏右边到卡右沿(右端铜钉 + 描边余量)
 const CARD_TAG_GAP := 8.0                   # 昵称与 #ID 之间
 const CARD_NAME := "PlayerCard"
+const GOAL_BOX_NAME := "GoalBox"           # 玩家卡右边的晋级进度块(照荒野乱斗奖杯块)
+const GOAL_W := 220.0
+const GOAL_GAP := 8.0
 const LV_BADGE_NAME := "LevelBadge"         # 大等级徽章(menu/hud/lvbadge.png, 黄铜盾)
 const LV_TEXT_NAME := "LevelNum"            # 徽章上的等级数字
 const LV_BADGE_SIZE := Vector2(68.0, 76.0)  # lvbadge.png 原尺寸 1:1
@@ -96,15 +99,16 @@ const SOLID_OUTLINE := 6
 ## ── 左侧: 一列方形图标键 ──
 ## ★88 不是 81: 触摸线 81(=44pt), 图标 44 + 字 20 + 上下留白要装进去; 4 × 88 + 3 × 8 = 376 ⇒ 144..520,
 ##   上面是玩家卡(底 136), 下面空着 —— 左下角正是擂台阴影最深处, 不压任何东西。
-const SQ := 88.0
+const SQ := 100.0                           # 原 88: 字压在方框底边木条上、「排行榜」比内框宽(2026-10-05 实拍)
 const SQ_GAP := 8.0
 const SQ_X := 16.0
 const SQ_Y0 := 144.0
 const SQ_ICON := 44.0
-const SQ_FONT := 19
+const SQ_FONT := 17
 const SQ_NAME_PREFIX := "Sq_"               # 每颗方键的节点名 = 前缀 + 入口名(门禁按名字找, 不按下标)
 const BADGE_NAME := "Badge"                 # 红点槽(默认藏着, 有事时由入口自己点亮)
-const LOCK_REASON_NAME := "LockReason"      # 商店锁的短理由(方键右边常驻一行)
+const LOCK_REASON_NAME := "LockReason"      # 商店锁的短理由(贴在方键底边的小签)
+const LOCK_ICON_NAME := "LockIcon"          # 像素锁(menu/hud/lock.png); 替换原系统表情 🔒
 
 ## ── 右下: 开始战斗 + 模式卡 + 训龟大师 ──
 ## ★主 CTA 440×120: 木框保留(R2), 框里那块面换成**全屏唯一的饱和亮黄**(menu/hud/cta-face.png)。
@@ -132,26 +136,17 @@ const RIGHT_EDGE := float(W - WALL)          # 右栏共用右沿: 货币/?⚙/�
 
 ## ── 右上: 货币一行 + ? / ⚙ 小图标键 ──
 const CHIP_W := 160.0                                  # 货币牌宽(高 56, 外框仍按 85 排位)
+const CURRENCY_BAR_NAME := "CurrencyBar"   # 右上货币条(两种货币同一条, 照荒野乱斗)
+const CUR_PAD := 16.0                       # 每段两端留白(含斜切)
+const CUR_SEP := 4.0                        # 两段之间的斜缝
+const CUR_ICON := 34.0                      # 货币图标
+const CUR_FONT := 24                        # 货币数字
+const CUR_GAP := 8.0                        # 货币条与 ? 键之间
 const ICON_TAP := 81.0                                 # ? / ⚙ 的点击区(触摸线)
-const ICON_VIS := 54.0                                 # ? / ⚙ 看得见的那块方框(原来 82, 用户「太大」)
+const ICON_VIS := 50.0                                 # ? / ⚙ 看得见的暗槽(82→54→50; 2026-10-05 换像素小图标)
 
-## ── 本周赛程: 收进模式卡后面的弹层 ──
-## ★赛程条组件原样复用(七格 + 收盘块 + 周六/周日的门), 只是从贴底常驻挪进弹层。
+## ── 本周赛程: 点模式卡打开的整页(结构照荒野乱斗「CHOOSE EVENT」, 见 `_week_popup`) ──
 const WEEK_POPUP_NAME := "WeekPopup"
-const POP_CY := 360.0                       # 条子竖向中心(条高随内容 81..95, resized 时重算顶沿)
-const STRIP_H := 68.0
-const STRIP_W := 884.0
-## ★★★今天那一格的上下留白(九宫格亮牌的内边距)。这个数字是**量出来的**:
-##   两行字实测共 **45px** ⇒ 格高 = 9 + 45 + 9 = **63**, 字块居中后距边带内沿还剩 **2px**
-##   ⇒ 「文字压边带」那条棘轮(主菜单基线 2, 只降不升)不会涨。改小了字就骑在铜边上。
-const STRIP_TODAY_PAD := 9.0
-## 赛程条的皮与字(2026-10-05 UI 重做)。★七格**同一套**字色 —— 今天只靠铜边框 + 「今」字区分。
-const STRIP_TEX := "strip-plank.png"
-const STRIP_TODAY_TEX := "brass-frame.png"
-const STRIP_DAY_FONT := 19
-const STRIP_PHASE_FONT := 17
-const STRIP_DAY_COL := Color("#fff0c8")
-const STRIP_PHASE_COL := Color("#f2d9a6")
 
 ## 字号层级
 const FONT_HERO := 44
@@ -197,7 +192,7 @@ func _ready() -> void:
 	##   memory `fb-second-clock-drops-events`。
 	## ★两个 override 都是 0 时行为**逐字节不变**(玩家路径一字未动)。
 	var paint_ts: int = _now_ts()
-	_title()
+	## 2026-10-06 用户「顶上那个斗龟场动画可以去掉」⇒ 主菜单不再放标题图(_title() 已删; 登录墙有自己的标题)
 	_right_column(paint_ts)
 	## ★★D-3: 建服务端身份。**必须在登录墙之前** —— v0.19.440 上墙之后这一句原本在
 	##   下面第 118 行, 而墙会在这之前 `return`, 于是**全新安装的玩家永远拿不到 token**:
@@ -327,53 +322,6 @@ func _bg() -> void:
 	ov.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(ov)
 	# (金色飘落粒子已移除 — 用户要求去掉; PoC 虽有 add.particles 但实机极淡, Godot 渲染显突兀)
-
-
-## Logo: 顶部居中、缩到一半(理由见文件头「为什么 Logo 挪到顶部居中」)。
-const LOGO_SCALE := 0.5
-const LOGO_TOP := 4.0                        # 缩放后看得见的那块的顶沿
-
-
-func _title() -> void:
-	# 标题图 menu-title.png(360×203)。入场: 从屏外上方落下 + 放大 + 淡入(原 PoC 那一套, 只换落点)。
-	var anim_path := "res://assets/sprites/menu/menu-title-anim.png"
-	var static_path := "res://assets/sprites/menu/menu-title.png"
-	if ResourceLoader.exists(anim_path) or ResourceLoader.exists(static_path):
-		var t := TextureRect.new()
-		t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		t.size = Vector2(360, 203)
-		t.pivot_offset = Vector2(180, 101.5)            # 绕中心缩放
-		# PoC .menu-title-anim (index.html:97-105): menu-title-anim.png 5帧 421×237, steps(5) 1s 循环
-		if ResourceLoader.exists(anim_path):
-			var sheet: Texture2D = load(anim_path)
-			var n := 5
-			var fw: float = float(sheet.get_width()) / float(n)   # 2105/5 = 421
-			var fh: float = float(sheet.get_height())             # 237
-			var at := AtlasTexture.new()
-			at.atlas = sheet
-			at.region = Rect2(0.0, 0.0, fw, fh)
-			t.texture = at
-			content_root.add_child(t)
-			var fanim := t.create_tween().set_loops()   # 帧循环 5fps (1s/5帧), int(f) 离散跳帧 ≈ steps(5)
-			fanim.tween_method(func(f: float): at.region = Rect2(float(int(f) % n) * fw, 0.0, fw, fh), 0.0, float(n), float(n) * 0.2).set_trans(Tween.TRANS_LINEAR)
-		else:
-			t.texture = load(static_path)
-			content_root.add_child(t)
-		t.name = "Logo"                                 # 门禁 verify_menu_toast 量提示条不压它
-		## 绕中心缩放 ⇒ 看得见的顶沿 = position.y + 101.5 × (1 − scale)
-		var end_top_y := LOGO_TOP - 101.5 * (1.0 - LOGO_SCALE)
-		var start_top_y := end_top_y - 180.0            # 起点在屏外上方
-		t.position = Vector2(W / 2.0 - 180.0, start_top_y)
-		t.scale = Vector2(LOGO_SCALE * 0.85, LOGO_SCALE * 0.85); t.modulate.a = 0.0
-		var tw := create_tween()
-		tw.tween_interval(0.25)                          # PoC delay 250ms
-		tw.tween_property(t, "position:y", end_top_y, UIPalette.T_SLOW).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tw.parallel().tween_property(t, "scale", Vector2(LOGO_SCALE, LOGO_SCALE), UIPalette.T_SLOW).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tw.parallel().tween_property(t, "modulate:a", 1.0, UIPalette.T_SLOW)
-		return
-	else:
-		var l := Label.new(); l.text = "斗龟场"; l.add_theme_font_size_override("font_size", 40)
-		l.add_theme_color_override("font_color", Color("#ffd93d")); l.position = Vector2(W / 2.0 - 60.0, 20); content_root.add_child(l)
 
 
 ## 九宫格贴图块(像素件一律最近邻, 不许插值糊掉)。margins = 左/上/右/下(贴图像素)。
@@ -567,7 +515,7 @@ func _square_entry(label: String, cb: Callable, icon_path: String, locked: bool,
 		it.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		it.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		it.size = Vector2(SQ_ICON, SQ_ICON)
-		it.position = Vector2((SQ - SQ_ICON) / 2.0, 9.0)
+		it.position = Vector2((SQ - SQ_ICON) / 2.0, 8.0 if locked else 14.0)   # 锁着: 底边要挂小签, 图标/字整体上提
 		it.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		if locked:
 			it.modulate = Color(0.55, 0.55, 0.58)
@@ -576,8 +524,8 @@ func _square_entry(label: String, cb: Callable, icon_path: String, locked: bool,
 	lb.add_theme_color_override("font_outline_color", Color("#140a03"))
 	lb.add_theme_constant_override("outline_size", 6)
 	lb.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	lb.position = Vector2(0.0, 55.0)
-	lb.size = Vector2(SQ, 26.0)
+	lb.position = Vector2(0.0, 52.0 if locked else 61.0)   # 平时字框 61..85(底边木条 ~86 起之上); 锁着上提到 52..76, 给底边小签让位
+	lb.size = Vector2(SQ, 24.0)
 	holder.add_child(lb)
 	## 红点槽(默认藏着)。★直角纯色块: 圆角/描边盒是「网页味」(verify_ui_consistency 的棘轮)。
 	var badge := Label.new()
@@ -597,19 +545,16 @@ func _square_entry(label: String, cb: Callable, icon_path: String, locked: bool,
 	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(badge)
 	if locked:
-		## 🔒 角标挂在 holder 直属、骑在方块右上角(不压图标) —— verify_season_elim 按「直属 Label 含 🔒」数它。
-		var lk := Label.new()
-		lk.text = "🔒"
-		lk.add_theme_font_size_override("font_size", 20)
-		lk.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		lk.position = Vector2(SQ - 30.0, 2.0)
-		lk.size = Vector2(28.0, 28.0)
-		lk.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		holder.add_child(lk)
+		## ★2026-10-05 商业游戏标准锁态: 整块压暗 + 像素锁盖在图标正中 + 解锁条件贴在按钮自己底边的小签上。
+		##   原来是系统表情 🔒 骑在右上角(红点的位置, 像"有新消息")+ 理由飘在方键外面的看台上。
+		holder.add_child(_pixel_lock(Vector2((SQ - 24.0) / 2.0, 8.0 + (SQ_ICON - 30.0) / 2.0), 2.0))
 		if reason != "":
-			## 理由没有底板, 压在看台最暗那一截上 ⇒ 实心描边 + 17 号字。
-			var rs := _place_outlined(reason, 17, Color("#ffe6b8"),
-				Vector2(SQ + 10.0, (SQ - 27.0) / 2.0), Vector2(220.0, 27.0))
+			var tag_box := Rect2(Vector2(-4.0, SQ - 23.0), Vector2(SQ + 8.0, 23.0))   # 整条落在方键里(底边木条上), 不探进下一颗
+			var tagbg := _nine_rect("xpbar.png", Vector4(8, 8, 8, 8), tag_box)
+			tagbg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			holder.add_child(tagbg)
+			var rs := _place_outlined(reason, 14, Color("#ffe6b8"), tag_box.position, tag_box.size)
+			rs.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			rs.name = LOCK_REASON_NAME
 			rs.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			holder.add_child(rs)
@@ -652,9 +597,8 @@ func _slide_in_left(holder: Control, idx: int) -> void:
 
 ## 锁定角标: 右上角 🔒 (商店未开时叠在灰框上, 一眼看出锁着)
 func _add_lock_badge(holder: Control, size: Vector2) -> void:
-	var lock := Label.new()
-	lock.text = "🔒"
-	lock.add_theme_font_size_override("font_size", 26)
+	## ★2026-10-05: 系统表情 🔒 → 像素锁(menu/hud/lock.png ×2.5)。
+	var lock := _pixel_lock(Vector2.ZERO, 2.5)
 	## ★2026-08-19 从 (w-36, 2) 挪到 (w-44, 10): 原位置让锁**骑在木牌右上角的花纹柱上、还探出板外**
 	##   (实拍确认, 门禁也报了「🔒+8」)。木牌的花纹边实测约占 22px, 往里让开就落在木面上。
 	## ★★★2026-10-03 又超了, 门禁报「🔒+13」。根因是上一次**照症状挪**(报 +8 就挪 8px),
@@ -665,10 +609,67 @@ func _add_lock_badge(holder: Control, size: Vector2) -> void:
 	const _BAND := 22.0          # 木牌花纹边宽(实拍量的)
 	const _LOCK_W := 32.0
 	lock.position = Vector2(size.x - _BAND - _LOCK_W - 2.0, 10.0)
-	lock.size = Vector2(_LOCK_W, _LOCK_W)
-	lock.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lock.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(lock)
+
+
+## 像素锁(12×15 原图, 最近邻按 k 倍贴)。名字固定 LOCK_ICON_NAME —— 门禁按名字找它。
+func _pixel_lock(pos: Vector2, k: float) -> TextureRect:
+	var t := TextureRect.new()
+	t.name = LOCK_ICON_NAME
+	t.texture = load(HUD + "lock.png")
+	t.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	t.stretch_mode = TextureRect.STRETCH_SCALE
+	t.size = Vector2(12.0, 15.0) * k
+	t.position = pos
+	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return t
+
+
+## 右上角的小图标键(? / ⚙): 暗槽(与经验条同一张 xpbar.png) + 一个字形(? 用像素字体 m6x11, ⚙ 走打包字体里的单色线稿齿轮)。
+## 点击区 = ICON_TAP(81, 触摸线), 看得见的暗槽 = ICON_VIS, 居中。
+func _icon_button(glyph: String, glyph_size: int, col: Color, cb: Callable, pos: Vector2) -> Control:
+	var holder := Control.new()
+	holder.position = pos
+	holder.size = Vector2(ICON_TAP, ICON_TAP)
+	holder.custom_minimum_size = holder.size
+	holder.pivot_offset = holder.size / 2.0
+	var vo: float = (ICON_TAP - ICON_VIS) / 2.0
+	## ★2026-10-06: 实体按钮(亮顶面 + 深底边 + 阴影, menu/hud/iconbtn.png), 照荒野乱斗右上方键的厚度; 原来是细铜线空框。
+	var slot := _nine_rect("iconbtn.png", Vector4(6, 6, 8, 16), Rect2(Vector2(vo, vo), Vector2(ICON_VIS, ICON_VIS + 4.0)))
+	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(slot)
+	var ic := Label.new()
+	ic.text = glyph
+	## 字形对准【顶面】中心(顶面 = 暗槽去掉底边厚 10px), 不是整块按钮的中心。
+	ic.position = Vector2(vo, vo)
+	ic.size = Vector2(ICON_VIS, ICON_VIS - 6.0)
+	ic.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ic.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	if glyph == "?":
+		ic.add_theme_font_override("font", load("res://assets/fonts/m6x11.ttf"))
+		## m6x11 的「?」字形在行框里偏上偏左(2026-10-06 实测墨迹中心 dx=-1 / dy=-2.5) ⇒ 整体挪回暗槽正中
+		ic.position += Vector2(0.5, 5.0)   # 2026-10-06 实体按钮版再量: 对准顶面中心
+	else:
+		ic.position += Vector2(-1.0, 1.0)  # ⚙ 线稿齿轮同样实量
+	ic.add_theme_font_size_override("font_size", glyph_size)
+	ic.add_theme_color_override("font_color", col)
+	ic.add_theme_color_override("font_outline_color", Color("#140a03"))
+	ic.add_theme_constant_override("outline_size", 6)
+	ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(ic)
+	var btn := Button.new()
+	btn.flat = true
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	btn.set_anchors_preset(Control.PRESET_FULL_RECT)
+	holder.add_child(btn)
+	btn.mouse_entered.connect(func(): slot.modulate = Color(1.3, 1.22, 1.1))
+	btn.mouse_exited.connect(func(): slot.modulate = Color.WHITE)
+	btn.button_down.connect(func(): holder.position.y += 3.0)   # 按下 = 往下沉一截(实体按钮的手感)
+	btn.button_up.connect(func(): holder.position.y -= 3.0)
+	btn.pressed.connect(func(): cb.call())
+	return holder
 
 
 ## btn-frame.png 金色边框按钮 (NinePatchRect 9宫格保证渲染 + 透明Button点击 + 文字)
@@ -846,24 +847,26 @@ func _right_column(now: int = 0) -> void:
 	## ★2026-10-05 第三轮: 货币在左、?/⚙ 在最右(五张横屏参考里设置/菜单键都是最靠角的那一颗),
 	##   ?/⚙ 看得见的方框从 82 缩到 ICON_VIS(用户「太大」), 点击区仍是 81(触摸线)。
 	var set_x := RIGHT_EDGE - ICON_TAP
-	var help_x := set_x - ICON_TAP
+	var help_x := set_x - ICON_VIS - CUR_GAP   # 看得见的两个暗槽之间 = CUR_GAP(与货币条到 ? 同宽); 点击区互相叠一截, 不影响
 	var uy := 30.0 + (85.0 - ICON_TAP) / 2.0                   # 与货币牌竖直居中对齐
-	var set_tile := _tile("", "⚙", func(): _go("Settings"), Vector2(set_x, uy), "", ICON_TAP, ICON_VIS)
+	## ★2026-10-05: ⚙(系统表情)/蓝色圆 ? 换成像素小图标 + 暗槽(参考: 荒野乱斗 ≡ / 英雄联盟手游齿轮 —— 角上的小图标, 不跟货币抢)。
+	var set_tile := _icon_button("⚙", 30, Color("#d8d4cc"), func(): _go("Settings"), Vector2(set_x, uy))
 	content_root.add_child(set_tile)
 	_slide_in(set_tile, 1)
-	var help_tile := _tile("ui/help-button", "❓", func(): _on_tutorial(), Vector2(help_x, uy), "", ICON_TAP, ICON_VIS)
+	var help_tile := _icon_button("?", 30, Color("#ffd27a"), func(): _on_tutorial(), Vector2(help_x, uy))
 	content_root.add_child(help_tile)
 	_slide_in(help_tile, 2)
-	## A5: 两种货币并排(金币 + 宝石那种摆法, 用户 2026-09-17)。右 = 龟币(主站货币), 左 = 深海币。
-	var coin := _coin_frame()                                  # 龟币: value<0 => GameState.coins
-	coin.position = Vector2(help_x - 6.0 - CHIP_W, 30)
-	content_root.add_child(coin)
-	_slide_in(coin, 0)
-	var dsea := _coin_frame(int(GameState.meta_deepsea_coins),
-		"res://assets/sprites/menu/ic-deepsea.png", Color(0, 0, 0, -1.0))   # a<0 = keep original colours
-	dsea.position = Vector2(help_x - 6.0 - CHIP_W - 8.0 - CHIP_W, 30)
-	content_root.add_child(dsea)
-	_slide_in(dsea, 0)
+	## ★2026-10-06 照荒野乱斗主大厅右上角(interfaceingame brawl-stars-main-menu / -lobby):
+	##   所有货币挤在【同一条】深色长条里(图标 + 数字, 中间一道分隔), 长条右边紧挨着方形小键, 同高、底边对齐。
+	##   原来两块带尖角的木牌是自己画的, 7 张参考里没有一款这么做(用户「金币框哪个游戏这么做的」)。
+	var slot_y: float = uy + (ICON_TAP - ICON_VIS) / 2.0
+	var bar := _currency_bar([
+		["res://assets/sprites/menu/ic-deepsea.png", Color(0, 0, 0, -1.0), int(GameState.meta_deepsea_coins)],
+		["res://assets/sprites/ui/coin.png", Color(0.122, 0.561, 0.247), int(GameState.coins)],
+	])
+	bar.position = Vector2(help_x + (ICON_TAP - ICON_VIS) / 2.0 - CUR_GAP - bar.size.x, slot_y)
+	content_root.add_child(bar)
+	_slide_in(bar, 0)
 	_status_row(now)       # 左上玩家信息卡
 	_version_stamp()
 	_travel_badge()
@@ -918,48 +921,64 @@ func _travel_badge() -> void:
 	content_root.add_child(l)
 
 
-## 货币芯片 (裸图标染色 + 描边数字, 无底框) — 抽出复用; 返回未定位的 Control, 调用方定位/入场
-## A5(2026-09-17, user): 龟币 is the MAIN-SITE currency and must stay visible, but the two
-## currencies used to sit in two totally different places/styles - 龟币 in a frame up top,
-## 深海币 as a text row inside the season panel. User asked for the usual game treatment:
-## gold and gems side by side. So this chip is parameterised and drawn twice.
-## value < 0 => GameState.coins (龟币). icon_path "" => the old green coin.png.
-func _coin_frame(value: int = -1, icon_path: String = "", tint: Color = Color(0.122, 0.561, 0.247)) -> Control:
-	var coin := Control.new()
-	coin.custom_minimum_size = Vector2(CHIP_W, 85); coin.size = Vector2(CHIP_W, 85)
-	## 2026-10-05 UI 重做: 货币要有底座 —— 一块暗木 + 黄铜包边的小牌(PixelLab 新生成, menu/hud/chip.png),
-	##   左端是币槽, 图标落进槽里。不是按钮材质(按钮是金边木框/铁箍木板), 不会被读成按钮。
-	coin.add_child(_nine_rect("chip.png", Vector4(56, 16, 20, 16), Rect2(0, 14.5, CHIP_W, 56)))
-	## P0-2(方案书 20260917 主菜单版式重做): 货币区【不套任何按钮材质】。
-	##   原来这里垫一张 menu/frame-coin 贴图 —— 与按钮同一族木框, 两个芯片看着像两个按钮。
-	##   参考的 18 款里没有一款给货币套框: 一律裸图标 + 描边数字。
-	##   外框尺寸 152x85 保留(右上那排磁贴按它排位), 只是不再画底。
-	var _ip: String = icon_path if icon_path != "" else "res://assets/sprites/ui/coin.png"
-	if ResourceLoader.exists(_ip):   # 黑线稿→非透明像素染绿(#1f8f3f)
-		var cimg: Image = load(_ip).get_image()
-		var green := tint
-		## tint.a < 0 means "this icon is already coloured, do not repaint it".
-		## Found by actually looking at the shot: the tint loop paints EVERY non-transparent
-		## pixel one flat colour. coin.png is line art so an outline survives; ic-deepsea.png
-		## is solid, so it came out as a featureless blue dot - unreadable as an icon.
-		var _repaint: bool = tint.a >= 0.0
+## 右上货币条: 一条深色长条(xpbar.png 暗槽, 与 ? / ⚙ 同底同高) + 每种货币「图标 + 数字」, 中间一道竖分隔。
+## items = [[图标路径, 染色(a<0 = 不染), 数值], ...] 从左到右。返回未定位的 Control。
+func _currency_bar(items: Array) -> Control:
+	var holder := Control.new()
+	holder.name = CURRENCY_BAR_NAME
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	## ★2026-10-06 第二版: 去掉铜边框(用户「你自己觉得这些框很好看吗」)。照荒野乱斗: 每种货币一段
+	##   半透明黑底、两头斜切, 段与段之间留一道斜缝(cur_seg.png 九宫格, 左右边距 = 斜切宽)。
+	var x: float = 0.0
+	var parts: Array = []
+	for i in range(items.size()):
+		var it: Array = items[i]
+		if i > 0:
+			x += CUR_SEP
+		var seg_x: float = x
+		x += CUR_PAD
+		var ic := _currency_icon(str(it[0]), it[1])
+		ic.size = Vector2(CUR_ICON, CUR_ICON)
+		ic.position = Vector2(x, (ICON_VIS - CUR_ICON) / 2.0)
+		parts.append(ic)
+		x += CUR_ICON + 8.0
+		var num := "%d" % int(it[2])
+		var nw: float = ceilf(_bold_font().get_string_size(num, HORIZONTAL_ALIGNMENT_LEFT, -1, CUR_FONT).x) + 6.0
+		var cl := _menu_label(num, CUR_FONT, Color("#fff4d6"), HORIZONTAL_ALIGNMENT_LEFT)
+		cl.add_theme_color_override("font_outline_color", Color("#140a03"))
+		cl.add_theme_constant_override("outline_size", 6)
+		cl.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		cl.position = Vector2(x, 3.0)   # 纯数字在 CJK 粗体行框里偏上 3px(2026-10-06 帧差实测)
+		cl.size = Vector2(nw, ICON_VIS)
+		parts.append(cl)
+		x += nw + CUR_PAD
+		var seg := _nine_rect("cur_seg.png", Vector4(12, 0, 12, 0), Rect2(Vector2(seg_x, 0.0), Vector2(x - seg_x, ICON_VIS)))
+		parts.insert(parts.size() - 2, seg)
+	holder.size = Vector2(x, ICON_VIS)
+	holder.custom_minimum_size = holder.size
+	for pp in parts:
+		holder.add_child(pp)
+	return holder
+
+
+## 货币图标: 线稿图标按 tint 染色(tint.a < 0 = 原色)。
+func _currency_icon(path: String, tint: Color) -> TextureRect:
+	var ci := TextureRect.new()
+	ci.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	ci.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	ci.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	ci.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if not ResourceLoader.exists(path):
+		return ci
+	var cimg: Image = load(path).get_image()
+	if tint.a >= 0.0:
 		for yy in range(cimg.get_height()):
 			for xx in range(cimg.get_width()):
 				var px := cimg.get_pixel(xx, yy)
-				if _repaint and px.a > 0.0:
-					cimg.set_pixel(xx, yy, Color(green.r, green.g, green.b, px.a))
-		var ci := TextureRect.new(); ci.texture = ImageTexture.create_from_image(cimg)
-		ci.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; ci.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		ci.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		ci.size = Vector2(34, 34); ci.position = Vector2(36 - 17, 42.5 - 17); coin.add_child(ci)
-	var cl := Label.new(); cl.text = "%d" % (GameState.coins if value < 0 else value)
-	cl.position = Vector2(64, 0); cl.size = Vector2(CHIP_W - 64 - 20, 85)
-	cl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT; cl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	## 没了木底, 深绿字直接压在背景上读不出来 ⇒ 改亮字 + 黑描边(同 _tile 的数字)。
-	cl.add_theme_font_size_override("font_size", 26); cl.add_theme_color_override("font_color", Color("#fff4d6"))
-	cl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1)); cl.add_theme_constant_override("outline_size", 6)
-	coin.add_child(cl)
-	return coin
+				if px.a > 0.0:
+					cimg.set_pixel(xx, yy, Color(tint.r, tint.g, tint.b, px.a))
+	ci.texture = ImageTexture.create_from_image(cimg)
+	return ci
 
 
 ## 赛季状态行 —— 原来是右侧 560×398 的金边表格卡(大轮/Lv/命/本周场次/战绩 五行)。
@@ -1071,7 +1090,7 @@ func _phase_status_line(now: int = 0) -> String:
 ## ★`now` = 本屏那一刻; 0 时才自己问一次(单独被门禁/实拍调用时)。
 func _status_row(now: int = 0) -> void:
 	var ts: int = now if now > 0 else _now_ts()
-	_player_card()
+	_player_card(ts)
 	_today_counter(ts)
 
 
@@ -1095,7 +1114,8 @@ func today_counter_texts(now: int) -> Array:
 		"本周对战 %d/%d" % [int(GameState.ranked_used), int(_P2C.RANKED_QUOTA)]]
 
 
-func _player_card() -> void:
+## ★`now` = 本屏那一刻(由 `_status_row` 传入), 原样转给 `_goal_box` —— 一屏只读一次钟(verify_quota_clock ④)。
+func _player_card(now: int) -> void:
 	## 先问 ID 再问名字: `my_tag()` 会顺手把安装号建出来, 而默认昵称的种子就是安装号 ——
 	##   反过来的话全新安装第一屏拿到的是没种子的兜底名, 下一屏才换成真默认名(门禁实测抓到过)。
 	var tag_s := str(_BE.my_tag())
@@ -1133,7 +1153,7 @@ func _player_card() -> void:
 	holder.add_child(badge)
 	## 数字落在盾面上半(盾尖往下收, 视觉重心偏上): 框 = 盾宽 × 盾面直边那段。
 	var lv := _place_outlined(str(int(GameState.season_level)), LV_FONT, Color("#fff4d6"),
-		LV_BADGE_POS + Vector2(0.0, 10.0), Vector2(LV_BADGE_SIZE.x, 44.0))
+		LV_BADGE_POS + Vector2(2.0, 13.0), Vector2(LV_BADGE_SIZE.x, 44.0))   # 2026-10-05 实测原位偏左 1.5 / 偏高 6.5, 挪到盾面直边段中心
 	lv.name = LV_TEXT_NAME
 	lv.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	holder.add_child(lv)
@@ -1145,7 +1165,7 @@ func _player_card() -> void:
 	if tag_txt != "":
 		var tx: float = CARD_TEXT_X + minf(name_w, tw) + CARD_TAG_GAP
 		var tg := _place_outlined(tag_txt, CARD_TAG_FONT, Color("#b8c4cf"),
-			Vector2(tx, CARD_L0_Y + 4.0), Vector2(maxf(CARD_TEXT_X + tw - tx, 1.0), 25.0))
+			Vector2(tx, CARD_L0_Y + 7.5), Vector2(maxf(CARD_TEXT_X + tw - tx, 1.0), 25.0))   # +7.5: 实测 +4 时 #ID 字块中心比昵称高 3.5px
 		tg.name = "PlayerTag"
 		holder.add_child(tg)
 	## 第二行: 经验条。暗槽(九宫格) + 里面一根 TextureProgressBar(value/max 就是读数本身) + 条上「x/y」。
@@ -1171,6 +1191,7 @@ func _player_card() -> void:
 	var xt := _place_outlined(str(xp[2]), XP_FONT, Color("#ffffff"), bar_r.position, bar_r.size)
 	xt.name = XP_TEXT_NAME
 	xt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	xt.position.y += 3.0   # 纯数字在 CJK 粗体行框里偏上(2026-10-06 帧差实测 dy=-3)
 	holder.add_child(xt)
 	## 第三行: 大轮(小字)。「大轮」是本作的赛季叫法, 不改。
 	var sl := _place_outlined(season_txt, SEASON_FONT, Color("#ecd9b0"),
@@ -1191,6 +1212,65 @@ func _player_card() -> void:
 	btn.pressed.connect(_open_record)
 	content_root.add_child(holder)
 	_slide_in_left(holder, 0)
+	_goal_box(CARD_POS + Vector2(card_size.x + GOAL_GAP, 0.0), card_size.y, now)   # 用落位 CARD_POS(holder.position 已被入场动画挪到屏外)
+
+
+## 晋级进度块: 玩家卡右边紧挨一块「图标 + 大数字 + 进度条(末端写奖励)」。
+## ★照荒野乱斗主大厅左上角(interfaceingame brawl-stars-main-menu): 玩家卡右边就是奖杯数 + 一根通往下一个奖励的进度条。
+##   本作的「下一个奖励」= 周六闯关赛资格(season_wins ≥ PROMOTE_WINS)。只在积分赛那几天(含周一)显示; 周六/周日不放。
+func _goal_box(pos: Vector2, card_h: float, now: int) -> void:
+	var ts: int = now
+	var ph: String = _P2C.phase_at_utc(ts)
+	if ph == _P2C.PHASE_GAUNTLET or ph == _P2C.PHASE_FINALS:
+		return
+	var need: int = int(_P2C.PROMOTE_WINS)
+	var have: int = mini(int(GameState.season_wins), need)
+	var holder := Control.new()
+	holder.name = GOAL_BOX_NAME
+	holder.position = pos
+	holder.size = Vector2(GOAL_W, card_h)
+	holder.custom_minimum_size = holder.size
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(_nine_rect("card.png", Vector4(40, 16, 40, 16), Rect2(Vector2.ZERO, holder.size)))
+	## ★图标是新画的胜利小旗(menu/hud/goal-flag.png, PixelLab), 不复用左列「排行榜」的奖杯
+	##   (用户「为啥复用这个奖杯啊」: 同一个奖杯出现两次 = 读成排行榜, 也违反新内容不复用素材)。
+	## ★图标 + 数字作为一组在块里水平居中(用户「字体居中？」; 原来贴左, 右边空一截, 实测偏左 30px)。
+	var txt := "%d / %d" % [have, need]
+	var tw_g: float = ceilf(_bold_font().get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 28).x) + 6.0
+	var gx: float = (GOAL_W - (40.0 + 8.0 + tw_g)) / 2.0
+	var ic := TextureRect.new()
+	ic.texture = load(HUD + "goal-flag.png")
+	ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	ic.size = Vector2(40.0, 40.0)
+	ic.position = Vector2(gx, 24.0)
+	ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(ic)
+	var num := _place_outlined(txt, 28, Color("#ffd24a"), Vector2(gx + 48.0, 25.0), Vector2(tw_g, 38.0))
+	num.name = "GoalNum"
+	holder.add_child(num)
+	var bar_r := Rect2(Vector2(22.0, 74.0), Vector2(GOAL_W - 44.0, 26.0))
+	holder.add_child(_nine_rect("xpbar.png", Vector4(8, 8, 8, 8), bar_r))
+	var bar := TextureProgressBar.new()
+	bar.name = "GoalBar"
+	bar.texture_progress = load(HUD + "xpbar-fill.png")
+	bar.nine_patch_stretch = true
+	bar.stretch_margin_left = 4; bar.stretch_margin_right = 4; bar.stretch_margin_top = 4; bar.stretch_margin_bottom = 4
+	bar.position = bar_r.position + Vector2(4.0, 4.0)
+	bar.size = bar_r.size - Vector2(8.0, 8.0)
+	bar.min_value = 0.0
+	bar.max_value = float(need)
+	bar.step = 0.0
+	bar.value = float(have)
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(bar)
+	## 进度条末端 = 奖励是什么(荒野乱斗在末端放下一个奖励的头像; 本作写「晋级」)。
+	var rw := _place_outlined("晋级闯关赛", 15, Color("#ffffff"), bar_r.position, bar_r.size)
+	rw.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	holder.add_child(rw)
+	content_root.add_child(holder)
+	_slide_in_left(holder, 1)
 
 
 ## 点玩家卡 → 战绩页。★具名方法(门禁量得到接线), 不是闭包。
@@ -1219,10 +1299,12 @@ func _today_counter(now: int) -> void:
 	var lh := _place_outlined(str(tx[0]), COUNTER_FONT, Color("#ffb4a2"),
 		Vector2(COUNTER_PAD, 3.0), Vector2(w0, COUNTER_H - 6.0))
 	lh.name = "CounterHearts"
+	lh.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER   # 字框比字宽多 6(描边余量), 左对齐时余量全堆在右边 ⇒ 整行偏左
 	holder.add_child(lh)
 	var lq := _place_outlined(str(tx[1]), COUNTER_FONT, Color("#ffe9a8"),
 		Vector2(COUNTER_PAD + w0 + gap, 3.0), Vector2(w1, COUNTER_H - 6.0))
 	lq.name = "CounterQuota"
+	lq.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	holder.add_child(lq)
 	content_root.add_child(holder)
 	_slide_in(holder, 5)
@@ -1244,103 +1326,17 @@ func _slide_in(holder: Control, idx: int) -> void:
 	tw.parallel().tween_property(holder, "modulate:a", 1.0, 0.42)
 
 
-func _tile(icon_key: String, label: String, cb: Callable, pos: Vector2, sub_value: String = "", sz: float = 82.0, vis: float = -1.0) -> Control:
-	var holder := Control.new()
-	holder.position = pos
-	holder.custom_minimum_size = Vector2(sz, sz)
-	holder.size = Vector2(sz, sz)
-	## ★`vis` > 0: 看得见的方框比点击区小(2026-10-05 第三轮 ?/⚙ 缩小, 用户「太大」) ——
-	##   方框画在 holder 正中, 点击区仍铺满 holder(触摸线 81 不让)。
-	var v: float = vis if vis > 0.0 else sz
-	var vo: float = (sz - v) / 2.0
-	var btn := TextureButton.new()
-	btn.set_anchors_preset(Control.PRESET_FULL_RECT)
-	btn.ignore_texture_size = true; btn.stretch_mode = TextureButton.STRETCH_SCALE
-	if ResourceLoader.exists("res://assets/sprites/menu/frame-square.png"):
-		if vis > 0.0:
-			var fr := TextureRect.new()
-			fr.texture = load("res://assets/sprites/menu/frame-square.png")
-			fr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; fr.stretch_mode = TextureRect.STRETCH_SCALE
-			fr.size = Vector2(v, v); fr.position = Vector2(vo, vo)
-			fr.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			holder.add_child(fr)
-		else:
-			btn.texture_normal = load("res://assets/sprites/menu/frame-square.png")
-	# 磁贴 hover/press (PoC ts:585-588: hover scale1.06 / press0.97 + delayedCall(60))
-	if cb.is_valid():
-		btn.mouse_entered.connect(_tile_hover.bind(holder, true))
-		btn.mouse_exited.connect(_tile_hover.bind(holder, false))
-		btn.button_down.connect(_tile_press.bind(holder, cb))
-	holder.add_child(btn)
-	var ipath := "res://assets/sprites/%s.png" % icon_key   # icon_key 已含子目录 (menu/.. 或 ui/..)
-	if icon_key != "" and ResourceLoader.exists(ipath):
-		var ic := TextureRect.new(); ic.texture = load(ipath)
-		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		# 有 subValue(战绩) 时图标缩到 0.58 + 上移 size*0.10 给文字让位 (1:1 PoC makeSquareTile)
-		var has_sub := sub_value != ""
-		var isz := roundi(v * (0.58 if has_sub else 0.72))    # 无sub图标(教程❓)填满些 (原0.62偏小)
-		var iy_off := -v * 0.10 if has_sub else 0.0           # 无sub → 正居中(原-6上偏→与旁边⚙不齐·歪·用户2026-07-18)
-		ic.size = Vector2(isz, isz); ic.position = Vector2((sz - isz) / 2.0, (sz - isz) / 2.0 + iy_off)
-		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE; holder.add_child(ic)
-		if has_sub:
-			var vl := Label.new()
-			vl.text = sub_value
-			vl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			vl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			vl.add_theme_font_size_override("font_size", 13)
-			vl.add_theme_color_override("font_color", Color("#ffd966"))
-			vl.size = Vector2(sz, 16); vl.position = Vector2(0, sz / 2.0 + sz * 0.34 - 8.0)
-			vl.mouse_filter = Control.MOUSE_FILTER_IGNORE; holder.add_child(vl)
-	else:
-		var tl := Label.new(); tl.text = label; tl.set_anchors_preset(Control.PRESET_FULL_RECT)
-		tl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; tl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		tl.add_theme_font_size_override("font_size", roundi(v * 0.44)); tl.mouse_filter = Control.MOUSE_FILTER_IGNORE; holder.add_child(tl)
-	return holder
-
-
-## 磁贴 hover (PoC ts:585 scale1.06) — 从中心缩放
-func _tile_hover(holder: Control, on: bool) -> void:
-	if is_instance_valid(holder):
-		holder.pivot_offset = holder.size / 2.0
-		holder.scale = Vector2(1.06, 1.06) if on else Vector2(1, 1)
-
-
-## 磁贴点击 press (PoC ts:587-588 scale0.97 + delayedCall(60)) → 回弹 + 回调
-func _tile_press(holder: Control, cb: Callable) -> void:
-	if is_instance_valid(holder):
-		holder.pivot_offset = holder.size / 2.0
-		holder.scale = Vector2(0.97, 0.97)
-	await get_tree().create_timer(0.06).timeout
-	if is_instance_valid(holder):
-		holder.scale = Vector2(1, 1)
-	if cb.is_valid():
-		cb.call()
-
-
 ## ══════════════════════════════════════════════════════════════════════
 ##  「今天」模式卡 + 本周赛程弹层(2026-10-05 第三轮)
 ## ══════════════════════════════════════════════════════════════════════
 ## 原来七天赛程是一条贴底的满宽长条, 常驻占掉屏幕最底下一整行。参考里(荒野乱斗那块活动卡)
 ## 主 CTA 左边只放**今天**那一件事: 今天打什么、一句规矩、还剩多久 —— 整周的表点开才看。
-## ⇒ 模式卡只说今天; 点它弹出**原来那条赛程条**(组件一个字没改, 七格 + 收盘块 + 周六/周日的门都在里面)。
+## ⇒ 模式卡只说今天; 点它打开**本周赛程页**(四个阶段四张卡, 周六/周日的门都在卡上)。
 ## ★赛程判定与数据一个字都没动, 只换了「摆在哪」: 模式卡的三行字全是现成的纯函数/常量拼出来的。
 var _mode_box: Control = null
 var _week_pop: Control = null
 var _week_dim: ColorRect = null
 const WEEK_DIM_NAME := "WeekPopupDim"
-
-
-## 这个阶段的一句规矩(不带星期几、不带阶段名)。★数字一律读规则常量。
-## ★与赛程条点格子飘的那句(`_week_day_note`)同一份字 —— 那句就是「周X 阶段名 · 这一句」。
-func _phase_rule(ph: String) -> String:
-	match ph:
-		_P2C.PHASE_REST:
-			return "本日不开放对战"
-		_P2C.PHASE_GAUNTLET:
-			return "积分赛 %d 胜可参加" % int(_P2C.PROMOTE_WINS)
-		_P2C.PHASE_FINALS:
-			return "闯关赛晋级玩家参赛"
-	return "每周最多 %d 场 · 周五截止" % int(_P2C.RANKED_QUOTA)
 
 
 ## 下一个阶段从哪一刻开始(UTC 零点)。★只问 `phase_at_utc`, 不另写一张星期表。
@@ -1356,12 +1352,8 @@ func _next_phase_start(now: int) -> int:
 
 ## 模式卡第三行: 倒计时。★档位与赛程条收盘块**同一个分类函数**(`close_block_kind`), 不另判一遍。
 func _mode_countdown(now: int) -> String:
-	var ph: String = _P2C.phase_at_utc(now)
 	var left: int = _P2C.close_left_sec(now)
-	var live: bool = (_P2C.phase_mode_live(_P2C.PHASE_FINALS)
-		if strip_finals_live_override < 0 else strip_finals_live_override == 1)
-	var kind := close_block_kind(ph, live,
-		_SB.service_state() == _SB.ST_MAINTENANCE, left, _P2C.can_start_match_utc(now))
+	var kind := _close_kind_at(now)
 	match kind:
 		BK_MAINTENANCE:
 			return "维护中"
@@ -1385,7 +1377,9 @@ func _mode_countdown(now: int) -> String:
 func mode_card_lines(now: int) -> Array:
 	var ph: String = _P2C.phase_at_utc(now)
 	var title := str(_P2C.PHASE_LABEL.get(ph, ph))
-	var second := _phase_rule(ph)
+	## ★2026-10-06 照荒野乱斗开战按钮旁的模式卡(模式名 + 下面一行副标题 + 上沿倒计时), 不写规则句
+	##   (用户「每周最多16场，周五截止，这是什么意味呢」「哪个游戏这么说」)。规则收进赛程弹层。
+	var second := "第 %d 大轮" % int(GameState.season_id)
 	var st: String = _phase_status_line(now)
 	if st != "":
 		second = _strip_phase_head(st, title)
@@ -1400,6 +1394,16 @@ static func _strip_phase_head(line: String, title: String) -> String:
 	if s.begins_with("·"):
 		s = s.substr(1).strip_edges()
 	return s if s != "" else line
+
+
+## 周末(闯关赛 / 决赛日)没资格的人: 模式卡压灰 + 像素锁。
+## ★判据不另写: 今天那张赛程卡锁着(`week_card_info` 的锁 = gauntlet_eligible / gauntlet_line_reached / gauntlet_state)
+##   **且** 开始战斗那扇门真的拦着(`_battle_block_msg`)。平日不走这一支(平日的锁画在开始战斗上)。
+func mode_card_locked(now: int) -> bool:
+	var ph: String = _P2C.phase_at_utc(now)
+	if ph != _P2C.PHASE_GAUNTLET and ph != _P2C.PHASE_FINALS:
+		return false
+	return bool(week_card_info(ph, now)["locked"]) and _battle_block_msg(now) != ""
 
 
 ## 建 / 重建模式卡。★`now` 由调用方给(首屏 = `_ready` 那一刻; 每秒轮询 = `_strip_now()`), 自己不读钟。
@@ -1425,31 +1429,48 @@ func _mode_card(now: int) -> void:
 	var plate := _nine_rect("modecard.png", Vector4(20, 18, 20, 18), Rect2(Vector2.ZERO, msz))
 	plate.axis_stretch_horizontal = NinePatchRect.AXIS_STRETCH_MODE_TILE
 	plate.axis_stretch_vertical = NinePatchRect.AXIS_STRETCH_MODE_TILE
+	## ★周末没资格(开始战斗锁着)⇒ 整张压灰 + 像素锁, 与赛程页那张锁着的卡同一个判据(`mode_card_locked`)。
+	var locked := mode_card_locked(now)
+	var plate_mod := Color(0.56, 0.54, 0.53) if locked else Color.WHITE
+	plate.modulate = plate_mod
 	holder.add_child(plate)
-	## 三行字(返工: 「太小太弱」): 赛制名 30 号最大; 规矩 17 号; 倒计时**单独一行、亮色 + 一条压暗底带**。
-	##   右上角「赛程 »」告诉人这块能点(原来那行小字「本周赛程」读起来像标签, 不像入口)。
-	var title := _place_outlined(str(lines[0]), MODE_TITLE_FONT, Color("#ffe9a8"), Vector2(18.0, 13.0), Vector2(180.0, 40.0))
+	## ★2026-10-06 排法照荒野乱斗那张模式卡: 上沿一条暗带(倒计时靠右 + 右端「i」), 中间大字模式名, 下面一行彩色副标题。
+	var band := ColorRect.new()
+	band.name = "CountdownBand"
+	band.color = Color(0.0, 0.0, 0.0, 0.42)
+	band.position = Vector2(12.0, 10.0)
+	band.size = Vector2(MODE_SIZE.x - 24.0, 26.0)
+	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(band)
+	var cd := _place_outlined(str(lines[2]), MODE_CD_FONT - 2, Color("#ffc94a"), Vector2(18.0, 10.0), Vector2(MODE_SIZE.x - 36.0 - 30.0, 26.0))
+	cd.name = "ModeCountdown"
+	cd.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	holder.add_child(cd)
+	var cap := _place_outlined("i", 18, Color("#fff4d6"), Vector2(MODE_SIZE.x - 12.0 - 26.0 + 1.5, 12.5), Vector2(26.0, 26.0))   # +1.5/+2.5: 帧差实测对准蓝底方块中心
+	cap.name = "ModeHint"
+	cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cap.add_theme_font_override("font", load("res://assets/fonts/m6x11.ttf"))
+	var capbg := ColorRect.new()
+	capbg.color = Color("#2f6fb8")
+	capbg.position = Vector2(MODE_SIZE.x - 12.0 - 26.0 + 3.0, 13.0)
+	capbg.size = Vector2(20.0, 20.0)
+	capbg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(capbg)
+	holder.add_child(cap)
+	var tx := 18.0
+	if locked:
+		var lk := _pixel_lock(Vector2(18.0, 36.0 + (40.0 - 30.0) / 2.0), 2.0)
+		holder.add_child(lk)
+		tx += 24.0 + 10.0
+	var title := _place_outlined(str(lines[0]), MODE_TITLE_FONT, Color("#cfc9c2") if locked else Color("#fff4d6"),
+		Vector2(tx, 36.0), Vector2(MODE_SIZE.x - 18.0 - tx, 40.0))
 	title.name = "ModeTitle"
 	holder.add_child(title)
-	var cap := _place_outlined("赛程 »", 18, Color("#ffd99a"), Vector2(MODE_SIZE.x - 18.0 - 100.0, 19.0), Vector2(100.0, 28.0))
-	cap.name = "ModeHint"
-	cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	holder.add_child(cap)
-	var rule := _place_outlined(str(lines[1]), MODE_RULE_FONT, Color("#ecd9b0"), Vector2(18.0, 49.0), Vector2(rule_w, 26.0 + grow))
+	var rule := _place_outlined(str(lines[1]), MODE_RULE_FONT + 1, Color("#b9b2a6") if locked else Color("#a8e06a"), Vector2(18.0, 76.0), Vector2(rule_w, 24.0 + grow))
 	rule.name = "ModeRule"
 	if extra_rows > 0:
 		rule.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
 	holder.add_child(rule)
-	var band := ColorRect.new()
-	band.name = "CountdownBand"
-	band.color = Color(0.0, 0.0, 0.0, 0.30)
-	band.position = Vector2(12.0, 76.0 + grow)
-	band.size = Vector2(MODE_SIZE.x - 24.0, 24.0)
-	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.add_child(band)
-	var cd := _place_outlined(str(lines[2]), MODE_CD_FONT, Color("#ffc94a"), Vector2(18.0, 75.0 + grow), Vector2(MODE_SIZE.x - 36.0, 26.0))
-	cd.name = "ModeCountdown"
-	holder.add_child(cd)
 	var btn := Button.new()
 	btn.name = "ModeTap"
 	btn.flat = true
@@ -1457,8 +1478,8 @@ func _mode_card(now: int) -> void:
 	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	btn.set_anchors_preset(Control.PRESET_FULL_RECT)
 	holder.add_child(btn)
-	btn.mouse_entered.connect(func(): plate.modulate = Color(1.2, 1.15, 1.08))
-	btn.mouse_exited.connect(func(): plate.modulate = Color.WHITE)
+	btn.mouse_entered.connect(func(): plate.modulate = plate_mod * Color(1.2, 1.15, 1.08))
+	btn.mouse_exited.connect(func(): plate.modulate = plate_mod)
 	btn.pressed.connect(_open_week_popup)
 	content_root.add_child(holder)
 	_mode_box = holder
@@ -1467,52 +1488,133 @@ func _mode_card(now: int) -> void:
 		content_root.move_child(_week_pop, -1)
 
 
-## 本周赛程弹层的壳: 压暗遮罩 + 标题 + 「收起」+ 赛程条(`_week_strip` 往里放)。默认藏着。
-## ★遮罩不是 Button(点哪都关): 点压暗处由色块自己的 gui_input 接 —— 不然它会被当成一个盖满全屏的「按钮」。
+## ══════════════════════════════════════════════════════════════════════
+##  本周赛程页(2026-10-06, 照荒野乱斗「CHOOSE EVENT」那一页)
+## ══════════════════════════════════════════════════════════════════════
+## 参考: interfaceingame.com/screenshots/brawl-stars-choose-event(本地 C:/tmp/lobby/brawl-stars-choose-event.png)。
+## 照着它的结构, 不照它的画风(皮仍是本作的暖色像素):
+##   顶栏      左上返回箭头 + 页名
+##   2×2 卡    每张 = 上沿一条暗带(右对齐的时间 + 右端「i」) / 彩色抬头(大字模式名 + 副标题) / 下面的要点
+##   锁着的卡  整张压灰 + 左边一把锁 + 旁边写解锁条件(参考里「Reach 350 total Trophies to unlock」那一格)
+## ★赛程判定与数据一个字没动, 只换了长相: 阶段 / 倒计时 / 门 / 锁全问原来那几个函数
+##   (`phase_at_utc` / `_mode_countdown` / `close_block_kind` / `gauntlet_eligible` / `gauntlet_state` / `phase_mode_live`)。
+## ★原来模式卡上那句规则(「每周最多 16 场 · 周五截止」)收到这里每张卡的要点里, 数字一律读规则常量。
+const WEEK_BAR_H := 84.0                     # 顶栏高 = 返回键触摸线 81 + 底边铜线 3(返回键不探出屏顶)
+const WEEK_BACK_NAME := "WeekPopupBack"
+const WEEK_CARDS_NAME := "WeekCards"         # 四张卡的容器(门禁按名字找)
+const WEEK_CARD_PREFIX := "PhaseCard_"       # 每张卡 = 前缀 + 阶段 id
+const WEEK_CARD_SIZE := Vector2(572.0, 296.0)
+const WEEK_CARD_GAP := 20.0
+## 2×2 居中在 1280 设计框里: 左右各 58, 竖向 96..708(顶栏 84 + 12 留白, 底下 12)
+const WEEK_GRID_POS := Vector2((W - 572.0 * 2.0 - 20.0) / 2.0, 96.0)
+const CARD_STRIP_H := 30.0                   # 上沿暗带
+const CARD_HEAD_H := 84.0                    # 彩色抬头
+const CARD_PAD := 18.0
+const CARD_CHIP_SIZE := Vector2(112.0, 58.0)
+const CARD_LINE_H := 26.0
+const WEEK_PHASES := [_P2C.PHASE_REST, _P2C.PHASE_RANKED, _P2C.PHASE_GAUNTLET, _P2C.PHASE_FINALS]
+## 抬头底色: 一个阶段一个颜色, 都在暖色像素调色板里(灰褐 / 铜橙 / 绛红 / 暗金)。
+const PHASE_HEAD_COL := {
+	_P2C.PHASE_REST: Color("#7a6856"),
+	_P2C.PHASE_RANKED: Color("#b0602c"),
+	_P2C.PHASE_GAUNTLET: Color("#9c3328"),
+	_P2C.PHASE_FINALS: Color("#a87a22"),
+}
+const CARD_LOCK_HEAD := Color("#5c5652")     # 锁着: 抬头压灰
+const CARD_LOCK_BODY := Color("#2c2826")
+const CARD_BODY_COL := Color("#2a1a10")
+const CARD_TODAY_COL := Color("#ffd34a")     # 今天那张的金边
+const CARD_PAST_TEXT := "已结束"
+const WEEK_DOOR_BRACKET := "bracket"
+const WEEK_DOOR_BOARD := "board"
+
+
+## 本周赛程页的壳: 压暗底 + 顶栏(返回 + 页名)。卡由 `_week_cards` 往里放。默认藏着。
+## ★压暗色块不是 Button: 它只负责挡住下面的主菜单(STOP), 关页面走左上角返回键 / 返回键(ui_cancel)。
 func _week_popup(paint_now: int) -> void:
 	_week_pop = Control.new()
 	_week_pop.name = WEEK_POPUP_NAME
 	_week_pop.size = Vector2(W, H)
 	_week_pop.visible = false
 	_week_pop.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	## 压暗色块**比设计框大一圈**(宽屏 1560 两侧也要压暗), 点它 = 关(返工: 点弹层外面也要能关)。
-	## ★它只在弹层打开时 visible —— 藏着的时候它不能是一块「铺满视口又 STOP」的东西
+	## 压暗色块**比设计框大一圈**(宽屏 1560 两侧也要盖住)。
+	## ★它只在页面打开时 visible —— 藏着的时候它不能是一块「铺满视口又 STOP」的东西
 	##   (verify_ui_layout ④ 按节点自己的 visible 量)。
 	_week_dim = ColorRect.new()
 	_week_dim.name = WEEK_DIM_NAME
-	_week_dim.color = Color(0.03, 0.02, 0.01, 0.66)
+	_week_dim.color = Color(0.06, 0.035, 0.02, 0.93)
 	_week_dim.position = Vector2(-1000.0, -1000.0)
 	_week_dim.size = Vector2(W + 2000.0, H + 2000.0)
 	_week_dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	_week_dim.visible = false
-	_week_dim.gui_input.connect(_on_pop_dim_input)
 	_week_pop.add_child(_week_dim)
-	## 表头一行(返工): 标题在左、「收起」在右, 同一行, 紧贴在条子上沿(留 4px)。
-	var sx: float = (W - STRIP_W) / 2.0
-	var row_y: float = POP_CY - 48.0 - 4.0 - 82.0
-	var head := _place_outlined("本周赛程", 26, Color("#ffe9a8"), Vector2(sx + 4.0, row_y + 21.0), Vector2(300.0, 40.0))
+	## 顶栏: 一条横贯视口的暗木色带 + 底边一道铜线(宽屏两侧跟着延长)。
+	## ★与压暗色块同一条规矩: 比设计框宽, 所以只在页面打开时 visible(藏着时不算「超出视口」的控件)。
+	_week_bar = ColorRect.new()
+	_week_bar.name = "WeekPopupBar"
+	_week_bar.color = Color("#160d07")
+	_week_bar.position = Vector2(-1000.0, 0.0)
+	_week_bar.size = Vector2(W + 2000.0, WEEK_BAR_H)
+	_week_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_week_bar.visible = false
+	_week_pop.add_child(_week_bar)
+	var edge := ColorRect.new()
+	edge.color = Color("#7a4e22")
+	edge.position = Vector2(0.0, WEEK_BAR_H - 3.0)
+	edge.size = Vector2(W + 2000.0, 3.0)
+	edge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	edge.visible = false
+	_week_bar.add_child(edge)
+	var back := _back_button()
+	back.position = Vector2(WALL, (WEEK_BAR_H - 3.0 - ICON_TAP) / 2.0)
+	_week_pop.add_child(back)
+	var hz := Control.new()
+	hz.name = "WeekPopupHead"
+	hz.size = Vector2(W, WEEK_BAR_H - 3.0)
+	hz.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_week_pop.add_child(hz)
+	var head := _place_outlined("本周赛程", 30, Color("#ffe9a8"),
+		Vector2(WALL + ICON_TAP + 4.0, -1.0), Vector2(360.0, WEEK_BAR_H - 3.0))
 	head.name = "WeekPopupTitle"
-	_week_pop.add_child(head)
-	var close := _plank_button("收起", _close_week_popup, Vector2(140.0, 82.0))
-	close.name = "WeekPopupClose"
-	close.position = Vector2(sx + STRIP_W - 140.0, row_y)
-	_week_pop.add_child(close)
+	hz.add_child(head)
 	content_root.add_child(_week_pop)
-	_week_strip(paint_now)
+	_week_cards(paint_now)
 
 
-## 弹层表头跟着条子的**真实**宽高走(条子宽由内容决定, 收盘块长了会撑宽): 标题左端对齐条子左沿,
-## 「收起」右端对齐条子右沿, 两者同一行、贴在条子上沿上面 4px。
-func _layout_pop_header(box: Control) -> void:
-	if not is_instance_valid(_week_pop):
-		return
-	var r := Rect2(box.position, box.size)
-	var close := _week_pop.get_node_or_null("WeekPopupClose") as Control
-	var head := _week_pop.get_node_or_null("WeekPopupTitle") as Control
-	if close != null:
-		close.position = Vector2(r.end.x - close.size.x, r.position.y - 4.0 - close.size.y)
-	if head != null and close != null:
-		head.position = Vector2(r.position.x + 4.0, close.position.y + (close.size.y - head.size.y) / 2.0)
+## 左上角返回键: 与右上 ? / ⚙ 同一种实体按钮(iconbtn.png), 里面一支像素箭头(menu/hud/back.png, 本轮新画)。
+## 点击区 = ICON_TAP(81, 触摸线)。★具名方法 `_close_week_popup`, 门禁量得到接的是谁。
+func _back_button() -> Control:
+	var holder := Control.new()
+	holder.name = WEEK_BACK_NAME
+	holder.size = Vector2(ICON_TAP, ICON_TAP)
+	holder.custom_minimum_size = holder.size
+	var vo: float = (ICON_TAP - ICON_VIS) / 2.0
+	var slot := _nine_rect("iconbtn.png", Vector4(6, 6, 8, 16), Rect2(Vector2(vo, vo), Vector2(ICON_VIS, ICON_VIS + 4.0)))
+	holder.add_child(slot)
+	var arrow := TextureRect.new()
+	arrow.name = "BackArrow"
+	arrow.texture = load(HUD + "back.png")
+	arrow.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	arrow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	arrow.stretch_mode = TextureRect.STRETCH_SCALE
+	arrow.size = Vector2(15.0, 19.0) * 2.0
+	## 对准【顶面】中心(顶面 = 暗槽去掉底边厚 10px), 与 ? / ⚙ 同一个口径
+	arrow.position = Vector2(vo + (ICON_VIS - arrow.size.x) / 2.0, vo + (ICON_VIS - 6.0 - arrow.size.y) / 2.0)
+	arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(arrow)
+	var btn := Button.new()
+	btn.flat = true
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	btn.set_anchors_preset(Control.PRESET_FULL_RECT)
+	holder.add_child(btn)
+	btn.mouse_entered.connect(func(): slot.modulate = Color(1.3, 1.22, 1.1))
+	btn.mouse_exited.connect(func(): slot.modulate = Color.WHITE)
+	btn.pressed.connect(_close_week_popup)
+	return holder
+
+
+var _week_bar: ColorRect = null
 
 
 func _open_week_popup() -> void:
@@ -1520,23 +1622,31 @@ func _open_week_popup() -> void:
 		content_root.move_child(_week_pop, -1)
 		_week_pop.visible = true
 		_week_dim.visible = true
+		_week_bar.visible = true
+		for e in _week_bar.get_children():
+			(e as CanvasItem).visible = true
 
 
 func _close_week_popup() -> void:
 	if is_instance_valid(_week_pop):
 		_week_pop.visible = false
 		_week_dim.visible = false
+		_week_bar.visible = false
+		for e in _week_bar.get_children():
+			(e as CanvasItem).visible = false
 
 
-func _on_pop_dim_input(ev: InputEvent) -> void:
-	if (ev is InputEventMouseButton and (ev as InputEventMouseButton).pressed) \
-			or (ev is InputEventScreenTouch and (ev as InputEventScreenTouch).pressed):
+## 系统返回键 / Esc 关掉赛程页(整页盖着主菜单, 不能只有左上角一个出口)。
+func _unhandled_input(ev: InputEvent) -> void:
+	if ev.is_action_pressed("ui_cancel") and is_instance_valid(_week_pop) and _week_pop.visible:
 		_close_week_popup()
+		get_viewport().set_input_as_handled()
 
 
-# ─── 📅 本周赛程条 (贴底横条) ───
+# ─── 📅 本周赛程 ───
 ## v2 的核心是周赛制, 而玩家在主菜单上【完全看不到这周是怎么安排的】: 哪天积分赛、
-## 哪天闯关、什么时候收盘, 全靠记。这条横着的七格就是干这个的。
+## 哪天闯关、什么时候收盘, 全靠记。
+## ★2026-10-06 从「七格横条」换成整页四张阶段卡(见 `_week_popup` 头注); 下面是横条那一版的来历。
 ##
 ## ★第一版做成了【中间一列竖排七行的日历表】, 连同右侧的赛季表格一起被用户否掉:
 ##   「市面上哪里有游戏会这么排版呢」。实拍参考里周期性/模式信息走的是
@@ -1548,13 +1658,13 @@ func _on_pop_dim_input(ev: InputEvent) -> void:
 ## ★2026-10-04 收进 `phase2_config.WEEKDAY_CN`(时间穿越角标也要用同一份)。
 const _WD_CN := _P2C.WEEKDAY_CN
 
-## 赛程条的外框。★留引用是为了服务状态变化时能把它换掉(见 `_sb_poll`)。
+## 赛程页四张卡的容器。★留引用是为了服务状态变化时能把它换掉(见 `_sb_poll`)。
 var _week_box: Control = null
-## 建这条赛程条时的服务状态。★存下来才知道"变没变" —— 只看当前值没法判断要不要重建。
+## 建这一页卡时的服务状态。★存下来才知道"变没变" —— 只看当前值没法判断要不要重建。
 var _sb_state_shown: String = ""
 
 
-## D-1: 服务状态变了就重建赛程条(维护态要盖掉收盘倒计时)。
+## D-1: 服务状态变了就重建赛程页(维护态要盖掉倒计时)。
 ## ★判据是**状态变了**而不是"每秒都重建" —— 后者会让主菜单每秒扔一堆节点。
 func _sb_poll() -> void:
 	if _SB.take_update_hint(): _toast(_SB.UPDATE_HINT)   # E15: 服务端要求的最低版本高于本机 ⇒ 非阻塞提示一次
@@ -1564,10 +1674,10 @@ func _sb_poll() -> void:
 	##   ⇒ 右侧那一块要显示的东西(档位 + 剩余时间文字)变了也重画。
 	if s == _sb_state_shown and _close_key(_strip_now()) == _close_key_shown:
 		return
-	rebuild_week_strip()
+	rebuild_week_page()
 
 
-## 赛程条此刻用哪个时钟(与 `_week_strip` 同一条: strip_now_override → _now_ts())。
+## 赛程页此刻用哪个时钟(与 `_week_cards` 同一条: strip_now_override → _now_ts())。
 func _strip_now() -> int:
 	return strip_now_override if strip_now_override > 0 else _now_ts()
 
@@ -1578,20 +1688,17 @@ var _close_key_shown: String = ""
 func _close_key(now: int) -> String:
 	var ph: String = _P2C.phase_at_utc(now)
 	var left: int = _P2C.close_left_sec(now)
-	var live: bool = (_P2C.phase_mode_live(_P2C.PHASE_FINALS)
-		if strip_finals_live_override < 0 else strip_finals_live_override == 1)
-	var kind := close_block_kind(ph, live,
-		_SB.service_state() == _SB.ST_MAINTENANCE, left, _P2C.can_start_match_utc(now))
+	var kind := _close_kind_at(now)
 	## ★模式卡第三行(倒计时)也算进指纹: 休赛/决赛日那几天它数的是「距下一阶段」, 收盘块不变它也在变。
 	return "%s|%s|%s|%s" % [ph, kind, _left_text(left) if left >= 0 else "", _mode_countdown(now)]
 
 
-## 重建赛程条。★抽出来是因为实拍要在换过时钟之后再建一次 ——
+## 重建赛程页的四张卡(+ 模式卡)。★抽出来是因为实拍要在换过时钟之后再建一次 ——
 ##   就地再抄一遍那两行就是「手抄的副本必然落后」。
-func rebuild_week_strip() -> void:
+func rebuild_week_page() -> void:
 	if is_instance_valid(_week_box):
 		_week_box.queue_free()
-	_week_strip()
+	_week_cards()
 	## 模式卡的倒计时跟着同一次重画走(同一条钟: `_strip_now()`)。
 	if is_instance_valid(content_root):
 		_mode_card(_strip_now())
@@ -1599,8 +1706,8 @@ func rebuild_week_strip() -> void:
 
 ## ★只给门禁与实拍喂已知时刻; **产品一律不传**。
 ##   先例: `TeamSelectScene.lockout_now_override` / `GameState.ranked_quota_full(now)`。
-##   ⚠ 为什么非要这个口子: 赛程条是**按星期分支**的东西 ⇒ 不给口子的话,
-##     「周日那一格变成对阵图的门」只有周日才会被执行, 变异改坏了也没人红
+##   ⚠ 为什么非要这个口子: 赛程页是**按星期分支**的东西 ⇒ 不给口子的话,
+##     「周日那张卡上的对阵图门」只有周日才会被执行, 变异改坏了也没人红
 ##     (memory `fb-gate-subject-never-constructed`)。
 var strip_now_override: int = 0
 
@@ -1612,199 +1719,329 @@ var strip_finals_live_override: int = -1
 
 
 ## ★`paint_now` = 本屏那一刻(`_ready` 传); 0 = 自己问一次
-##   (`rebuild_week_strip()` 走这一支 —— 它是**另一次刷屏**, 该读新的)。
-func _week_strip(paint_now: int = 0) -> void:
-	## ★UTC 纪元秒, 与本地时区无关
-	## ★★★兜底走 `_now_ts()`, 不再就地读系统钟(2026-09-28)。
-	##   原来这一行是主菜单上**第二条独立的时钟**: 把 `clock_override_ts` 钉在周六渲整屏时,
-	##   状态行已经改说「闯关赛」, 而赛程条仍把**真实的那一天**标成「今」。
-	##   实测(`tests/_probe_mmclock.gd`, 修前): 只注 `clock_override_ts` 逐日走一遍,
-	##   **七天里六天**条上标「今」的格与注入日对不上 —— 对得上的只有
-	##   “恰好是真实今天”那一天。memory `fb-second-clock-drops-events`。
-	## ★`strip_now_override` 不删, 留作**更细的一层**(截图脚本 `shot_menu_to_bracket`
-	##   与 `verify_week_strip` 在用); 但**真实时钟那条路只剩一条**:
-	##   `_now_ts()` → `clock_override_ts` → `_P2C.now_utc()`。
-	##   两个 override 都是 0 时行为**逐字节不变**(玩家路径一字未动)。
+##   (`rebuild_week_page()` 走这一支 —— 它是**另一次刷屏**, 该读新的)。
+## ★★兜底走 `_now_ts()`, 不就地读系统钟(2026-09-28, memory `fb-second-clock-drops-events`):
+##   `strip_now_override` → `paint_now` → `_now_ts()`(→ `clock_override_ts` → `_P2C.now_utc()`)。
+##   两个 override 都是 0 时行为逐字节不变(玩家路径一字未动)。
+func _week_cards(paint_now: int = 0) -> void:
 	var now: int = strip_now_override if strip_now_override > 0 \
 		else (paint_now if paint_now > 0 else _now_ts())
-	var today: int = _P2C.iso_weekday_utc(now)
 	_sb_state_shown = _SB.service_state()
-	var box := PanelContainer.new()
-	## ★给它一个名字当**地址** —— 门禁要只量条内那 7 格。
-	##   2026-09-27 探针扫全屏时把右侧「今天是什么日子」指示块的标签也数了进来,
-	##   凭空多出一格(x=812 vs 条内 x=126)。**判据宽一格就会造出假 bug。**
-	## ★名字只用来定位, **判据仍是相位序列**(与 `phase_of_weekday` 比), 不是名字本身。
-	box.name = "WeekStrip"
-	box.position = Vector2((W - STRIP_W) / 2.0, POP_CY - STRIP_H / 2.0)
-	box.custom_minimum_size = Vector2(STRIP_W, STRIP_H)
-	box.size = Vector2(STRIP_W, STRIP_H)
-	## ★2026-10-05 第三轮: 条子从「贴底常驻」挪进本周赛程弹层, 在弹层里**竖向居中**。
-	##   条高由子控件决定(常规 95; 周日那扇门也是 81 高的按钮) ⇒ `resized` 时按实际高度重算顶沿,
-	##   不写死坐标(原来写死 y=636 那次, 周日被撑高后掉出屏幕)。
-	box.resized.connect(func() -> void:
-		if is_instance_valid(box):
-			box.position = Vector2((W - box.size.x) / 2.0, POP_CY - box.size.y / 2.0)
-			_layout_pop_header(box))
-	var sb := StyleBoxFlat.new()
-	## ★不描边 + 底色更实: verify_ui_consistency 的「网页盒」= 四边有边框 + 底半透明
-	##   = CSS border+rgba 的长相(用户 2026-08-15「去掉 ai 味」时建的判据)。
-	##   条子靠更实的底色跟背景分开就够了, 不需要 1px 金描边。
-	sb.bg_color = Color(0.04, 0.10, 0.16, 0.94)
-	sb.set_border_width_all(0)
-	## ★直角不圆角: verify_ui_consistency 把「圆角盒」当网页感的指标(用户 2026-08-15「去掉 ai 味」),
-	##   主菜单上限 3 个, 而赛程条一家就能凑 8 个(外框 + 七格)。像素风里圆角也本来就是异类。
-	sb.set_corner_radius_all(0)
-	sb.content_margin_left = 12; sb.content_margin_right = 12
-	sb.content_margin_top = 7; sb.content_margin_bottom = 7
-	## ★★★2026-09-28 外框上九宫格 `ui/panel-wide-flat.png`(不可点的底板 · 源图 80×48 · 边带 8)。
-	##   **一个框, 不是七个** —— 七格各套一个实拍读成表格(理由见 `_week_day_cell` 头注)。
-	## ★它对「文字压边带」是安全的: 这张图的实测 band = **5**(比另两张薄),
-	##   而最靠边的字块距内沿还有 11px 以上(`tests/_probe_mmprofile.gd`)。
-	## ⚠ content_margin **必须原样钉住 12/12/7/7**: StyleBoxTexture 默认拿
-	##   texture_margin(8) 当 content_margin ⇒ 上下各 +1 ⇒ 条子长高 2px。
-	##   而**周日**那天条高 = 门按钮 81 + 上下 margin, 顶沿 = 719 − 条高,
-	##   实测顶沿与左栏栈底只差 **1px** ⇒ 多 2px 当场压住入口(门禁 ④ 那条)。
-	## ★★2026-10-05 UI 重做: 冷色藏青金属框 → 铁箍木板(menu/hud/strip-plank.png, PixelLab 新生成)。
-	##   原来那块藏青底 + 细边在暖色擂台上就是一个网页控件; 现在与左栏木牌、货币牌、训龟大师同一套材质。
-	##   两端铁箍占 22px ⇒ 左右内边距 12 → 26。
-	## ★★木纹**不许被拉伸**(用户:「木纹不要拉糊」): 贴图是烘好的 1400×95 长板,
-	##   中段走 TILE —— 条子比贴图窄就是原像素裁出来, 一个像素都不缩放。
-	##   竖向: 条高 = 格高 81 + 上下 7 = 95 = 贴图高 ⇒ 1:1(门禁 ⑯g 量这条)。
-	var frame := StyleBoxTexture.new()
-	frame.texture = load(HUD + STRIP_TEX)
-	frame.texture_margin_left = 22; frame.texture_margin_right = 22
-	frame.texture_margin_top = 11; frame.texture_margin_bottom = 12
-	frame.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_TILE
-	frame.axis_stretch_vertical = StyleBoxTexture.AXIS_STRETCH_MODE_TILE
-	frame.content_margin_left = 26; frame.content_margin_right = 26
-	frame.content_margin_top = 7; frame.content_margin_bottom = 7
-	frame.modulate_color = Color(0.62, 0.55, 0.50)   # 木板压暗, 字才浮得出来(对比度)
-	box.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	box.add_theme_stylebox_override("panel", frame)
-	## 放进本周赛程弹层(没有弹层时 —— 门禁单独调这一段 —— 退回内容层)。
+	_close_key_shown = _close_key(now)
+	var box := Control.new()
+	box.name = WEEK_CARDS_NAME
+	box.position = WEEK_GRID_POS
+	box.size = WEEK_CARD_SIZE * 2.0 + Vector2(WEEK_CARD_GAP, WEEK_CARD_GAP)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	## 放进赛程页(没有页面时 —— 门禁单独调这一段 —— 退回内容层)。
 	(_week_pop if is_instance_valid(_week_pop) else content_root).add_child(box)
 	_week_box = box          # D-1: 服务状态变了要能把它换掉
-	var h := HBoxContainer.new(); h.add_theme_constant_override("separation", 6)
-	box.add_child(h)
+	for i in range(WEEK_PHASES.size()):
+		var card := _week_card(week_card_info(str(WEEK_PHASES[i]), now))
+		card.position = Vector2(float(i % 2), float(i / 2)) * (WEEK_CARD_SIZE + Vector2(WEEK_CARD_GAP, WEEK_CARD_GAP))
+		box.add_child(card)
+
+
+## 这个阶段占本周哪几天: [首日, 末日](ISO 1..7)。★只问 `phase_of_weekday`, 不另写一张星期表。
+static func _phase_days(ph: String) -> Vector2i:
+	var a := 0
+	var b := 0
 	for wd in range(1, 8):
-		h.add_child(_week_day_cell(wd, today))
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	h.add_child(spacer)
-	h.add_child(_week_close_block(now))
+		if _P2C.phase_of_weekday(wd) == ph:
+			if a == 0:
+				a = wd
+			b = wd
+	return Vector2i(a, b)
 
 
-## 赛程条的一格 = 一天。上行周几、下行阶段名。
-## 今天给金边金底; 已过去的天淡到 0.42 —— 一眼看出这周走到哪了。
-func _week_day_cell(wd: int, today: int) -> Control:
-	var ph: String = _P2C.phase_of_weekday(wd)
-	var is_today := (wd == today)
-	var cell := PanelContainer.new()
-	cell.custom_minimum_size = Vector2(92, 0)
-	var cs := StyleBoxFlat.new()
-	cs.set_corner_radius_all(0)          # 同上: 七个格子也不圆角
-	cs.content_margin_left = 6; cs.content_margin_right = 6
-	cs.content_margin_top = 3; cs.content_margin_bottom = 3
-	## 今天那格也不描边(同上)。改成更实的金底 + 顶部一条金色实条 ——
-	## 实条是 ColorRect 不是 StyleBox, 既不算"盒", 在像素风里也比 1px 描边立得住。
-	## ★★2026-09-27 材质层(用户:「全是 ai 味和网页味」)。
-	##   原来**七格每格都有一块** `Color(1,1,1,0.05)` 的半透明底 —— 那正是 CSS 的
-	##   `rgba(255,255,255,.05)`; 七块并排 + 一行细灰字, 屏幕上读起来是**网页的标签栏**。
-	##   零边框零圆角只让它不被门禁判成"网页盒", 并没有让它变成游戏里的东西
-	##   (判据量的是"有没有 border+rgba 那个长相", 不是"像不像游戏")。
-	##
-	## ★★我先试的是【给七格都套九宫格金属芯片 `chip-frame`】, **实拍之后退掉了**:
-	##   chip-frame 源图 48×24, 拉到 92×54 之后那圈金属只剩 **1px 亮边** ——
-	##   屏幕上就是七个细线描边的方盒, 比原来的半透明块**更像网页表格**。
-	##   (这就是 `ui_skin.gd` 记的「贴图有它的最小可用尺寸」, 只是这次卡在"拉太大"那头;
-	##    我是**量完 band=4 判定安全、拍完才看出来不对** —— 数值过关不等于长相过关。)
-	##
-	## ⇒ 改法是**把盒子拿掉**, 不是换一种盒子: 过去/未来的日子直接落在条子上,
-	##   只有今天那格留一块实心金牌 + 顶上一条金边。一排日子 + 一块高亮牌,
-	##   这是游戏里周历的长相; 七个等大的框是表格的长相。
-	cs.bg_color = Color(1.0, 0.85, 0.24, 0.32) if is_today else Color(0, 0, 0, 0)
-	## ★★★2026-09-28 今天那一格换成**九宫格亮牌** `ui/panel-wide-on.png`。
-	##   上面那段说的「不换一种盒子」仍然成立 —— **只有今天这一格有牌子**,
-	##   其余六天还是直接落在条子上。一排日子 + 一块亮牌 = 游戏里的周历;
-	##   七个等大的框才是表格(上一轮四版对照实拍拍出来的, 不是推的)。
-	## ★为什么把 4px 金条去掉: 牌子本身就是高亮, 再掞一条金条就是两层高亮叠着;
-	##   而且那 4px 会把字块顶成 49px, 直接吃掉边带的余量。
-	## ⚠ 贴图不在就退回原来的金底(`cs`) —— `UISkin.nine` 自带这一手。
-	var skin: StyleBox = cs
-	if is_today:
-		## ★2026-10-05 UI 重做: 今天这格**不填底**, 与其余六天同一套明暗, 只套一圈黄铜边框
-		##   (brass-frame.png = 铜牌挖空) —— 实心铜牌配深色字是反色, 一排里跳出来像个按下去的键。
-		cs.bg_color = Color(0, 0, 0, 0)
-		skin = UISkin.nine("menu/hud/" + STRIP_TODAY_TEX, 10, cs)   # 10 = 挖空的边界(tools/build_menu_hud.py), 就是那圈铜的真宽
-		skin.content_margin_left = 6; skin.content_margin_right = 6
-		skin.content_margin_top = STRIP_TODAY_PAD
-		skin.content_margin_bottom = STRIP_TODAY_PAD
-	cell.add_theme_stylebox_override("panel", skin)
-	var v := VBoxContainer.new(); v.add_theme_constant_override("separation", 0)
-	## ★★七格**一律竖向居中**。不居中的话: 今天那格的内边距是 9(要避边带),
-	##   其余格是 3, 而 HBox 会把七格拉成等高 ⇒ 一排日子的字会差出 6px, 读起来是歪的。
-	## ★居中之后两种 margin 给出的**绝对位置完全相同**(内容区上下对称),
-	##   七格自动齐 —— 不用再给其余六格也填一份跟着漂的 margin。
-	v.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	cell.add_child(v)
-	var d := Label.new(); d.text = _WD_CN[wd - 1]
-	d.add_theme_font_size_override("font_size", STRIP_DAY_FONT)
-	d.add_theme_color_override("font_color", STRIP_DAY_COL)
-	d.add_theme_color_override("font_outline_color", Color("#140a03")); d.add_theme_constant_override("outline_size", 5)
-	d.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	v.add_child(d)
-	var n := Label.new()
-	## ★今天那格在名字后缀一个「今」——横条的格子只有 92px 宽, 光靠金边在缩略/小屏上读不出来;
-	##   顺带让门禁能量到"恰好一天是今天"(竖排那版有「今天」标签, 改横条时漏掉了)。
-	n.text = (str(_P2C.PHASE_LABEL.get(ph, ph)) + " 今") if is_today else str(_P2C.PHASE_LABEL.get(ph, ph))
-	n.add_theme_font_size_override("font_size", STRIP_PHASE_FONT)
-	n.add_theme_color_override("font_color", STRIP_PHASE_COL)
-	n.add_theme_color_override("font_outline_color", Color("#140a03")); n.add_theme_constant_override("outline_size", 5)
-	n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	v.add_child(n)
-	## ★★2026-10-04 台账 S15(两轮实操都记了「点别的天什么都不会发生」):
-	##   七格并排 + 今天一块亮牌 = 页签的长相, 玩家就会去点 ⇒ 让它**点了有回应**:
-	##   飘一行「那天是什么、谁能打」。不切页 —— 主菜单没有"别的天"的内容可切。
-	## ★触摸线: 格高吃 ROW_H(81), 与全屏所有靶子同一条线; 条子因此恒为周日那天的高度(95),
-	##   顶沿由 `resized` 那段贴底算出, 不是新的写死坐标。
-	cell.custom_minimum_size = Vector2(84, ROW_H)
-	var tap := Button.new()
-	tap.name = DAY_TAP_PREFIX + str(wd)
-	tap.flat = true
-	tap.focus_mode = Control.FOCUS_NONE
-	tap.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	tap.pressed.connect(func() -> void: _toast(_week_day_note(wd)))
-	cell.add_child(tap)
-	## PanelContainer 会把子控件缩进 content_margin 里(今天那格上下各 9 ⇒ 只剩 63 高)。
-	##   `sort_children` 在容器排完之后才发 ⇒ 这里把按钮铺回整格, 点击区 = 整格 92×81。
-	cell.sort_children.connect(func() -> void:
-		if is_instance_valid(tap) and is_instance_valid(cell):
-			tap.position = Vector2.ZERO
-			tap.size = cell.size)
-	if wd < today:
-		cell.modulate.a = 0.42
-	return cell
+## 「周二 ~ 周五」/「周六」
+static func _phase_days_text(ph: String) -> String:
+	var d := _phase_days(ph)
+	if d.x <= 0:
+		return ""
+	if d.x == d.y:
+		return "周%s" % _WD_CN[d.x - 1]
+	return "周%s ~ 周%s" % [_WD_CN[d.x - 1], _WD_CN[d.y - 1]]
 
 
-## 赛程条每一格那个透明按钮的节点名前缀(+ 星期几 1~7)。门禁按它找, 不抄文案。
-const DAY_TAP_PREFIX := "DayTap"
+## 决赛日玩法上线了没有(门禁/实拍可用 `strip_finals_live_override` 按成是/否; -1 = 问规则)。
+func _finals_live() -> bool:
+	return (_P2C.phase_mode_live(_P2C.PHASE_FINALS)
+		if strip_finals_live_override < 0 else strip_finals_live_override == 1)
 
 
-## 点了赛程条某一天飘的那一句: 那天打什么、谁能打。
-## ★数字一律读规则常量(配额 / 晋级线), 不抄字面量。
-func _week_day_note(wd: int) -> String:
-	var ph: String = _P2C.phase_of_weekday(wd)
-	## ★规矩那半句与模式卡同一份(`_phase_rule`), 不各写一遍。
-	return "周%s %s · %s" % [str(_WD_CN[wd - 1]), str(_P2C.PHASE_LABEL.get(ph, ph)), _phase_rule(ph)]
+## 此刻那一档(倒计时 / 已截止 / 门 …)。★`_mode_countdown` / `_close_key` / 卡上的门三处共用这一个。
+func _close_kind_at(now: int) -> String:
+	return close_block_kind(_P2C.phase_at_utc(now), _finals_live(),
+		_SB.service_state() == _SB.ST_MAINTENANCE, _P2C.close_left_sec(now), _P2C.can_start_match_utc(now))
 
 
-## 条子右端的收盘块: 主行(倒计时/状态) + 副行(本地时刻)。
-## 三种态各说各的话, 不拿一句话硬凑:
-##   · 有收盘的阶段 → 倒计时 + 本地几点收盘
-##   · 已进封盘窗口 → 直说"不开新局了", 因为这时点开始战斗会被拦下
-##   · 休赛/决赛日 → 没有收盘概念(close_left_sec 返回 -1), 说各自该说的事
-## 那一格属于哪一类。★**纯静态函数**, 门禁能把四个入参穷举着喂 ——
+## 赛程页一张卡要显示的全部内容。★纯数据, 门禁直接喂时间戳调它, 再与屏幕上那张卡逐字比。
+##   phase / title / days / state(past·now·future) / today / time / locked / lock_text
+##   / chips([[数字, 说明], …]) / points([一行, …]) / door("" · board · bracket)
+## ★判据全是原来那几个函数:
+##   阶段 = `phase_at_utc`; 当前阶段的时间 = `_mode_countdown`(模式卡第三行同一个);
+##   门 = `close_block_kind`(原赛程条收盘块同一个分类); 锁 = `gauntlet_eligible` / `gauntlet_line_reached`
+##   / `gauntlet_state` / `phase_mode_live` / `is_eliminated`(与开始战斗那扇门同一组)。
+## ★数字一律读规则常量(HEARTS_MAX / RANKED_QUOTA / PROMOTE_WINS / GAUNTLET_* / FINALS_SHOP_SEC)。
+func week_card_info(ph: String, now: int) -> Dictionary:
+	var today: int = _P2C.iso_weekday_utc(now)
+	var days := _phase_days(ph)
+	var anchor: int = _P2C.week_anchor_utc(now)
+	var state := "future"
+	if today >= days.x and today <= days.y:
+		state = "now"
+	elif days.y < today:
+		state = "past"
+	var info := {
+		"phase": ph,
+		"title": str(_P2C.PHASE_LABEL.get(ph, ph)),
+		"days": _phase_days_text(ph),
+		"state": state,
+		"today": state == "now",
+		"locked": false,
+		"lock_text": "",
+		"chips": [],
+		"points": [],
+		"door": "",
+	}
+	## ── 上沿那条暗带的时间 ──
+	if state == "now":
+		info["time"] = _mode_countdown(now)
+	elif state == "past":
+		info["time"] = CARD_PAST_TEXT
+	else:
+		var start: int = anchor + (days.x - 1) * 86400
+		if ph == _P2C.PHASE_FINALS:
+			start = _utc_today_at(start, int(_P2C.FINALS_SEAT_HOUR_UTC))     # 决赛日按分组开赛那一刻(原赛程条「X 开赛」同一个时刻)
+		info["time"] = "%s 开始" % _local_wd_hhmm(start)
+	## ── 要点 ──
+	var live: bool = _finals_live() if ph == _P2C.PHASE_FINALS else _P2C.phase_mode_live(ph)
+	var chips: Array = []
+	var pts: Array = []
+	if not live:
+		## 玩法没上线的阶段(周一休赛): 直说这天按什么规矩 —— 那一句只有 `phase_pending_note` 一处。
+		var note: String = _P2C.phase_pending_note(ph)
+		if note == "":
+			note = "规则同%s" % str(_P2C.PHASE_LABEL[_P2C.PHASE_RANKED])   # 手动按成「没上线」而表里查不到时的兜底
+		pts.append(note)
+		if ph == _P2C.PHASE_REST:
+			pts.append("版本更新在本日进行")
+	else:
+		match ph:
+			_P2C.PHASE_RANKED:
+				chips = [[int(_P2C.HEARTS_MAX), "条生命"], [int(_P2C.RANKED_QUOTA), "场上限"], [int(_P2C.PROMOTE_WINS), "胜晋级"]]
+				pts = ["每负一场扣 1 条生命，耗尽即本周出局",
+					"%d 胜获得周六闯关赛资格" % int(_P2C.PROMOTE_WINS),
+					_local_stamp(_P2C.ranked_close_ts(anchor))]
+			_P2C.PHASE_GAUNTLET:
+				chips = [[int(_P2C.GAUNTLET_WINS_IN), "胜晋级"], [int(_P2C.GAUNTLET_LOSSES_OUT), "负出局"], [int(_P2C.GAUNTLET_QUOTA), "场上限"]]
+				pts = ["不消耗生命",
+					"晋级者参加周日决赛日",
+					_local_stamp(_P2C.gauntlet_close_ts(anchor))]
+			_P2C.PHASE_FINALS:
+				chips = [[1, "负淘汰"], [int(_P2C.FINALS_SHOP_SEC / 60.0), "分钟备战"]]
+				pts = ["单败淘汰，胜者进入下一轮",
+					"冠军、亚军、四强获得头衔",
+					"%s 开赛" % _local_wd_hhmm(_utc_today_at(anchor + 6 * 86400, int(_P2C.FINALS_SEAT_HOUR_UTC)))]
+	## ── 锁(只锁现在和以后; 过去的阶段只说「已结束」) ──
+	if state != "past":
+		match ph:
+			_P2C.PHASE_RANKED:
+				if GameState.is_eliminated():
+					info["locked"] = true
+					info["lock_text"] = "生命已耗尽 · 下周二可参加"
+			_P2C.PHASE_GAUNTLET:
+				if live and not (GameState.gauntlet_eligible() or GameState.gauntlet_line_reached()):
+					info["locked"] = true
+					## 胜场够了但生命耗尽(2026-10-03 S13: 14 胜的人被告知「打够 11 胜就能来」)
+					if GameState.is_eliminated() and int(GameState.season_wins) >= int(_P2C.PROMOTE_WINS):
+						info["lock_text"] = "积分赛生命耗尽 · 本周无法参加"
+					else:
+						info["lock_text"] = "积分赛 %d 胜可参加" % int(_P2C.PROMOTE_WINS)
+			_P2C.PHASE_FINALS:
+				if live and not (GameState.gauntlet_eligible() and GameState.gauntlet_state() == _P2C.GAUNTLET_IN):
+					info["locked"] = true
+					info["lock_text"] = "闯关赛 %d 胜可参加" % int(_P2C.GAUNTLET_WINS_IN)
+	## ── 门(只在当天): 周六「全场赛况」/ 周日「对阵图」—— 档位与原赛程条收盘块同一个分类 ──
+	if state == "now":
+		var kind: String = _close_kind_at(now)
+		if kind == BK_MAINTENANCE:
+			var n := _SB.notice_text()
+			pts.push_front(n if n != "" else "版本维护，请稍后再来")
+		elif ph == _P2C.PHASE_FINALS and kind == BK_BRACKET_DOOR:
+			info["door"] = WEEK_DOOR_BRACKET
+		elif ph == _P2C.PHASE_GAUNTLET and _P2C.phase_mode_live(_P2C.PHASE_GAUNTLET) \
+				and kind in [BK_COUNTDOWN, BK_LOCKED, BK_CLOSED_TODAY]:
+			info["door"] = WEEK_DOOR_BOARD
+	info["chips"] = chips
+	info["points"] = pts
+	return info
+
+
+## 一块不可点的纯色面(像素风: 直角、不描边、不透明)。
+func _flat_cell(parent: Control, r: Rect2, col: Color, nm: String = "") -> ColorRect:
+	var c := ColorRect.new()
+	if nm != "":
+		c.name = nm
+	c.color = col
+	c.position = r.position
+	c.size = r.size
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(c)
+	return c
+
+
+## 一个只用来定位的区块(卡上的暗带 / 抬头 / 正文 / 数字牌): 字挂在它下面, 对齐就按它的框算。
+func _zone(parent: Control, nm: String, r: Rect2, col: Color) -> Control:
+	var z := Control.new()
+	z.name = nm
+	z.position = r.position
+	z.size = r.size
+	z.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(z)
+	_flat_cell(z, Rect2(Vector2.ZERO, r.size), col, "Fill")
+	return z
+
+
+## 一张阶段卡。结构照参考: 暗带(时间 + i) / 抬头(名字 + 副标题, 锁着时换成锁 + 条件) / 正文(数字牌 + 要点 + 门)。
+func _week_card(info: Dictionary) -> Control:
+	var ph := str(info["phase"])
+	var locked := bool(info["locked"])
+	var sz := WEEK_CARD_SIZE
+	var card := Control.new()
+	card.name = WEEK_CARD_PREFIX + ph
+	card.size = sz
+	card.custom_minimum_size = sz
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	## 外框: 落影 + 深色描边; 今天那张外面再套一圈金边。
+	_flat_cell(card, Rect2(Vector2(0.0, 6.0), sz), Color(0.0, 0.0, 0.0, 0.45), "Shadow")
+	if bool(info["today"]):
+		_flat_cell(card, Rect2(Vector2(-6.0, -6.0), sz + Vector2(12.0, 12.0)), CARD_TODAY_COL, "TodayFrame")
+	_flat_cell(card, Rect2(Vector2(-3.0, -3.0), sz + Vector2(6.0, 6.0)), Color("#140a03"), "Outline")
+	## ── 上沿暗带: 时间右对齐 + 右端「i」 ──
+	var strip := _zone(card, "CardStrip", Rect2(0.0, 0.0, sz.x, CARD_STRIP_H), Color("#100906"))
+	var tcol := Color("#ffc94a") if str(info["state"]) == "now" else Color("#cdbb9a")
+	var tl := _place_outlined(str(info["time"]), 17, tcol, Vector2(CARD_PAD, 0.0), Vector2(sz.x - CARD_PAD - 46.0, CARD_STRIP_H))
+	tl.name = "CardTime"
+	tl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	strip.add_child(tl)
+	card.add_child(_card_info_badge(info, Vector2(sz.x - 36.0, 3.0)))
+	## ── 彩色抬头 ──
+	var hcol: Color = CARD_LOCK_HEAD if locked else PHASE_HEAD_COL.get(ph, CARD_LOCK_HEAD)
+	var head := _zone(card, "CardHead", Rect2(0.0, CARD_STRIP_H, sz.x, CARD_HEAD_H), hcol)
+	_flat_cell(head, Rect2(0.0, 0.0, sz.x, 3.0), hcol.lightened(0.22))                 # 上亮边
+	_flat_cell(head, Rect2(0.0, CARD_HEAD_H - 4.0, sz.x, 4.0), hcol.darkened(0.35))   # 下暗边
+	var tx := CARD_PAD
+	if locked:
+		var lk := _pixel_lock(Vector2(CARD_PAD, (CARD_HEAD_H - 45.0) / 2.0), 3.0)
+		head.add_child(lk)
+		tx += 36.0 + 14.0
+	var title := _place_outlined(str(info["title"]), 34, Color("#d8d2cc") if locked else Color("#fff4d6"),
+		Vector2(tx, 3.0), Vector2(sz.x - tx - CARD_PAD, 44.0))
+	title.name = "CardTitle"
+	title.add_theme_constant_override("outline_size", 8)
+	head.add_child(title)
+	var sub_txt: String = str(info["lock_text"]) if locked else str(info["days"])
+	var sub := _place_outlined(sub_txt, 19, Color("#ffe08a") if locked else Color("#ffe9c4"),
+		Vector2(tx, 47.0), Vector2(sz.x - tx - CARD_PAD, 26.0))
+	sub.name = "CardSub"
+	head.add_child(sub)
+	## ── 正文 ──
+	var body_h: float = sz.y - CARD_STRIP_H - CARD_HEAD_H
+	var body := _zone(card, "CardBody", Rect2(0.0, CARD_STRIP_H + CARD_HEAD_H, sz.x, body_h),
+		CARD_LOCK_BODY if locked else CARD_BODY_COL)
+	var y := 14.0
+	var chips: Array = info["chips"]
+	for i in range(chips.size()):
+		var c: Array = chips[i]
+		var chip := _zone(body, "Chip%d" % i, Rect2(Vector2(CARD_PAD - 2.0 + float(i) * (CARD_CHIP_SIZE.x + 10.0), y), CARD_CHIP_SIZE),
+			Color("#1a1412") if locked else Color("#170d07"))
+		## 数字一行、说明一行, 各自一个定位框(字按框居中)。偏移是帧差实测的墨迹偏差(tests/_probe_textpos.gd):
+		##   m6x11 数字字形整体偏左 1.5、偏下 2; 中文 15 号偏左 1、偏下 1.5。
+		var nrow := Control.new()
+		nrow.name = "ChipNumRow"
+		nrow.position = Vector2(0.0, 3.0)
+		nrow.size = Vector2(CARD_CHIP_SIZE.x, 32.0)
+		nrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		chip.add_child(nrow)
+		var num := _place_outlined(str(c[0]), 28, Color("#bdb6ae") if locked else Color("#ffd34a"), Vector2(1.5, -2.0), Vector2(CARD_CHIP_SIZE.x, 32.0))
+		num.name = "ChipNum"
+		num.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		nrow.add_child(num)
+		var crow := Control.new()
+		crow.name = "ChipCapRow"
+		crow.position = Vector2(0.0, 35.0)
+		crow.size = Vector2(CARD_CHIP_SIZE.x, 20.0)
+		crow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		chip.add_child(crow)
+		var cap := _place_outlined(str(c[1]), 15, Color("#a8a29c") if locked else Color("#e8d6b0"), Vector2(1.0, -1.5), Vector2(CARD_CHIP_SIZE.x, 20.0))
+		cap.name = "ChipCap"
+		cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		crow.add_child(cap)
+	if not chips.is_empty():
+		y += CARD_CHIP_SIZE.y + 10.0
+	var door := str(info["door"])
+	var text_w: float = sz.x - CARD_PAD * 2.0 - ((150.0 + 12.0) if door != "" else 0.0)
+	var pts: Array = info["points"]
+	for k in range(pts.size()):
+		var pl := _place_outlined(str(pts[k]), 17, Color("#b4ada6") if locked else Color("#ecdcbc"),
+			Vector2(CARD_PAD, y + float(k) * CARD_LINE_H), Vector2(text_w, CARD_LINE_H))
+		pl.name = "CardPoint%d" % k
+		body.add_child(pl)
+	## 门: 周六「全场赛况」/ 周日「查看对阵图」。目标与原赛程条那两扇门同一处(`_open_gauntlet_board` / `_open_bracket_map`)。
+	if door != "":
+		var d: Button = _finals_entry() if door == WEEK_DOOR_BRACKET else _gauntlet_board_door()
+		d.position = Vector2(sz.x - CARD_PAD - 150.0, body_h - 81.0 - 12.0)
+		body.add_child(d)
+	if str(info["state"]) == "past":
+		card.modulate = Color(0.72, 0.72, 0.72)
+	return card
+
+
+## 暗带右端的「i」: 点了飘一行这张卡的要点(参考里那颗 i 也是「这个模式怎么玩」)。
+## ★看得见的是 22×22 小方块, 点击区按触摸线 81 铺开(居中在小方块上)。
+func _card_info_badge(info: Dictionary, pos: Vector2) -> Control:
+	var holder := Control.new()
+	holder.name = "CardInfo"
+	holder.position = pos
+	holder.size = Vector2(24.0, 24.0)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_flat_cell(holder, Rect2(0.0, 0.0, 24.0, 24.0), Color("#140a03"))
+	_flat_cell(holder, Rect2(2.0, 2.0, 20.0, 20.0), Color("#2f6fb8"))
+	var cap := _place_outlined("i", 18, Color("#fff4d6"), Vector2(1.5, 2.5), Vector2(24.0, 24.0))   # +1.5/+2.5: 帧差实测对准方块中心
+	cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cap.add_theme_font_override("font", load("res://assets/fonts/m6x11.ttf"))
+	cap.add_theme_constant_override("outline_size", 4)
+	holder.add_child(cap)
+	var b := Button.new()
+	b.name = "CardInfoTap"
+	b.flat = true
+	b.focus_mode = Control.FOCUS_NONE
+	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	b.position = Vector2(12.0 - ROW_H / 2.0, 0.0)
+	b.size = Vector2(ROW_H, CARD_STRIP_H + 20.0)
+	var parts: Array = []
+	for c in (info["chips"] as Array):
+		parts.append("%s %s" % [str(c[0]), str(c[1])])
+	parts.append_array(info["points"] as Array)
+	var msg := "%s · %s" % [str(info["title"]), "，".join(PackedStringArray(parts))]
+	b.pressed.connect(func() -> void: _toast(msg))
+	holder.add_child(b)
+	return holder
+
+
+## 「周六 07:00」(玩家本地时区)。★时区换算只在 `_local_dict` 一处。
+func _local_wd_hhmm(utc_ts: int) -> String:
+	var d := _local_dict(utc_ts)
+	var w: int = int(d.get("weekday", 0))
+	var wi := 7 if w == 0 else w
+	return "周%s %02d:%02d" % [_WD_CN[wi - 1], int(d.get("hour", 0)), int(d.get("minute", 0))]
+
+
+## 此刻属于哪一档(倒计时 / 已截止 / 今日已截止 / 门 / 维护 …)。
+## 模式卡第三行(`_mode_countdown`)与赛程页卡上的门(`week_card_info`)都按它分。
+## 那一档属于哪一类。★**纯静态函数**, 门禁能把四个入参穷举着喂 ——
 ##   尤其「玩法上线了没有」这一维: `PHASE_MODE_LIVE` 是 const 字典, 改不动,
 ##   不抽出来门禁就只能等到真上线那天才验得了「门会出现」。
 ## ★顺序就是原来那串 if 的顺序, 一个都没挪: 维护 → 决赛日的门 → 玩法没上线 → 收盘。
@@ -1844,81 +2081,6 @@ static func close_block_kind(phase: String, finals_live: bool, maintenance: bool
 	return BK_COUNTDOWN
 
 
-func _week_close_block(now: int) -> Control:
-	_close_key_shown = _close_key(now)
-	var ph: String = _P2C.phase_at_utc(now)
-	var left: int = _P2C.close_left_sec(now)
-	var head := ""
-	var sub := ""
-	var live: bool = (_P2C.phase_mode_live(_P2C.PHASE_FINALS)
-		if strip_finals_live_override < 0 else strip_finals_live_override == 1)
-	var kind := close_block_kind(ph, live,
-		_SB.service_state() == _SB.ST_MAINTENANCE, left, _P2C.can_start_match_utc(now))
-	## ★★D-1(2026-09-20): 后端**主动说自己在维护**时, 这一块盖掉赛程显示。
-	##   方案书 U7/§4.7 拍板「版本维护期放在周一休赛, 停服 → 发版本 → 开服」,
-	##   而在此之前玩家只会看到「连不上」⇒ 以为游戏坏了。
-	##   ⚠ 只有 **MAINTENANCE** 这一态才盖: 「没配后端」(当前状态)与「连不上」都不盖 ——
-	##     没配是有意关掉, 连不上是网络问题, 两者都不该在主菜单上喊话
-	##     (网络层第一原则: 永远不能把游戏搞坏; 这里也不能把没事说成有事)。
-	if kind == BK_MAINTENANCE:
-		head = "维护中"
-		var n := _SB.notice_text()
-		sub = n if n != "" else "版本维护, 稍后回来"
-		return _close_block_labels(head, sub)
-	## ★★2026-09-22: 有些阶段的**玩法还没上线**(见 `phase2_config.PHASE_MODE_LIVE`) ⇒
-	##   那三天实际走的是积分赛规则(照常开局、吃配额)。这一块必须**直说** ——
-	##   在此之前周日写「决赛日 本地 X 点开打」、周一写「本日维护」, 而两天都能照常开局:
-	##   玩家按字面读会以为自己错过了决赛、或者以为维护日不能玩。**说了做不到的事就是缺陷**。
-	## ★★周日决赛日**玩法上线之后**, 这一格变成进对阵图的门。
-	##   在此之前 `phase_mode_live(PHASE_FINALS)` 是 false ⇒ 走下面 BK_PENDING 那一支,
-	##   **门根本不存在** —— 而不是摆一个点了没反应的按钮
-	##   (memory `fb-branch-to-an-unbuilt-mode-is-a-backdoor`: 没做出来的那一支
-	##    要让「没上线」是个可读状态)。
-	if kind == BK_BRACKET_DOOR:
-		return _finals_entry()
-	if kind == BK_PENDING:
-		head = str(_P2C.PHASE_LABEL.get(ph, ph))
-		sub = _P2C.phase_pending_note(ph)
-		## ★兜底: 走到 BK_PENDING 而 `phase_pending_note()` 给空串, 只有一种情况 ——
-		##   用 `strip_finals_live_override` 把决赛日**手动**按成"没上线"(截图台/调试用),
-		##   而那张表里它其实已经上线了。不兜的话这一格会渲出一行空 Label。
-		## ★★2026-09-28 摘掉开发状态。原文是「玩法开发中, 暂按积分赛规则」——
-		##   「开发中」「暂按」是**开发备注**(玩家不需要知道我们做到哪了, 而「暂」
-		##   还顺带许了个不存在的期限)。玩家要知道的只有一件事: **这天按什么规矩打**。
-		##   与 `phase2_config.PHASE_PENDING_NOTE` 同一口径(那张表 2026-09-27 就改过,
-		##   只剩这条兜底一直没跟上), 后半句一字不差 —— 那是两处共同的那条信息。
-		## ★仍写字面量而不是去读那张表: 这一支的前提正是"那张表里查不到这个阶段"。
-		if sub == "":
-			sub = "规则同积分赛"
-		return _close_block_labels(head, sub)
-	if kind == BK_NO_CLOSE:
-		if ph == _P2C.PHASE_FINALS:
-			head = "决赛日"
-			sub = "%s 开赛" % _local_hhmm(_utc_today_at(now, int(_P2C.FINALS_SEAT_HOUR_UTC)))
-		else:
-			head = "休赛日"
-			sub = "周二开赛 · 本日维护"
-	elif kind == BK_CLOSED_TODAY:
-		head = "今日已截止"
-		var _tmr: int = now + 86400
-		var _tph: String = _P2C.phase_at_utc(_tmr)
-		if _tph == _P2C.PHASE_FINALS:
-			sub = "明天决赛日 · %s 开赛" % _local_hhmm(_utc_today_at(_tmr, int(_P2C.FINALS_SEAT_HOUR_UTC)))
-		else:
-			sub = "明天%s" % str(_P2C.PHASE_LABEL.get(_tph, ""))
-	elif kind == BK_LOCKED:
-		head = "已截止"
-		sub = "截止前 %d 分钟停止匹配" % int(_P2C.CLOSE_LOCKOUT_SEC / 60)
-	else:
-		head = "距截止 %s" % _left_text(left)
-		sub = "本地 %s" % _local_stamp(now + left)
-	## ★周六(闯关赛上线时)这一块是赛况板的门: 收盘前、封盘、收盘后都开着(收盘后正是看全场结果的时候)。
-	if ph == _P2C.PHASE_GAUNTLET and _P2C.phase_mode_live(_P2C.PHASE_GAUNTLET) \
-			and kind in [BK_COUNTDOWN, BK_LOCKED, BK_CLOSED_TODAY]:
-		return _gauntlet_board_entry(head, sub)
-	return _close_block_labels(head, sub)
-
-
 ## 周日决赛日那扇门通到哪。★具名常量 —— 门禁拿它去验"目标场景真的存在",
 ##   写死成字符串的话门禁就只能自己再抄一遍(抄一次永远落后一次)。
 const BRACKET_SCENE := "BracketMap"
@@ -1930,72 +2092,35 @@ func _finals_entry() -> Control:
 	## ★★2026-09-27 去掉行尾的「→」。它跟上面状态行那个「›」是同一族:
 	##   网页的「更多 →」写法 —— 用一个箭头告诉人"这里可以点"。
 	##   这一整块本来就是一个 150×81 的按钮(触控下限), 不需要箭头来交代。
-	return _door("决赛日\n看对阵图", _open_bracket_map)
+	var b := _door("查看对阵图", _open_bracket_map)
+	b.name = "BracketDoor"
+	return b
 
 
 ## 周六赛况板那扇门(周末看回放 2026-10-04, docs/plans/20261004-周末看回放.md)。
 ## ★与周日「看对阵图」**同一扇门**(`_door`: 同一张 `ui/panel-wide.png`、同一个尺寸) —— 不另造一种长相。
-## ★原来那两行(倒计时 / 收盘时刻或「明天决赛日 · 几点开打」)**一字不动**, 第三行说点进去看什么 ——
-##   第一版把第二行让给了「全场赛况」, `verify_week_strip` ⑥ 当场红: 周六收盘后那句「明天决赛日 · 本地 X 开打」没了。
-##   ⇒ 不是把字塞进 Button.text(Button 不按内容长宽), 而是**一块贴着内容的牌子 + 盖一层透明按钮**
-##   (与战绩页回放行同一个做法)。牌子皮与周日那扇门同一张 `ui/panel-wide.png`, 高度同为 81(触控下限)。
 const GAUNTLET_BOARD_SCENE := "GauntletBoard"
 const GAUNTLET_BOARD_LINE := "全场赛况"
 
 
-func _gauntlet_board_entry(head: String, sub: String) -> Control:
-	var pc := PanelContainer.new()
-	pc.name = "GauntletBoardPlate"
-	pc.custom_minimum_size = Vector2(172, 81)   # 2026-10-05: 铜牌边 14px, 150 宽装不下「距收盘 X 小时 Y 分」
-	pc.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var fsb := StyleBoxFlat.new()
-	fsb.bg_color = Color(0.05, 0.16, 0.15, 0.94)
-	fsb.set_border_width_all(0)
-	fsb.set_corner_radius_all(0)
-	var skin: StyleBox = UISkin.nine("menu/hud/brass.png", 14, fsb)   # 2026-10-05 UI 重做: 黄铜门牌
-	skin.content_margin_left = 12; skin.content_margin_right = 12
-	skin.content_margin_top = 6; skin.content_margin_bottom = 6
-	pc.add_theme_stylebox_override("panel", skin)
-	var v: Control = _close_block_labels(head, sub)
-	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	## 黄铜门牌上用深色字(收盘块默认是给木板配的亮字 + 深描边, 压在铜上读不出)
-	for lab in v.get_children():
-		if lab is Label:
-			(lab as Label).add_theme_color_override("font_color", Color("#2a1400"))
-			(lab as Label).add_theme_constant_override("outline_size", 0)
-			(lab as Label).add_theme_font_size_override("font_size", 14)
-	var go := Label.new()
-	go.text = GAUNTLET_BOARD_LINE
-	go.add_theme_font_size_override("font_size", 14)
-	go.add_theme_color_override("font_color", Color("#5a1a08"))
-	go.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	v.add_child(go)
-	pc.add_child(v)
-	var b := Button.new()
+## 周六卡上那扇门: 与周日「查看对阵图」同一扇门(`_door`: 同一张黄铜门牌、同一个尺寸)。
+func _gauntlet_board_door() -> Button:
+	var b := _door(GAUNTLET_BOARD_LINE, _open_gauntlet_board)
 	b.name = "GauntletBoardDoor"
-	b.flat = true
-	b.focus_mode = Control.FOCUS_NONE
-	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	for st in ["normal", "hover", "pressed", "focus", "disabled"]:
-		b.add_theme_stylebox_override(st, StyleBoxEmpty.new())
-	## 按下 / 悬停的反馈打在整块牌子上(与 `_door` 同一组系数)
-	b.mouse_entered.connect(func() -> void: pc.self_modulate = Color(1.22, 1.22, 1.22))
-	b.mouse_exited.connect(func() -> void: pc.self_modulate = Color.WHITE)
-	b.pressed.connect(_open_gauntlet_board)
-	pc.add_child(b)
-	return pc
+	return b
 
 
 func _open_gauntlet_board() -> void:
 	_go(GAUNTLET_BOARD_SCENE)
 
 
-## 赛程条右端那扇门(周日对阵图 / 周六赛况板共用)。
+## 赛程页卡上那扇门(周日对阵图 / 周六赛况板共用)。
 func _door(text: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.custom_minimum_size = Vector2(150, 81)
 	b.text = text
-	b.add_theme_font_size_override("font_size", 15)
+	b.add_theme_font_size_override("font_size", 18)   # 2026-10-06: 15 号细体比卡上其它字弱一截 ⇒ 18 号粗体
+	b.add_theme_font_override("font", _bold_font())
 	b.add_theme_color_override("font_color", Color("#2a1400"))
 	b.add_theme_color_override("font_hover_color", Color("#2a1400"))
 	## ★★2026-09-27 上皮。原来它用的是 **Godot 默认皮**(圆角纯灰), 与全屏其它按钮完全两个味。
@@ -2055,28 +2180,6 @@ func _open_bracket_map() -> void:
 	_go(BRACKET_SCENE)
 
 
-## 收盘块的两行标签。★抽出来是因为上面维护态那条要提前 return, 而**两条路必须长得一样** ——
-##   就地再写一份 Label 就是「手抄的副本必然落后」(本项目记过)。
-func _close_block_labels(head: String, sub: String) -> Control:
-	var v := VBoxContainer.new(); v.add_theme_constant_override("separation", 0)
-	## ★同七格: 竖向居中。不居中的话它会被 HBox 拉成满高而字靠顶,
-	##   与旁边居中的七格差出九几像素(实测 643 vs 652)。
-	v.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var a := Label.new(); a.text = head
-	a.add_theme_font_size_override("font_size", 16)
-	a.add_theme_color_override("font_color", Color("#ffd93d"))
-	a.add_theme_color_override("font_outline_color", Color("#1e0f04")); a.add_theme_constant_override("outline_size", 5)
-	a.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	v.add_child(a)
-	var b := Label.new(); b.text = sub
-	b.add_theme_font_size_override("font_size", 14)
-	b.add_theme_color_override("font_color", Color("#ecd5a8"))
-	b.add_theme_color_override("font_outline_color", Color("#1e0f04")); b.add_theme_constant_override("outline_size", 4)
-	b.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	v.add_child(b)
-	return v
-
-
 ## 剩余秒 → 人话。跨天时说"天/小时"比说 47:00:00 好读。
 func _left_text(sec: int) -> String:
 	if sec >= 86400:
@@ -2102,14 +2205,7 @@ func _local_dict(utc_ts: int) -> Dictionary:
 
 
 func _local_stamp(utc_ts: int) -> String:
-	var d := _local_dict(utc_ts)
-	var w: int = int(d.get("weekday", 0))
-	var wi := 7 if w == 0 else w
-	return "周%s %02d:%02d 截止" % [_WD_CN[wi - 1], int(d.get("hour", 0)), int(d.get("minute", 0))]
-
-
-func _local_hhmm(utc_ts: int) -> String:
-	return _P2C.local_hhmm(utc_ts)
+	return "%s 截止" % _local_wd_hhmm(utc_ts)
 
 
 # ─── 路由 ───
@@ -2190,11 +2286,11 @@ func _shop_block_kind(ts: int) -> String:
 func _shop_lock_reason(ts: int) -> String:
 	match _shop_block_kind(ts):
 		SHOP_LOCK_OUT:
-			return "本大轮已出局"
+			return "已出局"
 		SHOP_LOCK_QUOTA:
-			return "本周场次已用完"
+			return "场次已用完"
 		SHOP_LOCK_FIRST:
-			return "首场对战后解锁"
+			return "首战后解锁"
 	return ""
 
 
@@ -2583,7 +2679,6 @@ func _finals_title_pull(now: int) -> void:
 	_ft_timer.timeout.connect(_finals_title_tick)     # 方法引用, 不是闭包(tree_timer_audit)
 	add_child(_ft_timer)
 	_finals_title_tick()
-
 
 
 func _finals_title_tick() -> void:

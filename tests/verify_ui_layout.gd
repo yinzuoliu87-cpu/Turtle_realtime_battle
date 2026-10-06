@@ -549,6 +549,14 @@ func _entrance_settled(root: Node, vw: int, vh: int) -> bool:
 				if _r.size.x >= float(vw) - 1.0 and _r.size.y >= float(vh) - 1.0:
 					continue
 				cur[(ch as Control).get_instance_id()] = _r.position
+	## ★2026-10-06: 入场 tween 先 `tween_interval` 等一段(0.5~1.15 秒)再动, 等的那段里
+	##   位置一帧都不变 ⇒ 光比位置会在**还没起跑**时就判「落位」, 量到的是起跑点
+	##   (主 CTA 起跑点在 home+60 ⇒ 报「HeroGlow 超出 56px」; 只在积分赛日红, 因为周一开打锁着不挂光晕)。
+	##   ⇒ 还有**会结束的** tween 在跑(剩余轮数 > 0)= 入场没播完。无限循环的(呼吸/漂移, 剩余 -1)不算。
+	for tw in get_tree().get_processed_tweens():
+		if tw.is_valid() and tw.is_running() and tw.get_loops_left() > 0:
+			_settle_prev = {}
+			return false
 	if cur.size() < 3:              # 分母: 一个控件都没有时不算"落位"
 		_settle_prev = cur
 		return false

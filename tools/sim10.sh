@@ -90,8 +90,10 @@ MAIL_DOMAIN="${MAIL_DOMAIN:-gmail.com}"
 #   ★十个窗口同一个位置, 靠 **pid** 区分(pids.txt 记的是真 pid, 已修), 不靠位置。
 ## ★2026-10-03 用户:「你就用这一块屏幕，我用另一块，不要干涉我用的那个屏」⇒ 位置可由环境变量指定
 ##   (例: 副屏在主屏右边 ⇒ SIM_X=2000 SIM_Y=80)。不给 = 原值。
-STACK_X=${SIM_X:-320}
-STACK_Y=${SIM_Y:-100}
+## ★★2026-10-06 默认改成【右屏】(原默认 320,100 落在左屏 = 用户在用的那块)。
+##   右屏 DISPLAY1 在主屏右边, 虚拟坐标 x≥1920(memory fb-right-screen-only-no-focus-steal)。
+STACK_X=${SIM_X:-2000}
+STACK_Y=${SIM_Y:-80}
 WIN_CW=1280
 WIN_CH=720
 
@@ -158,6 +160,8 @@ cmd_start() {
     APPDATA="$d" SHIP=1 powershell -NoProfile -Command "
       \$env:APPDATA='$(cygpath -w "$d" 2>/dev/null || echo "$d")';
       \$env:SHIP='1';
+      ## ★QUIET=1(2026-10-06 补): 引擎主总线静音 —— --audio-driver Dummy 只是第二道(Audio.gd 头注)。
+      \$env:QUIET='1';
       ## ★自动驾驶(选技能/打/每轮买装备)。AUTOPILOT=1 bash tools/sim10.sh start 10
       ##   不带就是普通实例, 人自己玩 —— 默认必须彻底关掉, 这是它的硬约束之一。
       if ('${AUTOPILOT:-}' -ne '') { \$env:SIM_AUTOPILOT='1' };

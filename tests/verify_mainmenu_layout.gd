@@ -130,7 +130,13 @@ func _ready() -> void:
 	var taps: Array = _tappables(_menu)
 	print("  可点控件 %d 个 (★分母)" % taps.size())
 	_ok("★分母: 可点控件 ≥ 10(4 方键 + 训龟大师 + 开始战斗 + 玩家卡 + 模式卡 + ? + ⚙)", taps.size() >= 10, "%d 个" % taps.size())
+	## ★2026-10-06 改口径(要求没变: 「点 A 不许点到 B」):
+	##   右上 ?/⚙ 看得见的键 50px、间距 8px, 点击区按触摸线 81px 居中外扩 ⇒ 两块**点击区**按设计
+	##   重叠 23px。点击区搭边本身不算撞; 算撞的是**看得见的键**互相压(压了玩家就分不清点的是谁)。
+	##   ⇒ 两块点击区相交时: 两边都是「看得见的键 + 外扩点击区」那种(有 iconbtn 方块), 且看得见的
+	##      两块不相交、各自点击区仍 ≥ 81 ⇒ 记成「设计内搭边」; 否则照旧是撞。
 	var clash: Array = []
+	var margin_pairs: Array = []        # 设计内搭边: [说明, 看得见的两颗键之间的缝]
 	for i in range(taps.size()):
 		for j in range(i + 1, taps.size()):
 			var ra: Rect2 = (taps[i] as Control).get_global_rect()
@@ -138,12 +144,28 @@ func _ready() -> void:
 			if _nested(taps[i], taps[j]) or _nested(taps[j], taps[i]):
 				continue                                 # 父子(透明 Button 铺在 holder 上)不算撞
 			if ra.intersects(rb):
+				var va: Control = _find_frame_square(taps[i])
+				var vb: Control = _find_frame_square(taps[j])
+				if va != null and vb != null \
+						and va.get_global_rect().size.x < ra.size.x and vb.get_global_rect().size.x < rb.size.x \
+						and not va.get_global_rect().intersects(vb.get_global_rect()) \
+						and minf(ra.size.x, ra.size.y) >= MIN_TAP and minf(rb.size.x, rb.size.y) >= MIN_TAP:
+					var vgap: float = maxf(vb.get_global_rect().position.x - va.get_global_rect().end.x,
+						va.get_global_rect().position.x - vb.get_global_rect().end.x)
+					margin_pairs.append(["%s×%s 点击区搭 %.0f · 看得见的键间距 %.0f" % [_tag(taps[i]), _tag(taps[j]),
+						ra.intersection(rb).size.x, vgap], vgap])
+					continue
 				var it: Rect2 = ra.intersection(rb)
 				clash.append("%s @(%.0f,%.0f)%.0f×%.0f  ×  %s @(%.0f,%.0f)%.0f×%.0f  → 压 %.0f×%.0f" % [
 					_tag(taps[i]), ra.position.x, ra.position.y, ra.size.x, ra.size.y,
 					_tag(taps[j]), rb.position.x, rb.position.y, rb.size.x, rb.size.y,
 					it.size.x, it.size.y])
-	_ok("② ★可点控件互不重叠(重叠=点 A 点到 B)", clash.is_empty(), "撞 %d 对" % clash.size())
+	_ok("② ★可点控件互不重叠(重叠=点 A 点到 B; ?/⚙ 外扩点击区搭边除外, 但看得见的键不许碰)", clash.is_empty(), "撞 %d 对" % clash.size())
+	## ★分母: 那条豁免真的只用在 ?/⚙ 那一对上(0 对 = 豁免没走到, 上一条对 ?/⚙ 是空检查; >1 对 = 豁免放宽了)。
+	_ok("② ★分母: 设计内搭边恰 1 对(?×⚙)", margin_pairs.size() == 1
+		and str(margin_pairs[0][0]).find("⚙") >= 0, str(margin_pairs))
+	if margin_pairs.size() == 1:
+		_ok("② ★?/⚙ 看得见的两颗键不碰、之间留缝 ≥ 4px", float(margin_pairs[0][1]) >= 4.0, str(margin_pairs[0][0]))
 	for cl in clash.slice(0, 6):
 		print("       ★压住: " + cl)
 
@@ -205,8 +227,9 @@ func _ready() -> void:
 			var br_a: Rect2 = (bdg as Control).get_global_rect()
 			_ok("ⓐ ★徽章在卡的最左端(中心 x 在卡左 1/4)", br_a.get_center().x < cr.position.x + cr.size.x * 0.25, str(br_a))
 			_ok("ⓐ ★徽章上的数字 == season_level(%d)" % int(gs_a.season_level), lvn.text == str(int(gs_a.season_level)), "「%s」" % lvn.text)
+			## ★量**字的墨迹块**而不是 Label 框: 框按墨迹偏差实测挪过 +2/+13(2026-10-05), 框沿可以出盾, 字不许。
 			_ok("ⓐ ★数字是大字(≥ 30 号) 且压在徽章上", lvn.get_theme_font_size("font_size") >= 30
-				and br_a.encloses(lvn.get_global_rect()), "%d" % lvn.get_theme_font_size("font_size"))
+				and br_a.encloses(_ink_box(lvn)), "%d · 字 %s / 盾 %s" % [lvn.get_theme_font_size("font_size"), str(_ink_box(lvn)), str(br_a)])
 		var bar_a: TextureProgressBar = _find_named(card, str(MENU_S.XP_BAR_NAME)) as TextureProgressBar
 		var xpt_a: Label = _find_named(card, str(MENU_S.XP_TEXT_NAME)) as Label
 		_ok("ⓐ ★分母: 经验条 + 条上的字都在", bar_a != null and xpt_a != null)
@@ -215,7 +238,9 @@ func _ready() -> void:
 			_ok("ⓐ ★经验条 value/max == season_xp/xp_to_next(%d/%d)" % [int(gs_a.season_xp), need_a],
 				int(bar_a.value) == int(gs_a.season_xp) and int(bar_a.max_value) == need_a, "%.0f/%.0f" % [bar_a.value, bar_a.max_value])
 			_ok("ⓐ ★条上写着「%d/%d」" % [int(gs_a.season_xp), need_a], xpt_a.text == "%d/%d" % [int(gs_a.season_xp), need_a], "「%s」" % xpt_a.text)
-			_ok("ⓐ ★条上的字压在条上", bar_a.get_global_rect().grow(6.0).encloses(xpt_a.get_global_rect()), "")
+			## ★同上量墨迹块: 条上的字框 2026-10-06 为纯数字偏上下移了 3px(框沿出条 1px, 字没出)。
+			_ok("ⓐ ★条上的字压在条上", bar_a.get_global_rect().grow(6.0).encloses(_ink_box(xpt_a)),
+				"字 %s / 条 %s" % [str(_ink_box(xpt_a)), str(bar_a.get_global_rect())])
 			if bdg is Control:
 				var gx: float = bar_a.get_global_rect().position.x - (bdg as Control).get_global_rect().end.x
 				_ok("ⓐ ★经验条从徽章右边起(间距 0..24, 读成「2 [42/50]」)", gx >= 0.0 and gx <= 24.0, "%.0f" % gx)
@@ -276,22 +301,20 @@ func _ready() -> void:
 				if cb_t.get_method() == "_open_record":
 					went = "_open_record"
 		_ok("ⓐ ★点玩家卡接的是 _open_record(→ Record)", went == "_open_record", went)
-		## Logo 不再占左上角
-		var logo: Control = _find_named(_menu, "Logo") as Control
-		_ok("ⓐ ★分母: Logo 在场", logo != null)
-		if logo != null:
-			var lr: Rect2 = logo.get_global_rect()
-			print("  ⓐ Logo @(%.0f,%.0f) %.0f×%.0f" % [lr.position.x, lr.position.y, lr.size.x, lr.size.y])
-			_ok("ⓐ ★Logo 让出左上角: 在顶部居中(中心 x 落在屏宽 40%..60%)", lr.get_center().x >= W * 0.4 and lr.get_center().x <= W * 0.6, str(lr))
-			_ok("ⓐ ★Logo 缩小了(宽 ≤ 200)、不压玩家卡", lr.size.x <= 200.0 and not lr.intersects(cr), str(lr))
+		## 2026-10-06 用户「顶上那个斗龟场动画可以去掉」⇒ 主菜单不再有 Logo
+		_ok("ⓐ ★主菜单不再放标题图 Logo", _find_named(_menu, "Logo") == null)
 
-	# ── ⓑ ★右上 = 两种货币一行 + ? / ⚙ 小图标键 ──
+	# ── ⓑ ★右上 = 两种货币一条 + ? / ⚙ 小图标键 ──
+	## ★2026-10-06 货币区换成**一条**货币条 `CURRENCY_BAR_NAME`(照荒野乱斗: 每种货币一段 cur_seg.png 斜切暗底),
+	##   原来两块 chip.png 木牌已下线 ⇒ 量货币条里那两段。
+	var cbar: Control = _find_named(content, str(MENU_S.CURRENCY_BAR_NAME)) as Control
 	var chips: Array = []
-	for n_b in _walk(content):
-		if n_b is NinePatchRect and (n_b as NinePatchRect).texture != null \
-				and str((n_b as NinePatchRect).texture.resource_path).get_file() == "chip.png":
-			chips.append((n_b as Control).get_global_rect())
-	_ok("ⓑ ★分母: 两块货币牌在场", chips.size() == 2, "%d 块" % chips.size())
+	if cbar != null:
+		for n_b in _walk(cbar):
+			if n_b is NinePatchRect and (n_b as NinePatchRect).texture != null \
+					and str((n_b as NinePatchRect).texture.resource_path).get_file() == "cur_seg.png":
+				chips.append((n_b as Control).get_global_rect())
+	_ok("ⓑ ★分母: 货币条在场, 里面两段货币(cur_seg.png)", cbar != null and chips.size() == 2, "%d 段" % chips.size())
 	var icon_taps: Array = []
 	for t_b in taps:
 		var tg_b: String = _tag(t_b)
@@ -303,13 +326,15 @@ func _ready() -> void:
 	if chips.size() == 2 and icon_taps.size() == 2:
 		var c0: Rect2 = chips[0]
 		var c1: Rect2 = chips[1]
-		_ok("ⓑ ★两块货币牌在同一行(顶沿差 ≤2)", absf(c0.position.y - c1.position.y) <= 2.0, "%s / %s" % [str(c0), str(c1)])
+		_ok("ⓑ ★两段货币在同一行(顶沿差 ≤2)", absf(c0.position.y - c1.position.y) <= 2.0, "%s / %s" % [str(c0), str(c1)])
 		_ok("ⓑ ★货币在右上(都在屏宽右半 · 底沿 ≤ 130)", minf(c0.position.x, c1.position.x) >= W * 0.5 and maxf(c0.end.y, c1.end.y) <= 130.0,
 			"%s / %s" % [str(c0), str(c1)])
 		var chips_end: float = maxf(c0.end.x, c1.end.x)
 		var vis_max := 0.0
 		for t_b in icon_taps:
-			var tr_b: Rect2 = (t_b as Control).get_global_rect()
+			## ★量看得见的那块方键(iconbtn), 不量 81 的点击区: 点击区按触摸线外扩, 本来就会伸到货币条底下。
+			var vis_b: Control = _find_frame_square(t_b)
+			var tr_b: Rect2 = (vis_b if vis_b != null else (t_b as Control)).get_global_rect()
 			_ok("ⓑ ★「%s」在货币右边、同一行(中心 y 与货币牌差 ≤8)" % _tag(t_b),
 				tr_b.position.x >= chips_end - 1.0 and absf(tr_b.get_center().y - c0.get_center().y) <= 8.0, str(tr_b))
 			var fr_b: Control = _find_frame_square(t_b)
@@ -475,7 +500,9 @@ func _ready() -> void:
 				h_tex = str((n5 as TextureRect).texture.resource_path).get_file()
 		_ok("ⓓ ★训龟大师与主 CTA 不是同一张皮", t_tex != "" and h_tex != "" and t_tex != h_tex, "「%s」/「%s」" % [t_tex, h_tex])
 
-		# ── ⓔ ★开始战斗左边 = 「今天」模式卡: 今天的赛制 + 一句规矩 + 倒计时 ──
+		# ── ⓔ ★开始战斗左边 = 「今天」模式卡: 上沿暗带(倒计时 + i) / 赛制名大字 / 副标题 ──
+		#    ★2026-10-06 照荒野乱斗开战按钮旁的模式卡: 规则句去掉了(收进本周赛程页), 第二行是副标题
+		#      (平日「第 N 大轮」, 周六周日是当天读数); 倒计时挪到卡顶那条暗带里, 右端一颗「i」。
 		_ok("ⓔ ★分母: 模式卡在场(`%s`)" % str(MENU_S.MODE_CARD_NAME), mode != null)
 		if mode != null:
 			var mr: Rect2 = mode.get_global_rect()
@@ -485,19 +512,20 @@ func _ready() -> void:
 			var mt: Label = _find_named(mode, "ModeTitle") as Label
 			var mrl: Label = _find_named(mode, "ModeRule") as Label
 			var mcd: Label = _find_named(mode, "ModeCountdown") as Label
-			_ok("ⓔ ★分母: 赛制 / 规矩 / 倒计时三行都在", mt != null and mrl != null and mcd != null)
+			_ok("ⓔ ★分母: 赛制 / 副标题 / 倒计时三行都在", mt != null and mrl != null and mcd != null)
 			if mt != null and mrl != null and mcd != null:
 				_ok("ⓔ ★赛制名大字(≥ 26 号)", mt.get_theme_font_size("font_size") >= 26, "%d" % mt.get_theme_font_size("font_size"))
-				_ok("ⓔ ★规矩 ≥ 17 号", mrl.get_theme_font_size("font_size") >= 17, "%d" % mrl.get_theme_font_size("font_size"))
-				_ok("ⓔ ★倒计时单独一行(在规矩下面、不同一行) 且 ≥ 17 号", mcd.get_global_rect().position.y >= mrl.get_global_rect().get_center().y
+				_ok("ⓔ ★副标题 ≥ 17 号", mrl.get_theme_font_size("font_size") >= 17, "%d" % mrl.get_theme_font_size("font_size"))
+				_ok("ⓔ ★倒计时单独一行(卡顶暗带里, 在赛制名上面) 且 ≥ 17 号", mcd.get_global_rect().get_center().y < mt.get_global_rect().position.y + 4.0
 					and mcd.get_theme_font_size("font_size") >= 17, "")
-				_ok("ⓔ ★倒计时高亮(字色与规矩那行不同)", mcd.get_theme_color("font_color") != mrl.get_theme_color("font_color"), "")
+				_ok("ⓔ ★副标题在赛制名下面", mrl.get_global_rect().position.y >= mt.get_global_rect().get_center().y, "")
+				_ok("ⓔ ★倒计时高亮(字色与副标题不同)", mcd.get_theme_color("font_color") != mrl.get_theme_color("font_color"), "")
 			var hint_ok := false
 			for n_h in _walk(mode):
-				if n_h is Label and str((n_h as Label).text).find("»") >= 0 \
+				if n_h is Label and str((n_h as Label).text) == "i" \
 						and (n_h as Control).get_global_rect().end.x >= mr.end.x - 30.0:
 					hint_ok = true
-			_ok("ⓔ ★右边有「»」提示能点(贴着卡右沿)", hint_ok)
+			_ok("ⓔ ★右上有「i」提示能点开说明(贴着卡右沿)", hint_ok)
 			_ok("ⓔ ★与开始战斗底沿对齐(差 ≤2)", absf(mr.end.y - hr.end.y) <= 2.0, "%.0f / %.0f" % [mr.end.y, hr.end.y])
 			_ok("ⓔ ★模式卡比开始战斗小", mr.size.x * mr.size.y < hr.size.x * hr.size.y, "")
 			var mtxt: Array = []
@@ -511,7 +539,7 @@ func _ready() -> void:
 			_ok("ⓔ ★卡上写着今天的赛制「%s」(查表, 不问被测函数)" % ph_e, mtxt.has(ph_e), str(mtxt))
 			_ok("ⓔ ★卡上三行 == mode_card_lines(现在)", want_e.size() == 3 and mtxt.has(str(want_e[0])) and mtxt.has(str(want_e[1])) and mtxt.has(str(want_e[2])),
 				"要 %s" % str(want_e))
-			_ok("ⓔ ★一句规矩非空、倒计时非空", str(want_e[1]) != "" and str(want_e[2]) != "", str(want_e))
+			_ok("ⓔ ★副标题非空、倒计时非空", str(want_e[1]) != "" and str(want_e[2]) != "", str(want_e))
 			## 七天每天都说对: 喂七个已知日期, 第一行 == 那天的赛制(查表)
 			var wrong_e: Array = []
 			var cds: Dictionary = {}
@@ -525,13 +553,13 @@ func _ready() -> void:
 			_ok("ⓔ ★七天各喂一次: 卡上的赛制 == 那天的赛制", wrong_e.is_empty(), str(wrong_e))
 			_ok("ⓔ ★分母: 七天的倒计时行至少 4 种(一种 = 没跟着时间走)", cds.size() >= 4, str(cds.keys()))
 
-	# ── ⓕ ★点模式卡 ⇒ 弹出整周赛程(原来那条赛程条, 组件原样复用) ──
+	# ── ⓕ ★点模式卡 ⇒ 打开本周赛程页(2026-10-06: 七格横条 → 整页四张阶段卡, 照荒野乱斗「CHOOSE EVENT」) ──
 	var pop: Control = _find_named(_menu, str(MENU_S.WEEK_POPUP_NAME)) as Control
-	var strip: Control = _find_named(_menu, "WeekStrip") as Control
-	_ok("ⓕ ★分母: 赛程弹层与赛程条都在场", pop != null and strip != null)
+	var strip: Control = _find_named(_menu, str(MENU_S.WEEK_CARDS_NAME)) as Control
+	_ok("ⓕ ★分母: 赛程页与四张卡的容器都在场", pop != null and strip != null)
 	if pop != null and strip != null and mode != null:
-		_ok("ⓕ ★赛程条住在弹层里(不再贴底常驻)", pop.is_ancestor_of(strip))
-		_ok("ⓕ ★平时弹层藏着(主屏上看不见赛程条)", not pop.is_visible_in_tree() and not strip.is_visible_in_tree())
+		_ok("ⓕ ★卡住在赛程页里(不在主屏上常驻)", pop.is_ancestor_of(strip))
+		_ok("ⓕ ★平时赛程页藏着(主屏上看不见卡)", not pop.is_visible_in_tree() and not strip.is_visible_in_tree())
 		## ★压暗色块量它**自己的** visible(弹层藏着时 is_visible_in_tree 恒假 = 空检查; 变异 N15 第一版就是这么漏的)。
 		var dim0: Node = _find_named(pop, str(MENU_S.WEEK_DIM_NAME))
 		_ok("ⓕ2 ★平时压暗色块自己也藏着(不当一块铺满屏的拦截层)", dim0 is Control and not (dim0 as Control).visible)
@@ -549,39 +577,41 @@ func _ready() -> void:
 			mtap.pressed.emit()
 			for _i_f in range(3):
 				await get_tree().process_frame
-			_ok("ⓕ ★★点模式卡 ⇒ 弹层与赛程条都看得见了", pop.is_visible_in_tree() and strip.is_visible_in_tree())
+			_ok("ⓕ ★★点模式卡 ⇒ 赛程页与卡都看得见了", pop.is_visible_in_tree() and strip.is_visible_in_tree())
 			var srf: Rect2 = strip.get_global_rect()
-			print("  ⓕ 弹出的赛程条 @(%.0f,%.0f) %.0f×%.0f" % [srf.position.x, srf.position.y, srf.size.x, srf.size.y])
-			_ok("ⓕ ★弹出的赛程条整条在屏内", Rect2(0, 0, W, H).encloses(srf), str(srf))
-			var day_n := 0
-			for n_f in _walk(strip):
-				if n_f is Button and str(n_f.name).begins_with(str(MENU_S.DAY_TAP_PREFIX)):
-					day_n += 1
-			_ok("ⓕ ★弹出的就是七天赛程(七格都在)", day_n == 7, "%d 格" % day_n)
-			## 弹层盖在所有入口上面: 弹层在 content_root 子节点里排最后
-			_ok("ⓕ ★弹层排在内容层最上面(不被入口盖住)", content.get_child(content.get_child_count() - 1) == pop)
-			## 关得回去: 走「收起」那颗真按钮
-			var close_b: Node = _find_named(pop, "WeekPopupClose")
-			var cb_btn: BaseButton = null
-			if close_b != null:
-				for n_f in _walk(close_b):
-					if n_f is BaseButton:
-						cb_btn = n_f
-			_ok("ⓕ ★分母: 弹层里有「收起」键", cb_btn != null)
-			if cb_btn != null:
-				cb_btn.pressed.emit()
-				await get_tree().process_frame
-				_ok("ⓕ ★按「收起」⇒ 弹层藏回去", not pop.is_visible_in_tree())
-			## ⓕ2 返工: 表头一行(标题左、收起右, 紧贴条子上沿) + 点压暗处也能关
+			print("  ⓕ 赛程页四张卡 @(%.0f,%.0f) %.0f×%.0f" % [srf.position.x, srf.position.y, srf.size.x, srf.size.y])
+			_ok("ⓕ ★四张卡整块在屏内", Rect2(0, 0, W, H).encloses(srf), str(srf))
+			var cards_f: Array = []
+			for c_f in strip.get_children():
+				if str(c_f.name).begins_with(str(MENU_S.WEEK_CARD_PREFIX)):
+					cards_f.append(str(c_f.name))
+			_ok("ⓕ ★赛程页就是四个阶段四张卡", cards_f.size() == 4, str(cards_f))
+			## 赛程页盖在所有入口上面: 在 content_root 子节点里排最后
+			_ok("ⓕ ★赛程页排在内容层最上面(不被入口盖住)", content.get_child(content.get_child_count() - 1) == pop)
+			## 顶栏: 左上返回键 + 页名
+			var back_n: Control = _find_named(pop, str(MENU_S.WEEK_BACK_NAME)) as Control
 			var ttl: Control = _find_named(pop, "WeekPopupTitle") as Control
-			_ok("ⓕ2 ★分母: 弹层标题在场", ttl != null and close_b != null)
-			if ttl != null and close_b != null:
+			_ok("ⓕ2 ★分母: 返回键与页名都在", back_n != null and ttl != null)
+			if back_n != null and ttl != null:
+				var br2: Rect2 = back_n.get_global_rect()
 				var tr2: Rect2 = ttl.get_global_rect()
-				var cr2: Rect2 = (close_b as Control).get_global_rect()
-				_ok("ⓕ2 ★标题与「收起」同一行(竖向中心差 ≤ 4)", absf(tr2.get_center().y - cr2.get_center().y) <= 4.0, "%s / %s" % [str(tr2), str(cr2)])
-				_ok("ⓕ2 ★标题在左端、「收起」在右端(各对齐条子左右沿 ≤ 8)", absf(tr2.position.x - srf.position.x) <= 8.0 and absf(cr2.end.x - srf.end.x) <= 8.0,
-					"条 %s" % str(srf))
-				_ok("ⓕ2 ★表头紧贴条子上沿(间距 0..8)", srf.position.y - cr2.end.y >= 0.0 and srf.position.y - cr2.end.y <= 8.0, "%.0f" % (srf.position.y - cr2.end.y))
+				_ok("ⓕ2 ★返回键在左上角、页名紧跟在它右边同一行",
+					br2.position.x <= 32.0 and br2.position.y <= 8.0 and tr2.position.x >= br2.end.x - 1.0
+					and absf(tr2.get_center().y - br2.get_center().y) <= 8.0, "%s / %s" % [str(br2), str(tr2)])
+				_ok("ⓕ2 ★卡在顶栏下面(不压顶栏)", srf.position.y >= float(MENU_S.WEEK_BAR_H), "%.0f" % srf.position.y)
+				var bb: BaseButton = null
+				for n_f in _walk(back_n):
+					if n_f is BaseButton:
+						bb = n_f
+				var bm := ""
+				if bb != null:
+					for cn in bb.pressed.get_connections():
+						bm = (cn["callable"] as Callable).get_method()
+				_ok("ⓕ2 ★返回键接的是 _close_week_popup", bm == "_close_week_popup", bm)
+				if bb != null:
+					bb.pressed.emit()
+					await get_tree().process_frame
+					_ok("ⓕ ★按返回键 ⇒ 赛程页藏回去", not pop.is_visible_in_tree())
 			var dim: Control = _find_named(pop, str(MENU_S.WEEK_DIM_NAME)) as Control
 			_ok("ⓕ2 ★分母: 压暗色块在场", dim != null)
 			if dim != null:
@@ -589,14 +619,14 @@ func _ready() -> void:
 				await get_tree().process_frame
 				var dr: Rect2 = dim.get_global_rect()
 				_ok("ⓕ2 ★压暗盖住宽屏两侧(左右各外扩 ≥ 140)", dr.position.x <= -140.0 and dr.end.x >= W + 140.0 and dr.position.y <= 0.0 and dr.end.y >= H, str(dr))
-				_ok("ⓕ2 ★压暗处吃点击(不是摆设)", dim.mouse_filter == Control.MOUSE_FILTER_STOP and dim.is_visible_in_tree())
-				var ev := InputEventMouseButton.new()
-				ev.button_index = MOUSE_BUTTON_LEFT
+				_ok("ⓕ2 ★压暗处吃点击(下面的主菜单点不到)", dim.mouse_filter == Control.MOUSE_FILTER_STOP and dim.is_visible_in_tree())
+				## 整页盖着主菜单 ⇒ 系统返回键 / Esc 也得关得掉(不能只有左上角一个出口)
+				var ev := InputEventAction.new()
+				ev.action = "ui_cancel"
 				ev.pressed = true
-				ev.position = Vector2(30.0, 30.0)
-				dim.gui_input.emit(ev)
+				_menu._unhandled_input(ev)
 				await get_tree().process_frame
-				_ok("ⓕ2 ★★点弹层外面的压暗处 ⇒ 弹层关上", not pop.is_visible_in_tree())
+				_ok("ⓕ2 ★★按返回键(ui_cancel) ⇒ 赛程页关上", not pop.is_visible_in_tree())
 
 	# ── ⑧ ★主 CTA 的字号仍要压过次级入口 ──
 	var f_hero := _font_of(content, "开始战斗")
@@ -624,246 +654,145 @@ func _ready() -> void:
 		_ok("⑨ ★版本号不被任何可点元素盖住(右下角现在是主 CTA)", vcov.is_empty(), str(vcov))
 		_ok("⑨ ★版本号整行在屏内(底沿离屏底 ≥ 2px, 不贴边被切)", vrect.end.y <= H - 2.0, "底沿 %.0f" % vrect.end.y)
 
-	# ── ⑬ ★赛程条的内容: 七天齐全 + 四个阶段名 + 恰好一天标「今天」──
-	#    2026-09-18 改口径: 原来这条量的是「左右两栏【中间】那条空档里有没有赛程条」,
-	#    而赛程条已按方案挪到【贴底】(中间那块还给了背景的龟群像)。
-	#    ★位置的判据已经在 ④ 里了; 这里只管【内容对不对】, 两件事分开量。
-	#    这三条与"今天是星期几"无关, 任何一天跑都该绿; 日期/时区的判定在 verify_week_season ⑥。
+	# ── ⑬ ★赛程页的内容: 四个阶段各一张卡 + 恰好一张标今天(金边) ──
+	#    2026-10-06 改口径: 七格横条换成整页四张阶段卡(照荒野乱斗「CHOOSE EVENT」)。
+	#    ★「七天一天不少」那条没有对象了(每张卡写的是阶段占哪几天, 锁着的卡换成解锁条件);
+	#      现在守的是: 四个阶段名都在 + 恰好一张是今天。七天逐天的对账在 verify_week_strip。
 	var strip_txt: Array = []
 	if strip != null:
-		var q: Array = [strip]
-		while not q.is_empty():
-			var nd = q.pop_back()
-			for ch in nd.get_children():
-				q.append(ch)
-				if ch is Label and str((ch as Label).text).strip_edges() != "":
-					strip_txt.append(str((ch as Label).text).strip_edges())
-	print("  ⑬ 赛程条里有 %d 条文字: %s" % [strip_txt.size(), str(strip_txt)])
-	_ok("⑬ ★分母: 赛程条里量到文字 (0 条 = 条子是空的, 下面全是空检查)",
+		for nd in _walk(strip):
+			var t13 := ""
+			if nd is Label:
+				t13 = str((nd as Label).text).strip_edges()
+			elif nd is Button:
+				t13 = str((nd as Button).text).strip_edges()
+			if t13 != "":
+				strip_txt.append(t13)
+	print("  ⑬ 赛程页里有 %d 条文字: %s" % [strip_txt.size(), str(strip_txt)])
+	_ok("⑬ ★分母: 赛程页里量到文字 (0 条 = 页是空的, 下面全是空检查)",
 		strip_txt.size() >= 10, "%d 条" % strip_txt.size())
-	var miss_d: Array = []
-	for d3 in ["一", "二", "三", "四", "五", "六", "日"]:
-		if not strip_txt.has(d3):
-			miss_d.append(d3)
-	_ok("⑬ ★七天一天不少", miss_d.is_empty(), "缺 %s" % str(miss_d))
-	var joined := "
-".join(PackedStringArray(strip_txt))
+	var joined := "\n".join(PackedStringArray(strip_txt))
 	var miss_p: Array = []
 	for p3 in ["休赛", "积分赛", "闯关赛", "决赛日"]:
-		if joined.find(p3) < 0:
+		if not strip_txt.has(p3):
 			miss_p.append(p3)
 	_ok("⑬ ★四个阶段名都在(缺一个就说明赛程表漏了一段)", miss_p.is_empty(), "缺 %s" % str(miss_p))
 	var todays := 0
-	for t3 in strip_txt:
-		if str(t3).ends_with(" 今"):     # 横条上今天那格的阶段名后缀「今」(格子只有 92px, 光靠金边读不出)
-			todays += 1
-	_ok("⑬ ★恰好一天被标成今天(0=看不出今天 · >1=算错了)", todays == 1, "%d 个" % todays)
+	if strip != null:
+		for c13 in strip.get_children():
+			if (c13 as Node).get_node_or_null("TodayFrame") != null:
+				todays += 1
+	_ok("⑬ ★恰好一张卡被标成今天(0=看不出今天 · >1=算错了)", todays == 1, "%d 张" % todays)
 
-	# ── ⑬b ★收盘块说的话必须是**今天真能做到的事** (2026-09-22) ──
-	#    闯关赛/决赛日/休赛的玩法还没上线, 那三天实际走的是积分赛规则(照常开局、吃配额)。
-	#    在此之前周日写「决赛日 本地 X 点开打」、周一写「本日维护」—— 两句都做不到。
+	# ── ⑬b ★今天那张卡说的话必须是**今天真能做到的事** (2026-09-22) ──
 	#    ★判据**跟着纯函数走**, 不在这里另写一份"今天该说什么":
 	#      `phase_pending_note()` 是 UI 与门禁共用的那一个答案(七天全量在 verify_week_season ⑦)。
-	#    ★任何一天跑都成立: 周二~周五 → 要有倒计时/封盘; 周一六日 → 要有那句「开发中」。
 	var _P2M := preload("res://scripts/gamedata/phase2_config.gd")
 	## ★跟主菜单同一个钟(周一时本文件把钟钉到周二, 见开头)。
 	var now_ts: int = int(_menu.clock_override_ts) if int(_menu.clock_override_ts) > 0 else int(Time.get_unix_time_from_system())
 	var today_ph: String = _P2M.phase_at_utc(now_ts)
 	var note_today: String = _P2M.phase_pending_note(today_ph)
 	if note_today != "":
-		_ok("⑬b ★今天是「%s」(玩法还没上线) → 收盘块必须直说" % today_ph,
-			joined.find(note_today) >= 0, "条子里没有「%s」: %s" % [note_today, str(strip_txt)])
-		## ★★2026-09-28 这条分母原来是 `note_today.find("开发中") >= 0` ——
-		##   拿**开发状态词**当「这句话来自产品」的证据。而「开发中」这类词
-		##   正是这一轮要从玩家面前摘掉的东西(玩家不需要知道我们还没做完,
-		##   只需要知道**现在按什么规则打**)⇒ 产品一改对, 这条分母就红。
-		##   典型的「门禁把 bug 钉在原地」: 判据替那个缺陷站了岗。
-		## ★改成量它**本来想证明的那件事**: 这句话得是产品纯函数算出来的、
-		##   而且**说清了今天按谁的规矩打**。后者用 `PHASE_LABEL` 那张表取,
-		##   **不在门禁里抄一份字面量** —— 抄了就又变成一份会落后的副本。
+		_ok("⑬b ★今天是「%s」(玩法没上线) → 卡上必须直说" % today_ph,
+			joined.find(note_today) >= 0, "页上没有「%s」: %s" % [note_today, str(strip_txt)])
 		var _rk_name: String = str(_P2M.PHASE_LABEL.get(_P2M.PHASE_RANKED, ""))
 		## ★2026-10-05 周一休赛不开放对战(用户「周一哪来的比赛」) ⇒ 周一那句要说清「不开放对战」。
 		var _need: String = "不开放对战" if today_ph == _P2M.PHASE_REST else _rk_name
 		_ok("⑬b ★分母: 那句话是产品纯函数给的, 且说清了今天能不能打 / 按谁的规矩打",
 			_need != "" and note_today.find(_need) >= 0,
 			"规矩名「%s」/ 那句话「%s」" % [_rk_name, note_today])
-		## ★同时守住: 屏幕上**不许**出现开发状态词。
-		##   (原判据是「必须含开发中」, 现在是「不许含」—— 方向反过来了,
-		##    因为当初那个「必须」本身就是在替缺陷站岗。)
+		## ★同时守住: 屏幕上**不许**出现开发状态词(原判据「必须含开发中」是在替缺陷站岗, 方向已反过来)。
 		var _devw: Array = ["开发中", "打磨", "待做", "TODO", "占位", "未实现", "暂按", "暂锁", "还没做"]
 		var _hit_dev: Array = []
 		for _w in _devw:
 			if note_today.find(str(_w)) >= 0:
 				_hit_dev.append(_w)
-		_ok("⑬b ★收盘块不许把开发状态说给玩家听",
+		_ok("⑬b ★卡上不许把开发状态说给玩家听",
 			_hit_dev.is_empty(), "命中: %s ← 「%s」" % [str(_hit_dev), note_today])
 	elif today_ph == _P2M.PHASE_FINALS:
-		## ★★★2026-09-27 补上这一支。原来 else 那一支写着「今天是积分赛」, 而
-		##   `phase_pending_note()` 为空的条件是**玩法已上线** —— 周六闯关赛(2026-09-22 上线)
-		##   与周日决赛日(2026-09-25 上线)从那以后也会落进来, 而它们的收盘块根本不是倒计时。
-		##   ⇒ 判据一直是错的, 只是**一周里只有周六周日碰得到**, 今天(周日)才第一次红。
-		##   又一条「判据挂在星期几上」(同族已修四条, 见 v0.19.446)。
-		## ★周日收盘块 = **进对阵图的门**(`close_block_kind` 返回 BK_BRACKET_DOOR)。
-		## ★★判据要量**按钮**, 不是文字: 上面那个 `strip_txt` 只收 Label,
-		##   而决赛日那扇门 `_finals_entry()` 返回的是 Button ⇒ 它的字根本不在 strip_txt 里。
-		##   (我第一版就是拿 strip_txt 找「对阵图」, 当场红 —— 判据没卡在被测的那个量上。)
+		## ★周日决赛日(已上线) ⇒ 决赛日那张卡上有一个【进对阵图】的按钮(量按钮, 不是文字)。
 		var door_ok := false
 		if strip != null:
-			var q2: Array = [strip]
-			while not q2.is_empty():
-				var nd2 = q2.pop_back()
-				for ch2 in nd2.get_children():
-					q2.append(ch2)
-					if ch2 is Button and str((ch2 as Button).text).find("对阵图") >= 0:
-						door_ok = true
-		_ok("⑬b ★今天是决赛日(已上线) → 收盘块里有一个【进对阵图】的按钮",
-			door_ok, "条里的文字: %s" % str(strip_txt))
-	elif today_ph == _P2M.PHASE_GAUNTLET:
-		## 周六闯关赛(已上线): 与积分赛一样有收盘(WEEK_CLOSE_HOUR_UTC), 所以照旧是倒计时/封盘
-		## ★★2026-10-04: 原来接受「维护」二字 ⇒ 收盘后那句错话「休赛日 · 周二开赛 · **本日维护**」反而让它绿
-		##   (门禁替 bug 站岗)。改成按收盘前/后分开判, 维护只认真正的维护态「维护中」。
-		if _P2M.close_left_sec(now_ts) < 0:
-			_ok("⑬b ★今天是闯关赛(已上线)、已过收盘 → 「今日已收盘」并说明天",
-				joined.find("今日已截止") >= 0 and joined.find("明天") >= 0 and joined.find("休赛日") < 0
-				or joined.find("维护中") >= 0, str(strip_txt))
-		else:
-			_ok("⑬b ★今天是闯关赛(已上线) → 收盘块给的是倒计时或封盘提示",
-				joined.find("距截止") >= 0 or joined.find("已截止") >= 0
-				or joined.find("维护中") >= 0, str(strip_txt))
+			for nd2 in _walk(strip):
+				if nd2 is Button and str((nd2 as Button).text).find("对阵图") >= 0:
+					door_ok = true
+		_ok("⑬b ★今天是决赛日(已上线) → 卡上有一个【进对阵图】的按钮", door_ok, "页上的文字: %s" % str(strip_txt))
 	else:
-		## 积分赛那几天照旧: 要么在倒计时, 要么已进封盘窗口(收盘前 10 分钟)
+		## 积分赛 / 闯关赛(已上线): 有截止 ⇒ 倒计时或封盘提示; 已过截止 ⇒ 「今日已截止」并写下一个阶段几点开始。
 		## ★★2026-10-04: 原来接受「维护」二字 ⇒ 收盘后那句错话「休赛日 · 周二开赛 · **本日维护**」反而让它绿
-		##   (门禁替 bug 站岗)。改成按收盘前/后分开判, 维护只认真正的维护态「维护中」。
+		##   (门禁替 bug 站岗)。维护只认真正的维护态「维护中」。
 		if _P2M.close_left_sec(now_ts) < 0:
-			_ok("⑬b ★今天是积分赛、已过收盘 → 「今日已收盘」并说明天",
-				joined.find("今日已截止") >= 0 and joined.find("明天") >= 0 and joined.find("休赛日") < 0
+			_ok("⑬b ★今天是「%s」、已过截止 → 「今日已截止」并写下一个阶段的开始时刻" % today_ph,
+				joined.find("今日已截止") >= 0 and joined.find("开始") >= 0 and joined.find("休赛日 · 周二") < 0
 				or joined.find("维护中") >= 0, str(strip_txt))
 		else:
-			_ok("⑬b ★今天是积分赛 → 收盘块给的是倒计时或封盘提示",
+			_ok("⑬b ★今天是「%s」 → 卡上给的是倒计时或封盘提示" % today_ph,
 				joined.find("距截止") >= 0 or joined.find("已截止") >= 0
 				or joined.find("维护中") >= 0, str(strip_txt))
 
-	# ── ⑬c ★**四个阶段各喂一个已知日期**, 别只量"今天"那一格 ──
-	#    上面 ⑬b 量的是今天 —— 一周里有四天走不到周末那半, 等于那几天它是空检查
-	#    (跑门禁的日子决定判据强弱 = 判据本身不可靠)。
-	#    `_week_close_block(now)` 本来就收时间戳 ⇒ 直接喂四个已知日期, **调产品那个真函数**。
-	#    ★★判据**不问 `phase_pending_note()` 这一天要不要挂提示** —— 那是拿被测函数当尺子:
-	#      它若退化成"永远返回空串", 判据会跟着走进 else 分支、然后全绿
-	#      (实测: 变异 M3 第一版没红, 就是栽在这里; 同一份文件 ⑥ 的注释早写过这条)。
-	#      「哪几天要挂」由**星期几 + 开关**决定, 写死在下面这张表里。
-	#    ★★2026-09-22 E-A: 周六闯关赛**已上线** ⇒ 它那格不再挂「还没上线」, 改成照常倒计时。
-	#      表里第二列就是期望值本身, 跟着 `PHASE_MODE_LIVE` 手动同步 ——
-	#      **故意不写成 `not phase_mode_live(...)`**: 那是拿被测函数当尺子(今天栽过一次)。
-	var DAYS := {                      # 显示名: [时间戳, 这天要不要挂「还没上线」提示]
-		## 第二列 = 这天那一格**应该长什么样**, 三档:
-		##   "note"      —— 玩法没上线, 要说清暂按什么规则
-		##   "countdown" —— 有收盘概念, 给倒计时/封盘提示
-		##   "door"      —— ★★2026-09-25 新增: 周日决赛日上线后这一格是
-		##                 **进对阵图的门**(一个 Button, 不是两行字)。
-		##                 原来只有前两档 ⇒ 翻开关那天「建不出文字」+「没倒计时」两条假红。
+	# ── ⑬c ★**四个阶段各喂一个已知日期**, 别只量"今天"那一张 ──
+	#    上面 ⑬b 量的是今天 —— 一周里有几天走不到周末那半, 等于那几天它是空检查。
+	#    ⇒ 直接喂四个已知日期, **建产品那张真卡**(`_week_card(week_card_info(阶段, 时刻))`)再量。
+	#    ★★判据**不问 `phase_pending_note()` 这一天要不要挂提示** —— 那是拿被测函数当尺子。
+	#      「哪几天要挂」由**星期几 + 开关**决定, 写死在下面这张表里(跟着 `PHASE_MODE_LIVE` 手动同步)。
+	var DAYS := {                      # 显示名: [时间戳, 这天那张卡应该长什么样]
+		##   "note"       —— 玩法没上线, 要说清这天按什么规则
+		##   "countdown"  —— 有截止概念, 给倒计时/封盘提示
+		##   "board_door" —— 周六: 倒计时 + 「全场赛况」的门
+		##   "door"       —— 周日: 「查看对阵图」的门
 		"周一休赛": [1789344000, "note"],
 		"周四积分赛": [1789603200, "countdown"],
-		## ★★2026-10-04 周末看回放: 周六那一格变成**赛况板的门**, 门上第一行仍是倒计时
-		##   (docs/plans/20261004-周末看回放.md)。原来是 "countdown" 两行字。
 		"周六闯关赛": [1789776000, "board_door"],
-		## ★★2026-09-25 用户「周日要打开」 ⇒ PHASE_MODE_LIVE[FINALS] 翻成 true,
-		##   周日那格不再挂「还没上线」, 改成照常倒计时(与周六同)。
-		##   下一个阶段上线时还是手动同步这一列 —— 故意不写成
-		##   `not phase_mode_live(...)`(拿被测函数当尺子, 见上方长注释)。
 		"周日决赛日": [1789862400, "door"],
 	}
 	for dn in DAYS.keys():
 		var ts_d: int = int((DAYS[dn] as Array)[0])
 		var want_kind: String = str((DAYS[dn] as Array)[1])
-		var blk = _menu._week_close_block(ts_d)
+		var ph_d: String = _P2M.phase_at_utc(ts_d)
+		var blk: Node = _menu._week_card(_menu.week_card_info(ph_d, ts_d))
 		var btxt: Array = []
-		var bq: Array = [blk]
-		while not bq.is_empty():
-			var bn = bq.pop_back()
-			for bc in bn.get_children():
-				bq.append(bc)
-				if bc is Label:
-					btxt.append(str((bc as Label).text).strip_edges())
+		var btns: Array = []
+		for bn in _walk(blk):
+			if bn is Label:
+				btxt.append(str((bn as Label).text).strip_edges())
+			if bn is Button and str((bn as Button).text) != "":
+				btns.append(bn)
 		var bj := " / ".join(PackedStringArray(btxt))
-		var want_note: String = _P2M.phase_pending_note(_P2M.phase_at_utc(ts_d))
+		var want_note: String = _P2M.phase_pending_note(ph_d)
+		_ok("⑬c ★分母(%s): 那张卡真建出了文字" % dn, btxt.size() >= 3, bj)
 		if want_kind == "door" or want_kind == "board_door":
-			## ★★★周日决赛日上线之后这一格是**门**不是字。判据卡三件:
-			##   ① 真的建出了一个能按的 Button(不是摆一行字冒充)
-			##   ② 上面写着通到哪(玩家得看得懂按下去会发生什么)
-			##   ③ **接了处理函数** —— 「点了没反应比按钮是灰的糟得多」是本仓原则,
-			##      而「有按钮」不证明「按了有用」(zero_caller 那一族)。
-			## ★根节点自己也可能就是那个 Button ⇒ 从 blk 起遍历、**只数一次**。
-			##   (第一版在循环外又 append 了一次 blk, 分母打成「Button 2 个」
-			##    而其实只有 1 个 —— 分母算错的判据看着更"强"其实在骗人。)
-			var btns: Array = []
-			var q2: Array = [blk]
-			while not q2.is_empty():
-				var n2 = q2.pop_back()
-				if n2 is Button:
-					btns.append(n2)
-				for c2 in n2.get_children():
-					q2.append(c2)
+			## ★★门判据卡三件: ① 真的建出了能按的 Button ② 上面写着通到哪 ③ **接了处理函数**
 			_ok("⑬c ★★分母(%s): 真建出了一个能按的门" % dn, btns.size() >= 1,
 				"Button %d 个 / 文字 %s" % [btns.size(), bj])
 			if btns.size() >= 1:
 				var bt: Button = btns[0]
 				if want_kind == "board_door":
-					## 周六: 门上第一行**照常给倒计时**(原 "countdown" 那条判据搬到门上), 第二行说通到哪
-					## 门是「牌子 + 透明按钮」, 字在牌子上的 Label 里(bj)
-					_ok("⑬c ★%s: 门上照常给倒计时" % dn,
-						bj.find("距截止") >= 0 or bj.find("已截止") >= 0, bj)
-					_ok("⑬c ★%s: 门上写着通到哪(全场赛况)" % dn, bj.find("全场赛况") >= 0, bj)
+					_ok("⑬c ★%s: 卡上照常给倒计时" % dn, bj.find("距截止") >= 0 or bj.find("已截止") >= 0, bj)
+					_ok("⑬c ★%s: 门上写着通到哪(全场赛况)" % dn, str(bt.text).find("全场赛况") >= 0, str(bt.text))
 				else:
-					_ok("⑬c ★%s: 门上写着通到哪(玩家看得懂)" % dn,
-						str(bt.text).find("对阵图") >= 0, str(bt.text).replace("\n", "⏎"))
+					_ok("⑬c ★%s: 门上写着通到哪(玩家看得懂)" % dn, str(bt.text).find("对阵图") >= 0, str(bt.text))
 				_ok("⑬c ★★%s: 门**接了处理函数**(有按钮 ≠ 按了有用)" % dn,
-					bt.pressed.get_connections().size() >= 1,
-					"连了 %d 个" % bt.pressed.get_connections().size())
-			blk.queue_free()
-			continue
-		_ok("⑬c ★分母(%s): 收盘块真建出了文字" % dn, btxt.size() >= 2, bj)
-		if want_kind == "note":
-			## ① 屏幕上必须说清**实际会发生什么** —— 判据不引 `phase_pending_note()`
-			##   (拿被测函数当尺子: 它退化成空串时, 判据会跟着走进 else 分支然后全绿)。
-			## ★★2026-09-27 needle 从「暂按积分赛规则」换成**这天实际按哪个赛制的规矩打**,
-			##   取 `PHASE_LABEL[PHASE_RANKED]`(玩家看到的那个阶段名) —— 那是一张**数据表**、
-			##   不是被测函数, 而且它就是"按谁的规矩"这条信息本身。
-			##   换的原因: 「暂按」「开发中」是**开发备注印给了玩家**, 已从产品里摘掉
-			##   (见 `phase2_config.PHASE_PENDING_NOTE` 头注 2026-09-27 那段)。
-			##   判据不许把那几个词焊回去 —— 否则它会替那个缺陷站岗。
-			## ★只换 needle 是半条: 换完还得守住"别人再把开发状态词加回来" ⇒ 多一条。
-			## ★2026-10-05: 挂提示的那天(周一休赛)不开放对战 ⇒ 条子上必须直说「不开放对战」。
-			_ok("⑬c ★%s: 条子上必须说清这天不开放对战" % dn,
-				bj.find("不开放对战") >= 0,
-				"要出现「不开放对战」· 条子上是「%s」" % bj)
+					bt.pressed.get_connections().size() >= 1, "连了 %d 个" % bt.pressed.get_connections().size())
+		elif want_kind == "note":
+			_ok("⑬c ★%s: 卡上必须说清这天不开放对战" % dn, bj.find("不开放对战") >= 0,
+				"要出现「不开放对战」· 卡上是「%s」" % bj)
 			var devnote: Array = []
 			for w in ["开发中", "暂按", "待做", "TODO", "占位", "未实现"]:
 				if bj.find(str(w)) >= 0:
 					devnote.append(str(w))
 			_ok("⑬c ★★%s: 屏幕上不许出现开发状态词(玩家不需要知道我们做到哪了)" % dn,
-				devnote.is_empty(), "撞上 %s · 条子上是「%s」" % [str(devnote), bj])
-			## ② 而且必须**就是产品那个纯函数给的那一句**(否则 UI 自己抄了一份, 必然漂)
-			_ok("⑬c ★%s: 条子上那句 == phase_pending_note() 给的那句" % dn,
-				want_note != "" and bj.find(want_note) >= 0,
-				"函数给「%s」· 条子上是「%s」" % [want_note, bj])
-			## ★同时**不许**再出现那两句做不到的话 —— 只查"有没有加新句子"是半条判据
-			_ok("⑬c ★%s: 不再说「本日维护」/「开打」这类做不到的话" % dn,
-				bj.find("维护") < 0 and bj.find("开打") < 0, bj)
+				devnote.is_empty(), "撞上 %s · 卡上是「%s」" % [str(devnote), bj])
+			_ok("⑬c ★%s: 卡上那句 == phase_pending_note() 给的那句" % dn,
+				want_note != "" and bj.find(want_note) >= 0, "函数给「%s」· 卡上是「%s」" % [want_note, bj])
+			_ok("⑬c ★%s: 不说「本日维护」/「开打」这类做不到的话" % dn,
+				bj.find("本日维护") < 0 and bj.find("开打") < 0, bj)
 		else:
-			## 玩法已上线的阶段: 积分赛(周五 23:00 收盘)与闯关赛(周六 23:00 收盘)
-			## 都有收盘概念 ⇒ 必须给倒计时或封盘提示, 不许是别的话。
-			_ok("⑬c ★%s: 照常给倒计时" % dn,
-				bj.find("距截止") >= 0 or bj.find("已截止") >= 0, bj)
-		blk.queue_free()
+			_ok("⑬c ★%s: 照常给倒计时" % dn, bj.find("距截止") >= 0 or bj.find("已截止") >= 0, bj)
+		blk.free()
 
-	# ── ⑬e ★BK_PENDING 的【兜底那一句】也不许把开发状态说给玩家听 (2026-09-28) ──
-	#  ★由来: `MainMenuScene._week_close_block` 里 BK_PENDING 那一支有一条兜底,
-	#    原文是「玩法开发中, 暂按积分赛规则」—— 而 ⑬b/⑬c **一条都走不到它**:
-	#    它只在「kind=BK_PENDING 而 `phase_pending_note()` 给空串」时才上屏,
-	#    那要 `strip_finals_live_override` 把决赛日手动按成"没上线"
-	#    (`PHASE_MODE_LIVE[FINALS]` 已是 true ⇒ 纯函数返回 "")。
-	#    ⇒ 在此之前唯一守它的只有文案快照(而快照只证明"字没变", 不证明"字是对的")。
-	#    这里把那个局面**真的造出来**再量, 判据与 ⑬c 的 note 档同一条口径。
+	# ── ⑬e ★「玩法没上线」那一支的【兜底那一句】也不许把开发状态说给玩家听 (2026-09-28) ──
+	#  ★由来: 卡上「玩法没上线」那一支有一条兜底(`phase_pending_note()` 给空串时),
+	#    只在 `strip_finals_live_override` 把决赛日手动按成"没上线"时才上屏 ⇒ 这里把那个局面**真的造出来**再量。
 	var _ov0: int = int(_menu.strip_finals_live_override)
 	_menu.strip_finals_live_override = 0          # 0 = 手动按成「玩法没上线」
 	var sun_ts: int = 1789862400                  # 周日(与 ⑬c 同一个时刻)
@@ -873,27 +802,23 @@ func _ready() -> void:
 	_ok("⑬e ★分母②: 纯函数这时给的是空串 ⇒ 走的正是那条兜底",
 		_P2M.phase_pending_note(_P2M.PHASE_FINALS) == "",
 		"给了「%s」" % _P2M.phase_pending_note(_P2M.PHASE_FINALS))
-	var blk_e = _menu._week_close_block(sun_ts)
+	var blk_e: Node = _menu._week_card(_menu.week_card_info(_P2M.PHASE_FINALS, sun_ts))
 	var etxt: Array = []
-	var eq: Array = [blk_e]
-	while not eq.is_empty():
-		var en = eq.pop_back()
-		for ec in en.get_children():
-			eq.append(ec)
-			if ec is Label:
-				etxt.append(str((ec as Label).text).strip_edges())
+	for en in _walk(blk_e):
+		if en is Label:
+			etxt.append(str((en as Label).text).strip_edges())
 	var ej := " / ".join(PackedStringArray(etxt))
-	_ok("⑬e ★分母③: 兜底那一格真建出了文字", etxt.size() >= 2, ej)
+	_ok("⑬e ★分母③: 兜底那张卡真建出了文字", etxt.size() >= 3, ej)
 	_ok("⑬e 兜底那句也说清了这天按【哪个赛制】的规矩打",
 		ej.find(str(_P2M.PHASE_LABEL[_P2M.PHASE_RANKED])) >= 0,
-		"要出现「%s」· 条子上是「%s」" % [str(_P2M.PHASE_LABEL[_P2M.PHASE_RANKED]), ej])
+		"要出现「%s」· 卡上是「%s」" % [str(_P2M.PHASE_LABEL[_P2M.PHASE_RANKED]), ej])
 	var edev: Array = []
 	for ew in ["开发中", "打磨", "暂按", "暂锁", "待做", "TODO", "占位", "未实现", "还没做"]:
 		if ej.find(str(ew)) >= 0:
 			edev.append(str(ew))
 	_ok("⑬e ★★兜底那句不许出现开发状态词(玩家不需要知道我们做到哪了)",
-		edev.is_empty(), "撞上 %s · 条子上是「%s」" % [str(edev), ej])
-	blk_e.queue_free()
+		edev.is_empty(), "撞上 %s · 卡上是「%s」" % [str(edev), ej])
+	blk_e.free()
 	_menu.strip_finals_live_override = _ov0
 
 	# ── ⑬d ★两条拦截提示说的也得是**今天真会发生的事** (2026-09-22) ──
@@ -1243,16 +1168,26 @@ func _ready() -> void:
 			if judge_shop:
 				_ok("⑭b ★[%s] 商店锁着 ⇒ 理由常驻显示在那一行" % str(cs[0]),
 					rs_txt != "" and rs_txt == rs_want, "屏幕=「%s」 期望=「%s」" % [rs_txt, rs_want])
-				## ⑭c ★理由那行**读得清**(2026-10-05 UI 重做): 它不在木牌上, 直接压在看台上 ⇒
-				##   必须 ≥17 号字且实心描边 ≥4(原来 4 个 ±1 偏移副本, 实拍在看台上读不出)。
+				## ⑭c ★理由那行**读得清**。
+				##   2026-10-05 版: 理由直接压在看台上(没底) ⇒ 要 ≥17 号字 + 实心描边 ≥4。
+				##   2026-10-06 版: 理由收进方键底边一块**实心暗签**(xpbar.png 九宫格)里, 不再压看台 ⇒
+				##   读得清靠「暗底 + 描边」: ≥14 号字 + 实心描边 ≥4 + 整行字落在暗签里 + 整行字不出方键。
 				var rs_lab: Label = null
 				for n_r in _walk(shop_h):
 					if str(n_r.name) == str(MENU_S.LOCK_REASON_NAME) and n_r is Label:
 						rs_lab = n_r
-				_ok("⑭c ★[%s] 锁理由 ≥17 号字 + 实心描边 ≥4" % str(cs[0]),
-					rs_lab != null and rs_lab.get_theme_font_size("font_size") >= 17 and rs_lab.get_theme_constant("outline_size") >= 4,
-					"字 %s 描边 %s" % [str(rs_lab.get_theme_font_size("font_size")) if rs_lab != null else "-",
-						str(rs_lab.get_theme_constant("outline_size")) if rs_lab != null else "-"])
+				var rs_plate: Rect2 = Rect2()
+				if rs_lab != null:
+					for n_p in rs_lab.get_parent().get_children():
+						if n_p is NinePatchRect and (n_p as NinePatchRect).texture != null \
+								and str((n_p as NinePatchRect).texture.resource_path).get_file() == "xpbar.png" \
+								and (n_p as Control).get_global_rect().grow(1.0).encloses(_ink_box(rs_lab)):
+							rs_plate = (n_p as Control).get_global_rect()
+				_ok("⑭c ★[%s] 锁理由 ≥14 号字 + 实心描边 ≥4 + 压在实心暗签上 + 不出方键" % str(cs[0]),
+					rs_lab != null and rs_lab.get_theme_font_size("font_size") >= 14 and rs_lab.get_theme_constant("outline_size") >= 4
+						and rs_plate.size.x > 0.0 and shop_h.get_global_rect().grow(4.0).encloses(_ink_box(rs_lab)),
+					"字 %s 描边 %s 暗签 %s" % [str(rs_lab.get_theme_font_size("font_size")) if rs_lab != null else "-",
+						str(rs_lab.get_theme_constant("outline_size")) if rs_lab != null else "-", str(rs_plate)])
 				seen_reason += 1
 			else:
 				_ok("⑭b [%s] 商店没锁 ⇒ 不显示理由" % str(cs[0]), rs_txt == "", rs_txt)
@@ -1501,17 +1436,43 @@ func _reason_text(holder: Control) -> String:
 	return ""
 
 
-## 玩家看得到的那把锁: 这块按钮的子树里有没有 🔒。
+## 玩家看得到的那把锁: 这块按钮的子树里有没有一把**画出来的**像素锁。
+## ★2026-10-06: 锁从系统表情 🔒 Label 换成像素锁 TextureRect(`_pixel_lock`, 名字 LOCK_ICON_NAME,
+##   贴图 menu/hud/lock.png)。商店方键 / 开始战斗角标 / 赛程卡都用它。
 ## ★量的是**玩家看得到的东西**, 不是我自己插的标记
-##   (memory `fb-gate-must-measure-requirement-not-my-hook`): 🔒 要么是
-##   `_add_lock_badge` 挂的角标(主 CTA), 要么是 `_text_entry` 给文字加的前缀(左栏)。
+##   (memory `fb-gate-must-measure-requirement-not-my-hook`): 名字之外还要真挂着 lock.png、
+##   自己可见、有尺寸 —— 只有名字没有图 = 玩家什么也看不见。
 func _has_lock_glyph(holder: Control) -> bool:
 	if holder == null:
 		return false
 	for n in _walk(holder):
-		if n is Label and str((n as Label).text).find("🔒") >= 0:
+		if n is TextureRect and str(n.name) == str(MENU_S.LOCK_ICON_NAME) \
+				and (n as TextureRect).texture != null \
+				and str((n as TextureRect).texture.resource_path).get_file() == "lock.png" \
+				and (n as TextureRect).visible and (n as TextureRect).size.x >= 12.0:
 			return true
 	return false
+
+
+## Label 的**墨迹块**(字串实宽 × 字号高, 按对齐方式落在框里)。量「字压没压在 X 上」用它, 不用 Label 框。
+func _ink_box(l: Label) -> Rect2:
+	var r: Rect2 = l.get_global_rect()
+	var f: Font = l.get_theme_font("font")
+	var fs: int = l.get_theme_font_size("font_size")
+	var w: float = f.get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x if f != null else r.size.x
+	w = minf(w, r.size.x)
+	var h: float = minf(float(fs), r.size.y)
+	var x: float = r.position.x
+	if l.horizontal_alignment == HORIZONTAL_ALIGNMENT_CENTER:
+		x += (r.size.x - w) * 0.5
+	elif l.horizontal_alignment == HORIZONTAL_ALIGNMENT_RIGHT:
+		x += r.size.x - w
+	var y: float = r.position.y
+	if l.vertical_alignment == VERTICAL_ALIGNMENT_CENTER:
+		y += (r.size.y - h) * 0.5
+	elif l.vertical_alignment == VERTICAL_ALIGNMENT_BOTTOM:
+		y += r.size.y - h
+	return Rect2(x, y, w, h)
 
 
 ## 源码里某个函数的函数体(到下一个顶层 `func ` 为止), **注释已剥掉**。
@@ -1555,9 +1516,12 @@ func _sq_label(holder: Node) -> String:
 	return ""
 
 
-## ? / ⚙ 那颗键里看得见的方框(frame-square.png)。没有 ⇒ null。
+## ? / ⚙ 那颗键里看得见的方框(2026-10-06 起是实体按钮 iconbtn.png 九宫格; 原 frame-square.png)。没有 ⇒ null。
 func _find_frame_square(holder: Node) -> Control:
 	for n in _walk(holder):
+		if n is NinePatchRect and (n as NinePatchRect).texture != null \
+				and str((n as NinePatchRect).texture.resource_path).get_file() == "iconbtn.png":
+			return n as Control
 		if n is TextureRect and (n as TextureRect).texture != null \
 				and str((n as TextureRect).texture.resource_path).get_file() == "frame-square.png":
 			return n as Control

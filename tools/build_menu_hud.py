@@ -28,6 +28,8 @@
   (无原件)                                           → cta-face.png(主 CTA 的亮黄面, 本脚本按像素直接画:
                                                      木框保留(R2), 只把框里那块面换成全屏唯一的饱和亮黄)
 
+  (无原件)                                           → back.png(本周赛程页左上角的返回箭头, 按像素直接画)
+
 跑法: python tools/build_menu_hud.py
 """
 import os
@@ -191,6 +193,48 @@ def xp_fill():
     return up(im, 2)
 
 
+def lock_icon():
+    """锁定角标: 12×15 像素锁(铁环 + 黄铜锁身 + 锁孔), 游戏里 ×2 最近邻贴。2026-10-05 替换系统表情 🔒(彩色圆润, 与像素画不搭)。"""
+    P = {'.': None, 'o': (30, 15, 4, 255), 'i': (120, 118, 124, 255), 'I': (178, 176, 182, 255),
+         'd': (150, 92, 30, 255), 'b': (214, 150, 52, 255), 'B': (250, 214, 120, 255), 'k': (40, 22, 8, 255)}
+    g = ["...oooooo...", "..oIIiiiio..", ".oIo....oio.", ".oio....oio.", ".oio....oio.", ".oio....oio.",
+         "oooooooooooo", "oBBbbbbbbbdo", "oBbbbbbbbbdo", "obbbbkkbbbdo", "obbbbkkbbbdo", "obbbbbkbbbdo",
+         "obbbbbkbbbdo", "oddddddddddd", "oooooooooooo"]
+    im = Image.new("RGBA", (12, 15), (0, 0, 0, 0))
+    for y, row in enumerate(g):
+        for x, ch in enumerate(row):
+            if P[ch]:
+                im.putpixel((x, y), P[ch])
+    return im
+
+
+def back_arrow():
+    """返回键的像素箭头(本赛程页左上角, 照荒野乱斗 CHOOSE EVENT 的返回键): 15×19, 奶白箭身 + 深棕描边, 上亮下暗两档。
+    2026-10-06 按像素直接画, 不用字符「‹」(各平台字体不一, 像素画里也读成系统字)。游戏里 ×3 最近邻贴。"""
+    O = (20, 10, 3, 255)
+    hi, mid, lo = (255, 244, 214, 255), (232, 210, 160, 255), (176, 140, 92, 255)
+    w, h = 15, 19
+    im = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    c = (h - 1) / 2.0
+    for y in range(1, h - 1):
+        xl = 1 + int(round(abs(y - c) * 0.95))
+        for x in range(xl, min(w - 1, xl + 4)):
+            col = hi if y < c - 1 else (mid if y <= c + 1 else lo)
+            im.putpixel((x, y), col)
+    px = im.load()
+    out = im.copy()
+    op = out.load()
+    for y in range(h):
+        for x in range(w):
+            if px[x, y][3] == 0:
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nx, ny = x + dx, y + dy
+                    if 0 <= nx < w and 0 <= ny < h and px[nx, ny][3] > 0:
+                        op[x, y] = O
+                        break
+    return out
+
+
 def main():
     out = {}
     plank = Image.open(os.path.join(SRC, "plank.png")).convert("RGBA")
@@ -267,6 +311,8 @@ def main():
     out["modecard.png"] = mcw                                          # 320×108
 
     out["cta-face.png"] = cta_face()
+    out["lock.png"] = lock_icon()                                      # 12×15
+    out["back.png"] = back_arrow()                                     # 15×19(本周赛程页返回键)
 
     for name, im in out.items():
         im.save(os.path.join(ROOT, name))

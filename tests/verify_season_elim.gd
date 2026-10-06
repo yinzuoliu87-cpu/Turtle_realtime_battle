@@ -100,13 +100,14 @@ func _ready() -> void:
 	_ok("A4 quota full => shop blocked too (user decision)", _count_toasts(scene, needle) == q2 + 1)
 	GameState.ranked_used = 0            # restore for the rest of this file
 
-	# ⑤ 视觉: 淘汰时主菜单英雄键/商店键建出 🔒 锁角标
+	# ⑤ 视觉: 淘汰时主菜单入口键上画出锁
+	#   2026-10-06: 锁从系统表情 🔒 Label 换成像素锁 TextureRect(名字固定 MENU.LOCK_ICON_NAME)
+	#   ⇒ 按名字数「带锁的键」(整颗键的子树里找, 锁可能嵌在键的子容器里)。
 	var lock_badges := 0
 	for holder in scene.page_box.get_children():
-		for c in holder.get_children():
-			if c is Label and "🔒" in String(c.text):
-				lock_badges += 1
-	_ok("★淘汰时主菜单出现 🔒 锁角标(英雄键+商店键)", lock_badges >= 1, "%d 个" % lock_badges)
+		if holder.find_child(str(MENU.LOCK_ICON_NAME), true, false) != null:
+			lock_badges += 1
+	_ok("★淘汰时主菜单出现像素锁(开打键/商店键)", lock_badges >= 1, "%d 个" % lock_badges)
 
 	# ② reset_save 解锁(唯一出口)
 	GameState.reset_save()
