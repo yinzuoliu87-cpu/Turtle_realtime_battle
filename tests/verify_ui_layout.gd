@@ -57,6 +57,22 @@ const SCREENS := ["MainMenu", "Shop", "Inventory", "Codex", "Leaderboard",
 var _n := 0
 var _fail := 0
 
+## ★★撮合屏是【两幕】的: 「匹配中」(2.2 秒计时器) → 「VS 对撞」(再 2.6 秒) → 自己跳去战斗。
+##   2026-10-06 CI 红「Matchmaking 溢出 10 个, Panel 超出 244px @1280x720 尺寸370x316」——
+##   那块 370x316 就是 VS 幕的资料卡(`CARD_W/CARD_H`), 量到的是它**还在滑入**(起点 home±500)。
+##   探针实测: 满帧率下落位判据在「匹配中」那一幕的空档(雷达环两发之间)就成立,
+##   四个比例量的**全是匹配中**(卡片 0 张, VS 幕从没被量过); `--max-fps 15` 下判落位之后那
+##   4 帧 + 量测本身就跨过了 2.2 秒计时器, 量到 VS 幕的半路(另一次是震屏中, 内容层偏 (3.6, 4.9))。
+##   ⇒ 量哪一幕由机器快慢决定。改成【等这一屏自己演完】: 借产品现成的缝
+##   `MatchmakingScene._may_leave_for_test`(它在两幕都播完、要离开的那一刻被调)把屏留住,
+##   缝被调过之后才允许判落位。同一个病 `verify_ui_consistency` 已用同一条缝治过。
+const _MM := preload("res://scripts/scenes/MatchmakingScene.gd")
+var _mm_leave_calls := 0
+
+func _mm_may_leave(_dest: String) -> bool:
+	_mm_leave_calls += 1
+	return false
+
 
 func _ok(name: String, cond: bool, detail: String = "") -> void:
 	_n += 1
@@ -93,6 +109,8 @@ func _ready() -> void:
 		var after_bad := ""
 		var tab_bad := ""
 		var nodes_min := 999999
+		var mm_bad := ""
+		var mm_seen := 0
 		for v in VIEWS:
 			var w: int = int(v[0])
 			var h: int = int(v[1])
@@ -108,6 +126,10 @@ func _ready() -> void:
 			if after_bad == "" and str(res.get("after", "")) != "":
 				after_bad = str(res["after"])
 			nodes_min = mini(nodes_min, int(res["n"]))
+			if res.get("mm_final", null) != null:
+				mm_seen += 1
+				if mm_bad == "" and str(res["mm_final"]) != "":
+					mm_bad = str(res["mm_final"])
 			# 图鉴页签行必须居中于【真实视口】(它挂在全宽锚的 TabBar 上)
 			var stg = res.get("stage", null)
 			if stg != null:
@@ -134,6 +156,9 @@ func _ready() -> void:
 		# ★分母: 场景没建起来时后面全是空检查。门槛 3 而不是 5 —— 匹配屏本来就只有
 		#   "搜索中"文字 + 转圈 + 取消键这几件(实测 4 个), 卡 5 会把正常情况判成红。
 		_ok("★分母 %s 每个比例都量到 ≥3 个可见元素" % scn, nodes_min >= 3, "最少那次 %d 个" % nodes_min)
+		if scn == "Matchmaking":
+			_ok("★分母 Matchmaking 四个比例量的都是【最终那一幕】(VS 两张卡在场, 不是匹配中/滑入半路)",
+				mm_seen == VIEWS.size() and mm_bad == "", "量到 %d/%d 次 %s" % [mm_seen, VIEWS.size(), mm_bad])
 		_ok("① %s 四个比例都不溢出视口" % scn, over_total == 0,
 			"溢出 %d 个; 最严重: %s" % [over_total, over_detail])
 		if scn in SCALING_SCREENS:
@@ -226,6 +251,11 @@ func _measure(path: String, w: int, h: int) -> Dictionary:
 	sv.render_target_update_mode = SubViewport.UPDATE_DISABLED   # 只要布局, 不要渲染开销
 	add_child(sv)
 	var inst = (load(path) as PackedScene).instantiate()
+	## ★注入必须在 add_child 之前: 撮合屏的 _ready 是 add_child 那一刻起跑的。
+	var _is_mm := path.ends_with("/Matchmaking.tscn")
+	if _is_mm:
+		_mm_leave_calls = 0
+		_MM._may_leave_for_test = _mm_may_leave
 	sv.add_child(inst)
 	# 等界面建完 + 入场 tween 落定。
 	# ★★2026-09-18: 原来是"等 150 帧", 仍然不够 —— tween 走的是【真实 delta】, 而无头帧率极高、
@@ -238,7 +268,8 @@ func _measure(path: String, w: int, h: int) -> Dictionary:
 	var _settled := false
 	while Time.get_ticks_msec() - _t0 < 8000:
 		await get_tree().process_frame
-		if _entrance_settled(inst, w, h):
+		## 撮合屏: 缝被调过(= 两幕都演完、本该离开)之前不算落位。
+		if _entrance_settled(inst, w, h) and (not _is_mm or _mm_leave_calls > 0):
 			_settled = true
 			break
 	Engine.time_scale = 1.0
@@ -339,12 +370,25 @@ func _measure(path: String, w: int, h: int) -> Dictionary:
 	#   还原真事故)报 0 条红才暴露出来。"写了没人读"这个坑我这天踩了第二次。
 	var blocker: String = _blocker_check(inst, vp)
 	var after: String = await _after_click_check(inst, w, h)
+	## ★分母: 撮合屏真的是在【最终那一幕】被量的(两张资料卡都在、缝被调过)。
+	var mm_final = null
+	if _is_mm:
+		var _cards := 0
+		var _cr = inst.get("content_root")
+		if _cr != null and is_instance_valid(_cr):
+			for _c in (_cr as Node).get_children():
+				if _c is Panel and not (_c as Node).is_queued_for_deletion():
+					_cards += 1
+		mm_final = "" if (_mm_leave_calls == 1 and _cards == 2) \
+			else "@%dx%d 缝被调 %d 次, 资料卡 %d 张" % [w, h, _mm_leave_calls, _cards]
+		## ★static, 活过场景切换 ⇒ 用完立刻还原。
+		_MM._may_leave_for_test = Callable()
 	sv.queue_free()
 	await get_tree().process_frame
 	var bbc: float = ((bb.position.x + bb.end.x) * 0.5 - vp.x * 0.5) if have_bb else 9999.0
 	return {"over": over, "n": counted, "tiny": tiny, "worst": over_worst,
 		"frame": frame_pos, "tab_off": tab_off, "bbc": bbc, "blocker": blocker, "after": after,
-		"stage": stage}
+		"stage": stage, "mm_final": mm_final}
 
 
 ## 选龟屏构图 —— ② 对 TeamSelect 豁免(它按视口缩放, 问"内容层在哪"没意义),

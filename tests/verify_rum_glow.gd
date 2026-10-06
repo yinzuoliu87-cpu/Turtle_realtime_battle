@@ -76,6 +76,9 @@ func _ready() -> void:
 	u["rum_glow_until"] = _s._t + PIRATE.RUM_SEC
 	await _settle()
 	var c_on: Color = _spr(u).modulate
+	## ★分母: 量的这一刻没有受击闪白(闪白会按 1−fl 压扁暖度, 见 `_settle` 头注)。
+	_ok("★分母② 测量时载体不在受击闪白中(sim 已停, 不会再挨打)",
+		float(u.get("flash_t", 0.0)) <= 0.0, "flash_t=%.4f" % float(u.get("flash_t", 0.0)))
 	_ok("★★② 喝酒中立绘【变暖】了(红明显高于蓝)",
 		c_on.r - c_on.b > 0.15,
 		"r=%.3f g=%.3f b=%.3f (r-b=%.3f)" % [c_on.r, c_on.g, c_on.b, c_on.r - c_on.b])
@@ -148,10 +151,21 @@ func _ready() -> void:
 	_done()
 
 
-## 等渲染层至少完整跑一帧(它在 Phase4 写 modulate)。
+## 让渲染层按当前旗子重画一次立绘(它在 Phase4 写 modulate)。
+## ★★2026-10-06 改成【停住 sim、只直接调真渲染函数】: 原来是 `await` 4 帧, 而这 4 帧里 sim 照跑 ——
+##   CI 一帧 ≈ 4 步 sim(本地 1 步), 载体龟在这段时间里**挨打** ⇒ 受击闪白 `modulate = 暖色.lerp(过曝白, fl)`
+##   把暖度 r−b 按 (1−fl) 压扁。CI 实录 ② 刚喝 r=1.502 b=1.266(>1 = 闪白中) r−b=0.236,
+##   而无闪白的真值是 0.365 ⇒ ③ 拿被压扁的 ② 当基准对比干净的过半值 0.364 ⇒ 差 0.128 红。
+##   探针(15fps)还量到 ④ 那次 flash_t=0.043 fl=0.394 r−b=0.009, 10fps 下 ④ 的剩余时间走成 −0.13
+##   (效果已过期, ④ 是**碰巧**绿的)。
+## ⇒ 这份测试量的是「旗子 → 画面」这一截, 与战斗推进无关: 停住 `_process`(不再有 sim、不再挨打、
+##   `_t` 不走), 直接调 `_render._render_step` —— 正是 `_process` 每帧末尾调的那一个, 不是旁路。
+##   每条的剩余时间从此**精确**等于设定值, 与机器快慢无关。
 func _settle() -> void:
-	for _i in range(4):
-		await get_tree().process_frame
+	_s.set_process(false)
+	for _i in range(2):
+		_s._render._render_step(1.0 / 60.0, false, false)
+	await get_tree().process_frame
 
 
 func _done() -> void:
