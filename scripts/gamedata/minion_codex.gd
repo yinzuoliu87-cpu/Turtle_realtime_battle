@@ -28,7 +28,9 @@ static func skill_desc(stype: String) -> Variant:
 	if k == "" or not MINION_INFO.has(k):
 		return null
 	var d: Dictionary = MINION_INFO[k]
-	return {"name": str(d.get("skill_name", "")), "desc": str(d.get("skill_desc", ""))}
+	## ★icon(2026-10-06): 信息面板技能格要图标 —— 原来小将两个技能没有图, 那一格是空的。
+	return {"name": str(d.get("skill_name", "")), "desc": str(d.get("skill_desc", "")),
+		"icon": str(d.get("skill_icon", ""))}
 
 
 # 深海小将 (虚拟图鉴条目 — 非龟, pets.json 里没有)
@@ -48,13 +50,13 @@ const MINION_INFO := {
 	"front": {
 		"name": "近战小将", "img": "minion.png", "role": "前排 · 近战",
 		"hp": 750, "atk": 42, "def": 13, "mr": 13, "interval": 0.85, "range": 70, "spd": 105,
-		"skill_name": "人体浪板", "skill_cost": 120,
+		"skill_name": "人体浪板", "skill_cost": 120, "skill_icon": "skills/minion-bodysurf.png",
 		"skill_desc": "盯上 2000 码内的一个敌人：高高跃起，一边起跳一边回复 2×攻击力 生命（离得太近就先往后跳开拉出距离），跟着射出铁链把它眩晕，再把自己拉过去；接触瞬间造成 [color=#ff9f43]目标 10% 最大生命[/color] 物理伤害，随后踩着目标滑行——对被踩者持续造成 2×攻击力 物理伤害，沿途敌人受到 1.5×攻击力 物理伤害并被击退，最后跳下。",
 	},
 	"back": {
 		"name": "远程小将", "img": "minion-back.png", "role": "后排 · 远程",
 		"hp": 750, "atk": 45, "def": 7, "mr": 7, "interval": 0.85, "range": 400, "spd": 105,
-		"skill_name": "追踪火箭筒", "skill_cost": 120,
+		"skill_name": "追踪火箭筒", "skill_cost": 120, "skill_icon": "skills/minion-rocket.png",
 		"skill_desc": "锁上 2000 码内的敌人，蓄力 1.5 秒后发射一枚慢速追踪导弹，命中处核爆：400 码范围内造成 [color=#ff9f43]4×攻击力[/color] 物理伤害，并使命中的敌人受到的治疗降低 50%，持续 4 秒。",
 	},
 	"elite": {

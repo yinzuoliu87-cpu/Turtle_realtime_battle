@@ -1190,7 +1190,9 @@ func _skill_bar_entries(u: Dictionary) -> Array:
 			if md != null:
 				## ★带上 stype: 小将这条分支 sk 是空字典, 而 _apply_forms 要靠 type 认多形态技
 				##   (精英铁锤就走这条路 —— 它没有 pets.json 技能池)。
-				out.append({"name": str(md["name"]), "cost": battle._skill_cost(u, str(t)), "icon": "",
+				var _mip := str(md.get("icon", ""))
+				out.append({"name": str(md["name"]), "cost": battle._skill_cost(u, str(t)),
+					"icon": ("res://assets/sprites/" + _mip) if _mip != "" else "",
 					"desc": str(md["desc"]), "tpl": "", "sk": {}, "stype": str(t)})
 	else:
 		for t in battle._chosen_skill_types(id, str(u.get("side", "")) == "left"):

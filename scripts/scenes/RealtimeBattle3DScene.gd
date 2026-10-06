@@ -7799,6 +7799,13 @@ func _st_row(u: Dictionary) -> Dictionary:
 		"_st_kills": int(u.get("_st_kills", 0)), "_st_shield": int(u.get("_st_shield", 0)),
 		"_st_phy": int(sp[0]), "_st_mag": int(sp[1]), "_st_tru": int(sp[2]),
 	}
+	## ★头像兜底(2026-10-06 60 人实操 B3-1): 训龟大师没有 avatars/<id>.png ⇒ 结算 MVP 头像是空的。
+	##   把它【战场上用的那张立绘】的路径和帧格记进行里(纯标量, 快照可存), 结算屏取首帧。
+	var _isd: Dictionary = u.get("idle_sd", {}) if u.get("idle_sd", {}) is Dictionary else {}
+	var _itx = _isd.get("tex", null)
+	if _itx is Texture2D and str((_itx as Texture2D).resource_path) != "":
+		row["_st_portrait"] = str((_itx as Texture2D).resource_path)
+		row["_st_pf"] = "%d,%d" % [int(_isd.get("hframes", 1)), int(_isd.get("vframes", 1))]
 	row.merge(EquipTally.row_fields(u))   # ④ 每件装备的本局统计, 摊平成纯标量键 `_st_eq|<装备id>|<phy/mag/tru/heal/shield>`
 	return row
 const _SETTLE_S := preload("res://scripts/scenes/battle/settle_screen.gd")

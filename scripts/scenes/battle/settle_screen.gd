@@ -488,6 +488,20 @@ static func avatar(r: Dictionary, sz: float) -> Control:
 			p = SPRITE_ROOT + "pets/" + id + ".png"
 	if p != "" and ResourceLoader.exists(p):
 		tr.texture = load(p)
+	elif str(r.get("_st_portrait", "")) != "" and ResourceLoader.exists(str(r["_st_portrait"])):
+		## 没有头像图的单位(训龟大师等): 用它战场立绘的第一帧(见 _st_row 的头像兜底)。
+		var tex: Texture2D = load(str(r["_st_portrait"]))
+		var pf: PackedStringArray = str(r.get("_st_pf", "1,1")).split(",")
+		var hf: int = maxi(1, int(pf[0])) if pf.size() > 0 else 1
+		var vf: int = maxi(1, int(pf[1])) if pf.size() > 1 else 1
+		if hf <= 1 and vf <= 1:
+			tr.texture = tex
+		else:
+			var at := AtlasTexture.new()
+			at.atlas = tex
+			at.region = Rect2(0, 0, tex.get_width() / hf, tex.get_height() / vf)
+			tr.texture = at
+		tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	return tr
 
 
