@@ -162,32 +162,6 @@ func _ready() -> void:
 #  因为 _build_searching/_build_vs 会清空 content_root 的子节点。
 # ---------------------------------------------------------------------------
 
-## 震屏: 抖 content_root 的 position, 抖完归位到 _center() 的锚点.
-func _shake(amount: float, dur: float) -> void:
-	if content_root == null:
-		return
-	var home: Vector2 = content_root.position
-	var tw := create_tween()
-	var steps := int(dur / 0.04)
-	for i in steps:
-		var k: float = 1.0 - float(i) / float(maxi(steps, 1))   # 衰减
-		var off := Vector2(randf_range(-amount, amount), randf_range(-amount, amount)) * k
-		tw.tween_property(content_root, "position", home + off, 0.04)
-	tw.tween_property(content_root, "position", home, 0.04)
-
-
-## 全屏闪白/闪色: 叠一层 ColorRect 快速淡掉.
-func _flash(col: Color, dur: float) -> void:
-	var r := ColorRect.new()
-	r.set_anchors_preset(Control.PRESET_FULL_RECT)
-	r.color = col
-	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(r)
-	var tw := create_tween()
-	tw.tween_property(r, "color:a", 0.0, dur)
-	tw.tween_callback(r.queue_free)
-
-
 ## 冲击波圆环: 从 center 扩散并淡出 (纯 Control + draw, 不依赖贴图).
 func _shockwave(center: Vector2, col: Color, max_r: float, dur: float) -> void:
 	var ring := _RingFx.new()
@@ -431,10 +405,9 @@ func _build_vs(opp: Dictionary) -> void:
 		_dots_tween.kill()
 	for c in content_root.get_children():
 		c.queue_free()
-	# ① 命中瞬间: 绿闪 + 小震 + 一圈绿波 —— 让"找到了"有落点, 不是悄悄换个字
-	_flash(Color(0.55, 0.95, 0.62, 0.42), 0.30)
-	_shake(7.0, 0.20)
-	_shockwave(RADAR_C, Color("#7fd98a"), 520.0, 0.45)
+	## ★2026-10-06 用户「已匹配到对手后下面几帧怎么再乱搞」: 原来 1 秒里绿闪+绿波+震屏、红闪+红波+大震叠两轮。
+	##   照荒野乱斗 / 皇室战争 / Disney Melee Mania 的 VS 页(Game UI Database · Versus Screen): 没有闪屏、没有扩散圈,
+	##   只有双方卡 + 一个 VS 落定。⇒ 去掉两次全屏闪色、两道扩散圈和震屏。
 	var found := _font(26, Color("#7fd98a"))
 	found.text = "已匹配到对手!"
 	found.size = Vector2(W, 34); found.position = Vector2(0, FOUND_Y); found.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -464,24 +437,17 @@ func _build_vs(opp: Dictionary) -> void:
 	var me := _player_profile()
 	_build_card(me, Vector2(170, CARD_Y), Color("#5aa9ff"), -500.0)
 	_build_card(opp, Vector2(W - 170 - CARD_W, CARD_Y), Color("#ff6b6b"), 500.0)
-	# ③ VS 在两卡到位的同一拍砸下来 → 红闪 + 大震 + 红波, 做出"对撞"的响
+	# ③ VS 在两卡到位的同一拍放大落定一次(不闪屏、不扩圈、不震屏)
 	var vs := _font(64, Color("#ff6b6b"))
 	vs.text = "VS"; vs.size = Vector2(160, 80)
 	vs.position = Vector2(W / 2.0 - 80, CARD_Y + CARD_H / 2.0 - 40.0)
 	vs.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content_root.add_child(vs)
-	vs.scale = Vector2(3.4, 3.4); vs.modulate.a = 0.0; vs.pivot_offset = Vector2(80, 40)
+	vs.scale = Vector2(1.6, 1.6); vs.modulate.a = 0.0; vs.pivot_offset = Vector2(80, 40)
 	var vtw := vs.create_tween()
 	vtw.tween_interval(0.42)
-	vtw.tween_property(vs, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-	vtw.parallel().tween_property(vs, "modulate:a", 1.0, 0.10)
-	vtw.tween_callback(func() -> void:
-		_flash(Color(1.0, 0.42, 0.42, 0.5), 0.26)
-		_shake(15.0, 0.30)
-		_shockwave(Vector2(W / 2.0, CARD_Y + CARD_H / 2.0), Color("#ff6b6b"), 480.0, 0.42))
-	# 落定后微微回弹, 免得砸完就死板杵着
-	vtw.tween_property(vs, "scale", Vector2(1.12, 1.12), UIPalette.T_TAP)
-	vtw.tween_property(vs, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	vtw.tween_property(vs, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	vtw.parallel().tween_property(vs, "modulate:a", 1.0, 0.14)
 
 
 func _build_card(prof: Dictionary, pos: Vector2, accent: Color, slide_from_dx: float) -> void:

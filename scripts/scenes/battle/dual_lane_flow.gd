@@ -192,7 +192,7 @@ func _dl_build_present_overlay(mode: String) -> void:
 	elif mode == "preview":
 		## ★原文案 "对阵预览" —— 「预览」是编辑器/网页词。这一幕的两列阵容+VS 本身就说清了
 		##   "谁对谁", 标题该说的是【接下来要发生什么】。
-		title.text = "%s  马上开打" % lane_cn.get(cur_lane, cur_lane)
+		title.text = "%s  对阵" % lane_cn.get(cur_lane, cur_lane)   # 2026-10-06 原「马上开打」口语(60 人实操台账 M3)
 		vb.add_child(_dl_matchup_row(cur_lane))
 	elif mode == "lane_settle":
 		var win_lr = "right" if battle._dl_pending_loser == "left" else "left"

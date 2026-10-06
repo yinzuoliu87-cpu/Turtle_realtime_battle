@@ -195,11 +195,11 @@ scripts/gamedata/phase2_config.gd|lit|满配额
 scripts/gamedata/phase2_config.gd|lit|石头
 scripts/gamedata/phase2_config.gd|lit|积分赛
 scripts/gamedata/phase2_config.gd|lit|绑上邮箱，换手机或重装都能把进度接回来。
+scripts/gamedata/phase2_config.gd|lit|绑定账号 · 保存进度
 scripts/gamedata/phase2_config.gd|lit|绑定邮箱，换手机也接得回来
 scripts/gamedata/phase2_config.gd|lit|统领
 scripts/gamedata/phase2_config.gd|lit|规则同积分赛
 scripts/gamedata/phase2_config.gd|lit|进决赛日
-scripts/gamedata/phase2_config.gd|lit|进度没备份 · 绑定邮箱
 scripts/gamedata/phase2_config.gd|lit|闪电
 scripts/gamedata/phase2_config.gd|lit|闯关赛
 scripts/gamedata/phase2_config.gd|lit|龟
@@ -872,7 +872,6 @@ scripts/scenes/SettingsScene.gd|lit|确认
 scripts/scenes/SettingsScene.gd|lit|绑定之后，换手机用这个邮箱就能把账号和进度（龟、装备、排名、战绩）一起取回来。\n
 scripts/scenes/SettingsScene.gd|lit|绑定邮箱
 scripts/scenes/SettingsScene.gd|lit|设置
-scripts/scenes/SettingsScene.gd|lit|调完就记住了，下次进来还是这样
 scripts/scenes/SettingsScene.gd|lit|账号 · %s
 scripts/scenes/SettingsScene.gd|lit|账号 · 匿名 %s
 scripts/scenes/SettingsScene.gd|lit|账号 · 连接中…
@@ -1165,8 +1164,8 @@ scripts/scenes/battle/dual_lane_flow.gd|lit|敌军覆没
 scripts/scenes/battle/dual_lane_flow.gd|lit|精英小将
 scripts/scenes/battle/dual_lane_flow.gd|lit|结算
 scripts/scenes/battle/dual_lane_flow.gd|lit|龟蛋破碎
+scripts/scenes/battle/dual_lane_flow.gd|text|%s  对阵
 scripts/scenes/battle/dual_lane_flow.gd|text|%s  战果
-scripts/scenes/battle/dual_lane_flow.gd|text|%s  马上开打
 scripts/scenes/battle/dual_lane_flow.gd|text|三路开战
 scripts/scenes/battle/dual_lane_flow.gd|text|上下路幸存者对决
 scripts/scenes/battle/dual_lane_flow.gd|text|开打

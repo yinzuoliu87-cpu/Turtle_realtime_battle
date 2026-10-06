@@ -383,6 +383,13 @@ func _do_shop(s: Node) -> void:
 	if style == 1 and not tut and _alive(s):
 		if int(GameState.meta_deepsea_coins) >= _P2.BUY_XP_COST and _buy_xp(s):
 			xp_n += 1
+	## ★不攒钱(2026-10-06 第 1 批: p07/p09 出局时手里还有 91/98 币 —— 真人不会这么打):
+	##   货买完还剩得多, 就拿去买经验(升级 = 全队装备位变多), 留 6 币给下一轮。
+	while not tut and _alive(s) and int(GameState.meta_deepsea_coins) >= _P2.BUY_XP_COST + 6 			and int(GameState.season_level) < _P2.MAX_LEVEL and xp_n < 6:
+		if not _buy_xp(s):
+			break
+		xp_n += 1
+		await _sleep(0.3)
 	_ev("shop", {"visit": _shop_visits, "tutorial": tut, "style": style, "coins_before": coins0,
 		"coins_after": int(GameState.meta_deepsea_coins), "bought": bought, "xp_buys": xp_n,
 		"level": [lv0, int(GameState.season_level)], "bench_n": GameState.persistent_bench.size()})
@@ -441,7 +448,16 @@ func _do_inventory(v: Node) -> void:
 		await _sleep(0.45)
 		equipped.append({"to": tgt, "ok": GameState.persistent_bench.size() < before})
 		if GameState.persistent_bench.size() >= before:
-			_ev("ANOMALY", {"where": "inventory", "what": "点了装备+点了单位, 背包件数没少", "target": tgt})
+			## 产品自己飘的那句话(InventoryScene._toast 建的 Label 名叫 "Toast")—— 分清是产品拒了还是驱动点错了
+			var toasts: Array = []
+			for tl in v.find_children("Toast", "Label", true, false):
+				toasts.append((tl as Label).text)
+			var lane_now: Array = GameState.get_dual_lineup().get(str(tgt["lane"]), [])
+			var unit_now = lane_now[int(tgt["idx"])] if int(tgt["idx"]) < lane_now.size() else {}
+			_ev("ANOMALY", {"where": "inventory", "what": "点了装备+点了单位, 背包件数没少", "target": tgt,
+				"toast": toasts, "sel_bench": v.get("_sel_bench"), "bench": GameState.persistent_bench.duplicate(true),
+				"unit": unit_now, "team": [GameState.team_equipped_count(), GameState.team_equip_cap()]})
+			_shot("ANOMALY_inventory_equip")
 			break
 	_ev("inventory", {"tutorial": tut, "equipped": equipped,
 		"team_equipped": GameState.team_equipped_count(), "team_cap": GameState.team_equip_cap(),

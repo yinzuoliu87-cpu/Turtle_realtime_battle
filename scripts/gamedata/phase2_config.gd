@@ -1343,7 +1343,7 @@ static func login_wall_on(backend_on: bool, email: String) -> bool:
 ## ★不许退回成拦路: 它就是主菜单上一个可点元素, 点了去绑定屏, 不点照常玩。
 ## ★字**只在这一处**, 主菜单不自己拼 —— 抄一次永远落后一次。
 static func bind_nudge_text() -> String:
-	return "进度没备份 · 绑定邮箱"
+	return "绑定账号 · 保存进度"   # 2026-10-06 原「进度没备份 · 绑定邮箱」口语; 照使命召唤手游「LINK TO SOCIAL ACCOUNT」
 
 
 ## 绑定屏第一屏说什么。

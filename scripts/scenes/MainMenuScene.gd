@@ -450,8 +450,8 @@ func _build_page_buttons(now: int = 0) -> void:
 ##   高 = `ROW_H`(81 视口像素 = 44pt), 与全屏所有靶子同一条触摸线。
 ## ★y 是**算出来的空地**: 底沿 386+81 = 467, 训龟大师顶沿 `TRAINER_POS.y` = 478 ⇒ 留 11px;
 ##   左沿 756 在两只角斗龟右边(龟的右沿 732), 不压主角。
-const NUDGE_SIZE := Vector2(508.0, 81.0)
-const NUDGE_POS := Vector2(W - WALL - 508.0, 346.0)   # 底沿 427 < 训龟大师上移后的顶沿 440
+const NUDGE_H := 30.0                        # 齿轮下方绑定提示条高(不含尖角)
+const NUDGE_FONT := 16
 
 
 ## 【拆墙的配件】没绑邮箱的人在主菜单上看到的那一句。
@@ -469,10 +469,50 @@ const NUDGE_POS := Vector2(W - WALL - 508.0, 346.0)   # 底沿 427 < 训龟大�
 func _bind_nudge() -> void:
 	if not _P2C.bind_needed(_SB.enabled(), str(GameState.account_email)):
 		return
-	var b := _frame_button(_P2C.bind_nudge_text(), _open_bind_screen, false,
-		NUDGE_SIZE, FONT_BTN, "")
+	## ★2026-10-06: 从主菜单正中的大木牌改成【设置齿轮正下方的小提示条】
+	##   (照使命召唤手游主大厅: 齿轮下面一个带尖角的黄框小条「LINK TO SOCIAL ACCOUNT」)。
+	##   原来压在擂台画面正中、比训龟大师还大(用户「改」, 60 人实操台账 M1)。
+	var txt := str(_P2C.bind_nudge_text())
+	var tw_n: float = ceilf(_bold_font().get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, NUDGE_FONT).x)
+	var bw: float = tw_n + 28.0
+	var gear_cx: float = RIGHT_EDGE - ICON_TAP / 2.0
+	## 尖角顶 = 齿轮【点击区】底沿再往下 1px(不压 ?/⚙ 的 81px 触摸区; 看得见的空隙 ≈12px)。
+	var top: float = 30.0 + (85.0 - ICON_TAP) / 2.0 + ICON_TAP + 1.0 + 8.0
+	var b := Control.new()
 	b.name = NUDGE_NAME
-	b.position = NUDGE_POS
+	b.size = Vector2(bw, maxf(NUDGE_H + 8.0, ICON_TAP))   # 整块 = 点击区(81 触摸线); 看得见的条在上面 38px
+	b.position = Vector2(minf(gear_cx - bw / 2.0, RIGHT_EDGE - bw), top - 8.0)
+	var arrow := Polygon2D.new()
+	var ax: float = gear_cx - b.position.x
+	arrow.polygon = PackedVector2Array([Vector2(ax - 8.0, 8.0), Vector2(ax + 8.0, 8.0), Vector2(ax, 0.0)])
+	arrow.color = Color("#e8b84a")
+	b.add_child(arrow)
+	var box := ColorRect.new()
+	box.color = Color("#e8b84a")
+	box.position = Vector2(0.0, 8.0)
+	box.size = Vector2(bw, NUDGE_H)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(box)
+	var inner := ColorRect.new()
+	inner.color = Color("#1a1206")
+	inner.position = Vector2(2.0, 10.0)
+	inner.size = Vector2(bw - 4.0, NUDGE_H - 4.0)
+	inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(inner)
+	var lb := _menu_label(txt, NUDGE_FONT, Color("#ffd27a"))
+	lb.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	lb.position = Vector2(0.0, 8.0)
+	lb.size = Vector2(bw, NUDGE_H)
+	b.add_child(lb)
+	var btn := Button.new()
+	btn.flat = true
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	## 点击区: 看得见的条只有 30 高, 点击区往下补到 81(触摸线), 不往上(上面是齿轮的点击区)。
+	btn.position = Vector2(0.0, 0.0)
+	btn.size = Vector2(bw, maxf(NUDGE_H + 8.0, ICON_TAP))
+	btn.pressed.connect(_open_bind_screen)
+	b.add_child(btn)
 	content_root.add_child(b)
 	_slide_in(b, 3)
 
