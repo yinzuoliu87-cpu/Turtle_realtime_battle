@@ -1087,7 +1087,7 @@ scripts/scenes/battle/battle_hud.gd|lit|清空
 scripts/scenes/battle/battle_hud.gd|lit|满龟能默认:关
 scripts/scenes/battle/battle_hud.gd|lit|火箭
 scripts/scenes/battle/battle_hud.gd|lit|生命  %d / %d
-scripts/scenes/battle/battle_hud.gd|lit|生命已耗尽 · 本赛季结束
+scripts/scenes/battle/battle_hud.gd|lit|生命已耗尽 · 本大轮已出局
 scripts/scenes/battle/battle_hud.gd|lit|精英
 scripts/scenes/battle/battle_hud.gd|lit|练习赛 · 不计入赛季进度
 scripts/scenes/battle/battle_hud.gd|lit|继续

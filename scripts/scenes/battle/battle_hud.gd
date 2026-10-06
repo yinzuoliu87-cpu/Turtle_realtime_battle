@@ -1322,7 +1322,7 @@ func _result_subtitle(won: bool, gs) -> String:
 	if str(battle._last_settle_kind) == _P2C_HUD.SETTLE_FINALS:
 		return "决赛日 · 不消耗生命 · 胜负在下一轮开播时揭晓"
 	if gs.is_eliminated():
-		return "生命已耗尽 · 本赛季结束"
+		return "生命已耗尽 · 本大轮已出局"   # 2026-10-06 与主菜单「本大轮已出局」同一个词(60 人实操台账)
 	if battle._last_was_exhibition:
 		return "表演赛 · 不消耗生命"
 	return "赛季胜场 +1" if won else "消耗 1 点生命"

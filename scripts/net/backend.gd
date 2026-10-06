@@ -271,14 +271,23 @@ static func _is_self_ghost(g) -> bool:
 ##   **桶本身就是上传倒序** ⇒ 桶序里第一个命中的就是最新那份(D10: 新鲜度是排序不是过滤)。
 ##   ⇒ 所以这里**不随机**, 直接取第一个。`_rng` 留在签名里是给"同场次多人时要不要打散"
 ##   这条未决点用的; 现在按 D10 取最新, 一个字都不随机。
+## 同场次里从最新的几份快照中随机抽(见 pool_find_battles 头注, 台账 A1)。
+const POOL_PICK_TOP := 5
+
 static func pool_find_battles(pool: Dictionary, battles: int, exclude_ids: Array,
-		_rng: RandomNumberGenerator):
+		rng: RandomNumberGenerator):
 	if battles < 0:
 		return null
 	var buckets: Dictionary = pool.get(POOL_KEY, {})
 	var b := str(battles)
 	if not buckets.has(b):
 		return null
+	## ★★2026-10-06 改: 从「同场次里最新的 POOL_PICK_TOP 份」随机抽一份, 不再固定取第一份。
+	##   60 人实操第 1 批(台账 A1)实测: 116 局里同一场次的所有人打的都是同一份快照
+	##   (第 2~14 场 100% 是同一个玩家), 一份快照决定整批输赢, 模拟号之间一次都没碰上。
+	##   用户 2026-10-06 同意(「你可以开始了」, 对「从最新的 5 份里随机抽一份」那条提议)。
+	##   ★仍是 D5「总场次完全相同」, 仍按上传倒序取前 N 份 = 新鲜度照样优先(D10 的本意), 只是不再一人独占。
+	var cands: Array = []
 	for g in buckets[b]:
 		if not (g is Dictionary):
 			continue
@@ -297,8 +306,14 @@ static func pool_find_battles(pool: Dictionary, battles: int, exclude_ids: Array
 			continue                  # ★以快照自己的账为准, 不信桶的键名
 		if exclude_ids.has(str((g as Dictionary).get("ghost_id", ""))):
 			continue
-		return g                      # 桶序 = 上传倒序 ⇒ 第一个命中 = 最新(D10)
-	return null
+		cands.append(g)               # 桶序 = 上传倒序 ⇒ 越靠前越新(D10)
+		if cands.size() >= POOL_PICK_TOP:
+			break
+	if cands.is_empty():
+		return null
+	if rng == null or cands.size() == 1:
+		return cands[0]
+	return cands[rng.randi_range(0, cands.size() - 1)]
 
 
 # ─── bot 生成 (池空/冷启动兜底 = 永久安全网, 设计§十三) ───
