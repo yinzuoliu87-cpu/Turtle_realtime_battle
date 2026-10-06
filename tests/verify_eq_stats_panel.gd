@@ -3,12 +3,16 @@ extends Node
 ##
 ## 用户原话:「在信息栏内部点击任务后右侧面板点击装备图标展示装备效果时贴在描述的下面，你可以学学lol」
 ## 数据源 `u["_st_eq"][eid] = {phy, mag, tru, heal, shield}`(EquipTally)。
-## 走产品自己的入口: `_show_unit_info_panel` 开面板 → 给装备槽喂一次真左键 → 读浮层里的节点。
-##   ① 分母: 面板里真的有 2 个可点的装备槽, 点开后浮层可见且 key 是这件装备
-##   ② 有统计的那件: 描述正下方(Body 里紧跟描述那个节点)是统计块, 可见, 每一行数字 == 独立从 _st_eq 算的
+## 走产品自己的入口: `_show_unit_info_panel` 开面板 → 给装备槽喂一次真左键 → 读【面板左侧小卡】里的节点。
+## ★2026-10-06 面板重做: 点装备不再在面板里盖 DetailOverlay, 而是在面板左侧弹独立小卡
+##   (`battle._info_sys._card` · inspect_card.gd)。统计块 = 小卡里「本局」段那个 Label(live["extra"])。
+##   ① 分母: 面板里真的有 2 个可点的装备槽, 点开后小卡在场且 key 是这件装备
+##   ② 有统计的那件: 统计块在小卡里、排在描述【下面】(同一个 VBox 里下标更大), 可见,
+##      每一行数字 == 独立从 _st_eq 算的
 ##   ③ 只列非零: 护盾为 0 ⇒ 不出现「护盾」; 两种伤害非零 ⇒ 括号拆开
 ##   ④ 实时: 改 _st_eq 后走一次 `_refresh_info_panel`(产品每帧那条路) ⇒ 文字跟着变
-##   ⑤ 全零那件: 点开后没有可见的统计块(不印「0」)
+##   ⑤ 全零那件: ★2026-10-06 改为写一句「还没有产生效果」(小卡里「本局」段标题常在, 空着像坏了),
+##      仍然【不印「0」】—— 一个数字都不许出现
 ## 反向验证见报告: 拿掉 `_refresh_eq_stats()` 调用 ⇒ ④ 红; 统计块不建 ⇒ ②③ 红。
 
 const RTScene := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
@@ -46,25 +50,40 @@ func _eq_slots(root: Node) -> Array:
 	return out
 
 
-## 浮层 Body 里「描述」(RichTextLabel) 之后紧挨着的那个节点
-func _after_desc(s) -> Node:
-	var body = s._info_panel.get_node_or_null("DetailOverlay/Box/Body")
-	if body == null:
+## 左侧小卡(InspectCard)。没开 / 已释放 ⇒ null。
+func _card(s):
+	var c = s._info_sys._card
+	if c == null or c.card == null or not is_instance_valid(c.card) or c.key == "":
 		return null
-	var kids: Array = body.get_children()
-	for i in range(kids.size()):
-		if kids[i] is RichTextLabel and not (kids[i] as Node).is_queued_for_deletion():
-			return kids[i + 1] if i + 1 < kids.size() else null
-	return null
+	return c
+
+
+func _card_key(s) -> String:
+	var c = _card(s)
+	return "-" if c == null else str(c.key)
+
+
+## 统计块在小卡里排在描述【下面】: 两者同在小卡的内容 VBox 里, 统计块的下标更大。
+## ★不要求"紧挨着" —— 新版式里描述与本局之间夹着灰斜体脚注和一道细线(照云顶装备卡),
+##   用户要的是「贴在描述的下面」, 守的是上下关系, 不是中间不许有东西。
+func _below_desc(s) -> bool:
+	var c = _card(s)
+	if c == null or not c.live.has("body") or not c.live.has("extra"):
+		return false
+	var b: Node = c.live["body"]
+	var e: Node = c.live["extra"]
+	if not is_instance_valid(b) or not is_instance_valid(e) or b.get_parent() != e.get_parent():
+		return false
+	return e.get_index() > b.get_index()
 
 
 func _stats_lbl(s) -> Label:
-	var body = s._info_panel.get_node_or_null("DetailOverlay/Box/Body")
-	if body == null:
+	var c = _card(s)
+	if c == null or not c.live.has("extra"):
 		return null
-	for ch in body.get_children():
-		if ch is Label and str(ch.name) == "EqStats" and not ch.is_queued_for_deletion():
-			return ch
+	var l = c.live["extra"]
+	if l is Label and is_instance_valid(l) and not (l as Node).is_queued_for_deletion():
+		return l
 	return null
 
 
@@ -105,13 +124,13 @@ func _ready() -> void:
 	_click(slots[0])
 	for _i in range(2):
 		await get_tree().process_frame
-	var ov = s._info_panel.get_node_or_null("DetailOverlay")
-	_ok("① 分母: 点了之后浮层可见、key = eq:" + EA,
-		ov != null and ov.visible and str(ov.get_meta("key", "")) == "eq:" + EA,
-		"key=%s" % ("-" if ov == null else str(ov.get_meta("key", ""))))
+	_ok("① 分母: 点了之后左侧小卡在场、key = eq:" + EA,
+		_card(s) != null and (_card(s).card as Control).is_visible_in_tree() and _card_key(s) == "eq:" + EA,
+		"key=%s" % _card_key(s))
 	var sl: Label = _stats_lbl(s)
-	_ok("② 描述正下方就是统计块且可见", sl != null and is_same(_after_desc(s), sl) and sl.visible,
-		"after_desc=%s" % str(_after_desc(s)))
+	_ok("② 统计块在小卡里、排在描述下面且可见",
+		sl != null and _below_desc(s) and sl.is_visible_in_tree(),
+		"stats=%s below=%s" % [str(sl), str(_below_desc(s))])
 	var st: Dictionary = u["_st_eq"][EA]
 	var want_dmg: int = int(round(float(st["phy"]))) + int(round(float(st["mag"]))) + int(round(float(st["tru"])))
 	var want_heal: int = int(round(float(st["heal"])))
@@ -132,22 +151,34 @@ func _ready() -> void:
 	_click(slots[1])
 	for _i in range(2):
 		await get_tree().process_frame
-	_ok("⑤ 分母: 浮层换成了 eq:" + EB, ov != null and ov.visible and str(ov.get_meta("key", "")) == "eq:" + EB)
+	_ok("⑤ 分母: 小卡换成了 eq:" + EB, _card(s) != null and _card_key(s) == "eq:" + EB, "key=%s" % _card_key(s))
 	var sl2: Label = _stats_lbl(s)
-	_ok("⑤ 全零那件没有可见的统计块", sl2 == null or not sl2.visible or sl2.text == "",
-		"" if sl2 == null else "visible=%s text=%s" % [str(sl2.visible), sl2.text])
-	## ⑤b 全零 → 后来有了数 ⇒ 统计块出现(刷新路径能把它从隐藏翻成可见)
+	## ★全零: 写一句「还没有产生效果」, 而且【一个数字都没有】(不印「0」那条老要求不变)。
+	var _t2: String = "" if sl2 == null else sl2.text
+	var _digit := false
+	for _ch in _t2:
+		if _ch >= "0" and _ch <= "9":
+			_digit = true
+	_ok("⑤ 全零那件: 统计块写「还没有产生效果」, 不印任何数字",
+		sl2 != null and sl2.is_visible_in_tree() and _t2 == "还没有产生效果" and not _digit,
+		"" if sl2 == null else "visible=%s text=%s" % [str(sl2.is_visible_in_tree()), _t2])
+	## ⑤b 全零 → 后来有了数 ⇒ 统计块换成真数字(刷新路径能把那句占位换掉)
 	(u["_st_eq"][EB] as Dictionary)["mag"] = 88.0
 	s._info_sys._refresh_info_panel()
-	_ok("⑤b 全零那件之后有了魔法伤害 ⇒ 统计块出现「造成伤害 88」", sl2 != null and sl2.visible and sl2.text == "造成伤害 88",
+	_ok("⑤b 全零那件之后有了魔法伤害 ⇒ 统计块出现「造成伤害 88」", sl2 != null and is_instance_valid(sl2) and sl2.is_visible_in_tree() and sl2.text == "造成伤害 88",
 		"" if sl2 == null else sl2.text)
+	## ⑥ 再点同一个槽 = 收起(小卡是独立节点, 不收就一直压在战场上)
+	_click(slots[1])
+	for _i in range(2):
+		await get_tree().process_frame
+	_ok("⑥ 再点同一件 ⇒ 小卡收起", _card(s) == null, "key=%s" % _card_key(s))
 	_end(s)
 
 
 func _end(s) -> void:
 	s.queue_free()
 	print("")
-	if _fail == 0 and _n >= 10:
+	if _fail == 0 and _n >= 12:
 		print("ALL PASS (%d 条)" % _n)
 		get_tree().quit(0)
 	else:

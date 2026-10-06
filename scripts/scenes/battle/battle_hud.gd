@@ -104,17 +104,8 @@ func _build_ui_layer() -> void:
 ## 日志(U3): 只删按钮, _log()/_log_panel/_toggle_log 全保留 —— _log() 被战斗各处调用,
 ##   且 verify_battle_ui B 组守着它。📜 按钮只在调试场(DEBUG_EDIT)下出现, 正式对局没有。
 func _build_topright_btns() -> void:
-	if battle.DEBUG_EDIT:                              # 调试场保留 📜(我自己排查要用·U8: 开发工具不属"局内")
-		var log_btn = Button.new()
-		log_btn.text = "日志"                      # ★同上: 摘掉 📜, 改成两个字(调试场专用键)
-		log_btn.size = Vector2(52, 38)
-		# ★贴【真实视口】右缘(原写死 1088 = 1280-192, 宽屏上会浮在屏幕中间)
-		log_btn.position = Vector2(float(battle.get_viewport().get_visible_rect().size.x) - 192.0, 12)
-		log_btn.add_theme_font_size_override("font_size", 20)
-		battle._style_hud_btn(log_btn)
-		log_btn.process_mode = Node.PROCESS_MODE_ALWAYS
-		log_btn.pressed.connect(battle._toggle_log)
-		battle._ui_layer.add_child(log_btn)
+	## ★2026-10-06 用户「我们现在也不应该有日志这个东西了」: 调试场那枚「日志」键也删了 ——
+	##   正式对局早在 2026-07-30 就没有; 这里是最后一处。_log()/_toggle_log 内部仍保留(战斗各处在调、verify_battle_ui B 组守着)。
 
 	# ★★2026-07-31 修「手机上投降键重合在血条上」(用户报)。
 	#   原来两个键写死 x=1148 / 1208 —— 而 project.godot 是 stretch/aspect="expand":
@@ -1759,7 +1750,24 @@ func _make_team_frame(u: Dictionary) -> Control:
 	return frame
 
 # 重建头像下装备格 (从 u["equips"] 取, 至多4格). spawn时建 + 招财进宝运行时抽/升装备后调 → 图标即时显进左右信息框(用户2026-07-12).
+## 面板高度 = 内容高(照云顶检视面板: 框只包住内容)。等一帧让 RichTextLabel/HFlow 排完版再量。
+## ★超出视口时封顶到「顶 46 · 底 8」那个老范围, 内容靠 ScrollContainer 拖(小屏/宝箱龟)。
+func _fit_panel_height(panel: PanelContainer, vb: Control) -> void:
+	await battle.get_tree().process_frame
+	if not is_instance_valid(panel) or not is_instance_valid(vb):
+		return
+	var sb := panel.get_theme_stylebox("panel")
+	var pad: float = (sb.get_margin(SIDE_TOP) + sb.get_margin(SIDE_BOTTOM)) if sb != null else 28.0
+	var vp_h: float = float(battle.get_viewport().get_visible_rect().size.y)
+	var want: float = vb.get_combined_minimum_size().y + pad
+	var cap: float = vp_h - 46.0 - 8.0
+	panel.anchor_bottom = 0.0
+	panel.offset_bottom = panel.offset_top + minf(want, cap)
+
+
 func _close_info_panel() -> void:
+	if battle._info_sys != null and battle._info_sys._card != null:
+		battle._info_sys._card.close()
 	if battle._info_panel != null and is_instance_valid(battle._info_panel):
 		var _bg = battle._info_panel.get_parent()   # 老版本有全屏灰底backdrop→连父free; 新侧边版面板直接挂_ui_layer(无backdrop)→只free面板
 		(_bg if _bg != null and _bg is ColorRect else battle._info_panel).queue_free()
@@ -1785,7 +1793,7 @@ func _framed_portrait(u: Dictionary) -> Control:
 	big.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	big.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	big.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	var tex := "res://assets/sprites/battlehud/portrait-frame.png"
+	var tex := "res://assets/sprites/battlehud/insp-slot.png"   # ★2026-10-06 换新槽框(旧的蓝铆钉框随整套换掉)
 	if not ResourceLoader.exists(tex):
 		return big
 	## ⚠ 生成出来的框【中心是实心的】(no_background 只去外部背景) ⇒ 会把立绘整个盖住。
@@ -1804,14 +1812,15 @@ func _framed_portrait(u: Dictionary) -> Control:
 	var fr := NinePatchRect.new()
 	fr.texture = load(tex)
 	fr.set_anchors_preset(Control.PRESET_FULL_RECT)
-	fr.patch_margin_left = 11; fr.patch_margin_right = 11
-	fr.patch_margin_top = 11; fr.patch_margin_bottom = 11
+	fr.patch_margin_left = 6; fr.patch_margin_right = 6
+	fr.patch_margin_top = 6; fr.patch_margin_bottom = 6
 	## ⚠★中段要【平铺】不是拉伸: 源图 64px、目标 56px ⇒ 中段是被**压缩**的,
 	##   而上下沿有等距小铆钉花纹 —— 压缩会把像素丢掉, 实拍就是一条断续的点线。
 	fr.axis_stretch_horizontal = NinePatchRect.AXIS_STRETCH_MODE_TILE_FIT
 	fr.axis_stretch_vertical = NinePatchRect.AXIS_STRETCH_MODE_TILE_FIT
 	fr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	fr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fr.draw_center = false   # 新槽框中心是实心暗底, 不关会把立绘盖住
 	hold.add_child(fr)
 	return hold
 
@@ -1895,7 +1904,8 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	##   3 个正方槽 88 + 2 个间距 8 = 280, 加左右内边距各 16 ⇒ 312。
 	##   原来 400 是拍的, 于是三个 72 的槽右边白空 136px —— 我一开始想把槽拉宽去填面板,
 	##   那是本末倒置: 图标本来就是方的, 该让面板跟着槽走。窄下来战场也多露一条。
-	var PW = 312.0
+	## ★2026-10-06 用户「拉宽点啊，一排显示7个属性不行吗」⇒ 400: 属性一排 7 格(19 项 = 7/7/5 三行)。
+	var PW = 332.0   # 内容 300 = 3 槽×88 + 2×18 = 6 格属性×50(用户 10-06「面板可以瘦10%」368→332)
 	var panel = PanelContainer.new()
 	panel.name = "InfoPanel"
 	var psb = StyleBoxFlat.new()
@@ -1912,14 +1922,15 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	##   ★这张是【新生成的】(PixelLab), 不是复用商店那张: 深蓝金属 + 青色内沿 + 四角铜铆钉,
 	##     没有海草贝壳。铆钉是这套 UI 的签名细节(菜单木牌上就有)。
 	##   ★用 StyleBoxTexture 九宫格而不是贴死图 —— 面板高度随视口变。
-	var _ptex := "res://assets/sprites/battlehud/panel-frame.png"
+	## ★2026-10-06 整框换掉(用户「整个框框也给我换掉行吗，这个框，里面每个框都丑死了」):
+	##   insp-panel.png 新画 —— 深暖黑半透明 + 一道细黄铜边(与主菜单黄铜同一组色), 不再有铆钉与青内沿。
+	var _ptex := "res://assets/sprites/battlehud/insp-panel.png"
 	if ResourceLoader.exists(_ptex):
 		var pst := StyleBoxTexture.new()
 		pst.texture = load(_ptex)
-		pst.set_texture_margin_all(20)
-		## ★内边距给足 —— 第 1 轮实拍内容贴到边框上, 把四角铆钉压住了。
-		pst.content_margin_left = 22; pst.content_margin_right = 22
-		pst.content_margin_top = 20; pst.content_margin_bottom = 18
+		pst.set_texture_margin_all(12)
+		pst.content_margin_left = 16; pst.content_margin_right = 16
+		pst.content_margin_top = 14; pst.content_margin_bottom = 12
 		panel.add_theme_stylebox_override("panel", pst)
 	else:
 		panel.add_theme_stylebox_override("panel", psb)
@@ -1942,6 +1953,7 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	var scroll = ScrollContainer.new()
 	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER   # 小屏仍可拖, 但不画那根网页滚动条
 	panel.add_child(scroll)
 	var vb = VBoxContainer.new()
 	## ★行距 6 不是 8 —— 这个面板有 14 个区段, 每格省 2px 就是 28px。
@@ -1979,8 +1991,7 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	_info_res_rows.clear()
 	for _r in battle._info_sys._resource_bars(u):
 		_info_res_rows.append(battle._info_sys._info_resource_row(vb, _r))
-
-	_panel_sep(vb)
+	## ★2026-10-06: 条与状态签之间不再隔一条线(状态签紧跟在条下面, 省一道线 + 两份间距)。
 
 	# 当前状态 chips
 	## ★「当前状态」这个金色段标题删了 —— 其余三个(技能/装备/详细属性)早就删了,
@@ -2028,7 +2039,7 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	## ★两级切换按钮不在这里 —— 它搬进了【展开后的描述框】(用户 2026-08-16:
 	##   「点击图片出现面板后可以有按钮切换」)。悬在面板顶上那个全局开关删了:
 	##   140 条技能/被动里只有 28 条真有第二级, 对其余 112 条点它毫无反应。
-	battle._info_sys._info_skill_bar(vb, u)
+	battle._info_sys._info_ability_row(vb, u)
 
 	## ── 第五行【装备三槽】(2026-08-16)─────────────────────────────────────
 	##   72×72 图标横排, 星级角标压右上, 局内读数压图标下沿(走 EquipReadouts 那两张表,
@@ -2062,43 +2073,19 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 	## ★两个 grid 的 Label 【按主→次的顺序】统一存进 _info_stat_labels,
 	##   因为每帧刷新是按下标一一对位改文字的, 顺序错位会张冠李戴。
 	_panel_sep(vb)
+	## ★2026-10-06 属性重做(用户「我们全部要放上去啊」「不要再弄更多属性这样了」):
+	##   19 项全铺成 4×5, 每格图标在上、数字在下, 不写文字标签(照云顶检视面板);
+	##   点一格 → 面板左侧小卡写名字和一句解释。「更多属性」入口删掉。
 	battle._info_stat_labels.clear()
-	var gmain = GridContainer.new(); gmain.columns = 2
-	## ★行距 2 不是 5: 属性是 4 行两列的密表, 行距大了反而更难成对读(同族两项在同一行)。
-	gmain.add_theme_constant_override("h_separation", 18); gmain.add_theme_constant_override("v_separation", 2)
-	vb.add_child(gmain)
-	for row in battle._info_sys._info_stat_rows_main(u):
-		battle._info_stat_labels.append(battle._info_sys._info_stat_cell(gmain, "", str(row[1]), row[2], str(row[0])))
-	## ★次要属性【不直接铺在下面】(用户 2026-08-16:「更多属性不要直接放在这下面」)——
-	##   做成一个可点条目, 点开走【和技能/装备同一个浮层】。面板里只有一种"看更多"的语言。
-	##   ⚠ 用户 2026-07-21 定过「属性全都要显示啊」: 这不是条件隐藏(那次他不满的是
-	##     "某些龟身上根本不出现那一行, 你无从知道它存在"), 而是固定入口 + 条数写在标题上。
-	## ★「更多属性」改走共用的入口条 _info_more_row(2026-08-16)。
-	##   原来这里是就地手写的一段(建 PanelContainer/StyleBox/HBox/两个 Label/接 gui_input),
-	##   而宝箱战利品也要同一个东西 —— 再抄一遍就是 memory fb-hand-rolled-copies-drift
-	##   说的"手抄一次永远落后一次"。现在两处只剩一个出处。
-	## ⚠ 用户 2026-07-21 定过「属性全都要显示啊」: 这不是条件隐藏, 是固定入口 + 条数写在标题上。
-	var minor: Array = battle._info_sys._info_stat_rows_minor(u)
-	## ★末尾那个参数是【取数 Callable】—— 次要属性里有活的(移速会被减速/加速改),
-	##   传字符串等于把开面板那一刻的数钉死。见 info_panel._info_more_row 的注释。
-	## ★2026-09-28 去掉全角括号计数:「更多属性（11 项）」→「更多属性 · 11 项」。`（N 项）`
-	##   是文档列条目数的写法, 全角括号在这个游戏的 UI 里还是独一份(别处一律半角 + `·`)。
-	## ★★同日第二轮: 量词「项」→「个」。"项"是表单/报表里数条目的词(「共 11 项」),
-	##   而这一条要说的是"还有 11 个属性没铺出来" —— "个"是嘴里真会说的那个量词。
-	##   ⚠ **数字本身不许删**: 这条入口把 11 项次要属性收进了浮层, 而用户 2026-07-21
-	##     定过「属性全都要显示啊」; 当时能收起来的前提就是**条数写在标题上**
-	##     (见本函数上面那条 ⚠)。去掉计数等于把那个前提抽走。
-	## ⚠ 前缀「更多属性」**必须留着** —— `verify_panel_stats_onscreen.gd:260` 的
-	##   `_find_label_node(n, "更多属性")` 靠它找到这条入口(分母断言, 丢了后面整组变空检查)。
-	battle._info_sys._info_more_row(vb, "更多属性 · %d 个" % minor.size(),
-		battle._info_sys._more_stats_text(u), "more_stats", u,
-		func() -> String: return battle._info_sys._more_stats_text(u))
+	battle._info_stat_labels.append_array(battle._info_sys._info_stat_grid4(vb, u))
+	var gmain = vb.get_node("StatGrid")
 	battle._info_stat_grid = gmain
 
 	battle._info_sys._info_equip_slots(battle._info_equip_box, u)
 	battle._info_equip_sig = battle._equip_signature(u)
 
 	battle._info_sys._info_passthrough(vb)   # 面板内非按钮控件透传触摸→ScrollContainer可滑(手机·用户2026-07-18「列表滑动考虑手机端」)
+	_fit_panel_height(panel, vb)   # 2026-10-06: 面板高度跟内容走(底下不再空一大截), 超出视口才封顶
 
 	# 从右滑入
 	## ★★补间的终点也要吃安全区(2026-08-17)。**面板的停靠位置写在两个地方**:

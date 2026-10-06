@@ -30,7 +30,9 @@ func _ready() -> void:
 	## SHOT_SIDE=right: 敌方单位的面板 —— 血条与副标题取阵营色(绿/红), 标题写"敌方"。
 	##   28 只的门禁循环**全是 left 生成的**, 这一支从没验过。
 	var _side := OS.get_environment("SHOT_SIDE")
-	var u: Dictionary = s._spawn._make_unit(pet, "right" if _side == "right" else "left", c)
+	## SHOT_PET=__minion__ (+SHOT_ROLE=back): 小将面板 —— 多一格「前排/后排」(2026-10-06)。
+	var _spec: Dictionary = {"minion": true, "role": OS.get_environment("SHOT_ROLE") if OS.has_environment("SHOT_ROLE") else "front", "level": 3} if pet == "__minion__" else {}
+	var u: Dictionary = s._spawn._make_unit(pet, "right" if _side == "right" else "left", c, _spec)
 
 	## 把这只龟喂饱, 让面板【每一行都有东西可画】——
 	## 空面板拍出来看不出素材好坏(条是空的、槽是空的), 等于没拍。
@@ -182,6 +184,27 @@ func _ready() -> void:
 			var kids := n.get_children()
 			for i in range(kids.size() - 1, -1, -1):
 				stack.append([kids[i], d + 1])
+
+	## SHOT_CARD=sk0|sk1|eq0|eq1|st3 …: 2026-10-06 新的左侧小卡 —— 走真点击(向槽发 gui_input), 不直接调建卡函数。
+	if OS.has_environment("SHOT_CARD"):
+		var want := OS.get_environment("SHOT_CARD")
+		var row_name: String = str({"sk": "AbilityRow", "eq": "EquipRow", "st": "StatGrid"}.get(want.substr(0, 2), ""))
+		var row: Node = s._info_panel.find_child(row_name, true, false)
+		var idx := int(want.substr(2))
+		var tgt: Control = null
+		if row != null and idx < row.get_child_count():
+			tgt = row.get_child(idx) as Control
+			if tgt.has_meta("slot"):
+				tgt = tgt.get_meta("slot") as Control
+		if tgt == null:
+			print("[SHOT_CARD] 找不到 ", want)
+		else:
+			var ev := InputEventMouseButton.new()
+			ev.button_index = MOUSE_BUTTON_LEFT
+			ev.pressed = true
+			tgt.gui_input.emit(ev)
+			for _k in range(4):
+				await get_tree().process_frame
 
 	## SHOT_DETAIL=skill|equip|more: 顺带把【点开后的描述浮层】也打开再拍 ——
 	## 我修好了"点得动"(见 _info_passthrough 的注释), 但点开长什么样一直没拍过。

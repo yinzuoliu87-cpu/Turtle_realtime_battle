@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tests/verify_brew_glow_sheet_swap.gd" id="1"]
+
+[node name="V" type="Node"]
+script = ExtResource("1")

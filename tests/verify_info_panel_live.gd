@@ -71,10 +71,14 @@ func _panel_all_text(root: Node) -> String:
 	return out
 
 
+## ★2026-10-06 起面板上显示的属性来自 `_info_stat_tiles`(19 格: 名字和数字分开存, 屏上只印数字);
+##   `_info_stat_rows` 已经没有任何界面在读 —— 继续量它就是在量一个没人显示的生成器。
+##   ⇒ 改读 tiles, 拼回「名字 数值」, 原有断言的期望串一个字不用改。
 func _row(u: Dictionary, prefix: String) -> String:
-	for r in _ip._info_stat_rows(u):
-		if str((r as Array)[1]).begins_with(prefix):
-			return str((r as Array)[1])
+	for r in _ip._info_stat_tiles(u):
+		var line := "%s %s" % [str((r as Array)[1]), str((r as Array)[2])]
+		if line.begins_with(prefix):
+			return line
 	return ""
 
 
@@ -607,8 +611,10 @@ func _test_section_order() -> void:
 		psb is StyleBoxTexture, "实得 %s" % (psb.get_class() if psb != null else "null"))
 	if psb is StyleBoxTexture:
 		var tx: Texture2D = (psb as StyleBoxTexture).texture
+		## ★2026-10-06 整框换成新画的 insp-panel.png(用户「整个框框也给我换掉行吗」),
+		##   旧的 panel-frame.png 只剩战报/结算屏在用。要守的仍是"战斗 HUD 自己的框, 不是复用商店那张"。
 		_ok("★★★框贴图是【新生成的战斗 HUD 框】(不是复用商店那张)",
-			tx != null and str(tx.resource_path).find("battlehud/panel-frame") >= 0,
+			tx != null and str(tx.resource_path).find("battlehud/insp-panel") >= 0,
 			"实得 %s" % (str(tx.resource_path) if tx != null else "null"))
 		var img: Image = tx.get_image()
 		var cx: int = int(img.get_width() * 0.5)
@@ -719,40 +725,54 @@ func _test_panel_v2() -> void:
 	_ok("★★★④ 槽是正方的(不是被拉宽去填面板)", absf(slot_w - slot_h) <= 1.0,
 		"实测 %.0f×%.0f" % [slot_w, slot_h])
 
-	# ⑤ 属性 19 项一个不少, 且主要 8 项排在前面
-	## ★2026-08-16 次要属性搬进【点开的浮层】(用户:「更多属性不要直接放在这下面」),
-	##   所以常驻的 _info_stat_labels 只剩主要 8 项。
-	##   "全都要显示"仍然守住 —— 由下面两条守: ①次要 11 项一条不少 ②入口把条数写在标题上。
-	var minor_rows: Array = _s._info_sys._info_stat_rows_minor(_s._units[0] if not _s._units.is_empty() else u)
-	_ok("★★★⑤ 主要 8 项常驻", _s._info_stat_labels.size() == 8, "实得 %d 个" % _s._info_stat_labels.size())
-	_ok("★★★⑤ 次要 11 项一条不少(搬进浮层≠删掉)", minor_rows.size() == 11, "实得 %d 项" % minor_rows.size())
-	if _s._info_stat_labels.size() == 8:
-		var first8 := ""
-		for i in range(8):
-			first8 += str((_s._info_stat_labels[i] as Label).text) + " "
-		_ok("★★★⑤ 前 8 项 = 主要属性(攻击/攻速·暴击/暴伤·护甲/魔抗·移速/射程)",
-			first8.find("攻击") >= 0 and first8.find("攻速") >= 0 and first8.find("暴击") >= 0
-			and first8.find("增伤") >= 0 and first8.find("护甲") >= 0 and first8.find("魔抗") >= 0
-			and first8.find("减伤") >= 0 and first8.find("射程") >= 0, first8)
+	# ⑤ 属性 19 项一个不少, 全部常驻在面板上
+	## ★2026-08-16 曾把次要 11 项搬进「更多属性」浮层, 常驻只留 8 项。
+	## ★2026-10-06 用户推翻:「我们全部要放上去啊」「不要再弄更多属性这样了」⇒ 19 项全铺(StatGrid 6 列),
+	##   每格只有图标 + 数字(照云顶检视面板, 名字在点开的小卡里)。
+	##   "全都要显示"(用户 2026-07-21)现在由下面几条守: 常驻 19 个、顺序对、屏上的数 == 取数函数现算的。
+	var uu: Dictionary = _s._units[0] if not _s._units.is_empty() else u
+	var tiles: Array = _s._info_sys._info_stat_tiles(uu)
+	_ok("★★★⑤ 19 项全部常驻(用户 10-06「我们全部要放上去」)", _s._info_stat_labels.size() == 19 and tiles.size() == 19,
+		"刷新表 %d 个 / 取数 %d 项" % [_s._info_stat_labels.size(), tiles.size()])
+	var want_names := ["攻击", "攻速", "暴击", "暴伤", "护甲", "魔抗", "减伤", "增伤", "射程", "移速",
+		"吸血", "闪避", "护甲穿透", "魔法穿透", "治疗强度", "护盾强度", "龟能充能", "反伤", "韧性"]
+	var got_names: Array = []
+	for t in tiles:
+		got_names.append(str((t as Array)[1]))
+	_ok("★★★⑤ 19 项一项不少且顺序没乱(末项仍是韧性)", got_names == want_names, str(got_names))
+	var mism: Array = []
+	if _s._info_stat_labels.size() == tiles.size():
+		for i in range(tiles.size()):
+			var lb = _s._info_stat_labels[i]
+			var shown := str((lb as Label).text) if lb != null and is_instance_valid(lb) else "<null>"
+			if shown != str((tiles[i] as Array)[2]):
+				mism.append("%s 屏 %s / 现算 %s" % [str((tiles[i] as Array)[1]), shown, str((tiles[i] as Array)[2])])
+	_ok("★★⑤ 屏上 19 个数 == 取数函数现算的(按下标对位, 错位 = 张冠李戴)",
+		_s._info_stat_labels.size() == tiles.size() and mism.is_empty(), str(mism.slice(0, 4)))
 
-		_ok("★★⑤ 次要末项仍是韧性(顺序没乱)",
-		minor_rows.size() == 11 and str(minor_rows[10][1]).find("韧性") >= 0,
-		"实得「%s」" % (str(minor_rows[10][1]) if minor_rows.size() == 11 else "?"))
-
-	# ⑤b ★次要属性的图标**真画进浮层**(2026-10-04): 原来 7 行的图标路径是空串,
-	#   而且 `_more_stats_text` 只拼字、不读路径 —— 浮层里一枚图标都没有。
-	#   量的是**浮层正文里真出现的 [img] 与它指向的文件**, 不是我插的标记;
-	#   每一枚都必须带 color(白模板图标不染色 = 白方块)。
-	var mtxt: String = str(_s._info_sys._more_stats_text(_s._units[0] if not _s._units.is_empty() else u))
-	var n_img: int = mtxt.count("[img width=")
-	var n_dyed: int = mtxt.count(" color=#")
+	# ⑤b ★原次要属性那 7 张图标**真画在面板上**(2026-10-04 那条要求: 图标路径曾是空串、一枚都没画)。
+	#   ★10-06 起它们不在浮层 [img] 里了, 而是 StatGrid 格子里的 TextureRect ⇒ 量格子里的真节点:
+	#   贴图非空、指向那张文件、而且染了色(白模板图标不染色 = 白方块; 洋红 = 漏登记的兜底色)。
+	var grid: Node = panel.find_child("StatGrid", true, false)
+	var drawn: Dictionary = {}
+	var n_img := 0
+	var n_dyed := 0
+	if grid != null:
+		for cell in grid.get_children():
+			for k in (cell as Node).get_children():
+				if k is TextureRect and (k as TextureRect).texture != null:
+					n_img += 1
+					var mc: Color = (k as TextureRect).modulate
+					if not mc.is_equal_approx(Color.WHITE) and not mc.is_equal_approx(Color("#ff00ff")):
+						n_dyed += 1
+					drawn[str((k as TextureRect).texture.resource_path).get_file()] = true
 	var missing: Array = []
 	for want_ic in ["dodge", "healamp", "shieldamp", "echarge", "armorpen", "magicpen", "reflect"]:
-		var pth := "res://assets/sprites/stats/%s-icon.png" % want_ic
-		if mtxt.find("]" + pth + "[/img]") < 0 or not ResourceLoader.exists(pth):
+		if not drawn.has("%s-icon.png" % want_ic):
 			missing.append(want_ic)
-	_ok("★★⑤b 浮层里次要属性带图标: 7 张都画上了(护盾强度/治疗强度/龟能充能…)", missing.is_empty() and n_img >= 7,
-		"缺 %s · [img] %d 处" % [str(missing), n_img])
+	_ok("★★⑤b 面板格子里次要属性带图标: 7 张都画上了(护盾强度/治疗强度/龟能充能…)",
+		grid != null and missing.is_empty() and n_img >= 19,
+		"缺 %s · 图标 %d 枚" % [str(missing), n_img])
 	_ok("★⑤b 每一枚都染了色(不许白方块)", n_img > 0 and n_dyed == n_img, "%d / %d" % [n_dyed, n_img])
 
 ## 资源条里某一条的【数值文本】; 没有这条返回 ""。

@@ -656,6 +656,12 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, lane: St
 ##   点第二只龟身上的装备会把两只龟换路, 而玩家想做的只是"看看这只身上有什么、卸一件"。
 ## ★幂等: 再点同一只不取消(取消留给点卡片 body), 否则玩家点第二格会把刚出来的卸下条收掉。
 func _select_unit(lane: String, idx: int) -> void:
+	## ★2026-10-06 60 人实操「装备点了没反应、没有提示」(388 次里 8 次): 背包里已选中一件时, 手点在单位卡的
+	##   装备小格上会走到这里 —— 原来直接把背包选中清掉(_sel_bench = -1)、不装、不提示。
+	##   装满 3 件的卡上装备小格占了大半张卡, 很容易点中。⇒ 已选中装备时, 点装备格 = 装到这只身上(与点卡片同一条路)。
+	if _sel_bench >= 0:
+		_dl_click(lane, idx)
+		return
 	if str(_dl_sel.get("lane", "")) == lane and int(_dl_sel.get("idx", -1)) == idx:
 		return
 	_sel_bench = -1        # 与"选中背包里的装备"互斥(底部操作条同时只讲一件事)

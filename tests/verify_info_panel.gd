@@ -50,7 +50,7 @@ func _test_stat_rows(s) -> void:
 		"crit_dmg": 2.0, "armor_pen": 12.0, "magic_pen": 8.0, "reflect": 0.20,
 		"tenacity": 0.35, "damage_reduction": 0.12, "damage_amp": 0.18, "echarge_perm": 0.40,
 	}
-	var rows: Array = s._info_sys._info_stat_rows(u)
+	var rows: Array = _tile_rows(s, u)
 	var txt := ""
 	for r in rows:
 		txt += str((r as Array)[1]) + " | "
@@ -69,7 +69,7 @@ func _test_stat_rows(s) -> void:
 	#   (第一版做成"有值才显示", 结果没装备的龟看不到治疗强度/护盾强度/闪避那几行。)
 	var plain := {"atk": 10.0, "def": 1.0, "mr": 1.0, "crit": 0.0, "atk_interval": 1.0,
 				  "atk_range": 100.0, "move_spd": 50.0}
-	var rows2: Array = s._info_sys._info_stat_rows(plain)
+	var rows2: Array = _tile_rows(s, plain)
 	var txt2 := ""
 	for r in rows2:
 		txt2 += str((r as Array)[1]) + " | "
@@ -95,6 +95,16 @@ func _test_stat_rows(s) -> void:
 		if ic != "" and not ic.begins_with("res://"):
 			bad_icon += 1
 	_ok("★图标只用真图片或留空, 不用 emoji", bad_icon == 0, "非法图标 %d 个" % bad_icon)
+
+
+## ★2026-10-06 起面板显示的属性来自 `_info_stat_tiles`(19 格, 名字和数字分开存);
+##   `_info_stat_rows` 已没有任何界面在读 —— 再量它就是量一个没人显示的生成器。
+##   ⇒ 读 tiles, 拼回 [图标, "名字 数值"], 下面的期望串一个字不用改。
+func _tile_rows(s, u: Dictionary) -> Array:
+	var out: Array = []
+	for t in s._info_sys._info_stat_tiles(u):
+		out.append([str((t as Array)[0]), "%s %s" % [str((t as Array)[1]), str((t as Array)[2])]])
+	return out
 
 
 ## 2b. 小将技能描述
@@ -187,6 +197,9 @@ func _test_live_refresh() -> void:
 ##   没有它的话"字变了"可能只是"刷新把别的东西写了进去"。
 ## ★驱动用的是产品每帧真正调的那一个(`_update_team_panels`, 见 battle_render:580),
 ##   不是直接调 `_refresh_info_panel` —— 免得量的是我自己的钩子。
+## ★2026-10-06 面板重做: 点技能槽不再在面板里盖 DetailOverlay, 而是在面板左侧弹独立小卡
+##   (`battle._info_sys._card` · inspect_card.gd)。「描述框」= 小卡的正文 RichTextLabel(live["body"]),
+##   它由 `_open_skill_card` 登记进 `_info_skill_lbls`。判据一条没改, 只是"屏上那段字"换了读法。
 func _test_skill_desc_live(s) -> void:
 	var c: Vector2 = s.ARENA.position + s.ARENA.size * 0.5
 	## ★样本挑「小龟」: 它三个槽(被动 不屈 / 普攻 攻击 / 技能 打击)**全部**含 ATK 项
@@ -332,16 +345,23 @@ func _test_skill_desc_live(s) -> void:
 	print("  (技能描述实时性: 用掉 %d 帧, 默认预算 500)" % Engine.get_process_frames())
 
 
-## 技能栏的槽 = 88×88 且自己接了 gui_input 的 PanelContainer(装备槽不接 gui_input)。
+## 技能栏的槽 = AbilityRow 里 88×88 且自己接了 gui_input 的 PanelContainer。
+## ★2026-10-06 起装备槽【也接 gui_input】(点装备弹小卡), 所以只在 AbilityRow 里找,
+##   不能再全面板扫 —— 带装备的龟会把装备槽也数进来, 按下标取 tpl 就张冠李戴。
 func _collect_slots(n: Node, out: Array) -> void:
 	if n == null or not is_instance_valid(n):
 		return
-	if n is PanelContainer and not (n as Control).gui_input.get_connections().is_empty():
-		var cm: Vector2 = (n as Control).custom_minimum_size
-		if int(cm.x) == 88 and int(cm.y) == 88:
-			out.append(n)
-	for ch in n.get_children():
-		_collect_slots(ch, out)
+	var row: Node = n.find_child("AbilityRow", true, false)
+	if row == null:
+		return
+	var st: Array = [row]
+	while not st.is_empty():
+		var x: Node = st.pop_front()
+		if x is PanelContainer and not (x as Control).gui_input.get_connections().is_empty():
+			var cm: Vector2 = (x as Control).custom_minimum_size
+			if int(cm.x) == 88 and int(cm.y) == 88:
+				out.append(x)
+		st.append_array(x.get_children())
 
 
 ## 描述框里【屏幕上】那段字。浮层没开 / 没有 RichTextLabel 都返回空串 ——
@@ -359,19 +379,20 @@ func _parsed_text(bb: String) -> String:
 	return out
 
 
+## ★2026-10-06: 描述框 = 面板左侧小卡(InspectCard)的正文。只认技能卡(key 以 "sk:" 开头)
+##   且小卡真的挂在树上可见; 否则返回空串, 让分母断言把"读不到"照出来。
 func _overlay_text(s) -> String:
 	if s._info_panel == null or not is_instance_valid(s._info_panel):
 		return ""
-	var ov = s._info_panel.get_node_or_null("DetailOverlay")
-	if ov == null or not ov.visible:
+	var c = s._info_sys._card
+	if c == null or c.card == null or not is_instance_valid(c.card) or not str(c.key).begins_with("sk:"):
 		return ""
-	var bd = ov.get_node_or_null("Box/Body")
-	if bd == null:
+	if not (c.card as Control).is_visible_in_tree():
 		return ""
-	for ch in bd.get_children():
-		if ch is RichTextLabel:
-			return str((ch as RichTextLabel).get_parsed_text())
-	return ""
+	var b = c.live.get("body", null)
+	if b == null or not is_instance_valid(b) or not (b is RichTextLabel):
+		return ""
+	return str((b as RichTextLabel).get_parsed_text())
 
 
 ## 登记表里 lbl 非 null 的条数 —— 描述框全场只有一个, 所以正常只该是 0 或 1。

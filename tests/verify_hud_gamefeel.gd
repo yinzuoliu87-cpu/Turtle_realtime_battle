@@ -32,6 +32,7 @@ const DSP := preload("res://scripts/scenes/battle/dmg_stats_panel.gd")
 const SSC := preload("res://scripts/scenes/battle/settle_screen.gd")
 const RP := preload("res://scripts/net/remote_pool.gd")
 const UIP := preload("res://scripts/util/ui_palette.gd")
+const RTScene := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 
 ## 扫的文件 = 本轮改过的三块屏(结算屏 2026-10-04 起分在两个文件里)。
 const FILES := [
@@ -258,12 +259,13 @@ func _ready() -> void:
 				fw.append("%s (%s)" % [str(s).substr(0, 40), str(f).get_file()])
 			if str(s).begins_with("更多属性"):
 				more_row = str(s)
-	## ★分母: 「更多属性」那条入口的标题串**真的在场** —— 它就是当初出事的那一条,
-	##   找不到它就说明这组判据在对着空气检查(memory `fb-gate-subject-never-constructed`)。
-	_ok("②分母 找到「更多属性」那条入口的标题串", more_row != "", more_row)
-	_ok("②★ 标题里没有括号计数, 也没有量词「项」",
-		more_row != "" and not more_row.contains("（") and not more_row.contains("项"), more_row)
+	## ★2026-10-06 用户「我们全部要放上去啊」「不要再弄更多属性这样了」⇒「更多属性」入口整条删掉,
+	##   19 项属性全铺在面板上。原来这里断言"那条入口在场且标题不带（N 项）" —— 入口没了,
+	##   要守的就换成: ①它【不许回来】(源码字面量 + 渲染出来的面板两头都查)
+	##   ②19 项真的【全在面板上】(删入口≠删属性; 用户 2026-07-21 定过「属性全都要显示」)。
+	_ok("②★ 源码字面量里没有「更多属性」入口标题(用户 10-06: 不要再弄更多属性)", more_row == "", more_row)
 	_ok("②★ 三块屏的字面量里一个全角括号都没有", fw.is_empty(), str(fw.slice(0, 5)))
+	await _test_all_stats_on_panel()
 
 	# ══════════════════════════════════════════════════════════════
 	#  ③ 结算屏那块 chip: 阵容上传失败的那一行说的是人话
@@ -515,6 +517,89 @@ func _ready() -> void:
 	print("ALL PASS (%d/%d) — 战斗 UI 游戏味" % [_n, _n] if _fail == 0
 		else "FAIL x%d / %d — 战斗 UI 游戏味" % [_fail, _n])
 	get_tree().quit(1 if _fail > 0 else 0)
+
+
+## ── ② 渲染出来的面板: 没有「更多属性」入口, 19 项属性全在 ──────────────────
+## ★走产品真入口 `_show_unit_info_panel`, 量建出来的节点(不是取数函数):
+##   · 分母: 面板建出来了、扫到的文本节点 ≥ 10(0 个 ⇒「没有更多属性」是空检查)
+##   · 面板里任何 Label / RichTextLabel / Button 的字都不许含「更多属性」
+##   · StatGrid 里恰好 19 格, 每格都有图标贴图 + 一个数字; `_info_stat_labels` 也是 19 个且与格子里的是同一批节点
+##     (每帧刷新按它对位改字, 对不上 = 屏上的格子是死的)
+func _test_all_stats_on_panel() -> void:
+	var gs = get_node_or_null("/root/GameState")
+	var tm_bak = gs.test_mode if gs != null else null
+	if gs != null:
+		gs.test_mode = true          # 别让战斗场景写真存档(调试台写盘那一坑)
+	var s = RTScene.new()
+	add_child(s)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var c: Vector2 = s.ARENA.position + s.ARENA.size * 0.5
+	var u: Dictionary = s._spawn._make_unit("basic", "left", c)
+	s._units.clear()
+	s._units.append(u)
+	s._edit_mode = false
+	s._over = false
+	s.set_process(false)
+	s._hud._show_unit_info_panel(u)
+	for _i in range(3):
+		await get_tree().process_frame
+	var panel = s._info_panel
+	var built: bool = panel != null and is_instance_valid(panel)
+	var n_txt := 0
+	var more_hit: Array = []
+	if built:
+		var st: Array = [panel]
+		while not st.is_empty():
+			var n: Node = st.pop_back()
+			var t := ""
+			if n is Label:
+				t = str((n as Label).text)
+			elif n is RichTextLabel:
+				t = str((n as RichTextLabel).get_parsed_text())
+			elif n is Button:
+				t = str((n as Button).text)
+			if t != "":
+				n_txt += 1
+				if t.contains("更多属性"):
+					more_hit.append(t.substr(0, 20))
+			for ch in n.get_children():
+				st.append(ch)
+	_ok("②分母 面板真的建出来了, 扫到文本节点 ≥10(0 个 ⇒ 下一条是空检查)", built and n_txt >= 10,
+		"文本节点 %d 个" % n_txt)
+	_ok("②★ 渲染出来的面板里没有「更多属性」入口", built and more_hit.is_empty(), str(more_hit))
+	var grid: Node = panel.find_child("StatGrid", true, false) if built else null
+	var cells: int = grid.get_child_count() if grid != null else 0
+	var good := 0
+	var grid_lbls: Array = []
+	if grid != null:
+		for cell in grid.get_children():
+			var tex_ok := false
+			var num_ok := false
+			for k in (cell as Node).get_children():
+				if k is TextureRect and (k as TextureRect).texture != null:
+					tex_ok = true
+				if k is Label and str((k as Label).text).strip_edges() != "":
+					var lt := str((k as Label).text)
+					if lt.unicode_at(0) >= 48 and lt.unicode_at(0) <= 57:
+						num_ok = true
+						grid_lbls.append(k)
+			if tex_ok and num_ok:
+				good += 1
+	_ok("②★ 19 项属性全铺在面板上(StatGrid 19 格, 每格 图标+数字)", cells == 19 and good == 19,
+		"格 %d / 合格 %d" % [cells, good])
+	var same: bool = grid_lbls.size() == s._info_stat_labels.size() and grid_lbls.size() == 19
+	if same:
+		for i in range(grid_lbls.size()):
+			if not is_same(grid_lbls[i], s._info_stat_labels[i]):
+				same = false
+	_ok("②★ 每帧刷新表 _info_stat_labels 就是格子里那 19 个数字节点(对位一致)", same,
+		"格内数字 %d / 刷新表 %d" % [grid_lbls.size(), s._info_stat_labels.size()])
+	s._hud._close_info_panel()
+	s.queue_free()
+	await get_tree().process_frame
+	if gs != null:
+		gs.test_mode = tm_bak
 
 
 ## 一行里条的**段数**: 段是 stretch_ratio 来自伤害值的 Panel, 末尾那个余量 spacer 是 Control(不算)。

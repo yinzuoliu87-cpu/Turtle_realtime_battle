@@ -131,6 +131,7 @@ const ICON_CLASS_EXTRA := {
 	"shieldamp": "val-shield",
 	"reflect": "val-reflect",                           # 与"反伤"同色类
 	"dmg-amp": "val-normal", "dmg-red": "val-reflect",
+	"tenacity": "val-stun",                             # 韧性 = 抗控制, 与控制词(眩晕/减速)同色类(2026-10-06 新图标)
 }
 
 static var _ICON_COL_CACHE := {}

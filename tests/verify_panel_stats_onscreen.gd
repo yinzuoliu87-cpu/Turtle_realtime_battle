@@ -24,6 +24,13 @@ extends Node
 ##   A/C 两组是**全同步**的(直接调产品的刷新函数, 零 tween 依赖);
 ##   B 组要证"每帧真的有人调", 只能让场景真跑 —— 那一段用**墙钟**轮询。
 ##
+## ★★2026-10-06 面板重做后的读法(判据一条没放宽, 只换了"屏上那个数在哪"):
+##   · 19 项属性全铺成 StatGrid(用户「我们全部要放上去啊」「不要再弄更多属性这样了」),
+##     每格 = 图标 TextureRect + 数字 Label, **没有文字标签** ⇒ 不能再按「攻速」两个字找行。
+##     改成按【格子里那张图标的文件名】认格子(aspd-icon / move-icon), 读同一格里的数字 Label。
+##   · 「更多属性」入口删了 ⇒ C 组的移速改成: ①常驻格子里的移速是活的 ②点移速那一格
+##     (真左键)弹出的左侧小卡里的数也是活的, 收起再点开印的仍是现算值。
+##
 ## 跑法: <godot> --headless --path . res://tests/verify_panel_stats_onscreen.tscn --quit-after 3000
 
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
@@ -62,6 +69,48 @@ func _screen_text(root: Node, key: String) -> String:
 		if r != "":
 			return r
 	return ""
+
+
+## StatGrid 里【图标文件名 == icon】的那一格(VBox: TextureRect + 数字 Label)。没有 ⇒ null。
+## ★只认 is_visible_in_tree 的格子 —— 藏起来的不算"玩家看得见"。
+func _tile(icon: String) -> Control:
+	if _s._info_panel == null or not is_instance_valid(_s._info_panel):
+		return null
+	var grid: Node = _s._info_panel.find_child("StatGrid", true, false)
+	if grid == null:
+		return null
+	for cell in grid.get_children():
+		if not (cell as Control).is_visible_in_tree():
+			continue
+		for k in (cell as Node).get_children():
+			if k is TextureRect and (k as TextureRect).texture != null \
+					and str((k as TextureRect).texture.resource_path).get_file() == icon:
+				return cell as Control
+	return null
+
+
+## 那一格里屏幕上的数字(Label.text)。格子不在 ⇒ ""。
+func _tile_text(icon: String) -> String:
+	var cell := _tile(icon)
+	if cell == null:
+		return ""
+	for k in cell.get_children():
+		if k is Label:
+			return str((k as Label).text)
+	return ""
+
+
+## 面板左侧小卡(InspectCard)头部那一行的数(属性卡 = 当前值)。没开 / key 不对 ⇒ ""。
+func _card_text(key: String) -> String:
+	var c = _s._info_sys._card
+	if c == null or c.card == null or not is_instance_valid(c.card) or str(c.key) != key:
+		return ""
+	if not (c.card as Control).is_visible_in_tree():
+		return ""
+	var ls: Array = c.live.get("stat_lbls", [])
+	if ls.is_empty() or not is_instance_valid(ls[0]):
+		return ""
+	return str((ls[0] as Label).text)
 
 
 ## 从 "攻速 1.25 次/秒" 这类文字里抠第一个数。抠不到返回 -1(**不是 0** —— 0 会和
@@ -130,8 +179,8 @@ func _ready() -> void:
 #  A) 攻速: 掉血 → 屏幕上那行字变大 (全同步)
 # ────────────────────────────────────────────────────────────────────────────
 func _test_aspd_onscreen(u: Dictionary) -> void:
-	var t0 := _screen_text(_s._info_panel, "攻速")
-	_ok("★分母: 面板上真的有「攻速」那一行(读的是屏幕节点, 不是生成器)",
+	var t0 := _tile_text("aspd-icon.png")
+	_ok("★分母: 面板上真的有「攻速」那一格(按 aspd-icon 认格子, 读的是屏幕节点, 不是生成器)",
 		t0 != "", "实得 '%s'" % t0)
 	var v0 := _num_in(t0)
 	_ok("★分母: 那一行里抠得出数字(-1 = 没抠到, 空检查)", v0 > 0.0, "v0=%.3f" % v0)
@@ -144,7 +193,7 @@ func _test_aspd_onscreen(u: Dictionary) -> void:
 		aspd_after > 1.0001, "aspd_perm=%.4f (50%% 生命 × 0.4%%/1%% = 期望 1.20)" % aspd_after)
 
 	_s._info_sys._refresh_info_panel()
-	var t1 := _screen_text(_s._info_panel, "攻速")
+	var t1 := _tile_text("aspd-icon.png")
 	var v1 := _num_in(t1)
 	_ok("★★掉血之后【屏幕上那行字】跟着变(面板不是一次性快照)",
 		t1 != t0 and t1 != "", "'%s' → '%s'" % [t0, t1])
@@ -157,7 +206,7 @@ func _test_aspd_onscreen(u: Dictionary) -> void:
 	u["hp"] = 1000.0
 	_s._equip_sys._blade_sys.tick_unit(u, 0.1)
 	_s._info_sys._refresh_info_panel()
-	var v2 := _num_in(_screen_text(_s._info_panel, "攻速"))
+	var v2 := _num_in(_tile_text("aspd-icon.png"))
 	_ok("★反面: 血回满 ⇒ 屏幕上的攻速跌回去(不是单向钉死)",
 		v2 < v1 - 0.001, "%.3f → %.3f" % [v1, v2])
 
@@ -175,8 +224,8 @@ func _test_aspd_onscreen(u: Dictionary) -> void:
 ##   这一条就会红在"装备没算", 而不是它要测的"面板没刷" —— 判据没卡住那个形状。
 ##   (第一版正是这么写的, 实测红了 4 秒, 根因是装备 tick 没跑。)
 func _test_refresh_is_wired(u: Dictionary) -> void:
-	var before := _screen_text(_s._info_panel, "攻速")
-	_ok("★分母: 开跑前读得到攻速那一行", before != "", "实得 '%s'" % before)
+	var before := _tile_text("aspd-icon.png")
+	_ok("★分母: 开跑前读得到攻速那一格", before != "", "实得 '%s'" % before)
 	u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) * 1.75   # 面板每帧都读它(aspd_mult)
 	## ★★先证这条断言【会红】: _process 关着的时候, 光过帧不该有任何变化。
 	##   没有这一段的话, "字变了"可能只是因为别处也在刷 ⇒ 断言恒绿(空检查)。
@@ -187,14 +236,14 @@ func _test_refresh_is_wired(u: Dictionary) -> void:
 	for _w in range(20):
 		await get_tree().process_frame
 	_ok("★分母(反向): _process 关着时屏幕上的字【不变】—— 变了说明这条断言测不到东西",
-		_screen_text(_s._info_panel, "攻速") == before,
-		"实得 '%s'" % _screen_text(_s._info_panel, "攻速"))
+		_tile_text("aspd-icon.png") == before,
+		"实得 '%s'" % _tile_text("aspd-icon.png"))
 	_s.set_process(true)                 # ← 从这里开始【产品自己的每帧路径】接管
 	var t_start := Time.get_ticks_msec()
 	var after := before
 	while Time.get_ticks_msec() - t_start < 4000:
 		await get_tree().process_frame
-		after = _screen_text(_s._info_panel, "攻速")
+		after = _tile_text("aspd-icon.png")
 		if after != before and after != "":
 			break
 	_s.set_process(false)
@@ -205,79 +254,71 @@ func _test_refresh_is_wired(u: Dictionary) -> void:
 
 
 # ────────────────────────────────────────────────────────────────────────────
-#  C) 移速: 在「更多属性」浮层里, 也必须是活的
+#  C) 移速: 常驻格子里是活的, 点开的小卡里也是活的
 # ────────────────────────────────────────────────────────────────────────────
-## ★这一组在修之前是红的: 次要 11 项被拼成字符串捕进 lambda,
+## ★这一组的由来: 次要 11 项曾被拼成字符串捕进「更多属性」入口的 lambda,
 ##   开面板那一刻是多少, 之后点开多少次都是多少。
+## ★2026-10-06「更多属性」入口删掉, 移速搬上常驻格子; 点那一格 → 面板左侧弹属性小卡。
+##   要守的仍是同一件事: 【屏上】的移速(格子 + 小卡两处)跟着实战移速走, 不是快照。
 func _test_move_spd_onscreen(u: Dictionary) -> void:
 	u["hp"] = 1000.0
 	u["slow_until"] = 0.0
 	_s._info_sys._refresh_info_panel()
-	# 打开「更多属性」浮层(走产品自己的入口: 找到那一条再喂一次鼠标点击)
-	var row := _find_more_row(_s._info_panel)
-	_ok("★分母: 面板里找得到「更多属性」入口条", row != null)
-	if row == null:
+	## ★「更多属性」入口不许回来(用户 10-06「不要再弄更多属性这样了」)
+	_ok("★面板里没有「更多属性」入口(用户 10-06 删掉的)", _screen_text(_s._info_panel, "更多属性") == "",
+		_screen_text(_s._info_panel, "更多属性"))
+	var cell := _tile("move-icon.png")
+	_ok("★分母: 面板上找得到「移速」那一格(按 move-icon 认)", cell != null)
+	if cell == null:
 		return
-	_click(row)
-	var m0 := _screen_text(_s._info_panel, "移速")
-	_ok("★分母: 浮层打开后屏幕上读得到「移速」那一行", m0 != "", "实得 '%s'" % m0)
+	var m0 := _tile_text("move-icon.png")
 	var s0 := _num_in(m0)
-	_ok("★分母: 移速抠得出数字", s0 > 0.0, "s0=%.1f" % s0)
+	_ok("★分母: 移速那一格抠得出数字", s0 > 0.0, "实得 '%s'" % m0)
 
-	# 减速 50% → 浮层【开着不动】也要跟着掉(每帧刷新那条路)
+	# 减速 50% → 常驻格子跟着掉(每帧刷新那条路)
 	u["slow_until"] = _s._t + 99.0
 	u["slow_mag"] = 0.5
 	_s._info_sys._refresh_info_panel()
-	var m1 := _screen_text(_s._info_panel, "移速")
-	_ok("★★浮层开着时被减速 ⇒ 屏幕上的移速跟着掉(原来是开面板那一刻的快照)",
+	var m1 := _tile_text("move-icon.png")
+	_ok("★★被减速 ⇒ 屏幕上那一格的移速跟着掉(不是开面板那一刻的快照)",
 		m1 != m0 and m1 != "", "'%s' → '%s'" % [m0, m1])
 	_ok("★★而且印的就是面板自己的实战移速公式(_eff_move_spd)",
 		_num_in(m1) == float(int(round(_s._info_sys._eff_move_spd(u)))),
 		"屏幕 %.1f vs 公式 %.1f" % [_num_in(m1), _s._info_sys._eff_move_spd(u)])
 
-	# 收起再点开 —— 重新点开拿到的也必须是现算的, 不是建面板那一刻的字符串
-	_click(row)
-	_click(row)
-	var m2 := _screen_text(_s._info_panel, "移速")
-	## ★比【现算值】不比 m1 —— 比 m1 的话, 两次都停在旧快照上时它照样绿
-	##   (反向验证实测: 把修回退掉, 这一条仍是 PASS = 判据没卡住那个形状)。
-	_ok("★★收起再点开, 印的仍是【现在】的移速(而不是开面板那一刻捕进 lambda 的那串)",
-		_num_in(m2) == float(int(round(_s._info_sys._eff_move_spd(u)))),
-		"'%s' vs 现算 %.1f" % [m2, _s._info_sys._eff_move_spd(u)])
-
-	# 反面: 减速过期 ⇒ 回到原值。只跌不回同样是"钉死"。
+	# 点那一格(真左键) → 左侧小卡; 小卡里的数也必须是现算的
+	_click(cell)
+	var key := "st:%d" % cell.get_index()
+	var c1 := _card_text(key)
+	_ok("★分母: 点移速那一格 ⇒ 左侧小卡开了且读得到数(key=%s)" % key, c1 != "", "实得 '%s'" % c1)
+	_ok("★★小卡里印的是【现在】的移速(减速中)",
+		_num_in(c1) == float(int(round(_s._info_sys._eff_move_spd(u)))),
+		"'%s' vs 现算 %.1f" % [c1, _s._info_sys._eff_move_spd(u)])
+	# 小卡开着时减速过期 ⇒ 小卡里的数跟着回去(每帧刷新那条路, 不是点开那一刻的快照)
 	u["slow_until"] = 0.0
 	_s._info_sys._refresh_info_panel()
-	_ok("★反面: 减速过期后浮层里的移速回到原值",
-		_screen_text(_s._info_panel, "移速") == m0, _screen_text(_s._info_panel, "移速"))
+	var c2 := _card_text(key)
+	_ok("★★小卡开着时减速过期 ⇒ 卡上的移速跟着回去",
+		c2 != c1 and _num_in(c2) == float(int(round(_s._info_sys._eff_move_spd(u)))),
+		"'%s' → '%s' vs 现算 %.1f" % [c1, c2, _s._info_sys._eff_move_spd(u)])
 
+	# 收起再点开 —— 重新点开拿到的也必须是现算的
+	u["slow_until"] = _s._t + 99.0
+	_click(cell)
+	_ok("★再点同一格 ⇒ 小卡收起", _card_text(key) == "", "实得 '%s'" % _card_text(key))
+	_click(cell)
+	var c3 := _card_text(key)
+	## ★比【现算值】不比 c1 —— 比 c1 的话, 两次都停在旧快照上时它照样绿。
+	_ok("★★收起再点开, 印的仍是【现在】的移速(而不是某一刻的快照)",
+		c3 != "" and _num_in(c3) == float(int(round(_s._info_sys._eff_move_spd(u)))),
+		"'%s' vs 现算 %.1f" % [c3, _s._info_sys._eff_move_spd(u)])
+	_click(cell)
 
-## ★先找到那个 Label, 再往上爬到【最近的】PanelContainer。
-##   反过来"从上往下找第一个含该文字的 PanelContainer"会命中 **InfoPanel 自己**
-##   (它也是 PanelContainer, 子树里当然含这几个字) —— 于是点击喂给了整块面板,
-##   浮层根本没开, 后面全部读成空字符串。(第一版就是这么错的, 分母断言当场把它逮住。)
-func _find_more_row(n: Node) -> Control:
-	var lbl := _find_label_node(n, "更多属性")
-	if lbl == null:
-		return null
-	var p: Node = lbl.get_parent()
-	while p != null:
-		if p is PanelContainer:
-			return p as Control
-		p = p.get_parent()
-	return null
-
-
-func _find_label_node(n: Node, key: String) -> Label:
-	if n == null or not is_instance_valid(n):
-		return null
-	if n is Label and str((n as Label).text).find(key) >= 0:
-		return n as Label
-	for ch in n.get_children():
-		var r := _find_label_node(ch, key)
-		if r != null:
-			return r
-	return null
+	# 反面: 减速过期 ⇒ 格子回到原值。只跌不回同样是"钉死"。
+	u["slow_until"] = 0.0
+	_s._info_sys._refresh_info_panel()
+	_ok("★反面: 减速过期后格子里的移速回到原值",
+		_tile_text("move-icon.png") == m0, _tile_text("move-icon.png"))
 
 
 ## 喂一次真的左键点击给那条入口 —— 走产品自己的 gui_input 回调, 不去调内部函数。

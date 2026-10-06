@@ -288,11 +288,23 @@ func _ready() -> void:
 						hint_squashed.append("%s: 「%s」只有 %.0fpx 宽" % [pid, _lt, (_hn as Control).size.x])
 			for _hc in _hn.get_children():
 				_hst.append(_hc)
-		for _sr in s._info_sys._info_stat_rows_main(u):
-			n_statrow += 1
-			var _ip2 := str((_sr as Array)[0])
-			if _ip2 == "" or not ResourceLoader.exists(_ip2):
-				stat_noicon.append("%s: 「%s」图标=%s" % [pid, str((_sr as Array)[1]), _ip2 if _ip2 != "" else "(空)"])
+		## ★2026-10-06 起属性 19 项全铺在 StatGrid(每格 图标+数字, 不写文字标签)⇒ 图标是【唯一】的识别手段,
+		##   缺一个就是一格光秃秃的数字。量【屏上格子里真挂的 TextureRect】, 不量取数函数。
+		var _sgrid: Node = panel.find_child("StatGrid", true, false)
+		var _tiles: Array = s._info_sys._info_stat_tiles(u)
+		if _sgrid == null or _sgrid.get_child_count() != _tiles.size():
+			stat_noicon.append("%s: StatGrid 格数 %d / 属性 %d 项" % [pid,
+				-1 if _sgrid == null else _sgrid.get_child_count(), _tiles.size()])
+		else:
+			for _gi in range(_tiles.size()):
+				n_statrow += 1
+				var _tr: TextureRect = null
+				for _gk in _sgrid.get_child(_gi).get_children():
+					if _gk is TextureRect:
+						_tr = _gk
+				var _ip2: String = "" if _tr == null or _tr.texture == null else str(_tr.texture.resource_path)
+				if _ip2 == "" or not ResourceLoader.exists(_ip2) or not _tr.is_visible_in_tree():
+					stat_noicon.append("%s: 「%s」图标=%s" % [pid, str((_tiles[_gi] as Array)[1]), _ip2 if _ip2 != "" else "(空)"])
 		## 中英夹杂: 收面板里所有可见文本, 剔掉白名单后不该再有英文词
 		if measured <= 6:
 			var _ste: Array = [panel]
@@ -454,46 +466,54 @@ func _ready() -> void:
 				for _cq in _nq.get_children():
 					_stq.append(_cq)
 			tex_seen = maxi(tex_seen, _mounted.size())
-			for _need in ["panel-frame.png", "slot-frame.png", "bar-frame.png",
-					"chip-frame.png", "portrait-frame.png"]:
+			## ★2026-10-06 整套换皮(用户「整个框框也给我换掉行吗，这个框，里面每个框都丑死了」):
+			##   面板框 insp-panel / 槽与头像框 insp-slot / 条框 insp-bar / 状态签 insp-chip。
+			##   旧的 panel-frame / slot-frame / bar-frame / portrait-frame 不再挂在信息面板上
+			##   (前两张仍在战报/结算屏用)。判据不变: 新画的每一张都必须【真挂在活面板上】。
+			for _need in ["insp-panel.png", "insp-slot.png", "insp-bar.png", "insp-chip.png"]:
 				if not _mounted.has(_need) and not tex_missing.has(_need):
 					tex_missing.append(_need)
 
-		## 被动槽的紫调: 取【最上面那一排】三个 88px 槽(技能栏), 后两格应相同、第一格应不同
+		## 被动槽要看得出不一样。★2026-10-06 换了区分手段: 不再给被动槽上紫调(self_modulate),
+		##   而是每格左上角压一个【角色字】—— 被动(淡紫) / 普通攻击(灰蓝) / 技能(金),
+		##   用户原话「天生是什么鬼啊，是被动，普通攻击，和技能啊」。
+		##   ⇒ 判据量【AbilityRow 里每一格真的挂着的那个角色字 Label】: 三格依次是这三个词,
+		##   字真的可见且落在槽内, 被动那一格的字色与另两格都明显不同(色距 > 0.15)。
 		if measured <= 6:
-			var _slots: Array = []
-			var _sk2: Array = [panel]
-			while not _sk2.is_empty():
-				var _n2: Node = _sk2.pop_back()
-				if _n2 is PanelContainer:
-					var _cc2 := _n2 as Control
-					if _cc2.size.y > 80.0 and _cc2.size.y < 96.0 and _cc2.size.x > 80.0 and _cc2.size.x < 96.0:
-						_slots.append(_n2)
-				for _c2 in _n2.get_children():
-					_sk2.append(_c2)
-			## 技能三槽在装备三槽【上面】⇒ 取 y 最小的那一排
-			var _ymin: float = 1e9
-			for _s3 in _slots:
-				_ymin = minf(_ymin, (_s3 as Control).global_position.y)
-			var _row: Array = []
-			for _s4 in _slots:
-				if absf((_s4 as Control).global_position.y - _ymin) < 4.0:
-					_row.append(_s4)
-			## 同一排里按 x 从左到右(被动在最左)
-			for _a in range(_row.size()):
-				for _b in range(_row.size() - 1 - _a):
-					if (_row[_b] as Control).global_position.x > (_row[_b + 1] as Control).global_position.x:
-						var _t3 = _row[_b]; _row[_b] = _row[_b + 1]; _row[_b + 1] = _t3
-			if _row.size() >= 3:
-				var m0: Color = (_row[0] as CanvasItem).self_modulate
-				var m1: Color = (_row[1] as CanvasItem).self_modulate
-				var m2: Color = (_row[2] as CanvasItem).self_modulate
-				var base: float = absf(m1.r - m2.r) + absf(m1.g - m2.g) + absf(m1.b - m2.b)
-				var diff: float = absf(m0.r - m1.r) + absf(m0.g - m1.g) + absf(m0.b - m1.b)
-				if diff <= base + 0.15:
-					tint_bad.append("%s: 被动差 %.3f / 同款基线 %.3f" % [pid, diff, base])
+			var _arow: Node = panel.find_child("AbilityRow", true, false)
+			var _roles: Array = []      # [[文字, 颜色, 是否可见且在槽内], ...] 按格子从左到右
+			if _arow != null:
+				for _cell in _arow.get_children():
+					var _slot: Control = (_cell as Node).get_meta("slot") if (_cell as Node).has_meta("slot") else null
+					if _slot == null:
+						continue
+					var _found: Array = []
+					var _q2: Array = [_slot]
+					while not _q2.is_empty():
+						var _n2: Node = _q2.pop_back()
+						if _n2 is Label and ["被动", "普通攻击", "技能", "站位"].has(str((_n2 as Label).text)):
+							var _lr: Rect2 = (_n2 as Control).get_global_rect()
+							var _inside: bool = _slot.get_global_rect().grow(1.0).encloses(_lr)
+							_found = [str((_n2 as Label).text), (_n2 as Label).get_theme_color("font_color"),
+								(_n2 as Control).is_visible_in_tree() and _inside and _lr.size.x > 1.0]
+						for _c2 in _n2.get_children():
+							_q2.append(_c2)
+					_roles.append(_found if not _found.is_empty() else ["", Color(0, 0, 0, 0), false])
+			if _roles.size() >= 3:
+				var _want := ["被动", "普通攻击", "技能"]
+				for _ri in range(3):
+					if str(_roles[_ri][0]) != str(_want[_ri]) or not bool(_roles[_ri][2]):
+						tint_bad.append("%s: 第 %d 格角色字「%s」(要「%s」, 可见且在槽内=%s)" % [pid, _ri,
+							str(_roles[_ri][0]), str(_want[_ri]), str(_roles[_ri][2])])
+				var m0: Color = _roles[0][1]
+				var m1: Color = _roles[1][1]
+				var m2: Color = _roles[2][1]
+				var d1: float = absf(m0.r - m1.r) + absf(m0.g - m1.g) + absf(m0.b - m1.b)
+				var d2: float = absf(m0.r - m2.r) + absf(m0.g - m2.g) + absf(m0.b - m2.b)
+				if minf(d1, d2) <= 0.15:
+					tint_bad.append("%s: 被动字色与普攻差 %.3f / 与技能差 %.3f(要 > 0.15)" % [pid, d1, d2])
 			else:
-				tint_bad.append("%s: 技能排只找到 %d 个槽(下面是空检查)" % [pid, _row.size()])
+				tint_bad.append("%s: 技能排只找到 %d 个槽(下面是空检查)" % [pid, _roles.size()])
 		## ★三格里【每一格都要有图标】—— 空图标 = 槽里一片空白, 而它是可点的大方块。
 		##   实测 2026-08-17: 112 个技能里有 2 个(凤凰「强化涅槃」/ 熔岩「熔岩爆发」)
 		##   连 icon 字段都没有。和增伤/减伤同一类洞: 空值不报错, 只查错值等于放过它。
@@ -672,6 +692,10 @@ func _ready() -> void:
 	##     ⇒ 实拍空槽和满槽**一模一样**。典型的"写进去了没人读", 注释还在替它背书。
 	##   ★判据量【运行时挂上去的 StyleBoxTexture.modulate_color】: 空槽必须比满槽暗。
 	##     28 只的循环喂的是**三件满装**, 走不到空槽 ⇒ 这里单独造一只只带 1 件的。
+	## ★2026-10-06 换皮后: 满装备槽改成【按费用上色的边框】(StyleBoxFlat, 用户「装备框需要有不同费用的变色」),
+	##   空槽仍是 insp-slot.png 再压暗一档。两者不再是同一种 stylebox, 亮度没法直接比 ⇒
+	##   ①空槽: 必须比【同一张 insp-slot 框的不压暗版】(技能栏三格)暗 > 0.20
+	##   ②满槽: 边框色 == 局内统一的费用色 battle._equip_cost_color(cost)(1灰2绿3蓝4紫5金)
 	var u1: Dictionary = s._spawn._make_unit("basic", "left", c)
 	u1["equips"] = [{"id": "p2eq_093", "star": 1}]
 	s._units.clear()
@@ -679,28 +703,48 @@ func _ready() -> void:
 	s._hud._show_unit_info_panel(u1)
 	for _ke in range(6):
 		await get_tree().process_frame
-	var _mods: Array = []
+	var _ref_v: Array = []      # 技能栏三格(同一张 insp-slot 框, 不压暗)的亮度
+	var _empty_v: Array = []    # 空装备槽的亮度
+	var _filled_bad: Array = [] # 满装备槽: 边框色不是费用色
+	var _filled_n := 0
 	if s._info_panel != null and is_instance_valid(s._info_panel):
-		var _sq2: Array = [s._info_panel]
-		while not _sq2.is_empty():
-			var _n8: Node = _sq2.pop_back()
-			if _n8 is PanelContainer:
-				var _c8 := _n8 as Control
-				if _c8.size.x > 80.0 and _c8.size.x < 96.0 and _c8.size.y > 80.0 and _c8.size.y < 96.0:
-					var _s8 = _c8.get_theme_stylebox("panel")
-					if _s8 is StyleBoxTexture:
-						_mods.append((_s8 as StyleBoxTexture).modulate_color.v)
-			for _c9 in _n8.get_children():
-				_sq2.append(_c9)
-	_mods.sort()
-	_ok("★分母: 量到了 88px 的槽(技能三格 + 装备三格 = 6)", _mods.size() >= 6,
-		"量到 %d 个" % _mods.size())
+		var _ar: Node = s._info_panel.find_child("AbilityRow", true, false)
+		if _ar != null:
+			for _cl in _ar.get_children():
+				if (_cl as Node).has_meta("slot"):
+					var _s7 = ((_cl as Node).get_meta("slot") as Control).get_theme_stylebox("panel")
+					if _s7 is StyleBoxTexture and str((_s7 as StyleBoxTexture).texture.resource_path).get_file() == "insp-slot.png":
+						_ref_v.append((_s7 as StyleBoxTexture).modulate_color.v)
+		var _er: Node = s._info_panel.find_child("EquipRow", true, false)
+		if _er != null:
+			var _eqs: Array = u1.get("equips", [])
+			for _ei in range(_er.get_child_count()):
+				var _c8 := _er.get_child(_ei) as Control
+				if _c8 == null or _c8.size.x < 80.0 or _c8.size.x > 96.0:
+					continue
+				var _s8 = _c8.get_theme_stylebox("panel")
+				if _ei < _eqs.size():
+					_filled_n += 1
+					var _cost: int = int((DataRegistry.phase2_equipment_by_id.get(
+						str((_eqs[_ei] as Dictionary).get("id", "")), {}) as Dictionary).get("cost", 1))
+					var _wantc: Color = s._equip_cost_color(_cost)
+					if not (_s8 is StyleBoxFlat) or (_s8 as StyleBoxFlat).border_width_top < 1 \
+							or not (_s8 as StyleBoxFlat).border_color.is_equal_approx(_wantc):
+						_filled_bad.append("槽%d cost%d 要 %s 实得 %s" % [_ei, _cost, _wantc.to_html(false),
+							(_s8 as StyleBoxFlat).border_color.to_html(false) if _s8 is StyleBoxFlat else str(_s8)])
+				elif _s8 is StyleBoxTexture and str((_s8 as StyleBoxTexture).texture.resource_path).get_file() == "insp-slot.png":
+					_empty_v.append((_s8 as StyleBoxTexture).modulate_color.v)
+	_ok("★分母: 量到了槽(技能三格参照 + 空装备槽两格 + 满装备槽一格)",
+		_ref_v.size() >= 3 and _empty_v.size() >= 2 and _filled_n >= 1,
+		"参照 %d / 空 %d / 满 %d" % [_ref_v.size(), _empty_v.size(), _filled_n])
 	var _dim_ok := false
-	if _mods.size() >= 2:
-		_dim_ok = _mods[_mods.size() - 1] - _mods[0] > 0.20
-	_ok("★★空装备槽比满槽暗 —— 一眼看出还能装几件(注释承诺过, 但曾是死代码)", _dim_ok,
-		"最暗 %.2f / 最亮 %.2f" % [float(_mods[0]) if _mods.size() > 0 else -1.0,
-			float(_mods[_mods.size() - 1]) if _mods.size() > 0 else -1.0])
+	if _ref_v.size() >= 1 and _empty_v.size() >= 1:
+		_dim_ok = float(_ref_v.min()) - float(_empty_v.max()) > 0.20
+	_ok("★★空装备槽比同款不压暗的槽框暗 —— 一眼看出还能装几件(注释承诺过, 但曾是死代码)", _dim_ok,
+		"空槽最亮 %.2f / 参照最暗 %.2f" % [float(_empty_v.max()) if _empty_v.size() > 0 else -1.0,
+			float(_ref_v.min()) if _ref_v.size() > 0 else -1.0])
+	_ok("★★满装备槽的边框 = 局内费用色(用户 10-06「装备框需要有不同费用的变色」)",
+		_filled_n >= 1 and _filled_bad.is_empty(), str(_filled_bad))
 
 	_ok("★分母: 真的量到了每一只(不是 0 只)", measured >= 20, "量了 %d 只" % measured)
 
@@ -774,7 +818,7 @@ func _ready() -> void:
 		stock_btn.is_empty(), "还是默认皮的: %s" % str(stock_btn.slice(0, 6)))
 	_ok("★分母: 面板上真的挂了九宫格贴图(0 张 = 空检查)", tex_seen >= 4,
 		"挂了 %d 张不同的贴图" % tex_seen)
-	_ok("★★五张面板素材都真的挂在活面板上(文件在≠有人挂)", tex_missing.is_empty(),
+	_ok("★★四张新面板素材(insp-panel/slot/bar/chip)都真的挂在活面板上(文件在≠有人挂)", tex_missing.is_empty(),
 		"没挂上的: %s" % str(tex_missing))
 
 	_ok("★★面板里没有【四边描边 + 半透明填充】的网页盒(直角只是必要条件)",
@@ -801,14 +845,14 @@ func _ready() -> void:
 	_ok("★★血条/龟能条的九宫格框贴图真的加载上了(丢 .import 会静默失效)",
 		bar_noframe.is_empty(), "没贴图的: %s" % str(bar_noframe.slice(0, 4)))
 
-	_ok("★★被动槽与普攻/技能槽【看得出不一样】(同款之间是基线)",
+	_ok("★★被动槽与普攻/技能槽【看得出不一样】(角色字 被动/普通攻击/技能, 被动字色与另两格都不同)",
 		tint_bad.is_empty(), "不对的: %s" % str(tint_bad.slice(0, 4)))
 
 	_ok("★分母: 真的逐个查了技能图标(0 个 = 空检查)", n_skill >= 20, "查了 %d 个技能" % n_skill)
 	_ok("★★技能三槽每一格都有图标(空图标 = 可点的大方块里一片空白)",
 		skill_noicon.is_empty(), "缺图标的: %s" % str(skill_noicon.slice(0, 6)))
 	_ok("★分母: 真的逐行查了主要属性(0 行 = 空检查)", n_statrow >= 20, "查了 %d 行" % n_statrow)
-	_ok("★主要 8 项属性每项都配了图标, 且文件在盘上", stat_noicon.is_empty(),
+	_ok("★面板上 19 格属性每格都挂了图标, 且文件在盘上", stat_noicon.is_empty(),
 		"缺图标的: %s" % str(stat_noicon.slice(0, 6)))
 
 	# ── ③ 可点条目不许小到点不准 ───────────────────────────────────────────
