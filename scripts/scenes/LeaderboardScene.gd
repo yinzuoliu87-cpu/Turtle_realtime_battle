@@ -148,6 +148,27 @@ const HINT_ONLY_YOU_OFF := "（榜上暂时只有你）"
 const HINT_FIRST_WIN := "（赢下第一场就能上分 —— 你本赛季还是 0 胜）"
 const HINT_AUTO := "（每场打完自动上榜）"
 
+## ═══ 数据从哪来 (2026-10-06 · 60 人实操严重项 A2) ═══
+##
+## ★★原来**只有**本机那一路: `Backend.leaderboard(本机快照池)`。新玩家只拉过场次 N / N+1 的快照,
+##   榜上每个人都冻在「1 胜 · 6 命」—— 实操截图前 9 行全是 1 胜, 而那几个号几小时前已经打到 9-6 / 10-6。
+##   那是「我碰巧拉到过的那一份」, 不是排行榜。
+## ⇒ 先问服务端 `week_leaderboard`(`SupabaseNet.fetch_week_leaderboard_async`)。
+##   只有**问不到**(没配后端 / 断网 / 超时 / 服务端还没部署)才退回本机那一路,
+##   而且退回时屏上**明写「本机记录」** —— 不许把过期的本机数据当成实时榜摆出来。
+const SRC_SERVER := "server"
+const SRC_LOCAL := "local"
+const SRC_LOADING := "loading"
+const FALLBACK_MARK := "本机记录 · 不是实时排名"
+const LOADING_TEXT := "正在读取本周排行…"
+const SB := preload("res://scripts/net/supabase.gd")
+## 当前画的是哪一路 / 哪几行(门禁读它当分母; 屏幕上的字才是判据)。
+var source: String = ""
+var shown_rows: Array = []
+## 每次重画都整块换掉的那一层(表面板 + 分隔线 + 顶栏不动)。
+var _panel: Panel = null
+var _body: Control = null
+
 func _ready() -> void:
 	_bg()
 
@@ -166,15 +187,6 @@ func _ready() -> void:
 		"on_back": func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"),
 	})
 
-	var pool := Backend.load_pool()
-	## ★limit 必须给【全量】(原来是 30) —— `Backend.leaderboard()` 是**排完序再切**的,
-	##   开局大家**胜场**并列 0 时自己经常落在第 30 名开外, **在本屏拿到 rows 之前就已经被切没了**,
-	##   于是下面的"钉住自己"根本无从谈起(第一版实拍复看: 榜上仍旧一个「◀ 你」都没有)。
-	##   拿全量在这里自己切, 名次 = 全量下标 + 1, 才是真名次。
-	## ★"我"那一行用玩家昵称(没设就是兜底短码) —— 与别人那几行同一个来源。
-	var rows := Backend.leaderboard(pool, Backend.player_display_name(), int(GameState.season_wins),
-		int(GameState.hearts), int(GameState.season_sweeps), 1 << 30)
-
 	# 表面板 —— 金属九宫格(和背包/图鉴/战绩同一张 panel-frame)。冷蓝调走 modulate,
 	# ★ modulate 别超 1.3: 过了会把框芯冲亮、金属细节糊平(实拍确认过)。
 	var panel := Panel.new()
@@ -187,6 +199,7 @@ func _ready() -> void:
 	panel.add_theme_stylebox_override("panel", ptex)
 	panel.position = Vector2(PANEL_X, PANEL_Y); panel.size = Vector2(PANEL_W, PANEL_H)
 	add_child(panel)
+	_panel = panel
 
 	# 表头 + 一条分隔线(原来表头和第一行只隔 38px 且没有任何分界, 整块读起来是一堵字墙)
 	## ★表头说的量必须就是行里画的那三个量 —— A8 改排序那轮改了标题、改了行文案、
@@ -200,21 +213,123 @@ func _ready() -> void:
 	sep.color = Color(0.35, 0.55, 0.70, 0.55)
 	sep.position = Vector2(PAD, ROW_TOP - 12.0); sep.size = Vector2(PANEL_W - PAD * 2.0, 2)
 	panel.add_child(sep)
+
+	## ★先问服务端; 连节点都没建(没配后端)⇒ 当场画本机那一路(带「本机记录」)。
+	if not _ask_server():
+		_render(_local_rows(), SRC_LOCAL, -1)
+	# ★UI 双端适配(用户2026-08-01「有些画面都没有居中」): 把内容装进 1280×720 设计框并居中于真实视口。
+	#   本屏原先直接按设计坐标画在视口(0,0) → 21:9 上内容整体坐在左边 200px(审计器实测)。
+	#   ★必须放在 _ready 最后 —— UIFrame 收编的是【已经建出来的】子节点。
+	#   (异步晚建的节点由 UIFrame._process 的孤儿收编兜住; 回包后重画的那一层挂在已收编的面板下。)
+	UIFrame.attach(self)
+
+
+## 本周的周号 —— 与上传那一侧同一个数(`GameState.week_anchor_ts`, 见 backend.gd 拉对手那一行)。
+func _week() -> int:
+	var wk := int(GameState.week_anchor_ts)
+	if wk <= 0:
+		wk = Backend._P2.week_anchor_utc(int(Backend._P2.now_utc()))
+	return wk
+
+
+## 发请求; 返回 false = 一个请求都没发(没配后端), 调用方当场画本机那一路。
+## ★先画「正在读取」再发: 回包可能**同步**回来(门禁的假传输、令牌已在手时),
+##   反过来的话「正在读取」会把刚画好的服务端榜盖掉。
+func _ask_server() -> bool:
+	_render([], SRC_LOADING, -1)
+	return SB.fetch_week_leaderboard_async(_week(), SB.WEEK_LB_LIMIT, _on_server_lb)
+
+
+func _on_server_lb(res: Dictionary) -> void:
+	if not is_inside_tree():
+		return
+	if str(res.get("err", "?")) == "" and res.get("rows", null) is Array:
+		_render(_server_rows(res), SRC_SERVER, int(res.get("total", 0)))
+		return
+	print("[LB] 服务端榜没拿到(%s) ⇒ 退回本机记录" % str(res.get("err", res.get("reason", "?"))))
+	_render(_local_rows(), SRC_LOCAL, -1)
+
+
+## 本机那一路(原来唯一的一路)。名次 = 全量下标 + 1。
+func _local_rows() -> Array:
+	var pool := Backend.load_pool()
+	## ★limit 必须给【全量】(原来是 30) —— `Backend.leaderboard()` 是**排完序再切**的,
+	##   开局大家**胜场**并列 0 时自己经常落在第 30 名开外, **在本屏拿到 rows 之前就已经被切没了**,
+	##   于是下面的"钉住自己"根本无从谈起(第一版实拍复看: 榜上仍旧一个「◀ 你」都没有)。
+	##   拿全量在这里自己切, 名次 = 全量下标 + 1, 才是真名次。
+	## ★"我"那一行用玩家昵称(没设就是兜底短码) —— 与别人那几行同一个来源。
+	return Backend.leaderboard(pool, Backend.player_display_name(), int(GameState.season_wins),
+		int(GameState.hearts), int(GameState.season_sweeps), 1 << 30)
+
+
+## 服务端那一路: 前 N 名 + 「我」(不在前 N 名里就接在末尾, 名次是服务端给的全榜真名次)。
+## ★本周一份都没传过(服务端榜上没有我)⇒ 仍然钉一行自己, 名次画「—」(不编一个名次)。
+func _server_rows(res: Dictionary) -> Array:
+	var rows: Array = (res.get("rows", []) as Array).duplicate(true)
+	for r in rows:
+		if bool((r as Dictionary).get("is_self", false)):
+			return rows
+	var me: Dictionary = res.get("me", {}) if res.get("me", {}) is Dictionary else {}
+	if not me.is_empty():
+		rows.append(me)
+	else:
+		rows.append({"rank": 0, "name": Backend.player_display_name(), "wins": int(GameState.season_wins),
+			"hearts": int(GameState.hearts), "sweeps": int(GameState.season_sweeps),
+			"is_self": true, "tag": Backend.my_tag()})
+	return rows
+
+
+## 这一行的名次: 服务端那一路带 `rank`(全榜真名次), 本机那一路就是下标 + 1。
+static func _rank_of(r: Dictionary, idx: int) -> int:
+	return int(r.get("rank", idx + 1))
+
+
+## 整块重画(表面板/分隔线/顶栏不动)。`total` = 上榜人数(<0 ⇒ 用 rows.size())。
+func _render(rows: Array, src: String, total: int) -> void:
+	source = src
+	shown_rows = rows
+	if _body != null:
+		_panel.remove_child(_body)
+		_body.queue_free()
+	_body = Control.new()
+	_body.name = "LbBody"
+	_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_body.position = Vector2.ZERO
+	_body.size = Vector2(PANEL_W, PANEL_H)
+	_panel.add_child(_body)
+	var panel: Control = _body
+	var n_on_board: int = total if total >= 0 else rows.size()
+
 	## 表头拆掉之后分隔线上面空出 46px。**不再摆一行字段名**(那正是要去掉的东西),
 	## 改摆一句说人话的规模数 —— 顺带把"榜上只有我一个"这件事直接说出来。
+	## ★本机那一路时右半边摆「本机记录」—— 左右各占一半, 两段字不叠。
+	var half: float = (PANEL_W - PAD * 2.0 - 12.0) / 2.0
 	var cap_line := Label.new()
-	cap_line.text = "本周共 %d 人上榜" % rows.size()
+	cap_line.text = LOADING_TEXT if src == SRC_LOADING else ("本周共 %d 人上榜" % n_on_board)
 	cap_line.add_theme_font_size_override("font_size", 16)
 	cap_line.add_theme_color_override("font_color", Color("#8fa6b8"))
 	cap_line.position = Vector2(PAD + 6.0, PAD + 2.0)
-	cap_line.size = Vector2(PANEL_W - PAD * 2.0 - 12.0, 26.0)
+	cap_line.size = Vector2(half if src == SRC_LOCAL else PANEL_W - PAD * 2.0 - 12.0, 26.0)
 	cap_line.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	panel.add_child(cap_line)
+	if src == SRC_LOCAL:
+		var mark := Label.new()
+		mark.name = "LbSourceMark"
+		mark.text = FALLBACK_MARK
+		mark.add_theme_font_size_override("font_size", 15)
+		mark.add_theme_color_override("font_color", Color("#d9a95a"))
+		mark.position = Vector2(PAD + 6.0 + half, PAD + 2.0)
+		mark.size = Vector2(half, 26.0)
+		mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		panel.add_child(mark)
+	if src == SRC_LOADING:
+		return
 
 	# ★能画几行是【算出来】的, 不是写死的阈值 —— 写死那次末行正好压在金属边带上。
 	var body_h: float = PANEL_H - PAD - FOOT_H - ROW_TOP
 	var cap: int = maxi(1, int(floor(body_h / ROW_H)))
-	print("[LB] rows=%d cap=%d body_h=%.0f" % [rows.size(), cap, body_h])   # 分母: 0 行 = 空检查
+	print("[LB] src=%s rows=%d total=%d cap=%d body_h=%.0f" % [src, rows.size(), n_on_board, cap, body_h])   # 分母: 0 行 = 空检查
 	var self_idx := _self_index(rows)
 	var shown := _pick_rows(rows, cap, self_idx)
 	## ★重名按**全量** rows 判, 不按画出来的那几行 —— 第 3 名和第 40 名同名, 第 3 名照样该带号。
@@ -224,6 +339,7 @@ func _ready() -> void:
 	_dup_names = Backend._P2.names_needing_tag(_all_names)
 
 	var y := ROW_TOP
+	var max_rank := 0
 	for item in shown:
 		var idx: int = int(item)
 		if idx < 0:                     # -1 = 省略号占位(自己被钉到末行时, 中间断开的地方)
@@ -236,6 +352,7 @@ func _ready() -> void:
 			y += ROW_H
 			continue
 		_draw_row(panel, y, idx, rows[idx] as Dictionary)
+		max_rank = maxi(max_rank, _rank_of(rows[idx] as Dictionary, idx))
 		y += ROW_H
 
 	## ★★空席(2026-09-28)。用户那张实拍上整屏就是「一条金色长条 + 一行字」——
@@ -245,7 +362,7 @@ func _ready() -> void:
 	##   一眼能读出"这是一块 11 名的榜, 位置都空着", 而不是"这屏只有一行"。
 	##   ⚠ 空席**不带成绩数字** —— 补零会造出"别人 0 胜"的假数据。
 	var drawn: int = shown.size()
-	var vacant: int = rows.size() + 1
+	var vacant: int = max_rank + 1
 	while drawn < cap:
 		_draw_vacant(panel, y, vacant)
 		y += ROW_H
@@ -257,21 +374,17 @@ func _ready() -> void:
 	##   用户 2026-09-28 点的就是这个:「文字语言也是」。玩家侧只看得见"打了一场"。
 	##   (改这句之前 grep 过 `tests/` `tools/`: 没有任何判据钉这句文案;
 	##    `tests/_probe_newuser.gd:100` 里有一份手抄的同串, 那是探针的自印, 不是断言。)
+	## ★服务端那一路: 问到了就是 REACH_OK(「打完一场对手就会上来」此时是真的)。
 	var hint := Label.new()
-	hint.text = hint_text(rows.size(), self_idx >= 0,
+	hint.text = hint_text(n_on_board, self_idx >= 0,
 		int((rows[self_idx] as Dictionary).get("wins", 0)) if self_idx >= 0 else 0,
-		Backend.pool_reach())
+		Backend.REACH_OK if src == SRC_SERVER else Backend.pool_reach())
 	hint.add_theme_font_size_override("font_size", 15)
 	hint.add_theme_color_override("font_color", Color("#6b7b8c"))
 	hint.position = Vector2(PAD, PANEL_H - PAD - FOOT_H + 4.0)
 	hint.size = Vector2(PANEL_W - PAD * 2.0, FOOT_H - 6.0)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(hint)
-	# ★UI 双端适配(用户2026-08-01「有些画面都没有居中」): 把内容装进 1280×720 设计框并居中于真实视口。
-	#   本屏原先直接按设计坐标画在视口(0,0) → 21:9 上内容整体坐在左边 200px(审计器实测)。
-	#   ★必须放在 _ready 最后 —— UIFrame 收编的是【已经建出来的】子节点。
-	#   (异步晚建的节点由 UIFrame._process 的孤儿收编兜住。)
-	UIFrame.attach(self)
 
 
 ## 背景 = 主菜单那张平铺底(深绿 #1a3a2a + menu-bg-tile + 暗渐变遮罩)。
@@ -365,7 +478,8 @@ func _pick_rows(rows: Array, cap: int, self_idx: int) -> Array:
 
 ## 一行: 底签牌 + 名次牌 + 名字(+「你」签) + 三个「图标 数字」。
 func _draw_row(parent: Control, y: float, idx: int, r: Dictionary) -> void:
-	var rank: int = idx + 1
+	## ★名次读行自己带的(服务端那一路是全榜真名次, 「我」可能是第 20 名接在第 11 行)。
+	var rank: int = _rank_of(r, idx)
 	var is_self: bool = bool(r.get("is_self", false))
 	var wins: int = int(r.get("wins", 0))
 	## ★★★领奖台只发给**有战绩的人**(2026-09-28)。
@@ -376,7 +490,7 @@ func _draw_row(parent: Control, y: float, idx: int, r: Dictionary) -> void:
 	##   0 胜的那行仍然画得见(自己那行的整行金底 + 「你」签一个都没动 ——
 	##   「榜上必须找得到自己」是 2026-08-19 钉死的另一条需求), 只是**不上领奖台**。
 	##   ⚠ 空席的暗牌位不在此列: 那是"台阶空着", 本来就已经压到 0.42。
-	var podium: bool = rank <= 3 and wins > 0
+	var podium: bool = rank >= 1 and rank <= 3 and wins > 0
 	if is_self:
 		_row_band(parent, y, SELF_BAND)
 	elif podium:
@@ -448,8 +562,9 @@ func _row_band(parent: Control, y: float, tint: Color) -> void:
 ## `podium` = 这一行**配得上牌位**吗(见 `_draw_row` 里 `podium` 那段: 0 胜不上领奖台)。
 ##   前三名而不配牌位时走的就是第 4 名起那条路 —— 一个暗号码, 不是"没有名次"。
 func _rank_badge(parent: Control, y: float, rank: int, k: float, podium: bool) -> void:
-	if rank > 3 or not podium:
-		var n := _cell(parent, str(rank), RANK_X, y, RANK_W, 16,
+	if rank > 3 or rank < 1 or not podium:
+		## 名次 < 1 = 服务端榜上还没有我(本周一份都没传过) ⇒ 画「—」, 不编一个名次。
+		var n := _cell(parent, str(rank) if rank >= 1 else "—", RANK_X, y, RANK_W, 16,
 			Color(COL_RANK), HORIZONTAL_ALIGNMENT_CENTER)
 		n.modulate.a = k
 		return

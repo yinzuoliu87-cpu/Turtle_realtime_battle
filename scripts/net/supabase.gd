@@ -1532,7 +1532,7 @@ func _headers(extra: String = "") -> PackedStringArray:
 ##   回到真实时间后照常补发。快照队列另外认 `BLOCKED_CODE`, 不为这次「没发」记退避。
 ## 判定成「读」的 RPC。★白名单而不是黑名单: 新加的 RPC 默认算写(漏登记的代价是假时间里读不到, 不是写进生产)。
 ##   ⚠ `finals_opponent` **不是**读 —— 它往 `finals_scout` 插一行(每人每轮只能问一个种子), 所以不在这里。
-const READ_RPCS := ["finals_view", "finals_replay"]
+const READ_RPCS := ["finals_view", "finals_replay", "week_leaderboard"]
 ## 快照上传被时间穿越拦下时交给回调的 code(区别于没网的 0)。
 const BLOCKED_CODE := -1
 ## 本进程里被拦下的写请求条数(观测量 / 门禁分母)。
@@ -2518,3 +2518,87 @@ func _get_once(path: String, method: String, body: String, done: Callable, parse
 			fin.call(parse.call(res))
 			_bye(),
 		"Content-Type: application/json" if method == "POST" else "")
+
+
+# ─────────────────────────────────────────────────────────────
+# 本周排行榜(服务端) —— 2026-10-06 · 60 人实操严重项 A2
+#
+# ★为什么: 原来的榜是 `Backend.leaderboard(本机快照池)` 拼的。新玩家只拉过场次 N / N+1 的快照,
+#   于是榜上每个人都冻在「1 胜 · 6 命」(实操截图前 9 行全是 1 胜, 而那几个号已经打到 9-6 / 10-6)。
+#   ⇒ 服务端 RPC `week_leaderboard(p_week, p_limit)` 从 `ghosts` 现算(SQL 见 schema.sql 同名段 /
+#   migrations/20261006_week_leaderboard.sql): 本周、每账号最新一份、胜场 → 余命 → 横扫。
+# ★`standings` 表从来没人写过, 不用它。
+# ★没上线(404) / 断网 / 超时 / 没配后端 ⇒ 排行榜屏退回本机榜, **并在屏上标「本机记录」**。
+# ─────────────────────────────────────────────────────────────
+const WEEK_LB_LIMIT := 30
+
+
+## 纯函数: 请求体。键名与服务端对不上是这类接口最常见的死法, 门禁直接验它。
+static func week_leaderboard_body(week: int, limit: int) -> Dictionary:
+	return {"p_week": week, "p_limit": limit}
+
+
+## 一行服务端数据 → 排行榜屏的行形状(与 `Backend.leaderboard` 产的行同键: name/wins/hearts/sweeps/is_self/tag),
+##   另带 `rank`(全榜真名次 —— 「我」可能是第 20 名而只拿回前 N 行, 屏上不能再拿「下标 + 1」当名次)。
+## ★玩家 ID 先用快照里的 `profile.tag`(与对手卡片同一个号); 老快照没有就按 account_id 现算
+##   (算法只有 `_P2S.player_tag` 一份, 与对阵图同一个口径)。
+static func _week_lb_row(d: Dictionary, my_account: String) -> Dictionary:
+	var acc := str(d.get("account_id", ""))
+	var tg := str(d.get("tag", ""))
+	if not _P2S.tag_valid(tg):
+		tg = _P2S.player_tag(acc)
+	return {"rank": int(d.get("rank", 0)), "name": str(d.get("name", "?")),
+		"wins": int(d.get("wins", 0)), "hearts": int(d.get("hearts", 0)),
+		"sweeps": int(d.get("sweeps", 0)), "tag": tg, "account_id": acc,
+		"is_self": my_account != "" and acc == my_account}
+
+
+## 纯函数: 回包 → {"err": "", "rows": [...按名次], "total": int, "me": {...} 或 {}};
+##   拿不到 → {"err": 原因码}。原因码: offline / unavailable(404·函数没部署) / server / 服务端给的 reason。
+static func parse_week_leaderboard(ok: bool, code: int, body: String, my_account: String) -> Dictionary:
+	if not ok:
+		return {"err": "offline", "code": code}
+	if code == 404:
+		return {"err": "unavailable", "code": code}
+	if code < 200 or code >= 300:
+		return {"err": "server", "code": code}
+	var j := JSON.new()
+	if j.parse(body) != OK or not (j.data is Dictionary):
+		return {"err": "server", "code": code}
+	var d: Dictionary = j.data
+	if not bool(d.get("ok", false)):
+		var why := str(d.get("reason", "server"))
+		return {"err": why if why != "" else "server", "code": code}
+	var raw = d.get("rows", [])
+	if not (raw is Array):
+		return {"err": "server", "code": code}
+	var rows: Array = []
+	for r in (raw as Array):
+		if r is Dictionary:
+			rows.append(_week_lb_row(r, my_account))
+	rows.sort_custom(func(a, b): return int(a["rank"]) < int(b["rank"]))
+	var me: Dictionary = {}
+	if d.get("me", null) is Dictionary:
+		me = _week_lb_row(d["me"], my_account)
+		me["is_self"] = true
+	return {"err": "", "rows": rows, "total": int(d.get("total", rows.size())), "me": me, "code": code}
+
+
+## 取本周排行榜。返回 false = 连节点都没建(没配后端 / 周号不对) —— **一个请求都不发**。
+## `done.call(res)` 恰好一次(形状同 `parse_week_leaderboard`, 另有 "no_token" / "timeout")。
+## 调用方离场(`done` 失效)就不回调。
+static func fetch_week_leaderboard_async(week: int, limit: int, done: Callable) -> bool:
+	if not enabled() or week <= 0:
+		return false
+	var n = _spawn()
+	if n == null:
+		return false
+	n._get_once("/rest/v1/rpc/week_leaderboard", "POST",
+		JSON.stringify(week_leaderboard_body(week, limit)), done,
+		func(res: Dictionary) -> Dictionary:
+			## ★账号在回包到了再读: 首启时账号是在 `_get_once` 等令牌那段里才拿到的。
+			var g2 = _gs()
+			var acc := str(g2.account_id) if g2 != null else ""
+			return parse_week_leaderboard(bool(res.get("ok", false)), int(res.get("code", 0)),
+				str(res.get("body", "")), acc))
+	return true
