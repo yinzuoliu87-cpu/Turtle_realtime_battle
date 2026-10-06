@@ -80,28 +80,51 @@ const TAG_W := 82.0
 const TAG_FS := 14
 ## 这一榜里重名的名字(`_P2.names_needing_tag` 算的) —— `_draw_row` 读它决定要不要摆 ID。
 var _dup_names: Dictionary = {}
-## 成绩三格: 每格 = 图标 22 + 空 4 + 数字 44, 格距 12 ⇒ 500 / 582 / 664, 末格右沿 734。
+## 成绩三列: 每列宽 70, 列距 12 ⇒ 500 / 582 / 664, 末列右沿 734。数字与列名都**右对齐到列右沿**。
 const STAT_X0 := PAD + 478.0
 const STAT_CELL := 82.0
-const STAT_ICON := 22.0
-const STAT_NUM_W := 44.0
+const COL_W := 70.0
+## 表头左段「本周共 N 人上榜」的宽(16 号字 9 个字位 ≈ 140, 留 20 余量)。
+const CAP_W := 160.0
 
-## 三个量的图标。**都是本仓已有的图标库里的**, 没有新造也没有拿"别件的素材"顶替:
-##   胜场 `menu/ic-trophy.png`  —— 主菜单「排行榜」入口用的就是这张(MainMenuScene.gd:319),
-##                                 同一个概念在同一个游戏里用同一张图, 正是该做的事
-##   余命 `stats/hp-icon.png`   —— 选龟详情「生命值」那一格用的就是它(detail_panel.gd:125)
-##   横扫 `ui/icon-sweep.png`   —— **它自己那一张**(2026-09-28 接上)。
-##
-## ★★「横扫」这一格的欠账已还。原来借的是 `stats/aspd-icon.png` ——
-##   那张在战斗信息面板里是**攻速**(info_panel.gd:498), 当时的原话是
-##   「这是一次明知的借用……要是哪天有专门的"横扫"图标, 换这一行即可」。
-##   图标已经画好(`assets/sprites/ui/icon-sweep.png`, 32×32), 这一行就是那个「换」。
-##   ⚠ 留着"明知的借用"这种自我批准的欠账, 下一个人读到的是"借用是被允许的"。
-const STAT_ICONS := [
-	"res://assets/sprites/menu/ic-trophy.png",
-	"res://assets/sprites/stats/hp-icon.png",
-	"res://assets/sprites/ui/icon-sweep.png",
-]
+## ═══ 三个成绩列 (2026-10-06 · 用户「积分赛写上名字，剩余生命，胜场，总场次啊 ，都给我做」) ═══
+## 列名就是用户那句话里的词, 一个字不改; 照 使命召唤手游 / 英雄联盟手游 排行榜:
+##   **表头写纯文字列名, 行里只放数字**(格里不画图标 —— 用户「排行榜里的奖杯是？」)。
+## ★顺序 = 用户说的顺序: 剩余生命 | 胜场 | 总场次。
+## ★排序**不变**: 胜场 → 剩余生命 → 横扫。横扫不上屏, 但同胜同命时仍由它定先后(服务端 SQL 与本机 cmp 同一套)。
+## ★`battles` < 0 = 这一行的来源没带总场次(v1 服务端 / 老快照) ⇒ 画「—」, 不编 0。
+const COL_HEADS := ["剩余生命", "胜场", "总场次"]
+const COL_KEYS := ["hearts", "wins", "battles"]
+
+## ═══ 一周四种榜 (2026-10-06 · 同一句「都给我做」) ═══
+##   周一(休赛)   上周终榜      —— 请求**上周**的周锚点; 名字旁挂 冠军/亚军/四强/进决赛日
+##   周二~周五    本周排行      —— 实时积分赛榜
+##   周六(闯关)   积分赛终榜    —— 积分赛已收盘、榜冻结; 胜场 ≥ PROMOTE_WINS 的挂「已晋级」; 顶栏右侧「全场赛况」
+##   周日(决赛)   积分赛终榜    —— 同上; 顶栏右侧「查看对阵图」; 某一组决赛打完(closed)后组里的人换挂 冠军/亚军/四强
+## ★「冻结」不靠客户端拦: 只有积分赛那一支会写 `ghosts`(RealtimeBattle3DScene 结算里 upload_ghost
+##   只在积分赛分支), 周五 23:00 收盘之后本周的 `ghosts` 就不再长了。
+## ★头衔从哪来: 服务端 `standings.title` 至今**没人写**(恒空, v2 SQL 照样下发它, 将来写入端落地即生效);
+##   冠军/亚军/四强/进决赛日 = 客户端从 `finals_week_view(那一周)` 现算 —— 座次推导只在 `bracket.gd` 一份,
+##   与主菜单发头衔(`BracketMapScene.record_progress_from` → `Bracket.my_progress`)同一套。
+## ★日子只从 `phase2_config.now_utc()` 读**一次**(时间穿越 / 门禁钉钟都走它), 不读系统钟。
+const TITLE_ICON := "🏆 "
+const DAY_TITLE := {
+	"rest": "上周终榜",
+	"ranked": "本周排行",
+	"gauntlet": "积分赛终榜",
+	"finals": "积分赛终榜",
+}
+const MARK_PROMOTED := "已晋级"
+const MARK_W := 64.0
+const MARK_FS := 14
+const COL_TITLE := "#f2c766"
+const COL_PROMOTED := "#8fd99c"
+const WEEK_SEC := 7 * 86400
+## 顶栏右侧那个入口: 与主菜单赛程卡上那扇门**同一个目标场景**(常量取自 MainMenuScene, 不另抄)。
+const BRACKET_LINE := "查看对阵图"
+const _P2C := preload("res://scripts/gamedata/phase2_config.gd")
+const _BR := preload("res://scripts/gamedata/bracket.gd")
+const _MM := preload("res://scripts/scenes/MainMenuScene.gd")
 
 ## 金/银/铜。`modulate_color` 是**乘**在 chip-frame 上的(它是一块暗底 + 一圈银边:
 ## 实测底 (52,58,69)、边 (158,164,179)) ⇒ 乘出来就是"暗底 + 金/银/铜边框"的签牌,
@@ -145,8 +168,6 @@ const HINT_ONLY_YOU_OK := "（榜上暂时只有你 —— 打完一场, 对手�
 const HINT_ONLY_YOU_FAIL := "（连不上服务器 · 对手还没读到 —— 下一场开始时会自己再试）"
 const HINT_ONLY_YOU_UNKNOWN := "（对手还没读到 —— 下一场开始时去取一次）"
 const HINT_ONLY_YOU_OFF := "（榜上暂时只有你）"
-const HINT_FIRST_WIN := "（赢下第一场就能上分 —— 你本赛季还是 0 胜）"
-const HINT_AUTO := "（每场打完自动上榜）"
 
 ## ═══ 数据从哪来 (2026-10-06 · 60 人实操严重项 A2) ═══
 ##
@@ -165,6 +186,14 @@ const SB := preload("res://scripts/net/supabase.gd")
 ## 当前画的是哪一路 / 哪几行(门禁读它当分母; 屏幕上的字才是判据)。
 var source: String = ""
 var shown_rows: Array = []
+## 这一屏开着时是周几的哪一档(`phase2_config.PHASE_*`), 以及榜对应的那一周的周锚点。
+var day_phase: String = ""
+var board_week_ts: int = 0
+## 顶栏右侧那个入口(周六/周日才有), 门禁读它。
+var entry_btn: Button = null
+## account_id → {"id": 头衔 id, "closed": 那一组打完没有}(决赛日那一周的 finals_week_view 现算)。
+var _fin_titles: Dictionary = {}
+var _last_total: int = -1
 ## 每次重画都整块换掉的那一层(表面板 + 分隔线 + 顶栏不动)。
 var _panel: Panel = null
 var _body: Control = null
@@ -175,17 +204,30 @@ func _ready() -> void:
 	## ★顶栏走全项目同一个原语 `TopBar`(2026-09-19·用户「做」)。
 	##   规则来自 599 张/146 个触屏游戏枢纽页的逐张实测, 见 top_bar.gd 头注。
 	var _sm: Vector4 = SafeArea.margins(Vector2(get_viewport().get_visible_rect().size), 18.0)
+	## ★「现在」只读这一次(全局时间缝: 门禁钉钟 / 开发包穿越 / 服务器偏移都在它里面)。
+	var now: int = int(_P2C.now_utc())
+	day_phase = _P2C.phase_at_utc(now)
+	board_week_ts = board_week(now)
+	var acts: Array = []
+	var ent := day_entry(day_phase)
+	if not ent.is_empty():
+		acts.append([str(ent["text"]), _open_gauntlet_board if str(ent["scene"]) == _MM.GAUNTLET_BOARD_SCENE
+			else _open_bracket_map])
 	_top_bar = TopBar.new(self, {
 		## ★★2026-09-27 标题里**不写排序规则**。「排行榜 · 胜场 → 余命 → 横扫」是**规格书**
 		##   的写法(把内部比较器写在标题上), 用户 2026-09-27:「我一点也看不出来游戏的味道」。
 		##   排序规则该由榜自己的样子表达(名次牌 + 数字), 不是标题里念一遍。
-		"title": "🏆 本周排行",
+		"title": board_title(day_phase),
 		"palette": TopBar.DEEP,
 		"width": W,
 		"safe_left": _sm.x,
 		"safe_right": _sm.z,
 		"on_back": func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"),
+		"actions": acts,
 	})
+	if not acts.is_empty() and _top_bar.action_btns.size() > 0:
+		entry_btn = _top_bar.action_btns[_top_bar.action_btns.size() - 1] as Button
+		entry_btn.name = "LbDayEntry"
 
 	# 表面板 —— 金属九宫格(和背包/图鉴/战绩同一张 panel-frame)。冷蓝调走 modulate,
 	# ★ modulate 别超 1.3: 过了会把框芯冲亮、金属细节糊平(实拍确认过)。
@@ -224,20 +266,119 @@ func _ready() -> void:
 	UIFrame.attach(self)
 
 
-## 本周的周号 —— 与上传那一侧同一个数(`GameState.week_anchor_ts`, 见 backend.gd 拉对手那一行)。
-func _week() -> int:
-	var wk := int(GameState.week_anchor_ts)
-	if wk <= 0:
-		wk = Backend._P2.week_anchor_utc(int(Backend._P2.now_utc()))
-	return wk
+## 榜对应哪一周(周锚点)。周一(休赛)看**上周**, 其余六天看本周。
+## ★与上传那一侧同一个口径: 上传用 `GameState.week_anchor_ts`, 它由 `ensure_season` 从同一个
+##   `week_anchor_utc(now_utc())` 滚出来; 这里直接从「现在」算, 不依赖本屏打开前有没有滚过轮。
+static func board_week(now: int) -> int:
+	var a: int = _P2C.week_anchor_utc(now)
+	return a - WEEK_SEC if _P2C.phase_at_utc(now) == _P2C.PHASE_REST else a
+
+
+## 顶栏标题。不认识的阶段按积分赛日。
+static func board_title(phase: String) -> String:
+	return TITLE_ICON + str(DAY_TITLE.get(phase, DAY_TITLE[_P2C.PHASE_RANKED]))
+
+
+## 顶栏右侧入口: 周六 → 全场赛况(GauntletBoard) / 周日 → 查看对阵图(BracketMap) / 其余 → 无。
+## ★目标场景与文字都取主菜单那两扇门的常量 —— 同一个入口不许有两份地址。
+static func day_entry(phase: String) -> Dictionary:
+	if phase == _P2C.PHASE_GAUNTLET:
+		return {"text": _MM.GAUNTLET_BOARD_LINE, "scene": _MM.GAUNTLET_BOARD_SCENE}
+	if phase == _P2C.PHASE_FINALS:
+		return {"text": BRACKET_LINE, "scene": _MM.BRACKET_SCENE}
+	return {}
+
+
+## 具名方法(门禁量 `pressed.get_connections()` 能看到方法名)。走主菜单同一条路径规则 `res://scenes/<X>.tscn`。
+func _open_gauntlet_board() -> void:
+	_go(_MM.GAUNTLET_BOARD_SCENE)
+
+
+func _open_bracket_map() -> void:
+	_go(_MM.BRACKET_SCENE)
+
+
+func _go(scene: String) -> void:
+	var path := "res://scenes/%s.tscn" % scene
+	if not ResourceLoader.exists(path):
+		push_error("[LB] 目标场景不存在: " + path)
+		return
+	get_tree().change_scene_to_file(path)
+
+
+## 名字旁边挂什么(纯函数, 四天全可穷举)。返回显示文字, "" = 不挂。
+##   `srv_title` = 服务端 standings.title(现在恒空; 有就以它为准)
+##   `fin` = 这个人在那一周决赛里的 {"id": TITLE_*, "closed": 那一组打完没有}, 不在决赛里 = {}
+static func row_mark(phase: String, wins: int, srv_title: String, fin: Dictionary) -> String:
+	if srv_title != "":
+		return str(_P2C.TITLE_LABEL.get(srv_title, srv_title))
+	var fid := str(fin.get("id", ""))
+	match phase:
+		_P2C.PHASE_REST:
+			return str(_P2C.TITLE_LABEL.get(fid, "")) if fid != "" else ""
+		_P2C.PHASE_FINALS:
+			if bool(fin.get("closed", false)) and (fid == _P2C.TITLE_CHAMPION
+					or fid == _P2C.TITLE_RUNNER_UP or fid == _P2C.TITLE_SEMIFINAL):
+				return str(_P2C.TITLE_LABEL[fid])
+			return MARK_PROMOTED if wins >= _P2C.PROMOTE_WINS else ""
+		_P2C.PHASE_GAUNTLET:
+			return MARK_PROMOTED if wins >= _P2C.PROMOTE_WINS else ""
+	return ""
+
+
+## `finals_week_view` 的组(`SupabaseNet.parse_finals_week` 的 buckets) → account_id → {"id", "closed"}。
+## ★推导走 `Bracket.my_progress` / `semifinal_reached` —— 与主菜单给自己发头衔的那条链同一套。
+static func finals_titles(buckets: Array) -> Dictionary:
+	var out: Dictionary = {}
+	for b in buckets:
+		if not (b is Dictionary):
+			continue
+		var bd: Dictionary = b
+		var n := int(bd.get("size", 0))
+		var accs: Array = bd.get("accs", []) if bd.get("accs", []) is Array else []
+		var done: Dictionary = bd.get("done", {}) if bd.get("done", {}) is Dictionary else {}
+		if n <= 1:
+			continue
+		var total: int = _BR.rounds_for(n)
+		for sd in range(mini(n, accs.size())):
+			var acc := str(accs[sd])
+			if acc == "":
+				continue
+			var pr: Dictionary = _BR.my_progress(sd, n, done)
+			var tid := _P2C.TITLE_FINALS_DAY
+			if bool(pr.get("champion", false)):
+				tid = _P2C.TITLE_CHAMPION
+			elif bool(pr.get("runner_up", false)):
+				tid = _P2C.TITLE_RUNNER_UP
+			elif _BR.semifinal_reached(int(pr.get("deepest", 0)), total):
+				tid = _P2C.TITLE_SEMIFINAL
+			out[acc] = {"id": tid, "closed": bool(bd.get("closed", false))}
+	return out
 
 
 ## 发请求; 返回 false = 一个请求都没发(没配后端), 调用方当场画本机那一路。
 ## ★先画「正在读取」再发: 回包可能**同步**回来(门禁的假传输、令牌已在手时),
 ##   反过来的话「正在读取」会把刚画好的服务端榜盖掉。
+## ★周一/周日顺带问那一周的决赛(头衔用)。头衔晚到就把同一份榜重画一遍; 问不到就不挂头衔。
+## ★★请求**推迟一帧**发(2026-10-06 截图时查实): 从主菜单 `change_scene_to_file` 进来时, 本屏的 `_ready`
+##   跑在 root 正在挂子节点的那一刻, `SupabaseNet._spawn()` 往 root 上挂请求节点会报
+##   「Parent node is busy setting up children」—— 节点不在树里, 超时计时器起不来、HTTPRequest 也发不出去。
+##   (门禁里本屏是挂在测试节点下的, 碰不到这个时刻; 只有当主场景跑才看得见。)
 func _ask_server() -> bool:
+	if not SB.enabled():
+		return false
 	_render([], SRC_LOADING, -1)
-	return SB.fetch_week_leaderboard_async(_week(), SB.WEEK_LB_LIMIT, _on_server_lb)
+	call_deferred("_fetch_now")
+	return true
+
+
+func _fetch_now() -> void:
+	if not is_inside_tree():
+		return
+	if day_phase == _P2C.PHASE_REST or day_phase == _P2C.PHASE_FINALS:
+		SB.fetch_finals_week_cb(board_week_ts, _on_finals_week)
+	if not SB.fetch_week_leaderboard_async(board_week_ts, SB.WEEK_LB_LIMIT, _on_server_lb):
+		_render(_local_rows(), SRC_LOCAL, -1)
 
 
 func _on_server_lb(res: Dictionary) -> void:
@@ -250,6 +391,17 @@ func _on_server_lb(res: Dictionary) -> void:
 	_render(_local_rows(), SRC_LOCAL, -1)
 
 
+func _on_finals_week(res: Dictionary) -> void:
+	if not is_inside_tree():
+		return
+	if not (res.get("buckets", null) is Array):
+		print("[LB] 决赛头衔没拿到(%s) ⇒ 不挂头衔" % str(res.get("reason", "?")))
+		return
+	_fin_titles = finals_titles(res["buckets"] as Array)
+	if source == SRC_SERVER or source == SRC_LOCAL:
+		_render(shown_rows, source, _last_total)
+
+
 ## 本机那一路(原来唯一的一路)。名次 = 全量下标 + 1。
 func _local_rows() -> Array:
 	var pool := Backend.load_pool()
@@ -258,8 +410,13 @@ func _local_rows() -> Array:
 	##   于是下面的"钉住自己"根本无从谈起(第一版实拍复看: 榜上仍旧一个「◀ 你」都没有)。
 	##   拿全量在这里自己切, 名次 = 全量下标 + 1, 才是真名次。
 	## ★"我"那一行用玩家昵称(没设就是兜底短码) —— 与别人那几行同一个来源。
-	return Backend.leaderboard(pool, Backend.player_display_name(), int(GameState.season_wins),
+	var rows: Array = Backend.leaderboard(pool, Backend.player_display_name(), int(GameState.season_wins),
 		int(GameState.hearts), int(GameState.season_sweeps), 1 << 30)
+	## 自己那行的总场次(`leaderboard()` 只认别人的快照字段, 自己的从存档补)。
+	for r in rows:
+		if bool((r as Dictionary).get("is_self", false)):
+			(r as Dictionary)["battles"] = int(GameState.season_total_battles)
+	return rows
 
 
 ## 服务端那一路: 前 N 名 + 「我」(不在前 N 名里就接在末尾, 名次是服务端给的全榜真名次)。
@@ -273,8 +430,13 @@ func _server_rows(res: Dictionary) -> Array:
 	if not me.is_empty():
 		rows.append(me)
 	else:
-		rows.append({"rank": 0, "name": Backend.player_display_name(), "wins": int(GameState.season_wins),
-			"hearts": int(GameState.hearts), "sweeps": int(GameState.season_sweeps),
+		## ★周一看的是**上周**的榜: 存档里的成绩已经滚到本周了, 不许拿来冒充上周 ⇒ 只钉一行空名次。
+		var last_week: bool = day_phase == _P2C.PHASE_REST
+		rows.append({"rank": 0, "name": Backend.player_display_name(),
+			"wins": -1 if last_week else int(GameState.season_wins),
+			"hearts": -1 if last_week else int(GameState.hearts),
+			"sweeps": 0 if last_week else int(GameState.season_sweeps),
+			"battles": -1 if last_week else int(GameState.season_total_battles),
 			"is_self": true, "tag": Backend.my_tag()})
 	return rows
 
@@ -288,6 +450,7 @@ static func _rank_of(r: Dictionary, idx: int) -> int:
 func _render(rows: Array, src: String, total: int) -> void:
 	source = src
 	shown_rows = rows
+	_last_total = total
 	if _body != null:
 		_panel.remove_child(_body)
 		_body.queue_free()
@@ -302,26 +465,43 @@ func _render(rows: Array, src: String, total: int) -> void:
 
 	## 表头拆掉之后分隔线上面空出 46px。**不再摆一行字段名**(那正是要去掉的东西),
 	## 改摆一句说人话的规模数 —— 顺带把"榜上只有我一个"这件事直接说出来。
-	## ★本机那一路时右半边摆「本机记录」—— 左右各占一半, 两段字不叠。
-	var half: float = (PANEL_W - PAD * 2.0 - 12.0) / 2.0
+	## ★表头这一条从左到右三段, **各占各的横向区间, 互不重叠**:
+	##   规模数 [28, 28+CAP_W) │ 「本机记录」[28+CAP_W, STAT_X0-12) │ 三个列名 [STAT_X0, 734]
+	##   (2026-10-06 之前「本机记录」占右半边 [380, 732], 正好压在列名上 ⇒ verify_ui_consistency 报字叠字。)
 	var cap_line := Label.new()
-	cap_line.text = LOADING_TEXT if src == SRC_LOADING else ("本周共 %d 人上榜" % n_on_board)
+	cap_line.name = "LbCapLine"
+	cap_line.text = LOADING_TEXT if src == SRC_LOADING else (("上周共 %d 人上榜" if day_phase == _P2C.PHASE_REST
+		else "本周共 %d 人上榜") % n_on_board)
 	cap_line.add_theme_font_size_override("font_size", 16)
 	cap_line.add_theme_color_override("font_color", Color("#8fa6b8"))
 	cap_line.position = Vector2(PAD + 6.0, PAD + 2.0)
-	cap_line.size = Vector2(half if src == SRC_LOCAL else PANEL_W - PAD * 2.0 - 12.0, 26.0)
+	cap_line.size = Vector2(CAP_W, 26.0)
 	cap_line.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	panel.add_child(cap_line)
+	## 列名(照 使命召唤手游 / 英雄联盟手游: 表头纯文字, 与下面的数字**右沿对齐**)。
+	if src != SRC_LOADING:
+		for ci in range(COL_HEADS.size()):
+			var ch := Label.new()
+			ch.name = "LbColHead%d" % ci
+			ch.text = str(COL_HEADS[ci])
+			ch.add_theme_font_size_override("font_size", 15)
+			ch.add_theme_color_override("font_color", Color("#8fa6b8"))
+			ch.position = Vector2(STAT_X0 + float(ci) * STAT_CELL, PAD + 2.0)
+			ch.size = Vector2(COL_W, 26.0)
+			ch.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+			ch.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			panel.add_child(ch)
 	if src == SRC_LOCAL:
 		var mark := Label.new()
 		mark.name = "LbSourceMark"
 		mark.text = FALLBACK_MARK
 		mark.add_theme_font_size_override("font_size", 15)
 		mark.add_theme_color_override("font_color", Color("#d9a95a"))
-		mark.position = Vector2(PAD + 6.0 + half, PAD + 2.0)
-		mark.size = Vector2(half, 26.0)
+		var mx: float = PAD + 6.0 + CAP_W
+		mark.position = Vector2(mx, PAD + 2.0)
+		mark.size = Vector2(STAT_X0 - 12.0 - mx, 26.0)
 		mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		panel.add_child(mark)
 	if src == SRC_LOADING:
 		return
@@ -376,15 +556,17 @@ func _render(rows: Array, src: String, total: int) -> void:
 	##    `tests/_probe_newuser.gd:100` 里有一份手抄的同串, 那是探针的自印, 不是断言。)
 	## ★服务端那一路: 问到了就是 REACH_OK(「打完一场对手就会上来」此时是真的)。
 	var hint := Label.new()
-	hint.text = hint_text(n_on_board, self_idx >= 0,
-		int((rows[self_idx] as Dictionary).get("wins", 0)) if self_idx >= 0 else 0,
+	hint.text = hint_text(n_on_board,
 		Backend.REACH_OK if src == SRC_SERVER else Backend.pool_reach())
 	hint.add_theme_font_size_override("font_size", 15)
 	hint.add_theme_color_override("font_color", Color("#6b7b8c"))
 	hint.position = Vector2(PAD, PANEL_H - PAD - FOOT_H + 4.0)
 	hint.size = Vector2(PANEL_W - PAD * 2.0, FOOT_H - 6.0)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	panel.add_child(hint)
+	if hint.text != "":
+		panel.add_child(hint)
+	else:
+		hint.free()
 
 
 ## 背景 = 主菜单那张平铺底(深绿 #1a3a2a + menu-bg-tile + 暗渐变遮罩)。
@@ -434,10 +616,12 @@ func _bg() -> void:
 ##   埋在 `_ready` 里的话只验得到"这次真实环境落到的那一档"(而门禁环境恒是 OFF),
 ##   另外三句从来没被任何判据看过 —— 那正是上一版那句假话活下来的方式。
 ##   真屏幕上画的就是它的返回值(`_ready` 里只有这一处给 hint 赋值), 所以验它 = 验屏幕。
-static func hint_text(rows_n: int, self_found: bool, self_wins: int, reach: String) -> String:
+## ★2026-10-06 榜上有人时不再按自己的战绩说话 ⇒ self_found / self_wins 两个参数没人读了, 一并删掉(死参数门禁)。
+static func hint_text(rows_n: int, reach: String) -> String:
 	## 榜上不止你一个 ⇒ 与"问没问到"无关, 照旧按自己的战绩说。
+	## ★2026-10-06 用户「每场打完自动上榜？何意味啊」: 榜上有人时不再挂底注(参考的手游排行榜都没有页脚说明)。
 	if rows_n > 1:
-		return HINT_FIRST_WIN if (self_found and self_wins <= 0) else HINT_AUTO
+		return ""
 	match reach:
 		Backend.REACH_OK:
 			return HINT_ONLY_YOU_OK
@@ -508,6 +692,11 @@ func _draw_row(parent: Control, y: float, idx: int, r: Dictionary) -> void:
 	var show_tag: bool = tag_s != "" and _dup_names.has(str(r.get("name", "?")))
 	if show_tag:
 		nw -= TAG_W
+	## 名字旁的头衔 / 「已晋级」(四天各挂各的, 见 `row_mark`)。名字列先给它让出位置。
+	var mark_s := row_mark(day_phase, wins, str(r.get("title", "")),
+		_fin_titles.get(str(r.get("account_id", "")), {}) as Dictionary)
+	if mark_s != "":
+		nw -= MARK_W
 	var nm := _cell(parent, str(r.get("name", "?")), NAME_X, y, nw, 18,
 		Color(COL_SELF if is_self else COL_ROW), HORIZONTAL_ALIGNMENT_LEFT)
 	## ghost 名来自玩家自定义 profile, 长度不受控 —— 截断加省略号, 别让它糊到成绩列上。
@@ -515,15 +704,21 @@ func _draw_row(parent: Control, y: float, idx: int, r: Dictionary) -> void:
 	nm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	if is_self:
 		_you_tag(parent, nm, y)
+	## 紧跟在名字(自己那行是「你」签)后面依次摆: 玩家 ID → 头衔。
+	var tx: float = NAME_X + _text_w(nm) + 8.0 + ((YOU_W + YOU_GAP) if is_self else 0.0)
 	if show_tag:
-		## 紧跟在名字(自己那行是「你」签)后面, 底线对齐名字。
-		var tx: float = NAME_X + _text_w(nm) + 8.0 + ((YOU_W + YOU_GAP) if is_self else 0.0)
 		var tl := _cell(parent, tag_s, tx, y + 1.0, TAG_W, TAG_FS, Color(COL_RANK),
 			HORIZONTAL_ALIGNMENT_LEFT)
 		tl.name = "RowTag"
-	var vals: Array = [int(r.get("wins", 0)), int(r.get("hearts", 0)), int(r.get("sweeps", 0))]
-	for i in range(3):
-		_stat_cell(parent, y, i, int(vals[i]), is_self)
+		tx += _text_w(tl) + 8.0
+	if mark_s != "":
+		var ml := _cell(parent, mark_s, tx, y + 1.0, MARK_W, MARK_FS,
+			Color(COL_PROMOTED if mark_s == MARK_PROMOTED else COL_TITLE), HORIZONTAL_ALIGNMENT_LEFT)
+		ml.name = "RowMark_%d" % int(y)   # 带 y: 同一父节点下重名会被引擎改成 @Label@N
+	for ci in range(COL_KEYS.size()):
+		var k := str(COL_KEYS[ci])
+		var dv: int = -1 if k == "battles" else 0
+		_stat_cell(parent, y, ci, int(r.get(k, dv)), is_self)
 
 
 ## 空席: 名次 + 牌位(压暗) + 破折号。
@@ -535,9 +730,9 @@ func _draw_vacant(parent: Control, y: float, rank: int) -> void:
 	_rank_badge(parent, y, rank, 0.42, true)
 	var l := _cell(parent, "—", NAME_X, y, NAME_W, 18, Color(COL_DIM), HORIZONTAL_ALIGNMENT_LEFT)
 	l.modulate.a = 0.75
-	for i in range(3):
+	for i in range(COL_HEADS.size()):
 		var d := _cell(parent, "—", STAT_X0 + float(i) * STAT_CELL, y,
-			STAT_ICON + 4.0 + STAT_NUM_W, 18, Color(COL_DIM), HORIZONTAL_ALIGNMENT_CENTER)
+			COL_W, 18, Color(COL_DIM), HORIZONTAL_ALIGNMENT_RIGHT)
 		d.modulate.a = 0.6
 
 
@@ -628,28 +823,15 @@ func _you_tag(parent: Control, nm: Label, y: float) -> void:
 	tag.add_child(l)
 
 
-## 成绩一格 = 一个图标 + 一个数字。`i` 固定对应 STAT_ICONS 的同一格(顺序就是列顺序)。
+## 成绩一格 = 一个**纯数字**, 右对齐到列右沿(与表头列名同一条右沿)。`i` = COL_HEADS 的下标。
+## ★2026-10-06 用户「排行榜里的奖杯是？」: 格里不画图标(照 使命召唤手游 / 英雄联盟手游, 列名写在表头)。
+## `v < 0` = 这一项没有数据(老快照没带总场次 / 周一上周榜上没有我) ⇒ 「—」, 不编 0。
 func _stat_cell(parent: Control, y: float, i: int, v: int, is_self: bool) -> void:
 	var cx: float = STAT_X0 + float(i) * STAT_CELL
-	var p := str(STAT_ICONS[i])
-	if ResourceLoader.exists(p):
-		var ic := TextureRect.new()
-		ic.texture = load(p)
-		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		ic.size = Vector2(STAT_ICON, STAT_ICON)
-		ic.position = Vector2(cx, y + (ROW_H - 12.0 - STAT_ICON) / 2.0)
-		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		## `stats/` 那套是【纯白模板】(2026-10-01)要染色; 奖杯与横扫是成品彩图, **不能**染。
-		var base := Color.WHITE
-		if p.begins_with("res://assets/sprites/stats/"):
-			base = SkillText.stat_icon_color_of(p)
-		## 该量是 0 就把图标压暗 —— "还没有"一眼看得出, 不用逐个读数字。
-		ic.modulate = Color(base.r, base.g, base.b, 0.30) if v <= 0 else base
-		parent.add_child(ic)
 	var col: String = COL_DIM if v <= 0 else (COL_SELF if is_self else COL_ROW)
-	_cell(parent, str(v), cx + STAT_ICON + 4.0, y, STAT_NUM_W, 18,
+	var l := _cell(parent, str(v) if v >= 0 else "—", cx, y, COL_W, 18,
 		Color(col), HORIZONTAL_ALIGNMENT_RIGHT)
+	l.name = "RowStat%d_%d" % [i, int(y)]
 
 
 ## 行内一格文字(统一字号/行高/垂直居中 —— 手写一遍就会漂)。

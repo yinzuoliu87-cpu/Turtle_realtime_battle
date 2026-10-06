@@ -206,7 +206,7 @@ func _t_screen_says() -> void:
 	_collect_labels(inst, labels)
 	var hints: Array = []
 	var known := [_LB.HINT_ONLY_YOU_OK, _LB.HINT_ONLY_YOU_FAIL, _LB.HINT_ONLY_YOU_UNKNOWN,
-		_LB.HINT_ONLY_YOU_OFF, _LB.HINT_FIRST_WIN, _LB.HINT_AUTO]
+		_LB.HINT_ONLY_YOU_OFF]
 	for l in labels:
 		if known.has(str((l as Label).text)):
 			hints.append(str((l as Label).text))
@@ -215,7 +215,7 @@ func _t_screen_says() -> void:
 	var reach: String = _BE.pool_reach()
 	if hints.size() == 1:
 		_ok("③ ★★屏上画的就是 `hint_text()` 按当前那一档给的那句(没有第二份手抄的文案)",
-			str(hints[0]) == _LB.hint_text(1, true, 0, reach),
+			str(hints[0]) == _LB.hint_text(1, reach),
 			"屏上「%s」 ↔ 档 %s" % [str(hints[0]), reach])
 		_ok("③ ★★★门禁环境 = 问不到(%s) ⇒ 屏上**不许**出现那句承诺「%s」" % [reach, PROMISE],
 			not str(hints[0]).contains(PROMISE), "屏上「%s」" % str(hints[0]))
@@ -253,7 +253,7 @@ func _t_hint_table() -> void:
 	var reaches := [_BE.REACH_OK, _BE.REACH_FAIL, _BE.REACH_UNKNOWN, _BE.REACH_OFF]
 	var texts: Array = []
 	for r in reaches:
-		texts.append(_LB.hint_text(1, true, 0, str(r)))
+		texts.append(_LB.hint_text(1, str(r)))
 	var uniq := {}
 	for t in texts:
 		uniq[str(t)] = true
@@ -266,28 +266,25 @@ func _t_hint_table() -> void:
 	_ok("④ ★★★承诺「%s」只出现在【问到了】这一档" % PROMISE,
 		with_promise == [_BE.REACH_OK], "带承诺的档: %s" % str(with_promise))
 	_ok("④ ★【问过没问到】那句说的是「%s」(照 BracketMapScene 的样式)" % BLAME_NET,
-		str(_LB.hint_text(1, true, 0, _BE.REACH_FAIL)).contains(BLAME_NET),
-		_LB.hint_text(1, true, 0, _BE.REACH_FAIL))
+		str(_LB.hint_text(1, _BE.REACH_FAIL)).contains(BLAME_NET),
+		_LB.hint_text(1, _BE.REACH_FAIL))
 	## ★「还没问过」不许说"连不上" —— 那是把没发生的网络故障说成发生了(同 ST_UNKNOWN 的理由)。
 	_ok("④ ★★【还没问过】既不给承诺, 也不说「%s」" % BLAME_NET,
-		not str(_LB.hint_text(1, true, 0, _BE.REACH_UNKNOWN)).contains(PROMISE) \
-			and not str(_LB.hint_text(1, true, 0, _BE.REACH_UNKNOWN)).contains(BLAME_NET),
-		_LB.hint_text(1, true, 0, _BE.REACH_UNKNOWN))
+		not str(_LB.hint_text(1, _BE.REACH_UNKNOWN)).contains(PROMISE) \
+			and not str(_LB.hint_text(1, _BE.REACH_UNKNOWN)).contains(BLAME_NET),
+		_LB.hint_text(1, _BE.REACH_UNKNOWN))
 	## ★【没配后端】只陈述事实, 不挂"离线"角标(SettingsScene.gd:103 / remote_pool.gd:182)。
 	_ok("④ ★★【没配后端】不给承诺, 也不喊「%s」" % BLAME_NET,
-		not str(_LB.hint_text(1, true, 0, _BE.REACH_OFF)).contains(PROMISE) \
-			and not str(_LB.hint_text(1, true, 0, _BE.REACH_OFF)).contains(BLAME_NET),
-		_LB.hint_text(1, true, 0, _BE.REACH_OFF))
-	## ★榜上不止一行那两句**一个字没改**(这次改动的范围就该到这里为止)。
-	_ok("④ 榜上不止你一个 + 你 0 胜 ⇒ 照旧是「赢下第一场」那句",
-		_LB.hint_text(9, true, 0, _BE.REACH_OFF) == _LB.HINT_FIRST_WIN,
-		_LB.hint_text(9, true, 0, _BE.REACH_OFF))
-	_ok("④ 榜上不止你一个 + 你有胜场 ⇒ 照旧是「每场打完自动上榜」",
-		_LB.hint_text(9, true, 3, _BE.REACH_OFF) == _LB.HINT_AUTO,
-		_LB.hint_text(9, true, 3, _BE.REACH_OFF))
-	_ok("④ 榜上找不到自己(切片切没了) ⇒ 不许去读那个不存在的胜场",
-		_LB.hint_text(9, false, 0, _BE.REACH_OFF) == _LB.HINT_AUTO,
-		_LB.hint_text(9, false, 0, _BE.REACH_OFF))
+		not str(_LB.hint_text(1, _BE.REACH_OFF)).contains(PROMISE) \
+			and not str(_LB.hint_text(1, _BE.REACH_OFF)).contains(BLAME_NET),
+		_LB.hint_text(1, _BE.REACH_OFF))
+	## ★2026-10-06 用户「每场打完自动上榜？何意味啊」: 榜上不止一行时**不挂底注**(参考的手游排行榜都没有页脚)。
+	_ok("④ 榜上不止你一个 + 你 0 胜 ⇒ 不挂底注",
+		_LB.hint_text(9, _BE.REACH_OFF) == "", _LB.hint_text(9, _BE.REACH_OFF))
+	_ok("④ 榜上不止你一个 + 你有胜场 ⇒ 不挂底注",
+		_LB.hint_text(9, _BE.REACH_OFF) == "", _LB.hint_text(9, _BE.REACH_OFF))
+	_ok("④ 榜上找不到自己 ⇒ 也不挂底注(不读那个不存在的胜场)",
+		_LB.hint_text(9, _BE.REACH_OFF) == "", _LB.hint_text(9, _BE.REACH_OFF))
 
 
 # ─────────────────────────────────────────────────────────────
@@ -326,12 +323,12 @@ func _t_reach_live() -> void:
 		_BE.pool_reach() == _BE.REACH_FAIL,
 		"try=%d ok=%d ⇒ %s" % [_SB.pull_try_count(), _SB.pull_ok_count(), _BE.pool_reach()])
 	_ok("⑤ ★★★这一档屏上说的是「连不上」那句, 不是「打完一场对手就会上来」",
-		_LB.hint_text(1, true, 0, _BE.pool_reach()) == _LB.HINT_ONLY_YOU_FAIL,
-		_LB.hint_text(1, true, 0, _BE.pool_reach()))
+		_LB.hint_text(1, _BE.pool_reach()) == _LB.HINT_ONLY_YOU_FAIL,
+		_LB.hint_text(1, _BE.pool_reach()))
 	_SB.apply_pull_response(true, 200, "[]")         # 真入口: 问到了(空数组也算问到)
 	_ok("⑤ ★★★喂一次**成功**回包 ⇒ OK ⇒ 这时那句承诺才是真的",
 		_BE.pool_reach() == _BE.REACH_OK \
-			and _LB.hint_text(1, true, 0, _BE.pool_reach()) == _LB.HINT_ONLY_YOU_OK,
+			and _LB.hint_text(1, _BE.pool_reach()) == _LB.HINT_ONLY_YOU_OK,
 		"try=%d ok=%d ⇒ %s" % [_SB.pull_try_count(), _SB.pull_ok_count(), _BE.pool_reach()])
 	## ★★还原(变异必须逐字还原; 这两样都是 static / 进程级, 留着会污染后面的断言)。
 	_SB._reset_pull_for_test()

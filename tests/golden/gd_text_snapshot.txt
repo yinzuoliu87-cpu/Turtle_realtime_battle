@@ -638,17 +638,23 @@ scripts/scenes/InventoryScene.gd|tooltip_text|从糖果罐里开出来的临时�
 scripts/scenes/InventoryScene.gd|tooltip_text|全队装备已满 %d / %d · 升赛季等级可再装
 scripts/scenes/InventoryScene.gd|tooltip_text|点一下 → 底下出现「卸下」键
 scripts/scenes/InventoryScene.gd|tooltip_text|点一下换站位 —— 前排贴上去挥砍, 后排站远了射击
+scripts/scenes/LeaderboardScene.gd|lit|上周终榜
+scripts/scenes/LeaderboardScene.gd|lit|剩余生命
+scripts/scenes/LeaderboardScene.gd|lit|已晋级
+scripts/scenes/LeaderboardScene.gd|lit|总场次
+scripts/scenes/LeaderboardScene.gd|lit|本周共 %d 人上榜
+scripts/scenes/LeaderboardScene.gd|lit|本周排行
 scripts/scenes/LeaderboardScene.gd|lit|本机记录 · 不是实时排名
+scripts/scenes/LeaderboardScene.gd|lit|查看对阵图
 scripts/scenes/LeaderboardScene.gd|lit|正在读取本周排行…
+scripts/scenes/LeaderboardScene.gd|lit|积分赛终榜
+scripts/scenes/LeaderboardScene.gd|lit|胜场
 scripts/scenes/LeaderboardScene.gd|lit|（对手还没读到 —— 下一场开始时去取一次）
 scripts/scenes/LeaderboardScene.gd|lit|（榜上暂时只有你 —— 打完一场, 对手就会上来）
 scripts/scenes/LeaderboardScene.gd|lit|（榜上暂时只有你）
-scripts/scenes/LeaderboardScene.gd|lit|（每场打完自动上榜）
-scripts/scenes/LeaderboardScene.gd|lit|（赢下第一场就能上分 —— 你本赛季还是 0 胜）
 scripts/scenes/LeaderboardScene.gd|lit|（连不上服务器 · 对手还没读到 —— 下一场开始时会自己再试）
-scripts/scenes/LeaderboardScene.gd|lit|🏆 本周排行
+scripts/scenes/LeaderboardScene.gd|text|上周共 %d 人上榜
 scripts/scenes/LeaderboardScene.gd|text|你
-scripts/scenes/LeaderboardScene.gd|text|本周共 %d 人上榜
 scripts/scenes/MainMenuScene.gd|lit| · 没打的 %d 场化成 深海币 +%d · 经验 +%d
 scripts/scenes/MainMenuScene.gd|lit|%d 分 %02d 秒
 scripts/scenes/MainMenuScene.gd|lit|%d 天 %d 小时
@@ -1078,7 +1084,6 @@ scripts/scenes/battle/battle_hud.gd|lit|完成新手教学
 scripts/scenes/battle/battle_hud.gd|lit|左队(友军)
 scripts/scenes/battle/battle_hud.gd|lit|战报
 scripts/scenes/battle/battle_hud.gd|lit|掉血/不死
-scripts/scenes/battle/battle_hud.gd|lit|更多属性 · %d 个
 scripts/scenes/battle/battle_hud.gd|lit|本周场次
 scripts/scenes/battle/battle_hud.gd|lit|没传上去
 scripts/scenes/battle/battle_hud.gd|lit|浪板
@@ -1113,7 +1118,6 @@ scripts/scenes/battle/battle_hud.gd|text|友军
 scripts/scenes/battle/battle_hud.gd|text|战斗日志
 scripts/scenes/battle/battle_hud.gd|text|打到这里的战报和奖励照算, 不会白打
 scripts/scenes/battle/battle_hud.gd|text|敌方
-scripts/scenes/battle/battle_hud.gd|text|日志
 scripts/scenes/battle/battle_hud.gd|text|点空地=摆(龟/小将) · 点单位=选中配装 · 拖拽=挪位 · 满龟能开→秒放技看效果
 scripts/scenes/battle/battle_hud.gd|text|真要认输?
 scripts/scenes/battle/battle_hud.gd|text|阵容已上传 · 别人可能会打到你
@@ -1194,30 +1198,69 @@ scripts/scenes/battle/info_panel.gd|lit|储能
 scripts/scenes/battle/info_panel.gd|lit|充能 %d%%
 scripts/scenes/battle/info_panel.gd|lit|充能 %s / %s
 scripts/scenes/battle/info_panel.gd|lit|再攒开第 %d 箱
+scripts/scenes/battle/info_panel.gd|lit|减伤
 scripts/scenes/battle/info_panel.gd|lit|减伤 
 scripts/scenes/battle/info_panel.gd|lit|减速
+scripts/scenes/battle/info_panel.gd|lit|初始龟能
+scripts/scenes/battle/info_panel.gd|lit|反伤
 scripts/scenes/battle/info_panel.gd|lit|反伤 
+scripts/scenes/battle/info_panel.gd|lit|受到伤害时, 按这个比例反弹给攻击者。
+scripts/scenes/battle/info_panel.gd|lit|受到的所有伤害按这个比例降低。
+scripts/scenes/battle/info_panel.gd|lit|吸血
 scripts/scenes/battle/info_panel.gd|lit|吸血 
 scripts/scenes/battle/info_panel.gd|lit|嘲讽
+scripts/scenes/battle/info_panel.gd|lit|增伤
 scripts/scenes/battle/info_panel.gd|lit|增伤 
+scripts/scenes/battle/info_panel.gd|lit|射程
 scripts/scenes/battle/info_panel.gd|lit|射程 %d
 scripts/scenes/battle/info_panel.gd|lit|层数 %d
 scripts/scenes/battle/info_panel.gd|lit|怒气
+scripts/scenes/battle/info_panel.gd|lit|打物理伤害时, 无视目标这么多护甲。
+scripts/scenes/battle/info_panel.gd|lit|打魔法伤害时, 无视目标这么多魔抗。
 scripts/scenes/battle/info_panel.gd|lit|技能
+scripts/scenes/battle/info_panel.gd|lit|技能 · %d 龟能
+scripts/scenes/battle/info_panel.gd|lit|护甲
 scripts/scenes/battle/info_panel.gd|lit|护甲 %d
+scripts/scenes/battle/info_panel.gd|lit|护甲穿透
 scripts/scenes/battle/info_panel.gd|lit|护甲穿透 %d
+scripts/scenes/battle/info_panel.gd|lit|护盾
 scripts/scenes/battle/info_panel.gd|lit|护盾 %d
+scripts/scenes/battle/info_panel.gd|lit|护盾增幅
+scripts/scenes/battle/info_panel.gd|lit|护盾强度
 scripts/scenes/battle/info_panel.gd|lit|护盾强度 
+scripts/scenes/battle/info_panel.gd|lit|护盾效果的倍率。
+scripts/scenes/battle/info_panel.gd|lit|攻击
 scripts/scenes/battle/info_panel.gd|lit|攻击 %d
+scripts/scenes/battle/info_panel.gd|lit|攻击力
+scripts/scenes/battle/info_panel.gd|lit|攻击射程
+scripts/scenes/battle/info_panel.gd|lit|攻击打出暴击的几率。
+scripts/scenes/battle/info_panel.gd|lit|攻击速度
+scripts/scenes/battle/info_panel.gd|lit|攻速
 scripts/scenes/battle/info_panel.gd|lit|攻速 每秒 %s 下
 scripts/scenes/battle/info_panel.gd|lit|星能
 scripts/scenes/battle/info_panel.gd|lit|普攻
+scripts/scenes/battle/info_panel.gd|lit|普攻和大多数技能伤害的基础。
+scripts/scenes/battle/info_panel.gd|lit|普攻能打到多远。
+scripts/scenes/battle/info_panel.gd|lit|普通攻击
+scripts/scenes/battle/info_panel.gd|lit|暴伤
 scripts/scenes/battle/info_panel.gd|lit|暴伤 
+scripts/scenes/battle/info_panel.gd|lit|暴击
 scripts/scenes/battle/info_panel.gd|lit|暴击 
+scripts/scenes/battle/info_panel.gd|lit|暴击伤害
+scripts/scenes/battle/info_panel.gd|lit|暴击时造成的伤害倍率。暴击率超过 100% 的部分会折算进来。
+scripts/scenes/battle/info_panel.gd|lit|暴击率
+scripts/scenes/battle/info_panel.gd|lit|最大生命值
+scripts/scenes/battle/info_panel.gd|lit|本局
 scripts/scenes/battle/info_panel.gd|lit|每点 +2% 攻击
+scripts/scenes/battle/info_panel.gd|lit|每秒普攻几下。
+scripts/scenes/battle/info_panel.gd|lit|治疗
 scripts/scenes/battle/info_panel.gd|lit|治疗 %d
+scripts/scenes/battle/info_panel.gd|lit|治疗与护盾增幅
 scripts/scenes/battle/info_panel.gd|lit|治疗削减
+scripts/scenes/battle/info_panel.gd|lit|治疗增幅
+scripts/scenes/battle/info_panel.gd|lit|治疗强度
 scripts/scenes/battle/info_panel.gd|lit|治疗强度 
+scripts/scenes/battle/info_panel.gd|lit|治疗效果的倍率。
 scripts/scenes/battle/info_panel.gd|lit|泡泡
 scripts/scenes/battle/info_panel.gd|lit|流血
 scripts/scenes/battle/info_panel.gd|lit|潜伏中 · 不会被选为目标
@@ -1225,32 +1268,54 @@ scripts/scenes/battle/info_panel.gd|lit|火山形态 · 还剩 %.1f 秒
 scripts/scenes/battle/info_panel.gd|lit|灼烧
 scripts/scenes/battle/info_panel.gd|lit|熔岩形态
 scripts/scenes/battle/info_panel.gd|lit|物理
+scripts/scenes/battle/info_panel.gd|lit|物理伤害
+scripts/scenes/battle/info_panel.gd|lit|生命偷取
 scripts/scenes/battle/info_panel.gd|lit|真实
+scripts/scenes/battle/info_panel.gd|lit|真实伤害
 scripts/scenes/battle/info_panel.gd|lit|真火
 scripts/scenes/battle/info_panel.gd|lit|眩晕
+scripts/scenes/battle/info_panel.gd|lit|移动的快慢。被减速、加速时会跟着变。
+scripts/scenes/battle/info_panel.gd|lit|移动速度
+scripts/scenes/battle/info_panel.gd|lit|移速
 scripts/scenes/battle/info_panel.gd|lit|移速 %d
+scripts/scenes/battle/info_panel.gd|lit|穿透伤害
+scripts/scenes/battle/info_panel.gd|lit|站位
+scripts/scenes/battle/info_panel.gd|lit|缩短自己被眩晕、减速等控制的时间。
 scripts/scenes/battle/info_panel.gd|lit|被动
 scripts/scenes/battle/info_panel.gd|lit|被动 · 
 scripts/scenes/battle/info_panel.gd|lit|财宝
+scripts/scenes/battle/info_panel.gd|lit|躲开攻击的几率。
 scripts/scenes/battle/info_panel.gd|lit|近战形态 · 锤击
+scripts/scenes/battle/info_panel.gd|lit|还没有产生效果
 scripts/scenes/battle/info_panel.gd|lit|远程形态 · 灵能弹
 scripts/scenes/battle/info_panel.gd|lit|造成伤害 %d
+scripts/scenes/battle/info_panel.gd|lit|造成伤害时, 按这个比例回复自己的生命。
+scripts/scenes/battle/info_panel.gd|lit|造成的所有伤害按这个比例提高。
 scripts/scenes/battle/info_panel.gd|lit|释放 · 冲击波 %d + 护盾 %d
 scripts/scenes/battle/info_panel.gd|lit|金币
+scripts/scenes/battle/info_panel.gd|lit|闪避
 scripts/scenes/battle/info_panel.gd|lit|闪避 
+scripts/scenes/battle/info_panel.gd|lit|降低受到的物理伤害。
+scripts/scenes/battle/info_panel.gd|lit|降低受到的魔法伤害。
+scripts/scenes/battle/info_panel.gd|lit|韧性
 scripts/scenes/battle/info_panel.gd|lit|韧性 
+scripts/scenes/battle/info_panel.gd|lit|魔抗
 scripts/scenes/battle/info_panel.gd|lit|魔抗 %d
 scripts/scenes/battle/info_panel.gd|lit|魔法
+scripts/scenes/battle/info_panel.gd|lit|魔法伤害
+scripts/scenes/battle/info_panel.gd|lit|魔法穿透
 scripts/scenes/battle/info_panel.gd|lit|魔法穿透 %d
 scripts/scenes/battle/info_panel.gd|lit|龟能
 scripts/scenes/battle/info_panel.gd|lit|龟能 %d / %d
+scripts/scenes/battle/info_panel.gd|lit|龟能充能
 scripts/scenes/battle/info_panel.gd|lit|龟能充能 
+scripts/scenes/battle/info_panel.gd|lit|龟能充能速率
+scripts/scenes/battle/info_panel.gd|lit|龟能攒满的速度倍率。攒满就放技能。
 scripts/scenes/battle/info_panel.gd|lit|龟能锁
-scripts/scenes/battle/info_panel.gd|text| (普攻)
+scripts/scenes/battle/info_panel.gd|text|前排
+scripts/scenes/battle/info_panel.gd|text|后排
 scripts/scenes/battle/info_panel.gd|text|收起
 scripts/scenes/battle/info_panel.gd|text|生命  %d / %d
-scripts/scenes/battle/info_panel.gd|text|被动 · 
-scripts/scenes/battle/info_panel.gd|text|装备：
 scripts/scenes/battle/info_panel.gd|text|详细
 scripts/scenes/battle/replay_controls.gd|lit|%s  对  %s
 scripts/scenes/battle/replay_controls.gd|lit|全场 

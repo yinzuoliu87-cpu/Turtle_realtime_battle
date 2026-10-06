@@ -273,6 +273,8 @@ func _place(anchor: Control) -> void:
 	_place_now(anchor)
 	var c := card
 	await battle.get_tree().process_frame
+	if not is_instance_valid(battle):
+		return
 	if c == card and is_instance_valid(c):
 		c.size = Vector2(CARD_W, 0)          # 让容器按内容重算高度
 		_place_now(anchor)

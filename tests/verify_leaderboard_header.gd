@@ -32,18 +32,13 @@ const SELF_WINS := 12
 const SELF_HEARTS := 5
 const SELF_SWEEPS := 3
 
-## 列的语义: 第 0 列 = 胜场(奖杯) / 第 1 列 = 余命(红心) / 第 2 列 = 横扫。
-## 只认**概念**不认具体文件名, 但概念必须对得上 —— 图标顺序换了而数字没换, 靠这条抓。
-##
-## ★★2026-09-28 补上第 2 列。原来只有两条, 因为第 2 列当时借的是
-##   `stats/aspd-icon.png`(**攻速**那张) —— 那时按名字根本对不上"横扫"这个概念,
-##   于是我只写了两条, 而那一列就此**没有任何判据看着**。
-##   欠账还了(接上 `ui/icon-sweep.png`)⇒ 这一条同时钉住两件事: 概念对得上、欠账别回来。
-const ICON_KEY := ["trophy", "hp", "sweep"]
-
-## ★不许再出现的**借用**素材: 排行榜上没有"攻速"这个量。
-##   (借用当时是自我批准的「明知的借用」—— 那种欠账只有门禁盯着才不会回来。)
-const BORROWED_ICONS := ["aspd-icon"]
+## ★2026-10-06 换形状(用户「积分赛写上名字，剩余生命，胜场，总场次啊 ，都给我做」):
+##   成绩从「三格 图标+数字」改成**表头纯文字列名 + 行里纯数字**(照 使命召唤手游 / 英雄联盟手游),
+##   列 = 剩余生命 | 胜场 | 总场次。原来这份判据把「带成绩图标的行」当数据行 ⇒ 图标一拿掉**分母当场 0 行**。
+##   ⇒ 数据行改认「一条带 4 个整数的行(名次 + 三成绩)」; 图标那几条改成「表头三列名 + 格里零图标」。
+## 列的语义(表头文字必须逐字是这三个词, 顺序不许乱):
+const COL_WORDS := ["剩余生命", "胜场", "总场次"]
+const SELF_BATTLES := 17
 
 ## ★过期量词: A8 之前榜是按击杀龟蛋数排的。屏幕上再出现它 = 又漂了一次。
 const STALE_TERMS := ["蛋数", "击杀蛋"]
@@ -143,6 +138,25 @@ func _wide_bands(board: Control) -> Array:
 	return out
 
 
+func _count_tex(n: Node) -> int:
+	var c := 0
+	for ch in n.get_children():
+		if ch is TextureRect and (ch as TextureRect).texture != null and (ch as Control).is_visible_in_tree():
+			c += 1
+		c += _count_tex(ch)
+	return c
+
+
+func _find_named(n: Node, nm: String) -> Label:
+	if n is Label and str(n.name) == nm:
+		return n as Label
+	for ch in n.get_children():
+		var r := _find_named(ch, nm)
+		if r != null:
+			return r
+	return null
+
+
 func _find_band(wides: Array, y: float):
 	for w in wides:
 		if absf(float((w as Dictionary)["y"]) - y) <= 14.0:
@@ -163,10 +177,11 @@ func _ready() -> void:
 		gs.season_wins = SELF_WINS
 		gs.hearts = SELF_HEARTS
 		gs.season_sweeps = SELF_SWEEPS
+		gs.season_total_battles = SELF_BATTLES
 	## ★这一条不是走过场: 三个数只要有两个相等, 下面 ③ 的"列顺序"就成了空检查。
 	_ok("① ★分母: 自己那三个量两两不同(相等的话列顺序乱了也照样绿)",
-		SELF_WINS != SELF_HEARTS and SELF_HEARTS != SELF_SWEEPS and SELF_WINS != SELF_SWEEPS,
-		"%d / %d / %d" % [SELF_WINS, SELF_HEARTS, SELF_SWEEPS])
+		SELF_WINS != SELF_HEARTS and SELF_HEARTS != SELF_BATTLES and SELF_WINS != SELF_BATTLES,
+		"%d / %d / %d" % [SELF_HEARTS, SELF_WINS, SELF_BATTLES])
 
 	## ★★不灌真人行就只有自己一行(产品行为) ⇒ "每一行"这句话没有分母。
 	##   种子脚本第一版有过 Parse Error 而 `has_method` 静默为 false —— 跑不起来当场红。
@@ -196,26 +211,23 @@ func _ready() -> void:
 
 	var bands := _bands(board)
 	var all_text: Array = []
-	var data: Array = []          # 数据行 = 带成绩图标的那些行
+	var data: Array = []          # 数据行 = 带 4 个整数(名次 + 三成绩)的那些行
+	var n_icons := 0
 	for b in bands:
 		var items: Array = (b as Dictionary)["items"]
-		var icons: Array = []
 		var ints: Array = []
 		for it in items:
 			var d: Dictionary = it
 			if str(d["k"]) == "T":
-				icons.append(d)
+				n_icons += 1
 			else:
 				var lb := d["n"] as Label
 				all_text.append(str(lb.text))
 				if str(lb.text).is_valid_int():
 					ints.append(d)
-		if icons.is_empty():
-			continue
-		icons.sort_custom(func(p, q): return float(p["x"]) < float(q["x"]))
 		ints.sort_custom(func(p, q): return float(p["x"]) < float(q["x"]))
-		data.append({"y": float((b as Dictionary)["y"]), "icons": icons, "ints": ints,
-			"items": items})
+		if ints.size() >= 4:
+			data.append({"y": float((b as Dictionary)["y"]), "ints": ints, "items": items})
 
 	_ok("① ★分母: 屏上真的建出了 Label", all_text.size() >= 20, "共 %d 个" % all_text.size())
 	## ★★真分母: "每一行都含三个成绩数"这句话, 得先有足够多的行。
@@ -225,48 +237,39 @@ func _ready() -> void:
 		_finish(inst)
 		return
 
-	## ── ② 每一行都有三个成绩 + 列顺序逐行一致 ───────────────────────
+	## ── ② 表头 = 用户的三个词 / 格里零图标 / 每行 4 个数且列对齐 ─────────
+	var heads: Array = []
+	for i in range(COL_WORDS.size()):
+		var h := _find_named(board, "LbColHead%d" % i)
+		heads.append(str(h.text) if h != null else "(缺)")
+	_ok("② ★★表头三列 = 「剩余生命」「胜场」「总场次」(用户原词, 顺序不许乱)", heads == COL_WORDS, str(heads))
+	## ★任何尺寸的贴图都算(行内小图标那条过滤只认 8~24px, 一张 32px 的奖杯会从缝里漏过去)。
+	n_icons += _count_tex(board)
+	_ok("② 格里不画图标(用户「排行榜里的奖杯是？」)", n_icons == 0, "%d 个" % n_icons)
 	var bad_shape: Array = []
 	for r in data:
-		var d: Dictionary = r
-		var ni: int = (d["icons"] as Array).size()
-		var nn: int = (d["ints"] as Array).size()
-		## 4 个数字 = 名次 1 + 成绩 3。少一个就说明某一列没画出来(而不是"这行不是数据行")。
-		if ni != 3 or nn != 4:
-			bad_shape.append("y=%.0f 图标%d 数字%d" % [float(d["y"]), ni, nn])
-	_ok("② 每一行都是【3 个成绩图标 + 4 个数字(名次+三成绩)】", bad_shape.is_empty(),
+		if ((r as Dictionary)["ints"] as Array).size() != 4:
+			bad_shape.append("y=%.0f 数字%d" % [float((r as Dictionary)["y"]), ((r as Dictionary)["ints"] as Array).size()])
+	_ok("② 每一行都是【4 个数字(名次 + 三成绩)】", bad_shape.is_empty(),
 		"%d 行不合形状 %s" % [bad_shape.size(), str(bad_shape.slice(0, 3))])
-
-	var ref: Dictionary = data[0]
-	var ref_icons: Array = []
-	for ic in (ref["icons"] as Array):
-		ref_icons.append(str(((ic as Dictionary)["n"] as TextureRect).texture.resource_path))
-	_ok("② ★三列用的是三张【互不相同】的图(同一张 = 图标没有区分作用)",
-		ref_icons.size() == 3 and ref_icons[0] != ref_icons[1] \
-			and ref_icons[1] != ref_icons[2] and ref_icons[0] != ref_icons[2],
-		str(ref_icons))
-	var icon_drift: Array = []
+	## 列对齐: 每行第 N 个成绩数的**右沿**都 = 表头第 N 列名的右沿(≤1px)。
 	var x_drift: Array = []
+	var measured := 0
 	for r2 in data:
-		var d2: Dictionary = r2
-		var ics: Array = d2["icons"]
-		for i in range(mini(ics.size(), ref_icons.size())):
-			if str(((ics[i] as Dictionary)["n"] as TextureRect).texture.resource_path) != str(ref_icons[i]):
-				icon_drift.append("y=%.0f 第%d列" % [float(d2["y"]), i])
-			if absf(float((ics[i] as Dictionary)["x"]) - float(((ref["icons"] as Array)[i] as Dictionary)["x"])) > 1.0:
-				x_drift.append("y=%.0f 第%d列" % [float(d2["y"]), i])
-	_ok("② ★列顺序逐行一致: 每行第 N 列都是同一张图标", icon_drift.is_empty(),
-		str(icon_drift.slice(0, 3)))
-	_ok("② ★列对齐逐行一致: 每行第 N 列的 x 相同(列没错位)", x_drift.is_empty(),
-		str(x_drift.slice(0, 3)))
-	## 图标 ↔ 概念: 第 0 列奖杯(胜场) / 第 1 列红心(余命)。
-	## 顺序换了而数字没换, 单看 ③ 是抓不到的 —— 那时三个数还在原位, 只是配错了图。
-	for i in range(ICON_KEY.size()):
-		_ok("② 第 %d 列的图标是「%s」那一张" % [i, str(ICON_KEY[i])],
-			i < ref_icons.size() and str(ref_icons[i]).contains(str(ICON_KEY[i])),
-			"实得 %s" % (str(ref_icons[i]) if i < ref_icons.size() else "(缺)"))
+		var ii: Array = (r2 as Dictionary)["ints"]
+		for j in range(1, mini(4, ii.size())):
+			var h2 := _find_named(board, "LbColHead%d" % (j - 1))
+			if h2 == null:
+				continue
+			var cr: Rect2 = (((ii[j] as Dictionary)["n"]) as Label).get_global_rect()
+			measured += 1
+			if absf(cr.end.x - h2.get_global_rect().end.x) > 1.0:
+				x_drift.append("y=%.0f 第%d列 %.1f≠%.1f" % [float((r2 as Dictionary)["y"]), j - 1, cr.end.x,
+					h2.get_global_rect().end.x])
+	_ok("② ★列对齐逐行一致: 每个成绩数右沿 = 表头那一列右沿(≤1px)", x_drift.is_empty() and measured >= MIN_DATA_ROWS * 3,
+		"量了 %d 格 %s" % [measured, str(x_drift.slice(0, 3))])
 
-	## ── ③ 三列 ↔ 真数据: 列顺序真的是「胜 → 余命 → 横扫」 ─────────────
+	## ── ③ 三列 ↔ 真数据: 列顺序真的是「剩余生命 → 胜场 → 总场次」 ─────────────
 	## 「你」那一行认法: 屏上那枚「你」签(产品用它标自己, 不是测试自己插的标记)。
 	var self_y := -1.0
 	for r3 in data:
@@ -284,36 +287,30 @@ func _ready() -> void:
 		var got: Array = []
 		for j in range(1, 4):
 			got.append(int(str((((self_row["ints"] as Array)[j] as Dictionary)["n"] as Label).text)))
-		var want := [SELF_WINS, SELF_HEARTS, SELF_SWEEPS]
+		var want := [SELF_HEARTS, SELF_WINS, SELF_BATTLES]
 		for j2 in range(3):
-			_ok("③ ★第 %d 列画的就是真数据的第 %d 个量" % [j2, j2],
+			_ok("③ ★第 %d 列(%s)画的就是真数据的那个量" % [j2, COL_WORDS[j2]],
 				int(got[j2]) == int(want[j2]),
 				"屏上 %s ↔ 真值 %s" % [str(got), str(want)])
 	else:
 		_ok("③ ★你那一行取得到四个数", false, "实得 %s" % str(self_row.keys()))
 
-	## 整块榜按【胜 → 余命 → 横扫】字典序递减。把某一列换到前面去, 这条会断。
+	## 整块榜按【胜场 → 剩余生命】递减(横扫不上屏, 只在两者都相同时定先后 ⇒ 屏上允许相等)。
 	var order_bad: Array = []
 	var prev: Array = []
 	var ranks: Array = []
 	for r5 in data:
-		var ii: Array = (r5 as Dictionary)["ints"]
-		if ii.size() != 4:
+		var ii2: Array = (r5 as Dictionary)["ints"]
+		if ii2.size() != 4:
 			continue
-		ranks.append(int(str(((ii[0] as Dictionary)["n"] as Label).text)))
-		var cur: Array = []
-		for j3 in range(1, 4):
-			cur.append(int(str(((ii[j3] as Dictionary)["n"] as Label).text)))
+		ranks.append(int(str(((ii2[0] as Dictionary)["n"] as Label).text)))
+		var cur: Array = [int(str(((ii2[2] as Dictionary)["n"] as Label).text)),
+			int(str(((ii2[1] as Dictionary)["n"] as Label).text))]
 		if not prev.is_empty():
-			var worse := false
-			for j4 in range(3):
-				if int(cur[j4]) != int(prev[j4]):
-					worse = int(cur[j4]) < int(prev[j4])
-					break
-			if not worse:
-				order_bad.append("%s 不低于上一行 %s" % [str(cur), str(prev)])
+			if cur[0] > prev[0] or (cur[0] == prev[0] and cur[1] > prev[1]):
+				order_bad.append("%s 高于上一行 %s" % [str(cur), str(prev)])
 		prev = cur
-	_ok("③ 整块榜按【第0列 → 第1列 → 第2列】字典序递减", order_bad.is_empty(),
+	_ok("③ 整块榜按【胜场 → 剩余生命】字典序不增", order_bad.is_empty() and ranks.size() >= MIN_DATA_ROWS,
 		"%d 处 %s" % [order_bad.size(), str(order_bad.slice(0, 2))])
 	var rank_bad := false
 	for k in range(1, ranks.size()):
@@ -383,16 +380,6 @@ func _ready() -> void:
 			spliced.append(s)
 	_ok("⑥ ★成绩没有被拼回一条串(每个量该有自己的图标和数字)", spliced.is_empty(),
 		str(spliced.slice(0, 3)))
-	## ★★借用的素材不许回来。分母 = 屏上真的收到了三张图标路径(空数组也"不含 aspd")。
-	_ok("⑥ ★★分母: 取到了三列图标的真实路径", ref_icons.size() == 3, str(ref_icons))
-	for bi in BORROWED_ICONS:
-		var borrowed: Array = []
-		for p in ref_icons:
-			if str(p).contains(str(bi)):
-				borrowed.append(str(p))
-		_ok("⑥ ★★榜上不再借用「%s」(那是别的量的图标)" % str(bi),
-			borrowed.is_empty() and ref_icons.size() == 3, str(borrowed))
-
 	_finish(inst)
 
 

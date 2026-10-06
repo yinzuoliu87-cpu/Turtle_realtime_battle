@@ -1754,6 +1754,8 @@ func _make_team_frame(u: Dictionary) -> Control:
 ## ★超出视口时封顶到「顶 46 · 底 8」那个老范围, 内容靠 ScrollContainer 拖(小屏/宝箱龟)。
 func _fit_panel_height(panel: PanelContainer, vb: Control) -> void:
 	await battle.get_tree().process_frame
+	if not is_instance_valid(battle):
+		return
 	if not is_instance_valid(panel) or not is_instance_valid(vb):
 		return
 	var sb := panel.get_theme_stylebox("panel")

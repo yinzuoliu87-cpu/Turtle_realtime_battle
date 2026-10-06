@@ -1976,6 +1976,11 @@ static func _bucket_from(d: Dictionary, my_account: String, recv_at: int) -> Dic
 	for i in range(n):
 		names[i] = "?"
 		tags[i] = ""
+	## ★account_id 按种子落位(2026-10-06 排行榜头衔): 排行榜按账号把「冠军/四强…」贴到行上。
+	var accs: Array = []
+	accs.resize(n)
+	for i in range(n):
+		accs[i] = ""
 	var me := -1
 	for e in (d.get("entrants", []) as Array):
 		var ed: Dictionary = e if e is Dictionary else {}
@@ -1984,6 +1989,7 @@ static func _bucket_from(d: Dictionary, my_account: String, recv_at: int) -> Dic
 			continue
 		names[sd] = str(ed.get("name", "?"))
 		tags[sd] = _P2S.player_tag(str(ed.get("account_id", "")))
+		accs[sd] = str(ed.get("account_id", ""))
 		if my_account != "" and str(ed.get("account_id", "")) == my_account:
 			me = sd
 	## `done` 的值过一遍 int() —— JSON 解出来是浮点, 直接当 side 用会在比较时出错
@@ -2008,7 +2014,7 @@ static func _bucket_from(d: Dictionary, my_account: String, recv_at: int) -> Dic
 	##   没有它就只能再往返一次去问, 那会出现「查到桶号、桶却没了」的中间态
 	##   (服务端当初把这两件事并进一次往返, 正是为了避开它)。
 	return {"size": n, "round": rnd, "done": done,
-		"names": names, "tags": tags, "me": me, "closed": closed,
+		"names": names, "tags": tags, "accs": accs, "me": me, "closed": closed,
 		"left": left, "recv_at": recv_at, "bucket": int(d.get("bucket", -1)),
 		## ★E-B7 备战购物窗要的两个数。**都用服务端的** ——
 		##   `round_at` 是本轮开始时刻，`srv_now` 是收包那一刻服务端的钟。
@@ -2547,9 +2553,15 @@ static func _week_lb_row(d: Dictionary, my_account: String) -> Dictionary:
 	var tg := str(d.get("tag", ""))
 	if not _P2S.tag_valid(tg):
 		tg = _P2S.player_tag(acc)
+	## ★v2(20261006b) 多下发两个字段: `battles` 总场次 / `title` 头衔(standings.title, 现在恒空)。
+	##   v1 回包没有这两个键 ⇒ battles = -1(屏上画「—」, 不编 0)、title = ""。JSON null 一律当空。
+	var tt = d.get("title", "")
+	var bt = d.get("battles", null)
 	return {"rank": int(d.get("rank", 0)), "name": str(d.get("name", "?")),
 		"wins": int(d.get("wins", 0)), "hearts": int(d.get("hearts", 0)),
 		"sweeps": int(d.get("sweeps", 0)), "tag": tg, "account_id": acc,
+		"battles": int(bt) if bt != null else -1,
+		"title": str(tt) if tt != null else "",
 		"is_self": my_account != "" and acc == my_account}
 
 
@@ -2601,4 +2613,24 @@ static func fetch_week_leaderboard_async(week: int, limit: int, done: Callable) 
 			var acc := str(g2.account_id) if g2 != null else ""
 			return parse_week_leaderboard(bool(res.get("ok", false)), int(res.get("code", 0)),
 				str(res.get("body", "")), acc))
+	return true
+
+
+## 排行榜要的头衔来源: 某一周的 `finals_week_view`(与观赛同一条 RPC、同一个翻译 `parse_finals_week`)。
+## ★为什么不用 `fetch_finals_week_async`: 那条写进**全局缓存** `_finals_week`(对阵图在读),
+##   周一排行榜要的是**上周**那一份 —— 写进同一个缓存会让对阵图拿到上周的组。这里只回调、不落缓存。
+## 返回 false = 没配后端 / 周号不对, 一个请求都不发。`done.call(res)` 恰好一次(形状同 `parse_finals_week`)。
+static func fetch_finals_week_cb(week: int, done: Callable) -> bool:
+	if not enabled() or week <= 0:
+		return false
+	var n = _spawn()
+	if n == null:
+		return false
+	n._get_once("/rest/v1/rpc/finals_week_view", "POST", JSON.stringify({"p_week": week}), done,
+		func(res: Dictionary) -> Dictionary:
+			var g2 = _gs()
+			var acc := str(g2.account_id) if g2 != null else ""
+			## recv_at 只给倒计时用, 排行榜不倒计时 ⇒ 0(不在这里读系统钟)。
+			return parse_finals_week(bool(res.get("ok", false)), int(res.get("code", 0)),
+				str(res.get("body", "")), acc, 0))
 	return true

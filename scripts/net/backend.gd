@@ -711,6 +711,8 @@ static func leaderboard(pool: Dictionary, self_name: String, self_wins: int, sel
 				"wins": int(gd.get("season_wins", 0)),
 				"hearts": int(gd.get("hearts", 0)),
 				"sweeps": int(gd.get("season_sweeps", 0)),
+				## 总场次(排行榜「总场次」列, 2026-10-06)。老快照没这个字段 ⇒ -1, 屏上画「—」不编 0。
+				"battles": int(gd.get("season_total_battles", -1)),
 				"is_self": false,
 				"tag": profile_tag(gd.get("profile", {}) if gd.get("profile") is Dictionary else {})}
 			var pk := person_key(gd)
