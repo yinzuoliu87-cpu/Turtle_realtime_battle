@@ -638,6 +638,8 @@ scripts/scenes/InventoryScene.gd|tooltip_text|从糖果罐里开出来的临时�
 scripts/scenes/InventoryScene.gd|tooltip_text|全队装备已满 %d / %d · 升赛季等级可再装
 scripts/scenes/InventoryScene.gd|tooltip_text|点一下 → 底下出现「卸下」键
 scripts/scenes/InventoryScene.gd|tooltip_text|点一下换站位 —— 前排贴上去挥砍, 后排站远了射击
+scripts/scenes/LeaderboardScene.gd|lit|本机记录 · 不是实时排名
+scripts/scenes/LeaderboardScene.gd|lit|正在读取本周排行…
 scripts/scenes/LeaderboardScene.gd|lit|（对手还没读到 —— 下一场开始时去取一次）
 scripts/scenes/LeaderboardScene.gd|lit|（榜上暂时只有你 —— 打完一场, 对手就会上来）
 scripts/scenes/LeaderboardScene.gd|lit|（榜上暂时只有你）
