@@ -356,6 +356,9 @@ func _footer() -> void:
 		_pix_button(Rect2(Vector2(bx + _STRIP_BTN.x + 20.0, by), _STRIP_BTN), "测试时间", UISkin.PX_SLATE, _open_time_travel)
 
 	# 重置存档 — 破坏性 → 二次确认(`_ask_reset`)。
+	## ★开发工具: 用户 2026-10-07「正式版不会有重置存档」⇒ 与调试场同一道闸, 正式包不建。
+	if not dev:
+		return
 	## ★石板底 + 红字, 不用实心红: 这一颗是「很少点、点了会出事」的, 不该是全屏最响的一块
 	##   (实心红留给弹框里那颗「确认重置」—— 真正动手的那一下才用最响的颜色)。
 	var rb := _pix_button(Rect2(Vector2(1220.0 - _STRIP_BTN.x, by), _STRIP_BTN), "重置存档", UISkin.PX_SLATE, _ask_reset)

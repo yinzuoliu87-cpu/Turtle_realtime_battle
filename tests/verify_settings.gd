@@ -125,8 +125,9 @@ func _ready() -> void:
 	SettingsSceneScript.release_override = false
 	_ok("★★正式包条件下: 调试场键不建", dev_rel == null)
 	_ok("★★正式包条件下: 页面上也没有「调试场」「测试时间」字样", not ("调试场" in rel_t) and not ("测试时间" in rel_t), str(rel_t))
-	_ok("正式包条件下: 重置存档键照样在(只拿掉开发工具)",
-		sc_rel.find_child(SettingsSceneScript.RESET_BTN, true, false) is Button)
+	## 用户 2026-10-07「正式版不会有重置存档」⇒ 它也是开发工具。
+	_ok("★正式包条件下: 没有重置存档键",
+		sc_rel.find_child(SettingsSceneScript.RESET_BTN, true, false) == null)
 	sc_rel.queue_free()
 	await get_tree().process_frame
 
