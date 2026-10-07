@@ -482,7 +482,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 	if _refl_pct > 0.0 and not is_same(src, u) and src.get("alive", false) and not from_equip and dmg > 0:
 		var _refl = int(dmg * _refl_pct)
 		if _refl > 0:
-			_apply_damage_from(u, src, _refl, Color("#c9a36b"), 0.0, true, true)
+			_apply_damage_from(u, src, _refl, Color("#c9a36b"), 0.0, true, true, true)   # pre_crit=true: 反伤不暴击(用户 2026-10-07「改为不能吧」)
 	# 凤凰熔岩盾: 持盾窗口内对每段攻击反击 LAVA_RETALIATE×ATK 魔法 (from_equip守卫防循环)
 	# ★注释原写"5秒"是过期的 —— 真值是 PhoenixSystem.LAVA_SHIELD_SEC(4 秒·与护盾同步)。
 	if u["id"] == "phoenix" and battle._t < float(u.get("lava_shield_until", 0.0)) and not is_same(src, u) and src.get("alive", false) and not from_equip and dmg > 0:
