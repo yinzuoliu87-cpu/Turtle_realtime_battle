@@ -119,28 +119,29 @@ func _ready() -> void:
 		hole_bots == 30, "bot %d/30; 抽到的真快照: %s"
 		% [hole_bots, str(hole_wrong.slice(0, 3))])
 
-	## ── ② 同为 N 场的 7 份、上传先后不同 ⇒ 只从【最新的 POOL_PICK_TOP 份】里随机抽 ──
-	## ★2026-10-06 改(60 人实操台账 A1: 原来永远取第一份 ⇒ 同场次所有人打同一个对手)。
-	##   守三件事: ① 抽到的都在最新 5 份里(新鲜度仍优先) ② 不是永远同一份(真的在抽)
-	##   ③ 第 6、7 份(最旧的)一次都抽不到。
+	## ── ② 同为 N 场的 7 份、上传先后不同 ⇒ 从【全部】同场次里等概率抽 ──
+	## ★2026-10-08 改(用户「抽签范围扩大到全部同场次呢，不要排除快照吧」):
+	##   原来只抽最新 5 份 ⇒ 实打时每个场次都是同一批最近在玩的 3~4 个号。
+	##   守两件事: ① 七份每一份都抽得到(含最旧的两份) ② 大致等概率(没有哪份被饿死或独占)。
 	var pool2 := {K: {}}
 	for i2 in range(7):
 		Backend.pool_add(pool2, _ghost("r_%d" % i2, 12))   # 后传的 push_front ⇒ r_6 最新、r_0 最旧
 	_chk("② ★分母: 七份都在同一个场次桶里", ((pool2[K] as Dictionary)["12"] as Array).size() == 7)
-	var newest: Array = ["r_6", "r_5", "r_4", "r_3", "r_2"]
 	var seen := {}
-	var outside: Array = []
 	var rr := RandomNumberGenerator.new()
 	rr.seed = 12345
-	for _k in range(300):
+	for _k in range(700):
 		var got2 = Backend.pool_find_battles(pool2, 12, [], rr)
 		var gid2 := str(got2.get("ghost_id", "")) if got2 != null else "null"
-		seen[gid2] = true
-		if not newest.has(gid2):
-			outside.append(gid2)
-	_chk("② ★抽到的全在最新 %d 份里(新鲜度仍优先)" % int(Backend.POOL_PICK_TOP), outside.is_empty(), str(outside.slice(0, 5)))
-	_chk("② ★★不是永远同一份: 300 次抽到 ≥ 4 个不同对手", seen.size() >= 4, str(seen.keys()))
-	_chk("② ★最旧的两份一次都没抽到", not seen.has("r_0") and not seen.has("r_1"), str(seen.keys()))
+		seen[gid2] = int(seen.get(gid2, 0)) + 1
+	_chk("② ★★七份全都抽得到(全部同场次, 不只最新几份)", seen.size() == 7 and not seen.has("null"), str(seen))
+	_chk("② ★最旧的两份也抽得到", seen.has("r_0") and seen.has("r_1"), str(seen))
+	var lo := 700
+	var hi := 0
+	for k in seen.keys():
+		lo = mini(lo, int(seen[k]))
+		hi = maxi(hi, int(seen[k]))
+	_chk("② ★大致等概率: 700 次里每份都在 50~150 次之间(期望 100)", lo >= 50 and hi <= 150, "min=%d max=%d" % [lo, hi])
 
 	## ── ②b 桶键与快照自报的场次不符时, 以【快照自己的账】为准 ──
 	## ★为什么要这条: 远端并入 / 手造池子都可能把一条 7 场次的快照塞进 "5" 桶。

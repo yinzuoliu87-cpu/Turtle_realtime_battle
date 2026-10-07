@@ -271,9 +271,6 @@ static func _is_self_ghost(g) -> bool:
 ##   **桶本身就是上传倒序** ⇒ 桶序里第一个命中的就是最新那份(D10: 新鲜度是排序不是过滤)。
 ##   ⇒ 所以这里**不随机**, 直接取第一个。`_rng` 留在签名里是给"同场次多人时要不要打散"
 ##   这条未决点用的; 现在按 D10 取最新, 一个字都不随机。
-## 同场次里从最新的几份快照中随机抽(见 pool_find_battles 头注, 台账 A1)。
-const POOL_PICK_TOP := 5
-
 static func pool_find_battles(pool: Dictionary, battles: int, exclude_ids: Array,
 		rng: RandomNumberGenerator):
 	if battles < 0:
@@ -287,6 +284,11 @@ static func pool_find_battles(pool: Dictionary, battles: int, exclude_ids: Array
 	##   (第 2~14 场 100% 是同一个玩家), 一份快照决定整批输赢, 模拟号之间一次都没碰上。
 	##   用户 2026-10-06 同意(「你可以开始了」, 对「从最新的 5 份里随机抽一份」那条提议)。
 	##   ★仍是 D5「总场次完全相同」, 仍按上传倒序取前 N 份 = 新鲜度照样优先(D10 的本意), 只是不再一人独占。
+	## ★★★2026-10-08 再改: 从【全部】同场次快照里等概率抽, 不再只抽最新 5 份, 也不加「最近打过就排除」。
+	##   用户实打到后面「只匹配到固定 3，4 个对手」—— 生产库每个场次有 23~71 个不同的人,
+	##   但每格最新 5 份几乎都是同一批最近在玩的号(气场觉醒龟王 / 熔岩之心龟王 / 石头教头…)。
+	##   用户原话:「抽签范围扩大到全部同场次呢，不要排除快照吧」。
+	##   ⇒ D10 的「新鲜度优先」在选靶这一步不再生效(拉取仍按上传倒序, 只决定拉到哪些)。
 	var cands: Array = []
 	for g in buckets[b]:
 		if not (g is Dictionary):
@@ -306,9 +308,7 @@ static func pool_find_battles(pool: Dictionary, battles: int, exclude_ids: Array
 			continue                  # ★以快照自己的账为准, 不信桶的键名
 		if exclude_ids.has(str((g as Dictionary).get("ghost_id", ""))):
 			continue
-		cands.append(g)               # 桶序 = 上传倒序 ⇒ 越靠前越新(D10)
-		if cands.size() >= POOL_PICK_TOP:
-			break
+		cands.append(g)
 	if cands.is_empty():
 		return null
 	if rng == null or cands.size() == 1:
