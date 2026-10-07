@@ -6868,15 +6868,15 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 				u["_ai_dodge_cd"] = _t + 2.5
 				u["cyber_ai_charge"] = int(u["cyber_ai_charge"]) - 1
 				_cyber_sys._cyber_smart_dash(u)
-	# --- 石头坚壁: 每2.5秒永久+开局护甲/6, 上限=开局护甲×2(+100%); 反伤随护甲涨 ---
+	# --- 石头坚壁: 每2秒永久+开局护甲×10%, 额外至多+100%(用户 2026-10-07); 反伤随护甲涨 ---
 	elif u["id"] == "stone":
 		if not u.has("stone_init_def"):
 			u["stone_init_def"] = u["base_def"]            # 记开局护甲(含等级缩放)
 		if u["_ptimer"] >= StoneSystem.BULWARK_IV:
 			u["_ptimer"] = 0.0
-			var _cap: float = u["stone_init_def"] * StoneSystem.BULWARK_CAP_MULT
+			var _cap: float = u["stone_init_def"] * (1.0 + StoneSystem.BULWARK_CAP_PCT)
 			if u["base_def"] < _cap:
-				u["base_def"] = minf(_cap, u["base_def"] + u["stone_init_def"] / StoneSystem.BULWARK_GAIN_DIV)
+				u["base_def"] = minf(_cap, u["base_def"] + u["stone_init_def"] * StoneSystem.BULWARK_GAIN_PCT)
 				_recalc_stats(u)
 				_skill_ring(u["pos"], Color(0.79, 0.64, 0.42, 0.4), 42.0)   # 视觉: 硬化贴地褐环 (不飘名字文字)
 	# --- 竹叶生长: 每N秒充能 → 永久+ATK/HP ---

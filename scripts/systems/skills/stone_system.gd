@@ -7,12 +7,23 @@ extends RefCounted
 ## 【岩石护盾】全队盾 + 自身双抗, 两者时长不同。
 ## 【坚壁(被动)】周期性永久涨护甲(有上限) + 受击按双抗反弹。
 ## ★这些原来散在【两个别的文件】: 涨护甲在主场景 `_tick_periodic_passive`, 反伤在 battle_damage。
-const BULWARK_IV := 2.5          # 每几秒涨一次
-const BULWARK_GAIN_DIV := 6.0    # 每次涨 = 开局护甲 ÷ 它
-const BULWARK_CAP_MULT := 2.0    # 累积上限 = 开局护甲 ×
-const REFLECT_BASE := 0.05       # 反弹基础比例
-const REFLECT_PER_DEF := 0.01    # 每点护甲再 +
-const REFLECT_MR_WEIGHT := 0.5   # 魔抗按此权重折算成护甲
+const BULWARK_IV := 2.0          # 每几秒涨一次(用户 2026-10-07: 每 2 秒)
+const BULWARK_GAIN_PCT := 0.10   # 每次涨 = 开局护甲 × 此值(额外 10%)
+const BULWARK_CAP_PCT := 1.0     # 额外护甲上限 = 开局护甲 × 此值(至多 +100%)
+const REFLECT_BASE := 0.02       # 反弹基础比例(用户 2026-10-07: 2%)
+const REFLECT_PER_DEF := 0.001   # 每点护甲再 +0.1%
+const REFLECT_PER_MR := 0.001    # 每点魔抗再 +0.1%
+
+
+## 这个单位的【反伤】属性 = 通用反伤(装备 / 龟壳觉醒…) + 石头龟坚壁那一份。
+## ★用户 2026-10-07「这个是属于反伤的属性了」: 坚壁的反弹就是反伤属性的一部分 ——
+##   结算(battle_damage)与信息面板「反伤」一栏都读这一个函数, 面板显示的就是实际反弹比例。
+##   坚壁那一份按【当前】护甲 / 魔抗算(护甲随坚壁涨 ⇒ 反伤跟着涨)。
+static func reflect_of(u: Dictionary) -> float:
+	var r: float = float(u.get("reflect", 0.0))
+	if str(u.get("id", "")) == "stone":
+		r += REFLECT_BASE + float(u.get("def", 0.0)) * REFLECT_PER_DEF + float(u.get("mr", 0.0)) * REFLECT_PER_MR
+	return r
 ## 【磐石之躯】岩层被动 + 横排冲击波。
 const ROCK_LAYER_CAP := 30       # 岩层上限
 const ROCK_DR_PER_LAYER := 0.01  # 每层伤害减免

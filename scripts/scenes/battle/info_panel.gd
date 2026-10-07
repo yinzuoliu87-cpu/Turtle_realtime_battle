@@ -566,7 +566,7 @@ func _info_stat_rows_minor(u: Dictionary) -> Array:
 		[sic + "echarge-icon.png",   "龟能充能 " + _pct_mult(1.0 + float(u.get("echarge_perm", 0.0))), Color("#ffce4d")],
 		[sic + "armorpen-icon.png",  "护甲穿透 %d" % int(u.get("armor_pen", 0.0)),                 Color("#ffc48a")],
 		[sic + "magicpen-icon.png",  "魔法穿透 %d" % int(u.get("magic_pen", 0.0)),                 Color("#c9a0ff")],
-		[sic + "reflect-icon.png",   "反伤 " + _pct(float(u.get("reflect", 0.0))),                 Color("#ff9d8a")],
+		[sic + "reflect-icon.png",   "反伤 " + _pct(StoneSystem.reflect_of(u)),                 Color("#ff9d8a")],
 		["", "韧性 " + _pct(float(u.get("tenacity", 0.0))),                        Color("#d6e4f0")],
 	]
 
@@ -1736,7 +1736,7 @@ func _info_stat_tiles(u: Dictionary) -> Array:
 		[sic + "healamp-icon.png", "治疗强度", _pct_mult(1.0 + float(u.get("heal_amp", 0.0))), W, "治疗效果的倍率。"],
 		[sic + "shieldamp-icon.png", "护盾强度", _pct_mult(1.0 + float(u.get("shield_amp", 0.0))), W, "护盾效果的倍率。"],
 		[sic + "echarge-icon.png", "龟能充能", _pct_mult(1.0 + float(u.get("echarge_perm", 0.0))), W, "龟能积攒速度倍率。龟能满时释放技能。"],
-		[sic + "reflect-icon.png", "反伤", _pct(float(u.get("reflect", 0.0))), W if float(u.get("reflect", 0.0)) > 0.0005 else dim, "受到伤害时，按比例反弹给攻击者。"],
+		[sic + "reflect-icon.png", "反伤", _pct(StoneSystem.reflect_of(u)), W if StoneSystem.reflect_of(u) > 0.0005 else dim, "受到伤害时，按比例反弹给攻击者。"],
 		[sic + "tenacity-icon.png", "韧性", _pct(float(u.get("tenacity", 0.0))), W if float(u.get("tenacity", 0.0)) > 0.0005 else dim, "缩短受到眩晕、减速等控制效果的持续时间。"],
 	]
 

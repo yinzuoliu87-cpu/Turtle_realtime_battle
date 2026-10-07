@@ -115,8 +115,8 @@
       "name": "坚壁",
       "capTurns": 6,
       "maxDefInitPct": 100,
-      "brief": "每 {C:StoneSystem.BULWARK_IV} 秒永久获得 {D:DEF/StoneSystem.BULWARK_GAIN_DIV} 护甲（= 开局护甲的 1/{C:StoneSystem.BULWARK_GAIN_DIV}），最多再累积 {D:DEF}（达到开局护甲的 {C:StoneSystem.BULWARK_CAP_MULT} 倍）。\n此外，石头龟每次受到伤害时都会向攻击者反弹 {N:StoneSystem.REFLECT_BASE*100+(DEF+MR*StoneSystem.REFLECT_MR_WEIGHT)*StoneSystem.REFLECT_PER_DEF*100}% 的伤害。",
-      "desc": "每 {C:StoneSystem.BULWARK_IV} 秒永久获得 {D:DEF/StoneSystem.BULWARK_GAIN_DIV} 护甲（= 开局护甲 ÷ {C:StoneSystem.BULWARK_GAIN_DIV}），最多再累积 {D:DEF} 护甲，即<span class=\"val-def\">上限为开局护甲的 {C:StoneSystem.BULWARK_CAP_MULT} 倍</span>。\n受到伤害时将反弹（{C:StoneSystem.REFLECT_BASE%}% + {C:StoneSystem.REFLECT_PER_DEF%}%×护甲({DEF}) + {C:StoneSystem.REFLECT_MR_WEIGHT%}%×魔抗({MR}) = {N:StoneSystem.REFLECT_BASE*100+(DEF+MR*StoneSystem.REFLECT_MR_WEIGHT)*StoneSystem.REFLECT_PER_DEF*100}%）伤害给攻击者。"
+      "brief": "每 {C:StoneSystem.BULWARK_IV} 秒获得开局护甲 {C:StoneSystem.BULWARK_GAIN_PCT%}% 的额外护甲（{D:DEF*StoneSystem.BULWARK_GAIN_PCT}），至多获得 {C:StoneSystem.BULWARK_CAP_PCT%}% 额外护甲（{D:DEF*StoneSystem.BULWARK_CAP_PCT}）。\n受到伤害时向攻击者反弹 {N:StoneSystem.REFLECT_BASE*100+DEF*StoneSystem.REFLECT_PER_DEF*100+MR*StoneSystem.REFLECT_PER_MR*100}% 的伤害。",
+      "desc": "每 {C:StoneSystem.BULWARK_IV} 秒获得开局护甲 {C:StoneSystem.BULWARK_GAIN_PCT%}% 的额外护甲（{D:DEF*StoneSystem.BULWARK_GAIN_PCT}），至多获得 {C:StoneSystem.BULWARK_CAP_PCT%}% 额外护甲（{D:DEF*StoneSystem.BULWARK_CAP_PCT}）。\n受到伤害时将反弹（{C:StoneSystem.REFLECT_BASE%}% + {C:StoneSystem.REFLECT_PER_DEF%}%×护甲({DEF}) + {C:StoneSystem.REFLECT_PER_MR%}%×魔抗({MR}) = {N:StoneSystem.REFLECT_BASE*100+DEF*StoneSystem.REFLECT_PER_DEF*100+MR*StoneSystem.REFLECT_PER_MR*100}%）伤害给攻击者。"
     },
     "skillPool": [
       {
