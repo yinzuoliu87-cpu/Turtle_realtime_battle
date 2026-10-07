@@ -49,7 +49,7 @@ const VIEWS := [
 const SCALING_SCREENS := ["TeamSelect", "Codex"]
 
 ## 🛠 调试场键只在 debug 构建出现(正式包没有), 不卡它的热区。
-const TAP_EXEMPT := ["🛠 调试场"]
+const TAP_EXEMPT := ["调试场"]
 
 const SCREENS := ["MainMenu", "Shop", "Inventory", "Codex", "Leaderboard",
 	"Record", "Settings", "TrainerConfig", "Matchmaking", "TeamSelect"]

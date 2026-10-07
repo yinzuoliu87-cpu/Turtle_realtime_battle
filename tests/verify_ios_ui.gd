@@ -369,7 +369,8 @@ func _ready() -> void:
 		var nd = q.pop_back()
 		for ch in nd.get_children():
 			q.append(ch)
-			if ch is Label and str((ch as Label).text).contains("调试场"):
+			## ★2026-10-07 重排后是真 Button(像素按钮), 字在 Button.text 上 —— Label/Button 都认。
+			if (ch is Label and str((ch as Label).text).contains("调试场")) 					or (ch is Button and str((ch as Button).text).contains("调试场")):
 				dbg_hit = true
 				break
 	_ok("设置页有🛠调试场入口(debug构建)", dbg_hit)

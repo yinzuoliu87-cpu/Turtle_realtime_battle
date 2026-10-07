@@ -9,29 +9,58 @@ var _top_bar = null
 const W := 1280.0
 const H := 720.0
 
-## ── 竖向流水 (2026-09-29 台账 ④) ──────────────────────────────────────
-## ★★为什么不是一串写死的 y: 原来每一块自己写死(账号按钮 192 / 音乐 220 / 音效 330 /
-##   全屏 410 / 画质 490 / 调试场 560 / 重置 580~640)。账号行有四行高 ⇒ 那两颗按钮
-##   (实测 y 177..209)整个落进音乐条那条 **48px 拖动带**(196..244)里, 重叠 13px ——
-##   而拖动带是后建的、画在按钮上面 ⇒ **点按钮下沿会变成拖音量**。
-##   写死的坐标之间没有任何东西保证它们不相撞, 而账号行的行数还是**随状态变的**
-##   (连接中 / 未绑定 / 已绑定 / 存档冲突 → 一到四行)。
-## ★★这个 bug 只有**真玩家**碰得到: 门禁给每个测试 `TURTLE_SUPABASE=" "` ⇒
-##   `_acct_on()` 恒假 ⇒ 账号那四行**一次都没建出来**, 所以从 2026-09-22 起
-##   没有任何判据看见过它(memory `fb-gate-subject-never-constructed`)。
-##   判据 SETTINGS_NO_OVERLAP(`tests/verify_ios_ui.gd`)是拿 `acct_override = 1`
-##   把这一屏造出来再穷举两两重叠的。
-## ⇒ 现在每一块从**上一块的下沿**算出来: 账号行多一句话, 下面整叠自动让位。
-const _FLOW_TOP := 96.0        # TopBar 高 87, 往下留 9
-const _GAP_LINE := 4.0         # 同一块里两行之间
-const _GAP_BLOCK := 14.0       # 块与块之间
-const _SLD_LABEL_GAP := 30.0   # 名牌顶沿到槽中心的距离(原来写死在 _slider 里的那个 30)
+## ── 版式: 两块框并排 + 底部一条 (2026-10-07 设置页重排) ─────────────────
+## 用户 2026-10-07「设置页排版做一下吧」。方案书 `docs/plans/20261007-设置页重排.md`,
+##   参考 `docs/plans/ref/20261007-设置页参考/`(README 写了每张取什么)。
+## 原来是一整列居中: 账号四行 + 两条音量 + 四块循环木牌(「画面『窗口』」点一下换字),
+##   ① 选项藏在循环里(不点不知道有几个值) ② 「重置所有存档」与普通选项同一列同一种牌
+##   ③ 左右各空 400px。参考里五款的共同做法:
+##   · 账号单独一块(名字 / 玩家 ID / 绑定状态 / 操作)—— Mirrorverse 账号页签、Adorable Home 的 ID+云存档提示
+##   · 设置分组 + 小标题, 每项一行「左名 · 中控件 · 右值」—— Mirrorverse SOUND/OPTIONS、Bomberman
+##   · 二选一用分段钮(ON/OFF 并排)而不是循环按钮 —— Brawl Stars
+##   · 版本号 / 玩家 ID 底部小字, 危险操作放最下且与普通选项拉开 —— Angry Birds Journey
+## ★坐标都在 1280×720 设计框里, 最后 `UIFrame.attach` 把整框居中到真实视口。
+## ★★竖向不再是「从上一块下沿往下流」: 两块框各自高度固定, 账号框里行数随状态变的那段
+##   (状态行可能折成两行)由 `_account_panel` 自己量字宽算出来, 按钮钉在框底往上排 ——
+##   状态再多一行也只会往按钮那侧挤, 不会把整页往下推(旧版 2026-09-29 那条「按钮落进拖动带」
+##   的形状在这里不成立: 按钮与滑条分在两块框里, 横向不相交)。
+const _TOP := 104.0            # 两块框的顶(TopBar 高 87, 往下留 17)
+const _BOT := 626.0            # 两块框的底
+const _L_X := 60.0             # 左框「账号」
+const _L_W := 420.0
+const _R_X := 500.0            # 右框「声音 / 画面」
+const _R_W := 720.0
+const _R_X_SOLO := 280.0       # 没有账号框时(没配后端)右框居中
+const _PAD := 34.0             # 框内左右边距 = `SettleScreen.frame_style()` 的 content_margin
+const _HEAD_DY := 26.0         # 框顶到小标题顶
+const _ROW_H := 56.0           # 账号按钮 / 分段钮的高
+const _BTN_GAP := 12.0         # 账号按钮之间
+## 分段钮每一段的宽。★≥200 不是拍的: 本仓触摸线判据(`verify_ui_consistency` TOUCH_MIN)是
+##   「短边 ≥81 **或** 长边 ≥200」, 56 高的钮只能靠长边过线。
+const _SEG_W := 200.0
+const _SEG_GAP := 6.0
+const _LBL_COL := 120.0        # 右框「左名」那一栏的宽
+const _SLD_W := 406.0          # 音量槽宽 = 两段分段钮 + 中缝, 两种控件右沿对齐
 const _SLD_HIT_H := 48.0       # 滑条的透明触摸带高(26pt, 见 _slider 末尾那段)
-const _ACCT_BTN_H := 34.0      # _small_button 的占位高(设的是 30, 九宫格内边距顶到 32, 留 2)
-const _BTN_H := 50.0           # _text_button 的高(见那个函数里的 Vector2(260, 50))
+const _STRIP_CY := 672.0       # 底部一条的中线
+const _STRIP_BTN := Vector2(200.0, 48.0)   # 底部小按钮(长边 200 过触摸线, 理由同 `_SEG_W`)
 
-var _perf_btn: Label = null
-var _full_btn: Label = null   # 全屏按钮文字 (切换后要同步, 原来没接住 → 切了还写"全屏")
+## 【门禁按名字找的节点】—— 常量在产品这边, 门禁 preload 来读(不抄字符串, memory `fb-hand-rolled-copies-drift`)。
+const SEG_DISPLAY := "SegDisplay"      # + "Window" / "Full"
+const SEG_QUALITY := "SegQuality"      # + "Low" / "High"
+const RESET_BTN := "ResetSave"
+const DEV_ARENA_BTN := "DevArena"
+const FOOT_LABEL := "FootInfo"
+
+## 【门禁注入点】true = 当作正式包(release 模板)来建 —— 无头门禁跑不出 release 模板,
+##   而「调试场不许漏给玩家」这条要量**真建出来的页面**, 不是量源码里有没有那句 gate。
+## ★默认 false ⇒ 玩家路径一字不动(与 `acct_override` 同一个模式)。
+static var release_override: bool = false
+
+const SettleScreenS := preload("res://scripts/scenes/battle/settle_screen.gd")
+
+var _seg_display: Array = []
+var _seg_quality: Array = []
 
 
 func _ready() -> void:
@@ -55,81 +84,21 @@ func _ready() -> void:
 		"on_back": _on_back,
 	})
 
-	# ── 从这里开始走【竖向流水】(见文件头 `_FLOW_TOP` 那段) ──
-	var y := _FLOW_TOP
+	# ── 左框「账号」。没配后端 = 有意关掉, 整块不建(见 `_account_panel` 头注) ──
+	var acct := _acct_on()
+	if acct:
+		_account_panel(_L_X, _L_W)
+	var rx := _R_X if acct else _R_X_SOLO
+	_settings_panel(rx, _R_W)
 
-	# 账号行 — 标题栏与第一个滑条之间。行数随状态变(一到四行), 所以它自己报下沿
-	y = _account_row(y)
-	y += _GAP_BLOCK
-
-	# BGM 滑条 — 拖动实时生效; 写盘只在松手时一次 (原来每帧 save() = 拖一下写几十次盘)
-	## ★★2026-09-28 文案去"网页/开发者味": 原来是「🎵 BGM 音量」「🔊 音效音量」。
-	##   ① **BGM 是开发者黑话** —— 玩家的词是「音乐」。项目里给玩家看的字从不写英文缩写
-	##     (「深海币」「出战统领」「糖果罐」), 只有这一处漏了。
-	##   ② 「音量」两个字是多余的: 右边就写着 45%, 而它前面是一根音量条 ——
-	##     「标签: 值」那套是网页表单的读法, 条自己就说清了它是什么。
-	## ★★2026-09-28 去掉 🎵/🔊 两个 emoji —— 它们是**纯装饰**:
-	##   每条滑条前面写着「音乐」「音效」、右边就写着百分比, 信息一点不少。
-	##   而它们的字形来自回退链第三级 NotoEmoji(矢量描边), 与整屏 3~4px 像素笔触
-	##   **同屏两套画法** —— 用户 2026-09-27 点名的「ai 味/网页味」就是这一类。
-	##   仓库里没有音乐/音效的像素图标(已 grep: music/sound/audio 全无),
-	##   而素材铁律是「不拿语义不符的图顶替」 ⇒ 先只留字, 图标已登进缺口表。
-	y = _slider_row(y, "音乐", GameState.bgm_volume,
-		func(v): GameState.bgm_volume = v; Audio.bgm_volume = v; Audio.apply_bgm_volume(),   # ★补: 原来只设变量没调 apply → 拖动对正在播的BGM无效(用户2026-07-19"音量键根本没效果")
-		func(): GameState.save())
-	y += _GAP_BLOCK
-	# SFX 滑条 — 松手才试听 + 写盘 (原来拖动中每帧都播音效)
-	y = _slider_row(y, "音效", GameState.sfx_volume,
-		func(v): GameState.sfx_volume = v; Audio.sfx_volume = v,
-		func(): Audio.play_sfx("hit-physical", 1.0); GameState.save())
-	y += _GAP_BLOCK
-
-	# 全屏 — PoC 用 ⛶(U+26F6) 做图标, 但打包字体链无此字形(web/linux 豆腐块)且无等义替代 → 只留文字
-	_full_btn = _text_button(W / 2.0, y + _BTN_H / 2.0, _fullscreen_label(), _toggle_fullscreen)
-	y += _BTN_H + _GAP_BLOCK
-
-	# 低画质模式 — 现在是【真开关】: 关 MSAA + 3D 渲染分辨率 ×0.75 + 停菜单背景漂移; 持久化到存档.
-	_perf_btn = _text_button(W / 2.0, y + _BTN_H / 2.0, _perf_label(), _toggle_perf)
-	y += _BTN_H + _GAP_BLOCK
-
-	# 🛠 调试场 — 用户 2026-09-17:「调试场可以塞到设置里, 正式上线的不会要调试场」。
-	#   原来它钉在主菜单中间那条空档上, 而那块地现在给了「本周赛程条」。
-	#   ★gate 原样搬过来: OS.is_debug_build() 在导出 release 模板下为 false ⇒ 正式包玩家看不到。
-	#   门禁 verify_menu 也跟着搬(它验的是"调试入口不泄漏给玩家", 不是"这行代码在哪个文件")。
-	#   ★正式包里没这个键 ⇒ 下面的重置自动往上收, 不留空洞(原来这里是 580/640 两个写死的数)。
-	var dev := OS.is_debug_build() or OS.has_environment("DEVTOOLS")
-	## 「测试时间」(开发包时间穿越, 2026-10-04) —— 与调试场并排一行, 不加竖向高度
-	##   (加一行会把重置键往下推, 账号行四行时撞底部提示)。★判据比调试场更严:
-	##   `_P2C.time_travel_allowed()` 不认 DEVTOOLS(见 phase2_config 那段头注)。
-	var tt := _P2C.time_travel_allowed()
-	if dev:
-		_text_button(W / 2.0 - (140.0 if tt else 0.0), y + _BTN_H / 2.0, "🛠 调试场", _open_debug_arena)
-	if tt:
-		_text_button(W / 2.0 + (140.0 if dev else 0.0), y + _BTN_H / 2.0, "测试时间", _open_time_travel)
-	if dev or tt:
-		y += _BTN_H + _GAP_BLOCK
-
-	# 重置存档 — ⚠ 破坏性 → 二次确认
-	_text_button(W / 2.0, y + _BTN_H / 2.0, "⚠ 重置所有存档", _ask_reset)
-
-	# 底部提示 @ (W/2, H-40)
-	## ★★2026-09-28 这一行原来是 **11px 的 #888 灰小字**「设置自动保存」——
-	##   网页页脚的标准长相(最小号、纯灰、贴底居中), 而且说的是**系统在做什么**,
-	##   不是玩家关心的事。改成 13px 的暖羊皮色 + 描边(和这一屏其它字同一套),
-	##   话也换成玩家听得懂的: 他想知道的是「我还要不要点保存」。
-	##   (PoC 字面是"到 localStorage" —— 浏览器术语, 那一版就已经去掉了后缀。)
-	## ★2026-10-06 删掉底部「调完就记住了，下次进来还是这样」: 口语, 且压在「重置所有存档」按钮下边框上(60 人实操台账 M2)。
-
+	# ── 底部一条: 左 版本 · 玩家 ID(小字) / 右 开发工具 + 重置存档 ──
+	_footer()
 
 	# ★UI 双端适配(用户2026-08-01「有些画面都没有居中」): 把内容装进 1280×720 设计框并居中于真实视口。
-	#   本屏原先直接按设计坐标画在视口(0,0) → 21:9 上内容整体坐在左边 200px(审计器实测)。
 	#   ★必须放在 _ready 最后 —— UIFrame 收编的是【已经建出来的】子节点。
 	#   (异步晚建的节点由 UIFrame._process 的孤儿收编兜住。)
-	## ★★2026-09-18 这行差点丢了: 上面那句「## ESC 返回主菜单」本是 `_unhandled_input` 的文档注释,
-	##   却写在了 _ready 体内的这行【之前】。我把调试场的 const+func 插在那条注释前面, 于是
-	##   `const` 把 _ready 从中间截断, 这行落进了 _open_debug_arena 的函数体 ——
-	##   设置页的居中适配变成"只有点调试场时才执行"。verify_ui_layout ② 当场红(偏离 185px)。
-	##   ⇒ 往函数之间插代码前, 先确认插入点【不在某个函数体内】(CLAUDE.md §3.7 同族)。
+	## ★★2026-09-18 这行差点丢了一次: 往函数之间插代码前, 先确认插入点【不在某个函数体内】
+	##   (CLAUDE.md §3.7 同族)。verify_ui_layout ② 守着(偏离 >0 就红)。
 	UIFrame.attach(self)
 
 	## ★★绑定屏: 页面建完再盖上去。放 `_ready` 末尾而不是开头 ——
@@ -204,92 +173,311 @@ func _acct_mail() -> String:
 	return "" if acct_override == 1 else str(GameState.account_email)
 
 
-## 返回这一块的**下沿** —— 行数随状态变(连接中/未绑定/已绑定/存档冲突 → 一到四行),
-## 所以下面那一叠的位置只能由它报出来, 不能各自写死(见文件头 `_FLOW_TOP` 那段)。
-func _account_row(top: float) -> float:
-	if not _acct_on():
-		return top                               # 没配后端 = 有意关掉, 什么都不显示
+## 左框「账号」。状态分支(连接中 / 登录失效 / 存档冲突 / 已绑定 / 未绑定)与旧账号行逐条相同,
+##   只换了排法: 名字(大) → 玩家 ID → 状态行(未绑定用警示橙) → 一行说明 → 按钮钉在框底往上排。
+## ★★这一族**必须有名字**(`ACCT_ROW_PREFIX`)。
+##   由来: `verify_account` ⑤ 守的是「没配后端 ⇒ 整行不显示」, 但它原来的实现是
+##   `not _find_text(s3, "账号：")` —— **拿字面量当尺子**, 去掉冒号的同一刻就恒真了
+##   (memory `fb-gate-tautological-when-it-spans-a-frame` 同族)。
+##   ⇒ 判据平移到**行为**: 这一族节点在不在树上。文案以后怎么改都不影响它。
+##   框本身也归这一族(`AcctRowPanel`): 没配后端时连框都不该有。
+func _account_panel(x: float, w: float) -> void:
 	var aid := str(GameState.account_id)
 	var mail := _acct_mail()
-	var head := ""
-	var sub := ""
+	var name_txt := str(_BE_ID.player_display_name())
+	var status := ""
+	var status_col := "#8fa6bd"
+	var note := ""
+	## 哪颗按钮是主操作(金色)。"" = 没有主操作, 三颗都是石板色。
+	var primary := ""
 	if aid == "":
 		## 配了后端但还没拿到身份(刚开机还在登, 或登不上)。不说"失败" —— 说不准。
-		head = "账号 · 连接中…"
-		sub = ""
+		status = "连接中…"
+		note = ""
 	elif _SB_ACC.session_lost():
 		## D-3c: 绑了邮箱的号登录失效了。**不会**自动换成新匿名号(那是静默换身份),
-		##   只能用邮箱把同一个号取回来 —— 所以这里要明说该点哪个按钮。
-		head = "账号 · %s" % mail
-		sub = "登录已失效，请重新登录"
+		##   只能用邮箱把同一个号取回来 —— 所以这里要明说该点哪个按钮, 并把它染成主操作。
+		status = "登录已失效，请重新登录"
+		status_col = "#ff8a94"
+		note = "邮箱 %s" % mail
+		primary = "BtnRecover"
 	elif _SB_ACC.save_conflict():
 		## D-8: 两台设备交替玩 ⇒ 云端版本和这台对不上。**不自动选**, 等玩家二选一。
-		head = "账号 · %s" % mail
-		sub = "云端存档与本地存档不一致"
+		status = "云端存档与本地存档不一致"
+		status_col = "#ffb454"
+		note = "邮箱 %s" % mail
+		primary = "BtnConflict"
 	elif mail != "":
 		## ★D-8 之后这句才是真的: 绑了邮箱的号, 进度会同步到云端(verify_save_sync ⑦ 守着)。
-		head = "账号 · %s" % mail
-		sub = "已绑定 · 可在其他设备登录恢复进度"
+		status = "已绑定 · %s" % mail
+		status_col = "#7fe0b0"
+		note = "云端同步已开启 · 可在其他设备登录恢复进度"
 	else:
-		## ★显示玩家自己的名字(与主菜单 / 排行榜同一个出处)。原来写「游客 + uuid 前 8 位」——
-		##   主菜单叫 lisa、设置页却叫「游客 52763f95」, 像两个人; 报问题对号用下面那行玩家 ID。
-		head = str(_BE_ID.player_display_name())
-		sub = "未绑定邮箱 · 更换设备后无法恢复进度"
-	## ★★2026-09-28 这一族**必须有名字**(`ACCT_ROW_PREFIX`)。
-	##   由来: `verify_account` ⑤ 守的是「没配后端 ⇒ 整行不显示」, 但它原来的实现是
-	##   `not _find_text(s3, "账号：")` —— **拿字面量当尺子**。
-	##   于是我把「账号：」的冒号去掉(那是 `label: value` 的网页表单读法)的同一刻,
-	##   那条断言就**恒真**了: 找不到是因为这个词没了, 不是因为行没建
-	##   (memory `fb-gate-tautological-when-it-spans-a-frame` 同族: 判据不再卡住那个形状)。
-	##   ⇒ 判据平移到**行为**: 这一族节点在不在树上。文案以后怎么改都不影响它。
-	var y := top
-	var a := _stroked_label(head, 15, "#cfe3ff", "", 0)
-	y = _place_flow(a, y)
+		## ★匿名号**不**同步(隐私政策承诺过只有绑定者才上传) ⇒ 两种状态说的话不一样。
+		## ★★「存档」两个字不许出现在这里(2026-09-21): 匿名态绑邮箱之前什么都没上云,
+		##   承诺「取回存档」是一件做不到的事(`verify_account` ④ FALSE_PROMISE 守着)。
+		status = "未绑定邮箱 · 更换设备后无法恢复进度"
+		status_col = "#ffb454"
+		note = "绑定后同步云端进度"
+		primary = "BtnBind"
+
+	var p := _frame_panel(x, _TOP, w, _BOT - _TOP)
+	p.name = ACCT_ROW_PREFIX + "Panel"
+	var cx := x + _PAD
+	var cw := w - _PAD * 2.0
+	var y := _heading(cx, _TOP + _HEAD_DY, cw, "账号")
+
+	## ★显示玩家自己的名字(与主菜单 / 排行榜同一个出处)。原来写「游客 + uuid 前 8 位」——
+	##   主菜单叫 lisa、设置页却叫「游客 52763f95」, 像两个人; 报问题对号用下面那行玩家 ID。
+	var a := _stroked_label(name_txt, 26, "#f4f8ff", "#0a0d16", 4)
 	a.name = ACCT_ROW_PREFIX + "Head"
+	y = _place_left(a, cx, y + 8.0, cw)
 	## ★玩家 ID(2026-10-04): 名字允许重复, 别人靠这串分开同名的人 —— 自己也得看得见自己是哪一串。
 	##   只在拿到账号之后显示: 「连接中」那会儿算出来的是安装号的号, 一会儿就要换, 不给人看。
 	if aid != "":
-		var idl := _stroked_label("ID %s" % str(_BE_ID.my_tag()), 13, "#8fa6bd", "", 0)
-		y = _place_flow(idl, y + _GAP_LINE)
+		var idl := _stroked_label("玩家 ID %s" % str(_BE_ID.my_tag()), 14, "#8fa6bd", "", 0)
 		idl.name = ACCT_ROW_PREFIX + "Id"
-	if sub != "":
-		var col := "#ffb454" if mail == "" else "#8fa6bd"    # 未绑定用警示橙, 已绑定用灰
-		var b := _stroked_label(sub, 12, col, "", 0)
-		y = _place_flow(b, y + _GAP_LINE)
-		b.name = ACCT_ROW_PREFIX + "Sub"
-	## ★★2026-09-21 把「存档」两个字全部换掉 —— 原文案是**不准确的**。
-	##   核实过服务端五张表(`accounts` / `ghosts` / `matches` / `standings` /
-	##   `service_status`)：**没有一张存玩家存档**(`accounts` 只有
-	##   display_name / created_at / last_seen)。龟等级、装备、深海币
-	##   全在本机 `user://savegame.json`。
-	##   ⇒ 绑邮箱找回的是【账号(赛季身份：排名/战绩/鬼影)】，**不是存档**。
-	##   照原文案写等于承诺一件架构上做不到的事。存档同步是另一件事(未决)。
-	## ★D-8: 匿名号**不**同步(隐私政策承诺过只有绑定者才上传) ⇒ 两种状态说的话不一样。
-	var note := _stroked_label(("（绑定后同步云端进度）" if mail == ""
-		else "（云端同步已开启）"), 11, "#7e8fa0", "", 0)
-	y = _place_flow(note, y + _GAP_LINE)
-	note.name = ACCT_ROW_PREFIX + "Note"
-	## ★D-3c 补上 v0.19.423 漏掉的入口: 那一版只有「绑定邮箱」,
-	##   **取回流程写了但点不到** —— 新手机上根本没法用邮箱把号拿回来。
-	##   `verify_session_refresh` 没有覆盖到 UI, 这条由 `verify_account` ④ 走真入口验。
-	## ★★这两颗按钮的 y **原来写死成 192**, 而那正好落在音乐条的 48px 拖动带里(见文件头那段)。
-	##   现在钉在账号文字的下沿之后 —— 账号行多一句话, 它自己往下走。
-	var by := y + _GAP_LINE + _ACCT_BTN_H / 2.0
-	## ★2026-10-04 加第三颗「改昵称」(E 阶段方案书 ③「还没做: 改名」) ⇒ 有账号时三颗居中排开,
-	##   间距 160(按钮宽 150 + 10); 没账号(连接中)时只有「用邮箱取回」一颗, 位置不变。
+		y = _place_left(idl, cx, y, cw)
+	## ── 状态卡: 一块压暗的底 + 左边一道状态色竖条(Adorable Home 那块「云存档」提示框) ──
+	##   状态行: 邮箱长的时候会折行 ⇒ 自己量字宽算行数, 下面那行说明跟着让位, 卡跟着长。
+	var card_top := y + 12.0
+	var card := ColorRect.new()
+	card.name = ACCT_ROW_PREFIX + "Card"
+	card.color = Color("#141a2c")
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(card)
+	var bar := ColorRect.new()
+	bar.color = Color(status_col)
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(bar)
+	var b := _stroked_label(status, 15, status_col, "#0a0d16", 3)
+	b.name = ACCT_ROW_PREFIX + "Sub"
+	var ty := _place_left(b, cx + 18.0, card_top + 10.0, cw - 30.0, true)
+	if note != "":
+		var nl := _stroked_label(note, 13, "#8a9bb0", "", 0)
+		nl.name = ACCT_ROW_PREFIX + "Note"
+		ty = _place_left(nl, cx + 18.0, ty, cw - 30.0, true)
+	card.position = Vector2(cx, card_top)
+	card.size = Vector2(cw, ty + 8.0 - card_top)
+	bar.position = Vector2(cx, card_top)
+	bar.size = Vector2(4.0, card.size.y)
+
+	## ── 按钮: 钉在框底往上排(状态行折几行都不影响按钮的位置) ──
+	## ★D-3c: 「邮箱登录」是新手机上把旧号拿回来的唯一入口, 任何状态都在。
+	## ★2026-10-04 第三颗「修改昵称」(E 阶段方案书 ③)。
+	var btns: Array = []     # [节点名后缀, 文字, 回调]
 	if aid != "" and _SB_ACC.save_conflict():
-		_small_button(W / 2.0 - 160.0, by, "处理存档冲突", _open_conflict_dialog).name = \
-			ACCT_ROW_PREFIX + "BtnConflict"
+		btns.append(["BtnConflict", "处理存档冲突", _open_conflict_dialog])
 	elif aid != "":
-		_small_button(W / 2.0 - 160.0, by,
-			("更换邮箱" if mail != "" else "绑定邮箱"),
-			func(): _open_email_dialog(_SB_ACC.FLOW_BIND)).name = ACCT_ROW_PREFIX + "BtnBind"
-	_small_button(W / 2.0, by, "邮箱登录",
-		func(): _open_email_dialog(_SB_ACC.FLOW_RECOVER)).name = ACCT_ROW_PREFIX + "BtnRecover"
+		btns.append(["BtnBind", ("更换邮箱" if mail != "" else "绑定邮箱"),
+			func(): _open_email_dialog(_SB_ACC.FLOW_BIND)])
+	btns.append(["BtnRecover", "邮箱登录", func(): _open_email_dialog(_SB_ACC.FLOW_RECOVER)])
 	if aid != "":
-		_small_button(W / 2.0 + 160.0, by, RENAME_LABEL, _open_rename_dialog).name = \
-			ACCT_ROW_PREFIX + "BtnRename"
-	return by + _ACCT_BTN_H / 2.0
+		btns.append(["BtnRename", RENAME_LABEL, _open_rename_dialog])
+	var by := _BOT - 30.0 - float(btns.size()) * _ROW_H - float(btns.size() - 1) * _BTN_GAP
+	for row in btns:
+		var accent: String = UISkin.PX_GOLD if str(row[0]) == primary else UISkin.PX_SLATE
+		var bt := _pix_button(Rect2(cx, by, cw, _ROW_H), str(row[1]), accent, row[2])
+		bt.name = ACCT_ROW_PREFIX + str(row[0])
+		by += _ROW_H + _BTN_GAP
+
+
+## 右框「声音 / 画面」。每项一行: 左名 · 中控件 · 右值(参考 Mirrorverse / Bomberman)。
+func _settings_panel(x: float, w: float) -> void:
+	_frame_panel(x, _TOP, w, _BOT - _TOP)
+	var cx := x + _PAD
+	var cw := w - _PAD * 2.0
+	var ctl_x := cx + _LBL_COL
+	var y := _heading(cx, _TOP + _HEAD_DY, cw, "声音")
+
+	## ★★2026-09-28 文案去"网页/开发者味": 原来是「🎵 BGM 音量」「🔊 音效音量」 ——
+	##   BGM 是开发者黑话, 玩家的词是「音乐」; 右边就写着 45%, 「音量」两个字多余。
+	# 音乐 — 拖动实时生效; 写盘只在松手时一次 (原来每帧 save() = 拖一下写几十次盘)
+	var cy := y + 40.0
+	_row_label(cx, cy, "音乐")
+	_slider(ctl_x, cy, _SLD_W, GameState.bgm_volume,
+		func(v): GameState.bgm_volume = v; Audio.bgm_volume = v; Audio.apply_bgm_volume(),   # ★补: 原来只设变量没调 apply → 拖动对正在播的BGM无效(用户2026-07-19"音量键根本没效果")
+		func(): GameState.save())
+	# 音效 — 松手才试听 + 写盘 (原来拖动中每帧都播音效)
+	cy += 72.0
+	_row_label(cx, cy, "音效")
+	_slider(ctl_x, cy, _SLD_W, GameState.sfx_volume,
+		func(v): GameState.sfx_volume = v; Audio.sfx_volume = v,
+		func(): Audio.play_sfx("hit-physical", 1.0); GameState.save())
+
+	y = _heading(cx, cy + _SLD_HIT_H / 2.0 + 30.0, cw, "画面")
+	cy = y + 44.0
+	## 显示: 窗口 / 全屏。★只在桌面端建 —— 手机上没有「窗口」这回事, 切了也没反应
+	##   (本仓原则: 点了没反应比没有这个键糟)。
+	if _display_row_on():
+		_row_label(cx, cy, "显示")
+		_seg_display = _segmented(ctl_x, cy, SEG_DISPLAY,
+			[["Window", "窗口"], ["Full", "全屏"]], 1 if _is_full() else 0,
+			func(i: int): _set_fullscreen(i == 1))
+		cy += _ROW_H + 20.0
+	## 画质: 低 / 高。低 = 关 MSAA + 3D 渲染分辨率 ×0.75 + 停菜单背景漂移(`apply_perf_lite`), 持久化到存档。
+	_row_label(cx, cy, "画质")
+	_seg_quality = _segmented(ctl_x, cy, SEG_QUALITY,
+		[["Low", "低"], ["High", "高"]], 0 if GameState.perf_lite else 1,
+		func(i: int): _set_perf_lite(i == 0))
+	## 「低 = 更流畅」这条以前只在切换后的 toast 里, 不点就不知道调它图什么 ⇒ 常驻一行小字。
+	var hint := _stroked_label("低画质更流畅 · 下场战斗生效", 13, "#7e8fa0", "", 0)
+	_place_left(hint, ctl_x, cy + _ROW_H / 2.0 + 8.0, _SLD_W)
+
+
+## 底部一条。左: 版本 · 玩家 ID(小字, 报问题时对得上号 —— Angry Birds Journey 同位置);
+##   右: 开发工具(仅开发包) + 「重置存档」(破坏性 ⇒ 最右下角, 与普通选项分开两块框的距离)。
+func _footer() -> void:
+	var ver := "版本 v%s" % str(ProjectSettings.get_setting("application/config/version", ""))
+	## 玩家 ID: 有账号用账号算的; 没配后端时用安装号算的(本地就这一个身份, 不会再换)。
+	##   ★「连接中」那会儿不写 —— 那时算出来的是安装号的号, 一会儿就要换。
+	if not _acct_on() or str(GameState.account_id) != "":
+		ver += " · 玩家 ID %s" % str(_BE_ID.my_tag())
+	var fl := _stroked_label(ver, 13, "#a9b8c8", "#0a0d16", 3)
+	fl.name = FOOT_LABEL
+	fl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	fl.position = Vector2(_L_X, _STRIP_CY - 14.0)
+	fl.size = Vector2(400.0, 28.0)
+	add_child(fl)
+
+	## 调试场 — 用户 2026-09-17:「调试场可以塞到设置里, 正式上线的不会要调试场」。
+	##   ★gate 原样搬过来: OS.is_debug_build() 在导出 release 模板下为 false ⇒ 正式包玩家看不到。
+	##   门禁: verify_menu(源码 gate 在分支里) + verify_settings(把页面当正式包建出来, 量节点不在)。
+	var dev := OS.is_debug_build() or OS.has_environment("DEVTOOLS")
+	dev = dev and not release_override
+	## 「测试时间」(开发包时间穿越, 2026-10-04)。★判据比调试场更严:
+	##   `_P2C.time_travel_allowed()` 不认 DEVTOOLS(见 phase2_config 那段头注)。
+	var tt := _P2C.time_travel_allowed() and not release_override
+	var bx := 1220.0 - _STRIP_BTN.x * 3.0 - 20.0 - 40.0      # 两颗开发键 + 中缝 20 + 与重置拉开 40
+	var by := _STRIP_CY - _STRIP_BTN.y / 2.0
+	if dev:
+		_pix_button(Rect2(Vector2(bx, by), _STRIP_BTN), "调试场", UISkin.PX_SLATE, _open_debug_arena).name = DEV_ARENA_BTN
+	if tt:
+		_pix_button(Rect2(Vector2(bx + _STRIP_BTN.x + 20.0, by), _STRIP_BTN), "测试时间", UISkin.PX_SLATE, _open_time_travel)
+
+	# 重置存档 — 破坏性 → 二次确认(`_ask_reset`)。
+	## ★石板底 + 红字, 不用实心红: 这一颗是「很少点、点了会出事」的, 不该是全屏最响的一块
+	##   (实心红留给弹框里那颗「确认重置」—— 真正动手的那一下才用最响的颜色)。
+	var rb := _pix_button(Rect2(Vector2(1220.0 - _STRIP_BTN.x, by), _STRIP_BTN), "重置存档", UISkin.PX_SLATE, _ask_reset)
+	rb.name = RESET_BTN
+	for s in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
+		rb.add_theme_color_override(s, Color("#ff8a94"))
+
+
+## 一块金属框(战斗信息面板 / 结算屏同一张 `panel-frame` 九宫格, 不新增素材)。
+## ★mouse_filter = IGNORE: 框只是底板。默认的 STOP 会让框成为「可点区域」, 把框里的按钮
+##   全算成它的子孙(`verify_ios_ui` SETTINGS_NO_OVERLAP 按最外层去重), 还会吞掉框里空白处的点击。
+func _frame_panel(x: float, y: float, w: float, h: float) -> Panel:
+	var p := Panel.new()
+	p.add_theme_stylebox_override("panel", SettleScreenS.frame_style())
+	p.position = Vector2(x, y)
+	p.size = Vector2(w, h)
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(p)
+	return p
+
+
+## 框里的小标题 + 一道细分隔线(Mirrorverse 的 SOUND / OPTIONS 那种)。返回分隔线下沿。
+func _heading(x: float, y: float, w: float, t: String) -> float:
+	var l := _stroked_label(t, 18, "#ffd98a", "#0a0d16", 3)
+	l.position = Vector2(x, y)
+	l.size = Vector2(w, 26.0)
+	add_child(l)
+	var line := ColorRect.new()
+	line.color = Color("#2f4a66")
+	line.position = Vector2(x, y + 32.0)
+	line.size = Vector2(w, 2.0)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(line)
+	return y + 34.0
+
+
+## 右框一行的「左名」, 竖向对齐到控件中线。
+func _row_label(x: float, cy: float, t: String) -> void:
+	var l := _stroked_label(t, 17, "#dfe8f2", "#0a0d16", 3)
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.position = Vector2(x, cy - 14.0)
+	l.size = Vector2(_LBL_COL - 8.0, 28.0)
+	add_child(l)
+
+
+## 左对齐放一行字, 返回它的下沿。`wrap` = 超宽就按字折行(中文没有词边界, 用 ARBITRARY)。
+## ★行数自己量(字体实测宽 ÷ 可用宽): Label 入树前 `size` 会被重算, 拿它的最小高不可靠
+##   (`_wall_text` 头注那两次实测)。
+func _place_left(l: Label, x: float, top: float, w: float, wrap: bool = false) -> float:
+	var fs := float(l.get_theme_font_size("font_size"))
+	var lines := 1
+	if wrap:
+		l.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+		var f: Font = l.get_theme_font("font")
+		if f != null:
+			var tw := f.get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, int(fs)).x
+			lines = maxi(1, int(ceil(tw / maxf(1.0, w - 4.0))))
+	var h := (fs + 8.0) * float(lines) + 6.0
+	l.position = Vector2(x, top)
+	l.size = Vector2(w, h)
+	add_child(l)
+	l.position = Vector2(x, top)
+	l.size = Vector2(w, h)
+	return top + h
+
+
+## 像素按钮(`UISkin.pixel_button`, 周末页 / 战绩页同一套)。
+## ★尺寸在套皮之前给 —— 与 `UISkin.button` 同一条: 皮按真实尺寸挑。
+func _pix_button(r: Rect2, label: String, accent: String, cb: Callable) -> Button:
+	var b := Button.new()
+	b.text = label
+	b.add_theme_font_size_override("font_size", 17)
+	b.focus_mode = Control.FOCUS_NONE
+	b.position = r.position
+	b.size = r.size
+	UISkin.pixel_button(b, accent, 4)
+	b.pressed.connect(cb)
+	add_child(b)
+	b.position = r.position
+	b.size = r.size
+	return b
+
+
+## 分段钮(二选一/三选一并排, 选中那段亮)。★代替原来的循环木牌「画质『高』」——
+##   循环按钮不点就看不出一共有几个值, 也看不出点了会变成什么(Brawl Stars 的 ON/OFF 同理)。
+## 皮 = `UISkin.pixel_tab`(选中 = 青边 + 青色底杠), 与对阵图页签同一套。
+## `opts` = [[节点名后缀, 文字], ...]; `cb(i)` 在玩家点了**另一段**时调(点已选中那段不重复写盘)。
+func _segmented(x: float, cy: float, base: String, opts: Array, sel: int, cb: Callable) -> Array:
+	var btns: Array = []
+	var cur := [sel]
+	for i in range(opts.size()):
+		var b := Button.new()
+		b.name = base + str(opts[i][0])
+		b.text = str(opts[i][1])
+		b.add_theme_font_size_override("font_size", 17)
+		b.focus_mode = Control.FOCUS_NONE
+		b.position = Vector2(x + float(i) * (_SEG_W + _SEG_GAP), cy - _ROW_H / 2.0)
+		b.size = Vector2(_SEG_W, _ROW_H)
+		UISkin.pixel_tab(b, i == sel)
+		add_child(b)
+		b.size = Vector2(_SEG_W, _ROW_H)
+		btns.append(b)
+	for i in range(btns.size()):
+		var idx := i
+		(btns[i] as Button).pressed.connect(func():
+			if int(cur[0]) == idx:
+				return
+			cur[0] = idx
+			for j in range(btns.size()):
+				UISkin.pixel_tab(btns[j], j == idx)
+			cb.call(idx))
+	return btns
+
+
+## 「显示」那一行该不该有: 手机(iOS/Android)上没有窗口模式。
+func _display_row_on() -> bool:
+	return not OS.has_feature("mobile")
+
+
+func _is_full() -> bool:
+	var m := DisplayServer.window_get_mode()
+	return m == DisplayServer.WINDOW_MODE_FULLSCREEN or m == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN
 
 
 # ─── D-8 存档冲突: 二选一 ──────────────────────────────────────
@@ -422,25 +610,6 @@ func _skin_edit(e: LineEdit) -> void:
 	e.add_theme_color_override("font_color", Color("#e8f0ff"))
 	e.add_theme_color_override("font_placeholder_color", Color("#7d93ac"))
 	e.add_theme_color_override("caret_color", Color("#ffd93d"))
-
-
-## 紧凑按钮 —— 账号行下面那一个。`_text_button` 是 260×50 的木框大按钮,
-## 塞进 128~192 这段窄地里会压到下面的 BGM 滑条。
-func _small_button(cx: float, cy: float, label: String, cb: Callable) -> Button:
-	var b := Button.new()
-	b.text = label
-	b.add_theme_font_size_override("font_size", 14)
-	b.size = Vector2(150, 30)
-	b.position = Vector2(cx - 75.0, cy - 15.0)
-	## ★★换皮走共享层 `UISkin`, 不在这里手写 StyleBox —— 抄一份就永远落后
-	##   (memory `fb-hand-rolled-copies-drift`)。`UISkin.button` 自己按真实尺寸挑框:
-	##   短边 ≥56 且面积 ≥5000 用 `frame-rect`(源图 666x161), 否则 `chip-frame`。
-	## ★2026-09-27 之前这几个按钮是**裸 `Button.new()`** ⇒ Godot 默认皮(圆角灰板),
-	##   而它们正长在**每个新玩家看到的第一屏**(关不掉的登录墙)上。
-	UISkin.button(b)
-	b.pressed.connect(cb)
-	add_child(b)
-	return b
 
 
 # ─── D-3b 补绑邮箱 / 换设备取回 (2026-09-21) ──────────────────────
@@ -1220,7 +1389,7 @@ func _email_poll() -> void:
 		_email_ok_btn.disabled = not (st == _SB_ACC.EM_SENT or st == _SB_ACC.EM_ERR)
 
 
-# ─── 🛠 调试场 (自由摆位测试场; 开发工具, 正式包不出现) ───
+# ─── 调试场 (自由摆位测试场; 开发工具, 正式包不出现) ───
 ## 2026-09-17 从 MainMenuScene 整体搬来 —— 行为一字未改, 只换了入口所在的屏。
 const _RB_DEBUG := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 
@@ -1251,61 +1420,24 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 
 
-## ★★2026-09-28 与下面的画质键统一成【状态式】: 牌子上写的是**现在是什么**,
-##   不是"按下去会发生什么"。原来这一个是动作式(「全屏」/「退出全屏」)、
-##   旁边那个是状态式 —— 同一列两种读法, 玩家要在两种语法之间来回切。
-##   状态式那条原则是这一屏自己定的(见 `_perf_label` 头注), 这里把它补齐。
-## ★用「」而不是半角冒号: `画质: 高` 那种 `标签: 值` 就是网页表单的长相,
-##   而「」是这个项目通篇在用的引用号(「用邮箱取回」「财神龟」)。
-func _fullscreen_label() -> String:
-	var m := DisplayServer.window_get_mode()
-	if m == DisplayServer.WINDOW_MODE_FULLSCREEN or m == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
-		return "画面「全屏」"
-	return "画面「窗口」"
-
-
-## ★2026-08-19 缩短: 原文「🪶 低画质模式: 关 (高画质)」在 260 宽的木牌里**装不下** ——
-##   木牌两端的花纹柱实测各占 29px, 内部只有 202px, 而这行字的墨迹约 240px ⇒ 字骑在花纹上。
-##   (实拍看出来的; 门禁原来查不到, 因为它只把 StyleBoxTexture/NinePatchRect 当框,
-##    而这里的框是一个**拉伸的 TextureRect**。已一并补进 verify_ui_consistency。)
-##   "开/关" 也去掉了 —— 按钮显示的是**当前是什么**, 不是"这个开关的开关状态", 后者要绕一圈才读懂。
-## ★★2026-09-28 去掉那个**半角冒号**。「画质: 高」= `label: value`,
-##   是网页表单/设置页最典型的一行; 换成「」之后它读起来是一块写着当前状态的牌子。
-##   宽度没变大(冒号+空格 2 个半角 ≈ 「」1 个全角), 仍远小于木牌 202px 的内部净宽。
-## ★★2026-09-28 去掉 🪶(羽毛)。它既不是「画质」也不是「高/低」的图形,
-##   是当时随手挖的一个装饰字符; 而它的字形来自 NotoEmoji ⇒ 这块木牌上
-##   一个矢量羽毛 + 一排像素字。信息全在后面那四个字里, 直接去掉。
-func _perf_label() -> String:
-	if GameState.perf_lite:
-		return "画质「低」"
-	return "画质「高」"
-
-
-## 低画质模式 = 真开关 (原来只改自己的 label, grep 全库无第二处引用 = 死按钮)
-## 实际效果见 `apply_perf_lite()` (战斗视口) 与各菜单场景的背景漂移 gate。
-func _toggle_perf() -> void:
-	GameState.perf_lite = not GameState.perf_lite
-	GameState.save()
-	if _perf_btn != null:
-		_perf_btn.text = _perf_label()
-	## 按钮上只剩"高/低", 于是把"低=更流畅"这条信息挪到 toast 里, 不然玩家不知道调它图什么。
-	## ★2026-09-28 换成说人话的版本: 「已设为」是设置面板的腔调, 玩家听的是"下一场就不卡了"。
-	_toast("画质已切换为「%s」%s · 下场战斗生效" % [
-		"低" if GameState.perf_lite else "高",
-		"，可提升流畅度" if GameState.perf_lite else ""])
-
-
-func _toggle_fullscreen() -> void:
-	var m := DisplayServer.window_get_mode()
-	var to_full: bool = not (m == DisplayServer.WINDOW_MODE_FULLSCREEN or m == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN)
+## 显示: 窗口 / 全屏(分段钮「显示」那一行调它)。
+## ★持久化: 原来切了不存, 重启回窗口。
+func _set_fullscreen(to_full: bool) -> void:
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if to_full else DisplayServer.WINDOW_MODE_WINDOWED)
 	GameState.fullscreen = to_full
-	GameState.save()                      # 持久化: 原来切了不存, 重启回窗口
-	if _full_btn != null:
-		_full_btn.text = _fullscreen_label()   # 同步文字: 原来 Label 没接住, 切了还写"全屏"
+	GameState.save()
 
 
-# ── 重置存档: ⚠ 破坏性, 必须二次确认 ──────────────────────────
+## 画质: 低 / 高(分段钮「画质」那一行调它)。
+## 低画质模式 = 真开关 (原来只改自己的 label, grep 全库无第二处引用 = 死按钮)
+## 实际效果见 `apply_perf_lite()` (战斗视口) 与各菜单场景的背景漂移 gate。
+func _set_perf_lite(lite: bool) -> void:
+	GameState.perf_lite = lite
+	GameState.save()
+	_toast("画质：%s · 下场战斗生效" % ("低" if lite else "高"))
+
+
+# ── 重置存档: 破坏性, 必须二次确认 ──────────────────────────
 var _confirm_layer: Control = null
 
 func _ask_reset() -> void:
@@ -1338,7 +1470,7 @@ func _ask_reset() -> void:
 	dim.add_child(box)
 
 	var ttl := Label.new()
-	ttl.text = "⚠ 重置所有存档？"
+	ttl.text = "重置存档？"
 	ttl.add_theme_font_size_override("font_size", 26)
 	ttl.add_theme_color_override("font_color", Color("#ff5566"))
 	ttl.position = Vector2(0, 20); ttl.size = Vector2(520, 36)
@@ -1367,9 +1499,8 @@ func _ask_reset() -> void:
 	cancel.text = "取消"
 	cancel.add_theme_font_size_override("font_size", 18)
 	cancel.position = Vector2(40, 196); cancel.size = Vector2(210, 52)
-	## ★★原来是**裸 `Button.new()`** = Godot 默认皮(圆角灰板)。换皮走共享层 `UISkin`,
-	##   不在这里手写 StyleBox(memory `fb-hand-rolled-copies-drift`)。
-	UISkin.button(cancel)
+	## ★皮走共享层 `UISkin.pixel_button`(2026-10-07 与设置页本身同一套像素按钮), 不手写 StyleBox。
+	UISkin.pixel_button(cancel, UISkin.PX_SLATE, 4)
 	cancel.pressed.connect(func(): dim.queue_free(); _confirm_layer = null)
 	box.add_child(cancel)
 
@@ -1378,8 +1509,7 @@ func _ask_reset() -> void:
 	ok.add_theme_font_size_override("font_size", 18)
 	ok.position = Vector2(270, 196); ok.size = Vector2(210, 52)
 	## 破坏性那一侧染红 —— 两个键长得一样时, 玩家分不出哪个是"会出事"的那个。
-	UISkin.button(ok, Color("#ff5566"))
-	ok.add_theme_color_override("font_color", Color("#ffdfe2"))
+	UISkin.pixel_button(ok, UISkin.PX_RED, 4)
 	ok.pressed.connect(func():
 		dim.queue_free(); _confirm_layer = null
 		_do_reset())
@@ -1411,30 +1541,17 @@ const _SLD_H := 26.0            # 槽总高(含金属边带)
 const _SLD_BAND_X := 8.0        # 槽左右边带厚度(量自贴图)
 const _SLD_BAND_Y := 5.0        # 槽上下边带厚度(量自贴图)
 
-## 按流水放一条滑条: 顶沿钉在 top, 返回下沿。
-## ★一条滑条占的竖向空间 = 名牌(槽中心往上 `_SLD_LABEL_GAP`) 到 触摸带下沿(槽中心往下 24) ——
-##   **触摸带比槽本身各往外宽 11px**, 忘了它就是 2026-09-29 那条"按钮压进拖动带"的来源。
-func _slider_row(top: float, label: String, init: float, cb: Callable,
-		on_release: Callable = Callable()) -> float:
-	var cy := top + _SLD_H / 2.0 + _SLD_LABEL_GAP
-	_slider(W / 2.0, cy, label, init, cb, on_release)
-	return cy + _SLD_HIT_H / 2.0
-
-
-func _slider(cx: float, cy: float, label: String, init: float, cb: Callable, on_release: Callable = Callable()) -> void:
-	var track_w := 380.0
-	var left := cx - track_w / 2.0
+## 一条音量槽: 左沿 `left`、中线 `cy`、宽 `track_w`; 名牌在调用方(`_row_label`), 百分比在槽右边。
+## ★占的竖向空间 = 透明触摸带(槽中心上下各 `_SLD_HIT_H / 2`) —— 触摸带比槽本身各往外宽 11px,
+##   排下一行时按触摸带算, 不按槽算(2026-09-29 那条"按钮压进拖动带"的来源)。
+func _slider(left: float, cy: float, track_w: float, init: float, cb: Callable, on_release: Callable = Callable()) -> void:
+	var cx := left + track_w / 2.0
 	## 填充的可用区 = 槽减掉金属边带。把值映射到这一段而不是整条,
 	## 否则 0% 时会有一截颜色压在左边那道金属沿上。
 	var fx := left + _SLD_BAND_X
 	var fw := track_w - _SLD_BAND_X * 2.0
 	var fy := cy - _SLD_H / 2.0 + _SLD_BAND_Y
 	var fh := _SLD_H - _SLD_BAND_Y * 2.0
-
-	## 名牌: 加描边 —— 这一屏的背景是平铺的图案砖, 无描边的白字在上面发糊。
-	var lbl := _stroked_label(label, 17, "#ffe9b0", "#2a1b08", 4)
-	lbl.position = Vector2(left, cy - _SLD_H / 2.0 - _SLD_LABEL_GAP)
-	add_child(lbl)
 
 	## ① 金属槽(九宫格)。`mouse_filter=IGNORE` —— 命中全交给下面那条 48px 的透明条。
 	var groove := NinePatchRect.new()
@@ -1445,18 +1562,15 @@ func _slider(cx: float, cy: float, label: String, init: float, cb: Callable, on_
 	groove.size = Vector2(track_w, _SLD_H)
 	groove.position = Vector2(left, cy - _SLD_H / 2.0)
 	groove.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	## ★★染成**青铜**。`bar-frame` 是战斗 HUD 的件, 主体色量出来是 (119,178,250) 的
-	##   矢车菊蓝 —— 直接拿过来放在这一屏, 它是整块画面里唯一的冷色, 实拍一眼就是"外来件"。
-	##   乘数是按目标色**算**的不是拍的: 119×1.51≈180 / 178×0.79≈141 / 250×0.28≈70,
-	##   落在木牌那身 #c8862a 的同一族里。黑色乘出来还是黑, 深槽不受影响。
-	##   (`UISkin` 铁律②: 状态/配色走 modulate, 不为此另做一张图。)
-	groove.self_modulate = Color(1.51, 0.79, 0.28)
+	## ★2026-10-07 起**不再染青铜**: 2026-09-28 染铜是因为槽直接摆在绿底木牌那一屏上,
+	##   蓝金属是唯一的冷色。重排后槽坐在 `panel-frame` 深蓝金属框里 —— 这张图本来就是
+	##   给这套深蓝框画的(战斗血条同一张), 原色正好与框同族, 再染铜反倒成了外来件。
 	add_child(groove)
 
-	## ② 槽底。贴图里那块是**纯黑**, 在暖色画面里读起来是个洞;
-	##   铺一层暗棕当底(贴图缺失时它也正好当兜底, 不用再写一支 if)。
+	## ② 槽底。贴图里那块是**纯黑**, 读起来是个洞;
+	##   铺一层深海军蓝当底(与框同族; 贴图缺失时它也正好当兜底, 不用再写一支 if)。
 	var channel := ColorRect.new()
-	channel.color = Color("#241a0c")
+	channel.color = Color("#0b1422")
 	channel.size = Vector2(fw, fh)
 	channel.position = Vector2(fx, fy)
 	channel.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1467,7 +1581,7 @@ func _slider(cx: float, cy: float, label: String, init: float, cb: Callable, on_
 	##   ★颜色要比槽底**亮**: 第一版用的是半透明黑, 压在黑槽上等于没画(实拍一道都看不见)。
 	for i in range(1, 5):
 		var tick := ColorRect.new()
-		tick.color = Color("#5a431d")
+		tick.color = Color("#2a4058")
 		tick.size = Vector2(2.0, fh)
 		tick.position = Vector2(fx + fw * (float(i) / 5.0) - 1.0, fy)
 		tick.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1498,13 +1612,13 @@ func _slider(cx: float, cy: float, label: String, init: float, cb: Callable, on_
 	##   右边缘钉死 ⇒ 45%→100% 位数变了也不会左右跳(等宽当初就是为了防跳)。
 	var pct := Label.new()
 	pct.text = "%d%%" % int(round(init * 100.0))
-	pct.add_theme_font_size_override("font_size", 18)
+	pct.add_theme_font_size_override("font_size", 20)
 	pct.add_theme_color_override("font_color", Color("#ffe066"))
 	pct.add_theme_constant_override("outline_size", 4)
 	pct.add_theme_color_override("font_outline_color", Color("#2a1b08"))
 	pct.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	pct.size = Vector2(66, 22)
-	pct.position = Vector2(cx + track_w / 2.0 + 12.0, cy - 12.0)
+	pct.size = Vector2(58, 26)
+	pct.position = Vector2(cx + track_w / 2.0 + 8.0, cy - 13.0)
 	add_child(pct)
 
 	## ⑥ 方钮把手。★2026-08-01 起它不吃事件(28x28 = 手机上 15pt, 点不中),
@@ -1561,63 +1675,6 @@ func _knob(w: float, h: float) -> Control:
 	return c
 
 
-# ── 按钮: btn-frame.png 整图拉伸 260×50 + 文字描边 + hover/press 动画 ──
-func _text_button(cx: float, cy: float, label: String, cb: Callable) -> Label:
-	var cont := Control.new()
-	cont.size = Vector2(260, 50)
-	cont.pivot_offset = Vector2(130, 25)
-	cont.position = Vector2(cx - 130.0, cy - 25.0)
-	add_child(cont)
-
-	var frame := TextureRect.new()
-	frame.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	frame.stretch_mode = TextureRect.STRETCH_SCALE
-	frame.size = Vector2(260, 50)
-	frame.mouse_filter = Control.MOUSE_FILTER_STOP
-	if ResourceLoader.exists("res://assets/sprites/menu/btn-frame.png"):
-		frame.texture = load("res://assets/sprites/menu/btn-frame.png")
-	cont.add_child(frame)
-
-	# 文字 18px #3a1f00 stroke #ffe4a0 厚2, 居中
-	var txt := _stroked_label(label, 18, "#3a1f00", "#ffe4a0", 2)
-	txt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	txt.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	txt.size = Vector2(260, 50)
-	txt.position = Vector2(0, -2)
-	txt.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	cont.add_child(txt)
-
-	var pressed_tex := "res://assets/sprites/menu/btn-frame-pressed.png"
-	# hover scale→1.05 100ms
-	frame.mouse_entered.connect(func():
-		var tw := create_tween()
-		tw.tween_property(cont, "scale", Vector2(1.05, 1.05), 0.1))
-	frame.mouse_exited.connect(func():
-		var tw := create_tween()
-		tw.tween_property(cont, "scale", Vector2(1, 1), 0.1)
-		if ResourceLoader.exists("res://assets/sprites/menu/btn-frame.png"):
-			frame.texture = load("res://assets/sprites/menu/btn-frame.png"))
-	frame.gui_input.connect(func(ev: InputEvent):
-		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			if ResourceLoader.exists(pressed_tex):
-				frame.texture = load(pressed_tex)
-			# press scale→0.96 60ms yoyo
-			var tw := create_tween()
-			tw.tween_property(cont, "scale", Vector2(0.96, 0.96), 0.06)
-			tw.tween_property(cont, "scale", Vector2(1, 1), 0.06)
-			## ★2026-08-21: 原来接的是 `get_tree().create_timer()` —— 树级计时器**活过场景释放**,
-			##   而 cb 捕获了本场景/场景里的节点 ⇒ 场景被释放后它照响, 报
-			##   `Lambda capture at index 0 was freed`(报错在【绑定捕获】那一刻, 函数体没执行,
-			##   所以在 cb 里加任何 is_instance_valid 都救不了)。改成挂自己身上的 Timer 子节点。
-			var _dt := Timer.new()
-			_dt.one_shot = true
-			_dt.wait_time = 0.1
-			add_child(_dt)
-			_dt.start()
-			_dt.timeout.connect(cb))
-	return txt
-
-
 func _stroked_label(t: String, size: int, color: String, stroke: String, thick: int) -> Label:
 	var l := Label.new()
 	l.text = t
@@ -1627,16 +1684,6 @@ func _stroked_label(t: String, size: int, color: String, stroke: String, thick: 
 		l.add_theme_constant_override("outline_size", thick)
 		l.add_theme_color_override("font_outline_color", Color(stroke))
 	return l
-
-
-## 按【流水】放一行居中文字: 顶沿钉在 top, 返回它的下沿。
-## ★返回的是**控件矩形**的下沿(比字的 ink 高 8px 左右) —— 宁可多留一点也不要压住下一行。
-func _place_flow(l: Label, top: float) -> float:
-	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	l.size = Vector2(400, float(l.get_theme_font_size("font_size")) + 16.0)
-	l.position = Vector2(W / 2.0 - 200.0, top)
-	add_child(l)
-	return top + l.size.y
 
 
 func _place_center(l: Label, cx: float, cy: float) -> void:
@@ -1652,8 +1699,10 @@ func _place_center(l: Label, cx: float, cy: float) -> void:
 
 ## 轻量提示 (1.4s 后淡出)
 func _toast(msg: String) -> void:
-	var l := _stroked_label(msg, 16, "#06d6a0", "", 0)
-	_place_center(l, W / 2.0, 650.0)
+	var l := _stroked_label(msg, 16, "#06d6a0", "#0a0d16", 3)
+	## ★名字带 Toast: 浮在内容上的提示, 一致性门禁按名字豁免「两段字压在一起」。
+	l.name = "Toast"
+	_place_center(l, W / 2.0, 638.0)
 	l.modulate.a = 0.0
 	var tw := create_tween()
 	tw.tween_property(l, "modulate:a", 1.0, UIPalette.T_BASE)

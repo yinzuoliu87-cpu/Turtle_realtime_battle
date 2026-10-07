@@ -100,7 +100,7 @@ const SCREEN_LEDGER: Dictionary = {
 	"Record": [0, ""],
 	## 设置。⚠ 不计入(它在 NotoSansSC 里, 与正文同一套字);
 	## 🛠 调试场只在 `OS.is_debug_build()` 下建 —— 正式包玩家看不到, 不是玩家路径。
-	"Settings": [1, "🛠 调试场入口(仅 debug 构建, 不是玩家路径)"],
+	"Settings": [0, "2026-10-07 重排: 调试场键去掉 🛠、重置去掉 ⚠"],
 	"TrainerConfig": [0, ""],
 	"Matchmaking": [0, ""],
 }
@@ -130,7 +130,7 @@ const SRC_LEDGER: Dictionary = {
 	"scripts/scenes/CodexScene.gd": [1,
 		"数据未加载那行的 ❌(平时 visible=false); 🛠 调试面板 ×2 已于 2026-10-07 整块删除"],
 	"scripts/scenes/InventoryScene.gd": [1, "临时等级器 🔼(无素材)"],
-	"scripts/scenes/SettingsScene.gd": [1, "🛠 调试场(仅 debug 构建, 不是玩家路径)"],
+	"scripts/scenes/SettingsScene.gd": [0, "2026-10-07 重排后 0(钉住)"],
 	"scripts/scenes/codex/detail_views.gd": [1,
 		"装备详情头图的 📦 兜底 —— 96 件装备**全部**有 PNG 且图都在盘上(下面有一条断言在守), 这一支永不触发"],
 	"scripts/scenes/team_select/layout_editor.gd": [5,

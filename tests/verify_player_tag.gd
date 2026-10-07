@@ -223,7 +223,7 @@ func _ready() -> void:
 		await get_tree().process_frame
 	var idl = st_inst.find_child(SETTINGS_SCRIPT.ACCT_ROW_PREFIX + "Id", true, false)
 	var idtxt := str(idl.text) if idl is Label else "<没有这一行>"
-	_ok("★★设置页账号那一块有「ID #XXXXXX」, 就是我的 ID", idtxt == "ID " + BE.my_tag(), idtxt)
+	_ok("★★设置页账号那一块有「ID #XXXXXX」, 就是我的 ID", idtxt == "玩家 ID " + BE.my_tag(), idtxt)
 	_ok("★那一行字比账号标题小(不抢眼)", idl is Label and (idl as Label).get_theme_font_size("font_size") < 15,
 		str((idl as Label).get_theme_font_size("font_size")) if idl is Label else "")
 	st_inst.queue_free()

@@ -63,7 +63,7 @@ func _ready() -> void:
 	var _dev_i := set_src.find("var dev := OS.is_debug_build()")
 	var _arena_line := ""
 	for _l in set_src.split(char(10)):
-		if str(_l).find("_open_debug_arena)") >= 0 and str(_l).find("_text_button") >= 0:
+		if str(_l).find("_open_debug_arena)") >= 0 and str(_l).find("_pix_button") >= 0:
 			_arena_line = str(_l)
 			break
 	_ok("★分母: 找到了建调试场按钮那一行", _arena_line != "" and _dev_i >= 0,

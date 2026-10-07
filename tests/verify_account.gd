@@ -366,7 +366,8 @@ func _t_real_settings() -> void:
 	_chk("⑤ ★也没有「离线」这种常驻角标(需求明确不要它, 不是漏做)", not _find_text(s3, "离线"))
 	_chk("⑤ 也没有那行丢档警告", not _find_text(s3, WARN))
 	## ★分母: 设置页本身是好的(别把"页面没建起来"读成"没显示账号行")
-	_chk("⑤ ★分母: 设置页仍然正常(能找到「重置所有存档」)", _find_text(s3, "重置所有存档"))
+	## ★2026-10-07 重排: 按节点名找(名字常量在产品那边), 不再拿按钮上的字当尺子。
+	_chk("⑤ ★分母: 设置页仍然正常(重置存档键在)", s3.find_child(SETTINGS_SCRIPT.RESET_BTN, true, false) is Button)
 	s3.queue_free()
 	await get_tree().process_frame
 

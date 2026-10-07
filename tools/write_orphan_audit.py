@@ -119,6 +119,7 @@ WHY = {
     "strip_now_override": "主菜单赛程条的时刻注入(截图台/门禁用)",
     "strip_finals_live_override": "把决赛日**手动**按成「没上线」(截图台/调试用)",
     "acct_override": "设置屏账号态注入 —— 登录墙那一屏只有靠它才建得出来(verify_ui_consistency 在用)",
+    "release_override": "设置屏「当作正式包建」注入 —— 无头门禁跑不出 release 模板, 调试场不漏给玩家这条只能靠它把正式包那一页真建出来量(verify_settings 3c 在用)",
     ## ★★洞⑥ 的容器网一开就露出来的一条: 它**本来就在本文件头注的测试缝名单里**
     ##   (「`pool_override` / `now_override_ts` / `_transport_for_test`」),
     ##   只是从没进过 WHY —— 因为旧判据只收标量, 它是 Dictionary, **从来没被量到过**。
