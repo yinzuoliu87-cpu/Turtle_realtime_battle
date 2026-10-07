@@ -265,7 +265,7 @@ func _open_settings() -> Node:
 ##   ① 匿名态必须说清楚账号找不回来（`WARN`）
 ##   ② 绑定态不许再有那句（反向分母，证明 ① 不是恒真式）
 ##   ③ **任何状态下都不许**出现「丢失存档 / 取回存档」这种假承诺（`FALSE_PROMISE`）
-const WARN := "找不回来"
+const WARN := "无法恢复进度"
 const FALSE_PROMISE := ["丢失存档", "取回存档", "找回存档"]
 
 
@@ -307,7 +307,7 @@ func _t_real_settings() -> void:
 	_chk("④ ★界面文案里不写死验证码位数(后台是 8 位, 我曾写成 6 位)", rx.search(src) == null,
 		rx.search(src).get_string() if rx.search(src) != null else "")
 	_chk("④ ★★匿名态: 有「用邮箱取回」按钮(新手机上拿回旧号的唯一入口; v0.19.423 就漏了它)",
-		_find_button(s1, "用邮箱取回"))
+		_find_button(s1, "邮箱登录"))
 	s1.queue_free()
 	await get_tree().process_frame
 
@@ -321,9 +321,9 @@ func _t_real_settings() -> void:
 	##   原来这里断言「绑定态不许承诺存档」—— 事实变了还留着它, 就是门禁把旧事实钉在产品里
 	##   (memory `fb-gate-can-pin-the-bug-in-place`)。**匿名态那条禁令不动**: 匿名号仍然不同步。
 	_chk("④ ★★绑定态说了能取回【进度】(D-8 之后这是真的, 由 verify_save_sync ⑦ 守着)",
-		_find_text(s2, "取回账号和进度"))
+		_find_text(s2, "登录恢复进度"))
 	_chk("④ 绑了邮箱: 屏幕上显示的是邮箱", _find_text(s2, "someone@example.com"))
-	_chk("④ 绑了邮箱: 按钮变成「换个邮箱」", _find_button(s2, "换个邮箱"))
+	_chk("④ 绑了邮箱: 按钮变成「换个邮箱」", _find_button(s2, "更换邮箱"))
 	_chk("④ ★反向分母: 没有冲突时【不】出现「处理存档冲突」", not _find_button(s2, "处理存档冲突"))
 	s2.queue_free()
 	await get_tree().process_frame
@@ -334,7 +334,7 @@ func _t_real_settings() -> void:
 	_chk("④ ★分母: 冲突状态确实立起来了", SB.save_conflict())
 	var s4 = await _open_settings()
 	_chk("④ ★★存档冲突: 屏幕上说了「云端存档和这台设备的不一样」",
-		_find_text(s4, "云端存档和这台设备的不一样"))
+		_find_text(s4, "云端存档与本地存档不一致"))
 	_chk("④ ★★存档冲突: 有「处理存档冲突」按钮(不然玩家永远卡在停推状态)",
 		_find_button(s4, "处理存档冲突"))
 	s4.queue_free()
@@ -427,7 +427,7 @@ func _t_unwall() -> void:
 		not _find_text(s5, str(_P2C_ACC.bind_nudge_text())),
 		str(_P2C_ACC.bind_nudge_text()))
 	_chk("⑥b ★分母: 按钮照旧是「换个邮箱」(绑定入口留着, 且没变成别的字)",
-		_find_button(s5, "换个邮箱"))
+		_find_button(s5, "更换邮箱"))
 	s5.queue_free()
 	await get_tree().process_frame
 

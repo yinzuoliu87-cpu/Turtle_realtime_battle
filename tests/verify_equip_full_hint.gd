@@ -144,7 +144,7 @@ func _case(tag: String, leader_n: int, level: int, want_sub: String, first_sub: 
 		var txt := _toast_text(sc)
 		if i == 0:
 			first_txt = txt
-		if txt.find(want_sub) >= 0:
+		if Array(want_sub.split("|")).any(func(w): return txt.find(str(w)) >= 0):
 			hit += 1
 		else:
 			bad.append("#%d @(%.0f,%.0f) 「%s」" % [i, c_rect.position.x, c_rect.position.y, txt])
@@ -168,8 +168,8 @@ func _ready() -> void:
 	for _q in range(4):
 		await get_tree().process_frame
 	GameState.test_mode = true          # ★绝不许写进玩家真存档
-	await _case("A 全队18/18·这只3/3", 3, 10, "卸", "已装满 3 件")
-	await _case("B 全队16/16·这只1/3", 1, 9, "卸", "全队装备已满")
+	await _case("A 全队18/18·这只3/3", 3, 10, "装备栏已满", "装备栏已满（3 件）")
+	await _case("B 全队16/16·这只1/3", 1, 9, "装备栏已满|全队装备已达上限", "全队装备已达上限")
 	print("")
 	print("断言 %d 条" % _n)
 	if _fail == 0 and _n >= 12:

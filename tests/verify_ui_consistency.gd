@@ -876,9 +876,9 @@ func _audit(root: Node) -> Dictionary:
 ## `mark`: 开完之后屏幕上必须出现的一句话 —— `abs` 模式下没有"新增控件数"可用,
 ##         它就是那一条**分母**(催了但没出来 ⇒ 当场红, 不是静默变空检查)。
 const POPUPS: Array = [
-	## 存量: 两个按钮 96x40 / 120x40, 短边 40 < 81px(44pt)。★这是真缺陷, 交主会话。
+	## 2026-10-07 换成教程选择框(scripts/scenes/tutorial_choice.gd): 两颗按钮 168x81 ⇒ 热区存量 2 → 0(棘轮收紧)。
 	{"scn": "MainMenu", "id": "tutorial_confirm", "label": "主菜单·教程确认弹窗",
-		"min_new": 6, "web": 0, "round": 0, "tap": 2, "frame": 0, "stock": 0},
+		"min_new": 6, "web": 0, "round": 0, "tap": 0, "frame": 0, "stock": 0},
 	## `abs`: 选中糖果罐会整页重建。数字与静止态的 Inventory 基线同一口径
 	## (web 10 / round 18 = 那批**刻意保留**的迷你装备格与羁绊赠送徽章, 见 KEEP_OK)。
 	## 存量: tap 13 = 静止态那 11 个 + 糖果罐那条栏带进来的 2 个 40x40 Panel。

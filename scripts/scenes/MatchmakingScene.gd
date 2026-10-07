@@ -377,7 +377,7 @@ func _build_searching() -> void:
 	_dots_lbl.position = Vector2(W / 2.0 + tw / 2.0 + 6.0, 300)
 	content_root.add_child(_dots_lbl)
 	var sub := _font(20, Color("#9fb6c9"))
-	sub.text = "正在为你寻找势均力敌的对手..."
+	sub.text = "正在匹配对手…"
 	sub.size = Vector2(W, 28); sub.position = Vector2(0, 366); sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content_root.add_child(sub)
 	# 跳动的点
@@ -409,7 +409,7 @@ func _build_vs(opp: Dictionary) -> void:
 	##   照荒野乱斗 / 皇室战争 / Disney Melee Mania 的 VS 页(Game UI Database · Versus Screen): 没有闪屏、没有扩散圈,
 	##   只有双方卡 + 一个 VS 落定。⇒ 去掉两次全屏闪色、两道扩散圈和震屏。
 	var found := _font(26, Color("#7fd98a"))
-	found.text = "已匹配到对手!"
+	found.text = "匹配成功"
 	found.size = Vector2(W, 34); found.position = Vector2(0, FOUND_Y); found.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content_root.add_child(found)
 	## ★★2026-09-28「✓」→ 像素勾 `ui/icon-check.png`(32×32, 1x)。

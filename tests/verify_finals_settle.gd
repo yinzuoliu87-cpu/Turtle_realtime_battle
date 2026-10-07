@@ -152,24 +152,24 @@ func _t_shop_wiring() -> void:
 		int(SB._finals_view.get("round_at", -1)) == 1000
 			and int(SB._finals_view.get("srv_now", -1)) == 1060,
 		str(SB._finals_view).substr(0, 120))
-	_ok("②' 开窗 60 秒时: 还开着", SB.finals_shop_open_now(5000))
-	_ok("②' 剩余 = 180 - 60 = 120 秒", SB.finals_shop_left_now(5000) == 120,
-		str(SB.finals_shop_left_now(5000)))
+	_ok("②' 开窗 60 秒时: 还开着", SB.finals_shop_open_of(SB.finals_cached(), 5000))
+	_ok("②' 剩余 = 180 - 60 = 120 秒", SB.finals_shop_left_of(SB.finals_cached(), 5000) == 120,
+		str(SB.finals_shop_left_of(SB.finals_cached(), 5000)))
 	## 本机再走 60 秒 ⇒ 服务端也走了 60 秒 ⇒ 还剩 60
 	_ok("②' 本机再走 60 秒 ⇒ 剩 60(用的是**时间差**)",
-		SB.finals_shop_left_now(5060) == 60, str(SB.finals_shop_left_now(5060)))
-	_ok("②' 本机走过 180 秒 ⇒ 窗关了", not SB.finals_shop_open_now(5000 + 180))
+		SB.finals_shop_left_of(SB.finals_cached(), 5060) == 60, str(SB.finals_shop_left_of(SB.finals_cached(), 5060)))
+	_ok("②' 本机走过 180 秒 ⇒ 窗关了", not SB.finals_shop_open_of(SB.finals_cached(), 5000 + 180))
 
 	## ★★★同一份回包, 换一个**差了一天**的本机时刻重新收包 ⇒ 答案必须一模一样
 	SB._finals_view = SB.parse_finals(true, 200, body, "uid-me", 90000)
 	_ok("②' ★★★本机时钟差了一天, 同一刻的答案**完全一样** —— 全桶同步的事不能看本机钟",
-		SB.finals_shop_open_now(90000) and SB.finals_shop_left_now(90000) == 120,
-		"开=%s 剩=%d" % [SB.finals_shop_open_now(90000), SB.finals_shop_left_now(90000)])
+		SB.finals_shop_open_of(SB.finals_cached(), 90000) and SB.finals_shop_left_of(SB.finals_cached(), 90000) == 120,
+		"开=%s 剩=%d" % [SB.finals_shop_open_of(SB.finals_cached(), 90000), SB.finals_shop_left_of(SB.finals_cached(), 90000)])
 
 	## 没有桶(空缓存) ⇒ 一律关, 不是开
 	SB.finals_clear()
-	_ok("②' ★没拿到桶 ⇒ 关(默认值选错方向的代价不对称)", not SB.finals_shop_open_now(5000))
-	_ok("②' ★没拿到桶 ⇒ 剩 0 不是负数", SB.finals_shop_left_now(5000) == 0)
+	_ok("②' ★没拿到桶 ⇒ 关(默认值选错方向的代价不对称)", not SB.finals_shop_open_of(SB.finals_cached(), 5000))
+	_ok("②' ★没拿到桶 ⇒ 剩 0 不是负数", SB.finals_shop_left_of(SB.finals_cached(), 5000) == 0)
 
 	## ── 屏幕那一行说什么(纯函数, 三种状态各不相同) ──
 	var MAP := preload("res://scripts/scenes/BracketMapScene.gd")
@@ -281,8 +281,15 @@ func _t_real_settle() -> void:
 	scene._settle_season(false)
 	var sub3: String = scene._hud._result_subtitle(false, GameState)
 	_ok("③ ★分母: 这一局确实按决赛日结算", str(scene._last_settle_kind) == P2C.SETTLE_FINALS, str(scene._last_settle_kind))
-	_ok("③ ★★周日输了(连 0 命的晋级者)不写「消耗 1 点生命」/「生命已耗尽」/「赛季胜场」, 写决赛日",
-		sub3.find("生命已耗尽") < 0 and sub3.find("消耗 1 点生命") < 0 and sub3.find("赛季胜场") < 0 and sub3.find("决赛日") >= 0, sub3)
+	## ★2026-10-07 用户「那么上午就叫小组赛啊，晚上叫冠军杯赛」: 副标题说是哪一段(组号在待揭晓那一单上)。
+	_ok("③ ★★周日输了(连 0 命的晋级者)不写「消耗 1 点生命」/「生命已耗尽」/「赛季胜场」, 写小组赛",
+		sub3.find("生命已耗尽") < 0 and sub3.find("消耗 1 点生命") < 0 and sub3.find("赛季胜场") < 0
+			and sub3.begins_with(P2C.STAGE_GROUP + " · "), sub3)
+	var _pr0 = GameState.finals_pending_reveal
+	GameState.finals_pending_reveal = {"round": 1, "match": 0, "bucket": P2C.FINALS_CUP_BUCKET}
+	var sub4: String = scene._hud._result_subtitle(false, GameState)
+	_ok("③ ★★冠军杯赛那一场 ⇒ 副标题写「冠军杯赛」", sub4.begins_with(P2C.STAGE_CUP + " · "), sub4)
+	GameState.finals_pending_reveal = _pr0
 	GameState.week_phase = P2C.PHASE_RANKED
 	GameState.hearts = 5
 	scene._settle_season(false)

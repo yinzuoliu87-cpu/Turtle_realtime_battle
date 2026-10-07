@@ -192,7 +192,7 @@ func _check_g_and_b_all() -> void:
 		## 「看全部」: 被动条一个 + 普攻条一个
 		var n_all := 0
 		for ch in _c.detail.get_children():
-			if ch is Label and str((ch as Label).text) == "看全部":
+			if ch is Label and str((ch as Label).text) == "查看全部" and (ch as Label).horizontal_alignment != HORIZONTAL_ALIGNMENT_RIGHT:
 				n_all += 1
 		if n_all < 2:
 			no_basic_hint.append("%s(%d)" % [pid, n_all])
@@ -256,7 +256,7 @@ func _check_f_lava() -> void:
 				await _settle(5)
 			var tag := "%s%s" % [pid, "·形态页" if form else ""]
 			var bar := _basic_bar()
-			var btn_lbl := _label_starting("换成")
+			var btn_lbl := _label_starting("切换至")
 			_ok("F %s 分母: 普攻条与形态切换钮都在" % tag, bar != null and btn_lbl != null)
 			if bar == null or btn_lbl == null:
 				continue

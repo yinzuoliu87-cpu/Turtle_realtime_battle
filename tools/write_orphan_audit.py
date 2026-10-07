@@ -127,6 +127,8 @@ WHY = {
                      ":234 清空)。产品只读是设计如此: 正式对局的池子来自服务端",
     "match_fetch_timeout_for_test": "取回放录像的看门狗时限注入(supabase.gd `fetch_match`; 产品用 "
                                     "MATCH_FETCH_TIMEOUT_SEC 15 秒, verify_replay_watch ③ 把它压到 0.4 秒量「服务器不回话」那一支)",
+    "stale_sec_for_test": "观赛「直播中断」时限注入(live_spectate.gd `_tick`; 产品用 gauntlet_board.LIVE_STALE_SEC 45 秒, "
+                          "verify_live_spectate ⑤ 压到 6 秒量「打的人断线 ⇒ 直播中断」那一支)",
     ## ⚠ 这张表**只写核对过出处的理由** —— 一条实测教训, 留一句免得重犯:
     ##   2026-09-28 我顺手给 `_info_passive_lbl` / `_info_passive_tpl` 编了两条理由,
     ##   一查全错: 它们当时已经被删掉了, 而"tests 在写它"其实是判据把

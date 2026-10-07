@@ -75,7 +75,7 @@ func _ready() -> void:
 	await get_tree().process_frame
 	m.set_data({}, {}, now)
 	m.set_week(wv)
-	m._show_replay_msg("这场的回放还没开放", Color("#ff9b7a"))
+	m._show_replay_msg("回放暂不可用", Color("#ff9b7a"))
 	await _shot("bracket_spectate")
 	get_tree().quit(0)
 

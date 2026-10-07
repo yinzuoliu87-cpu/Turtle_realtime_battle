@@ -290,7 +290,7 @@ func _ready() -> void:
 	var clean = hud._build_reward_chips(gs)
 	var t_clean := _all_text(clean) if clean != null else ""
 	_ok("③分母 结算屏 chip 真的建出来了(不是 null/空)", t_clean != "", t_clean.substr(0, 70))
-	_ok("③反面 后端没出错时【不出现】上传失败那一行", not t_clean.contains("没传上去"), t_clean.substr(0, 70))
+	_ok("③反面 后端没出错时【不出现】上传失败那一行", not t_clean.contains("上传失败"), t_clean.substr(0, 70))
 
 	## 再让它真的坏掉(走产品自己的记账入口, 不直接改 looks_broken)。
 	RP.note_result(false, 404)
@@ -298,7 +298,7 @@ func _ready() -> void:
 		"fail=%d ok=%d" % [int(RP.fail_count), int(RP.ok_count)])
 	var broken = hud._build_reward_chips(gs)
 	var t_broken := _all_text(broken) if broken != null else ""
-	_ok("③分母 坏掉之后那一行真的画出来了", t_broken.contains("没传上去"), t_broken.substr(0, 90))
+	_ok("③分母 坏掉之后那一行真的画出来了", t_broken.contains("上传失败"), t_broken.substr(0, 90))
 	## 判据: 整块 chip 的**渲染后文本**里一个后台词都没有 —— 尤其不许再有「同步」。
 	var chip_bad: Array = []
 	for w in BAD_WORDS:

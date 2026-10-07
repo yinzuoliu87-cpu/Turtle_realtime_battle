@@ -32,7 +32,6 @@ func _test_flags_exist() -> void:
 	_ok("GameState 有 onboarded", "onboarded" in GameState)
 	_ok("GameState 有 tutorial_stage", "tutorial_stage" in GameState)
 	_ok("GameState 有 tutorial_active(沙盒开关)", "tutorial_active" in GameState)
-	_ok("GameState 有 tutorial_mandatory(能否跳过)", "tutorial_mandatory" in GameState)
 	var gs_src := FileAccess.get_file_as_string("res://autoload/GameState.gd")
 	# onboarded 必须进 save() 和 _load(), 否则重启又触发教学
 	_ok("★onboarded 进了存档(save 表里有)", gs_src.contains("\"onboarded\": onboarded"))
@@ -79,9 +78,13 @@ func _test_menu_wiring() -> void:
 	var src := _code_only(FileAccess.get_file_as_string("res://scripts/scenes/MainMenuScene.gd"))
 	_ok("★主菜单 _ready 挂了首次检测", src.contains("_maybe_first_launch_tutorial()"))
 	_ok("★首次检测按 onboarded 判断(走完就不再触发)", src.contains("GameState.onboarded"))
-	_ok("★启动教学时开沙盒(tutorial_active=true)", src.contains("GameState.tutorial_active = true"))
-	_ok("★首次是强制的(mandatory=true)", src.contains("_begin_tutorial(true)"))
-	_ok("★❓ 重玩是可跳的(mandatory=false)", src.contains("_begin_tutorial(false)"))
+	## 2026-10-07 重做: 首启不再强制直进教程, 而是弹「开始教程 / 跳过」选择框(用户「一般是有跳过和开始教程选项啊」);
+	##   开沙盒的事归导演(tutorial_director.enter)。真点按钮的行为由 verify_tutorial_choice 量。
+	var dsrc := _code_only(FileAccess.get_file_as_string("res://autoload/tutorial_director.gd"))
+	_ok("★启动教学时开沙盒(导演 enter 里 tutorial_active=true)", dsrc.contains("GameState.tutorial_active = true"))
+	_ok("★首启弹选择框(第二个按钮是「跳过」)", src.contains("TutorialChoice.open(self, true)"))
+	_ok("★❓ 重玩弹同一个框(第二个按钮是「取消」)", src.contains("TutorialChoice.open(self, false)"))
+	_ok("★主菜单里不再有直进教程的旧入口", not src.contains("_begin_tutorial("))
 	# ONBOARD 开发开关(否则本机跑一次 onboarded=true 就再也测不到)
 	_ok("★有 ONBOARD 环境开关(强制开/关, 供测试)", src.contains("ONBOARD"))
 

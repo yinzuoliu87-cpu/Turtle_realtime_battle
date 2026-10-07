@@ -11,11 +11,8 @@ autoload/shot_diff.gd|lit|竹叶龟
 autoload/shot_diff.gd|lit|萌新龟龟
 autoload/shot_diff.gd|lit|退役龟皇
 autoload/shot_diff.gd|lit|龟界传说
-autoload/tutorial_director.gd|lit|看完了 → 打第二把 ▶
+autoload/tutorial_director.gd|lit|教程完成
 autoload/tutorial_director.gd|lit|练习木桩
-autoload/tutorial_director.gd|lit|继续 ▶
-autoload/tutorial_director.gd|lit|装备买好了 → 去背包
-autoload/tutorial_director.gd|lit|装好了 → 看看图鉴
 scripts/gamedata/arena_theme.gd|lit|(现状)
 scripts/gamedata/arena_theme.gd|lit|(现状·无)
 scripts/gamedata/arena_theme.gd|lit|(现状·无灯具)
@@ -66,7 +63,7 @@ scripts/gamedata/equip_stats.gd|lit|闪避
 scripts/gamedata/equip_stats.gd|lit|魔抗
 scripts/gamedata/equip_stats.gd|lit|魔法穿透
 scripts/gamedata/equip_stats.gd|lit|龟能充能速率
-scripts/gamedata/glossary.gd|lit|【涨潮】到期后的还原：加成全部收回。它不会致死，只把生命削到新的上限。
+scripts/gamedata/glossary.gd|lit|【涨潮】结束后移除全部加成。不会致死，生命降至新的上限。
 scripts/gamedata/glossary.gd|lit|【融合】之后获得的被动：每挨一段攻击就永久加一点护甲与魔抗，各有上限。
 scripts/gamedata/glossary.gd|lit|低血模式
 scripts/gamedata/glossary.gd|lit|余烬点上的状态：期间这名敌人受到的灼烧全部改判成真实伤害（不吃魔抗）。
@@ -86,7 +83,7 @@ scripts/gamedata/glossary.gd|lit|吸收
 scripts/gamedata/glossary.gd|lit|地毯轰炸
 scripts/gamedata/glossary.gd|lit|奶油护盾
 scripts/gamedata/glossary.gd|lit|寒冰龟留在地面的减速领域。冰柱层数会让它的范围与持续时间一起变大。
-scripts/gamedata/glossary.gd|lit|小木斧召唤的近战随从。它自己会升级，属性随累计的经验增长。
+scripts/gamedata/glossary.gd|lit|小木斧召唤的近战随从。属性随累计经验成长。
 scripts/gamedata/glossary.gd|lit|小龟每隔一段时间蓄满的一次强化普攻：额外伤害、击飞目标，并把这次伤害的一部分转成自己的护盾。
 scripts/gamedata/glossary.gd|lit|幽灵护盾
 scripts/gamedata/glossary.gd|lit|开战时给全队套上的护盾，永久不衰减；被打破时会炸伤周围的敌人。
@@ -117,7 +114,7 @@ scripts/gamedata/glossary.gd|lit|灵能冲击
 scripts/gamedata/glossary.gd|lit|猎人龟打上的猎杀印记。被标记的敌人，处决线会抬高。
 scripts/gamedata/glossary.gd|lit|生命跌破阈值时获得的一次性护盾，会在几秒内线性衰减掉。
 scripts/gamedata/glossary.gd|lit|登场一段时间后进入的强化状态：最大生命值与攻击力大幅提升，体型也变大。
-scripts/gamedata/glossary.gd|lit|登场时塞给敌人的枪。持枪的敌人属性会变强，但每次普攻都要付出自己的血。
+scripts/gamedata/glossary.gd|lit|登场时给予敌人的枪。持枪者属性提升，但每次普攻损失自身生命。
 scripts/gamedata/glossary.gd|lit|直升机龟能满时的大招：沿一条覆盖敌人最多的航线飞过，一路投弹。
 scripts/gamedata/glossary.gd|lit|真火
 scripts/gamedata/glossary.gd|lit|破损
@@ -155,22 +152,24 @@ scripts/gamedata/minion_codex.gd|lit|铁锤
 scripts/gamedata/minion_codex.gd|lit|锁上 2000 码内的敌人，蓄力 1.5 秒后发射一枚慢速追踪导弹，命中处核爆：400 码范围内造成 [color=#ff9f43]4×攻击力[/color] 物理伤害，并使命中的敌人受到的治疗降低 50%，持续 4 秒。
 scripts/gamedata/minion_codex.gd|lit|长手刃 · 普攻
 scripts/gamedata/phase2_config.gd|lit| · 不联网
-scripts/gamedata/phase2_config.gd|lit|\n不绑也能玩 —— 只是换了手机接不回来；邮箱和名字以后随时能改。
-scripts/gamedata/phase2_config.gd|lit|\n收不到验证码？看看垃圾邮件，或回上一步换个邮箱重发。
+scripts/gamedata/phase2_config.gd|lit|\n未收到验证码？请检查垃圾邮件，或返回更换邮箱。
+scripts/gamedata/phase2_config.gd|lit|\n未绑定时进度仅保存在本设备。邮箱与昵称可随时修改。
 scripts/gamedata/phase2_config.gd|lit|一
 scripts/gamedata/phase2_config.gd|lit|三
 scripts/gamedata/phase2_config.gd|lit|乌龟
 scripts/gamedata/phase2_config.gd|lit|二
 scripts/gamedata/phase2_config.gd|lit|五
 scripts/gamedata/phase2_config.gd|lit|亚军
+scripts/gamedata/phase2_config.gd|lit|今日决赛日 · 前往对阵图参赛
+scripts/gamedata/phase2_config.gd|lit|今日决赛日 · 本周未晋级 · 下周一重置
+scripts/gamedata/phase2_config.gd|lit|今日决赛日 · 闯关赛止步 · 下周一重置
 scripts/gamedata/phase2_config.gd|lit|休赛
 scripts/gamedata/phase2_config.gd|lit|休赛日 · 不开放对战
 scripts/gamedata/phase2_config.gd|lit|六
 scripts/gamedata/phase2_config.gd|lit|冠军
+scripts/gamedata/phase2_config.gd|lit|冠军杯赛
 scripts/gamedata/phase2_config.gd|lit|决赛日
-scripts/gamedata/phase2_config.gd|lit|双方同时开赛 · 结果统一在本轮开播时揭晓\n去【决赛日 → 看对阵图】等翻面
-scripts/gamedata/phase2_config.gd|lit|名字太短了 —— 至少 %d 个字
-scripts/gamedata/phase2_config.gd|lit|名字太长了 —— 最多 %d 个字(现在 %d 个)
+scripts/gamedata/phase2_config.gd|lit|双方同时开赛 · 结果于本轮开播时公布\n可在对阵图查看
 scripts/gamedata/phase2_config.gd|lit|周一
 scripts/gamedata/phase2_config.gd|lit|周三
 scripts/gamedata/phase2_config.gd|lit|周二
@@ -183,31 +182,32 @@ scripts/gamedata/phase2_config.gd|lit|四强
 scripts/gamedata/phase2_config.gd|lit|大师
 scripts/gamedata/phase2_config.gd|lit|小
 scripts/gamedata/phase2_config.gd|lit|小将
+scripts/gamedata/phase2_config.gd|lit|小组赛
 scripts/gamedata/phase2_config.gd|lit|小龟主
 scripts/gamedata/phase2_config.gd|lit|彩虹
 scripts/gamedata/phase2_config.gd|lit|忍者
 scripts/gamedata/phase2_config.gd|lit|换一个
 scripts/gamedata/phase2_config.gd|lit|教头
 scripts/gamedata/phase2_config.gd|lit|日
+scripts/gamedata/phase2_config.gd|lit|昵称最多 %d 个字（当前 %d 个）
+scripts/gamedata/phase2_config.gd|lit|昵称至少 %d 个字
 scripts/gamedata/phase2_config.gd|lit|测试时间 周%s %02d:%02d UTC
 scripts/gamedata/phase2_config.gd|lit|海盗
 scripts/gamedata/phase2_config.gd|lit|满配额
 scripts/gamedata/phase2_config.gd|lit|石头
 scripts/gamedata/phase2_config.gd|lit|积分赛
-scripts/gamedata/phase2_config.gd|lit|绑上邮箱，换手机或重装都能把进度接回来。
+scripts/gamedata/phase2_config.gd|lit|组冠军
 scripts/gamedata/phase2_config.gd|lit|绑定账号 · 保存进度
-scripts/gamedata/phase2_config.gd|lit|绑定邮箱，换手机也接得回来
+scripts/gamedata/phase2_config.gd|lit|绑定邮箱 · 跨设备同步进度
+scripts/gamedata/phase2_config.gd|lit|绑定邮箱后，更换设备或重新安装可恢复进度。
 scripts/gamedata/phase2_config.gd|lit|统领
 scripts/gamedata/phase2_config.gd|lit|规则同积分赛
-scripts/gamedata/phase2_config.gd|lit|进决赛日
+scripts/gamedata/phase2_config.gd|lit|进入决赛日
 scripts/gamedata/phase2_config.gd|lit|闪电
 scripts/gamedata/phase2_config.gd|lit|闯关赛
 scripts/gamedata/phase2_config.gd|lit|龟
 scripts/gamedata/phase2_config.gd|lit|龟主
 scripts/gamedata/phase2_config.gd|lit|龟王
-scripts/gamedata/phase2_config.gd|lit|🏆 今天是决赛日 · 去【决赛日 → 看对阵图】打你那一场
-scripts/gamedata/phase2_config.gd|lit|🏆 今天是决赛日 · 本周没晋级 · 下周一开新的一轮
-scripts/gamedata/phase2_config.gd|lit|🏆 今天是决赛日 · 闯关赛没打进决赛日 · 下周一开新的一轮
 scripts/gamedata/phase2_equip.gd|lit|双穿
 scripts/gamedata/phase2_equip.gd|lit|反伤
 scripts/gamedata/phase2_equip.gd|lit|护甲
@@ -461,78 +461,89 @@ scripts/net/remote_pool.gd|lit|缺 ghost_id
 scripts/net/remote_pool.gd|lit|装备 id `%s` 不在白名单
 scripts/net/remote_pool.gd|lit|龟 id `%s` 不在白名单
 scripts/net/remote_pool.gd|lit|（部署不存在）
-scripts/net/supabase.gd|lit|发得太频繁了，等几分钟再试
-scripts/net/supabase.gd|lit|发送失败（%d），稍后再试
-scripts/net/supabase.gd|lit|把邮件里那串数字填进来
-scripts/net/supabase.gd|lit|有新版本，请更新
-scripts/net/supabase.gd|lit|服务器没给账号，取回失败
-scripts/net/supabase.gd|lit|服务器返回的是另一个账号，没有绑成功（没动你的进度）
-scripts/net/supabase.gd|lit|本机还没有账号（正在连服务器），过两秒重新发一次验证码
-scripts/net/supabase.gd|lit|正在连服务器，过两秒再点一次（一直这样就是连不上，检查下网络）
-scripts/net/supabase.gd|lit|账号取回来了
-scripts/net/supabase.gd|lit|还没接后端
-scripts/net/supabase.gd|lit|这个邮箱已经绑过别的账号了
-scripts/net/supabase.gd|lit|这个邮箱没有绑定过账号，检查一下拼写
-scripts/net/supabase.gd|lit|这个邮箱用不了（示例/测试域名不支持），换一个试试
-scripts/net/supabase.gd|lit|连不上服务器，检查一下网络
-scripts/net/supabase.gd|lit|邮件服务还没开通，暂时绑定不了（正在接入）
-scripts/net/supabase.gd|lit|邮箱格式不对，再看一眼
-scripts/net/supabase.gd|lit|邮箱绑好了
+scripts/net/supabase.gd|lit|不支持该邮箱域名
+scripts/net/supabase.gd|lit|发现新版本，请更新
+scripts/net/supabase.gd|lit|发送失败（%d），请稍后重试
+scripts/net/supabase.gd|lit|操作过于频繁，请稍后再试
+scripts/net/supabase.gd|lit|无法连接服务器，请检查网络
+scripts/net/supabase.gd|lit|服务暂不可用
+scripts/net/supabase.gd|lit|正在连接服务器，请稍后重新发送
+scripts/net/supabase.gd|lit|正在连接服务器，请稍后重试
+scripts/net/supabase.gd|lit|绑定失败：账号不匹配（进度未受影响）
+scripts/net/supabase.gd|lit|该邮箱已绑定其他账号
+scripts/net/supabase.gd|lit|该邮箱未绑定账号
+scripts/net/supabase.gd|lit|请输入邮件中的验证码
+scripts/net/supabase.gd|lit|账号已恢复
+scripts/net/supabase.gd|lit|账号恢复失败
+scripts/net/supabase.gd|lit|邮箱格式错误
+scripts/net/supabase.gd|lit|邮箱绑定成功
+scripts/net/supabase.gd|lit|邮箱绑定服务不可用
 scripts/net/supabase.gd|lit|验证失败
 scripts/net/supabase.gd|lit|验证失败（%d）
-scripts/net/supabase.gd|lit|验证码不对，或者已经过期了（重新发一次）
-scripts/net/supabase.gd|lit|验证码发到 %s 了，查收一下（也看看垃圾邮件）
+scripts/net/supabase.gd|lit|验证码已发送至 %s（如未收到，请检查垃圾邮件）
+scripts/net/supabase.gd|lit|验证码错误或已过期
+scripts/scenes/BracketMapScene.gd|lit| · 待分组
 scripts/scenes/BracketMapScene.gd|lit| · 未开赛
 scripts/scenes/BracketMapScene.gd|lit| · 未晋级
 scripts/scenes/BracketMapScene.gd|lit| · 查询中
-scripts/scenes/BracketMapScene.gd|lit| · 等分组
-scripts/scenes/BracketMapScene.gd|lit| · 连不上
+scripts/scenes/BracketMapScene.gd|lit| · 直接晋级
+scripts/scenes/BracketMapScene.gd|lit| · 连接失败
 scripts/scenes/BracketMapScene.gd|lit|%d 分 %d 秒
 scripts/scenes/BracketMapScene.gd|lit|%d 秒
+scripts/scenes/BracketMapScene.gd|lit|%s %d 分后开赛
+scripts/scenes/BracketMapScene.gd|lit|%s %d 小时 %d 分后开赛
+scripts/scenes/BracketMapScene.gd|lit|%s · 等待开赛
+scripts/scenes/BracketMapScene.gd|lit|%s · 等待开赛\n
+scripts/scenes/BracketMapScene.gd|lit|%s 获胜
+scripts/scenes/BracketMapScene.gd|lit|%s仅 1 人 · 直接晋级%s\n%s %s 开赛
+scripts/scenes/BracketMapScene.gd|lit|%s进行中
+scripts/scenes/BracketMapScene.gd|lit|%s进行中 · 组冠军 %d/%d
 scripts/scenes/BracketMapScene.gd|lit|…还有 %d 组
 scripts/scenes/BracketMapScene.gd|lit|上一组
 scripts/scenes/BracketMapScene.gd|lit|下一组
 scripts/scenes/BracketMapScene.gd|lit|你
-scripts/scenes/BracketMapScene.gd|lit|你不在这一组里 · 只能看别人打
-scripts/scenes/BracketMapScene.gd|lit|你本周未晋级 · 本周各组的对阵只能看
+scripts/scenes/BracketMapScene.gd|lit|关闭
 scripts/scenes/BracketMapScene.gd|lit|冠
-scripts/scenes/BracketMapScene.gd|lit|冠军赛
-scripts/scenes/BracketMapScene.gd|lit|冠军赛 %d 小时 %d 分后开播 · 先等各组决出自己的冠军
-scripts/scenes/BracketMapScene.gd|lit|冠军赛正在集结 · 等各组决出自己的冠军
-scripts/scenes/BracketMapScene.gd|lit|决赛进行中 · 冠军还没决出
-scripts/scenes/BracketMapScene.gd|lit|决赛进行中 · 各组冠军还没决出
-scripts/scenes/BracketMapScene.gd|lit|决赛进行中 · 已决出 %d/%d 组
-scripts/scenes/BracketMapScene.gd|lit|各组冠军决出后在这里公布
+scripts/scenes/BracketMapScene.gd|lit|冠军 · %s%s
 scripts/scenes/BracketMapScene.gd|lit|周日 · 决赛日
 scripts/scenes/BracketMapScene.gd|lit|备战购物 · 还剩 %s
 scripts/scenes/BracketMapScene.gd|lit|对手
-scripts/scenes/BracketMapScene.gd|lit|对手没留下阵容 · 这一场算他弃权
+scripts/scenes/BracketMapScene.gd|lit|对手未提交阵容 · 判对手弃权
+scripts/scenes/BracketMapScene.gd|lit|对手阵容加载失败，请稍后重试
 scripts/scenes/BracketMapScene.gd|lit|对手阵容已就位 · %s
-scripts/scenes/BracketMapScene.gd|lit|已决出的冠军
+scripts/scenes/BracketMapScene.gd|lit|已产生的组冠军
+scripts/scenes/BracketMapScene.gd|lit|开始对战
 scripts/scenes/BracketMapScene.gd|lit|待定
-scripts/scenes/BracketMapScene.gd|lit|我这一组
-scripts/scenes/BracketMapScene.gd|lit|暂时看不到对手阵容 · 过两秒再点一次
-scripts/scenes/BracketMapScene.gd|lit|本周冠军
-scripts/scenes/BracketMapScene.gd|lit|本周冠军已全部决出 · 共 %d 组
-scripts/scenes/BracketMapScene.gd|lit|本周只有 %d 人晋级 · 人太少, 决赛日没开起来; 你的晋级算数, 下周再来
-scripts/scenes/BracketMapScene.gd|lit|本周没有你这一组 · 周六闯关赛晋级才进得来
+scripts/scenes/BracketMapScene.gd|lit|无法连接服务器 · 30 秒后自动刷新
+scripts/scenes/BracketMapScene.gd|lit|无法连接服务器，请稍后重试
+scripts/scenes/BracketMapScene.gd|lit|未分组 · %s 自动分组
+scripts/scenes/BracketMapScene.gd|lit|未晋级 · 需通过周六闯关赛
+scripts/scenes/BracketMapScene.gd|lit|本周仅 1 名组冠军 · 直接夺冠\n冠军 · %s%s
+scripts/scenes/BracketMapScene.gd|lit|本周晋级人数不足（%d 人）· 决赛日取消 · 晋级记录保留
+scripts/scenes/BracketMapScene.gd|lit|本周未晋级 · 仅可观战
 scripts/scenes/BracketMapScene.gd|lit|本轮备战已结束 · 等待开赛
-scripts/scenes/BracketMapScene.gd|lit|正在摆你这一组的对阵
-scripts/scenes/BracketMapScene.gd|lit|正在翻本周的名册 · 看看你分在哪一组
-scripts/scenes/BracketMapScene.gd|lit|正在读取这一场…
+scripts/scenes/BracketMapScene.gd|lit|本轮对战
+scripts/scenes/BracketMapScene.gd|lit|本轮已结束，请刷新
+scripts/scenes/BracketMapScene.gd|lit|正在查询分组
+scripts/scenes/BracketMapScene.gd|lit|正在生成对阵
+scripts/scenes/BracketMapScene.gd|lit|每轮仅可查看 1 名对手（已查看 %d 号）
 scripts/scenes/BracketMapScene.gd|lit|神秘龟
+scripts/scenes/BracketMapScene.gd|lit|第 %d 组
 scripts/scenes/BracketMapScene.gd|lit|第 %d 组冠军 · %s%s
+scripts/scenes/BracketMapScene.gd|lit|组冠军产生后公布
+scripts/scenes/BracketMapScene.gd|lit|组冠军已全部产生 · 共 %d 组
+scripts/scenes/BracketMapScene.gd|lit|胜
+scripts/scenes/BracketMapScene.gd|lit|观战模式
+scripts/scenes/BracketMapScene.gd|lit|观看
+scripts/scenes/BracketMapScene.gd|lit|读取中…
 scripts/scenes/BracketMapScene.gd|lit|轮空
-scripts/scenes/BracketMapScene.gd|lit|还没分组 · %s 自动分组开赛, 到时候这里会出现你的对阵
-scripts/scenes/BracketMapScene.gd|lit|这一轮你已经看过 %d 号了 · 一轮只能看一个对手
-scripts/scenes/BracketMapScene.gd|lit|这一轮已经翻篇了 · 刷新一下看看新的对阵
-scripts/scenes/BracketMapScene.gd|lit|连不上服务器 · 你这一组还没看到, 每 30 秒自己再看一次
-scripts/scenes/BracketMapScene.gd|lit|连不上服务器 · 过两秒再点一次
 scripts/scenes/BracketMapScene.gd|text|下一轮 %s后开播
-scripts/scenes/BracketMapScene.gd|text|你本周未晋级 · 只能看 · 第 %d 组
-scripts/scenes/BracketMapScene.gd|text|回到我
+scripts/scenes/BracketMapScene.gd|text|对战
+scripts/scenes/BracketMapScene.gd|text|我的位置
+scripts/scenes/BracketMapScene.gd|text|本周未晋级 · 观战 · 第 %d 组
+scripts/scenes/BracketMapScene.gd|text|（我）
 scripts/scenes/BracketMapScene.gd|tooltip_text|开始对战
-scripts/scenes/BracketMapScene.gd|tooltip_text|重看这一场
+scripts/scenes/BracketMapScene.gd|tooltip_text|观看回放
 scripts/scenes/CodexScene.gd|lit|剑
 scripts/scenes/CodexScene.gd|lit|图鉴
 scripts/scenes/CodexScene.gd|lit|奇械
@@ -554,116 +565,118 @@ scripts/scenes/CodexScene.gd|lit|龟
 scripts/scenes/CodexScene.gd|text|✓ %d 龟 / %d 装备 / %d 羁绊 / %d 状态
 scripts/scenes/CodexScene.gd|text|❌ DataRegistry 未加载
 scripts/scenes/GauntletBoardScene.gd|lit| · 已截止
+scripts/scenes/GauntletBoardScene.gd|lit| · 正在打 %d 场
 scripts/scenes/GauntletBoardScene.gd|lit|%d 分钟前
 scripts/scenes/GauntletBoardScene.gd|lit|%d 天前
 scripts/scenes/GauntletBoardScene.gd|lit|%d 小时前
+scripts/scenes/GauntletBoardScene.gd|lit|%s 获胜
 scripts/scenes/GauntletBoardScene.gd|lit|刚刚
 scripts/scenes/GauntletBoardScene.gd|lit|周六赛况
-scripts/scenes/GauntletBoardScene.gd|lit|回放
-scripts/scenes/GauntletBoardScene.gd|lit|对
+scripts/scenes/GauntletBoardScene.gd|lit|周六闯关赛对局结束后在此显示
+scripts/scenes/GauntletBoardScene.gd|lit|开打
+scripts/scenes/GauntletBoardScene.gd|lit|当前版本不支持在线赛况
 scripts/scenes/GauntletBoardScene.gd|lit|战绩榜
-scripts/scenes/GauntletBoardScene.gd|lit|最近打完的对局
-scripts/scenes/GauntletBoardScene.gd|lit|本周闯关赛 · %d 人 · %d 场%s
-scripts/scenes/GauntletBoardScene.gd|lit|本周闯关赛还没有打完的对局
-scripts/scenes/GauntletBoardScene.gd|lit|正在取本周闯关赛况…
-scripts/scenes/GauntletBoardScene.gd|lit|看全部
+scripts/scenes/GauntletBoardScene.gd|lit|暂无已完成对局
+scripts/scenes/GauntletBoardScene.gd|lit|最近对局
+scripts/scenes/GauntletBoardScene.gd|lit|本周闯关赛 · %d 人 · %d 场%s%s
+scripts/scenes/GauntletBoardScene.gd|lit|查看全部
+scripts/scenes/GauntletBoardScene.gd|lit|正在打
+scripts/scenes/GauntletBoardScene.gd|lit|每 %d 秒自动刷新
+scripts/scenes/GauntletBoardScene.gd|lit|观看
 scripts/scenes/GauntletBoardScene.gd|lit|读取中
+scripts/scenes/GauntletBoardScene.gd|lit|读取中…
 scripts/scenes/GauntletBoardScene.gd|lit|赛况暂无
-scripts/scenes/GauntletBoardScene.gd|lit|赢
-scripts/scenes/GauntletBoardScene.gd|lit|这个版本没接服务器，看不到全场赛况
 scripts/scenes/GauntletBoardScene.gd|lit|（我）
-scripts/scenes/GauntletBoardScene.gd|text|%s 今天的对局
-scripts/scenes/InventoryScene.gd|lit|  这件不加属性，只有效果
-scripts/scenes/InventoryScene.gd|lit|[color=#8fa6bb]这件不加属性，只有效果[/color]
-scripts/scenes/InventoryScene.gd|lit|[color=#8fa6bb]这件只加属性，不带效果[/color]
+scripts/scenes/GauntletBoardScene.gd|text|%s 的对局
+scripts/scenes/InventoryScene.gd|lit|  无属性加成
+scripts/scenes/InventoryScene.gd|lit|[color=#8fa6bb]无属性加成[/color]
+scripts/scenes/InventoryScene.gd|lit|[color=#8fa6bb]无特殊效果[/color]
 scripts/scenes/InventoryScene.gd|lit|[color=#9fb6c9][b]属性[/b][/color]\n%s\n\n[color=#9fb6c9][b]效果[/b][/color]\n[color=#cfe0ef]%s[/color]
-scripts/scenes/InventoryScene.gd|lit|\n升到 Lv%d 就能装 %d 件
-scripts/scenes/InventoryScene.gd|lit|\n已经满级, 不会再多了
+scripts/scenes/InventoryScene.gd|lit|\nLv%d 可装备 %d 件
+scripts/scenes/InventoryScene.gd|lit|\n已达上限
 scripts/scenes/InventoryScene.gd|lit|　　小将 ×%d
 scripts/scenes/InventoryScene.gd|lit|上战场
 scripts/scenes/InventoryScene.gd|lit|下战场
-scripts/scenes/InventoryScene.gd|lit|去商店买装备
+scripts/scenes/InventoryScene.gd|lit|前往商店
 scripts/scenes/InventoryScene.gd|lit|商店
 scripts/scenes/InventoryScene.gd|lit|小将 ×%d
 scripts/scenes/InventoryScene.gd|lit|属性\n%s\n\n效果\n%s
-scripts/scenes/InventoryScene.gd|lit|怎么配阵容
-scripts/scenes/InventoryScene.gd|lit|打完本大轮第一场后解锁
+scripts/scenes/InventoryScene.gd|lit|无属性加成
+scripts/scenes/InventoryScene.gd|lit|本大轮首战后解锁
 scripts/scenes/InventoryScene.gd|lit|盾
-scripts/scenes/InventoryScene.gd|lit|空槽 · 先点背包里的装备, 再点这只单位
+scripts/scenes/InventoryScene.gd|lit|空槽位
 scripts/scenes/InventoryScene.gd|lit|系
 scripts/scenes/InventoryScene.gd|lit|统领 ×%d
 scripts/scenes/InventoryScene.gd|lit|背包
-scripts/scenes/InventoryScene.gd|lit|这件不加属性，只有效果
+scripts/scenes/InventoryScene.gd|lit|阵容说明
 scripts/scenes/InventoryScene.gd|lit|（无主动效果）
 scripts/scenes/InventoryScene.gd|text|[b][color=#ffffff]%s[/color][/b]   [color=#ffd93d]%s[/color]   [color=#8fa6bb]%d费%s[/color]
-scripts/scenes/InventoryScene.gd|text|· 上下两个战场各打各的, 兵力自己分\n· 点两个单位, 它们就互换战场和位置\n· 点小将的【前排 / 后排】, 近战挥砍和远程射击之间切\n· 先点下面背包里的装备, 再点一只龟或小将, 就装上了\n· 点单位身上的装备格, 那件就回背包\n· 三件同款同星的装备会自己合成, 升一颗星
+scripts/scenes/InventoryScene.gd|text|· 上路、下路独立作战\n· 依次点击两个单位：交换位置\n· 小将【前排 / 后排】：切换近战 / 远程\n· 选择背包装备后点击单位：装备\n· 点击单位装备格：卸下\n· 3 件同名同星装备自动合成升星
 scripts/scenes/InventoryScene.gd|text|▼ 下面还有
 scripts/scenes/InventoryScene.gd|text|临时等级器
+scripts/scenes/InventoryScene.gd|text|全队装备 %d/%d
 scripts/scenes/InventoryScene.gd|text|前排
 scripts/scenes/InventoryScene.gd|text|卖出 +%d
 scripts/scenes/InventoryScene.gd|text|卸下 %s
+scripts/scenes/InventoryScene.gd|text|卸下装备
 scripts/scenes/InventoryScene.gd|text|取消
 scripts/scenes/InventoryScene.gd|text|后排
+scripts/scenes/InventoryScene.gd|text|完成教程
 scripts/scenes/InventoryScene.gd|text|小将
-scripts/scenes/InventoryScene.gd|text|怎么配出战阵容
 scripts/scenes/InventoryScene.gd|text|打碎
-scripts/scenes/InventoryScene.gd|text|点「卸下」把装备收回背包
-scripts/scenes/InventoryScene.gd|text|点一只龟或小将, 这一大轮就给它多一级
+scripts/scenes/InventoryScene.gd|text|查看更多（%d 行）
 scripts/scenes/InventoryScene.gd|text|知道了
+scripts/scenes/InventoryScene.gd|text|空槽位
 scripts/scenes/InventoryScene.gd|text|精英小将
 scripts/scenes/InventoryScene.gd|text|糖果罐 %d档
-scripts/scenes/InventoryScene.gd|text|糖果罐 · 第 %d 档 —— 现在打碎能开出 %s。本大轮只碎这一次。
-scripts/scenes/InventoryScene.gd|text|细看
+scripts/scenes/InventoryScene.gd|text|糖果罐 · 第 %d 档\n打碎可获得：%s（每大轮限 1 次）
 scripts/scenes/InventoryScene.gd|text|统领%d
-scripts/scenes/InventoryScene.gd|text|背包是空的 —— 去商店买几件装备
-scripts/scenes/InventoryScene.gd|text|装备 %d / %d
+scripts/scenes/InventoryScene.gd|text|背包为空
 scripts/scenes/InventoryScene.gd|text|装备背包
-scripts/scenes/InventoryScene.gd|text|还有 %d 行没说完 · 点【细看】
-scripts/scenes/InventoryScene.gd|text|这个位子还空着
-scripts/scenes/InventoryScene.gd|tooltip_text|%s · 盾羁绊白送的, 不占装备位 · 盾羁绊掉下去就收回
+scripts/scenes/InventoryScene.gd|text|详情
+scripts/scenes/InventoryScene.gd|text|选择单位 · 本大轮等级 +1
+scripts/scenes/InventoryScene.gd|text|阵容说明
+scripts/scenes/InventoryScene.gd|tooltip_text|%s · 盾羁绊赠送 · 不占装备位 · 羁绊失效时移除
 scripts/scenes/InventoryScene.gd|tooltip_text|[b]%s[/b]  ★%d  %d费\n\n属性\n%s\n\n效果\n%s
-scripts/scenes/InventoryScene.gd|tooltip_text|一只身上最多 %d 件；全队六只一起能装几件, 看你的赛季等级。\n现在 Lv%d, 全队能装 %d 件%s
-scripts/scenes/InventoryScene.gd|tooltip_text|从糖果罐里开出来的临时等级器\n点它, 再点一只龟统领或小将 —— 这一大轮它就多一级, 换了大轮还原
-scripts/scenes/InventoryScene.gd|tooltip_text|全队装备已满 %d / %d · 升赛季等级可再装
-scripts/scenes/InventoryScene.gd|tooltip_text|点一下 → 底下出现「卸下」键
-scripts/scenes/InventoryScene.gd|tooltip_text|点一下换站位 —— 前排贴上去挥砍, 后排站远了射击
+scripts/scenes/InventoryScene.gd|tooltip_text|临时等级器\n指定单位本大轮等级 +1
+scripts/scenes/InventoryScene.gd|tooltip_text|全队装备已达上限 %d/%d
+scripts/scenes/InventoryScene.gd|tooltip_text|切换站位：前排近战 / 后排远程
+scripts/scenes/InventoryScene.gd|tooltip_text|单位装备上限 %d 件\n全队上限由赛季等级决定（当前 Lv%d：%d 件）%s
 scripts/scenes/LeaderboardScene.gd|lit|上周终榜
 scripts/scenes/LeaderboardScene.gd|lit|剩余生命
 scripts/scenes/LeaderboardScene.gd|lit|已晋级
 scripts/scenes/LeaderboardScene.gd|lit|总场次
 scripts/scenes/LeaderboardScene.gd|lit|本周共 %d 人上榜
 scripts/scenes/LeaderboardScene.gd|lit|本周排行
-scripts/scenes/LeaderboardScene.gd|lit|本机记录 · 不是实时排名
+scripts/scenes/LeaderboardScene.gd|lit|本地记录 · 非实时排名
 scripts/scenes/LeaderboardScene.gd|lit|查看对阵图
 scripts/scenes/LeaderboardScene.gd|lit|正在读取本周排行…
 scripts/scenes/LeaderboardScene.gd|lit|积分赛终榜
 scripts/scenes/LeaderboardScene.gd|lit|胜场
-scripts/scenes/LeaderboardScene.gd|lit|（对手还没读到 —— 下一场开始时去取一次）
-scripts/scenes/LeaderboardScene.gd|lit|（榜上暂时只有你 —— 打完一场, 对手就会上来）
-scripts/scenes/LeaderboardScene.gd|lit|（榜上暂时只有你）
-scripts/scenes/LeaderboardScene.gd|lit|（连不上服务器 · 对手还没读到 —— 下一场开始时会自己再试）
+scripts/scenes/LeaderboardScene.gd|lit|（无法连接服务器）
+scripts/scenes/LeaderboardScene.gd|lit|（暂无其他玩家 · 对战后更新）
+scripts/scenes/LeaderboardScene.gd|lit|（暂无其他玩家）
+scripts/scenes/LeaderboardScene.gd|lit|（暂无对手数据）
 scripts/scenes/LeaderboardScene.gd|text|上周共 %d 人上榜
 scripts/scenes/LeaderboardScene.gd|text|你
-scripts/scenes/MainMenuScene.gd|lit| · 没打的 %d 场化成 深海币 +%d · 经验 +%d
+scripts/scenes/MainMenuScene.gd|lit| · 未使用 %d 场已折算：深海币 +%d · 经验 +%d
 scripts/scenes/MainMenuScene.gd|lit|%d 分 %02d 秒
 scripts/scenes/MainMenuScene.gd|lit|%d 天 %d 小时
 scripts/scenes/MainMenuScene.gd|lit|%d 小时 %d 分
 scripts/scenes/MainMenuScene.gd|lit|%d 胜获得周六闯关赛资格
 scripts/scenes/MainMenuScene.gd|lit|%s 开始
-scripts/scenes/MainMenuScene.gd|lit|%s 开赛
 scripts/scenes/MainMenuScene.gd|lit|%s 截止
-scripts/scenes/MainMenuScene.gd|lit|✅ 已晋级决赛日 · 闯关赛到此为止(%s) · 明天周日参加决赛日
 scripts/scenes/MainMenuScene.gd|lit|不消耗生命
+scripts/scenes/MainMenuScene.gd|lit|今日休赛 · 积分赛周二开启
 scripts/scenes/MainMenuScene.gd|lit|今日已截止
 scripts/scenes/MainMenuScene.gd|lit|但你已晋级, 周六闯关赛见
 scripts/scenes/MainMenuScene.gd|lit|但你已过晋级线, 周六闯关赛见
 scripts/scenes/MainMenuScene.gd|lit|全场赛况
-scripts/scenes/MainMenuScene.gd|lit|冠军、亚军、四强获得头衔
+scripts/scenes/MainMenuScene.gd|lit|冠军、亚军、四强、组冠军获得头衔
 scripts/scenes/MainMenuScene.gd|lit|决赛日 · 已晋级
-scripts/scenes/MainMenuScene.gd|lit|决赛日 · 本周没晋级
+scripts/scenes/MainMenuScene.gd|lit|决赛日 · 未晋级
 scripts/scenes/MainMenuScene.gd|lit|决赛日 · 闯关赛止步 %s
 scripts/scenes/MainMenuScene.gd|lit|分钟备战
-scripts/scenes/MainMenuScene.gd|lit|单败淘汰，胜者进入下一轮
 scripts/scenes/MainMenuScene.gd|lit|周%s
 scripts/scenes/MainMenuScene.gd|lit|周%s %02d:%02d
 scripts/scenes/MainMenuScene.gd|lit|周%s ~ 周%s
@@ -673,24 +686,33 @@ scripts/scenes/MainMenuScene.gd|lit|场上限
 scripts/scenes/MainMenuScene.gd|lit|场次已用完
 scripts/scenes/MainMenuScene.gd|lit|已出局
 scripts/scenes/MainMenuScene.gd|lit|已截止 · 停止匹配
+scripts/scenes/MainMenuScene.gd|lit|已晋级决赛日（%s）· 周日开赛
 scripts/scenes/MainMenuScene.gd|lit|已结束
 scripts/scenes/MainMenuScene.gd|lit|开始战斗
 scripts/scenes/MainMenuScene.gd|lit|排行榜
 scripts/scenes/MainMenuScene.gd|lit|晋级者参加周日决赛日
 scripts/scenes/MainMenuScene.gd|lit|晋级闯关赛
+scripts/scenes/MainMenuScene.gd|lit|本周 %d 场已用完 · %s
+scripts/scenes/MainMenuScene.gd|lit|本周 %d 场已用完 · 下周一重置
 scripts/scenes/MainMenuScene.gd|lit|本周对战 %d/%d
+scripts/scenes/MainMenuScene.gd|lit|本周未晋级 · 下周一重置 · 积分赛 %d 胜可参加
+scripts/scenes/MainMenuScene.gd|lit|本周未晋级 · 积分赛生命已耗尽 · 下周一重置
 scripts/scenes/MainMenuScene.gd|lit|本周赛程
+scripts/scenes/MainMenuScene.gd|lit|本大轮已出局 · %s
+scripts/scenes/MainMenuScene.gd|lit|本大轮已出局 · 下周一重置
+scripts/scenes/MainMenuScene.gd|lit|本大轮首战后解锁
 scripts/scenes/MainMenuScene.gd|lit|条生命
 scripts/scenes/MainMenuScene.gd|lit|查看对阵图
 scripts/scenes/MainMenuScene.gd|lit|查看对阵图 »
 scripts/scenes/MainMenuScene.gd|lit|每负一场扣 1 条生命，耗尽即本周出局
 scripts/scenes/MainMenuScene.gd|lit|满级
 scripts/scenes/MainMenuScene.gd|lit|版本更新在本日进行
-scripts/scenes/MainMenuScene.gd|lit|版本维护，请稍后再来
+scripts/scenes/MainMenuScene.gd|lit|版本维护中
 scripts/scenes/MainMenuScene.gd|lit|生命已耗尽 · 下周二可参加
 scripts/scenes/MainMenuScene.gd|lit|积分赛 %d 胜可参加
 scripts/scenes/MainMenuScene.gd|lit|积分赛生命耗尽 · 本周无法参加
 scripts/scenes/MainMenuScene.gd|lit|第 %d 大轮
+scripts/scenes/MainMenuScene.gd|lit|组冠军进入%s，单败决出冠军
 scripts/scenes/MainMenuScene.gd|lit|维护中
 scripts/scenes/MainMenuScene.gd|lit|背包
 scripts/scenes/MainMenuScene.gd|lit|胜晋级
@@ -701,24 +723,12 @@ scripts/scenes/MainMenuScene.gd|lit|负淘汰
 scripts/scenes/MainMenuScene.gd|lit|距%s开始 %s
 scripts/scenes/MainMenuScene.gd|lit|距截止 %s
 scripts/scenes/MainMenuScene.gd|lit|闯关赛 %d 胜可参加
-scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 再赢 %d 场晋级 / 再输 %d 场出局%s
 scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 已出局%s
 scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 已晋级决赛日%s
-scripts/scenes/MainMenuScene.gd|lit|闯关赛 · 本周没晋级
+scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 晋级还需 %d 胜 / 剩余 %d 负%s
+scripts/scenes/MainMenuScene.gd|lit|闯关赛 · 未晋级
+scripts/scenes/MainMenuScene.gd|lit|闯关赛已出局（%s）· 下周一重置
 scripts/scenes/MainMenuScene.gd|lit|首战后解锁
-scripts/scenes/MainMenuScene.gd|lit|💀 本大轮已出局 · %s
-scripts/scenes/MainMenuScene.gd|lit|💀 本大轮已出局 · 下周一开新的一轮
-scripts/scenes/MainMenuScene.gd|lit|💀 闯关赛已出局(%s) · 下周一开新的一轮
-scripts/scenes/MainMenuScene.gd|lit|📋 本周配额 %d 场已打满 · %s
-scripts/scenes/MainMenuScene.gd|lit|📋 本周配额 %d 场已打满 · 下周一开新的一轮
-scripts/scenes/MainMenuScene.gd|lit|🔒 今日休赛，积分赛周二开始
-scripts/scenes/MainMenuScene.gd|lit|🔒 完成本大轮首场对战后解锁商店
-scripts/scenes/MainMenuScene.gd|lit|🔒 本周没晋级 · 下周一开新的一轮, 积分赛打够 %d 胜就能来
-scripts/scenes/MainMenuScene.gd|lit|🔒 本周没晋级 · 积分赛命用完了 · 下周一开新的一轮
-scripts/scenes/MainMenuScene.gd|text|先下场练练
-scripts/scenes/MainMenuScene.gd|text|开打
-scripts/scenes/MainMenuScene.gd|text|来一场热身局, 我教你挑龟、摆阵
-scripts/scenes/MainMenuScene.gd|text|等会儿
 scripts/scenes/MatchmakingScene.gd|lit|一击三连
 scripts/scenes/MatchmakingScene.gd|lit|乌龟跑得快
 scripts/scenes/MatchmakingScene.gd|lit|佛系养龟
@@ -737,8 +747,8 @@ scripts/scenes/MatchmakingScene.gd|lit|龟界传说
 scripts/scenes/MatchmakingScene.gd|lit|龟速前进
 scripts/scenes/MatchmakingScene.gd|lit|龟龟不下班
 scripts/scenes/MatchmakingScene.gd|text|匹配中
-scripts/scenes/MatchmakingScene.gd|text|已匹配到对手!
-scripts/scenes/MatchmakingScene.gd|text|正在为你寻找势均力敌的对手...
+scripts/scenes/MatchmakingScene.gd|text|匹配成功
+scripts/scenes/MatchmakingScene.gd|text|正在匹配对手…
 scripts/scenes/RealtimeBattle3DScene.gd|lit|%s %.0f/%.0f (治疗/加血没夹上限)
 scripts/scenes/RealtimeBattle3DScene.gd|lit|%s 护盾 %.0f = %.1f× 最大生命
 scripts/scenes/RealtimeBattle3DScene.gd|lit|%s 攻击 %.0f → %.0f (%.1f×)
@@ -805,204 +815,193 @@ scripts/scenes/RealtimeBattle3DScene.gd|lit|驯服
 scripts/scenes/RecordScene.gd|lit|%d 分钟前
 scripts/scenes/RecordScene.gd|lit|%d 天前
 scripts/scenes/RecordScene.gd|lit|%d 小时前
-scripts/scenes/RecordScene.gd|lit|%d 秒拿下
-scripts/scenes/RecordScene.gd|lit|%s · 打了 %d 回合
-scripts/scenes/RecordScene.gd|lit|一照面就拿下
+scripts/scenes/RecordScene.gd|lit|%s · %d 回合
 scripts/scenes/RecordScene.gd|lit|出战
 scripts/scenes/RecordScene.gd|lit|切磋
 scripts/scenes/RecordScene.gd|lit|刚刚
 scripts/scenes/RecordScene.gd|lit|前天
-scripts/scenes/RecordScene.gd|lit|回放
+scripts/scenes/RecordScene.gd|lit|失败
 scripts/scenes/RecordScene.gd|lit|实时
 scripts/scenes/RecordScene.gd|lit|战绩
 scripts/scenes/RecordScene.gd|lit|指定首领
-scripts/scenes/RecordScene.gd|lit|撑了 %d 秒
+scripts/scenes/RecordScene.gd|lit|时长 %d:%02d
 scripts/scenes/RecordScene.gd|lit|昨天
+scripts/scenes/RecordScene.gd|lit|最近对局
 scripts/scenes/RecordScene.gd|lit|测试
 scripts/scenes/RecordScene.gd|lit|深海闯关
+scripts/scenes/RecordScene.gd|lit|胜
+scripts/scenes/RecordScene.gd|lit|胜利
 scripts/scenes/RecordScene.gd|lit|胜率
+scripts/scenes/RecordScene.gd|lit|观看
 scripts/scenes/RecordScene.gd|lit|读取中
-scripts/scenes/RecordScene.gd|lit|赢
-scripts/scenes/RecordScene.gd|lit|输
-scripts/scenes/RecordScene.gd|lit|还没站稳就倒了
+scripts/scenes/RecordScene.gd|lit|负
 scripts/scenes/RecordScene.gd|lit|野生
 scripts/scenes/RecordScene.gd|lit|首领
-scripts/scenes/RecordScene.gd|text|下去斗一场，看台自会替你记上第一笔
-scripts/scenes/RecordScene.gd|text|战报牌上还空着
-scripts/scenes/RecordScene.gd|text|最近对局
-scripts/scenes/RecordScene.gd|text|赢
-scripts/scenes/RecordScene.gd|text|输
-scripts/scenes/SettingsScene.gd|lit|⚠ 云端存档和这台设备的不一样（可能在别的设备上玩过）
-scripts/scenes/SettingsScene.gd|lit|⚠ 未绑定邮箱 —— 换设备后账号和进度都找不回来
-scripts/scenes/SettingsScene.gd|lit|⚠ 清掉就拿不回来了。音量、全屏、画质这些不动。
-scripts/scenes/SettingsScene.gd|lit|⚠ 登录已失效 —— 点「用邮箱取回」重新登录
-scripts/scenes/SettingsScene.gd|lit|⚠ 这台设备现在的进度会被换掉（换之前会先在本机备份一份）。
+scripts/scenes/RecordScene.gd|text|暂无对局记录
+scripts/scenes/RecordScene.gd|text|暂无战绩
+scripts/scenes/RecordScene.gd|text|胜
+scripts/scenes/RecordScene.gd|text|负
 scripts/scenes/SettingsScene.gd|lit|⚠ 重置所有存档
+scripts/scenes/SettingsScene.gd|lit|云端存档与本地存档不一致
+scripts/scenes/SettingsScene.gd|lit|云端进度将被本地覆盖
 scripts/scenes/SettingsScene.gd|lit|低
+scripts/scenes/SettingsScene.gd|lit|使用云端存档
+scripts/scenes/SettingsScene.gd|lit|使用本地存档
+scripts/scenes/SettingsScene.gd|lit|修改昵称
+scripts/scenes/SettingsScene.gd|lit|修改邮箱
 scripts/scenes/SettingsScene.gd|lit|关闭
-scripts/scenes/SettingsScene.gd|lit|发验证码
-scripts/scenes/SettingsScene.gd|lit|另一台设备上的进度会被这台覆盖
-scripts/scenes/SettingsScene.gd|lit|回上一步改邮箱
-scripts/scenes/SettingsScene.gd|lit|填邮箱 → 发验证码 → 填邮件里那串数字
+scripts/scenes/SettingsScene.gd|lit|发送验证码
 scripts/scenes/SettingsScene.gd|lit|处理存档冲突
-scripts/scenes/SettingsScene.gd|lit|存档清空了 · 从头再来
-scripts/scenes/SettingsScene.gd|lit|已绑定 · 换设备可用这个邮箱取回账号和进度
-scripts/scenes/SettingsScene.gd|lit|换个邮箱
-scripts/scenes/SettingsScene.gd|lit|改好了 · 现在叫「%s」
-scripts/scenes/SettingsScene.gd|lit|改昵称
+scripts/scenes/SettingsScene.gd|lit|存档已重置
+scripts/scenes/SettingsScene.gd|lit|已绑定 · 可在其他设备登录恢复进度
+scripts/scenes/SettingsScene.gd|lit|昵称已修改为「%s」
+scripts/scenes/SettingsScene.gd|lit|更换邮箱
+scripts/scenes/SettingsScene.gd|lit|未绑定时，进度仅保存在本设备。
+scripts/scenes/SettingsScene.gd|lit|未绑定邮箱 · 更换设备后无法恢复进度
+scripts/scenes/SettingsScene.gd|lit|本地未同步的进度将被替换\n（替换前自动备份）
+scripts/scenes/SettingsScene.gd|lit|本地进度将被替换（替换前自动备份）。
 scripts/scenes/SettingsScene.gd|lit|正在发送…
 scripts/scenes/SettingsScene.gd|lit|正在验证…
-scripts/scenes/SettingsScene.gd|lit|没绑定之前，进度只存在这台设备上。
+scripts/scenes/SettingsScene.gd|lit|此操作不可撤销。音量、画面、画质设置不受影响。
 scripts/scenes/SettingsScene.gd|lit|测试时间
-scripts/scenes/SettingsScene.gd|lit|用云端那份
-scripts/scenes/SettingsScene.gd|lit|用你绑过的邮箱收一个验证码，把那个账号和它的进度取回到这台设备上。\n
-scripts/scenes/SettingsScene.gd|lit|用这台的
-scripts/scenes/SettingsScene.gd|lit|用邮箱取回
-scripts/scenes/SettingsScene.gd|lit|用邮箱取回账号
+scripts/scenes/SettingsScene.gd|lit|游客 %s
 scripts/scenes/SettingsScene.gd|lit|画质「低」
 scripts/scenes/SettingsScene.gd|lit|画质「高」
-scripts/scenes/SettingsScene.gd|lit|画质换成「%s」了%s · 下一场开始时生效
+scripts/scenes/SettingsScene.gd|lit|画质已切换为「%s」%s · 下场战斗生效
 scripts/scenes/SettingsScene.gd|lit|画面「全屏」
 scripts/scenes/SettingsScene.gd|lit|画面「窗口」
+scripts/scenes/SettingsScene.gd|lit|登录已失效，请重新登录
 scripts/scenes/SettingsScene.gd|lit|确认
-scripts/scenes/SettingsScene.gd|lit|绑定之后，换手机用这个邮箱就能把账号和进度（龟、装备、排名、战绩）一起取回来。\n
+scripts/scenes/SettingsScene.gd|lit|绑定后可在其他设备恢复账号与进度（龟、装备、排名、战绩）。\n
 scripts/scenes/SettingsScene.gd|lit|绑定邮箱
 scripts/scenes/SettingsScene.gd|lit|设置
+scripts/scenes/SettingsScene.gd|lit|设置昵称（%d~%d 个字）· 显示于排行榜，可随时修改
 scripts/scenes/SettingsScene.gd|lit|账号 · %s
-scripts/scenes/SettingsScene.gd|lit|账号 · 匿名 %s
 scripts/scenes/SettingsScene.gd|lit|账号 · 连接中…
-scripts/scenes/SettingsScene.gd|lit|起个名字(%d~%d 个字) —— 排行榜上别人看到的就是它，以后随时能改
-scripts/scenes/SettingsScene.gd|lit|这台设备上次同步之后的进度会被换掉\n（换之前先在本机备份一份）
+scripts/scenes/SettingsScene.gd|lit|输入已绑定的邮箱，验证后恢复账号与进度。\n
+scripts/scenes/SettingsScene.gd|lit|输入邮箱并完成验证
+scripts/scenes/SettingsScene.gd|lit|邮箱登录
 scripts/scenes/SettingsScene.gd|lit|音乐
 scripts/scenes/SettingsScene.gd|lit|音效
 scripts/scenes/SettingsScene.gd|lit|高
-scripts/scenes/SettingsScene.gd|lit|（绑定邮箱后，进度会同步到云端）
-scripts/scenes/SettingsScene.gd|lit|（进度会自动同步到云端）
-scripts/scenes/SettingsScene.gd|lit|，手机会跑得更顺
+scripts/scenes/SettingsScene.gd|lit|（云端同步已开启）
+scripts/scenes/SettingsScene.gd|lit|（绑定后同步云端进度）
+scripts/scenes/SettingsScene.gd|lit|，可提升流畅度
 scripts/scenes/SettingsScene.gd|lit|🛠 调试场
-scripts/scenes/SettingsScene.gd|placeholder_text|你的名字
-scripts/scenes/SettingsScene.gd|placeholder_text|你的邮箱
-scripts/scenes/SettingsScene.gd|placeholder_text|邮件里的验证码
-scripts/scenes/SettingsScene.gd|text|%d~%d 个字 —— 排行榜上别人看到的就是它
+scripts/scenes/SettingsScene.gd|placeholder_text|输入昵称
+scripts/scenes/SettingsScene.gd|placeholder_text|输入邮箱
+scripts/scenes/SettingsScene.gd|placeholder_text|输入验证码
+scripts/scenes/SettingsScene.gd|text|%d~%d 个字 · 显示于排行榜
 scripts/scenes/SettingsScene.gd|text|⚠ 重置所有存档？
-scripts/scenes/SettingsScene.gd|text|两边的存档对不上
-scripts/scenes/SettingsScene.gd|text|云端的存档被另一台设备更新过，和这台设备上的不一样。留哪一份？
+scripts/scenes/SettingsScene.gd|text|云端存档已被其他设备更新，与本地存档不一致。请选择要保留的存档。
 scripts/scenes/SettingsScene.gd|text|会清空：深海币 · 背包装备 · 出战统领 · 赛季进度（命/等级/胜场）· 糖果罐 · 布阵。\n
-scripts/scenes/SettingsScene.gd|text|先不改
-scripts/scenes/SettingsScene.gd|text|先不清
-scripts/scenes/SettingsScene.gd|text|先不选
-scripts/scenes/SettingsScene.gd|text|就叫这个
-scripts/scenes/SettingsScene.gd|text|把邮件里那串数字填进来
-scripts/scenes/SettingsScene.gd|text|清空，我确定
+scripts/scenes/SettingsScene.gd|text|取消
+scripts/scenes/SettingsScene.gd|text|存档冲突
 scripts/scenes/SettingsScene.gd|text|版本 
-scripts/scenes/SettingsScene.gd|text|邮箱绑好了
-scripts/scenes/SettingsScene.gd|text|验证码已发到 %s
-scripts/scenes/ShopScene.gd|lit|  能进化了
-scripts/scenes/ShopScene.gd|lit|[color=#5b7a92]这件的门道, 摊主自己也讲不明白[/color]
-scripts/scenes/ShopScene.gd|lit|「%s」刚被人抢走了 · 刷新看看
-scripts/scenes/ShopScene.gd|lit|买下「%s」· 凑齐 3 件, 合成 ★%d 了
-scripts/scenes/ShopScene.gd|lit|买下「%s」· 进背包了
-scripts/scenes/ShopScene.gd|lit|已经是最高等级 Lv%d · 经验用不上了
-scripts/scenes/ShopScene.gd|lit|已经有一把「%s」了 · 这一笔化成 +%d 砍伐经验
+scripts/scenes/SettingsScene.gd|text|确认
+scripts/scenes/SettingsScene.gd|text|确认重置
+scripts/scenes/SettingsScene.gd|text|稍后处理
+scripts/scenes/SettingsScene.gd|text|请输入邮件中的验证码
+scripts/scenes/SettingsScene.gd|text|邮箱绑定成功
+scripts/scenes/SettingsScene.gd|text|验证码已发送至 %s
+scripts/scenes/ShopScene.gd|lit|  可进化
+scripts/scenes/ShopScene.gd|lit|[color=#5b7a92]暂无说明[/color]
+scripts/scenes/ShopScene.gd|lit|「%s」已失效 · 请刷新
+scripts/scenes/ShopScene.gd|lit|已拥有「%s」· 转化为砍伐经验 +%d
+scripts/scenes/ShopScene.gd|lit|已解锁 · 下场战斗后刷新
+scripts/scenes/ShopScene.gd|lit|已达最高等级 Lv%d
+scripts/scenes/ShopScene.gd|lit|已锁定 · 下场战斗后不刷新
 scripts/scenes/ShopScene.gd|lit|斧头
-scripts/scenes/ShopScene.gd|lit|深海币不够 · 买一次经验要 %d
-scripts/scenes/ShopScene.gd|lit|深海币不够 · 刷新要 %d
+scripts/scenes/ShopScene.gd|lit|未选择龟
+scripts/scenes/ShopScene.gd|lit|深海币不足 · 「%s」需要 %d，还差 %d
+scripts/scenes/ShopScene.gd|lit|深海币不足（需要 %d）
 scripts/scenes/ShopScene.gd|lit|精英小将
-scripts/scenes/ShopScene.gd|lit|解锁了 · 打完下一场换新货
+scripts/scenes/ShopScene.gd|lit|购买成功 · 「%s」合成 ★%d
+scripts/scenes/ShopScene.gd|lit|购买成功 · 「%s」已放入背包
 scripts/scenes/ShopScene.gd|lit|近战小将
-scripts/scenes/ShopScene.gd|lit|还差 %d 枚深海币 ·「%s」要 %d
-scripts/scenes/ShopScene.gd|lit|还没选龟
 scripts/scenes/ShopScene.gd|lit|这件
 scripts/scenes/ShopScene.gd|lit|远程小将
-scripts/scenes/ShopScene.gd|lit|锁住了 · 打完下一场也不换货
 scripts/scenes/ShopScene.gd|lit|🎒 背包
 scripts/scenes/ShopScene.gd|text|%d 深海币%s
 scripts/scenes/ShopScene.gd|text|%d 费 %d%%
-scripts/scenes/ShopScene.gd|text|← 摊上的货, 点一件看看\n手里那些也能点开
 scripts/scenes/ShopScene.gd|text|▼ 下面还有
 scripts/scenes/ShopScene.gd|text|上
 scripts/scenes/ShopScene.gd|text|下
-scripts/scenes/ShopScene.gd|text|买下  %d
 scripts/scenes/ShopScene.gd|text|买经验 +%d
-scripts/scenes/ShopScene.gd|text|今日货源
+scripts/scenes/ShopScene.gd|text|出战阵容  装备 %d/%d
+scripts/scenes/ShopScene.gd|text|出战阵容 · 已装备
 scripts/scenes/ShopScene.gd|text|刷新  %d
+scripts/scenes/ShopScene.gd|text|前往背包
 scripts/scenes/ShopScene.gd|text|另外还有 %d 项
-scripts/scenes/ShopScene.gd|text|同类装备凑够 3 件, 羁绊才会亮
-scripts/scenes/ShopScene.gd|text|回 🎒 背包装上或卖掉
+scripts/scenes/ShopScene.gd|text|另有 %d 件
+scripts/scenes/ShopScene.gd|text|同类装备达到件数后激活羁绊
+scripts/scenes/ShopScene.gd|text|商品
+scripts/scenes/ShopScene.gd|text|商店未解锁\n\n本大轮首战后解锁
 scripts/scenes/ShopScene.gd|text|属性
-scripts/scenes/ShopScene.gd|text|已入袋
 scripts/scenes/ShopScene.gd|text|已满级
+scripts/scenes/ShopScene.gd|text|已购买
 scripts/scenes/ShopScene.gd|text|已锁定
 scripts/scenes/ShopScene.gd|text|收起
-scripts/scenes/ShopScene.gd|text|空的, 上面挑几件带走
+scripts/scenes/ShopScene.gd|text|无属性加成
+scripts/scenes/ShopScene.gd|text|未配置阵容
 scripts/scenes/ShopScene.gd|text|等级已满
 scripts/scenes/ShopScene.gd|text|经验 %d/%d
 scripts/scenes/ShopScene.gd|text|羁绊
-scripts/scenes/ShopScene.gd|text|背包里有 %d 件, 点一下看看
-scripts/scenes/ShopScene.gd|text|背包里空着
+scripts/scenes/ShopScene.gd|text|背包  %d 件
+scripts/scenes/ShopScene.gd|text|背包 %d 件
+scripts/scenes/ShopScene.gd|text|背包为空
+scripts/scenes/ShopScene.gd|text|购买  %d
 scripts/scenes/ShopScene.gd|text|还差 %d 枚深海币
-scripts/scenes/ShopScene.gd|text|还有 %d 件, 去背包页看全部
-scripts/scenes/ShopScene.gd|text|还没点兵, 先去选龟那边排一路人马
-scripts/scenes/ShopScene.gd|text|这件不加属性，只有效果
+scripts/scenes/ShopScene.gd|text|选择装备查看详情
 scripts/scenes/ShopScene.gd|text|锁定
-scripts/scenes/ShopScene.gd|text|🎒 我的背包  %d 件
-scripts/scenes/ShopScene.gd|text|🐢 出战阵容  已装 %d/%d
-scripts/scenes/ShopScene.gd|text|🐢 出战阵容 · 身上带着的
-scripts/scenes/ShopScene.gd|text|🔒 摊子还没摆开\n\n打完这一大轮的头一场, 老板才出摊
-scripts/scenes/ShopScene.gd|tooltip_text|已锁定: 打完下一场也不刷新, 再点一下解锁
-scripts/scenes/ShopScene.gd|tooltip_text|锁定商店: 打完下一场不自动刷新
+scripts/scenes/ShopScene.gd|tooltip_text|已锁定 · 点击解锁
+scripts/scenes/ShopScene.gd|tooltip_text|锁定商品：下场战斗后不刷新
 scripts/scenes/TeamSelectScene.gd|lit|%s 不能被替换
 scripts/scenes/TeamSelectScene.gd|lit|%s 只能拖到空格
-scripts/scenes/TeamSelectScene.gd|lit|三只满了 · 先撤下一只
-scripts/scenes/TeamSelectScene.gd|lit|三只满了 · 点格子把龟撤下来
 scripts/scenes/TeamSelectScene.gd|lit|受到致命伤害时一次不死, 保留 1 点生命(每场 1 次)。这段较长描述用于测试自动换行与屏内夹取是否正常, 多写几个字确保会换到第二三行。
+scripts/scenes/TeamSelectScene.gd|lit|本大轮阵容已锁定
+scripts/scenes/TeamSelectScene.gd|lit|本大轮阵容已锁定 · 可更换技能
 scripts/scenes/TeamSelectScene.gd|lit|水晶球位
 scripts/scenes/TeamSelectScene.gd|lit|测试被动·不屈
 scripts/scenes/TeamSelectScene.gd|lit|糖果炸弹位
-scripts/scenes/TeamSelectScene.gd|lit|这一轮的三只龟定了 · 还能换招, 换不了龟
-scripts/scenes/TeamSelectScene.gd|lit|这一轮的龟定了 · 下个赛季才能重挑
+scripts/scenes/TeamSelectScene.gd|lit|阵容已满
 scripts/scenes/TeamSelectScene.gd|lit|随从位
 scripts/scenes/TeamSelectScene.gd|text|全部
-scripts/scenes/TeamSelectScene.gd|text|就这三只 · 出战
+scripts/scenes/TeamSelectScene.gd|text|出战
 scripts/scenes/TeamSelectScene.gd|text|已截止 · 截止前 %d 分钟停止匹配
-scripts/scenes/TeamSelectScene.gd|text|带它们出战
-scripts/scenes/TeamSelectScene.gd|text|挑 3 只龟上阵
 scripts/scenes/TeamSelectScene.gd|text|撤下
+scripts/scenes/TeamSelectScene.gd|text|数据加载失败，请重启游戏
+scripts/scenes/TeamSelectScene.gd|text|暂无羁绊
 scripts/scenes/TeamSelectScene.gd|text|沿用上次
 scripts/scenes/TeamSelectScene.gd|text|羁绊
-scripts/scenes/TeamSelectScene.gd|text|装备还没凑成同类
 scripts/scenes/TeamSelectScene.gd|text|返回
-scripts/scenes/TeamSelectScene.gd|text|还差 %d 只
-scripts/scenes/TeamSelectScene.gd|text|选择你的统领
-scripts/scenes/TeamSelectScene.gd|text|龟谱没读出来 · 请重开一次
+scripts/scenes/TeamSelectScene.gd|text|还需 %d 只
+scripts/scenes/TeamSelectScene.gd|text|选择 3 只龟
+scripts/scenes/TeamSelectScene.gd|text|选择统领
 scripts/scenes/TrainerConfigScene.gd|lit|主动
 scripts/scenes/TrainerConfigScene.gd|lit|冰川
-scripts/scenes/TrainerConfigScene.gd|lit|冷却一好就自动吹哨，唤来一种帮手，三者随机。护盾：全体友军获得 700 点临时生命，5 秒后逐渐消退。灵龟：召出一只灵体小龟，蓄力后打出贯穿 2000 码的气波，命中的敌人受到 100 点、加目标最大生命 15% 的真实伤害、被击飞，破甲 30% 持续 5 秒。狂暴：全体友军 4 秒内攻击力 +20%、每次出手 +20 点吸血，且不会死亡。冷却 14 秒。
-scripts/scenes/TrainerConfigScene.gd|lit|冷却一好就自动朝最近的敌人丢出药水(射程 2000 码)。落点 300 码内的友军获得 5 秒狂热：攻速 +30%，移速 +25%，龟能充能 +25%。冷却 16 秒。
-scripts/scenes/TrainerConfigScene.gd|lit|冷却一好就自动朝最近的敌人甩出钩索，勾住 2000 码内第一个敌人：眩晕 4 秒，一路拖到大师身边，期间它受到的伤害 +25%。冷却 20 秒；钩空了只冷却 10 秒。
-scripts/scenes/TrainerConfigScene.gd|lit|冷却一好就自动朝最近的敌人铺出一条 2000 码长的冰川，留存 6 秒。站在冰面上的敌人移速 -40%，受到的伤害 +20%。冷却 17 秒。
-scripts/scenes/TrainerConfigScene.gd|lit|冷却一好就自动标记 2000 码内最近的敌人。它下次死亡时不会真死，而是以 30% 最大生命复活、倒向我方，复活后 2.5 秒无敌，此后每秒损失 2% 最大生命。驯服来的龟能一直跟你打到决胜。冷却 60 秒；没标中只冷却 30 秒。
-scripts/scenes/TrainerConfigScene.gd|lit|冷却一好就自动锁定 2000 码内最近的敌人，持续 15 秒：它受到的伤害 +15%，而它周围 400 码内的友军会优先揍它 —— 这个范围跟着它走。冷却 30 秒；没锁中只冷却 15 秒。
+scripts/scenes/TrainerConfigScene.gd|lit|冷却结束后自动吹哨，随机召唤以下一种。护盾：全体友军获得 700 点临时生命，5 秒后逐渐消退。灵龟：召出一只灵体小龟，蓄力后打出贯穿 2000 码的气波，命中的敌人受到 100 点、加目标最大生命 15% 的真实伤害、被击飞，破甲 30% 持续 5 秒。狂暴：全体友军 4 秒内攻击力 +20%、每次出手 +20 点吸血，且不会死亡。冷却 14 秒。
+scripts/scenes/TrainerConfigScene.gd|lit|冷却结束后自动朝最近的敌人射出钩索，命中 2000 码内第一个敌人：眩晕 4 秒并拉至大师身边，期间目标受到的伤害 +25%。冷却 20 秒；未命中时冷却 10 秒。
+scripts/scenes/TrainerConfigScene.gd|lit|冷却结束后自动朝最近的敌人投掷药水（射程 2000 码）。落点 300 码内的友军获得 5 秒狂热：攻速 +30%，移速 +25%，龟能充能 +25%。冷却 16 秒。
+scripts/scenes/TrainerConfigScene.gd|lit|冷却结束后自动朝最近的敌人生成一条 2000 码长的冰川，持续 6 秒。冰面上的敌人移速 -40%，受到的伤害 +20%。冷却 17 秒。
+scripts/scenes/TrainerConfigScene.gd|lit|冷却结束后自动标记 2000 码内最近的敌人。该敌人下次死亡时以 30% 最大生命复活并加入我方，复活后 2.5 秒无敌，此后每秒损失 2% 最大生命，持续作战至决胜阶段。冷却 60 秒；未命中时冷却 30 秒。
+scripts/scenes/TrainerConfigScene.gd|lit|冷却结束后自动锁定 2000 码内最近的敌人，持续 15 秒：目标受到的伤害 +15%，其周围 400 码内的友军优先攻击该目标（范围随目标移动）。冷却 30 秒；未命中时冷却 15 秒。
 scripts/scenes/TrainerConfigScene.gd|lit|口哨
 scripts/scenes/TrainerConfigScene.gd|lit|少女
 scripts/scenes/TrainerConfigScene.gd|lit|怒火药水
-scripts/scenes/TrainerConfigScene.gd|lit|技能　%d 门里只选 1 门 · 被动与主动不可兼得
-scripts/scenes/TrainerConfigScene.gd|lit|挑个模样
+scripts/scenes/TrainerConfigScene.gd|lit|技能（%d 选 1）· 主动与被动不可同时选择
 scripts/scenes/TrainerConfigScene.gd|lit|普攻额外造成目标最大生命 2% 的魔法伤害。每次出手让自己攻速 +3%，整场不断累积、没有上限。层数攒到 10、25、50 时，身上会亮起共鸣。
 scripts/scenes/TrainerConfigScene.gd|lit|村民
 scripts/scenes/TrainerConfigScene.gd|lit|猎龟令
 scripts/scenes/TrainerConfigScene.gd|lit|被动
+scripts/scenes/TrainerConfigScene.gd|lit|选择形象
 scripts/scenes/TrainerConfigScene.gd|lit|钩锁
 scripts/scenes/TrainerConfigScene.gd|lit|驯服
 scripts/scenes/TrainerConfigScene.gd|lit|魔法师
 scripts/scenes/TrainerConfigScene.gd|lit|魔法石
-scripts/scenes/TrainerConfigScene.gd|text|就这么定了
-scripts/scenes/TrainerConfigScene.gd|text|算了不改了
+scripts/scenes/TrainerConfigScene.gd|text|保存
+scripts/scenes/TrainerConfigScene.gd|text|取消
 scripts/scenes/TrainerConfigScene.gd|text|训龟大师
-scripts/scenes/TutorialGuide.gd|text|下一步 ▶
-scripts/scenes/TutorialGuide.gd|text|完成 ✓
-scripts/scenes/TutorialGuide.gd|text|知道了
-scripts/scenes/TutorialGuide.gd|text|跳过教程
 scripts/scenes/battle/battle_damage.gd|lit|%s 单次承伤 %d (%s)
 scripts/scenes/battle/battle_damage.gd|lit|+%d 盾
 scripts/scenes/battle/battle_damage.gd|lit|亡灵!
@@ -1058,22 +1057,22 @@ scripts/scenes/battle/battle_debug_arena.gd|text|左队(友军)
 scripts/scenes/battle/battle_debug_arena.gd|text|满龟能:关
 scripts/scenes/battle/battle_debug_arena.gd|text|满龟能:开
 scripts/scenes/battle/battle_debug_arena.gd|text|选中: %s(%s)
+scripts/scenes/battle/battle_hud.gd|lit|%s · 不消耗生命 · 结果于下轮开播时公布
 scripts/scenes/battle/battle_hud.gd|lit|⏸ 编辑
 scripts/scenes/battle/battle_hud.gd|lit|▶ 开始
 scripts/scenes/battle/battle_hud.gd|lit|▼ 折叠
+scripts/scenes/battle/battle_hud.gd|lit|上传失败
 scripts/scenes/battle/battle_hud.gd|lit|倍速
 scripts/scenes/battle/battle_hud.gd|lit|假人HP
-scripts/scenes/battle/battle_hud.gd|lit|再打
-scripts/scenes/battle/battle_hud.gd|lit|决赛日 · 不消耗生命 · 胜负在下一轮开播时揭晓
+scripts/scenes/battle/battle_hud.gd|lit|再来一局
 scripts/scenes/battle/battle_hud.gd|lit|前往商店
 scripts/scenes/battle/battle_hud.gd|lit|剩余生命
 scripts/scenes/battle/battle_hud.gd|lit|大师
-scripts/scenes/battle/battle_hud.gd|lit|完成新手教学
+scripts/scenes/battle/battle_hud.gd|lit|失败
 scripts/scenes/battle/battle_hud.gd|lit|左队(友军)
 scripts/scenes/battle/battle_hud.gd|lit|战报
 scripts/scenes/battle/battle_hud.gd|lit|掉血/不死
 scripts/scenes/battle/battle_hud.gd|lit|本周场次
-scripts/scenes/battle/battle_hud.gd|lit|没传上去
 scripts/scenes/battle/battle_hud.gd|lit|浪板
 scripts/scenes/battle/battle_hud.gd|lit|消耗 1 点生命
 scripts/scenes/battle/battle_hud.gd|lit|深海币
@@ -1084,7 +1083,7 @@ scripts/scenes/battle/battle_hud.gd|lit|生命  %d / %d
 scripts/scenes/battle/battle_hud.gd|lit|生命已耗尽 · 本大轮已出局
 scripts/scenes/battle/battle_hud.gd|lit|精英
 scripts/scenes/battle/battle_hud.gd|lit|练习赛 · 不计入赛季进度
-scripts/scenes/battle/battle_hud.gd|lit|继续
+scripts/scenes/battle/battle_hud.gd|lit|胜利
 scripts/scenes/battle/battle_hud.gd|lit|表演赛 · 不消耗生命
 scripts/scenes/battle/battle_hud.gd|lit|装备星级
 scripts/scenes/battle/battle_hud.gd|lit|认输
@@ -1097,18 +1096,15 @@ scripts/scenes/battle/battle_hud.gd|lit|闯关 %s · 不消耗生命
 scripts/scenes/battle/battle_hud.gd|lit|闯关 %s · 晋级决赛日
 scripts/scenes/battle/battle_hud.gd|lit|闯关 %s · 闯关赛出局
 scripts/scenes/battle/battle_hud.gd|lit|阵容上传
-scripts/scenes/battle/battle_hud.gd|lit|🏆 战斗胜利!
-scripts/scenes/battle/battle_hud.gd|lit|💀 战斗失败!
-scripts/scenes/battle/battle_hud.gd|lit|🔁 再来一把
 scripts/scenes/battle/battle_hud.gd|text|← 手指横滑挑龟(共28只+小将+大师) →   点一格选笔刷 → 点战场连点连摆 · 点已摆的龟→出配置面板
-scripts/scenes/battle/battle_hud.gd|text|举白旗 · 这一场就算输了, 按下去收不回来
 scripts/scenes/battle/battle_hud.gd|text|友军
+scripts/scenes/battle/battle_hud.gd|text|已获得的战报与奖励将保留
 scripts/scenes/battle/battle_hud.gd|text|战斗日志
-scripts/scenes/battle/battle_hud.gd|text|打到这里的战报和奖励照算, 不会白打
 scripts/scenes/battle/battle_hud.gd|text|敌方
 scripts/scenes/battle/battle_hud.gd|text|点空地=摆(龟/小将) · 点单位=选中配装 · 拖拽=挪位 · 满龟能开→秒放技看效果
-scripts/scenes/battle/battle_hud.gd|text|真要认输?
-scripts/scenes/battle/battle_hud.gd|text|阵容已上传 · 别人可能会打到你
+scripts/scenes/battle/battle_hud.gd|text|确认认输？
+scripts/scenes/battle/battle_hud.gd|text|认输后本场判负，且无法撤销
+scripts/scenes/battle/battle_hud.gd|text|阵容已上传
 scripts/scenes/battle/battle_hud.gd|text|🛠 调试场
 scripts/scenes/battle/battle_hud.gd|tooltip_text|%s · %d 档
 scripts/scenes/battle/battle_hud.gd|tooltip_text|%s · 点开细看
@@ -1161,21 +1157,21 @@ scripts/scenes/battle/dual_lane_flow.gd|lit|龟蛋破碎
 scripts/scenes/battle/dual_lane_flow.gd|text|%s  对阵
 scripts/scenes/battle/dual_lane_flow.gd|text|%s  战果
 scripts/scenes/battle/dual_lane_flow.gd|text|三路开战
-scripts/scenes/battle/dual_lane_flow.gd|text|上下路幸存者对决
-scripts/scenes/battle/dual_lane_flow.gd|text|开打
-scripts/scenes/battle/dual_lane_flow.gd|text|拖动布阵，准备好后开打
-scripts/scenes/battle/dual_lane_flow.gd|text|拿下本路
-scripts/scenes/battle/dual_lane_flow.gd|text|本路失守
+scripts/scenes/battle/dual_lane_flow.gd|text|决胜阶段
+scripts/scenes/battle/dual_lane_flow.gd|text|开始战斗
+scripts/scenes/battle/dual_lane_flow.gd|text|拖动单位调整站位
+scripts/scenes/battle/dual_lane_flow.gd|text|本路失败
+scripts/scenes/battle/dual_lane_flow.gd|text|本路胜利
 scripts/scenes/battle/dual_lane_flow.gd|text|点击继续
-scripts/scenes/battle/dual_lane_flow.gd|text|蛋血  我方 %d  ·  对方 %d
+scripts/scenes/battle/dual_lane_flow.gd|text|龟蛋生命  我方 %d  ·  对方 %d
 scripts/scenes/battle/dual_lane_flow.gd|text|（无装备）
 scripts/scenes/battle/incense_vfx.gd|lit|香火 +%d
 scripts/scenes/battle/incense_vfx.gd|lit|香火 满
-scripts/scenes/battle/info_panel.gd|lit|  ·  攒满了, 随时能放\n
-scripts/scenes/battle/info_panel.gd|lit|  ·  还差 %.1f 秒\n
-scripts/scenes/battle/info_panel.gd|lit|  ·  龟能被锁住 %.1f 秒\n
+scripts/scenes/battle/info_panel.gd|lit|  ·  剩余 %.1f 秒\n
+scripts/scenes/battle/info_panel.gd|lit|  ·  已就绪\n
+scripts/scenes/battle/info_panel.gd|lit|  ·  龟能锁定 %.1f 秒\n
 scripts/scenes/battle/info_panel.gd|lit| (普攻)
-scripts/scenes/battle/info_panel.gd|lit|%.1f 秒后炸开 · 回血 %d · 伤害 %d
+scripts/scenes/battle/info_panel.gd|lit|%.1f 秒后爆炸 · 治疗 %d · 伤害 %d
 scripts/scenes/battle/info_panel.gd|lit|%d层 · %d%%
 scripts/scenes/battle/info_panel.gd|lit|%d层 · %s/%s
 scripts/scenes/battle/info_panel.gd|lit|%s %d 层
@@ -1185,15 +1181,14 @@ scripts/scenes/battle/info_panel.gd|lit|中毒
 scripts/scenes/battle/info_panel.gd|lit|储能
 scripts/scenes/battle/info_panel.gd|lit|充能 %d%%
 scripts/scenes/battle/info_panel.gd|lit|充能 %s / %s
-scripts/scenes/battle/info_panel.gd|lit|再攒开第 %d 箱
 scripts/scenes/battle/info_panel.gd|lit|减伤
 scripts/scenes/battle/info_panel.gd|lit|减伤 
 scripts/scenes/battle/info_panel.gd|lit|减速
 scripts/scenes/battle/info_panel.gd|lit|初始龟能
 scripts/scenes/battle/info_panel.gd|lit|反伤
 scripts/scenes/battle/info_panel.gd|lit|反伤 
-scripts/scenes/battle/info_panel.gd|lit|受到伤害时, 按这个比例反弹给攻击者。
-scripts/scenes/battle/info_panel.gd|lit|受到的所有伤害按这个比例降低。
+scripts/scenes/battle/info_panel.gd|lit|受到伤害时，按比例反弹给攻击者。
+scripts/scenes/battle/info_panel.gd|lit|受到的所有伤害按比例降低。
 scripts/scenes/battle/info_panel.gd|lit|嘲讽
 scripts/scenes/battle/info_panel.gd|lit|增伤
 scripts/scenes/battle/info_panel.gd|lit|增伤 
@@ -1201,8 +1196,6 @@ scripts/scenes/battle/info_panel.gd|lit|射程
 scripts/scenes/battle/info_panel.gd|lit|射程 %d
 scripts/scenes/battle/info_panel.gd|lit|层数 %d
 scripts/scenes/battle/info_panel.gd|lit|怒气
-scripts/scenes/battle/info_panel.gd|lit|打物理伤害时, 无视目标这么多护甲。
-scripts/scenes/battle/info_panel.gd|lit|打魔法伤害时, 无视目标这么多魔抗。
 scripts/scenes/battle/info_panel.gd|lit|技能
 scripts/scenes/battle/info_panel.gd|lit|技能 · %d 龟能
 scripts/scenes/battle/info_panel.gd|lit|护甲
@@ -1222,12 +1215,13 @@ scripts/scenes/battle/info_panel.gd|lit|攻击射程
 scripts/scenes/battle/info_panel.gd|lit|攻击打出暴击的几率。
 scripts/scenes/battle/info_panel.gd|lit|攻击速度
 scripts/scenes/battle/info_panel.gd|lit|攻速
-scripts/scenes/battle/info_panel.gd|lit|攻速 每秒 %s 下
+scripts/scenes/battle/info_panel.gd|lit|攻速 每秒 %s 次
 scripts/scenes/battle/info_panel.gd|lit|星能
 scripts/scenes/battle/info_panel.gd|lit|普攻
 scripts/scenes/battle/info_panel.gd|lit|普攻和大多数技能伤害的基础。
-scripts/scenes/battle/info_panel.gd|lit|普攻能打到多远。
+scripts/scenes/battle/info_panel.gd|lit|普攻的攻击距离。
 scripts/scenes/battle/info_panel.gd|lit|普通攻击
+scripts/scenes/battle/info_panel.gd|lit|暂无效果
 scripts/scenes/battle/info_panel.gd|lit|暴伤
 scripts/scenes/battle/info_panel.gd|lit|暴伤 
 scripts/scenes/battle/info_panel.gd|lit|暴击
@@ -1238,7 +1232,7 @@ scripts/scenes/battle/info_panel.gd|lit|暴击率
 scripts/scenes/battle/info_panel.gd|lit|最大生命值
 scripts/scenes/battle/info_panel.gd|lit|本局
 scripts/scenes/battle/info_panel.gd|lit|每点 +2% 攻击
-scripts/scenes/battle/info_panel.gd|lit|每秒普攻几下。
+scripts/scenes/battle/info_panel.gd|lit|每秒普攻次数。
 scripts/scenes/battle/info_panel.gd|lit|治疗
 scripts/scenes/battle/info_panel.gd|lit|治疗 %d
 scripts/scenes/battle/info_panel.gd|lit|治疗与护盾增幅
@@ -1261,27 +1255,29 @@ scripts/scenes/battle/info_panel.gd|lit|真实
 scripts/scenes/battle/info_panel.gd|lit|真实伤害
 scripts/scenes/battle/info_panel.gd|lit|真火
 scripts/scenes/battle/info_panel.gd|lit|眩晕
-scripts/scenes/battle/info_panel.gd|lit|移动的快慢。被减速、加速时会跟着变。
 scripts/scenes/battle/info_panel.gd|lit|移动速度
+scripts/scenes/battle/info_panel.gd|lit|移动速度，受减速、加速效果影响。
 scripts/scenes/battle/info_panel.gd|lit|移速
 scripts/scenes/battle/info_panel.gd|lit|移速 %d
 scripts/scenes/battle/info_panel.gd|lit|穿透伤害
 scripts/scenes/battle/info_panel.gd|lit|站位
-scripts/scenes/battle/info_panel.gd|lit|缩短自己被眩晕、减速等控制的时间。
+scripts/scenes/battle/info_panel.gd|lit|缩短受到眩晕、减速等控制效果的持续时间。
 scripts/scenes/battle/info_panel.gd|lit|被动
 scripts/scenes/battle/info_panel.gd|lit|被动 · 
 scripts/scenes/battle/info_panel.gd|lit|财宝
-scripts/scenes/battle/info_panel.gd|lit|躲开攻击的几率。
+scripts/scenes/battle/info_panel.gd|lit|距第 %d 箱
 scripts/scenes/battle/info_panel.gd|lit|近战形态 · 锤击
-scripts/scenes/battle/info_panel.gd|lit|还没有产生效果
 scripts/scenes/battle/info_panel.gd|lit|远程形态 · 灵能弹
 scripts/scenes/battle/info_panel.gd|lit|造成伤害 %d
-scripts/scenes/battle/info_panel.gd|lit|造成伤害时, 按这个比例回复自己的生命。
-scripts/scenes/battle/info_panel.gd|lit|造成的所有伤害按这个比例提高。
+scripts/scenes/battle/info_panel.gd|lit|造成伤害时，按比例回复自身生命。
+scripts/scenes/battle/info_panel.gd|lit|造成物理伤害时无视目标的护甲值。
+scripts/scenes/battle/info_panel.gd|lit|造成的所有伤害按比例提高。
+scripts/scenes/battle/info_panel.gd|lit|造成魔法伤害时无视目标的魔抗值。
 scripts/scenes/battle/info_panel.gd|lit|释放 · 冲击波 %d + 护盾 %d
 scripts/scenes/battle/info_panel.gd|lit|金币
 scripts/scenes/battle/info_panel.gd|lit|闪避
 scripts/scenes/battle/info_panel.gd|lit|闪避 
+scripts/scenes/battle/info_panel.gd|lit|闪避攻击的几率。
 scripts/scenes/battle/info_panel.gd|lit|降低受到的物理伤害。
 scripts/scenes/battle/info_panel.gd|lit|降低受到的魔法伤害。
 scripts/scenes/battle/info_panel.gd|lit|韧性
@@ -1297,7 +1293,7 @@ scripts/scenes/battle/info_panel.gd|lit|龟能 %d / %d
 scripts/scenes/battle/info_panel.gd|lit|龟能充能
 scripts/scenes/battle/info_panel.gd|lit|龟能充能 
 scripts/scenes/battle/info_panel.gd|lit|龟能充能速率
-scripts/scenes/battle/info_panel.gd|lit|龟能攒满的速度倍率。攒满就放技能。
+scripts/scenes/battle/info_panel.gd|lit|龟能积攒速度倍率。龟能满时释放技能。
 scripts/scenes/battle/info_panel.gd|lit|龟能锁
 scripts/scenes/battle/info_panel.gd|text|前排
 scripts/scenes/battle/info_panel.gd|text|后排
@@ -1305,16 +1301,19 @@ scripts/scenes/battle/info_panel.gd|text|收起
 scripts/scenes/battle/info_panel.gd|text|生命  %d / %d
 scripts/scenes/battle/info_panel.gd|text|详细
 scripts/scenes/battle/replay_controls.gd|lit|%s  对  %s
+scripts/scenes/battle/replay_controls.gd|lit|上路
+scripts/scenes/battle/replay_controls.gd|lit|下路
 scripts/scenes/battle/replay_controls.gd|lit|全场 
-scripts/scenes/battle/replay_controls.gd|lit|回放
 scripts/scenes/battle/replay_controls.gd|lit|回放中断
+scripts/scenes/battle/replay_controls.gd|lit|回放异常，无法继续播放
 scripts/scenes/battle/replay_controls.gd|lit|已暂停
 scripts/scenes/battle/replay_controls.gd|lit|暂停
+scripts/scenes/battle/replay_controls.gd|lit|终极
 scripts/scenes/battle/replay_controls.gd|lit|返回
 scripts/scenes/battle/replay_controls.gd|lit|返回对阵图
 scripts/scenes/battle/replay_controls.gd|lit|返回战绩
 scripts/scenes/battle/replay_controls.gd|lit|返回赛况
-scripts/scenes/battle/replay_controls.gd|lit|这场回放出了点问题，没法继续往下播
+scripts/scenes/battle/replay_controls.gd|lit|退出
 scripts/scenes/battle/replay_controls.gd|lit|退出回放
 scripts/scenes/battle/replay_controls.gd|text|%d 倍速
 scripts/scenes/battle/replay_controls.gd|text|再看一遍
@@ -1325,7 +1324,7 @@ scripts/scenes/battle/review_console.gd|lit|◀龟
 scripts/scenes/battle/review_console.gd|lit|关
 scripts/scenes/battle/review_console.gd|lit|技%d%s
 scripts/scenes/battle/settle_screen.gd|lit|← 滑动翻页 →
-scripts/scenes/battle/settle_screen.gd|lit|▼ 还有 %d 只在下面 · 可上下滑动
+scripts/scenes/battle/settle_screen.gd|lit|▼ 另有 %d 个单位
 scripts/scenes/battle/settle_screen.gd|lit|击杀数
 scripts/scenes/battle/settle_screen.gd|lit|受到伤害
 scripts/scenes/battle/settle_screen.gd|lit|合计
@@ -1336,6 +1335,7 @@ scripts/scenes/battle/settle_screen.gd|lit|我方
 scripts/scenes/battle/settle_screen.gd|lit|战果
 scripts/scenes/battle/settle_screen.gd|lit|护盾
 scripts/scenes/battle/settle_screen.gd|lit|敌方
+scripts/scenes/battle/settle_screen.gd|lit|暂无战报
 scripts/scenes/battle/settle_screen.gd|lit|本场
 scripts/scenes/battle/settle_screen.gd|lit|本场 MVP
 scripts/scenes/battle/settle_screen.gd|lit|治疗
@@ -1343,24 +1343,28 @@ scripts/scenes/battle/settle_screen.gd|lit|结果已封存
 scripts/scenes/battle/settle_screen.gd|lit|胜
 scripts/scenes/battle/settle_screen.gd|lit|胜利
 scripts/scenes/battle/settle_screen.gd|lit|负
-scripts/scenes/battle/settle_screen.gd|lit|这一场没有留下战报
 scripts/scenes/battle/settle_screen.gd|lit|造成伤害 %d
 scripts/scenes/battle/settle_screen.gd|lit|造成总伤害
 scripts/scenes/battle/settle_screen.gd|lit|造成物理伤害
 scripts/scenes/battle/settle_screen.gd|lit|造成魔法伤害
 scripts/scenes/battle/settle_screen.gd|lit|阵亡
-scripts/scenes/battle/topbar_status.gd|lit|加时中所有治疗效果 -%d%%
-scripts/scenes/battle/topbar_status.gd|lit|加时中每 %d 秒, 全场伤害再 +%d%%
 scripts/scenes/battle/topbar_status.gd|lit|加时！
+scripts/scenes/battle/topbar_status.gd|lit|加时：每 %d 秒全场伤害 +%d%%
+scripts/scenes/battle/topbar_status.gd|lit|加时：治疗效果 -%d%%
+scripts/scenes/battle/topbar_status.gd|lit|回放
 scripts/scenes/battle/topbar_status.gd|lit|团灭
 scripts/scenes/codex/detail_views.gd|lit|[color=%s][b]%d 件[/b][/color]  %s
 scripts/scenes/codex/detail_views.gd|lit|← 返回
 scripts/scenes/codex/detail_views.gd|lit|　[color=#06d6a0][font_size=20]龟能 %d[/font_size][/color]
-scripts/scenes/codex/detail_views.gd|lit|不能编进阵容, 开战时自己登场
+scripts/scenes/codex/detail_views.gd|lit|不可编入阵容 · 开战时自动登场
 scripts/scenes/codex/detail_views.gd|lit|主动 · 龟能 %d
 scripts/scenes/codex/detail_views.gd|lit|作用于友方
 scripts/scenes/codex/detail_views.gd|lit|作用于敌方
 scripts/scenes/codex/detail_views.gd|lit|减益
+scripts/scenes/codex/detail_views.gd|lit|切换至普通形态
+scripts/scenes/codex/detail_views.gd|lit|切换至火山形态
+scripts/scenes/codex/detail_views.gd|lit|切换至近战形态
+scripts/scenes/codex/detail_views.gd|lit|切换至远程形态
 scripts/scenes/codex/detail_views.gd|lit|同类装备
 scripts/scenes/codex/detail_views.gd|lit|基础 · 普攻
 scripts/scenes/codex/detail_views.gd|lit|增益
@@ -1369,23 +1373,20 @@ scripts/scenes/codex/detail_views.gd|lit|属性
 scripts/scenes/codex/detail_views.gd|lit|开局三选一
 scripts/scenes/codex/detail_views.gd|lit|护甲
 scripts/scenes/codex/detail_views.gd|lit|持续伤害
-scripts/scenes/codex/detail_views.gd|lit|换成 普通形态
-scripts/scenes/codex/detail_views.gd|lit|换成 火山形态
-scripts/scenes/codex/detail_views.gd|lit|换成 近战形态
-scripts/scenes/codex/detail_views.gd|lit|换成 远程形态
 scripts/scenes/codex/detail_views.gd|lit|控制
 scripts/scenes/codex/detail_views.gd|lit|收起
 scripts/scenes/codex/detail_views.gd|lit|攻击
 scripts/scenes/codex/detail_views.gd|lit|效果
 scripts/scenes/codex/detail_views.gd|lit|普攻 · %s
-scripts/scenes/codex/detail_views.gd|lit|每升一级, 生命与攻击 ×1.05; 双抗不变
+scripts/scenes/codex/detail_views.gd|lit|未解锁
+scripts/scenes/codex/detail_views.gd|lit|查看全部
 scripts/scenes/codex/detail_views.gd|lit|每秒攻击
+scripts/scenes/codex/detail_views.gd|lit|每级生命与攻击 ×1.05，护甲与魔抗不变
 scripts/scenes/codex/detail_views.gd|lit|消耗品
 scripts/scenes/codex/detail_views.gd|lit|深海小将
 scripts/scenes/codex/detail_views.gd|lit|激活 %s 件   ·   现有装备 %d 件
 scripts/scenes/codex/detail_views.gd|lit|生命
 scripts/scenes/codex/detail_views.gd|lit|生效公式
-scripts/scenes/codex/detail_views.gd|lit|看全部
 scripts/scenes/codex/detail_views.gd|lit|移速
 scripts/scenes/codex/detail_views.gd|lit|羁绊
 scripts/scenes/codex/detail_views.gd|lit|羁绊效果
@@ -1394,40 +1395,37 @@ scripts/scenes/codex/detail_views.gd|lit|被动
 scripts/scenes/codex/detail_views.gd|lit|被动 · %s
 scripts/scenes/codex/detail_views.gd|lit|装备羁绊
 scripts/scenes/codex/detail_views.gd|lit|费用 %d
-scripts/scenes/codex/detail_views.gd|lit|还没解锁
 scripts/scenes/codex/detail_views.gd|lit|队伍里装满 %s 件同类型装备, 依次激活各档位效果
 scripts/scenes/codex/detail_views.gd|lit|队伍里装满 %s 件同类型装备即激活
 scripts/scenes/codex/detail_views.gd|lit|魔抗
 scripts/scenes/codex/detail_views.gd|text|数值分档: 
-scripts/scenes/codex/detail_views.gd|text|点开看全部
+scripts/scenes/codex/detail_views.gd|text|查看全部
 scripts/scenes/codex/list_builder.gd|lit|%d 费
 scripts/scenes/codex/list_builder.gd|lit|减益
 scripts/scenes/codex/list_builder.gd|lit|增益
 scripts/scenes/codex/list_builder.gd|lit|持续伤害
 scripts/scenes/codex/list_builder.gd|lit|控制
 scripts/scenes/codex/list_builder.gd|lit|羁绊赠送
-scripts/scenes/inventory/candy_jar.gd|lit|%s %s 收进了背包
-scripts/scenes/inventory/candy_jar.gd|lit|临时等级器 ×1 收进背包 · 点它再点一只龟或小将, 这一大轮就多一级
 scripts/scenes/inventory/candy_jar.gd|lit|深海币 +%d
-scripts/scenes/inventory/candy_jar.gd|text|收下
-scripts/scenes/inventory/candy_jar.gd|text|糖果罐碎了！第 %d 档的东西全掉出来了
-scripts/scenes/inventory/equip_ops.gd|lit|临时等级器 → %s 本大轮 +1 级 (现 +%d)
+scripts/scenes/inventory/candy_jar.gd|lit|获得 %s %s
+scripts/scenes/inventory/candy_jar.gd|lit|获得 临时等级器 ×1
+scripts/scenes/inventory/candy_jar.gd|text|糖果罐 · 第 %d 档奖励
+scripts/scenes/inventory/candy_jar.gd|text|领取
+scripts/scenes/inventory/equip_ops.gd|lit|%s 本大轮等级 +1（当前 +%d）
 scripts/scenes/inventory/equip_ops.gd|lit|临时等级器 → 小将(%s路第%d格) 本大轮 +1 级
-scripts/scenes/inventory/equip_ops.gd|lit|全队装备已满 %d/%d · 卸一件或升等级再装
-scripts/scenes/inventory/equip_ops.gd|lit|圣光护盾是羁绊赠送的，不能卖（盾羁绊掉档时会自动收回）
-scripts/scenes/inventory/equip_ops.gd|lit|这个小将已装满 %d 件 · 先点它卸下一件
-scripts/scenes/inventory/equip_ops.gd|lit|这只已装满 %d 件 · 先点它卸下一件
-scripts/scenes/inventory/synergy_panel.gd|lit|   还没开启
-scripts/scenes/inventory/synergy_panel.gd|lit|  ◀ 现在这档
+scripts/scenes/inventory/equip_ops.gd|lit|全队装备已达上限 %d/%d
+scripts/scenes/inventory/equip_ops.gd|lit|羁绊赠送装备不可出售
+scripts/scenes/inventory/equip_ops.gd|lit|装备栏已满（%d 件）
+scripts/scenes/inventory/synergy_panel.gd|lit|   未激活
+scripts/scenes/inventory/synergy_panel.gd|lit|  ◀ 当前
 scripts/scenes/inventory/synergy_panel.gd|lit|%d 件升级
 scripts/scenes/inventory/synergy_panel.gd|lit|已满
 scripts/scenes/inventory/synergy_panel.gd|text|%d 件
-scripts/scenes/inventory/synergy_panel.gd|text|同一只多装几件同类型, 羁绊就开了
 scripts/scenes/inventory/synergy_panel.gd|text|已满
+scripts/scenes/inventory/synergy_panel.gd|text|暂无羁绊
 scripts/scenes/inventory/synergy_panel.gd|text|知道了
 scripts/scenes/inventory/synergy_panel.gd|text|羁绊
-scripts/scenes/inventory/synergy_panel.gd|text|还没凑上羁绊。\n把同类型的装备堆到同一只身上, 它自己就开了。
-scripts/scenes/inventory/synergy_panel.gd|tooltip_text|点开看这个羁绊一路能给到什么
+scripts/scenes/inventory/synergy_panel.gd|tooltip_text|查看羁绊详情
 scripts/scenes/map_editor.gd|text|当前: %s (%d)
 scripts/scenes/map_editor.gd|text|当前: grass (0)
 scripts/scenes/map_editor.gd|text|撤销
@@ -1449,9 +1447,9 @@ scripts/scenes/settings/time_travel_panel.gd|lit|穿越到这一刻
 scripts/scenes/settings/time_travel_panel.gd|text|周%s %02d:%02d UTC
 scripts/scenes/settings/time_travel_panel.gd|text|现在: 
 scripts/scenes/shop/axe_panel.gd|lit|砍伐经验 %d/%d
-scripts/scenes/shop/axe_panel.gd|text|挑一个最终造物 · 这一大轮定了就不能改
-scripts/scenes/shop/axe_panel.gd|text|砍伐经验 %d/%d · 可以做最终进化了
+scripts/scenes/shop/axe_panel.gd|text|砍伐经验 %d/%d · 可最终进化
 scripts/scenes/shop/axe_panel.gd|text|累计 %d
+scripts/scenes/shop/axe_panel.gd|text|选择最终造物（本大轮不可更改）
 scripts/scenes/team_select/detail_panel.gd|lit|攻击力
 scripts/scenes/team_select/detail_panel.gd|lit|生命值
 scripts/scenes/team_select/detail_panel.gd|lit|防御力
@@ -1476,18 +1474,21 @@ scripts/scenes/team_select/roster_slots.gd|text|空位
 scripts/scenes/team_select/skill_picker.gd|lit| (龟能%d)
 scripts/scenes/team_select/skill_picker.gd|lit|\n火山：%s — %s
 scripts/scenes/team_select/skill_picker.gd|lit|\n近战：%s — %s
-scripts/scenes/team_select/skill_picker.gd|lit|上场
-scripts/scenes/team_select/skill_picker.gd|lit|天生
-scripts/scenes/team_select/skill_picker.gd|lit|普攻自己会打, 不用选
+scripts/scenes/team_select/skill_picker.gd|lit|固有
+scripts/scenes/team_select/skill_picker.gd|lit|固有技能 · 不可更换
+scripts/scenes/team_select/skill_picker.gd|lit|已选
+scripts/scenes/team_select/skill_picker.gd|lit|普攻（自动释放）
 scripts/scenes/team_select/skill_picker.gd|lit|未解锁
-scripts/scenes/team_select/skill_picker.gd|lit|这招还没解锁
-scripts/scenes/team_select/skill_picker.gd|lit|这招还没解锁, 先带它的看家本领
-scripts/scenes/team_select/skill_picker.gd|lit|这是它天生就会的, 换不掉
-scripts/scenes/team_select/skill_picker.gd|text|带上场 · %s
 scripts/scenes/team_select/skill_picker.gd|text|技能
-scripts/scenes/team_select/skill_picker.gd|text|挑 1 个带上场 · 共 %d 招
-scripts/scenes/team_select/skill_picker.gd|tooltip_text|这招还没解锁
-scripts/scenes/team_select/skill_picker.gd|tooltip_text|这招还没解锁 · 先带它的看家本领
+scripts/scenes/team_select/skill_picker.gd|text|选择 1 个技能（共 %d 个）
+scripts/scenes/team_select/skill_picker.gd|text|选择 · %s
+scripts/scenes/team_select/skill_picker.gd|tooltip_text|未解锁
+scripts/scenes/tutorial_choice.gd|lit|取消
+scripts/scenes/tutorial_choice.gd|lit|开始教程
+scripts/scenes/tutorial_choice.gd|lit|新手教程
+scripts/scenes/tutorial_choice.gd|lit|欢迎来到斗龟场
+scripts/scenes/tutorial_choice.gd|lit|跳过
+scripts/scenes/tutorial_chrome.gd|text|跳过教程
 scripts/systems/equip/bow_synergy_system.gd|lit|弓箭
 scripts/systems/equip/eq_blood_combo.gd|lit|护盾+
 scripts/systems/equip/eq_bow_batch.gd|lit|弓箭
@@ -1529,23 +1530,32 @@ scripts/systems/equip/timestop_system.gd|lit|+%d龟能
 scripts/systems/replay/gauntlet_board.gd|lit|在打
 scripts/systems/replay/gauntlet_board.gd|lit|已出局
 scripts/systems/replay/gauntlet_board.gd|lit|已晋级
-scripts/systems/replay/replay_fetcher.gd|lit|服务器上找不到这场回放（每周二清掉上周的回放）
-scripts/systems/replay/replay_fetcher.gd|lit|服务器这会儿出了点问题（%d），稍后再试
-scripts/systems/replay/replay_fetcher.gd|lit|等了太久服务器都没回音，稍后再试
-scripts/systems/replay/replay_fetcher.gd|lit|账号还没连上服务器，检查一下网络再试
-scripts/systems/replay/replay_fetcher.gd|lit|这一场没有留下回放
-scripts/systems/replay/replay_fetcher.gd|lit|这一场还没揭晓，揭晓之后再来看
-scripts/systems/replay/replay_fetcher.gd|lit|这一场还没有结果
-scripts/systems/replay/replay_fetcher.gd|lit|这一组已经不在了
-scripts/systems/replay/replay_fetcher.gd|lit|这个版本没接服务器，只能看在这台设备上打的比赛
-scripts/systems/replay/replay_fetcher.gd|lit|这场回放的数据坏了，播不了
-scripts/systems/replay/replay_fetcher.gd|lit|这场的回放还没开放
-scripts/systems/replay/replay_fetcher.gd|lit|连不上服务器，检查一下网络再试
+scripts/systems/replay/live_spectate.gd|lit|下路准备中
+scripts/systems/replay/live_spectate.gd|lit|同步中
+scripts/systems/replay/live_spectate.gd|lit|开播
+scripts/systems/replay/live_spectate.gd|lit|版本不同，无法观赛
+scripts/systems/replay/live_spectate.gd|lit|直播
+scripts/systems/replay/live_spectate.gd|lit|直播中断
+scripts/systems/replay/live_spectate.gd|lit|观赛
+scripts/systems/replay/replay_fetcher.gd|lit|分组已失效
+scripts/systems/replay/replay_fetcher.gd|lit|回放不存在（每周二清理上周回放）
+scripts/systems/replay/replay_fetcher.gd|lit|回放数据损坏
+scripts/systems/replay/replay_fetcher.gd|lit|回放暂不可用
+scripts/systems/replay/replay_fetcher.gd|lit|当前版本仅支持本地回放
+scripts/systems/replay/replay_fetcher.gd|lit|无法连接服务器，请检查网络
+scripts/systems/replay/replay_fetcher.gd|lit|暂无回放
+scripts/systems/replay/replay_fetcher.gd|lit|暂无结果
+scripts/systems/replay/replay_fetcher.gd|lit|服务器异常（%d），请稍后重试
+scripts/systems/replay/replay_fetcher.gd|lit|结果未公布
+scripts/systems/replay/replay_fetcher.gd|lit|请求超时，请稍后重试
+scripts/systems/replay/replay_fetcher.gd|lit|账号未连接，请检查网络
 scripts/systems/replay/replay_recorder.gd|lit|%s 获胜
 scripts/systems/replay/replay_recorder.gd|lit|事件 %s 在本机没能发生
 scripts/systems/replay/replay_recorder.gd|lit|事件 %s(第 %d 步)没有发生
-scripts/systems/replay/replay_recorder.gd|lit|回放格式不认识
-scripts/systems/replay/replay_recorder.gd|lit|回放记录读不出来
+scripts/systems/replay/replay_recorder.gd|lit|回放
+scripts/systems/replay/replay_recorder.gd|lit|回放格式无效
+scripts/systems/replay/replay_recorder.gd|lit|回放版本（%s）与当前版本（%s）不兼容
+scripts/systems/replay/replay_recorder.gd|lit|回放读取失败
 scripts/systems/replay/replay_recorder.gd|lit|失败
 scripts/systems/replay/replay_recorder.gd|lit|开打时场上单位与录制时不同
 scripts/systems/replay/replay_recorder.gd|lit|录制那一局在第 %d 步已经结束, 本机还没结束
@@ -1553,7 +1563,6 @@ scripts/systems/replay/replay_recorder.gd|lit|校验点 %d 对不上
 scripts/systems/replay/replay_recorder.gd|lit|校验点 %d: 一边在摆位一边不在
 scripts/systems/replay/replay_recorder.gd|lit|终局对不上
 scripts/systems/replay/replay_recorder.gd|lit|胜利
-scripts/systems/replay/replay_recorder.gd|lit|这场比赛是旧版本(%s)打的, 当前版本(%s)播不了
 scripts/systems/sim/sim_driver.gd|lit|(未进入)
 scripts/systems/sim/sim_driver.gd|lit|主菜单
 scripts/systems/sim/sim_driver.gd|lit|前往商店
@@ -1565,19 +1574,19 @@ scripts/systems/sim/sim_driver.gd|lit|帮助?
 scripts/systems/sim/sim_driver.gd|lit|开打钮不可点
 scripts/systems/sim/sim_driver.gd|lit|战绩(点玩家卡)
 scripts/systems/sim/sim_driver.gd|lit|排行榜
-scripts/systems/sim/sim_driver.gd|lit|教学里找不到「下一站」钮
-scripts/systems/sim/sim_driver.gd|lit|点 ? 没弹出确认框
+scripts/systems/sim/sim_driver.gd|lit|教程里找不到「完成教程」钮
+scripts/systems/sim/sim_driver.gd|lit|点 ? 没弹出教程选择框
 scripts/systems/sim/sim_driver.gd|lit|点了装备+点了单位, 背包件数没少
-scripts/systems/sim/sim_driver.gd|lit|确认框里找不到「等会儿」
-scripts/systems/sim/sim_driver.gd|lit|等会儿
 scripts/systems/sim/sim_driver.gd|lit|结算屏没有可按的按钮
 scripts/systems/sim/sim_driver.gd|lit|继续
 scripts/systems/sim/sim_driver.gd|lit|背包
 scripts/systems/sim/sim_driver.gd|lit|训龟大师
 scripts/systems/sim/sim_driver.gd|lit|设置
 scripts/systems/sim/sim_driver.gd|lit|赛程页
+scripts/systems/sim/sim_driver.gd|lit|选择框里找不到「取消」
+scripts/systems/sim/sim_driver.gd|lit|首启选择框里找不到按钮
 scripts/systems/sim/sim_driver.gd|text|返回主菜单
-scripts/systems/skills/candy_system.gd|lit|喂!
+scripts/systems/skills/candy_system.gd|lit|投喂!
 scripts/systems/skills/candy_system.gd|lit|甜蜜掠夺 -
 scripts/systems/skills/candy_system.gd|lit|糖果炸弹
 scripts/systems/skills/chest_system.gd|lit|开箱! 

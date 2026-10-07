@@ -269,13 +269,26 @@ const BUCKET_SHOP_SEC := 180           # 桶内购物 3 分钟(原稿)
 ## ★D11 拍板: 重放节奏 3 → **4 分钟**。9457 场实测纯战斗超 3 分钟只占 0.17%、**超 4 分钟 0 场**,
 ##   ⇒ 放宽到 4 分钟即可全覆盖, **不必做加速播、也不给对局设硬时限**(用户原话「不用给每场设置时限的」)。
 const BUCKET_REPLAY_SEC := 240
-const FINALS_START_HOUR_UTC := 20      # 冠军签表开赛 20:00(同样是 UTC, 见 E2)
+const FINALS_START_HOUR_UTC := 20      # 冠军杯赛开赛 20:00(同样是 UTC, 见 E2)。★= 服务端 `finals_cup_hour()`(门禁逐字对)
+## ★冠军杯赛在服务端是 `finals_buckets` 里一个**保留组号**的单败图(方案书 `docs/plans/20261007-冠军杯赛.md` §4.2):
+##   报结果 / 问对手 / 推进 / 开播 / 回放五个函数全按 (周, 组号) 工作 ⇒ 杯就是「又一个组」, 一行都不用改。
+##   ★= 服务端 `finals_cup_no()`(`verify_champion_cup` 逐字对)。负数不行: `finals_view` 的 -1 = 「我那个组」。
+const FINALS_CUP_BUCKET := 1000000
+## 周日两段赛的名字(用户 2026-10-07「那么上午就叫小组赛啊，晚上叫冠军杯赛」)。★屏幕上只从这两个常量取。
+const STAGE_GROUP := "小组赛"
+const STAGE_CUP := "冠军杯赛"
 ## ★周日**分桶赛**几点开打(UTC) = 服务端 pg_cron `finals_seat` 的首个触发小时。
 ##   2026-10-04 从真库只读查到: jobid 5 `*/10 8-23 * * 0`(周日 08:00 起每 10 分钟分桶) ——
 ##   这条定时任务原来**只在服务端**, 仓库里一个字都没有; 已抄进 schema.sql 末尾注释。
 ##   ★2026-10-03 周六收盘后主菜单写「明天决赛日 · 本地 21:00 开打」(取的是上面冠军签表那个钟点),
 ##   晋级的人照着晚上 9 点才来, 白天的分桶赛就全错过了。
 const FINALS_SEAT_HOUR_UTC := 8
+
+
+## 周日这一场是哪一段赛: 冠军杯赛那张(保留组号) ⇒「冠军杯赛」, 其余 ⇒「小组赛」。
+## ★结算副标题 / 对阵图共用(组号来自 `finals_match` / `finals_pending_reveal` 的 bucket)。
+static func finals_stage_name(bucket: int) -> String:
+	return STAGE_CUP if bucket == FINALS_CUP_BUCKET else STAGE_GROUP
 
 
 ## UTC 时刻 → 玩家本地「HH:MM」。★唯一一份: 主菜单与对阵图共用(原来只在主菜单里有一份)。
@@ -400,12 +413,12 @@ static func phase_uses_ranked_quota(phase: String) -> bool:
 static func finals_block_msg(entered: bool, eligible: bool) -> String:
 	if entered:
 		## 进了决赛日: 他今天**有比赛**, 只是不在这个按钮后面 —— 要指路, 不是干挡。
-		return "🏆 今天是决赛日 · 去【决赛日 → 看对阵图】打你那一场"
+		return "今日决赛日 · 前往对阵图参赛"
 	if eligible:
 		## 打过闯关赛但没打进 —— **不能说「没晋级」**, 周一~五刚夸过他「你已晋级」。
-		return "🏆 今天是决赛日 · 闯关赛没打进决赛日 · 下周一开新的一轮"
+		return "今日决赛日 · 闯关赛止步 · 下周一重置"
 	## 连闯关赛资格都没拿到。说清**下一次机会在哪**, 别让人以为坏了。
-	return "🏆 今天是决赛日 · 本周没晋级 · 下周一开新的一轮"
+	return "今日决赛日 · 本周未晋级 · 下周一重置"
 
 
 ## 这个阶段要不要在赛程条上挂一句"还没上线"? 返回空串 = 照常, 不用额外说明。
@@ -947,6 +960,9 @@ const TITLE_CHAMPION := "champion"        # 冠军: 周日夺冠
 ##   ★累加不顶替(D12「可累加的列表」+ 冠军本来就同时拿四强): 亚军同时保留四强。
 const TITLE_RUNNER_UP := "runner_up"      # 亚军: 周日决赛告负
 const TITLE_SEMIFINAL := "semifinal"      # 四强: 周日打进四强
+## ★★组冠军(2026-10-07 冠军杯赛): 原稿奖励「冠军/亚军/四强/…/桶冠军逐档」—— 冠军是**全服**一个(冠军杯赛),
+##   赢下自己那一组的是「组冠军」。冠军 / 亚军 / 四强从冠军杯赛派生(`GameState.sync_titles`)。
+const TITLE_GROUP_CHAMPION := "group_champion"   # 组冠军: 赢下周日小组赛自己那一组
 const TITLE_FINALS_DAY := "finals_day"    # 进决赛日: 周六闯关赛晋级
 const TITLE_FULL_QUOTA := "full_quota"    # 积分赛满配额: 本周 24 场打满
 
@@ -955,13 +971,15 @@ const TITLE_LABEL := {
 	TITLE_CHAMPION: "冠军",
 	TITLE_RUNNER_UP: "亚军",
 	TITLE_SEMIFINAL: "四强",
-	TITLE_FINALS_DAY: "进决赛日",
+	TITLE_GROUP_CHAMPION: "组冠军",
+	TITLE_FINALS_DAY: "进入决赛日",
 	TITLE_FULL_QUOTA: "满配额",
 }
 
 ## 展示顺序(含金量从高到低)。★不靠字典键序 —— Godot 字典有序但那是**插入序**,
 ##   谁手滑调一下常量位置显示就跟着变, 而这是**产品决定**不是实现细节。
-const TITLE_ORDER := [TITLE_CHAMPION, TITLE_RUNNER_UP, TITLE_SEMIFINAL, TITLE_FINALS_DAY, TITLE_FULL_QUOTA]
+const TITLE_ORDER := [TITLE_CHAMPION, TITLE_RUNNER_UP, TITLE_SEMIFINAL, TITLE_GROUP_CHAMPION,
+	TITLE_FINALS_DAY, TITLE_FULL_QUOTA]
 
 ## ══════════════════════════════════════════════════════════════════════
 ##  周日「结果封存」那一屏说什么(原稿 §五.5)
@@ -973,12 +991,12 @@ const TITLE_ORDER := [TITLE_CHAMPION, TITLE_RUNNER_UP, TITLE_SEMIFINAL, TITLE_FI
 ## ★不承诺具体秒数: 揭晓时刻由服务端的轮次推进决定(`finals_round_sec`),
 ##   客户端说死一个数就会变成"说了做不到的事"。
 static func finals_sealed_sub() -> String:
-	return "双方同时开赛 · 结果统一在本轮开播时揭晓\n去【决赛日 → 看对阵图】等翻面"
+	return "双方同时开赛 · 结果于本轮开播时公布\n可在对阵图查看"
 
 
 ## 这一档现在拿得到吗。★冠军/四强要周日玩法上线 —— 与门那一套同一条闸。
 static func title_earnable(tid: String) -> bool:
-	if tid == TITLE_CHAMPION or tid == TITLE_RUNNER_UP or tid == TITLE_SEMIFINAL:
+	if tid in [TITLE_CHAMPION, TITLE_RUNNER_UP, TITLE_SEMIFINAL, TITLE_GROUP_CHAMPION]:
 		return phase_mode_live(PHASE_FINALS)
 	return tid == TITLE_FINALS_DAY or tid == TITLE_FULL_QUOTA
 
@@ -1083,9 +1101,9 @@ static func nickname_valid(raw: String) -> bool:
 static func nickname_error(raw: String) -> String:
 	var s := nickname_clean(raw)
 	if s.length() < NICK_MIN:
-		return "名字太短了 —— 至少 %d 个字" % NICK_MIN
+		return "昵称至少 %d 个字" % NICK_MIN
 	if s.length() > NICK_MAX:
-		return "名字太长了 —— 最多 %d 个字(现在 %d 个)" % [NICK_MAX, s.length()]
+		return "昵称最多 %d 个字（当前 %d 个）" % [NICK_MAX, s.length()]
 	return ""
 
 
@@ -1350,7 +1368,7 @@ static func bind_nudge_text() -> String:
 ## ★★★ 2026-09-29 换掉「绑定邮箱才能开始」—— **那句话本身就是假的**:
 ##   不绑也能开始(见本节头注那三道闸)。现在标题只说**绑了买到什么**。
 static func login_wall_head() -> String:
-	return "绑定邮箱，换手机也接得回来"
+	return "绑定邮箱 · 跨设备同步进度"
 
 
 ## 绑定屏上那段话。★**一行一句、按步分发**: 第一步印前面那些, 最后一句留给第二步
@@ -1370,6 +1388,6 @@ static func login_wall_head() -> String:
 ## ★★第一句只说**买到什么**; 「不绑也能玩」摆第二句 —— 那是 2026-09-29 之后的真话,
 ##   写上去等于把这一屏自己的性质讲清楚: 它是个邀请, 不是一道闸。
 static func login_wall_body() -> String:
-	return ("绑上邮箱，换手机或重装都能把进度接回来。"
-		+ "\n不绑也能玩 —— 只是换了手机接不回来；邮箱和名字以后随时能改。"
-		+ "\n收不到验证码？看看垃圾邮件，或回上一步换个邮箱重发。")
+	return ("绑定邮箱后，更换设备或重新安装可恢复进度。"
+		+ "\n未绑定时进度仅保存在本设备。邮箱与昵称可随时修改。"
+		+ "\n未收到验证码？请检查垃圾邮件，或返回更换邮箱。")

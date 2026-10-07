@@ -1,0 +1,4 @@
+[gd_scene load_steps=2 format=3]
+[ext_resource type="Script" path="res://tests/verify_tutorial_guide_timing.gd" id="1_t"]
+[node name="Test" type="Node"]
+script = ExtResource("1_t")

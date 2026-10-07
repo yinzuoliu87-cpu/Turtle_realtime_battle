@@ -278,7 +278,7 @@ func _ready() -> void:
 		var blk: String = str(scene._battle_block_msg(pin))
 		var want_block: bool = _gs.ranked_quota_full(pin)
 		_ok("② [%s] 「开始战斗」那句话提不提配额, 也跟同一天" % tag,
-			(blk.find("配额") >= 0) == want_block,
+			(blk.find("场已用完") >= 0) == want_block,
 			"拦=「%s」· 打满=%s" % [blk, str(want_block)])
 
 		# ── ④(续) 传了入参之后**一次都不许再读钟**

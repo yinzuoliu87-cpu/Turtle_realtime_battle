@@ -78,11 +78,17 @@ func _ready() -> void:
 # ─────────────────────────────────────────────────────────────
 func _t_rules() -> void:
 	print("── ① 规则 ──")
-	_ok("① 五档都有显示名(2026-10-04 加亚军)", P2C.TITLE_LABEL.size() == 5 and P2C.TITLE_ORDER.size() == 5,
+	_ok("① 六档都有显示名(2026-10-04 加亚军 · 2026-10-07 加组冠军)", P2C.TITLE_LABEL.size() == 6 and P2C.TITLE_ORDER.size() == 6,
 		"%d / %d" % [P2C.TITLE_LABEL.size(), P2C.TITLE_ORDER.size()])
 	_ok("① ★展示顺序 = 含金量从高到低(冠军在最前)",
 		str(P2C.TITLE_ORDER[0]) == P2C.TITLE_CHAMPION
-			and str(P2C.TITLE_ORDER[4]) == P2C.TITLE_FULL_QUOTA, str(P2C.TITLE_ORDER))
+			and str(P2C.TITLE_ORDER[P2C.TITLE_ORDER.size() - 1]) == P2C.TITLE_FULL_QUOTA, str(P2C.TITLE_ORDER))
+	_ok("① ★★组冠军排在四强之下、进入决赛日之上(冠军杯赛 2026-10-07)",
+		P2C.TITLE_ORDER.find(P2C.TITLE_SEMIFINAL) < P2C.TITLE_ORDER.find(P2C.TITLE_GROUP_CHAMPION)
+			and P2C.TITLE_ORDER.find(P2C.TITLE_GROUP_CHAMPION) < P2C.TITLE_ORDER.find(P2C.TITLE_FINALS_DAY),
+		str(P2C.TITLE_ORDER))
+	_ok("① ★组冠军显示名 = 「组冠军」", str(P2C.TITLE_LABEL.get(P2C.TITLE_GROUP_CHAMPION, "")) == "组冠军",
+		str(P2C.TITLE_LABEL.get(P2C.TITLE_GROUP_CHAMPION, "<缺>")))
 	_ok("① ★★亚军排在冠军之下、四强之上(用户 2026-10-04)",
 		P2C.TITLE_ORDER.find(P2C.TITLE_CHAMPION) < P2C.TITLE_ORDER.find(P2C.TITLE_RUNNER_UP)
 			and P2C.TITLE_ORDER.find(P2C.TITLE_RUNNER_UP) < P2C.TITLE_ORDER.find(P2C.TITLE_SEMIFINAL),
@@ -132,7 +138,7 @@ func _t_rules() -> void:
 	var line := str(P2C.title_line(many))
 	print("     完整串: 「%s」" % line)
 	_ok("① ★按含金量排序, 只拿过一次的不写 ×1(×1 是噪声)",
-		line == "冠军 · 进决赛日 · 满配额 ×2", line)
+		line == "冠军 · 进入决赛日 · 满配额 ×2", line)
 	_ok("① ★★主菜单只取**最高一档**(那一行 382px 放不下完整串)",
 		str(P2C.title_top(many)) == "冠军", str(P2C.title_top(many)))
 	_ok("① ★最高一档也带计数", str(P2C.title_top([
@@ -350,13 +356,27 @@ func _t_finals_titles() -> void:
 	GameState.finals_deepest_round = 0
 	GameState.finals_rounds_total = 0
 	GameState.finals_champion = false
+	GameState._clear_cup_progress()
 	GameState.ensure_season()
 	await get_tree().process_frame
 	_ok("⑤b ★分母: 什么都没达成 ⇒ 一个头衔都不发", GameState.titles.is_empty(),
 		str(GameState.titles))
 
-	## 走到四强(4 人桶第 1 轮)但没夺冠
-	GameState.record_finals_progress(1, 2, false)
+	## ★★冠军杯赛(2026-10-07): 赢下小组赛 = 「组冠军」, **不是**冠军 —— 冠军是全服那一个(冠军杯赛)。
+	##   组里的四强 / 亚军也不发(冠亚四强只从冠军杯赛来)。
+	GameState.record_finals_progress(2, 2, true)
+	GameState.ensure_season()
+	await get_tree().process_frame
+	_ok("⑤b ★★★小组赛夺冠 ⇒ 真入口发了【组冠军】",
+		P2C.title_has(GameState.titles, P2C.TITLE_GROUP_CHAMPION, int(GameState.week_anchor_ts)),
+		str(GameState.titles))
+	_ok("⑤b ★★★小组赛夺冠 ⇒ **不发冠军 / 四强**(那要从冠军杯赛来)",
+		not P2C.title_has(GameState.titles, P2C.TITLE_CHAMPION, int(GameState.week_anchor_ts))
+			and not P2C.title_has(GameState.titles, P2C.TITLE_SEMIFINAL, int(GameState.week_anchor_ts)),
+		str(GameState.titles))
+
+	## 冠军杯赛走到四强(4 人表第 1 轮)但没夺冠
+	GameState.record_cup_progress(1, 2, false, false)
 	GameState.ensure_season()
 	await get_tree().process_frame
 	var has_semi: bool = P2C.title_has(GameState.titles, P2C.TITLE_SEMIFINAL,
@@ -366,8 +386,8 @@ func _t_finals_titles() -> void:
 	_ok("⑤b ★★★走到四强 ⇒ 真入口把【四强】发了", has_semi, str(GameState.titles))
 	_ok("⑤b ★★★没夺冠 ⇒ **冠军一条都不许有**", not has_champ, str(GameState.titles))
 
-	## 夺冠
-	GameState.record_finals_progress(2, 2, true)
+	## 冠军杯赛夺冠
+	GameState.record_cup_progress(2, 2, true, false)
 	GameState.ensure_season()
 	await get_tree().process_frame
 	_ok("⑤b ★★★夺冠 ⇒ 真入口把【冠军】发了",
@@ -394,9 +414,10 @@ func _t_finals_titles() -> void:
 	## ── (d) 周换轮把依据清掉(头衔本身不清) ─────────────────────
 	var titles_before := GameState.titles.size()
 	GameState.start_new_season()
-	_ok("⑤d ★★★切轮 ⇒ 三个依据字段都清零(上周的冠军不许顺延成本周的头衔)",
+	_ok("⑤d ★★★切轮 ⇒ 依据字段都清零(上周的冠军不许顺延成本周的头衔; 含冠军杯赛五个)",
 		int(GameState.finals_deepest_round) == 0 and int(GameState.finals_rounds_total) == 0
-		and not bool(GameState.finals_champion),
+		and not bool(GameState.finals_champion) and int(GameState.finals_cup_deepest) == 0
+		and int(GameState.finals_cup_total) == 0 and not bool(GameState.finals_cup_champion),
 		"%d/%d/%s" % [GameState.finals_deepest_round, GameState.finals_rounds_total,
 			str(GameState.finals_champion)])
 	_ok("⑤d ★分母: 头衔本身一条都没少(清的是依据不是荣誉)",
@@ -576,6 +597,9 @@ func _t_runner_up() -> void:
 	## ── (c) 真入口: BracketMapScene.set_data → _record_progress → sync_titles ────
 	var wk: int = P2C.week_anchor_utc(int(Time.get_unix_time_from_system()))
 	var got := {}
+	## ★★冠军杯赛(2026-10-07): 那一周只有一个组 ⇒ 20:00 冠军杯赛只有 p03 一人(直接夺冠)。
+	##   主会话 10-07: 冠亚四强**只**从冠军杯赛来, 不再拿组里的名次兜底 ⇒ p05 / p01 什么都不拿。
+	var accs := ["a01", "a02", "a03", "a04", "a05", "a06"]
 	for me in [4, 2, 0]:          # p05 亚军 / p03 冠军 / p01 半决赛出局
 		GameState.titles = []
 		GameState.week_anchor_ts = wk
@@ -585,26 +609,26 @@ func _t_runner_up() -> void:
 		GameState.finals_champion = false
 		GameState.finals_runner_up = false
 		GameState.finals_pending_reveal = {}
+		GameState._clear_cup_progress()
 		var map = _BMS.new()
-		map.set_data({"size": 6, "round": 3, "me": me, "names": names, "done": live}, {})
+		map.set_data({"size": 6, "round": 3, "me": me, "names": names, "accs": accs, "done": live,
+			"bucket": 0, "closed": true},
+			{"size": 1, "round": 1, "me": 0 if me == 2 else -1, "names": ["p03"], "accs": ["a03"],
+				"bucket": P2C.FINALS_CUP_BUCKET, "closed": true, "done": {}})
 		map.free()
 		got[me] = GameState.titles.duplicate(true)
 	_ok("⑦c ★分母: 周日玩法开着(关着的话下面几条只能验「发不出来」)", P2C.phase_mode_live(P2C.PHASE_FINALS))
 	var t5: Array = got[4]
-	_ok("⑦c ★★★p05(决赛输) ⇒ 真入口发了【亚军】", P2C.title_has(t5, P2C.TITLE_RUNNER_UP, wk), str(t5))
-	_ok("⑦c ★★累加: p05 同时保留【四强】", P2C.title_has(t5, P2C.TITLE_SEMIFINAL, wk), str(t5))
-	_ok("⑦c ★p05 没有【冠军】", not P2C.title_has(t5, P2C.TITLE_CHAMPION, wk), str(t5))
-	_ok("⑦c ★★主菜单那一格显示「亚军」(最高一档), 完整行「亚军 · 四强」",
-		P2C.title_top(t5) == "亚军" and P2C.title_line(t5).begins_with("亚军 · 四强"),
-		"%s / %s" % [P2C.title_top(t5), P2C.title_line(t5)])
+	_ok("⑦c ★★★p05(组决赛输) ⇒ **不再**拿【亚军】/【四强】(冠亚四强只从冠军杯赛来)",
+		not P2C.title_has(t5, P2C.TITLE_RUNNER_UP, wk) and not P2C.title_has(t5, P2C.TITLE_SEMIFINAL, wk), str(t5))
 	var t3: Array = got[2]
-	_ok("⑦c ★★p03(冠军) ⇒ 冠军 + 四强, **没有亚军**",
-		P2C.title_has(t3, P2C.TITLE_CHAMPION, wk) and P2C.title_has(t3, P2C.TITLE_SEMIFINAL, wk)
+	_ok("⑦c ★★p03(唯一组冠军 = 1 人冠军杯赛) ⇒ 冠军 + 组冠军, 没有亚军",
+		P2C.title_has(t3, P2C.TITLE_CHAMPION, wk) and P2C.title_has(t3, P2C.TITLE_GROUP_CHAMPION, wk)
 			and not P2C.title_has(t3, P2C.TITLE_RUNNER_UP, wk), str(t3))
+	_ok("⑦c ★主菜单那一格显示最高一档「冠军」", P2C.title_top(t3) == "冠军", P2C.title_top(t3))
 	var t1: Array = got[0]
-	_ok("⑦c ★★p01(半决赛出局) ⇒ 只有四强, 没有亚军",
-		P2C.title_has(t1, P2C.TITLE_SEMIFINAL, wk) and not P2C.title_has(t1, P2C.TITLE_RUNNER_UP, wk),
-		str(t1))
+	_ok("⑦c ★p01(半决赛出局) ⇒ 冠亚四强一个都没有", not P2C.title_has(t1, P2C.TITLE_SEMIFINAL, wk)
+		and not P2C.title_has(t1, P2C.TITLE_RUNNER_UP, wk), str(t1))
 	## 存档往返 + 随周清
 	GameState.finals_runner_up = true
 	var sv: Dictionary = GameState._save_dict()

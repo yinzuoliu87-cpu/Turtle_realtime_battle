@@ -1582,6 +1582,8 @@ func pick_arena_theme() -> String:
 	return ArenaTheme.choose_for_battle(int(battle._battle_rng.seed), _is_formal_battle(), _is_tutorial_battle())
 
 
+## ★也是「不计赛季」的判据(用户 2026-10-07「在调试场里打的为什么会计入局数啊」):
+##   `_settle_season` 读它 ⇒ 调试场/特效台/地图编辑器打完不加场次、不扣命、不发币、不上传快照。门禁 verify_debug_no_season。
 func _is_dev_tool_battle() -> bool:
 	return battle.DEBUG_EDIT or OS.has_environment("VFXLAB") or OS.has_environment("MAPEDIT")
 

@@ -93,7 +93,6 @@ const _P2C := preload("res://scripts/gamedata/phase2_config.gd")
 ##   都会在生产打开它」。这里的开关是 **> 0**, 产品代码一处都不写它(可 grep 证)。
 var lockout_now_override: int = 0
 const SkillTipButton := preload("res://scripts/scenes/SkillTipButton.gd")
-const TutorialGuide := preload("res://scripts/scenes/TutorialGuide.gd")   # 技能图标 styled tooltip
 const SkillEnergy := preload("res://scripts/systems/skill_energy.gd")        # 龟能花费 单一事实源 (无"CD")
 
 # 特殊占位 mark (1:1 PoC TeamSelectScene.ts:119-121) — 占编队槽但非真龟, 显召唤预留位
@@ -170,7 +169,7 @@ var _rarity_btns: Array = []         # [{btn, key}]
 func _ready() -> void:
 	rng.randomize()
 	if DataRegistry.all_pets.is_empty():
-		status_bar.text = "龟谱没读出来 · 请重开一次"
+		status_bar.text = "数据加载失败，请重启游戏"
 		push_error("[TeamSelect] DataRegistry 没加载!")
 		return
 	# 大轮已锁定? = season_leaders 已是有效 3 龟. 锁定→预填不清; 未锁(新赛季/首次)→清空全选.
@@ -197,13 +196,11 @@ func _ready() -> void:
 	_load_team()
 	_refresh_all()
 	if _roster_locked:
-		_flash_status("这一轮的三只龟定了 · 还能换招, 换不了龟")
+		_flash_status("本大轮阵容已锁定 · 可更换技能")
 	# 新手引导: 教学模式挂分步引导(带高亮锚点)。导演按当前阶段选步骤集 + 是否 mandatory。
 	var _tdg = get_node_or_null("/root/TutorialDirector")
 	if _tdg != null and _tdg.is_active():
 		_tut_guide = _tdg.attach_guide(self, "team_select")
-	elif GameState.tutorial:
-		_tut_guide = TutorialGuide.attach(self, "team_select")   # 兜底(旧 tutorial=true 路径)
 	# 窗口 resize/全屏/最大化 → 重算背景 + 按新尺寸重建浮层 (PoC fitSelectStage 绑 resize; 之前缺 → 铺不满根因)
 	get_viewport().size_changed.connect(_on_resize)
 	if OS.has_environment("TSEDIT"):
@@ -670,7 +667,7 @@ func _build_ui() -> void:
 	_edge_btns.clear()   # resize 会整份重建 UI → 先清旧登记(里面是已 free 的节点)
 	# 标题 (PoC .ts-title: #ffe6b0 22px, letter-spacing 2px, 阴影)
 	var title := Label.new()
-	title.text = "选择你的统领"
+	title.text = "选择统领"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", _sf(22))
@@ -723,6 +720,11 @@ func _build_ui() -> void:
 	_last_btn.pressed.connect(_on_restore_last)
 	_space_top_pair(clear, _last_btn)
 	_ent_top = [back, clear, _last_btn]
+	## ★教程里没有返回(用户 2026-10-07「教程里就不应该有返回键啊，要一直跟着教程走啊」);
+	##   「沿用上次」读的是账号的上次阵容文件 —— 教程是隔离沙盒, 不许碰账号的东西 ⇒ 一并藏起。
+	if _tut_on():
+		back.visible = false
+		_last_btn.visible = false
 
 	# 实时 3v3：去掉回合制「前排/后排」标签 (自由走位下定位无意义)
 
@@ -739,7 +741,7 @@ func _build_ui() -> void:
 	_start_btn = Button.new()
 	_start_btn.disabled = true
 	_start_btn.add_theme_font_size_override("font_size", _sf(18))
-	_start_btn.text = "挑 3 只龟上阵"
+	_start_btn.text = "选择 3 只龟"
 	_start_btn.add_theme_color_override("font_color", Color("#eaffd0"))
 	_start_btn.add_theme_color_override("font_hover_color", Color("#ffffff"))
 	## 按下压暗一档 —— 底板是画好的绿牌, 这是唯一不加盒子的按下反馈(见下方注释)。
@@ -892,7 +894,7 @@ func _refresh_synergy_chips() -> void:
 	if rows.is_empty():
 		var none := Label.new()
 		## 2026-10-05: 原句「上阵的龟还没戴同类装备」放大字号后在 16:9 上折成「…同类装 / 备」(孤字一行) ⇒ 缩成 8 个字。
-		none.text = "装备还没凑成同类"
+		none.text = "暂无羁绊"
 		## 11 号 → 17 号、换深一档, 纸只有约 120~158px 宽 ⇒ 仍开自动折行兜底(不折行会冲出纸面)。
 		none.add_theme_font_size_override("font_size", _sf(17))
 		none.add_theme_color_override("font_color", Color("#3a2408"))
@@ -1150,7 +1152,7 @@ func _make_rarity_badge(rarity: String, rcolor: Color, font_px: int = 11) -> Con
 func _refresh_confirm() -> void:
 	if _roster_locked:
 		_start_btn.disabled = false
-		_start_btn.text = "就这三只 · 出战"
+		_start_btn.text = "出战"
 		if _last_btn != null:
 			_last_btn.disabled = true          # 锁定态禁"上次阵容"
 		return
@@ -1163,11 +1165,11 @@ func _refresh_confirm() -> void:
 	# PoC #poc-btn-confirm(index.html:518) 显式 animation:none box-shadow:none → 开始按钮无脉冲发光
 	#   (.select-cta 通用脉冲被 ID 规则覆盖关掉)。曾自创发光 Panel 已删。
 	if placed == 0:
-		_start_btn.text = "挑 3 只龟上阵"
+		_start_btn.text = "选择 3 只龟"
 	elif placed < REQUIRED_PETS:
-		_start_btn.text = "还差 %d 只" % (REQUIRED_PETS - placed)
+		_start_btn.text = "还需 %d 只" % (REQUIRED_PETS - placed)
 	else:
-		_start_btn.text = "带它们出战"
+		_start_btn.text = "出战"
 	# 上次阵容: 空队 + 有完整存档才可恢复
 	var last := _read_last_lineup()
 	var can_restore: bool = placed == 0 and last.has("ids") and (last["ids"] as Array).size() == 3
@@ -1190,7 +1192,7 @@ func _on_pick_pet(pid: String) -> void:
 		if t != null and not _is_special_mark(t):
 			placed += 1
 	if placed >= REQUIRED_PETS:
-		_flash_status("三只满了 · 点格子把龟撤下来")   # 1:1 PoC onPickPet toast(:1556) — 原"⚠队伍已满(3/3)"是自创
+		_flash_status("阵容已满")   # 1:1 PoC onPickPet toast(:1556) — 原"⚠队伍已满(3/3)"是自创
 		return
 	# 优先填 active 槽 (PoC onPickPet:1561), 否则首个空槽
 	var empty_idx := -1
@@ -1308,7 +1310,7 @@ func _on_drop_pet(pet_id: String, slot_idx: int) -> void:
 			if t != null and not _is_special_mark(t):
 				placed += 1
 		if placed >= REQUIRED_PETS:
-			_flash_status("三只满了 · 先撤下一只")
+			_flash_status("阵容已满")
 			return
 	team[slot_idx] = pet_id
 	_sync_special_slots()
@@ -1320,7 +1322,7 @@ func _on_drop_pet(pet_id: String, slot_idx: int) -> void:
 
 func _on_clear_all() -> void:
 	if _roster_locked:
-		_flash_status("这一轮的龟定了 · 下个赛季才能重挑")
+		_flash_status("本大轮阵容已锁定")
 		return
 	team = [null, null, null]
 	_selected_slot_idx = -1
@@ -1358,6 +1360,22 @@ func _on_start() -> void:
 			picked.append(team[i])
 			slots.append(SLOT_KEYS[i])
 	if picked.size() != REQUIRED_PETS:
+		return
+	## ★教程: 不走封盘闸 / 不记赛程阶段 / 不写「上次阵容」(X6: 教学阵容不许覆盖账号的上次阵容),
+	##   由导演直接进教学战斗(弱对手, 不联网)。阵容写进的是沙盒里的 season_leaders。
+	var _tdc = get_node_or_null("/root/TutorialDirector")
+	if _tdc != null and _tdc.is_active():
+		var tut_team: Array[String] = []
+		for p in picked:
+			tut_team.append(str(p))
+		var tut_slots: Array[String] = []
+		for sk in slots:
+			tut_slots.append(str(sk))
+		GameState.left_team = tut_team
+		GameState.left_slots = tut_slots
+		GameState.season_leaders = tut_team.duplicate()
+		_tdc.notify("team_confirmed")
+		get_tree().change_scene_to_file(_tdc.next_scene_after("team_select"))
 		return
 
 	## ★★A4 的第三种拦截原因(封盘) —— 前两种(淘汰 / 配额打满)在 `MainMenuScene._start_battle_flow()`。
@@ -1415,12 +1433,6 @@ func _on_start() -> void:
 	GameState.sync_synergy_grants()
 
 	_write_last_lineup()
-
-	# ★教学模式: 不走匹配(不联网), 由导演直接进第一把双路战斗(弱对手)。
-	var _tdc = get_node_or_null("/root/TutorialDirector")
-	if _tdc != null and _tdc.is_active():
-		get_tree().change_scene_to_file(_tdc.next_scene_after("team_select"))
-		return
 	# → 匹配动画 (Matchmaking): 抽对手 ghost 写 dual_ghost → 进 2.5D 战斗.
 	get_tree().change_scene_to_file("res://scenes/Matchmaking.tscn")
 
@@ -1490,6 +1502,8 @@ func _write_last_lineup() -> void:
 # 当前阵容临时记忆 (本会话, 进战斗回来还在) — 简化: 用 _read_last_lineup 兜
 func _save_team() -> void:
 	# 持久化 6 槽阵容草稿 (含未确认的 1-2 龟 + 槽位) → 离开再回来还在 (1:1 PoC saveTeam localStorage[LS_KEY])
+	if _tut_on():
+		return   # ★教程沙盒不写盘(账号的草稿文件不许被教学阵容覆盖)
 	var f := FileAccess.open(TEAM_DRAFT_PATH, FileAccess.WRITE)
 	if f != null:
 		f.store_string(JSON.stringify(team))
@@ -1508,7 +1522,7 @@ func _load_team() -> void:
 			team[si] = GameState.left_team[i]
 		return
 	# 草稿恢复 (1:1 PoC loadTeam: 6 槽数组, 验 id 在已知龟内否则置 null)
-	if not FileAccess.file_exists(TEAM_DRAFT_PATH):
+	if _tut_on() or not FileAccess.file_exists(TEAM_DRAFT_PATH):
 		return
 	var fr := FileAccess.open(TEAM_DRAFT_PATH, FileAccess.READ)
 	if fr == null:
@@ -1546,18 +1560,30 @@ func _skill_energy(sk: Dictionary) -> int:
 	return int(round(SkillEnergy.cost_of(str(sk.get("type", "")))))
 
 
+const TutorialGuide := preload("res://scripts/scenes/TutorialGuide.gd")   # 教程锚点: vis_rect(只认真看得见的控件)
+
+func _tut_on() -> bool:
+	var td = get_node_or_null("/root/TutorialDirector")
+	return td != null and td.is_active()
+
+
 ## 新手引导高亮锚点(用户2026-07-23 D): 把锚点名换成屏幕矩形, TutorialGuide 据此挖洞高亮。
 ## 解析不到(控件还没建)→返回空 Rect2, TutorialGuide 本步不挖洞(见 _apply_highlight)。
 func _tutorial_anchor(anchor: String) -> Rect2:
 	match anchor:
 		"roster":   # 底部 3 龟卡网格(教学只显 3 只)
+			return TutorialGuide.vis_rect(_grid_flow)
+		"roster_pet":   # 手势指针: 第一张还没上阵的龟卡
 			if _grid_flow != null and is_instance_valid(_grid_flow):
-				return _grid_flow.get_global_rect()
+				for c in _grid_flow.get_children():
+					var pid := str((c as Node).get_meta("pet_id", "")) if (c as Node).has_meta("pet_id") else ""
+					if pid != "" and pid in team:
+						continue
+					return TutorialGuide.vis_rect(c)
 		"slots":    # 顶部出战阵容槽(3 格)
 			return _tut_union_rect(_slot_nodes)
 		"confirm":  # 确认出战钮
-			if _start_btn != null and is_instance_valid(_start_btn):
-				return _start_btn.get_global_rect()
+			return TutorialGuide.vis_rect(_start_btn)
 	return Rect2()
 
 ## 一组 Control 的全局矩形并集(空/无效的跳过)。

@@ -535,7 +535,7 @@ func _info_stat_rows_main(u: Dictionary) -> Array:
 		##   两处印的**数和含义完全一致**(都是每秒攻击次数), 差的只是单位那几个字 ——
 		##   与 2026-08-10 那次「面板印间隔 / 图鉴印速率」的语义分叉不是一回事, 但仍是
 		##   "同一件事两种写法", 该收。
-		[sic + "aspd-icon.png",  "攻速 每秒 %s 下" % battle._fmt_num(battle.aspd_mult(u) / maxf(0.001, float(u.get("atk_interval", 1.0)))), W],
+		[sic + "aspd-icon.png",  "攻速 每秒 %s 次" % battle._fmt_num(battle.aspd_mult(u) / maxf(0.001, float(u.get("atk_interval", 1.0)))), W],
 		[sic + "crit-icon.png",  "暴击 " + _pct(minf(float(u.get("crit", 0.0)), 1.0)), W],
 		[sic + "dmg-amp-icon.png", "增伤 " + _pct(amp), Color("#ff7a7a") if amp > 0.0005 else Color("#7a8694")],
 		[sic + "def-icon.png",   def_txt,                                          W],
@@ -711,7 +711,7 @@ func _resource_bars(u: Dictionary) -> Array:
 			##   ①「结算」是后台词(它在这个项目里还专指战斗结束那一屏 ⇒ 一个词两个意思);
 			##     泡泡到点做的事就是**炸开**(回血 + 溅最近的敌人), 说它在干什么比说"结算"准。
 			##   ② 半角冒号换 `·`, 与上面储能那条同一个写法。
-			"hint": "%.1f 秒后炸开 · 回血 %d · 伤害 %d" % [nxt, int(bs * 0.10), int(bs * 0.10)],
+			"hint": "%.1f 秒后爆炸 · 治疗 %d · 伤害 %d" % [nxt, int(bs * 0.10), int(bs * 0.10)],
 			"color": Color("#aef1ff"),
 		})
 
@@ -732,7 +732,7 @@ func _resource_bars(u: Dictionary) -> Array:
 		if opened < th.size():
 			out.append({
 				"name": "财宝", "cur": float(u.get("dmg_dealt", 0.0)), "cap": float(th[opened]),
-				"hint": "再攒开第 %d 箱" % (opened + 1), "color": Color("#ffcf6b"),
+				"hint": "距第 %d 箱" % (opened + 1), "color": Color("#ffcf6b"),
 			})
 	return out
 
@@ -765,10 +765,10 @@ func _skill_status_line(u: Dictionary, sk) -> String:
 	var es: Array = _energy_state(u, stype)
 	var head := "龟能 %d / %d" % [int(es[0]), int(es[1])]
 	if battle._t < float(u.get("energy_lock_until", 0.0)):
-		return head + "  ·  龟能被锁住 %.1f 秒\n" % (float(u.get("energy_lock_until", 0.0)) - battle._t)
+		return head + "  ·  龟能锁定 %.1f 秒\n" % (float(u.get("energy_lock_until", 0.0)) - battle._t)
 	if float(es[2]) <= 0.001:
-		return head + "  ·  攒满了, 随时能放\n"
-	return head + "  ·  还差 %.1f 秒\n" % float(es[2])
+		return head + "  ·  已就绪\n"
+	return head + "  ·  剩余 %.1f 秒\n" % float(es[2])
 
 
 ## 技能描述框里印的那一段字 —— 【建面板 / 点开 / 每帧刷新】三处同源(2026-09-28)。
@@ -957,7 +957,7 @@ func _refresh_eq_stats() -> void:
 	var tx := eq_stats_text(_eq_stats_unit, _eq_stats_eid)
 	## ★2026-10-06 统计搬进左侧小卡的「本局」段: 全零时写一句而不是整块藏掉(段标题还在, 空着像坏了)。
 	if tx == "":
-		tx = "还没有产生效果"
+		tx = "暂无效果"
 	if _eq_stats_lbl.text != tx:
 		_eq_stats_lbl.text = tx
 
@@ -1712,24 +1712,24 @@ func _info_stat_tiles(u: Dictionary) -> Array:
 	var dim := Color("#7d7264")
 	return [
 		[sic + "atk-icon.png", "攻击", "%d" % int(u.get("atk", 0)), W, "普攻和大多数技能伤害的基础。"],
-		[sic + "aspd-icon.png", "攻速", "%.2f" % aspd, W, "每秒普攻几下。"],
+		[sic + "aspd-icon.png", "攻速", "%.2f" % aspd, W, "每秒普攻次数。"],
 		[sic + "crit-icon.png", "暴击", _pct(minf(float(u.get("crit", 0.0)), 1.0)), W, "攻击打出暴击的几率。"],
 		[sic + "crit-dmg-icon.png", "暴伤", _pct_mult(float(u.get("crit_dmg", 1.5)) + crit_over), W, "暴击时造成的伤害倍率。暴击率超过 100% 的部分会折算进来。"],
 		[sic + "def-icon.png", "护甲", ("%d" % def_now) + ("+%d" % def_gain if def_gain > 0 else ""), W, "降低受到的物理伤害。"],
 		[sic + "mr-icon.png", "魔抗", "%d" % int(u.get("mr", 0)), W, "降低受到的魔法伤害。"],
-		[sic + "dmg-red-icon.png", "减伤", _pct(dr), W if dr > 0.0005 else dim, "受到的所有伤害按这个比例降低。"],
-		[sic + "dmg-amp-icon.png", "增伤", _pct(amp), W if amp > 0.0005 else dim, "造成的所有伤害按这个比例提高。"],
-		[sic + "range-icon.png", "射程", "%d" % int(round(battle._eff_range(u))), W, "普攻能打到多远。"],
-		[sic + "move-icon.png", "移速", "%d" % int(round(_eff_move_spd(u))), W, "移动的快慢。被减速、加速时会跟着变。"],
-		[sic + "lifesteal-icon.png", "生命偷取", _pct(ls), W if ls > 0.0005 else dim, "造成伤害时, 按这个比例回复自己的生命。"],
-		[sic + "dodge-icon.png", "闪避", _pct(float(u.get("dodge_bonus", 0.0))), W if float(u.get("dodge_bonus", 0.0)) > 0.0005 else dim, "躲开攻击的几率。"],
-		[sic + "armorpen-icon.png", "护甲穿透", "%d" % int(u.get("armor_pen", 0.0)), W if int(u.get("armor_pen", 0.0)) > 0 else dim, "打物理伤害时, 无视目标这么多护甲。"],
-		[sic + "magicpen-icon.png", "魔法穿透", "%d" % int(u.get("magic_pen", 0.0)), W if int(u.get("magic_pen", 0.0)) > 0 else dim, "打魔法伤害时, 无视目标这么多魔抗。"],
+		[sic + "dmg-red-icon.png", "减伤", _pct(dr), W if dr > 0.0005 else dim, "受到的所有伤害按比例降低。"],
+		[sic + "dmg-amp-icon.png", "增伤", _pct(amp), W if amp > 0.0005 else dim, "造成的所有伤害按比例提高。"],
+		[sic + "range-icon.png", "射程", "%d" % int(round(battle._eff_range(u))), W, "普攻的攻击距离。"],
+		[sic + "move-icon.png", "移速", "%d" % int(round(_eff_move_spd(u))), W, "移动速度，受减速、加速效果影响。"],
+		[sic + "lifesteal-icon.png", "生命偷取", _pct(ls), W if ls > 0.0005 else dim, "造成伤害时，按比例回复自身生命。"],
+		[sic + "dodge-icon.png", "闪避", _pct(float(u.get("dodge_bonus", 0.0))), W if float(u.get("dodge_bonus", 0.0)) > 0.0005 else dim, "闪避攻击的几率。"],
+		[sic + "armorpen-icon.png", "护甲穿透", "%d" % int(u.get("armor_pen", 0.0)), W if int(u.get("armor_pen", 0.0)) > 0 else dim, "造成物理伤害时无视目标的护甲值。"],
+		[sic + "magicpen-icon.png", "魔法穿透", "%d" % int(u.get("magic_pen", 0.0)), W if int(u.get("magic_pen", 0.0)) > 0 else dim, "造成魔法伤害时无视目标的魔抗值。"],
 		[sic + "healamp-icon.png", "治疗强度", _pct_mult(1.0 + float(u.get("heal_amp", 0.0))), W, "治疗效果的倍率。"],
 		[sic + "shieldamp-icon.png", "护盾强度", _pct_mult(1.0 + float(u.get("shield_amp", 0.0))), W, "护盾效果的倍率。"],
-		[sic + "echarge-icon.png", "龟能充能", _pct_mult(1.0 + float(u.get("echarge_perm", 0.0))), W, "龟能攒满的速度倍率。攒满就放技能。"],
-		[sic + "reflect-icon.png", "反伤", _pct(float(u.get("reflect", 0.0))), W if float(u.get("reflect", 0.0)) > 0.0005 else dim, "受到伤害时, 按这个比例反弹给攻击者。"],
-		[sic + "tenacity-icon.png", "韧性", _pct(float(u.get("tenacity", 0.0))), W if float(u.get("tenacity", 0.0)) > 0.0005 else dim, "缩短自己被眩晕、减速等控制的时间。"],
+		[sic + "echarge-icon.png", "龟能充能", _pct_mult(1.0 + float(u.get("echarge_perm", 0.0))), W, "龟能积攒速度倍率。龟能满时释放技能。"],
+		[sic + "reflect-icon.png", "反伤", _pct(float(u.get("reflect", 0.0))), W if float(u.get("reflect", 0.0)) > 0.0005 else dim, "受到伤害时，按比例反弹给攻击者。"],
+		[sic + "tenacity-icon.png", "韧性", _pct(float(u.get("tenacity", 0.0))), W if float(u.get("tenacity", 0.0)) > 0.0005 else dim, "缩短受到眩晕、减速等控制效果的持续时间。"],
 	]
 
 
@@ -2026,7 +2026,7 @@ func _open_equip_card(u: Dictionary, eid: String, star: int, anchor: Control) ->
 		"body": SkillText.highlight_star(SkillText.equip_full_bb(edef, 14), star),
 		"foot": SkillText.glossary_bb(SkillText.equip_full(edef), 14),
 		"extra_title": "本局",
-		"extra": st_txt if st_txt != "" else "还没有产生效果",
+		"extra": st_txt if st_txt != "" else "暂无效果",
 	})
 	if lv.has("extra"):
 		_eq_stats_lbl = lv["extra"]

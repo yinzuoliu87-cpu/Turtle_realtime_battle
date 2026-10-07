@@ -86,6 +86,9 @@ const BACKUP_SKIP := ["test_mode", "auth_refresh", "account_email", "install_uid
 	## S2 上传队列: 播放时不许被覆盖(V5)。E7 快照上传队列同理。
 	"replay_upload_pending", "ghost_upload_pending"]
 const Uploader := preload("res://scripts/systems/replay/replay_uploader.gd")
+## 实时观赛(2026-10-07, docs/plans/20261007-实时观赛.md): 打的人边打边传(`live_upload`) / 看的人按观赛方式跟播(`live_spectate`)。
+const LiveUp := preload("res://scripts/systems/replay/live_upload.gd")
+const Live := preload("res://scripts/systems/replay/live_spectate.gd")
 
 ## 待播的那一份: 播放入口写、战斗场 `_ready` 里 `start()` 读走。
 static var pending_play: Dictionary = {}
@@ -105,6 +108,8 @@ var diverge_why := ""
 var cp_checked := 0            # 播放: 已比对的校验点数(门禁的分母)
 var finished := false
 var _ui_built := false
+var live = null                 # 观赛(看): `live_spectate` 实例; null = 普通回放(有暂停 / 倍速 / 进度条)
+var live_up = null              # 直播(打): `live_upload` 实例; null = 这一局不直播
 
 
 func _init(b) -> void:
@@ -125,6 +130,7 @@ func start() -> void:
 		##   `note_battle_seed` 刚登记过, 还没有任何人从 `_battle_rng` 取过数 ⇒ 这里覆盖等价于开局就是它。
 		##   (录制那边 `seed = note_battle_seed(seed)` 同样是「重设 seed ⇒ 状态归位」, 两边起点一致。)
 		battle._battle_rng.seed = GameState.note_battle_seed(int(rec.get("seed", 0)))
+		live = Live.take(self)      # 观赛会话(赛况板「观赛」/ 对阵图开播时挂上的); 没有 = 普通回放
 		return
 	if should_record():
 		mode = "rec"
@@ -136,6 +142,11 @@ func start() -> void:
 			"events": [],
 			"cps": [],
 		}
+		## ★开打前就定下 id(原来结算时才定): 直播行与打完之后的 matches 行是同一个 match_id,
+		##   赛况板据此把「正在打」那张卡换成打完的那张(`save_record` 沿用它)。
+		rec["id"] = new_id()
+		if LiveUp.wanted():
+			live_up = LiveUp.new(self)
 
 
 ## 这一局录不录。Q3(用户授权按推荐): 先只录周六闯关赛;
@@ -214,6 +225,24 @@ func fight_steps() -> Array:
 	return out
 
 
+## 这一帧喂给 sim 累加器多少秒(战斗场 `_process` 调)。观赛由 `live_spectate.feed` 定(追帧 / 跟播 / 停在 horizon),
+##   其余照旧 = 真实帧时长 × 倍速(`time_mult`)。★两条路都只改「这一帧跑几步」, 不改步长。
+func sim_feed(rd: float) -> float:
+	if live != null and mode == "play":
+		return live.feed(rd)
+	return rd * time_mult()
+
+
+## 观赛中(没有播放控件, 只有「退出」)。
+func is_live() -> bool:
+	return live != null and mode == "play"
+
+
+## 顶栏小签上的字: 观赛「直播」/「开播」, 回放「回放」。
+func mark_text() -> String:
+	return live.tag() if is_live() else "回放"
+
+
 # ─────────────────────────────── 每步 ───────────────────────────────
 
 ## `_sim_step` 第一行调(此刻 `_sim_step_n` 还是上一步的号 S)。
@@ -239,6 +268,8 @@ func pre_step() -> bool:
 		var end_s: int = int((rec.get("end", {}) as Dictionary).get("s", -1))
 		if end_s >= 0 and s > end_s and not finished and diverged_at < 0:
 			_diverge(s, "录制那一局在第 %d 步已经结束, 本机还没结束" % end_s)
+	if live_up != null:
+		live_up.heartbeat(s)        # 直播: 每 3 游戏秒心跳(校验点之后 ⇒ 这一步的校验点在这一行里)
 	return fired
 
 
@@ -300,6 +331,9 @@ func allow_input(kind: String) -> bool:
 		if kind == "fight":
 			e["p"] = positions(battle)
 		(rec["events"] as Array).append(e)
+		if live_up != null:
+			## 步里面记的(i=true)这一步后面可能还有 ⇒ horizon 退一步(见 live_upload 头注)。
+			live_up.on_event(kind, int(battle._sim_step_n) - (1 if _in_step else 0))
 		return true
 	if mode != "play":
 		return true
@@ -329,6 +363,8 @@ func on_settle(won: bool) -> bool:
 		if id != "" and GameState != null:
 			GameState.replay_pending_id = id      # record_match 那一刻挂到战绩行上
 			Uploader.enqueue(id)                  # S2: 先进落盘队列再发; 回读确认才销单
+		if live_up != null:
+			live_up.finish(int(battle._sim_step_n))   # 直播最后一行: 带 end、ended = true
 		return false
 	if mode == "play":
 		if not finished:
@@ -337,6 +373,8 @@ func on_settle(won: bool) -> bool:
 			if diverged_at < 0 and (int(end.get("s", -1)) != int(battle._sim_step_n) \
 					or str(end.get("h", "")) != digest(battle) or bool(end.get("won", not won)) != won):
 				_diverge(int(battle._sim_step_n), "终局对不上")
+			if live != null:
+				live.on_end()
 		return true
 	return false
 
@@ -495,7 +533,9 @@ static func decode(b: PackedByteArray) -> Dictionary:
 
 ## 存本地 user://replays/<id>.rpl, 返回 id("" = 没存成)。上传(S2)见 `replay_uploader.gd`。
 static func save_record(r: Dictionary) -> String:
-	var id := new_id()
+	var id := str(r.get("id", ""))
+	if not Uploader.SB.is_uuid(id):
+		id = new_id()                   # 开局没定下 id 的(老路径 / 门禁直接拼的记录)
 	r["id"] = id
 	DirAccess.make_dir_recursive_absolute(SAVE_DIR)
 	var f := FileAccess.open(SAVE_DIR + id + ".rpl", FileAccess.WRITE)
@@ -589,11 +629,11 @@ static func play_again(tree: SceneTree, r: Dictionary) -> void:
 ## `back` = 看完回哪一页(空 = 战绩页); `names` 见 `play_names`。
 static func play(tree: SceneTree, r: Dictionary, back: String = "", names: Dictionary = {}) -> String:
 	if r.is_empty():
-		return "回放记录读不出来"
+		return "回放读取失败"
 	if str(r.get("client_version", "")) != client_version():
-		return "这场比赛是旧版本(%s)打的, 当前版本(%s)播不了" % [str(r.get("client_version", "?")), client_version()]
+		return "回放版本（%s）与当前版本（%s）不兼容" % [str(r.get("client_version", "?")), client_version()]
 	if int(r.get("v", 0)) != FORMAT_V:
-		return "回放格式不认识"
+		return "回放格式无效"
 	return_scene = back
 	play_names = names.duplicate()
 	## 看的人自己的名字(看自己的录像时铭牌左边写它)。★在 begin_play 之前读:

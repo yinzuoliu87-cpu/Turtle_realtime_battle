@@ -152,7 +152,7 @@ func _build_synergy_panel(_leaders: Array) -> void:
 	var cy: float = host.SYN_TOP + 32.0
 	if host._sel_bench >= 0:   # 装备模式上下文提示: 引导玩家凑同类型激活/升档羁绊(用户2026-07-19)
 		## ★不写"→ 开启羁绊 / 升一档"那种箭头式的说明书句 —— 这是给玩家的一句话, 不是流程图。
-		var ctx = Label.new(); ctx.text = "同一只多装几件同类型, 羁绊就开了"
+		var ctx = Label.new(); ctx.text = "暂无羁绊"
 		ctx.add_theme_font_size_override("font_size", 15); ctx.add_theme_color_override("font_color", Color("#7fe39a"))
 		ctx.position = Vector2(x0, cy); ctx.size = Vector2(w, 20); ctx.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; host.add_child(ctx)
 		cy += 24.0
@@ -184,7 +184,7 @@ func _build_synergy_panel(_leaders: Array) -> void:
 			return ta > tb
 		return int(counts[a]) > int(counts[b]))
 	if keys.is_empty():
-		var e = Label.new(); e.text = "还没凑上羁绊。\n把同类型的装备堆到同一只身上, 它自己就开了。"
+		var e = Label.new(); e.text = "暂无羁绊"
 		e.add_theme_font_size_override("font_size", 17); e.add_theme_color_override("font_color", Color("#6c7d8e"))
 		e.position = Vector2(x0, cy); e.size = Vector2(w, 60); e.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; host.add_child(e)
 		return
@@ -236,9 +236,9 @@ func _build_synergy_panel(_leaders: Array) -> void:
 		##   ⚠ 原来这里还有一行 `add_theme_stylebox_override("panel", csb)` —— 它在**后面**,
 		##     会把上面这次覆盖直接盖掉。插新代码时要看清楚原赋值在前还是在后。
 		chip.position = Vector2(0, y); chip.size = Vector2(w - 8.0, SYN_ROW_H)
-		## ⚠「点开看这个羁绊」这七个字是 `verify_inventory_layout` ㉖㉗ **认羁绊行用的识别位**
+		## ⚠「查看羁绊详情」这六个字是 `verify_inventory_layout` ㉖㉗ **认羁绊行用的识别位**
 		##   (产品自己写的 tooltip, 不是为测试加的标记) —— 改后半句可以, 这个前缀别动。
-		chip.tooltip_text = "点开看这个羁绊一路能给到什么"
+		chip.tooltip_text = "查看羁绊详情"
 		inner.add_child(chip)
 		## ★★2026-09-28 类型图标 emoji → `tags/` 像素图 ⇒ `Label` 换 `RichTextLabel`
 		##   (Label 画不了行内图)。写法走 `Phase2Types.icon_bb()`, 与商店/出战/图鉴同一份。
@@ -346,7 +346,7 @@ func _show_synergy_popup(type_key: String, cur_tier: int) -> void:
 		## 档号用【颜色】表示, 不写"档1/档2"(用户 2026-08-15) —— 与右侧按钮同一套色。
 		var tcol: String = "#" + _tier_color(type_key, i + 1).to_html(false)
 		var col: String = "#e8f2ff" if (i + 1) == cur_tier else "#8a97a8"
-		var mark: String = "  ◀ 现在这档" if (i + 1) == cur_tier else ""
+		var mark: String = "  ◀ 当前" if (i + 1) == cur_tier else ""
 		bb += ("" if bb == "" else "
 
 ") + "[color=%s][b]%d 件[/b][/color][color=%s]%s[/color]\n[color=%s]%s[/color]" % [
@@ -392,7 +392,7 @@ func _show_synergy_popup(type_key: String, cur_tier: int) -> void:
 	## ★标题里也不写"档" —— 每一段本来就以【N 件】开头, 强弱看颜色。
 	##   cur_tier 可能是 0(未开启的羁绊现在也能点开看), 那就直接说还没开启。
 	ttl.text = "%s %s%s" % [host.Phase2Types.icon_bb(type_key, TITLE_ICON_PX), _syn_name(type_key),
-		"   还没开启" if cur_tier <= 0 else ""]
+		"   未激活" if cur_tier <= 0 else ""]
 	ttl.add_theme_font_size_override("normal_font_size", 24)   # ★RTL 的键名不是 font_size
 	ttl.add_theme_color_override("default_color", _tier_color(type_key, cur_tier))
 	## ★高 34 → 36: 24px 字的行高实测 **35**(图标 32 更矮), 34 会把底下 1px 切掉。

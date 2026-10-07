@@ -25,8 +25,8 @@ func _show_minion(kind: String) -> void:
 	_mcx += _tag_chip(_mcx, 84.0, str(mi["role"]), "#58d3ff") + 8.0
 	## 两句说明改口语: 原文「非统领单位 · 不可选入阵容 · 由系统补位生成」「…×1.05 复利成长,
 	## 双抗为定值」—— "非统领单位""复利成长""定值"都是开发者/说明书用词, 不是游戏里的话。
-	host._add_text(mid_x, 122, "不能编进阵容, 开战时自己登场", 13, "#7a8a96", 0.0, 0.5)
-	host._add_text(mid_x, 148, "每升一级, 生命与攻击 ×1.05; 双抗不变", 13, "#7a8a96", 0.0, 0.5)
+	host._add_text(mid_x, 122, "不可编入阵容 · 开战时自动登场", 13, "#7a8a96", 0.0, 0.5)
+	host._add_text(mid_x, 148, "每级生命与攻击 ×1.05，护甲与魔抗不变", 13, "#7a8a96", 0.0, 0.5)
 	# 属性牌 2 列 × 4 行 (Lv1 值) —— 与龟页共用 _stat_plaque, 不在这里另摆一套表格
 	var rows = [
 		{"key": "hp", "label": "生命", "disp": str(mi["hp"]), "color": "#06d6a0"},
@@ -311,7 +311,7 @@ func _show_pet(pet: Dictionary) -> void:
 			host.detail.add_child(brt)
 		# hint: 展开→"收起"金 / 否则"看全部"蓝(与技能卡的"点开看全部"同一句式)
 		## ★同上去掉 ▾/▸ 两个折叠箭头。
-		var p_hint: String = "收起" if host._codex_passive_view else "看全部"
+		var p_hint: String = "收起" if host._codex_passive_view else "查看全部"
 		var p_hint_col: String = "#ffd93d" if host._codex_passive_view else "#7fb5d8"
 		host._add_text(host.DETAIL_W - 30 - CARD_PAD * 2.0, mid_y, p_hint, 14, p_hint_col, 1.0, 0.5)
 		# drill-down: 点被动条 → 内联展开/收起完整 passive desc (1:1 PoC showPetDetail view='passive' toggle, 非弹窗)
@@ -383,9 +383,9 @@ func _mark_card_clipped(rt: RichTextLabel, cx: float, y: float, card_w: float) -
 	y = float(_card_hint_y.get(rt, y))   # 收缩后各卡底边不同; 没登记就用调用侧给的兜底值
 	var l := Label.new()
 	## ★★2026-09-27 去掉 `▸` —— 它是网页折叠控件的展开箭头, 游戏里不用它指路。
-	##   ⚠ 「点开看全部」这四个字**不能再改**: verify_codex_layout ⑨ 逐只龟数
-	##   "被截的卡数 == 画出提示的卡数", 它认的就是 `begins_with("点开看全部")`。
-	l.text = "点开看全部"
+	##   ⚠ 技能卡提示「查看全部」(2026-10-07 去口语化, 原「点开看全部」)与被动/普攻条同字; verify_codex_layout ⑨ 逐只龟数
+	##   "被截的卡数 == 画出提示的卡数", 靠右对齐(HORIZONTAL_ALIGNMENT_RIGHT)把它与条上的提示分开。
+	l.text = "查看全部"
 	l.add_theme_font_size_override("font_size", 12)
 	l.add_theme_color_override("font_color", Color("#7fb5d8"))
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -535,7 +535,7 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 			## ⚠ 这一支是**死分支**: 上面 `var is_locked: bool = false` 是写死的,
 			##   `tests/verify_codex.gd` 第 77 条正是盯这一句的 ⇒ 改不改都上不了屏,
 			##   改是为了别在源码里留下“下一个人把它接回去就又多一个 emoji”的种子。
-			chip_text = "还没解锁"; chip_color = "#ff8888"
+			chip_text = "未解锁"; chip_color = "#ff8888"
 		else:
 			# 龟能口径 (无"冷却/CD"): 普攻=不花龟能 / 主动=显龟能花费(与战斗同源) / 被动
 			match host._skill_role(str(pet.get("id", "")), sk, (int(_orig_idx[i]) if i < _orig_idx.size() else i)):
@@ -651,7 +651,7 @@ func _basic_attack_bar(pet: Dictionary, ctx: Dictionary, bsk: Dictionary, start_
 	## ★★2026-10-07 B: 普攻简述定高一行 + clip, 原来**没有任何办法看到被切掉的部分**
 	##   (15 只龟, 例: 忍者龟「若本次斩击暴击，则改为施加 3 层流血」整句不可见)。
 	##   照被动条那一套: 条上给简述 + 右端「看全部」, 点整条进技能详情(与三选一卡片同一个落地页)。
-	host._add_text(host.DETAIL_W - 30 - CARD_PAD * 2.0, bmid, "看全部", 14, "#7fb5d8", 1.0, 0.5)
+	host._add_text(host.DETAIL_W - 30 - CARD_PAD * 2.0, bmid, "查看全部", 14, "#7fb5d8", 1.0, 0.5)
 	var b_hit := Control.new()
 	b_hit.position = Vector2(20.0, start_y)
 	b_hit.size = Vector2(host.DETAIL_W - 40, bar_h)
@@ -712,9 +712,9 @@ func _form_switch_button(pet: Dictionary, center_y: float, is_melee_form: bool) 
 		##   钉在一颗 14px 的像素签牌上就是两套画法。
 		## ⚠ 不拿现成的 `icon-turtle`/`icon-equip` 顶替: 这里说的是「近战/远程/火山形态」,
 		##   不是「龟」也不是「装备」 —— 语义不符的图不往上放(素材铁律)。已登进缺口表。
-		label = "换成 远程形态" if host._codex_form_view else "换成 近战形态"
+		label = "切换至远程形态" if host._codex_form_view else "切换至近战形态"
 	else:
-		label = "换成 普通形态" if host._codex_form_view else "换成 火山形态"
+		label = "切换至普通形态" if host._codex_form_view else "切换至火山形态"
 	var bg_hex = "#3a1810" if host._codex_form_view else "#2a1430"
 	var border_hex = "#58d3ff" if host._codex_form_view else "#ff7043"
 	var txt_hex = "#9fd8ff" if host._codex_form_view else "#ffae80"

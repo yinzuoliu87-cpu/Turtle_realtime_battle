@@ -62,71 +62,66 @@ func _test_steps_data() -> void:
 	print("  [分母] 引导场景 %d 个, 步骤共 %d 步" % [n_keys, n_steps])
 	_ok("★步骤分母非 0(N=0 是空检查不是通过)", n_keys > 0 and n_steps > 0)
 	# steps_for 取得到
-	for key in ["team_select", "battle"]:
+	for key in ["team_select", "place", "settle", "shop", "inventory"]:
 		var steps := TutorialGuide.steps_for(key)
 		_ok("steps_for(\"%s\") 取得到步骤" % key, steps.size() > 0, "%d 步" % steps.size())
 	_ok("steps_for 对不存在的 key 返回空而不是崩",
 		TutorialGuide.steps_for("__不存在的场景__").is_empty())
 
 
-## ② 真跑一遍: 建 UI → 推进 → 结束回调
+## ② 真跑一遍: 建 UI → 只靠动作事件推进 → 结束回调
+## (2026-10-07 重做: 引导条没有「下一步」按钮了, 每一步都靠 advanceOn 事件; 细节见 verify_tutorial_steps_v2)
 func _test_guide_runs() -> void:
 	var g = TutorialGuide.new()
 	add_child(g)
 	var steps := [
-		{"text": "第一步 <b>加粗</b>", "anchor": "top"},
-		{"text": "第二步 等事件", "anchor": "top", "advanceOn": "手动事件"},
-		{"text": "第三步 收尾", "anchor": "bottom"},
+		{"text": "第一步", "highlight": "t", "advanceOn": "e1"},
+		{"text": "第二步", "highlight": "t", "advanceOn": "手动事件"},
+		{"text": "第三步", "highlight": "t", "advanceOn": "e3"},
 	]
-	g.start(steps, func() -> void: _done_called = true)
-	await get_tree().process_frame
-	var rt := _find_rich(g)
-	_ok("★引导真的建出了文字控件", rt != null)
-	if rt != null:
-		var t1 := rt.get_parsed_text()
-		print("  [实测] 第1步显示 = %s" % t1.strip_edges())
-		_ok("★显示的是第一步的内容", t1.contains("第一步"), t1)
-		_ok("★<b> 被转成了 BBCode 而不是当字面量显示", not t1.contains("<b>"), t1)
-
-	# 推进到第二步
-	g._next()
-	await get_tree().process_frame
-	_ok("★能推进到第二步", _find_rich(g) != null and _find_rich(g).get_parsed_text().contains("第二步"))
-
+	g.start(steps, func() -> void: _done_called = true, func(_n: String) -> Rect2: return Rect2(100, 100, 200, 60))
+	for _i in range(TutorialGuide.STABLE_FRAMES + 3):
+		await get_tree().process_frame
+	_ok("★引导真的显示出来了", g.is_showing())
+	print("  [实测] 第1步显示 = %s" % g.current_text())
+	_ok("★显示的是第一步的内容", g.current_text() == "第一步", g.current_text())
+	g.notify("e1")
+	_ok("★做了第一步的动作 ⇒ 第二步", g.current_text() == "第二步")
 	# notify: 名字不对不该推进 —— 否则任何事件都能乱推
 	g.notify("不相干的事件")
-	await get_tree().process_frame
-	_ok("★notify 事件名不匹配时【不】推进",
-		_find_rich(g).get_parsed_text().contains("第二步"), "被别的事件推走了")
+	_ok("★notify 事件名不匹配时【不】推进", g.current_text() == "第二步", "被别的事件推走了")
 	g.notify("手动事件")
-	await get_tree().process_frame
-	_ok("★notify 事件名匹配时推进到第三步",
-		_find_rich(g) != null and _find_rich(g).get_parsed_text().contains("第三步"))
-
-	# 最后一步再 next → 结束回调
+	_ok("★notify 事件名匹配时推进到第三步", g.current_text() == "第三步")
 	_ok("结束前 on_done 还没被调用", not _done_called)
-	g._next()
+	g.notify("e3")
 	await get_tree().process_frame
 	_ok("★走完最后一步会调 on_done", _done_called)
 
 
 ## ③ 真的被接上了 —— 这才是本轮的核心, 死代码永远是"对"的
+## (2026-10-07: 五屏都经导演 `attach_guide` 挂; 导演自己在非教程时返回 null —— 正常对局不弹)
 func _test_wired_in() -> void:
+	var hosts := {
+		"res://scripts/scenes/TeamSelectScene.gd": 'attach_guide(self, "team_select")',
+		"res://scripts/scenes/battle/dual_lane_flow.gd": 'attach_guide(battle, "battle"',
+		"res://scripts/scenes/battle/battle_hud.gd": 'attach_guide(battle, "settle"',
+		"res://scripts/scenes/ShopScene.gd": 'attach_guide(self, "shop")',
+		"res://scripts/scenes/InventoryScene.gd": 'attach_guide(self, "inventory")',
+	}
 	var refs := 0
-	var hits: Array = []
-	for path in ["res://scripts/scenes/TeamSelectScene.gd", "res://scripts/scenes/RealtimeBattle3DScene.gd"]:
+	for path in hosts.keys():
 		var src := _code_only(FileAccess.get_file_as_string(path))
-		if src.contains("TutorialGuide.attach("):
+		var hit: bool = src.contains(str(hosts[path]))
+		_ok("★%s 接上了引导(%s)" % [str(path).get_file(), str(hosts[path])], hit)
+		if hit:
 			refs += 1
-			hits.append(path.get_file())
-	print("  [分母] 调用 TutorialGuide.attach 的场景 %d 个: %s" % [refs, str(hits)])
-	_ok("★选龟与战斗两个场景都接上了引导(此前零引用)", refs >= 2, "只有 %d 个" % refs)
-	var bat := _code_only(FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd") + "
-" + FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_hud.gd"))   # 面板/HUD 已抽到 BattleHud(2026-07-26)
-	_ok("★战斗场在开面板处发了推进事件(否则那一步永远卡住)",
-		bat.contains("_tutorial.notify(\"info_panel_opened\")"))
-	_ok("★引导只在 GameState.tutorial 时才建(正常对局不该弹)",
-		bat.contains("if GameState.tutorial:"))
+	print("  [分母] 接上引导的屏 %d 个" % refs)
+	var dsrc := _code_only(FileAccess.get_file_as_string("res://autoload/tutorial_director.gd"))
+	var body := dsrc.substr(dsrc.find("func attach_guide"), 400)
+	_ok("★引导只在教程里才建(attach_guide 第一件事就是 is_active 判断; 正常对局不该弹)",
+		body.contains("if not is_active():") and body.contains("return null"))
+	var bat := _code_only(FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd"))
+	_ok("★★战斗场 _ready 里不挂引导(开场演出期间不许出提示, 方案书 B1)", not bat.contains("attach_guide("))
 
 
 func _find_rich(n: Node) -> RichTextLabel:
@@ -259,26 +254,23 @@ const CLAIM_SCENES := {
 	"team_select": "res://scenes/TeamSelect.tscn",
 	"shop": "res://scenes/Shop.tscn",
 	"inventory": "res://scenes/Inventory.tscn",
-	"codex": "res://scenes/Codex.tscn",
 }
 ## place/battle 的锚点要 3D 运行态才有(太重, 见 verify_tutorial_anchors 头注) ⇒ 这两套走源码证据。
 ## ★只认**赋给 .text 的字符串字面量**, 不是"源码里出现过这几个字" —— 注释里出现不算。
 const CLAIM_SRC := {
 	"place": ["res://scripts/scenes/battle/dual_lane_flow.gd",
 		"res://scripts/scenes/RealtimeBattle3DScene.gd"],
-	"battle": ["res://scripts/scenes/RealtimeBattle3DScene.gd",
-		"res://scripts/scenes/battle/battle_hud.gd"],
+	"settle": ["res://scripts/scenes/battle/battle_hud.gd"],
 }
 ## 屏上找不到的按钮(要先点开一层才出现, 例如商店的「买下」在卡详情里) → 退到该屏自己的脚本找字面量。
 const CLAIM_SCRIPT := {
 	"team_select": "res://scripts/scenes/TeamSelectScene.gd",
 	"shop": "res://scripts/scenes/ShopScene.gd",
 	"inventory": "res://scripts/scenes/InventoryScene.gd",
-	"codex": "res://scripts/scenes/CodexScene.gd",
 }
 
-const CJK_NUM := {"一": 1, "两": 2, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6}
-const CLAIM_UNITS := ["只", "格", "条"]
+const CJK_NUM := {"一": 1, "两": 2, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "1 ": 1, "2 ": 2, "3 ": 3}
+const CLAIM_UNITS := ["只", "格", "条", "件", "级"]
 ## 方位词 → 期望方向。x/y: -1=左/上, 1=右/下, 0=这一轴不管。
 ## ★★阈值是**按剖面分两档定的**, 不是拍的(memory `fb-judge-must-fit-the-shape`:
 ##   宽一格造假 bug、窄一格放过真 bug):
@@ -303,14 +295,18 @@ const DIR_CORNER := ["右上角", "左上角", "右下角", "左下角"]
 const PRESET_PAT := ["已经", "帮你", "给了你", "给你"]
 
 ## 【认领表】"key|步序|词" → 核实器名。提取到而这里没人认领 ⇒ FAIL。
-const PRESET_CHECK := {
-	"team_select|0|给你": "roster_is_3",     # 「教学给你三只…龟」→ 候选池真的就 3 只
-	"shop|0|给了你": "coins_on_screen",      # 「教学给了你一些币」→ 屏上那个币数 > 0
-}
+const PRESET_CHECK := {}
 const COUNT_CHECK := {
 	"team_select|三只": "roster_is_3",
 	"team_select|三格": "slots_is_3",
+	## 2026-10-07 新文案是阿拉伯数字的指令句(「选择 3 只龟上阵」「购买 1 件装备」「升到 2 级」):
+	##   指令里的数也是声称 —— 候选池真有 3 只 / 教学币真买得起 1 件 / 买一次经验真升到 2 级且能装备。
+	"team_select|3 只": "roster_is_3",
+	"shop|1 件": "one_item_affordable",
+	"shop|2 级": "xp_buy_reaches_2",
 }
+## 「点击X」里的 X 不是按钮名, 而是「一类东西」—— 由该步 highlight 锚点核实(锚点解析得出 = 屏上真有)。
+const CLICK_OBJECTS := ["一件装备", "一只龟装上"]
 ## 方位词既绑不到「按钮名」也绑不到 highlight 锚点时, 在这里指认它说的是屏上哪块。
 const DIR_EXTRA := {
 	"team_select|1|右侧": "detail_column",   # 「点龟头像时, 右侧会显示它的属性和技能」
@@ -318,14 +314,14 @@ const DIR_EXTRA := {
 ## 【补登的声称】机器提取抓不到的句式 —— 数词+量词后面直接跟名词(「两条战线」)。
 ## ★手登的是"这句话在哪", **不是**"就算它通过": 它照样跑核实器, 而且句子改没了会红
 ##   (免得表里留一条早就不存在的登记, memory `fb-registered-todos-rot`)。
-const EXTRA_CLAIM := {
-	"inventory|0|两条战线": "lanes_is_2",
-}
+const EXTRA_CLAIM := {}
 ## 手势词 → 代码里必须存在的证据。★这是 ① 的另一半: 换成触屏说法之后,
 ##   得证明**触屏那条路真的实现了**, 否则只是把一句假话换成另一句假话。
 const GESTURE_EVIDENCE := {
 	"两指捏合": ["_pinch_dist", "_touch_pts"],
 	"一根手指拖": ["InputEventScreenDrag", "_touch_pts.size() == 1"],
+	## 2026-10-07「拖动龟调整站位」: 摆位拖动 + 拖过才发的完成信号
+	"拖动龟": ["_dl_handle_place_input", "notify(\"unit_dragged\")"],
 }
 
 ## 选龟屏的未确认阵容草稿(`TeamSelectScene.TEAM_DRAFT_PATH`)。
@@ -354,8 +350,8 @@ func _test_tutorial_claims() -> void:
 	GameState.test_mode = true
 	GameState.tutorial = true
 	GameState.tutorial_active = true
-	GameState.tutorial_mandatory = true
 	GameState.meta_deepsea_coins = 20
+	GameState.season_level = 1
 	get_tree().root.size = Vector2i(1280, 720)
 	await get_tree().process_frame
 	_draft_stash()
@@ -435,12 +431,12 @@ func _harvest(key: String) -> Dictionary:
 		return out
 	var inst = (scn as PackedScene).instantiate()
 	add_child(inst)
-	for _i in range(8):
+	for _i in range(40):
 		await get_tree().process_frame
 	out["vp"] = get_viewport().get_visible_rect().size
 	_walk_texts(inst, out["texts"], "A")
 	if inst.has_method("_tutorial_anchor"):
-		for nm in ["roster", "slots", "confirm", "offer", "coins", "lanes", "backpack", "tabs"]:
+		for nm in ["roster", "slots", "confirm", "offer", "coins", "xp_button", "bag_button", "lanes", "backpack", "finish_button"]:
 			var r: Rect2 = inst.call("_tutorial_anchor", nm)
 			if r.size != Vector2.ZERO:
 				(out["anchors"] as Dictionary)[nm] = r
@@ -570,6 +566,16 @@ func _check_step_claims(key: String, idx: int, text: String, hl: String, screen:
 		else:
 			terms.append(nm)          # 「站位」这种是**术语引号**, 不是按钮名
 		p = b + 1
+	## 2026-10-07 新文案: 「点击X」不带引号, X 直接就是按钮名(或一类东西, 见 CLICK_OBJECTS)
+	if text.begins_with("点击"):
+		var nm2 := text.substr(2).strip_edges()
+		if nm2 in CLICK_OBJECTS:
+			_claim_n += 1
+			var ar2: Rect2 = (screen.get("anchors", {}) as Dictionary).get(hl, Rect2())
+			_ok("%s 「点击%s」⇒ 高亮锚点 %s 在屏上解析得出" % [tag, nm2, hl], ar2.size != Vector2.ZERO or CLAIM_SRC.has(key),
+				str(ar2))
+		else:
+			labels.append({"name": nm2, "pos": 0})
 	for L in labels:
 		_claim_n += 1
 		var found := _find_label(key, str(L["name"]), screen)
@@ -646,7 +652,7 @@ func _check_step_claims(key: String, idx: int, text: String, hl: String, screen:
 			var tail := text.substr(pp + phrase.length(), 1)
 			var is_claim: bool = lead2.contains("给你") or lead2.contains("给了你") \
 				or lead2.contains("有") or lead2.contains("这") \
-				or tail in ["是", "都", "齐", "在"]
+				or tail in ["是", "都", "齐", "在"] or str(nw).strip_edges().is_valid_int()
 			if not is_claim:
 				continue
 			_claim_n += 1
@@ -694,6 +700,21 @@ func _run_counter(tag: String, phrase: String, checker: String, screen: Dictiona
 		"lanes_is_2":
 			var got3: int = int((screen.get("counts", {}) as Dictionary).get("lanes", -1))
 			_ok("%s 「%s」 ⇒ 屏上真有 2 条战线" % [tag, phrase], got3 == 2, "实测 %d" % got3)
+		"one_item_affordable":
+			var td2 = get_node_or_null("/root/TutorialDirector")
+			var P2c = load("res://scripts/gamedata/phase2_config.gd")
+			var left: int = int(td2.TUT_COINS) - int(P2c.BUY_XP_COST)
+			var cheapest := 999
+			for e in DataRegistry.phase2_equipment:
+				cheapest = mini(cheapest, maxi(1, int((e as Dictionary).get("cost", 1))))
+			_ok("%s 「%s」 ⇒ 教学币买完经验还买得起 1 件(剩 %d, 最便宜 %d)" % [tag, phrase, left, cheapest], left >= cheapest)
+		"xp_buy_reaches_2":
+			var td3 = get_node_or_null("/root/TutorialDirector")
+			var P2d = load("res://scripts/gamedata/phase2_config.gd")
+			var ok_lv: bool = int(td3.TUT_COINS) >= int(P2d.BUY_XP_COST) and int(P2d.BUY_XP_AMOUNT) >= int(P2d.xp_to_next(1))
+			_ok("%s 「%s」 ⇒ 1 级买一次经验真的升到 2 级, 而且 2 级能装备(X1)" % [tag, phrase],
+				ok_lv and int(P2d.team_equip_cap(2)) > 0 and int(P2d.team_equip_cap(1)) == 0,
+				"cap(1)=%d cap(2)=%d" % [int(P2d.team_equip_cap(1)), int(P2d.team_equip_cap(2))])
 		"coins_on_screen":
 			var coin: int = int((screen.get("blocks", {}) as Dictionary).get("coins", -1))
 			_ok("%s 「%s」 ⇒ 屏上那个币数真的 > 0" % [tag, phrase], coin > 0, "实测读数 %d" % coin)
@@ -705,6 +726,12 @@ func _run_counter(tag: String, phrase: String, checker: String, screen: Dictiona
 func _find_label(key: String, nm: String, screen: Dictionary) -> Dictionary:
 	var want := _norm(nm)
 	var best := {}
+	## ★先找**名字恰好相等**的按钮: 「背包」在商店里既是顶栏那颗「🎒 背包」, 也是底栏「背包 0 件」——
+	##   取第一个「包含」会拿底栏那颗冒充, 通过了但理由是错的。
+	for t in (screen.get("texts", []) as Array):
+		if bool(t["btn"]) and str(t["norm"]) == want:
+			return {"how": "屏上按钮(同名)", "live": true, "rect": t["rect"],
+				"disabled": bool(t["disabled"]), "raw": str(t["raw"])}
 	for t in (screen.get("texts", []) as Array):
 		if str(t["norm"]).contains(want):
 			# 按钮优先(文案说的是"点"), 同名 Label 只当兜底
@@ -726,6 +753,13 @@ func _find_label(key: String, nm: String, screen: Dictionary) -> Dictionary:
 		var lit := _text_literal_with(str(s), want)
 		if lit != "":
 			return {"how": "源码 .text 字面量", "live": false, "rect": Rect2(), "raw": lit}
+		## 按钮字抽成常量的(结算「前往商店」= battle_hud.SHOP_BTN_TEXT): 认 `*BTN_TEXT := "…"`
+		var src2 := FileAccess.get_file_as_string(str(s))
+		var re := RegEx.new()
+		re.compile("const ([A-Z_]*BTN_TEXT) := \"([^\"]*)\"")
+		for m in re.search_all(src2):
+			if _norm(m.get_string(2)) == want:
+				return {"how": "源码按钮字常量 %s" % m.get_string(1), "live": false, "rect": Rect2(), "raw": m.get_string(2)}
 	return {}
 
 
@@ -854,7 +888,8 @@ func _check_gestures(parsed: Dictionary) -> void:
 		for st in (steps as Array):
 			if st is Dictionary:
 				all += _plain(str((st as Dictionary).get("text", ""))) + " "
-	var bsrc := FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd")
+	var bsrc := FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd") \
+		+ FileAccess.get_file_as_string("res://scripts/scenes/battle/dual_lane_flow.gd")
 	var seen := 0
 	for g in GESTURE_EVIDENCE.keys():
 		if not all.contains(str(g)):
@@ -883,7 +918,7 @@ func _check_gestures(parsed: Dictionary) -> void:
 ##   **漏的不是正则, 是路径**。所以本节必须建真战斗场、真走到 `_dl_state == "place"`。
 ##
 ## ★★修好之后这层【强制挡点击】的浮层第一次真出现在玩家面前 ⇒ 引入一条从没跑过的交互路径。
-##   首次教学 mandatory = **没有跳过钮**, 摆位屏唯一的出路就是提示条上那颗钮。
+##   (2026-10-07 重做后引导条一颗按钮都没有, 推进只靠玩家拖龟 / 按开始战斗; 跳过在外壳上。)
 ##   本仓教训「拦住人的同时别拦住解锁动作」⇒ 所以下面既验「挡住了开打」, 也验「出路钮点得动」、
 ##   「洞里落到 3D 拖拽输入」、「照提示按开打之后引导会自己收掉」。
 ##   量的是引擎自己的命中测试(`gui_get_hovered_control()` 就是决定这一下点击给谁的那套) +
@@ -908,11 +943,6 @@ func _click_at(p: Vector2) -> void:
 	await get_tree().process_frame
 
 
-func _guide_next_btn(g) -> Button:
-	var kids: Array = (g._btn_row as HBoxContainer).get_children()
-	return kids[kids.size() - 1] as Button if not kids.is_empty() else null
-
-
 func _is_guide_mask(g, c: Control) -> bool:
 	if c == null or g == null or not is_instance_valid(g):
 		return false
@@ -922,18 +952,22 @@ func _is_guide_mask(g, c: Control) -> bool:
 	return false
 
 
+## 引导条里有没有按钮(2026-10-07 起一个都不许有 —— 推进只靠玩家的动作)。
+func _guide_buttons(g) -> int:
+	return (g as Node).find_children("*", "Button", true, false).size() if is_instance_valid(g) else 0
+
+
 func _test_guide_host() -> void:
-	print("  ── ⑤ GUIDE_HOST: 教站位那三步真的出场 + 挡对东西 ──")
+	print("  ── ⑤ GUIDE_HOST: 教站位那两步真的出场 + 挡对东西 ──")
 	var gs = get_node_or_null("/root/GameState")
 	var td = get_node_or_null("/root/TutorialDirector")
 	_ok("★分母 GUIDE_HOST: GameState / TutorialDirector 两个 autoload 都在", gs != null and td != null)
 	if gs == null or td == null:
 		return
-	## ── 快照全局态(含 static) —— 不还原会波及同进程后面的一切 ──
 	var snap := {
 		"test_mode": bool(gs.test_mode), "tutorial": bool(gs.tutorial),
 		"tutorial_active": bool(gs.tutorial_active), "tutorial_stage": str(gs.tutorial_stage),
-		"tutorial_mandatory": bool(gs.tutorial_mandatory), "dual_active": bool(gs.dual_active),
+		"dual_active": bool(gs.dual_active),
 		"dual_ghost": gs.dual_ghost, "season_leaders": gs.season_leaders.duplicate(),
 		"left_team": Array(gs.left_team), "dual_lineup": gs.dual_lineup,
 	}
@@ -942,7 +976,6 @@ func _test_guide_host() -> void:
 	gs.tutorial = true
 	gs.tutorial_active = true
 	gs.tutorial_stage = "match1"
-	gs.tutorial_mandatory = true    # 首次强制 = 没有跳过钮(最恶劣的那一档)
 	var lt: Array[String] = []
 	for id in td.FIXED_TEAM:
 		lt.append(str(id))
@@ -951,14 +984,12 @@ func _test_guide_host() -> void:
 	gs.dual_lineup = {}
 	gs.reset_dual_lane()
 	td.arm_battle_sandbox()         # 真入口: 教学弱 ghost + dual_active
-	DualLaneFlow.NO_PRESENT = true  # 跳掉 5+5 秒纯演出(对摆位阶段的 UI/引导没有影响)
+	DualLaneFlow.NO_PRESENT = true  # 跳掉 5+5 秒纯演出(演出期间不出提示由 verify_tutorial_flow_v2 B1 量)
 	_ok("★分母 GUIDE_HOST: 教学沙盒真的武装了(stage=match1 + 弱 ghost + 双路)",
 		td.is_active() and str(td.stage()) == "match1" and bool(gs.dual_active)
-			and str(gs.dual_ghost.get("ghost_id", "")) == "tutorial_weak",
-		"stage=%s dual=%s ghost=%s" % [str(td.stage()), str(gs.dual_active),
-			str(gs.dual_ghost.get("ghost_id", ""))])
-	_ok("★分母 GUIDE_HOST: 本阶段该挂的是「place」那套(不是 battle 那套)",
-		td.steps_key_for("battle") == "place", "steps_key=%s" % td.steps_key_for("battle"))
+			and str(gs.dual_ghost.get("ghost_id", "")) == "tutorial_weak")
+	_ok("★分母 GUIDE_HOST: 本阶段该挂的是「place」那套", td.steps_key_for("battle") == "place",
+		"steps_key=%s" % td.steps_key_for("battle"))
 
 	var s = load("res://scripts/scenes/RealtimeBattle3DScene.gd").new()
 	add_child(s)
@@ -969,121 +1000,88 @@ func _test_guide_host() -> void:
 	_ok("★★分母 GUIDE_HOST: 真战斗场走到了【摆位阶段】(走不到 = 下面全是空检查)",
 		str(s._dl_state) == "place", "等了 %d 帧, _dl_state=%s" % [w, str(s._dl_state)])
 	var g = s._tutorial
-	var ov: Array = get_tree().get_nodes_in_group("tut_overlay")
-	print("    [实测] battle._tutorial=%s  group tut_overlay=%d 个  _tut_place_shown=%s"
-		% [str(g), ov.size(), str(s._tut_place_shown)])
-	## ★这两条就是台账 ⑧ 本体: 传 self 时 battle._tutorial 是 null、group 里 0 个。
 	_ok("★★GUIDE_HOST: `battle._tutorial` 真的被赋值了(传 RefCounted 时报错中止 ⇒ 这里是 null)",
 		g != null and is_instance_valid(g), "实测 %s" % str(g))
-	_ok("★★GUIDE_HOST: 引导浮层真的进了场景树(group `tut_overlay` ≥1; 台账 ⑧ 时是 0)",
-		ov.size() >= 1, "实测 %d 个" % ov.size())
 	if g == null or not is_instance_valid(g):
-		_ok("GUIDE_HOST 后续(挡点击 / 出路钮 / 自动收尾)", false, "引导没挂上, 没得量")
+		_ok("GUIDE_HOST 后续(挡点击 / 拖动 / 开始战斗)", false, "引导没挂上, 没得量")
 		s.queue_free()
 		await get_tree().process_frame
 		_guide_host_restore(gs, snap, no_present0)
 		return
-	_ok("★GUIDE_HOST: 挂的是「place」三步(不是 battle 四步)", int((g._steps as Array).size()) == 3,
+	_ok("★GUIDE_HOST: 挂的是「place」两步(拖动 → 开始战斗)", int((g._steps as Array).size()) == 2,
 		"实测 %d 步" % int((g._steps as Array).size()))
-	_ok("★GUIDE_HOST: 首次是强制的(mandatory) ⇒ 没有跳过钮, 所以出路钮必须点得动",
-		bool(g._mandatory))
-	# 等布局落定(首帧容器还没算 rect ⇒ 洞是空的; 见 TutorialGuide._apply_highlight 那段)
 	for _i in range(20):
 		await get_tree().process_frame
-
+	_ok("★分母 GUIDE_HOST: 引导真的显示出来了", g.is_showing())
+	_ok("★★GUIDE_HOST: 引导条里一个按钮都没有(「下一步/知道了」全删)", _guide_buttons(g) == 0,
+		"%d 个" % _guide_buttons(g))
 	var go_btn: Button = s._dl_go_btn
-	_ok("★分母 GUIDE_HOST: 「开打」钮在场且可见(它是被挡 / 该放行的那个对象)",
-		is_instance_valid(go_btn) and go_btn.visible and go_btn.get_global_rect().size.x > 0.0,
-		"rect=%s" % (str(go_btn.get_global_rect()) if is_instance_valid(go_btn) else "无"))
-
-	# ── 第 1 步: highlight=field ⇒ 洞在我方半场, 开打该被挡住, 出路钮该点得动 ──
-	_ok("★分母 GUIDE_HOST: 第 1 步高亮的是 `field`", str(g._cur_hl) == "field",
-		"实测 highlight=%s" % str(g._cur_hl))
+	_ok("★分母 GUIDE_HOST: 「开始战斗」钮在场且可见", is_instance_valid(go_btn) and go_btn.visible
+		and go_btn.get_global_rect().size.x > 0.0)
+	_ok("★分母 GUIDE_HOST: 第 1 步高亮的是 `field`", str(g._cur_hl) == "field", "highlight=%s" % str(g._cur_hl))
 	var vis := 0
 	for m in (g._mask as Array):
 		if (m as Control).visible:
 			vis += 1
-	_ok("★分母 GUIDE_HOST: 第 1 步四块暗幕真的在压暗(0 块 ⇒ 下面那条「挡住了」是假绿)", vis == 4,
-		"可见 %d/4" % vis)
+	_ok("★分母 GUIDE_HOST: 第 1 步四块暗幕真的在压暗", vis == 4, "可见 %d/4" % vis)
 	var who_go := _hovered_at(go_btn.get_global_rect().get_center())
-	_ok("★★GUIDE_HOST: 引导挡得住该挡的 —— 「开打」那一点被自家暗幕吃掉(引擎自己的命中测试)",
-		_is_guide_mask(g, who_go), "命中的是 %s" % (who_go.get_class() if who_go != null else "null"))
+	_ok("★★GUIDE_HOST: 第 1 步「开始战斗」那一点被暗幕吃掉(得先拖龟)", _is_guide_mask(g, who_go),
+		"命中的是 %s" % (who_go.get_class() if who_go != null else "null"))
 	await _click_at(go_btn.get_global_rect().get_center())
-	_ok("★★GUIDE_HOST: 真点一下「开打」, 摆位阶段没被跳掉", str(s._dl_state) == "place",
-		"_dl_state=%s" % str(s._dl_state))
+	_ok("★★GUIDE_HOST: 真点一下「开始战斗」, 摆位阶段没被跳掉", str(s._dl_state) == "place")
 	var hole := Rect2(s._tutorial_anchor("field"))
-	_ok("★分母 GUIDE_HOST: `field` 锚点解析出非空矩形(空矩形 ⇒ 根本没挖洞)",
-		hole.size.x > 0.0 and hole.size.y > 0.0, "rect=%s" % str(hole))
 	var who_hole := _hovered_at(hole.get_center())
-	_ok("★★GUIDE_HOST: 洞【里】没有控件吃点击 ⇒ 玩家照第 1 步说的拖龟还拖得动",
-		who_hole == null, "洞里命中了 %s" % (who_hole.get_class() if who_hole != null else "null"))
-	var nb := _guide_next_btn(g)
-	_ok("★分母 GUIDE_HOST: 出路钮在场", nb != null and nb.get_global_rect().size.x > 0.0,
-		"钮=%s rect=%s" % [(str(nb.text) if nb != null else "无"),
-			(str(nb.get_global_rect()) if nb != null else "-")])
-	if nb != null:
-		var who_nb := _hovered_at(nb.get_global_rect().get_center())
-		_ok("★★GUIDE_HOST: 出路钮那一点归【钮】自己(不是暗幕) —— 否则 mandatory 引导 = 死局",
-			who_nb != null and is_same(who_nb, nb),
-			"命中的是 %s" % (who_nb.get_class() if who_nb != null else "null"))
-		var idx0: int = int(g._idx)
-		await _click_at(nb.get_global_rect().get_center())
-		_ok("★★GUIDE_HOST: 真点出路钮, 步数前进了(没前进 = 被自家暗幕挡住 = 永久卡死)",
-			is_instance_valid(g) and int(g._idx) == idx0 + 1,
-			"_idx %d → %s" % [idx0, (str(g._idx) if is_instance_valid(g) else "引导已销毁")])
-
-	# ── 走到最后一步: highlight=go_button ⇒ 开打该【放行】, 且按下去引导要自己收掉 ──
-	var guard := 0
-	while is_instance_valid(g) and int(g._idx) < int((g._steps as Array).size()) - 1 and guard < 8:
-		var nb2 := _guide_next_btn(g)
-		if nb2 == null:
-			break
-		await _click_at(nb2.get_global_rect().get_center())
-		for _j in range(4):
-			await get_tree().process_frame
-		guard += 1
-	_ok("★分母 GUIDE_HOST: 走到了最后一步(highlight=go_button)",
-		is_instance_valid(g) and str(g._cur_hl) == "go_button",
-		"_idx=%s highlight=%s" % [(str(g._idx) if is_instance_valid(g) else "已销毁"),
-			(str(g._cur_hl) if is_instance_valid(g) else "-")])
+	_ok("★★GUIDE_HOST: 洞【里】没有控件吃点击 ⇒ 拖龟拖得动", who_hole == null,
+		"洞里命中了 %s" % (who_hole.get_class() if who_hole != null else "null"))
+	## 真拖: 按下 → 移动 → 松开(push_input 走 GUI 命中 → 战斗 _unhandled_input)
+	var r: Rect2 = s._dl_sys._tut_anchor("my_unit")
+	_ok("★分母 GUIDE_HOST: 找得到一只能拖的我方龟(手势指针指的就是它)", r.size.x > 0.0, str(r))
+	if r.size.x > 0.0:
+		var a: Vector2 = r.get_center()
+		await _drag(a, a + Vector2(100, -30))
+	_ok("★★GUIDE_HOST: 真拖了一只龟 ⇒ 第 2 步(高亮「开始战斗」)", is_instance_valid(g) and str(g._cur_hl) == "go_button",
+		"highlight=%s" % (str(g._cur_hl) if is_instance_valid(g) else "已销毁"))
+	for _k in range(8):
+		await get_tree().process_frame
 	if is_instance_valid(g) and str(g._cur_hl) == "go_button":
 		var who_go2 := _hovered_at(go_btn.get_global_rect().get_center())
-		_ok("★★GUIDE_HOST: 最后一步的洞开在「开打」上 ⇒ 那一点归钮自己(挡住它 = 教学让你按而你按不着)",
+		_ok("★★GUIDE_HOST: 第 2 步的洞开在「开始战斗」上 ⇒ 那一点归钮自己",
 			who_go2 != null and is_same(who_go2, go_btn),
 			"命中的是 %s" % (who_go2.get_class() if who_go2 != null else "null"))
 		await _click_at(go_btn.get_global_rect().get_center())
-		for _k in range(10):
+		for _k2 in range(10):
 			await get_tree().process_frame
-		_ok("★★GUIDE_HOST: 照提示按下「开打」, 战斗真的开了", str(s._dl_state) == "fight",
+		_ok("★★GUIDE_HOST: 照提示按下「开始战斗」, 战斗真的开了", str(s._dl_state) == "fight",
 			"_dl_state=%s" % str(s._dl_state))
-		## ★按下开打之后开打钮被 `visible=false`, 而这一步高亮的就是它 ⇒ 引导要是还挂着,
-		##   `_tutorial_anchor` 每帧返回空 Rect2, 既刷警告又在屏上说假话(「摆好了就点开打」)。
-		##   place[2] 的 `advanceOn: fight_started` 就是为这个加的。
-		_ok("★★GUIDE_HOST: 按开打之后引导自己收掉了(否则屏上继续教你按一个已经按过且藏起来的钮)",
-			not is_instance_valid(g), "引导还在 = %s" % str(is_instance_valid(g)))
-		_ok("★GUIDE_HOST: 收掉之后 group `tut_overlay` 也清了",
-			get_tree().get_nodes_in_group("tut_overlay").is_empty(),
-			"还剩 %d 个" % get_tree().get_nodes_in_group("tut_overlay").size())
-	## 上面那条自动收尾靠的两头: 数据侧的 advanceOn + 代码侧真的发这个事件。两头各钉一条。
-	var praw := FileAccess.get_file_as_string(STEPS_JSON)
-	var ppj = JSON.parse_string(praw)
-	var padv := ""
-	if ppj is Dictionary and (ppj as Dictionary).has("place"):
-		var parr = (ppj as Dictionary)["place"]
-		if parr is Array and (parr as Array).size() == 3 and (parr as Array)[2] is Dictionary:
-			padv = str(((parr as Array)[2] as Dictionary).get("advanceOn", ""))
-	_ok("★GUIDE_HOST: place[2]「点开打」挂了完成信号 advanceOn=fight_started",
-		padv == "fight_started", "advanceOn=%s" % padv)
+		_ok("★★GUIDE_HOST: 开始战斗之后引导自己收掉了(战斗中全程无提示)", not is_instance_valid(g))
 	var dl_src := _code_only(FileAccess.get_file_as_string("res://scripts/scenes/battle/dual_lane_flow.gd"))
-	_ok("★GUIDE_HOST: 开打那一刻真的发这个信号(不发 ⇒ advanceOn 永远等不到)",
-		dl_src.contains('notify("fight_started")'))
+	_ok("★GUIDE_HOST: 开打那一刻真的发 fight_started", dl_src.contains('notify("fight_started")'))
 	_ok("★★GUIDE_HOST: 挂引导时 host 传的是 `battle` 不是 `self`(self 是 RefCounted ⇒ 运行期报错中止)",
-		dl_src.contains('attach_guide(battle, "battle")') and not dl_src.contains("attach_guide(self,"),
-		"源码里还留着 attach_guide(self, …)")
-
+		dl_src.contains('attach_guide(battle, "battle"') and not dl_src.contains("attach_guide(self,"))
 	s.queue_free()
 	await get_tree().process_frame
 	_guide_host_restore(gs, snap, no_present0)
+
+
+func _drag(a: Vector2, b: Vector2) -> void:
+	_hovered_at(a)
+	var e := InputEventMouseButton.new()
+	e.button_index = MOUSE_BUTTON_LEFT; e.pressed = true; e.position = a; e.global_position = a
+	e.button_mask = MOUSE_BUTTON_MASK_LEFT
+	Input.parse_input_event(e)          # 让 Input.is_mouse_button_pressed 跟着变(摆位拖动读它)
+	get_viewport().push_input(e)
+	await get_tree().process_frame
+	for i in range(1, 9):
+		var mm := InputEventMouseMotion.new()
+		mm.position = a.lerp(b, float(i) / 8.0); mm.global_position = mm.position
+		mm.button_mask = MOUSE_BUTTON_MASK_LEFT
+		get_viewport().push_input(mm)
+		await get_tree().process_frame
+	var u := InputEventMouseButton.new()
+	u.button_index = MOUSE_BUTTON_LEFT; u.pressed = false; u.position = b; u.global_position = b
+	Input.parse_input_event(u)
+	get_viewport().push_input(u)
+	await get_tree().process_frame
 
 
 ## 还原本节改过的全局态 + static。★不还原会波及同进程后面的一切(本仓栽过 static 没还原那一类)。
@@ -1092,7 +1090,6 @@ func _guide_host_restore(gs, snap: Dictionary, no_present0: bool) -> void:
 	gs.tutorial = bool(snap["tutorial"])
 	gs.tutorial_active = bool(snap["tutorial_active"])
 	gs.tutorial_stage = str(snap["tutorial_stage"])
-	gs.tutorial_mandatory = bool(snap["tutorial_mandatory"])
 	gs.dual_active = bool(snap["dual_active"])
 	gs.dual_ghost = snap["dual_ghost"]
 	gs.season_leaders = snap["season_leaders"]

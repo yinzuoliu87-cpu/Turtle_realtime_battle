@@ -551,7 +551,14 @@ func _finals_reply(closed: bool) -> Dictionary:
 	done["2-1"] = 0
 	done["3-0"] = 0
 	var b := {"bucket": 0, "n": 8, "round": 3, "closed": closed, "entrants": ents, "done": done}
-	return {"ok": true, "code": 200, "body": JSON.stringify({"ok": true, "week": WEEK, "now": 0, "buckets": [b]})}
+	## ★★冠军杯赛(2026-10-07): 这一周只有一个组 ⇒ 组决赛打完后 20:00 冠军杯赛只有组冠军一人(直接夺冠)。
+	##   冠亚四强只从冠军杯赛来(主会话 10-07) ⇒ 组里其余 7 人挂「进入决赛日」。组冠军 = 全 0 侧赢 ⇒ 0 号种子。
+	var cup = null
+	if closed:
+		cup = {"bucket": P2C.FINALS_CUP_BUCKET, "n": 1, "round": 1, "closed": true, "done": {},
+			"entrants": [{"seed": 0, "name": SRV_NAMES[0], "account_id": "uid-srv-0"}]}
+	return {"ok": true, "code": 200, "body": JSON.stringify({"ok": true, "week": WEEK, "now": 0,
+		"buckets": [b], "cup": cup})}
 
 
 ## 独立算出这一组的冠军是谁(走对阵图「本周冠军」页那条 `champion_seed`, 不走排行榜自己的推导)。
@@ -620,8 +627,8 @@ func _t_days() -> void:
 	var mk := _marks(_screen_rows(mon))
 	print("    [头衔] ", mk)
 	_ok("⑤一 ★★冠军挂在独立算出的那个人名字旁", str(mk.get(champ, "")) == "冠军", "%s → %s" % [champ, str(mk.get(champ, ""))])
-	_ok("⑤一 ★8 人组: 冠军 1 / 亚军 1 / 四强 2 / 进决赛日 4",
-		_count(mk, "冠军") == 1 and _count(mk, "亚军") == 1 and _count(mk, "四强") == 2 and _count(mk, "进决赛日") == 4,
+	_ok("⑤一 ★8 人组 + 1 人冠军杯赛: 冠军 1 / 亚军 0 / 四强 0 / 进决赛日 7",
+		_count(mk, "冠军") == 1 and _count(mk, "亚军") == 0 and _count(mk, "四强") == 0 and _count(mk, "进入决赛日") == 7,
 		str(mk))
 	_ok("⑤一 不在决赛里的人不挂(第 9 名起)", not mk.has(SRV_NAMES[8]) and not mk.has(ME_NAME), str(mk.keys()))
 	_ok("⑤一 周一不挂「已晋级」", _count(mk, LB.MARK_PROMOTED) == 0)
@@ -698,7 +705,7 @@ func _t_days() -> void:
 	var m1 := _marks(_screen_rows(sun1))
 	print("    [头衔] ", m1)
 	_ok("⑤日 ★★决赛打完 ⇒ 冠军挂在独立算出的那个人名字旁", str(m1.get(champ, "")) == "冠军", str(m1))
-	_ok("⑤日 打完: 冠军 1 / 亚军 1 / 四强 2; 其余晋级者仍挂「已晋级」、周日不挂「进决赛日」",
-		_count(m1, "冠军") == 1 and _count(m1, "亚军") == 1 and _count(m1, "四强") == 2
-		and _count(m1, "进决赛日") == 0, str(m1))
+	_ok("⑤日 打完: 冠军 1 / 亚军 0 / 四强 0; 其余晋级者仍挂「已晋级」、周日不挂「进决赛日」",
+		_count(m1, "冠军") == 1 and _count(m1, "亚军") == 0 and _count(m1, "四强") == 0
+		and _count(m1, "进入决赛日") == 0, str(m1))
 	await _close(sun1)

@@ -556,7 +556,7 @@ func _t_board_failures() -> void:
 		if mode == "404":
 			_ok("③ ★404(服务端没这条) ⇒ 「赛况暂无」, 不说网络不好", st == "赛况暂无", st)
 		else:
-			_ok("③ 断网 ⇒ 说连不上", st.find("连不上") >= 0, st)
+			_ok("③ 断网 ⇒ 说连不上", st.find("无法连接") >= 0, st)
 		bs.queue_free()
 		await _frames(3)
 	## 没接服务器
@@ -566,7 +566,7 @@ func _t_board_failures() -> void:
 	var bs2: Node = await _open_scene(BOARD_SCENE)
 	await _frames(5)
 	var st2 := str((bs2.get("_status") as Label).text)
-	_ok("③ 没接服务器 ⇒ 说清楚, 一个请求都不发", st2.find("没接服务器") >= 0 and _reqs.is_empty(), st2)
+	_ok("③ 没接服务器 ⇒ 说清楚, 一个请求都不发", st2.find("不支持在线赛况") >= 0 and _reqs.is_empty(), st2)
 	bs2.queue_free()
 	OS.set_environment(SB.ENV_URL, "http://gate.local")
 	_board_mode = "ok"
@@ -574,6 +574,17 @@ func _t_board_failures() -> void:
 
 
 # ⑤ ─────────────────────────────────────────────────────────────
+## 点一格 ⇒ 弹出对局卡 ⇒ 按卡里的主按钮(「观看」)。★审图第三版(2026-10-07)起点格子先弹卡, 「观看」在卡里;
+##   卡里那一颗按下去走的仍是原来那一条(`match_opened` ⇒ `open_replay`)。
+func _tap_node(m, b: Button) -> void:
+	b.pressed.emit()
+	await _frames(2)
+	var go: Button = m.find_child("PopupGoBtn", true, false) as Button
+	_ok("⑤ 点格子 ⇒ 弹出对局卡, 卡里有「观看」", go != null and str(go.text) == "观看", str(go))
+	if go != null:
+		go.pressed.emit()
+
+
 func _btn_at(m, r: int, mm: int) -> Button:
 	for b in m._canvas.find_children("*", "Button", true, false):
 		if (b as Button).get_meta("rm", Vector2i(-9, -9)) == Vector2i(r, mm):
@@ -633,18 +644,18 @@ func _t_bracket() -> void:
 	## 404: 服务端函数没上线
 	_fr_mode = "404"
 	_fr_bodies.clear()
-	b11.pressed.emit()
+	await _tap_node(m, b11)
 	await _frames(20)
 	_ok("⑤ ★没上线(404) ⇒ 一句话、不换场景", str(m.last_replay_code) == "unavailable"
 		and get_tree().current_scene == m and str(m._replay_lb.text) == RF.message("unavailable"), str(m.last_replay_msg))
 	_fr_mode = "no_replay"
-	b11.pressed.emit()
+	await _tap_node(m, b11)
 	await _frames(20)
 	_ok("⑤ 没有采纳录像(超时补判) ⇒ 说没留下回放", str(m.last_replay_code) == "no_replay", str(m.last_replay_msg))
 	## 正常
 	_fr_mode = "ok"
 	_fr_bodies.clear()
-	b11.pressed.emit()
+	await _tap_node(m, b11)
 	var bt: Node = await _wait_scene("RealtimeBattle3DScene.gd")
 	var ask: Dictionary = _fr_bodies[0] if not _fr_bodies.is_empty() else {}
 	_ok("⑤ ★★问的是对的那一场 (周, 组 2, 第 1 轮, 第 1 场)",
@@ -677,7 +688,7 @@ func _t_bracket() -> void:
 	_ok("⑤ 我这一场(2-0, 当前轮)仍是上场开打, 不是看回放", m2.should_fetch_opponent(2, 0)
 		and _btn_at(m2, 2, 0) != null and str(_btn_at(m2, 2, 0).tooltip_text) == "开始对战")
 	_ok("⑤ 已翻面的格子提示「重看这一场」(不写「回放」: 对阵图用词规矩④)",
-		_btn_at(m2, 1, 2) != null and str(_btn_at(m2, 1, 2).tooltip_text) == "重看这一场")
+		_btn_at(m2, 1, 2) != null and str(_btn_at(m2, 1, 2).tooltip_text) == "观看回放")
 	m2.queue_free()
 	await _frames(3)
 

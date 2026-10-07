@@ -24,7 +24,7 @@ func _ready() -> void:
 	if gs != null:
 		gs.account_email = "tester01@x.co"
 	SB._email_state = SB.EM_OK
-	SB._email_msg = "邮箱绑好了"
+	SB._email_msg = "邮箱绑定成功"
 	st.acct_override = 0                        ## 回到真实取值 ⇒ 现在「已绑定」
 	## 墙里那个 Timer 每 0.25 秒喂一次 _email_poll, 等够两轮
 	var _w := 0.0

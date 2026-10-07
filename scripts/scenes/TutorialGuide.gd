@@ -1,254 +1,306 @@
 extends Node
 
 const STEPS_PATH := "res://data/tutorial-steps.json"
-## TutorialGuide — 新手教程步骤引导 (1:1 PoC src/scenes/TutorialGuide.ts)。
-## 顶部/底部非阻挡横幅: 序号徽章 + 提示文 + 下一步/知道了/完成 + 跳过。玩家照提示在真实战斗里操作,
-## advanceOn 事件由 BattleScene 在对应动作发生时 notify → 自动推进。
-## 用法: var g = preload(".../TutorialGuide.gd").new(); add_child(g); g.start(steps, on_done)
-##   steps = [{ "text": String, "advanceOn"?: String, "anchor"?: "top"|"bottom" }]
+## TutorialGuide — 新手教程的一屏引导条。
+##
+## ══════════════════════════════════════════════════════════════════════
+##  2026-10-07 重做(方案书 docs/plans/20261007-新手教程重做.md §4.4)
+## ══════════════════════════════════════════════════════════════════════
+## 用户「行」认可的方向: 每一步只有**一句短的祈使句**; 高亮目标 + 手势指针;
+##   **玩家做了那个动作才前进**; 不要长段阅读, 不要一串「下一步」。
+## ⇒ 本条**没有任何按钮**(原来的「下一步 / 知道了 / 完成 / 跳过」全删 —— B2/B3 都是它们造的:
+##   不买也能翻页、三格还空着就点「知道了」翻过去)。跳过教程在导演挂的外壳上(tutorial_chrome.gd)。
+## ⇒ 每一步都靠 `advanceOn` 事件前进; 事件可「越级」: 玩家做了后面那步的动作,
+##   前面没做的步一并算完成(例: 没拖龟直接按开始战斗), 不会卡死。
+## ⇒ **等宿主可以引导了才显示**(B6 那一类: 屏有入场动画时, 提示比内容先到):
+##   宿主给 ready_fn 就用它; 没给 ⇒ 等本步目标矩形连续 STABLE_FRAMES 帧不动。
+##
+## steps = [{ "text", "highlight", "advanceOn", "point"?, "hand"?("tap"|"drag"), "anchor"?("top"|"bottom"|"right") }]
+
+const HAND_TEX := "res://assets/sprites/ui/tut-hand.png"
+const HAND_SCALE := 3.0
+## 指尖在源图里的像素位置(18×19 的手, 食指尖)。
+const HAND_TIP := Vector2(6.5, 0.0)
+## 目标矩形连续这么多帧位置不变才算「布局/入场动画走完了」。
+const STABLE_FRAMES := 4
+## 首帧解析出空矩形是正常的(容器还没跑布局) ⇒ 撑过这几帧还空才报一条警告。
+const HL_GRACE_FRAMES := 3
 
 var _steps: Array = []
 var _idx: int = 0
 var _on_done: Callable
+var _anchor_fn: Callable             # (name:String)->Rect2 屏幕矩形
+var _ready_fn: Callable              # ()->bool 宿主可以引导了吗; 空 = 只看目标矩形稳定
 var _layer: CanvasLayer
 var _panel: PanelContainer
-var _badge: Label
-var _text: RichTextLabel
-var _btn_row: HBoxContainer
-# ── 高亮遮罩(手把手指引): 四块暗幕围住目标矩形挖洞 ──
-var _mask: Array = []                # 4 个 ColorRect(上/下/左/右), 把非目标区域压暗+挡点击
-var _ring: ColorRect                 # 目标矩形的亮边框
-var _mandatory: bool = false         # 首次强制: 无"跳过"按钮
-var _anchor_fn: Callable             # (name:String)->Rect2 屏幕矩形; 空=不高亮
-var _cur_hl: String = ""             # 当前步的高亮锚点名(每帧重贴, 见 _process)
-## 本步锚点连续解析出空矩形的帧数 + 本步是否已经报过警。见 _apply_highlight 的空矩形分支。
+var _text: Label
+var _hand: TextureRect
+var _mask: Array = []                # 4 个 ColorRect(上/下/左/右), 洞外压暗 + 挡点击
+var _ring: ColorRect
+var _cur_hl: String = ""
+var _shown: bool = false             # 本步已经显示过(之后不再因目标轻微移动而闪)
+var _stable_n: int = 0
+var _last_rect := Rect2()
+var _t: float = 0.0
 var _hl_empty_frames: int = 0
 var _hl_warned: bool = false
-## 首帧解析出空矩形是【正常且会自愈】的(容器还没跑布局) ⇒ 撑过这几帧还空才算真出事。
-const HL_GRACE_FRAMES := 3
 
 
-## on_done: 走完/跳过的回调。mandatory: 首次强制(无跳过)。anchor_fn: 把 step.highlight 名字换成屏幕 Rect2。
-func start(steps: Array, on_done: Callable, mandatory: bool = false, anchor_fn: Callable = Callable()) -> void:
+func start(steps: Array, on_done: Callable, anchor_fn: Callable = Callable(), ready_fn: Callable = Callable()) -> void:
 	_steps = steps
 	_on_done = on_done
-	_mandatory = mandatory
 	_anchor_fn = anchor_fn
-	# ★暂停时也要能读引导/点按钮/高亮跟随 → ALWAYS(战斗可暂停; 见 §3.4 process_mode 坑)
+	_ready_fn = ready_fn
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build_ui()
 	_render()
 
 
-## ★每帧重贴当前步高亮: 控件首帧可能还没布局好(rect 为 0)→挖空洞会退回无高亮;
-##   下一帧布局好了自动补上。同时兼顾窗口 resize / 控件移动(如商店换货重排)。
-func _process(_dt: float) -> void:
-	if _cur_hl != "" and _anchor_fn.is_valid():
-		_apply_highlight(_cur_hl)
+## 是否正显示在屏上(门禁量「演出期间不出提示」用的就是这个)。
+func is_showing() -> bool:
+	return _layer != null and _layer.visible
+
+
+func current_text() -> String:
+	return _text.text if _text != null else ""
 
 
 func notify(event: String) -> void:
-	if _idx < _steps.size() and str(_steps[_idx].get("advanceOn", "")) == event:
-		_next()
+	for j in range(_idx, _steps.size()):
+		if str((_steps[j] as Dictionary).get("advanceOn", "")) == event:
+			_idx = j + 1
+			if _idx >= _steps.size():
+				_finish()
+			else:
+				_render()
+			return
 
 
 func _build_ui() -> void:
 	_layer = CanvasLayer.new()
 	_layer.layer = 8000
+	_layer.visible = false
 	add_child(_layer)
-	# ★暗幕四块(挖洞高亮)先建 → 在提示条【下方】。默认覆盖全屏(高亮矩形为空时=整幕压暗)。
-	#   四块围住目标矩形留出中间的洞 —— 洞内可点(玩家按引导操作), 洞外被暗幕挡住(STOP)。
-	#   不用 shader: 四块 ColorRect 拼一个"回字形"最简单也最稳。
 	for i in 4:
 		var m := ColorRect.new()
-		m.color = Color(0, 0, 0, 0.62)
-		m.mouse_filter = Control.MOUSE_FILTER_STOP   # 洞外挡点击 = 逼玩家只能点洞里
+		m.color = Color(0, 0, 0, 0.58)
+		m.mouse_filter = Control.MOUSE_FILTER_STOP   # 洞外挡点击 = 只能点洞里那一处
 		_layer.add_child(m)
 		_mask.append(m)
 	_ring = ColorRect.new()
-	_ring.color = Color(1, 0.85, 0.25, 0.0)          # 透明填充; 只画边框(用 _draw 覆盖)
+	_ring.color = Color(1, 0.85, 0.25, 0.0)
 	_ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ring.set_script(preload("res://scripts/scenes/tutorial_ring.gd"))
 	_layer.add_child(_ring)
-	_set_mask_visible(false)
 	_panel = PanelContainer.new()
-	_panel.anchor_left = 0.5; _panel.anchor_right = 0.5
-	_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_panel.custom_minimum_size = Vector2(620, 0)
+	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.071, 0.110, 0.204, 0.96)   # rgba(18,28,52,.96)
+	sb.bg_color = Color(0.071, 0.110, 0.204, 0.94)
 	sb.set_border_width_all(2); sb.border_color = Color("#ffd93d")
-	sb.set_corner_radius_all(12)
-	sb.shadow_color = Color(0, 0, 0, 0.55)   # PoC box-shadow 0 6px 30px rgba(0,0,0,.55)
-	sb.shadow_size = 12
-	sb.shadow_offset = Vector2(0, 6)
-	sb.content_margin_left = 18; sb.content_margin_right = 18
-	sb.content_margin_top = 14; sb.content_margin_bottom = 14
+	sb.set_corner_radius_all(0)
+	sb.content_margin_left = 26; sb.content_margin_right = 26
+	sb.content_margin_top = 10; sb.content_margin_bottom = 10
 	_panel.add_theme_stylebox_override("panel", sb)
 	_layer.add_child(_panel)
-	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 10)
-	_panel.add_child(vb)
-	# 行: 徽章 + 文字
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
-	vb.add_child(row)
-	_badge = Label.new()
-	_badge.add_theme_font_size_override("font_size", 13)
-	_badge.add_theme_color_override("font_color", Color("#3a1f00"))
-	var bsb := StyleBoxFlat.new()
-	bsb.bg_color = Color("#ffd93d")
-	bsb.set_corner_radius_all(6)
-	bsb.content_margin_left = 9; bsb.content_margin_right = 9
-	bsb.content_margin_top = 2; bsb.content_margin_bottom = 2
-	_badge.add_theme_stylebox_override("normal", bsb)
-	_badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(_badge)
-	_text = RichTextLabel.new()
-	_text.bbcode_enabled = true
-	_text.fit_content = true
-	_text.scroll_active = false
-	_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_text.add_theme_font_size_override("normal_font_size", 15)
-	_text.add_theme_font_size_override("bold_font_size", 15)
-	_text.add_theme_color_override("default_color", Color("#eaf0fa"))
-	row.add_child(_text)
-	# 按钮行
-	_btn_row = HBoxContainer.new()
-	_btn_row.alignment = BoxContainer.ALIGNMENT_END
-	_btn_row.add_theme_constant_override("separation", 10)
-	vb.add_child(_btn_row)
+	_text = Label.new()
+	_text.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_text.add_theme_font_size_override("font_size", 24)
+	_text.add_theme_color_override("font_color", Color("#fff3c4"))
+	_text.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
+	_text.add_theme_constant_override("outline_size", 4)
+	_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_panel.add_child(_text)
+	_hand = TextureRect.new()
+	_hand.name = "TutorialHand"
+	if ResourceLoader.exists(HAND_TEX):
+		_hand.texture = load(HAND_TEX)
+	_hand.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_hand.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_hand.stretch_mode = TextureRect.STRETCH_SCALE
+	_hand.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var ts: Vector2 = _hand.texture.get_size() if _hand.texture != null else Vector2(18, 19)
+	_hand.size = ts * HAND_SCALE
+	_layer.add_child(_hand)
 
 
 func _render() -> void:
 	if _idx >= _steps.size():
 		return
 	var step: Dictionary = _steps[_idx]
-	# 锚点: top → 顶部 14; bottom → 底部 120
-	var anchor := str(step.get("anchor", "top"))
-	if anchor == "bottom":
-		_panel.anchor_top = 1.0; _panel.anchor_bottom = 1.0
-		_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-		_panel.offset_top = -120.0 - 80.0; _panel.offset_bottom = -120.0
-	else:
-		_panel.anchor_top = 0.0; _panel.anchor_bottom = 0.0
-		_panel.grow_vertical = Control.GROW_DIRECTION_END
-		_panel.offset_top = 14.0; _panel.offset_bottom = 14.0 + 80.0
-	_badge.text = "%d/%d" % [_idx + 1, _steps.size()]
-	_text.text = _html_b_to_bbcode(str(step.get("text", "")))
-	# ★高亮遮罩: 这一步指定了 highlight 目标 → 挖洞压暗其余; 没指定 → 无遮罩(纯提示条)
-	#   _cur_hl 记住当前锚点名, _process 每帧重贴(布局时序/resize 稳)。
+	_text.text = str(step.get("text", ""))
 	_cur_hl = str(step.get("highlight", ""))
-	_hl_empty_frames = 0     # 换步 = 重新数宽限帧(否则上一步的计数会让新步第一帧就报警)
+	_shown = false
+	_stable_n = 0
+	_last_rect = Rect2()
+	_hl_empty_frames = 0
 	_hl_warned = false
-	_apply_highlight(_cur_hl)
-	# 重建按钮
-	for c in _btn_row.get_children():
-		c.queue_free()
-	var is_last := _idx == _steps.size() - 1
-	# ★首次强制(mandatory)时不给"跳过"; ❓ 重玩(非 mandatory)才有
-	if not is_last and not _mandatory:
-		var skip := Button.new()
-		skip.text = "跳过教程"
-		skip.add_theme_font_size_override("font_size", 14)
-		skip.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		skip.pressed.connect(_finish)
-		_btn_row.add_child(skip)
-	var nxt := Button.new()
-	nxt.text = "完成 ✓" if is_last else ("知道了" if step.has("advanceOn") else "下一步 ▶")
-	nxt.add_theme_font_size_override("font_size", 14)
-	nxt.add_theme_color_override("font_color", Color("#3a1f00"))
-	var nsb := StyleBoxFlat.new()
-	nsb.bg_color = Color("#ffc23c")
-	nsb.set_corner_radius_all(7)
-	nsb.content_margin_left = 18; nsb.content_margin_right = 18
-	nsb.content_margin_top = 7; nsb.content_margin_bottom = 7
-	nxt.add_theme_stylebox_override("normal", nsb)
-	nxt.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	nxt.pressed.connect(_next)
-	_btn_row.add_child(nxt)
+	_show(false)
 
 
-## 挖洞高亮: 把 highlight 名字换成屏幕矩形, 四块暗幕围住它。空名字 = 无高亮(纯提示条)。
-func _apply_highlight(hl_name: String) -> void:
-	if hl_name == "" or not _anchor_fn.is_valid():
-		_set_mask_visible(false)
+func _process(dt: float) -> void:
+	if _idx >= _steps.size() or _layer == null:
 		return
-	var rect: Rect2 = _anchor_fn.call(hl_name)
+	_t += dt
+	var host_ok: bool = (not _ready_fn.is_valid()) or bool(_ready_fn.call())
+	var rect := _target_rect(_cur_hl)
+	if not host_ok:
+		_show(false)
+		_shown = false
+		_stable_n = 0
+		return
 	if rect.size.x <= 0.0 or rect.size.y <= 0.0:
-		# 锚点解析失败(控件还没布局好/名字错/目标已经被藏起来) → 别挖个空洞把全屏挡死, 退回无高亮
-		## ★★【看到这条 WARNING 先别当 bug 查】(2026-08-20 有人照它下过"聚光灯没挖出来"的错误结论)
-		##   **首帧解析出空矩形是正常的、而且会自愈**: 场景 `_ready` 里就 attach 引导(如
-		##   TeamSelectScene.gd:176 → attach → start → _render → 这里), 而那一刻 Godot 的容器
-		##   还没跑布局 ⇒ `get_global_rect()` 必然是 0×0。下一帧 `_process`(本文件 L40-42)
-		##   照 `_cur_hl` 重贴一次, 洞就补上了 —— 这是**设计好的**每帧重贴, 不是碰巧被某次
-		##   resize 救回来的(`_on_resize` 根本不碰引导), 所以换分辨率/换屏一样成立。
-		##   ⇒ 实测证据(SHIP=1 ONBOARD=1 tests/_tutorial_playthrough): 整个流程只有 2 条本
-		##     WARNING, **两条的 backtrace 都是 `_render`(:139), 零条来自 `_process`(:42)**
-		##     —— `_process` 每帧都跑, 它要是还量到空矩形就会自己再刷一条。零条 = 第二帧
-		##     就已经是有效矩形了。配合截图 `C:/tmp/tut_flow_0_1_team_select.png`(角标还停在
-		##     1/4 = 没翻过步, 洞却已经挖在 3 只教学龟那一排上)可确认画面是对的。
-		##   ⇒ 只有当这条**每帧连刷**(而不是每进一次场景刷一条)时才说明真出事了。
-		##
-		## ★★2026-09-30 改口径(台账 ⑧ 的连带): 上面那句"首帧正常"既然成立, **首帧就不该报警**;
-		##   而"每帧连刷"这个真出事的信号原来靠人去数日志行数 —— 现在直接由代码判:
-		##   撑过 HL_GRACE_FRAMES 帧还空 = 目标真的不在了, **报一条**(不是每帧一条)。
-		##   由来: 修好台账 ⑧ 后这层浮层第一次真出场, 当场量到一个**每帧连刷**的真形状 ——
-		##   摆位第三步 highlight 的就是「开打」钮, 而玩家一按开打 `_dl_start_fight` 就把它
-		##   `visible = false` ⇒ `_tutorial_anchor` 返回空 Rect2 ⇒ 这条警告刷到玩家点「完成」为止。
-		##   (那个形状本身已由 place[2] 的 `advanceOn: fight_started` 修掉, 见 dual_lane_flow._dl_start_fight;
-		##    这里管的是"下一个人再造出同样形状时, 日志不许被冲垮、但也不许静音"。)
 		_hl_empty_frames += 1
 		if _hl_empty_frames >= HL_GRACE_FRAMES and not _hl_warned:
 			_hl_warned = true
-			push_warning("[Tutorial] 高亮锚点 '%s' 连续 %d 帧解析出空矩形 → 本步不挖洞(目标控件不在/已隐藏; 本步只报这一条)"
-				% [hl_name, _hl_empty_frames])
-		_set_mask_visible(false)
+			push_warning("[Tutorial] 高亮锚点 '%s' 连续 %d 帧解析出空矩形 → 本步暂不显示(本步只报这一条)"
+				% [_cur_hl, _hl_empty_frames])
+		_show(false)
+		_shown = false
+		_stable_n = 0
 		return
 	_hl_empty_frames = 0
-	var pad := 8.0
-	rect = rect.grow(pad)
+	if not _shown:
+		if rect.is_equal_approx(_last_rect):
+			_stable_n += 1
+		else:
+			_stable_n = 0
+		_last_rect = rect
+		if _stable_n < STABLE_FRAMES:
+			_show(false)
+			return
+		_shown = true
+	_show(true)
+	_apply_highlight(rect)
+	_place_panel(rect)
+	_place_hand(rect)
+
+
+## 显示 / 收起整条引导。★暗幕本身也一起关: 只关图层的话, 暗幕节点的 visible 仍是 true,
+##   而它们是 MOUSE_FILTER_STOP 的 —— 不能指望引擎对「图层隐藏」的命中判定替我们挡住。
+func _show(on: bool) -> void:
+	_layer.visible = on
+	for m in _mask:
+		(m as Control).visible = on
+	_ring.visible = on
+
+
+func _target_rect(hl_name: String) -> Rect2:
+	if hl_name == "" or not _anchor_fn.is_valid():
+		return Rect2()
+	var r = _anchor_fn.call(hl_name)
+	return r if r is Rect2 else Rect2()
+
+
+## 挖洞高亮: 四块暗幕围住目标矩形。
+func _apply_highlight(target: Rect2) -> void:
+	var rect := target.grow(8.0)
 	var vp: Vector2 = Vector2(_layer.get_viewport().get_visible_rect().size)
-	# 四块: 上/下/左/右, 拼成"回"字, 中间留 rect 这个洞
-	_mask[0].position = Vector2(0, 0);                    _mask[0].size = Vector2(vp.x, rect.position.y)                       # 上
-	_mask[1].position = Vector2(0, rect.end.y);           _mask[1].size = Vector2(vp.x, vp.y - rect.end.y)                     # 下
-	_mask[2].position = Vector2(0, rect.position.y);      _mask[2].size = Vector2(rect.position.x, rect.size.y)                # 左
-	_mask[3].position = Vector2(rect.end.x, rect.position.y); _mask[3].size = Vector2(vp.x - rect.end.x, rect.size.y)          # 右
+	_mask[0].position = Vector2(0, 0);                         _mask[0].size = Vector2(vp.x, maxf(0.0, rect.position.y))
+	_mask[1].position = Vector2(0, rect.end.y);                _mask[1].size = Vector2(vp.x, maxf(0.0, vp.y - rect.end.y))
+	_mask[2].position = Vector2(0, rect.position.y);           _mask[2].size = Vector2(maxf(0.0, rect.position.x), rect.size.y)
+	_mask[3].position = Vector2(rect.end.x, rect.position.y);  _mask[3].size = Vector2(maxf(0.0, vp.x - rect.end.x), rect.size.y)
 	_ring.position = rect.position
 	_ring.size = rect.size
 	_ring.queue_redraw()
-	_set_mask_visible(true)
 
 
-func _set_mask_visible(on: bool) -> void:
-	for m in _mask:
-		m.visible = on
-	if _ring != null:
-		_ring.visible = on
+## 提示条: 贴着目标放 —— 目标下方放得下就放下方, 否则放上方, 都放不下才退到屏顶(不压目标)。
+##   (第一版按「目标在哪半屏就放另一半」, 实拍盖住了选龟屏标题、商店里和购买提示叠在一起。)
+func _place_panel(target: Rect2) -> void:
+	var vp: Vector2 = Vector2(_layer.get_viewport().get_visible_rect().size)
+	var sz: Vector2 = _panel.get_combined_minimum_size()
+	_panel.size = sz
+	const GAP := 20.0
+	const HAND_ROOM := 64.0
+	var y: float
+	var where := str((_steps[_idx] as Dictionary).get("anchor", ""))
+	## "right": 贴在指点处(point, 缺省=目标)右侧、垂直居中 —— 目标上下紧挨着别的内容(背包上方是战场行、完成钮下方是龟卡)时用。
+	##   右侧放不下才退回下面的常规规则。
+	if where == "right":
+		var base := target
+		var pt_name := str((_steps[_idx] as Dictionary).get("point", ""))
+		if pt_name != "":
+			var r2 := _target_rect(pt_name)
+			if r2.size.x > 0.0 and r2.size.y > 0.0:
+				base = r2
+		var rx: float = base.end.x + HAND_ROOM
+		var ry: float = base.get_center().y - sz.y * 0.5
+		if rx + sz.x + 12.0 <= vp.x and ry >= 8.0 and ry + sz.y + 8.0 <= vp.y:
+			_panel.position = Vector2(round(rx), round(ry))
+			return
+	if where == "top":
+		y = 22.0
+	elif where == "bottom":
+		y = vp.y - sz.y - 22.0
+	elif target.end.y + HAND_ROOM + sz.y + 8.0 <= vp.y:
+		y = target.end.y + HAND_ROOM      # 下方要让出手势指针的高度(指尖在目标里, 手掌伸出目标下沿)
+	elif target.position.y - GAP - sz.y >= 8.0:
+		y = target.position.y - GAP - sz.y
+	else:
+		y = 22.0
+	var x: float = clampf(target.get_center().x - sz.x * 0.5, 12.0, vp.x - sz.x - 12.0)
+	_panel.position = Vector2(round(x), round(y))
 
 
-func _next() -> void:
-	_idx += 1
-	if _idx >= _steps.size():
-		_finish()
+## 手势指针: 点按类在目标上「按下 - 抬起」循环; 拖动类从目标拖向右侧循环。
+func _place_hand(target: Rect2) -> void:
+	if _hand.texture == null:
+		_hand.visible = false
 		return
-	_render()
+	var step: Dictionary = _steps[_idx]
+	var pr := target
+	var pt_name := str(step.get("point", ""))
+	if pt_name != "":
+		var r2 := _target_rect(pt_name)
+		if r2.size.x > 0.0 and r2.size.y > 0.0:
+			pr = r2
+	var tip: Vector2 = pr.get_center()
+	if pr.size.y > 120.0 or pr.size.x > 320.0:
+		tip = pr.get_center()
+	else:
+		tip.y = pr.position.y + pr.size.y * 0.62
+	var off := Vector2.ZERO
+	var a := 1.0
+	if str(step.get("hand", "tap")) == "drag":
+		var cyc: float = fmod(_t, 1.6) / 1.6
+		var k: float = clampf(cyc / 0.75, 0.0, 1.0)
+		k = k * k * (3.0 - 2.0 * k)
+		off = Vector2(150.0, -30.0) * k
+		a = 1.0 if cyc < 0.8 else maxf(0.0, 1.0 - (cyc - 0.8) / 0.2)
+	else:
+		off.y = 10.0 + 8.0 * sin(_t * TAU * 1.4)
+	_hand.modulate.a = a
+	_hand.visible = true
+	_hand.position = (tip + off - HAND_TIP * HAND_SCALE).round()
 
 
 func _finish() -> void:
+	_idx = _steps.size()
+	if _layer != null:
+		_show(false)
 	if _on_done.is_valid():
 		_on_done.call()
 	queue_free()
 
 
-# <b>...</b> → [b]...[/b] (PoC 教程文用 HTML 粗体)
-func _html_b_to_bbcode(s: String) -> String:
-	return s.replace("<b>", "[b]").replace("</b>", "[/b]")
+## 控件的屏幕矩形 —— 只有它**真的看得见**(在树里可见 + 一路往上的透明度乘积 ≥ 0.98)才返回;
+##   否则空矩形 ⇒ 本步先不显示。★B6 那一类(提示比内容先到)的另一半: 入场动画常常是**淡入**不是位移,
+##   只看「矩形连续几帧不动」挡不住(实拍: 结算屏「前往商店」还没淡进来, 洞已经挖在一块空地上)。
+static func vis_rect(c) -> Rect2:
+	if c == null or not is_instance_valid(c) or not (c is Control) or not (c as Control).is_visible_in_tree():
+		return Rect2()
+	var a := 1.0
+	var n: Node = c
+	while n != null and n is CanvasItem:
+		a *= (n as CanvasItem).modulate.a * (n as CanvasItem).self_modulate.a
+		n = n.get_parent()
+	if a < 0.98:
+		return Rect2()
+	return (c as Control).get_global_rect()
 
-## 从 data/tutorial-steps.json 取某个场景的步骤。
-## ★取不到就返回空数组, 调用方据此【不显示引导】而不是崩 —— 引导缺失不该让游戏挂掉。
+
+## 从 data/tutorial-steps.json 取某一屏的步骤。取不到返回空数组(不显示引导, 不崩)。
 static func steps_for(key: String) -> Array:
 	var raw := FileAccess.get_file_as_string(STEPS_PATH)
 	if raw == "":
@@ -262,20 +314,20 @@ static func steps_for(key: String) -> Array:
 	return arr if arr is Array else []
 
 
-## 一行接入: 有引导步骤才建节点。返回 guide 实例(没有步骤则 null)。
-## 调用方拿到实例后可在关键动作处调 guide.notify("事件名") 推进。
-## host 可实现 _tutorial_anchor(name)->Rect2 提供高亮锚点; on_done 走完回调。
-## mandatory: 首次强制(无跳过)。
-static func attach(host: Node, key: String, on_done: Callable = Callable(), mandatory: bool = false) -> Node:
+## 一行接入: 有步骤才建节点。返回实例(没有步骤 ⇒ null)。
+## anchor_fn 缺省用 host._tutorial_anchor; ready_fn 缺省 = 只等目标矩形稳定。
+static func attach(host: Node, key: String, on_done: Callable = Callable(),
+		anchor_fn: Callable = Callable(), ready_fn: Callable = Callable()) -> Node:
 	var steps := steps_for(key)
 	if steps.is_empty():
 		return null
 	var g = load("res://scripts/scenes/TutorialGuide.gd").new()
+	g.name = "TutorialGuide"
 	host.add_child(g)
-	g.add_to_group("tut_overlay")   # ★场景 _rebuild(买装备/装备后重建)要【跳过】本组, 否则引导被 queue_free
-	var anchor_fn := Callable()
-	if host.has_method("_tutorial_anchor"):
-		anchor_fn = Callable(host, "_tutorial_anchor")
+	g.add_to_group("tut_overlay")   # ★商店/背包 `_rebuild()` 跳过本组, 否则引导被 queue_free
+	var af := anchor_fn
+	if not af.is_valid() and host.has_method("_tutorial_anchor"):
+		af = Callable(host, "_tutorial_anchor")
 	var cb: Callable = on_done if on_done.is_valid() else func() -> void: pass
-	g.start(steps, cb, mandatory, anchor_fn)
+	g.start(steps, cb, af, ready_fn)
 	return g

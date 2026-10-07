@@ -31,7 +31,7 @@ func _ready() -> void:
 		await _settle(5)
 		var hints := 0
 		for c in _inst.detail.get_children():
-			if c is Label and str((c as Label).text) == "点开看全部":
+			if c is Label and str((c as Label).text) == "查看全部" and (c as Label).horizontal_alignment == HORIZONTAL_ALIGNMENT_RIGHT:
 				hints += 1
 		n_hint += hints
 		for c in _inst.detail.get_children():

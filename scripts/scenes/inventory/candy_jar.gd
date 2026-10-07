@@ -46,7 +46,7 @@ func _show_jar_reward(r: Dictionary) -> void:
 	##   它只是因为这个弹框不在静止态的屏上才没被数到。改成「第 N 档」两不相犯。
 	## ★2026-09-28 去掉句首的 🍬 —— 纯装饰(「糖果罐」三个字就在后面),
 	##   而 emoji 的字形来自 NotoEmoji, 与这一屏的像素笔触是两套画法。
-	ttl.text = "糖果罐碎了！第 %d 档的东西全掉出来了" % int(r.get("tier", 1))
+	ttl.text = "糖果罐 · 第 %d 档奖励" % int(r.get("tier", 1))
 	ttl.add_theme_font_size_override("font_size", 22)
 	ttl.add_theme_color_override("font_color", Color("#ffd93d"))
 	ttl.position = Vector2(0, 20); ttl.size = Vector2(520, 36)
@@ -60,12 +60,12 @@ func _show_jar_reward(r: Dictionary) -> void:
 	var eid = str(r.get("equip", ""))
 	if eid != "":
 		var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
-		lines.append("%s %s 收进了背包" % [str(edef.get("name", eid)), "★".repeat(int(r.get("star", 1)))])
+		lines.append("获得 %s %s" % [str(edef.get("name", eid)), "★".repeat(int(r.get("star", 1)))])
 	if bool(r.get("leveler", false)):
 		## ★原文是"🔼 临时等级器 ×1 → 进背包 (点它再点一只龟/小将, 本大轮 +1 级)":
 		##   箭头 + 括号注解 = 说明书腔, 而且 35 字在 440px / 18 号字下要排**两行**,
 		##   却挤在 30px 高的 Label 里 ⇒ 第二行一直被静默吃掉(所以下面把行高改成 48)。
-		lines.append("临时等级器 ×1 收进背包 · 点它再点一只龟或小将, 这一大轮就多一级")
+		lines.append("获得 临时等级器 ×1")
 
 	const Y0 := 80.0
 	var y = Y0
@@ -98,7 +98,7 @@ func _show_jar_reward(r: Dictionary) -> void:
 	box.add_child(ci)
 
 	var ok = Button.new()
-	ok.text = "收下"
+	ok.text = "领取"
 	ok.add_theme_font_size_override("font_size", 20)
 	ok.position = Vector2(200, 234); ok.size = Vector2(120, 44)
 	## ★套金属签牌皮 —— 不套就是 Godot 默认皮(圆角纯色)。必须在 size 之后调, 见 UISkin.button 注释。

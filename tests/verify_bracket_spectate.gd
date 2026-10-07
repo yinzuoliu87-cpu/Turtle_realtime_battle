@@ -88,18 +88,18 @@ func _t_tabs() -> void:
 		_ok("① 后缀 %s ⇒「我这一组%s」不再出现「还没分」" % [k, sfx], sfx.find("还没分") < 0, sfx)
 	_ok("① ★没晋级 ⇒ 未晋级", MAP.bucket_tab_suffix(MAP.EK_NO_GROUP) == " · 未晋级")
 	_ok("① ★观赛也是没晋级(同一档字)", MAP.bucket_tab_suffix(MAP.EK_SPECTATE) == " · 未晋级")
-	_ok("① ★晋级了、还没到分组时间 ⇒ 等分组", MAP.bucket_tab_suffix(MAP.EK_NOT_SEATED) == " · 等分组")
+	_ok("① ★晋级了、还没到分组时间 ⇒ 等分组", MAP.bucket_tab_suffix(MAP.EK_NOT_SEATED) == " · 待分组")
 	_ok("① ★分好组了 ⇒ 不带后缀(与原来一样)", MAP.bucket_tab_suffix(MAP.EK_SEATED) == "")
 
 	## 真屏: 三种真实输入 → 页签字 / 正文 / 分类
 	var cases := [
-		["没晋级", {}, SUN_NOON, MAP.EK_NO_GROUP, "我这一组 · 未晋级", "晋级才进得来"],
+		["没晋级", {}, SUN_NOON, MAP.EK_NO_GROUP, "小组赛 · 未晋级", "需通过周六闯关赛"],
 		["晋级·分组前(服务端 not_seated)", {"reason": "not_seated", "entered": 6}, SUN_NOON,
-			MAP.EK_NOT_SEATED, "我这一组 · 等分组", "还没分组"],
+			MAP.EK_NOT_SEATED, "小组赛 · 待分组", "未分组"],
 		["晋级·分组前(服务端还回 too_few)", {"reason": "too_few", "entered": 6}, SUN_EARLY,
-			MAP.EK_NOT_SEATED, "我这一组 · 等分组", "还没分组"],
+			MAP.EK_NOT_SEATED, "小组赛 · 待分组", "未分组"],
 		["已分组", {"size": 4, "round": 1, "me": 1, "names": ["阿龟", "小乙", "老丙", "丁丁"],
-			"done": {}}, SUN_NOON, MAP.EK_SEATED, "我这一组", ""],
+			"done": {}}, SUN_NOON, MAP.EK_SEATED, "小组赛", ""],
 	]
 	var kinds_seen := {}
 	for c in cases:
@@ -111,7 +111,7 @@ func _t_tabs() -> void:
 		_ok("① ★真屏[%s] 页签 =「%s」" % [c[0], c[4]], t0 == str(c[4]), t0)
 		## ★★页签与正文同一份判断: 页签后缀 == 由正文那份分类算出的后缀
 		_ok("① ★★真屏[%s] 页签字从正文那份分类出(不是两处各判各的)" % c[0],
-			t0 == "我这一组" + MAP.bucket_tab_suffix(str(m._empty_kind())),
+			t0 == "小组赛" + MAP.bucket_tab_suffix(str(m._empty_kind())),
 			"页签「%s」/ 正文分类 %s" % [t0, str(m._empty_kind())])
 		if str(c[5]) != "":
 			_ok("① 真屏[%s] 正文可见且说的是这件事" % c[0],
@@ -150,8 +150,10 @@ func _champ_text(bucket: Dictionary, week_body: String) -> Array:
 
 func _t_champ() -> void:
 	print("── ② 本周冠军 ──")
-	_ok("② ★分母: 跨组总决赛确实没上线(这一节量的就是这种情况)", not MAP.CROSS_BUCKET_LIVE)
-	_ok("② ★上线前页签叫「本周冠军」", MAP.finals_tab_text(0) == "本周冠军", MAP.finals_tab_text(0))
+	## ★★2026-10-07 冠军杯赛上线: 第二页叫「冠军杯赛」; 没成表缀「· 未开赛」, 成表 / 1 人表不缀。
+	_ok("② ★没成表 ⇒ 页签「冠军杯赛 · 未开赛」", MAP.finals_tab_text(0) == "冠军杯赛 · 未开赛", MAP.finals_tab_text(0))
+	_ok("② ★成表 / 1 人表 ⇒ 页签「冠军杯赛」", MAP.finals_tab_text(4) == "冠军杯赛"
+		and MAP.finals_tab_text(1) == "冠军杯赛", "%s / %s" % [MAP.finals_tab_text(4), MAP.finals_tab_text(1)])
 	## 2 人组: 决赛 = 第 1 轮第 0 场; 坐次 0/1 = 种子 0/1 ⇒ 「1-0 = 1」就是种子 1 夺冠, 手算得出来
 	_ok("② ★分母: 2 人组的坐次就是种子(下面的手算冠军成立)",
 		preload("res://scripts/gamedata/bracket.gd").seed_at_seat(1, 2) == 1)
@@ -162,43 +164,44 @@ func _t_champ() -> void:
 	var all := await _champ_text({}, _week_body([
 		_b2(0, "甲龟", "乙龟", 1, true, {"1-0": 1}),
 		_b2(1, "丙龟", "丁龟", 1, true, {"1-0": 0})]))
-	print("  ② 全部决出: 「%s」" % str(all[1]).replace("\n", " / "))
-	_ok("② 全部决出: 分类 = 各组冠军这一档", all[0] == MAP.EK_FINALS_LOCAL, all[0])
-	_ok("② ★全部决出: 页签「本周冠军」, 不再是「冠军赛 · 未开赛」", all[2] == "本周冠军", all[2])
-	_ok("② ★★全部决出: 说「全部决出」并列出两组冠军(名字 + #ID)",
-		str(all[1]).find("全部决出") >= 0 and str(all[1]).find("乙龟 " + tag_b) >= 0
+	print("  ② 全部产生: 「%s」" % str(all[1]).replace("\n", " / "))
+	_ok("② 全部产生(中午): 分类 = 冠军杯赛开赛前这一档(倒计时 + 组冠军)", all[0] == MAP.EK_FINALS_SOON, all[0])
+	_ok("② ★全部产生(中午): 页签「冠军杯赛 · 未开赛」", all[2] == "冠军杯赛 · 未开赛", all[2])
+	_ok("② ★开赛前: 第一行是冠军杯赛倒计时", str(all[1]).begins_with("冠军杯赛") and str(all[1]).find("后开赛") >= 0, all[1])
+	_ok("② ★★全部产生: 说「全部产生」并列出两组冠军(名字 + #ID)",
+		str(all[1]).find("全部产生") >= 0 and str(all[1]).find("乙龟 " + tag_b) >= 0
 		and str(all[1]).find("丙龟 " + tag_c) >= 0, all[1])
-	_ok("② ★全部决出: 败者不上榜", str(all[1]).find("甲龟") < 0 and str(all[1]).find("丁龟") < 0, all[1])
+	_ok("② ★全部产生: 败者不上榜", str(all[1]).find("甲龟") < 0 and str(all[1]).find("丁龟") < 0, all[1])
 	_ok("② ★★不再对没晋级的人说「你这一组」", str(all[1]).find("你这一组") < 0, all[1])
 
 	var part := await _champ_text({}, _week_body([
 		_b2(0, "甲龟", "乙龟", 1, true, {"1-0": 1}),
 		_b2(1, "丙龟", "丁龟", 1, false, {})]))
 	print("  ② 部分决出: 「%s」" % str(part[1]).replace("\n", " / "))
-	_ok("② ★★部分决出: 「决赛进行中」+ 已决出 1/2 + 已决出的那位",
-		str(part[1]).find("决赛进行中") >= 0 and str(part[1]).find("1/2") >= 0
+	_ok("② ★★部分决出: 「小组赛进行中」+ 已决出 1/2 + 已决出的那位",
+		str(part[1]).find("小组赛进行中") >= 0 and str(part[1]).find("1/2") >= 0
 		and str(part[1]).find("乙龟") >= 0, part[1])
 	_ok("② 部分决出: 没打完那组不许出冠军", str(part[1]).find("丙龟") < 0 and str(part[1]).find("丁龟") < 0, part[1])
 
 	var none := await _champ_text({}, _week_body([
 		_b2(0, "甲龟", "乙龟", 1, false, {}), _b2(1, "丙龟", "丁龟", 1, false, {})]))
-	_ok("② ★一组都没决出: 「决赛进行中」且一个名字都不报",
-		str(none[1]).find("决赛进行中") >= 0 and str(none[1]).find("龟") < 0, none[1])
+	_ok("② ★一组都没决出: 「小组赛进行中」且一个名字都不报",
+		str(none[1]).find("小组赛进行中") >= 0 and str(none[1]).find("龟") < 0, none[1])
 	var empty := await _champ_text({}, _week_body([]))
 	_ok("② 本周一个组都没有: 说什么时候公布, 不编冠军", str(empty[1]).find("公布") >= 0, empty[1])
 	_ok("② ★★三档说的是三句不同的话(否则上面有一条是蒙的)",
 		all[1] != part[1] and part[1] != none[1] and all[1] != none[1])
 
-	## 观赛接口没上线(回包里没有 buckets 键): 没晋级的人 ⇒ 不编、不说「你这一组」、不说「全部决出」
+	## 观赛接口没上线(回包里没有 buckets 键): 没晋级的人 ⇒ 不编、不说「你这一组」、不说「全部产生」
 	var off := await _champ_text({}, "")
-	_ok("② ★接口没上线 + 没晋级: 不说「你这一组」也不说「全部决出」",
-		str(off[1]).find("你这一组") < 0 and str(off[1]).find("全部决出") < 0 and off[3], off[1])
+	_ok("② ★接口没上线 + 没晋级: 不说「你这一组」也不说「全部产生」",
+		str(off[1]).find("你这一组") < 0 and str(off[1]).find("全部产生") < 0 and off[3], off[1])
 	## 接口没上线 + 我自己那一组打完了: 至少报出我那一组的冠军(这是手机上那一刻真实可得的信息)
 	var mine := {"size": 2, "round": 1, "me": 0, "closed": true, "bucket": 0,
 		"names": ["甲龟", "乙龟"], "tags": ["", tag_b], "done": {"1-0": 1}}
 	var off2 := await _champ_text(mine, "")
-	_ok("② 接口没上线 + 我那一组已决出: 报出冠军, 但不冒称「全部决出」",
-		str(off2[1]).find("乙龟") >= 0 and str(off2[1]).find("全部决出") < 0, off2[1])
+	_ok("② 接口没上线 + 我那一组已决出: 报出冠军, 但不冒称「全部产生」",
+		str(off2[1]).find("乙龟") >= 0 and str(off2[1]).find("全部产生") < 0, off2[1])
 
 	## ★★第二道锁: 服务端写错一行、把当前轮的决赛结果漏下来 ⇒ 客户端不许报冠军
 	var leak := await _champ_text({}, _week_body([_b2(0, "甲龟", "乙龟", 1, false, {"1-0": 1})]))
@@ -271,7 +274,7 @@ func _t_spectate() -> void:
 	_ok("③ ★★没部署 ⇒ 缓存标「暂时没有」, 不是「问不到」",
 		str(SB.finals_week_cached().get("reason", "")) == "unavailable", str(SB.finals_week_cached()))
 	_ok("③ ★★没部署 ⇒ 屏幕照旧说「未晋级」(不报错、不画半张图)",
-		str(m._bucket_kind()) == MAP.EK_NO_GROUP and _tab(m, 0) == "我这一组 · 未晋级"
+		str(m._bucket_kind()) == MAP.EK_NO_GROUP and _tab(m, 0) == "小组赛 · 未晋级"
 		and m._empty_lb.visible and not m._spec_bar.visible,
 		"%s / %s" % [str(m._bucket_kind()), _tab(m, 0)])
 
@@ -293,8 +296,8 @@ func _t_spectate() -> void:
 	_ok("③ ★★上线后不用重开: 下一次轮询就变成观赛", str(m._bucket_kind()) == MAP.EK_SPECTATE,
 		str(m._bucket_kind()))
 	_ok("③ ★★页签仍是「未晋级」(观赛与没晋级同一档字, 页签与正文同源)",
-		_tab(m, 0) == "我这一组 · 未晋级", _tab(m, 0))
-	_ok("③ 观赛那一行可见, 说清「只能看」", m._spec_bar.visible and str(m._spec_lb.text).find("只能看") >= 0,
+		_tab(m, 0) == "小组赛 · 未晋级", _tab(m, 0))
+	_ok("③ 观赛那一行可见, 说清「只能看」", m._spec_bar.visible and str(m._spec_lb.text).find("观战") >= 0,
 		str(m._spec_lb.text))
 	_ok("③ 画的是第 1 组(4 人), 不是空态框", int(m.cur().get("size", 0)) == 4 and not m._empty_lb.visible,
 		"size=%d" % int(m.cur().get("size", 0)))
@@ -334,7 +337,7 @@ func _t_spectate() -> void:
 	## 冠军页也用这一份: 第二组没翻面 ⇒ 一个冠军都没有
 	m.set_view(L.VIEW_FINALS)
 	await get_tree().process_frame
-	_ok("③ 冠军页(同一份数据): 两组都没决出 ⇒ 决赛进行中", str(m._empty_lb.text).find("决赛进行中") >= 0,
+	_ok("③ 冠军页(同一份数据): 两组都没决出 ⇒ 小组赛进行中", str(m._empty_lb.text).find("小组赛进行中") >= 0,
 		str(m._empty_lb.text))
 	_ok("③ 冠军页上观赛那一行不出现", not m._spec_bar.visible)
 	m.queue_free()

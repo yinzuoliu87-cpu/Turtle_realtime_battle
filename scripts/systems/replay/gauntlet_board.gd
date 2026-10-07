@@ -5,6 +5,7 @@ extends RefCounted
 ## ══════════════════════════════════════════════════════════════════════
 ##  一行 = 一场周六闯关赛的录像摘要(`SupabaseNet.gauntlet_board_query` 只取这些):
 ##    match_id / created_at / result{won, gw?, gl?} / lp = 录像方 profile / rp = 对手 profile /
+##    la / ra = 双方三统领 id(对局卡上画阵容; 老查询 / 门禁造的行没有 ⇒ 空槽) /
 ##    rw, rl = 对手快照上的战绩标签(那一刻他几胜几负; 闯关只同标签互配)
 ## ══════════════════════════════════════════════════════════════════════
 ## ★人按 `#ID`(profile.tag)认 —— 两侧一视同仁。对手是真人快照还是机器人, 这一层**看不出来也不问**
@@ -20,6 +21,7 @@ extends RefCounted
 
 const P2C := preload("res://scripts/gamedata/phase2_config.gd")
 const BE := preload("res://scripts/net/backend.gd")
+const SB := preload("res://scripts/net/supabase.gd")
 
 const ST_TEXT := {
 	"running": "在打",
@@ -78,7 +80,7 @@ static func build(rows: Array, my_tag: String, closed: bool) -> Dictionary:
 		var lt := tag_of(r.get("lp", null))
 		var rt := tag_of(r.get("rp", null))
 		games.append({"id": str(r.get("match_id", "")), "t": t, "lw": lw,
-			"l": _side(r.get("lp", null), lt), "r": _side(r.get("rp", null), rt)})
+			"l": _side(r.get("lp", null), lt, r.get("la", null)), "r": _side(r.get("rp", null), rt, r.get("ra", null))})
 		if lt != "":
 			var p: Dictionary = _person(ppl, lt, r.get("lp", null), t)
 			if res.has("gw") and res.has("gl"):
@@ -121,9 +123,74 @@ static func games_of(games: Array, tag: String) -> Array:
 	return out
 
 
+## 这一场能不能看。★赛况板的每一行都是 `matches` 表里的一份录像(上传侧 `upload_match_async` 不带录像本体
+##   一律不发, 见 supabase.gd 那一处 `str(row.get("replay", "")) == ""`), 所以判据就是「这一行有合法的 match_id」
+##   —— 点下去按 match_id 去取。认不出 id 的行(脏数据 / 门禁造的)⇒ 不放「观看」, 不摆死按钮。
+static func watchable(g: Dictionary) -> bool:
+	return SB.is_uuid(str(g.get("id", "")))
+
+
 ## 一场的胜者名字。
 static func winner_name(g: Dictionary) -> String:
 	return str((g["l"] if bool(g.get("lw", false)) else g["r"]).get("name", "?"))
+
+
+# ─────────────────────────────── 正在打(周六直播, 2026-10-07) ───────────────────────────────
+## 方案书 docs/plans/20261007-实时观赛.md。一行 = `live_matches` 的摘要(`SupabaseNet.live_board_query` 只取这些):
+##   match_id / started_at / updated_at / client_version / lp rp(双方 profile) / la ra(双方三统领)。
+## ★「正在打」卡**不写胜负**(观赛 ≠ 回放: 看之前不知道结果)。
+
+## 一行直播多久没写算断了(秒)。打的人每 3 秒心跳一次 ⇒ 45 秒没动静就是断网 / 杀进程(方案书风险 1)。
+const LIVE_STALE_SEC := 45
+
+
+## 一行直播还算「正在打」吗。**纯函数**(时钟由调用方给; updated_at 是服务端写的, `now` 用跟服务器走的钟)。
+static func live_stale(updated: int, now: int) -> bool:
+	return updated <= 0 or now - updated > LIVE_STALE_SEC
+
+
+## 直播行 → 「正在打」卡: {id, t(开打时刻), l, r}(l/r 同 `games` 的形状)。新开打的在前。
+##   丢掉: 已结束的 / 断了的(`live_stale`) / 已经打完上了「最近对局」的(同一个 match_id)/ id 不是 uuid 的。
+static func live_games(rows: Array, finished_ids: Array, now: int) -> Array:
+	var out: Array = []
+	for r0 in rows:
+		if not (r0 is Dictionary):
+			continue
+		var r: Dictionary = r0
+		var id := str(r.get("match_id", ""))
+		if not SB.is_uuid(id) or finished_ids.has(id) or bool(r.get("ended", false)):
+			continue
+		if live_stale(iso_to_unix(str(r.get("updated_at", ""))), now):
+			continue
+		out.append({"id": id, "t": iso_to_unix(str(r.get("started_at", ""))),
+			"l": _side(r.get("lp", null), tag_of(r.get("lp", null)), r.get("la", null)),
+			"r": _side(r.get("rp", null), tag_of(r.get("rp", null)), r.get("ra", null))})
+	out.sort_custom(func(a, b) -> bool:
+		if int(a["t"]) != int(b["t"]):
+			return int(a["t"]) > int(b["t"])
+		return str(a["id"]) < str(b["id"]))
+	return out
+
+
+## 战绩榜标「直播」: 正在打的那一方(录像方 = 左边; 右边是对手快照, 不是人在打)。
+##   榜上还没有他(这周第一场还没打完)⇒ 补一行 0-0「在打」。改 `data` 本身, 补完重新排序。
+static func mark_live(data: Dictionary, live: Array, my_tag: String) -> void:
+	var on := {}
+	for g in live:
+		var tg := str((g as Dictionary)["l"].get("tag", ""))
+		if tg != "":
+			on[tg] = g["l"]
+	var players: Array = data.get("players", [])
+	for p in players:
+		(p as Dictionary)["live"] = on.has(str(p["tag"]))
+		on.erase(str(p["tag"]))
+	for tg in on:
+		var sd: Dictionary = on[tg]
+		players.append({"tag": str(tg), "name": str(sd.get("name", "?")), "avatar": str(sd.get("avatar", "")),
+			"w": 0, "l": 0, "state": P2C.GAUNTLET_RUNNING, "state_text": str(ST_TEXT["running"]),
+			"me": my_tag != "" and str(tg) == my_tag, "live": true})
+	players.sort_custom(_player_before)
+	data["players"] = players
 
 
 static func _player_before(a: Dictionary, b: Dictionary) -> bool:
@@ -136,11 +203,16 @@ static func _player_before(a: Dictionary, b: Dictionary) -> bool:
 	return str(a["tag"]) < str(b["tag"])
 
 
-static func _side(prof, tag: String) -> Dictionary:
+static func _side(prof, tag: String, leaders = null) -> Dictionary:
 	var av := ""
 	if prof is Dictionary:
 		av = str((prof as Dictionary).get("avatar", ""))
-	return {"tag": tag, "name": name_of(prof), "avatar": av}
+	var lu: Array = []
+	if leaders is Array:
+		for x in leaders:
+			if lu.size() < 3 and (x is String) and str(x) != "":
+				lu.append(str(x))
+	return {"tag": tag, "name": name_of(prof), "avatar": av, "lineup": lu}
 
 
 ## 取(或建)这个人的账。名字 / 头像取**最新**那一行的(改过名的人显示新名)。

@@ -16,12 +16,18 @@ extends Node
 ##      「返回战绩」⇒ 回战绩页; 存档逐字节不变 / GameState 还原
 ##   ⑤ 主菜单左栏有「战绩」入口(独立一格, ≥ 触控线), 点了真进战绩页
 ##   ⑥ 两侧单位栏不再有龟蛋那一格(分母: 场上真有蛋); 路名只有「上路 / 下路 / 决胜」
+##   ⑦ 2026-10-07 第二轮(用户「回放系统也是个问题呢」):
+##      · 战绩页每场一张对局卡; 「观看」只出在有录像的那一张(另造一条没录像的老记录当对照)
+##      · 写入侧记下对手(三统领 + 名字), 卡上右边写的就是那个名字
+##      · 回放时左上铭牌没了(不许有 ReplayPlate); 顶栏路名牌左边有「回放」小签
+##      · 进度条每道刻度下面有路名(上路 / 下路 / 终极), 个数 = 录像里开打的路数
 
 const SB := preload("res://scripts/net/supabase.gd")
 const RU := preload("res://scripts/systems/replay/replay_uploader.gd")
 const Backend := preload("res://scripts/net/backend.gd")
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const RC := preload("res://scripts/scenes/battle/replay_controls.gd")
+const ReplayFetcher := preload("res://scripts/systems/replay/replay_fetcher.gd")
 const MM := preload("res://scripts/scenes/MainMenuScene.gd")
 const RECORD_SCENE := "res://scenes/Record.tscn"
 const ME := "11111111-2222-4333-8444-555555555555"
@@ -93,6 +99,8 @@ func _ready() -> void:
 	if _id == "":
 		_finish()
 		return
+	## ⑦ 对照行: 一条没有录像、也没有对手信息的老记录(老存档长这样)。★在取基线之前加, 回放还原比的是含它的那一份。
+	(_gs.match_history as Array).append({"result": "lose", "lineup": ["basic", "stone"], "mode": "实时", "turn": 41, "ts": 1})
 	_gs.save()
 	var base := {"save": FileAccess.get_file_as_bytes(_gs.SAVE_PATH), "state": var_to_bytes(ReplayRecorder.capture_state()),
 		"hist": var_to_bytes(_gs.match_history)}
@@ -143,6 +151,16 @@ func _record() -> void:
 	_ok("① ★结算挂上了回放 id", SB.is_uuid(_id), _id)
 	_rec = ReplayRecorder.load_record(_id) if _id != "" else {}
 	_ok("① ★本机录像在、读得回来", not _rec.is_empty())
+	var _h0: Dictionary = _gs.match_history[0] if (_gs.match_history as Array).size() > hist0 else {}
+	var _gh: Dictionary = _gs.dual_ghost if _gs.dual_ghost is Dictionary else {}
+	var _want_foe: Array = []
+	for x in _gh.get("leaders", []):
+		if _want_foe.size() < 3:
+			_want_foe.append(str(x))
+	var _want_nm := str((_gh.get("profile", {}) as Dictionary).get("name", ""))
+	_ok("⑦ 分母: 对手快照有统领、有名字", not _want_foe.is_empty() and _want_nm != "", "%s %s" % [str(_want_foe), _want_nm])
+	_ok("⑦ ★战绩写下了对手三统领 + 名字(与顶栏同一出处)", _h0.get("foe", []) == _want_foe and str(_h0.get("foe_name", "")) == _want_nm,
+		"%s / %s" % [str(_h0.get("foe", [])), str(_h0.get("foe_name", ""))])
 	for h in _rec.get("cps", []):
 		if str(h) != ReplayRecorder.PLACE_CP:
 			_n_real_cp += 1
@@ -224,7 +242,28 @@ func _t_controls_and_card(base: Dictionary) -> void:
 	for b in rs.find_children("ReplayBtn", "Button", true, false):
 		if str((b as Button).get_meta("replay_id", "")) == _id:
 			btn = b
-	_ok("① ★战绩页那一行(积分赛)有「回放」", btn != null)
+	_ok("① ★战绩页那一场(积分赛)有「观看」", btn != null and btn.text == "观看", btn.text if btn != null else "")
+	## ⑦ 对局卡: 一场一张; 「观看」只在有录像的那张
+	var cards: Array = rs.find_children("RecordCard*", "", true, false)
+	var hist: Array = _gs.match_history
+	var want_btn := 0
+	var now: int = ReplayFetcher.P2C.now_utc()
+	for k in range(mini(20, hist.size())):
+		if ReplayFetcher.has_replay(hist[k], now):
+			want_btn += 1
+	var with_btn := 0
+	var bad := 0
+	for k in range(cards.size()):
+		var nb: int = (cards[k] as Node).find_children("ReplayBtn", "Button", true, false).size()
+		with_btn += 1 if nb > 0 else 0
+		if (nb > 0) != (k < hist.size() and ReplayFetcher.has_replay(hist[k], now)):
+			bad += 1
+	_ok("⑦ 分母: 卡数 = 记录数 %d, 其中有录像的 %d 张、没录像的 ≥1 张" % [hist.size(), want_btn],
+		cards.size() == mini(20, hist.size()) and want_btn >= 1 and want_btn < cards.size(), "卡 %d" % cards.size())
+	_ok("⑦ ★「观看」只出在有录像的卡上(逐张对)", bad == 0 and with_btn == want_btn, "错 %d / 有钮 %d" % [bad, with_btn])
+	var foe_l := (cards[0] as Node).find_child("FoeName", true, false) as Label if not cards.is_empty() else null
+	_ok("⑦ ★第一张卡右边写着对手名", foe_l != null and foe_l.text != "" and foe_l.text == str(hist[0].get("foe_name", "~")),
+		foe_l.text if foe_l != null else "<无>")
 	if btn == null:
 		return
 	btn.pressed.emit()
@@ -245,11 +284,27 @@ func _t_controls_and_card(base: Dictionary) -> void:
 	var spd := _named(bar, RC.N_SPEED) as Button
 	var ex := _named(bar, RC.N_EXIT) as Button
 	_ok("② 分母: 操作条上 暂停 / 倍速 / 退出回放 三颗钮都在", pb != null and spd != null and ex != null and ex.text == "退出回放")
-	_ok("② 铭牌写着现在打到哪一路", _named(bar, RC.N_LANE) != null and (_named(bar, RC.N_LANE) as Label).text == "上路战场",
-		(_named(bar, RC.N_LANE) as Label).text if _named(bar, RC.N_LANE) != null else "")
-	_ok("② 铭牌写着谁对谁(看自己的录像: 我 对 对手快照名)", _named(bar, RC.N_NAMES) != null
-		and (_named(bar, RC.N_NAMES) as Label).text.contains(str(((_rec["state"]["dual_ghost"] as Dictionary).get("profile", {}) as Dictionary).get("name", "~"))),
-		(_named(bar, RC.N_NAMES) as Label).text if _named(bar, RC.N_NAMES) != null else "")
+	## ⑦ 左上铭牌删了(与顶栏重复、压开场牌子); 「回放」改成顶栏路名牌旁边的小签。
+	_ok("⑦ ★回放时整个战斗场里没有 ReplayPlate", b.find_child("ReplayPlate", true, false) == null)
+	var mark := b.find_child("ReplayMark", true, false) as Control
+	_ok("⑦ ★顶栏路名牌旁边有「回放」小签(同一行、看得见)", mark != null and mark.is_visible_in_tree()
+		and str(mark.get_parent().name) == "LaneRow" and b._dl_hud != null and mark.get_parent() == b._dl_hud.get_parent().get_parent()
+		and (mark.find_children("*", "Label", true, false) as Array).size() == 1
+		and ((mark.find_children("*", "Label", true, false) as Array)[0] as Label).text == "回放")
+	_ok("② 顶栏计时牌写着现在打到哪一路", str(b._dl_hud.text).begins_with("上路战场"), str(b._dl_hud.text))
+	var tn := b.find_child("TopName_R", true, false) as Label
+	_ok("② 顶栏右边写着对手快照名(看自己的录像)", tn != null
+		and tn.text == str(((_rec["state"]["dual_ghost"] as Dictionary).get("profile", {}) as Dictionary).get("name", "~")),
+		tn.text if tn != null else "<无>")
+	## ⑦ 进度条刻度下的路名
+	var nf: int = mini(3, (b._replay.fight_steps() as Array).size())
+	var tl_txt: Array = []
+	for k in range(3):
+		var tl := _named(bar, RC.N_TICK_LBL + str(k)) as Label
+		if tl != null:
+			tl_txt.append(tl.text)
+	_ok("⑦ ★进度条每道刻度下面有路名(个数 = 开打的路数 %d ≥ 2)" % nf,
+		nf >= 2 and tl_txt == (["上路", "下路", "终极"] as Array).slice(0, nf), str(tl_txt))
 	_ok("② 时间读数「已播 / 全场」", _named(bar, RC.N_TIME) != null and (_named(bar, RC.N_TIME) as Label).text.contains(" / "))
 	if pb == null or spd == null:
 		return

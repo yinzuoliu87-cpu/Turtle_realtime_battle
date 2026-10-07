@@ -13,10 +13,23 @@ extends RefCounted
 ##   ③ 暂停时屏幕中间一块「已暂停」签牌
 ##   ④ 收尾卡: 谁赢了 + 双方 + 全场时长 · 「再看一遍」「返回」
 ##
+## ★★2026-10-07 第二轮(用户「回放系统也是个问题呢」, 新玩家实录 C:/tmp/newplayer/rp_sheet.jpg):
+##   ① 左上铭牌**删掉**: 它写的「上路战场 / A 对 B」与对局顶栏(两端名字 + VS 下面的路名计时牌)一字不差地重复,
+##      而且开场那块「三路开战 / 对阵」牌子出来时它正好压在牌子左上角。
+##      「这是回放」改成顶栏路名牌左边一枚小签「回放」(topbar_status `ReplayMark`)。
+##   ② 底部操作条放大(按钮 48→72 高, 条宽 52%→64% 视口), 进度条上每一路开打处的刻度下面写路名(上路 / 下路 / 终极),
+##      当前那一路的字点亮。参考: 部落冲突回放底栏(大按钮 + 长进度条)、皇室战争回放。
+##   ★点路名**不跳转**: ReplayRecorder 只能从第 0 步往前逐步重算(没有存档点, 没有 seek),
+##     做跳转等于另造一条「快进到第 N 步」的路径, 那是确定性风险(方案书 §已知风险)。
 ## ★只用现成的皮: 底板 = 战斗信息面板那块金属框(`SettleScreen.frame_style()`, 结算屏同一张),
 ##   按钮 = `UISkin.button()` 的签牌/木牌。不新增素材、不用圆角卡片/渐变/emoji。
 ## ★倍速与暂停不碰 sim: 只改 `ReplayRecorder.time_mult()`(一帧跑几步), 步长不变 ⇒ 校验点照样逐个比。
 ## ★放这里的理由(CLAUDE.md §5): 不在 `_sim_step` 调用链上 ⇒ 不进主文件; battle_hud 已近上限 ⇒ 单独一个文件。
+##
+## ★★2026-10-07 观赛(docs/plans/20261007-实时观赛.md, 用户「观赛和回放是两码事明白吗」):
+##   观赛(`ReplayRecorder.is_live()`: 周六直播 / 周日开播)**不建**操作条与「已暂停」签牌 ——
+##   没有暂停 / 倍速 / 进度条 / 全场时长; 只有左下角「退出」与底部一行状态(同步中 / 下路准备中)。
+##   收尾卡只揭晓谁赢 + 「返回」, 没有「再看一遍」(那是回放)。参考: 皇室战争观战(同一套 HUD + Live 小签, 无播放控制)。
 
 const SettleScreenS := preload("res://scripts/scenes/battle/settle_screen.gd")
 
@@ -24,8 +37,13 @@ const COL_GOLD := Color("#ffd93d")
 const COL_LOSS := Color("#ff6b6b")
 const COL_TEXT := Color("#e8f0f6")
 const COL_SUB := Color("#9fb3c8")
-const STRIP_H := 64.0
-const BTN_H := 48.0
+const STRIP_H := 112.0
+const BTN_H := 72.0
+## 进度条上路名的字(按开打顺序; 刻度只画录像里真有的那几路)。
+const TICK_NAMES := ["上路", "下路", "终极"]
+const TICK_LW := 48.0             # 一个路名占的宽(两字 18px + 余量), 挨得太近时往右推开
+const BAR_Y := 18.0               # 进度槽在 _track 里的 y
+const BAR_H := 8.0
 const CARD_DELAY := 1.2            # 最后一击落地后再出收尾卡(真实秒)
 
 ## 节点名 —— 门禁按名字找, 不按下标、不抄文案。
@@ -37,8 +55,11 @@ const N_BACK := "ReplayBack"
 const N_CARD := "ReplayEndCard"
 const N_PAUSED := "ReplayPausedTag"
 const N_TIME := "ReplayTime"
-const N_LANE := "ReplayLane"
-const N_NAMES := "ReplayNames"
+const N_TICK_LBL := "ReplayTickLabel"   # + 下标 0/1/2(上路/下路/终极)
+const N_LIVE_EXIT := "LiveExit"          # 观赛: 左下角「退出」
+const N_LIVE_STATUS := "LiveStatus"      # 观赛: 底部状态(同步中 / 下路准备中)
+const N_LIVE_SHADE := "LiveSyncShade"    # 观赛: 追帧时盖住战场的暗幕(追帧一帧 8 步, 幕布 / 演出叠成一团, 不给人看)
+const LIVE_BTN := Vector2(128.0, 60.0)
 
 var battle
 var root: Control = null           # 全屏、不吃点击; battle_hud._replay_bar 指向它
@@ -47,13 +68,16 @@ var pause_btn: Button = null
 var speed_btn: Button = null
 var exit_btn: Button = null
 var time_lb: Label = null
-var lane_lb: Label = null
-var names_lb: Label = null
+var tick_lbs: Array = []
 var paused_tag: Control = null
 var card: Control = null
 var _track: Control = null
 var _fill: ColorRect = null
 var _names: Dictionary = {}
+var live_exit: Button = null
+var live_status: PanelContainer = null
+var live_shade: ColorRect = null
+var _live_lb: Label = null
 
 
 func _init(b) -> void:
@@ -80,9 +104,15 @@ func build() -> Control:
 	battle.add_child(cl)
 	cl.add_child(root)
 	_names = ReplayRecorder.side_names(battle._replay.rec, ReplayRecorder.viewer_name)
-	_build_plate(m)
-	_build_strip(vp, m)
-	_build_paused_tag(vp)
+	## 对阵图那一场: 认不出谁是录像方(对手快照的名字对不上这一场的两个人)时, 收尾卡至少按对阵图上的顺序写出两个人。
+	var pair = ReplayRecorder.play_names.get("pair", [])
+	if str(_names.get("l", "")) == "" and str(_names.get("r", "")) == "" and pair is Array and (pair as Array).size() == 2:
+		_names = {"l": str(pair[0]), "r": str(pair[1])}
+	if battle._replay.is_live():
+		_build_live(vp, m)
+	else:
+		_build_strip(vp, m)
+		_build_paused_tag(vp)
 	var tm := Timer.new()
 	tm.wait_time = 0.1
 	tm.autostart = true
@@ -93,59 +123,24 @@ func build() -> Control:
 	return root
 
 
-# ─────────────────────────────── 左上铭牌 ───────────────────────────────
-
-func _build_plate(m: Vector4) -> void:
-	var pc := PanelContainer.new()
-	pc.name = "ReplayPlate"
-	pc.add_theme_stylebox_override("panel", _frame(16, 10))
-	pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pc.position = Vector2(m.x, m.y + 70.0)
-	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 2)
-	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pc.add_child(vb)
-	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 10)
-	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vb.add_child(top)
-	top.add_child(_lbl("回放", 20, COL_GOLD))
-	lane_lb = _lbl("", 18, COL_TEXT)
-	lane_lb.name = N_LANE
-	top.add_child(lane_lb)
-	var l := str(_names.get("l", ""))
-	var r := str(_names.get("r", ""))
-	## 对阵图那一场: 认不出谁是录像方(对手快照的名字对不上这一场的两个人)时, 至少按对阵图上的顺序写出两个人。
-	var pair = ReplayRecorder.play_names.get("pair", [])
-	if l == "" and r == "" and pair is Array and (pair as Array).size() == 2:
-		l = str(pair[0])
-		r = str(pair[1])
-		_names = {"l": l, "r": r}
-	if l != "" or r != "":
-		names_lb = _lbl("%s  对  %s" % [l if l != "" else "?", r if r != "" else "?"], 15, COL_SUB)
-		names_lb.name = N_NAMES
-		names_lb.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		names_lb.custom_minimum_size = Vector2(220, 0)
-		vb.add_child(names_lb)
-	root.add_child(pc)
-
-
 # ─────────────────────────────── 底部操作条 ───────────────────────────────
 
+## [暂停][倍速][进度条 + 路名][已播/全场][退出回放]。底板 = 结算屏同一张金属框, 按钮 = 大木牌(短边 72 ≥ 56 ⇒ frame-rect)。
 func _build_strip(vp: Vector2, m: Vector4) -> void:
 	strip = PanelContainer.new()
 	strip.name = "ReplayStrip"
-	strip.add_theme_stylebox_override("panel", _frame(18, 8))
+	strip.add_theme_stylebox_override("panel", _frame(26, 20))
 	strip.mouse_filter = Control.MOUSE_FILTER_STOP     # 点在条上不穿到战场
-	var w: float = clampf(vp.x * 0.52, 600.0, 780.0)
+	var w: float = clampf(vp.x * 0.64, 820.0, 1060.0)
+	w = minf(w, vp.x - m.x - m.z)
 	strip.custom_minimum_size = Vector2(w, STRIP_H)
 	strip.size = Vector2(w, STRIP_H)
-	strip.position = Vector2((vp.x - w) * 0.5, vp.y - m.w - STRIP_H + 6.0)
+	strip.position = Vector2((vp.x - w) * 0.5, vp.y - m.w - STRIP_H + 8.0)
 	var hb := HBoxContainer.new()
-	hb.add_theme_constant_override("separation", 12)
+	hb.add_theme_constant_override("separation", 14)
 	hb.alignment = BoxContainer.ALIGNMENT_CENTER
 	strip.add_child(hb)
-	pause_btn = _btn("暂停", 92.0, Color.WHITE)
+	pause_btn = _btn("暂停", 112.0, Color.WHITE)
 	pause_btn.name = N_PAUSE
 	var sc := Shortcut.new()
 	var ev := InputEventKey.new()
@@ -155,22 +150,22 @@ func _build_strip(vp: Vector2, m: Vector4) -> void:
 	pause_btn.shortcut_in_tooltip = false
 	pause_btn.pressed.connect(toggle_pause)
 	hb.add_child(pause_btn)
-	speed_btn = _btn("", 104.0, Color.WHITE)
+	speed_btn = _btn("", 128.0, Color.WHITE)
 	speed_btn.name = N_SPEED
 	speed_btn.pressed.connect(cycle_speed)
 	hb.add_child(speed_btn)
-	## 进度条: 深色槽 + 金色填充 + 每一路开打处一道刻度。
+	## 进度条: 深色槽 + 金色填充 + 每一路开打处一道刻度, 刻度下面写路名。
 	_track = Control.new()
 	_track.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_track.custom_minimum_size = Vector2(120, BTN_H)
+	_track.custom_minimum_size = Vector2(160, BTN_H)
 	_track.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hb.add_child(_track)
-	time_lb = _lbl("", 16, COL_TEXT)
+	time_lb = _lbl("", 20, COL_TEXT)
 	time_lb.name = N_TIME
-	time_lb.custom_minimum_size = Vector2(96, 0)
+	time_lb.custom_minimum_size = Vector2(118, 0)
 	time_lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hb.add_child(time_lb)
-	exit_btn = _btn("退出回放", 120.0, Color(0.80, 0.84, 0.90))
+	exit_btn = _btn("退出回放", 150.0, Color(0.80, 0.84, 0.90))
 	exit_btn.name = N_EXIT
 	exit_btn.pressed.connect(battle._hud._replay_exit)
 	hb.add_child(exit_btn)
@@ -183,30 +178,106 @@ func _layout_track() -> void:
 	if _track == null or not is_instance_valid(_track):
 		return
 	for c in _track.get_children():
+		_track.remove_child(c)       # 先摘下再释放: 新建的路名才拿得到原名(门禁按名字找)
 		c.queue_free()
+	tick_lbs.clear()
 	var w := _track.size.x
-	var y := _track.size.y * 0.5 - 3.0
+	var y := BAR_Y
+	## 槽: 暗底 + 上沿 1px 暗线 / 下沿 1px 亮线(像素凹槽), 不是圆角进度条。
 	var bg := ColorRect.new()
-	bg.color = Color(0.02, 0.03, 0.05, 0.9)
+	bg.color = Color(0.02, 0.03, 0.05, 0.95)
 	bg.position = Vector2(0, y)
-	bg.size = Vector2(w, 6)
+	bg.size = Vector2(w, BAR_H)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_track.add_child(bg)
+	var lip := ColorRect.new()
+	lip.color = Color(0.45, 0.55, 0.68, 0.55)
+	lip.position = Vector2(0, y + BAR_H)
+	lip.size = Vector2(w, 1)
+	lip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_track.add_child(lip)
 	_fill = ColorRect.new()
 	_fill.color = COL_GOLD
 	_fill.position = Vector2(0, y)
-	_fill.size = Vector2(0, 6)
+	_fill.size = Vector2(0, BAR_H)
 	_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_track.add_child(_fill)
 	var tot := float(maxi(1, battle._replay.total_steps()))
-	for s in battle._replay.fight_steps():
+	var fs: Array = battle._replay.fight_steps()
+	var prev_x := -INF
+	for i in range(fs.size()):
+		var x: float = roundf(w * clampf(float(fs[i]) / tot, 0.0, 1.0))
 		var tk := ColorRect.new()
-		tk.color = Color(0.85, 0.92, 1.0, 0.85)
-		tk.position = Vector2(roundf(w * clampf(float(s) / tot, 0.0, 1.0)) - 1.0, y - 5.0)
-		tk.size = Vector2(2, 16)
+		tk.color = Color(0.85, 0.92, 1.0, 0.9)
+		tk.position = Vector2(x - 1.0, y - 6.0)
+		tk.size = Vector2(2, BAR_H + 12.0)
 		tk.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_track.add_child(tk)
+		if i >= TICK_NAMES.size():
+			continue
+		## 路名: 以刻度为中心; 挨得太近就往右推开一个字宽, 两端不出槽。
+		var lx: float = maxf(x - TICK_LW * 0.5, prev_x + TICK_LW)
+		lx = clampf(lx, 0.0, maxf(0.0, w - TICK_LW))
+		prev_x = lx
+		var lb := _lbl(str(TICK_NAMES[i]), 18, COL_SUB, HORIZONTAL_ALIGNMENT_CENTER)
+		lb.name = N_TICK_LBL + str(i)
+		lb.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+		lb.add_theme_constant_override("outline_size", 4)
+		lb.position = Vector2(lx, y + BAR_H + 8.0)
+		lb.size = Vector2(TICK_LW, 24)
+		_track.add_child(lb)
+		tick_lbs.append(lb)
 	refresh()
+
+
+## 观赛: 左下角一颗「退出」+ 底部正中一块状态牌(平时藏着)。没有任何播放控制。
+func _build_live(vp: Vector2, m: Vector4) -> void:
+	## 追帧暗幕先建(加入顺序 = 绘制顺序): 状态牌与「退出」画在它上面。
+	live_shade = ColorRect.new()
+	live_shade.name = N_LIVE_SHADE
+	live_shade.color = Color(0.02, 0.03, 0.06, 0.92)
+	live_shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	live_shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	live_shade.visible = false
+	root.add_child(live_shade)
+	live_exit = _btn("退出", LIVE_BTN.x, Color(0.80, 0.84, 0.90))
+	live_exit.name = N_LIVE_EXIT
+	live_exit.custom_minimum_size = LIVE_BTN
+	live_exit.size = LIVE_BTN
+	live_exit.position = Vector2(m.x, vp.y - m.w - LIVE_BTN.y)
+	live_exit.pressed.connect(battle._hud._replay_exit)
+	root.add_child(live_exit)
+	live_status = PanelContainer.new()
+	live_status.name = N_LIVE_STATUS
+	live_status.add_theme_stylebox_override("panel", _frame(26, 10))
+	live_status.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_live_lb = _lbl("", 24, COL_GOLD, HORIZONTAL_ALIGNMENT_CENTER)
+	live_status.add_child(_live_lb)
+	live_status.visible = false
+	root.add_child(live_status)
+
+
+func _sync_live() -> void:
+	if live_status == null or not is_instance_valid(live_status):
+		return
+	var lv = battle._replay.live
+	var t: String = str(lv.status) if lv != null and not bool(lv.broken) else ""
+	live_status.visible = t != "" and card == null
+	## 追帧中(一帧 8 步): 整屏暗幕 + 正中「同步中」; 平时: 底部正中一块小牌(下路准备中 / 卡在 horizon 上等数据)。
+	var shade: bool = lv != null and bool(lv.catching) and t != "" and card == null
+	if live_shade != null:
+		live_shade.visible = shade
+	if _live_lb.text != t:
+		_live_lb.text = t
+		live_status.reset_size()
+	var vp := _vp()
+	var m: Vector4 = SafeArea.margins(vp, 18.0)
+	var sz := live_status.get_combined_minimum_size()
+	live_status.size = sz
+	if shade:
+		live_status.position = Vector2((vp.x - sz.x) * 0.5, (vp.y - sz.y) * 0.5)
+	else:
+		live_status.position = Vector2((vp.x - sz.x) * 0.5, vp.y - m.w - sz.y - 6.0)
 
 
 func _build_paused_tag(vp: Vector2) -> void:
@@ -247,6 +318,9 @@ func refresh() -> void:
 	if root == null or not is_instance_valid(root):
 		return
 	var rp = battle._replay
+	if rp.is_live():
+		_sync_live()
+		return
 	if pause_btn != null:
 		pause_btn.text = "继续" if rp.paused else "暂停"
 	if speed_btn != null:
@@ -259,9 +333,17 @@ func refresh() -> void:
 		time_lb.text = "%s / %s" % [clock(cur), clock(tot)] if tot > 0 else clock(cur)
 	if _fill != null and is_instance_valid(_fill) and _track != null and tot > 0:
 		_fill.size.x = _track.size.x * clampf(float(cur) / float(tot), 0.0, 1.0)
-	if lane_lb != null:
-		var ln := str(GameState.current_lane) if GameState != null and GameState.current_lane != null else ""
-		lane_lb.text = str(battle._LANE_CN.get(ln, ""))   # 路名唯一出处
+	## 路名: 正在打的那一路点亮(金), 打过的白, 没到的暗。
+	var ln := str(GameState.current_lane) if GameState != null and GameState.current_lane != null else ""
+	var cur_i: int = ["top", "bottom", "final"].find(ln)
+	if ln == "done":
+		cur_i = TICK_NAMES.size()
+	for i in range(tick_lbs.size()):
+		var lb = tick_lbs[i]
+		if lb == null or not is_instance_valid(lb):
+			continue
+		var c: Color = COL_GOLD if i == cur_i else (COL_TEXT if i < cur_i else Color(0.50, 0.58, 0.68))
+		(lb as Label).add_theme_color_override("font_color", c)
 
 
 # ─────────────────────────────── 收尾 ───────────────────────────────
@@ -270,7 +352,10 @@ func refresh() -> void:
 func show_end(won: bool) -> void:
 	if root == null or not is_instance_valid(root):
 		return
-	strip.visible = false
+	if strip != null:
+		strip.visible = false
+	if live_status != null:
+		live_status.visible = false
 	if paused_tag != null:
 		paused_tag.visible = false
 	var tm := Timer.new()
@@ -286,7 +371,17 @@ func show_end(won: bool) -> void:
 func show_mismatch() -> void:
 	if root == null or not is_instance_valid(root):
 		return
-	strip.visible = false
+	if strip != null:
+		strip.visible = false
+	_end_card(false, true)
+
+
+## 观赛中断(打的人断线 / 数据对不上): 当场出卡, 只有「返回」。
+func show_broken() -> void:
+	if root == null or not is_instance_valid(root):
+		return
+	if live_status != null:
+		live_status.visible = false
 	_end_card(false, true)
 
 
@@ -295,6 +390,10 @@ func _end_card(won: bool, broken: bool) -> void:
 		return
 	if battle._dmg_stats != null and battle._dmg_stats.panel != null and is_instance_valid(battle._dmg_stats.panel):
 		battle._dmg_stats.panel.visible = false
+	if live_exit != null:
+		live_exit.visible = false          # 收尾卡上有「返回」, 左下角那颗不再留着
+	if live_shade != null:
+		live_shade.visible = false
 	var dim := ColorRect.new()
 	dim.name = N_CARD
 	dim.color = Color(0, 0, 0, 0.55)
@@ -316,8 +415,11 @@ func _end_card(won: bool, broken: bool) -> void:
 	pc.add_child(vb)
 	var title: String
 	var col: Color
+	var lv = battle._replay.live if battle._replay.is_live() else null
 	if broken:
 		title = "回放中断"
+		if lv != null:
+			title = str(lv.broken_why) if str(lv.broken_why) != "" else lv.TXT_BROKEN
 		col = COL_LOSS
 	else:
 		title = ReplayRecorder.end_caption(won)
@@ -328,14 +430,14 @@ func _end_card(won: bool, broken: bool) -> void:
 	vb.add_child(tl)
 	var sub := ""
 	if broken:
-		sub = "这场回放出了点问题，没法继续往下播"
+		sub = "回放异常，无法继续播放" if lv == null else ""
 	else:
 		var l := str(_names.get("l", ""))
 		var r := str(_names.get("r", ""))
 		if l != "" and r != "":
 			sub = "%s  对  %s" % [l, r]
 		var tot: int = battle._replay.total_steps()
-		if tot > 0:
+		if tot > 0 and lv == null:       # 观赛不报全场时长
 			sub += ("  ·  " if sub != "" else "") + "全场 " + clock(tot)
 	if sub != "":
 		vb.add_child(_lbl(sub, 20, COL_SUB, HORIZONTAL_ALIGNMENT_CENTER))
@@ -343,7 +445,7 @@ func _end_card(won: bool, broken: bool) -> void:
 	hb.alignment = BoxContainer.ALIGNMENT_CENTER
 	hb.add_theme_constant_override("separation", 18)
 	vb.add_child(hb)
-	if not broken:
+	if not broken and lv == null:          # 「再看一遍」只有回放有
 		var ag := Button.new()
 		ag.name = N_AGAIN
 		ag.text = "再看一遍"
@@ -388,7 +490,7 @@ func _btn(t: String, w: float, tint: Color) -> Button:
 	b.focus_mode = Control.FOCUS_NONE
 	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	b.process_mode = Node.PROCESS_MODE_ALWAYS
-	b.add_theme_font_size_override("font_size", 18)
+	b.add_theme_font_size_override("font_size", 22)
 	UISkin.button(b, tint)
 	for s in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
 		b.add_theme_color_override(s, COL_TEXT)

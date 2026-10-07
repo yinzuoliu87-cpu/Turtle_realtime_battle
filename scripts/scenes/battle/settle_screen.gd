@@ -60,7 +60,7 @@ const PAGE_NAMES := ["战果", "我方", "敌方"]
 const COLS := ["造成总伤害", "造成物理伤害", "造成魔法伤害", "受到伤害", "治疗", "护盾", "击杀数"]
 ## 表底「下面还有几只」—— 只有召唤物多到一页放不下时才出现(见 `_refresh_more`)。
 ## ★抽成常量: 门禁拿同一份格式串算「屏上该写的那句」, 不在测试里抄第二份。
-const MORE_FMT := "▼ 还有 %d 只在下面 · 可上下滑动"
+const MORE_FMT := "▼ 另有 %d 个单位"
 
 const COL_GOLD := Color("#ffd93d")
 const COL_LOSS := Color("#ff6b6b")
@@ -384,7 +384,7 @@ func _page_team(team: int, title: String, hc: Color, views: Array, side: String)
 		holder.add_child(g)
 		(_grids[team] as Array).append(g)
 	if views.is_empty():
-		holder.add_child(_lbl("这一场没有留下战报", F_SUB, COL_DIM, HORIZONTAL_ALIGNMENT_CENTER))
+		holder.add_child(_lbl("暂无战报", F_SUB, COL_DIM, HORIZONTAL_ALIGNMENT_CENTER))
 	## 溢出与否变了 / 玩家滑了 / 重排了 ⇒ 重写「还有 N 只」。包 call_deferred: 信号在排版中途发。
 	var bar := sc.get_v_scroll_bar()
 	bar.changed.connect(func() -> void: _refresh_more.call_deferred())

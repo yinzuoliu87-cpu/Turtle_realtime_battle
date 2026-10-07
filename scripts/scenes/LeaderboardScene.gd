@@ -164,10 +164,10 @@ const COL_RANK := "#7f93a6"
 ##   · OFF     没配后端 ⇒ **一句承诺都不给, 也不挂"离线"角标**
 ##     (`SettingsScene.gd:103` / `remote_pool.gd:182`: 常驻的"离线"标记是反的 ——
 ##      它等于告诉玩家"你是残缺状态, 去修"。所以这一档只陈述事实, 不解释原因。)
-const HINT_ONLY_YOU_OK := "（榜上暂时只有你 —— 打完一场, 对手就会上来）"
-const HINT_ONLY_YOU_FAIL := "（连不上服务器 · 对手还没读到 —— 下一场开始时会自己再试）"
-const HINT_ONLY_YOU_UNKNOWN := "（对手还没读到 —— 下一场开始时去取一次）"
-const HINT_ONLY_YOU_OFF := "（榜上暂时只有你）"
+const HINT_ONLY_YOU_OK := "（暂无其他玩家 · 对战后更新）"
+const HINT_ONLY_YOU_FAIL := "（无法连接服务器）"
+const HINT_ONLY_YOU_UNKNOWN := "（暂无对手数据）"
+const HINT_ONLY_YOU_OFF := "（暂无其他玩家）"
 
 ## ═══ 数据从哪来 (2026-10-06 · 60 人实操严重项 A2) ═══
 ##
@@ -180,7 +180,7 @@ const HINT_ONLY_YOU_OFF := "（榜上暂时只有你）"
 const SRC_SERVER := "server"
 const SRC_LOCAL := "local"
 const SRC_LOADING := "loading"
-const FALLBACK_MARK := "本机记录 · 不是实时排名"
+const FALLBACK_MARK := "本地记录 · 非实时排名"
 const LOADING_TEXT := "正在读取本周排行…"
 const SB := preload("res://scripts/net/supabase.gd")
 ## 当前画的是哪一路 / 哪几行(门禁读它当分母; 屏幕上的字才是判据)。
@@ -317,8 +317,8 @@ static func row_mark(phase: String, wins: int, srv_title: String, fin: Dictionar
 		_P2C.PHASE_REST:
 			return str(_P2C.TITLE_LABEL.get(fid, "")) if fid != "" else ""
 		_P2C.PHASE_FINALS:
-			if bool(fin.get("closed", false)) and (fid == _P2C.TITLE_CHAMPION
-					or fid == _P2C.TITLE_RUNNER_UP or fid == _P2C.TITLE_SEMIFINAL):
+			if bool(fin.get("closed", false)) and fid in [_P2C.TITLE_CHAMPION,
+					_P2C.TITLE_RUNNER_UP, _P2C.TITLE_SEMIFINAL, _P2C.TITLE_GROUP_CHAMPION]:
 				return str(_P2C.TITLE_LABEL[fid])
 			return MARK_PROMOTED if wins >= _P2C.PROMOTE_WINS else ""
 		_P2C.PHASE_GAUNTLET:
@@ -326,10 +326,15 @@ static func row_mark(phase: String, wins: int, srv_title: String, fin: Dictionar
 	return ""
 
 
-## `finals_week_view` 的组(`SupabaseNet.parse_finals_week` 的 buckets) → account_id → {"id", "closed"}。
-## ★推导走 `Bracket.my_progress` / `semifinal_reached` —— 与主菜单给自己发头衔的那条链同一套。
-static func finals_titles(buckets: Array) -> Dictionary:
+## `finals_week_view` 的组(`SupabaseNet.parse_finals_week` 的 buckets) + 冠军杯赛那一张(`cup`)
+##   → account_id → {"id", "closed"}。
+## ★推导走 `Bracket.my_progress` / `semifinal_reached` —— 与主菜单给自己发头衔的那条链同一套
+##   (`GameState.sync_titles`): 小组赛赢下 = 组冠军(1 人组也算, 不设门槛); 冠军 / 亚军 / 四强从冠军杯赛来;
+##   冠军杯赛只有 1 人 ⇒ 他是冠军, 没有亚军 / 四强。
+static func finals_titles(buckets: Array, cup: Dictionary = {}) -> Dictionary:
 	var out: Dictionary = {}
+	var cn := int(cup.get("size", 0))
+	var caccs: Array = cup.get("accs", []) if cup.get("accs", []) is Array else []
 	for b in buckets:
 		if not (b is Dictionary):
 			continue
@@ -337,22 +342,36 @@ static func finals_titles(buckets: Array) -> Dictionary:
 		var n := int(bd.get("size", 0))
 		var accs: Array = bd.get("accs", []) if bd.get("accs", []) is Array else []
 		var done: Dictionary = bd.get("done", {}) if bd.get("done", {}) is Dictionary else {}
-		if n <= 1:
+		if n < 1:
 			continue
-		var total: int = _BR.rounds_for(n)
+		var gc := _BR.champion_seed(n, done)
 		for sd in range(mini(n, accs.size())):
 			var acc := str(accs[sd])
 			if acc == "":
 				continue
-			var pr: Dictionary = _BR.my_progress(sd, n, done)
-			var tid := _P2C.TITLE_FINALS_DAY
+			var tid := _P2C.TITLE_GROUP_CHAMPION if sd == gc else _P2C.TITLE_FINALS_DAY
+			out[acc] = {"id": tid, "closed": bool(bd.get("closed", false))}
+	## 冠军杯赛 1 人表: 他直接是冠军。
+	if cn == 1 and not caccs.is_empty() and str(caccs[0]) != "":
+		out[str(caccs[0])] = {"id": _P2C.TITLE_CHAMPION, "closed": bool(cup.get("closed", false))}
+	## 冠军杯赛(两人及以上): 冠军 / 亚军 / 四强盖过小组赛那一档(组冠军)。
+	if cn >= 2:
+		var cdone: Dictionary = cup.get("done", {}) if cup.get("done", {}) is Dictionary else {}
+		var ctotal: int = _BR.rounds_for(cn)
+		for sd in range(mini(cn, caccs.size())):
+			var acc := str(caccs[sd])
+			if acc == "":
+				continue
+			var pr: Dictionary = _BR.my_progress(sd, cn, cdone)
+			var tid := ""
 			if bool(pr.get("champion", false)):
 				tid = _P2C.TITLE_CHAMPION
 			elif bool(pr.get("runner_up", false)):
 				tid = _P2C.TITLE_RUNNER_UP
-			elif _BR.semifinal_reached(int(pr.get("deepest", 0)), total):
+			elif _BR.semifinal_reached(int(pr.get("deepest", 0)), ctotal):
 				tid = _P2C.TITLE_SEMIFINAL
-			out[acc] = {"id": tid, "closed": bool(bd.get("closed", false))}
+			if tid != "":
+				out[acc] = {"id": tid, "closed": bool(cup.get("closed", false))}
 	return out
 
 
@@ -397,7 +416,8 @@ func _on_finals_week(res: Dictionary) -> void:
 	if not (res.get("buckets", null) is Array):
 		print("[LB] 决赛头衔没拿到(%s) ⇒ 不挂头衔" % str(res.get("reason", "?")))
 		return
-	_fin_titles = finals_titles(res["buckets"] as Array)
+	_fin_titles = finals_titles(res["buckets"] as Array,
+		res.get("cup", {}) if res.get("cup", {}) is Dictionary else {})
 	if source == SRC_SERVER or source == SRC_LOCAL:
 		_render(shown_rows, source, _last_total)
 

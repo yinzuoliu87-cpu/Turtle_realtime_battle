@@ -132,6 +132,93 @@ static func button(b: Button, tint: Color = Color.WHITE, margin: int = 7) -> voi
 		b.add_theme_stylebox_override(str(st[0]), sb)
 
 
+## ══════════════════════════════════════════════════════════════════════
+##  像素按钮皮(周末页 / 战绩页)—— 2026-10-07
+## ══════════════════════════════════════════════════════════════════════
+## 用户 2026-10-07 看周日对阵图:「按钮框能不能换一种呢，这不适合我们啊」「参考别的游戏，别看仓库的」。
+## 木牌(`frame-rect`)是主菜单擂台那一套暖色; 对阵图 / 赛况板 / 战绩页是深海军蓝 + 青色细边,
+## 木牌压在上面就是两套世界。参考见 `docs/plans/ref/20261007-按钮参考/`(README 写了每张取什么):
+##   主操作 = 1/2/8(indieklem 像素按钮四态 · 元气骑士实心按钮): 实心色块 + 顶 1px 亮线 + 底 3px 深色厚度
+##            + 1px 深描边切角; 悬停 = 提亮; 按下 = 厚度变 1px、整体下移; 焦点 = 外圈亮描边。
+##   页签   = 5/6(Children of Morta): 深底细边; 选中 = 青边 + 青色底杠。
+## ★素材 `ui/pixel-btn.png` 是一张表(一格 40x36 = 逻辑 20x18 × 2 倍最近邻):
+##   一个逻辑像素 = 屏上 2px, 与弹窗金属框 / 对阵图格子的像素格同一个尺度。
+##   行: 红 / 金 / 石板 / 禁用 / 页签; 列: 常态 / 悬停 / 按下 / 焦点圈(页签行: 未选 / 未选悬停 / 选中 / 选中悬停)。
+## ★为什么不像 `button()` 那样一张中性图 modulate 出状态: modulate 会把**深描边和底厚度一起染色**,
+##   像素按钮的明暗关系就靠这三档色(亮线 / 本体 / 厚度)立住 ⇒ 每档单独画。
+## ★九宫格边带: 左右 6 / 上 8 / 下 12(px), 最小可用尺寸 12x20 —— 这三屏最小的页签 132x81 远大于它。
+## ⚠ 只给这几屏用; 全局 `button()` 不动(主菜单 / 商店 / 背包是擂台木牌那一套)。
+const PIXEL_BTN := "res://assets/sprites/ui/pixel-btn.png"
+const PX_CELL := Vector2(40.0, 36.0)
+const PX_RED := "red"        # 观赛 / 直播(与「直播」「开播」小签同一种红)
+const PX_GOLD := "gold"      # 观看 / 回放 / 开始对战
+const PX_SLATE := "slate"    # 关闭 / 上一组 / 下一组 / 我的位置
+const _PX_ROW := {"red": 0, "gold": 1, "slate": 2}
+const _PX_ROW_DISABLED := 3
+const _PX_ROW_TAB := 4
+## 字色 / 描边色。金底亮, 白字压不住 ⇒ 深棕字、不描边(描边色不分状态, 浅金描边落到禁用的灰底上就是一圈黄晕);
+## 红底白字深红描边; 石板白字近黑描边。描边色 a=0 ⇒ 不描边。
+const _PX_FONT := {
+	"red": [Color("#fff4ee"), Color("#4a0f0b")],
+	"gold": [Color("#2e1a00"), Color(0, 0, 0, 0)],
+	"slate": [Color("#e8f0f6"), Color("#0a0d16")],
+}
+
+
+## 表里的一格 → StyleBoxTexture。贴图不在就返回 null(调用方保持原样)。
+static func _px_cell(row: int, col: int, pressed: bool = false) -> StyleBoxTexture:
+	if not ResourceLoader.exists(PIXEL_BTN):
+		return null
+	var sb := StyleBoxTexture.new()
+	sb.texture = load(PIXEL_BTN)
+	sb.region_rect = Rect2(col * PX_CELL.x, row * PX_CELL.y, PX_CELL.x, PX_CELL.y)
+	sb.texture_margin_left = 6; sb.texture_margin_right = 6
+	sb.texture_margin_top = 8; sb.texture_margin_bottom = 12
+	sb.content_margin_left = 12; sb.content_margin_right = 12
+	## 字落在本体的视觉中心(底下 6px 是厚度); 按下时厚度剩 2px、整体下移 2px, 字跟着下移 2px。
+	sb.content_margin_top = 8 if pressed else 6
+	sb.content_margin_bottom = 10 if pressed else 12
+	return sb
+
+
+## 像素按钮(实心色块)。`accent` = PX_RED / PX_GOLD / PX_SLATE。
+static func pixel_button(b: Button, accent: String = PX_SLATE, outline: int = 4) -> void:
+	var row: int = int(_PX_ROW.get(accent, 2))
+	var styles := {
+		"normal": _px_cell(row, 0), "hover": _px_cell(row, 1), "pressed": _px_cell(row, 2, true),
+		"focus": _px_cell(row, 3), "disabled": _px_cell(_PX_ROW_DISABLED, 0),
+	}
+	if styles["normal"] == null:
+		return
+	for k in styles:
+		b.add_theme_stylebox_override(str(k), styles[k])
+	var fc: Array = _PX_FONT.get(accent, _PX_FONT["slate"])
+	for s in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
+		b.add_theme_color_override(s, fc[0])
+	b.add_theme_color_override("font_disabled_color", Color("#8a909a"))
+	b.add_theme_color_override("font_outline_color", fc[1])
+	b.add_theme_constant_override("outline_size", outline if (fc[1] as Color).a > 0.0 else 0)
+
+
+## 像素页签(深底细边)。`on` = 选中: 青边 + 青色底杠 + 亮字; 未选: 暗边暗字。切换选中时再调一次。
+static func pixel_tab(b: Button, on: bool) -> void:
+	var c0 := 2 if on else 0
+	var styles := {
+		"normal": _px_cell(_PX_ROW_TAB, c0), "hover": _px_cell(_PX_ROW_TAB, c0 + 1),
+		"pressed": _px_cell(_PX_ROW_TAB, 2), "focus": StyleBoxEmpty.new(),
+		"disabled": _px_cell(_PX_ROW_TAB, 0),
+	}
+	if styles["normal"] == null:
+		return
+	for k in styles:
+		b.add_theme_stylebox_override(str(k), styles[k])
+	var fc := Color("#e8fff8") if on else Color("#8fa0b6")
+	for s in ["font_color", "font_focus_color", "font_hover_pressed_color", "font_pressed_color"]:
+		b.add_theme_color_override(s, fc)
+	b.add_theme_color_override("font_hover_color", Color("#ffffff") if on else Color("#c4d2e2"))
+	b.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+
+
 ## 把一个"状态边框色"折算成适合 modulate 的色调。
 ##
 ## 调用方原来传的是 `border_color`(黄=选中 / 紫=道具 / 深灰=空)。直接拿它 modulate 会过饱和,

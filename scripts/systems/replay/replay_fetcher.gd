@@ -31,19 +31,19 @@ const PURGE_AFTER_MONDAY_SEC := 86400
 ## ★"unplayable" 没有固定文案: 用 `ReplayRecorder.play` 自己给的原因(版本不同 / 格式不认识),
 ##   版本闸只有那一处判据, 文案也只出自那一处。
 const MSG := {
-	"no_backend": "这个版本没接服务器，只能看在这台设备上打的比赛",
-	"no_token": "账号还没连上服务器，检查一下网络再试",
-	"offline": "连不上服务器，检查一下网络再试",
-	"server": "服务器这会儿出了点问题（%d），稍后再试",
-	"missing": "服务器上找不到这场回放（每周二清掉上周的回放）",
-	"corrupt": "这场回放的数据坏了，播不了",
-	"timeout": "等了太久服务器都没回音，稍后再试",
+	"no_backend": "当前版本仅支持本地回放",
+	"no_token": "账号未连接，请检查网络",
+	"offline": "无法连接服务器，请检查网络",
+	"server": "服务器异常（%d），请稍后重试",
+	"missing": "回放不存在（每周二清理上周回放）",
+	"corrupt": "回放数据损坏",
+	"timeout": "请求超时，请稍后重试",
 	## 周日对阵图(周末看回放 2026-10-04): 服务端 `finals_replay()` 的原因码
-	"unavailable": "这场的回放还没开放",
-	"not_revealed": "这一场还没揭晓，揭晓之后再来看",
-	"no_result": "这一场还没有结果",
-	"no_replay": "这一场没有留下回放",
-	"no_bucket": "这一组已经不在了",
+	"unavailable": "回放暂不可用",
+	"not_revealed": "结果未公布",
+	"no_result": "暂无结果",
+	"no_replay": "暂无回放",
+	"no_bucket": "分组已失效",
 }
 
 

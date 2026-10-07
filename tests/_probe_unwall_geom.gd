@@ -149,7 +149,7 @@ func _walk_labels(n: Node, out: Array) -> void:
 
 func _is_status(_c: Node, t: String) -> bool:
 	## 页脚那一行是状态机画的步骤提示 —— 认它的原话(产品里就这一句)。
-	return t.find("填邮箱") >= 0 and t.find("发验证码") >= 0
+	return t.find("输入邮箱并完成验证") >= 0
 
 
 func _count_edits(hot: Array) -> int:

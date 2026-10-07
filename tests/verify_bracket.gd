@@ -50,6 +50,7 @@ func _ready() -> void:
 	_t_byes()
 	_t_small()
 	_t_occupant()
+	_t_cup()
 	print("")
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 单败对阵图" if _fail == 0 else "FAIL x%d" % _fail)
@@ -61,39 +62,57 @@ func _ready() -> void:
 # ─────────────────────────────────────────────────────────────
 func _t_bucket_split() -> void:
 	print("── ① 切桶 ──")
-	## U3 逐字: >16 → 32 人桶; ≤16 → 16 人桶, 再少依次减半(8 / 4)
-	_ok("① 17 人 → 32 人桶", B.bucket_size_for(17) == 32, "%d" % B.bucket_size_for(17))
-	_ok("① 16 人 → 16 人桶", B.bucket_size_for(16) == 16, "%d" % B.bucket_size_for(16))
-	_ok("① 9 人 → 16 人桶", B.bucket_size_for(9) == 16, "%d" % B.bucket_size_for(9))
-	_ok("① 8 人 → 8 人桶", B.bucket_size_for(8) == 8, "%d" % B.bucket_size_for(8))
-	_ok("① 5 人 → 8 人桶", B.bucket_size_for(5) == 8, "%d" % B.bucket_size_for(5))
-	_ok("① 4 人 → 4 人桶", B.bucket_size_for(4) == 4, "%d" % B.bucket_size_for(4))
-	_ok("① ★3 人不再减半(1 人桶不是比赛)", B.bucket_size_for(3) == 3, "%d" % B.bucket_size_for(3))
-	_ok("① ★2 人同理", B.bucket_size_for(2) == 2, "%d" % B.bucket_size_for(2))
+	## ★★2026-10-07 用户改规则: 「仔细思考，人少的时候桶能不能就1，2个人打出杯赛参赛者，然后多人开始在9点打杯赛？」
+	##   「8 人或更少时直接杯赛，不用门槛」⇒ 每组 s = {1,2,4,8,16,32} 里最小、使组数 ⌈N/s⌉ ≤ 8; 32 封顶。
+	##   期望值**写死**(主会话给的例子), 不拿公式再算一遍。
+	var table := [[1, 1, 1], [3, 1, 3], [8, 1, 8], [9, 2, 5], [10, 2, 5], [16, 2, 8], [17, 4, 5], [32, 4, 8],
+		[33, 8, 5], [40, 8, 5], [64, 8, 8], [65, 16, 5], [128, 16, 8], [129, 32, 5], [200, 32, 7], [1000, 32, 32]]
+	var tbad: Array = []
+	for row in table:
+		var n0: int = int(row[0])
+		if B.bucket_size_for(n0) != int(row[1]) or B.bucket_count(n0) != int(row[2]):
+			tbad.append("N=%d → %d 人 × %d 组(应 %d × %d)" % [n0, B.bucket_size_for(n0), B.bucket_count(n0),
+				int(row[1]), int(row[2])])
+	_ok("① ★★★例子表: N=1/3/8 → 1 人组, 10 → 2×5, 17 → 4×5, 40 → 8×5, 200 → 32×7, 1000 → 32×32",
+		tbad.is_empty(), str(tbad))
+	_ok("① 0 人 → 0", B.bucket_size_for(0) == 0 and B.bucket_count(0) == 0)
 
-	## ★蛇形: 每个桶的人数差不超过 1(均匀), 且每个种子恰好进一个桶
+	## ★N=1..1000 全扫: 组数 ≤ 8(32 封顶之前) / 这一档是**最小**的那一档 / 各组人数差 ≤ 1 / 每个种子恰好进一个组
 	var uneven := 0
 	var scanned := 0
-	for players in range(2, 41):
+	var over8 := 0
+	var not_min := 0
+	var lost := 0
+	for players in range(1, 1001):
 		scanned += 1
+		var sz := B.bucket_size_for(players)
 		var nb := B.bucket_count(players)
-		if nb <= 1:
-			continue
+		if sz < 32 and nb > 8:
+			over8 += 1
+		var idx: int = B.BUCKET_SIZES.find(sz)
+		if idx > 0 and ceili(float(players) / float(B.BUCKET_SIZES[idx - 1])) <= 8:
+			not_min += 1
 		var cnt := {}
 		for i in range(players):
 			var bk := B.bucket_of_seed(i, nb)
+			if bk < 0 or bk >= nb:
+				lost += 1
 			cnt[bk] = int(cnt.get(bk, 0)) + 1
-		var lo := 999
+		var lo := 999999
 		var hi := -1
 		for k in range(nb):
 			var c: int = int(cnt.get(k, 0))
 			lo = mini(lo, c)
 			hi = maxi(hi, c)
-		if hi - lo > 1:
+		if hi - lo > 1 or hi > sz or lo < 1:
 			uneven += 1
-			print("       ★不均: %d 人 %d 桶 → 最多 %d 最少 %d" % [players, nb, hi, lo])
-	_ok("① ★分母: 扫了 %d 个人数" % scanned, scanned == 39, "%d" % scanned)
-	_ok("① 各桶人数差 ≤ 1", uneven == 0, "不均的有 %d 个人数" % uneven)
+			if uneven <= 3:
+				print("       ★不均: %d 人 %d 组 → 最多 %d 最少 %d(容量 %d)" % [players, nb, hi, lo, sz])
+	_ok("① ★分母: 扫了 %d 个人数(1..1000)" % scanned, scanned == 1000, "%d" % scanned)
+	_ok("① ★★组数 ≤ 8(每组 < 32 人时)", over8 == 0, "超了 %d 个人数" % over8)
+	_ok("① ★★取的是最小那一档(小一档就会超 8 组)", not_min == 0, "%d 个人数不是最小档" % not_min)
+	_ok("① 各组人数差 ≤ 1、不超容量、没有空组", uneven == 0, "不均的有 %d 个人数" % uneven)
+	_ok("① 每个种子都进了某一组", lost == 0, "%d" % lost)
 
 	## ★★上面那条**守不住蛇形** —— 顺序轮转切(`seed_idx % nb`)的人数同样均匀。
 	##   实测: 把蛇形改成轮转, 上面那条照样绿(反向验证 B4 第一版没红)。
@@ -370,3 +389,95 @@ func _t_occupant() -> void:
 	_ok("★★★满桶(8 人)一场没打 ⇒ 第二轮全是【待定】(证明 TBD 这一支真的会走到)",
 		tbd == 2 * B.matches_in_round(8, 2), "待定 %d / %d" % [tbd, 2 * B.matches_in_round(8, 2)])
 
+
+
+# ─────────────────────────────────────────────────────────────
+# ⑧ 冠军杯赛(2026-10-07): 全部组冠军补轮空进 2 的幂签表 —— 种子 / 轮空 / 冠军是谁
+#   原稿 §四「全部桶冠军补轮空进最近的 2 的幂签表(226 人 → 256 签), 单败打到决赛」。
+#   ★杯与组是同一种单败图(同一套 bracket.gd), 这里量的是杯独有的两件事:
+#     ① 人数 1..40 全扫: 轮空恰好 = 2 的幂 − 人数, 而且**全给最高的那几个种子**(0 号起)
+#     ② `champion_seed`(选人 + 显示冠军): 与独立模拟的冠军逐个一致 —— 服务端那种 done
+#        (轮空也补了一行 side 0)与客户端那种(轮空没有行)两种形状都要对
+# ─────────────────────────────────────────────────────────────
+
+## 独立模拟一张图: 按 `rng` 决定每一场真打的输赢; `fill_byes` = 像服务端那样给轮空场补 side 0。
+## 返回 {"done", "champ"}。★不调 `occupant_seed` —— 拿被测函数当尺子等于没量。
+func _sim_cup(n: int, rng: RandomNumberGenerator, fill_byes: bool) -> Dictionary:
+	var slots := B.slots_for(n)
+	var cur: Array = []
+	for i in range(slots):
+		var sd := B.seed_at_seat(i, n)
+		cur.append(sd if sd >= 0 and sd < n else -2)
+	var done := {}
+	var r := 1
+	while cur.size() > 1:
+		var nxt: Array = []
+		for m in range(cur.size() / 2):
+			var x: int = cur[m * 2]
+			var y: int = cur[m * 2 + 1]
+			if x == -2 or y == -2:
+				if fill_byes:
+					done["%d-%d" % [r, m]] = 1 if x == -2 else 0
+				nxt.append(y if x == -2 else x)
+			else:
+				var side := rng.randi_range(0, 1)
+				done["%d-%d" % [r, m]] = side
+				nxt.append(x if side == 0 else y)
+		cur = nxt
+		r += 1
+	return {"done": done, "champ": int(cur[0]) if not cur.is_empty() else -1}
+
+
+func _t_cup() -> void:
+	print("── ⑧ 冠军杯赛: 种子 / 轮空 / 冠军 ──")
+	var scanned := 0
+	var bye_bad: Array = []
+	var bye_total := 0
+	for n in range(1, 41):
+		scanned += 1
+		var slots := B.slots_for(n)
+		var holders: Array = []
+		for sd in range(n):
+			if B.has_first_round_bye(B.seat_of_seed(sd, n), n):
+				holders.append(sd)
+		bye_total += holders.size()
+		var want: Array = []
+		if n > 1:
+			for sd in range(slots - n):
+				want.append(sd)
+		if holders != want:
+			bye_bad.append("n=%d 轮空=%s 应为=%s" % [n, str(holders), str(want)])
+	_ok("⑧ ★分母: 人数 1~40 全扫", scanned == 40, "%d 个人数" % scanned)
+	_ok("⑧ ★★★轮空个数 = 2 的幂 − 人数, 且全给最高的那几个种子(0 号起)", bye_bad.is_empty(),
+		"%d 处不对: %s" % [bye_bad.size(), str(bye_bad.slice(0, 3))])
+	_ok("⑧ ★分母: 确实扫到了轮空(否则上一条是空检查)", bye_total > 100, "轮空共 %d 个" % bye_total)
+	## 原稿那一句的规模: 226 名组冠军 → 256 签 / 8 轮 / 30 个轮空
+	_ok("⑧ 226 名组冠军 → 256 签 8 轮", B.slots_for(226) == 256 and B.rounds_for(226) == 8,
+		"%d 签 %d 轮" % [B.slots_for(226), B.rounds_for(226)])
+
+	## 冠军是谁: n=2..40 × 每个人数 12 组随机结果 × 两种 done 形状
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261007
+	var cases := 0
+	var bad: Array = []
+	var champs := {}
+	for n in range(2, 41):
+		for k in range(12):
+			for fill in [false, true]:
+				var sim := _sim_cup(n, rng, fill)
+				cases += 1
+				var got := B.champion_seed(n, sim["done"])
+				champs[int(sim["champ"])] = true
+				if got != int(sim["champ"]):
+					bad.append("n=%d k=%d fill=%s 得 %d 应 %d" % [n, k, str(fill), got, int(sim["champ"])])
+				## 决赛还没翻面 ⇒ 没有冠军
+				var pre: Dictionary = (sim["done"] as Dictionary).duplicate()
+				pre.erase("%d-0" % B.rounds_for(n))
+				if B.champion_seed(n, pre) != -1:
+					bad.append("n=%d k=%d 决赛未翻面却有冠军" % [n, k])
+	_ok("⑧ ★分母: 冠军判定扫了 %d 例" % cases, cases == 39 * 12 * 2, "%d" % cases)
+	_ok("⑧ ★★★冠军 = 独立模拟的冠军(轮空有行 / 没行两种 done 都对); 决赛未翻面 ⇒ -1", bad.is_empty(),
+		"%d 处不对: %s" % [bad.size(), str(bad.slice(0, 3))])
+	_ok("⑧ ★分母: 模拟出的冠军不总是同一个人(结果真的在变)", champs.size() >= 10, "%d 个不同冠军" % champs.size())
+	_ok("⑧ ★1 人表(本周只有一个组) ⇒ 0 号直接是冠军", B.champion_seed(1, {}) == 0)
+	_ok("⑧ ★空表 ⇒ 没有冠军", B.champion_seed(0, {}) == -1)

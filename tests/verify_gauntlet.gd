@@ -146,9 +146,9 @@ func _ready() -> void:
 		var _sun_no: String = P2.finals_block_msg(false, false)
 		_ok("⑧ ★进了决赛日: 那句话要**指到决赛日那一屏**", _sun_in.find("决赛日") >= 0, _sun_in)
 		_ok("⑧ ★★★打过闯关赛没打进的人: **不许说他「没晋级」**(周一~五刚夸过他已晋级)",
-			_sun_try.find("没晋级") < 0, _sun_try)
+			_sun_try.find("未晋级") < 0, _sun_try)
 		_ok("⑧ ★他那句要说清**卡在哪一关**(闯关赛)", _sun_try.find("闯关赛") >= 0, _sun_try)
-		_ok("⑧ ★连资格都没有的人: 说「本周没晋级」是对的", _sun_no.find("没晋级") >= 0, _sun_no)
+		_ok("⑧ ★连资格都没有的人: 说「本周没晋级」是对的", _sun_no.find("未晋级") >= 0, _sun_no)
 		_ok("⑧ ★三句话两两不同(有一对一样 = 那一维白分了)",
 			_sun_in != _sun_try and _sun_try != _sun_no and _sun_in != _sun_no,
 			"%s / %s / %s" % [_sun_in.substr(0, 18), _sun_try.substr(0, 18), _sun_no.substr(0, 18)])
@@ -482,7 +482,7 @@ func _t_menu_gate() -> void:
 	_gs.gauntlet_losses = 3
 	var m_out: String = str(menu._battle_block_msg(SAT + 3600))
 	_ok("⑥ 没资格 → 拦住且说「没晋级」",
-		m_noelig.find("没晋级") >= 0, "「%s」" % m_noelig)
+		m_noelig.find("未晋级") >= 0, "「%s」" % m_noelig)
 	_ok("⑥ 已晋级(4-0) → 拦住且带战绩标签",
 		m_in != "" and m_in.find("4-0") >= 0, "「%s」" % m_in)
 	_ok("⑥ 已出局(1-3) → 拦住且带战绩标签",
@@ -500,7 +500,7 @@ func _t_menu_gate() -> void:
 	_ok("⑦ ★分母: 周四返回空串(读数只在周六接管)", l_thu == "", "「%s」" % l_thu)
 	_ok("⑦ 周六 2-1 → 带战绩标签", l_sat.find("2-1") >= 0, "「%s」" % l_sat)
 	_ok("⑦ ★★带**还差几场**(再赢 2 / 再输 2) —— 光有「2-1」不告诉玩家还剩多少机会",
-		l_sat.find("再赢 2") >= 0 and l_sat.find("再输 2") >= 0, "「%s」" % l_sat)
+		l_sat.find("晋级还需 2 胜") >= 0 and l_sat.find("剩余 2 负") >= 0, "「%s」" % l_sat)
 	_gs.gauntlet_wins = 4
 	_gs.gauntlet_losses = 1
 	var l_in: String = str(menu._gauntlet_status_line(SAT + 3600))
@@ -511,7 +511,7 @@ func _t_menu_gate() -> void:
 	var l_no: String = str(menu._gauntlet_status_line(SAT + 3600))
 	_ok("⑦ 已晋级 → 说晋级", l_in.find("已晋级") >= 0, "「%s」" % l_in)
 	_ok("⑦ 已出局 → 说出局", l_out.find("已出局") >= 0, "「%s」" % l_out)
-	_ok("⑦ 没资格 → 说没晋级", l_no.find("没晋级") >= 0, "「%s」" % l_no)
+	_ok("⑦ 没资格 → 说没晋级", l_no.find("未晋级") >= 0, "「%s」" % l_no)
 	_ok("⑦ ★四种状态说的不是同一句话",
 		l_sat != l_in and l_in != l_out and l_out != l_no and l_sat != l_no)
 	## ★★周六不该再摆「本周 N/24」—— 那个配额周六根本不动

@@ -421,17 +421,17 @@ func _t_countdown() -> void:
 		int(d.get("left", -1)) == 300 and int(d.get("recv_at", 0)) == 5000, str(d).substr(0, 120))
 	## finals_left() 走缓存, 所以先塞进去
 	SB._finals_view = d
-	_ok("③ 本机又过了 0 秒 ⇒ 还剩 300", int(SB.finals_left(5000)) == 300, str(SB.finals_left(5000)))
+	_ok("③ 本机又过了 0 秒 ⇒ 还剩 300", int(SB.finals_left_of(SB.finals_cached(), 5000)) == 300, str(SB.finals_left_of(SB.finals_cached(), 5000)))
 	_ok("③ ★本机又过了 120 秒 ⇒ 还剩 180(用的是**时间差**)",
-		int(SB.finals_left(5120)) == 180, str(SB.finals_left(5120)))
+		int(SB.finals_left_of(SB.finals_cached(), 5120)) == 180, str(SB.finals_left_of(SB.finals_cached(), 5120)))
 	_ok("③ ★过了头 ⇒ 钳到 0, 不给负数",
-		int(SB.finals_left(9999)) == 0, str(SB.finals_left(9999)))
+		int(SB.finals_left_of(SB.finals_cached(), 9999)) == 0, str(SB.finals_left_of(SB.finals_cached(), 9999)))
 	var bad: Dictionary = SB.parse_finals(true, 200,
 		'{"ok":true,"n":4,"round":1,"entrants":[],"done":{}}', "uid-me", 5000)
 	_ok("③ 回包没带时间 ⇒ left = -1(不显示倒计时, 不瞎猜)",
 		int(bad.get("left", -9)) == -1, str(bad.get("left")))
 	SB.finals_clear()
-	_ok("③ ★分母: 缓存清了 ⇒ finals_left 返回 -1", int(SB.finals_left(5000)) == -1)
+	_ok("③ ★分母: 缓存清了 ⇒ finals_left 返回 -1", int(SB.finals_left_of(SB.finals_cached(), 5000)) == -1)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -541,7 +541,7 @@ func _t_real_request() -> void:
 	await get_tree().process_frame
 	var txt := str(m2._empty_text())
 	_ok("④b ★★★屏幕上说的是人话: 要承认他晋级了, 且**不许**再说「晋级才进得来」",
-		txt.contains("晋级算数") and not txt.contains("晋级才进得来"), txt)
+		txt.contains("晋级记录保留") and not txt.contains("需通过周六闯关赛"), txt)
 	_ok("④b ★而且把人数说出来(「只有 1 人」比「人太少」有用)", txt.contains("1 人"), txt)
 	m2.queue_free()
 	await get_tree().process_frame
@@ -658,7 +658,7 @@ func _t_empty() -> void:
 		str((m._tabs.get_child(0) as Button).text).find("·") >= 0,
 		str((m._tabs.get_child(0) as Button).text))
 	## ★★★页签的字**不许压在木边带上**(2026-09-28 实拍抓到, 一直没人看见)。
-	##   `UISkin.button` 给大按钮套的是 `menu/frame-rect.png`, 左右各 27px 是**木框**;
+	##   当时页签是木牌 `menu/frame-rect.png`, 左右各 27px 是**木框**(2026-10-07 换成 `UISkin.pixel_tab`, 边带 6px, 判据照旧从 StyleBox 读);
 	##   页签的字随数据变长(「我这一组」→「我这一组 · 还没分」), 写死的 132 装不下,
 	##   首尾两个字就骑在木框上。
 	## ⚠ 为什么不能指望 `verify_ui_consistency`: 它那条「文字压边带」只量

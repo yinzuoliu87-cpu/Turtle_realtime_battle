@@ -685,7 +685,7 @@ func _t_backfill_visible() -> void:
 	_gs.backfill_paid = 0
 	var s0: String = str(mm._gauntlet_status_line(sat))
 	_ok("⑪ ★★没化成过的人屏上**不许**出现这句话(否则是恒真式 + 占位噪声)",
-		s0.find("化成") < 0, s0)
+		s0.find("折算") < 0, s0)
 
 	## ── ①② 正题: 化成过 4 场的人, 屏上那三个数必须等于账本 ──
 	_gs.backfill_paid = 4
@@ -694,7 +694,7 @@ func _t_backfill_visible() -> void:
 		int(bf["games"]) == 4 and int(bf["coins"]) > 0 and int(bf["xp"]) > 0, str(bf))
 	var s1: String = str(mm._gauntlet_status_line(sat))
 	_ok("⑪ ★★★BACKFILL_VISIBLE: 屏上真有那句话(走产品自己拼的那一行, 不是我拼的)",
-		s1.find("化成") >= 0, s1)
+		s1.find("折算") >= 0, s1)
 	_ok("⑪ ★★★金额与账本同源: 场数/币/经验三个数都在屏上且与 `backfill_summary()` 一致",
 		s1.find("%d 场" % int(bf["games"])) >= 0
 			and s1.find("+%d" % int(bf["coins"])) >= 0

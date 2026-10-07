@@ -1,6 +1,7 @@
 extends Control
 
 const TopBar = preload("res://scripts/util/top_bar.gd")
+const TutorialGuide = preload("res://scripts/scenes/TutorialGuide.gd")   # 教程锚点: vis_rect(只认真看得见的控件)
 var _top_bar = null
 
 ## ShopScene — V2 局外商店 (阶段2, 设计§五/§十一). 10 卡货架, 用 meta_deepsea_coins 买装备入持久背包.
@@ -92,6 +93,8 @@ const P2 = preload("res://scripts/gamedata/phase2_config.gd")
 var _offer: Array = []
 var _rng := RandomNumberGenerator.new()
 var _tut_coin: Label = null   # 教学高亮"深海币"锚点(每次 _rebuild 重设)
+var _tut_xp_btn: Button = null   # 教程高亮「买经验」钮(每次 _rebuild 重设)
+var _tut_buy_btn: Button = null  # 教程手势指针: 详情面板里买得起时的「购买」钮
 var _sel: int = -1            # 当前选中的货架格(两步购买: 点卡选中 → 面板里确认)
 ## 当前选中的【已拥有装备】id。与 _sel 互斥: 选了货架格就清空它, 反之亦然。
 ## ★为什么要这个: 背包格/龟身格原来只有 tooltip_text 能看名字 —— 手机没有 hover, 等于看不到。
@@ -125,8 +128,7 @@ func _ready() -> void:
 		_shop_selfshot()
 		return
 	if _td != null:
-		_td.attach_guide(self, "shop")          # 分步引导(带高亮: 币/货架)
-		_td.attach_next_button(self, "shop")    # 右上"去背包"推进钮
+		_td.attach_guide(self, "shop")          # 教程: 买经验升 2 级 → 买 1 件装备 → 点击背包
 
 
 ## dev 商店自截图: 等 SHOP_SHOT 秒 → 抓主视口存 SHOT_OUT → 退。SHOT_SEL=N 可先选中第 N 格(验详情面板)。
@@ -218,7 +220,7 @@ func _build_locked() -> void:
 	## ★文案换成摊主的口气(2026-09-28 用户「全是 ai 味和网页味, 文字语言也是」)。
 	##   原「商店未开 / 本大轮打完第一场战斗后开店」是一句**系统状态播报**:
 	##   主语是"商店"这个功能模块, 句式是"条件 + 后 + 动作"——那正是网页提示条的写法。
-	lbl.text = "🔒 摊子还没摆开\n\n打完这一大轮的头一场, 老板才出摊"
+	lbl.text = "商店未解锁\n\n本大轮首战后解锁"
 	lbl.add_theme_font_size_override("font_size", 26)
 	lbl.add_theme_color_override("font_color", Color("#ffd93d"))
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -422,8 +424,7 @@ func _rebuild() -> void:
 		"safe_left": _sm.x,
 		"safe_right": _sm.z,
 		"on_back": func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"),
-		"left_actions": [["🎒 背包",
-			func(): get_tree().change_scene_to_file("res://scenes/Inventory.tscn")]],
+		"left_actions": [["🎒 背包", _go_inventory, {"tutorial_keep": true}]],
 	})
 
 	## ── 头部三组重排(用户 2026-08-15「右上角咋做的, 中间给你这么空位你在干啥啊」)──
@@ -453,7 +454,10 @@ func _rebuild() -> void:
 	## ★组宽 240 → 170: 铺开不等于把一组【拉长】。240 宽时「Lv1」与「经验 0/2」
 	##   中间空着 180px 的死档, 进度条也变成一条长空线 —— 实拍一眼就是散的。
 	var _lx := 560.0
-	var _lw := 340.0
+	## ★教程: 右上角要让给「跳过教程」(TutorialChrome 走 _tutorial_skip_slot) ⇒ 等级条缩短、
+	##   买经验那一组整体左移 TUT_SKIP_W + 间隙。非教程一个像素不动(verify_shop_layout 量的是非教程)。
+	var _tsh: float = (TUT_SKIP_W + 18.0) if _tut_on() else 0.0
+	var _lw := 340.0 - _tsh
 	var lv := Label.new(); lv.text = "Lv%d" % int(GameState.season_level)
 	lv.add_theme_font_size_override("font_size", 28); lv.add_theme_color_override("font_color", Color("#ffd93d"))
 	lv.position = Vector2(_lx, HDR_CY - 27.0); lv.size = Vector2(76, 32)
@@ -488,7 +492,7 @@ func _rebuild() -> void:
 	## 买经验 —— 用户 2026-08-15 逐字指定:「购买4xp 放在按钮左侧, 4图标放在按钮上」。
 	##   ⇒ 「购买 4xp」是按钮【左边】的一行说明文字, 按钮本身只放价格「4💠」。
 	var _bw := 140.0
-	var _bx := W - 28.0 - _bw
+	var _bx := W - 28.0 - _bw - _tsh
 	## ★★「xp」这两个英文字母是本屏唯一的外文缩写(2026-09-28 去 ai 味):
 	##   同一屏左边已经写着「经验 0/2」, 右边却叫它 xp —— 一个概念两个名字, 是机翻味的来源。
 	##   ⚠ 用户 2026-08-15 的原话是「**购买4xp** 放在按钮左侧, 4图标放在按钮上」,
@@ -531,13 +535,17 @@ func _rebuild() -> void:
 	##   会为【两个】理由返回 false —— 满级 / 币不够 ⇒ 两个理由各给一句话。
 	##   满级那句不是"到不了的分支": 按钮被程序触发、或哪天 disabled 的条件漂了, 它就是唯一的出口。
 	bxp.pressed.connect(func():
+		var _lv0: int = int(GameState.season_level)
 		if GameState.buy_season_xp():
 			_rebuild()
+			if int(GameState.season_level) > _lv0:
+				_tut_notify("level_up")   # 教程「购买经验，升到 2 级」
 		elif int(GameState.season_level) >= int(P2.MAX_LEVEL):
-			_toast("已经是最高等级 Lv%d · 经验用不上了" % int(P2.MAX_LEVEL))
+			_toast("已达最高等级 Lv%d" % int(P2.MAX_LEVEL))
 		else:
-			_toast("深海币不够 · 买一次经验要 %d" % int(P2.BUY_XP_COST)))
+			_toast("深海币不足（需要 %d）" % int(P2.BUY_XP_COST)))
 	_skin_button(bxp); add_child(bxp)
+	_tut_xp_btn = bxp
 	var _gw2 := 60.0
 	var _gx := (_bw - _gw2) * 0.5
 	var bn := Label.new(); bn.text = "%d" % _xp_cost
@@ -598,7 +606,7 @@ func _build_odds_row() -> void:
 	##   一个统计学名词加五组 `label: value`, 读起来是后台报表, 不是摊位。
 	##   改成摊主挂的牌子「今日货源」+「1费 45%」: 数字一个不少(用户 2026-08-12 点名要数字),
 	##   但把字段名那一半去掉 —— 颜色已经在讲"这是哪一档"(与卡框同一套 5 色)。
-	var lbl := Label.new(); lbl.text = "今日货源"
+	var lbl := Label.new(); lbl.text = "商品"
 	lbl.add_theme_font_size_override("font_size", 15); lbl.add_theme_color_override("font_color", Color("#8aa0b4"))
 	row.add_child(lbl)
 	for c in range(5):
@@ -627,7 +635,7 @@ func _build_bench_preview(host: Node = null, ox: float = 0.0, oy: float = 0.0) -
 	## ★★2026-09-28 再改一次口气: 上一版「我的背包 N 件   · 点格子看详情」还是
 	##   「标题 + 计数 + 操作说明」三段拼的**控件说明**(「点格子」是在说界面构件的名字,
 	##   而玩家眼里那不是"格子"是"东西")。改成一句人话。
-	bh.text = ("背包里有 %d 件, 点一下看看" % bench.size()) if bench.size() > 0 else "背包里空着"
+	bh.text = ("背包 %d 件" % bench.size()) if bench.size() > 0 else "背包为空"
 	bh.add_theme_font_size_override("font_size", 15); bh.add_theme_color_override("font_color", Color("#9fb6c9"))
 	bh.position = Vector2(ox + GRID_X, (oy + BENCH_Y)); bh.size = Vector2(740, 22); host.add_child(bh)   # 原(80,560)宽900会伸进详情面板
 	## ★画得下的件数 = 一行 BENCH_PER_ROW × 最多 BENCH_MAX_ROWS 行。
@@ -670,7 +678,7 @@ func _build_bench_preview(host: Node = null, ox: float = 0.0, oy: float = 0.0) -
 	##   而屏上没有任何东西告诉玩家"还有"。玩家只会以为东西丢了)。
 	if bench.size() > shown:
 		var more := Label.new()
-		more.text = "还有 %d 件, 去背包页看全部" % (bench.size() - shown)
+		more.text = "另有 %d 件" % (bench.size() - shown)
 		more.add_theme_font_size_override("font_size", 14)
 		more.add_theme_color_override("font_color", Color("#ffb454"))
 		more.position = Vector2(ox + GRID_X,
@@ -678,7 +686,7 @@ func _build_bench_preview(host: Node = null, ox: float = 0.0, oy: float = 0.0) -
 		more.size = Vector2(460, 22); host.add_child(more)
 	if bench.is_empty():
 		## ★去掉全角括号 + 破折号(「（空 — …）」是排版符号堆出来的空状态提示, 典型 ai 味)。
-		var e := Label.new(); e.text = "空的, 上面挑几件带走"
+		var e := Label.new(); e.text = "背包为空"
 		e.add_theme_font_size_override("font_size", 14); e.add_theme_color_override("font_color", Color("#5a6675"))
 		e.position = Vector2(ox + GRID_X + 4, (oy + BENCH_Y) + 28); e.size = Vector2(400, 22); host.add_child(e)
 
@@ -693,7 +701,7 @@ func _build_lineup_equips(host: Node = null, ox: float = 0.0, oy: float = 0.0) -
 	# 「回背包页调整」那半句删掉 —— 顶部本来就有背包按钮, 那是教程文字不是界面
 	#   (用户 2026-07-28 已就同类文案说过一次)。
 	## ★「· 已装备」是字段名(被动式的状态标注), 换成一句说人话的定语。
-	var hdr := Label.new(); hdr.text = "🐢 出战阵容 · 身上带着的"
+	var hdr := Label.new(); hdr.text = "出战阵容 · 已装备"
 	hdr.add_theme_font_size_override("font_size", 15); hdr.add_theme_color_override("font_color", Color("#9fb6c9"))
 	hdr.position = Vector2(ox + GRID_X, (oy + LINEUP_Y)); hdr.size = Vector2(740, 20); host.add_child(hdr)
 	var row := 0
@@ -717,7 +725,7 @@ func _build_lineup_equips(host: Node = null, ox: float = 0.0, oy: float = 0.0) -
 				##     (与本页别处「还没点兵, 先去选龟那边排一路人马」同一口气)。
 				nm = str(DataRegistry.pet_by_id.get(str(u.get("id", "")), {}).get("name", ""))
 				if nm.strip_edges() == "":
-					nm = "还没选龟"
+					nm = "未选择龟"
 			elif bool(u.get("elite", false)):
 				nm = "精英小将"
 			else:
@@ -798,7 +806,7 @@ func _build_lineup_equips(host: Node = null, ox: float = 0.0, oy: float = 0.0) -
 					st.mouse_filter = Control.MOUSE_FILTER_IGNORE; cell.add_child(st)
 	if row == 0:
 		## ★「尚未编排」是公文体, 「去背包/选龟」用斜杠把两个去处并排堆着(表单写法)。
-		var e2 := Label.new(); e2.text = "还没点兵, 先去选龟那边排一路人马"
+		var e2 := Label.new(); e2.text = "未配置阵容"
 		e2.add_theme_font_size_override("font_size", 14); e2.add_theme_color_override("font_color", Color("#5a6675"))
 		e2.position = Vector2(ox + GRID_X, (oy + LINEUP_Y) + 24); e2.size = Vector2(400, 22); host.add_child(e2)
 
@@ -878,7 +886,7 @@ func _card(idx: int, pos: Vector2) -> Control:
 		var _hole := _nine(box, CARD_TEX_N, CARD_MARGIN, Vector2.ZERO, Vector2(SLOT_W, SLOT_H), 1)
 		_hole.self_modulate = Color(0.55, 0.60, 0.66)
 		## ★「已购」是订单状态词。摊位上的说法是"这件已经进你兜里了"。
-		var sold := Label.new(); sold.text = "已入袋"
+		var sold := Label.new(); sold.text = "已购买"
 		sold.add_theme_color_override("font_color", Color("#6f8091")); sold.add_theme_font_size_override("font_size", 16)
 		sold.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		sold.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; sold.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -1115,7 +1123,7 @@ func _build_synergy_bar() -> void:
 		var none := Label.new()
 		## ★原句三个毛病一次改掉: 全角括号包一句、「任何」这种法条语气、「即可激活」是后台动词。
 		##   ⚠ 只改说法不改口径: 阈值仍然是"同类 3 件"(`Phase2Types` 那份事实源), 没有新承诺。
-		none.text = "同类装备凑够 3 件, 羁绊才会亮"
+		none.text = "同类装备达到件数后激活羁绊"
 		none.add_theme_font_size_override("font_size", 13)
 		none.add_theme_color_override("font_color", Color("#5a6675"))
 		none.position = Vector2(GRID_X + 46, y + 1); none.size = Vector2(700, 20)
@@ -1167,7 +1175,7 @@ func _build_synergy_bar() -> void:
 			## ★尾巴那句原来是「  可进化!」—— 去掉感叹号。门禁⑫ 焊死的正是
 			##   "不许有带感叹号的推销话术"那一类; 它说的是事实, 但语气是广告位。
 			chip.text += "  ·  %s %d/%d%s" % [str(_d4["name"]), int(GameState.axe_exp_bar),
-				_nd, "  能进化了" if _rd else ""]
+				_nd, "  可进化" if _rd else ""]
 			## ⚠ 2026-09-28 顺手修掉一处**双倍宽从来没生效过**: 原来这里写
 			##   `chip.size = Vector2(SYN_CHIP_W * 2.0, 20)`, 而下面还有一行**无条件**的
 			##   `chip.size = Vector2(SYN_CHIP_W, 20)` —— 后者在后面, 直接把它盖掉,
@@ -1226,7 +1234,7 @@ func _build_detail_panel() -> void:
 		##   两条"点 X 看 Y"的操作说明是网页空状态页的标准写法(而且在说界面构件的名字:
 		##   "货架卡片""格子"都不是玩家脑子里的东西)。改成摊主招呼客人的两句。
 		## ★`←` 留着 —— 它不是装饰, 是**指方向**的(详情面板在右, 货架在左)。
-		hint.text = "← 摊上的货, 点一件看看\n手里那些也能点开"
+		hint.text = "选择装备查看详情"
 		hint.add_theme_font_size_override("font_size", 18)
 		hint.add_theme_color_override("font_color", Color("#5b7a92"))
 		hint.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -1363,7 +1371,7 @@ func _build_detail_panel() -> void:
 		# 看的是自己已有的那件 —— 商店不做装备/合星/卖, 那些在背包页。这里给一条去路。
 		## ★「背包页」里的"页"是网页的量词(本作没有"页"这个概念, 只有背包这个地方);
 		##   「装备 / 卖」用斜杠把两个动作并排列着, 是按钮组的写法不是一句话。
-		buy.text = "回 🎒 背包装上或卖掉"
+		buy.text = "前往背包"
 		buy.add_theme_font_size_override("font_size", 19)
 		buy.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Inventory.tscn"))
 		_skin_button(buy, true)
@@ -1372,8 +1380,9 @@ func _build_detail_panel() -> void:
 	_coin_button_icon(buy, 24)
 	if coins >= price:
 		## ★「购买」是收银台的词, 「买下」是摊子前说的话。价钱与币图标不动。
-		buy.text = "买下  %d" % price
+		buy.text = "购买  %d" % price
 		buy.pressed.connect(func(): _on_buy(_sel))
+		_tut_buy_btn = buy
 	else:
 		# 买不起要说清【原因和差多少】, 不是只把按钮变灰(用户 P1-4)
 		## ★原句是「深海币不足 (还差 3)」—— 半角括号包一个计数, 那是报错串的格式。
@@ -1464,7 +1473,7 @@ func _build_stat_rows(box: Control, eid: String, star: int = 1) -> Array:
 		## ★★★这一句**必须与 `InventoryScene.gd` 逐字相同**(那边三处: 渲染文/量高平文/`_stat_block`)。
 		##   同一句话出现两个版本, 比两边都留着原文更糟 —— 玩家会以为商店和背包讲的不是一回事。
 		##   改这句就得两个文件一起改; `verify_shop_layout` 第⑭条把两个文件对着量, 只改一边直接红。
-		none.text = "这件不加属性，只有效果"
+		none.text = "无属性加成"
 		none.add_theme_font_size_override("font_size", 15)
 		none.add_theme_color_override("font_color", Color("#5b7a92"))
 		none.position = Vector2(34, STAT_ROW_Y[0]); none.size = Vector2(PANEL_W - 68, 22)
@@ -1534,7 +1543,7 @@ func _rich_desc(edef: Dictionary, star: int = 1) -> String:
 		##   等于当面告诉玩家"我们没写"。而且实测 95 件的 `effectDesc1` 全都有
 		##   ⇒ 这一支**打不到**, 它只是数据损坏时的兜底。
 		##   ⇒ 换成一句不暴露内情的摊主话: 玩家读到也只当是这件东西玄乎, 不会读成 bug。
-		return "[color=#5b7a92]这件的门道, 摊主自己也讲不明白[/color]"
+		return "[color=#5b7a92]暂无说明[/color]"
 	# ★按星级高亮(用户 2026-07-29「上面的效果能按照描述规则渲染吗」)。
 	#   装备描述里的 `1/1.2/1.5` 是【一/二/三星三档值】。商店卖 ★1, 原来三档同色平铺,
 	#   玩家看不出哪个数才是自己买到的。highlight_star 把当前星那档高亮、另两档压暗。
@@ -1554,7 +1563,7 @@ func _on_buy(idx: int) -> void:
 	##     按钮文案与这里各算一遍价钱, 两边一漂(或按钮被程序触发)这里就是唯一的出口 ——
 	##     满级那颗买经验按钮的 else 分支就是为同一个理由补的。
 	if int(GameState.meta_deepsea_coins) < price:
-		_toast("还差 %d 枚深海币 ·「%s」要 %d" % [price - int(GameState.meta_deepsea_coins), _nm, price])
+		_toast("深海币不足 · 「%s」需要 %d，还差 %d" % [_nm, price, price - int(GameState.meta_deepsea_coins)])
 		return   # 买不起
 	# ★私人池: 先扣张再扣钱 —— 扣不到张就整笔不成交(货架是异步持久化的, 极端情况下
 	#   可能出现"货架上还挂着、池子已被别的路径抽空"; 那时宁可这一次点击无效, 也不能凭空造张)。
@@ -1562,7 +1571,7 @@ func _on_buy(idx: int) -> void:
 	if not GameState.pool_take(_eid, 1):
 		## ★这一条**不是**到不了的分支: 货架是异步持久化的, 同一件被别的路径抽空时
 		##   摊上那张卡还挂着。玩家点下去钱没扣、货没来, 必须有人告诉他为什么。
-		_toast("「%s」刚被人抢走了 · 刷新看看" % _nm)
+		_toast("「%s」已失效 · 请刷新" % _nm)
 		return
 	GameState.meta_deepsea_coins -= price
 	## ★096 小木斧(方案书未决点 ⑧, 用户 2026-08-31 亲自纠正过我): **只能拥有一把**。
@@ -1592,11 +1601,12 @@ func _on_buy(idx: int) -> void:
 	##   ★三种成交各有各的话: 合成到 ★N / 小木斧重复买(化成砍伐经验) / 普通进背包。
 	##     合成那条最要紧 —— 卡片消失了而背包里【多出来的是另一件东西】, 不说就是"我的钱去哪了"。
 	if _will_star >= 2:
-		_toast("买下「%s」· 凑齐 3 件, 合成 ★%d 了" % [_nm, _will_star])
+		_toast("购买成功 · 「%s」合成 ★%d" % [_nm, _will_star])
 	elif _axe_dup:
-		_toast("已经有一把「%s」了 · 这一笔化成 +%d 砍伐经验" % [_nm, int(AxeEvo.EXP_ON_BUY)])
+		_toast("已拥有「%s」· 转化为砍伐经验 +%d" % [_nm, int(AxeEvo.EXP_ON_BUY)])
 	else:
-		_toast("买下「%s」· 进背包了" % _nm)
+		_toast("购买成功 · 「%s」已放入背包" % _nm)
+	_tut_notify("item_bought")   # 教程「购买 1 件装备」: 成交才前进(方案书 B2)
 
 ## ── 货架锁(用户 2026-10-04 · 学云顶) ─────────────────────────────────
 ## 「换一批」右边一颗方钮, 图标复用 `icon-lock.png`(不新画: 背包页/对阵图同一张)。
@@ -1623,7 +1633,7 @@ func _build_lock_button(pos: Vector2, h: float) -> void:
 	## 图标在左、字在右, 一行排开(竖排时 76 高的皮框上下边带会压住图标和字 —— 实拍过)
 	lb.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	lb.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	lb.tooltip_text = "已锁定: 打完下一场也不刷新, 再点一下解锁" if locked else "锁定商店: 打完下一场不自动刷新"
+	lb.tooltip_text = "已锁定 · 点击解锁" if locked else "锁定商品：下场战斗后不刷新"
 	_skin_button(lb, locked)
 	## 未锁时图标压暗(按钮本身不 disabled —— 它随时都能点)
 	lb.add_theme_color_override("icon_normal_color", Color(1, 1, 1, 1) if locked else Color(1, 1, 1, 0.45))
@@ -1640,7 +1650,7 @@ func _on_toggle_lock() -> void:
 	GameState.meta_shop_battles = int(GameState.season_total_battles)
 	GameState.save()
 	_rebuild()   # ★先重建再提示 —— _rebuild 会清掉全部子节点(提示也在其中)
-	_toast("锁住了 · 打完下一场也不换货" if GameState.meta_shop_locked else "解锁了 · 打完下一场换新货")
+	_toast("已锁定 · 下场战斗后不刷新" if GameState.meta_shop_locked else "已解锁 · 下场战斗后刷新")
 
 
 func _on_refresh() -> void:
@@ -1648,7 +1658,7 @@ func _on_refresh() -> void:
 		## ★同 `_on_buy`: 原来是裸 return。而「换一批」那颗按钮**一直是亮的**
 		##   (实测 coins=0 时 `disabled=false`) ⇒ 玩家点得下去、什么也不发生。
 		##   这是满级买经验那颗死按钮的同一个形状: 死按钮要长得像死的 + 点了要说为什么。
-		_toast("深海币不够 · 刷新要 %d" % REFRESH_COST)
+		_toast("深海币不足（需要 %d）" % REFRESH_COST)
 		return
 	GameState.meta_deepsea_coins -= REFRESH_COST
 	## ★锁着也能换一批, 而且**换完自动解锁** —— 照云顶(tft.ninja「The Shop」: 锁住的商店
@@ -1660,16 +1670,66 @@ func _on_refresh() -> void:
 	_rebuild()
 
 
-## 新手引导高亮锚点(用户2026-07-23 D)。名字→屏幕矩形; 解析不到返回空 Rect2(本步不挖洞)。
+## 顶栏「背包」: 非教程直接换屏; 教程里先报「点击背包」这一步, 再走导演推进到背包站。
+func _go_inventory() -> void:
+	var td = get_node_or_null("/root/TutorialDirector")
+	if td != null and td.is_active():
+		td.notify("shop_to_bag")
+		get_tree().change_scene_to_file(td.next_scene_after("shop"))
+		return
+	get_tree().change_scene_to_file("res://scenes/Inventory.tscn")
+
+
+const TUT_SKIP_W := 132.0
+
+func _tut_on() -> bool:
+	var td = get_node_or_null("/root/TutorialDirector")
+	return td != null and td.is_active()
+
+
+## 右上「跳过教程」的位置: 头部最右那一格(教程里买经验组已左移让出来, 见 _rebuild)。
+func _tutorial_skip_slot() -> Rect2:
+	return Rect2(Vector2(W - 28.0 - TUT_SKIP_W, 48.0 - 28.0) + _frame_off(), Vector2(TUT_SKIP_W, 56.0))
+
+
+func _tut_notify(ev: String) -> void:
+	var td = get_node_or_null("/root/TutorialDirector")
+	if td != null:
+		td.notify(ev)
+
+
+## 设计框(UIFrame)的屏幕偏移 —— 本屏内容按 1280×720 设计坐标画, 宽屏上整体居中平移。
+func _frame_off() -> Vector2:
+	for c in get_children():
+		if c is UIFrame and not (c as Node).is_queued_for_deletion():
+			return (c as Control).global_position
+	return Vector2.ZERO
+
+
+## 新手引导高亮锚点。名字→屏幕矩形; 解析不到返回空 Rect2(本步不显示)。
 func _tutorial_anchor(anchor: String) -> Rect2:
 	match anchor:
 		"coins":   # 深海币显示
 			if _tut_coin != null and is_instance_valid(_tut_coin):
 				return _tut_coin.get_global_rect()
-		"offer":   # 货架卡片区(5列×2行, 与 _rebuild 同口径 gx=80 gy=150)
-			var w: float = 5.0 * (SLOT_W + 24.0)
-			var h: float = 2.0 * (SLOT_H + 28.0)
-			return Rect2(80.0, 150.0, w, h)
+		"xp_button":
+			return TutorialGuide.vis_rect(_tut_xp_btn)
+		"offer_pick":   # 手势指针: 已选中且买得起 ⇒ 指「购买」; 否则指第一张买得起的卡
+			var br := TutorialGuide.vis_rect(_tut_buy_btn)
+			if br.size.x > 0.0:
+				return br
+			for i in range(_offer.size()):
+				if _offer[i] != null and _price(_deco(_offer[i])) <= int(GameState.meta_deepsea_coins):
+					var cp := Vector2(GRID_X + (i % 5) * (SLOT_W + GRID_GAP_X), GRID_Y + (i / 5) * (SLOT_H + GRID_GAP_Y))
+					return Rect2(cp + _frame_off(), Vector2(SLOT_W, SLOT_H))
+		"offer":   # 货架 5×2 + 右侧详情面板(「购买」在面板里, 两步购买都得在洞里)
+			var grid := Rect2(GRID_X, GRID_Y, 5.0 * SLOT_W + 4.0 * GRID_GAP_X, 2.0 * SLOT_H + GRID_GAP_Y)
+			var panel := Rect2(PANEL_X, PANEL_Y, PANEL_W, PANEL_H)
+			var u := grid.merge(panel)
+			return Rect2(u.position + _frame_off(), u.size)
+		"bag_button":
+			if _top_bar != null and not _top_bar.action_btns.is_empty():
+				return TutorialGuide.vis_rect(_top_bar.action_btns[0])
 	return Rect2()
 
 
@@ -1965,7 +2025,7 @@ func _build_bottom_buttons() -> void:
 	var bw := (740.0 - 20.0) * 0.5
 	var bh2 := 96.0
 	var b1 := Button.new()
-	b1.text = "🎒 我的背包  %d 件" % bench.size()
+	b1.text = "背包  %d 件" % bench.size()
 	b1.add_theme_font_size_override("font_size", 21)
 	b1.position = Vector2(GRID_X, BOTTOM_BTN_Y); b1.size = Vector2(bw, bh2)
 	b1.pressed.connect(func(): _open_bottom_popup("bench"))
@@ -1973,7 +2033,7 @@ func _build_bottom_buttons() -> void:
 
 	var b2 := Button.new()
 	## ★「已装 3 / 9」中间那两个空格是表格对齐的写法; 收成 `3/9` 才像一个读数。
-	b2.text = "🐢 出战阵容  已装 %d/%d" % [int(lc[0]), int(lc[1])]
+	b2.text = "出战阵容  装备 %d/%d" % [int(lc[0]), int(lc[1])]
 	b2.add_theme_font_size_override("font_size", 21)
 	b2.position = Vector2(GRID_X + bw + 20.0, BOTTOM_BTN_Y); b2.size = Vector2(bw, bh2)
 	b2.pressed.connect(func(): _open_bottom_popup("lineup"))

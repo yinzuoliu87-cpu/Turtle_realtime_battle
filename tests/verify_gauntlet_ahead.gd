@@ -401,8 +401,8 @@ func _t_sunday_row() -> void:
 		s_in.find("已晋级") >= 0 and sun_card.find("对阵图") >= 0, "%s / %s" % [s_in, sun_card])
 	_ok("③ ★★打过闯关赛没打进的人: **不许说他「没晋级」**(周一~五刚夸过他已过晋级线) —— " \
 			+ "与 `finals_block_msg(false, true)` 同一个口径",
-		s_try.find("没晋级") < 0, s_try)
-	_ok("③ ★连资格都没拿到的人: 说「没晋级」是对的", s_no.find("没晋级") >= 0, s_no)
+		s_try.find("未晋级") < 0, s_try)
+	_ok("③ ★连资格都没拿到的人: 说「没晋级」是对的", s_no.find("未晋级") >= 0, s_no)
 
 	## (c) 分派真的按天走: 周一~周五回落(空串), 周六是闯关赛那一段, 周日是决赛日那一段。
 	_gs.promoted = true

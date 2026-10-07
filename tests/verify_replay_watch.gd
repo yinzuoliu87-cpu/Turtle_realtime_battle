@@ -311,10 +311,9 @@ func _btn_for(rs: Node, id: String) -> Button:
 	return null
 
 
+## 2026-10-07 起「观看」本身就是按钮(对局卡右边那颗), 字就在按钮上。
 func _chip_text(b: Button) -> String:
-	var row := b.get_parent() if b != null else null
-	var t: Label = row.find_child("ReplayChipText", true, false) as Label if row != null else null
-	return t.text if t != null else "<没有签牌>"
+	return b.text if b != null else "<没有按钮>"
 
 
 # ⑤ ─────────────────────────────────────────────────────────────
@@ -340,9 +339,11 @@ func _t_buttons(rs: Node) -> void:
 		ids == [_id, "99999999-8888-4777-8666-555555555555"], str(ids))
 	_ok("⑤ 没 id / id 不像样 / 服务端已清(15 天前)/ 旧本机 id 文件没了 ⇒ 都没有按钮", ids.size() == 2)
 	var b := _btn_for(rs, _id)
-	_ok("⑤ 按钮签牌写「回放」", b != null and _chip_text(b) == "回放", _chip_text(b))
-	_ok("⑤ 整行是热区(宽 ≥ 200, 触控下限的豁免条件), 不是行尾一个小钮",
-		b != null and b.size.x >= 200.0, str(b.size) if b != null else "")
+	_ok("⑤ 按钮写「观看」", b != null and _chip_text(b) == "观看", _chip_text(b))
+	## 2026-10-07: 从「整行透明热区」换成对局卡右边一颗大「观看」(荒野乱斗/皇室战争 Battle Log 的做法) ⇒
+	##   守的仍是触控线: 短边 ≥ 81(=44pt), 不是行尾一个小签。
+	_ok("⑤ 「观看」够大(短边 ≥ 81 = 44pt 触控线)",
+		b != null and minf(b.size.x, b.size.y) >= 81.0, str(b.size) if b != null else "")
 
 
 # ④ ─────────────────────────────────────────────────────────────
@@ -533,7 +534,7 @@ func _t_one_failure(rs: Node, mode: String, want: String, what: String, msgs: Di
 	_ok("③ %s 给了一句人话" % what, msg != "" and not msg.contains("%"), msg)
 	if code == want and msg != "":
 		msgs[want] = msg if not msgs.has(want) or str(msgs[want]) == msg else str(msgs[want]) + " ≠ " + msg
-	_ok("③ %s ★按钮回来了(没在转)" % what, str(rs._rp_busy) == "" and not b.disabled and _chip_text(b) == "回放",
+	_ok("③ %s ★按钮回来了(没在转)" % what, str(rs._rp_busy) == "" and not b.disabled and _chip_text(b) == "观看",
 		"busy=%s disabled=%s chip=%s" % [str(rs._rp_busy), str(b.disabled), _chip_text(b)])
 	_ok("③ %s 那句话显示在列表上方" % what, rs._list_title != null and rs._list_title.text == msg)
 	_ok("③ %s ★没进回放: 还在这一页、没挂待播" % what,

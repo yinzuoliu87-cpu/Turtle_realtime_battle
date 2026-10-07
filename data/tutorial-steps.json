@@ -1,118 +1,84 @@
 {
-  "_note": "新手引导步骤。由 scripts/scenes/TutorialGuide.gd 读取; 教学导演 TutorialDirector.steps_key_for 决定当前阶段用哪套。",
-  "_schema": "每步: text(必填, 支持 <b>) / anchor(top|bottom, 默认 top) / highlight(可选: 场景 _tutorial_anchor(name) 认得的锚点名, 挖洞高亮该控件) / advanceOn(可选: 等这个事件才前进, 场景调 notify() 触发)",
+  "_note": "新手教程步骤(2026-10-07 重做, 方案书 docs/plans/20261007-新手教程重做.md §4.1)。由 scripts/scenes/TutorialGuide.gd 读取; 教程导演 TutorialDirector.steps_key_for 决定当前阶段用哪套。",
+  "_schema": "每步: text(必填, 一句祈使句, 单行) / highlight(必填: 宿主 _tutorial_anchor 认得的锚点名, 挖洞高亮) / advanceOn(必填: 玩家做了这个动作才前进, 由产品代码 TutorialDirector.notify 发) / point(可选: 手势指针指的锚点, 缺省=highlight) / hand(可选: tap|drag, 缺省 tap) / anchor(可选: top|bottom|right, 提示条位置)",
   "_anchors": {
-    "team_select": "roster(3龟卡) / slots(阵容槽) / confirm(出战钮)",
-    "place": "field(左半场) / go_button(开打钮)",
-    "shop": "offer(货架) / coins(深海币)",
-    "inventory": "lanes(上下战场) / backpack(装备背包)",
-    "codex": "tabs(分类页签)"
+    "team_select": "roster(候选龟) / roster_pet(第一只没上阵的龟) / confirm(出战钮)",
+    "place": "field(我方半场) / my_unit(我方一只龟) / go_button(开始战斗钮)",
+    "settle": "settle_shop(结算「前往商店」钮)",
+    "shop": "xp_button(买经验钮) / offer(货架 + 详情面板) / offer_pick(第一张买得起的卡; 选中后=「购买」钮) / bag_button(顶栏「背包」)",
+    "inventory": "backpack(装备背包) / first_item(背包第一件) / lanes(上下战场) / first_leader(第一只统领) / finish_button(完成教程钮)"
   },
-
   "team_select": [
     {
-      "text": "欢迎来到<b>斗龟场</b>！教学给你三只上手最简单的龟 —— <b>点头像</b>就派它上阵，三只都点上。",
-      "anchor": "top",
+      "text": "选择 3 只龟上阵",
       "highlight": "roster",
-      "advanceOn": "team_filled"
+      "advanceOn": "team_filled",
+      "point": "roster_pet"
     },
     {
-      "text": "点龟头像时，<b>右侧</b>会显示它的属性和技能。技能图标<b>点一下</b>就弹出说明；<b>数值是彩色的</b>：红=物理、蓝=魔法、白=真伤。",
-      "anchor": "top"
-    },
-    {
-      "text": "上面这三格是你的<b>出战阵容</b> —— 点上的龟就站到这儿。站位一会儿在战场上还能细调。",
-      "anchor": "top",
-      "highlight": "slots"
-    },
-    {
-      "text": "三只齐了，点右下角的<b>「带它们出战」</b>，第一场战斗开始。",
-      "anchor": "bottom",
-      "highlight": "confirm"
+      "text": "点击出战",
+      "highlight": "confirm",
+      "advanceOn": "team_confirmed"
     }
   ],
-
   "place": [
     {
-      "text": "开打<b>之前</b>，你可以<b>摆位</b>：把自己的龟拖到<b>左半场</b>任意位置。这就是「站位」。",
-      "anchor": "top",
-      "highlight": "field"
+      "text": "拖动龟调整站位",
+      "highlight": "field",
+      "point": "my_unit",
+      "hand": "drag",
+      "advanceOn": "unit_dragged"
     },
     {
-      "text": "<b>前排扛伤、后排输出</b> —— 谁站前面谁先挨打。摆位决定谁先被集火，很关键。",
-      "anchor": "top"
-    },
-    {
-      "text": "摆好了就点<b>「开打」</b>。战斗全自动，你的所有决策都在开打之前。",
-      "anchor": "bottom",
+      "text": "点击开始战斗",
       "highlight": "go_button",
       "advanceOn": "fight_started"
     }
   ],
-
-  "battle": [
+  "settle": [
     {
-      "text": "战斗<b>全自动</b>进行。你能做的是观察：谁在挨打、谁的技能快好了。",
-      "anchor": "top"
-    },
-    {
-      "text": "<b>点场上任意一只龟</b>可以看它的详细面板：属性、技能、身上的状态。",
-      "anchor": "top",
-      "advanceOn": "info_panel_opened"
-    },
-    {
-      "text": "<b>两指捏合</b>能缩放战场，<b>一根手指拖</b>能挪视角 —— 乱战看不清就拖一拖。",
-      "anchor": "top"
-    },
-    {
-      "text": "打完这一把，教学就结束了。往后变强主要靠<b>商店</b>买装备、在<b>背包</b>里装到龟身上。",
-      "anchor": "bottom"
+      "text": "点击前往商店",
+      "highlight": "settle_shop",
+      "advanceOn": "settle_continue"
     }
   ],
-
   "shop": [
     {
-      "text": "这是<b>商店</b>。用<b>深海币</b>买装备，装备是变强的关键。教学给了你一些币。",
-      "anchor": "top",
-      "highlight": "coins"
+      "text": "购买经验，升到 2 级",
+      "highlight": "xp_button",
+      "advanceOn": "level_up"
     },
     {
-      "text": "货架上<b>点一张卡</b>看它的详情，再点<b>「买下」</b>才付钱 —— 装备会进你的背包。挑一件便宜的试试。",
-      "anchor": "top",
-      "highlight": "offer"
+      "text": "购买 1 件装备",
+      "highlight": "offer",
+      "advanceOn": "item_bought",
+      "point": "offer_pick"
     },
     {
-      "text": "买好了，点上方的<b>「去背包」</b>，把装备装到龟身上。",
-      "anchor": "bottom"
+      "text": "点击背包",
+      "highlight": "bag_button",
+      "advanceOn": "shop_to_bag"
     }
   ],
-
   "inventory": [
     {
-      "text": "这是<b>背包 / 出战配置</b>。上面是<b>上战场 / 下战场</b>两条战线，每只龟身上有装备槽。",
-      "anchor": "top",
-      "highlight": "lanes"
+      "text": "点击一件装备",
+      "highlight": "backpack",
+      "anchor": "right",
+      "advanceOn": "bench_selected",
+      "point": "first_item"
     },
     {
-      "text": "下面是你的<b>装备背包</b>。<b>先点一件装备、再点一只龟</b>，就装上了。想调上下战场就<b>点两只龟</b>，它们互换位置。",
-      "anchor": "bottom",
-      "highlight": "backpack"
+      "text": "点击一只龟装上",
+      "highlight": "lanes",
+      "advanceOn": "item_equipped",
+      "point": "first_leader"
     },
     {
-      "text": "装好、位置也调顺了，点上方的<b>「看看图鉴」</b>。",
-      "anchor": "top"
-    }
-  ],
-
-  "codex": [
-    {
-      "text": "这是<b>图鉴</b>。所有的龟、装备、羁绊、状态都能在这查 —— 不确定某个东西干嘛用，就来这里翻。",
-      "anchor": "top",
-      "highlight": "tabs"
-    },
-    {
-      "text": "看完了，点上方的<b>「打第二把」</b>，带着刚装好的装备再打一场，教学就结束啦。",
-      "anchor": "top"
+      "text": "点击完成教程",
+      "highlight": "finish_button",
+      "anchor": "right",
+      "advanceOn": "tutorial_finished"
     }
   ]
 }

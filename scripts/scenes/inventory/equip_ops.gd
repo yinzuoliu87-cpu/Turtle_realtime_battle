@@ -48,7 +48,7 @@ func _equip_to(pet_id: String, bench_idx: int) -> void:
 		GameState.apply_temp_leveler(pet_id)
 		GameState.consume_temp_leveler(bench_idx)
 		host._sel_bench = -1
-		host._toast("临时等级器 → %s 本大轮 +1 级 (现 +%d)" % [pet_id, GameState.temp_level_bonus(pet_id)])
+		host._toast("%s 本大轮等级 +1（当前 +%d）" % [pet_id, GameState.temp_level_bonus(pet_id)])
 		host._rebuild(); return
 	var eqs: Array = GameState.persistent_equipped.get(pet_id, [])
 	## ★★【羁绊赠送件】直接放行: 它不占任何容量(见 GameState._cap_count),
@@ -63,11 +63,11 @@ func _equip_to(pet_id: String, bench_idx: int) -> void:
 	#   漏了这一处就会出现"明明只装了 2 件却说已装满"。
 	if not _grant and GameState._cap_count(eqs) >= host.P2.UNIT_EQUIP_CAP:
 		host._sel_bench = -1
-		host._toast("这只已装满 %d 件 · 先点它卸下一件" % host.P2.UNIT_EQUIP_CAP)
+		host._toast("装备栏已满（%d 件）" % host.P2.UNIT_EQUIP_CAP)
 		host._rebuild(); return
 	if not _grant and not GameState.team_has_equip_room():
 		host._sel_bench = -1
-		host._toast("全队装备已满 %d/%d · 卸一件或升等级再装" % [GameState.team_equipped_count(), GameState.team_equip_cap()])
+		host._toast("全队装备已达上限 %d/%d" % [GameState.team_equipped_count(), GameState.team_equip_cap()])
 		host._rebuild(); return
 	var item = bench[bench_idx]
 	bench.remove_at(bench_idx)
@@ -108,11 +108,11 @@ func _equip_minion(lane: String, idx: int, bench_idx: int) -> void:
 	#   漏了这一处就会出现"明明只装了 2 件却说已装满"。
 	if not _grant and GameState._cap_count(eqs) >= host.P2.UNIT_EQUIP_CAP:
 		host._sel_bench = -1
-		host._toast("这个小将已装满 %d 件 · 先点它卸下一件" % host.P2.UNIT_EQUIP_CAP)
+		host._toast("装备栏已满（%d 件）" % host.P2.UNIT_EQUIP_CAP)
 		host._rebuild(); return
 	if not _grant and not GameState.team_has_equip_room():
 		host._sel_bench = -1
-		host._toast("全队装备已满 %d/%d · 卸一件或升等级再装" % [GameState.team_equipped_count(), GameState.team_equip_cap()])
+		host._toast("全队装备已达上限 %d/%d" % [GameState.team_equipped_count(), GameState.team_equip_cap()])
 		host._rebuild(); return
 	eqs.append(bench[bench_idx])
 	bench.remove_at(bench_idx)
@@ -143,7 +143,7 @@ func _sell_selected() -> void:
 	##   它的进出只由盾羁绊档位决定(掉档自动收回), 不该出现在交易路径上。
 	if GameState.is_synergy_grant(_it):
 		host._sel_bench = -1
-		host._toast("圣光护盾是羁绊赠送的，不能卖（盾羁绊掉档时会自动收回）")
+		host._toast("羁绊赠送装备不可出售")
 		host._rebuild()
 		return
 	GameState.meta_deepsea_coins += _sell_value(_it)

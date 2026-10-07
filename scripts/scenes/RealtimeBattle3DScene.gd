@@ -606,9 +606,8 @@ var _headless_sys := HeadlessSystem.new(self)   # 无头骑士·恐惧/镰刀/�
 var _glacier_zones: Array = []            # 冰川带(训龟大师·用户2026-07-23) {from, dir, len, width, until, side}: 站带上的敌-40%移速+受伤+20%
 
 # --- 暂停 + 战斗日志 (R2b, 用户 2026-07-11) ---
-const TutorialGuide := preload("res://scripts/scenes/TutorialGuide.gd")
 var _spell_disc: SpellDisc = null         # 法术圆盘: 右下角·**只读**(U2: 冷却 + 魔法石层数显示, 不再能点/拖施法)
-var _tutorial: Node = null                # 新手引导实例(GameState.tutorial 才建); null=不在教程里
+var _tutorial: Node = null                # 教程摆位引导(dual_lane_flow._dl_enter_place 挂); null=不在教程里
 var _tut_place_shown: bool = false        # 教学 match1: 摆位引导只挂一次(首路), 别每路都弹
 var _surrender_panel: Control = null      # 投降确认浮层(取消/确认认输), 默认隐; 取代原暂停浮层(用户2026-07-30)
 var _surrender_btn: Button = null          # 🏳 投降按钮(原 ⏸ 暂停位); 结算后 disabled
@@ -930,16 +929,7 @@ func _ready() -> void:
 	_spawn._spawn_teams()
 	if _vfxlab != null:
 		_vfxlab.post_spawn()   # 🔬 调试台: 清 UI/铺暗地板/改携带者/摆相机/开拍(单位摆放已由 EQDEMO 那条路走完)
-	# 新手引导: ★存成员变量 —— 后面 _hud._show_unit_info_panel 要调 notify() 推进那一步。
-	#   match1(第一把): "place"摆位引导延到 _dl_sys._dl_enter_place 才挂(那时才有摆位UI, 文案对得上屏幕);
-	#   match2(第二把)/旧路径: 现在就挂"battle"观察引导。
-	if GameState.tutorial:
-		var _tdg = get_node_or_null("/root/TutorialDirector")
-		if _tdg != null and _tdg.is_active():
-			if str(_tdg.stage()) != "match1":
-				_tutorial = _tdg.attach_guide(self, "battle")
-		else:
-			_tutorial = TutorialGuide.attach(self, "battle")
+	# 教程引导只在摆位阶段挂(_dl_sys._dl_enter_place) —— 开场演出期间不出提示(方案书 B1)。
 	if OS.has_environment("INFO_DEMO"):   # DEV: 自动弹第一只友军的详情面板(截图核对侧边信息面板用·env门控·正常包无)
 		## ★★别用 `get_tree().create_timer()` —— 那造的是**树级**计时器,
 		##   本场景释放了它照样会响, 响的时候引擎去绑已释放的捕获, 就喷
@@ -2184,7 +2174,7 @@ func _process(delta: float) -> void:
 		_frame_sim_dt = SIM_DT   # B 阶段: det 模式恒 1 步/帧
 		_render_alpha = 0.0   # det/headless: 无渲染·不插值
 	else:
-		_advance_sim_accum(rd * _replay.time_mult())   # ★切片2: 交互累加器(verify_interactive_determinism 直接驱动·证帧率无关); 回放摆位期快进
+		_advance_sim_accum(_replay.sim_feed(rd))   # ★切片2: 交互累加器(verify_interactive_determinism 直接驱动·证帧率无关); 回放摆位期快进 / 倍速 / 观赛追帧(replay_recorder.sim_feed)
 	# 演出每帧一次(真实时间·立绘动画/相机随真实帧走→平滑)。frozen/in_ts 用 sim 后最新态。
 	var r_frozen: bool = _hitstop > 0.0
 	var r_in_ts: bool = not _timestop._ts_active.is_empty()
@@ -7534,7 +7524,7 @@ func _settle_season(won: bool) -> void:
 	if _replay.on_settle(won): _had_season = false; return   # 回放: 录制那一局在此落盘; 播放时一切结算副作用跳过(V5)
 	var gs = get_node_or_null("/root/GameState")
 	# ★新手教程沙盒(用户2026-07-23「不获得任何奖励」): 不喂赛季。放最前面 —— 下方 season_total_battles++/coins+= 全在这行之后, 一个都到不了。
-	if gs != null and bool(gs.get("tutorial_active")):
+	if (gs != null and bool(gs.get("tutorial_active"))) or _world_builder._is_dev_tool_battle():   # 开发工具场同样不计赛季(见 _is_dev_tool_battle 头注)
 		_had_season = false
 		return
 	# demo / 无赛季态: 玩家没配 season_leaders → 不喂赛季 (只显横幅)

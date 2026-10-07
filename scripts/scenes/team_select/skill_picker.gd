@@ -27,7 +27,7 @@ func _build_skill_picker(pet: Dictionary) -> void:
 	var count_lbl = Label.new()
 	## ★原文案 "3 选 1 (主动/被动)" —— 括号计数 + 括号补注, 是说明书腔不是游戏话。
 	##   括号里那句还等于没说(玩家点开就看得见是主动还是被动)。改成一句话讲清"挑一个带上场"。
-	count_lbl.text = "挑 1 个带上场 · 共 %d 招" % maxi(1, pool.size() - 1)   # 普攻(idx0)外的候选数; 收敛成[普攻+3技]后=3选1
+	count_lbl.text = "选择 1 个技能（共 %d 个）" % maxi(1, pool.size() - 1)   # 普攻(idx0)外的候选数; 收敛成[普攻+3技]后=3选1
 	count_lbl.add_theme_font_size_override("font_size", host._sf(11))   # PoC .dp-skill-count 11px
 	count_lbl.add_theme_color_override("font_color", Color(1, 1, 1, 0.5))   # rgba(255,255,255,.5)
 	count_lbl.size_flags_vertical = Control.SIZE_SHRINK_END   # 底对齐近 baseline
@@ -61,7 +61,7 @@ func _build_skill_picker(pet: Dictionary) -> void:
 			sel_names += "%s  " % pool[i].get("name", "?")
 	sel_names = sel_names.strip_edges()
 	var sel_lbl = Label.new()
-	sel_lbl.text = ("带上场 · %s" % sel_names) if sel_names != "" else ""
+	sel_lbl.text = ("选择 · %s" % sel_names) if sel_names != "" else ""
 	sel_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sel_lbl.add_theme_font_size_override("font_size", host._sf(12))
 	sel_lbl.add_theme_color_override("font_color", Color("#ffd86b"))
@@ -166,14 +166,14 @@ func _make_skill_icon(pet: Dictionary, sk: Dictionary, idx: int, is_fixed: bool,
 			btn.add_theme_color_override(_ic, Color(0.34, 0.36, 0.38, 0.55))
 		btn.add_theme_color_override("font_color", Color(0.62, 0.64, 0.66, 0.6))
 	if is_locked:
-		btn.tooltip_text = "这招还没解锁"   # 【不可达】等级解锁已移除(2026-07-10); 分支留作将来若引入其它锁条件
+		btn.tooltip_text = "未解锁"   # 【不可达】等级解锁已移除(2026-07-10); 分支留作将来若引入其它锁条件
 	elif dev_locked:
 		## ★"候选技开发中, 当前锁定默认签名技" 是写给我自己看的。玩家不知道什么叫"候选技/签名技"。
 		## ★★接着又改一次(同日): 中间那版写的是"这招还在打磨" —— **还是开发状态**,
 		##   只是把"开发中"换了个文雅说法, 玩家读到的仍然是「我们还没做完」。
 		##   玩家要的是【现在按什么规则】: 这格选不了, 这只龟带的是它本来最拿手的那招。
 		## ⇒ 与它右下那枚角标(「未解锁」)对齐, 再补一句"那现在带的是什么"。
-		btn.tooltip_text = "这招还没解锁 · 先带它的看家本领"
+		btn.tooltip_text = "未解锁"
 
 	# 角标 (PoC .ico-corner bottom-right, index.html:634-641): lock=Lv4/Lv7 / fixed=基础 / selected=✓
 	if is_locked:
@@ -181,9 +181,9 @@ func _make_skill_icon(pet: Dictionary, sk: Dictionary, idx: int, is_fixed: bool,
 	elif dev_locked:
 		btn.add_child(_make_skill_corner("未解锁", Color("#2a2f3a"), Color("#ccdddd")))
 	elif is_fixed:
-		btn.add_child(_make_skill_corner("天生", Color("#7dffb3"), Color("#0a2417")))
+		btn.add_child(_make_skill_corner("固有", Color("#7dffb3"), Color("#0a2417")))
 	elif is_sel:
-		btn.add_child(_make_skill_corner("上场", Color("#ffd86b"), Color("#2a1605")))
+		btn.add_child(_make_skill_corner("已选", Color("#ffd86b"), Color("#2a1605")))
 	# 强化被动 "+" 角标 (PoC .ico-plus 右上金圈, index.html:614-618)
 	if sk.get("enhancesPassive", false) or sk.get("iconPlus", false):
 		btn.add_child(_make_ico_plus())
@@ -198,11 +198,11 @@ func _make_skill_icon(pet: Dictionary, sk: Dictionary, idx: int, is_fixed: bool,
 		if is_fixed:
 			btn.disabled = false
 			var pi2 = pid
-			btn.pressed.connect(func() -> void: host._flash_status("这是它天生就会的, 换不掉"))
+			btn.pressed.connect(func() -> void: host._flash_status("固有技能 · 不可更换"))
 		elif dev_locked:
 			btn.disabled = false
 			## ★与 tooltip / 角标同一句口径(上面 dev_locked 那支有为什么不提"开发中/打磨"的说明)。
-			btn.pressed.connect(func() -> void: host._flash_status("这招还没解锁, 先带它的看家本领"))
+			btn.pressed.connect(func() -> void: host._flash_status("未解锁"))
 	# 点/触 技能图标 → 弹窗看名+龟能+描述 (手机无 hover 的唯一途径; 与选中互不影响)
 	var _skinfo: String = _skill_tooltip(pet, sk, idx)
 	if not btn.disabled:
@@ -347,11 +347,11 @@ func _toggle_skill(pid: String, idx: int) -> void:
 	if pet.is_empty():
 		return
 	if idx == 0:
-		host._flash_status("普攻自己会打, 不用选")        # skillPool[0]=普攻
+		host._flash_status("普攻（自动释放）")        # skillPool[0]=普攻
 		return
 	var unlocked: Array = _available_skill_indices(pet)
 	if not (idx in unlocked):
-		host._flash_status("这招还没解锁")   # 【不可达】等级解锁已移除(2026-07-10)
+		host._flash_status("未解锁")   # 【不可达】等级解锁已移除(2026-07-10)
 		return
 	# 3选1: idx1=默认签名技恒可选; idx2/3 候选需 impl:true(与按钮层 dev_locked L1250 同一门控)。
 	#   旧的 `if idx != 1` 一刀切拦截是陈旧死码, 与 impl 标记矛盾(28龟 idx2/3 全 impl:true) → 已拆, 改成逐技校验。
@@ -360,7 +360,7 @@ func _toggle_skill(pid: String, idx: int) -> void:
 		return
 	var sk: Dictionary = pool[idx]
 	if SkillChoice.dev_locked(pet, idx):
-		host._flash_status("这招还没解锁, 先带它的看家本领")   # 与按钮层 dev_locked 同一句
+		host._flash_status("未解锁")   # 与按钮层 dev_locked 同一句
 		return
 	GameState.loadouts[pid] = idx                       # 3选1: 单选, 点哪个就替换成哪个
 	# ★这三行的调用目标在上帝文件拆分时搬过家: _refresh_slots 去了 roster_slots.gd,

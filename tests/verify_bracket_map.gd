@@ -122,10 +122,10 @@ func _t_opponent_gate() -> void:
 	_ok("⑥ 拿到了 ⇒ 说出对手是谁", t_ok.find("乙龟") >= 0, t_ok)
 	var t_used := SCENE.opponent_tip({"ok": false, "reason": "already_asked", "asked": 3}, true)
 	_ok("⑥ ★★用掉了 ⇒ 说清**已经看过几号**(不然玩家不知道自己为什么拿不到)",
-		t_used.find("3") >= 0 and t_used.find("一轮只能看一个") >= 0, t_used)
+		t_used.find("3") >= 0 and t_used.find("每轮仅可查看") >= 0, t_used)
 	var t_net := SCENE.opponent_tip({"ok": false, "reason": "net"}, true)
 	_ok("⑥ 连不上 ⇒ 让他再点一次(可恢复的要说得出怎么恢复)",
-		t_net.find("再点") >= 0, t_net)
+		t_net.find("稍后重试") >= 0, t_net)
 	var t_out := SCENE.opponent_tip({"ok": false, "reason": "not_in_bucket"}, true)
 	_ok("⑥ ★四种 reason 说的不是同一句话(混成「取不到」等于没说)",
 		t_used != t_net and t_net != t_out and t_used != t_out,
@@ -406,37 +406,26 @@ func _t_two_views() -> void:
 	##    联网那条路 `_on_poll` 只写 `_bucket`) ⇒ 那个倒计时在一小时一小时地数一个
 	##   **永远不会来**的东西, 而 10 人规模下全周只有一个桶、「等各桶决出冠军」
 	##   连概念都不存在。判据钉住了一句假话。
-	## ⇒ 改成**跟着 `CROSS_BUCKET_LIVE` 走的一对**: 没上线要照实说、
-	##   **不许**出现倒计时那句; 上线了才要求倒计时。
-	if _map.CROSS_BUCKET_LIVE:
-		_ok("⑤ ★上线了 ⇒ 带倒计时(「敬请期待」没用)", et.find("后开播") >= 0, et)
-	else:
-		## ★★★2026-09-28 这条判据从**抄屏幕字面量**改成**量空态分类**。
-		##   原来写的是 `et.find("还没做") >= 0` —— 它**要求**「还没做」三个字
-		##   必须出现在玩家眼前。而那是一句**开发状态**: 玩家不需要知道我们做完没做完,
-		##   只需要知道**现在按什么规矩算**(与 `verify_mainmenu_layout` ⑬b 2026-09-28
-		##   摘掉「开发中」那条同一族 —— memory fb-gate-can-pin-the-bug-in-place:
-		##   门禁会把 bug 钉在原地, 判据替那个缺陷站了岗)。
-		##   产品那句已改成「本周按各组自己算冠军 · 你这一组的冠军就是本周冠军」。
-		## ⇒ 拆成三条各管一件事, 一条都不比原来松:
-		##   ①「没上线」这件事本身 —— 量 `_empty_kind()`(产品自己那一份判断, 不抄字面量)
-		##   ②**不许**数一个永远不来的倒计时(原来那条的后半, 一字未动)
-		##   ③**不许**把开发状态说给玩家听(原来那条的**反向** —— 以前是"必须有")
-		_ok("⑤ ★★没上线 ⇒ 空态判成【各组自己评冠军】这一档(不是倒计时那一档)",
-			str(_map._empty_kind()) == str(_map.EK_FINALS_LOCAL),
-			"kind=%s 「%s」" % [str(_map._empty_kind()), et])
-		_ok("⑤ ★★没上线 ⇒ **不许**数一个永远不来的倒计时", et.find("后开播") < 0, et)
-		var _devw: Array = ["还没做", "开发中", "未实现", "待做", "TODO", "占位", "暂按", "暂锁", "打磨"]
-		var _hit_dev: Array = []
-		for _w in _devw:
-			if et.find(str(_w)) >= 0:
-				_hit_dev.append(_w)
-		_ok("⑤ ★★★空态不许把开发状态说给玩家听", _hit_dev.is_empty(),
-			"命中: %s ← 「%s」" % [str(_hit_dev), et])
-		## ★分母: 上面那条禁词表**真的会命中** —— 否则它是一条空检查。
-		##   (拿产品旧稿里那半句现场试一下, 不碰产品。)
-		_ok("⑤ ★分母: 禁词表不是空检查(旧稿那半句会被它逮住)",
-			"跨组总决赛还没做出来".find(str(_devw[0])) >= 0)
+	## ★★★2026-10-07 冠军杯赛上线(方案书 20261007-冠军杯赛.md): `CROSS_BUCKET_LIVE` 删了。
+	##   上午切过去 ⇒ 【开赛前】这一档: 倒计时到 20:00 UTC + 已产生的组冠军(不是空图, 也不是假倒计时 ——
+	##   这回倒计时数的东西真的会来)。
+	_ok("⑤ ★★上午 ⇒ 空态判成【冠军杯赛开赛前】这一档",
+		str(_map._empty_kind()) == str(_map.EK_FINALS_SOON),
+		"kind=%s 「%s」" % [str(_map._empty_kind()), et])
+	_ok("⑤ ★★开赛前 ⇒ 带倒计时、说的是「冠军杯赛」", et.find("后开赛") >= 0 and et.find("冠军杯赛") >= 0, et)
+	## ★分母: 10:00 → 20:00 正好 10 小时(倒计时数的是真的开赛时刻, 不是随便一个数)
+	_ok("⑤ ★分母: 倒计时 = 10 小时 0 分", et.find("10 小时 0 分") >= 0, et)
+	var _devw: Array = ["还没做", "开发中", "未实现", "待做", "TODO", "占位", "暂按", "暂锁", "打磨"]
+	var _hit_dev: Array = []
+	for _w in _devw:
+		if et.find(str(_w)) >= 0:
+			_hit_dev.append(_w)
+	_ok("⑤ ★★★空态不许把开发状态说给玩家听", _hit_dev.is_empty(),
+		"命中: %s ← 「%s」" % [str(_hit_dev), et])
+	## ★分母: 上面那条禁词表**真的会命中** —— 否则它是一条空检查。
+	##   (拿产品旧稿里那半句现场试一下, 不碰产品。)
+	_ok("⑤ ★分母: 禁词表不是空检查(旧稿那半句会被它逮住)",
+		"跨组总决赛还没做出来".find(str(_devw[0])) >= 0)
 	_ok("⑤ ★用词还是「开播」, 不出现「直播」「回放」",
 		et.find("直播") < 0 and et.find("回放") < 0, et)
 
@@ -452,7 +441,7 @@ func _t_two_views() -> void:
 		{"size": 4, "round": 1, "me": -1, "names": ["甲龟", "乙龟", "丙龟", "丁龟"], "done": {}},
 		SUN_PM)
 	await get_tree().process_frame
-	_ok("⑤ 晚上 + 签表已建好 → 默认看【冠军赛】", str(_map._view) == L.VIEW_FINALS, str(_map._view))
+	_ok("⑤ 晚上 + 冠军杯赛已成表 → 默认看【冠军杯赛】", str(_map._view) == L.VIEW_FINALS, str(_map._view))
 	_ok("⑤ ★★切图之后读的是【另一份】数据(4 人签表不是 8 人桶)",
 		int(_map.cur().get("size", 0)) == 4, "size=%d" % int(_map.cur().get("size", 0)))
 	_ok("⑤ ★我不在签表里 → 对焦到当前轮(不崩、不乱指)",

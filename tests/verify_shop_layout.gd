@@ -427,7 +427,7 @@ func _ready() -> void:
 		if not (c is Button):
 			continue
 		var t := str((c as Button).text)
-		if t.find("我的背包") < 0 and t.find("出战阵容") < 0:
+		if not t.begins_with("背包  ") and t.find("出战阵容") < 0:
 			continue
 		var cb: Control = c
 		bmin = minf(bmin, cb.global_position.x)
@@ -488,7 +488,7 @@ func _ready() -> void:
 	_chk("⑭ ★分母: 剥注释没把代码剥没(两边都还剩大半)",
 		code_shop.length() > src_shop.length() / 3 and code_inv.length() > src_inv.length() / 3)
 	_chk("⑭ ★★商店与背包共用同一句「这件不加属性，只有效果」",
-		code_shop.find("这件不加属性，只有效果") >= 0 and code_inv.find("这件不加属性，只有效果") >= 0)
+		code_shop.find("无属性加成") >= 0 and code_inv.find("无属性加成") >= 0)
 	_chk("⑭ ★旧的公文体版本在【代码里】两边都已绝迹(留一处 = 又是两个版本)",
 		code_shop.find("本件不提供属性加成") < 0 and code_inv.find("本件不提供属性加成") < 0)
 
@@ -1168,7 +1168,7 @@ func _lineup_pair(sc) -> Array:
 	_collect_buttons(sc, btns)
 	for b in btns:
 		var t := str((b as Button).text)
-		var i := t.find("已装 ")
+		var i := t.find("装备 ")
 		if i < 0:
 			continue
 		var parts: PackedStringArray = t.substr(i + 3).strip_edges().split("/")
@@ -1245,7 +1245,7 @@ func _check_bag_popup_all(sc) -> void:
 		_chk("BAG_POPUP_ALL ★分母+判据: 找到「收起」按钮, 而且没有格子压住它(压住 %d 格)" % blocked,
 			closer != null and blocked == 0)
 		if n > cap:
-			var need := "还有 %d 件" % (n - cap)
+			var need := "另有 %d 件" % (n - cap)
 			var said := false
 			for l in _labels_in(pan):
 				if str((l as Label).text).find(need) >= 0:
@@ -1468,7 +1468,7 @@ func _check_buy_feedback() -> void:
 		await get_tree().process_frame
 	var msg2 := ""
 	for l in _labels_in(sc3):
-		if str((l as Label).text).find("刷新要") >= 0:
+		if str((l as Label).text).find("深海币不足（需要") >= 0:
 			msg2 = str((l as Label).text)
 	var after_ids: Array = []
 	for it in sc3._offer:
@@ -1498,13 +1498,13 @@ func _check_buy_feedback() -> void:
 		await get_tree().process_frame
 	var msg1 := ""
 	for l in _labels_in(sc3):
-		if str((l as Label).text).find("还差") >= 0:
+		if str((l as Label).text).find("深海币不足 · ") >= 0:
 			msg1 = str((l as Label).text)
 	print("     买不起(币 %d / 价 %d, 差 %d): 屏上「%s」 币 %d→%d 背包 %d→%d"
 		% [coin0, price, gap0, msg1, coin0, int(GameState.meta_deepsea_coins),
 		   bench0, GameState.persistent_bench.size()])
 	_chk("BUY_FEEDBACK ② 买不起 → 屏上写着「还差 %d 枚深海币」(不是只把按钮变灰)" % gap0,
-		msg1.find("还差 %d 枚深海币" % gap0) >= 0)
+		msg1.ends_with("还差 %d" % gap0))
 	_chk("BUY_FEEDBACK ② ★分母: 买不起时钱和背包一个都没动(%d→%d / %d→%d)"
 		% [coin0, int(GameState.meta_deepsea_coins), bench0, GameState.persistent_bench.size()],
 		int(GameState.meta_deepsea_coins) == coin0
@@ -1522,7 +1522,7 @@ func _check_buy_feedback() -> void:
 		await get_tree().process_frame
 	var msg3 := ""
 	for l in _labels_in(sc3):
-		if str((l as Label).text).find("买下") >= 0:
+		if str((l as Label).text).find("购买成功") >= 0:
 			msg3 = str((l as Label).text)
 	print("     成交(价 %d): 屏上「%s」 币 %d→%d 背包 %d→%d"
 		% [price, msg3, coin1, int(GameState.meta_deepsea_coins), bench1,

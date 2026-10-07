@@ -35,19 +35,19 @@ func _ready() -> void:
 	var sun0: int = P2.week_anchor_utc(int(Time.get_unix_time_from_system())) + 6 * 86400
 	var before := _say(sun0 + 7 * 3600)             # 07:00 UTC
 	_ok("★★分组前(07:00 UTC)不说「人太少/下周再来」", before.find("下周再来") < 0 and before.find("人太少") < 0, before)
-	_ok("★★分组前说清什么时候开打", before.find("还没分组") >= 0 and before.find(P2.local_hhmm(sun0 + P2.FINALS_SEAT_HOUR_UTC * 3600)) >= 0, before)
+	_ok("★★分组前说清什么时候开打", before.find("未分组") >= 0 and before.find(P2.local_hhmm(sun0 + P2.FINALS_SEAT_HOUR_UTC * 3600)) >= 0, before)
 	var m = MAP.new()
 	m._injected = true
 	m._bucket = {"reason": "not_seated", "entered": 6}
 	m._now_override = sun0 + 10 * 3600            # 就算时钟已过分组点, 服务端说没分组就是没分组
 	var ns := str(m._empty_text())
 	m.free()
-	_ok("★★服务端回 not_seated ⇒ 说「还没分组」", ns.find("还没分组") >= 0 and ns.find("下周再来") < 0, ns)
+	_ok("★★服务端回 not_seated ⇒ 说「还没分组」", ns.find("未分组") >= 0 and ns.find("下周再来") < 0, ns)
 	var SBn = load("res://scripts/net/supabase.gd")
 	var pv: Dictionary = SBn.parse_finals(true, 200, '{"ok":false,"reason":"not_seated","entered":6}', "uid-me", 1)
 	_ok("★★回包解析把 not_seated 带出来(不吞成空字典)", str(pv.get("reason", "")) == "not_seated" and int(pv.get("entered", 0)) == 6, str(pv))
 	var after := _say(sun0 + 10 * 3600)             # 10:00 UTC, 分组早就跑过了
-	_ok("★分母: 分组之后真没开起来时仍然说「人太少」", after.find("人太少") >= 0, after)
+	_ok("★分母: 分组之后真没开起来时仍然说「人太少」", after.find("人数不足") >= 0, after)
 	## ★2026-10-04 用户拍板「改成『8 分 43 秒后』」: 原来 `8:43` 读起来像钟点。
 	_ok("倒计时 523 秒 ⇒ 「8 分 43 秒」", MAP.countdown_text(523) == "8 分 43 秒", MAP.countdown_text(523))
 	_ok("不足 1 分钟只写秒", MAP.countdown_text(43) == "43 秒", MAP.countdown_text(43))

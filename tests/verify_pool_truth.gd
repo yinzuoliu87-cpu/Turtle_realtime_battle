@@ -36,8 +36,8 @@ const _P2 := preload("res://scripts/gamedata/phase2_config.gd")
 
 ## ★那句假话的**承诺**本身 —— 这是整条 ① 的判据核心。
 ##   「打完一场」是玩家的动作、「对手就会上来」是结果, 后半句才是谎。
-const PROMISE := "对手就会上来"
-const BLAME_NET := "连不上"
+const PROMISE := "对战后更新"
+const BLAME_NET := "无法连接"
 
 ## 端到端抽对手的次数。★40 与探针同一个数, 好对着看。
 const N_DRAWS := 40

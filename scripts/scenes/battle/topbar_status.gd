@@ -36,6 +36,8 @@ const SPLASH_TEXT := "加时！"
 const SPLASH_DUR := 1.2      # 大字从出现到淡完(秒)
 const STAMP_TEXT := "团灭"
 const POPUP_LIFE := 3.0      # 说明小框自己消失的时间(秒)
+const REPLAY_MARK := "ReplayMark"   # 回放时路名牌左边的小签(门禁按名字找)
+const REPLAY_MARK_TEXT := "回放"
 
 var hud
 var battle
@@ -48,6 +50,7 @@ var name_r: Label = null
 var dot_cores: Array = []
 var dot_rings: Array = []
 var plate: PanelContainer = null
+var replay_mark: PanelContainer = null
 var badge_amp: PanelContainer = null
 var badge_heal: PanelContainer = null
 var badge_amp_lab: Label = null
@@ -280,6 +283,11 @@ func _build_center() -> void:
 	prow.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	prow.offset_top = hud.PK_H + 22.0 + DOT_PX + 4.0
 	bar.add_child(prow)
+	## 回放时: 路名牌左边一枚「回放」小签(2026-10-07 代替回放左上那块与顶栏重复的铭牌);
+	##   右边垫一块同宽的空位 ⇒ 路名牌仍正对 VS。
+	var rp_on: bool = battle._replay != null and battle._replay.is_playing()
+	if rp_on:
+		prow.add_child(_mk_replay_mark())
 	badge_amp = _mk_badge(ICON_AMP, "amp")
 	badge_amp_lab = badge_amp.get_meta("lab")
 	prow.add_child(badge_amp)
@@ -307,9 +315,64 @@ func _build_center() -> void:
 	badge_heal_lab = badge_heal.get_meta("lab")
 	badge_heal_lab.text = "-%d%%" % int(round((1.0 - float(battle.SD_HEAL_MULT)) * 100.0))
 	prow.add_child(badge_heal)
+	if rp_on:
+		var pad := Control.new()
+		pad.name = REPLAY_MARK + "Pad"
+		pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pad.custom_minimum_size = Vector2(replay_mark.get_combined_minimum_size().x, 0)
+		prow.add_child(pad)
 	badge_amp.visible = false
 	badge_heal.visible = false
 	_build_popup()
+
+
+## 「回放」小签: 与路名牌同一张银边石板, 染成暗红 + 左边一颗红方点(录像标记)。
+## ★观赛(2026-10-07, docs/plans/20261007-实时观赛.md): 同一个位置写「直播」(周六)/「开播」(周日),
+##   石板染得更红、字白 —— 参考皇室战争观战计时器下那块红底「Live」。字由 `ReplayRecorder.mark_text()` 给。
+func _mk_replay_mark() -> PanelContainer:
+	var live: bool = battle._replay != null and battle._replay.is_live()
+	var pc := PanelContainer.new()
+	pc.name = REPLAY_MARK
+	pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if live:
+		## 观赛: 实心红块 + 暗红硬边(像素风直角, 与赛况板「直播」横幅 / 对阵图「开播」签同一种红)。
+		var lsb := StyleBoxFlat.new()
+		lsb.bg_color = Color("#d8473f")
+		lsb.border_color = Color("#4a0f0b")
+		lsb.set_border_width_all(2)
+		lsb.set_corner_radius_all(0)
+		lsb.content_margin_left = 12; lsb.content_margin_right = 14
+		lsb.content_margin_top = 3; lsb.content_margin_bottom = 3
+		pc.add_theme_stylebox_override("panel", lsb)
+	elif ResourceLoader.exists(PLATE_TEX):
+		var sb := StyleBoxTexture.new()
+		sb.texture = load(PLATE_TEX)
+		sb.set_texture_margin_all(12)
+		sb.modulate_color = Color(1.0, 0.62, 0.58)
+		sb.content_margin_left = 12; sb.content_margin_right = 14
+		sb.content_margin_top = 3; sb.content_margin_bottom = 3
+		pc.add_theme_stylebox_override("panel", sb)
+	var hb := HBoxContainer.new()
+	hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hb.add_theme_constant_override("separation", 6)
+	pc.add_child(hb)
+	var dot := ColorRect.new()
+	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dot.color = Color("#ffffff") if live else Color("#ff4d4d")
+	dot.custom_minimum_size = Vector2(8, 8)
+	dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	hb.add_child(dot)
+	var l := Label.new()
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	l.text = battle._replay.mark_text() if battle._replay != null else REPLAY_MARK_TEXT
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.add_theme_font_size_override("font_size", 17)
+	l.add_theme_color_override("font_color", Color("#ffffff") if live else Color("#ffd0c8"))
+	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
+	l.add_theme_constant_override("outline_size", 4)
+	hb.add_child(l)
+	replay_mark = pc
+	return pc
 
 
 func _mk_px_rect(path: String, px: float) -> TextureRect:
@@ -401,8 +464,8 @@ func _build_popup() -> void:
 ## 一行说明。数字从战斗常量来(SD_STEP / SD_AMP_PER / SD_HEAL_MULT), 不写死。
 func badge_text(kind: String) -> String:
 	if kind == "amp":
-		return "加时中每 %d 秒, 全场伤害再 +%d%%" % [int(battle.SD_STEP), int(round(float(battle.SD_AMP_PER) * 100.0))]
-	return "加时中所有治疗效果 -%d%%" % int(round((1.0 - float(battle.SD_HEAL_MULT)) * 100.0))
+		return "加时：每 %d 秒全场伤害 +%d%%" % [int(battle.SD_STEP), int(round(float(battle.SD_AMP_PER) * 100.0))]
+	return "加时：治疗效果 -%d%%" % int(round((1.0 - float(battle.SD_HEAL_MULT)) * 100.0))
 
 
 func _is_press(ev: InputEvent) -> bool:

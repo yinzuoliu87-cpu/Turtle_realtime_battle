@@ -264,7 +264,7 @@ func _eq_crystal_sweep(u: Dictionary, si: int) -> void:
 	mat.no_depth_test = true
 	im.set_meta("mat", mat)
 	battle._world.add_child(im)
-	var start_a: float = randf() * TAU
+	var start_a: float = battle._battle_rng.randf() * TAU   # ★起始角决定先扫到谁 = 改结果 ⇒ 种子化 RNG(原裸 randf ⇒ 回放/观赛在扫射处分叉, 2026-10-07 · verify_finals_premiere ⑧)
 	var state: Dictionary = {"prev": start_a}
 	battle._crystal_sys._crystal_spark(center, 1.1)
 	## ★结算走 sim 时钟(2026-08-14): 原来这里是

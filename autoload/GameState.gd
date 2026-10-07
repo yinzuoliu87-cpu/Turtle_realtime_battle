@@ -120,15 +120,15 @@ var mode: String = "single"
 ##   BattleScene._ready 读取后立即清空 (一次性消费, 不污染下一局)。
 var tutorial: bool = false
 
-## ── 新手教程模式 (用户 2026-07-23: 两把战斗+中场商店/图鉴, 沙盒不给奖励) ──
-## onboarded: 是否走完过首次教学 → 存档, 只触发一次(删档才再触发)
+## ── 新手教程 (2026-10-07 重做: 完全隔离的沙盒, 见 autoload/tutorial_director.gd 头注) ──
+## onboarded: 看过(走完或跳过)首次教程 → 存档; false 时主菜单首启弹「开始教程 / 跳过」
 var onboarded: bool = false
-## tutorial_stage: 教学当前阶段(跨场景记住走到哪) —— ""=非教学 / match1 / interlude / match2 / done
+## tutorial_stage: 教程当前阶段 —— ""=非教程 / match1_pick / match1 / shop / inventory / done
 var tutorial_stage: String = ""
-## tutorial_active: 沙盒开关 —— 为真时不给奖励(不设 season_leaders)、商店免费、固定阵容+弱对手。【不进存档】(运行时态)
+## tutorial_active: 沙盒开关 —— 为真时 GameState 里是**教程专用的全新状态**(导演换进来的),
+##   `save()` / 云同步一律不动盘与云端。【不进存档】(运行时态)
 var tutorial_active: bool = false
-## tutorial_mandatory: 首次强制(无跳过) / ❓重玩(可跳)。【不进存档】
-var tutorial_mandatory: bool = false
+## (tutorial_mandatory「首次强制无跳过」2026-10-07 删除: 教程随时可跳, 见方案书 20261007-新手教程重做 §4.3)
 
 ## 技能说明看【详细】还是【简明】(用户需求1 两级描述)。存这里而不是战斗场的成员变量,
 ## 是为了跨场景/跨对局记住 —— 玩家对"要不要看公式"的偏好是稳定的, 每局重设很烦。
@@ -799,10 +799,17 @@ func sync_titles() -> int:
 	## ★依据是从服务端 feed 派生的三个字段(见它们的声明处), 不是本地 `won`。
 	## ★「四强」= 被排进倒数第二轮(那一轮正好 4 个人)⇒ 原稿「打进四强」问的是**名次**,
 	##   不要求赢。2 人桶只有决赛那一轮, `semifinal_reached` 里不发。
-	if _Bracket.semifinal_reached(int(finals_deepest_round), int(finals_rounds_total)):
+	## ★★★2026-10-07 冠军杯赛(方案书 20261007-冠军杯赛.md): 赢下自己那一组 = 「组冠军」,
+	##   冠军 / 亚军 / 四强改从**冠军杯赛**(全部组冠军那一张)派生 —— 原稿「冠军/亚军/四强/…/桶冠军逐档」。
+	##   ★组冠军**不设人数门槛**(用户 2026-10-07「8 人或更少时直接杯赛，不用门槛」): 1 人组的那一位也是组冠军。
+	##   ★冠军杯赛只有 1 人 ⇒ 他就是冠军(`record_cup_progress` 里 n=1 ⇒ champion), 没有亚军 / 四强。
+	if bool(finals_champion):
+		if award_title(_P2.TITLE_GROUP_CHAMPION):
+			got += 1
+	if _Bracket.semifinal_reached(int(finals_cup_deepest), int(finals_cup_total)):
 		if award_title(_P2.TITLE_SEMIFINAL):
 			got += 1
-	if bool(finals_champion):
+	if bool(finals_cup_champion):
 		if award_title(_P2.TITLE_CHAMPION):
 			got += 1
 	## ★★亚军(用户 2026-10-04「加『亚军』头衔」): 决赛翻面且输的是我。
@@ -810,7 +817,7 @@ func sync_titles() -> int:
 	##     D12 原话「存成一个可累加的列表」。
 	##   ★`not finals_champion` 是防御: 一个桶决赛只有一个 `done` 值, 两个旗不会同时真;
 	##     真同时真了(坏存档)宁可只认冠军, 也不许一个人同周既冠又亚。
-	elif bool(finals_runner_up):
+	elif bool(finals_cup_runner_up):
 		if award_title(_P2.TITLE_RUNNER_UP):
 			got += 1
 	return got
@@ -838,6 +845,33 @@ func record_finals_progress(deepest: int, total: int, champion: bool, runner_up:
 		finals_runner_up = true
 		changed = true
 	return changed
+
+
+## 冠军杯赛那一张的进度(**只增不减**, 理由同 `record_finals_progress`)。返回有没有变。
+## ★调用点: `BracketMapScene.record_cup_from()`(对阵图 / 主菜单拿到 `finals_week_view` 的 `cup` 那一刻)。
+func record_cup_progress(deepest: int, total: int, champion: bool, runner_up: bool) -> bool:
+	var changed := false
+	if deepest > int(finals_cup_deepest):
+		finals_cup_deepest = deepest
+		changed = true
+	if total > int(finals_cup_total):
+		finals_cup_total = total
+		changed = true
+	if champion and not bool(finals_cup_champion):
+		finals_cup_champion = true
+		changed = true
+	if runner_up and not bool(finals_cup_runner_up):
+		finals_cup_runner_up = true
+		changed = true
+	return changed
+
+
+## 冠军杯赛进度随周清(换周 / 清档两处共用, 与上面四个小组赛字段同一处清)。
+func _clear_cup_progress() -> void:
+	finals_cup_deepest = 0
+	finals_cup_total = 0
+	finals_cup_champion = false
+	finals_cup_runner_up = false
 
 
 ## 打完一场 → 该不该吃掉一格积分赛配额。★与开闸的 `ranked_quota_full()` 共用
@@ -987,6 +1021,13 @@ var finals_deepest_round: int = 0   # 我被排进的最深那一轮(1 起; 0 = 
 var finals_rounds_total: int = 0    # 我那个桶一共几轮(0 = 还不知道)
 var finals_champion: bool = false   # 服务端说我赢下了决赛
 var finals_runner_up: bool = false  # 服务端说我输掉了决赛(亚军 · 2026-10-04)
+## ★★冠军杯赛进度(2026-10-07, 方案书 20261007-冠军杯赛.md)。上面四个是**小组赛**(我那一组)的,
+##   这五个是**冠军杯赛**(全部组冠军那一张)的 —— 冠军 / 亚军 / 四强从这里派生, 组冠军从上面那组派生。
+##   来源同样只有服务端 feed(`finals_week_view` 的 `cup`), 写入点 `record_cup_progress()`, 只增不减, 随周清。
+var finals_cup_deepest: int = 0     # 我在冠军杯赛被排进的最深那一轮(0 = 没进)
+var finals_cup_total: int = 0       # 冠军杯赛一共几轮
+var finals_cup_champion: bool = false
+var finals_cup_runner_up: bool = false
 ## ★★头衔(E-B5 · D12 四档): 一条 `{id, week}`。
 ##   **跨大轮保留、清档也不清** —— 这是玩家唯一的永久资产
 ##   (先例: `install_uid` / `account_id` 也是"清的是这局游戏, 不是你是谁")。
@@ -1426,6 +1467,11 @@ func cloud_payload() -> Dictionary:
 
 ## 把云存档应用到本机。★设备本地键**一律用本机现值**, 云端那份里就算带了也不认。
 func apply_cloud_payload(p: Dictionary, rev: int) -> void:
+	## ★教程沙盒期间内存里是教程状态 ⇒ 云端那份属于账号, 交给导演在教程结束、账号换回来之后再落。
+	var _td = get_node_or_null("/root/TutorialDirector") if is_inside_tree() else null
+	if tutorial_active and _td != null and _td.in_sandbox():
+		_td.defer_cloud_payload(p, rev)
+		return
 	var merged: Dictionary = p.duplicate(true)
 	var here := _save_dict()
 	for k in DEVICE_LOCAL_KEYS:
@@ -1441,7 +1487,7 @@ func apply_cloud_payload(p: Dictionary, rev: int) -> void:
 ##   但「内存里刚改、还没落盘」那一刻只有前者是对的。
 ## ★test_mode 下不写(门禁 / 调试台不许往 user:// 乱丢文件), 门禁自己临时开闸再量。
 func backup_save(tag: String) -> String:
-	if test_mode:
+	if test_mode or tutorial_active:
 		return ""
 	var path := "user://savegame.before-%s-%d.json" % [tag, int(Time.get_unix_time_from_system())]
 	var f := FileAccess.open(path, FileAccess.WRITE)
@@ -1483,7 +1529,7 @@ func _notification(what: int) -> void:
 	## D-8: 切后台 / 关窗口时立刻推一次 —— 手机上切到后台之后进程随时会被系统杀掉,
 	##   等下一拍(最多 20 秒)可能就没有下一拍了。
 	if (what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST) \
-			and not test_mode:
+			and not test_mode and not tutorial_active:
 		_SB_NET.maybe_push_save(true)
 
 
@@ -1538,6 +1584,18 @@ func record_match(result: String, lineup: Array, mode_str: String, turn_num: int
 	if replay_pending_id != "":
 		match_history[0]["replay_id"] = replay_pending_id   # 战绩页据此出「回放」按钮(S3)
 		replay_pending_id = ""
+	## 对手这一维(2026-10-07 战绩页对局卡): 对手三统领 + 对手名, 取自本局对手快照
+	##   (名字与对局顶栏右边同一出处 `dual_ghost.profile.name`)。没有快照(调试/老路)就不写, 战绩卡画空槽。
+	var foe: Array = []
+	var ldr = dual_ghost.get("leaders", []) if dual_ghost is Dictionary else []
+	for x in (ldr if ldr is Array else []):
+		if foe.size() < 3:
+			foe.append(str(x))
+	if not foe.is_empty():
+		match_history[0]["foe"] = foe
+	var pf = dual_ghost.get("profile", null) if dual_ghost is Dictionary else null
+	if pf is Dictionary and str((pf as Dictionary).get("name", "")) != "":
+		match_history[0]["foe_name"] = str((pf as Dictionary)["name"])
 	if match_history.size() > 50:
 		match_history.resize(50)
 	save()
@@ -1684,6 +1742,10 @@ func _save_dict() -> Dictionary:
 		"finals_rounds_total": finals_rounds_total,
 		"finals_champion": finals_champion,
 		"finals_runner_up": finals_runner_up,
+		"finals_cup_deepest": finals_cup_deepest,
+		"finals_cup_total": finals_cup_total,
+		"finals_cup_champion": finals_cup_champion,
+		"finals_cup_runner_up": finals_cup_runner_up,
 		"promoted": promoted,
 		"titles": titles,
 		"incense_marks": incense_marks,   # 093 香火石: 赛季级刻痕池
@@ -1725,7 +1787,9 @@ func _save_dict() -> Dictionary:
 ## ★`.bak` 是双保险: 万一「旧档改名」与「新档改名」之间被杀, 正式档暂时不存在,
 ##   读档那边会回落到 `.bak`(见 `_load`)。
 func save() -> void:
-	if test_mode:
+	## ★教程沙盒(2026-10-07 用户「整个教程都不应该有当前存档的东西」): 教程期间内存里是教程专用状态,
+	##   一个字节都不许落到账号存档上。结束时导演先把账号状态换回来、关掉 tutorial_active, 再 save()。
+	if test_mode or tutorial_active:
 		return
 	var data := _save_dict()
 	var tmp := SAVE_PATH + ".tmp"
@@ -1856,6 +1920,10 @@ func _apply_save_dict(data: Dictionary) -> void:
 	finals_rounds_total = int(data.get("finals_rounds_total", 0))
 	finals_champion = bool(data.get("finals_champion", false))
 	finals_runner_up = bool(data.get("finals_runner_up", false))
+	finals_cup_deepest = int(data.get("finals_cup_deepest", 0))
+	finals_cup_total = int(data.get("finals_cup_total", 0))
+	finals_cup_champion = bool(data.get("finals_cup_champion", false))
+	finals_cup_runner_up = bool(data.get("finals_cup_runner_up", false))
 	week_phase = str(data.get("week_phase", ""))
 	promoted = bool(data.get("promoted", false))
 	titles = (data.get("titles", []) as Array).duplicate(true)
@@ -2038,6 +2106,7 @@ func reset_save() -> void:
 	finals_rounds_total = 0
 	finals_champion = false
 	finals_runner_up = false
+	_clear_cup_progress()
 	incense_marks = 0                 # 093 香火石: 刻痕随大轮(赛季)清零 —— 用户「一大轮重置」
 	incense_charge = 0                # 同上: 充能与刻痕同一条线, 一起重置
 	season_level = 1
@@ -2566,6 +2635,7 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	finals_rounds_total = 0
 	finals_champion = false
 	finals_runner_up = false
+	_clear_cup_progress()
 	incense_marks = 0                 # 093 香火石: 刻痕随大轮(赛季)清零 —— 用户「一大轮重置」
 	incense_charge = 0                # 同上: 充能与刻痕同一条线, 一起重置
 	season_level = 1

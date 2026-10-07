@@ -221,20 +221,20 @@ func _account_row(top: float) -> float:
 		## D-3c: 绑了邮箱的号登录失效了。**不会**自动换成新匿名号(那是静默换身份),
 		##   只能用邮箱把同一个号取回来 —— 所以这里要明说该点哪个按钮。
 		head = "账号 · %s" % mail
-		sub = "⚠ 登录已失效 —— 点「用邮箱取回」重新登录"
+		sub = "登录已失效，请重新登录"
 	elif _SB_ACC.save_conflict():
 		## D-8: 两台设备交替玩 ⇒ 云端版本和这台对不上。**不自动选**, 等玩家二选一。
 		head = "账号 · %s" % mail
-		sub = "⚠ 云端存档和这台设备的不一样（可能在别的设备上玩过）"
+		sub = "云端存档与本地存档不一致"
 	elif mail != "":
 		## ★D-8 之后这句才是真的: 绑了邮箱的号, 进度会同步到云端(verify_save_sync ⑦ 守着)。
 		head = "账号 · %s" % mail
-		sub = "已绑定 · 换设备可用这个邮箱取回账号和进度"
+		sub = "已绑定 · 可在其他设备登录恢复进度"
 	else:
 		## ★只显前 8 位: 完整 uuid 36 个字符, 在 1280 宽里既放不下也没用 ——
 		##   它的用途是「报问题时能对上号」, 前 8 位足够。
-		head = "账号 · 匿名 %s" % aid.substr(0, 8)
-		sub = "⚠ 未绑定邮箱 —— 换设备后账号和进度都找不回来"
+		head = "游客 %s" % aid.substr(0, 8)
+		sub = "未绑定邮箱 · 更换设备后无法恢复进度"
 	## ★★2026-09-28 这一族**必须有名字**(`ACCT_ROW_PREFIX`)。
 	##   由来: `verify_account` ⑤ 守的是「没配后端 ⇒ 整行不显示」, 但它原来的实现是
 	##   `not _find_text(s3, "账号：")` —— **拿字面量当尺子**。
@@ -265,8 +265,8 @@ func _account_row(top: float) -> float:
 	##   ⇒ 绑邮箱找回的是【账号(赛季身份：排名/战绩/鬼影)】，**不是存档**。
 	##   照原文案写等于承诺一件架构上做不到的事。存档同步是另一件事(未决)。
 	## ★D-8: 匿名号**不**同步(隐私政策承诺过只有绑定者才上传) ⇒ 两种状态说的话不一样。
-	var note := _stroked_label(("（绑定邮箱后，进度会同步到云端）" if mail == ""
-		else "（进度会自动同步到云端）"), 11, "#7e8fa0", "", 0)
+	var note := _stroked_label(("（绑定后同步云端进度）" if mail == ""
+		else "（云端同步已开启）"), 11, "#7e8fa0", "", 0)
 	y = _place_flow(note, y + _GAP_LINE)
 	note.name = ACCT_ROW_PREFIX + "Note"
 	## ★D-3c 补上 v0.19.423 漏掉的入口: 那一版只有「绑定邮箱」,
@@ -282,9 +282,9 @@ func _account_row(top: float) -> float:
 			ACCT_ROW_PREFIX + "BtnConflict"
 	elif aid != "":
 		_small_button(W / 2.0 - 160.0, by,
-			("换个邮箱" if mail != "" else "绑定邮箱"),
+			("更换邮箱" if mail != "" else "绑定邮箱"),
 			func(): _open_email_dialog(_SB_ACC.FLOW_BIND)).name = ACCT_ROW_PREFIX + "BtnBind"
-	_small_button(W / 2.0, by, "用邮箱取回",
+	_small_button(W / 2.0, by, "邮箱登录",
 		func(): _open_email_dialog(_SB_ACC.FLOW_RECOVER)).name = ACCT_ROW_PREFIX + "BtnRecover"
 	if aid != "":
 		_small_button(W / 2.0 + 160.0, by, RENAME_LABEL, _open_rename_dialog).name = \
@@ -318,7 +318,7 @@ func _open_conflict_dialog() -> void:
 	dim.add_child(box)
 
 	var ttl := Label.new()
-	ttl.text = "两边的存档对不上"
+	ttl.text = "存档冲突"
 	ttl.add_theme_font_size_override("font_size", 24)
 	ttl.add_theme_color_override("font_color", Color("#ffb454"))
 	ttl.position = Vector2(0, 18); ttl.size = Vector2(560, 32)
@@ -326,7 +326,7 @@ func _open_conflict_dialog() -> void:
 	box.add_child(ttl)
 
 	var msg := Label.new()
-	msg.text = "云端的存档被另一台设备更新过，和这台设备上的不一样。留哪一份？"
+	msg.text = "云端存档已被其他设备更新，与本地存档不一致。请选择要保留的存档。"
 	msg.add_theme_font_size_override("font_size", 14)
 	msg.add_theme_color_override("font_color", Color("#c9d6e2"))
 	msg.position = Vector2(30, 60)
@@ -337,9 +337,9 @@ func _open_conflict_dialog() -> void:
 	msg.size = Vector2(500, 44)     # ★入树后再设一次, 写在 add_child 前的那次不一定算数
 
 	var opts := [
-		["用云端那份", "这台设备上次同步之后的进度会被换掉\n（换之前先在本机备份一份）",
+		["使用云端存档", "本地未同步的进度将被替换\n（替换前自动备份）",
 			func(): _SB_ACC.resolve_conflict_use_cloud()],
-		["用这台的", "另一台设备上的进度会被这台覆盖",
+		["使用本地存档", "云端进度将被本地覆盖",
 			func(): _SB_ACC.resolve_conflict_use_local()],
 	]
 	for i in range(opts.size()):
@@ -368,7 +368,7 @@ func _open_conflict_dialog() -> void:
 		cost.size = Vector2(230, 64)
 
 	var close := Button.new()
-	close.text = "先不选"
+	close.text = "稍后处理"
 	close.add_theme_font_size_override("font_size", 15)
 	## ★160x40 短边 40 < 81 触摸线; 拉成 240x48 的长条(宽的那边过 200, 热区判据也放行)。
 	close.position = Vector2(160, 262); close.size = Vector2(240, 48)
@@ -666,7 +666,7 @@ func _email_set_step(step: int) -> void:
 			var _to: String = str(_SB_ACC.email_pending()).strip_edges()
 			if _to == "" and _email_edit != null and is_instance_valid(_email_edit):
 				_to = str(_email_edit.text).strip_edges()
-			_email_hint.text = ("验证码已发到 %s" % _to) if _to != "" else "把邮件里那串数字填进来"
+			_email_hint.text = ("验证码已发送至 %s" % _to) if _to != "" else "请输入邮件中的验证码"
 	_email_relayout()
 
 ## ★绑定屏与「设置里主动绑定」共用这一个对话框 —— 另做一份就要把昵称那一行
@@ -842,7 +842,7 @@ func _wall_title(box: Control, flow: String, standalone: bool) -> void:
 	## ★标题**两步共用一份**, 不随步骤换字 —— 墙上那句话是
 	##   `verify_ui_consistency` 的真分母(“墙那句话真的在屏幕上”), 换字就量不到了。
 	ttl.text = (_P2C.login_wall_head() if standalone
-		else ("绑定邮箱" if flow == _SB_ACC.FLOW_BIND else "用邮箱取回账号"))
+		else ("绑定邮箱" if flow == _SB_ACC.FLOW_BIND else "邮箱登录"))
 	ttl.add_theme_font_size_override("font_size", 24)
 	ttl.add_theme_color_override("font_color", Color("#cfe3ff"))
 	ttl.position = Vector2(0, 18); ttl.size = Vector2(520, 32)
@@ -863,15 +863,15 @@ func _wall_explain(box: Control, flow: String, standalone: bool) -> void:
 	if flow == _SB_ACC.FLOW_BIND:
 		## ★墙上第一句先让**老玩家别慌**: 绑定是升级同一个号, 进度一个字节都不会变。
 		body = (_P2C.login_wall_body() if standalone
-			else ("绑定之后，换手机用这个邮箱就能把账号和进度（龟、装备、排名、战绩）一起取回来。\n"
-				+ "没绑定之前，进度只存在这台设备上。"))
+			else ("绑定后可在其他设备恢复账号与进度（龟、装备、排名、战绩）。\n"
+				+ "未绑定时，进度仅保存在本设备。"))
 	else:
 		## ★取回只换【账号】, 这台设备上的龟和装备原样不动 —— 照实说, 不许说成「取回存档」
 		##   (服务端现在没有存档, `verify_account` ④ 有一条专门禁这句话)。
 		## ★D-8: 取回会把那个号的云存档拉下来**整体替换**本机进度 —— 照实说,
 		##   并说清替换之前会先备份(GameState.backup_save)。
-		body = ("用你绑过的邮箱收一个验证码，把那个账号和它的进度取回到这台设备上。\n"
-			+ "⚠ 这台设备现在的进度会被换掉（换之前会先在本机备份一份）。")
+		body = ("输入已绑定的邮箱，验证后恢复账号与进度。\n"
+			+ "本地进度将被替换（替换前自动备份）。")
 	## ★★第一步只印**除最后一句以外的全部**。原来第一步把**整段**都印上去,
 	##   而墙上最后那句恰好是「收不到验证码？…」—— 第一步还没发码,
 	##   这句话在那里一点用处也没有, 就是白白多两行字。
@@ -895,10 +895,10 @@ func _wall_build_step1(box: Control, flow: String) -> void:
 		## ★★昵称(只有绑定流程要填)。用户 2026-09-24:「这个在创建账号应该一起吧」——
 		##   这个项目里玩家感知得到的「创建账号」只有这一处(首启建匈名号是**静默**的)。
 		##   取回流程不填: 那个号已经有昵称了, 跟着账号一起回来。
-		_email_hint1 = "起个名字(%d~%d 个字) —— 排行榜上别人看到的就是它，以后随时能改" % [
+		_email_hint1 = "设置昵称（%d~%d 个字）· 显示于排行榜，可随时修改" % [
 			_P2C.NICK_MIN, _P2C.NICK_MAX]
 		_nick_edit = LineEdit.new()
-		_nick_edit.placeholder_text = "你的名字"
+		_nick_edit.placeholder_text = "输入昵称"
 		## ★★★**预填一个龟世界的随机名** —— 参考里取名那一步的设计目标是
 		##   「玩家一个字都不打也能过去」(Sonic Rumble 预填 `Player_561962` 直接点 OK)。
 		##   而这一屏是每个新玩家开游戏的第一屏, 原来是**空框**: 第一件事就是
@@ -926,7 +926,7 @@ func _wall_build_step1(box: Control, flow: String) -> void:
 			_nick_edit.text = _P2C.nickname_suggest(_nick_edit.text))
 
 	_email_edit = LineEdit.new()
-	_email_edit.placeholder_text = "你的邮箱"
+	_email_edit.placeholder_text = "输入邮箱"
 	_email_edit.text = str(GameState.account_email)
 	## ★★键盘**类型**要对(2026-09-28)。它不只是方便: 中文键盘的候选条会让键盘再高
 	##   一档(41.5% → ≈52% 屏高), 而这一屏的按钮就在那条线附近(见 `_email_relayout` 头注)。
@@ -937,7 +937,7 @@ func _wall_build_step1(box: Control, flow: String) -> void:
 	box.add_child(_email_edit)
 	_email_rows1.append(_email_edit)
 
-	_email_send_btn = _wall_btn(box, "发验证码", func():
+	_email_send_btn = _wall_btn(box, "发送验证码", func():
 		_SB_ACC.send_code_async(_email_edit.text, flow))
 	_email_rows1.append(_email_send_btn)
 
@@ -945,7 +945,7 @@ func _wall_build_step1(box: Control, flow: String) -> void:
 ## 第二步的三行: 验证码 / 确认 / 回上一步改邮箱。
 func _wall_build_step2(box: Control, flow: String) -> void:
 	_code_edit = LineEdit.new()
-	_code_edit.placeholder_text = "邮件里的验证码"
+	_code_edit.placeholder_text = "输入验证码"
 	## ★码是纯数字(`verify_code_async` 的提示原话:「把邮件里那串数字填进来」)
 	##   ⇒ 给数字键盘。同上: 顺带避掉中文候选条那一档高度。
 	_code_edit.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_NUMBER
@@ -976,7 +976,7 @@ func _wall_build_step2(box: Control, flow: String) -> void:
 	##   码永远收不到, 而墙关不掉 ⇒ 唯一出路是杀进程。
 	##   (memory `fb-a-wall-must-let-the-unblocking-action-through`: 加了拦截就要验
 	##    「被拦住的人能不能完成解锁动作」。)
-	_email_back_btn = _wall_btn(box, "回上一步改邮箱", func():
+	_email_back_btn = _wall_btn(box, "修改邮箱", func():
 		## ★必须把流程也重置 —— 不然 `_email_poll` 下一跳看到 state 还是 SENT,
 		##   当场把玩家又弹回第二步(自己造一个“点了没反应”)。
 		_SB_ACC.reset_email_flow()
@@ -1196,7 +1196,7 @@ func _email_poll() -> void:
 			##   而设置页本体在墙立起来时就没什么可看的了。
 			var _dest: String = _post_bind_dest()
 			if _dest != "":
-				_email_status.text = msg if msg != "" else "邮箱绑好了"
+				_email_status.text = msg if msg != "" else "邮箱绑定成功"
 				get_tree().change_scene_to_file(_dest)
 				return
 		_:
@@ -1204,7 +1204,7 @@ func _email_poll() -> void:
 				## ★★原话是「…把邮件里的数字填到**下面**」。分两步之后那个「下面」
 				##   在第一步根本不存在(码框在下一屏)、在第二步反而在**上面**
 				##   ⇒ 指错方向比不指更糟。换成不带方位的说法。
-				msg = "填邮箱 → 发验证码 → 填邮件里那串数字"
+				msg = "输入邮箱并完成验证"
 	_email_status.text = msg
 	_email_status.add_theme_color_override("font_color", Color(col))
 	## ★★★码发出去了 ⇒ 自己翻到第二步。**不给玩家一个「下一步」去找** ——
@@ -1290,9 +1290,9 @@ func _toggle_perf() -> void:
 		_perf_btn.text = _perf_label()
 	## 按钮上只剩"高/低", 于是把"低=更流畅"这条信息挪到 toast 里, 不然玩家不知道调它图什么。
 	## ★2026-09-28 换成说人话的版本: 「已设为」是设置面板的腔调, 玩家听的是"下一场就不卡了"。
-	_toast("画质换成「%s」了%s · 下一场开始时生效" % [
+	_toast("画质已切换为「%s」%s · 下场战斗生效" % [
 		"低" if GameState.perf_lite else "高",
-		"，手机会跑得更顺" if GameState.perf_lite else ""])
+		"，可提升流畅度" if GameState.perf_lite else ""])
 
 
 func _toggle_fullscreen() -> void:
@@ -1350,7 +1350,7 @@ func _ask_reset() -> void:
 	##   Label 不解析它, 屏幕上就是四个星号。写文案的人当时在写文档不是在写 UI。
 	## ★「此操作不可撤销」是条款腔; 玩家要听的是「清了就拿不回来」。
 	msg.text = ("会清空：深海币 · 背包装备 · 出战统领 · 赛季进度（命/等级/胜场）· 糖果罐 · 布阵。\n"
-		+ "⚠ 清掉就拿不回来了。音量、全屏、画质这些不动。")
+		+ "此操作不可撤销。音量、画面、画质设置不受影响。")
 	msg.add_theme_font_size_override("font_size", 15)
 	msg.add_theme_color_override("font_color", Color("#c9d6e2"))
 	msg.position = Vector2(30, 72)
@@ -1364,7 +1364,7 @@ func _ask_reset() -> void:
 	msg.size = Vector2(460, 96)
 
 	var cancel := Button.new()
-	cancel.text = "先不清"
+	cancel.text = "取消"
 	cancel.add_theme_font_size_override("font_size", 18)
 	cancel.position = Vector2(40, 196); cancel.size = Vector2(210, 52)
 	## ★★原来是**裸 `Button.new()`** = Godot 默认皮(圆角灰板)。换皮走共享层 `UISkin`,
@@ -1374,7 +1374,7 @@ func _ask_reset() -> void:
 	box.add_child(cancel)
 
 	var ok := Button.new()
-	ok.text = "清空，我确定"
+	ok.text = "确认重置"
 	ok.add_theme_font_size_override("font_size", 18)
 	ok.position = Vector2(270, 196); ok.size = Vector2(210, 52)
 	## 破坏性那一侧染红 —— 两个键长得一样时, 玩家分不出哪个是"会出事"的那个。
@@ -1388,7 +1388,7 @@ func _ask_reset() -> void:
 
 func _do_reset() -> void:
 	GameState.reset_save()
-	_toast("存档清空了 · 从头再来")
+	_toast("存档已重置")
 
 
 # ── 音量条 (track w=380) ──────────────────────────────────────
@@ -1718,7 +1718,7 @@ func _bg() -> void:
 ##   取名都走 `Backend.player_display_name()`, 自然带新名字。
 ## ⚠ 本周已经报过到的决赛桶里那份名字是报到那一刻的, 不会跟着改(服务端没有改名接口)。
 ## ⚠ 重名规则(要不要加后缀)在等用户拍板 —— 这里**不碰**生成规则。
-const RENAME_LABEL := "改昵称"
+const RENAME_LABEL := "修改昵称"
 ## 门禁按名字找这几个节点(不抄文案)。
 const RENAME_EDIT := "RenameEdit"
 const RENAME_OK := "RenameOk"
@@ -1756,7 +1756,7 @@ func _open_rename_dialog() -> void:
 	ttl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(ttl)
 	var rule := Label.new()
-	rule.text = "%d~%d 个字 —— 排行榜上别人看到的就是它" % [_P2C.NICK_MIN, _P2C.NICK_MAX]
+	rule.text = "%d~%d 个字 · 显示于排行榜" % [_P2C.NICK_MIN, _P2C.NICK_MAX]
 	rule.add_theme_font_size_override("font_size", 13)
 	rule.add_theme_color_override("font_color", Color("#9fb4c8"))
 	rule.position = Vector2(0, 56); rule.size = Vector2(520, 22)
@@ -1765,7 +1765,7 @@ func _open_rename_dialog() -> void:
 
 	var ed := LineEdit.new()
 	ed.name = RENAME_EDIT
-	ed.placeholder_text = "你的名字"
+	ed.placeholder_text = "输入昵称"
 	## 预填**现在显示的那个名字**(自己起过的, 或默认名) —— 改一两个字不用全打。
 	ed.text = str(preload("res://scripts/net/backend.gd").player_display_name())
 	ed.max_length = _P2C.NICK_MAX * 2   # 按规范化后判长度, 这里只防手滑贴一长串(同绑定屏)
@@ -1791,7 +1791,7 @@ func _open_rename_dialog() -> void:
 	box.add_child(st)
 
 	var cancel := Button.new()
-	cancel.text = "先不改"
+	cancel.text = "取消"
 	cancel.add_theme_font_size_override("font_size", 18)
 	cancel.position = Vector2(40, 214); cancel.size = Vector2(210, _W_ROW_H)
 	UISkin.button(cancel)
@@ -1799,7 +1799,7 @@ func _open_rename_dialog() -> void:
 	box.add_child(cancel)
 	var ok := Button.new()
 	ok.name = RENAME_OK
-	ok.text = "就叫这个"
+	ok.text = "确认"
 	ok.add_theme_font_size_override("font_size", 18)
 	ok.position = Vector2(270, 214); ok.size = Vector2(210, _W_ROW_H)
 	UISkin.button(ok, Color("#9fe0a8"))
@@ -1809,7 +1809,7 @@ func _open_rename_dialog() -> void:
 			st.text = err
 			return
 		_close_rename_dialog()
-		_toast("改好了 · 现在叫「%s」" % str(GameState.nickname)))
+		_toast("昵称已修改为「%s」" % str(GameState.nickname)))
 	box.add_child(ok)
 
 

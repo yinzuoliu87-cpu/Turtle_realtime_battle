@@ -112,9 +112,57 @@ func _drive_place() -> void:
 	if not _go_btn_ready():
 		_note("place_go_btn_gone")
 		return
+	## ★教程摆位第一步「拖动龟调整站位」: 像人一样真拖一下(真输入事件, 走引导暗幕 → 战斗 _unhandled_input
+	##   → dual_lane_flow._dl_handle_place_input), 引导条从产品代码收到 unit_dragged 才翻到下一步。
+	var td = get_node_or_null("/root/TutorialDirector")
+	if td != null and td.is_active() and td.get("_guide") != null and is_instance_valid(td.get("_guide")):
+		await _tut_drag()
+		if not await _wait(30):
+			return
+		if str(_host.get("_dl_state")) != "place" or not _go_btn_ready():
+			return
 	press_go += 1
 	_note("press_go")
 	(_host._dl_go_btn as Button).emit_signal("pressed")
+
+
+## 教程: 把第一只能拖的我方龟往右上拖一段(屏幕坐标 → 窗口坐标, 走 Input.parse_input_event 真输入)。
+func _tut_drag() -> void:
+	var dl = _host.get("_dl_sys")
+	if dl == null:
+		return
+	var r: Rect2 = dl.call("_tut_anchor", "my_unit")
+	if r.size.x <= 0.0:
+		_note("tut_drag_no_unit")
+		return
+	var xf: Transform2D = get_viewport().get_final_transform()
+	var a: Vector2 = r.get_center()
+	var b: Vector2 = a + Vector2(110, -40)
+	var steps := 12
+	_mouse_btn(xf * a, true)
+	await get_tree().process_frame
+	for i in range(1, steps + 1):
+		var p: Vector2 = xf * a.lerp(b, float(i) / float(steps))
+		var mm := InputEventMouseMotion.new()
+		mm.position = p
+		mm.global_position = p
+		mm.button_mask = MOUSE_BUTTON_MASK_LEFT
+		Input.parse_input_event(mm)
+		await get_tree().process_frame
+		if not is_inside_tree():
+			return
+	_mouse_btn(xf * b, false)
+	_note("tut_drag")
+
+
+func _mouse_btn(p: Vector2, down: bool) -> void:
+	var e := InputEventMouseButton.new()
+	e.button_index = MOUSE_BUTTON_LEFT
+	e.pressed = down
+	e.position = p
+	e.global_position = p
+	e.button_mask = MOUSE_BUTTON_MASK_LEFT if down else 0
+	Input.parse_input_event(e)
 
 
 ## 等 n 帧。返回 false = 场景(或我自己)已经不在了 ⇒ **别再碰 `_host`**。

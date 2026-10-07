@@ -22,8 +22,9 @@ const CONTROL_SCENES := {
 	"team_select": "res://scenes/TeamSelect.tscn",
 	"shop": "res://scenes/Shop.tscn",
 	"inventory": "res://scenes/Inventory.tscn",
-	"codex": "res://scenes/Codex.tscn",
 }
+## 每屏进来时的教程阶段(背包的「完成教程」钮只在教程里建)
+const STAGE := {"team_select": "match1_pick", "shop": "shop", "inventory": "inventory"}
 
 
 func _collect_highlights() -> Dictionary:
@@ -42,9 +43,11 @@ func _collect_highlights() -> Dictionary:
 		var names: Array = []
 		for st in steps:
 			if st is Dictionary:
-				var hl := str((st as Dictionary).get("highlight", ""))
-				if hl != "" and not (hl in names):
-					names.append(hl)
+				## highlight(挖洞)与 point(手势指针)两种锚点都要解析得出
+				for fld in ["highlight", "point"]:
+					var hl := str((st as Dictionary).get(fld, ""))
+					if hl != "" and not (hl in names):
+						names.append(hl)
 		out[key] = names
 	return out
 
@@ -54,7 +57,6 @@ func _ready() -> void:
 	# 教学态: 商店要 tutorial_active 才开店; 背包/选龟要 season_leaders 才建阵容
 	GameState.tutorial_active = true
 	GameState.tutorial_stage = "match1_pick"
-	GameState.tutorial_mandatory = true
 	var lt: Array[String] = ["basic", "stone", "bamboo"]
 	GameState.season_leaders = lt.duplicate()
 	GameState.left_team = lt.duplicate()
@@ -75,12 +77,28 @@ func _ready() -> void:
 		var names: Array = hl.get(key, [])
 		if names.is_empty():
 			continue
+		GameState.tutorial_stage = str(STAGE[key])
+		if key == "team_select":
+			GameState.season_leaders = []
+			GameState.left_team = []
+		else:
+			GameState.season_leaders = lt.duplicate()
+			GameState.left_team = lt.duplicate()
+		if key == "inventory":
+			GameState.persistent_bench = [{"id": "p2eq_001", "star": 1}]   # 「点击一件装备」的指针要有一件可指
 		var scn = load(CONTROL_SCENES[key])
 		var inst = scn.instantiate()
 		add_child(inst)
-		# 等几帧让 Control 布局完成(get_global_rect 才有真尺寸)
-		for _i in range(4):
+		# ★锚点只认【真看得见】的控件(TutorialGuide.vis_rect: 入场淡入完才算) ⇒ 轮询到解析得出, 上限 90 帧
+		for _i in range(90):
 			await get_tree().process_frame
+			var all_ok := true
+			for nm0 in names:
+				var r0: Rect2 = inst.call("_tutorial_anchor", nm0) if inst.has_method("_tutorial_anchor") else Rect2()
+				if r0.size.x <= 0.0:
+					all_ok = false
+			if all_ok:
+				break
 		var has_fn: bool = inst.has_method("_tutorial_anchor")
 		_ok("[%s] 实现了 _tutorial_anchor" % key, has_fn)
 		if has_fn:
@@ -94,17 +112,19 @@ func _ready() -> void:
 		inst.queue_free()
 		await get_tree().process_frame
 
-	# ② battle 的 place 锚点: 脚本定义了方法(3D 运行态锚点靠 playthrough 覆盖)
-	var bscript = load("res://scripts/scenes/RealtimeBattle3DScene.gd")
-	var src: String = ""
-	if bscript is GDScript:
-		src = (bscript as GDScript).source_code
-	_ok("battle 脚本定义 _tutorial_anchor", src.contains("func _tutorial_anchor"))
-	_ok("battle 有 field 锚点分支", src.contains("\"field\""))
-	_ok("battle 有 go_button 锚点分支", src.contains("\"go_button\""))
-	# place 步在 json 里也得声明了这俩(否则锚点没人用)
+	# ② 战斗(摆位 / 结算)的锚点: 3D 运行态才有 ⇒ 这里断言源码【定义了】, 真解析由 verify_tutorial GUIDE_HOST /
+	#    verify_tutorial_flow_v2 在真战斗场里量。
+	var bsrc: String = FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd")
+	var dsrc: String = FileAccess.get_file_as_string("res://scripts/scenes/battle/dual_lane_flow.gd")
+	var hsrc: String = FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_hud.gd")
+	_ok("battle 定义 _tutorial_anchor 且有 field / go_button 分支",
+		bsrc.contains("func _tutorial_anchor") and bsrc.contains("\"field\"") and bsrc.contains("\"go_button\""))
+	_ok("dual_lane_flow 有 my_unit 锚点(手势指针指一只我方龟)", dsrc.contains("func _tut_anchor") and dsrc.contains("\"my_unit\""))
+	_ok("battle_hud 结算有 settle_shop 锚点", hsrc.contains("\"settle_shop\""))
 	var place_names: Array = hl.get("place", [])
-	_ok("★place 步声明了 field/go_button 高亮", ("field" in place_names) and ("go_button" in place_names), str(place_names))
+	_ok("★place 步声明了 field / my_unit / go_button", ("field" in place_names) and ("my_unit" in place_names)
+		and ("go_button" in place_names), str(place_names))
+	_ok("★settle 步声明了 settle_shop", "settle_shop" in (hl.get("settle", []) as Array))
 
 	GameState.tutorial_active = false; GameState.tutorial_stage = ""
 	print("ALL PASS — 新手引导高亮锚点" if _fail == 0 else "FAILED: %d" % _fail)

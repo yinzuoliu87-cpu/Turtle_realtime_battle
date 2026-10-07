@@ -477,7 +477,7 @@
     "effectDesc1": "每 {C:EquipSystem.FPGA_IV} 秒随机抽 {C:EquipSystem.FPGA_PICKS} 个 2-bit 状态（可重复）：00=回复自身最大生命值 {C:EquipSystem.FPGA_00_HEAL_PCT%}%，并累计+{C:EquipSystem.FPGA_00_RESIST} 护甲与魔抗；\n01=累计+{C:EquipSystem.FPGA_01_ATK} 攻击力与+{C:EquipSystem.FPGA_01_LIFESTEAL%}%生命偷取；\n10={C:EquipSystem.FPGA_BUFF_SEC} 秒内增伤+{C:EquipSystem.FPGA_10_AMP%}%；11={C:EquipSystem.FPGA_BUFF_SEC} 秒内受伤-{C:EquipSystem.FPGA_11_DR%}%（真实伤害除外）。\n00 与 01 的加成本场内累计，战斗结束重置。\n登场另给随机 1/2/3 名敌人各一把【古灵精怪枪】：持枪者 +{C:GremlinGun.ATK_PER_GUN}攻击力、+{C:GremlinGun.HP_PER_GUN}最大生命值、+{C:GremlinGun.ASPD_PCT_PER_GUN%}%攻击速度，但每次普攻自受自身最大生命值 {C:GremlinGun.SELF_TRUE_PCT%}% 真实伤害，可致死。",
     "effectDesc3": "",
     "img": "equip/dungeon-fpga.png",
-    "effectBrief": "登场时塞给 1/2/3 名敌人一把古灵精怪枪；之后每 {C:EquipSystem.FPGA_IV} 秒随机抽 1/2/4 个状态。"
+    "effectBrief": "登场时给予 1/2/3 名敌人一把古灵精怪枪；之后每 {C:EquipSystem.FPGA_IV} 秒随机抽 1/2/4 个状态。"
   },
   {
     "id": "p2eq_041",

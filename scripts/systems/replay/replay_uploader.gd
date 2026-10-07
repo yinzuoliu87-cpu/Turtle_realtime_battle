@@ -253,6 +253,10 @@ static func _cached_buckets() -> Array:
 	var wv: Dictionary = SB.finals_week_cached()
 	for b in (wv.get("buckets", []) if wv.get("buckets", []) is Array else []):
 		out.append(b)
+	## 冠军杯赛那一张(2026-10-07): 杯里打完的那一场也要等它翻面才上传。
+	var cup: Dictionary = SB.finals_cup_cached()
+	if cup.has("bucket"):
+		out.append(cup)
 	return out
 
 

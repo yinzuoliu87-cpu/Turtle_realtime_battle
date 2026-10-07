@@ -916,23 +916,23 @@ static func send_code_result(ok: bool, code: int, body: String) -> Dictionary:
 	if j.parse(body) == OK and j.data is Dictionary:
 		ec = str((j.data as Dictionary).get("error_code", ""))
 	if code == 0:
-		return {"ok": false, "reason": "连不上服务器，检查一下网络"}
+		return {"ok": false, "reason": "无法连接服务器，请检查网络"}
 	if ec == "validation_failed":
-		return {"ok": false, "reason": "邮箱格式不对，再看一眼"}
+		return {"ok": false, "reason": "邮箱格式错误"}
 	## ★发信服务还没接上时服务端回这个(官方错误码表原文: 默认发信服务只能发给组织成员)。
 	##   原来这里没映射, 走兜底「发送失败, 稍后再试」——「稍后再试」是**错的**, 再试多少次都不会成功。
 	if ec == "email_address_not_authorized":
-		return {"ok": false, "reason": "邮件服务还没开通，暂时绑定不了（正在接入）"}
+		return {"ok": false, "reason": "邮箱绑定服务不可用"}
 	if ec == "email_address_invalid":
-		return {"ok": false, "reason": "这个邮箱用不了（示例/测试域名不支持），换一个试试"}
+		return {"ok": false, "reason": "不支持该邮箱域名"}
 	if ec == "otp_disabled":
 		## 取回时填了一个没绑定过的邮箱(实测 422, 见 send_code 里 create_user:false 那段)
-		return {"ok": false, "reason": "这个邮箱没有绑定过账号，检查一下拼写"}
+		return {"ok": false, "reason": "该邮箱未绑定账号"}
 	if ec == "email_exists" or ec == "user_already_exists":
-		return {"ok": false, "reason": "这个邮箱已经绑过别的账号了"}
+		return {"ok": false, "reason": "该邮箱已绑定其他账号"}
 	if code == 429 or ec == "over_email_send_rate_limit":
-		return {"ok": false, "reason": "发得太频繁了，等几分钟再试"}
-	return {"ok": false, "reason": "发送失败（%d），稍后再试" % code}
+		return {"ok": false, "reason": "操作过于频繁，请稍后再试"}
+	return {"ok": false, "reason": "发送失败（%d），请稍后重试" % code}
 
 
 ## 纯函数: 一次「验码」回包 → 结果。
@@ -948,9 +948,9 @@ static func verify_code_result(ok: bool, code: int, body: String) -> Dictionary:
 	if j.parse(body) == OK and j.data is Dictionary:
 		ec = str((j.data as Dictionary).get("error_code", ""))
 	if code == 0:
-		return {"ok": false, "reason": "连不上服务器，检查一下网络", "account_id": ""}
+		return {"ok": false, "reason": "无法连接服务器，请检查网络", "account_id": ""}
 	if ec == "otp_expired" or code == 403:
-		return {"ok": false, "reason": "验证码不对，或者已经过期了（重新发一次）", "account_id": ""}
+		return {"ok": false, "reason": "验证码错误或已过期", "account_id": ""}
 	return {"ok": false, "reason": "验证失败（%d）" % code, "account_id": ""}
 
 
@@ -963,10 +963,10 @@ static func bind_accepts(res: Dictionary, current_account: String) -> Dictionary
 	var got := str(res.get("account_id", ""))
 	if current_account == "":
 		## ★同上: 登录墙之后「先开一局」是做不到的事, 不许再这么写(verify_login_wall ③ 守)。
-		return {"ok": false, "reason": "本机还没有账号（正在连服务器），过两秒重新发一次验证码"}
+		return {"ok": false, "reason": "正在连接服务器，请稍后重新发送"}
 	if got != current_account:
 		return {"ok": false,
-			"reason": "服务器返回的是另一个账号，没有绑成功（没动你的进度）"}
+			"reason": "绑定失败：账号不匹配（进度未受影响）"}
 	return {"ok": true, "reason": ""}
 
 
@@ -976,7 +976,7 @@ static func recover_accepts(res: Dictionary) -> Dictionary:
 	if not bool(res.get("ok", false)):
 		return {"ok": false, "reason": str(res.get("reason", "验证失败"))}
 	if str(res.get("account_id", "")) == "":
-		return {"ok": false, "reason": "服务器没给账号，取回失败"}
+		return {"ok": false, "reason": "账号恢复失败"}
 	return {"ok": true, "reason": ""}
 
 
@@ -986,12 +986,12 @@ static func recover_accepts(res: Dictionary) -> Dictionary:
 static func send_code_async(email: String, flow: String) -> void:
 	if not enabled():
 		_email_state = EM_ERR
-		_email_msg = "还没接后端"
+		_email_msg = "服务暂不可用"
 		return
 	var e := email.strip_edges()
 	if not email_looks_valid(e):
 		_email_state = EM_ERR
-		_email_msg = "邮箱格式不对，再看一眼"
+		_email_msg = "邮箱格式错误"
 		return
 	if flow == FLOW_BIND and _token == "":
 		## ★★别教玩家「先联网开一局」—— v0.19.440 的登录墙就是**开局前**那一屏,
@@ -1002,7 +1002,7 @@ static func send_code_async(email: String, flow: String) -> void:
 		##   ②照实说「在连」并让他重试 —— 连不上也照实说, 因为那时确实打不开游戏。
 		ensure_signed_in_async()
 		_email_state = EM_ERR
-		_email_msg = "正在连服务器，过两秒再点一次（一直这样就是连不上，检查下网络）"
+		_email_msg = "正在连接服务器，请稍后重试"
 		return
 	_email_state = EM_SENDING
 	_email_msg = ""
@@ -1020,7 +1020,7 @@ static func verify_code_async(code_text: String) -> void:
 	var c := code_text.strip_edges()
 	if c == "":
 		_email_state = EM_ERR
-		_email_msg = "把邮件里那串数字填进来"
+		_email_msg = "请输入邮件中的验证码"
 		return
 	_email_state = EM_VERIFYING
 	_email_msg = ""
@@ -1049,7 +1049,7 @@ func send_code(email: String, flow: String) -> void:
 				int(res.get("code", 0)), str(res.get("body", "")))
 			if bool(r["ok"]):
 				_email_state = EM_SENT
-				_email_msg = "验证码发到 %s 了，查收一下（也看看垃圾邮件）" % email
+				_email_msg = "验证码已发送至 %s（如未收到，请检查垃圾邮件）" % email
 			else:
 				_email_state = EM_ERR
 				_email_msg = str(r["reason"])
@@ -1090,7 +1090,7 @@ static func _apply_verify(ok: bool, code: int, body: String, flow: String) -> bo
 		acc["email"] = _email_pending
 	_store_session(acc)
 	_email_state = EM_OK
-	_email_msg = ("邮箱绑好了" if flow == FLOW_BIND else "账号取回来了")
+	_email_msg = ("邮箱绑定成功" if flow == FLOW_BIND else "账号已恢复")
 	## D-8: 补绑那一刻立刻推一次(云端还没有这个号的存档);
 	##   取回则把那个号的云存档拉下来整体替换(替换前先备份)。
 	if flow == FLOW_BIND:
@@ -1209,6 +1209,8 @@ static func maybe_push_save(force: bool = false) -> void:
 	var gs = _gs()
 	if gs == null or _save_inflight or save_conflict() or _pull_state == "pulling":
 		return
+	if bool(gs.get("tutorial_active")):
+		return          # ★教程沙盒: 内存里是教程状态, 不许推上云(结束后导演 save() 会再标脏)
 	if not (_save_dirty or force):
 		return
 	if not sync_allowed(str(gs.account_id), str(gs.account_email), _token):
@@ -1374,7 +1376,7 @@ static func _reset_for_test() -> void:
 static var _min_client: String = ""
 ## 本进程已经提示过一次了(主菜单每秒轮询一次, 不能每秒弹一句)。
 static var _update_hinted := false
-const UPDATE_HINT := "有新版本，请更新"
+const UPDATE_HINT := "发现新版本，请更新"
 
 
 ## 纯函数: 版本串 a 是否**严格低于** b。按「.」分段逐段比**整数**(0.19.10 > 0.19.9),
@@ -1750,7 +1752,9 @@ static func fetch_opponent_async(week: int, bucket: int, round_no: int, seed: in
 #   这一层**不重新算一遍**，只负责发出去。
 # ─────────────────────────────────────────────────────────────
 static var _report_inflight := false
-static var _report_done: Dictionary = {}     # "r-m" → true，本进程报过的场次
+## "组号:r-m" → true，本进程报过的场次。★★组号是 2026-10-07 加的(冠军杯赛): 杯第 1 轮第 0 场与
+##   小组赛第 1 轮第 0 场坐标相同, 只按 "r-m" 记会把杯那一场当成「报过了」而**一个字节都不发**。
+static var _report_done: Dictionary = {}
 
 
 ## 组包。**纯函数** —— 键名与服务端对不上是这类接口最常见的死法，门禁直接验它。
@@ -1760,8 +1764,15 @@ static func finals_report_body(week: int, bucket: int, round_no: int,
 		"p_match": match_no, "p_winner_side": winner_side, "p_seed": seed_used}
 
 
-static func finals_reported(round_no: int, match_no: int) -> bool:
-	return bool(_report_done.get("%d-%d" % [round_no, match_no], false))
+## `bucket = -1` = 任一组(老调用点 / 门禁只问坐标时用)。
+static func finals_reported(round_no: int, match_no: int, bucket: int = -1) -> bool:
+	if bucket >= 0:
+		return bool(_report_done.get("%d:%d-%d" % [bucket, round_no, match_no], false))
+	var tail := ":%d-%d" % [round_no, match_no]
+	for k in _report_done:
+		if str(k).ends_with(tail):
+			return true
+	return false
 
 
 static func finals_report_clear() -> void:
@@ -1786,7 +1797,7 @@ static func report_finals_async(week: int, bucket: int, round_no: int,
 	## ★同一场只报一次：服务端是 `on conflict do nothing`（先到先得），
 	##   客户端这边再挡一层是为了**不把重复请求当成正常流量**——
 	##   结算路径会被重入（投降/重开结算屏），没这道闸就会一场报好几次。
-	if finals_reported(round_no, match_no):
+	if finals_reported(round_no, match_no, bucket):
 		return
 	var n = _spawn()
 	if n != null:
@@ -1817,7 +1828,7 @@ func report_finals(week: int, bucket: int, round_no: int,
 			##   ⇒ 宁可多报一次, 不可漏一次。
 			var code := int(res.get("code", 0))
 			if bool(res.get("ok", false)) and code >= 200 and code < 300:
-				_report_done["%d-%d" % [round_no, match_no]] = true
+				_report_done["%d:%d-%d" % [bucket, round_no, match_no]] = true
 			_bye(),
 		"Content-Type: application/json")
 
@@ -2020,7 +2031,10 @@ static func _bucket_from(d: Dictionary, my_account: String, recv_at: int) -> Dic
 		##   `round_at` 是本轮开始时刻，`srv_now` 是收包那一刻服务端的钟。
 		##   有了这两个，本机只需要算**过了多久**（时间差），不必相信本机的绝对时钟
 		##   （与上面 `left` 同一条纪律：本机时钟偏了也不影响，只要它走得不快不慢）。
-		"round_at": int(d.get("round_at", 0)), "srv_now": int(d.get("now", 0))}
+		"round_at": int(d.get("round_at", 0)), "srv_now": int(d.get("now", 0)),
+		## ★2026-10-07 实时观赛: 最近一次翻面的时刻(服务端 20261007 迁移起下发; 没有 = 0 ⇒ 客户端退回 round_at)。
+		##   开播窗口按它算(`live_spectate.premiere_hidden`)。JSON null 也当 0。
+		"revealed_at": int(d.get("revealed_at", 0)) if d.get("revealed_at", null) != null else 0}
 
 
 # ─────────────────────────────────────────────────────────────
@@ -2045,6 +2059,21 @@ static func finals_week_cached() -> Dictionary:
 static func finals_week_clear() -> void:
 	_finals_week = {}
 	_finals_week_inflight = false
+	_finals_week_tried = false
+
+
+## 冠军杯赛那一张(`parse_finals_week` 的 `cup`); 没成表 / 没部署 / 没问到 = {}。
+static func finals_cup_cached() -> Dictionary:
+	var c = _finals_week.get("cup", null)
+	return c if c is Dictionary else {}
+
+
+## 观赛那份「问过一次了没有」(主菜单对冠军杯赛头衔账要分得清「还在路上」与「问过了」)。
+static var _finals_week_tried := false
+
+
+static func finals_week_tried() -> bool:
+	return _finals_week_tried
 
 
 static func fetch_finals_week_async(week: int) -> void:
@@ -2053,6 +2082,7 @@ static func fetch_finals_week_async(week: int) -> void:
 		return
 	## 闸与 `fetch_finals_async` 同一条: 服务端认得出你是谁才去问(`auth.uid() is null` 它也拦)。
 	if str(gs.account_id) == "" or _token == "":
+		_finals_week_tried = true
 		return
 	var n = _spawn()
 	if n != null:
@@ -2063,6 +2093,7 @@ static func fetch_finals_week_async(week: int) -> void:
 func fetch_finals_week(week: int) -> void:
 	if not enabled():
 		_finals_week_inflight = false
+		_finals_week_tried = true
 		_bye()
 		return
 	var gs = _gs()
@@ -2071,6 +2102,7 @@ func fetch_finals_week(week: int) -> void:
 		JSON.stringify({"p_week": week}),
 		func(res):
 			_finals_week_inflight = false
+			_finals_week_tried = true
 			var pw: Dictionary = parse_finals_week(bool(res.get("ok", false)), int(res.get("code", 0)),
 				str(res.get("body", "")), mine, int(Time.get_unix_time_from_system()))
 			## ★同 `fetch_finals`: 问不到就别抹掉上一份好数据(网络抖一下观赛图不许消失)。
@@ -2100,17 +2132,37 @@ static func parse_finals_week(ok: bool, code: int, body: String, my_account: Str
 	for b in (d.get("buckets", []) if d.get("buckets", []) is Array else []):
 		if not (b is Dictionary):
 			continue
-		var one: Dictionary = _bucket_from(b, my_account, recv_at)
-		if int(one.get("size", 0)) > 1:
+		## ★每一组都带上回包那一刻服务端的钟(开播窗口按服务端钟判, 观赛那几组也要)。
+		var b2: Dictionary = (b as Dictionary).duplicate()
+		if not b2.has("now"):
+			b2["now"] = d.get("now", 0)
+		var one: Dictionary = _bucket_from(b2, my_account, recv_at)
+		## ★冠军杯赛不是一个组(服务端已经不放进来; 这里再筛一遍, 防哪天服务端回退)。
+		## ★1 人组也要(2026-10-07 新分组规则: 他是那组的冠军, 冠军杯赛开赛前的名单里要有他)。
+		if int(one.get("size", 0)) >= 1 and int(one.get("bucket", -1)) != int(_P2S.FINALS_CUP_BUCKET):
 			out.append(one)
 	out.sort_custom(func(x, y): return int(x.get("bucket", 0)) < int(y.get("bucket", 0)))
-	return {"buckets": out, "srv_now": int(d.get("now", 0)), "recv_at": recv_at}
+	var res := {"buckets": out, "srv_now": int(d.get("now", 0)), "recv_at": recv_at}
+	## ★★冠军杯赛(2026-10-07): 服务端放在回包顶层 `cup`(组列表里不放 —— 老客户端会把它画成一个组)。
+	##   没成表 = null / 没部署 = 没这个键 ⇒ 不带 `cup` 键, 屏幕按「还没成表」走, 不报错。
+	##   形状与组一样(同一份 `_bucket_from`), 1 人表也留着(本周只有一个组 ⇒ 他直接夺冠)。
+	var cp = d.get("cup", null)
+	if cp is Dictionary:
+		var c2: Dictionary = (cp as Dictionary).duplicate()
+		if not c2.has("now"):
+			c2["now"] = d.get("now", 0)
+		var one_cup: Dictionary = _bucket_from(c2, my_account, recv_at)
+		if int(one_cup.get("size", 0)) >= 1:
+			res["cup"] = one_cup
+	return res
 
 
 ## 收到回包时还剩几秒 → 现在还剩几秒。★用的是「收包时剩多少」减「本机过了多久」,
 ##   两个都是**时间差**, 所以本机时钟偏了也不影响(只要它走得不快不慢)。
-static func finals_left(now_local: int) -> int:
-	var v := _finals_view
+## ★吃一张图(2026-10-07 冠军杯赛): 我在杯里打时倒计时 / 购物窗跟着**杯那一张**走, 不是我那组。
+##   (原来的 `finals_left / finals_srv_now / finals_shop_open_now / finals_shop_left_now` 只认我那组,
+##    改成吃一张图之后它们零个产品调用者 ⇒ 删了, 不留两套入口。我那组 = 传 `finals_cached()`。)
+static func finals_left_of(v: Dictionary, now_local: int) -> int:
 	if v.is_empty() or int(v.get("left", -1)) < 0:
 		return -1
 	return maxi(0, int(v["left"]) - (now_local - int(v.get("recv_at", now_local))))
@@ -2120,8 +2172,7 @@ static func finals_left(now_local: int) -> int:
 ## ★★为什么不直接用本机时钟: 备战购物窗是**全桶同步**的事，
 ##   本机时钟偏 10 分钟的人会比别人早关窗或晚关窗，而他自己一点都察觉不到。
 ##   这里只用**时间差**（本机走得不快不慢就够），绝对时刻一律听服务端的。
-static func finals_srv_now(now_local: int) -> int:
-	var v := _finals_view
+static func finals_srv_now_of(v: Dictionary, now_local: int) -> int:
 	if v.is_empty() or int(v.get("srv_now", 0)) <= 0:
 		return 0
 	return int(v["srv_now"]) + (now_local - int(v.get("recv_at", now_local)))
@@ -2129,18 +2180,16 @@ static func finals_srv_now(now_local: int) -> int:
 
 ## 备战购物窗现在开着吗 / 还剩几秒。★判据本身在 `phase2_config.finals_shop_open()`
 ##   （纯函数、门禁穷举过），这一层只负责**把两个时刻凑齐**，不重写规则。
-static func finals_shop_open_now(now_local: int) -> bool:
-	var v := _finals_view
+static func finals_shop_open_of(v: Dictionary, now_local: int) -> bool:
 	if v.is_empty():
 		return false
-	return _P2S.finals_shop_open(int(v.get("round_at", 0)), finals_srv_now(now_local))
+	return _P2S.finals_shop_open(int(v.get("round_at", 0)), finals_srv_now_of(v, now_local))
 
 
-static func finals_shop_left_now(now_local: int) -> int:
-	var v := _finals_view
+static func finals_shop_left_of(v: Dictionary, now_local: int) -> int:
 	if v.is_empty():
 		return 0
-	return _P2S.finals_shop_left(int(v.get("round_at", 0)), finals_srv_now(now_local))
+	return _P2S.finals_shop_left(int(v.get("round_at", 0)), finals_srv_now_of(v, now_local))
 
 
 ## ─────────────────────────────────────────────────────────────
@@ -2408,7 +2457,8 @@ func fetch_match(match_id: String, done: Callable) -> void:
 const BOARD_LIMIT := 1000
 
 
-## 纯函数: 赛况板要问的查询串。★只取 `profile`(名字 / 头像 / #ID)与对手的战绩标签,
+## 纯函数: 赛况板要问的查询串。★只取 `profile`(名字 / 头像 / #ID)、双方三统领 id(`leaders`, 对局卡上的阵容头像,
+##   2026-10-07 周末观战第三轮加: TV Royale 那种卡要看得到双方阵容)与对手的战绩标签,
 ##   **不取** left/right_snapshot 整列(阵容)、不取 `replay`(录像本体, 点开那一场才按 match_id 取)、
 ##   不取 left_account(赛况板按 #ID 认人, 用不着账号)。
 static func gauntlet_board_query(season_week: int) -> String:
@@ -2416,6 +2466,7 @@ static func gauntlet_board_query(season_week: int) -> String:
 		return ""
 	return ("phase=eq.gauntlet&season_week=eq.%d&select=match_id,created_at,result,"
 		+ "lp:left_snapshot->profile,rp:right_snapshot->profile,"
+		+ "la:left_snapshot->leaders,ra:right_snapshot->leaders,"
 		+ "rw:right_snapshot->gl_w,rl:right_snapshot->gl_l"
 		+ "&order=created_at.desc&limit=%d") % [season_week, BOARD_LIMIT]
 
@@ -2634,3 +2685,127 @@ static func fetch_finals_week_cb(week: int, done: Callable) -> bool:
 			return parse_finals_week(bool(res.get("ok", false)), int(res.get("code", 0)),
 				str(res.get("body", "")), acc, 0))
 	return true
+
+
+# ─────────────────────────────────────────────────────────────
+# 实时观赛 · 周六直播(2026-10-07, docs/plans/20261007-实时观赛.md)
+#   表 `live_matches`(SQL: server/supabase/migrations/20261007_live_matches.sql)。
+#   打的人: `live_upload.gd` 边打边整行覆盖(upsert); 观众: `live_spectate.gd` 每 2~3 秒按 match_id 读一次;
+#   赛况板: 读本周还在打的那几行(只取名字 / 头像 / 三统领, 不取录像本体)。
+# ★表没部署(404) ⇒ 赛况板没有「正在打」那一块、观赛说「暂不可用」, 都不报错。
+# ─────────────────────────────────────────────────────────────
+const LIVE_PATH := "/rest/v1/live_matches"
+## 赛况板一次最多取几场直播。
+const LIVE_BOARD_LIMIT := 200
+## 赛况板只问最近这么多秒里写过的行(其余早就断了; 真正的「还在打吗」由客户端按服务端钟再判一次)。
+const LIVE_BOARD_WINDOW_SEC := 600
+## 服务端回过 404(表还没部署)⇒ 本进程不再发直播行(否则每 3 秒一次心跳, 每次都被拒、都打一行日志)。
+static var live_table_missing := false
+
+
+## 发一行直播(整行覆盖)。返回 false = 没发(没配后端 / 行不完整)。`done.call(ok: bool)` 恰好一次。
+static func live_upsert_async(row: Dictionary, done: Callable) -> bool:
+	if not enabled() or live_table_missing or not is_uuid(str(row.get("match_id", ""))) or str(row.get("replay", "")) == "":
+		return false
+	var n = _spawn()
+	if n == null:
+		return false
+	n.live_upsert(row, done)
+	return true
+
+
+func live_upsert(row: Dictionary, done: Callable) -> void:
+	## ★同 `upload_match`: 没有这个账号的令牌就不发(匿名钥匙写只会被 RLS 拒)。
+	var gs = _gs()
+	if not enabled() or not await _await_token() or gs == null \
+			or str(gs.account_id) == "" or str(row.get("account_id", "")) != str(gs.account_id):
+		if done.is_valid():
+			done.call(false)
+		_bye()
+		return
+	_http("POST", base_url().rstrip("/") + LIVE_PATH, JSON.stringify(row),
+		func(res):
+			var code := int(res.get("code", 0))
+			var good := bool(res.get("ok", false)) and code >= 200 and code < 300
+			if code == 404:
+				live_table_missing = true
+			if not good:
+				_log_upload_fail("live_matches", res)
+			if done.is_valid():
+				done.call(good)
+			_bye(),
+		"Prefer: resolution=merge-duplicates,return=minimal")
+
+
+## 纯函数: 观众取一行要问的查询串。
+static func live_fetch_query(match_id: String) -> String:
+	if not is_uuid(match_id):
+		return ""
+	return "match_id=eq.%s&select=match_id,replay,horizon,ended,client_version,updated_at" % match_id
+
+
+## 纯函数: 回包 → {"err": "", "b64", "horizon", "ended", "updated_at"(ISO 串)} 或 {"err": 原因码}。
+##   原因码同 `parse_fetched_match`, 另有 "unavailable"(表没部署: 404)。
+static func parse_live_row(ok: bool, code: int, body: String, match_id: String) -> Dictionary:
+	if not ok:
+		return {"err": "offline", "code": code}
+	if code == 404:
+		return {"err": "unavailable", "code": code}
+	if code < 200 or code >= 300:
+		return {"err": "server", "code": code}
+	var j := JSON.new()
+	if j.parse(body) != OK or not (j.data is Array):
+		return {"err": "server", "code": code}
+	for r in (j.data as Array):
+		if r is Dictionary and str((r as Dictionary).get("match_id", "")) == match_id:
+			var d: Dictionary = r
+			var b = d.get("replay", null)
+			if not (b is String) or (b as String) == "":
+				return {"err": "corrupt", "code": code}
+			return {"err": "", "b64": b, "code": code,
+				"horizon": int(d.get("horizon", 0)) if d.get("horizon", null) != null else 0,
+				"ended": bool(d.get("ended", false)) if d.get("ended", null) != null else false,
+				"updated_at": str(d.get("updated_at", ""))}
+	return {"err": "missing", "code": code}
+
+
+static func fetch_live_async(match_id: String, done: Callable) -> bool:
+	if not enabled() or not is_uuid(match_id):
+		return false
+	var n = _spawn()
+	if n == null:
+		return false
+	n._get_once(LIVE_PATH + "?" + live_fetch_query(match_id), "GET", "", done,
+		func(res: Dictionary) -> Dictionary:
+			return parse_live_row(bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", "")), match_id))
+	return true
+
+
+## 纯函数: 赛况板问「本周还在打的」。`since` = 只要这一刻之后写过的(unix 秒)。
+## ★时间写成 `...Z`(不写 `+00:00`): 查询串里的 `+` 会被当成空格。
+static func live_board_query(season_week: int, since: int) -> String:
+	if season_week <= 0:
+		return ""
+	return ("season_week=eq.%d&ended=is.false&updated_at=gte.%sZ&select=match_id,started_at,updated_at,client_version,"
+		+ "lp:left_snapshot->profile,rp:right_snapshot->profile,"
+		+ "la:left_snapshot->leaders,ra:right_snapshot->leaders"
+		+ "&order=started_at.desc&limit=%d") % [season_week,
+			Time.get_datetime_string_from_unix_time(maxi(0, since)), LIVE_BOARD_LIMIT]
+
+
+## 纯函数: 回包 → {"rows": [...]}; 拿不到 → {"reason": ...}(形状同 `parse_gauntlet_board`)。
+static func parse_live_board(ok: bool, code: int, body: String) -> Dictionary:
+	return parse_gauntlet_board(ok, code, body)
+
+
+static func fetch_live_board_async(season_week: int, since: int, done: Callable) -> bool:
+	if not enabled() or season_week <= 0:
+		return false
+	var n = _spawn()
+	if n == null:
+		return false
+	n._get_once(LIVE_PATH + "?" + live_board_query(season_week, since), "GET", "", done,
+		func(res: Dictionary) -> Dictionary:
+			return parse_live_board(bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", ""))))
+	return true
+

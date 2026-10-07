@@ -1410,7 +1410,8 @@ static func report_finals_if_any(won: bool) -> void:
 	var r := int(d.get("round", -1))
 	var m := int(d.get("match", -1))
 	if r >= 1 and m >= 0:
-		GameState.finals_pending_reveal = {"round": r, "match": m}
+		## ★带组号(2026-10-07 冠军杯赛): 杯与小组赛坐标相同, 不带组号就会拿小组赛那张的 `done` 去揭晓杯那一场。
+		GameState.finals_pending_reveal = {"round": r, "match": m, "bucket": int(d.get("bucket", -1))}
 	var side := int(d.get("side", -1))
 	if side == 0 or side == 1:
 		var ws: int = side if won else (1 - side)
@@ -1453,7 +1454,7 @@ static func retry_finals_report() -> void:
 	var SB6 = load("res://scripts/net/supabase.gd")
 	if SB6 == null:
 		return
-	if SB6.finals_reported(r2, m2):
+	if SB6.finals_reported(r2, m2, int(d2.get("bucket", -1))):
 		GameState.finals_report_pending = {}       # 已经报成了, 销单
 		GameState.save()
 		return

@@ -175,10 +175,24 @@ func _t_fits_landscape() -> void:
 func _t_ratios() -> void:
 	print("── ⑤ 比例(量自 Worlds 官方对阵图) ──")
 	## ★量自 Worlds 的 5.4% 是**单侧一行**的高; 整格是两行(对阵双方), 所以是它的两倍。
-	_ok("⑤ 单侧一行高 = 屏高 5.4%（≈39px，量自 Worlds）",
-		absf(L.slot_h() - 720.0 * 0.054) < 0.5, "%.1f" % L.slot_h())
+	## ★2026-10-07 周末观战第三轮: 5.4%(39px, 量自 Worlds 的纯文字横条)放不下头像 ⇒ 7.8%(56px):
+	##   头像 44 + 名字 18px(CR / CRL 对阵图的坑位)。审图第三版起整格就是点击热区(没有另外的按钮)。
+	_ok("⑤ 单侧一行高 = 屏高 7.8%（≈56px，放得下 ≥40 的头像）",
+		absf(L.slot_h() - 720.0 * 0.078) < 0.5 and L.slot_h() - 12.0 >= 40.0, "%.1f" % L.slot_h())
 	_ok("⑤ ★整格 = 单侧两倍(上下各一个对手)",
 		absf(L.row_h() - L.slot_h() * 2.0) < 0.5, "%.1f vs %.1f" % [L.row_h(), L.slot_h()])
+	## ★审图第三版(用户「哪个游戏观赛按钮会这样弄？」): 对阵图上不挂按钮, 点对局条本身 ⇒ 整格短边 ≥ 81。
+	var nr: Rect2 = L.node_rect(8, 1, 0)
+	_ok("⑤ ★整格就是热区: 短边 ≥ 81(44pt 触控线)", minf(nr.size.x, nr.size.y) >= 81.0, str(nr.size))
+	## ★横向铺多宽跟着 `view_w` 走(手机比例铺满): 放宽到 1718 ⇒ 8 人组左右两端各贴 SIDE_PAD, 决赛仍在正中。
+	L.view_w = 1718.0
+	var l8: Rect2 = L.node_rect(8, 1, 0)
+	var r8: Rect2 = L.node_rect(8, 1, 2)
+	var f8: Rect2 = L.node_rect(8, 3, 0)
+	L.view_w = L.DESIGN.x
+	_ok("⑤ ★view_w 放宽 ⇒ 两端贴边、决赛居中", absf(l8.position.x - L.SIDE_PAD) < 0.5
+		and absf(r8.end.x - (1718.0 - L.SIDE_PAD)) < 0.5
+		and absf(f8.position.x + f8.size.x * 0.5 - 859.0) < 0.5, "%s %s %s" % [str(l8), str(r8), str(f8)])
 
 	## ★同半区 32 / 半区之间 94 —— 正好 3 倍。量 16 人桶第一轮(每侧 4 场, 中间那道缝是 1/4 区分界)
 	var a: Rect2 = L.node_rect(16, 1, 0)

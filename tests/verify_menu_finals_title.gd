@@ -19,13 +19,17 @@ const MENU := preload("res://scripts/scenes/MainMenuScene.gd")
 
 const KEYS := ["titles", "ranked_used", "promoted", "week_anchor_ts", "account_id",
 	"finals_deepest_round", "finals_rounds_total", "finals_champion", "finals_runner_up",
-	"finals_pending_reveal"]
+	"finals_pending_reveal", "finals_cup_deepest", "finals_cup_total", "finals_cup_champion",
+	"finals_cup_runner_up"]
 
 var _n := 0
 var _fail := 0
 var _bak := {}
 var _finals_reqs := 0
+var _week_reqs := 0
 var _body := ""
+## 冠军杯赛那一份(`finals_week_view` 的回包)。★"" = 服务端没部署(回 404)。
+var _wbody := ""
 
 
 func _ok(nm: String, cond: bool, detail: String = "") -> void:
@@ -42,6 +46,16 @@ func _mk_body(done: Dictionary, me_seed: int) -> String:
 		ent.append({"seed": s, "name": "龟%d" % s, "account_id": "uid-me" if s == me_seed else "uid-%d" % s})
 	return JSON.stringify({"ok": true, "bucket": 1, "n": 4, "round": 3, "closed": true,
 		"round_at": 500, "next_at": 980, "now": 1000, "entrants": ent, "done": done})
+
+
+## 冠军杯赛 4 人表(同一份 done), 我坐 cup_seed(-1 = 不在杯里)。组列表放一个别人的组。
+func _mk_week_body(done: Dictionary, cup_seed: int) -> String:
+	var ent: Array = []
+	for s in range(4):
+		ent.append({"seed": s, "name": "杯%d" % s, "account_id": "uid-me" if s == cup_seed else "uid-c%d" % s})
+	return JSON.stringify({"ok": true, "week": 1, "now": 1000, "buckets": [],
+		"cup": {"bucket": P2C.FINALS_CUP_BUCKET, "n": 4, "round": 2, "closed": true,
+			"round_at": 500, "revealed_at": 500, "next_at": 980, "entrants": ent, "done": done}})
 
 
 func _has_bracket_node(n: Node) -> bool:
@@ -82,6 +96,7 @@ func _reset_progress(wk: int) -> void:
 	GameState.finals_champion = false
 	GameState.finals_runner_up = false
 	GameState.finals_pending_reveal = {}
+	GameState._clear_cup_progress()
 
 
 func _ready() -> void:
@@ -115,7 +130,13 @@ func _ready() -> void:
 	GameState.account_id = "uid-me"
 	SB._token = "gate-token"
 	SB._transport_for_test = func(_m, u, _h, _b, cb):
-		if str(u).find("finals_view") >= 0:
+		if str(u).find("finals_week_view") >= 0:
+			_week_reqs += 1
+			if _wbody == "":
+				cb.call({"ok": false, "code": 404, "body": ""})
+			else:
+				cb.call({"ok": true, "code": 200, "body": _wbody})
+		elif str(u).find("finals_view") >= 0:
 			_finals_reqs += 1
 			cb.call({"ok": true, "code": 200, "body": _body})
 		else:
@@ -139,21 +160,38 @@ func _ready() -> void:
 	_ok("② ★分母: 这份 done 里算得出冠军与亚军", ch_seed >= 0 and ru_seed >= 0 and ch_seed != ru_seed,
 		"冠 %d 亚 %d" % [ch_seed, ru_seed])
 
-	## ③ 冠军
+	## ③ 冠军: 小组赛赢下(组冠军) + 冠军杯赛赢下(冠军)。★2026-10-07 冠军杯赛: 冠军 / 亚军从杯那一张来。
 	_reset_progress(wk)
 	_body = _mk_body(done, ch_seed)
+	_wbody = _mk_week_body(done, ch_seed)
 	_finals_reqs = 0
+	_week_reqs = 0
 	var r3: int = await _open_menu(sun)
-	print("  ③ titles = %s · finals_view 请求 %d 次" % [str(GameState.titles), _finals_reqs])
+	print("  ③ titles = %s · finals_view 请求 %d 次 · finals_week_view %d 次" % [str(GameState.titles), _finals_reqs, _week_reqs])
 	_ok("③ ★分母: 主菜单真的拉了 finals feed 并记了账", _finals_reqs >= 1 and r3 >= 1,
 		"请求 %d · 记账 %d" % [_finals_reqs, r3])
+	_ok("③ ★分母: 主菜单也拉了冠军杯赛那一份(finals_week_view)", _week_reqs >= 1, "%d 次" % _week_reqs)
 	_ok("③ ★★★冠军不进对阵图也拿到【冠军】头衔", P2C.title_has(GameState.titles, P2C.TITLE_CHAMPION, wk),
+		str(GameState.titles))
+	_ok("③ ★★小组赛赢下 ⇒ 同时有【组冠军】", P2C.title_has(GameState.titles, P2C.TITLE_GROUP_CHAMPION, wk),
 		str(GameState.titles))
 	_ok("③ 冠军没有【亚军】", not P2C.title_has(GameState.titles, P2C.TITLE_RUNNER_UP, wk))
 
-	## ④ 亚军
+	## ③b 服务端还没部署冠军杯赛(finals_week_view 404): 小组赛赢下的人只有【组冠军】, 不冒领【冠军】
+	_reset_progress(wk)
+	_body = _mk_body(done, ch_seed)
+	_wbody = ""
+	_finals_reqs = 0
+	var r3b: int = await _open_menu(sun)
+	_ok("③b ★分母: 记了账", r3b >= 1, "记账 %d" % r3b)
+	_ok("③b ★★★冠军杯赛没部署 ⇒ 只有【组冠军】、没有【冠军】",
+		P2C.title_has(GameState.titles, P2C.TITLE_GROUP_CHAMPION, wk)
+			and not P2C.title_has(GameState.titles, P2C.TITLE_CHAMPION, wk), str(GameState.titles))
+
+	## ④ 亚军(冠军杯赛决赛输)
 	_reset_progress(wk)
 	_body = _mk_body(done, ru_seed)
+	_wbody = _mk_week_body(done, ru_seed)
 	_finals_reqs = 0
 	var r4: int = await _open_menu(sun)
 	_ok("④ ★分母: 记了账", r4 >= 1, "记账 %d" % r4)
@@ -164,6 +202,7 @@ func _ready() -> void:
 	## ⑤ 纯观众: 问到了, 但我不在桶里 ⇒ 一条都不发
 	_reset_progress(wk)
 	_body = _mk_body(done, -1)
+	_wbody = _mk_week_body(done, -1)
 	_finals_reqs = 0
 	var r5: int = await _open_menu(sun)
 	_ok("⑤ ★分母: 问到了(记账那一步走到了)", r5 >= 1 and _finals_reqs >= 1)
@@ -181,6 +220,7 @@ func _ready() -> void:
 	## 收尾: static 与环境全部还原
 	SB._transport_for_test = Callable()
 	SB.finals_clear()
+	SB.finals_week_clear()
 	SB._token = ""
 	OS.set_environment(SB.ENV_URL, env0)
 	ProjectSettings.set_setting(SB.SETTING_KEY, key0)

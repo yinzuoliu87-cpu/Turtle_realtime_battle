@@ -32,13 +32,25 @@ const _P2 := preload("res://scripts/gamedata/phase2_config.gd")
 const DESIGN := Vector2(1280.0, 720.0)
 ## ★★节点是**两行**(对阵双方各一行), 不是一行 —— 照参考图(德国 / VS / 巴拉圭)。
 ##   量自 Worlds 的 5.4% 是**一行**的高度, 所以整格 = 它的两倍。
-const SLOT_H_RATIO := 0.054        # 单侧一行的高 / 屏高（量自 Worlds）
-const ROW_H_RATIO := 0.108         # 整格 = 两行
+## ★★2026-10-07 周末观战第三轮: 5.4%(39px, 量自 Worlds 的纯文字横条)放不下头像 ——
+##   CR / CRL 对阵图每个坑都是头像 + 名字, 头像 ≥ 40px、名字 ≥ 18px 才读得出;
+##   而且整格就是点击热区(短边要 ≥ 81)。⇒ 一行 56px(7.8%), 整格 112。
+const SLOT_H_RATIO := 0.078        # 单侧一行的高 / 屏高
+const ROW_H_RATIO := 0.156         # 整格 = 两行
 const GAP_IN_HALF := 32.0          # 同半区两场之间
 const GAP_HALF_MULT := 3.0         # ★半区之间 = 同半区的 3 倍
 const SIDE_PAD := 28.0             # 左右边距
 const NODE_MIN_W := 104.0          # 节点条最窄到这里（再窄写不下名字）
-const NODE_MAX_W := 268.0          # 节点条最宽到这里（4 人桶则则则会被撑成 351）
+const NODE_MAX_W := 300.0          # 节点条最宽到这里（4 人桶则则则会被撑成 351）
+## 决赛那一格比别的格子宽这么多(参考图正中的决赛是全图的焦点)。
+const FINAL_W_MULT := 1.15
+
+## ★★横向铺多宽(2026-10-07): 原来写死 1280 设计宽, 手机(视口 ≈1718×720)上整张图缩在正中、两边大片空着。
+##   场景每次重画前把它设成**可用视口宽**; 不设 = 1280(纯函数门禁照旧按 1280 量)。
+static var view_w: float = DESIGN.x
+## ★★2026-10-07 审图第三版(用户「哪个游戏观赛按钮会这样弄？」): 格子底下挂「观看」大木牌那一版撤掉 ——
+##   VALORANT Premier / 英雄联盟 Clash 的对阵图上没有任何按钮, 每场一条紧凑的对局条, 点对局条本身。
+##   ⇒ 竖向单位回到「一格」; 一格 = 两行 × 56 = 112 高, 本身就是热区(短边 ≥ 81)。
 
 
 static func row_h() -> float:
@@ -62,13 +74,17 @@ static func col_gap(n: int) -> float:
 	var c := columns(n)
 	if c <= 1:
 		return 0.0
-	return (DESIGN.x - SIDE_PAD * 2.0) / float(c)
+	return (view_w - SIDE_PAD * 2.0) / float(c)
 
 
 ## ★上下限都要: 太窄写不下名字, **太宽也不行** ——
 ##   4 人桶只有 3 列, 列距除下来 408 ⇒ 条子被撑到 351px(实拍拓到),
 ##   而参考图里的条子始终是紧凑的。
 static func node_w(n: int) -> float:
+	## ★2 人组只有决赛一列(2026-10-07 新分组规则后常见: N=9~16 时每组 2 人): 列距算不出来(0),
+	##   原来会被夹到最窄 104 ⇒ 名字与「你」小签撞在一起。⇒ 直接给最宽那一档。
+	if columns(n) <= 1:
+		return NODE_MAX_W
 	return clampf(col_gap(n) * 0.86, NODE_MIN_W, NODE_MAX_W)
 
 
@@ -114,9 +130,10 @@ static func node_rect(n: int, r: int, m: int) -> Rect2:
 	if sd == SIDE_LEFT:
 		x = SIDE_PAD + float(r - 1) * gap
 	elif sd == SIDE_RIGHT:
-		x = DESIGN.x - SIDE_PAD - float(r - 1) * gap - w
+		x = view_w - SIDE_PAD - float(r - 1) * gap - w
 	else:
-		x = (DESIGN.x - w) * 0.5              # 决赛居中
+		w *= FINAL_W_MULT
+		x = (view_w - w) * 0.5                # 决赛居中, 比别的格子宽
 	return Rect2(Vector2(x, _center_y(n, r, m) - h * 0.5), Vector2(w, h))
 
 
@@ -151,6 +168,17 @@ static func _span_mid(n: int) -> float:
 	var extra := GAP_IN_HALF * (GAP_HALF_MULT - 1.0) if per >= 4 else 0.0
 	var last := h * 0.5 + float(per - 1) * pitch + extra
 	return (h * 0.5 + last) * 0.5
+
+
+## 整张图最左那一格的 x(场景据此把整张图摆正中)。★2 人组只有正中那一格, 不从 SIDE_PAD 起 ——
+##   原来场景写死「内容从 SIDE_PAD 起」, 2 人组被推到了最右边(2026-10-07 新分组规则后实拍抓到)。
+static func content_left(n: int) -> float:
+	var total := _B.rounds_for(n)
+	var left := INF
+	for r in range(1, total + 1):
+		for m in range(_B.matches_in_round(n, r)):
+			left = minf(left, node_rect(n, r, m).position.x)
+	return SIDE_PAD if left == INF else left
 
 
 ## 整张图的包围盒。

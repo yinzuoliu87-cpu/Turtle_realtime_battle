@@ -191,10 +191,7 @@ func _ready() -> void:
 	if OS.has_environment("CODEX_SHOT"):   # dev: 图鉴自截图(SHOT_TAB=equips CODEX_SHOT=秒 SHOT_OUT=路径)·验框色等·截完自退
 		_codex_selfshot()
 		return
-	var _td = get_node_or_null("/root/TutorialDirector")
-	if _td != null:
-		_td.attach_guide(self, "codex")        # 分步引导(带高亮: 分类页签)
-		_td.attach_next_button(self, "codex")  # 右上"打第二把"推进钮
+	## (2026-10-07 教程重做: 图鉴站已删 —— 用户「缩」。本屏不再挂教程引导。)
 
 ## dev 图鉴自截图: 等 CODEX_SHOT 秒(默认1.2·让入场动画落定)→ 抓主视口存 SHOT_OUT → 退。可选滚动到 SHOT_SCROLL 像素。
 func _codex_selfshot() -> void:
@@ -252,15 +249,6 @@ func _codex_selfshot() -> void:
 	var img: Image = get_viewport().get_texture().get_image()
 	img.save_png(OS.get_environment("SHOT_OUT") if OS.has_environment("SHOT_OUT") else "res://_codex.png")
 	get_tree().quit()
-
-
-## 新手引导高亮锚点(用户2026-07-23 D)。名字→屏幕矩形; 解析不到返回空 Rect2(本步不挖洞)。
-func _tutorial_anchor(anchor: String) -> Rect2:
-	match anchor:
-		"tabs":   # 顶部分类页签栏(龟/装备/羁绊/状态)
-			if tab_bar != null and is_instance_valid(tab_bar):
-				return tab_bar.get_global_rect()
-	return Rect2()
 
 
 # ── 背景铺满 + 内容居中 (1:1 PoC menu-bg-active 边距 + 1280×720 画布居中) ──

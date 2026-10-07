@@ -51,6 +51,7 @@ func _make_pet_card(pet: Dictionary) -> Control:
 
 	# PoC .pet-card 卡 = 纯 Control 叠层: 背景框(满) + 内容(padding内缩, 上→下 头像→meta) + badge(相对卡) + 被动(相对头像)
 	var card = Control.new()
+	card.set_meta("pet_id", pid)   # 教程手势指针找「第一只没上阵的龟」用(TeamSelectScene._tutorial_anchor)
 	# 宽=填满行均分(≥116, 1:1 PoC minmax(116,1fr) 卡拉伸); 高 ~116. 原固定116²方卡左packed留白=用户报"布局不同"
 	card.custom_minimum_size = Vector2(host._grid_card_w, host._sp(116))
 	card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND

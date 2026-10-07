@@ -444,7 +444,7 @@ func _ready() -> void:
 					bad_words.append("%s ← 「%s」" % [s.substr(0, 24), str(w)])
 	for c in _all(sc3):
 		## 羁绊行 = 挂了那句 tooltip 的 Panel(产品自己写的识别位, 不是我为测试加的)
-		if c is Panel and str((c as Control).tooltip_text).find("点开看这个羁绊") >= 0:
+		if c is Panel and str((c as Control).tooltip_text).find("查看羁绊详情") >= 0:
 			syn_rows += 1
 			if (c as Control).size.y < 44.0:
 				short_rows.append((c as Control).size.y)
@@ -518,7 +518,7 @@ func _toasts_on_screen(sc: Node, needle: String) -> Array:
 
 func _check_toast_survives() -> void:
 	const OPS_SRC := "res://scripts/scenes/inventory/equip_ops.gd"
-	const NEEDLE := "已装满"
+	const NEEDLE := "装备栏已满"
 	## ★分母0: 这句话确实是产品的原文(有人改文案时, 红的是这条, 不是下面一堆谜语)
 	var src := ""
 	var fo := FileAccess.open(OPS_SRC, FileAccess.READ)
@@ -757,7 +757,7 @@ func _cap_pair(sc: Node) -> Array:
 		var parts: PackedStringArray = t.split("/")
 		if parts.size() < 2:
 			continue
-		var a := str(parts[0]).replace("装备", "").strip_edges()
+		var a := str(parts[0]).replace("全队", "").replace("装备", "").strip_edges()
 		var b := str(parts[1]).strip_edges()
 		if a.is_valid_int() and b.is_valid_int():
 			return [int(a), int(b)]

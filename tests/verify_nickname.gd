@@ -93,8 +93,8 @@ func _t_rules() -> void:
 		P2C.nickname_clean("阿龟大王") == "阿龟大王")
 
 	## 报错文案: 太短/太长各有各的话
-	_ok("① 太短有话说", P2C.nickname_error("龟").find("太短") >= 0, P2C.nickname_error("龟"))
-	_ok("① 太长有话说", P2C.nickname_error("一二三四五六七八九").find("太长") >= 0,
+	_ok("① 太短有话说", P2C.nickname_error("龟").find("至少") >= 0, P2C.nickname_error("龟"))
+	_ok("① 太长有话说", P2C.nickname_error("一二三四五六七八九").find("最多") >= 0,
 		P2C.nickname_error("一二三四五六七八九"))
 	_ok("① ★合法 ⇒ 空串(调用方据此判断要不要报错)", P2C.nickname_error("阿龟") == "")
 
@@ -503,7 +503,7 @@ func _t_bind_copy() -> void:
 	print("     第一步「%s」 / 第二步「%s」" % [t1, t2])
 	_ok("⑧ ★分母: 两块说明都建出来了", t1 != "" and t2 != "")
 	_ok("⑧ ★★★不再说「换设备仍然会丢」", all.find("换设备仍然会丢") < 0, all)
-	_ok("⑧ ★说了绑定之后进度能取回", t1.find("取回") >= 0 and t1.find("进度") >= 0, t1)
-	_ok("⑧ ★说了没绑定时进度只在这台设备上", all.find("只存在这台设备") >= 0, all)
+	_ok("⑧ ★说了绑定之后进度能取回", t1.find("恢复") >= 0 and t1.find("进度") >= 0, t1)
+	_ok("⑧ ★说了没绑定时进度只在这台设备上", all.find("仅保存在本设备") >= 0, all)
 	inst.queue_free()
 	await get_tree().process_frame

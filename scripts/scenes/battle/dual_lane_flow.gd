@@ -35,6 +35,11 @@ func _init(b) -> void:
 ##   换路时 `_dl_clear_units` 把 `_sim_tweens` 全部 kill, 被 kill 的 tween 永不发 finished、
 ##   回调永不再调 ⇒ 它们本来就在换路那一刻作废了(这是对的: 上一路已经结束)。
 var lane_epoch: int = 0
+## 教程「拖动龟调整站位」: 本次拖动的起点(战场像素) / 位移超过这么多才算拖过(防把一次点按当成拖动)。
+var _drag_from := Vector2.ZERO
+## 正在淡出的对阵幕布(淡出完自己 queue_free ⇒ is_instance_valid 变假)。
+var present_fading: Node = null
+const DRAG_MIN_PX := 20.0
 
 ## 等一个 sim 步; 这一步里换了路 ⇒ 永不返回(调用方那条协程就此作废)。
 func lane_step() -> void:
@@ -122,6 +127,7 @@ func _dl_clear_present_overlay() -> void:
 		tw.tween_property(old, "modulate:a", 0.0, 0.22) \
 			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 		tw.tween_callback(old.queue_free)
+		present_fading = old      # 教程引导要等它淡出完才出现(对阵卡上不许压提示, 方案书 B1)
 	battle._dl_present_root = null
 
 func _dl_spec_name(spec) -> String:
@@ -150,19 +156,26 @@ func _dl_build_present_overlay(mode: String) -> void:
 	# 完全不透明整屏幕幕布 —— 呈现层是隔开上/下/终极战场的「幕」, 绝不透出后面的战场(用户2026-07-12: 就是为了避免上下战场串东西)
 	back.color = Color(0.03, 0.05, 0.09, 1.0)
 	back.set_anchors_preset(Control.PRESET_FULL_RECT)
+	## 幕布压住同层后建的飘字(「+19 盾」曾画在幕布上面): 飘字与幕布同在 _ui_layer, 后建的画在上面 ⇒ 抬 z。
+	back.z_index = 50
 	back.mouse_filter = Control.MOUSE_FILTER_STOP
 	back.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed: _dl_present_click())
 	battle._ui_layer.add_child(back)
 	battle._dl_present_root = back
 	var center = CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	## 看回放时底部有一条操作条(replay_controls, 高 ReplayControls.STRIP_H): 幕布上的牌子在它上面那块里居中, 不被它压住。
+	var _rp_inset: float = 0.0
+	if battle._replay != null and battle._replay.is_playing() and not battle._replay.is_live():   # 观赛没有操作条
+		_rp_inset = ReplayControls.STRIP_H + 4.0
+	center.offset_bottom = -_rp_inset
 	back.add_child(center)
 	var panel = PanelContainer.new()
 	panel.name = "PresentPanel"
 	# 撑大呈现面板(用户2026-07-12「预览这么小」), 但按视口收口 ——
 	#   原来死写 980x560, 窄屏(手机竖屏/小窗)直接顶出屏幕外, 卡片被裁掉看不全。
 	var _vp: Vector2 = battle.get_viewport().get_visible_rect().size   # ★Node3D 没有 get_viewport_rect()
-	panel.custom_minimum_size = Vector2(minf(980.0, _vp.x - 48.0), minf(560.0, _vp.y - 48.0))
+	panel.custom_minimum_size = Vector2(minf(980.0, _vp.x - 48.0), minf(560.0, _vp.y - 48.0 - _rp_inset))
 	## ★2026-10-05(回放体验打磨 · 主会话实玩): 原来是 StyleBoxFlat 圆角 18 + 3px 黄边 + 纯黑底 = 网页卡片。
 	##   换成战斗信息面板 / 结算屏同一张九宫格金属框(`SettleScreen.frame_style()`), 不新增素材。
 	var sb: StyleBox = SettleScreenS.frame_style().duplicate()
@@ -200,7 +213,7 @@ func _dl_build_present_overlay(mode: String) -> void:
 		var r = Label.new(); r.add_theme_font_size_override("font_size", 26)
 		r.add_theme_color_override("font_color", Color("#9ae6b0") if win_lr == "left" else Color("#ff9b9b"))
 		r.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		r.text = "拿下本路" if win_lr == "left" else "本路失守"
+		r.text = "本路胜利" if win_lr == "left" else "本路失败"
 		vb.add_child(r)
 		var rec = Label.new(); rec.add_theme_font_size_override("font_size", 19); rec.add_theme_color_override("font_color", Color("#ffe9a8"))
 		rec.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -209,7 +222,7 @@ func _dl_build_present_overlay(mode: String) -> void:
 		if GameState != null and GameState.egg_hp is Dictionary:
 			var e = Label.new(); e.add_theme_font_size_override("font_size", 16); e.add_theme_color_override("font_color", Color("#cfe6ff"))
 			e.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			e.text = "蛋血  我方 %d  ·  对方 %d" % [int(GameState.egg_hp.get("left", 0.0)), int(GameState.egg_hp.get("right", 0.0))]
+			e.text = "龟蛋生命  我方 %d  ·  对方 %d" % [int(GameState.egg_hp.get("left", 0.0)), int(GameState.egg_hp.get("right", 0.0))]
 			vb.add_child(e)
 	var hint = Label.new(); hint.add_theme_font_size_override("font_size", 13); hint.add_theme_color_override("font_color", Color("#7a8a96"))
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -299,7 +312,7 @@ func _dl_overview_lane_row(lane: String, cn: String) -> Control:
 	var tag = Label.new(); tag.text = cn; tag.add_theme_font_size_override("font_size", 26); tag.add_theme_color_override("font_color", Color("#cfe6ff"))
 	tag.custom_minimum_size = Vector2(108, 0); row.add_child(tag)
 	if lane == "final":
-		var fl = Label.new(); fl.text = "上下路幸存者对决"; fl.add_theme_font_size_override("font_size", 22); fl.add_theme_color_override("font_color", Color("#9fb4c8"))
+		var fl = Label.new(); fl.text = "决胜阶段"; fl.add_theme_font_size_override("font_size", 22); fl.add_theme_color_override("font_color", Color("#9fb4c8"))
 		row.add_child(fl)
 		return row
 	row.add_child(_dl_mini_avatars(_dl_lane_specs(lane)))
@@ -447,7 +460,7 @@ func _dl_enter_place() -> void:
 		## ★2026-10-05: 原来是「▶  开  打」+ Godot 默认深色方块。换成结算屏主按钮同一块木牌(`SettleScreen.dress_btn` → `UISkin.button`),
 		##   字去掉「▶」(字体链里的兜底字形)和字间空格。
 		battle._dl_go_btn.name = "GoBtn"
-		battle._dl_go_btn.text = "开打"
+		battle._dl_go_btn.text = "开始战斗"
 		SettleScreenS.dress_btn(battle._dl_go_btn, Color("#ffd27a"), Color("#ffe7a0"))
 		battle._dl_go_btn.pressed.connect(_dl_start_fight)
 		if battle._ui_layer != null:
@@ -468,7 +481,7 @@ func _dl_enter_place() -> void:
 	##   ② 「(左侧)」是坐标注释 —— 自己那半场眼睛看得见, 而且 _dl_clamp_place 本来就拦着过不了中线
 	##   ③ 「单位」是 unit 直译, 场上就是龟
 	## v2(2026-10-05): 「拖我方的龟在自己半场摆好站位 → 点「开打」」带箭头 + 引号按钮名 = 说明书口吻。
-	battle._dl_place_hint.text = "拖动布阵，准备好后开打"
+	battle._dl_place_hint.text = "拖动单位调整站位"
 	battle._dl_go_btn.visible = true
 	battle._dl_place_hint.visible = true
 	## ★自动驾驶(`SIM_AUTOPILOT=1`): 停 `DWELL_PLACE` 帧让人看清双方站位,
@@ -480,23 +493,35 @@ func _dl_enter_place() -> void:
 	##   ★在这一屏停多久不影响战斗结果: `_dl_state == "place"` 时 `_fight_on` 恒假
 	##     (`RealtimeBattle3DScene.gd:2219`) ⇒ `_t` 不涨、单位不 tick。
 	SimAutopilot.attach(battle)
-	# ★教学 match1: 摆位UI就绪 → 挂"place"引导(教站位), 只挂一次(首路; 别每路弹)。
-	## ★★host 必须是 `battle` 不是 `self`(2026-09-30 修, 台账 ⑧)。`DualLaneFlow extends RefCounted`,
-	##   而 `attach_guide(host: Node, …)` 要 Node ⇒ 传 self 时运行期报
-	##   `SCRIPT ERROR: Invalid type in function 'attach_guide' … argument 1 (RefCounted (DualLaneFlow))
-	##    is not a subclass of the expected argument class`(探针 tests/_probe_guide_host.gd 实测),
-	##   而 GDScript 的这条错**当场中止整个 `_dl_enter_place`** ⇒ 左值 `battle._tutorial` 根本没被写
-	##   (实测 null)、树里 group `tut_overlay` 节点数 **0** ⇒ 教站位那三步**一个画面都没出过**。
-	##   **上一行已经把 `_tut_place_shown` 置了 true**, 所以后面几路也不会再试 —— 一次报错永久沉默。
-	##   ⇒ 本来就该传 battle: 两个高亮锚点 `field`/`go_button` 定义在
-	##     `RealtimeBattle3DScene._tutorial_anchor()`(实测解析出 (64,384)576×537.6 / (530,1180)220×62),
-	##     而 `DualLaneFlow` 既没有 `_tutorial_anchor` 也没有 `add_child`。
-	##   ⇒ 门禁: `tests/verify_tutorial.gd` 的 `_test_guide_host`(搜 GUIDE_HOST)。
+	# ★教程: 摆位 UI 就绪 → 挂「place」引导(拖动龟 → 点击开始战斗)。只挂一次(首路; 后两路不再提示)。
+	## ★host 必须是 `battle`(Node), 不是 `self`(RefCounted) —— 2026-09-30 台账 ⑧(传 self 运行期报错中止整段)。
+	## ★ready_fn: 只在 `_dl_state == "place"` 时显示 —— 三路总览 / 对阵卡演出期间不出提示(方案书 B1)。
+	## ★anchor_fn: `my_unit`(手势指针指着一只我方龟)在这里算; 其余交给 battle._tutorial_anchor。
 	if not battle._tut_place_shown:
 		var _tdp = battle.get_node_or_null("/root/TutorialDirector")
 		if _tdp != null and _tdp.is_active() and str(_tdp.stage()) == "match1":
 			battle._tut_place_shown = true
-			battle._tutorial = _tdp.attach_guide(battle, "battle")   # stage match1 → steps "place"
+			battle._dl_place_hint.visible = false     # 引导条说的就是这一句, 不重复两遍
+			battle._tutorial = _tdp.attach_guide(battle, "battle", _tut_anchor, _tut_ready)
+
+## 教程摆位引导「可以出现了吗」: 摆位阶段 + 对阵幕布已经淡出完(方案书 B1)。
+func _tut_ready() -> bool:
+	return str(battle._dl_state) == "place" and not is_instance_valid(present_fading) \
+		and not is_instance_valid(battle._dl_present_root)
+
+
+## 教程摆位引导的锚点: `my_unit` = 第一只能拖的我方龟头顶附近的屏幕矩形; 其余走 battle._tutorial_anchor。
+func _tut_anchor(nm: String) -> Rect2:
+	if nm == "my_unit":
+		for u in battle._units:
+			if battle._can_place_drag(u) and u.get("alive", true) and battle._cam != null:
+				var head: Vector3 = battle._world_pos(u["pos"], float(u.get("height", 1.0)) + 1.0)   # 与 _edit_unit_at_screen 命中点同口径
+				if battle._cam.is_position_behind(head):
+					continue
+				var sp: Vector2 = battle._cam.unproject_position(head)
+				return Rect2(sp - Vector2(36, 36), Vector2(72, 72))
+		return Rect2()
+	return battle._tutorial_anchor(nm)
 
 # ── 摆位阶段的新手引导高亮锚点(用户2026-07-23 D): 名字→屏幕矩形, 解析不到返回空 Rect2(本步不挖洞)。
 #    ★实现在 `RealtimeBattle3DScene._tutorial_anchor()` —— host 是 battle, **本文件没有这个函数**。
@@ -530,8 +555,9 @@ func _dl_start_fight() -> void:
 	##     ② 屏上继续挂着「摆好了就点开打」——而开打已经按过了, 教学在说假话。
 	##   `notify()` 自己会比对当前步的 advanceOn, 名字不对什么都不做(TutorialGuide:46)
 	##   ⇒ 第二把(match2)挂的是 "battle" 那套, 这一下对它是空操作, 不会误推进。
-	if is_instance_valid(battle._tutorial):
-		battle._tutorial.notify("fight_started")
+	var _tdf = battle.get_node_or_null("/root/TutorialDirector")
+	if _tdf != null:
+		_tdf.notify("fight_started")
 	_dl_fight_start_dramatize()
 
 
@@ -557,9 +583,15 @@ func _dl_handle_place_input(event: InputEvent) -> void:
 			var hit = battle._edit_unit_at_screen(event.position)   # 只拖我方(left)非蛋非召唤
 			if battle._can_place_drag(hit):
 				battle._edit_drag_unit = hit
+				_drag_from = hit["pos"]
 			else:
 				battle._edit_drag_unit = null
 		else:
+			## ★教程「拖动龟调整站位」等的就是这一下: 松手时这只龟真的被挪动过(不是点一下)。
+			if battle._edit_drag_unit != null and (battle._edit_drag_unit["pos"] as Vector2).distance_to(_drag_from) > DRAG_MIN_PX:
+				var _tdd = battle.get_node_or_null("/root/TutorialDirector")
+				if _tdd != null:
+					_tdd.notify("unit_dragged")
 			battle._edit_drag_unit = null
 	elif event is InputEventMouseMotion and battle._edit_drag_unit != null:
 		if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):

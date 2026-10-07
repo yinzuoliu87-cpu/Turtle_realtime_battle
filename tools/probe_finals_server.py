@@ -69,16 +69,21 @@ def chk(name, cond, detail=""):
 # ── 管理员通道(跑 SQL: 造数据 / 直接叫推进器 / 回读真相) ──
 def sql(q):
     tok = io.open(TOKEN_FILE, encoding="utf-8").read().strip()
-    r = urllib.request.Request(
-        "https://api.supabase.com/v1/projects/%s/database/query" % PROJ,
-        method="POST", data=json.dumps({"query": q}).encode(),
-        headers={"Authorization": "Bearer " + tok, "Content-Type": "application/json"})
-    try:
-        with OP.open(r, timeout=90) as resp:
-            t = resp.read().decode()
-            return resp.status, (json.loads(t) if t.strip() else None)
-    except urllib.error.HTTPError as e:
-        return e.code, e.read().decode()[:400]
+    ## ★2026-10-07: 管理接口有频率限制(实测跑到 ⑭ 时回 429, 后面整段假红) ⇒ 429 退避重试。
+    for attempt in range(6):
+        r = urllib.request.Request(
+            "https://api.supabase.com/v1/projects/%s/database/query" % PROJ,
+            method="POST", data=json.dumps({"query": q}).encode(),
+            headers={"Authorization": "Bearer " + tok, "Content-Type": "application/json"})
+        try:
+            with OP.open(r, timeout=90) as resp:
+                t = resp.read().decode()
+                return resp.status, (json.loads(t) if t.strip() else None)
+        except urllib.error.HTTPError as e:
+            if e.code == 429 and attempt < 5:
+                time.sleep(10 * (attempt + 1))
+                continue
+            return e.code, e.read().decode()[:400]
 
 
 # ── 客户端通道(就是游戏里走的那条: anon key + 用户令牌) ──
@@ -436,17 +441,29 @@ chk("⑯ ★再报一次 = 覆盖(不是撞主键报错) —— 阵容会改, �
     isinstance(rows, list) and len(rows) == 1 and int(rows[0].get("gw", 0)) == 9, str(rows)[:120])
 
 print("── ⑰ 坐下 finals_seat + 报结果 finals_report ──")
+## ★★2026-10-07 新分组规则(用户「8 人或更少时直接杯赛」): N ≤ 8 ⇒ 每组 1 人, 坐下即收盘(没有对局),
+##   那一位就是组冠军、晚上直接进冠军杯赛。⇒ 2 个人 = 2 个 1 人组(原来是 1 个 2 人组)。
 st, d = sql("select public.finals_seat(%d) as nb" % WEEK)
 nb = int(d[0]["nb"]) if isinstance(d, list) and d else -1
-chk("⑰ ★2 个人 ⇒ 切出 1 个桶", nb == 1, "nb=%d" % nb)
-st, rows = sql("""select bucket_no, n from public.finals_buckets
+chk("⑰ ★★2 个人 ⇒ 切出 2 个 1 人组(新分组规则)", nb == 2, "nb=%d" % nb)
+st, rows = sql("""select bucket_no, n, closed, revealed_at is not null as rv from public.finals_buckets
                   where season_week = %d order by bucket_no""" % WEEK)
-chk("⑰ 桶建出来了, n=2", isinstance(rows, list) and len(rows) == 1 and int(rows[0]["n"]) == 2,
-    str(rows)[:120])
-st, rows = sql("""select seed, name from public.finals_entrants
-                  where season_week = %d order by seed""" % WEEK)
-chk("⑰ ★★种子顺序 = 胜场降序(甲 9 胜在前, 乙 6 胜在后)",
-    isinstance(rows, list) and [r["name"] for r in rows] == ["甲改名", "乙"], str(rows)[:140])
+chk("⑰ ★★两组各 1 人、坐下即收盘(closed + revealed_at)",
+    isinstance(rows, list) and len(rows) == 2 and all(int(r["n"]) == 1 and r["closed"] and r["rv"] for r in rows),
+    str(rows)[:160])
+st, rows = sql("""select bucket_no, seed, name from public.finals_entrants
+                  where season_week = %d order by bucket_no""" % WEEK)
+chk("⑰ ★★种子顺序 = 胜场降序(甲 9 胜进 0 组, 乙 6 胜进 1 组; 蛇形)",
+    isinstance(rows, list) and [r["name"] for r in rows] == ["甲改名", "乙"]
+    and all(int(r["seed"]) == 0 for r in rows), str(rows)[:140])
+st, rows = sql("select public.finals_champion_seed(%d, 0) as c0, public.finals_champion_seed(%d, 1) as c1"
+               % (WEEK, WEEK))
+chk("⑰ ★1 人组的冠军就是他自己(finals_champion_seed = 0)",
+    isinstance(rows, list) and rows and rows[0]["c0"] == 0 and rows[0]["c1"] == 0, str(rows)[:120])
+sql("select public.finals_advance(%d)" % WEEK)
+st, rows = sql("select count(*)::int as c from public.finals_results where season_week = %d" % WEEK)
+chk("⑰ ★推进器不碰已收盘的 1 人组(没有对局 ⇒ 0 条结果)",
+    isinstance(rows, list) and int(rows[0]["c"]) == 0, str(rows)[:80])
 st, d = sql("select public.finals_seat(%d) as nb" % WEEK)
 chk("⑰ ★幂等: 再坐一次返回 0, 不重复插",
     isinstance(d, list) and int(d[0]["nb"]) == 0, str(d)[:80])
@@ -455,7 +472,17 @@ st, d = req("POST", "/rest/v1/rpc/finals_enter",
 chk("⑰ ★★已经坐定之后不再收报名(这时塞人会让别人的对阵图当场变形)",
     isinstance(d, dict) and d.get("reason") == "already_seated", str(d)[:140])
 
-## 报结果
+## 报结果: 新规则下 2 人报名不会有对局 ⇒ 另造一个 2 人组(管理员直插)来验 finals_report
+sql("delete from public.finals_results  where season_week = %d" % WEEK)
+sql("delete from public.finals_entrants where season_week = %d" % WEEK)
+sql("delete from public.finals_buckets  where season_week = %d" % WEEK)
+st, _ = sql("""
+insert into public.finals_buckets (season_week, bucket_no, n, round, round_at, closed)
+  values (%d, 0, 2, 1, now(), false);
+insert into public.finals_entrants (season_week, bucket_no, seed, account_id, name, snapshot)
+  values (%d,0,0,'%s','甲改名','{}'::jsonb), (%d,0,1,'%s','乙','{}'::jsonb);
+""" % (WEEK, WEEK, IA, WEEK, IB))
+chk("⑰ ★分母: 2 人组造好了(报结果那几条的前提)", st in (200, 201), "HTTP %s" % st)
 st, d = req("POST", "/rest/v1/rpc/finals_report",
             {"p_week": WEEK, "p_bucket": 0, "p_round": 2, "p_match": 0,
              "p_winner_side": 0, "p_seed": 42}, TA)
@@ -703,14 +730,45 @@ for tok, nm, snap, gw in ((TA, "端到端甲", '{"leaders":["basic"],"tag":"AAA"
     e_ok = e_ok and isinstance(d, dict) and bool(d.get("ok"))
 chk("㉑ ① 两个人都报上名了(客户端 RPC + 真 token)", e_ok)
 
-# ② 切桶(只有 pg_cron 干得动)
+# ② 切桶(只有 pg_cron 干得动)。★新分组规则: 2 人 ⇒ 2 个 1 人组, 坐下即收盘
 st, d = sql("select public.finals_seat(%d) as nb" % EW)
 nb = int(d[0]["nb"]) if isinstance(d, list) and d else -1
-chk("㉑ ② 切出 1 个桶", nb == 1, str(nb))
-
-# ③ 甲看图: 拿得到自己的桶 + 名字按种子落位
+chk("㉑ ② 切出 2 个 1 人组", nb == 2, str(nb))
 st, v = req("POST", "/rest/v1/rpc/finals_view", {"p_week": EW, "p_bucket": -1}, TA)
-chk("㉑ ③ 甲查到了自己那个桶(p_bucket=-1 那条路)",
+chk("㉑ ② 甲查到了自己那一组: 1 人、已收盘、没有结果",
+    isinstance(v, dict) and bool(v.get("ok")) and int(v.get("n", 0)) == 1 and v.get("closed") is True
+    and not v.get("done"), str(v)[:170])
+my_group = int(v.get("bucket", -1)) if isinstance(v, dict) else -1
+
+# ②b 冠军杯赛成表(★假周号的「周日 20:00」在 1970 年 ⇒ finals_cup_seat 的到点条件已满足, 真函数直接跑)
+st, d = sql("select public.finals_cup_no() as cup")
+CUP = int(d[0]["cup"]) if isinstance(d, list) and d else -1
+chk("㉑ ②b ★分母: 保留组号 = 客户端 FINALS_CUP_BUCKET",
+    CUP == int(re.search(r"const\s+FINALS_CUP_BUCKET\s*:=\s*(\d+)", _p2c).group(1)), str(CUP))
+st, d = sql("select public.finals_cup_seat(%d) as n" % EW)
+ncup = int(d[0]["n"]) if isinstance(d, list) and d else -1
+chk("㉑ ②b ★★★两个组冠军 ⇒ 冠军杯赛 2 人", ncup == 2, str(d)[:120])
+st, d = sql("select public.finals_cup_seat(%d) as n" % EW)
+chk("㉑ ②b ★幂等: 再叫一次返回 0", isinstance(d, list) and int(d[0]["n"]) == 0, str(d)[:80])
+st, rows = sql("select seed, name from public.finals_entrants where season_week=%d and bucket_no=%d order by seed"
+               % (EW, CUP))
+chk("㉑ ②b ★★杯种子按周六战绩(甲 6 胜 = 0 号)", isinstance(rows, list)
+    and [r["name"] for r in rows] == ["端到端甲", "端到端乙"], str(rows)[:140])
+st, v = req("POST", "/rest/v1/rpc/finals_view", {"p_week": EW, "p_bucket": -1}, TA)
+chk("㉑ ②b ★★「我那个组」仍是小组赛那一组(不会查到杯)",
+    isinstance(v, dict) and int(v.get("bucket", -9)) == my_group and my_group != CUP, str(v)[:120])
+st, w = req("POST", "/rest/v1/rpc/finals_week_view", {"p_week": EW}, TB)
+wb = w.get("buckets", []) if isinstance(w, dict) else []
+wc = w.get("cup") if isinstance(w, dict) else None
+chk("㉑ ②b ★★周视图: 组列表 2 组且不含杯, 顶层 cup = 2 人",
+    isinstance(wb, list) and len(wb) == 2 and all(int(b.get("bucket", -1)) != CUP for b in wb)
+    and isinstance(wc, dict) and int(wc.get("n", 0)) == 2 and int(wc.get("bucket", -1)) == CUP, str(w)[:200])
+chk("㉑ ②b ★杯那一张不下发 snapshot", isinstance(wc, dict)
+    and all("snapshot" not in e for e in wc.get("entrants", [])), str(wc)[:150])
+
+# ③ 甲看冠军杯赛那一张(按组号)
+st, v = req("POST", "/rest/v1/rpc/finals_view", {"p_week": EW, "p_bucket": CUP}, TA)
+chk("㉑ ③ 甲查到了冠军杯赛那一张",
     isinstance(v, dict) and bool(v.get("ok")) and int(v.get("n", 0)) == 2, str(v)[:170])
 bno = int(v.get("bucket", -1)) if isinstance(v, dict) else -1
 ents = v.get("entrants", []) if isinstance(v, dict) else []
@@ -761,8 +819,11 @@ sql("update public.finals_buckets set round_at = now() - interval '20 minutes' "
 sql("select public.finals_advance(%d)" % EW)
 st, b = sql("select round, closed from public.finals_buckets "
             "where season_week=%d and bucket_no=%d" % (EW, bno))
-chk("㉑ ⑦ ★★★到点了 ⇒ 桶收盘(2 人桶只有 1 轮) —— 对阵图**真的走完了**",
+chk("㉑ ⑦ ★★★到点了 ⇒ 冠军杯赛收盘(2 人只有 1 轮) —— 对阵图**真的走完了**",
     isinstance(b, list) and b and bool(b[0]["closed"]), str(b)[:120])
+st, d = sql("select public.finals_champion_seed(%d, %d) as c" % (EW, bno))
+chk("㉑ ⑦ ★★冠军杯赛冠军 = 甲(finals_champion_seed 追溯与报上去的那一侧一致)",
+    isinstance(d, list) and d and d[0]["c"] == my_seed, "%s / 甲=%d" % (str(d)[:60], my_seed))
 
 # ⑧ 甲再看图: 现在该看得到结果了(收盘之后全给)
 st, v2 = req("POST", "/rest/v1/rpc/finals_view", {"p_week": EW, "p_bucket": bno}, TA)
@@ -781,6 +842,43 @@ st, c = sql("select (select count(*) from public.finals_buckets where season_wee
             " as leftover" % (EW, EW))
 chk("㉑ 收尾: 端到端那一周的数据清干净了",
     isinstance(c, list) and c and int(c[0]["leftover"]) == 0, str(c)[:110])
+
+# ═════════════════════════════════════════════════════════════
+# ㉒ 冠军杯赛的零件(纯 SQL, 不造账号): 座次表 / 组冠军追溯 / 分组容量 / 没到点不成表
+# ═════════════════════════════════════════════════════════════
+print("")
+print("── ㉒ 冠军杯赛零件 ──")
+st, d = sql("select array_agg(public.finals_seed_at_seat(8, p) order by p) as s from generate_series(0, 7) p")
+seats = d[0]["s"] if isinstance(d, list) and d else None
+chk("㉒ ★★座次表 8 坑 = [0,7,3,4,1,6,2,5](与 bracket.gd 同一张)", seats == [0, 7, 3, 4, 1, 6, 2, 5], str(seats))
+CW = 5
+for _t in ("finals_results", "finals_entrants", "finals_buckets"):
+    sql("delete from public.%s where season_week = %d" % (_t, CW))
+sql("""insert into public.finals_buckets (season_week, bucket_no, n, round, round_at, closed)
+         values (%d, 0, 4, 2, now(), true), (%d, 1, 4, 2, now(), false);
+       insert into public.finals_results (season_week, bucket_no, round, match_no, winner_side, seed_used)
+         values (%d,0,1,0,1,1),(%d,0,1,1,0,1),(%d,0,2,0,1,1),(%d,1,1,0,0,1);"""
+    % (CW, CW, CW, CW, CW, CW))
+st, d = sql("select public.finals_champion_seed(%d,0) as c0, public.finals_champion_seed(%d,1) as c1" % (CW, CW))
+## 4 坑 [0,3,1,2]: 决赛 side1 ⇒ 第 1 轮第 1 场; 那场 side0 ⇒ 座位 2 ⇒ 种子 1(手算)
+chk("㉒ ★★组冠军追溯: 4 人组结果 {1-0:1,1-1:0,2-0:1} ⇒ 1 号种子(手算)",
+    isinstance(d, list) and d and d[0]["c0"] == 1, str(d)[:100])
+chk("㉒ ★没收盘的组 ⇒ 不认冠军(null)", isinstance(d, list) and d and d[0]["c1"] is None, str(d)[:100])
+for _t in ("finals_results", "finals_entrants", "finals_buckets"):
+    sql("delete from public.%s where season_week = %d" % (_t, CW))
+st, d = sql("select array_agg(public.finals_bucket_size(n) order by n) as s from unnest(array[1,3,8,9,10,16,17,40,65,200,1000]) n")
+chk("㉒ ★★分组容量抽查(1,3,8,9,10,16,17,40,65,200,1000 → 1,1,1,2,2,2,4,8,16,32,32)",
+    isinstance(d, list) and d and d[0]["s"] == [1, 1, 1, 2, 2, 2, 4, 8, 16, 32, 32], str(d)[:120])
+FUT = 4102444800                     # 2100 年的一个周一: 「周日 20:00」还没到
+st, d = sql("select public.finals_cup_seat(%d) as n" % FUT)
+st2, c = sql("select count(*)::int as c from public.finals_buckets where season_week = %d" % FUT)
+chk("㉒ ★★没到周日 20:00 ⇒ 冠军杯赛不成表、一行都不写",
+    isinstance(d, list) and int(d[0]["n"]) == 0 and isinstance(c, list) and int(c[0]["c"]) == 0,
+    "%s / %s" % (str(d)[:60], str(c)[:60]))
+st, d = sql("select jobname, schedule, active from cron.job where jobname = 'finals_cup_seat'")
+row = d[0] if isinstance(d, list) and d else {}
+chk("㉒ ★cron finals_cup_seat 在、active、周日 20~23 点每 5 分钟",
+    row.get("active") is True and str(row.get("schedule", "")) == "*/5 20-23 * * 0", str(row))
 
 
 ## ★反向验证时跳过这一段(它要真等 pg_cron 醒, 一轮 30~90 秒)
@@ -838,5 +936,5 @@ chk("收尾: 探针任务与假周号数据都清干净了",
 
 print("")
 print("══ %d 通过 / %d 失败 ══" % (OK[0], BAD[0]))
-print("(留了两个匿名测试号在库里: %s… %s…)" % (IA[:8], IB[:8]))
+print("(本次造的匿名测试号在进程退出时删掉, 见上面「收尾」那一行)")
 sys.exit(1 if BAD[0] else 0)

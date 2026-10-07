@@ -133,7 +133,7 @@ func _ready() -> void:
 				if _rt.size.x < 400.0 and _rt.size.y > 16.0 and _rt.size.y < 400.0 \
 					and _rt.get_content_height() > _rt.size.y + 0.5:
 					_cl += 1
-			elif _c is Label and str((_c as Label).text).begins_with("点开看全部"):
+			elif _c is Label and str((_c as Label).text).begins_with("查看全部") and (_c as Label).horizontal_alignment == HORIZONTAL_ALIGNMENT_RIGHT:
 				_hi += 1
 		_clip_total += _cl
 		_hint_total += _hi

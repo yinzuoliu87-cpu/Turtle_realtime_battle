@@ -178,7 +178,7 @@ func _sk_candy_bomb_feed(u: Dictionary) -> void:               # 糖果龟·技�
 	if bomb != null:
 		bomb["maxHp"] = float(bomb["maxHp"]) + u["maxHp"] * BOMB_FEED_MAXHP_PCT   # 上限+25%糖果龟maxHp
 		bomb["hp"] = minf(float(bomb["maxHp"]), float(bomb["hp"]) + u["maxHp"] * BOMB_FEED_HEAL_PCT)   # 治疗10%(喂续命)
-		battle._vfx._float_text(bomb["pos"] + Vector2(0, -40), "喂!", Color("#ff9ed6"))
+		battle._vfx._float_text(bomb["pos"] + Vector2(0, -40), "投喂!", Color("#ff9ed6"))
 		battle._gambler_sys._gambler_pop(bomb["pos"], float(bomb.get("height", 0.0)) + 0.4, Color(1.0, 0.7, 0.88, 0.85))   # 喂养涨大糖光
 		battle._skill_ring(bomb["pos"], Color(1.0, 0.62, 0.84, 0.5), 40.0)
 		for _cb in range(4): _candy_bomb_bubble(bomb)            # 一簇糖泡

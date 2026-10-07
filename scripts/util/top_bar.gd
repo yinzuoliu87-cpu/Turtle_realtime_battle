@@ -71,6 +71,7 @@ var bar: Control = null            # 顶栏本体（调用方定位/入场）
 var back_btn: Button = null
 var title_label: Label = null
 var action_btns: Array = []        # 右侧动作，顺序与传入一致
+var _tut_keep: Array = []          # 教程中仍要显示的动作键(opts 里 tutorial_keep=true)
 
 var _pal: Dictionary = DEEP
 var _width: float = 1280.0
@@ -196,6 +197,8 @@ func _init(host: Node, opts: Dictionary) -> void:
 		lx += lb.size.x + ACT_GAP
 		bar.add_child(lb)
 		action_btns.append(lb)
+		if (a2 as Array).size() > 2 and (a2 as Array)[2] is Dictionary and bool(((a2 as Array)[2] as Dictionary).get("tutorial_keep", false)):
+			_tut_keep.append(lb)
 
 	## ── 右上：动作（`⌂` 回主菜单 / `?` 帮助），与返回**同款同高** ──
 	##   ★这一条是判据之一：右侧动作和返回长得不一样，就是"一屏两套语言"，
@@ -224,6 +227,14 @@ func _init(host: Node, opts: Dictionary) -> void:
 	## ★左侧导航(left_actions)也在 action_btns 里, 但它们贴左沿 ⇒ 记 0 = 不跟右沿。
 	while _right_off.size() < action_btns.size():
 		_right_off.append(0.0)
+	## ★教程里没有返回 / 切屏(用户 2026-10-07「教程里就不应该有返回键啊，要一直跟着教程走啊」):
+	##   返回键与所有动作键藏起, 只留调用方标了 `tutorial_keep` 的那颗(= 教程当前要点的下一站)。
+	var _td = host.get_node_or_null("/root/TutorialDirector") if (host is Node and (host as Node).is_inside_tree()) else null
+	if _td != null and _td.is_active():
+		back_btn.visible = false
+		for b2 in action_btns:
+			if not (b2 in _tut_keep):
+				(b2 as Control).visible = false
 	_width = _w_design
 	_fit_to_viewport()
 	if _vp0 != null and not _vp0.size_changed.is_connected(_fit_later):

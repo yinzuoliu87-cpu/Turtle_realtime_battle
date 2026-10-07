@@ -22,6 +22,12 @@ extends Control
 ## ★③ **拖不拖由规模决定**，不是一律能拖：`needs_pan()` 按 1:1 画放不放得下来判。
 ##     Worlds 8 队一屏放得下所以不需要拖；我们 4 人桶比它还小，更不需要。
 ## ★④ **用词写「开播」**：写「直播」是假话（它就是回放），写「回放」会泄露"已经打完了"。
+## ★⑤ **开播窗口**（2026-10-07 实时观赛，docs/plans/20261007-实时观赛.md）：一轮翻面之后，
+##     「翻面时刻 + 一场时长 + 缓冲」之内这一轮的格子**不显示胜负**（没有 ✓、没有「胜」、两行一样亮、
+##     下一轮那个坑写「待定」），格子标「开播」；弹卡不写胜负、按钮「观赛」，进去按翻面至今的偏移同步跟播。
+##     窗口过了（或这台设备已经看完那一场）⇒ 照旧写胜者、按钮「观看」= 回放。
+##     判据是纯函数 `live_spectate.premiere_hidden`，翻面时刻来自服务端（`revealed_at`，没上线时退回 `round_at`）。
+##     ⚠ 这是**展示层**的遮挡（结果已经下发了）：不剧透的数据层闸仍是 ★② 那一条（当前轮根本不下发）。
 ##
 ## ══════════════════════════════════════════════════════════════════════
 ##  数据长什么样（`set_bucket()` 的入参）
@@ -38,8 +44,10 @@ extends Control
 ## ══════════════════════════════════════════════════════════════════════
 ##  ★★周日是【两场】不是一场（用户 2026-09-23 指出，我原来糊成了一张图）
 ## ══════════════════════════════════════════════════════════════════════
-##   · **上午·分桶赛**：你自己那个桶，5 轮 → 产生**桶冠军**
-##   · **晚上·冠军签表**：20:00 开赛，**全部桶冠军**进一张新图，单败打到决赛
+##   · **上午·小组赛**：自己那一组，5 轮 → 产生**组冠军**
+##   · **晚上·冠军杯赛**：20:00 UTC 开赛，**全部组冠军**进一张新图，单败打到决赛
+##   （用户 2026-10-07「那么上午就叫小组赛啊，晚上叫冠军杯赛」；方案书 `docs/plans/20261007-冠军杯赛.md`。
+##    冠军杯赛在服务端是保留组号 `FINALS_CUP_BUCKET` 的一张图 ⇒ 布局 / 弹卡 / 开播 / 观赛 / 回放 / 开打全部同一套。）
 ##
 ## 两者对同一个玩家的意义完全不同：**上午你是选手，晚上你多半是观众**
 ## （只有桶冠军进得去）。所以：
@@ -53,6 +61,10 @@ const _B := preload("res://scripts/gamedata/bracket.gd")
 const _L := preload("res://scripts/gamedata/bracket_layout.gd")
 const _RF := preload("res://scripts/systems/replay/replay_fetcher.gd")
 const _RU := preload("res://scripts/systems/replay/replay_uploader.gd")
+const _LS := preload("res://scripts/systems/replay/live_spectate.gd")
+## 头像 / 提示框 / 像素按钮 —— 与战绩页、周六赛况板同一套共享件(2026-10-07 周末观战第三轮)。
+const MatchCard := preload("res://scripts/scenes/record/match_card.gd")
+const _Board := preload("res://scripts/systems/replay/gauntlet_board.gd")
 ## 看完回放回到对阵图。
 const SELF_SCENE := "res://scenes/BracketMap.tscn"
 
@@ -82,6 +94,18 @@ const LINE_W_LIT := 4.0                # 连线: 已决出 = 粗
 const LINE_W_DIM := 2.0                # 连线: 还没决出 = 细
 ## 节点右侧那条槽 —— 「你」/「冠」小签与开打标住这里; 名字条**不许伸进来**(会撞上)。
 const GUTTER := 30.0
+## 弹卡里「观看」按钮的字与节点名(门禁按名字找)。
+const WATCH_LABEL := "观看"
+## 格子右沿 ▶ 那一条的宽(能点的格子才画 ▶; 名字与小签都让开它)。
+const PLAY_W := 24.0
+## 节点名 —— 门禁按名字找: 整格热区 / 弹窗里的主按钮 / 关闭。
+const N_NODE_BTN := "NodeBtn"
+const N_POPUP_GO := "PopupGoBtn"
+const N_POPUP_CLOSE := "PopupCloseBtn"
+const POPUP_W := 560.0
+const POPUP_AV := 72.0
+const FINAL_GOLD := Color("#d9a441")
+const PREMIERE_RED := Color("#d8473f")  # 「开播」小签 / 弹卡横幅(与赛况板「直播」同一种红)
 
 var _bucket: Dictionary = {}           # 上午: 我自己那个桶
 ## 观赛: 本周**所有组**(服务端 `finals_week_view`)。被喂过就用喂进来的这份, 否则读网络缓存。
@@ -89,14 +113,19 @@ var _week: Dictionary = {}
 var _spec_idx := 0                     # 观赛时正在看第几组(下标, 不是组号)
 var _spec_bar: HBoxContainer = null
 var _spec_lb: Label = null
-var _finals: Dictionary = {}           # 晚上: 桶冠军的签表(上午是空的)
+var _finals: Dictionary = {}           # 晚上: 冠军杯赛(全部组冠军那一张; 没成表 = 空 / 1 人 = 直接夺冠)
 var _view: String = _L.VIEW_BUCKET     # 现在看的是哪一张
+## 玩家自己点过页签了吗。★点过就不再按时刻 / 数据自动换页(自动换页只在他没表态时才帮他选)。
+var _user_picked := false
+## 冠军杯赛收盘后顶上那一块「冠军 · 名字」(金边牌子 + 奖杯; 字在 `_champ_lb`, 门禁读它)。
+var _champ_lb: Label = null
+var _champ_box: PanelContainer = null
 var _now_override := 0                 # ★只给门禁喂已知时刻; 产品不传
 var _tabs: HBoxContainer = null
 var _empty_lb: Label = null
 ## 空态那句话的**框**。★没桶的人整个周日看到的就只有这一屏, 一句裸字飘在黑底上
 ##   正是"网页味"最重的地方 ⇒ 套共享皮的金属框(UISkin.nine, 不手写圆角矩形)。
-var _empty_box: Panel = null
+var _empty_box: PanelContainer = null
 ## 空态那一枚像素图标(跟着 `_empty_kind()` 换)。★由来见 `_empty_icon_path()`。
 var _empty_icon: TextureRect = null
 var _bg: ColorRect = null
@@ -107,6 +136,10 @@ var _dragging := false
 var _can_pan := false
 var _top_bar = null
 var _home_btn: Button = null
+## #ID → 头像 id。★对阵数据(`finals_view` / `finals_week_view`)只有名字与账号, 没有头像;
+##   决赛日的人**都打过周六闯关赛**, 他们的 profile(含头像)就在同一周的赛况板里 ⇒ 按 #ID 对上。
+##   对不上的人画名字首字(不编一只龟给他)。见 `set_portraits()`。
+var _portraits: Dictionary = {}
 ## 点了哪一场 —— 外部接重放用。留成信号, 本屏不管怎么播。
 signal match_opened(r: int, m: int)
 
@@ -145,27 +178,22 @@ func _ready() -> void:
 	_tabs.position = Vector2(24, 96)
 	_tabs.add_theme_constant_override("separation", 10)
 	add_child(_tabs)
-	for pair in [[_L.VIEW_BUCKET, "我这一组"], [_L.VIEW_FINALS, "冠军赛"]]:
+	for pair in [[_L.VIEW_BUCKET, _P2C.STAGE_GROUP], [_L.VIEW_FINALS, _P2C.STAGE_CUP]]:
 		var b := Button.new()
 		b.text = str(pair[1])
 		b.custom_minimum_size = Vector2(132, 81)    # 触控下限 81px(=44pt)
 		var v: String = str(pair[0])
-		b.pressed.connect(func(): set_view(v))
-		## ★页签同上 —— 换皮走共享层, 不在这里手写 StyleBox。
-		UISkin.button(b)
-		## ★★选中态不能只靠字色(那是网页 tab 的做法): 底下压一条 4px 实心杠,
-		##   **形态**上就分得出现在看的是哪一张。颜色在 `_sync_tabs()` 里跟着切。
-		##   名字定死成 `Underline` —— `_sync_tabs` 按名字找它, 不靠子节点下标。
-		var ul := ColorRect.new()
-		ul.name = "Underline"
-		ul.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		ul.position = Vector2(6.0, 81.0 - 6.0)
-		ul.size = Vector2(132.0 - 12.0, 4.0)
-		b.add_child(ul)
+		b.pressed.connect(func(): pick_view(v))
+		## ★页签皮走共享层 `UISkin.pixel_tab`(2026-10-07 从木牌换成深底细边像素页签, 参考 Children of Morta)。
+		##   选中态不只靠字色(那是网页 tab 的做法): 选中那张是青边 + 底下一条 4px 青色实心杠(画在贴图里),
+		##   **形态**上就分得出现在看的是哪一张。切换在 `_sync_tabs()`。
+		UISkin.pixel_tab(b, false)
+		b.add_theme_font_size_override("font_size", 19)
+		b.add_theme_constant_override("outline_size", 5)
 		_tabs.add_child(b)
 
 	## ★观赛那一行(2026-10-04): 没晋级的人看别人那一组时, 页签右边说清「只能看」+ 换组。
-	##   皮走同一个 UISkin.button(木框), 不另造。只在【观赛】这一种状态下可见。
+	##   皮走 `UISkin.pixel_button`(石板色次要按钮), 不另造。只在【观赛】这一种状态下可见。
 	_spec_bar = HBoxContainer.new()
 	_spec_bar.add_theme_constant_override("separation", 10)
 	_spec_bar.visible = false
@@ -176,7 +204,8 @@ func _ready() -> void:
 		sb2.custom_minimum_size = Vector2(132, 81)
 		var step: int = int(spec[1])
 		sb2.pressed.connect(func(): _spec_step(step))
-		UISkin.button(sb2)
+		UISkin.pixel_button(sb2, UISkin.PX_SLATE, 5)
+		sb2.add_theme_font_size_override("font_size", 19)
 		_spec_bar.add_child(sb2)
 	_spec_lb = Label.new()
 	_spec_lb.custom_minimum_size = Vector2(0, 81)
@@ -186,53 +215,80 @@ func _ready() -> void:
 	_spec_bar.add_child(_spec_lb)
 	_spec_bar.move_child(_spec_lb, 1)
 
-	## 签表还没形成时说人话的那一行(不是画一张空图)
-	## ★先建框、后建字 —— 加入顺序就是绘制顺序, 反了字会被框盖住。
-	_empty_box = Panel.new()
-	_empty_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var ebfb := StyleBoxFlat.new()
-	ebfb.bg_color = Color("#121a27")
-	ebfb.border_color = Color("#2c3950")
-	ebfb.set_border_width_all(2)
-	ebfb.set_corner_radius_all(0)
-	_empty_box.add_theme_stylebox_override("panel", UISkin.nine("panel-frame.png", 20, ebfb))
+	## 签表还没形成时说人话的那一块(不是画一张空图)。
+	## ★★2026-10-07: 原来是手摆的 Panel + 图标 + Label 三件, 实拍(before.jpg)字掉出了框、框里只剩一枚图标。
+	##   ⇒ 换成共享件 `MatchCard.notice_panel`(PanelContainer 自己排版: 图标在左、字在右, 字多了框跟着长)。
+	##   `_empty_lb` / `_empty_icon` 仍是那两个节点(门禁读它们), 只是现在住在框里。
+	var nt: Dictionary = MatchCard.notice_panel(self)
+	_empty_box = nt["panel"] as PanelContainer
 	_empty_box.visible = false
-	add_child(_empty_box)
-	## ★★这一屏对**没晋级的人**就是整个周日的全部内容 —— 一句裸字孤零零躺在框里
-	##   正是"网页味"最重的形状。⇒ 左边压一枚像素图标, 32px 素材按**整 2 倍**放到 64
-	##   (最近邻整数倍才不糊; 1.5 倍会掉像素 —— `pk-vs-emblem` 那条教训的同族)。
-	##   图标**跟着空态的种类换** ⇒ 它也是"这是哪一种情况"的一维形态信息。
-	_empty_icon = TextureRect.new()
-	_empty_icon.stretch_mode = TextureRect.STRETCH_SCALE
-	_empty_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_empty_icon.visible = false
-	add_child(_empty_icon)
-	_empty_lb = Label.new()
-	_empty_lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_empty_lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_empty_lb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_empty_lb.add_theme_font_size_override("font_size", 19)
-	_empty_lb.add_theme_color_override("font_color", TXT)
-	_empty_lb.visible = false
-	add_child(_empty_lb)
+	_empty_icon = nt["icon"] as TextureRect
+	_empty_lb = nt["title"] as Label
+	(nt["sub"] as Label).visible = false
 
 	## ★「回到我」钉在右下角, **不跟着画布走** —— 拖多远它都在。
 	##   触控下限 81px(= 44pt), 与全项目同一条线。
 	_home_btn = Button.new()
-	_home_btn.text = "回到我"
+	_home_btn.text = "我的位置"
 	_home_btn.custom_minimum_size = Vector2(140, 81)
 	_home_btn.pressed.connect(func(): _center_on_me())
 	## ★2026-09-27 换皮: 原来是裸 `Button.new()` = Godot 默认皮(圆角灰板)。
 	##   周日对阵图**整天都在看**, 而这一屏至今一条 UI 判据都没量过
 	##   (`verify_ui_consistency` 原来只有 7 屏, 没有它)。
-	UISkin.button(_home_btn)
+	## ★2026-10-07 再换: 木牌 → 像素按钮(石板色), 与这一屏其它按钮同一套。
+	UISkin.pixel_button(_home_btn, UISkin.PX_SLATE, 5)
 	add_child(_home_btn)
+
+	## ★冠军牌子: 不透明暗金底 + 2px 金边 + 直角(与对阵格同一套直角硬边; 半透底 + 描边会被判成网页盒)。
+	##   奖杯用现成的 `ui/icon-trophy.png` 32px 原尺寸(与决赛列同一枚, 不新生成)。
+	_champ_box = PanelContainer.new()
+	_champ_box.name = "CupChampionBox"
+	_champ_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var csb := StyleBoxFlat.new()
+	csb.bg_color = Color("#1d1708")
+	csb.border_color = FINAL_GOLD
+	csb.set_border_width_all(2)
+	csb.set_corner_radius_all(0)
+	csb.content_margin_left = 16
+	csb.content_margin_right = 20
+	csb.content_margin_top = 6
+	csb.content_margin_bottom = 6
+	csb.shadow_color = SHADOW
+	csb.shadow_size = 0
+	csb.shadow_offset = Vector2(4, 4)
+	_champ_box.add_theme_stylebox_override("panel", csb)
+	_champ_box.visible = false
+	add_child(_champ_box)
+	var chb := HBoxContainer.new()
+	chb.add_theme_constant_override("separation", 10)
+	chb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_champ_box.add_child(chb)
+	var tp := "res://assets/sprites/ui/icon-trophy.png"
+	if ResourceLoader.exists(tp):
+		var ti := TextureRect.new()
+		ti.texture = load(tp)
+		ti.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		ti.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+		ti.custom_minimum_size = Vector2(32, 32)
+		ti.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		chb.add_child(ti)
+	_champ_lb = Label.new()
+	_champ_lb.name = "CupChampion"
+	_champ_lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_champ_lb.add_theme_font_size_override("font_size", 22)
+	_champ_lb.add_theme_color_override("font_color", MINE)
+	_champ_lb.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	_champ_lb.add_theme_constant_override("outline_size", 4)
+	_champ_lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chb.add_child(_champ_lb)
 
 	if not _bucket.is_empty() or not _finals.is_empty():
 		_injected = true
 		_rebuild()
 	else:
 		## ★没人喂 ⇒ 这是玩家自己从主菜单点进来的, 自己去服务端取
+		## ★★默认页跟着时刻走(2026-10-07): 原来联网这条路 `_view` 恒是第一页 ⇒ 晚上从主菜单进来看的是小组赛。
+		_view = _pick_default_view()
 		_start_feed()
 
 
@@ -260,10 +316,8 @@ func set_data(bucket: Dictionary, finals: Dictionary, now: int = 0) -> void:
 	_bucket = bucket.duplicate(true)
 	_finals = finals.duplicate(true)
 	_now_override = now
-	_view = _L.default_view(_clock())
-	## ★默认那张要是还没形成, 就退回另一张 —— 别让人开屏就看到一张空图
-	if _view == _L.VIEW_FINALS and int(_finals.get("size", 0)) <= 1:
-		_view = _L.VIEW_BUCKET
+	if not _user_picked:
+		_view = _pick_default_view()
 	_record_progress()
 	if is_inside_tree():
 		_rebuild()
@@ -283,6 +337,43 @@ func set_data(bucket: Dictionary, finals: Dictionary, now: int = 0) -> void:
 ##   只挂一条的话, 门禁验的就不是玩家真走的那条(memory fb-verify-must-run-the-real-path)。
 func _record_progress() -> void:
 	record_progress_from(_bucket)
+	record_cup_from(_finals)
+
+
+## 这一刻默认该看哪一张。★20:00 UTC 之后看冠军杯赛(`default_view`); 但冠军杯赛还没成表就退回小组赛 ——
+##   别让人开屏就看到一张空图(1 人表不算空: 那一页写着谁直接夺冠)。
+func _pick_default_view() -> String:
+	var v := _L.default_view(_clock())
+	if v == _L.VIEW_FINALS and int(_finals.get("size", 0)) < 1:
+		v = _L.VIEW_BUCKET
+	return v
+
+
+## ★★冠军杯赛那一张 → 记进度 + 对头衔账(2026-10-07)。与 `record_progress_from` 同一个形状、同一条链:
+##   主菜单不进对阵图也走这里(只喂 feed)。
+## 返回: 存档有没有变(门禁用)。
+static func record_cup_from(cup: Dictionary) -> bool:
+	if GameState == null:
+		return false
+	var n := int(cup.get("size", 0))
+	if n < 1:
+		return false                  # 冠军杯赛还没成表
+	var me := int(cup.get("me", -1))
+	var changed := false
+	if n == 1:
+		## ★只有 1 名组冠军 ⇒ 他直接是冠军; 没有亚军 / 四强(2026-10-07 主会话: 不再拿组里的名次兜底)。
+		if me == 0:
+			changed = GameState.record_cup_progress(0, 0, true, false)
+	elif me >= 0:
+		var pr: Dictionary = _B.my_progress(me, n, cup.get("done", {}) as Dictionary)
+		changed = GameState.record_cup_progress(int(pr.get("deepest", 0)), int(pr.get("total", 0)),
+			bool(pr.get("champion", false)), bool(pr.get("runner_up", false)))
+	if me >= 0 and _reveal_sealed_from(cup):
+		changed = true
+	var got: int = GameState.sync_titles()
+	if changed or got > 0:
+		GameState.save()
+	return changed or got > 0
 
 
 ## ★★2026-10-04 (方案书 20260926 头衔发放 · U1): 记进度 + 对头衔账的**本体**抽成静态,
@@ -294,12 +385,17 @@ static func record_progress_from(bucket: Dictionary) -> bool:
 		return false
 	var n := int(bucket.get("size", 0))
 	var me := int(bucket.get("me", -1))
-	if n <= 1 or me < 0:
+	if n < 1 or me < 0:
 		return false                  # 没有桶 / 我不在桶里(纯观众) ⇒ 一个字都不记
-	var pr: Dictionary = _B.my_progress(me, n, bucket.get("done", {}) as Dictionary)
-	var changed: bool = GameState.record_finals_progress(
-		int(pr.get("deepest", 0)), int(pr.get("total", 0)), bool(pr.get("champion", false)),
-		bool(pr.get("runner_up", false)))
+	var changed := false
+	if n == 1:
+		## ★1 人组(2026-10-07 新分组规则): 没有对局, 他就是这一组的冠军(组冠军不设门槛, 用户原话「不用门槛」)。
+		changed = GameState.record_finals_progress(0, 0, me == 0)
+	else:
+		var pr: Dictionary = _B.my_progress(me, n, bucket.get("done", {}) as Dictionary)
+		changed = GameState.record_finals_progress(
+			int(pr.get("deepest", 0)), int(pr.get("total", 0)), bool(pr.get("champion", false)),
+			bool(pr.get("runner_up", false)))
 	if _reveal_sealed_from(bucket):
 		changed = true
 	## ★头衔在 `sync_titles()` 里发(与满配额/进决赛日同一个入口) —— 这里不自己发。
@@ -331,6 +427,13 @@ static func _reveal_sealed_from(bucket: Dictionary) -> bool:
 	if not (p is Dictionary) or (p as Dictionary).is_empty():
 		return false
 	var pd: Dictionary = p
+	## ★★组号(2026-10-07 冠军杯赛): 杯与小组赛坐标相同 ⇒ 只认**同一张**图。没带组号的老单子 = 小组赛那一场。
+	var pb := int(pd.get("bucket", -1))
+	var bb := int(bucket.get("bucket", -1))
+	if pb >= 0 and bb != pb:
+		return false                            # 待揭晓的是另一张图的那一场
+	if pb < 0 and bb == int(_P2C.FINALS_CUP_BUCKET):
+		return false
 	var r := int(pd.get("round", -1))
 	var m := int(pd.get("match", -1))
 	if r < 1 or m < 0:
@@ -392,6 +495,12 @@ func set_view(v: String) -> void:
 	_rebuild()
 
 
+## 玩家点页签。★点过之后不再自动换页(`_user_picked`)。
+func pick_view(v: String) -> void:
+	_user_picked = true
+	set_view(v)
+
+
 ## ─────────────────────────────────────────────────────────────
 ## 一场对局在**我这一侧**看起来是什么状态。
 ## ★这是全屏的判据中心 —— 节点画成什么样、点不点得动，全看它。
@@ -400,12 +509,13 @@ const ST_BYE := "bye"          # 轮空(对手那个坑是空的)
 const ST_LOCKED := "locked"    # 还轮不到(上一轮没打完)
 const ST_LIVE := "live"        # ★当前轮: 可以点开看, 但**不显示结果**
 const ST_DONE := "done"        # 已翻面: 显示胜者
+const ST_PREMIERE := "premiere"  # ★已翻面但在开播窗口里: 可以点开观赛, **不显示胜者**(文件头 ★⑤)
 func match_state(r: int, m: int) -> String:
 	var n := int(cur().get("size", 0))
 	var cur_r := int(cur().get("round", 1))
 	var key := "%d-%d" % [r, m]
 	if (cur().get("done", {}) as Dictionary).has(key):
-		return ST_DONE
+		return ST_PREMIERE if premiere_hidden(r, m) else ST_DONE
 	if r == 1:
 		var sa: int = m * 2
 		var sb: int = m * 2 + 1
@@ -414,6 +524,41 @@ func match_state(r: int, m: int) -> String:
 	if r > cur_r:
 		return ST_LOCKED
 	return ST_LIVE
+
+
+## 服务端此刻(unix 秒)。门禁钉了 `_now_override` 就用它; 否则 = 收包那一刻服务端的钟 + 本机从那时起过了多久
+##   (只用时间差, 本机时钟偏了不影响 —— 与倒计时 `finals_srv_now_of` 同一条纪律)。
+func srv_now() -> int:
+	if _now_override > 0:
+		return _now_override
+	var c := cur()
+	var sn := int(c.get("srv_now", 0))
+	var ra := int(c.get("recv_at", 0))
+	if sn > 0 and ra > 0:
+		return sn + (int(Time.get_unix_time_from_system()) - ra)
+	return int(_P2C.now_utc())
+
+
+## 这一场此刻在开播窗口里吗(⇒ 不许显示胜负)。轮空那几场不算(没有对局可播)。判据在 `live_spectate.premiere_hidden`。
+func premiere_hidden(r: int, m: int) -> bool:
+	var c := cur()
+	var n := int(c.get("size", 0))
+	if r == 1 and (_B.is_bye_slot(m * 2, n) or _B.is_bye_slot(m * 2 + 1, n)):
+		return false
+	return _LS.premiere_hidden(c, r, m, srv_now())
+
+
+## 此刻在开播窗口里的场数(轮询指纹用: 窗口一过就要重画, 把胜者亮出来)。
+func premiere_count() -> int:
+	var c := cur()
+	var r := _LS.premiere_round(c)
+	if r < 1:
+		return 0
+	var k := 0
+	for m in range(_B.matches_in_round(int(c.get("size", 0)), r)):
+		if premiere_hidden(r, m):
+			k += 1
+	return k
 
 
 ## ★★★重放做出来了没有。**没有** —— `matches` 表建好了、索引和清理任务都有,
@@ -427,9 +572,8 @@ func match_state(r: int, m: int) -> String:
 ##   函数没上线(404)时点了说「这场的回放还没开放」, 不报错。
 const REPLAY_LIVE := true
 
-## ★★跨桶「冠军赛」做出来了没有。**没有**(F 阶段)—— 服务端没有桶冠军汇总,
-##   客户端联网那条路只写 `_bucket`。上线那天改这一格。
-const CROSS_BUCKET_LIVE := false
+## ★★2026-10-07 删掉了 `CROSS_BUCKET_LIVE`(冠军杯赛上线, 方案书 20261007-冠军杯赛.md)。
+##   没部署时不靠开关, 靠数据: 服务端没有 `cup` ⇒ `_finals` 为空 ⇒ 冠军杯赛页说「等待开赛」+ 组冠军名单。
 
 ## 这一场能不能点开看。★轮空与未开打**不可点** —— 点了没东西放，
 ##   而"点了没反应"比"按钮是灰的"糟得多。
@@ -444,7 +588,7 @@ const CROSS_BUCKET_LIVE := false
 ## ⇒ 判据改成「点下去真有事发生」= `should_fetch_opponent`(它同时管住了
 ##   「当前轮」「是我的场」「问得出对手」三条), 外加重放那条**显式的**没上线开关。
 func can_open(r: int, m: int) -> bool:
-	if REPLAY_LIVE and match_state(r, m) == ST_DONE:
+	if REPLAY_LIVE and (match_state(r, m) == ST_DONE or match_state(r, m) == ST_PREMIERE):
 		return true
 	return should_fetch_opponent(r, m)
 
@@ -529,6 +673,7 @@ func _rebuild() -> void:
 		_bg.size = vp0                 # ★视口变了要跟上, 否则又露出瓷砖底
 	_sync_tabs()
 	_sync_spec()
+	_sync_champ()
 	var n := int(cur().get("size", 0))
 	if n <= 1:
 		## ★★不是画一张空图 —— 说清楚在等什么, 还剩多久。
@@ -536,31 +681,22 @@ func _rebuild() -> void:
 		if _empty_lb != null:
 			_empty_lb.text = _empty_text()
 			var bw: float = minf(660.0, vp0.x - 80.0)
-			## ★冠军页一组一行(2026-10-04) ⇒ 框高跟着行数走; 一行的老样子仍是 126。
-			var nl: int = _empty_lb.text.count("\n") + 1
-			var bh: float = maxf(126.0, 56.0 + float(nl) * 34.0)
-			var bp := Vector2((vp0.x - bw) * 0.5, vp0.y * 0.5 - bh * 0.5 + 30.0)
-			if _empty_box != null:
-				_empty_box.position = bp
-				_empty_box.size = Vector2(bw, bh)
-				_empty_box.visible = true
-			## ★图标与文字**并排**: 图标占左边 64, 文字从 108 起(留 18 的呼吸)。
-			##   贴图不在就原样退回"只有字"的版式 —— 不许因为少一张图就空出一块
-			##   (UISkin 铁律①「贴图缺失必须优雅退回」同族)。
-			var tx_x := 30.0
-			if _empty_icon != null:
-				var ip := _empty_icon_path(_empty_kind())
-				if ResourceLoader.exists(ip):
-					_empty_icon.texture = load(ip)
-					_empty_icon.position = bp + Vector2(26.0, (bh - 64.0) * 0.5)
-					_empty_icon.size = Vector2(64.0, 64.0)
-					_empty_icon.visible = true
-					tx_x = 108.0
-				else:
-					_empty_icon.visible = false
-			_empty_lb.position = bp + Vector2(tx_x, 18.0)
-			_empty_lb.size = Vector2(bw - tx_x - 30.0, bh - 36.0)
+			## ★图标**跟着空态的种类换**(那也是"这是哪一种情况"的一维形态信息); 贴图不在就只留字。
+			var ip := _empty_icon_path(_empty_kind())
+			_empty_icon.visible = ResourceLoader.exists(ip)
+			if _empty_icon.visible:
+				_empty_icon.texture = load(ip)
 			_empty_lb.visible = true
+			_empty_box.visible = true
+			_empty_box.custom_minimum_size = Vector2(bw, 126.0)
+			## 字宽 = 框宽 - 两侧内边距(30+34) - 图标 64 - 间距 20; 给定宽度 autowrap 才算得出真高。
+			_empty_lb.custom_minimum_size = Vector2(bw - 64.0 - (84.0 if _empty_icon.visible else 0.0), 0.0)
+			_empty_box.size = Vector2(bw, 0.0)
+			## 框高由内容定(冠军页一组一行); 摆在可用区正中。
+			var bh: float = maxf(126.0, _empty_box.get_combined_minimum_size().y)
+			_empty_box.size = Vector2(bw, bh)
+			_empty_box.position = Vector2((vp0.x - bw) * 0.5,
+				TOP_RESERVED + maxf(0.0, (vp0.y - TOP_RESERVED - bh) * 0.5) - 20.0)
 		if _home_btn != null:
 			_home_btn.visible = false
 		return
@@ -575,6 +711,9 @@ func _rebuild() -> void:
 	##   左边两列的轮次标签被页签压在了底下。
 	var vp := vp0
 	var usable := Vector2(vp0.x, maxf(120.0, vp0.y - TOP_RESERVED))
+	## ★横向铺满可用宽(手机比例不再缩在正中): 版式按「视口宽 - 两侧安全区」排。
+	var sm: Vector4 = SafeArea.margins(vp0, 0.0)
+	_L.view_w = maxf(_L.DESIGN.x, vp0.x - sm.x - sm.z)
 	_can_pan = _L.needs_pan(n, usable)
 	## ★★**要拖就不缩** —— 缩到放得下了就不需要拖, 两件事只能选一件。
 	##   实拍拓到: 32 人桶同时缩到 0.80 **又**能拖, 于是字被压成 12px 还要拖——
@@ -624,8 +763,10 @@ const EK_WAIT := "wait"                  # 还没问到回音(正在找名册)
 const EK_UNREACHABLE := "unreachable"    # 问不到 —— 每 30 秒自己再看一次
 const EK_TOO_FEW := "too_few"            # 我晋级了, 但全周人太少, 决赛日没开起来
 const EK_NOT_SEATED := "not_seated"      # 报了名, 但还没到周日分组时间(服务端此时也回 too_few)
-const EK_FINALS_SOON := "finals_soon"    # 冠军赛还没集结(CROSS_BUCKET_LIVE 之后才走到)
-const EK_FINALS_LOCAL := "finals_local"  # 跨组总决赛没上线 ⇒ 各组自己评冠军
+const EK_FINALS_SOON := "finals_soon"    # 冠军杯赛还没到开赛时刻: 倒计时 + 已产生的组冠军
+const EK_FINALS_LOCAL := "finals_local"  # 过了开赛时刻冠军杯赛还没成表(组没打完 / 定时任务还没跑到 / 服务端没部署): 组冠军名单
+const EK_CUP_SOLO := "cup_solo"          # 冠军杯赛只有 1 人(本周只有一个组): 他直接夺冠
+const EK_GROUP_SOLO := "group_solo"      # 我这一组只有我 1 人(2026-10-07 新分组规则): 没有对局, 直接晋级冠军杯赛
 const EK_NO_GROUP := "no_group"          # 确实没有我这一组(没晋级)
 ## ★2026-10-04 加的两档 —— 它们**不是空态**(会画图), 但「我这一组」页签的字要从同一份判断里出:
 const EK_SEATED := "seated"              # 我有组(分好了) ⇒ 画我那一组
@@ -644,6 +785,8 @@ func _feed_view() -> Dictionary:
 func _bucket_kind() -> String:
 	if int(_bucket.get("size", 0)) > 1:
 		return EK_SEATED
+	if int(_bucket.get("size", 0)) == 1:
+		return EK_GROUP_SOLO
 	var k := _feed_kind()
 	if k != "":
 		return k
@@ -655,13 +798,14 @@ func _bucket_kind() -> String:
 ## 现在是哪一种空态。★★门禁量这个, **不量屏幕字面量**(见上面那段的由来)。
 ## ★冠军页(跨组总决赛没上线时)不看「我有没有组」—— 冠军是全服的事, 没晋级的人也该看得到。
 func _empty_kind() -> String:
-	if _view == _L.VIEW_FINALS and not CROSS_BUCKET_LIVE:
+	if _view == _L.VIEW_FINALS:
 		if not _injected and not _SB.finals_tried():
 			return EK_WAIT
+		if int(_finals.get("size", 0)) == 1:
+			return EK_CUP_SOLO
+		if _clock() < int(_L.finals_start_ts(_clock())):
+			return EK_FINALS_SOON
 		return EK_FINALS_LOCAL
-	if _view == _L.VIEW_FINALS:
-		var fk := _feed_kind()
-		return fk if fk != "" else EK_FINALS_SOON
 	return _bucket_kind()
 
 
@@ -689,12 +833,7 @@ func _feed_kind() -> String:
 		if _P2C.finals_before_seating(_clock()):
 			return EK_NOT_SEATED
 		return EK_TOO_FEW
-	## ★★★2026-09-26: 跨组总决赛是 **F 阶段**, 一行都没做 —— 没上线时冠军页走 EK_FINALS_LOCAL
-	##   (见 `_empty_kind()`; 原来这里一小时一小时地倒计时一个永远不会来的东西)。
-	##   上线那天把 `CROSS_BUCKET_LIVE` 翻成 true, 倒计时那两句就回来。
-	## ★`_empty_kind()` 里写成 `_view == FINALS and not CROSS_BUCKET_LIVE` 而**不是**
-	##   `if not CROSS_BUCKET_LIVE: return …` —— 后者是恒真常量分支 + return,
-	##   `tools/const_branch_audit.py` 当场判红(会吞掉上线那一支), 而那条审计器是对的。
+	## (冠军杯赛页不走这里: 它的几种状态由 `_empty_kind()` 按 `_finals` 与开赛时刻判。)
 	return ""
 
 
@@ -704,14 +843,16 @@ static func bucket_tab_suffix(kind: String) -> String:
 	match kind:
 		EK_SEATED:
 			return ""
+		EK_GROUP_SOLO:
+			return " · 直接晋级"
 		EK_NO_GROUP, EK_SPECTATE:
 			return " · 未晋级"
 		EK_NOT_SEATED:
-			return " · 等分组"
+			return " · 待分组"
 		EK_TOO_FEW:
 			return " · 未开赛"
 		EK_UNREACHABLE:
-			return " · 连不上"
+			return " · 连接失败"
 	return " · 查询中"
 
 
@@ -760,7 +901,7 @@ func _sync_spec() -> void:
 	var lst := _spectate_list()
 	var sb: Dictionary = _spectate_bucket()
 	var grp := int(sb.get("bucket", _spec_idx)) + 1
-	_spec_lb.text = ("你本周未晋级 · 只能看 · 第 %d 组" % grp) + (
+	_spec_lb.text = ("本周未晋级 · 观战 · 第 %d 组" % grp) + (
 		"  (%d/%d)" % [_spec_idx + 1, lst.size()] if lst.size() > 1 else "")
 	for i in [0, 2]:
 		var bb := _spec_bar.get_child(i) as Button
@@ -780,18 +921,13 @@ const CH_PARTIAL := "partial"    # 决出了一部分
 const CH_ALL := "all"            # 全部决出
 
 
-## 这一组的冠军是几号种子; -1 = 决赛还没翻面。★推导走 `bracket.occupant_seed`(与对阵图同一份)。
+## 这一组的冠军是几号种子; -1 = 决赛还没翻面。★推导在 `bracket.champion_seed`(与对阵图 / 服务端选人同一份)。
 static func champion_seed(b: Dictionary) -> int:
 	var n := int(b.get("size", 0))
-	if n <= 1:
+	if n < 1:
 		return -1
-	var total := _B.rounds_for(n)
 	var done: Dictionary = b.get("done", {}) if b.get("done", {}) is Dictionary else {}
-	var w := int(done.get("%d-0" % total, -1))
-	if w < 0:
-		return -1
-	var sd := _B.occupant_seed(total, 0, w, n, done)
-	return sd if sd >= 0 else -1
+	return _B.champion_seed(n, done)
 
 
 ## 冠军汇总。**纯函数**: 喂若干组就能验。`complete` = 这份名单是不是**全服所有组**
@@ -801,7 +937,7 @@ static func champion_summary(buckets: Array, complete: bool) -> Dictionary:
 	var lines: Array = []
 	var total := 0
 	for b in buckets:
-		if not (b is Dictionary) or int((b as Dictionary).get("size", 0)) <= 1:
+		if not (b is Dictionary) or int((b as Dictionary).get("size", 0)) < 1:
 			continue
 		total += 1
 		var sd := champion_seed(b)
@@ -829,17 +965,17 @@ static func champion_text(cs: Dictionary) -> String:
 	var head := ""
 	var total := int(cs.get("total", 0))
 	if total <= 0:
-		return "各组冠军决出后在这里公布"
+		return "组冠军产生后公布"
 	if not bool(cs.get("complete", false)):
-		head = "已决出的冠军" if not lines.is_empty() else "决赛进行中 · 冠军还没决出"
+		head = "已产生的组冠军" if not lines.is_empty() else "%s进行中" % _P2C.STAGE_GROUP
 	else:
 		match str(cs.get("state", CH_NONE)):
 			CH_ALL:
-				head = "本周冠军已全部决出 · 共 %d 组" % total
+				head = "组冠军已全部产生 · 共 %d 组" % total
 			CH_PARTIAL:
-				head = "决赛进行中 · 已决出 %d/%d 组" % [int(cs.get("decided", 0)), total]
+				head = "%s进行中 · 组冠军 %d/%d" % [_P2C.STAGE_GROUP, int(cs.get("decided", 0)), total]
 			_:
-				head = "决赛进行中 · 各组冠军还没决出"
+				head = "%s进行中" % _P2C.STAGE_GROUP
 	## 太多组就收尾一行, 不让框顶出屏幕(10 人规模下最多 3 组, 这是防将来)。
 	var show: Array = lines.slice(0, 8)
 	if lines.size() > show.size():
@@ -855,7 +991,7 @@ func _champ_buckets() -> Array:
 	var wv := _week_view()
 	if wv.has("buckets"):
 		return wv.get("buckets", []) as Array
-	return [_bucket] if int(_bucket.get("size", 0)) > 1 else []
+	return [_bucket] if int(_bucket.get("size", 0)) >= 1 else []
 
 
 ## 空态图标 —— 分类 → `assets/sprites/ui/` 里**现成**的像素图标。
@@ -864,7 +1000,7 @@ func _champ_buckets() -> Array:
 ##   冠军那两档用奖杯; 「没有我这一组」用锁(你进不来, 不是出错了)。
 func _empty_icon_path(kind: String) -> String:
 	match kind:
-		EK_FINALS_SOON, EK_FINALS_LOCAL:
+		EK_FINALS_SOON, EK_FINALS_LOCAL, EK_CUP_SOLO, EK_GROUP_SOLO:
 			return "res://assets/sprites/ui/icon-trophy.png"
 		EK_NO_GROUP:
 			return "res://assets/sprites/ui/icon-lock.png"
@@ -881,29 +1017,70 @@ func _empty_icon_path(kind: String) -> String:
 func _empty_text() -> String:
 	match _empty_kind():
 		EK_WAIT:
-			return "正在翻本周的名册 · 看看你分在哪一组"
+			return "正在查询分组"
 		EK_UNREACHABLE:
-			return "连不上服务器 · 你这一组还没看到, 每 30 秒自己再看一次"
+			return "无法连接服务器 · 30 秒后自动刷新"
 		EK_NOT_SEATED:
-			return "还没分组 · %s 自动分组开赛, 到时候这里会出现你的对阵" % _P2C.local_hhmm(
+			return "未分组 · %s 自动分组" % _P2C.local_hhmm(
 				_P2C.week_anchor_utc(_clock()) + 6 * 86400 + int(_P2C.FINALS_SEAT_HOUR_UTC) * 3600)
 		EK_TOO_FEW:
-			return "本周只有 %d 人晋级 · 人太少, 决赛日没开起来; 你的晋级算数, 下周再来" % int(_feed_view().get("entered", 0))
+			return "本周晋级人数不足（%d 人）· 决赛日取消 · 晋级记录保留" % int(_feed_view().get("entered", 0))
 		EK_FINALS_SOON:
+			## 开赛倒计时 + 已产生的组冠军(谁会进冠军杯赛)。
 			var left: int = int(_L.finals_start_ts(_clock())) - _clock()
-			if left > 0:
-				return "冠军赛 %d 小时 %d 分后开播 · 先等各组决出自己的冠军" % [left / 3600, (left % 3600) / 60]
-			return "冠军赛正在集结 · 等各组决出自己的冠军"
+			return cup_soon_head(left) + "\n" + champion_text(champion_summary(_champ_buckets(),
+				_week_view().has("buckets")))
 		EK_FINALS_LOCAL:
-			## ★★★只说**现在按什么算**, 不把内部进度顶在玩家脸上(2026-09-28)。
-			## ★★2026-10-04: 原来是「本周按各组自己算冠军 · 你这一组的冠军就是本周冠军」——
-			##   决赛早就打完了还不报冠军, 而且对没晋级的人说「你这一组」。⇒ 直接列各组冠军。
-			return champion_text(champion_summary(_champ_buckets(), _week_view().has("buckets")))
+			## 到点了还没成表: 说清在等开赛, 再列组冠军(★2026-10-04 的老规矩: 打完了就报出来, 不让人干等)。
+			return "%s · 等待开赛\n" % _P2C.STAGE_CUP + champion_text(champion_summary(_champ_buckets(),
+				_week_view().has("buckets")))
+		EK_CUP_SOLO:
+			return cup_solo_text(_finals)
+		EK_GROUP_SOLO:
+			## 1 人组: 没有对局 ⇒ 说清去向与开赛时刻(本地时间)。
+			return "%s仅 1 人 · 直接晋级%s\n%s %s 开赛" % [sheet_name(_bucket), _P2C.STAGE_CUP, _P2C.STAGE_CUP,
+				_P2C.local_hhmm(int(_L.finals_start_ts(_clock())))]
 		EK_SEATED:
-			return "正在摆你这一组的对阵"
+			return "正在生成对阵"
 		EK_SPECTATE:
-			return "你本周未晋级 · 本周各组的对阵只能看"
-	return "本周没有你这一组 · 周六闯关赛晋级才进得来"
+			return "本周未晋级 · 仅可观战"
+	return "未晋级 · 需通过周六闯关赛"
+
+
+## 冠军杯赛开赛倒计时那一行。`left` = 距 20:00 UTC 还有几秒。
+static func cup_soon_head(left: int) -> String:
+	if left <= 0:
+		return "%s · 等待开赛" % _P2C.STAGE_CUP
+	if left < 3600:
+		return "%s %d 分后开赛" % [_P2C.STAGE_CUP, maxi(1, left / 60)]
+	return "%s %d 小时 %d 分后开赛" % [_P2C.STAGE_CUP, left / 3600, (left % 3600) / 60]
+
+
+## 冠军杯赛只有 1 人那一页(本周只有一个组: 那个组的冠军直接夺冠)。
+static func cup_solo_text(cup: Dictionary) -> String:
+	var names: Array = cup.get("names", []) if cup.get("names", []) is Array else []
+	var tags: Array = cup.get("tags", []) if cup.get("tags", []) is Array else []
+	var nm := str(names[0]) if not names.is_empty() else "神秘龟"
+	var tg := str(tags[0]) if not tags.is_empty() else ""
+	return "本周仅 1 名组冠军 · 直接夺冠\n冠军 · %s%s" % [nm, (" " + tg) if tg != "" else ""]
+
+
+## 冠军杯赛已收盘且决赛不在开播窗口里 ⇒ 顶上那一行「冠军 · 名字 #ID」; 否则 ""。
+## ★决赛还在开播窗口里时**不许**写(名字就是剧透, 文件头 ★⑤)。
+func cup_champion_line() -> String:
+	var n := int(_finals.get("size", 0))
+	if n < 2 or not bool(_finals.get("closed", false)):
+		return ""
+	var total := _B.rounds_for(n)
+	if _view == _L.VIEW_FINALS and premiere_hidden(total, 0):
+		return ""
+	var sd := _B.champion_seed(n, _finals.get("done", {}) as Dictionary)
+	if sd < 0:
+		return ""
+	var names: Array = _finals.get("names", []) if _finals.get("names", []) is Array else []
+	var tags: Array = _finals.get("tags", []) if _finals.get("tags", []) is Array else []
+	var tg := str(tags[sd]) if sd < tags.size() else ""
+	return "冠军 · %s%s" % [str(names[sd]) if sd < names.size() else "神秘龟", (" " + tg) if tg != "" else ""]
 
 
 ## 两个 Tab 的样子：当前那张高亮；**还没形成的那张不禁用**（要让人点进去看倒计时），
@@ -917,7 +1094,7 @@ func _sync_tabs() -> void:
 	if kids.size() < 2:
 		return
 	var names := [
-		"我这一组" + bucket_tab_suffix(_bucket_kind()),
+		_P2C.STAGE_GROUP + bucket_tab_suffix(_bucket_kind()),
 		finals_tab_text(int(_finals.get("size", 0))),
 	]
 	var views := [_L.VIEW_BUCKET, _L.VIEW_FINALS]
@@ -926,17 +1103,13 @@ func _sync_tabs() -> void:
 		b.text = str(names[i])
 		_fit_tab(b)
 		var on: bool = str(views[i]) == _view
-		b.add_theme_color_override("font_color", ACCENT if on else DIM)
-		## ★形态: 选中那一页底下压一条实心杠; 没选中的只留一道暗底槽。
-		var ul := b.get_node_or_null("Underline") as ColorRect
-		if ul != null:
-			ul.size.x = b.custom_minimum_size.x - 12.0
-			ul.color = ACCENT if on else Color("#222c3e")
+		## ★选中 = 青边 + 青色底杠 + 亮字; 未选 = 暗边暗字(皮与字色都在 `UISkin.pixel_tab`)。
+		UISkin.pixel_tab(b, on)
 
 
-## 第二张页签叫什么。★跨组总决赛上线前后是两件事: 上线了才有「冠军赛」这场比赛。
+## 第二张页签叫什么。★没成表 ⇒ 「· 未开赛」; 1 人表(直接夺冠)与成表一样不缀。
 static func finals_tab_text(finals_size: int) -> String:
-	return ("冠军赛" + ("" if finals_size > 1 else " · 未开赛")) if CROSS_BUCKET_LIVE else "本周冠军"
+	return _P2C.STAGE_CUP + ("" if finals_size >= 1 else " · 未开赛")
 
 
 ## 页签宽度**按字量**, 不拍脑袋。
@@ -949,7 +1122,7 @@ static func finals_tab_text(finals_size: int) -> String:
 ##   ⇒ 判据补在 `verify_finals_feed` ⑥, 宽度在这里算。
 ##
 ## ★边带宽度**从 StyleBox 上读**, 不在这里抄一份 27
-##   (`UISkin.button` 给大按钮套的是 `menu/frame-rect.png`, 九宫格边距 27) ——
+##   (原来是木牌 `menu/frame-rect.png` 边距 27; 2026-10-07 换成 `UISkin.pixel_tab` 边距 6) ——
 ##   抄一次就永远落后(memory fb-hand-rolled-copies-drift)。换皮/换图都不用动这里。
 func _fit_tab(b: Button) -> void:
 	var band := 0.0
@@ -1042,12 +1215,14 @@ func _state_colors(st: String) -> Array:
 ##   「被 clip_text 截断的文字」(它是对的 —— 硬裁出来的半个字读不出来)。
 ##   ⇒ 在**文字层**截, 留一个省略号。13px 的汉字≈13px 宽, 除得到能放几个。
 ## 对阵格里「 #XXXXXX」那一段大约占多宽(13px 字, 西文约 0.6 个字宽)。
-const TAG_PX := 64.0
+const TAG_PX := 80.0
+## 对阵格里名字的字号(2026-10-07: 13 → 18, 主会话审图「名字约 13px 太小」)。汉字宽 ≈ 字号。
+const NAME_FS := 18.0
 
 
-func _fit_name(nm: String, px: float, tick: bool) -> String:
-	var avail: float = px - (16.0 if tick else 0.0)
-	var maxc: int = int(avail / 13.0)
+func _fit_name(nm: String, px: float, tick: bool, fs: float = NAME_FS) -> String:
+	var avail: float = px - (fs + 4.0 if tick else 0.0)
+	var maxc: int = int(avail / fs)
 	if maxc < 2 or nm.length() <= maxc:
 		return nm
 	return nm.substr(0, maxi(1, maxc - 1)) + "…"
@@ -1091,12 +1266,36 @@ func _make_round_labels(n: int, total: int) -> void:
 			lb.position = Vector2(rect.position.x, -34.0)
 			lb.size = Vector2(rect.size.x, 24.0)
 			lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			lb.add_theme_font_size_override("font_size", 13)
-			## 当前轮用强调色 —— 其余淡下去, 免得九个标签一样抢眼
+			lb.add_theme_font_size_override("font_size", 15)
+			## 当前轮用强调色 —— 其余淡下去, 免得九个标签一样抢眼(2026-10-07: 淡到 #8796a6 仍读得出, 原来 DIM 太暗)
 			lb.add_theme_color_override("font_color",
-				ACCENT if r == int(cur().get("round", 1)) else DIM)
+				ACCENT if r == int(cur().get("round", 1)) else Color("#8796a6"))
 			lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			_canvas.add_child(lb)
+			## ★决赛那一列(CRL / YouTuber Tournament 对阵图正中都是奖杯 + FINAL): 字放大成金色,
+			##   两边各一枚现成的像素奖杯(`ui/icon-trophy.png` 32px 原尺寸, 不缩放不糊; 贴图不在就只留字)。
+			if r >= total:
+				lb.add_theme_font_size_override("font_size", 22)
+				lb.add_theme_color_override("font_color", MINE)
+				lb.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+				lb.add_theme_constant_override("outline_size", 4)
+				lb.position.y = -44.0          # 底边让开本轮那条 3px 亮杠(-12)
+				lb.size.y = 30.0
+				## 奖杯: 32px 素材按整 2 倍放到 64(最近邻整数倍不糊)。决赛格上面有空就挂在格子正上方
+				##   (8 人组: 标签行与决赛格之间), 没空(4 人组决赛与首轮同高)就放到标签行上面。
+				var tp := "res://assets/sprites/ui/icon-trophy.png"
+				if ResourceLoader.exists(tp):
+					var tr := TextureRect.new()
+					tr.name = "FinalTrophy"
+					tr.texture = load(tp)
+					tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+					tr.stretch_mode = TextureRect.STRETCH_SCALE
+					tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+					var ty: float = rect.position.y - 70.0 if rect.position.y >= 70.0 else -112.0
+					tr.position = Vector2(rect.position.x + rect.size.x * 0.5 - 32.0, ty)
+					tr.size = Vector2(64.0, 64.0)
+					tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+					_canvas.add_child(tr)
 
 
 ## 这一场某一侧（0=上 1=下）坐的是谁。
@@ -1116,6 +1315,13 @@ func competitor(r: int, m: int, side: int) -> Dictionary:
 	var sd := _B.occupant_seed(r, m, side, n, cur().get("done", {}) as Dictionary)
 	if sd == _B.OCC_BYE:
 		return {"name": "轮空", "seed": -1, "bye": true}
+	## ★开播窗口(文件头 ★⑤): 这个坑是从「还在开播的那一场」晋级上来的 ⇒ 写「待定」, 不然名字本身就是剧透。
+	##   例外: 这一场有我(我得知道对手才能打 —— 本轮备战与上一轮开播同时进行)。
+	if sd >= 0 and r >= 2 and premiere_hidden(r - 1, m * 2 + side):
+		var me := int(cur().get("me", -1))
+		var other := _B.occupant_seed(r, m, 1 - side, n, cur().get("done", {}) as Dictionary)
+		if me < 0 or (sd != me and other != me):
+			return {"name": "待定", "seed": -1, "bye": false}
 	if sd < 0:
 		return {"name": "待定", "seed": -1, "bye": false}
 	var nm := str(names[sd]) if sd < names.size() else "神秘龟"
@@ -1198,6 +1404,8 @@ func _is_me_side(r: int, m: int, side: int) -> bool:
 func winner_side(r: int, m: int) -> int:
 	var d: Dictionary = cur().get("done", {})
 	var key := "%d-%d" % [r, m]
+	if premiere_hidden(r, m):
+		return -1                     # 开播窗口里: 与当前轮一样当作「还不知道」(✓ / 胜 / 亮暗底 全不画)
 	return int(d[key]) if d.has(key) else -1
 
 
@@ -1226,6 +1434,8 @@ func _make_node(r: int, m: int) -> Control:
 	holder.position = rect.position
 	holder.custom_minimum_size = rect.size
 	holder.size = rect.size
+	## ★格子本身不吃点击: 能点的那一场底下有一颗透明整格热区(见文末); 按在格子上拖图照样能拖。
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	## ★★「我在哪一格」= 这屏的头等大事(文件头 ★①)。原来只有**一圈 2px 金边**,
 	##   而已打完的格子也有亮底、当前轮也有亮框 ⇒ 32 人桶里根本挑不出来。
@@ -1243,6 +1453,12 @@ func _make_node(r: int, m: int) -> Control:
 	var cols: Array = _state_colors(st)
 	var bd_w: int = 2 if st == ST_LIVE else 1
 	var bd_c: Color = cols[1]
+	## ★决赛是全图的焦点(CRL 那张正中的奖杯 + 决赛格): 金边 2px + 外面一圈淡金, 与「我」的双金环区分(那个是两圈)。
+	if r >= total and not mine:
+		bd_c = FINAL_GOLD
+		bd_w = 2
+		_outline(holder, Rect2(-5.0, -5.0, w + 10.0, h + 10.0), 3.0,
+			Color(FINAL_GOLD.r, FINAL_GOLD.g, FINAL_GOLD.b, 0.28))
 	if mine:
 		bd_c = MINE
 		bd_w = 2
@@ -1268,37 +1484,48 @@ func _make_node(r: int, m: int) -> Control:
 		_rect(holder, float(bd_w), h - float(bd_w) - 1.0, w - float(bd_w) * 2.0, 1.0,
 			Color(0, 0, 0, 0.30))
 
-	## ★已翻面: 两行的**明暗**就是结果。不剧透靠的是 `ws == -1`(当前轮拿不到),
-	##   所以这一整块在当前轮根本不画 —— 而不是"画了再藏起来"(文件头 ★②)。
+	## ★已翻面: 两行的**明暗**就是结果(CRL Pocket 那张: 胜者那一行亮、败者压暗)。不剧透靠的是
+	##   `ws == -1`(当前轮拿不到), 所以这一整块在当前轮根本不画 —— 而不是"画了再藏起来"(文件头 ★②)。
 	if ws >= 0:
 		_rect(holder, 1.0, float(ws) * sh + 1.0, w - 2.0, sh - 2.0, PLATE_WIN)
 		_rect(holder, 1.0, float(1 - ws) * sh + 1.0, w - 2.0, sh - 2.0, PLATE_LOSE)
 		_rect(holder, 1.0, float(ws) * sh + 1.0, 4.0, sh - 2.0,
 			MINE if _is_me_side(r, m, ws) else ACCENT)
 
-	## 两行: 上侧 / 下侧
-	var name_w: float = maxf(28.0, w - 9.0 - GUTTER)
+	## 两行: 上侧 / 下侧。每行 = [头像] [名字] …… [右槽小签]。
+	## ★2026-10-07 加头像(皇室战争 / CRL 对阵图每个坑都是头像 + 名字): 行高 39 ⇒ 头像 31。
+	var av_px: float = sh - 12.0
+	var name_x: float = 8.0 + av_px + 6.0
+	var name_w: float = maxf(28.0, w - name_x - GUTTER - PLAY_W)
 	for side in range(2):
 		var c: Dictionary = competitor(r, m, side)
 		var nm := str(c.get("name", "神秘龟"))
 		var is_bye := bool(c.get("bye", false))
 		var tick: bool = ws >= 0 and side == ws
+		var lost: bool = ws >= 0 and side != ws
+		var sd := int(c.get("seed", -1))
+		## 头像: 有人坐 ⇒ 他的头像(对不上就写名字首字); 待定 / 轮空 ⇒ 空槽。
+		var av := MatchCard.avatar(portrait_of(sd), av_px, false, lost or is_bye,
+			nm if sd >= 0 else "")
+		av.position = Vector2(8.0, float(side) * sh + (sh - av_px) * 0.5)
+		av.size = Vector2(av_px, av_px)
+		holder.add_child(av)
 		var lb := Label.new()
-		lb.position = Vector2(9, float(side) * sh)
-		## ★★宽度**必须**给右边那条槽留出 GUTTER —— 「你」/「冠」小签住在那里,
+		lb.position = Vector2(name_x, float(side) * sh)
+		## ★★宽度**必须**给右边那条槽留出 GUTTER —— 「你」/「冠」/「胜」小签住在那里,
 		##   不留的话名字会骑在小签上(而 `verify_ui_consistency` 的"两段文字压在一起"
 		##   只量 Label 矩形, 骑上去它也照样绿 ⇒ 这一条得自己守)。
 		lb.size = Vector2(name_w, sh)
 		lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		lb.add_theme_font_size_override("font_size", 13)
+		lb.add_theme_font_size_override("font_size", int(NAME_FS))
 		## ★★谁赢**只在已翻面时**标出来 —— 当前轮 `ws == -1`, 两侧一样亮 ⇒ 不剧透。
 		##   而双方**名字照常显示**(参考里 SF1「法国 VS 西班牙」就是还没打的那一场),
 		##   剧透的是"谁赢"不是"谁打"。
 		var col := TXT
-		if is_bye:
+		if is_bye or sd < 0:
 			col = DIM
 		elif ws >= 0:
-			col = ACCENT if side == ws else DIM
+			col = ACCENT if side == ws else Color("#7d8a9c")
 		if _is_me_side(r, m, side):
 			col = MINE
 		lb.add_theme_color_override("font_color", col)
@@ -1313,18 +1540,21 @@ func _make_node(r: int, m: int) -> Control:
 		lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		holder.add_child(lb)
 
-		## ★右槽小签: 金牌子 + 深色字, 一眼跳出来。「冠」优先于「你」——
-		##   我自己夺冠时"冠"信息量更大, 而我那一格本来就有金环 + 金字在标。
+		## ★右槽小签: 「冠」>「你」>「胜」。金牌子 = 冠 / 你(只有"我"和冠军用金色); 青牌子 = 胜。
 		var badge := ""
+		var bcol := MINE
 		if r >= total and ws == side:
 			badge = "冠"
 		elif _is_me_side(r, m, side):
 			badge = "你"
+		elif tick:
+			badge = "胜"
+			bcol = ACCENT
 		if badge != "":
-			var bx: float = w - GUTTER + 2.0
+			var bx: float = w - GUTTER - PLAY_W + 2.0
 			var by: float = float(side) * sh + (sh - 22.0) * 0.5
 			_rect(holder, bx + 2.0, by + 2.0, 24.0, 22.0, SHADOW)
-			_rect(holder, bx, by, 24.0, 22.0, MINE)
+			_rect(holder, bx, by, 24.0, 22.0, bcol)
 			_rect(holder, bx, by, 24.0, 2.0, Color(1, 1, 1, 0.45))
 			var bl := Label.new()
 			bl.text = badge
@@ -1338,9 +1568,6 @@ func _make_node(r: int, m: int) -> Control:
 			holder.add_child(bl)
 
 	## ★中缝三种形态: 实线(打完/轮空) · 锯齿(正在打) · 虚线(还没到)。
-	##   参考图那里是个 VS 徽章, 但 104~268 宽的条子上塞 76x56 的徽章要缩到半尺寸,
-	##   像素图 0.5 倍最近邻会掉掉一半像素(battle_hud 那张 `pk-vs-emblem` 是原尺寸用的)
-	##   ⇒ 改用**缝的形状**说话, 零缩放、零新素材。
 	var seam_y: float = sh - 1.0
 	if st == ST_LIVE:
 		var i := 0
@@ -1366,24 +1593,220 @@ func _make_node(r: int, m: int) -> Control:
 				_rect(holder, 0.0 if sx == 0 else w - 3.0, 0.0 if sy == 0 else h - al,
 					3.0, al, cc)
 
+	## ══ 点哪儿: 整格就是热区(VALORANT Premier / 英雄联盟 Clash 的对阵图都是这样) ══
+	## ★★2026-10-07 审图第三版, 用户「哪个游戏观赛按钮会这样弄？」: 上一版在每格底下挂了一颗「观看」大木牌,
+	##   参考的游戏内对阵图上**一颗按钮都没有**(docs/plans/ref/20261007-周末观战参考/ingame_brackets.jpg)。
+	##   ⇒ 能点的格子右沿一枚阶梯 ▶(`PlayMark`, 唯一的提示); 点了弹出对局卡(`_open_popup`), 「观看」在卡里。
+	## ★每一场**恰好一颗**按钮(`verify_bracket_map` ③「屏上真按钮数 == 可点场次数」)。
 	if can_open(r, m):
-		## 能点的那一格右槽里放一个**阶梯像素播放标**(原来是字体里的 ▶ 字形 ——
-		## 那玩意儿在像素风里是唯一一个抗锯齿的东西)。
-		var pc: Color = MINE if mine else ACCENT
+		var play: bool = should_fetch_opponent(r, m)
+		var pc: Color = MINE if (mine or play) else ACCENT
+		var pm := Control.new()
+		pm.name = "PlayMark"
+		pm.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pm.position = Vector2(w - PLAY_W, 0.0)
+		pm.size = Vector2(PLAY_W, h)
+		holder.add_child(pm)
 		for i2 in range(4):
-			var hh: float = float(4 - i2) * 4.0
-			_rect(holder, w - GUTTER + 6.0 + float(i2) * 3.0, sh - hh * 0.5, 3.0, hh, pc)
+			var hh: float = float(4 - i2) * 5.0
+			_rect(pm, 5.0 + float(i2) * 3.0, h * 0.5 - hh * 0.5, 3.0, hh, pc)
+		if st == ST_PREMIERE:
+			## 开播窗口: 顶边一枚红色「开播」小签(与「对战」同一个位置、同一种做法)。
+			var pt := Label.new()
+			pt.name = "PremiereTag"
+			pt.text = _LS.TAG_PREMIERE
+			pt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			pt.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			pt.add_theme_font_size_override("font_size", 15)
+			pt.add_theme_color_override("font_color", Color.WHITE)
+			pt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_rect(holder, w - 62.0, -12.0, 52.0, 22.0, PREMIERE_RED)
+			pt.position = Vector2(w - 62.0, -12.0)
+			pt.size = Vector2(52.0, 22.0)
+			holder.add_child(pt)
+		if play:
+			## 我这一场: 金边(上面 `mine` 已画) + 顶边一枚「对战」小签 —— 在格子上, 不另起按钮。
+			var tg := Label.new()
+			tg.name = "PlayTag"
+			tg.text = "对战"
+			tg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			tg.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			tg.add_theme_font_size_override("font_size", 15)
+			tg.add_theme_color_override("font_color", BG)
+			tg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_rect(holder, w - 62.0, -12.0, 52.0, 22.0, MINE)
+			tg.position = Vector2(w - 62.0, -12.0)
+			tg.size = Vector2(52.0, 22.0)
+			holder.add_child(tg)
 		var btn := Button.new()
+		btn.name = N_NODE_BTN
 		btn.flat = true
+		btn.focus_mode = Control.FOCUS_NONE
+		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		for sk in ["normal", "hover", "pressed", "focus", "disabled"]:
+			btn.add_theme_stylebox_override(sk, StyleBoxEmpty.new())
 		btn.size = rect.size
-		## ★★用词分两种(2026-09-27): `can_open` 现在**只对我自己的当前轮**为真
-		##   (见 `can_open` 的头注), 点下去是**我上场打**, 不是看别人 ⇒ 写「开播」是错的。
-		##   重放那条路上线之后才是真的"开播看回放"(文件头 ★④: 不许写「直播」「回放」)。
-		btn.tooltip_text = "开始对战" if should_fetch_opponent(r, m) else "重看这一场"
+		## ★★用词分两种(2026-09-27): 我自己的当前轮 = 我上场打(「开始对战」); 已翻面 = 看回放。
+		##   文件头 ★④ 管的是**未揭晓**的场次; 「观看」只出现在已翻面的那场的对局卡里, 不剧透。
+		btn.tooltip_text = "开始对战" if play else (_LS.BTN_WATCH if st == ST_PREMIERE else "观看回放")
 		btn.set_meta("rm", Vector2i(r, m))     # 门禁按格子找按钮(手指点的就是它)
-		btn.pressed.connect(func(): match_opened.emit(r, m))
+		btn.pressed.connect(func(): _open_popup(r, m))
 		holder.add_child(btn)
 	return holder
+
+
+## ══════════════════════════════════════════════════════════════════════
+##  对局卡弹窗(点一场已翻面 / 我这一场 ⇒ 弹出; TV Royale 把 Watch 放在对局卡上, 这里同理)
+## ══════════════════════════════════════════════════════════════════════
+## 版式与周六赛况板的对局卡同一套件(`MatchCard`): 横幅「X 获胜」/ 两边头像 + 名字 VS / 「观看」+「关闭」。
+## ★阵容不画: 决赛日的数据(`finals_view` / `finals_week_view`)只下发名字与账号 —— 服务端刻意不下发快照
+##   (阵容只能经 `finals_opponent` 每人每轮问一次)。只画每人的头像, 不编三只龟。
+## ★主按钮按下 = 原来点格子那一下(`match_opened`), 往后的路(看回放 / 开打)一字没改。
+var _popup: Control = null
+
+
+func _open_popup(r: int, m: int) -> void:
+	if replay_busy.x >= 0 or not can_open(r, m):
+		return
+	_close_popup()
+	var play: bool = should_fetch_opponent(r, m)
+	var prem: bool = match_state(r, m) == ST_PREMIERE
+	var ws := winner_side(r, m)
+	var vp := get_viewport().get_visible_rect().size
+	var ov := ColorRect.new()
+	ov.name = "MatchPopup"
+	ov.color = Color(0.0, 0.0, 0.0, 0.62)
+	ov.position = Vector2.ZERO
+	ov.size = vp
+	ov.mouse_filter = Control.MOUSE_FILTER_STOP
+	ov.gui_input.connect(func(ev: InputEvent) -> void:
+		if ev is InputEventMouseButton and (ev as InputEventMouseButton).pressed:
+			_close_popup())
+	add_child(ov)
+	_popup = ov
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", MatchCard.card_style(Color(0.80, 0.86, 1.0), 22, 18))
+	card.custom_minimum_size = Vector2(POPUP_W, 0)
+	card.mouse_filter = Control.MOUSE_FILTER_STOP
+	ov.add_child(card)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 14)
+	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(vb)
+	var info := "%s · %s" % [_L.round_label(int(cur().get("size", 0)), r), sheet_name(cur())]
+	if play:
+		vb.add_child(MatchCard.banner("本轮对战", info, Color("#5a4a1c"), Color("#2a2008"), MINE, Color("#e8d9b0")))
+	elif prem:
+		## 开播窗口: 横幅只写「开播」, 不写谁赢(文件头 ★⑤)。
+		vb.add_child(MatchCard.banner(_LS.TAG_PREMIERE, info, PREMIERE_RED, Color("#4a0f0b"), Color.WHITE, Color("#ffe1dc")))
+	else:
+		var wn := str(competitor(r, m, ws).get("name", "?")) if ws >= 0 else "?"
+		vb.add_child(MatchCard.banner("%s 获胜" % wn, info, Color("#24394e"), Color("#0f1c28"), MINE, Color("#c9d6e4")))
+	var body := HBoxContainer.new()
+	body.alignment = BoxContainer.ALIGNMENT_CENTER
+	body.add_theme_constant_override("separation", 24)
+	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(body)
+	body.add_child(_popup_side(r, m, 0, ws))
+	body.add_child(MatchCard.vs_label(POPUP_AV * 0.5 + 34.0))
+	body.add_child(_popup_side(r, m, 1, ws))
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 24)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(row)
+	var go := MatchCard.big_btn("开始对战" if play else (_LS.BTN_WATCH if prem else WATCH_LABEL), N_POPUP_GO,
+		MatchCard.WATCH_SIZE, MatchCard.BTN_LIVE if (prem and not play) else MatchCard.BTN_WATCH)
+	go.pressed.connect(func():
+		_close_popup()
+		match_opened.emit(r, m))
+	row.add_child(go)
+	var cl := MatchCard.big_btn("关闭", N_POPUP_CLOSE, MatchCard.WATCH_SIZE, MatchCard.BTN_CLOSE)
+	cl.pressed.connect(_close_popup)
+	row.add_child(cl)
+	card.reset_size()
+	var cs := card.get_combined_minimum_size()
+	card.size = cs
+	card.position = (vp - cs) * 0.5
+
+
+## 这一张图叫什么: 冠军杯赛那张叫「冠军杯赛」, 小组赛那几张叫「第 N 组」。
+static func sheet_name(b: Dictionary) -> String:
+	var bk := int(b.get("bucket", 0))
+	if bk == int(_P2C.FINALS_CUP_BUCKET):
+		return _P2C.STAGE_CUP
+	return "第 %d 组" % (bk + 1)
+
+
+## 弹窗里的一方: 大头像 + 名字(胜者金、负者暗) + #ID。
+func _popup_side(r: int, m: int, side: int, ws: int) -> Control:
+	var c: Dictionary = competitor(r, m, side)
+	var sd := int(c.get("seed", -1))
+	var nm := str(c.get("name", "?"))
+	var won: bool = ws >= 0 and ws == side
+	var lost: bool = ws >= 0 and ws != side
+	var col := VBoxContainer.new()
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.add_theme_constant_override("separation", 6)
+	col.custom_minimum_size = Vector2(180, 0)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var av := MatchCard.avatar(portrait_of(sd), POPUP_AV, side == 1, lost, nm if sd >= 0 else "")
+	av.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	col.add_child(av)
+	var lb := Label.new()
+	lb.text = nm + ("（我）" if _is_me_side(r, m, side) else "")
+	lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lb.add_theme_font_size_override("font_size", 20)
+	lb.add_theme_color_override("font_color", MINE if won else (Color("#7d8a9c") if lost else TXT))
+	lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(lb)
+	var tags: Array = cur().get("tags", []) if cur().get("tags", []) is Array else []
+	var tg := Label.new()
+	tg.text = str(tags[sd]) if sd >= 0 and sd < tags.size() else ""
+	tg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tg.add_theme_font_size_override("font_size", 13)
+	tg.add_theme_color_override("font_color", Color("#8796a6"))
+	tg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(tg)
+	return col
+
+
+func _close_popup() -> void:
+	if _popup != null and is_instance_valid(_popup):
+		_popup.queue_free()
+	_popup = null
+
+
+## 一个种子的头像 id: 喂进来的 `avatars`(按种子序)优先, 否则按 #ID 查同周赛况板那份(`_portraits`)。
+## "" = 对不上(调用方画名字首字)。
+func portrait_of(sd: int) -> String:
+	if sd < 0:
+		return ""
+	var avs = cur().get("avatars", null)
+	if avs is Array and sd < (avs as Array).size() and str(avs[sd]) != "":
+		return str(avs[sd])
+	var tags = cur().get("tags", [])
+	if tags is Array and sd < (tags as Array).size():
+		return str(_portraits.get(str(tags[sd]), ""))
+	return ""
+
+
+## 喂 #ID → 头像。产品侧由 `_on_board_rows`(同周赛况板)喂; 截图探针 / 门禁直接喂。
+func set_portraits(mp: Dictionary) -> void:
+	_portraits = mp.duplicate()
+	if is_inside_tree() and int(cur().get("size", 0)) > 1:
+		_rebuild()
+
+
+## 同周赛况板回来了 ⇒ 每个上过榜的人: #ID → 头像(`gauntlet_board.build` 的 players, 取他最新那一行的 profile)。
+func _on_board_rows(res: Dictionary) -> void:
+	if not is_inside_tree() or not res.has("rows"):
+		return
+	var mp := {}
+	for p in (_Board.build(res["rows"], "", true).get("players", []) as Array):
+		if str(p.get("tag", "")) != "" and str(p.get("avatar", "")) != "":
+			mp[str(p["tag"])] = str(p["avatar"])
+	set_portraits(mp)
 
 
 ## ══════════════════════════════════════════════════════════════════════
@@ -1487,6 +1910,23 @@ func _v_line(x: float, y0: float, y1: float, lit: bool, mine: bool) -> void:
 	_rect(_canvas, x - t * 0.5, y - t * 0.5, t, h + t, _link_col(lit, mine))
 
 
+## 冠军杯赛页顶上那一行「冠军 · 名字」(只在冠军杯赛页、收盘且决赛已揭晓时)。
+func _sync_champ() -> void:
+	if _champ_lb == null:
+		return
+	var t := cup_champion_line() if _view == _L.VIEW_FINALS else ""
+	_champ_lb.text = t
+	_champ_lb.visible = t != ""
+	_champ_box.visible = t != ""
+	if t != "":
+		## 摆在页签右侧那一段空里、整屏水平居中(页签在左上, 牌子不会压上它)。
+		var vp: Vector2 = get_viewport().get_visible_rect().size
+		_champ_box.reset_size()
+		var cs: Vector2 = _champ_box.get_combined_minimum_size()
+		_champ_box.size = cs
+		_champ_box.position = Vector2((vp.x - cs.x) * 0.5, 112.0)
+
+
 ## 顶栏 + 页签占掉的高度 —— 图要摆在它们下面, 不然被压住。
 const TOP_RESERVED := 190.0
 
@@ -1503,7 +1943,7 @@ func _center_on_me() -> void:
 		##   而门禁 30 条全绿(它量的是"我那一场在视口正中", 那条本身没错, 错在前提)。
 		var cs: Vector2 = _L.content_size(n)
 		_pan = Vector2(
-			(usable.x - cs.x * _scale) * 0.5 - _L.SIDE_PAD * _scale,
+			(usable.x - cs.x * _scale) * 0.5 - _L.content_left(n) * _scale,
 			TOP_RESERVED + (usable.y - cs.y * _scale) * 0.5)
 	else:
 		var f := my_focus()
@@ -1572,6 +2012,9 @@ func _start_feed() -> void:
 	match_opened.connect(_on_match_opened)
 	_rebuild()
 	_pull()
+	## ★头像(2026-10-07): 对阵数据里没有头像 ⇒ 取同一周的周六赛况板一次, 按 #ID 对上(见 `_portraits`)。
+	##   只取一次: 头像在决赛日不会变; 取不到就一直画名字首字, 不重试、不报错。
+	_SB.fetch_gauntlet_board_async(_P2C.week_anchor_utc(_clock()), _on_board_rows)
 
 
 func _pull() -> void:
@@ -1594,11 +2037,13 @@ func _pull() -> void:
 # ─────────────────────────────────────────────────────────────
 ## 正在等哪一场的对手快照。`Vector2i(-1, -1)` = 没在等。
 var _await_match := Vector2i(-1, -1)
+## 等的那一场在哪一页(冠军杯赛 / 小组赛坐标相同 ⇒ 等的期间换了页签, 侧别会算到另一张图上 ⇒ 作废)。
+var _await_view := ""
 
 
 func _on_match_opened(r: int, m: int) -> void:
 	if not should_fetch_opponent(r, m):
-		if REPLAY_LIVE and match_state(r, m) == ST_DONE:
+		if REPLAY_LIVE and (match_state(r, m) == ST_DONE or match_state(r, m) == ST_PREMIERE):
 			open_replay(r, m)
 		return
 	var bk := int(cur().get("bucket", -1))
@@ -1606,6 +2051,7 @@ func _on_match_opened(r: int, m: int) -> void:
 		return                        # 桶号还没回来，问了服务端也认不出
 	_SB.opponent_clear()
 	_await_match = Vector2i(r, m)
+	_await_view = _view
 	_SB.fetch_opponent_async(_P2C.week_anchor_utc(_clock()), bk, r, my_opponent_seed(r, m))
 
 
@@ -1622,18 +2068,24 @@ var _replay_lb: Label = null
 
 
 func open_replay(r: int, m: int) -> void:
-	if replay_busy.x >= 0 or not (REPLAY_LIVE and match_state(r, m) == ST_DONE):
+	var st := match_state(r, m)
+	if replay_busy.x >= 0 or not (REPLAY_LIVE and (st == ST_DONE or st == ST_PREMIERE)):
 		return
 	var bk := int(cur().get("bucket", -1))
 	if bk < 0:
 		return
 	## 回放结束那句话说「X 赢了」: 胜者就是 `done` 里那一侧(录像方赢 ⇒ 说左, 输 ⇒ 说右, 两边都填胜者)。
-	var ws := winner_side(r, m)
+	##   ★开播窗口里也要它(收尾卡揭晓用) ⇒ 直接读 `done`, 不走 `winner_side`(那个在窗口里故意回 -1)。
+	var d: Dictionary = cur().get("done", {})
+	var ws := int(d.get("%d-%d" % [r, m], -1))
+	## 开播窗口 ⇒ 挂观赛会话: 按「翻面至今」的偏移同步跟播(迟到的人从当前进度看)。取录像失败时在回调里摘掉。
+	if st == ST_PREMIERE:
+		_LS.pending = _LS.premiere_session(cur(), r, m, srv_now())
 	var wn := str(competitor(r, m, ws).get("name", "")) if ws >= 0 else ""
 	replay_busy = Vector2i(r, m)
 	var wk: int = _P2C.week_anchor_utc(_clock())
 	last_replay_ask = {"week": wk, "bucket": bk, "round": r, "match": m}
-	_show_replay_msg("正在读取这一场…", ACCENT)
+	_show_replay_msg("读取中…", ACCENT)
 	## 2026-10-05: 多带这一场的两个人(`pair`)⇒ 回放铭牌能写出「谁 对 谁」(录像方是谁由录像里的对手快照认出来, 见 `ReplayRecorder.side_names`)。
 	var pair := [str(competitor(r, m, 0).get("name", "")), str(competitor(r, m, 1).get("name", ""))]
 	_RF.open_finals(get_tree(), wk, bk, r, m, _on_replay_done, SELF_SCENE, {"l": wn, "r": wn, "pair": pair})
@@ -1643,6 +2095,8 @@ func _on_replay_done(code: String, msg: String) -> void:
 	last_replay_code = code
 	last_replay_msg = msg
 	replay_busy = Vector2i(-1, -1)
+	if code != "":
+		_LS.pending = {}               # 没进战斗场: 观赛会话别留给下一场不相干的回放
 	if code == "" or not is_inside_tree():
 		return
 	_show_replay_msg(msg, Color("#ff9b7a"))
@@ -1677,6 +2131,9 @@ func _try_start_match() -> bool:
 		return false                  # 拿不到 ⇒ `_tip` 那边照 reason 说话，不开打
 	var r := _await_match.x
 	var m := _await_match.y
+	if _await_view != _view:
+		_await_match = Vector2i(-1, -1)
+		return false
 	var side := my_side(r, m)
 	if side < 0:
 		_await_match = Vector2i(-1, -1)
@@ -1736,16 +2193,16 @@ static func opponent_tip(res: Dictionary, tried: bool) -> String:
 		return "对手阵容已就位 · %s" % str(res.get("name", "对手"))
 	match str(res.get("reason", "")):
 		"already_asked":
-			return "这一轮你已经看过 %d 号了 · 一轮只能看一个对手" % int(res.get("asked", -1))
+			return "每轮仅可查看 1 名对手（已查看 %d 号）" % int(res.get("asked", -1))
 		"wrong_round":
-			return "这一轮已经翻篇了 · 刷新一下看看新的对阵"
+			return "本轮已结束，请刷新"
 		"not_in_bucket":
-			return "你不在这一组里 · 只能看别人打"
+			return "观战模式"
 		"empty_snapshot", "no_such_seed":
-			return "对手没留下阵容 · 这一场算他弃权"
+			return "对手未提交阵容 · 判对手弃权"
 		"net", "bad_body":
-			return "连不上服务器 · 过两秒再点一次"
-	return "暂时看不到对手阵容 · 过两秒再点一次"
+			return "无法连接服务器，请稍后重试"
+	return "对手阵容加载失败，请稍后重试"
 
 
 ## ★轮询缓存而不是接回调: 回调在网络那一侧, 接过来就得处理"场景已经被切掉了"的情况。
@@ -1763,8 +2220,9 @@ func _on_poll() -> void:
 		var now_l := _clock()
 		## ★看的是**我那一组**(`_bucket`), 不是 `cur()` —— 观赛时 `cur()` 是别人那一组,
 		##   拿它判「有组」会对没晋级的人念「本轮备战已结束 · 等开打」。
-		var st := shop_tip(_SB.finals_shop_open_now(now_l), _SB.finals_shop_left_now(now_l),
-			int(_bucket.get("size", 0)) > 1)
+		var lv := _live_dict()
+		var st := shop_tip(_SB.finals_shop_open_of(lv, now_l), _SB.finals_shop_left_of(lv, now_l),
+			int(lv.get("size", 0)) > 1)
 		_shop_row.text = st
 		_shop_row.visible = st != ""
 		if st != "":
@@ -1786,12 +2244,17 @@ func _on_poll() -> void:
 	## ★比一个「指纹」而不是逐字段比: 只比 size 会漏掉翻面, 只比 round 会漏掉
 	##   **同一轮里陆续出结果**(一个桶里那几场不是同时结束的) ⇒ 半张图要等到下一轮才亮。
 	var sig := "%d/%d/%d" % [int(v.get("size", 0)), int(v.get("round", 0)),
-		(v.get("done", {}) as Dictionary).size()] + week_sig(_SB.finals_week_cached())
+		(v.get("done", {}) as Dictionary).size()] + week_sig(_SB.finals_week_cached()) + "|p%d" % premiere_count() \
+		+ cup_sig(_SB.finals_cup_cached())
 	## ★空了也要重画(比如服务端说「你没报名」) —— 只在"有数据且变了"时重画,
 	##   就会把开屏那句「正在连线」永远留在屏幕上。
 	if sig != _last_sig:
 		_last_sig = sig
 		_bucket = v.duplicate(true)
+		## ★冠军杯赛那一张(2026-10-07): 跟观赛那份一起回来(`finals_week_view` 的 `cup`)。
+		_finals = (_SB.finals_cup_cached() as Dictionary).duplicate(true)
+		if not _user_picked:
+			_view = _pick_default_view()
 		_record_progress()             # ★权威结果到手 ⇒ 记进度 + 对头衔账(见那个函数的头注)
 		_rebuild()
 		## 周末看回放: 有场次刚翻面 ⇒ 我那一场的录像(揭晓前压着没传)现在可以传了。
@@ -1814,6 +2277,22 @@ static func week_sig(w: Dictionary) -> String:
 	return "|%d/%d/%d/%d" % [(bs as Array).size(), r, d, c]
 
 
+## 冠军杯赛那一张的指纹: 人数 / 轮次 / 已翻面场数 / 收盘。★成表、翻面、收盘都要重画。
+static func cup_sig(c: Dictionary) -> String:
+	if c.is_empty():
+		return "|c-"
+	return "|c%d/%d/%d/%d" % [int(c.get("size", 0)), int(c.get("round", 0)),
+		(c.get("done", {}) as Dictionary).size(), 1 if bool(c.get("closed", false)) else 0]
+
+
+## 我此刻正在打的那一张(购物窗 / 倒计时跟着它): 冠军杯赛里有我且还没收盘 ⇒ 杯; 否则我那一组。
+func _live_dict() -> Dictionary:
+	if int(_finals.get("me", -1)) >= 0 and int(_finals.get("size", 0)) > 1 \
+			and not bool(_finals.get("closed", false)):
+		return _finals
+	return _bucket
+
+
 ## 倒计时的写法。★用户 2026-10-04 拍板「改成『8 分 43 秒后』」:
 ##   原来写 `8:43` —— 意思是 8 分 43 秒, 读起来却像 8 点 43 分。不足 1 分钟只写秒。
 static func countdown_text(sec: int) -> String:
@@ -1827,8 +2306,9 @@ static func countdown_text(sec: int) -> String:
 func _sync_tip() -> void:
 	if _tip == null:
 		return
-	var left: int = _SB.finals_left(_clock())
-	if left < 0 or bool(_bucket.get("closed", false)):
+	var lv := _live_dict()
+	var left: int = _SB.finals_left_of(lv, _clock())
+	if left < 0 or bool(lv.get("closed", false)):
 		_tip.visible = false
 		return
 	_tip.visible = true

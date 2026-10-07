@@ -9,7 +9,9 @@ extends Node
 ## 本节点代掉的是**手指**, 不是判断之外的任何东西:
 ##   · 每一步都走产品自己的入口: 按钮的 `pressed` 信号、或按钮绑定的那个函数
 ##     (`_go(...)` / `_open_shop()` / `_start_battle_flow()` / `_on_pick_pet()` / `_toggle_skill()` /
-##       `_on_select()`+`_on_buy()` / `_on_bench_click()`+`_dl_click()` / 引导条的「下一步」钮)。
+##       `_on_select()`+`_on_buy()` / `_on_bench_click()`+`_dl_click()` / 首启教程选择框的按钮)。
+##   · 教程引导条**没有按钮**(2026-10-07 重做): 每一步靠玩家的真动作前进, 本节点做的就是那个动作,
+##     引导条自己从产品代码里收到事件。★绝不按「跳过教程」(除非 SIM_TUTORIAL=skip 在首启框里选了跳过)。
 ##   · **不写**任何经济/战斗字段: 钱、命、场次、装备全由产品函数自己改。
 ##   · 摆位屏「开打」仍由 `autopilot.gd` 按(`SIM_AUTOPILOT=1`), 本文件不碰战斗。
 ##
@@ -26,6 +28,8 @@ extends Node
 ##                        (2026-10-06 用户「下一周…准备大概120个选手」: 这周先把号建好, 下周再打。
 ##                         sim60.sh 起这种窗口时同时带 ONBOARD=0, 让主菜单不跳进教学 —— 教学留到下周正式打时走。)
 ##   SIM_SHOT_DIR         命名截图落在这里(与 sim_shot 的 latest.png 同目录); 没给就 user://sim_shots
+##   SIM_TUTORIAL=play|skip  首启选择框按哪颗(默认 play = 「开始教程」, 与真新玩家一样走一遍教程;
+##                        skip = 「跳过」)。没弹框(ONBOARD=0 / 已看过教程)时不起作用。
 ##
 ## ── 产物 ──
 ##   user://sim_events.jsonl   每件事一行(时间 / 类型 / 数据) —— 台账的原始依据
@@ -128,7 +132,7 @@ func _run() -> void:
 			_stuck_noted = true
 			_ev("STUCK", {"scene": p, "stayed_s": _since()})
 			_shot("STUCK_" + p.get_file().get_basename())
-		await _drain_guides()
+		_drain_guides()
 		sc = get_tree().current_scene
 		if sc == null or sc.scene_file_path != p or sc.get_instance_id() == _acted_id:
 			continue
@@ -180,6 +184,11 @@ func _do_menu(m: Node) -> void:
 	await _sleep(1.5)   # 主菜单 _ready 自己 await 两帧 + 入场动画
 	if not _alive(m):
 		return
+	## ★首启教程选择框(onboarded=false 的号): 像真新玩家一样先在框里选。
+	##   不设 _acted_id —— 选「跳过」后还停在这一屏, 下一拍要接着开打。
+	if _press_tutorial_choice(m):
+		await _sleep(1.0)
+		return
 	_acted_id = m.get_instance_id()
 	var block := str(m.call("_battle_block_msg"))
 	var played := int(GameState.season_total_battles)
@@ -199,6 +208,25 @@ func _do_menu(m: Node) -> void:
 	_rounds_started += 1
 	_ev("start_battle", {"n": _rounds_started, "stats": _stats()})
 	m.call("_start_battle_flow")
+
+
+## 主菜单上弹着教程选择框 ⇒ 按 SIM_TUTORIAL 选一颗(默认 play =「开始教程」), 返回 true。
+## ★只在选择框(节点 TutorialChoice)里找按钮 —— 教程外壳上也有一颗同名的「跳过教程」(SkipTutorial),
+##   驱动绝不能去按那一颗(门禁 verify_tutorial_choice ⑧ 量这条)。
+func _press_tutorial_choice(m: Node) -> bool:
+	var choice := m.get_node_or_null("TutorialChoice")
+	if choice == null:
+		return false
+	var want := OS.get_environment("SIM_TUTORIAL").strip_edges()
+	var bname := "SkipTutorial" if want == "skip" else "StartTutorial"
+	var b := choice.find_child(bname, true, false) as Button
+	_shot("menu_tutorial_choice")
+	_ev("tutorial_choice", {"press": bname, "text": b.text if b != null else ""})
+	if b == null:
+		_ev("ANOMALY", {"where": "menu", "what": "首启选择框里找不到按钮", "want": bname})
+		return true
+	b.emit_signal("pressed")
+	return true
 
 
 func _finish(why: String) -> void:
@@ -246,7 +274,7 @@ func _do_team(t: Node) -> void:
 				return
 			t.call("_set_detail_pet", pid)
 			sp.call("_toggle_skill", pid, int(skills[k]))
-	await _drain_guides()
+	_drain_guides()
 	await _sleep(0.6)
 	if not _alive(t):
 		return
@@ -300,7 +328,7 @@ func _do_battle(b: Node) -> void:
 				"dl_state": str(b.get("_dl_state"))})
 			_shot("STUCK_battle")
 		await _sleep(1.0)
-		await _drain_guides()
+		_drain_guides()
 	if settle == null:
 		return
 	_battle_n += 1
@@ -372,6 +400,15 @@ func _do_shop(s: Node) -> void:
 			await _sleep(0.4)
 			if not _alive(s):
 				return
+	## ★教程「购买经验，升到 2 级」: 按产品那颗买经验钮(它的回调会发 level_up 给引导条)。
+	if tut:
+		var xb = s.get("_tut_xp_btn")
+		if is_instance_valid(xb) and xb is Button:
+			(xb as Button).emit_signal("pressed")
+			xp_n += 1
+			await _sleep(0.8)
+			if not _alive(s):
+				return
 	for _round in range(8):
 		if not _alive(s):
 			return
@@ -406,7 +443,7 @@ func _do_shop(s: Node) -> void:
 		s.call("_on_buy", i)
 		bought.append({"id": eid, "paid": c_before - int(GameState.meta_deepsea_coins)})
 		await _sleep(0.5)
-		if bought.size() >= (2 if tut else 4):
+		if bought.size() >= (1 if tut else 4):
 			break
 	## 均衡: 剩的钱买一次经验
 	if style == 1 and not tut and _alive(s):
@@ -427,11 +464,9 @@ func _do_shop(s: Node) -> void:
 		return
 	if _shop_visits <= 2:
 		_shot("shop_%02d_after" % _shop_visits)
-	if tut:
-		await _press_tut_next()
-	else:
-		## 顶栏「🎒 背包」那颗钮绑的就是这一句(ShopScene.gd TopBar left_actions)
-		get_tree().change_scene_to_file(S_INV)
+	## 顶栏「🎒 背包」那颗钮绑的就是这一句(ShopScene.gd TopBar left_actions → _go_inventory;
+	##   教程里它先报「点击背包」那一步, 再走导演推进)。
+	s.call("_go_inventory")
 
 
 ## 买经验 —— 与商店那颗经验钮的 `pressed` 回调逐字同一段(`GameState.buy_season_xp()` 成功则 `_rebuild()`)。
@@ -497,7 +532,13 @@ func _do_inventory(v: Node) -> void:
 	if not _alive(v):
 		return
 	if tut:
-		await _press_tut_next()
+		## 教程最后一步「点击完成教程」—— 按产品那颗钮(InventoryScene._build_tut_finish)。
+		var fb = v.get("_tut_finish_btn")
+		if is_instance_valid(fb) and fb is Button:
+			_ev("tutorial_finish", {"label": (fb as Button).text, "guide": _guide_text()})
+			(fb as Button).emit_signal("pressed")
+		else:
+			_ev("ANOMALY", {"where": "inventory", "what": "教程里找不到「完成教程」钮"})
 	else:
 		get_tree().change_scene_to_file(S_MENU)   # 顶栏返回钮绑的就是这一句
 
@@ -535,19 +576,12 @@ func _equip_target() -> Dictionary:
 	return {}
 
 
-# ═══════════════════════════════ 图鉴(教学那一站) ═══════════════════════════════
+# ═══════════════════════════════ 图鉴 ═══════════════════════════════
 
 func _do_codex(c: Node) -> void:
-	if not bool(GameState.tutorial_active):
-		if _since() > 8.0:
-			_acted_id = c.get_instance_id()
-			await _back_to_menu(c)
-		return
-	_acted_id = c.get_instance_id()
-	await _sleep(2.0)
-	if _alive(c):
-		_shot("codex_tut")
-		await _press_tut_next()
+	if _since() > 8.0:
+		_acted_id = c.get_instance_id()
+		await _back_to_menu(c)
 
 
 # ═══════════════════════════════ 每个界面逛一遍 ═══════════════════════════════
@@ -568,21 +602,21 @@ func _tour(m: Node) -> void:
 	if _alive(m):
 		_shot("tour_02_week"); seen.append("赛程页")
 		m.call("_close_week_popup")
-	## ② 右上「?」(pressed → _on_tutorial: 弹「先下场练练」确认框) → 点「等会儿」
+	## ② 右上「?」(pressed → _on_tutorial: 弹「新手教程」选择框) → 点「取消」
 	await _sleep(0.6)
 	if _alive(m):
 		m.call("_on_tutorial")
 		await _sleep(1.0)
-		var ov := m.get_node_or_null("TutorialConfirm")
+		var ov := m.get_node_or_null("TutorialChoice")
 		_shot("tour_03_help"); seen.append("帮助?")
 		if ov == null:
-			_ev("ANOMALY", {"where": "tour", "what": "点 ? 没弹出确认框"})
+			_ev("ANOMALY", {"where": "tour", "what": "点 ? 没弹出教程选择框"})
 		else:
-			var later := _find_button(ov, "等会儿")
+			var later := ov.find_child("CancelTutorial", true, false) as Button
 			if later != null:
 				later.emit_signal("pressed")
 			else:
-				_ev("ANOMALY", {"where": "tour", "what": "确认框里找不到「等会儿」"})
+				_ev("ANOMALY", {"where": "tour", "what": "选择框里找不到「取消」"})
 	## ③ 以下每一项: 主菜单上的入口 → 等进场 → 截图 → 用那一屏自己的返回钮回来
 	var steps := [
 		["tour_04_inventory", "背包", S_INV, func(mm): mm.call("_go", "Inventory")],
@@ -683,44 +717,25 @@ func _back_to_menu(sc: Node) -> void:
 
 # ═══════════════════════════════ 新手引导 ═══════════════════════════════
 
-## 引导条(TutorialGuide)在就一步一步点「下一步 / 知道了 / 完成」。上限防死循环。
+## 引导条没有按钮(2026-10-07 重做) —— 这里只**记账**: 当前显示的那一句换了就记一行事件,
+##   事后对照「每一步是不是都出现过、按什么顺序」。推进靠本节点做的真动作。
+var _last_guide := ""
+var _guide_n := 0
 func _drain_guides() -> void:
-	for _i in range(20):
-		var g := _guide()
-		if g == null:
-			return
-		var row = g.get("_btn_row")
-		var nxt: Button = null
-		if row is Node:
-			for c in (row as Node).get_children():
-				if c is Button and not (c as Node).is_queued_for_deletion():
-					nxt = c      # 最后一颗 = 下一步/完成(跳过钮在它前面)
-		if nxt == null:
-			return
-		var idx := int(g.get("_idx"))
-		nxt.emit_signal("pressed")
-		_ev("guide_next", {"idx": idx, "label": nxt.text})
-		await _sleep(0.6)
+	var t := _guide_text()
+	if t != _last_guide:
+		_last_guide = t
+		if t != "":
+			_guide_n += 1
+			_ev("guide_step", {"n": _guide_n, "text": t, "scene": _scene_path})
+			_shot("guide_%02d" % _guide_n)
 
 
-func _guide() -> Node:
+func _guide_text() -> String:
 	for n in get_tree().get_nodes_in_group("tut_overlay"):
-		if is_instance_valid(n) and n.get("_btn_row") != null and not n.is_queued_for_deletion():
-			return n
-	return null
-
-
-## 教学里商店/背包/图鉴右上那颗「下一站」钮(TutorialDirector.attach_next_button 建的)。
-func _press_tut_next() -> void:
-	await _drain_guides()
-	for n in get_tree().get_nodes_in_group("tut_overlay"):
-		if n is CanvasLayer:
-			for c in n.get_children():
-				if c is Button:
-					_ev("tut_next", {"label": (c as Button).text})
-					(c as Button).emit_signal("pressed")
-					return
-	_ev("ANOMALY", {"where": _scene_path, "what": "教学里找不到「下一站」钮"})
+		if is_instance_valid(n) and n.has_method("is_showing") and not n.is_queued_for_deletion() and bool(n.call("is_showing")):
+			return str(n.call("current_text"))
+	return ""
 
 
 # ═══════════════════════════════ 小工具 ═══════════════════════════════
@@ -747,13 +762,6 @@ func _wait_scene(path: String, timeout: float) -> Node:
 		if sc != null and sc.scene_file_path == path:
 			return sc
 		await get_tree().process_frame
-	return null
-
-
-func _find_button(root: Node, text: String) -> Button:
-	for b in root.find_children("*", "Button", true, false):
-		if (b as Button).text == text:
-			return b
 	return null
 
 

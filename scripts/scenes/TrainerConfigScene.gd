@@ -10,12 +10,12 @@ const TopBar = preload("res://scripts/util/top_bar.gd")
 ## 全部技能池(被动 + 主动·**N 选 1**, N 就是本数组长度)。icon 供卡片显示; kind 显示"被动/主动"。
 const SKILLS := [
 	{"id": "magic_stone", "kind": "被动", "name": "魔法石", "icon": "res://assets/sprites/vfx/magic-stone-icon.png", "desc": "普攻额外造成目标最大生命 2% 的魔法伤害。每次出手让自己攻速 +3%，整场不断累积、没有上限。层数攒到 10、25、50 时，身上会亮起共鸣。"},
-	{"id": "hook", "kind": "主动", "name": "钩锁", "icon": "res://assets/sprites/vfx/hook-skill-icon.png", "desc": "冷却一好就自动朝最近的敌人甩出钩索，勾住 2000 码内第一个敌人：眩晕 4 秒，一路拖到大师身边，期间它受到的伤害 +25%。冷却 20 秒；钩空了只冷却 10 秒。"},
-	{"id": "fury_potion", "kind": "主动", "name": "怒火药水", "icon": "res://assets/sprites/vfx/fury-potion-icon.png", "desc": "冷却一好就自动朝最近的敌人丢出药水(射程 2000 码)。落点 300 码内的友军获得 5 秒狂热：攻速 +30%，移速 +25%，龟能充能 +25%。冷却 16 秒。"},
-	{"id": "whistle", "kind": "主动", "name": "口哨", "icon": "res://assets/sprites/vfx/whistle-icon.png", "desc": "冷却一好就自动吹哨，唤来一种帮手，三者随机。护盾：全体友军获得 700 点临时生命，5 秒后逐渐消退。灵龟：召出一只灵体小龟，蓄力后打出贯穿 2000 码的气波，命中的敌人受到 100 点、加目标最大生命 15% 的真实伤害、被击飞，破甲 30% 持续 5 秒。狂暴：全体友军 4 秒内攻击力 +20%、每次出手 +20 点吸血，且不会死亡。冷却 14 秒。"},
-	{"id": "glacier", "kind": "主动", "name": "冰川", "icon": "res://assets/sprites/vfx/glacier-icon.png", "desc": "冷却一好就自动朝最近的敌人铺出一条 2000 码长的冰川，留存 6 秒。站在冰面上的敌人移速 -40%，受到的伤害 +20%。冷却 17 秒。"},
-	{"id": "hunt_order", "kind": "主动", "name": "猎龟令", "icon": "res://assets/sprites/vfx/hunt-order-icon.png", "desc": "冷却一好就自动锁定 2000 码内最近的敌人，持续 15 秒：它受到的伤害 +15%，而它周围 400 码内的友军会优先揍它 —— 这个范围跟着它走。冷却 30 秒；没锁中只冷却 15 秒。"},
-	{"id": "tame", "kind": "主动", "name": "驯服", "icon": "res://assets/sprites/vfx/tame-icon.png", "desc": "冷却一好就自动标记 2000 码内最近的敌人。它下次死亡时不会真死，而是以 30% 最大生命复活、倒向我方，复活后 2.5 秒无敌，此后每秒损失 2% 最大生命。驯服来的龟能一直跟你打到决胜。冷却 60 秒；没标中只冷却 30 秒。"},
+	{"id": "hook", "kind": "主动", "name": "钩锁", "icon": "res://assets/sprites/vfx/hook-skill-icon.png", "desc": "冷却结束后自动朝最近的敌人射出钩索，命中 2000 码内第一个敌人：眩晕 4 秒并拉至大师身边，期间目标受到的伤害 +25%。冷却 20 秒；未命中时冷却 10 秒。"},
+	{"id": "fury_potion", "kind": "主动", "name": "怒火药水", "icon": "res://assets/sprites/vfx/fury-potion-icon.png", "desc": "冷却结束后自动朝最近的敌人投掷药水（射程 2000 码）。落点 300 码内的友军获得 5 秒狂热：攻速 +30%，移速 +25%，龟能充能 +25%。冷却 16 秒。"},
+	{"id": "whistle", "kind": "主动", "name": "口哨", "icon": "res://assets/sprites/vfx/whistle-icon.png", "desc": "冷却结束后自动吹哨，随机召唤以下一种。护盾：全体友军获得 700 点临时生命，5 秒后逐渐消退。灵龟：召出一只灵体小龟，蓄力后打出贯穿 2000 码的气波，命中的敌人受到 100 点、加目标最大生命 15% 的真实伤害、被击飞，破甲 30% 持续 5 秒。狂暴：全体友军 4 秒内攻击力 +20%、每次出手 +20 点吸血，且不会死亡。冷却 14 秒。"},
+	{"id": "glacier", "kind": "主动", "name": "冰川", "icon": "res://assets/sprites/vfx/glacier-icon.png", "desc": "冷却结束后自动朝最近的敌人生成一条 2000 码长的冰川，持续 6 秒。冰面上的敌人移速 -40%，受到的伤害 +20%。冷却 17 秒。"},
+	{"id": "hunt_order", "kind": "主动", "name": "猎龟令", "icon": "res://assets/sprites/vfx/hunt-order-icon.png", "desc": "冷却结束后自动锁定 2000 码内最近的敌人，持续 15 秒：目标受到的伤害 +15%，其周围 400 码内的友军优先攻击该目标（范围随目标移动）。冷却 30 秒；未命中时冷却 15 秒。"},
+	{"id": "tame", "kind": "主动", "name": "驯服", "icon": "res://assets/sprites/vfx/tame-icon.png", "desc": "冷却结束后自动标记 2000 码内最近的敌人。该敌人下次死亡时以 30% 最大生命复活并加入我方，复活后 2.5 秒无敌，此后每秒损失 2% 最大生命，持续作战至决胜阶段。冷却 60 秒；未命中时冷却 30 秒。"},
 ]
 ## 三形象(2026-07-26 定稿·PixelLab)。sprite = 南向立绘, 用于选择卡缩略 + 大预览。
 const APPEARANCES := [
@@ -138,7 +138,7 @@ func _build_ui() -> void:
 	# 左栏: 形象
 	var col_l := VBoxContainer.new()
 	col_l.add_theme_constant_override("separation", 8)
-	col_l.add_child(_heading("挑个模样"))
+	col_l.add_child(_heading("选择形象"))
 	col_l.add_child(_appearance_section())
 	main.add_child(col_l)
 
@@ -161,7 +161,7 @@ func _build_ui() -> void:
 	## ⚠ 这一行的形状被 `tests/verify_trainer_skill_count.gd` 钉着, 改文案要守三条:
 	##   ① 必须以「技能」开头  ② 必须含「选」  ③ 第一串阿拉伯数字必须 == SKILLS.size()
 	##   (它当年抓到的正是这一行长期写着「五选一」而数组已经 7 条)。
-	col_r.add_child(_heading("技能　%d 门里只选 1 门 · 被动与主动不可兼得" % SKILLS.size()))
+	col_r.add_child(_heading("技能（%d 选 1）· 主动与被动不可同时选择" % SKILLS.size()))
 	col_r.add_child(_skill_row())
 	var desc_panel := PanelContainer.new()
 	desc_panel.add_theme_stylebox_override("panel", _nine("panel-frame.png", 20,
@@ -203,7 +203,7 @@ func _build_ui() -> void:
 	## ⚠ 主 CTA 的文字里不要再出现「返回 / ← / ‹」: `tests/verify_top_bar.gd` 的规则是
 	##   「厚签牌只给主 CTA」, 它靠**文字里带返回字样**去认返回键(并靠"含保存"把这个按钮排掉)。
 	##   这一屏目前不在它的 SCREENS 里, 但别给以后埋一个"主 CTA 被当成返回键"的坑。
-	save_btn.text = "就这么定了"
+	save_btn.text = "保存"
 	save_btn.add_theme_font_size_override("font_size", 19)
 	save_btn.custom_minimum_size = Vector2(210, 81)
 	save_btn.focus_mode = Control.FOCUS_NONE
@@ -211,7 +211,7 @@ func _build_ui() -> void:
 	save_btn.pressed.connect(_save_and_back)
 	row.add_child(save_btn)
 	var back_btn := Button.new()
-	back_btn.text = "算了不改了"
+	back_btn.text = "取消"
 	back_btn.custom_minimum_size = Vector2(210, 81)
 	back_btn.focus_mode = Control.FOCUS_NONE
 	## ★次操作走薄片皮; **主 CTA「保存并返回」保留厚金属签牌** ——

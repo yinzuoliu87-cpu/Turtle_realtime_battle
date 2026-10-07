@@ -44,7 +44,7 @@ func _ready() -> void:
 					if over > 0.5:
 						clipped += 1
 						worst.append("第%d只 超%.0fpx" % [i, over])
-			elif c is Label and str((c as Label).text).begins_with("点开看全部"):
+			elif c is Label and str((c as Label).text).begins_with("查看全部") and (c as Label).horizontal_alignment == HORIZONTAL_ALIGNMENT_RIGHT:
 				hints += 1
 	print("=== 图鉴技能卡截断实测(全 %d 只) ===" % _inst._items.size())
 	print("  卡片正文 %d 张 · 被截断 %d 张 · 提示条 %d 条" % [cards, clipped, hints])

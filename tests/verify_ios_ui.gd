@@ -280,7 +280,7 @@ func _check_login_wall(vp: Vector2) -> void:
 	##   改了屏上那个字而这里还找旧的, 就会拿到一条“背后设置页漏出来了”的假红。
 	## ★★★ 2026-09-29 拆墙之后「关闭」不再是**可选项**: 这一屏必须有出口。
 	##   白名单里留着它只是「不当漏出来」, 下面另有一条**要求它在**。
-	var _wall_ok := ["发验证码", "确认", "回上一步改邮箱", "关闭",
+	var _wall_ok := ["发送验证码", "确认", "修改邮箱", "关闭",
 		str(_P2C_IOS.NICK_REROLL)]
 	var _leak: Array = []
 	for _n in names:
@@ -289,7 +289,7 @@ func _check_login_wall(vp: Vector2) -> void:
 	_ok("登录墙: ★分母 可见按钮 %d 个, 且全是墙自己的(背后设置页没漏出来)" % btns.size(),
 		btns.size() >= 1 and _leak.is_empty(), "漏出来的: %s / 全部: %s" % [str(_leak), str(names)])
 	_ok("绑定屏: ★分母 这一步至少露着一个能往下走的键",
-		names.has("发验证码") or names.has("确认"), str(names))
+		names.has("发送验证码") or names.has("确认"), str(names))
 	## ★★★WALL_SOFT: 墙拆了 ⇒ 这一屏必须有**出口**。
 	##   旧版本这里守的是反过来那一件(墙上不许有关闭), 而那条需求已作废。
 	## ★这一条只管「出口在屏幕上」; 「点下去真的关得掉」由

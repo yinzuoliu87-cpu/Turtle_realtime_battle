@@ -267,6 +267,12 @@ func _ready() -> void:
 	# ★首次打开强制新手教学(用户2026-07-23)。判据: 从没走完过教学(onboarded=false)。
 	#   ONBOARD=1/0 可强制开/关, 供开发与门禁 —— 否则本机跑一次就 onboarded=true, 再也测不到。
 	_maybe_first_launch_tutorial()
+	## 教程走完回到主菜单: 飘一行「教程完成」(方案书 §6.1 完成提示)。导演只留一句话, 由这里说出来。
+	var _tdm = get_node_or_null("/root/TutorialDirector")
+	## ★用 get/set 不直接点属性: 导演是 autoload, 万一跑的是旧版本(没有这个字段)也只是不飘字, 不报错中断 _ready。
+	if _tdm != null and str(_tdm.get("pending_toast")) not in ["", "<null>"]:
+		_toast(str(_tdm.get("pending_toast")))
+		_tdm.set("pending_toast", "")
 
 
 ## 内容框居中于真实视口 (1:1 PoC FIT 居中); bg 在 self 上随视口自适应
@@ -1044,7 +1050,7 @@ func _gauntlet_status_line(now: int = 0) -> String:
 	if not _P2C.phase_mode_live(_P2C.PHASE_GAUNTLET):
 		return ""
 	if not GameState.gauntlet_eligible():
-		return "闯关赛 · 本周没晋级"
+		return "闯关赛 · 未晋级"
 	var w: int = int(GameState.gauntlet_wins)
 	var l: int = int(GameState.gauntlet_losses)
 	var lab: String = _P2C.gauntlet_label(w, l)
@@ -1055,13 +1061,13 @@ func _gauntlet_status_line(now: int = 0) -> String:
 	var bf: Dictionary = GameState.backfill_summary()
 	var conv: String = ""
 	if int(bf.get("games", 0)) > 0:
-		conv = " · 没打的 %d 场化成 深海币 +%d · 经验 +%d" % [
+		conv = " · 未使用 %d 场已折算：深海币 +%d · 经验 +%d" % [
 			int(bf["games"]), int(bf["coins"]), int(bf["xp"])]
 	if st == _P2C.GAUNTLET_IN:
 		return "闯关赛 %s · 已晋级决赛日%s" % [lab, conv]
 	if st == _P2C.GAUNTLET_OUT:
 		return "闯关赛 %s · 已出局%s" % [lab, conv]
-	return "闯关赛 %s · 再赢 %d 场晋级 / 再输 %d 场出局%s" % [
+	return "闯关赛 %s · 晋级还需 %d 胜 / 剩余 %d 负%s" % [
 		lab, maxi(0, int(_P2C.GAUNTLET_WINS_IN) - w), maxi(0, int(_P2C.GAUNTLET_LOSSES_OUT) - l), conv]
 
 
@@ -1096,7 +1102,7 @@ func _finals_status_line(now: int = 0) -> String:
 		## ★打过闯关赛但没打进 —— **不许说他「没晋级」**(周一~五刚夸过他已过晋级线),
 		##   与 `finals_block_msg(false, true)` 同一个口径。
 		return "决赛日 · 闯关赛止步 %s" % lab
-	return "决赛日 · 本周没晋级"
+	return "决赛日 · 未晋级"
 
 
 ## 今天这一天该在状态行里显示哪一段。空串 = 照旧显示积分赛那一行(命 + 本周配额)。
@@ -1881,9 +1887,13 @@ func week_card_info(ph: String, now: int) -> Dictionary:
 					_local_stamp(_P2C.gauntlet_close_ts(anchor))]
 			_P2C.PHASE_FINALS:
 				chips = [[1, "负淘汰"], [int(_P2C.FINALS_SHOP_SEC / 60.0), "分钟备战"]]
-				pts = ["单败淘汰，胜者进入下一轮",
-					"冠军、亚军、四强获得头衔",
-					"%s 开赛" % _local_wd_hhmm(_utc_today_at(anchor + 6 * 86400, int(_P2C.FINALS_SEAT_HOUR_UTC)))]
+				## ★2026-10-07 用户「那么上午就叫小组赛啊，晚上叫冠军杯赛」: 两段各自的开赛时刻都写出来。
+				pts = ["%s %s · %s %s" % [_P2C.STAGE_GROUP,
+						_P2C.local_hhmm(_utc_today_at(anchor + 6 * 86400, int(_P2C.FINALS_SEAT_HOUR_UTC))),
+						_P2C.STAGE_CUP,
+						_P2C.local_hhmm(_utc_today_at(anchor + 6 * 86400, int(_P2C.FINALS_START_HOUR_UTC)))],
+					"组冠军进入%s，单败决出冠军" % _P2C.STAGE_CUP,
+					"冠军、亚军、四强、组冠军获得头衔"]
 	## ── 锁(只锁现在和以后; 过去的阶段只说「已结束」) ──
 	if state != "past":
 		match ph:
@@ -1908,7 +1918,7 @@ func week_card_info(ph: String, now: int) -> Dictionary:
 		var kind: String = _close_kind_at(now)
 		if kind == BK_MAINTENANCE:
 			var n := _SB.notice_text()
-			pts.push_front(n if n != "" else "版本维护，请稍后再来")
+			pts.push_front(n if n != "" else "版本维护中")
 		elif ph == _P2C.PHASE_FINALS and kind == BK_BRACKET_DOOR:
 			info["door"] = WEEK_DOOR_BRACKET
 		elif ph == _P2C.PHASE_GAUNTLET and _P2C.phase_mode_live(_P2C.PHASE_GAUNTLET) \
@@ -2297,7 +2307,7 @@ func _shop_block_msg(ts: int) -> String:
 		SHOP_LOCK_QUOTA:
 			return _msg_quota_full()
 		SHOP_LOCK_FIRST:
-			return "🔒 完成本大轮首场对战后解锁商店"
+			return "本大轮首战后解锁"
 	return ""
 
 
@@ -2384,16 +2394,16 @@ func _msg_eliminated() -> String:
 	##   原稿的终榜排序是「胜场 > 余命 > 横扫」, 余命只是第二键, 不是门槛。
 	var tail: String = _gauntlet_ahead_tail()
 	if tail != "":
-		return "💀 本大轮已出局 · %s" % tail
-	return "💀 本大轮已出局 · 下周一开新的一轮"
+		return "本大轮已出局 · %s" % tail
+	return "本大轮已出局 · 下周一重置"
 
 
 func _msg_quota_full() -> String:
 	var q: int = int(_P2C.RANKED_QUOTA)
 	var tail: String = _gauntlet_ahead_tail()
 	if tail != "":
-		return "📋 本周配额 %d 场已打满 · %s" % [q, tail]
-	return "📋 本周配额 %d 场已打满 · 下周一开新的一轮" % q
+		return "本周 %d 场已用完 · %s" % [q, tail]
+	return "本周 %d 场已用完 · 下周一重置" % q
 
 
 ## 周六点「开打」被拦住时说什么。返回空串 = 没拦, 可以开。
@@ -2412,15 +2422,15 @@ func _msg_gauntlet_block() -> String:
 		## ★2026-10-03 周六实操 S13: 14 胜 / 16 胜的人被告知「打够 11 胜就能来」——
 		##   晋级是「胜场过线 **且** 没淘汰」(gauntlet_line_reached), 这句原来不分是哪一条没过。
 		if GameState.is_eliminated() and int(GameState.season_wins) >= int(_P2C.PROMOTE_WINS):
-			return "🔒 本周没晋级 · 积分赛命用完了 · 下周一开新的一轮"
-		return "🔒 本周没晋级 · 下周一开新的一轮, 积分赛打够 %d 胜就能来" % int(
+			return "本周未晋级 · 积分赛生命已耗尽 · 下周一重置"
+		return "本周未晋级 · 下周一重置 · 积分赛 %d 胜可参加" % int(
 			_P2C.PROMOTE_WINS)
 	var st: String = GameState.gauntlet_state()
 	if st == _P2C.GAUNTLET_IN:
-		return "✅ 已晋级决赛日 · 闯关赛到此为止(%s) · 明天周日参加决赛日" % _P2C.gauntlet_label(
+		return "已晋级决赛日（%s）· 周日开赛" % _P2C.gauntlet_label(
 			int(GameState.gauntlet_wins), int(GameState.gauntlet_losses))
 	if st == _P2C.GAUNTLET_OUT:
-		return "💀 闯关赛已出局(%s) · 下周一开新的一轮" % _P2C.gauntlet_label(
+		return "闯关赛已出局（%s）· 下周一重置" % _P2C.gauntlet_label(
 			int(GameState.gauntlet_wins), int(GameState.gauntlet_losses))
 	return ""
 
@@ -2486,7 +2496,7 @@ func _battle_block_msg(now: int = 0) -> String:
 	## ★周一休赛(用户原稿: 周一 = 休赛期·发奖/终榜公示; 2026-10-05「周一哪来的比赛」)。
 	##   原来周一照常能打积分赛且计入本周场次 —— 实现漏洞, 不是设计。
 	if _P2C.phase_at_utc(ts) == _P2C.PHASE_REST:
-		return "🔒 今日休赛，积分赛周二开始"
+		return "今日休赛 · 积分赛周二开启"
 	if _P2C.phase_at_utc(ts) == _P2C.PHASE_GAUNTLET \
 			and _P2C.phase_mode_live(_P2C.PHASE_GAUNTLET):
 		return _msg_gauntlet_block()
@@ -2561,119 +2571,32 @@ func _start_battle_flow() -> void:
 	_go("TeamSelect")
 
 
-## 教程: 确认弹窗 → 固定阵容教程战斗 (1:1 PoC confirmStartTutorial → startTutorialBattle, 直进 Battle 不经选龟)
+## 右上「?」: 弹新手教程选择框(「开始教程 / 取消」)。与首启同一个框(scripts/scenes/tutorial_choice.gd)。
+## ★2026-10-07 方案书 §4.3: 原来这里是一块单独手写的弹窗, 文案口语化(「先下场练练 / 来一场热身局, 我教你挑龟、摆阵 /
+##   开打 / 等会儿」), 且是全游戏唯一重开教程的入口 —— 与首启各走各的。现在两处共用一个框。
 func _on_tutorial() -> void:
-	if has_node("TutorialConfirm"):
-		return
-	var ov := ColorRect.new()
-	ov.name = "TutorialConfirm"
-	ov.color = Color(0, 0, 0, 0.6)
-	ov.set_anchors_preset(Control.PRESET_FULL_RECT)
-	ov.mouse_filter = Control.MOUSE_FILTER_STOP
-	var box := PanelContainer.new()
-	box.anchor_left = 0.5; box.anchor_top = 0.5; box.anchor_right = 0.5; box.anchor_bottom = 0.5
-	box.grow_horizontal = Control.GROW_DIRECTION_BOTH; box.grow_vertical = Control.GROW_DIRECTION_BOTH
-	## ★★★2026-09-27 这块弹窗是**全主菜单唯一一个真正的"网页盒"**:
-	##   `#16213a` 底 + 2px 金描边 + **12px 圆角** + 一个 8px 圆角的纯色主按钮
-	##   + 一个**完全没换过皮的 Godot 默认按钮**(圆角纯灰)。
-	##   照着 `verify_ui_consistency` 的 13 条判据逐条对, 它一次占了 1(网页盒) / 2(圆角盒) / 3(默认皮)。
-	## ★★为什么门禁一直没红: 那张基线表扫的是**主菜单加载完的样子**, 而这块弹窗要按过
-	##   ❓ 磁贴才建得出来 ⇒ **被测对象根本不在场**(memory `fb-gate-subject-never-constructed`)。
-	##   跟上周那个"一周只有周日露面"的决赛日按钮是同一族: 判据没错, 只是碰不到面。
-	## ⇒ 换成共享皮肤层的九宫格金属面板(与背包/图鉴/排行榜的面板同一张皮), 零圆角零描边。
-	## ★内容留白设在**返回的那个 StyleBox 上**, 不是设在 `bsb` 上 ——
-	##   `UISkin.nine` 换掉的是整个 StyleBox, 写在 fallback 上的 margin 不会被带过去
-	##   (贴图缺失退回时才用得上, 所以两边都要设)。
-	var bsb := StyleBoxFlat.new()
-	bsb.bg_color = Color("#16213a")
-	bsb.set_border_width_all(0)
-	bsb.set_corner_radius_all(0)
-	bsb.content_margin_left = 36; bsb.content_margin_right = 36; bsb.content_margin_top = 28; bsb.content_margin_bottom = 28
-	var bframe := UISkin.nine("panel-frame.png", 20, bsb)
-	bframe.content_margin_left = 36; bframe.content_margin_right = 36
-	bframe.content_margin_top = 28; bframe.content_margin_bottom = 28
-	box.add_theme_stylebox_override("panel", bframe)
-	ov.add_child(box)
-	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 16); vb.alignment = BoxContainer.ALIGNMENT_CENTER
-	box.add_child(vb)
-	## ★★文案改口(2026-09-27)。原稿是**说明书腔**:「新手教程」/「是否开始龟龟对战教程？」——
-	##   "是否…？" 是表单确认框的句式(Are you sure you want to…), 不是游戏里会有人说的话,
-	##   而且它在**描述一个功能**(教程), 不是在**招呼玩家做一件事**。
-	## ⇒ 改成场里那位老师傅开口: 说清楚要干嘛(选龟 + 摆阵), 一句话, 不带问句模板。
-	var t := Label.new()
-	t.text = "先下场练练"; t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	t.add_theme_font_size_override("font_size", 20); t.add_theme_color_override("font_color", Color("#ffd93d"))
-	vb.add_child(t)
-	var d := Label.new()
-	d.text = "来一场热身局, 我教你挑龟、摆阵"; d.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	d.add_theme_font_size_override("font_size", 15); d.add_theme_color_override("font_color", Color("#e8d9b0"))
-	vb.add_child(d)
-	var bh := HBoxContainer.new()
-	bh.alignment = BoxContainer.ALIGNMENT_CENTER; bh.add_theme_constant_override("separation", 14)
-	vb.add_child(bh)
-	## ★主按钮: 原来是 `#ffc23c` 纯色 + **8px 圆角** —— 那是 Bootstrap 的 primary button,
-	##   不是像素游戏的按钮。走 `UISkin.button` 上金属签牌皮(它自己按真实尺寸挑框:
-	##   120×40 短边 <56 ⇒ 用 48×24 的 `chip-frame`, 正是给这个尺寸画的那张)。
-	## ★文字色跟着改: 签牌是**深色金属**, 原来那个深褐 `#3a1f00` 压在上面根本读不出
-	##   (它是配亮金底的)。换暖金字。
-	var start_btn := Button.new()
-	start_btn.text = "开打"; start_btn.custom_minimum_size = Vector2(120, 40)
-	start_btn.add_theme_color_override("font_color", Color("#ffe9a8"))
-	UISkin.button(start_btn, Color("#ffd08a"))
-	start_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	bh.add_child(start_btn)
-	## ★次按钮原来是**一个字都没动过的 Godot 默认皮**(圆角纯灰) ——
-	##   `ui_skin.gd` 头注里记着的那 12 个"没游戏味最直接的来源", 这是漏网的第 13 个。
-	##   (它连门禁第 3 条都躲过了, 因为那条先查 `has_theme_stylebox_override`,
-	##    而默认主题不是 override —— 跟战斗面板「✕」「详细」两个按钮当年一模一样。)
-	## ★「取消」也是表单词。这里不是在取消一个操作, 是在回一句话。
-	var cancel_btn := Button.new()
-	cancel_btn.text = "等会儿"; cancel_btn.custom_minimum_size = Vector2(96, 40)
-	cancel_btn.add_theme_color_override("font_color", Color("#c6d2e0"))
-	UISkin.button(cancel_btn, Color("#9fb6c9"))
-	cancel_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	bh.add_child(cancel_btn)
-	start_btn.pressed.connect(func() -> void:
-		ov.queue_free()
-		_begin_tutorial(false))   # ❓ 手动重玩: 可跳过(mandatory=false)
-	cancel_btn.pressed.connect(func() -> void: ov.queue_free())
-	add_child(ov)
+	TutorialChoice.open(self, false)
 
 
-## 首次打开 → 强制走教学(不弹确认框、不能跳)。已走完(onboarded)则不触发。
+## 首次打开 → 弹选择框「开始教程 / 跳过」(用户 2026-10-07「一般是有跳过和开始教程选项啊」)。
+## 已看过(onboarded) / ONBOARD=0 → 不弹; ONBOARD=1 → 强制弹(门禁用)。
 func _maybe_first_launch_tutorial() -> void:
 	if OS.get_environment("ONBOARD") == "0":
 		return   # 显式关(测试/开发)
 	var force := OS.get_environment("ONBOARD") == "1"
-	# ★只在【真正作为当前主场景】时触发 —— 冒烟/门禁把主菜单当子节点 instantiate() 时,
-	#   get_tree().current_scene 不是它, 这时 change_scene 会搅乱人家的场景树(smoke 报 44 条 null)。
-	#   force(ONBOARD=1)时放行, 供门禁真跑首次流程。
+	# ★只在【真正作为当前主场景】时触发 —— 冒烟/门禁把主菜单当子节点 instantiate() 时不弹。
 	if not force and get_tree().current_scene != self:
 		return
-	if not force and GameState.onboarded:
-		return   # 走完过, 不再强制
 	if not force and GameState.tutorial_active:
-		return   # 已经在教学里(防重入)
-	_begin_tutorial(true)   # 首次: mandatory=true(无跳过)
-
-
-## 统一的教学启动: 从【选龟界面】进第一把(教选龟+站位)。mandatory=首次不能跳。
-## ★沙盒(tutorial_active): 不给奖励(_settle_season 直接 return)、固定阵容、弱对手。
-## ★走完整流程(选龟→双路战斗含摆位), 但选龟界面只显 3 只教学龟(用户2026-07-23)。
-func _begin_tutorial(mandatory: bool) -> void:
-	GameState.tutorial = true
-	GameState.tutorial_active = true
-	GameState.dual_active = true               # 双路模式 → 战斗有【摆位阶段】可教站位
-	GameState.tutorial_stage = "match1_pick"   # 导演: 第一把从选龟开始
-	GameState.tutorial_mandatory = mandatory
-	GameState.dungeon_stage = 1
-	GameState.dungeon_carry_hp = {}; GameState.dungeon_dead_ids = []
-	GameState.clear_team()
-	var _td = get_node_or_null("/root/TutorialDirector")
-	if _td != null:
-		_td.begin_sandbox()    # 快照真经济+发教学币(结束还原, 不给奖励)
-	get_tree().change_scene_to_file("res://scenes/TeamSelect.tscn")
+		return   # 已经在教程里(防重入)
+	## ★老存档迁移(方案书 §4.3): 打过积分赛却没有 onboarded 标记的号(早期 ONBOARD=0 建的 sim 号 / 老玩家)
+	##   ⇒ 静默记成看过, 不弹框。
+	if not force and not GameState.onboarded and (int(GameState.season_total_battles) > 0 or not GameState.match_history.is_empty()):
+		GameState.onboarded = true
+		GameState.save()
+	if not force and GameState.onboarded:
+		return
+	TutorialChoice.open(self, true)
 
 
 ## ══════════════════════════════════════════════════════════════════════
@@ -2723,13 +2646,16 @@ func _finals_title_pull(now: int) -> void:
 
 func _finals_title_tick() -> void:
 	if _ft_sent:
-		if not _SB.finals_tried():
-			return                                    # 还在路上
+		if not _SB.finals_tried() or not _SB.finals_week_tried():
+			return                                    # 还在路上(我那组 + 冠军杯赛两份都要等回音)
 		_ft_sent = false
 		var v: Dictionary = _SB.finals_cached()
 		if str(v.get("reason", "")) != _SB.UNREACHABLE:
 			## 问到了: 有桶就走那条链; 没桶(观众 / 人不够)那条链自己会一个字都不记。
 			_BMS.record_progress_from(v)
+			## ★冠军杯赛(2026-10-07): 冠军 / 亚军 / 四强从杯那一张来 —— 不进对阵图也要对得上账。
+			##   服务端没部署 / 没成表 ⇒ `finals_cup_cached()` 是空的, 那条链一个字都不记。
+			_BMS.record_cup_from(_SB.finals_cup_cached())
 			finals_title_records += 1
 			_finals_title_stop()
 			return
@@ -2744,6 +2670,8 @@ func _finals_title_tick() -> void:
 	## ★先清缓存: 不清的话, 上一次(比如刚从对阵图回来)留下的旧视图会被当成这次的答案。
 	_SB.finals_clear()
 	_SB.fetch_finals_async(_ft_week, -1)
+	_SB.finals_week_clear()
+	_SB.fetch_finals_week_async(_ft_week)
 	_ft_sent = true
 
 

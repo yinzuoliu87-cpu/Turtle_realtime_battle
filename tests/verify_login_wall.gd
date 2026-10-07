@@ -269,16 +269,16 @@ func _t_rule() -> void:
 	_ok("① ★★★wall_dismissible: 标题**不再说「才能开始」/「必须」**(不绑也能开始)",
 		head.find("才能开始") < 0 and head.find("必须") < 0, head)
 	_ok("① ★★标题讲**绑了买到什么**(换手机/换设备 + 接得回来), 不讲代价",
-		(head.find("换手机") >= 0 or head.find("换设备") >= 0)
-			and (head.find("回来") >= 0), head)
+		(head.find("换手机") >= 0 or head.find("换设备") >= 0 or head.find("跨设备") >= 0)
+			and (head.find("回来") >= 0 or head.find("同步") >= 0), head)
 	_ok("① ★标题里也不许有威胁词", not _is_scary(head), head)
 	## 文案: 第一句要讲**买到什么**
 	var body := str(P2C.login_wall_body())
 	print("     绑定屏第一句: 「%s」" % body.split("\n")[0])
 	_ok("① ★★第一句讲**绑了买到什么**(接回来), 不是开口就说代价",
-		body.split("\n")[0].find("接回来") >= 0, body.substr(0, 40))
+		body.split("\n")[0].find("恢复进度") >= 0, body.substr(0, 40))
 	_ok("① ★★★wall_dismissible: 正文明说**不绑也能玩** —— 拆墙之后这才是真话",
-		body.find("不绑也能玩") >= 0, body)
+		body.find("未绑定时") >= 0, body)
 	_ok("① ★还告诉他收不到验证码怎么办(不然就是死路)",
 		body.find("垃圾") >= 0 or body.find("重发") >= 0 or body.find("换一个") >= 0,
 		body.substr(0, 60))
@@ -325,11 +325,11 @@ func _t_copy_tone() -> void:
 	_ok("⑦B ★★★第一句**不再是恐吓**(不开口就说丢档 / 不抬⚠)",
 		not _is_scary(str(lines[0])), str(lines[0]))
 	_ok("⑦B ★★★说了**以后还能改**(参考里到处都是这句, 它把这一步的心理成本压下去)",
-		body.find("以后") >= 0 and body.find("改") >= 0, body)
+		body.find("随时") >= 0 and body.find("修改") >= 0, body)
 	## ★★用户 2026-09-24 点名的那个**事实不许删**。两个字都要在:
 	##   “不绑”(条件) + “换手机/换设备”(场景) —— 只剩一个就不叫说清楚了。
 	_ok("⑦B ★★★「没绑邮箱换手机就拿不回来」这个**事实还在**(用户 2026-09-24 点名要的)",
-		body.find("不绑") >= 0 and (body.find("换手机") >= 0 or body.find("换设备") >= 0), body)
+		body.find("未绑定") >= 0 and body.find("仅保存在本设备") >= 0 and (body.find("更换设备") >= 0 or body.find("换手机") >= 0), body)
 	## `verify_account` §④ 的禁令: 服务端根本没存存档, 不许承诺「存档」能找回。
 	var lied: Array = []
 	for bad in ["丢失存档", "取回存档", "找回存档"]:
@@ -530,7 +530,7 @@ func _t_wall_ui() -> void:
 		labels.append(str((b as Button).text))
 	print("     绑定屏上的按钮: %s" % str(labels))
 	_ok("②b ★分母: 该有的按钮在(发验证码 / 确认)",
-		labels.has("发验证码") and labels.has("确认"), str(labels))
+		labels.has("发送验证码") and labels.has("确认"), str(labels))
 	_ok("②b ★★★WALL_SOFT: 这一屏**有出口**(一颗「关闭」) —— 关不掉的那一版已经拆了",
 		labels.has("关闭"), str(labels))
 	_ok("②b ★分母: 绑定屏立着时背后的设置页是**藏掉的**(不藏 ⇒ 下面「原样交还」恒真)",
@@ -1518,6 +1518,13 @@ func _t_open_path() -> void:
 	await _drop_scene()
 	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 	await _wf(6)
+	## ★2026-10-07 首启先弹「开始教程 / 跳过」选择框(用户「一般是有跳过和开始教程选项啊」)。
+	##   新玩家按「开始教程」—— 那是产品自己的按钮, 不是绑定控件。
+	var _menu8b = get_tree().current_scene
+	var _choice = _menu8b.get_node_or_null("TutorialChoice") if _menu8b != null else null
+	_ok("⑧b ★分母: 全新安装进主菜单 ⇒ 弹出教程选择框", _choice != null)
+	if _choice != null:
+		(_choice.find_child("StartTutorial", true, false) as Button).emit_signal("pressed")
 	var _wb: int = await _wait_scene_named("TeamSelect", 200)
 	var cur2 = get_tree().current_scene
 	print("     全新安装进主菜单后等了 %d 帧" % _wb)
@@ -1609,6 +1616,10 @@ func _t_open_path() -> void:
 	OS.set_environment("ONBOARD", "")
 	OS.set_environment("TURTLE_SUPABASE", " ")
 	SB._reset_auth_for_test()
+	## 教程沙盒收掉(把进教程前的账号状态换回来)。当前场景已清空 ⇒ 出口不换场。
+	var _td8 = get_node_or_null("/root/TutorialDirector")
+	if _td8 != null and _td8.in_sandbox():
+		_td8.end_tutorial("abandoned")
 	GameState.perf_lite = pl0
 	GameState.onboarded = ob0
 	GameState.tutorial = false

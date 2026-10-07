@@ -3,6 +3,7 @@ extends RefCounted
 const RemotePoolRef := preload("res://scripts/net/remote_pool.gd")   # 阵容同步的失败留痕(结算屏一行)
 
 const RemotePoolS = preload("res://scripts/net/remote_pool.gd")
+const TutorialGuide := preload("res://scripts/scenes/TutorialGuide.gd")   # 教程锚点: vis_rect(结算屏淡入完才挖洞)
 
 ## 结算屏等"阵容已上传"回执的轮询节奏。总等待 = 0.4 × 20 = 8 秒,
 ## 比 RemotePool.TIMEOUT_SEC(6 秒) 略长 —— 请求要么在这之前回来, 要么已经放弃了。
@@ -128,6 +129,10 @@ func _build_topright_btns() -> void:
 	battle._surrender_btn = _mk_icon_btn(ICON_SURRENDER, _pos["surrender"], "认输")
 	battle._surrender_btn.pressed.connect(battle._show_surrender_confirm)
 	battle._ui_layer.add_child(battle._surrender_btn)
+	## ★教程里没有退出入口(用户 2026-10-07「教程里就不应该有返回键啊」): 认输 = 离场, 藏起。
+	var _tds = battle.get_node_or_null("/root/TutorialDirector")
+	if _tds != null and _tds.is_active():
+		battle._surrender_btn.visible = false
 
 	_build_surrender_panel()
 	_build_log_panel()
@@ -181,19 +186,19 @@ func _build_surrender_panel() -> void:
 	##   第二行说**后果**(这一场就算输了, 按下去就收不回来);
 	##   第三行说**玩家真正会担心的那件事** —— 认输不等于白打, 该结的照结。
 	var title := Label.new()
-	title.text = "真要认输?"
+	title.text = "确认认输？"
 	title.add_theme_font_size_override("font_size", 40)
 	title.add_theme_color_override("font_color", Color("#ffb3b3"))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title)
 	var tip := Label.new()
-	tip.text = "举白旗 · 这一场就算输了, 按下去收不回来"
+	tip.text = "认输后本场判负，且无法撤销"
 	tip.add_theme_font_size_override("font_size", 19)
 	tip.add_theme_color_override("font_color", Color("#cfe6ff"))
 	tip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(tip)
 	var tip2 := Label.new()
-	tip2.text = "打到这里的战报和奖励照算, 不会白打"
+	tip2.text = "已获得的战报与奖励将保留"
 	tip2.add_theme_font_size_override("font_size", 15)
 	tip2.add_theme_color_override("font_color", Color("#8a93a0"))
 	tip2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -206,7 +211,7 @@ func _build_surrender_panel() -> void:
 	##   换成【说清各自要干什么】——「再打」是留下来继续打, 「认输」是走。
 	##   ★门禁不看这两个字: `verify_battle_ui` 走的是 `_hide_surrender_confirm()` /
 	##     `_do_surrender()` 两个方法, 不按文字找按钮(已核实), 所以改字是安全的。
-	row.add_child(battle._make_result_btn("再打", Color("#8a93a0"), Color("#12161f"),
+	row.add_child(battle._make_result_btn("再来一局", Color("#8a93a0"), Color("#12161f"),
 		func() -> void: battle._hide_surrender_confirm()))
 	row.add_child(battle._make_result_btn("认输", Color("#ff6b6b"), Color("#3a0000"),
 		func() -> void: battle._do_surrender()))
@@ -1244,7 +1249,7 @@ func _show_banner(won: bool, _sealed_hint: bool = false) -> void:
 	if battle._dmg_stats != null and battle._dmg_stats.panel != null \
 			and is_instance_valid(battle._dmg_stats.panel):
 		battle._dmg_stats.panel.visible = false
-	battle._log("[color=%s]%s[/color]" % ["#ffd93d" if won else "#ff6b6b", "🏆 战斗胜利!" if won else "💀 战斗失败!"])
+	battle._log("[color=%s]%s[/color]" % ["#ffd93d" if won else "#ff6b6b", "胜利" if won else "失败"])
 	# §AUDIO: 结算 — 败方放 defeat 音; BGM 淡出收尾.
 	# ⚠缺口(2026-07-21 核实): assets/audio/sfx/ 下【只有 defeat.wav, 没有胜利音】,
 	#   所以赢了是静悄悄的。不在这里硬写一个 "victory" —— 文件不存在时 battle._audio_sys._sfx_simple 是
@@ -1279,17 +1284,20 @@ func _settle_buttons(btn_row: HBoxContainer) -> void:
 	var shop_fc := Color("#ffe7a0")
 	var menu_tint := Color("#c9d3de")
 	var menu_fc := Color("#e8f0f6")
-	# ★教学模式: 结算按钮走导演(战斗1打完→商店, 战斗2打完→结束回菜单), 而不是直接返回菜单。
+	# ★教程: 只有一颗「前往商店」(走导演推进到商店站); 没有「返回主菜单」——
+	#   用户 2026-10-07「教程里就不应该有返回键啊，要一直跟着教程走啊」。
+	#   ★点了才 next_scene_after 推进 stage(建按钮时不改状态)。
 	var _td = battle.get_node_or_null("/root/TutorialDirector")
 	if _td != null and _td.is_active():
-		# ★文字用 _peek_next【只读】—— 用 next_scene_after 会在【建按钮时】就推进 stage,
-		#   导致战斗1一结算 stage 就跳到 shop, 玩家还没点。点了才 next_scene_after 真推进。
-		var _peek: String = _td._peek_next("battle")
-		var _label: String = "前往商店" if _peek.ends_with("Shop.tscn") else ("完成新手教学" if _peek.ends_with("MainMenu.tscn") else "继续")
-		var tb: Button = battle._make_result_btn(_label, shop_tint, shop_fc,
-			func() -> void: battle.get_tree().change_scene_to_file(_td.next_scene_after("battle")))
+		var tb: Button = battle._make_result_btn(SHOP_BTN_TEXT, shop_tint, shop_fc,
+			func() -> void:
+				_td.notify("settle_continue")
+				battle.get_tree().change_scene_to_file(_td.next_scene_after("battle")))
+		tb.name = "TutorialSettleShop"
 		SettleScreenS.dress_btn(tb, shop_tint, shop_fc)
 		btn_row.add_child(tb)
+		_td.attach_guide(battle, "settle", func(nm: String) -> Rect2:
+			return TutorialGuide.vis_rect(tb) if nm == "settle_shop" else Rect2())
 		return
 	# ★★2026-08-02 补【前往商店】主按钮: 自走棋的核心节奏是「打 → 买 → 再打」。
 	#   ⚠ 赛季淘汰时【商店是锁的】(GameState.is_eliminated() → 锁匹配+商店,
@@ -1326,7 +1334,10 @@ func _result_subtitle(won: bool, gs) -> String:
 	##   落到积分赛那句「赛季胜场 +1 / 消耗 1 点生命」—— 周日不掉命, 胜负也要等揭晓, 两句都是假的。
 	##   (之前一直走的是闯关赛那一支, 所以这个缺口从没露出来过。) 排在「生命已耗尽」前面: 0 命的晋级者周日照常打。
 	if str(battle._last_settle_kind) == _P2C_HUD.SETTLE_FINALS:
-		return "决赛日 · 不消耗生命 · 胜负在下一轮开播时揭晓"
+		## ★2026-10-07: 说清是哪一段(小组赛 / 冠军杯赛) —— 组号在待揭晓那一单上(结算时 finals_match 已清)。
+		var _pr = gs.get("finals_pending_reveal")
+		var _bk: int = int((_pr as Dictionary).get("bucket", -1)) if _pr is Dictionary else -1
+		return "%s · 不消耗生命 · 结果于下轮开播时公布" % _P2C_HUD.finals_stage_name(_bk)
 	if gs.is_eliminated():
 		return "生命已耗尽 · 本大轮已出局"   # 2026-10-06 与主菜单「本大轮已出局」同一个词(60 人实操台账)
 	if battle._last_was_exhibition:
@@ -1384,7 +1395,7 @@ func _build_reward_chips(gs, cap_fs: int = 13, val_fs: int = 24) -> Control:
 	##     (`looks_broken()` 的读数后面真的跟着一次 `items.append`), 屏幕上那个词
 	##     由 `verify_hud_gamefeel` ① 接手守(它渲染真 chip 再读文本)。
 	if RemotePoolRef.looks_broken():
-		items.append(["阵容上传", "没传上去", Color("#ff8a8a")])
+		items.append(["阵容上传", "上传失败", Color("#ff8a8a")])
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 30)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -1551,7 +1562,7 @@ func _build_edit_palette() -> void:
 	battle._edit_btn_edit = battle._debug._edit_mk_btn("⏸ 编辑", func(): battle._debug._edit_back_to_edit(), 100)
 	battle._edit_btn_edit.disabled = true
 	row_ctl.add_child(battle._edit_btn_edit)
-	row_ctl.add_child(battle._debug._edit_mk_btn("🔁 再来一把", func(): battle._debug._edit_replay(), 130))
+	row_ctl.add_child(battle._debug._edit_mk_btn("再来一局", func(): battle._debug._edit_replay(), 130))
 
 	var row_ctl2 = HBoxContainer.new(); row_ctl2.add_theme_constant_override("separation", 8); vb.add_child(row_ctl2)
 	row_ctl2.add_child(battle._debug._edit_mk_btn("清空", func(): battle._debug._edit_clear(), 90))
@@ -1904,9 +1915,6 @@ func _count_chips(n: Node) -> int:
 
 
 func _show_unit_info_panel(u: Dictionary) -> void:
-	# 引导第 2 步等的就是"玩家点开了详情面板"这个动作(advanceOn: info_panel_opened)。
-	if battle._tutorial != null and is_instance_valid(battle._tutorial):
-		battle._tutorial.notify("info_panel_opened")
 	_close_info_panel()
 	battle._selected_unit = u
 	if battle._ui_layer == null:
@@ -2148,6 +2156,16 @@ func on_viewport_resized() -> void:
 		(battle._surrender_btn as Control).position = pos["surrender"]
 
 
+## 教程右上「跳过教程」的位置(TutorialChrome 找宿主的 `_hud.tutorial_skip_slot`):
+##   教程里认输键是藏起来的 ⇒ 用它那一格(战报键正下方), 右沿对齐; 顶部对阵条上全是名字/血量, 没有空位。
+func tutorial_skip_slot() -> Rect2:
+	var pos: Dictionary = _topright_positions()
+	var vp: Vector2 = Vector2(battle.get_viewport().get_visible_rect().size)
+	var m: Vector4 = SafeArea.margins(vp, 12.0)
+	var sz := Vector2(132, 44)
+	return Rect2(Vector2(vp.x - m.z - sz.x, (pos["surrender"] as Vector2).y), sz)
+
+
 ## 右上角两个键的摆位(按右边缘 + 安全区反算)。★建与重摆共用这一处, 别在两边各算一遍。
 func _topright_positions() -> Dictionary:
 	var vp: Vector2 = Vector2(battle.get_viewport().get_visible_rect().size)
@@ -2269,7 +2287,7 @@ func sweep_ui_vfx() -> int:
 ## 取到旗子就显示、然后把计时器停掉(旗子是一次性的, 见 RemotePool.consume_upload_flash)。
 func _attach_upload_flash(card: Control) -> void:
 	var lb := Label.new()
-	lb.text = "阵容已上传 · 别人可能会打到你"
+	lb.text = "阵容已上传"
 	lb.add_theme_font_size_override("font_size", 14)
 	lb.add_theme_color_override("font_color", Color("#7fd8a0"))
 	lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -2403,6 +2421,12 @@ func build_replay_bar() -> void:
 func show_replay_mismatch() -> void:
 	if _replay_ui != null:
 		_replay_ui.show_mismatch()
+
+
+## 观赛中断(live_spectate: 打的人断线 / 前后两份对不上)⇒ 收尾卡写那句话, 只有「返回」。
+func show_live_broken(_why: String) -> void:
+	if _replay_ui != null:
+		_replay_ui.show_broken()
 
 
 func show_replay_end(won: bool) -> void:
