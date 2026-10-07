@@ -108,6 +108,9 @@ SKIP_TYPE = re.compile(r":\s*(Vector[234]i?|Color|Rect2i?|Transform[23]D|Quatern
 ## 【测试缝】: 产品**只读**、**只有 tests/ 写** —— 那是设计如此(产品不该写它, 门禁要注入它)。
 ## 逐条都去看过声明处的头注, 不是按名字猜的。
 WHY = {
+    "debug_level": "强制全员等级的测试缝(GameState.gd 头注)。唯一的产品写入方 —— 图鉴右上角调试面板 —— "
+                   "2026-10-07 按用户「右上角调试器直接删掉」整块删除; 战斗 `_unit_level` / 图鉴 `_battle_level` / "
+                   "回放录制仍读它(正式对局恒 0), 门禁 verify_codex_battle_parity 写它来验「强制等级」那条路",
     "NO_PRESENT": "对照实验快路径(dual_lane_flow.gd:19 头注:「只给离线统计用; 正式对局绝不会设它」)",
     "NO_TRAINER": "对照实验开关(RealtimeBattle3DScene.gd:650:「true 则不生成训龟大师」, 胜率测试用)",
     "now_override_ts": "phase2_config 的纯静态**时间缝** —— 门禁要把「现在」钉在某一刻",

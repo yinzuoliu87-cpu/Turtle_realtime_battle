@@ -135,19 +135,24 @@ func _ready() -> void:
 		_set_cam(s, RB.CAM_ZOOM_MAX, Vector2(1, 0))
 		_ok("[%s] ③ 拉到最近仍能横向推出去 ≥ 4 米(没把平移锁死)" % th, absf(s._cam_pan.x) >= 4.0, "pan=%s" % s._cam_pan)
 		## ── ④ 前景带横向盖满 ──
+		## ★2026-10-07 前景带改挂在世界里(跟着场地走): 回默认机位, 把它们换算到相机局部坐标再量。
+		_set_cam(s, 1.0, Vector2.ZERO)
 		var bands: Array = []
-		for ch in s._cam.get_children():
-			if ch is Sprite3D and ch.has_meta("fg_band"):
+		var _inv: Transform3D = s._cam.global_transform.affine_inverse()
+		for ch in s._world.find_children("*", "Sprite3D", true, false):
+			if ch.has_meta("fg_band"):
 				bands.append(ch)
 		_ok("[%s] ④ ★分母: 前景带节点存在" % th, bands.size() >= 1, "%d 张" % bands.size())
 		var lo := 1e9
 		var hi := -1e9
 		var bz := -2.35
 		for q in bands:
+			var lp: Vector3 = _inv * (q as Node3D).global_position
 			var hw_q: float = float((q as Sprite3D).texture.get_width()) * (q as Sprite3D).pixel_size * 0.5
-			lo = minf(lo, q.position.x - hw_q)
-			hi = maxf(hi, q.position.x + hw_q)
-			bz = q.position.z
+			## 世界里的带子被等比推远了 ⇒ 换回「每单位深度」的比例再与视锥半宽比
+			var k: float = 2.35 / maxf(0.001, absf(lp.z))
+			lo = minf(lo, (lp.x - hw_q) * k)
+			hi = maxf(hi, (lp.x + hw_q) * k)
 		var need: float = absf(bz) * tan(deg_to_rad(s._cam.fov) * 0.5) * 2.4
 		_ok("[%s] ④ 前景带在 2.4:1 画幅下横向盖满(需要 ±%.2f)" % [th, need], lo <= -need and hi >= need, "带子 x∈[%.2f, %.2f]" % [lo, hi])
 		s.queue_free()

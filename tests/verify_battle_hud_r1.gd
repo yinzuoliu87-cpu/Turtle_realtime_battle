@@ -80,7 +80,7 @@ func _ready() -> void:
 	_readout(s)
 	_vs_badge(s)
 	_egg_bar(s)
-	_btn_vs_bar(s)
+	await _btn_vs_bar(s)
 
 	print("  ★分母: 本测试共 %d 条断言" % _n)
 	if _fail == 0:
@@ -104,7 +104,7 @@ func _geometry(s) -> void:
 	_ok("① 条不吃鼠标事件(纯显示·别挡战场点击)",
 		s._hud._pk_bar.mouse_filter == Control.MOUSE_FILTER_IGNORE)
 	# ★核心不变量: 左段左缘恒定贴 x=2; 右段【右缘】恒定贴总宽-2; 两段都不超过自己那半
-	var inner: float = h.PK_SEG - 4.0
+	var inner: float = h._pk_seg_cur - 4.0     # ★运行时段宽(2026-10-07 起按视口算, 不再等于常量 PK_SEG)
 	var worst_l := 0.0
 	var worst_r := 0.0
 	var worst_over := 0.0
@@ -115,7 +115,7 @@ func _geometry(s) -> void:
 			h._pk_apply()
 			worst_l = maxf(worst_l, absf(s._hud._pk_fill_l.position.x - 2.0))
 			var r_right: float = s._hud._pk_fill_r.position.x + s._hud._pk_fill_r.size.x
-			worst_r = maxf(worst_r, absf(r_right - (h.PK_SEG + h.PK_VS + 2.0 + inner)))
+			worst_r = maxf(worst_r, absf(r_right - (h._pk_seg_cur + h.PK_VS + 2.0 + inner)))
 			worst_over = maxf(worst_over,
 				maxf(s._hud._pk_fill_l.size.x - inner, s._hud._pk_fill_r.size.x - inner))
 	_ok("① ★25 组比例下左段恒贴左端(最大偏差 %.4f px)" % worst_l, worst_l < 0.001)
@@ -355,7 +355,7 @@ func _smooth_and_trail(s) -> void:
 			s._hud._pk_fill_r.get_index(), s._hud._pk_gain_r.get_index()])
 	# ★★填充节点的宽度必须【永远等于当前显示血量】—— 这是条的基本语义, 不许被特效偷换。
 	#   (第一版让 fill 只画到低水位, 门禁①"都剩10%时更短"当场被测糊: 满血433.2 vs 剩10% 433.2。)
-	var inner_w: float = h.PK_SEG - 4.0
+	var inner_w: float = h._pk_seg_cur - 4.0
 	_ok("⑤回 ★★填充宽度 == 当前血量 × 内宽(特效不许偷换条的长度)",
 		absf(s._hud._pk_fill_r.size.x - s._hud._pk_shown_r * inner_w) < 0.6,
 		"fill %.1f px vs 应为 %.1f px" % [s._hud._pk_fill_r.size.x, s._hud._pk_shown_r * inner_w])
@@ -514,7 +514,6 @@ func ", _tp_i + 1) if _tp_i >= 0 else -1
 	var _tp_body: String = src.substr(_tp_i, (_tp_e - _tp_i) if _tp_e > _tp_i else 400) if _tp_i >= 0 else ""
 	_ok("⑨ 右上键摆位走 SafeArea(在 _topright_positions 里)",
 		_tp_body.contains("SafeArea.margins("), "找到函数=%s" % str(_tp_i >= 0))
-	_ok("⑨ PK 条宽度自适应(给按钮区让位)", src.contains("PK_BTN_ZONE"))
 	# ★★先读【真实按钮】的位置, 再验公式 —— 否则下面那圈多宽高比只是在"模拟公式",
 	#   改了代码里的坐标它看不见。我第一版就是这样: 把按钮改回写死 1208, 门禁【照样绿】。
 	#   现在: ①量真实矩形不相交 ②证明真实 x 就是"右边缘-按钮宽-安全区" → 模拟才站得住。
@@ -534,17 +533,50 @@ func ", _tp_i + 1) if _tp_i >= 0 else -1
 		var want_x: float = vp0.x - sb.size.x - m0.z
 		_ok("⑨ ★★投降键 x 就是「右边缘-按钮宽-安全区」(证明下面的公式模拟站得住)",
 			absf(sb.position.x - want_x) < 0.5, "实际 %.0f / 公式 %.0f" % [sb.position.x, want_x])
-	var bw := 52.0
-	var gap := 8.0
-	for pair in [["16:9", 16.0 / 9.0], ["18:9", 2.0], ["19.5:9", 19.5 / 9.0], ["20:9", 20.0 / 9.0], ["4:3", 4.0 / 3.0]]:
-		var vw: float = 720.0 * float(pair[1])
-		var w: float = minf(h.PK_W, maxf(h.PK_MIN_W, vw - h.PK_BTN_ZONE * 2.0))
-		var bar := Rect2(vw * 0.5 - w * 0.5, h.PK_Y, w, h.PK_H + h.PK_EGG_GAP + h.PK_EGG_H)
-		var sur := Rect2(vw - bw - 12.0, 12.0, bw, 38.0)
-		var sta := Rect2(sur.position.x - bw - gap, 12.0, bw, 38.0)
-		var hit: bool = bar.intersects(sur) or bar.intersects(sta)
-		print("     %-7s 视口 %6.0f  条 x[%.0f..%.0f]  统计 x[%.0f..%.0f]  投降 x[%.0f..%.0f]  %s" % [
-			str(pair[0]), vw, bar.position.x, bar.end.x,
-			sta.position.x, sta.end.x, sur.position.x, sur.end.x,
-			"★相交" if hit else "ok"])
-		_ok("⑨ %s 按钮与 PK 条不相交" % str(pair[0]), not hit)
+	## ★2026-10-07 顶部栏重做: 两键挪到右头像下面竖排, 条两端是头像 —— 原来这圈"按公式模拟条宽 vs 键"的比较,
+	##   公式本身已不存在(PK_BTN_ZONE 删了), 再模拟就是拿一份手抄副本比自己。
+	##   改成【真把根视口调到每个比例】→ 重建顶部栏 → 量引擎给的真实矩形:
+	##   两键 vs 顶部栏里每一块可见控件(条 / 头像 / 名字 / 百分比斜牌 / 计时牌…)都不相交, 且两键都在视口内。
+	var root := get_tree().root
+	var size0: Vector2i = root.size
+	var w_by: Dictionary = {}
+	for pair in [["16:9", Vector2i(1280, 720)], ["18:9", Vector2i(1440, 720)], ["19.5:9", Vector2i(1560, 720)],
+			["20:9", Vector2i(1600, 720)], ["4:3", Vector2i(960, 720)]]:
+		root.size = pair[1]
+		await get_tree().process_frame
+		h.on_viewport_resized()
+		await get_tree().process_frame
+		var vp: Vector2 = Vector2(s.get_viewport().get_visible_rect().size)
+		var btns: Array = [(h._stats_btn as Control).get_global_rect(), (s._surrender_btn as Control).get_global_rect()]
+		var hit := ""
+		var n_parts := 0
+		for c in _visible_controls(h._pk_bar):
+			n_parts += 1
+			var r: Rect2 = (c as Control).get_global_rect()
+			for bb in btns:
+				if r.intersects(bb):
+					hit = str((c as Node).name)
+		var inside := true
+		for bb in btns:
+			if bb.position.x < 0.0 or bb.end.x > vp.x + 0.5 or bb.position.y < 0.0 or bb.end.y > vp.y:
+				inside = false
+		w_by[str(pair[0])] = float(h._pk_w_cur)
+		print("     %-7s 视口 %.0fx%.0f  条宽 %.0f  统计 %s  认输 %s  顶栏控件 %d 块  %s" % [str(pair[0]), vp.x, vp.y,
+			h._pk_w_cur, str(btns[0]), str(btns[1]), n_parts, ("★撞上 " + hit) if hit != "" else "ok"])
+		_ok("⑨ %s 两键与顶部栏任何一块都不相交(分母 %d 块)" % [str(pair[0]), n_parts], hit == "" and n_parts >= 8, hit)
+		_ok("⑨ %s 两键都在视口内" % str(pair[0]), inside)
+	_ok("⑨ PK 条宽度自适应(视口越宽条越长)", float(w_by["20:9"]) > float(w_by["16:9"]) + 200.0,
+		"16:9 %.0f / 20:9 %.0f" % [float(w_by["16:9"]), float(w_by["20:9"])])
+	root.size = size0
+	await get_tree().process_frame
+	h.on_viewport_resized()
+
+
+## 一棵控件树里所有【看得见、有面积】的控件(含根)。
+func _visible_controls(n: Node) -> Array:
+	var out: Array = []
+	if n is Control and (n as Control).is_visible_in_tree() and (n as Control).size.x > 0.5 and (n as Control).size.y > 0.5:
+		out.append(n)
+	for ch in n.get_children():
+		out.append_array(_visible_controls(ch))
+	return out

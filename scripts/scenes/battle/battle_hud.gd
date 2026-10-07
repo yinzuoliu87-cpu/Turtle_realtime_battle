@@ -26,6 +26,8 @@ const SHOP_SCENE := "res://scenes/Shop.tscn"
 const SHOP_BTN_TEXT := "前往商店"
 ## 战后结算屏(三页)的本体 —— 2026-10-04 从本文件拆出去(本文件离 3000 行上限只差几行)
 const SettleScreenS := preload("res://scripts/scenes/battle/settle_screen.gd")
+## 顶部栏的头像/名字/路点/计时牌/加时/团灭/蛋碎那一层(2026-10-07 拆出去: 本文件只留血条本体)
+const TopbarStatusS := preload("res://scripts/scenes/battle/topbar_status.gd")
 
 ## 第二行资源条的节点引用 —— 每帧按下标对位改数, 不重建节点。
 ## ★存在 hud 这个 RefCounted 上而不是主战斗文件里: 主文件有 arch_budget 冻结的行数台账,
@@ -70,20 +72,9 @@ func _build_ui_layer() -> void:
 	# ★左上角那行开发期标题「2.5D 实时战斗 · 3v3(左队 vs 右队)」已删(用户 2026-07-30)。
 	#   它是开发期自证用的, 正式对局里没信息量, 而且【正是它把 PK 条限死在 600 宽】——
 	#   条要避开它才能不重叠。删掉后条才有空间加宽到格斗游戏那个比例。
+	## ★路名计时牌(battle._dl_hud)、三路点、加时徽章都由 PK 条里的 topbar_status 建(2026-10-07 顶部栏重做):
+	##   它们摆在 VS 下面, 跟着条的宽度走; 换视口时随条一起重建(原来是这里单独建一块牌子)。
 	_build_pk_bar()   # 顶部双方总血量 PK 条 (用户2026-07-30 需求1)
-	if battle._is_dual_lane_mode():   # 双路 HUD: 当前路 + 双方蛋血
-		battle._dl_hud = Label.new()
-		battle._dl_hud.add_theme_font_size_override("font_size", 17)
-		battle._dl_hud.add_theme_color_override("font_color", Color("#ffe08a"))
-		# ★y 44→70: 让开整条 PK 条。实测(按 PK_Y=16 / PK_H=32 / PK_EGG_GAP=4 / PK_EGG_H=15 算):
-		#   主条占 16..48, 龟蛋副条占 52..67 ⇒ 这行字必须从 68 起, 现取 70。
-		#   ★注释原写"主条 16..42 / 副条 46..60"是陈的(那是 PK_H=26、PK_EGG_H=14 那两版的数)。
-		# ★宽度 700 居中于【真实视口】: 原来写死 x=290(=(1280-700)/2), 手机 1560 宽时左偏 140
-		var _vw0: float = float(battle.get_viewport().get_visible_rect().size.x)
-		battle._dl_hud.size = Vector2(700, 24)
-		battle._dl_hud.position = Vector2(_vw0 * 0.5 - 350.0, 70)
-		battle._dl_hud.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		battle._ui_layer.add_child(battle._dl_hud)
 	_build_topright_btns()   # 📊 统计 + 🏳 投降 (原 ⏸暂停/📜日志 已移除·用户2026-07-30)
 
 
@@ -242,6 +233,9 @@ var _pk_w_cur: float = PK_W                # 本次建条时的实际【总宽�
 ##   16:9 及更宽的手机恰好都 ≥1280 ⇒ 外框正好等于 PK_W, 所以这个 bug 一直没暴露。
 ## 现在条内一律用这两个运行时值, 常量只当"上限"。
 var _pk_seg_cur: float = PK_SEG
+var _pk_egg_w: float = 0.0                 # 蛋副条单段宽(= 段宽 - 百分比斜牌 - 间距)
+var _pk_fenced := {"left": true, "right": true}   # 各侧蛋围栏还在不在(topbar_status 按它压暗/呼吸)
+var _topbar = null                         # topbar_status.gd 实例(随 PK 条一起建/重建)
 var _pk_lane: String = ""                  # 上一次采样时的路 id —— 换路才把两条拉回 100%(原来按"计数单位数变了"判, 会被中途增减单位误触发)
 ## (已删 _pk_count —— 原来靠"计数单位数变了"判换路, 会被【任何中途增减计数单位】误触发,
 ##  表现就是两条莫名满格。改用 _pk_lane 按路 id 判, 见 _pk_refresh。)
@@ -331,20 +325,19 @@ var _pk_hit_r: float = 0.0
 #    "护盾/回血/复活没走伤害钩"两类漏记。
 # ════════════════════════════════════════════════════════════════════════════
 
-## ★尺寸参照格斗游戏(街霸/拳皇/Guilty Gear —— 同样是 1v1 双方总量对撞, 最贴这个场景):
-##   它们的血条【几乎横跨整屏】(约占屏宽 85~90%)、厚度约占屏高 5~6%。
-##   第一版 600/1280 = 47% 宽、26/720 = 3.6% 厚 —— 太小气, 撑不起"主读数"的地位。
-##   现在 960/1280 = 75% 宽(右上两个按钮在 1148.., 左右对称留白后到 1120)、32/720 = 4.4% 厚。
-const PK_SEG := 440.0        # 单段宽(左/右各一段)
-const PK_VS := 68.0          # 中间 VS 槽宽。★80 → 68: 徽章本身会【破框】(比槽宽/条高都大),
-                             #   槽只需要给它一个"断口", 留太宽反而像两条中间空了一段。
-const PK_W := PK_SEG * 2.0 + PK_VS      # 总宽上限 948(★注释原写"600"是陈的; 窄屏实际宽见 _pk_w_cur)
-const PK_H := 32.0           # 主条高
-const PK_EGG_H := 15.0       # 副条(龟蛋)高。★要塞得下两端的蛋图标(9×12 太小看不出是蛋)
-const PK_EGG_GAP := 4.0      # 主条与副条间距
-const PK_Y := 16.0           # 主条顶。占 16..48(=PK_Y+PK_H); 副条 52..67(=+PK_EGG_GAP, 高 PK_EGG_H);
-                             #   双路 HUD 文字下移到 70(本文件 L56)。★旧注释写的 "16..42 / 46..55"
-                             #   是 PK_H=26、PK_EGG_H=9 那两版的数, 已随两个常量一起过期。
+## ★尺寸参照格斗游戏(铁拳8 / 罪恶装备 Strive / 碧蓝幻想VS / 拳皇15 —— 同样是 1v1 双方总量对撞):
+##   条【几乎横跨整屏】、细, 两端外侧是领队头像, 名字贴着条。
+##   ★2026-10-07 第二版(用户「血条并不是这样搞啊，我不满意」): 宽度 = 视口 - 两侧(安全区 + 头像 + 间距),
+##   主条 32 → 22 高; 百分比/血量从条里搬到外端下面的斜牌(PK_TAG_*); 右上两键挪到右头像下面。
+const PK_SEG := 440.0        # 单段宽的【初值】(真实值是 _pk_seg_cur, 按视口算)
+const PK_VS := 80.0          # 中间 VS 槽宽(徽章本身破框, 比槽大)
+const PK_W := 1560.0         # 总宽上限(到 20:9 都不封顶 ⇒ 头像贴屏边、两键正好在右头像下; 再宽才封顶)
+const PK_H := 22.0           # 主条高
+const PK_EGG_H := 10.0       # 副条(龟蛋)高
+const PK_EGG_GAP := 3.0      # 主条与下面一行(百分比斜牌 + 蛋副条)的间距
+const PK_TAG_W := 132.0      # 百分比斜牌宽(挂在主条外端正下方, 照碧蓝幻想VS 的「41 %」)
+const PK_TAG_H := 26.0       # 百分比斜牌高
+const PK_Y := 30.0           # 主条顶(安全区之下)。上面 -20..-2 是名字行, 头像占 -16..42(见 topbar_status)
 const PK_SAMPLE := 0.1       # 扫 _units 的采样间隔(秒)。别每帧扫: 主文件热路径预算 <0.2%
 const PK_SMOOTH := 6.0       # 填充平滑速率
 const PK_TRAIL_SMOOTH := 2.2 # 残影追赶速率(慢于填充 → 才看得出"刚掉了这一段")。
@@ -381,8 +374,6 @@ const PK_GAIN_HOLD := 0.40   # 回血带原地停顿多久才开始被追平。
                              #   停顿在这儿更像"闪一下"而不是"卡一下"。要是看着也别扭就一并删掉。
 const PK_TRAIL_COL := Color("#b04141")   # ★#8b2f2f 太暗, 压在绿/紫填充边上几乎看不出;
                                         #   提亮到 #b04141 仍是"旧伤"的暗红, 但读得出来了
-## 右上按钮区宽度(投降+统计+间距+安全区) —— PK 条要给它让出这么多, 否则窄屏会盖住。
-const PK_BTN_ZONE := 140.0
 const PK_MIN_W := 420.0      # 条最窄也不小于这个(再窄就读不出双方血量了)
 
 const PK_VS_EMBLEM := "res://assets/sprites/ui/pk-vs-emblem.png"   # 中央 VS 徽章(全新生成)
@@ -404,7 +395,9 @@ const PK_RED := Color("#a855f7")    # 敌方(紫)·比魔法伤害紫字 #c86bff
 ##   围栏未破时要把它压暗一档, 而低饱和色一压暗就直接塌成灰(实拍验证过两轮),
 ##   暖黄压暗后仍是暖色, 认得出是蛋壳。★不用队色 —— 用户: 原来和主条同色"像装饰下划线"。
 const PK_EGG_COL := Color("#f5d29a")
-
+## 血条细金属边(2026-10-07 第二版): 1px 银灰。上一版的 3px 黑框 + 黄铜 + 10% 刻度被用户否掉。
+const PK_EDGE := Color("#c3cad6")
+const PK_VS_EM_H := 64.0    # VS 徽章高(破框; 条高 22)
 
 ## 平行四边形遮罩 shader。
 ##
@@ -456,6 +449,7 @@ func _mk_icon_btn(icon_path: String, pos: Vector2, tip: String) -> Button:
 	b.size = Vector2(52, 38)
 	b.tooltip_text = tip
 	battle._style_hud_btn(b)
+	_insp_btn_skin(b)
 	b.process_mode = Node.PROCESS_MODE_ALWAYS
 	if ResourceLoader.exists(icon_path):
 		var ic := TextureRect.new()
@@ -474,6 +468,21 @@ func _mk_icon_btn(icon_path: String, pos: Vector2, tip: String) -> Button:
 	return b
 
 
+## 顶栏按钮换成与信息面板同一套新画的框(insp-panel: 深暖黑 + 细黄铜边)。
+## 常态/悬停/按下用 modulate 分三档(一张图管三态, 与 info_panel._btn_skin 同一做法)。
+func _insp_btn_skin(b: Button) -> void:
+	var p := "res://assets/sprites/battlehud/insp-panel.png"
+	if not ResourceLoader.exists(p):
+		return
+	var t: Texture2D = load(p)
+	for st in [["normal", 1.0], ["hover", 1.3], ["pressed", 0.75]]:
+		var sb := StyleBoxTexture.new()
+		sb.texture = t
+		sb.set_texture_margin_all(12)
+		sb.modulate_color = Color(float(st[1]), float(st[1]), float(st[1]), 1.0)
+		b.add_theme_stylebox_override(str(st[0]), sb)
+
+
 ## 建 PK 条。★锚点自适应(顶部居中), 不写死 1280×720 ——
 ##   2026-07-21 结算横幅就是踩了写死绝对坐标, 手机分辨率不同会跑偏出屏(见 _show_banner 注释)。
 func _build_pk_bar() -> void:
@@ -481,11 +490,12 @@ func _build_pk_bar() -> void:
 	bar.name = "PkBar"
 	bar.anchor_left = 0.5; bar.anchor_right = 0.5
 	bar.anchor_top = 0.0; bar.anchor_bottom = 0.0
-	# ★宽度【自适应】: 窄比例(iPad 4:3 → 视口只有 960 宽)下 960 的固定宽会占满全屏、
-	#   把右上两个键也盖住。给两侧各留出"按钮区"(2×52 + 间距 + 安全区)后再取较小者。
-	var _vpw: float = float(battle.get_viewport().get_visible_rect().size.x)
-	var _reserve: float = PK_BTN_ZONE * 2.0
-	var _w: float = minf(PK_W, maxf(PK_MIN_W, _vpw - _reserve))
+	# ★宽度【自适应】: 视口宽 - 两侧(安全区 + 头像 + 间距)。右上两个键挪到了右头像下面(_topright_positions),
+	#   条不再给它们让一整段"按钮区"。
+	var _vp: Vector2 = Vector2(battle.get_viewport().get_visible_rect().size)
+	var _m: Vector4 = SafeArea.margins(_vp, 12.0)
+	var _side: float = maxf(_m.x, _m.z) + TopbarStatusS.PORT + TopbarStatusS.PORT_GAP
+	var _w: float = minf(PK_W, maxf(PK_MIN_W, _vp.x - _side * 2.0))
 	bar.offset_left = -_w * 0.5; bar.offset_right = _w * 0.5
 	_pk_w_cur = _w
 	_pk_seg_cur = (_w - PK_VS) * 0.5   # VS 槽宽固定, 剩下的两侧平分
@@ -493,7 +503,7 @@ func _build_pk_bar() -> void:
 	#   项目里训龟大师摇杆和调试笔刷条都用了 SafeArea, 这里同办。
 	var _top: float = PK_Y + SafeArea.margins(Vector2(battle.get_viewport().get_visible_rect().size), 0.0).y
 	bar.offset_top = _top
-	bar.offset_bottom = _top + PK_H + PK_EGG_GAP + PK_EGG_H
+	bar.offset_bottom = _top + PK_H + PK_EGG_GAP + PK_TAG_H
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 纯显示, 别吃战场点击
 	battle._ui_layer.add_child(bar)
 	_pk_bar = bar
@@ -505,16 +515,17 @@ func _build_pk_bar() -> void:
 	_pk_fill_r = res[0]; _pk_trail_r = res[1]; _pk_gain_r = res[2]
 
 	# ── 副条: 龟蛋(细), 同样左右分段 ──
-	var ey: float = PK_H + PK_EGG_GAP
+	var ey: float = _pk_egg_y()
+	_pk_egg_w = maxf(40.0, _pk_seg_cur - PK_TAG_W - 6.0)
 	# ★副条整行挂在一个容器上 —— 无蛋时整行隐藏(见 _pk_refresh)
 	var row := Control.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bar.add_child(row)
 	_pk_egg_row = row
-	res = _pk_seg(row, true, ey, PK_EGG_H, PK_EGG_COL, false)
+	res = _pk_seg(row, true, ey, PK_EGG_H, PK_EGG_COL, false, _pk_egg_x0_of(true), _pk_egg_w)
 	_pk_egg_l = res[0]
-	res = _pk_seg(row, false, ey, PK_EGG_H, PK_EGG_COL, false)
+	res = _pk_seg(row, false, ey, PK_EGG_H, PK_EGG_COL, false, _pk_egg_x0_of(false), _pk_egg_w)
 	_pk_egg_r = res[0]
 	_pk_egg_icon(row, ey)      # 副条行标签: 两端各一个蛋图标
 
@@ -533,49 +544,50 @@ func _build_pk_bar() -> void:
 	_pk_lab_r2 = _pk_tag_r.get_meta("abs")
 
 	_pk_build_vs(bar)
+	_topbar = TopbarStatusS.new(self)
+	_topbar.build(bar)
 
 	_pk_lane = ""         # 逼下一次 _pk_refresh 当作换路处理(两条回满)
 	_pk_refresh()
 	_pk_apply()
 
 
-## 建一段(带边框 + 暗底 + 残影 + 填充)。→ [填充, 残影]
+## 建一段(带边框 + 暗底 + 残影 + 填充)。→ [填充, 残影, 回血带]
 ## left=true 时填充贴【外侧左端】往右长(空槽露在靠中间那侧); false 时贴外侧右端往左长。
-func _pk_seg(bar: Control, left: bool, y: float, h: float, col: Color, gloss_on: bool = true) -> Array:
-	var x0: float = 0.0 if left else (_pk_seg_cur + PK_VS)
+## sx/sw: 这一段的起点与宽(默认 = 主条那一段); 蛋副条比主条短(外端让给百分比斜牌), 用这两个参数。
+func _pk_seg(bar: Control, left: bool, y: float, h: float, col: Color, gloss_on: bool = true, sx: float = -1.0, sw: float = -1.0) -> Array:
+	var x0: float = sx if sx >= 0.0 else (0.0 if left else (_pk_seg_cur + PK_VS))
+	var w: float = sw if sw > 0.0 else _pk_seg_cur
+	## ★2026-10-07 第二版(用户「血条并不是这样搞啊，我不满意」): 上一版的 3px 纯黑外框 + 2px 黄铜 + 10% 刻度整套撤掉。
+	##   照铁拳8 / 罪恶装备 / 碧蓝幻想VS: 1px 细金属边 + 黑槽, 条本身是主角, 框不抢戏。
+	##   ★填充的渐变一个像素都不动(用户:「里面的颜色渐变不要动」) —— _pk_grad_tex 原样。
 	var frame := Panel.new()
 	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	frame.position = Vector2(x0, y)
-	frame.size = Vector2(_pk_seg_cur, h)
+	frame.size = Vector2(w, h)
 	var sb := StyleBoxFlat.new()
 	# ★真不透明(1.0 不是 0.95): 0.95 仍透 5%, 放大截图里暗槽还能看到背景游过去的鱼。
 	#   空掉的部分要是【槽】不是【窗】。
-	sb.bg_color = Color(0.05, 0.07, 0.11, 1.0)
-	sb.set_border_width_all(2)
-	sb.border_color = col.lerp(Color(0.10, 0.13, 0.19), 0.45)
+	sb.bg_color = Color(0.04, 0.045, 0.06, 1.0)
+	sb.set_border_width_all(1)
+	sb.border_color = PK_EDGE
 	# ★不要圆角: 斜切端和圆角是两种【互斥】的造型语言, 同时用必然打架 ——
 	#   圆角+描边被斜切 shader 一刀切掉角后会留下残留像素(实拍里左端那个"灰三角脏点")。
-	#   去掉后斜边成为端部唯一造型, 脏点自然消失, 也更硬朗、更贴格斗游戏那套。
 	sb.set_corner_radius_all(0)
 	frame.add_theme_stylebox_override("panel", sb)
-	frame.material = _pk_slant_mat(Vector2(_pk_seg_cur, h))
+	frame.material = _pk_slant_mat(Vector2(w, h))
 	bar.add_child(frame)
 	# 残影(damage trail): 压在填充【下面】, 掉血时旧位置留一段亮色再慢慢收
 	var trail := ColorRect.new()
 	trail.color = PK_TRAIL_COL
 	trail.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	trail.material = _pk_slant_mat(Vector2(_pk_seg_cur, h))
+	trail.material = _pk_slant_mat(Vector2(w, h))
 	bar.add_child(trail)
 	# ★★体积感做进【填充本身】的竖向渐变, 不再叠一块白方块。
-	#
-	#   由来(用户 2026-07-31:「为什么血条上半部分有个白色的长方形？跟现在的切面不合适啊」):
-	#   原来是给 fill 加了个白色 ColorRect 子节点盖住上半 46%。而【Godot 里子 CanvasItem
-	#   不继承父节点的 ShaderMaterial】—— frame/trail/fill 三层都挂了斜切 shader,
-	#   唯独那块高光没有 → 它是整条上唯一一块【直角矩形】, 端部直边就露在斜边外面。
-	#
-	#   现在: fill 换成 TextureRect + 竖向 GradientTexture2D(上浅下深),
-	#   渐变是【同一块四边形的贴图】→ 被同一个斜切 shader 一起切, 永远不可能对不上。
-	#   ★副条(gloss_on=false)仍用纯色: 13px 的细条上渐变看不出来, 平涂更干净。
+	#   (用户 2026-07-31:「为什么血条上半部分有个白色的长方形？跟现在的切面不合适啊」)
+	#   Godot 里子 CanvasItem 不继承父节点的 ShaderMaterial —— 叠上去的高光块会是唯一一块直角矩形。
+	#   fill 用 TextureRect + 竖向 GradientTexture2D, 被同一个斜切 shader 一起切。
+	#   ★副条(gloss_on=false)仍用纯色: 细条上渐变看不出来, 平涂更干净。
 	var fill: Control
 	if gloss_on:
 		var tr2 := TextureRect.new()
@@ -588,17 +600,14 @@ func _pk_seg(bar: Control, left: bool, y: float, h: float, col: Color, gloss_on:
 		cr.color = col
 		fill = cr
 	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	fill.material = _pk_slant_mat(Vector2(_pk_seg_cur, h))
+	fill.material = _pk_slant_mat(Vector2(w, h))
 	bar.add_child(fill)
 	# 回血带(heal gain): 画在填充【上面】的一条独立窄带, 只覆盖 [低水位, 当前值] 这一段。
-	# ★第一版是"填充只画到低水位, 让底下的绿露出来" —— 结果【填充节点的宽度不再等于显示血量】,
-	#   门禁①(量 fill.size.x 判"都剩10%时更短")当场被测糊: 满血 433.2 vs 都剩10% 433.2。
-	#   条的长度是 HUD 最基本的语义, 不该为了一个特效被偷换。改成盖在上面的独立带,
-	#   fill 永远等于当前值, 谁读它都不会被骗。
+	# ★fill 永远等于当前值(条的长度是 HUD 最基本的语义, 不为特效偷换), 回血高亮是盖在上面的独立带。
 	var gain := ColorRect.new()
 	gain.color = col.lightened(PK_GAIN_LIGHTEN)   # 见 PK_GAIN_LIGHTEN: 按本侧队色提亮
 	gain.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	gain.material = _pk_slant_mat(Vector2(_pk_seg_cur, h))
+	gain.material = _pk_slant_mat(Vector2(w, h))
 	bar.add_child(gain)
 	return [fill, trail, gain]
 
@@ -633,53 +642,52 @@ func _pk_egg_icon(bar: Control, ey: float) -> void:
 		ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		var x: float = 4.0 + PK_SLANT if left else (_pk_w_cur - 15.0 - PK_SLANT)   # ★避开斜边(用运行时宽)
-		ic.position = Vector2(x, ey + 1.0)
+		## ★蛋图标压在蛋副条的【外端】(外端让给百分比斜牌之后, 副条从斜牌内侧起)。避开斜边。
+		var x: float = (_pk_egg_x0_of(true) + PK_SLANT - 2.0) if left else (_pk_egg_x0_of(false) + _pk_egg_w - 13.0 - PK_SLANT * 0.5)
+		ic.position = Vector2(x, ey - 2.0)
 		ic.size = Vector2(11.0, 14.0)
 		bar.add_child(ic)
 		_pk_egg_icons.append(ic)
 
 
-## 读数标签: 深色底板 + [百分比大字][绝对血量小字] 紧挨成一组。
-## 底板宽度随内容自适应(HBox), 贴自己那一侧的外端(内缩一个斜切量, 否则被斜边切掉)。
+## 读数斜牌: [百分比大字][绝对血量小字], 挂在主条【外端正下方】。
+## ★2026-10-07 第三版(用户「百分比和数值可以加，但这么搞很丑啊」): 数字从条里搬出来 ——
+##   照碧蓝幻想VS(条外端下面挂一块小斜牌写「41 %」)。条从头到尾不被字压着, 低血时字也不会飘在暗槽上。
+##   牌子与条同一个斜切语言(_pk_slant_mat), 同一条细金属边(PK_EDGE)。
 func _pk_mk_tag(bar: Control, left: bool) -> PanelContainer:
 	var pc := PanelContainer.new()
+	pc.name = "PctTag_" + ("L" if left else "R")
 	pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# ★★去掉深色底板(用户 2026-07-31:「那个数字你办法，别这么放」)。
-	#   原来是块 alpha 0.62 的深色板压在条上 —— 它把血条【左端连同斜边一起盖住】,
-	#   看起来像贴了张标签而不是条的一部分。
-	#   现在: 只留字, 靠字自己的 4px 黑描边在填充上读(_pk_mk_label 已有描边),
-	#   条从头到尾不被打断。
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0, 0, 0, 0)                  # 全透明: 不再有底板
-	sb.content_margin_left = 2; sb.content_margin_right = 2
+	sb.bg_color = Color(0.04, 0.045, 0.06, 0.94)
+	sb.set_border_width_all(1)
+	sb.border_color = PK_EDGE
+	sb.content_margin_left = PK_SLANT + 5.0; sb.content_margin_right = PK_SLANT + 5.0
 	sb.content_margin_top = 0; sb.content_margin_bottom = 0
 	sb.set_corner_radius_all(0)
 	pc.add_theme_stylebox_override("panel", sb)
 	var hb := HBoxContainer.new()
 	hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# ★间距 6 → 10: 去掉底板后两个数字失去了"同一块板上"的归属感, 挨太近会读成一个数
-	#   ("91%2,792")。拉开一点, 它们就是【主 + 副】两个信息。
-	hb.add_theme_constant_override("separation", 10)
+	# ★两个数字拉开 6px: 挨太近会读成一个数("91%2,792")。
+	hb.add_theme_constant_override("separation", 6)
+	hb.alignment = BoxContainer.ALIGNMENT_BEGIN if left else BoxContainer.ALIGNMENT_END
 	pc.add_child(hb)
-	# ★层级: 百分比是主角(19号·纯白), 绝对血量是配角(12号·半透)。
-	#   原来 18/13 且配角 0.70 不透明 —— 两者体量太接近, 眼睛不知道先看哪个。
+	# ★层级: 百分比是主角(19号·纯白), 绝对血量是配角(12号·0.76 白·描边 2 —— 描边 3 会把千分位逗号糊掉)。
 	var pct := _pk_mk_label(HORIZONTAL_ALIGNMENT_LEFT, 19)
 	var abs_l := _pk_mk_label(HORIZONTAL_ALIGNMENT_LEFT, 12)
-	# ★配角 = 【小 + 淡】, 不能靠"加粗描边"来降级 —— 12px 像素字配 3px 黑描边, 描边占了
-	#   字身 1/4, 0.55 的白被黑边挤成一坨灰; 抓图实测 "2,049" 的千分位逗号直接糊没了,
-	#   四个数字读成一个色块 = 配角信息【完全失效】。描边 2 + 0.76 白: 仍明显轻于纯白主角,
-	#   但每一位数(含逗号)都数得出来。
 	abs_l.add_theme_color_override("font_color", Color(1, 1, 1, 0.76))
 	abs_l.add_theme_constant_override("outline_size", 2)
 	if left:
-		hb.add_child(pct); hb.add_child(abs_l)     # 左段: 百分比在外(左)
+		hb.add_child(pct); hb.add_child(abs_l)     # 左牌: 百分比在外(左)
 	else:
-		hb.add_child(abs_l); hb.add_child(pct)     # 右段镜像
+		hb.add_child(abs_l); hb.add_child(pct)     # 右牌镜像
 	pc.set_meta("pct", pct)
 	pc.set_meta("abs", abs_l)
 	bar.add_child(pc)
-	pc.position = Vector2(6.0 + PK_SLANT, 3.0) if left else Vector2(0.0, 3.0)
+	var th: float = maxf(PK_TAG_H, pc.get_combined_minimum_size().y)
+	pc.size = Vector2(PK_TAG_W, th)
+	pc.position = Vector2(0.0 if left else _pk_w_cur - PK_TAG_W, PK_H + PK_EGG_GAP)
+	pc.material = _pk_slant_mat(pc.size)
 	return pc
 
 
@@ -715,7 +723,7 @@ func _pk_build_vs(bar: Control) -> void:
 	gl.stretch_mode = TextureRect.STRETCH_SCALE
 	# ★2.1×2.6 太大: 实拍里它不是"徽章背后一点光", 而是中间一大团雾,
 	#   把两侧血条的内端都染了色、盖住了。收到 1.35×1.7 才是"衬托徽章"而不是"糊住中段"。
-	gl.size = Vector2(PK_VS * 1.35, PK_H * 1.7)
+	gl.size = Vector2(PK_VS * 1.35, PK_VS_EM_H * 1.1)
 	gl.position = Vector2(PK_VS * 0.5, PK_H * 0.5) - gl.size * 0.5
 	holder.add_child(gl)
 	_pk_vs_glow = gl
@@ -739,7 +747,8 @@ func _pk_build_vs(bar: Control) -> void:
 	# ★故意【超出条高】: 格斗游戏的中央徽章都是破出血条框的, 这样它才是焦点而不是条的一格
 	# ★槽收窄后徽章反而要【更大】: 破框幅度 = 焦点强度。
 	#   宽 PK_VS+16(左右各溢出 8px 压住两条内端的斜边) · 高 PK_H+16(仍不压到副条: 副条从 y=36 起)
-	em.size = Vector2(PK_VS + 16.0, PK_H + 16.0)
+	## ★2026-10-07 主条变细(22)之后徽章不再按条高推: 固定 PK_VS_EM_H 高, 上下都破出条, 底下接三路点和计时牌。
+	em.size = Vector2(PK_VS + 8.0, PK_VS_EM_H)
 	em.position = Vector2(PK_VS * 0.5, PK_H * 0.5) - em.size * 0.5
 	holder.add_child(em)
 	_pk_vs_em = em
@@ -848,19 +857,7 @@ func _pk_refresh() -> void:
 	_pk_lab_r.text = "%d%%" % int(round(_pk_target_r * 100.0))
 	_pk_lab_l2.text = _pk_num(l.x)
 	_pk_lab_r2.text = _pk_num(r.x)
-	# 右侧标签宽度随内容变 → 每次刷新后重新贴右端(内缩一个斜切量)
-	## ★★用 `get_combined_minimum_size().x` 而不是 `size.x`, 并且【显式把 size 写回去】。
-	##   由来(2026-08-19 实拍量出来的): 这块 PanelContainer 不在任何 Container 里,
-	##   它的 size 由 offset 决定 —— 而 `position = ...` 每次都把当前 size 重新写进 offset,
-	##   于是 **size 只涨不缩**, 永远停在这一路里出现过的最宽内容上。
-	##   实测(1560×720): 内容 "644"+"22%" 只要 55px, 而标签仍是 70px(开局 "2,405"+"100%" 撑的),
-	##   HBox 被撑到 66 且内容靠左 ⇒ 右侧读数的右沿停在 1221, 而它该贴到 1238 —— **差 17px**,
-	##   左边那个是贴死在 322 的, 于是左右两个读数一眼看去不对称(左紧贴条头、右边空一块)。
-	##   ★不能靠"右对齐 HBox"糊过去: 那样标签框仍然过宽, 掉数字位时读数会左右跳。
-	if _pk_tag_r != null and is_instance_valid(_pk_tag_r):
-		var _tw: float = _pk_tag_r.get_combined_minimum_size().x
-		_pk_tag_r.size.x = _tw
-		_pk_tag_r.position.x = _pk_w_cur - _tw - 6.0 - PK_SLANT
+	## (右侧读数原来每次刷新按内容宽重贴右端 —— 读数挪到固定宽的斜牌里之后, 牌子定宽、字在牌里右对齐, 不用再贴。)
 	# ── 副条: 龟蛋 ──
 	var el := _pk_egg_sum("left")
 	var er := _pk_egg_sum("right")
@@ -875,24 +872,30 @@ func _pk_refresh() -> void:
 	# ★围栏未破 → 副条压暗: 此时蛋【打不到】(battle_targeting 里单体+AoE 都不锁它),
 	#   副条会一直满着不动。压暗就把"现在还打不到蛋"这个状态说出来了, 破栏后恢复全亮
 	#   —— 副条从"静止的装饰"变成有信息量的状态指示。
-	var fenced := false
+	## ★2026-10-07 按【侧】记: 一方团灭只破那一方的围栏 —— 原来"有任何一颗蛋围着就整行压暗",
+	##   破蛋窗口里正在挨打的那颗蛋看不出"现在能打了"。亮度(压暗/呼吸)由 topbar_status._tick_egg_glow 每帧上;
+	##   ★压暗调 RGB 不调 alpha: 半透的米黄压在深色背景上会被拉成灰管子。
+	_pk_fenced = {"left": false, "right": false}
 	for u in battle._units:
 		if u.get("_isEgg", false) and u.get("_egg_fence", false):
-			fenced = true
-			break
-	# ★压暗要【调暗颜色】不能用 alpha ——
-	#   半透的米黄压在深色背景上会被背景拉成【灰管子】(0.38 时最明显, 0.62 仍偏灰):
-	#   看不出蛋壳色, 也读不出"暂时打不到"。改成把 modulate 的 RGB 压到 0.58、alpha 保持 1.0,
-	#   壳色的色相就还在, 只是暗一档。
-	var k: float = 0.58 if fenced else 1.0
-	var mod := Color(k, k, k, 1.0)
-	if _pk_egg_l != null and is_instance_valid(_pk_egg_l):
-		_pk_egg_l.modulate = mod
-		_pk_egg_r.modulate = mod
-	for ic in _pk_egg_icons:
-		if is_instance_valid(ic):
-			ic.modulate = mod
+			_pk_fenced[str(u.get("egg_side_lr", "left"))] = true
+	if _topbar != null:
+		_topbar.refresh()
 
+
+## 这一侧的蛋还围着吗(围着 = 打不到)。
+func egg_fenced(side: String) -> bool:
+	return bool(_pk_fenced.get(side, true))
+
+
+## 蛋副条一段的起点 x。左段从百分比斜牌内侧起; 右段从 VS 槽右沿起(外端同样让给右牌)。
+func _pk_egg_x0_of(left: bool) -> float:
+	return (PK_TAG_W + 6.0) if left else (_pk_seg_cur + PK_VS)
+
+
+## 蛋副条顶 y(主条下面那一行)。
+func _pk_egg_y() -> float:
+	return PK_H + PK_EGG_GAP + 1.0
 
 ## 千分位。1234 → "1,234"
 func _pk_num(v: float) -> String:
@@ -926,9 +929,10 @@ func _pk_apply() -> void:
 	_pk_put(_pk_fill_r, false, _pk_shown_r, inner, h, 2.0)
 	_pk_put_band(_pk_gain_r, false, _pk_gain_vr, _pk_shown_r, inner, h, 2.0)
 	var eh: float = PK_EGG_H - 4.0
-	var ey: float = PK_H + PK_EGG_GAP + 2.0
-	_pk_put(_pk_egg_l, true, _pk_egg_sl, inner, eh, ey)
-	_pk_put(_pk_egg_r, false, _pk_egg_sr, inner, eh, ey)
+	var ey: float = _pk_egg_y() + 2.0
+	var ein: float = _pk_egg_w - 4.0
+	_pk_put(_pk_egg_l, true, _pk_egg_sl, ein, eh, ey, _pk_egg_x0_of(true))
+	_pk_put(_pk_egg_r, false, _pk_egg_sr, ein, eh, ey, _pk_egg_x0_of(false))
 
 
 ## 放一条【区间带】: 只覆盖 [a, b] 这一段(a<b), 用于回血带。a>=b 时宽度为 0(等于隐形)。
@@ -949,14 +953,16 @@ func _pk_put_band(cr: Control, left: bool, a: float, b: float, inner: float, h: 
 
 ## 放一条填充。left=true 贴外侧左端; false 贴外侧右端。
 ## ★参数类型 Control 而不是 ColorRect —— 主条填充现在是 TextureRect(竖向渐变), 副条仍是 ColorRect。
-func _pk_put(cr: Control, left: bool, frac: float, inner: float, h: float, y: float) -> void:
+## sx = 这一段的起点 x(默认主条那一段: 左 0 / 右 段宽+VS)。
+func _pk_put(cr: Control, left: bool, frac: float, inner: float, h: float, y: float, sx: float = -1.0) -> void:
 	if cr == null or not is_instance_valid(cr):
 		return
 	var w: float = clampf(frac, 0.0, 1.0) * inner
+	var x0: float = sx if sx >= 0.0 else (0.0 if left else _pk_seg_cur + PK_VS)
 	if left:
-		cr.position = Vector2(2.0, y)
+		cr.position = Vector2(x0 + 2.0, y)
 	else:
-		cr.position = Vector2(_pk_seg_cur + PK_VS + 2.0 + (inner - w), y)
+		cr.position = Vector2(x0 + 2.0 + (inner - w), y)
 	cr.size = Vector2(w, h)
 	_pk_slant_size(cr, cr.size)     # ★宽度变了要重喂, 否则斜边角度跟着宽度变形
 
@@ -1020,6 +1026,8 @@ func _pk_tick(delta: float) -> void:
 	_pk_hit_r = maxf(0.0, _pk_hit_r - delta * PK_HIT_DECAY)
 	_pk_low_tick()
 	_pk_vs_tick(delta)
+	if _topbar != null:
+		_topbar.tick(delta)
 
 
 ## 低血量警示: 低于 PK_LOW 时该侧填充开始明暗闪烁, 越低闪得越狠。
@@ -2137,10 +2145,12 @@ func on_viewport_resized() -> void:
 func _topright_positions() -> Dictionary:
 	var vp: Vector2 = Vector2(battle.get_viewport().get_visible_rect().size)
 	var m: Vector4 = SafeArea.margins(vp, 12.0)
+	## ★2026-10-07 顶部栏重做: 条拉到几乎整屏宽, 右端是对手头像 ⇒ 两个键挪到【右头像正下方】竖排,
+	##   右沿 = 右边缘 - 安全区(与头像右沿同一个边距), 上沿 = 头像底 + 6。战报在上、认输在下(退出类放远一点)。
 	var bw := 52.0
-	var sur_x: float = vp.x - bw - m.z          # 最右 = 投降
-	var sta_x: float = sur_x - bw - 8.0         # 其左 = 统计
-	return {"surrender": Vector2(sur_x, m.y), "stats": Vector2(sta_x, m.y)}
+	var x: float = vp.x - bw - m.z
+	var top: float = SafeArea.margins(vp, 0.0).y + PK_Y + TopbarStatusS.PORT_Y + TopbarStatusS.PORT + 6.0
+	return {"stats": Vector2(x, top), "surrender": Vector2(x, top + 38.0 + 6.0)}
 
 ## 装备格底下的一条充能条(黑底 + 彩色填充)。★一件装备可以有【多条】——
 ## 023 灼热火珊瑚 / 026 雷电法杖 身上同时跑着两条真条子: 它自己的老充能

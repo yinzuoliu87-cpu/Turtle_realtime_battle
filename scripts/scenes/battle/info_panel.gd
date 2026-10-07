@@ -555,7 +555,7 @@ func _info_stat_rows_minor(u: Dictionary) -> Array:
 	return [
 		[sic + "crit-dmg-icon.png", "暴伤 " + _pct_mult(float(u.get("crit_dmg", 1.5)) + crit_over), Color("#ffb37a")],
 		[sic + "move-icon.png",     "移速 %d" % int(round(_eff_move_spd(u))),      Color("#d6e4f0")],
-		[sic + "lifesteal-icon.png", "吸血 " + _pct(ls),                           Color("#ff8fb0")],
+		[sic + "lifesteal-icon.png", "生命偷取 " + _pct(ls),                           Color("#ff8fb0")],
 		## ★2026-10-04 补图标: 下面 7 行原来图标路径全是空串 —— 而 `assets/sprites/stats/` 里
 		##   这 7 张(10-01 重做的那套)一直都在, 浮层里只有字。韧性没有图标, 留空不硬配。
 		## ⚠ 染色走 `SkillText.stat_icon_color_of`(那套已把同形的分开: shieldamp 走护盾色、
@@ -1721,7 +1721,7 @@ func _info_stat_tiles(u: Dictionary) -> Array:
 		[sic + "dmg-amp-icon.png", "增伤", _pct(amp), W if amp > 0.0005 else dim, "造成的所有伤害按这个比例提高。"],
 		[sic + "range-icon.png", "射程", "%d" % int(round(battle._eff_range(u))), W, "普攻能打到多远。"],
 		[sic + "move-icon.png", "移速", "%d" % int(round(_eff_move_spd(u))), W, "移动的快慢。被减速、加速时会跟着变。"],
-		[sic + "lifesteal-icon.png", "吸血", _pct(ls), W if ls > 0.0005 else dim, "造成伤害时, 按这个比例回复自己的生命。"],
+		[sic + "lifesteal-icon.png", "生命偷取", _pct(ls), W if ls > 0.0005 else dim, "造成伤害时, 按这个比例回复自己的生命。"],
 		[sic + "dodge-icon.png", "闪避", _pct(float(u.get("dodge_bonus", 0.0))), W if float(u.get("dodge_bonus", 0.0)) > 0.0005 else dim, "躲开攻击的几率。"],
 		[sic + "armorpen-icon.png", "护甲穿透", "%d" % int(u.get("armor_pen", 0.0)), W if int(u.get("armor_pen", 0.0)) > 0 else dim, "打物理伤害时, 无视目标这么多护甲。"],
 		[sic + "magicpen-icon.png", "魔法穿透", "%d" % int(u.get("magic_pen", 0.0)), W if int(u.get("magic_pen", 0.0)) > 0 else dim, "打魔法伤害时, 无视目标这么多魔抗。"],

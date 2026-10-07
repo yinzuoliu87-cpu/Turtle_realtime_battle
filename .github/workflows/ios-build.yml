@@ -2,7 +2,8 @@
 # 路线: macOS runner → Godot headless导出Xcode工程(export_project_only) → xcodebuild免签编译 → 打包unsigned IPA artifact
 # 用户侧: Actions页下载 turtle-ios-v<版本> (或 Release「ios-latest」里的 turtle-v<版本>.ipa) → Windows装Sideloadly → iPhone USB连电脑 → 拖入IPA用AppleID签名安装
 #         → 手机 设置→通用→VPN与设备管理→信任自己的AppleID证书。免费证书7天过期, 重签即可(存档不丢)。
-# 构建=debug模板: OS.is_debug_build()=true → 调试场按钮出现; REVIEW_DEMO_DEFAULT=false → 正常匹配不被劫持。
+# 构建=release模板(2026-10-07 用户「内测包我们用正式版」): OS.is_debug_build()=false → 调试场/测试时间/图鉴调试面板都不出现。
+#   (原来是 debug 模板 —— 朋友内测时能点到「测试时间」, 会让客户端往服务器报假时刻。)
 name: iOS unsigned IPA
 
 on:
@@ -60,10 +61,10 @@ jobs:
         run: |
           "$GODOT" --headless --import --path . || true
 
-      - name: Export iOS Xcode project (debug, project only)
+      - name: Export iOS Xcode project (release, project only)
         run: |
           mkdir -p build/ios
-          "$GODOT" --headless --export-debug "iOS" "$PWD/build/ios/turtle.ipa" --path .
+          "$GODOT" --headless --export-release "iOS" "$PWD/build/ios/turtle.ipa" --path .
           echo "--- exported files ---"
           find build/ios -maxdepth 2 | head -40
 
@@ -74,7 +75,7 @@ jobs:
           PROJ=$(ls -d *.xcodeproj | head -1)
           echo "project=$PROJ" | tee diag.log
           xcodebuild -list -project "$PROJ" 2>&1 | tee -a diag.log || true
-          xcodebuild -project "$PROJ" -alltargets -configuration Debug -sdk iphoneos \
+          xcodebuild -project "$PROJ" -alltargets -configuration Release -sdk iphoneos \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
             CONFIGURATION_BUILD_DIR="$PWD/out" build 2>&1 | tee xcodebuild.log
           echo "--- built ---"

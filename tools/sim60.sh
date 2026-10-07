@@ -26,6 +26,11 @@
 #   bash tools/sim60.sh roster               # 打印 60 个槽位的龟/招分配表(跑的是驱动用的同一个函数)
 #   bash tools/sim60.sh scan [批号]          # 汇总事件日志 + godot.log 里的报错(python tools/sim60_scan.py)
 #   SLOTS="3" bash tools/sim60.sh start 1    # 只起某几个槽位(冒烟用), 空格分隔
+#   ACCOUNT_ONLY=1 bash tools/sim60.sh start 7   # ★只建号: 拿到 account_id 就退, 不打(带 ONBOARD=0, 不进教学)
+#
+# ★2026-10-06 扩到 120 人(用户「下一周…准备大概120个选手装作玩家来战斗」):
+#   批号 1..12(每批 10 个), 槽位 p01..p120; 存档根不变(/c/tmp/turtle-sim60), p01..p60 原样沿用。
+#   p61 起的龟/招分配见 scripts/systems/sim/sim_roster.gd 的 SPLIT_POS 头注。
 #
 # 可调:
 #   SIM_X/SIM_Y   窗口左上角(默认 2000,80 = 右屏)    PER_BATCH 每批几个(默认 10)
@@ -41,6 +46,7 @@ PER_BATCH="${PER_BATCH:-10}"
 WX="${SIM_X:-2000}"
 WY="${SIM_Y:-80}"
 QWD="${SIM_QUIT_WHEN_DONE-1}"
+MAX_SLOTS="${MAX_SLOTS:-120}"
 
 slot_dir() { printf "%s/p%02d" "$SIM_ROOT" "$1"; }
 slot_save() { printf "%s/Godot/app_userdata/斗龟场 实时版/savegame.json" "$(slot_dir "$1")"; }
@@ -82,6 +88,7 @@ cmd_start() {
       \$env:SIM_ROUNDS='${SIM_ROUNDS:-}';
       \$env:SIM_QUIT_WHEN_DONE='$QWD';
       \$env:SIM_TOUR='${SIM_TOUR:-}';
+      if ('${ACCOUNT_ONLY:-}' -ne '') { \$env:SIM_ACCOUNT_ONLY='1'; \$env:ONBOARD='0' };
       Start-Process -FilePath '$(win "$GODOT")' \
         -ArgumentList '--path','$(win "$PROJ_DIR")','--audio-driver','Dummy', \
                       '--resolution','1280x720','--position','$WX,$WY', \
@@ -112,7 +119,7 @@ cmd_wait() {
 
 cmd_stop() {
   local n=0 i pid
-  for i in $(seq 1 60); do
+  for i in $(seq 1 "$MAX_SLOTS"); do
     pid="$(slot_pid "$i")"
     if [ -n "$pid" ]; then
       powershell -NoProfile -Command "Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue" 2>/dev/null
@@ -124,7 +131,7 @@ cmd_stop() {
 
 cmd_status() {
   local b="${1:-}" i list
-  if [ -n "$b" ]; then list="$(batch_slots "$b")"; else list="$(seq 1 60)"; fi
+  if [ -n "$b" ]; then list="$(batch_slots "$b")"; else list="$(seq 1 "$MAX_SLOTS")"; fi
   printf "%-5s %-7s %s\n" "槽位" "进程" "账号 / 场次 / 胜 / 命 / 配额 / 龟"
   for i in $list; do
     local sv pid; sv="$(slot_save "$i")"; pid="$(slot_pid "$i")"
@@ -144,8 +151,8 @@ PY
 }
 
 cmd_roster() {
-  QUIET=1 TURTLE_BACKEND=" " TURTLE_SUPABASE=" " "$GODOT" --headless --audio-driver Dummy --path "$PROJ_DIR" \
-    -s tools/sim60_roster.gd 2>&1 | grep -E '^\||^COVER|^DUP'
+  SIM_N="${SIM_N:-$MAX_SLOTS}" QUIET=1 TURTLE_BACKEND=" " TURTLE_SUPABASE=" " "$GODOT" --headless --audio-driver Dummy --path "$PROJ_DIR" \
+    -s tools/sim60_roster.gd 2>&1 | grep -E '^\||^COVER|^DUP|^TRIPLE'
 }
 
 case "${1:-}" in

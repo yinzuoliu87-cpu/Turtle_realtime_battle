@@ -1,6 +1,7 @@
 extends SceneTree
 ## tools/sim60_roster.gd — 把 `scripts/systems/sim/sim_roster.gd` 的分配表打成 markdown(写台账用)。
 ## ★跑的就是模拟窗口自己用的那个函数, 不另写一份 Python 镜像(手抄的副本必然落后)。
+## ★SIM_N=120 打 120 人表(默认 60); SIM_FROM=61 只统计/只打第 61 槽起那一段(覆盖统计按这一段算)。
 ## 跑法: QUIET=1 TURTLE_BACKEND=" " TURTLE_SUPABASE=" " <godot> --headless --audio-driver Dummy --path . -s tools/sim60_roster.gd
 
 const R := preload("res://scripts/systems/sim/sim_roster.gd")
@@ -14,7 +15,10 @@ func _init() -> void:
 	var by := {}
 	for p in pets:
 		by[str(p["id"])] = p
-	var t: Array = R.table(pets, 60)
+	var n_all: int = int(OS.get_environment("SIM_N")) if OS.get_environment("SIM_N") != "" else 60
+	var from: int = int(OS.get_environment("SIM_FROM")) if OS.get_environment("SIM_FROM") != "" else 1
+	var t_all: Array = R.table(pets, n_all)
+	var t: Array = t_all.slice(from - 1)
 	print("| 槽位 | 龟1 · 招 | 龟2 · 招 | 龟3 · 招 |")
 	print("|---|---|---|---|")
 	var cnt := {}
@@ -52,4 +56,20 @@ func _init() -> void:
 			if s.has(pid): bad += 1
 			s[pid] = true
 	print("DUP_IN_SLOT=%d" % bad)
+	## 三连组重复: 本段内部 / 与本段之前的槽位
+	var key_of := func(row) -> String:
+		var k: Array = (row["pets"] as Array).duplicate(); k.sort()
+		return ",".join(PackedStringArray(k))
+	var before := {}
+	for i in range(from - 1):
+		before[key_of.call(t_all[i])] = true
+	var inside := {}
+	var dup_in := 0
+	var dup_prev := 0
+	for row in t:
+		var kk: String = key_of.call(row)
+		if inside.has(kk): dup_in += 1
+		if before.has(kk): dup_prev += 1
+		inside[kk] = true
+	print("TRIPLE_DUP_IN_RANGE=%d TRIPLE_SAME_AS_EARLIER_SLOTS=%d (range %d..%d)" % [dup_in, dup_prev, from, n_all])
 	quit(0)

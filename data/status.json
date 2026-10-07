@@ -4,90 +4,167 @@
     "name": "灼烧",
     "iconKey": "status-burn",
     "category": "dot",
-    "desc": "身上着了火，每秒烧一跳：每层扣 1 点生命，再加被烧者最大生命的 0.1%。这笔算魔法伤害，魔抗能挡、护盾能吸。每跳完一次层数打八折（零头抹掉），层数见底火才灭。"
+    "desc": "每秒受到魔法伤害：每层 1 点 + 自身最大生命值的 {C:CombatMath.STACK_DOT_MAXHP_PCT%}%。每秒结算后层数变为 {C:CombatMath.STACK_DECAY%}%（向下取整），归零后消失。"
   },
   {
     "id": "poison",
     "name": "中毒",
     "iconKey": "status-poison",
     "category": "dot",
-    "desc": "毒在血里走，每秒扎一跳：每层扣 1 点生命，算魔法伤害，魔抗能挡、护盾能吸。每跳完一次层数打八折（零头抹掉），层数见底毒才散。"
+    "desc": "每秒受到魔法伤害：每层 1 点。每秒结算后层数变为 {C:CombatMath.STACK_DECAY%}%（向下取整），归零后消失。"
   },
   {
     "id": "bleed",
     "name": "流血",
     "iconKey": "status-bleed",
     "category": "dot",
-    "desc": "伤口一直在淌，每秒流一跳：每层扣 1 点生命，算物理伤害，护甲能挡、护盾能吸。每跳完一次层数打八折（零头抹掉），层数见底血才止。"
+    "desc": "每秒受到物理伤害：每层 1 点。每秒结算后层数变为 {C:CombatMath.STACK_DECAY%}%（向下取整），归零后消失。"
   },
   {
     "id": "curse",
     "name": "诅咒",
     "iconKey": "status-curse-debuff",
     "category": "dot",
-    "desc": "咒上了就没处躲：每秒掉被咒者最大生命的 5%，算真实伤害，护甲和魔抗一点用都没有，只有护盾还扛得下。咒不会变弱，时间走完才散；重复上咒不叠伤害，只把时间往后接。"
+    "desc": "每秒受到自身最大生命值 {C:BattleDamage.CURSE_HP_PCT%}% 的真实伤害。重复施加只延长持续时间，不叠加伤害。"
   },
   {
     "id": "stun",
     "name": "眩晕",
     "iconKey": "status-stun",
     "category": "cc",
-    "desc": "打懵了：原地定住，走不动，普攻和技能也都使不出来，晕多久看挨的是哪一下。"
+    "desc": "无法移动、攻击和释放技能，期间龟能不增长。"
+  },
+  {
+    "id": "airborne",
+    "name": "击飞",
+    "iconKey": "status-airborne",
+    "category": "cc",
+    "desc": "被击飞到空中：无法移动、攻击和释放技能，期间龟能不增长，落地后恢复。"
   },
   {
     "id": "fear",
     "name": "恐惧",
     "iconKey": "status-fear",
     "category": "cc",
-    "desc": "吓住的一方钉在原地：不走、不出手、也放不出技能；龟能照常攒，攒满了照样放不出来。无头龟一声咆哮能吓住半径 200 码内的所有敌人，持续 3 秒，龟蛋不吃这一套。"
+    "desc": "无法移动、攻击和释放技能，期间龟能不增长。"
   },
   {
     "id": "taunt",
     "name": "嘲讽",
     "iconKey": "status-taunt",
     "category": "cc",
-    "desc": "眼里只剩挑事的那一个：被嘲讽的单位只打嘲讽它的人，别的目标一概不选，直到嘲讽过去。"
+    "desc": "只能攻击施加嘲讽的单位。"
   },
   {
     "id": "shield",
     "name": "护盾",
     "iconKey": "status-shield",
     "category": "buff",
-    "desc": "挡在血前面的一层额外血量，先扣盾再扣血。什么伤害都吃盾，真实伤害也照吸；身上有几块盾就一块块往下扣。"
+    "desc": "先于生命值承受伤害，可吸收所有类型的伤害，包括真实伤害。"
   },
   {
     "id": "dodge",
     "name": "闪避",
     "iconKey": "status-dodge",
     "category": "buff",
-    "desc": "挨打时有几率整下躲开，一滴血都不掉。几率就是自己的闪避率，最高 75%。普攻和技能躲得开；灼烧中毒这类持续伤害躲不开，有些攻击本身就标着必中。"
+    "desc": "按闪避率完全躲开一次普攻或技能，闪避率上限 {C:RealtimeBattle3DScene.DODGE_CAP%}%。持续伤害与必中攻击无法闪避。"
   },
   {
     "id": "stealth",
     "name": "虚化",
     "iconKey": "status-stealth",
     "category": "buff",
-    "desc": "半透明地晃着，物理伤害打上来只剩一成（幽灵龟虚化时 -90%）；魔法和真实伤害照样疼。"
+    "desc": "普攻和技能造成的物理伤害降低 {C:GhostSystem.PHASE_PHYS_CUT%}%。流血、魔法伤害和真实伤害不受影响。"
+  },
+  {
+    "id": "untargetable",
+    "name": "不可选中",
+    "iconKey": "status-untargetable",
+    "category": "buff",
+    "desc": "无法被敌方普攻和指向型技能选为目标，范围伤害仍可命中。"
   },
   {
     "id": "reflect",
     "name": "反伤",
     "iconKey": "status-reflect",
     "category": "buff",
-    "desc": "挨一下就还一下：把受到伤害的一部分原样砸回攻击者，砸回去那一下算真实伤害。还多少看来源 —— 荆棘海胆按星级还 12% / 25% / 40%，石头龟的坚壁则随护甲越堆越多。"
+    "desc": "受到伤害时，按反伤比例对攻击者造成等量的真实伤害。比例由来源决定。"
+  },
+  {
+    "id": "cyber-charge",
+    "name": "充能",
+    "iconKey": "status-cyber-charge",
+    "category": "buff",
+    "desc": "赛博龟的充能层：登场 {C:CyberSystem.AI_START_CHARGE} 层，每次释放技能 +1 层；敌人贴近时消耗 1 层自动冲刺躲避。"
   },
   {
     "id": "chilled",
     "name": "冰寒",
     "iconKey": "status-chilled",
     "category": "debuff",
-    "desc": "冻得动作发僵：移动速度、攻击速度、龟能充能这几项里会被压慢一项或几项。压哪几项、压多少看是谁放的 —— 冰霜冻露瓶是移速 -20%、攻速 -10%，持续 5 秒；冰龟的寒域是三项各 -30%，持续 12 秒。"
+    "desc": "降低移动速度、攻击速度、龟能充能速度中的一项或多项，数值由来源决定。"
+  },
+  {
+    "id": "slow",
+    "name": "减速",
+    "iconKey": "status-slow",
+    "category": "debuff",
+    "desc": "移动速度降低，数值由来源决定。多个减速不叠加。"
   },
   {
     "id": "heal-reduce",
     "name": "治疗削减",
     "iconKey": "status-heal-reduce",
     "category": "debuff",
-    "desc": "伤口不肯收口：受到的治疗只剩一半（-50%）。几个来源同时压也不叠加，只按最重的那一层算。"
+    "desc": "受到的治疗降低，降幅由来源决定。多个来源不叠加，取最高值。"
+  },
+  {
+    "id": "energy-lock",
+    "name": "龟能锁",
+    "iconKey": "status-energy-lock",
+    "category": "debuff",
+    "desc": "龟能不增长，解除后继续充能。"
+  },
+  {
+    "id": "true-fire",
+    "name": "真火",
+    "iconKey": "status-true-fire",
+    "category": "debuff",
+    "desc": "持续 {C:EquipSystem.EMBER_TRUEFIRE_SEC} 秒：受到的灼烧伤害改为真实伤害。"
+  },
+  {
+    "id": "corrode",
+    "name": "腐蚀",
+    "iconKey": "status-corrode",
+    "category": "debuff",
+    "desc": "每层使受到的伤害 +{C:BowSynergySystem.CORRODE_PER_STACK%}%（按弓箭羁绊档位），上限 {C:BowSynergySystem.CORRODE_MAX} 层。满层时受到的伤害中 {C:BowSynergySystem.CORRODE_TRUE_PCT%}% 转为真实伤害。"
+  },
+  {
+    "id": "ink",
+    "name": "墨迹",
+    "iconKey": "status-ink",
+    "category": "debuff",
+    "desc": "每层使每次受到的伤害额外附带 {C:LineSystem.INK_TRUE_PER_STACK%}% 的真实伤害，这部分无视减伤与护盾。上限 {C:LineSystem.INK_CAP} 层（墨水炸弹：{C:LineSystem.INK_CAP_BOMB} 层）。"
+  },
+  {
+    "id": "crystal-mark",
+    "name": "结晶印记",
+    "iconKey": "status-crystal-mark",
+    "category": "debuff",
+    "desc": "叠满 {C:CrystalSystem.STACK_MAX} 层时引爆：受到自身最大生命值 {C:CrystalSystem.BURST_MAXHP_PCT%}% 的魔法伤害，魔抗降低 {C:CrystalSystem.BURST_MR_SHRED%}%，持续 {C:RealtimeBattle3DScene.BUFF_SEC} 秒，层数清零。"
+  },
+  {
+    "id": "shock-mark",
+    "name": "电击标记",
+    "iconKey": "status-shock-mark",
+    "category": "debuff",
+    "desc": "叠满 {C:LightningSystem.SHOCK_STACK_MAX} 层时引爆：受到闪电龟 {C:LightningSystem.SHOCK_COEF%}% 攻击力的真实伤害，层数清零。"
+  },
+  {
+    "id": "hunt-mark",
+    "name": "猎杀印记",
+    "iconKey": "status-hunt-mark",
+    "category": "debuff",
+    "desc": "持续 {C:HunterSystem.MARK_SEC} 秒：斩杀线从 {C:HunterSystem.EXEC_BASE%}% 提高到 {C:HunterSystem.EXEC_MARKED%}%。"
   }
 ]

@@ -100,6 +100,8 @@ func _ready() -> void:
 
 	s._units.clear()
 	s._units.append(u)
+	if OS.has_environment("SHOT_MELEE") and pet == "two_head":   # 变脸龟近战形态(2026-10-07)
+		s._two_head_sys._two_head_after_cast(u, null)
 	s._edit_mode = false
 	s._over = false
 	s.set_process(false)

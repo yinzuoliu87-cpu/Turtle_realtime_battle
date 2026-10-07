@@ -64,6 +64,7 @@ PASS=0; FAIL=0
 frames_for () {
   case "$1" in
     verify_ios_ui) echo 4000 ;;
+    verify_topbar_states) echo 3000 ;;   # 五次重建场之间各等 0.4 秒真实时间(开打前介绍幕按真实时间淡出) —— 快机器上这段帧数不定, 给足
     verify_debug_equip_pick) echo 1200 ;;   # 鼠标一遍 + 触屏两种比例各一遍(2026-10-05), 实测 ~350 帧
     verify_autopilot_finals) echo 1500 ;;   # 默认关 140 帧 + 开着等 400 帧(驾驶每 120 帧看一次)
     verify_bracket_spectate) echo 4000 ;;   # 两种窗口尺寸 × 7 屏逐个实例化(各等 30 帧) ⇒ 500 帧中途被掐断

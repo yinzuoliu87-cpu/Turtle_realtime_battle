@@ -15,13 +15,13 @@ def chk(name, bad, detail=''):
 pets = J('data/pets.json'); pets = pets if isinstance(pets, list) else pets['pets']
 eq   = J('data/phase2-equipment.json'); eq = eq if isinstance(eq, list) else eq.get('equipment', eq.get('items'))
 types= J('data/p2eq-types.json')
-picons = J('data/passive-icons.json'); status = J('data/status.json'); rules = J('data/battle-rules.json')
+picons = J('data/passive-icons.json'); status = J('data/status.json')   # battle-rules.json 2026-10-07 随图鉴规则页一起删除
 cons = J('data/equipment.json'); cons = cons if isinstance(cons,list) else cons.get('equipment',cons.get('items'))
 src = io.open('scripts/scenes/RealtimeBattle3DScene.gd', encoding='utf-8').read()
 sken = io.open('scripts/systems/skill_energy.gd', encoding='utf-8').read()
 
 print('=== 数量 ===')
-print('  龟 %d · 装备 %d · 消耗品 %d · 状态 %d · 规则 %d · 被动图标 %d' % (len(pets),len(eq),len(cons),len(status),len(rules),len(picons)))
+print('  龟 %d · 装备 %d · 消耗品 %d · 状态 %d · 被动图标 %d' % (len(pets),len(eq),len(cons),len(status),len(picons)))
 
 print('\n=== 资源路径存在性 ===')
 chk('装备 img 全部存在', [e['id'] for e in eq if not os.path.exists('assets/sprites/'+str(e.get('img','')))])
@@ -226,7 +226,7 @@ _DEVWORD = ('参考英雄联盟', '原设计', '已由用户', '未采用', '回
             '订正', '勘误', '此前文案', '已按代码', '逐字', '〖')
 _devnote = []
 _TEXT_FILES = ('data/pets.json', 'data/phase2-equipment.json', 'data/equipment.json',
-               'data/status.json', 'data/battle-rules.json')
+               'data/status.json')
 _scanned = 0
 for _f in _TEXT_FILES:
     try:
@@ -365,7 +365,7 @@ chk('★玩家文案里没有开发笔记(参考XX/原设计/已由用户/回合
 _punc = []
 _ENWORD = ('tick', 'band', 'buff', 'debuff', 'DPS', 'cooldown')
 for _f in ('data/pets.json', 'data/phase2-equipment.json', 'data/equipment.json',
-           'data/status.json', 'data/battle-rules.json'):
+           'data/status.json'):
     try:
         _d = J(_f)
     except Exception:

@@ -15,7 +15,7 @@ extends Node
 ## 跑法: SHIP=1 <godot> --headless --audio-driver Dummy --path . res://tests/verify_codex_browse.tscn
 
 const SCN := preload("res://scenes/Codex.tscn")
-const TABS := ["pets", "equips", "synergies", "status", "rules"]
+const TABS := ["pets", "equips", "synergies", "status"]   # 「规则」页签 2026-10-07 已删
 
 var _n := 0
 var _fail := 0

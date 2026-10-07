@@ -21,6 +21,13 @@ extends RefCounted
 const SLOTS_DEFAULT := 60
 const STRIDE := 11      # gcd(11, 28) = 1
 const SHIFT := 5
+## ★p61 起(2026-10-06 扩到 120 人, 用户「下周准备大概 120 个选手」)换一套步长 ——
+##   旧公式每轮同一个步长 ⇒ 每 28 个位置三连组就重来一遍(实测 120 槽里 84 槽与别人同一组三只龟)。
+##   p01..p60 已有存档、已在台账里登记, **一个字不动**; 只有第 181 个位置(p61 第一只)起走这套:
+##   每一轮换一个与 28 互质的步长, 轮间再错 7 位。
+const SPLIT_POS := 180
+const STRIDES2 := [3, 5, 9, 13, 15, 17, 19, 23, 25, 27]
+const SHIFT2 := 7
 
 
 ## 一只龟可选的主动技位次(1..3 里真能选的)。
@@ -46,9 +53,15 @@ static func table(pets_in: Array, n: int = SLOTS_DEFAULT) -> Array:
 	## ① 180 个位置的龟序列
 	var seq: Array = []
 	for pos in range(n * 3):
-		var rnd := pos / m
-		var k := pos % m
-		seq.append(ids[(k * STRIDE + rnd * SHIFT) % m])
+		if pos < SPLIT_POS:
+			var rnd := pos / m
+			var k := pos % m
+			seq.append(ids[(k * STRIDE + rnd * SHIFT) % m])
+		else:
+			var q := pos - SPLIT_POS
+			var r2 := q / m
+			var k2 := q % m
+			seq.append(ids[(k2 * int(STRIDES2[r2 % STRIDES2.size()]) + r2 * SHIFT2) % m])
 	## ② 槽内去重(跨轮那几格)
 	for s in range(n):
 		for a in range(3):

@@ -3,7 +3,7 @@ extends Node2D
 const TopBar = preload("res://scripts/util/top_bar.gd")
 var _top_bar = null
 
-## CodexScene — 图鉴 (5 Tab: 龟/装备/羁绊/状态/规则). 1:1 PoC CodexScene.ts 像素布局移植.
+## CodexScene — 图鉴 (4 Tab: 龟/装备/羁绊/状态; 「规则」页签 2026-10-07 按用户「规则页直接删掉，我们没有这东西」整页删除). 1:1 PoC CodexScene.ts 像素布局移植.
 ## 详情容器 (UI/Detail) 左上 = (340,158) — PoC 原为 (340,150), 2026-08-19 为页签让出 8px → PoC 详情局部坐标直接对应.
 
 @onready var title_lbl: Label = $UI/Title
@@ -13,7 +13,7 @@ var _top_bar = null
 @onready var list_vbox: VBoxContainer = $UI/ListScroll/ListVBox
 var _row_press_pos := Vector2.ZERO   # 触屏点选/滑动判定: 记按下位置, 松开位移小才算点选(手机2026-07-18)
 var _codex_list := CodexList.new(self)   # 图鉴·左栏列表行构建(龟/装备/状态/分组头/简单行·back_button和共享_add_text/image/portrait/rect留主场景)(2026-07-25 抽出)
-var _codex_detail := CodexDetail.new(self)   # 图鉴·右栏详情视图(龟/装备/羁绊(类型)/状态/规则/小将 13渲染函数)(2026-07-25 抽出)
+var _codex_detail := CodexDetail.new(self)   # 图鉴·右栏详情视图(龟/装备/羁绊(类型)/状态/小将)(2026-07-25 抽出)
 @onready var detail_bg: ColorRect = $UI/DetailBg
 # ★2026-08-03 详情改可滚动。这里【故意】做了一次换名:
 #   detail_frame = 场景里那个固定 900×550 的框(UI/DetailBg 画着边框)——入场 tween / 居中偏移打它;
@@ -36,8 +36,8 @@ const RARITY_COLOR := {
 const COST_COLOR := {
 	1: "#94a3b8", 2: "#06d6a0", 3: "#4cc9f0", 4: "#c77dff", 5: "#ffd93d",
 }
-# 稀有度倍率取 DataRegistry.rarity_mult (=rarity-mult.json {S:1.09…}, 同战斗引擎 fighter.gd:127 + PoC pets.ts RARITY_MULT)。
-# 原硬编 {S:1.5/SS:1.75/SSS:2.0} 是自创错值 → 图鉴数值全部虚高且与实战/PoC不符 (用户报"数值不太对")。
+# ★图鉴数值【不乘稀有度倍率】(2026-10-07): 实时版战斗 `_make_unit` 不乘 rarity_mult,
+#   图鉴乘了就是对玩家虚报 3~15%。数值上下文只走 `_ctx_for`(等级缩放与战斗同一个 UnitScaling)。
 ## 页签 = [id, 页名, 像素图标]。
 ## ★★2026-09-28 emoji → 像素图标。原来是「🐢 龟 / ⚔ 装备 / 🔗 羁绊 / 💫 状态 / 📜 规则」——
 ##   那五个字形来自 **NotoEmoji**(回退链第三级), 是**另一套画法**: 抗锯齿矢量描边,
@@ -52,7 +52,6 @@ const TABS := [
 	["equips", "装备", "res://assets/sprites/ui/icon-equip.png"],
 	["synergies", "羁绊", "res://assets/sprites/ui/icon-synergy.png"],
 	["status", "状态", "res://assets/sprites/ui/icon-status.png"],
-	["rules", "规则", "res://assets/sprites/ui/icon-rules.png"],
 ]
 # PoC 详情内部排版宽 (CodexScene.ts: pets/synergy/status/rule detailW=900, equip=920)
 const DETAIL_W := 900.0
@@ -131,7 +130,7 @@ func _type_color(t: String) -> String:
 
 var current_tab: String = "pets"
 var _items: Array = []
-var _sel_idx: int = -1   # 当前选中条目 idx (调试面板改等级后刷新用)
+var _sel_idx: int = -1   # 当前选中条目 idx
 
 
 ## ← 返回主菜单 (1:1 PoC CodexScene.ts:68 makeIconButton 40,40 → MainMenuScene). 原 Godot 无 → 图鉴死胡同。
@@ -152,108 +151,6 @@ func _add_back_button() -> void:
 		"safe_right": _m.z,
 		"on_back": func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"),
 	})
-	# 🛠 调试面板 (右上角, 仅 debug 构建显示 — 1:1 PoC DEV_VISIBLE; 设等级/加币/重置/快速对战)
-	if OS.is_debug_build():
-		var dbg := Button.new()
-		dbg.text = "🛠"
-		dbg.add_theme_font_size_override("font_size", 22)
-		## ★位置要跟着宽度走: 原来写死 -64 是按 44 宽算的, 按钮放大到 81 之后
-		##   右边缘就顶出屏幕 17px(verify_ui_layout 实测)。改成 -(宽+右安全区+18)。
-		dbg.position = Vector2(float(get_viewport().get_visible_rect().size.x) - 81.0 - 18.0
-			- SafeArea.insets(Vector2(get_viewport().get_visible_rect().size)).z, 18.0)
-		dbg.custom_minimum_size = Vector2(81.0, 81.0)   # 同上: 44px 只有 24pt
-		dbg.focus_mode = Control.FOCUS_NONE
-		dbg.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		dbg.pressed.connect(_toggle_debug_overlay)
-		## ★2026-08-18 换金属签牌皮(实测它还是 Godot 默认皮)。
-		UISkin.button(dbg, Color("#9fb6c9"))
-		$UI.add_child(dbg)
-
-
-## 🛠 调试面板 (1:1 PoC MenuDebugOverlay): 设全体等级/加币/重置/快速对战 (dev 工具)
-func _toggle_debug_overlay() -> void:
-	var ex := get_node_or_null("DebugOverlay")
-	if ex:
-		ex.queue_free()
-		return
-	var layer := CanvasLayer.new()
-	layer.layer = 90
-	layer.name = "DebugOverlay"
-	add_child(layer)
-	var veil := ColorRect.new()
-	veil.set_anchors_preset(Control.PRESET_FULL_RECT)
-	veil.color = Color(0, 0, 0, 0.55)
-	veil.mouse_filter = Control.MOUSE_FILTER_STOP
-	veil.gui_input.connect(func(ev: InputEvent) -> void:
-		if ev is InputEventMouseButton and ev.pressed:
-			layer.queue_free())
-	layer.add_child(veil)
-	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	layer.add_child(center)
-	var box := PanelContainer.new()
-	box.mouse_filter = Control.MOUSE_FILTER_STOP
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color("#141d2e"); sb.border_color = Color("#58a6ff"); sb.set_border_width_all(2); sb.set_corner_radius_all(10)
-	sb.content_margin_left = 22; sb.content_margin_right = 22; sb.content_margin_top = 18; sb.content_margin_bottom = 18
-	box.add_theme_stylebox_override("panel", sb)
-	center.add_child(box)
-	var vb := VBoxContainer.new(); vb.add_theme_constant_override("separation", 8); box.add_child(vb)
-	var title := Label.new(); title.text = "🛠 调试面板"; title.add_theme_font_size_override("font_size", 20); title.add_theme_color_override("font_color", Color("#58a6ff")); vb.add_child(title)
-	var info := Label.new(); info.add_theme_font_size_override("font_size", 13); info.add_theme_color_override("font_color", Color("#9aa6b2")); vb.add_child(info)
-	var refresh_info := func() -> void:
-		var lv_count: Dictionary = {}
-		for p in DataRegistry.all_pets:
-			var l: int = GameState.get_pet_level(str(p.get("id", "")))
-			lv_count[l] = int(lv_count.get(l, 0)) + 1
-		var summ := ""
-		for k in lv_count:
-			summ += "Lv%d×%d  " % [k, lv_count[k]]
-		var force := ("强制全体 Lv.%d (含对手)" % GameState.debug_level) if GameState.debug_level > 0 else "强制等级: 关"
-		info.text = "龟币: %d   龟种: %d\n等级分布: %s\n战斗: %s" % [GameState.coins, DataRegistry.all_pets.size(), summ, force]
-	refresh_info.call()
-	vb.add_child(_dbg_label("全体等级 (战斗内强制两队同档)"))
-	var lv_row := HBoxContainer.new(); lv_row.add_theme_constant_override("separation", 8)
-	for lvv in [1, 2, 5, 10]:
-		var b := _dbg_btn("全员 Lv.%d" % lvv)
-		b.pressed.connect(func() -> void:
-			GameState.debug_level = lvv                          # 战斗: 强制全体单位等级(两队同档, 见战斗基础-策划焊死.md §三)
-			for p in DataRegistry.all_pets:
-				GameState.set_pet_level(str(p.get("id", "")), lvv)   # 图鉴显示: 各龟等级
-			if _sel_idx >= 0:
-				_select(_sel_idx)
-			refresh_info.call())
-		lv_row.add_child(b)
-	vb.add_child(lv_row)
-	vb.add_child(_dbg_label("龟币"))
-	var coin_row := HBoxContainer.new(); coin_row.add_theme_constant_override("separation", 8)
-	for amt in [100, 500]:
-		var b := _dbg_btn("+%d 龟币" % amt)
-		b.pressed.connect(func() -> void:
-			GameState.coins += amt; GameState.save(); refresh_info.call())
-		coin_row.add_child(b)
-	vb.add_child(coin_row)
-	var reset := _dbg_btn("重置 (等级+龟币)")
-	reset.pressed.connect(func() -> void:
-		GameState.pet_levels = {}; GameState.coins = 0; GameState.debug_level = 0; GameState.save()
-		if _sel_idx >= 0:
-			_select(_sel_idx)
-		refresh_info.call())
-	vb.add_child(reset)
-	var close := _dbg_btn("× 关闭")
-	close.pressed.connect(func() -> void: layer.queue_free())
-	vb.add_child(close)
-
-
-func _dbg_label(txt: String) -> Label:
-	var l := Label.new(); l.text = txt; l.add_theme_font_size_override("font_size", 14); l.add_theme_color_override("font_color", Color("#ffd93d"))
-	return l
-
-
-func _dbg_btn(txt: String) -> Button:
-	var b := Button.new(); b.text = txt; b.add_theme_font_size_override("font_size", 14); b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	return b
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -269,9 +166,9 @@ func _ready() -> void:
 	##   (页签就写着 龟(28) / 装备(103) / 羁绊(11) / 状态(13) / 规则(7)),
 	##   而且它浮在左边列表上面 —— 实拍压在最后一只龟「财神龟」那一行上(判据 12 逮到)。
 	##   纯冗余 + 遮挡 ⇒ 平时收起来; 只有**数据没加载出来**时才需要它(上面那个 ❌ 分支)。
-	status_bar.text = "✓ %d 龟 / %d 装备 / %d 羁绊 / %d 状态 / %d 规则" % [
+	status_bar.text = "✓ %d 龟 / %d 装备 / %d 羁绊 / %d 状态" % [
 		DataRegistry.all_pets.size(), _equip_tab_count(),
-		Phase2Types.TYPES.size(), DataRegistry.status_defs.size(), DataRegistry.battle_rules.size()]
+		Phase2Types.TYPES.size(), DataRegistry.status_defs.size()]
 	status_bar.visible = false
 	# 视口比例由项目级 EXPAND(window/stretch/aspect)保证, 场景切换不翻转 aspect → 入场丝滑(同 TeamSelect)。
 	#   同步建完(无 await), 首帧即完整布局, 无半成品/撕裂帧。背景铺满+居中见 _fill_bg_and_center。
@@ -360,7 +257,7 @@ func _codex_selfshot() -> void:
 ## 新手引导高亮锚点(用户2026-07-23 D)。名字→屏幕矩形; 解析不到返回空 Rect2(本步不挖洞)。
 func _tutorial_anchor(anchor: String) -> Rect2:
 	match anchor:
-		"tabs":   # 顶部分类页签栏(龟/装备/羁绊/状态/规则)
+		"tabs":   # 顶部分类页签栏(龟/装备/羁绊/状态)
 			if tab_bar != null and is_instance_valid(tab_bar):
 				return tab_bar.get_global_rect()
 	return Rect2()
@@ -459,7 +356,6 @@ func _build_tab_bar() -> void:
 	var tab_counts := {
 		"pets": DataRegistry.launch_pets.size(), "equips": _equip_tab_count(),
 		"synergies": Phase2Types.TYPES.size(), "status": DataRegistry.status_defs.size(),
-		"rules": DataRegistry.battle_rules.size(),
 	}
 	for i in TABS.size():
 		var t: Array = TABS[i]
@@ -555,14 +451,10 @@ func _switch_tab(tab: String) -> void:
 					_items.size() - 1, true)
 		"status":
 			_codex_list._add_status_rows()
-		"rules":
-			for r in DataRegistry.battle_rules:
-				_items.append(r)
-				_codex_list._add_simple_row(r.get("name", "?"), "#ffd93d", Color("#06d6a0"),
-					"res://assets/sprites/rules/%s.png" % r.get("id", ""), _items.size() - 1)
-			# 「小商店物品池」虚拟入口已删 (R3 2026-07-11): 那是回合制/PoC 局内金币小商店(第4/8/12场开张),
-			#   实时版 V2 经济已挪局外深海币商店, 战斗内无小商店 → 该页描述玩家永远遇不到的机制, 属知识库分歧, 删除。
-			#   规则之日 battle_rules 目前未在实时版战斗生效, 但【用户 2026-07-11 定: 改制后加入, 现在待做】→ rules Tab 保留不删。
+		## ★「规则」页签已删(2026-10-07 用户「规则页直接删掉，我们没有这东西」):
+		##   battle-rules.json 的 5 条「XX之日」在实时版战斗里**一条都没生效**, 只有图鉴在读。
+		##   (2026-07-11 那句「改制后加入, 现在待做」被这次的原话取代。)
+		##   判据: tests/verify_codex_text.gd ⑥ 断言图鉴里没有规则页签、DataRegistry 不再载入规则表。
 	if _items.size() > 0:
 		_select(0)
 	# 列表/详情滑入 (PoC scene.restart 每次切 tab 重播)
@@ -681,7 +573,6 @@ func _select(idx: int) -> void:
 		"equips": _codex_detail._show_equip(item)
 		"synergies": _codex_detail._show_type(item)
 		"status": _codex_detail._show_status(item)
-		"rules": _codex_detail._show_rule(item)
 
 
 # ══════════════════════════════════════════════════════════
@@ -894,15 +785,29 @@ func _add_rect(cx: float, cy: float, w: float, h: float, color: String, a: float
 	return p
 
 
+## 图鉴显示用的数值上下文 —— 必须与战斗里**真生成出来的单位**逐数相同。
+## ★★2026-10-07(内测前图鉴体检 A/J): 原来这里乘了 `DataRegistry.rarity_mult`(B×1.03 … SSS×1.15),
+##   而战斗 `_make_unit`(battle_spawn.gd)**从来不乘稀有度** ⇒ 非 C 龟的血/攻/双抗和所有
+##   {N:…ATK} 技能数字在图鉴上虚高 3~15%。等级也读错了: 读的是 `pet_levels`(唯一写入方是图鉴调试面板, 已于同日删除),
+##   而战斗读的是赛季等级 ⇒ 见 `_battle_level`。
+## 守卫: tests/verify_codex_battle_parity.gd(拿真生成的战斗单位逐项比)。
 func _ctx_for(pet: Dictionary) -> Dictionary:
-	# 1:1 PoC petToCtx(CodexScene.ts:167): m = rarity_mult × getLevelBonus(1+(lv-1)×0.05); lv=实际等级 (技能{N:ATK}/{LV}随等级变)
-	var lv: int = GameState.get_pet_level(str(pet.get("id", "")))
-	var m: float = float(DataRegistry.rarity_mult.get(pet.get("rarity", "C"), 1.0)) * (1.0 + (lv - 1) * 0.05)
+	var lv: int = _battle_level(str(pet.get("id", "")))
+	var m: float = UnitScaling.level_multiplier(lv)
 	return {
 		"atk": roundi(pet.get("atk", 0) * m), "def": roundi(pet.get("def", 0) * m),
 		"mr": roundi(pet.get("mr", pet.get("def", 0)) * m), "maxHp": roundi(pet.get("hp", 0) * m),
 		"crit": pet.get("crit", 0.0), "lv": lv,
 	}
+
+
+## 这只龟在玩家这一侧开战时**真正吃到的等级** —— 与战斗同一套取法:
+##   `RealtimeBattle3DScene._unit_level("left")`(调试强制等级 > 赛季等级)
+##   + `battle_spawn._make_unit` 里的 `GameState.temp_level_bonus(id)`(临时等级器)。
+## ★不读 `get_pet_level` —— 那个表真玩家恒为 1(写它的调试面板已删), 战斗侧没人读它。
+func _battle_level(pet_id: String) -> int:
+	var lv: int = GameState.debug_level if GameState.debug_level > 0 else maxi(1, GameState.season_level)
+	return lv + GameState.temp_level_bonus(pet_id)
 
 
 # ─── 龟详情 (1:1 PoC showPetDetail 顶部固定区) ───

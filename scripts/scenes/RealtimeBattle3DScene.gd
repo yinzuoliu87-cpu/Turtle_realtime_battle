@@ -1501,11 +1501,11 @@ func _sd_tick() -> void:
 	if _sd_stacks == 1:
 		_announce_sudden()
 
-## 决胜开始: 全场飘字 + 提示(只在第1档播一次, 后续档位靠 HUD 显示数值)
+## 加时开始: 屏幕中上一次性大字「加时！」(只在第1档播一次, 后续档位靠顶栏徽章的读数)
+## ★2026-10-07 顶部栏重做: 原来是每只龟头顶飘一个「决胜!」—— 名字和第三路「终极战场」撞, 而且一屏散字读不出是一件事。
 func _announce_sudden() -> void:
-	for u in _units:
-		if u.get("alive", false) and not u.get("_isEgg", false):
-			_vfx._float_text(u["pos"] + Vector2(0, -90), "决胜!", Color("#ff6b6b"))
+	if _hud != null and _hud._topbar != null:
+		_hud._topbar.show_splash()
 	_log("⚔ 决胜阶段: 治疗效果 -50%, 每 5 秒全场 +25% 增伤")
 
 func _foe_normalize_lane(raw: Array) -> Array:   # 对手每路规整到"恰好3单位"(用户2026-07-18"每条路都是3个单位·跟玩家一样"): 保留全部统领(≤3), 小将补/裁到 3-统领数(=玩家逻辑). 3统领→0小将 / 空统领→3小将 皆合规
@@ -6168,7 +6168,7 @@ const _CHEST_TREASURE_DESC := {
 	"chain": "砸击的范围与射程 ×2",
 	"stone": "砸击额外 +100% 护甲与 +100% 魔抗",
 	"long_sword": "攻击力 +45%",
-	"bloodblade": "吸血 +25%",
+	"bloodblade": "生命偷取 +25%",
 	"flint": "普攻命中施加灼烧",
 	"gem_armor": "护甲与魔抗 +25%, 最大生命 +500",
 	"poison": "普攻命中使目标受到的治疗 -50%, 持续 5 秒",
@@ -7832,7 +7832,8 @@ func _on_dmg_stats_toggle() -> void:
 
 
 
-const _LANE_CN := {"top": "上路", "bottom": "下路", "final": "决胜"}   # ★路名唯一出处(2026-10-05 统一成 上路/下路/决胜)
+## ★路名唯一出处。用户 2026-10-07:「我们叫上路战场，下路战场，终极战场」(推翻 10-05 我统一成的 上路/下路/决胜)。
+const _LANE_CN := {"top": "上路战场", "bottom": "下路战场", "final": "终极战场"}
 
 ## 相机输入(滚轮缩放 / 双指捏合 / 拖动平移)。
 ##

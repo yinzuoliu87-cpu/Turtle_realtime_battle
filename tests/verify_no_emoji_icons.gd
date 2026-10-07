@@ -78,7 +78,8 @@ const SCREEN_LEDGER: Dictionary = {
 	##   ★数字是 `EMOJI_DUMP=1` 量出来的, 不是 38−12 算出来的 —— 按算术估会差 20。
 	## ★数字口径 = 一次扫描里出现的 emoji **字符数**(同一类型在页签/详情各出现一次也各算一次),
 	##   所以它随"当前选中哪一条"浮动 ⇒ 取实测上沿。
-	"Codex": [6, "data/equipment.json 里 5 件消耗品名字自带 emoji + 🛠(debug 构建)"],
+	## ★2026-10-07 6 → 0(实测): 消耗品分组 10-02 已删, 右上角 🛠 调试面板 10-07 按用户「右上角调试器直接删掉」整块删除。
+	"Codex": [0, "已清零: 消耗品分组与 🛠 调试面板都删了"],
 	## ⚠★★ Codex 剩下的 6 个里有 **5 个根本不在任何 .gd 里** —— 它们在
 	##   `data/equipment.json` 的 **`name` 字段**里: 「🔥 怒火药水」「⛑ 应急护盾」
 	##   「🌿 急救包」「✨ 净化」「🎯 必中标记」(5 件消耗品)。
@@ -126,8 +127,8 @@ const SRC_LEDGER: Dictionary = {
 	##   不是 20−12 算出来的 —— 按算术估会多留 5 个的余量, 而余量就是下一次悄悄长回来的地方。
 	## ★兜底值从 🔗 改成 **""**(缺的类型就不画图) —— 香火(2026-08-15)/斧头(2026-09-28)
 	##   两次事故都是"兜底成别的东西", 看上去像是有意设计。
-	"scripts/scenes/CodexScene.gd": [3,
-		"🛠 调试面板 ×2(仅 debug 构建) + 数据未加载那行的 ❌(平时 visible=false)"],
+	"scripts/scenes/CodexScene.gd": [1,
+		"数据未加载那行的 ❌(平时 visible=false); 🛠 调试面板 ×2 已于 2026-10-07 整块删除"],
 	"scripts/scenes/InventoryScene.gd": [1, "临时等级器 🔼(无素材)"],
 	"scripts/scenes/SettingsScene.gd": [1, "🛠 调试场(仅 debug 构建, 不是玩家路径)"],
 	"scripts/scenes/codex/detail_views.gd": [1,
@@ -722,7 +723,7 @@ func _coax(scn: String, inst) -> void:
 		"Codex":
 			## 五个页签**全过一遍**, 每个再选中一条 —— 详情面板是这一屏 emoji 最密的地方
 			## (羁绊详情的「同类装备」一张表就列十几件)。
-			var tabs: Array = ["pets", "equips", "synergies", "status", "rules"]
+			var tabs: Array = ["pets", "equips", "synergies", "status"]   # 「规则」页签 2026-10-07 已删
 			var built := 0
 			for t in tabs:
 				inst.call("_switch_tab", str(t))
@@ -732,7 +733,7 @@ func _coax(scn: String, inst) -> void:
 					await _wait(3)
 					built += 1
 				_absorb(inst)          # ★每个页签当场量, 不留到最后
-			_ok("★分母 Codex: 五个页签都建出了条目(%d/5)" % built, built == 5)
+			_ok("★分母 Codex: 四个页签都建出了条目(%d/4)" % built, built == 4)
 			## 双形态龟(双头/熔岩)的「换形态」钮 —— 只有这两只身上才画。
 			inst.call("_switch_tab", "pets")
 			await _wait(3)

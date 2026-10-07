@@ -67,13 +67,18 @@ func _ready() -> void:
 		var rings: Array = _all_named(s._world, "ThemeRing")
 		_ok("[%s] ★★主题环只有一个(真对局那条路不许再建第二遍)" % th, rings.size() == 1, "%d 个" % rings.size())
 
-		## ③ 前景框边: 挂在相机上的那条剪影带
+		## ③ 前景框边: 那条剪影带(2026-10-07 起挂在世界里跟着场地走, 不再挂相机)
 		var fg: String = str(cfg.get("fg_band", ""))
 		var fg_n := 0
-		for ch in s._cam.get_children():
-			if ch is Sprite3D and str(ch.get_meta("fg_band", "")) == fg and (ch as Sprite3D).texture != null:
+		var fg_on_cam := 0
+		for ch in s._world.find_children("*", "Sprite3D", true, false):
+			if str(ch.get_meta("fg_band", "")) == fg and (ch as Sprite3D).texture != null:
 				fg_n += 1
-		_ok("[%s] ★前景框边真的挂在相机上(%s)" % [th, fg], fg_n >= 1, "%d 张" % fg_n)
+		for ch in s._cam.get_children():
+			if ch.has_meta("fg_band"):
+				fg_on_cam += 1
+		_ok("[%s] ★前景框边真的建出来了且挂在世界里(%s)" % [th, fg], fg_n >= 1, "%d 张" % fg_n)
+		_ok("[%s] ★★前景框边不许再挂在相机上(用户「改成跟着场地走」)" % th, fg_on_cam == 0, "相机上还有 %d 张" % fg_on_cam)
 
 		## ④ 挡路障碍: 换成主题外观, 而且看起来多宽就挡多宽
 		var props: Node = s._world.find_child("MapProps", true, false)

@@ -227,7 +227,7 @@ func _test_pct_not_rounded_to_zero() -> void:
 	u["crit_dmg"] = 1.5
 	u["echarge_perm"] = 0.003
 	var cases := [
-		["吸血 ", "吸血 0.4%"],
+		["生命偷取 ", "生命偷取 0.4%"],
 		["闪避 ", "闪避 0.3%"],
 		["治疗强度 ", "治疗强度 100.4%"],
 		["护盾强度 ", "护盾强度 100.2%"],
@@ -735,7 +735,7 @@ func _test_panel_v2() -> void:
 	_ok("★★★⑤ 19 项全部常驻(用户 10-06「我们全部要放上去」)", _s._info_stat_labels.size() == 19 and tiles.size() == 19,
 		"刷新表 %d 个 / 取数 %d 项" % [_s._info_stat_labels.size(), tiles.size()])
 	var want_names := ["攻击", "攻速", "暴击", "暴伤", "护甲", "魔抗", "减伤", "增伤", "射程", "移速",
-		"吸血", "闪避", "护甲穿透", "魔法穿透", "治疗强度", "护盾强度", "龟能充能", "反伤", "韧性"]
+		"生命偷取", "闪避", "护甲穿透", "魔法穿透", "治疗强度", "护盾强度", "龟能充能", "反伤", "韧性"]
 	var got_names: Array = []
 	for t in tiles:
 		got_names.append(str((t as Array)[1]))

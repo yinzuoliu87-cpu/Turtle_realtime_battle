@@ -165,7 +165,7 @@ const GAP_TOL := 46.0
 func _check_dead_space() -> void:
 	print("  ── ① 详情框死空白 ──")
 	var worst := {}
-	for tab in ["pets", "equips", "synergies", "status", "rules"]:
+	for tab in ["pets", "equips", "synergies", "status"]:   # 「规则」页签 2026-10-07 已删
 		_inst._switch_tab(tab)
 		await _settle(6)
 		var cnt: int = _inst._items.size()
@@ -207,7 +207,8 @@ func _check_dead_space() -> void:
 	_ok("★① 分母: 龟页内容足够高, 框吃满上限(证明框不是永远停在下限)",
 		_inst.detail_frame.size.y >= 500.0, "框高 %.0f" % _inst.detail_frame.size.y)
 	# 边框(ReferenceRect 全锚在 DetailBg 上)必须跟着一起收, 否则会露出一圈空框
-	_inst._switch_tab("rules")
+	## ★原来拿「规则」页(内容最短)量; 规则页签 2026-10-07 已删 ⇒ 改用状态页(同样是短内容, 框会收到下限附近)。
+	_inst._switch_tab("status")
 	await _settle(6)
 	_inst._select(0)
 	await _settle(4)
@@ -391,7 +392,7 @@ const BODY_MIN := 16
 func _check_font_hierarchy() -> void:
 	print("  ── ⑤ 正文字号 ──")
 	var got := {}
-	for tab in ["equips", "synergies", "status", "rules"]:
+	for tab in ["equips", "synergies", "status"]:   # 「规则」页签 2026-10-07 已删
 		_inst._switch_tab(tab)
 		await _settle(6)
 		_inst._select(0)

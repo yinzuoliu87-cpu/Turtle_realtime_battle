@@ -134,10 +134,6 @@ var tutorial_mandatory: bool = false
 ## 是为了跨场景/跨对局记住 —— 玩家对"要不要看公式"的偏好是稳定的, 每局重设很烦。
 var skill_text_detail: bool = false
 
-## 本局战斗规则 (规则之日) — 7 项之一 (烈焰/雷暴/铁壁/狂暴/装备/下雨/正常) 或 "" = 无规则.
-## TeamSelect 选规则后写入, BattleScene._ready 读取后清空 (PoC scene.start data.rule 等价).
-var battle_rule: String = ""
-
 ## 上一场战斗结果 (BattleScene._show_result 写, BattleEndScene 读) — 跨场景传 playerStats 等
 var last_battle_result: Dictionary = {}
 
@@ -910,7 +906,7 @@ var battles_won: int = 0
 var battles_total: int = 0
 var inventory: Array[String] = []                     # 收集到的装备 id 列表 (跨场景持久)
 var match_history: Array = []                          # 对局记录 [{result,lineup,mode,turn}], 最新在前封顶 50
-var pet_levels: Dictionary = {}                        # 宠物等级 {petId: 1-10} (1:1 PoC petState.levels; 只调试面板改, 默认1)
+var pet_levels: Dictionary = {}                        # 宠物等级 {petId: 1-10} (1:1 PoC petState.levels; 默认1)。★唯一写入方(图鉴调试面板)2026-10-07 已删, 现在只从旧存档读回; 战斗不读它(用 season_level)
 var bgm_volume: float = 0.45                           # 设置: BGM 音量
 var sfx_volume: float = 0.8                            # 设置: SFX 音量
 var fullscreen: bool = false                           # 设置: 全屏 (原来切了不存, 重启回窗口)
@@ -1580,14 +1576,9 @@ func reset_dungeon() -> void:
 
 
 
-## 宠物等级 (1:1 PoC pet-level.ts getPetLevel/setPetLevel): 默认1, clamp 1-10, set 后存档
+## 宠物等级 (1:1 PoC pet-level.ts getPetLevel): 默认1。setPetLevel 随图鉴调试面板一起删了(2026-10-07)
 func get_pet_level(pet_id: String) -> int:
 	return int(pet_levels.get(pet_id, 1))
-
-
-func set_pet_level(pet_id: String, level: int) -> void:
-	pet_levels[pet_id] = clampi(level, 1, 10)
-	save()
 
 
 ## ★存档保护: 置 true 后 save() 空转。

@@ -42,6 +42,8 @@ var _hang_cbs: Array = []
 var _rec: Dictionary = {}           # 录制那一份(本机文件读回来的)
 var _id := ""
 var _n_real_cp := 0
+var _keepalive: Timer = null
+var _ka_live_ticks := 0            # NetKeepalive 在「后端开着 + test_mode=false」时跑过几拍
 
 
 func _ok(name: String, cond: bool, detail: String = "") -> void:
@@ -94,6 +96,11 @@ func _transport(m, u, h, b, cb) -> void:
 					"body": JSON.stringify([{"match_id": id, "replay": str(_bad_rows.get(_mode, ""))}])})
 		return
 	cb.call({"ok": true, "code": 200, "body": "[]"})
+
+
+func _on_keepalive_tick() -> void:
+	if SB.enabled() and not bool(_gs.test_mode):
+		_ka_live_ticks += 1
 
 
 func _gets() -> Array:
@@ -172,6 +179,22 @@ func _ready() -> void:
 	SB._transport_for_test = _transport
 	SB._reset_auth_for_test()
 	SB._token = TOKEN
+	## ★令牌要连【有效期】一起给。只给 _token 而 _expires_at 留 0 ⇒ `session_action` 判「快过期」⇒
+	##   GameState 的 NetKeepalive(20 秒一拍, test_mode=false 时照跑)去续登录 ⇒ `_store_session`
+	##   把 auth_refresh 从 r1 换成 r2 并 save() ⇒ 「存档逐字节不变」红, 而 GameState 那条照绿
+	##   (auth_refresh 在 BACKUP_SKIP 里)。本机整份测试 <20 秒, 那一拍永远落不进来; CI 慢,
+	##   一拍落在 ③ 里 ⇒ 偶发红(2026-10-07 探针把节拍缩到 0.5 秒当场复现, 差异恰好就是 auth_refresh 一行)。
+	##   续登录写盘是合法的, 不是回放的副作用。
+	SB._expires_at = int(Time.get_unix_time_from_system()) + 3600
+	## ★把那一拍从「看机器快慢碰运气」变成**每次都在**: 节拍缩到 0.05 秒, 并数它在「后端开着 +
+	##   test_mode=false」时真的跑过几次(分母)。否则本机永远跑不到它, 这一类回归只能等 CI 偶发红。
+	_keepalive = _gs.get_node_or_null("NetKeepalive") as Timer
+	_ok("分母: GameState 的 NetKeepalive 节拍在", _keepalive != null)
+	var ka_wait0: float = _keepalive.wait_time if _keepalive != null else 20.0
+	if _keepalive != null:
+		_keepalive.timeout.connect(_on_keepalive_tick)
+		_keepalive.wait_time = 0.05
+		_keepalive.start()
 	_ok("★分母: 后端真的打开了(关着的话 ②③ 全是空检查)", SB.enabled())
 	_rows[_id] = RU.upload_b64(_rec)
 
@@ -186,6 +209,12 @@ func _ready() -> void:
 	rs = await _t_local(rs, base)
 	rs = await _t_remote(rs, base)
 	rs = await _t_failures(rs, base)
+	_ok("★分母: 后台续登录节拍在后端开着、test_mode=false 时真的跑过(%d 拍; 0 = ④ 没量到它)" % _ka_live_ticks,
+		_ka_live_ticks >= 3)
+	if _keepalive != null:
+		_keepalive.timeout.disconnect(_on_keepalive_tick)
+		_keepalive.wait_time = ka_wait0
+		_keepalive.start()
 
 	SB._transport_for_test = Callable()
 	SB._reset_auth_for_test()
@@ -486,6 +515,7 @@ func _t_one_failure(rs: Node, mode: String, want: String, what: String, msgs: Di
 		SB._reset_auth_for_test()          # 冷启动: 内存里没令牌, 去续 → 续不上
 	else:
 		SB._token = TOKEN
+		SB._expires_at = int(Time.get_unix_time_from_system()) + 3600
 	SB.match_fetch_timeout_for_test = 0.4 if mode == "hang" else 0.0
 	var b := _btn_for(rs, _id)
 	if b == null:

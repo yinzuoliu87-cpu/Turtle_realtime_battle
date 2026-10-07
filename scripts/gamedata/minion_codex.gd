@@ -46,10 +46,13 @@ const MINION_KINDS := [
 ]
 
 ## Lv1 数值 + 说明. hp/atk 随等级 ×1.05^(lv-1) 复利, 双抗定值(与 _make_unit 一致).
+## ★`range` 写的是【实际生效】的射程: 近战单位在 `_make_unit` 里被抬到 ≥ MELEE_ATK_RANGE_MIN(100),
+##   原表照抄 `st` 里的 70 / 90 ⇒ 图鉴比战斗少报(2026-10-07 体检 H)。
+##   守卫: tests/verify_codex_battle_parity.gd 拿真生成的小将逐项比(血/攻/双抗/攻击间隔/射程)。
 const MINION_INFO := {
 	"front": {
 		"name": "近战小将", "img": "minion.png", "role": "前排 · 近战",
-		"hp": 750, "atk": 42, "def": 13, "mr": 13, "interval": 0.85, "range": 70, "spd": 105,
+		"hp": 750, "atk": 42, "def": 13, "mr": 13, "interval": 0.85, "range": 100, "spd": 105,
 		"skill_name": "人体浪板", "skill_cost": 120, "skill_icon": "skills/minion-bodysurf.png",
 		"skill_desc": "盯上 2000 码内的一个敌人：高高跃起，一边起跳一边回复 2×攻击力 生命（离得太近就先往后跳开拉出距离），跟着射出铁链把它眩晕，再把自己拉过去；接触瞬间造成 [color=#ff9f43]目标 10% 最大生命[/color] 物理伤害，随后踩着目标滑行——对被踩者持续造成 2×攻击力 物理伤害，沿途敌人受到 1.5×攻击力 物理伤害并被击退，最后跳下。",
 	},
@@ -60,8 +63,8 @@ const MINION_INFO := {
 		"skill_desc": "锁上 2000 码内的敌人，蓄力 1.5 秒后发射一枚慢速追踪导弹，命中处核爆：400 码范围内造成 [color=#ff9f43]4×攻击力[/color] 物理伤害，并使命中的敌人受到的治疗降低 50%，持续 4 秒。",
 	},
 	"elite": {
-		"name": "精英小将", "img": "minion-elite.png", "role": "顶上统领位 · 近战",
-		"hp": 1000, "atk": 50, "def": 16, "mr": 20, "interval": 1.54, "range": 90, "spd": 105,
+		"name": "精英小将", "img": "minion-elite.png", "role": "精英 · 近战",
+		"hp": 1000, "atk": 50, "def": 16, "mr": 20, "interval": 1.54, "range": 100, "spd": 105,
 		"skill_name": "铁锤", "skill_cost": 100,
 		"skill_desc": "500 码内有敌人就举拳蓄力 0.35 秒，随后一锤砸地，对身前 60° 锥形 500 码内造成 [color=#ff9f43]4×攻击力[/color] 魔法伤害；每第 3 次改为高高跃起、空中蓄力 1 秒后下锤，覆盖 700 码全域并造成 [color=#ff9f43]6×攻击力[/color] 魔法伤害。",
 		"passives": [

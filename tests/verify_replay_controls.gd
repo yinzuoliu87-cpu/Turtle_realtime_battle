@@ -185,9 +185,10 @@ func _check_egg_and_lane(s) -> void:
 				egg_frames += 1
 	_ok("⑥ 分母: 场上真有蛋(%d 个)、栏里真有单位格(%d 个)" % [eggs, frames], eggs >= 2 and frames >= 2)
 	_ok("⑥ ★两侧单位栏里没有龟蛋那一格", egg_frames == 0, "蛋格 %d" % egg_frames)
-	_ok("⑥ ★路名唯一出处: 上路 / 下路 / 决胜", s._LANE_CN == {"top": "上路", "bottom": "下路", "final": "决胜"}, str(s._LANE_CN))
+	## ★2026-10-07 用户:「我们叫上路战场，下路战场，终极战场」(推翻 10-05 统一成的 上路/下路/决胜)。
+	_ok("⑥ ★路名唯一出处: 上路战场 / 下路战场 / 终极战场", s._LANE_CN == {"top": "上路战场", "bottom": "下路战场", "final": "终极战场"}, str(s._LANE_CN))
 	var hud_t := str(s._dl_hud.text) if s._dl_hud != null else ""
-	_ok("⑥ 顶上那行写「上路」(不是「上半场」, 不带【】)", hud_t.begins_with("上路") and not hud_t.contains("半场"), hud_t)
+	_ok("⑥ 顶上计时牌写「上路战场 m:ss」(不是「上半场」, 不带【】)", hud_t.begins_with("上路战场 ") and not hud_t.contains("半场"), hud_t)
 
 
 # ② ④ ─────────────────────────────────────────────────────────────
@@ -244,7 +245,7 @@ func _t_controls_and_card(base: Dictionary) -> void:
 	var spd := _named(bar, RC.N_SPEED) as Button
 	var ex := _named(bar, RC.N_EXIT) as Button
 	_ok("② 分母: 操作条上 暂停 / 倍速 / 退出回放 三颗钮都在", pb != null and spd != null and ex != null and ex.text == "退出回放")
-	_ok("② 铭牌写着现在打到哪一路", _named(bar, RC.N_LANE) != null and (_named(bar, RC.N_LANE) as Label).text == "上路",
+	_ok("② 铭牌写着现在打到哪一路", _named(bar, RC.N_LANE) != null and (_named(bar, RC.N_LANE) as Label).text == "上路战场",
 		(_named(bar, RC.N_LANE) as Label).text if _named(bar, RC.N_LANE) != null else "")
 	_ok("② 铭牌写着谁对谁(看自己的录像: 我 对 对手快照名)", _named(bar, RC.N_NAMES) != null
 		and (_named(bar, RC.N_NAMES) as Label).text.contains(str(((_rec["state"]["dual_ghost"] as Dictionary).get("profile", {}) as Dictionary).get("name", "~"))),

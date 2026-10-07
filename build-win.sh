@@ -2,7 +2,7 @@
 # Windows 测试包(用户 2026-07-29「出个 window 测试包，以压缩包的形式放在我的桌面上，exe 运行文件这样就好」)
 #
 # 用 export_presets.cfg 里【早就存在】的 WinDist 预设(导到 build/windist/斗龟场.exe) —— 别再另起炉灶。
-# 出 debug 模板包, 与 iOS 测试包同口径: OS.is_debug_build()=true → 调试场按钮出现; 正常匹配不被劫持。
+# 出 release 模板包(2026-10-07 用户「内测包我们用正式版」), 与 iOS 包同口径: OS.is_debug_build()=false → 调试场/测试时间不出现。
 #
 # 产物: 桌面/斗龟场-v<版本>-win.zip  (内含 斗龟场.exe + 斗龟场.pck)
 # 跑法: bash build-win.sh
@@ -21,7 +21,7 @@ VER="$(sed -n 's/^config\/version="\(.*\)"/\1/p' "$DIR/project.godot")"
 echo "=== 打 Windows 测试包 v$VER ==="
 
 rm -rf "$OUT"; mkdir -p "$OUT"
-"$GODOT" --headless --path "$DIR" --export-debug "WinDist" "$OUT/斗龟场.exe"
+"$GODOT" --headless --path "$DIR" --export-release "WinDist" "$OUT/斗龟场.exe"
 
 # ★退出码 0 不等于出了包 —— iOS 那次 Godot 照样吐了个非 ipa 的东西还 rc=0。判据只能是【产物本身】。
 [ -f "$OUT/斗龟场.exe" ] || { echo "[FAIL] 没生成 exe"; ls -la "$OUT"; exit 1; }

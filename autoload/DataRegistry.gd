@@ -24,7 +24,6 @@ var equipment_by_id: Dictionary = {}
 var phase2_equipment: Array = []
 var phase2_equipment_by_id: Dictionary = {}
 var status_defs: Array = []
-var battle_rules: Array = []
 var passive_icons: Dictionary = {}
 var rarity_mult: Dictionary = {}
 
@@ -47,14 +46,13 @@ func _ready() -> void:
 		phase2_equipment_by_id[eq["id"]] = eq
 
 	status_defs = _load_json_array("res://data/status.json")
-	battle_rules = _load_json_array("res://data/battle-rules.json")
 	passive_icons = _load_json_dict("res://data/passive-icons.json")
 	rarity_mult = _load_json_dict("res://data/rarity-mult.json")
+	## ★规则之日(battle-rules.json)已删(2026-10-07 用户「规则页直接删掉，我们没有这东西」):
+	##   实时版战斗一条都没接, 唯一读者是图鉴的「规则」页签, 页签一起删了。
 
-
-	print("[DataRegistry] ✓ loaded: %d pets, %d equipment, %d status, %d rules"
-		% [all_pets.size(), all_equipment.size(), status_defs.size(),
-		   battle_rules.size()])
+	print("[DataRegistry] ✓ loaded: %d pets, %d equipment, %d status"
+		% [all_pets.size(), all_equipment.size(), status_defs.size()])
 
 
 func _load_json_array(path: String) -> Array:

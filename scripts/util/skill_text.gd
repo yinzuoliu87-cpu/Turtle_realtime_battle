@@ -75,12 +75,12 @@ const KEYWORD_RULES := [
 	["(?<!\">)时停(?!<)", "val-stun"],
 	["物理伤害", "val-normal"], ["魔法伤害", "val-magic"], ["真实伤害", "val-true"],
 	["(?<!\">)真实(?!伤害|<)", "val-true"], ["(?<!\">)物理(?!伤害|<)", "val-normal"],
-	["(?<!\">)魔法(?!伤害|<)", "val-magic"], ["防御力加成", "val-def", "def"],
+	["(?<!\">)魔法(?!伤害|穿透|<)", "val-magic"], ["防御力加成", "val-def", "def"],
 	["(?<!\">)攻击力(?!<)", "val-normal", "atk"], ## ★颜色走【穿透自己一族】(橙)不是 val-def(黄): `ICON_CLASS_EXTRA` 早就定了
 	##   「armorpen → val-burn」, 理由是 armorpen(裂盾) 与 def(盾) 形状 IoU 0.70,
 	##   同色就彻底分不出。这条规则第一版写 val-def, `verify_stat_icon_color ⑦` 当场红 —— 它是对的。
 	["(?<!\">)护甲穿透(?!<)", "val-burn", "armorpen"],
-	["(?<!\">)护甲(?!穿透|<)", "val-def", "def"], ["(?<!\">)(?:魔抗穿透|法穿)(?!<)", "val-dot", "magicpen"], ["(?<!\">)魔抗(?!穿透|<)", "val-magic", "mr"],
+	["(?<!\">)护甲(?!穿透|<)", "val-def", "def"], ["(?<!\">)(?:魔法穿透|魔抗穿透|法穿)(?!<)", "val-dot", "magicpen"], ["(?<!\">)魔抗(?!穿透|<)", "val-magic", "mr"],
 	["(?<!\">)最大生命值?(?!<)", "val-heal", "hp"], ["(?<!\">)最大HP(?!<)", "val-heal", "hp"],
 	["(?<!\">)治疗削减(?!<)", "val-heal-reduce"], ["(?<!\">)灼烧(?!<)", "val-burn"],
 	["(?<!\">)生命偷取(?!<)", "val-lifesteal", "lifesteal"], ["(?<!\">)眩晕(?!<)", "val-stun"],

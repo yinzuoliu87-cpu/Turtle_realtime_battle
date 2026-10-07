@@ -1764,6 +1764,7 @@ func _build_foreground_band() -> void:   # ★不收 root: 它挂在相机上, �
 		var _lifted: Array = _fg_band_layer_lift(tex, _lg)
 		tex = _lifted[0]
 		_gain *= float(_lifted[1])
+	var _made: Array = []
 	for i in range(n):
 		var q := Sprite3D.new()
 		q.texture = tex
@@ -1789,6 +1790,7 @@ func _build_foreground_band() -> void:   # ★不收 root: 它挂在相机上, �
 		q.sorting_offset = 8.0                              # 压在所有东西前面
 		q.set_meta("fg_band", img)                          # 打标: 判据按它认前景带(分层增益后贴图换成 ImageTexture, 没有路径可认)
 		battle._cam.add_child(q)
+		_made.append(q)
 		## ★2026-10-05 镜头可达范围: 单张整幅宽 3.8 单位, 而 20:9(2.22) 手机在 z=-2.35 处可见宽就是 3.80 ——
 		##   再宽一点的屏(21:9 = 2.33)两边就露出带子的断头。左右各补一张**镜像**(镜像 ⇒ 接缝两侧是同一列像素, 无缝),
 		##   ≤2.17 的屏上它们完全在画面外 ⇒ 默认画面一个像素不变。判据 `verify_cam_extent` ④。
@@ -1801,6 +1803,48 @@ func _build_foreground_band() -> void:   # ★不收 root: 它挂在相机上, �
 				fl.set_meta("fg_band", img)
 				fl.set_meta("fg_band_flank", true)
 				battle._cam.add_child(fl)
+				_made.append(fl)
+	## ★★2026-10-07 用户「前景海草那一层改成跟着场地走，不再是贴在屏幕上的一条」:
+	##   挂在相机上 ⇒ 拖动/缩放时它钉在屏幕下沿(录屏里像一条贴纸, 放大后底部还露出硬边)。
+	##   ⇒ 摆好之后把它们**按相机为中心等比推到地面深度**再挂进世界: 默认机位下屏上一个像素不变,
+	##     之后平移/缩放时它和地面以同样的视差移动、同样变大变小。见 `_fg_band_to_world`。
+	if not _made.is_empty():
+		_fg_band_to_world.call_deferred(_made)
+
+
+## 把挂在相机上的前景带搬进世界(见 `_build_foreground_band` 末尾的说明)。
+## ★以相机为中心做**等比缩放**(位移 × f、pixel_size × f): 从相机看过去每个像素的方向都不变 ⇒ 默认机位画面不变。
+## ★f 取主带中心那条视线打到地面(y = FG_GROUND_Y)的距离 ÷ 原距离; 两侧镜像补带用**同一个** f, 接缝不错位。
+const FG_GROUND_Y := 0.0
+func _fg_band_to_world(bands: Array) -> void:
+	var cam: Camera3D = battle._cam
+	if cam == null or not is_instance_valid(cam) or battle._world == null:
+		return
+	var cpos: Vector3 = cam.global_position
+	var main: Sprite3D = null
+	for q in bands:
+		if is_instance_valid(q) and not (q as Node).has_meta("fg_band_flank"):
+			main = q
+			break
+	if main == null:
+		return
+	var d: Vector3 = main.global_position - cpos
+	if d.y >= -0.0001:
+		return                                          # 视线不朝下(不该发生): 留在相机上, 不冒险
+	var t: float = (FG_GROUND_Y - cpos.y) / d.y         # 视线打到地面的参数(以原距离为 1)
+	var f: float = maxf(1.0, t)
+	for q in bands:
+		if not is_instance_valid(q):
+			continue
+		var sq := q as Sprite3D
+		var gt: Transform3D = sq.global_transform
+		sq.get_parent().remove_child(sq)
+		battle._world.add_child(sq)
+		sq.global_transform = Transform3D(gt.basis, cpos + (gt.origin - cpos) * f)
+		sq.pixel_size *= f
+		## ★推到地面深度后下半截在地面之下 ⇒ 不关深度测试会被地面挡掉(实拍整条带消失)。它本来就是「压在所有东西前面」的剪影。
+		sq.no_depth_test = true
+		sq.set_meta("fg_band_world", true)
 
 
 ## 前景剪影带的分层增益: 灰度贴图按层(近 < FG_LAYER_MID_FROM ≤ 中 < FG_LAYER_FAR_FROM ≤ 远)各乘一个系数。

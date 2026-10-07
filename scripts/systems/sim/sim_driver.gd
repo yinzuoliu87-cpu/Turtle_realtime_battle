@@ -22,6 +22,9 @@ extends Node
 ##   SIM_ROUNDS=N         本进程最多开几局积分赛(不含教学); 空/0 = 打到被拦(配额满/没命)为止
 ##   SIM_QUIT_WHEN_DONE=1 打完(被拦或到局数)自己退出 —— 分批跑时下一批靠它腾位置
 ##   SIM_TOUR=0           不走「每个界面逛一遍」(默认第一次进主菜单且已打过 ≥1 局时逛一次)
+##   SIM_ACCOUNT_ONLY=1   只建号: 等到拿到 account_id(已写盘)就截一张主菜单、记一行事件、退出 —— 什么都不点。
+##                        (2026-10-06 用户「下一周…准备大概120个选手」: 这周先把号建好, 下周再打。
+##                         sim60.sh 起这种窗口时同时带 ONBOARD=0, 让主菜单不跳进教学 —— 教学留到下周正式打时走。)
 ##   SIM_SHOT_DIR         命名截图落在这里(与 sim_shot 的 latest.png 同目录); 没给就 user://sim_shots
 ##
 ## ── 产物 ──
@@ -107,6 +110,9 @@ func _run() -> void:
 	await _sleep(2.0)
 	_roster = _Roster.for_slot(_slot, DataRegistry.all_pets)
 	_ev("roster", _roster)
+	if OS.get_environment("SIM_ACCOUNT_ONLY").strip_edges() != "":
+		await _account_only()
+		return
 	while is_inside_tree():
 		await _sleep(0.5)
 		var sc := get_tree().current_scene
@@ -139,6 +145,29 @@ func _run() -> void:
 				if _since() > 8.0:
 					_acted_id = sc.get_instance_id()
 					await _back_to_menu(sc)
+
+
+# ═══════════════════════════════ 只建号 ═══════════════════════════════
+
+## 等主菜单 `_ready` 里那句 `ensure_signed_in_async()` 把号建出来。
+## ★`supabase._store_session` 拿到令牌就 `gs.save()` ⇒ account_id 非空时存档里也有了;
+##   再多等 2 秒才退, 给写盘留余量。拿不到(被限流 / 没网)也退, 事件里记 ok=false, 下一批补。
+func _account_only() -> void:
+	var until := Time.get_ticks_msec() + 120000
+	while is_inside_tree() and str(GameState.account_id) == "" and Time.get_ticks_msec() < until:
+		await _sleep(1.0)
+	var ok := str(GameState.account_id) != ""
+	await _sleep(2.0)
+	_shot("account_menu")
+	_ev("account", {"ok": ok, "account": str(GameState.account_id), "waited_s": _since_start(),
+		"version": str(ProjectSettings.get_setting("application/config/version", ""))})
+	await _sleep(1.0)
+	get_tree().quit()
+
+
+var _start_ms := Time.get_ticks_msec()
+func _since_start() -> float:
+	return (Time.get_ticks_msec() - _start_ms) / 1000.0
 
 
 # ═══════════════════════════════ 主菜单 ═══════════════════════════════

@@ -164,7 +164,7 @@ func _ready() -> void:
 	print("  最大绝对偏移 = %.1f px" % worst)
 
 	print("=== B) 双形态龟详情页 + C) 五个 Tab 逐条压边带 ===")
-	var tabs: Array = ["pets", "equips", "synergies", "status", "rules"]
+	var tabs: Array = ["pets", "equips", "synergies", "status"]
 	var tot_hits: Array = []
 	var tot_web := 0
 	var tot_framed := 0

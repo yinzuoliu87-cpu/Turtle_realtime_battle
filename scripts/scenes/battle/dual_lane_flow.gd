@@ -872,8 +872,11 @@ func _dl_flow_check() -> void:
 					var _ln = str(GameState.current_lane)
 					if _ln != "" and _ln != "done" and not GameState.lane_results.has(_ln):
 						GameState.lane_results[_ln] = ("right" if es == "left" else "left")
+				## 顶栏: 那一侧蛋副条当场碎掉(在演出与结算之前, 不等 0.1 秒一次的采样)
+				if battle._hud._topbar != null:
+					battle._hud._topbar.break_egg(es)
 				_dl_egg_break_dramatize(es)   # ★蛋破演出(原来是直接跳胜负横幅, 整场最高潮却零过场)
-				_dl_finish(es == "right")   # 蛋破=立即结束整场(用户2026-07-12「蛋被打碎立马结束」); 右蛋破→我方(左)赢
+				_dl_finish(es == "right", EGG_BREAK_BANNER_DELAY)   # 蛋破=立即结束整场(用户2026-07-12「蛋被打碎立马结束」); 右蛋破→我方(左)赢
 				return
 	## ★★团灭判定 —— 唯一出处(用户 2026-10-04 ③「一方团灭后罩子破裂，如果另一方因为某种原因团灭了那罩子也要破裂」)。
 	##   改前: 第一方团灭后状态切 eggwindow, 而 eggwindow 分支只看计时 ⇒ 第二方之后再团灭(DoT/反伤/同归于尽/
@@ -1140,7 +1143,10 @@ func _dl_next_lane(finished_lane: String = "") -> void:
 	battle._dl_wiped_side = ""
 	battle._spawn._spawn_dual_lane()   # 读推进后的 current_lane; final 从幸存 spawn
 
-func _dl_finish(won: bool) -> void:
+## 蛋碎后结算屏晚一点出(用户 2026-10-07「可以」: 原来同一帧盖上来, 碎蛋演出和顶栏碎片玩家看不到)。
+## ★只推迟【画面】: 胜负/结算账(_settle_season)仍在这一刻立即落定, 防"等的那 1 秒里退出 = 没结算"。
+const EGG_BREAK_BANNER_DELAY := 1.2
+func _dl_finish(won: bool, banner_delay: float = 0.0) -> void:
 	if battle._over:
 		return
 	if OS.has_environment("XDBG"): print("XDBG_DL finish won=", won, " t=", battle._t, " egg_hp=", (GameState.egg_hp if GameState != null else {}))
@@ -1148,25 +1154,52 @@ func _dl_finish(won: bool) -> void:
 	battle._dl_state = "done"
 	battle._equip_sys._axe.reset_for_lane()   # 096 整场结束: 斧头挂的减伤/吸血/定身一并收掉(第十批 E2)
 	battle._settle_season(won)    # 结果喂赛季(命/币/胜场/XP/糖果罐/ghost上传), 守卫一次性
-	battle._hud._show_banner(won)
+	if banner_delay > 0.0 and battle.is_inside_tree():
+		var tw = battle.create_tween()
+		tw.tween_interval(banner_delay)
+		tw.tween_callback(battle._hud._show_banner.bind(won))
+	else:
+		battle._hud._show_banner(won)
 
-func _dl_update_hud() -> void:   # 双路 HUD: 当前路 + 破蛋窗口计时 + 决胜档位
-	## ★2026-07-30: 双方蛋血【已挪到顶部 PK 条下方的副条】(用户:「你就下面加个副血条
-	##   表示龟蛋的」)。原因: 这行文字和上面那条龟血 PK 条都是"双方对比", 上下叠着看起来
-	##   像两条血条却没有任何标签区分。所以这里只留【路名 + 破蛋窗口计时 + 决胜档位】——
-	##   那三项是文字才说得清的, 血量交给条。
+func _dl_update_hud() -> void:   # 双路 HUD: VS 下面那块路名计时牌(上路战场 0:23 / 加时 0:42 / 破蛋 0:08 / 破蛋定胜负)
+	## ★2026-07-30: 双方蛋血【已挪到顶部 PK 条下方的副条】, 这里只管一行字。
+	## ★2026-10-07 顶部栏重做(用户拍板「加时、团灭、破蛋的新显示方案行」):
+	##   · 平时: 「上路战场 0:23」—— 这一路已经打了多久, **正着走**(用户「我们这又不是倒计时」);
+	##     按本战场开打时刻 _sd_t0 算 —— _t 跨路累加(CLAUDE.md §3.4)。
+	##   · 加时: 「加时 0:42」橙红; 增伤/治疗两个数字挂在牌子两侧的图标徽章上(topbar_status), 不再写成一句话
+	##     (删掉的原文:「加时 +X%增伤 · 治疗-50%」)。
+	##   · 破蛋窗口(非定局路): 「破蛋 0:08」—— 这一个**是倒数**(还剩多久), 最后 3 秒变红。
+	##   · 破蛋窗口(定局路, 窗口无限): 「破蛋定胜负」。
+	##   ★"打到第几路"交给牌子上面那三颗路点(topbar_status), 加时/破蛋时牌子上不再写路名。
 	var lane = str(GameState.current_lane) if GameState != null else "top"
-	var lane_cn: String = str(battle._LANE_CN.get(lane, "结算" if lane == "done" else lane))   # 唯一出处(2026-10-05 统一: 原来写「上半场/终极战场」)
-	var st = ""
+	var lane_cn: String = str(battle._LANE_CN.get(lane, "结算" if lane == "done" else lane))   # 唯一出处
+	var live: bool = lane != "done" and (battle._dl_state == "fight" or battle._dl_state == "eggwindow")
+	var el: float = maxf(0.0, battle._t - battle._sd_t0)
+	var clock := "%d:%02d" % [int(el) / 60, int(el) % 60]
+	var txt: String = lane_cn
+	var col: Color = DL_PLATE_COL
 	if battle._dl_state == "eggwindow":
-		var rem = battle._dl_window_until - battle._t
-		## ★原文案 "破蛋窗口 %.0fs" —— 「窗口」是 time-window 直译。玩家要知道的是
-		##   【还剩多久】, 那就直说"还剩"。(状态名 eggwindow / 本函数注释里的"破蛋窗口"
-		##   是代码侧词汇, 不上屏, 保持不动。)
-		st = ("  ·  破蛋还剩 %.0fs" % maxf(0.0, rem)) if rem < 1.0e17 else "  ·  破蛋定胜负"
-	if battle._sd_stacks > 0:   # §SUDDEN 决胜档位: 不显玩家会莫名其妙"怎么突然打得动了/奶不住了"
-		## 2026-10-05: 第三路叫「决胜」之后, 这一档改叫「加时」(两件事不能同名); 去掉 ⚔ 兜底字形。
-		st += "  ·  加时 +%d%%增伤 · 治疗-50%%" % int(battle._sd_amp() * 100.0)
-	battle._dl_hud.text = "%s%s" % [lane_cn, st]
+		var rem: float = battle._dl_window_until - battle._t
+		if rem >= 1.0e17:
+			txt = "破蛋定胜负"
+			col = DL_PLATE_EGG_COL
+		else:
+			var rs: int = int(ceil(maxf(0.0, rem)))
+			txt = "破蛋 %d:%02d" % [rs / 60, rs % 60]
+			col = DL_PLATE_URGENT_COL if rem <= DL_EGG_URGENT_SEC else DL_PLATE_EGG_COL
+	elif live and battle._sd_stacks > 0:
+		txt = "加时 %s" % clock
+		col = DL_PLATE_OT_COL
+	elif live:
+		txt = "%s %s" % [lane_cn, clock]
+	battle._dl_hud.text = txt
+	battle._dl_hud.add_theme_color_override("font_color", col)
+
+## 路名计时牌的四种颜色: 平时金黄 / 加时橙红 / 破蛋蛋壳色 / 破蛋最后几秒红。
+const DL_PLATE_COL := Color("#ffe08a")
+const DL_PLATE_OT_COL := Color("#ff7a45")
+const DL_PLATE_EGG_COL := Color("#f5d29a")
+const DL_PLATE_URGENT_COL := Color("#ff4d4d")
+const DL_EGG_URGENT_SEC := 3.0
 
 ## 匹配对手快照的首领 id (Matchmaking 写 GameState.dual_ghost). 过滤到 STATS 已知龟, 上限 3.

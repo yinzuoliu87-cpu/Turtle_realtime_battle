@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/_probe_lb_textpos.gd" id="1_lbtp"]
+
+[node name="ProbeLbTextpos" type="Node"]
+script = ExtResource("1_lbtp")

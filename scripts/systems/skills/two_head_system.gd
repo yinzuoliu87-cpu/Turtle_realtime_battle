@@ -366,6 +366,7 @@ func _two_head_after_cast(u: Dictionary, tgt) -> void:          # 被动·双生
 	u["melee"] = not to_ranged
 	u["atk_range"] = RANGED_RANGE if to_ranged else MELEE_RANGE
 	u["_th_enh"] = "ranged" if to_ranged else "melee"          # 挂强化: 下1下普攻搬旧切形态那一下的伤害+效果(远程=1.4A物理+破甲 / 近战=0.6A魔法+1.1A盾)
+	_two_head_form_art(u)
 	if to_ranged:
 		var et = (tgt if (tgt is Dictionary and tgt.get("alive", false)) else battle._targeting._nearest_enemy(u))
 		_two_head_retreat(u, et)                               # 切远程: 纯平滑滑退200码到射程(伤害/破甲已挪到强化普攻)
@@ -409,3 +410,19 @@ func _two_head_slide_end(u: Dictionary) -> void:
 	u["_slam"] = false
 
 # 熔岩龟·选一套 (demo 默认套A). 龟能满→放【当前形态】(小/火山)这套对应招. 攒怒变身在 _tick_periodic_passive.
+
+
+## 形态立绘(2026-10-07 变脸龟定稿·用户「定稿吧」): 远程=术士 `pets/two_head.png`(开局, 也是 pets.json 的 img) /
+## 近战=战士 `pets/two_head_melee.png`。切形态时换 `idle_sd` 源头(不是 spr.texture —— 渲染层每帧按 idle_sd 还原, 同 087 蛋糕礼盒)。
+## ★在礼盒形态里(还存着 `_cake_o_idle_sd`)就只换那份存档, 出盒时自然换回对的形态。
+const FORM_ART := {"ranged": "res://assets/sprites/pets/two_head.png", "melee": "res://assets/sprites/pets/two_head_melee.png"}
+func _two_head_form_art(u: Dictionary) -> void:
+	var p: String = str(FORM_ART.get(str(u.get("two_form", "ranged")), ""))
+	if p == "" or not ResourceLoader.exists(p):
+		return
+	var sd: Dictionary = battle._sprite_dict_from(load(p), null, false)
+	if u.has("_cake_o_idle_sd"):
+		u["_cake_o_idle_sd"] = sd
+		return
+	u["idle_sd"] = sd
+	battle._set_anim_sheet(u, sd, "", true)
