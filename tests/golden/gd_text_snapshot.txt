@@ -156,6 +156,7 @@ scripts/gamedata/phase2_config.gd|lit|\n未收到验证码？请检查垃圾邮�
 scripts/gamedata/phase2_config.gd|lit|\n未绑定时进度仅保存在本设备。邮箱与昵称可随时修改。
 scripts/gamedata/phase2_config.gd|lit|一
 scripts/gamedata/phase2_config.gd|lit|三
+scripts/gamedata/phase2_config.gd|lit|丶
 scripts/gamedata/phase2_config.gd|lit|乌龟
 scripts/gamedata/phase2_config.gd|lit|二
 scripts/gamedata/phase2_config.gd|lit|五
@@ -179,35 +180,25 @@ scripts/gamedata/phase2_config.gd|lit|周四
 scripts/gamedata/phase2_config.gd|lit|周日
 scripts/gamedata/phase2_config.gd|lit|四
 scripts/gamedata/phase2_config.gd|lit|四强
-scripts/gamedata/phase2_config.gd|lit|大师
-scripts/gamedata/phase2_config.gd|lit|小
-scripts/gamedata/phase2_config.gd|lit|小将
 scripts/gamedata/phase2_config.gd|lit|小组赛
-scripts/gamedata/phase2_config.gd|lit|小龟主
-scripts/gamedata/phase2_config.gd|lit|彩虹
-scripts/gamedata/phase2_config.gd|lit|忍者
 scripts/gamedata/phase2_config.gd|lit|换一个
-scripts/gamedata/phase2_config.gd|lit|教头
 scripts/gamedata/phase2_config.gd|lit|日
 scripts/gamedata/phase2_config.gd|lit|昵称最多 %d 个字（当前 %d 个）
 scripts/gamedata/phase2_config.gd|lit|昵称至少 %d 个字
 scripts/gamedata/phase2_config.gd|lit|测试时间 周%s %02d:%02d UTC
-scripts/gamedata/phase2_config.gd|lit|海盗
 scripts/gamedata/phase2_config.gd|lit|满配额
-scripts/gamedata/phase2_config.gd|lit|石头
 scripts/gamedata/phase2_config.gd|lit|积分赛
 scripts/gamedata/phase2_config.gd|lit|组冠军
 scripts/gamedata/phase2_config.gd|lit|绑定账号 · 保存进度
 scripts/gamedata/phase2_config.gd|lit|绑定邮箱 · 跨设备同步进度
 scripts/gamedata/phase2_config.gd|lit|绑定邮箱后，更换设备或重新安装可恢复进度。
-scripts/gamedata/phase2_config.gd|lit|统领
+scripts/gamedata/phase2_config.gd|lit|老
 scripts/gamedata/phase2_config.gd|lit|规则同积分赛
+scripts/gamedata/phase2_config.gd|lit|路人乙
+scripts/gamedata/phase2_config.gd|lit|路人甲
 scripts/gamedata/phase2_config.gd|lit|进入决赛日
-scripts/gamedata/phase2_config.gd|lit|闪电
 scripts/gamedata/phase2_config.gd|lit|闯关赛
 scripts/gamedata/phase2_config.gd|lit|龟
-scripts/gamedata/phase2_config.gd|lit|龟主
-scripts/gamedata/phase2_config.gd|lit|龟王
 scripts/gamedata/phase2_equip.gd|lit|双穿
 scripts/gamedata/phase2_equip.gd|lit|反伤
 scripts/gamedata/phase2_equip.gd|lit|护甲

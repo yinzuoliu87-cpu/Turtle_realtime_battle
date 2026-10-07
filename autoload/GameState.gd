@@ -76,17 +76,39 @@ var cloud_rev: int = 0
 ## 取本机安装标识, 没有就现生成一个并落盘。
 ## ★用 crypto 随机而不是 randi(): 后者受 `TURTLE_SEED` 之类的播种影响,
 ##   播了种的两台机器会生成**同一个 uid** —— 那就等于没加这一维。
+## ★★2026-10-07 同一次迁移的第二半(主会话代用户拍板): 绑定邮箱那屏把**预填的旧默认名**原样写进了
+##   `nickname` ⇒ 那些号的「石头统领」看着像自己起的, 其实是系统给的。⇒ `nickname` 是旧池里的名字
+##   就当没起过名: 清空, 默认名照 `default_nickname` 同一条路按同一个种子生成。**旧池以外的名字一个字不碰**。
+##   只在**读档**时做(开游戏 / 云存档落地), 不在显示时做 —— 显示时做会把刚改名改成旧池名字的人当场改回去。
+##   清空之后 `nickname == ""` ⇒ 不会再触发, 只迁一次。
+func _migrate_legacy_nickname() -> void:
+	var cur := _P2.nickname_clean(nickname)
+	if cur == "" or not _P2.nickname_is_legacy_default(cur):
+		return
+	print("[GameState] 昵称「%s」是旧版预填的默认名 ⇒ 当作没起过名, 换成新生成器的名字" % cur)
+	nickname = ""
+
+
 ## 没自己起名时显示的那个名字。★第一次调用时生成并**落盘**, 之后永远返回存下来的那个。
 ## ★种子 = 账号优先、没账号用安装号(`nickname_seed`)。连种子都没有时给兜底名但**不冻结** ——
 ##   冻结一个人人相同的兜底名, 等于让这台机器永远叫那个名字。
+## ★★2026-10-07 一次性迁移(用户「默认昵称你得看现实玩家会用的名字啊，你这一看就是人机」):
+##   冻结着**旧生成器**名字(石头统领 / 不屈龟主 这类, `nickname_is_legacy_default`)而**没自己起过名**的号,
+##   按同一个种子换成新生成器的名字并落盘。新生成器**永远不产出**旧池里的名字(`nickname_blocked`)
+##   ⇒ 换过一次就不再是旧名, 之后照常冻结不变 —— 不需要另存一个「迁过了」的标记。
+##   `nickname` 一个字不碰(这里只换默认名字段 —— 自己起过名的人看不见它); `nickname` 本身是旧池名字的,
+##   读档时已由 `_migrate_legacy_nickname` 清空。
 func default_nickname() -> String:
 	var cur := _P2.nickname_clean(nickname_default)
-	if _P2.nickname_valid(cur):
+	var legacy := _P2.nickname_is_legacy_default(cur)
+	if _P2.nickname_valid(cur) and not legacy:
 		return cur
 	var sd: String = _P2.nickname_seed(str(account_id), str(install_uid))
 	if sd == "":
-		return _P2.nickname_fallback("")
+		return cur if _P2.nickname_valid(cur) else _P2.nickname_fallback("")
 	nickname_default = _P2.nickname_fallback(sd)
+	if legacy:
+		print("[GameState] 默认昵称换成新生成器: 「%s」→「%s」" % [cur, nickname_default])
 	save()
 	return nickname_default
 
@@ -1892,6 +1914,7 @@ func _apply_save_dict(data: Dictionary) -> void:
 	account_email = str(data.get("account_email", ""))
 	nickname = str(data.get("nickname", ""))
 	nickname_default = str(data.get("nickname_default", ""))
+	_migrate_legacy_nickname()
 	auth_refresh = str(data.get("auth_refresh", ""))
 	cloud_rev = int(data.get("cloud_rev", 0))
 	season_id = int(data.get("season_id", 1))

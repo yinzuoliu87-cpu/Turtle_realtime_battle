@@ -18,6 +18,28 @@ func _ok(name: String, cond: bool, detail: String = "") -> void:
 		print("  [FAIL] ", name, "  ", detail)
 
 
+## 一批名字里: [带汉字的个数, 带拉丁字母的个数, 带数字的个数]
+func _mix(names: Array) -> Array:
+	var r := [0, 0, 0]
+	for nm in names:
+		var s := str(nm)
+		var c := false
+		var l := false
+		var d := false
+		for i in range(s.length()):
+			var u := s.unicode_at(i)
+			if u >= 0x4E00 and u <= 0x9FFF:
+				c = true
+			elif (u >= 65 and u <= 90) or (u >= 97 and u <= 122):
+				l = true
+			elif u >= 48 and u <= 57:
+				d = true
+		r[0] += 1 if c else 0
+		r[1] += 1 if l else 0
+		r[2] += 1 if d else 0
+	return r
+
+
 func _id_line(prof: Dictionary) -> String:
 	return MM.card_id_text(prof)
 
@@ -57,11 +79,37 @@ func _ready() -> void:
 	##   (切出来的是「石头统领-」这种永远匹配不上的串 = 恒真)。旧格式写死在这里。
 	var fb_head: String = "龟主-"
 	_ok("★★机器人不用「龟主-xxxxx」兜底名", str(pb.get("name")).find(fb_head) < 0 and str(pb2.get("name")).find(fb_head) < 0, "%s / %s" % [pb.get("name"), pb2.get("name")])
-	var pool := {}
-	for i in range(BE._P2.nickname_stems().size()):
-		for j in range(BE._P2.NICK_HEADS.size()):
-			pool[BE._P2.nickname_suggest_at(i, j)] = true
-	_ok("★★机器人名字出自真人注册时的预填名生成器", pool.has(str(pb.get("name"))) and pool.has(str(pb2.get("name"))), "%s / %s (池 %d 个)" % [pb.get("name"), pb2.get("name"), pool.size()])
+	## ★★2026-10-07 生成器换成真人用户名的长相, 池子不能再穷举 ⇒ 改量「机器人名字与真人默认名**长得一样**」:
+	##   同样 300 个, 比字形构成(中文 / 拉丁 / 带数字)的占比 —— 机器人要是走了另一套名字, 占比必然对不上
+	##   (旧版「石头统领」那套: 拉丁 0%, 而真人默认名拉丁约一半)。
+	var bots: Array = []
+	var humans: Array = []
+	var brng := RandomNumberGenerator.new()
+	brng.seed = 77
+	for i in range(300):
+		var bb: Dictionary = BE.make_bot(int(brng.randi() % 25), brng)
+		bots.append(str((bb.get("profile", {}) as Dictionary).get("name", "")))
+		humans.append(str(BE._P2.nickname_fallback("acct-%d-%s" % [i, str(i * 7919).sha256_text().substr(0, 8)])))
+	var hb := _mix(bots)
+	var hh := _mix(humans)
+	print("     机器人 中/拉丁/数字 = %s · 真人默认名 = %s" % [str(hb), str(hh)])
+	var bad_b: Array = []
+	for nm in bots:
+		if not BE._P2.nickname_valid(nm) or BE._P2.nickname_blocked(nm):
+			bad_b.append(nm)
+	_ok("★★机器人名字每一个都合法、不撞屏蔽词(与真人同一道门)", bad_b.is_empty(), str(bad_b.slice(0, 5)))
+	_ok("★分母: 两边各 300 个, 且真人那边中文/拉丁都有(否则占比比较没意义)",
+		bots.size() == 300 and humans.size() == 300 and hh[0] > 30 and hh[1] > 30, str(hh))
+	var near := true
+	for k in range(3):
+		if absi(int(hb[k]) - int(hh[k])) > 45:
+			near = false
+	_ok("★★★机器人名字与真人默认名**长得一样**(中文 / 拉丁 / 带数字 三项占比各差 ≤ 15 个百分点)", near,
+		"机器人 %s vs 真人 %s (每 300 个)" % [str(hb), str(hh)])
+	var bset := {}
+	for nm in bots:
+		bset[nm] = true
+	_ok("★★300 个机器人里没有大批同名(≥ 240 种)", bset.size() >= 240, "%d 种" % bset.size())
 	mm.free()
 	print("")
 	print("  (共 %d 条断言)" % _n)

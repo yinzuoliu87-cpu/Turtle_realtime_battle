@@ -394,7 +394,7 @@ static func make_bot(battles: int, rng: RandomNumberGenerator, gw: int = -1, gl:
 			(minions[lk] as Array).append(m)
 	var ghost_id := "bot_%d_%d" % [battles, rng.randi() % 1000000]
 	## ★★用户 2026-10-04「不能让玩家知道是机器人」: 原来全体机器人同名「海域守卫」、同号(hash("BOT") 恒为 #451562),
-	##   打两场就认得出。⇒ 名字用**真人注册时的预填名生成器**(「石头统领」这类), 不用「龟主-xxxxx」兜底名
+	##   打两场就认得出。⇒ 名字用**真人默认名的同一个生成器**(2026-10-07 起是 kevin_99 / 不吃香菜 这类), 不用「龟主-xxxxx」兜底名
 	##   (用户 2026-10-04:「龟主-32c6c这是真人会用的名字？」)。
 	var nick: String = _P2.nickname_suggest_at(rng.randi(), rng.randi())
 	## ★`profile.id` 与真人同形: 真人四个上传点都传 `{"id": gid}`, 即 `player_ghost_id()` 拼的那串。
@@ -891,7 +891,9 @@ static func _load_seed() -> Dictionary:
 		return parsed
 	return {POOL_KEY: {}}
 
-const SEED_VER := 15  # ★★2026-10-04 v15: 种子文件没动, 陪练入池时多盖一个 `profile.tag`(玩家 ID, 与真人同一套算法 ——
+const SEED_VER := 16  # ★★2026-10-07 v16: 种子文件没动, 陪练入池时的名字换成新昵称生成器(真人用户名的长相)。
+                      #   不升版老池里那 396 条还叫「石头统领」这类旧名, 而真人的默认名已经换了 ⇒ 一眼分得出谁是陪练。
+                      # ★★2026-10-04 v15: 种子文件没动, 陪练入池时多盖一个 `profile.tag`(玩家 ID, 与真人同一套算法 ——
                       #   `fake_person_tag`)。不升版老池里那 396 条没有这个键, 与真人快照不同形。
                       # ★★2026-10-04 v14: **种子文件一个字节没动**, 升版只为一件事:
                       #   陪练入池时改成**真人对手的形状**(`seed_as_human`, 用户 2026-10-04

@@ -1115,21 +1115,24 @@ static func nickname_error(raw: String) -> String:
 ##   (`nickname_suggest_at`, 机器人也用它)里按哈希挑一个 ⇒ 同一个号永远同一个名字。
 ## ★★这里只是**生成器**(纯函数)。玩家真正显示的默认名由 `GameState.default_nickname()`
 ##   第一次调用时生成并存进**独立字段** `nickname_default`(用户 2026-10-04 拍板), 之后不再变 ——
-##   池子(pets.json)增改也不会把它换掉。
+##   词表(data/nickname-words.json)增改也不会把它换掉。
+## ★★2026-10-07 生成器换成真人用户名的长相(见下方「预填一个名字」节)。冻结了旧名(石头统领 这类)
+##   而没自己起过名的老号, 由 `GameState.default_nickname()` 一次性换成新生成器的名字(同一个种子)。
 ## ★★老玩家: 存档里 `nickname == ""` 就是「没自己起过名」⇒ 下次开游戏生成新名并冻结;
-##   自己起过名的(`nickname` 非空, 哪怕起的就是「龟主-xxxxx」)一个字都不碰。
+##   自己起过名的(`nickname` 非空, 哪怕起的就是「龟主-xxxxx」)一个字都不碰 —— 唯一例外: `nickname` 是旧版
+##   生成器的名字(绑邮箱那屏预填写进去的), 读档时当作没起过名(`GameState._migrate_legacy_nickname`)。
 ## ⚠ 别把默认名写进 `GameState.nickname` —— 写了就分不清「默认」和「自己起的」。
 static func nickname_fallback(account_id: String) -> String:
 	if account_id == "":
 		return NICK_LAST_RESORT
 	var h := account_id.sha256_text()
-	## 两段互不重叠的哈希分别挑定语/名头。★`hex_to_int` 读 7 位(28 bit)不会溢出成负数。
+	## 两段互不重叠的哈希当生成器的两个种子。★`hex_to_int` 读 7 位(28 bit)不会溢出成负数。
 	return nickname_suggest_at(h.substr(0, 7).hex_to_int(), h.substr(7, 7).hex_to_int())
 
 
-## 连种子都没有(既没账号也没安装号)时的名字。★不能再走 `nickname_suggest_at` ——
-##   它自己的兜底就是回到这里, 走了会互相递归。
-const NICK_LAST_RESORT := "小龟主"
+## 连种子都没有(既没账号也没安装号)时的名字。不冻结(见 `GameState.default_nickname`)。
+## ★2026-10-07 原来是「小龟主」—— 那是旧生成器的形状, 换成真人常用的那种占位名。
+const NICK_LAST_RESORT := "路人甲"
 
 
 ## 默认名用哪个种子。★账号优先(换设备找回账号 ⇒ 名字跟着账号走, 服务端那份对得上);
@@ -1141,7 +1144,7 @@ static func nickname_seed(account_id: String, install_uid: String) -> String:
 # ═══════════════════════════════════════════════════════════════
 #  玩家 ID —— 「名字可以重, ID 分得开」(用户 2026-10-04「行啊，做做看，别搞出ai味的就行」)
 #
-#  ★名字不唯一(池子 336 个, 而且玩家能自己改), 同名的两个人靠这串短码区分 ——
+#  ★名字不唯一(会撞名, 而且玩家能自己改), 同名的两个人靠这串短码区分 ——
 #    Clash Royale 的 `#2PP` 玩家标签就是这个做法。**它只管"看得出是两个人"**,
 #    真正的身份仍然是 account_id(主键 / 去重 / 匹配记账一律用它, 不用这串)。
 #  ★形状 `#` + 6 位, 字母表 28 个: 数字 2~9 + 大写辅音(去掉全部元音 A E I O U, 再去掉 L)。
@@ -1150,7 +1153,7 @@ static func nickname_seed(account_id: String, install_uid: String) -> String:
 #    ⇒ 28^6 ≈ 4.82 亿种。为什么不用纯 6 位数字(老卡片上那种 `#195060`):
 #    10^6 = 100 万种, 1 万个账号按生日碰撞要撞出约 **50 对**(n²/2N), 而这里约 **0.10 对**。
 #  ★撞了会怎样: 两个人显示同一串 —— 只是看起来像, 什么都不会合并
-#    (没有任何代码拿这串当键)。同名又同号的概率再乘 1/336。
+#    (没有任何代码拿这串当键)。同名又同号的概率再乘上撞名的概率。
 #  ★纯函数、确定性: 同一个身份串在任何设备上算出同一个号, 不存盘、不上传 account_id 本身
 #    (sha256 单向, 从号推不回账号)。
 # ═══════════════════════════════════════════════════════════════
@@ -1213,73 +1216,235 @@ static func display_name(nick: String, account_id: String) -> String:
 #    Sonic Rumble 预填 `Player_561962` 直接点 OK; Monster Hunter Stories /
 #    Lapis / Worms 给一个 Generate 钮; Cat Game 重名时给三个候选让你点;
 #    Angry Birds Match 直接发一个 `AwesomeHyacinth`。
-#    而我们原来是**空框 + 一行规则**, 玩家开局第一件事就是用虚拟键盘打中文。
-#  ★★名字要**像这个游戏的**, 不是 `Player_561962`:
-#    定语从 `data/pets.json` 的龟名里剥出来(去掉尾巴的「龟」/「乌龟」),
-#    名头用本仓自己的词: `龟主` 就是 `nickname_fallback` 已经在用的那个词,
-#    `统领` / `小将` 是本作的单位定位, `大师` 出自「训龟大师」。
-#  ★★★池子**跟着 pets.json 走**, 不在这里抄一份龟名 ——
-#    抄一份就等于以后加的龟悄悄不进池(memory `fb-hand-rolled-copies-drift`)。
+#  ★★2026-10-07 整段重做(用户「默认昵称你得看现实玩家会用的名字啊，你这一看就是人机」
+#    「你觉得正常玩家的名字是什么，用户名就行的」, 方案书 docs/plans/20261007-默认昵称像真人.md):
+#    原来是「龟名/被动名 × 名头」(石头统领 / 不屈龟主) —— 每个名字同一个形状、用的全是游戏里的词,
+#    一眼就是系统发的。现在照真人用户名的几种长相拼:
+#      · 拼音缩写 / 英文名 + 数字或下划线: lyz0721 · kevin_99 · tom1234 · Leo_7
+#      · 叠字 / 小名: kiki · 豆豆 · 阿杰 · 小雨 · 老王
+#      · 随手一句: 不吃香菜 · 奶茶三分糖 · 月亮不睡我不睡
+#      · 网络梗: 咸鱼本鱼 · 菜鸡互啄 · 躺平选手
+#      · 游戏味: 我要上王者 · 一拳一个 · xXLeoXx
+#    中文 / 拼音英文大约各一半, 有的带数字有的不带, 长短不一。
+#  ★★★词全在 `data/nickname-words.json`, 这里只有拼法 —— 抄一份进代码就是一份永远落后的副本
+#    (memory `fb-hand-rolled-copies-drift`)。
+#  ★★真人默认名与机器人对手名**同一个生成器**(用户 2026-10-04「不能让玩家知道是机器人」)。
 # ═══════════════════════════════════════════════════════════════
-const NICK_HEADS := ["龟主", "龟王", "统领", "小将", "大师", "教头"]
 ## 「换一个」那颗钮的字。★写在这里而不是屏上: 门禁要拿它找那颗钮,
 ##   两边各写一份就成了「改了屏上那个字门禁还在找旧的」。
 const NICK_REROLL := "换一个"
-## 词表的**唯一出口**。★定语池故意不列在这里 —— 它整张从 `stem_src`
-##   摸出来(见 `nickname_stems`), 列在这里就是拄一份永远落后的副本。
-const NICK_WORDS := {
-	"heads": NICK_HEADS,
-	"stem_src": "res://data/pets.json",
-}
-## 只在**读不到 pets.json** 时用(dev / 裸实例)。不是第二份事实源, 所以故意只留几个。
-const NICK_STEM_FALLBACK := ["小", "石头", "忍者", "闪电", "海盗", "彩虹"]
+## 词表文件(唯一出处)。
+const NICK_WORDS_PATH := "res://data/nickname-words.json"
+## 一个种子最多重抽几次(撞屏蔽词 / 超长才会重抽; 实测极少超过 2 次)。
+const NICK_TRIES := 24
+static var _nick_words_cache: Dictionary = {}
+static var _nick_legacy_cache: Dictionary = {}
 
 
-## 定语池。两个来源, **都在 `data/pets.json` 里**:
-##   ① 28 个龟名剥掉尾巴的那个「龟」/「乌龟」(石头 / 彩虹 / 海盗…)
-##   ② 28 个被动技名(不屈 / 坚壁 / 涅槃 / 水晶共鸣…) —— 它们本来就是这个游戏
-##     自己的词, 拼上名头读起来就是个头衔(「不屈龟主」「水晶共鸣大师」)。
-## ★★为什么要两个来源: 只拿龟名是 28×6 = **168** 个名字, 按生日碰撞算,
-##   10 个人里就有 24% 的概率撞名; 加上被动技名是 56×6 = **336**, 降到 12%。
-##   (参考里的 `Player_561962` 是拿**数字**拉开的, 而本轮明确不要那种名字 ⇒
-##    不加数字的前提下, 撞名只能缩小不能消灭。撞了也只是重名, 玩家改得掉:
-##    本仓任何一处都没有昵称唯一性约束。)
-## ★去重 —— 两处剥出同一个词时池子不该有两份。
-static func nickname_stems() -> Array:
-	var out: Array = []
+## 整张词表(懒加载一次)。读不到 ⇒ 空字典 ⇒ 生成器走 `NICK_LAST_RESORT`。
+static func nickname_words() -> Dictionary:
+	if _nick_words_cache.is_empty():
+		var f := FileAccess.open(NICK_WORDS_PATH, FileAccess.READ)
+		if f != null:
+			var parsed = JSON.parse_string(f.get_as_text())
+			if parsed is Dictionary:
+				_nick_words_cache = parsed
+	return _nick_words_cache
+
+
+static func _nw(key: String) -> Array:
+	var v = nickname_words().get(key, [])
+	return v if v is Array else []
+
+
+## 从某张表里按 rng 挑一个。
+static func _nk(rng: RandomNumberGenerator, key: String) -> String:
+	var arr := _nw(key)
+	if arr.is_empty():
+		return ""
+	return str(arr[rng.randi() % arr.size()])
+
+
+## 首字母大写(pct% 的概率)。真人的英文名有大写有小写。
+static func _nick_cap(rng: RandomNumberGenerator, s: String, pct: int) -> String:
+	if s == "" or int(rng.randi() % 100) >= pct:
+		return s
+	return s.substr(0, 1).to_upper() + s.substr(1)
+
+
+## 名字后面挂的数字: 生日/年份 · 520/666/233 这种 · 随手两位 · 随手四位。
+static func _nick_digits(rng: RandomNumberGenerator) -> String:
+	var r := int(rng.randi() % 100)
+	if r < 40:
+		return _nk(rng, "digits_date")
+	if r < 75:
+		return _nk(rng, "digits_short")
+	if r < 90:
+		return str(10 + int(rng.randi() % 90))
+	return str(1000 + int(rng.randi() % 9000))
+
+
+## 整句名偶尔挂个尾巴(不吃香菜呀 / 咸鱼本鱼233)—— 真人常这么干, 也让同一句不那么容易撞名。
+## ★挂上就超长 ⇒ 不挂(不是丢掉整句重抽)。
+static func _nick_tail(rng: RandomNumberGenerator, base: String) -> String:
+	if rng.randi() % 4 != 0:
+		return base
+	var t := _nk(rng, "phrase_tail")
+	return base + t if (base + t).length() <= NICK_MAX else base
+
+
+## 按模板 id 拼一个(还没过长度/屏蔽词)。模板 id 与 `templates` 表一一对应。
+static func _nick_build(tid: String, rng: RandomNumberGenerator) -> String:
+	match tid:
+		"en_num":
+			return _nick_cap(rng, _nk(rng, "en_names"), 30) + _nick_digits(rng)
+		"en_us_num":
+			var tail := _nk(rng, "digits_short") if rng.randi() % 2 == 0 else str(1 + int(rng.randi() % 99))
+			return _nick_cap(rng, _nk(rng, "en_names"), 40) + "_" + tail
+		"ini_num":
+			var il := str(nickname_words().get("initial_letters", ""))
+			var s := _nk(rng, "py_surnames").substr(0, 1)
+			if il != "":
+				for _i in range(1 + int(rng.randi() % 2)):
+					s += il[rng.randi() % il.length()]
+			return s + _nick_digits(rng)
+		"py_num":
+			var p := _nk(rng, "py_given")
+			return p + (_nick_digits(rng) if rng.randi() % 4 != 0 else "")
+		"word_num":
+			var w := _nk(rng, "en_words")
+			## ★短词光秃秃一个(cat / sky)太像占位符 ⇒ 不足 5 个字母的一定挂数字。
+			return w + (_nick_digits(rng) if rng.randi() % 4 != 0 or w.length() < 5 else "")
+		"en_plain":
+			return _nick_cap(rng, _nk(rng, "en_names"), 50)
+		"deco":
+			match int(rng.randi() % 4):
+				0:
+					return "xX" + _nk(rng, "deco_core") + "Xx"
+				1:
+					return "Mr_" + _nick_cap(rng, _nk(rng, "py_surnames"), 100)
+				2:
+					return _nk(rng, "en_names") + "~"
+				_:
+					return _nk(rng, "cn_prefix") + _nk(rng, "cn_given") + "丶"
+		"cn_xiao":
+			var s := _nk(rng, "cn_prefix") + _nk(rng, "cn_given")
+			return s + (_nk(rng, "cn_suffix") if rng.randi() % 5 == 0 else "")
+		"cn_lao":
+			return "老" + _nk(rng, "cn_surnames")
+		"cn_redup":
+			var c := _nk(rng, "cn_redup")
+			return c + c + (_nk(rng, "cn_suffix") if rng.randi() % 4 == 0 else "")
+		"cn_num":
+			var b := ""
+			if rng.randi() % 2 == 0:
+				b = _nk(rng, "cn_prefix") + _nk(rng, "cn_given")
+			else:
+				var c := _nk(rng, "cn_redup")
+				b = c + c
+			return b + _nk(rng, "digits_short")
+		"phrase":
+			return _nick_tail(rng, _nk(rng, "cn_phrases"))
+		"slang":
+			return _nick_tail(rng, _nk(rng, "cn_slang"))
+		"gamer":
+			return _nick_tail(rng, _nk(rng, "cn_gamer"))
+		"mix":
+			return _nk(rng, "en_names") + _nk(rng, "mix_suffix")
+	return ""
+
+
+## 这个名字能不能发出去。★判的是**最终串**(拼出来之后), 不是词 —— 两个干净的词能拼出一个脏的。
+##   · `block_sub`: 小写子串命中即弃(不雅/色情/政治/歧视 + 冒充官方/客服/机器人)
+##   · `block_core`: 拉丁字母核心整串等于它(ai / bot / gm …)。短串单列, 免得子串误伤。
+##   · 与游戏里的名字相同(龟名 / 被动名 / 训龟大师 …)
+##   · 是旧版生成器的名字(否则迁移会把老名字换成另一个老名字)
+static func nickname_blocked(raw: String) -> bool:
+	var s := nickname_clean(raw)
+	var low := s.to_lower()
+	for w in _nw("block_sub"):
+		var ws := str(w).to_lower()
+		if ws != "" and low.find(ws) >= 0:
+			return true
+	var core := ""
+	for i in range(low.length()):
+		var c := low.unicode_at(i)
+		if c >= 97 and c <= 122:
+			core += low[i]
+	if core != "" and _nw("block_core").has(core):
+		return true
+	if _nw("reserved").has(s):
+		return true
 	for p in DataRegistry.all_pets:
 		var pd := p as Dictionary
-		var nm := str(pd.get("name", "")).strip_edges()
-		if nm.ends_with("乌龟"):
-			nm = nm.substr(0, nm.length() - 2)
-		elif nm.ends_with("龟"):
-			nm = nm.substr(0, nm.length() - 1)
-		if nm != "" and not out.has(nm):
-			out.append(nm)
-		var pas := str((pd.get("passive", {}) as Dictionary).get("name", "")).strip_edges()
-		if pas != "" and not out.has(pas):
-			out.append(pas)
-	return out if not out.is_empty() else NICK_STEM_FALLBACK.duplicate()
+		var nm := str(pd.get("name", ""))
+		var pas := str((pd.get("passive", {}) as Dictionary).get("name", ""))
+		if s == nm or s == pas or s + "龟" == nm or s + "乌龟" == nm:
+			return true
+	return nickname_is_legacy_default(s)
 
 
-## 第 (si, hi) 个候选名。★**纯函数** —— 门禁据此穷举全池, 证明每一个都合法。
-## ★龟名要是长到装不下名头就**截短**, 不是丢掉: 丢掉等于新龟悄悄不进池。
+## 是不是**旧版**默认名(2026-09-29 ~ 2026-10-07 的「定语 × 名头」, 如 石头统领 / 不屈龟主)。
+## ★只用于两件事: GameState 认出老玩家冻结的旧默认名去迁移 · 生成器不许再产出它。
+## ★旧池冻结在词表的 `legacy_v1` 里, **不**从 pets.json 现算 —— 以后改龟名不该让认旧名失灵。
+static func nickname_is_legacy_default(raw: String) -> bool:
+	if _nick_legacy_cache.is_empty():
+		var lg = nickname_words().get("legacy_v1", {})
+		if lg is Dictionary:
+			for h in ((lg as Dictionary).get("heads", []) as Array):
+				var room: int = maxi(NICK_MAX - str(h).length(), 1)
+				for st in ((lg as Dictionary).get("stems", []) as Array):
+					var stem := str(st)
+					if stem.length() > room:
+						stem = stem.substr(0, room)
+					_nick_legacy_cache[stem + str(h)] = true
+	return _nick_legacy_cache.has(nickname_clean(raw))
+
+
+## 第 (si, hi) 个候选名。★**纯函数**: 同一对整数在任何设备上都给同一个名字
+##   (默认名按账号哈希取, 换设备找回账号要对得上; 机器人按自己的 rng 取)。
+## ★★保证: 返回值一定过 `nickname_valid` 且不撞 `nickname_blocked` —— 拼出来不合格就用
+##   **同一个** rng 接着重抽(确定性), 抽 `NICK_TRIES` 次都不行才落到 `safe` 表。
 static func nickname_suggest_at(si: int, hi: int) -> String:
-	var stems: Array = nickname_stems()
-	if stems.is_empty():
-		return nickname_fallback("")
-	var stem := str(stems[posmod(si, stems.size())])
-	var head := str(NICK_HEADS[posmod(hi, NICK_HEADS.size())])
-	var room: int = maxi(NICK_MAX - head.length(), 1)
-	if stem.length() > room:
-		stem = stem.substr(0, room)
-	var s := nickname_clean(stem + head)
-	return s if nickname_valid(s) else nickname_fallback("")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = (si & 0x7FFFFFFF) * 2147483647 + (hi & 0x7FFFFFFF)
+	var tpl := _nw("templates")
+	var tot := 0
+	for t in tpl:
+		tot += maxi(0, int((t as Dictionary).get("w", 0)))
+	if tot > 0:
+		for _try in range(NICK_TRIES):
+			var r := int(rng.randi() % tot)
+			var tid := ""
+			for t in tpl:
+				r -= maxi(0, int((t as Dictionary).get("w", 0)))
+				if r < 0:
+					tid = str((t as Dictionary).get("id", ""))
+					break
+			var s := nickname_clean(_nick_build(tid, rng))
+			if nickname_valid(s) and not nickname_blocked(s):
+				return s
+	var safe := _nw("safe")
+	if safe.is_empty():
+		return NICK_LAST_RESORT
+	return str(safe[posmod(si, safe.size())])
 
 
-## 池子一共多少个候选。★门禁的分母: N=0 就是空检查。
+## 组合空间有多大(各模板「挑词的乘积」之和, 不算大小写)。★门禁的分母: N=0 就是空检查。
 static func nickname_suggest_count() -> int:
-	return nickname_stems().size() * NICK_HEADS.size()
+	var en := _nw("en_names").size()
+	var dg := _nw("digits_date").size() + _nw("digits_short").size() + 90 + 9000
+	var cg := _nw("cn_prefix").size() * _nw("cn_given").size()
+	var rd := _nw("cn_redup").size()
+	var sf := _nw("cn_suffix").size()
+	var il := str(nickname_words().get("initial_letters", "")).length()
+	return en * dg + en * (_nw("digits_short").size() + 99) \
+		+ _nw("py_surnames").size() * (il + il * il) * dg \
+		+ _nw("py_given").size() * (dg + 1) + _nw("en_words").size() * (dg + 1) + en \
+		+ _nw("deco_core").size() + _nw("py_surnames").size() + en + cg \
+		+ cg * (sf + 1) + _nw("cn_surnames").size() + rd * (sf + 1) \
+		+ (cg + rd) * _nw("digits_short").size() \
+		+ (_nw("cn_phrases").size() + _nw("cn_slang").size() + _nw("cn_gamer").size()) * (_nw("phrase_tail").size() + 1) + en * _nw("mix_suffix").size()
 
 
 ## 命名随机源。裸的全局 `randi()` 会被 `tools/rng_discipline.py` 判红 ——
@@ -1288,20 +1453,21 @@ static func nickname_suggest_count() -> int:
 static var _nick_rng := RandomNumberGenerator.new()
 
 ## 随便给一个候选名。★`avoid` 里那个**不许再给** —— 「换一个」按下去还是同一个名字,
-##   就是本仓最忌的那种「点了没反应」。池子只剩一个时才会重复(这里 336 个)。
+##   就是本仓最忌的那种「点了没反应」。重抽都撞上(几乎不可能)时从 `safe` 表里挑一个不同的。
 static func nickname_suggest(avoid: String = "") -> String:
-	var n: int = nickname_suggest_count()
-	if n <= 0:
-		return nickname_fallback("")
-	var heads: int = NICK_HEADS.size()
 	var av := nickname_clean(avoid)
-	var start: int = _nick_rng.randi() % n
-	for k in range(n):
-		var idx: int = (start + k) % n
-		var s := nickname_suggest_at(idx / heads, idx % heads)
+	for _k in range(16):
+		var s := nickname_suggest_at(int(_nick_rng.randi()), int(_nick_rng.randi()))
 		if s != av:
 			return s
-	return nickname_suggest_at(start / heads, start % heads)
+	for s2 in _nw("safe"):
+		if str(s2) != av:
+			return str(s2)
+	return NICK_LAST_RESORT if NICK_LAST_RESORT != av else NICK_REROLL_SPARE
+
+
+## `safe` 表读不到又正好撞上 `NICK_LAST_RESORT` 时的最后一个(只为「换一个」永不原地不动)。
+const NICK_REROLL_SPARE := "路人乙"
 
 
 # ═══════════════════════════════════════════════════════════════

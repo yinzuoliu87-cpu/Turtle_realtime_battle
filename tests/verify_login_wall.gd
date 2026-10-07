@@ -351,36 +351,66 @@ func _t_copy_tone() -> void:
 
 
 # ──────────────────────────────────────────────────────────
-# ⑦ A · ★★★名字池: 全池穷举 + 熵 (2026-09-29)
+# ⑦ A · ★★★名字池: 像真人 + 每个都合法 + 熵 (2026-09-29 · 2026-10-07 整节重写)
 #
 #    参考里取名那一步的设计目标是「不打字也能过」⇒ 昵称框预填一个名字。
-#    ★★判据不能只问「有没有预填」—— 预填一个**固定**名字也能过那一条,
-#      而那会让排行榜上一片同名。⇒ 要量**熵**: N 次生成有多少个不同的。
-#    ★三条各管一事, 缺一条就能被蒙过去:
-#      ① 全池每一个名字都合法(不超 `NICK_MAX`) —— 否则玩家一点确认就报错
-#      ② 名字**像这个游戏的** —— 字形得能在 pets.json 里找到出处, 且没有 ASCII
-#      ③ 熵 —— 池子大小 + 重复率
+#    ★2026-10-07 判据掉头: 原来守「名字像这个游戏的」(字在 pets.json 里找得到、没 ASCII),
+#      用户:「默认昵称你得看现实玩家会用的名字啊，你这一看就是人机」
+#      「你觉得正常玩家的名字是什么，用户名就行的」⇒ 现在守「像真人起的用户名」。
+#    ★各管一事, 缺一条就能被蒙过去:
+#      ① 每一个都合法、不撞屏蔽词 —— 否则玩家一点确认就报错 / 发出去一个脏名字
+#      ② 长相**杂**: 中文与拼音英文都有、有带数字有不带、长短不一、形状不止一种
+#         (旧版每个名字同一个形状, 这正是「一看就是人机」的来源)
+#      ③ 熵 —— 抽 400 次的去重数
+#    ★形状签名由**名字本身**算(字形/数字/装饰/长度), 不读生成器内部的模板 id ——
+#      读模板 id 就是「数我自己插的标记」(memory `fb-gate-must-measure-requirement-not-my-hook`)。
 # ──────────────────────────────────────────────────────────
-## “这个名字像不像这个游戏的”的谓词。两位一体:
-##   · 没有 ASCII 字母/数字(`Player_561962` 就是这样被判掉的)
-##   · 去掉尾部名头之后剩下的字**在 pets.json 里找得到**(龟名或被动技名)
-func _looks_like_this_game(s: String) -> bool:
+## 「像不像真人起的用户名」的谓词。
+##   · 合法、不撞产品屏蔽词
+##   · 不是旧版生成器的名字(石头统领 / 不屈龟主 …), 不是「龟主-xxxxx」短码
+##   · 不是 `Player_561962` / `用户123` 这种系统编号
+##   · 不带游戏里的词「龟」
+func _looks_like_a_person(s: String) -> bool:
+	if not P2C.nickname_valid(s) or P2C.nickname_blocked(s):
+		return false
+	if P2C.nickname_is_legacy_default(s) or s.begins_with("龟主-") or s.find("龟") >= 0:
+		return false
+	var sys_id := RegEx.create_from_string("(?i)^(player|user|guest|玩家|用户)[_ -]?[0-9]+$")
+	return sys_id.search(s) == null
+
+
+## 名字的形状签名: 有没有汉字 / 拉丁字母 / 数字 / 装饰符(_ ~ 丶) + 长度档(≤3 / 4~5 / 6+)。
+func _shape(s: String) -> String:
+	var cjk := false
+	var lat := false
+	var dig := false
+	var deco := false
 	for i in range(s.length()):
 		var c := s.unicode_at(i)
-		if (c >= 48 and c <= 57) or (c >= 65 and c <= 90) or (c >= 97 and c <= 122) or c == 95:
-			return false
-	var stem := s
-	for h in P2C.NICK_HEADS:
-		if s.ends_with(str(h)):
-			stem = s.substr(0, s.length() - str(h).length())
-			break
-	if stem == s or stem == "":
-		return false
-	for p in DataRegistry.all_pets:
-		var pd := p as Dictionary
-		if str(pd.get("name", "")).find(stem) >= 0:
+		if c >= 0x4E00 and c <= 0x9FFF:
+			cjk = true
+		elif (c >= 65 and c <= 90) or (c >= 97 and c <= 122):
+			lat = true
+		elif c >= 48 and c <= 57:
+			dig = true
+		elif s[i] == "_" or s[i] == "~" or s[i] == "丶":
+			deco = true
+	var band := "S" if s.length() <= 3 else ("M" if s.length() <= 5 else "L")
+	return "%s%s%s%s%s" % ["C" if cjk else "", "L" if lat else "", "D" if dig else "", "_" if deco else "", band]
+
+
+func _has_cjk(s: String) -> bool:
+	for i in range(s.length()):
+		var c := s.unicode_at(i)
+		if c >= 0x4E00 and c <= 0x9FFF:
 			return true
-		if str((pd.get("passive", {}) as Dictionary).get("name", "")).find(stem) >= 0:
+	return false
+
+
+func _has_latin(s: String) -> bool:
+	for i in range(s.length()):
+		var c := s.unicode_at(i)
+		if (c >= 65 and c <= 90) or (c >= 97 and c <= 122):
 			return true
 	return false
 
@@ -388,75 +418,133 @@ func _looks_like_this_game(s: String) -> bool:
 func _t_suggest_pool() -> void:
 	print("── ⑦A 名字池 ──")
 	var n: int = P2C.nickname_suggest_count()
-	var stems: Array = P2C.nickname_stems()
-	print("     池子 = %d 个定语 × %d 个名头 = %d 个名字"
-		% [stems.size(), P2C.NICK_HEADS.size(), n])
-	## ★分母①: 池子真的建起来了。N=0 时下面的「每一个都合法」是空检查。
-	_ok("⑦A ★分母: 池子里真有名字(N=%d, 读不到 pets.json 就只剩兑底的 6×6)" % n,
-		n >= 150 and stems.size() >= 40, "定语 %d / 名字 %d" % [stems.size(), n])
-	## ★★词表的**出处**也要守: `NICK_WORDS` 只拿得出名头表 + 定语的源文件,
-	##   定语池本身必须是从那个文件摸出来的 —— 哪天有人把 28 个龟名抄进
-	##   代码里当常量, 新加的龟就悄悄不进池了(memory `fb-hand-rolled-copies-drift`)。
-	var words: Dictionary = P2C.NICK_WORDS
-	var src: String = str(words.get("stem_src", ""))
-	_ok("⑦A ★`NICK_WORDS` 指的词表源文件真存在: %s" % src,
-		src != "" and ResourceLoader.exists(src) and (words.get("heads", []) as Array).size() >= 4,
-		"src=%s heads=%d" % [src, (words.get("heads", []) as Array).size()])
-	## 定语池是不是真从那个文件摸的: 每一个定语都要能在 pets.json 里找到。
-	var orphan: Array = []
-	for st in stems:
-		var hit := false
-		for p in DataRegistry.all_pets:
-			var pd := p as Dictionary
-			if str(pd.get("name", "")).find(str(st)) >= 0 \
-					or str((pd.get("passive", {}) as Dictionary).get("name", "")).find(str(st)) >= 0:
-				hit = true
-				break
-		if not hit:
-			orphan.append(str(st))
-	_ok("⑦A ★★`NICK_WORDS` 的 %d 个定语**每一个**都在 pets.json 里找得到(不是手抄的表)" % stems.size(),
-		orphan.is_empty(), "找不到出处的 %d 个: %s" % [orphan.size(), str(orphan.slice(0, 5))])
-	## ① 全池穷举: 每一个都得合法, 且像这个游戏的
-	var bad_len: Array = []
-	var bad_style: Array = []
-	var seen_all: Dictionary = {}
-	var heads: int = P2C.NICK_HEADS.size()
-	for idx in range(n):
-		var s := str(P2C.nickname_suggest_at(idx / heads, idx % heads))
-		seen_all[s] = true
-		if not P2C.nickname_valid(s):
-			bad_len.append("%s(%d 字)" % [s, s.length()])
-		if not _looks_like_this_game(s):
-			bad_style.append(s)
-	print("     例: %s" % str(seen_all.keys().slice(0, 8)))
-	_ok("⑦A ★★全池 %d 个名字**每一个**都过 `nickname_valid`(2~%d 字)" % [n, P2C.NICK_MAX],
-		bad_len.is_empty(), "越线 %d 个: %s" % [bad_len.size(), str(bad_len.slice(0, 5))])
-	_ok("⑦A ★★★全池 %d 个名字都**像这个游戏的**(字在 pets.json 里找得到 · 没 ASCII)" % n,
-		bad_style.is_empty(), "不像的 %d 个: %s" % [bad_style.size(), str(bad_style.slice(0, 5))])
-	## ★分母②: 谓词真的会 FAIL —— 拿参考里那两个名字跑一遍。
-	_ok("⑦A ★分母: 谓词把 `Player_561962` / `AwesomeHyacinth` 判成**不像**(判不出 ⇒ 上条恒真)",
-		not _looks_like_this_game("Player_561962")
-			and not _looks_like_this_game("AwesomeHyacinth"))
-	_ok("⑦A ★分母: 谓词把池子里随便一个判成**像**(判不出 ⇒ 上条也恒真)",
-		_looks_like_this_game(str(P2C.nickname_suggest_at(0, 0))),
-		str(P2C.nickname_suggest_at(0, 0)))
-	## ③ 熵: 抽 400 次, 数去重。
-	##   ★★固定预填一个名字 ⇒ 去重 = 1; 这条把它卡在外面。
-	##   期望值 = N×(1-(1-1/N)^400); N=336 时 ≈ 233 ⇒ 卡 120 留着余量。
+	var words: Dictionary = P2C.nickname_words()
+	## ★分母①: 词表文件真在、真读出来了。N=0 时下面的「每一个都合法」是空检查。
+	var base_lists := ["en_names", "en_words", "py_given", "py_surnames", "cn_given", "cn_surnames",
+		"cn_redup", "cn_phrases", "cn_slang", "cn_gamer", "deco_core", "digits_date", "digits_short"]
+	var base_n := 0
+	for k in base_lists:
+		base_n += (words.get(k, []) as Array).size()
+	print("     词表 %s: %d 个基础词, 组合空间 ≈ %d" % [P2C.NICK_WORDS_PATH, base_n, n])
+	_ok("⑦A ★分母: 词表文件真存在且读得出(%s)" % P2C.NICK_WORDS_PATH,
+		FileAccess.file_exists(P2C.NICK_WORDS_PATH) and (words.get("templates", []) as Array).size() >= 10,
+		"模板 %d 个" % (words.get("templates", []) as Array).size())
+	_ok("⑦A ★分母: 基础词 ≥ 400 个、组合空间 ≥ 10 万(池子小 ⇒ 人人撞名)",
+		base_n >= 400 and n >= 100000, "基础词 %d / 空间 %d" % [base_n, n])
+
+	## ① 屏蔽词真的会拦(否则下面「不撞屏蔽词」恒真)
+	var must_block := ["官方客服", "GM", "bot123", "xjp0721", "sb666", "管理员", "人机", "AI", "训龟大师", "石头统领"]
+	if not DataRegistry.all_pets.is_empty():
+		must_block.append(str((DataRegistry.all_pets[0] as Dictionary).get("name", "")))
+	var leak: Array = []
+	for w in must_block:
+		if not P2C.nickname_blocked(str(w)):
+			leak.append(str(w))
+	_ok("⑦A ★★屏蔽词真的拦得住(冒充官方/机器人、不雅、政治、游戏里的名字、旧版名字)", leak.is_empty(), "漏了: %s" % str(leak))
+	_ok("⑦A ★分母: 正常名字**不被**屏蔽词拦(kevin_99 / 不吃香菜 / 阿杰)",
+		not P2C.nickname_blocked("kevin_99") and not P2C.nickname_blocked("不吃香菜") and not P2C.nickname_blocked("阿杰"))
+
+	## ★词表里每一个词自己就不该撞屏蔽词 / 整句名不该超长 —— 撞了就是一个永远抽不出来的死词
+	var dead: Array = []
+	for k in base_lists + ["safe", "cn_suffix", "mix_suffix", "phrase_tail"]:
+		for e in (words.get(k, []) as Array):
+			if P2C.nickname_blocked(str(e)):
+				dead.append("%s:%s" % [k, e])
+	for k in ["cn_phrases", "cn_slang", "cn_gamer", "safe"]:
+		for e in (words.get(k, []) as Array):
+			if not P2C.nickname_valid(str(e)):
+				dead.append("%s:%s(长度)" % [k, e])
+	_ok("⑦A ★★词表里没有死词(自己撞屏蔽词 / 整句超长)", dead.is_empty(), str(dead.slice(0, 8)))
+
+	## ② 大样本: 每一个都合法 + 像真人; 长相杂
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261007
+	var bad: Array = []
+	var shapes := {}
+	var lens := {}
+	var cjk := 0
+	var lat := 0
+	var dig := 0
+	var samples := 2000
+	var first200_shapes := {}
+	for i in range(samples):
+		var s := str(P2C.nickname_suggest_at(int(rng.randi()), int(rng.randi())))
+		if not _looks_like_a_person(s):
+			bad.append(s)
+		var sh := _shape(s)
+		shapes[sh] = int(shapes.get(sh, 0)) + 1
+		if i < 200:
+			first200_shapes[sh] = true
+		lens[s.length()] = true
+		if _has_cjk(s):
+			cjk += 1
+		if _has_latin(s):
+			lat += 1
+		if s.find("0") >= 0 or s.find("1") >= 0 or s.find("2") >= 0 or s.find("3") >= 0 or s.find("5") >= 0 \
+				or s.find("6") >= 0 or s.find("7") >= 0 or s.find("8") >= 0 or s.find("9") >= 0 or s.find("4") >= 0:
+			dig += 1
+	print("     %d 个样本: 中文 %d · 拉丁 %d · 带数字 %d · 形状 %d 种 · 长度 %s" % [samples, cjk, lat, dig, shapes.size(), str(lens.keys())])
+	_ok("⑦A ★★★%d 个样本**每一个**都合法、不撞屏蔽词、像真人起的" % samples,
+		bad.is_empty(), "不合格 %d 个: %s" % [bad.size(), str(bad.slice(0, 6))])
+	_ok("⑦A ★★中文与拼音/英文**都有**, 且各占三到七成(用户「大约各一半」)",
+		cjk >= samples * 3 / 10 and cjk <= samples * 7 / 10 and lat >= samples * 3 / 10 and lat <= samples * 7 / 10,
+		"中文 %d / 拉丁 %d / %d" % [cjk, lat, samples])
+	_ok("⑦A ★★有带数字的、也有不带的(各 ≥ 15%)",
+		dig >= samples * 15 / 100 and samples - dig >= samples * 15 / 100, "带数字 %d / %d" % [dig, samples])
+	_ok("⑦A ★★★前 200 个就有 ≥ 6 种形状(旧版每个名字同一个形状 = 一看就是人机)",
+		first200_shapes.size() >= 6, str(first200_shapes.keys()))
+	_ok("⑦A ★★长短不一: 最短 ≤ 3 字、最长 ≥ 7 字、≥ 5 种长度",
+		lens.size() >= 5 and (lens.keys() as Array).min() <= 3 and (lens.keys() as Array).max() >= 7, str(lens.keys()))
+	var top_sh := ""
+	var top_n := 0
+	for k in shapes.keys():
+		if int(shapes[k]) > top_n:
+			top_n = int(shapes[k])
+			top_sh = str(k)
+	_ok("⑦A ★没有哪一种形状独占(最多的一种 ≤ 35%)", top_n <= samples * 35 / 100, "%s 占 %d / %d" % [top_sh, top_n, samples])
+
+	## ★分母: 谓词真的会 FAIL —— 拿旧版名字 / 系统编号跑一遍。
+	_ok("⑦A ★分母: 谓词把 `Player_561962` / 旧版「石头统领」/ 「龟主-ab12c」判成**不像**(判不出 ⇒ 上面恒真)",
+		not _looks_like_a_person("Player_561962") and not _looks_like_a_person("石头统领")
+			and not _looks_like_a_person("龟主-ab12c"))
+	_ok("⑦A ★分母: 谓词把真人那几种判成**像**(kevin_99 / 不吃香菜 / lyz0721)",
+		_looks_like_a_person("kevin_99") and _looks_like_a_person("不吃香菜") and _looks_like_a_person("lyz0721"))
+	## 纯函数: 同一对种子同一个名字
+	_ok("⑦A ★确定性: 同一对种子两次给同一个名字(默认名按账号哈希取, 换设备要对得上)",
+		P2C.nickname_suggest_at(123456, 654321) == P2C.nickname_suggest_at(123456, 654321),
+		P2C.nickname_suggest_at(123456, 654321))
+	## ★兜底表(重抽都不行时落到这里)每一个都得是正经名字
+	var bad_safe: Array = []
+	for e in (words.get("safe", []) as Array):
+		if not _looks_like_a_person(str(e)):
+			bad_safe.append(str(e))
+	_ok("⑦A ★兜底表 %d 个名字都像真人" % (words.get("safe", []) as Array).size(),
+		bad_safe.is_empty() and (words.get("safe", []) as Array).size() >= 2, str(bad_safe))
+
+	## ③ 熵: 抽 400 次, 数去重。★固定预填一个名字 ⇒ 去重 = 1; 这条把它卡在外面。
 	var draws := 400
 	var seen: Dictionary = {}
 	for _i in range(draws):
 		seen[str(P2C.nickname_suggest())] = true
-	print("     熵: 抽 %d 次 ⇒ %d 个不同的(池子 %d)" % [draws, seen.size(), n])
-	_ok("⑦A ★★★**名字熵**够: 抽 %d 次至少 120 个不同(固定预填一个名字 ⇒ 只有 1 个)" % draws,
-		seen.size() >= 120, "实测 %d 个" % seen.size())
-	## ★「换一个」永远不该给同一个名字 —— 全池逐个验。
+	print("     熵: 抽 %d 次 ⇒ %d 个不同的" % [draws, seen.size()])
+	_ok("⑦A ★★★**名字熵**够: 抽 %d 次至少 300 个不同(固定预填一个名字 ⇒ 只有 1 个)" % draws,
+		seen.size() >= 300, "实测 %d 个" % seen.size())
+	## ★「换一个」永远不该给同一个名字 —— 抽到过的 + 兜底表逐个验。
 	var same: Array = []
-	for k in seen_all.keys():
+	var probe: Array = seen.keys() + (words.get("safe", []) as Array) + [P2C.NICK_LAST_RESORT]
+	for k in probe:
 		if str(P2C.nickname_suggest(str(k))) == str(k):
 			same.append(str(k))
-	_ok("⑦A ★★★全池 %d 个名字每一个当 avoid 传进去, 都**不会再得到它**(否则就是点了没反应)" % seen_all.size(),
+	_ok("⑦A ★★★%d 个名字每一个当 avoid 传进去, 都**不会再得到它**(否则就是点了没反应)" % probe.size(),
 		same.is_empty(), "重复的 %d 个: %s" % [same.size(), str(same.slice(0, 5))])
+	## ★★上面那条随机抽, 「下一个正好撞上 avoid」几乎碰不到 ⇒ 拿不掉 avoid 判断也照样绿。
+	##   这里把命名随机源**倒回去**: 先看下一次会给什么, 倒回同一个状态再把它当 avoid 传进去 ——
+	##   这一次生成器第一抽**必然**就是它, 只有 avoid 判断真在才换得掉。
+	var st0: int = P2C._nick_rng.state
+	var nxt := str(P2C.nickname_suggest())
+	P2C._nick_rng.state = st0
+	var got := str(P2C.nickname_suggest(nxt))
+	_ok("⑦A ★★★倒回随机源: 下一个本来是「%s」, 把它当 avoid ⇒ 换出来的不是它" % nxt, got != nxt and got != "", got)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -1107,8 +1195,8 @@ func _t_no_typing(inst) -> void:
 	##   量的是产品自己那道门(`nickname_error` 就是「确认」按下去跑的那一条)。
 	_ok("⑥e ★★★**预填名**能直接过(玩家不碰键盘也能按确认)",
 		P2C.nickname_error(pre) == "", "「%s」 ⇒ %s" % [pre, P2C.nickname_error(pre)])
-	_ok("⑥e ★预填的名字像这个游戏的(不是 `Player_561962`)",
-		_looks_like_this_game(pre), pre)
+	_ok("⑥e ★预填的名字像真人起的(不是 `Player_561962`、不是旧版「石头统领」那种)",
+		_looks_like_a_person(pre), pre)
 	## 「换一个」
 	var re: Button = inst._email_side.get(inst._nick_edit)
 	_ok("⑥e ★分母: `NICK_REROLL` 那颗钮在第一步看得见, 且短边 ≥ 44pt",
