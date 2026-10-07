@@ -10,7 +10,6 @@ extends TextureRect
 ##   紧贴木框外沿一圈实金边, 往外三圈离散递减。不用平滑径向渐变: 平滑渐变光晕正是用户
 ##   点过名的「AI 味/网页味」, 像素风里光也该是一格一格的。
 ## 呼吸: 透明度在 0.40~1.0 之间 1.8 秒一个来回(`step()` 推, 测试可直接喂 dt)。
-## ★低画质(perf_lite)不呼吸, 停在 0.85 —— 金边还在, 主次照样分得开。
 ## ★锁着(开打被拦)时**不挂**: 灰框配金光是在说「快点我」, 而点了只会被拦。
 
 const NODE_NAME := "HeroGlow"
@@ -72,12 +71,7 @@ func _make(btn_size: Vector2) -> void:
 
 
 func _ready() -> void:
-	var lite: bool = GameState != null and bool(GameState.perf_lite)
-	set_process(not lite)
-	if lite:
-		modulate.a = 0.85
-	else:
-		step(0.0)
+	step(0.0)
 
 
 func _process(delta: float) -> void:

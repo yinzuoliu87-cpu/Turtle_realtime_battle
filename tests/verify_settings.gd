@@ -3,14 +3,15 @@ extends Node
 ## 跑法: godot --headless --path . res://tests/verify_settings.tscn --quit-after 200
 ##
 ## 覆盖:
-##  1. GameState 有 fullscreen / perf_lite 字段, 默认 false, 且进 save() 的数据里
-##  2. reset_save() 【不清】偏好设置 (音量/全屏/低画质) — 那是偏好不是进度
-##  3. SettingsScene 能在 headless 构建 (无报错); 分段钮(画质/显示)真按下去真改设置;
+##  1. GameState 有 fullscreen 字段, 默认 false
+##  2. reset_save() 【不清】偏好设置 (音量/全屏) — 那是偏好不是进度
+##  3. SettingsScene 能在 headless 构建 (无报错); 分段钮(显示)真按下去真改设置;
 ##     页面无 emoji、无「」循环键; 正式包条件下不建调试场(2026-10-07 重排)
 ##  4. ★安全属性: 点「重置所有存档」只弹确认框, 【不会立刻清档】
 ##  5. 确认框「取消」→ 关闭且存档仍然完好
 ##  6. 确认框「确认清空」→ 才真的清
-##  7. perf_lite 不再是死按钮: 战斗视口/菜单漂移 都读它 (源码级断言)
+##  7. ★「画质」整个删了(2026-10-07 用户「我们为什么有画质这个东西，应该去掉吧」):
+##     页面上没有画质控件 / GameState 没有 perf_lite / 存档里没有这个键 / 带着这个键的旧存档照常读
 
 const SettingsSceneScript = preload("res://scripts/scenes/SettingsScene.gd")
 
@@ -33,17 +34,13 @@ func _ready() -> void:
 
 	print("=== 1. 新设置字段 ===")
 	_ok("有 fullscreen 字段", "fullscreen" in gs)
-	_ok("有 perf_lite 字段", "perf_lite" in gs)
 	gs.fullscreen = false
-	gs.perf_lite = false
 	_ok("默认 fullscreen=false", gs.fullscreen == false)
-	_ok("默认 perf_lite=false", gs.perf_lite == false)
 
 	print("=== 2. reset_save() 不清【偏好设置】(只清进度) ===")
 	gs.bgm_volume = 0.11
 	gs.sfx_volume = 0.22
 	gs.fullscreen = true
-	gs.perf_lite = true
 	gs.meta_deepsea_coins = 999
 	gs.persistent_bench = [{"id": "p2eq_001", "star": 1}]
 	gs.season_leaders = ["candy"]
@@ -54,31 +51,13 @@ func _ready() -> void:
 	_ok("偏好保留: bgm_volume", is_equal_approx(gs.bgm_volume, 0.11), "got=%f" % gs.bgm_volume)
 	_ok("偏好保留: sfx_volume", is_equal_approx(gs.sfx_volume, 0.22), "got=%f" % gs.sfx_volume)
 	_ok("偏好保留: fullscreen", gs.fullscreen == true)
-	_ok("偏好保留: perf_lite", gs.perf_lite == true)
 
 	print("=== 3. SettingsScene 构建 + 分段钮(2026-10-07 重排: 循环木牌 → 分段钮) ===")
-	gs.perf_lite = true
 	var sc: Control = SettingsSceneScript.new()
 	add_child(sc)
 	await get_tree().process_frame
 	_ok("SettingsScene 在 headless 构建无报错", is_instance_valid(sc))
 	## ★量**行为**不量文案: 按名字找分段钮(名字常量在产品那边), 真按下去, 看 GameState 变没变。
-	##   原来这里量 `_perf_label()` 的字(「画质「低」」) —— 循环木牌没了, 判据跟着需求走:
-	##   「点了真的改设置」+「选中态跟着设置走」。
-	var q_low = sc.find_child(SettingsSceneScript.SEG_QUALITY + "Low", true, false)
-	var q_high = sc.find_child(SettingsSceneScript.SEG_QUALITY + "High", true, false)
-	_ok("★分母: 画质分段钮两段都建出来了(低/高)", q_low is Button and q_high is Button)
-	if q_low is Button and q_high is Button:
-		_ok("perf_lite=true 开页 ⇒ 选中的是「低」那段", _seg_on(q_low) and not _seg_on(q_high),
-			"低=%s 高=%s" % [_seg_on(q_low), _seg_on(q_high)])
-		(q_high as Button).pressed.emit()
-		await get_tree().process_frame
-		_ok("★★点「高」⇒ GameState.perf_lite 真的变 false", gs.perf_lite == false)
-		_ok("点「高」⇒ 选中态移到「高」", _seg_on(q_high) and not _seg_on(q_low))
-		(q_low as Button).pressed.emit()
-		await get_tree().process_frame
-		_ok("★★点「低」⇒ GameState.perf_lite 真的变 true", gs.perf_lite == true)
-		_ok("点「低」⇒ 选中态移回「低」", _seg_on(q_low) and not _seg_on(q_high))
 	var d_win = sc.find_child(SettingsSceneScript.SEG_DISPLAY + "Window", true, false)
 	var d_full = sc.find_child(SettingsSceneScript.SEG_DISPLAY + "Full", true, false)
 	## 「显示」只在桌面端建(手机上没有窗口模式) —— 门禁跑在桌面, 所以这里必须在。
@@ -159,30 +138,43 @@ func _ready() -> void:
 	_ok("「确认清空」后才真的清 (币=0)", gs.meta_deepsea_coins == 0, "got=%d" % gs.meta_deepsea_coins)
 	_ok("「确认清空」后背包空", (gs.persistent_bench as Array).is_empty())
 
-	print("=== 7. perf_lite 不再是死按钮 (源码级) ===")
-	_ok("战斗视口读 perf_lite", _src_has("res://scripts/scenes/battle/battle_world_builder.gd", "perf_lite"))   # 视口构建已抽到 BattleWorldBuilder(2026-07-26)
-	## ★2026-09-18 改了措辞不是放宽: 主菜单背景已从「平铺+25s 漂移」换成静态龟群像,
-	##   没有漂移可关了。perf_lite 在主菜单的消费者改成【跳过入场动画】(_slide_in/_slide_in_left),
-	##   所以这条仍然在守"低画质开关在主菜单真的有作用", 只是作用换了一个。
-	_ok("主菜单读 perf_lite(低画质跳过入场动画)", _src_has("res://scripts/scenes/MainMenuScene.gd", "perf_lite"))
-	_ok("图鉴背景漂移读 perf_lite", _src_has("res://scripts/scenes/CodexScene.gd", "perf_lite"))
-	_ok("战斗视口低画质关 MSAA", _src_has("res://scripts/scenes/battle/battle_world_builder.gd", "MSAA_DISABLED"))
-	_ok("战斗视口低画质降 3D 分辨率", _src_has("res://scripts/scenes/battle/battle_world_builder.gd", "scaling_3d_scale"))
+	print("=== 7. ★「画质」整个删了(用户 2026-10-07「我们为什么有画质这个东西，应该去掉吧」) ===")
+	## 7a 页面: 量**真建出来的页面**(sc 还在树上), 不量源码。
+	##   ★分母: 同一页上「显示」那一行的名字是扫得到的 —— 扫描器本身能看见右框的行名。
+	var pg_t: Array = []
+	_texts(sc, pg_t, false)
+	_ok("★分母: 右框的行名扫得到(「音乐」「显示」都在)", ("音乐" in pg_t) and ("显示" in pg_t), str(pg_t.size()))
+	var q_hits: Array = []
+	for s in pg_t:
+		if str(s).find("画质") >= 0:
+			q_hits.append(s)
+	_ok("★★设置页上没有任何带「画质」的字(行名 / 按钮 / 提示)", q_hits.is_empty(), str(q_hits))
+	_ok("★★设置页上没有 SegQuality* 分段钮节点", sc.find_children("SegQuality*", "", true, false).is_empty())
+	## 7b GameState: 字段没了, 存档字典里也没有这个键。
+	_ok("★★GameState 没有 perf_lite 属性", not ("perf_lite" in gs))
+	var sd: Dictionary = gs._save_dict()
+	_ok("★分母: 存档字典是真的(有 fullscreen 键)", sd.has("fullscreen"))
+	_ok("★★存档字典里没有 perf_lite 键", not sd.has("perf_lite"))
+	_ok("设备本地键清单里没有 perf_lite", not ("perf_lite" in gs.DEVICE_LOCAL_KEYS))
+	## 7c ★旧存档(带着 "perf_lite": true)照常读: 其余字段读进来, 未知键被忽略, 下次存档就没了。
+	var snap: Dictionary = gs._save_dict()
+	var old: Dictionary = snap.duplicate(true)
+	old["perf_lite"] = true
+	old["meta_deepsea_coins"] = 4321
+	old["fullscreen"] = true
+	gs._apply_save_dict(old)
+	_ok("★★带 perf_lite 的旧存档读得进来: 深海币 = 4321", int(gs.meta_deepsea_coins) == 4321, str(gs.meta_deepsea_coins))
+	_ok("旧存档里的 fullscreen 也读进来了", gs.fullscreen == true)
+	_ok("★读完旧档 GameState 仍然没有 perf_lite", not ("perf_lite" in gs))
+	_ok("★读完旧档再存一次, 存档字典里没有 perf_lite", not gs._save_dict().has("perf_lite"))
+	gs._apply_save_dict(snap)
 
 	print("")
 	if _fail == 0:
-		print("ALL PASS — 设置持久化 + 重置二次确认 + 低画质真开关")
+		print("ALL PASS — 设置持久化 + 重置二次确认 + 画质已整个删除")
 	else:
 		print("FAIL x", _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
-
-
-func _src_has(path: String, needle: String) -> bool:
-	var f := FileAccess.open(path, FileAccess.READ)
-	if f == null: return false
-	var s := f.get_as_text()
-	f.close()
-	return s.find(needle) >= 0
 
 
 ## 分段钮这一段是不是选中态。`UISkin.pixel_tab` 选中 = 页签行第 3/4 格(青边), 未选 = 第 1/2 格。

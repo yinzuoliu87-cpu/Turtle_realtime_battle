@@ -37,7 +37,7 @@ const TUT_COINS := 20
 ##   教程期间它们照常活着(例: 首启时异步登录拿到 account_id), 结束时**保留现值**, 不被拷贝盖回去。
 ##   其余所有脚本变量一律进沙盒(进时换成全新值, 出时换回原值)。
 const PASSTHROUGH := ["install_uid", "account_id", "account_email", "auth_refresh", "cloud_rev",
-	"nickname", "nickname_default", "bgm_volume", "sfx_volume", "fullscreen", "perf_lite",
+	"nickname", "nickname_default", "bgm_volume", "sfx_volume", "fullscreen",
 	"replay_upload_pending", "ghost_upload_pending", "test_mode", "skill_text_detail", "onboarded",
 	"tutorial", "tutorial_active", "tutorial_stage"]
 ## 全新状态里沿用账号的「赛程时钟」: 否则选龟屏/结算按周相位判断时会把沙盒当成另一周。

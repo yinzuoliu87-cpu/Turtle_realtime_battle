@@ -836,8 +836,6 @@ scripts/scenes/SettingsScene.gd|lit| · 玩家 ID %s
 scripts/scenes/SettingsScene.gd|lit|云端同步已开启 · 可在其他设备登录恢复进度
 scripts/scenes/SettingsScene.gd|lit|云端存档与本地存档不一致
 scripts/scenes/SettingsScene.gd|lit|云端进度将被本地覆盖
-scripts/scenes/SettingsScene.gd|lit|低
-scripts/scenes/SettingsScene.gd|lit|低画质更流畅 · 下场战斗生效
 scripts/scenes/SettingsScene.gd|lit|使用云端存档
 scripts/scenes/SettingsScene.gd|lit|使用本地存档
 scripts/scenes/SettingsScene.gd|lit|修改昵称
@@ -858,12 +856,10 @@ scripts/scenes/SettingsScene.gd|lit|本地未同步的进度将被替换\n（替
 scripts/scenes/SettingsScene.gd|lit|本地进度将被替换（替换前自动备份）。
 scripts/scenes/SettingsScene.gd|lit|正在发送…
 scripts/scenes/SettingsScene.gd|lit|正在验证…
-scripts/scenes/SettingsScene.gd|lit|此操作不可撤销。音量、画面、画质设置不受影响。
+scripts/scenes/SettingsScene.gd|lit|此操作不可撤销。音量、画面设置不受影响。
 scripts/scenes/SettingsScene.gd|lit|测试时间
 scripts/scenes/SettingsScene.gd|lit|版本 v%s
 scripts/scenes/SettingsScene.gd|lit|玩家 ID %s
-scripts/scenes/SettingsScene.gd|lit|画质
-scripts/scenes/SettingsScene.gd|lit|画质：%s · 下场战斗生效
 scripts/scenes/SettingsScene.gd|lit|画面
 scripts/scenes/SettingsScene.gd|lit|登录已失效，请重新登录
 scripts/scenes/SettingsScene.gd|lit|确认
@@ -883,7 +879,6 @@ scripts/scenes/SettingsScene.gd|lit|邮箱登录
 scripts/scenes/SettingsScene.gd|lit|重置存档
 scripts/scenes/SettingsScene.gd|lit|音乐
 scripts/scenes/SettingsScene.gd|lit|音效
-scripts/scenes/SettingsScene.gd|lit|高
 scripts/scenes/SettingsScene.gd|placeholder_text|输入昵称
 scripts/scenes/SettingsScene.gd|placeholder_text|输入邮箱
 scripts/scenes/SettingsScene.gd|placeholder_text|输入验证码

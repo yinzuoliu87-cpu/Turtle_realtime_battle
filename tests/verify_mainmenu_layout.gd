@@ -998,10 +998,9 @@ func _ready() -> void:
 				crowd_on_screen_15 += 1
 		_ok("⑮c 旧群像墙不在主菜单上了", crowd_on_screen_15 == 0, "%d 张" % crowd_on_screen_15)
 		## ⑮d' 真入口在推钟(入场那几秒 _process 已经跑过)
-		var lite_15: bool = bool(get_node("/root/GameState").perf_lite)
 		var s_real_15: Dictionary = bd_15.debug_state()
-		_ok("⑮d' ★真入口: 背景的 _process 开着(低画质才关)", bd_15.is_processing() == (not lite_15),
-			"processing=%s perf_lite=%s" % [str(bd_15.is_processing()), str(lite_15)])
+		_ok("⑮d' ★真入口: 背景的 _process 开着", bd_15.is_processing(),
+			"processing=%s" % str(bd_15.is_processing()))
 		_ok("⑮d' ★真入口: 背景的钟已经被 _process 推过(不是只有测试在喂)", float(s_real_15["t"]) > 0.0,
 			"t=%.3f" % float(s_real_15["t"]))
 		## ⑮d 会动: 喂 6 秒(> 一个出手循环 3.4 秒), 每 0.05 秒采一次
@@ -1095,8 +1094,7 @@ func _ready() -> void:
 			a_lo_15 = minf(a_lo_15, gl_15.modulate.a)
 			a_hi_15 = maxf(a_hi_15, gl_15.modulate.a)
 		_ok("⑮f ★在呼吸: 3 秒内透明度起伏 ≥ 0.4", a_hi_15 - a_lo_15 >= 0.4, "%.2f ~ %.2f" % [a_lo_15, a_hi_15])
-		_ok("⑮f ★真入口: 光晕的 _process 开着(低画质才关)",
-			gl_15.is_processing() == (not bool(get_node("/root/GameState").perf_lite)))
+		_ok("⑮f ★真入口: 光晕的 _process 开着", gl_15.is_processing())
 
 	# ── ⑭ ★★PLAY_LOCK_SAME_SOURCE: 画在按钮上的锁 == 那扇门自己的判据 ──
 	#

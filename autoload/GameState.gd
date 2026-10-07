@@ -966,7 +966,8 @@ var pet_levels: Dictionary = {}                        # 宠物等级 {petId: 1-
 var bgm_volume: float = 0.45                           # 设置: BGM 音量
 var sfx_volume: float = 0.8                            # 设置: SFX 音量
 var fullscreen: bool = false                           # 设置: 全屏 (原来切了不存, 重启回窗口)
-var perf_lite: bool = false                            # 设置: 低画质模式 (原来是死按钮, 只改自己的 label)
+## ★「画质(低画质模式)」2026-10-07 整个删了(用户「我们为什么有画质这个东西，应该去掉吧」)。
+##   旧存档里的 "perf_lite" 键 `_apply_save_dict` 不读、下次 save 自然消失(verify_settings 守着旧档能读)。
 
 # ─── V2 异步PvP 生命赛季 持久字段 (写入 savegame.json; 见 docs/specs/V2-阶段2) ───
 var meta_deepsea_coins: int = 0                       # 局外深海币 (独立钱包; 区别于 coins/battle_coins/dual_coins)
@@ -1467,14 +1468,14 @@ func _ready() -> void:
 #  D-8 云存档 (2026-09-21 用户「需要存档同步的」)
 # ════════════════════════════════════════════════════════════════════════
 ## ★★设备本地、**永不进云**的键。
-##   · 音量 / 全屏 / 画质 —— 这台设备的偏好, 换到另一台不该跟过去
+##   · 音量 / 全屏 —— 这台设备的偏好, 换到另一台不该跟过去
 ##   · install_uid —— 这台设备的标识
 ##   · account_id / account_email / auth_refresh —— **身份只来自登录, 永远不许从存档里读**
 ##     (否则改一份云存档就能让别的设备「变成」另一个号)
 ##   · cloud_rev —— 同步元数据, 由服务端回包决定
 ##   · replay_upload_pending —— 回放上传队列: 录像文件只在这台设备上, 别的设备拿到单子也发不出去
 ##   · ghost_upload_pending —— 快照上传队列(E7): 两台设备各补一遍同一行是白发; 单子跟着打出它的那台设备走
-const DEVICE_LOCAL_KEYS := ["bgm_volume", "sfx_volume", "fullscreen", "perf_lite",
+const DEVICE_LOCAL_KEYS := ["bgm_volume", "sfx_volume", "fullscreen",
 	"install_uid", "account_id", "account_email", "auth_refresh", "cloud_rev",
 	"replay_upload_pending", "ghost_upload_pending"]
 
@@ -1729,7 +1730,6 @@ func _save_dict() -> Dictionary:
 		"bgm_volume": bgm_volume,
 		"sfx_volume": sfx_volume,
 		"fullscreen": fullscreen,
-		"perf_lite": perf_lite,
 		"meta_deepsea_coins": meta_deepsea_coins,
 		"meta_shop_offer": meta_shop_offer,
 		"meta_shop_battles": meta_shop_battles,
@@ -1903,7 +1903,6 @@ func _apply_save_dict(data: Dictionary) -> void:
 	bgm_volume = data.get("bgm_volume", 0.45)
 	sfx_volume = data.get("sfx_volume", 0.8)
 	fullscreen = bool(data.get("fullscreen", false))
-	perf_lite = bool(data.get("perf_lite", false))
 	# V2 赛季持久字段
 	meta_deepsea_coins = int(data.get("meta_deepsea_coins", 0))
 	meta_shop_offer = data.get("meta_shop_offer", [])
@@ -1994,7 +1993,7 @@ func _apply_save_dict(data: Dictionary) -> void:
 		print("[GameState] 装备容量新规则迁移: ★删除 ", _mig, " 件超额装备(单只≤3 且 全队≤", team_equip_cap(), ")")
 
 
-## 重置所有进度。**不清设置项**(bgm/sfx 音量 · fullscreen · perf_lite) — 那是偏好不是进度。
+## 重置所有进度。**不清设置项**(bgm/sfx 音量 · fullscreen) — 那是偏好不是进度。
 ## ⚠ 破坏性: 调用方必须先做二次确认 (SettingsScene 已加确认弹窗)。
 # ════════════════════════════════════════════════════════════════════════
 #  096 小木斧【砍伐经验】—— 四期(2026-09-01)

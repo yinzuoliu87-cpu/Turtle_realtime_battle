@@ -822,6 +822,14 @@ func _wf(n: int) -> void:
 		await get_tree().process_frame
 
 
+## 把正在跑的**有限次** tween(主菜单入场滑入等)一步走到头 —— 量几何要落位之后才算数。
+## ★无限循环的(`get_loops_left() == -1`, 例: 背景漂移)不碰: 一次喂 10 秒只会让它绕圈, 没有「落位」可言。
+func _settle_intro() -> void:
+	for tw in get_tree().get_processed_tweens():
+		if tw.is_valid() and tw.is_running() and tw.get_loops_left() != -1:
+			tw.custom_step(10.0)
+
+
 ## 这棵子树里**玩家能操作**的控件。判据与 `verify_ui_consistency._interactive` 同口径。
 func _hot(root) -> Array:
 	var out: Array = []
@@ -1490,12 +1498,11 @@ func _t_open_path() -> void:
 	SB._token = "tok-path"
 	GameState.account_email = ""
 	GameState.account_id = "uid-path"
-	var pl0: bool = bool(GameState.perf_lite)
 	var ob0: bool = bool(GameState.onboarded)
-	## ★★`perf_lite = true` ⇒ `_slide_in` 直接就位, 不播 0.85+0.42 秒的入场 tween。
-	##   量几何要**落位之后**才算数(memory `fb-screenshot-must-settle-and-multi-ratio`),
-	##   而等 tween 落位要烧掉上千帧(无头帧率极高) ⇒ 走产品自己的低画质路直接就位。
-	GameState.perf_lite = true
+	## ★★量几何要**落位之后**才算数(memory `fb-screenshot-must-settle-and-multi-ratio`),
+	##   而等 0.85+0.42 秒的入场 tween 落位要烧掉上千帧(无头帧率极高)。
+	##   原来走产品的低画质路(perf_lite)直接就位; 2026-10-07 画质设置整个删了 ⇒ 改成 `_settle_intro()`
+	##   把有限次的 tween 一步走完(见该函数头注)。
 
 	# ── ⑧a 老玩家: 主菜单留住 + 那句提示不挡路 + 真点「开始战斗」──
 	OS.set_environment("ONBOARD", "0")      ## 关掉首启教学, 这一支要看「主菜单留不留得住」
@@ -1510,6 +1517,8 @@ func _t_open_path() -> void:
 	##   再由 `call_deferred("_go","Settings")` 换走 ⇒ 等「出现」会在换走之前就判完,
 	##   那条判据就成了恒真式。⇒ 等它**落定**(14 帧 ≫ 一次 deferred)再量。
 	await _wf(14)
+	_settle_intro()
+	await _wf(1)
 	var cur := get_tree().current_scene
 	## ★★★2026-10-03 把主菜单的时钟**钉在工作日**。
 	##   由来: 这一条在 2026-10-03(周六)跑门禁时红了 ——
@@ -1708,7 +1717,6 @@ func _t_open_path() -> void:
 	var _td8 = get_node_or_null("/root/TutorialDirector")
 	if _td8 != null and _td8.in_sandbox():
 		_td8.end_tutorial("abandoned")
-	GameState.perf_lite = pl0
 	GameState.onboarded = ob0
 	GameState.tutorial = false
 	GameState.tutorial_active = false

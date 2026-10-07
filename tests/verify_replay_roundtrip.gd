@@ -139,7 +139,6 @@ func _tamper_gs(gs) -> void:
 	gs.dual_survivors = {"left": ["basic"], "right": []}
 	gs.dual_ms_stacks = {"left": 9, "right": 9}
 	gs.foe_loadouts = {"basic": 2}
-	gs.perf_lite = not bool(gs.perf_lite)
 	gs.tutorial = true
 	_perturbed = n
 

@@ -13,7 +13,6 @@ extends Control
 ##   · 顶沿的灯: 3 组各自明暗
 ##   · 小旗: 着色器按行横摆, 越往下摆幅越大, 摆幅取整到原生像素(不糊)
 ##   · 两只角斗龟: 架势 → 蓄力 → 突刺/顶盾 → 收回, 一个循环 3.4 秒
-## ★低画质(perf_lite)整页静止: 不跑 `_process`, 停在第 0 帧。
 ##
 ## 像素口径: 原生 390×180, 按视口高(或宽, 取大的那个)整体放大铺满 —— 与原来那张群像 COVERED 一样居中裁边。
 ##   1280×720 与 1560×720 下都是 ×4, UI 落在原生坐标上是同一个位置(主角站位就是照这个算的)。
@@ -60,8 +59,6 @@ func _init() -> void:
 
 func _ready() -> void:
 	_build()
-	var lite: bool = GameState != null and bool(GameState.perf_lite)
-	set_process(not lite)
 	step(0.0)
 
 

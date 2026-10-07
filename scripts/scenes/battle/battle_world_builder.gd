@@ -169,12 +169,8 @@ static func tile_material(ti: int, ws: float, cx: float, cy: float) -> Material:
 		sm.set_shader_parameter("field_r", MapField.FIELD_R)
 	else:
 		push_warning("[tile] 地图距离场烘不出来 → 岸线/水深退化成平涂")
-	# ★低画质/移动端: 关掉焦散与沉积起伏(约 13 个正弦/片元)。
-	#   ★桌面 A/B/A 背对背实测【差值在噪声内】(开179.5 关179.6 再开179.6), 别引用"省 21%"那种数字 ——
-	#     那是我一度被热降频骗出来的。这个开关是给低端移动设备的安全阀, 不是桌面实测收益。
-	#   ★放在 if/else 【外面】—— 它跟距离场烘没烘出来无关, 任何情况都该设。
-	sm.set_shader_parameter("rich_fx",
-		not (GameState != null and GameState.perf_lite))
+	# ★焦散与沉积起伏(shader `rich_fx`, 默认 true)常开。原来低画质会关掉它; 2026-10-07 画质设置整个删了
+	#   (桌面 A/B/A 背对背实测差值在噪声内: 开179.5 关179.6 再开179.6)。uniform 留着当低端机的安全阀。
 	return sm
 
 
@@ -249,10 +245,6 @@ func _build_viewport() -> void:
 	battle._sub.handle_input_locally = false
 	# ★A4 黑屏排查: 移动端 SubViewport + MSAA 在部分安卓 GPU 上有问题 → 移动端默认关 MSAA。桌面保留 2X。
 	battle._sub.msaa_3d = Viewport.MSAA_DISABLED if battle._is_mobile() else Viewport.MSAA_2X
-	# 低画质模式(设置里的开关·持久化): 关抗锯齿 + 3D 渲染分辨率 ×0.75 (UI 层不受影响, 仍是原生分辨率)
-	if GameState != null and GameState.perf_lite:
-		battle._sub.msaa_3d = Viewport.MSAA_DISABLED
-		battle._sub.scaling_3d_scale = 0.75
 	container.add_child(battle._sub)
 	battle._world = Node3D.new()
 	battle._world.name = "World"
@@ -1535,7 +1527,7 @@ func _build_environment() -> void:
 	# ★辉光(bloom): 水下场景的标配 —— 亮青的水与岸线泡沫会向周围渗出一点光晕,
 	#   画面立刻从"平涂色块"变成"有介质的水体"。阈值调高 ⇒ 只有【最亮的那一档】发光
 	#   (水/泡沫/技能特效), 暗地与立绘不受影响, 不会整体发糊。
-	#   ★移动端与低画质关掉: glow 是全屏多次降采样, 是这套画面里最贵的一项。
+	#   ★移动端关掉: glow 是全屏多次降采样, 是这套画面里最贵的一项。
 	env.glow_enabled = not battle._is_mobile()
 	env.glow_intensity = 0.26
 	env.glow_strength = 0.95

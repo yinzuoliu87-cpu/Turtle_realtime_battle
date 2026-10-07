@@ -630,8 +630,6 @@ func _square_entry(label: String, cb: Callable, icon_path: String, locked: bool,
 
 ## 左栏键入场: 从屏外左侧滑入 + 淡入, 错峰 (保留原 PoC 好动画)
 func _slide_in_left(holder: Control, idx: int) -> void:
-	if GameState != null and GameState.perf_lite:   # 同 _slide_in: 低画质直接就位
-		return
 	var home_x := holder.position.x
 	holder.modulate.a = 0.0
 	holder.position.x = -560.0
@@ -1357,12 +1355,6 @@ func _today_counter(now: int) -> void:
 
 ## 右栏卡片入场: 从右(贴墙外)滑入 + 淡入. PoC delay 850+60*idx, dur420.
 func _slide_in(holder: Control, idx: int) -> void:
-	## ★低画质: 直接就位, 不播入场。
-	##   背景从「平铺+25s 漂移」换成静态群像后, perf_lite 在主菜单【一个消费者都没有了】
-	##   (verify_settings 当场红: 「主菜单背景漂移读 perf_lite」)。
-	##   静态图没有漂移可关, 但入场 tween 还在 —— 低画质关掉它, 这个开关才不是空的。
-	if GameState != null and GameState.perf_lite:
-		return
 	var home_x := holder.position.x
 	holder.position.x = home_x + 60.0
 	holder.modulate.a = 0.0

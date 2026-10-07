@@ -14,7 +14,7 @@ const MAX_FRAMES := 30000
 
 const CANDIDATES := ["candy_temp_levels", "chest_treasure_value", "chest_treasures_won", "current_lane",
 	"debug_level", "dual_active", "dual_ghost", "dual_lineup", "dual_ms_stacks", "dual_survivors", "egg_hp",
-	"foe_loadouts", "incense_charge", "incense_marks", "lane_results", "loadouts", "perf_lite",
+	"foe_loadouts", "incense_charge", "incense_marks", "lane_results", "loadouts",
 	"persistent_equipped", "season_leaders", "season_level", "test_mode", "trainer_appearance", "trainer_skill",
 	"tutorial", "gambler_wheel_stacks"]
 
@@ -26,7 +26,6 @@ func _setup_r(gs) -> void:
 	gs.tutorial_active = false
 	gs.tutorial = false
 	gs.debug_level = 0
-	gs.perf_lite = false
 	gs.week_phase = "gauntlet"
 	var L: Array = ["gambler", "chest", "headless"]
 	gs.season_leaders = L.duplicate()
@@ -60,7 +59,6 @@ func _setup_v(gs) -> void:
 	gs.tutorial_active = false
 	gs.tutorial = true
 	gs.debug_level = 5
-	gs.perf_lite = true
 	gs.week_phase = "ranked"
 	gs.season_leaders = ["basic", "stone", "bamboo"]
 	gs.left_team.assign(gs.season_leaders)

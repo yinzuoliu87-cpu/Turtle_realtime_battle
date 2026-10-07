@@ -6,7 +6,6 @@ func _grab() -> Image:
 	return get_viewport().get_texture().get_image()
 func _ready() -> void:
 	var gs = get_node("/root/GameState"); gs.test_mode = true
-	gs.perf_lite = true                              # 低画质: 背景静止, 入场不播 ⇒ 帧差只来自那一行字
 	gs.coins = 10000; gs.meta_deepsea_coins = 380
 	m = load("res://scenes/MainMenu.tscn").instantiate()
 	add_child(m)

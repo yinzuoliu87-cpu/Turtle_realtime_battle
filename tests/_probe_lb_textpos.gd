@@ -22,7 +22,6 @@ func _ink(l: Label) -> Rect2:
 	return Rect2(x0, y0, x1 - x0 + 1, y1 - y0 + 1)
 
 func _ready() -> void:
-	GameState.perf_lite = true
 	var shot: Node = load("res://tests/_shot_lb_days.tscn").instantiate()
 	add_child(shot)
 	for _i in range(90): await get_tree().process_frame

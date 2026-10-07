@@ -42,12 +42,17 @@ const _SEG_GAP := 6.0
 const _LBL_COL := 120.0        # 右框「左名」那一栏的宽
 const _SLD_W := 406.0          # 音量槽宽 = 两段分段钮 + 中缝, 两种控件右沿对齐
 const _SLD_HIT_H := 48.0       # 滑条的透明触摸带高(26pt, 见 _slider 末尾那段)
+## 右框的行距。★2026-10-07 去掉「画质」那一行后右框只剩 2~3 行, 原来 72 的行距会在框底空出半块 ⇒
+##   行距放宽, 让内容铺开到与左框按钮区大致同高(桌面端最后一行底 ≈534, 左框按钮底 596)。
+const _ROW_PITCH := 104.0
+## 手机(没有「画面」组)时右框只剩「声音」一块 ⇒ 整块(小标题 + 两行)在框内竖向居中, 行距再放宽一点,
+##   免得上半块挤着、下半块空着(2026-10-07 主会话看 2532×1061 实拍后定)。
+const _ROW_PITCH_SOLO := 136.0
 const _STRIP_CY := 672.0       # 底部一条的中线
 const _STRIP_BTN := Vector2(200.0, 48.0)   # 底部小按钮(长边 200 过触摸线, 理由同 `_SEG_W`)
 
 ## 【门禁按名字找的节点】—— 常量在产品这边, 门禁 preload 来读(不抄字符串, memory `fb-hand-rolled-copies-drift`)。
 const SEG_DISPLAY := "SegDisplay"      # + "Window" / "Full"
-const SEG_QUALITY := "SegQuality"      # + "Low" / "High"
 const RESET_BTN := "ResetSave"
 const DEV_ARENA_BTN := "DevArena"
 const FOOT_LABEL := "FootInfo"
@@ -60,7 +65,6 @@ static var release_override: bool = false
 const SettleScreenS := preload("res://scripts/scenes/battle/settle_screen.gd")
 
 var _seg_display: Array = []
-var _seg_quality: Array = []
 
 
 func _ready() -> void:
@@ -288,41 +292,42 @@ func _settings_panel(x: float, w: float) -> void:
 	var cx := x + _PAD
 	var cw := w - _PAD * 2.0
 	var ctl_x := cx + _LBL_COL
-	var y := _heading(cx, _TOP + _HEAD_DY, cw, "声音")
+	## 「画面」组建不建(只桌面端有「显示」一行)决定「声音」块怎么放: 有 ⇒ 顶对齐(与左框「账号」同高);
+	##   没有 ⇒ 整块竖向居中。块高 = 小标题+分隔线 34 + 到第一行中线 64 + 行距 + 末行触摸带下半。
+	var solo := not _display_row_on()
+	var pitch := _ROW_PITCH_SOLO if solo else _ROW_PITCH
+	var head_top := _TOP + _HEAD_DY
+	if solo:
+		var block_h := 34.0 + 64.0 + pitch + _SLD_HIT_H / 2.0
+		head_top = (_TOP + _BOT) / 2.0 - block_h / 2.0
+	var y := _heading(cx, head_top, cw, "声音")
 
 	## ★★2026-09-28 文案去"网页/开发者味": 原来是「🎵 BGM 音量」「🔊 音效音量」 ——
 	##   BGM 是开发者黑话, 玩家的词是「音乐」; 右边就写着 45%, 「音量」两个字多余。
 	# 音乐 — 拖动实时生效; 写盘只在松手时一次 (原来每帧 save() = 拖一下写几十次盘)
-	var cy := y + 40.0
+	var cy := y + 64.0
 	_row_label(cx, cy, "音乐")
 	_slider(ctl_x, cy, _SLD_W, GameState.bgm_volume,
 		func(v): GameState.bgm_volume = v; Audio.bgm_volume = v; Audio.apply_bgm_volume(),   # ★补: 原来只设变量没调 apply → 拖动对正在播的BGM无效(用户2026-07-19"音量键根本没效果")
 		func(): GameState.save())
 	# 音效 — 松手才试听 + 写盘 (原来拖动中每帧都播音效)
-	cy += 72.0
+	cy += pitch
 	_row_label(cx, cy, "音效")
 	_slider(ctl_x, cy, _SLD_W, GameState.sfx_volume,
 		func(v): GameState.sfx_volume = v; Audio.sfx_volume = v,
 		func(): Audio.play_sfx("hit-physical", 1.0); GameState.save())
 
-	y = _heading(cx, cy + _SLD_HIT_H / 2.0 + 30.0, cw, "画面")
-	cy = y + 44.0
-	## 显示: 窗口 / 全屏。★只在桌面端建 —— 手机上没有「窗口」这回事, 切了也没反应
-	##   (本仓原则: 点了没反应比没有这个键糟)。
-	if _display_row_on():
+	## 「画面」组只剩「显示: 窗口 / 全屏」一行, 而它只在桌面端建 —— 手机上没有「窗口」这回事,
+	##   切了也没反应(本仓原则: 点了没反应比没有这个键糟)。⇒ 手机上整组(连小标题)不建, 免得挂一个空标题。
+	## ★「画质 低/高」2026-10-07 整个删了(用户「我们为什么有画质这个东西，应该去掉吧」):
+	##   桌面 A/B 实测测不出差别, 移动端本来就自动关 MSAA(`battle._is_mobile()`), 这个开关没有可选的意义。
+	if not solo:
+		y = _heading(cx, cy + _SLD_HIT_H / 2.0 + 52.0, cw, "画面")
+		cy = y + 64.0
 		_row_label(cx, cy, "显示")
 		_seg_display = _segmented(ctl_x, cy, SEG_DISPLAY,
 			[["Window", "窗口"], ["Full", "全屏"]], 1 if _is_full() else 0,
 			func(i: int): _set_fullscreen(i == 1))
-		cy += _ROW_H + 20.0
-	## 画质: 低 / 高。低 = 关 MSAA + 3D 渲染分辨率 ×0.75 + 停菜单背景漂移(`apply_perf_lite`), 持久化到存档。
-	_row_label(cx, cy, "画质")
-	_seg_quality = _segmented(ctl_x, cy, SEG_QUALITY,
-		[["Low", "低"], ["High", "高"]], 0 if GameState.perf_lite else 1,
-		func(i: int): _set_perf_lite(i == 0))
-	## 「低 = 更流畅」这条以前只在切换后的 toast 里, 不点就不知道调它图什么 ⇒ 常驻一行小字。
-	var hint := _stroked_label("低画质更流畅 · 下场战斗生效", 13, "#7e8fa0", "", 0)
-	_place_left(hint, ctl_x, cy + _ROW_H / 2.0 + 8.0, _SLD_W)
 
 
 ## 底部一条。左: 版本 · 玩家 ID(小字, 报问题时对得上号 —— Angry Birds Journey 同位置);
@@ -1431,15 +1436,6 @@ func _set_fullscreen(to_full: bool) -> void:
 	GameState.save()
 
 
-## 画质: 低 / 高(分段钮「画质」那一行调它)。
-## 低画质模式 = 真开关 (原来只改自己的 label, grep 全库无第二处引用 = 死按钮)
-## 实际效果见 `apply_perf_lite()` (战斗视口) 与各菜单场景的背景漂移 gate。
-func _set_perf_lite(lite: bool) -> void:
-	GameState.perf_lite = lite
-	GameState.save()
-	_toast("画质：%s · 下场战斗生效" % ("低" if lite else "高"))
-
-
 # ── 重置存档: 破坏性, 必须二次确认 ──────────────────────────
 var _confirm_layer: Control = null
 
@@ -1485,7 +1481,7 @@ func _ask_reset() -> void:
 	##   Label 不解析它, 屏幕上就是四个星号。写文案的人当时在写文档不是在写 UI。
 	## ★「此操作不可撤销」是条款腔; 玩家要听的是「清了就拿不回来」。
 	msg.text = ("会清空：深海币 · 背包装备 · 出战统领 · 赛季进度（命/等级/胜场）· 糖果罐 · 布阵。\n"
-		+ "此操作不可撤销。音量、画面、画质设置不受影响。")
+		+ "此操作不可撤销。音量、画面设置不受影响。")
 	msg.add_theme_font_size_override("font_size", 15)
 	msg.add_theme_color_override("font_color", Color("#c9d6e2"))
 	msg.position = Vector2(30, 72)
@@ -1734,9 +1730,8 @@ func _bg() -> void:
 		tile.size = Vector2(vp.x + 512, vp.y + 512)
 		tile.position = Vector2(-512, -512)
 		add_child(tile)
-		if not (GameState != null and GameState.perf_lite):   # 低画质: 不跑常驻背景漂移 tween
-			var drift := tile.create_tween().set_loops()
-			drift.tween_property(tile, "position", Vector2(0, 0), 25.0).from(Vector2(-512, -512)).set_trans(Tween.TRANS_LINEAR)
+		var drift := tile.create_tween().set_loops()
+		drift.tween_property(tile, "position", Vector2(0, 0), 25.0).from(Vector2(-512, -512)).set_trans(Tween.TRANS_LINEAR)
 	# ::after 暗渐变遮罩 (顶 alpha.15 → 底 .40), 压暗背景
 	# 显式设 offsets+colors (别用 set_color/add_point — Gradient 默认 offset1 是白点, 会漏成底部白光)
 	var grad := Gradient.new()

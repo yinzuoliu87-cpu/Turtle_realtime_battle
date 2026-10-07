@@ -72,11 +72,10 @@ const STATE_KEYS := [
 ##   test_mode / tutorial      播放入口自己设(test_mode=true 不落盘; tutorial=false 回放不挂教学引导)
 ##   current_lane / egg_hp / lane_results / dual_survivors / dual_ms_stacks / foe_loadouts
 ##                             战斗场开局自己初始化(foe_loadouts 从 dual_ghost 取)
-##   perf_lite                 看的人那台设备的画质设置
 ## ★门禁 `verify_replay_roundtrip` V3c 每次都**重新量**一遍「回放读了哪些」, 必须 ⊆ STATE_KEYS ∪ 本表 ——
 ##   以后谁在战斗里新读一个 GameState 变量, 门禁当场红, 逼着回答「它进不进录像」。
 const PLAY_READS_NOT_RECORDED := ["test_mode", "tutorial", "current_lane", "egg_hp", "lane_results",
-	"dual_survivors", "dual_ms_stacks", "foe_loadouts", "perf_lite"]
+	"dual_survivors", "dual_ms_stacks", "foe_loadouts"]
 ## 其余约 100 个变量回放那一遍**一次都没读**(币/邮箱/昵称/账号/背包/装备池/赛季战绩/宝箱以外的进度……)。
 
 ## 播放前备份 / 退出还原时**不碰**的变量(令牌 / 设备身份 / 战绩 / 补报单 / 上传队列):

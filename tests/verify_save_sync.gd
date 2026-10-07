@@ -34,7 +34,7 @@ var _fail := 0
 var _tree: SceneTree = null
 var _bak := {}
 const KEYS := ["account_id", "account_email", "auth_refresh", "cloud_rev", "bgm_volume",
-	"sfx_volume", "fullscreen", "perf_lite", "install_uid", "meta_deepsea_coins", "coins",
+	"sfx_volume", "fullscreen", "install_uid", "meta_deepsea_coins", "coins",
 	"hearts", "season_wins", "pet_levels", "inventory", "season_leaders", "trainer_skill",
 	"match_history", "season_total_battles", "season_id", "week_anchor_ts", "season_start_ts"]
 
@@ -108,7 +108,7 @@ func _t_payload() -> void:
 	for k in GameState.DEVICE_LOCAL_KEYS:
 		if p.has(k):
 			leaked.append(k)
-	_chk("① ★★设备本地键一个都没进云(音量/全屏/画质/安装标识/身份/登录令牌/版本号)",
+	_chk("① ★★设备本地键一个都没进云(音量/全屏/安装标识/身份/登录令牌/版本号)",
 		leaked.is_empty(), str(leaked))
 	_chk("① ★分母: 设备本地键在完整存档里是【有】的(否则上一条是恒真式)",
 		full.has("account_id") and full.has("auth_refresh") and full.has("bgm_volume")
