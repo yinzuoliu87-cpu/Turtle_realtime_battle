@@ -1181,6 +1181,7 @@ scripts/scenes/battle/info_panel.gd|lit|中毒
 scripts/scenes/battle/info_panel.gd|lit|储能
 scripts/scenes/battle/info_panel.gd|lit|充能 %d%%
 scripts/scenes/battle/info_panel.gd|lit|充能 %s / %s
+scripts/scenes/battle/info_panel.gd|lit|冰寒
 scripts/scenes/battle/info_panel.gd|lit|减伤
 scripts/scenes/battle/info_panel.gd|lit|减伤 
 scripts/scenes/battle/info_panel.gd|lit|减速
@@ -1196,6 +1197,7 @@ scripts/scenes/battle/info_panel.gd|lit|射程
 scripts/scenes/battle/info_panel.gd|lit|射程 %d
 scripts/scenes/battle/info_panel.gd|lit|层数 %d
 scripts/scenes/battle/info_panel.gd|lit|怒气
+scripts/scenes/battle/info_panel.gd|lit|恐惧
 scripts/scenes/battle/info_panel.gd|lit|技能
 scripts/scenes/battle/info_panel.gd|lit|技能 · %d 龟能
 scripts/scenes/battle/info_panel.gd|lit|护甲

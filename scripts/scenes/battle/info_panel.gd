@@ -1015,7 +1015,9 @@ func _info_status_chips(vb: VBoxContainer, u: Dictionary) -> void:
 	## 计时类: 统一带"还剩 N.N 秒"
 	var _timed: Array = [
 		["stun_until", "眩晕", "#ff8a3d", "stun-icon.png"],
-		["slow_until", "减速", "#7fd0ff", "chilled-icon.png"],
+		["fear_until", "恐惧", "#b07cff", "fear-icon.png"],
+		["slow_until", "减速", "#7fd0ff", "slow-icon.png"],
+		["spd_dbf_until", "冰寒", "#9fe3ff", "chilled-icon.png"],
 		["taunt_until", "嘲讽", "#ff5c8a", "taunt-icon.png"],
 		["untargetable_until", "不可选中", "#b28bff", "stealth-icon.png"],
 		["heal_reduce_until", "治疗削减", "#ff6b6b", "heal-reduce-icon.png"],
@@ -1024,8 +1026,14 @@ func _info_status_chips(vb: VBoxContainer, u: Dictionary) -> void:
 		## ★真火同样没有专属图标 —— 用 burn(它就是火)。
 		["true_fire_until", "真火", "#ffffff", "burn-icon.png"],
 	]
+	## 恐惧就是一段眩晕: 两者同时在时只写「恐惧」; 之后另有更长的眩晕才把「眩晕」也列出来。
+	var _fear_end: float = minf(float(u.get("fear_until", 0.0)), float(u.get("stun_until", 0.0)))
 	for t in _timed:
 		var left: float = float(u.get(str(t[0]), 0.0)) - battle._t
+		if str(t[0]) == "fear_until":
+			left = _fear_end - battle._t
+		elif str(t[0]) == "stun_until" and _fear_end > battle._t and float(u.get("stun_until", 0.0)) <= _fear_end + 0.05:
+			left = 0.0
 		if left > 0.0:
 			chips.append(["%s %.1fs" % [str(t[1]), left], str(t[2]), sic + str(t[3])])
 	## DoT 层数: 真实层数在 dot_stacks —— 2026-07-22 查过, burn_until 是零处写入的死字段,

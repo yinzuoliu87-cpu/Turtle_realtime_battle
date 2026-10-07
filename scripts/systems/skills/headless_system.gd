@@ -508,6 +508,9 @@ func _sk_headless_fear(u: Dictionary, _tgt = null) -> void:      # 无头·恐�
 		if o["pos"].distance_to(cx) > FEAR_RADIUS: continue
 		if o.get("_eggImmune", false): continue
 		battle._damage._stun(o, 3.0, "_sk_headless_fear")
+		## 信息面板把这段控制写成「恐惧」而不是「眩晕」。只给显示读, 结算仍走眩晕(免控/韧性照旧)。
+		if battle._t < float(o.get("stun_until", 0.0)):
+			o["fear_until"] = float(o["stun_until"])
 		_headless_fear_mark(o)
 
 ## ★★2026-08-22 文案根除: 万千触须这一组原来全是函数体里的裸字面量。

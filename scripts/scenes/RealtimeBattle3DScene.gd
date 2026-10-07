@@ -8560,8 +8560,8 @@ func _equip_signature(u: Dictionary) -> String:
 ## ★不能每帧无脑重建 —— 那会每帧 queue_free + new 一堆节点, 还会让 UI 闪。
 func _status_signature(u: Dictionary) -> String:
 	return "%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d" % [
-		1 if _t < float(u.get("stun_until", 0.0)) else 0,
-		1 if _t < float(u.get("slow_until", 0.0)) else 0,
+		(1 if _t < float(u.get("stun_until", 0.0)) else 0) + (2 if _t < float(u.get("fear_until", 0.0)) else 0),
+		(1 if _t < float(u.get("slow_until", 0.0)) else 0) + (2 if _t < float(u.get("spd_dbf_until", 0.0)) else 0),
 		1 if _t < float(u.get("taunt_until", 0.0)) else 0,
 		1 if _t < float(u.get("untargetable_until", 0.0)) else 0,
 		1 if _t < float(u.get("heal_reduce_until", 0.0)) else 0,
