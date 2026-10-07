@@ -94,6 +94,31 @@ func _ready() -> void:
 	foe["reflect"] = 0.07
 	_ok("★别的龟: 反伤属性 == 通用 reflect(不吃坚壁那一份)", absf(StoneSystem.reflect_of(foe) - 0.07) < 1e-9)
 
+	# ── ⑤ 015 荆棘海胆(4 费): 反伤属性含它那一份, 弹一次、不暴击 ──
+	##   015 有专属分支自己发反伤(累计 thorn_accum), 通用结算不含它 ⇒ 面板读 reflect_of, 结算各走各的。
+	var h: Dictionary = s._spawn._make_unit("ninja", "left", c + Vector2(0, 400))
+	var a: Dictionary = s._spawn._make_unit("ninja", "right", c + Vector2(60, 400))
+	h["equips"] = [{"id": "p2eq_015", "star": 1}]
+	s._equip_sys._stats._eq_apply_one_stats(h, "p2eq_015", 1)
+	s._equip_sys._stats._eq_apply_flags(h, "p2eq_015", 1)
+	s._units.append(h)
+	s._units.append(a)
+	var th: float = float(s._equip_sys.THORN_REFLECT[0])
+	_ok("★分母: 015 装上了(eq_state 有 reflect_pct)", absf(StoneSystem.reflect_of(h) - th) < 1e-9,
+		"%.3f vs %.3f" % [StoneSystem.reflect_of(h), th])
+	_ok("★★信息面板「反伤」一格含 015 那一份(不是 0%)", _reflect_tile(ip, h) == ip._pct(th), _reflect_tile(ip, h))
+	_ok("★通用结算那一份不含 015(否则弹两次)", absf(StoneSystem.reflect_generic(h)) < 1e-9)
+	h["crit"] = 1.0
+	h["shield"] = 0.0
+	var ah0: float = float(a["hp"])
+	var hh0: float = float(h["hp"])
+	s._damage._apply_damage_from(a, h, 300, Color.WHITE, 0.0, false, false, false, true, false, true)
+	var taken_h: float = hh0 - float(h["hp"])
+	var back: float = ah0 - float(a["hp"])
+	_ok("★分母: 015 携带者真吃到了这一下", taken_h > 0.0, "%.0f" % taken_h)
+	_ok("★★015: 弹回去的 == int(实际吃到 × 12%) —— 只弹一次、暴击率拉满也不暴击",
+		absf(back - float(int(taken_h * th))) <= 1.0, "taken=%.0f back=%.0f want=%d" % [taken_h, back, int(taken_h * th)])
+
 	print("--- %d 条, 失败 %d ---" % [_n, _fail])
 	if _fail == 0 and _n > 0:
 		print("ALL PASS")

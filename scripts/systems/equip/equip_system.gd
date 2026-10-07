@@ -2271,7 +2271,7 @@ func _eq_on_target(u: Dictionary, src: Dictionary, dmg: int) -> void:
 				if src.get("alive", false) and battle._is_hostile(u, src):
 					var refl: float = float(dmg) * float(stt.get("reflect_pct", THORN_REFLECT[0]))
 					if refl >= 1.0:
-						battle._damage._apply_damage_from(u, src, int(refl), Color("#c9a36b"), 0.0, true, true)   # 反伤=真实伤害跳白字(原_raw_lose静默不跳数字=bug); from_equip防循环
+						battle._damage._apply_damage_from(u, src, int(refl), Color("#c9a36b"), 0.0, true, true, true)   # pre_crit=true: 反伤不暴击(用户 2026-10-07); 反伤=真实伤害跳白字(原_raw_lose静默不跳数字=bug); from_equip防循环
 					# ★★重做: 原来是"每次反伤都给攻击者 2/2.5/3 层流血"。
 					#   现在改成【累计制】—— 反伤总量每满 THORN_THRESHOLD 点:
 					#     ① 给【自己】THORN_SHIELD 点护盾

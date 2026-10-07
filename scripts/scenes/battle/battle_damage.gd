@@ -475,7 +475,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 	if u["id"] == "bubble":
 		u["bubble_store"] = minf(u["maxHp"], float(u.get("bubble_store", 0.0)) + d * BubbleSystem.FOAM_STORE_PCT)
 	# 反伤(通用): 受击反弹 reflect% × 受到伤害 给攻击者(真实伤害); from_equip守卫防循环; stone坚壁随防御涨(被动)
-	var _refl_pct: float = StoneSystem.reflect_of(u)   # 反伤属性(含石头龟坚壁那一份), 与信息面板同一个出处
+	var _refl_pct: float = StoneSystem.reflect_generic(u)   # 通用反伤(含石头龟坚壁); 015 由它的专属分支自己发, 不在这里
 	if u["id"] == "stone" and u.get("stone_rockbody", false) and not from_equip and dmg > 0 and int(u.get("rock_layers", 0)) < StoneSystem.ROCK_LAYER_CAP:
 		u["rock_layers"] = int(u.get("rock_layers", 0)) + 1   # 岩层(岩石之躯被动·选此才有): 每受伤+1层上限30
 		u["size_mult"] = 1.0 + StoneSystem.ROCK_SIZE_PER_LAYER * float(u["rock_layers"])   # +2%体型/层(回合制 rockShockwave.rockSizePctPerLayer=2·满30层=+60%)

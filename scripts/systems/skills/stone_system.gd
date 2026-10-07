@@ -15,11 +15,19 @@ const REFLECT_PER_DEF := 0.001   # 每点护甲再 +0.1%
 const REFLECT_PER_MR := 0.001    # 每点魔抗再 +0.1%
 
 
-## 这个单位的【反伤】属性 = 通用反伤(装备 / 龟壳觉醒…) + 石头龟坚壁那一份。
-## ★用户 2026-10-07「这个是属于反伤的属性了」: 坚壁的反弹就是反伤属性的一部分 ——
-##   结算(battle_damage)与信息面板「反伤」一栏都读这一个函数, 面板显示的就是实际反弹比例。
-##   坚壁那一份按【当前】护甲 / 魔抗算(护甲随坚壁涨 ⇒ 反伤跟着涨)。
+## 这个单位的【反伤】属性(信息面板「反伤」一栏) = 通用那一份 + 015 荆棘海胆那一份。
+## ★用户 2026-10-07「这个是属于反伤的属性了」: 坚壁、015 的反弹都是反伤属性的一部分,
+##   面板显示的就是实际反弹比例。
+## ★015 有【专属分支】自己发反伤(要把弹出去的量累计进 thorn_accum, 见 equip_stats_apply 的
+##   REFLECT_OWNED_BY_BRANCH), 所以通用结算读 `reflect_generic`, 不含 015 —— 否则 015 会弹两次。
 static func reflect_of(u: Dictionary) -> float:
+	var thorn = (u.get("eq_state", {}) as Dictionary).get("p2eq_015", {})
+	return reflect_generic(u) + (float((thorn as Dictionary).get("reflect_pct", 0.0)) if thorn is Dictionary else 0.0)
+
+
+## 通用反伤结算(battle_damage)用的那一份: 装备 reflectPct(013 等) / 龟壳觉醒 + 石头龟坚壁。
+##   坚壁按【当前】护甲 / 魔抗算(护甲随坚壁涨 ⇒ 反伤跟着涨)。
+static func reflect_generic(u: Dictionary) -> float:
 	var r: float = float(u.get("reflect", 0.0))
 	if str(u.get("id", "")) == "stone":
 		r += REFLECT_BASE + float(u.get("def", 0.0)) * REFLECT_PER_DEF + float(u.get("mr", 0.0)) * REFLECT_PER_MR
