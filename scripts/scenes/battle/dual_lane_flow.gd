@@ -1155,9 +1155,14 @@ func _dl_finish(won: bool, banner_delay: float = 0.0) -> void:
 	battle._equip_sys._axe.reset_for_lane()   # 096 整场结束: 斧头挂的减伤/吸血/定身一并收掉(第十批 E2)
 	battle._settle_season(won)    # 结果喂赛季(命/币/胜场/XP/糖果罐/ghost上传), 守卫一次性
 	if banner_delay > 0.0 and battle.is_inside_tree():
-		var tw = battle.create_tween()
-		tw.tween_interval(banner_delay)
-		tw.tween_callback(battle._hud._show_banner.bind(won))
+		## 真实钟延时(不是演出 tween: 战斗已结束, sim 不再推进)。Timer 挂在战斗场景上 ⇒ 场景没了它跟着没。
+		var bt := Timer.new()
+		bt.one_shot = true
+		bt.wait_time = banner_delay
+		bt.process_mode = Node.PROCESS_MODE_ALWAYS
+		battle.add_child(bt)
+		bt.timeout.connect(battle._hud.show_banner_if_alive.bind(won))
+		bt.start()
 	else:
 		battle._hud._show_banner(won)
 

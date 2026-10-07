@@ -1206,6 +1206,13 @@ func _banner_sealed() -> bool:
 	return p is Dictionary and not (p as Dictionary).is_empty()
 
 
+## 延时结算屏的入口(蛋碎后晚 1.2 秒): 等的这段时间里场景可能已经被换掉(退出/回主菜单)。
+func show_banner_if_alive(won: bool) -> void:
+	if battle == null or not is_instance_valid(battle) or not battle.is_inside_tree():
+		return
+	_show_banner(won)
+
+
 func _show_banner(won: bool, _sealed_hint: bool = false) -> void:
 	if battle._settled:
 		return

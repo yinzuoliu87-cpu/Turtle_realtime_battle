@@ -141,7 +141,7 @@ func _ready() -> void:
 	var probe: Array = [
 		["攻击", "atk", 999.0], ["护甲", "def", 777.0], ["魔抗", "mr", 555.0],
 		["暴击", "crit", 0.77], ["射程", "atk_range", 1234.0], ["移速", "move_spd", 321.0],
-		["吸血", "lifesteal", 0.44], ["闪避", "dodge_bonus", 0.33],
+		["生命偷取", "lifesteal", 0.44], ["闪避", "dodge_bonus", 0.33],
 		["治疗强度", "heal_amp", 0.66], ["护盾强度", "shield_amp", 0.88],
 		["暴伤", "crit_dmg", 2.75], ["龟能充能", "echarge_perm", 0.5],
 		["护甲穿透", "armor_pen", 42.0], ["魔法穿透", "magic_pen", 37.0],
