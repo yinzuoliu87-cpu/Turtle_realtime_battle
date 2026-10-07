@@ -27,6 +27,7 @@ const BEAR_WAVE_PULL := 70.0    # 冲击波把命中者拉回身前(码)
 ## 【036 温泉蛋】孵化进度的五个来源 + 满进度阈值 + 每级成长
 ## 【014 深海堡垒甲】受击叠硬化, 满层后周期性汲取全体敌。
 const FORTRESS_CAP := 25       # 硬化层上限(013 是 20, 见 equip_stats_apply)
+const FORTRESS_HARDEN_INC := [2.0, 3.0, 6.0]   # 每层硬化 +护甲 / +魔抗(用户 2026-10-08: 2/4/6 → 2/3/6)
 const FORTRESS_IV := 8.0       # 满层后每几秒汲取一次
 const FORTRESS_HEAL_LOST := 0.05   # 每汲取 1 名敌人, 额外回复自身【已损】生命 ×
 const EGG_FULL := 100.0         # 进度满多少 → +1 临时等级
@@ -183,7 +184,8 @@ const ANCHOR_ASPD := 1.00      # 持有充能期间普攻攻速 +(真值在 batt
 ##   现在代码是唯一的那一份, 两处文案都用 `{C:EquipTickSystem.XXX_IV}` 指过来。
 const RUST_IV := 3.0            # 001 木制长剑: 每几秒甩一道飞斩剑气
 const RUST_RANGE := 2000.0      # 001 剑气射程(码)·2000 = 全场覆盖(用户 2026-07-19 近战→远程)
-const JELLY_MAXHP_PCT := 0.04   # 012 海藻: 护盾 = 固定值 + 自身最大生命 ×
+const JELLY_SHIELD := [40.0, 60.0, 90.0]       # 012 海藻: 每 JELLY_IV 秒护盾 = 固定值 +
+const JELLY_MAXHP_PCT := [0.03, 0.04, 0.055]   #   自身最大生命 × (用户 2026-10-08: 4% 单值 → 3/4/5.5% 分星)
 const IRONWALL_MAXHP_PCT := 0.08  # 016 铁壁盾: 护盾总池 = 固定值 + 携带者最大生命 ×
 const SWORD_STORM_IV := 7.0     # 006 千刃风暴: 每几秒召一排剑穿过全体敌人
 const BROADSWORD_IV := 6.0      # 007 锈蚀阔剑: 每几秒挥一道剑气墙
@@ -504,15 +506,24 @@ func _tick_barnacle(u: Dictionary, delta: float) -> void:   # 守护贝母p2eq_0
 func _tick_jelly(u: Dictionary, delta: float) -> void:   # 海藻p2eq_012: 每4s自护盾(用户2026-07-02, 原走2.5s周期); 每件独立计时
 	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
+	var _k := -1
 	for e in u["equips"]:
+		_k += 1
 		if str(e["id"]) != "p2eq_012": continue
 		battle._equip_sys.tally.push(u, "p2eq_012")   # ④ 这一段是这件装备的效果
+		## 登场魔法护盾(用户 2026-10-08): 本路第一次 tick 给一次(羁绊加的最大生命此时都已写完);
+		##   标记记在单位字典上 ⇒ 换路重建单位后自然再给一次。每件各给一份。
+		var _msk: String = "_kelp_ms_%d" % _k
+		if not bool(u.get(_msk, false)):
+			u[_msk] = true
+			if MagicShield.seaweed_on_spawn(battle, u, battle._equip_sys._eq_si(int(e.get("star", 1)))) > 0.0:
+				battle._vfx.shield_shell(u, Color(0.62, 0.58, 1.0))   # 罩在身上的六棱护罩(通用原语), 染魔法护盾的蓝紫
 		e["jelly_t"] = float(e.get("jelly_t", 0.0)) + delta
 		if float(e["jelly_t"]) < JELLY_IV: continue
 		e["jelly_t"] = 0.0
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
 		battle._vfx.kelp_burst(u)   # ★来源标识: 脚下长一丛海藻(通用六棱护罩由 _grant_shield 另罩一层)
-		battle._damage._grant_shield(u, [40.0, 60.0, 90.0][si] + u["maxHp"] * JELLY_MAXHP_PCT, BattleDamage.COMMON_SHIELD_SEC)   # 用户2026-07-19: 30/40/55 → 40/60/90 + 4%最大生命; 通用护盾=4秒(恰好接上下一轮 JELLY_IV=4s·不断层也不无限叠)
+		battle._damage._grant_shield(u, JELLY_SHIELD[si] + u["maxHp"] * JELLY_MAXHP_PCT[si], BattleDamage.COMMON_SHIELD_SEC)   # 用户2026-10-08: 40/60/90 + 3/4/5.5%最大生命; 通用护盾=4秒(恰好接上下一轮 JELLY_IV=4s·不断层也不无限叠)
 
 func _tick_rustblade(u: Dictionary, delta: float) -> void:   # 木制长剑p2eq_001: 每3s就绪, 射程2000(全场)内最近敌即甩飞斩剑气; 每件独立(多件各自触发)
 	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)

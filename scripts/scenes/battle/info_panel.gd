@@ -561,8 +561,8 @@ func _info_stat_rows_minor(u: Dictionary) -> Array:
 		## ⚠ 染色走 `SkillText.stat_icon_color_of`(那套已把同形的分开: shieldamp 走护盾色、
 		##   armorpen 走穿透橙 —— 不跟 def 同色, 见 verify_stat_icon_color ⑦), 这里不另配色。
 		[sic + "dodge-icon.png",     "闪避 " + _pct(float(u.get("dodge_bonus", 0.0))),             Color("#a0e8ff")],
-		[sic + "healamp-icon.png",   "治疗强度 " + _pct_mult(1.0 + float(u.get("heal_amp", 0.0))), Color("#7fe39a")],
-		[sic + "shieldamp-icon.png", "护盾强度 " + _pct_mult(1.0 + float(u.get("shield_amp", 0.0))), Color("#ffd93d")],
+		[sic + "healamp-icon.png",   "治疗强度 " + _pct_mult(BattleDamage.heal_strength(u, battle._t)), Color("#7fe39a")],
+		[sic + "shieldamp-icon.png", "护盾强度 " + _pct_mult(BattleDamage.shield_strength(u, battle._t)), Color("#ffd93d")],
 		[sic + "echarge-icon.png",   "龟能充能 " + _pct_mult(1.0 + float(u.get("echarge_perm", 0.0))), Color("#ffce4d")],
 		[sic + "armorpen-icon.png",  "护甲穿透 %d" % int(u.get("armor_pen", 0.0)),                 Color("#ffc48a")],
 		[sic + "magicpen-icon.png",  "魔法穿透 %d" % int(u.get("magic_pen", 0.0)),                 Color("#c9a0ff")],
@@ -1047,6 +1047,8 @@ func _info_status_chips(vb: VBoxContainer, u: Dictionary) -> void:
 			chips.append(["%s %d 层" % [str(d[1]), n], str(d[2]), sic + str(d[3])])
 	if float(u.get("shield", 0.0)) > 0.0:
 		chips.append(["护盾 %d" % int(u.get("shield", 0.0)), "#7fe0ff", sic + "shield-icon.png"])
+	if float(u.get("magic_shield", 0.0)) >= 1.0:
+		chips.append(["魔法护盾 %d" % int(u.get("magic_shield", 0.0)), "#9a8cff", sic + "magic-shield-icon.png"])
 	var flow = HFlowContainer.new()
 	flow.add_theme_constant_override("h_separation", 6); flow.add_theme_constant_override("v_separation", 4)
 	vb.add_child(flow)
@@ -1109,8 +1111,9 @@ func _info_status_chips(vb: VBoxContainer, u: Dictionary) -> void:
 func _status_sig_own(u: Dictionary) -> String:
 	var vol := 1 if bool(u.get("volcano", false)) else 0
 	var vleft := int(maxf(0.0, float(u.get("volcano_until", 0.0)) - battle._t) * 10.0)   # 0.1 秒一档(chip 印一位小数)
-	return "%s|%d|%d|%s|%d|%d|%d" % [
+	return "%s|%d|%d|%d|%s|%d|%d|%d" % [
 		battle._status_signature(u),
+		int(float(u.get("magic_shield", 0.0))),   # 「魔法护盾 N」chip 印的数
 		vol, vleft,
 		str(u.get("two_form", "")),
 		1 if bool(u.get("shell_stealth", false)) else 0,
@@ -1733,8 +1736,8 @@ func _info_stat_tiles(u: Dictionary) -> Array:
 		[sic + "dodge-icon.png", "闪避", _pct(float(u.get("dodge_bonus", 0.0))), W if float(u.get("dodge_bonus", 0.0)) > 0.0005 else dim, "闪避攻击的几率。"],
 		[sic + "armorpen-icon.png", "护甲穿透", "%d" % int(u.get("armor_pen", 0.0)), W if int(u.get("armor_pen", 0.0)) > 0 else dim, "造成物理伤害时无视目标的护甲值。"],
 		[sic + "magicpen-icon.png", "魔法穿透", "%d" % int(u.get("magic_pen", 0.0)), W if int(u.get("magic_pen", 0.0)) > 0 else dim, "造成魔法伤害时无视目标的魔抗值。"],
-		[sic + "healamp-icon.png", "治疗强度", _pct_mult(1.0 + float(u.get("heal_amp", 0.0))), W, "治疗效果的倍率。"],
-		[sic + "shieldamp-icon.png", "护盾强度", _pct_mult(1.0 + float(u.get("shield_amp", 0.0))), W, "护盾效果的倍率。"],
+		[sic + "healamp-icon.png", "治疗强度", _pct_mult(BattleDamage.heal_strength(u, battle._t)), W, "治疗效果的倍率。"],
+		[sic + "shieldamp-icon.png", "护盾强度", _pct_mult(BattleDamage.shield_strength(u, battle._t)), W, "护盾效果的倍率。"],
 		[sic + "echarge-icon.png", "龟能充能", _pct_mult(1.0 + float(u.get("echarge_perm", 0.0))), W, "龟能积攒速度倍率。龟能满时释放技能。"],
 		[sic + "reflect-icon.png", "反伤", _pct(StoneSystem.reflect_of(u)), W if StoneSystem.reflect_of(u) > 0.0005 else dim, "受到伤害时，按比例反弹给攻击者。"],
 		[sic + "tenacity-icon.png", "韧性", _pct(float(u.get("tenacity", 0.0))), W if float(u.get("tenacity", 0.0)) > 0.0005 else dim, "缩短受到眩晕、减速等控制效果的持续时间。"],

@@ -151,13 +151,17 @@ func _ice_bottle_arc(pf: float, spr: Sprite3D, from2d: Vector2, to2d: Vector2) -
 func _ice_bottle_hit(spr: Sprite3D, u: Dictionary, t: Dictionary, si: int) -> void:
 	if is_instance_valid(spr): spr.queue_free()
 	if not t.get("alive", false): return
-	battle._damage._apply_damage_from(u, t, battle._resolve_dmg(u, float([40, 60, 100][si]), t, true), Color("#bfe9ff"), 0.0, false, true)
+	battle._damage._apply_damage_from(u, t, battle._resolve_dmg(u, vial_raw_dmg(u, t, si), t, true), Color("#bfe9ff"), 0.0, false, true)   # magic=true ⇒ 吃魔抗
 	t["spd_move_mult"] = VIAL_MOVE_MULT; t["spd_aspd_mult"] = VIAL_ASPD_MULT; t["spd_dbf_until"] = battle._t + VIAL_CHILL_SEC
 	_ice_burst(t["pos"])
 	_frost_puff(t["pos"])
 	battle._shake(0.06)
 	battle._damage._knockback(u, t, 16.0)
 	battle._skill_ring(t["pos"], Color(0.7, 0.9, 1.0, 0.55), 62.0)
+
+## 028 减抗前的原始伤害 = 固定值 + 攻击力 × 系数 + 目标最大生命 × 比例
+static func vial_raw_dmg(u: Dictionary, t: Dictionary, si: int) -> float:
+	return VIAL_DMG_BASE[si] + float(u.get("atk", 0.0)) * VIAL_DMG_ATK[si] + float(t.get("maxHp", 0.0)) * VIAL_DMG_MAXHP[si]
 
 func _ice_burst(pos2d: Vector2) -> void:
 	var tex: Texture2D = load("res://assets/sprites/vfx/ice-shatter.png")
@@ -235,7 +239,11 @@ const AURA_SLOW := 0.30         # 攻速 / 龟能充能 / 移速 各降低
 const AURA_MULT := 1.0 - AURA_SLOW   # 推导: 代码要的倍率
 const AURA_SEC := 12.0          # 减速持续(秒)·用户 2026-07-11 从永久改成 12 秒
 const AURA_VS_FIRE := 0.20      # 对熔岩/凤凰的额外增伤(选极寒技会覆盖成更高)
-## 【028 冰霜冻露瓶】抛冰瓶砸最近敌: 魔法伤 + 击退 + 冰寒减速减攻速。
+## 【028 冰冻药剂】(原名冰霜冻露瓶, 用户 2026-10-08 改名) 抛冰瓶砸最近敌: 魔法伤 + 击退 + 冰寒减速减攻速。
+## ★伤害(用户 2026-10-08): 20/35/60 + 0.8/1/1.2×攻击力 + 目标最大生命值 3/5/9%, 魔法(吃魔抗)。原为固定 40/60/100。
+const VIAL_DMG_BASE := [20.0, 35.0, 60.0]
+const VIAL_DMG_ATK := [0.8, 1.0, 1.2]
+const VIAL_DMG_MAXHP := [0.03, 0.05, 0.09]
 ## ★"冰寒"这三个数原来是一行三连赋值里的裸字面量, 且移速/攻速存的是**倍率**,
 ##   文案说的是"-20% / -10%" ⇒ 存语义值(降幅), 倍率现推。
 const VIAL_CHILL_SEC := 5.0     # 冰寒持续(秒)

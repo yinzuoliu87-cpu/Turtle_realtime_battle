@@ -1279,6 +1279,7 @@ scripts/scenes/battle/info_panel.gd|lit|魔抗
 scripts/scenes/battle/info_panel.gd|lit|魔抗 %d
 scripts/scenes/battle/info_panel.gd|lit|魔法
 scripts/scenes/battle/info_panel.gd|lit|魔法伤害
+scripts/scenes/battle/info_panel.gd|lit|魔法护盾 %d
 scripts/scenes/battle/info_panel.gd|lit|魔法穿透
 scripts/scenes/battle/info_panel.gd|lit|魔法穿透 %d
 scripts/scenes/battle/info_panel.gd|lit|龟能

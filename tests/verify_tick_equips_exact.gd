@@ -58,7 +58,7 @@ func _ready() -> void:
 	await get_tree().process_frame
 	var tk = s._equip_tick_sys
 
-	# ── 012 海藻: 每 4 秒自护盾 [40,60,90][si] + 4%最大生命 ──────────────
+	# ── 012 海藻: 每 4 秒自护盾 [40,60,90][si] + [3,4,5.5]%最大生命(用户 2026-10-08) ──────────────
 	var u12: Dictionary = _stage(s, "p2eq_012", 3)
 	u12["shield"] = 0.0
 	var sh0: float = float(u12.get("shield", 0.0))
@@ -67,9 +67,9 @@ func _ready() -> void:
 		absf(float(u12.get("shield", 0.0)) - sh0) < 0.01,
 		"盾 %.1f → %.1f" % [sh0, float(u12.get("shield", 0.0))])
 	tk._tick_jelly(u12, 0.2)                       # 跨过 4 秒
-	## 期望值从代码推导: ★3 ⇒ 90 + maxHp × 0.04 = 90 + 200 = 290
-	var want12: float = 90.0 + float(u12["maxHp"]) * 0.04
-	_ok("★★012 到点给盾 = 90 + 4%%最大生命 = %.0f" % want12,
+	## 期望值是需求字面量: ★3 ⇒ 90 + maxHp × 5.5%
+	var want12: float = 90.0 + float(u12["maxHp"]) * 0.055
+	_ok("★★012 到点给盾 = 90 + 5.5%%最大生命 = %.0f" % want12,
 		absf(float(u12.get("shield", 0.0)) - sh0 - want12) < 1.0,
 		"盾 %.1f → %.1f (增 %.1f, 应 %.1f)"
 			% [sh0, float(u12.get("shield", 0.0)), float(u12.get("shield", 0.0)) - sh0, want12])

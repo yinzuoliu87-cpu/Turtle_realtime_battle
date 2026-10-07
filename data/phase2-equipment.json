@@ -135,13 +135,13 @@
     "id": "p2eq_012",
     "name": "海藻",
     "cost": 1,
-    "baseStats1": "+生命40/70/100·护甲5/10/18",
+    "baseStats1": "+生命90/180/300·魔抗7/16/23",
     "shopAvailable": 1,
     "emoji": "🌱",
-    "effectDesc1": "每 {C:EquipTickSystem.JELLY_IV} 秒为自身获得（40/60/90+自身最大生命值 {C:EquipTickSystem.JELLY_MAXHP_PCT%}%）点护盾。",
+    "effectDesc1": "登场时获得自身最大生命值 {C:MagicShield.SEAWEED_MAXHP_PCT%}% 的魔法护盾（只吸收魔法伤害）。\n每 {C:EquipTickSystem.JELLY_IV} 秒获得（{C:EquipTickSystem.JELLY_SHIELD}+自身最大生命值 {C:EquipTickSystem.JELLY_MAXHP_PCT%}%）点护盾。",
     "effectDesc3": "",
     "img": "equip/eq012-icon.png",
-    "effectBrief": "每 {C:EquipTickSystem.JELLY_IV} 秒获得 40/60/90 点护盾。"
+    "effectBrief": "登场获得自身最大生命值 {C:MagicShield.SEAWEED_MAXHP_PCT%}% 的魔法护盾；每 {C:EquipTickSystem.JELLY_IV} 秒获得 {C:EquipTickSystem.JELLY_SHIELD}+自身最大生命值 {C:EquipTickSystem.JELLY_MAXHP_PCT%}% 的护盾。"
   },
   {
     "id": "p2eq_013",
@@ -162,22 +162,22 @@
     "baseStats1": "+生命80/160/600·护甲&魔抗14/25/50",
     "shopAvailable": 1,
     "emoji": "🏰",
-    "effectDesc1": "每次受到伤害获得 1 层硬化，每层提供+2/4/6 护甲和魔抗（上限 {C:EquipTickSystem.FORTRESS_CAP} 层，无满层护盾）；\n硬化满层时立即汲取一次，此后每 {C:EquipTickSystem.FORTRESS_IV} 秒对全体敌人汲取生命，每名敌人受到 0.8/1/2.5×（护甲+魔抗）魔法伤害，每汲取 1 名敌人就回复（50/100/250+自身已损生命值 {C:EquipTickSystem.FORTRESS_HEAL_LOST%}%）生命；\n汲取不作用于训龟大师与屏障中的龟蛋。",
+    "effectDesc1": "每次受到伤害获得 1 层硬化，每层提供+{C:EquipTickSystem.FORTRESS_HARDEN_INC} 护甲和魔抗（上限 {C:EquipTickSystem.FORTRESS_CAP} 层，无满层护盾）；\n硬化满层时立即汲取一次，此后每 {C:EquipTickSystem.FORTRESS_IV} 秒对全体敌人汲取生命，每名敌人受到 0.8/1/2.5×（护甲+魔抗）魔法伤害，每汲取 1 名敌人就回复（50/100/250+自身已损生命值 {C:EquipTickSystem.FORTRESS_HEAL_LOST%}%）生命；\n汲取不作用于训龟大师与屏障中的龟蛋。",
     "effectDesc3": "",
     "img": "equip/eq014-icon.png",
-    "effectBrief": "每次受伤叠 1 层硬化（各 +2/4/6 双抗）；满 {C:EquipTickSystem.FORTRESS_CAP} 层后每 {C:EquipTickSystem.FORTRESS_IV} 秒全场汲取生命。"
+    "effectBrief": "每次受伤叠 1 层硬化（各 +{C:EquipTickSystem.FORTRESS_HARDEN_INC} 双抗）；满 {C:EquipTickSystem.FORTRESS_CAP} 层后每 {C:EquipTickSystem.FORTRESS_IV} 秒全场汲取生命。"
   },
   {
     "id": "p2eq_015",
     "name": "荆棘海胆",
     "cost": 4,
-    "baseStats1": "+生命100/200/1000·反伤12/25/40%",
+    "baseStats1": "+生命180/350/1000·反伤12/25/40%",
     "shopAvailable": 1,
     "emoji": "🦔",
-    "effectDesc1": "每累计反伤 300/270/230 点伤害，便获得 50/70/200 点护盾，并强化下一次普攻：命中时对目标施加 30/50/90 层流血。",
+    "effectDesc1": "每累计反伤 300/270/230 点伤害，便获得 50/70/200 点护盾，并强化下一次普攻：命中时对目标施加 30/50/90 层流血。\n反伤命中时，目标的治疗强度与护盾强度降低 {C:ThornCut.AMP_CUT%}%，持续 {C:ThornCut.CUT_SEC} 秒。",
     "effectDesc3": "",
     "img": "equip/eq015-icon.png",
-    "effectBrief": "每反伤 300/270/230 点获得护盾，下一次普攻施加 30/50/90 层流血。"
+    "effectBrief": "每反伤 300/270/230 点获得护盾，下一次普攻施加 30/50/90 层流血；反伤命中使目标治疗强度与护盾强度降低 {C:ThornCut.AMP_CUT%}%，持续 {C:ThornCut.CUT_SEC} 秒。"
   },
   {
     "id": "p2eq_016",
@@ -325,15 +325,15 @@
   },
   {
     "id": "p2eq_028",
-    "name": "冰霜冻露瓶",
+    "name": "冰冻药剂",
     "cost": 1,
     "baseStats1": "+生命30/40/60·魔穿5/9/14",
     "shopAvailable": 1,
     "emoji": "🔮",
-    "effectDesc1": "每 {C:IceSystem.VIAL_IV} 秒短暂蓄力，抛出一个冰瓶砸向最近的敌人，命中造成 40/60/100 魔法伤害并将其击退，同时施加冰寒 {C:IceSystem.VIAL_CHILL_SEC} 秒（移动速度-{C:IceSystem.VIAL_MOVE_DOWN%}%、攻击速度-{C:IceSystem.VIAL_ASPD_DOWN%}%）。",
+    "effectDesc1": "每 {C:IceSystem.VIAL_IV} 秒短暂蓄力，抛出一个冰瓶砸向最近的敌人，命中造成（{C:IceSystem.VIAL_DMG_BASE}+{C:IceSystem.VIAL_DMG_ATK}×攻击力+目标最大生命值 {C:IceSystem.VIAL_DMG_MAXHP%}%）魔法伤害并将其击退，同时施加冰寒 {C:IceSystem.VIAL_CHILL_SEC} 秒（移动速度-{C:IceSystem.VIAL_MOVE_DOWN%}%、攻击速度-{C:IceSystem.VIAL_ASPD_DOWN%}%）。",
     "effectDesc3": "",
     "img": "equip/frost-flask.png",
-    "effectBrief": "每 {C:IceSystem.VIAL_IV} 秒抛出冰瓶，造成 40/60/100 魔法伤害并施加冰寒 {C:IceSystem.VIAL_CHILL_SEC} 秒。"
+    "effectBrief": "每 {C:IceSystem.VIAL_IV} 秒抛出冰瓶，造成（{C:IceSystem.VIAL_DMG_BASE}+{C:IceSystem.VIAL_DMG_ATK}×攻击力+目标最大生命值 {C:IceSystem.VIAL_DMG_MAXHP%}%）魔法伤害并施加冰寒 {C:IceSystem.VIAL_CHILL_SEC} 秒。"
   },
   {
     "id": "p2eq_029",

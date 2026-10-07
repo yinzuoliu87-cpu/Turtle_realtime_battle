@@ -20,7 +20,7 @@ const TS_EQ_TIMER_FIELDS := ["aspd_until", "up_until", "vine_aspd_until", "emp_c
 ## 主场景 `_TS_TIMER_FIELDS` 之外再补的【单位顶层】到期时刻(2026-10-04·§8.7 #9 逐个核过; 放这里是因为主文件有行数预算)。
 ##   原来时停里不倒计时: 大师狂怒的移速半边(`haste_until`/`echarge_until` 早在表里, 同一个 buff 两半不同步)、
 ##   僵硬减益(同 `slow_until`)、钻石自动滚/赛博闪避冷却、041 涨潮(还原走 `_pending_shots`, 时停里照走)、财神梭哈免控。
-const TS_EXTRA_UNIT_TIMER_FIELDS := ["move_buff_until", "stiff_until", "roll_free_cd", "_ai_dodge_cd", "_ebb_until", "cc_immune_until"]
+const TS_EXTRA_UNIT_TIMER_FIELDS := ["move_buff_until", "stiff_until", "roll_free_cd", "_ai_dodge_cd", "_ebb_until", "cc_immune_until", "heal_amp_cut_until", "shield_amp_cut_until"]
 ## 【「上次发生时刻」戳】(`x = _t`, 再判 `_t - x >= CD` / 按 `_t - x` 推进度)·2026-10-04 方案书 20260916c §8.8 尾巴。
 ##   与上面的到期时刻是**镜像**: 到期时刻往前挪(`v - delta`)让「还剩多久」变短; 起点戳往后挪(也是 `v - delta`)
 ##   让「已经过了多久」变长 —— 两者都等价于「只为这一只单位推进了 delta 秒」。

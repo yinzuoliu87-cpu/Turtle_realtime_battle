@@ -856,7 +856,7 @@ func _eq_fuel_throw(u: Dictionary, si: int) -> void:   # 余烬燃油瓶022: 每
 	tw.tween_method(battle._fuel_flask_step.bind(spr, from2d, to2d, clampf(dist / 900.0, 0.55, 1.5)), 0.0, 1.0, clampf(dist / 620.0, 0.45, 1.05))
 	tw.tween_callback(battle._fuel_bottle_hit.bind(spr, u, t, si))
 
-# 028 冰霜冻露瓶: 蓄力→抛物线缓慢扔冰瓶→砸敌魔法伤+冰寒+冰爆
+# 028 冰冻药剂: 蓄力→抛物线缓慢扔冰瓶→砸敌魔法伤+冰寒+冰爆
 func _eq_ice_throw(u: Dictionary, si: int) -> void:
 	if not u.get("alive", false): return
 	if battle._targeting._nearest_enemy(u) == null: return
@@ -2231,8 +2231,6 @@ func _fire_coral_wave_hit(src: Dictionary, origin: Vector2, dir: Vector2,
 # ============================================================================
 #  on-target (受伤时, 防守者视角)
 # ============================================================================
-#  on-target (受伤时, 防守者视角)
-# ============================================================================
 func _eq_on_target(u: Dictionary, src: Dictionary, dmg: int) -> void:
 	if u.get("equips", []).is_empty():
 		return
@@ -2272,6 +2270,7 @@ func _eq_on_target(u: Dictionary, src: Dictionary, dmg: int) -> void:
 					var refl: float = float(dmg) * float(stt.get("reflect_pct", THORN_REFLECT[0]))
 					if refl >= 1.0:
 						battle._damage._apply_damage_from(u, src, int(refl), Color("#c9a36b"), 0.0, true, true, true)   # pre_crit=true: 反伤不暴击(用户 2026-10-07); 反伤=真实伤害跳白字(原_raw_lose静默不跳数字=bug); from_equip防循环
+						ThornCut.on_reflect(u, src, battle._t)   # 2026-10-07 追加: 反伤命中 → 目标 3 秒治疗强度/护盾强度 -50%(见 thorn_cut.gd)
 					# ★★重做: 原来是"每次反伤都给攻击者 2/2.5/3 层流血"。
 					#   现在改成【累计制】—— 反伤总量每满 THORN_THRESHOLD 点:
 					#     ① 给【自己】THORN_SHIELD 点护盾
@@ -2360,7 +2359,7 @@ func _eq_on_cast(u: Dictionary, tgt: Dictionary) -> void:
 				pass
 			"p2eq_022":   # 余烬燃油瓶: 改为每8秒定时(battle._EQ_CUSTOM_IV→_eq_fuel_throw, 用户2026-07-19); on_cast不处理
 				pass
-			"p2eq_028":   # 冰霜冻露瓶: 改为每6秒定时(battle._EQ_CUSTOM_IV→_eq_ice_throw, 用户2026-07-19); on_cast不处理
+			"p2eq_028":   # 冰冻药剂: 改为每6秒定时(battle._EQ_CUSTOM_IV→_eq_ice_throw, 用户2026-07-19); on_cast不处理
 				pass
 			"p2eq_030":   # 迷你水晶球A: 法力条集满触发(fire_equip_effect→_eq_crystal_line); 不在任何周期表里; on_cast不处理
 				pass

@@ -1,11 +1,12 @@
 extends Node
-## verify_ice_vial.gd — 028 冰霜冻露瓶的门禁 (2026-09-13)
+## verify_ice_vial.gd — 028 冰冻药剂(原名冰霜冻露瓶)的门禁 (2026-09-13)
 ##
 ## ════════════════════════════════════════════════════════════════════════
 ##  ★文案就是规格
 ## ════════════════════════════════════════════════════════════════════════
 ## 「每 IceSystem.VIAL_IV 秒短暂蓄力, 抛出一个冰瓶砸向**最近的**敌人,
-##   命中造成 **40/60/100 魔法伤害**并**将其击退**,
+##   命中造成 **(20/35/60 + 0.8/1/1.2×攻击力 + 目标最大生命值 3/5/9%) 魔法伤害**并**将其击退**,
+##   (2026-10-08 用户改: 原为固定 40/60/100; 精确数值由 verify_ice_flask_dmg 量)
 ##   同时施加冰寒 IceSystem.VIAL_CHILL_SEC 秒(移动速度 -20%、攻击速度 -10%)。」
 ##
 ## ★★这一件**原来既没有台子也没有门禁**, 而且**两层延时都挂在 tween 上**:
@@ -17,7 +18,13 @@ extends Node
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const ICE := preload("res://scripts/systems/skills/ice_system.gd")
 
-const DMG := [40, 60, 100]
+## 需求字面量(2026-10-08): 固定 + 攻击力系数 + 目标最大生命比例
+const DMG_BASE := [20.0, 35.0, 60.0]
+const DMG_ATK := [0.8, 1.0, 1.2]
+const DMG_HP := [0.03, 0.05, 0.09]
+
+func _want_raw(c: Dictionary, o: Dictionary, si: int) -> float:
+	return DMG_BASE[si] + float(c["atk"]) * DMG_ATK[si] + float(o["maxHp"]) * DMG_HP[si]
 
 var _s = null
 var _n := 0
@@ -52,7 +59,7 @@ func _ready() -> void:
 	if gs == null:
 		print("  [FAIL] 缺 autoload"); get_tree().quit(1); return
 	gs.test_mode = true
-	print("=== 028 冰霜冻露瓶: 每 %.0f 秒抛冰瓶 ===" % ICE.VIAL_IV)
+	print("=== 028 冰冻药剂: 每 %.0f 秒抛冰瓶 ===" % ICE.VIAL_IV)
 	RB.DEBUG_EDIT = true
 	_s = RB.new()
 	add_child(_s)
@@ -126,20 +133,22 @@ func _ready() -> void:
 	var c5: Dictionary = _mk(500.0, 400.0, "left")
 	_s._units.append(c5)
 	var got: Array = []
+	var want: Array = []
 	for si in [0, 1, 2]:
 		var o: Dictionary = _mk(700.0 + 60.0 * si, 400.0, "right")
 		o["mr"] = 0.0
 		o["_knock_immune"] = true        # 免击飞: 位移会干扰后面的距离判据, 这一节只量伤害
 		_s._units.append(o)
 		var h: float = float(o["hp"])
+		want.append(_want_raw(c5, o, si))
 		_s._ice_sys._ice_bottle_hit(null, c5, o, si)
 		got.append(h - float(o["hp"]))
 	_ok("⑤ ★分母: 三个星级都掉血了(%.0f / %.0f / %.0f)" % [got[0], got[1], got[2]],
 		got[0] > 0.0 and got[1] > 0.0 and got[2] > 0.0)
-	_ok("⑤ ★★伤害吃星级且比例对得上 40:60:100(实测 %.0f:%.0f:%.0f)"
-		% [got[0], got[1], got[2]],
-		absf(float(got[1]) / float(got[0]) - float(DMG[1]) / float(DMG[0])) < 0.05
-			and absf(float(got[2]) / float(got[0]) - float(DMG[2]) / float(DMG[0])) < 0.05)
+	_ok("⑤ ★★伤害吃星级且比例对得上公式 %.0f:%.0f:%.0f(实测 %.0f:%.0f:%.0f)"
+		% [want[0], want[1], want[2], got[0], got[1], got[2]],
+		absf(float(got[1]) / float(got[0]) - float(want[1]) / float(want[0])) < 0.05
+			and absf(float(got[2]) / float(got[0]) - float(want[2]) / float(want[0])) < 0.05)
 	var hard: Dictionary = _mk(900.0, 400.0, "right")
 	hard["mr"] = 500.0
 	hard["_knock_immune"] = true
@@ -278,5 +287,5 @@ func _done() -> void:
 	if _n < 19:
 		print("  [FAIL] ★断言只有 %d 条(<19) —— 有用例中途中止了" % _n)
 		_fail += 1
-	print("ALL PASS — 028 冰霜冻露瓶" if _fail == 0 else "FAIL x%d" % _fail)
+	print("ALL PASS — 028 冰冻药剂" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)

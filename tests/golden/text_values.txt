@@ -7,9 +7,9 @@ eq|信号放大器|effectBrief	5.0
 eq|信号放大器|effectDesc1	2.5 5.0 5.0 20.0 30.0 90.0 90.0 360.0
 eq|六分仪浮游炮|effectBrief	6.0
 eq|六分仪浮游炮|effectDesc1	6.0
+eq|冰冻药剂|effectBrief	5.0 6.0
+eq|冰冻药剂|effectDesc1	5.0 6.0 10.0 20.0
 eq|冰封水母|effectDesc1	0.6 90.0 500.0
-eq|冰霜冻露瓶|effectBrief	5.0 6.0
-eq|冰霜冻露瓶|effectDesc1	5.0 6.0 10.0 20.0
 eq|千刃风暴|effectBrief	7.0
 eq|千刃风暴|effectDesc1	7.0
 eq|压舱咸鱼砖|effectDesc1	5.0 250.0
@@ -53,7 +53,7 @@ eq|海浪护符|effectDesc1	1200.0
 eq|海葵药膏|effectBrief	7.0
 eq|海葵药膏|effectDesc1	7.0
 eq|海藻|effectBrief	4.0
-eq|海藻|effectDesc1	4.0 4.0
+eq|海藻|effectDesc1	4.0
 eq|涟漪药剂|effectBrief	8.0
 eq|涟漪药剂|effectDesc1	8.0
 eq|涨潮碑|effectBrief	5.0
@@ -90,6 +90,8 @@ eq|盗令潜水钟|effectDesc1	2.0 3.0 3.0 10.0 10.0 15.0
 eq|磷光水母伞|effectBrief	2.5 7.0 200.0
 eq|磷光水母伞|effectDesc1	2.5 7.0 7.0 15.0 200.0
 eq|竹制弓箭|effectDesc1	6.0 6.0
+eq|荆棘海胆|effectBrief	3.0 50.0
+eq|荆棘海胆|effectDesc1	3.0 50.0
 eq|草莓蛋糕|effectDesc1	3.0 5.0 8.0 20.0 30.0 50.0
 eq|蚀月符纸|effectBrief	15.0
 eq|蚀月符纸|effectDesc1	15.0

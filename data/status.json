@@ -63,6 +63,13 @@
     "desc": "先于生命值承受伤害，可吸收所有类型的伤害，包括真实伤害。"
   },
   {
+    "id": "magic-shield",
+    "name": "魔法护盾",
+    "iconKey": "status-magic-shield",
+    "category": "buff",
+    "desc": "只吸收魔法伤害，先于护盾承受；物理伤害与真实伤害不受影响。不随时间消失。"
+  },
+  {
     "id": "dodge",
     "name": "闪避",
     "iconKey": "status-dodge",

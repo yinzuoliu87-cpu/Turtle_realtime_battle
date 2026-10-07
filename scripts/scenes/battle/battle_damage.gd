@@ -193,6 +193,7 @@ func _apply_damage(u: Dictionary, dmg: int, _col: Color, src = null, bucket: Str
 	#   ⚠ 撤要两条路一起撤(CLAUDE.md §3.3), 另一半在 _apply_damage_from 的同一位置。
 	dmg = maxi(1, int(round(d)))                     # 统计/飘字用减伤【后】的值, 否则面板数字与实际掉血对不上
 	var shield_before: float = u["shield"]
+	d = MagicShield.absorb(u, d, bucket == "mag")   # 魔法护盾(012): 只挡魔法, 先于普通盾; §3.3 两路都接
 	d = ShieldMath.absorb(u, d)   # 普通盾+aura盾 吸全类型(§3.3 收口·两路共用)
 	d = battle._spec.absorb(u, d)  # ★特殊余额(幽灵/法力/灰条/奶油/终极盾)在普通盾之后扛; §3.3 两路都接
 	# 弓箭顶档【腐蚀满 5 层】: 受到伤害的 25% 转成真实伤害(无视护甲与护盾)。
@@ -417,6 +418,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 	var shield_before: float = u["shield"]
 	# 护盾吸收【全类型】伤害(物理/法术/真实): 1:1 回合制 damage.gd「真伤(true)也走护盾」+ 用户2026-07-11「真伤/反伤真伤要被盾档」。
 	#   真伤只无视护甲/魔抗/减伤(见上方 not raw 分支), 但护盾照吸。唯一穿盾=墨迹(_ink_true·在护盾后单独加·由线条被动设计)。
+	d = MagicShield.absorb(u, d, _dtv == "magic" and not raw)   # 魔法护盾(012): 只挡魔法, 先于普通盾; §3.3 两路都接
 	d = ShieldMath.absorb(u, d)   # 普通盾+aura盾 吸全类型(§3.3 收口·两路共用)
 	d = battle._spec.absorb(u, d)  # ★特殊余额(幽灵/法力/灰条/奶油/终极盾)在普通盾之后扛; §3.3 两路都接
 	if _ink_true > 0.0: d += _ink_true   # 墨迹真伤: 穿减伤穿盾(唯一穿盾例外·护盾吸收后加), 直接进扣血并计入跳字
@@ -483,6 +485,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 		var _refl = int(dmg * _refl_pct)
 		if _refl > 0:
 			_apply_damage_from(u, src, _refl, Color("#c9a36b"), 0.0, true, true, true)   # pre_crit=true: 反伤不暴击(用户 2026-10-07「改为不能吧」)
+			ThornCut.on_reflect(u, src, battle._t)   # 带 015 的单位: 任何来源的反伤都削目标 3 秒治疗强度/护盾强度(没带=空操作)
 	# 凤凰熔岩盾: 持盾窗口内对每段攻击反击 LAVA_RETALIATE×ATK 魔法 (from_equip守卫防循环)
 	# ★注释原写"5秒"是过期的 —— 真值是 PhoenixSystem.LAVA_SHIELD_SEC(4 秒·与护盾同步)。
 	if u["id"] == "phoenix" and battle._t < float(u.get("lava_shield_until", 0.0)) and not is_same(src, u) and src.get("alive", false) and not from_equip and dmg > 0:
@@ -709,11 +712,20 @@ func _dot_float_flyaway(u: Dictionary, bucket: String, st: Dictionary) -> void:
 ##   2026-08 那轮只扫了技能, 装备的 `_grant_shield` 全部吾着 dur=0(永久)。
 const COMMON_SHIELD_SEC := 4.0
 
+## 【治疗强度 / 护盾强度】的此刻实际倍率 —— 结算(_heal / _grant_shield)与信息面板两行共用这一份。
+##   = (1 + heal_amp / shield_amp) × (1 − 015 荆棘海胆反伤削弱, 3 秒, 见 ThornCut)。
+##   ★面板原来自己写 `1 + heal_amp`: 削弱生效时面板会照旧显示 100%, 与实际结算对不上。
+static func heal_strength(u: Dictionary, t: float) -> float:
+	return (1.0 + float(u.get("heal_amp", 0.0))) * (1.0 - ThornCut.cut_of(u, "heal_amp_cut", t))
+
+static func shield_strength(u: Dictionary, t: float) -> float:
+	return (1.0 + float(u.get("shield_amp", 0.0))) * (1.0 - ThornCut.cut_of(u, "shield_amp_cut", t))
+
 func _grant_shield(u: Dictionary, amt: float, dur: float = 0.0) -> void:
 	if amt <= 0.0: return
 	_holy_convert(u, amt, dur)      # 盾羁绊9档: 盾类装备给的护盾, 额外 20% 转成圣光护盾(★时长跟随母次)
 	amt *= battle._copy_fx_mult                          # 龟壳复制期: 护盾也按60%(封板"以60%效果释放")
-	amt *= 1.0 + float(u.get("shield_amp", 0.0))   # 护盾加成(受到方,所有来源)
+	amt *= shield_strength(u, battle._t)   # 护盾强度(受到方,所有来源) = (1 + shield_amp) × (1 − 015 反伤削弱)
 	var sb: float = u["shield"]
 	# ★★2026-08-05 用户拍板【删掉护盾上限】。
 	#   原来这里是 `minf(u["shield"] + amt, u["maxHp"] * SHIELD_CAP_MULT)`, 封顶在最大生命的 150%。
@@ -783,7 +795,7 @@ func _holy_convert(u: Dictionary, amt: float, dur: float = 0.0) -> void:
 func _heal(u: Dictionary, amt: float, silent: bool = false) -> float:   # 返回【实际】回血(满血=0·溢出转盾不计·用户2026-07-19"按实际治疗算")
 	if amt <= 0.0: return 0.0
 	amt *= battle._copy_fx_mult                        # 龟壳复制期: 治疗也按60%
-	amt *= 1.0 + float(u.get("heal_amp", 0.0))   # 治疗加成(受到方,所有来源)
+	amt *= heal_strength(u, battle._t)   # 治疗强度(受到方,所有来源) = (1 + heal_amp) × (1 − 015 反伤削弱)
 	amt *= battle._sd_heal_mult()                       # §SUDDEN 决胜期治疗 ×50%
 	if battle._t < float(u.get("heal_reduce_until", 0.0)):
 		amt *= maxf(0.0, 1.0 - float(u.get("heal_reduce_pct", 0.0)))   # 治疗削减(凤凰涅槃/烫伤等)
