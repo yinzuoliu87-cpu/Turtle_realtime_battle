@@ -855,7 +855,6 @@ scripts/scenes/SettingsScene.gd|lit|正在发送…
 scripts/scenes/SettingsScene.gd|lit|正在验证…
 scripts/scenes/SettingsScene.gd|lit|此操作不可撤销。音量、画面、画质设置不受影响。
 scripts/scenes/SettingsScene.gd|lit|测试时间
-scripts/scenes/SettingsScene.gd|lit|游客 %s
 scripts/scenes/SettingsScene.gd|lit|画质「低」
 scripts/scenes/SettingsScene.gd|lit|画质「高」
 scripts/scenes/SettingsScene.gd|lit|画质已切换为「%s」%s · 下场战斗生效

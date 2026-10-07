@@ -295,8 +295,12 @@ func _t_real_settings() -> void:
 			lied1.append(str(p))
 	_chk("④ ★★匿名态不许承诺「存档」能找回(服务端根本没存存档)",
 		lied1.is_empty(), str(lied1))
-	_chk("④ 匿名态: 也显示了账号前 8 位(报问题时能对上号)",
-		_find_text(s1, UID_OK.substr(0, 8)), UID_OK.substr(0, 8))
+	## ★2026-10-07: 账号行写玩家自己的名字(与主菜单同一个出处), 不再写「游客 + uuid 前 8 位」——
+	##   新号实录里主菜单叫 lisa、设置页叫「游客 52763f95」, 看着像两个人。对号用玩家 ID 那一行。
+	var _me := str(preload("res://scripts/net/backend.gd").player_display_name())
+	_chk("④ ★匿名态: 账号行写的是玩家自己的名字(与主菜单同一个)", _me != "" and _find_text(s1, _me), _me)
+	_chk("④ 匿名态: 不再把 uuid 前 8 位当名字摆出来", not _find_text(s1, UID_OK.substr(0, 8)),
+		UID_OK.substr(0, 8))
 	_chk("④ ★分母: 设置页真的建出了按钮(N=0 的话下面两条是空检查)", _n_buttons(s1) > 0,
 		"%d 个" % _n_buttons(s1))
 	_chk("④ 匿名态: 有「绑定邮箱」按钮", _find_button(s1, "绑定邮箱"))
