@@ -362,6 +362,7 @@ while _w < 600 and float(u["hp"]) >= hp0:   # 上限防死循环
 | 提交门禁 | push 自动跑 `.github/workflows/tests.yml` | 123 项，ubuntu |
 | Web（手机浏览器直接玩） | `SHIP=1 bash build-web.sh` | `build/turtle-realtime-web.zip` |
 | Android APK | 见 [实时版APK打包.md](docs/实时版APK打包.md) | `build/android/*.apk` |
+| Mac 包 | Windows 上直接导：`<godot> --headless --path . --export-release "MacDist" "build/macdist/斗龟场.zip"`（通用二进制·Godot 内置临时签名·**未公证**，玩家首次打开要在「隐私与安全性」点「仍要打开」；重新打包时要保留条目的 Unix 权限位，否则 Mac 上解压后不可执行） | `build/macdist/斗龟场.zip` |
 
 **iOS 的硬事实（实测，别再试）：**
 
