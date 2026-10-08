@@ -1107,6 +1107,32 @@ static func _seed_record(battles: int, rng: RandomNumberGenerator) -> Dictionary
 ## upload_ghost 污染 user://ghost_pool.json; 更隐蔽的是 load_pool→_ensure_seeded→save_pool(L211),
 ## 【光是读池就会写盘】。存档目录里那个 savegame.json.bak-被测试污染 就是同类事故的遗迹。
 ## 只挡默认的 user:// 真实池; 显式传 path(自举仿真/离线产池) 照写不误。
+## 换周: 对手池里只留内置陪练(`seed_`), 真人快照全清。
+## ★用户 2026-10-08「每周快照会刷掉对吧」「改」: 选靶只认「总场次相同」、不认哪一周 ⇒
+##   不清的话新一周还会抽到上周存下来的同场次阵容。服务端拉取本来就只拉本周(`season_week=eq.`),
+##   清掉本机这份之后, 新一周的真人对手全部来自本周的服务端快照。返回清掉了几条。
+static func drop_week_snapshots(pool: Dictionary) -> int:
+	var buckets: Dictionary = pool.get(POOL_KEY, {})
+	var n := 0
+	for b in buckets.keys():
+		var keep: Array = []
+		for g in (buckets[b] as Array):
+			if g is Dictionary and str((g as Dictionary).get("ghost_id", "")).begins_with(SEED_ID_PREFIX):
+				keep.append(g)
+			else:
+				n += 1
+		buckets[b] = keep
+	return n
+
+
+## 换周时调(GameState.start_new_season): 读池 → 清真人快照 → 落盘。
+static func wipe_week_snapshots(path: String = POOL_PATH) -> int:
+	var pool := load_pool(path)
+	var n := drop_week_snapshots(pool)
+	save_pool(pool, path)
+	return n
+
+
 static func save_pool(pool: Dictionary, path: String = POOL_PATH) -> void:
 	if path == POOL_PATH and GameState != null and bool(GameState.test_mode):
 		return

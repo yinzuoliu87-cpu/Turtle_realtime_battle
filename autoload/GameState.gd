@@ -2670,6 +2670,8 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	persistent_bench = []
 	persistent_equipped = {}
 	equip_pool = {}                   # 池随之清空, 下次用到时补满(D6: 赛季重置)
+	## 对手池: 上周的真人快照不许当本周对手(用户 2026-10-08「每周快照会刷掉对吧」「改」)。只留内置陪练。
+	load("res://scripts/net/backend.gd").wipe_week_snapshots()
 	## 096 小木斧: 砍伐经验【随大轮重置】(用户 2026-08-31) —— 进度条与累计值**都**清,
 	##   档位退回木斧、最终造物的选择也作废(未决点 ⑩「本大轮锁定」的另一半)。
 	axe_exp_bar = 0
