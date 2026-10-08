@@ -28,6 +28,9 @@ const BMS := preload("res://scripts/scenes/BracketMapScene.gd")
 const BRACKET := "res://scenes/BracketMap.tscn"
 const ME := "11111111-2222-4333-8444-555555555555"
 const DT := 1.0 / 60.0
+## ⑤ 翻面那一刻这一场还剩几秒。追帧每喂一次净追 7 步 ⇒ 要在放完前追上, 进场前的墙钟(取录像 + 载场景)
+##   须 < (tot − (tot/60 − REMAIN)·60·8/7)/60 秒: 8 秒时只容 ~2 秒(CI 不够), 30 秒时容 ~24 秒。
+const PREMIERE_REMAIN := 30
 
 var _fail := 0
 var _n := 0
@@ -419,8 +422,8 @@ func _wait_scene(pred: Callable, max_frames: int = 240) -> Node:
 func _t_watch() -> void:
 	print("── ⑤ 观赛跟播(开播) ──")
 	var tot := int((_rec["end"] as Dictionary)["s"])
-	## 翻面在「这一场还剩 8 秒」的那一刻之前: 进去要追到 tot − 480 附近, 再 1 倍看完最后 8 秒
-	var flip := _now - (tot / 60 - 8)
+	## 翻面在「这一场还剩 REMAIN 秒」的那一刻之前: 进去要追到 tot − REMAIN×60 附近, 再 1 倍看完最后 REMAIN 秒
+	var flip := _now - (tot / 60 - PREMIERE_REMAIN)
 	var m: Node = await _open_map(_week(flip), _now)
 	_ok("⑤ 分母: 第 1 轮第 1 场在开播窗口里", str(m.match_state(1, 0)) == BMS.ST_PREMIERE)
 	var key := LS.premiere_key(m.cur(), 1, 0)
@@ -466,7 +469,15 @@ func _t_watch() -> void:
 	var frames := 0
 	var sync_seen := false
 	var tw := Time.get_ticks_msec()
+	## ★观赛钟换成「每喂一次 `_process` 走 DT」(2026-10-08 CI 红: 追上时第 -1 步):
+	##   `target_step()` 按墙钟每秒涨 60 步, 观众每次 `_process` 至多追 8 步 ⇒ 净追速取决于这台机器一秒能喂几次。
+	##   CI 16 路并行时一秒喂不到 ~8 次, 直到这一场放完都没追上(369 次喂、每次 8 步、frames=369)。
+	##   ⇒ 进场之前那段(取录像 + 载场景)照真墙钟算进去, 进场之后观赛钟与喂的次数绑定 —— 与 `_deterministic` 同一个道理。
+	##   产品的追帧判定 / 翻面至今的换算一行没碰: 量的仍是 `lv.catching` 与 `lv.target_step()`。
+	var el0_ms: int = Time.get_ticks_msec() - int(lv.ref_ms)
+	var recatch := 0
 	while frames < 6000 and not b._replay.finished and b._replay.diverged_at < 0 and Time.get_ticks_msec() - tw < 120000:
+		lv.ref_ms = Time.get_ticks_msec() - (el0_ms + int(round(float(frames) * DT * 1000.0)))
 		frames += 1
 		b._process(DT)
 		var n := int(b._sim_step_n)
@@ -475,17 +486,20 @@ func _t_watch() -> void:
 		prev = n
 		if str(lv.status) == LS.TXT_SYNC:
 			sync_seen = true
+		if caught_n >= 0 and lv.catching:
+			recatch += 1
 		if caught_n < 0 and not lv.catching:
 			caught_n = n
 			caught_tgt = lv.target_step()
-		## 一帧喂 4 次 `_process`(每次至多 8 步): CI 无头 15 帧/秒时追帧也追得上真实时间(--max-fps 15 实测过)
+		## 一帧喂 4 次 `_process`(每次至多 8 步); 观赛钟按喂的次数走, 与帧率无关
 		if frames % 4 == 0:
 			await get_tree().process_frame
-	var want_lo := (tot / 60 - 8) * 60
+	var want_lo := (tot / 60 - PREMIERE_REMAIN) * 60
 	_ok("⑤ ★追帧到「翻面至今」那一步(追上时第 %d 步 / 应在 ≥ %d)" % [caught_n, want_lo],
 		caught_n >= want_lo and caught_n >= caught_tgt - LS.CATCH_PER_FRAME and caught_n <= caught_tgt + LS.CATCH_PER_FRAME,
 		"target %d" % caught_tgt)
 	_ok("⑤ 追帧时屏上「同步中」", sync_seen)
+	_ok("⑤ ★追上之后 1 倍跟播, 不再回到「同步中」暗幕(回去了 %d 次)" % recatch, caught_n >= 0 and recatch == 0)
 	_ok("⑤ 步号只增不减(不倒回)", mono)
 	## 终局(结算那一步的步号 + 指纹 + 胜负)由 `on_settle` 播放分支逐字比过, 对不上会记成分叉 ⇒ 这里看 diverged_at。
 	##   (不直接比 `_sim_step_n`: 结算那一帧里剩下的几步照样会跑完, 步号会比结算步多几步。)

@@ -160,7 +160,10 @@ func feed(rd: float) -> float:
 	var tgt := target_step()
 	var cap := cap_step()
 	var left: int = (cap - n) if cap >= 0 else 1 << 30
-	if catching and n >= tgt:
+	## ★追上 = 落后不到一帧能追的步数(不是 n >= tgt): target 在两帧之间按墙钟又涨了一截,
+	##   60 帧/秒时每帧 +1、30 帧/秒时每帧 +2 —— 判「n >= tgt」就永远差这一截, 「同步中」暗幕一直不收
+	##   (2026-10-08 门禁按每喂一次走 DT 的钟量出: 放完全场 1826 次喂都没追上)。
+	if catching and n >= tgt - CATCH_PER_FRAME:
 		catching = false
 	elif not catching and n < tgt - CATCH_SLACK:
 		catching = true

@@ -600,7 +600,11 @@ func _t_stale() -> void:
 	_ok("⑤ ★打开时就断了 ⇒ 不进场, 说「直播中断」", got[0] == "stale" and got[1] == LS.TXT_BROKEN and get_tree().current_scene == before
 		and LS.pending.is_empty(), "%s / %s" % [got[0], got[1]])
 	## 进场后行再也不动 ⇒ 等满中断时限出卡
-	LS.stale_sec_for_test = 6.0
+	## ★两段走(2026-10-08 CI 红): 原来进场前就把时限缩到 6 秒, 而观众要先从第 0 步追到 horizon 再停够 60 帧 ——
+	##   CI 上 16 路并行时这段追帧墙钟超过 6 秒, 还没走到 horizon 就被判中断(「停在第 -1 步 / 停了 0 帧」)。
+	##   中断的口径是「horizon 多久没涨」(墙钟, 从会话建立起算), 与观众追帧快慢无关 —— 产品没错, 是尺子挂在机器快慢上。
+	##   ⇒ 第一段时限放到很大, 追到 horizon 并停够之后再把时限缩成「至今 + 6 秒」, 等满 6 秒判中断。
+	LS.stale_sec_for_test = 3600.0
 	var b = await _spectate_from(j, _now)
 	_ok("⑤ 分母: 进了观赛", b != null and b._replay.is_live())
 	if b == null or not b._replay.is_live():
@@ -612,7 +616,11 @@ func _t_stale() -> void:
 	var stalled_at := -1
 	var over := 0
 	var held := 0
-	while Time.get_ticks_msec() - tw < 20000 and not lv.broken:
+	var broke_early := false
+	var t_shr := 0
+	var m_shr := 0
+	var shrunk := false
+	while Time.get_ticks_msec() - tw < 120000 and not lv.broken:
 		for _q in range(6):
 			b._process(DT)
 			over = maxi(over, int(b._sim_step_n) - int(lv.horizon))
@@ -620,7 +628,22 @@ func _t_stale() -> void:
 				held += 1
 				if stalled_at < 0:
 					stalled_at = int(b._sim_step_n)
+		if lv.broken and not shrunk:
+			broke_early = true
+		## 停够了 ⇒ 把时限缩成「horizon 上次涨至今 + 6 秒」: 再过 6 秒墙钟该判中断,
+		##   而这 6 秒里轮询照样把(没涨的)行合并进来 —— 合并进来却没涨, 不许算「还活着」。
+		if not shrunk and held > 60:
+			shrunk = true
+			t_shr = Time.get_ticks_msec()
+			m_shr = int(lv.merges)
+			LS.stale_sec_for_test = float(t_shr - int(lv._last_adv_ms)) / 1000.0 + 6.0
 		await get_tree().process_frame
+	var t_brk := Time.get_ticks_msec()
+	_ok("⑤ 分母: 时限放大的那一段里没被提前判中断(提前断 = 停不停得住根本没量到)", not broke_early and shrunk,
+		"提前断 %s / 缩过时限 %s" % [str(broke_early), str(shrunk)])
+	_ok("⑤ ★缩时限后等满 6 秒才断, 期间轮询合并了 %d 次没涨的行(合并 ≠ 还活着)" % (int(lv.merges) - m_shr),
+		shrunk and lv.broken and t_brk - t_shr >= 5500 and int(lv.merges) - m_shr >= 1,
+		"缩后 %d ms 断" % (t_brk - t_shr))
 	_ok("⑤ 分母: 先追到 horizon 停住(停在第 %d 步)" % stalled_at, stalled_at == int(lv.horizon))
 	## ★服务器再也不放新的一份 ⇒ 观众必须**停在** horizon 上(喂多少帧都不越过), 直到判中断。
 	_ok("⑤ ★horizon 不再涨 ⇒ 停在 horizon 上一步不越过(停了 %d 帧)" % held, over == 0 and held > 60

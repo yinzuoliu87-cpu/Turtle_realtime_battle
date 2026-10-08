@@ -90,11 +90,21 @@ func _ready() -> void:
 		var cds: Dictionary = mi.get("skill_cd", {})
 		_ok("★分母: 随从带着自己的技能冷却表(%d 项)" % cds.size(), not cds.is_empty(),
 			"active_skills=%s" % str(mi.get("active_skills", [])))
+		## ★★输入当场造(2026-10-08 CI 红): 随从是**随机**抽的, 冷却初值各不相同, 又被前面 20 帧自然走掉一截
+		##   (帧越慢走得越多)。CI 抽到 rainbow/shield, 剩 1.717 秒 < 应推进的 1.875 秒 ⇒ 冷却推到 0 封顶,
+		##   多出的 0.158 秒按设计存进龟能银行 —— 产品是对的, 是尺子跟着「抽到谁 × 机器快慢」漂。
+		##   ⇒ 冷却改成当场写一个确定值(够推满), 银行清零; 封顶 + 溢出入银行另起一条判。
+		var acts: Array = mi.get("active_skills", [])
+		var cost: float = scene.SkillEnergy.cost_of(str(acts[0])) if not acts.is_empty() else 95.0
+		var want_drop: float = cost * HidingSystem.SHRINK_MINION_ENERGY * 0.075
+		for k in cds:
+			cds[k] = want_drop + 2.0
+		mi["energy_bank"] = 0.0
 		var cd0 := 1e9
 		for k in cds:
 			cd0 = minf(cd0, float(cds[k]))
-		_ok("★分母: 放技前冷却是【非零】的(为 0 就推不动, 这条会恒绿)", cd0 > 0.05,
-			"实测 %.3f 秒" % cd0)
+		_ok("★分母: 放技前冷却够推满一整份(%.3f > %.3f, 不够会封顶在 0、量不出全量)" % [cd0, want_drop],
+			cd0 > want_drop + 0.5 and want_drop > 0.05, "实测 %.3f 秒" % cd0)
 		## ★★★【不许跨帧】—— 第一版我在前后各 await 了一帧, 而冷却**自己也在走**,
 		##   于是 `cd1 < cd0` 恒真: 反向验证时把那行改回没人读的 energy, 门禁照样全绿。
 		##   量的是"时间过去了"而不是"技能给了龟能"。同步调用同步量, 中间一帧都不许过。
@@ -104,13 +114,23 @@ func _ready() -> void:
 			cd1 = minf(cd1, float(cds[k]))
 		## ★判据还要卡住【推进了多少】: 1 点龟能 = 0.075 秒(全局换算),
 		##   给的是该技花费的 50% ⇒ 推进量 = cost × 0.5 × 0.075。只判">0"会被自然冷却蒙混。
-		var acts: Array = mi.get("active_skills", [])
-		var cost: float = scene.SkillEnergy.cost_of(str(acts[0])) if not acts.is_empty() else 95.0
-		var want_drop: float = cost * HidingSystem.SHRINK_MINION_ENERGY * 0.075
 		_ok("★★★缩头把随从冷却推进了 %.3f 秒(应 %.3f = %.0f龟能×50%%×0.075)"
 			% [cd0 - cd1, want_drop, cost],
 			absf((cd0 - cd1) - want_drop) <= 0.05,
 			"一点没动/对不上 = 那 +50% 龟能又进了没人读的字段")
+		## ★CI 那一形状本身: 冷却只剩一点 ⇒ 推到 0 封顶, 溢出进龟能银行(不浪费)。推进 + 银行 = 一整份。
+		var cd_low := want_drop * 0.5
+		for k in cds:
+			cds[k] = cd_low
+		mi["energy_bank"] = 0.0
+		scene._hiding_sys._sk_hiding_shrink(owner_u)
+		var cd2 := 1e9
+		for k in cds:
+			cd2 = minf(cd2, float(cds[k]))
+		var bank_sec: float = float(mi.get("energy_bank", 0.0)) * 0.075
+		_ok("★冷却不够推 ⇒ 封顶在 0, 溢出进龟能银行(推进 %.3f + 银行 %.3f = 应 %.3f)" % [cd_low - cd2, bank_sec, want_drop],
+			absf(cd2) <= 0.001 and absf((cd_low - cd2) + bank_sec - want_drop) <= 0.05,
+			"剩 %.3f 秒" % cd2)
 
 	print("")
 	if _fail == 0:
