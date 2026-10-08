@@ -79,9 +79,10 @@ func _ready() -> void:
 	_ok("⑤ 从没连上过 ⇒ known=false", not P2.server_offset_known)
 
 	var differs := 0
-	for shift in [3 * DAY, -3 * DAY]:
+	## ★±4 天(原 ±3): ±3 在周四恰好落在同一周(周一/周日)⇒ 「至少一条跨周」那条分母周四必红; ±4 在一周任何一天都至少跨一次。
+	for shift in [4 * DAY, -4 * DAY]:
 		P2.server_clock_reset()
-		var tag := "本机快3天" if shift > 0 else "本机慢3天"
+		var tag := "本机快4天" if shift > 0 else "本机慢4天"
 		_round_trip(_dev() - shift)
 		var now: int = P2.now_utc()
 		var truth_now: int = _dev() - shift
