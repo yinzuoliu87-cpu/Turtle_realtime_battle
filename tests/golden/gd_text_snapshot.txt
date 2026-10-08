@@ -63,59 +63,59 @@ scripts/gamedata/equip_stats.gd|lit|闪避
 scripts/gamedata/equip_stats.gd|lit|魔抗
 scripts/gamedata/equip_stats.gd|lit|魔法穿透
 scripts/gamedata/equip_stats.gd|lit|龟能充能速率
-scripts/gamedata/glossary.gd|lit|【涨潮】结束后移除全部加成。不会致死，生命降至新的上限。
-scripts/gamedata/glossary.gd|lit|【融合】之后获得的被动：每挨一段攻击就永久加一点护甲与魔抗，各有上限。
+scripts/gamedata/glossary.gd|lit|【涨潮】结束后移除全部加成。此效果不会致死，生命值降至新的上限。
+scripts/gamedata/glossary.gd|lit|【融合】后获得的被动：每次受到一段攻击时永久获得一点护甲与魔抗，各有上限。
 scripts/gamedata/glossary.gd|lit|低血模式
-scripts/gamedata/glossary.gd|lit|余烬点上的状态：期间这名敌人受到的灼烧全部改判成真实伤害（不吃魔抗）。
+scripts/gamedata/glossary.gd|lit|余烬施加的状态：期间该敌人受到的灼烧伤害全部转为真实伤害（不受魔抗减免）。
 scripts/gamedata/glossary.gd|lit|冰霜
 scripts/gamedata/glossary.gd|lit|剑士
-scripts/gamedata/glossary.gd|lit|剑羁绊：对同一个目标连续命中会触发追打。
+scripts/gamedata/glossary.gd|lit|剑羁绊：连续命中同一个目标时触发追打。
 scripts/gamedata/glossary.gd|lit|十字斩
 scripts/gamedata/glossary.gd|lit|双头坚韧
-scripts/gamedata/glossary.gd|lit|双头龟的技能三：两个头合体，登场即锁定形态不再自动切换，并换上一套合体后的招式。
+scripts/gamedata/glossary.gd|lit|双头龟的技能三：两个头合体，登场即锁定形态，不再自动切换，并替换为一套合体后的招式。
 scripts/gamedata/glossary.gd|lit|双头龟近战形态的技能一：对目标砸下一锤。
-scripts/gamedata/glossary.gd|lit|双头龟近战形态的技能二：打出伤害并把其中一部分转化回自己身上。
-scripts/gamedata/glossary.gd|lit|双头龟远程形态的技能一：射出一颗炮弹，碰到第一个敌人就爆炸。
-scripts/gamedata/glossary.gd|lit|双头龟远程形态的技能二：真实伤害，并削减目标的治疗与护盾。
-scripts/gamedata/glossary.gd|lit|叠在同一个敌人身上的层，不会随时间衰减。满层之后，这件装备打出的伤害转为真实伤害。
+scripts/gamedata/glossary.gd|lit|双头龟近战形态的技能二：造成伤害，并将其中一部分转化回自身。
+scripts/gamedata/glossary.gd|lit|双头龟远程形态的技能一：射出一颗炮弹，命中第一个敌人时爆炸。
+scripts/gamedata/glossary.gd|lit|双头龟远程形态的技能二：造成真实伤害，并削减目标的治疗与护盾效果。
+scripts/gamedata/glossary.gd|lit|叠加在同一名敌人身上的层数，不会随时间衰减。达到最大层数后，此装备造成的伤害转为真实伤害。
 scripts/gamedata/glossary.gd|lit|古灵精怪枪
 scripts/gamedata/glossary.gd|lit|吸收
 scripts/gamedata/glossary.gd|lit|地毯轰炸
 scripts/gamedata/glossary.gd|lit|奶油护盾
-scripts/gamedata/glossary.gd|lit|寒冰龟留在地面的减速领域。冰柱层数会让它的范围与持续时间一起变大。
+scripts/gamedata/glossary.gd|lit|寒冰龟在地面留下的减速领域。冰柱层数会同时提升其范围与持续时间。
 scripts/gamedata/glossary.gd|lit|小木斧召唤的近战随从。属性随累计经验成长。
-scripts/gamedata/glossary.gd|lit|小龟每隔一段时间蓄满的一次强化普攻：额外伤害、击飞目标，并把这次伤害的一部分转成自己的护盾。
+scripts/gamedata/glossary.gd|lit|小龟每隔一段时间充能完成的一次强化普通攻击：造成额外伤害并击飞目标，并将此次伤害的一部分转化为自身的护盾。
 scripts/gamedata/glossary.gd|lit|幽灵护盾
-scripts/gamedata/glossary.gd|lit|开战时给全队套上的护盾，永久不衰减；被打破时会炸伤周围的敌人。
-scripts/gamedata/glossary.gd|lit|弓箭系叠在敌人身上的层，与弓箭羁绊共用同一份层数。
-scripts/gamedata/glossary.gd|lit|手半剑替换掉原技能的招式：先横斩并放出一道横波，随后竖斩。
+scripts/gamedata/glossary.gd|lit|开战时为全队提供的护盾，永久不衰减。护盾被击破时对周围的敌人造成伤害。
+scripts/gamedata/glossary.gd|lit|弓箭系叠加在敌人身上的层数，与弓箭羁绊共用同一份层数。
+scripts/gamedata/glossary.gd|lit|手半剑替换原技能的招式：先横斩并释放一道横波，随后竖斩。
 scripts/gamedata/glossary.gd|lit|扭曲空间
 scripts/gamedata/glossary.gd|lit|护心反伤
-scripts/gamedata/glossary.gd|lit|持续掉血的负面状态：每秒按目标最大生命值的百分比造成真实伤害，无视护甲与魔抗。不叠层，重复施加改为累加剩余时长。
-scripts/gamedata/glossary.gd|lit|敌人被己方击飞时挂上的标记，不会自己消失；飞镖每周期向所有带标记的敌人各射一发，命中即摘掉标记。
+scripts/gamedata/glossary.gd|lit|持续伤害的负面状态：每秒造成基于目标最大生命值百分比的真实伤害，无视护甲与魔抗。不可叠加，重复施加时累加剩余持续时间。
+scripts/gamedata/glossary.gd|lit|敌人被己方击飞时获得的标记，不会自然消失。飞镖每个周期向所有带有标记的敌人各发射一枚，命中后移除标记。
 scripts/gamedata/glossary.gd|lit|斧头
-scripts/gamedata/glossary.gd|lit|斧头每进化一档额外叠加的属性加成，售价也随之上涨。
-scripts/gamedata/glossary.gd|lit|斧头进化到钻石斧之后、经验再满一次时的四选一终形态，选定后本大轮锁定。
+scripts/gamedata/glossary.gd|lit|斧头每进化一档额外获得的属性加成，售价也随之提高。
+scripts/gamedata/glossary.gd|lit|斧头进化为钻石斧后，经验值再次充满时可进化成的最终形态。选定后本大轮内锁定。
 scripts/gamedata/glossary.gd|lit|时间停止
 scripts/gamedata/glossary.gd|lit|星波
-scripts/gamedata/glossary.gd|lit|星际龟的技能：以自身为中心放出一圈向外扩散的环形波。
+scripts/gamedata/glossary.gd|lit|星际龟的技能：以自身为中心释放一圈向外扩散的环形波。
 scripts/gamedata/glossary.gd|lit|星际龟的技能：扭曲一片区域的空间。
-scripts/gamedata/glossary.gd|lit|普攻给敌人施加的层。满层即引爆，按那名敌人的最大生命值造成真实伤害。
+scripts/gamedata/glossary.gd|lit|普通攻击对敌人施加的层数。达到最大层数时引爆，造成基于该敌人最大生命值的真实伤害。
 scripts/gamedata/glossary.gd|lit|最终造物
-scripts/gamedata/glossary.gd|lit|枪羁绊：每打出若干发普通子弹后接一发金弹，它继承那一发的全部效果并额外附带真实伤害。
-scripts/gamedata/glossary.gd|lit|每挨一段攻击就反弹一份魔法伤害给攻击者。持续伤害不计，多段攻击每段单独算。
+scripts/gamedata/glossary.gd|lit|枪羁绊：每发射若干发普通子弹后发射一发金弹，金弹继承该发子弹的全部效果并额外造成真实伤害。
+scripts/gamedata/glossary.gd|lit|每次受到一段攻击时，对攻击者反弹一次魔法伤害。持续伤害不会触发此效果，多段攻击的每一段单独触发。
 scripts/gamedata/glossary.gd|lit|气环
-scripts/gamedata/glossary.gd|lit|永久不衰减的护盾。它存在期间自身化身蛋糕礼盒：射程变近战，普攻与技能也换成礼盒专属的。
-scripts/gamedata/glossary.gd|lit|沙漏放出的全场定格：除持有全场最高星沙漏的那只龟之外，所有单位、弹道、特效一律静止。
+scripts/gamedata/glossary.gd|lit|永久不衰减的护盾。护盾存在期间，自身变为蛋糕礼盒：射程变为近战，普通攻击与技能也替换为礼盒专属版本。
+scripts/gamedata/glossary.gd|lit|沙漏释放的全场定格：除持有全场最高星级沙漏的龟之外，所有单位、弹道与特效全部静止。
 scripts/gamedata/glossary.gd|lit|海胆护盾
-scripts/gamedata/glossary.gd|lit|海胆每受一次伤害就叠一层硬化，层数满时给自己的护盾，之后会在几秒内逐渐衰减掉。
+scripts/gamedata/glossary.gd|lit|海胆每次受到伤害时叠加一层硬化，层数达到上限时为自身提供的护盾，随后在数秒内逐渐衰减。
 scripts/gamedata/glossary.gd|lit|涨潮
 scripts/gamedata/glossary.gd|lit|灵能冲击
-scripts/gamedata/glossary.gd|lit|猎人龟打上的猎杀印记。被标记的敌人，处决线会抬高。
-scripts/gamedata/glossary.gd|lit|生命跌破阈值时获得的一次性护盾，会在几秒内线性衰减掉。
-scripts/gamedata/glossary.gd|lit|登场一段时间后进入的强化状态：最大生命值与攻击力大幅提升，体型也变大。
-scripts/gamedata/glossary.gd|lit|登场时给予敌人的枪。持枪者属性提升，但每次普攻损失自身生命。
-scripts/gamedata/glossary.gd|lit|直升机龟能满时的大招：沿一条覆盖敌人最多的航线飞过，一路投弹。
+scripts/gamedata/glossary.gd|lit|猎人龟施加的猎杀印记。被标记的敌人处决线提高。
+scripts/gamedata/glossary.gd|lit|生命值低于阈值时获得的一次性护盾，在数秒内线性衰减。
+scripts/gamedata/glossary.gd|lit|登场一段时间后进入的强化状态：最大生命值与攻击力大幅提升，体型变大。
+scripts/gamedata/glossary.gd|lit|登场时给予敌人的枪。持枪者属性提升，但每次普通攻击会损失生命值。
+scripts/gamedata/glossary.gd|lit|直升机龟的龟能充满时施放的大招：沿覆盖敌人最多的航线飞行，沿途投弹。
 scripts/gamedata/glossary.gd|lit|真火
 scripts/gamedata/glossary.gd|lit|破损
 scripts/gamedata/glossary.gd|lit|精准射击
@@ -124,8 +124,8 @@ scripts/gamedata/glossary.gd|lit|终极护盾
 scripts/gamedata/glossary.gd|lit|腐蚀
 scripts/gamedata/glossary.gd|lit|融合
 scripts/gamedata/glossary.gd|lit|诅咒
-scripts/gamedata/glossary.gd|lit|财神龟用过【梭哈】之后那个技能槽变成的护盾技能：护盾值按当前金币数折算，不花金币，持盾期间锁住龟能。
-scripts/gamedata/glossary.gd|lit|赌神龟生命低于阈值时【赌注】的替代行为：不甩牌、不消耗生命，改为回血。
+scripts/gamedata/glossary.gd|lit|财神龟施放【梭哈】后，该技能槽转变成的护盾技能：护盾值基于当前金币数，不消耗金币，持有护盾期间锁定龟能。
+scripts/gamedata/glossary.gd|lit|赌神龟生命值低于阈值时【赌注】的替代效果：不甩牌、不消耗生命值，转而回复生命值。
 scripts/gamedata/glossary.gd|lit|进化被动
 scripts/gamedata/glossary.gd|lit|退潮
 scripts/gamedata/glossary.gd|lit|金弹
@@ -133,15 +133,14 @@ scripts/gamedata/glossary.gd|lit|金盾
 scripts/gamedata/glossary.gd|lit|锤击
 scripts/gamedata/glossary.gd|lit|靶子
 scripts/gamedata/glossary.gd|lit|龟盾
-scripts/gamedata/minion_codex.gd|lit|500 码内有敌人就举拳蓄力 0.35 秒，随后一锤砸地，对身前 60° 锥形 500 码内造成 [color=#ff9f43]4×攻击力[/color] 魔法伤害；每第 3 次改为高高跃起、空中蓄力 1 秒后下锤，覆盖 700 码全域并造成 [color=#ff9f43]6×攻击力[/color] 魔法伤害。
+scripts/gamedata/minion_codex.gd|lit|500 码内有敌人时举拳蓄力 0.35 秒，随后砸向地面，对前方 60° 锥形范围内 500 码的敌人造成 [color=#ff9f43]4×攻击力[/color] 的魔法伤害。每第 3 次施放时转而高高跃起，在空中蓄力 1 秒后砸下，对 700 码内的全部敌人造成 [color=#ff9f43]6×攻击力[/color] 的魔法伤害。
 scripts/gamedata/minion_codex.gd|lit|人体浪板
 scripts/gamedata/minion_codex.gd|lit|前排 · 近战
 scripts/gamedata/minion_codex.gd|lit|后排 · 远程
 scripts/gamedata/minion_codex.gd|lit|吞噬
-scripts/gamedata/minion_codex.gd|lit|普攻造成 1×攻击力 物理伤害，每第 5 击附带旋刃。
-scripts/gamedata/minion_codex.gd|lit|每 5 秒一次：锁住 150~350 码之间的敌人，链射命中后把它眩晕 0.4 秒、拉到自己身后，并造成 1×攻击力 魔法伤害。
-scripts/gamedata/minion_codex.gd|lit|目标生命低于 15% 时发动，吞噬的这 1.5 秒里自身获得 [color=#ff9f43]95% 伤害减免[/color]，完成后回复 [color=#ff9f43]目标剩余生命的 2 倍[/color]，并获得持续 5 秒的 50% 攻速提升，同时窃取目标的主动技能。普攻、铁锁、铁拳与强化普攻都能触发。
-scripts/gamedata/minion_codex.gd|lit|盯上 2000 码内的一个敌人：高高跃起，一边起跳一边回复 2×攻击力 生命（离得太近就先往后跳开拉出距离），跟着射出铁链把它眩晕，再把自己拉过去；接触瞬间造成 [color=#ff9f43]目标 10% 最大生命[/color] 物理伤害，随后踩着目标滑行——对被踩者持续造成 2×攻击力 物理伤害，沿途敌人受到 1.5×攻击力 物理伤害并被击退，最后跳下。
+scripts/gamedata/minion_codex.gd|lit|普通攻击造成 1×攻击力 的物理伤害，每第 5 次攻击附带旋刃。
+scripts/gamedata/minion_codex.gd|lit|每 5 秒一次：锁定 150~350 码之间的敌人，射出锁链，命中后将其眩晕 0.4 秒并拉至自身后方，造成 1×攻击力 的魔法伤害。
+scripts/gamedata/minion_codex.gd|lit|目标生命值低于 15% 时发动吞噬，持续 1.5 秒，期间自身获得 [color=#ff9f43]95% 伤害减免[/color]。吞噬完成后回复 [color=#ff9f43]目标剩余生命的 2 倍[/color]，获得 50% 攻击速度提升，持续 5 秒，并窃取目标的主动技能。普通攻击、铁锁、铁拳与强化普通攻击均可触发。
 scripts/gamedata/minion_codex.gd|lit|精英 · 近战
 scripts/gamedata/minion_codex.gd|lit|精英小将
 scripts/gamedata/minion_codex.gd|lit|近战小将
@@ -149,8 +148,9 @@ scripts/gamedata/minion_codex.gd|lit|远程小将
 scripts/gamedata/minion_codex.gd|lit|追踪火箭筒
 scripts/gamedata/minion_codex.gd|lit|铁锁
 scripts/gamedata/minion_codex.gd|lit|铁锤
-scripts/gamedata/minion_codex.gd|lit|锁上 2000 码内的敌人，蓄力 1.5 秒后发射一枚慢速追踪导弹，命中处核爆：400 码范围内造成 [color=#ff9f43]4×攻击力[/color] 物理伤害，并使命中的敌人受到的治疗降低 50%，持续 4 秒。
-scripts/gamedata/minion_codex.gd|lit|长手刃 · 普攻
+scripts/gamedata/minion_codex.gd|lit|锁定 2000 码内的一个敌人并跃起，起跳时回复 2×攻击力 的生命值，距离过近时先向后跳开。随后射出铁链眩晕该敌人并将自身拉向目标，接触时造成 [color=#ff9f43]目标 10% 最大生命[/color] 的物理伤害。之后踩着目标滑行，对其持续造成 2×攻击力 的物理伤害，并对沿途敌人造成 1.5×攻击力 的物理伤害并将其击退，最后跳下。
+scripts/gamedata/minion_codex.gd|lit|锁定 2000 码内的敌人，蓄力 1.5 秒后发射一枚慢速追踪导弹，命中时引发核爆，对 400 码范围内的敌人造成 [color=#ff9f43]4×攻击力[/color] 的物理伤害，并使其受到的治疗效果降低 50%，持续 4 秒。
+scripts/gamedata/minion_codex.gd|lit|长手刃
 scripts/gamedata/phase2_config.gd|lit| · 不联网
 scripts/gamedata/phase2_config.gd|lit|\n未收到验证码？请检查垃圾邮件，或返回更换邮箱。
 scripts/gamedata/phase2_config.gd|lit|\n未绑定时进度仅保存在本设备。邮箱与昵称可随时修改。
@@ -1360,19 +1360,18 @@ scripts/scenes/codex/detail_views.gd|lit|切换至火山形态
 scripts/scenes/codex/detail_views.gd|lit|切换至近战形态
 scripts/scenes/codex/detail_views.gd|lit|切换至远程形态
 scripts/scenes/codex/detail_views.gd|lit|同类装备
-scripts/scenes/codex/detail_views.gd|lit|基础 · 普攻
 scripts/scenes/codex/detail_views.gd|lit|增益
 scripts/scenes/codex/detail_views.gd|lit|射程
 scripts/scenes/codex/detail_views.gd|lit|属性
-scripts/scenes/codex/detail_views.gd|lit|开局三选一
+scripts/scenes/codex/detail_views.gd|lit|技能
 scripts/scenes/codex/detail_views.gd|lit|护甲
 scripts/scenes/codex/detail_views.gd|lit|持续伤害
 scripts/scenes/codex/detail_views.gd|lit|控制
 scripts/scenes/codex/detail_views.gd|lit|收起
 scripts/scenes/codex/detail_views.gd|lit|攻击
 scripts/scenes/codex/detail_views.gd|lit|效果
-scripts/scenes/codex/detail_views.gd|lit|普攻 · %s
-scripts/scenes/codex/detail_views.gd|lit|未解锁
+scripts/scenes/codex/detail_views.gd|lit|普通攻击
+scripts/scenes/codex/detail_views.gd|lit|普通攻击 · %s
 scripts/scenes/codex/detail_views.gd|lit|查看全部
 scripts/scenes/codex/detail_views.gd|lit|每秒攻击
 scripts/scenes/codex/detail_views.gd|lit|每级生命与攻击 ×1.05，护甲与魔抗不变
@@ -1474,7 +1473,7 @@ scripts/scenes/team_select/skill_picker.gd|lit|已选
 scripts/scenes/team_select/skill_picker.gd|lit|普攻（自动释放）
 scripts/scenes/team_select/skill_picker.gd|lit|未解锁
 scripts/scenes/team_select/skill_picker.gd|text|技能
-scripts/scenes/team_select/skill_picker.gd|text|选择 1 个技能（共 %d 个）
+scripts/scenes/team_select/skill_picker.gd|text|选择 1 个技能
 scripts/scenes/team_select/skill_picker.gd|text|选择 · %s
 scripts/scenes/team_select/skill_picker.gd|tooltip_text|未解锁
 scripts/scenes/tutorial_choice.gd|lit|取消

@@ -169,7 +169,7 @@ func _text() -> void:
 	_chk("② 文案·冰霜旧值 {M:0.18*ATK} 已消失", not frost.contains("{M:0.18*ATK}"))
 	# 冰柱攻速(写在普攻【冰锥】的文案里)
 	_chk("② 文案·冰柱每层 +5% 攻速",
-		spike.contains("+5% 攻速") and spike.contains("+5% 攻击速度"))
+		spike.contains("+5% 攻击速度"))   # 2026-10-08 体例改写: 简述里的缩写「攻速」统一成「攻击速度」
 	_chk("② 文案·冰柱旧值 +3% 已消失",
 		not spike.contains("+3% 攻速") and not spike.contains("+3% 攻击速度"))
 	# 糖衣炮弹护盾（★"2%"在同段里还用于伤害, 所以连上下文一起查）
@@ -203,7 +203,7 @@ func _text() -> void:
 	_chk("② ★文案·镰刀横扫写明 3 秒诅咒", soul.contains("3 秒诅咒") or soul.contains("3秒诅咒"))
 	_chk("② ★文案·镰刀横扫写明击退", soul.contains("击退"))
 	_chk("② ★文案·灵魂打击写明锁龟能",
-		soul.contains("锁龟能") or soul.contains("重新开始充能") or soul.contains("不充能"))
+		soul.contains("锁龟能") or soul.contains("龟能锁定") or soul.contains("重新开始充能") or soul.contains("不充能"))
 
 
 ## ③ 本轮故意不动的 —— 用户 2026-07-30 逐字:「那就不动普攻附带的伤害」

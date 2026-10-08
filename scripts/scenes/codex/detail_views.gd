@@ -15,43 +15,39 @@ func _show_minion(kind: String) -> void:
 	var mi: Dictionary = host.MINION_INFO.get(kind, {})
 	if mi.is_empty():
 		return
-	host._add_image(100, 110, "res://assets/sprites/pets/%s" % mi["img"], 170, 170, true)
-	var mid_x = 220.0
-	host._add_text(mid_x, 30, str(mi["name"]), 32, "#ffd93d", 0.0, 0.5, true)
+	## ★2026-10-08 两栏, 与龟页同一套: 左栏立绘 + 名字/签牌 + 属性方块条, 右栏说明 + 技能 + 被动。
+	host._add_image(95, 100, "res://assets/sprites/pets/%s" % mi["img"], 160, 160, true)
 	## ★★2026-09-27 抬头与龟页同一套: 名字 + 一排签牌, 不再是「深海小将   近战」这种
 	##   "字段名 + 值"的两段式(用户: 图鉴「全是 ai 味和网页味, 文字语言也是」)。
-	var _mcx: float = mid_x
-	_mcx += _tag_chip(_mcx, 84.0, "深海小将", "#9fb6c9") + 8.0
-	_mcx += _tag_chip(_mcx, 84.0, str(mi["role"]), "#58d3ff") + 8.0
-	## 两句说明改口语: 原文「非统领单位 · 不可选入阵容 · 由系统补位生成」「…×1.05 复利成长,
-	## 双抗为定值」—— "非统领单位""复利成长""定值"都是开发者/说明书用词, 不是游戏里的话。
-	host._add_text(mid_x, 122, "不可编入阵容 · 开战时自动登场", 13, "#7a8a96", 0.0, 0.5)
-	host._add_text(mid_x, 148, "每级生命与攻击 ×1.05，护甲与魔抗不变", 13, "#7a8a96", 0.0, 0.5)
-	# 属性牌 2 列 × 4 行 (Lv1 值) —— 与龟页共用 _stat_plaque, 不在这里另摆一套表格
+	_left_header(str(mi["name"]), [{"kind": "tag", "text": "深海小将", "color": "#9fb6c9"},
+		{"kind": "tag", "text": str(mi["role"]), "color": "#58d3ff"}])
+	# 属性 7 行 (Lv1 值) —— 与龟页共用 _stat_rows, 不在这里另摆一套表格
 	var rows = [
 		{"key": "hp", "label": "生命", "disp": str(mi["hp"]), "color": "#06d6a0"},
 		{"key": "atk", "label": "攻击", "disp": str(mi["atk"]), "color": "#ff9f43"},
 		{"key": "def", "label": "护甲", "disp": str(mi["def"]), "color": "#ffd93d"},
 		{"key": "mr", "label": "魔抗", "disp": str(mi["mr"]), "color": "#4dabf7"},
+		## 顺序与龟页同一套(…魔抗 / 移速 / 每秒攻击 / 射程)。
+		{"key": "move", "label": "移速", "disp": str(mi["spd"]), "color": "#8fd4ff"},
 		## ★与龟页同一个单位(「每秒攻击」= 1 / 攻击间隔), 原来这里单独写「间隔 0.85 秒」(2026-10-07 H)。
 		{"key": "aspd", "label": "每秒攻击", "disp": "%.2f" % (1.0 / maxf(0.01, float(mi["interval"]))), "color": "#ff9ecb"},
 		{"key": "range", "label": "射程", "disp": str(mi["range"]), "color": "#d6e4f0"},
-		{"key": "move", "label": "移速", "disp": str(mi["spd"]), "color": "#8fd4ff"},
 	]
-	for i in range(rows.size()):
-		_stat_plaque(STAT_COL_X + float(i % 2) * (STAT_CARD_W + STAT_GAP),
-			22.0 + float(i / 2) * (STAT_CARD_H + STAT_GAP), rows[i])
-	## 4 行牌子排到 y=235 —— 分隔线跟着往下(原来写死 195, 会被第 4 行压住)。
-	host._add_rect(host.DETAIL_W / 2.0, 248.0, host.DETAIL_W - 40, 1, "#ffd93d", 0.4)
+	_col_divider(_stat_rows(rows))
+	## 两句说明改口语: 原文「非统领单位 · 不可选入阵容 · 由系统补位生成」「…×1.05 复利成长,
+	## 双抗为定值」—— "非统领单位""复利成长""定值"都是开发者/说明书用词, 不是游戏里的话。
+	## (两栏后挪到右栏顶: 左栏抬头只有 180 宽, 放不下这两句)
+	host._add_text(RCOL_X + 4.0, 26, "不可编入阵容 · 开战时自动登场", 13, "#7a8a96", 0.0, 0.5)
+	host._add_text(RCOL_X + 4.0, 48, "每级生命与攻击 ×1.05，护甲与魔抗不变", 13, "#7a8a96", 0.0, 0.5)
 	# 技能 + 被动
-	var y = 268.0
+	var y = 72.0
 	## ★2026-10-07 H: 技能抬头与龟页同一套 —— [技能图标] 名字 + 「主动 · 龟能 N」(龟页卡片 chip 同一句式);
 	##   原来是「技能 · 人体浪板  (120 龟能)」, 而 MinionCodex 里新加的 skill_icon 图鉴一直没画。
-	var _sx: float = 20.0
+	var _sx: float = RCOL_X
 	var _sic: String = str(mi.get("skill_icon", ""))
 	if _sic.ends_with(".png") and ResourceLoader.exists("res://assets/sprites/%s" % _sic):
-		host._add_image(36.0, y + 12.0, "res://assets/sprites/%s" % _sic, 32, 32)
-		_sx = 60.0
+		host._add_image(RCOL_X + 16.0, y + 12.0, "res://assets/sprites/%s" % _sic, 32, 32)
+		_sx = RCOL_X + 40.0
 	var _snl: Variant = host._add_text(_sx, y + 12.0, str(mi["skill_name"]), 17, "#ffd93d", 0.0, 0.5, true)
 	var _scx: float = _sx + 90.0
 	if _snl is Control:
@@ -60,7 +56,7 @@ func _show_minion(kind: String) -> void:
 	y += 34.0
 	y = _minion_body(str(mi["skill_desc"]), y) + 18.0
 	for pv in mi.get("passives", []):
-		host._add_text(20, y, "被动 · %s" % str(pv["name"]), 17, "#58d3ff", 0.0, 0.0, true)
+		host._add_text(RCOL_X, y, "被动 · %s" % str(pv["name"]), 17, "#58d3ff", 0.0, 0.0, true)
 		y += 28.0
 		y = _minion_body(str(pv["desc"]), y) + 16.0
 
@@ -68,8 +64,8 @@ func _show_minion(kind: String) -> void:
 func _minion_body(txt: String, y: float) -> float:
 	var rt = RichTextLabel.new()
 	rt.bbcode_enabled = true; rt.fit_content = true; rt.scroll_active = false
-	rt.position = Vector2(20, y)
-	rt.custom_minimum_size = Vector2(host.DETAIL_W - 40, 0)
+	rt.position = Vector2(RCOL_X, y)
+	rt.custom_minimum_size = Vector2(_rw(), 0)
 	rt.add_theme_font_size_override("normal_font_size", 16)
 	rt.add_theme_constant_override("line_separation", 5)
 	rt.add_theme_color_override("default_color", Color("#e8f2ff"))
@@ -161,38 +157,145 @@ func _tag_chip(x: float, cy: float, txt: String, col: String) -> float:
 ## ★行高 36 = 32 + 4 的行间缝; 原来是 26(那时行里只有一个 emoji 字符)。
 const MEMBER_ICON := 32.0
 const MEMBER_ROW := 36.0
-const STAT_COL_X := 500.0
-const STAT_CARD_W := 186.0
-const STAT_CARD_H := 48.0
-const STAT_GAP := 7.0
+## ═══ 两栏骨架(2026-10-08 用户「右侧布局需要重新设计」) ═══
+## 左栏 0~LCOL_W: 立绘 + 名字/签牌 + 属性方块条; 右栏 RCOL_X~(DETAIL_W-20): 被动 / 普攻 / 开局三选一(竖排)。
+## 方案书 docs/plans/20261008-图鉴龟页右侧重排.md。
+const LCOL_W := 370.0
+const RCOL_X := 386.0
 
-## 一块属性牌: [图标] 大数字  小字名。
+## 右栏宽(右缘与原来整宽版式同一条线 DETAIL_W - 20)。
+func _rw() -> float:
+	return float(host.DETAIL_W) - 20.0 - RCOL_X
+
+## 属性方块: 每格代表多少。用户 2026-10-08 原话「100生命值一格，10攻击力一格」, 看过实拍后改「攻击力按6，双抗按2」;
+##   移速 10、每秒攻击 0.1 经 AskUserQuestion 拍板; 射程(只有小将页有)是我定的 100。
+## ★只画满格(用户选「只画满格」): 945 生命 = 9 格, 零头看旁边的数字。
+const STAT_BLOCK_UNIT := {"hp": 100.0, "atk": 6.0, "def": 2.0, "mr": 2.0, "move": 10.0, "aspd": 0.1, "range": 100.0}
+const STAT_ROW_Y0 := 196.0
+const STAT_ROW_H := 46.0
+const BLOCK_X0 := 22.0
+const BLOCK_W := 16.0
+const BLOCK_H := 14.0
+const BLOCK_GAP := 4.0
+## 每 5 格多空一点, 一眼数得出「几个 5」(战斗血条 1000 大刻度 / 100 小刻度是同一个思路)。
+const BLOCK_GROUP_GAP := 4.0
+
+## 一格属性该画几格: floor(屏上数值 / 单位)。拿【屏上那个数】算, 不拿原始浮点 ——
+##   每秒攻击屏上写 0.70, 原始值 0.7000001 或 0.6999999 都必须画 7 格。+1e-6 吃掉 0.7/0.1 = 6.9999 的浮点尾巴。
+static func stat_block_count(key: String, disp: String) -> int:
+	var unit: float = float(STAT_BLOCK_UNIT.get(key, 0.0))
+	if unit <= 0.0 or not disp.is_valid_float():
+		return 0
+	return maxi(0, int(floorf(float(disp) / unit + 1e-6)))
+
+## 一行属性: 上层 [图标] 数值 小字名(左对齐挨着), 下层一排方块。
 ##
-## ★★原来这一块是 6 行 `图标 + 名词 + 右对齐数字 + 一长串小方块` ——
-##   用户 2026-09-27:「全是 ai 味和网页味」。那串方块是**条形图**(hp 945/40 = 23 个),
-##   名词在左、数字在右、后面拖一条进度条 = 后台仪表盘的标准长相。
-## ★条【直接去掉】而不是改成"5 格像素刻度": 5 格刻度得先有个"满格是多少"的标尺,
-##   而那个数只能由我拍(memory `fb-my-thresholds-degrade-good-assets`: 我拍的阈值会把好素材改坏)。
-##   数字本身就是精确信息, 条只是把同一个数再画一遍 —— 去掉不丢任何东西。
-## ★名词降到 13px 暗灰、排在数字**右边**(不是上/下): 上下排会和大数字的字块竖着相交,
-##   门禁的"文字压字"判据按面积比算, 那就是一条真命中。
-func _stat_plaque(px: float, py: float, st: Dictionary) -> void:
-	_plaque(px, py, STAT_CARD_W, STAT_CARD_H, str(st["color"]))
-	var _iconp: String = "res://assets/sprites/stats/%s-icon.png" % str(st["key"])
-	var vx: float = px + 16.0
+## ★★2026-09-27 用户否过一版「名词在左、数字在右、后面拖一串小方块(945/40 = 23 个)」——
+##   「全是 ai 味和网页味」: 那是后台仪表盘的长相。这次方块是用户自己要的(单位也是他给的),
+##   但长相不退回去: 不做名左数右、不画空槽底轨、方块是带亮边/暗边的像素砖, 不是扁平进度条。
+## ★名词 13px 暗灰排在数字**右边**: 与原属性牌同一个读法(先看数, 再看是什么)。
+func _stat_row(y: float, st: Dictionary) -> void:
+	var key: String = str(st["key"])
+	var col: Color = Color(str(st["color"]))
+	var _iconp: String = "res://assets/sprites/stats/%s-icon.png" % key
+	var vx: float = BLOCK_X0
 	if ResourceLoader.exists(_iconp):   # 缺图只显文字, 不崩
-		## ★`host` 没有类型标注 ⇒ 这个调用是动态派发, 返回 Variant, 不能用 `:=` 推断
-		##   (2026-10-01 实测: 写成 `var _ir :=` 当场 Parse Error, 而**门禁全绿** ——
-		##    verify_stat_icon_color 不载入 CodexScene, 是真跑了一次图鉴才照出来的)。
-		var _ir: Variant = host._add_image(px + 26.0, py + STAT_CARD_H / 2.0, _iconp, 26, 26)
+		## ★`host` 没有类型标注 ⇒ 动态派发返回 Variant, 不能用 `:=` 推断(2026-10-01 Parse Error 那次)。
+		var _ir: Variant = host._add_image(BLOCK_X0 + 11.0, y + 10.0, _iconp, 22, 22)
 		if _ir is TextureRect:
 			(_ir as TextureRect).modulate = SkillText.stat_icon_color_of(_iconp)   # 纯白模板→按属性固定色
-		vx = px + 48.0
+		vx = BLOCK_X0 + 30.0
 	var disp: String = str(st["disp"])
-	host._add_text(vx, py + STAT_CARD_H / 2.0, disp, 22, str(st["color"]), 0.0, 0.5, true)
-	## 14/字 是**上沿**估值(m6x11 像素字在 22px 下每个数字约 12px), 宁可多留也不让两块字相交。
-	host._add_text(vx + float(disp.length()) * 14.0 + 12.0, py + STAT_CARD_H / 2.0 + 2.0,
-		str(st["label"]), 13, "#8c9cab", 0.0, 0.5)
+	var num: Label = host._add_text(vx, y + 10.0, disp, 20, str(st["color"]), 0.0, 0.5, true)
+	num.set_meta("stat_num", key)
+	var nw: float = num.get_combined_minimum_size().x
+	host._add_text(vx + nw + 8.0, y + 11.0, str(st["label"]), 13, "#8c9cab", 0.0, 0.5)
+	_stat_blocks(y + 24.0, key, stat_block_count(key, disp), col)
+
+## 一排方块。超出左栏可用宽度时等比收窄(满级生命 15 格正常放得下, 这是给临时等级加成留的退路)。
+func _stat_blocks(y: float, key: String, n: int, col: Color) -> void:
+	if n <= 0:
+		return
+	var avail: float = LCOL_W - 10.0 - BLOCK_X0
+	var need: float = float(n) * (BLOCK_W + BLOCK_GAP) - BLOCK_GAP + float((n - 1) / 5) * BLOCK_GROUP_GAP
+	var k: float = minf(1.0, avail / need)
+	var bw: float = BLOCK_W * k
+	var x: float = BLOCK_X0
+	var hi: Color = col.lightened(0.35)
+	var lo: Color = col.darkened(0.45)
+	for i in range(n):
+		if i > 0:
+			x += (BLOCK_W + BLOCK_GAP) * k
+			if i % 5 == 0:
+				x += BLOCK_GROUP_GAP * k
+		var body := ColorRect.new()
+		body.color = col
+		body.position = Vector2(x, y)
+		body.size = Vector2(bw, BLOCK_H)
+		body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		body.set_meta("stat_block", key)   # 门禁 verify_codex_stat_blocks 按它数格
+		host.detail.add_child(body)
+		## 像素砖: 顶 2px 亮边 + 底 3px 暗边(画在砖内, 不另占地方)
+		for band in [[0.0, 2.0, hi], [BLOCK_H - 3.0, 3.0, lo]]:
+			var r := ColorRect.new()
+			r.color = band[2]
+			r.position = Vector2(x, y + float(band[0]))
+			r.size = Vector2(bw, float(band[1]))
+			r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			host.detail.add_child(r)
+
+## 左栏整列属性(龟 6 行 / 小将 7 行)。返回最后一行的底边。
+func _stat_rows(rows: Array) -> float:
+	var y: float = STAT_ROW_Y0
+	for st in rows:
+		_stat_row(y, st)
+		y += STAT_ROW_H
+	return y - STAT_ROW_H + 24.0 + BLOCK_H
+
+## 左栏抬头: 立绘 + 名字 + 一排签牌(放不下就换行)。立绘/名字的位置龟页与小将页同一套。
+func _left_header(name_txt: String, chips: Array) -> void:
+	var mid_x := 190.0
+	host._add_text(mid_x, 34, name_txt, 32, "#ffd93d", 0.0, 0.5, true)
+	var cx: float = mid_x
+	var cy: float = 88.0
+	for c in chips:
+		var w: float = 0.0
+		if str(c["kind"]) == "badge":
+			w = BADGE_PX
+		else:
+			w = maxf(58.0, float(str(c["text"]).length()) * 16.0 + 26.0)   # 与 _tag_chip 同一个估宽
+		if cx > mid_x and cx + w > LCOL_W - 6.0:
+			cx = mid_x
+			cy += 48.0
+		if str(c["kind"]) == "badge":
+			_rarity_badge(cx + BADGE_PX / 2.0, cy, str(c["text"]), str(c["color"]))
+		else:
+			_tag_chip(cx, cy, str(c["text"]), str(c["color"]))
+		cx += w + 8.0
+
+## ★★2026-10-08 右栏去框(用户:「这些框框真的丑，哪个游戏这么排的」)。参考 `docs/plans/ref/20261006-云顶装备弹窗/` 1、2:
+##   Riot 检视面板设计稿 / 云顶实机 —— 技能是「图标 + 名字」一行, 区块之间只用一条细线, **没有一层套一层的框**;
+##   战斗信息面板(info_panel.gd, 10-06 用户拍板)也是这一套。⇒ 被动 / 普通攻击 / 技能 每项一行、无底框, 项与项之间一条细线。
+## 一行的底板: 不画任何东西(StyleBoxEmpty), 只占位 —— 点击区/门禁按节点认它, 但画面上它不存在。
+func _flat_row(x: float, y: float, w: float, h: float, nm: String = "") -> Panel:
+	var p := Panel.new()
+	if nm != "":
+		p.name = nm
+	p.position = Vector2(x, y)
+	p.custom_minimum_size = Vector2(w, h)
+	p.size = p.custom_minimum_size
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	host.detail.add_child(p)
+	return p
+
+## 右栏里项与项之间那条细线(与两栏竖分隔线同色同透明度)。
+func _row_rule(y: float) -> Panel:
+	return host._add_rect(RCOL_X + _rw() / 2.0, y, _rw(), 1, "#ffd93d", 0.3)
+
+## 两栏之间一条竖分隔线。
+func _col_divider(bottom: float) -> void:
+	host._add_rect(LCOL_W + 8.0, (16.0 + bottom) / 2.0, 1, bottom - 16.0, "#ffd93d", 0.3)
 
 
 func _show_pet(pet: Dictionary) -> void:
@@ -200,10 +303,9 @@ func _show_pet(pet: Dictionary) -> void:
 	var rarity: String = pet.get("rarity", "C")
 	var rarity_color: String = host.RARITY_COLOR.get(rarity, "#ffffff")
 	var ctx = host._ctx_for(pet)
-	var divider_y: float = 195.0
 
-	# 1) 立绘 170×170 @(100,110) — 全身 idle 动画 sprite (1:1 PoC showPetDetail:285-296), 非头像
-	host._add_pet_portrait(100, 110, pet, 170.0)
+	# 1) 立绘 160 —— 左栏左上(2026-10-08 两栏) · 全身 idle 动画 sprite, 非头像
+	host._add_pet_portrait(95, 100, pet, 160.0)
 
 	# 2) 名字 y30 32px 金 bold。
 	## ★★2026-09-27 抬头改「名字 + 一排牌子」(用户: 图鉴「全是 ai 味和网页味」)。
@@ -214,20 +316,18 @@ func _show_pet(pet: Dictionary) -> void:
 	##   —— 「稀有度」「定位」两个词只是在给旁边那个值当字段名, 玩家一个都不需要读,
 	##   而「C」在游戏里从来不是一个"字段的值", 它是**一块牌子**。
 	##   现在: 名字独占一行, 下面一排 [稀有度牌][Lv 签][定位签] —— 牌/签的形状自己说明是什么。
-	var mid_x = 220.0
 	## ★等级牌显示【战斗真正用的等级】(2026-10-07 J): 原来读 `pet_levels`(战斗不读它; 写它的调试面板已删)。
 	var lv: int = int(ctx.get("lv", 1))
-	host._add_text(mid_x, 30, str(pet.get("name", "?")), 32, "#ffd93d", 0.0, 0.5, true)
 	# ★tag 区已删(用户2026-07-23 点5): 守护/元素/物理/法术等 10 种标签全是凑羁绊的, 龟间羁绊已废 → 全去。
 	#   腾出的位置给【定位】(用户2026-07-28: 定位是移速/攻速的权威事实源, 玩家该看得到)。
 	var _role: String = str(host.TurtleStats.ROLE.get(str(pet.get("id", "")), ""))
-	_rarity_badge(mid_x + BADGE_PX / 2.0, 84.0, rarity, rarity_color)
-	var _chip_x: float = mid_x + BADGE_PX + 10.0
-	_chip_x += _tag_chip(_chip_x, 84.0, "Lv %d" % lv, "#ffd93d") + 8.0
+	var _chips: Array = [{"kind": "badge", "text": rarity, "color": rarity_color},
+		{"kind": "tag", "text": "Lv %d" % lv, "color": "#ffd93d"}]
 	if _role != "":
-		_chip_x += _tag_chip(_chip_x, 84.0, _role, "#9ad0ff") + 8.0
+		_chips.append({"kind": "tag", "text": _role, "color": "#9ad0ff"})
+	_left_header(str(pet.get("name", "?")), _chips)
 
-	# 3) 属性牌 2 列 × 3 行 (原来是 6 行「名词 : 数字 + 一长串方块」)。
+	# 3) 属性: 左栏 6 行「数值 + 方块」(2026-10-08; 原来是右上 2×3 属性牌)。
 	# ★四项主属性直接取 `ctx`(= host._ctx_for, 与战斗生成的单位同口径: 只吃等级缩放, 不乘稀有度)。
 	#   2026-10-07 之前这里另乘了一份 rarity_mult ⇒ 非 C 龟虚高 3~15%(战斗从不乘它)。
 	# ★移速/攻速(点5): 从 host.TurtleStats.STATS 单一事实源读, 与战斗同口径 ——
@@ -236,9 +336,14 @@ func _show_pet(pet: Dictionary) -> void:
 	var _ts: Array = host.TurtleStats.STATS.get(_tid, [])
 	var _mspd: int = int(round(float(_ts[1]))) if _ts.size() > 1 else 0
 	var _aspd: float = (1.0 / float(_ts[2])) * (1.0 + 0.02 * float(lv - 1)) if _ts.size() > 2 and float(_ts[2]) > 0.0 else 0.0
+	## ★射程(2026-10-08 用户「射程要么都显示啊，怎么只有小将有？」): 印【出生时实际生效】的值 ——
+	##   与 battle_spawn._make_unit 同一条规则: 近战抬到 ≥ MELEE_ATK_RANGE_MIN, 远程照表(门禁 verify_codex_battle_parity 对真单位)。
+	var _rng: int = 0
+	if _ts.size() > 3:
+		_rng = int(round(maxf(float(_ts[3]), RealtimeBattle3DScene.MELEE_ATK_RANGE_MIN) if bool(_ts[0]) else float(_ts[3])))
 	## `label` 是牌子底下那行**小字说明**(13px 暗灰), 不再是"字段名: 值"里的字段名。
 	## ★★★2026-09-28 两件事一起收:
-	##  ① **`unit` 这个字段没人读** —— `_stat_plaque` 只读 `key/disp/label/color`
+	##  ① **`unit` 这个字段没人读** —— 当时的 `_stat_plaque`(2026-10-08 已换成 `_stat_row`)只读 `key/disp/label/color`
 	##    (2026-09-27 那版重写把它丢了、字段留在这里)。于是「次/秒」这三个字
 	##    **一直没上过屏**, 而它看着像在屏上 ⇒ 正是 memory `fb-write-without-reader`
 	##    那一类。直接删掉, 不再留一个只能骗人的字段。
@@ -257,44 +362,34 @@ func _show_pet(pet: Dictionary) -> void:
 		{"key": "mr", "label": "魔抗", "disp": str(int(ctx["mr"])), "color": "#4dabf7"},
 		{"key": "move", "label": "移速", "disp": str(_mspd), "color": "#8fd4ff"},
 		{"key": "aspd", "label": "每秒攻击", "disp": "%.2f" % _aspd, "color": "#ff9ecb"},
+		{"key": "range", "label": "射程", "disp": str(_rng), "color": "#d6e4f0"},
 	]
-	for i in stats.size():
-		var st: Dictionary = stats[i]
-		_stat_plaque(STAT_COL_X + float(i % 2) * (STAT_CARD_W + STAT_GAP),
-			22.0 + float(i / 2) * (STAT_CARD_H + STAT_GAP), st)
+	var stats_bottom: float = _stat_rows(stats)
+	_col_divider(stats_bottom)
 
-	# 8) 横分隔线 y195 宽 detailW-40 #ffd93d@0.4 1px
-	host._add_rect(host.DETAIL_W / 2.0, divider_y, host.DETAIL_W - 40, 1, "#ffd93d", 0.4)
-
-	# 9) 被动条 y213 高 PASSIVE_BAR_H · 0x12202a@0.55 + 被动icon 40×40@x50
+	# 9) 被动条(右栏顶) 高 PASSIVE_BAR_H · 两行: 标题行 + 简述一行
 	var passive: Dictionary = pet.get("passive", {})
-	var cards_y := divider_y + 87.0   # 无被动的龟(目前 0 只)也走同一个起点, 排版不跳
+	var rw: float = _rw()
+	var cards_y := 16.0   # 无被动的龟(目前 0 只)从右栏顶起
 	if not passive.is_empty():
-		var passive_y = divider_y + 18.0
-		# 选中态(被动展开): 边框亮黄 2px@1; 否则蓝 1px@0.5 (1:1 PoC CodexScene.ts:366-393)
-		var pbar_stroke: String = "#ffd93d" if host._codex_passive_view else "#58d3ff"
-		var pbar_sw: float = 2.0 if host._codex_passive_view else 1.0
-		var pbar_sa: float = 1.0 if host._codex_passive_view else 0.5
-		host._add_rect(host.DETAIL_W / 2.0, passive_y + PASSIVE_BAR_H / 2.0, host.DETAIL_W - 40, PASSIVE_BAR_H,
-			"#12202a", 0.55, pbar_stroke, pbar_sw, pbar_sa)
-		var mid_y: float = passive_y + PASSIVE_BAR_H / 2.0
-		var text_x = 30.0
+		var passive_y = 16.0
+		## ★2026-10-08 无框(见 _flat_row 上方): 展开态靠右端「收起」二字区分, 不再靠框色。
+		_flat_row(RCOL_X, passive_y, rw, PASSIVE_BAR_H, "PassiveBar")
+		var mid_y: float = passive_y + 19.0   # 标题行中线(与普攻条同一套几何)
+		var text_x = RCOL_X + 16.0
 		var pi_path: String = DataRegistry.passive_icons.get(passive.get("type", ""), "")
 		if pi_path != "":
 			if pi_path.ends_with(".png"):
-				## 同理: 被动条高 56、边带 13 ⇒ 内沿 30, 原来放 40 的图漫出 5px。
-				host._add_image(50, mid_y, "res://assets/sprites/%s" % pi_path, 30, 30)
-				text_x = 80.0
+				## 被动条九宫格边带 13 ⇒ 图标放 28, 不漫到边带上。
+				host._add_image(RCOL_X + 30.0, mid_y, "res://assets/sprites/%s" % pi_path, 28, 28)
+				text_x = RCOL_X + ROW_TEXT_X
 			else:
-				host._add_text(50, mid_y, pi_path, 32, "#ffffff", 0.5, 0.5)
-				text_x = 80.0
-		host._add_text(text_x, mid_y, "被动 · %s" % passive.get("name", ""), 20, "#58d3ff", 0.0, 0.5, true)
-		## ★★被动的简述【就画在条上】(2026-08-15, 用户点名的"同一屏两种交互")。
-		##   原来这一条只有标题 + 一句「点击查看 ▸」, 而右边四张技能卡是【直接摊开简述】的 ——
-		##   同一屏里同一类东西两种读法, 玩家还得先猜出被动是可以点的。
-		##   现在与技能卡完全同构: **条上给简述, 点开看全文**。
-		##   简述【横着放】(占标题右边那段本来空着的 500px), 所以条高只从 50 涨到 56 ——
-		##   技能卡一寸没让。竖着排会吃掉 40px, 那正是卡片最缺的。
+				host._add_text(RCOL_X + ROW_ICON_CX, mid_y, pi_path, 28, "#ffffff", 0.5, 0.5)
+				text_x = RCOL_X + ROW_TEXT_X
+		host._add_text(text_x, mid_y, "被动 · %s" % passive.get("name", ""), 17, "#58d3ff", 0.0, 0.5, true)
+		## ★★被动的简述【就画在条上】(2026-08-15, 用户点名的"同一屏两种交互"):
+		##   与技能卡同构 —— **条上给简述, 点开看全文**。
+		## ★2026-10-08 两栏后右栏只剩 494 宽, 简述从「标题右边横着放」改成标题下面一整行。
 		var p_brief: String = str(passive.get("brief", passive.get("desc", "")))
 		if p_brief.strip_edges() != "":
 			var brt := RichTextLabel.new()
@@ -302,12 +397,12 @@ func _show_pet(pet: Dictionary) -> void:
 			brt.fit_content = false     # 定高一行 + clip: 撑高就把技能卡挤下去了
 			brt.scroll_active = false
 			brt.clip_contents = true
-			brt.position = Vector2(text_x + 168.0, mid_y - 12.0)
-			brt.custom_minimum_size = Vector2(host.DETAIL_W - 40 - (text_x + 168.0) - 96.0, 24.0)
+			brt.position = Vector2(RCOL_X + CARD_PAD + 2.0, passive_y + 35.0)   # 标题 Label 下沿约 +34
+			brt.custom_minimum_size = Vector2(rw - CARD_PAD * 2.0 - 4.0, 22.0)
 			brt.size = brt.custom_minimum_size
-			brt.add_theme_font_size_override("normal_font_size", 15)
+			brt.add_theme_font_size_override("normal_font_size", 14)
 			brt.add_theme_color_override("default_color", Color("#aab8c6"))
-			brt.text = SkillText.render_bbcode(_trim_tail(p_brief), ctx, passive, 15)
+			brt.text = SkillText.render_bbcode(_trim_tail(p_brief), ctx, passive, 14)
 			host.detail.add_child(brt)
 		# hint: 展开→"收起"金 / 否则"看全部"蓝(与技能卡的"点开看全部"同一句式)
 		## ★同上去掉 ▾/▸ 两个折叠箭头。
@@ -316,8 +411,8 @@ func _show_pet(pet: Dictionary) -> void:
 		host._add_text(host.DETAIL_W - 30 - CARD_PAD * 2.0, mid_y, p_hint, 14, p_hint_col, 1.0, 0.5)
 		# drill-down: 点被动条 → 内联展开/收起完整 passive desc (1:1 PoC showPetDetail view='passive' toggle, 非弹窗)
 		var p_hit = Control.new()
-		p_hit.position = Vector2(20, passive_y)
-		p_hit.size = Vector2(host.DETAIL_W - 40, PASSIVE_BAR_H)
+		p_hit.position = Vector2(RCOL_X, passive_y)
+		p_hit.size = Vector2(rw, PASSIVE_BAR_H)
 		p_hit.mouse_filter = Control.MOUSE_FILTER_STOP
 		p_hit.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		var pet_ref2: Dictionary = pet
@@ -327,7 +422,8 @@ func _show_pet(pet: Dictionary) -> void:
 				host._codex_passive_view = not host._codex_passive_view
 				_show_pet(pet_ref2))
 		host.detail.add_child(p_hit)
-		cards_y = passive_y + PASSIVE_BAR_H + 18.0
+		_row_rule(passive_y + PASSIVE_BAR_H + 3.0)
+		cards_y = passive_y + PASSIVE_BAR_H + 8.0
 	## 双形态龟(双头/熔岩)的形态切换钮: 原来写死 y=262 压在被动条上; 后来给它在这里留了一条 42px 带,
 	##   而钮却按【卡片起点】定位(start_y 已经越过普攻条) ⇒ 实拍压在普攻条上、带子空着。
 	## ★2026-10-07 改挂到「开局三选一」那一行的右端(见 _render_skill_cards), 这里不再另留带 ——
@@ -338,10 +434,9 @@ func _show_pet(pet: Dictionary) -> void:
 
 
 # ─── 技能卡 (1:1 PoC renderSkillListSection) ───
-## 被动条高。原来 50(只放得下标题), 现在条上还要放一行简述 —— 简述横排在标题右边, 只多 6px。
-const PASSIVE_BAR_H := 56.0
-## 卡片底部那条提示带的高度(平时空着, 正文真被切了才画"点开看全部 ▸")。
-const CARD_HINT_BAND := 18.0
+## 被动条高。2026-10-08 两栏后改两行: 标题行 + 简述一行(右栏只有 494 宽, 简述横排在标题右边放不下)。
+## ★60 = 与普攻条同高同几何(chip-frame 边带 4px)。原 panel-frame(边带 13)要 80 才装得下两行。
+const PASSIVE_BAR_H := 60.0
 ## 卡片内容离卡边的留白。
 ##
 ## ★原来是散在八处的字面量 8 —— 而卡框换成九宫格金属框之后, 边带**实测 13px 厚**,
@@ -349,13 +444,23 @@ const CARD_HINT_BAND := 18.0
 ##   **换框不是换花纹, 是内容区真的变小了。** 提到 14(> 13) 并收进一个常量,
 ##   免得下次换框又要满文件找 `cx + 8`。
 const CARD_PAD := 14.0
-## 卡片正文的起始 y(卡内相对) —— 图标 44 + 名字 + 类型 chip 之后。
-const CARD_BODY_TOP := 82.0
-## 卡片最矮不低于这个(只有两行字的普攻卡也不该缩成一条)。
-const CARD_MIN_H := 150.0
-## 卡片【最高】也至少给到这么多: 正文起点 82 + 3 行(13px 纯文字行≈20, 带行内图标的行≈24) + 间隙 8 + 提示带 18 + 底边带 14。
-## ★取 190 而不是更高: 普通龟(单形态)剩余高度实测 192, 下限不能高过它, 否则全部 28 只龟的详情都要多滚一截。
-const CARD_MAX_FLOOR := 190.0
+## ★2026-10-08 技能卡改竖排(每张占右栏整宽): 图标槽 44 在左, 名字 + 「主动 · 龟能 N」同一行在图标右边,
+##   简述接在名字下面、与名字左对齐。正文左缘 = 卡左 + CARD_PAD + CARD_TEXT_DX。
+## ★2026-10-08 去框后: 图标中心与被动/普通攻击两行的图标同一条竖线(RCOL_X + 30), 名字左缘同一条竖线(RCOL_X + 60)。
+const ROW_ICON_CX := 30.0
+const ROW_TEXT_X := 60.0
+const CARD_TEXT_DX := ROW_TEXT_X - CARD_PAD
+## 卡片正文的起始 y(卡内相对) —— 边带 14 + 名字行 26。
+const CARD_BODY_TOP := 40.0
+## 卡片最矮不低于这个: 能把 44 的图标槽完整装下(14 + 44 + 14 + 4)。
+const CARD_MIN_H := 76.0
+## 正文与卡底边带之间的缝。
+const CARD_BODY_GAP := 4.0
+## 卡片【最高】也至少给到这么多: 正文起点 40 + 3 行(13px 纯文字行≈20) + 间隙 4 + 底边带 14。
+## ★被切时「查看全部」画在**名字行右端**, 不在卡底另占一条提示带 —— 竖排三张卡, 每张省 18px。
+const CARD_MAX_FLOOR := 118.0
+## 竖排卡片之间的缝。
+const CARD_GAP := 8.0
 ## 双形态龟「开局三选一」那一行的行高(同时挂 34 高的形态切换钮)。
 const FORM_ROW_H := 38.0
 
@@ -416,8 +521,7 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 	if not (skill_pool is Array):
 		return
 	var default_idxs = pet.get("defaultSkills", [0, 1, 2])
-	var gap = 8.0
-	var start_x = 20.0
+	var start_x: float = RCOL_X
 	var start_y: float = cards_y
 	var form_btn_y: float = -1.0   # 形态切换钮的中心 y(挂在「开局三选一」那一行); <0 = 还没排到
 
@@ -449,7 +553,9 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 		# 三选一那一排上面给一句抬头 —— 不然玩家不知道这三张是"要选一个"
 		## 双形态龟: 这一行同时挂「换成 X 形态」钮(钮高 34) ⇒ 行高 38; 其余龟仍是 15。
 		var head_h: float = FORM_ROW_H if has_form else 15.0
-		host._add_text(start_x + 2.0, start_y + (head_h / 2.0 if has_form else 6.0), "开局三选一", 12, "#06d6a0", 0.0, 0.5, true)
+		## ★2026-10-08 「开局三选一」→「技能」。用户:「开局三选一是啥呢」「我问你哪个参考游戏会这么说？」—— 没有哪个游戏这么说,
+		##   是我 08-18 自己加的, 讲的是我们的选择机制(同 10-01 被否的「3选1候选」)。对齐战斗信息面板「被动 / 普通攻击 / 技能」(10-06 用户拍板)。
+		host._add_text(start_x + 2.0, start_y + (head_h / 2.0 if has_form else 6.0), "技能", 12, "#06d6a0", 0.0, 0.5, true)
 		if has_form:
 			form_btn_y = start_y + head_h / 2.0
 		start_y += head_h
@@ -461,31 +567,28 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 		form_btn_y = start_y + FORM_ROW_H / 2.0
 		start_y += FORM_ROW_H
 	var n: int = mini(skill_pool.size(), 5)
-	## ★卡片【铺满板宽】(2026-08-15)。原来写死 168 宽: 28 只龟每只都是 4 个技能,
-	##   4×168 + 3×8 = 696 画在 900 宽的板子上 ⇒ 右边【死空 184px, 整整一张卡的宽度】,
-	##   而卡里的字同时又窄到放不下(实拍 4 张里 3 张被切)。宽度按卡数分, 空白清零、每行多 3 个字。
-	var card_w: float = (host.DETAIL_W - 2.0 * start_x - float(n - 1) * gap) / float(n)
-	## 卡片最高不超过详情框剩下的高度 —— 超了就得滚动才能看完一行卡, 比截断更难用。
-	## ★下限 CARD_MAX_FLOOR(2026-10-07 F): 双形态龟多一行钮, 剩下的高度只够卡片 1 行正文
-	##   (熔岩龟形态页实拍)。至少给到 3 行 —— 超出详情框的那几十 px 由外层滚动接住。
-	var card_max_h: float = maxf(CARD_MAX_FLOOR, host.DETAIL_MAX_H - start_y - 14.0)
+	## ★2026-10-08 两栏: 卡片【竖排】, 每张占右栏整宽(494)。
+	##   原来三张横排各 ~280 宽, 而右栏只剩 494 —— 横排每张只剩 160, 一行放不下 10 个字。
+	var card_w: float = _rw()
+	## 每张卡最高 = 详情框剩下的高度均分给 n 张; 下限 CARD_MAX_FLOOR(至少 3 行正文), 超出由外层滚动接住。
+	var card_max_h: float = maxf(CARD_MAX_FLOOR,
+		(host.DETAIL_MAX_H - start_y - 14.0 - float(maxi(0, n - 1)) * CARD_GAP) / float(maxi(1, n)))
 	var card_h: float = card_max_h
-	var parts: Array = []   # 每张卡的 {panel, rt, hit}, 建完统一按各自正文收高
+	var parts: Array = []   # 每张卡的 {panel, rt, hit, nodes, y0}, 建完统一按各自正文收高并重新竖排
 	for i in n:
 		var sk: Dictionary = skill_pool[i]
 		if sk.is_empty():
 			continue
-		var cx: float = start_x + i * (card_w + gap)
-		var is_default: bool = i in default_idxs
-		# ★2026-07-10 去掉「idx3需Lv4 / idx4需Lv7」等级解锁 (回合制PoC残留, 与3选1冲突; 详见 TeamSelectScene._available_skill_indices)
-		var is_locked: bool = false
-		# 卡背/边框: 锁=暗灰#6b7686 / 默认技能=绿#06d6a0 / 普通=蓝#4a93d6
-		var border: String = "#6b7686" if is_locked else ("#06d6a0" if is_default else "#4a93d6")
-		var border_w: float = 2.5 if (is_default and not is_locked) else 2.0
-		var bg_hex: String = "#141d2a" if is_locked else "#18283c"
-		var bg_a: float = 0.7 if is_locked else 0.92
-		var card_panel: Panel = host._add_rect(cx + card_w / 2.0, start_y + card_h / 2.0, card_w, card_h, bg_hex, bg_a, border, border_w, 1.0)
-		# 图标 38×38 (skills/<icon>.png), "+" 强化角标
+		var cx: float = start_x
+		## 先按最高卡高排开(互不重叠), 下一帧 _fit_skill_cards 收高后整体上移。
+		var cy0: float = start_y + float(i) * (card_max_h + CARD_GAP)
+		var nodes: Array = []
+		## (2026-07-10 去掉等级解锁后「锁住」恒为假的那条死分支, 随竖排重写一并删掉 —— 它连同锁图标都上不了屏)
+		## ★2026-10-08 无框(见 _flat_row 上方): 原来每张卡一个金属框(默认绿/普通蓝边), 改成一行 + 行间细线。
+		var card_panel: Panel = _flat_row(cx, cy0, card_w, card_h)
+		if i > 0:
+			nodes.append(_row_rule(cy0 - CARD_GAP / 2.0))
+		# 图标 (skills/<icon>.png), "+" 强化角标
 		var icon: String = sk.get("icon", "")
 		var enhances: bool = sk.get("enhancesPassive", false)
 		var icon_src: String = ""
@@ -495,9 +598,9 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 			var pic: String = DataRegistry.passive_icons.get(pet.get("passive", {}).get("type", ""), "")
 			if pic.ends_with(".png"):
 				icon_src = pic
-		var name_x: float = cx + CARD_PAD
+		var text_x: float = cx + CARD_PAD + CARD_TEXT_DX
 		if icon_src != "":
-			# PoC skillIconHtml: 图标带金框 socket (深底+金边1.5px radius8); 原裸图无框 (用户报"很多地方技能都没有框")
+			# PoC skillIconHtml: 图标带金框 socket; 原裸图无框 (用户报"很多地方技能都没有框")
 			var sock = Panel.new()
 			var sock_sb = StyleBoxFlat.new()
 			sock_sb.bg_color = Color(0.04, 0.06, 0.09, 0.7)
@@ -505,50 +608,37 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 			sock_sb.set_border_width_all(2)
 			sock_sb.set_corner_radius_all(8)
 			# 装备槽换成和背包/战斗面板同一张槽框(44px 够 MIN_FRAME_PX)。
-			# 金色描边的语义(「这是个能放东西的槽」)由贴图本身表达, 不再靠 CSS 边框。
 			var sock_nine := UISkin.nine_if_big(44.0, 44.0, "slot-frame.png", 12, sock_sb)
 			if sock_nine is StyleBoxTexture:
 				(sock_nine as StyleBoxTexture).modulate_color = Color(1.0, 0.94, 0.72, 1.0)
 				sock_sb = sock_nine
 			sock.add_theme_stylebox_override("panel", sock_sb)
-			sock.position = Vector2(cx + CARD_PAD, start_y + CARD_PAD)
+			sock.position = Vector2(cx + ROW_ICON_CX - 22.0, cy0 + CARD_PAD)
 			sock.custom_minimum_size = Vector2(44, 44); sock.size = Vector2(44, 44)
 			host.detail.add_child(sock)
-			## 图标中心从 +19 挪到 +22: 38px 图标的边缘原来正好压在卡框内沿上(门禁量到 3~5px)。
-			## 图标 38→32: 它住在一个 44x44 的槽框里, 而槽框金属边带 6px ⇒ 内沿只有 32。
-			## 38 的图会**从槽框里漫出来 3px**(门禁量到)。挪位置没用 —— 是图本身比容器大。
-			host._add_image(cx + CARD_PAD + 22, start_y + CARD_PAD + 22, "res://assets/sprites/%s" % icon_src, 32, 32)
-			name_x = cx + CARD_PAD + 50
+			nodes.append(sock)
+			## 图标 32: 它住在 44x44 的槽框里, 槽框金属边带 6px ⇒ 内沿只有 32(38 的图会漫出 3px)。
+			nodes.append(host._add_image(cx + ROW_ICON_CX, cy0 + CARD_PAD + 22, "res://assets/sprites/%s" % icon_src, 32, 32))
 			if enhances or sk.get("iconPlus", false):
-				host._add_text(cx + CARD_PAD + 38 - 6, start_y + CARD_PAD - 2, "+", 15, "#06d6a0", 0.5, 0.5, true)
-		# 名字 16px (锁=灰)
-		var nlbl = host._add_text(name_x, start_y + 18 + 4.0, sk.get("name", "?"), 16, ("#bbbbbb" if is_locked else "#ffd93d"), 0.0, 0.5, true)
-		nlbl.custom_minimum_size = Vector2(card_w - (name_x - cx) - 8, 0)
-		# 类型 chip 行 (锁→Lv.N解锁 / 否则 基础/主动CDn/被动)
+				nodes.append(host._add_text(cx + ROW_ICON_CX + 10.0, cy0 + CARD_PAD - 2, "+", 15, "#06d6a0", 0.5, 0.5, true))
+		else:
+			text_x = cx + CARD_PAD
+		# 名字 16px —— 与类型 chip 同一行
+		var name_y: float = cy0 + CARD_PAD + 12.0
+		var nlbl: Label = host._add_text(text_x, name_y, sk.get("name", "?"), 16, "#ffd93d", 0.0, 0.5, true)
+		nodes.append(nlbl)
+		# 类型 chip (基础/主动·龟能/被动) —— 龟能口径(无"冷却/CD"): 普攻=不花龟能 / 主动=显龟能花费(与战斗同源) / 被动
 		var chip_text = ""
 		var chip_color = "#58d3ff"
-		if is_locked:
-			## ★★2026-09-28 🔒 → 文字。两个理由:
-			##  ① 🔒 的字形来自 NotoEmoji, 与整屏像素笔触是两套画法;
-			##  ② 它旁边三个兄弟分支写的都是字(「被动」「基础 · 普攻」
-			##    「3选1候选 · 龟能 N」) —— 同一个位置四种状态, 三个写字一个画图标本身就是不一致。
-			## ⚠ 这一支是**死分支**: 上面 `var is_locked: bool = false` 是写死的,
-			##   `tests/verify_codex.gd` 第 77 条正是盯这一句的 ⇒ 改不改都上不了屏,
-			##   改是为了别在源码里留下“下一个人把它接回去就又多一个 emoji”的种子。
-			chip_text = "未解锁"; chip_color = "#ff8888"
-		else:
-			# 龟能口径 (无"冷却/CD"): 普攻=不花龟能 / 主动=显龟能花费(与战斗同源) / 被动
-			match host._skill_role(str(pet.get("id", "")), sk, (int(_orig_idx[i]) if i < _orig_idx.size() else i)):
-				"passive": chip_text = "被动"; chip_color = "#c77dff"
-				"basic": chip_text = "基础 · 普攻"; chip_color = "#58d3ff"
-				## ★★2026-10-01 改: 原来写「3选1候选 · 龟能N」。用户:「3选1候选，这又是什么 ai 味描述，
-				##   你不是学习了吗」—— 他是对的。「3选1候选」说的是**我们这边的选择机制**
-				##   (skillPool 里三取一), 不是这个技能本身; 玩家眼前就摆着三张卡, 不需要我告诉他有三张。
-				##   LoL 的技能头上只写**名字 + 消耗 + 冷却**, 没有一个字在解释"这是候选之一"。
-				##   ⇒ 与两个兄弟分支(「被动」「基础 · 普攻」)对齐成同一个句式: 角色 · 代价。
-				##   ⚠ 并把「龟能100」分开成「龟能 100」—— codex_text_lint 有一条「汉字贴着数字」。
-				_: chip_text = "主动 · 龟能 %d" % host._skill_energy(sk); chip_color = "#06d6a0"
-		host._add_text(cx + CARD_PAD, start_y + 60, chip_text, 13, chip_color, 0.0, 0.0)
+		match host._skill_role(str(pet.get("id", "")), sk, (int(_orig_idx[i]) if i < _orig_idx.size() else i)):
+			"passive": chip_text = "被动"; chip_color = "#c77dff"
+			## 用户 2026-10-06「真的要说普攻这个吗，真的是商业游戏吗」「是被动，普通攻击，和技能啊」⇒ 全称, 与战斗信息面板同一个词。
+			"basic": chip_text = "普通攻击"; chip_color = "#58d3ff"
+			## ★★2026-10-01: 原来写「3选1候选 · 龟能N」。用户:「3选1候选，这又是什么 ai 味描述」——
+			##   LoL 的技能头上只写**名字 + 消耗**。⇒ 与兄弟分支对齐成「角色 · 代价」;
+			##   「龟能 100」中间留空格(codex_text_lint「汉字贴着数字」)。
+			_: chip_text = "主动 · 龟能 %d" % host._skill_energy(sk); chip_color = "#06d6a0"
+		nodes.append(host._add_text(text_x + nlbl.get_combined_minimum_size().x + 12.0, name_y + 1.0, chip_text, 13, chip_color, 0.0, 0.5))
 		# 简述 — 富文本 BBCode, 多行 clamp
 		var brief = SkillText.render_bbcode(_trim_tail(str(sk.get("brief", ""))), ctx, sk, 13)
 		var rt = RichTextLabel.new()
@@ -558,27 +648,22 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 		##   而文字照样被卡片边缘切掉。这就是个不会红的假检查(等一帧也救不了)。
 		rt.fit_content = false
 		rt.scroll_active = false
-		rt.position = Vector2(cx + CARD_PAD, start_y + CARD_BODY_TOP)
-		## ★底部再留 18px(2026-08-14, 用户「图鉴描述需要优化」):
-		##   卡片 `clip_contents = true` + 定高 ⇒ 长简述被**静默切断**, 实拍「过肩摔」停在
-		##   "施法期间小龟露体（不可" 就没了, 玩家看不出后面还有内容, 也不知道点卡片能看全。
-		##   这条带子平时是空的, 真被切了才画一行"点开看全部"。
-		## ★正文高度必须**扣掉底部那条提示带**(CARD_HINT_BAND)。
-		##   原来只扣了 18 —— 恰好等于带高, 但正文起点 CARD_BODY_TOP 已经是 82,
-		##   而卡片内容区又被金属边带吃掉 CARD_PAD ⇒ 正文实际能画到带子里,
-		##   实拍可见「点开看全部 ▸」和正文最后一行**叠在一起**(判据 12 也报了)。
-		var rt_h: float = card_h - CARD_BODY_TOP - CARD_HINT_BAND - CARD_PAD
-		rt.custom_minimum_size = Vector2(card_w - CARD_PAD * 2.0, rt_h)
-		rt.size = Vector2(card_w - CARD_PAD * 2.0, rt_h)
+		rt.position = Vector2(text_x, cy0 + CARD_BODY_TOP)
+		## 正文高度 = 卡高 − 头部(CARD_BODY_TOP) − 间隙(CARD_BODY_GAP) − 底边带(CARD_PAD); 「查看全部」在名字行, 不占正文。
+		var rt_w: float = cx + card_w - CARD_PAD - text_x
+		var rt_h: float = card_h - CARD_BODY_TOP - CARD_BODY_GAP - CARD_PAD
+		rt.custom_minimum_size = Vector2(rt_w, rt_h)
+		rt.size = Vector2(rt_w, rt_h)
 		rt.clip_contents = true
 		rt.add_theme_font_size_override("normal_font_size", 13)
 		rt.add_theme_color_override("default_color", Color("#aaaaaa"))
 		rt.text = brief
+		rt.set_meta("codex_card_body", true)   # 门禁据此认「技能卡正文」(竖排后宽度已分不开卡片与被动条)
 		host.detail.add_child(rt)
-		_mark_card_clipped(rt, cx, start_y + card_h - 22.0, card_w)
+		_mark_card_clipped(rt, cx, cy0 + CARD_PAD + 4.0, card_w)
 		# drill-down: 点技能卡 → 内联换页显示完整 host.detail (1:1 PoC showPetDetail view={skillIdx}→renderSkillDetailSection)
 		var hit = Control.new()
-		hit.position = Vector2(cx, start_y)
+		hit.position = Vector2(cx, cy0)
 		hit.size = Vector2(card_w, card_h)
 		hit.mouse_filter = Control.MOUSE_FILTER_STOP
 		hit.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -588,7 +673,7 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 				host._codex_skill_detail = sk_ref
 				_show_pet(pet))
 		host.detail.add_child(hit)
-		parts.append({"panel": card_panel, "rt": rt, "hit": hit})
+		parts.append({"panel": card_panel, "rt": rt, "hit": hit, "nodes": nodes, "y0": cy0})
 	_fit_skill_cards(parts, start_y, card_max_h)
 	## E1 形态切换钮 —— 整块在 `_form_switch_button()`(2026-09-28 拆出去的)。
 	if has_form:
@@ -599,62 +684,50 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 ## ★2026-10-07 从 `_render_skill_cards` 整块搬出来(行为一字未改): 本轮给它加了「看全部」与点击区,
 ##   函数涨到 269 行越过 `tools/arch_budget.py` 的 250 行上限 —— 按职责拆, 不靠删注释凑绿。
 func _basic_attack_bar(pet: Dictionary, ctx: Dictionary, bsk: Dictionary, start_y: float) -> float:
-	## 条高 36 而不是 44: 每多占 1px 都是从三选一卡片的正文里挖的
-	## (加了这条之后卡片矮了一截, 正文从 5 行掉到 3 行 —— 得把占用压到最小)。
-	var bar_h := 36.0
-	var bmid: float = start_y + bar_h / 2.0
-	## 条高 36 < UISkin.MIN_FRAME_PX(40) ⇒ 走 _add_rect 会**退回纯色 StyleBoxFlat**,
-	## 于是这条成了全图鉴唯一一个网页盒(门禁当场逮到)。改挂边带只有 4px 的 chip-frame。
+	## ★2026-10-08 两栏: 条占右栏整宽(494), 改两行 —— 标题行(图标 + 「普攻 · X」 + 右端「查看全部」) + 简述一行。
+	##   原来是 36 高一行(名字右边接简述), 右栏变窄后简述只剩二十来个字的位置。
+	var bar_h := 60.0
+	var rw: float = _rw()
+	var bmid: float = start_y + 19.0   # 标题行中线
+	## 条高 58 ≥ UISkin.MIN_FRAME_PX, 但仍挂边带只有 4px 的 chip-frame(与签牌同一张), 不吃正文的地方。
 	var bp := Panel.new()
-	bp.position = Vector2(20.0, start_y)
-	bp.custom_minimum_size = Vector2(host.DETAIL_W - 40, bar_h)
+	bp.name = "BasicBar"   # 门禁按名字找这一条(原来按「宽 > 800、高 36」认, 两栏后不成立)
+	bp.position = Vector2(RCOL_X, start_y)
+	bp.custom_minimum_size = Vector2(rw, bar_h)
 	bp.size = bp.custom_minimum_size
-	var bfb := StyleBoxFlat.new()
-	bfb.bg_color = Color(0.071, 0.125, 0.165, 0.55)
-	var bsb := UISkin.nine("chip-frame.png", 7, bfb)
-	if bsb is StyleBoxTexture:
-		(bsb as StyleBoxTexture).modulate_color = Color(0.86, 0.95, 1.06, 1.0)
-	bp.add_theme_stylebox_override("panel", bsb)
+	## ★2026-10-08 无框(见 _flat_row 上方): 只占位给点击区与门禁认。
+	bp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bp.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	host.detail.add_child(bp)
-	var btx := 30.0
+	var btx := RCOL_X + 14.0
 	var bic: String = str(bsk.get("icon", ""))
 	if bic.ends_with(".png"):
-		host._add_image(50, bmid, "res://assets/sprites/%s" % bic, 32, 32)
-		btx = 80.0
-	var bname_lbl: Variant = host._add_text(btx, bmid, "普攻 · %s" % str(bsk.get("name", "?")), 18, "#58d3ff", 0.0, 0.5, true)
-	## ★简述的起点跟着名字的真实宽度走(2026-10-07 F): 原来写死 btx+150,
-	##   火山形态的「普攻 · 熔岩弹（火山形态）」约 230px ⇒ 名字和简述叠在一起。
-	var bbx: float = btx + 150.0
-	if bname_lbl is Control:
-		bbx = maxf(bbx, btx + (bname_lbl as Control).get_combined_minimum_size().x + 16.0)
-	## ★★2026-10-02: 普攻简述从 `Label`(`_add_text`) 换成 `RichTextLabel`。
-	##   原来走 `render_plain` —— 它是这一屏上【唯一一条不上色的技能简述】:
-	##   旁边三张 3 选 1 卡和上面被动条都是 `render_bbcode` + RichTextLabel,
-	##   就这一条是白字。同一屏四段同类文案两种长相。
-	## ★版式照上面被动条那一份(定高一行 + clip), 不自创:
-	##   `RichTextLabel` 没有 `vertical_alignment`, 所以自己减半行高对齐到 bmid。
-	## ★条高就 36px, `fit_content` 必须是 false —— 开了它会被撑高把三选一卡片挤下去。
+		host._add_image(RCOL_X + 30.0, bmid, "res://assets/sprites/%s" % bic, 28, 28)
+		btx = RCOL_X + ROW_TEXT_X
+	## 「普通攻击」全称(用户 2026-10-06, 战斗信息面板 info_panel.gd 同一个词); 2026-10-08 图鉴这里漏改, 用户实拍追问。
+	host._add_text(btx, bmid, "普通攻击 · %s" % str(bsk.get("name", "?")), 17, "#58d3ff", 0.0, 0.5, true)
+	## ★★2026-10-02: 普攻简述用 `RichTextLabel` + `render_bbcode`(与被动条/三选一卡同一种上色)。
+	## ★定高一行 + clip; `fit_content` 必须是 false —— 开了它会被撑高把三选一卡片挤下去。
 	var bbrief := SkillText.render_bbcode(_trim_tail(str(bsk.get("brief", ""))), ctx, bsk, 14)
 	var brt2 := RichTextLabel.new()
 	brt2.bbcode_enabled = true
 	brt2.fit_content = false
 	brt2.scroll_active = false
 	brt2.clip_contents = true
-	brt2.position = Vector2(bbx, bmid - 11.0)
-	## ★右端让出 96px 给「看全部」(与被动条同一个让位, 见上面 brt.custom_minimum_size)。
-	brt2.custom_minimum_size = Vector2(host.DETAIL_W - 40.0 - bbx - 96.0, 22.0)
+	## 名字 17px 的 Label 下沿在 start_y + 33(中线 19 + 估高的一半); 简述从 35 起, 不相交(门禁 F 量过 0.95px 的重叠)。
+	brt2.position = Vector2(RCOL_X + CARD_PAD + 2.0, start_y + 35.0)
+	brt2.custom_minimum_size = Vector2(rw - CARD_PAD * 2.0 - 4.0, 22.0)
 	brt2.size = brt2.custom_minimum_size
 	brt2.add_theme_font_size_override("normal_font_size", 14)
 	brt2.add_theme_color_override("default_color", Color("#aab8c6"))
 	brt2.text = bbrief
 	host.detail.add_child(brt2)
-	## ★★2026-10-07 B: 普攻简述定高一行 + clip, 原来**没有任何办法看到被切掉的部分**
-	##   (15 只龟, 例: 忍者龟「若本次斩击暴击，则改为施加 3 层流血」整句不可见)。
-	##   照被动条那一套: 条上给简述 + 右端「看全部」, 点整条进技能详情(与三选一卡片同一个落地页)。
+	## ★★2026-10-07 B: 简述被切时**必须有办法看到被切掉的部分**(例: 忍者龟「若本次斩击暴击，则改为施加 3 层流血」)。
+	##   照被动条那一套: 条上给简述 + 右端「查看全部」, 点整条进技能详情(与三选一卡片同一个落地页)。
 	host._add_text(host.DETAIL_W - 30 - CARD_PAD * 2.0, bmid, "查看全部", 14, "#7fb5d8", 1.0, 0.5)
 	var b_hit := Control.new()
-	b_hit.position = Vector2(20.0, start_y)
-	b_hit.size = Vector2(host.DETAIL_W - 40, bar_h)
+	b_hit.position = Vector2(RCOL_X, start_y)
+	b_hit.size = Vector2(rw, bar_h)
 	b_hit.mouse_filter = Control.MOUSE_FILTER_STOP
 	b_hit.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	var bsk_ref: Dictionary = bsk
@@ -664,6 +737,7 @@ func _basic_attack_bar(pet: Dictionary, ctx: Dictionary, bsk: Dictionary, start_
 			host._codex_skill_detail = bsk_ref
 			_show_pet(pet))
 	host.detail.add_child(b_hit)
+	_row_rule(start_y + bar_h + 3.0)
 	return bar_h
 
 
@@ -752,35 +826,32 @@ func _fit_skill_cards(parts: Array, top: float, max_h: float) -> void:
 	await host.get_tree().process_frame
 	if not is_instance_valid(host) or host.detail == null:
 		return
+	## ★2026-10-08 竖排: 每张卡收完高度后, 下一张紧接着它的底边排(各卡高度不同)。
+	##   卡里的图标/名字/chip 是 detail 的直接子节点(门禁按 detail 的子节点数富文本), 不能装进容器整体挪 ——
+	##   所以每张卡记下自己建过的节点和起始 y, 这里按差值整体平移。
+	var y: float = top
 	for p in parts:
 		var panel: Panel = p["panel"]
 		var rt: RichTextLabel = p["rt"]
 		var hit: Control = p["hit"]
 		if not (is_instance_valid(panel) and is_instance_valid(rt) and is_instance_valid(hit)):
 			continue
-		## 卡高 = 正文起点 + 正文 + 间隙 + 提示带 + **底部边带**。
-		## ★上一版漏了最后一项: 卡框换成金属九宫格后底边带有 13px 厚, 提示带被它压掉一半,
-		##   我当时的"修法"是把提示**往上挪 14px** —— 结果挪进了正文里, 实拍两行字叠在一起
-		##   (判据 12 报「点开看全部|将目标过肩」)。**修 A 判据把 B 判据弄红了。**
-		##   正确做法: 空间在卡高里真正预留出来, 提示仍待在它该在的位置。
-		var want: float = clampf(CARD_BODY_TOP + rt.get_content_height() + 8.0
-			+ CARD_HINT_BAND + CARD_PAD, CARD_MIN_H, max_h)
-		panel.position.y = top
-		panel.custom_minimum_size.y = want
-		panel.size.y = want
-		hit.size.y = want
-		## ★高度对齐整行, 但**只在真的装不下时才这么做**。
-		##   第一版无条件向下取整 ⇒ 明明放得下的卡也被削掉最后一行的零头,
-		##   于是"被截了却没画提示"(门禁 verify_codex_layout 逐只龟数出来的)。
-		##   现在: 没顶到上限就按内容实际高度给足(不切、也就不需要提示);
+		var dy: float = y - float(p["y0"])
+		for nd in p["nodes"]:
+			if is_instance_valid(nd) and nd is Control:   # 先判有效再 is(对已释放对象 is 会报错, freed_is_order 审计)
+				(nd as Control).position.y += dy
+		rt.position.y += dy
+		## 卡高 = 正文起点 + 正文 + 间隙 + **底部边带**(金属九宫格 13px 厚, 内容区真的变小了)。
+		var want: float = clampf(CARD_BODY_TOP + rt.get_content_height() + CARD_BODY_GAP
+			+ CARD_PAD, CARD_MIN_H, max_h)
+		## ★高度对齐整行, 但**只在真的装不下时才这么做**:
+		##   没顶到上限就按内容实际高度给足(不切、也就不需要提示);
 		##   顶到上限了才向下取整到整行(避免半截字悬在卡底), 这时提示才该出现。
-		var body_h: float = want - CARD_BODY_TOP - 8.0 - CARD_HINT_BAND - CARD_PAD
+		var body_h: float = want - CARD_BODY_TOP - CARD_BODY_GAP - CARD_PAD
 		var clamped: bool = want >= max_h - 0.5
 		if clamped:
-			## ★2026-10-07 G: 按【这段正文自己的行边界】取整, 不再按"标称行高"取整。
-			##   带行内图标/大字号数值的行比纯文字行高(实测 20 vs 24), 标称行高 × 行数
-			##   落不到真实行边界上 ⇒ 15 张卡最后一行被切成半截(_probe_codex_cardlines 实测)。
-			##   get_line_offset(i) = 第 i 行的上沿 = 前 i 行(含行距)的总高 ⇒ 取 ≤ body_h 的最大一个。
+			## ★2026-10-07 G: 按【这段正文自己的行边界】取整, 不按"标称行高"取整
+			##   (带行内图标的行比纯文字行高, 实测 20 vs 24)。get_line_offset(i) = 第 i 行的上沿。
 			var cut: float = 0.0
 			for li in range(1, rt.get_line_count()):
 				var off: float = rt.get_line_offset(li)
@@ -790,21 +861,31 @@ func _fit_skill_cards(parts: Array, top: float, max_h: float) -> void:
 					break
 			if cut > 0.0:
 				body_h = cut
+				## ★卡高跟着截断收回来(2026-10-08 实拍): 第三行带行内图标(行高 24 > 20)放不下时只剩两行,
+				##   卡却仍按三行的高度画 ⇒ 两行字下面空一截。竖排下这截空白会把下面的卡整体往下推。
+				want = maxf(CARD_MIN_H, CARD_BODY_TOP + body_h + CARD_BODY_GAP + CARD_PAD)
 		else:
 			body_h = maxf(body_h, rt.get_content_height())
+		panel.position.y = y
+		panel.custom_minimum_size.y = want
+		panel.size.y = want
+		hit.position.y = y
+		hit.size.y = want
 		rt.custom_minimum_size.y = body_h
 		rt.size.y = body_h
-		# 提示带跟着这张卡自己的底边走 —— 各卡高度不同, 不能再用一个统一的 y
-		_card_hint_y[rt] = top + want - CARD_HINT_BAND - CARD_PAD + 2.0
+		## 「查看全部」画在这张卡**名字行**的右端(竖排后不在卡底另占提示带)。
+		_card_hint_y[rt] = y + CARD_PAD + 4.0
+		y += want + CARD_GAP
 
 
 ## 内联技能详情 (1:1 PoC renderSkillDetailSection CodexScene.ts:532-568): 顶"← 返回列表"(蓝) + 标题行(图标+★+名32px+CD) + 完整 host.detail #fff 13px
 func _render_skill_detail_inline(pet: Dictionary, ctx: Dictionary, sk: Dictionary, top: float) -> void:
 	# 返回钮 100×34, fill #1a2740@0.9 边 #58d3ff 1px@0.6; 文字 14px #58d3ff (PoC L539-549)
-	host._add_rect(70, top + 17.0, 100, 34, "#1a2740", 0.9, "#58d3ff", 1, 0.6)
-	host._add_text(70, top + 17.0, "← 返回", 14, "#58d3ff", 0.5, 0.5)
+	## ★2026-10-08 两栏: 内联详情只占右栏, 左栏立绘与属性保持可见。
+	host._add_rect(RCOL_X + 50.0, top + 17.0, 100, 34, "#1a2740", 0.9, "#58d3ff", 1, 0.6)
+	host._add_text(RCOL_X + 50.0, top + 17.0, "← 返回", 14, "#58d3ff", 0.5, 0.5)
 	var bhit = Control.new()
-	bhit.position = Vector2(20, top)
+	bhit.position = Vector2(RCOL_X, top)
 	bhit.size = Vector2(100, 34)
 	bhit.mouse_filter = Control.MOUSE_FILTER_STOP
 	bhit.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -847,8 +928,8 @@ func _render_skill_detail_inline(pet: Dictionary, ctx: Dictionary, sk: Dictionar
 	title.fit_content = true
 	title.scroll_active = false
 	title.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST   # 内联图标像素锐利
-	title.position = Vector2(160, top + 3.0)
-	title.custom_minimum_size = Vector2(host.DETAIL_W - 180, 48)
+	title.position = Vector2(RCOL_X + 116.0, top + 3.0)
+	title.custom_minimum_size = Vector2(_rw() - 116.0, 48)
 	title.add_theme_font_size_override("normal_font_size", 32)
 	title.add_theme_color_override("default_color", Color("#ffffff"))
 	title.text = bb
@@ -860,8 +941,8 @@ func _render_skill_detail_inline(pet: Dictionary, ctx: Dictionary, sk: Dictionar
 	rt.bbcode_enabled = true
 	rt.fit_content = true
 	rt.scroll_active = false
-	rt.position = Vector2(20, top + 58.0)
-	rt.custom_minimum_size = Vector2(host.DETAIL_W - 40, 0)
+	rt.position = Vector2(RCOL_X, top + 58.0)
+	rt.custom_minimum_size = Vector2(_rw(), 0)
 	rt.add_theme_font_size_override("normal_font_size", 17)
 	rt.add_theme_constant_override("line_separation", 5)
 	rt.add_theme_color_override("default_color", Color("#e8f2ff"))
@@ -887,8 +968,8 @@ func _render_passive_detail_inline(pet: Dictionary, ctx: Dictionary, top: float)
 	rt.bbcode_enabled = true
 	rt.fit_content = true
 	rt.scroll_active = false
-	rt.position = Vector2(20, top)
-	rt.custom_minimum_size = Vector2(host.DETAIL_W - 40, 0)
+	rt.position = Vector2(RCOL_X, top)
+	rt.custom_minimum_size = Vector2(_rw(), 0)
 	rt.add_theme_font_size_override("normal_font_size", 17)
 	rt.add_theme_constant_override("line_separation", 5)
 	rt.add_theme_color_override("default_color", Color("#e8f2ff"))

@@ -74,11 +74,12 @@ func _ready() -> void:
 	var csrc := _src("res://scripts/scenes/CodexScene.gd") + "
 " + _src("res://scripts/scenes/codex/detail_views.gd")
 	_ok("图鉴无「🔒 Lv.4 解锁」文案", csrc.find("Lv.4 解锁") < 0)
-	_ok("图鉴 is_locked 已恒 false", csrc.find("var is_locked: bool = false") >= 0)
+	## ★2026-10-08 技能卡竖排重写时把那条恒 false 的死分支整个删了 ⇒ 改钉更严的契约: 一个 is_locked 都不许有。
+	_ok("图鉴无等级锁分支(is_locked 整个删除)", csrc.find("is_locked") < 0)
 	## ★2026-10-01 改: 原来钉的是「3选1候选 · 龟能」。用户指出那是 ai 味 ——
 	##   它说的是我们这边的选择机制(三取一), 不是技能本身, 而玩家眼前就摆着三张卡。
 	##   这条不是放宽, 是改成钉**新**契约, 而且多守一条: 不许再出现那串旧词。
-	_ok("图鉴 chip 用「主动 · 龟能 N」(与「被动」「基础 · 普攻」同句式)",
+	_ok("图鉴 chip 用「主动 · 龟能 N」(与「被动」「普通攻击」同句式)",
 		csrc.find("主动 · 龟能 %d") >= 0)
 	## ⚠ 查的是**字符串字面量**(前面带一个双引号), 不是整份源码里的任何出现 ——
 	##   源码注释里还留着好几处"原来叫 3选1候选"的来历说明, 那是历史不是屏幕文案。

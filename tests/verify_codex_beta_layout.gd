@@ -79,10 +79,10 @@ func _label_starting(prefix: String) -> Label:
 	return null
 
 
-## 普攻条那块底板: 宽 = 详情宽 - 40、高 36 的 Panel。
+## 普攻条那块底板。★2026-10-08 两栏后不再是「宽 > 800、高 36」⇒ 按产品给它起的节点名找。
 func _basic_bar() -> Panel:
 	for ch in _c.detail.get_children():
-		if ch is Panel and absf((ch as Panel).size.y - 36.0) < 0.5 and (ch as Panel).size.x > 800.0:
+		if ch is Panel and str(ch.name) == "BasicBar":
 			return ch
 	return null
 
@@ -232,14 +232,15 @@ func _check_b_ninja_click() -> void:
 	if hit == null:
 		return
 	var before := _rich()
-	_ok("B 反面: 点开前那句「暴击时 3 层」读不到", before.find("暴击时 3 层") < 0)
+	## ★2026-10-08 技能/装备文案按 LoL 体例整体改写(copy_lol_style_lint)后, 句式变了、数值与归属没变: 「暴击时 3 层」→「暴击时改为 3 层」, 改认「暴击时」+「3 层」。
+	_ok("B 反面: 点开前那句「暴击时…3 层」读不到", before.find("暴击时改为 3 层") < 0)
 	var ev := InputEventMouseButton.new()
 	ev.button_index = MOUSE_BUTTON_LEFT
 	ev.pressed = true
 	hit.gui_input.emit(ev)
 	await _settle(4)
 	var after := _rich()
-	_ok("B 点普攻条 ⇒ 进技能详情, 流血那句可见(「暴击时 3 层」)", after.find("暴击时 3 层") >= 0 and after.find("流血") >= 0,
+	_ok("B 点普攻条 ⇒ 进技能详情, 流血那句可见(「暴击时 3 层」)", after.find("暴击时改为 3 层") >= 0 and after.find("流血") >= 0,
 		after.substr(0, 60).replace("\n", "⏎"))
 	_c._codex_skill_detail = {}
 
@@ -268,23 +269,34 @@ func _check_f_lava() -> void:
 			var bar_rect := Rect2(bar.position, bar.size)
 			_ok("F %s 形态切换钮不压普攻条" % tag, btn_rect.size.x > 0.0 and not btn_rect.intersects(bar_rect),
 				"钮 %s / 普攻条 %s" % [str(btn_rect), str(bar_rect)])
-			var nm := _label_starting("普攻 · ")
+			var nm := _label_starting("普通攻击 · ")
 			var brief: RichTextLabel = null
 			for ch in _c.detail.get_children():
+				## 普攻简述 = 落在普攻条里面的那个定高富文本(两行条: 名字一行、简述一行)
 				if ch is RichTextLabel and not (ch as RichTextLabel).fit_content \
-						and absf((ch as RichTextLabel).position.y + 11.0 - (bar.position.y + 18.0)) < 1.0:
+						and (ch as RichTextLabel).position.y > bar.position.y \
+						and (ch as RichTextLabel).position.y < bar.position.y + bar.size.y:
 					brief = ch
 			if nm != null and brief != null:
-				var nm_right: float = nm.position.x + nm.get_combined_minimum_size().x
-				_ok("F %s 普攻名字(右缘 %.0f)不压简述(左缘 %.0f)「%s」" % [tag, nm_right, brief.position.x, nm.text],
-					nm_right <= brief.position.x + 0.5)
+				## ★2026-10-08 两行条: 名字在上一行、简述在下一行 ⇒ 判据从「名字右缘 ≤ 简述左缘」换成「两块矩形不相交」(意思不变: 不压字)。
+				var nm_rect := Rect2(nm.position, nm.get_combined_minimum_size())
+				var br_rect := Rect2(brief.position, brief.size)
+				_ok("F %s 普攻名字 %s 不压简述 %s「%s」" % [tag, str(nm_rect), str(br_rect), nm.text],
+					not nm_rect.intersects(br_rect))
 			else:
 				_ok("F %s 分母: 普攻名字与简述都在" % tag, false)
-			var min_lines := 99
+			## ★2026-10-08 竖排后卡片变宽(正文 412), 短简述本来就只有 1~2 行 ⇒ 不能再拿「高 > 40」认卡片、也不能要求人人 ≥2 行。
+			##   意思不变: 每张卡至少露出 min(2, 它自己的总行数) 整行 —— 卡片没被形态钮那一行挤扁。分母: 认到 ≥3 张卡。
+			var n_cards := 0
+			var squeezed: PackedStringArray = []
 			for ch in _c.detail.get_children():
-				if ch is RichTextLabel and not (ch as RichTextLabel).fit_content and (ch as RichTextLabel).size.y > 40.0:
-					min_lines = mini(min_lines, _full_lines(ch))
-			_ok("F %s 三选一卡片每张至少 2 整行正文(最少 %d 行)" % [tag, min_lines], min_lines >= 2 and min_lines < 99)
+				if ch is RichTextLabel and (ch as RichTextLabel).has_meta("codex_card_body"):
+					n_cards += 1
+					var need: int = mini(2, (ch as RichTextLabel).get_line_count())
+					if _full_lines(ch) < need:
+						squeezed.append("%s(%d/%d)" % [(ch as RichTextLabel).get_parsed_text().substr(0, 8), _full_lines(ch), need])
+			_ok("F %s 分母: 认到 %d 张三选一卡片" % [tag, n_cards], n_cards >= 3)
+			_ok("F %s 三选一卡片每张至少露出 2 整行正文(不足 2 行的露全)" % tag, squeezed.is_empty(), ", ".join(squeezed))
 
 
 ## H: 小将页

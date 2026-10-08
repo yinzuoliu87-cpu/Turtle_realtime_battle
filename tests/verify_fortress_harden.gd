@@ -54,7 +54,7 @@ func _ready() -> void:
 	var full: String = SkillText.equip_full(edef)
 	var brief: String = SkillText.equip_brief(edef)
 	_ok("★文案详细 +2/3/6", full.find("每层提供+2/3/6 护甲和魔抗") >= 0, full)
-	_ok("★文案简述 +2/3/6", brief.find("各 +2/3/6 双抗") >= 0, brief)
+	_ok("★文案简述 +2/3/6", brief.find("+2/3/6 护甲和魔抗") >= 0, brief)   # 2026-10-08 技能/装备文案按 LoL 体例整体改写(copy_lol_style_lint)后, 句式变了、数值与归属没变
 	_ok("没有残留占位符", full.find("{C:") < 0 and brief.find("{C:") < 0)
 	print("--- %d 条, 失败 %d ---" % [_n, _fail])
 	if _fail == 0 and _n > 0:

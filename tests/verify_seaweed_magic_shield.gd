@@ -272,6 +272,6 @@ func _g5_display_and_text() -> void:
 	var full: String = SkillText.equip_full(_edef())
 	var brief: String = SkillText.equip_brief(_edef())
 	_ok("★文案详细: 登场 25/40/60% 魔法护盾", full.find("登场时获得自身最大生命值 25/40/60% 的魔法护盾") >= 0, full)
-	_ok("★文案详细: 每 4 秒 40/60/90+3/4/5.5%", full.find("每 4 秒获得（40/60/90+自身最大生命值 3/4/5.5%）点护盾") >= 0, full)
+	_ok("★文案详细: 每 4 秒 40/60/90+3/4/5.5%", full.find("每 4 秒获得护盾，护盾值为 40/60/90+自身最大生命值的 3/4/5.5%") >= 0, full)   # 2026-10-08 技能/装备文案按 LoL 体例整体改写(copy_lol_style_lint)后, 句式变了、数值与归属没变
 	_ok("★文案简述含百分比部分", brief.find("40/60/90+自身最大生命值 3/4/5.5%") >= 0 and brief.find("自身最大生命值 25/40/60%") >= 0, brief)
 	_ok("★文案没有残留占位符", full.find("{C:") < 0 and brief.find("{C:") < 0)

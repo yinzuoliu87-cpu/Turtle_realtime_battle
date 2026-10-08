@@ -130,7 +130,9 @@ func _ready() -> void:
 				##   ② 只按高度筛还不够: **被动条**也是 RichTextLabel(实测 516x24 / 内容 46 ⇒ 也算"被截"),
 				##      但它的提示写的是「展开全文 ▸」而不是「点开看全部」⇒ 又报"被截 1 / 提示 0"。
 				##      技能卡并排三张(宽约 253), 被动条是整条(宽 516) —— **用宽度把两者分开**。
-				if _rt.size.x < 400.0 and _rt.size.y > 16.0 and _rt.size.y < 400.0 \
+				##   ③ 2026-10-08 技能卡改竖排(每张占右栏整宽 412)后, 宽度再也分不开卡片与被动条 ⇒
+				##      改认产品给卡片正文挂的 `codex_card_body` 标记(只用来认是谁, 被截与否仍量真实内容高)。
+				if _rt.has_meta("codex_card_body") and _rt.size.y > 16.0 and _rt.size.y < 400.0 \
 					and _rt.get_content_height() > _rt.size.y + 0.5:
 					_cl += 1
 			elif _c is Label and str((_c as Label).text).begins_with("查看全部") and (_c as Label).horizontal_alignment == HORIZONTAL_ALIGNMENT_RIGHT:
@@ -245,7 +247,9 @@ func _check_skill_cards() -> void:
 	var det_w: float = float(_inst.DETAIL_W)
 	_ok("★★★② 卡片铺满板宽(右边不许空出一整张卡)", right >= det_w - 30.0,
 		"卡右缘 %.0f / 板宽 %.0f ⇒ 右侧余 %.0f px" % [right, det_w, det_w - right])
-	_ok("★② 左边距对称", left >= 12.0 and left <= 28.0, "左缘 %.0f" % left)
+	## ★2026-10-08 两栏: 卡片住在右栏, 左缘 = 右栏左缘 CodexDetail.RCOL_X(原来整宽版式是「左边距对称 12~28」)。
+	var rcol_x: float = float(CodexDetail.RCOL_X)
+	_ok("★② 卡片左缘贴右栏左缘", left >= rcol_x - 0.5 and left <= rcol_x + 8.0, "左缘 %.0f / 右栏 %.0f" % [left, rcol_x])
 
 	# ── 纵向: 每张卡贴着自己的正文, 不许留大片空 ──
 	var gaps: Array = []
@@ -280,10 +284,14 @@ func _check_skill_cards() -> void:
 		var rt2: RichTextLabel = c2["rt"]
 		if rt2 == null:
 			continue
-		if p2.size.y < rt2.size.y + 60.0:
-			fit_bad.append("卡高 %.0f 装不下正文 %.0f" % [p2.size.y, rt2.size.y])
+		## ★2026-10-08 原来写「卡高 ≥ 正文高 + 60」(60 = 旧版卡头 82 减去行距那一套估值)。竖排卡头只有 40,
+		##   这个 60 就成了一个跟版式绑死的魔数。改量几何本身: 正文下沿不越过卡底的金属边带(CARD_PAD)。
+		var rt_bottom: float = rt2.position.y + rt2.size.y
+		var inner_bottom: float = p2.position.y + p2.size.y - float(CodexDetail.CARD_PAD)
+		if rt_bottom > inner_bottom + 0.5:
+			fit_bad.append("正文下沿 %.0f 越过卡内沿 %.0f" % [rt_bottom, inner_bottom])
 	_ok("★★② 分母: 每张卡都装得下自己的正文(最短 %.0f / 最高 %.0f)" % [hmin, hmax],
-		fit_bad.is_empty() and hmin >= 100.0, str(fit_bad.slice(0, 3)))
+		fit_bad.is_empty() and hmin >= float(CodexDetail.CARD_MIN_H) - 0.5, str(fit_bad.slice(0, 3)))
 
 
 ## 技能卡 = detail 里成排的 Panel(同一 y、宽度相同)+ 它下面那个 RichTextLabel。
@@ -291,7 +299,7 @@ func _check_skill_cards() -> void:
 func _skill_cards() -> Array:
 	var panels: Array = []
 	for c in _inst.detail.get_children():
-		if c is Panel and (c as Panel).size.x >= 120.0 and (c as Panel).size.y >= 100.0:
+		if c is Panel and (c as Panel).size.x >= 120.0 and (c as Panel).size.y >= 70.0:
 			panels.append(c)
 	var out: Array = []
 	for p in panels:
@@ -300,13 +308,16 @@ func _skill_cards() -> Array:
 			if not (c2 is RichTextLabel):
 				continue
 			var rt: RichTextLabel = c2
+			## 只配技能卡正文(竖排后被动条也 ≥70 高, 它里面的简述不是卡片正文)
+			if not rt.has_meta("codex_card_body"):
+				continue
 			if rt.position.x >= p.position.x - 1.0 and rt.position.x <= p.position.x + p.size.x \
 					and rt.position.y >= p.position.y and rt.position.y <= p.position.y + p.size.y:
 				best = rt
 				break
 		if best != null:
 			out.append({"panel": p, "rt": best})
-	out.sort_custom(func(a, b): return (a["panel"] as Panel).position.x < (b["panel"] as Panel).position.x)
+	out.sort_custom(func(a, b): return (a["panel"] as Panel).position.y < (b["panel"] as Panel).position.y)   # 竖排: 自上而下
 	return out
 
 

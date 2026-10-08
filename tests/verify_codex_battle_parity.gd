@@ -101,6 +101,14 @@ func _check_stats(id: String, tag: String) -> Dictionary:
 		_ok("%s %s(%s) %s: 图鉴 %d == 战斗 %d" % [tag, id, str(pet.get("rarity", "?")), p[0], got, want],
 			got == want and labels.has(str(want)),
 			"" if labels.has(str(want)) else "属性牌上没印出 %d" % want)
+	## ★射程(2026-10-08 龟页新增): 图鉴印的必须是真生成单位的 atk_range(近战被抬到 ≥100, 远程照表)。
+	##   按射程那一行的数字 Label 认(stat_num 元数据) —— 只查「屏上有个 100」会被移速 100 冒充。
+	var want_rng: int = roundi(float(u.get("atk_range", -1.0)))
+	var got_rng: String = "<没有射程行>"
+	for ch in _codex.detail.get_children():
+		if ch is Label and ch.has_meta("stat_num") and str(ch.get_meta("stat_num")) == "range":
+			got_rng = str((ch as Label).text)
+	_ok("%s %s 射程: 图鉴 %s == 战斗 atk_range %d" % [tag, id, got_rng, want_rng], want_rng > 0 and got_rng == str(want_rng))
 	return u
 
 

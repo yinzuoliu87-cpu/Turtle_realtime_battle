@@ -89,10 +89,14 @@ func _ready() -> void:
 	##   也就是**四项都得扣掉**, 一项都不能少。少扣哪项, 提示就会压到正文上。
 	##   (真正的几何验证在 verify_codex_layout 的活场景里, 那边量真实矩形。)
 	var i_fit: int = src.find("func _fit_skill_cards")
-	var fit_body: String = src.substr(i_fit, 900) if i_fit > 0 else ""
-	_ok("★★★④ 卡底留了提示带(正文高度扣掉了头部/提示带/边带三项)",
-		i_fit > 0 and fit_body.find("CARD_BODY_TOP") >= 0
-		and fit_body.find("CARD_HINT_BAND") >= 0 and fit_body.find("CARD_PAD") >= 0,
+	## ★2026-10-08 技能卡改竖排: 「查看全部」从卡底那条提示带挪到**名字行右端**(每张卡省 18px)。
+	##   这段代码现在保证的事: 正文高度扣掉头部与底边带两项, 而提示的 y 落在名字行(卡顶 + CARD_PAD),
+	##   不在正文区里 —— 提示照样压不到正文。切整个函数体(原来切 900 字符, 竖排后提示那行在 900 之外)。
+	var i_fit_end: int = src.find("\nfunc ", i_fit + 10) if i_fit > 0 else -1
+	var fit_body: String = src.substr(i_fit, (i_fit_end - i_fit) if i_fit_end > i_fit else 4000) if i_fit > 0 else ""
+	_ok("★★★④ 正文高度扣掉了头部/边带, 提示挂在名字行(不压正文)",
+		i_fit > 0 and fit_body.find("CARD_BODY_TOP") >= 0 and fit_body.find("CARD_PAD") >= 0
+		and fit_body.find("_card_hint_y[rt] = y + CARD_PAD") >= 0,
 		"切出 %d 字符" % fit_body.length())
 	## ★★★2026-09-28 这条原来是 `src.find('l.text = "点开看全部 ▸"')` —— **把屏幕上的字
 	##   一个不差地抄进判据**。去网页味那一轮只删了一个 ▸, 它当场就红, 而版面是变好了。

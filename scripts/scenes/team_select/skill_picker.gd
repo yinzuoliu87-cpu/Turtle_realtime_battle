@@ -27,7 +27,8 @@ func _build_skill_picker(pet: Dictionary) -> void:
 	var count_lbl = Label.new()
 	## ★原文案 "3 选 1 (主动/被动)" —— 括号计数 + 括号补注, 是说明书腔不是游戏话。
 	##   括号里那句还等于没说(玩家点开就看得见是主动还是被动)。改成一句话讲清"挑一个带上场"。
-	count_lbl.text = "选择 1 个技能（共 %d 个）" % maxi(1, pool.size() - 1)   # 普攻(idx0)外的候选数; 收敛成[普攻+3技]后=3选1
+	## ★2026-10-08 去掉「（共 N 个）」: 玩家眼前就摆着那几张卡, 括号计数是说明书腔(用户「能不能把这种说法的都解决好」)。
+	count_lbl.text = "选择 1 个技能"
 	count_lbl.add_theme_font_size_override("font_size", host._sf(11))   # PoC .dp-skill-count 11px
 	count_lbl.add_theme_color_override("font_color", Color(1, 1, 1, 0.5))   # rgba(255,255,255,.5)
 	count_lbl.size_flags_vertical = Control.SIZE_SHRINK_END   # 底对齐近 baseline

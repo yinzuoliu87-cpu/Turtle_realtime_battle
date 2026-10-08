@@ -707,6 +707,7 @@ if [ -n "${AUDIT_PID:-}" ]; then
 fi
 echo "=== 只读数据审计 ==="
 run_audit "tools/data_integrity.py"       "ALL OK" "data_integrity (json交叉引用/资源路径/孤儿字段)"
+run_audit "tools/copy_lol_style_lint.py"  "ALL OK" "copy_lol_style_lint (技能/装备文案体例: 无分号/破折号/口语词/普攻·括号密度≤LoL×1.5)"
 run_audit "tools/pixel_art_audit.py"     "ALL OK" "pixel_art_audit (装备图标必须是真像素画·台账只减不增)"
 run_audit "tools/tooltip_number_audit.py" "ALL OK" "tooltip_number_audit (装备文案数值 ↔ 代码)"
 # ★龟技能文案 ↔ 代码 (2026-07-30 新增)。由来: 用户「不只是无头龟有这问题啊，所有龟、装备、

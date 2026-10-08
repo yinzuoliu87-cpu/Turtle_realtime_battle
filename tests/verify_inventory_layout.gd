@@ -221,7 +221,9 @@ func _ready() -> void:
 		##   中位 129 字、最长 329 字的全文 —— 所以"放不下要明说"这条不再适用于底栏,
 		##   **它现在就该一行不截地放得下**。全文由「细看」那一层承接(下面有断言)。
 		##   判据的意思没变: **不许静默截断**。只是从"截断了要提示"变成"根本不截断"。
-		var eb: String = SkillText.equip_brief(DataRegistry.phase2_equipment_by_id.get(long_id, {}))
+		## ★2026-10-08 改走产品同一个入口: 底栏用的是 equip_brief_bb(带内联属性图标, 图标比字宽),
+		##   这里原来量纯文本 equip_brief ⇒ 算出 1 行, 产品实际 3 行、挂着「查看更多」—— ⑪ 绿 ⑫ 红, 自相矛盾。
+		var eb: String = SkillText.equip_brief_bb(DataRegistry.phase2_equipment_by_id.get(long_id, {}), int(InvScene.OP_BODY_FS))
 		var total: int = int(sc.call("_op_total_lines", body, eb, br.size.x))
 		var rows: int = int(InvScene.OP_BODY_ROWS)
 		_ok("⑩ ★分母: 简述确实拿到了(空串 = 下面是空检查)", eb.strip_edges() != "",
