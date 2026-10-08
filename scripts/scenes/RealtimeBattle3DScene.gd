@@ -4533,6 +4533,9 @@ func _dash_to(u: Dictionary, tgt: Dictionary, gap: float) -> void:
 func _kill(u: Dictionary, killer = null) -> void:
 	if u.get("_dead_done", false) or u.get("is_trainer", false):   # ★U2: 大师没有血量 ⇒ 任何直接处决也杀不死它
 		return   # 死亡已完整处理过→不重入(防死亡链重入无限递归卡死·用户2026-07-19卡死猎手: 053霰弹击杀 egg/minion 冻死)
+	## ★死亡处理计数(2026-10-08 天使龟不死 bug 的修法附带): 伤害结算记下「这一击开始时」的计数,
+	##   结算中途若在内层(反伤链)已经处理过一次死亡 —— 复活 / 涅槃 / 驯服重生 —— 外层就不再拿过期的「致命」补刀。
+	u["_kill_n"] = int(u.get("_kill_n", 0)) + 1
 	# 人头归属改写(用户2026-07-22): 被侵入者打死的人算侵入它的赛博龟, 赛博自己已死也照算。
 	#   放在函数最前 → 后面所有用 killer 的地方(击杀数/on-kill装备/日志)一次性全对。
 	killer = _credit_killer(killer)

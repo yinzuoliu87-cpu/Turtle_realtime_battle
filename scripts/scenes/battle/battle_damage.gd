@@ -215,6 +215,14 @@ func _apply_damage(u: Dictionary, dmg: int, _col: Color, src = null, bucket: Str
 	if u["hp"] <= 0.0 and battle._t < float(u.get("deathfloor_until", 0.0)):
 		u["hp"] = 1.0
 	if u.get("_review_dummy", false): u["hp"] = u["maxHp"]   # 训练靶: 受击即回满, 打不死不结算(看完整)
+	## ★★致命判定在这里定死(2026-10-08 用户「天使龟有不死bug」, 重放用户那局实测):
+	##   扣到 0 之后、下面那句 `_kill` 之前还要跑一串受击钩子 —— 护心甲 082 的反伤会以【被打的这只】为来源
+	##   再结算一次伤害, 它的生命偷取当场给自己回 0.04 血 ⇒ 轮到 `hp <= 0` 时已经不成立 ⇒ 不死。
+	##   每次挨打都重演一遍: 血条空着、人照样动(重放里从第 27 秒挂到第 60 秒)。
+	##   正规的免死(无头亡灵锁血 / 训练靶回满)都在这一行【之前】处理完, 所以此刻 hp ≤ 0 就是真的致命;
+	##   之后钩子里回的那点血救不了命。两条伤害路径同一写法(CLAUDE.md §3.3)。
+	var _lethal: bool = u["hp"] <= 0.0
+	var _kill_n0: int = int(u.get("_kill_n", 0))   # 见 RealtimeBattle3DScene._kill 开头
 	if battle._audit and dmg > 100000:
 		battle._audit_flag("huge_hit", "%s 单次承伤 %d (%s)" % [str(u.get("name", "?")), dmg, bucket])
 	# §STATS 修(用户2026-07-19"统计面板感觉很多伤害没统计"): DoT(灼烧/中毒/流血)此前【只计承受方】,
@@ -300,7 +308,8 @@ func _apply_damage(u: Dictionary, dmg: int, _col: Color, src = null, bucket: Str
 		battle._equip_sys._eq_check_hp_threshold(u)
 		battle._equip_sys.tally.pop(_tl1)
 		battle._hpl.check(u)
-	if u["hp"] <= 0.0 and u["alive"]:
+	if ((_lethal and int(u.get("_kill_n", 0)) == _kill_n0) or u["hp"] <= 0.0) and u["alive"]:
+		u["hp"] = 0.0
 		# ★带上 src: 原为 battle._kill(u) 无凶手 → DOT 击杀【不算击杀数】, 且暴君之牙处决回血这类
 		#   on-kill 装备钩子全不触发(对比另一条路 battle._kill(u, src))。2026-07-22 修。
 		battle._kill(u, src if src is Dictionary else null)
@@ -450,6 +459,14 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 		battle._headless_sys._headless_undead_vfx(u)                                    # 免死金骨光环5秒(2026-07-17)
 	if battle._t < float(u.get("deathfloor_until", 0.0)):
 		u["hp"] = maxf(1.0, u["hp"])
+	## ★★致命判定在这里定死(2026-10-08 用户「天使龟有不死bug」, 重放用户那局实测):
+	##   扣到 0 之后、下面那句 `_kill` 之前还要跑一串受击钩子 —— 护心甲 082 的反伤会以【被打的这只】为来源
+	##   再结算一次伤害, 它的生命偷取当场给自己回 0.04 血 ⇒ 轮到 `hp <= 0` 时已经不成立 ⇒ 不死。
+	##   每次挨打都重演一遍: 血条空着、人照样动(重放里从第 27 秒挂到第 60 秒)。
+	##   正规的免死(无头亡灵锁血 / 训练靶回满)都在这一行【之前】处理完, 所以此刻 hp ≤ 0 就是真的致命;
+	##   之后钩子里回的那点血救不了命。两条伤害路径同一写法(CLAUDE.md §3.3)。
+	var _lethal: bool = u["hp"] <= 0.0
+	var _kill_n0: int = int(u.get("_kill_n", 0))   # 见 RealtimeBattle3DScene._kill 开头
 	var _dt: String = "true" if raw else _dtv   # 飘字类型=真实伤害类型(_resolve_dmg设的_last_dmg_type·即时伤害对); 远程弹道在飞时会被别的伤害覆写→弹道在_step_projectiles命中前用捕获的pr.dtype还原(见那里)
 	var _ncol: Color = battle._VC.color_of(battle._VC.cls_for("damage", _dt, was_crit))   # 飘字按伤害类型统一取色 (物红/魔蓝/真白, 1:1 回合制)
 	var _jdir: float = 0.0
@@ -546,7 +563,8 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 		battle._hpl.check(u)                                 # ★多条血线(069 三块糕 80/55/30% · 064 <35%); 与上面那条 50% 线并存
 		if str(u.get("id", "")) == "fortune" and not u.get("_lowhp_fired", false) and u["hp"] <= u["maxHp"] * FortuneSystem.LOWHP_PCT:
 			battle._fortune_sys._fortune_lowhp_burst(u)       # 财神【通用被动】(用户2026-07-28): 首次跌破20%血 → 立得70龟能(不论带哪个技能)
-	if u["hp"] <= 0.0 and u["alive"]:
+	if ((_lethal and int(u.get("_kill_n", 0)) == _kill_n0) or u["hp"] <= 0.0) and u["alive"]:
+		u["hp"] = 0.0
 		battle._kill(u, src)
 
 
