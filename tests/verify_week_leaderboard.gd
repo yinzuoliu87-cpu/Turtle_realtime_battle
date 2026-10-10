@@ -9,7 +9,9 @@ extends Node
 ## 全部走**真入口**(实例化 `Leaderboard.tscn`, 网络走 `SupabaseNet._transport_for_test`,
 ##   时钟走 `phase2_config.now_override_ts`), 量的是**真实发出去的请求**与**屏上真画出来的字**:
 ##   ①  SQL v1 静态: 起止标记唯一 / security definer / 本周过滤 / 每账号最新一行 / 胜场→余命→横扫 / 只读
-##   ①b SQL v2 静态: 同上 + 下发 battles(总场次)与 standings.title; 在 schema.sql 里排在 v1 之后(重放以 v2 为准)
+##   ①b SQL v2 静态: 同上 + 下发 battles(总场次)与 standings.title; 在 schema.sql 里排在 v1 之后
+##   ①c SQL v3 静态: latest 里滤掉周六战绩非 0-0 的行(gl_w / gl_l); schema.sql 最后一个定义落在 v3 段(重放以 v3 为准);
+##       去掉那两行后与 v2 逐字相同
 ##   ②  没配后端 ⇒ 一个请求都不发, 画本机记录且标「本机记录」, 且「本机记录」不压列名
 ##   ③  周二 · 服务端 12 行(末行是我·第 20 名)⇒ 名字/名次/剩余生命/胜场/总场次逐行 = 服务端
 ##   ③b 服务端只在 `me` 里给我(不在 rows 里)⇒ 同样钉在末行、名次 20
@@ -34,6 +36,12 @@ const MARK_END := "-- <<< END week_leaderboard 20261006-A2 <<<"
 const MIGRATION2 := "res://server/supabase/migrations/20261006b_week_leaderboard_v2.sql"
 const MARK2_BEGIN := "-- >>> BEGIN week_leaderboard_v2 20261006b >>>"
 const MARK2_END := "-- <<< END week_leaderboard_v2 20261006b <<<"
+const MIGRATION3 := "res://server/supabase/migrations/20261010_week_leaderboard_v3.sql"
+const MARK3_BEGIN := "-- >>> BEGIN week_leaderboard_v3 20261010 >>>"
+const MARK3_END := "-- <<< END week_leaderboard_v3 20261010 <<<"
+## v3 只多的那两行(周六战绩不是 0-0 的行不进「最新一行」)。
+const V3_GL_W := "and coalesce(g.snapshot -> 'gl_w', '0'::jsonb) = '0'::jsonb"
+const V3_GL_L := "and coalesce(g.snapshot -> 'gl_l', '0'::jsonb) = '0'::jsonb"
 
 ## 假周锚点: 一个**真的周一 00:00 UTC**(下面 ⑤ 把钟钉在这一周的周二/周六/周日、下一周的周一)。
 const WEEK := 1790553600
@@ -69,6 +77,7 @@ func _ready() -> void:
 	print("=== 周榜: 服务端优先 / 本机兜底且标明 / 一周四种榜 ===")
 	_t_sql()
 	_t_sql_v2()
+	_t_sql_v3()
 	var acc0 := str(GameState.account_id)
 	var wk0 := int(GameState.week_anchor_ts)
 	var bt0 := int(GameState.season_total_battles)
@@ -193,6 +202,43 @@ func _t_sql_v2() -> void:
 		and c.count("'title', coalesce(r.title, '')") == 2)
 	_ok("①b 签名不变(create or replace 原地换函数体, 授权照旧)",
 		c.find("create or replace function public.week_leaderboard(p_week bigint, p_limit int default 30)") >= 0)
+
+
+## ①c v3(2026-10-10): 周六闯关赛的行(旧客户端照样写进 ghosts, battles 17/18…、胜场含周六)不许进「最新一行」。
+##   ★0-0 那份要留: 它与积分赛收官行主键相同、upsert 原地盖掉了那一行 —— 扔了就退回倒数第二场。
+func _t_sql_v3() -> void:
+	print("── ①c SQL v3 静态(周六行不进积分赛终榜) ──")
+	var t := _read(SCHEMA)
+	_ok("①c ★v3 起止标记在 schema.sql 里各恰好一次", t.count(MARK3_BEGIN) == 1 and t.count(MARK3_END) == 1,
+		"BEGIN %d / END %d" % [t.count(MARK3_BEGIN), t.count(MARK3_END)])
+	var m3 := _read(MIGRATION3)
+	_ok("①c ★v3 起止标记在迁移文件里各恰好一次", m3.count(MARK3_BEGIN) == 1 and m3.count(MARK3_END) == 1)
+	var seg := _segment(t, MARK3_BEGIN, MARK3_END)
+	var mig := _segment(m3, MARK3_BEGIN, MARK3_END)
+	_ok("①c ★分母: 截到了 v3 那一段", seg.length() > 500, "%d 字" % seg.length())
+	_ok("①c v3 迁移文件与 schema.sql 那一段逐字相同", seg != "" and seg == mig, "%d / %d 字" % [seg.length(), mig.length()])
+	## ★「上线的是哪一版」= schema.sql 里**最后一个** `create or replace function public.week_leaderboard(`
+	##   —— 它必须落在 v3 段里(以后谁再追加一版而没带上这两行, 这条当场红)。
+	var key := "create or replace function public.week_leaderboard("
+	var last := t.rfind(key)
+	_ok("①c ★★schema.sql 里最后一个 week_leaderboard 定义落在 v3 段内(整份重放时最后生效的是 v3)",
+		last > t.find(MARK3_BEGIN) and last < t.find(MARK3_END) and t.find(MARK3_BEGIN) > t.find(MARK2_END),
+		"最后定义 @%d / v3 段 [%d, %d]" % [last, t.find(MARK3_BEGIN), t.find(MARK3_END)])
+	var c := _code_of(seg)
+	_check_sql_common("①c", c)
+	_ok("①c ★★latest 里滤掉周六战绩非 0-0 的行(gl_w / gl_l 两条都在, 且在 order by 之前 = 在 latest 子句里)",
+		c.find(V3_GL_W) > 0 and c.find(V3_GL_L) > 0
+		and c.find(V3_GL_W) < c.find("order by g.account_id") and c.find(V3_GL_L) < c.find("order by g.account_id"),
+		"gl_w@%d gl_l@%d" % [c.find(V3_GL_W), c.find(V3_GL_L)])
+	_ok("①c v2 的下发字段一个没少(battles / title 各两处)",
+		c.count("'battles', r.battles") == 2 and c.count("'title', coalesce(r.title, '')") == 2)
+	_ok("①c 签名不变(create or replace 原地换函数体, 授权照旧)",
+		c.find("create or replace function public.week_leaderboard(p_week bigint, p_limit int default 30)") >= 0)
+	## ★「其余一个字没动」: v3 的代码 = v2 的代码 + 那两行。别的地方漂了这条红。
+	var c2 := _code_of(_segment(t, MARK2_BEGIN, MARK2_END))
+	var c3_minus := c.replace(" " + V3_GL_W, "").replace(" " + V3_GL_L, "")
+	_ok("①c ★v3 去掉那两行之后与 v2 代码逐字相同(只加过滤, 口径没动)", c2 != "" and c3_minus == c2,
+		"%d / %d 字" % [c3_minus.length(), c2.length()])
 
 
 # ─────────────────────────────────────────────────────────────
