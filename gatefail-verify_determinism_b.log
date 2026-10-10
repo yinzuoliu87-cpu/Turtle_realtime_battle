@@ -1,0 +1,244 @@
+Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org
+
+[DataRegistry] Loading PoC data → res://data/*.json
+[DataRegistry] ✓ loaded: 28 pets, 8 equipment, 25 status
+[Audio] QUIET=1 ⇒ 主总线已静音(mute=true, -80 dB)
+  [PASS] 分母 · 场景表读到 15 个场景(与 verify_determinism_cross 同一份表)   15 个
+  [PASS] 分母 · pets.json 读到 28 只龟(读不到 = 下一条是空检查)   28 只
+  [PASS] ★28 龟覆盖 · 每只龟至少在一个确定性场景里出场(缺 0 只)   从没出场: []
+  [PASS] 分母 · ① 2 单位裸装 · 逐步快照 200 步(要求 200)   det=true 比对步数=200 tween峰值=73 全场承伤=228 不同指纹=13 可抄池=0 复制施放=0
+  [PASS] 分母 · ① 2 单位裸装 · 战斗真的在推进(不同指纹 13 个 > 1, 累计承伤 228 > 0)
+  [PASS] 分母 · ① 2 单位裸装 · 本局真的建过演出 tween(峰值 73 > 0)
+  [PASS] ★① 2 单位裸装 · 同种子(424242)两遍 · 逐步指纹 0/200 步分叉 → 必须 0
+  [PASS] 分母 · ② 3v3 裸装(海盗/忍者/骰子/闪电) · 逐步快照 600 步(要求 600)   det=true 比对步数=600 tween峰值=252 全场承伤=1892 不同指纹=484 可抄池=0 复制施放=0
+  [PASS] 分母 · ② 3v3 裸装(海盗/忍者/骰子/闪电) · 战斗真的在推进(不同指纹 484 个 > 1, 累计承伤 1892 > 0)
+  [PASS] 分母 · ② 3v3 裸装(海盗/忍者/骰子/闪电) · 本局真的建过演出 tween(峰值 252 > 0)
+  [PASS] ★② 3v3 裸装(海盗/忍者/骰子/闪电) · 同种子(424242)两遍 · 逐步指纹 0/600 步分叉 → 必须 0
+[087 盗令潜水钟] 海盗龟 偷【hunt_order】→ 施放成功
+[087 盗令潜水钟] 海盗龟 偷【hunt_order】→ 施放成功
+  [PASS] 分母 · ③ 3v3 满装备(每只 3 件 3★) · 逐步快照 600 步(要求 600)   det=true 比对步数=600 tween峰值=510 全场承伤=46457 不同指纹=380 可抄池=0 复制施放=0
+  [PASS] 分母 · ③ 3v3 满装备(每只 3 件 3★) · 战斗真的在推进(不同指纹 380 个 > 1, 累计承伤 46457 > 0)
+  [PASS] 分母 · ③ 3v3 满装备(每只 3 件 3★) · 本局真的建过演出 tween(峰值 510 > 0)
+  [PASS] ★③ 3v3 满装备(每只 3 件 3★) · 同种子(424242)两遍 · 逐步指纹 0/600 步分叉 → 必须 0
+  [PASS] 分母 · ④ 双头/藏身/宽刃(协程位移同族) · 逐步快照 1000 步(要求 1000)   det=true 比对步数=1000 tween峰值=289 全场承伤=29094 不同指纹=626 可抄池=0 复制施放=0
+  [PASS] 分母 · ④ 双头/藏身/宽刃(协程位移同族) · 战斗真的在推进(不同指纹 626 个 > 1, 累计承伤 29094 > 0)
+  [PASS] 分母 · ④ 双头/藏身/宽刃(协程位移同族) · 本局真的建过演出 tween(峰值 289 > 0)
+  [PASS] ★④ 双头/藏身/宽刃(协程位移同族) · 同种子(424242)两遍 · 逐步指纹 0/1000 步分叉 → 必须 0
+  [PASS] 分母 · ⑤ 007阔剑+006千刃(协程扫描同族) · 逐步快照 1400 步(要求 1400)   det=true 比对步数=1400 tween峰值=397 全场承伤=14555 不同指纹=190 可抄池=0 复制施放=0
+  [PASS] 分母 · ⑤ 007阔剑+006千刃(协程扫描同族) · 战斗真的在推进(不同指纹 190 个 > 1, 累计承伤 14555 > 0)
+  [PASS] 分母 · ⑤ 007阔剑+006千刃(协程扫描同族) · 本局真的建过演出 tween(峰值 397 > 0)
+  [PASS] ★⑤ 007阔剑+006千刃(协程扫描同族) · 同种子(424242)两遍 · 逐步指纹 0/1400 步分叉 → 必须 0
+  [PASS] 分母 · ⑥ 小将浪板/追踪火箭(协程位移) · 逐步快照 800 步(要求 800)   det=true 比对步数=800 tween峰值=170 全场承伤=124986 不同指纹=153 可抄池=0 复制施放=0
+  [PASS] 分母 · ⑥ 小将浪板/追踪火箭(协程位移) · 战斗真的在推进(不同指纹 153 个 > 1, 累计承伤 124986 > 0)
+  [PASS] 分母 · ⑥ 小将浪板/追踪火箭(协程位移) · 本局真的建过演出 tween(峰值 170 > 0)
+  [PASS] ★⑥ 小将浪板/追踪火箭(协程位移) · 同种子(424242)两遍 · 逐步指纹 0/800 步分叉 → 必须 0
+  [PASS] 分母 · ⑦ 双头灵能炮弹(协程位移) · 逐步快照 700 步(要求 700)   det=true 比对步数=700 tween峰值=67 全场承伤=8507 不同指纹=138 可抄池=0 复制施放=0
+  [PASS] 分母 · ⑦ 双头灵能炮弹(协程位移) · 战斗真的在推进(不同指纹 138 个 > 1, 累计承伤 8507 > 0)
+  [PASS] 分母 · ⑦ 双头灵能炮弹(协程位移) · 本局真的建过演出 tween(峰值 67 > 0)
+  [PASS] ★⑦ 双头灵能炮弹(协程位移) · 同种子(424242)两遍 · 逐步指纹 0/700 步分叉 → 必须 0
+  [PASS] 分母 · ⑧ 雷暴/random_aoe/聚宝盆/无人机/棱镜(受控 PRNG 落点) · 逐步快照 1000 步(要求 1000)   det=true 比对步数=1000 tween峰值=512 全场承伤=3387 不同指纹=624 可抄池=0 复制施放=0
+  [PASS] 分母 · ⑧ 雷暴/random_aoe/聚宝盆/无人机/棱镜(受控 PRNG 落点) · 战斗真的在推进(不同指纹 624 个 > 1, 累计承伤 3387 > 0)
+  [PASS] 分母 · ⑧ 雷暴/random_aoe/聚宝盆/无人机/棱镜(受控 PRNG 落点) · 本局真的建过演出 tween(峰值 512 > 0)
+  [PASS] ★⑧ 雷暴/random_aoe/聚宝盆/无人机/棱镜(受控 PRNG 落点) · 同种子(424242)两遍 · 逐步指纹 0/1000 步分叉 → 必须 0
+  [PASS] 分母 · ⑨ 骰子龟稳定骰子(掷段数) · 逐步快照 1800 步(要求 1800)   det=true 比对步数=1800 tween峰值=504 全场承伤=2114 不同指纹=772 可抄池=0 复制施放=0
+  [PASS] 分母 · ⑨ 骰子龟稳定骰子(掷段数) · 战斗真的在推进(不同指纹 772 个 > 1, 累计承伤 2114 > 0)
+  [PASS] 分母 · ⑨ 骰子龟稳定骰子(掷段数) · 本局真的建过演出 tween(峰值 504 > 0)
+  [PASS] ★⑨ 骰子龟稳定骰子(掷段数) · 同种子(424242)两遍 · 逐步指纹 0/1800 步分叉 → 必须 0
+[CP] CAST copy
+[CP] CAST copy
+[CP] CAST copy
+[CP] CAST copy
+[CP] CAST copy
+[CP] CAST copy
+  [PASS] 分母 · ⑩ 龟壳复制(抄哪两个技能·受控 PRNG) · 逐步快照 1200 步(要求 1200)   det=true 比对步数=1200 tween峰值=334 全场承伤=1438 不同指纹=265 可抄池=5 复制施放=3
+  [PASS] 分母 · ⑩ 龟壳复制(抄哪两个技能·受控 PRNG) · 战斗真的在推进(不同指纹 265 个 > 1, 累计承伤 1438 > 0)
+  [PASS] 分母 · ⑩ 龟壳复制(抄哪两个技能·受控 PRNG) · 本局真的建过演出 tween(峰值 334 > 0)
+  [PASS] 分母 · ⑩ 龟壳复制(抄哪两个技能·受控 PRNG) · 可抄池 ≥ 2(实测 5 个可抄技·用 CopyRules.can_copy 过的活敌人技)   池子 < 2 ⇒ 洗牌无可洗 ⇒ 这一条恒绿(空跑)
+  [PASS] 分母 · ⑩ 龟壳复制(抄哪两个技能·受控 PRNG) · 两遍都真的放过【复制】(A 3 次 / B 3 次, 都须 ≥ 1)   数的是 skill_cd["shellCopy"] 抬头(RealtimeBattle3DScene.gd:2618 写的), 不是我插的标记
+  [PASS] ★⑩ 龟壳复制(抄哪两个技能·受控 PRNG) · 同种子(424242)两遍 · 逐步指纹 0/1200 步分叉 → 必须 0
+  [PASS] 分母 · ⑪ 训龟大师自动施法(U2·钩锁·敌我同规则) · 逐步快照 1500 步(要求 1500)   det=true 比对步数=1500 tween峰值=512 全场承伤=4226 不同指纹=657 可抄池=0 复制施放=0
+  [PASS] 分母 · ⑪ 训龟大师自动施法(U2·钩锁·敌我同规则) · 战斗真的在推进(不同指纹 657 个 > 1, 累计承伤 4226 > 0)
+  [PASS] 分母 · ⑪ 训龟大师自动施法(U2·钩锁·敌我同规则) · 本局真的建过演出 tween(峰值 512 > 0)
+  [PASS] ★⑪ 训龟大师自动施法(U2·钩锁·敌我同规则) · 同种子(424242)两遍 · 逐步指纹 0/1500 步分叉 → 必须 0
+  [PASS] 分母 · ⑫ 补覆盖·天使/寒冰/幽灵/糖果/连线 · 逐步快照 1000 步(要求 1000)   det=true 比对步数=1000 tween峰值=512 全场承伤=46834 不同指纹=621 可抄池=0 复制施放=0
+  [PASS] 分母 · ⑫ 补覆盖·天使/寒冰/幽灵/糖果/连线 · 战斗真的在推进(不同指纹 621 个 > 1, 累计承伤 46834 > 0)
+  [PASS] 分母 · ⑫ 补覆盖·天使/寒冰/幽灵/糖果/连线 · 本局真的建过演出 tween(峰值 512 > 0)
+  [PASS] 分母 · ⑫ 补覆盖·天使/寒冰/幽灵/糖果/连线 · 左队 5 只两遍都真的放过主动技(A { "0:angel": 8, "1:ice": 6, "2:ghost": 7, "3:candy": 7, "4:line": 6 })   没放过技的: [] —— 数的是产品写的 skill_cd 抬头
+  [PASS] ★⑫ 补覆盖·天使/寒冰/幽灵/糖果/连线 · 同种子(424242)两遍 · 逐步指纹 0/1000 步分叉 → 必须 0
+  [PASS] 分母 · ⑬ 补覆盖·凤凰/熔岩/宝箱/星际/无头 · 逐步快照 1000 步(要求 1000)   det=true 比对步数=1000 tween峰值=512 全场承伤=34054 不同指纹=926 可抄池=0 复制施放=0
+  [PASS] 分母 · ⑬ 补覆盖·凤凰/熔岩/宝箱/星际/无头 · 战斗真的在推进(不同指纹 926 个 > 1, 累计承伤 34054 > 0)
+  [PASS] 分母 · ⑬ 补覆盖·凤凰/熔岩/宝箱/星际/无头 · 本局真的建过演出 tween(峰值 512 > 0)
+  [PASS] 分母 · ⑬ 补覆盖·凤凰/熔岩/宝箱/星际/无头 · 左队 5 只两遍都真的放过主动技(A { "0:phoenix": 8, "1:lava": 5, "2:chest": 7, "3:space": 2, "4:headless": 5 })   没放过技的: [] —— 数的是产品写的 skill_cd 抬头
+  [PASS] ★⑬ 补覆盖·凤凰/熔岩/宝箱/星际/无头 · 同种子(424242)两遍 · 逐步指纹 0/1000 步分叉 → 必须 0
+  [PASS] 分母 · ⑭ 换选技能·糖衣炮弹/平等/团队盾/幻影/墨爆 · 逐步快照 1000 步(要求 1000)   det=true 比对步数=1000 tween峰值=512 全场承伤=104478 不同指纹=830 可抄池=0 复制施放=0
+  [PASS] 分母 · ⑭ 换选技能·糖衣炮弹/平等/团队盾/幻影/墨爆 · 战斗真的在推进(不同指纹 830 个 > 1, 累计承伤 104478 > 0)
+  [PASS] 分母 · ⑭ 换选技能·糖衣炮弹/平等/团队盾/幻影/墨爆 · 本局真的建过演出 tween(峰值 512 > 0)
+  [PASS] 分母 · ⑭ 换选技能·糖衣炮弹/平等/团队盾/幻影/墨爆 · 左队 5 只两遍都真的放过主动技(A { "0:candy": 5, "1:angel": 7, "2:ice": 6, "3:ghost": 6, "4:line": 6 })   没放过技的: [] —— 数的是产品写的 skill_cd 抬头
+  [PASS] ★⑭ 换选技能·糖衣炮弹/平等/团队盾/幻影/墨爆 · 同种子(424242)两遍 · 逐步指纹 0/1000 步分叉 → 必须 0
+  [PASS] 分母 · ⑮ 059沙漏时停(携带者阔剑/千刃·其余定格) · 逐步快照 1100 步(要求 1100)   det=true 比对步数=1100 tween峰值=444 全场承伤=49003 不同指纹=509 可抄池=0 复制施放=0
+  [PASS] 分母 · ⑮ 059沙漏时停(携带者阔剑/千刃·其余定格) · 战斗真的在推进(不同指纹 509 个 > 1, 累计承伤 49003 > 0)
+  [PASS] 分母 · ⑮ 059沙漏时停(携带者阔剑/千刃·其余定格) · 本局真的建过演出 tween(峰值 444 > 0)
+  [PASS] 分母 · ⑮ 059沙漏时停(携带者阔剑/千刃·其余定格) · 两遍都真的进过时停(A 359 步 / B 359 步, 都须 ≥ 300)   数的是产品的 _timestop._ts_active 非空的步数
+  [PASS] ★⑮ 059沙漏时停(携带者阔剑/千刃·其余定格) · 同种子(424242)两遍 · 逐步指纹 0/1100 步分叉 → 必须 0
+  [PASS] 分母 · 反证比对了 240 步
+  [PASS] ★反证 · 换种子(424242→77) → 逐步指纹必须不同(203/240 步不同 > 0)   全同 = 指纹根本没读到随机/没读到战斗状态, 上面几条就全是恒真式
+[CP] 我方: 小龟 技能=["basicBarrage"] 龟能=0.0/0 cost={ "physical": 0.0, "basicBarrage": 80.0, "basicChiWave": 100.0, "basicSlam": 120.0 }
+[CP] 我方: 石头龟 技能=["stoneRockShield"] 龟能=0.0/0 cost={ "physical": 0.0, "stoneRockShield": 100.0, "rockShockwave": 80.0, "stoneTaunt": 120.0 }
+[CP] 我方: 闪电龟 技能=["lightningBarrage"] 龟能=0.0/0 cost={ "lightningStrike": 0.0, "lightningSurgeBuff": 110.0, "lightningBarrage": 110.0, "lightningShield": 90.0 }
+WARNING: RealtimeBattle3D: 立绘缺失 green (占位空)
+     at: push_warning (core/variant/variant_utility.cpp:1034)
+     GDScript backtrace (most recent call first):
+         [0] _resolve_pet_sprite (res://scripts/scenes/RealtimeBattle3DScene.gd:1825)
+         [1] _make_unit (res://scripts/scenes/battle/battle_spawn.gd:351)
+         [2] _salvo_unit (res://tests/verify_determinism_b.gd:191)
+         [3] _salvo_run (res://tests/verify_determinism_b.gd:152)
+WARNING: RealtimeBattle3D: 立绘缺失 green (占位空)
+     at: push_warning (core/variant/variant_utility.cpp:1034)
+     GDScript backtrace (most recent call first):
+         [0] _resolve_pet_sprite (res://scripts/scenes/RealtimeBattle3DScene.gd:1825)
+         [1] _make_unit (res://scripts/scenes/battle/battle_spawn.gd:351)
+         [2] _salvo_unit (res://tests/verify_determinism_b.gd:191)
+         [3] _salvo_run (res://tests/verify_determinism_b.gd:164)
+WARNING: RealtimeBattle3D: 立绘缺失 green (占位空)
+     at: push_warning (core/variant/variant_utility.cpp:1034)
+     GDScript backtrace (most recent call first):
+         [0] _resolve_pet_sprite (res://scripts/scenes/RealtimeBattle3DScene.gd:1825)
+         [1] _make_unit (res://scripts/scenes/battle/battle_spawn.gd:351)
+         [2] _salvo_unit (res://tests/verify_determinism_b.gd:191)
+         [3] _salvo_run (res://tests/verify_determinism_b.gd:164)
+WARNING: RealtimeBattle3D: 立绘缺失 green (占位空)
+     at: push_warning (core/variant/variant_utility.cpp:1034)
+     GDScript backtrace (most recent call first):
+         [0] _resolve_pet_sprite (res://scripts/scenes/RealtimeBattle3DScene.gd:1825)
+         [1] _make_unit (res://scripts/scenes/battle/battle_spawn.gd:351)
+         [2] _salvo_unit (res://tests/verify_determinism_b.gd:191)
+         [3] _salvo_run (res://tests/verify_determinism_b.gd:164)
+WARNING: RealtimeBattle3D: 立绘缺失 green (占位空)
+     at: push_warning (core/variant/variant_utility.cpp:1034)
+     GDScript backtrace (most recent call first):
+         [0] _resolve_pet_sprite (res://scripts/scenes/RealtimeBattle3DScene.gd:1825)
+         [1] _make_unit (res://scripts/scenes/battle/battle_spawn.gd:351)
+         [2] _salvo_unit (res://tests/verify_determinism_b.gd:191)
+         [3] _salvo_run (res://tests/verify_determinism_b.gd:164)
+WARNING: RealtimeBattle3D: 立绘缺失 green (占位空)
+     at: push_warning (core/variant/variant_utility.cpp:1034)
+     GDScript backtrace (most recent call first):
+         [0] _resolve_pet_sprite (res://scripts/scenes/RealtimeBattle3DScene.gd:1825)
+         [1] _make_unit (res://scripts/scenes/battle/battle_spawn.gd:351)
+         [2] _salvo_unit (res://tests/verify_determinism_b.gd:191)
+         [3] _salvo_run (res://tests/verify_determinism_b.gd:164)
+WARNING: RealtimeBattle3D: 立绘缺失 green (占位空)
+     at: push_warning (core/variant/variant_utility.cpp:1034)
+     GDScript backtrace (most recent call first):
+         [0] _resolve_pet_sprite (res://scripts/scenes/RealtimeBattle3DScene.gd:1825)
+         [1] _make_unit (res://scripts/scenes/battle/battle_spawn.gd:351)
+         [2] _salvo_unit (res://tests/verify_determinism_b.gd:191)
+         [3] _salvo_run (res://tests/verify_determinism_b.gd:164)
+WARNING: RealtimeBattle3D: 立绘缺失 green (占位空)
+     at: push_warning (core/variant/variant_utility.cpp:1034)
+     GDScript backtrace (most recent call first):
+         [0] _resolve_pet_sprite (res://scripts/scenes/RealtimeBattle3DScene.gd:1825)
+         [1] _make_unit (res://scripts/scenes/battle/battle_spawn.gd:351)
+         [2] _salvo_unit (res://tests/verify_determinism_b.gd:191)
+         [3] _salvo_run (res://tests/verify_determinism_b.gd:164)
+WARNING: RealtimeBattle3D: 立绘缺失 green (占位空)
+     at: push_warning (core/variant/variant_utility.cpp:1034)
+     GDScript backtrace (most recent call first):
+         [0] _resolve_pet_sprite (res://scripts/scenes/RealtimeBattle3DScene.gd:1825)
+         [1] _make_unit (res://scripts/scenes/battle/battle_spawn.gd:351)
+         [2] _salvo_unit (res://tests/verify_determinism_b.gd:191)
+         [3] _salvo_run (res://tests/verify_determinism_b.gd:164)
+  [量] ⑯ 齐射那一遍: dl_state= edit=false over=false 选靶=6 承伤=12,0,12,18,74,0,0,24
+[CP] 我方: 小龟 技能=["basicBarrage"] 龟能=0.0/0 cost={ "physical": 0.0, "basicBarrage": 80.0, "basicChiWave": 100.0, "basicSlam": 120.0 }
+[CP] 我方: 石头龟 技能=["stoneRockShield"] 龟能=0.0/0 cost={ "physical": 0.0, "stoneRockShield": 100.0, "rockShockwave": 80.0, "stoneTaunt": 120.0 }
+[CP] 我方: 闪电龟 技能=["lightningBarrage"] 龟能=0.0/0 cost={ "lightningStrike": 0.0, "lightningSurgeBuff": 110.0, "lightningBarrage": 110.0, "lightningShield": 90.0 }
+WARNING: RealtimeBattle3D: 立绘缺失 green (占位空)
+     at: push_warning (core/variant/variant_utility.cpp:1034)
+     GDScript backtrace (most recent call first):
+         [0] _resolve_pet_sprite (res://scripts/scenes/RealtimeBattle3DScene.gd:1825)
+         [1] _make_unit (res://scripts/scenes/battle/battle_spawn.gd:351)
+         [2] _salvo_unit (res://tests/verify_determinism_b.gd:191)
+         [3] _salvo_run (res://tests/verify_determinism_b.gd:152)
+WARNING: RealtimeBattle3D: 立绘缺失 green (占位空)
+     at: push_warning (core/variant/variant_utility.cpp:1034)
+     GDScript backtrace (most recent call first):
+         [0] _resolve_pet_sprite (res://scripts/scenes/RealtimeBattle3DScene.gd:1825)
+         [1] _make_unit (res://scripts/scenes/battle/battle_spawn.gd:351)
+         [2] _salvo_unit (res://tests/verify_determinism_b.gd:191)
+         [3] _salvo_run (res://tests/verify_determinism_b.gd:164)
+WARNING: RealtimeBattle3D: 立绘缺失 green (占位空)
+     at: push_warning (core/variant/variant_utility.cpp:1034)
+     GDScript backtrace (most recent call first):
+         [0] _resolve_pet_sprite (res://scripts/scenes/RealtimeBattle3DScene.gd:1825)
+         [1] _make_unit (res://scripts/scenes/battle/battle_spawn.gd:351)
+         [2] _salvo_unit (res://tests/verify_determinism_b.gd:191)
+         [3] _salvo_run (res://tests/verify_determinism_b.gd:164)
+WARNING: RealtimeBattle3D: 立绘缺失 green (占位空)
+     at: push_warning (core/variant/variant_utility.cpp:1034)
+     GDScript backtrace (most recent call first):
+         [0] _resolve_pet_sprite (res://scripts/scenes/RealtimeBattle3DScene.gd:1825)
+         [1] _make_unit (res://scripts/scenes/battle/battle_spawn.gd:351)
+         [2] _salvo_unit (res://tests/verify_determinism_b.gd:191)
+         [3] _salvo_run (res://tests/verify_determinism_b.gd:164)
+WARNING: RealtimeBattle3D: 立绘缺失 green (占位空)
+     at: push_warning (core/variant/variant_utility.cpp:1034)
+     GDScript backtrace (most recent call first):
+         [0] _resolve_pet_sprite (res://scripts/scenes/RealtimeBattle3DScene.gd:1825)
+         [1] _make_unit (res://scripts/scenes/battle/battle_spawn.gd:351)
+         [2] _salvo_unit (res://tests/verify_determinism_b.gd:191)
+         [3] _salvo_run (res://tests/verify_determinism_b.gd:164)
+WARNING: RealtimeBattle3D: 立绘缺失 green (占位空)
+     at: push_warning (core/variant/variant_utility.cpp:1034)
+     GDScript backtrace (most recent call first):
+         [0] _resolve_pet_sprite (res://scripts/scenes/RealtimeBattle3DScene.gd:1825)
+         [1] _make_unit (res://scripts/scenes/battle/battle_spawn.gd:351)
+         [2] _salvo_unit (res://tests/verify_determinism_b.gd:191)
+         [3] _salvo_run (res://tests/verify_determinism_b.gd:164)
+WARNING: RealtimeBattle3D: 立绘缺失 green (占位空)
+     at: push_warning (core/variant/variant_utility.cpp:1034)
+     GDScript backtrace (most recent call first):
+         [0] _resolve_pet_sprite (res://scripts/scenes/RealtimeBattle3DScene.gd:1825)
+         [1] _make_unit (res://scripts/scenes/battle/battle_spawn.gd:351)
+         [2] _salvo_unit (res://tests/verify_determinism_b.gd:191)
+         [3] _salvo_run (res://tests/verify_determinism_b.gd:164)
+WARNING: RealtimeBattle3D: 立绘缺失 green (占位空)
+     at: push_warning (core/variant/variant_utility.cpp:1034)
+     GDScript backtrace (most recent call first):
+         [0] _resolve_pet_sprite (res://scripts/scenes/RealtimeBattle3DScene.gd:1825)
+         [1] _make_unit (res://scripts/scenes/battle/battle_spawn.gd:351)
+         [2] _salvo_unit (res://tests/verify_determinism_b.gd:191)
+         [3] _salvo_run (res://tests/verify_determinism_b.gd:164)
+WARNING: RealtimeBattle3D: 立绘缺失 green (占位空)
+     at: push_warning (core/variant/variant_utility.cpp:1034)
+     GDScript backtrace (most recent call first):
+         [0] _resolve_pet_sprite (res://scripts/scenes/RealtimeBattle3DScene.gd:1825)
+         [1] _make_unit (res://scripts/scenes/battle/battle_spawn.gd:351)
+         [2] _salvo_unit (res://tests/verify_determinism_b.gd:191)
+         [3] _salvo_run (res://tests/verify_determinism_b.gd:164)
+  [量] ⑯ 齐射那一遍: dl_state= edit=false over=false 选靶=6 承伤=12,0,18,12,74,0,0,24
+  [PASS] 分母 · ⑯ 两遍齐射都选了 6 门炮的靶(A 6 / B 6)
+  [PASS] 分母 · ⑯ 两遍齐射都真的打出了伤害(A 总承伤 140 / B 140)
+  [FAIL] ★⑯ 赛博阵亡齐射: 战斗种子相同、全局 RNG 不同 ⇒ 每个敌人挨的伤害逐个相同   A 12,0,12,18,74,0,0,24 / B 12,0,18,12,74,0,0,24
+  [PASS] 分母 · 静态棘轮扫了 115 个文件 / 81437 行(0 个文件 = 空检查, 不是通过)
+  [PASS] ★⑧ 战斗模拟路径里 `get_process_delta_time()` 必须 0 处(实测 0 处)
+
+FAILED: 1 / 76
+ERROR: Pages in use exist at exit in PagedAllocator: N20RasterizerSceneDummy21GeometryInstanceDummyE
+   at: ~PagedAllocator (./core/templates/paged_allocator.h:169)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+   at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+   at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+   at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: Leaked instance dependency: Bug - did not call instance_notify_deleted when freeing.
+   at: ~Dependency (servers/rendering/storage/utilities.cpp:56)
+WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+   at: cleanup (core/object/object.cpp:2663)
+ERROR: 79 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:810)
+ERROR: 41 RID allocations of type 'PN13RendererDummy14TextureStorage12DummyTextureE' were leaked at exit.
+ERROR: 48 RID allocations of type 'N13RendererDummy9DummyMeshE' were leaked at exit.
+ERROR: 140 RID allocations of type 'N13RendererDummy15MaterialStorage13DummyMaterialE' were leaked at exit.
+ERROR: 37 RID allocations of type 'N13RendererDummy15MaterialStorage11DummyShaderE' were leaked at exit.
+ERROR: 4 RID allocations of type 'N17RendererSceneCull8InstanceE' were leaked at exit.
