@@ -18,6 +18,8 @@ extends Node
 ##      看门狗那一条: 迟到的回包**不许**再把人拽进回放
 ##   ④ 每一段之后: 存档文件逐字节不变 / GameState 与 test_mode 还原 / 战绩条数不变
 ##   ⑤ 没有回放的行不出按钮(没 id / id 不像样 / 服务端已清 / 旧本机 id 文件没了 / 没接服务器)
+##   ⑥ 版本闸(2026-10-10): 录像版本已知且与本机不同 ⇒ 没有「观看」、换成灰签「版本不同」; 相同 / 不知道 ⇒ 照旧;
+##      写入侧给新行记 client_version; 老行(没有 foe / foe_name / client_version)从本机录像补, 对手三槽不再是空的
 ##
 ## ★每条断言配分母: 按钮真的找到了、请求真的发了、场景真的换过去了、校验点真的比过了。
 
@@ -169,6 +171,7 @@ func _ready() -> void:
 		"replay_id": "99999999-8888-4777-8666-555555555555"})
 
 	await _t_no_button_without_backend()
+	await _t_record_version()
 
 	## 开后端(假服务器)。令牌预先给好 ⇒ 取录像那一下不触发续登录(续登录会合法地改存档, 那不是回放的副作用)。
 	var had_env: bool = OS.has_environment(SB.ENV_URL)
@@ -344,6 +347,92 @@ func _t_buttons(rs: Node) -> void:
 	##   守的仍是触控线: 短边 ≥ 81(=44pt), 不是行尾一个小签。
 	_ok("⑤ 「观看」够大(短边 ≥ 81 = 44pt 触控线)",
 		b != null and minf(b.size.x, b.size.y) >= 81.0, str(b.size) if b != null else "")
+
+
+# ⑥ ─────────────────────────────────────────────────────────────
+## 一张战绩卡上: 「观看」几颗 / 灰签几块 + 灰签上的字 / 头像上画的龟(meta) / 对手名。
+func _card_view(rs: Node, idx: int) -> Dictionary:
+	var c: Node = rs.find_child("RecordCard%d" % idx, true, false)
+	if c == null:
+		return {}
+	var offs: Array = c.find_children("VerOff", "", true, false)
+	var tx := ""
+	for o in offs:
+		for l in (o as Node).find_children("*", "Label", true, false):
+			tx += str((l as Label).text)
+	var pids: Array = []
+	for pc in c.find_children("*", "PanelContainer", true, false):
+		if (pc as Node).has_meta("Portrait"):
+			pids.append(str((pc as Node).get_meta("Portrait")))
+	var fl := c.find_child("FoeName", true, false) as Label
+	return {"btn": c.find_children("ReplayBtn", "Button", true, false).size(), "off": offs.size(), "off_text": tx,
+		"pids": pids, "foe": fl.text if fl != null else "<无>"}
+
+
+func _t_record_version() -> void:
+	print("── ⑥ 战绩页: 版本不同 ⇒ 灰签 / 老行从本机录像补对手 ──")
+	var cur := ReplayRecorder.client_version()
+	var hist: Array = _gs.match_history
+	_ok("⑥ ★写入侧: 结算那一行记下了录像版本 = 本机版本", str(hist[0].get("replay_id", "")) == _id
+		and str(hist[0].get("client_version", "")) == cur and cur != "", str(hist[0].get("client_version", "<无>")))
+	var g: Dictionary = (_rec.get("state", {}) as Dictionary).get("dual_ghost", {})
+	var foe_nm := str((g.get("profile", {}) as Dictionary).get("name", ""))
+	var foe_ld: Array = []
+	for x in g.get("leaders", []):
+		foe_ld.append(str(x))
+	_ok("⑥ 分母: 录像里有对手名和三统领", foe_nm != "" and foe_ld.size() == 3, "%s %s" % [foe_nm, str(foe_ld)])
+	## [种类, 录像本体里的版本("" = 没这个键), 行里多带的键]
+	var specs := [
+		["old", "0.0.1", {}],
+		["rowdiff", cur, {"client_version": "0.0.1", "foe": ["basic", "stone", "bamboo"], "foe_name": "行里的名字"}],
+		["same", cur, {"client_version": cur, "foe": ["basic", "stone", "bamboo"], "foe_name": "行里的名字"}],
+		["unknown", "", {}],
+	]
+	var now := int(Time.get_unix_time_from_system())
+	var n0: int = hist.size()
+	var idx := {}
+	var ids: Array = []
+	for k in range(specs.size()):
+		var id := "abcdef0%d-1111-4222-8333-44445555666%d" % [k, k]
+		var r: Dictionary = _rec.duplicate(true)
+		r["id"] = id
+		if str(specs[k][1]) == "":
+			r.erase("client_version")
+		else:
+			r["client_version"] = str(specs[k][1])
+		var saved := ReplayRecorder.save_record(r)
+		var row := {"result": "win", "lineup": ["basic"], "mode": "实时", "turn": 40 + k, "ts": now - 60, "replay_id": id}
+		row.merge(specs[k][2] as Dictionary, true)
+		hist.append(row)
+		idx[str(specs[k][0])] = hist.size() - 1
+		ids.append(id)
+		_ok("⑥ 分母: %s 那一份本机录像在" % specs[k][0], saved == id and RF.local_available(id))
+	var old_row: Dictionary = (hist[int(idx["old"])] as Dictionary).duplicate(true)
+	var rs: Node = await _open_record()
+	var v := {}
+	for kk in idx:
+		v[kk] = _card_view(rs, int(idx[kk]))
+	_ok("⑥ 分母: 四张卡都画出来了", v.values().all(func(d): return not (d as Dictionary).is_empty()), str(v.keys()))
+	var s0: Dictionary = v.get("same", {})
+	_ok("⑥ ★版本相同 ⇒「观看」照旧、没有灰签", int(s0.get("btn", -1)) == 1 and int(s0.get("off", -1)) == 0, str(s0))
+	var s1: Dictionary = v.get("old", {})
+	_ok("⑥ ★★老行(行里没版本、本机录像是别的版本) ⇒ 没有「观看」, 灰签「版本不同」",
+		int(s1.get("btn", -1)) == 0 and int(s1.get("off", -1)) == 1 and str(s1.get("off_text", "")) == "版本不同", str(s1))
+	_ok("⑥ ★★老行的对手从本机录像补上: 名字 + 三只统领头像(不再是三个空槽)",
+		str(s1.get("foe", "")) == foe_nm and (s1.get("pids", []) as Array).slice(3) == foe_ld, str(s1))
+	var s2: Dictionary = v.get("rowdiff", {})
+	_ok("⑥ ★行里记着别的版本 ⇒ 灰签(行里的值优先于录像)", int(s2.get("btn", -1)) == 0 and int(s2.get("off", -1)) == 1
+		and str(s2.get("foe", "")) == "行里的名字", str(s2))
+	var s3: Dictionary = v.get("unknown", {})
+	_ok("⑥ ★版本不知道(行里没有、录像里也没有) ⇒「观看」照旧", int(s3.get("btn", -1)) == 1 and int(s3.get("off", -1)) == 0, str(s3))
+	_ok("⑥ 补对手只补在卡上, 不改战绩那一行", (hist[int(idx["old"])] as Dictionary) == old_row
+		and not (hist[int(idx["old"])] as Dictionary).has("foe"))
+	rs.queue_free()
+	await _frames(3)
+	hist.resize(n0)
+	for id in ids:
+		DirAccess.remove_absolute(ReplayRecorder.SAVE_DIR + str(id) + ".rpl")
+	_ok("⑥ 收尾: 战绩回到 %d 行、临时录像删掉" % n0, hist.size() == n0 and not ids.any(func(i): return RF.local_available(str(i))))
 
 
 # ④ ─────────────────────────────────────────────────────────────

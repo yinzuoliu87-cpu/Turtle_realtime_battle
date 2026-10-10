@@ -20,7 +20,8 @@ var _top_bar = null
 ##
 ## 【对手这一维】写入侧 `GameState.record_match()` 从 2026-10-07 起多存 `foe`(对手三统领 id)
 ##   和 `foe_name`(对手快照里的名字, 与对局顶栏右边那个名字同一出处)。
-##   老记录没有这两个键 ⇒ 右边画三个空槽、不写名字(版式不跳)。
+##   老记录没有这两个键 ⇒ 从本机录像补(`ReplayFetcher.card_row`, 2026-10-10); 本机也没录像 ⇒ 右边画三个空槽、不写名字(版式不跳)。
+## ★录像版本与本机不同(`ReplayRecorder.version_differs`)⇒ 「观看」的位置换成灰签「版本不同」(点了也播不了, 不摆按钮)。
 
 ## 回合制 PoC 留下的模式名(老存档里的旧记录才会命中; 实时版只写 "实时")。
 const MODE_LABEL := {"single": "野生", "pve": "野生", "dungeon": "深海闯关", "custom": "切磋",
@@ -130,7 +131,7 @@ func _ready() -> void:
 		var now: int = ReplayFetcher.P2C.now_utc()
 		var me := str(Backend.player_display_name())
 		for i in range(n):
-			list.add_child(_match_card(hist[i], now, me, i))
+			list.add_child(_match_card(ReplayFetcher.card_row(hist[i]), now, me, i))
 
 	# ★UI 双端适配: 把内容装进 1280×720 设计框并居中于真实视口。必须放在 _ready 最后。
 	UIFrame.attach(self)
@@ -255,7 +256,10 @@ func _match_card(m: Dictionary, now: int, me: String, idx: int = 0) -> Control:
 	sp.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	body.add_child(sp)
 	if ReplayFetcher.has_replay(m, now):
-		body.add_child(_watch_btn(str(m.get("replay_id", ""))))
+		if ReplayRecorder.version_differs(str(m.get("client_version", ""))):
+			body.add_child(MatchCard.off_tag())
+		else:
+			body.add_child(_watch_btn(str(m.get("replay_id", ""))))
 	return pc
 
 

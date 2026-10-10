@@ -461,7 +461,8 @@ func _as_board_row(row: Dictionary, created: String) -> Dictionary:
 	var rs: Dictionary = row.get("right_snapshot", {})
 	return {"match_id": row["match_id"], "created_at": created, "result": row["result"],
 		"lp": (row.get("left_snapshot", {}) as Dictionary).get("profile", {}),
-		"rp": rs.get("profile", {}), "rw": rs.get("gl_w", null), "rl": rs.get("gl_l", null)}
+		"rp": rs.get("profile", {}), "rw": rs.get("gl_w", null), "rl": rs.get("gl_l", null),
+		"client_version": row.get("client_version", null)}
 
 
 func _t_board_screen() -> void:
@@ -475,6 +476,10 @@ func _t_board_screen() -> void:
 	_ok("② 查询只取摘要: 不取整份快照 / 录像 / 账号",
 		q.find("lp:left_snapshot->profile") >= 0 and q.find("replay") < 0 and q.find("left_account") < 0
 		and q.find("phase=eq.gauntlet") >= 0, q)
+	_ok("② ★查询带上录像版本(卡上据此判「版本不同」, 不摆死按钮)", q.find("client_version") >= 0, q)
+	if _rows.has(_gid):
+		_ok("② 分母: 上传的那一行版本 = 本机版本(同版本 ⇒ 下面那颗「观看」照旧)",
+			str((_rows[_gid] as Dictionary).get("client_version", "")) == ReplayRecorder.client_version())
 	## 本机录像删掉 ⇒ 点回放必须真去服务端取(走 S3 那条)
 	DirAccess.remove_absolute(ReplayRecorder.SAVE_DIR + _gid + ".rpl")
 	_ok("② 分母: 本机那份已删", not RF.local_available(_gid))

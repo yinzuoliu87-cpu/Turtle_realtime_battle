@@ -2468,7 +2468,7 @@ const BOARD_LIMIT := 1000
 static func gauntlet_board_query(season_week: int) -> String:
 	if season_week <= 0:
 		return ""
-	return ("phase=eq.gauntlet&season_week=eq.%d&select=match_id,created_at,result,"
+	return ("phase=eq.gauntlet&season_week=eq.%d&select=match_id,created_at,result,client_version,"
 		+ "lp:left_snapshot->profile,rp:right_snapshot->profile,"
 		+ "la:left_snapshot->leaders,ra:right_snapshot->leaders,"
 		+ "rw:right_snapshot->gl_w,rl:right_snapshot->gl_l"

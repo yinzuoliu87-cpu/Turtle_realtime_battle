@@ -8,6 +8,7 @@ extends Node
 ##   ② 周日对阵图: 每一场已揭晓的对局都有一颗「观看」(短边 ≥ 81, 字是「观看」); 未揭晓的一颗都没有;
 ##      每一格两侧都有头像节点; 喂了 #ID → 头像的人画的是那只龟, 没喂的画名字首字
 ##   ③ 空态: 没数据时两屏都是正中一块提示框(不是一行裸字), 框里的字就是那句话
+##   ①b 版本闸(2026-10-10): 「最近对局」/「正在打」卡 —— 版本不同 ⇒ 没有按钮、灰签「版本不同」; 相同 / 不知道 ⇒ 按钮照旧
 ## ★每条断言都带分母(卡数 / 场数 / 头像数), 防 0 张卡也全绿。
 
 const MAP := preload("res://scripts/scenes/BracketMapScene.gd")
@@ -16,6 +17,7 @@ const L := preload("res://scripts/gamedata/bracket_layout.gd")
 const B := preload("res://scripts/gamedata/bracket.gd")
 const SB := preload("res://scripts/net/supabase.gd")
 const P2C := preload("res://scripts/gamedata/phase2_config.gd")
+const MatchCard := preload("res://scripts/scenes/record/match_card.gd")
 const TOUCH := 81.0
 
 var _n := 0
@@ -79,6 +81,78 @@ func _rows() -> Array:
 			"result": {"won": k % 2 == 0, "gw": 2, "gl": 1}, "lp": ppl[k], "rp": ppl[(k + 1) % 6],
 			"la": lu, "ra": lu, "rw": 1, "rl": 1})
 	return rows
+
+
+## ①b 版本闸(2026-10-10 内测前): 录下时的版本已知且与本机不同 ⇒ 卡上没有按钮、换成灰签「版本不同」;
+##   相同 ⇒ 按钮照旧; 不知道(老行没有 client_version)⇒ 照旧。「最近对局」与「正在打」两种卡各量一遍。
+## 返回 {"btn": 按钮数, "off": 灰签数, "off_text": 灰签上的字}。
+func _card_gate(c: Node, btn_name: String) -> Dictionary:
+	var offs: Array = c.find_children(MatchCard.N_VER_OFF, "", true, false)
+	var tx := ""
+	for o in offs:
+		for l in (o as Node).find_children("*", "Label", true, false):
+			tx += str((l as Label).text)
+	return {"btn": c.find_children(btn_name, "Button", true, false).size(), "off": offs.size(), "off_text": tx}
+
+
+func _t_board_version(bs: Node) -> void:
+	print("── ①b 版本闸 ──")
+	var cur := ReplayRecorder.client_version()
+	_ok("①b 分母: 本机版本号不是空的", cur != "" and cur != "0.0.1", cur)
+	_ok("①b 纯判据: 相同 ⇒ 不拦 / 不同 ⇒ 拦 / 不知道 ⇒ 不拦",
+		not Board.version_differs({"ver": cur}) and Board.version_differs({"ver": "0.0.1"})
+		and not Board.version_differs({}) and not Board.version_differs({"ver": ""}))
+	var all: Array = _rows()
+	var vr: Array = [all[0], all[1], all[3]]
+	vr[0]["client_version"] = cur
+	vr[1]["client_version"] = "0.0.1"
+	var want := {str(vr[0]["match_id"]): "same", str(vr[1]["match_id"]): "diff", str(vr[2]["match_id"]): "unknown"}
+	bs.set_rows(vr)
+	await _frames(6)
+	var seen := {}
+	for c in bs.find_children("GameCard*", "PanelContainer", true, false):
+		var k := str(want.get(str((c as Node).get_meta("match_id", "")), ""))
+		if k != "":
+			seen[k] = _card_gate(c, "GameBtn")
+	_ok("①b 分母: 三种行各一张「最近对局」卡", seen.size() == 3, str(seen.keys()))
+	_ok("①b ★版本相同 ⇒「观看」照旧、没有灰签", seen.has("same") and int(seen["same"]["btn"]) == 1 and int(seen["same"]["off"]) == 0,
+		str(seen.get("same", {})))
+	_ok("①b ★★版本不同 ⇒ 没有「观看」, 换成灰签「版本不同」", seen.has("diff") and int(seen["diff"]["btn"]) == 0
+		and int(seen["diff"]["off"]) == 1 and str(seen["diff"]["off_text"]) == "版本不同", str(seen.get("diff", {})))
+	_ok("①b ★版本不知道(老行) ⇒「观看」照旧", seen.has("unknown") and int(seen["unknown"]["btn"]) == 1
+		and int(seen["unknown"]["off"]) == 0, str(seen.get("unknown", {})))
+	## 正在打: 三行直播(都还在心跳), 版本 同 / 不同 / 不知道
+	var now: int = P2C.now_utc()
+	var iso := Time.get_datetime_string_from_unix_time(now - 2) + "+00:00"
+	var live: Array = []
+	var lwant := {}
+	var kinds := ["same", "diff", "unknown"]
+	for k in range(3):
+		var id := "%08d-2222-4333-8444-%012d" % [k + 1, k + 1]
+		var lr := {"match_id": id, "started_at": iso, "updated_at": iso, "ended": false,
+			"lp": vr[k]["lp"], "rp": vr[k]["rp"], "la": vr[k]["la"], "ra": vr[k]["ra"]}
+		if k == 0:
+			lr["client_version"] = cur
+		elif k == 1:
+			lr["client_version"] = "0.0.1"
+		live.append(lr)
+		lwant[id] = kinds[k]
+	bs.set_live_rows(live)
+	await _frames(6)
+	var lseen := {}
+	for c in bs.find_children("LiveCard*", "PanelContainer", true, false):
+		var k2 := str(lwant.get(str((c as Node).get_meta("match_id", "")), ""))
+		if k2 != "":
+			lseen[k2] = _card_gate(c, "LiveBtn")
+	_ok("①b 分母: 三种直播各一张「正在打」卡", lseen.size() == 3, str(lseen.keys()))
+	_ok("①b ★直播版本相同 ⇒「观赛」照旧", lseen.has("same") and int(lseen["same"]["btn"]) == 1 and int(lseen["same"]["off"]) == 0,
+		str(lseen.get("same", {})))
+	_ok("①b ★★直播版本不同 ⇒ 没有「观赛」, 换成灰签「版本不同」", lseen.has("diff") and int(lseen["diff"]["btn"]) == 0
+		and int(lseen["diff"]["off"]) == 1 and str(lseen["diff"]["off_text"]) == "版本不同", str(lseen.get("diff", {})))
+	_ok("①b ★直播版本不知道 ⇒「观赛」照旧", lseen.has("unknown") and int(lseen["unknown"]["btn"]) == 1
+		and int(lseen["unknown"]["off"]) == 0, str(lseen.get("unknown", {})))
+	bs.set_live_rows([])
+	await _frames(2)
 
 
 func _t_board() -> void:
@@ -147,6 +221,7 @@ func _t_board() -> void:
 		rp += _portraits(r).size()
 	## ★选手5 只以对手身份出现过 ⇒ 不进榜(2026-10-10: 机器人的样子, 见 gauntlet_board.build) ⇒ 5 行。
 	_ok("① 战绩榜每行一个头像", rows.size() == 5 and rp == 5, "%d 行 / %d 头像" % [rows.size(), rp])
+	await _t_board_version(bs)
 	bs.queue_free()
 	await _frames(2)
 

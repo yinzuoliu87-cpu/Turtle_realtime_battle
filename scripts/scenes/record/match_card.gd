@@ -20,6 +20,9 @@ const AVATAR_GAP := 4.0
 const NAME_H := 20.0
 ## 头像节点名 —— 门禁按名字数头像。
 const N_PORTRAIT := "Portrait"
+## 录像 / 直播的版本与本机不同(`ReplayRecorder.version_differs`)⇒ 按钮的位置换成这块灰签, 不摆点了也播不了的按钮。
+const VER_DIFF := "版本不同"
+const N_VER_OFF := "VerOff"
 
 
 ## 卡框: `slot-frame.png`(57x57, 中心平色 + 四角金铆钉)。内边距 14 > 这张图画出来的边带(实测 6px)。
@@ -195,6 +198,25 @@ static func big_btn(text: String, node_name: String, sz: Vector2 = WATCH_SIZE,
 	bt.add_theme_font_size_override("font_size", fs)
 	UISkin.pixel_button(bt, accent, 5)
 	return bt
+
+
+## 按钮位上的灰签(不是按钮, 不吃点击): 与「观看」同尺寸, 版式不跳。默认写「版本不同」。
+static func off_tag(text: String = VER_DIFF, sz: Vector2 = WATCH_SIZE) -> Control:
+	var pc := PanelContainer.new()
+	pc.name = N_VER_OFF
+	pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pc.custom_minimum_size = sz
+	pc.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	pc.add_theme_stylebox_override("panel", bevel(Color("#2a3440"), Color("#161c24"), 8, 4))
+	var l := Label.new()
+	l.text = text
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.add_theme_font_size_override("font_size", 20)
+	l.add_theme_color_override("font_color", Color("#8a98a8"))
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pc.add_child(l)
+	return pc
 
 
 ## 居中的一块提示框(空态 / 出错): 金属大框 + 左边一枚现成像素图标(32→64 整 2 倍) + 一行主文 + 可选一行副文。

@@ -411,6 +411,8 @@ func _t_board_and_watch() -> void:
 	## 另一场直播的打的人 = 「最近对局」里已经上榜的老将丁(榜上那一行要换成红签; 我那一场的人还没上榜, 走补 0-0 那条)
 	(other["lp"] as Dictionary)["name"] = "老将丁"
 	(other["lp"] as Dictionary)["tag"] = P2C.player_tag("other-d")
+	## 另一场是别的版本打的(内测期间三端版本可能不一) ⇒ 卡照样出, 但没有「观赛」, 换成「版本不同」灰签
+	other["client_version"] = "0.0.1"
 	var stale := _board_row(js, t_join - 900, t_join - 300)
 	stale["match_id"] = "aaaaaaaa-1111-4222-8333-000000000002"
 	(stale["lp"] as Dictionary)["name"] = "断线乙"
@@ -447,6 +449,15 @@ func _t_board_and_watch() -> void:
 	_ok("② 每张卡都有「直播」横幅", has_live_banner == 2)
 	var lb: Button = my_card.find_child(GBS.N_LIVE_BTN, true, false) as Button if my_card != null else null
 	_ok("② ★那一场的卡上有「观赛」(不是「观看」)", lb != null and lb.text == "观赛")
+	var oc: Node = null
+	for c in lcards:
+		if str((c as Node).get_meta("match_id", "")) == str(other["match_id"]):
+			oc = c
+	var ooff: Array = oc.find_children("VerOff", "", true, false) if oc != null else []
+	_ok("② ★★别的版本那一场: 没有「观赛」、换成灰签「版本不同」(查询带 client_version, 不等点了才说)",
+		oc != null and oc.find_children(GBS.N_LIVE_BTN, "Button", true, false).is_empty() and ooff.size() == 1
+		and _labels_text(ooff[0]).has("版本不同"), str(_labels_text(oc)) if oc != null else "<没有那张卡>")
+	_ok("② 本机版本那一场没有灰签", my_card != null and my_card.find_children("VerOff", "", true, false).is_empty())
 	var names_ok := false
 	if my_card != null:
 		for t0 in _labels_text(my_card):

@@ -79,6 +79,41 @@ static func server_keeps(ts: int, now: int) -> bool:
 	return now < mon + PURGE_AFTER_MONDAY_SEC and ts >= mon - WEEK_SEC
 
 
+## 战绩卡要画的那一行: 行里缺的 `client_version` / `foe`(对手三统领)/ `foe_name` 从**本机录像**补(返回副本, 不改原行)。
+## ★为什么要补(2026-10-10 实测, 内测机上的战绩页): 0.19.559 之前写的行没有 foe / foe_name(写入侧 10-07 才加),
+##   而且一直没有 client_version ⇒ 对手三个空槽 + 跨版本的录像照样摆一颗「观看」(点了才说不兼容)。
+##   录像本体里两样都有: `client_version`, 以及开局状态里的对手快照 `state.dual_ghost`(leaders + profile.name)。
+## ★行里已有的不覆盖(写入侧那一刻的值就是真值)。本机没录像 / 读不出 ⇒ 原样(版本未知 = 入口照旧)。
+static func card_row(m: Dictionary) -> Dictionary:
+	var out := m.duplicate()
+	var has_ver := str(m.get("client_version", "")) != ""
+	var has_foe: bool = m.get("foe", null) is Array and not (m.get("foe", []) as Array).is_empty()
+	var has_name := str(m.get("foe_name", "")) != ""
+	var id := str(m.get("replay_id", ""))
+	if (has_ver and has_foe and has_name) or not local_available(id):
+		return out
+	var rec: Dictionary = ReplayRecorder.load_record(id)
+	if rec.is_empty():
+		return out
+	if not has_ver and rec.get("client_version", null) is String:
+		out["client_version"] = str(rec["client_version"])
+	var st = rec.get("state", null)
+	var g = (st as Dictionary).get("dual_ghost", null) if st is Dictionary else null
+	if not (g is Dictionary):
+		return out
+	if not has_foe and (g as Dictionary).get("leaders", null) is Array:
+		var foe: Array = []
+		for x in ((g as Dictionary)["leaders"] as Array):
+			if foe.size() < 3:
+				foe.append(str(x))
+		if not foe.is_empty():
+			out["foe"] = foe
+	var pf = (g as Dictionary).get("profile", null)
+	if not has_name and pf is Dictionary and str((pf as Dictionary).get("name", "")) != "":
+		out["foe_name"] = str((pf as Dictionary)["name"])
+	return out
+
+
 static func local_available(id: String) -> bool:
 	return _safe_id(id) and FileAccess.file_exists(ReplayRecorder.SAVE_DIR + id + ".rpl")
 

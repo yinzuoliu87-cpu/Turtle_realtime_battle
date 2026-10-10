@@ -10,6 +10,7 @@ extends Control
 ##   (横幅「谁获胜 · 多久之前」/ 双方名字 + 三统领头像 VS / 右边一颗大的「观看」)。
 ## ★卡片件与战绩页同一套(`scripts/scenes/record/match_card.gd`), 不另抄一份。
 ## ★「观看」只在 `Board.watchable(g)` 为真的卡上出(不放死按钮)。
+## ★版本与本机不同(`Board.version_differs`)⇒「观看」/「观赛」的位置换成灰签「版本不同」(2026-10-10)。
 ## ★机器人对手在这里与真人**同一种长相**: 名字与 #ID 都来自快照 profile, 数据层不分真假(也分不出)。
 ##   这一屏任何地方都不写「机器人」(用户 2026-10-04「不能让玩家知道是机器人」)。
 ## ★没接服务器 / 服务端不认这条查询 / 断网 ⇒ 屏幕正中一块提示框(金属框 + 像素图标), 不报错, 不建死按钮。
@@ -444,6 +445,9 @@ func _game_card(g: Dictionary, idx: int) -> Control:
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sp.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	body.add_child(sp)
+	if Board.version_differs(g):
+		body.add_child(MatchCard.off_tag())
+		return pc
 	if Board.watchable(g):
 		var names := {"l": str(g["l"].get("name", "?")), "r": str(g["r"].get("name", "?"))}
 		var bt := MatchCard.big_btn(WATCH_LABEL, N_WATCH)
@@ -485,6 +489,9 @@ func _live_card(g: Dictionary, idx: int) -> Control:
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sp.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	body.add_child(sp)
+	if Board.version_differs(g):
+		body.add_child(MatchCard.off_tag())
+		return pc
 	var names := {"l": str(g["l"].get("name", "?")), "r": str(g["r"].get("name", "?"))}
 	var bt := MatchCard.big_btn(Live.BTN_WATCH, N_LIVE_BTN, MatchCard.WATCH_SIZE, MatchCard.BTN_LIVE)
 	bt.set_meta("key", str(g["id"]))

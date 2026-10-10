@@ -1426,6 +1426,7 @@ scripts/scenes/map_editor.gd|text|清空
 scripts/scenes/map_editor.gd|text|重载
 scripts/scenes/map_editor.gd|text|💾保存
 scripts/scenes/map_editor.gd|text|🖌 地图编辑器 (左键刷格 · MAPEDIT)
+scripts/scenes/record/match_card.gd|lit|版本不同
 scripts/scenes/settings/time_travel_panel.gd|lit|+1 时
 scripts/scenes/settings/time_travel_panel.gd|lit|+5 分
 scripts/scenes/settings/time_travel_panel.gd|lit|-1 时

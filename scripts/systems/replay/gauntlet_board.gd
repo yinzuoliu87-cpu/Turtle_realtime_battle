@@ -6,7 +6,8 @@ extends RefCounted
 ##  一行 = 一场周六闯关赛的录像摘要(`SupabaseNet.gauntlet_board_query` 只取这些):
 ##    match_id / created_at / result{won, gw?, gl?} / lp = 录像方 profile / rp = 对手 profile /
 ##    la / ra = 双方三统领 id(对局卡上画阵容; 老查询 / 门禁造的行没有 ⇒ 空槽) /
-##    rw, rl = 对手快照上的战绩标签(那一刻他几胜几负; 闯关只同标签互配)
+##    rw, rl = 对手快照上的战绩标签(那一刻他几胜几负; 闯关只同标签互配) /
+##    client_version = 录下时的版本(`version_differs`; 老查询没有 ⇒ 不知道)
 ## ══════════════════════════════════════════════════════════════════════
 ## ★人按 `#ID`(profile.tag)认 —— 两侧一视同仁。对手是真人快照还是机器人, 这一层**看不出来也不问**
 ##   (录像与 right_snapshot 上传前都摘掉了 is_bot / ghost_id; 机器人的名字与号与真人同一套生成法)。
@@ -82,7 +83,7 @@ static func build(rows: Array, my_tag: String, closed: bool) -> Dictionary:
 		var t := iso_to_unix(str(r.get("created_at", "")))
 		var lt := tag_of(r.get("lp", null))
 		var rt := tag_of(r.get("rp", null))
-		games.append({"id": str(r.get("match_id", "")), "t": t, "lw": lw,
+		games.append({"id": str(r.get("match_id", "")), "t": t, "lw": lw, "ver": _ver(r),
 			"l": _side(r.get("lp", null), lt, r.get("la", null)), "r": _side(r.get("rp", null), rt, r.get("ra", null))})
 		if lt != "":
 			var p: Dictionary = _person(ppl, lt, r.get("lp", null), t)
@@ -139,6 +140,18 @@ static func watchable(g: Dictionary) -> bool:
 	return SB.is_uuid(str(g.get("id", "")))
 
 
+## 这一场(打完的 / 正在打的)录下时的版本与本机不同 ⇒ 卡上不摆「观看」/「观赛」, 换成「版本不同」灰签
+##   (点了也播不了: 回放走 `ReplayRecorder.play` 的版本闸, 观赛走 `live_spectate` 的版本闸)。
+##   `ver` = 行里的 `client_version`(两条查询都取这一列); 老查询 / 门禁造的行没有 ⇒ 不知道 ⇒ 照旧摆按钮。
+static func version_differs(g: Dictionary) -> bool:
+	return ReplayRecorder.version_differs(str(g.get("ver", "")))
+
+
+static func _ver(r: Dictionary) -> String:
+	var v = r.get("client_version", null)
+	return str(v) if v is String else ""
+
+
 ## 一场的胜者名字。
 static func winner_name(g: Dictionary) -> String:
 	return str((g["l"] if bool(g.get("lw", false)) else g["r"]).get("name", "?"))
@@ -171,7 +184,7 @@ static func live_games(rows: Array, finished_ids: Array, now: int) -> Array:
 			continue
 		if live_stale(iso_to_unix(str(r.get("updated_at", ""))), now):
 			continue
-		out.append({"id": id, "t": iso_to_unix(str(r.get("started_at", ""))),
+		out.append({"id": id, "t": iso_to_unix(str(r.get("started_at", ""))), "ver": _ver(r),
 			"l": _side(r.get("lp", null), tag_of(r.get("lp", null)), r.get("la", null)),
 			"r": _side(r.get("rp", null), tag_of(r.get("rp", null)), r.get("ra", null))})
 	out.sort_custom(func(a, b) -> bool:

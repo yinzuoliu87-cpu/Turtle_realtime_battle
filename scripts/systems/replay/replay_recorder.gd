@@ -175,6 +175,13 @@ static func client_version() -> String:
 	return str(ProjectSettings.get_setting("application/config/version", ""))
 
 
+## 入口处的版本闸(2026-10-10 内测前: 不同版本的录像/直播点了也播不了, 入口不摆一颗能点的按钮)。
+## `ver` = 那一场录下时的 `client_version`。已知且与本机不同 ⇒ true;
+## 不知道(""= 老行 / 老查询没带这一维)⇒ false, 入口照旧, 由 `play` 里的闸兜底。
+static func version_differs(ver: String) -> bool:
+	return ver != "" and ver != client_version()
+
+
 func is_playing() -> bool:
 	return mode == "play"
 

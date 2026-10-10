@@ -1606,6 +1606,8 @@ func record_match(result: String, lineup: Array, mode_str: String, turn_num: int
 	match_history.insert(0, {"result": result, "lineup": lineup, "mode": mode_str, "turn": turn_num})
 	if replay_pending_id != "":
 		match_history[0]["replay_id"] = replay_pending_id   # 战绩页据此出「回放」按钮(S3)
+		## 录像的版本(= 录像本体里的 client_version): 战绩页据此把跨版本的那一行换成「版本不同」, 不摆死按钮。
+		match_history[0]["client_version"] = ReplayRecorder.client_version()
 		replay_pending_id = ""
 	## 对手这一维(2026-10-07 战绩页对局卡): 对手三统领 + 对手名, 取自本局对手快照
 	##   (名字与对局顶栏右边同一出处 `dual_ghost.profile.name`)。没有快照(调试/老路)就不写, 战绩卡画空槽。
