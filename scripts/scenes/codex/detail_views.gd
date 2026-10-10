@@ -582,7 +582,7 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 			cand_pool.append(skill_pool[ci])
 	if basic_i >= 0:
 		var bsk: Dictionary = skill_pool[basic_i]
-		start_y += _basic_attack_bar(pet, ctx, bsk, start_y) + 6.0
+		start_y += _basic_attack_bar(ctx, bsk, start_y) + 6.0
 		skill_pool = cand_pool
 		default_idxs = [0, 1, 2]
 	# 卡片那一排上面给一句抬头。★没有普通攻击条的页(近战 / 远程小将)也画 —— 原来只在普攻条后面画, 小将页就没有「技能」这一节。
@@ -705,13 +705,13 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 	_fit_skill_cards(parts, start_y, card_max_h)
 	## E1 形态切换钮 —— 整块在 `_form_switch_button()`(2026-09-28 拆出去的)。
 	if has_form:
-		_form_switch_button(pet, form_btn_y, is_melee_form)
+		_form_switch_button(form_btn_y, is_melee_form)
 
 
 ## 普攻条(固定自带、不参与三选一): 图标 + 名字 + 一行简述 + 「看全部」, 点整条进技能详情。返回条高。
 ## ★2026-10-07 从 `_render_skill_cards` 整块搬出来(行为一字未改): 本轮给它加了「看全部」与点击区,
 ##   函数涨到 269 行越过 `tools/arch_budget.py` 的 250 行上限 —— 按职责拆, 不靠删注释凑绿。
-func _basic_attack_bar(pet: Dictionary, ctx: Dictionary, bsk: Dictionary, start_y: float) -> float:
+func _basic_attack_bar(ctx: Dictionary, bsk: Dictionary, start_y: float) -> float:
 	## ★2026-10-08 两栏: 条占右栏整宽(494), 改两行 —— 标题行(图标 + 「普攻 · X」 + 右端「查看全部」) + 简述一行。
 	##   原来是 36 高一行(名字右边接简述), 右栏变窄后简述只剩二十来个字的位置。
 	var bar_h := 60.0
@@ -790,7 +790,7 @@ func _trim_tail(s: String) -> String:
 ##     这一块自成一事(一颗钮的版式 + 文案 + 点击), 与技能卡排版没有共享状态,
 ##     入参只有 `pet / start_y / is_melee_form` 三个。
 ##   ★留在 `scripts/scenes/codex/` —— 它不在 `_sim_step` 调用链上, 图鉴的东西就放图鉴这里。
-func _form_switch_button(pet: Dictionary, center_y: float, is_melee_form: bool) -> void:
+func _form_switch_button(center_y: float, is_melee_form: bool) -> void:
 	## ★钮的尺寸/位置都改了(2026-08-15):
 	##   · 220×30 = 7.3:1 的又扁又宽片(用户刚为商店的扁按钮发过火) → 196×34。
 	##   · 原来写死 btn_y=262, 而被动条占 213~263 ⇒ 【钮压在被动条上】, 双形态那两只

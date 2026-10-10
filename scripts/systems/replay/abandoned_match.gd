@@ -245,7 +245,7 @@ static func build_cover(battle: Node) -> CanvasLayer:
 	bg.add_child(lab)
 	battle.add_child(cl)
 	var sub = battle.get("_sub")
-	if sub is SubViewport and is_instance_valid(sub):
+	if is_instance_valid(sub) and sub is SubViewport:
 		(sub as SubViewport).render_target_update_mode = SubViewport.UPDATE_DISABLED
 	var au := battle.get_node_or_null("/root/Audio")
 	if au != null and au.get("mute_sfx") != null:
@@ -282,7 +282,7 @@ static func _restore(battle: Node) -> void:
 	if battle == null or not is_instance_valid(battle):
 		return
 	var sub = battle.get("_sub")
-	if sub is SubViewport and is_instance_valid(sub):
+	if is_instance_valid(sub) and sub is SubViewport:
 		(sub as SubViewport).render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	var au := battle.get_node_or_null("/root/Audio")
 	if au != null and au.get("mute_sfx") != null:
