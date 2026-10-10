@@ -30,6 +30,9 @@ const MIN_TAP := 81.0          # 44pt, 见上
 const MENU_S := preload("res://scripts/scenes/MainMenuScene.gd")
 const SETTLE_MS := 15000       # 等入场 tween 落定的墙钟上限
 const _P2A := preload("res://scripts/gamedata/phase2_config.gd")
+## ★整份测试的「现在」: 2026-09-24 周四 00:00 UTC(积分赛日, 能打的那一屏)。
+##   与 ⑬c 表里「周四积分赛」、⑬d、⑭ 同一个时间戳。改它之前先读 `_ready` 开头那段由来。
+const PIN_RANKED_TS := 1789603200
 
 var _fail := 0
 var _menu: Node = null
@@ -69,12 +72,14 @@ func _ready() -> void:
 	if packed == null:
 		print("  [FAIL] 载不到 MainMenu.tscn"); get_tree().quit(1); return
 	_menu = packed.instantiate()
-	## ★周一休赛(2026-10-05 起「开始战斗」周一锁住、不发光) ⇒ 本文件量的是「能打的那一屏」;
-	##   真实今天是周一时把钟钉到次日(周二)同一时刻。其余六天行为不变。
-	var _p2c0 = load("res://scripts/gamedata/phase2_config.gd")
-	var _now0: int = int(_p2c0.now_utc())
-	if str(_p2c0.phase_at_utc(_now0)) == str(_p2c0.PHASE_REST):
-		_menu.clock_override_ts = _now0 + 86400
+	## ★本文件量的是「能打的那一屏」(开始战斗亮黄 + 呼吸光晕 + 计数条) ⇒ 整份把钟钉死在积分赛日。
+	## ★★2026-10-10 改正: 原来只在「真实今天是周一」时把钟拨到 +1 天, 其余六天跟着真实时钟走。
+	##   于是 UTC 周六(闯关赛) / 周日(决赛日) 这份测试存档没有闯关资格 ⇒ `_battle_block_msg` 按设计拦住
+	##   ⇒ 开始战斗画灰框 + 锁、不挂光晕 ⇒ ⓓ「实心亮黄」与 ⑮f「恰 1 个呼吸光晕」必红(实测 -100% / 0 个)。
+	##   而周日 +1 天 = 周一休赛, 同样是锁的。判据挂在星期几上 ⇒ 一周只有几天算数。
+	##   ⇒ 不再看今天星期几, 一律钉 `PIN_RANKED_TS`(周四积分赛, 与 ⑬c/⑬d/⑭ 同一个时间戳)。
+	##   各阶段那一屏长什么样由 ⑬c(四个已知日期)/ ⓔ(七天)/ ⓖ(周六周日) / verify_week_strip 管。
+	_menu.clock_override_ts = PIN_RANKED_TS
 	get_tree().root.add_child(_menu)
 	# 无头视口是方形的 —— 强制按真机 1280×720 口径量, 否则根 Control 会被撑成 1280×1280。
 	if _menu is Control:
@@ -259,7 +264,15 @@ func _ready() -> void:
 		var sl_a: Label = _find_named(card, str(MENU_S.SEASON_LINE_NAME)) as Label
 		_ok("ⓐ ★「第 %d 大轮」小字一行在经验条下面" % int(gs_a.season_id), sl_a != null and sl_a.text == "第 %d 大轮" % int(gs_a.season_id)
 			and bar_a != null and sl_a.get_global_rect().position.y >= bar_a.get_global_rect().end.y, "")
-		_ok("ⓐ ★卡里没有战绩行(战绩 / 胜负 / 还没上过场)", cj.find("战绩") < 0 and cj.find("胜") < 0 and cj.find("还没上过场") < 0, cj)
+		## ★昵称那一行不参与字面搜: 默认昵称是随机抽的(data/nickname-words.json 里有「连胜中」「必胜」),
+		##   抽中就会让「胜」字假红(2026-10-10 实测「连胜中」)。战绩行是另起的一行, 不在昵称里。
+		var ctxt_nn: Array = []
+		for t_nn in ctxt:
+			if str(t_nn) != want_name:
+				ctxt_nn.append(t_nn)
+		var cj_nn := " | ".join(PackedStringArray(ctxt_nn))
+		_ok("ⓐ ★分母: 去掉昵称后卡里还有字(徽章数字 / ID / 经验条 / 大轮)", ctxt_nn.size() >= 3, cj_nn)
+		_ok("ⓐ ★卡里没有战绩行(战绩 / 胜负 / 还没上过场)", cj_nn.find("战绩") < 0 and cj_nn.find("胜") < 0 and cj_nn.find("还没上过场") < 0, cj)
 		_ok("ⓐ ★卡里没有命与本周(挪到开始战斗上方)", cj.find("♥") < 0 and cj.find("本周") < 0, cj)
 		_ok("ⓐ ★卡里没有「Lv」字样(等级就是徽章上的数字)", cj.find("Lv") < 0, cj)
 		_ok("ⓐ ★整张卡可点", taps.has(card))
@@ -688,8 +701,9 @@ func _ready() -> void:
 	#    ★判据**跟着纯函数走**, 不在这里另写一份"今天该说什么":
 	#      `phase_pending_note()` 是 UI 与门禁共用的那一个答案(七天全量在 verify_week_season ⑦)。
 	var _P2M := preload("res://scripts/gamedata/phase2_config.gd")
-	## ★跟主菜单同一个钟(周一时本文件把钟钉到周二, 见开头)。
-	var now_ts: int = int(_menu.clock_override_ts) if int(_menu.clock_override_ts) > 0 else int(Time.get_unix_time_from_system())
+	## ★跟主菜单同一个钟(本文件整份钉在 PIN_RANKED_TS, 见开头)。
+	##   兜底也走产品那条钟(`now_utc()` 认全局缝 now_override_ts), 不读裸系统钟 —— 否则又是第二条钟。
+	var now_ts: int = int(_menu.clock_override_ts) if int(_menu.clock_override_ts) > 0 else int(_P2M.now_utc())
 	var today_ph: String = _P2M.phase_at_utc(now_ts)
 	var note_today: String = _P2M.phase_pending_note(today_ph)
 	if note_today != "":
@@ -915,7 +929,8 @@ func _ready() -> void:
 		gs_m.promoted = kp_pr
 		gs_m.gauntlet_wins = kp_gw
 		gs_m.gauntlet_losses = kp_gl
-		_menu.clock_override_ts = 0            # ★还原: 不还原会波及同文件后面的用例
+		## ★还原成整份测试钉的那一刻(不是 0 —— 0 = 真实时钟, 后面 ⑮f 就又挂回星期几上了)。
+		_menu.clock_override_ts = PIN_RANKED_TS
 
 	# ── ⑪ ★没有花名 / 感叹号推销话术 (用户 2026-08-15 点名要去掉的那类"ai 味") ──
 	#    ★只扫【字符串字面量】—— 扫整段代码会被 `!=` 运算符命中(第一版就是这么假红的),
@@ -1226,7 +1241,8 @@ func _ready() -> void:
 		gs_l.hearts = k_h
 		gs_l.ranked_used = k_u
 		gs_l.season_total_battles = k_b
-		_menu.clock_override_ts = 0
+		## ★还原成整份测试钉的那一刻(同 ⑬d 末尾), 不是 0。
+		_menu.clock_override_ts = PIN_RANKED_TS
 		for ch_r in page_box.get_children():
 			page_box.remove_child(ch_r)
 			ch_r.queue_free()
