@@ -1086,6 +1086,7 @@ scripts/scenes/battle/battle_hud.gd|lit|返回菜单
 scripts/scenes/battle/battle_hud.gd|lit|闯关 %s · 不消耗生命
 scripts/scenes/battle/battle_hud.gd|lit|闯关 %s · 晋级决赛日
 scripts/scenes/battle/battle_hud.gd|lit|闯关 %s · 闯关赛出局
+scripts/scenes/battle/battle_hud.gd|lit|闯关战绩
 scripts/scenes/battle/battle_hud.gd|lit|阵容上传
 scripts/scenes/battle/battle_hud.gd|text|← 手指横滑挑龟(共28只+小将+大师) →   点一格选笔刷 → 点战场连点连摆 · 点已摆的龟→出配置面板
 scripts/scenes/battle/battle_hud.gd|text|友军

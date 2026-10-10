@@ -1354,9 +1354,16 @@ func _build_reward_chips(gs, cap_fs: int = 13, val_fs: int = 24) -> Control:
 	## ★出局那一局不发币(见 RealtimeBattle3DScene 结算), 结算屏也不放「深海币 +0」这一格。
 	if not (gs.has_method("is_eliminated") and gs.is_eliminated()):
 		items.append(["深海币", "+%d" % battle._last_reward, Color("#ffd93d")])
-	if not battle._last_was_exhibition:
+	## ★★周末两天不放「剩余生命 / 赛季胜场」(2026-10-10 周六实操): 周六周日不扣命, 红字「2 / 6」只会让人以为输一场掉了命;
+	##   赛季胜场又把闯关赛的胜场混了进去。周六换成闯关战绩(副标题里那一笔的大字版), 周日结果封存 ⇒ 两格都不放。
+	var _sk := str(battle.get("_last_settle_kind")) if battle.get("_last_settle_kind") != null else ""
+	var _weekend: bool = _sk == _P2C_HUD.SETTLE_GAUNTLET or _sk == _P2C_HUD.SETTLE_FINALS
+	if _sk == _P2C_HUD.SETTLE_GAUNTLET:
+		items.append(["闯关战绩", "%d-%d" % [int(gs.gauntlet_wins), int(gs.gauntlet_losses)], Color("#e8f0f6")])
+	elif not battle._last_was_exhibition and not _weekend:
 		items.append(["剩余生命", "%d / %d" % [int(gs.hearts), int(_P2C_HUD.HEARTS_MAX)], Color("#ff8a8a") if int(gs.hearts) <= 2 else Color("#e8f0f6")])
-	items.append(["赛季胜场", "%d" % int(gs.season_wins), Color("#e8f0f6")])
+	if not _weekend:
+		items.append(["赛季胜场", "%d" % int(gs.season_wins), Color("#e8f0f6")])
 	## ★★A5 的另一半(2026-09-19): 结算屏的本周配额读数。
 	##   由来: 方案书 A5 写的是「主菜单**与结算屏**读数」, 而落地时只做了主菜单
 	##   (`MainMenuScene.gd` 的状态行)。2026-09-18 查实 `grep ranked_used scripts/scenes/battle/`

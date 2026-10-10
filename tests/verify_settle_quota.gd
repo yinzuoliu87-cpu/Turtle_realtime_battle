@@ -38,6 +38,7 @@ class FakeBattle extends RefCounted:
 	var _had_season := true
 	var _last_reward := 12
 	var _last_was_exhibition := false
+	var _last_settle_kind := ""
 
 ## 把 chip 树里所有 Label 的文本拼起来 —— 判据落在**渲染后文本**,
 ## 不落在"items 数组里有没有那一项"(后者是我塞进去的中间变量)。
@@ -99,6 +100,23 @@ func _ready() -> void:
 		_chk("② %s → 「本周场次」%s" % [tag2, "显示" if want2 else "不显示"],
 			t2.contains("本周场次") == want2, t2.substr(0, 90))
 	(hud.battle as FakeBattle)._last_was_exhibition = false
+
+	## ③ ★★周末两天的数据块(2026-10-10 周六实操): 周六周日不扣命 ⇒ 不放「剩余生命」; 「赛季胜场」混着闯关赛胜场 ⇒ 不放;
+	##   周六换成「闯关战绩 w-l」。积分赛那一格照旧(对照组, 挡住「一律删掉」)。
+	for k in ["gauntlet_wins", "gauntlet_losses"]:
+		_bak[k] = gs.get(k)
+	gs.gauntlet_wins = 3
+	gs.gauntlet_losses = 1
+	gs.hearts = 2
+	for case3 in [[P2C.SETTLE_GAUNTLET, true, false, false], [P2C.SETTLE_FINALS, false, false, false], [P2C.SETTLE_RANKED, false, true, true]]:
+		(hud.battle as FakeBattle)._last_settle_kind = str(case3[0])
+		var c3 = hud._build_reward_chips(gs)
+		var t3 := _all_text(c3) if c3 != null else ""
+		_chk("③ 分母(%s): chip 建出来了" % case3[0], t3 != "", t3.substr(0, 60))
+		_chk("③ %s → 闯关战绩 3-1 %s" % [case3[0], "显示" if case3[1] else "不显示"], t3.contains("闯关战绩") == bool(case3[1]) and (not bool(case3[1]) or t3.contains("3-1")), t3.substr(0, 90))
+		_chk("③ %s → 剩余生命 %s" % [case3[0], "显示" if case3[2] else "不显示"], t3.contains("剩余生命") == bool(case3[2]), t3.substr(0, 90))
+		_chk("③ %s → 赛季胜场 %s" % [case3[0], "显示" if case3[3] else "不显示"], t3.contains("赛季胜场") == bool(case3[3]), t3.substr(0, 90))
+	(hud.battle as FakeBattle)._last_settle_kind = ""
 
 	_restore()
 	_chk("★收尾: GameState 已还原成跑之前的样子",
