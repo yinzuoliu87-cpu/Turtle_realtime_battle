@@ -1357,14 +1357,12 @@ scripts/scenes/codex/detail_views.gd|lit|且
 scripts/scenes/codex/detail_views.gd|lit|主动 · 龟能 %d
 scripts/scenes/codex/detail_views.gd|lit|作用于友方
 scripts/scenes/codex/detail_views.gd|lit|作用于敌方
-scripts/scenes/codex/detail_views.gd|lit|减益
 scripts/scenes/codex/detail_views.gd|lit|切换至普通形态
 scripts/scenes/codex/detail_views.gd|lit|切换至火山形态
 scripts/scenes/codex/detail_views.gd|lit|切换至近战形态
 scripts/scenes/codex/detail_views.gd|lit|切换至远程形态
 scripts/scenes/codex/detail_views.gd|lit|初始龟能
 scripts/scenes/codex/detail_views.gd|lit|反伤
-scripts/scenes/codex/detail_views.gd|lit|增益
 scripts/scenes/codex/detail_views.gd|lit|外加
 scripts/scenes/codex/detail_views.gd|lit|射程
 scripts/scenes/codex/detail_views.gd|lit|属性
@@ -1374,8 +1372,6 @@ scripts/scenes/codex/detail_views.gd|lit|技能
 scripts/scenes/codex/detail_views.gd|lit|护甲
 scripts/scenes/codex/detail_views.gd|lit|护甲穿透
 scripts/scenes/codex/detail_views.gd|lit|护盾增幅
-scripts/scenes/codex/detail_views.gd|lit|持续伤害
-scripts/scenes/codex/detail_views.gd|lit|控制
 scripts/scenes/codex/detail_views.gd|lit|收起
 scripts/scenes/codex/detail_views.gd|lit|攻击
 scripts/scenes/codex/detail_views.gd|lit|攻击力
@@ -1396,7 +1392,6 @@ scripts/scenes/codex/detail_views.gd|lit|治疗增幅
 scripts/scenes/codex/detail_views.gd|lit|消耗品
 scripts/scenes/codex/detail_views.gd|lit|生命
 scripts/scenes/codex/detail_views.gd|lit|生命偷取
-scripts/scenes/codex/detail_views.gd|lit|生效公式
 scripts/scenes/codex/detail_views.gd|lit|移动速度
 scripts/scenes/codex/detail_views.gd|lit|移速
 scripts/scenes/codex/detail_views.gd|lit|羁绊
@@ -1419,6 +1414,99 @@ scripts/scenes/codex/list_builder.gd|lit|增益
 scripts/scenes/codex/list_builder.gd|lit|持续伤害
 scripts/scenes/codex/list_builder.gd|lit|控制
 scripts/scenes/codex/list_builder.gd|lit|羁绊赠送
+scripts/scenes/codex/status_page.gd|lit|%s · 技能
+scripts/scenes/codex/status_page.gd|lit|%s · 被动
+scripts/scenes/codex/status_page.gd|lit|减益
+scripts/scenes/codex/status_page.gd|lit|友军
+scripts/scenes/codex/status_page.gd|lit|增益
+scripts/scenes/codex/status_page.gd|lit|属性
+scripts/scenes/codex/status_page.gd|lit|技能
+scripts/scenes/codex/status_page.gd|lit|持续伤害
+scripts/scenes/codex/status_page.gd|lit|控制
+scripts/scenes/codex/status_page.gd|lit|效果
+scripts/scenes/codex/status_page.gd|lit|无
+scripts/scenes/codex/status_page.gd|lit|普攻
+scripts/scenes/codex/status_page.gd|lit|来源
+scripts/scenes/codex/status_page.gd|lit|深海小将
+scripts/scenes/codex/status_page.gd|lit|羁绊
+scripts/scenes/codex/status_page.gd|lit|自身
+scripts/scenes/codex/status_page.gd|lit|被动
+scripts/scenes/codex/status_page.gd|lit|装备
+scripts/scenes/codex/status_page.gd|lit|龟
+scripts/scenes/codex/status_sources.gd|lit|# 028 冰冻药剂[^\\n]*\\nfunc _eq_ice_throw
+scripts/scenes/codex/status_sources.gd|lit|0.4 秒
+scripts/scenes/codex/status_sources.gd|lit|1.1 秒
+scripts/scenes/codex/status_sources.gd|lit|1.6 秒
+scripts/scenes/codex/status_sources.gd|lit|1.7 秒
+scripts/scenes/codex/status_sources.gd|lit|1/1.8/2.5 秒
+scripts/scenes/codex/status_sources.gd|lit|2.7 秒
+scripts/scenes/codex/status_sources.gd|lit|3 秒
+scripts/scenes/codex/status_sources.gd|lit|50% · 4 秒
+scripts/scenes/codex/status_sources.gd|lit|50% · 5 秒
+scripts/scenes/codex/status_sources.gd|lit|func _ninja_dash\\(u: Dictionary, target: Dictionary\\) -> void:    # 被动
+scripts/scenes/codex/status_sources.gd|lit|{C:AxeEvolution.SLAM_STUN} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:BambooSystem.SMACK_STUN} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:BasicConsts.SLAM_STUN_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:BubbleSystem.BIND_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:BubbleSystem.SHIELD_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:CyberSystem.HIJACK_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:DiamondSystem.ROLL_STUN_MIN}~{C:DiamondSystem.ROLL_STUN_MAX} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:EqSpiritBatch.GHOST_CURSE_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:EquipSystem.DART_KNOCKUP_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:EquipSystem.EMBER_TRUEFIRE_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:GadgetSynergySystem.FREEZE_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:GhostSystem.PHASE_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:GhostSystem.RAID_DODGE%}% · {C:GhostSystem.RAID_DODGE_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:GhostSystem.SPAWN_CURSE_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:GhostSystem.STORM_CURSE_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:HeadlessSystem.SCYTHE_CURSE_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:HunterSystem.MARK_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:HunterSystem.ROLL_DODGE%}% · {C:HunterSystem.ROLL_DODGE_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:HunterSystem.SHOT_HEALCUT_PCT%}% · {C:HunterSystem.SHOT_HEALCUT_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:PhoenixSystem.NIRVANA_HEALCUT%}% · {C:RealtimeBattle3DScene.BUFF_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:PhoenixSystem.NIRVANA_SHOW_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:PirateSystem.HOOK_STUN} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:PirateSystem.SHIP_CHARGE_STUN} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:RainbowSystem.PRISM_BUFF_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:RealtimeBattle3DScene.CTRL_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:ShellSystem.STEALTH_HEALCUT_PCT%}% · {C:ShellSystem.STEALTH_HEALCUT_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:SignalWaveSystem.WAVE_STUN} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:StoneSystem.REFLECT_BASE%}% + 护甲 / 魔抗加成
+scripts/scenes/codex/status_sources.gd|lit|{C:StoneSystem.ROCK_WAVE_STUN} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:StoneSystem.SLAM_DELAY} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:StoneSystem.TAUNT_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:TwoHeadSystem.DISRUPT_HEALCUT_PCT%}% · {C:TwoHeadSystem.DISRUPT_HEALCUT_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|−{C:DiamondSystem.SMASH_SLOW_PCT%}% · {C:DiamondSystem.SMASH_SLOW_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|吞噬
+scripts/scenes/codex/status_sources.gd|lit|哑铃
+scripts/scenes/codex/status_sources.gd|lit|奇械
+scripts/scenes/codex/status_sources.gd|lit|宝箱藏宝图 on-hit 战利品
+scripts/scenes/codex/status_sources.gd|lit|小木斧
+scripts/scenes/codex/status_sources.gd|lit|弓箭
+scripts/scenes/codex/status_sources.gd|lit|攻速 −30% · {C:RainbowSystem.PRISM_BUFF_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|攻速 移速 龟能 −{C:IceSystem.AURA_SLOW%}% · {C:IceSystem.AURA_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|枪
+scripts/scenes/codex/status_sources.gd|lit|棱镜
+scripts/scenes/codex/status_sources.gd|lit|每次觉醒 +{C:ShellSystem.AWAKEN_PCT%}%
+scripts/scenes/codex/status_sources.gd|lit|气场觉醒
+scripts/scenes/codex/status_sources.gd|lit|法器
+scripts/scenes/codex/status_sources.gd|lit|涅槃
+scripts/scenes/codex/status_sources.gd|lit|温泉蛋\\(036\\)
+scripts/scenes/codex/status_sources.gd|lit|玩偶小熊仔
+scripts/scenes/codex/status_sources.gd|lit|登场 {C:CyberSystem.AI_START_CHARGE} 层
+scripts/scenes/codex/status_sources.gd|lit|盾
+scripts/scenes/codex/status_sources.gd|lit|盾羁绊9档
+scripts/scenes/codex/status_sources.gd|lit|移速 −{C:BambooSystem.SMACK_CHILL_DOWN%}% · {C:BambooSystem.SMACK_CHILL_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|移速 −{C:CandySystem.BARRAGE_SLOW_PCT%}%
+scripts/scenes/codex/status_sources.gd|lit|移速 −{C:CrystalSystem.SPIKE_SLOW_PCT%}% · {C:CrystalSystem.SPIKE_SLOW_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|移速 −{C:IceSystem.VIAL_MOVE_DOWN%}% · 攻速 −{C:IceSystem.VIAL_ASPD_DOWN%}% · {C:IceSystem.VIAL_CHILL_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|移速 −{C:ShellSystem.BURN_SLOW_PCT%}%
+scripts/scenes/codex/status_sources.gd|lit|精英小将铁锁
+scripts/scenes/codex/status_sources.gd|lit|赛博龟阵亡 → 浮游炮组装成机甲
+scripts/scenes/codex/status_sources.gd|lit|铁锁
+scripts/scenes/codex/status_sources.gd|lit|锈蚀阔剑007
+scripts/scenes/codex/status_sources.gd|lit|雷暴单道
+scripts/scenes/codex/status_sources.gd|lit|霰弹贝古053
 scripts/scenes/codex/synergy_view.gd|lit|%d 件
 scripts/scenes/codex/synergy_view.gd|lit|同上
 scripts/scenes/codex/synergy_view.gd|lit|同类装备

@@ -850,11 +850,16 @@ func _fit_skill_cards(parts: Array, top: float, max_h: float) -> void:
 	##   所以每张卡记下自己建过的节点和起始 y, 这里按差值整体平移。
 	var y: float = top
 	for p in parts:
-		var panel: Panel = p["panel"]
-		var rt: RichTextLabel = p["rt"]
-		var hit: Control = p["hit"]
-		if not (is_instance_valid(panel) and is_instance_valid(rt) and is_instance_valid(hit)):
+		## ★先用无类型的值判有效, 再转类型(2026-10-10): 同一帧里换页时卡已被释放, 直接赋给带类型的变量那一步就报
+		##   SCRIPT ERROR(「previously freed」), 后面的 is_instance_valid 来不及起作用。
+		var _pn = p["panel"]
+		var _rt = p["rt"]
+		var _ht = p["hit"]
+		if not (is_instance_valid(_pn) and is_instance_valid(_rt) and is_instance_valid(_ht)):
 			continue
+		var panel: Panel = _pn
+		var rt: RichTextLabel = _rt
+		var hit: Control = _ht
 		var dy: float = y - float(p["y0"])
 		for nd in p["nodes"]:
 			if is_instance_valid(nd) and nd is Control:   # 先判有效再 is(对已释放对象 is 会报错, freed_is_order 审计)
@@ -1435,28 +1440,10 @@ func _type_members(tname: String) -> Array:
 
 
 func _show_status(st: Dictionary) -> void:
-	host._clear_detail()
-	var icon_key: String = st.get("iconKey", "")
-	host._add_image(70, 70, "res://assets/sprites/status/%s-icon.png" % icon_key.replace("status-", ""), 100, 100, true)
-	var cat_label = {"dot": "持续伤害", "cc": "控制", "buff": "增益", "debuff": "减益"}
-	host._add_text(140, 38, st.get("name", "?"), 32, "#ffd93d", 0.0, 0.5, true)
-	host._add_text(140, 78, cat_label.get(st.get("category", ""), st.get("category", "")), 15, "#58d3ff", 0.0, 0.5, true)
-	host._add_text(20, 150, "效果", 17, "#58d3ff", 0.0, 0.0, true)
-	var rt = RichTextLabel.new()
-	rt.bbcode_enabled = true; rt.fit_content = true; rt.scroll_active = false
-	rt.position = Vector2(20, 176)
-	rt.custom_minimum_size = Vector2(host.DETAIL_W - 40, 0)
-	rt.add_theme_font_size_override("normal_font_size", 17)
-	rt.add_theme_constant_override("line_separation", 5)
-	rt.add_theme_color_override("default_color", Color("#e8f2ff"))
-	## ★2026-10-07: 状态说明里的数字走 `{C:类.常量}`(与龟/装备文案同一套), 不在 json 里手抄。
-	##   原来这里是裸取 desc —— 写 {C:} 会原样漏给玩家, 所以要先过一遍 render_consts。
-	rt.text = SkillText.render_consts(str(st.get("desc", "")))
-	host.detail.add_child(rt)
-	var formula: String = st.get("formula", "")
-	if formula != "":
-		## ★"生效公式"接着说明往下排。原来写死 y=240/264 —— 说明只要长过 64px 就会被公式压住,
-		##   而 13 个状态里最长的那条正文改成 17px 之后就正好跨过这条线。
-		var fy: float = 176.0 + maxf(24.0, rt.get_combined_minimum_size().y) + 26.0
-		host._add_text(20, fy, "生效公式", 17, "#58d3ff", 0.0, 0.0, true)
-		host._add_text(20, fy + 28.0, formula, 17, "#ffd93d", 0.0, 0.0, true)
+	## 2026-10-10 整页搬到 status_page.gd(效果 + 从代码推出的「来源」+ 满高详情框)。
+	if _status_page == null:
+		_status_page = StatusPage.new(host)
+	_status_page.show(st)
+
+const StatusPage := preload("res://scripts/scenes/codex/status_page.gd")
+var _status_page = null

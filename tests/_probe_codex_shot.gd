@@ -12,6 +12,26 @@ func _ready() -> void:
 		tab = "equips"
 	cs.call("_switch_tab", tab)
 	await get_tree().process_frame
+	## CODEX_ALL_DIR=目录: 该页签每一条各截一张 <id>.png(内容超出一屏时另截一张滚到底的 <id>_end.png)
+	var all_dir := OS.get_environment("CODEX_ALL_DIR")
+	if all_dir != "":
+		var its: Array = cs.get("_items")
+		for i in range(its.size()):
+			cs.call("_select", i)
+			for _j in range(24):
+				await get_tree().process_frame
+			var iid := str((its[i] as Dictionary).get("id", str(i)))
+			get_viewport().get_texture().get_image().save_png("%s/%s.png" % [all_dir, iid])
+			var sc: ScrollContainer = cs.get("_detail_scroll")
+			if sc != null and sc.get_v_scroll_bar().max_value > sc.size.y + 2.0:
+				sc.scroll_vertical = int(sc.get_v_scroll_bar().max_value)
+				for _j in range(6):
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("%s/%s_end.png" % [all_dir, iid])
+				sc.scroll_vertical = 0
+		print("[CODEX] saved all ", its.size())
+		get_tree().quit()
+		return
 	var want := OS.get_environment("CODEX_ID")
 	var items: Array = cs.get("_items")
 	## CODEX_ID=minion:front|back|elite —— 深海小将(虚拟条目, 没有 id, 按 _minion 认)
