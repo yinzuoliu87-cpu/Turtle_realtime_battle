@@ -21,7 +21,8 @@ extends RefCounted
 ##   · 落后 target 超过 CATCH_SLACK ⇒ 追帧(一帧 8 步, 屏上「同步中」); 追上了 ⇒ 1 倍跟播。
 ##   · 跑到 cap ⇒ 停住攒一点(RESUME_STEPS)再放 —— 不攒的话每次心跳只放 3 秒、停 3 秒。
 ##   · 停在幕布 / 摆位上、打的人还没按下一路开打 ⇒ 屏上「下路准备中」。
-##   · horizon 超过 LIVE_STALE_SEC 没涨(打的人断网 / 杀进程)⇒ 「直播中断」收尾卡。
+##   · horizon 超过 STALL_HINT_SEC 没涨 ⇒ 屏上「信号中断」, 照常轮询, 一涨就接着放;
+##     服务端作证 LIVE_BREAK_SEC 没涨(打的人断网 / 杀进程)⇒ 「直播中断」收尾卡。
 ##
 ## ★这一层**不碰任何对局状态**: 只读 `_sim_step_n` / `_dl_state`, 只写累加器余量 `_sim_accum`。
 
@@ -38,6 +39,7 @@ const TAG_PREMIERE := "开播"
 const TXT_WAIT := "下路准备中"
 const TXT_SYNC := "同步中"
 const TXT_BROKEN := "直播中断"
+const TXT_STALL := "信号中断"
 const TXT_VERSION := "版本不同，无法观赛"
 const BTN_WATCH := "观赛"
 
@@ -51,8 +53,8 @@ const RESUME_STEPS := 240
 const CATCH_SLACK := 90
 ## 追帧时一帧跑几步(= 战斗场累加器每帧上限 8)。
 const CATCH_PER_FRAME := 8
-## horizon 多久没涨算中断: 与赛况板「还在打吗」同一个数(`gauntlet_board.LIVE_STALE_SEC`, 墙钟秒)。
-##   打的人每 3 秒一次心跳, 摆位思考期间心跳照发 ⇒ 不会误判。
+## horizon 多久没涨算中断: 见下面 `LIVE_BREAK_SEC`(★不再与赛况板的 45 秒共用 —— 板上 45 秒不更新就收卡是对的,
+##   正在看的人被 45 秒踢出去不对)。打的人每 3 秒一次心跳, 摆位思考期间心跳照发。
 ## 开播窗口: 翻面时刻起多久之内不揭晓胜负。一场时长不知道时用上限(4 分钟, 与服务端「4 分钟重放」同一个数);
 ##   看过那一场(拿到了录像)就按真实时长 + 缓冲。
 const PREMIERE_SEC := 240
@@ -66,7 +68,17 @@ static var pending: Dictionary = {}
 static var watched: Dictionary = {}
 ## 开播: 拿到过录像的场次的真实步数(key → 步数), 开播窗口按它算。
 static var known_len: Dictionary = {}
-## 只给门禁: > 0 时替代 LIVE_STALE_SEC。
+## ★★观赛判「直播中断」(终态)的时限, 墙钟秒(2026-10-10 实操查实后改):
+##   原来用赛况板那个 45 秒, 且按**观众本机**的钟判 ⇒ 两种误判都是永久的:
+##   ① 观众自己切后台 / 断网 45 秒, 回来第一帧(轮询还没来得及发)就判中断 —— 对局其实还在打;
+##   ② 打的人切后台 50 秒再回来接着打, 所有观众已被永久踢出。
+##   ⇒ 终态只认**服务端回过话、证明 horizon 真的没涨**的那段时长(`_last_ok_ms - _last_adv_ms`),
+##     时限放宽到 3 分钟(方案书风险 1:「超过一次正常的离开 + 缓冲」); 中间那段只显示「信号中断」, 照常轮询,
+##     一涨就接着放。
+const LIVE_BREAK_SEC := 180
+## 多久没涨就在屏上提示「信号中断」(不是终态): > 心跳 3 秒 + 轮询 2.5 秒 + 余量。
+const STALL_HINT_SEC := 10
+## 只给门禁: > 0 时替代 LIVE_BREAK_SEC。
 static var stale_sec_for_test := 0.0
 
 var rp                          # ReplayRecorder
@@ -88,6 +100,8 @@ var polls := 0                  # 门禁分母: 问过几次 / 合并进来几�
 var merges := 0
 var max_ahead := -1             # 门禁: 跑到过的最大「步号 − cap」(必须 ≤ 0)
 var _last_adv_ms := 0
+## 最近一次**服务端回了这一场的行**(不管涨没涨)的时刻 —— 「对方真的停了」只认它作证。
+var _last_ok_ms := 0
 var _inflight := false
 
 
@@ -103,6 +117,7 @@ func _init(r, p: Dictionary) -> void:
 	ref_ms = int(p.get("t_ms", Time.get_ticks_msec()))
 	key = str(p.get("key", ""))
 	_last_adv_ms = Time.get_ticks_msec()
+	_last_ok_ms = _last_adv_ms
 
 
 ## 战斗场开局(`ReplayRecorder.start` 播放分支)取走挂着的会话。没有 / 过期 ⇒ null(照常回放)。
@@ -201,9 +216,13 @@ func _tick() -> void:
 		status = ""
 		return
 	if kind == KIND_LIVE and not ended:
-		var lim: float = stale_sec_for_test if stale_sec_for_test > 0.0 else float(Board.LIVE_STALE_SEC)
-		if float(Time.get_ticks_msec() - _last_adv_ms) > lim * 1000.0:
+		var lim: float = stale_sec_for_test if stale_sec_for_test > 0.0 else float(LIVE_BREAK_SEC)
+		## ★终态只认服务端作证的那一段(见 LIVE_BREAK_SEC 头注); 观众自己离开 / 断网时 `_last_ok_ms` 不动 ⇒ 不会判。
+		if float(_last_ok_ms - _last_adv_ms) > lim * 1000.0:
 			_break(TXT_BROKEN)
+			return
+		if Time.get_ticks_msec() - _last_adv_ms > STALL_HINT_SEC * 1000:
+			status = TXT_STALL
 			return
 	if catching:
 		status = TXT_SYNC
@@ -301,8 +320,9 @@ func merge(nr: Dictionary, h: int, e: bool) -> void:
 	if e and nr.get("end", null) is Dictionary:
 		rp.rec["end"] = nr["end"]
 	merges += 1
+	_last_ok_ms = Time.get_ticks_msec()
 	if h > horizon or (e and not ended):
-		_last_adv_ms = Time.get_ticks_msec()
+		_last_adv_ms = _last_ok_ms
 	horizon = maxi(horizon, h)
 	ended = ended or (e and rp.rec.get("end", null) is Dictionary)
 
@@ -336,7 +356,7 @@ static func _on_live_fetched(tree: SceneTree, id: String, res: Dictionary, done:
 		return
 	var why := str(res.get("err", ""))
 	if why == "missing":
-		RF._reply(done, "stale", TXT_BROKEN)
+		_fallback_replay(tree, id, done, back, names)
 		return
 	if why != "":
 		RF._reply(done, why, RF.message(why, int(res.get("code", 0))))
@@ -351,7 +371,7 @@ static func _on_live_fetched(tree: SceneTree, id: String, res: Dictionary, done:
 		return
 	var e := bool(res.get("ended", false)) and rec.get("end", null) is Dictionary
 	if not e and Board.live_stale(Board.iso_to_unix(str(res.get("updated_at", ""))), P2C.now_utc()):
-		RF._reply(done, "stale", TXT_BROKEN)
+		_fallback_replay(tree, id, done, back, names)
 		return
 	## 已经打完 ⇒ 就是一场回放(带控件), 不挂观赛会话。
 	if not e:
@@ -365,6 +385,17 @@ static func _on_live_fetched(tree: SceneTree, id: String, res: Dictionary, done:
 	RF._reply(done, "", "")
 
 
+
+
+## 直播行没了 / 停更了 ⇒ 先试正式录像(同一个 match_id, 走另一条可靠的上传队列), 拿不到才说「直播中断」。
+## ★2026-10-10 审计: 结束行 3 次都没传上时直播行停在 ended=false, 而录像多半已经在 `matches` 里 ——
+##   原来直接报中断, 明明能看的那一场看不了。
+static func _fallback_replay(tree: SceneTree, id: String, done: Callable, back: String, names: Dictionary) -> void:
+	RF.open(tree, id, func(code: String, _msg: String) -> void:
+		if code == "":
+			RF._reply(done, "", "")
+		else:
+			RF._reply(done, "stale", TXT_BROKEN), back, names)
 
 
 # ─────────────────────────────── 周日开播窗口(纯函数) ───────────────────────────────

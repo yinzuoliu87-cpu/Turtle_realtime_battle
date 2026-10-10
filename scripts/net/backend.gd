@@ -1224,8 +1224,9 @@ static func find_opponent(battles: int, exclude_ids: Array, rng: RandomNumberGen
 ##   ③ 回落**不降标签**, 只降到机器人 —— 上面那条会 `for b in range(bracket, -1, -1)`
 ##      往低档找, 这里一格都不许降。
 ##
-## ⚠ 本函数**一行网络代码都没有**(与 `find_opponent` 同一条纪律): 顺手发一次拉取填
-##   【下一局】的池子, 本局就用现在这个本地池算。断网时那一行是 no-op, 下面照常跑。
+## ⚠ 本函数**一行网络代码都没有**(与 `find_opponent` 同一条纪律): 本局就用现在这个本地池算。
+##   下面那次拉取的是**当前**标签 —— 打完这场标签就换了, 它只在「取消匹配再进来」时用得上。
+##   ★真正喂池子的是 `prefetch_gauntlet_pool()`(主菜单 + 每场结算后, 提前一格拉)。
 static func find_gauntlet_opponent(gw: int, gl: int, exclude_ids: Array,
 		rng: RandomNumberGenerator) -> Dictionary:
 	var pool := load_pool()
@@ -1285,12 +1286,17 @@ static func upload_gauntlet_ghost(gw: int, gl: int) -> void:
 	snap["gl_l"] = gl
 	snap["gl_ts"] = int(Time.get_unix_time_from_system())
 	gauntlet_uploads += 1
-	upload_ghost(snap)                 ## 老通道: 进本地池(+ 旧后端, 现在是 no-op)
+	## 老通道: 只进本地池。★★不进积分赛的 `ghosts` 表(2026-10-10 周六实操查实): 原来这一句也排进了 ladder 队列,
+	##   每打一场闯关赛就往积分赛那张表写一行「第 17、18…场」⇒ 服务端周榜(每人取最新一行)周六还在变,
+	##   「积分赛终榜」上出现总场次 20(上限 16)、名次被闯关赛改写。周六那份走下面自己的 gauntlet 队列。
+	upload_ghost(snap, false)
 	## ★E7: 同积分赛那一份, 进落盘队列, 回读确认才销单(`ghost_uploader.gd`)。
 	var GU3 = load("res://scripts/net/ghost_uploader.gd")
 	if GU3 != null:
 		GU3.enqueue_gauntlet(snap, int(GameState.week_anchor_ts), gw, gl,
 			str(ProjectSettings.get_setting("application/config/version", "")))
+	## ★传完我这一格, 顺手把这一格别人的拉回来 —— 这正是下一场要匹配的那一格(见 `prefetch_gauntlet_pool` 头注)。
+	prefetch_gauntlet_pool()
 
 
 ## 周日决赛日报到。★只有**这一场把我打成「晋级」**时才报 ——
@@ -1352,6 +1358,31 @@ static func ensure_gauntlet_entry_snapshot(now: int = 0) -> bool:
 	upload_gauntlet_ghost(0, 0)
 	GameState.gauntlet_entry_week = wk
 	GameState.save()
+	return true
+
+
+## ★★周六对手池要【提前一格】拉(2026-10-10 60 人实操查实)。
+##   `find_gauntlet_opponent` 里那次拉取拉的是**当前**标签, 而它照纪律不等网络、当场用本地池算 ——
+##   积分赛那条拉 N 与 N+1 场次, 下一局用得上; 闯关赛**打完这一场标签就换了, 永远不会回到这一格**
+##   ⇒ 拉回来的真人一份都用不上。实测 p14 0-0 拉回 9 份真人、入池 9, 照样配了机器人。
+## ⇒ 在【已经知道下一场是哪一格】的两个时刻拉: 进主菜单(当前格: 管第一场与重开 App)、
+##   每场闯关赛结算后(新格)。匹配那一步仍然一行网络都不碰。
+## 返回: 这一次真的发了没有(门禁用)。
+static func prefetch_gauntlet_pool(now: int = 0) -> bool:
+	if GameState == null:
+		return false
+	var ts: int = now if now > 0 else int(_P2.now_utc())
+	if _P2.phase_at_utc(ts) != _P2.PHASE_GAUNTLET or not _P2.phase_mode_live(_P2.PHASE_GAUNTLET):
+		return false
+	if not GameState.gauntlet_eligible():
+		return false
+	if str(GameState.gauntlet_state()) != _P2.GAUNTLET_RUNNING:
+		return false
+	var SB2 = load("res://scripts/net/supabase.gd")
+	if SB2 == null:
+		return false
+	SB2.pull_gauntlet_async(int(GameState.week_anchor_ts), int(GameState.gauntlet_wins),
+		int(GameState.gauntlet_losses), str(GameState.account_id))
 	return true
 
 
@@ -1699,12 +1730,15 @@ static func self_season_prefix(season_id: int) -> String:
 ## 上传自己阵容快照进池 (玩家配好 build / 赢一场后).
 ## ★进本地池的这一份盖 origin=local 章 —— 匹配时靠它认出"这是我自己"(见 _is_self_ghost)。
 ##   ⚠ 盖在**副本**上: 调用方那份快照还要原样发给服务端, 不该带本机的来源标记。
-static func upload_ghost(snapshot: Dictionary) -> void:
+## `ladder = false`: 只进本地池, 不往积分赛那张 `ghosts` 表排队(周六闯关赛用, 见 `upload_gauntlet_ghost`)。
+static func upload_ghost(snapshot: Dictionary, ladder: bool = true) -> void:
 	var mine := snapshot.duplicate(true)
 	mine[ORIGIN_KEY] = ORIGIN_LOCAL
 	var pool := load_pool()
 	pool_add(pool, mine)
 	save_pool(pool)
+	if not ladder:
+		return
 	## ★远端同步(方案书 20260820 §落地步骤 2): 本地那步**先做完且一定成功**, 远端是追加的一次 POST,
 	##   失败静默、不回滚、不碰存档 —— 网络是锦上添花, 不是开局的依赖。
 	## ★用 load 不用 preload: remote_pool.gd 反过来 preload 本文件, **循环 preload 会编译失败**。

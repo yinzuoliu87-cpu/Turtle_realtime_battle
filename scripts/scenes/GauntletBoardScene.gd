@@ -132,7 +132,14 @@ func _ready() -> void:
 	lt.timeout.connect(_refresh_live)
 	add_child(lt)
 	lt.start()
-	refresh()
+	## ★★推迟一帧发(2026-10-10 实操查实, 同 LeaderboardScene `_ask_server` 那条): `_ready` 跑在 root 正在挂子节点
+	##   的那一刻, `SupabaseNet._spawn()` 挂不上 ⇒ 每次进来头 30 秒都是「账号未连接，请检查网络」。
+	##   没接服务器时照旧当场判(那条路不建节点; 门禁喂数据的顺序也不变)。
+	if SB.enabled():
+		_set_status("loading")
+		call_deferred("refresh")
+	else:
+		refresh()
 	UIFrame.attach(self)
 
 
@@ -442,7 +449,7 @@ func _game_card(g: Dictionary, idx: int) -> Control:
 		var bt := MatchCard.big_btn(WATCH_LABEL, N_WATCH)
 		bt.set_meta("key", str(g["id"]))
 		bt.set_meta("label", WATCH_LABEL)
-		bt.pressed.connect(_on_game_pressed.bind(str(g["id"]), names))
+		_tap_or_scroll(bt, _on_game_pressed.bind(str(g["id"]), names))
 		body.add_child(bt)
 	return pc
 
@@ -482,7 +489,7 @@ func _live_card(g: Dictionary, idx: int) -> Control:
 	var bt := MatchCard.big_btn(Live.BTN_WATCH, N_LIVE_BTN, MatchCard.WATCH_SIZE, MatchCard.BTN_LIVE)
 	bt.set_meta("key", str(g["id"]))
 	bt.set_meta("label", Live.BTN_WATCH)
-	bt.pressed.connect(_on_live_pressed.bind(str(g["id"]), names))
+	_tap_or_scroll(bt, _on_live_pressed.bind(str(g["id"]), names))
 	body.add_child(bt)
 	return pc
 
@@ -538,8 +545,38 @@ func _hit(pc: PanelContainer, nm: String, key: String, cb: Callable) -> void:
 		bt.add_theme_stylebox_override(s, StyleBoxEmpty.new())
 	bt.mouse_entered.connect(func() -> void: pc.self_modulate = Color(1.12, 1.12, 1.12))
 	bt.mouse_exited.connect(func() -> void: pc.self_modulate = Color.WHITE)
-	bt.pressed.connect(cb)
+	## ★★手机上滑不动(用户 2026-10-10「左侧滑动我在手机端很难操作啊」): 这颗按钮盖满整行, 默认 STOP 把触摸吃掉,
+	##   ScrollContainer 收不到拖动 ⇒ 只有行与行之间那几像素能滑。⇒ PASS 透传(同图鉴 / 背包 07-18 的做法)。
+	##   代价是滑完松手可能顺带算一次点 ⇒ 按下时记滚动位置, 松手时列表动过就不算点。
+	_tap_or_scroll(bt, cb)
 	pc.add_child(bt)
+
+
+## 点和滑的分界(像素): 按下到松手之间列表滚动超过它 = 这次是滑, 不是点。
+const TAP_SLOP := 8
+
+
+## 滚动列表里的按钮: 触摸透传给 ScrollContainer(手指按在按钮上也能滑), 滑过的那一下不算点。
+## ★没经过 button_down 的 pressed(键盘 / 门禁直接发信号)照常算点。
+func _tap_or_scroll(bt: Button, cb: Callable) -> void:
+	bt.mouse_filter = Control.MOUSE_FILTER_PASS
+	var at := [-1]
+	bt.button_down.connect(func() -> void: at[0] = _scroll_of(bt))
+	bt.pressed.connect(func() -> void:
+		var down := int(at[0])
+		at[0] = -1
+		if down >= 0 and absi(_scroll_of(bt) - down) > TAP_SLOP:
+			return
+		cb.call())
+
+
+func _scroll_of(n: Node) -> int:
+	var p := n.get_parent()
+	while p != null:
+		if p is ScrollContainer:
+			return (p as ScrollContainer).scroll_vertical
+		p = p.get_parent()
+	return 0
 
 
 func _rel_time(t: int) -> String:

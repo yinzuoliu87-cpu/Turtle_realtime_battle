@@ -1580,6 +1580,36 @@ func _is_dev_tool_battle() -> bool:
 	return battle.DEBUG_EDIT or OS.has_environment("VFXLAB") or OS.has_environment("MAPEDIT")
 
 
+## 这一局打完会不会进赛季结算(扣命 / 记闯关战绩 / 发奖)。条件与 `_settle_season` 开头那几条 early return 一致。
+## ★给键盘用(2026-10-10 实操查实): R 重开 / ESC 回主菜单原来**不分场合** ⇒ 计分对局里一按就把这一局抹掉,
+##   负场不记、命不扣 —— 与用户 2026-07-30「认输 = 整场负, 不许直接回主菜单」相反。
+func _is_scored_match() -> bool:
+	if battle._replay != null and battle._replay.is_playing():
+		return false
+	var gs = battle.get_node_or_null("/root/GameState")
+	if gs == null or bool(gs.get("tutorial_active")) or _is_dev_tool_battle():
+		return false
+	return (gs.get("season_leaders") is Array) and (gs.get("season_leaders") as Array).size() >= 1
+
+
+## 键盘守卫(`_unhandled_input` 第一句调): 计分对局没打完时吞掉 R / ESC 并返回 true。
+##   ESC = 弹认输确认(框开着再按 = 收起); R 什么都不做。其余情况返回 false, 主文件照旧处理。
+func _scored_key_guard(keycode: int) -> bool:
+	if keycode != KEY_R and keycode != KEY_ESCAPE:
+		return false
+	if battle._settled or not _is_scored_match():
+		return false
+	if keycode == KEY_ESCAPE:
+		if battle._info_panel != null and is_instance_valid(battle._info_panel):
+			return false                     # 详情面板开着 → 交给主文件先关面板
+		var sp = battle._surrender_panel
+		if sp != null and is_instance_valid(sp) and sp.visible:
+			battle._hide_surrender_confirm()
+		else:
+			battle._show_surrender_confirm()
+	return true
+
+
 ## 这一场是不是**教学战斗**(GameState.tutorial_active 且走双路)。
 ## ★用户 2026-10-04 拍板(「可以」): 教学固定暗林一张, 不跟正式对局随机。
 func _is_tutorial_battle() -> bool:

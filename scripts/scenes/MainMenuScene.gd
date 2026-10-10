@@ -213,6 +213,7 @@ func _ready() -> void:
 	##   「该不该补报」不是主菜单的事(同 `login_wall_on` 那条纪律: 判据只留一处)。
 	_BE.ensure_finals_entry()
 	_BE.ensure_gauntlet_entry_snapshot()   # 周六 0-0 进场快照(每周一次; 判据全在 Backend 里)
+	_BE.prefetch_gauntlet_pool()           # 周六对手池提前拉当前格(见 Backend 头注: 匹配时才拉就晚了一格)
 	## ★★决赛日那一场的**结果**也要补报 —— 与上面那句同一层、同一个理由:
 	##   「那一刻可能没网, 而那一刻只有一次」。漏报会让那一场只能靠 960 秒宽限兜,
 	##   **可能把错的人送进下一轮**(2026-09-27)。

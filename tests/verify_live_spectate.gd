@@ -591,14 +591,31 @@ func _t_stale() -> void:
 	## 打开时就已经断了(updated_at 比现在早 100 秒)⇒ 不进场
 	var j := _join_index()
 	_serve = _served(_snaps[j], _now - 100)
+	## ★★2026-10-10: 停更 / 行没了 ⇒ 先试正式录像(同一个 match_id)。本测试打的人与看的人在同一台机器,
+	##   本机就有这一场的录像 ⇒ 先量「有录像 ⇒ 转成回放」, 再把它挪开量「没录像 ⇒ 直播中断」。
+	var fb := ["~", "~"]
+	LS.open_live(get_tree(), _id, func(c: String, m: String) -> void:
+		fb[0] = c
+		fb[1] = m)
+	var bf = await _wait_scene(_is_battle, 120)
+	_ok("⑤ ★停更但录像在 ⇒ 转成回放(不是观赛、不报中断)", fb[0] == "" and bf != null and not bf._replay.is_live(),
+		"%s / %s" % [fb[0], fb[1]])
+	if bf != null:
+		bf._hud._replay_exit()
+		await _frames(6)
+	var rpl: String = ReplayRecorder.SAVE_DIR + _id + ".rpl"
+	var rpl_away: String = rpl + ".away"
+	_ok("⑤ 分母: 本机那份录像在, 挪开", FileAccess.file_exists(rpl) and DirAccess.rename_absolute(rpl, rpl_away) == OK)
 	var got := ["~", "~"]
 	var before := get_tree().current_scene
 	LS.open_live(get_tree(), _id, func(c: String, m: String) -> void:
 		got[0] = c
 		got[1] = m)
 	await _frames(4)
-	_ok("⑤ ★打开时就断了 ⇒ 不进场, 说「直播中断」", got[0] == "stale" and got[1] == LS.TXT_BROKEN and get_tree().current_scene == before
+	_ok("⑤ ★打开时就断了且没有录像 ⇒ 不进场, 说「直播中断」", got[0] == "stale" and got[1] == LS.TXT_BROKEN and get_tree().current_scene == before
 		and LS.pending.is_empty(), "%s / %s" % [got[0], got[1]])
+	DirAccess.rename_absolute(rpl_away, rpl)
+	_ok("⑤ 分母: 录像放回原处", FileAccess.file_exists(rpl))
 	## 进场后行再也不动 ⇒ 等满中断时限出卡
 	## ★两段走(2026-10-08 CI 红): 原来进场前就把时限缩到 6 秒, 而观众要先从第 0 步追到 horizon 再停够 60 帧 ——
 	##   CI 上 16 路并行时这段追帧墙钟超过 6 秒, 还没走到 horizon 就被判中断(「停在第 -1 步 / 停了 0 帧」)。
@@ -673,6 +690,32 @@ func _t_stale() -> void:
 		await _frames(6)
 	else:
 		_ok("⑤ 分母: 第二次进了观赛", false)
+	## ★★⑤b 观众自己离开 / 断网很久 ≠ 对方停了(2026-10-10 实操: 原来按观众本机的钟判, 切后台回来第一帧就永久中断)。
+	##   造法: 把「上次涨」和「上次服务端回话」一起拨回 60 秒前 = 这 60 秒里一次轮询都没成功(观众那头断了)。
+	LS.stale_sec_for_test = 6.0
+	var b3 = await _spectate_from(j, _now)
+	if b3 != null and b3._replay.is_live():
+		b3.set_process(false)
+		var lv3 = b3._replay.live
+		var back := Time.get_ticks_msec() - 60000
+		lv3._last_adv_ms = back
+		lv3._last_ok_ms = back
+		for _i in range(10):
+			b3._process(DT)
+		_ok("⑤b ★观众自己断了 60 秒(时限 6 秒)⇒ 不判中断, 只提示「信号中断」", not lv3.broken
+			and str(lv3.status) == LS.TXT_STALL, "broken=%s status=%s" % [str(lv3.broken), str(lv3.status)])
+		## 回来后第一次轮询拿到涨了的行 ⇒ 提示收掉、接着放。
+		var h0 := int(lv3.horizon)
+		lv3.merge(lv3.rp.rec.duplicate(true), h0 + 180, false)
+		for _i in range(3):
+			b3._process(DT)
+		_ok("⑤b ★一涨就恢复: 不中断、提示收掉、horizon 跟上", not lv3.broken and str(lv3.status) != LS.TXT_STALL
+			and int(lv3.horizon) == h0 + 180, "broken=%s status=%s h=%d" % [str(lv3.broken), str(lv3.status), int(lv3.horizon)])
+		b3._hud._replay_exit()
+		await _frames(6)
+	else:
+		_ok("⑤b 分母: 第三次进了观赛", false)
+	LS.stale_sec_for_test = 0.0
 
 
 # ⑥ ⑦ ─────────────────────────────────────────────────────────────

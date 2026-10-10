@@ -2011,9 +2011,17 @@ func _start_feed() -> void:
 	##   只在自己联网这条路上接: 门禁喂数据那条路不该去打网络。
 	match_opened.connect(_on_match_opened)
 	_rebuild()
-	_pull()
+	## ★★两个请求都**推迟一帧**发(2026-10-10 实操查实, 同 LeaderboardScene `_ask_server` 那条):
+	##   本函数跑在 `_ready` 里, 从主菜单 `change_scene_to_file` 进来时 root 正在挂子节点,
+	##   `SupabaseNet._spawn()` 往 root 上挂请求节点报「Parent node is busy setting up children」⇒ 请求发不出去。
+	##   头像那条只取一次、不重试 ⇒ 不推迟的话周日整天都是名字首字。
+	call_deferred("_pull")
 	## ★头像(2026-10-07): 对阵数据里没有头像 ⇒ 取同一周的周六赛况板一次, 按 #ID 对上(见 `_portraits`)。
 	##   只取一次: 头像在决赛日不会变; 取不到就一直画名字首字, 不重试、不报错。
+	call_deferred("_fetch_portraits")
+
+
+func _fetch_portraits() -> void:
 	_SB.fetch_gauntlet_board_async(_P2C.week_anchor_utc(_clock()), _on_board_rows)
 
 

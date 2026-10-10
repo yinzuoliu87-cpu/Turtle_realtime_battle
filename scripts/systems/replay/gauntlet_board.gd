@@ -14,7 +14,8 @@ extends RefCounted
 ## ★战绩取「证据里场次最多的那一条」:
 ##   · 自己上传的行带 `result.gw/gl`(那一局**打完后**的战绩) —— 最准;
 ##   · 老行没有 gw/gl ⇒ 退回数自己上传了几胜几负;
-##   · 只以对手身份出现的(录像没传上来的真人 / 机器人) ⇒ 用他快照上的标签(那一刻的战绩)。
+##   · 他被别人打到时快照上的标签(那一刻的战绩)也算一条证据。
+##   ★★但只以对手身份出现过的人**不进榜**(2026-10-10): 机器人每场一个新号, 进榜就露馅。
 ##   三条对所有人是**同一条规则**, 不分真人机器人。
 ## ★状态 = `Phase2Config.gauntlet_state`(4 胜晋级 / 3 负出局); 周六收盘后还没定的算出局
 ##   (没打满就到收盘 = 没晋级, 与 `gauntlet_backfill_owed` 同一口径)。
@@ -24,7 +25,9 @@ const BE := preload("res://scripts/net/backend.gd")
 const SB := preload("res://scripts/net/supabase.gd")
 
 const ST_TEXT := {
-	"running": "在打",
+	## ★「待定」不是「在打」(用户 2026-10-10「在打又是什么说法呢」): 这一档 = 没晋级也没出局, 与此刻在不在打无关;
+	##   正在打的另有红色「直播」签(`GauntletBoardScene._apply_live`)。
+	"running": "待定",   # devnote-ok: 闯关赛状态词(晋级与否未定), 玩家该读的规则, 与对阵表那格「待定」同一类
 	"in": "已晋级",
 	"out": "已出局",
 }
@@ -83,6 +86,7 @@ static func build(rows: Array, my_tag: String, closed: bool) -> Dictionary:
 			"l": _side(r.get("lp", null), lt, r.get("la", null)), "r": _side(r.get("rp", null), rt, r.get("ra", null))})
 		if lt != "":
 			var p: Dictionary = _person(ppl, lt, r.get("lp", null), t)
+			p["own"] = true
 			if res.has("gw") and res.has("gl"):
 				_offer(p, int(res.get("gw", 0)), int(res.get("gl", 0)))
 			else:
@@ -97,6 +101,11 @@ static func build(rows: Array, my_tag: String, closed: bool) -> Dictionary:
 	var players: Array = []
 	for tg in ppl:
 		var p: Dictionary = ppl[tg]
+		## ★★只以对手身份出现过的人不进榜(2026-10-10 周六实操): 机器人每场都是一个新号, 原来每个都进榜、
+		##   战绩冻在赛前标签、整天「在打」又从不出现在流水的录像方 —— 一对比就认得出(用户「不能让玩家知道是机器人」)。
+		##   规则仍对所有人相同: 自己传过一场才进榜(真人打一场就会传)。他快照上的标签仍算进下面的战绩证据。
+		if not bool(p.get("own", false)):
+			continue
 		_offer(p, int(p["cw"]), int(p["cl"]))
 		var w := int(p["best_w"])
 		var l := int(p["best_l"])

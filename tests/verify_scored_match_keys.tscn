@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/verify_scored_match_keys.gd" id="1_smk"]
+
+[node name="VerifyScoredMatchKeys" type="Node"]
+script = ExtResource("1_smk")

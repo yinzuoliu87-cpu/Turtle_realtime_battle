@@ -1520,10 +1520,11 @@ scripts/systems/equip/swordsman_system.gd|lit|剑
 scripts/systems/equip/synergy_system.gd|lit|剑
 scripts/systems/equip/synergy_system.gd|lit|食物
 scripts/systems/equip/timestop_system.gd|lit|+%d龟能
-scripts/systems/replay/gauntlet_board.gd|lit|在打
 scripts/systems/replay/gauntlet_board.gd|lit|已出局
 scripts/systems/replay/gauntlet_board.gd|lit|已晋级
+scripts/systems/replay/gauntlet_board.gd|lit|待定
 scripts/systems/replay/live_spectate.gd|lit|下路准备中
+scripts/systems/replay/live_spectate.gd|lit|信号中断
 scripts/systems/replay/live_spectate.gd|lit|同步中
 scripts/systems/replay/live_spectate.gd|lit|开播
 scripts/systems/replay/live_spectate.gd|lit|版本不同，无法观赛

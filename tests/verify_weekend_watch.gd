@@ -145,7 +145,8 @@ func _t_board() -> void:
 	var rp := 0
 	for r in rows:
 		rp += _portraits(r).size()
-	_ok("① 战绩榜每行一个头像", rows.size() == 6 and rp == 6, "%d 行 / %d 头像" % [rows.size(), rp])
+	## ★选手5 只以对手身份出现过 ⇒ 不进榜(2026-10-10: 机器人的样子, 见 gauntlet_board.build) ⇒ 5 行。
+	_ok("① 战绩榜每行一个头像", rows.size() == 5 and rp == 5, "%d 行 / %d 头像" % [rows.size(), rp])
 	bs.queue_free()
 	await _frames(2)
 

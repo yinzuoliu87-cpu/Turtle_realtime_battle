@@ -130,6 +130,22 @@ func _frames(n: int) -> void:
 		await get_tree().process_frame
 
 
+## ★★周六快照只进 `gauntlet_ghosts`, 不许往积分赛的 `ghosts` 排队(2026-10-10 周六实操查实):
+##   原来 `upload_gauntlet_ghost` 里那句 `upload_ghost(snap)` 也排进了 ladder ⇒ 每场闯关赛给积分赛表写一行第 17、18…场,
+##   服务端周榜(每人取最新一行)周六还在变。①段里看不出来: 它那一条恰好与积分赛那条同场次、按键去重合掉了。
+func _t_gauntlet_not_ladder() -> void:
+	print("── ⑪ 周六快照不进积分赛表 ──")
+	_mode = "down"
+	_gs.ghost_upload_pending = []
+	_gs.season_total_battles = 17           # 周六打到第 17 场: 与任何积分赛那一条都不同场次, 去重合不掉
+	Backend.upload_gauntlet_ghost(2, 0)
+	await _frames(10)
+	var keys := _queue_keys()
+	_ok("⑪ 分母: 周六那份进了队列", keys.size() >= 1, str(keys))
+	_ok("⑪ ★★只有 gauntlet_ghosts 一条, 没有 ghosts 那条", keys.size() == 1 and str(keys[0]).begins_with("gauntlet_ghosts|"), str(keys))
+	_gs.ghost_upload_pending = []
+
+
 func _queue_keys() -> Array:
 	var out: Array = []
 	for e in _gs.ghost_upload_pending:
@@ -224,6 +240,7 @@ func _ready() -> void:
 	await _t_server_codes()
 	await _t_structural()
 	_t_dedupe_cap()
+	await _t_gauntlet_not_ladder()
 
 	SB._transport_for_test = Callable()
 	SB._reset_auth_for_test()

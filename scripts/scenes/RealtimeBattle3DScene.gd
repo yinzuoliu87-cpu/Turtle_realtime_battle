@@ -7928,6 +7928,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_map_ed_paint(event.position)
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
+		if _world_builder._scored_key_guard(event.keycode):   # 计分对局里 R / ESC 不许抹掉这一局(见该函数头注)
+			return
 		if event.keycode == KEY_R:
 			get_tree().reload_current_scene()
 		elif event.keycode == KEY_ESCAPE:

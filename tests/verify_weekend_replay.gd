@@ -312,7 +312,8 @@ func _uid(n: int) -> String:
 
 
 ## 一套固定输入(标签自洽: 闯关只同标签互配, 对手快照标签 = 录像方赛前战绩):
-##   我 2-0(在打) / 甲 4-1(晋级) / 乙 1-3(出局) / 丙 只以对手出现、快照标签 2-1 / 戊 只以对手出现、标签 3-1 /
+##   我 2-0(待定) / 甲 4-1(晋级) / 乙 1-3(出局) / 丙 只以对手出现、快照标签 2-1 / 戊 只以对手出现、标签 3-1 /
+##   (★2026-10-10 起丙、戊不进榜: 只以对手身份出现过的人 = 机器人的样子, 见 gauntlet_board.build 那条注释)
 ##   丁 老行没有 gw(数场次 1-1)。
 func _fixture() -> Array:
 	var me := _prof("小龟我", Backend.my_tag())
@@ -343,17 +344,20 @@ func _t_board_pure() -> void:
 	for p in ps:
 		got.append("%s %d-%d %s" % [p["name"], int(p["w"]), int(p["l"]), p["state_text"]])
 	print("    榜: ", got)
-	_ok("① 分母: 六个人都上榜", ps.size() == 6, str(ps.size()))
+	_ok("① 分母: 自己传过录像的四个人都上榜", ps.size() == 4, str(ps.size()))
 	_ok("① ★★排序 = 胜多在前、负少在前; 状态 = 4 胜晋级 / 3 负出局",
-		got == ["甲龟 4-1 已晋级", "戊龟 3-1 在打", "小龟我 2-0 在打", "丙龟 2-1 在打", "丁龟 1-1 在打", "乙龟 1-3 已出局"], str(got))
-	_ok("① ★排序判据本身: 2-0 排在 2-1 前面", got.find("小龟我 2-0 在打") >= 0 and got.find("小龟我 2-0 在打") < got.find("丙龟 2-1 在打"), str(got))
+		got == ["甲龟 4-1 已晋级", "小龟我 2-0 待定", "丁龟 1-1 待定", "乙龟 1-3 已出局"], str(got))
+	_ok("① ★排序判据本身: 2-0 排在 1-1 前面", got.find("小龟我 2-0 待定") >= 0 and got.find("小龟我 2-0 待定") < got.find("丁龟 1-1 待定"), str(got))
 	var me_n := 0
 	for p in ps:
 		if bool(p["me"]):
 			me_n += 1
-	_ok("① 「我」恰好一个、是我", me_n == 1 and bool(ps[got.find("小龟我 2-0 在打")]["me"]))
-	_ok("① ★只以对手身份出现的丙按快照标签记 2-1(与机器人走同一条规则)", got.has("丙龟 2-1 在打"), str(got))
-	_ok("① 老行(没有 gw/gl)退回数场次: 丁 1-1", got.has("丁龟 1-1 在打"), str(got))
+	_ok("① 「我」恰好一个、是我", me_n == 1 and bool(ps[got.find("小龟我 2-0 待定")]["me"]))
+	var names: Array = ps.map(func(p): return str(p["name"]))
+	_ok("① ★★只以对手身份出现的丙、戊不进榜(机器人每场一个新号, 进榜就露馅; 规则对真人机器人相同)",
+		not names.has("丙龟") and not names.has("戊龟"), str(names))
+	_ok("① 甲既传过录像又被当作对手 ⇒ 照样在榜(过滤只看「自己传过没有」)", names.has("甲龟"), str(names))
+	_ok("① 老行(没有 gw/gl)退回数场次: 丁 1-1", got.has("丁龟 1-1 待定"), str(got))
 	var gs: Array = d["games"]
 	_ok("① 流水 6 场、新的在前(+08:00 那场其实是 04:00 UTC)", gs.size() == 6 and str(gs[0]["id"]) == _uid(2)
 		and str(gs[5]["id"]) == _uid(6) and str(gs[4]["id"]) == _uid(5), str(gs.map(func(g): return g["id"])))
@@ -364,7 +368,7 @@ func _t_board_pure() -> void:
 	for p in dc["players"]:
 		st_c[str(p["name"])] = str(p["state_text"])
 	_ok("① ★收盘后还在打的一律算出局(没打满 = 没晋级), 晋级的不变",
-		st_c.get("小龟我", "") == "已出局" and st_c.get("丙龟", "") == "已出局" and st_c.get("甲龟", "") == "已晋级", str(st_c))
+		st_c.get("小龟我", "") == "已出局" and st_c.get("丁龟", "") == "已出局" and st_c.get("甲龟", "") == "已晋级", str(st_c))
 	_ok("① 空输入 ⇒ 空榜, 不报错", (BOARD.build([], "", false)["players"] as Array).is_empty())
 
 
@@ -482,7 +486,8 @@ func _t_board_screen() -> void:
 	var prow: Array = bs.find_children("PlayerBtn", "Button", true, false)
 	var grow: Array = bs.find_children("GameBtn", "Button", true, false)
 	print("    状态行: ", (bs.get("_status") as Label).text)
-	_ok("② ★行数: 7 个人(含真录的那一局的对手) / 7 场", prow.size() == 7 and grow.size() == 7,
+	## ★2026-10-10 起只以对手身份出现过的人不进榜(丙、戊、那局的机器人) ⇒ 4 人; 流水仍是 7 场。
+	_ok("② ★行数: 4 个人(只算自己传过录像的) / 7 场", prow.size() == 4 and grow.size() == 7,
 		"%d 人 / %d 场" % [prow.size(), grow.size()])
 	var order: Array = []
 	for p in bs.data.get("players", []):
@@ -492,13 +497,19 @@ func _t_board_screen() -> void:
 	_ok("② ★★不露馅: 屏上没有「机器人」/ bot 字样", txt.find("机器人") < 0 and txt.to_lower().find("bot") < 0,
 		txt.substr(0, 120))
 	var bot_prof: Dictionary = ((_rows.get(_gid, {}) as Dictionary).get("right_snapshot", {}) as Dictionary).get("profile", {})
-	var bot_seen := false
+	var bot_on_board := false
 	for p in bs.data.get("players", []):
 		if str(p["tag"]) == str(bot_prof.get("tag", "?")):
-			bot_seen = P2C.tag_valid(str(p["tag"])) and str(p["name"]) == str(bot_prof.get("name", "")) \
-				and int(p["w"]) == 2 and int(p["l"]) == 1
-	_ok("② ★那局的对手(机器人)上榜: 像人的名字 + 合法 #ID + 快照标签 2-1, 与真人同一种长相", bot_seen,
+			bot_on_board = true
+	var bot_in_games := false
+	for g in bs.data.get("games", []):
+		var r_side: Dictionary = g.get("r", {})
+		if str(r_side.get("tag", "")) == str(bot_prof.get("tag", "?")):
+			bot_in_games = P2C.tag_valid(str(r_side["tag"])) and str(r_side.get("name", "")) == str(bot_prof.get("name", ""))
+	_ok("② 分母: 那局的对手(机器人)确有合法 #ID", P2C.tag_valid(str(bot_prof.get("tag", ""))), str(bot_prof))
+	_ok("② ★★那局的对手(机器人)不上战绩榜(只以对手身份出现 ⇒ 不进榜, 免得一场一个新号露馅)", not bot_on_board,
 		str(bot_prof))
+	_ok("② ★流水里那一场照样画它像人的名字 + 合法 #ID", bot_in_games, str(bot_prof))
 	## 点人
 	var a_tag := P2C.player_tag("acct:a")
 	var pa: Button = null
