@@ -555,7 +555,7 @@ scripts/scenes/CodexScene.gd|lit|香火
 scripts/scenes/CodexScene.gd|lit|龟
 scripts/scenes/CodexScene.gd|text|✓ %d 龟 / %d 装备 / %d 羁绊 / %d 状态
 scripts/scenes/CodexScene.gd|text|❌ DataRegistry 未加载
-scripts/scenes/GauntletBoardScene.gd|lit| · 已截止
+scripts/scenes/GauntletBoardScene.gd|lit| · 已截止 · 周日 %s %s开打
 scripts/scenes/GauntletBoardScene.gd|lit| · 正在打 %d 场
 scripts/scenes/GauntletBoardScene.gd|lit|%d 分钟前
 scripts/scenes/GauntletBoardScene.gd|lit|%d 天前
@@ -569,7 +569,7 @@ scripts/scenes/GauntletBoardScene.gd|lit|当前版本不支持在线赛况
 scripts/scenes/GauntletBoardScene.gd|lit|战绩榜
 scripts/scenes/GauntletBoardScene.gd|lit|暂无已完成对局
 scripts/scenes/GauntletBoardScene.gd|lit|最近对局
-scripts/scenes/GauntletBoardScene.gd|lit|本周闯关赛 · %d 人 · %d 场%s%s
+scripts/scenes/GauntletBoardScene.gd|lit|本周闯关赛 · %d 人 · %d 场 · 晋级 %d · 出局 %d%s%s
 scripts/scenes/GauntletBoardScene.gd|lit|查看全部
 scripts/scenes/GauntletBoardScene.gd|lit|正在打
 scripts/scenes/GauntletBoardScene.gd|lit|每 %d 秒自动刷新

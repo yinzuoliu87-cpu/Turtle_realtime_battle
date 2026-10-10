@@ -370,6 +370,18 @@ func _t_board_pure() -> void:
 	_ok("① ★收盘后还在打的一律算出局(没打满 = 没晋级), 晋级的不变",
 		st_c.get("小龟我", "") == "已出局" and st_c.get("丁龟", "") == "已出局" and st_c.get("甲龟", "") == "已晋级", str(st_c))
 	_ok("① 空输入 ⇒ 空榜, 不报错", (BOARD.build([], "", false)["players"] as Array).is_empty())
+	## ★★同战绩先到先排(2026-10-10): 「阿」9 点就到 1-0、「赵」11 点才到 ⇒ 阿在前。按码位「赵」(U+8D75) < 「阿」(U+963F), 按名字排会把赵排前。
+	##   名字顺序与时间顺序故意相反 —— 排对了只可能是按时间排的(第一版两个顺序碰巧一致, 变异打不红, 已改)。
+	var pa := _prof("阿龟", P2C.player_tag("acct:tie_a"))
+	var pz := _prof("赵龟", P2C.player_tag("acct:tie_z"))
+	var po := _prof("对手龟", P2C.player_tag("acct:tie_o"))
+	var tie_rows := [
+		_row(_uid(91), "2026-10-03T09:00:00+00:00", pa, po, true, 1, 0, 0, 0),
+		_row(_uid(92), "2026-10-03T11:00:00+00:00", pz, po, true, 1, 0, 0, 0),
+	]
+	var tp: Array = BOARD.build(tie_rows, "", false)["players"]
+	var tnames: Array = tp.map(func(x): return str(x["name"]))
+	_ok("① ★★同战绩(1-0)先打到的排前面: 阿(9 点)在赵(11 点)前", tnames.size() == 2 and tnames[0] == "阿龟" and tnames[1] == "赵龟", str(tnames))
 
 
 # ④c ─────────────────────────────────────────────────────────────

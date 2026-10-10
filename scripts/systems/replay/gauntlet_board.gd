@@ -89,7 +89,7 @@ static func build(rows: Array, my_tag: String, closed: bool) -> Dictionary:
 			var p: Dictionary = _person(ppl, lt, r.get("lp", null), t)
 			p["own"] = true
 			if res.has("gw") and res.has("gl"):
-				_offer(p, int(res.get("gw", 0)), int(res.get("gl", 0)))
+				_offer(p, int(res.get("gw", 0)), int(res.get("gl", 0)), t)
 			else:
 				if lw:
 					p["cw"] = int(p["cw"]) + 1
@@ -98,7 +98,7 @@ static func build(rows: Array, my_tag: String, closed: bool) -> Dictionary:
 		if rt != "":
 			var q: Dictionary = _person(ppl, rt, r.get("rp", null), t)
 			if r.get("rw", null) != null and r.get("rl", null) != null:
-				_offer(q, int(r.get("rw", 0)), int(r.get("rl", 0)))
+				_offer(q, int(r.get("rw", 0)), int(r.get("rl", 0)), t)
 	var players: Array = []
 	for tg in ppl:
 		var p: Dictionary = ppl[tg]
@@ -107,14 +107,14 @@ static func build(rows: Array, my_tag: String, closed: bool) -> Dictionary:
 		##   规则仍对所有人相同: 自己传过一场才进榜(真人打一场就会传)。他快照上的标签仍算进下面的战绩证据。
 		if not bool(p.get("own", false)):
 			continue
-		_offer(p, int(p["cw"]), int(p["cl"]))
+		_offer(p, int(p["cw"]), int(p["cl"]), int(p["t"]))
 		var w := int(p["best_w"])
 		var l := int(p["best_l"])
 		var st: String = P2C.gauntlet_state(w, l)
 		if closed and st == P2C.GAUNTLET_RUNNING:
 			st = P2C.GAUNTLET_OUT
 		players.append({"tag": str(tg), "name": str(p["name"]), "avatar": str(p["avatar"]),
-			"w": w, "l": l, "state": st, "state_text": str(ST_TEXT.get(st, st)),
+			"w": w, "l": l, "at": int(p.get("best_t", -1)), "state": st, "state_text": str(ST_TEXT.get(st, st)),
 			"me": my_tag != "" and str(tg) == my_tag})
 	players.sort_custom(_player_before)
 	games.sort_custom(func(a, b) -> bool:
@@ -220,6 +220,13 @@ static func _player_before(a: Dictionary, b: Dictionary) -> bool:
 		return int(a["w"]) > int(b["w"])
 	if int(a["l"]) != int(b["l"]):
 		return int(a["l"]) < int(b["l"])
+	## ★同战绩: 先打到的排前面(2026-10-10: 原来按名字字母排, 最早 4-0 的 Lu 排第 3)。时刻不知道(-1)的排后面。
+	var ta := int(a.get("at", -1))
+	var tb := int(b.get("at", -1))
+	if ta != tb:
+		if ta < 0 or tb < 0:
+			return tb < 0
+		return ta < tb
 	if str(a["name"]) != str(b["name"]):
 		return str(a["name"]) < str(b["name"])
 	return str(a["tag"]) < str(b["tag"])
@@ -251,7 +258,8 @@ static func _person(ppl: Dictionary, tag: String, prof, t: int) -> Dictionary:
 
 
 ## 一条战绩证据: 场次更多的胜出(同场次取胜多的 —— 同一个人同场次只会有一个真实战绩, 这一条只防脏数据)。
-static func _offer(p: Dictionary, w: int, l: int) -> void:
+## `t` = 这条证据的时刻(行的 created_at); 记下「最早打到这个战绩」的那一刻, 同战绩排名用(先到先排)。
+static func _offer(p: Dictionary, w: int, l: int, t: int = -1) -> void:
 	w = maxi(0, w)
 	l = maxi(0, l)
 	var bw := int(p["best_w"])
@@ -259,3 +267,6 @@ static func _offer(p: Dictionary, w: int, l: int) -> void:
 	if w + l > bw + bl or (w + l == bw + bl and w > bw):
 		p["best_w"] = w
 		p["best_l"] = l
+		p["best_t"] = t
+	elif w == bw and l == bl and t >= 0 and (int(p.get("best_t", -1)) < 0 or t < int(p["best_t"])):
+		p["best_t"] = t

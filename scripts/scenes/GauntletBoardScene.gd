@@ -250,8 +250,18 @@ func _set_status(code: String) -> void:
 				sub = "周六闯关赛对局结束后在此显示"
 				icon = "icon-record"
 			else:
-				t = "本周闯关赛 · %d 人 · %d 场%s%s" % [pn, gn, (" · 正在打 %d 场" % ln) if ln > 0 else "",
-					" · 已截止" if _closed else ""]
+				## ★2026-10-10: 加上晋级 / 出局人数; 截止后再说周日几点开打(打完的人要知道接下来去哪)。
+				var n_in := 0
+				var n_out := 0
+				for pp in data.get("players", []):
+					n_in += 1 if str(pp.get("state", "")) == P2C.GAUNTLET_IN else 0
+					n_out += 1 if str(pp.get("state", "")) == P2C.GAUNTLET_OUT else 0
+				var tail := ""
+				if _closed:
+					var seat: int = P2C.week_anchor_utc(P2C.now_utc()) + 6 * 86400 + int(P2C.FINALS_SEAT_HOUR_UTC) * 3600
+					tail = " · 已截止 · 周日 %s %s开打" % [P2C.local_hhmm(seat), P2C.STAGE_GROUP]
+				t = "本周闯关赛 · %d 人 · %d 场 · 晋级 %d · 出局 %d%s%s" % [pn, gn, n_in, n_out,
+					(" · 正在打 %d 场" % ln) if ln > 0 else "", tail]
 			c = Color("#9fb0c4")
 		"unavailable":
 			t = "赛况暂无"
