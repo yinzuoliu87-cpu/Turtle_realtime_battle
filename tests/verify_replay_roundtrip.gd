@@ -31,6 +31,9 @@ extends Node
 ##        而物理帧按墙钟走 ⇒ 开打头几步走直线还是绕障, 取决于那几帧真实花了多久。
 ##        回放摆位期 8 倍速快进, 建场到开打只隔约 5 帧 —— 机器快到这 5 帧不满 1/60 秒, 就分叉。
 ##      这一遍把「这几帧不满 1/60 秒」从运气造成必然: 修之前**必红**, 修之后必绿。
+##   V8 斧头召唤物(2026-10-10): 096 的召唤物血/攻/档位按**本机** GameState 砍伐进度建(不在单位身上) ⇒ 录像必须带进度。
+##      实测: 周六赛况板 92 场录像 37 场在斧头登场后的第一个校验点分叉(多为「第 660 步 校验点 10」)。
+##      录制方带 096 + 非零进度; V3 篡改把本机进度 +7 ⇒ 不录就分叉。反证: 录像里删掉 axe_exp_total ⇒ 必须停下。
 ##
 ## ★分母: 录到的校验点数 > 0, 每类输入(fight / present / surrender)至少一条, 两路都开打过。
 
@@ -45,6 +48,8 @@ const PAT_PLAY := [0.05, 0.0167, 0.004, 0.03, 0.012, 0.0167, 0.045, 0.02]
 const MAX_FRAMES := 30000
 const AT := preload("res://scripts/gamedata/arena_theme.gd")
 const EQ_ID := "p2eq_001"          # 录制方统领身上那件持久装备(V3 反证要删的就是它)
+## V8(2026-10-10 周六赛况板 37 场「斧头登场后第一个校验点」分叉): 096 小木斧 —— 召唤物按本机砍伐进度建, 进度必须进录像。
+const AXE_EQ := "p2eq_096"
 ## V3b: 录像里**绝不许**出现的 GameState 变量(录制时都摆上值, 当分母)。不是 STATE_KEYS 的反面清单 ——
 ##   判据主体是「键 ⊆ STATE_KEYS」, 这张只是把最要紧的几样点名, 让报错一眼看得懂。
 const SENSITIVE := {
@@ -87,7 +92,13 @@ func _setup_gs(gs) -> void:
 			{"kind": "minion", "role": "back", "equips": []},
 		],
 	}
-	gs.persistent_equipped = {"basic": [{"id": EQ_ID, "star": 3}], UNFIELDED: [{"id": "p2eq_065", "star": 3}]}
+	gs.persistent_equipped = {"basic": [{"id": EQ_ID, "star": 3}, {"id": AXE_EQ, "star": 1}], UNFIELDED: [{"id": "p2eq_065", "star": 3}]}
+	## ★V8(2026-10-10): 斧头召唤物的血/攻/档位读的是**本机** GameState 的砍伐进度(不在单位身上)。
+	##   摆一份非零的进度 ⇒ V3 篡改(int +7)会把看的人那份变成另一个数 ⇒ 不录就第一只斧头登场那步分叉。
+	gs.axe_exp_bar = 40
+	gs.axe_exp_total = 150
+	gs.axe_stage = 1
+	gs.axe_final = ""
 	for k in SENSITIVE:
 		var v = SENSITIVE[k]
 		if v is Array:
@@ -113,6 +124,9 @@ func _tamper_gs(gs) -> void:
 	}
 	gs.persistent_equipped = {"basic": [{"id": "p2eq_065", "star": 1}]}
 	gs.season_level = 9
+	gs.axe_exp_bar = 3                       # V8: 看的人自己的砍伐进度(与录制时 40/150/1 不同)
+	gs.axe_exp_total = 157
+	gs.axe_stage = 2
 	gs.trainer_skill = "whistle"
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 77
@@ -281,6 +295,17 @@ func _ready() -> void:
 		str(rec_run["theme"]) == str(play["theme"]) and str(play["theme"]) == AT.theme_for_seed(int(rec["seed"])),
 		"种子 %d → %s" % [int(rec["seed"]), AT.theme_for_seed(int(rec["seed"]))])
 	_ok("★V7 正式对局的地图不是 V0_BASE(已退役) —— 在四张池里", AT.MATCH_POOL.has(str(rec_run["theme"])), str(rec_run["theme"]))
+	## ── V8 斧头召唤物(096)按本机砍伐进度建 ⇒ 进度必须录进去 ──
+	var axe_steps := 0
+	for k in rec_run["fps"]:
+		if str(rec_run["fps"][k]).contains("/_summon_axe/"):
+			axe_steps += 1
+	_ok("分母 · V8 录制那一局斧头召唤物真的上场了(%d 步指纹里有它)" % axe_steps, axe_steps > 0)
+	_ok("分母 · V8 看的人那份砍伐进度与录制时不同(本机 %d / 录像 %s)" % [int(gs.axe_exp_total), str((rec["state"] as Dictionary).get("axe_exp_total", "缺"))],
+		int(gs.axe_exp_total) == 157 and int(gs.axe_stage) == 2)
+	_ok("★★V8 录像里带着砍伐进度(axe_exp_total / axe_stage / axe_exp_bar / axe_final)",
+		(rec["state"] as Dictionary).get("axe_exp_total", -1) == 150 and (rec["state"] as Dictionary).get("axe_stage", -1) == 1
+		and (rec["state"] as Dictionary).get("axe_exp_bar", -1) == 40 and (rec["state"] as Dictionary).has("axe_final"))
 
 	# ── V1b: 建场 → 开打后 40 帧, 引擎一帧都不走(物理帧不推进) ──
 	print("=== 播(V1b): 从建场到开打后 40 帧, 引擎一帧都不走 ===")
@@ -360,6 +385,9 @@ func _ready() -> void:
 	var r5: Dictionary = rec.duplicate(true)
 	(r5["state"] as Dictionary).erase("season_level")
 	await _reverse("V3 记录里删掉 season_level(本机是 9, 录制时是 4)", r5)
+	var r6: Dictionary = rec.duplicate(true)
+	(r6["state"] as Dictionary).erase("axe_exp_total")
+	await _reverse("V8 记录里删掉 axe_exp_total(本机 157, 录制时 150 ⇒ 斧头血差 35)", r6)
 	_finish()
 
 

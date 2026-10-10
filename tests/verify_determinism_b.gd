@@ -137,6 +137,64 @@ func _trace(pairs: Array, frames: int, loadouts: Dictionary = {}, cast_probe: bo
 	return [tr, det, tw_max, taken, pool_n, copy_casts, casts, ts_steps]
 
 
+## ⑯ 用: 干净合成单位(照 verify_salvo_trainer)—— 中间一只带 6 门浮游炮的赛博, 8 个敌人散在全场。
+##   `_battle_rng` 固定种子, 全局 RNG 用 gseed ⇒ 结果只许取决于前者。走真入口 `_cyber_assemble_mech`。
+## 返回 [每个敌人的承伤串, 选靶门数, 总承伤]
+func _salvo_run(gseed: int) -> Array:
+	RB.DEBUG_EDIT = false          # ★上面的场景把它置真(调试场) ⇒ 不复位的话本局处于编辑态, _fight_on 恒假, 齐射永不结算
+	var s = load("res://scenes/RealtimeBattle3D.tscn").instantiate()
+	add_child(s)
+	for _i in range(40):
+		await get_tree().process_frame
+	s._units.clear()
+	var ar: Rect2 = s.ARENA
+	var ctr: Vector2 = ar.position + ar.size * 0.5
+	var cyber: Dictionary = _salvo_unit(s, "left", ctr)
+	cyber["drone_n"] = 6
+	cyber["_drones"] = []
+	for _k in range(6):
+		var sp := Sprite3D.new()
+		s._world.add_child(sp)
+		cyber["_drones"].append({"spr": sp})
+	s._units.append(cyber)
+	var foes: Array = []
+	for k in range(8):
+		var fx: float = ar.position.x + ar.size.x * (0.15 + 0.1 * float(k))
+		var fy: float = ar.position.y + ar.size.y * (0.2 + 0.6 * float(k % 3) / 2.0)
+		var f: Dictionary = _salvo_unit(s, "right", Vector2(fx, fy))
+		foes.append(f)
+		s._units.append(f)
+	s._dbg_salvo_picks.clear()
+	seed(gseed)
+	s._battle_rng.seed = 20261010
+	s.set_process(false)          # ★步数由我喂: 一次一个 SIM_DT ⇒ 两遍走的 sim 步数逐个相同(不吃机器快慢)
+	s._cyber_sys._cyber_assemble_mech(cyber)
+	for w in range(150):          # 2.5 游戏秒: 齐射在 1.35 秒选靶 + 0.45 秒蓄力光球(挂 sim 钟)末尾结算
+		s._process(s.SIM_DT)
+		if w % 10 == 0:
+			await get_tree().process_frame
+	var parts: Array = []
+	var tot := 0.0
+	for f in foes:
+		var lost: float = float(f["maxHp"]) - float(f["hp"])
+		tot += lost
+		parts.append("%.0f" % lost)
+	print("  [量] ⑯ 齐射那一遍: dl_state=%s edit=%s over=%s 选靶=%d 承伤=%s" % [str(s._dl_state), str(s._edit_mode), str(s._over), s._dbg_salvo_picks.size(), ",".join(parts)])
+	var out := [",".join(parts), s._dbg_salvo_picks.size(), tot]
+	s.queue_free()
+	for _i in range(4):
+		await get_tree().process_frame
+	return out
+
+
+func _salvo_unit(s, side: String, pos: Vector2) -> Dictionary:
+	var u: Dictionary = s._spawn._make_unit("green", side, pos)
+	u["maxHp"] = 30000.0; u["hp"] = 30000.0
+	u["shield"] = 0.0; u["flat_dr"] = 0.0
+	u["_home_pos"] = pos
+	return u
+
+
 ## 同种子跑两遍 → 逐步比对。返回 [分叉步数, 比对步数, 首个分叉步, A的trace, 附注]
 func _two_runs(pairs: Array, frames: int, sd: String, loadouts: Dictionary = {},
 		cast_probe: bool = false) -> Array:
@@ -292,6 +350,18 @@ func _ready() -> void:
 	_ok("分母 · 反证比对了 %d 步" % nn, nn == 240)
 	_ok("★反证 · 换种子(424242→77) → 逐步指纹必须不同(%d/%d 步不同 > 0)" % [diff_seed, nn], diff_seed > 0,
 		"全同 = 指纹根本没读到随机/没读到战斗状态, 上面几条就全是恒真式")
+
+	# ═══ ⑯ 赛博龟阵亡齐射: 浮游炮散点(= 激光发射点)必须只吃 `_battle_rng` ═══
+	## 2026-10-10 周六赛况板录像逐场重放: 1504a5e0 同一进程连放三遍, 第 1446 步齐射打中的人三遍各不相同
+	##   (散点用的是裸全局 randf_range)。⇒ 录的那一遍与看的那一遍必然对不上(第 1500 步校验点)。
+	## 判据: `_battle_rng` 同种子、**全局 RNG 换种子**跑两遍, 8 个敌人挨的伤害必须逐个相同。
+	## 分母: 两遍都真的齐射了 6 门炮, 且真的打出了伤害(否则逐个相同是空检查)。
+	var sa: Array = await _salvo_run(11)
+	var sb: Array = await _salvo_run(97)
+	_ok("分母 · ⑯ 两遍齐射都选了 6 门炮的靶(A %d / B %d)" % [int(sa[1]), int(sb[1])], int(sa[1]) == 6 and int(sb[1]) == 6)
+	_ok("分母 · ⑯ 两遍齐射都真的打出了伤害(A 总承伤 %.0f / B %.0f)" % [float(sa[2]), float(sb[2])], float(sa[2]) > 0.0 and float(sb[2]) > 0.0)
+	_ok("★⑯ 赛博阵亡齐射: 战斗种子相同、全局 RNG 不同 ⇒ 每个敌人挨的伤害逐个相同", str(sa[0]) == str(sb[0]),
+		"A %s / B %s" % [str(sa[0]), str(sb[0])])
 
 	# ═══ ⑧ 静态棘轮: 战斗路径里不许再出现 `get_process_delta_time()` ═══
 	# ★为什么需要它(诚实地说清运行时判据守不住的那一半):

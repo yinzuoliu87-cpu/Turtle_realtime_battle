@@ -67,6 +67,16 @@ const STATE_KEYS := [
 	"dual_ghost",           # 必需(347): 对手快照(上传那份再摘机器人标记, 见 replay_uploader.GHOST_STRIP)
 	"trainer_appearance",   # 不改 sim(实测拿掉不分叉), 但它是**画面**: 不录的话看的人看到的是自己的大师形象
 	"tutorial_active",      # 必需(选图): v0.19.533 起教学固定暗林、正式对局按种子随机 ⇒ 不录的话看的人那台若在教学中就放成另一张图(合批门禁 V7 实测: 录 shoal 放 dusk)
+	## ★096 小木斧进化(2026-10-10 补): 场上**任何一方**的斧头召唤物, 血/攻/被动档/造物都按**本机** GameState 这几个读
+	##   (`axe_system.summon` → `_gs_int("axe_exp_total")` / `axe_stage` / `axe_final`, 走 `gs.get()` 动态读 ⇒ 静态扫没扫到)。
+	##   不录 ⇒ 看的人用自己那份 ⇒ 斧头登场那一步就分叉。实测: 周六赛况板 92 场录像里 37 场在斧头登场后的第一个校验点分叉(多为「第 660 步 校验点 10」),
+	##   833fa8ac 对手带 096, 录制时斧头血 ≠ 播放时 2550(= 500 + 5×380 + 50×3, 看的人 exp=380/stage=3)。
+	##   每打完一场 axe_on_match_end 还 +10 ⇒ 连录制者自己隔一场再看也对不上。
+	##   axe_exp_bar: 局内斧头击杀 `axe_add_exp` 可能**当场进化**(下一路斧头换档), 进不进化看进度条 ⇒ 也要录。
+	"axe_exp_bar",          # 必需(局内进化): 见上
+	"axe_exp_total",        # 必需(斧头登场那一步): 召唤物血/攻
+	"axe_stage",            # 必需(斧头登场那一步): 被动条数 / 形态
+	"axe_final",            # 必需(斧头登场那一步): 最终造物属性
 ]
 ## 回放那一遍读了、但**不进录像**的(实测拿掉都不分叉 + 读代码确认原因):
 ##   test_mode / tutorial      播放入口自己设(test_mode=true 不落盘; tutorial=false 回放不挂教学引导)
@@ -136,6 +146,10 @@ func start() -> void:
 		rec = {
 			"v": FORMAT_V,
 			"client_version": client_version(),
+			## ★录制设备(2026-10-10): 真人手机 / PC 录的 8 场在开打后不久分叉, 原因没定位(推测 ARM 与 x86 浮点末位差)。
+			##   记下平台与架构, 下一批分叉的录像就能直接对上号。只读不参与重算。
+			"plat": OS.get_name(),
+			"arch": Engine.get_architecture_name(),
 			"seed": int(battle._battle_rng.seed),
 			"state": capture_state(),
 			"events": [],

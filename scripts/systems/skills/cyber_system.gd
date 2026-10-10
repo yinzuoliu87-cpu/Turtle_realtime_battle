@@ -201,11 +201,15 @@ func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡演出(用户2026-07
 	var scat: Array = []
 	for i in range(live.size()):
 		var spr = live[i]
-		var fpos = Vector2(randf_range(battle.ARENA.position.x + 40.0, battle.ARENA.end.x - 40.0), randf_range(battle.ARENA.position.y + 30.0, battle.ARENA.end.y - 30.0))
+		## ★★散点 = 下面那轮贯穿激光的**发射点**(决定哪些敌人在线上挨 0.4A) ⇒ 是 sim, 必须走种子化的 `_battle_rng`。
+		##   原来是裸全局 randf_range: 同一份回放连放两遍, 激光打到的人都不一样
+		##   (2026-10-10 实测 1504a5e0: 同进程第 1/2/3 遍在第 1446 步分别打中 {闪电×3,泡泡} / {闪电×2,泡泡×2,大师} / {泡泡×4}, 指纹各不相同)。
+		##   下面三个只管飞行观感(起飞错峰/高度/时长), 走演出随机 `_juice_rng`。
+		var fpos = Vector2(battle._battle_rng.randf_range(battle.ARENA.position.x + 40.0, battle.ARENA.end.x - 40.0), battle._battle_rng.randf_range(battle.ARENA.position.y + 30.0, battle.ARENA.end.y - 30.0))
 		scat.append(fpos)
 		var ft = battle._reg_tween()
-		ft.tween_interval(randf() * 0.35)
-		ft.tween_property(spr, "position", battle._world_pos(fpos, randf_range(1.1, 1.8)), randf_range(0.6, 1.2)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		ft.tween_interval(battle._juice_rng.randf() * 0.35)
+		ft.tween_property(spr, "position", battle._world_pos(fpos, battle._juice_rng.randf_range(1.1, 1.8)), battle._juice_rng.randf_range(0.6, 1.2)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	# ② 蓄力(0.6s炮身发亮)→各自对最近敌射贯穿激光(0.4×赛博ATK魔法·线上全体)
 	var atk_ref: float = float(u["atk"])
 	battle._pending_shots.append({"delay": 0.75, "fn": func() -> void:
