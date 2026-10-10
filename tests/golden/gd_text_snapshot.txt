@@ -1631,7 +1631,7 @@ scripts/util/skill_text.gd|lit|(?<!\">)护甲穿透(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)护盾(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)攻击力(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)攻击速度(?!<)
-scripts/util/skill_text.gd|lit|(?<!\">)时停(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)时停(?!止|<)
 scripts/util/skill_text.gd|lit|(?<!\">)暴击伤害(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)暴击率(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)最大HP(?!<)
@@ -1651,7 +1651,7 @@ scripts/util/skill_text.gd|lit|(?<!\">)诅咒(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)闪避(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)额外伤害(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)魔抗(?!穿透|<)
-scripts/util/skill_text.gd|lit|(?<!\">)魔法(?!伤害|穿透|<)
+scripts/util/skill_text.gd|lit|(?<!\">)魔法(?!伤害|穿透|波|光线|<)
 scripts/util/skill_text.gd|lit|物理伤害
 scripts/util/skill_text.gd|lit|真实伤害
 scripts/util/skill_text.gd|lit|防御力加成

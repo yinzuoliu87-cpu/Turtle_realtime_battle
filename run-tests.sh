@@ -796,6 +796,9 @@ run_audit "tools/frame_study_audit.py" "ALL OK" "frame_study (逐帧研究的行
 run_audit "tools/text_const_orphan_audit.py" "ALL OK" "text_const_orphan_audit (文案指的常量有没有产品代码在读)"
 run_audit "tools/const_leftover_audit.py" "ALL OK" "const_leftover_audit (抽了常量却还有别处留着裸数字·跨文件判红)"
 run_audit "tools/codex_text_lint.py"     "ALL OK" "codex_text_lint (图鉴文案: 教学味/自夸/开发备注/别家黑话/数字贴字)"
+# 关键词自动上色误伤(2026-10-10): 中文按子串匹配, 「时停止」里的「时停」被染成控制色(052 左轮手枪)。
+#   规则从 skill_text.gd 现读、复刻上色管线扫两份 json 全部文案; 关键词落在登记的「别的词」或数据专名里就红。
+run_audit "tools/keyword_false_positive_audit.py" "ALL OK" "keyword_false_positive (关键词上色不许误伤别的词/专名·如时停止)"
 # 文案体例(2026-10-01): 四个 LoL 语料零命中的口语词硬零; 叠满/攒满 与「百分比没写是谁的」记台账只减不增。
 #   ★台账在 tests/golden/copy_style_debt.txt, 减下去要同时改那边的数(脚本有一条专判这个)。
 run_audit "tools/copy_style_audit.py"    "ALL OK" "copy_style (文案体例: 口语词硬零/「X%生命值」必须写明是谁的/叠满台账只减不增)"

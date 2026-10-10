@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/verify_keyword_false_positive.gd" id="1_kfp"]
+
+[node name="VerifyKeywordFalsePositive" type="Node"]
+script = ExtResource("1_kfp")
