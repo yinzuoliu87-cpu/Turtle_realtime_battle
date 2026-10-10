@@ -3,13 +3,16 @@ extends RefCounted
 const _EquipPoolRef := preload("res://scripts/gamedata/equip_pool.gd")   # NO_STAR: 不升星的件不给选档
 const _EquipStatsRef := preload("res://scripts/gamedata/equip_stats.gd")   # 属性一排按选中档取值
 const PreviewText := preload("res://scripts/scenes/codex/preview_text.gd")   # 龟页一行条/技能卡的预览截断(「…」+ 跳过开头小标题)
+const _SynergyViewRef := preload("res://scripts/scenes/codex/synergy_view.gd")   # 羁绊页排版(2026-10-10)
 ## 图鉴·右栏详情视图(龟/装备/羁绊(类型)/状态/规则/小将 13渲染函数)
 ## 类内名不变;外部名加 battle.
 
 var host
+var _syn_view   # CodexSynergyView —— 成员格的点击回调挂在它身上, 所以与本对象同寿
 
 func _init(b) -> void:
 	host = b
+	_syn_view = _SynergyViewRef.new(b, self)
 
 func _show_minion(kind: String) -> void:
 	host._clear_detail()
@@ -151,13 +154,6 @@ func _tag_chip(x: float, cy: float, txt: String, col: String) -> float:
 	return w
 
 ## 属性牌的排布。2 列 × 3 行, 右缘正好落在 DETAIL_W - 20。
-## 同类装备网格: 图标边长与行高。
-## ★图标 32: 装备 PNG 尺寸不统一(51 张 64 / 27 张 32 / 十几张大图),
-##   跟左栏列表(36×36)同一党: 等比内缩到固定框。项目默认 texture_filter 已是 NEAREST
-##   (`project.godot` 第 54 行 `default_texture_filter=0`), 所以不会被插值糊掉。
-## ★行高 36 = 32 + 4 的行间缝; 原来是 26(那时行里只有一个 emoji 字符)。
-const MEMBER_ICON := 32.0
-const MEMBER_ROW := 36.0
 ## ═══ 两栏骨架(2026-10-08 用户「右侧布局需要重新设计」) ═══
 ## 左栏 0~LCOL_W: 立绘 + 名字/签牌 + 属性方块条; 右栏 RCOL_X~(DETAIL_W-20): 被动 / 普攻 / 开局三选一(竖排)。
 ## 方案书 docs/plans/20261008-图鉴龟页右侧重排.md。
@@ -1398,99 +1394,8 @@ func _show_consumable(eq: Dictionary) -> void:
 #   互相矛盾的口径(一份写"每2.5秒"、一份写"每回合开始")且都自称权威。现在只有 TIER_DESCS 一份。
 #   排版骨架 1:1 沿用旧 _show_school, 只换数据源。
 func _show_type(item: Dictionary) -> void:
-	host._clear_detail()
-	var tname: String = str(item.get("_type", ""))
-	var def: Dictionary = host.Phase2Types.TYPES.get(tname, {})
-	# 类型的色/图标只走 host 那一对取值函数 —— 三处各自 `TYPE_STYLE.get(...)` 加各自的兜底,
-	# 正是「香火在羁绊页是 🔗、在装备页是 🗡️」那种两处默认值不一样的来源。
-	var color: String = host._type_color(tname)
-	var icon: String = host._type_icon(tname)
-	var tiers: Array = def.get("tiers", [])
-	var members: Array = _type_members(tname)   # [{id,name,emoji}], 该类型全部装备
-
-	# 头图区: 类型色框 + 类型图标徽章
-	host._add_rect(60, 70, 90, 90, "#12202a", 0.55, color, 2.0, 0.9)
-	## ★★ 2026-09-28 从 44px 的 emoji 字换成 tags/ 的 32×32 像素图, **按 2x = 64 画**。
-	##   44 是 1.375 倍 —— 非整数倍会把像素网格打烂; 这个框是 90×90, 64 装得下(四边各留 13)。
-	## ★图标为空(表里没这个类型)就只留空框 —— 看得见的缺口好过兜底成别的类型的图。
-	if icon != "":
-		var _badge = host._add_image(60, 70, icon, 64, 64, true)   # host 无类型标注 ⇒ 返回 Variant, 不能用 :=
-		if _badge != null:
-			_badge.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	# 名 32px 类型色 + 副标 + 档阈值 / 成员件数
-	host._add_text(130, 36, tname, 32, color, 0.0, 0.5, true)
-	## ★副标不写 display_name —— 那返回「剑系」「弓箭·神射手」这类游戏里不存在的花名(用户 2026-08-14)。
-	##   而且大标题已经写了类型名, 副标再写一遍就是同一屏说两遍。这里只说它【是什么】。
-	host._add_text(130, 72, "装备羁绊", 15, "#888888", 0.0, 0.5)
-	var thresh := ""
-	for i in range(tiers.size()):
-		thresh += ("" if i == 0 else " / ") + str(int(tiers[i]))
-	# ★顶档 == 该类型【最终】件数是有意设计(方案书 D5)。批 3 加完 35 件之前顶档够不到,
-	#   这里如实显示"现有 N 件", 玩家自己看得出还差几件, 不写"不可达"这种开发者口吻的字。
-	host._add_text(130, 100, "激活 %s 件   ·   现有装备 %d 件" % [thresh, members.size()], 16, color, 0.0, 0.5, true)
-
-	# 逐档效果文案 (事实源 Phase2Types.TIER_DESCS, 与背包羁绊面板同一份)
-	host._add_text(20, 150, "羁绊效果", 17, "#58d3ff", 0.0, 0.0, true)
-	var descs: Array = host.Phase2Types.TIER_DESCS.get(tname, [])
-	var bb := ""
-	for i in range(descs.size()):
-		## ★2026-08-21 接上 {C:} 消费链: TIER_DESCS 原来是**直接拿原文显示**的,
-		##   写 `{C:类名.常量}` 会原样漏给玩家(这正是 verify_code_const_token ⑦ 在守的那类事故)。
-		##   过一遍 render_consts 之后, 羁绊文案就能直接引用代码常量、不再手抄。
-		var txt: String = SkillText.render_consts(str(descs[i]))
-		if txt.strip_edges() == "":
-			continue
-		var th: int = int(tiers[i]) if i < tiers.size() else 0
-		bb += ("" if bb == "" else "\n\n") + "[color=%s][b]%d 件[/b][/color]  %s" % [color, th, txt]
-	var rt = RichTextLabel.new()
-	rt.bbcode_enabled = true
-	## ★2026-08-15 改回撑高 + 让【外层详情】滚。原来是"固定 260px 框 + 框内自己滚":
-	##   · 短的类型(剑 3 档)内容只有 ~150px ⇒ 框里空 110px, 而下面的成员清单又写死在 y=446,
-	##     两处死空白叠一块;
-	##   · 长的类型(弓箭/奇械 4 档)内容 300+px ⇒ 藏进一个【框中框】的滚动条里 ——
-	##     详情面板本身已经是 ScrollContainer, 套两层滚动玩家根本发现不了里面还有内容。
-	rt.fit_content = true
-	rt.scroll_active = false
-	rt.position = Vector2(20, 176)
-	rt.custom_minimum_size = Vector2(host.DETAIL_W - 40, 0)
-	rt.add_theme_font_size_override("normal_font_size", 16)
-	rt.add_theme_color_override("default_color", Color("#e8f2ff"))
-	rt.add_theme_constant_override("line_separation", 5)
-	rt.text = bb.strip_edges()
-	host.detail.add_child(rt)
-
-	# 成员装备清单 (从 p2eq-types.json 反查). 3 列流式网格, 接着上面的效果文案往下排(不再写死 y=446)。
-	var list_y: float = 176.0 + maxf(24.0, rt.get_combined_minimum_size().y) + 26.0
-	## ★★2026-09-27 去掉括号计数。
-	host._add_text(20, list_y, "同类装备", 17, "#58d3ff", 0.0, 0.0, true)
-	var cols := 3
-	var col_w: float = (host.DETAIL_W - 40.0) / float(cols)
-	for i in range(members.size()):
-		var m: Dictionary = members[i]
-		var col: int = i % cols
-		var row: int = int(i / cols)
-		var mx: float = 24.0 + col * col_w
-		## ★行高 26 → `MEMBER_ROW`(36): 图标要 1x = 32 画, 26 的行距会让上下两行的图重叠 6px。
-		var my: float = list_y + 30.0 + row * MEMBER_ROW
-		## ★★2026-09-28 行前缀从 emoji 换成**装备自己的 PNG 图标**。
-		##   这一处是整屏最密的 emoji: 羽维页一张表就能列出十几件, 每件一个
-		##   🗡/⚙/🍖…—— 而左栏列表早就画的是真图标。**同一件装备在两个地方两种长相。**
-		## ★图从 `m["img"]` 来(96 件**全部**有 PNG 且图都在盘上, 已逐件查过),
-		##   所以这条路不会退化成空白; 真的缺图才走后面那支只写名字。
-		## ★尺寸的实情(量过, 不是拍的): 96 件装备的 PNG **尺寸不统一** ——
-		##   51 张 64×64 / 27 张 32×32 / 剩下十几张是几百到 1024 的大图。
-		##   所以装备图标本来就**做不到统一整数倍** ⇒ 跟着全项目既有的写法走:
-		##   等比内缩到一个固定框(左栏列表 36×36 / 背包大格 44×36 / 详情头图 78×78)。
-		##   这里取 32 —— 与左栏列表那一类尺寸相当, 且行高装得下。
-		##   (本轮那批**新 UI 图标**是另一回事: 它们全是 32×32, 一律按整数倍画。)
-		## ★画法走 `keep_aspect=true`: 源图里有非正方(489×510 等), 拉满会变形。
-		var _mimg: String = str(m.get("img", ""))
-		var _mpath: String = ("res://assets/sprites/" + _mimg) if _mimg.ends_with(".png") else ""
-		if _mpath != "" and ResourceLoader.exists(_mpath):
-			host._add_image(mx + MEMBER_ICON / 2.0, my + MEMBER_ICON / 2.0, _mpath, MEMBER_ICON, MEMBER_ICON, true)
-			host._add_text(mx + MEMBER_ICON + 6.0, my + MEMBER_ICON / 2.0, str(m.get("name", "?")), 15, "#cdd6e0", 0.0, 0.5)
-		else:
-			host._add_text(mx, my + MEMBER_ICON / 2.0, str(m.get("name", "?")), 15, "#cdd6e0", 0.0, 0.5)
+	## ★2026-10-10 整页排版挪到 synergy_view.gd(一档一行、子机制拆行、成员图标格可点)。
+	_syn_view.show(item)
 
 
 ## 某类型的成员装备 [{id,name,emoji}], 反查 p2eq-types.json(经 host.Phase2Types.type_of)。

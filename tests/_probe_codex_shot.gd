@@ -1,6 +1,6 @@
 extends Node
 ## _probe_codex_shot —— 图鉴某一件装备 / 某只龟那一页截图(看「玩家看到的是什么」)。探针, 不进门禁, 要非无头跑。
-##   CODEX_TAB=equips|pets  CODEX_ID=p2eq_052  CODEX_OUT=C:/tmp/x.png
+##   CODEX_TAB=equips|pets|synergies  CODEX_ID=p2eq_052(羁绊页写类型名, 如 剑)  CODEX_OUT=C:/tmp/x.png
 
 func _ready() -> void:
 	var cs = (load("res://scenes/Codex.tscn") as PackedScene).instantiate()
@@ -15,16 +15,21 @@ func _ready() -> void:
 	var want := OS.get_environment("CODEX_ID")
 	var items: Array = cs.get("_items")
 	for i in range(items.size()):
-		if str((items[i] as Dictionary).get("id", "")) == want:
+		var _it: Dictionary = items[i]
+		if str(_it.get("id", _it.get("_type", ""))) == want:
 			cs.call("_select", i)
 			break
+	## CODEX_IDX=N: 直接按左栏序号选(中文类型名走环境变量在 Windows 上会被代码页弄乱)
+	if OS.get_environment("CODEX_IDX") != "":
+		cs.call("_select", int(OS.get_environment("CODEX_IDX")))
 	## CODEX_STAR=1|2|3: 装备页切到那一档再截(走 CodexDetail._set_eq_star, 与点签牌同一个入口)
 	var want_star := OS.get_environment("CODEX_STAR")
 	if want_star != "" and tab == "equips":
 		await get_tree().process_frame
 		var cur: Dictionary = DataRegistry.phase2_equipment_by_id.get(want, {})
 		cs.get("_codex_detail").call("_set_eq_star", cur, int(want_star))
-	for _i in range(20):
+	## CODEX_WAIT=帧: 等入场滑动落位(实拍要 400 帧上下才干净)
+	for _i in range(maxi(20, int(OS.get_environment("CODEX_WAIT")))):
 		await get_tree().process_frame
 	## CODEX_SCROLL=像素: 把装着详情的那个 ScrollContainer 往下滚(看页底的羁绊块)
 	var want_scroll := OS.get_environment("CODEX_SCROLL")

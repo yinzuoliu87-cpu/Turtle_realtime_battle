@@ -1364,7 +1364,6 @@ scripts/scenes/codex/detail_views.gd|lit|切换至近战形态
 scripts/scenes/codex/detail_views.gd|lit|切换至远程形态
 scripts/scenes/codex/detail_views.gd|lit|初始龟能
 scripts/scenes/codex/detail_views.gd|lit|反伤
-scripts/scenes/codex/detail_views.gd|lit|同类装备
 scripts/scenes/codex/detail_views.gd|lit|增益
 scripts/scenes/codex/detail_views.gd|lit|外加
 scripts/scenes/codex/detail_views.gd|lit|射程
@@ -1396,18 +1395,15 @@ scripts/scenes/codex/detail_views.gd|lit|治疗与护盾增幅
 scripts/scenes/codex/detail_views.gd|lit|治疗增幅
 scripts/scenes/codex/detail_views.gd|lit|消耗品
 scripts/scenes/codex/detail_views.gd|lit|深海小将
-scripts/scenes/codex/detail_views.gd|lit|激活 %s 件   ·   现有装备 %d 件
 scripts/scenes/codex/detail_views.gd|lit|生命
 scripts/scenes/codex/detail_views.gd|lit|生命偷取
 scripts/scenes/codex/detail_views.gd|lit|生效公式
 scripts/scenes/codex/detail_views.gd|lit|移动速度
 scripts/scenes/codex/detail_views.gd|lit|移速
 scripts/scenes/codex/detail_views.gd|lit|羁绊
-scripts/scenes/codex/detail_views.gd|lit|羁绊效果
 scripts/scenes/codex/detail_views.gd|lit|羁绊赠送
 scripts/scenes/codex/detail_views.gd|lit|被动
 scripts/scenes/codex/detail_views.gd|lit|被动 · %s
-scripts/scenes/codex/detail_views.gd|lit|装备羁绊
 scripts/scenes/codex/detail_views.gd|lit|费用 %d
 scripts/scenes/codex/detail_views.gd|lit|闪避
 scripts/scenes/codex/detail_views.gd|lit|随后
@@ -1421,6 +1417,11 @@ scripts/scenes/codex/list_builder.gd|lit|增益
 scripts/scenes/codex/list_builder.gd|lit|持续伤害
 scripts/scenes/codex/list_builder.gd|lit|控制
 scripts/scenes/codex/list_builder.gd|lit|羁绊赠送
+scripts/scenes/codex/synergy_view.gd|lit|%d 件
+scripts/scenes/codex/synergy_view.gd|lit|同上
+scripts/scenes/codex/synergy_view.gd|lit|同类装备
+scripts/scenes/codex/synergy_view.gd|lit|激活 %s 件   ·   现有装备 %d 件
+scripts/scenes/codex/synergy_view.gd|lit|羁绊效果
 scripts/scenes/inventory/candy_jar.gd|lit|深海币 +%d
 scripts/scenes/inventory/candy_jar.gd|lit|获得 %s %s
 scripts/scenes/inventory/candy_jar.gd|lit|获得 临时等级器 ×1
