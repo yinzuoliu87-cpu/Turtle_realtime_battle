@@ -63,11 +63,15 @@ func _ready() -> void:
 	_ok("★③ 图例三档齐全", lg.find("★1") >= 0 and lg.find("★2") >= 0 and lg.find("★3") >= 0)
 	_ok("★★③ 图例与正文【同一套色】(不同色就成了两套读法)",
 		lg.find("#ffffff") >= 0 and lg.find("#7fe3ff") >= 0 and lg.find("#ffd93d") >= 0)
-	_ok("★③ 详情页真的把图例画出来了(不是只写了函数没人调)",
-		src.find("SkillTextRef.star_legend_bbcode()") >= 0)
-	_ok("★③ 属性行与效果段走同一个上色函数",
-		src.count("SkillTextRef.color_all_stars(") >= 2,
-		"调用 %d 处(属性行 + 效果段)" % src.count("SkillTextRef.color_all_stars("))
+	## ★★2026-10-10 图鉴装备页不再「三色平铺 + 页底图例」(用户「这有任何其他游戏是这样的吗」):
+	##   改成选档签牌 + 正文只写选中那一档 + 分档表(当前档亮、另两档暗), 照云顶技能卡。
+	##   原来这里两条是 grep「详情页调了 star_legend_bbcode / color_all_stars ≥ 2 处」—— 钉的正是被否的那版。
+	##   活场景判据在 verify_codex_equip_star; 这里只守「分档表与正文走同一个拆分函数」(两处各写一份拆法必漂)。
+	_ok("★③ 图鉴装备页不再挂三色图例(被否的那版)",
+		src.find("SkillTextRef.star_legend_bbcode()") < 0)
+	_ok("★③ 正文与分档表走同一个分档拆分(CodexDetail.tier_matches)",
+		src.count("tier_matches(") >= 3,
+		"调用 %d 处" % src.count("tier_matches("))
 
 	# ── ④ 技能卡被切断要有提示 ────────────────────────────────────────────
 	## ★判据必须【锚在技能卡这一处】: 全文有两处 `rt.fit_content = false`(另一处在成员清单视图),

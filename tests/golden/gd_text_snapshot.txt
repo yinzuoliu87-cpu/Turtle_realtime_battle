@@ -1348,10 +1348,12 @@ scripts/scenes/battle/topbar_status.gd|lit|加时：每 %d 秒全场伤害 +%d%%
 scripts/scenes/battle/topbar_status.gd|lit|加时：治疗效果 -%d%%
 scripts/scenes/battle/topbar_status.gd|lit|回放
 scripts/scenes/battle/topbar_status.gd|lit|团灭
+scripts/scenes/codex/detail_views.gd|lit|[color=#8c9cab]无属性加成[/color]
 scripts/scenes/codex/detail_views.gd|lit|[color=%s][b]%d 件[/b][/color]  %s
 scripts/scenes/codex/detail_views.gd|lit|← 返回
 scripts/scenes/codex/detail_views.gd|lit|　[color=#06d6a0][font_size=20]龟能 %d[/font_size][/color]
 scripts/scenes/codex/detail_views.gd|lit|不可编入阵容 · 开战时自动登场
+scripts/scenes/codex/detail_views.gd|lit|且
 scripts/scenes/codex/detail_views.gd|lit|主动 · 龟能 %d
 scripts/scenes/codex/detail_views.gd|lit|作用于友方
 scripts/scenes/codex/detail_views.gd|lit|作用于敌方
@@ -1360,27 +1362,45 @@ scripts/scenes/codex/detail_views.gd|lit|切换至普通形态
 scripts/scenes/codex/detail_views.gd|lit|切换至火山形态
 scripts/scenes/codex/detail_views.gd|lit|切换至近战形态
 scripts/scenes/codex/detail_views.gd|lit|切换至远程形态
+scripts/scenes/codex/detail_views.gd|lit|初始龟能
+scripts/scenes/codex/detail_views.gd|lit|反伤
 scripts/scenes/codex/detail_views.gd|lit|同类装备
 scripts/scenes/codex/detail_views.gd|lit|增益
+scripts/scenes/codex/detail_views.gd|lit|外加
 scripts/scenes/codex/detail_views.gd|lit|射程
 scripts/scenes/codex/detail_views.gd|lit|属性
+scripts/scenes/codex/detail_views.gd|lit|并
+scripts/scenes/codex/detail_views.gd|lit|并且
 scripts/scenes/codex/detail_views.gd|lit|技能
 scripts/scenes/codex/detail_views.gd|lit|护甲
+scripts/scenes/codex/detail_views.gd|lit|护甲穿透
+scripts/scenes/codex/detail_views.gd|lit|护盾增幅
 scripts/scenes/codex/detail_views.gd|lit|持续伤害
 scripts/scenes/codex/detail_views.gd|lit|控制
 scripts/scenes/codex/detail_views.gd|lit|收起
 scripts/scenes/codex/detail_views.gd|lit|攻击
+scripts/scenes/codex/detail_views.gd|lit|攻击力
+scripts/scenes/codex/detail_views.gd|lit|攻击射程
+scripts/scenes/codex/detail_views.gd|lit|攻击速度
 scripts/scenes/codex/detail_views.gd|lit|效果
 scripts/scenes/codex/detail_views.gd|lit|普通攻击
 scripts/scenes/codex/detail_views.gd|lit|普通攻击 · %s
+scripts/scenes/codex/detail_views.gd|lit|暴击伤害
+scripts/scenes/codex/detail_views.gd|lit|暴击率
+scripts/scenes/codex/detail_views.gd|lit|最大生命值
 scripts/scenes/codex/detail_views.gd|lit|查看全部
+scripts/scenes/codex/detail_views.gd|lit|此外
 scripts/scenes/codex/detail_views.gd|lit|每秒攻击
 scripts/scenes/codex/detail_views.gd|lit|每级生命与攻击 ×1.05，护甲与魔抗不变
+scripts/scenes/codex/detail_views.gd|lit|治疗与护盾增幅
+scripts/scenes/codex/detail_views.gd|lit|治疗增幅
 scripts/scenes/codex/detail_views.gd|lit|消耗品
 scripts/scenes/codex/detail_views.gd|lit|深海小将
 scripts/scenes/codex/detail_views.gd|lit|激活 %s 件   ·   现有装备 %d 件
 scripts/scenes/codex/detail_views.gd|lit|生命
+scripts/scenes/codex/detail_views.gd|lit|生命偷取
 scripts/scenes/codex/detail_views.gd|lit|生效公式
+scripts/scenes/codex/detail_views.gd|lit|移动速度
 scripts/scenes/codex/detail_views.gd|lit|移速
 scripts/scenes/codex/detail_views.gd|lit|羁绊
 scripts/scenes/codex/detail_views.gd|lit|羁绊效果
@@ -1389,10 +1409,11 @@ scripts/scenes/codex/detail_views.gd|lit|被动
 scripts/scenes/codex/detail_views.gd|lit|被动 · %s
 scripts/scenes/codex/detail_views.gd|lit|装备羁绊
 scripts/scenes/codex/detail_views.gd|lit|费用 %d
-scripts/scenes/codex/detail_views.gd|lit|队伍里装满 %s 件同类型装备, 依次激活各档位效果
-scripts/scenes/codex/detail_views.gd|lit|队伍里装满 %s 件同类型装备即激活
+scripts/scenes/codex/detail_views.gd|lit|闪避
+scripts/scenes/codex/detail_views.gd|lit|随后
 scripts/scenes/codex/detail_views.gd|lit|魔抗
-scripts/scenes/codex/detail_views.gd|text|数值分档: 
+scripts/scenes/codex/detail_views.gd|lit|魔法穿透
+scripts/scenes/codex/detail_views.gd|lit|龟能充能速率
 scripts/scenes/codex/detail_views.gd|text|查看全部
 scripts/scenes/codex/list_builder.gd|lit|%d 费
 scripts/scenes/codex/list_builder.gd|lit|减益

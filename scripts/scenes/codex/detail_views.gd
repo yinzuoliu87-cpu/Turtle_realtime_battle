@@ -1,7 +1,8 @@
 class_name CodexDetail
 extends RefCounted
 const SkillTextRef := preload("res://scripts/util/skill_text.gd")   # 三档数值按★1高亮(与商店/背包同一份)
-const _EquipPoolRef := preload("res://scripts/gamedata/equip_pool.gd")   # NO_STAR: 不升星的件不显示星级图例
+const _EquipPoolRef := preload("res://scripts/gamedata/equip_pool.gd")   # NO_STAR: 不升星的件不给选档
+const _EquipStatsRef := preload("res://scripts/gamedata/equip_stats.gd")   # 属性一排按选中档取值
 ## 图鉴·右栏详情视图(龟/装备/羁绊(类型)/状态/规则/小将 13渲染函数)
 ## 类内名不变;外部名加 battle.
 
@@ -1013,32 +1014,12 @@ func _show_p2eq(eq: Dictionary) -> void:
 		host._add_text(60, 70, emoji, 44, rcol, 0.5, 0.5, true)
 	# 名 30px 黄 + 副标(费用 · 类型)
 	host._add_text(130, 34, eq.get("name", "?"), 30, "#ffd93d", 0.0, 0.5, true)
-	# 类型: 真类型(11种·p2eq-types.json)。旧 series/category 字段已废弃删除(用户2026-07-19)
-	## ★取【全部】类型: p2eq_093 香火石有两个羁绊(遗物 + 香火, 用户 2026-08-13 拍板),
-	##   而 type_of 只给第一个 ⇒ 详情页从来没提过它还吃香火羁绊。
-	var _tps: Array = host.Phase2Types.types_of(str(eq.get("id", "")))
-	var _tp: String = str(_tps[0]) if not _tps.is_empty() else ""
-	## ★2026-08-15 副标【一行说完费用+类型】(原来费用一行、类型又一行, 而类型那一行
-	##   跟页底的羁绊块把同一个类型名写了两遍 —— 用户点名「有没有说两遍的信息」)。
-	## ★羁绊名【只写它本身】("剑"), 不用 Phase2Types.display_name —— 那个返回
-	##   「剑系」「弓箭·神射手」这类游戏里根本不存在的花名(用户 2026-08-14 已让商店删过一次,
-	##   见 ShopScene.gd:799 的同款注释)。
+	## ★2026-08-15 副标原来【一行说完费用+类型】; 2026-10-10 类型挪到页底「羁绊」那一块
+	##   (那里同时写每档给什么), 副标只留费用 —— 同一个类型标签一屏只出现一次(verify_codex_layout ⑥)。
 	## ★费用 0 = 盾羁绊赠送的圣光护盾, 它不上商店所以没有费用; 写"费用 0"读起来像"免费"。
 	##   左栏分组标题早就写的是"羁绊赠送"(list_builder.gd:178), 详情跟着对齐。
 	var sub: String = ("羁绊赠送" if cost <= 0 else "费用 %d" % cost)
-	## ★★ 2026-09-28 类型图标从 emoji 换成 `tags/` 像素图, 走**行内 [img]** ——
-	##   照仓库里现成的写法(`scripts/util/skill_text.gd:288` 的 "[img=%d]" 与本文件 725 行的
-	##   [img=40x40]), 不另造一套“Label 旁边摆 TextureRect”的排版。
-	## ★尺寸取 16 而不是 17: 源图 32×32 硬边像素画, 只有 32(1x) 与 16(1:2) 保得住像素网格
-	##   (16 时每个输出像素恰好取一个源像素); 这一行字号 17 ⇒ 16 最贴字高, 32 会高出一倍。
-	const SUB_ICON_PX := 16
 	var sub_bb: String = sub
-	for tp0 in _tps:
-		var tic: String = host._type_icon(str(tp0))
-		sub_bb += "   ·   "
-		if tic != "":
-			sub_bb += "[img=%dx%d]%s[/img] " % [SUB_ICON_PX, SUB_ICON_PX, tic]
-		sub_bb += str(tp0)
 	var subrt := RichTextLabel.new()
 	subrt.bbcode_enabled = true
 	subrt.fit_content = true
@@ -1054,119 +1035,311 @@ func _show_p2eq(eq: Dictionary) -> void:
 
 	## ── 以下各块【按实测高度顺排】(2026-08-15) ────────────────────────────
 	## 原来是一串写死的绝对 y(134/154/200/224…): 上面任何一块长了就压住下一块、短了就留洞。
-	## 2026-08-03 删「学派」那一行时就踩过 —— 删完留了 24px 空洞, 只能手工把下面每块都减 24,
-	## 而【没有任何门禁抓得到】(见当时的注释)。现在每块画完问它自己占了多高, 下一块接着画。
+	## 现在每块画完问它自己占了多高, 下一块接着画。
+	##
+	## ★★2026-10-10 整页按云顶装备卡/技能卡重排(用户「左轮手枪玩家看到的是什么东西」「这有任何其他游戏是这样的吗」)。
+	##   参考 docs/plans/ref/20261006-云顶装备弹窗/ 5(装备卡: 名字 → 一排属性图标+数 → 一段效果)、
+	##   6/7(技能卡: 正文只写当前那一档的数, 底下一张分档表「名字 [ a / b / c ]」, 当前档亮、另两档暗)。
+	##   改前三个毛病: ① 简述 + 全文说两遍且数对不上(简述「150/310/1200 点」, 全文「150/310/1200+3/5/9×攻击力」)
+	##   ② 三档挤成「150/310/1200+3/5/9×攻击力」靠三色 + 页底图例读 ③ 羁绊只写「装满 3/6/9 件」不说是哪个羁绊、每档给什么。
+	##   ⇒ 右上 ★1/★2/★3 选档(默认 ★1) → 属性一排(图标 + 当前档的数) → 效果一段(只有当前档的数) → 分档表 → 羁绊(名字 + 逐档效果)。
+	##   简述(effectBrief)只在商店/背包这类小框里用, 图鉴不再显示。
 	const HEAD_SIZE := 17     # 小标题(原来 14 —— 比它自己的正文 19 还小一大截)
-	const BLOCK_GAP := 22.0
+	const BLOCK_GAP := 20.0
+	var _eid: String = str(eq.get("id", ""))
+	var _no_star: bool = _EquipPoolRef.NO_STAR.has(_eid)
+	if _eid != _eq_star_for:   # 换了一件装备 ⇒ 回到 ★1
+		_eq_star_for = _eid
+		_eq_star = 1
+	var _full_plain: String = SkillText.equip_full(eq)
+	var d3: String = SkillText.render_consts(str(eq.get("effectDesc3", "")))
+	var _st_rows: Array = host.EquipStats.stat_lines_all_stars(_eid)
+	## 有没有分档: 效果正文里有「a/b/c」, 或某条属性三档不同。不升星的件(096)永远只有一档 ⇒ 不给选档。
+	var _tiered: bool = not _no_star and (not tier_matches(_full_plain + "\n" + d3).is_empty() or _stats_tiered(_st_rows))
+	var star: int = _eq_star if _tiered else 0
+	if _tiered:
+		_star_selector(eq)
 	var y := 130.0
 
-	# 属性 —— 取自 host.EquipStats.STATS(战斗实装的同一张表), 不再打印 data 里手写的 baseStats1。
-	# baseStats1 只是 STATS 的人工镜像, 无机制保证一致; 走这里则图鉴与实装天然同源。
+	# 属性 —— 取自 host.EquipStats.STATS(战斗实装的同一张表), 不打印 data 里手写的 baseStats1。
 	host._add_text(20, y, "属性", HEAD_SIZE, "#58d3ff", 0.0, 0.0, true)
 	y += 26.0
-	var _eid: String = str(eq.get("id", ""))
-	var _stat_str: String = host.EquipStats.stat_line_all_stars(_eid)
-	## ★属性行也走三色分档 —— 与下面「效果」里的三档同一套配色, 否则同一屏两种读法。
-	##   原来是纯 Label(单色 #ffd93d), `+5/+10/+20` 三档挤成一串。
 	var srt := RichTextLabel.new()
 	srt.bbcode_enabled = true; srt.fit_content = true; srt.scroll_active = false
+	srt.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	srt.position = Vector2(20, y)
 	srt.custom_minimum_size = Vector2(host.DETAIL_W - 40, 0)
-	srt.add_theme_font_size_override("normal_font_size", 17)
-	srt.text = SkillTextRef.color_all_stars(_stat_str)
+	srt.add_theme_font_size_override("normal_font_size", 19)
+	srt.add_theme_color_override("default_color", Color("#e8f2ff"))
+	srt.text = stat_row_bb(_eid, maxi(1, star), 19)
+	srt.set_meta("codex_eq_stats", true)
 	host.detail.add_child(srt)
 	y += maxf(24.0, srt.get_combined_minimum_size().y) + BLOCK_GAP
 
-	# 效果 (effectDesc1 = 1星基础 / effectDesc3 = 3星升级)
+	# 效果 —— 一段, 只写当前选中那一档的数(★2 时「150/310/1200+3/5/9×攻击力」读作「310+5×攻击力」)。
 	host._add_text(20, y, "效果", HEAD_SIZE, "#58d3ff", 0.0, 0.0, true)
 	y += 26.0
-	## ★图鉴是"查资料"的地方, 全文要留; 但**第一眼读到的必须是一句话**。
-	##   用户 2026-08-19:「图鉴所有的描述都不应该有 ai 味和教导玩家的味道」——
-	##   实抓 489 条同类文案量出来: 中文同类 12~85 字, 而我们中位 129 字。
-	##   现在: 简述(粗体, 一句话) → 空行 → 完整机制。
-	var _eb := SkillText.equip_brief(eq)
-	var _ef := SkillText.equip_full(eq)
-	## ★★2026-10-01(两层渲染 P2): 显示用【上色 + 内联属性图标】的版本, 与龟技能同一条管线。
-	##   ⚠ 纯文本那两个**不能删** —— 下面 `brief_is_redundant` 比的是文字内容,
-	##   拿带 [img]/[color] 的串去比, 相似度会被标记稀释, 判据直接失真。
-	var _eb_bb := SkillText.equip_brief_bb(eq, 17)
-	var _ef_bb := SkillText.equip_full_bb(eq, 17)
-	## ★★2026-08-31: 判据从「一字不差才算重复」放宽到
-	##   「既没更短、也没说新东西」—— 见 SkillText.brief_is_redundant 的头注。
-	##   原来只挡一字不差的, 于是"差几个字"的重复(辣椒/黄铜齿轮等 4 件)全漏过去,
-	##   玩家在图鉴里看到同一件事写两遍。
-	var bb = _ef_bb if SkillText.brief_is_redundant(_eb, _ef) else ("[b]%s[/b]
-
-%s" % [_eb_bb, _ef_bb])
-	## ★★这里原来是**裸取** `effectDesc3` —— 不走 `render_consts` ⇒ 里面的
-	##   `{C:类.常量}` 会**原样显示给玩家**。2026-09-01 给 096 写四个最终造物那一段时
-	##   被门禁当场抓到(「图鉴渲染后没有 {C: 占位符残留」)。desc1 一直走的是
-	##   `SkillText.equip_full`(内部展开), 只有 desc3 这一路漏了。
-	## ★★2026-10-01: 专名解释行要盖住**这一屏显示的全部文字**, 所以在 d3 之后再算
-	##   (096 小木斧的【最终造物】【进化被动】只出现在 desc3 里 —— 只按 desc1 算会漏掉它们)。
-	var d3: String = SkillText.render_consts(str(eq.get("effectDesc3", "")))
+	var bb: String = star_text_bb(_full_plain, star, 19)
+	## ★{C:} 要先展开(render_consts)—— 原来裸取 effectDesc3 会把 {C:类.常量} 原样显示给玩家。
 	if d3.strip_edges() != "":
-		bb += "\n\n[color=%s][b]%s[/b][/color]" % [rcol, d3]
-	var _gloss := SkillText.glossary_bb(_eb + "\n" + _ef + "\n" + d3, 17)
+		bb += "\n\n" + star_text_bb(d3, star, 19)
+	## ★专名解释行要盖住【这一屏显示的全部文字】(096 的【最终造物】只出现在 desc3 里)。
+	var _gloss := SkillText.glossary_bb(_full_plain + "\n" + d3, 17)
 	if _gloss != "":
 		bb += "\n\n" + _gloss
 	var rt = RichTextLabel.new()
 	rt.bbcode_enabled = true; rt.fit_content = true; rt.scroll_active = false
 	rt.position = Vector2(20, y)
 	rt.custom_minimum_size = Vector2(host.DETAIL_W - 40, 0)
-	## ★字号 14 → 19(2026-08-14, 用户「图鉴描述需要优化」)。
-	##   实拍: 图鉴的效果正文是全项目【最小】的一处 —— 商店 20 / 背包 18 / 图鉴 14,
-	##   而图鉴恰恰是"专门来看资料"的地方。同一屏右侧还空着 ~60%, 小字纯属没道理。
+	## ★字号 19(2026-08-14): 图鉴是"专门来看资料"的地方, 正文不能是全项目最小的一处。
 	rt.add_theme_font_size_override("normal_font_size", 19)
 	rt.add_theme_color_override("default_color", Color("#e8f2ff"))
 	rt.add_theme_constant_override("line_separation", 6)
-	## ★三档数值【三色等亮】—— 图鉴是资料页, 玩家在这里没有"我的星级",
-	##   用 highlight_star 压暗另两档等于暗示错误信息; 但三档同色平铺又读不出边界。
-	##   ⇒ color_all_stars(★1白/★2青/★3金) + 下面一行图例。
-	## ★★2026-10-07 I: 原来是 `bb.find("/") >= 0` —— bb 是 BBCode, 里面恒有 `[/b]` `[/color]`
-	##   ⇒ **恒真**, 没有分档的圣光护盾(095)也挂着「数值分档 ★1/★2/★3」。
-	##   改成找【真正的分档形状】: 数字(或 —)/数字, 例 0.6/0.75/1.0、+5/+12、10%/15%、—/+20。
-	##   属性行(+5/+12/+20 攻击力)也算 —— 那一行也是三色分档上的色。
-	var _tier_re := RegEx.create_from_string("[0-9—]%?/[+]?[0-9—]")
-	var has_tiers: bool = _tier_re.search(bb) != null or _tier_re.search(_stat_str) != null
-	rt.text = SkillTextRef.color_all_stars(bb) if has_tiers else bb
+	rt.text = bb
+	rt.set_meta("codex_eq_effect", true)
 	host.detail.add_child(rt)
-	var _next_y := y + maxf(24.0, rt.get_combined_minimum_size().y) + BLOCK_GAP
-	## ── 羁绊(类型阈值) ────────────────────────────────────────────────
-	## ★图鉴原来【一个字都不提羁绊】, 而羁绊是这件装备最重要的搭配信息。
-	##   商店详情里有(右上角小签), 图鉴反而没有 —— 同一份信息两个界面不一致。
-	## ★【不升星】的装备不显示"数值分档 ★1/★2/★3" —— 它永远只有 1★,
-	##   摆着三档图例等于对玩家说谎(用户 2026-08-31 小木斧: 「这个装备不会进行升星」)。
-	##   判据走 EquipPool.NO_STAR 这一份名单, 不在这里另抄一份 id。
-	var _no_star: bool = _EquipPoolRef.NO_STAR.has(str(eq.get("id", "")))
-	if has_tiers and not _no_star:
-		var lg := RichTextLabel.new()
-		lg.bbcode_enabled = true; lg.fit_content = true; lg.scroll_active = false
-		lg.position = Vector2(20, _next_y)
-		lg.custom_minimum_size = Vector2(host.DETAIL_W - 40, 0)
-		lg.add_theme_font_size_override("normal_font_size", 16)
-		lg.text = "数值分档: " + SkillTextRef.star_legend_bbcode()
-		host.detail.add_child(lg)
-		_next_y += 34.0
+	y += maxf(24.0, rt.get_combined_minimum_size().y) + BLOCK_GAP
+
+	# 分档表 —— 每个分档的量一行, 三档并排, 当前档亮、另两档暗(云顶技能卡底部那张表)。
+	if _tiered:
+		var lines: PackedStringArray = tier_breakdown_lines(_full_plain + "\n" + d3, _st_rows, star)
+		if not lines.is_empty():
+			_row_rule_full(y - BLOCK_GAP / 2.0)
+			var brt := RichTextLabel.new()
+			brt.bbcode_enabled = true; brt.fit_content = true; brt.scroll_active = false
+			brt.position = Vector2(20, y)
+			brt.custom_minimum_size = Vector2(host.DETAIL_W - 40, 0)
+			brt.add_theme_font_size_override("normal_font_size", 18)
+			brt.add_theme_color_override("default_color", Color("#aab8c6"))
+			brt.add_theme_constant_override("line_separation", 4)
+			brt.text = "\n".join(lines)
+			brt.set_meta("codex_eq_tiers", lines.size())
+			host.detail.add_child(brt)
+			y += maxf(24.0, brt.get_combined_minimum_size().y) + BLOCK_GAP
+
+	## ── 羁绊: 写出是哪个羁绊(图标 + 名字) + 每档给什么(与羁绊页同一份 Phase2Types.TIER_DESCS) ──
+	## ★类型标签(图标 + 名字)全屏只出现在这里一次 —— 头顶副标只写费用(2026-08-15 用户「有没有说两遍的信息」)。
+	var _tps: Array = host.Phase2Types.types_of(_eid)
 	if not _tps.is_empty():
-		host._add_text(20, _next_y, "羁绊", HEAD_SIZE, "#58d3ff", 0.0, 0.0, true)
-		var ty := _next_y + 26.0
+		host._add_text(20, y, "羁绊", HEAD_SIZE, "#58d3ff", 0.0, 0.0, true)
+		y += 28.0
 		for tp1 in _tps:
-			var tiers: Array = (host.Phase2Types.TYPES.get(str(tp1), {}) as Dictionary).get("tiers", [])
+			var tname: String = str(tp1)
+			var tiers: Array = (host.Phase2Types.TYPES.get(tname, {}) as Dictionary).get("tiers", [])
 			if tiers.is_empty():
 				continue
-			var ps: PackedStringArray = []
-			for t in tiers:
-				ps.append(str(int(t)))
-			## ★类型的图标不在这里【再画一遍】—— 头顶副标已经写了「🗡️ 剑」。
-			##   原文是「🗡️ 剑系 —— 队伍装满 3/6/9 件同类型即激活对应档位」, 同一屏两遍, 还带花名。
-			##   两个羁绊的装备(香火石)才写类型名区分, 单羁绊的只写阈值。
-			var line: String = ("%s: " % str(tp1)) if _tps.size() > 1 else ""
-			## 只有一档的类型(香火)不能写"依次激活各档位" —— 它压根没有第二档。
-			line += ("队伍里装满 %s 件同类型装备即激活" % ps[0]) if ps.size() == 1 \
-				else ("队伍里装满 %s 件同类型装备, 依次激活各档位效果" % "/".join(ps))
-			host._add_text(20, ty, line, 17, "#9fb6c9", 0.0, 0.0, true)
-			ty += 26.0
+			y = _synergy_block(tname, tiers, y) + 12.0
+
+
+## 羁绊一块: 「[图标] 名字」一行 + 逐档「N 件  效果」。返回块底 y。
+func _synergy_block(tname: String, tiers: Array, y: float) -> float:
+	var tcol: String = host._type_color(tname)
+	var tic: String = host._type_icon(tname)
+	var head := RichTextLabel.new()
+	head.bbcode_enabled = true; head.fit_content = true; head.scroll_active = false
+	head.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	head.position = Vector2(20, y)
+	head.custom_minimum_size = Vector2(host.DETAIL_W - 40, 0)
+	head.add_theme_font_size_override("normal_font_size", 18)
+	head.add_theme_color_override("default_color", Color(tcol))
+	## 图标 16: 源图 32×32 硬边像素画, 只有 32 与 16 保得住像素网格。
+	head.text = ("[img=16x16]%s[/img] " % tic if tic != "" else "") + "[b]%s[/b]" % tname
+	head.set_meta("codex_eq_synergy", tname)
+	host.detail.add_child(head)
+	y += maxf(24.0, head.get_combined_minimum_size().y) + 4.0
+	var descs: Array = host.Phase2Types.TIER_DESCS.get(tname, [])
+	var parts: PackedStringArray = []
+	for i in range(tiers.size()):
+		var txt: String = SkillText.render_consts(str(descs[i])) if i < descs.size() else ""
+		parts.append("[color=%s][b]%d 件[/b][/color]  %s" % [tcol, int(tiers[i]), txt])
+	var body := RichTextLabel.new()
+	body.bbcode_enabled = true; body.fit_content = true; body.scroll_active = false
+	body.position = Vector2(20, y)
+	body.custom_minimum_size = Vector2(host.DETAIL_W - 40, 0)
+	body.add_theme_font_size_override("normal_font_size", 16)
+	body.add_theme_color_override("default_color", Color("#c8d4e0"))
+	body.add_theme_constant_override("line_separation", 5)
+	body.text = "\n".join(parts)
+	host.detail.add_child(body)
+	return y + maxf(24.0, body.get_combined_minimum_size().y)
+
+
+## 整幅宽的细线(分档表上方), 与两栏竖分隔线同色同透明度。
+func _row_rule_full(y: float) -> void:
+	host._add_rect(host.DETAIL_W / 2.0, y, host.DETAIL_W - 40.0, 1, "#ffd93d", 0.3)
+
+
+# ─── 装备页的星级选择 ───
+## 图鉴里看的是哪一档(1~3)。换一件装备回到 ★1。
+var _eq_star: int = 1
+var _eq_star_for: String = ""
+const STAR_CHIP_W := 56.0
+const STAR_CHIP_H := 36.0
+const STAR_HIT_H := 48.0
+
+## 右上角三块签牌 ★1 / ★2 / ★3(与龟页签牌同一张 chip-frame), 当前档金色, 另两档暗。点一下换档重画。
+func _star_selector(eq: Dictionary) -> void:
+	var x0: float = float(host.DETAIL_W) - 20.0 - 3.0 * STAR_CHIP_W - 2.0 * 8.0
+	var cy := 52.0
+	for s in [1, 2, 3]:
+		var x: float = x0 + float(s - 1) * (STAR_CHIP_W + 8.0)
+		var on: bool = s == _eq_star
+		var col: String = "#ffd93d" if on else "#5f7186"
+		var p: Panel = _plaque(x, cy - STAR_CHIP_H / 2.0, STAR_CHIP_W, STAR_CHIP_H, col)
+		p.name = "EqStar%d" % s
+		_chip_text(x + 6.0, cy - 12.0, STAR_CHIP_W - 12.0, 24.0, "★%d" % s, 18, col)
+		var hit := Control.new()
+		hit.name = "EqStarHit%d" % s
+		## 点击区比签牌大一圈: 手机上手指的最小热区 44(verify_ui_consistency「热区不足」同一个数), 签牌只画 36 高。
+		hit.position = Vector2(x - 4.0, cy - STAR_HIT_H / 2.0)
+		hit.size = Vector2(STAR_CHIP_W + 8.0, STAR_HIT_H)
+		hit.mouse_filter = Control.MOUSE_FILTER_STOP
+		hit.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		var eq_ref: Dictionary = eq
+		var s_ref: int = s
+		hit.gui_input.connect(func(ev: InputEvent) -> void:
+			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+				_set_eq_star(eq_ref, s_ref))
+		host.detail.add_child(hit)
+
+
+## 换档并重画(点签牌 / 门禁 / 截图探针共用这一个入口)。
+func _set_eq_star(eq: Dictionary, s: int) -> void:
+	_eq_star_for = str(eq.get("id", ""))
+	_eq_star = clampi(s, 1, 3)
+	_show_p2eq(eq)
+
+
+# ─── 分档文字的拆分(纯函数, 门禁直接调) ───
+## 恰好三档的「a/b/c」: 前后都不许再贴着数字或斜杠 —— 「80/110/130/160」这种四段的(斧头进化阈值)不是星级分档。
+const TIER_PAT := "(?<![\\d./])(\\d+(?:\\.\\d+)?)/(\\d+(?:\\.\\d+)?)/(\\d+(?:\\.\\d+)?)(?![\\d/]|\\.\\d)"
+const TIER_HI := "#ffd93d"      # 当前档(与签牌选中色同一个)。★只上色不加粗: 粗体走另一套像素字, 数字会小一号(实拍)
+const TIER_DIM := "#7d8ea0"     # 另两档(与 SkillText.highlight_star 的压暗色同一个, 对比度 4.9:1)
+static var _tier_re: RegEx = null
+
+static func tier_matches(t: String) -> Array:
+	if _tier_re == null:
+		_tier_re = RegEx.create_from_string(TIER_PAT)
+	return _tier_re.search_all(t)
+
+
+## 纯文本里每个「a/b/c」换成第 star 档的那一个数; star=0 原样返回。
+## mark=true 时数字两边夹私用区字符, 上色后再换成 BBCode(上色管线认的是纯文本, 不能先塞 BBCode 进去)。
+static func collapse_tiers(t: String, star: int, mark: bool = false) -> String:
+	if star < 1 or star > 3:
+		return t
+	var out := ""
+	var pos := 0
+	for m in tier_matches(t):
+		out += t.substr(pos, m.get_start() - pos)
+		var v: String = m.get_string(star)
+		out += ("\uE000%s\uE001" % v) if mark else v
+		pos = m.get_end()
+	return out + t.substr(pos)
+
+
+## 效果正文(纯文本) → 只剩当前档的数、数字加亮, 关键词上色与内联属性图标照 SkillText 同一条管线。
+static func star_text_bb(plain: String, star: int, font_px: int) -> String:
+	var bb: String = SkillText.plain_to_bb(collapse_tiers(plain, star, true), font_px)
+	return bb.replace("\uE000", "[color=%s]" % TIER_HI).replace("\uE001", "[/color]")
+
+
+## 一组三档 → 「a / b / c」, 第 star 档亮、另两档暗。
+static func tier_triplet_bb(vals: Array, star: int) -> String:
+	var ps: PackedStringArray = []
+	for i in range(vals.size()):
+		var v: String = str(vals[i])
+		ps.append(("[color=%s]%s[/color]" % [TIER_HI, v]) if i == star - 1 else ("[color=%s]%s[/color]" % [TIER_DIM, v]))
+	return (" [color=%s]/[/color] " % TIER_DIM).join(ps)
+
+
+## 属性里有没有哪一条三档不同。
+static func _stats_tiered(rows: Array) -> bool:
+	for kv in rows:
+		if str(kv[1]).contains("/"):
+			return true
+	return false
+
+
+## 属性一排: [图标] +数 名字 —— 第 star 档的值(云顶装备卡那一排「图标 + 数」, 名字小一号暗灰跟在数后面, 与龟页读法相同)。
+const STAT_ICON_KEY := {"攻击力": "atk", "最大生命值": "hp", "护甲": "def", "魔抗": "mr", "暴击率": "crit",
+	"暴击伤害": "crit-dmg", "护甲穿透": "armorpen", "魔法穿透": "magicpen", "生命偷取": "lifesteal",
+	"闪避": "dodge", "反伤": "reflect", "治疗增幅": "healamp", "护盾增幅": "shieldamp",
+	"治疗与护盾增幅": "shieldheal", "初始龟能": "maxenergy", "龟能充能速率": "echarge", "射程": "range",
+	"攻击速度": "aspd", "移动速度": "move", "攻击射程": "range"}
+
+static func stat_row_bb(eid: String, star: int, font_px: int) -> String:
+	var kvs: Array = _EquipStatsRef.stat_lines(eid, star)
+	if kvs.is_empty():
+		return "[color=#8c9cab]无属性加成[/color]"
+	var ipx: int = maxi(12, roundi(float(font_px) * 1.15))
+	var ps: PackedStringArray = []
+	for kv in kvs:
+		var key: String = str(STAT_ICON_KEY.get(str(kv[0]), ""))
+		var ip: String = "res://assets/sprites/stats/%s-icon.png" % key
+		var seg := ""
+		if key != "" and ResourceLoader.exists(ip):
+			seg += "[img width=%d color=#%s]%s[/img] " % [ipx, SkillText.stat_icon_color_of(ip).to_html(false), ip]
+		seg += "%s [font_size=%d][color=#8c9cab]%s[/color][/font_size]" % [str(kv[1]), maxi(14, font_px - 4), str(kv[0])]
+		ps.append(seg)
+	return "      ".join(ps)
+
+
+## 分档表的行: 先属性(三档不同的那几条), 再效果正文里每一句带分档的话。
+## ★效果那一行【不另起名字】—— 名字从原句里截(按 ，。；、：换行 切句), 分档数换成「a / b / c」。
+##   起名字要猜「这个数是什么」, 猜错就是在骗人; 原句本身就是这个数的说明。
+static func tier_breakdown_lines(plain: String, stat_rows: Array, star: int) -> PackedStringArray:
+	var out: PackedStringArray = []
+	for kv in stat_rows:
+		var v: String = str(kv[1])
+		if not v.contains("/"):
+			continue
+		out.append("[color=#c8d4e0]%s[/color]  %s" % [str(kv[0]), tier_triplet_bb(Array(v.split("/")), star)])
+	var seen := {}
+	for clause in _tier_clauses(plain):
+		if seen.has(clause):
+			continue
+		seen[clause] = true
+		var line := ""
+		var pos := 0
+		## ★一句里有两组以上分档时每组加方括号(2026-10-10 实拍:「150 / 310 / 1200+3 / 5 / 9×攻击力」读成「1200+3」)。
+		##   照云顶技能卡「[450% / 450% / 1000%]」的写法; 字面方括号在 BBCode 里要写 [lb]/[rb]。
+		var ms: Array = tier_matches(clause)
+		var wrap: bool = ms.size() >= 2
+		for m in ms:
+			## 原句的空格原样留着(「造成 150/310/1200 + …」与「4/6/15%自身…」两种写法都有), 不另加。
+			line += "[color=#c8d4e0]%s[/color]" % clause.substr(pos, m.get_start() - pos)
+			var trip := tier_triplet_bb([m.get_string(1), m.get_string(2), m.get_string(3)], star)
+			line += ("[color=%s][lb][/color]%s[color=%s][rb][/color]" % [TIER_DIM, trip, TIER_DIM]) if wrap else trip
+			pos = m.get_end()
+		line += "[color=#c8d4e0]%s[/color]" % clause.substr(pos)
+		out.append(line.strip_edges())
+	return out
+
+
+## 正文切句, 只留带分档的那几句; 去掉句首连接词、补齐落单的括号。
+const CLAUSE_SEP := "，。；、：\n,;"
+static func _tier_clauses(plain: String) -> PackedStringArray:
+	var out: PackedStringArray = []
+	var cur := ""
+	for ch in plain + "\n":
+		if CLAUSE_SEP.contains(ch):
+			var c := cur.strip_edges()
+			cur = ""
+			if c == "" or tier_matches(c).is_empty():
+				continue
+			for lead in ["并且", "并", "且", "外加", "此外", "随后"]:
+				if c.begins_with(lead):
+					c = c.substr(str(lead).length()).strip_edges()
+					break
+			if c.count("（") > c.count("）"):
+				c = c.replace("（", "")
+			elif c.count("）") > c.count("（"):
+				c = c.replace("）", "")
+			out.append(c)
+		else:
+			cur += ch
+	return out
 
 
 # ── 消耗品详情 (all_equipment category=consumable; 有 PNG icon + desc + target) ──

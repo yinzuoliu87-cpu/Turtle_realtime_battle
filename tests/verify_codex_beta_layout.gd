@@ -363,7 +363,7 @@ func _check_status_page() -> void:
 	await _settle(2)
 
 
-## I: 分档图例只给真有分档的装备
+## I: 分档选档(原「分档图例」, 2026-10-10 换成选档签牌)只给真有分档的装备
 func _check_i_tiers() -> void:
 	print("-- I 数值分档图例 --")
 	_c._switch_tab("equips")
@@ -371,7 +371,13 @@ func _check_i_tiers() -> void:
 	for cs in [["p2eq_095", false], ["p2eq_001", true]]:
 		var it := await _open("id", str(cs[0]))
 		_ok("I 分母: %s 打开了" % cs[0], not it.is_empty())
-		var has_legend := _rich().find("数值分档") >= 0
-		_ok("I %s %s「数值分档」图例" % [cs[0], "有" if cs[1] else "没有"], has_legend == bool(cs[1]))
+		## ★2026-10-10 图例「数值分档 ★1/★2/★3」整个撤掉(用户「这有任何其他游戏是这样的吗」),
+		##   换成右上 ★1/★2/★3 选档签牌 —— 判据跟着换: 选档也只给真有分档的装备, 图例一个都不许再出现。
+		var has_sel := false
+		for ch in _c.detail.get_children():
+			if str(ch.name) == "EqStarHit1" and not ch.is_queued_for_deletion():
+				has_sel = true
+		_ok("I %s %s ★1/★2/★3 选档" % [cs[0], "有" if cs[1] else "没有"], has_sel == bool(cs[1]))
+		_ok("I %s 不再挂「数值分档」图例" % cs[0], _rich().find("数值分档") < 0)
 	_c._switch_tab("pets")
 	await _settle(2)
