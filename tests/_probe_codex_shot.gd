@@ -14,14 +14,25 @@ func _ready() -> void:
 	await get_tree().process_frame
 	var want := OS.get_environment("CODEX_ID")
 	var items: Array = cs.get("_items")
+	## CODEX_ID=minion:front|back|elite —— 深海小将(虚拟条目, 没有 id, 按 _minion 认)
 	for i in range(items.size()):
 		var _it: Dictionary = items[i]
-		if str(_it.get("id", _it.get("_type", ""))) == want:
+		if str(_it.get("id", _it.get("_type", ""))) == want or (want.begins_with("minion:") and str(_it.get("_minion", "")) == want.substr(7)):
 			cs.call("_select", i)
 			break
 	## CODEX_IDX=N: 直接按左栏序号选(中文类型名走环境变量在 Windows 上会被代码页弄乱)
 	if OS.get_environment("CODEX_IDX") != "":
 		cs.call("_select", int(OS.get_environment("CODEX_IDX")))
+	## CODEX_FORM=1: 双形态龟切到另一形态(与点「切换至…形态」钮同一个状态位)
+	if OS.get_environment("CODEX_FORM") == "1" and tab == "pets":
+		await get_tree().process_frame
+		cs.set("_codex_form_view", true)
+		cs.get("_codex_detail").call("_show_pet", _find_pet(want))
+	## CODEX_PASSIVE=1: 展开被动(与点被动条同一个状态位)
+	if OS.get_environment("CODEX_PASSIVE") == "1" and tab == "pets":
+		await get_tree().process_frame
+		cs.set("_codex_passive_view", true)
+		cs.get("_codex_detail").call("_show_pet", _find_pet(want))
 	## CODEX_STAR=1|2|3: 装备页切到那一档再截(走 CodexDetail._set_eq_star, 与点签牌同一个入口)
 	var want_star := OS.get_environment("CODEX_STAR")
 	if want_star != "" and tab == "equips":
@@ -46,3 +57,10 @@ func _ready() -> void:
 	img.save_png(OS.get_environment("CODEX_OUT"))
 	print("[CODEX] saved ", OS.get_environment("CODEX_OUT"))
 	get_tree().quit()
+
+
+func _find_pet(pid: String) -> Dictionary:
+	for p in DataRegistry.launch_pets:
+		if str((p as Dictionary).get("id", "")) == pid:
+			return p
+	return {}

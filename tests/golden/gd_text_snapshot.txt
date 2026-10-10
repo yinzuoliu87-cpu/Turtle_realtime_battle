@@ -1352,7 +1352,7 @@ scripts/scenes/codex/detail_views.gd|lit|[color=#8c9cab]无属性加成[/color]
 scripts/scenes/codex/detail_views.gd|lit|[color=%s][b]%d 件[/b][/color]  %s
 scripts/scenes/codex/detail_views.gd|lit|← 返回
 scripts/scenes/codex/detail_views.gd|lit|　[color=#06d6a0][font_size=20]龟能 %d[/font_size][/color]
-scripts/scenes/codex/detail_views.gd|lit|不可编入阵容 · 开战时自动登场
+scripts/scenes/codex/detail_views.gd|lit|不可编入
 scripts/scenes/codex/detail_views.gd|lit|且
 scripts/scenes/codex/detail_views.gd|lit|主动 · 龟能 %d
 scripts/scenes/codex/detail_views.gd|lit|作用于友方
@@ -1390,11 +1390,10 @@ scripts/scenes/codex/detail_views.gd|lit|最大生命值
 scripts/scenes/codex/detail_views.gd|lit|查看全部
 scripts/scenes/codex/detail_views.gd|lit|此外
 scripts/scenes/codex/detail_views.gd|lit|每秒攻击
-scripts/scenes/codex/detail_views.gd|lit|每级生命与攻击 ×1.05，护甲与魔抗不变
+scripts/scenes/codex/detail_views.gd|lit|每级 ×1.05
 scripts/scenes/codex/detail_views.gd|lit|治疗与护盾增幅
 scripts/scenes/codex/detail_views.gd|lit|治疗增幅
 scripts/scenes/codex/detail_views.gd|lit|消耗品
-scripts/scenes/codex/detail_views.gd|lit|深海小将
 scripts/scenes/codex/detail_views.gd|lit|生命
 scripts/scenes/codex/detail_views.gd|lit|生命偷取
 scripts/scenes/codex/detail_views.gd|lit|生效公式
@@ -1411,6 +1410,9 @@ scripts/scenes/codex/detail_views.gd|lit|魔抗
 scripts/scenes/codex/detail_views.gd|lit|魔法穿透
 scripts/scenes/codex/detail_views.gd|lit|龟能充能速率
 scripts/scenes/codex/detail_views.gd|text|查看全部
+scripts/scenes/codex/form_variants.gd|lit|近战形态
+scripts/scenes/codex/form_variants.gd|lit|远程形态
+scripts/scenes/codex/form_variants.gd|lit|随形态变体：
 scripts/scenes/codex/list_builder.gd|lit|%d 费
 scripts/scenes/codex/list_builder.gd|lit|减益
 scripts/scenes/codex/list_builder.gd|lit|增益

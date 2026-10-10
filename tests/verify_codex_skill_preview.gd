@@ -1,4 +1,5 @@
 extends Node
+const FormVariantsRef := preload("res://scripts/scenes/codex/form_variants.gd")
 ## verify_codex_skill_preview.gd — 图鉴龟页: 技能标签/龟能 == 战斗; 一行预览截断; 小标题行; 字号(2026-10-10 视觉体检)。
 ##
 ##   ① 每只龟每个技能(含熔岩龟火山形态组), 图鉴卡片签「主动 · 龟能 N」/「被动」/「普通攻击」与详情页标题里的「龟能 N」
@@ -267,7 +268,9 @@ func _check_previews() -> void:
 		_c._select(i)
 		await _settle(6)
 		var ctx = _c._ctx_for(pet)
-		var sources: Array = [str((pet.get("passive", {}) as Dictionary).get("brief", "")), str(((pet.get("skillPool", []) as Array)[0] as Dictionary).get("brief", ""))]
+		## ★双头龟(2026-10-10): 普攻条按形态只印默认(远程)那一半 —— 原文取同一个拆法(FormVariants), 不拿合写的整段比。
+		var _pool0: Array = FormVariantsRef.pool(pet, 0) if FormVariantsRef.has_variants(pet) else (pet.get("skillPool", []) as Array)
+		var sources: Array = [str((pet.get("passive", {}) as Dictionary).get("brief", "")), str((_pool0[0] as Dictionary).get("brief", ""))]
 		var bars: Array = []
 		var cards: Array = []
 		var row_hints := 0

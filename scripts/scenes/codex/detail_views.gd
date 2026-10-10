@@ -4,6 +4,7 @@ const _EquipPoolRef := preload("res://scripts/gamedata/equip_pool.gd")   # NO_ST
 const _EquipStatsRef := preload("res://scripts/gamedata/equip_stats.gd")   # 属性一排按选中档取值
 const PreviewText := preload("res://scripts/scenes/codex/preview_text.gd")   # 龟页一行条/技能卡的预览截断(「…」+ 跳过开头小标题)
 const _SynergyViewRef := preload("res://scripts/scenes/codex/synergy_view.gd")   # 羁绊页排版(2026-10-10)
+const FormVariants := preload("res://scripts/scenes/codex/form_variants.gd")   # 双头龟: 同槽随形态变招 → 拆成两种形态各一份
 ## 图鉴·右栏详情视图(龟/装备/羁绊(类型)/状态/规则/小将 13渲染函数)
 ## 类内名不变;外部名加 battle.
 
@@ -14,17 +15,44 @@ func _init(b) -> void:
 	host = b
 	_syn_view = _SynergyViewRef.new(b, self)
 
+## 当前这一页怎么重画(龟页 / 小将页共用同一套右栏, 点被动条 / 技能卡 / 形态钮之后都靠它回到同一页)。
+var _rerender: Callable = Callable()
+
+func _redraw() -> void:
+	if _rerender.is_valid():
+		_rerender.call()
+
+## 形态拆出来的技能(FormVariants.pool)与小将页的合成技能, 角色 / 龟能 / 默认技都按 pets.json 里那一条认。
+static func _base_of(sk: Dictionary) -> Dictionary:
+	var b: Variant = sk.get("_base", null)
+	return b if b is Dictionary else sk
+
+func _role_of(pet: Dictionary, sk: Dictionary) -> String:
+	if sk.has("_role"):   # 小将页合成的技能自带角色(小将不在 pets.json 里, 槽位判定认不到)
+		return str(sk["_role"])
+	return str(host.skill_role_of(pet, _base_of(sk)))
+
+func _energy_of(pet: Dictionary, sk: Dictionary) -> int:
+	if sk.has("_energy"):
+		return int(sk["_energy"])
+	return int(host.skill_energy_of(pet, _base_of(sk)))
+
+
+## ★★2026-10-10 小将页改走龟页同一套(图鉴体检: 小将页 16px 大段正文、没有被动条 / 普通攻击条、
+##   顶上一行灰字「不可编入阵容 · 每级 ×1.05」)。左栏立绘 + 名字 + 签牌 + 属性方块, 右栏 _render_right
+##   (被动条 → 普通攻击条 → 技能卡, 同一套截断与「查看全部」)。小将特有的两件事做成签牌。
 func _show_minion(kind: String) -> void:
 	host._clear_detail()
 	var mi: Dictionary = host.MINION_INFO.get(kind, {})
 	if mi.is_empty():
 		return
-	## ★2026-10-08 两栏, 与龟页同一套: 左栏立绘 + 名字/签牌 + 属性方块条, 右栏说明 + 技能 + 被动。
+	_rerender = _show_minion.bind(kind)
 	host._add_image(95, 100, "res://assets/sprites/pets/%s" % mi["img"], 160, 160, true)
-	## ★★2026-09-27 抬头与龟页同一套: 名字 + 一排签牌, 不再是「深海小将   近战」这种
-	##   "字段名 + 值"的两段式(用户: 图鉴「全是 ai 味和网页味, 文字语言也是」)。
-	_left_header(str(mi["name"]), [{"kind": "tag", "text": "深海小将", "color": "#9fb6c9"},
-		{"kind": "tag", "text": str(mi["role"]), "color": "#58d3ff"}])
+	## 签牌: 站位(前排 / 后排 / 精英) + 不可编入 + 每级成长。「深海小将」不再单挂一块 —— 左栏列表的分组标题就是它。
+	var _pos: String = str(mi["role"]).split(" · ")[0]
+	_left_header(str(mi["name"]), [{"kind": "tag", "text": _pos, "color": "#58d3ff"},
+		{"kind": "tag", "text": "不可编入", "color": "#9fb6c9"},
+		{"kind": "tag", "text": "每级 ×1.05", "color": "#ffd93d"}])
 	# 属性 7 行 (Lv1 值) —— 与龟页共用 _stat_rows, 不在这里另摆一套表格
 	var rows = [
 		{"key": "hp", "label": "生命", "disp": str(mi["hp"]), "color": "#06d6a0"},
@@ -38,52 +66,37 @@ func _show_minion(kind: String) -> void:
 		{"key": "range", "label": "射程", "disp": str(mi["range"]), "color": "#d6e4f0"},
 	]
 	_col_divider(_stat_rows(rows))
-	## 两句说明改口语: 原文「非统领单位 · 不可选入阵容 · 由系统补位生成」「…×1.05 复利成长,
-	## 双抗为定值」—— "非统领单位""复利成长""定值"都是开发者/说明书用词, 不是游戏里的话。
-	## (两栏后挪到右栏顶: 左栏抬头只有 180 宽, 放不下这两句)
-	host._add_text(RCOL_X + 4.0, 26, "不可编入阵容 · 开战时自动登场", 13, "#7a8a96", 0.0, 0.5)
-	host._add_text(RCOL_X + 4.0, 48, "每级生命与攻击 ×1.05，护甲与魔抗不变", 13, "#7a8a96", 0.0, 0.5)
-	# 技能 + 被动
-	var y = 72.0
-	## ★2026-10-07 H: 技能抬头与龟页同一套 —— [技能图标] 名字 + 「主动 · 龟能 N」(龟页卡片 chip 同一句式);
-	##   原来是「技能 · 人体浪板  (120 龟能)」, 而 MinionCodex 里新加的 skill_icon 图鉴一直没画。
-	var _sx: float = RCOL_X
-	var _sic: String = str(mi.get("skill_icon", ""))
-	if _sic.ends_with(".png") and ResourceLoader.exists("res://assets/sprites/%s" % _sic):
-		host._add_image(RCOL_X + 16.0, y + 12.0, "res://assets/sprites/%s" % _sic, 32, 32)
-		_sx = RCOL_X + 40.0
-	var _snl: Variant = host._add_text(_sx, y + 12.0, str(mi["skill_name"]), 17, "#ffd93d", 0.0, 0.5, true)
-	var _scx: float = _sx + 90.0
-	if _snl is Control:
-		_scx = _sx + (_snl as Control).get_combined_minimum_size().x + 14.0
-	host._add_text(_scx, y + 12.0, "主动 · 龟能 %d" % int(mi["skill_cost"]), CARD_CHIP_PX, "#06d6a0", 0.0, 0.5)
-	y += 34.0
-	y = _minion_body(str(mi["skill_desc"]), y) + 18.0
+	var ctx: Dictionary = {"atk": float(mi["atk"]), "maxHp": float(mi["hp"]), "hp": float(mi["hp"]),
+		"def": float(mi["def"]), "mr": float(mi["mr"]), "lv": 1, "crit": 0.0}
+	_render_right(_minion_pet(kind, mi), ctx)
+
+
+## 小将 → 龟页右栏认得的形状: skillPool[0] 普通攻击(有才放) / 主动技 / 其余技能, passive 一条。
+## 每条被动按 MinionCodex 里的 `slot` 归位: basic → 普通攻击条, passive → 被动条, skill → 技能卡(签「被动」)。
+func _minion_pet(kind: String, mi: Dictionary) -> Dictionary:
+	var basic: Array = []
+	var extra: Array = []
+	var passive: Dictionary = {}
 	for pv in mi.get("passives", []):
-		host._add_text(RCOL_X, y, "被动 · %s" % str(pv["name"]), 17, "#58d3ff", 0.0, 0.0, true)
-		y += 28.0
-		y = _minion_body(str(pv["desc"]), y) + 16.0
-
-## 一段正文(自动换行), 返回下一段该起的 y.
-func _minion_body(txt: String, y: float) -> float:
-	var rt = RichTextLabel.new()
-	rt.bbcode_enabled = true; rt.fit_content = true; rt.scroll_active = false
-	rt.position = Vector2(RCOL_X, y)
-	rt.custom_minimum_size = Vector2(_rw(), 0)
-	rt.add_theme_font_size_override("normal_font_size", 16)
-	rt.add_theme_constant_override("line_separation", 5)
-	rt.add_theme_color_override("default_color", Color("#e8f2ff"))
-	rt.text = txt
-	host.detail.add_child(rt)
-	# ★2026-08-15 改成【问它自己占多高】, 不再按字数估行。
-	#   原来是 `ceilf(txt.length() / 62.0) * 19` —— 62 这个"每行几个全角字"是照 13px 字号拍的,
-	#   字号一改(13→16)整套间距就全错; 而且 BBCode 标记也被算进了 length()。
-	#   同一个位置 2026-08-01 已经栽过一次(写成 host.ceilf ⇒ SCRIPT ERROR ⇒ return 永不执行 ⇒
-	#   每段正文拿到同一个 y、全叠在一起, 用户报「精英小将的描述都挤在一块」)。
-	#   get_combined_minimum_size() 是 RichTextLabel(fit_content) 自己算的真实高度, 与字号自洽
-	#   —— 同一份写法在 _show_p2eq 已经用了(那边的效果段/羁绊块就是这么顺排的)。
-	return y + maxf(20.0, rt.get_combined_minimum_size().y)
-
+		var d: Dictionary = {"name": str(pv["name"]), "brief": str(pv["desc"]), "detail": str(pv["desc"]), "desc": str(pv["desc"])}
+		match str(pv.get("slot", "passive")):
+			"basic":
+				d["_role"] = "basic"
+				basic.append(d)
+			"skill":
+				d["_role"] = "passive"
+				extra.append(d)
+			_:
+				if passive.is_empty():
+					passive = d
+				else:
+					d["_role"] = "passive"
+					extra.append(d)
+	var active: Dictionary = {"name": str(mi["skill_name"]), "icon": str(mi.get("skill_icon", "")),
+		"brief": str(mi["skill_desc"]), "detail": str(mi["skill_desc"]),
+		"_role": "active", "_energy": int(mi["skill_cost"])}
+	return {"id": "__minion_%s" % kind, "_minion": kind, "name": str(mi["name"]),
+		"skillPool": basic + [active] + extra, "passive": passive}
 
 # ══════════════════════════════════════════════════════════════════
 # 属性牌 / 稀有度牌 / 词条签 (2026-09-27 去"后台仪表盘"味)
@@ -297,12 +310,14 @@ func _col_divider(bottom: float) -> void:
 
 func _show_pet(pet: Dictionary) -> void:
 	host._clear_detail()
+	_rerender = _show_pet.bind(pet)
 	var rarity: String = pet.get("rarity", "C")
 	var rarity_color: String = host.RARITY_COLOR.get(rarity, "#ffffff")
 	var ctx = host._ctx_for(pet)
 
 	# 1) 立绘 160 —— 左栏左上(2026-10-08 两栏) · 全身 idle 动画 sprite, 非头像
-	host._add_pet_portrait(95, 100, pet, 160.0)
+	## 双头龟近战形态页: 立绘换成战斗里近战形态用的那张(TwoHeadSystem.FORM_ART, 同一个源头)。
+	host._add_pet_portrait(95, 100, FormVariants.portrait_pet(pet, host._codex_form_view), 160.0)
 
 	# 2) 名字 y30 32px 金 bold。
 	## ★★2026-09-27 抬头改「名字 + 一排牌子」(用户: 图鉴「全是 ai 味和网页味」)。
@@ -363,7 +378,11 @@ func _show_pet(pet: Dictionary) -> void:
 	]
 	var stats_bottom: float = _stat_rows(stats)
 	_col_divider(stats_bottom)
+	_render_right(pet, ctx)
 
+
+## 右栏: 被动条 → 普通攻击条 → 技能卡。龟页与小将页(_show_minion 合成的 pet)共用 —— 两边长得一样就是因为走的同一段。
+func _render_right(pet: Dictionary, ctx: Dictionary) -> void:
 	# 9) 被动条(右栏顶) 高 PASSIVE_BAR_H · 两行: 标题行 + 简述一行
 	var passive: Dictionary = pet.get("passive", {})
 	var rw: float = _rw()
@@ -407,12 +426,11 @@ func _show_pet(pet: Dictionary) -> void:
 		p_hit.size = Vector2(rw, PASSIVE_BAR_H)
 		p_hit.mouse_filter = Control.MOUSE_FILTER_STOP
 		p_hit.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		var pet_ref2: Dictionary = pet
 		p_hit.gui_input.connect(func(ev: InputEvent) -> void:
 			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 				host._codex_skill_detail = {}
 				host._codex_passive_view = not host._codex_passive_view
-				_show_pet(pet_ref2))
+				_redraw())
 		host.detail.add_child(p_hit)
 		_row_rule(passive_y + PASSIVE_BAR_H + 3.0)
 		cards_y = passive_y + PASSIVE_BAR_H + 8.0
@@ -531,6 +549,12 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 	var form_skills: Array = (melee if is_melee_form else (volcano if volcano is Array else [])) as Array
 	var has_form: bool = not form_skills.is_empty()
 	var skill_pool = form_skills if (host._codex_form_view and has_form) else pet.get("skillPool", [])
+	## ★2026-10-10 双头龟: 技能一 / 技能二同一槽位随形态变招, 数据里合写成一条(「灵能冲击/锤击」)。
+	##   与熔岩龟同一颗形态钮: 默认 = 远程形态(战斗里远程起手), 钮切到近战形态; 每种形态的招各用自己的名字(FormVariants)。
+	if not has_form and FormVariants.has_variants(pet):
+		has_form = true
+		is_melee_form = true
+		skill_pool = FormVariants.pool(pet, 1 if host._codex_form_view else 0)
 	if not (skill_pool is Array):
 		return
 	var default_idxs = pet.get("defaultSkills", [0, 1, 2])
@@ -547,7 +571,7 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 	## 附带好处: 卡片从 4 张变 3 张, **每张宽 33%**, 正文被切、要点"看全部"的情况同时缓解。
 	var basic_i: int = -1
 	for bi in range(skill_pool.size()):
-		if str(host.skill_role_of(pet, skill_pool[bi])) == "basic":
+		if _role_of(pet, skill_pool[bi]) == "basic":
 			basic_i = bi
 			break
 	var cand_pool: Array = []
@@ -559,21 +583,17 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 	if basic_i >= 0:
 		var bsk: Dictionary = skill_pool[basic_i]
 		start_y += _basic_attack_bar(pet, ctx, bsk, start_y) + 6.0
-		# 三选一那一排上面给一句抬头 —— 不然玩家不知道这三张是"要选一个"
-		## 双形态龟: 这一行同时挂「换成 X 形态」钮(钮高 34) ⇒ 行高 38; 其余龟仍是 15。
-		var head_h: float = FORM_ROW_H if has_form else 26.0
-		## ★2026-10-08 「开局三选一」→「技能」。用户:「开局三选一是啥呢」「我问你哪个参考游戏会这么说？」—— 没有哪个游戏这么说,
-		##   是我 08-18 自己加的, 讲的是我们的选择机制(同 10-01 被否的「3选1候选」)。对齐战斗信息面板「被动 / 普通攻击 / 技能」(10-06 用户拍板)。
-		host._add_text(start_x + 2.0, start_y + head_h / 2.0, "技能", SECTION_PX, "#06d6a0", 0.0, 0.5, true)
-		if has_form:
-			form_btn_y = start_y + head_h / 2.0
-		start_y += head_h
 		skill_pool = cand_pool
 		default_idxs = [0, 1, 2]
-
-	if has_form and form_btn_y < 0.0:   # 没有普攻条的双形态龟(目前 0 只): 自己占一行, 不压卡片
-		form_btn_y = start_y + FORM_ROW_H / 2.0
-		start_y += FORM_ROW_H
+	# 卡片那一排上面给一句抬头。★没有普通攻击条的页(近战 / 远程小将)也画 —— 原来只在普攻条后面画, 小将页就没有「技能」这一节。
+	## 双形态龟: 这一行同时挂「换成 X 形态」钮(钮高 34) ⇒ 行高 38; 其余仍是 26。
+	var head_h: float = FORM_ROW_H if has_form else 26.0
+	## ★2026-10-08 「开局三选一」→「技能」。用户:「开局三选一是啥呢」「我问你哪个参考游戏会这么说？」—— 没有哪个游戏这么说,
+	##   是我 08-18 自己加的, 讲的是我们的选择机制(同 10-01 被否的「3选1候选」)。对齐战斗信息面板「被动 / 普通攻击 / 技能」(10-06 用户拍板)。
+	host._add_text(start_x + 2.0, start_y + head_h / 2.0, "技能", SECTION_PX, "#06d6a0", 0.0, 0.5, true)
+	if has_form:
+		form_btn_y = start_y + head_h / 2.0
+	start_y += head_h
 	var n: int = mini(skill_pool.size(), 5)
 	## ★2026-10-08 两栏: 卡片【竖排】, 每张占右栏整宽(494)。
 	##   原来三张横排各 ~280 宽, 而右栏只剩 494 —— 横排每张只剩 160, 一行放不下 10 个字。
@@ -638,14 +658,14 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 		# 类型 chip (基础/主动·龟能/被动) —— 龟能口径(无"冷却/CD"): 普攻=不花龟能 / 主动=显龟能花费(与战斗同源) / 被动
 		var chip_text = ""
 		var chip_color = "#58d3ff"
-		match host.skill_role_of(pet, sk):
+		match _role_of(pet, sk):
 			"passive": chip_text = "被动"; chip_color = "#c77dff"
 			## 用户 2026-10-06「真的要说普攻这个吗，真的是商业游戏吗」「是被动，普通攻击，和技能啊」⇒ 全称, 与战斗信息面板同一个词。
 			"basic": chip_text = "普通攻击"; chip_color = "#58d3ff"
 			## ★★2026-10-01: 原来写「3选1候选 · 龟能N」。用户:「3选1候选，这又是什么 ai 味描述」——
 			##   LoL 的技能头上只写**名字 + 消耗**。⇒ 与兄弟分支对齐成「角色 · 代价」;
 			##   「龟能 100」中间留空格(codex_text_lint「汉字贴着数字」)。
-			_: chip_text = "主动 · 龟能 %d" % host.skill_energy_of(pet, sk); chip_color = "#06d6a0"
+			_: chip_text = "主动 · 龟能 %d" % _energy_of(pet, sk); chip_color = "#06d6a0"
 		nodes.append(host._add_text(text_x + nlbl.get_combined_minimum_size().x + 12.0, name_y + 1.0, chip_text, CARD_CHIP_PX, chip_color, 0.0, 0.5))
 		# 简述 — 富文本 BBCode, 多行 clamp。开头只有小标题的行(龟壳「主被动·潜影：」)跳过, 从效果那句起。
 		var brief = SkillText.render_bbcode(PreviewText.skip_lead_headings(_trim_tail(str(sk.get("brief", "")))), ctx, sk, PREVIEW_PX)
@@ -679,7 +699,7 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 		hit.gui_input.connect(func(ev: InputEvent) -> void:
 			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 				host._codex_skill_detail = sk_ref
-				_show_pet(pet))
+				_redraw())
 		host.detail.add_child(hit)
 		parts.append({"panel": card_panel, "rt": rt, "hit": hit, "nodes": nodes, "y0": cy0})
 	_fit_skill_cards(parts, start_y, card_max_h)
@@ -735,7 +755,7 @@ func _basic_attack_bar(pet: Dictionary, ctx: Dictionary, bsk: Dictionary, start_
 		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 			host._codex_passive_view = false
 			host._codex_skill_detail = bsk_ref
-			_show_pet(pet))
+			_redraw())
 	host.detail.add_child(b_hit)
 	_row_rule(start_y + bar_h + 3.0)
 	return bar_h
@@ -805,11 +825,10 @@ func _form_switch_button(pet: Dictionary, center_y: float, is_melee_form: bool) 
 	hitb.size = Vector2(btn_w, btn_h)
 	hitb.mouse_filter = Control.MOUSE_FILTER_STOP
 	hitb.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	var pet_ref: Dictionary = pet
 	hitb.gui_input.connect(func(ev: InputEvent) -> void:
 		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 			host._codex_form_view = not host._codex_form_view
-			_show_pet(pet_ref))
+			_redraw())
 	host.detail.add_child(hitb)
 
 
@@ -903,7 +922,7 @@ func _render_skill_detail_inline(pet: Dictionary, ctx: Dictionary, sk: Dictionar
 	bhit.gui_input.connect(func(ev: InputEvent) -> void:
 		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 			host._codex_skill_detail = {}
-			_show_pet(pet))   # host._codex_form_view 保留 → 返回到形态/普通列表 (PoC isForm?'form-list':'skill-list')
+			_redraw())   # host._codex_form_view 保留 → 返回到形态/普通列表 (PoC isForm?'form-list':'skill-list')
 	host.detail.add_child(bhit)
 	# 标题行 (PoC L552-558 addDomHTML(160,283) origin(0,0)): 图标40 inline + ★(默认绿) + 名32px#ffd93d + CD chip 20px#06d6a0
 	# 默认技能判定: 形态视图不算默认 (PoC isDefault = !isForm && defaultSkills.includes(idx))
@@ -912,7 +931,7 @@ func _render_skill_detail_inline(pet: Dictionary, ctx: Dictionary, sk: Dictionar
 		var sp = pet.get("skillPool", [])
 		if sp is Array:
 			var dfs = pet.get("defaultSkills", [0, 1, 2])
-			is_default = (sp as Array).find(sk) in dfs
+			is_default = not pet.has("_minion") and (sp as Array).find(_base_of(sk)) in dfs
 	# 图标解析同技能卡 (1:1 PoC skillIconHtml): 有png用; 否则 enhancesPassive→取被动图标
 	var icon: String = str(sk.get("icon", ""))
 	var icon_src: String = ""
@@ -922,7 +941,7 @@ func _render_skill_detail_inline(pet: Dictionary, ctx: Dictionary, sk: Dictionar
 		var pic: String = DataRegistry.passive_icons.get(pet.get("passive", {}).get("type", ""), "")
 		if pic.ends_with(".png"):
 			icon_src = pic
-	var role_d: String = host.skill_role_of(pet, sk)
+	var role_d: String = _role_of(pet, sk)
 	var bb = ""
 	if icon_src != "":
 		bb += "[img=40x40]res://assets/sprites/%s[/img] " % icon_src
@@ -932,7 +951,7 @@ func _render_skill_detail_inline(pet: Dictionary, ctx: Dictionary, sk: Dictionar
 	if role_d == "active":   # 龟能口径: 主动技显龟能花费 (无"CD"); 攒满龟能自动施放
 		## ★2026-10-01: 「龟能100」→「龟能 100」。codex_text_lint 有一条「汉字贴着数字」,
 		##   它只扫 data/*.json 的玩家文案, 扫不到这里拼出来的屏幕串 —— 所以这处一直漏着。
-		bb += "　[color=#06d6a0][font_size=20]龟能 %d[/font_size][/color]" % host.skill_energy_of(pet, sk)
+		bb += "　[color=#06d6a0][font_size=20]龟能 %d[/font_size][/color]" % _energy_of(pet, sk)
 	var title = RichTextLabel.new()
 	title.bbcode_enabled = true
 	title.fit_content = true
