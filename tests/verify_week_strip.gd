@@ -150,6 +150,19 @@ func _ready() -> void:
 			str(tinfo["time"]) == str(mm.mode_card_lines(ts)[2]), "%s / %s" % [tinfo["time"], mm.mode_card_lines(ts)[2]])
 		if iso == 6:
 			await _info_taps(mm)
+		## ★★周六已晋级 ⇒ 模式卡第三行说周日几点开打, 不再数闯关赛收盘(2026-10-10 周六实操)。没晋级的照旧(对照组)。
+		if iso == 6:
+			var gw0 := int(GameState.gauntlet_wins)
+			var gl0 := int(GameState.gauntlet_losses)
+			GameState.gauntlet_wins = 4
+			GameState.gauntlet_losses = 0
+			var l_in: String = str(mm.mode_card_lines(ts)[2])
+			GameState.gauntlet_wins = 0
+			var l_run: String = str(mm.mode_card_lines(ts)[2])
+			GameState.gauntlet_wins = gw0
+			GameState.gauntlet_losses = gl0
+			_ok("%s ★★已晋级 ⇒ 倒计时指向周日小组赛开打" % tag, l_in.begins_with("距" + P2.STAGE_GROUP + "开始"), l_in)
+			_ok("%s 对照: 还在打 ⇒ 仍是闯关赛收盘倒计时" % tag, l_run.begins_with("距截止") or l_run.begins_with("已截止") or l_run.begins_with("今日"), l_run)
 		mm.queue_free()
 		await get_tree().process_frame
 

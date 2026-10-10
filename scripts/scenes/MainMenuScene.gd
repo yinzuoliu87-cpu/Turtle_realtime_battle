@@ -1391,6 +1391,11 @@ func _next_phase_start(now: int) -> int:
 
 ## 模式卡第三行: 倒计时。★档位与赛程条收盘块**同一个分类函数**(`close_block_kind`), 不另判一遍。
 func _mode_countdown(now: int) -> String:
+	## ★★周六已晋级的人: 闯关赛几点收盘与他无关了, 他要知道的是周日几点开打(2026-10-10 周六实操)。
+	##   开打时刻 = 周日分组那一刻(`FINALS_SEAT_HOUR_UTC`), 与赛程页决赛日卡「X 开始」同一个常量。
+	if _P2C.phase_at_utc(now) == _P2C.PHASE_GAUNTLET and str(GameState.gauntlet_state()) == _P2C.GAUNTLET_IN:
+		var seat: int = _utc_today_at(_next_phase_start(now), int(_P2C.FINALS_SEAT_HOUR_UTC))
+		return "距%s开始 %s" % [_P2C.STAGE_GROUP, _left_text(seat - now)]
 	var left: int = _P2C.close_left_sec(now)
 	var kind := _close_kind_at(now)
 	match kind:
