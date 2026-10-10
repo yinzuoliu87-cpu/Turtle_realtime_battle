@@ -284,7 +284,7 @@ func _elite_steal_skill_type(tref: Dictionary) -> String:        # 吞噬偷技:
 	for a in tref.get("active_skills", []):
 		var stype = str(a)
 		if stype == "": continue
-		if bool((battle._skill_meta.get(stype, {}) as Dictionary).get("passiveSkill", false)): continue
+		if bool((battle._skill_meta.get(stype, {}) as Dictionary).get("passiveSkill", false)): continue   # ★2026-10-10 命运之轮/海盗船/水晶球原被错标 passiveSkill(战斗里都按龟能主动放), 已从 pets.json 删标 ⇒ 现在可被吞噬(与龟壳复制同一道 can_copy 闸, 08-30 批量台已验过能被他人放)
 		## ★★2026-08-31: 走【和龟壳复制同一道闸】。
 		##   由来: 吞噬和龟壳复制是同一个机制(偷敌人的主动技再放出来), 但这里
 		##   **只过滤了被动技与未实装**, 黑名单一个都不看 ⇒ 实测 8 个黑名单技能全偷得到:
