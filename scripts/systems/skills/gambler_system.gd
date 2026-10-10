@@ -170,7 +170,7 @@ func _gambler_apply_wheel_suit(u: Dictionary, suit: int) -> void:   # 命运之�
 			battle._vfx._float_text(u["pos"] + Vector2(0, -64), "♦ 暴击+2% 护穿+1", Color("#ff9f43"))
 		_:
 			battle._damage._buff(u, "lifesteal", WHEEL_CLUB_LIFESTEAL, false, 9999.0); u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) + WHEEL_CLUB_ASPD
-			battle._vfx._float_text(u["pos"] + Vector2(0, -64), "♣ 吸血+0.5% 攻速+2%", Color("#5be08a"))
+			battle._vfx._float_text(u["pos"] + Vector2(0, -64), "♣ 生命偷取+0.5% 攻速+2%", Color("#5be08a"))
 	battle._recalc_stats(u)
 
 func _gambler_apply_wheel_stacks(u: Dictionary) -> void:   # 命运之轮跨场累积(方案B): 登场套用GameState本大轮已抽花色(切轮重置)·只玩家赌神调用

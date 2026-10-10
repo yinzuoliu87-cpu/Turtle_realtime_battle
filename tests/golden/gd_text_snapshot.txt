@@ -250,13 +250,13 @@ scripts/gamedata/phase2_types.gd|lit|每件灵物 +9% 闪避率 · 2 个触手 �
 scripts/gamedata/phase2_types.gd|lit|每件盾 +13 护甲 · 【怒气】冲击波 6% · 【圣光护盾】获得第 2 件「圣光护盾」装备 · 【收殓】敌方单位阵亡时, 给最近的携带盾者罩上该单位 30% 最大生命值的护盾
 scripts/gamedata/phase2_types.gd|lit|每件盾 +22 护甲 · 【怒气】冲击波 8% · 【收殓】同上 · 【圣光·强化】盾类装备给携带者罩护盾或加血时, 再多给其 20% 的圣光护盾值; 且圣光护盾装备生成的所有圣盾值 +20%
 scripts/gamedata/phase2_types.gd|lit|每件盾 +5 护甲 · 【怒气】全队每个单位每累计受到 400 点伤害, 就对最近的敌人释放一次冲击波, 造成 4% 自身最大生命值的真实伤害, 并为自己获得该伤害 20% 的护盾值 · 【圣光护盾】获得 1 件「圣光护盾」装备(可在背包自由装配, 不占装备位与单只上限; 掉档即消失): +250 最大生命, 每 3 秒为携带者生成 55 点圣光护盾值, 圣光护盾存在时反击敌人的每段伤害造成 2 点真实伤害
-scripts/gamedata/phase2_types.gd|lit|每件药水 +12% 治疗强度、+12% 护盾强度、+4 最大龟能 · 【猎物】+25% · 【战利品】每击杀 1 名猎物 → 全队攻击力永久 +5(本场累积·跨上下路与决胜保留)
+scripts/gamedata/phase2_types.gd|lit|每件药水 +12% 治疗强度、+12% 护盾强度、+4 最大龟能 · 【猎物】+25% · 【战利品】每击杀 1 名猎物 → 全队攻击力永久 +5(本场累积·跨路保留)
 scripts/gamedata/phase2_types.gd|lit|每件药水 +20% 治疗强度、+20% 护盾强度、+6 最大龟能 · 【猎物】+40% · 【战利品】每击杀 1 名猎物 → 全队攻击力永久 +8 · 【斩首】攻击猎物时, 若其生命低于 20% → 直接处决
 scripts/gamedata/phase2_types.gd|lit|每件药水 +6% 治疗强度、+6% 护盾强度、+2 最大龟能 · 【猎物】每 2.5 秒自动将敌方当前生命值最高的 1 名单位标记为猎物(龟蛋除外; 猎物死亡后下个周期重选); 全队对猎物造成的伤害 +15%
-scripts/gamedata/phase2_types.gd|lit|每件遗物 +10% 生命偷取 · 【生死界】>50% 时 +12% 攻击力(<50% 吸血翻倍) · 【远古之力】每 2.5 秒全队永久 +2% 增伤(上限 +35%) · 【龟蛋加固】本方龟蛋 +3600 最大生命值, 还击 140 攻击力 · 【觉醒】本路战斗开打满 20 秒后, 已累积的远古之力 +50%
+scripts/gamedata/phase2_types.gd|lit|每件遗物 +10% 生命偷取 · 【生死界】>50% 时 +12% 攻击力(<50% 生命偷取翻倍) · 【远古之力】每 2.5 秒全队永久 +2% 增伤(上限 +35%) · 【龟蛋加固】本方龟蛋 +3600 最大生命值, 还击 140 攻击力 · 【觉醒】本路战斗开打满 20 秒后, 已累积的远古之力 +50%
 scripts/gamedata/phase2_types.gd|lit|每件遗物 +3% 生命偷取 · 【生死界】携带遗物者生命 >50% 时额外 +3% 攻击力; 生命 <50% 时其生命偷取【翻倍】
-scripts/gamedata/phase2_types.gd|lit|每件遗物 +5% 生命偷取 · 【生死界】>50% 时 +5% 攻击力(<50% 吸血翻倍) · 【远古之力】每 2.5 秒全队永久 +1% 增伤(本场累积·跨路保留, 上限 +15%) · 【龟蛋加固】本方龟蛋 +1200 最大生命值, 且龟蛋开始还击(40 攻击力, 射程 420)
-scripts/gamedata/phase2_types.gd|lit|每件遗物 +8% 生命偷取 · 【生死界】>50% 时 +8% 攻击力(<50% 吸血翻倍) · 【远古之力】每 2.5 秒全队永久 +1.5% 增伤(上限 +25%) · 【龟蛋加固】本方龟蛋 +2200 最大生命值, 还击 80 攻击力
+scripts/gamedata/phase2_types.gd|lit|每件遗物 +5% 生命偷取 · 【生死界】>50% 时 +5% 攻击力(<50% 生命偷取翻倍) · 【远古之力】每 2.5 秒全队永久 +1% 增伤(本场累积·跨路保留, 上限 +15%) · 【龟蛋加固】本方龟蛋 +1200 最大生命值, 且龟蛋开始还击(40 攻击力, 射程 420)
+scripts/gamedata/phase2_types.gd|lit|每件遗物 +8% 生命偷取 · 【生死界】>50% 时 +8% 攻击力(<50% 生命偷取翻倍) · 【远古之力】每 2.5 秒全队永久 +1.5% 增伤(上限 +25%) · 【龟蛋加固】本方龟蛋 +2200 最大生命值, 还击 80 攻击力
 scripts/gamedata/phase2_types.gd|lit|法器
 scripts/gamedata/phase2_types.gd|lit|法器·法师
 scripts/gamedata/phase2_types.gd|lit|灵物
@@ -270,7 +270,7 @@ scripts/gamedata/phase2_types.gd|lit|遗物
 scripts/gamedata/phase2_types.gd|lit|遗物·古物
 scripts/gamedata/phase2_types.gd|lit|队伍每件装备 +130 最大生命值(食物双倍 +260) · 【成长】每 2.5 秒每件食物给携带者永久 +30 · 【学院】队伍全体额外 +220 最大生命值 · 【盛宴】每 2.5 秒, 全队回复已损失生命的 3%
 scripts/gamedata/phase2_types.gd|lit|队伍每件装备 +70 最大生命值(食物双倍 +140) · 【成长】每 2.5 秒每件食物给携带者永久 +16 · 【学院】队伍全体额外 +100 最大生命值
-scripts/gamedata/phase2_types.gd|lit|队伍每件装备给携带者 +30 最大生命值(食物类装备双倍 +60) · 【成长】每 2.5 秒, 每件食物给携带者永久 +8 最大生命值(无上限, 本场累积·跨上下路与决胜保留)
+scripts/gamedata/phase2_types.gd|lit|队伍每件装备给携带者 +30 最大生命值(食物类装备双倍 +60) · 【成长】每 2.5 秒, 每件食物给携带者永久 +8 最大生命值(无上限, 本场累积·跨路保留)
 scripts/gamedata/phase2_types.gd|lit|食物
 scripts/gamedata/phase2_types.gd|lit|食物·增益
 scripts/gamedata/phase2_types.gd|lit|香火
@@ -757,7 +757,7 @@ scripts/scenes/RealtimeBattle3DScene.gd|lit|冰川
 scripts/scenes/RealtimeBattle3DScene.gd|lit|凤凰雕像
 scripts/scenes/RealtimeBattle3DScene.gd|lit|口哨
 scripts/scenes/RealtimeBattle3DScene.gd|lit|命中叠金色闪电, 满 5 层引爆 1.0×ATK 真实伤害
-scripts/scenes/RealtimeBattle3DScene.gd|lit|命运吸血!
+scripts/scenes/RealtimeBattle3DScene.gd|lit|命运生命偷取!
 scripts/scenes/RealtimeBattle3DScene.gd|lit|嗜血之刃
 scripts/scenes/RealtimeBattle3DScene.gd|lit|复活!
 scripts/scenes/RealtimeBattle3DScene.gd|lit|大熊
@@ -771,7 +771,7 @@ scripts/scenes/RealtimeBattle3DScene.gd|lit|战利品 %d/5
 scripts/scenes/RealtimeBattle3DScene.gd|lit|护甲与魔抗 +20%
 scripts/scenes/RealtimeBattle3DScene.gd|lit|护甲与魔抗 +25%, 最大生命 +500
 scripts/scenes/RealtimeBattle3DScene.gd|lit|攻击力 +25%
-scripts/scenes/RealtimeBattle3DScene.gd|lit|攻击力 +40%, 暴击 +40%, 暴击伤害 +25%, 吸血提升
+scripts/scenes/RealtimeBattle3DScene.gd|lit|攻击力 +40%, 暴击 +40%, 暴击伤害 +25%, 生命偷取 +15%
 scripts/scenes/RealtimeBattle3DScene.gd|lit|攻击力 +45%
 scripts/scenes/RealtimeBattle3DScene.gd|lit|星辉
 scripts/scenes/RealtimeBattle3DScene.gd|lit|普攻命中使目标受到的治疗 -50%, 持续 5 秒
@@ -971,11 +971,11 @@ scripts/scenes/TeamSelectScene.gd|text|选择 3 只龟
 scripts/scenes/TeamSelectScene.gd|text|选择统领
 scripts/scenes/TrainerConfigScene.gd|lit|主动
 scripts/scenes/TrainerConfigScene.gd|lit|冰川
-scripts/scenes/TrainerConfigScene.gd|lit|冷却结束后自动吹哨，随机召唤以下一种。护盾：全体友军获得 700 点临时生命，5 秒后逐渐消退。灵龟：召出一只灵体小龟，蓄力后打出贯穿 2000 码的气波，命中的敌人受到 100 点、加目标最大生命 15% 的真实伤害、被击飞，破甲 30% 持续 5 秒。狂暴：全体友军 4 秒内攻击力 +20%、每次出手 +20 点吸血，且不会死亡。冷却 14 秒。
+scripts/scenes/TrainerConfigScene.gd|lit|冷却结束后自动吹哨，随机召唤以下一种。护盾：全体友军获得 700 点临时生命，5 秒后逐渐消退。灵龟：召出一只灵体小龟，蓄力后打出贯穿 2000 码的气波，命中的敌人受到 100 点、加目标最大生命 15% 的真实伤害、被击飞，破甲 30% 持续 5 秒。狂暴：全体友军 4 秒内攻击力 +20%、生命偷取 +20%，且不会死亡。冷却 14 秒。
 scripts/scenes/TrainerConfigScene.gd|lit|冷却结束后自动朝最近的敌人射出钩索，命中 2000 码内第一个敌人：眩晕 4 秒并拉至大师身边，期间目标受到的伤害 +25%。冷却 20 秒；未命中时冷却 10 秒。
 scripts/scenes/TrainerConfigScene.gd|lit|冷却结束后自动朝最近的敌人投掷药水（射程 2000 码）。落点 300 码内的友军获得 5 秒狂热：攻速 +30%，移速 +25%，龟能充能 +25%。冷却 16 秒。
 scripts/scenes/TrainerConfigScene.gd|lit|冷却结束后自动朝最近的敌人生成一条 2000 码长的冰川，持续 6 秒。冰面上的敌人移速 -40%，受到的伤害 +20%。冷却 17 秒。
-scripts/scenes/TrainerConfigScene.gd|lit|冷却结束后自动标记 2000 码内最近的敌人。该敌人下次死亡时以 30% 最大生命复活并加入我方，复活后 2.5 秒无敌，此后每秒损失 2% 最大生命，持续作战至决胜阶段。冷却 60 秒；未命中时冷却 30 秒。
+scripts/scenes/TrainerConfigScene.gd|lit|冷却结束后自动标记 2000 码内最近的敌人。该敌人下次死亡时以 30% 最大生命复活并加入我方，复活后 2.5 秒无敌，此后每秒损失 2% 最大生命，持续作战至终极战场。冷却 60 秒；未命中时冷却 30 秒。
 scripts/scenes/TrainerConfigScene.gd|lit|冷却结束后自动锁定 2000 码内最近的敌人，持续 15 秒：目标受到的伤害 +15%，其周围 400 码内的友军优先攻击该目标（范围随目标移动）。冷却 30 秒；未命中时冷却 15 秒。
 scripts/scenes/TrainerConfigScene.gd|lit|口哨
 scripts/scenes/TrainerConfigScene.gd|lit|少女
@@ -1148,7 +1148,7 @@ scripts/scenes/battle/dual_lane_flow.gd|lit|龟蛋破碎
 scripts/scenes/battle/dual_lane_flow.gd|text|%s  对阵
 scripts/scenes/battle/dual_lane_flow.gd|text|%s  战果
 scripts/scenes/battle/dual_lane_flow.gd|text|三路开战
-scripts/scenes/battle/dual_lane_flow.gd|text|决胜阶段
+scripts/scenes/battle/dual_lane_flow.gd|text|上下路幸存单位
 scripts/scenes/battle/dual_lane_flow.gd|text|开始战斗
 scripts/scenes/battle/dual_lane_flow.gd|text|拖动单位调整站位
 scripts/scenes/battle/dual_lane_flow.gd|text|本路失败
@@ -1597,14 +1597,14 @@ scripts/systems/skills/fortune_system.gd|lit|掷骰 +%d金币
 scripts/systems/skills/fortune_system.gd|lit|金盾 +%d
 scripts/systems/skills/fortune_system.gd|lit|龟能 +%d
 scripts/systems/skills/gambler_system.gd|lit|♠ 攻+3 血+10
-scripts/systems/skills/gambler_system.gd|lit|♣ 吸血+0.5% 攻速+2%
+scripts/systems/skills/gambler_system.gd|lit|♣ 生命偷取+0.5% 攻速+2%
 scripts/systems/skills/gambler_system.gd|lit|♥ 护甲+1 魔抗+1
 scripts/systems/skills/gambler_system.gd|lit|♦ 暴击+2% 护穿+1
 scripts/systems/skills/ghost_system.gd|lit|幻影!
 scripts/systems/skills/hunter_system.gd|lit|处决!
 scripts/systems/skills/hunter_system.gd|lit|掠夺!
 scripts/systems/skills/phoenix_system.gd|lit|涅槃!
-scripts/systems/skills/rainbow_system.gd|lit|橙·全体吸血
+scripts/systems/skills/rainbow_system.gd|lit|橙·全体生命偷取
 scripts/systems/skills/shell_system.gd|lit|破隐!
 scripts/systems/skills/shell_system.gd|lit|觉醒
 scripts/systems/trainer/trainer_system.gd|lit|归顺!

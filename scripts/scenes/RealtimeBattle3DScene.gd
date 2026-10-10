@@ -4005,7 +4005,7 @@ func _emit_basic(u: Dictionary, tgt: Dictionary, dmg: int, col: Color, i: int) -
 	if u.get("dice_fate_ls", false):
 		_ls = DiceSystem.FATE_LIFESTEAL
 		u["dice_fate_ls"] = false
-		_vfx._float_text(u["pos"] + Vector2(0, -58), "命运吸血!", Color("#ff6b6b"))
+		_vfx._float_text(u["pos"] + Vector2(0, -58), "命运生命偷取!", Color("#ff6b6b"))
 	# 手半剑084近战携带→瞬发激光束(整段在 eq_blade_batch.beam_basic); 近战但射程被拉远的→弹道(见 BasicConsts.LONG_MELEE_RANGE); 其余近战→瞬发
 	if not _equip_sys._blade_sys.beam_basic(u, tgt, dmg, col, _ls, i):
 		if u["melee"] and _eff_range(u) < BasicConsts.LONG_MELEE_RANGE:
@@ -6166,7 +6166,7 @@ const _CHEST_TREASURE_DESC := {
 	"gem_armor": "护甲与魔抗 +25%, 最大生命 +500",
 	"poison": "普攻命中使目标受到的治疗 -50%, 持续 5 秒",
 	"phoenix_statue": "首次死亡以 25% 最大生命复活",
-	"crown": "攻击力 +40%, 暴击 +40%, 暴击伤害 +25%, 吸血提升",
+	"crown": "攻击力 +40%, 暴击 +40%, 暴击伤害 +25%, 生命偷取 +15%",
 	"thunder": "命中叠金色闪电, 满 5 层引爆 1.0×ATK 真实伤害",
 	"starlight": "自身造成的所有伤害转为真实伤害",
 }

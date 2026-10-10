@@ -312,7 +312,7 @@ func _dl_overview_lane_row(lane: String, cn: String) -> Control:
 	var tag = Label.new(); tag.text = cn; tag.add_theme_font_size_override("font_size", 26); tag.add_theme_color_override("font_color", Color("#cfe6ff"))
 	tag.custom_minimum_size = Vector2(108, 0); row.add_child(tag)
 	if lane == "final":
-		var fl = Label.new(); fl.text = "决胜阶段"; fl.add_theme_font_size_override("font_size", 22); fl.add_theme_color_override("font_color", Color("#9fb4c8"))
+		var fl = Label.new(); fl.text = "上下路幸存单位"; fl.add_theme_font_size_override("font_size", 22); fl.add_theme_color_override("font_color", Color("#9fb4c8"))
 		row.add_child(fl)
 		return row
 	row.add_child(_dl_mini_avatars(_dl_lane_specs(lane)))

@@ -43,7 +43,7 @@ const WHISTLE_WAVE_MAXHP_PCT := 0.15  # 口哨②: 真实伤害的百分比段 =
 const WHISTLE_WAVE_KB := 100.0   # 口哨②: 击飞距离
 const WHISTLE_SHRED_SEC := 5.0   # 口哨②: 削甲持续(秒)  ★文案没写这个时长
 const WHISTLE_BERSERK_ATK := 0.2 # 口哨③: 攻击力 +20%
-const WHISTLE_BERSERK_LS := 20   # 口哨③: 生命偷取 +20(定值)
+const WHISTLE_BERSERK_LS := 0.20   # 口哨③: 生命偷取 +20%。★原来写 20(=2000%, 回血 = 伤害×20); 方案书 20260723c 原文「+20% 吸血」(2026-10-10 改)
 const WHISTLE_BERSERK_SEC := 4.0 # 口哨③: 狂暴/免死 持续(秒)
 ## ── 口哨②灵体气波: 真 skillshot(2026-07-30 重做) ──
 ##

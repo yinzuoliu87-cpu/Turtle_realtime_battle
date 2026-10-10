@@ -148,7 +148,11 @@ func _test_whistle(scene) -> void:
 	_ok("★口哨·临时血: 当前hp +700", abs(float(ally["hp"]) - (hp0 + 700.0)) < 0.5)
 	# ③ 狂暴: +20%攻击力 + 免疫死亡
 	var atk0: float = float(ally["atk"])
+	var ls0: float = float(ally.get("ls_bonus", 0.0))
 	scene._trainer_sys._whistle_berserk_on(ally)   # 直接对已知友军(绕过随机)
+	## ★量生效值, 不量常量: 原来常量写 20(回血 = 伤害×20 = 2000%), 文案和门禁都照抄了它, 一直没人量过(2026-10-10)。
+	_ok("★口哨·狂暴: 生命偷取实际 +20%(不是 +2000%)", absf(float(ally.get("ls_bonus", 0.0)) - ls0 - 0.20) < 0.001,
+		"%.3f → %.3f" % [ls0, float(ally.get("ls_bonus", 0.0))])
 	_ok("★口哨·狂暴: 攻击力 +20%", float(ally["atk"]) > atk0 * 1.15,
 		"%.0f → %.0f" % [atk0, float(ally["atk"])])
 	_ok("★口哨·狂暴: 4秒免疫死亡(deathfloor)", float(ally.get("deathfloor_until", 0.0)) > scene._t)
