@@ -1838,3 +1838,5 @@ revoke all on function public.week_leaderboard(bigint, int) from public;
 revoke execute on function public.week_leaderboard(bigint, int) from anon;
 grant execute on function public.week_leaderboard(bigint, int) to authenticated;
 -- <<< END week_leaderboard_v3 20261010 <<<
+-- week_leaderboard_v3 20261010 已上生产(2026-10-10 Management API 回 201; 回读 pg_get_functiondef 含 gl_w = true;
+--   只读重算本周榜: 73 人不变, 最高场次 22 → 16, 超 16 场 21 → 0)

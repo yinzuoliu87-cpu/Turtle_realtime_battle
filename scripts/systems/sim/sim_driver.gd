@@ -412,21 +412,25 @@ func _do_shop(s: Node) -> void:
 	for _round in range(8):
 		if not _alive(s):
 			return
-		## 不囤货: 背包里没装上的件数 > 全队空位 + 1(留一件凑合成)⇒ 不再买
+		## 不囤货: 背包里没装上的件数 > 全队空位 + 1(留一件凑合成)⇒ 只买「凑升星」的同款(已有同 id ★1), 别的不买。
+		## ★2026-10-10 周六实操: 原来这里直接 break ⇒ 满装备的号整天一件不买、攒到 190 币, 被我误判成「游戏里没处花钱」;
+		##   真人满装备时正是拿钱买同款三合一升星(商店卡上有「已有 N/3」与合成指示星)。
+		var merge_only := false
 		if not tut:
 			var free_slots: int = maxi(0, int(GameState.team_equip_cap()) - int(GameState.team_equipped_count()))
-			if _bench_gear_n() > free_slots:
-				break
+			merge_only = _bench_gear_n() > free_slots
 		var offer: Array = s.get("_offer")
 		var cands: Array = []
 		for i in range(offer.size()):
 			if offer[i] == null:
 				continue
 			var price := int(s.call("_price", s.call("_deco", offer[i])))
+			if merge_only and int(s.call("_owned_count", str((s.call("_deco", offer[i]) as Dictionary).get("id", "")), 1)) < 1:
+				continue
 			if price <= int(GameState.meta_deepsea_coins):
 				cands.append(i)
 		if cands.is_empty():
-			if style == 0 and not refreshed and not tut and int(GameState.meta_deepsea_coins) >= 2 + 3:
+			if (style == 0 or merge_only) and not refreshed and not tut and int(GameState.meta_deepsea_coins) >= 2 + 3:
 				refreshed = true
 				s.call("_on_refresh")
 				_ev("shop_refresh", {"coins": int(GameState.meta_deepsea_coins)})
