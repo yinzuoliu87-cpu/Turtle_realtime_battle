@@ -13,7 +13,7 @@ extends Node
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 
 ## 文案字面量(data/phase2-equipment.json 与 盾羁绊文案, 2026-10-04)
-const TXT_HAMMER_PCT_3 := 0.15      # 047「获得 4/6/15% 自身最大生命值的攻击力」3★
+const TXT_HAMMER_PCT_3 := 0.08      # 047「获得 4/6/8% 自身最大生命值的攻击力」3★(2026-10-10 15%→8%)
 const TXT_BAMBOO_FLAT_3 := 35       # 039「（25/30/35 + 6% 自身最大生命值）魔法伤害」3★
 const TXT_BAMBOO_PCT := 0.06
 const TXT_WAVE_PCT_3 := 0.08        # 盾羁绊冲击波「自身最大生命的 4/6/8%」第 3 档
@@ -72,7 +72,7 @@ func _ready() -> void:
 	_s.process_mode = Node.PROCESS_MODE_DISABLED
 	_s._edit_mode = false
 
-	# ── ① 047 重击锤 3★: ATK 增量 == maxHp × 15% ──
+	# ── ① 047 重击锤 3★: ATK 增量 == maxHp × 8%(2026-10-10 15%→8%) ──
 	_s._units.clear()
 	var c1: Dictionary = _mk(500.0, 400.0, "left", MHP)
 	c1["equips"] = []; c1["eq_state"] = {}; c1["hammer_pct"] = 0.0
@@ -84,7 +84,7 @@ func _ready() -> void:
 	_s._recalc_stats(c1)
 	var got1: float = float(c1["atk"]) - atk0
 	_ok("① 分母: 重击锤 maxHp=%.0f" % mhp1, mhp1 > 100.0)
-	_ok("① 047 3★ ATK 增量 %.1f == 真实maxHp %.0f × 15%% = %.1f" % [got1, mhp1, mhp1 * TXT_HAMMER_PCT_3],
+	_ok("① 047 3★ ATK 增量 %.1f == 真实maxHp %.0f × 8%% = %.1f" % [got1, mhp1, mhp1 * TXT_HAMMER_PCT_3],
 		absf(got1 - mhp1 * TXT_HAMMER_PCT_3) < 1.0, "若是 %.1f 就是又除了 3" % (mhp1 * TXT_HAMMER_PCT_3 / 3.0))
 
 	# ── ② 039 竹箭 3★: 强化竹箭伤害 == 35 + maxHp × 6% ──

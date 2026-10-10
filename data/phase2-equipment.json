@@ -558,10 +558,10 @@
     "baseStats1": "+生命100/200/400",
     "shopAvailable": 1,
     "emoji": "🔨",
-    "effectDesc1": "获得 4/6/15%自身最大生命值的攻击力，该攻击力随最大生命值动态成长。",
+    "effectDesc1": "获得 4/6/8%自身最大生命值的攻击力，该攻击力随最大生命值动态成长。",
     "effectDesc3": "",
     "img": "equip/dungeon-hammer.png",
-    "effectBrief": "获得自身 4/6/15% 最大生命值的攻击力，随最大生命值成长。"
+    "effectBrief": "获得自身 4/6/8% 最大生命值的攻击力，随最大生命值成长。"
   },
   {
     "id": "p2eq_048",

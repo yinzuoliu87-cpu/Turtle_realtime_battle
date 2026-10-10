@@ -239,7 +239,7 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 			u["_skele_pending"] = true
 			u["_skele_si"] = si
 		"p2eq_047":   # 重击锤: ATK += maxHp×pct (一次性按当前maxHp折算)
-			u["hammer_pct"] = float(u.get("hammer_pct", 0.0)) + [0.04, 0.06, 0.15][si]   # 重击锤: 随maxHp动态(在_recalc_stats累加), 多件叠加
+			u["hammer_pct"] = float(u.get("hammer_pct", 0.0)) + [0.04, 0.06, 0.08][si]   # 重击锤(3★ 15%→8% 用户2026-10-10): 随maxHp动态(在_recalc_stats累加), 多件叠加
 			battle._recalc_stats(u)
 		"p2eq_041":   # 退潮浊液: 登场5秒后涨潮(临时+maxHp/+攻击/+体积/+射程), 到期退潮还原(用户2026-07-19)
 			## ★用户 2026-09-30 加强: 250/400/650 → 500/1100/2000 maxHp ·
