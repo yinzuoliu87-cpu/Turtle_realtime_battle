@@ -452,7 +452,7 @@ func _dl_enter_place() -> void:
 		return
 	## ★回放播放中: 不建「开打」钮、不挂引导/自动驾驶 —— 开打由 ReplayRecorder 在录制时那一步替人按
 	##   (连同录下的站位一起), 人在这一屏什么都改不了。
-	if battle._replay.is_playing():
+	if battle._replay.blocks_input():   # 复算上一局(中途退出)同样: 开打由 ReplayRecorder 自动按
 		return
 	battle._edit_drag_unit = null
 	if not is_instance_valid(battle._dl_go_btn):
@@ -576,8 +576,8 @@ func _dl_fight_start_dramatize() -> void:
 	battle._splash_ring_bold(Vector2(battle._arena_center.x + half_w * 0.55, cy), Color(1.0, 0.42, 0.42), 150.0)
 
 func _dl_handle_place_input(event: InputEvent) -> void:
-	if battle._replay.is_playing():
-		return   # 回放: 站位以记录为准, 人拖不动
+	if battle._replay.blocks_input():
+		return   # 回放 / 复算: 站位以记录为准, 人拖不动
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			var hit = battle._edit_unit_at_screen(event.position)   # 只拖我方(left)非蛋非召唤

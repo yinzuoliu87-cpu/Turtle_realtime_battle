@@ -17,6 +17,7 @@ const _P2C := preload("res://scripts/gamedata/phase2_config.gd")
 const _SB := preload("res://scripts/net/supabase.gd")
 const _BE := preload("res://scripts/net/backend.gd")
 const _RU := preload("res://scripts/systems/replay/replay_uploader.gd")
+const _AM := preload("res://scripts/systems/replay/abandoned_match.gd")
 ## 拆墙之后那句非阻塞提示要把人送到【绑定屏】去, 而那一屏的代码在设置页那侧
 ## ⇒ 跨场景传一个 static 布尔 `open_bind_on_entry`。
 ## ★不在这边再建一份绑定 UI: 抄一份就要把昵称那一行和验证码状态机抄第二遍
@@ -221,6 +222,11 @@ func _ready() -> void:
 	## 回放 S2: 没回读确认传上去的周六录像补传一次(同上一句同一个理由; 判据全在 ReplayUploader 里)。
 	_RU.retry()
 	load("res://scripts/net/ghost_uploader.gd").retry()   # E7: 没回读确认的对手快照补传(判据全在 ghost_uploader 里)
+	## ★★中途退出的那一局(杀进程 / 闪退 / 断电)在这里打完并结算(2026-10-10 用户「学习他们的做法」,
+	##   docs/plans/20261010-中途退出自动结算.md)。必须在登录墙之前、在任何能开新局的入口之前 —— 理由同上面那几句。
+	##   判据全在 `AbandonedMatch` 里; 只在自己就是 current_scene 时跳(门禁把主菜单挂成子节点量东西时不跳, 同登录墙那条)。
+	if get_tree() != null and get_tree().current_scene == self and _AM.resume_if_any(get_tree()):
+		return
 	## ★★★ 2026-09-29 【墙拆了】—— 用户「那就不用必须绑定吧」推翻了他 2026-09-24
 	##   那句「直接改为必须绑定账号吧」。`login_wall_on()` 现在**恒假**
 	##   (`phase2_config.WALL_BLOCKS = false`) ⇒ 下面这三行对玩家永远不成立,
@@ -274,6 +280,10 @@ func _ready() -> void:
 	if _tdm != null and str(_tdm.get("pending_toast")) not in ["", "<null>"]:
 		_toast(str(_tdm.get("pending_toast")))
 		_tdm.set("pending_toast", "")
+	## 上一局中途退出、但没法打完(跨周作废 / 无法复算)⇒ 飘一行说清楚(打完了的那种看的是结算屏, 不在这里)。
+	if _AM.notice != "":
+		_toast(_AM.notice)
+		_AM.notice = ""
 
 
 ## 内容框居中于真实视口 (1:1 PoC FIT 居中); bg 在 self 上随视口自适应

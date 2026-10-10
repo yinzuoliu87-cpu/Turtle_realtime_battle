@@ -30,6 +30,9 @@ const BGM_PATHS: Dictionary = {
 # 默认音量 (linear, 0-1)
 var sfx_volume: float = 0.8
 var bgm_volume: float = 0.45
+## 上一局复算期间(快进, 遮罩盖着)不出音效: 一帧几百步, 每一击都生一个播放器会堆成几百个。
+## 写的人: `AbandonedMatch.build_cover` / 撤遮罩时还原。不进存档(与 sfx_volume 那个玩家设置无关)。
+var mute_sfx := false
 
 # SFX 播放器池 (一次性 spawn, 自动 free)
 var _sfx_cache: Dictionary = {}   # name → AudioStream
@@ -97,7 +100,7 @@ func apply_bgm_volume() -> void:
 func play_sfx(name: String, volume_scale: float = 1.0, pitch_base: float = 1.0,
 		pitch_jitter: float = 0.05, vol_jitter: float = 0.05) -> void:
 	var stream: AudioStream = _sfx_cache.get(name)
-	if stream == null:
+	if stream == null or mute_sfx:
 		return
 	# 每次 spawn 一个临时 player, finished 后自动 free (避免重叠时 cut off 旧的)
 	var p := AudioStreamPlayer.new()

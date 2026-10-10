@@ -101,6 +101,8 @@ const Uploader := preload("res://scripts/systems/replay/replay_uploader.gd")
 ## 实时观赛(2026-10-07, docs/plans/20261007-实时观赛.md): 打的人边打边传(`live_upload`) / 看的人按观赛方式跟播(`live_spectate`)。
 const LiveUp := preload("res://scripts/systems/replay/live_upload.gd")
 const Live := preload("res://scripts/systems/replay/live_spectate.gd")
+## 中途退出自动结算(2026-10-10, docs/plans/20261010-中途退出自动结算.md): 录制时落「待结算单」, 下次开机以 "resume" 模式打完。
+const Abandoned := preload("res://scripts/systems/replay/abandoned_match.gd")
 
 ## 待播的那一份: 播放入口写、战斗场 `_ready` 里 `start()` 读走。
 static var pending_play: Dictionary = {}
@@ -110,7 +112,7 @@ static var _backup_test_mode := false
 static var _has_backup := false
 
 var battle
-var mode := ""                 # "rec" 录 / "play" 播 / "" 都不是
+var mode := ""                 # "rec" 录 / "play" 播 / "resume" 把上一局中途退出的打完(见 abandoned_match.gd) / "" 都不是
 var rec: Dictionary = {}
 var _ev_i := 0                 # 播放: 下一条待发事件下标
 var _firing := false           # 播放: 正在由本模块自己触发事件(放行 allow_input)
@@ -122,6 +124,20 @@ var finished := false
 var _ui_built := false
 var live = null                 # 观赛(看): `live_spectate` 实例; null = 普通回放(有暂停 / 倍速 / 进度条)
 var live_up = null              # 直播(打): `live_upload` 实例; null = 这一局不直播
+## ── 中途退出自动结算 ──
+var _pending_on := false        # 录制: 这一局落了待结算单(每条输入覆盖写一次)
+var _pending_meta: Dictionary = {}
+var _resume_evs: Array = []     # 复算: 原局已发生的输入(按步号重放); 放完之后没有人的输入
+var resume_loss := false        # 复算: 不打了, 开局即认输(版本不同 / 复算闪退过两次)
+var resume_text := ""           # 复算: 结算屏顶上那一行
+var resume_steps := 0           # 复算: 已推的 sim 步(观测量 + 防卡死上限)
+var resume_dropped := ""        # 复算: 原局前缀对不上时的原因(继续打完, 结果照算)
+var _cover = null
+var _revealed := false
+## 复算每帧推 sim 的时间预算(微秒): 帧切法不改结果(回放倍速已证), 只决定多快打完。遮罩是静止的, 一帧 40ms(25 帧/秒)看不出卡。
+const RESUME_BUDGET_US := 40000
+## 防卡死: 推了这么多步还没结算 ⇒ 认输收尾(正常对局远不到: 实测 9457 场没有超 4 分钟的)。
+const RESUME_STEP_CAP := 60 * 60 * 20
 
 
 func _init(b) -> void:
@@ -144,6 +160,9 @@ func start() -> void:
 		battle._battle_rng.seed = GameState.note_battle_seed(int(rec.get("seed", 0)))
 		live = Live.take(self)      # 观赛会话(赛况板「观赛」/ 对阵图开播时挂上的); 没有 = 普通回放
 		return
+	if not Abandoned.pending_resume.is_empty():
+		_start_resume()
+		return
 	if should_record():
 		mode = "rec"
 		rec = {
@@ -163,6 +182,39 @@ func start() -> void:
 		rec["id"] = new_id()
 		if LiveUp.wanted():
 			live_up = LiveUp.new(self)
+		if Abandoned.wanted(battle):
+			_pending_meta = Abandoned.capture_meta()
+			_pending_on = Abandoned.write(rec, _pending_meta)
+
+
+## 复算上一局(主菜单 `AbandonedMatch.resume_if_any` 挂上的)。种子 / 状态 / id 都是原局的;
+##   事件与校验点**重新录**(前缀事件从原局里按步号重放, 之后的「开打」是自动按的, 一样记进录像)。
+func _start_resume() -> void:
+	var pr: Dictionary = Abandoned.pending_resume
+	Abandoned.pending_resume = {}
+	mode = "resume"
+	rec = (pr["rec"] as Dictionary).duplicate(true)
+	resume_loss = bool(pr.get("loss", false))
+	resume_text = str(pr.get("text", Abandoned.TXT_DONE))
+	_resume_evs = [] if resume_loss else (rec.get("events", []) as Array).duplicate(true)
+	rec["events"] = []
+	rec["cps"] = []
+	rec.erase("end")
+	if resume_loss:
+		rec["client_version"] = client_version()   # 判负那一份是本机这一版录的(开局即认输)
+	battle._battle_rng.seed = GameState.note_battle_seed(int(rec.get("seed", 0)))
+	## 直播行(周六): 原局开打过 ⇒ 观众那边挂着一行「正在打」, 结算时补一行 ended。复算途中不发心跳(快进)。
+	if not resume_loss and LiveUp.wanted():
+		for e in _resume_evs:
+			if str((e as Dictionary).get("k", "")) == "fight":
+				live_up = LiveUp.new(self)
+				live_up.started = true
+				break
+
+
+## 人的输入进不来(回放 / 复算): 摆位屏不建开打钮、拖不动。
+func blocks_input() -> bool:
+	return mode == "play" or mode == "resume"
 
 
 ## 这一局录不录。Q3(用户授权按推荐): 先只录周六闯关赛;
@@ -253,7 +305,35 @@ func fight_steps() -> Array:
 func sim_feed(rd: float) -> float:
 	if live != null and mode == "play":
 		return live.feed(rd)
+	if mode == "resume":
+		return _resume_frame(rd)
 	return rd * time_mult()
+
+
+## 复算的一帧: 没结算 ⇒ 在时间预算内直接推 sim(返回 0, 累加器这一帧不再推); 结算屏出来了 ⇒ 撤遮罩, 之后照常走。
+func _resume_frame(rd: float) -> float:
+	if finished:
+		if not _revealed and bool(battle._settled):
+			_revealed = true
+			Abandoned.reveal(battle, _cover, resume_text)
+			_cover = null
+		return rd
+	if _cover == null:
+		_cover = Abandoned.build_cover(battle)
+	var t0 := Time.get_ticks_usec()
+	while not finished:
+		var frozen: bool = battle._hitstop > 0.0
+		var in_ts: bool = not battle._timestop._ts_active.is_empty()
+		battle._sim_step(battle.SIM_DT, frozen, in_ts)
+		resume_steps += 1
+		if resume_steps >= RESUME_STEP_CAP and not finished:
+			push_warning("[Abandoned] 复算 %d 步仍未结算 ⇒ 认输收尾" % resume_steps)
+			_firing = true
+			battle._do_surrender()
+			_firing = false
+		if Time.get_ticks_usec() - t0 > RESUME_BUDGET_US:
+			break
+	return 0.0
 
 
 ## 观赛中(没有播放控件, 只有「退出」)。
@@ -285,14 +365,38 @@ func pre_step() -> bool:
 	var fired := false
 	if mode == "play" and diverged_at < 0:
 		fired = _fire_due(s)
+	elif mode == "resume":
+		fired = _resume_inputs(s)
 	if s > 0 and s % CP_EVERY == 0 and diverged_at < 0:
 		_checkpoint(s)
 		## 录制那一局在第 E 步就结算了, 本机却还在打 ⇒ 结局已经不同(例如漏了一条认输)。
 		var end_s: int = int((rec.get("end", {}) as Dictionary).get("s", -1))
 		if end_s >= 0 and s > end_s and not finished and diverged_at < 0:
 			_diverge(s, "录制那一局在第 %d 步已经结束, 本机还没结束" % end_s)
-	if live_up != null:
+	if live_up != null and mode == "rec":
 		live_up.heartbeat(s)        # 直播: 每 3 游戏秒心跳(校验点之后 ⇒ 这一步的校验点在这一行里)
+	return fired
+
+
+## 复算: 这一步开头该发的输入。①判负 ⇒ 开局即认输; ②原局前缀按步号重放(与回放同一套 `_fire_due`);
+##   ③前缀放完之后没有人的输入 —— 幕布 5 秒自己走(sim 里的), **摆位屏立刻按当前站位开打**(摆位没有时限, 不按就永远不打)。
+func _resume_inputs(s: int) -> bool:
+	if finished:
+		return false
+	_firing = true
+	var fired := false
+	if resume_loss:
+		battle._do_surrender()
+		fired = true
+	else:
+		if _ev_i < _resume_evs.size():
+			_firing = false
+			fired = _fire_due(s)
+			_firing = true
+		if _ev_i >= _resume_evs.size() and str(battle._dl_state) == "place":
+			battle._dl_sys._dl_start_fight()
+			fired = true
+	_firing = false
 	return fired
 
 
@@ -306,7 +410,7 @@ func _checkpoint(s: int) -> void:
 	##   它不进对局 —— 开打那一刻的站位由 fight 事件逐个比对(`_apply_positions`)。
 	##   ⇒ 摆位期的校验点记成占位, 两边都不比。
 	var h := PLACE_CP if str(battle._dl_state) == "place" else digest(battle)
-	if mode == "rec":
+	if mode == "rec" or mode == "resume":
 		(rec["cps"] as Array).append(h)
 		return
 	var idx: int = s / CP_EVERY - 1
@@ -324,7 +428,7 @@ func _checkpoint(s: int) -> void:
 
 func _fire_due(s: int) -> bool:
 	var fired := false
-	var evs: Array = rec.get("events", [])
+	var evs: Array = _resume_evs if mode == "resume" else rec.get("events", [])
 	while _ev_i < evs.size():
 		var e: Dictionary = evs[_ev_i]
 		var es: int = int(e.get("s", -1))
@@ -350,14 +454,10 @@ func _fire_due(s: int) -> bool:
 ##   录: 记下来, 放行。  播: 只放行"本模块自己在发"或"录制时也是在步内这一刻发生"的那一条。
 func allow_input(kind: String) -> bool:
 	if mode == "rec":
-		var e := {"s": int(battle._sim_step_n), "k": kind, "i": _in_step}
-		if kind == "fight":
-			e["p"] = positions(battle)
-		(rec["events"] as Array).append(e)
-		if live_up != null:
-			## 步里面记的(i=true)这一步后面可能还有 ⇒ horizon 退一步(见 live_upload 头注)。
-			live_up.on_event(kind, int(battle._sim_step_n) - (1 if _in_step else 0))
+		_record_event(kind)
 		return true
+	if mode == "resume":
+		return _resume_allow(kind)
 	if mode != "play":
 		return true
 	var evs: Array = rec.get("events", [])
@@ -375,17 +475,57 @@ func allow_input(kind: String) -> bool:
 	return true
 
 
+## 录下一条输入(录制; 复算时自己按的那几下也照样录 —— 复算打完存下来的录像要能播)。
+func _record_event(kind: String) -> void:
+	## ★本模块自己按的(复算的自动开打 / 前缀重放)发生在步开头 pre_step 里, 等价于「两步之间」⇒ i=false(与人按的同一口径, 存下来的录像才播得动)。
+	var e := {"s": int(battle._sim_step_n), "k": kind, "i": _in_step and not _firing}
+	if kind == "fight":
+		e["p"] = positions(battle)
+	(rec["events"] as Array).append(e)
+	if live_up != null and mode == "rec":
+		## 步里面记的(i=true)这一步后面可能还有 ⇒ horizon 退一步(见 live_upload 头注)。
+		live_up.on_event(kind, int(battle._sim_step_n) - (1 if _in_step else 0))
+	if _pending_on:
+		Abandoned.write(rec, _pending_meta)   # 待结算单跟着输入走: 复算要重放到退出那一刻为止的全部输入
+
+
+## 复算: 前缀没放完 ⇒ 只认原局下一条(同回放); 放完之后只认本模块自己按的(自动开打 / 判负认输)。人的输入一律不认。
+func _resume_allow(kind: String) -> bool:
+	if _ev_i < _resume_evs.size():
+		var e2: Dictionary = _resume_evs[_ev_i]
+		if str(e2.get("k", "")) != kind or int(e2.get("s", -1)) != int(battle._sim_step_n):
+			return false
+		if not _firing and not (bool(e2.get("i", false)) and _in_step):
+			return false
+		_ev_i += 1
+		if kind == "fight" and not _apply_positions(e2.get("p", [])):
+			_diverge(int(battle._sim_step_n), "开打时场上单位与录制时不同")
+			return false
+		_record_event(kind)
+		return true
+	if not _firing:
+		return false
+	_record_event(kind)
+	return true
+
+
 # ─────────────────────────────── 结束 ───────────────────────────────
 
 ## `_settle_season` 第一行调。返回 true = 这是回放, 结算一律跳过(V5 零副作用)。
 func on_settle(won: bool) -> bool:
-	if mode == "rec" and not finished:
+	if (mode == "rec" or mode == "resume") and not finished:
 		finished = true
 		rec["end"] = {"s": int(battle._sim_step_n), "h": digest(battle), "won": won}
 		var id := save_record(rec)
 		if id != "" and GameState != null:
 			GameState.replay_pending_id = id      # record_match 那一刻挂到战绩行上
 			Uploader.enqueue(id)                  # S2: 先进落盘队列再发; 回读确认才销单
+		## 待结算单: 战绩行挂上 id 并落盘 = 已结算 ⇒ 之后删单。录像存不下来(拿不到 id)⇒ 当场删(宁可漏, 不可双)。
+		if _pending_on or mode == "resume":
+			if id == "":
+				Abandoned.clear()
+			else:
+				Abandoned.clear_after_settle(id)
 		if live_up != null:
 			live_up.finish(int(battle._sim_step_n))   # 直播最后一行: 带 end、ended = true
 		return false
@@ -403,6 +543,13 @@ func on_settle(won: bool) -> bool:
 
 
 func _diverge(s: int, why: String) -> void:
+	if mode == "resume":
+		## 复算对不上原局前缀(同版本同设备理论上不会): 不停 —— 放弃剩下的前缀输入, 自动打完, 结果照算。
+		if resume_dropped == "":
+			resume_dropped = str(s) + " " + why
+			push_warning("[Abandoned] 复算 %s —— 放弃剩余前缀输入, 继续打完" % resume_dropped)
+		_ev_i = _resume_evs.size()
+		return
 	if diverged_at >= 0:
 		return
 	diverged_at = s

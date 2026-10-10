@@ -254,6 +254,8 @@ frames_for () {
     #   (每步一帧·帧数即分母; 掐断的表现是「没打 ALL PASS」而 rc=0)
     verify_arena_theme_pick) echo 40000 ;;
     verify_replay_roundtrip) echo 120000 ;;
+    # 中途退出自动结算: 参照局 det 一帧一步打完一整局(约 7~8 千帧) + 复算 7 次(每次几百帧, 帧内推多步) + 真被杀 60 帧; 实测约 1.2 万帧
+    verify_abandoned_match) echo 40000 ;;
     # 回放 S2(V7): 一局认输 + 主菜单实例化 + 九段各等 30 帧左右, 实测 217 帧(假传输同步回包, 与机器快慢无关); 给到 4000
     verify_replay_upload_retry) echo 4000 ;;
     # 渲染不写 sim 读的字段: 三局各 2400 步全在同一帧里同步推(不 await), 帧数只有几十; 墙钟约 1.5 分钟(逐步全标量指纹)
