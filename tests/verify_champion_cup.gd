@@ -725,7 +725,7 @@ func _t_leaderboard() -> void:
 	_ok("⑨ ★★★杯决赛赢的 d ⇒ 冠军; 输的 a ⇒ 亚军", str(with_cup.get("d", {}).get("id", "")) == P2C.TITLE_CHAMPION
 		and str(with_cup.get("a", {}).get("id", "")) == P2C.TITLE_RUNNER_UP, str(with_cup))
 	_ok("⑨ ★冠军/亚军那条的「打完没有」跟着杯走", bool(with_cup.get("d", {}).get("closed", false)))
-	_ok("⑨ 排行榜挂得出「组冠军」字样", LB.row_mark(P2C.PHASE_FINALS, 0, "", {"id": P2C.TITLE_GROUP_CHAMPION, "closed": true}) == "组冠军")
+	_ok("⑨ 排行榜挂得出「组冠军」字样", LB.row_mark(P2C.PHASE_FINALS, "", {"id": P2C.TITLE_GROUP_CHAMPION, "closed": true}) == "组冠军")
 	var solo_g := [_pb(0, 4, true, {"1-0": 0, "1-1": 0, "2-0": 0}, ["p0", "p1", "p2", "p3"])]
 	var champ := B.champion_seed(4, {"1-0": 0, "1-1": 0, "2-0": 0})
 	var solo: Dictionary = LB.finals_titles(solo_g, _pb(P2C.FINALS_CUP_BUCKET, 1, true, {}, ["p%d" % champ]))

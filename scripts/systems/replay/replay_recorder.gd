@@ -545,8 +545,15 @@ static func encode(r: Dictionary) -> PackedByteArray:
 	return var_to_bytes(r).compress(FileAccess.COMPRESSION_DEFLATE)
 
 
+## ★先自己验形状再交给引擎(2026-10-10 门禁抓到): 坏文件(写到一半杀进程 / 别的东西同名)直接喂 decompress_dynamic /
+##   bytes_to_var, 引擎会往日志喷「Decompression failed」「Condition \"len < 4\"」—— 战绩页给每一行补对手阵容时就会读到。
+##   判据与 `ReplayFetcher.decode_b64` 同一条(zlib 头 0x78 且前两字节能被 31 整除)。
 static func decode(b: PackedByteArray) -> Dictionary:
+	if b.size() < 6 or b[0] != 0x78 or ((int(b[0]) << 8) | int(b[1])) % 31 != 0:
+		return {}
 	var raw := b.decompress_dynamic(-1, FileAccess.COMPRESSION_DEFLATE)
+	if raw.size() < 4:
+		return {}
 	var v = bytes_to_var(raw)
 	return v if v is Dictionary else {}
 

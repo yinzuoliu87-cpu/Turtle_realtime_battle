@@ -309,7 +309,7 @@ func _go(scene: String) -> void:
 ## 名字旁边挂什么(纯函数, 四天全可穷举)。返回显示文字, "" = 不挂。
 ##   `srv_title` = 服务端 standings.title(现在恒空; 有就以它为准)
 ##   `fin` = 这个人在那一周决赛里的 {"id": TITLE_*, "closed": 那一组打完没有}, 不在决赛里 = {}
-static func row_mark(phase: String, wins: int, srv_title: String, fin: Dictionary) -> String:
+static func row_mark(phase: String, srv_title: String, fin: Dictionary) -> String:
 	if srv_title != "":
 		return str(_P2C.TITLE_LABEL.get(srv_title, srv_title))
 	var fid := str(fin.get("id", ""))
@@ -715,7 +715,7 @@ func _draw_row(parent: Control, y: float, idx: int, r: Dictionary) -> void:
 	if show_tag:
 		nw -= TAG_W
 	## 名字旁的头衔 / 「已晋级」(四天各挂各的, 见 `row_mark`)。名字列先给它让出位置。
-	var mark_s := row_mark(day_phase, wins, str(r.get("title", "")),
+	var mark_s := row_mark(day_phase, str(r.get("title", "")),
 		_fin_titles.get(str(r.get("account_id", "")), {}) as Dictionary)
 	if mark_s != "":
 		nw -= MARK_W

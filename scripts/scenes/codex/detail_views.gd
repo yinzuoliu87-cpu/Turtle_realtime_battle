@@ -1,6 +1,5 @@
 class_name CodexDetail
 extends RefCounted
-const SkillTextRef := preload("res://scripts/util/skill_text.gd")   # 三档数值按★1高亮(与商店/背包同一份)
 const _EquipPoolRef := preload("res://scripts/gamedata/equip_pool.gd")   # NO_STAR: 不升星的件不给选档
 const _EquipStatsRef := preload("res://scripts/gamedata/equip_stats.gd")   # 属性一排按选中档取值
 ## 图鉴·右栏详情视图(龟/装备/羁绊(类型)/状态/规则/小将 13渲染函数)
@@ -1214,6 +1213,13 @@ func _set_eq_star(eq: Dictionary, s: int) -> void:
 ## 恰好三档的「a/b/c」: 前后都不许再贴着数字或斜杠 —— 「80/110/130/160」这种四段的(斧头进化阈值)不是星级分档。
 const TIER_PAT := "(?<![\\d./])(\\d+(?:\\.\\d+)?)/(\\d+(?:\\.\\d+)?)/(\\d+(?:\\.\\d+)?)(?![\\d/]|\\.\\d)"
 const TIER_HI := "#ffd93d"      # 当前档(与签牌选中色同一个)。★只上色不加粗: 粗体走另一套像素字, 数字会小一号(实拍)
+## 当前档数字两边的临时记号(私用区码点, 上色后就换掉, 不上屏)。用 char() 运行时造: 写成字面量会被 verify_fonts 当豆腐块扫出来。
+static func _mk_a() -> String:
+	return char(0xE000)
+
+static func _mk_b() -> String:
+	return char(0xE001)
+
 const TIER_DIM := "#7d8ea0"     # 另两档(与 SkillText.highlight_star 的压暗色同一个, 对比度 4.9:1)
 static var _tier_re: RegEx = null
 
@@ -1233,7 +1239,7 @@ static func collapse_tiers(t: String, star: int, mark: bool = false) -> String:
 	for m in tier_matches(t):
 		out += t.substr(pos, m.get_start() - pos)
 		var v: String = m.get_string(star)
-		out += ("\uE000%s\uE001" % v) if mark else v
+		out += (_mk_a() + v + _mk_b()) if mark else v
 		pos = m.get_end()
 	return out + t.substr(pos)
 
@@ -1241,7 +1247,7 @@ static func collapse_tiers(t: String, star: int, mark: bool = false) -> String:
 ## 效果正文(纯文本) → 只剩当前档的数、数字加亮, 关键词上色与内联属性图标照 SkillText 同一条管线。
 static func star_text_bb(plain: String, star: int, font_px: int) -> String:
 	var bb: String = SkillText.plain_to_bb(collapse_tiers(plain, star, true), font_px)
-	return bb.replace("\uE000", "[color=%s]" % TIER_HI).replace("\uE001", "[/color]")
+	return bb.replace(_mk_a(), "[color=%s]" % TIER_HI).replace(_mk_b(), "[/color]")
 
 
 ## 一组三档 → 「a / b / c」, 第 star 档亮、另两档暗。
