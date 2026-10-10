@@ -1,8 +1,7 @@
 # 死参数台账 —— 只减不增（verify_dead_params.gd 守）
 # 生成方式: 引擎 get_script_method_list() 报的真参数名, 不是正则扫源码
 # 消掉一条: 给参数加 `_` 前缀(显式声明不用) 或删掉它(要改所有调用点)
-# 冻结于 2026-09-04 · 共 21 条(2026-09-10: 010 删 _laser_blade_sweep 25→22, 011 删 _blood_slash 22→21)
-res://scripts/scenes/CodexScene.gd	_skill_role	pet_id
+# 冻结于 2026-09-04 · 共 21 条(2026-09-10: 010 删 _laser_blade_sweep 25→22, 011 删 _blood_slash 22→21; 2026-10-10 图鉴 _skill_role 换成 skill_role_of(pet, sk) 21→20)
 res://scripts/scenes/InventoryScene.gd	_item_cell	it
 res://scripts/scenes/RealtimeBattle3DScene.gd	_anchor_aspd	u
 res://scripts/scenes/RealtimeBattle3DScene.gd	_apply_skill_extras	u

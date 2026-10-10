@@ -409,6 +409,7 @@ static func make_bot(battles: int, rng: RandomNumberGenerator, gw: int = -1, gl:
 	var loadouts: Dictionary = _SkillChoice.pick_loadouts(leaders,
 		func(pid: String) -> Dictionary: return DataRegistry.pet_by_id.get(pid, {}), rng)
 	var rec := _bot_season_record(battles, rng, gw, gl)
+	var _axe_prog: Dictionary = AxeEvolution.progress_for_battles(battles)   # 纯函数, 不吃 rng(不改后续机器人的随机序列)
 	var snap := {
 		"schema_ver": SCHEMA_VER,
 		"ghost_id": ghost_id,
@@ -437,6 +438,11 @@ static func make_bot(battles: int, rng: RandomNumberGenerator, gw: int = -1, gl:
 		##   (`battle_spawn` 宝箱分支) ⇒ 补键不改变任何一场机器人战斗。
 		"chest_treasures_won": [],
 		"chest_treasure_value": 0.0,
+		## 096 砍伐进度(2026-10-10): 与真人快照同三键(不露馅)。值 = 「打了 battles 场的人至少有的」,
+		##   与老快照缺键时的回落**同一个函数** ⇒ 机器人强度只随场次走, 与它的装备预算曲线同一把尺子。
+		"axe_exp_total": int(_axe_prog["total"]),
+		"axe_stage": int(_axe_prog["stage"]),
+		"axe_final": str(_axe_prog["final"]),
 		## 真人对手都是从服务端拉回来的, `RemotePool.ingest_remote` 必盖这个章。
 		ORIGIN_KEY: ORIGIN_REMOTE,
 	}
@@ -1051,6 +1057,7 @@ static func seed_as_human(g: Dictionary, season_id: int) -> Dictionary:
 		levels[pid] = 1               # 真人恒 1(`get_pet_level` 默认); 战斗侧不读
 	var prof_src: Dictionary = g.get("profile", {}) if g.get("profile") is Dictionary else {}
 	var avatar := str(prof_src.get("avatar", leaders[0] if not leaders.is_empty() else "basic"))
+	var _axe_prog: Dictionary = AxeEvolution.progress_of_snapshot(g)
 	var snap := {
 		"schema_ver": SCHEMA_VER,
 		"ghost_id": gid,
@@ -1070,6 +1077,11 @@ static func seed_as_human(g: Dictionary, season_id: int) -> Dictionary:
 		"season_sweeps": int(rec["sweeps"]),
 		"chest_treasures_won": (g.get("chest_treasures_won", []) as Array).duplicate(true) if g.get("chest_treasures_won") is Array else [],
 		"chest_treasure_value": float(g.get("chest_treasure_value", 0.0)),
+		## 096 砍伐进度(2026-10-10): 种子文件没有这三键 ⇒ 与战斗侧缺键回落**同一个函数**
+		##   (`progress_of_snapshot`: 有就原样、没有按场次) ⇒ 原样 vs 转换后斧头强度逐字相同, 再转一次也幂等。
+		"axe_exp_total": int(_axe_prog["total"]),
+		"axe_stage": int(_axe_prog["stage"]),
+		"axe_final": str(_axe_prog["final"]),
 		ORIGIN_KEY: ORIGIN_REMOTE,
 	}
 	## 与真人对手同一个 JSON 往返(数字一律 float)。
@@ -1908,4 +1920,12 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 		##   现在带上真实进度, 敌方按对手【真的攒到哪】开箱。
 		"chest_treasures_won": (GameState.chest_treasures_won as Array).duplicate() if GameState.chest_treasures_won is Array else [],
 		"chest_treasure_value": float(GameState.chest_treasure_value),
+		## ★096 小木斧的砍伐进度(2026-10-10)。消费侧 `AxeSystem._progress_of`: 对手的斧头按**对手**的进度建。
+		##   在这之前快照里没有它 ⇒ 对手的斧头读的是**看的人本机**的进度(我练到钻石斧, 对面的木斧也是钻石斧身板)。
+		##   ★不升 SCHEMA_VER: 升了会把整池旧快照丢光; 缺这三个键的旧快照由
+		##   `AxeEvolution.progress_of_snapshot` 回落到「打了这么多场的人至少有的进度」。
+		##   键名与 GameState 属性名逐字相同(读的一侧见 `AxeEvolution.progress_of_snapshot`)。不传进度条: 对手不在我这台机器上进化。
+		"axe_exp_total": int(GameState.axe_exp_total),
+		"axe_stage": int(GameState.axe_stage),
+		"axe_final": str(GameState.axe_final),
 	}

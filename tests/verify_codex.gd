@@ -3,7 +3,7 @@ extends Node
 ## 跑法: godot --headless --path . res://tests/verify_codex.tscn --quit-after 300
 ##
 ## 覆盖:
-##  1. ★龟能事实源同一: 图鉴 _skill_energy(sk) 必须等于战斗 _skill_cost() 的口径
+##  1. ★龟能事实源同一: 图鉴 skill_energy_of(pet, sk) 必须等于战斗 _skill_cost() 的口径
 ##     (= pets.json energyCost 优先, 缺则 SkillEnergy 表兜底) —— 全 28 龟 × 全候选技逐个对
 ##  2. ★3选1 真的能选 3 个: _available_skill_indices() 返回全部索引 (原 idx3 需 Lv4 → 实际是 2选1)
 ##  3. 图鉴不再显示"🔒 Lv.4 解锁" 这类回合制残留
@@ -37,12 +37,13 @@ func _ready() -> void:
 		var sp: Array = p.get("skillPool", [])
 		for i in range(sp.size()):
 			var sk: Dictionary = sp[i]
-			if i == 0 or sk.get("passiveSkill", false):
+			## (2026-10-10 不再跳过 passiveSkill:true 的三张 —— 战斗照样花龟能放它们, 图鉴现在也显龟能)
+			if i == 0:
 				continue
 			var ty := str(sk.get("type", ""))
 			if ty == "" or ty == "physical" or ty == "magic":
 				continue
-			var shown: int = codex._skill_energy(sk)
+			var shown: int = codex.skill_energy_of(p, sk)
 			var battle: int = int(round(float(sk["energyCost"]))) if sk.has("energyCost") else int(round(SkillEnergy.cost_of(ty)))
 			if shown != battle:
 				drift.append("%s/%s 图鉴=%d 战斗=%d" % [p["id"], ty, shown, battle])

@@ -218,6 +218,58 @@ static func final_ready(bar: int, stage_i: int, final_key: String) -> bool:
 	return final_key == "" and stage_i >= STAGES.size() - 1 and bar >= FINAL_NEED
 
 
+## ── 对手的砍伐进度(2026-10-10) ────────────────────────────────
+## ★由来: 斧头召唤物的血/攻/档位/造物原来**不分敌我**一律读本机 GameState ⇒
+##   对手(快照/机器人)带 096 时, 它的斧头用的是**我**的进度。现在敌方读对手快照里的
+##   `axe_exp_total / axe_stage / axe_final`(`Backend.build_ghost_snapshot` 上传时写)。
+## ★快照里的三个键名与 GameState 的属性名**逐字相同**, 一处改名另一处必须跟着改
+##   (门禁 verify_axe_owner_progress 走「上传 → JSON 往返 → 对手读出」整条量)。
+## 场次的防脏上限: 循环按场次跑, 一条脏快照写个 1e9 不该卡死开局。真实一个赛季远小于它。
+const BATTLES_SANE_CAP := 1000
+
+
+## 「打了 `battles` 场」的玩家**至少**有的砍伐进度。
+## ★★这是一个**下界**, 不是猜测: 每一场结算都**无条件**调 `GameState.axe_on_match_end()`
+##   (+EXP_ON_MATCH, 与 `season_total_battles += 1` 同一处, 不论带没带斧头), 两者又在同一个
+##   `start_new_season` 里一起清零 ⇒ 任何真人的 `axe_exp_total ≥ battles × EXP_ON_MATCH`。
+##   买斧头(+EXP_ON_BUY)与击杀(+EXP_ON_KILL)因人而异、快照里看不出 ⇒ 不猜, 只给下界。
+## ★用途两个, 而且**必须是同一个函数**:
+##   ① 老快照(这三个键出现之前上传的)/ 内置陪练文件 的回落值;
+##   ② 机器人(`Backend.make_bot`)与陪练(`Backend.seed_as_human`)写进快照的值。
+##   两处同源 ⇒ 陪练「原样 vs 转换后」战斗强度逐字相同(verify_bot_snapshot_shape)。
+## ★最终造物恒为空: 那是玩家手动四选一, 不能替人选。
+static func progress_for_battles(battles: int) -> Dictionary:
+	var bar := 0
+	var total := 0
+	var st := 0
+	for _i in range(clampi(battles, 0, BATTLES_SANE_CAP)):
+		var r: Dictionary = advance(bar, total, st, EXP_ON_MATCH)
+		bar = int(r["bar"])
+		total = int(r["total"])
+		st = int(r["stage"])
+	return {"total": total, "stage": st, "final": ""}
+
+
+## 一份对手快照里的砍伐进度(`dual_ghost` / 池子里的快照)。返回 {total, stage, final}。
+## ★三个键都在且是数/串 ⇒ 用它(JSON 往返后数字是 float, 这里转 int; 档位夹到合法区间,
+##   造物不是四个之一就当没选)。缺任何一个 ⇒ 回落 `progress_for_battles(season_total_battles)`。
+## ★不信任快照: 别人传上来的东西 —— 负数 / null / 乱写的造物名都不许让开局崩或造出不存在的形态。
+static func progress_of_snapshot(snap) -> Dictionary:
+	var d: Dictionary = snap if snap is Dictionary else {}
+	var t = d.get("axe_exp_total", null)
+	var s = d.get("axe_stage", null)
+	var f = d.get("axe_final", null)
+	var nums_ok: bool = (t is int or t is float) and (s is int or s is float) and f is String
+	if not nums_ok:
+		var b = d.get("season_total_battles", 0)
+		return progress_for_battles(int(b) if (b is int or b is float) else 0)
+	var fk: String = ""
+	for fd in FINALS:
+		if str((fd as Dictionary)["key"]) == str(f):
+			fk = str(f)
+	return {"total": maxi(0, int(t)), "stage": clampi(int(s), 0, STAGES.size() - 1), "final": fk}
+
+
 ## 当前该显示成什么。商店的【形态与售价随进化变】读的就是它。
 ## 选完最终造物 ⇒ 显示最终造物(它不再随档位走)。
 static func display(stage_i: int, final_key: String) -> Dictionary:

@@ -2,7 +2,7 @@ extends Node
 ## verify_codex_beta_layout.gd — 内测前图鉴体检(2026-10-07)里的版式/交互项, 每项量真实节点。
 ##
 ##   B 普攻条: 简述定高一行 + clip, 原来**没有任何办法看到被切掉的部分**(15 只龟)。
-##     判据: 每只龟的普攻条右端都有「看全部」; 点普攻条(真发一次鼠标事件) ⇒ 进技能详情,
+##     判据: 截断的条(末尾「…」)右端有「查看全部」, 没截断的没有(2026-10-10); 点普攻条(真发一次鼠标事件) ⇒ 进技能详情,
 ##     忍者龟那句「暴击时 3 层」流血能读到。
 ##   F 熔岩龟形态页: 「换成 X 形态」钮压在普攻条上 / 「熔岩弹（火山形态）」名字压着简述 /
 ##     三选一卡片只剩 1 行正文。判据: 钮与普攻条矩形不相交; 名字右缘 ≤ 简述左缘; 每张卡 ≥ 2 整行。
@@ -178,6 +178,8 @@ func _check_g_and_b_all() -> void:
 	var partial: PackedStringArray = []
 	var false_hint: PackedStringArray = []
 	var no_basic_hint: PackedStringArray = []
+	var n_bar := 0
+	var n_cut_total := 0
 	for i in range(_c._items.size()):
 		var it = _c._items[i]
 		if not (it is Dictionary) or (it as Dictionary).has("_minion"):
@@ -189,13 +191,20 @@ func _check_g_and_b_all() -> void:
 		_c._select(i)
 		await _settle(5)
 		n_pet += 1
-		## 「看全部」: 被动条一个 + 普攻条一个
+		## 「查看全部」: 被动条 / 普攻条【截断了才画】(2026-10-10; 原判据「每条都有」把无条件挂提示钉成了规矩)。
+		##   ⇒ 两条上的提示数 == 两条里真被截断(末尾「…」)的条数。
 		var n_all := 0
+		var n_cut := 0
 		for ch in _c.detail.get_children():
 			if ch is Label and str((ch as Label).text) == "查看全部" and (ch as Label).horizontal_alignment != HORIZONTAL_ALIGNMENT_RIGHT:
 				n_all += 1
-		if n_all < 2:
-			no_basic_hint.append("%s(%d)" % [pid, n_all])
+			elif ch is RichTextLabel and (ch as RichTextLabel).has_meta("preview_truncated"):
+				n_bar += 1
+				if (ch as RichTextLabel).get_parsed_text().ends_with("…"):
+					n_cut += 1
+		n_cut_total += n_cut
+		if n_all != n_cut:
+			no_basic_hint.append("%s(提示 %d / 截断 %d)" % [pid, n_all, n_cut])
 		for ch in _c.detail.get_children():
 			if not (ch is RichTextLabel) or (ch as RichTextLabel).fit_content:
 				continue
@@ -212,7 +221,9 @@ func _check_g_and_b_all() -> void:
 	_ok("G 分母: 逐只量了 %d 只龟 / %d 个定高富文本" % [n_pet, n_rt], n_pet >= 28 and n_rt >= 28 * 4)
 	_ok("G 没有一行被切成半截(原 15 处)", partial.is_empty(), ", ".join(partial))
 	_ok("G 没有「只切掉尾部空行却提示看全部」(原 26 处)", false_hint.is_empty(), ", ".join(false_hint))
-	_ok("B 每只龟的普攻条都有「看全部」(被动 + 普攻 ≥ 2)", no_basic_hint.is_empty(), ", ".join(no_basic_hint))
+	_ok("B 分母: 量到 %d 条一行条(被动 + 普攻), 其中截断 %d 条、完整 %d 条(两种都得有)" % [n_bar, n_cut_total, n_bar - n_cut_total],
+		n_bar >= 28 * 2 and n_cut_total > 0 and n_bar - n_cut_total > 0)
+	_ok("B 被动条/普攻条: 截断了才画「查看全部」(提示数 == 截断数)", no_basic_hint.is_empty(), ", ".join(no_basic_hint))
 
 
 ## B: 忍者龟, 真发一次鼠标点击到普攻条上

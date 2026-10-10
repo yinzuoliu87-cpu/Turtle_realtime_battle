@@ -5,7 +5,7 @@ const SkillEnergy := preload("res://scripts/systems/skill_energy.gd")  # 该脚�
 ##
 ## 由来: 龟能的数值散在两个地方, 三处 UI 各读各的 → 骗玩家。
 ##   · 战斗   `RealtimeBattle3DScene._skill_cost` = pets.json `energyCost` 优先, `SkillEnergy` 兜底
-##   · 图鉴   `CodexScene._skill_energy`          = 同口径 (早先已修)
+##   · 图鉴   `CodexScene.skill_energy_of`       = 同口径 (SkillEnergy.cost_for, 与战斗 _skill_cost 同一个函数)
 ##   · 选龟   `TeamSelectScene`                   = ★2026-07-10 之前【只读 SkillEnergy】→
 ##        彩虹·棱镜护盾 `shield`: pets=50 / SkillEnergy=70 → 界面显 70, 实战花 50
 ##        彩虹·反射 `rainbowReflect`: 表里根本没有 → `is_active()` 为 false → 界面【完全不显龟能】

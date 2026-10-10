@@ -73,7 +73,10 @@ const STATE_KEYS := [
 	##   833fa8ac 对手带 096, 录制时斧头血 ≠ 播放时 2550(= 500 + 5×380 + 50×3, 看的人 exp=380/stage=3)。
 	##   每打完一场 axe_on_match_end 还 +10 ⇒ 连录制者自己隔一场再看也对不上。
 	##   axe_exp_bar: 局内斧头击杀 `axe_add_exp` 可能**当场进化**(下一路斧头换档), 进不进化看进度条 ⇒ 也要录。
-	"axe_exp_bar",          # 必需(局内进化): 见上
+	## ★(同日稍后) 上面「任何一方都读本机」本身也是 bug, 已改: 现在只有**左边(录制者)**的斧头读这四个;
+	##   右边(对手)的斧头读 `dual_ghost` 里的 axe_exp_total/axe_stage/axe_final(缺键按 season_total_battles 回落),
+	##   见 `AxeSystem._progress_of`。dual_ghost 本来就在上面 ⇒ 对手那一份不需要另录。
+	"axe_exp_bar",         # 必需(局内进化): 见上
 	"axe_exp_total",        # 必需(斧头登场那一步): 召唤物血/攻
 	"axe_stage",            # 必需(斧头登场那一步): 被动条数 / 形态
 	"axe_final",            # 必需(斧头登场那一步): 最终造物属性

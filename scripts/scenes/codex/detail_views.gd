@@ -2,6 +2,7 @@ class_name CodexDetail
 extends RefCounted
 const _EquipPoolRef := preload("res://scripts/gamedata/equip_pool.gd")   # NO_STAR: 不升星的件不给选档
 const _EquipStatsRef := preload("res://scripts/gamedata/equip_stats.gd")   # 属性一排按选中档取值
+const PreviewText := preload("res://scripts/scenes/codex/preview_text.gd")   # 龟页一行条/技能卡的预览截断(「…」+ 跳过开头小标题)
 ## 图鉴·右栏详情视图(龟/装备/羁绊(类型)/状态/规则/小将 13渲染函数)
 ## 类内名不变;外部名加 battle.
 
@@ -52,7 +53,7 @@ func _show_minion(kind: String) -> void:
 	var _scx: float = _sx + 90.0
 	if _snl is Control:
 		_scx = _sx + (_snl as Control).get_combined_minimum_size().x + 14.0
-	host._add_text(_scx, y + 12.0, "主动 · 龟能 %d" % int(mi["skill_cost"]), 13, "#06d6a0", 0.0, 0.5)
+	host._add_text(_scx, y + 12.0, "主动 · 龟能 %d" % int(mi["skill_cost"]), CARD_CHIP_PX, "#06d6a0", 0.0, 0.5)
 	y += 34.0
 	y = _minion_body(str(mi["skill_desc"]), y) + 18.0
 	for pv in mi.get("passives", []):
@@ -391,24 +392,19 @@ func _show_pet(pet: Dictionary) -> void:
 		##   与技能卡同构 —— **条上给简述, 点开看全文**。
 		## ★2026-10-08 两栏后右栏只剩 494 宽, 简述从「标题右边横着放」改成标题下面一整行。
 		var p_brief: String = str(passive.get("brief", passive.get("desc", "")))
+		var p_cut: bool = false
 		if p_brief.strip_edges() != "":
-			var brt := RichTextLabel.new()
-			brt.bbcode_enabled = true
-			brt.fit_content = false     # 定高一行 + clip: 撑高就把技能卡挤下去了
-			brt.scroll_active = false
-			brt.clip_contents = true
-			brt.position = Vector2(RCOL_X + CARD_PAD + 2.0, passive_y + 35.0)   # 标题 Label 下沿约 +34
-			brt.custom_minimum_size = Vector2(rw - CARD_PAD * 2.0 - 4.0, 22.0)
-			brt.size = brt.custom_minimum_size
-			brt.add_theme_font_size_override("normal_font_size", 14)
-			brt.add_theme_color_override("default_color", Color("#aab8c6"))
-			brt.text = SkillText.render_bbcode(_trim_tail(p_brief), ctx, passive, 14)
-			host.detail.add_child(brt)
-		# hint: 展开→"收起"金 / 否则"看全部"蓝(与技能卡的"点开看全部"同一句式)
-		## ★同上去掉 ▾/▸ 两个折叠箭头。
-		var p_hint: String = "收起" if host._codex_passive_view else "查看全部"
-		var p_hint_col: String = "#ffd93d" if host._codex_passive_view else "#7fb5d8"
-		host._add_text(host.DETAIL_W - 30 - CARD_PAD * 2.0, mid_y, p_hint, 14, p_hint_col, 1.0, 0.5)
+			var brt := _one_line_preview(passive_y + 35.0)   # 标题 Label 下沿约 +34
+			## 开头若只是一行小标题(海盗龟「登场轰击：」), 预览从下面那句效果开始; 放不下就「…」截断。
+			p_cut = PreviewText.fit_one_line(brt, SkillText.render_bbcode(
+				PreviewText.skip_lead_headings(_trim_tail(p_brief)), ctx, passive, PREVIEW_PX))
+			brt.set_meta("preview_truncated", p_cut)
+		# hint: 展开→"收起"金 / 否则"查看全部"蓝(与技能卡同一句式)。
+		## ★2026-10-10「查看全部」只在【真的截断了】时画 —— 原来无条件画, 一句话写完的被动也挂着它, 点开什么新东西都没有。
+		if host._codex_passive_view or p_cut:
+			var p_hint: String = "收起" if host._codex_passive_view else "查看全部"
+			var p_hint_col: String = "#ffd93d" if host._codex_passive_view else "#7fb5d8"
+			host._add_text(host.DETAIL_W - 30 - CARD_PAD * 2.0, mid_y, p_hint, HINT_PX, p_hint_col, 1.0, 0.5)
 		# drill-down: 点被动条 → 内联展开/收起完整 passive desc (1:1 PoC showPetDetail view='passive' toggle, 非弹窗)
 		var p_hit = Control.new()
 		p_hit.position = Vector2(RCOL_X, passive_y)
@@ -437,6 +433,31 @@ func _show_pet(pet: Dictionary) -> void:
 ## 被动条高。2026-10-08 两栏后改两行: 标题行 + 简述一行(右栏只有 494 宽, 简述横排在标题右边放不下)。
 ## ★60 = 与普攻条同高同几何(chip-frame 边带 4px)。原 panel-frame(边带 13)要 80 才装得下两行。
 const PASSIVE_BAR_H := 60.0
+## ★2026-10-10 龟页字号(手机上 13/12 读不动): 一行条的简述与技能卡正文 16(= 图鉴其它页正文下限 BODY_MIN),
+##   卡名 17(与被动/普通攻击两条的标题同号, 比正文大一号), 「主动 · 龟能 N」签与「查看全部」14, 「技能」小节标题 16。
+const PREVIEW_PX := 16
+const CARD_NAME_PX := 17
+const CARD_CHIP_PX := 14
+const HINT_PX := 14
+const SECTION_PX := 16
+## 一行条简述的行高(16px 实测一行 24)。
+const PREVIEW_LINE_H := 24.0
+
+## 被动条 / 普通攻击条上那一行简述(定高一行; 截断与「…」由 PreviewText.fit_one_line 处理)。
+## ★fit_content 必须是 false —— 开了它会被撑高把下面的卡片挤下去。
+func _one_line_preview(y: float) -> RichTextLabel:
+	var rt := RichTextLabel.new()
+	rt.bbcode_enabled = true
+	rt.fit_content = false
+	rt.scroll_active = false
+	rt.clip_contents = true
+	rt.position = Vector2(RCOL_X + CARD_PAD + 2.0, y)
+	rt.custom_minimum_size = Vector2(_rw() - CARD_PAD * 2.0 - 4.0, PREVIEW_LINE_H)
+	rt.size = rt.custom_minimum_size
+	rt.add_theme_font_size_override("normal_font_size", PREVIEW_PX)
+	rt.add_theme_color_override("default_color", Color("#aab8c6"))
+	host.detail.add_child(rt)   # 先进树再排版: fit_one_line 同步量行数要用到主题字体
+	return rt
 ## 卡片内容离卡边的留白。
 ##
 ## ★原来是散在八处的字面量 8 —— 而卡框换成九宫格金属框之后, 边带**实测 13px 厚**,
@@ -456,9 +477,9 @@ const CARD_BODY_TOP := 40.0
 const CARD_MIN_H := 76.0
 ## 正文与卡底边带之间的缝。
 const CARD_BODY_GAP := 4.0
-## 卡片【最高】也至少给到这么多: 正文起点 40 + 3 行(13px 纯文字行≈20) + 间隙 4 + 底边带 14。
+## 卡片【最高】也至少给到这么多: 正文起点 40 + 3 行(16px 纯文字行≈24; 2026-10-10 由 13px 的 20 改) + 间隙 4 + 底边带 14。
 ## ★被切时「查看全部」画在**名字行右端**, 不在卡底另占一条提示带 —— 竖排三张卡, 每张省 18px。
-const CARD_MAX_FLOOR := 118.0
+const CARD_MAX_FLOOR := 130.0
 ## 竖排卡片之间的缝。
 const CARD_GAP := 8.0
 ## 双形态龟「开局三选一」那一行的行高(同时挂 34 高的形态切换钮)。
@@ -468,9 +489,6 @@ const FORM_ROW_H := 38.0
 ## 键是 RichTextLabel 实例 —— _mark_card_clipped 拿它取自己那张卡的真实底边。
 ## (不是单位字典, 可以安全做键; 见 CLAUDE.md §3.2 说的是战斗单位字典)
 var _card_hint_y: Dictionary = {}
-
-## 抽掉普攻后, 候选卡在原 skillPool 里的索引(角色/龟能判定要用原始索引, 不能用移位后的)。
-var _orig_idx: Array = []
 
 ## 技能卡的简述被切断时, 在卡片底部那条留白里画一行"点开看全部 ▸"。
 ##
@@ -491,7 +509,7 @@ func _mark_card_clipped(rt: RichTextLabel, cx: float, y: float, card_w: float) -
 	##   ⚠ 技能卡提示「查看全部」(2026-10-07 去口语化, 原「点开看全部」)与被动/普攻条同字; verify_codex_layout ⑨ 逐只龟数
 	##   "被截的卡数 == 画出提示的卡数", 靠右对齐(HORIZONTAL_ALIGNMENT_RIGHT)把它与条上的提示分开。
 	l.text = "查看全部"
-	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_font_size_override("font_size", HINT_PX)
 	l.add_theme_color_override("font_color", Color("#7fb5d8"))
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -502,7 +520,6 @@ func _mark_card_clipped(rt: RichTextLabel, cx: float, y: float, card_w: float) -
 
 func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> void:
 	_card_hint_y.clear()
-	_orig_idx = []
 	# 内联技能详情页 (1:1 PoC showPetDetail view={skillIdx} → renderSkillDetailSection): 顶部"← 返回列表" + 完整 host.detail
 	if not host._codex_skill_detail.is_empty():
 		_render_skill_detail_inline(pet, ctx, host._codex_skill_detail, cards_y)
@@ -532,35 +549,30 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 	## 现在分三层, 每层是一种东西:
 	##     被动条(固定) → 普攻条(固定) → 三选一卡片 ×3(要选)
 	## 附带好处: 卡片从 4 张变 3 张, **每张宽 33%**, 正文被切、要点"看全部"的情况同时缓解。
-	var pid_s: String = str(pet.get("id", ""))
 	var basic_i: int = -1
 	for bi in range(skill_pool.size()):
-		if str(host._skill_role(pid_s, skill_pool[bi], bi)) == "basic":
+		if str(host.skill_role_of(pet, skill_pool[bi])) == "basic":
 			basic_i = bi
 			break
 	var cand_pool: Array = []
-	## ★角色判定 `_skill_role(pid, sk, i)` 是**按索引**算的(索引 0 = 普攻)。
-	##   抽掉普攻之后剩下的技能索引整体前移 ⇒ 第一张候选卡会被判成"基础 · 普攻"
-	##   (实拍确认: 「打击」卡上挂着「基础 · 普攻」)。所以要把**原始索引**带着走。
-	var cand_orig: Array = []
+	## ★角色判定 `skill_role_of(pet, sk)` 按技能字典【本身】在龟数据里的槽位认(is_same),
+	##   抽掉普攻之后数组下标前移也不受影响(原来按下标判, 「打击」卡曾挂上「基础 · 普攻」)。
 	for ci in range(skill_pool.size()):
 		if ci != basic_i:
 			cand_pool.append(skill_pool[ci])
-			cand_orig.append(ci)
 	if basic_i >= 0:
 		var bsk: Dictionary = skill_pool[basic_i]
 		start_y += _basic_attack_bar(pet, ctx, bsk, start_y) + 6.0
 		# 三选一那一排上面给一句抬头 —— 不然玩家不知道这三张是"要选一个"
 		## 双形态龟: 这一行同时挂「换成 X 形态」钮(钮高 34) ⇒ 行高 38; 其余龟仍是 15。
-		var head_h: float = FORM_ROW_H if has_form else 15.0
+		var head_h: float = FORM_ROW_H if has_form else 26.0
 		## ★2026-10-08 「开局三选一」→「技能」。用户:「开局三选一是啥呢」「我问你哪个参考游戏会这么说？」—— 没有哪个游戏这么说,
 		##   是我 08-18 自己加的, 讲的是我们的选择机制(同 10-01 被否的「3选1候选」)。对齐战斗信息面板「被动 / 普通攻击 / 技能」(10-06 用户拍板)。
-		host._add_text(start_x + 2.0, start_y + (head_h / 2.0 if has_form else 6.0), "技能", 12, "#06d6a0", 0.0, 0.5, true)
+		host._add_text(start_x + 2.0, start_y + head_h / 2.0, "技能", SECTION_PX, "#06d6a0", 0.0, 0.5, true)
 		if has_form:
 			form_btn_y = start_y + head_h / 2.0
 		start_y += head_h
 		skill_pool = cand_pool
-		_orig_idx = cand_orig
 		default_idxs = [0, 1, 2]
 
 	if has_form and form_btn_y < 0.0:   # 没有普攻条的双形态龟(目前 0 只): 自己占一行, 不压卡片
@@ -623,24 +635,24 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 				nodes.append(host._add_text(cx + ROW_ICON_CX + 10.0, cy0 + CARD_PAD - 2, "+", 15, "#06d6a0", 0.5, 0.5, true))
 		else:
 			text_x = cx + CARD_PAD
-		# 名字 16px —— 与类型 chip 同一行
+		# 名字 17px —— 与类型 chip 同一行
 		var name_y: float = cy0 + CARD_PAD + 12.0
-		var nlbl: Label = host._add_text(text_x, name_y, sk.get("name", "?"), 16, "#ffd93d", 0.0, 0.5, true)
+		var nlbl: Label = host._add_text(text_x, name_y, sk.get("name", "?"), CARD_NAME_PX, "#ffd93d", 0.0, 0.5, true)
 		nodes.append(nlbl)
 		# 类型 chip (基础/主动·龟能/被动) —— 龟能口径(无"冷却/CD"): 普攻=不花龟能 / 主动=显龟能花费(与战斗同源) / 被动
 		var chip_text = ""
 		var chip_color = "#58d3ff"
-		match host._skill_role(str(pet.get("id", "")), sk, (int(_orig_idx[i]) if i < _orig_idx.size() else i)):
+		match host.skill_role_of(pet, sk):
 			"passive": chip_text = "被动"; chip_color = "#c77dff"
 			## 用户 2026-10-06「真的要说普攻这个吗，真的是商业游戏吗」「是被动，普通攻击，和技能啊」⇒ 全称, 与战斗信息面板同一个词。
 			"basic": chip_text = "普通攻击"; chip_color = "#58d3ff"
 			## ★★2026-10-01: 原来写「3选1候选 · 龟能N」。用户:「3选1候选，这又是什么 ai 味描述」——
 			##   LoL 的技能头上只写**名字 + 消耗**。⇒ 与兄弟分支对齐成「角色 · 代价」;
 			##   「龟能 100」中间留空格(codex_text_lint「汉字贴着数字」)。
-			_: chip_text = "主动 · 龟能 %d" % host._skill_energy(sk); chip_color = "#06d6a0"
-		nodes.append(host._add_text(text_x + nlbl.get_combined_minimum_size().x + 12.0, name_y + 1.0, chip_text, 13, chip_color, 0.0, 0.5))
-		# 简述 — 富文本 BBCode, 多行 clamp
-		var brief = SkillText.render_bbcode(_trim_tail(str(sk.get("brief", ""))), ctx, sk, 13)
+			_: chip_text = "主动 · 龟能 %d" % host.skill_energy_of(pet, sk); chip_color = "#06d6a0"
+		nodes.append(host._add_text(text_x + nlbl.get_combined_minimum_size().x + 12.0, name_y + 1.0, chip_text, CARD_CHIP_PX, chip_color, 0.0, 0.5))
+		# 简述 — 富文本 BBCode, 多行 clamp。开头只有小标题的行(龟壳「主被动·潜影：」)跳过, 从效果那句起。
+		var brief = SkillText.render_bbcode(PreviewText.skip_lead_headings(_trim_tail(str(sk.get("brief", "")))), ctx, sk, PREVIEW_PX)
 		var rt = RichTextLabel.new()
 		rt.bbcode_enabled = true
 		## ★fit_content 必须是 false: 它会把控件撑到内容高度, 于是
@@ -655,7 +667,7 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 		rt.custom_minimum_size = Vector2(rt_w, rt_h)
 		rt.size = Vector2(rt_w, rt_h)
 		rt.clip_contents = true
-		rt.add_theme_font_size_override("normal_font_size", 13)
+		rt.add_theme_font_size_override("normal_font_size", PREVIEW_PX)
 		rt.add_theme_color_override("default_color", Color("#aaaaaa"))
 		rt.text = brief
 		rt.set_meta("codex_card_body", true)   # 门禁据此认「技能卡正文」(竖排后宽度已分不开卡片与被动条)
@@ -707,24 +719,16 @@ func _basic_attack_bar(pet: Dictionary, ctx: Dictionary, bsk: Dictionary, start_
 	## 「普通攻击」全称(用户 2026-10-06, 战斗信息面板 info_panel.gd 同一个词); 2026-10-08 图鉴这里漏改, 用户实拍追问。
 	host._add_text(btx, bmid, "普通攻击 · %s" % str(bsk.get("name", "?")), 17, "#58d3ff", 0.0, 0.5, true)
 	## ★★2026-10-02: 普攻简述用 `RichTextLabel` + `render_bbcode`(与被动条/三选一卡同一种上色)。
-	## ★定高一行 + clip; `fit_content` 必须是 false —— 开了它会被撑高把三选一卡片挤下去。
-	var bbrief := SkillText.render_bbcode(_trim_tail(str(bsk.get("brief", ""))), ctx, bsk, 14)
-	var brt2 := RichTextLabel.new()
-	brt2.bbcode_enabled = true
-	brt2.fit_content = false
-	brt2.scroll_active = false
-	brt2.clip_contents = true
 	## 名字 17px 的 Label 下沿在 start_y + 33(中线 19 + 估高的一半); 简述从 35 起, 不相交(门禁 F 量过 0.95px 的重叠)。
-	brt2.position = Vector2(RCOL_X + CARD_PAD + 2.0, start_y + 35.0)
-	brt2.custom_minimum_size = Vector2(rw - CARD_PAD * 2.0 - 4.0, 22.0)
-	brt2.size = brt2.custom_minimum_size
-	brt2.add_theme_font_size_override("normal_font_size", 14)
-	brt2.add_theme_color_override("default_color", Color("#aab8c6"))
-	brt2.text = bbrief
-	host.detail.add_child(brt2)
+	var brt2 := _one_line_preview(start_y + 35.0)
+	var b_cut: bool = PreviewText.fit_one_line(brt2, SkillText.render_bbcode(
+		PreviewText.skip_lead_headings(_trim_tail(str(bsk.get("brief", "")))), ctx, bsk, PREVIEW_PX))
+	brt2.set_meta("preview_truncated", b_cut)
 	## ★★2026-10-07 B: 简述被切时**必须有办法看到被切掉的部分**(例: 忍者龟「若本次斩击暴击，则改为施加 3 层流血」)。
 	##   照被动条那一套: 条上给简述 + 右端「查看全部」, 点整条进技能详情(与三选一卡片同一个落地页)。
-	host._add_text(host.DETAIL_W - 30 - CARD_PAD * 2.0, bmid, "查看全部", 14, "#7fb5d8", 1.0, 0.5)
+	## ★2026-10-10 只在真的截断时画(一句写完的普攻不挂「查看全部」); 点整条照样能进详情。
+	if b_cut:
+		host._add_text(host.DETAIL_W - 30 - CARD_PAD * 2.0, bmid, "查看全部", HINT_PX, "#7fb5d8", 1.0, 0.5)
 	var b_hit := Control.new()
 	b_hit.position = Vector2(RCOL_X, start_y)
 	b_hit.size = Vector2(rw, bar_h)
@@ -853,12 +857,23 @@ func _fit_skill_cards(parts: Array, top: float, max_h: float) -> void:
 			## ★2026-10-07 G: 按【这段正文自己的行边界】取整, 不按"标称行高"取整
 			##   (带行内图标的行比纯文字行高, 实测 20 vs 24)。get_line_offset(i) = 第 i 行的上沿。
 			var cut: float = 0.0
+			var first_hidden: int = 0
 			for li in range(1, rt.get_line_count()):
 				var off: float = rt.get_line_offset(li)
 				if off <= body_h + 0.5:
 					cut = off
+					first_hidden = li
 				else:
 					break
+			## ★2026-10-10 可见的最后一行若只是个小标题(石头龟「磐石之躯」卡停在「被动：」), 把它也藏到「查看全部」后面 ——
+			##   一个后文全被切掉的标题只会让人以为文案写坏了。
+			##   只认【整段】是标题的行(行首就是段首): 一句长话折行后剩下的「性：」不算(赌神龟「…提升一项属性：」)。
+			if first_hidden >= 2:
+				var _pt: String = rt.get_parsed_text()
+				var _lr: Vector2i = rt.get_line_range(first_hidden - 1)
+				var _para_start: bool = _lr.x == 0 or _pt.substr(_lr.x - 1, 1) == "\n"
+				if _para_start and PreviewText.is_heading_line(_pt.substr(_lr.x, _lr.y - _lr.x)):
+					cut = rt.get_line_offset(first_hidden - 1)
 			if cut > 0.0:
 				body_h = cut
 				## ★卡高跟着截断收回来(2026-10-08 实拍): 第三行带行内图标(行高 24 > 20)放不下时只剩两行,
@@ -911,8 +926,7 @@ func _render_skill_detail_inline(pet: Dictionary, ctx: Dictionary, sk: Dictionar
 		var pic: String = DataRegistry.passive_icons.get(pet.get("passive", {}).get("type", ""), "")
 		if pic.ends_with(".png"):
 			icon_src = pic
-	var sp_role: Array = pet.get("skillPool", []) if pet.get("skillPool") is Array else []
-	var role_d: String = host._skill_role(str(pet.get("id", "")), sk, sp_role.find(sk))
+	var role_d: String = host.skill_role_of(pet, sk)
 	var bb = ""
 	if icon_src != "":
 		bb += "[img=40x40]res://assets/sprites/%s[/img] " % icon_src
@@ -922,7 +936,7 @@ func _render_skill_detail_inline(pet: Dictionary, ctx: Dictionary, sk: Dictionar
 	if role_d == "active":   # 龟能口径: 主动技显龟能花费 (无"CD"); 攒满龟能自动施放
 		## ★2026-10-01: 「龟能100」→「龟能 100」。codex_text_lint 有一条「汉字贴着数字」,
 		##   它只扫 data/*.json 的玩家文案, 扫不到这里拼出来的屏幕串 —— 所以这处一直漏着。
-		bb += "　[color=#06d6a0][font_size=20]龟能 %d[/font_size][/color]" % host._skill_energy(sk)
+		bb += "　[color=#06d6a0][font_size=20]龟能 %d[/font_size][/color]" % host.skill_energy_of(pet, sk)
 	var title = RichTextLabel.new()
 	title.bbcode_enabled = true
 	title.fit_content = true
@@ -934,6 +948,9 @@ func _render_skill_detail_inline(pet: Dictionary, ctx: Dictionary, sk: Dictionar
 	title.add_theme_color_override("default_color", Color("#ffffff"))
 	title.text = bb
 	host.detail.add_child(title)
+	## ★2026-10-10 标题折行时正文跟着往下让: 原来正文钉死在 top + 58, 名字长(「熔岩弹（火山形态）」)+「龟能 N」
+	##   折成两行, 第二行压在正文第一行上。RichTextLabel 不开 threaded 时排版同步, 进树后即可量。
+	var body_y: float = maxf(top + 58.0, title.position.y + title.get_content_height() + 6.0)
 	## 完整正文。★字号 13 → 17: 这是"点开技能看全部"的落地页, 全项目最小的字放在这里最没道理
 	##   (同一屏的装备效果正文是 19)。★fit_content 撑高 + 外层详情自己会滚(2026-08-03),
 	##   不再自己开 scroll_active —— 框里套框的滚动条玩家根本发现不了。
@@ -941,7 +958,7 @@ func _render_skill_detail_inline(pet: Dictionary, ctx: Dictionary, sk: Dictionar
 	rt.bbcode_enabled = true
 	rt.fit_content = true
 	rt.scroll_active = false
-	rt.position = Vector2(RCOL_X, top + 58.0)
+	rt.position = Vector2(RCOL_X, body_y)
 	rt.custom_minimum_size = Vector2(_rw(), 0)
 	rt.add_theme_font_size_override("normal_font_size", 17)
 	rt.add_theme_constant_override("line_separation", 5)

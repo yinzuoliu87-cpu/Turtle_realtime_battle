@@ -498,7 +498,7 @@ func _t_kill(gs) -> void:
 
 	## 情形 A: 斧头亲手打死(killer 就是斧头)
 	gs.axe_exp_bar = 0; gs.axe_exp_total = 0; gs.axe_stage = 0
-	var killer := {"_eq_axe": true, "alive": true}
+	var killer := {"_eq_axe": true, "alive": true, "_axe_local": true}   # 本机玩家的斧头(登场时 summon 钉的标记)
 	var victim := {"alive": false}
 	axe_sys.on_death(victim, killer)
 	_ok("★斧头亲手击杀 → +%d(实测 %d)" % [AE.EXP_ON_KILL, gs.axe_exp_total],
@@ -525,7 +525,7 @@ func _t_kill(gs) -> void:
 	_ok("★分母: 从没被斧头碰过 → 一分不给(实测 %d)" % gs.axe_exp_total, gs.axe_exp_total == 0)
 
 	## on_hit 真的会盖时间戳(否则情形 B 在真战斗里永远发生不了)
-	var ax := {"_eq_axe": true, "alive": true}
+	var ax := {"_eq_axe": true, "alive": true, "_axe_local": true}
 	var tg := {"alive": true, "shield": 0.0}
 	axe_sys.on_hit(ax, tg, false)
 	_ok("★on_hit 会在目标身上盖【斧头碰过】时间戳(非普攻也盖 —— 助攻不该只算普攻)",

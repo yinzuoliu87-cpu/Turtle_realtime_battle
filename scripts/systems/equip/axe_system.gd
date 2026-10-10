@@ -30,15 +30,37 @@ func _init(b) -> void:
 	_fin = AFF.new(b)
 
 
-## 历史累计经验。★四期之前恒为 0 —— 但**必须现在就走这个函数**,
+## 历史累计经验(**本机玩家**的)。★四期之前恒为 0 —— 但**必须现在就走这个函数**,
 ##   否则四期接上经验时得回头找散落各处的 0。
 func _exp_total() -> int:
 	return _gs_int("axe_exp_total", 0)
 
 
-## 当前档位索引(0=木斧)。四期之前恒为 0。
+## 当前档位索引(0=木斧, **本机玩家**的)。四期之前恒为 0。
 func _stage_idx() -> int:
 	return clampi(_gs_int("axe_stage", 0), 0, AE.STAGES.size() - 1)
+
+
+## ★★斧头是【谁的】(2026-10-10): 左边 = 本机玩家(录像里左边 = 录制者), 右边 = 对手。
+##   与宝箱龟同一条口径(`battle_spawn` 的 "chest" 分支: left 读 GameState, right 读 `dual_ghost`)。
+func _is_local_side(u: Dictionary) -> bool:
+	return str(u.get("side", "left")) != "right"
+
+
+## 这只携带者的砍伐进度 {total, stage, final}。
+## ★根因(2026-10-10): 原来不分敌我一律读本机 GameState ⇒ 对手带 096 时, 它的斧头用的是**我的**进度
+##   (我练到钻石斧, 对面的木斧也跟着是钻石斧的身板)。
+##   · 本机一方 → GameState(原样)
+##   · 对手一方 → 对手快照 `GameState.dual_ghost`(它在录像 STATE_KEYS 里 ⇒ 回放照样复现);
+##     快照没这几个键(老快照 / 内置陪练文件)或干脆没有快照 ⇒ `AE.progress_of_snapshot` 回落到
+##     「打了 season_total_battles 场的人至少有的进度」(见那个函数的头注; 没快照 = 0 场 = 木斧)。
+##     ★没快照时**不再**回落到 GameState —— 那正是这个 bug 本身。
+func _progress_of(u: Dictionary) -> Dictionary:
+	if _is_local_side(u):
+		return {"total": _exp_total(), "stage": _stage_idx(), "final": _gs_str("axe_final", "")}
+	var gs = battle.get_node_or_null("/root/GameState")
+	var dg = gs.get("dual_ghost") if gs != null else null
+	return AE.progress_of_snapshot(dg if dg is Dictionary else {})
 
 
 ## 从 GameState 读一个整数, **null 安全**。
@@ -138,8 +160,10 @@ func reset_for_lane() -> int:
 func summon(u: Dictionary) -> Variant:
 	if not u.get("alive", false):
 		return null
-	var et: int = _exp_total()
-	var si: int = _stage_idx()
+	var prog: Dictionary = _progress_of(u)          # ★按携带者那一方的进度(见 _progress_of)
+	var et: int = int(prog["total"])
+	var si: int = int(prog["stage"])
+	var fin: String = str(prog["final"])
 	var pv: int = AE.passives_at(si)
 	var ax = battle._spawn._spawn_summon(u, "axe", AE.minion_hp(et, pv), AE.minion_atk(et, pv),
 		{"label": str(AE.stage(si)["name"]), "spr_id": "axe", "col_size": AE.MINION_COL_SIZE, "hp_w": 28.0,
@@ -149,6 +173,9 @@ func summon(u: Dictionary) -> Variant:
 	ax["eq_state"] = {}
 	ax["equips"] = []
 	ax["_eq_axe"] = true                    # 认亲标记: 被动 2 / 主动都靠它认出"这是斧头"
+	## ★是不是**本机玩家**的斧头 —— 只有它的击杀/助攻给本机加砍伐经验(见 on_death)。
+	##   钉在登场那一刻(同 `_axe_pv`): 局内换边(驯服倒戈)不改变"这把斧头是谁练出来的"。
+	ax["_axe_local"] = _is_local_side(u)
 	## ★把档位解锁的被动条数**钉在召唤物身上**, 而不是每次用的时候回头问 GameState:
 	##   一路打到一半玩家在别处进化了, 场上这只不该中途变身(它的血/攻也是登场那一刻算的)。
 	ax["_axe_pv"] = pv
@@ -162,9 +189,9 @@ func summon(u: Dictionary) -> Variant:
 	ax["energy"] = 0.0
 	## ★最终造物的属性要在 `_recalc_stats` **之前**折进去(它改的是 base_*)。
 	##   ★钉在召唤物身上: 一路打到一半玩家在别处选了造物, 场上这只不该中途变身。
-	_fin.apply_stats(ax, _gs_str("axe_final", ""))
+	_fin.apply_stats(ax, fin)
 	## ★九把悬空 3D 斧(2026-09-15): 按形态(造物优先, 否则进化档位)换帧表 + 统一贴图尺寸, 见 AxeArt 头注
-	AxeArt.apply(battle, ax, AxeArt.form_of(_gs_str("axe_final", ""), str(AE.stage(si)["key"])))
+	AxeArt.apply(battle, ax, AxeArt.form_of(fin, str(AE.stage(si)["key"])))
 	battle._recalc_stats(ax)
 	ax["hp"] = float(ax["maxHp"])
 	u["_axe_ref"] = ax                       # ★只用 is_same 比较, 绝不当 Dictionary 的键(CLAUDE.md §3.2)
@@ -368,9 +395,11 @@ func steal_shield(ax: Dictionary, tgt: Dictionary) -> float:
 func on_hit(src: Dictionary, tgt: Dictionary, basic: bool) -> void:
 	if not (src is Dictionary) or not src.get("_eq_axe", false):
 		return
-	if tgt is Dictionary:
+	if tgt is Dictionary and src.get("_axe_local", false):
 		## 助攻窗的起点(四期)。★记在**被打的那个**身上, 而不是在斧头身上记一份名单 ——
 		##   名单要拿单位字典当元素比对, 而单位字典之间互相引用成环(CLAUDE.md §3.2)。
+		## ★只记**本机玩家**的斧头碰过(2026-10-10): 这个时间戳唯一的读者是 on_death 给本机加经验;
+		##   对手斧头碰过我方单位、我方单位随后阵亡 ⇒ 原来会给**我**加经验。
 		tgt["_axe_touch_t"] = float(battle._t)
 	if not basic:
 		return
@@ -429,7 +458,10 @@ func on_death(victim: Dictionary, killer) -> bool:
 	if gs == null or not gs.has_method("axe_add_exp"):
 		return false
 	var hit := false
-	if killer is Dictionary and (killer as Dictionary).get("_eq_axe", false):
+	## ★★只认**本机玩家**的斧头(`_axe_local`, 登场时钉, 2026-10-10)。原来任何一把斧头的击杀都给
+	##   本机 GameState 加经验 ⇒ 对手的斧头砍死我的龟, 涨的是**我的**砍伐进度。
+	if killer is Dictionary and (killer as Dictionary).get("_eq_axe", false) \
+			and (killer as Dictionary).get("_axe_local", false):
 		hit = true                                   # 斧头亲手打死
 	elif float(battle._t) - float(victim.get("_axe_touch_t", -9999.0)) <= AE.ASSIST_WINDOW:
 		hit = true                                   # 3 秒内被斧头碰过 = 参与击杀

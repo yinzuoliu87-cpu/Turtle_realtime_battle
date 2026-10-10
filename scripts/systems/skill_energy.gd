@@ -46,6 +46,14 @@ const SKILL_COST := {
 static func cost_of(stype: String) -> float:
 	return float(SKILL_COST.get(stype, COST_DEFAULT))
 
+## ★某只龟放某个技真正花多少龟能 —— 战斗 `_skill_cost()` 与图鉴共用这一个函数(2026-10-10)。
+##   energy_cost = 该龟 pets.json 各技 energyCost(BattleSpawn.energy_cost_table); volcano = 熔岩龟火山形态。
+##   原来火山形态那条特例只写在战斗里, 图鉴照 type 兜底 ⇒ 火山页三张卡显示 95/95/80, 实发 115/150/120。
+static func cost_for(stype: String, energy_cost: Dictionary, volcano: bool) -> float:
+	if stype == "lavaErupt" and volcano:
+		return LavaSystem.RAMPAGE_ENERGY   # 熔岩技三·火山形态版=暴走·龟能单独120(用户2026-07-09"要单独")
+	return float(energy_cost.get(stype, cost_of(stype)))
+
 ## 该技是不是"要花龟能的主动技" (在花费表里=主动; 普攻/被动不在表里走自己的节奏)
 static func is_active(stype: String) -> bool:
 	return SKILL_COST.has(stype)

@@ -66,20 +66,49 @@ const TurtleStats := preload("res://scripts/gamedata/turtle_stats.gd")    # 龟�
 
 # 技能在实时版里的角色: passive(被动) / basic(普攻,不花龟能) / active(主动,花龟能). 跟战斗 BASIC_ATK+改造一致.
 #   普攻=skillPool[0] (忍者已改回近战刺客: 斩击=普攻idx0, 冲击转被动auto-dash不占技位).
-func _skill_role(pet_id: String, sk: Dictionary, i: int) -> String:
-	if sk.get("passiveSkill", false):
+## ★★2026-10-10 改成【跟战斗同一个判据】, 不再读 pets.json 的 `passiveSkill`:
+##   赌神龟「命运之轮」/ 海盗龟「海盗船」/ 水晶龟「水晶球」三张卡标着 passiveSkill:true ⇒ 图鉴写「被动」、不显龟能,
+##   而战斗 `_resolve_active_skills` 只按 `PASSIVE_SKILL_TYPES` 剔除 ⇒ 三个都进主动轮转、攒满 110/120/70 龟能就放。
+##   ⇒ 角色 = 槽位 0 是普攻; 其余看战斗那张 PASSIVE_SKILL_TYPES 表。
+## ★形态技(熔岩龟 volcanoSkills / 双头 meleeSkills)按【它在形态组里的槽位】判: 战斗里火山形态放的是同一槽位的技能,
+##   原来拿 skillPool.find() 去找形态技 ⇒ 得 -1 ⇒ 「熔岩弹（火山形态）」这条普攻被判成主动、标「龟能 95」。
+func skill_slot_of(pet: Dictionary, sk: Dictionary) -> Dictionary:
+	for key in ["skillPool", "volcanoSkills", "meleeSkills"]:
+		var pool: Variant = pet.get(key, [])
+		if not (pool is Array):
+			continue
+		for i in range((pool as Array).size()):
+			if is_same((pool as Array)[i], sk):
+				return {"idx": i, "form": key != "skillPool"}
+	return {"idx": -1, "form": false}
+
+func skill_role_of(pet: Dictionary, sk: Dictionary) -> String:
+	var slot: Dictionary = skill_slot_of(pet, sk)
+	var i: int = int(slot["idx"])
+	if i == 0:
+		return "basic"
+	## 形态技在战斗里放的是 skillPool 同一槽位的 type(火山形态只改它的效果) ⇒ 按那个 type 判。
+	var base: Dictionary = _base_slot_skill(pet, slot, sk)
+	if RealtimeBattle3DScene.PASSIVE_SKILL_TYPES.has(str(base.get("type", ""))):
 		return "passive"
-	return "basic" if i == 0 else "active"
+	return "active"
 
+## 图鉴显示的龟能 = 战斗 `_skill_cost()` 同一个函数(SkillEnergy.cost_for), 形态技按火山形态算。
+##   (更早只读 SkillEnergy.cost_of(type): 彩虹「护盾」显 70 实发 50、「反射」显 0 实发 110 —— 该龟 energyCost 优先。)
+func skill_energy_of(pet: Dictionary, sk: Dictionary) -> int:
+	var slot: Dictionary = skill_slot_of(pet, sk)
+	var base: Dictionary = _base_slot_skill(pet, slot, sk)
+	return int(round(SkillEnergy.cost_for(str(base.get("type", "")), BattleSpawn.energy_cost_table(pet), bool(slot["form"]))))
 
-## ★龟能事实源必须与战斗一致: 战斗 `_skill_cost()` = pets.json 的 `energyCost` 优先, 缺则 SkillEnergy 表兜底。
-## 原来图鉴只读 SkillEnergy.cost_of(type) → 两处对不上就在骗玩家:
-##   · 彩虹「护盾」: 战斗 50, 图鉴显 70 (type "shield" 是多龟共用的通用键, 一个值套不了所有龟)
-##   · 彩虹「反射」: SkillEnergy 表里根本没有 rainbowReflect → 图鉴显【龟能 0】, 战斗实际 110
-func _skill_energy(sk: Dictionary) -> int:
-	if sk.has("energyCost"):
-		return int(round(float(sk["energyCost"])))
-	return int(round(SkillEnergy.cost_of(str(sk.get("type", "")))))
+func _base_slot_skill(pet: Dictionary, slot: Dictionary, sk: Dictionary) -> Dictionary:
+	if not bool(slot["form"]):
+		return sk
+	var sp: Variant = pet.get("skillPool", [])
+	var i: int = int(slot["idx"])
+	if sp is Array and i >= 0 and i < (sp as Array).size():
+		return (sp as Array)[i]
+	return sk
+
 
 # 各类型强调色 + emoji (无 tag PNG → 用 emoji 占位; 颜色用于列表描边/标题)。★2026-08-03 批1:
 #   原来这里是 11 学派的 SCHOOL_STYLE + 66 行 SCHOOL_EFFECTS 文案。学派系统已整体删除(方案书 D1),
