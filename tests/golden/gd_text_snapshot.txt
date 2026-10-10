@@ -140,7 +140,7 @@ scripts/gamedata/minion_codex.gd|lit|后排 · 远程
 scripts/gamedata/minion_codex.gd|lit|吞噬
 scripts/gamedata/minion_codex.gd|lit|普通攻击造成 1×攻击力 的物理伤害，每第 5 次攻击附带旋刃。
 scripts/gamedata/minion_codex.gd|lit|每 5 秒一次：锁定 150~350 码之间的敌人，射出锁链，命中后将其眩晕 0.4 秒并拉至自身后方，造成 1×攻击力 的魔法伤害。
-scripts/gamedata/minion_codex.gd|lit|目标生命值低于 15% 时发动吞噬，持续 1.5 秒，期间自身获得 [color=#ff9f43]95% 伤害减免[/color]。吞噬完成后回复 [color=#ff9f43]目标剩余生命的 2 倍[/color]，获得 50% 攻击速度提升，持续 5 秒，并窃取目标的主动技能。普通攻击、铁锁、铁拳与强化普通攻击均可触发。
+scripts/gamedata/minion_codex.gd|lit|目标生命值低于 15% 时发动吞噬，持续 1.5 秒，期间自身获得 [color=#ff9f43]95% 伤害减免[/color]。吞噬完成后回复 [color=#ff9f43]目标剩余生命的 2 倍[/color]，获得 50% 攻击速度提升，持续 5 秒，并窃取目标的主动技能。普通攻击、铁锁与铁锤均可触发。
 scripts/gamedata/minion_codex.gd|lit|精英 · 近战
 scripts/gamedata/minion_codex.gd|lit|精英小将
 scripts/gamedata/minion_codex.gd|lit|近战小将
@@ -1637,6 +1637,7 @@ scripts/util/skill_text.gd|lit|(?<!\">)(?:伤害减免|减伤)(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)(?:治疗效果提升|受到的治疗)(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)(?:魔法穿透|魔抗穿透|法穿)(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)(?:龟能充能|充能速度)(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)(?<!泡泡)束缚(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)中毒(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)冰寒(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)减速(?!<)
@@ -1657,7 +1658,6 @@ scripts/util/skill_text.gd|lit|(?<!\">)暴击伤害(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)暴击率(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)最大HP(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)最大生命值?(?!<)
-scripts/util/skill_text.gd|lit|(?<!\">)束缚(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)沉默(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)治疗削减(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)流血(?!<)

@@ -338,7 +338,7 @@ func _elite_spike(pos2d: Vector2, big: bool) -> void:            # 单根黑刺(
 func _sk_elite_hammer(u: Dictionary, tgt) -> void:               # 技能·铁锤(100龟能·Hammerfist·2026-07-16细节轮): 举拳蓄力0.35s→往下砸→碎块+尘环→60°锥500码刺浪; 每第3次跳很高(5.2)空中蓄力1s→下锤700码全域
 	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
-	if _elite_try_consume(u, tgt):   # 用户2026-07-19: 铁拳也能触发吞噬(目标<15%血时优先吞)
+	if _elite_try_consume(u, tgt):   # 用户2026-07-19: 铁锤也能触发吞噬(目标<15%血时优先吞)
 		return
 	## ★"这一发是普通还是强化"【只由 SkillForms 说了算】(2026-08-28)。
 	##   原来是 `+1` 之后判 `% 3 == 0`; 现在改成【放之前】问 SkillForms(判据 `% 3 == 2`),
