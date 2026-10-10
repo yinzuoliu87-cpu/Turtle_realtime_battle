@@ -707,11 +707,11 @@ func _t_days() -> void:
 	var prom_bad: Array = []
 	for r in sr:
 		var w := int(str(r.get("s1", "-1")))
-		var want := LB.MARK_PROMOTED if w >= pw else ""
+		var want := ""      # ★2026-10-10 用户拍板: 周六周日不挂「已晋级」(与赛况板的「已晋级」= 进周日 撞词)
 		if str(r.get("mark", "")) != want:
 			prom_bad.append("%s 胜%d 挂「%s」" % [r.get("name", "?"), w, r.get("mark", "")])
-	_ok("⑤六 ★★胜场 ≥ %d 的挂「已晋级」、其余不挂(逐行)" % pw, prom_bad.is_empty() and sr.size() == 10, str(prom_bad))
-	_ok("⑤六 ★分母: 真的挂出了 %d 个「已晋级」" % n_prom, _count(smk, LB.MARK_PROMOTED) == n_prom, str(smk))
+	_ok("⑤六 ★★周六谁都不挂「已晋级」(逐行, 含胜场 ≥ %d 的 %d 人)" % [pw, n_prom], prom_bad.is_empty() and sr.size() == 10, str(prom_bad))
+	_ok("⑤六 ★分母: 榜上确有 %d 个胜场过线的人(不然上一条是空检查)" % n_prom, n_prom > 0, str(smk))
 	var sb = sat.get("entry_btn")
 	_ok("⑤六 ★★顶栏入口 = 「全场赛况」(与主菜单那扇门同一个字)",
 		sb is Button and str((sb as Button).text) == MM.GAUNTLET_BOARD_LINE and MM.GAUNTLET_BOARD_LINE == "全场赛况",
@@ -734,8 +734,8 @@ func _t_days() -> void:
 	_ok("⑤日 ★标题 = 🏆 积分赛终榜", _title_of(sun0) == LB.TITLE_ICON + "积分赛终榜", _title_of(sun0))
 	_ok("⑤日 问的是本周的决赛", _fw_reqs().size() == 1 and _p_week_of(_fw_reqs()[0]) == WEEK)
 	var m0 := _marks(_screen_rows(sun0))
-	_ok("⑤日 决赛没打完 ⇒ 不挂冠军/亚军/四强, 照旧「已晋级」",
-		_count(m0, "冠军") + _count(m0, "亚军") + _count(m0, "四强") == 0 and _count(m0, LB.MARK_PROMOTED) == n_prom,
+	_ok("⑤日 决赛没打完 ⇒ 不挂冠军/亚军/四强, 也不挂「已晋级」",
+		_count(m0, "冠军") + _count(m0, "亚军") + _count(m0, "四强") == 0 and _count(m0, LB.MARK_PROMOTED) == 0,
 		str(m0))
 	var ub = sun0.get("entry_btn")
 	_ok("⑤日 ★★顶栏入口 = 「查看对阵图」→ _open_bracket_map → BracketMap(主菜单同一个场景)",
@@ -751,7 +751,7 @@ func _t_days() -> void:
 	var m1 := _marks(_screen_rows(sun1))
 	print("    [头衔] ", m1)
 	_ok("⑤日 ★★决赛打完 ⇒ 冠军挂在独立算出的那个人名字旁", str(m1.get(champ, "")) == "冠军", str(m1))
-	_ok("⑤日 打完: 冠军 1 / 亚军 0 / 四强 0; 其余晋级者仍挂「已晋级」、周日不挂「进决赛日」",
+	_ok("⑤日 打完: 冠军 1 / 亚军 0 / 四强 0; 其余人不挂「已晋级」、周日不挂「进决赛日」",
 		_count(m1, "冠军") == 1 and _count(m1, "亚军") == 0 and _count(m1, "四强") == 0
-		and _count(m1, "进入决赛日") == 0, str(m1))
+		and _count(m1, "进入决赛日") == 0 and _count(m1, LB.MARK_PROMOTED) == 0, str(m1))
 	await _close(sun1)

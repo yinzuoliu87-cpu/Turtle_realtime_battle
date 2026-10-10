@@ -320,9 +320,11 @@ static func row_mark(phase: String, wins: int, srv_title: String, fin: Dictionar
 			if bool(fin.get("closed", false)) and fid in [_P2C.TITLE_CHAMPION,
 					_P2C.TITLE_RUNNER_UP, _P2C.TITLE_SEMIFINAL, _P2C.TITLE_GROUP_CHAMPION]:
 				return str(_P2C.TITLE_LABEL[fid])
-			return MARK_PROMOTED if wins >= _P2C.PROMOTE_WINS else ""
+			return ""
+		## ★★周六周日不挂「已晋级」(用户 2026-10-10「行」): 这块榜上它指「晋级了闯关赛」, 而同一天赛况板上的「已晋级」
+		##   指「晋级了周日」⇒ 闯关赛 0-3 出局的人在这里照样挂着「已晋级」, 读起来像进了周日。
 		_P2C.PHASE_GAUNTLET:
-			return MARK_PROMOTED if wins >= _P2C.PROMOTE_WINS else ""
+			return ""
 	return ""
 
 
