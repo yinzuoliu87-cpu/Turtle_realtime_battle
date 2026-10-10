@@ -148,6 +148,7 @@ frames_for () {
     verify_inventory_layout)  echo 4000 ;;
     verify_codex_layout)      echo 6000 ;;
     verify_codex_equip_star)  echo 3000 ;;   # 96 件装备逐件打开两遍(简述不上屏 / ★2 正文无三档串), 实测 500 帧只跑到第 12 条
+    verify_codex_skill_preview)  echo 5000 ;;   # 28 只龟逐页开被动 / 技能详情 / 火山形态(实测 3000 帧够; 默认 500 跑不完, 不打 ALL PASS)
     # 7 个整屏场景逐个实例化, 而且每个都要**轮询到入场动画停下来**(最多 240 帧)才量 ——
     #   不等稳就会量到还在半空中的控件(主菜单实测 x = -485, 两个标签报同一个矩形,
     #   压字判据当场报假警)。7 × 240 + 逐屏扫描 ⇒ 预算给到 3 万帧。
