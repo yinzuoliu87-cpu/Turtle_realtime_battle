@@ -8,6 +8,13 @@ const SAVE_PATH := "user://savegame.json"
 
 
 func _ready() -> void:
+	## ★2026-10-11 全项目通读: 本探针会关掉 test_mode 真写/截断存档 ⇒ 落在真用户目录时拒跑(手动单跑会毁掉开发者的真存档)。
+	##   隔离跑法: APPDATA=<临时目录> XDG_DATA_HOME=<临时目录> <godot> ...; 确实要动真存档就设 PROBE_ALLOW_REAL_SAVE=1。
+	var _ud: String = OS.get_user_data_dir().replace("\\", "/")
+	if (_ud.contains("/AppData/Roaming/") or _ud.contains("/.local/share/")) and OS.get_environment("PROBE_ALLOW_REAL_SAVE") != "1":
+		print("拒跑: user:// 落在真用户目录(%s), 本探针会写坏真存档。请用临时 APPDATA/XDG_DATA_HOME 隔离" % _ud)
+		get_tree().quit(2)
+		return
 	await get_tree().process_frame
 	var gs = get_node_or_null("/root/GameState")
 	if gs == null:
