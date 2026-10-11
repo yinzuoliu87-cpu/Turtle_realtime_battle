@@ -269,7 +269,10 @@ func _add(u: Dictionary, k: String, v: float) -> void:
 		"dodgePct":
 			# 灵物。★上限【不在这里钳】—— DODGE_CAP(0.75) 钳在 _recalc_stats 的唯一写入点,
 			#   两处各钳一次必然漂移(v0.18.9 修"带 2 件 3★ 幽灵墨鱼永远打不中"时定的规矩)。
-			u["dodge"] = float(u.get("dodge", 0.0)) + v / 100.0
+			## ★2026-10-11 全项目通读修: 原来写 `u["dodge"]` —— 全仓没人读(判定读 dodge_bonus, 它只累加
+			##   stat=="dodge" 的 buff) ⇒ 灵物羁绊的闪避从上线起就是 0。改成与装备 dodgePct 同一条路
+			##   (`equip_stats_apply` 也是挂永久 buff), 门禁 verify_spirit_synergy_dodge 量 dodge_bonus。
+			battle._damage._buff(u, "dodge", v / 100.0, false, 99999.0)
 		_:
 			pass
 
