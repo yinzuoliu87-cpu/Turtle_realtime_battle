@@ -476,6 +476,16 @@ func _clock() -> int:
 	return _now_override if _now_override > 0 else int(_P2C.now_utc())
 
 
+## 算【时间差】用的钟: 与 `recv_at`(收包那一刻的**原始系统钟**)同一把尺子。
+## ★2026-10-11 全项目通读(赛制第 6 条): 倒计时/购物窗原来传 `_clock()`(= 原始钟 + 服务器偏移/穿越偏移)
+##   ⇒ 时间差里多出一整个偏移(手机钟偏 10 分钟 ⇒ 倒计时差 10 分钟; 穿越时恒 0)。门禁 verify_bracket_clock_delta。
+func _delta_now() -> int:
+	if _now_override > 0:
+		return _now_override
+	## 门禁钉死的钟(产品里恒 0)也认 —— 门禁把收包时刻对齐到它; 只排除服务器偏移/时间穿越那两层
+	return _P2C.now_override_ts if _P2C.now_override_ts > 0 else int(Time.get_unix_time_from_system())
+
+
 ## 现在这一张的数据。★全屏所有判据都从这里取 —— 切 Tab 只换它, 其余一行不动。
 ## ★观赛(2026-10-04): 「我这一组」页签在【观赛】那一档换成**正在看的那一组** ——
 ##   判据就是 `_bucket_kind()`(页签字、正文、画哪张图三者同一份判断)。
@@ -1978,6 +1988,8 @@ var _poll: Timer = null
 var _injected := false          # ★有人喂过数据 ⇒ 这一屏不联网
 var _fetch_left := 0.0          # 距下次重新拉(服务端每过一轮, 图上就该翻一面)
 var _tip: Label = null
+## 这一拍「拿不到对手」的原因(空 = 没有)。★2026-10-11: 它与倒计时共用 `_tip`, 有它时倒计时让路(见 `_sync_tip`)。
+var _opp_tip_text: String = ""
 ## E-B7 备战购物窗那一行。★与 `_tip` 分成**两个**标签：一个说「还能买多久」、
 ##   一个说「对手阵容拿没拿到」；挤进同一行会互相盖掉，而那两件事同时成立。
 var _shop_row: Label = null
@@ -2232,11 +2244,11 @@ func _on_poll() -> void:
 	##   两者共用 `_tip`，而"拿不到对手阵容"是**当下要处理的事**，
 	##   优先级高于"还能买多久"，所以下面那句有内容时会盖掉这一句。
 	if _shop_row != null:
-		var now_l := _clock()
+
 		## ★看的是**我那一组**(`_bucket`), 不是 `cur()` —— 观赛时 `cur()` 是别人那一组,
 		##   拿它判「有组」会对没晋级的人念「本轮备战已结束 · 等开打」。
 		var lv := _live_dict()
-		var st := shop_tip(_SB.finals_shop_open_of(lv, now_l), _SB.finals_shop_left_of(lv, now_l),
+		var st := shop_tip(_SB.finals_shop_open_of(lv, _delta_now()), _SB.finals_shop_left_of(lv, _delta_now()),
 			int(lv.get("size", 0)) > 1)
 		_shop_row.text = st
 		_shop_row.visible = st != ""
@@ -2247,6 +2259,7 @@ func _on_poll() -> void:
 	## 对手那边的结果(拿不到/被拒/连不上)要说人话 —— 每种 reason 说的不一样。
 	if _tip != null:
 		var tip := opponent_tip(_SB.opponent_cached(), _SB.opponent_tried())
+		_opp_tip_text = tip
 		_tip.text = tip
 		_tip.visible = tip != ""
 		if tip != "":
@@ -2330,8 +2343,12 @@ static func round_tip(cur_round: int, size: int, left_sec: int) -> String:
 func _sync_tip() -> void:
 	if _tip == null:
 		return
+	## ★2026-10-11 全项目通读(赛制第 6 条): 原来每拍先写对手原因、拍尾这里又无条件写倒计时 ⇒ 原因永远看不到。
+	##   「拿不到对手」是当下要处理的事, 优先级高于倒计时(门禁 verify_bracket_clock_delta)。
+	if _opp_tip_text != "":
+		return
 	var lv := _live_dict()
-	var left: int = _SB.finals_left_of(lv, _clock())
+	var left: int = _SB.finals_left_of(lv, _delta_now())
 	if left < 0 or bool(lv.get("closed", false)):
 		_tip.visible = false
 		return

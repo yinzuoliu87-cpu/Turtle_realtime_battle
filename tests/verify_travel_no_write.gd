@@ -261,6 +261,8 @@ func _ready() -> void:
 	var table := [
 		["GET", base + "ghosts?select=*", false], ["POST", base + "ghosts", true],
 		["POST", base + "rpc/finals_view", false], ["POST", base + "rpc/finals_opponent", true],
+		## ★2026-10-11 全项目通读: finals_week_view 是纯读(schema 标 stable), 原来漏在白名单外 ⇒ 时间穿越测周日时观赛/冠军杯赛页拿不到数据
+		["POST", base + "rpc/finals_week_view", false], ["POST", base + "rpc/finals_replay", false], ["POST", base + "rpc/week_leaderboard", false],
 		["POST", base + "rpc/push_save", true], ["POST", base + "rpc/finals_enter", true],
 		["POST", base + "rpc/finals_report", true], ["POST", base + "rpc/some_new_rpc", true],
 		["POST", "http://x/auth/v1/token?grant_type=refresh_token", false], ["PUT", "http://x/auth/v1/user", false],
