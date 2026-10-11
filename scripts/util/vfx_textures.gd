@@ -83,7 +83,12 @@ static func _make_bubble_texture() -> ImageTexture:
 # blob 影贴图: radial 渐变 中心黑→边缘透明 (优化: 中段加点过渡, 边缘更柔不硬切)
 # 亮光晕贴图 (命中火花用): 白心→透明 (modulate 上色才会亮; blob 是黑的不能拿来当火花)
 ## ★#6修: 命中辉光/子弹用 GradientTexture2D radial 会露方角(角落 alpha≠0) → 改 Image 逐像素真圆(角=0).
+## ★2026-10-11 全项目通读 A8: 原来每次调用都逐像素重建一张 96×96 并上传(海盗炮弹烟尾等每帧调, 28 处直调)。
+##   结果只取决于常量 ⇒ 缓存一份共用(同文件 _blob/_tile 早就这么做)。调用方只拿来当贴图, 不改它。
+static var _glow_tex_cache: ImageTexture = null
 static func _make_glow_texture() -> ImageTexture:
+	if _glow_tex_cache != null:
+		return _glow_tex_cache
 	var N := 96
 	var img := Image.create(N, N, false, Image.FORMAT_RGBA8)
 	var c := float(N - 1) / 2.0
@@ -98,7 +103,8 @@ static func _make_glow_texture() -> ImageTexture:
 			elif d < 1.0:
 				a = lerp(0.18, 0.0, (d - 0.75) / 0.25)
 			img.set_pixel(x, y, Color(1, 1, 1, a))
-	return ImageTexture.create_from_image(img)
+	_glow_tex_cache = ImageTexture.create_from_image(img)
+	return _glow_tex_cache
 
 static var _blob_tex_cache: ImageTexture = null
 static func _make_blob_texture() -> ImageTexture:   # Image真圆软影(角alpha=0不显方块, 替FILL_RADIAL方角bug); 黑底,modulate控浓度,缓存
