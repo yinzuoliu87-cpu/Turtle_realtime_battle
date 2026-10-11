@@ -539,7 +539,7 @@ QUIET=1 APPDATA="$GATE_APPDATA" XDG_DATA_HOME="$GATE_APPDATA" "$GODOT" --headles
 #   每跑一次门禁就在线上 auth.users 里造一个垃圾账号(本机 + CI 每次都造; 9-27 起每天 25~125 个, 实测零真人)。
 #   测试池那一行早就带了, 冒烟这一行漏了。判据: tools/gate_offline_audit.py。
 ( SHIP=1 TURTLE_BACKEND=" " TURTLE_SUPABASE=" " QUIET=1 APPDATA="$GATE_APPDATA" XDG_DATA_HOME="$GATE_APPDATA" "$GODOT" --headless --audio-driver Dummy --path "$DIR" res://tests/smoke_scenes.tscn \
-    --quit-after 40000 > "$RAW/smoke.log" 2>&1; echo $? > "$RAW/smoke.rc" ) &
+    --quit-after 90000 > "$RAW/smoke.log" 2>&1; echo $? > "$RAW/smoke.rc" ) &
 SMOKE_PID=$!
 
 NAMES=()
@@ -658,7 +658,7 @@ SMOKE_KNOWN="$(echo "$SMOKE_OUT" | grep -cE "Lambda capture at index [0-9]+ was 
 SMOKE_FATAL=$((SMOKE_FATAL - SMOKE_KNOWN))
 [ "$SMOKE_FATAL" -lt 0 ] && SMOKE_FATAL=0
 if [ "$SMOKE_RC" -eq 0 ] && [ "$SMOKE_FATAL" -eq 0 ] && echo "$SMOKE_OUT" | grep -q "SMOKE DONE"; then
-  PASS=$((PASS+1)); echo "  PASS  smoke_scenes (9场景进出×4 + 战斗中途硬释放×3 + 60秒完整战斗)"
+  PASS=$((PASS+1)); echo "  PASS  smoke_scenes (12场景进出×4 + 战斗中途硬释放×3 + 60秒单路战斗 + 90秒双路对局)"
   [ "$SMOKE_KNOWN" -gt 0 ] && echo "        WARN 含 $SMOKE_KNOWN 条已登记未修的 Lambda capture(拆除时序·玩家碰不到) - 见 KNOWN_LAMBDA_CAP"
 else
   FAIL=$((FAIL+1)); echo "  FAIL  smoke_scenes  (rc=$SMOKE_RC, 致命报错=$SMOKE_FATAL)"

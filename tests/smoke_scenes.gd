@@ -24,7 +24,14 @@ const SCENES := [
 	"res://scenes/Record.tscn",
 	"res://scenes/Leaderboard.tscn",
 	"res://scenes/Matchmaking.tscn",
+	## ★2026-10-11 全项目通读: 周六赛况板 / 周日对阵图 / 训龟大师配置原来不在清单里(内测周末就靠前两个)
+	"res://scenes/GauntletBoard.tscn",
+	"res://scenes/BracketMap.tscn",
+	"res://scenes/TrainerConfig.tscn",
 ]
+
+## 场景不存在 / 加载失败的条数。★2026-10-11: 原来只打印 [SKIP]/[FAIL] 照样 SMOKE DONE + quit(0) ⇒ 门禁绿。
+var _bad := 0
 
 const BATTLE := "res://scenes/RealtimeBattle3D.tscn"
 const RTScene := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
@@ -79,18 +86,42 @@ func _ready() -> void:
 		inst2.free()
 	await _tick_for(1.0)
 
+	print("=== 5. ★双路对局(玩家真实打的那种: 分路/小将/蛋/三战场)跑满 90 秒 ===")
+	## ★2026-10-11 全项目通读: 上面第 3/4 节没设 dual_active ⇒ 走的是旧单路 spawn, 从没跑过玩家真实的双路流程。
+	##   DL_AUTOFIGHT = 跳过摆位直接开打(dual_lane_flow 的测试开关), 不需要点按钮。
+	if gs != null:
+		gs.dual_active = true
+	OS.set_environment("DL_AUTOFIGHT", "1")
+	var pack3: PackedScene = load(BATTLE)
+	var inst3 := pack3.instantiate()
+	add_child(inst3)
+	await _tick_for(90.0)
+	print("  [OK] 双路 90 秒跑完, 场景仍存活=%s" % is_instance_valid(inst3))
+	if is_instance_valid(inst3):
+		inst3.free()
+	OS.set_environment("DL_AUTOFIGHT", "")
+	if gs != null:
+		gs.dual_active = false
+	await _tick_for(1.0)
+
 	print("")
+	if _bad > 0:
+		print("SMOKE FAILED — %d 个场景不存在或加载失败" % _bad)
+		get_tree().quit(1)
+		return
 	print("SMOKE DONE — 无崩溃 (报错由外层 shell 判定)")
 	get_tree().quit(0)
 
 
 func _cycle(path: String, frames: int) -> void:
 	if not ResourceLoader.exists(path):
-		print("  [SKIP] 不存在: ", path)
+		print("  [FAIL] 不存在: ", path)
+		_bad += 1
 		return
 	var pack: PackedScene = load(path)
 	if pack == null:
 		print("  [FAIL] load 失败: ", path)
+		_bad += 1
 		return
 	var inst := pack.instantiate()
 	add_child(inst)
