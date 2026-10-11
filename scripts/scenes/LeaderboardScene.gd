@@ -435,9 +435,16 @@ func _local_rows() -> Array:
 	var rows: Array = Backend.leaderboard(pool, Backend.player_display_name(), int(GameState.season_wins),
 		int(GameState.hearts), int(GameState.season_sweeps), 1 << 30)
 	## 自己那行的总场次(`leaderboard()` 只认别人的快照字段, 自己的从存档补)。
+	## ★2026-10-11 全项目通读 B4: 周一看的是**上周**的榜, 而存档已滚到本周(清零) ⇒ 与 `_server_rows` 同一口径,
+	##   自己那一行不许拿本周成绩冒充上周 —— 一律 -1(画「—」)。门禁 verify_leaderboard_monday_local。
+	var last_week: bool = day_phase == _P2C.PHASE_REST
 	for r in rows:
 		if bool((r as Dictionary).get("is_self", false)):
-			(r as Dictionary)["battles"] = int(GameState.season_total_battles)
+			(r as Dictionary)["battles"] = -1 if last_week else int(GameState.season_total_battles)
+			if last_week:
+				(r as Dictionary)["wins"] = -1
+				(r as Dictionary)["hearts"] = -1
+				(r as Dictionary)["sweeps"] = 0
 	return rows
 
 
