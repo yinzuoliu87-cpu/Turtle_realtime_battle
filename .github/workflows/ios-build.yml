@@ -155,6 +155,16 @@ jobs:
           # ★★文件名带版本号之后, 老资产不会被 --clobber 顶掉(名字不一样了) ⇒ 会越堆越多。
           #   ⇒ 传新的之前先把 release 里其它 .ipa 删掉, 只留当前这一个。
           #   这样既能一眼看出版本, 又不会让一个 release 堆几十个 132MB 的包。
+          # ★★2026-10-11 全项目通读: 原来先删光其它版本的包、再比版本 ⇒ 比的时候 release 上只剩本次这个(或空),
+          #   「旧包不许覆盖新包」永远不触发(两个 tag 并发时 ios-latest 照样可能挂旧包)。⇒ 先比版本, 确定要当 latest 再删旧的。
+          CUR=$(gh release view ios-latest --json assets --jq '.assets[].name | select(endswith(".ipa"))' 2>/dev/null | sed -E 's/^turtle-v//; s/[.]ipa$//' | sort -V | tail -1)   # 有多个包时取最新的那个比
+          if [ -n "$CUR" ] && [ "$CUR" != "$VER" ]; then
+            NEWEST=$( { echo "$CUR"; echo "$VER"; } | sort -V | tail -1 )
+            if [ "$NEWEST" = "$CUR" ]; then
+              echo "release 上已是 v$CUR, 比本次 v$VER 新 ⇒ 不覆盖(本包在 artifact 里)"
+              exit 0
+            fi
+          fi
           for OLD in $(gh release view ios-latest --json assets \
                         --jq '.assets[].name' 2>/dev/null | grep '\.ipa$' || true); do
             if [ "$OLD" != "turtle-v${VER}.ipa" ]; then
@@ -171,14 +181,6 @@ jobs:
           #   「**后完成**」不等于「**版本最新**」—— 两个 tag 同时推, 谁先跑完只看 runner 排队。
           # ⇒ 传之前先比一次版本: release 上已有的包比我新就**不许覆盖**(跳过, 不判红 ——
           #   它不是失败, 是这一次本来就不该当 latest)。想要旧版去 Actions artifact 拿。
-          CUR=$(gh release view ios-latest --json assets --jq '.assets[].name | select(endswith(".ipa"))' 2>/dev/null | sed -E 's/^turtle-v//; s/[.]ipa$//' | head -1)
-          if [ -n "$CUR" ] && [ "$CUR" != "$VER" ]; then
-            NEWEST=$( { echo "$CUR"; echo "$VER"; } | sort -V | tail -1 )
-            if [ "$NEWEST" = "$CUR" ]; then
-              echo "release 上已是 v$CUR, 比本次 v$VER 新 ⇒ 不覆盖(本包在 artifact 里)"
-              exit 0
-            fi
-          fi
           #   ⇒ 重试三次, 每次间隔 15 秒; 三次都不行才真的红。
           for i in 1 2 3; do
             if gh release upload ios-latest "build/ios/turtle-v${VER}.ipa" --clobber; then
