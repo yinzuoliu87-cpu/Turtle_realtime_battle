@@ -1,0 +1,13 @@
+scripts/scenes/RealtimeBattle3DScene.gd	1	8643
+scripts/scenes/RecordScene.gd	1	393
+scripts/scenes/SettingsScene.gd	1	1877
+scripts/scenes/ShopScene.gd	1	2106
+scripts/scenes/SkillTipButton.gd	1	49
+scripts/scenes/TeamSelectScene.gd	1	1602
+scripts/scenes/TrainerConfigScene.gd	1	524
+scripts/scenes/TutorialGuide.gd	1	333
+scripts/scenes/battle/arcane_eq_vfx.gd	1	1602
+scripts/scenes/battle/arena_outer.gd	1	84
+scripts/scenes/battle/axe_ember_vfx.gd	1	135
+scripts/scenes/battle/axe_final_vfx.gd	1	213
+scripts/scenes/battle/axe_holo_vfx.gd	1	319

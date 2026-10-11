@@ -1,0 +1,8 @@
+scripts/net/supabase.gd	1	2815
+scripts/scenes/BracketMapScene.gd	1	2342
+scripts/scenes/CodexScene.gd	1	838
+scripts/scenes/GauntletBoardScene.gd	1	686
+scripts/scenes/InventoryScene.gd	1	1671
+scripts/scenes/LeaderboardScene.gd	1	871
+scripts/scenes/MainMenuScene.gd	1	2690
+scripts/scenes/MatchmakingScene.gd	1	523

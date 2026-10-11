@@ -1,0 +1,16 @@
+scripts/scenes/battle/axe_passive_vfx.gd	1	946
+scripts/scenes/battle/axe_seraph_vfx.gd	1	167
+scripts/scenes/battle/axe_undead_vfx.gd	1	287
+scripts/scenes/battle/battle_ballistics.gd	1	721
+scripts/scenes/battle/battle_damage.gd	1	1004
+scripts/scenes/battle/battle_debug_arena.gd	1	716
+scripts/scenes/battle/battle_hud.gd	1	2449
+scripts/scenes/battle/battle_render.gd	1	759
+scripts/scenes/battle/battle_spawn.gd	1	929
+scripts/scenes/battle/battle_targeting.gd	1	247
+scripts/scenes/battle/battle_vfx.gd	1	2877
+scripts/scenes/battle/battle_vfx_lab.gd	1	915
+scripts/scenes/battle/battle_watchdog.gd	1	112
+scripts/scenes/battle/battle_world_builder.gd	1	2902
+scripts/scenes/battle/blade_eq_vfx.gd	1	1442
+scripts/scenes/battle/bow_eq_vfx.gd	1	1395
