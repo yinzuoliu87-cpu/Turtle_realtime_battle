@@ -153,4 +153,10 @@ for title, issues in rows:
     L.append("")
 L.append("=== 合计差异: %d 处 ===" % total)
 import os as _os; _out=_os.environ.get("TRI_OUT", "tri_audit_report.txt"); io.open(_out, "w", encoding="utf-8").write("\n".join(L))
-print("selftest OK, 差异 %d 处 -> %s" % (total, _out))
+# ★2026-10-11 全项目通读: 原来不论差异多少都打 "selftest OK" 并 exit 0, 而门禁只认这个关键字
+#   ⇒ run-tests.sh 注释里那句「A/B/D/E/F 必须 0」没有任何代码在执行。C 段(icon)是已知待拍板项, 不计。
+hard = sum(len(issues) for title, issues in rows if not title.startswith("C."))
+print("selftest OK, 差异 %d 处(其中必须为 0 的 A/B/D/E/F 段 %d 处) -> %s" % (total, hard, _out))
+if hard:
+    print("FAIL — A/B/D/E/F 段有 %d 处差异(见报告)" % hard)
+    import sys as _sys; _sys.exit(1)

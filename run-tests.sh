@@ -671,9 +671,10 @@ fi
 
 # ── 三方一致性对账 (pets.json ↔ 活代码 ↔ 权威文档) ──────────────────────────
 echo "=== 三方一致性对账 ==="
-TRI="$(cd "$DIR" && TRI_OUT="$DIR/tri_audit_report.txt" python tools/tri_audit.py 2>&1)"
+TRI="$(cd "$DIR" && TRI_OUT="$DIR/tri_audit_report.txt" python tools/tri_audit.py 2>&1)"; TRI_RC=$?
 # C 段(icon 索引错位)是已知待用户拍板项, 不算失败; 其余段(A/B/D/E/F)必须 0
-if echo "$TRI" | grep -q "selftest OK"; then
+# ★2026-10-11: 原来只认 "selftest OK" 关键字(差异多少都会打) ⇒ 恒绿。现在 tri_audit 非 0 段有差异就 exit 1, 这里同时看退出码。
+if [ "$TRI_RC" -eq 0 ] && echo "$TRI" | grep -q "selftest OK"; then
   PASS=$((PASS+1)); echo "  PASS  tri_audit ($(echo "$TRI" | grep -oE '差异 [0-9]+ 处'))"
 else
   FAIL=$((FAIL+1)); echo "  FAIL  tri_audit"; echo "$TRI" | tail -3 | sed 's/^/        /'

@@ -140,6 +140,9 @@ func _ready() -> void:
 		OS.set_environment("TURTLE_SEED", "")
 		var dig: String = str(r[0])
 		_digests[tag] = dig
+		## ★重生金标用(战斗规则有意改动之后): TURTLE_DET_PRINT_FULL=1 ⇒ 打出完整摘要, 抄回 golden/determinism_cross.json
+		if OS.get_environment("TURTLE_DET_PRINT_FULL") != "":
+			print("[FULL] %s	%s" % [tag, dig])
 		## 分母: 这一局真的在推进(不然摘要是"静止画面"的摘要, 稳定得毫无意义)
 		_ok("分母 · %s · 真的在推进(不同指纹 %d 个 > 1, 累计承伤 %.0f > 0)"
 			% [tag, int(r[2]), float(r[3])], int(r[2]) > 1 and float(r[3]) > 0.0)

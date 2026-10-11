@@ -57,11 +57,12 @@ func _ready() -> void:
 		print("ALL PASS — 门禁隔离(独立运行, 跳过)")
 		get_tree().quit(0)
 		return
+	## ★2026-10-11 全项目通读: 走到这里一定是【在门禁里】(上一段已把独立运行放走)而本平台的隔离变量没设 ——
+	##   原来这里照样打 ALL PASS + quit(0) ⇒ 正是它要抓的场景被判绿(run-tests 只看退出码/致命正则/ALL PASS)。
 	if expect == "":
 		print("")
-		print("  （不是在 run-tests.sh 里跑 —— 这一条只有在门禁里才有意义）")
-		print("ALL PASS — 门禁隔离(独立运行, 跳过)")
-		get_tree().quit(0)
+		print("FAILED — 门禁隔离: 在门禁里跑, 但本平台的 %s 没设 ⇒ 所有测试共用一份 user://" % which)
+		get_tree().quit(1)
 		return
 
 	_ok("★★★ISOLATED_USERDIR: `user://` 真的落在门禁给这个测试的目录里 —— "
