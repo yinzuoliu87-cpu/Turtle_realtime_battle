@@ -245,9 +245,12 @@ func _pirate_shotgun(u: Dictionary, tgt) -> void:
 		var hit = battle._basic_first_blocker(u, d)                # 该方向路径第一敌(含蛋·障碍穿我方不挡)
 		if hit != null and DetMath.dist(hit["pos"], u["pos"]) <= SHOT_RANGE:
 			battle._damage._apply_damage_from(u, hit, battle._atk_dmg(u, SHOT_COEF, hit), Color("#ffd07a"))   # 0.5A物理
-			var pd: Vector2 = DetMath.norm((hit["pos"] - u["pos"]))               # 40码轻击退(不用_knockback避免8连击飞震屏)
-			hit["pos"] += pd * SHOT_KNOCK
-			hit["pos"] = ArenaShape.clamp_in(hit["pos"], battle.ARENA)
+			## ★2026-10-11 全项目通读 A5: 原来直接改 pos, 不查 `_knockback` 那三道守卫 ⇒ 017 不沉之锚/不可阻挡照样被推
+			##   (门禁 verify_pirate_shot_knock_immune)。守卫与 `_knockback` 一致: 活着 / 不在空中 / 不免击退。
+			if hit.get("alive", false) and not bool(hit.get("airborne", false)) and not hit.get("_knock_immune", false):
+				var pd: Vector2 = DetMath.norm((hit["pos"] - u["pos"]))               # 40码轻击退(不用_knockback避免8连击飞震屏)
+				hit["pos"] += pd * SHOT_KNOCK
+				hit["pos"] = ArenaShape.clamp_in(hit["pos"], battle.ARENA)
 			battle._vfx._hit_spark(hit)
 
 func _pirate_ship_charge(ship, from2d: Vector2, from_h: float, to2d: Vector2, on_impact: Callable) -> void:   # 演出船俯冲: 从后方高空冲向撞击点·边冲边变大·拉水花航迹
