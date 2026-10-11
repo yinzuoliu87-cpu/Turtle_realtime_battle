@@ -46,6 +46,11 @@ PER_BATCH="${PER_BATCH:-10}"
 WX="${SIM_X:-2000}"
 WY="${SIM_Y:-80}"
 QWD="${SIM_QUIT_WHEN_DONE-1}"
+## HEADLESS=1: 不开窗口(用户 2026-10-11「左屏全屏打游戏, 不抢鼠标、不把全屏卡掉」)。
+##   FLAG_NO_FOCUS 是驱动 _ready 里才挂的, 窗口创建那一下仍会激活 ⇒ 只有不建窗口才保证不打断全屏。
+##   代价: 无头下自拍取不到画面(sim_shot 报 texture null, 无害), 证据改看 sim_events.jsonl。
+HL_ARG=""
+[ -n "${HEADLESS:-}" ] && [ "${HEADLESS}" != "0" ] && HL_ARG="'--headless',"
 MAX_SLOTS="${MAX_SLOTS:-120}"
 
 slot_dir() { printf "%s/p%02d" "$SIM_ROOT" "$1"; }
@@ -90,7 +95,7 @@ cmd_start() {
       \$env:SIM_TOUR='${SIM_TOUR:-}';
       if ('${ACCOUNT_ONLY:-}' -ne '') { \$env:SIM_ACCOUNT_ONLY='1'; \$env:ONBOARD='0' };
       Start-Process -FilePath '$(win "$GODOT")' \
-        -ArgumentList '--path','$(win "$PROJ_DIR")','--audio-driver','Dummy', \
+        -ArgumentList ${HL_ARG}'--path','$(win "$PROJ_DIR")','--audio-driver','Dummy', \
                       '--resolution','1280x720','--position','$WX,$WY', \
                       '--','--sim-slot=$(printf '%02d' "$i")','--sim-root=turtle-sim60' | Out-Null" 2>/dev/null
     sleep 4
