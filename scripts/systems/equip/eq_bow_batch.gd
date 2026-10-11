@@ -194,13 +194,10 @@ func on_basic_074(u: Dictionary, tgt, si: int) -> void:
 ## 只做魔抗减免、不掷暴击 —— `battle._phys_after_armor` 的魔法版。
 ## ★公式与 `_resolve_dmg` 的魔法分支逐字一致(DamageMath 那两个静态函数是单一事实源),
 ##   没有在这里抄第二份减伤曲线。
+## ★2026-10-11 全项目通读第八条: 原来这里自抄一份魔抗公式、注释说「逐字一致」—— 实际漏了水晶龟受魔法 ×0.8
+##   ⇒ 074 打水晶龟多 25%(088~090 那份同病早修过)。删副本、转调主场景的同名函数(不掷暴击的口径不变)。
 func _magic_after_mr(u: Dictionary, raw: float, tgt: Dictionary) -> int:
-	var resist: float = DamageMath.effective_resist(float(tgt.get("mr", 0.0)),
-		float(u.get("magic_pen_pct", 0.0)), float(u.get("magic_pen", 0.0)))
-	var d: float = raw * DamageMath.resist_multiplier(resist)
-	d *= 1.0 + float(u.get("damage_amp", 0.0))
-	d *= 1.0 - float(tgt.get("damage_reduction", 0.0))
-	return maxi(1, int(round(d)))
+	return battle._magic_after_mr(u, raw, tgt)
 
 
 # ══════════════════════════════════════════════════════════════════

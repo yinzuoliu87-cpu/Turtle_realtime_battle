@@ -228,7 +228,14 @@ func tick(delta: float) -> void:
 			#   两处消费点(battle_damage.gd:546 / RealtimeBattle3DScene.gd:4243)已在用,
 			#   信息面板也早就显示"增伤 N%"。消费侧零改动。
 			u["damage_amp"] = float(u.get("damage_amp", 0.0)) + add
-			_ancient_total[s] = float(u["_ancient"])   # 跨路存档(全队同量, 记一个数就够)
+		## ★2026-10-11 全项目通读第八条: 跨路存档原来在循环里逐个覆盖 ⇒ 存的是【最后一个被加的单位】的值 ——
+		##   已封顶的单位被 continue 跳过、刚登场的召唤物值低, 都会把它拉低; 觉醒的 +50% 也从没写进来。
+		##   改成每跳结束后取本方单位里的最大累积量(门禁 verify_item8_batch ⑤)。
+		var _mx: float = float(_ancient_total.get(s, 0.0))
+		for u2 in battle._units:
+			if u2 is Dictionary and str(u2.get("side", "")) == s:
+				_mx = maxf(_mx, float(u2.get("_ancient", 0.0)))
+		_ancient_total[s] = _mx
 
 
 # ══════════════════════════════════════════════════════════════════════════

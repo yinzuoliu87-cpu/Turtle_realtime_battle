@@ -381,8 +381,12 @@ func holo_aura_tick(ax: Dictionary) -> int:
 		battle._damage._heal(a, AF.HOLO_AURA_HEAL)
 		_give_energy(a, AF.HOLO_AURA_ENERGY)
 		## 攻速走既有的 haste 通道，到期自己失效（比自己再造一条通道稳）
-		a["haste_mult"] = 1.0 + AF.HOLO_AURA_ASPD
-		a["haste_until"] = float(battle._t) + AF.HOLO_AURA_TICK * 1.5
+		## ★2026-10-11 全项目通读第八条: 原来无条件覆盖 ⇒ 友军身上更强的加速(天使祝福 +50% 5 秒)被改成 +30%、
+		##   剩余时长缩成 0.75 秒。身上正有【不弱于法阵】的加速就不碰它(到期后下一跳再接上)。
+		var _hm: float = float(a.get("haste_mult", 1.0)) if float(battle._t) < float(a.get("haste_until", 0.0)) else 1.0
+		if _hm <= 1.0 + AF.HOLO_AURA_ASPD:
+			a["haste_mult"] = 1.0 + AF.HOLO_AURA_ASPD
+			a["haste_until"] = maxf(float(a.get("haste_until", 0.0)), float(battle._t) + AF.HOLO_AURA_TICK * 1.5)
 		healed.append(a)
 		n += 1
 	## ★演出同一步(原来是「把程序环的透明度闪一下」): 法阵从圆心推一道波(第 0 帧起) + 名单里每个友军

@@ -379,7 +379,7 @@ func _step_projectiles(delta: float) -> void:
 					battle._on_basic_hit(pr["src"], tgt)   # 远程普攻附带(审判等)弹道命中时触发→与裁决同帧跳数字
 				if pr.get("freeze_on_hit", 0.0) > 0.0:
 					battle._freeze(tgt, pr["freeze_on_hit"])   # 冰封: 弹道命中→冻结
-				if pr.get("coin_true", 0) > 0:
+				if pr.get("coin_true", 0) > 0 and tgt.get("alive", false):   # ★10-11: 物理段打死目标后不再打尸体(同处 ms_onhit/star_true 都有这道闸)
 					battle._damage._apply_damage_from(pr["src"], tgt, int(pr["coin_true"]), Color("#fff0a0"), 0.0, true)   # 金币真实那半
 				if pr.get("ms_onhit", false) and pr["src"] != null and tgt.get("alive", false):
 					battle._trainer_sys._trainer_magicstone_onhit(pr["src"], tgt)   # 魔法石那段: 与物理【同帧】跳字
