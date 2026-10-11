@@ -143,7 +143,8 @@ func _check_flat_near(src: String) -> void:
 	if b == "":
 		_fail("缺少 _far_terrain_weight —— 地形起伏没有做近处淡出, 会把贴地特效顶穿")
 		return
-	if b.find("smoothstep") < 0:
+	## ★2026-10-10 跨芯片确定性改写后写成 DetMath.smooth(同一个 smoothstep 公式, 只用 + - * /), 两种写法都认。
+	if b.find("smoothstep") < 0 and b.find("DetMath.smooth(") < 0:
 		_fail("_far_terrain_weight 没用 smoothstep 做距离淡出")
 	var flat_r := _const_f(src, "FAR_TERRAIN_FLAT_R")
 	# 战场半径: ARENA 约 1772×1000 码 × WS(0.024) → 半对角约 24m。平坦半径要盖住它。

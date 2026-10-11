@@ -100,9 +100,13 @@ func _test_obstacle_vs_visual() -> void:
 	#   搜全文会误报(我第一版就这么错了)。
 	var src := _src()
 	var nav_line := ""
+	var _prev_hole := ""
 	for line in src.split("\n"):
+		if line.contains("var hole") and line.contains("_ellipse_pts("):
+			_prev_hole = line
 		if line.contains("add_obstruction_outline"):
-			nav_line = line
+			## ★2026-10-10 跨芯片确定性改写: 洞先算进 `var hole`(DetNav 也用它), 这一行只传变量 ⇒ 外扩边距看算 hole 的那一行。
+			nav_line = line if line.contains("OBSTACLE_MARGIN") or _prev_hole == "" else _prev_hole
 			break
 	_ok("★navmesh 障碍外扩用 OBSTACLE_MARGIN", nav_line.contains("OBSTACLE_MARGIN"),
 		nav_line.strip_edges().substr(0, 100))

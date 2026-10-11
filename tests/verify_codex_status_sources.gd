@@ -527,11 +527,11 @@ func _claimed_by_custom_re(ck: String) -> bool:
 func _check_derived() -> void:
 	var n_r := 0
 	var n_d := 0
-	for eid in EquipStats_STATS().keys():
-		for t in EquipStats_STATS()[eid]:
+	for eid in _equip_stats_table().keys():
+		for t in _equip_stats_table()[eid]:
 			if t is Dictionary and (t as Dictionary).has("reflectPct"):
 				n_r += 1; break
-		for t in EquipStats_STATS()[eid]:
+		for t in _equip_stats_table()[eid]:
 			if t is Dictionary and (t as Dictionary).has("dodgePct"):
 				n_d += 1; break
 	var dr := StatusSources.derived("reflect").filter(func(x): return str(x["k"]) == "eq").size()
@@ -542,7 +542,7 @@ func _check_derived() -> void:
 	_ok("属性派生: 闪避羁绊(灵物)在列", syn_d >= 1, str(syn_d))
 
 
-func EquipStats_STATS() -> Dictionary:
+func _equip_stats_table() -> Dictionary:
 	return (load("res://scripts/gamedata/equip_stats.gd") as Script).get_script_constant_map()["STATS"]
 
 

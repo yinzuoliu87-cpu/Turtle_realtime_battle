@@ -205,7 +205,9 @@ func _t_no_skip() -> void:
 	_s._units.append(carrier)
 	var org: Vector2 = carrier["pos"]
 	# 初始最远敌: 正右方远处; 途中敌: 与初始方向成 ~18°, 距离 600
-	var far: Dictionary = _mk("right", org + Vector2(1400.0, 0.0))
+	## ★1420 不是 1400(2026-10-10): 原来 far 与 nxt 都在 1400 码 = 平局, 谁算「最远」取决于浮点末位
+	##   (单精度 length_squared 恰好偏 far, DetMath 双精度恰好偏 nxt)。断言别坐在平局上。
+	var far: Dictionary = _mk("right", org + Vector2(1420.0, 0.0))
 	var mid: Dictionary = _mk("right", org + Vector2(600.0 * cos(deg_to_rad(18.0)), 600.0 * sin(deg_to_rad(18.0))))
 	# 更远且更偏的新目标 —— far 死后射线会朝它扫, 途中必然扫过 mid
 	var nxt: Dictionary = _mk("right", org + Vector2(1400.0 * cos(deg_to_rad(40.0)), 1400.0 * sin(deg_to_rad(40.0))))
