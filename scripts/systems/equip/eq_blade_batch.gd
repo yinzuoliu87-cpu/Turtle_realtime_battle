@@ -620,6 +620,8 @@ func _spawn084(u: Dictionary, si: int) -> void:
 		# _b84_refresh 是差量施加 ⇒ 重算不会叠成两份。
 		if str(u["_b84_mode"]) == "ranged":
 			_b84_refresh(u, sx)
+		else:
+			_b84_set_amp(u, HH_MELEE_AMP[sx])   # ★10-11 全项目通读 A14: 近战这半原来没重算 ⇒ 先 1★ 后 3★ 停在 3%(门禁 verify_b84_melee_star_max)
 		return
 	if bool(u.get("melee", false)):
 		u["_b84_mode"] = "melee"
