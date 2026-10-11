@@ -141,11 +141,15 @@ func _ready() -> void:
 	var frame: Control = inst.detail_frame
 	_ok("④ 详情框内套了 ScrollContainer 且纵向可滚",
 		sc != null and sc.vertical_scroll_mode == ScrollContainer.SCROLL_MODE_AUTO)
+	## ★2026-10-11: 全量门禁满负载下连红两次、单跑次次绿 ⇒ 量的时候布局还没落定(上面选完末条只等了 4 帧)。
+	##   多等几帧再量; 失败信息带上横向与裁剪, 下次红了能直接看出是哪一项。
+	for _j in range(8):
+		await get_tree().process_frame
 	var vp := inst.get_viewport().get_visible_rect().size
 	var fr := frame.get_global_rect()
 	_ok("④ 详情框仍然不溢出屏幕(2026-08-01 那条不能丢)",
 		frame.clip_contents and fr.end.y <= vp.y + 0.5 and fr.end.x <= vp.x + 0.5,
-		"框底 %.1f / 视口高 %.1f" % [fr.end.y, vp.y])
+		"框底 %.1f / 视口高 %.1f · 框右 %.1f / 视口宽 %.1f · clip=%s" % [fr.end.y, vp.y, fr.end.x, vp.x, str(frame.clip_contents)])
 	# ★上面那条在无头下偏松(无头视口是方形 1280×1280, 比设计高 720 宽裕得多)。
 	#   真正要守的是【框自己不被内容撑高】—— 内容 764 高时框必须还是 550。
 	_ok("④ ★框高不随内容变(内容 %.0f 高时框仍是设计的 550)" % _tall_h,
