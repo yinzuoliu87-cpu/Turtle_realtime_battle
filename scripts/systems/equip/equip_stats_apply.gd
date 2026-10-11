@@ -156,19 +156,19 @@ func _eq_star_delta_stats(u: Dictionary, item_id: String, from_star: int, to_sta
 		return
 	var a: Dictionary = arr[fi]
 	var b: Dictionary = arr[ti]
-	u["base_atk"] += float(b.get("atk", 0.0)) - float(a.get("atk", 0.0))
-	var hp_d: float = float(b.get("hp", 0.0)) - float(a.get("hp", 0.0))   # 装备hp已是最终值
-	u["maxHp"] += hp_d; u["hp"] += hp_d
-	u["crit"] += float(b.get("crit", 0.0)) - float(a.get("crit", 0.0))
-	u["armor_pen"] += float(b.get("armorPen", 0.0)) - float(a.get("armorPen", 0.0))
-	u["magic_pen"] += float(b.get("magicPen", 0.0)) - float(a.get("magicPen", 0.0))
-	u["lifesteal"] += (float(b.get("_lifestealPct", 0.0)) - float(a.get("_lifestealPct", 0.0))) / 100.0
-	u["base_def"] += float(b.get("def", 0.0)) - float(a.get("def", 0.0))
-	u["base_mr"] += float(b.get("mr", 0.0)) - float(a.get("mr", 0.0))
-	u["crit_dmg"] += float(b.get("critDmg", 0.0)) - float(a.get("critDmg", 0.0))
-	u["init_energy_bonus"] = float(u.get("init_energy_bonus", 0.0)) + float(b.get("_maxEnergy", 0.0)) - float(a.get("_maxEnergy", 0.0))
-	u["echarge_perm"] = float(u.get("echarge_perm", 1.0)) + (float(b.get("_echargePct", 0.0)) - float(a.get("_echargePct", 0.0))) / 100.0
-	battle._recalc_stats(u)
+	## ★2026-10-11 全项目通读 A6: 原来这里手抄了 apply_stat_dict 的 11 个老字段, 漏攻速/移速/射程/反伤/闪避/治疗增幅/护盾增幅
+	##   ⇒ 临时装备升星后这些停在 1★。改成: 算出两星之间每个数值键的差, 交给 apply_stat_dict 同一条路施加
+	##   (它对所有字段都是加算, 差量施加 = 直接装新星)。门禁 verify_star_delta_matches_apply 全表比对。
+	var diff: Dictionary = {}
+	for k in b.keys():
+		if (b[k] is float or b[k] is int):
+			var dv: float = float(b[k]) - float(a.get(k, 0.0))
+			if absf(dv) > 0.0:
+				diff[k] = dv
+	for k in a.keys():
+		if (a[k] is float or a[k] is int) and not b.has(k) and absf(float(a[k])) > 0.0:
+			diff[k] = -float(a[k])
+	apply_stat_dict(u, diff, item_id)
 
 # 永久 flag / 初始充能 (受击/闪避/必中类被动开关 + 充能计数器初值).
 # 永久 flag / 初始充能 (受击/闪避/必中类被动开关 + 充能计数器初值).
