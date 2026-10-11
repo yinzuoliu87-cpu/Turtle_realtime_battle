@@ -41,10 +41,14 @@ func give(u: Dictionary) -> int:
 	u["gremlin_guns"] = n
 	## ★属性直接加在单位上 —— 它不在 `u["equips"]` 里, 走不了 `_eq_apply_all_stats`。
 	##   `aspd_perm` 是攻速的永久乘区(战斗侧 atk_cd 除以它), 与 `_aspdPct` 同一个通道。
-	u["atk"] = float(u.get("atk", 0.0)) + ATK_PER_GUN
+	## ★2026-10-11 全项目通读 A17: 原来加在 `atk`(重算的输出)上, 下一次任何 buff 触发 _recalc_stats 就丢;
+	##   加在 `base_atk`(重算的输入)再重算一次(门禁 verify_gremlin_atk_survives)。
+	u["base_atk"] = float(u.get("base_atk", 0.0)) + ATK_PER_GUN
 	u["maxHp"] = float(u.get("maxHp", 0.0)) + HP_PER_GUN
 	u["hp"] = float(u.get("hp", 0.0)) + HP_PER_GUN
 	u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) + ASPD_PCT_PER_GUN
+	if battle != null and battle.has_method("_recalc_stats"):
+		battle._recalc_stats(u)
 	## ★★读数要有出口: 镜像一份到 `eq_state`, 头像下的装备格就能显
 	##   【枪图标 + 右下角枚数】—— 走的是既有的 `EquipReadouts.COUNT` 通道,
 	##   不自造头顶条(memory: 读数一律进装备图标框)。
