@@ -165,6 +165,7 @@ func _sk_rock_shockwave(u: Dictionary) -> void:                  # 石头龟·�
 		var rel: Vector2 = o["pos"] - origin
 		if DetMath.dot(rel, dir) <= 0.0: continue                     # 只前方
 		if absf(DetMath.dot(rel, perp)) > 90.0: continue              # 带宽~180
+		if DetMath.dot(rel, dir) > reach: continue                    # ★10-11: 只到岩脊铺到的地方(原来无距离上限, 1500 码外也被打+眩晕; 门禁 verify_rock_wave_reach)
 		var oo = o
 		var hit_delay: float = windup + maxf(0.0, DetMath.dot(rel, dir)) / wave_spd
 		var hf = func() -> void:
