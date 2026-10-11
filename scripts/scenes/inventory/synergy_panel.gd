@@ -150,14 +150,15 @@ func _build_synergy_panel(_leaders: Array) -> void:
 	hdr.add_theme_font_size_override("font_size", 22); hdr.add_theme_color_override("font_color", Color("#cfe0ef"))
 	hdr.position = Vector2(x0, host.SYN_TOP); hdr.size = Vector2(w, 26); host.add_child(hdr)
 	var cy: float = host.SYN_TOP + 32.0
-	if host._sel_bench >= 0:   # 装备模式上下文提示: 引导玩家凑同类型激活/升档羁绊(用户2026-07-19)
+	var team: Array = [{"_p2_equips": _team_equips_for_synergy()}]
+	var active: Array = host.Phase2Types.calc_active(team)
+	## ★2026-10-11 全项目通读 A10: 原来选中装备时无条件插一行「暂无羁绊」, 下面却列着羁绊(自相矛盾)。只在真没有激活羁绊时才说。
+	if host._sel_bench >= 0 and active.is_empty():   # 装备模式上下文提示: 引导玩家凑同类型激活/升档羁绊(用户2026-07-19)
 		## ★不写"→ 开启羁绊 / 升一档"那种箭头式的说明书句 —— 这是给玩家的一句话, 不是流程图。
 		var ctx = Label.new(); ctx.text = "暂无羁绊"
 		ctx.add_theme_font_size_override("font_size", 15); ctx.add_theme_color_override("font_color", Color("#7fe39a"))
 		ctx.position = Vector2(x0, cy); ctx.size = Vector2(w, 20); ctx.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; host.add_child(ctx)
 		cy += 24.0
-	var team: Array = [{"_p2_equips": _team_equips_for_synergy()}]
-	var active: Array = host.Phase2Types.calc_active(team)
 	## ★件数口径必须和 `calc_active` 一致(它按装备 id 去重、且一件多类型都算),
 	##   否则同一行的"4 件"和"档1"会打架。`raw_counts` 是**另一套口径**(不去重·只取首要类型)
 	##   ⇒ 这里自己按 calc_active 的规矩数一遍, 不用 raw_counts。
