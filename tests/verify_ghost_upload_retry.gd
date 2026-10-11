@@ -426,8 +426,6 @@ func _t_structural() -> void:
 	var fresh := now - 60
 	var cases := {
 		"那一周过完了": {"tbl": "ghosts", "wk": wk - 7 * 86400, "b": 3, "gw": -1, "gl": -1, "snap": {"x": 1}, "acc": ME, "n": 0},
-		"周六快照过了新鲜窗": {"tbl": "gauntlet_ghosts", "wk": wk, "b": -1, "gw": 2, "gl": 1,
-			"snap": {"gl_ts": now - int(P2.FRESH_SNAPSHOT_SEC) - 5}, "acc": ME, "n": 0},
 		"换了号": {"tbl": "ghosts", "wk": wk, "b": 3, "gw": -1, "gl": -1, "snap": {"x": 1}, "acc": OTHER, "n": 0},
 		"试满了": {"tbl": "ghosts", "wk": wk, "b": 4, "gw": -1, "gl": -1, "snap": {"x": 1}, "acc": ME, "n": GU.MAX_TRIES},
 		"没有快照": {"tbl": "ghosts", "wk": wk, "b": 5, "gw": -1, "gl": -1, "snap": {}, "acc": ME, "n": 0},
@@ -441,11 +439,14 @@ func _t_structural() -> void:
 	_reqs.clear()
 	GU.retry()
 	await _frames(20)
-	_ok("⑨ 分母: 进去之前队列里有 %d 条" % cases.size(), cases.size() == 7)
+	_ok("⑨ 分母: 进去之前队列里有 %d 条" % cases.size(), cases.size() == 6)
 	_ok("⑨ ★全部销掉", _gs.ghost_upload_pending.is_empty(), str(_queue_keys()))
 	_ok("⑨ ★一条快照请求都没发", _snap_reqs().is_empty(), str(_snap_reqs()))
 	_ok("⑨ 对照: 本周、本号、积分赛 ⇒ 不销(判据不是一律销)", GU.drop_reason(
 		{"tbl": "ghosts", "wk": wk, "b": 3, "gw": -1, "gl": -1, "snap": {"x": 1}, "acc": ME, "n": GU.MAX_TRIES - 1}, now, ME) == "")
+	## ★2026-10-11: 周六快照过了新鲜窗也【不销】—— 匹配层用隔夜的同标签快照(Backend.gauntlet_pool_find), 原来销单是误判
+	_ok("⑨ 对照: 周六快照过了新鲜窗 ⇒ 不销(匹配层照样用隔夜的同标签快照)", GU.drop_reason(
+		{"tbl": "gauntlet_ghosts", "wk": wk, "b": -1, "gw": 2, "gl": 1, "snap": {"gl_ts": now - int(P2.FRESH_SNAPSHOT_SEC) - 5}, "acc": ME, "n": 0}, now, ME) == "")
 	_ok("⑨ 对照: 周六快照还新鲜 ⇒ 不销", GU.drop_reason(
 		{"tbl": "gauntlet_ghosts", "wk": wk, "b": -1, "gw": 2, "gl": 1, "snap": {"gl_ts": fresh}, "acc": ME, "n": 0}, now, ME) == "")
 	_ok("⑨ 对照: 那一场打的时候还没登录(acc 空) ⇒ 不销", GU.drop_reason(

@@ -175,10 +175,9 @@ static func drop_reason(e, now: int, acc: String) -> String:
 	var k := key_of(d)
 	if now >= int(d["wk"]) + WEEK_SEC:
 		return "week_over:%s" % k
-	## 周六快照只在上传后 FRESH_SNAPSHOT_SEC 内会被匹配层挑中(`Backend.gauntlet_pool_find` 按快照自带的 gl_ts 过滤)
-	##   ⇒ 过了这个窗口补上去也没人打得到。
-	if str(d["tbl"]) == TBL_GAUNTLET and now - int((d["snap"] as Dictionary).get("gl_ts", 0)) > int(P2.FRESH_SNAPSHOT_SEC):
-		return "stale:%s" % k
+	## ★2026-10-11 全项目通读(赛制第 5 条): 这里原来把超过 FRESH_SNAPSHOT_SEC 的周六快照销单, 理由是「匹配层按 30 分钟过滤」——
+	##   匹配层 2026-09-26 起已改成「同标签新鲜优先、没有就用隔夜的」(Backend.gauntlet_pool_find), 过期快照照样打得到。
+	##   ⇒ 不再按新鲜度销单, 只按跨周销(门禁 verify_gauntlet_stale_upload)。
 	var a := str(d.get("acc", ""))
 	if a != "" and acc != "" and a != acc:
 		return "other_account:%s" % k
