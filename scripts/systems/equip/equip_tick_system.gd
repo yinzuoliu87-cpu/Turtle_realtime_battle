@@ -480,13 +480,16 @@ func _tick_barnacle(u: Dictionary, delta: float) -> void:   # 守护贝母p2eq_0
 		battle._equip_sys.tally.push(u, "p2eq_021")   # ④ 这一段是这件装备的效果
 		var stt: Dictionary = u["eq_state"].get("p2eq_021", {})
 		e["barnacle_t"] = float(e.get("barnacle_t", 0.0)) + delta
-		if stt.get("link_target", null) == null or float(e["barnacle_t"]) >= BARNACLE_IV:   # 首次立即连 + 每5秒重连+给buff
+		## ★2026-10-11 全项目通读 A13: 「首次立即连」原来用 link_target == null 判 ⇒ 没友军时 best 又写回 null,
+		##   下一帧条件仍成立 ⇒ 每帧 +10 龟能 +10% 攻速(实测 2 秒叠 +1200%)。改用独立的「连过了」标记(门禁 verify_barnacle_solo)。
+		if not bool(stt.get("_bar_init", false)) or float(e["barnacle_t"]) >= BARNACLE_IV:   # 首次立即连 + 每5秒重连+给buff
+			stt["_bar_init"] = true
 			if float(e["barnacle_t"]) >= BARNACLE_IV: e["barnacle_t"] = 0.0
 			var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
 			var prev = stt.get("link_target", null)   # 重连前清上个连接对象的伤害转移标记
 			if prev is Dictionary: prev.erase("dmg_redirect_to")
 			var best = null; var ba = -1.0
-			for o in battle._targeting._allies_of(u):
+			for o in battle._targeting._allies_share_pool(u):   # ★10-11: 排除训龟大师/龟蛋(原来会连到它们身上白给)
 				if is_same(o, u): continue   # is_same: 单位字典深比较有卡死风险(同053)
 				if float(o["atk"]) > ba: ba = float(o["atk"]); best = o
 			stt["link_target"] = best
