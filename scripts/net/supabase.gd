@@ -541,11 +541,13 @@ func _await_token() -> bool:
 		if not is_inside_tree():
 			return false
 		await get_tree().process_frame
-		if _token != "":
+		## ★2026-10-11 全项目通读(赛制第 7 条): 原来判 `_token != ""` ⇒ 攥着过期旧令牌时第一帧就放行
+		##   (后台一小时回来第一批请求 401、拉对手悄悄回落机器人)。改成等到【新鲜】的令牌(门禁 verify_await_token_fresh)。
+		if token_fresh(int(Time.get_unix_time_from_system())):
 			return true
 		if not _auth_inflight:
 			break
-	return _token != ""
+	return token_fresh(int(Time.get_unix_time_from_system()))
 
 
 ## 上传被拒时把服务端原话打出来 —— 原来只记一个失败计数, 401 静默了一整周。
