@@ -1611,7 +1611,7 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false,
 				## ★系数**原样不动**(用户:「不用补」) —— 这是一次明知的净削弱:
 				##   技能段 / DoT 段 / 追击段从此都不再叠流血。别顺手往上调。
 				if not basic:
-					return
+					continue   # ★2026-10-11: 原来是 return ⇒ 技能命中时排在后面的装备整批不触发(verify_onhit_order_independent)
 				var bs: int = maxi(1, roundi([0.075, 0.1, 0.15][si] * src["atk"]))
 				battle._damage._apply_dot_stacks(tgt, "bleed", battle._cyeq_n(bs), src)
 			"p2eq_003":   # 锋利鲨齿: 溅射200码内敌 + 醒目双层冲击环(no_depth_test防地板盖)+每敌立式火花(用户2026-07-19)
@@ -1634,7 +1634,7 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false,
 				##   造成伤害 ×0.1 / 受伤 ×0.1), 其中"造成伤害"那一路不分普攻技能。
 				##   本次收掉的只是 023 这份【定额】。
 				if not basic:
-					return
+					continue   # ★2026-10-11: 原来是 return ⇒ 技能命中时排在后面的装备整批不触发(verify_onhit_order_independent)
 				var burn: int = maxi(1, roundi([2.0, 5.0, 8.0][si] + [0.07, 0.11, 0.15][si] * src["atk"]))
 				battle._damage._apply_dot_stacks(tgt, "burn", battle._cyeq_n(burn), src)
 				## 被动的第二半: 每段命中 +10 **法器法力**(文案逐字:「并获得10点法力」)。
@@ -1649,7 +1649,7 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false,
 				##   充能量原样不动(用户「不要补」)。技能伤害仍会经"造成伤害×0.1"那一路涨法力,
 				##   本次收掉的只是本件的【定额】。
 				if not basic:
-					return
+					continue   # ★2026-10-11: 原来是 return ⇒ 技能命中时排在后面的装备整批不触发(verify_onhit_order_independent)
 				## ★2026-08-12 从它自己的 `thunder` 条改过来 —— 法器只有一条法力条,
 				##   主动(连锁闪电)由法力满触发, 见 fire_equip_effect 的 "p2eq_026" 分支。
 				##   文案原文就是「每段伤害充能25点;充能满100点时…」, 代码原来另开了一条条子。
