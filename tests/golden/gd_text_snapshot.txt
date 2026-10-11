@@ -492,10 +492,12 @@ scripts/scenes/BracketMapScene.gd|lit|%s进行中 · 组冠军 %d/%d
 scripts/scenes/BracketMapScene.gd|lit|…还有 %d 组
 scripts/scenes/BracketMapScene.gd|lit|上一组
 scripts/scenes/BracketMapScene.gd|lit|下一组
+scripts/scenes/BracketMapScene.gd|lit|下一轮 %s后开播
 scripts/scenes/BracketMapScene.gd|lit|你
 scripts/scenes/BracketMapScene.gd|lit|关闭
 scripts/scenes/BracketMapScene.gd|lit|冠
 scripts/scenes/BracketMapScene.gd|lit|冠军 · %s%s
+scripts/scenes/BracketMapScene.gd|lit|决赛 %s后开播
 scripts/scenes/BracketMapScene.gd|lit|周日 · 决赛日
 scripts/scenes/BracketMapScene.gd|lit|备战购物 · 还剩 %s
 scripts/scenes/BracketMapScene.gd|lit|对手
@@ -528,7 +530,6 @@ scripts/scenes/BracketMapScene.gd|lit|观战模式
 scripts/scenes/BracketMapScene.gd|lit|观看
 scripts/scenes/BracketMapScene.gd|lit|读取中…
 scripts/scenes/BracketMapScene.gd|lit|轮空
-scripts/scenes/BracketMapScene.gd|text|下一轮 %s后开播
 scripts/scenes/BracketMapScene.gd|text|对战
 scripts/scenes/BracketMapScene.gd|text|我的位置
 scripts/scenes/BracketMapScene.gd|text|本周未晋级 · 观战 · 第 %d 组

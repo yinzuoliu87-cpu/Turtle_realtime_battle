@@ -33,10 +33,15 @@ func _ready() -> void:
 	var sat: int = sun - 86400
 
 	## ① 复现现场: 周六选过队(存档里是 gauntlet), 周日从对阵图直接开战
+	var keep_dual := bool(GameState.dual_active)
 	GameState.week_phase = P2.PHASE_GAUNTLET
 	GameState.finals_match = {}
+	## ★2026-10-11 周日实操: 刚启动的进程 dual_active 是默认 false(主菜单「开始战斗」才写 true)
+	GameState.dual_active = false
 	_ok("① ★分母: 开战前存档里确实是周六的阶段(复现现场)", _kind() == P2.SETTLE_GAUNTLET, _kind())
 	MAP.stamp_finals_match(GameState, 0, 1, 3, 1, sun)
+	_ok("① ★★开战后 dual_active = true(否则打的是非双路对局: 十几秒就完、不录像)", bool(GameState.dual_active))
+	_ok("① ★★这一局会录像(对阵图格子的「回放」靠它)", ReplayRecorder.should_record())
 	_ok("① ★★开战后 week_phase = 决赛日", str(GameState.week_phase) == P2.PHASE_FINALS, str(GameState.week_phase))
 	_ok("① ★★结算口径 = SETTLE_FINALS(不是闯关赛 —— 否则闯关战绩被改、快照重传)", _kind() == P2.SETTLE_FINALS, _kind())
 	var fm: Dictionary = GameState.finals_match
@@ -57,8 +62,17 @@ func _ready() -> void:
 	_ok("③ ★★开战入口调了 stamp_finals_match", body.find("stamp_finals_match(") >= 0)
 	_ok("③ 开战入口不再就地写 finals_match(只写一半的那种)", body.find("GameState.finals_match =") < 0)
 
+	## ★2026-10-11: 2 人一组只有决赛一场, 倒计时不许写「下一轮」
+	var t2: String = MAP.round_tip(1, 2, 322)
+	_ok("④ ★★2 人组第 1 轮 = 决赛, 不写「下一轮」", t2.begins_with("决赛") and t2.find("下一轮") < 0, t2)
+	var t8a: String = MAP.round_tip(1, 8, 60)
+	var t8c: String = MAP.round_tip(3, 8, 60)
+	_ok("④ 对照: 8 人组第 1 轮仍是「下一轮」、第 3 轮是「决赛」", t8a.begins_with("下一轮") and t8c.begins_with("决赛"),
+		"%s / %s" % [t8a, t8c])
+
 	GameState.week_phase = keep_phase
 	GameState.finals_match = keep_match
+	GameState.dual_active = keep_dual
 	if _fail == 0:
 		print("ALL PASS (%d)" % _n)
 	else:

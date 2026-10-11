@@ -2171,9 +2171,16 @@ func _try_start_match() -> bool:
 ##   副标题写「闯关 5-0 · 晋级决赛日」、对称轮次币没发。对阵图本身没坏(结果在分支前就报了)。
 ## ★抽成静态函数而不是就地两行: 门禁要能走【产品自己这一步】再去量结算口径,
 ##   不是自己喂一个 week_phase 再测(那正是这个洞一直没红的原因, memory fb-read-a-field-nobody-writes)。
+## ★★2026-10-11 周日实操又抓到同一形状的第二个: 开局标记 `dual_active` 全仓只有主菜单「开始战斗」在写,
+##   而对阵图 → 直接开战不经过主菜单那一步 ⇒ 刚打开游戏就进对阵图的人打的是**非双路**对局
+##   (没有摆位、十几秒就完、不录像、对阵图格子点「回放」永远取不到)。9 个模拟号 6 场小组赛全中。
+##   ⇒ 与主菜单 `_start_battle_flow` 同一套开局口径在这里补齐。
 static func stamp_finals_match(gs, bucket: int, r: int, m: int, side: int, now_utc: int) -> void:
 	gs.finals_match = {"bucket": bucket, "round": r, "match": m, "side": side}
 	gs.week_phase = _P2C.phase_at_utc(now_utc)
+	gs.mode = "single"
+	gs.tutorial = false
+	gs.dual_active = true
 
 
 ## 备战购物窗那一行该说什么。`""` = 这一行根本不出现。
@@ -2310,6 +2317,15 @@ static func countdown_text(sec: int) -> String:
 	return "%d 分 %d 秒" % [s / 60, s % 60]
 
 
+## 顶上那行倒计时的话。★纯函数(喂数就能验)。
+## ★★2026-10-11 周日实操: 2 人一组时整张图只有决赛一场, 屏幕却写「下一轮 5 分 22 秒后开播」——
+##   已经没有下一轮了。最后一轮改说「决赛 X 后开播」。
+static func round_tip(cur_round: int, size: int, left_sec: int) -> String:
+	if size > 1 and cur_round >= _B.rounds_for(size):
+		return "决赛 %s后开播" % countdown_text(left_sec)
+	return "下一轮 %s后开播" % countdown_text(left_sec)
+
+
 ## 顶上那行「下一轮 X 分 Y 秒后开」。★秒数来自**服务端的时间差**, 不看本机时钟绝对值。
 func _sync_tip() -> void:
 	if _tip == null:
@@ -2320,7 +2336,7 @@ func _sync_tip() -> void:
 		_tip.visible = false
 		return
 	_tip.visible = true
-	_tip.text = "下一轮 %s后开播" % countdown_text(left)
+	_tip.text = round_tip(int(lv.get("round", 1)), int(lv.get("size", 0)), left)
 	var vp: Vector2 = get_viewport().get_visible_rect().size
 	_tip.size.x = vp.x
 	_tip.position = Vector2(0.0, 150.0)
