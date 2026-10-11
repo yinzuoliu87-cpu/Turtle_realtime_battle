@@ -47,25 +47,25 @@ func _sk_hunter_hide(u: Dictionary) -> void:                     # 猎人龟·�
 	var nmd = 150.0
 	for o in battle._targeting._enemies_of(u):                                     # ① 近战/刺客贴近(<150码)→朝远离最近近战威胁滚(拉距保远程)
 		if o.get("alive", false) and o.get("melee", false):
-			var dd: float = u["pos"].distance_to(o["pos"])
+			var dd: float = DetMath.dist(u["pos"], o["pos"])
 			if dd < nmd: nmd = dd; nm = o
 	if nm != null:
-		dir = (u["pos"] - nm["pos"]).normalized()
+		dir = DetMath.norm((u["pos"] - nm["pos"]))
 	elif u["hp"] < u["maxHp"] * 0.35:                           # ② 残血→朝敌质心反向撤退
 		var cen = Vector2.ZERO
 		var cn = 0
 		for o in battle._targeting._enemies_of(u):
 			if o.get("alive", false): cen += o["pos"]; cn += 1
-		if cn > 0: cen /= float(cn); dir = (u["pos"] - cen).normalized()
+		if cn > 0: cen /= float(cn); dir = DetMath.norm((u["pos"] - cen))
 	else:                                                       # ③ 安全→朝当前目标最佳射程滚(目标<14%凑近确保处决,否则拉开保持射程)
 		var tg = battle._targeting._nearest_enemy(u)
 		if tg != null:
-			if float(tg["hp"]) < float(tg["maxHp"]) * 0.14: dir = (tg["pos"] - u["pos"]).normalized()
-			else: dir = (u["pos"] - tg["pos"]).normalized()
-	if dir.length() < 0.1: dir = Vector2.RIGHT
+			if float(tg["hp"]) < float(tg["maxHp"]) * 0.14: dir = DetMath.norm((tg["pos"] - u["pos"]))
+			else: dir = DetMath.norm((u["pos"] - tg["pos"]))
+	if DetMath.vlen(dir) < 0.1: dir = Vector2.RIGHT
 	var dest: Vector2 = _hunter_roll_best_dest(u["pos"], dir)   # 墙感翻滚: 贴墙沿墙滚/角落朝内滚(避免撞墙位移浪费·用户2026-07-14)
-	var rdir: Vector2 = dir.normalized()
-	if u["pos"].distance_to(dest) > 1.0: rdir = (dest - u["pos"]).normalized()
+	var rdir: Vector2 = DetMath.norm(dir)
+	if DetMath.dist(u["pos"], dest) > 1.0: rdir = DetMath.norm((dest - u["pos"]))
 	battle._skill_ring(u["pos"], Color(0.45, 1.0, 0.68, 0.6), 60.0)                       # 起手灵巧绿环(闪避激活)
 	battle._burst_vfx("res://assets/sprites/vfx/dust-impact.png", u["pos"], 175.0, 0.12)  # 起跳轻尘
 	u["_roll_dest"] = dest                                       # 进入平滑翻滚滑行态(真位移·非瞬移·由_hunter_roll_tick逐帧驱动)
@@ -79,8 +79,8 @@ func _sk_hunter_hide(u: Dictionary) -> void:                     # 猎人龟·�
 func _hunter_roll_best_dest(from2d: Vector2, pref_dir: Vector2) -> Vector2:
 	# 墙感智能翻滚落点(用户2026-07-14"被逼到边界/角落怎么翻滚"): 意图方向撞墙时改沿墙/朝内翻滚,
 	# 保证每次翻滚都有真实位移(不被clamp吃掉)。360°采样候选→按(实际位移 + 与意图对齐度)打分选最优。
-	if pref_dir.length() < 0.1: pref_dir = Vector2.RIGHT
-	pref_dir = pref_dir.normalized()
+	if DetMath.vlen(pref_dir) < 0.1: pref_dir = Vector2.RIGHT
+	pref_dir = DetMath.norm(pref_dir)
 	const ROLL := ROLL_DIST
 	const ALIGN_W := 90.0              # 对齐权重: 开阔时优先意图方向; 撞墙时"实际位移"主导→自动沿墙/朝内
 	var pad = 40.0                    # 离墙内缩(不贴死边线)
@@ -89,12 +89,12 @@ func _hunter_roll_best_dest(from2d: Vector2, pref_dir: Vector2) -> Vector2:
 	var best = from2d
 	var best_score = -1.0e9
 	for deg in [0, 30, -30, 60, -60, 90, -90, 120, -120, 150, -150, 180]:
-		var d: Vector2 = pref_dir.rotated(deg_to_rad(float(deg)))
+		var d: Vector2 = DetMath.rotated(pref_dir, deg_to_rad(float(deg)))
 		var raw: Vector2 = from2d + d * ROLL
 		var cl = Vector2(clampf(raw.x, xlo, xhi), clampf(raw.y, ylo, yhi))
-		var reached: float = cl.distance_to(from2d)          # clamp后真实位移(贴墙方向→接近0)
+		var reached: float = DetMath.dist(cl, from2d)          # clamp后真实位移(贴墙方向→接近0)
 		var align = 0.0
-		if reached > 1.0: align = (cl - from2d).normalized().dot(pref_dir)   # 落点方向与意图的一致度[-1,1]
+		if reached > 1.0: align = DetMath.dot(DetMath.norm((cl - from2d)), pref_dir)   # 落点方向与意图的一致度[-1,1]
 		var score: float = reached + ALIGN_W * align
 		if score > best_score:
 			best_score = score; best = cl
@@ -111,7 +111,7 @@ func _hunter_roll_tick(u: Dictionary, delta: float) -> void:
 		_hunter_roll_ghost(u)
 	u["face_right"] = rdir.x > 0.0
 	var to_d: Vector2 = dest - u["pos"]
-	if to_d.length() <= step + 2.0 or to_d.dot(rdir) <= 0.0:     # 到达/穿过 → 落地结算
+	if DetMath.vlen(to_d) <= step + 2.0 or DetMath.dot(to_d, rdir) <= 0.0:     # 到达/穿过 → 落地结算
 		u["pos"] = dest
 		u["pos"] = ArenaShape.clamp_in(u["pos"], battle.ARENA)
 		u["hunter_roll_active"] = false

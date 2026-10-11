@@ -153,8 +153,8 @@ func _chest_pick_equip(costs: Array) -> String:
 
 func _chest_basic(u: Dictionary, tgt: Dictionary) -> void:       # 普攻·宝箱砸击(封板): K'Sante一段Q式·朝目标前方短直线AOE·各1A物理(近战扫一小片非单体)
 	var dir: Vector2 = tgt["pos"] - u["pos"]
-	if dir.length() < 1.0: dir = Vector2.RIGHT
-	dir = dir.normalized()
+	if DetMath.vlen(dir) < 1.0: dir = Vector2.RIGHT
+	dir = DetMath.norm(dir)
 	var aoe_mult: float = float(u.get("chest_aoe_mult", 1.0))       # 锁链loot将来翻倍AOE距离/射程钩子(=1未装)
 	var reach: float = 170.0 * aoe_mult
 	var halfw: float = 62.0 * aoe_mult
@@ -166,9 +166,9 @@ func _chest_basic(u: Dictionary, tgt: Dictionary) -> void:       # 普攻·宝�
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		var rel: Vector2 = o["pos"] - u["pos"]
-		var along: float = rel.dot(dir)
+		var along: float = DetMath.dot(rel, dir)
 		if along < -18.0 or along > reach: continue
-		if (rel - dir * along).length() > halfw: continue
+		if DetMath.vlen((rel - dir * along)) > halfw: continue
 		var oref: Dictionary = o
 		battle._pending_shots.append({"delay": wave_t * clampf(along / reach, 0.0, 1.0), "fn": func() -> void:   # 波头扫到才结算(近先远后)
 			if not oref.get("alive", false) or not uu.get("alive", false): return
@@ -217,7 +217,7 @@ func _chest_coin_spray(pos2d: Vector2, n: int) -> void:        # 金币弹飞(�
 		ck.position = battle._world_pos(pos2d, 0.5)
 		battle._world.add_child(ck)
 		var ang: float = randf() * TAU
-		var dst: Vector2 = pos2d + Vector2(cos(ang), sin(ang)) * randf_range(40.0, 90.0)
+		var dst: Vector2 = pos2d + Vector2(DetMath.dcos(ang), DetMath.dsin(ang)) * randf_range(40.0, 90.0)
 		var dur: float = randf_range(0.35, 0.5)
 		var tw = battle._reg_tween(); tw.set_parallel(true)
 		tw.tween_property(ck, "position", battle._world_pos(dst, 0.05), dur).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
@@ -308,8 +308,8 @@ func _sk_chest_cannon(u: Dictionary, tgt) -> void:              # 技三·财宝
 	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	var dir: Vector2 = tgt["pos"] - u["pos"]
-	if dir.length() < 1.0: dir = Vector2.RIGHT
-	dir = dir.normalized()
+	if DetMath.vlen(dir) < 1.0: dir = Vector2.RIGHT
+	dir = DetMath.norm(dir)
 	var uu = u
 	var fire = func() -> void:                                     # 蓄力0.4s→喷金币洪流(用户2026-07-15确认换皮: 激光→金币+宝物炮流·机制不动)
 		if not uu.get("alive", false): return
@@ -399,7 +399,7 @@ func _sk_chest_storm(u: Dictionary, tgt) -> void:              # 技二·财宝�
 			ck.shaded = false; ck.transparent = true
 			ck.pixel_size = 0.030 + 0.008 * randf()
 			var a0: float = TAU * float(k) / float(lay[2]) + randf() * 0.4
-			ck.position = battle._world_pos(center + Vector2(cos(a0), sin(a0)) * float(lay[0]) * 0.25, 0.04)
+			ck.position = battle._world_pos(center + Vector2(DetMath.dcos(a0), DetMath.dsin(a0)) * float(lay[0]) * 0.25, 0.04)
 			battle._world.add_child(ck)
 			coins.append({"spr": ck, "r": float(lay[0]), "h": float(lay[1]), "spd": float(lay[3]),
 				"a0": a0, "rj": randf_range(0.85, 1.15), "up": randf_range(0.0, 0.28), "ph": randf() * TAU})
@@ -417,16 +417,16 @@ func _sk_chest_storm(u: Dictionary, tgt) -> void:              # 技二·财宝�
 		for pi2 in range(pillars.size()):
 			var pg2 = pillars[pi2]
 			if is_instance_valid(pg2):
-				pg2.modulate.a = 0.42 * form * (0.85 + 0.15 * sin(T * 9.0 + float(pi2) * 1.7))   # 0.28→0.42自验后调亮
+				pg2.modulate.a = 0.42 * form * (0.85 + 0.15 * DetMath.dsin(T * 9.0 + float(pi2) * 1.7))   # 0.28→0.42自验后调亮
 		for c in coins:
 			var sp = c["spr"]
 			if not is_instance_valid(sp): continue
 			var rise: float = clampf((T - float(c["up"])) / 0.35, 0.0, 1.0)
 			var aa: float = float(c["a0"]) + T * float(c["spd"])
-			var rr: float = float(c["r"]) * (0.25 + 0.75 * rise) * float(c["rj"]) * (1.0 + 0.06 * sin(T * 3.0 + float(c["ph"])))
+			var rr: float = float(c["r"]) * (0.25 + 0.75 * rise) * float(c["rj"]) * (1.0 + 0.06 * DetMath.dsin(T * 3.0 + float(c["ph"])))
 			var hh: float = 0.04 + (float(c["h"]) - 0.04) * rise
-			sp.position = battle._world_pos(center + Vector2(cos(aa), sin(aa)) * rr, hh)
-			var mb: float = 0.85 + 0.3 * absf(sin(T * 7.0 + float(c["ph"])))
+			sp.position = battle._world_pos(center + Vector2(DetMath.dcos(aa), DetMath.dsin(aa)) * rr, hh)
+			var mb: float = 0.85 + 0.3 * absf(DetMath.dsin(T * 7.0 + float(c["ph"])))
 			sp.modulate = Color(mb, mb, mb, 1.0)
 	, 0.0, 1.0, 2.1)
 	drv.tween_callback(func() -> void:                          # ⑤ 消散: 金币沿切线甩出抛物线落地(动量延续)·盘减速缩小淡出·柱下沉
@@ -434,9 +434,9 @@ func _sk_chest_storm(u: Dictionary, tgt) -> void:              # 技二·财宝�
 			var sp = c["spr"]
 			if not is_instance_valid(sp): continue
 			var af: float = float(c["a0"]) + 2.1 * float(c["spd"])
-			var pcur: Vector2 = center + Vector2(cos(af), sin(af)) * float(c["r"]) * float(c["rj"])
-			var tangent: Vector2 = Vector2(-sin(af), cos(af))
-			var dst: Vector2 = pcur + tangent * randf_range(130.0, 230.0) + Vector2(cos(af), sin(af)) * randf_range(20.0, 80.0)
+			var pcur: Vector2 = center + Vector2(DetMath.dcos(af), DetMath.dsin(af)) * float(c["r"]) * float(c["rj"])
+			var tangent: Vector2 = Vector2(-DetMath.dsin(af), DetMath.dcos(af))
+			var dst: Vector2 = pcur + tangent * randf_range(130.0, 230.0) + Vector2(DetMath.dcos(af), DetMath.dsin(af)) * randf_range(20.0, 80.0)
 			var fdur: float = randf_range(0.4, 0.55)
 			var ft = battle._reg_tween(); ft.set_parallel(true)
 			ft.tween_property(sp, "position", battle._world_pos(dst, 0.05), fdur).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
@@ -467,7 +467,7 @@ func _sk_chest_storm(u: Dictionary, tgt) -> void:              # 技二·财宝�
 			rs.shaded = false; rs.transparent = true
 			rs.pixel_size = 0.026
 			var ra2: float = randf() * TAU
-			rs.position = battle._world_pos(center + Vector2(cos(ra2), sin(ra2)) * randf_range(30.0, 170.0), 0.05)
+			rs.position = battle._world_pos(center + Vector2(DetMath.dcos(ra2), DetMath.dsin(ra2)) * randf_range(30.0, 170.0), 0.05)
 			rs.modulate = Color(1, 1, 1, 0.9)
 			battle._world.add_child(rs)
 			var rt2 = battle._reg_tween()
@@ -485,13 +485,13 @@ func _sk_chest_storm(u: Dictionary, tgt) -> void:              # 技二·财宝�
 			if is_instance_valid(dn):
 				dn.modulate.a = minf(0.85, dn.modulate.a + 0.25)   # 风暴脉冲闪亮(驱动器逐帧回落)
 			for o in battle._targeting._enemies_of(uu):
-				if o.get("alive", false) and o["pos"].distance_to(center) <= STORM_RADIUS:
+				if o.get("alive", false) and DetMath.dist(o["pos"], center) <= STORM_RADIUS:
 					battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, STORM_ATK_COEF, o), Color("#ffd93d"))
 					battle._burst_vfx("res://assets/sprites/vfx/treasure-slam.png", o["pos"], 74.0)   # 命中金光爆
 					_chest_coin_spray(o["pos"], 2)                                              # 敌身金币被抽飞
 			battle._skill_ring(center, Color(1.0, 0.82, 0.2, 0.35), STORM_RADIUS)
 			for _d in range(2):                                                                 # 边缘扬尘
 				var da: float = randf() * TAU
-				battle._skill_ring(center + Vector2(cos(da), sin(da)) * randf_range(330.0, 390.0), Color(1.0, 0.85, 0.4, 0.3), 22.0)
+				battle._skill_ring(center + Vector2(DetMath.dcos(da), DetMath.dsin(da)) * randf_range(330.0, 390.0), Color(1.0, 0.85, 0.4, 0.3), 22.0)
 		battle._pending_shots.append({"delay": float(i) * STORM_TICK_SEC, "fn": fn, "src": u})
 

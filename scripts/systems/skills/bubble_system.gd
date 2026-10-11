@@ -135,7 +135,7 @@ func _sk_bubble_burst(u: Dictionary, tgt) -> void:              # 泡泡龟·泡
 	u["bubble_store"] = maxf(0.0, float(u.get("bubble_store", 0.0)) - consumed)
 	var c: Vector2 = tgt["pos"]
 	var dirp: Vector2 = tgt["pos"] - u["pos"]
-	var perp: Vector2 = (dirp.orthogonal().normalized() if dirp.length() > 1.0 else Vector2.UP) * 175.0
+	var perp: Vector2 = (DetMath.norm(dirp.orthogonal()) if DetMath.vlen(dirp) > 1.0 else Vector2.UP) * 175.0
 	var g1: Vector2 = c + perp                                  # 严格马尔扎哈Q(虚空幽视·用户2026-07-15"按LoL Q怎么动"): 目标两侧现两门→延迟→门间竖起虚空泡沫墙(连接两门·猛涌起)→墙起时结算伤害
 	var g2: Vector2 = c - perp
 	_bubble_gate(g1)                                            # ① 先现两门(portals)
@@ -146,11 +146,11 @@ func _sk_bubble_burst(u: Dictionary, tgt) -> void:              # 泡泡龟·泡
 	wt.tween_callback(func() -> void:                          # ③ 门间竖起泡沫墙(从中心向两端展开·每点从地面猛涌起) + 墙起时命中结算
 		for k in range(20):
 			var t: float = float(k) / 19.0
-			_bubble_wall_erupt(gg1.lerp(gg2, t), absf(t - 0.5) * 0.12)
+			_bubble_wall_erupt(DetMath.vlerp(gg1, gg2, t), absf(t - 0.5) * 0.12)
 		battle._skill_ring(cc, Color(0.5, 0.9, 1.0, 0.6), 200.0)
 		if not uu.get("alive", false): return
 		for o in battle._targeting._enemies_of(uu):
-			if o.get("alive", false) and o["pos"].distance_to(cc) <= BURST_RADIUS:   # 门间200码带内敌
+			if o.get("alive", false) and DetMath.dist(o["pos"], cc) <= BURST_RADIUS:   # 门间200码带内敌
 				battle._damage._apply_damage_from(uu, o, int(battle._mitigate(uu, cons * BURST_MAGIC_MULT, o, true)) + battle._atk_dmg(uu, BURST_ATK_COEF, o), Color("#cdebff")))   # 魔法=消耗量×1.5(吃魔抗) + 物理1.5A(用户2026-07-29 第五轮·原 ×1.0 + 0.8A)
 				# ★物理段【不吃泡泡值】, 是开局(泡泡值=0)唯一稳定的伤害 —— 从 38 翻到 71, 第一发不再是空技能。
 

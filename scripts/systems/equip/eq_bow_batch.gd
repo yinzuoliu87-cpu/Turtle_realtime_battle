@@ -261,7 +261,7 @@ func rain_hop(u: Dictionary, si: int, center: Vector2) -> int:
 	for o in battle._targeting._enemies_of(u):
 		if not (o as Dictionary).get("alive", false):
 			continue
-		if (o["pos"] as Vector2).distance_squared_to(center) > r2:
+		if DetMath.dist2((o["pos"] as Vector2), center) > r2:
 			continue
 		n += 1
 		var amp: float = 1.0 + amp_075(u, o, si)
@@ -282,7 +282,7 @@ static func amp_of(dist_px: float, si: int) -> float:
 
 
 func amp_075(u: Dictionary, tgt: Dictionary, si: int) -> float:
-	return amp_of((u["pos"] as Vector2).distance_to(tgt["pos"]), si)
+	return amp_of(DetMath.dist((u["pos"] as Vector2), tgt["pos"]), si)
 
 
 ## 每次命中(on-hit): 按距离补一段加伤。
@@ -394,9 +394,9 @@ func volley_shot(u: Dictionary, si: int) -> int:
 		return 0
 	var aim: Dictionary = es[battle._battle_rng.randi() % es.size()]
 	var dir: Vector2 = aim["pos"] - u["pos"]
-	if dir.length() < 1.0:
+	if DetMath.vlen(dir) < 1.0:
 		dir = Vector2.RIGHT
-	dir = dir.normalized()
+	dir = DetMath.norm(dir)
 	## 走廊内、2000 码以内的敌人, **按距离排序** —— "穿过的第 k 个"这个概念得有先后,
 	## 靠 `_units` 的数组顺序是不行的(赛博激光那里踩过)。
 	var line: Array = []
@@ -404,10 +404,10 @@ func volley_shot(u: Dictionary, si: int) -> int:
 		if not (o as Dictionary).get("alive", false):
 			continue
 		var rel: Vector2 = o["pos"] - u["pos"]
-		var along: float = rel.dot(dir)
+		var along: float = DetMath.dot(rel, dir)
 		if along < 0.0 or along > PIERCE_RANGE:
 			continue
-		if (rel - dir * along).length() > PIERCE_HALF_W:
+		if DetMath.vlen((rel - dir * along)) > PIERCE_HALF_W:
 			continue
 		line.append({"u": o, "d": along})
 	line.sort_custom(func(a, b): return float(a["d"]) < float(b["d"]))

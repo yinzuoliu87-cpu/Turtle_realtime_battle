@@ -747,7 +747,7 @@ func _hh_self_drive(u: Dictionary, _delta: float) -> void:
 	var tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null or not (tgt as Dictionary).get("alive", false):
 		return
-	if ((tgt as Dictionary)["pos"] - u["pos"]).length() > battle._eff_range(u):
+	if DetMath.vlen(((tgt as Dictionary)["pos"] - u["pos"])) > battle._eff_range(u):
 		return
 	cds[HH_SKILL] = battle._skill_cd(u, HH_SKILL)
 	u["skill_gcd_until"] = battle._t + battle.SKILL_GCD
@@ -788,7 +788,7 @@ func cast_cross_slash(u: Dictionary, tgt) -> void:
 	u["_slam"] = true
 	u["_b84_lock_until"] = battle._t + CROSS_T3 + BladeEqVfx.SLASH_LIFE
 	var dir: Vector2 = (tgt as Dictionary)["pos"] - u["pos"]
-	dir = dir.normalized() if dir.length() > 0.01 else Vector2.RIGHT
+	dir = DetMath.norm(dir) if DetMath.vlen(dir) > 0.01 else Vector2.RIGHT
 	u["_b84_casts"] = int(u.get("_b84_casts", 0)) + 1   # 同步触发证据
 	u["face_right"] = dir.x > 0.0
 	## ★★2026-08-29 补【蓄力】(用户点名:「然后是蓄力, 你做了吗」—— 没有)。
@@ -849,9 +849,9 @@ func cross_slash_hit(u: Dictionary, dir: Vector2, sx: int, seg: int) -> int:
 		if not (o is Dictionary) or not (o as Dictionary).get("alive", false):
 			continue
 		var rel: Vector2 = (o as Dictionary)["pos"] - u["pos"]
-		if rel.length() > BladeEqVfx.SLASH_REACH:
+		if DetMath.vlen(rel) > BladeEqVfx.SLASH_REACH:
 			continue
-		if rel.length() > 0.01 and absf(rel.angle_to(dir)) > half:
+		if DetMath.vlen(rel) > 0.01 and absf(DetMath.angle_to(rel, dir)) > half:
 			continue
 		var d: int = battle._resolve_dmg(u, flat + float(u.get("atk", 0.0)) * sc, o, false)
 		battle._damage._apply_damage_from(u, o, d, Color("#dbe9ff"), 0.0, false, true)
@@ -895,9 +895,9 @@ func _step_waves(delta: float, only: Array = []) -> void:
 				if battle._arr_has_unit(w["hit"], o):
 					continue                     # ★引用判重: in/has() 对单位字典是深比较→卡死
 				var rel: Vector2 = (o as Dictionary)["pos"] - org
-				if absf(rel.dot(dir) - trav) > WAVE_BAND:
+				if absf(DetMath.dot(rel, dir) - trav) > WAVE_BAND:
 					continue
-				if absf(rel.dot(perp)) > float(w["half_w"]):
+				if absf(DetMath.dot(rel, perp)) > float(w["half_w"]):
 					continue
 				(w["hit"] as Array).append(o)
 				var d: int = battle._resolve_dmg(u, flat + float(u.get("atk", 0.0)) * sc, o, false)

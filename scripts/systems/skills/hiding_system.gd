@@ -52,14 +52,14 @@ func _sk_minion_rocket(u: Dictionary, tgt) -> void:   # 远程小将·追踪火�
 	##   由 verify_elite_anim 的 RANGED_BEATS 守着 —— 不等的话动画先播完、角色站着发呆。
 	battle._melee_anim(uu, "skill")
 	var aim: Vector2 = (tref["pos"] as Vector2) - (uu["pos"] as Vector2)
-	aim = aim.normalized() if aim.length() > 1.0 else (Vector2.RIGHT if uu.get("face_right", true) else Vector2.LEFT)
+	aim = DetMath.norm(aim) if DetMath.vlen(aim) > 1.0 else (Vector2.RIGHT if uu.get("face_right", true) else Vector2.LEFT)
 	uu["face_right"] = aim.x >= 0.0
 	battle._rocket_sys._rocket_charge_vfx(uu, aim)                         # 蓄力表现(用户2026-07-18): 枪口聚能球渐大转白热+火星汇入+脚下能量环脉冲
 	battle._pending_shots.append({"delay": 1.5, "fn": func() -> void:   # 蓄力1.5s→发射
 		uu["_slam"] = false
 		if not uu.get("alive", false): return
 		var aim2: Vector2 = (tref["pos"] as Vector2) - (uu["pos"] as Vector2)
-		aim2 = aim2.normalized() if aim2.length() > 1.0 else aim
+		aim2 = DetMath.norm(aim2) if DetMath.vlen(aim2) > 1.0 else aim
 		uu["face_right"] = aim2.x >= 0.0
 		var muzzle: Vector2 = (uu["pos"] as Vector2) + aim2 * 34.0
 		battle._rocket_sys._rocket_muzzle_flash(uu, muzzle, aim2)          # 枪口特效动画(用户2026-07-18): 白热闪+锥形喷火+火星前喷+后坐
@@ -82,7 +82,7 @@ func _minion_rocket_fly(u: Dictionary, tref: Dictionary, from: Vector2) -> void:
 	var halo: MeshInstance3D = battle._glow_bb(pos, mh, 42.0, Color(1.0, 0.58, 0.26, 0.7))   # 弹头发光晕(加性·跟随脉动)
 	var flew: float = 0.0
 	var lastdir: Vector2 = (tref["pos"] as Vector2) - pos
-	lastdir = lastdir.normalized() if lastdir.length() > 1.0 else Vector2.RIGHT
+	lastdir = DetMath.norm(lastdir) if DetMath.vlen(lastdir) > 1.0 else Vector2.RIGHT
 	var trailc: float = 0.0
 	var puls: float = 0.0
 	while is_instance_valid(battle) and flew < 2400.0 and is_instance_valid(miss) and battle.is_inside_tree():
@@ -93,22 +93,22 @@ func _minion_rocket_fly(u: Dictionary, tref: Dictionary, from: Vector2) -> void:
 		var dt: float = battle._frame_sim_dt
 		var target_pos: Vector2 = (tref["pos"] as Vector2) if tref.get("alive", false) else pos
 		var to: Vector2 = target_pos - pos
-		var dir: Vector2 = to.normalized() if to.length() > 1.0 else lastdir
+		var dir: Vector2 = DetMath.norm(to) if DetMath.vlen(to) > 1.0 else lastdir
 		lastdir = dir
 		var step: float = 266.0 * dt                    # 慢速追踪(−30%·用户2026-07-18: 380→266码/s)
 		flew += step
-		if to.length() <= step + 26.0:
+		if DetMath.vlen(to) <= step + 26.0:
 			pos = target_pos; break                     # 命中
 		pos += dir * step
 		miss.position = battle._world_pos(pos, mh)
 		var travel_world: Vector3 = battle._world_pos(pos + dir, mh) - battle._world_pos(pos, mh)
 		battle._orient_billboard_dir(miss, travel_world)       # 尖头领着飞(朝屏幕行进方向)
 		puls += dt                                       # 引擎燃烧脉动(弹身微暖闪·保留金属本色+光晕呼吸)
-		var glow: float = 0.5 + 0.5 * sin(puls * 32.0)
+		var glow: float = 0.5 + 0.5 * DetMath.dsin(puls * 32.0)
 		miss.modulate = Color(1.0, 0.98, 0.95).lerp(Color(1.0, 0.9, 0.78), glow)
 		if is_instance_valid(halo):
 			halo.position = battle._world_pos(pos, mh)
-			halo.scale = Vector3.ONE * (0.9 + 0.18 * sin(puls * 32.0))
+			halo.scale = Vector3.ONE * (0.9 + 0.18 * DetMath.dsin(puls * 32.0))
 		trailc += dt
 		if trailc >= 0.022:                             # 尾焰(推进尾迹)
 			trailc = 0.0
@@ -157,7 +157,7 @@ func _minion_rocket_nuke(u: Dictionary, center: Vector2) -> void:   # 核爆(用
 	# ⑤ 放射火焰streak×12(向外快闪)
 	for k in range(12):
 		var ang: float = TAU * float(k) / 12.0 + 0.26
-		var d2: Vector2 = Vector2(cos(ang), sin(ang))
+		var d2: Vector2 = Vector2(DetMath.dcos(ang), DetMath.dsin(ang))
 		battle._bolt_line(center + d2 * 30.0, center + d2 * randf_range(150.0, 240.0), Color(1.0, 0.75, 0.4, 0.8))
 	# ⑥ 火花四溅 + 碎石 + 烟柱 + 焦痕
 	battle._vfx._impact_particles(center, 0.4)
@@ -169,7 +169,7 @@ func _minion_rocket_nuke(u: Dictionary, center: Vector2) -> void:   # 核爆(用
 	battle._skill_ring(center, Color(1.0, 0.7, 0.3, 0.75), 400.0)
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
-		if (o["pos"] as Vector2).distance_to(center) > 400.0: continue
+		if DetMath.dist((o["pos"] as Vector2), center) > 400.0: continue
 		battle._vfx._hit_spark(o)
 		battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 4.0, o, false), Color("#ff4444"))   # 4A物理
 		o["heal_reduce_until"] = maxf(float(o.get("heal_reduce_until", 0.0)), battle._t + 4.0)   # 4秒50%治疗削减
@@ -264,15 +264,15 @@ func _sk_minion_bodysurf(u: Dictionary, tgt) -> void:   # 近战小将·人体�
 	# ★蓄力→往后上方自然起跳(用户2026-07-18"正常蓄力往高处/后高处跳·别直上直下"): 位移往后+升到峰→悬停(不落)·等拉向目标才俯冲
 	var jstart: Vector2 = uu["pos"]
 	var back_dir: Vector2 = (jstart - (tref["pos"] as Vector2))
-	back_dir = back_dir.normalized() if back_dir.length() > 1.0 else Vector2.LEFT
+	back_dir = DetMath.norm(back_dir) if DetMath.vlen(back_dir) > 1.0 else Vector2.LEFT
 	var apex: Vector2 = jstart + back_dir * 120.0        # 往后上方跳~120码(后撤+20%·用户2026-07-18)
 	apex = ArenaShape.clamp_in(apex, battle.ARENA, 30, 20)
 	var jt = battle._reg_tween()
 	jt.tween_interval(0.3)                               # 蓄力更久(蹬地聚力·用户2026-07-18"蓄力久点·用力一跳·符合现实")
 	jt.tween_method(func(q: float) -> void:              # 用力爆发式起跳: 高度sin(离地瞬间最快→到顶减速=真实抛物上升)·水平匀速往后上→到顶悬停
 		if uu.get("alive", false):
-			uu["pos"] = jstart.lerp(apex, q)
-			uu["height"] = 5.76 * sin(q * PI * 0.5)
+			uu["pos"] = DetMath.vlerp(jstart, apex, q)
+			uu["height"] = 5.76 * DetMath.dsin(q * PI * 0.5)
 	, 0.0, 1.0, 0.34)
 	battle._pending_shots.append({"delay": 0.68, "fn": func() -> void:   # 到顶后→从小将射铁链向目标+晕住顿一下(蓄力变久后挪·2026-07-18)
 		if not (uu.get("alive", false) and tref.get("alive", false)):
@@ -330,7 +330,7 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己�
 		d += battle._frame_sim_dt
 		var kk: float = clampf(d / 0.3, 0.0, 1.0)
 		if u.get("alive", false):
-			u["pos"] = from.lerp((tref["pos"] as Vector2), kk)   # 水平接近目标
+			u["pos"] = DetMath.vlerp(from, (tref["pos"] as Vector2), kk)   # 水平接近目标
 			u["height"] = h0 - (h0 - 0.3) * kk * kk       # 高度按重力加速下落(前段高·末段猛扎)→路径成弧线俯冲, 不直线飞(用户2026-07-18"符合现实")
 	if not (u.get("alive", false) and tref.get("alive", false)):
 		u["_slam"] = false; return
@@ -338,7 +338,7 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己�
 	battle._melee_anim(u, "surf")                                # 1.58-2.41 踩在目标身上滑行
 	battle._vfx._hit_spark(tref); battle._shake(0.14)
 	var sdir: Vector2 = ((tref["pos"] as Vector2) - from)
-	sdir = sdir.normalized() if sdir.length() > 1.0 else Vector2.RIGHT
+	sdir = DetMath.norm(sdir) if DetMath.vlen(sdir) > 1.0 else Vector2.RIGHT
 	var slide_from: Vector2 = tref["pos"]
 	var slide_to: Vector2 = slide_from + sdir * 200.0
 	slide_to = ArenaShape.clamp_in(slide_to, battle.ARENA, 30, 20)
@@ -361,7 +361,7 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己�
 		sd += dt
 		var _sq: float = clampf(sd / slide_dur, 0.0, 1.0)
 		_sq = 1.0 - (1.0 - _sq) * (1.0 - _sq)             # ease-out减速: 俯冲惯性大→摩擦逐渐减速停下(非匀速·用户2026-07-18)
-		var mypos: Vector2 = slide_from.lerp(slide_to, _sq)
+		var mypos: Vector2 = DetMath.vlerp(slide_from, slide_to, _sq)
 		u["pos"] = mypos
 		u["height"] = 0.3                                  # 踩在目标身上(略高=站在冲浪板上·参考浪板)
 		if tref.get("alive", false): tref["pos"] = mypos   # 踩着目标一起滑(目标=冲浪板)
@@ -371,7 +371,7 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己�
 			battle._damage._apply_damage_from(u, tref, battle._atk_dmg(u, 2.0 * 0.1 / slide_dur, tref, false), Color("#ff4444"))
 		for o in battle._targeting._enemies_of(u):                           # 沿途撞到的其他敌: 1.5A物理+撞飞(参考"撞飞其他敌")
 			if is_same(o, tref) or not o.get("alive", false) or battle._arr_has_unit(hit_others, o): continue
-			if (o["pos"] as Vector2).distance_to(mypos) <= 70.0:
+			if DetMath.dist((o["pos"] as Vector2), mypos) <= 70.0:
 				hit_others.append(o)
 				battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, 1.5, o, false), Color("#ff4444"))
 				## ★2026-08-21: 免控的第三方**不被撞飞** —— 用户已定「推开就是控制技能」,
@@ -382,14 +382,14 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己�
 	# 完美收尾: 从目标身上跳到【目标周围】(不重叠·用户2026-07-18)→龟能随后正常回充
 	var land_from: Vector2 = u["pos"]
 	var perp: Vector2 = Vector2(-sdir.y, sdir.x)         # 滑向的垂直方向=往侧边跳
-	if perp.length() < 0.5: perp = Vector2.UP
+	if DetMath.vlen(perp) < 0.5: perp = Vector2.UP
 	var base: Vector2 = (tref["pos"] as Vector2) if tref.get("alive", false) else land_from
 	var land_to: Vector2 = base + perp * 72.0            # 跳到目标侧边72码(不与目标重叠)
 	land_to = ArenaShape.clamp_in(land_to, battle.ARENA, 30, 20)
 	var ho = battle._reg_tween()
 	ho.tween_method(func(q: float) -> void:
 		if u.get("alive", false):
-			u["pos"] = land_from.lerp(land_to, q)       # 跳到目标周围
+			u["pos"] = DetMath.vlerp(land_from, land_to, q)       # 跳到目标周围
 			u["height"] = 0.3 + 1.5 * 4.0 * q * (1.0 - q)   # 跳弧
 	, 0.0, 1.0, 0.3)
 	ho.tween_callback(func() -> void:
@@ -465,10 +465,10 @@ func _hiding_summon_vfx(pos: Vector2) -> void:                 # 喊龟·召唤�
 		sp.pixel_size = 0.006
 		sp.modulate = Color(1.0, 0.9, 0.6, 0.95)
 		var sa: float = TAU * float(si) / 6.0
-		sp.position = battle._world_pos(pos + Vector2(cos(sa), sin(sa)) * randf_range(30.0, 70.0), 0.1)
+		sp.position = battle._world_pos(pos + Vector2(DetMath.dcos(sa), DetMath.dsin(sa)) * randf_range(30.0, 70.0), 0.1)
 		battle._world.add_child(sp)
 		var spt = battle._reg_tween(); spt.set_parallel(true)
-		spt.tween_property(sp, "position", battle._world_pos(pos + Vector2(cos(sa), sin(sa)) * randf_range(20.0, 50.0), randf_range(1.2, 1.8)), 0.7).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		spt.tween_property(sp, "position", battle._world_pos(pos + Vector2(DetMath.dcos(sa), DetMath.dsin(sa)) * randf_range(20.0, 50.0), randf_range(1.2, 1.8)), 0.7).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		spt.tween_property(sp, "modulate:a", 0.0, 0.7)
 		spt.chain().tween_callback(sp.queue_free)
 	battle._burst_vfx("res://assets/sprites/vfx/dust-impact.png", pos, 130.0, 0.12)
@@ -490,7 +490,7 @@ func _hiding_legacy_vfx(from_pos: Vector2, owner: Dictionary) -> void:   # 遗�
 		dt.tween_interval(0.06 * float(i))
 		dt.tween_method(func(q: float) -> void:                 # 活追踪主人(主人在走也能飞进身体)
 			if is_instance_valid(dot) and oref.get("alive", false):
-				dot.position = battle._world_pos(start.lerp(oref["pos"], q), lerpf(0.6, 0.8, q))
+				dot.position = battle._world_pos(start.lerp(oref["pos"], q), DetMath.flerp(0.6, 0.8, q))
 		, 0.0, 1.0, 0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		dt.tween_property(dot, "modulate:a", 0.0, 0.12)
 		dt.tween_callback(dot.queue_free)
@@ -522,14 +522,14 @@ func _hiding_legacy_heal_vfx(u: Dictionary) -> void:            # 防御盾到�
 		dot.pixel_size = 0.005
 		dot.modulate = Color(0.5, 0.95, 0.6, 0.9)
 		var sa: float = TAU * float(i) / 3.0
-		var start: Vector2 = (oref["pos"] as Vector2) + Vector2(cos(sa), sin(sa)) * 60.0
+		var start: Vector2 = (oref["pos"] as Vector2) + Vector2(DetMath.dcos(sa), DetMath.dsin(sa)) * 60.0
 		dot.position = battle._world_pos(start, 0.4)
 		battle._world.add_child(dot)
 		var dt = battle._reg_tween()
 		dt.bind_node(dot)
 		dt.tween_method(func(q: float) -> void:
 			if is_instance_valid(dot) and oref.get("alive", false):
-				dot.position = battle._world_pos(start.lerp(oref["pos"], q), lerpf(0.4, 0.8, q))
+				dot.position = battle._world_pos(start.lerp(oref["pos"], q), DetMath.flerp(0.4, 0.8, q))
 		, 0.0, 1.0, 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		dt.tween_property(dot, "modulate:a", 0.0, 0.1)
 		dt.tween_callback(dot.queue_free)
@@ -617,7 +617,7 @@ func _sk_hiding_buff(u: Dictionary) -> void:                    # 强化随从(�
 			if not is_instance_valid(sp): return
 			if mref.get("alive", false):
 				var aa: float = a0 + q * TAU * 1.5
-				sp.position = battle._world_pos((mref["pos"] as Vector2) + Vector2(cos(aa), sin(aa)) * 34.0, 0.3 + q * 1.3)
+				sp.position = battle._world_pos((mref["pos"] as Vector2) + Vector2(DetMath.dcos(aa), DetMath.dsin(aa)) * 34.0, 0.3 + q * 1.3)
 			sp.modulate.a = 0.95 * clampf(q / 0.15, 0.0, 1.0) * clampf((1.0 - q) / 0.25, 0.0, 1.0)
 		, 0.0, 1.0, 0.9)
 		st.tween_callback(sp.queue_free)

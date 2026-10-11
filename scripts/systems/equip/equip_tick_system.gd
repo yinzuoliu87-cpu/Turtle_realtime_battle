@@ -103,14 +103,14 @@ func _tick_bear_anim(u: Dictionary, delta: float) -> void:   # 大熊状态机: 
 		else:
 			spr.frame = mini(f, _bmax)
 		if anim == "attack":
-			voff = ldir * (sin(prog * PI) * 0.55)          # 前扑扑击(前冲再回)
-			voff.y += sin(prog * PI) * 0.14                # 略抬(挥爪)
+			voff = ldir * (DetMath.dsin(prog * PI) * 0.55)          # 前扑扑击(前冲再回)
+			voff.y += DetMath.dsin(prog * PI) * 0.14                # 略抬(挥爪)
 		# slam 的位移由 _bear_shockwave 手控(_slam_manual), 这里只推进帧
 	else:   # walk / idle: 移动→循环走路, 停下→站立顿住(frame0)
 		if str(u.get("_bear_sheet", "")) != "walk":
 			battle._set_bear_sheet(spr, "walk"); u["_bear_sheet"] = "walk"
 		var pv: Vector2 = u.get("_bear_pp", u["pos"])
-		var moving: bool = (u["pos"] - pv).length() > 0.6
+		var moving: bool = DetMath.vlen((u["pos"] - pv)) > 0.6
 		u["_bear_pp"] = u["pos"]
 		if moving:
 			spr.frame = int(float(u["bear_anim_t"]) * 9.0) % maxi(1, int(spr.hframes))
@@ -536,7 +536,7 @@ func _tick_rustblade(u: Dictionary, delta: float) -> void:   # 木制长剑p2eq_
 		if float(e["rust_t"]) < RUST_IV: continue           # 该件未就绪(每3s就绪一次)
 		if not got:                                          # 目标懒求(多件共用同一最近敌)
 			t = battle._targeting._nearest_enemy(u); got = true
-		if t == null or (t["pos"] - u["pos"]).length() > rng: continue   # 射程内无敌→保持就绪等待
+		if t == null or DetMath.vlen((t["pos"] - u["pos"])) > rng: continue   # 射程内无敌→保持就绪等待
 		e["rust_t"] = 0.0
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
 		var dmg01: int = battle._resolve_dmg(u, u["atk"] * [0.6, 0.75, 1.0][si] + [40.0, 60.0, 100.0][si] * u["crit"], t, false)
@@ -553,7 +553,7 @@ func _tick_coral(u: Dictionary, delta: float) -> void:   # 双穿珊瑚刺p2eq_0
 		if float(e["coral_t"]) < CORAL_IV: continue
 		var far = null; var fd = -1.0
 		for o in battle._targeting._pick_enemies_of(u):   # ★单体定向(挑最远一个)必须走 battle._targeting._pick_enemies_of: 排除训龟大师(场外监视者·永远最远)+不可选中; 见 §PICK-TARGET 铁律。原用 battle._targeting._enemies_of → 珊瑚刺永远锁大师(用户2026-07-24)
-			var dd2: float = (o["pos"] - u["pos"]).length_squared()
+			var dd2: float = DetMath.len2((o["pos"] - u["pos"]))
 			if dd2 > fd: fd = dd2; far = o
 		if far == null: continue
 		e["coral_t"] = 0.0
@@ -793,7 +793,7 @@ func _tick_bear_waves(dt: float) -> void:
 			var inset: float = battle._vfx.QUAKE_ERUPT_YARDS * 0.5
 			var span: float = maxf(0.0, BEAR_WAVE_HALF - inset)
 			for k in range(BEAR_WAVE_PER_SEG):
-				var off: float = lerpf(-span, span, float(k) / float(BEAR_WAVE_PER_SEG - 1))
+				var off: float = DetMath.flerp(-span, span, float(k) / float(BEAR_WAVE_PER_SEG - 1))
 				off = clampf(off + (6.0 if n % 2 else -6.0), -span, span)   # 两排错开半格, 但不许溢出
 				var lead: float = float((n + k) % 3) * -7.0                  # 只往后抖: 前缘不许越过判定
 				battle._vfx.bear_quake_erupt(origin + dir * (float(w["seg"]) + lead) + perp * off)
@@ -801,7 +801,7 @@ func _tick_bear_waves(dt: float) -> void:
 		for o in battle._targeting._enemies_of(src):
 			if battle._arr_has_unit(w["hit"], o) or not o.get("alive", false):
 				continue
-			var proj: float = ((o["pos"] as Vector2) - origin).dot(dir)
+			var proj: float = DetMath.dot(((o["pos"] as Vector2) - origin), dir)
 			if proj < -40.0 or proj > trav + 30.0 or proj > BEAR_WAVE_RANGE + 30.0:
 				continue
 			if not battle._on_line(origin, dir, o["pos"], BEAR_WAVE_HALF):
@@ -816,7 +816,7 @@ func _tick_bear_waves(dt: float) -> void:
 			##   命中反馈交给 `_hit_spark` + 伤害飘字, 破土只用来画【波本身】。
 		## ③ 大熊从砸地的下沉姿势起身复位(0.3 秒) —— 也走游戏钟
 		if src.get("alive", false):
-			src["_bear_voff"] = Vector3(0.0, lerpf(-0.22, 0.0,
+			src["_bear_voff"] = Vector3(0.0, DetMath.flerp(-0.22, 0.0,
 				clampf(trav / (BEAR_WAVE_SPEED * 0.3), 0.0, 1.0)), 0.0)
 		if trav < BEAR_WAVE_RANGE:
 			continue
@@ -839,7 +839,7 @@ func pull_airborne(o: Dictionary, origin: Vector2, dist: float, dur: float) -> v
 	if not o.get("alive", false):
 		return
 	var to_o: Vector2 = origin - (o["pos"] as Vector2)
-	var d0: float = to_o.length()
+	var d0: float = DetMath.vlen(to_o)
 	if d0 < 1.0:
 		return
 	var pull: float = minf(dist, maxf(0.0, d0 - 24.0))   # 别拉进熊身(留 24px)
@@ -863,7 +863,7 @@ func _tick_pulls(dt: float) -> void:
 				o["pos"] = q["target"]
 			_pulls.remove_at(i)
 			continue
-		o["pos"] = (q["start"] as Vector2).lerp(q["target"] as Vector2, 1.0 - (1.0 - k) * (1.0 - k))
+		o["pos"] = DetMath.vlerp((q["start"] as Vector2), q["target"] as Vector2, 1.0 - (1.0 - k) * (1.0 - k))
 
 
 ## ════════════════════════════════════════════════════════════════════════════

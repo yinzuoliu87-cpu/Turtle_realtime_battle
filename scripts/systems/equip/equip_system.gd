@@ -220,7 +220,7 @@ func _eq_ice_fissure(u: Dictionary, si: int) -> void:
 	var t = battle._targeting._nearest_enemy(u)
 	if t == null:
 		return
-	var dir: Vector2 = (t["pos"] - u["pos"]).normalized()
+	var dir: Vector2 = DetMath.norm((t["pos"] - u["pos"]))
 	if dir == Vector2.ZERO:
 		dir = Vector2.RIGHT
 	battle._anticipate(u)                                 # 蓄力砸地
@@ -234,7 +234,7 @@ func _eq_crystal_line(u: Dictionary, si: int) -> void:   # 迷你水晶球A030: 
 	if not u.get("alive", false): return
 	var t4 = battle._targeting._nearest_enemy(u)
 	if t4 == null: return
-	var dir2: Vector2 = (t4["pos"] - u["pos"]).normalized()
+	var dir2: Vector2 = DetMath.norm((t4["pos"] - u["pos"]))
 	if dir2 == Vector2.ZERO: dir2 = Vector2.RIGHT
 	## ★★2026-08-14 从 tween 改走 `_pending_shots`(sim 时钟)。
 	##   原来用 `_reg_tween().tween_interval().tween_callback()` 排这 2/3 段 ——
@@ -307,7 +307,7 @@ func _tick_eq_turret(u: Dictionary, delta: float) -> void:   # 058: 炮台双抗
 	if absf(float(tr.get("base_def", -1.0)) - res) > 0.01:
 		tr["base_def"] = res; tr["base_mr"] = res
 		battle._recalc_stats(tr)
-	var near: bool = u.get("alive", false) and (u["pos"] - tr["pos"]).length() <= TURRET_BUFF_R
+	var near: bool = u.get("alive", false) and DetMath.vlen((u["pos"] - tr["pos"])) <= TURRET_BUFF_R
 	## ★用户 2026-09-14 拍板加强: 20/30/40% → **三档统一 100%**(「携带者在自己附近时, 攻速加 100%」)。
 	u["_turret_aspd_mult"] = (1.0 + TURRET_BUFF_ASPD) if near else 1.0   # 直接赋值(不累加·不会泄漏)
 	battle._update_turret_line(tr)
@@ -411,14 +411,14 @@ func _eq_crossbow_volley(u: Dictionary, si: int) -> void:   # 连发弩049: 每8
 	if not u.get("alive", false): return
 	var far49 := _eq_farthest_enemies(u, false)
 	if far49.is_empty(): return
-	var dir49: Vector2 = (far49[0]["pos"] - u["pos"]).normalized()
+	var dir49: Vector2 = DetMath.norm((far49[0]["pos"] - u["pos"]))
 	var fire49 := func():
 		if not u.get("alive", false): return
 		var ft49 = _eq_first_in_line(u, dir49, 42.0)
 		if ft49 == null: return
 		var lost49: float = clampf((1.0 - ft49["hp"] / ft49["maxHp"]) / XBOW_LOST_FULL, 0.0, 1.0)
 		battle._muzzle_flash(u["pos"], dir49, Color("#d8f0a8"))
-		battle._spawn_eq_bolt(u, ft49, battle._atk_dmg(u, lerpf(XBOW_MIN_COEF, XBOW_MAX_COEF, lost49), ft49), "res://assets/sprites/vfx/crossbow-bolt.png", Color("#eaffd0"))
+		battle._spawn_eq_bolt(u, ft49, battle._atk_dmg(u, DetMath.flerp(XBOW_MIN_COEF, XBOW_MAX_COEF, lost49), ft49), "res://assets/sprites/vfx/crossbow-bolt.png", Color("#eaffd0"))
 	battle._queue_shots([1, 2, 3][si], XBOW_GAP, fire49, u, "p2eq_049")
 
 func _eq_gatling_burst(u: Dictionary, si: int) -> void:   # 幽灵加特林050: 每8秒连打20/30/60发随机分布+永久减甲(单目标累计上限)
@@ -441,7 +441,7 @@ func _eq_gatling_burst(u: Dictionary, si: int) -> void:   # 幽灵加特林050: 
 
 func _eq_laser_pistol(u: Dictionary, si: int) -> void:   # 激光手枪051: 每8秒穿透红激光, 首敌满伤+流血, 身后敌半伤半流血
 	if not u.get("alive", false): return
-	var dir4: Vector2 = (battle._targeting._nearest_enemy(u)["pos"] - u["pos"]).normalized() if battle._targeting._nearest_enemy(u) != null else Vector2.RIGHT
+	var dir4: Vector2 = DetMath.norm((battle._targeting._nearest_enemy(u)["pos"] - u["pos"])) if battle._targeting._nearest_enemy(u) != null else Vector2.RIGHT
 	var first = _eq_first_in_line(u, dir4, PISTOL_LASER_BAND)
 	if first != null:
 		## 演出整套搬进 battle_vfx.laser_pistol_fx(分段表见 docs/plans/20260914-046至051第五批与判定带三件.md)。
@@ -461,7 +461,7 @@ func _eq_laser_pistol(u: Dictionary, si: int) -> void:   # 激光手枪051: 每8
 func _eq_shotgun_blast(u: Dictionary, si: int) -> void:   # 霰弹贝古053: 朝最近敌扇形散开, 每颗弹珠沿自己的直线飞, 撞到第一个敌人才结算伤害并消失; 被8发及以上命中→眩晕
 	if not u.get("alive", false): return
 	var t53 = battle._targeting._nearest_enemy(u)
-	var dir53: Vector2 = (t53["pos"] - u["pos"]).normalized() if t53 != null else Vector2.RIGHT
+	var dir53: Vector2 = DetMath.norm((t53["pos"] - u["pos"])) if t53 != null else Vector2.RIGHT
 	battle._vfx.shotgun_muzzle_fx(u, dir53)   # 枪口闪 + 爆环(纯演出, 住 battle_vfx)
 	var n53: int = [12, 14, 18][si]
 	var step53: float = deg_to_rad(battle.SHOTGUN_PELLET_DEG)
@@ -469,10 +469,10 @@ func _eq_shotgun_blast(u: Dictionary, si: int) -> void:   # 霰弹贝古053: 朝
 	var maxdur: float = 0.0
 	for k in range(n53):
 		var off53: float = (float(k) - float(n53 - 1) * 0.5) * step53   # 均匀分布在中线两侧
-		var d53: Vector2 = dir53.rotated(off53)
+		var d53: Vector2 = DetMath.rotated(dir53, off53)
 		var hit53 = _eq_first_in_line(u, d53, 40.0)                     # 这条线上最近的敌人=挡住这颗弹珠的那个
 		var endp: Vector2 = (hit53["pos"] if hit53 != null else u["pos"] + d53 * 1800.0)   # 没挡住→无限飞出场外
-		var dur53: float = clampf(u["pos"].distance_to(endp) / 1500.0, 0.10, 0.75)         # 恒定弹速
+		var dur53: float = clampf(DetMath.dist(u["pos"], endp) / 1500.0, 0.10, 0.75)         # 恒定弹速
 		maxdur = maxf(maxdur, dur53)
 		if hit53 == null:
 			battle._ballistics._shotgun_pellet(u["pos"], endp, Color(1.0, 0.86, 0.5, 0.95), dur53)
@@ -493,7 +493,7 @@ func _eq_shotgun_blast(u: Dictionary, si: int) -> void:   # 霰弹贝古053: 朝
 func _eq_pistol_volley(u: Dictionary, si: int) -> void:   # 黄铜手铳048: 每8秒依次射4/5/6发, 每发命中直线首敌(错峰: 枪口闪+子弹+火花)
 	if not u.get("alive", false): return
 	var t48 = battle._targeting._nearest_enemy(u)
-	var dir48: Vector2 = (t48["pos"] - u["pos"]).normalized() if t48 != null else Vector2.RIGHT
+	var dir48: Vector2 = DetMath.norm((t48["pos"] - u["pos"])) if t48 != null else Vector2.RIGHT
 	var mul48: float = [0.5, 0.54, 0.6][si]
 	var fire48 := func():
 		if not u.get("alive", false): return
@@ -543,7 +543,7 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 		u["candle_hot_rate"] = hv37 / CANDLE_IV
 		u["candle_hot_until"] = battle._t + CANDLE_IV
 		for a37 in battle._targeting._allies_of(u, false):
-			if a37["pos"].distance_to(u["pos"]) <= CANDLE_HEAL_R:
+			if DetMath.dist(a37["pos"], u["pos"]) <= CANDLE_HEAL_R:
 				a37["candle_hot_rate"] = (hv37 * CANDLE_ALLY_HALF) / CANDLE_IV
 				a37["candle_hot_until"] = battle._t + CANDLE_IV
 	elif ph == 2:   # 燃烧: 火苗爆燃(蜡烛过亮+弹一下) + 原地爆炸, 500码内敌各受魔法伤+灼烧
@@ -557,7 +557,7 @@ func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 		battle._shake(0.06)
 		var dmg37: float = float([20, 30, 44][si]) + u["atk"] * [0.5, 0.7, 1.0][si]
 		for o in battle._targeting._enemies_of(u):
-			if o["pos"].distance_to(u["pos"]) <= CANDLE_BURN_R:   # 499→500(用户2026-07-19)
+			if DetMath.dist(o["pos"], u["pos"]) <= CANDLE_BURN_R:   # 499→500(用户2026-07-19)
 				battle._damage._apply_damage_from(u, o, battle._resolve_dmg(u, dmg37, o, true), Color("#ffb066"), 0.0, false, true)   # 魔法伤(蓝字), 非真伤
 				battle._damage._apply_dot_stacks(o, "burn", [20, 30, 40][si], u)
 				battle._vfx.candle_ignite(o["pos"])   # 命中 = **被点燃**(另一张表), 不是又一次爆炸
@@ -851,7 +851,7 @@ func _eq_fuel_throw(u: Dictionary, si: int) -> void:   # 余烬燃油瓶022: 每
 	spr.pixel_size = (42.0 * battle.WS) / float(maxi(1, spr.texture.get_height()))
 	spr.position = battle._world_pos(from2d, 1.15)
 	battle._world.add_child(spr)
-	var dist: float = from2d.distance_to(to2d)
+	var dist: float = DetMath.dist(from2d, to2d)
 	var tw = battle._reg_tween()
 	tw.tween_method(battle._fuel_flask_step.bind(spr, from2d, to2d, clampf(dist / 900.0, 0.55, 1.5)), 0.0, 1.0, clampf(dist / 620.0, 0.45, 1.05))
 	tw.tween_callback(battle._fuel_bottle_hit.bind(spr, u, t, si))
@@ -871,8 +871,8 @@ func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑007: 高举
 	var sc: float = [0.5, 0.8, 1.1][si]
 	var shp: float = [0.5, 0.75, 1.0][si]
 	var t = battle._targeting._nearest_enemy(u)
-	var dir: Vector2 = ((t["pos"] - u["pos"]).normalized() if t != null else Vector2.RIGHT)
-	if dir.length() < 0.1: dir = Vector2.RIGHT
+	var dir: Vector2 = (DetMath.norm((t["pos"] - u["pos"])) if t != null else Vector2.RIGHT)
+	if DetMath.vlen(dir) < 0.1: dir = Vector2.RIGHT
 	## ★锚点在施法那一刻定死(同 006): 整套演出跨 3 秒而携带者一直在走,
 	##   每段现读 u["pos"] 会让"劈下去的地方"和"剑气出发的地方"对不上。
 	var anchor: Vector2 = u["pos"]
@@ -914,7 +914,7 @@ func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑007: 高举
 		if not is_instance_valid(sword): break
 		var k: float = float(step) / float(BSW_CHOP_ARC)
 		sword.frame = posmod(chop_from + int(round(float(chop_arc) * k)), BSW_DIRS)
-		sword.position = battle._world_pos(front, lerpf(2.4, 0.8, k))
+		sword.position = battle._world_pos(front, DetMath.flerp(2.4, 0.8, k))
 	if not u.get("alive", false):
 		if is_instance_valid(sword): sword.queue_free()
 		return
@@ -964,7 +964,7 @@ func _eq_broadsword(u: Dictionary, si: int) -> void:   # 锈蚀阔剑007: 高举
 			for h in hit:
 				if is_same(h, o): seen = true; break   # ★引用比较(is_same)·不用 o in hit(字典内容哈希=053卡死同类坑)
 			if seen: continue
-			if (o["pos"] - front).dot(dir) <= traveled and battle._on_line(front, dir, o["pos"], 95.0):
+			if DetMath.dot((o["pos"] - front), dir) <= traveled and battle._on_line(front, dir, o["pos"], 95.0):
 				hit.append(o)
 				var dd: int = battle._resolve_dmg(u, u["atk"] * sc + float(flat), o, false)
 				battle._damage._apply_damage_from(u, o, dd, Color("#dfe8ff"), 0.0, false, true)
@@ -991,7 +991,7 @@ func _bsw_scrape(at: Vector2, dir: Vector2) -> void:
 	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	sp.shaded = false; sp.transparent = true
 	sp.pixel_size = BSW_SCRAPE_PX
-	sp.rotation = Vector3(0.0, -atan2(dir.y, dir.x), 0.0)
+	sp.rotation = Vector3(0.0, -DetMath.datan2(dir.y, dir.x), 0.0)
 	sp.position = battle._world_pos(at, 0.06)
 	battle._world.add_child(sp)
 	for f in range(1, BSW_SCRAPE_FRAMES):
@@ -1092,9 +1092,9 @@ func _sword_fly_frame(dir: Vector2) -> int:
 ## ★量的是屏幕投影角不是场地角: 相机俯角 ≈51°, 场地 y 投到屏幕要乘 SWORD_SCREEN_SQUASH。
 ##   屏幕 y 向下、场地 y 也向下 ⇒ 数学角取负。
 func _screen_dir_frame(dir: Vector2, n: int) -> int:
-	if dir.length() < 0.001 or n <= 0:
+	if DetMath.vlen(dir) < 0.001 or n <= 0:
 		return 0
-	var ang: float = atan2(-dir.y * SWORD_SCREEN_SQUASH, dir.x)
+	var ang: float = DetMath.datan2(-dir.y * SWORD_SCREEN_SQUASH, dir.x)
 	var idx: int = int(round(ang / (TAU / float(n))))
 	return posmod(idx, n)
 
@@ -1107,9 +1107,9 @@ func _screen_dir_frame(dir: Vector2, n: int) -> int:
 ##   抄错任何一处都会让八格整体偏, 而且肉眼看不出来 —— 007 的剑气墙就一致偏了 175°,
 ##   是逐格量才发现的(memory fb-verify-check-can-fail 第 6 条)。
 func _ground_dir_frame(dir: Vector2, n: int) -> int:
-	if dir.length() < 0.001 or n <= 0:
+	if DetMath.vlen(dir) < 0.001 or n <= 0:
 		return 0
-	return posmod(int(round(atan2(dir.y, dir.x) / (TAU / float(n)))), n)
+	return posmod(int(round(DetMath.datan2(dir.y, dir.x) / (TAU / float(n)))), n)
 
 ## a → b 的【最短有向步数】(可负)。平局(正好半圈)取负 = 顺时针,
 ## 因为立姿朝上、目标多半在左右, 顺时针那半圈更像"把剑压下来"。
@@ -1156,10 +1156,10 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 	var flat: int = [70, 100, 400][si]
 	var sc: float = [0.8, 1.3, 4.0][si]
 	var t = battle._targeting._nearest_enemy(u)
-	var dir: Vector2 = ((t["pos"] - u["pos"]).normalized() if t != null else Vector2.RIGHT)
-	if dir.length() < 0.1: dir = Vector2.RIGHT
+	var dir: Vector2 = (DetMath.norm((t["pos"] - u["pos"])) if t != null else Vector2.RIGHT)
+	if DetMath.vlen(dir) < 0.1: dir = Vector2.RIGHT
 	var perp: Vector2 = Vector2(-dir.y, dir.x)
-	var ang: float = -atan2(dir.y, dir.x)
+	var ang: float = -DetMath.datan2(dir.y, dir.x)
 	## ★★【锚点在施法那一刻定死】。整套演出跨 3 秒, 而携带者这期间是在走路的:
 	##   原来每一段都现读 `u["pos"]`, 于是地缝开在 A 点、0.45 秒后剑从 B 点冒出来
 	##   —— 实测差 1.19 米(≈50 码), **剑根本不是从我裂开的那道缝里出来的**。
@@ -1324,7 +1324,7 @@ func _eq_sword_storm(u: Dictionary, si: int) -> void:   # 千刃风暴(用户改
 				(sp as Sprite3D).frame = fly_frame
 		for o in battle._targeting._enemies_of(u):
 			if battle._arr_has_unit(hit, o) or not o.get("alive", false): continue
-			if (o["pos"] - anchor).dot(dir) <= front_along:
+			if DetMath.dot((o["pos"] - anchor), dir) <= front_along:
 				hit.append(o)
 				battle._damage._apply_damage_from(u, o, battle._resolve_dmg(u, u["atk"] * sc + float(flat), o, false), Color("#dfe8ff"), 0.0, false, true)
 				## ★命中反馈从"白圆环"换成【钢碰壳的火花】(2026-09-07)。
@@ -1360,7 +1360,7 @@ func _eq_water_wave(u: Dictionary, si: int) -> void:
 		for e in enemies: ec += e["pos"]
 		ec /= float(enemies.size())
 	var dvec: Vector2 = ec - u["pos"]
-	var dir: Vector2 = Vector2.RIGHT if dvec.length() < 1.0 else dvec.normalized()   # 浪行进方向=朝敌人(2D可对角)
+	var dir: Vector2 = Vector2.RIGHT if DetMath.vlen(dvec) < 1.0 else DetMath.norm(dvec)   # 浪行进方向=朝敌人(2D可对角)
 	var startc: Vector2 = u["pos"] - dir * WAVE_BACK    # 敌人反方向(身后)涌起
 	var tdist: float = WAVE_DIST
 	var windup: float = 0.5
@@ -1374,7 +1374,7 @@ func _eq_water_wave(u: Dictionary, si: int) -> void:
 	battle._equip_tick_sys.tide_wall_start(startc, dir, WAVE_HALF_W, tdist, windup, travel)
 	for o in allies:
 		var oo: Dictionary = o
-		var fwd: float = clampf((o["pos"] - startc).dot(dir), 0.0, tdist)
+		var fwd: float = clampf(DetMath.dot((o["pos"] - startc), dir), 0.0, tdist)
 		var d: float = windup + fwd / tdist * travel
 		var fn := func():
 			if not oo.get("alive", false): return
@@ -1384,7 +1384,7 @@ func _eq_water_wave(u: Dictionary, si: int) -> void:
 		battle._pending_shots.append({"delay": d, "fn": fn, "src": u})
 	for o in enemies:
 		var oo2: Dictionary = o
-		var fwd2: float = clampf((o["pos"] - startc).dot(dir), 0.0, tdist)
+		var fwd2: float = clampf(DetMath.dot((o["pos"] - startc), dir), 0.0, tdist)
 		var d2: float = windup + fwd2 / tdist * travel
 		var fn2 := func():
 			if not oo2.get("alive", false): return
@@ -1405,13 +1405,13 @@ func _eq_first_in_line(u: Dictionary, dir: Vector2, width: float):
 	var best = null; var bd := INF
 	for o in battle._targeting._pick_enemies_of(u):
 		if battle._on_line(u["pos"], dir, o["pos"], width):
-			var dd: float = (o["pos"] - u["pos"]).length_squared()
+			var dd: float = DetMath.len2((o["pos"] - u["pos"]))
 			if dd < bd: bd = dd; best = o
 	return best
 
 func _eq_farthest_enemies(u: Dictionary, half: bool) -> Array:
 	var es = battle._targeting._enemies_of(u)
-	es.sort_custom(func(a, b): return (a["pos"] - u["pos"]).length_squared() > (b["pos"] - u["pos"]).length_squared())
+	es.sort_custom(func(a, b): return DetMath.len2((a["pos"] - u["pos"])) > DetMath.len2((b["pos"] - u["pos"])))
 	if half:
 		return es.slice(0, maxi(1, es.size() / 2))
 	return es
@@ -1618,7 +1618,7 @@ func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false,
 				var frac: float = [0.15, 0.28, 0.50][si]
 				battle._splash_ring_bold(tgt["pos"], Color(1.0, 0.80, 0.36, 0.95), SHARKTOOTH_SPLASH_R)   # 醒目双环从命中点扩到200码·恒画在地板之上
 				for o in battle._targeting._enemies_of(src):
-					if not is_same(o, tgt) and (o["pos"] - tgt["pos"]).length() <= SHARKTOOTH_SPLASH_R:
+					if not is_same(o, tgt) and DetMath.vlen((o["pos"] - tgt["pos"])) <= SHARKTOOTH_SPLASH_R:
 						battle._damage._apply_damage_from(src, o, maxi(1, int(dmg * frac)), Color("#ffd07a"), 0.0, false, true)
 						battle._vfx._hit_spark(o)   # 每个被溅射敌人身上一记立式火花(胸高billboard·地板高度盖不住)
 			"p2eq_005":   # 双生匕首: 命中概率追加一刀双生刺击
@@ -1716,7 +1716,7 @@ func _eq_chain_lightning(u: Dictionary, si: int) -> void:
 		for o in enemies:
 			if is_same(o, cur):
 				continue
-			var d: float = o["pos"].distance_squared_to(cpos)
+			var d: float = DetMath.dist2(o["pos"], cpos)
 			if d < bd_any: bd_any = d; best_any = o
 			if not battle._arr_has_unit(hit, o) and d < bd_new: bd_new = d; best_new = o
 		var nxt = best_new if best_new != null else best_any
@@ -1795,13 +1795,13 @@ func laser_alive_enemies(src: Dictionary) -> Array:
 ## 谁被【顶点 org / 朝向 dir / 半径 rng / 全角 LASER_ARC_DEG】的扇形罩住。
 ## 判定与演出共用同一个 org/dir/rng ⇒ 画到哪就打到哪。
 func laser_fan_hits(org: Vector2, dir: Vector2, rng: float, enemies: Array) -> Array:
-	var cos_half: float = cos(deg_to_rad(LASER_HALF_DEG))
+	var cos_half: float = DetMath.dcos(deg_to_rad(LASER_HALF_DEG))
 	var out: Array = []
 	for o in enemies:
 		var rel: Vector2 = o["pos"] - org
-		var d: float = rel.length()
+		var d: float = DetMath.vlen(rel)
 		if d > rng: continue
-		if dir.dot(rel / maxf(1.0, d)) < cos_half: continue
+		if DetMath.dot(dir, rel / maxf(1.0, d)) < cos_half: continue
 		out.append(o)
 	return out
 
@@ -1839,9 +1839,9 @@ func laser_chop_slab(org: Vector2, dir: Vector2, d0: float, d1: float, enemies: 
 	var out: Array = []
 	for o in enemies:
 		var rel: Vector2 = o["pos"] - org
-		var along: float = rel.dot(dir)
+		var along: float = DetMath.dot(rel, dir)
 		if along < d0 or along >= d1: continue
-		if (rel - dir * along).length() > LASER_CHOP_HALF_W: continue
+		if DetMath.vlen((rel - dir * along)) > LASER_CHOP_HALF_W: continue
 		out.append(o)
 	return out
 
@@ -1860,7 +1860,7 @@ func laser_chop_reach(u: Dictionary, si: int) -> float:
 ## ★两者必须是同一套口径: 判定用它返回的向量, 贴图用 k 号格, 于是"画的"和"打的"永远同一个方向。
 func _laser_dir_of(k: int) -> Vector2:
 	var a: float = TAU * float(posmod(k, LASER_DIRS)) / float(LASER_DIRS)
-	return Vector2(cos(a), sin(a))
+	return Vector2(DetMath.dcos(a), DetMath.dsin(a))
 
 
 ## 扇形斩的贴地精灵。★顶点就在格心 ⇒ `position` 直接是释放点, **没有任何锚点偏移**。
@@ -1894,8 +1894,8 @@ func _eq_laser_sweep(u: Dictionary, tgt: Dictionary, si: int) -> void:
 	##   给它加预警 = 每 1.25 秒闪一片红网点, 还把出手推迟 0.30 秒。
 	##   ⇒ 触发就斩, 伤害在斩击第 0 帧同帧落地。
 	if not u.get("alive", false): return
-	var raw: Vector2 = (tgt["pos"] - u["pos"]).normalized()
-	if raw.length() < 0.1: raw = Vector2.RIGHT
+	var raw: Vector2 = DetMath.norm((tgt["pos"] - u["pos"]))
+	if DetMath.vlen(raw) < 0.1: raw = Vector2.RIGHT
 	## ★★把瞄准轴**吸附到素材的 16 档**, 然后判定也用吸附后的轴(与 009 同一条)。
 	##   贴图只有 16 档而判定用真实角 ⇒ 画出来的扇边和真判定边最多差 11.25°,
 	##   在 450 码处两端错开约 88 码 —— 敌人明明画在扇里却不掉血。
@@ -1918,8 +1918,8 @@ func _eq_laser_sweep(u: Dictionary, tgt: Dictionary, si: int) -> void:
 	if is_instance_valid(slash): slash.queue_free()
 	## ③ 只命中 1 人 ⇒ 追加竖劈冲击波(文案原话)。
 	if hits.size() == 1 and u.get("alive", false):
-		var cd: Vector2 = (hits[0]["pos"] - u["pos"]).normalized()
-		if cd.length() < 0.1: cd = dir
+		var cd: Vector2 = DetMath.norm((hits[0]["pos"] - u["pos"]))
+		if DetMath.vlen(cd) < 0.1: cd = dir
 		var cdf: int = _ground_dir_frame(cd, LASER_DIRS)
 		await _eq_laser_chop(u, si, u["pos"], _laser_dir_of(cdf), cdf, laser_chop_reach(u, si))
 
@@ -1993,13 +1993,13 @@ func blade_alive_enemies(src: Dictionary) -> Array:
 
 ## 谁被 500~800 码 / BLADE_ARC_DEG 度的扇形带罩住。判定与演出共用同一个 org ⇒ 画到哪就打到哪。
 func blade_hit_test(org: Vector2, dir: Vector2, enemies: Array) -> Array:
-	var cos_half: float = cos(deg_to_rad(BLADE_ARC_DEG * 0.5))
+	var cos_half: float = DetMath.dcos(deg_to_rad(BLADE_ARC_DEG * 0.5))
 	var out: Array = []
 	for o in enemies:
 		var rel: Vector2 = o["pos"] - org
-		var dist: float = rel.length()
+		var dist: float = DetMath.vlen(rel)
 		if dist < BLADE_R_IN or dist > BLADE_R_OUT: continue
-		if dir.dot(rel / maxf(1.0, dist)) < cos_half: continue
+		if DetMath.dot(dir, rel / maxf(1.0, dist)) < cos_half: continue
 		out.append(o)
 	return out
 
@@ -2020,7 +2020,7 @@ func blade_release_point(src: Dictionary, dir: Vector2, enemies: Array, aim_dist
 	var base: float = clampf(aim_dist - (BLADE_R_IN + BLADE_R_OUT) * 0.5, -BLADE_SEEK, BLADE_SEEK)
 	var cands: Array = [base]
 	for o in enemies:
-		var d: float = (o["pos"] - src["pos"]).dot(dir)
+		var d: float = DetMath.dot((o["pos"] - src["pos"]), dir)
 		cands.append(clampf(d - BLADE_R_IN - 1.0, -BLADE_SEEK, BLADE_SEEK))
 		cands.append(clampf(d - BLADE_R_OUT + 1.0, -BLADE_SEEK, BLADE_SEEK))
 	var best: float = base
@@ -2040,8 +2040,8 @@ func _eq_wide_blade(src: Dictionary, tgt: Dictionary, si: int) -> void:   # 宽�
 	for _o in foes: cen += _o["pos"]
 	if not foes.is_empty(): cen /= float(foes.size())
 	var aimpt: Vector2 = cen if not foes.is_empty() else tgt["pos"]
-	var raw: Vector2 = (aimpt - src["pos"]).normalized()
-	if raw.length() < 0.1: raw = Vector2.RIGHT
+	var raw: Vector2 = DetMath.norm((aimpt - src["pos"]))
+	if DetMath.vlen(raw) < 0.1: raw = Vector2.RIGHT
 	## ★★把瞄准轴**吸附到素材的 16 档**, 然后**选释放点和判定都用吸附后的轴**。
 	##   贴图只有 16 档而判定用真实角 ⇒ 画出来的扇区边和真判定边最多差 11.25°,
 	##   在带心 650 码处两端错开约 127 码 —— 敌人明明画在带里却不掉血, 就是通病「演出与判定不一致」。
@@ -2049,7 +2049,7 @@ func _eq_wide_blade(src: Dictionary, tgt: Dictionary, si: int) -> void:   # 宽�
 	##   代价只是瞄准轴落在 22.5° 网格上, 而释放点搜索本来就会沿该轴重新找最优覆盖。
 	var dirf: int = _ground_dir_frame(raw, MOON_DIRS)
 	var dir: Vector2 = _moon_dir_of(dirf)
-	var org: Vector2 = blade_release_point(src, dir, foes, (aimpt - src["pos"]).length())
+	var org: Vector2 = blade_release_point(src, dir, foes, DetMath.vlen((aimpt - src["pos"])))
 	## 1) 预警: **一片填充的区域**(不是几条线) —— 上一代最重要的那一样, 我上一版把它删了。
 	##    从 alpha 0 淡入, 0.56 秒里脉动两个来回; 峰值只到 0.58 ⇒ 半透, 单位照样画在它上面。
 	var tel := _moon_sprite(MOON_BAND_TEX, 1, dirf, org, dir, 0.08)
@@ -2107,14 +2107,14 @@ func _eq_wide_blade(src: Dictionary, tgt: Dictionary, si: int) -> void:   # 宽�
 ##   「演出与量它的尺子共用一条时钟」—— 调用点在 `_wait_sim` 循环里逐格写。
 func _moon_tel_alpha(u: float) -> float:
 	var rise: float = clampf(u / MOON_TEL_RISE, 0.0, 1.0)
-	return rise * (MOON_TEL_A + MOON_TEL_SWING * sin(u * TAU * 2.0 - PI * 0.5))
+	return rise * (MOON_TEL_A + MOON_TEL_SWING * DetMath.dsin(u * TAU * 2.0 - PI * 0.5))
 
 
 ## 第 k 档方向对应的**单位向量** —— 与 `_ground_dir_frame` 严格互逆。
 ## ★两者必须是同一套口径: 判定用它返回的向量, 贴图用 k 号格, 于是"画的"和"打的"永远同一个方向。
 func _moon_dir_of(k: int) -> Vector2:
 	var a: float = TAU * float(posmod(k, MOON_DIRS)) / float(MOON_DIRS)
-	return Vector2(cos(a), sin(a))
+	return Vector2(DetMath.dcos(a), DetMath.dsin(a))
 
 
 ## 009 的两张贴地素材共用这一份摆放(别各抄一份: 两处的口径必须完全一致, 否则预警和刃会错位)。
@@ -2145,7 +2145,7 @@ func _eq_fire_coral_active(src: Dictionary, si: int) -> void:
 	if not es.is_empty():
 		var cen := Vector2.ZERO
 		for o in es: cen += o["pos"]
-		dir = (cen / float(es.size()) - src["pos"]).normalized()
+		dir = DetMath.norm((cen / float(es.size()) - src["pos"]))
 	battle._anticipate(src); battle._shake(battle.JUICE_SHAKE_HEAVY)   # 蓄力
 	await battle._wait_sim(CORAL_WINDUP, src)
 	if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free)
@@ -2204,7 +2204,7 @@ func _fire_coral_place(pool: Array, origin: Vector2, dir: Vector2, traveled: flo
 		var ai: int = i % ncol
 		var ri: int = i / ncol
 		var a: float = -half + (2.0 * half) * (float(ai) / float(maxi(1, ncol - 1)))
-		var d2: Vector2 = dir.rotated(a)
+		var d2: Vector2 = DetMath.rotated(dir, a)
 		## 径向偏移: 3 排落在 -43.3 / 0 / +43.3 码, 覆盖 ±68 码 ⊇ 判定带 ±65
 		var roff: float = (float(ri) - float(CORAL_CREST_ROWS - 1) * 0.5) * (CORAL_BAND * 2.0 / float(CORAL_CREST_ROWS))
 		sp2.position = battle._world_pos(origin + d2 * maxf(0.0, traveled + roff), CORAL_CREST_H)
@@ -2220,9 +2220,9 @@ func _fire_coral_wave_hit(src: Dictionary, origin: Vector2, dir: Vector2,
 	for o in battle._targeting._enemies_of(src):
 		if battle._arr_has_unit(hit, o): continue
 		var rel: Vector2 = o["pos"] - origin
-		if rel.dot(dir) <= 0.0: continue
-		if absf(rel.angle_to(dir)) > half: continue          # 扇形内
-		if absf(rel.length() - traveled) > CORAL_BAND: continue   # 波前带
+		if DetMath.dot(rel, dir) <= 0.0: continue
+		if absf(DetMath.angle_to(rel, dir)) > half: continue          # 扇形内
+		if absf(DetMath.vlen(rel) - traveled) > CORAL_BAND: continue   # 波前带
 		hit.append(o)
 		battle._damage._apply_dot_stacks(o, "burn", CORAL_BURN[si], src)
 		n += 1
@@ -2454,7 +2454,7 @@ func _eq_sniper(u: Dictionary, si: int, depth: int, locked = null) -> void:
 		low = _sniper_pick_lowest(u)
 	if low == null:
 		return
-	var dir: Vector2 = (low["pos"] - u["pos"]).normalized()
+	var dir: Vector2 = DetMath.norm((low["pos"] - u["pos"]))
 	battle._vfx.sniper_shot_fx(u, low, dir)   # 开枪整套演出(枪口闪/后坐/爆环/双层曳光/命中火花)
 	var killed := false
 	for o in battle._targeting._enemies_of(u):
@@ -2748,18 +2748,18 @@ func _eq_dragon_breath(u: Dictionary, si: int) -> void:
 	var anchor = es[0]                               # 瞄最靠质心的敌人=保证龙穿过它(不是瞄质心从两敌之间缝里穿)
 	var abest := INF
 	for o in es:
-		var dd: float = o["pos"].distance_squared_to(cen)
+		var dd: float = DetMath.dist2(o["pos"], cen)
 		if dd < abest:
 			abest = dd; anchor = o
-	var dir: Vector2 = (anchor["pos"] - u["pos"]).normalized()
+	var dir: Vector2 = DetMath.norm((anchor["pos"] - u["pos"]))
 	if dir == Vector2.ZERO:
 		dir = Vector2.RIGHT
 	var start: Vector2 = u["pos"]
 	var reach: float = 340.0                         # 飞到最远敌人身后(真穿过去), 不再固定760码够不着
 	for o in es:
-		reach = maxf(reach, (o["pos"] - start).dot(dir) + 260.0)
+		reach = maxf(reach, DetMath.dot((o["pos"] - start), dir) + 260.0)
 	var end: Vector2 = start + dir * reach
-	var total: float = maxf(1.0, start.distance_to(end))
+	var total: float = maxf(1.0, DetMath.dist(start, end))
 	var dur: float = clampf(reach / 480.0, 1.6, 2.6)  # 按距离定时长=恒定速度
 	## 前摇: 召唤点聚火蓄能再爆发出龙(修「一下冒出来」)
 	battle._anticipate(u)

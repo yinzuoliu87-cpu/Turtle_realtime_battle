@@ -141,7 +141,7 @@ static func slot_prob(matches: int, slots: int) -> float:
 	var p: float = shelf_prob(matches)
 	if slots <= 0:
 		return 0.0
-	return 1.0 - pow(1.0 - p, 1.0 / float(slots))
+	return 1.0 - DetMath.dpow(1.0 - p, 1.0 / float(slots))
 
 
 ## ── 被动 2(木斧就解锁): 普攻窃取目标护盾 ──────────────────────
@@ -369,19 +369,19 @@ static func charge_height(elapsed: float) -> float:
 static func in_trapezoid(origin: Vector2, dir: Vector2, h: float, p: Vector2) -> bool:
 	if h <= 0.0:
 		return false
-	var d: Vector2 = dir.normalized()
+	var d: Vector2 = DetMath.norm(dir)
 	if d == Vector2.ZERO:
 		return false
 	var rel: Vector2 = p - origin
-	var t: float = rel.dot(d)                     # 纵深
+	var t: float = DetMath.dot(rel, d)                     # 纵深
 	if t < 0.0 or t > h:
 		return false
-	var lat: float = absf(rel.dot(Vector2(-d.y, d.x)))   # 到中轴的横向距离
+	var lat: float = absf(DetMath.dot(rel, Vector2(-d.y, d.x)))   # 到中轴的横向距离
 	## ★半宽按【满蓄高】插值, 不是按当前高 —— 否则梯形长大的时候会跟着"变胖",
 	##   而需求只说高在长、没说宽在长。
 	var full_h: float = CHARGE_TIME / CHARGE_STEP * CHARGE_H_PER_STEP
 	var k: float = clampf(t / maxf(1.0, full_h), 0.0, 1.0)
-	var half_w: float = lerpf(TRAPEZOID_NEAR_W, TRAPEZOID_FAR_W, k) * 0.5
+	var half_w: float = DetMath.flerp(TRAPEZOID_NEAR_W, TRAPEZOID_FAR_W, k) * 0.5
 	return lat <= half_w
 
 

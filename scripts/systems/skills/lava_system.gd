@@ -103,7 +103,7 @@ func _tick_lava_zones(_delta: float) -> void:   # 每帧: 周期结算池内敌 
 				for o in battle._targeting._enemies_of(src):
 					if not o.get("alive", false):
 						continue
-					if o["pos"].distance_to(c) > r:
+					if DetMath.dist(o["pos"], c) > r:
 						continue
 					## 每跳 = ATK×QUAKE_ATK_COEF + 目标maxHp×QUAKE_TGT_HP, 两段一起吃魔抗(魔法)
 					battle._damage._apply_damage_from(src, o, _quake_tick_dmg(src, o), Color("#ff7a33"))
@@ -151,13 +151,13 @@ func _lava_quake(u: Dictionary) -> void:                         # 小·岩浆�
 
 func _lava_volcano_erupt(u: Dictionary) -> void:                 # 火山·火山爆发(用户2026-07-15定稿): 目标那头的尽头生成岩浆浪潮→朝火山龟压过来(250码/s)→穿过龟到另一头尽头消散; 碾过每敌击飞+一段 ERUPT_ATK_COEF(1.2)A 魔+ERUPT_BURN_COEF(0.2)A 灼烧+回血 ERUPT_HEAL_PCT(8%)
 	var dir: Vector2 = battle._densest_enemy_point(u, SLAM_WARN_RADIUS) - u["pos"]   # 瞄准轴: 朝敌最密方向
-	dir = dir.normalized() if dir.length() > 0.1 else Vector2.RIGHT
+	dir = DetMath.norm(dir) if DetMath.vlen(dir) > 0.1 else Vector2.RIGHT
 	var tdir: Vector2 = -dir                                       # ★行进方向=朝火山龟压过来(用户: 目标尽头生成→移向龟→穿过到另一端)
 	var full_len := 1200.0                                         # 行进全长(目标侧尽头600→穿过龟→背后尽头600)
 	var half_w := 140.0                                            # 浪半宽(全宽280码)
 	var origin: Vector2 = u["pos"]
 	var start: Vector2 = origin + dir * 600.0                      # 生成点=目标所在那头的尽头
-	var ang := -atan2(tdir.y, tdir.x)                             # 浪体朝向=行进方向(前缘对着龟)
+	var ang := -DetMath.datan2(tdir.y, tdir.x)                             # 浪体朝向=行进方向(前缘对着龟)
 	var perp_axis := Vector2(-dir.y, dir.x)
 	battle._anticipate(u); battle._shake(battle.JUICE_SHAKE_HEAVY)
 	# 1) 超长红矩形预警 (拉长 blob 沿 dir, ~0.6s, 横跨全场)
@@ -230,8 +230,8 @@ func _lava_volcano_erupt(u: Dictionary) -> void:                 # 火山·火�
 		var z1: float = (float(j + 1) / float(M) - 0.5) * wall_w
 		var cx0: float = float(j) / float(M) * 2.0 - 1.0
 		var cx1: float = float(j + 1) / float(M) * 2.0 - 1.0
-		var hf0: float = sqrt(maxf(0.0, 1.0 - pow(absf(cx0), 3.0)))   # 中段平坦成板(slab)·两端圆角捏合(体自闭合)
-		var hf1: float = sqrt(maxf(0.0, 1.0 - pow(absf(cx1), 3.0)))
+		var hf0: float = sqrt(maxf(0.0, 1.0 - DetMath.dpow(absf(cx0), 3.0)))   # 中段平坦成板(slab)·两端圆角捏合(体自闭合)
+		var hf1: float = sqrt(maxf(0.0, 1.0 - DetMath.dpow(absf(cx1), 3.0)))
 		for k in range(prof.size() - 1):
 			var pa: Vector2 = prof[k]
 			var pb: Vector2 = prof[k + 1]
@@ -266,22 +266,22 @@ func _lava_volcano_erupt(u: Dictionary) -> void:                 # 火山·火�
 			wave.position = battle._world_pos(front, 0.12)
 		if is_instance_valid(wall):
 			wall.position = battle._world_pos(front, 0.04)               # 浪壳随波前推进(mesh底边即地面)
-			(wall.material_override as ShaderMaterial).set_shader_parameter("intensity", 0.92 + 0.08 * sin(battle._t * 13.0))
+			(wall.material_override as ShaderMaterial).set_shader_parameter("intensity", 0.92 + 0.08 * DetMath.dsin(battle._t * 13.0))
 			if battle._juice_rng.randf() < 0.55:                         # 浪顶洒火星熔滴(行进点缀)
-				var sx: Vector2 = front + perp_axis * battle._juice_rng.randf_range(-half_w * 0.8, half_w * 0.8)
+				var sx: Vector2 = front + perp_axis * DetMath.rrange(battle._juice_rng, -half_w * 0.8, half_w * 0.8)
 				var sp := Sprite3D.new()
 				sp.texture = VfxTex._make_fire_glow_tex()
 				sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED; sp.shaded = false; sp.transparent = true
 				sp.pixel_size = 0.0042
 				sp.modulate = Color(1.0, 0.8, 0.4, 0.95)
-				sp.position = battle._world_pos(sx, wall_h * battle._juice_rng.randf_range(0.7, 1.0))
+				sp.position = battle._world_pos(sx, wall_h * DetMath.rrange(battle._juice_rng, 0.7, 1.0))
 				battle._world.add_child(sp)
 				var st = battle._reg_tween(); st.set_parallel(true)
-				st.tween_property(sp, "position", battle._world_pos(sx + tdir * battle._juice_rng.randf_range(20.0, 60.0), 0.1), 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+				st.tween_property(sp, "position", battle._world_pos(sx + tdir * DetMath.rrange(battle._juice_rng, 20.0, 60.0), 0.1), 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 				st.tween_property(sp, "modulate:a", 0.0, 0.4)
 				st.chain().tween_callback(sp.queue_free)
 			if battle._juice_rng.randf() < 0.6:                          # ★雾云尾迹(娜美R观察: 不规则软雾云包四周+尾部拖白雾)
-				var mpos: Vector2 = front + perp_axis * battle._juice_rng.randf_range(-half_w * 1.1, half_w * 1.1) - tdir * battle._juice_rng.randf_range(0.0, 180.0)
+				var mpos: Vector2 = front + perp_axis * DetMath.rrange(battle._juice_rng, -half_w * 1.1, half_w * 1.1) - tdir * DetMath.rrange(battle._juice_rng, 0.0, 180.0)
 				var mf := Sprite3D.new()
 				mf.texture = VfxTex._make_fire_glow_tex()
 				mf.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
@@ -289,25 +289,25 @@ func _lava_volcano_erupt(u: Dictionary) -> void:                 # 火山·火�
 				mf.pixel_size = 0.013
 				mf.modulate = Color(1.0, 0.62, 0.3, 0.22)         # 软橙雾(低alpha大团)
 				mf.scale = Vector3(0.6, 0.6, 0.6)
-				mf.position = battle._world_pos(mpos, battle._juice_rng.randf_range(0.2, wall_h * 0.9))
+				mf.position = battle._world_pos(mpos, DetMath.rrange(battle._juice_rng, 0.2, wall_h * 0.9))
 				battle._world.add_child(mf)
 				var mt = battle._reg_tween(); mt.set_parallel(true)
 				mt.tween_property(mf, "scale", Vector3(1.6, 1.6, 1.6), 0.7)
-				mt.tween_property(mf, "position", battle._world_pos(mpos - tdir * 40.0 + perp_axis * battle._juice_rng.randf_range(-30.0, 30.0), wall_h * 1.1), 0.7)
+				mt.tween_property(mf, "position", battle._world_pos(mpos - tdir * 40.0 + perp_axis * DetMath.rrange(battle._juice_rng, -30.0, 30.0), wall_h * 1.1), 0.7)
 				mt.tween_property(mf, "modulate:a", 0.0, 0.7)
 				mt.chain().tween_callback(mf.queue_free)
 		if is_instance_valid(tel):
-			tel.modulate.a = lerpf(0.42, 0.12, clampf(d / full_len, 0.0, 1.0))
+			tel.modulate.a = DetMath.flerp(0.42, 0.12, clampf(d / full_len, 0.0, 1.0))
 		for o in battle._targeting._enemies_of(u):
 			if not o.get("alive", false):
 				continue
 			if battle._arr_has_unit(hit, o):
 				continue
 			var rel: Vector2 = o["pos"] - start
-			var perp: float = absf(rel.dot(perp_axis))
+			var perp: float = absf(DetMath.dot(rel, perp_axis))
 			if perp >= half_w:
 				continue                                          # 不在浪宽内
-			var along: float = rel.dot(tdir)
+			var along: float = DetMath.dot(rel, tdir)
 			if along < -20.0 or along > d:
 				continue                                          # 波前尚未扫到
 			hit.append(o)                                         # 命中一次 (each-once; 用 Array 不用 Dictionary-key, 见下方注释)
@@ -327,8 +327,8 @@ func _lava_volcano_erupt(u: Dictionary) -> void:                 # 火山·火�
 	battle._gambler_sys._gambler_pop(start, 0.6, Color(1.0, 0.85, 0.5, 0.95))         # ★出生爆闪(娜美R观察: 浪在白亮爆闪中诞生·非淡入)
 	battle._skill_ring(start, Color(1.0, 0.6, 0.2, 0.8), 70.0)
 	for bi in range(6):                                           # 放射光条
-		var ba: float = TAU * float(bi) / 6.0 + battle._juice_rng.randf_range(-0.2, 0.2)
-		battle._bolt_line(start, start + Vector2(cos(ba), sin(ba)) * battle._juice_rng.randf_range(40.0, 80.0), Color(1.0, 0.9, 0.6, 0.9))
+		var ba: float = TAU * float(bi) / 6.0 + DetMath.rrange(battle._juice_rng, -0.2, 0.2)
+		battle._bolt_line(start, start + Vector2(DetMath.dcos(ba), DetMath.dsin(ba)) * DetMath.rrange(battle._juice_rng, 40.0, 80.0), Color(1.0, 0.9, 0.6, 0.9))
 	battle._shake(battle.JUICE_SHAKE_BIG)
 	var travel := 4.8                                             # 1200码/4.8s=250码/s(用户2026-07-15定)
 	var wt = battle._reg_tween()
@@ -408,7 +408,7 @@ func _lava_magma_surge(u: Dictionary, tgt: Dictionary) -> void:  # 小·岩浆�
 	battle._skill_ring(center, Color(1.0, 0.5, 0.18, 0.7), 120.0)
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
-		if o["pos"].distance_to(center) > 120.0: continue
+		if DetMath.dist(o["pos"], center) > 120.0: continue
 		battle._knock_up(o, center, 9.0)
 	if tgt != null and tgt.get("alive", false):
 		battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, SURGE_ATK_COEF, tgt, true), Color("#ff9d5c"))
@@ -421,7 +421,7 @@ func _lava_flame_strike(u: Dictionary, tgt: Dictionary) -> void: # 火山·重�
 	u["_slam"] = true
 	battle._anticipate(u)
 	var dir: Vector2 = (tgt["pos"] - u["pos"])
-	dir = dir.normalized() if dir.length() > 0.1 else Vector2.RIGHT
+	dir = DetMath.norm(dir) if DetMath.vlen(dir) > 0.1 else Vector2.RIGHT
 	# 1) 蓄力 ~0.5s: 身上聚火光
 	var glow := Sprite3D.new()
 	glow.texture = VfxTex._make_fire_glow_tex()
@@ -496,8 +496,8 @@ func _lava_ult_revert(u: Dictionary) -> void:                   # 火山暴走5�
 	u["_lava_ult_hp"] = 0.0
 
 func _lava_pierce_bolt(u: Dictionary, tgt) -> void:             # 熔岩·穿透普攻: 贯穿全场岩浆光矢+沿途0.6A【魔法】+4%目标maxHp+0.07A灼烧层 (★旧注释写"真伤"与代码不符, 2026-07-10订正)
-	var dir: Vector2 = ((tgt["pos"] - u["pos"]).normalized() if (tgt != null) else Vector2.RIGHT)
-	if dir.length() < 0.1: dir = Vector2.RIGHT
+	var dir: Vector2 = (DetMath.norm((tgt["pos"] - u["pos"])) if (tgt != null) else Vector2.RIGHT)
+	if DetMath.vlen(dir) < 0.1: dir = Vector2.RIGHT
 	battle._bolt_line(u["pos"], u["pos"] + dir * 2000.0, Color(1.0, 0.5, 0.2, 0.95))
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
@@ -535,15 +535,15 @@ func _lava_charge_vfx(u: Dictionary) -> void:   # 滞空蓄力: 火山龟身上�
 	t.tween_property(g, "modulate:a", 0.0, battle.LAVA_SLAM_T + 0.05)
 	t.tween_callback(g.queue_free)
 	for i in range(8):                                            # 火星向心汇聚(吸能感·像素化设计2026-07-15)
-		var sa: float = TAU * float(i) / 8.0 + battle._juice_rng.randf_range(-0.3, 0.3)
-		var soff: Vector2 = Vector2(cos(sa), sin(sa)) * battle._juice_rng.randf_range(70.0, 110.0)
+		var sa: float = TAU * float(i) / 8.0 + DetMath.rrange(battle._juice_rng, -0.3, 0.3)
+		var soff: Vector2 = Vector2(DetMath.dcos(sa), DetMath.dsin(sa)) * DetMath.rrange(battle._juice_rng, 70.0, 110.0)
 		var sp := Sprite3D.new()
 		sp.texture = VfxTex._make_pixel_block_tex()
 		sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED; sp.shaded = false; sp.transparent = true
 		sp.pixel_size = 0.018
 		sp.modulate = Color(1.0, 0.75, 0.3, 0.0)
-		sp.position = battle._world_pos(u["pos"] + soff, battle.LAVA_LEAP_H + battle._juice_rng.randf_range(-0.3, 0.5))
+		sp.position = battle._world_pos(u["pos"] + soff, battle.LAVA_LEAP_H + DetMath.rrange(battle._juice_rng, -0.3, 0.5))
 		battle._world.add_child(sp)
 		var st = battle._reg_tween()
 		st.tween_interval(float(i) * 0.06)
@@ -560,24 +560,24 @@ func _lava_volcano_slam(u: Dictionary) -> void:   # 加里奥R式: 高跃升+飞
 	battle._anticipate(u); battle._shake(battle.JUICE_SHAKE_HEAVY)
 	_lava_slam_telegraph(target, battle.LAVA_SLAM_RADIUS, battle.LAVA_LEAP_UP_T + battle.LAVA_CHARGE_T + battle.LAVA_SLAM_T)
 	for i in range(9):                                            # 起跳点像素尘土块弹开(2026-07-15像素化)
-		var da: float = TAU * float(i) / 9.0 + battle._juice_rng.randf_range(-0.3, 0.3)
+		var da: float = TAU * float(i) / 9.0 + DetMath.rrange(battle._juice_rng, -0.3, 0.3)
 		var dp := Sprite3D.new()
 		dp.texture = VfxTex._make_pixel_block_tex()
 		dp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 		dp.billboard = BaseMaterial3D.BILLBOARD_ENABLED; dp.shaded = false; dp.transparent = true
-		dp.pixel_size = 0.02 * battle._juice_rng.randf_range(0.7, 1.2)
+		dp.pixel_size = 0.02 * DetMath.rrange(battle._juice_rng, 0.7, 1.2)
 		dp.modulate = Color(0.75, 0.6, 0.45, 0.9)                # 土色尘块
 		dp.position = battle._world_pos(start, 0.15)
 		battle._world.add_child(dp)
-		var de: Vector2 = start + Vector2(cos(da), sin(da)) * battle._juice_rng.randf_range(40.0, 85.0)
+		var de: Vector2 = start + Vector2(DetMath.dcos(da), DetMath.dsin(da)) * DetMath.rrange(battle._juice_rng, 40.0, 85.0)
 		var dt = battle._reg_tween(); dt.set_parallel(true)
-		dt.tween_property(dp, "position", battle._world_pos(de, battle._juice_rng.randf_range(0.1, 0.5)), 0.38).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		dt.tween_property(dp, "position", battle._world_pos(de, DetMath.rrange(battle._juice_rng, 0.1, 0.5)), 0.38).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		dt.tween_property(dp, "modulate:a", 0.0, 0.38)
 		dt.chain().tween_callback(dp.queue_free)
 	# 1) 高跃升 + 同时飞向落点
 	var up = battle._reg_tween(); up.set_parallel(true)
-	up.tween_method(func(h): u["height"] = h, 0.0, battle.LAVA_LEAP_H, battle.LAVA_LEAP_UP_T).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	up.tween_method(func(p): u["pos"] = p, start, target, battle.LAVA_LEAP_UP_T).set_trans(Tween.TRANS_SINE)
+	up.tween_method(func(q: float): u["height"] = battle.LAVA_LEAP_H * DetMath.tween_ease(q, Tween.TRANS_QUAD, Tween.EASE_OUT), 0.0, 1.0, battle.LAVA_LEAP_UP_T)
+	up.tween_method(func(q: float): u["pos"] = DetMath.vlerp(start, target, DetMath.tween_ease(q, Tween.TRANS_SINE, Tween.EASE_IN_OUT)), 0.0, 1.0, battle.LAVA_LEAP_UP_T)
 	await up.finished
 	# 2) 滞空蓄力 (悬停高处, 火光渐聚, 不直接砸)
 	_lava_charge_vfx(u)
@@ -586,7 +586,7 @@ func _lava_volcano_slam(u: Dictionary) -> void:   # 加里奥R式: 高跃升+飞
 	await hover.finished
 	# 3) 砸地
 	var down = battle._reg_tween()
-	down.tween_method(func(h): u["height"] = h, battle.LAVA_LEAP_H, 0.0, battle.LAVA_SLAM_T).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	down.tween_method(func(q: float): u["height"] = battle.LAVA_LEAP_H * (1.0 - DetMath.tween_ease(q, Tween.TRANS_QUAD, Tween.EASE_IN)), 0.0, 1.0, battle.LAVA_SLAM_T)
 	await down.finished
 	u["pos"] = target; u["height"] = 0.0
 	u["untargetable_until"] = battle._t                                  # 落地恢复可被索敌
@@ -632,19 +632,19 @@ func _lava_slam_impact(u: Dictionary, center: Vector2) -> void:   # 落地: 击�
 	ct.tween_callback(crk.queue_free)
 	var rtex: Texture2D = load("res://assets/sprites/vfx/lava-rock.png")   # 岩块碎片抛物弹射
 	for i in range(10):
-		var ra: float = TAU * float(i) / 10.0 + battle._juice_rng.randf_range(-0.25, 0.25)
-		var rdist: float = battle._juice_rng.randf_range(70.0, 170.0)
+		var ra: float = TAU * float(i) / 10.0 + DetMath.rrange(battle._juice_rng, -0.25, 0.25)
+		var rdist: float = DetMath.rrange(battle._juice_rng, 70.0, 170.0)
 		var rp := Sprite3D.new()
 		rp.texture = rtex
 		rp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 		rp.billboard = BaseMaterial3D.BILLBOARD_ENABLED; rp.shaded = false; rp.transparent = true
 		rp.flip_h = battle._juice_rng.randf() < 0.5
-		rp.pixel_size = (26.0 * battle.WS) / float(maxi(1, rtex.get_height())) * battle._juice_rng.randf_range(0.7, 1.3)
+		rp.pixel_size = (26.0 * battle.WS) / float(maxi(1, rtex.get_height())) * DetMath.rrange(battle._juice_rng, 0.7, 1.3)
 		rp.position = battle._world_pos(center, 0.5)
 		battle._world.add_child(rp)
-		var endp: Vector2 = center + Vector2(cos(ra), sin(ra)) * rdist
-		var hpk: float = battle._juice_rng.randf_range(0.8, 1.5)
-		var life: float = battle._juice_rng.randf_range(0.32, 0.5)
+		var endp: Vector2 = center + Vector2(DetMath.dcos(ra), DetMath.dsin(ra)) * rdist
+		var hpk: float = DetMath.rrange(battle._juice_rng, 0.8, 1.5)
+		var life: float = DetMath.rrange(battle._juice_rng, 0.32, 0.5)
 		var rw = battle._reg_tween()
 		rw.bind_node(rp)
 		rw.tween_method(func(p: float) -> void:
@@ -657,10 +657,10 @@ func _lava_slam_impact(u: Dictionary, center: Vector2) -> void:   # 落地: 击�
 	_lava_burst_vfx(center)                           # AI生成爆裂火球
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
-		if (o["pos"] - center).length() > battle.LAVA_SLAM_RADIUS: continue
+		if DetMath.vlen((o["pos"] - center)) > battle.LAVA_SLAM_RADIUS: continue
 		if not o.get("airborne", false) and not o.get("_knock_immune", false):
 			var dir: Vector2 = (o["pos"] - center)
-			dir = dir.normalized() if dir.length() > 0.1 else Vector2.RIGHT
+			dir = DetMath.norm(dir) if DetMath.vlen(dir) > 0.1 else Vector2.RIGHT
 			o["airborne"] = true
 			o["vy"] = battle.LAVA_SLAM_KNOCK_VY
 			o["vx"] = dir.x * battle.KNOCK_PUSH * 0.7
@@ -700,12 +700,12 @@ func _sk_lava_erupt(u: Dictionary, tgt) -> void:                # 熔岩龟·技
 	var danger: bool = u["hp"] < u["maxHp"] * 0.35
 	if not danger:
 		for e in battle._targeting._enemies_of(u):
-			if e.get("alive", false) and e.get("melee", false) and (e["pos"] - u["pos"]).length() < 110.0:
+			if e.get("alive", false) and e.get("melee", false) and DetMath.vlen((e["pos"] - u["pos"])) < 110.0:
 				danger = true; break
 	if danger:                                                   # 保命: 背离最近威胁撤220码
 		var threat = battle._targeting._nearest_enemy(u)
-		var d: Vector2 = ((u["pos"] - threat["pos"]).normalized() if threat != null else Vector2.RIGHT)
-		if d.length() < 0.1: d = Vector2.RIGHT
+		var d: Vector2 = (DetMath.norm((u["pos"] - threat["pos"])) if threat != null else Vector2.RIGHT)
+		if DetMath.vlen(d) < 0.1: d = Vector2.RIGHT
 		u["pos"] += d * 220.0
 		u["pos"] = ArenaShape.clamp_in(u["pos"], battle.ARENA)
 	elif tgt != null and tgt.get("alive", false):               # 追击: 冲贴目标

@@ -88,7 +88,7 @@ func undead_ring_tick(ax: Dictionary) -> int:
 	var org: Vector2 = ax.get("pos", Vector2.ZERO)
 	var hit: Array = []
 	for o in battle._targeting._targetable_enemies(ax):
-		if (o.get("pos", Vector2.ZERO) as Vector2).distance_to(org) <= AF.UNDEAD_RING_R:
+		if DetMath.dist((o.get("pos", Vector2.ZERO) as Vector2), org) <= AF.UNDEAD_RING_R:
 			hit.append(o)
 	for o in hit:
 		var d: float = AF.undead_tick_dmg(float(o.get("maxHp", 0.0)))
@@ -200,7 +200,7 @@ func seraph_on_hit(ax: Dictionary, tgt: Dictionary) -> int:
 func seraph_boomerang_launch(ax: Dictionary, dir: Vector2) -> Dictionary:
 	if _fk(ax) != "seraph":
 		return {}
-	var d: Vector2 = dir.normalized()
+	var d: Vector2 = DetMath.norm(dir)
 	if d == Vector2.ZERO:
 		return {}
 	var org: Vector2 = ax.get("pos", Vector2.ZERO)
@@ -208,12 +208,12 @@ func seraph_boomerang_launch(ax: Dictionary, dir: Vector2) -> Dictionary:
 	var out: float = AF.SERAPH_BOOM_MIN_OUT
 	for o in battle._targeting._targetable_enemies(ax):
 		var rel: Vector2 = (o.get("pos", Vector2.ZERO) as Vector2) - org
-		if rel.dot(d) < 0.0:
+		if DetMath.dot(rel, d) < 0.0:
 			continue                       # 只打身前那一侧(单向的目标集合)
 		cands.append(o)
 		## 到飞行中线的横向距离 ≤ 半宽 = 原判定带覆盖到的那个 ⇒ 镖至少要飞到它的纵深
-		if absf(rel.dot(Vector2(-d.y, d.x))) <= AF.SERAPH_BOOM_R:
-			out = maxf(out, rel.dot(d))
+		if absf(DetMath.dot(rel, Vector2(-d.y, d.x))) <= AF.SERAPH_BOOM_R:
+			out = maxf(out, DetMath.dot(rel, d))
 	var rec := {
 		"src": ax, "org": org, "dir": d, "out": out,
 		"dmg": maxi(1, int(round(float(ax.get("atk", 0.0)) * AF.SERAPH_BOOM_ATK))),
@@ -282,11 +282,11 @@ func _boom_advance(rec: Dictionary, step: float) -> Array:
 	if src.get("alive", false):
 		home = src.get("pos", home)
 	var to_home: Vector2 = home - (rec["pos"] as Vector2)
-	if to_home.length() <= left:
+	if DetMath.vlen(to_home) <= left:
 		rec["pos"] = home
 		rec["done"] = true
 	else:
-		rec["pos"] = (rec["pos"] as Vector2) + to_home.normalized() * left
+		rec["pos"] = (rec["pos"] as Vector2) + DetMath.norm(to_home) * left
 	pts.append(rec["pos"])
 	return pts
 
@@ -303,7 +303,7 @@ func _boom_sweep(rec: Dictionary, pts: Array) -> int:
 		var p: Vector2 = o.get("pos", Vector2.ZERO)
 		var near := false
 		for i in range(pts.size() - 1):
-			if Geometry2D.get_closest_point_to_segment(p, pts[i], pts[i + 1]).distance_to(p) <= AF.SERAPH_BOOM_R:
+			if DetMath.dist(DetMath.seg_closest(p, pts[i], pts[i + 1]), p) <= AF.SERAPH_BOOM_R:
 				near = true
 				break
 		if not near:
@@ -376,7 +376,7 @@ func holo_aura_tick(ax: Dictionary) -> int:
 	for a in battle._targeting._allies_share_pool(ax):
 		if not a.get("alive", false):
 			continue
-		if (a.get("pos", Vector2.ZERO) as Vector2).distance_to(org) > AF.HOLO_AURA_R:
+		if DetMath.dist((a.get("pos", Vector2.ZERO) as Vector2), org) > AF.HOLO_AURA_R:
 			continue                       # ★范围外的一律不许吃到（门禁专门量这条）
 		battle._damage._heal(a, AF.HOLO_AURA_HEAL)
 		_give_energy(a, AF.HOLO_AURA_ENERGY)
@@ -627,7 +627,7 @@ func tick_active(ax: Dictionary, _delta: float) -> int:
 			if t2 is Dictionary:
 				var rel: Vector2 = (t2.get("pos", Vector2.ZERO) as Vector2) - (ax.get("pos", Vector2.ZERO) as Vector2)
 				if rel != Vector2.ZERO:
-					dir = rel.normalized()
+					dir = DetMath.norm(rel)
 			seraph_boomerang_launch(ax, dir)   # 只登记在途; 伤害在 tick_boomerangs 里镖经过时结算
 			ax["_seraph_left"] = int(ax.get("_seraph_left", 0)) - 1
 			## ★间隔 = 4 秒 / 10 把, 与 AxeFinalVfx.boomerang_launch_t 同一个口径

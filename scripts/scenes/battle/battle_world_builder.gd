@@ -191,6 +191,8 @@ var _flames: Array = []
 ## 且此刻 battle 可能已失效, 所以【RID 要在本地留一份】, 不能回头读 battle._nav_map。
 var _own_nav_map: RID
 var _own_nav_region: RID
+## 确定性寻路(2026-10-10): 单位绕障走它, 不走 NavigationServer2D.map_get_path(见 scripts/util/det_nav.gd 头注)。
+var det_nav: DetNav = null
 
 
 func _init(b) -> void:
@@ -2877,6 +2879,7 @@ func _build_navmesh() -> void:
 	poly.cell_size = 1.0
 	var src = NavigationMeshSourceGeometryData2D.new()
 	var m: float = 24.0   # 边界内缩(单位半径), 别贴墙
+	var holes: Array = []
 	src.add_traversable_outline(PackedVector2Array([
 		battle.ARENA.position + Vector2(m, m),
 		Vector2(battle.ARENA.end.x - m, battle.ARENA.position.y + m),
@@ -2884,10 +2887,16 @@ func _build_navmesh() -> void:
 		Vector2(battle.ARENA.position.x + m, battle.ARENA.end.y - m),
 	]))
 	for ob in battle._obstacles:   # 障碍挖洞: footprint椭圆 + 单位半径margin(留出绕行间隙)
-		src.add_obstruction_outline(battle._ellipse_pts(ob["c"], float(ob["rx"]) + battle.OBSTACLE_MARGIN, float(ob["ry"]) + battle.OBSTACLE_MARGIN, 14))
+		var hole: PackedVector2Array = battle._ellipse_pts(ob["c"], float(ob["rx"]) + battle.OBSTACLE_MARGIN, float(ob["ry"]) + battle.OBSTACLE_MARGIN, 14)
+		src.add_obstruction_outline(hole)
+		## DetNav 的洞 = 烘焙后的洞: 烘焙还会按 agent_radius(默认 10)外扩障碍、内缩外边界 ⇒ 这里同样加上
+		holes.append(battle._ellipse_pts(ob["c"], float(ob["rx"]) + battle.OBSTACLE_MARGIN + poly.agent_radius, float(ob["ry"]) + battle.OBSTACLE_MARGIN + poly.agent_radius, 14))
 	NavigationServer2D.bake_from_source_geometry_data(poly, src)
 	NavigationServer2D.region_set_navigation_polygon(battle._nav_region, poly)
 	NavigationServer2D.map_force_update(battle._nav_map)
+	det_nav = DetNav.new()
+	det_nav.map_rid = battle._nav_map
+	det_nav.build(holes, battle.ARENA.position + Vector2(m, m) + Vector2.ONE * poly.agent_radius, battle.ARENA.end - Vector2(m, m) - Vector2.ONE * poly.agent_radius)
 	battle._nav_ready = true
 
 # 返回单位朝目标该走的方向: 有navmesh→沿路点绕障; 否则/无路径→直奔(straight). 路径每单位缓存~0.4s.

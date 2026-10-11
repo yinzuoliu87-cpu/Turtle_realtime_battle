@@ -142,7 +142,7 @@ func _tut_drag() -> void:
 	_mouse_btn(xf * a, true)
 	await get_tree().process_frame
 	for i in range(1, steps + 1):
-		var p: Vector2 = xf * a.lerp(b, float(i) / float(steps))
+		var p: Vector2 = xf * DetMath.vlerp(a, b, float(i) / float(steps))
 		var mm := InputEventMouseMotion.new()
 		mm.position = p
 		mm.global_position = p

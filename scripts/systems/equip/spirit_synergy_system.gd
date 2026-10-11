@@ -127,7 +127,7 @@ func _foe_in_range(side: String, idx: int) -> bool:
 	for u in battle._targeting._pick_enemies_of_side(side):
 		if not (u is Dictionary) or not u.get("alive", false):
 			continue
-		if origin.distance_squared_to(Vector2(u["pos"])) <= rng * rng:
+		if DetMath.dist2(origin, Vector2(u["pos"])) <= rng * rng:
 			return true
 	return false
 
@@ -213,16 +213,16 @@ func _reloc_tick(delta: float) -> void:
 			var best = null
 			var bd := INF
 			for f in foes:
-				var d: float = origin.distance_squared_to(Vector2(f["pos"]))
+				var d: float = DetMath.dist2(origin, Vector2(f["pos"]))
 				if d < bd:
 					bd = d; best = f
 			if best == null:
 				continue                          # 全场没敌人了，别瞎搬
 			var fp: Vector2 = Vector2(best["pos"])
 			var back: Vector2 = (origin - fp)
-			if back.length() < 1.0:
+			if DetMath.vlen(back) < 1.0:
 				back = Vector2.LEFT if s2 == "left" else Vector2.RIGHT
-			var to2: Vector2 = fp + back.normalized() * (rng * RELOC_NEAR)
+			var to2: Vector2 = fp + DetMath.norm(back) * (rng * RELOC_NEAR)
 			to2 = ArenaShape.clamp_in(to2, battle.ARENA, 40.0)
 			to2.x = clampf(to2.x, battle.ARENA.position.x + 40.0,
 				battle.ARENA.position.x + battle.ARENA.size.x - 40.0)
@@ -252,7 +252,7 @@ func _slap(side: String, idx: int, share: float) -> int:
 	var aim = null
 	var best := INF
 	for f in foes:
-		var d: float = origin.distance_squared_to(Vector2(f["pos"]))
+		var d: float = DetMath.dist2(origin, Vector2(f["pos"]))
 		if d > rng * rng:
 			continue                      # 射程外
 		if d < best:
@@ -261,9 +261,9 @@ func _slap(side: String, idx: int, share: float) -> int:
 	if aim == null:
 		return 0
 	var dir: Vector2 = Vector2(aim["pos"]) - origin
-	if dir.length() < 1.0:
+	if DetMath.vlen(dir) < 1.0:
 		dir = Vector2.RIGHT
-	dir = dir.normalized()
+	dir = DetMath.norm(dir)
 	var mult: float = HIT_MULT[clampi(ti - 1, 0, 3)] * share
 	## ══════════════════════════════════════════════════════════════
 	##  ★★演出先起、伤害后到（用户 2026-08-10 拍板【方案 A】）
@@ -308,7 +308,7 @@ func _band_foes(side: String, origin: Vector2, dir: Vector2, rng: float) -> Arra
 		if str(u.get("side", "")) == side:
 			continue
 		var rel: Vector2 = Vector2(u["pos"]) - origin
-		var along: float = rel.dot(dir)
+		var along: float = DetMath.dot(rel, dir)
 		# ★★2026-08-05 补的长度上限：原来只排除"在身后"，没有长度限制 ⇒
 		#   伤害带是【向前无限延伸】的半平面，触手够不到的敌人照样挨打
 		#   (探针实测: 640 码外的敌人被打掉 48065)。
@@ -318,7 +318,7 @@ func _band_foes(side: String, origin: Vector2, dir: Vector2, rng: float) -> Arra
 		#   ⚠ 必须与 `tentacle_vfx.WARN_HALF_W` 一致 —— 那是画给玩家看的预警区，
 		#     两者不等 = 打得到却不画(骗玩家) 或 画了打不到(白吓唬)。
 		#     `verify_spirit_slap_range` ⑤b 焊着这一条。
-		if absf(rel.cross(dir)) > HIT_HALF_W:
+		if absf(DetMath.cross(rel, dir)) > HIT_HALF_W:
 			continue
 		out.append(u)
 	return out

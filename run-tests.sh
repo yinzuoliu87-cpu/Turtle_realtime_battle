@@ -245,6 +245,10 @@ frames_for () {
     #   ★帧不够的表现是「没打 ALL PASS」而 rc=0(CLAUDE.md §2 那个坑) —— 实测 12000 帧
     #   时只跑到 28 条就被掐断, 日志里一条 FAIL 都没有。
     verify_determinism_cross) echo 40000 ;;
+    # 跨芯片浮点(2026-10-10): 场景表 15 个各跑一遍(带扰动, 比金标) + 3 个场景 raw 两遍 + 1 遍复核 ⇒ 实测约见日志「[量] 共走了 N 帧」
+    verify_determinism_ulp) echo 40000 ;;
+    # 同上·产品回放那一半: 3 局双路真对局「录 + 带扰动播」+ 第 1 局 raw 对照 ⇒ 日志「[量] 共走了 N 帧」
+    verify_determinism_ulp_replay) echo 60000 ;;
     # 一帧多步: 基准 600 帧(1 步/帧) + k=2/3/4 各 300/200/150 帧 = 1250 帧 + 4 次建场。
     #   ★它**必须自己 pump 帧**(协程靠 `await process_frame` 醒), 所以帧数就是分母;
     #   掐断的表现是「没打 ALL PASS」而 rc=0, 不是某条 FAIL。
@@ -732,6 +736,7 @@ run_audit "tools/ci_deps_audit.py"        "ALL OK" "ci_deps_audit (门禁审计�
 run_audit "tools/arch_budget.py"          "ALL OK" "arch_budget (架构预算·不许上帝对象·欠债只减不增)"
 run_audit "tools/style_lint.py"           "ALL OK" "style_lint (代码风格·全tab/snake_case/PascalCase 焊死)"
 run_audit "tools/rng_discipline.py"        "ALL OK" "rng_discipline (裸随机冻结·护确定性不回退)"
+run_audit "tools/det_math_lint.py"         "ALL OK" "det_math_lint (sim 路径不许绕过 DetMath 裸调 FMA/libm 数学·跨芯片确定性)"
 run_audit "tools/docs_authority_lint.py"  "ALL OK" "docs_authority_lint (单一事实源纪律·三权威在位/消费链活/README无漂移/无冒名)"
 # 服务端(Node)【手抄】的客户端规则 —— 四个常量 + 龟/装备白名单逐条对账。
 #   服务端读不了 .gd, 只能抄; 而抄的副本落后时是**静默的**: 它会把合法快照判成伪造,

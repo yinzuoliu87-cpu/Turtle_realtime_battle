@@ -785,7 +785,7 @@ func _spawn_pirate_ship(u: Dictionary, tgt = null) -> void:   # 首次: 后方�
 		var src: Dictionary = ship if ship != null else uu
 		for e in battle._targeting._enemies_of(uu):                         # 撞击: 200码内1.0A魔法+击飞2秒(封板)
 			if not e.get("alive", false): continue
-			if e["pos"].distance_to(impact2d) > PirateSystem.SHIP_CHARGE_RADIUS: continue
+			if DetMath.dist(e["pos"], impact2d) > PirateSystem.SHIP_CHARGE_RADIUS: continue
 			battle._damage._apply_damage_from(src, e, battle._atk_dmg(uu, 1.0, e, true), Color("#e8c07a"), 0.0, true)
 			battle._damage._knockback(src, e, 40.0, 3.667, 1.0)
 			battle._damage._stun(e, PirateSystem.SHIP_CHARGE_STUN, "_spawn_pirate_ship")
@@ -821,7 +821,7 @@ func _spawn_summon(owner: Dictionary, kind: String, hp: float, atk: float, behav
 	#   这是**存量** bug: 058 穿甲遗弹的炮台 / 032 唤灵骷髅 早就中招, 077 只是新的消费者。
 	#   PvP 的快照对拍靠的正是"同种子两遍同结果", 所以这条不是小事。
 	var pos: Vector2 = owner["pos"] + Vector2(
-		battle._battle_rng.randf_range(-40, 40), battle._battle_rng.randf_range(30, 60))
+		DetMath.rrange(battle._battle_rng, -40, 40), DetMath.rrange(battle._battle_rng, 30, 60))
 	pos = ArenaShape.clamp_in(pos, battle.ARENA)
 	var col = Color("#3fa9ff") if owner["side"] == "left" else Color("#ff5a5a")
 	var spr_id: String = str(behavior.get("spr_id", ""))

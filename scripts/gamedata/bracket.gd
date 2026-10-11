@@ -94,7 +94,7 @@ static func matches_in_round(n: int, r: int) -> int:
 	var total := rounds_for(n)
 	if r < 1 or r > total:
 		return 0
-	return slots_for(n) / int(pow(2, r))
+	return slots_for(n) / int(DetMath.dpow(2, r))
 
 
 ## 一个桶的全部对局位置：[{r=轮次, m=本轮第几场, a=位置A, b=位置B}]。

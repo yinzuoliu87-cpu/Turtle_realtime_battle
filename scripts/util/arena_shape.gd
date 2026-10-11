@@ -45,7 +45,7 @@ static func t_of(p: Vector2, rect: Rect2, n: float, pad: float, pad_y: float) ->
 	var py_: float = pad if pad_y < 0.0 else pad_y
 	var rx: float = maxf(1.0, rect.size.x * 0.5 - pad)
 	var ry: float = maxf(1.0, rect.size.y * 0.5 - py_)
-	return pow(absf((p.x - c.x) / rx), n) + pow(absf((p.y - c.y) / ry), n)
+	return DetMath.dpow(absf((p.x - c.x) / rx), n) + DetMath.dpow(absf((p.y - c.y) / ry), n)
 
 
 ## 点在不在形状里(pad = 往内缩的像素; pad_y < 0 表示跟随 pad)。
@@ -65,5 +65,5 @@ static func clamp_to(p: Vector2, rect: Rect2, n: float, pad: float = 0.0, pad_y:
 	var ry: float = maxf(1.0, rect.size.y * 0.5 - py_)
 	## ★径向投影: 把归一化坐标按 k 缩回边上, 再换算回像素。
 	##   不要写成 `(p.x-c.x)/rx*k*rx` —— 先除再乘回同一个数是白绕一圈, 还平白引入浮点次序差异。
-	var k: float = pow(tt, -1.0 / n)
+	var k: float = DetMath.dpow(tt, -1.0 / n)
 	return Vector2(c.x + (p.x - c.x) * k, c.y + (p.y - c.y) * k)

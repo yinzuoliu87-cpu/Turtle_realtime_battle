@@ -68,7 +68,7 @@ func _ghost_touch_hit(at2d: Vector2) -> void:
 		m.position = battle._world_pos(at2d, 1.0)
 		battle._world.add_child(m)
 		var ang: float = float(k) * TAU / 5.0 + 0.3
-		var dest: Vector2 = at2d + Vector2(cos(ang), sin(ang)) * randf_range(28.0, 50.0)
+		var dest: Vector2 = at2d + Vector2(DetMath.dcos(ang), DetMath.dsin(ang)) * randf_range(28.0, 50.0)
 		var mtw = battle._reg_tween()
 		mtw.tween_method(_ghost_mote_step.bind(m, at2d, dest), 0.0, 1.0, 0.3)
 		mtw.tween_callback(m.queue_free)
@@ -76,8 +76,8 @@ func _ghost_touch_hit(at2d: Vector2) -> void:
 func _ghost_mote_step(pf: float, m, from2d: Vector2, dest: Vector2) -> void:
 	if not is_instance_valid(m):
 		return
-	m.position = battle._world_pos(from2d.lerp(dest, pf), lerpf(1.0, 1.5, pf))
-	m.modulate.a = lerpf(0.85, 0.0, pf)
+	m.position = battle._world_pos(from2d.lerp(dest, pf), DetMath.flerp(1.0, 1.5, pf))
+	m.modulate.a = DetMath.flerp(0.85, 0.0, pf)
 
 # 诅咒·头顶骷髅标记(专属curse-mark·跟随中咒者·咒散/死亡自动消)
 # 诅咒·头顶骷髅标记(专属curse-mark·跟随中咒者·咒散/死亡自动消)

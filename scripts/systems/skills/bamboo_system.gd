@@ -66,7 +66,7 @@ func _bamboo_hit_splash(tgt: Dictionary) -> void:
 func _bamboo_orb_step(t: float, orb: Sprite3D, from_pos: Vector2, to_pos: Vector2, nframes: int, trail: Array) -> void:
 	if not is_instance_valid(orb):
 		return
-	var base: Vector2 = from_pos.lerp(to_pos, t)
+	var base: Vector2 = DetMath.vlerp(from_pos, to_pos, t)
 	var h: float = 1.0 + 1.5 * 4.0 * t * (1.0 - t)   # 抛物高度弧 (峰+1.5m)
 	orb.position = battle._world_pos(base, h)
 	if nframes > 1:
@@ -107,7 +107,7 @@ func _sk_bamboo_smack(u: Dictionary, tgt) -> void:              # 竹叶龟·竹
 	var far_d = -1.0
 	for o in battle._targeting._pick_enemies_of(u):   # ★单体定向(钩最远一个)走 battle._targeting._pick_enemies_of: 不锁训龟大师(场外·永远最远)+不可选中; 见 §PICK-TARGET(与珊瑚刺同类·用户2026-07-24)
 		if not o.get("alive", false): continue
-		var d: float = o["pos"].distance_to(u["pos"])
+		var d: float = DetMath.dist(o["pos"], u["pos"])
 		if d > far_d:
 			far_d = d; far = o
 	if far == null: return
@@ -125,8 +125,8 @@ func _sk_bamboo_smack(u: Dictionary, tgt) -> void:              # 竹叶龟·竹
 		var pull_fn = func() -> void:                           # 顿0.2s后再拽贴身
 			if not ff.get("alive", false): return
 			var pd: Vector2 = ff["pos"] - uu["pos"]
-			if pd.length() > 1.0:
-				ff["pos"] = uu["pos"] + pd.normalized() * 60.0     # 竹藤拽到贴身
+			if DetMath.vlen(pd) > 1.0:
+				ff["pos"] = uu["pos"] + DetMath.norm(pd) * 60.0     # 竹藤拽到贴身
 			battle._bolt_line(uu["pos"], ff["pos"], Color(0.22, 0.83, 0.33))   # 收藤(收线感)
 			battle._vfx._impact_particles(ff["pos"], float(ff.get("height", 0.0)))
 			battle._skill_ring(uu["pos"], Color(0.22, 0.83, 0.33, 0.4), 54.0)   # 拉到脸上落点环
@@ -141,9 +141,9 @@ func _sk_bamboo_spikes(u: Dictionary, tgt) -> void:            # 竹叶龟·竹�
 		for i in range(14):   # 竹刺齐爆: 300码圈内铺一片从地冒起的绿竹刺(科加斯Q式·用户2026-07-11「要补刺」)
 			var ang: float = TAU * float(i) / 14.0 + randf() * 0.45
 			var rr: float = sqrt(randf()) * 285.0
-			battle._spawn_bamboo_spike(c + Vector2(cos(ang), sin(ang)) * rr, randf_range(0.85, 1.3), 0.5)
+			battle._spawn_bamboo_spike(c + Vector2(DetMath.dcos(ang), DetMath.dsin(ang)) * rr, randf_range(0.85, 1.3), 0.5)
 		for o in battle._targeting._enemies_of(uu):
-			if o.get("alive", false) and o["pos"].distance_to(c) <= SPIKE_RADIUS:
+			if o.get("alive", false) and DetMath.dist(o["pos"], c) <= SPIKE_RADIUS:
 				battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, SPIKE_ATK_COEF, o) + int(uu["maxHp"] * SPIKE_MAXHP_PCT), Color("#39d353"))
 				battle._spawn_bamboo_spike(o["pos"], 1.5, 0.5)   # 命中点更粗一根竹刺
 				if not o.get("_eggImmune", false):

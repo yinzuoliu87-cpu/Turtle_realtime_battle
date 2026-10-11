@@ -48,7 +48,7 @@ func _headless_fear_mark(o: Dictionary) -> void:               # 恐惧标记: �
 	t.tween_property(mk, "modulate:a", 0.85, 0.15)              # 现身
 	t.tween_method(func(q: float) -> void:                      # 雾团轻缓浮动(控制期一直挂)
 		if is_instance_valid(mk):
-			mk.pixel_size = ((42.0 + sin(q * 6.0) * 4.0) * battle.WS) / 128.0
+			mk.pixel_size = ((42.0 + DetMath.dsin(q * 6.0) * 4.0) * battle.WS) / 128.0
 	, 0.0, 1.0, 2.55)
 	t.tween_property(mk, "modulate:a", 0.0, 0.35)               # 控制结束->缓散
 	t.tween_callback(mk.queue_free)
@@ -61,7 +61,7 @@ func _headless_tendril_shoot(center: Vector2, dir: Vector2, elev: float, length:
 	var th_px: int = maxi(1, tex.get_height())
 	var thick: float = randf_range(88.0, 128.0) if big else randf_range(60.0, 92.0)   # 粗度×2(用户2026-07-17仅视觉)
 	var ps: float = (thick * battle.WS) / float(tw_px)
-	var dir3d := Vector3(dir.x * cos(elev), sin(elev), dir.y * cos(elev)).normalized()   # 三维朝向(水平dir×cos仰 + 上×sin仰)
+	var dir3d := Vector3(dir.x * DetMath.dcos(elev), DetMath.dsin(elev), dir.y * DetMath.dcos(elev)).normalized()   # 三维朝向(水平dir×cos仰 + 上×sin仰)
 	var start_w = battle._world_pos(center, 0.55)                             # 球心=龟身
 	var full_len_w: float = length * battle.WS                                 # 触须世界长度
 	var full_yscale: float = full_len_w / maxf(0.001, float(th_px) * ps)   # scale.y伸到full_len
@@ -129,7 +129,7 @@ func _headless_reap_soul(from_pos: Vector2, u: Dictionary) -> void:   # 镰刀�
 	st.parallel().tween_property(soul, "position", battle._world_pos(from_pos, 1.3), 0.15)
 	st.chain().tween_method(func(q: float) -> void:            # 飞回无头龟(活追踪)
 		if is_instance_valid(soul) and uref.get("alive", false):
-			soul.position = battle._world_pos(start.lerp(uref["pos"], q), lerpf(1.3, 0.9, q))
+			soul.position = battle._world_pos(start.lerp(uref["pos"], q), DetMath.flerp(1.3, 0.9, q))
 	, 0.0, 1.0, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	st.tween_property(soul, "modulate:a", 0.0, 0.1)
 	st.tween_callback(soul.queue_free)
@@ -192,7 +192,7 @@ func _headless_soul_bite(tgt: Dictionary) -> void:              # 灵魂强化�
 			battle._world.add_child(sp)
 			var sa: float = TAU * float(si) / 4.0 + 0.5
 			var spt = battle._reg_tween(); spt.set_parallel(true)
-			spt.tween_property(sp, "position", battle._world_pos(pos + Vector2(cos(sa), sin(sa)) * 40.0, h + randf_range(-0.2, 0.2)), 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			spt.tween_property(sp, "position", battle._world_pos(pos + Vector2(DetMath.dcos(sa), DetMath.dsin(sa)) * 40.0, h + randf_range(-0.2, 0.2)), 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 			spt.tween_property(sp, "modulate:a", 0.0, 0.3)
 			spt.chain().tween_callback(sp.queue_free)
 		battle._shake(0.04)
@@ -213,8 +213,8 @@ func _headless_knock_out(o: Dictionary, dir: Vector2, dist: float) -> void:   # 
 		o["airborne"] = true; o["vy"] = 6.0; o["vx"] = 0.0; o["vz"] = 0.0   # 竖直起跳~0.55s
 	var mt = battle._reg_tween()
 	mt.tween_method(func(q: float) -> void:
-		if oref.get("alive", false) and oref.get("airborne", false): oref["pos"] = from.lerp(dest, q)
-	, 0.0, 1.0, 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		if oref.get("alive", false) and oref.get("airborne", false): oref["pos"] = DetMath.vlerp(from, dest, DetMath.tween_ease(q, Tween.TRANS_QUAD, Tween.EASE_OUT))
+	, 0.0, 1.0, 0.4)
 
 func _headless_scythe_telegraph(center: Vector2, aim: Vector2, dur: float) -> void:   # 镰刀预警扇形(Camille W式): 100度锥填充+外缘半环高亮(300码·时长由 dur 参数给, 唯一调用方 _headless_scythe 传 0.5s)
 	var half := deg_to_rad(50.0)
@@ -224,7 +224,7 @@ func _headless_scythe_telegraph(center: Vector2, aim: Vector2, dur: float) -> vo
 	cone.shaded = false; cone.transparent = true
 	cone.modulate = Color(0.62, 0.35, 1.0, 0.0)
 	cone.pixel_size = (300.0 * battle.WS) / 128.0                     # apex在贴图中心→半径=c(128px)映射300码
-	cone.rotation.y = -atan2(aim.y, aim.x) - PI * 0.5          # 扇形朝上→转到aim方向
+	cone.rotation.y = -DetMath.datan2(aim.y, aim.x) - PI * 0.5          # 扇形朝上→转到aim方向
 	cone.position = battle._world_pos(center, 0.055)
 	battle._world.add_child(cone)
 	var cnt = battle._reg_tween()
@@ -233,12 +233,12 @@ func _headless_scythe_telegraph(center: Vector2, aim: Vector2, dur: float) -> vo
 	cnt.tween_property(cone, "modulate:a", 0.0, 0.12)
 	cnt.tween_callback(cone.queue_free)
 	for sgn in [-1.0, 1.0]:                                     # 2道边缘亮线(锥界)
-		var d2 := aim.rotated(half * sgn)
+		var d2 := DetMath.rotated(aim, half * sgn)
 		battle._beam_vfx("res://assets/sprites/vfx/fx-trail.png", center, center + d2 * 300.0, 26.0, Color(0.85, 0.55, 1.0, 0.98), dur, 0.07)
 	var glow := VfxTex._make_fire_glow_tex()
 	for i2 in range(19):                                        # 外缘弧线(300码/外圈加成感·连密)
 		var a3: float = -half + 2.0 * half * float(i2) / 18.0
-		var pd := center + aim.rotated(a3) * 300.0
+		var pd := center + DetMath.rotated(aim, a3) * 300.0
 		var dot := Sprite3D.new()
 		dot.texture = glow
 		dot.billboard = BaseMaterial3D.BILLBOARD_ENABLED; dot.shaded = false; dot.transparent = true
@@ -259,8 +259,8 @@ func _headless_scythe(u: Dictionary) -> void:                  # 镰刀横扫(Ca
 	u["headless_soul_stacks"] = 0
 	u["atk_range"] = float(u.get("headless_soul_base_range", 100.0))   # 恢复基础射程(强化窗口结束)
 	var tgt = battle._targeting._nearest_enemy(u)
-	var aim: Vector2 = ((tgt["pos"] - u["pos"]) as Vector2).normalized() if tgt != null else (Vector2.RIGHT if u.get("face_right", true) else Vector2.LEFT)
-	if aim.length() < 0.5: aim = Vector2.RIGHT
+	var aim: Vector2 = DetMath.norm(((tgt["pos"] - u["pos"]) as Vector2)) if tgt != null else (Vector2.RIGHT if u.get("face_right", true) else Vector2.LEFT)
+	if DetMath.vlen(aim) < 0.5: aim = Vector2.RIGHT
 	u["_scythe_aim"] = aim
 	u["_slam"] = true                                          # 蓄力期定身(举镰)
 	var raise := Sprite3D.new()                                # 蓄力: 头顶镰刀抬起+紫光聚
@@ -291,12 +291,12 @@ func _headless_scythe(u: Dictionary) -> void:                  # 镰刀横扫(Ca
 		for o in battle._targeting._enemies_of(uu):
 			if not o.get("alive", false): continue
 			var to: Vector2 = (o["pos"] as Vector2) - (uu["pos"] as Vector2)
-			if to.length() > SCYTHE_RANGE: continue
-			if to.length() < 1.0: continue
-			if absf(aim2.angle_to(to.normalized())) > half2: continue   # 100度锥(半角50度)
+			if DetMath.vlen(to) > SCYTHE_RANGE: continue
+			if DetMath.vlen(to) < 1.0: continue
+			if absf(DetMath.angle_to(aim2, DetMath.norm(to))) > half2: continue   # 100度锥(半角50度)
 			battle._vfx._hit_spark(o)
 			if not o.get("_eggImmune", false):
-				_headless_knock_out(o, to.normalized(), SCYTHE_KNOCK)     # 击退300码从龟朝外
+				_headless_knock_out(o, DetMath.norm(to), SCYTHE_KNOCK)     # 击退300码从龟朝外
 				battle._damage._add_curse(o, SCYTHE_CURSE_SEC, uu)   # 幽灵式诅咒3秒(5→3·用户2026-07-30 第六轮·总量 288→173)
 				_headless_fear_mark(o)                             # 紫标记示意中咒
 				_headless_reap_soul(o["pos"], uu)                  # 收割感: 从敌身扯灵魂飞回无头龟(用户2026-07-17 F)
@@ -320,7 +320,7 @@ func _headless_scythe_sweep(center: Vector2, aim: Vector2) -> void:   # 镰刀�
 	cone.shaded = false; cone.transparent = true
 	cone.modulate = Color(0.7, 0.4, 1.1, 0.0)
 	cone.pixel_size = (300.0 * battle.WS) / 128.0
-	cone.rotation.y = -atan2(aim.y, aim.x) - PI * 0.5
+	cone.rotation.y = -DetMath.datan2(aim.y, aim.x) - PI * 0.5
 	cone.position = battle._world_pos(center, 0.05)
 	cone.no_depth_test = true; cone.render_priority = 16
 	battle._world.add_child(cone)
@@ -347,11 +347,11 @@ func _headless_scythe_sweep(center: Vector2, aim: Vector2) -> void:   # 镰刀�
 	var swt = battle._reg_tween()
 	swt.tween_method(func(q: float) -> void:
 		if not is_instance_valid(scythe): return
-		var theta: float = lerpf(a0, a1, q)
+		var theta: float = DetMath.flerp(a0, a1, q)
 		battle._scythe_face_screen(scythe, center, aim, theta)
 		if is_instance_valid(cone): cone.modulate.a = 0.22 + 0.5 * clampf((theta + half) / (2.0 * half), 0.0, 1.0)   # 扫过区渐亮
 		if trailtex == null or theta < -half: return
-		var d := aim.rotated(clampf(theta, -half, half))    # 贴地宽亮径向刀光(扫过处刷亮·累积成footprint)
+		var d := DetMath.rotated(aim, clampf(theta, -half, half))    # 贴地宽亮径向刀光(扫过处刷亮·累积成footprint)
 		var edge := Sprite3D.new()
 		edge.texture = trailtex
 		edge.billboard = BaseMaterial3D.BILLBOARD_DISABLED; edge.axis = Vector3.AXIS_Y
@@ -359,7 +359,7 @@ func _headless_scythe_sweep(center: Vector2, aim: Vector2) -> void:   # 镰刀�
 		var eps: float = (78.0 * battle.WS) / float(eth)           # 加宽(份量)
 		edge.pixel_size = eps
 		edge.modulate = Color(0.95, 0.72, 1.35, 0.82)       # 紫白刀光(非死白·刀身可读)
-		edge.rotation.y = -atan2(d.y, d.x)
+		edge.rotation.y = -DetMath.datan2(d.y, d.x)
 		edge.scale = Vector3((300.0 * battle.WS) / maxf(0.001, float(etw) * eps), 1.0, 1.0)
 		edge.position = battle._world_pos(center + d * 150.0, 0.07)
 		edge.no_depth_test = true; edge.render_priority = 24
@@ -478,7 +478,7 @@ func _sk_headless_fear(u: Dictionary, _tgt = null) -> void:      # 无头·恐�
 	for pi in range(42):                                        # 42团黑紫雾铺满200码半径(加密加浓·用户2026-07-17"黑雾不够密集不够明显")
 		var pa: float = randf() * TAU
 		var pr: float = FEAR_RADIUS * sqrt(randf())                   # sqrt=均匀铺满圆盘
-		var pp = cx + Vector2(cos(pa), sin(pa)) * pr
+		var pp = cx + Vector2(DetMath.dcos(pa), DetMath.dsin(pa)) * pr
 		var puff = Sprite3D.new()
 		puff.texture = mtex
 		puff.billboard = BaseMaterial3D.BILLBOARD_ENABLED; puff.shaded = false; puff.transparent = true
@@ -505,7 +505,7 @@ func _sk_headless_fear(u: Dictionary, _tgt = null) -> void:      # 无头·恐�
 	pt.tween_callback(pool.queue_free)
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
-		if o["pos"].distance_to(cx) > FEAR_RADIUS: continue
+		if DetMath.dist(o["pos"], cx) > FEAR_RADIUS: continue
 		if o.get("_eggImmune", false): continue
 		battle._damage._stun(o, 3.0, "_sk_headless_fear")
 		## 信息面板把这段控制写成「恐惧」而不是「眩晕」。只给显示读, 结算仍走眩晕(免控/韧性照旧)。
@@ -546,7 +546,7 @@ func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万�
 	vpt.bind_node(virus)
 	vpt.tween_method(func(q: float) -> void:
 		if is_instance_valid(virus):
-			var puls: float = 1.0 + sin(q * TAU * 5.0) * 0.28   # 5次脉动
+			var puls: float = 1.0 + DetMath.dsin(q * TAU * 5.0) * 0.28   # 5次脉动
 			virus.scale = Vector3.ONE * puls
 			virus.rotation.y = q * TAU * 0.6                    # 缓转(蠕动感)
 	, 0.0, 1.0, 3.0)
@@ -578,7 +578,7 @@ func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万�
 	# 触须从龟身球心朝【上半球任意三维方向】爆发(用户2026-07-17"想象球体只留上半球·朝上半球任意方向射"·虐杀原形2)
 	for ti in range(100):                                       # 100根: 方位角0-360×仰角(偏低角·上半球)
 		var az: float = randf() * TAU                            # 方位角
-		var od = Vector2(cos(az), sin(az))
+		var od = Vector2(DetMath.dcos(az), DetMath.dsin(az))
 		var e01: float = randf(); e01 = e01 * e01                # 平方偏低→更多触须近平射(用户2026-07-17"更多低角度")
 		var elev: float = deg_to_rad(4.0 + 82.0 * e01)           # 仰角: 大量近平射→少数冲天
 		var L: float = randf_range(340.0, 860.0) * 1.2 * (1.0 - 0.25 * e01)   # 长度: 低角度更长+20%(用户2026-07-17仅视觉·布满竞技场)
@@ -587,20 +587,20 @@ func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万�
 	var pass_fn = func():                                      # 伸/穿过(≈0.3s铺满): 无差别 敌1A+眩晕 / 友0.5A+眩晕(刷新不叠)
 		for o in battle._units:
 			if not o.get("alive", false) or is_same(o, uu): continue
-			if (o["pos"] as Vector2).distance_to(center) > TENDRIL_RADIUS: continue   # 射程1500码(用户2026-07-19; 原为全场无差别)
+			if DetMath.dist((o["pos"] as Vector2), center) > TENDRIL_RADIUS: continue   # 射程1500码(用户2026-07-19; 原为全场无差别)
 			var sc: float = TENDRIL_PASS_FOE if battle._is_hostile(uu, o) else TENDRIL_PASS_ALLY
 			battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, sc, o), Color("#9b3bff"), TENDRIL_LIFESTEAL)
 			if not o.get("_eggImmune", false):
 				battle._damage._stun(o, 2.7, "_sk_headless_tendrils", true)   # 眩晕持续到脱离
 				o["_tendril_stun"] = true
-			_headless_tendril_shoot(center, ((o["pos"] as Vector2) - center).normalized() if ((o["pos"] as Vector2) - center).length() > 1.0 else Vector2.RIGHT, deg_to_rad(18.0), maxf(90.0, (o["pos"] as Vector2).distance_to(center)), true, 0.0, 2.4)   # 命中者: 从龟身甩一根粗触须缠住
+			_headless_tendril_shoot(center, DetMath.norm(((o["pos"] as Vector2) - center)) if DetMath.vlen(((o["pos"] as Vector2) - center)) > 1.0 else Vector2.RIGHT, deg_to_rad(18.0), maxf(90.0, DetMath.dist((o["pos"] as Vector2), center)), true, 0.0, 2.4)   # 命中者: 从龟身甩一根粗触须缠住
 			if battle._is_hostile(uu, o): _headless_drain_dot(o["pos"], uu)   # 吸血红珠回流
 	battle._pending_shots.append({"delay": TENDRIL_PASS_SEC, "fn": pass_fn, "src": u})
 	var detach_fn = func():                                    # 收/脱离(≈3.0s): 无差别 敌1.5A / 友0.5A + 回复行动(解眩晕)
 		battle._shake(0.12)
 		for o in battle._units:
 			if not o.get("alive", false) or is_same(o, uu): continue
-			if (o["pos"] as Vector2).distance_to(center) > TENDRIL_RADIUS: continue   # 射程1500码(用户2026-07-19; 原为全场无差别)
+			if DetMath.dist((o["pos"] as Vector2), center) > TENDRIL_RADIUS: continue   # 射程1500码(用户2026-07-19; 原为全场无差别)
 			var sc: float = TENDRIL_DETACH_FOE if battle._is_hostile(uu, o) else TENDRIL_DETACH_ALLY
 			battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, sc, o), Color("#ff3b6b"), TENDRIL_LIFESTEAL)
 			battle._vfx._hit_spark(o)
@@ -632,7 +632,7 @@ func _sk_headless_soul_charge(u: Dictionary) -> void:           # 无头·灵魂
 		if not is_instance_valid(fl): return
 		if uref.get("alive", false):
 			var aa: float = q * TAU
-			fl.position = battle._world_pos((uref["pos"] as Vector2) + Vector2(cos(aa), sin(aa)) * 26.0, 1.5 + sin(aa * 2.0) * 0.12)
+			fl.position = battle._world_pos((uref["pos"] as Vector2) + Vector2(DetMath.dcos(aa), DetMath.dsin(aa)) * 26.0, 1.5 + DetMath.dsin(aa * 2.0) * 0.12)
 	, 0.0, 1.0, 0.9)
 	battle._skill_ring(u["pos"], Color(0.6, 0.23, 0.7, 0.5), 44.0)
 	battle._pending_shots.append({"delay": 7.0, "fn": func():            # 兜底: 7秒内没打完3下(无敌/被控)→强制镰刀收尾防永锁龟能

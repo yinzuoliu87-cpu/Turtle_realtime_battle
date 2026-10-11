@@ -91,8 +91,8 @@ func _fire(src: Dictionary, tgt: Dictionary, si: int, stt: Dictionary) -> void:
 	var dir: Vector2 = Vector2.RIGHT
 	if tgt != null and tgt.get("alive", false):
 		var d: Vector2 = tgt["pos"] - src["pos"]
-		if d.length() > 0.01:
-			dir = d.normalized()
+		if DetMath.vlen(d) > 0.01:
+			dir = DetMath.norm(d)
 	_waves.append({
 		"src": src, "from": src["pos"], "dir": dir, "half": deg_to_rad(deg * 0.5),
 		"deg": deg, "dmg": WAVE_DMG[si], "t": 0.0, "hit": [], "nodes": [],
@@ -136,12 +136,12 @@ func _hit_at(w: Dictionary, r: float) -> Array:
 	var already: Array = w["hit"]
 	for o in battle._targeting._pick_enemies_of(src):
 		var rel: Vector2 = o["pos"] - from2d
-		var dist: float = rel.length()
+		var dist: float = DetMath.vlen(rel)
 		if absf(dist - r) > WAVE_BAND:
 			continue
 		# 张角判定: 360° 时全向命中(免得浮点角度比较在整圈边界上抖)
 		if float(w["deg"]) < ARC_MAX_DEG - 0.01:
-			if dist > 0.01 and absf(dir.angle_to(rel)) > half:
+			if dist > 0.01 and absf(DetMath.angle_to(dir, rel)) > half:
 				continue
 		var dup := false
 		for h in already:
@@ -214,7 +214,7 @@ func _place_nodes(w: Dictionary, r: float) -> void:
 		w["imesh"] = imesh
 	var mat2: StandardMaterial3D = im.get_meta("mat")
 	var from2d: Vector2 = w["from"]
-	var base: float = (w["dir"] as Vector2).angle()
+	var base: float = DetMath.angle((w["dir"] as Vector2))
 	var half: float = float(w["half"])
 	var segs: int = clampi(int(float(w["deg"]) / 6.0), 8, 90)    # 6° 一段 → 弧看着是圆的不是折线
 	var fade: float = clampf(1.0 - r / WAVE_RANGE, 0.12, 1.0)
@@ -236,12 +236,12 @@ func _place_nodes(w: Dictionary, r: float) -> void:
 		var t1: float = float(i + 1) / float(segs) * 2.0 - 1.0
 		var a0: float = base + half * t0
 		var a1: float = base + half * t1
-		var d0 := Vector2(cos(a0), sin(a0))
-		var d1 := Vector2(cos(a1), sin(a1))
+		var d0 := Vector2(DetMath.dcos(a0), DetMath.dsin(a0))
+		var d1 := Vector2(DetMath.dcos(a1), DetMath.dsin(a1))
 		# ★波前【锯齿脉动】= 电磁的"炸毛"感。用角度+时间的确定性函数, 不用随机 ——
 		#   本项目有 rng_discipline 门禁(裸随机会破坏对局确定性), 演出也一并守这条。
-		var j0: float = sin(a0 * 17.0 + float(w["t"]) * 34.0) * 7.0
-		var j1: float = sin(a1 * 17.0 + float(w["t"]) * 34.0) * 7.0
+		var j0: float = DetMath.dsin(a0 * 17.0 + float(w["t"]) * 34.0) * 7.0
+		var j1: float = DetMath.dsin(a1 * 17.0 + float(w["t"]) * 34.0) * 7.0
 		var vi0: Vector3 = battle._world_pos(from2d + d0 * r_in, 0.55)
 		var vi1: Vector3 = battle._world_pos(from2d + d1 * r_in, 0.55)
 		var vo0: Vector3 = battle._world_pos(from2d + d0 * (r_out + j0), 0.55)
@@ -259,9 +259,9 @@ func _place_nodes(w: Dictionary, r: float) -> void:
 	for i in range(segs + 1):
 		var tt: float = float(i) / float(segs) * 2.0 - 1.0
 		var aa: float = base + half * tt
-		var jj: float = sin(aa * 17.0 + float(w["t"]) * 34.0) * 7.0
+		var jj: float = DetMath.dsin(aa * 17.0 + float(w["t"]) * 34.0) * 7.0
 		imesh.surface_set_color(Color(0.86, 0.99, 1.00, 0.92 * fade))   # crest 只有这一条近白
-		imesh.surface_add_vertex(battle._world_pos(from2d + Vector2(cos(aa), sin(aa)) * (r_out + jj), 0.6))
+		imesh.surface_add_vertex(battle._world_pos(from2d + Vector2(DetMath.dcos(aa), DetMath.dsin(aa)) * (r_out + jj), 0.6))
 	imesh.surface_end()
 	# ★径向电弧: 沿张角每隔几段拉一条内→外的亮线, 是"电磁"而不是"水波"的关键特征。
 	#   条数随张角走(90°约4条, 360°约16条), 相位随时间滚动 → 看着在噼啪窜。
@@ -270,13 +270,13 @@ func _place_nodes(w: Dictionary, r: float) -> void:
 	for k in range(spokes):
 		var ts: float = (float(k) + 0.5) / float(spokes) * 2.0 - 1.0
 		var as_: float = base + half * ts
-		var ds := Vector2(cos(as_), sin(as_))
-		var flick: float = 0.45 + 0.55 * absf(sin(float(k) * 2.3 + float(w["t"]) * 26.0))
+		var ds := Vector2(DetMath.dcos(as_), DetMath.dsin(as_))
+		var flick: float = 0.45 + 0.55 * absf(DetMath.dsin(float(k) * 2.3 + float(w["t"]) * 26.0))
 		var cs := Color(0.55, 0.98, 1.00, 0.80 * fade * flick)
 		imesh.surface_set_color(Color(cs.r, cs.g, cs.b, 0.0))
 		imesh.surface_add_vertex(battle._world_pos(from2d + ds * r_in, 0.58))
 		imesh.surface_set_color(cs)
-		imesh.surface_add_vertex(battle._world_pos(from2d + ds * (r_out + sin(as_ * 17.0 + float(w["t"]) * 34.0) * 7.0), 0.58))
+		imesh.surface_add_vertex(battle._world_pos(from2d + ds * (r_out + DetMath.dsin(as_ * 17.0 + float(w["t"]) * 34.0) * 7.0), 0.58))
 	imesh.surface_end()
 	# 中段稍暗的一条, 给扇带一点"体积"
 	imesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP, mat2)
@@ -284,7 +284,7 @@ func _place_nodes(w: Dictionary, r: float) -> void:
 		var tm: float = float(i) / float(segs) * 2.0 - 1.0
 		var am: float = base + half * tm
 		imesh.surface_set_color(c_mid)
-		imesh.surface_add_vertex(battle._world_pos(from2d + Vector2(cos(am), sin(am)) * ((r_in + r_out) * 0.5), 0.57))
+		imesh.surface_add_vertex(battle._world_pos(from2d + Vector2(DetMath.dcos(am), DetMath.dsin(am)) * ((r_in + r_out) * 0.5), 0.57))
 	imesh.surface_end()
 
 

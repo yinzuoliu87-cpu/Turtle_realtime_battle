@@ -64,7 +64,7 @@ func combo_hits(si: int) -> int:
 
 ## 第 k 刀的衰减系数。★伤害和斩痕宽度**都**乘它 ⇒ 画多大就是打多重。
 func blood_decay(k: int) -> float:
-	return pow(BLOOD_DECAY, k)
+	return DetMath.dpow(BLOOD_DECAY, k)
 
 
 ## 第 k 刀打多少。★抽出来是为了让门禁不必重算一遍公式(手抄的副本必然落后)。
@@ -80,9 +80,9 @@ func blood_hit_dmg(u: Dictionary, si: int, o: Dictionary, k: int) -> int:
 ##   (把携带者放到目标的左边/右边各跑一次, 偏移方向必须跟着翻)。
 func blood_slash_at(from2d: Vector2, to2d: Vector2) -> Vector2:
 	var d: Vector2 = from2d - to2d
-	if d.length() < 1.0:
+	if DetMath.vlen(d) < 1.0:
 		return to2d
-	return to2d + d.normalized() * BLOOD_ENTER
+	return to2d + DetMath.norm(d) * BLOOD_ENTER
 
 
 ## 一刀的斩痕精灵。宽度由调用方给(现在恒为 BLOOD_SLASH_W)。

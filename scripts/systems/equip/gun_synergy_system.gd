@@ -162,25 +162,25 @@ func _turret_one(side: String) -> void:
 	var aim = null
 	var best := INF
 	for f in foes:
-		var d: float = origin.distance_squared_to(Vector2(f["pos"]))
+		var d: float = DetMath.dist2(origin, Vector2(f["pos"]))
 		if d < best:
 			best = d
 			aim = f
 	if aim == null:
 		return
 	var dir: Vector2 = (Vector2(aim["pos"]) - origin)
-	if dir.length() < 1.0:
+	if DetMath.vlen(dir) < 1.0:
 		dir = Vector2.RIGHT
-	dir = dir.normalized()
+	dir = DetMath.norm(dir)
 	var total := 0.0
 	var shooter = _any_carrier(side)
 	var hit_pos: Array = []
 	for f in foes:
 		# 点到射线的距离 —— 直线上(半宽内)且在正方向才算命中
 		var rel: Vector2 = Vector2(f["pos"]) - origin
-		if rel.dot(dir) < 0.0:
+		if DetMath.dot(rel, dir) < 0.0:
 			continue
-		if absf(rel.cross(dir)) > T1_LINE_HALFW:
+		if absf(DetMath.cross(rel, dir)) > T1_LINE_HALFW:
 			continue
 		var dmg: int = maxi(1, int(T1_DMG))
 		if shooter is Dictionary:
@@ -215,7 +215,7 @@ func _turret_one(side: String) -> void:
 		if not hit_pos.is_empty():
 			far = 0.0
 			for hp2 in hit_pos:
-				far = maxf(far, origin.distance_to(hp2) + 55.0)
+				far = maxf(far, DetMath.dist(origin, hp2) + 55.0)
 		sv2.gun_laser(origin, dir, far)
 		for hp3 in hit_pos:
 			sv2.gun_laser_hit(hp3, dir)
@@ -262,7 +262,7 @@ func _turret_two(side: String) -> void:
 			if not (t is Dictionary) or not (t as Dictionary).get("alive", false):
 				continue
 			## 到达时刻 = 距离 ÷ 波速(与演出同一个常量 —— 波扫到谁, 谁那一刻才吃效果)
-			var d: float = origin.distance_to(Vector2((t as Dictionary)["pos"]))
+			var d: float = DetMath.dist(origin, Vector2((t as Dictionary)["pos"]))
 			battle._pending_shots.append({"delay": d / SynergyVfx.WAVE_SPEED, "src": shooter,
 				"fn": func() -> void:
 					if not (t as Dictionary).get("alive", false):

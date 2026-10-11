@@ -934,7 +934,7 @@ func _vfx_preview_sigwave(origin: Vector2, dir: Vector2, si: int) -> void:
 		for i in range(7):
 			var a: float = TAU * float(i) / 7.0
 			var e: Dictionary = battle._spawn._make_unit("basic", "right",
-				origin + Vector2(-120.0, 0.0) + Vector2(cos(a), sin(a)) * 380.0)
+				origin + Vector2(-120.0, 0.0) + Vector2(DetMath.dcos(a), DetMath.dsin(a)) * 380.0)
 			e["maxHp"] = 9999.0
 			e["hp"] = 9999.0
 			_hb_pin(e)
@@ -984,7 +984,7 @@ func _vfx_preview_hookbomb(origin: Vector2, si: int) -> void:
 		for i in range(5):
 			var a: float = TAU * float(i) / 5.0 - PI * 0.5
 			var e: Dictionary = battle._spawn._make_unit("basic", "right",
-				origin + Vector2(150.0, 0.0) + Vector2(cos(a), sin(a)) * 330.0)
+				origin + Vector2(150.0, 0.0) + Vector2(DetMath.dcos(a), DetMath.dsin(a)) * 330.0)
 			e["maxHp"] = 3000.0
 			e["hp"] = 3000.0
 			_hb_pin(e)
@@ -996,7 +996,7 @@ func _vfx_preview_hookbomb(origin: Vector2, si: int) -> void:
 			for i in range(_hb_prev_foes.size()):
 				var e: Dictionary = _hb_prev_foes[i]
 				var a2: float = TAU * float(i) / float(maxi(1, _hb_prev_foes.size())) - PI * 0.5
-				e["pos"] = origin + Vector2(150.0, 0.0) + Vector2(cos(a2), sin(a2)) * 330.0
+				e["pos"] = origin + Vector2(150.0, 0.0) + Vector2(DetMath.dcos(a2), DetMath.dsin(a2)) * 330.0
 				e["_home_pos"] = e["pos"]
 				e["hp"] = 3000.0
 				e["alive"] = true

@@ -390,7 +390,7 @@ func sext_fire_one(u: Dictionary, atk_mult: float, di: int = -1) -> bool:
 	# ★★2026-08-08 照赛博龟被动: 弹从**那门炮**出膛(不是从携带者身上), 且伤害等弹飞到。
 	#   `di` 由调用方给 —— 哪门炮的计时器到点就是哪门在打。
 	var vt: Dictionary = tgt
-	var fly: float = clampf((Vector2(tgt["pos"]) - Vector2(u["pos"])).length()
+	var fly: float = clampf(DetMath.vlen((Vector2(tgt["pos"]) - Vector2(u["pos"])))
 		/ GadgetEqVfx.SHOT_BOLT_SPD, 0.12, 0.5)
 	battle._queue_shots(1, 0.0, func() -> void:
 		if not vt.get("alive", false):
@@ -412,8 +412,8 @@ func sext_ultimate(u: Dictionary, si: int) -> int:
 	var beams: Array = []
 	for d in drones:
 		var sp: Vector2 = Vector2(
-			battle._battle_rng.randf_range(battle.ARENA.position.x, battle.ARENA.end.x),
-			battle._battle_rng.randf_range(battle.ARENA.position.y, battle.ARENA.end.y))
+			DetMath.rrange(battle._battle_rng, battle.ARENA.position.x, battle.ARENA.end.x),
+			DetMath.rrange(battle._battle_rng, battle.ARENA.position.y, battle.ARENA.end.y))
 		d["sx"] = sp.x
 		d["sy"] = sp.y
 		# ★★2026-08-08【错峰飞散】照赛博龟: 起飞**间隔** randf()*SEXT_SCATTER_LAG(0.35)、
@@ -439,7 +439,7 @@ func sext_ultimate(u: Dictionary, si: int) -> int:
 		#   ⚠ 这是**强度变化**(线上多个敌人时伤害翻倍), 规格原文只写了"朝一个随机目标发一条
 		#     射线, 每条造成 200/350/1000" —— 没写贯穿也没写不贯穿。要退回只打首目标说一声。
 		var ldir: Vector2 = (Vector2(tgt["pos"]) - sp)
-		ldir = ldir.normalized() if ldir.length() > 1.0 else Vector2.RIGHT
+		ldir = DetMath.norm(ldir) if DetMath.vlen(ldir) > 1.0 else Vector2.RIGHT
 		var endp: Vector2 = sp + ldir * SEXT_RAY_LEN
 		# ★★2026-08-08【时序合一 + 照赛博龟的编排】用户:「参考下赛博龟被动的攻击方式和技能演出」。
 		#   赛博龟阵亡齐射是完整的七段: 错峰飞散 → 炮身发亮 → **口部聚能光球膨胀 0.45 秒**

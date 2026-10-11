@@ -628,7 +628,7 @@ func _apply_carrier_sway() -> void:
 		c["_sway_base"] = Vector2(c["pos"])
 	var base: Vector2 = c["_sway_base"]
 	var per: float = maxf(0.1, float(sw[1]))
-	var p: Vector2 = base + Vector2(0.0, float(sw[0]) * sin(TAU * (float(battle._t) - t0) / per))
+	var p: Vector2 = base + Vector2(0.0, float(sw[0]) * DetMath.dsin(TAU * (float(battle._t) - t0) / per))
 	c["pos"] = _clamp_arena(p)
 	## ★只在已有时同步 —— 凭空写 `_home_pos` 会打开评审假人的每帧归位(memory fb-home-pos-only-if-exists)
 	if (c as Dictionary).has("_home_pos"):

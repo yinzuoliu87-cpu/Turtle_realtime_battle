@@ -62,7 +62,7 @@ func _sk_line_link(u: Dictionary) -> void:                       # 线条龟·�
 	for o in battle._targeting._enemies_of(u):
 		if o.get("alive", false): foes.append(o)
 	if foes.is_empty(): return
-	foes.sort_custom(func(x, y): return u["pos"].distance_squared_to(x["pos"]) < u["pos"].distance_squared_to(y["pos"]))
+	foes.sort_custom(func(x, y): return DetMath.dist2(u["pos"], x["pos"]) < DetMath.dist2(u["pos"], y["pos"]))
 	var picks: Array = foes.slice(0, mini(LINK_TARGETS, foes.size()))
 	for o in picks:
 		battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, LINK_ATK_COEF, o), Color("#dddddd"))
@@ -108,7 +108,7 @@ func _sk_line_ink_bomb(u: Dictionary) -> void:                  # 线条龟·墨
 	for a in es:
 		var cnt = 0
 		for b in es:
-			if (a["pos"] as Vector2).distance_to(b["pos"]) <= battle.INK_BOMB_RADIUS: cnt += 1
+			if DetMath.dist((a["pos"] as Vector2), b["pos"]) <= battle.INK_BOMB_RADIUS: cnt += 1
 		if cnt > best_cnt:
 			best_cnt = cnt; center = a["pos"]
 	var uu: Dictionary = u
@@ -118,7 +118,7 @@ func _sk_line_ink_bomb(u: Dictionary) -> void:                  # 线条龟·墨
 		battle._shake(battle.JUICE_SHAKE_HEAVY)
 		for o in battle._targeting._enemies_of(uu):
 			if not o.get("alive", false): continue
-			if (o["pos"] as Vector2).distance_to(land) > battle.INK_BOMB_RADIUS: continue   # ★只打落点300码内(用户2026-07-15: 原全体)
+			if DetMath.dist((o["pos"] as Vector2), land) > battle.INK_BOMB_RADIUS: continue   # ★只打落点300码内(用户2026-07-15: 原全体)
 			for i in range(BOMB_SEGMENTS):
 				battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, BOMB_SEG_COEF, o, true), Color("#c9b0ff"))
 			battle._add_stack(o, "ink", 4, _ink_cap(uu))
@@ -134,12 +134,12 @@ func _ink_bomb_throw(from2d: Vector2, to2d: Vector2, on_land: Callable) -> void:
 	ball.pixel_size = (30.0 * battle.WS) / float(maxi(1, ball.texture.get_height()))
 	ball.position = battle._world_pos(from2d, 1.0)
 	battle._world.add_child(ball)
-	var dur: float = clampf(from2d.distance_to(to2d) / 900.0, 0.32, 0.6)
+	var dur: float = clampf(DetMath.dist(from2d, to2d) / 900.0, 0.32, 0.6)
 	var tw = battle._reg_tween()
 	tw.bind_node(ball)
 	tw.tween_method(func(p: float) -> void:
 		if not is_instance_valid(ball): return
-		ball.position = battle._world_pos(from2d.lerp(to2d, p), 1.0 * (1.0 - p) + 3.0 * sin(PI * p))   # 抛物
+		ball.position = battle._world_pos(from2d.lerp(to2d, p), 1.0 * (1.0 - p) + 3.0 * DetMath.dsin(PI * p))   # 抛物
 	, 0.0, 1.0, dur).set_trans(Tween.TRANS_SINE)
 	tw.tween_callback(func() -> void:
 		if is_instance_valid(ball): ball.queue_free()

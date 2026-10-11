@@ -25,7 +25,7 @@ func _nearest_enemy_for_trainer(u: Dictionary):
 			continue   # 训龟大师之间不互殴(都是场外监视者)
 		if battle._is_untargetable(o):
 			continue
-		var dd: float = (o["pos"] - u["pos"]).length_squared()
+		var dd: float = DetMath.len2((o["pos"] - u["pos"]))
 		if dd < best_d:
 			best_d = dd; best = o
 	return best
@@ -52,7 +52,7 @@ func _farthest_enemy(u: Dictionary):
 			continue
 		if o.get("is_trainer", false):            # 训龟大师: 不被【主动索敌】(AoE 仍能波及)
 			continue
-		var dd: float = (o["pos"] - u["pos"]).length_squared()
+		var dd: float = DetMath.len2((o["pos"] - u["pos"]))
 		if dd > best_d:
 			best_d = dd; best = o
 	return best
@@ -105,7 +105,7 @@ func _nearest_enemy(u: Dictionary):
 			# ★只挡这一条路 —— AoE 走 _enemies_of, 那里【故意不跳过】它, 所以照样吃到范围伤害。
 			#   两条路天然分离, 正好对上"不会被主动索敌但会吃到aoe伤害"。
 			continue
-		var dd: float = (o["pos"] - u["pos"]).length_squared()
+		var dd: float = DetMath.len2((o["pos"] - u["pos"]))
 		if dd < best_d:
 			best_d = dd; best = o
 	return best
@@ -130,7 +130,7 @@ func _nearest_enemy_from(u: Dictionary, from_pos: Vector2):
 			continue
 		if o.get("is_trainer", false):
 			continue   # 训龟大师: 不被【主动索敌】(用户2026-07-22) —— AOE 仍然照吃
-		var dd: float = (o["pos"] as Vector2).distance_squared_to(from_pos)
+		var dd: float = DetMath.dist2((o["pos"] as Vector2), from_pos)
 		if dd < best_d:
 			best_d = dd; best = o
 	return best

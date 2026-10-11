@@ -55,12 +55,12 @@ func _diamond_roll_tick(u: Dictionary, delta: float) -> void:
 		u["roll_active"] = false; u["state"] = "move"
 		return
 	var to_t: Vector2 = tgt["pos"] - u["pos"]
-	if to_t.length() <= ROLL_HIT_RADIUS:                                     # 进入120码→撞击结算
+	if DetMath.vlen(to_t) <= ROLL_HIT_RADIUS:                                     # 进入120码→撞击结算
 		_diamond_roll_impact(u, tgt["pos"], sf)
 		u["roll_active"] = false; u["state"] = "move"
 		return
 	var roll_spd: float = battle.DIAMOND_ROLL_MAX_SPD * (0.1 + 0.9 * sf)  # 0.1起步(避免完全不动)→满速
-	u["pos"] += to_t.normalized() * roll_spd * delta
+	u["pos"] += DetMath.norm(to_t) * roll_spd * delta
 	u["pos"] = ArenaShape.clamp_in(u["pos"], battle.ARENA)
 	u["face_right"] = to_t.x > 0.0
 	if int(battle._t * 30.0) % 2 == 0:                                    # 速度线拖尾(越快越猛·美术L231)
@@ -69,7 +69,7 @@ func _diamond_roll_tick(u: Dictionary, delta: float) -> void:
 func _diamond_roll_impact(u: Dictionary, cp: Vector2, sf: float) -> void:
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
-		if o["pos"].distance_to(cp) > ROLL_HIT_RADIUS: continue             # 撞击点120码小AOE
+		if DetMath.dist(o["pos"], cp) > ROLL_HIT_RADIUS: continue             # 撞击点120码小AOE
 		var dmg: int = int(u["def"] * (ROLL_RESIST_MIN + (ROLL_RESIST_MAX - ROLL_RESIST_MIN) * sf) + u["mr"] * (ROLL_RESIST_MIN + (ROLL_RESIST_MAX - ROLL_RESIST_MIN) * sf) + o["maxHp"] * (ROLL_MAXHP_MIN + (ROLL_MAXHP_MAX - ROLL_MAXHP_MIN) * sf))   # 按速插值(封板: 0速0.1甲0.1抗2%→满速1.0甲1.0抗20%)
 		battle._damage._apply_damage_from(u, o, dmg, Color("#9bdcff"))
 		battle._damage._knockback(u, o, 50.0, 1.8, 1.0)                          # 击飞1秒(vy高)
@@ -98,7 +98,7 @@ func _diamond_smash_impact(u: Dictionary, tgt) -> void:         # 蓄力结束�
 
 func _diamond_slash_fx(u: Dictionary, tgt: Dictionary) -> void:   # 钻石普攻·切割: 水晶新月斩弧, 随攻击方向翻转·落在攻击者→目标之间(近战无弹道·用户2026-07-12指出方向问题)
 	var to_r: bool = tgt["pos"].x >= u["pos"].x
-	var at: Vector2 = u["pos"].lerp(tgt["pos"], 0.7) + Vector2(0, -6)   # 斩弧落在偏目标一侧(斩到敌身上)
+	var at: Vector2 = DetMath.vlerp(u["pos"], tgt["pos"], 0.7) + Vector2(0, -6)   # 斩弧落在偏目标一侧(斩到敌身上)
 	var b := Sprite3D.new()
 	b.texture = load("res://assets/sprites/vfx/diamond-slash.png")
 	b.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST

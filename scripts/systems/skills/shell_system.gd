@@ -124,7 +124,7 @@ func _shell_basic(u: Dictionary, tgt: Dictionary) -> void:
 	for e in battle._targeting._enemies_of(u):
 		if is_same(e, tgt) or not e.get("alive", false):
 			continue
-		if (e["pos"] - tgt["pos"]).length() <= battle.SHELL_SPLASH_RADIUS:
+		if DetMath.vlen((e["pos"] - tgt["pos"])) <= battle.SHELL_SPLASH_RADIUS:
 			if is_true:
 				battle._damage._apply_basic_hit_from(u, e, int(u["atk"] * SPLASH_PCT), Color("#ffffff"), 0.0, true)
 			else:
@@ -246,14 +246,14 @@ func _sk_shell_shadow_dive(u: Dictionary, tgt) -> void:        # 龟壳·暗影�
 	if tgt == null: return
 	var start: Vector2 = u["pos"]
 	var dir: Vector2 = tgt["pos"] - start
-	if dir.length() < 1.0: dir = Vector2.RIGHT
-	dir = dir.normalized()
+	if DetMath.vlen(dir) < 1.0: dir = Vector2.RIGHT
+	dir = DetMath.norm(dir)
 	var dest: Vector2 = start + dir * DIVE_RANGE
 	dest = ArenaShape.clamp_in(dest, battle.ARENA)
 	for o in battle._targeting._enemies_of(u):                                    # 落地+路径敌: 2.0A魔法+击退
 		if not o.get("alive", false): continue
 		if not battle._on_line(start, dir, o["pos"], 75.0): continue
-		if o["pos"].distance_to(start) > 620.0: continue
+		if DetMath.dist(o["pos"], start) > 620.0: continue
 		battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, DIVE_MAGIC, o, true), Color("#9b3bff"))
 		battle._damage._knockback(u, o, 60.0, 1.0, 1.4)
 	_shell_dark_flame(start, 60.0, 0.5)                         # 起跳点火(Corki官方帧t=1.0起飞喷焰·2026-07-17)
@@ -262,8 +262,8 @@ func _sk_shell_shadow_dive(u: Dictionary, tgt) -> void:        # 龟壳·暗影�
 	u["_slam"] = true                                           # 冲刺滑行0.22s(cyber dash先例·位移演出; 伤害仍施放帧结算=封板)
 	var dv = battle._reg_tween()
 	dv.tween_method(func(q: float) -> void:
-		if uu.get("alive", false): uu["pos"] = start.lerp(dest, q)
-	, 0.0, 1.0, 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		if uu.get("alive", false): uu["pos"] = DetMath.vlerp(start, dest, DetMath.tween_ease(q, Tween.TRANS_QUAD, Tween.EASE_IN))
+	, 0.0, 1.0, 0.22)
 	dv.tween_callback(func() -> void:
 		uu["_slam"] = false
 		if not uu.get("alive", false): return
@@ -272,7 +272,7 @@ func _sk_shell_shadow_dive(u: Dictionary, tgt) -> void:        # 龟壳·暗影�
 		battle._shake(0.1)
 		for bi in range(7):                                     # 燃烧区=暗焰斑块群铺150码(Corki火团式·替代原每0.5s重复画环)
 			var ba: float = randf() * TAU
-			_shell_burn_patch(dest + Vector2(cos(ba), sin(ba)) * randf_range(0.0, 120.0), 5.0)
+			_shell_burn_patch(dest + Vector2(DetMath.dcos(ba), DetMath.dsin(ba)) * randf_range(0.0, 120.0), 5.0)
 		var zring = Sprite3D.new()                             # 区界暗紫细环常驻5秒→渐隐
 		zring.texture = VfxTex._make_thin_ring_tex()
 		zring.billboard = BaseMaterial3D.BILLBOARD_DISABLED; zring.axis = Vector3.AXIS_Y
@@ -287,7 +287,7 @@ func _sk_shell_shadow_dive(u: Dictionary, tgt) -> void:        # 龟壳·暗影�
 		zt.tween_callback(zring.queue_free)
 		_shell_enter_stealth(uu))                               # 落地才羽化入隐(原瞬移即隐)
 	for si in range(5):                                         # 沿途暗焰痕(纯视觉·Corki沿途火团黑烟·各1.8s烟先散火后灭)
-		var sp: Vector2 = start.lerp(dest, (float(si) + 0.5) / 5.0) + Vector2(randf_range(-20.0, 20.0), randf_range(-20.0, 20.0))
+		var sp: Vector2 = DetMath.vlerp(start, dest, (float(si) + 0.5) / 5.0) + Vector2(randf_range(-20.0, 20.0), randf_range(-20.0, 20.0))
 		var st = battle._reg_tween()
 		st.tween_interval(0.22 * (float(si) + 0.5) / 5.0)
 		st.tween_callback(func() -> void: _shell_burn_patch(sp, 1.8))
@@ -295,7 +295,7 @@ func _sk_shell_shadow_dive(u: Dictionary, tgt) -> void:        # 龟壳·暗影�
 	for i in range(BURN_TICKS):                                 # 暗影燃烧区(半径/时长/节拍全在常量里, 文案 {C:} 引用同一份)
 		var fn = func():
 			for o in battle._targeting._enemies_of(u):
-				if o.get("alive", false) and o["pos"].distance_to(zc) <= BURN_RADIUS:
+				if o.get("alive", false) and DetMath.dist(o["pos"], zc) <= BURN_RADIUS:
 					battle._damage._apply_dot_stacks(o, "burn", maxi(1, int(round(u["atk"] * BURN_ATK_MULT))), u)
 					o["spd_move_mult"] = BURN_SLOW_MULT
 					o["spd_dbf_until"] = battle._t + BURN_TICK_SEC
@@ -444,9 +444,9 @@ func _shell_awaken_vfx(u: Dictionary) -> void:   # 觉醒金光爆发: 震屏+�
 	tp.chain().tween_callback(pil.queue_free)
 	# 金光上腾粒子 (更多更大)
 	for i in range(14):
-		var ang: float = TAU * float(i) / 14.0 + battle._juice_rng.randf_range(-0.2, 0.2)
-		var dd: float = battle._juice_rng.randf_range(10.0, 50.0)
-		var p: Vector2 = u["pos"] + Vector2(cos(ang), sin(ang)) * dd
+		var ang: float = TAU * float(i) / 14.0 + DetMath.rrange(battle._juice_rng, -0.2, 0.2)
+		var dd: float = DetMath.rrange(battle._juice_rng, 10.0, 50.0)
+		var p: Vector2 = u["pos"] + Vector2(DetMath.dcos(ang), DetMath.dsin(ang)) * dd
 		var spr = Sprite3D.new()
 		spr.texture = VfxTex._make_fire_glow_tex()
 		spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -459,7 +459,7 @@ func _shell_awaken_vfx(u: Dictionary) -> void:   # 觉醒金光爆发: 震屏+�
 		battle._world.add_child(spr)
 		var tw = battle._reg_tween()
 		tw.set_parallel(true)
-		tw.tween_property(spr, "position", battle._world_pos(p, 1.95 + battle._juice_rng.randf_range(0.0, 0.6)), 0.6)
+		tw.tween_property(spr, "position", battle._world_pos(p, 1.95 + DetMath.rrange(battle._juice_rng, 0.0, 0.6)), 0.6)
 		tw.tween_property(spr, "scale", Vector3(1.3, 1.3, 1.3), 0.6)
 		tw.tween_property(spr, "modulate", Color(1.0, 0.72, 0.2, 0.0), 0.6)
 		tw.chain().tween_callback(spr.queue_free)
@@ -609,7 +609,7 @@ func _shell_shockwave_tick(u: Dictionary, delta: float) -> void:
 		var sp = stars[si]
 		if sp != null and is_instance_valid(sp):
 			var sa: float = TAU * float(si) / 6.0 + frac * 2.0
-			sp.position = battle._world_pos((sw["center"] as Vector2) + Vector2(cos(sa), sin(sa)) * r, 0.25)
+			sp.position = battle._world_pos((sw["center"] as Vector2) + Vector2(DetMath.dcos(sa), DetMath.dsin(sa)) * r, 0.25)
 	# 命中: 距中心 <= 当前半径 且未命中过的敌人 (环刚扫过) 各吃一次
 	var center: Vector2 = sw["center"]
 	var hit: Dictionary = sw["hit"]
@@ -622,7 +622,7 @@ func _shell_shockwave_tick(u: Dictionary, delta: float) -> void:
 			var eid: int = spr_e.get_instance_id()
 			if hit.has(eid):
 				continue
-			if (e["pos"] - center).length() <= r:
+			if DetMath.vlen((e["pos"] - center)) <= r:
 				hit[eid] = true
 				## ★★2026-08-29 真物理(用户 2026-08-27 拍板:「肯定是要真物理啊,
 				##   物理伤害为啥不吃护甲啊」)。

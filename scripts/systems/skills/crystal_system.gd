@@ -84,7 +84,7 @@ func _crystal_shrapnel(pos2d: Vector2) -> void:
 	battle._world.add_child(spr)
 	var ang: float = randf() * TAU
 	var dist: float = randf_range(55.0, 130.0)
-	var dst: Vector2 = pos2d + Vector2(cos(ang), sin(ang)) * dist
+	var dst: Vector2 = pos2d + Vector2(DetMath.dcos(ang), DetMath.dsin(ang)) * dist
 	var dur: float = randf_range(0.4, 0.6)
 	var tw = battle._reg_tween(); tw.set_parallel(true)
 	tw.tween_property(spr, "position", battle._world_pos(dst, 0.15), dur).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)   # 水平飞出+落地(QUAD_IN=重力感)
@@ -102,14 +102,14 @@ func _crystal_beam(a2d: Vector2, b2d: Vector2, col: Color) -> void:
 	## ★地面判定带: 文案写明「中线两侧各 55 码」, 而上面两条 bolt_line 都是细线,
 	##   地面横向宽度≈0 —— 站在 ±55 码内的敌人全都挨打, 画面上却只有一条线。
 	##   半宽**读 LINE_HALF_W 本身**, 不在这里写第二份(判定改了演出要跟着改)。
-	var dirb: Vector2 = (b2d - a2d).normalized()
+	var dirb: Vector2 = DetMath.norm((b2d - a2d))
 	var perp: Vector2 = dirb.orthogonal()
-	battle._vfx.line_band_ground(a2d, dirb, LINE_HALF_W, (b2d - a2d).length(),
+	battle._vfx.line_band_ground(a2d, dirb, LINE_HALF_W, DetMath.vlen((b2d - a2d)),
 								 Color(0.62, 0.44, 1.0, 0.30))
-	var n: int = clampi(int((b2d - a2d).length() / 60.0), 1, 30)
+	var n: int = clampi(int(DetMath.vlen((b2d - a2d)) / 60.0), 1, 30)
 	for i in range(1, n + 1):
 		## ★碎晶原来全撒在中线上(纯 lerp)= 又画了一条线; 现在撒满整个判定带。
-		_crystal_spark(a2d.lerp(b2d, float(i) / float(n + 1))
+		_crystal_spark(DetMath.vlerp(a2d, b2d, float(i) / float(n + 1))
 					   + perp * randf_range(-LINE_HALF_W, LINE_HALF_W))
 
 # 可视水晶叠层: 敌身周围绕 n 颗水晶碎片 (n=当前层数, 0=清除)
@@ -176,7 +176,7 @@ func _crystal_detonate(pos2d: Vector2) -> void:
 	if tex != null:                                           # 6根大水晶尖刺: CRACK弹出(BACK缓动)→定格→碎裂
 		for k in range(6):
 			var a: float = k * TAU / 6.0 + randf_range(-0.25, 0.25)
-			var off: Vector2 = pos2d + Vector2(cos(a), sin(a)) * randf_range(14.0, 34.0)
+			var off: Vector2 = pos2d + Vector2(DetMath.dcos(a), DetMath.dsin(a)) * randf_range(14.0, 34.0)
 			var spike = Sprite3D.new()
 			spike.texture = tex
 			spike.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -255,7 +255,7 @@ func tick(delta: float) -> void:
 		sw["el"] = float(sw["el"]) + delta
 		var t: float = clampf(float(sw["el"]) / SWEEP_SEC, 0.0, 1.0)
 		## Godot TRANS_CUBIC / EASE_IN_OUT 的原式 —— 不近似, 保证观感不变
-		var k: float = 4.0 * t * t * t if t < 0.5 else 1.0 - pow(-2.0 * t + 2.0, 3.0) / 2.0
+		var k: float = 4.0 * t * t * t if t < 0.5 else 1.0 - DetMath.dpow(-2.0 * t + 2.0, 3.0) / 2.0
 		var _tp: Array = battle._equip_sys.tally.push(sw["u"], "p2eq_031")   # ④ 装备统计: 扫射只有 031 会发起, 在本表里逐帧推进
 		_crystal_sweep_step(float(sw["a0"]) + SWEEP_ARC_RAD * k, sw["u"], int(sw["si"]),
 			float(sw["reach"]), sw["state"], im2, sw["imesh"], sw["mat"])
@@ -276,7 +276,7 @@ func _crystal_sweep_step(ang: float, u: Dictionary, si: int, reach: float, state
 	if not is_instance_valid(im): return
 	var center: Vector2 = u["pos"]   # 跟随携带者当前位置(非施法点定死)
 	var col = Color("#c9b0ff")
-	var dir2: Vector2 = Vector2(cos(ang), sin(ang))
+	var dir2: Vector2 = Vector2(DetMath.dcos(ang), DetMath.dsin(ang))
 	var perp: Vector2 = dir2.orthogonal()
 	var tip2: Vector2 = center + dir2 * reach
 	imesh.clear_surfaces()
@@ -315,9 +315,9 @@ func _crystal_sweep_step(ang: float, u: Dictionary, si: int, reach: float, state
 			##   后果是**演出与判定对不上** —— 射线只画到 1000 码, 而战场对角线 1754 码,
 			##   站在射线画不到的地方的敌人照样挨伤害 + 被偷魔抗。
 			##   用户原话:「演出得贴合实际伤害范围和判定啊」。
-			if (o["pos"] as Vector2).distance_to(center) > reach:
+			if DetMath.dist((o["pos"] as Vector2), center) > reach:
 				continue
-			var ea: float = atan2(float(o["pos"].y) - center.y, float(o["pos"].x) - center.x)
+			var ea: float = DetMath.datan2(float(o["pos"].y) - center.y, float(o["pos"].x) - center.x)
 			if battle._ang_in(prev, ang, ea):
 				# 伤害 60/130/250 (用户2026-08-01: 3★由 700 削到 250 —— 一次扫过全场敌人, 700 是全表最粗的一根)
 				battle._damage._apply_damage_from(u, o, battle._resolve_dmg(u, float([60, 130, 250][si]), o, true), Color("#bfa8ff"), 0.0, false, true)
@@ -338,7 +338,7 @@ func _crystal_spike_line(u: Dictionary) -> void:   # 照小菊R第三击(2026-07
 	var dirv: Vector2 = Vector2.RIGHT if str(u.get("side", "left")) == "left" else Vector2.LEFT
 	if tgt != null:
 		var dv: Vector2 = (tgt["pos"] as Vector2) - (u["pos"] as Vector2)
-		if dv.length() > 1.0: dirv = dv.normalized()
+		if DetMath.vlen(dv) > 1.0: dirv = DetMath.norm(dv)
 	var origin: Vector2 = u["pos"]
 	var tok: int = battle._next_cast_tok()                                       # 命中标记记在敌单位上(⛔不拿字典当Dict键)
 	var uu = u
@@ -453,7 +453,7 @@ func _crystal_spike_line(u: Dictionary) -> void:   # 照小菊R第三击(2026-07
 			for o in battle._units:
 				if not battle._is_hostile(uu, o) or not o.get("alive", false): continue
 				if int(o.get("_spike_tok", -1)) == tok: continue
-				if (o["pos"] as Vector2).distance_to(pref) > 52.0: continue
+				if DetMath.dist((o["pos"] as Vector2), pref) > 52.0: continue
 				o["_spike_tok"] = tok
 				# ★水晶刺从【纯控制零伤害】改成带 1.5A 真实伤害(用户2026-07-29 第五轮)。
 				#   壁垒 80 龟能 + 持盾4秒锁龟能, 而唯一输出是"+2层印记" —— 一个技能的伤害部分完全是 0。
@@ -514,8 +514,8 @@ func _crystal_ray_vfx(src: Dictionary, tgt: Dictionary, seg_dmg_fn: Callable) ->
 			if not sref.get("alive", false): return
 			var a2: Vector2 = sref["pos"]
 			var ldir: Vector2 = ((tref["pos"] as Vector2) - a2) if tref.get("alive", false) else Vector2.RIGHT * (1.0 if str(sref.get("side", "left")) == "left" else -1.0)
-			if ldir.length() < 1.0: ldir = Vector2.RIGHT
-			ldir = ldir.normalized()
+			if DetMath.vlen(ldir) < 1.0: ldir = Vector2.RIGHT
+			ldir = DetMath.norm(ldir)
 			var b2: Vector2 = a2 + ldir * 2000.0                                                                        # 贯穿直线2000码(用户2026-07-16)
 			battle._beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", a2, b2, 30.0, Color(1.0, 1.0, 1.0, 0.95), 0.22)   # 白核
 			battle._beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", a2, b2, 52.0, Color(0.55, 0.9, 1.0, 0.6), 0.3)    # 冰蓝晕
@@ -564,7 +564,7 @@ func _sk_crystal_burst(u: Dictionary, tgt) -> void:   # 碎晶爆破: 目标周�
 	var uu = u
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
-		if (o["pos"] as Vector2).distance_to(center) > battle.CRYSTAL_BURST_RADIUS: continue
+		if DetMath.dist((o["pos"] as Vector2), center) > battle.CRYSTAL_BURST_RADIUS: continue
 		var oref: Dictionary = o
 		for k in range(BURST_SEGMENTS):                          # 3段碎晶从天坠落(错峰0.14s)
 			battle._pending_shots.append({"delay": 0.1 + 0.14 * float(k), "fn": func() -> void:

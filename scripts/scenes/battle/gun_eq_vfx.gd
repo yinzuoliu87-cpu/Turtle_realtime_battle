@@ -714,8 +714,8 @@ func chain_arc(a: Vector2, b: Vector2, _col: Color, gold_pct: float = 0.0,
 		var p0: Vector2 = pts[i]
 		var p1: Vector2 = pts[i + 1]
 		# 高度沿链**线性插值** ⇒ 从这一端的身体中段斜到那一端的身体中段
-		var q0: float = lerpf(h_a, hb, float(i) / float(last))
-		var q1: float = lerpf(h_a, hb, float(i + 1) / float(last))
+		var q0: float = DetMath.flerp(h_a, hb, float(i) / float(last))
+		var q1: float = DetMath.flerp(h_a, hb, float(i + 1) / float(last))
 		# 身: 高饱和电紫的窄带, MIX ⇒ 越叠越白在结构上不可能发生
 		var body := _band(p0, p1, q0, 3.2 + 1.6 * g,
 			Color(COL_ARC.r + 0.35 * g, COL_ARC.g, COL_ARC.b, 0.92), false, q1)
@@ -725,17 +725,17 @@ func chain_arc(a: Vector2, b: Vector2, _col: Color, gold_pct: float = 0.0,
 			Color(COL_ARC_CORE.r, COL_ARC_CORE.g, COL_ARC_CORE.b, 1.0), true, q1 + 0.02)
 		_adopt(core, 0.12, "band", {"a0": 1.0})
 	# 分叉: 从主干中段随机挑几个节点甩出短枝(纯装饰, 不参与任何判定)
-	var span: float = (b - a).length()
+	var span: float = DetMath.vlen((b - a))
 	for _f in range(ARC_FORKS):
 		var k: int = 1 + int(rng.randf() * float(maxi(1, pts.size() - 2)))
 		k = clampi(k, 1, pts.size() - 2)
 		var root: Vector2 = pts[k]
 		var seg: Vector2 = Vector2(pts[k + 1]) - Vector2(pts[k - 1])
-		var pdir: Vector2 = Vector2(-seg.y, seg.x).normalized() if seg.length() > 0.001 else Vector2.UP
+		var pdir: Vector2 = DetMath.norm(Vector2(-seg.y, seg.x)) if DetMath.vlen(seg) > 0.001 else Vector2.UP
 		var sgn: float = 1.0 if rng.randf() < 0.5 else -1.0
-		var tip: Vector2 = root + (pdir * sgn + seg.normalized() * 0.5).normalized() \
+		var tip: Vector2 = root + DetMath.norm((pdir * sgn + DetMath.norm(seg) * 0.5)) \
 			* span * ARC_FORK_FRAC * (0.4 + 0.6 * rng.randf())
-		var fh: float = lerpf(h_a, hb, float(k) / float(last))
+		var fh: float = DetMath.flerp(h_a, hb, float(k) / float(last))
 		for fp in _fork_pts(root, tip, rng):
 			var fb := _band(fp[0], fp[1], fh, 1.4 + 0.6 * g,
 				Color(COL_ARC.r + 0.3 * g, COL_ARC.g, COL_ARC.b, 0.6), false)

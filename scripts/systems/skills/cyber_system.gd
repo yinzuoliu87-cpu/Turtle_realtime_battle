@@ -62,20 +62,20 @@ func _sk_cyber_cannon(u: Dictionary, tgt) -> void:              # 赛博龟·能
 	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	var dir: Vector2 = tgt["pos"] - u["pos"]
-	if dir.length() < 1.0: dir = Vector2.RIGHT
-	dir = dir.normalized()
+	if DetMath.vlen(dir) < 1.0: dir = Vector2.RIGHT
+	dir = DetMath.norm(dir)
 	var drones: int = int(u.get("drone_n", 0))   # 浮游炮改纯视觉后从计数取(2026-07-15)
 	var uu = u
 	# ★照Lux R终极闪光重做(用户2026-07-15: 节奏效果全参考·配色换科技青蓝): 蓄力0.9s(能量向心+细瞄准线)→贯屏三层巨柱瞬现→残光衰减+衍射颗粒
 	for i in range(8):                                          # 蓄力: 青色能量向心汇聚
-		var sa: float = TAU * float(i) / 8.0 + battle._juice_rng.randf_range(-0.3, 0.3)
-		var soff: Vector2 = Vector2(cos(sa), sin(sa)) * battle._juice_rng.randf_range(60.0, 100.0)
+		var sa: float = TAU * float(i) / 8.0 + DetMath.rrange(battle._juice_rng, -0.3, 0.3)
+		var soff: Vector2 = Vector2(DetMath.dcos(sa), DetMath.dsin(sa)) * DetMath.rrange(battle._juice_rng, 60.0, 100.0)
 		var sp = Sprite3D.new()
 		sp.texture = VfxTex._make_fire_glow_tex()
 		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED; sp.shaded = false; sp.transparent = true
 		sp.pixel_size = 0.007
 		sp.modulate = Color(0.55, 0.95, 1.0, 0.0)
-		sp.position = battle._world_pos(u["pos"] + soff, battle._juice_rng.randf_range(0.5, 1.3))
+		sp.position = battle._world_pos(u["pos"] + soff, DetMath.rrange(battle._juice_rng, 0.5, 1.3))
 		battle._world.add_child(sp)
 		var st = battle._reg_tween()
 		st.tween_interval(float(i) * 0.07)
@@ -93,7 +93,7 @@ func _sk_cyber_cannon(u: Dictionary, tgt) -> void:              # 赛博龟·能
 		for o in battle._targeting._enemies_of(uu):
 			if not o.get("alive", false): continue
 			if not battle._on_line(uu["pos"], dir, o["pos"], CANNON_BAND): continue    # 直线判定带宽±70码
-			if o["pos"].distance_to(uu["pos"]) > CANNON_RANGE: continue
+			if DetMath.dist(o["pos"], uu["pos"]) > CANNON_RANGE: continue
 			battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, 1.0, o), Color("#9bf0ff"))                          # 1A物理
 			if drones > 0:
 				battle._damage._apply_damage_from(uu, o, int(uu["atk"] * CANNON_TRUE_PER_DRONE * drones), Color("#d0ffff"), 0.0, true)  # 0.1A×浮游炮数真伤
@@ -105,16 +105,16 @@ func _sk_cyber_cannon(u: Dictionary, tgt) -> void:              # 赛博龟·能
 		battle._gambler_sys._gambler_pop(uu["pos"] + dir * 30.0, 0.9, Color(0.85, 1.0, 1.0, 0.95))                          # 发射爆闪
 		battle._shake(battle.JUICE_SHAKE_BIG); battle._add_hitstop(battle.JUICE_HITSTOP_KNOCK)
 		for j in range(12):                                     # 衍射颗粒沿线散落(参考Lux R残光棱彩颗粒)
-			var pp: Vector2 = uu["pos"] + dir * battle._juice_rng.randf_range(80.0, 1000.0) + Vector2(-dir.y, dir.x) * battle._juice_rng.randf_range(-70.0, 70.0)
+			var pp: Vector2 = uu["pos"] + dir * DetMath.rrange(battle._juice_rng, 80.0, 1000.0) + Vector2(-dir.y, dir.x) * DetMath.rrange(battle._juice_rng, -70.0, 70.0)
 			var gk = Sprite3D.new()
 			gk.texture = VfxTex._make_fire_glow_tex()
 			gk.billboard = BaseMaterial3D.BILLBOARD_ENABLED; gk.shaded = false; gk.transparent = true
 			gk.pixel_size = 0.004
-			gk.modulate = Color(battle._juice_rng.randf_range(0.6, 1.0), 1.0, 1.0, 0.9)
-			gk.position = battle._world_pos(pp, battle._juice_rng.randf_range(0.3, 1.2))
+			gk.modulate = Color(DetMath.rrange(battle._juice_rng, 0.6, 1.0), 1.0, 1.0, 0.9)
+			gk.position = battle._world_pos(pp, DetMath.rrange(battle._juice_rng, 0.3, 1.2))
 			battle._world.add_child(gk)
 			var gt = battle._reg_tween(); gt.set_parallel(true)
-			gt.tween_property(gk, "position", battle._world_pos(pp, 1.6 + battle._juice_rng.randf_range(0.0, 0.5)), 0.6)
+			gt.tween_property(gk, "position", battle._world_pos(pp, 1.6 + DetMath.rrange(battle._juice_rng, 0.0, 0.5)), 0.6)
 			gt.tween_property(gk, "modulate:a", 0.0, 0.6)
 			gt.chain().tween_callback(gk.queue_free)
 	battle._muzzle_flash(u["pos"], dir, Color("#9bf0ff"))             # 起手枪口闪
@@ -159,11 +159,11 @@ func _cyber_smart_dash(u: Dictionary) -> void:   # 智能走位冲刺核心(主�
 	var es = battle._targeting._enemies_of(u)
 	for i in range(16):
 		var aa: float = TAU * float(i) / 16.0
-		var cand: Vector2 = u["pos"] + Vector2(cos(aa), sin(aa)) * 200.0
+		var cand: Vector2 = u["pos"] + Vector2(DetMath.dcos(aa), DetMath.dsin(aa)) * 200.0
 		cand = ArenaShape.clamp_in(cand, battle.ARENA, 50, 40)
 		var d_enemy = INF
 		for o in es:
-			if o.get("alive", false): d_enemy = minf(d_enemy, cand.distance_to(o["pos"]))
+			if o.get("alive", false): d_enemy = minf(d_enemy, DetMath.dist(cand, o["pos"]))
 		var d_wall: float = minf(minf(cand.x - battle.ARENA.position.x, battle.ARENA.end.x - cand.x), minf(cand.y - battle.ARENA.position.y, battle.ARENA.end.y - cand.y))
 		var score: float = minf(d_enemy, 420.0) + minf(d_wall, 160.0) * 0.8
 		if score > best_score:
@@ -172,11 +172,11 @@ func _cyber_smart_dash(u: Dictionary) -> void:   # 智能走位冲刺核心(主�
 	battle._beam_vfx("res://assets/sprites/vfx/fx-trail.png", u["pos"], best, 44.0, Color(0.3, 0.9, 1.0, 0.6), 0.28)
 	var from4: Vector2 = u["pos"]
 	var uu4 = u
-	var dur4: float = maxf(0.05, from4.distance_to(best) / 800.0)
+	var dur4: float = maxf(0.05, DetMath.dist(from4, best) / 800.0)
 	u["_slam"] = true
 	var dt4 = battle._reg_tween()
 	dt4.tween_method(func(q: float) -> void:
-		if uu4.get("alive", false): uu4["pos"] = from4.lerp(best, q)
+		if uu4.get("alive", false): uu4["pos"] = DetMath.vlerp(from4, best, q)
 	, 0.0, 1.0, dur4)
 	dt4.tween_callback(func() -> void: uu4["_slam"] = false)
 
@@ -205,11 +205,11 @@ func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡演出(用户2026-07
 		##   原来是裸全局 randf_range: 同一份回放连放两遍, 激光打到的人都不一样
 		##   (2026-10-10 实测 1504a5e0: 同进程第 1/2/3 遍在第 1446 步分别打中 {闪电×3,泡泡} / {闪电×2,泡泡×2,大师} / {泡泡×4}, 指纹各不相同)。
 		##   下面三个只管飞行观感(起飞错峰/高度/时长), 走演出随机 `_juice_rng`。
-		var fpos = Vector2(battle._battle_rng.randf_range(battle.ARENA.position.x + 40.0, battle.ARENA.end.x - 40.0), battle._battle_rng.randf_range(battle.ARENA.position.y + 30.0, battle.ARENA.end.y - 30.0))
+		var fpos = Vector2(DetMath.rrange(battle._battle_rng, battle.ARENA.position.x + 40.0, battle.ARENA.end.x - 40.0), DetMath.rrange(battle._battle_rng, battle.ARENA.position.y + 30.0, battle.ARENA.end.y - 30.0))
 		scat.append(fpos)
 		var ft = battle._reg_tween()
 		ft.tween_interval(battle._juice_rng.randf() * 0.35)
-		ft.tween_property(spr, "position", battle._world_pos(fpos, battle._juice_rng.randf_range(1.1, 1.8)), battle._juice_rng.randf_range(0.6, 1.2)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		ft.tween_property(spr, "position", battle._world_pos(fpos, DetMath.rrange(battle._juice_rng, 1.1, 1.8)), DetMath.rrange(battle._juice_rng, 0.6, 1.2)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	# ② 蓄力(0.6s炮身发亮)→各自对最近敌射贯穿激光(0.4×赛博ATK魔法·线上全体)
 	var atk_ref: float = float(u["atk"])
 	battle._pending_shots.append({"delay": 0.75, "fn": func() -> void:
@@ -232,8 +232,8 @@ func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡演出(用户2026-07
 			battle._dbg_salvo_picks.append("trainer" if (best != null and best.get("is_trainer", false)) else "unit")
 			if best == null: continue
 			var ldir: Vector2 = (best["pos"] - dpos)
-			if ldir.length() < 1.0: ldir = Vector2.RIGHT
-			ldir = ldir.normalized()
+			if DetMath.vlen(ldir) < 1.0: ldir = Vector2.RIGHT
+			ldir = DetMath.norm(ldir)
 			var orb = Sprite3D.new()                                # 口部聚能光球(蓄力0.45s膨胀)
 			orb.texture = VfxTex._make_fire_glow_tex()
 			orb.billboard = BaseMaterial3D.BILLBOARD_ENABLED; orb.shaded = false; orb.transparent = true
@@ -305,10 +305,10 @@ func _cyber_assemble_mech(u: Dictionary) -> void:   # 阵亡演出(用户2026-07
 			mref["maxHp"] = final_hp
 			var _seg: float = floorf(g * 10.0) / 10.0             # ★一段段回复(10段·每0.5s一段)从0填到满(用户2026-07-18: 700血就5秒内分段回到700)
 			mref["hp"] = maxf(1.0, final_hp * _seg)
-			mref["atk"] = lerpf(0.0, final_atk, g)
+			mref["atk"] = DetMath.flerp(0.0, final_atk, g)
 			mref["base_atk"] = mref["atk"]
-			mref["def"] = lerpf(0.0, final_def, g); mref["base_def"] = mref["def"]
-			mref["mr"] = lerpf(0.0, final_def, g); mref["base_mr"] = mref["mr"]
+			mref["def"] = DetMath.flerp(0.0, final_def, g); mref["base_def"] = mref["def"]
+			mref["mr"] = DetMath.flerp(0.0, final_def, g); mref["base_mr"] = mref["mr"]
 		, 0.0, 1.0, 5.0)
 		grow.tween_callback(func() -> void:                      # 就位: 解锁+解除免疫+白闪+环
 			if not mref.get("alive", false): return

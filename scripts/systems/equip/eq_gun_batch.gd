@@ -324,7 +324,7 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 	##   原来到点就朝最近的敌人开, 不管它在多远 ⇒ 霰弹在空地上炸、电击弹隔着半个战场打人。
 	##   计时攒满后【停在满格等着】, 有人进范围立刻开这一发 —— 不空放、也不白丢一拍。
 	var near = battle._targeting._nearest_enemy(u)
-	if near == null or Vector2(near["pos"]).distance_to(Vector2(u["pos"])) > EEL_FIRE_RANGE:
+	if near == null or DetMath.dist(Vector2(near["pos"]), Vector2(u["pos"])) > EEL_FIRE_RANGE:
 		u["_g078_t"] = EEL_IV
 		return
 	u["_g078_t"] = float(u["_g078_t"]) - EEL_IV
@@ -416,7 +416,7 @@ func _pistol_kick_tick(p: Dictionary, delta: float) -> void:
 		spr.position = base
 		return
 	var tau: float = (t / T) * 4.0                    # 4τ 内衰减到 ~9%
-	var amp: float = (1.0 + tau) * exp(-tau)          # 临界阻尼包络
+	var amp: float = (1.0 + tau) * DetMath.dexp(-tau)          # 临界阻尼包络
 	var d: Vector2 = p.get("_pistol_kick_d", Vector2.ZERO)
 	spr.position = base + Vector3(d.x * amp * float(battle.WS), 0.0, d.y * amp * float(battle.WS))
 
@@ -429,12 +429,12 @@ func _pistol_attack(e: Dictionary) -> void:
 	var tgt = battle._targeting._nearest_enemy(p)
 	if tgt == null or not tgt.get("alive", false):
 		return
-	if (Vector2(tgt["pos"]) - Vector2(p["pos"])).length() > PISTOL_RANGE:
+	if DetMath.vlen((Vector2(tgt["pos"]) - Vector2(p["pos"]))) > PISTOL_RANGE:
 		return
 	# ★演出: 枪口火焰 + 后坐力。**朝向取"打谁"** —— 立绘是朝右的(见 _resolve_summon_sprite 的
 	#   pistol 分支), 所以火焰锚点也按同一个朝向算, 两者天然一致。
 	#   后坐时长传实际攻击间隔 ⇒ 攻速被枪羁绊拉到 4/秒 时也占满一个周期, 不会播不完被打断。
-	var _aim: Vector2 = (Vector2(tgt["pos"]) - Vector2(p["pos"])).normalized()
+	var _aim: Vector2 = DetMath.norm((Vector2(tgt["pos"]) - Vector2(p["pos"])))
 	vfx.pistol_fire(p, _aim, PISTOL_IV)
 	# ★★2026-08-07: **让枪转身面向目标**。用户问「子弹方向有考虑吗」时查出来的:
 	#   渲染层的 flip_h = face_right != 立绘朝向, 而小手枪是 no_basic 召唤物、
@@ -455,7 +455,7 @@ func _pistol_bullet(p: Dictionary) -> void:
 	var tgt = battle._targeting._nearest_enemy(p)
 	if tgt == null or not tgt.get("alive", false):
 		return
-	if (Vector2(tgt["pos"]) - Vector2(p["pos"])).length() > PISTOL_RANGE:
+	if DetMath.vlen((Vector2(tgt["pos"]) - Vector2(p["pos"]))) > PISTOL_RANGE:
 		return
 	var gold: float = float(p.get("_golden_pct", 0.0))
 	# ★弹道从**枪管尖**出发, 不是单位中心 —— 与枪口火焰同一个锚点(pistol_fire 里写的)。
@@ -495,9 +495,9 @@ func _eel_fire(u: Dictionary, si: int) -> void:
 	u["_g078_n"] = n + 1
 	var left: bool = (n % 2) == 0
 	var aim: Vector2 = Vector2(tgt["pos"]) - Vector2(u["pos"])
-	if aim.length() < 1.0:
+	if DetMath.vlen(aim) < 1.0:
 		aim = Vector2.RIGHT
-	aim = aim.normalized()
+	aim = DetMath.norm(aim)
 	# ★金弹从【轮到的那一管】打出并完整继承该管效果 —— 因为金弹复用的就是这里这个 `fn`。
 	var fn: Callable = (func() -> void: _eel_left(u, si, aim)) if left else (func() -> void: _eel_right(u, si))
 	# ★★2026-08-08: 补上 muzzle 回调。原来没传 ⇒ 金弹的菱珠串从**携带者中心**出发,
@@ -524,7 +524,7 @@ func _eel_left(u: Dictionary, si: int, aim: Vector2) -> void:
 		return
 	var flat: float = [15.0, 25.0, 40.0][si]
 	var scale: float = [0.3, 0.6, 1.0][si]
-	var half_cos: float = cos(deg_to_rad(EEL_CONE_DEG * 0.5))     # 60 度锥 ⇒ 半角 30 度
+	var half_cos: float = DetMath.dcos(deg_to_rad(EEL_CONE_DEG * 0.5))     # 60 度锥 ⇒ 半角 30 度
 	var apex: Vector2 = GunEqVfx.barrel_muzzle(Vector2(u["pos"]), aim, true)
 	var gpct: float = float(u.get("_golden_pct", 0.0))
 	var muz_h: float = GunEqVfx.body_mid_h(u)
@@ -535,10 +535,10 @@ func _eel_left(u: Dictionary, si: int, aim: Vector2) -> void:
 		if not o.get("alive", false):
 			continue
 		var rel: Vector2 = Vector2(o["pos"]) - apex
-		var d: float = rel.length()
+		var d: float = DetMath.vlen(rel)
 		if d > EEL_CONE_RANGE:
 			continue
-		if d > 1.0 and rel.normalized().dot(aim) < half_cos:
+		if d > 1.0 and DetMath.dot(DetMath.norm(rel), aim) < half_cos:
 			continue
 		if d < hit_d:
 			hit_d = d
@@ -646,7 +646,7 @@ func _eel_next_hop(u: Dictionary, from_u: Dictionary, done: Array):
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false) or battle._arr_has_unit(done, o):
 			continue
-		var d: float = (Vector2(o["pos"]) - Vector2(from_u["pos"])).length_squared()
+		var d: float = DetMath.len2((Vector2(o["pos"]) - Vector2(from_u["pos"])))
 		if d < bd:
 			bd = d
 			best = o
@@ -674,7 +674,7 @@ static func tower_pos(carrier: Vector2, side: String, arena: Rect2, obstacles: A
 		var rx: float = float(ob["rx"]) + margin
 		var ry: float = float(ob["ry"]) + margin
 		var d: Vector2 = p - c
-		var t: float = Vector2(d.x / maxf(1.0, rx), d.y / maxf(1.0, ry)).length()
+		var t: float = DetMath.vlen(Vector2(d.x / maxf(1.0, rx), d.y / maxf(1.0, ry)))
 		if t < 1.0:
 			p = c + (d / t if t > 0.01 else Vector2(rx, 0.0))
 	p.x = clampf(p.x, arena.position.x + pad, arena.end.x - pad)
@@ -779,7 +779,7 @@ func _tower_bullet(t: Dictionary, si: int) -> void:
 	var per_gold: int = [4, 3, 2][clampi(int(battle._synergy.tier_for(t, "枪")) - 1, 0, 2)]
 	var golden: bool = float(t.get("_golden_pct", 0.0)) > 0.0
 	var tgt = battle._targeting._nearest_enemy(t)
-	if tgt != null and tgt.get("alive", false) and (Vector2(tgt["pos"]) - Vector2(t["pos"])).length() <= TOWER_RANGE:
+	if tgt != null and tgt.get("alive", false) and DetMath.vlen((Vector2(tgt["pos"]) - Vector2(t["pos"]))) <= TOWER_RANGE:
 		# ★★2026-08-08 实拍(_vfxlab_p2eq_079_2.png): 炮弹**贴着地面滑行**, 从敌人**脚下**穿过去。
 		#   根因是这一行 `tracer(a, b, col, gold)` 后面三个参数一个都没传 ⇒ 全吃默认值:
 		#     · h_m 默认 0.05 米(手枪的枪口高度) ⇒ 炮台从自己脚底 5 厘米处开火
@@ -918,14 +918,14 @@ func _heli_orbit_step(h: Dictionary, target: Vector2, delta: float) -> void:
 		#   ⇒ 它永远在动、永远保持一个可读的交战距离; 而 60 码那版是"飞过去 → 定住"。
 		#   ⚠ standoff 必须 < 机炮实际射程, 否则会站在射程外空转。
 		var to: Vector2 = target - Vector2(h["pos"])
-		var dist: float = maxf(1.0, to.length())
+		var dist: float = maxf(1.0, DetMath.vlen(to))
 		var radial: Vector2 = to / dist
 		var tangent := Vector2(-radial.y, radial.x)
 		# 径向速度分量: 正=靠近, 负=后退。误差越大走得越快, 到位就自然停在环上。
 		var err: float = dist - HELI_STANDOFF
 		var v_r: float = clampf(err, -HELI_SPD, HELI_SPD)
 		var v_t: float = HELI_ORBIT_SPD
-		h["pos"] = Vector2(h["pos"]) + (radial * v_r + tangent * v_t).limit_length(HELI_SPD) * delta
+		h["pos"] = Vector2(h["pos"]) + DetMath.limit_len((radial * v_r + tangent * v_t), HELI_SPD) * delta
 
 
 ## 一发机炮: 0.35 ATK 物理; **每命中一发 +4 龟能**(上限 100)。
@@ -984,7 +984,7 @@ static func lane_cover(center: Vector2, dir: Vector2, pts: Array,
 	var perp: Vector2 = Vector2(-dir.y, dir.x)
 	for p in pts:
 		var rel: Vector2 = (p as Vector2) - center
-		if absf(rel.dot(dir)) <= half_len and absf(rel.dot(perp)) <= half_w:
+		if absf(DetMath.dot(rel, dir)) <= half_len and absf(DetMath.dot(rel, perp)) <= half_w:
 			n += 1
 	return n
 
@@ -998,7 +998,7 @@ static func best_lane(pts: Array) -> Array:
 	for c in pts:
 		for k in range(LANE_DIRS):
 			var a: float = PI * float(k) / float(LANE_DIRS)
-			var d: Vector2 = Vector2(cos(a), sin(a))
+			var d: Vector2 = Vector2(DetMath.dcos(a), DetMath.dsin(a))
 			var n: int = lane_cover(c, d, pts)
 			if n > best_n:
 				best_n = n
@@ -1044,7 +1044,7 @@ func _heli_begin_bomb(h: Dictionary) -> void:
 	#   ⚠ 结算完全不变 —— 航线是**双向对称**的带(`lane_cover` 只看点到直线的距离),
 	#     从哪头进, 覆盖到的敌人、投弹枚数、间隔都一样。
 	var here: Vector2 = Vector2(h["pos"])
-	if here.distance_squared_to(e2) < here.distance_squared_to(e1):
+	if DetMath.dist2(here, e2) < DetMath.dist2(here, e1):
 		var t: Vector2 = e1
 		e1 = e2
 		e2 = t
@@ -1070,12 +1070,12 @@ func _heli_begin_bomb(h: Dictionary) -> void:
 func _heli_approach(h: Dictionary, delta: float) -> void:
 	h["appr_t"] = float(h.get("appr_t", 0.0)) + delta
 	var to: Vector2 = Vector2(h["lane_a"]) - Vector2(h["pos"])
-	if to.length() <= HELI_APPROACH_SPD * delta + 6.0 or float(h["appr_t"]) >= HELI_APPROACH_MAX:
+	if DetMath.vlen(to) <= HELI_APPROACH_SPD * delta + 6.0 or float(h["appr_t"]) >= HELI_APPROACH_MAX:
 		h["pos"] = Vector2(h["lane_a"])
 		h["state"] = "bomb"
 		h["appr_t"] = 0.0
 		return
-	h["pos"] = Vector2(h["pos"]) + to.normalized() * HELI_APPROACH_SPD * delta
+	h["pos"] = Vector2(h["pos"]) + DetMath.norm(to) * HELI_APPROACH_SPD * delta
 
 
 ## 脱离: 沿原航向再飞一段, 然后回巡航。★这段**不索敌、不开火** —— 它就是"飞出去"。
@@ -1094,9 +1094,9 @@ func _heli_bomb_run(h: Dictionary, delta: float) -> void:
 	var gap: float = total / float(maxi(1, n_total - 1))
 	h["run_t"] = float(h.get("run_t", 0.0)) + delta
 	var f: float = clampf(float(h["run_t"]) / total, 0.0, 1.0)
-	h["pos"] = Vector2(h["lane_a"]).lerp(Vector2(h["lane_b"]), f)
+	h["pos"] = DetMath.vlerp(Vector2(h["lane_a"]), Vector2(h["lane_b"]), f)
 	while int(h.get("bombs", 0)) < n_total and float(h["run_t"]) >= gap * float(h.get("bombs", 0)):
-		var at: Vector2 = Vector2(h["lane_a"]).lerp(Vector2(h["lane_b"]), float(h["bombs"]) / float(maxi(1, n_total - 1)))
+		var at: Vector2 = DetMath.vlerp(Vector2(h["lane_a"]), Vector2(h["lane_b"]), float(h["bombs"]) / float(maxi(1, n_total - 1)))
 		h["bombs"] = int(h.get("bombs", 0)) + 1
 		var si: int = int(h["si"])
 		# ★炸弹也计入金弹计数(规格原文) ⇒ 同样从 `_queue_shots` 出去, gun_id 与机炮共用。
@@ -1121,7 +1121,7 @@ func _heli_bomb_run(h: Dictionary, delta: float) -> void:
 		else:
 			h["state"] = "egress"
 			h["egr_t"] = 0.0
-			h["egr_dir"] = (Vector2(h["lane_b"]) - Vector2(h["lane_a"])).normalized()
+			h["egr_dir"] = DetMath.norm((Vector2(h["lane_b"]) - Vector2(h["lane_a"])))
 		h["fire_t"] = 0.0
 
 
@@ -1141,7 +1141,7 @@ func heli_bomb_hit(h: Dictionary, si: int, at: Vector2) -> int:
 	for o in battle._targeting._enemies_of(owner):
 		if not o.get("alive", false):
 			continue
-		if (Vector2(o["pos"]) - at).length() > BOMB_R:
+		if DetMath.vlen((Vector2(o["pos"]) - at)) > BOMB_R:
 			continue
 		battle._damage._apply_damage_from(owner, o, battle._atk_dmg(owner, scale, o), COL_BOMB, 0.0, false, true)
 		if o.get("alive", false):
@@ -1170,12 +1170,12 @@ func _heli_begin_crash(h: Dictionary) -> void:
 
 func _heli_crash_fly(h: Dictionary, delta: float) -> void:
 	var to: Vector2 = Vector2(h["crash_to"]) - Vector2(h["pos"])
-	if to.length() <= CRASH_SPD * delta + 8.0:
+	if DetMath.vlen(to) <= CRASH_SPD * delta + 8.0:
 		h["pos"] = Vector2(h["crash_to"])
 		heli_crash_explode(h)
 		h["state"] = "dead"
 		return
-	h["pos"] = Vector2(h["pos"]) + to.normalized() * CRASH_SPD * delta
+	h["pos"] = Vector2(h["pos"]) + DetMath.norm(to) * CRASH_SPD * delta
 
 
 ## 坠机爆炸: 500 码内 200/300/500 物理 + 40 层灼烧(数值在 on_death 里就近声明并存进 h)。
@@ -1189,7 +1189,7 @@ func heli_crash_explode(h: Dictionary) -> int:
 	for o in battle._targeting._enemies_of(owner):
 		if not o.get("alive", false):
 			continue
-		if (Vector2(o["pos"]) - at).length() > CRASH_R:
+		if DetMath.vlen((Vector2(o["pos"]) - at)) > CRASH_R:
 			continue
 		battle._damage._apply_damage_from(owner, o, battle._resolve_dmg(owner, phys, o, false), COL_BOMB, 0.0, false, true)
 		if o.get("alive", false) and burn > 0:

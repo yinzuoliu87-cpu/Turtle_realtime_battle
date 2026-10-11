@@ -230,7 +230,7 @@ func _eq_vial_dest(u: Dictionary) -> Dictionary:
 	for a in centers:
 		var n: int = 0
 		for b in hits:
-			if (b["pos"] - a["pos"]).length() <= VIAL_RADIUS:
+			if DetMath.vlen((b["pos"] - a["pos"])) <= VIAL_RADIUS:
 				n += 1
 		if n > bn:
 			bn = n
@@ -265,7 +265,7 @@ func _eq_vial_land(u: Dictionary, si: int, pos: Vector2) -> void:
 	_vfx.vial_cloud(pos)
 	battle._splash_ring_bold(pos, Color(0.42, 0.90, 0.38), VIAL_RADIUS)
 	for o in battle._targeting._enemies_of(u):
-		if (o["pos"] - pos).length() > VIAL_RADIUS:
+		if DetMath.vlen((o["pos"] - pos)) > VIAL_RADIUS:
 			continue
 		battle._damage._apply_dot_stacks(o, "poison", [40, 70, 110][si], u)
 
@@ -434,9 +434,9 @@ func _eq_pressure_release(u: Dictionary, si: int, stt: Dictionary) -> void:
 	if far == null:
 		return
 	var dir: Vector2 = (far["pos"] - u["pos"])
-	if dir.length() < 0.01:
+	if DetMath.vlen(dir) < 0.01:
 		dir = Vector2.RIGHT
-	dir = dir.normalized()
+	dir = DetMath.norm(dir)
 	stt["beam_total"] = stored * [1.00, 1.20, 6.00][si]
 	stt["beam_paid"] = 0.0
 	stt["beam_t"] = 0.0
@@ -446,15 +446,15 @@ func _eq_pressure_release(u: Dictionary, si: int, stt: Dictionary) -> void:
 	# ★可转向(2026-08-11 用户:「本来就应该是可以转向的射线」):
 	#   `beam_ang` 是**射线的真实朝向**, `beam_tgt` 是它想指向的目标。
 	#   伤害判定一律用 `beam_ang` 而不是目标位置 —— 否则"扫过谁烧谁"就是假的。
-	stt["beam_ang"] = dir.angle()
+	stt["beam_ang"] = DetMath.angle(dir)
 	# ★★扫掠起点必须钉在【开火时的朝向】。
 	#   漏了这一行, 第一个 tick 的 `beam_ang_paid` 会默认成"转完之后的当前角"
 	#   ⇒ 首段扫掠被压成零宽 ⇒ 开火后立刻扫过的敌人【一个都判不到】。
 	#   这是 verify_mana_beam_steer ② 抓出来的真 bug, 不是假想。
-	stt["beam_ang_paid"] = dir.angle()
+	stt["beam_ang_paid"] = DetMath.angle(dir)
 	stt["beam_tgt"] = far
 	u["eq_state"]["p2eq_068"] = stt
-	stt["beam_h"] = _beam_vfx.fire(u["pos"], dir.angle(), Vfx.BEAM_RANGE, Vfx.BEAM_HALF_W)
+	stt["beam_h"] = _beam_vfx.fire(u["pos"], DetMath.angle(dir), Vfx.BEAM_RANGE, Vfx.BEAM_HALF_W)
 
 
 ## 最远的【可定向选取】敌人(排除训龟大师与不可选中者)。
@@ -463,7 +463,7 @@ func _can_farthest(u: Dictionary):
 	var best = null
 	var bd: float = -1.0
 	for o in es:
-		var d2: float = (o["pos"] - u["pos"]).length_squared()
+		var d2: float = DetMath.len2((o["pos"] - u["pos"]))
 		if d2 > bd:
 			bd = d2
 			best = o
@@ -519,12 +519,12 @@ func _eq_beam_step(u: Dictionary, delta: float) -> void:
 		tgt = _can_farthest(u)
 		stt["beam_tgt"] = tgt
 	if tgt is Dictionary:
-		var want_ang: float = ((tgt["pos"] as Vector2) - (stt.get("beam_org", u["pos"]) as Vector2)).angle()
+		var want_ang: float = DetMath.angle(((tgt["pos"] as Vector2) - (stt.get("beam_org", u["pos"]) as Vector2)))
 		var step: float = deg_to_rad(BeamVfx.TURN_DPS) * maxf(delta, 0.0)
 		var dd: float = angle_difference(a0, want_ang)
 		a0 = a0 + clampf(dd, -step, step)
 	stt["beam_ang"] = a0
-	stt["beam_dir"] = Vector2(cos(a0), sin(a0))
+	stt["beam_dir"] = Vector2(DetMath.dcos(a0), DetMath.dsin(a0))
 
 	# ── 演出: 只转节点 + 更新包络 + 告知现在照到了谁 ────────────────
 	var h = stt.get("beam_h", null)
@@ -564,10 +564,10 @@ func _beam_lit(u: Dictionary, stt: Dictionary) -> Array:
 	var out: Array = []
 	for o in battle._targeting._enemies_of(u):
 		var rel: Vector2 = o["pos"] - org
-		var d: float = rel.length()
+		var d: float = DetMath.vlen(rel)
 		if d > Vfx.BEAM_RANGE:
 			continue
-		if absf(angle_difference(ang, rel.angle())) <= _half_angle(d):
+		if absf(angle_difference(ang, DetMath.angle(rel))) <= _half_angle(d):
 			out.append(o)
 	return out
 
@@ -577,7 +577,7 @@ func _beam_lit(u: Dictionary, stt: Dictionary) -> Array:
 ##   点在距离 d、角偏 θ 处的垂距 = d·sin(θ), 所以 垂距≤W ⇔ |θ| ≤ asin(W/d)。
 ##   等价性是回归保护的基础: 不转向时新旧行为必须逐字一致。
 func _half_angle(d: float) -> float:
-	return asin(clampf(Vfx.BEAM_HALF_W / maxf(d, 0.001), 0.0, 1.0))
+	return DetMath.dasin(clampf(Vfx.BEAM_HALF_W / maxf(d, 0.001), 0.0, 1.0))
 
 
 ## 本 tick 内, 敌人被射线照到的【时长比例】。
@@ -612,10 +612,10 @@ func _beam_hit(u: Dictionary, stt: Dictionary, amount: float, a0: float, a1: flo
 	var org: Vector2 = stt.get("beam_org", u["pos"])
 	for o in battle._targeting._enemies_of(u):
 		var rel: Vector2 = o["pos"] - org
-		var d: float = rel.length()
+		var d: float = DetMath.vlen(rel)
 		if d > Vfx.BEAM_RANGE:
 			continue
-		var f: float = _sweep_frac(a0, a1, rel.angle(), _half_angle(d))
+		var f: float = _sweep_frac(a0, a1, DetMath.angle(rel), _half_angle(d))
 		if f <= 0.0:
 			continue
 		var part: float = amount * f

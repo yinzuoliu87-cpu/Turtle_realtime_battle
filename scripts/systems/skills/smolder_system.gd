@@ -114,7 +114,7 @@ func _smolder_spawn_blob(origin: Vector2, dir: Vector2, perp: Vector2, lateral: 
 
 func _smolder_blob_fly(p: float, spr: Sprite3D, a: Vector2, b: Vector2, h: float) -> void:
 	if is_instance_valid(spr):
-		spr.position = battle._world_pos(a.lerp(b, p), h + sin(p * PI) * 0.22)
+		spr.position = battle._world_pos(a.lerp(b, p), h + DetMath.dsin(p * PI) * 0.22)
 
 func _smolder_spawn_core(origin: Vector2, dir: Vector2, reach: float) -> void:
 	var tex := VfxTex._make_fire_glow_tex()

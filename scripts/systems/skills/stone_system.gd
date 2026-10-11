@@ -98,7 +98,7 @@ func _rock_chunk_erupt(pos2d: Vector2) -> void:   # 岩石破土冒起(石棕灰
 func _sk_stone_taunt(u: Dictionary) -> void:                    # 石头龟·嘲讽(用户设计·120龟能): 500码敌4秒硬嘲讽 + 自身1A永久盾 + 0.5×护甲减伤4秒 + 将结束砸地(400码1A魔法+击飞1.2s)
 	var victims: Array = []
 	for o in battle._targeting._enemies_of(u):
-		if o.get("alive", false) and o["pos"].distance_to(u["pos"]) <= TAUNT_RADIUS:
+		if o.get("alive", false) and DetMath.dist(o["pos"], u["pos"]) <= TAUNT_RADIUS:
 			victims.append(o)
 	battle._taunt(u, victims, TAUNT_SEC)
 	# shield-perm-ok: 封板文档点名的特例 —— 「所有"通用护盾"持续=4秒(嘲讽的"永久护盾"是特例除外)」
@@ -111,7 +111,7 @@ func _sk_stone_taunt(u: Dictionary) -> void:                    # 石头龟·嘲
 		if not uu.get("alive", false): return
 		battle._burst_vfx("res://assets/sprites/vfx/stone-slam-impact.png", uu["pos"], 220.0)   # 砸地岩石冲击(用户2026-07-06"像地面猛砸")
 		for o in battle._targeting._enemies_of(uu):
-			if o.get("alive", false) and o["pos"].distance_to(uu["pos"]) <= SLAM_RADIUS:
+			if o.get("alive", false) and DetMath.dist(o["pos"], uu["pos"]) <= SLAM_RADIUS:
 				battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, SLAM_ATK_COEF, o, true), Color("#c8a878"))
 				if not o.get("airborne", false):
 						battle._damage._knockback(uu, o, 80.0, 3.6111)   # 击飞【1.2秒·峰高6.5】(用户2026-07-11) — vy=6.0×3.6111=21.667
@@ -123,8 +123,8 @@ func _sk_rock_shockwave(u: Dictionary) -> void:                  # 石头龟·�
 #   (2026-07-19订正: 头注释原写"1%×层眩晕1.5s"是旧版, 用户2026-07-11已改成必中2秒, 见下方 battle._damage._stun 那行); 伤害随波前经过逐个同步(用户2026-07-11补VFX·原=只1个130px环)
 	var tgt = battle._targeting._acquire_target(u)
 	var dir: Vector2 = (Vector2.RIGHT if tgt == null else (tgt["pos"] - u["pos"]))
-	if dir.length() < 1.0: dir = Vector2.RIGHT
-	dir = dir.normalized()
+	if DetMath.vlen(dir) < 1.0: dir = Vector2.RIGHT
+	dir = DetMath.norm(dir)
 	var perp = Vector2(-dir.y, dir.x)
 	var layers: int = int(u.get("rock_layers", 0))
 	var origin: Vector2 = u["pos"]
@@ -163,10 +163,10 @@ func _sk_rock_shockwave(u: Dictionary) -> void:                  # 石头龟·�
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		var rel: Vector2 = o["pos"] - origin
-		if rel.dot(dir) <= 0.0: continue                     # 只前方
-		if absf(rel.dot(perp)) > 90.0: continue              # 带宽~180
+		if DetMath.dot(rel, dir) <= 0.0: continue                     # 只前方
+		if absf(DetMath.dot(rel, perp)) > 90.0: continue              # 带宽~180
 		var oo = o
-		var hit_delay: float = windup + maxf(0.0, rel.dot(dir)) / wave_spd
+		var hit_delay: float = windup + maxf(0.0, DetMath.dot(rel, dir)) / wave_spd
 		var hf = func() -> void:
 			if not oo.get("alive", false): return
 			battle._damage._apply_damage_from(uu, oo, dmgv, Color("#c8a878"))

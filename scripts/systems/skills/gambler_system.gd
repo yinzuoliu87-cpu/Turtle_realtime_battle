@@ -112,8 +112,8 @@ func _gambler_throw_hit(u: Dictionary, tgt: Dictionary, dmg: int, roll_multi: bo
 	ctw.tween_method(func(f: float) -> void:
 		if not is_instance_valid(card): return
 		var pos = from3.lerp(to3, f)
-		pos.y += arc * sin(PI * f)                    # 抛物线拱起(不再贴地直飞)
-		pos += perp * lat * sin(PI * f)               # 侧向弧线(每张不同→扇形·不再直直)
+		pos.y += arc * DetMath.dsin(PI * f)                    # 抛物线拱起(不再贴地直飞)
+		pos += perp * lat * DetMath.dsin(PI * f)               # 侧向弧线(每张不同→扇形·不再直直)
 		card.position = pos
 		if battle._cam != null:
 			var ct: Transform3D = card.global_transform

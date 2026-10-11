@@ -16,7 +16,7 @@ func _ice_fissure_go(u: Dictionary, si: int, start: Vector2, dir: Vector2) -> vo
 	var fdur: float = FISSURE_SWEEP_SEC
 	_ice_fissure_vfx(start, dir, reach, fdur)      # 冰道: 一排冰刺racing forward
 	for o in battle._targeting._enemies_of(u):
-		var along: float = (o["pos"] - start).dot(dir)
+		var along: float = DetMath.dot((o["pos"] - start), dir)
 		if along < 0.0 or along > reach:
 			continue
 		if not battle._on_line(start, dir, o["pos"], width):
@@ -58,9 +58,9 @@ func _ice_fissure_vfx(start: Vector2, dir: Vector2, reach: float, fdur: float) -
 		##   ②画面上冰墙的边界每次都不一样宽。11 个档位循环铺过去, 每 11 根必定
 		##   踩满 ±FISSURE_HALF_W 两端, 而沿线位置在推进 ⇒ 看上去仍是散的。
 		var slot: float = float(i % 11) / 10.0
-		var lat: float = clampf(lerpf(-FISSURE_HALF_W, FISSURE_HALF_W, slot)
+		var lat: float = clampf(DetMath.flerp(-FISSURE_HALF_W, FISSURE_HALF_W, slot)
 								+ randf_range(-6.0, 6.0), -FISSURE_HALF_W, FISSURE_HALF_W)
-		var hs: float = lerpf(1.4, 0.68, absf(lat) / FISSURE_HALF_W) * randf_range(0.82, 1.15)   # 中脊高两侧矮
+		var hs: float = DetMath.flerp(1.4, 0.68, absf(lat) / FISSURE_HALF_W) * randf_range(0.82, 1.15)   # 中脊高两侧矮
 		var pos: Vector2 = start + dir * (reach * f) + perp * lat
 		## ★★错峰窜起改走**游戏钟**(`_equip_tick_sys.schedule`), 不再挂 tween。
 		##   同一个函数里的**伤害**早在 2026-09-13 就搬过来了(tween 走未钳制 delta,
@@ -86,7 +86,7 @@ func _ice_field_patch(tex: Texture2D, pos2d: Vector2, dir: Vector2, life: float)
 	spr.transparent = true
 	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	spr.modulate = Color(0.72, 0.88, 1.0, 0.0)
-	spr.rotation.y = -atan2(dir.y, dir.x)
+	spr.rotation.y = -DetMath.datan2(dir.y, dir.x)
 	spr.pixel_size = (155.0 * battle.WS) / float(maxi(1, int(tex.get_width())))
 	spr.position = battle._world_pos(pos2d, 0.04)
 	battle._world.add_child(spr)
@@ -146,7 +146,7 @@ func _ice_throw_go(u: Dictionary, si: int) -> void:
 
 func _ice_bottle_arc(pf: float, spr: Sprite3D, from2d: Vector2, to2d: Vector2) -> void:
 	if is_instance_valid(spr):
-		spr.position = battle._world_pos(from2d.lerp(to2d, pf), 1.0 + sin(pf * PI) * 2.4)
+		spr.position = battle._world_pos(from2d.lerp(to2d, pf), 1.0 + DetMath.dsin(pf * PI) * 2.4)
 
 func _ice_bottle_hit(spr: Sprite3D, u: Dictionary, t: Dictionary, si: int) -> void:
 	if is_instance_valid(spr): spr.queue_free()
@@ -326,7 +326,7 @@ func _ice_frost_tick(u: Dictionary, center: Vector2, radius: float) -> void:
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false):
 			continue
-		if o["pos"].distance_to(center) <= radius:
+		if DetMath.dist(o["pos"], center) <= radius:
 			battle._damage._buff(o, "mr", -FROST_MR_DOWN, true, 0.65)   # 圈内 -25%魔抗(刷新, 略>0.5s跳间隔)
 			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, FROST_ATK_COEF, o, true), Color("#bfe9ff"))   # 每跳 0.18→0.25A(用户2026-07-30 第六轮·寒冰整只 10.8% 垫底)
 
@@ -357,7 +357,7 @@ func _ice_frost_rain(center: Vector2, radius: float) -> void:
 		# 极坐标均匀采样(旧版是方形取样再 continue 掉圈外的, 实际根数经常不足)
 		var a: float = battle._juice_rng.randf() * TAU
 		var r: float = sqrt(battle._juice_rng.randf()) * radius
-		var at: Vector2 = center + Vector2(cos(a), sin(a)) * r
+		var at: Vector2 = center + Vector2(DetMath.dcos(a), DetMath.dsin(a)) * r
 		var delay: float = battle._juice_rng.randf() * 0.30      # 错峰, 不要齐刷刷一起落
 		battle._pending_shots.append({"delay": delay, "fn": _frost_icicle_drop.bind(at)})
 
@@ -535,7 +535,7 @@ func _frost_shield_burst(ally: Dictionary) -> void:
 	if src is Dictionary:
 		var c: Vector2 = ally["pos"]
 		for o in battle._targeting._enemies_of(src):
-			if o.get("alive", false) and o["pos"].distance_to(c) <= TEAM_BURST_RADIUS:
+			if o.get("alive", false) and DetMath.dist(o["pos"], c) <= TEAM_BURST_RADIUS:
 				battle._damage._apply_damage_from(src, o, battle._atk_dmg(src, boom, o, true), Color("#bfe9ff"))   # boom×ATK 魔法(1或5)
 		battle._burst_vfx("res://assets/sprites/vfx/fx-shock-ring.png", c, 520.0, 0.14)   # 冰爆冲击环(≈250码半径)
 		battle._skill_ring(c, Color(0.68, 0.9, 1.0, 0.6), TEAM_BURST_RADIUS)
@@ -565,7 +565,7 @@ func _ice_chill_vfx(pos2d: Vector2, big: bool = false) -> void:
 		sh.transparent = true
 		sh.modulate = Color(0.62, 0.86, 1.0, 0.95)
 		var ang = TAU * float(i) / float(n)
-		var off = Vector2(cos(ang), sin(ang)) * (r * 0.45)
+		var off = Vector2(DetMath.dcos(ang), DetMath.dsin(ang)) * (r * 0.45)
 		sh.position = battle._world_pos(pos2d + off, 0.35)
 		battle._world.add_child(sh)
 		var tw = battle._reg_tween()

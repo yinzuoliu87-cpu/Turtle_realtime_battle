@@ -121,7 +121,7 @@ func _parasol_open(u: Dictionary, si: int, stt: Dictionary) -> void:
 	for o in battle._targeting._allies_of(u, true):
 		if not (o is Dictionary) or not o.get("alive", false):
 			continue
-		if float((o["pos"] as Vector2).distance_to(u["pos"])) > PARASOL_RADIUS:
+		if float(DetMath.dist((o["pos"] as Vector2), u["pos"])) > PARASOL_RADIUS:
 			continue
 		o["damage_reduction"] = float(o.get("damage_reduction", 0.0)) + dr
 		(o["buffs"] as Array).append({
@@ -503,7 +503,7 @@ func _ghost_break(u: Dictionary, _star_i: int) -> void:
 	for o in battle._targeting._enemies_of(u):
 		if not (o is Dictionary) or not o.get("alive", false):
 			continue
-		if float((o["pos"] as Vector2).distance_to(u["pos"])) > GHOST_BURST_R:
+		if float(DetMath.dist((o["pos"] as Vector2), u["pos"])) > GHOST_BURST_R:
 			continue
 		var _tp: Array = battle._equip_sys.tally.push(u, "p2eq_064")   # ④ 装备统计: 破盾可能发生在对方的伤害结算里 ⇒ 诅咒 DoT 条目打「携带者 · 064」的标
 		battle._damage._add_curse(o, GHOST_CURSE_SEC, u)

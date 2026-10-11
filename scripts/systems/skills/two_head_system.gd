@@ -83,8 +83,8 @@ func _sk_two_head_strike(u: Dictionary, tgt) -> void:            # 双头·技�
 		_two_head_hammer(u, tgt)                                # 近战锤击: 跳起→落在目标→地面锤击
 	else:
 		var dir: Vector2 = tgt["pos"] - u["pos"]
-		if dir.length() < 1.0: dir = Vector2.RIGHT
-		_two_head_cannon(u, u["pos"], dir.normalized())         # 远程灵能冲击: 大紫炮弹
+		if DetMath.vlen(dir) < 1.0: dir = Vector2.RIGHT
+		_two_head_cannon(u, u["pos"], DetMath.norm(dir))         # 远程灵能冲击: 大紫炮弹
 
 # 双头·灵能冲击炮弹(用户2026-07-11): 大紫炮弹朝目标方向飞(射程2000·760码/s)→碰第一敌(46码)爆炸→200码内敌 1A+10%目标maxHp 物理
 # 双头·灵能冲击炮弹(用户2026-07-11): 大紫炮弹朝目标方向飞(射程2000·760码/s)→碰第一敌(46码)爆炸→200码内敌 1A+10%目标maxHp 物理
@@ -109,7 +109,7 @@ func _two_head_cannon(u: Dictionary, from2d: Vector2, dir: Vector2) -> void:
 		pos = ArenaShape.clamp_in(pos, battle.ARENA)
 		if is_instance_valid(spr): spr.position = battle._world_pos(pos, 1.1)
 		for o in battle._targeting._enemies_of(u):
-			if o.get("alive", false) and pos.distance_to(o["pos"]) <= 46.0:
+			if o.get("alive", false) and DetMath.dist(pos, o["pos"]) <= 46.0:
 				hit = o; break
 		if hit != null: break
 	if is_instance_valid(spr): spr.queue_free()
@@ -131,7 +131,7 @@ func _two_head_cannon_boom(u: Dictionary, at2d: Vector2) -> void:
 	battle._skill_ring(at2d, Color(0.76, 0.55, 1.0, 0.9), STRIKE_BLAST_RADIUS)       # 200码爆炸范围冲击波
 	battle._skill_ring(at2d, Color(0.86, 0.72, 1.0, 0.7), 110.0)
 	for o in battle._targeting._enemies_of(u):
-		if o.get("alive", false) and at2d.distance_to(o["pos"]) <= STRIKE_BLAST_RADIUS:
+		if o.get("alive", false) and DetMath.dist(at2d, o["pos"]) <= STRIKE_BLAST_RADIUS:
 			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, STRIKE_RANGED_COEF, o) + int(o["maxHp"] * STRIKE_RANGED_MAXHP), Color("#c0a0ff"))
 			battle._vfx._flash(o, Color(0.8, 0.6, 1.0))
 
@@ -140,7 +140,7 @@ func _two_head_cannon_boom(u: Dictionary, at2d: Vector2) -> void:
 func _two_head_hammer(u: Dictionary, tgt: Dictionary) -> void:
 	var from2d: Vector2 = u["pos"]
 	var d: Vector2 = tgt["pos"] - from2d
-	var land2d: Vector2 = tgt["pos"] - (d.normalized() if d.length() > 1.0 else Vector2.RIGHT) * 52.0
+	var land2d: Vector2 = tgt["pos"] - (DetMath.norm(d) if DetMath.vlen(d) > 1.0 else Vector2.RIGHT) * 52.0
 	u["_slam"] = true                                           # 跳跃期免分离推挤
 	u["_anim_lock_until"] = battle._t + 0.46                           # 跳跃期AI不出手/不移动
 	var dmg: int = battle._atk_dmg(u, STRIKE_MELEE_COEF, tgt)
@@ -149,8 +149,8 @@ func _two_head_hammer(u: Dictionary, tgt: Dictionary) -> void:
 	tw.tween_callback(_two_head_hammer_land.bind(u, tgt, land2d, dmg, battle._last_dmg_type))   # 捕获举锤时的伤害类型(空中会被覆写)
 
 func _two_head_hammer_arc(pf: float, u: Dictionary, from2d: Vector2, land2d: Vector2) -> void:
-	u["pos"] = from2d.lerp(land2d, pf)
-	u["_slam_voff"] = Vector3(0.0, sin(pf * PI) * 4.2, 0.0)     # 跳起弧线(render偏移·峰高4.2)
+	u["pos"] = DetMath.vlerp(from2d, land2d, pf)
+	u["_slam_voff"] = Vector3(0.0, DetMath.dsin(pf * PI) * 4.2, 0.0)     # 跳起弧线(render偏移·峰高4.2)
 
 ## `dt` = 举锤那一刻 `_resolve_dmg` 定下的伤害类型。锤子在空中飞 ~1.5 秒, 期间全局
 ## `battle._last_dmg_type` 会被场上任何一发伤害覆写 ⇒ 落地时飘字捡别人的颜色
@@ -306,8 +306,8 @@ func _two_head_fusion_wave(u: Dictionary, tgt: Dictionary, is_true: bool) -> voi
 func _two_head_wave_step(pf: float, wv, from2d: Vector2, to2d: Vector2) -> void:
 	if not is_instance_valid(wv):
 		return
-	wv.position = battle._world_pos(from2d.lerp(to2d, pf), lerpf(1.0, 1.15, pf))
-	wv.scale = Vector3.ONE * lerpf(0.7, 1.15, pf)
+	wv.position = battle._world_pos(from2d.lerp(to2d, pf), DetMath.flerp(1.0, 1.15, pf))
+	wv.scale = Vector3.ONE * DetMath.flerp(0.7, 1.15, pf)
 
 func _two_head_fusion_wave_hit(u: Dictionary, tgt: Dictionary, is_true: bool, wv) -> void:
 	if is_instance_valid(wv):
@@ -380,8 +380,8 @@ func _two_head_retreat(u: Dictionary, et) -> void:
 	var from2d: Vector2 = u["pos"]
 	var away: Vector2 = Vector2.RIGHT
 	if et != null:
-		away = (from2d - et["pos"]).normalized()
-		if away.length() < 0.1: away = Vector2.RIGHT
+		away = DetMath.norm((from2d - et["pos"]))
+		if DetMath.vlen(away) < 0.1: away = Vector2.RIGHT
 	var dest: Vector2 = from2d + away * RETREAT_DIST                  # 切远程滑退距离(用户2026-07-11: 350→200码)
 	dest = ArenaShape.clamp_in(dest, battle.ARENA)
 	u["_slam"] = true
@@ -404,7 +404,7 @@ func _two_head_enhanced_basic(u: Dictionary, tgt: Dictionary, form: String) -> v
 			battle._damage._buff(tgt, "def", -ENH_ARMOR_DOWN, true, ENH_SEC)                                          # + 命中目标 -25% 护甲(4s·破甲)
 
 func _two_head_slide_step(pf: float, u: Dictionary, from2d: Vector2, dest: Vector2) -> void:
-	u["pos"] = from2d.lerp(dest, pf)
+	u["pos"] = DetMath.vlerp(from2d, dest, pf)
 
 func _two_head_slide_end(u: Dictionary) -> void:
 	u["_slam"] = false

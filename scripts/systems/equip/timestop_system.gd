@@ -421,15 +421,15 @@ static func ts_wave_at(t: float) -> Dictionary:
 			r_o = TS_OUT_EDGE_R * (1.0 - (1.0 - x) * (1.0 - x))
 		elif t >= TS_OUT_REACH + TS_OUT_HOLD:
 			var z: float = (t - TS_OUT_REACH - TS_OUT_HOLD) / maxf(0.001, TS_WAVE_OUT - TS_OUT_REACH - TS_OUT_HOLD)
-			r_o = lerpf(TS_OUT_EDGE_R, TS_WAVE_EDGE, z)
+			r_o = DetMath.flerp(TS_OUT_EDGE_R, TS_WAVE_EDGE, z)
 		w.merge({"r": r_o, "dir": -1.0, "a": 1.0,
 			"warp": 1.0, "violet": 1.0, "zoom": 1.0, "phase": "out"}, true)
 	elif t < t2:
 		var y: float = (t - t1) / TS_WAVE_VIOLET
-		w.merge({"r": TS_WAVE_EDGE, "dir": -1.0, "violet": 1.0, "zoom": lerpf(1.0, 0.4, y), "phase": "violet"}, true)
+		w.merge({"r": TS_WAVE_EDGE, "dir": -1.0, "violet": 1.0, "zoom": DetMath.flerp(1.0, 0.4, y), "phase": "violet"}, true)
 	elif t < t3:
 		var y2: float = (t - t2) / TS_WAVE_FLIP
-		w.merge({"r": TS_WAVE_EDGE, "dir": 1.0, "flip": 1.0, "zoom": lerpf(0.4, 0.3, y2), "phase": "flip"}, true)
+		w.merge({"r": TS_WAVE_EDGE, "dir": 1.0, "flip": 1.0, "zoom": DetMath.flerp(0.4, 0.3, y2), "phase": "flip"}, true)
 	elif t < t4:
 		var y3: float = (t - t3) / TS_WAVE_IN
 		## 收回: 匀速(参考 #030→#034 每帧收 ≈0.11 屏高, 看不出加减速)

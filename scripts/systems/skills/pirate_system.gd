@@ -84,13 +84,13 @@ func _pirate_rum_bottle(from2d: Vector2, from_h: float, to2d: Vector2, on_land: 
 	b.pixel_size = (46.0 * battle.WS) / float(maxi(1, bt.get_height()))
 	b.position = battle._world_pos(from2d, from_h)
 	battle._world.add_child(b)
-	var dur: float = clampf(from2d.distance_to(to2d) / 900.0, 0.4, 0.7)
+	var dur: float = clampf(DetMath.dist(from2d, to2d) / 900.0, 0.4, 0.7)
 	var tw = battle._reg_tween()
 	tw.bind_node(b)
 	tw.tween_method(func(p: float) -> void:
 		if not is_instance_valid(b): return
-		var flat: Vector2 = from2d.lerp(to2d, p)
-		var hh: float = from_h * (1.0 - p) + 2.4 * sin(PI * p) + 1.0   # 高抛物(船高抛给海盗)
+		var flat: Vector2 = DetMath.vlerp(from2d, to2d, p)
+		var hh: float = from_h * (1.0 - p) + 2.4 * DetMath.dsin(PI * p) + 1.0   # 高抛物(船高抛给海盗)
 		b.position = battle._world_pos(flat, maxf(0.4, hh))
 		if battle._cam != null:                                # 面向相机+屏幕内翻滚
 			var tf: Transform3D = b.global_transform
@@ -125,14 +125,14 @@ func _sk_pirate_volley(u: Dictionary, tgt) -> void:              # 海盗龟·�
 			if cand.is_empty(): return
 			var aim: Dictionary = cand[battle._battle_rng.randi() % cand.size()]   # 随机敌
 			## ★2026-10-04: 落点决定谁吃伤害 ⇒ 必须走战斗随机流(原来是全局 randf_range ⇒ 同一场重放会分岔, 回放 agent 实测海盗阵容 3 次分岔 2 次)
-			var land: Vector2 = aim["pos"] + Vector2(battle._battle_rng.randf_range(-32.0, 32.0), battle._battle_rng.randf_range(-32.0, 32.0))   # 落点略散=炮击手感
+			var land: Vector2 = aim["pos"] + Vector2(DetMath.rrange(battle._battle_rng, -32.0, 32.0), DetMath.rrange(battle._battle_rng, -32.0, 32.0))   # 落点略散=炮击手感
 			_pirate_ship_muzzle(ship2d, ship_h)                # 船炮口闪
 			_pirate_cannonball(ship2d, ship_h, land, func() -> void:   # 炮弹到点才结算(命中才跳)
 				battle._burst_vfx("res://assets/sprites/vfx/cannon-blast.png", land, 230.0, 0.3)
 				battle._shake(0.05)
 				battle._skill_ring(land, Color(1.0, 0.55, 0.3, 0.5), VOLLEY_RADIUS)   # 落点250码范围环
 				for o in battle._targeting._enemies_of(u):                        # 落点250码内: 0.5A+2%目标maxHp 物理(红)
-					if o.get("alive", false) and o["pos"].distance_to(land) <= VOLLEY_RADIUS:
+					if o.get("alive", false) and DetMath.dist(o["pos"], land) <= VOLLEY_RADIUS:
 						battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, VOLLEY_ATK_COEF, o) + int(o["maxHp"] * VOLLEY_MAXHP_PCT), Color("#ff4444")))
 			})
 
@@ -194,12 +194,12 @@ func _pirate_cannonball(from2d: Vector2, from_h: float, to2d: Vector2, on_land: 
 	ball.pixel_size = (28.0 * battle.WS) / float(maxi(1, ball.texture.get_height()))
 	ball.position = battle._world_pos(from2d, from_h)
 	battle._world.add_child(ball)
-	var dur: float = clampf(from2d.distance_to(to2d) / 950.0, 0.34, 0.62)
+	var dur: float = clampf(DetMath.dist(from2d, to2d) / 950.0, 0.34, 0.62)
 	var tw = battle._reg_tween()
 	tw.tween_method(func(p: float) -> void:
 		if not is_instance_valid(ball): return
-		var flat: Vector2 = from2d.lerp(to2d, p)
-		var hh: float = from_h * pow(1.0 - p, 1.7) + 1.2 * sin(PI * p)   # 抛物下落(先抛起再重力加速落地)
+		var flat: Vector2 = DetMath.vlerp(from2d, to2d, p)
+		var hh: float = from_h * DetMath.dpow(1.0 - p, 1.7) + 1.2 * DetMath.dsin(PI * p)   # 抛物下落(先抛起再重力加速落地)
 		ball.position = battle._world_pos(flat, maxf(0.1, hh))
 		if int(p * 20.0) % 3 == 0:   # 烟尾
 			var sm = battle._glow_bb(flat, maxf(0.2, hh), 16.0, Color(0.4, 0.38, 0.36, 0.5))
@@ -232,20 +232,20 @@ func _pirate_shotgun(u: Dictionary, tgt) -> void:
 	if aim == null:
 		return
 	var base_dir: Vector2 = aim["pos"] - u["pos"]
-	if base_dir.length() < 1.0:
+	if DetMath.vlen(base_dir) < 1.0:
 		base_dir = Vector2.RIGHT
-	base_dir = base_dir.normalized()
+	base_dir = DetMath.norm(base_dir)
 	battle._muzzle_flash(u["pos"], base_dir, Color("#ffd9a0"))
 	battle._skill_ring(u["pos"] + base_dir * 22.0, Color(1.0, 0.82, 0.4, 0.7), 26.0)
 	var half: float = deg_to_rad(SHOT_ARC_DEG * 0.5)        # 60度扇面=±30度
 	for i in range(SHOT_PELLETS):
 		var frac: float = (float(i) / 7.0) * 2.0 - 1.0      # -1..1 均分
-		var d: Vector2 = base_dir.rotated(half * frac)
+		var d: Vector2 = DetMath.rotated(base_dir, half * frac)
 		battle._ballistics._shotgun_pellet(u["pos"], u["pos"] + d * SHOT_RANGE, Color(1.0, 0.86, 0.5, 0.95), 0.72)   # 弹丸VFX(射程400·慢速用户2026-07-14)
 		var hit = battle._basic_first_blocker(u, d)                # 该方向路径第一敌(含蛋·障碍穿我方不挡)
-		if hit != null and hit["pos"].distance_to(u["pos"]) <= SHOT_RANGE:
+		if hit != null and DetMath.dist(hit["pos"], u["pos"]) <= SHOT_RANGE:
 			battle._damage._apply_damage_from(u, hit, battle._atk_dmg(u, SHOT_COEF, hit), Color("#ffd07a"))   # 0.5A物理
-			var pd: Vector2 = (hit["pos"] - u["pos"]).normalized()               # 40码轻击退(不用_knockback避免8连击飞震屏)
+			var pd: Vector2 = DetMath.norm((hit["pos"] - u["pos"]))               # 40码轻击退(不用_knockback避免8连击飞震屏)
 			hit["pos"] += pd * SHOT_KNOCK
 			hit["pos"] = ArenaShape.clamp_in(hit["pos"], battle.ARENA)
 			battle._vfx._hit_spark(hit)
@@ -258,10 +258,10 @@ func _pirate_ship_charge(ship, from2d: Vector2, from_h: float, to2d: Vector2, on
 	var tw = battle._reg_tween()
 	tw.tween_method(func(p: float) -> void:
 		if not is_instance_valid(ship): return
-		var flat: Vector2 = from2d.lerp(to2d, p)
-		var hh: float = lerpf(from_h, 0.7, p * p)          # 加速俯冲(重力式下沉)
+		var flat: Vector2 = DetMath.vlerp(from2d, to2d, p)
+		var hh: float = DetMath.flerp(from_h, 0.7, p * p)          # 加速俯冲(重力式下沉)
 		ship.position = battle._world_pos(flat, hh)
-		ship.scale = base_sc * lerpf(1.0, 1.7, p)          # 冲近变大(逼近感)
+		ship.scale = base_sc * DetMath.flerp(1.0, 1.7, p)          # 冲近变大(逼近感)
 		if int(p * 22.0) % 2 == 0:
 			_pirate_ship_wake(flat + Vector2(0.0, 10.0))   # 船尾水花航迹
 	, 0.0, 1.0, 1.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)   # 俯冲放慢(用户"再慢一点"·1.5s更有气势)
@@ -275,8 +275,8 @@ func _pirate_death_grapple(pirate: Dictionary, killer: Dictionary) -> void:
 	var from2d: Vector2 = pirate["pos"]
 	var kpos: Vector2 = killer["pos"]
 	var dir: Vector2 = from2d - kpos
-	if dir.length() < 1.0: dir = Vector2.RIGHT
-	dir = dir.normalized()
+	if DetMath.vlen(dir) < 1.0: dir = Vector2.RIGHT
+	dir = DetMath.norm(dir)
 	var htex = load("res://assets/sprites/vfx/grapple-hook.png")
 	var hook = Sprite3D.new()
 	hook.texture = htex; hook.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
@@ -284,14 +284,14 @@ func _pirate_death_grapple(pirate: Dictionary, killer: Dictionary) -> void:
 	hook.pixel_size = (50.0 * battle.WS) / float(maxi(1, htex.get_height()))
 	hook.position = battle._world_pos(from2d, 1.0)
 	battle._world.add_child(hook)
-	var throw_dur: float = clampf(from2d.distance_to(kpos) / 1500.0, 0.16, 0.34)
+	var throw_dur: float = clampf(DetMath.dist(from2d, kpos) / 1500.0, 0.16, 0.34)
 	var ct = [0.0]
 	var pk: Dictionary = pirate; var kk: Dictionary = killer
 	var tw = battle._reg_tween()
 	tw.bind_node(hook)
 	tw.tween_method(func(p: float) -> void:   # ① 甩钩爪飞向击杀者(带链条拖尾)
 		if not is_instance_valid(hook): return
-		var hp2: Vector2 = from2d.lerp(kpos, p)
+		var hp2: Vector2 = DetMath.vlerp(from2d, kpos, p)
 		hook.position = battle._world_pos(hp2, 1.0)
 		battle._face_screen_dir(hook, from2d, kpos)
 		ct[0] += 0.02
@@ -312,13 +312,13 @@ func _pirate_death_grapple(pirate: Dictionary, killer: Dictionary) -> void:
 		pull.bind_node(hook)
 		pull.tween_method(func(q: float) -> void:
 			if not kk.get("alive", false): return
-			kk["pos"] = kstart.lerp(dest, q)
+			kk["pos"] = DetMath.vlerp(kstart, dest, DetMath.tween_ease(q, Tween.TRANS_QUAD, Tween.EASE_IN))
 			if is_instance_valid(hook): hook.position = battle._world_pos(kk["pos"], 1.0)
 			ct2[0] += 0.02
 			if ct2[0] >= 0.05:
 				ct2[0] = 0.0
 				_pirate_chain(from2d, kk["pos"])
-		, 0.0, 1.0, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		, 0.0, 1.0, 0.3)
 		pull.tween_callback(func() -> void:   # ③ 到位: 真伤+爆炸
 			if is_instance_valid(hook): hook.queue_free()
 			_pirate_grapple_hit(pk, kk)))
@@ -326,7 +326,7 @@ func _pirate_death_grapple(pirate: Dictionary, killer: Dictionary) -> void:
 ## 钩索拉回的终点: 尸位方向 90 码处(clamp 进场)。纯几何, 供演出和测试共用。
 func _pirate_grapple_dest(pirate_pos: Vector2, killer_pos: Vector2) -> Vector2:
 	var dir: Vector2 = (pirate_pos - killer_pos)
-	dir = dir.normalized() if dir.length() > 0.001 else Vector2.RIGHT
+	dir = DetMath.norm(dir) if DetMath.vlen(dir) > 0.001 else Vector2.RIGHT
 	var dest: Vector2 = pirate_pos - dir * HOOK_DEST_DIST
 	dest = ArenaShape.clamp_in(dest, battle.ARENA)
 	return dest
@@ -375,13 +375,13 @@ func _pirate_ship_splash(pos2d: Vector2) -> void:   # 撞击大水花爆(青白�
 	for i in range(12):   # 飞溅水珠(向外+抛物上飞)
 		var ang: float = TAU * float(i) / 12.0 + randf_range(-0.25, 0.25)
 		var drop = battle._glow_bb(pos2d, 0.4, 16.0, Color(0.9, 0.97, 1.0, 0.95))
-		var dest2d: Vector2 = pos2d + Vector2(cos(ang), sin(ang)) * randf_range(70.0, 180.0)
+		var dest2d: Vector2 = pos2d + Vector2(DetMath.dcos(ang), DetMath.dsin(ang)) * randf_range(70.0, 180.0)
 		var peak: float = randf_range(1.6, 3.2)
 		var dtw = battle._reg_tween()
 		dtw.bind_node(drop)
 		dtw.tween_method(func(p: float) -> void:
 			if not is_instance_valid(drop): return
-			drop.position = battle._world_pos(pos2d.lerp(dest2d, p), 0.4 + peak * sin(PI * p))
+			drop.position = battle._world_pos(pos2d.lerp(dest2d, p), 0.4 + peak * DetMath.dsin(PI * p))
 		, 0.0, 1.0, 0.48).set_trans(Tween.TRANS_SINE)
 		dtw.parallel().tween_property(drop, "material_override:albedo_color", Color(0.9, 0.97, 1.0, 0.0), 0.48)
 		dtw.chain().tween_callback(drop.queue_free)

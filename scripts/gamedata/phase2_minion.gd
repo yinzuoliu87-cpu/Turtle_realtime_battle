@@ -33,7 +33,7 @@ const BACK_ATK_MULT := 1.5     # 后排射击
 
 ## Lv 复利系数 ×1.05^(level-1).
 static func level_mult(level: int) -> float:
-	return pow(LEVEL_MULT, maxi(0, level - 1))
+	return DetMath.dpow(LEVEL_MULT, maxi(0, level - 1))
 
 
 ## 小将立绘路径选取 (精英→精英皮 / 前排→砍皮 / 后排→射皮). 单一来源:

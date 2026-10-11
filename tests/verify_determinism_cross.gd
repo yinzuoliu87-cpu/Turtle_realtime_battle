@@ -111,62 +111,9 @@ func _fp(scene) -> String:
 	return SC.fp(scene)   # ★两个门禁共用一份(见 `_det_scenarios.fp` 头注: 位模式, 不走 %.Nf)
 
 
-## 跑一个场景 → 返回 [摘要, 逐步指纹数组, 不同指纹数, 累计承伤]
+## 跑一个场景 → 返回 [摘要, 逐步指纹数组, 不同指纹数, 累计承伤]。建场在 `_det_scenarios.run`(与 verify_determinism_ulp 共用)。
 func _run(sc: Dictionary) -> Array:
-	RB.DEBUG_EDIT = true
-	var s = RB.new()
-	add_child(s)
-	await get_tree().process_frame
-	await get_tree().process_frame
-	s._debug._edit_clear()
-	var lo: Dictionary = sc.get("loadouts", {})
-	if not lo.is_empty():
-		var gs2 = get_node_or_null("/root/GameState")
-		if gs2 != null:
-			for k in lo:
-				gs2.loadouts[str(k)] = int(lo[k])
-	s._edit_dummy_killable = true
-	s._edit_dummy_hp = 40000.0
-	s._edit_full_energy = true
-	for p in (sc["pairs"] as Array):
-		var pid: String = str(p[0])
-		if pid.begins_with("__minion__"):
-			var bits: PackedStringArray = pid.split(":")
-			s._edit_minion_role = str(bits[1]) if bits.size() > 1 else "front"
-			pid = "__minion__"
-		var u: Dictionary = s._debug._edit_place_unit(pid, str(p[1]),
-			Vector2(float(p[2]), float(p[3])))
-		if (p[4] as Array).size() > 0:
-			var el: Array = []
-			for e in (p[4] as Array):
-				el.append({"id": str(e), "star": 3})
-			u["_edit_equips"] = el
-		## 第 6 项 = 给右队假人恢复真实主动技(见 `_det_scenarios.gd` 的说明)。
-		## ★两个消费者**必须一字不差地同样处理** —— 处理方式分家 = 两边跑的不是同一局,
-		##   而金标是拿这边跑出来的(memory `fb-hand-rolled-copies-drift`)。
-		if (p as Array).size() > 5 and bool(p[5]):
-			u["active_skills"] = s._resolve_active_skills(pid, false)
-			u["skill_idx"] = 0
-	s._debug._edit_start_battle()
-	var tr: Array = []
-	for _i in range(int(sc["frames"])):
-		await get_tree().process_frame
-		tr.append(_fp(s))
-	var taken := 0.0
-	for u2 in s._units:
-		taken += float(u2.get("_st_taken", 0.0))
-	s.queue_free()
-	await get_tree().process_frame
-	await get_tree().process_frame
-	var uniq := {}
-	for f in tr:
-		uniq[str(f)] = true
-	## ★摘要用 SHA-256 而不是"取前几步" —— 取前几步会把后半局的分叉整段漏掉。
-	var ctx := HashingContext.new()
-	ctx.start(HashingContext.HASH_SHA256)
-	for f2 in tr:
-		ctx.update(str(f2).to_utf8_buffer())
-	return [(ctx.finish() as PackedByteArray).hex_encode(), tr, uniq.size(), taken]
+	return await SC.run(self, sc)
 
 
 func _ready() -> void:

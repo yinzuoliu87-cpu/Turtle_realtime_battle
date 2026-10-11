@@ -312,7 +312,7 @@ func _eq_ballast_brick(src: Dictionary, tgt: Dictionary, si: int, basic: bool = 
 	for o in battle._targeting._enemies_of(src):
 		if is_same(o, tgt) or not o.get("alive", false):
 			continue
-		var d: float = (o["pos"] - tgt["pos"]).length()
+		var d: float = DetMath.vlen((o["pos"] - tgt["pos"]))
 		if d > BRICK_SPLASH_R:
 			continue
 		## ★伤害跟冲击环走(2026-08-11 用户: 「主要是炸开一道环, 环碰到敌人才跳伤害」):
@@ -442,7 +442,7 @@ func _cream_on_break(holder: Dictionary, si: int, reason: String, carrier = null
 	for o in battle._targeting._enemies_of(holder):
 		if not o.get("alive", false):
 			continue
-		if (o["pos"] - holder["pos"]).length() > CREAM_BURST_R:
+		if DetMath.vlen((o["pos"] - holder["pos"])) > CREAM_BURST_R:
 			continue
 		battle._damage._apply_damage_from(holder, o,
 			battle._resolve_dmg(holder, dmg, o, true), Color("#fff0c8"), 0.0, false, true)
@@ -561,7 +561,7 @@ func _box_form_tick(u: Dictionary, si: int, stt: Dictionary, delta: float) -> vo
 	# ── 嘲讽: 每帧重新施加短时长 ⇒ 敌人走出 550 码就自然掉 ──
 	var tl: Array = []
 	for o in battle._targeting._enemies_of(u):
-		if o.get("alive", false) and (o["pos"] - u["pos"]).length() <= BOX_TAUNT_PX:
+		if o.get("alive", false) and DetMath.vlen((o["pos"] - u["pos"])) <= BOX_TAUNT_PX:
 			tl.append(o)
 	if not tl.is_empty():
 		battle._taunt(u, tl, BOX_TAUNT_SEC)
@@ -615,7 +615,7 @@ func _box_basic_tick(u: Dictionary, delta: float) -> void:
 	var tgt = battle._targeting._acquire_target(u)
 	if not (tgt is Dictionary) or not (tgt as Dictionary).get("alive", false):
 		return
-	if ((tgt as Dictionary)["pos"] - u["pos"]).length() > battle._eff_range(u):
+	if DetMath.vlen(((tgt as Dictionary)["pos"] - u["pos"])) > battle._eff_range(u):
 		return
 	u["_box_cd"] = float(u.get("atk_interval", 1.2)) / maxf(0.1, float(u.get("aspd_perm", 1.0)))
 	box_hit(u, tgt)
@@ -661,7 +661,7 @@ func box_field_pulse(u: Dictionary, si: int) -> void:
 	var energy: float = [2.0, 4.0, 6.0][si]       # 每秒给 2/4/6 龟能
 	var n := 0
 	for o in battle._targeting._allies_of(u, true):
-		if not o.get("alive", false) or (o["pos"] - c).length() > BOX_FIELD_PX:
+		if not o.get("alive", false) or DetMath.vlen((o["pos"] - c)) > BOX_FIELD_PX:
 			continue
 		battle._damage._heal(o, heal)
 		_eq._eq_grant_energy(o, energy)

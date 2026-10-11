@@ -29,12 +29,12 @@ func _dragon_unleash(u: Dictionary, si: int, start: Vector2, end: Vector2, dir: 
 	##   与 031 水晶球B 同一条路(「结算走 sim 时钟, 不走 tween」)。
 	for o in battle._targeting._enemies_of(u):
 		if battle._on_line(start, dir, o["pos"], BREATH_HALF_W):
-			var d_e: float = clampf((o["pos"] - start).dot(dir) / total, 0.0, 1.0) * dur
+			var d_e: float = clampf(DetMath.dot((o["pos"] - start), dir) / total, 0.0, 1.0) * dur
 			battle._equip_tick_sys.schedule(d_e,
 				_dragon_hit_enemy.bind(u, o, si, expl, burn_tex))
 	for o in battle._targeting._allies_of(u):
 		if battle._on_line(start, dir, o["pos"], BREATH_HALF_W):
-			var d_a: float = clampf((o["pos"] - start).dot(dir) / total, 0.0, 1.0) * dur
+			var d_a: float = clampf(DetMath.dot((o["pos"] - start), dir) / total, 0.0, 1.0) * dur
 			battle._equip_tick_sys.schedule(d_a, _dragon_heal_ally.bind(u, o, si))
 
 # 火柱扫到敌人那一刻: 魔法伤害+灼烧+金爆+着火 (同步, 数字跟火柱一起)
@@ -85,7 +85,7 @@ func _dragon_windup(pos2d: Vector2) -> void:
 
 func _dragon_fly_step(p: float, spr: Sprite3D, start2d: Vector2, end2d: Vector2) -> void:
 	if is_instance_valid(spr):
-		spr.position = battle._world_pos(start2d.lerp(end2d, p), lerpf(2.9, 3.5, clampf(p * 2.5, 0.0, 1.0)) + sin(p * PI) * 0.18)
+		spr.position = battle._world_pos(start2d.lerp(end2d, p), DetMath.flerp(2.9, 3.5, clampf(p * 2.5, 0.0, 1.0)) + DetMath.dsin(p * PI) * 0.18)
 
 func _dragon_flap_frame(v: float, spr: Sprite3D) -> void:
 	if is_instance_valid(spr):
@@ -124,8 +124,8 @@ func _dragon_mouth_jet(start2d: Vector2, end2d: Vector2, dur: float) -> void:
 	var n := 30
 	for i in range(n):
 		var p: float = float(i) / float(n)
-		var col_pos: Vector2 = start2d.lerp(end2d, p)               # 火柱落点=龙嘴正下方(在掠射线上)
-		var top_h: float = lerpf(2.9, 3.5, clampf(p * 2.5, 0.0, 1.0)) + 0.25   # 火柱顶=龙嘴高度
+		var col_pos: Vector2 = DetMath.vlerp(start2d, end2d, p)               # 火柱落点=龙嘴正下方(在掠射线上)
+		var top_h: float = DetMath.flerp(2.9, 3.5, clampf(p * 2.5, 0.0, 1.0)) + 0.25   # 火柱顶=龙嘴高度
 		var tw = battle._reg_tween()
 		tw.tween_interval(p * dur * 0.95)
 		tw.tween_callback(battle._spawn_fire_pillar.bind(burn, col_pos, top_h))
@@ -158,11 +158,11 @@ func _spawn_fire_dragon(start2d: Vector2, end2d: Vector2, dur: float) -> void:
 		var tf = battle._reg_tween()                       # 振翅: 乒乓循环5帧(~4次/秒)
 		tf.tween_method(_dragon_flap_frame.bind(d), 0.0, 32.0 * dur, dur)
 	var burn: Texture2D = load("res://assets/sprites/vfx/dragon-flame.png")
-	var perp: Vector2 = (end2d - start2d).orthogonal().normalized()
+	var perp: Vector2 = DetMath.norm((end2d - start2d).orthogonal())
 	for i in range(1, 19):                           # 燃烧带: 沿线真像素火, 大小/横向随机=有机火带(非机械等距), 龙飞到才点燃
 		var f: float = float(i) / 19.0
 		var jit: Vector2 = perp * randf_range(-28.0, 28.0)
-		battle._delayed_ground_fire(start2d.lerp(end2d, f) + jit, burn, randf_range(74.0, 128.0), f * dur * 0.9)
+		battle._delayed_ground_fire(DetMath.vlerp(start2d, end2d, f) + jit, burn, randf_range(74.0, 128.0), f * dur * 0.9)
 	_dragon_mouth_jet(start2d, end2d, dur)           # 龙嘴喷火(从嘴喷向地面)
 
 

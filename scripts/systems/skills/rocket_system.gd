@@ -29,7 +29,7 @@ func _rocket_charge_vfx(u: Dictionary, aim: Vector2) -> void:
 		battle._pending_shots.append({"delay": 0.15 + float(i) * 0.13, "src": u, "fn": func() -> void:
 			if not uu.get("alive", false) or not battle.is_inside_tree(): return
 			var ang: float = float(idx) * 0.92 + 0.5
-			var from2: Vector2 = muzzle + Vector2(cos(ang), sin(ang)) * 58.0
+			var from2: Vector2 = muzzle + Vector2(DetMath.dcos(ang), DetMath.dsin(ang)) * 58.0
 			var gl := Sprite3D.new()
 			gl.texture = VfxTex._make_glow_texture()
 			gl.billboard = BaseMaterial3D.BILLBOARD_ENABLED; gl.shaded = false; gl.transparent = true
@@ -66,10 +66,10 @@ func _rocket_muzzle_flash(u: Dictionary, muzzle: Vector2, aim: Vector2) -> void:
 	flt.chain().tween_callback(fl.queue_free)
 	for k in range(3):                                  # 锥形喷火(3条·中间最长)
 		var spread: float = (float(k) - 1.0) * 0.32
-		var d2: Vector2 = aim.rotated(spread)
+		var d2: Vector2 = DetMath.rotated(aim, spread)
 		battle._bolt_line(muzzle, muzzle + d2 * (108.0 - absf(spread) * 130.0), Color(1.0, 0.85, 0.5, 0.85 - absf(spread) * 0.55))
 	for k2 in range(7):                                 # 火星前喷(锥内散开·抛物淡出)
-		var a2: Vector2 = aim.rotated(randf_range(-0.5, 0.5))
+		var a2: Vector2 = DetMath.rotated(aim, randf_range(-0.5, 0.5))
 		var reach: float = randf_range(45.0, 95.0)
 		var sp := Sprite3D.new()
 		sp.texture = VfxTex._make_glow_texture()
@@ -82,7 +82,7 @@ func _rocket_muzzle_flash(u: Dictionary, muzzle: Vector2, aim: Vector2) -> void:
 		var spt = battle._reg_tween(); spt.set_parallel(true)
 		spt.bind_node(sp)
 		spt.tween_method(func(t: float) -> void:
-			if is_instance_valid(sp): sp.position = battle._world_pos(muzzle.lerp(dest, t), 0.95 + 0.25 * sin(t * PI))
+			if is_instance_valid(sp): sp.position = battle._world_pos(muzzle.lerp(dest, t), 0.95 + 0.25 * DetMath.dsin(t * PI))
 		, 0.0, 1.0, 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		spt.tween_property(sp, "modulate:a", 0.0, 0.28)
 		spt.chain().tween_callback(sp.queue_free)
@@ -90,7 +90,7 @@ func _rocket_muzzle_flash(u: Dictionary, muzzle: Vector2, aim: Vector2) -> void:
 	var base: Vector2 = uu["pos"]
 	var kt = battle._reg_tween()
 	kt.tween_method(func(t: float) -> void:
-		if uu.get("alive", false): uu["pos"] = base - aim * (5.0 * sin(t * PI))
+		if uu.get("alive", false): uu["pos"] = base - aim * (5.0 * DetMath.dsin(t * PI))
 	, 0.0, 1.0, 0.16)
 
 # 尾焰喷团: 白热→橙→烟灰·膨胀淡出 (导弹每~0.022s在尾部丢一团→连成推进尾迹)
@@ -149,7 +149,7 @@ func _rocket_smoke_plume(center: Vector2) -> void:
 			var a: float = (t / 0.18) if t < 0.18 else (1.0 - (t - 0.18) / 0.82)
 			smref.modulate.a = clampf(a, 0.0, 1.0) * peak
 			smref.position = battle._world_pos(cc, 0.6 + rise * t)
-			smref.scale = Vector3.ONE * lerpf(s0, s1, t)
+			smref.scale = Vector3.ONE * DetMath.flerp(s0, s1, t)
 		, 0.0, 1.0, 1.5)
 		mt.tween_callback(sm.queue_free)
 

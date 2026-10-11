@@ -131,7 +131,7 @@ func _rainbow_storm_tick(u: Dictionary, center: Vector2, radius: float, ti: int)
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false):
 			continue
-		if o["pos"].distance_to(center) <= radius:
+		if DetMath.dist(o["pos"], center) <= radius:
 			battle._damage._buff(o, "def", -STORM_SHRED, true, 0.65)   # 圈内-20%护甲
 			battle._damage._buff(o, "mr", -STORM_SHRED, true, 0.65)    # 圈内-20%魔抗
 			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, STORM_MAGIC_COEF, o, true), Color("#ff8ad8"))
@@ -139,7 +139,7 @@ func _rainbow_storm_tick(u: Dictionary, center: Vector2, radius: float, ti: int)
 			battle._storm_shred(o)   # ★碎甲: 把"削护甲魔抗"可视化
 	# 圈内友军: 每跳回0.25ATK (用户2026-07-28加强: 风暴从纯AOE→攻防一体的团队站场区)
 	for a in battle._targeting._allies_of(u):
-		if a.get("alive", false) and a["pos"].distance_to(center) <= radius:
+		if a.get("alive", false) and DetMath.dist(a["pos"], center) <= radius:
 			battle._damage._heal(a, u["atk"] * STORM_ALLY_HEAL)
 
 # 碎甲: 削防御的可视化(AI棱镜碎片爆在敌人身上)

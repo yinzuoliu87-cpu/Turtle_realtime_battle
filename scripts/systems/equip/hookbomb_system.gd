@@ -151,7 +151,7 @@ func _hb_targets(u: Dictionary, n: int) -> Array:
 		if float(o.get("hookbomb_pct", 0.0)) > 0.0:
 			continue                                   # 已经挂着弹, 不重复挂
 		cand.append(o)
-	cand.sort_custom(func(a, b): return (a["pos"] - u["pos"]).length_squared() < (b["pos"] - u["pos"]).length_squared())
+	cand.sort_custom(func(a, b): return DetMath.len2((a["pos"] - u["pos"])) < DetMath.len2((b["pos"] - u["pos"])))
 	return cand.slice(0, maxi(0, n))
 
 
@@ -240,10 +240,10 @@ func _hb_detonate(carrier: Dictionary, si: int, epicenter_in = null, husk_in = n
 		# ① 触须高速爆出→抓住→【全程连着】直到炸开(hold 覆盖 眩晕+绷紧+拖拽)
 		#   ★根部【扇开】: 全从同一点出发的话, n 条满宽触手在根部会叠成一整块紫板(实拍确认)。
 		#     各自从伤口边缘偏出去一点, 方向按自己的朝向左右交替 —— 一蓬, 不是一坨。
-		var away: Vector2 = ((o["pos"] as Vector2) - epi).normalized()
-		if away.length() < 0.5:
+		var away: Vector2 = DetMath.norm(((o["pos"] as Vector2) - epi))
+		if DetMath.vlen(away) < 0.5:
 			away = Vector2.RIGHT
-		var root2d: Vector2 = epi + away.rotated(0.62 if (i % 2) == 0 else -0.62) * 17.0
+		var root2d: Vector2 = epi + DetMath.rotated(away, 0.62 if (i % 2) == 0 else -0.62) * 17.0
 		_tendril_shoot(root2d, o, i, PULL_STUN + 0.08 + dur)
 		_pull_over_time(o, dest, dur)                                # ② 恒速拖回震中
 	# ③ 聚拢后一次爆炸 —— 走 sim 定时器, 不是 tween
@@ -279,7 +279,7 @@ func _hb_blast(carrier: Dictionary, list: Array, si: int, epi: Vector2) -> int:
 		battle._damage._apply_damage_from(carrier, o, dmg, Color("#ff5a2a"), 0.0, false, true, false, false, true)
 		battle._equip_sys.tally.pop(_tp)
 		var ang: float = TAU * float(oi) / maxf(1.0, float(list.size())) - PI * 0.5
-		var off := Vector2(cos(ang), sin(ang)) * 108.0 + Vector2(0.0, -30.0)   # ★108: 62 挡不住大字号的 800 互相压
+		var off := Vector2(DetMath.dcos(ang), DetMath.dsin(ang)) * 108.0 + Vector2(0.0, -30.0)   # ★108: 62 挡不住大字号的 800 互相压
 		var pp: Vector2 = (o["pos"] as Vector2) + off
 		var dd: int = dmg
 		_pending.append({"t": 0.035 * float(oi), "fn": func():
@@ -314,7 +314,7 @@ func _hb_blast(carrier: Dictionary, list: Array, si: int, epi: Vector2) -> int:
 ##   已经比聚拢半径近的, 就该原地不动。
 func _hb_pull_dest_at(epi: Vector2, from_pos: Vector2) -> Vector2:
 	var d: Vector2 = from_pos - epi
-	var dist: float = d.length()
+	var dist: float = DetMath.vlen(d)
 	if dist <= PULL_GATHER_R:
 		return from_pos            # 已经够近 —— 触须不会把你往外顶
 	return epi + (d / dist) * PULL_GATHER_R
@@ -322,7 +322,7 @@ func _hb_pull_dest_at(epi: Vector2, from_pos: Vector2) -> Vector2:
 
 ## 这一拉要花多久 = 实际位移 / 恒定收缩速度。
 func _hb_pull_dur(from_pos: Vector2, dest: Vector2) -> float:
-	return clampf(from_pos.distance_to(dest) / PULL_SPEED, PULL_DUR_MIN, PULL_DUR_MAX)
+	return clampf(DetMath.dist(from_pos, dest) / PULL_SPEED, PULL_DUR_MIN, PULL_DUR_MAX)
 
 
 
@@ -375,12 +375,12 @@ func _convulse(o: Dictionary) -> void:
 		if spr2 == null:
 			return
 		# 抖动频率与幅度都随 t 升高: 前半段是"痉挛", 后半段是"绷不住了"
-		var amp: float = lerpf(1.2, 7.0, t * t) * battle.WS
-		var freq: float = lerpf(26.0, 64.0, t)
+		var amp: float = DetMath.flerp(1.2, 7.0, t * t) * battle.WS
+		var freq: float = DetMath.flerp(26.0, 64.0, t)
 		var ph: float = battle._t * freq
-		(spr2 as Node3D).position = base_pos + Vector3(sin(ph) * amp, absf(cos(ph * 1.7)) * amp * 0.6, 0.0)
+		(spr2 as Node3D).position = base_pos + Vector3(DetMath.dsin(ph) * amp, absf(DetMath.dcos(ph * 1.7)) * amp * 0.6, 0.0)
 		# 越来越胀、越来越红(生物质在里面涨)
-		var g: float = lerpf(1.0, 1.34, t * t)
+		var g: float = DetMath.flerp(1.0, 1.34, t * t)
 		(spr2 as Node3D).scale = Vector3(base_sc.x * g, base_sc.y * g, base_sc.z)
 		if spr2 is GeometryInstance3D:
 			(spr2 as Sprite3D).modulate = Color(1.0, 1.0, 1.0).lerp(Color(1.0, 0.30, 0.26), t)
@@ -419,9 +419,9 @@ func _biomass_spray(epi: Vector2) -> void:
 		return
 	for i in range(SPRAY_N):
 		# 角度确定性错开(不是 randf —— rng_discipline 门禁: sim/演出里不许裸随机)
-		var a: float = TAU * float(i) / float(SPRAY_N) + sin(float(i) * 2.7) * 0.22
-		var reach: float = SPRAY_LEN * (0.62 + absf(sin(float(i) * 1.9)) * 0.55)
-		var tip: Vector2 = epi + Vector2(cos(a), sin(a)) * reach
+		var a: float = TAU * float(i) / float(SPRAY_N) + DetMath.dsin(float(i) * 2.7) * 0.22
+		var reach: float = SPRAY_LEN * (0.62 + absf(DetMath.dsin(float(i) * 1.9)) * 0.55)
+		var tip: Vector2 = epi + Vector2(DetMath.dcos(a), DetMath.dsin(a)) * reach
 		var idx2: int = i
 		var tw = battle._reg_tween()
 		tw.tween_interval(0.012 * float(i))         # 逐条错峰 = 一蓬炸开, 不是齐刷刷
@@ -488,8 +488,8 @@ func _fireball(epi: Vector2, r_yards: float, life: float) -> void:
 		imesh.clear_surfaces()
 		var t: float = q * life
 		# 胀开: 极快起势(0.12 秒到八成)再缓慢外扩 —— 爆炸的力量感全在这条曲线上
-		var grow: float = (1.0 - pow(1.0 - clampf(t / 0.12, 0.0, 1.0), 3.0)) * 0.80 + q * 0.34
-		var fade: float = clampf(1.0 - pow(q, 1.35), 0.0, 1.0)   # 收得快一点: 爆炸是一瞬, 不是一直烧
+		var grow: float = (1.0 - DetMath.dpow(1.0 - clampf(t / 0.12, 0.0, 1.0), 3.0)) * 0.80 + q * 0.34
+		var fade: float = clampf(1.0 - DetMath.dpow(q, 1.35), 0.0, 1.0)   # 收得快一点: 爆炸是一瞬, 不是一直烧
 		var cy: float = R * grow * FIRE_SQUASH * 0.92      # 球心抬到半高 ⇒ 底边刚好坐在地上
 		var c0: Vector3 = battle._world_pos(epi, cy)
 		var to_cam: Vector3 = (battle._cam.global_position - c0).normalized()
@@ -503,8 +503,8 @@ func _fireball(epi: Vector2, r_yards: float, life: float) -> void:
 			var inner: bool = li == FIRE_LOBES
 			var la: float = TAU * float(li) / float(FIRE_LOBES) + t * 0.9
 			var lr: float = 0.0 if inner else R * grow * 0.44
-			var lc: Vector3 = c0 + (ax * cos(la) + ay * sin(la)) * lr
-			var rad: float = R * grow * (0.42 if inner else lerpf(0.50, 0.44, q))   # 肉块收小(别连成饼)/核放大(要看得见)
+			var lc: Vector3 = c0 + (ax * DetMath.dcos(la) + ay * DetMath.dsin(la)) * lr
+			var rad: float = R * grow * (0.42 if inner else DetMath.flerp(0.50, 0.44, q))   # 肉块收小(别连成饼)/核放大(要看得见)
 			# ★★2026-08-02 改配色(用户:「这是病毒的拉在一起，这个爆炸颜色和样式合适吗」):
 			#   整套设定是【病毒】—— 触手紫黑、尸壳病毒化、病毒巢紫肉, 唯独高潮炸出一团
 			#   汽油味的橙色火球, 观感是断的。这是我照搬"爆炸=火"的惯性, 没跟自己的设定走。
@@ -543,8 +543,8 @@ func _fireball(epi: Vector2, r_yards: float, life: float) -> void:
 					# 极径扰动: 火舌。相位随时间滚 ⇒ 在翻滚, 不是一个静止的圆
 						# ★轮廓也要改: 火舌是【圆润翻滚】的, 生物质是【尖锐撕裂】的。
 					#   加一条高频谐波(11 次)并抬高振幅 ⇒ 边缘长出肉刺, 不再是一团圆火。
-					var wob: float = 1.0 + sin(a * 3.0 + t * 5.5 + float(li)) * 0.30 						+ sin(a * 6.0 - t * 3.4 + float(li) * 2.1) * 0.17 						+ absf(sin(a * 11.0 + float(li) * 0.7)) * 0.22
-					var dirv: Vector3 = ax * cos(a) + ay * sin(a)
+					var wob: float = 1.0 + DetMath.dsin(a * 3.0 + t * 5.5 + float(li)) * 0.30 						+ DetMath.dsin(a * 6.0 - t * 3.4 + float(li) * 2.1) * 0.17 						+ absf(DetMath.dsin(a * 11.0 + float(li) * 0.7)) * 0.22
+					var dirv: Vector3 = ax * DetMath.dcos(a) + ay * DetMath.dsin(a)
 					var q0: Vector3 = lc + dirv * (rad * wob * r0)
 					var q1: Vector3 = lc + dirv * (rad * wob * r1)
 					if k > 0:
@@ -575,8 +575,8 @@ func _husk_writhe(spr, life: float) -> void:
 		if not is_instance_valid(spr):
 			return
 		var t: float = q * life
-		var jolt: float = sin(t * 21.0) * 0.09 + sin(t * 7.0) * 0.05     # 一颤一颤
-		var deflate: float = lerpf(1.0, 0.88, q)   # 轻微泄气 —— 用户要"尸体还在那", 瘪成 0.72 就不像尸体了
+		var jolt: float = DetMath.dsin(t * 21.0) * 0.09 + DetMath.dsin(t * 7.0) * 0.05     # 一颤一颤
+		var deflate: float = DetMath.flerp(1.0, 0.88, q)   # 轻微泄气 —— 用户要"尸体还在那", 瘪成 0.72 就不像尸体了
 		(spr as Node3D).scale = Vector3(base_sc.x * (deflate + jolt * 0.6), base_sc.y * (deflate - jolt), base_sc.z)
 		(spr as Sprite3D).modulate = Color(0.66, 0.46, 0.56).lerp(Color(0.44, 0.27, 0.36), q)   # 一路失血变暗, 但不变成触手色
 		(spr as Node3D).visible = true        # ★同上: 压住死亡淡出的 hide(), 尸体要留到聚拢引爆
@@ -640,9 +640,9 @@ func _hb_pulse(o: Dictionary) -> void:
 	if float(o.get("hookbomb_pct", 0.0)) <= 0.0:
 		return
 	var frac: float = clampf(float(o["hp"]) / maxf(1.0, float(o["maxHp"])), 0.0, 1.0)
-	var period: float = lerpf(0.11, 0.50, frac)          # 血越少拍越急
+	var period: float = DetMath.flerp(0.11, 0.50, frac)          # 血越少拍越急
 	var hot: Color = Color(1.0, 1.0, 1.0).lerp(Color(1.0, 0.42, 0.30), 1.0 - frac)
-	var big: float = lerpf(1.40, 1.16, frac)             # 血越少胀得越狠
+	var big: float = DetMath.flerp(1.40, 1.16, frac)             # 血越少胀得越狠
 	var uu: Dictionary = o
 	var tw = battle._reg_tween()
 	tw.tween_property(spr, "scale", Vector3(big, big, big), period * 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -663,7 +663,7 @@ func _hb_pulse(o: Dictionary) -> void:
 func _tendril_shoot(from2d: Vector2, tgt: Dictionary, idx: int, hold: float) -> void:
 	var tip_h: float = TENT_ANCHOR_H + float(tgt.get("height", 0.0))
 	var to2d: Vector2 = tgt["pos"]
-	var dist: float = from2d.distance_to(to2d)
+	var dist: float = DetMath.dist(from2d, to2d)
 	if dist < 6.0:
 		return
 	var tex: Texture2D = load(TEX_MINE) if ResourceLoader.exists(TEX_MINE) else null
@@ -690,7 +690,7 @@ func _tendril_shoot(from2d: Vector2, tgt: Dictionary, idx: int, hold: float) -> 
 	tw.bind_node(hook)
 	tw.tween_interval(0.02 * float(idx))          # 逐条错峰 = 一蓬触须炸开, 不是齐刷刷一条
 	tw.tween_method(func(p: float) -> void:
-		var cur: Vector2 = from2d.lerp(to2d, p)
+		var cur: Vector2 = DetMath.vlerp(from2d, to2d, p)
 		if is_instance_valid(hook):
 			hook.position = battle._world_pos(cur, tip_h)
 			battle._face_screen_dir(hook, from2d, to2d)
@@ -731,7 +731,7 @@ func _pull_over_time(o: Dictionary, dest: Vector2, dur: float) -> void:
 	tw.tween_method(func(q: float) -> void:
 		if not uu.get("alive", false):
 			return
-		uu["pos"] = start.lerp(dest, q)
+		uu["pos"] = DetMath.vlerp(start, dest, DetMath.tween_ease(q, Tween.TRANS_QUAD, Tween.EASE_IN))
 		# ★★只在【本来就有】_home_pos 时才更新 —— 绝不能凭空创建。
 		#   RealtimeBattle3DScene.gd 里有一段每帧无条件生效的归位:
 		#     if u.has("_home_pos") ... u["pos"] = pos.move_toward(_home_pos, 220*delta)
@@ -744,7 +744,7 @@ func _pull_over_time(o: Dictionary, dest: Vector2, dur: float) -> void:
 			uu["_home_pos"] = uu["pos"]
 		if int(q * 100.0) % 10 == 0:
 			_tendril_draw(dest, uu["pos"], 1.0, battle._t * 9.0)   # 拖拽途中触手持续连着
-	, 0.0, 1.0, dur).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	, 0.0, 1.0, dur)
 
 
 ## ★★病毒触手(用户 2026-08-01:「这个钩索也做的不好，干脆做成那种病毒触手的吧」)。
@@ -787,7 +787,7 @@ func _tendril_draw(from2d: Vector2, to2d: Vector2, t01: float, phase: float, tip
 	if battle._world == null or battle._cam == null:
 		return
 	var d: Vector2 = to2d - from2d
-	var dist: float = d.length()
+	var dist: float = DetMath.vlen(d)
 	if dist < 6.0:
 		return
 	var dir: Vector2 = d / dist
@@ -814,17 +814,17 @@ func _tendril_draw(from2d: Vector2, to2d: Vector2, t01: float, phase: float, tip
 	for i in range(TENT_SEGS + 1):
 		var f: float = float(i) / float(TENT_SEGS)
 		# 侧向蠕动: 根梢两端收紧(钉在两个身体上), 中段摆幅最大
-		var bend: float = sin(f * PI * 1.6 + phase) * TENT_BEND * (1.0 - f) * f * 4.0
+		var bend: float = DetMath.dsin(f * PI * 1.6 + phase) * TENT_BEND * (1.0 - f) * f * 4.0
 		var p2: Vector2 = from2d + dir * (f * reach) + perp * bend
 		# ★Y 方向拱起 —— 这一条是"立体"与"贴纸"的分界。两端锚在身体中心高度。
-		var h: float = lerpf(TENT_ANCHOR_H, tip_h, f) + sin(f * PI) * TENT_ARCH + sin(f * 9.0 + phase * 1.3) * 0.05
+		var h: float = DetMath.flerp(TENT_ANCHOR_H, tip_h, f) + DetMath.dsin(f * PI) * TENT_ARCH + DetMath.dsin(f * 9.0 + phase * 1.3) * 0.05
 		spine.append(battle._world_pos(p2, h))
 		# 有机鼓包: 粗细不是平滑锥形, 一节一节像肌肉
-		var bulge: float = 1.0 + sin(f * 11.0 + phase * 1.7) * TENT_BULGE
+		var bulge: float = 1.0 + DetMath.dsin(f * 11.0 + phase * 1.7) * TENT_BULGE
 		# ★出口【收颈】: 从伤口钻出来的那一小段是最细的, 出来一点才鼓成最粗。
 		#   不收颈 ⇒ 几条触手在根部都是满宽, 叠成一整块紫板(实拍确认)。
-		var neck: float = 1.0 if f > 0.12 else lerpf(0.42, 1.0, f / 0.12)
-		half.append(lerpf(TENT_W_ROOT, TENT_W_TIP, f * f) * bulge * neck * battle.WS)
+		var neck: float = 1.0 if f > 0.12 else DetMath.flerp(0.42, 1.0, f / 0.12)
+		half.append(DetMath.flerp(TENT_W_ROOT, TENT_W_TIP, f * f) * bulge * neck * battle.WS)
 
 	# ── ② 沿脊线铺【正对镜头】的管状带: 横截面 7 条, 暗边→肉→高光脊→肉→暗边
 	#     偏移方向 = 切线 × 指向相机 ⇒ 无论触手朝哪个方向, 看上去都一样粗(不再被 z 压扁)
@@ -914,7 +914,7 @@ func _virus_nest(epi: Vector2, life: float) -> void:
 		imesh.clear_surfaces()
 		var t: float = q * life
 		var grow: float = clampf(t / 0.14, 0.0, 1.0)                       # 破体而出: 瞬间涨开
-		var pulse: float = 1.0 + sin(t * 12.0) * 0.10 + sin(t * 5.0) * 0.05  # 搏动
+		var pulse: float = 1.0 + DetMath.dsin(t * 12.0) * 0.10 + DetMath.dsin(t * 5.0) * 0.05  # 搏动
 		var rr: float = NEST_R * grow * pulse * battle.WS
 		var c: Vector3 = battle._world_pos(epi, TENT_ANCHOR_H)
 		var to_cam: Vector3 = (battle._cam.global_position - c).normalized()
@@ -926,8 +926,8 @@ func _virus_nest(epi: Vector2, life: float) -> void:
 		var pts: Array[Vector3] = []
 		for k in range(NEST_SIDES):
 			var a: float = TAU * float(k) / float(NEST_SIDES)
-			var wob: float = 1.0 + sin(a * 3.0 + t * 2.4) * 0.30 + sin(a * 5.0 - t * 1.9) * 0.17
-			pts.append(c + (ax * cos(a) + ay * sin(a)) * (rr * wob))
+			var wob: float = 1.0 + DetMath.dsin(a * 3.0 + t * 2.4) * 0.30 + DetMath.dsin(a * 5.0 - t * 1.9) * 0.17
+			pts.append(c + (ax * DetMath.dcos(a) + ay * DetMath.dsin(a)) * (rr * wob))
 		var a_f: float = 0.95 * clampf((life - t) / 0.18, 0.0, 1.0)
 		var cc := TENT_EDGE;  cc.a = a_f
 		var ce := TENT_BODY;  ce.a = a_f
@@ -1023,11 +1023,12 @@ func _hb_counter_refresh(o: Dictionary) -> void:
 	##   ⇒ `Lambda capture at index N was freed` 从根上不再产生(见 `_convulse` 的长注释:
 	##   lambda 里的 `is_instance_valid` 只能防崩, 防不住那条错, 而那条错会把门禁弄红)。
 	tw.bind_node(lbl)
-	tw.tween_method(func(v: float) -> void:
+	tw.tween_method(func(q: float) -> void:
 		if not is_instance_valid(lbl):
 			return
+		var v: float = from_v + (to_v - from_v) * DetMath.tween_ease(q, Tween.TRANS_CUBIC, Tween.EASE_OUT)
 		uu["hookbomb_shown"] = v
 		lbl.text = str(int(round(v)))
-	, from_v, to_v, NUM_ROLL_SEC).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	, 0.0, 1.0, NUM_ROLL_SEC)
 	tw.parallel().tween_property(lbl, "scale", Vector3(1.22, 1.22, 1.22), NUM_ROLL_SEC * 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_property(lbl, "scale", Vector3.ONE, NUM_ROLL_SEC * 0.5).set_trans(Tween.TRANS_SINE)

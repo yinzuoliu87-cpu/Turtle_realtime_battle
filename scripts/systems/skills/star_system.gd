@@ -129,8 +129,8 @@ func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭�
 		dkt.tween_property(disk, "modulate:a", 0.0, 0.43).set_delay(1.43)
 		dkt.chain().tween_callback(disk.queue_free)
 		for o in es:                                             # 强化锚点②前奏: 敌人脚下指向中心的紫色拉力短痕
-			if not o.get("alive", false) or (o["pos"] as Vector2).distance_to(center) > WARP_RADIUS: continue
-			var pd: Vector2 = (center - (o["pos"] as Vector2)).normalized()
+			if not o.get("alive", false) or DetMath.dist((o["pos"] as Vector2), center) > WARP_RADIUS: continue
+			var pd: Vector2 = DetMath.norm((center - (o["pos"] as Vector2)))
 			battle._beam_vfx("res://assets/sprites/vfx/fx-trail.png", o["pos"], (o["pos"] as Vector2) + pd * 46.0, 14.0, Color(0.62, 0.42, 1.0, 0.5), 0.86, 0.06)
 	# ── 吸入(0→1.03s): 白色烟圈螺旋内收拖彗尾(EASE_IN先慢后快·同时到达) + 紫星尘被吸向中心
 	var wisp_n: int = 8 if charged else 6
@@ -145,7 +145,7 @@ func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭�
 		wisp.billboard = BaseMaterial3D.BILLBOARD_ENABLED; wisp.shaded = false; wisp.transparent = true
 		wisp.pixel_size = (34.0 * battle.WS) / 96.0
 		wisp.modulate = Color(1, 1, 1, 0.0)
-		wisp.position = battle._world_pos(center + Vector2(cos(a0), sin(a0)) * r0, h0)
+		wisp.position = battle._world_pos(center + Vector2(DetMath.dcos(a0), DetMath.dsin(a0)) * r0, h0)
 		battle._world.add_child(wisp)
 		var tail_i := [0]
 		var wt = battle._reg_tween()
@@ -154,7 +154,7 @@ func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭�
 			if not is_instance_valid(wisp): return
 			var rr: float = r0 * (1.0 - q)
 			var aa: float = a0 + q * 1.6
-			wisp.position = battle._world_pos(center + Vector2(cos(aa), sin(aa)) * rr, lerpf(h0, 0.9, q))
+			wisp.position = battle._world_pos(center + Vector2(DetMath.dcos(aa), DetMath.dsin(aa)) * rr, DetMath.flerp(h0, 0.9, q))
 			wisp.modulate.a = 0.85 * clampf(q / 0.12, 0.0, 1.0) * clampf((1.0 - q) / 0.15, 0.0, 1.0)   # 淡入淡出(有来处有去处)
 			tail_i[0] += 1
 			if tail_i[0] % 3 == 0:                               # 彗尾: 渐隐光点链
@@ -181,7 +181,7 @@ func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭�
 		dp.billboard = BaseMaterial3D.BILLBOARD_ENABLED; dp.shaded = false; dp.transparent = true
 		dp.pixel_size = 0.005
 		dp.modulate = Color(0.8, 0.65, 1.0, 0.75)
-		dp.position = battle._world_pos(center + Vector2(cos(da), sin(da)) * randf_range(140.0, 470.0), randf_range(0.1, 0.6))
+		dp.position = battle._world_pos(center + Vector2(DetMath.dcos(da), DetMath.dsin(da)) * randf_range(140.0, 470.0), randf_range(0.1, 0.6))
 		battle._world.add_child(dp)
 		var dpt = battle._reg_tween(); dpt.set_parallel(true)
 		dpt.tween_property(dp, "position", battle._world_pos(center, 0.85), 0.38).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
@@ -203,7 +203,7 @@ func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭�
 		var victims: Array = []
 		for o2 in battle._targeting._enemies_of(uu):                               # 爆发帧结算(同帧飘字·封板0.8A魔法)
 			if not o2.get("alive", false): continue
-			if (o2["pos"] as Vector2).distance_to(center) > WARP_RADIUS: continue
+			if DetMath.dist((o2["pos"] as Vector2), center) > WARP_RADIUS: continue
 			battle._damage._apply_damage_from(uu, o2, battle._atk_dmg(uu, WARP_ATK_COEF, o2, true), Color("#b09bff"))
 			battle._vfx._hit_spark(o2)
 			victims.append(o2)
@@ -255,7 +255,7 @@ func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭�
 			var mvt = battle._reg_tween()                              # 真抛物线弧: 水平匀速直线(linear无缓动)+竖直重力=被甩飞过中心点(用户2026-07-16"很真实的被重力拖拽·飞过中心点·落到对端后回复行动"→无定身, 落地即自由; airborne期分离/AI本就不生效)
 			mvt.tween_method(func(q: float) -> void:
 				if oref3.get("alive", false) and oref3.get("airborne", false):
-					oref3["pos"] = from3.lerp(dest3, q)
+					oref3["pos"] = DetMath.vlerp(from3, dest3, q)
 			, 0.0, 1.0, 0.57)
 			battle._beam_vfx("res://assets/sprites/vfx/fx-trail.png", from3, dest3, 26.0, Color(0.72, 0.55, 1.0, 0.55), 0.64)
 			var swirl := Sprite3D.new()                          # 头顶紫螺旋丝带(发条R翻卷标记b29-b41)
@@ -337,7 +337,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 		gs.billboard = BaseMaterial3D.BILLBOARD_ENABLED; gs.shaded = false; gs.transparent = true
 		gs.pixel_size = 0.009
 		gs.modulate = Color(1.0, 0.95, 1.0, 0.95)
-		gs.position = battle._world_pos(origin + Vector2(cos(ga), sin(ga)) * randf_range(90.0, 140.0), randf_range(0.3, 1.0))
+		gs.position = battle._world_pos(origin + Vector2(DetMath.dcos(ga), DetMath.dsin(ga)) * randf_range(90.0, 140.0), randf_range(0.3, 1.0))
 		battle._world.add_child(gs)
 		var gt = battle._reg_tween(); gt.set_parallel(true)
 		gt.tween_property(gs, "position", battle._world_pos(origin, 0.8), 0.36).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
@@ -372,7 +372,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 				var ws2 = wstars[wi2]
 				if not is_instance_valid(ws2): continue
 				var wa: float = TAU * float(wi2) / 12.0 + q * 2.6
-				ws2.position = battle._world_pos(origin + Vector2(cos(wa), sin(wa)) * r, 0.25)
+				ws2.position = battle._world_pos(origin + Vector2(DetMath.dcos(wa), DetMath.dsin(wa)) * r, 0.25)
 			dust_t[0] += 1.0
 			if int(dust_t[0]) % 4 == 0 and r > 40.0:              # 波过留痕: 星尘微光点0.4s渐隐
 				var da: float = randf() * TAU
@@ -381,14 +381,14 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 				dp.billboard = BaseMaterial3D.BILLBOARD_ENABLED; dp.shaded = false; dp.transparent = true
 				dp.pixel_size = 0.004
 				dp.modulate = Color(0.85, 0.7, 1.0, 0.8)
-				dp.position = battle._world_pos(origin + Vector2(cos(da), sin(da)) * randf_range(r * 0.4, r * 0.95), randf_range(0.1, 0.5))
+				dp.position = battle._world_pos(origin + Vector2(DetMath.dcos(da), DetMath.dsin(da)) * randf_range(r * 0.4, r * 0.95), randf_range(0.1, 0.5))
 				battle._world.add_child(dp)
 				var dpt = battle._reg_tween()
 				dpt.tween_property(dp, "modulate:a", 0.0, 0.8)
 				dpt.tween_callback(dp.queue_free)
 			for o in battle._targeting._enemies_of(uu2):                            # 波前扫到才结算1.0A魔法(近先远后·封板系数)
 				if not o.get("alive", false) or battle._arr_has_unit(hitset, o): continue
-				if (o["pos"] as Vector2).distance_to(origin) > r: continue
+				if DetMath.dist((o["pos"] as Vector2), origin) > r: continue
 				hitset.append(o)
 				battle._damage._apply_damage_from(uu2, o, battle._atk_dmg(uu2, WAVE_COEF, o, true), Color("#c9b0ff"))
 				battle._vfx._hit_spark(o)
@@ -402,7 +402,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 					hs.position = battle._world_pos(o["pos"], 0.7)
 					battle._world.add_child(hs)
 					var ht = battle._reg_tween(); ht.set_parallel(true)
-					ht.tween_property(hs, "position", battle._world_pos((o["pos"] as Vector2) + Vector2(cos(ha), sin(ha)) * randf_range(30.0, 60.0), 0.15), 0.7).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+					ht.tween_property(hs, "position", battle._world_pos((o["pos"] as Vector2) + Vector2(DetMath.dcos(ha), DetMath.dsin(ha)) * randf_range(30.0, 60.0), 0.15), 0.7).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 					ht.tween_property(hs, "modulate:a", 0.0, 0.7)
 					ht.chain().tween_callback(hs.queue_free)
 		, 0.0, 1.0, 1.16)
@@ -423,7 +423,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 				if not is_instance_valid(ws3): continue
 				var wa3: float = TAU * float(wi3) / 12.0 + 2.6
 				var wt3 = battle._reg_tween(); wt3.set_parallel(true)
-				wt3.tween_property(ws3, "position", battle._world_pos(origin + Vector2(cos(wa3), sin(wa3)) * 580.0, 0.1), 0.6).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+				wt3.tween_property(ws3, "position", battle._world_pos(origin + Vector2(DetMath.dcos(wa3), DetMath.dsin(wa3)) * 580.0, 0.1), 0.6).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 				wt3.tween_property(ws3, "modulate:a", 0.0, 0.6)
 				wt3.chain().tween_callback(ws3.queue_free))
 	battle._pending_shots.append({"delay": 0.4, "fn": wave, "src": u})
@@ -468,7 +468,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 				var ob2 = orbs[oi2]
 				if not is_instance_valid(ob2): continue
 				var oa: float = TAU * float(oi2) / 3.0 + q * 1.6
-				ob2.position = battle._world_pos(center + Vector2(cos(oa), sin(oa)) * 400.0, 0.15)
+				ob2.position = battle._world_pos(center + Vector2(DetMath.dcos(oa), DetMath.dsin(oa)) * 400.0, 0.15)
 		, 0.0, 1.0, 0.001)
 		var obr = battle._reg_tween()                                   # 节点珠绕环(独立驱动1s)
 		obr.tween_method(func(q: float) -> void:
@@ -476,13 +476,13 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 				var ob3 = orbs[oi3]
 				if not is_instance_valid(ob3): continue
 				var oa2: float = TAU * float(oi3) / 3.0 + q * 1.7
-				ob3.position = battle._world_pos(center + Vector2(cos(oa2), sin(oa2)) * 400.0, 0.15)
+				ob3.position = battle._world_pos(center + Vector2(DetMath.dcos(oa2), DetMath.dsin(oa2)) * 400.0, 0.15)
 		, 0.0, 1.0, 2.0)
 		var rise_t = battle._reg_tween()                                # 地面星屑被吸起(反向预兆·每0.12s一粒)
 		rise_t.tween_method(func(q: float) -> void:
 			if int(q * 8.0) != int(maxf(0.0, q - 0.125) * 8.0):
 				var ra: float = randf() * TAU
-				var rp: Vector2 = center + Vector2(cos(ra), sin(ra)) * randf_range(60.0, 320.0)
+				var rp: Vector2 = center + Vector2(DetMath.dcos(ra), DetMath.dsin(ra)) * randf_range(60.0, 320.0)
 				var rs := Sprite3D.new()
 				rs.texture = stex
 				rs.billboard = BaseMaterial3D.BILLBOARD_ENABLED; rs.shaded = false; rs.transparent = true
@@ -504,7 +504,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 				if is_instance_valid(ob4): ob4.queue_free()
 			if not uu2.get("alive", false): return
 			var from2: Vector2 = center + Vector2(520.0, -420.0)
-			var fdir: Vector2 = (from2 - center).normalized()
+			var fdir: Vector2 = DetMath.norm((from2 - center))
 			var head := Sprite3D.new()                            # 白炽大火球头(~90码)
 			var htex: Texture2D = load("res://assets/sprites/vfx/comet-head.png")
 			if htex != null:
@@ -522,10 +522,10 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 			var ct2 = battle._reg_tween()
 			ct2.tween_method(func(pv: float) -> void:
 				if not is_instance_valid(head): return
-				var cp: Vector2 = from2.lerp(center, pv)
+				var cp: Vector2 = DetMath.vlerp(from2, center, pv)
 				var ch2: float = 4.2 * (1.0 - pv) + 0.4 * pv
 				head.position = battle._world_pos(cp, ch2)
-				head.rotation.z = -atan2(-fdir.y, fdir.x) + PI
+				head.rotation.z = -DetMath.datan2(-fdir.y, fdir.x) + PI
 				battle._bolt_line(cp, cp + fdir * 280.0, Color(1.0, 0.97, 1.0, 0.92))                                # 束状粗光柱: 白炽核
 				battle._bolt_line(cp + fdir.orthogonal() * 8.0, cp + fdir * 250.0, Color(0.8, 0.55, 1.0, 0.6))       # 紫晕两翼
 				battle._bolt_line(cp - fdir.orthogonal() * 8.0, cp + fdir * 250.0, Color(0.6, 0.4, 0.95, 0.45))
@@ -554,7 +554,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 			ct2.tween_callback(func() -> void:
 				if is_instance_valid(head): head.queue_free()
 				for o2 in battle._targeting._enemies_of(uu2):                        # 伤害撞击帧结算(用户2026-07-16: 100%消耗星能·真实伤害·400码)
-					if o2.get("alive", false) and o2["pos"].distance_to(center) <= COMET_RADIUS:
+					if o2.get("alive", false) and DetMath.dist(o2["pos"], center) <= COMET_RADIUS:
 						battle._damage._apply_damage_from(uu2, o2, maxi(1, int(burst)), Color("#ffffff"), 0.0, true)
 				if uu2.get("alive", false):
 					uu2["energy_lock_until"] = battle._t                  # 巨彗星造成伤害后才恢复龟能/星能(用户2026-07-16)
@@ -587,10 +587,10 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 					petal.billboard = BaseMaterial3D.BILLBOARD_ENABLED; petal.shaded = false; petal.transparent = true
 					petal.pixel_size = (randf_range(90.0, 130.0) * battle.WS) / float(maxi(1, glow0.get_width()))
 					petal.modulate = Color(0.4, 0.1, 0.2, 0.85) if pi2 % 3 == 0 else Color(0.22, 0.08, 0.32, 0.9)
-					petal.position = battle._world_pos(center + Vector2(cos(pa2), sin(pa2)) * 40.0, 0.4)
+					petal.position = battle._world_pos(center + Vector2(DetMath.dcos(pa2), DetMath.dsin(pa2)) * 40.0, 0.4)
 					battle._world.add_child(petal)
 					var pt2 = battle._reg_tween(); pt2.set_parallel(true)
-					pt2.tween_property(petal, "position", battle._world_pos(center + Vector2(cos(pa2), sin(pa2)) * randf_range(150.0, 230.0), randf_range(1.0, 1.9)), 1.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+					pt2.tween_property(petal, "position", battle._world_pos(center + Vector2(DetMath.dcos(pa2), DetMath.dsin(pa2)) * randf_range(150.0, 230.0), randf_range(1.0, 1.9)), 1.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 					pt2.tween_property(petal, "pixel_size", petal.pixel_size * 1.7, 1.1)
 					pt2.tween_property(petal, "modulate:a", 0.0, 1.4)
 					pt2.chain().tween_callback(petal.queue_free)
@@ -600,7 +600,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 				var cons: Array = []                               # 星座刻印(a38): 6星细线相连·缓亮定格缓隐
 				for si0 in range(6):
 					var ca0: float = TAU * float(si0) / 6.0 + randf_range(-0.35, 0.35)
-					cons.append(center + Vector2(cos(ca0), sin(ca0)) * randf_range(120.0, 240.0))
+					cons.append(center + Vector2(DetMath.dcos(ca0), DetMath.dsin(ca0)) * randf_range(120.0, 240.0))
 				for si2 in range(cons.size()):
 					battle._bolt_line(cons[si2], cons[(si2 + 1) % cons.size()], Color(0.9, 0.8, 1.0, 0.4))
 					var cst := Sprite3D.new()
@@ -617,7 +617,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 					cstt.tween_callback(cst.queue_free)
 				for si in range(12):                               # 外围星星闪点
 					var sa2: float = TAU * float(si) / 12.0 + randf_range(-0.2, 0.2)
-					var sp2: Vector2 = center + Vector2(cos(sa2), sin(sa2)) * randf_range(60.0, 260.0)
+					var sp2: Vector2 = center + Vector2(DetMath.dcos(sa2), DetMath.dsin(sa2)) * randf_range(60.0, 260.0)
 					var ss := Sprite3D.new()
 					ss.texture = stex
 					ss.billboard = BaseMaterial3D.BILLBOARD_ENABLED; ss.shaded = false; ss.transparent = true
@@ -650,8 +650,8 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 func _sk_star_wormhole(u: Dictionary, tgt) -> void:                # 星际龟·虫洞(用户2026-07-16重做): 蓄力→140码/s直线飞到地图边界→引力场150码真重力吸(1/r²加速度·弧线卷入)→捕获100码吸着走(绕洞打转·位移被主导·可攻可被打)→边界爆炸=1.5A×(1+5%每秒·发射时刻定格)魔法+携带者炸开
 	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
-	var dir: Vector2 = (tgt["pos"] - u["pos"]).normalized()
-	if dir.length() < 0.1: dir = Vector2.RIGHT
+	var dir: Vector2 = DetMath.norm((tgt["pos"] - u["pos"]))
+	if DetMath.vlen(dir) < 0.1: dir = Vector2.RIGHT
 	var start: Vector2 = u["pos"]
 	## ★★★用户 2026-08-14:「虫洞是战斗时间越久…每一路的时间」
 	##   —— 机制按代码走(战斗时长, 不是虫洞寿命), 但基准改成【本路】开打时刻。
@@ -701,7 +701,7 @@ func _sk_star_wormhole(u: Dictionary, tgt) -> void:                # 星际龟·
 				for cg in caught:
 					if cg["o"] == o: carried = true; break
 				if carried: continue
-				var r: float = (o["pos"] as Vector2).distance_to(c)
+				var r: float = DetMath.dist((o["pos"] as Vector2), c)
 				if r > WORM_GRAV_R: continue
 				if r <= WORM_CAPTURE_R:                                       # ② 捕获(100码·用户定): 吸着走·绕洞打转
 					## ★方案 C-①: 免控免疫窗口内【不被捕获】。
@@ -712,7 +712,7 @@ func _sk_star_wormhole(u: Dictionary, tgt) -> void:                # 星际龟·
 					if battle._damage._is_cc_immune(o):
 						continue
 					var rel: Vector2 = (o["pos"] as Vector2) - c
-					caught.append({"o": o, "ang": atan2(rel.y, rel.x), "rr": maxf(50.0, r),
+					caught.append({"o": o, "ang": DetMath.datan2(rel.y, rel.x), "rr": maxf(50.0, r),
 						"set": o["pos"] as Vector2})
 					battle._skill_ring(o["pos"], Color(0.75, 0.6, 1.0, 0.6), 44.0)
 					continue
@@ -723,7 +723,7 @@ func _sk_star_wormhole(u: Dictionary, tgt) -> void:                # 星际龟·
 					grav.append({"o": o, "vel": Vector2.ZERO}); gi = grav.size() - 1
 				var acc: float = 900000.0 / maxf(r, 45.0) / maxf(r, 45.0)   # 1/r²引力(150码≈40码/s²→45码≈444·封顶防瞬吸)
 				var g2: Dictionary = grav[gi]
-				g2["vel"] = (g2["vel"] as Vector2) * 0.985 + (c - (o["pos"] as Vector2)).normalized() * acc * dt
+				g2["vel"] = (g2["vel"] as Vector2) * 0.985 + DetMath.norm((c - (o["pos"] as Vector2))) * acc * dt
 				o["pos"] = (o["pos"] as Vector2) + (g2["vel"] as Vector2) * dt
 			## ③ 携带: 跟虫洞走+绕洞缓转·半径缓收(事件视界打转)
 			## ★方案 C-②: 每帧先看它【有没有被别的东西挪走】, 有就放它走(见 WORM_ESCAPE_DIST 头注)。
@@ -735,7 +735,7 @@ func _sk_star_wormhole(u: Dictionary, tgt) -> void:                # 星际龟·
 				## 把它挪走了 ⇒ 脱离。**不认技能名单**, 任何位移都自动算数。
 				## 上一帧我们把它放在 `set`; 这一帧它离那儿多远, 就是**纯外力**挪的距离
 				## (虫洞本帧还没动它)。逐帧累加 —— 平滑位移也攒得满, 瞬移当帧就超。
-				cg2["acc"] = float(cg2.get("acc", 0.0)) 					+ (oc["pos"] as Vector2).distance_to(cg2["set"] as Vector2)
+				cg2["acc"] = float(cg2.get("acc", 0.0)) 					+ DetMath.dist((oc["pos"] as Vector2), cg2["set"] as Vector2)
 				if float(cg2["acc"]) > WORM_ESCAPE_DIST:
 					## ★产品自己的账: 放走过几次。门禁量这个, 不量"它最后在哪"——
 					##   虫洞飞到边界会自己结束, 那之后单位当然能自由移动,
@@ -752,14 +752,14 @@ func _sk_star_wormhole(u: Dictionary, tgt) -> void:                # 星际龟·
 					continue
 				cg2["ang"] = float(cg2["ang"]) + dt * 2.2
 				cg2["rr"] = maxf(52.0, float(cg2["rr"]) - 26.0 * dt)
-				oc["pos"] = c + Vector2(cos(float(cg2["ang"])), sin(float(cg2["ang"]))) * float(cg2["rr"])
+				oc["pos"] = c + Vector2(DetMath.dcos(float(cg2["ang"])), DetMath.dsin(float(cg2["ang"]))) * float(cg2["rr"])
 				cg2["set"] = oc["pos"] as Vector2               # ★记下"我们把它放哪了", 下一帧靠它判脱离
 			for fr in freed:
 				caught.erase(fr)
 			suck[0] += 1.0
 			if int(suck[0]) % 5 == 0 and is_instance_valid(hole):    # 星尘吸入粒子
 				var pa: float = randf() * TAU
-				var pp: Vector2 = c + Vector2(cos(pa), sin(pa)) * randf_range(120.0, 200.0)
+				var pp: Vector2 = c + Vector2(DetMath.dcos(pa), DetMath.dsin(pa)) * randf_range(120.0, 200.0)
 				var dust := Sprite3D.new()
 				dust.texture = VfxTex._make_fire_glow_tex()
 				dust.billboard = BaseMaterial3D.BILLBOARD_ENABLED; dust.shaded = false; dust.transparent = true
@@ -797,7 +797,7 @@ func _sk_star_wormhole(u: Dictionary, tgt) -> void:                # 星际龟·
 				sd.position = battle._world_pos(c3, 0.5)
 				battle._world.add_child(sd)
 				var sdt = battle._reg_tween(); sdt.set_parallel(true)
-				sdt.tween_property(sd, "position", battle._world_pos(c3 + Vector2(cos(sa), sin(sa)) * randf_range(90.0, 170.0), 0.1), 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+				sdt.tween_property(sd, "position", battle._world_pos(c3 + Vector2(DetMath.dcos(sa), DetMath.dsin(sa)) * randf_range(90.0, 170.0), 0.1), 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 				sdt.tween_property(sd, "modulate:a", 0.0, 0.45)
 				sdt.chain().tween_callback(sd.queue_free)
 			var boomed: Array = []
@@ -809,7 +809,7 @@ func _sk_star_wormhole(u: Dictionary, tgt) -> void:                # 星际龟·
 				battle._knock_up(ob, c3, 6.6)
 			for o3 in battle._targeting._enemies_of(uu):                               # 爆炸半径150码内其余敌也吃原伤害
 				if not o3.get("alive", false) or boomed.has(o3): continue
-				if (o3["pos"] as Vector2).distance_to(c3) > 150.0: continue
+				if DetMath.dist((o3["pos"] as Vector2), c3) > 150.0: continue
 				battle._damage._apply_damage_from(uu, o3, battle._atk_dmg(uu, mult, o3, true), Color("#c9a0ff"))
 			## ★虫洞消失 ⇒ 解锁龟能(设成当前时刻 = 立即到期, 与星波彗星同一写法)
 			if uu.get("alive", false):

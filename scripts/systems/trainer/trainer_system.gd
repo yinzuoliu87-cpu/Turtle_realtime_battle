@@ -162,15 +162,15 @@ func _tick_trainer_attacks(delta: float) -> void:
 
 ## 从 trainer 沿 dir 方向找【射程内】第一个可钩的敌人(600码内、线上最近)。走 battle._targeting._pick_enemies_of(不含大师/不可选)。
 func _hook_first_target(trainer: Dictionary, dir: Vector2):
-	if dir.length() < 0.01:
+	if DetMath.vlen(dir) < 0.01:
 		return null
-	var d = dir.normalized()
+	var d = DetMath.norm(dir)
 	var best = null
 	var bd: float = battle.HOOK_RANGE * battle.HOOK_RANGE
 	for o in battle._targeting._pick_enemies_of(trainer):
 		if not battle._on_line(trainer["pos"], d, o["pos"], 80.0):   # 带宽80(视觉留美术, 文案不写)
 			continue
-		var dd: float = (o["pos"] - trainer["pos"]).length_squared()
+		var dd: float = DetMath.len2((o["pos"] - trainer["pos"]))
 		if dd <= bd:
 			bd = dd; best = o
 	return best
@@ -218,7 +218,7 @@ func _cast_hook(trainer: Dictionary, dir: Vector2) -> bool:
 		return false
 	if float(trainer.get("_active_cd", 0.0)) > 0.0:
 		return false
-	var d: Vector2 = dir.normalized() if dir.length() > 0.01 else Vector2.RIGHT
+	var d: Vector2 = DetMath.norm(dir) if DetMath.vlen(dir) > 0.01 else Vector2.RIGHT
 	trainer["_active_cd"] = battle.HOOK_CD                     # 出手即进 CD; 空放到底再返还
 	var full_t: float = battle.HOOK_WINDUP + battle.HOOK_RANGE / battle.HOOK_MISSILE_SPD
 	var hook: Sprite3D = _hook_head_node(trainer["pos"])
@@ -255,7 +255,7 @@ func _hook_hit_at(src: Dictionary, pos: Vector2):
 	var best = null
 	var bd: float = battle.HOOK_HIT_R * battle.HOOK_HIT_R
 	for o in battle._targeting._pick_enemies_of(src):
-		var dd: float = (o["pos"] - pos).length_squared()
+		var dd: float = DetMath.len2((o["pos"] - pos))
 		if dd <= bd:
 			bd = dd; best = o
 	return best
@@ -318,7 +318,7 @@ func _fury_apply_buffs(trainer: Dictionary, point: Vector2) -> int:
 			continue
 		if str(o.get("side", "")) != side:
 			continue
-		if o["pos"].distance_to(point) > FURY_RADIUS:
+		if DetMath.dist(o["pos"], point) > FURY_RADIUS:
 			continue
 		o["haste_mult"] = FURY_HASTE;      o["haste_until"] = battle._t + FURY_SEC   # +30% 攻速
 		o["move_buff_mult"] = FURY_MOVE;   o["move_buff_until"] = battle._t + FURY_SEC   # +25% 移速
@@ -347,8 +347,8 @@ func _fury_dramatize(trainer: Dictionary, point: Vector2) -> void:
 	tw.tween_interval(battle.HOOK_WINDUP)
 	tw.tween_method(func(p: float) -> void:   # R4 ③ 抛物线飞 + 橙红拖尾
 		if not is_instance_valid(pot): return
-		var cp: Vector2 = from2d.lerp(point, p)
-		var ph: float = 0.9 + peak * sin(PI * p)
+		var cp: Vector2 = DetMath.vlerp(from2d, point, p)
+		var ph: float = 0.9 + peak * DetMath.dsin(PI * p)
 		pot.position = battle._world_pos(cp, ph)
 		ct[0] += 0.02
 		if ct[0] >= 0.07:
@@ -358,7 +358,7 @@ func _fury_dramatize(trainer: Dictionary, point: Vector2) -> void:
 			trt.bind_node(pot)
 			trt.tween_property(tg.material_override, "albedo_color", Color(1.0, 0.5, 0.2, 0.0), 0.3)
 			trt.tween_callback(tg.queue_free)
-	, 0.0, 1.0, maxf(0.15, from2d.distance_to(point) / 800.0))
+	, 0.0, 1.0, maxf(0.15, DetMath.dist(from2d, point) / 800.0))
 	tw.tween_callback(func() -> void:   # R4 ④ 落地: 怒火圈 + 爆点 + 轻震屏
 		if is_instance_valid(pot): pot.queue_free()
 		battle._splash_ring_bold(point, Color(1.0, 0.55, 0.22, 0.85), 300.0)  # 300码怒火冲击环
@@ -428,7 +428,7 @@ func _whistle_spirit_wave(trainer: Dictionary) -> int:
 	if tgt == null:
 		return 0
 	var origin: Vector2 = trainer["pos"]
-	var dir: Vector2 = (tgt["pos"] - origin).normalized()
+	var dir: Vector2 = DetMath.norm((tgt["pos"] - origin))
 	# ★这里【只定方向、只召小龟】—— 一点伤害都不结算。
 	#   方向仍按"出手时最近的敌人"取(小龟是自动放的, 不是玩家瞄), 但【打到谁】由
 	#   _tick_wave_flights 每帧的碰撞决定 —— 目标跑开就打空, 这才是"命中才造成伤害"。
@@ -489,7 +489,7 @@ func _tick_wave_flights(delta: float) -> void:
 			var sp: Sprite3D = nd
 			sp.position = battle._world_pos(p, 0.9)
 			# 单帧素材: 用轻微脉动代替帧动画(按【飞行距离】推, 不看帧率 —— §3.5)
-			var pulse: float = 1.0 + 0.09 * sin(flown / 26.0)
+			var pulse: float = 1.0 + 0.09 * DetMath.dsin(flown / 26.0)
 			sp.scale = Vector3(pulse, pulse, 1.0)
 		var gl = f.get("glow", null)
 		if gl != null and is_instance_valid(gl):
@@ -509,7 +509,7 @@ func _wave_hit_at(src: Dictionary, pos: Vector2, already: Array) -> Array:
 	var out: Array = []
 	var r2: float = WAVE_HIT_R * WAVE_HIT_R
 	for o in battle._targeting._pick_enemies_of(src):
-		if (o["pos"] - pos).length_squared() > r2:
+		if DetMath.len2((o["pos"] - pos)) > r2:
 			continue
 		var dup := false
 		for h in already:
@@ -602,7 +602,7 @@ func _whistle_berserk_on(ally: Dictionary) -> void:
 		st.chain().tween_callback(sh.queue_free)
 		for k in range(5):                                            # 红血滴上溅淡出(吸血)
 			var a: float = float(k) * TAU / 5.0
-			var d = battle._glow_bb(ally["pos"] + Vector2(cos(a), sin(a)) * 18.0, 0.7, 16.0, Color(0.9, 0.12, 0.12, 0.9))
+			var d = battle._glow_bb(ally["pos"] + Vector2(DetMath.dcos(a), DetMath.dsin(a)) * 18.0, 0.7, 16.0, Color(0.9, 0.12, 0.12, 0.9))
 			var dt = battle._reg_tween(); dt.set_parallel(true)
 			dt.tween_property(d, "position", d.position + Vector3(0.0, 0.5, 0.0), 0.32)
 			dt.tween_property(d.material_override, "albedo_color", Color(0.9, 0.12, 0.12, 0.0), 0.42)
@@ -662,10 +662,10 @@ func _tick_glaciers(_delta: float) -> void:
 			if str(o.get("side", "")) == str(z["side"]):
 				continue   # 只冻【敌方】
 			var rel: Vector2 = o["pos"] - from2d
-			var along: float = rel.dot(dir)
+			var along: float = DetMath.dot(rel, dir)
 			if along < 0.0 or along > zlen:
 				continue
-			if (rel - dir * along).length() > half_w:
+			if DetMath.vlen((rel - dir * along)) > half_w:
 				continue
 			o["slow_until"] = battle._t + 0.2      # -40% 移速(slow_mag 0.6)
 			o["slow_mag"] = GLACIER_SLOW_MAG
@@ -731,7 +731,7 @@ func _glacier_ground_tile(pos2d: Vector2, dir: Vector2, size_px: float, life: fl
 	s.pixel_size = (size_px * battle.WS) / float(maxi(1, t.get_height()))
 	s.position = battle._world_pos(pos2d, 0.04 + 0.015 * float(idx % 3))   # 微抬错层防 z-fight
 	var wdir: Vector3 = battle._world_pos(pos2d + dir, 0.0) - battle._world_pos(pos2d, 0.0)   # 对齐方向(照 _beam_vfx 口径)
-	s.rotation.y = -atan2(wdir.z, wdir.x) + 0.18 * float((idx % 3) - 1)    # +索引微扰(冰面不规则)
+	s.rotation.y = -DetMath.datan2(wdir.z, wdir.x) + 0.18 * float((idx % 3) - 1)    # +索引微扰(冰面不规则)
 	s.modulate = Color(0.85, 0.95, 1.0, 0.0)
 	battle._world.add_child(s)
 	var tw = battle._reg_tween()
@@ -807,8 +807,8 @@ func _tick_hooks(delta: float) -> void:
 				var ph: float = battle._t - float(u.get("_hook_tug_t0", battle._t))   # 相对第一下拽的相位
 				if ph >= 0.0 and fmod(ph, battle.HOOK_PULL_INTERVAL) < battle.HOOK_TUG_DUR:   # 处在"拽"的窗口内
 					var to: Vector2 = by["pos"] - u["pos"]
-					if to.length() > 24.0:                    # 留 24 码不重叠
-						u["pos"] += to.normalized() * tug_spd * delta
+					if DetMath.vlen(to) > 24.0:                    # 留 24 码不重叠
+						u["pos"] += DetMath.norm(to) * tug_spd * delta
 						u["pos"] = ArenaShape.clamp_in(u["pos"], battle.ARENA)
 
 ## 训龟大师自动施法(U2·**敌我同规则**): 冷却一好 → 朝【最近的敌人】放已装配的那一个主动技。
@@ -1001,8 +1001,8 @@ func _ms_place_aura(u: Dictionary, tier: int) -> void:
 		if not is_instance_valid(m):
 			continue
 		var a: float = base + TAU * float(i) / float(maxi(1, n))
-		var off := Vector2(cos(a), sin(a) * 0.42) * MS_ORBIT_R   # y 压扁 0.42 = 俯视下的椭圆轨道
-		var bob: float = sin(base * 1.7 + float(i)) * 0.10       # 上下小幅浮动 + 错开相位 → 不像僵硬转盘
+		var off := Vector2(DetMath.dcos(a), DetMath.dsin(a) * 0.42) * MS_ORBIT_R   # y 压扁 0.42 = 俯视下的椭圆轨道
+		var bob: float = DetMath.dsin(base * 1.7 + float(i)) * 0.10       # 上下小幅浮动 + 错开相位 → 不像僵硬转盘
 		(m as Sprite3D).position = battle._world_pos(u["pos"] + off, MS_MOTE_Y + bob)
 	var ring = u.get("_ms_ring", null)
 	if is_instance_valid(ring):
@@ -1100,13 +1100,13 @@ func _trainer_sprite_dict(appearance_id: String = "default") -> Dictionary:
 ## 在 600 码内、离瞄准点最近的敌人。aim 是【相对大师的偏移】(与其他主动技口径一致)。
 ## 返回 null = 没锁到人(空放)。
 func _hunt_pick_target(trainer: Dictionary, aim: Vector2):
-	var want: Vector2 = trainer["pos"] + aim.limit_length(battle.HUNT_RANGE)
+	var want: Vector2 = trainer["pos"] + DetMath.limit_len(aim, battle.HUNT_RANGE)
 	var best = null
 	var bd: float = INF
 	for o in battle._targeting._pick_enemies_of(trainer):
-		if (o["pos"] - trainer["pos"]).length() > battle.HUNT_RANGE:
+		if DetMath.vlen((o["pos"] - trainer["pos"])) > battle.HUNT_RANGE:
 			continue                      # 超出射程的不能锁
-		var dd: float = (o["pos"] - want).length_squared()
+		var dd: float = DetMath.len2((o["pos"] - want))
 		if dd < bd:
 			bd = dd; best = o
 	return best
@@ -1132,7 +1132,7 @@ func _cast_hunt_order(trainer: Dictionary, aim: Vector2) -> bool:
 		trainer["_active_cd"] = battle.HUNT_CD * 0.5   # 空放返还一半(与钩锁同思路)
 		return false
 	trainer["_active_cd"] = battle.HUNT_CD
-	var dist: float = (tgt["pos"] - trainer["pos"]).length()
+	var dist: float = DetMath.vlen((tgt["pos"] - trainer["pos"]))
 	var arrive: float = dist / battle.HUNT_MISSILE_SPD
 	var tt: Dictionary = trainer
 	var kk: Dictionary = tgt
@@ -1162,7 +1162,7 @@ func _tick_hunt_taunt(_delta: float) -> void:
 				continue
 			if not battle._is_hostile(o, m):      # 已经归顺我方的不该被嘲讽去打自己人
 				continue
-			if o["pos"].distance_to(m["pos"]) > battle.HUNT_TAUNT_R:
+			if DetMath.dist(o["pos"], m["pos"]) > battle.HUNT_TAUNT_R:
 				continue
 			# 只刷到"下一帧" —— 出圈立刻失效, 不留尾巴
 			o["taunt_until"] = battle._t + 0.2
@@ -1269,22 +1269,22 @@ func _cast_tame(trainer: Dictionary, aim: Vector2) -> bool:
 		return false
 	if float(trainer.get("_active_cd", 0.0)) > 0.0:
 		return false
-	var want: Vector2 = trainer["pos"] + aim.limit_length(battle.TAME_RANGE)
+	var want: Vector2 = trainer["pos"] + DetMath.limit_len(aim, battle.TAME_RANGE)
 	var tgt = null
 	var bd: float = INF
 	for o in battle._targeting._pick_enemies_of(trainer):
-		if (o["pos"] - trainer["pos"]).length() > battle.TAME_RANGE:
+		if DetMath.vlen((o["pos"] - trainer["pos"])) > battle.TAME_RANGE:
 			continue
 		if str(o.get("tamed_side", "")) != "" or o.get("tame_pending", false):
 			continue                       # 已经被驯服/已标记的不重复标
-		var dd: float = (o["pos"] - want).length_squared()
+		var dd: float = DetMath.len2((o["pos"] - want))
 		if dd < bd:
 			bd = dd; tgt = o
 	if tgt == null:
 		trainer["_active_cd"] = battle.TAME_CD * 0.5   # 空放返还一半
 		return false
 	trainer["_active_cd"] = battle.TAME_CD
-	var dist: float = (tgt["pos"] - trainer["pos"]).length()
+	var dist: float = DetMath.vlen((tgt["pos"] - trainer["pos"]))
 	var arrive: float = dist / battle.TAME_MISSILE_SPD
 	var tt: Dictionary = trainer
 	var kk: Dictionary = tgt

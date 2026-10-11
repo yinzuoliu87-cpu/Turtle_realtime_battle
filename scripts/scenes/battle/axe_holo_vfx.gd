@@ -156,7 +156,7 @@ func on_hit(ax: Dictionary, ally: Dictionary) -> Dictionary:
 	root.position = to3
 	battle._world.add_child(root)
 	out["stream"] = root
-	var dist_yd: float = (ax.get("pos", Vector2.ZERO) as Vector2).distance_to(ally.get("pos", Vector2.ZERO))
+	var dist_yd: float = DetMath.dist((ax.get("pos", Vector2.ZERO) as Vector2), ally.get("pos", Vector2.ZERO))
 	var nb: int = bit_count(dist_yd)
 	var off: Vector3 = from3 - to3
 	var tex_ok: bool = ResourceLoader.exists(TEX_BIT)

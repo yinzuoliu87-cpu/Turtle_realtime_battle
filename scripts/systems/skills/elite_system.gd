@@ -60,7 +60,7 @@ func _elite_basic(u: Dictionary, tgt: Dictionary) -> void:      # 普攻·长手
 		_elite_whirl(u)
 		return
 	var dirv: Vector2 = (tgt["pos"] as Vector2) - (u["pos"] as Vector2)
-	dirv = dirv.normalized() if dirv.length() > 1.0 else Vector2.RIGHT
+	dirv = DetMath.norm(dirv) if DetMath.vlen(dirv) > 1.0 else Vector2.RIGHT
 	battle._emit_basic(u, tgt, battle._atk_dmg(u, 1.0, tgt), Color("#e05555"), 0)
 	_elite_slash_arc(tgt["pos"], dirv)
 
@@ -92,7 +92,7 @@ func _elite_debris(pos2d: Vector2, n: int) -> void:             # 砸地碎块�
 		db.position = battle._world_pos(pos2d, 0.3)
 		battle._world.add_child(db)
 		var ang: float = randf() * TAU
-		var dst: Vector2 = pos2d + Vector2(cos(ang), sin(ang)) * randf_range(40.0, 110.0)
+		var dst: Vector2 = pos2d + Vector2(DetMath.dcos(ang), DetMath.dsin(ang)) * randf_range(40.0, 110.0)
 		var dur: float = randf_range(0.3, 0.5)
 		var tw = battle._reg_tween(); tw.set_parallel(true)
 		tw.tween_property(db, "position", battle._world_pos(dst, 0.05), dur).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
@@ -111,7 +111,7 @@ func _elite_slash_arc(pos2d: Vector2, dirv: Vector2) -> void:    # 黑红刀光(
 	sl.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	sl.pixel_size = (86.0 * battle.WS) / float(maxi(1, t.get_height()))
 	sl.position = battle._world_pos(pos2d, 0.8)
-	sl.rotation.z = atan2(-dirv.y, dirv.x) + randf_range(-0.3, 0.3)
+	sl.rotation.z = DetMath.datan2(-dirv.y, dirv.x) + randf_range(-0.3, 0.3)
 	sl.modulate = Color(0.75, 0.12, 0.15, 0.95)
 	sl.flip_h = randf() < 0.5
 	battle._world.add_child(sl)
@@ -148,7 +148,7 @@ func _elite_whirl(u: Dictionary) -> void:                        # 被动3·旋�
 				var bl2 = blades[b2]
 				if not is_instance_valid(bl2): continue
 				var ba: float = aa + float(b2) * PI
-				bl2.position = battle._world_pos((uu["pos"] as Vector2) + Vector2(cos(ba), sin(ba)) * 105.0, 0.65)
+				bl2.position = battle._world_pos((uu["pos"] as Vector2) + Vector2(DetMath.dcos(ba), DetMath.dsin(ba)) * 105.0, 0.65)
 				bl2.rotation.z = -ba - PI * 0.5                    # 刃对齐切线
 				bl2.modulate = Color(1, 1, 1, 1.0 - maxf(0.0, q - 0.78) / 0.22)
 			if aa - ghost_last[0] >= 0.22:                         # 稠密拖影: 每0.22rad×双刃留渐隐残影(扫过的面填满)
@@ -161,7 +161,7 @@ func _elite_whirl(u: Dictionary) -> void:                        # 被动3·旋�
 					gh.shaded = false; gh.transparent = true
 					gh.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 					gh.pixel_size = bps
-					gh.position = battle._world_pos((uu["pos"] as Vector2) + Vector2(cos(ga), sin(ga)) * 105.0, 0.65)
+					gh.position = battle._world_pos((uu["pos"] as Vector2) + Vector2(DetMath.dcos(ga), DetMath.dsin(ga)) * 105.0, 0.65)
 					gh.rotation.z = -ga - PI * 0.5
 					gh.modulate = Color(0.7, 0.15, 0.18, 0.55)
 					battle._world.add_child(gh)
@@ -176,12 +176,12 @@ func _elite_whirl(u: Dictionary) -> void:                        # 被动3·旋�
 	var total: int = 0
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
-		if (o["pos"] as Vector2).distance_to(u["pos"]) > 200.0: continue
+		if DetMath.dist((o["pos"] as Vector2), u["pos"]) > 200.0: continue
 		var dmg: int = battle._atk_dmg(u, 1.3, o)
 		battle._damage._apply_damage_from(u, o, dmg, Color("#e05555"))
 		total += dmg
 		var dv: Vector2 = (o["pos"] as Vector2) - (u["pos"] as Vector2)
-		_elite_slash_arc(o["pos"], dv.normalized() if dv.length() > 1.0 else Vector2.RIGHT)
+		_elite_slash_arc(o["pos"], DetMath.norm(dv) if DetMath.vlen(dv) > 1.0 else Vector2.RIGHT)
 	if total > 0:
 		battle._damage._heal(u, float(total) * 0.5)                              # 吸血50%(生物质回收)
 func _elite_try_consume(u: Dictionary, tgt: Dictionary) -> bool:   # 被动1·吞噬(Consume·用户拍板: 1.5s演出不中断/演出期95%减伤/回复=触发瞬间目标剩余HP×2(用户2026-07-19)/只偷主动技)
@@ -224,7 +224,7 @@ func _elite_try_consume(u: Dictionary, tgt: Dictionary) -> bool:   # 被动1·�
 			if not is_instance_valid(td2): continue
 			var aa: float = q * 9.0 + float(i2) * TAU / 3.0
 			var rr: float = 40.0 - 32.0 * q
-			td2.position = battle._world_pos((tref["pos"] as Vector2) + Vector2(cos(aa), sin(aa)) * rr, 0.35 + 0.3 * (1.0 + sin(aa * 0.7)) * 0.5)
+			td2.position = battle._world_pos((tref["pos"] as Vector2) + Vector2(DetMath.dcos(aa), DetMath.dsin(aa)) * rr, 0.35 + 0.3 * (1.0 + DetMath.dsin(aa * 0.7)) * 0.5)
 	, 0.0, 1.0, 1.45)
 	battle._pending_shots.append({"delay": 1.5, "fn": func() -> void:   # 吞噬完成: 黑丝缕流入→回血→击杀→偷放主动技
 		for td3 in tends:
@@ -351,7 +351,7 @@ func _sk_elite_hammer(u: Dictionary, tgt) -> void:               # 技能·铁�
 	_elite_anim(u, "hammer_big" if big else "hammer")   # 每第3次=跃起强化版, 换另一套帧
 	var uu = u
 	var dirv: Vector2 = (tgt["pos"] as Vector2) - (u["pos"] as Vector2)
-	dirv = dirv.normalized() if dirv.length() > 1.0 else Vector2.RIGHT
+	dirv = DetMath.norm(dirv) if DetMath.vlen(dirv) > 1.0 else Vector2.RIGHT
 	var ftex: Texture2D = load("res://assets/sprites/vfx/bio-fist.png")
 	_elite_mist(u["pos"], 0.9, 4)                                 # 武器黑雾幻化
 	if not big:
@@ -391,14 +391,14 @@ func _sk_elite_hammer(u: Dictionary, tgt) -> void:               # 技能·铁�
 				var n_sp: int = 4 + int(float(sref) * 1.2)   # 加密(近4→远12根/波)
 				for k in range(n_sp):
 					var aoff: float = deg_to_rad(randf_range(-30.0, 30.0))
-					var pp: Vector2 = origin + dirv.rotated(aoff) * (dist + randf_range(-20.0, 20.0))
+					var pp: Vector2 = origin + DetMath.rotated(dirv, aoff) * (dist + randf_range(-20.0, 20.0))
 					if battle.ARENA.has_point(pp): _elite_spike(pp, false)
 				for o in battle._units:
 					if not battle._is_hostile(uu, o) or not o.get("alive", false): continue
 					if int(o.get("_espk_tok", -1)) == tok: continue
 					var rel: Vector2 = (o["pos"] as Vector2) - origin
-					if rel.length() > dist + 40.0 or rel.length() < dist - 40.0: continue
-					if absf(rel.angle_to(dirv)) > deg_to_rad(30.0): continue
+					if DetMath.vlen(rel) > dist + 40.0 or DetMath.vlen(rel) < dist - 40.0: continue
+					if absf(DetMath.angle_to(rel, dirv)) > deg_to_rad(30.0): continue
 					o["_espk_tok"] = tok
 					battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, 4.0, o, true), Color("#9bdcff"))   # 普通施法 1.5→4.0 ATK魔法(用户2026-07-19)
 					battle._knock_up(o, origin, 5.5)
@@ -432,12 +432,12 @@ func _sk_elite_hammer(u: Dictionary, tgt) -> void:               # 技能·铁�
 			fg.tween_property(fs2, "pixel_size", (88.0 * battle.WS) / float(maxi(1, ftex.get_height())), 1.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		var jt = battle._reg_tween()
 		jt.tween_method(func(q: float) -> void:                    # 跳很高
-			if uu.get("alive", false): uu["height"] = q * 5.2
-		, 0.0, 1.0, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			if uu.get("alive", false): uu["height"] = DetMath.tween_ease(q, Tween.TRANS_QUAD, Tween.EASE_OUT) * 5.2
+		, 0.0, 1.0, 0.35)
 		jt.tween_interval(1.0)                                     # 空中蓄力1秒(用户2026-07-16定)
 		jt.tween_method(func(q: float) -> void:                    # 砸落(快)
-			if uu.get("alive", false): uu["height"] = (1.0 - q) * 5.2
-		, 0.0, 1.0, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			if uu.get("alive", false): uu["height"] = (1.0 - DetMath.tween_ease(q, Tween.TRANS_QUAD, Tween.EASE_IN)) * 5.2
+		, 0.0, 1.0, 0.12)
 		jt.tween_callback(func() -> void:
 			if is_instance_valid(fs2):                             # 巨拳随砸下→撞地淡出
 				var fd = battle._reg_tween()
@@ -461,12 +461,12 @@ func _sk_elite_hammer(u: Dictionary, tgt) -> void:               # 技能·铁�
 					var n_sp2: int = 8 + sref2 * 2   # 加密(8→26根/波)
 					for k2 in range(n_sp2):
 						var aa2: float = randf() * TAU
-						var pp2: Vector2 = c2 + Vector2(cos(aa2), sin(aa2)) * (dist2 + randf_range(-25.0, 25.0))
+						var pp2: Vector2 = c2 + Vector2(DetMath.dcos(aa2), DetMath.dsin(aa2)) * (dist2 + randf_range(-25.0, 25.0))
 						if battle.ARENA.has_point(pp2): _elite_spike(pp2, true)
 					for o2 in battle._units:
 						if not battle._is_hostile(uu, o2) or not o2.get("alive", false): continue
 						if int(o2.get("_espk_tok", -1)) == tok2: continue
-						var dd2: float = (o2["pos"] as Vector2).distance_to(c2)
+						var dd2: float = DetMath.dist((o2["pos"] as Vector2), c2)
 						if dd2 > dist2 + 45.0 or dd2 < dist2 - 45.0: continue
 						o2["_espk_tok"] = tok2
 						battle._damage._apply_damage_from(uu, o2, battle._atk_dmg(uu, 6.0, o2, true), Color("#9bdcff"))   # 第三段 3.0→6.0 ATK魔法(用户2026-07-19)

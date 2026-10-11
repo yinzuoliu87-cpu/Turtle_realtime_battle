@@ -287,3 +287,62 @@ static func counter_proof_pairs() -> Array:
 ## 而失效的理由跟确定性一点关系都没有。
 ## ⇒ 跨平台那份必须钉死一个绝对值。这里选 2026-09-21(周一) 00:00 UTC。
 const PIN_WEEK_ANCHOR := 1789948800
+
+
+## 跑一个场景 → [摘要, 逐步指纹数组, 不同指纹数, 累计承伤]。
+## ★`verify_determinism_cross` 与 `verify_determinism_ulp` 共用这一份建场(原来写在 cross 里;
+##   ulp 门禁要跑「同一局、只差扰动开关」, 建场分家 = 两边跑的不是同一局)。
+static func run(host: Node, sc: Dictionary) -> Array:
+	var RB = load("res://scripts/scenes/RealtimeBattle3DScene.gd")
+	RB.DEBUG_EDIT = true
+	var s = RB.new()
+	host.add_child(s)
+	await host.get_tree().process_frame
+	await host.get_tree().process_frame
+	s._debug._edit_clear()
+	var lo: Dictionary = sc.get("loadouts", {})
+	if not lo.is_empty():
+		var gs2 = host.get_node_or_null("/root/GameState")
+		if gs2 != null:
+			for k in lo:
+				gs2.loadouts[str(k)] = int(lo[k])
+	s._edit_dummy_killable = true
+	s._edit_dummy_hp = 40000.0
+	s._edit_full_energy = true
+	for p in (sc["pairs"] as Array):
+		var pid: String = str(p[0])
+		if pid.begins_with("__minion__"):
+			var bits: PackedStringArray = pid.split(":")
+			s._edit_minion_role = str(bits[1]) if bits.size() > 1 else "front"
+			pid = "__minion__"
+		var u: Dictionary = s._debug._edit_place_unit(pid, str(p[1]),
+			Vector2(float(p[2]), float(p[3])))
+		if (p[4] as Array).size() > 0:
+			var el: Array = []
+			for e in (p[4] as Array):
+				el.append({"id": str(e), "star": 3})
+			u["_edit_equips"] = el
+		## 第 6 项 = 给右队假人恢复真实主动技(见本文件头注)。
+		if (p as Array).size() > 5 and bool(p[5]):
+			u["active_skills"] = s._resolve_active_skills(pid, false)
+			u["skill_idx"] = 0
+	s._debug._edit_start_battle()
+	var tr: Array = []
+	for _i in range(int(sc["frames"])):
+		await host.get_tree().process_frame
+		tr.append(fp(s))
+	var taken := 0.0
+	for u2 in s._units:
+		taken += float(u2.get("_st_taken", 0.0))
+	s.queue_free()
+	await host.get_tree().process_frame
+	await host.get_tree().process_frame
+	var uniq := {}
+	for f in tr:
+		uniq[str(f)] = true
+	## ★摘要用 SHA-256 而不是"取前几步" —— 取前几步会把后半局的分叉整段漏掉。
+	var ctx := HashingContext.new()
+	ctx.start(HashingContext.HASH_SHA256)
+	for f2 in tr:
+		ctx.update(str(f2).to_utf8_buffer())
+	return [(ctx.finish() as PackedByteArray).hex_encode(), tr, uniq.size(), taken]

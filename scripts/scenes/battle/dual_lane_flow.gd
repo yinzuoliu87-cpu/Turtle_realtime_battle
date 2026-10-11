@@ -588,7 +588,7 @@ func _dl_handle_place_input(event: InputEvent) -> void:
 				battle._edit_drag_unit = null
 		else:
 			## ★教程「拖动龟调整站位」等的就是这一下: 松手时这只龟真的被挪动过(不是点一下)。
-			if battle._edit_drag_unit != null and (battle._edit_drag_unit["pos"] as Vector2).distance_to(_drag_from) > DRAG_MIN_PX:
+			if battle._edit_drag_unit != null and DetMath.dist((battle._edit_drag_unit["pos"] as Vector2), _drag_from) > DRAG_MIN_PX:
 				var _tdd = battle.get_node_or_null("/root/TutorialDirector")
 				if _tdd != null:
 					_tdd.notify("unit_dragged")
@@ -609,7 +609,7 @@ func _dl_clamp_place(fp: Vector2) -> Vector2:
 		var rx: float = float(ob["rx"]) + battle.OBSTACLE_MARGIN
 		var ry: float = float(ob["ry"]) + battle.OBSTACLE_MARGIN
 		var d: Vector2 = fp - c
-		var e: float = Vector2(d.x / rx, d.y / ry).length()
+		var e: float = DetMath.vlen(Vector2(d.x / rx, d.y / ry))
 		if e < 1.0 and e > 0.01:
 			fp = c + d / e
 	return fp

@@ -137,17 +137,17 @@ func sweep_targets(ax: Dictionary, tgt: Dictionary, swing: int) -> Array:
 	var dir: Vector2 = (tgt.get("pos", Vector2.ZERO) - org)
 	if dir == Vector2.ZERO:
 		dir = Vector2.RIGHT
-	dir = dir.normalized()
+	dir = DetMath.norm(dir)
 	var rng: float = float(ax.get("atk_range", 120.0))
-	var half_cos: float = cos(deg_to_rad(AE.SWEEP_ARC_DEG * 0.5))
+	var half_cos: float = DetMath.dcos(deg_to_rad(AE.SWEEP_ARC_DEG * 0.5))
 	var out: Array = []
 	for o in battle._targeting._targetable_enemies(ax):
 		var rel: Vector2 = (o.get("pos", Vector2.ZERO) as Vector2) - org
-		if rel.length() > rng:
+		if DetMath.vlen(rel) > rng:
 			continue
 		## 180° ⇒ half_cos == 0 ⇒ 判据退化成"在斧头正面这半边"。
 		## ★用点积不用角度差 —— 角度差要处理 ±π 环绕, 那是最容易写错的一段。
-		if rel == Vector2.ZERO or rel.normalized().dot(dir) >= half_cos:
+		if rel == Vector2.ZERO or DetMath.dot(DetMath.norm(rel), dir) >= half_cos:
 			out.append(o)
 	return out
 
@@ -204,7 +204,7 @@ func begin_charge(ax: Dictionary) -> bool:
 	ax["_axe_charge_t0"] = float(battle._t)
 	var t: Dictionary = battle._targeting._nearest_enemy(ax) if battle._targeting._nearest_enemy(ax) is Dictionary else {}
 	var dir: Vector2 = ((t.get("pos", Vector2.ZERO) as Vector2) - (ax.get("pos", Vector2.ZERO) as Vector2)) if not t.is_empty() else Vector2.RIGHT
-	ax["_axe_charge_dir"] = (dir.normalized() if dir != Vector2.ZERO else Vector2.RIGHT)
+	ax["_axe_charge_dir"] = (DetMath.norm(dir) if dir != Vector2.ZERO else Vector2.RIGHT)
 	## 70% 减伤 —— 走既有的 damage_reduction 通道(_mitigate_incoming 读它)
 	ax["_axe_dr_bak"] = float(ax.get("damage_reduction", 0.0))
 	ax["damage_reduction"] = maxf(float(ax.get("damage_reduction", 0.0)), AE.CHARGE_DR)

@@ -59,7 +59,7 @@ func _fire_trainer_rock(u: Dictionary, tgt: Dictionary, ms_onhit: bool = false) 
 	var world_from = battle._world_pos(start2d, 1.1)   # 从胸口高度出手
 	p.position = world_from
 	battle._world.add_child(p)
-	var dist: float = start2d.distance_to(tgt["pos"])
+	var dist: float = DetMath.dist(start2d, tgt["pos"])
 	var pdur = clampf(dist / 650.0, 0.25, 0.9)
 	_push_proj({
 		"node": p, "from": world_from, "tgt": tgt, "dmg": 1, "col": Color("#d9d2c4"),   # ★伤害写死 1(象征性): 不走 _resolve_dmg 是有意的 —— 吃了护甲也还是 1(maxi(1,…) 兜底)
@@ -97,7 +97,7 @@ func _fire_coral_spike(src: Dictionary, tgt: Dictionary, si: int) -> void:   # �
 	battle._world.add_child(p)
 	_push_proj({
 		"node": p, "from": battle._world_pos(start2d, 1.0), "tgt": tgt, "dmg": 0, "col": Color(1.0, 0.5, 0.36),
-		"src": src, "t": 0.0, "dur": clampf(start2d.distance_to(tgt["pos"]) / 900.0, 0.22, 0.8),
+		"src": src, "t": 0.0, "dur": clampf(DetMath.dist(start2d, tgt["pos"]) / 900.0, 0.22, 0.8),
 		"coral_spike": true, "dirsel": true, "co_si": si,
 	})
 
@@ -147,8 +147,8 @@ func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, ba
 	var world_from = battle._world_pos(start2d, 1.0)   # 从胸口高度出
 	p.position = world_from
 	battle._world.add_child(p)
-	var pdur = clampf(start2d.distance_to(tgt["pos"]) / 700.0, 0.22, 0.7)
-	if card_spin: pdur = clampf(start2d.distance_to(tgt["pos"]) / 430.0, 0.42, 1.1)   # 扑克牌弹道放慢看清(用户2026-07-14)
+	var pdur = clampf(DetMath.dist(start2d, tgt["pos"]) / 700.0, 0.22, 0.7)
+	if card_spin: pdur = clampf(DetMath.dist(start2d, tgt["pos"]) / 430.0, 0.42, 1.1)   # 扑克牌弹道放慢看清(用户2026-07-14)
 	var _stt: int = 0
 	if basic_onhit and src is Dictionary and str(src.get("id", "")) == "space" and float(src.get("star_energy", 0.0)) > 0.0:
 		_stt = int(float(src["star_energy"]) * StarSystem.ENERGY_TRUE_PCT)   # 星能追加真伤=12%当前星能(用户2026-07-16: 30%→12%)·打包进普攻弹道命中才结算
@@ -174,7 +174,7 @@ func _fire_ghost_wisp(u: Dictionary, tgt: Dictionary) -> void:
 	battle._world.add_child(p)
 	_push_proj({
 		"node": p, "from": world_from, "tgt": tgt, "src": u, "t": 0.0,
-		"dur": clampf(start2d.distance_to(tgt["pos"]) / 620.0, 0.2, 0.62),
+		"dur": clampf(DetMath.dist(start2d, tgt["pos"]) / 620.0, 0.2, 0.62),
 		"ghost_touch": true, "gt_phys": 0.4 * atk, "gt_true": 0.9 * atk, "basic_onhit": true, "wisp_dir": true,
 	})
 
@@ -241,9 +241,9 @@ func _step_projectiles(delta: float) -> void:
 			##   **根本没翻**; 3.30 那个横着的东西是【拖尾残影】不是弹体。
 			##   (同一天第三次"目视报了个不存在的 bug"。判断朝向一律先量再说。)
 			var a2: Vector2 = battle._cam.unproject_position(to) 				- battle._cam.unproject_position(pr["from"] if pr.has("from") else node.global_position)
-			if a2.length() > 0.5:
+			if DetMath.vlen(a2) > 0.5:
 				## 屏幕空间角度 → 方向下标。-a2.y 是因为屏幕 Y 向下。
-				var ang: float = atan2(-a2.y, a2.x)
+				var ang: float = DetMath.datan2(-a2.y, a2.x)
 				var di: int = int(round(ang / (TAU / float(nd)))) % nd
 				if di < 0: di += nd
 				spd.frame = int(float(pr["t"]) * 14.0) % int(spd.vframes) * nd + di
@@ -256,17 +256,17 @@ func _step_projectiles(delta: float) -> void:
 				pr["_ai_t"] = 0.0
 				_spawn_afterimage(node as Sprite3D, float(pr.get("ai_life", 0.20)))
 		if pr.has("arc"):
-			node.position.y += float(pr["arc"]) * sin(PI * frac)   # 抛物线拱起(火球等)
+			node.position.y += float(pr["arc"]) * DetMath.dsin(PI * frac)   # 抛物线拱起(火球等)
 		if pr.get("oriented", false):                              # 尖尖波: 绕Y转向行进方向(尖端领着飞)
 			var d3: Vector3 = to - node.position
 			if d3.length() > 0.05:
-				node.rotation.y = -atan2(d3.z, d3.x)
+				node.rotation.y = -DetMath.datan2(d3.z, d3.x)
 		if pr.get("wisp_dir", false) and battle._cam != null:            # 幽魂弹: 正对镜头+屏幕roll→火苗尖指向目标屏幕方向(用户2026-07-11)
 			var ss2: Vector2 = battle._cam.unproject_position(node.global_position)
 			var st2: Vector2 = battle._cam.unproject_position(to)
 			var sd2: Vector2 = st2 - ss2
-			if sd2.length() > 1.0:
-				var roll2: float = atan2(-sd2.y, sd2.x) - PI / 2.0 + float(pr.get("wisp_off", 0.0))   # wisp_off: 纹理朝前方向修正(默认+Y; 横向贴图=+X 传 PI/2)
+			if DetMath.vlen(sd2) > 1.0:
+				var roll2: float = DetMath.datan2(-sd2.y, sd2.x) - PI / 2.0 + float(pr.get("wisp_off", 0.0))   # wisp_off: 纹理朝前方向修正(默认+Y; 横向贴图=+X 传 PI/2)
 				var wtf2: Transform3D = node.global_transform
 				wtf2.basis = battle._vfx.cam_basis() * Basis(Vector3(0, 0, 1), roll2)
 				node.global_transform = wtf2
@@ -424,7 +424,7 @@ func _shotgun_pellet(from2d: Vector2, to2d: Vector2, col: Color, dur: float = 0.
 	sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	sp.shaded = false; sp.transparent = true
 	sp.pixel_size = 0.02
-	var perp = (to2d - from2d).orthogonal().normalized() if (to2d - from2d).length() > 1.0 else Vector2.UP
+	var perp = DetMath.norm((to2d - from2d).orthogonal()) if DetMath.vlen((to2d - from2d)) > 1.0 else Vector2.UP
 	sp.position = battle._world_pos(from2d + perp * randf_range(-18.0, 18.0), 1.0)
 	battle._world.add_child(sp)
 	var tw = battle._reg_tween()   # 顺序: 全程满alpha飞行 → 命中处才快速淡出(修"路中间淡化"用户2026-07-04)
@@ -466,7 +466,7 @@ func _fire_venom_fang(src: Dictionary, tgt: Dictionary, base: float) -> void:
 	battle._world.add_child(p)
 	_push_proj({
 		"node": p, "from": battle._world_pos(start2d, 1.0), "tgt": tgt, "dmg": 0, "col": Color("#c96bff"),
-		"src": src, "t": 0.0, "dur": clampf(start2d.distance_to(tgt["pos"]) / 700.0, 0.28, 0.84),
+		"src": src, "t": 0.0, "dur": clampf(DetMath.dist(start2d, tgt["pos"]) / 700.0, 0.28, 0.84),
 		"venom_fang": true, "fang_base": base,
 		"afterimage": 0.016,     # 拖尾很密(毒牙飞得快, 要拉出旧版那种"一条带"的速度感)
 		"ai_life": 0.34,         # 残影活久一点 ⇒ 尾更长(实测 0.20 只有约 2 个龟身, 旧版跨 3 个)
@@ -487,7 +487,7 @@ func _fire_ice_shard(src: Dictionary, tgt: Dictionary, dmg: int, freeze_sec: flo
 	var world_from = battle._world_pos(start2d, 1.0)
 	p.position = world_from
 	battle._world.add_child(p)
-	var dur = clampf(start2d.distance_to(tgt["pos"]) / 600.0, 0.35, 0.9)   # 恒速~600px/s, 慢到看得清(原0.2太快)
+	var dur = clampf(DetMath.dist(start2d, tgt["pos"]) / 600.0, 0.35, 0.9)   # 恒速~600px/s, 慢到看得清(原0.2太快)
 	_push_proj({
 		"node": p, "from": world_from, "tgt": tgt, "dmg": dmg, "col": Color("#4dabf7"),
 		"src": src, "t": 0.0, "dur": dur, "basic_onhit": false, "freeze_on_hit": freeze_sec, "oriented": true, "dtype": battle._last_dmg_type,
@@ -507,7 +507,7 @@ func _fire_shuriken(src: Dictionary, tgt: Dictionary, phys_raw: float, true_raw:
 	var world_from = battle._world_pos(start2d, 1.0)
 	p.position = world_from
 	battle._world.add_child(p)
-	var dur = clampf(start2d.distance_to(tgt["pos"]) / 850.0, 0.12, 0.5)   # 快镖
+	var dur = clampf(DetMath.dist(start2d, tgt["pos"]) / 850.0, 0.12, 0.5)   # 快镖
 	_push_proj({
 		"node": p, "from": world_from, "tgt": tgt, "src": src, "t": 0.0, "dur": dur,
 		"shuriken_hit": true, "shuriken_anim": true,
@@ -532,7 +532,7 @@ func _fire_hunter_arrow(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   # �
 	_push_proj({
 		"node": p, "tgt": tgt, "src": u, "dmg": dmg, "col": Color("#ffffff"),
 		"t": 0.0, "homing_arc": true, "pos2d": from2d, "h0": 1.2,
-		"init_dist": maxf(120.0, from2d.distance_to(tgt["pos"])),
+		"init_dist": maxf(120.0, DetMath.dist(from2d, tgt["pos"])),
 		"arc": 4.6, "raw": true,
 	})
 
@@ -582,7 +582,7 @@ func _step_homing_arrow(pr: Dictionary, node: Sprite3D, delta: float) -> bool:  
 		node.frame = int(float(pr["t"]) * 16.0) % int(node.hframes)   # 箭身帧动画
 	var cur2d: Vector2 = pr["pos2d"]
 	var tp: Vector2 = tgt["pos"]
-	var dist: float = cur2d.distance_to(tp)
+	var dist: float = DetMath.dist(cur2d, tp)
 	if dist <= 30.0:   # 命中
 		node.queue_free()
 		if pr.get("hunt_exec", false):                            # 被动强化箭: 命中处决(<斩杀线)
@@ -591,16 +591,16 @@ func _step_homing_arrow(pr: Dictionary, node: Sprite3D, delta: float) -> bool:  
 			battle._damage._apply_damage_from(pr["src"], tgt, int(pr["dmg"]), pr["col"], 0.0, true)   # 弹幕: 白色真伤
 			battle._vfx._flash(tgt); battle._vfx._hit_spark(tgt)
 		return false
-	cur2d = cur2d.move_toward(tp, float(pr.get("spd", battle.HUNTER_ARROW_SPD)) * delta)   # 追踪(向当前目标位置移动·spd可覆写)
+	cur2d = DetMath.vmove_toward(cur2d, tp, float(pr.get("spd", battle.HUNTER_ARROW_SPD)) * delta)   # 追踪(向当前目标位置移动·spd可覆写)
 	pr["pos2d"] = cur2d
 	var progress: float = clampf(1.0 - dist / float(pr["init_dist"]), 0.0, 1.0)
-	var h: float = float(pr["h0"]) + float(pr["arc"]) * sin(PI * progress)   # 抛物线高度(升→降)
+	var h: float = float(pr["h0"]) + float(pr["arc"]) * DetMath.dsin(PI * progress)   # 抛物线高度(升→降)
 	var prev_world: Vector3 = node.global_position
 	node.position = battle._world_pos(cur2d, h)
 	if battle._cam != null:   # 箭头随角度: 屏幕空间速度方向(含上下弧)→in-plane roll(箭尖上扬/下俯)
 		var sv: Vector2 = battle._cam.unproject_position(node.global_position) - battle._cam.unproject_position(prev_world)
-		if sv.length() > 0.4:
-			var roll: float = atan2(-sv.y, sv.x) + float(pr.get("roll_off", 0.0))
+		if DetMath.vlen(sv) > 0.4:
+			var roll: float = DetMath.datan2(-sv.y, sv.x) + float(pr.get("roll_off", 0.0))
 			var tf: Transform3D = node.global_transform
 			tf.basis = battle._vfx.cam_basis() * Basis(Vector3(0, 0, 1), roll)
 			node.global_transform = tf
@@ -627,7 +627,7 @@ func _fire_hunter_exec_arrow(u: Dictionary, tgt: Dictionary) -> void:   # 强化
 	_push_proj({
 		"node": p, "tgt": tgt, "src": u, "dmg": 0, "col": Color("#ffd700"),
 		"t": 0.0, "homing_arc": true, "hunt_exec": true, "pos2d": from2d, "h0": 1.3,
-		"init_dist": maxf(120.0, from2d.distance_to(tgt["pos"])),
+		"init_dist": maxf(120.0, DetMath.dist(from2d, tgt["pos"])),
 		"arc": 2.0, "spd": 720.0, "raw": true,   # 更快更直(决绝处决箭)
 	})
 
@@ -690,7 +690,7 @@ func fire_flyslash(src: Dictionary, tgt: Dictionary, dmg: int, col: Color) -> vo
 	if _flyslash_sheet == null:
 		_flyslash_sheet = load("res://assets/sprites/vfx/eq001-flyslash-dir4.png")
 	var aim: Vector2 = (tgt["pos"] - src["pos"])
-	var start2d: Vector2 = src["pos"] + (aim.normalized() * FLYSLASH_SPAWN_OFF if aim.length() > 1.0 else Vector2.ZERO)
+	var start2d: Vector2 = src["pos"] + (DetMath.norm(aim) * FLYSLASH_SPAWN_OFF if DetMath.vlen(aim) > 1.0 else Vector2.ZERO)
 	battle._vfx.flyslash_muzzle(start2d, col)                    # ② 发射: 一次性，锚在出手点(已偏出身体)，不跟飞
 	var p := Sprite3D.new()
 	p.texture = _flyslash_sheet
@@ -713,7 +713,7 @@ func fire_flyslash(src: Dictionary, tgt: Dictionary, dmg: int, col: Color) -> vo
 	battle._world.add_child(p)
 	_push_proj({
 		"node": p, "from": battle._world_pos(start2d, 1.0), "tgt": tgt, "dmg": dmg, "col": col,
-		"src": src, "t": 0.0, "dur": clampf(start2d.distance_to(tgt["pos"]) / 520.0, 0.8, 2.6),   # 飞行速度: 降60%后再减半(用户2026-07-19: /2600→/1040→/520)
+		"src": src, "t": 0.0, "dur": clampf(DetMath.dist(start2d, tgt["pos"]) / 520.0, 0.8, 2.6),   # 飞行速度: 降60%后再减半(用户2026-07-19: /2600→/1040→/520)
 		"flyslash": true, "o2d": start2d,
 		"dirsel": true,                # ③ 按飞行角度选方向帧(不旋转) —— 见本文件 _step_projectiles
 		"afterimage": 0.045,           # ④ 拖尾: 每 45ms 留一个半透明残影, 原地淡出(不画进贴图)

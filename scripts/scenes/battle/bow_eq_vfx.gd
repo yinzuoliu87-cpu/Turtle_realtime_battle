@@ -370,7 +370,7 @@ static func densest_point(pts: Array, radius: float) -> Vector2:
 func scatter_offset(sigma: float) -> Vector2:
 	if battle == null:
 		return Vector2.ZERO
-	return Vector2(battle._battle_rng.randfn(0.0, sigma), battle._battle_rng.randfn(0.0, sigma))
+	return Vector2(DetMath.rnorm(battle._battle_rng, 0.0, sigma), DetMath.rnorm(battle._battle_rng, 0.0, sigma))
 
 
 # ── ④ 076 贯穿衰减 + 连射节奏 ───────────────────────────────────

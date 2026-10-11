@@ -26,7 +26,7 @@ func _ninja_mark_shatter(spr) -> void:
 		sh.position = pos
 		battle._world.add_child(sh)
 		var ang: float = float(k) * TAU / 4.0 + 0.4
-		var dst = pos + Vector3(cos(ang) * 0.2, 0.06, sin(ang) * 0.2)
+		var dst = pos + Vector3(DetMath.dcos(ang) * 0.2, 0.06, DetMath.dsin(ang) * 0.2)
 		var st = battle._reg_tween().bind_node(sh); st.set_parallel(true)
 		st.tween_property(sh, "position", dst, 0.24)
 		st.tween_property(sh, "modulate:a", 0.0, 0.24)
@@ -71,8 +71,8 @@ func _ninja_dash(u: Dictionary, target: Dictionary) -> void:    # 被动·冲击
 	u["_ninja_last_dash"] = battle._t
 	var start: Vector2 = u["pos"]
 	var dir: Vector2 = target["pos"] - start
-	if dir.length() < 1.0: dir = Vector2.RIGHT
-	dir = dir.normalized()
+	if DetMath.vlen(dir) < 1.0: dir = Vector2.RIGHT
+	dir = DetMath.norm(dir)
 	# ★#5修〖用户2026-07-11〗: 亚索 E 式【滑行穿过】(非瞬移), 滑速 600 码/秒. 固定路径 300 码(同日 450→300).
 	var endp: Vector2 = start + dir * DASH_RANGE                     # 冲刺距离 300码(用户2026-07-11: 450→300)
 	endp = ArenaShape.clamp_in(endp, battle.ARENA)
@@ -81,7 +81,7 @@ func _ninja_dash(u: Dictionary, target: Dictionary) -> void:    # 被动·冲击
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		if not battle._on_line(start, dir, o["pos"], DASH_WIDTH): continue
-		var proj: float = (o["pos"] - start).dot(dir)
+		var proj: float = DetMath.dot((o["pos"] - start), dir)
 		if proj < 0.0 or proj > DASH_RANGE: continue
 		hits.append({"o": o, "proj": proj, "done": false})
 	hits.sort_custom(func(a, b): return float(a["proj"]) < float(b["proj"]))
@@ -90,7 +90,7 @@ func _ninja_dash(u: Dictionary, target: Dictionary) -> void:    # 被动·冲击
 
 ## 忍者冲击滑行 (亚索 E 式 · 600 码/秒 · 穿过路径敌逐个割). no_move 期间分离跳过, 每帧直接推 pos.
 func _ninja_glide(u: Dictionary, start: Vector2, endp: Vector2, dir: Vector2, target: Dictionary, hits: Array) -> void:
-	var total: float = start.distance_to(endp)
+	var total: float = DetMath.dist(start, endp)
 	if total < 1.0:
 		return
 	var was_nm: bool = bool(u.get("no_move", false))
@@ -121,7 +121,7 @@ func _ninja_glide(u: Dictionary, start: Vector2, endp: Vector2, dir: Vector2, ta
 	lead.modulate = Color(0.72, 0.95, 1.0, 0.9)                # 疾风蓝白
 	var _lt = float(maxi(1, int(lead.texture.get_width())))
 	lead.pixel_size = (160.0 * battle.WS) / _lt
-	lead.rotation.y = -atan2(dir.y, dir.x)                      # 朝行进方向
+	lead.rotation.y = -DetMath.datan2(dir.y, dir.x)                      # 朝行进方向
 	lead.position = battle._world_pos(start + dir * 60.0, 1.0)
 	battle._world.add_child(lead)
 	while is_instance_valid(battle) and traveled < total and u.get("alive", false) and battle.is_inside_tree():
@@ -179,7 +179,7 @@ func _sk_ninja_backstab(u: Dictionary, tgt: Dictionary) -> void: # 技三·背�
 	var fd = -1.0
 	for o in battle._targeting._pick_enemies_of(u):   # ★单体定向(闪现到最远敌身后)走 battle._targeting._pick_enemies_of: 否则忍者会瞬移到场外训龟大师身后背刺(场外·永远最远); 见 §PICK-TARGET(用户2026-07-24)
 		if not o.get("alive", false): continue
-		var dd: float = u["pos"].distance_to(o["pos"])
+		var dd: float = DetMath.dist(u["pos"], o["pos"])
 		if dd > fd: fd = dd; far = o
 	if far == null: far = tgt
 	if far == null: return
@@ -274,7 +274,7 @@ func _bomb_explode(spr, u: Dictionary, at2d: Vector2, opts: Dictionary) -> void:
 	var col: Color = opts.get("color", Color("#ff9a3c"))
 	var hit: Array = []
 	for e in battle._targeting._enemies_of(u):
-		if e != null and e.get("alive", false) and e["pos"].distance_to(at2d) <= battle.NINJA_BOMB_RADIUS:
+		if e != null and e.get("alive", false) and DetMath.dist(e["pos"], at2d) <= battle.NINJA_BOMB_RADIUS:
 			hit.append(e)
 	for e in hit:
 		battle._apply_skill_extras(u, e, opts)        # -20%护甲(defDown 0.20·BUFF_SEC=5秒)

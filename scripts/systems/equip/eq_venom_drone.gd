@@ -126,9 +126,9 @@ func _init(b) -> void:
 ## ★纯几何, 门禁验终点而不是等飞行物飞到(CLAUDE.md §3.5 的 `_pirate_grapple_dest` 同款做法)。
 static func overshoot_dest(from: Vector2, tgt: Vector2) -> Vector2:
 	var dir: Vector2 = tgt - from
-	if dir.length() < 1.0:
+	if DetMath.vlen(dir) < 1.0:
 		dir = Vector2.RIGHT          # 退化: 已经贴在目标身上 → 随便挑一个方向穿出去
-	return tgt + dir.normalized() * OVERSHOOT
+	return tgt + DetMath.norm(dir) * OVERSHOOT
 
 
 ## n 层剧毒缓速的移速倍率
@@ -204,13 +204,13 @@ func _tick_drones(dt: float) -> void:
 			d["dest"] = _clamp_arena(overshoot_dest(
 				d.get("leg_p0", pos) as Vector2, (_tg as Dictionary)["pos"] as Vector2))
 		var dest: Vector2 = d["dest"]
-		if pos.distance_to(dest) <= ARRIVE_R or float(d["leg_t"]) >= LEG_TIMEOUT:
+		if DetMath.dist(pos, dest) <= ARRIVE_R or float(d["leg_t"]) >= LEG_TIMEOUT:
 			_new_leg(d)
 			dest = d["dest"]
-		var want: float = (dest - pos).angle()
+		var want: float = DetMath.angle((dest - pos))
 		d["hd"] = VFX.steer(float(d["hd"]), want, dt)
 		var hd: float = d["hd"]
-		pos += Vector2(cos(hd), sin(hd)) * VFX.DRONE_SPEED * dt
+		pos += Vector2(DetMath.dcos(hd), DetMath.dsin(hd)) * VFX.DRONE_SPEED * dt
 		d["pos"] = _clamp_arena(pos)
 		d["age"] = float(d["age"]) + dt
 		d["fog_acc"] = float(d["fog_acc"]) + dt
@@ -414,7 +414,7 @@ func _spawn_drone(u: Dictionary, star: int) -> void:
 	}
 	_next_did += 1
 	_new_leg(d)
-	d["hd"] = (Vector2(d["dest"]) - Vector2(d["pos"])).angle()
+	d["hd"] = DetMath.angle((Vector2(d["dest"]) - Vector2(d["pos"])))
 	_drones.append(d)
 
 
@@ -526,7 +526,7 @@ func _star_of(u: Dictionary) -> int:
 func _in_any_fog(arr: Array, p: Vector2) -> bool:
 	for f in arr:
 		var r: float = VFX.fog_radius(float(f["t"]))
-		if r > 0.0 and (Vector2(f["pos"]) - p).length() <= r:
+		if r > 0.0 and DetMath.vlen((Vector2(f["pos"]) - p)) <= r:
 			return true
 	return false
 

@@ -36,8 +36,8 @@ func _dice_dash_set_target(u: Dictionary, tgt) -> void:
 	u["dice_dash_seg_start"] = battle._t                                  # 本段起始(超时保险)
 	if tgt == null: return
 	var dir: Vector2 = tgt["pos"] - u["pos"]
-	if dir.length() < 1.0: dir = Vector2.RIGHT
-	dir = dir.normalized()
+	if DetMath.vlen(dir) < 1.0: dir = Vector2.RIGHT
+	dir = DetMath.norm(dir)
 	u["dice_dash_dir"] = dir
 	var land: Vector2 = tgt["pos"] + dir * battle.DICE_DASH_OVERSHOOT     # 落点在目标后方一点(穿过去)
 	land = ArenaShape.clamp_in(land, battle.ARENA, 20)   # ★落点clamp进场内(否则算到边界外→被clamp卡死)
@@ -59,7 +59,7 @@ func _dice_dash_tick(u: Dictionary, delta: float) -> void:
 	var land: Vector2 = u.get("dice_dash_land", tgt["pos"])
 	var to_land: Vector2 = land - u["pos"]
 	var stuck: bool = battle._t - float(u.get("dice_dash_seg_start", battle._t)) > 1.6   # ★超时保险: 本段冲>1.6s还没到(卡边界)→强制结算
-	if to_land.length() <= 26.0 or to_land.dot(ddir) <= 0.0 or stuck:   # 到达落点/已穿过/卡住 → 挥剑斩结算
+	if DetMath.vlen(to_land) <= 26.0 or DetMath.dot(to_land, ddir) <= 0.0 or stuck:   # 到达落点/已穿过/卡住 → 挥剑斩结算
 		u["pos"] = land
 		u["pos"] = ArenaShape.clamp_in(u["pos"], battle.ARENA)
 		_dice_dash_hit(u, tgt, ddir)
@@ -78,7 +78,7 @@ func _dice_dash_tick(u: Dictionary, delta: float) -> void:
 		_dice_blade_trail(u["pos"], ddir)
 
 func _dice_dash_hit(u: Dictionary, tgt: Dictionary, dir: Vector2) -> void:
-	var scale_i: float = FLASH_FIRST_COEF * pow(1.0 - FLASH_FALLOFF, float(int(u.get("dice_dash_seg", 0))))   # 每段递减10%(回合制falloffPct=10)
+	var scale_i: float = FLASH_FIRST_COEF * DetMath.dpow(1.0 - FLASH_FALLOFF, float(int(u.get("dice_dash_seg", 0))))   # 每段递减10%(回合制falloffPct=10)
 	battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, scale_i, tgt), Color("#ff4444"))
 	battle._damage._grant_shield(u, float(u["atk"]) * FLASH_SHIELD_PER_HIT, 6.0)   # 每穿一次 +0.2ATK 护盾(用户2026-07-28)
 	_dice_blade_slash(tgt["pos"], dir)   # AI挥剑斩(沿冲刺方向)
@@ -119,7 +119,7 @@ func _dice_pick_strike_target(u: Dictionary):                   # 随机敌(用�
 	var cand: Array = []
 	for o in battle._targeting._pick_enemies_of(u):
 		if not o.get("alive", false): continue
-		if o["pos"].distance_to(u["pos"]) > 2000.0: continue   # 射程2000
+		if DetMath.dist(o["pos"], u["pos"]) > 2000.0: continue   # 射程2000
 		cand.append(o)
 	if cand.is_empty(): return null
 	return cand[battle._battle_rng.randi() % cand.size()]
@@ -127,7 +127,7 @@ func _dice_pick_strike_target(u: Dictionary):                   # 随机敌(用�
 func _dice_scythe_sweep(u: Dictionary, origin: Vector2, dir: Vector2, rng: float, half_deg: float) -> void:
 	var tex: Texture2D = load("res://assets/sprites/vfx/dice-scythe.png")
 	if tex == null: return
-	var base_ang: float = atan2(dir.y, dir.x)
+	var base_ang: float = DetMath.datan2(dir.y, dir.x)
 	var blade = Sprite3D.new()
 	blade.texture = tex
 	blade.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
@@ -143,8 +143,8 @@ func _dice_scythe_sweep(u: Dictionary, origin: Vector2, dir: Vector2, rng: float
 
 func _dice_scythe_step(fr: float, blade: Sprite3D, origin: Vector2, base_ang: float, rng: float, half_deg: float) -> void:
 	if not is_instance_valid(blade): return
-	var a: float = base_ang + deg_to_rad(lerpf(-half_deg, half_deg, fr))   # 从 -60° 扫到 +60°
-	var bd = Vector2(cos(a), sin(a))
+	var a: float = base_ang + deg_to_rad(DetMath.flerp(-half_deg, half_deg, fr))   # 从 -60° 扫到 +60°
+	var bd = Vector2(DetMath.dcos(a), DetMath.dsin(a))
 	blade.rotation = Vector3(0.0, -a - PI * 0.5, 0.0)     # 刀刃切向沿扫掠方向(镰刀立绘上=刀朝上→旋转对齐弧线)
 	blade.position = battle._world_pos(origin + bd * (rng * 0.5), 0.16)
 	var tr = Sprite3D.new()   # 红拖尾(残影)
@@ -160,15 +160,15 @@ func _dice_scythe_step(fr: float, blade: Sprite3D, origin: Vector2, base_ang: fl
 func _sk_dice_allin(u: Dictionary) -> void:                      # 骰子龟·孤注一掷(用户设计: 前方120°/300码镰刀扇形斩·1.5A物理+30%吸血·用户2026-07-28 1.2→1.5)
 	var tgt = battle._targeting._nearest_enemy(u)
 	var dir: Vector2 = (Vector2.RIGHT if tgt == null else (tgt["pos"] - u["pos"]))
-	if dir.length() < 1.0: dir = Vector2.RIGHT
-	dir = dir.normalized()
-	var half_cos: float = cos(deg_to_rad(ALLIN_ARC_DEG * 0.5))   # 半角60°=全120°
+	if DetMath.vlen(dir) < 1.0: dir = Vector2.RIGHT
+	dir = DetMath.norm(dir)
+	var half_cos: float = DetMath.dcos(deg_to_rad(ALLIN_ARC_DEG * 0.5))   # 半角60°=全120°
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		var to_o: Vector2 = o["pos"] - u["pos"]
-		var d: float = to_o.length()
+		var d: float = DetMath.vlen(to_o)
 		if d > ALLIN_RANGE or d < 1.0: continue
-		if dir.dot(to_o / d) < half_cos: continue
+		if DetMath.dot(dir, to_o / d) < half_cos: continue
 		battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, ALLIN_DMG, o), Color("#ff4444"), ALLIN_LIFESTEAL)
 	_dice_scythe_sweep(u, u["pos"], dir, ALLIN_RANGE, ALLIN_ARC_DEG * 0.5)   # 红镰刀贴地弧扫过120°扇形(用户2026-07-13)
 	battle._skill_ring(u["pos"], Color(1.0, 0.3, 0.3, 0.35), 52.0)
@@ -192,7 +192,7 @@ func _sk_dice_fate(u: Dictionary) -> void:
 	if u.get("crit_fate_until", 0.0) > battle._t:           # 撤销未到期旧增益, 防叠加
 		u["crit"] -= u.get("crit_fate_amt", 0.0)
 		u["crit_dmg"] -= u.get("crit_dmg_fate_amt", 0.0)
-	var roll: float = battle._battle_rng.randf_range(FATE_CRIT_MIN, FATE_CRIT_MAX)   # B 阶段: 命运暴击的点数是对局结果(方案书 20260916c §2.3 点名的那一处)
+	var roll: float = DetMath.rrange(battle._battle_rng, FATE_CRIT_MIN, FATE_CRIT_MAX)   # B 阶段: 命运暴击的点数是对局结果(方案书 20260916c §2.3 点名的那一处)
 	var over: float = maxf(0.0, (u["crit"] + roll) - 1.0)   # 暴击封顶100%, 超出转暴伤
 	var add_crit: float = roll - over
 	var add_cd: float = over * 1.5

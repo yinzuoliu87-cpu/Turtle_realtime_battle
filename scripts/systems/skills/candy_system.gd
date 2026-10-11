@@ -48,8 +48,8 @@ func _sk_candy_hammer(u: Dictionary, tgt) -> void:              # 糖果龟·技
 	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	var dir: Vector2 = tgt["pos"] - u["pos"]
-	if dir.length() < 1.0: dir = Vector2.RIGHT
-	dir = dir.normalized()
+	if DetMath.vlen(dir) < 1.0: dir = Vector2.RIGHT
+	dir = DetMath.norm(dir)
 	battle._anticipate(u)                                              # 蹲身蓄力
 	var hammer: Sprite3D = null                                # 举锤→猛砸一气呵成(用户2026-07-15"不连贯"→连续动作·无干等)
 	var htex = load("res://assets/sprites/skills/candy-hammer.png")
@@ -84,7 +84,7 @@ func _sk_candy_hammer(u: Dictionary, tgt) -> void:              # 糖果龟·技
 		if not uu.get("alive", false): return
 		var hits: Array = []
 		for o in battle._targeting._enemies_of(uu):
-			if o.get("alive", false) and battle._on_line(uu["pos"], d2, o["pos"], 70.0) and o["pos"].distance_to(uu["pos"]) <= HAMMER_RANGE:
+			if o.get("alive", false) and battle._on_line(uu["pos"], d2, o["pos"], 70.0) and DetMath.dist(o["pos"], uu["pos"]) <= HAMMER_RANGE:
 				hits.append(o)
 		if hits.is_empty(): return
 		var per_raw: float = (uu["atk"] * HAMMER_ATK_COEF + uu["maxHp"] * HAMMER_HP_PCT) / float(hits.size())
@@ -100,9 +100,9 @@ func _candy_hammer_pose(hammer: Sprite3D, pos2d: Vector2, dir: Vector2, slamming
 	var back: Vector2 = pos2d - dir * 24.0
 	var front: Vector2 = pos2d + dir * 82.0
 	if not slamming:
-		flat = pos2d.lerp(back, p); hh = lerpf(1.1, 3.1, p); ang = lerpf(0.0, (0.75 if dir.x >= 0.0 else -0.75), p)
+		flat = DetMath.vlerp(pos2d, back, p); hh = DetMath.flerp(1.1, 3.1, p); ang = DetMath.flerp(0.0, (0.75 if dir.x >= 0.0 else -0.75), p)
 	else:
-		flat = back.lerp(front, p); hh = lerpf(3.1, 0.45, p * p); ang = lerpf((0.75 if dir.x >= 0.0 else -0.75), (-1.2 if dir.x >= 0.0 else 1.2), p)
+		flat = DetMath.vlerp(back, front, p); hh = DetMath.flerp(3.1, 0.45, p * p); ang = DetMath.flerp((0.75 if dir.x >= 0.0 else -0.75), (-1.2 if dir.x >= 0.0 else 1.2), p)
 	hammer.flip_h = dir.x < 0.0
 	hammer.position = battle._world_pos(flat, hh)
 	if battle._cam != null:
@@ -126,12 +126,12 @@ func _sk_candy_barrage(u: Dictionary, tgt) -> void:            # 糖果龟·技�
 			for b in range(8):
 				## ★2026-10-04: 落点决定谁吃伤害/谁拿盾 ⇒ 必须走战斗随机流(原来是全局 randf ⇒ 同种子两遍 945/1000 步分叉·首个分叉步 50)
 				var ang = battle._battle_rng.randf() * TAU
-				var land: Vector2 = ctr + Vector2(cos(ang), sin(ang)) * battle._battle_rng.randf_range(15.0, 430.0)
+				var land: Vector2 = ctr + Vector2(DetMath.dcos(ang), DetMath.dsin(ang)) * DetMath.rrange(battle._battle_rng, 15.0, 430.0)
 				_candy_shell_drop(land, func() -> void:          # 糖弹落地: 大糖爆+落点120码局部结算
 					battle._burst_vfx("res://assets/sprites/vfx/candy-burst.png", land, 185.0, 0.3)
 					for o in battle._units:
 						if not o.get("alive", false): continue
-						if o["pos"].distance_to(land) > 120.0: continue
+						if DetMath.dist(o["pos"], land) > 120.0: continue
 						if not battle._is_hostile(uu, o):
 							battle._damage._grant_shield(o, uu["maxHp"] * BARRAGE_SHIELD_PCT, 2.0)   # 友军护盾 2%→1.5% 自身最大生命/跳(用户2026-07-30 第六轮)
 							# ★削的是它"同时当辅助"那一半: 一场送出的护盾 2378→1647(−31%), 输出身份保留。
@@ -153,7 +153,7 @@ func _candy_shell_drop(land2d: Vector2, on_land: Callable) -> void:   # 糖衣�
 	s.pixel_size = (58.0 * battle.WS) / float(maxi(1, tex.get_height()))   # 炮弹调大(用户2026-07-15)
 	var from_h = 8.5
 	## ★下落时长决定 on_land(伤害结算)落在哪一步 ⇒ 走战斗随机流(tween 由 sim 步喂, 时长就是结算时刻)
-	var fall_sec: float = battle._battle_rng.randf_range(0.42, 0.6)
+	var fall_sec: float = DetMath.rrange(battle._battle_rng, 0.42, 0.6)
 	s.position = battle._world_pos(land2d, from_h)
 	battle._world.add_child(s)
 	var tw = battle._reg_tween()
@@ -221,7 +221,7 @@ func _candy_drain_fx(candy: Dictionary, fat: Dictionary, amt: int) -> void:   # 
 	for k in range(bits):
 		var ang: float = TAU * float(k) / float(bits) + randf_range(-0.2, 0.2)
 		var r0: float = 26.0 + randf_range(0.0, 22.0)
-		var start: Vector2 = from2d + Vector2(cos(ang), sin(ang)) * r0
+		var start: Vector2 = from2d + Vector2(DetMath.dcos(ang), DetMath.dsin(ang)) * r0
 		var bit := Sprite3D.new()
 		bit.texture = tex
 		bit.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -232,7 +232,7 @@ func _candy_drain_fx(candy: Dictionary, fat: Dictionary, amt: int) -> void:   # 
 		bit.position = battle._world_pos(start, 0.7 + randf_range(0.0, 0.5))
 		battle._world.add_child(bit)
 		## 弧线: 先向外弹一点再被吸走 —— 直线飞读起来像"发射", 弧线才像"被抽"
-		var mid: Vector2 = start + (start - from2d).normalized() * 30.0
+		var mid: Vector2 = start + DetMath.norm((start - from2d)) * 30.0
 		var tw = battle._reg_tween()
 		tw.tween_interval(float(k) * 0.035)
 		tw.tween_property(bit, "position", battle._world_pos(mid, 1.15), 0.16) 			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)

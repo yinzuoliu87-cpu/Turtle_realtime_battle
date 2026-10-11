@@ -637,9 +637,9 @@ func _knockback(by: Dictionary, tgt: Dictionary, _ignored_dist: float, vy_mult: 
 	if tgt.get("_knock_immune", false):   # 不沉之锚017免击飞(原flag只写不读=死标记, 用户2026-07-19"说好的免疫呢"补)
 		return
 	var dir: Vector2 = (tgt["pos"] - by["pos"])
-	if dir.length() < 0.1:
+	if DetMath.vlen(dir) < 0.1:
 		dir = Vector2.RIGHT
-	dir = dir.normalized()
+	dir = DetMath.norm(dir)
 	tgt["airborne"] = true
 	tgt["vy"] = battle.KNOCK_VY * vy_mult
 	tgt["vx"] = dir.x * battle.KNOCK_PUSH * push_mult

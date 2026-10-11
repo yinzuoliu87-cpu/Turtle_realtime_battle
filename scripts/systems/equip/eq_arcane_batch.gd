@@ -388,7 +388,7 @@ func _stele_settle(st: Dictionary) -> void:
 	for o in battle._targeting._enemies_of(src):
 		if not o.get("alive", false):
 			continue
-		if (o["pos"] as Vector2).distance_squared_to(c) > r2:
+		if DetMath.dist2((o["pos"] as Vector2), c) > r2:
 			continue
 		battle._damage._apply_damage_from(src, o,
 			_magic_after_mr(src, float(st["dmg"]), o), COL_TIDE, 0.0, false, true)
@@ -400,7 +400,7 @@ func _stele_settle(st: Dictionary) -> void:
 	for a in battle._targeting._allies_share_pool(src):
 		if not a.get("alive", false):
 			continue
-		if (a["pos"] as Vector2).distance_squared_to(c) > r2:
+		if DetMath.dist2((a["pos"] as Vector2), c) > r2:
 			continue
 		battle._damage._grant_shield(a, float(st["shd"]))
 	battle._cur_eq_item = ""
@@ -430,7 +430,7 @@ func _stele_aura() -> void:
 					continue
 				if not (is_same(o, src) or battle._is_ally(src, o)):
 					continue
-				if (o["pos"] as Vector2).distance_to((st as Dictionary)["pos"] as Vector2) > STELE_RADIUS:
+				if DetMath.dist((o["pos"] as Vector2), (st as Dictionary)["pos"] as Vector2) > STELE_RADIUS:
 					continue
 				want = maxf(want, float((st as Dictionary)["aspd"]))
 		var given: float = float(o.get("_stele_aspd", 0.0))
@@ -606,8 +606,8 @@ func pestle_dest(u: Dictionary) -> Vector2:
 		return here
 	var want: Vector2 = BowEqVfx.densest_point(pts, PESTLE_RADIUS)
 	var d: Vector2 = want - here
-	if d.length() > PESTLE_LEAP_MAX:
-		want = here + d.normalized() * PESTLE_LEAP_MAX
+	if DetMath.vlen(d) > PESTLE_LEAP_MAX:
+		want = here + DetMath.norm(d) * PESTLE_LEAP_MAX
 	## 钳进战场(别跳到墙外/屏外)
 	want = ArenaShape.clamp_in(want, battle.ARENA, 40)
 	return want
@@ -635,7 +635,7 @@ func _tick_slams(delta: float) -> void:
 		var _tt: float = maxf(0.001, float(sl.get("t_total", 1.0)))
 		var _q: float = clampf(1.0 - float(sl["t_left"]) / _tt, 0.0, 1.0)
 		if sl.has("p0") and sl.has("dest") and (u as Dictionary).get("airborne", false):
-			(u as Dictionary)["pos"] = (sl["p0"] as Vector2).lerp(sl["dest"] as Vector2, _q)
+			(u as Dictionary)["pos"] = DetMath.vlerp((sl["p0"] as Vector2), sl["dest"] as Vector2, _q)
 		## ★★砸落**不再由倒计时触发** —— 由 `on_unit_landed`(真实落地事件)结算。
 		##   历史: 倒计时走 `tick_global` 的 delta, 而跳跃走被顿帧/时停门控的 `_tick_unit`,
 		##   两条时钟在顿帧期间分叉 ⇒ 砸落提前(实测结算那一刻龟还在 3.59 米高)。
@@ -685,7 +685,7 @@ func pestle_slam(sl: Dictionary) -> void:
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false):
 			continue
-		if (o["pos"] as Vector2).distance_squared_to(c) > r2:
+		if DetMath.dist2((o["pos"] as Vector2), c) > r2:
 			continue
 		battle._damage._apply_damage_from(u, o, _magic_after_mr(u, base, o), COL_SLAM, 0.0, false, true)
 		battle._damage._stun(o, float(sl["stun"]), "p2eq_090")
@@ -792,7 +792,7 @@ func _wave_next(u: Dictionary, from: Vector2, visited: Array):
 				continue
 			if battle._arr_has_unit(visited, o):
 				continue
-			var d: float = (o["pos"] as Vector2).distance_squared_to(from)
+			var d: float = DetMath.dist2((o["pos"] as Vector2), from)
 			if d < bd:
 				bd = d
 				best = o

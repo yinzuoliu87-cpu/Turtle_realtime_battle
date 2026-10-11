@@ -51,10 +51,10 @@ func _init(b) -> void:
 func _phoenix_flame_channel(u: Dictionary, tgt: Dictionary, delta: float) -> void:
 	u["face_right"] = tgt["pos"].x > u["pos"].x      # 朝向目标(原写的是 u["flip_h"] —— 立绘朝向实际由 face_right 驱动, 那行没人读=死写法·2026-07-19)
 	# ★贴地扇形火焰(用户2026-07-15拍板·照兰博Q官方参考): shader扇形(条纹火舌+暗烟裹边+不透明) + 喷嘴白热星芒闪 + 少量火星
-	var want: float = (tgt["pos"] - u["pos"]).angle() if (tgt["pos"] - u["pos"]).length() > 1.0 else float(u.get("phx_aim", 0.0))
+	var want: float = DetMath.angle((tgt["pos"] - u["pos"])) if DetMath.vlen((tgt["pos"] - u["pos"])) > 1.0 else float(u.get("phx_aim", 0.0))
 	if battle._t - float(u.get("phx_aim_t", -9.9)) > 0.4:   # 停喷过0.4s重开→直接对准(不从旧方向扫)
 		u["phx_aim"] = want
-	u["phx_aim"] = lerp_angle(float(u.get("phx_aim", want)), want, clampf(delta * 5.5, 0.0, 1.0))   # 换目标时锥平滑扫过去(~0.3s·参考: 喷射器有惯性非瞬跳)
+	u["phx_aim"] = DetMath.lerp_ang(float(u.get("phx_aim", want)), want, clampf(delta * 5.5, 0.0, 1.0))   # 换目标时锥平滑扫过去(~0.3s·参考: 喷射器有惯性非瞬跳)
 	u["phx_aim_t"] = battle._t
 	_phoenix_sector_indicator(u, tgt)                # 主视觉: 贴地扇形火焰shader(方向=phx_aim)
 	u["phx_core_t"] = float(u.get("phx_core_t", 0.0)) + delta
@@ -78,12 +78,12 @@ func _phoenix_flame_cone(u: Dictionary, tgt: Dictionary) -> void:
 	var burn_stacks: int = maxi(1, roundi(atk * battle.PHX_FLAME_BURN_COEF))
 	var origin: Vector2 = u["pos"]
 	var dir: Vector2 = tgt["pos"] - origin
-	if dir.length() < 1.0:
+	if DetMath.vlen(dir) < 1.0:
 		return
-	var aim: float = float(u.get("phx_aim", dir.angle()))   # 伤害锥=平滑瞄准角(与视觉锥一致·扫到哪烧到哪)
-	dir = Vector2(cos(aim), sin(aim))
+	var aim: float = float(u.get("phx_aim", DetMath.angle(dir)))   # 伤害锥=平滑瞄准角(与视觉锥一致·扫到哪烧到哪)
+	dir = Vector2(DetMath.dcos(aim), DetMath.dsin(aim))
 	var rng: float = battle._eff_range(u)
-	var half_cos: float = cos(deg_to_rad(FLAME_ARC_HALF))
+	var half_cos: float = DetMath.dcos(deg_to_rad(FLAME_ARC_HALF))
 	## ★★这一跳里【离凤凰最近的那个】要走一次 on-hit(用户 2026-08-13:
 	##   「火焰每0.5跳的时候给最近的onhit, 比如触发竹叶装备」)。
 	##   由来: 喷火走的是范围结算, **一次都不碰 on-hit 钩子** ⇒ 竹弓/金弹/腐蚀这类
@@ -104,10 +104,10 @@ func _phoenix_flame_cone(u: Dictionary, tgt: Dictionary) -> void:
 		if not e.get("alive", false):
 			continue
 		var to_e: Vector2 = e["pos"] - origin
-		var d: float = to_e.length()
+		var d: float = DetMath.vlen(to_e)
 		if d > rng or d < 1.0:
 			continue
-		if dir.dot(to_e / d) < half_cos:
+		if DetMath.dot(dir, to_e / d) < half_cos:
 			continue
 		cone.append(e)
 		if d < nearest_d:
@@ -147,10 +147,10 @@ func _phoenix_flame_cone(u: Dictionary, tgt: Dictionary) -> void:
 func _phoenix_nozzle_flash(u: Dictionary, tgt: Dictionary) -> void:   # 喷嘴白热星芒闪(照兰博Q参考: 嘴部一小簇白热放射光·快闪; 替换原贴脸dragon-flame帧=用户2026-07-15"脸上莫名图片")
 	var origin: Vector2 = u["pos"]
 	var cdir: Vector2 = tgt["pos"] - origin
-	if cdir.length() < 1.0:
+	if DetMath.vlen(cdir) < 1.0:
 		return
-	var _na: float = float(u.get("phx_aim", cdir.angle()))           # 平滑瞄准角(与锥同步扫)
-	cdir = Vector2(cos(_na), sin(_na))
+	var _na: float = float(u.get("phx_aim", DetMath.angle(cdir)))           # 平滑瞄准角(与锥同步扫)
+	cdir = Vector2(DetMath.dcos(_na), DetMath.dsin(_na))
 	var mouth: Vector2 = origin + cdir * 34.0                        # 嘴前方(不贴脸)
 	var glow := Sprite3D.new()                                       # 白热核心光
 	glow.texture = VfxTex._make_fire_glow_tex()
@@ -168,24 +168,24 @@ func _phoenix_nozzle_flash(u: Dictionary, tgt: Dictionary) -> void:   # 喷嘴�
 	tw.tween_property(glow, "modulate:a", 0.0, 0.1)
 	tw.chain().tween_callback(glow.queue_free)
 	for i in range(2):                                               # 2道放射白色小光条(星芒感·锥内前向)
-		var sa: float = cdir.angle() + battle._juice_rng.randf_range(-0.5, 0.5)
-		var endp: Vector2 = mouth + Vector2(cos(sa), sin(sa)) * battle._juice_rng.randf_range(26.0, 60.0)
+		var sa: float = DetMath.angle(cdir) + DetMath.rrange(battle._juice_rng, -0.5, 0.5)
+		var endp: Vector2 = mouth + Vector2(DetMath.dcos(sa), DetMath.dsin(sa)) * DetMath.rrange(battle._juice_rng, 26.0, 60.0)
 		battle._bolt_line(mouth, endp, Color(1.0, 0.97, 0.85, 0.9))
 
 func _phoenix_flame_puff(u: Dictionary, tgt: Dictionary) -> void:   # 飞散火星(dragon-flame小火苗动画·喷流上的细节碎火)
 	var origin: Vector2 = u["pos"]
 	var dir: Vector2 = tgt["pos"] - origin
-	if dir.length() < 1.0:
+	if DetMath.vlen(dir) < 1.0:
 		return
-	dir = dir.normalized()
+	dir = DetMath.norm(dir)
 	var rng: float = battle._eff_range(u)
-	var base_ang: float = float(u.get("phx_aim", dir.angle()))   # 平滑瞄准角(与锥同步扫)
+	var base_ang: float = float(u.get("phx_aim", DetMath.angle(dir)))   # 平滑瞄准角(与锥同步扫)
 	var half: float = deg_to_rad(FLAME_ARC_HALF)
-	var ang: float = base_ang + battle._juice_rng.randf_range(-half, half) * 0.65   # 收紧火锥→定向喷流(非散开)
-	var travel: float = battle._juice_rng.randf_range(rng * 0.55, rng * 1.0)
-	var mouth: Vector2 = origin + Vector2(cos(base_ang), sin(base_ang)) * 24.0
-	var endp: Vector2 = origin + Vector2(cos(ang), sin(ang)) * travel
-	var start_p: Vector2 = mouth.lerp(endp, battle._juice_rng.randf_range(0.0, 0.5))   # 沿喷流线随机起点→火流从口到尖铺满(非全堆在口部=散篝火)
+	var ang: float = base_ang + DetMath.rrange(battle._juice_rng, -half, half) * 0.65   # 收紧火锥→定向喷流(非散开)
+	var travel: float = DetMath.rrange(battle._juice_rng, rng * 0.55, rng * 1.0)
+	var mouth: Vector2 = origin + Vector2(DetMath.dcos(base_ang), DetMath.dsin(base_ang)) * 24.0
+	var endp: Vector2 = origin + Vector2(DetMath.dcos(ang), DetMath.dsin(ang)) * travel
+	var start_p: Vector2 = DetMath.vlerp(mouth, endp, DetMath.rrange(battle._juice_rng, 0.0, 0.5))   # 沿喷流线随机起点→火流从口到尖铺满(非全堆在口部=散篝火)
 	var spr := Sprite3D.new()
 	spr.texture = load("res://assets/sprites/vfx/dragon-flame.png")   # 8帧动画火焰(烧动感·非静态软光点)
 	spr.hframes = 8
@@ -199,8 +199,8 @@ func _phoenix_flame_puff(u: Dictionary, tgt: Dictionary) -> void:   # 飞散火�
 	spr.scale = Vector3(0.4, 0.4, 0.4)
 	spr.position = battle._world_pos(start_p, 0.95)
 	battle._world.add_child(spr)
-	var life: float = battle._juice_rng.randf_range(0.26, 0.4)
-	var hend: float = 0.95 + battle._juice_rng.randf_range(0.05, 0.5)   # 火星往上飘散
+	var life: float = DetMath.rrange(battle._juice_rng, 0.26, 0.4)
+	var hend: float = 0.95 + DetMath.rrange(battle._juice_rng, 0.05, 0.5)   # 火星往上飘散
 	var tw = battle._reg_tween()
 	tw.bind_node(spr)
 	tw.set_parallel(true)
@@ -227,7 +227,7 @@ func _phoenix_sector_indicator(u: Dictionary, tgt: Dictionary) -> void:
 		u["flame_sector"] = sect
 	sect.visible = true
 	u["flame_sector_t"] = battle._t + 0.05
-	(sect.material_override as ShaderMaterial).set_shader_parameter("intensity", 0.9 + 0.1 * sin(battle._t * 11.0))   # 强度轻跳(烧动)
+	(sect.material_override as ShaderMaterial).set_shader_parameter("intensity", 0.9 + 0.1 * DetMath.dsin(battle._t * 11.0))   # 强度轻跳(烧动)
 	var hist: Array = u.get("phx_hist", [])                       # 喷射历史[t,角,开]: 分环回放→停喷火飞完才灭/转向拖尾(用户2026-07-15"完整运动")
 	hist.append([battle._t, float(u.get("phx_aim", 0.0)), 1.0])
 	while hist.size() > 90: hist.pop_front()
@@ -255,7 +255,7 @@ func _phoenix_build_flame_mesh(u: Dictionary) -> bool:   # 分环建扇形mesh: 
 	var origin: Vector2 = u["pos"]
 	var half: float = deg_to_rad(FLAME_ARC_HALF)
 	var rng: float = battle._eff_range(u) * 0.92
-	var mouth: Vector2 = origin + Vector2(cos(ring_a[0]), sin(ring_a[0])) * 18.0
+	var mouth: Vector2 = origin + Vector2(DetMath.dcos(ring_a[0]), DetMath.dsin(ring_a[0])) * 18.0
 	im.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
 	for i in range(R):
 		for j in range(N):
@@ -295,9 +295,9 @@ func _phoenix_scald_hit(u: Dictionary, tgt, fb) -> void:
 func _phoenix_flame_burst(pos2d: Vector2) -> void:
 	battle._skill_ring(pos2d, Color(1.0, 0.55, 0.2, 0.7), 52.0)
 	for i in range(12):
-		var ang: float = TAU * float(i) / 12.0 + battle._juice_rng.randf_range(-0.2, 0.2)
-		var d: float = battle._juice_rng.randf_range(10.0, 46.0)
-		var p: Vector2 = pos2d + Vector2(cos(ang), sin(ang)) * d
+		var ang: float = TAU * float(i) / 12.0 + DetMath.rrange(battle._juice_rng, -0.2, 0.2)
+		var d: float = DetMath.rrange(battle._juice_rng, 10.0, 46.0)
+		var p: Vector2 = pos2d + Vector2(DetMath.dcos(ang), DetMath.dsin(ang)) * d
 		var spr := Sprite3D.new()
 		spr.texture = VfxTex._make_fire_glow_tex()
 		spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -310,7 +310,7 @@ func _phoenix_flame_burst(pos2d: Vector2) -> void:
 		battle._world.add_child(spr)
 		var tw = battle._reg_tween()
 		tw.set_parallel(true)
-		tw.tween_property(spr, "position", battle._world_pos(p, 0.9 + battle._juice_rng.randf_range(0.0, 0.4)), 0.34)
+		tw.tween_property(spr, "position", battle._world_pos(p, 0.9 + DetMath.rrange(battle._juice_rng, 0.0, 0.4)), 0.34)
 		tw.tween_property(spr, "scale", Vector3(1.3, 1.3, 1.3), 0.34)
 		tw.tween_property(spr, "modulate", Color(0.9, 0.25, 0.05, 0.0), 0.34)
 		tw.chain().tween_callback(spr.queue_free)
@@ -322,9 +322,9 @@ func _sk_phoenix_scald(u: Dictionary, tgt) -> void:
 	if tgt == null or not tgt.get("alive", false):
 		return
 	var dir: Vector2 = tgt["pos"] - u["pos"]
-	if dir.length() < 1.0:
+	if DetMath.vlen(dir) < 1.0:
 		dir = Vector2(1, 0)
-	dir = dir.normalized()
+	dir = DetMath.norm(dir)
 	var mouth: Vector2 = u["pos"] + dir * 18.0
 	var fb = Sprite3D.new()
 	fb.texture = VfxTex._make_fire_glow_tex()

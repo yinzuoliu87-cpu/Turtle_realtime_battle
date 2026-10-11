@@ -46,7 +46,7 @@ func _lightning_basic(u: Dictionary, tgt: Dictionary) -> void:
 		for o in battle._targeting._pick_enemies_of(u):
 			if battle._arr_has_unit(chain, o) or not o["alive"]:
 				continue
-			var dd: float = (o["pos"] - prev["pos"]).length()
+			var dd: float = DetMath.vlen((o["pos"] - prev["pos"]))
 			if dd < bestd:
 				bestd = dd; nxt = o
 		if nxt == null:
@@ -103,13 +103,13 @@ func _lightning_strike(pos2d: Vector2, _col: Color, world_h: float = 2.6) -> voi
 
 func _lightning_arc(a2d: Vector2, b2d: Vector2, col: Color) -> void:   # 锯齿状电弧(zigzag折线, 像真闪电劈过去)
 	var n := 6
-	var perp := (b2d - a2d).orthogonal().normalized()
+	var perp := DetMath.norm((b2d - a2d).orthogonal())
 	var prev := a2d
 	for i in range(1, n + 1):
 		var t := float(i) / float(n)
-		var mid := a2d.lerp(b2d, t)
+		var mid := DetMath.vlerp(a2d, b2d, t)
 		if i < n:
-			mid += perp * battle._juice_rng.randf_range(-16.0, 16.0)
+			mid += perp * DetMath.rrange(battle._juice_rng, -16.0, 16.0)
 		battle._bolt_line(prev, mid, col)
 		prev = mid
 

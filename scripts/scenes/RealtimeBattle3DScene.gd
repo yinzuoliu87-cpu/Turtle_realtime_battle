@@ -1348,8 +1348,8 @@ const FAR_TERRAIN_RISE_R := 46.0                  # 到这个半径起伏达到�
 
 ## 到战场中心的水平距离 → 起伏权重 (0=近处恒平, 1=远处满幅)
 func _far_terrain_weight(x: float, z: float) -> float:
-	var d := Vector2(x, z).length()
-	return smoothstep(FAR_TERRAIN_FLAT_R, FAR_TERRAIN_RISE_R, d)
+	var d := DetMath.vlen(Vector2(x, z))
+	return DetMath.smooth(FAR_TERRAIN_FLAT_R, FAR_TERRAIN_RISE_R, d)
 
 
 ## 地形高度场: 三层不同频率的正弦叠加(比纯随机更像地貌) × 距离权重
@@ -1358,9 +1358,9 @@ func _far_terrain_height(x: float, z: float) -> float:
 	if w <= 0.0:
 		return 0.0
 	var h := 0.0
-	h += 1.55 * sin(x * 0.055 + 1.3) * cos(z * 0.048 - 0.7)
-	h += 0.70 * sin(x * 0.130 - 2.1) * cos(z * 0.115 + 1.9)
-	h += 0.28 * sin(x * 0.290 + 0.4) * cos(z * 0.265 - 2.6)
+	h += 1.55 * DetMath.dsin(x * 0.055 + 1.3) * DetMath.dcos(z * 0.048 - 0.7)
+	h += 0.70 * DetMath.dsin(x * 0.130 - 2.1) * DetMath.dcos(z * 0.115 + 1.9)
+	h += 0.28 * DetMath.dsin(x * 0.290 + 0.4) * DetMath.dcos(z * 0.265 - 2.6)
 	return h * w
 
 
@@ -1408,7 +1408,7 @@ func _ellipse_pts(c: Vector2, rx: float, ry: float, n: int) -> PackedVector2Arra
 	var pts := PackedVector2Array()
 	for i in range(n):
 		var a: float = TAU * float(i) / float(n)
-		pts.append(c + Vector2(cos(a) * rx, sin(a) * ry))
+		pts.append(c + Vector2(DetMath.dcos(a) * rx, DetMath.dsin(a) * ry))
 	return pts
 
 func _nav_dir(u: Dictionary, tgt_pos: Vector2, straight: Vector2) -> Vector2:
@@ -1421,10 +1421,10 @@ func _nav_dir(u: Dictionary, tgt_pos: Vector2, straight: Vector2) -> Vector2:
 		need = true
 	elif now >= float(u.get("_nav_repath_t", 0.0)):
 		need = true
-	elif (Vector2(u.get("_nav_tgt", tgt_pos)) - tgt_pos).length() > 70.0:
+	elif DetMath.vlen((Vector2(u.get("_nav_tgt", tgt_pos)) - tgt_pos)) > 70.0:
 		need = true
 	if need:
-		cached = NavigationServer2D.map_get_path(_nav_map, u["pos"], tgt_pos, true)
+		cached = _world_builder.det_nav.path(u["pos"], tgt_pos)   # ★确定性寻路(引擎寻路在 iOS 上是 FMA 编译的, 见 DetNav 头注)
 		u["_nav_path"] = cached
 		u["_nav_tgt"] = tgt_pos
 		u["_nav_repath_t"] = now + 0.4
@@ -1432,14 +1432,14 @@ func _nav_dir(u: Dictionary, tgt_pos: Vector2, straight: Vector2) -> Vector2:
 	if cached.size() < 2:
 		return straight
 	var wp: int = int(u.get("_nav_wp", 1))
-	while wp < cached.size() - 1 and (cached[wp] - u["pos"]).length() < 42.0:
+	while wp < cached.size() - 1 and DetMath.vlen((cached[wp] - u["pos"])) < 42.0:
 		wp += 1
 	u["_nav_wp"] = wp
 	wp = clampi(wp, 1, cached.size() - 1)
 	var to_wp: Vector2 = cached[wp] - u["pos"]
-	if to_wp.length() < 1.0:
+	if DetMath.vlen(to_wp) < 1.0:
 		return straight
-	return to_wp.normalized()
+	return DetMath.norm(to_wp)
 
 func _tutorial_anchor(anchor: String) -> Rect2:
 	var vp: Vector2 = get_viewport().get_visible_rect().size
@@ -1706,9 +1706,9 @@ func _cast_fury_potion(trainer: Dictionary, aim: Vector2) -> bool:
 	if float(trainer.get("_active_cd", 0.0)) > 0.0:
 		return false
 	trainer["_active_cd"] = float(TRAINER_SKILLS["fury_potion"]["cd"])
-	var pt: Vector2 = trainer["pos"] + aim.limit_length(float(TRAINER_SKILLS["fury_potion"]["range"]))   # 落点(射程内·U2 2000)
+	var pt: Vector2 = trainer["pos"] + DetMath.limit_len(aim, float(TRAINER_SKILLS["fury_potion"]["range"]))   # 落点(射程内·U2 2000)
 	var tt: Dictionary = trainer
-	var throw_t: float = HOOK_WINDUP + trainer["pos"].distance_to(pt) / 800.0   # 前摇 + 抛出飞行
+	var throw_t: float = HOOK_WINDUP + DetMath.dist(trainer["pos"], pt) / 800.0   # 前摇 + 抛出飞行
 	_pending_shots.append({"delay": throw_t, "src": trainer, "fn": func() -> void:
 		_trainer_sys._fury_apply_buffs(tt, pt)})                                    # 落地才生效(delta定时·无头也稳)
 	_trainer_sys._fury_dramatize(trainer, pt)
@@ -1744,7 +1744,7 @@ func _cast_glacier(trainer: Dictionary, aim: Vector2) -> bool:
 	if float(trainer.get("_active_cd", 0.0)) > 0.0:
 		return false
 	trainer["_active_cd"] = float(TRAINER_SKILLS["glacier"]["cd"])
-	var dir: Vector2 = aim.normalized() if aim.length() > 0.01 else Vector2.RIGHT
+	var dir: Vector2 = DetMath.norm(aim) if DetMath.vlen(aim) > 0.01 else Vector2.RIGHT
 	_glacier_zones.append({
 		"from": trainer["pos"], "dir": dir, "len": GLACIER_LEN, "width": GLACIER_WIDTH,
 		"until": _t + GLACIER_SEC, "side": str(trainer.get("side", "")),
@@ -2414,18 +2414,18 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 	if u.get("hijacked", false) and u.get("alive", false):
 		var _gspr = u.get("sprite", null)
 		if is_instance_valid(_gspr):
-			var _pul: float = 0.5 + 0.5 * sin(_t * 11.0)                  # 红光呼吸
+			var _pul: float = 0.5 + 0.5 * DetMath.dsin(_t * 11.0)                  # 红光呼吸
 			_gspr.modulate = Color(1.0 + 0.55 * _pul, 0.42 + 0.18 * _pul, 0.42 + 0.18 * _pul)
 		# 电流穿身: 每 ~0.13s 在身体范围内随机位置炸一道小电弧(不用 tween, 靠 _burst_vfx 自播完自销)
 		if _t >= float(u.get("_hj_zap_next", 0.0)):
-			u["_hj_zap_next"] = _t + _battle_rng.randf_range(0.09, 0.17)
+			u["_hj_zap_next"] = _t + DetMath.rrange(_battle_rng, 0.09, 0.17)
 			var _zp: Vector2 = (u["pos"] as Vector2) + Vector2(randf_range(-16.0, 16.0), randf_range(-20.0, 12.0))
 			_burst_vfx("res://assets/sprites/vfx/electric-zap.png", _zp,
 				randf_range(20.0, 34.0), float(u.get("height", 0.0)) + randf_range(0.25, 1.05))
 	if u.has("_home_pos") and u.get("alive", false) and not u.get("airborne", false) and not u.get("_slam", false):   # fixed评审假人: 被击飞落地后缓步归位(板稳定·_slam定身期不归位→扭曲空间换位落点可保持)
 		var _hp2: Vector2 = u["_home_pos"]
-		if (u["pos"] as Vector2).distance_to(_hp2) > 4.0:
-			u["pos"] = (u["pos"] as Vector2).move_toward(_hp2, 220.0 * delta)
+		if DetMath.dist((u["pos"] as Vector2), _hp2) > 4.0:
+			u["pos"] = DetMath.vmove_toward((u["pos"] as Vector2), _hp2, 220.0 * delta)
 	if u.get("id") == "candy" and not u.get("_sweet_drained", false):   # 甜蜜掠夺: 战斗第8秒触发一次甜蜜吸取(用户2026-07-15改·原登场触发)
 		u["_sweet_t"] = float(u.get("_sweet_t", 0.0)) + delta
 		if float(u["_sweet_t"]) >= CandySystem.DRAIN_AT:
@@ -2491,7 +2491,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 		# 横向滑行换算回像素 (vx/vz 是米/s → /WS = 像素/s)
 		u["pos"].x += u["vx"] / WS * delta
 		u["pos"].y += u["vz"] / WS * delta
-		var _kdamp: float = pow(0.9, delta * 60.0)   # ★帧率无关阻尼(2026-07-25): 原每帧×0.9 假设60fps; 高帧率下每秒衰减快数倍→击飞竖直照抛(vy走delta)但横向vx几乎不滑="飞不出去"。按时间衰减·60fps下=0.9原值
+		var _kdamp: float = DetMath.dpow(0.9, delta * 60.0)   # ★帧率无关阻尼(2026-07-25): 原每帧×0.9 假设60fps; 高帧率下每秒衰减快数倍→击飞竖直照抛(vy走delta)但横向vx几乎不滑="飞不出去"。按时间衰减·60fps下=0.9原值
 		u["vx"] *= _kdamp; u["vz"] *= _kdamp
 		u["pos"] = ArenaShape.clamp_in(u["pos"], ARENA)
 		if u["height"] <= 0.0:
@@ -2543,7 +2543,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 	if stunned:                     # 麻痹: 不移动/不出手 (但冷却已走)
 		return
 	var to_t: Vector2 = tgt["pos"] - u["pos"]
-	var dist := to_t.length()
+	var dist := DetMath.vlen(to_t)
 	var rng: float = _eff_range(u)
 	var spd: float = u["move_spd"] * float(u.get("move_perm", 1.0)) * (float(u.get("slow_mag", 0.6)) if _t < u["slow_until"] else 1.0) * (float(u.get("spd_move_mult", 1.0)) if _t < float(u.get("spd_dbf_until", 0.0)) else 1.0) * (float(u.get("move_buff_mult", 1.0)) if _t < float(u.get("move_buff_until", 0.0)) else 1.0)   # ×移速buff通道(怒火药水等·独立于减速debuff防冲突)
 
@@ -2590,7 +2590,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 					var _fired := false
 					if tgt != null and tgt.get("alive", false):
 						# 出手承诺: 前摇一旦走完必打出, 不再被射程门丢弃(根治近战被风筝→抬手→目标跑出射程→这一击作废→再追→再空转→伤害完全打不出)
-						if u["melee"] and (tgt["pos"] - u["pos"]).length() > rng:
+						if u["melee"] and DetMath.vlen((tgt["pos"] - u["pos"])) > rng:
 							_melee_lunge(u, tgt)                 # 目标微脱离→踏步补缺口(视觉够到·伤害由_basic_attack保证)
 						_basic_attack(u, tgt)
 						_fired = true
@@ -2855,12 +2855,12 @@ func _separation(u: Dictionary) -> Vector2:
 		if is_same(o, u) or not o["alive"]:
 			continue
 		var d: Vector2 = u["pos"] - o["pos"]
-		var l := d.length()
+		var l := DetMath.vlen(d)
 		var radius: float = SEP_RADIUS
 		if mt_valid and is_same(o, mt):
 			radius = tgt_radius
 		if l > 0.01 and l < radius:
-			push += d.normalized() * (1.0 - l / radius)
+			push += DetMath.norm(d) * (1.0 - l / radius)
 	return push * 0.9
 
 # ============================================================================
@@ -2908,15 +2908,15 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 		return
 	if u["id"] == "cyber":          # 贯穿激光(封板): 首个1A物理·后续50%(用户2026-07-28削弱)·穿透飞到射程尽头(射程450)
 		var _cdir: Vector2 = tgt["pos"] - u["pos"]
-		if _cdir.length() < 1.0: _cdir = Vector2.RIGHT
-		_cdir = _cdir.normalized()
+		if DetMath.vlen(_cdir) < 1.0: _cdir = Vector2.RIGHT
+		_cdir = DetMath.norm(_cdir)
 		# ★必须按【离赛博的距离】排序才有"穿过的第一个"这个概念 ——
 		#   原实现是遍历全体敌人判在不在线上, 命中顺序取决于 _units 的数组顺序, 没有先后可言。
 		var _hits: Array = []
 		for o in _targeting._enemies_of(u):
 			if o.get("alive", false) and _on_line(u["pos"], _cdir, o["pos"], CyberSystem.LASER_BAND):
 				_hits.append(o)
-		_hits.sort_custom(func(a, b): return (a["pos"] - u["pos"]).length() < (b["pos"] - u["pos"]).length())
+		_hits.sort_custom(func(a, b): return DetMath.vlen((a["pos"] - u["pos"])) < DetMath.vlen((b["pos"] - u["pos"])))
 		for _i2 in range(_hits.size()):
 			var o: Dictionary = _hits[_i2]
 			var _sc: float = CyberSystem.LASER_FIRST_COEF if _i2 == 0 else CYBER_LASER_FALLOFF   # 首个满伤, 后续 50%
@@ -2946,7 +2946,7 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 	if u["id"] == "pirate":                                         # 海盗普攻·弯刀劈砍: 钢色新月斩弧+命中环(伤害走 _do_basic·1A物理+自愈0.2A)
 		_weapon_slash(u["pos"], tgt["pos"], Color(0.88, 0.93, 1.0))
 	if u["id"] == "candy":                                          # 糖果普攻·糖果拳: 命中糖爆粉星(伤害走 _do_basic·1.1A+3%maxHp物理+减攻15%)
-		var _cdir: Vector2 = (tgt["pos"] - u["pos"]).normalized() if (tgt["pos"] - u["pos"]).length() > 1.0 else Vector2.RIGHT
+		var _cdir: Vector2 = DetMath.norm((tgt["pos"] - u["pos"])) if DetMath.vlen((tgt["pos"] - u["pos"])) > 1.0 else Vector2.RIGHT
 		_burst_vfx("res://assets/sprites/vfx/candy-burst.png", tgt["pos"] - _cdir * 8.0, 95.0, 0.35)
 	if u["id"] == "bubble":                                         # 泡泡普攻·泡泡三连击: 命中泡泡爆+泡沫(伤害走 _do_basic·0.5A×3物理)
 		_burst_vfx("res://assets/sprites/skills/bubble-attack.png", tgt["pos"], 80.0, 0.9)
@@ -2954,8 +2954,8 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 	# 线条普攻·素描: 施法只发墨弹飞(_do_basic远程弹道), 墨线+墨溅改到子弹命中瞬间才显(用户2026-07-15: 原在施法瞬间显=没等子弹到)→见 _on_basic_hit "line" 分支
 	if u["id"] == "crystal":   # 水晶刺(近战·2026-07-15提质): 冰蓝碎晶突刺戳向目标
 		var _xd: Vector2 = tgt["pos"] - u["pos"]
-		if _xd.length() < 1.0: _xd = Vector2.RIGHT
-		_xd = _xd.normalized()
+		if DetMath.vlen(_xd) < 1.0: _xd = Vector2.RIGHT
+		_xd = DetMath.norm(_xd)
 		var _xtex: Texture2D = load("res://assets/sprites/vfx/crystal-shard.png")
 		if _xtex != null:
 			var _xs := Sprite3D.new()
@@ -2965,7 +2965,7 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 			_xs.axis = Vector3.AXIS_Y
 			_xs.pixel_size = (34.0 * WS) / float(maxi(1, _xtex.get_height()))
 			_xs.position = _world_pos(u["pos"] + _xd * 30.0, 0.8)
-			_xs.rotation = Vector3(0.0, -atan2(_xd.y, _xd.x) - PI * 0.5, 0.0)   # 尖端朝目标
+			_xs.rotation = Vector3(0.0, -DetMath.datan2(_xd.y, _xd.x) - PI * 0.5, 0.0)   # 尖端朝目标
 			_world.add_child(_xs)
 			var _xt := _reg_tween()
 			_xt.tween_property(_xs, "position", _world_pos(u["pos"] + _xd * 62.0, 0.8), 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)   # 突刺
@@ -2995,7 +2995,7 @@ func _big_bear_charge_and_spawn(u: Dictionary, si: int) -> void:   # 满层: 携
 		var ca: float = float(k) * TAU / 7.0
 		var ctw := _reg_tween()
 		ctw.tween_interval(float(k) * 0.14)
-		ctw.tween_callback(_gold_chunk_erupt.bind(u["pos"] + Vector2(cos(ca), sin(ca)) * randf_range(40.0, 62.0)))
+		ctw.tween_callback(_gold_chunk_erupt.bind(u["pos"] + Vector2(DetMath.dcos(ca), DetMath.dsin(ca)) * randf_range(40.0, 62.0)))
 	var gt := _reg_tween()
 	gt.tween_property(glow, "modulate:a", 0.95, UIPalette.T_SET)
 	gt.parallel().tween_property(glow, "scale", Vector3(3.2, 3.2, 3.2), 1.2)
@@ -3053,7 +3053,7 @@ func _set_bear_sheet(spr: Sprite3D, kind: String) -> void:   # 换大熊动画�
 
 func _big_bear_attack(u: Dictionary, tgt: Dictionary) -> void:   # 大熊: <2层→熊掌(前摇抬爪→挥击命中跳数字→后摇收手); 满2层→放冲击波
 	var si: int = int(u.get("bear_star", 0))
-	var d2: Vector2 = (tgt["pos"] - u["pos"]).normalized()
+	var d2: Vector2 = DetMath.norm((tgt["pos"] - u["pos"]))
 	u["_bear_ldir"] = (_world_pos(u["pos"] + d2 * 10.0, 0.0) - _world_pos(u["pos"], 0.0)).normalized()   # 扑击/砸地世界朝向
 	if int(u.get("bear_stacks", 0)) >= EquipTickSystem.BEAR_PAW_STACKS:
 		_bear_shockwave(u, tgt, si)
@@ -3311,7 +3311,7 @@ func _update_turret_line(tr) -> void:   # 058: 炮台↔当前锁定目标的细
 		tr["_turret_line"] = im
 	im.visible = true
 	var imesh: ImmediateMesh = im.mesh
-	var col := Color(1.0, 0.26, 0.26, 0.55 + 0.25 * sin(_t * 7.0))   # 细红线+呼吸
+	var col := Color(1.0, 0.26, 0.26, 0.55 + 0.25 * DetMath.dsin(_t * 7.0))   # 细红线+呼吸
 	var a := _world_pos(tr["pos"], 1.35)
 	var b := _world_pos(target["pos"], 1.35)
 	if (b - a).length() < 0.01: return
@@ -3341,7 +3341,7 @@ func _necro_burst(pos2d: Vector2, radius: float) -> void:
 	tw.chain().tween_callback(fl.queue_free)
 	for k in range(7):
 		var a := k * TAU / 7.0
-		_bone_speck(pos2d + Vector2(cos(a), sin(a)) * randf_range(25.0, radius * 0.5))
+		_bone_speck(pos2d + Vector2(DetMath.dcos(a), DetMath.dsin(a)) * randf_range(25.0, radius * 0.5))
 
 func _bone_speck(pos2d: Vector2) -> void:
 	var tex := VfxTex._make_fire_glow_tex()
@@ -3498,7 +3498,7 @@ func _ebb_tide_fx(u: Dictionary, rising: bool) -> void:   # 041: 涨潮=一圈�
 	var n: int = 9
 	for k in range(n):
 		var ang: float = float(k) * TAU / float(n)
-		var off: Vector2 = Vector2(cos(ang), sin(ang) * 0.62) * 46.0   # 0.62 = 地面透视压扁
+		var off: Vector2 = Vector2(DetMath.dcos(ang), DetMath.dsin(ang) * 0.62) * 46.0   # 0.62 = 地面透视压扁
 		_vfx.tide_swell(u["pos"] + off, rising, float(k) * 0.035)
 	## ★飘字「涨潮/退潮」由 `_eq_ebb_surge` / `_eq_ebb_recede` 自己打, 这里不重复
 
@@ -3530,7 +3530,7 @@ func _throw_dumbbell(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   # 钢�
 		el = minf(FLY_T, el + FLY_STEP)
 		var pf: float = el / FLY_T
 		if is_instance_valid(spr):
-			spr.position = _world_pos(from2d.lerp(to2d, pf), lerpf(1.1, 1.0, pf))
+			spr.position = _world_pos(from2d.lerp(to2d, pf), DetMath.flerp(1.1, 1.0, pf))
 		await _wait_sim(FLY_STEP, u)
 		if not is_instance_valid(self):
 			return   ## await 期间战斗可能已结束(场景 free)
@@ -3545,8 +3545,8 @@ func _dumbbell_hit(spr: Sprite3D, u: Dictionary, tgt: Dictionary, dmg: int) -> v
 
 func _fuel_flask_step(pf: float, spr, from2d: Vector2, to2d: Vector2, peak: float) -> void:   # 火瓶飞行帧: 抛物线高度 + 翻滚 + 掉余烬
 	if not is_instance_valid(spr): return
-	var p2: Vector2 = from2d.lerp(to2d, pf)
-	var h: float = lerpf(1.15, 0.55, pf) + peak * 4.0 * pf * (1.0 - pf)   # 4·p·(1-p)=标准抛物, 顶点在中段
+	var p2: Vector2 = DetMath.vlerp(from2d, to2d, pf)
+	var h: float = DetMath.flerp(1.15, 0.55, pf) + peak * 4.0 * pf * (1.0 - pf)   # 4·p·(1-p)=标准抛物, 顶点在中段
 	spr.position = _world_pos(p2, h)
 	if _cam != null:   # 面向镜头 + 绕视线轴自转(投掷物无固定朝向, 翻滚即可, 不用wisp_dir)
 		spr.global_transform.basis = _vfx.cam_basis() * Basis(Vector3(0, 0, 1), -pf * TAU * 2.2)
@@ -3593,7 +3593,7 @@ func _fuel_shatter_fx(at2d: Vector2) -> void:   # 碎裂: 地面燃烧圈 + 火�
 		m.position = _world_pos(at2d, 0.3)
 		_world.add_child(m)
 		var ang: float = float(k) * TAU / 9.0 + randf_range(-0.28, 0.28)
-		var dest: Vector2 = at2d + Vector2(cos(ang), sin(ang)) * randf_range(42.0, 98.0)
+		var dest: Vector2 = at2d + Vector2(DetMath.dcos(ang), DetMath.dsin(ang)) * randf_range(42.0, 98.0)
 		var mtw := _reg_tween()
 		mtw.tween_method(_fuel_splash_step.bind(m, at2d, dest), 0.0, 1.0, randf_range(0.30, 0.52))
 		mtw.tween_callback(m.queue_free)
@@ -3601,7 +3601,7 @@ func _fuel_shatter_fx(at2d: Vector2) -> void:   # 碎裂: 地面燃烧圈 + 火�
 func _fuel_splash_step(pf: float, m, from2d: Vector2, dest: Vector2) -> void:   # 溅开的火焰: 小抛物飞出+淡出
 	if not is_instance_valid(m): return
 	m.position = _world_pos(from2d.lerp(dest, pf), 0.22 + 0.85 * pf * (1.0 - pf))
-	m.modulate.a = lerpf(0.95, 0.0, pf)
+	m.modulate.a = DetMath.flerp(0.95, 0.0, pf)
 
 func _frozen_encase(o: Dictionary, dur: float = 1.5) -> void:
 	var tex: Texture2D = load("res://assets/sprites/vfx/frozen-encase.png")
@@ -3841,8 +3841,8 @@ func _bear_shockwave(u: Dictionary, tgt: Dictionary, _si: int) -> void:   # 大�
 	## ★★2026-09-13 重做(用户:「这个大熊冲击波的特效不好, 你得重做」)。
 	##   四条实拍毛病与对应改动写在 `battle_vfx.bear_quake_erupt` 的头注里;
 	##   推进与命中结算已搬到 `EquipTickSystem._tick_bear_waves`(游戏钟), 这里只剩**姿势**。
-	var dir: Vector2 = (tgt["pos"] - u["pos"]).normalized()
-	if dir.length() < 0.1:
+	var dir: Vector2 = DetMath.norm((tgt["pos"] - u["pos"]))
+	if DetMath.vlen(dir) < 0.1:
 		dir = Vector2.RIGHT
 	var origin: Vector2 = u["pos"]
 	u["bear_anim"] = "slam"; u["bear_anim_t"] = 0.0
@@ -3871,7 +3871,7 @@ func _bear_shockwave(u: Dictionary, tgt: Dictionary, _si: int) -> void:   # 大�
 		await _dl_sys.lane_step()
 		if _timestop.holds(u): continue   # 时停: 被定格的单位这一步不推进(携带者照常; 顿帧行为不变)
 		st += _frame_sim_dt
-		u["_bear_voff"] = Vector3(0.0, lerpf(0.95, -0.22, st / 0.12), 0.0)   # 猛砸下: 直下(无横移)
+		u["_bear_voff"] = Vector3(0.0, DetMath.flerp(0.95, -0.22, st / 0.12), 0.0)   # 猛砸下: 直下(无横移)
 	# === 砸地瞬间: 落地压扁 + 大震屏 + 顿帧 + 尘, 冲击波起 ===
 	## ★这里**没有** `_skill_ring` 了 —— 原来那个又大又细的黄色椭圆环挂几秒不散,
 	##   正是"无含义圆环"那条禁区; 砸地的反馈由 `_impact_particles` + 震屏 + 顿帧给。
@@ -4023,7 +4023,7 @@ func _splash_adjacent(u: Dictionary, tgt: Dictionary, frac: float) -> void:
 	for o in _targeting._enemies_of(u):
 		if is_same(o, tgt) or not o["alive"]:
 			continue
-		if (o["pos"] - tgt["pos"]).length() <= 90.0:
+		if DetMath.vlen((o["pos"] - tgt["pos"])) <= 90.0:
 			_damage._apply_basic_hit_from(u, o, _mitigate(u, u["atk"] * 0.6 * frac, o, false), Color("#cfd8e8"))
 	# 普攻 on-hit 被动钩子 (墨迹/电击/结晶叠层 + 猎杀斩杀 等)
 	_on_basic_hit(u, tgt)
@@ -4034,7 +4034,7 @@ const PHX_FLAME_MAG_COEF := 0.2      # 每0.5s tick 魔法系数 ×ATK
 const PHX_FLAME_BURN_COEF := 0.04     # 每0.5s tick 灼烧层系数 ×ATK (用户2026-07-28削弱: 0.07→0.04) ★T3实装默认(从熔岩龟抄来). 用户2026-06-30那句"每次普攻加灼烧层0.07ATK"是【对熔岩龟说的】(上文在谈熔岩攻速0.85), 凤凰这里用户原话写的是"每0.5秒造成？魔法伤害并施加？灼烧层"=没给数 → 见附录A
 
 func _spawn_burn_ember(u: Dictionary) -> void:
-	var pos2d: Vector2 = u["pos"] + Vector2(_juice_rng.randf_range(-14.0, 14.0), _juice_rng.randf_range(-4.0, 8.0))
+	var pos2d: Vector2 = u["pos"] + Vector2(DetMath.rrange(_juice_rng, -14.0, 14.0), DetMath.rrange(_juice_rng, -4.0, 8.0))
 	var spr := Sprite3D.new()
 	spr.texture = VfxTex._make_fire_glow_tex()
 	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -4054,7 +4054,7 @@ func _spawn_burn_ember(u: Dictionary) -> void:
 	tw.chain().tween_callback(spr.queue_free)
 
 func _spawn_poison_bubble(u: Dictionary) -> void:   # 中毒持续视觉(照灼烧余烬): 毒绿泡边升边胀淡出=一眼可辨"中毒"
-	var pos2d: Vector2 = u["pos"] + Vector2(_juice_rng.randf_range(-16.0, 16.0), _juice_rng.randf_range(-2.0, 10.0))
+	var pos2d: Vector2 = u["pos"] + Vector2(DetMath.rrange(_juice_rng, -16.0, 16.0), DetMath.rrange(_juice_rng, -2.0, 10.0))
 	var spr := Sprite3D.new()
 	spr.texture = VfxTex._make_fire_glow_tex()   # 软圆辉光当毒泡
 	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -4082,18 +4082,18 @@ func _phx_hist_sample(hist: Array, tq: float) -> Array:   # 采样喷射历史�
 			var a: Array = hist[k]
 			var b: Array = hist[k + 1]
 			var f: float = clampf((tq - float(a[0])) / maxf(0.0001, float(b[0]) - float(a[0])), 0.0, 1.0)
-			return [lerp_angle(float(a[1]), float(b[1]), f), lerpf(float(a[2]), float(b[2]), f)]
+			return [DetMath.lerp_ang(float(a[1]), float(b[1]), f), DetMath.flerp(float(a[2]), float(b[2]), f)]
 	return [float(hist[0][1]), float(hist[0][2])]
 
 func _phx_fan_pt(mouth: Vector2, center_ang: float, half: float, rng: float, r: float, f: float) -> Vector2:   # 扇形上(径向r,角向f)的2D点(环各自的历史中心角→弯流)
 	var aa: float = center_ang - half + 2.0 * half * f
-	return mouth + Vector2(cos(aa), sin(aa)) * (rng * r)
+	return mouth + Vector2(DetMath.dcos(aa), DetMath.dsin(aa)) * (rng * r)
 
 func _scald_arc(t: float, fb, p0: Vector2, p1: Vector2) -> void:
 	if not is_instance_valid(fb):
 		return
-	var p: Vector2 = p0.lerp(p1, t)
-	var h: float = lerpf(1.05, 0.6, t) + 1.5 * sin(PI * t)   # 抛物线峰高~2.3m
+	var p: Vector2 = DetMath.vlerp(p0, p1, t)
+	var h: float = DetMath.flerp(1.05, 0.6, t) + 1.5 * DetMath.dsin(PI * t)   # 抛物线峰高~2.3m
 	fb.position = _world_pos(p, h)
 	if _juice_rng.randf() < 0.7:
 		_scald_trail(p, h)
@@ -4227,9 +4227,9 @@ func _melee_lunge(u: Dictionary, tgt: Dictionary, amp: float = ATK_LUNGE_AMP) ->
 	if tgt == null:
 		return
 	var d: Vector2 = tgt["pos"] - u["pos"]
-	if d.length() < 0.01:
+	if DetMath.vlen(d) < 0.01:
 		return
-	var dn := d.normalized()
+	var dn := DetMath.norm(d)
 	u["_lunge_dir"] = Vector3(dn.x, 0.0, dn.y)   # 2D方向→世界XZ(2D-x→世界x, 2D-y→世界z)
 	var _ldur: float = clampf(float(u.get("atk_interval", 0.5)) * ATK_LUNGE_PCT, ATK_LUNGE_MIN, ATK_LUNGE_MAX)   # 踏步时长随攻速(快攻速踏步短, 同前摇)
 	u["_lunge_t"] = _ldur
@@ -4272,9 +4272,9 @@ func _summon_walking_bear(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   #
 		if guard > 4.0:   # 兜底: 走太久放弃
 			break
 		var to: Vector2 = tgt["pos"]
-		if pos.distance_to(to) <= 60.0:   # 进攻击范围
+		if DetMath.dist(pos, to) <= 60.0:   # 进攻击范围
 			break
-		pos = pos.move_toward(to, spd * dt)
+		pos = DetMath.vmove_toward(pos, to, spd * dt)
 		bear.position = _world_pos(pos, GROUND_LIFT)
 	# 到位: 播踢击动画 (5帧), 第3帧接触→伤害+击飞
 	if tgt != null and tgt.get("alive", false) and is_instance_valid(bear):
@@ -4357,7 +4357,7 @@ func _queue_shots(count: int, interval: float, fn: Callable, src = null, gun_id:
 
 # 枪口闪: 在 pos2d 沿 dir 前方一点爆一小簇火光(胸口高度), 表现开火
 func _muzzle_flash(pos2d: Vector2, dir: Vector2, col: Color) -> void:
-	var mp: Vector2 = pos2d + dir.normalized() * 26.0
+	var mp: Vector2 = pos2d + DetMath.norm(dir) * 26.0
 	var sp := Sprite3D.new()
 	if _spark_tex == null:
 		_spark_tex = VfxTex._make_glow_texture()
@@ -4389,7 +4389,7 @@ func _spawn_eq_bolt(src: Dictionary, tgt: Dictionary, dmg: int, tex_path: String
 	_world.add_child(p)
 	var pd: Dictionary = {
 		"node": p, "from": _world_pos(start2d, 1.0), "tgt": tgt, "dmg": dmg, "col": col,
-		"src": src, "t": 0.0, "dur": clampf(start2d.distance_to(tgt["pos"]) / 520.0, 0.22, 1.1),   # 慢一半(用户"完全看不清")
+		"src": src, "t": 0.0, "dur": clampf(DetMath.dist(start2d, tgt["pos"]) / 520.0, 0.22, 1.1),   # 慢一半(用户"完全看不清")
 		"eq_bolt": true, "eq_bleed": bleed,
 	}
 	if spin:
@@ -4525,8 +4525,8 @@ func _redirect_damage(carrier: Dictionary, amt: float, dtype: String) -> void:
 #   若要加新的"扣血"逻辑, 用 _damage._apply_damage(..., is_self=true) 或 _damage._apply_damage_from。
 
 func _dash_to(u: Dictionary, tgt: Dictionary, gap: float) -> void:
-	var dir: Vector2 = (u["pos"] - tgt["pos"]).normalized()
-	if dir.length() < 0.1: dir = Vector2.RIGHT
+	var dir: Vector2 = DetMath.norm((u["pos"] - tgt["pos"]))
+	if DetMath.vlen(dir) < 0.1: dir = Vector2.RIGHT
 	u["pos"] = tgt["pos"] + dir * gap
 	u["pos"] = ArenaShape.clamp_in(u["pos"], ARENA)
 
@@ -4544,7 +4544,7 @@ func _kill(u: Dictionary, killer = null) -> void:
 		var _fd := 0.0
 		for _go in _targeting._enemies_of(u):
 			if _go.get("alive", false):
-				var _dd: float = u["pos"].distance_to(_go["pos"])
+				var _dd: float = DetMath.dist(u["pos"], _go["pos"])
 				if _dd > _fd: _fd = _dd; _gtar = _go
 		_pirate_sys._pirate_death_grapple(u, _gtar)
 		u["hp"] = float(u["maxHp"]) * 0.4
@@ -4842,7 +4842,7 @@ func _venom_splat(pos2d: Vector2) -> void:   # 蛇女毒液飞溅: 毒绿中心�
 		drop.position = _world_pos(pos2d, h)
 		drop.pixel_size = 0.012; drop.scale = Vector3.ONE * 0.5
 		_world.add_child(drop)
-		var to: Vector2 = pos2d + Vector2(cos(ang), sin(ang)) * randf_range(26.0, 54.0)
+		var to: Vector2 = pos2d + Vector2(DetMath.dcos(ang), DetMath.dsin(ang)) * randf_range(26.0, 54.0)
 		var twd := _reg_tween(); twd.set_parallel(true)
 		twd.tween_property(drop, "position", _world_pos(to, h * 0.35), 0.28).set_ease(Tween.EASE_OUT)
 		twd.tween_property(drop, "modulate:a", 0.0, 0.28)
@@ -5027,7 +5027,7 @@ func _beam_vfx(path: String, from2d: Vector2, to2d: Vector2, width_px: float, co
 	s.modulate = Color(color.r, color.g, color.b, 0.0)
 	s.pixel_size = ps
 	s.position = wf + seg * 0.5
-	s.rotation.y = -atan2(seg.z, seg.x)
+	s.rotation.y = -DetMath.datan2(seg.z, seg.x)
 	s.scale = Vector3(L / maxf(0.001, float(tw_px) * ps), 1.0, 1.0)
 	_world.add_child(s)
 	var tw := _reg_tween(); tw.set_parallel(true)
@@ -5071,8 +5071,8 @@ func _orient_billboard_dir(node: Node3D, travel_world: Vector3) -> void:
 	var s0: Vector2 = _cam.unproject_position(p)
 	var s1: Vector2 = _cam.unproject_position(p + tw)
 	var scr: Vector2 = s1 - s0
-	if scr.length() < 0.001: return
-	var ang: float = atan2(scr.y, scr.x)   # 屏幕行进角(y向下)
+	if DetMath.vlen(scr) < 0.001: return
+	var ang: float = DetMath.datan2(scr.y, scr.x)   # 屏幕行进角(y向下)
 	var zx: Vector3 = to_cam                # 法线朝相机→面向相机
 	var xx: Vector3 = Vector3.UP.cross(zx)
 	if xx.length() < 0.001: xx = Vector3.RIGHT
@@ -5314,13 +5314,13 @@ func _apply_separation_pass(delta: float) -> void:   # 每帧全单位软分离:
 		# ★用户2026-07-11「近战靠近后应停止移动、定身攻击、收手, 别一直挤」:
 		#   已进攻击射程(交战)的近战 → 完全不被分离推 → 贴脸定身开打(根治"打起来一直挤")。
 		var _mt = u.get("_sep_target")
-		if bool(u.get("melee", false)) and _mt is Dictionary and (_mt as Dictionary).get("alive", false) and u["pos"].distance_to((_mt as Dictionary)["pos"]) <= _eff_range(u) + 10.0:
+		if bool(u.get("melee", false)) and _mt is Dictionary and (_mt as Dictionary).get("alive", false) and DetMath.dist(u["pos"], (_mt as Dictionary)["pos"]) <= _eff_range(u) + 10.0:
 			continue
 		var _st := str(u.get("state", "move"))
 		var _sepmul: float = 0.4 if _st == "windup" else 1.0   # 前摇大体钉住(不挤着冲)但给40%分离→防完全叠一起; 后摇(orb-walk自由)/移动=全分离
 		var push: Vector2 = _separation(u)
-		if push.length() > 0.001:
-			u["pos"] += push.limit_length(1.0) * SEP_PUSH_SPD * _sepmul * delta
+		if DetMath.vlen(push) > 0.001:
+			u["pos"] += DetMath.limit_len(push, 1.0) * SEP_PUSH_SPD * _sepmul * delta
 			u["pos"] = ArenaShape.clamp_in(u["pos"], ARENA)
 
 # 移动; no_move 召唤体定点不动. 分离已移到 _apply_separation_pass. (状态机仅"move"态调)
@@ -5337,22 +5337,22 @@ func _do_move(u: Dictionary, tgt: Dictionary, dist: float, rng: float, spd: floa
 			if is_same(o, u) or not o.get("alive", false) or str(o.get("side", "")) != str(u.get("side", "")):
 				continue
 			var rel: Vector2 = o["pos"] - u["pos"]
-			var ahead: float = rel.dot(dir)                       # 在我前方(朝目标)多远
+			var ahead: float = DetMath.dot(rel, dir)                       # 在我前方(朝目标)多远
 			if ahead <= 5.0 or ahead > 95.0:
 				continue
-			var side: float = rel.dot(Vector2(-dir.y, dir.x))     # 横向偏移(是否在正前窄道)
+			var side: float = DetMath.dot(rel, Vector2(-dir.y, dir.x))     # 横向偏移(是否在正前窄道)
 			if absf(side) > 52.0:
 				continue
 			var tang: Vector2 = Vector2(-dir.y, dir.x)
 			if side > 0.0:
 				tang = -tang                                      # 往挡路友军的反侧绕
-			intent = (dir + tang * 1.5).normalized()
+			intent = DetMath.norm((dir + tang * 1.5))
 			break
 	elif not u["melee"] and dist < rng * 0.7:
-		intent = -to_t.normalized()                          # 远程太近→风筝后撤
+		intent = -DetMath.norm(to_t)                          # 远程太近→风筝后撤
 	# 分离已移到 _apply_separation_pass (每帧全单位, 不只move态) → 根治攻击/待机扎堆
-	if intent.length() > 0.01:
-		u["vel"] = intent.limit_length(1.0) * spd            # 合力调速, 力抵消缓停
+	if DetMath.vlen(intent) > 0.01:
+		u["vel"] = DetMath.limit_len(intent, 1.0) * spd            # 合力调速, 力抵消缓停
 		u["pos"] += u["vel"] * delta
 		u["pos"] = ArenaShape.clamp_in(u["pos"], ARENA)
 		var _slowed: bool = _t < float(u.get("slow_until", 0.0)) or (_t < float(u.get("spd_dbf_until", 0.0)) and float(u.get("spd_move_mult", 1.0)) < 0.99)
@@ -5484,7 +5484,7 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 func _sk_basic_shield(u: Dictionary, tgt: Dictionary) -> void:   # 小龟·龟盾: 金弧劈砍→挥到位(0.25s)爆裂+命中(1:1 PoC时序/帧率·用户2026-07-11)
 	var to_r: bool = tgt["pos"].x >= u["pos"].x
 	var toward: Vector2 = u["pos"] - tgt["pos"]
-	var arc_off: Vector2 = (toward.normalized() if toward.length() > 1.0 else Vector2.LEFT) * 42.0
+	var arc_off: Vector2 = (DetMath.norm(toward) if DetMath.vlen(toward) > 1.0 else Vector2.LEFT) * 42.0
 	_vfx._play_anim_vfx("res://assets/sprites/vfx/basic-shieldbash-arc.png", tgt["pos"] + arc_off, 150.0, 16.67, 1.25, not to_r)
 	_anticipate(u)
 	_pending_shots.append({"delay": 0.25, "src": u, "fn": _basic_shield_impact_hit.bind(u, tgt)})
@@ -5511,9 +5511,9 @@ func _basic_first_blocker(u: Dictionary, dir: Vector2):          # 可被挡直�
 	for o in _targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		var rel: Vector2 = o["pos"] - u["pos"]
-		var along: float = rel.dot(dir)
+		var along: float = DetMath.dot(rel, dir)
 		if along < 0.0: continue
-		if (rel - dir * along).length() > 55.0: continue
+		if DetMath.vlen((rel - dir * along)) > 55.0: continue
 		if along < bestd: bestd = along; best = o
 	return best
 
@@ -5526,12 +5526,12 @@ func _sk_basic_strike(u: Dictionary, _tgt = null) -> void:      # 小龟·打击
 			if not es.is_empty():
 				var dt = es[i % es.size()]                       # 随机分布(轮询近似)挑1存活敌当方向
 				var dd: Vector2 = dt["pos"] - u["pos"]
-				if dd.length() > 1.0: dir = dd.normalized()
+				if DetMath.vlen(dd) > 1.0: dir = DetMath.norm(dd)
 			var hit = _basic_first_blocker(u, dir)               # 命中路径第一个敌/蛋(可被挡)
 			var end_pos: Vector2 = u["pos"] + dir * 420.0
 			if hit != null:
 				end_pos = hit["pos"]                              # 打到人就停在人身上(不穿透飞满420码)
-			var flight: float = clampf(u["pos"].distance_to(end_pos) / 380.0, 0.12, 1.2)   # 恒速~380码/秒(满420码≈1.1s·慢)
+			var flight: float = clampf(DetMath.dist(u["pos"], end_pos) / 380.0, 0.12, 1.2)   # 恒速~380码/秒(满420码≈1.1s·慢)
 			_fly_vfx("res://assets/sprites/vfx/qibo-ball.png", u["pos"], end_pos, 52.0, flight, 1.0)   # 打击气波弹
 			if hit != null:                                      # ★伤害同步到气波【视觉命中】(不再放技瞬间掉血·用户2026-07-11)
 				var _h: Dictionary = hit
@@ -5544,19 +5544,19 @@ func _sk_basic_strike(u: Dictionary, _tgt = null) -> void:      # 小龟·打击
 # 气波从 from2d 打向 tgt 时能命中几个敌 (带宽80·射程900) — 供智能位移冲刺评估
 func _chiwave_hits_from(u: Dictionary, from2d: Vector2, tgt: Dictionary) -> int:
 	var d: Vector2 = tgt["pos"] - from2d
-	if d.length() < 1.0: return 0
-	d = d.normalized()
+	if DetMath.vlen(d) < 1.0: return 0
+	d = DetMath.norm(d)
 	var n := 0
 	for o in _targeting._enemies_of(u):
 		if not o.get("alive", false): continue
-		if o["pos"].distance_to(from2d) > 900.0: continue
+		if DetMath.dist(o["pos"], from2d) > 900.0: continue
 		if _on_line(from2d, d, o["pos"], 80.0): n += 1
 	return n
 
 # 候选落点是否贴脸(离任一敌 < min_gap) — 用户"不是贴人家脸上·要考虑碰撞体积"
 func _too_close_to_enemy(u: Dictionary, p: Vector2, min_gap: float) -> bool:
 	for o in _targeting._enemies_of(u):
-		if o.get("alive", false) and o["pos"].distance_to(p) < min_gap: return true
+		if o.get("alive", false) and DetMath.dist(o["pos"], p) < min_gap: return true
 	return false
 
 func _sk_basic_chiwave(u: Dictionary, tgt) -> void:            # 小龟·龟派气波(100龟能): 先自增buff(暴击25%/吸血20%/护穿0.1A·3秒·第六轮删暴伤)→朝当前目标发穿透气波(带宽80·打沿途所有敌+蛋)每命中2.0A物理+击飞1.5s+击退200 [智能位移留F5]
@@ -5580,7 +5580,7 @@ func _sk_basic_chiwave(u: Dictionary, tgt) -> void:            # 小龟·龟派�
 	var _bp: Vector2 = u["pos"]
 	var _bn: int = _chiwave_hits_from(u, u["pos"], tgt)
 	for _a in range(BasicConsts.CHI_DASH_DIRS):                 # 多方向 × 3档距离 采样
-		var _ad: Vector2 = Vector2(cos(float(_a) * TAU / float(BasicConsts.CHI_DASH_DIRS)), sin(float(_a) * TAU / float(BasicConsts.CHI_DASH_DIRS)))
+		var _ad: Vector2 = Vector2(DetMath.dcos(float(_a) * TAU / float(BasicConsts.CHI_DASH_DIRS)), DetMath.dsin(float(_a) * TAU / float(BasicConsts.CHI_DASH_DIRS)))
 		for _r in [BasicConsts.CHI_DASH_MAX * 0.4, BasicConsts.CHI_DASH_MAX * 0.7, BasicConsts.CHI_DASH_MAX]:
 			var _cand: Vector2 = u["pos"] + _ad * _r
 			if _too_close_to_enemy(u, _cand, BasicConsts.CHI_DASH_MIN_FOE): continue   # 不贴脸(碰撞体积)
@@ -5590,19 +5590,19 @@ func _sk_basic_chiwave(u: Dictionary, tgt) -> void:            # 小龟·龟派�
 	if _bp != u["pos"]:                                         # 能打到更多人才冲
 		_beam_vfx("res://assets/sprites/vfx/fx-trail.png", u["pos"], _bp, 52.0, Color(0.6, 0.92, 1.0, 0.6), 0.30)   # 冲刺拖影
 		var _ds: Vector2 = u["pos"]
-		var _ddur: float = clampf(_ds.distance_to(_bp) / 900.0, 0.10, 0.35)   # ★冲刺=滑行非瞬移(用户2026-07-11)·~900码/秒
+		var _ddur: float = clampf(DetMath.dist(_ds, _bp) / 900.0, 0.10, 0.35)   # ★冲刺=滑行非瞬移(用户2026-07-11)·~900码/秒
 		u["no_move"] = true; u["no_basic"] = true
 		var _del: float = 0.0
 		while _del < _ddur and u.get("alive", false) and is_inside_tree():
 			await _dl_sys.lane_step()
 			if _timestop.holds(u): continue   # 时停: 被定格的单位这一步不推进(携带者照常; 顿帧行为不变)
 			_del += _frame_sim_dt
-			u["pos"] = _ds.lerp(_bp, clampf(_del / _ddur, 0.0, 1.0))
+			u["pos"] = DetMath.vlerp(_ds, _bp, clampf(_del / _ddur, 0.0, 1.0))
 		u["pos"] = _bp
 		u["no_move"] = false; u["no_basic"] = false
 	var dir: Vector2 = tgt["pos"] - u["pos"]
-	if dir.length() < 1.0: dir = Vector2.RIGHT
-	dir = dir.normalized()
+	if DetMath.vlen(dir) < 1.0: dir = Vector2.RIGHT
+	dir = DetMath.norm(dir)
 	_damage._stun(u, 0.6, "_sk_basic_chiwave", true)   # 掌心聚气 0.6s 定身(生成动画期间)
 	var start2: Vector2 = u["pos"]
 	var uu2: Dictionary = u
@@ -5655,7 +5655,7 @@ func _sk_basic_chiwave(u: Dictionary, tgt) -> void:            # 小龟·龟派�
 			var cw: Vector3 = _world_pos(c, FLY_H)   # 晕/核心跟火球同高(空中)
 			if is_instance_valid(glow):
 				glow.position = cw
-				glow.scale = Vector3.ONE * (1.0 + 0.12 * sin(d * 0.08))   # 呼吸脉动
+				glow.scale = Vector3.ONE * (1.0 + 0.12 * DetMath.dsin(d * 0.08))   # 呼吸脉动
 			if is_instance_valid(core):
 				core.position = cw
 			if d - _last_trail[0] >= 45.0:                          # ── 拖尾残影 (加性·淡出缩小) ──
@@ -5669,7 +5669,7 @@ func _sk_basic_chiwave(u: Dictionary, tgt) -> void:            # 小龟·龟派�
 			for o in _targeting._enemies_of(uu2):
 				if not o.get("alive", false) or _arr_has_unit(hit2, o): continue
 				if not _on_line(launch, dir, o["pos"], 80.0): continue
-				if o["pos"].distance_to(c) > 95.0: continue
+				if DetMath.dist(o["pos"], c) > 95.0: continue
 				hit2.append(o)
 				_damage._apply_damage_from(uu2, o, _atk_dmg(uu2, BasicConsts.CHI_ATK_COEF, o), Color("#7fd0ff"))   # 气波 3.5→3.0→2.0A(用户2026-07-29 第五轮)
 				_damage._knockback(uu2, o, 200.0, 2.752, 2.0)              # 击飞1.5s+击退200
@@ -5699,8 +5699,8 @@ func _sk_basic_slam(u: Dictionary, tgt) -> void:  # 小龟·过肩摔(#7重做·
 		_burst_vfx("res://assets/sprites/vfx/fx-shock-ring.png", tgt["pos"], 250.0, 0.06)
 		return
 	var dir: Vector2 = tgt["pos"] - u["pos"]
-	if dir.length() < 1.0: dir = Vector2.RIGHT
-	dir = dir.normalized()
+	if DetMath.vlen(dir) < 1.0: dir = Vector2.RIGHT
+	dir = DetMath.norm(dir)
 	var u_start: Vector2 = u["pos"]
 	var land: Vector2 = u_start - dir * BasicConsts.SLAM_LAND_BACK    # 落点=龟背后~55码(过肩摔到身后)
 	land = ArenaShape.clamp_in(land, ARENA, 20)
@@ -5712,7 +5712,7 @@ func _slam_apply_damage(u: Dictionary, tgt: Dictionary, tmax: float) -> void:
 		_damage._apply_damage_from(u, tgt, _atk_dmg(u, BasicConsts.SLAM_MAIN_ATK, tgt) + int(u["atk"] * BasicConsts.SLAM_MAIN_HP_PER_ATK * tmax), Color("#ff9d5c"))   # 过肩摔主目标(用户2026-07-29 第五轮): 0.7A+23%最大生命 → 1.0A + 0.2%×ATK×最大生命
 	for o in _targeting._enemies_of(u):
 		if is_same(o, tgt) or not o.get("alive", false): continue
-		if o["pos"].distance_to(tgt["pos"]) <= BasicConsts.SLAM_SPLASH_RADIUS:   # 范围 350码(用户2026-07-11: 250→350)
+		if DetMath.dist(o["pos"], tgt["pos"]) <= BasicConsts.SLAM_SPLASH_RADIUS:   # 范围 350码(用户2026-07-11: 250→350)
 			_damage._apply_damage_from(u, o, _atk_dmg(u, BasicConsts.SLAM_SPLASH_ATK, o) + int(u["atk"] * BasicConsts.SLAM_SPLASH_HP_PER_ATK * tmax), Color("#ff9d5c"))   # 过肩摔周围(用户2026-07-29 第五轮): 0.2A+18% → 0.3A + 0.13%×ATK×主目标最大生命
 
 ## 过肩摔完整编排(#7·用户2026-07-11): 擒抱→双方跳空(_slam_voff)→空中反转180°(flip_v)→坠落→落地范围伤+大尘爆+震屏. 双方 _slam 冻结.
@@ -5736,14 +5736,14 @@ func _basic_slam_run(u: Dictionary, tgt: Dictionary, dir: Vector2, u_start: Vect
 		el += _frame_sim_dt
 		if el < T_GRAB:                                     # ① 擒住: 敌拉到龟身前
 			p = el / T_GRAB
-			tgt["pos"] = e_start.lerp(u_start, p)
+			tgt["pos"] = DetMath.vlerp(e_start, u_start, p)
 		elif el < T_GRAB + T_AIR:                           # ② 跳空 + 抡向落点 + 空中反转
 			p = (el - T_GRAB) / T_AIR
-			var hy := sin(p * PI * 0.5)                     # ease 上升到 apex
+			var hy := DetMath.dsin(p * PI * 0.5)                     # ease 上升到 apex
 			tgt["_slam_voff"] = Vector3(0.0, 5.4 * hy, 0.0)
 			u["_slam_voff"] = Vector3(0.0, 4.0 * hy, 0.0)
-			tgt["pos"] = u_start.lerp(land, p)              # 敌被抡向落点
-			u["pos"] = u_start - dir * (18.0 * sin(p * PI)) # 龟小后仰再回
+			tgt["pos"] = DetMath.vlerp(u_start, land, p)              # 敌被抡向落点
+			u["pos"] = u_start - dir * (18.0 * DetMath.dsin(p * PI)) # 龟小后仰再回
 			if p > 0.45 and not flipped:                    # 空中反转180°(billboard→flip_v 上下颠倒)
 				flipped = true
 				if is_instance_valid(uspr): uspr.flip_v = true
@@ -5802,7 +5802,7 @@ func _update_dice_blood_aura(u: Dictionary) -> void:
 			_world.add_child(spr)
 			_follow_vfx.append({"spr": spr, "unit": u, "h": 0.35})
 			u["_dice_blood_spr"] = spr
-		var pulse: float = 0.6 + 0.4 * sin(_t * 7.0)
+		var pulse: float = 0.6 + 0.4 * DetMath.dsin(_t * 7.0)
 		spr.modulate = Color(1.0, 0.12, 0.10, (0.10 + 0.42 * inten) * pulse)   # 血红·随损血+脉动
 	elif valid:
 		u["_dice_blood_spr"] = null
@@ -5831,7 +5831,7 @@ func _update_rainbow_prism_aura(u: Dictionary) -> void:
 		u["_prism_aura_spr"] = spr
 	var pc: int = int(u.get("prism_color", -1))
 	var col: Color = _PRISM_COLS[pc] if pc >= 0 and pc < 3 else Color(1, 1, 1)
-	var pulse: float = 0.78 + 0.22 * sin(_t * 5.0)
+	var pulse: float = 0.78 + 0.22 * DetMath.dsin(_t * 5.0)
 	spr.modulate = Color(col.r, col.g, col.b, 0.72 * pulse)
 
 const _PRISM_RAINBOW := [Color(1, 0.35, 0.35), Color(1, 0.7, 0.25), Color(1, 0.95, 0.35), Color(0.35, 1, 0.5), Color(0.35, 0.65, 1), Color(0.7, 0.45, 1)]
@@ -5899,7 +5899,7 @@ func _layout_head_row(u: Dictionary, store: String, items: Array, anchor: Vector
 		return
 	# ★网格：每行最多 HEAD_COLS 列，整体仍以头顶为中心
 	var rows: int = int(ceil(float(count) / float(HEAD_COLS)))
-	var pa: float = (0.55 + 0.45 * sin(_t * 5.0)) if pulse else 1.0
+	var pa: float = (0.55 + 0.45 * DetMath.dsin(_t * 5.0)) if pulse else 1.0
 	for i in range(count):
 		var b = pool[i]
 		if not is_instance_valid(b): continue
@@ -6086,7 +6086,7 @@ func _shock_dmg(u: Dictionary) -> int:   # 被动电击真伤 1.0×ATK(用户202
 func _scythe_face_screen(scythe: Sprite3D, center: Vector2, aim: Vector2, theta: float) -> void:   # 镰刀朝向·手动basis=面朝相机+刀锋对齐地面径向(用户2026-07-17): billboard会吞掉node旋转→改手动: 法线朝相机(正面可读), 局部up=柄尾→地面径向投影到⊥相机平面(刀锋随θ在屏幕内转=挥砍·且与地面扇形咬合)
 	if not is_instance_valid(scythe) or _cam == null: return
 	var grip := _world_pos(center, 0.5)
-	var tip := _world_pos(center + aim.rotated(theta) * 200.0, 0.06)
+	var tip := _world_pos(center + DetMath.rotated(aim, theta) * 200.0, 0.06)
 	var to_cam := (_cam.global_position - grip).normalized()
 	var up := (tip - grip)                                     # 期望刀锋朝向(柄尾→地面径向)
 	up = up - to_cam * up.dot(to_cam)                          # 投影到⊥相机平面(仍正面朝相机)
@@ -6177,7 +6177,7 @@ func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁�
 	if _t < float(u.get("_whip_cd", 0.0)) or _t < float(u.get("stun_until", 0.0)): return
 	var tgt = _targeting._acquire_target(u)
 	if tgt == null or not tgt.get("alive", false): return
-	var d: float = (tgt["pos"] as Vector2).distance_to(u["pos"])
+	var d: float = DetMath.dist((tgt["pos"] as Vector2), u["pos"])
 	if d >= 150.0 and d <= 350.0 and _elite_sys._elite_try_consume(u, tgt):
 		u["_whip_cd"] = _t + 5.0   # 吞噬取代本次铁锁(用户2026-07-19: 铁链也能触发吞噬)
 		return
@@ -6196,13 +6196,13 @@ func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁�
 	var tref: Dictionary = tgt
 	var from5: Vector2 = u["pos"]
 	var to5: Vector2 = tgt["pos"]
-	_elite_sys._elite_mist(from5 + (to5 - from5).normalized() * 24.0, 0.8, 3)   # 手臂黑雾幻化
+	_elite_sys._elite_mist(from5 + DetMath.norm((to5 - from5)) * 24.0, 0.8, 3)   # 手臂黑雾幻化
 	_bolt_line(from5, to5, Color(0.55, 0.1, 0.12, 0.9))
 	var ctex: Texture2D = load("res://assets/sprites/vfx/bio-chain.png")
 	if ctex != null:                                              # 链节依次伸出(快)
 		var links: int = clampi(int(d / 55.0), 5, 14)
 		for i in range(links):
-			var lp: Vector2 = from5.lerp(to5, float(i + 1) / float(links))
+			var lp: Vector2 = DetMath.vlerp(from5, to5, float(i + 1) / float(links))
 			var lk := Sprite3D.new()
 			lk.texture = ctex
 			lk.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -6210,7 +6210,7 @@ func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁�
 			lk.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 			lk.pixel_size = (20.0 * WS) / float(maxi(1, ctex.get_height()))
 			lk.position = _world_pos(lp, 0.8)
-			lk.rotation.z = atan2(-(to5 - from5).y, (to5 - from5).x)
+			lk.rotation.z = DetMath.datan2(-(to5 - from5).y, (to5 - from5).x)
 			lk.modulate = Color(1, 1, 1, 0.0)
 			_world.add_child(lk)
 			var lt := _reg_tween()
@@ -6234,14 +6234,14 @@ func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁�
 			return
 		var tp: Vector2 = tref["pos"]
 		var dirp: Vector2 = tp - (uu["pos"] as Vector2)
-		dirp = dirp.normalized() if dirp.length() > 1.0 else Vector2.RIGHT
+		dirp = DetMath.norm(dirp) if DetMath.vlen(dirp) > 1.0 else Vector2.RIGHT
 		var dest: Vector2 = tp + dirp * 46.0
 		dest = ArenaShape.clamp_in(dest, ARENA, 30, 20)
 		var fromp: Vector2 = uu["pos"]
 		_beam_vfx("res://assets/sprites/vfx/fx-trail.png", fromp, dest, 40.0, Color(0.45, 0.08, 0.1, 0.6), 0.25)
 		var pt5 := _reg_tween()
 		pt5.tween_method(func(q: float) -> void:
-			if uu.get("alive", false): uu["pos"] = fromp.lerp(dest, q)
+			if uu.get("alive", false): uu["pos"] = DetMath.vlerp(fromp, dest, q)
 		, 0.0, 1.0, 0.18)
 		pt5.tween_callback(func() -> void:
 			uu["_slam"] = false
@@ -6249,7 +6249,7 @@ func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁�
 				_damage._apply_damage_from(uu, tref, _atk_dmg(uu, 2.0, tref, true), Color("#9bdcff"))   # 铁锁2A魔法(蓝字·用户2026-07-18: 1A→2A)
 				_elite_sys._elite_mist(uu["pos"], 0.6, 3)
 				var dv2: Vector2 = (tref["pos"] as Vector2) - (uu["pos"] as Vector2)
-				_elite_sys._elite_slash_arc(tref["pos"], dv2.normalized() if dv2.length() > 1.0 else Vector2.RIGHT))
+				_elite_sys._elite_slash_arc(tref["pos"], DetMath.norm(dv2) if DetMath.vlen(dv2) > 1.0 else Vector2.RIGHT))
 	, "src": u})
 
 func _screen_flash_light() -> void:                              # 全屏轻白闪一拍(彗星撞击帧·0.06s淡入0.12s淡出·layer60盖UI下方一点)
@@ -6291,13 +6291,13 @@ func _slam_debris(at2d: Vector2) -> void:
 func _absorb_mote_step(pf: float, mote, from2d: Vector2, to2d: Vector2) -> void:
 	if not is_instance_valid(mote):
 		return
-	mote.position = _world_pos(from2d.lerp(to2d, pf), lerpf(1.0, 1.25, pf))
+	mote.position = _world_pos(from2d.lerp(to2d, pf), DetMath.flerp(1.0, 1.25, pf))
 
 func _knock_up(o: Dictionary, center: Vector2, vy: float) -> void:
 	if o == null or not o.get("alive", false) or o.get("airborne", false) or o.get("_knock_immune", false):   # 免击飞(017不沉之锚): 直接设airborne会绕过_knockback的守卫(用户2026-07-19"修吧")
 		return
 	var dir: Vector2 = (o["pos"] - center)
-	dir = dir.normalized() if dir.length() > 0.1 else Vector2.RIGHT
+	dir = DetMath.norm(dir) if DetMath.vlen(dir) > 0.1 else Vector2.RIGHT
 	o["airborne"] = true
 	o["vy"] = vy
 	o["vx"] = dir.x * KNOCK_PUSH * 0.7
@@ -6313,7 +6313,7 @@ func _densest_enemy_point(u: Dictionary, radius: float) -> Vector2:   # 敌最�
 	for e in es:
 		var n: int = 0
 		for o in es:
-			if (o["pos"] - e["pos"]).length() <= radius: n += 1
+			if DetMath.vlen((o["pos"] - e["pos"])) <= radius: n += 1
 		if n > best_n: best_n = n; best = e["pos"]
 	return best
 
@@ -6451,7 +6451,7 @@ func _throw_gold_coin(src: Dictionary, tgt: Dictionary) -> void:
 	var world_from := _world_pos(start2d, 1.0)
 	p.position = world_from
 	_world.add_child(p)
-	var dur := clampf(start2d.distance_to(tgt["pos"]) / 650.0, 0.18, 0.6)
+	var dur := clampf(DetMath.dist(start2d, tgt["pos"]) / 650.0, 0.18, 0.6)
 	_ballistics._push_proj({
 		"node": p, "from": world_from, "tgt": tgt, "dmg": _atk_dmg(src, 0.30, tgt, false),
 		"col": Color("#ff4444"), "src": src, "t": 0.0, "dur": dur, "basic_onhit": false,
@@ -6494,7 +6494,7 @@ func _urchin_shield_fx(u: Dictionary) -> void:   # 海胆护盾(013满层): 放�
 		sp.pixel_size = (38.0 * WS) / 32.0
 		sp.position = _world_pos(u["pos"], 0.06)
 		_world.add_child(sp)
-		var to: Vector2 = u["pos"] + Vector2(cos(ang), sin(ang)) * SPIKE_FLY
+		var to: Vector2 = u["pos"] + Vector2(DetMath.dcos(ang), DetMath.dsin(ang)) * SPIKE_FLY
 		var tw := _reg_tween(); tw.set_parallel(true)
 		tw.tween_property(sp, "position", _world_pos(to, 0.06), SPIKE_HOLD + SPIKE_FADE).set_ease(Tween.EASE_OUT)
 		## ★先占住 SPIKE_HOLD 这一段(等值 tween), 淡出才真的排在它后面 ——
@@ -6683,9 +6683,9 @@ func _consume_stacks(u: Dictionary, tag: String) -> int:
 # 直线判定: p 是否在 origin 出发 dir 方向的一条宽 width 直线带上 (前方)
 func _on_line(origin: Vector2, dir: Vector2, p: Vector2, width: float) -> bool:
 	var rel: Vector2 = p - origin
-	var along: float = rel.dot(dir)
+	var along: float = DetMath.dot(rel, dir)
 	if along < 0.0: return false
-	var perp: float = (rel - dir * along).length()
+	var perp: float = DetMath.vlen((rel - dir * along))
 	return perp <= width
 
 func _arr_has_unit(arr: Array, x) -> bool:   # ★引用判重: Array 的 has()/in 对 Dictionary 是【深比较】, 单位字典互引成环 → 卡死(同053)
@@ -6838,7 +6838,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 			for o in _targeting._pick_enemies_of(u):
 				if not o.get("alive", false): continue
 				if _t < float(o.get("_ninja_dash_until", 0.0)): continue
-				var _ndd: float = u["pos"].distance_to(o["pos"])
+				var _ndd: float = DetMath.dist(u["pos"], o["pos"])
 				if _ndd <= _nbd: _nbd = _ndd; _nbest = o
 			if _nbest != null: _ninja_sys._ninja_dash(u, _nbest)
 	# 亡灵怒(补实装 2026-07-19 用户拍板): 无头龟每损失 1% 最大生命 → 攻击力 +1%, 最高 +100%。
@@ -6866,7 +6866,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 		_tick_cyber_drones(u, delta)
 		if not u.get("_slam", false) and "cyberSmartAI" in _chosen_skill_types(u["id"], u["side"] == "left"):   # 常驻走位闪避(用户2026-07-16: 被动冲刺是消耗充能层数的): 敌贴近130码+有层数→消耗1层自动躲避冲刺(冷却2.5s)
 			var _ne5 = _targeting._nearest_enemy(u)
-			if _ne5 != null and int(u.get("cyber_ai_charge", 0)) > 0 and (u["pos"] as Vector2).distance_to(_ne5["pos"]) < 130.0 and _t >= float(u.get("_ai_dodge_cd", 0.0)):
+			if _ne5 != null and int(u.get("cyber_ai_charge", 0)) > 0 and DetMath.dist((u["pos"] as Vector2), _ne5["pos"]) < 130.0 and _t >= float(u.get("_ai_dodge_cd", 0.0)):
 				u["_ai_dodge_cd"] = _t + 2.5
 				u["cyber_ai_charge"] = int(u["cyber_ai_charge"]) - 1
 				_cyber_sys._cyber_smart_dash(u)
@@ -6909,7 +6909,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 	# --- 钻石滚球被动(封板): 选滚球 且 200码内无敌 → 免费自动滚(不耗龟能不充能)撞向最近·防抖内CD ★2026-08-22订正: 原注释写"100码"而代码 07-12 就已是 200 ---
 	if u["id"] == "diamond" and not u.get("roll_active", false) and _t > float(u.get("roll_free_cd", 0.0)) and "diamondPowerball" in _chosen_skill_types(u["id"], u["side"] == "left"):
 		var _dne = _targeting._nearest_enemy(u)
-		if _dne != null and _dne["pos"].distance_to(u["pos"]) > DiamondSystem.ROLL_AUTO_RANGE:   # 200码内无敌=最近敌>200码(用户2026-07-12: 100→200)
+		if _dne != null and DetMath.dist(_dne["pos"], u["pos"]) > DiamondSystem.ROLL_AUTO_RANGE:   # 200码内无敌=最近敌>200码(用户2026-07-12: 100→200)
 			u["roll_active"] = true; u["roll_start"] = _t; u["roll_free_cd"] = _t + DiamondSystem.ROLL_AUTO_CD
 	# --- 财神聚宝盆: 每3秒 +4~7金币 (用户) ---
 	if u["id"] == "fortune":
@@ -7014,7 +7014,7 @@ func _on_unit_death(u: Dictionary, killer) -> void:
 	if u.get("boom_pct_true", 0.0) > 0.0:                 # 032骷髅死亡: 200码内敌各受其%最大生命真伤
 		var _br: float = float(u.get("boom_radius", 200.0))
 		for _bo in _targeting._enemies_of(u):
-			if _bo.get("alive", false) and (_bo["pos"] - u["pos"]).length() <= _br:
+			if _bo.get("alive", false) and DetMath.vlen((_bo["pos"] - u["pos"])) <= _br:
 				_damage._apply_damage_from(u, _bo, int(float(_bo["maxHp"]) * float(u["boom_pct_true"])), Color("#8affa0"), 0.0, true, true)
 		_necro_burst(u["pos"], _br)
 	# 缩头本体死亡 → 同步杀掉其随从
@@ -7049,9 +7049,9 @@ const HIDING_POOL := ["basic", "stone", "bamboo", "ninja", "dice", "rainbow", "h
 func _face_screen_dir(node: Node3D, world_from2d: Vector2, world_to2d: Vector2) -> void:   # 立牌朝相机+屏幕内指向 from→to 方向(钩爪尖朝行进)
 	if _cam == null: return
 	var d: Vector2 = _cam.unproject_position(_world_pos(world_to2d, 1.0)) - _cam.unproject_position(_world_pos(world_from2d, 1.0))
-	if d.length() < 1.0: return
+	if DetMath.vlen(d) < 1.0: return
 	var tf: Transform3D = node.global_transform
-	tf.basis = _vfx.cam_basis() * Basis(Vector3(0, 0, 1), atan2(-d.y, d.x) - PI / 2.0)
+	tf.basis = _vfx.cam_basis() * Basis(Vector3(0, 0, 1), DetMath.datan2(-d.y, d.x) - PI / 2.0)
 	node.global_transform = tf
 
 func _tick_cyber_drones(u: Dictionary, delta: float) -> void:   # 浮游炮纯视觉系统(用户2026-07-15: 非实体·环绕跟飞+攻击动作·数量只是计数)
@@ -7085,8 +7085,8 @@ func _tick_cyber_drones(u: Dictionary, delta: float) -> void:   # 浮游炮纯�
 		var ring: int = i % 2                                     # 双环编队(内48px/外76px交错)
 		var r_px: float = 48.0 + 28.0 * float(ring)
 		var aa: float = base_a * (1.0 if ring == 0 else -0.8) + TAU * float(i) / float(maxi(1, n))
-		var off: Vector2 = Vector2(cos(aa), sin(aa)) * r_px
-		var hh: float = 1.35 + 0.25 * float(ring) + sin(_t * 2.2 + float(d["ph"])) * 0.1   # 悬浮上下浮动
+		var off: Vector2 = Vector2(DetMath.dcos(aa), DetMath.dsin(aa)) * r_px
+		var hh: float = 1.35 + 0.25 * float(ring) + DetMath.dsin(_t * 2.2 + float(d["ph"])) * 0.1   # 悬浮上下浮动
 		spr.position = spr.position.lerp(_world_pos(u["pos"] + off, hh), clampf(delta * 6.0, 0.0, 1.0))
 		spr.flip_h = off.x < 0.0
 		d["fire_t"] = float(d["fire_t"]) - delta                  # 各自1.6秒射击(错峰)
@@ -7114,7 +7114,7 @@ func _tick_cyber_drones(u: Dictionary, delta: float) -> void:   # 浮游炮纯�
 				_world.add_child(p)
 				var dmg: int = _resolve_dmg(u, u["atk"] * CyberSystem.DRONE_SHOT_COEF, tgt, false)   # 弹伤=赛博ATK×4%(系数与来由见 CyberSystem.DRONE_SHOT_COEF)
 				_ballistics._push_proj({"node": p, "from": p.position, "tgt": tgt, "dmg": maxi(1, dmg), "col": Color("#9fe8ff"),
-					"src": u, "t": 0.0, "dur": clampf((u["pos"] - tgt["pos"]).length() / 900.0, 0.15, 0.5),
+					"src": u, "t": 0.0, "dur": clampf(DetMath.vlen((u["pos"] - tgt["pos"])) / 900.0, 0.15, 0.5),
 					"basic_onhit": false, "oriented": false, "card_spin": false, "dtype": "physical", "drone_shot": true})
 
 func _art_faces_right(u: Dictionary) -> bool:
@@ -7179,7 +7179,7 @@ func _tick_summon_special(u: Dictionary, delta: float) -> void:
 		"ship_shot":                                          # 海盗船普攻: 射最近敌0.4A(封板L379·攻速0.8由special_cd驱动)
 			var st = _targeting._nearest_enemy(u)
 			if st == null: return
-			_muzzle_flash(u["pos"], (st["pos"] - u["pos"]).normalized(), Color("#ffd9a0"))
+			_muzzle_flash(u["pos"], DetMath.norm((st["pos"] - u["pos"])), Color("#ffd9a0"))
 			_ballistics._fire_bolt_from(u, st, _atk_dmg(u, u.get("special_scale", 0.4), st), Color("#e8c07a"))
 		"ray":                                            # 水晶球射线(2026-07-16重做): 蓄力聚能→两段厚冰蓝光束·伤害不变(2段×0.5A魔法+2层结晶)
 			var t = _targeting._nearest_enemy(u)
@@ -7246,7 +7246,7 @@ func _pinch_dist() -> float:
 	if _touch_pts.size() < 2:
 		return -1.0
 	var ks: Array = _touch_pts.keys()
-	return (_touch_pts[ks[0]] as Vector2).distance_to(_touch_pts[ks[1]] as Vector2)
+	return DetMath.dist((_touch_pts[ks[0]] as Vector2), _touch_pts[ks[1]] as Vector2)
 
 func _shake(amp: float) -> void:
 	if amp <= 0.0:
@@ -7418,7 +7418,7 @@ func _spawn_fireball(src: Dictionary, tgt: Dictionary, dmg: int, burn: int) -> v
 	_world.add_child(p)
 	_ballistics._push_proj({
 		"node": p, "from": from, "tgt": tgt, "dmg": dmg, "col": Color("#ff7a33"),
-		"src": src, "t": 0.0, "dur": clampf(src["pos"].distance_to(tgt["pos"]) / 600.0, 0.35, 0.7),
+		"src": src, "t": 0.0, "dur": clampf(DetMath.dist(src["pos"], tgt["pos"]) / 600.0, 0.35, 0.7),
 		"arc": 2.2, "fireball": true, "fire_burst": burn,
 	})
 
@@ -7436,7 +7436,7 @@ func _spawn_bamboo_arrow(src: Dictionary, tgt: Dictionary, dmg: int, grow: float
 	_world.add_child(p)
 	_ballistics._push_proj({
 		"node": p, "from": from, "tgt": tgt, "dmg": dmg, "col": Color("#a8ffb0"),
-		"src": src, "t": 0.0, "dur": clampf(src["pos"].distance_to(tgt["pos"]) / 850.0, 0.14, 0.5),
+		"src": src, "t": 0.0, "dur": clampf(DetMath.dist(src["pos"], tgt["pos"]) / 850.0, 0.14, 0.5),
 		"bamboo": true, "wisp_dir": true, "wisp_off": PI / 2.0, "bamboo_grow": grow,   # bamboo-arrow.png 是96x24横向贴图(+X朝前)
 	})
 
@@ -8258,7 +8258,7 @@ func _zap_frame(fr: float, spr: Sprite3D) -> void:
 		spr.frame = clampi(int(fr), 0, 4)
 
 func _sniper_charge_fx(u: Dictionary, tgt: Dictionary) -> void:   # 蓄力1秒: 细红瞄准线由暗渐亮 + 枪口聚能球胀大 + 目标身上三道收缩锁定环
-	var dir: Vector2 = (tgt["pos"] - u["pos"]).normalized()
+	var dir: Vector2 = DetMath.norm((tgt["pos"] - u["pos"]))
 	if dir == Vector2.ZERO: dir = Vector2.RIGHT
 	_laser_beam(u["pos"], tgt["pos"] + dir * 90.0, Color(1.0, 0.22, 0.26, 0.34), 0.025, 1.0, 1.0)   # 细红瞄准线(持续1秒)
 	# 枪口聚能球: 由小变大再爆开
@@ -8295,7 +8295,7 @@ func _windup_spark(pos2d: Vector2, ang: float) -> void:
 	spr.shaded = false
 	spr.transparent = true
 	spr.pixel_size = (24.0 * WS) / tw_w
-	var from: Vector2 = pos2d + Vector2(cos(ang), sin(ang)) * 135.0
+	var from: Vector2 = pos2d + Vector2(DetMath.dcos(ang), DetMath.dsin(ang)) * 135.0
 	spr.position = _world_pos(from, 1.3)
 	_world.add_child(spr)
 	var tw := _reg_tween()
@@ -8315,7 +8315,7 @@ func _spawn_fire_pillar(burn: Texture2D, pos2d: Vector2, top_h: float) -> void:
 	var seg := 5
 	for k in range(seg):
 		var frac: float = float(k) / float(seg - 1)
-		_spawn_pillar_flame(burn, pos2d, lerpf(0.55, top_h, frac), frac)
+		_spawn_pillar_flame(burn, pos2d, DetMath.flerp(0.55, top_h, frac), frac)
 
 func _spawn_pillar_flame(burn: Texture2D, pos2d: Vector2, h: float, frac: float) -> void:
 	var spr := Sprite3D.new()
@@ -8327,7 +8327,7 @@ func _spawn_pillar_flame(burn: Texture2D, pos2d: Vector2, h: float, frac: float)
 	spr.transparent = true
 	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	var fw: float = float(burn.get_width()) / 8.0
-	spr.pixel_size = (lerpf(98.0, 56.0, frac) * WS) / fw          # 底大顶小=火柱形
+	spr.pixel_size = (DetMath.flerp(98.0, 56.0, frac) * WS) / fw          # 底大顶小=火柱形
 	spr.position = _world_pos(pos2d, h)
 	_world.add_child(spr)
 	var tw := _reg_tween()

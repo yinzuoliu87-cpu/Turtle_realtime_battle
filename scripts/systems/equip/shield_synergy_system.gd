@@ -259,7 +259,7 @@ func on_enemy_died(victim: Dictionary) -> void:
 				break
 		if not carries:
 			continue                                 # 「最近的**携带盾者**」
-		var d: float = Vector2(u.get("pos", Vector2.ZERO)).distance_squared_to(
+		var d: float = DetMath.dist2(Vector2(u.get("pos", Vector2.ZERO)), 
 			Vector2(victim.get("pos", Vector2.ZERO)))
 		if d < best_d:
 			best_d = d
