@@ -1484,6 +1484,32 @@ static func _spawn():
 	return n
 
 
+## 客户端报错上报(2026-10-11 · scripts/net/error_reporter.gd)。发完就忘; 没配后端 = 什么都不做。
+## ★发不出去就丢 —— 报错上报不重试、不落盘排队(它不是玩家数据, 丢几条只少一个线索)。
+static var client_error_posts: int = 0   ## 观测量: 真交给 _http 的条数(门禁分母)
+static func report_client_errors_async(rows: Array) -> void:
+	if not enabled() or rows.is_empty():
+		return
+	var n = _spawn()
+	if n != null:
+		n.report_client_errors(rows)
+
+
+func report_client_errors(rows: Array) -> void:
+	if not await _await_token():
+		_bye()
+		return
+	var url := base_url().rstrip("/") + "/rest/v1/rpc/report_client_error"
+	var left := [rows.size()]
+	for r in rows:
+		client_error_posts += 1
+		_http("POST", url, JSON.stringify(r), func(_res):
+			left[0] -= 1
+			if left[0] <= 0:
+				_bye(),
+			"Content-Type: application/json")
+
+
 ## 去问一次服务状态。**发完就忘**；没配后端 = 什么都不做（连节点都不建）。
 static func fetch_status_async() -> void:
 	if not enabled():

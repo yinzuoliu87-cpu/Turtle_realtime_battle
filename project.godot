@@ -36,6 +36,10 @@ ShotDiff="*res://autoload/shot_diff.gd"
 CursorTheme="*res://autoload/CursorTheme.gd"
 TutorialDirector="*res://autoload/tutorial_director.gd"
 
+[debug]
+
+settings/gdscript/always_track_call_stacks=true
+
 [display]
 
 window/size/viewport_width=1280

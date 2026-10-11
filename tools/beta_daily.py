@@ -137,6 +137,28 @@ def main():
     print("  直播已打完、录像却没进 matches: %s 场(录像上传失败 / 还在补传)" % up["n"])
     print("  直播开了没结束、10 分钟没更新: %s 场(中途退出 / 掉线 / 杀进程)" % stale["n"])
     print("  当天新注册、一场都没传上来: %s 个(只走了教学 / 卡在某处 / 没联网)" % idle["n"])
+
+    ## ⑥ 当天报错(客户端上报 · 2026-10-11 · scripts/net/error_reporter.gd)
+    ##   count = 多少个【进程】碰到过(同一进程同一签名只报一次), 不是总次数。
+    print("\n⑥ 当天报错(客户端上报; 次数 = 碰到过的进程数)")
+    if not q("select to_regclass('public.client_errors') is not null ok")[0]["ok"]:
+        print("  [没有 client_errors 表] 迁移 20261011b_client_errors.sql 还没上生产")
+        return 0
+    er = q("select sig, kind, max(message) msg, max(detail) det, sum(count) n, count(distinct account_id) people, "
+           "count(distinct account_id) filter (where account_id::text not in %s) others, "
+           "string_agg(distinct version, ',') vers, string_agg(distinct platform, ',') plats, "
+           "string_agg(distinct scene, ',') scenes "
+           "from public.client_errors where day = '%s' group by sig, kind order by others desc, n desc limit 40"
+           % (S, a.day))
+    tot = sum(int(x["n"]) for x in er)
+    print("  N=%d 种 · 合计 %d 次" % (len(er), tot) + ("" if er else " —— 当天一条都没有"))
+    for x in er:
+        print("  [%s] %s 次 · %s 人(其他人 %s) · %s · %s · 界面 %s" % (
+            x["kind"], x["n"], x["people"], x["others"], x["vers"], x["plats"], x["scenes"] or "-"))
+        print("      %s" % str(x["msg"]).replace("\n", " ")[:160])
+        ## 详情第 1 行是引擎报的出处(push_error 一律是 variant_utility.cpp), 第 2 行起是脚本调用栈 ⇒ 优先看栈顶
+        lines = str(x["det"]).split("\n")
+        print("      %s" % (lines[1] if len(lines) > 1 else lines[0])[:160])
     return 0
 
 
