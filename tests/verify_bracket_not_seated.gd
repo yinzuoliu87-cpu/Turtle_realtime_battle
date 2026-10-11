@@ -58,7 +58,13 @@ func _ready() -> void:
 	var _i1 := _src.find("\nfunc ", _i0 + 10)
 	var _body := _src.substr(_i0, (_i1 if _i1 > 0 else _src.length()) - _i0)
 	_ok("★分母: 找到 _sync_tip", _i0 >= 0 and _body.length() > 50)
-	_ok("★★对阵图顶上那行走 countdown_text, 不再拼 %d:%02d", _body.find("countdown_text(") >= 0 and _body.find("%d:%02d") < 0)
+	## ★2026-10-11 那行字抽成纯函数 `round_tip`(最后一轮说「决赛」), `_sync_tip` 调它 ⇒ 两段一起量。
+	var _j0 := _src.find("static func round_tip")
+	var _j1 := _src.find("\nfunc ", _j0 + 10)
+	var _rt := _src.substr(_j0, (_j1 if _j1 > 0 else _src.length()) - _j0) if _j0 >= 0 else ""
+	_ok("★★对阵图顶上那行走 countdown_text, 不再拼 %d:%02d",
+		(_body.find("countdown_text(") >= 0 or (_body.find("round_tip(") >= 0 and _rt.find("countdown_text(") >= 0))
+		and _body.find("%d:%02d") < 0 and _rt.find("%d:%02d") < 0)
 	print("")
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 分组前不劝退" if _fail == 0 else "FAIL x%d" % _fail)
