@@ -246,14 +246,14 @@ func _sk_gambler_bet(u: Dictionary, tgt: Dictionary) -> void:    # 赌神龟·�
 	var cost: float = u["hp"] * BET_HP_COST
 	u["hp"] = maxf(1.0, u["hp"] - cost)
 	battle._vfx._flash(u, Color(1.7, 0.4, 0.4))                            # HP牺牲红闪(押上血本)
-	var per: int = maxi(1, int(cost / float(BET_SEGMENTS)))
+	var per_raw: float = cost / float(BET_SEGMENTS) * DamageMath.RESIST_COMP   # ★10-11: 物理改真吃护甲(×1.5 补平均强度), 每张牌落地时按目标护甲结算
 	u["gambler_bet_until"] = battle._t + BET_BONUS_SEC                           # 3秒多重概率+20%(见_gambler_multi_cd·回补钩)
 	battle._skill_ring(u["pos"], Color(1.0, 0.85, 0.2, 0.55), 54.0)
 	for i in range(7):                                         # 7张牌barrage(错峰0.11s·命中才跳伤害·每张触发多重打击B·扣'七段')
 		# ★用户2026-07-28 报的 bug: 这里原来只传了 roll_multi=true, 而 _gambler_throw_hit 的
 		#   is_true 默认值是 true → 七段全走【真实伤害】穿透双抗, 与"七段物理伤害"的设定不符。
 		#   显式传 false 走物理。(另一处调用 :37 本来就显式传了 false,false, 只有这行漏了)
-		battle._pending_shots.append({"delay": float(i) * 0.11, "fn": func() -> void: _gambler_throw_hit(u, tgt, per, true, false), "src": u})
+		battle._pending_shots.append({"delay": float(i) * 0.11, "fn": func() -> void: _gambler_throw_hit(u, tgt, battle._phys_after_armor(u, per_raw, tgt) if tgt != null and tgt.get("alive", false) else 1, true, false), "src": u})
 
 func _sk_gambler_fate_wheel(u: Dictionary) -> void:             # 赌神龟·命运之轮(用户封板·80龟能): 抽1花色永久加属性(♠攻+3&血+10/♥护甲魔抗各+1/♦暴击+2%&护穿+1/♣吸血+0.5%&攻速+2%)·跨场累积=存GameState.gambler_wheel_stacks(本大轮累积·切轮重置·方案B·用户2026-07-09)
 	var _suit = battle._battle_rng.randi() % 4

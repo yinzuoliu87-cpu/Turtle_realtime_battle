@@ -4,6 +4,11 @@ extends RefCounted
 ## 暴击率溢出 100% 的部分, 每 1 点转成多少暴击伤害
 ## (文案: "暴击机率超过 100% 的部分, 每 1% 转化为 1.5% 暴击伤害")。
 const CRIT_OVERFLOW := 1.5
+## ★「不吃抗性 → 吃抗性」改造的补偿倍率(2026-10-11 全项目通读第四条)。
+##   一发伤害平均被护甲/魔抗砍到 ×0.67(tests/verify_armor_compensation 的 ARMOR_AVG_MULT 0.6685 /
+##   MAGIC_AVG_MULT 0.6745, 387 次真实挨打实测) ⇒ 补 ×1.5 让【平均强度不变】、而护甲/魔抗从此能挡它。
+##   与 2026-08-29 那三处(冲击波 0.40→0.60 / 撕咬 0.03→0.045 / 钩弹)同一个倍率。
+const RESIST_COMP := 1.5
 ## 战斗纯数学 (SIM · 无节点 · 可 headless 单测) —— 结构治理·切片2 的【模式验证】。
 ##
 ## 大厂做法(Riot「gameplay-deterministic·纯逻辑隔离」/ Cliffski「SIM 与 GUI 分家」):

@@ -169,7 +169,7 @@ func _sk_rock_shockwave(u: Dictionary) -> void:                  # 石头龟·�
 		var hit_delay: float = windup + maxf(0.0, DetMath.dot(rel, dir)) / wave_spd
 		var hf = func() -> void:
 			if not oo.get("alive", false): return
-			battle._damage._apply_damage_from(uu, oo, dmgv, Color("#c8a878"))
+			battle._damage._apply_damage_from(uu, oo, battle._phys_after_armor(uu, float(dmgv) * DamageMath.RESIST_COMP, oo), Color("#c8a878"))
 			battle._damage._stun(oo, ROCK_WAVE_STUN, "_sk_rock_shockwave")   # 命中即眩晕2秒(用户2026-07-11: 除击退外必附2s眩晕·原1%×层概率改必中·头顶通用眩晕圈由_update_stun_vfx画)
 			battle._damage._knockback(uu, oo, 60.0)
 			_rock_chunk_erupt(oo["pos"])                     # 命中点额外破土

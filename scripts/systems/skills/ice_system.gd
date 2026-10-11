@@ -294,13 +294,9 @@ func _ice_gain_icicle(u: Dictionary) -> void:
 	var base_iv: float = float(u.get("_icicle_base_iv", u.get("atk_interval", 1.0)))
 	u["_icicle_base_iv"] = base_iv
 	u["atk_interval"] = base_iv / (1.0 + ICICLE_ASPD * float(u["icicle"]))
-	# 双抗: 按【开局基准】的百分比加, 同样只算总量
-	var bd: float = float(u.get("_icicle_base_def", u.get("def", 0.0)))
-	var bm: float = float(u.get("_icicle_base_mr", u.get("mr", 0.0)))
-	u["_icicle_base_def"] = bd
-	u["_icicle_base_mr"] = bm
-	u["def"] = bd * (1.0 + ICICLE_DEFMR * float(u["icicle"]))
-	u["mr"] = bm * (1.0 + ICICLE_DEFMR * float(u["icicle"]))
+	# 双抗: 按层数加百分比 —— ★2026-10-11 改由 `_recalc_stats`(唯一写入点)读 `icicle` 层数算,
+	#   原来在这里直接写 def/mr, 任何 buff 触发重算就被抹掉(门禁 verify_icicle_resist_survives_recalc)。
+	battle._recalc_stats(u)
 
 
 func _sk_ice_frost(u: Dictionary, tgt: Dictionary) -> void:      # 寒冰龟·冰霜 ✅ (圆形冰霜场: 5秒/每0.5秒一跳/圈内-25%魔抗)

@@ -71,7 +71,7 @@ func _diamond_roll_impact(u: Dictionary, cp: Vector2, sf: float) -> void:
 		if not o.get("alive", false): continue
 		if DetMath.dist(o["pos"], cp) > ROLL_HIT_RADIUS: continue             # 撞击点120码小AOE
 		var dmg: int = int(u["def"] * (ROLL_RESIST_MIN + (ROLL_RESIST_MAX - ROLL_RESIST_MIN) * sf) + u["mr"] * (ROLL_RESIST_MIN + (ROLL_RESIST_MAX - ROLL_RESIST_MIN) * sf) + o["maxHp"] * (ROLL_MAXHP_MIN + (ROLL_MAXHP_MAX - ROLL_MAXHP_MIN) * sf))   # 按速插值(封板: 0速0.1甲0.1抗2%→满速1.0甲1.0抗20%)
-		battle._damage._apply_damage_from(u, o, dmg, Color("#9bdcff"))
+		battle._damage._apply_damage_from(u, o, battle._phys_after_armor(u, float(dmg) * DamageMath.RESIST_COMP, o), Color("#9bdcff"))
 		battle._damage._knockback(u, o, 50.0, 1.8, 1.0)                          # 击飞1秒(vy高)
 		battle._freeze(o, ROLL_STUN_MIN + (ROLL_STUN_MAX - ROLL_STUN_MIN) * sf)                                # 眩晕0.5~3s(随速插值·满速3s)
 	battle._burst_vfx("res://assets/sprites/vfx/diamond-impact.png", cp, 120.0 + 70.0 * sf, 0.5)   # 水晶碎裂撞击(按速插值·越快越大)
@@ -85,7 +85,7 @@ func _diamond_smash_impact(u: Dictionary, tgt) -> void:         # 蓄力结束�
 	if tgt == null: return
 	battle._dash_to(u, tgt, 45.0)
 	var dmg: int = int(u["def"] * SMASH_RESIST_COEF + u["mr"] * SMASH_RESIST_COEF + u["atk"] * SMASH_ATK_COEF)     # 保留原撞击伤害(1.0甲+1.0抗+0.1A物理·用户2026-07-12保留)
-	battle._damage._apply_damage_from(u, tgt, dmg, Color("#9bdcff"))
+	battle._damage._apply_damage_from(u, tgt, battle._phys_after_armor(u, float(dmg) * DamageMath.RESIST_COMP, tgt), Color("#9bdcff"))
 	var bstacks: int = maxi(1, roundi(SMASH_BLEED_ATK * float(u["atk"]) + SMASH_BLEED_RESIST * float(u["def"]) + SMASH_BLEED_RESIST * float(u["mr"])))   # 流血层数=0.5A+0.1甲+0.1抗(用户2026-07-12·走既有层数式流血)
 	battle._damage._apply_dot_stacks(tgt, "bleed", bstacks, u)
 	var prev_slow: float = float(tgt.get("slow_mag", 1.0)) if battle._t < float(tgt.get("slow_until", 0.0)) else 1.0

@@ -4221,6 +4221,20 @@ func _phys_after_armor(u: Dictionary, raw: float, tgt: Dictionary) -> int:
 		d *= GhostSystem.PHASE_MULT                 # 虚化(幽灵): 受物理-90%
 	return maxi(1, int(round(d)))
 
+## 魔法版的 `_phys_after_armor`: 只做魔抗减免(法穿/增伤/减伤/水晶共鸣), 不掷暴击。
+## ★2026-10-11 全项目通读第四条: 原来没有这一个 ⇒ 「+N% 目标最大生命 魔法」这类定额段只能裸值传进
+##   `_apply_damage_from`(那条路没有抗性公式), 或者各装备批次自己抄一份(074 那份就漏了水晶 ×0.8)。
+func _magic_after_mr(u: Dictionary, raw: float, tgt: Dictionary) -> int:
+	_last_dmg_type = "magic"; _damage._dt_fresh = true; _damage._dt_owner = tgt
+	var resist: float = DamageMath.effective_resist(float(tgt["mr"]), float(u.get("magic_pen_pct", 0.0)), float(u.get("magic_pen", 0.0)))
+	var d: float = raw * DamageMath.resist_multiplier(resist)
+	d *= 1.0 + float(u.get("damage_amp", 0.0))
+	_damage._dt_resolved = true
+	d *= 1.0 - float(tgt.get("damage_reduction", 0.0))
+	if str(tgt.get("id", "")) == "crystal":
+		d *= CrystalSystem.MAGIC_DR_MULT
+	return maxi(1, int(round(d)))
+
 # 立绘前冲 (近战命中视觉) — billboard offset 微推再回 (朝镜头, 不用翻 facing)
 # 近战命中踏步: 朝目标前冲再回. 走渲染追加偏移 _atk_voff(每帧render叠加, 见 _vfx._juice_decay), 不tween spr.position(会被逐帧render覆盖)
 func _melee_lunge(u: Dictionary, tgt: Dictionary, amp: float = ATK_LUNGE_AMP) -> void:
@@ -6600,6 +6614,11 @@ func _recalc_stats(u: Dictionary) -> void:
 	#     去掉钳会让那些一起变成增伤 = 改掉已上线机制。所以只给【显式削减】开一条口子:
 	#     谁写了 `mr_shred` 谁才拿得到负抗性, 别的路径行为一个字节都没变。
 	#   ⚠ 削减量是**单位字段** ⇒ 换路整体重建单位时自动清零(= 用户定的「削掉的魔抗本路不恢复、换路重置」)。
+	## ★冰锥双抗(2026-10-11 全项目通读第五条): 原来 `_ice_gain_icicle` 直接写 def/mr ⇒ 任何一次重算都把它抹掉。
+	##   改成在这个唯一写入点按层数加百分比(门禁 verify_icicle_resist_survives_recalc)。
+	var _icic: float = IceSystem.ICICLE_DEFMR * float(u.get("icicle", 0))
+	acc["def"][0] += _icic
+	acc["mr"][0] += _icic
 	u["def"] = maxf(0.0, u["base_def"] * (1.0 + acc["def"][0]) + acc["def"][1]) - float(u.get("def_shred", 0.0))
 	u["mr"]  = maxf(0.0, u["base_mr"]  * (1.0 + acc["mr"][0])  + acc["mr"][1]) - float(u.get("mr_shred", 0.0))
 	# ★★闪避上限(2026-08-02 用户问「每个角色我记得有闪避上限做了吗」——答: 没有, 现在加)。
@@ -6777,10 +6796,9 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 		u["basic_enh_ready"] = false
 		if tgt.get("alive", false):
 			_sk_basic_shield(u, tgt)
-	# 无头亡灵: 每损1%HP攻击+1%(上限+100%)
-	if u["id"] == "headless":
-		var lost_pct: float = clampf(1.0 - u["hp"] / u["maxHp"], 0.0, 1.0)
-		u["atk"] = u["base_atk"] * (1.0 + lost_pct * HeadlessSystem.UNDEAD_ATK_PER_LOST)
+	# 无头亡灵(每损1%HP攻击+1%·上限+100%)只在 _tick_periodic_passive 算一处。
+	# ★2026-10-11 全项目通读第六条: 这里原来每次普攻又写一遍 `atk = base_atk×(1+损血)` ⇒ 与周期被动叠成平方
+	#   (半血 ×2.25、满损 ×4)且覆盖 atk 冲掉所有攻击 buff/羁绊。已删(门禁 verify_headless_rage_once)。
 
 func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 	u["_ptimer"] = u.get("_ptimer", 0.0) + delta
@@ -7185,7 +7203,7 @@ func _tick_summon_special(u: Dictionary, delta: float) -> void:
 			var t = _targeting._nearest_enemy(u)
 			if t == null: return
 			_crystal_sys._crystal_ray_vfx(u, t, func(sr: Dictionary, tr: Dictionary, last: bool) -> void:
-				_damage._apply_damage_from(sr, tr, _atk_dmg(sr, sr.get("special_scale", 1.0), tr, true), Color("#9bdcff"), 0.0, true)
+				_damage._apply_damage_from(sr, tr, _atk_dmg(sr, sr.get("special_scale", 1.0), tr, true), Color("#9bdcff"), 0.0, true, false, true)   # ★10-11: pre_crit —— _atk_dmg 已掷过暴击
 				if last: _crystal_sys._crystal_stack(sr, tr, 2))   # 与本体共享满5引爆(引爆改吃魔抗)
 		"random_hit":
 			var es2 := _targeting._pick_enemies_of(u)

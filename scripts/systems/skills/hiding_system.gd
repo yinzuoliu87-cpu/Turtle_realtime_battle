@@ -334,7 +334,7 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己�
 			u["height"] = h0 - (h0 - 0.3) * kk * kk       # 高度按重力加速下落(前段高·末段猛扎)→路径成弧线俯冲, 不直线飞(用户2026-07-18"符合现实")
 	if not (u.get("alive", false) and tref.get("alive", false)):
 		u["_slam"] = false; return
-	battle._damage._apply_damage_from(u, tref, int(float(tref["maxHp"]) * 0.10), Color("#ff4444"))   # 接触: 10%目标最大生命(物理)
+	battle._damage._apply_damage_from(u, tref, battle._phys_after_armor(u, float(tref["maxHp"]) * 0.10 * DamageMath.RESIST_COMP, tref), Color("#ff4444"))   # 接触: 10%目标最大生命(物理)
 	battle._melee_anim(u, "surf")                                # 1.58-2.41 踩在目标身上滑行
 	battle._vfx._hit_spark(tref); battle._shake(0.14)
 	var sdir: Vector2 = ((tref["pos"] as Vector2) - from)
@@ -588,9 +588,11 @@ func _sk_hiding_shrink(u: Dictionary) -> void:                  # 缩头(封板�
 		mb.tween_callback(func() -> void:
 			if mref.get("alive", false): battle._skill_ring(mref["pos"], Color(0.6, 0.9, 1.0, 0.6), 50.0))
 	battle._damage._stun(u, SHRINK_SEC, "_sk_hiding_shrink", true)   # 缩头3秒: 不能攻击/移动(定身)
-	u["damage_reduction"] = SHRINK_DR                                # 80%减伤
+	## ★2026-10-11 全项目通读第五条: 原来是 `= SHRINK_DR` / 3 秒后 `= 0.0` ⇒ 盖掉并永久清掉别的来源的减伤
+	##   (011 / 香火石 / 060 水母伞 / 精英都是 += / -=)。改成同一口径(门禁 verify_shrink_dr_additive)。
+	u["damage_reduction"] = float(u.get("damage_reduction", 0.0)) + SHRINK_DR   # 80%减伤
 	var uu: Dictionary = u
-	battle._pending_shots.append({"delay": 3.0, "fn": func(): uu["damage_reduction"] = 0.0, "src": u})
+	battle._pending_shots.append({"delay": 3.0, "fn": func(): uu["damage_reduction"] = maxf(0.0, float(uu.get("damage_reduction", 0.0)) - SHRINK_DR), "src": u})
 	_hiding_dome(u, Color(0.78, 0.64, 0.4, 1.0), 3.0)          # 土棕硬壳护罩3秒(80%减伤可视·与技2壳绿区分)
 	battle._burst_vfx("res://assets/sprites/vfx/dust-impact.png", u["pos"], 90.0, 0.1)   # 缩进壳的尘土
 
