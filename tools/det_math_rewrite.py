@@ -221,7 +221,15 @@ def rewrite_line(line, stats, dry_rows, path, ln, lines=None):
 
 
 def main():
-    dry = '--dry' in sys.argv
+    ## ★2026-10-11 全项目通读: 头注写了 `--check`(只数), 而这里只认 `--dry` ⇒ 带 --check 跑会落到写盘分支、就地改写约 60 个 sim 文件。
+    ##   --check 与 --dry 一样不写盘(只是不逐行列出); 认不出的参数直接拒跑, 不再静默当成「改写」。
+    known = {'--dry', '--check'}
+    unknown = [a for a in sys.argv[1:] if a not in known]
+    if unknown:
+        print('不认识的参数 %s(只认 --dry / --check; 不带参数 = 就地改写)' % unknown)
+        sys.exit(2)
+    check = '--check' in sys.argv
+    dry = '--dry' in sys.argv or check
     stats = {}
     rows = []
     files_changed = 0
@@ -249,11 +257,11 @@ def main():
             files_changed += 1
             if not dry:
                 open(full, 'wb').write(new.encode('utf-8'))
-    if dry:
+    if dry and not check:
         for r in rows:
             print('%s:%d  %-18s %s %s' % r)
     print('stats', stats)
-    print('files', files_changed, '(dry)' if dry else '(written)')
+    print('files', files_changed, '(check)' if check else ('(dry)' if dry else '(written)'))
 
 
 if __name__ == '__main__':
