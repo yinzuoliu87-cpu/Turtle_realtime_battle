@@ -460,7 +460,8 @@ func _t_lockout_sweep() -> void:
 				blocked.append("wd%d %02d:%02d(left=%d)" % [wd, h, m, left])
 				if wd != P2.RANKED_CLOSE_WD and wd != P2.GAUNTLET_CLOSE_WD:
 					off_day.append("wd%d %02d:%02d" % [wd, h, m])
-				if left < 0 or left > P2.CLOSE_LOCKOUT_SEC:
+				## ★2026-10-11: 收盘后(left < 0)到当天结束也封 —— 原稿「23:00 收盘」; 只有「收盘前超过封盘窗口」才算越界
+				if left > P2.CLOSE_LOCKOUT_SEC:
 					off_window.append("wd%d %02d:%02d left=%d" % [wd, h, m, left])
 	P2.now_override_ts = 0
 	print("    封住的时刻: %s" % str(blocked))
@@ -522,7 +523,14 @@ func _t_lockout_sweep() -> void:
 		after.append("wd%d %02d:%02d phase=%s left=%d can_start=%s"
 			% [P2.iso_weekday_utc(ts3), int(spec[1]), int(spec[2]), P2.phase_at_utc(ts3),
 				P2.close_left_sec(ts3), str(P2.can_start_match_utc(ts3))])
-	print("    [INFO·只报不判] 收盘后到午夜: %s" % str(after))
+	print("    收盘后到午夜: %s" % str(after))
+	## ★2026-10-11 全项目通读: 原来这里只报不判(当时等产品决定)。原稿 §二/§三 写的是「23:00 收盘/截止」⇒ 改成断言。
+	var reopened := 0
+	for spec2 in [[4, 23, 0, 1], [4, 23, 30, 0], [4, 23, 59, 59], [5, 23, 30, 0], [5, 23, 59, 59]]:
+		var ts4: int = MON0 + int(spec2[0]) * 86400 + int(spec2[1]) * 3600 + int(spec2[2]) * 60 + int(spec2[3])
+		if P2.can_start_match_utc(ts4):
+			reopened += 1
+	_chk("⑦ ★★收盘(周五/周六 23:00)之后到午夜都不能开新局", reopened == 0, "又能开的时刻 %d / 5" % reopened)
 
 
 # ═════════════════════════════════════════════════════════════════

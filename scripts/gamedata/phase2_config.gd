@@ -775,11 +775,14 @@ static func close_left_sec(ts: int) -> int:
 
 ## 现在还能不能开新局? ★★E3: 收盘前 CLOSE_LOCKOUT_SEC 内封盘。
 ## ⚠ 调用点必须是**点「开打」那一刻**, 不是点匹配 —— 摆位不限时, 设在匹配就盖不住。
+## ★2026-10-11 全项目通读(赛制第 1 条): 原来 `left < 0 ⇒ true`(把「负数」当成「这个阶段没有收盘」),
+##   而收盘之后 close_left_sec 也是负数 ⇒ 周五/周六 23:00:01~23:59:59 又能开新局。
+##   原稿 §二/§三「23:00 收盘/截止」⇒ 有收盘概念的阶段, 收盘后到当天结束一律不能开。
 static func can_start_match_utc(ts: int) -> bool:
-	var left := close_left_sec(ts)
-	if left < 0:
-		return true                      # 没有收盘概念的阶段不封盘
-	return left > CLOSE_LOCKOUT_SEC
+	var ph := phase_at_utc(ts)
+	if ph != PHASE_RANKED and ph != PHASE_GAUNTLET:
+		return true                      # 休赛 / 决赛日没有收盘概念
+	return close_left_sec(ts) > CLOSE_LOCKOUT_SEC
 
 # ─── 商店 ───────────────────────────────────────────────────
 const SMALL_SHOP_SLOTS := 10      # 小商店格数 (V2 §五: 一次展示10个, 用户 2026-06-25)
