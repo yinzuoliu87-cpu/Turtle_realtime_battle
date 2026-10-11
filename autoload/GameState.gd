@@ -2135,6 +2135,10 @@ func reset_save() -> void:
 	incense_charge = 0                # 同上: 充能与刻痕同一条线, 一起重置
 	season_level = 1
 	season_xp = 0
+	## ★2026-10-11 全项目通读 B3: 这里是 start_new_season 的手抄副本, 原来漏了这三个 ⇒ 重置后技能选择与宝箱龟财宝残留(门禁 verify_reset_save_clears)
+	loadouts = {}
+	chest_treasure_value = 0.0
+	chest_treasures_won = []
 	season_leaders = []
 	persistent_bench = []
 	persistent_equipped = {}
@@ -2411,8 +2415,12 @@ func break_candy_jar() -> Dictionary:
 
 func _candy_jar_pick_equip(costs: Array) -> String:   # 从 DataRegistry.phase2_equipment 按 cost 抽1
 	var pool: Array = []
+	var has_axe: bool = axe_owned()
 	for eq in DataRegistry.phase2_equipment:
 		if int(eq.get("cost", 0)) in costs:
+			## ★2026-10-11 全项目通读 B2: 小木斧只能拥有一把(用户 2026-08-31) —— 已有就不进池(门禁 verify_candy_axe_unique)
+			if has_axe and str(eq.get("id", "")) == "p2eq_096":
+				continue
 			pool.append(str(eq.get("id", "")))
 	if pool.is_empty(): return ""
 	return str(pool[randi() % pool.size()])
@@ -2510,6 +2518,9 @@ func auto_merge_all() -> void:
 			var iid := str(parts[0])
 			var star := int(parts[1])
 			if star >= 3:
+				continue
+			## ★2026-10-11 全项目通读 B2: 不升星的件(小木斧)不参与三合一 —— 与 try_merge_all 同一份名单
+			if _EquipPool.NO_STAR.has(iid):
 				continue
 			var removed := 0
 			# ★093 香火石: 被合掉的三件的香火充能要加进升星件(用户 2026-08-06「升星就合并」)。
