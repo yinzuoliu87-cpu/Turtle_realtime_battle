@@ -52,6 +52,8 @@ def launch(i, bots_per_shard, max_rounds, seed):
     """起一个分片进程。★每片自己的 APPDATA —— Godot 在 Windows 从 %APPDATA% 解析 user://,
     共用会让 N 个进程抢同一个存档目录(门禁那边踩过, run-tests.sh 也是这么隔离的)。"""
     env = dict(os.environ)
+    env["TURTLE_BACKEND"] = " "    # ★2026-10-11: 造池子是纯离线模拟, 不许连正式服(gate_offline_audit 守)
+    env["TURTLE_SUPABASE"] = " "
     env.update({
         "SHIP": "1",
         "DL_AUTOFIGHT": "1",

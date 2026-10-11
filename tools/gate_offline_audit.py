@@ -22,6 +22,31 @@ if len(cmds) < 2:
     sys.exit(1)
 for b in bad:
     print("  [FAIL] 没关后端(会打生产库): " + b)
+# ★2026-10-11 全项目通读: tools/ 下起 Godot 跑测试场景的 Python 工具(变异验证器等)同样不许打生产库 ——
+#   mutate_verify.py / mutation_probe.py 原来只关一半或都没关, 而本审计只扫 run-tests.sh, 看不见它们。
+#   判据: 文件里出现「GODOT 可执行 + .tscn」就必须同时出现 TURTLE_BACKEND 与 TURTLE_SUPABASE 两个关闭。
+import glob as _glob, os as _os
+## 本来就是去量正式服的只读探针(不进门禁、手动跑) —— 名单必须写理由, 不许拿来放水。
+_PROD_OK = {
+    "probe_finals_server.py": "周日赛程的线上体检探针: 它的用途就是连正式服只读核对 finals_* 函数",
+}
+py_hits = 0
+for _f in sorted(_glob.glob(_os.path.join("tools", "**", "*.py"), recursive=True)):
+    if _os.path.basename(_f) == "gate_offline_audit.py":
+        continue
+    try:
+        _t = io.open(_f, encoding="utf-8", errors="replace").read()
+    except Exception:
+        continue
+    if not re.search(r"GODOT", _t) or not re.search(r"\.tscn", _t) or "--headless" not in _t:
+        continue
+    py_hits += 1
+    if _os.path.basename(_f) in _PROD_OK:
+        continue
+    if not (re.search(r"TURTLE_BACKEND[\"'\]]*\s*[=:]\s*[\"']\s[\"']", _t) and re.search(r"TURTLE_SUPABASE[\"'\]]*\s*[=:]\s*[\"']\s[\"']", _t)):
+        bad.append("[tools] " + _f.replace(_os.sep, "/") + " 起 Godot 跑场景但没同时关掉 TURTLE_BACKEND / TURTLE_SUPABASE")
+        print("  [FAIL] 没关后端(会打生产库): " + bad[-1])
+print("  tools/ 下起 Godot 跑场景的 Python 工具: %d 个" % py_hits)
 if bad:
     print("FAILED: %d 条" % len(bad))
     sys.exit(1)

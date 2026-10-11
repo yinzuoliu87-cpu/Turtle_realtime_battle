@@ -36,9 +36,13 @@ GODOT = r'C:\Users\Louis\Desktop\Godot_v4.6.3-stable_win64.exe'
 REP = r'c:\tmp\mut_report.json'
 
 def run(test, frames):
-    r = subprocess.run('"%s" --headless --path . tests/%s.tscn --quit-after %d' % (GODOT, test, frames),
+    ## ★2026-10-11 全项目通读: 原来两个后端开关都没关、也不隔离 user:// ⇒ 每次都连正式服、可能写本机真存档。
+    import tempfile
+    d = tempfile.mkdtemp(prefix="mutp_")
+    env = dict(os.environ, TURTLE_BACKEND=" ", TURTLE_SUPABASE=" ", QUIET="1", APPDATA=d, XDG_DATA_HOME=d)
+    r = subprocess.run('"%s" --headless --audio-driver Dummy --path . tests/%s.tscn --quit-after %d' % (GODOT, test, frames),
                        shell=True, cwd=ROOT, capture_output=True, text=True,
-                       encoding='utf-8', errors='replace')
+                       encoding='utf-8', errors='replace', env=env)
     t = (r.stdout or '') + (r.stderr or '')
     return ('[FAIL]' in t) or ('FAIL x' in t) or ('ALL PASS' not in t)
 

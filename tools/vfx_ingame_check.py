@@ -60,9 +60,11 @@ def shoot():
         except Exception:
             pass
     env = dict(os.environ)
+    env["TURTLE_BACKEND"] = " "    # ★2026-10-11: 门禁里开的真窗口也不许连正式服(gate_offline_audit 守)
+    env["TURTLE_SUPABASE"] = " "
     env.update({"VFXLAB": "1", "VFXLAB_CASE": "p2eq_084_melee",
                 "VFXLAB_OUT": OUT, "VFXLAB_SHOTS": SHOTS, "TURTLE_BACKEND": " "})
-    subprocess.run([GODOT, "--path", ".", "--position", "5000,5000",
+    subprocess.run([GODOT, "--audio-driver", "Dummy", "--path", ".", "--position", "5000,5000",
                     "--resolution", "1280x720", "res://scenes/RealtimeBattle3D.tscn"],
                    env=env, capture_output=True, timeout=280)
     return sorted(glob.glob(OUT + "_*.png"))

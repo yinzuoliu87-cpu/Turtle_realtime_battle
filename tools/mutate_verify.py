@@ -50,11 +50,19 @@ def _git_diff(path):
         return None
 
 
+def _offline_env():
+    """★2026-10-11 全项目通读: 原来只关 TURTLE_BACKEND, 没关 TURTLE_SUPABASE、也不隔离 user://
+    ⇒ 每次反向验证都连正式服 Supabase、可能写本机真存档。与 run-tests.sh 同一套: 两个后端都关 + 一次性 user:// 目录。"""
+    import tempfile
+    d = tempfile.mkdtemp(prefix="mutv_")
+    return dict(os.environ, TURTLE_BACKEND=" ", TURTLE_SUPABASE=" ", QUIET="1", APPDATA=d, XDG_DATA_HOME=d)
+
+
 def run_scene(scene):
-    r = subprocess.run([GODOT, "--headless", "--path", ".", "res://" + scene.lstrip("./"),
+    r = subprocess.run([GODOT, "--headless", "--audio-driver", "Dummy", "--path", ".", "res://" + scene.lstrip("./"),
                         "--quit-after", FRAMES],
                        capture_output=True, timeout=600,
-                       env=dict(os.environ, TURTLE_BACKEND=" "))
+                       env=_offline_env())
     out = r.stdout.decode("utf-8", "replace")
     fails = [L.strip() for L in out.split("\n") if "[FAIL]" in L]
     broke = [L for L in out.split("\n") if "SCRIPT ERROR" in L or "Parse Error" in L]
