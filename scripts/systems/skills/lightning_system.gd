@@ -117,7 +117,7 @@ func _lightning_arc(a2d: Vector2, b2d: Vector2, col: Color) -> void:   # 锯齿�
 # 伤害核心: 暴击(封顶100%溢出转暴伤×1.5) → 有效护甲/魔抗(先%后flat,可负) → 减伤倍率(K=40,负防增伤) → 增伤/减伤
 
 func _sk_lightning_barrage(u: Dictionary) -> void:             # 闪电龟·雷暴 (用户2026-07-15纠错重做: 原风暴云低压施法者脸上像帽子=离谱→改敌方阵型上空高处的大风暴云下雷)
-	var es = battle._targeting._enemies_of(u)
+	var es = battle._targeting._pick_enemies_of(u)   # ★10-11 A3: 选落点/目标走 _pick_enemies_of(排除站在岛外的大师, §PICK-TARGET); 结算仍按范围扫到谁算谁
 	var center: Vector2 = u["pos"]                 # 风暴云中心=敌方阵型质心(雷暴"随机轰击敌方"→云在敌上空非施法者头顶)
 	if not es.is_empty():
 		center = Vector2.ZERO

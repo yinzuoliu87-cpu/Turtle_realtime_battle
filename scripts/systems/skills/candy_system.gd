@@ -112,7 +112,7 @@ func _candy_hammer_pose(hammer: Sprite3D, pos2d: Vector2, dir: Vector2, slamming
 
 func _sk_candy_barrage(u: Dictionary, tgt) -> void:            # 糖果龟·技能二糖衣炮弹(封板·120龟能): 敌最密集区降糖衣炮弹雨8跳·可见糖弹从天落下·落点局部命中(用户2026-07-14全套标准)·友1.5%maxHp盾/敌0.2A+2%maxHp魔法+减速20%
 	var es: Array = []
-	for o in battle._targeting._enemies_of(u):
+	for o in battle._targeting._pick_enemies_of(u):   # ★10-11 A3: 选落点/目标走 _pick_enemies_of(排除站在岛外的大师, §PICK-TARGET); 结算仍按范围扫到谁算谁
 		if o.get("alive", false): es.append(o)
 	var center: Vector2 = tgt["pos"] if tgt != null else u["pos"]
 	if not es.is_empty():

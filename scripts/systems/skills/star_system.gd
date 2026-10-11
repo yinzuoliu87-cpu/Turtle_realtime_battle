@@ -66,7 +66,7 @@ func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭�
 	# 演出重设计照发条R官方逐帧(C:/tmp/ori_burst: b13施放三件套/b13-b24吸入0.37s/b25-27屏息/b28爆发帧/b29-b34拉拽0.2s)·星际×2放慢换算
 	# 用户2026-07-16批准: 伤害挪到爆发帧结算+施法锁(技2先例); 同日整改: ①普通版施法可积攒星能·强化版才锁星能 ②强化换位=重力抛物线甩飞过中心点落对端·落地即恢复行动("延中心点到对端") ③特效范围=伤害范围500码对齐 ④节奏再减慢30%→吸入1.03s/爆发帧1.24s/拉拽0.57s
 	var es: Array = []
-	for o in battle._targeting._enemies_of(u):
+	for o in battle._targeting._pick_enemies_of(u):   # ★10-11 A3: 选落点/目标走 _pick_enemies_of(排除站在岛外的大师, §PICK-TARGET); 结算仍按范围扫到谁算谁
 		if o.get("alive", false): es.append(o)
 	if es.is_empty(): return
 	var center := Vector2.ZERO
@@ -429,7 +429,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 	battle._pending_shots.append({"delay": 0.4, "fn": wave, "src": u})
 	if charged:                                                   # ── 强化: 巨彗星「天崩」(逐帧订正asol_hi a30/a38/a44)
 		var es: Array = []
-		for o in battle._targeting._enemies_of(u):
+		for o in battle._targeting._pick_enemies_of(u):   # ★10-11 A3: 选落点/目标走 _pick_enemies_of(排除站在岛外的大师, §PICK-TARGET); 结算仍按范围扫到谁算谁
 			if o.get("alive", false): es.append(o)
 		if es.is_empty(): return
 		var center := Vector2.ZERO

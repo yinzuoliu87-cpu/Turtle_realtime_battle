@@ -215,7 +215,7 @@ func _sk_rainbow_storm(u: Dictionary) -> void:                  # 彩虹龟·全
 # 全色风暴 GPU 粒子: 圆盘内发射, 上升, 全光谱彩虹ramp (240颗=暴风能量体积)
 func _sk_rainbow_reflect(u: Dictionary) -> void:               # 彩虹龟·反射弹射 (重做2026-07-13: 棱镜光束敌我间反射弹跳·治友绿/伤敌全色魔法)
 	var allies = battle._targeting._allies_of(u)
-	var enemies = battle._targeting._enemies_of(u)
+	var enemies = battle._targeting._pick_enemies_of(u)   # ★10-11 A3: 按下标挑弹射目标走 _pick_enemies_of(排除站在岛外的大师, §PICK-TARGET); 结算仍按范围扫到谁算谁 (原来会挑到大师, 白打一段)
 	var prev: Vector2 = u["pos"]                # 弹射起点=彩虹龟
 	for i in range(REFLECT_BOUNCES):
 		var _ally: bool = (i % 2 == 0)
