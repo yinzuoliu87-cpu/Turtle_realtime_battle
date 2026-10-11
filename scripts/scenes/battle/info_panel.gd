@@ -519,7 +519,7 @@ func _info_stat_rows_main(u: Dictionary) -> Array:
 		def_txt += " (+%d)" % def_gain
 	## ★增伤/减伤非 0 时标色 —— 不为 0 就说明此刻正被强化或削弱, 得能一眼扫到。
 	var amp: float = float(u.get("damage_amp", 0.0))
-	var dr: float = float(u.get("damage_reduction", 0.0))
+	var dr: float = minf(float(u.get("damage_reduction", 0.0)), DamageMath.DR_CAP)   # 显示的是真实生效值(封顶 90%)
 	return [
 		[sic + "atk-icon.png",   "攻击 %d" % int(u.get("atk", 0)),                 Color("#ff9d8a")],
 		## ★★2026-09-28「次/秒」→「每秒 N 下」(用户点名的工程单位)。
@@ -1735,7 +1735,7 @@ func _info_stat_tiles(u: Dictionary) -> Array:
 	var sic := "res://assets/sprites/stats/"
 	var W := Color("#e6dccb")
 	var amp: float = float(u.get("damage_amp", 0.0))
-	var dr: float = float(u.get("damage_reduction", 0.0))
+	var dr: float = minf(float(u.get("damage_reduction", 0.0)), DamageMath.DR_CAP)   # 显示真实生效值(封顶 90%)
 	var ls: float = float(u.get("lifesteal", 0.0)) + float(u.get("ls_bonus", 0.0))
 	var crit_over: float = maxf(0.0, float(u.get("crit", 0.0)) - 1.0) * 1.5
 	var def_now: int = int(u.get("def", 0))

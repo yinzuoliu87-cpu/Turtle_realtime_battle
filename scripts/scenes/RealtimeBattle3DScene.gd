@@ -4196,7 +4196,7 @@ func _resolve_dmg(u: Dictionary, base: float, tgt: Dictionary, magic: bool) -> i
 	var mult: float = DamageMath.resist_multiplier(resist)
 	base *= mult
 	base *= 1.0 + float(u.get("damage_amp", 0.0))          # 攻击者增伤%
-	base *= 1.0 - float(tgt.get("damage_reduction", 0.0))  # 受害者减伤%(真伤不走此函数)
+	base *= DamageMath.dr_mult(float(tgt.get("damage_reduction", 0.0)))  # 受害者减伤%(真伤不走此函数; 封顶 90%)
 	if not magic and _t < float(tgt.get("phase_until", 0.0)):
 		base *= GhostSystem.PHASE_MULT                       # 虚化(幽灵): 受物理伤害-90% (真伤/魔法不减)
 	if magic and str(tgt.get("id", "")) == "crystal":
@@ -4216,7 +4216,7 @@ func _phys_after_armor(u: Dictionary, raw: float, tgt: Dictionary) -> int:
 	var d: float = raw * mult
 	d *= 1.0 + float(u.get("damage_amp", 0.0))
 	_damage._dt_resolved = true                                     # 哨兵第三只眼: 这一段真算过护甲
-	d *= 1.0 - float(tgt.get("damage_reduction", 0.0))
+	d *= DamageMath.dr_mult(float(tgt.get("damage_reduction", 0.0)))
 	if _t < float(tgt.get("phase_until", 0.0)):
 		d *= GhostSystem.PHASE_MULT                 # 虚化(幽灵): 受物理-90%
 	return maxi(1, int(round(d)))

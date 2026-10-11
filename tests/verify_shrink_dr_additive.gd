@@ -48,6 +48,16 @@ func _ready() -> void:
 	var after: float = float(u.get("damage_reduction", 0.0))
 	_ok("★★缩头结束(3 秒后): 回到原来的 0.25, 不是 0", absf(after - 0.25) < 1e-4, "damage_reduction = %.3f" % after)
 
+	# ── 减伤封顶 90%(用户 2026-10-11 拍板): 叠到 1.05 时伤害 = 10%, 不是被压到 1 ──
+	var foe2: Dictionary = s._spawn._make_unit("basic", "right", c + Vector2(60, 0))
+	s._units.append(foe2)
+	u["damage_reduction"] = 1.05
+	u["def"] = 0.0
+	u["phase_until"] = 0.0
+	foe2["damage_amp"] = 0.0
+	var got: int = s._phys_after_armor(foe2, 1000.0, u)
+	_ok("★★减伤叠到 105%% ⇒ 按封顶 90%% 算, 1000 只吃 100(不是被压到 1)", got == 100, "吃 %d" % got)
+
 	if _fail == 0:
 		print("ALL PASS (%d)" % _n)
 	else:

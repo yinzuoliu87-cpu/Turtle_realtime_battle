@@ -9,6 +9,13 @@ const CRIT_OVERFLOW := 1.5
 ##   MAGIC_AVG_MULT 0.6745, 387 次真实挨打实测) ⇒ 补 ×1.5 让【平均强度不变】、而护甲/魔抗从此能挡它。
 ##   与 2026-08-29 那三处(冲击波 0.40→0.60 / 撕咬 0.03→0.045 / 钩弹)同一个倍率。
 const RESIST_COMP := 1.5
+## ★减伤(damage_reduction)封顶(用户 2026-10-11 拍板「封顶 90%」)。各来源是加算叠加的(011/香火石/060 伞/
+##   缩头/精英…), 叠过 100% 时 (1 - dr) 变负 ⇒ 伤害被压到 1 = 无敌。所有消费点一律走 dr_mult(), 不许各自 1 - dr。
+const DR_CAP := 0.90
+
+
+static func dr_mult(dr: float) -> float:
+	return 1.0 - clampf(dr, 0.0, DR_CAP)
 ## 战斗纯数学 (SIM · 无节点 · 可 headless 单测) —— 结构治理·切片2 的【模式验证】。
 ##
 ## 大厂做法(Riot「gameplay-deterministic·纯逻辑隔离」/ Cliffski「SIM 与 GUI 分家」):

@@ -1019,7 +1019,7 @@ func _magic_after_mr(u: Dictionary, raw: float, tgt: Dictionary) -> int:
 	var d: float = raw * DamageMath.resist_multiplier(resist)
 	d *= 1.0 + float(u.get("damage_amp", 0.0))
 	_dt_resolved = true
-	d *= 1.0 - float(tgt.get("damage_reduction", 0.0))
+	d *= DamageMath.dr_mult(float(tgt.get("damage_reduction", 0.0)))
 	if str(tgt.get("id", "")) == "crystal":
 		d *= CrystalSystem.MAGIC_DR_MULT
 	return maxi(1, int(round(d)))
