@@ -186,7 +186,7 @@ func _turret_one(side: String) -> void:
 		if shooter is Dictionary:
 			battle._damage._apply_damage_from(shooter, f, dmg, Color("#ffb74d"))
 		else:
-			battle._damage._apply_damage(f, dmg, Color("#ffb74d"))
+			battle._damage._apply_damage(f, dmg, Color("#ffb74d"), null, "phy")   # ★10-11: 原来落进 dot 桶(统计/飘字记成持续伤害); 与有携枪者那条同为物理
 		total += float(dmg)
 		hit_pos.append(Vector2(f["pos"]))
 	var healed = null
@@ -274,7 +274,7 @@ func _turret_two(side: String) -> void:
 						if shooter is Dictionary:
 							battle._damage._apply_damage_from(shooter, t, dmg, Color("#ff5a55"), 0.0, true, true)
 						else:
-							battle._damage._apply_damage(t, dmg, Color("#ff5a55"), true)})
+							battle._damage._apply_damage(t, dmg, Color("#ff5a55"), null, "tru")})   # ★10-11: 原来把 true 传进了 src 位 ⇒ 真伤变成吃减伤的 dot(与有携枪者那条 raw=true 不一致)
 	})
 	_t2_shield_phase[side] = not is_shield
 	_t2_last[side] = {"shield": is_shield, "energy": energy, "n": targets.size()}
