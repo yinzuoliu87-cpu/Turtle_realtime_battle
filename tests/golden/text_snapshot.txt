@@ -198,7 +198,7 @@ pet|凤凰龟/强化涅槃|brief|获得 <span class="val-atk">50% 攻击速度</
 pet|凤凰龟/强化涅槃|detail|主动：消耗 120 龟能，凤凰龟周身烈焰暴涨，自身获得 <span class="val-atk">+50%</span> 攻击速度与 <span class="val-atk">+50%</span> 移动速度，持续 4 秒。喷火伤害随攻击速度提升。\n被动强化涅槃：\n浴火重生时转而以自身 60% 最大生命值复活，并永久获得 <span class="val-atk">+20%</span> 攻击力。
 pet|凤凰龟/涅槃|brief|在首次死亡时浴火重生，以 <span class="val-heal">自身最大生命值 25%</span>复活，并对全体敌人施加（0.3×攻击力）层灼烧，以及持续 <span class="val-atk">5 秒</span>的 <span class="val-atk">50%</span> 治疗削减。
 pet|凤凰龟/涅槃|desc|首次死亡时以（25%×最大生命值({HP}) = {H:HP*PhoenixSystem.NIRVANA_HP_PCT}）生命值复活，并对全体敌人施加 <span style="color:#ff6600">（0.3×攻击力）层灼烧</span>，以及持续 5 秒的治疗削减（<span class="val-atk">-50%</span>）。
-pet|凤凰龟/涅槃|detail|以及持续 <span class="val-atk">5 秒</span>的 <span class="val-atk">50%</span> 治疗削减。
+pet|凤凰龟/涅槃|detail|凤凰龟首次死亡时浴火重生，以（25%×最大生命值({HP}) = {H:HP*PhoenixSystem.NIRVANA_HP_PCT}）生命值复活，并对全体敌人施加（0.3×攻击力）层灼烧，以及持续 <span class="val-atk">5 秒</span>的 <span class="val-atk">50%</span> 治疗削减。
 pet|凤凰龟/灼烧|brief|持续喷射火焰，每 0.5 秒对身前的敌人造成（0.2×攻击力×(1+攻击速度)）魔法伤害，并施加（0.04×攻击力）层灼烧。\n<span style="color:#8a93a0">喷火不随攻击速度停顿，凤凰龟可边喷边走位。\n</span>
 pet|凤凰龟/灼烧|detail|凤凰龟持续喷吐烈焰，喷火不随攻击速度停顿，可边喷边走位，喷火时移动速度 ×0.5。\n每 0.5 秒对身前 70° 扇形、射程之内的所有敌人造成（0.2×攻击力×(1+攻击速度)）魔法伤害，并施加 <span style="color:#ff6600">（0.04×攻击力）层灼烧</span>。\n<span style="color:#8a93a0">灼烧：\n每秒造成（层数 + 0.1%×<b>被灼烧者</b>最大生命值×层数）魔法伤害，结算后层数衰减到 80%。\n</span>
 pet|凤凰龟/烫伤|brief|蓄力投掷火球，命中造成 {M:PhoenixSystem.SCALD_ATK_COEF*ATK} 魔法伤害，施加 {N:PhoenixSystem.SCALD_BURN_COEF*ATK} 层灼烧，并破坏目标 <span class="val-atk">50%</span> 护盾，\n同时使其攻击力、护甲、魔抗各降低 <span class="val-atk">15%</span> 并受到 <span class="val-atk">50%</span> 治疗削减，以上负面效果均持续 <span class="val-atk">5 秒</span>。
@@ -287,8 +287,8 @@ pet|忍者龟/背刺|brief|获得 <span class="val-atk">15 护甲穿透</span>�
 pet|忍者龟/背刺|detail|忍者龟准备偷袭，获得 +15 护甲穿透，持续 5 秒，随后闪现到<span class="val-emph">全场最远的敌人</span>身后背刺 3 段，共造成（200%×攻击力 = {N:NinjaSystem.BACKSTAB_SEG_COEF*ATK*NinjaSystem.BACKSTAB_SEGMENTS}）物理伤害，之后留在该敌人身边继续追砍该目标。
 pet|无头龟/万千触须|brief|以自身为中心爆发出触须，几乎覆盖整个战场，伸出、停顿与收回共持续约 4 秒，施法期间额外获得 <span class="val-heal">+22% 生命偷取</span>。\n触须伸出时命中所有单位：对敌人造成 1 倍攻击力的物理伤害并<span class="val-atk">眩晕</span>，对友军造成 0.5 倍攻击力的伤害并<span class="val-atk">眩晕</span>。\n触须收回时，对敌人造成 1.5 倍攻击力的伤害，对友军造成 0.5 倍攻击力的伤害并<span class="val-atk">解除其控制，使其恢复行动</span>。\n<span style="color:#8a93a0">施法期间无头龟自身也处于硬控状态。\n</span>
 pet|无头龟/万千触须|detail|无头龟亡灵暴走，以自身为中心爆发触须，几乎覆盖整个战场，半径约 1500 码。\n本次技能额外获得 +22% 生命偷取。\n施法后约 0.3 秒，触须<b>穿过时</b>命中所有单位：敌人受到（100%×攻击力({ATK}) = {N:ATK}）物理伤害并被眩晕，友军受到（50%×攻击力 = {N:HeadlessSystem.TENDRIL_PASS_ALLY*ATK}）物理伤害并被眩晕。\n施法后约 3 秒，触须<b>脱离时</b>：敌人受到（150%×攻击力 = {N:HeadlessSystem.TENDRIL_DETACH_FOE*ATK}）物理伤害，友军受到（50%×攻击力 = {N:HeadlessSystem.TENDRIL_PASS_ALLY*ATK}）物理伤害，并解除眩晕、恢复行动。\n<span style="color:#8a93a0">施法期间无头龟自身被硬控 4 秒，无法移动或攻击。眩晕效果不叠加，仅刷新持续时间。蛋类单位免疫眩晕。\n</span>
-pet|无头龟/亡灵|brief|登场时便获得 <span class="val-heal">22% 生命偷取</span>。\n无头龟每损失 <span class="val-atk">1%</span> 生命值，攻击力便提升 <span class="val-atk">100%</span>，最高叠加至 <span class="val-atk">+100%</span>。\n无头龟首次濒死时进入<span class="val-emph">亡灵状态</span>，持续 5 秒。
-pet|无头龟/亡灵|desc|拥有亡灵之力，登场时获得 <span class="val-heal">22%</span> 生命偷取。\n每损失 1%生命值，攻击力 <span class="val-atk">+100%</span>（最高 <span class="val-atk">+100%</span>）。\n首次濒死时获得亡灵状态，持续 5 秒。\n<span style="color:#8a93a0">亡灵：\n生命值无法降至 1 以下。\n</span>
+pet|无头龟/亡灵|brief|登场时便获得 <span class="val-heal">22% 生命偷取</span>。\n无头龟每损失 <span class="val-atk">1%</span> 生命值，攻击力便提升 <span class="val-atk">1%</span>，最高叠加至 <span class="val-atk">+100%</span>。\n无头龟首次濒死时进入<span class="val-emph">亡灵状态</span>，持续 5 秒。
+pet|无头龟/亡灵|desc|拥有亡灵之力，登场时获得 <span class="val-heal">22%</span> 生命偷取。\n每损失 1%生命值，攻击力 <span class="val-atk">+1%</span>（最高 <span class="val-atk">+100%</span>）。\n首次濒死时获得亡灵状态，持续 5 秒。\n<span style="color:#8a93a0">亡灵：\n生命值无法降至 1 以下。\n</span>
 pet|无头龟/恐吓|brief|发出咆哮威吓周围的所有敌人，施加<span class="val-atk">恐惧</span> 3 秒，期间敌人无法移动、攻击或释放技能。\n<span style="color:#8a93a0">恐惧期间敌人的龟能也停止充能。\n</span>
 pet|无头龟/恐吓|detail|无头龟咆哮威吓，对半径 200 码内的所有敌人施加恐惧，持续 3 秒。\n恐惧期间，目标无法移动、攻击或释放技能，龟能停止充能。\n蛋类单位免疫此效果。\n<span style="color:#8a93a0">此技能仅施加控制，不造成伤害。\n</span>
 pet|无头龟/撕咬|brief|撕咬目标，造成 {N:ATK} 物理伤害外加 <span class="val-magic">目标最大生命值 4.5%</span> 的魔法伤害。
@@ -473,7 +473,7 @@ pet|骰子龟/稳定骰子|detail|骰子龟对随机敌人突刺 <span class="va
 pet|骰子龟/赌徒之血|brief|赌徒之血在危机中觉醒，根据已损失的生命值获得额外暴击率，在自身损失 <span class="val-atk">30%</span> 生命值时达到满额 <span class="val-atk">+70% 暴击率</span>。
 pet|骰子龟/赌徒之血|desc|根据已损失的生命值获得额外暴击机率，在自身损失 <span class="val-atk">30%</span> 生命值时达到满额 <span class="val-atk">+70%</span> 暴击机率。\n<span style="color:#8a93a0">当前暴击机率：\n</span><span class="val-atk">{crit*100}%</span>
 pet|骰子龟/骰子攻击|brief|掷出 3 颗骰子打击目标，共造成 {N:DiceSystem.BASIC_ATK_COEF*ATK+crit*DiceSystem.BASIC_CRIT_FLAT} 物理伤害。
-pet|骰子龟/骰子攻击|detail|骰子龟掷出 3 颗骰子打击目标，共造成（90%×攻击力 + 5500%×暴击机率 = {N:DiceSystem.BASIC_ATK_COEF*ATK+crit*DiceSystem.BASIC_CRIT_FLAT}）物理伤害。
+pet|骰子龟/骰子攻击|detail|骰子龟掷出 3 颗骰子打击目标，共造成（90%×攻击力 + 55×暴击机率 = {N:DiceSystem.BASIC_ATK_COEF*ATK+crit*DiceSystem.BASIC_CRIT_FLAT}）物理伤害。
 pet|龟壳/吸收|brief|吸取单个目标的生命力，夺取其 <span class="val-heal">10% 最大生命值</span> 并转移给自身。
 pet|龟壳/吸收|detail|龟壳吸收单个目标的生命力，将其 <span class="val-atk">10%</span> 最大生命值转移给自身。目标的最大生命值与当前生命值同步减少，龟壳的最大生命值与当前生命值同步增加。
 pet|龟壳/复制|brief|随机复制敌方的两个可用技能并依次轮流释放，每个技能以 <span class="val-atk">60%</span> 的效果生效。

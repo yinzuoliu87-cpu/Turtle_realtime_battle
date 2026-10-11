@@ -269,7 +269,7 @@ func _make_ico_plus() -> Control:
 
 func _skill_tooltip(pet: Dictionary, sk: Dictionary, idx: int = -1) -> String:
 	# 数值随存档等级 (1:1 PoC fakeF: base×getLevelBonus, lv=真实等级; 原硬编 lv:1+裸值=等级没同步)
-	var tlv: int = GameState.get_pet_level(str(pet.get("id", "")))
+	var tlv: int = GameState.battle_level_for(str(pet.get("id", "")))   # ★10-11: 实战等级
 	var tb: float = 1.0 + (tlv - 1) * 0.05
 	var hp: int = roundi(pet.get("hp", 0) * tb)
 	var atk: int = roundi(pet.get("atk", 0) * tb)

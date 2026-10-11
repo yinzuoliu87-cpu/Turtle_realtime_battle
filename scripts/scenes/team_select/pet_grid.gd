@@ -176,7 +176,7 @@ func _make_pet_card(pet: Dictionary) -> Control:
 	meta.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	meta.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var lv = Label.new()
-	lv.text = "Lv.%d" % GameState.get_pet_level(pid)   # PoC pet-card lv=getPetLevel
+	lv.text = "Lv.%d" % GameState.battle_level_for(pid)   # ★10-11: 实战等级(原读 get_pet_level, 真玩家恒为 1)
 	lv.add_theme_font_size_override("font_size", host._sf(11))
 	lv.add_theme_color_override("font_color", Color("#ffd86b"))   # PoC .pet-lv #ffd86b
 	lv.mouse_filter = Control.MOUSE_FILTER_IGNORE

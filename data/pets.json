@@ -870,7 +870,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "掷出 3 颗骰子打击目标，共造成 {N:DiceSystem.BASIC_ATK_COEF*ATK+crit*DiceSystem.BASIC_CRIT_FLAT} 物理伤害。",
-        "detail": "骰子龟掷出 3 颗骰子打击目标，共造成（{C:DiceSystem.BASIC_ATK_COEF%}%×攻击力 + {C:DiceSystem.BASIC_CRIT_FLAT%}%×暴击机率 = {N:DiceSystem.BASIC_ATK_COEF*ATK+crit*DiceSystem.BASIC_CRIT_FLAT}）物理伤害。"
+        "detail": "骰子龟掷出 3 颗骰子打击目标，共造成（{C:DiceSystem.BASIC_ATK_COEF%}%×攻击力 + {C:DiceSystem.BASIC_CRIT_FLAT}×暴击机率 = {N:DiceSystem.BASIC_ATK_COEF*ATK+crit*DiceSystem.BASIC_CRIT_FLAT}）物理伤害。"
       },
       {
         "name": "孤注一掷",
@@ -1538,7 +1538,7 @@
       "name": "涅槃",
       "brief": "在首次死亡时浴火重生，以 <span class=\"val-heal\">自身最大生命值 {C:PhoenixSystem.NIRVANA_HP_PCT%}%</span>复活，并对全体敌人施加（{C:PhoenixSystem.NIRVANA_BURN_COEF}×攻击力）层灼烧，以及持续 <span class=\"val-atk\">{C:RealtimeBattle3DScene.BUFF_SEC} 秒</span>的 <span class=\"val-atk\">{C:PhoenixSystem.NIRVANA_HEALCUT%}%</span> 治疗削减。",
       "desc": "首次死亡时以（{C:PhoenixSystem.NIRVANA_HP_PCT%}%×最大生命值({HP}) = {H:HP*PhoenixSystem.NIRVANA_HP_PCT}）生命值复活，并对全体敌人施加 <span style=\"color:#ff6600\">（{C:PhoenixSystem.NIRVANA_BURN_COEF}×攻击力）层灼烧</span>，以及持续 {C:RealtimeBattle3DScene.BUFF_SEC} 秒的治疗削减（<span class=\"val-atk\">-{C:PhoenixSystem.NIRVANA_HEALCUT%}%</span>）。",
-      "detail": "以及持续 <span class=\"val-atk\">{C:RealtimeBattle3DScene.BUFF_SEC} 秒</span>的 <span class=\"val-atk\">{C:PhoenixSystem.NIRVANA_HEALCUT%}%</span> 治疗削减。"
+      "detail": "凤凰龟首次死亡时浴火重生，以（{C:PhoenixSystem.NIRVANA_HP_PCT%}%×最大生命值({HP}) = {H:HP*PhoenixSystem.NIRVANA_HP_PCT}）生命值复活，并对全体敌人施加（{C:PhoenixSystem.NIRVANA_BURN_COEF}×攻击力）层灼烧，以及持续 <span class=\"val-atk\">{C:RealtimeBattle3DScene.BUFF_SEC} 秒</span>的 <span class=\"val-atk\">{C:PhoenixSystem.NIRVANA_HEALCUT%}%</span> 治疗削减。"
     },
     "skillPool": [
       {
@@ -2116,8 +2116,8 @@
     "passive": {
       "type": "undeadRage",
       "name": "亡灵",
-      "brief": "登场时便获得 <span class=\"val-heal\">{C:HeadlessSystem.UNDEAD_LIFESTEAL%}% 生命偷取</span>。\n无头龟每损失 <span class=\"val-atk\">1%</span> 生命值，攻击力便提升 <span class=\"val-atk\">{C:HeadlessSystem.UNDEAD_ATK_PER_LOST%}%</span>，最高叠加至 <span class=\"val-atk\">+{C:HeadlessSystem.UNDEAD_ATK_PER_LOST%}%</span>。\n无头龟首次濒死时进入<span class=\"val-emph\">亡灵状态</span>，持续 {C:HeadlessSystem.UNDEAD_DEATHFLOOR} 秒。",
-      "desc": "拥有亡灵之力，登场时获得 <span class=\"val-heal\">{C:HeadlessSystem.UNDEAD_LIFESTEAL%}%</span> 生命偷取。\n每损失 1%生命值，攻击力 <span class=\"val-atk\">+{C:HeadlessSystem.UNDEAD_ATK_PER_LOST%}%</span>（最高 <span class=\"val-atk\">+{C:HeadlessSystem.UNDEAD_ATK_PER_LOST%}%</span>）。\n首次濒死时获得亡灵状态，持续 {C:HeadlessSystem.UNDEAD_DEATHFLOOR} 秒。\n<span style=\"color:#8a93a0\">亡灵：\n生命值无法降至 1 以下。\n</span>"
+      "brief": "登场时便获得 <span class=\"val-heal\">{C:HeadlessSystem.UNDEAD_LIFESTEAL%}% 生命偷取</span>。\n无头龟每损失 <span class=\"val-atk\">1%</span> 生命值，攻击力便提升 <span class=\"val-atk\">{C:HeadlessSystem.UNDEAD_ATK_PER_LOST}%</span>，最高叠加至 <span class=\"val-atk\">+{C:HeadlessSystem.UNDEAD_ATK_PER_LOST%}%</span>。\n无头龟首次濒死时进入<span class=\"val-emph\">亡灵状态</span>，持续 {C:HeadlessSystem.UNDEAD_DEATHFLOOR} 秒。",
+      "desc": "拥有亡灵之力，登场时获得 <span class=\"val-heal\">{C:HeadlessSystem.UNDEAD_LIFESTEAL%}%</span> 生命偷取。\n每损失 1%生命值，攻击力 <span class=\"val-atk\">+{C:HeadlessSystem.UNDEAD_ATK_PER_LOST}%</span>（最高 <span class=\"val-atk\">+{C:HeadlessSystem.UNDEAD_ATK_PER_LOST%}%</span>）。\n首次濒死时获得亡灵状态，持续 {C:HeadlessSystem.UNDEAD_DEATHFLOOR} 秒。\n<span style=\"color:#8a93a0\">亡灵：\n生命值无法降至 1 以下。\n</span>"
     },
     "skillPool": [
       {

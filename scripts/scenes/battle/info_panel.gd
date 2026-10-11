@@ -697,7 +697,7 @@ func _resource_bars(u: Dictionary) -> Array:
 			"name": "储能", "cur": se, "cap": mhp * 0.50,
 			## ★半角冒号换 `·` —— 同一块面板里两条资源的结论句必须一个写法(泡泡那条同日改),
 			##   一条带冒号一条不带, 就是"同一件事两种写法"那类不一致。
-			"hint": "释放 · 冲击波 %d + 护盾 %d" % [int(se * 0.40), int(se * 0.80)],
+			"hint": "释放 · 冲击波 %d + 护盾 %d" % [int(se * ShellSystem.RELEASE_DMG_PCT), int(se * ShellSystem.RELEASE_SHIELD_PCT)],   # ★10-11: 读常量(原写死 0.40, 常量 8-29 已改 0.60)
 			"color": Color("#ffd93d"),
 		})
 
@@ -925,6 +925,27 @@ func _info_equip_slots(vb: VBoxContainer, u: Dictionary) -> void:
 ## 装备本局统计文字(数据源 `u["_st_eq"][eid]`, 由 EquipTally 记账)。口径与结算页同一套词:
 ## 「造成伤害 N」(两种以上伤害类型非零时括号里拆开) /「治疗 N」/「护盾 N」, 每行一项、只列非零;
 ## 全零返回 ""(调用方据此整块隐藏)。
+## 小卡标题写「本局」⇒ 本局 = 已打完的路(`battle._st_lane_hist`, 结算页「合计」同源) + 当前这一路(`_st_eq`)。
+## ★2026-10-11 全项目通读第十条: 原来三个调用点都直接调下面那个只读当前单位的版本 ⇒ 下路/终极战场里看到的只是这一路。
+##   同一只龟按 id + 阵营认(单位字典每路重建, 不能按引用认; 召唤物/小将同 id 多只时会合在一起, 那几类基本不带装备)。
+func eq_stats_text_live(u: Dictionary, eid: String) -> String:
+	var merged: Dictionary = {}
+	var cur = u.get("_st_eq", {})
+	if cur is Dictionary and (cur as Dictionary).get(eid, null) is Dictionary:
+		merged = ((cur as Dictionary)[eid] as Dictionary).duplicate()
+	var side: String = str(u.get("side", "left"))
+	var uid: String = str(u.get("id", ""))
+	if battle != null:
+		for snap in battle._st_lane_hist:
+			for r in (snap as Dictionary).get(side, []):
+				if not (r is Dictionary) or str((r as Dictionary).get("id", "")) != uid:
+					continue
+				var prev: Dictionary = EquipTally.from_row(r).get(eid, {})
+				for k in prev:
+					merged[k] = float(merged.get(k, 0.0)) + float(prev[k])
+	return eq_stats_text({"_st_eq": {eid: merged}}, eid)
+
+
 static func eq_stats_text(u: Dictionary, eid: String) -> String:
 	var all = u.get("_st_eq", {})
 	var st = (all as Dictionary).get(eid, {}) if all is Dictionary else {}
@@ -954,7 +975,7 @@ static func eq_stats_text(u: Dictionary, eid: String) -> String:
 func _refresh_eq_stats() -> void:
 	if _eq_stats_lbl == null or not is_instance_valid(_eq_stats_lbl) or not (_eq_stats_unit is Dictionary):
 		return
-	var tx := eq_stats_text(_eq_stats_unit, _eq_stats_eid)
+	var tx := eq_stats_text_live(_eq_stats_unit, _eq_stats_eid)
 	## ★2026-10-06 统计搬进左侧小卡的「本局」段: 全零时写一句而不是整块藏掉(段标题还在, 空着像坏了)。
 	if tx == "":
 		tx = "暂无效果"
@@ -1563,7 +1584,7 @@ func _show_detail(host_panel: Control, key: String, title: String, body: String,
 		_eq_stats_lbl = sl
 		_eq_stats_eid = key.substr(3)
 		_eq_stats_unit = unit
-		sl.text = eq_stats_text(unit, _eq_stats_eid)
+		sl.text = eq_stats_text_live(unit, _eq_stats_eid)
 		sl.visible = sl.text != ""
 	## ★★把【屏上这个描述框】登记回 `_info_skill_lbls` —— 这里是全仓唯一知道
 	##   "当前描述框是哪个节点"的地方, 所以登记只能发生在这里。
@@ -2025,7 +2046,7 @@ func _open_equip_card(u: Dictionary, eid: String, star: int, anchor: Control) ->
 		var ik := str(_EQ_STAT_ICON.get(str(kv[0]), ""))
 		var ip := ("res://assets/sprites/stats/%s-icon.png" % ik) if ik != "" else ""
 		stats.append([ip, str(kv[1]) if ip != "" else "%s %s" % [kv[0], kv[1]], Color("#f4ead8")])
-	var st_txt := eq_stats_text(u, eid)
+	var st_txt := eq_stats_text_live(u, eid)
 	var lv: Dictionary = card().open("eq:" + eid, anchor, {
 		"icon": ("res://assets/sprites/" + img) if img.ends_with(".png") else "",
 		"title": str(edef.get("name", eid)),

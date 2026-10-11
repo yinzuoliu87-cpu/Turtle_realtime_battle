@@ -58,7 +58,7 @@ func _refresh_detail() -> void:
 	var rcolor: Color = host.RARITY_COLOR.get(rarity, Color.WHITE)
 	# 数值=base×getLevelBonus(1+(lv-1)×0.05), 仅等级加成不乘稀有(1:1 PoC TeamSelectScene.ts:788-792).
 	# 原 Godot 用裸 base + 硬编 Lv.1 → 有等级的龟数值/等级都不对.
-	var det_lv: int = GameState.get_pet_level(host.detail_pet_id)
+	var det_lv: int = GameState.battle_level_for(host.detail_pet_id)   # ★10-11: 原读 get_pet_level(真玩家恒为 1), 与实战不符
 	var lv_bonus: float = 1.0 + (det_lv - 1) * 0.05
 	var hp: int = roundi(pet.get("hp", 0) * lv_bonus)
 	var atk: int = roundi(pet.get("atk", 0) * lv_bonus)

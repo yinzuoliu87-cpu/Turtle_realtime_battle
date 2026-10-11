@@ -822,8 +822,7 @@ func _ctx_for(pet: Dictionary) -> Dictionary:
 ##   + `battle_spawn._make_unit` 里的 `GameState.temp_level_bonus(id)`(临时等级器)。
 ## ★不读 `get_pet_level` —— 那个表真玩家恒为 1(写它的调试面板已删), 战斗侧没人读它。
 func _battle_level(pet_id: String) -> int:
-	var lv: int = GameState.debug_level if GameState.debug_level > 0 else maxi(1, GameState.season_level)
-	return lv + GameState.temp_level_bonus(pet_id)
+	return GameState.battle_level_for(pet_id)
 
 
 # ─── 龟详情 (1:1 PoC showPetDetail 顶部固定区) ───

@@ -2423,6 +2423,15 @@ func apply_temp_leveler(pet_id: String) -> void:
 	save()
 
 ## 某单位本大轮临时等级加成 (已接战斗: RealtimeBattle3DScene._make_unit 的 _lvl += temp_level_bonus(id) → 主属性+5%/级)
+## 这只龟在玩家这一侧开战时**真正吃到的等级**(调试强制等级 > 赛季等级, 再加临时等级器)。
+## ★与战斗同一套取法: `RealtimeBattle3DScene._unit_level("left")` + `battle_spawn._make_unit` 的 temp_level_bonus。
+## ★2026-10-11 全项目通读第十条: 原来只在 CodexScene 里有一份, 选龟界面三处读的是 `get_pet_level`(真玩家恒为 1)
+##   ⇒ 选龟时看到的等级/属性/技能数与实战不符。抽到这里, 两边都调它。
+func battle_level_for(pet_id: String) -> int:
+	var lv: int = debug_level if debug_level > 0 else maxi(1, season_level)
+	return lv + temp_level_bonus(pet_id)
+
+
 func temp_level_bonus(pet_id: String) -> int:
 	return int(candy_temp_levels.get(pet_id, 0))
 
