@@ -2510,12 +2510,7 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 		if _b4d != null:
 			_b4d.on_death(u, iid, si)
 		match iid:
-			"p2eq_060":   # 磷光水母伞: ★10-11 携带者阵亡时伞若开着 ⇒ 收伞(撤队友减伤/闪避)。原来只在伞自己的计时里收,
-				##   人死了计时就不跑 ⇒ 伞下队友一直带着 11~35% 减伤 +15% 闪避到本路结束(门禁 verify_item8_batch ④)。
-				if bool(stt.get("pa_open", false)):
-					_spirit_sys._parasol_close(u, si, stt)
-					stt["pa_open"] = false
-					u["eq_state"][iid] = stt
+			"p2eq_060": _spirit_sys.on_owner_death(u, si, stt)   # 磷光水母伞: 携带者阵亡时收伞(见那个函数头注)
 			"p2eq_033":   # 复活海螺: 彻底阵亡→原位变形成小虫(通用打法/攻速0.65) + 亡灵变形演出
 				battle._conch_transform(u["pos"])
 				# ★用户 2026-07-30 加强: 小虫 生命 400/900/5000 → 100/1500/10000, 攻击 30/55/200 → 50/80/200

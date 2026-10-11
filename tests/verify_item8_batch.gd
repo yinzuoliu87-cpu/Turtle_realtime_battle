@@ -43,7 +43,7 @@ func _ready() -> void:
 	cr["damage_reduction"] = 0.0
 	a["damage_amp"] = 0.0
 	var got: int = _s._equip_sys._bow_sys._magic_after_mr(a, 100.0, cr)
-	var want: int = _s._magic_after_mr(a, 100.0, cr)
+	var want: int = _s._damage._magic_after_mr(a, 100.0, cr)
 	_ok("★★① 074 魔伤打水晶龟 = 主公式(含水晶 ×%.2f)" % CrystalSystem.MAGIC_DR_MULT, got == want,
 		"074 那份 %d / 主公式 %d" % [got, want])
 	_ok("★① 分母: 主公式对水晶龟确实打了折(<100)", want < 100, "%d" % want)

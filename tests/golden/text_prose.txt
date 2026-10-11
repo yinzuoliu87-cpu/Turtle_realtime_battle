@@ -291,7 +291,7 @@ pet|凤凰龟/强化涅槃|brief	获得 <span class="val-atk">% 攻击速度</sp
 pet|凤凰龟/强化涅槃|detail	主动：消耗 龟能，凤凰龟周身烈焰暴涨，自身获得 <span class="val-atk">+%</span> 攻击速度与 <span class="val-atk">+%</span> 移动速度，持续 秒。喷火伤害随攻击速度提升。 被动强化涅槃： 浴火重生时转而以自身 % 最大生命值复活，并永久获得 <span class="val-atk">+%</span> 攻击力。
 pet|凤凰龟/涅槃|brief	在首次死亡时浴火重生，以 <span class="val-heal">自身最大生命值 %</span>复活，并对全体敌人施加（×攻击力）层灼烧，以及持续 <span class="val-atk"> 秒</span>的 <span class="val-atk">%</span> 治疗削减。
 pet|凤凰龟/涅槃|desc	首次死亡时以（%×最大生命值() = ）生命值复活，并对全体敌人施加 <span style="color:#ff">（×攻击力）层灼烧</span>，以及持续 秒的治疗削减（<span class="val-atk">-%</span>）。
-pet|凤凰龟/涅槃|detail	以及持续 <span class="val-atk"> 秒</span>的 <span class="val-atk">%</span> 治疗削减。
+pet|凤凰龟/涅槃|detail	凤凰龟首次死亡时浴火重生，以（%×最大生命值() = ）生命值复活，并对全体敌人施加（×攻击力）层灼烧，以及持续 <span class="val-atk"> 秒</span>的 <span class="val-atk">%</span> 治疗削减。
 pet|凤凰龟/灼烧|brief	持续喷射火焰，每 秒对身前的敌人造成（×攻击力×(+攻击速度)）魔法伤害，并施加（×攻击力）层灼烧。 <span style="color:#aa">喷火不随攻击速度停顿，凤凰龟可边喷边走位。 </span>
 pet|凤凰龟/灼烧|detail	凤凰龟持续喷吐烈焰，喷火不随攻击速度停顿，可边喷边走位，喷火时移动速度 ×。 每 秒对身前 ° 扇形、射程之内的所有敌人造成（×攻击力×(+攻击速度)）魔法伤害，并施加 <span style="color:#ff">（×攻击力）层灼烧</span>。 <span style="color:#aa">灼烧： 每秒造成（层数 + %×<b>被灼烧者</b>最大生命值×层数）魔法伤害，结算后层数衰减到 %。 </span>
 pet|凤凰龟/烫伤|brief	蓄力投掷火球，命中造成 魔法伤害，施加 层灼烧，并破坏目标 <span class="val-atk">%</span> 护盾， 同时使其攻击力、护甲、魔抗各降低 <span class="val-atk">%</span> 并受到 <span class="val-atk">%</span> 治疗削减，以上负面效果均持续 <span class="val-atk"> 秒</span>。
@@ -566,7 +566,7 @@ pet|骰子龟/稳定骰子|detail	骰子龟对随机敌人突刺 <span class="va
 pet|骰子龟/赌徒之血|brief	赌徒之血在危机中觉醒，根据已损失的生命值获得额外暴击率，在自身损失 <span class="val-atk">%</span> 生命值时达到满额 <span class="val-atk">+% 暴击率</span>。
 pet|骰子龟/赌徒之血|desc	根据已损失的生命值获得额外暴击机率，在自身损失 <span class="val-atk">%</span> 生命值时达到满额 <span class="val-atk">+%</span> 暴击机率。 <span style="color:#aa">当前暴击机率： </span><span class="val-atk">%</span>
 pet|骰子龟/骰子攻击|brief	掷出 颗骰子打击目标，共造成 物理伤害。
-pet|骰子龟/骰子攻击|detail	骰子龟掷出 颗骰子打击目标，共造成（%×攻击力 + %×暴击机率 = ）物理伤害。
+pet|骰子龟/骰子攻击|detail	骰子龟掷出 颗骰子打击目标，共造成（%×攻击力 + ×暴击机率 = ）物理伤害。
 pet|龟壳/吸收|brief	吸取单个目标的生命力，夺取其 <span class="val-heal">% 最大生命值</span> 并转移给自身。
 pet|龟壳/吸收|detail	龟壳吸收单个目标的生命力，将其 <span class="val-atk">%</span> 最大生命值转移给自身。目标的最大生命值与当前生命值同步减少，龟壳的最大生命值与当前生命值同步增加。
 pet|龟壳/复制|brief	随机复制敌方的两个可用技能并依次轮流释放，每个技能以 <span class="val-atk">%</span> 的效果生效。

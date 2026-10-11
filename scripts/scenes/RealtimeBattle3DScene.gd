@@ -4221,20 +4221,6 @@ func _phys_after_armor(u: Dictionary, raw: float, tgt: Dictionary) -> int:
 		d *= GhostSystem.PHASE_MULT                 # 虚化(幽灵): 受物理-90%
 	return maxi(1, int(round(d)))
 
-## 魔法版的 `_phys_after_armor`: 只做魔抗减免(法穿/增伤/减伤/水晶共鸣), 不掷暴击。
-## ★2026-10-11 全项目通读第四条: 原来没有这一个 ⇒ 「+N% 目标最大生命 魔法」这类定额段只能裸值传进
-##   `_apply_damage_from`(那条路没有抗性公式), 或者各装备批次自己抄一份(074 那份就漏了水晶 ×0.8)。
-func _magic_after_mr(u: Dictionary, raw: float, tgt: Dictionary) -> int:
-	_last_dmg_type = "magic"; _damage._dt_fresh = true; _damage._dt_owner = tgt
-	var resist: float = DamageMath.effective_resist(float(tgt["mr"]), float(u.get("magic_pen_pct", 0.0)), float(u.get("magic_pen", 0.0)))
-	var d: float = raw * DamageMath.resist_multiplier(resist)
-	d *= 1.0 + float(u.get("damage_amp", 0.0))
-	_damage._dt_resolved = true
-	d *= 1.0 - float(tgt.get("damage_reduction", 0.0))
-	if str(tgt.get("id", "")) == "crystal":
-		d *= CrystalSystem.MAGIC_DR_MULT
-	return maxi(1, int(round(d)))
-
 # 立绘前冲 (近战命中视觉) — billboard offset 微推再回 (朝镜头, 不用翻 facing)
 # 近战命中踏步: 朝目标前冲再回. 走渲染追加偏移 _atk_voff(每帧render叠加, 见 _vfx._juice_decay), 不tween spr.position(会被逐帧render覆盖)
 func _melee_lunge(u: Dictionary, tgt: Dictionary, amp: float = ATK_LUNGE_AMP) -> void:
@@ -6867,7 +6853,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 		var _hb: float = float(u.get("headless_base_atk", 0.0))
 		if _hb > 0.0:
 			var _hlost: float = clampf(1.0 - float(u["hp"]) / maxf(1.0, float(u["maxHp"])), 0.0, 1.0)
-			var _want: float = _hb * (1.0 + _hlost)
+			var _want: float = _hb * (1.0 + _hlost * HeadlessSystem.UNDEAD_ATK_PER_LOST)
 			if not is_equal_approx(float(u.get("base_atk", 0.0)), _want):
 				u["base_atk"] = _want
 				_recalc_stats(u)

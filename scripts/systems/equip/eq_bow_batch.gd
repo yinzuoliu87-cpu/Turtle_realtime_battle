@@ -197,7 +197,7 @@ func on_basic_074(u: Dictionary, tgt, si: int) -> void:
 ## ★2026-10-11 全项目通读第八条: 原来这里自抄一份魔抗公式、注释说「逐字一致」—— 实际漏了水晶龟受魔法 ×0.8
 ##   ⇒ 074 打水晶龟多 25%(088~090 那份同病早修过)。删副本、转调主场景的同名函数(不掷暴击的口径不变)。
 func _magic_after_mr(u: Dictionary, raw: float, tgt: Dictionary) -> int:
-	return battle._magic_after_mr(u, raw, tgt)
+	return battle._damage._magic_after_mr(u, raw, tgt)
 
 
 # ══════════════════════════════════════════════════════════════════

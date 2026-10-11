@@ -106,7 +106,7 @@ func _shell_basic(u: Dictionary, tgt: Dictionary) -> void:
 	_shell_break_stealth(u)                                     # 自己普攻→破隐(设shell_stealth_broke)
 	if u.get("shell_stealth_broke", false):                    # 破隐后第一发普攻: +0.5A魔法 + 0.5A毒层 + 3秒50%治疗削减(用户2026-07-28 1.0→0.5)
 		u["shell_stealth_broke"] = false
-		battle._damage._apply_damage_from(u, tgt, battle._magic_after_mr(u, float(u["atk"]) * STEALTH_BREAK_MAGIC * DamageMath.RESIST_COMP, tgt), Color("#9b3bff"))
+		battle._damage._apply_damage_from(u, tgt, battle._damage._magic_after_mr(u, float(u["atk"]) * STEALTH_BREAK_MAGIC * DamageMath.RESIST_COMP, tgt), Color("#9b3bff"))
 		battle._damage._apply_dot_stacks(tgt, "poison", maxi(1, int(round(u["atk"] * STEALTH_POISON_MULT))), u)
 		tgt["heal_reduce_until"] = battle._t + STEALTH_HEALCUT_SEC
 		tgt["heal_reduce_pct"] = maxf(float(tgt.get("heal_reduce_pct", 0.0)), STEALTH_HEALCUT_PCT)

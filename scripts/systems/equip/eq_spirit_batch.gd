@@ -142,6 +142,17 @@ func _parasol_open(u: Dictionary, si: int, stt: Dictionary) -> void:
 	_vfx.parasol_open(u["pos"], Color(0.55, 0.95, 1.0, 0.9), PARASOL_RADIUS, PARASOL_OPEN, others)
 
 
+## ★2026-10-11 全项目通读第八条: 伞开着时携带者阵亡 ⇒ 收伞(撤队友减伤/闪避)。原来只在伞自己的计时里收,
+##   人死了计时就不跑 ⇒ 伞下队友一直带着 11~35% 减伤 +15% 闪避到本路结束(门禁 verify_item8_batch ④)。
+##   由 EquipSystem._eq_on_death 的 060 分支调。
+func on_owner_death(u: Dictionary, si: int, stt: Dictionary) -> void:
+	if not bool(stt.get("pa_open", false)):
+		return
+	_parasol_close(u, si, stt)
+	stt["pa_open"] = false
+	u["eq_state"]["p2eq_060"] = stt
+
+
 ## 伞收拢: 摘掉减伤/闪避, 携带者回复 50/80/130 生命
 func _parasol_close(u: Dictionary, si: int, stt: Dictionary) -> void:
 	var dr: float = float(stt.get("pa_dr", 0.0))

@@ -1008,3 +1008,18 @@ func anchor_aspd(u: Dictionary) -> float:   # 不沉之锚017: 持有沉锚充�
 		return 1.0 + EquipTickSystem.ANCHOR_ASPD
 	# 刚用掉最后一点充能的这一发也算"持有充能"(避免末发掉速)
 	return 2.0 if absf(battle._t - float(u.get("anchor_swing_t", -99.0))) < 0.001 else 1.0
+
+
+## 魔法版的 `_phys_after_armor`: 只做魔抗减免(法穿/增伤/减伤/水晶共鸣), 不掷暴击。
+## ★2026-10-11 全项目通读第四条: 原来没有这一个 ⇒ 「+N% 目标最大生命 魔法」这类定额段只能裸值传进
+##   `_apply_damage_from`(那条路没有抗性公式), 或者各装备批次自己抄一份(074 那份就漏了水晶 ×0.8)。
+func _magic_after_mr(u: Dictionary, raw: float, tgt: Dictionary) -> int:
+	battle._last_dmg_type = "magic"; _dt_fresh = true; _dt_owner = tgt
+	var resist: float = DamageMath.effective_resist(float(tgt["mr"]), float(u.get("magic_pen_pct", 0.0)), float(u.get("magic_pen", 0.0)))
+	var d: float = raw * DamageMath.resist_multiplier(resist)
+	d *= 1.0 + float(u.get("damage_amp", 0.0))
+	_dt_resolved = true
+	d *= 1.0 - float(tgt.get("damage_reduction", 0.0))
+	if str(tgt.get("id", "")) == "crystal":
+		d *= CrystalSystem.MAGIC_DR_MULT
+	return maxi(1, int(round(d)))
