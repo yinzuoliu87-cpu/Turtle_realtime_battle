@@ -162,7 +162,7 @@ func _apply(src: Dictionary, o: Dictionary, dmg: float) -> void:
 	battle._damage._apply_damage_from(src, o, battle._resolve_dmg(src, dmg, o, true),
 		Color("#7fe8ff"), 0.0, false, true)          # 魔法伤害(走魔抗·与文案一致)
 	battle._equip_sys.tally.pop(_tp)
-	o["stun_until"] = maxf(float(o.get("stun_until", 0.0)), battle._t + WAVE_STUN)
+	battle._damage._stun(o, WAVE_STUN, "p2eq_038")   # ★10-11: 走唯一入口(免控窗口/韧性), 原来直接写 stun_until(门禁 verify_equip_stun_via_entry)
 	o["_sig_hit_n"] = int(o.get("_sig_hit_n", 0)) + 1   # 同步触发证据(供门禁)
 	battle._skill_ring(o["pos"], Color(0.55, 0.92, 1.0, 0.85), 44.0)
 
