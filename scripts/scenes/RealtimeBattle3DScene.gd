@@ -6027,7 +6027,7 @@ func _make_ink_link(a: Dictionary, b: Dictionary, caster: Dictionary) -> void:
 func _drop_ink_link_of(u: Dictionary) -> void:
 	for i in range(_ink_links.size() - 1, -1, -1):
 		var L: Dictionary = _ink_links[i]
-		if L["a"] == u or L["b"] == u:
+		if is_same(L["a"], u) or is_same(L["b"], u):   # ★10-11: 原来用 == 深比较(§3.2: 成环字典可能无限递归, 且同内容的不同单位会被摘错)
 			if is_instance_valid(L["spr"]): L["spr"].queue_free()
 			_ink_links.remove_at(i)
 
