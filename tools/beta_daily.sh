@@ -21,8 +21,57 @@ DOW=${FORCE_DOW:-$(date -u +%u)}         # 1=周一 … 7=周日
 case "$DOW" in
   2) BATCHES="1 2 3 4 5 6 7 8" ;;
   4) BATCHES="9 10 11 12" ;;
+  6) BATCHES="SAT" ;;
   *) echo "$(date -u +%FT%TZ) 今天(星期 $DOW)不排模拟号, 不跑"; exit 0 ;;
 esac
+
+## ★周六闯关赛(用户 2026-10-12「周六我们这样，0点跑部分，早上9点跑部分，中午12点后每一小时跑部分直到下午6点」):
+##   只起「积分赛已晋级、闯关赛还没打完(<4 胜且 <3 负)」的号; 按 (槽位-1) mod 9 分成 9 组,
+##   UTC 00 / 09 / 12 / 13 / 14 / 15 / 16 / 17 / 18 点各跑一组, 每组一次 ≤10 个窗口, 打到底(闯关赛 23:00 截止)。
+if [ "$BATCHES" = "SAT" ]; then
+  HOUR=$((10#${FORCE_HOUR:-$(date -u +%H)}))
+  case "$HOUR" in
+    0) G=0 ;; 9) G=1 ;; 12) G=2 ;; 13) G=3 ;; 14) G=4 ;; 15) G=5 ;; 16) G=6 ;; 17) G=7 ;; 18) G=8 ;;
+    *) echo "$(date -u +%FT%TZ) 周六 ${HOUR} 点不是排定时段, 不跑"; exit 0 ;;
+  esac
+  ELIG=$(python - "$G" <<'PYEOF'
+import json, sys
+g = int(sys.argv[1])
+out = []
+for i in range(1, 121):
+    if (i - 1) % 9 != g:
+        continue
+    try:
+        d = json.load(open(rf'C:\tmp\turtle-sim60\p{i:02d}\Godot\app_userdata\斗龟场 实时版\savegame.json', encoding='utf-8'))
+    except Exception:
+        continue
+    if d.get('promoted') and int(d.get('gauntlet_wins', 0)) < 4 and int(d.get('gauntlet_losses', 0)) < 3:
+        out.append(str(i))
+print(' '.join(out))
+PYEOF
+)
+  echo "════ $(date -u +%FT%TZ) 周六第 $((G+1))/9 组 · 晋级且没打完的槽位: ${ELIG:-无} · $(git rev-parse --short HEAD)"
+  set -- $ELIG
+  while [ $# -gt 0 ]; do
+    CHUNK=""
+    for _k in 1 2 3 4 5 6 7 8 9 10; do [ $# -gt 0 ] && { CHUNK="$CHUNK $1"; shift; }; done
+    if [ -n "${DRY:-}" ]; then echo "[DRY] SLOTS=\"$CHUNK\" sim60.sh start"; continue; fi
+    SLOTS="$CHUNK" bash tools/sim60.sh start 1
+    t0=$(date +%s)
+    while :; do
+      left=0
+      for s in $CHUNK; do [ -n "$(bash tools/sim60.sh status 2>/dev/null | awk -v p="$(printf 'p%02d' "$s")" '$1==p && $2!="-"')" ] && left=$((left+1)); done
+      [ "$left" -eq 0 ] && break
+      if [ $(( $(date +%s) - t0 )) -ge 5400 ] || [ "$((10#$(date -u +%H%M)))" -ge 2240 ]; then
+        echo "$(date -u +%T)Z 超时或到收工时间, 关掉剩下 $left 个"; bash tools/sim60.sh stop; break
+      fi
+      sleep 60
+    done
+    for s in $CHUNK; do bash tools/sim60.sh status 2>/dev/null | awk -v p="$(printf 'p%02d' "$s")" '$1==p'; done
+  done
+  echo "════ $(date -u +%FT%TZ) 周六本组结束"
+  exit 0
+fi
 ROUNDS=""                   # 不设上限: 打到被拦
 STOP_AT=2240                # UTC HHMM: 到点不再起新批, 在跑的关掉(22:50 封盘)
 BATCH_CAP=5400              # 一批最多等 90 分钟, 超时关掉这一批(实测一批 45~50 分钟)

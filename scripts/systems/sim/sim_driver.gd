@@ -450,7 +450,10 @@ func _do_shop(s: Node) -> void:
 		if not _alive(s):
 			return
 	## ① 先把等级升到本策略此刻的目标(留出本策略的底钱)
-	if not tut:
+	var fast_mid: bool = style == 2 and int(GameState.season_level) >= 8 and int(GameState.season_level) < _P2.MAX_LEVEL
+	var fast_rolls: int = _rng.randi_range(0, 4)
+	var fast_new_high := 0
+	if not tut and not fast_mid:      # 速升 8~9 级: 先看货架有没有 4~5 费 / 能合的, 剩下的钱才升级(见 ③)
 		while int(GameState.season_level) < _target_level() \
 				and int(GameState.meta_deepsea_coins) >= _P2.BUY_XP_COST + _reserve() and xp_n < 8:
 			if not _buy_xp(s):
@@ -484,6 +487,10 @@ func _do_shop(s: Node) -> void:
 				and int(GameState.meta_deepsea_coins) >= 2 + _refresh_floor()
 		if style == 2 and int(GameState.season_level) < 7:
 			want_refresh = want_refresh and best_score < 0.0     # 速升: 低等级不刷, 钱留着升级
+		if fast_mid:
+			## 用户「允许每轮刷0到4次随机这样子吧」: 每次进店随机定 0~4 次, 找 4~5 费或同款; 留够买一件的钱
+			want_refresh = not tut and best_score < 400.0 and refreshes < fast_rolls \
+				and int(GameState.meta_deepsea_coins) >= 2 + 3
 		if style == 2 and _rolling_down():
 			want_refresh = not tut and best_score < 300.0 and refreshes < refresh_cap 				and int(GameState.meta_deepsea_coins) >= 2 + 4     # 8 级大刷: 找 4~5 费, 留够买一件 4 费的钱
 		if want_refresh and (best_score < 0.0 or style == 0 or _owned_gear_n() >= 3):
@@ -494,6 +501,13 @@ func _do_shop(s: Node) -> void:
 			continue
 		if best_i < 0 or best_score < 0.0:
 			break
+		if fast_mid and best_score < 400.0:
+			break                                               # 速升 8~9 级: 只顺手拿 4~5 费 / 合星的, 别的钱留着升级
+		## ★16 场推演(10-12 第二版): 8 级后每场买 5~7 件新 4~5 费、升级 0 次, 停在 8 级 + 24 件 ★1 卖不完
+		##   ⇒ 新的 4~5 费每次进店最多 1 件, 其余钱全进升级(冲 10 级)。同款 / 合星不受限。
+		if fast_mid and best_score >= 576.0 and best_score < 1000.0 and fast_new_high >= 1 \
+				and int(s.call("_owned_count", str((s.call("_deco", offer[best_i]) as Dictionary).get("id", "")), 1)) == 0:
+			break
 		var eid := str((s.call("_deco", offer[best_i]) as Dictionary).get("id", ""))
 		s.call("_on_select", best_i)      # 两步购买: 点卡选中 → 面板里点「买下」
 		await _sleep(0.4)
@@ -503,6 +517,8 @@ func _do_shop(s: Node) -> void:
 		var n_before := GameState.persistent_bench.size()
 		s.call("_on_buy", best_i)
 		bought.append({"id": eid, "paid": c_before - int(GameState.meta_deepsea_coins), "score": int(best_score)})
+		if fast_mid and _cost_of(eid) >= 4 and best_score >= 576.0 and best_score < 1000.0:
+			fast_new_high += 1
 		await _sleep(0.4)
 		if tut and bought.size() >= 1:
 			break
@@ -574,10 +590,7 @@ func _target_level() -> int:
 		1:
 			return clampi(_P2.bot_level_for_battles(b), 1, _P2.MAX_LEVEL)   # 真人中位(396 条真人快照量出来的那条曲线)
 		_:
-			var lv := int(FAST_LV[clampi(b, 0, FAST_LV.size() - 1)])
-			if lv > 8 and _n_high_cost() < 3:
-				lv = 8                       # 8 级先停, 刷出高费再升(见 _rolling_down)
-			return lv
+			return int(FAST_LV[clampi(b, 0, FAST_LV.size() - 1)])   # 一路冲 10 级(用户「得到10级才能追」)
 
 
 ## 升级时留的底钱。
@@ -611,11 +624,25 @@ func _offer_score(s: Node, d: Dictionary, tut: bool) -> float:
 	var own1 := int(s.call("_owned_count", eid, 1))
 	var own2 := int(s.call("_owned_count", eid, 2))
 	var style := _strategy()
-	## 速升到 8 级(大刷阶段): 4~5 费新货排在低费同款前面(16 场推演: 8 级后刷了 25 次只买到 1 件 4 费, 钱都拿去合低费 ★2)
-	if style == 2 and int(GameState.season_level) >= 8 and own1 == 0 and own2 == 0 and cost >= 4:
-		return 650.0 + cost * 20 + _syn_gain(eid)
-	if style == 2 and int(GameState.season_level) >= 8 and cost <= 2 and not (own2 >= 2 and own1 >= 2) and own1 < 2:
-		return 140.0 + cost * 10               # 低费同款往后排(差 1 件就合的照常优先)
+	## 速升到 8 级: 花了约 176 币升级换的是 4~5 费的出货率(8 级 4 费 17% / 5 费 9%), 回头合低费 ★2 等于这笔钱白花,
+	##   而且三种打法会变成一种(用户问「到8级后仍优先买低费同款…有什么问题吗」)。面板中位: 1 费★2 21 ≈ 4 费★1 18,
+	##   但上限 4 费★2 35 / 5 费★2 90 / 4 费★3 100 只有走高费拿得到。
+	## 顺序: 合出 ★3(1000) > 合出 4~5 费 ★2(640~650) > 新 5 费(600) > 4~5 费同款第 2 件(540~550) > 新 4 费(560 不到 5 费) > 低费同款(140~160)
+	if style == 2 and int(GameState.season_level) >= 8:
+		if own2 >= 2 and own1 >= 2:
+			return 1000.0 + cost
+		if own1 >= 2:
+			return 600.0 + cost * 10 if cost >= 4 else 400.0 + cost * 10
+		if cost >= 4:
+			if own1 == 1 or own2 >= 1:
+				return 500.0 + cost * 10
+			var room8 := int(GameState.team_equip_cap()) - int(GameState.team_equipped_count()) - _bench_gear_n()
+			if room8 <= 0 and (_bench_gear_n() >= 1 or float(cost) < _worst_owned_val() * 1.5):
+				return -1.0                                         # 位子满了: 只换掉明显更差的, 不囤
+			return 480.0 + cost * 24 + _syn_gain(eid) * 0.5   # 新 4 费 576 / 新 5 费 600
+		## 用户「那一到3费不管吗，可以升3星2费呢，遇到了要留吧」⇒ 手里已有的 1~3 费同款照买(往 ★2 / ★3 凑)
+		if own1 == 1 or own2 >= 1:
+			return 420.0 + cost * 10 + own2 * 50
 	if own2 >= 2 and own1 >= 2:
 		return 1000.0 + cost                   # 这一买直接合出 ★3
 	if own1 >= 2:
@@ -787,23 +814,13 @@ func _eff_val(it: Dictionary) -> float:
 	return _gear_val(it) * (1.4 if _is_core(str(it.get("id", ""))) else 1.0)
 
 
-## 速升打法的「8 级大刷」阶段: 已到 8 级、身上 ≥4 费的装备还不到 3 件。
-##   ★16 场推演(10-12)量到: 原来速升一路把钱全砸升级到 9 级, 4~5 费一件没买过、商店一次没刷 ——
-##   真人是升到 8 级就停下来刷, 找高费并合 ★2, 刷出来了再升 9。
+## 速升打法的「大刷」阶段 = 已到 10 级。
+##   ★用户 2026-10-12:「凑出 3 件 4 费以上？这是不可以的概率太低了，得到10级才能追，但期间遇到需要得4费可以去拿」
+##   ⇒ 8~9 级不停下刷: 钱先升级, 货架上刚好有 4~5 费 / 能合出 ★2 的才顺手买; 10 级才大刷找高费。
 func _rolling_down() -> bool:
-	return _strategy() == 2 and int(GameState.season_level) >= 8 and _n_high_cost() < 3
+	return _strategy() == 2 and int(GameState.season_level) >= _P2.MAX_LEVEL
 
 
-## 手里(身上 + 背包)≥4 费的装备件数(★2 / ★3 也按 1 件算)。
-func _n_high_cost() -> int:
-	var n := 0
-	for it in _all_gear():
-		if _cost_of(str(it.get("id", ""))) >= 4:
-			n += 1
-	for e in _equipped_list():
-		if str(e["kind"]) == "minion" and _cost_of(str(e["it"].get("id", ""))) >= 4:
-			n += 1
-	return n
 
 
 ## 买经验 —— 与商店那颗经验钮的 `pressed` 回调逐字同一段(`GameState.buy_season_xp()` 成功则 `_rebuild()`)。
@@ -896,11 +913,17 @@ func _do_inventory(v: Node) -> void:
 	for _k in range(14):
 		if not _alive(v):
 			return
-		var bi := _best_bench_gear()
+		## ★10-12 逐场阵容(p11 第 8~10 场 10/12 有空位, 背包里瞄准镜 / 小木斧没装):
+		##   原来只看「最好那件」, 它装不上(追合成的件只装统领, 统领满了)就整轮收工 ⇒ 按份量从高到低逐件试。
+		var bi := -1
+		var tgt := {}
+		for cand in _bench_gear_by_value():
+			var tt := _equip_target(GameState.persistent_bench[cand])
+			if not tt.is_empty():
+				bi = cand
+				tgt = tt
+				break
 		if bi < 0:
-			break
-		var tgt := _equip_target(GameState.persistent_bench[bi])
-		if tgt.is_empty():
 			break
 		var before := GameState.persistent_bench.size()
 		v.call("_on_bench_click", bi)          # 点背包里那件(选中)
@@ -1015,6 +1038,18 @@ func _lineup_record() -> Dictionary:
 			bench.append("%s★%d" % [str(it.get("id", "")), int(it.get("star", 1))])
 	return {"units": units, "bench": bench}
 
+## 背包里的装备按有效份量从高到低的下标(临时等级器不算)。
+func _bench_gear_by_value() -> Array:
+	var idx: Array = []
+	var bench: Array = GameState.persistent_bench
+	for i in range(bench.size()):
+		var it = bench[i]
+		if it is Dictionary and str((it as Dictionary).get("id", "")) != "" and str((it as Dictionary).get("kind", "")) != "item":
+			idx.append(i)
+	idx.sort_custom(func(a, b): return _eff_val(bench[a]) > _eff_val(bench[b]))
+	return idx
+
+
 ## 背包里最值得装的那件(份量最大; 临时等级器不算)。
 func _best_bench_gear() -> int:
 	var bench: Array = GameState.persistent_bench
@@ -1127,6 +1162,12 @@ func _equip_target(it: Dictionary = {}) -> Dictionary:
 				if chasing:
 					continue
 				eqs = u.get("equips", []) if u.get("equips", null) is Array else []
+				var dup_here := false
+				for e2 in eqs:
+					if e2 is Dictionary and str(e2.get("id", "")) == str(it.get("id", "")):
+						dup_here = true
+				if dup_here:
+					continue                          # 小将身上不叠同款(不进合成池, 两件同款永远合不成 ★2)
 			else:
 				continue
 			if GameState._cap_count(eqs) >= _P2.UNIT_EQUIP_CAP:
