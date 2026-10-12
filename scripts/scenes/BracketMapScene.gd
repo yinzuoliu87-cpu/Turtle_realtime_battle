@@ -678,6 +678,8 @@ func winner_side_for(r: int, m: int, i_won: bool) -> int:
 func _rebuild() -> void:
 	for c in _canvas.get_children():
 		c.queue_free()
+	if _hint_lb != null:
+		_hint_lb.visible = false       # 空态那条路提前 return ⇒ 先藏, 画了图才按需亮
 	var vp0 := get_viewport().get_visible_rect().size
 	if _bg != null:
 		_bg.size = vp0                 # ★视口变了要跟上, 否则又露出瓷砖底
@@ -740,11 +742,47 @@ func _rebuild() -> void:
 		for m in range(_B.matches_in_round(n, r)):
 			_canvas.add_child(_make_node(r, m))
 	_make_round_labels(n, total)
+	_update_replay_hint(n, total)
 	_center_on_me()
 	if _home_btn != null:
 		## 不需要拖的规模就没有"迷路"这回事 ⇒ 藏起来, 不占地方
 		_home_btn.visible = _can_pan
 		_home_btn.position = vp - Vector2(140 + 24, 81 + 24)
+
+
+## ══ 底部操作提示「点击对局观看」(不写「回放」: 开播窗口里它会剧透「已经打完了」, 见文件头 ★④)(2026-10-12 对阵图对照参考改版 §6) ══
+## ★参考 06 火箭联盟: 对阵图底部一行操作提示 SHOW MATCH DETAILS。我们每格右沿只有一枚 ▶(PlayMark),
+##   没有一个字说它是什么 ⇒ 图上有能回放的场次时, 底部说一句。我自己要打的那场另有「对战」小签, 不在此列。
+const REPLAY_HINT := "点击对局观看"
+var _hint_lb: Label = null
+
+
+## 纯函数: 这张图该不该出提示。`replayable` = 能点开看回放的场数。
+static func replay_hint_text(replayable: int) -> String:
+	return REPLAY_HINT if replayable > 0 else ""
+
+
+func _update_replay_hint(n: int, total: int) -> void:
+	var k := 0
+	for r in range(1, total + 1):
+		for m in range(_B.matches_in_round(n, r)):
+			var st := match_state(r, m)
+			if REPLAY_LIVE and (st == ST_DONE or st == ST_PREMIERE) and can_open(r, m) and not should_fetch_opponent(r, m):
+				k += 1
+	var t := replay_hint_text(k)
+	if _hint_lb == null:
+		_hint_lb = Label.new()
+		_hint_lb.name = "ReplayHint"
+		_hint_lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_hint_lb.add_theme_font_size_override("font_size", 15)
+		_hint_lb.add_theme_color_override("font_color", Color("#7d8a9c"))
+		_hint_lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_hint_lb)
+	var vs := get_viewport().get_visible_rect().size
+	_hint_lb.position = Vector2(0, vs.y - 56)
+	_hint_lb.size = Vector2(vs.x, 24)
+	_hint_lb.text = t
+	_hint_lb.visible = t != ""
 
 
 ## 顶部那一行轮次标签：`32强 | 16强 | 8强 | 半决赛 | 决赛 | 半决赛 | 8强 | 16强 | 32强`。
@@ -1230,12 +1268,17 @@ const TAG_PX := 80.0
 const NAME_FS := 18.0
 
 
+## ★2026-10-12(对阵图对照参考改版 §3): 原来按「每个字 = 字号宽」估 ⇒ 西文名(fish31 / haohao)
+##   只有汉字一半宽, 格子还空着一截就被截成「fish…」(用户 10-12 真机截图)。改成拿 Label 实际用的字体量真宽。
 func _fit_name(nm: String, px: float, tick: bool, fs: float = NAME_FS) -> String:
-	var avail: float = px - (fs + 4.0 if tick else 0.0)
-	var maxc: int = int(avail / fs)
-	if maxc < 2 or nm.length() <= maxc:
+	var f: Font = get_theme_font("font", "Label")
+	var avail: float = px - (f.get_string_size("✓ ", HORIZONTAL_ALIGNMENT_LEFT, -1, int(fs)).x if tick else 0.0)
+	if f.get_string_size(nm, HORIZONTAL_ALIGNMENT_LEFT, -1, int(fs)).x <= avail:
 		return nm
-	return nm.substr(0, maxi(1, maxc - 1)) + "…"
+	var k := nm.length() - 1
+	while k > 1 and f.get_string_size(nm.substr(0, k) + "…", HORIZONTAL_ALIGNMENT_LEFT, -1, int(fs)).x > avail:
+		k -= 1
+	return nm.substr(0, maxi(1, k)) + "…"
 
 
 ## 【本轮】那一列的竖带。★9 列的 32 人桶里"现在打到哪儿了"光靠标签变色看不出来,
@@ -1435,6 +1478,10 @@ func _make_node(r: int, m: int) -> Control:
 	var st := match_state(r, m)
 	var mine := is_my_match(r, m)
 	var ws := winner_side(r, m)
+	## ★2026-10-12 对阵图对照参考改版(方案书 20261012-对阵图对照参考改版 §4): 对面是轮空的那一场**没打**,
+	##   服务端照样在 done 里补一行(side 0) —— 原来照画 ✓ + 亮底 + 「胜」, 看着像赢了一场。画的时候当它没结果。
+	if bool(competitor(r, m, 0).get("bye", false)) or bool(competitor(r, m, 1).get("bye", false)):
+		ws = -1
 	var sh: float = _L.slot_h()
 	var total := _B.rounds_for(n)
 	var w: float = rect.size.x
@@ -1506,8 +1553,11 @@ func _make_node(r: int, m: int) -> Control:
 	## ★2026-10-07 加头像(皇室战争 / CRL 对阵图每个坑都是头像 + 名字): 行高 39 ⇒ 头像 31。
 	var av_px: float = sh - 12.0
 	var name_x: float = 8.0 + av_px + 6.0
-	var name_w: float = maxf(28.0, w - name_x - GUTTER - PLAY_W)
 	for side in range(2):
+		## ★小签只剩「你」(§1/§2: 「胜」「冠」去掉, 参考里没有一家用字标胜者)。
+		##   名字只在这一行真挂小签时才给槽让位 —— 原来每行都让, 名字被截成「fis…」(用户 10-12 真机截图)。
+		var me_row: bool = _is_me_side(r, m, side)
+		var name_w: float = maxf(28.0, w - name_x - PLAY_W - (GUTTER if me_row else 6.0))
 		var c: Dictionary = competitor(r, m, side)
 		var nm := str(c.get("name", "神秘龟"))
 		var is_bye := bool(c.get("bye", false))
@@ -1550,16 +1600,10 @@ func _make_node(r: int, m: int) -> Control:
 		lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		holder.add_child(lb)
 
-		## ★右槽小签: 「冠」>「你」>「胜」。金牌子 = 冠 / 你(只有"我"和冠军用金色); 青牌子 = 胜。
-		var badge := ""
+		## ★右槽小签只剩「你」(金)。胜者靠亮底 + 前缘竖条 + ✓(参考 02 英雄联盟 Clash 的 ✓);
+		##   冠军由顶部「冠军 · 名字」那一条单独展示(参考 08 Brawlhalla / 01 VALORANT 决赛旁单独一块)。
+		var badge := "你" if me_row else ""
 		var bcol := MINE
-		if r >= total and ws == side:
-			badge = "冠"
-		elif _is_me_side(r, m, side):
-			badge = "你"
-		elif tick:
-			badge = "胜"
-			bcol = ACCENT
 		if badge != "":
 			var bx: float = w - GUTTER - PLAY_W + 2.0
 			var by: float = float(side) * sh + (sh - 22.0) * 0.5

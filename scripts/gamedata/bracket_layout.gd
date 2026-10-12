@@ -212,6 +212,10 @@ static func round_label(n: int, r: int) -> String:
 		return "决赛"
 	if r == total - 1:
 		return "半决赛"
+	## ★2026-10-12 对阵图对照参考改版 §5: 人数不满(有轮空)时第一轮按坑位叫「8强」名不副实(6 人桶叫 8 强)。
+	##   参考 06 火箭联盟 / 07 Brawlhalla 第一轮都叫 ROUND 1 ⇒ 有轮空时第一轮叫「第 1 轮」。
+	if r == 1 and n < _B.slots_for(n):
+		return "第 1 轮"
 	if r == total - 2:
 		return "8强"
 	return "%d强" % (_B.slots_for(n) >> (r - 1))

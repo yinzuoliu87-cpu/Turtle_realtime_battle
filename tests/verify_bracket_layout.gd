@@ -228,3 +228,16 @@ func _t_labels() -> void:
 		got2.append(L.round_label(2, r))
 	_ok("⑥ 2 人桶 = 只有决赛", got2 == ["决赛"], str(got2))
 	_ok("⑥ 越界轮次 → 空串", L.round_label(4, 9) == "" and L.round_label(4, 0) == "")
+	## 2026-10-12 对阵图对照参考改版 §5: 有轮空时第一轮叫「第 1 轮」(6 人桶原来叫「8强」)
+	var got6: Array = []
+	for r in range(1, B.rounds_for(6) + 1):
+		got6.append(L.round_label(6, r))
+	_ok("⑥ ★6 人桶(2 人轮空) = 第 1 轮/半决赛/决赛", got6 == ["第 1 轮", "半决赛", "决赛"], str(got6))
+	var got12: Array = []
+	for r in range(1, B.rounds_for(12) + 1):
+		got12.append(L.round_label(12, r))
+	_ok("⑥ 12 人桶 = 第 1 轮/8强/半决赛/决赛(只改有轮空的第一轮)", got12 == ["第 1 轮", "8强", "半决赛", "决赛"], str(got12))
+	var got8: Array = []
+	for r in range(1, B.rounds_for(8) + 1):
+		got8.append(L.round_label(8, r))
+	_ok("⑥ ★分母: 8 人满签不变 = 8强/半决赛/决赛", got8 == ["8强", "半决赛", "决赛"], str(got8))

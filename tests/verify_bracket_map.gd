@@ -317,6 +317,14 @@ func _t_clickable() -> void:
 			_ok("③ ★轮空那一场不可点(点了没东西放)", not _map.can_open(1, m),
 				"第 1 轮第 %d 场" % m)
 	_ok("③ ★分母: 3 人桶里确实有一场是轮空(否则上面那条没跑)", bye_seen)
+	## 2026-10-12 对阵图对照参考改版 §4: 服务端给轮空那场也补一行 done(side 0) ⇒ 原来照画 ✓, 看着像赢了一场。
+	##   第 1 轮已翻面: 轮空那场(1-0) + 真打的那场(1-1) ⇒ ✓ 只许 1 个(真打的那场)。
+	await _mk({"size": 3, "round": 2, "me": -1, "names": ["甲龟", "乙龟", "丙龟"], "done": {"1-0": 0, "1-1": 1}})
+	var bye_ticks := 0
+	for x in _texts():
+		if str(x).begins_with("✓"):
+			bye_ticks += 1
+	_ok("③ ★★轮空那场不画 ✓(只有真打的那一场有; 2 = 轮空也画成赢了)", bye_ticks == 1, "%d 个 ✓" % bye_ticks)
 	_ok("③ ★还轮不到的(第 2 轮)不可点", not _map.can_open(2, 0),
 		_map.match_state(2, 0))
 

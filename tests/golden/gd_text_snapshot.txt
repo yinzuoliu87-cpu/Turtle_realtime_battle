@@ -34,6 +34,7 @@ scripts/gamedata/bracket_layout.gd|lit|%d强
 scripts/gamedata/bracket_layout.gd|lit|8强
 scripts/gamedata/bracket_layout.gd|lit|决赛
 scripts/gamedata/bracket_layout.gd|lit|半决赛
+scripts/gamedata/bracket_layout.gd|lit|第 1 轮
 scripts/gamedata/copy_rules.gd|lit|变形态: cyber_ai_charge=1 6 秒后仍为真(赛博龟的充能形态)
 scripts/gamedata/copy_rules.gd|lit|变形态: hunter_roll_buff=true + state=move(猎人的翻滚形态)
 scripts/gamedata/copy_rules.gd|lit|变形态: shell_stealth=true + untargetable_until 长时间不可选中
@@ -499,7 +500,6 @@ scripts/scenes/BracketMapScene.gd|lit|下一组
 scripts/scenes/BracketMapScene.gd|lit|下一轮 %s后开播
 scripts/scenes/BracketMapScene.gd|lit|你
 scripts/scenes/BracketMapScene.gd|lit|关闭
-scripts/scenes/BracketMapScene.gd|lit|冠
 scripts/scenes/BracketMapScene.gd|lit|冠军 · %s%s
 scripts/scenes/BracketMapScene.gd|lit|决赛 %s后开播
 scripts/scenes/BracketMapScene.gd|lit|周日 · 决赛日
@@ -524,12 +524,12 @@ scripts/scenes/BracketMapScene.gd|lit|本轮已结束，请刷新
 scripts/scenes/BracketMapScene.gd|lit|正在查询分组
 scripts/scenes/BracketMapScene.gd|lit|正在生成对阵
 scripts/scenes/BracketMapScene.gd|lit|每轮仅可查看 1 名对手（已查看 %d 号）
+scripts/scenes/BracketMapScene.gd|lit|点击对局观看
 scripts/scenes/BracketMapScene.gd|lit|神秘龟
 scripts/scenes/BracketMapScene.gd|lit|第 %d 组
 scripts/scenes/BracketMapScene.gd|lit|第 %d 组冠军 · %s%s
 scripts/scenes/BracketMapScene.gd|lit|组冠军产生后公布
 scripts/scenes/BracketMapScene.gd|lit|组冠军已全部产生 · 共 %d 组
-scripts/scenes/BracketMapScene.gd|lit|胜
 scripts/scenes/BracketMapScene.gd|lit|观战模式
 scripts/scenes/BracketMapScene.gd|lit|观看
 scripts/scenes/BracketMapScene.gd|lit|读取中…

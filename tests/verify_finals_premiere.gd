@@ -318,11 +318,14 @@ func _t_closed() -> void:
 	var done := {"1-0": 0, "1-1": 1, "1-2": 0, "1-3": 1, "2-0": 0, "2-1": 1, "3-0": 1}
 	var m: Node = await _open_map(_week(flip, true, flip, 3, done), _now)
 	_ok("④ 分母: 收盘、7 场都在 done", bool(m.cur().get("closed", false)) and (m.cur().get("done", {}) as Dictionary).size() == 7)
-	_ok("④ ★有 revealed_at ⇒ 决赛在开播: 没有「冠」、决赛标「开播」, 前两轮照常揭晓(✓ 6 个)",
-		_badges(m, "冠") == 0 and str(m.match_state(3, 0)) == BMS.ST_PREMIERE and _ticks(m) == 6, "✓ %d" % _ticks(m))
+	_ok("④ ★有 revealed_at ⇒ 决赛在开播: 决赛不写胜负、标「开播」, 前两轮照常揭晓(✓ 6 个)",
+		str(m.match_state(3, 0)) == BMS.ST_PREMIERE and _ticks(m) == 6, "✓ %d" % _ticks(m))
 	var m2: Node = await _open_map(_week(flip, true, 0, 3, done), _now)
-	_ok("④ ★收盘但没有 revealed_at ⇒ 不开播, 直接揭晓(有「冠」、✓ 7 个)", _badges(m2, "冠") == 1 and _ticks(m2) == 7,
+	_ok("④ ★收盘但没有 revealed_at ⇒ 不开播, 直接揭晓(决赛也有 ✓ ⇒ 7 个)", _ticks(m2) == 7,
 		"✓ %d" % _ticks(m2))
+	## 2026-10-12 对阵图对照参考改版 §1/§2: 揭晓之后格子里也不挂「胜」「冠」字小签(冠军由顶部那一条单独展示)
+	_ok("④ ★★全部揭晓后也没有「胜」「冠」小签(分母: 上一条 ✓ 7 个 = 真揭晓了)",
+		_badges(m2, "胜") == 0 and _badges(m2, "冠") == 0)
 
 
 # ⑤ ─────────────────────────────────────────────────────────────

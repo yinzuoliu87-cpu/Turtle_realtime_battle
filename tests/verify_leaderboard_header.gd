@@ -26,6 +26,10 @@ extends Node
 ##   (「0胜 · ♥8 · 0横扫」正好是两个 0: 那种数据下 ①③ 都是空检查。)
 
 const SEED_PATH := "res://tests/_setup_lb_rows.gd"
+## ★2026-10-12 钉钟: 本屏周一看的是**上周**榜、自己那一行画「—」(通读 B4) ⇒ 不钉的话这条门禁逢周一(UTC)必红。
+##   这里量的是本周榜的三列对账 ⇒ 钉在周三(2026-10-07 12:00 UTC)。
+const P2C := preload("res://scripts/gamedata/phase2_config.gd")
+const PIN_WED := 1791158400 - 7 * 86400 + 2 * 86400 + 12 * 3600
 
 ## ★三个数必须两两不同(下面 ① 有一条断言看着它) —— 这是本门禁能不能看见"列乱了"的前提。
 const SELF_WINS := 12
@@ -196,6 +200,8 @@ func _ready() -> void:
 	if ps == null:
 		_done()
 		return
+	P2C.now_override_ts = PIN_WED
+	_ok("① ★分母: 钉的钟是积分赛日(不是周一休赛)", P2C.phase_at_utc(PIN_WED) != P2C.PHASE_REST, P2C.phase_at_utc(PIN_WED))
 	var inst: Node = ps.instantiate()
 	add_child(inst)
 	## ★等它自己把行画完(本屏在 `_ready` 里同步建节点, 一帧足够; 多等两帧保险)。
@@ -393,6 +399,7 @@ func _finish(inst: Node) -> void:
 
 
 func _done() -> void:
+	P2C.now_override_ts = 0
 	var total := _pass + _fail
 	if _fail == 0:
 		print("ALL PASS — 排行榜成绩三列对账 (%d/%d)" % [_pass, total])
