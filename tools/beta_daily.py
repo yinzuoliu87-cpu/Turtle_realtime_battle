@@ -143,7 +143,7 @@ def main():
     print("\n⑥ 当天报错(客户端上报; 次数 = 碰到过的进程数)")
     if not q("select to_regclass('public.client_errors') is not null ok")[0]["ok"]:
         print("  [没有 client_errors 表] 迁移 20261011b_client_errors.sql 还没上生产")
-        return 0
+        return feedback_section(t0, t1)
     er = q("select sig, kind, max(message) msg, max(detail) det, sum(count) n, count(distinct account_id) people, "
            "count(distinct account_id) filter (where account_id::text not in %s) others, "
            "string_agg(distinct version, ',') vers, string_agg(distinct platform, ',') plats, "
@@ -159,6 +159,27 @@ def main():
         ## 详情第 1 行是引擎报的出处(push_error 一律是 variant_utility.cpp), 第 2 行起是脚本调用栈 ⇒ 优先看栈顶
         lines = str(x["det"]).split("\n")
         print("      %s" % (lines[1] if len(lines) > 1 else lines[0])[:160])
+    return feedback_section(t0, t1)
+
+
+def feedback_section(t0, t1):
+    ## ⑦ 当天玩家反馈(设置 → 问题反馈 · 2026-10-12 · scripts/net/feedback_net.gd)
+    ##   每条都列。⑥ 那节没有表时也会走到这里(两张表各自上生产)。
+    print("\n⑦ 当天玩家反馈(设置 → 问题反馈)")
+    if not q("select to_regclass('public.player_feedback') is not null ok")[0]["ok"]:
+        print("  [没有 player_feedback 表] 迁移 20261012c_player_feedback.sql 还没上生产")
+        return 0
+    fb = q("select to_char(created_at at time zone 'UTC', 'HH24:MI:SS') t, kind, message, "
+           "meta->>'version' ver, meta->>'platform' plat, meta->>'model' model, meta->'replays' reps, "
+           "account_id::text acct from public.player_feedback "
+           "where created_at between to_timestamp(%d) and to_timestamp(%d) order by created_at" % (t0, t1))
+    print("  N=%d 条" % len(fb) + ("" if fb else " —— 当天一条都没有"))
+    for x in fb:
+        reps = x["reps"] if isinstance(x["reps"], list) else []
+        print("  %s UTC · [%s] · v%s · %s · %s · 账号 %s" % (
+            x["t"], x["kind"], x["ver"] or "?", x["plat"] or "?", x["model"] or "?", str(x["acct"])[:8]))
+        print("      %s" % str(x["message"]).replace("\n", " ")[:200])
+        print("      对局: %s" % (", ".join(str(r) for r in reps) if reps else "-"))
     return 0
 
 

@@ -202,6 +202,11 @@ func _mk(d: Dictionary) -> Control:
 	_map = SCENE.new()
 	get_tree().root.add_child(_map)
 	await get_tree().process_frame
+	## 2026-10-12 周日统一结算: 购物窗内不能开打 ⇒ 这里要量「能开打」的场景, 本轮开始时刻给在购物结束之后(没显式给的才补)
+	if not d.has("round_at"):
+		d = d.duplicate()
+		d["round_at"] = 1
+		d["srv_now"] = 100000
 	_map.set_bucket(d)
 	await get_tree().process_frame
 	return _map

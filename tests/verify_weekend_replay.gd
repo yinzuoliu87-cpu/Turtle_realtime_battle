@@ -705,6 +705,7 @@ func _t_bracket() -> void:
 			back.queue_free()
 	## 选手(我在组里): 我上场那一格照旧是「上场开打」, 翻面的仍可看
 	var mine: Dictionary = SB._bucket_from({"bucket": 2, "n": 8, "round": 2, "closed": false,
+		"round_at": now - 600, "now": now,   ## 2026-10-12 周日统一结算: 购物窗内不能开打 ⇒ 本轮开始时刻给在购物结束之后
 		"done": {"1-0": 0, "1-1": 1, "1-2": 0, "1-3": 1}, "entrants": ents}, "acct-0", now)
 	var m2 = MAP.new()
 	add_child(m2)

@@ -1484,6 +1484,29 @@ static func _spawn():
 	return n
 
 
+## 周日购物窗内把当前阵容推上去(2026-10-12 统一结算 · 服务端 finals_update_snapshot)。发完就忘。
+##   购物结束后服务端不再收 ⇒ 那一刻的这一份就是本轮锁定的阵容(原稿「最后锁定的阵容」)。
+static var finals_snapshot_posts: int = 0   ## 观测量: 真交给 _http 的次数(门禁分母)
+static func finals_update_snapshot_async(week: int, bucket: int, snapshot: Dictionary) -> void:
+	if not enabled() or bucket < 0 or snapshot.is_empty():
+		return
+	var n = _spawn()
+	if n != null:
+		n.finals_update_snapshot(week, bucket, snapshot)
+
+
+func finals_update_snapshot(week: int, bucket: int, snapshot: Dictionary) -> void:
+	if not await _await_token():
+		_bye()
+		return
+	finals_snapshot_posts += 1
+	_http("POST", base_url().rstrip("/") + "/rest/v1/rpc/finals_update_snapshot",
+		JSON.stringify({"p_week": week, "p_bucket": bucket, "p_snapshot": snapshot}),
+		func(_res):
+			_bye(),
+		"Content-Type: application/json")
+
+
 ## 客户端报错上报(2026-10-11 · scripts/net/error_reporter.gd)。发完就忘; 没配后端 = 什么都不做。
 ## ★发不出去就丢 —— 报错上报不重试、不落盘排队(它不是玩家数据, 丢几条只少一个线索)。
 static var client_error_posts: int = 0   ## 观测量: 真交给 _http 的条数(门禁分母)
@@ -1755,7 +1778,7 @@ static func parse_opponent(ok: bool, code: int, body: String) -> Dictionary:
 		"name": str(d.get("name", "")), "snapshot": snap}
 
 
-static func fetch_opponent_async(week: int, bucket: int, round_no: int, seed: int) -> void:
+static func fetch_opponent_async(week: int, bucket: int, round_no: int, seed: int, match_no: int = -1) -> void:
 	var gs = _gs()
 	if gs == null or _opp_inflight:
 		return
@@ -1769,7 +1792,7 @@ static func fetch_opponent_async(week: int, bucket: int, round_no: int, seed: in
 	var n = _spawn()
 	if n != null:
 		_opp_inflight = true
-		n.fetch_opponent(week, bucket, round_no, seed)
+		n.fetch_opponent(week, bucket, round_no, seed, match_no)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -1791,9 +1814,13 @@ static var _report_done: Dictionary = {}
 
 ## 组包。**纯函数** —— 键名与服务端对不上是这类接口最常见的死法，门禁直接验它。
 static func finals_report_body(week: int, bucket: int, round_no: int,
-		match_no: int, winner_side: int, seed_used: int) -> Dictionary:
-	return {"p_week": week, "p_bucket": bucket, "p_round": round_no,
+		match_no: int, winner_side: int, seed_used: int, reporter_side: int = -1) -> Dictionary:
+	var b := {"p_week": week, "p_bucket": bucket, "p_round": round_no,
 		"p_match": match_no, "p_winner_side": winner_side, "p_seed": seed_used}
+	## ★2026-10-12 统一结算: 报的人是哪一侧(上半区先算, 下半区宽限后代打)。没有 ⇒ 不带, 服务端回 update_required。
+	if reporter_side == 0 or reporter_side == 1:
+		b["p_reporter_side"] = reporter_side
+	return b
 
 
 ## `bucket = -1` = 任一组(老调用点 / 门禁只问坐标时用)。
@@ -1813,7 +1840,7 @@ static func finals_report_clear() -> void:
 
 
 static func report_finals_async(week: int, bucket: int, round_no: int,
-		match_no: int, winner_side: int, seed_used: int, loser_lanes: int = -1) -> void:
+		match_no: int, winner_side: int, seed_used: int, loser_lanes: int = -1, reporter_side: int = -1) -> void:
 	var gs = _gs()
 	if gs == null or _report_inflight:
 		return
@@ -1841,25 +1868,28 @@ static func report_finals_async(week: int, bucket: int, round_no: int,
 		##   **可能把错的人送进下一轮**。
 		##   —— 与 v0.19.446 修掉的**报名漏报**同一个形状(「发了就不管」)。
 		## ⇒ 标记移进**成功**那一支(见 `report_finals` 的回调)。
-		n.report_finals(week, bucket, round_no, match_no, winner_side, seed_used, loser_lanes)
+		n.report_finals(week, bucket, round_no, match_no, winner_side, seed_used, loser_lanes, reporter_side)
 
 
 func report_finals(week: int, bucket: int, round_no: int,
-		match_no: int, winner_side: int, seed_used: int, loser_lanes: int = -1) -> void:
+		match_no: int, winner_side: int, seed_used: int, loser_lanes: int = -1, reporter_side: int = -1) -> void:
 	if not enabled() or not await _await_token():
 		_report_inflight = false
 		_bye()
 		return
 	_http("POST", base_url().rstrip("/") + "/rest/v1/rpc/finals_report",
 		JSON.stringify(finals_report_body(week, bucket, round_no, match_no,
-			winner_side, seed_used)),
+			winner_side, seed_used, reporter_side)),
 		func(res):
 			_report_inflight = false
 			## ★★只有**真报成了**才记账。服务端是 `on conflict do nothing`(先到先得),
 			##   所以重复报一次无害, 而**漏报**是会把错的人送进下一轮的。
 			##   ⇒ 宁可多报一次, 不可漏一次。
 			var code := int(res.get("code", 0))
-			if bool(res.get("ok", false)) and code >= 200 and code < 300:
+			## ★2026-10-12: 服务端拒收也回 200(正文 ok:false)。「时候没到」(shop_open / upper_first)不算报成,
+			##   留着补报单下次再报; 其余拒收(轮已过 / 不在组里 / 版本旧)补报也没用, 当作结束。
+			var why := finals_report_reject(str(res.get("body", "")))
+			if bool(res.get("ok", false)) and code >= 200 and code < 300 and why != "shop_open" and why != "upper_first":
 				_report_done["%d:%d-%d" % [bucket, round_no, match_no]] = true
 				## ★2026-10-12 比分: 结果报成了再补报比分。服务端只认 seed 与采纳那份相同的 ——
 				##   我这份没被采纳(对面先报)时它回 false, 无害; 发不出去就算了(比分只是展示, 不影响晋级)。
@@ -1874,6 +1904,14 @@ func report_finals(week: int, bucket: int, round_no: int,
 		"Content-Type: application/json")
 
 
+## 纯函数: 上报回包里服务端拒收的原因("" = 收了 / 看不懂)。
+static func finals_report_reject(body: String) -> String:
+	var j = JSON.parse_string(body)
+	if j is Dictionary and not bool((j as Dictionary).get("ok", true)):
+		return str((j as Dictionary).get("reason", "rejected"))
+	return ""
+
+
 ## 纯函数: 补报比分那一次的请求体(参数名 = 服务端 finals_report_score 的形参)。
 static func finals_score_body(week: int, bucket: int, round_no: int, match_no: int,
 		seed_used: int, loser_lanes: int) -> Dictionary:
@@ -1881,15 +1919,18 @@ static func finals_score_body(week: int, bucket: int, round_no: int, match_no: i
 		"p_seed": seed_used, "p_loser_lanes": loser_lanes}
 
 
-func fetch_opponent(week: int, bucket: int, round_no: int, seed: int) -> void:
+func fetch_opponent(week: int, bucket: int, round_no: int, seed: int, match_no: int = -1) -> void:
 	if not enabled() or not await _await_token():
 		_opp_inflight = false
 		_opp_tried = true
 		_bye()
 		return
 	var url := base_url().rstrip("/") + "/rest/v1/rpc/finals_opponent"
-	var body := JSON.stringify({"p_week": week, "p_bucket": bucket,
-		"p_round": round_no, "p_seed": seed})
+	## ★2026-10-12 带场号: 这一场已有结果时服务端回 settled(每场只算一次)
+	var ob := {"p_week": week, "p_bucket": bucket, "p_round": round_no, "p_seed": seed}
+	if match_no >= 0:
+		ob["p_match"] = match_no
+	var body := JSON.stringify(ob)
 	_http("POST", url, body,
 		func(res):
 			_opp_inflight = false

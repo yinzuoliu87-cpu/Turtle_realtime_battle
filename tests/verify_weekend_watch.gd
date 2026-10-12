@@ -348,6 +348,7 @@ func _t_bracket() -> void:
 	await _frames(2)
 	## 我这一场(当前轮、对手已定): 格子上金色 ▶ +「对战」小签; 点了弹卡, 主按钮「开始对战」
 	var mine: Dictionary = SB._bucket_from({"bucket": 0, "n": 8, "round": 2, "closed": false,
+		"round_at": now - 600, "now": now,   ## 2026-10-12 周日统一结算: 购物窗内不能开打 ⇒ 这里要量「能开打」的场景, 本轮开始时刻给在购物结束之后
 		"done": {"1-0": 0, "1-1": 1, "1-2": 0, "1-3": 1}, "entrants": ents}, "acct-0", now)
 	var m3 = MAP.new()
 	add_child(m3)

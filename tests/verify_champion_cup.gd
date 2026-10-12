@@ -466,7 +466,7 @@ func _t_flow() -> void:
 	_ok("④ ★分母: 画的是杯那一张(2 人、组号 = 保留组号、我是 0 号)", int(m.cur().get("size", 0)) == 2
 		and int(m.cur().get("bucket", -1)) == P2C.FINALS_CUP_BUCKET and int(m.cur().get("me", -9)) == 0, str(m.cur().get("bucket")))
 	_ok("④ 页签「冠军杯赛」", str((m._tabs.get_child(1) as Button).text) == "冠军杯赛")
-	_ok("④ ★★我那一场能打", m.should_fetch_opponent(1, 0) and m.my_opponent_seed(1, 0) == 1)
+	_ok("④ ★分母: 我那一场的对手是 1 号种子", m.my_opponent_seed(1, 0) == 1)
 	## 购物窗那一行每拍算一次(轮询 0.5 秒一拍); 杯那一张是上一拍才到手的。
 	## ★收包时刻对齐到钉住的钟: 剩余秒数 = 服务端钟 + (本屏的「现在」− 收包时刻), 而收包时刻是真实系统钟,
 	##   门禁把「现在」钉在周日 ⇒ 不对齐的话差出好几天(产品里两者是同一个钟, 差不出来)。
@@ -476,6 +476,12 @@ func _t_flow() -> void:
 	var shop := str(m._shop_row.text)
 	_ok("④ ★★购物窗跟着杯那一张(我那组早收盘了, 用组那张会说「已结束」)", shop.begins_with("备战购物 · 还剩 2 分 30 秒"), shop)
 	_ok("④ ★倒计时跟着杯那一张", m._tip.visible and str(m._tip.text).find("后开播") >= 0, str(m._tip.text))
+	## 2026-10-12 周日统一结算: 购物窗内(开轮 30 秒)不能开打; 下面把钟拨到购物结束后再量「能」
+	_ok("④ ★★购物窗内我那一场还不能打(原稿「购物结束后统一结算」)", not m.should_fetch_opponent(1, 0))
+	P2C.now_override_ts = t1 + 200            # 购物结束(开轮 30 + 200 = 230 秒 > 180)
+	m._rebuild()
+	await _frames(1)
+	_ok("④ ★★购物结束 ⇒ 我那一场(上半区)能打", m.should_fetch_opponent(1, 0))
 	var nb := _find_btn(m, Vector2i(1, 0))
 	_ok("④ ★分母: 那一格有热区按钮", nb != null)
 	if nb != null:
@@ -695,7 +701,8 @@ func _t_group_solo() -> void:
 	var m2 = BMS.new()
 	add_child(m2)
 	await _frames(1)
-	m2.set_data({"size": 2, "round": 1, "me": 0, "names": ["我龟", "乙龟"], "done": {}, "bucket": 2}, {}, noon)
+	m2.set_data({"size": 2, "round": 1, "me": 0, "names": ["我龟", "乙龟"], "done": {}, "bucket": 2,
+		"round_at": noon - 600, "srv_now": noon}, {}, noon)   ## 2026-10-12 周日统一结算: 购物窗内不能开打 ⇒ 这里要量「能开打」的场景, 本轮开始时刻给在购物结束之后
 	await _frames(2)
 	var nb2: Button = _find_btn(m2, Vector2i(1, 0))
 	var vpw: float = get_viewport().get_visible_rect().size.x

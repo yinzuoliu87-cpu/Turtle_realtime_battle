@@ -56,6 +56,9 @@ const SEG_DISPLAY := "SegDisplay"      # + "Window" / "Full"
 const RESET_BTN := "ResetSave"
 const DEV_ARENA_BTN := "DevArena"
 const FOOT_LABEL := "FootInfo"
+const FEEDBACK_BTN := "Feedback"
+## 「问题反馈」弹框本体(2026-10-12): 面板与上传都在自己的文件里, 这一页只放按钮。
+const _FB_PANEL := preload("res://scripts/scenes/feedback_panel.gd")
 
 ## 【门禁注入点】true = 当作正式包(release 模板)来建 —— 无头门禁跑不出 release 模板,
 ##   而「调试场不许漏给玩家」这条要量**真建出来的页面**, 不是量源码里有没有那句 gate。
@@ -359,6 +362,10 @@ func _footer() -> void:
 		_pix_button(Rect2(Vector2(bx, by), _STRIP_BTN), "调试场", UISkin.PX_SLATE, _open_debug_arena).name = DEV_ARENA_BTN
 	if tt:
 		_pix_button(Rect2(Vector2(bx + _STRIP_BTN.x + 20.0, by), _STRIP_BTN), "测试时间", UISkin.PX_SLATE, _open_time_travel)
+	## 「问题反馈」(2026-10-12): 正式包在最右下角; 开发包右边已排满三颗开发键 ⇒ 排在它们左边。
+	var fx := (bx - 20.0 - _STRIP_BTN.x) if (dev or tt) else (1220.0 - _STRIP_BTN.x)
+	_pix_button(Rect2(Vector2(fx, by), _STRIP_BTN), "问题反馈", UISkin.PX_SLATE,
+		func() -> void: _FB_PANEL.open(self)).name = FEEDBACK_BTN
 
 	# 重置存档 — 破坏性 → 二次确认(`_ask_reset`)。
 	## ★开发工具: 用户 2026-10-07「正式版不会有重置存档」⇒ 与调试场同一道闸, 正式包不建。

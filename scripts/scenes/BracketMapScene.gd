@@ -1374,6 +1374,11 @@ func should_fetch_opponent(r: int, m: int) -> bool:
 	##   判据 = 「待揭晓」那一场 —— 它在上报那一刻写下、揭晓时清掉, 正好覆盖封存期。
 	if played_awaiting_reveal(r, m):
 		return false
+	## ★★2026-10-12 周日统一结算(方案书 20261012-周日统一结算 · 原稿「3 分钟备战购物 → 系统瞬间结算」):
+	##   购物窗内谁都不能开打(S4: 原来购物还剩 22 秒就被对手打完了); 每场只算一次 ——
+	##   上半区购物一结束就算, 下半区等宽限过后才能替不在线的上半区快照代打(S6: 原来两边各打各的、都算自己赢)。
+	if not _P2C.finals_fight_open(int(cur().get("round_at", 0)), _SB.finals_srv_now_of(cur(), _delta_now()), my_side(r, m)):
+		return false
 	return my_opponent_seed(r, m) >= 0
 
 
@@ -2026,7 +2031,7 @@ func _on_match_opened(r: int, m: int) -> void:
 	_SB.opponent_clear()
 	_await_match = Vector2i(r, m)
 	_await_view = _view
-	_SB.fetch_opponent_async(_P2C.week_anchor_utc(_clock()), bk, r, my_opponent_seed(r, m))
+	_SB.fetch_opponent_async(_P2C.week_anchor_utc(_clock()), bk, r, my_opponent_seed(r, m), m)
 
 
 ## ─────────────────────────────────────────────────────────────
@@ -2149,6 +2154,24 @@ static func stamp_finals_match(gs, bucket: int, r: int, m: int, side: int, now_u
 	gs.dual_active = true
 
 
+## 购物结束后、我这一场还不能开打时那一行说什么(2026-10-12 统一结算)。`""` = 不出现(交给 shop_tip)。
+##   只有下半区会落到这里: 上半区购物一结束就能开打。
+func settle_wait_tip(lv: Dictionary) -> String:
+	if lv.is_empty() or int(lv.get("me", -1)) < 0 or not shop_row_applies(lv):
+		return ""
+	var srv := _SB.finals_srv_now_of(lv, _delta_now())
+	var ra := int(lv.get("round_at", 0))
+	if _P2C.finals_shop_open(ra, srv):
+		return ""
+	var f := my_focus()
+	if f.x != int(lv.get("round", 1)) or not is_my_match(f.x, f.y) or winner_side(f.x, f.y) >= 0:
+		return ""
+	var side := my_side(f.x, f.y)
+	if side != 1 or _P2C.finals_fight_open(ra, srv, side) or played_awaiting_reveal(f.x, f.y):
+		return ""
+	return "本场结算中 · 结果于开播时公布"
+
+
 ## 备战购物窗那一行该说什么。`""` = 这一行根本不出现。
 ## ★★**纯函数**（喂两个数就能验），理由同 `finals_shop_open` 本身：
 ##   只写在屏幕里的话，门禁只量得到"此刻"那一格，窗外那一大段全是空检查。
@@ -2188,6 +2211,12 @@ static func opponent_tip(res: Dictionary, tried: bool) -> String:
 			return "观战模式"
 		"empty_snapshot", "no_such_seed":
 			return "对手未提交阵容 · 判对手弃权"
+		"shop_open":
+			return "备战阶段 · 结束后开赛"
+		"settled", "upper_first":
+			return "本场结算中 · 结果于开播时公布"
+		"update_required":
+			return "当前版本过低，请更新游戏"
 		"net", "bad_body":
 			return "无法连接服务器，请稍后重试"
 	return "对手阵容加载失败，请稍后重试"
@@ -2211,6 +2240,12 @@ func _on_poll() -> void:
 		var lv := _live_dict()
 		var st := shop_tip(_SB.finals_shop_open_of(lv, _delta_now()), _SB.finals_shop_left_of(lv, _delta_now()),
 			shop_row_applies(lv))
+		## ★2026-10-12 统一结算: 购物窗内把我当前的阵容推上去(购物结束那一刻服务端锁定)。
+		if _SB.finals_shop_open_of(lv, _delta_now()) and int(lv.get("me", -1)) >= 0 and shop_row_applies(lv):
+			load("res://scripts/net/backend.gd").finals_push_snapshot(int(lv.get("bucket", -1)), int(Time.get_unix_time_from_system()))
+		var wt := settle_wait_tip(lv)
+		if wt != "":
+			st = wt
 		_shop_row.text = st
 		_shop_row.visible = st != ""
 		if st != "":

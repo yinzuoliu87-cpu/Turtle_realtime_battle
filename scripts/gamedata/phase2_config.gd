@@ -206,6 +206,20 @@ static func settle_kind(phase: String, live: bool) -> String:
 ##   `parse_finals` 那里算剩余秒数用的也是服务端的时间差，不是本机绝对时刻）。
 ## ★做成纯函数而不是在屏幕里就地 if：只写在屏幕里的话，门禁只量得到"此刻"那一格，
 ##   窗外那一大段全是空检查（同 `phase_pending_note` 的理由）。
+## ★2026-10-12 周日统一结算(方案书 20261012-周日统一结算): 购物结束后给上半区的时间; 过了还没结果, 下半区才能替他快照代打。
+##   = 服务端 `finals_lower_grace_sec()`。
+const FINALS_LOWER_GRACE_SEC := 300
+
+
+## 这一场此刻能不能开打(纯函数)。原稿「3 分钟备战购物 → 系统瞬间结算」: 购物窗内谁都不能开打;
+##   每场只算一次 —— 上半区(0)购物一结束就算, 下半区(1)要等宽限过后(上半区不在线时替他快照代打)。
+static func finals_fight_open(round_at: int, srv_now: int, side: int) -> bool:
+	if round_at <= 0 or srv_now <= 0 or (side != 0 and side != 1):
+		return false
+	var open_at: int = round_at + FINALS_SHOP_SEC + (FINALS_LOWER_GRACE_SEC if side == 1 else 0)
+	return srv_now >= open_at
+
+
 static func finals_shop_open(round_at: int, srv_now: int) -> bool:
 	if round_at <= 0:
 		return false                  # 还没拿到桶 ⇒ 谈不上开窗
@@ -282,7 +296,10 @@ const STAGE_CUP := "冠军杯赛"
 ##   这条定时任务原来**只在服务端**, 仓库里一个字都没有; 已抄进 schema.sql 末尾注释。
 ##   ★2026-10-03 周六收盘后主菜单写「明天决赛日 · 本地 21:00 开打」(取的是上面冠军签表那个钟点),
 ##   晋级的人照着晚上 9 点才来, 白天的分桶赛就全错过了。
-const FINALS_SEAT_HOUR_UTC := 8
+##   ★★2026-10-12 用户拍板「晚上 19 点」(英国; 原 08:00 UTC = 英国早 9 点,「9点说了有问题啊，太早了啊」)。
+##   保持 UTC(E2) ⇒ 18:00 UTC: 英国夏令时 19 点、10-25 冬令时后 18 点。服务端 jobid 5 同步改成 `*/10 18-23 * * 0`
+##   (迁移 server/supabase/migrations/20261012b_finals_seat_1800.sql)。冠军杯赛 20:00 UTC 不变。
+const FINALS_SEAT_HOUR_UTC := 18
 
 
 ## 周日这一场是哪一段赛: 冠军杯赛那张(保留组号) ⇒「冠军杯赛」, 其余 ⇒「小组赛」。
@@ -299,7 +316,7 @@ static func local_hhmm(utc_ts: int) -> String:
 
 
 ## 周日分组(finals_seat)第一次跑之前吗? 服务端在这之前对「报了名还没分组」的人回 too_few, 不能照字面念给玩家。
-## ★多给 15 分钟: cron 是每 10 分钟一次, 08:00 那一拍之后客户端还要过一个刷新周期才看得到桶。
+## ★多给 15 分钟: cron 是每 10 分钟一次, 开赛那一拍(FINALS_SEAT_HOUR_UTC)之后客户端还要过一个刷新周期才看得到桶。
 static func finals_before_seating(ts: int) -> bool:
 	if phase_at_utc(ts) != PHASE_FINALS:
 		return false

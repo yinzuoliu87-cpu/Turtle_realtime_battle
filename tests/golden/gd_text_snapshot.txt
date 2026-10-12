@@ -442,6 +442,7 @@ scripts/net/error_reporter.gd|lit|\n最近报错: 无
 scripts/net/error_reporter.gd|lit|\n最近报错:\n
 scripts/net/error_reporter.gd|lit|上次启动: 
 scripts/net/error_reporter.gd|lit|上次运行没有正常退出(闪退 / 卡死被结束 / 前台被系统杀)
+scripts/net/feedback_net.gd|lit|请填写问题描述
 scripts/net/remote_pool.gd|lit|%s 带了 %d 件装备(上限 %d)
 scripts/net/remote_pool.gd|lit|%s 的 equipped 不是 Array
 scripts/net/remote_pool.gd|lit|%s 等级 %d 越界(1~%d)
@@ -504,12 +505,14 @@ scripts/scenes/BracketMapScene.gd|lit|冠军 · %s%s
 scripts/scenes/BracketMapScene.gd|lit|决赛 %s后开播
 scripts/scenes/BracketMapScene.gd|lit|周日 · 决赛日
 scripts/scenes/BracketMapScene.gd|lit|备战购物 · 还剩 %s
+scripts/scenes/BracketMapScene.gd|lit|备战阶段 · 结束后开赛
 scripts/scenes/BracketMapScene.gd|lit|对手
 scripts/scenes/BracketMapScene.gd|lit|对手未提交阵容 · 判对手弃权
 scripts/scenes/BracketMapScene.gd|lit|对手阵容加载失败，请稍后重试
 scripts/scenes/BracketMapScene.gd|lit|对手阵容已就位 · %s
 scripts/scenes/BracketMapScene.gd|lit|已产生的组冠军
 scripts/scenes/BracketMapScene.gd|lit|开始对战
+scripts/scenes/BracketMapScene.gd|lit|当前版本过低，请更新游戏
 scripts/scenes/BracketMapScene.gd|lit|待定
 scripts/scenes/BracketMapScene.gd|lit|无法连接服务器 · 30 秒后自动刷新
 scripts/scenes/BracketMapScene.gd|lit|无法连接服务器，请稍后重试
@@ -518,6 +521,7 @@ scripts/scenes/BracketMapScene.gd|lit|未晋级 · 需通过周六闯关赛
 scripts/scenes/BracketMapScene.gd|lit|本周仅 1 名组冠军 · 直接夺冠\n冠军 · %s%s
 scripts/scenes/BracketMapScene.gd|lit|本周晋级人数不足（%d 人）· 决赛日取消 · 晋级记录保留
 scripts/scenes/BracketMapScene.gd|lit|本周未晋级 · 仅可观战
+scripts/scenes/BracketMapScene.gd|lit|本场结算中 · 结果于开播时公布
 scripts/scenes/BracketMapScene.gd|lit|本轮备战已结束 · 等待开赛
 scripts/scenes/BracketMapScene.gd|lit|本轮对战
 scripts/scenes/BracketMapScene.gd|lit|本轮已结束，请刷新
@@ -882,6 +886,7 @@ scripts/scenes/SettingsScene.gd|lit|连接中…
 scripts/scenes/SettingsScene.gd|lit|邮箱 %s
 scripts/scenes/SettingsScene.gd|lit|邮箱登录
 scripts/scenes/SettingsScene.gd|lit|重置存档
+scripts/scenes/SettingsScene.gd|lit|问题反馈
 scripts/scenes/SettingsScene.gd|lit|音乐
 scripts/scenes/SettingsScene.gd|lit|音效
 scripts/scenes/SettingsScene.gd|placeholder_text|输入昵称
@@ -1517,6 +1522,17 @@ scripts/scenes/codex/synergy_view.gd|lit|同上
 scripts/scenes/codex/synergy_view.gd|lit|同类装备
 scripts/scenes/codex/synergy_view.gd|lit|激活 %s 件   ·   现有装备 %d 件
 scripts/scenes/codex/synergy_view.gd|lit|羁绊效果
+scripts/scenes/feedback_panel.gd|lit|其他
+scripts/scenes/feedback_panel.gd|lit|已提交
+scripts/scenes/feedback_panel.gd|lit|提交中
+scripts/scenes/feedback_panel.gd|lit|提交失败，请检查网络后重试
+scripts/scenes/feedback_panel.gd|lit|玩法 / 数值
+scripts/scenes/feedback_panel.gd|lit|画面 / 显示
+scripts/scenes/feedback_panel.gd|lit|闪退 / 卡顿
+scripts/scenes/feedback_panel.gd|lit|问题反馈
+scripts/scenes/feedback_panel.gd|lit|问题描述（必填，500 字以内）
+scripts/scenes/feedback_panel.gd|text|取消
+scripts/scenes/feedback_panel.gd|text|提交
 scripts/scenes/inventory/candy_jar.gd|lit|深海币 +%d
 scripts/scenes/inventory/candy_jar.gd|lit|获得 %s %s
 scripts/scenes/inventory/candy_jar.gd|lit|获得 临时等级器 ×1
