@@ -44,6 +44,10 @@ const S_TEAM := "res://scenes/TeamSelect.tscn"
 const S_MATCH := "res://scenes/Matchmaking.tscn"
 const S_BATTLE := "res://scenes/RealtimeBattle3D.tscn"
 const S_SHOP := "res://scenes/Shop.tscn"
+const _TS := preload("res://scripts/gamedata/turtle_stats.gd")
+const _EQS := preload("res://scripts/gamedata/equip_stats.gd")
+const _P2T := preload("res://scripts/gamedata/phase2_types.gd")
+const _AXE := preload("res://scripts/gamedata/axe_evolution.gd")
 const S_INV := "res://scenes/Inventory.tscn"
 const S_CODEX := "res://scenes/Codex.tscn"
 const S_LB := "res://scenes/Leaderboard.tscn"
@@ -88,6 +92,8 @@ var _scene_since := 0
 var _stuck_noted := false
 var _battle_n := 0          # 本进程看到的结算屏次数
 var _shop_visits := 0
+var _formed_season := -1      # 本进程里已经排过阵的大轮号(每个大轮排一次)
+var _econ_only := OS.get_environment("SIM_ECON_ONLY") == "1"   # 离线经济推演(见 _do_menu)
 var _acted_id := 0         # 已经处理过的场景实例(同一屏只做一次主动作, 防连点)
 
 
@@ -223,6 +229,24 @@ func _do_menu(m: Node) -> void:
 		_finish("rounds_cap")
 		return
 	_rounds_started += 1
+	## ★SIM_ECON_ONLY=1(只给离线推演用, 用户 2026-10-12「检查加入给一个账号16轮的深海币量，看看几个机器人怎么买」):
+	##   第 1 场照常真打(要走选龟 / 锁阵容), 之后不打, 按真实结算公式记一场(RealtimeBattle3DScene 积分赛分支同一条式子),
+	##   直接进商店 → 背包。胜负固定: 每第 3 场输(16 场 = 5 负 11 胜, 刚好不出局)。
+	if _econ_only and _rounds_started > 1:
+		var won := _rounds_started % 3 != 0
+		if not won:
+			GameState.lose_heart()
+		var lost_hearts: int = maxi(0, int(_P2.HEARTS_MAX) - int(GameState.hearts))
+		var reward: int = 8 + int(GameState.hearts) + 2 * lost_hearts + (6 if won else 0)
+		GameState.meta_deepsea_coins += reward
+		GameState.season_total_battles += 1
+		GameState.add_season_xp(2)
+		if won:
+			GameState.season_wins += 1
+		GameState.save()
+		_ev("econ_settle", {"n": _rounds_started, "won": won, "reward": reward, "stats": _stats()})
+		m.call("_open_shop")
+		return
 	_ev("start_battle", {"n": _rounds_started, "stats": _stats()})
 	m.call("_start_battle_flow")
 
@@ -402,21 +426,12 @@ func _do_shop(s: Node) -> void:
 	var tut := bool(GameState.tutorial_active)
 	if _shop_visits <= 2:
 		_shot("shop_%02d" % _shop_visits)
-	var style := _slot % 3      # 0 装备优先 / 1 均衡 / 2 升级优先
+	var style := _strategy()
 	var bought: Array = []
 	var xp_n := 0
-	var refreshed := false
+	var refreshes := 0
 	var coins0 := int(GameState.meta_deepsea_coins)
 	var lv0 := int(GameState.season_level)
-	## 升级优先: 先买经验(留够一件 1 费的钱)
-	if style == 2 and not tut:
-		while int(GameState.meta_deepsea_coins) >= _P2.BUY_XP_COST + 2 and int(GameState.season_level) < _P2.MAX_LEVEL and xp_n < 3:
-			if not _buy_xp(s):
-				break
-			xp_n += 1
-			await _sleep(0.4)
-			if not _alive(s):
-				return
 	## ★教程「购买经验，升到 2 级」: 按产品那颗买经验钮(它的回调会发 level_up 给引导条)。
 	if tut:
 		var xb = s.get("_tut_xp_btn")
@@ -426,59 +441,85 @@ func _do_shop(s: Node) -> void:
 			await _sleep(0.8)
 			if not _alive(s):
 				return
-	for _round in range(8):
+	## 小木斧攒满 ⇒ 最终进化四选一(按槽位挑一个; 走商店面板那颗按钮的同一个回调)
+	if not tut and _AXE.final_ready(int(GameState.axe_exp_bar), int(GameState.axe_stage), str(GameState.axe_final)):
+		var fk: String = str((_AXE.FINALS[_slot % _AXE.FINALS.size()] as Dictionary)["key"])
+		s.get("_axe_panel").call("_pick", fk)
+		_ev("axe_final", {"pick": fk, "ok": str(GameState.axe_final) == fk})
+		await _sleep(0.5)
 		if not _alive(s):
 			return
-		## 不囤货: 背包里没装上的件数 > 全队空位 + 1(留一件凑合成)⇒ 只买「凑升星」的同款(已有同 id ★1), 别的不买。
-		## ★2026-10-10 周六实操: 原来这里直接 break ⇒ 满装备的号整天一件不买、攒到 190 币, 被我误判成「游戏里没处花钱」;
-		##   真人满装备时正是拿钱买同款三合一升星(商店卡上有「已有 N/3」与合成指示星)。
-		var merge_only := false
-		if not tut:
-			var free_slots: int = maxi(0, int(GameState.team_equip_cap()) - int(GameState.team_equipped_count()))
-			merge_only = _bench_gear_n() > free_slots
+	## ① 先把等级升到本策略此刻的目标(留出本策略的底钱)
+	if not tut:
+		while int(GameState.season_level) < _target_level() \
+				and int(GameState.meta_deepsea_coins) >= _P2.BUY_XP_COST + _reserve() and xp_n < 8:
+			if not _buy_xp(s):
+				break
+			xp_n += 1
+			await _sleep(0.3)
+			if not _alive(s):
+				return
+	## ② 买: 每一步挑分最高的一件; 没有「同款 / 合星」可买时按策略刷新去找
+	var refresh_cap: int = [30, 2, 25 if _rolling_down() else 2][style]
+	## 追三星的号: 没到目标等级前不狂刷(先升到位再刷 = 真人的 slow roll), 只刷 1 次
+	if style == 0 and int(GameState.season_level) < _target_level():
+		refresh_cap = 1
+	for _step in range(40):
+		if not _alive(s):
+			return
 		var offer: Array = s.get("_offer")
-		var cands: Array = []
+		var best_i := -1
+		var best_score := -1.0
 		for i in range(offer.size()):
 			if offer[i] == null:
 				continue
-			var price := int(s.call("_price", s.call("_deco", offer[i])))
-			if merge_only and int(s.call("_owned_count", str((s.call("_deco", offer[i]) as Dictionary).get("id", "")), 1)) < 1:
+			var d: Dictionary = s.call("_deco", offer[i])
+			if int(s.call("_price", d)) > int(GameState.meta_deepsea_coins):
 				continue
-			if price <= int(GameState.meta_deepsea_coins):
-				cands.append(i)
-		if cands.is_empty():
-			if (style == 0 or merge_only) and not refreshed and not tut and int(GameState.meta_deepsea_coins) >= 2 + 3:
-				refreshed = true
-				s.call("_on_refresh")
-				_ev("shop_refresh", {"coins": int(GameState.meta_deepsea_coins)})
-				await _sleep(0.6)
-				continue
+			var sc := _offer_score(s, d, tut)
+			if sc > best_score:
+				best_score = sc
+				best_i = i
+		var want_refresh := not tut and best_score < 300.0 and refreshes < refresh_cap \
+				and int(GameState.meta_deepsea_coins) >= 2 + _refresh_floor()
+		if style == 2 and int(GameState.season_level) < 7:
+			want_refresh = want_refresh and best_score < 0.0     # 速升: 低等级不刷, 钱留着升级
+		if style == 2 and _rolling_down():
+			want_refresh = not tut and best_score < 300.0 and refreshes < refresh_cap 				and int(GameState.meta_deepsea_coins) >= 2 + 4     # 8 级大刷: 找 4~5 费, 留够买一件 4 费的钱
+		if want_refresh and (best_score < 0.0 or style == 0 or _owned_gear_n() >= 3):
+			refreshes += 1
+			s.call("_on_refresh")
+			_ev("shop_refresh", {"coins": int(GameState.meta_deepsea_coins), "best": best_score})
+			await _sleep(0.5)
+			continue
+		if best_i < 0 or best_score < 0.0:
 			break
-		var i: int = int(cands[_rng.randi() % cands.size()])
-		var eid := str((s.call("_deco", offer[i]) as Dictionary).get("id", ""))
-		s.call("_on_select", i)      # 两步购买: 点卡选中 → 面板里点「买下」
+		var eid := str((s.call("_deco", offer[best_i]) as Dictionary).get("id", ""))
+		s.call("_on_select", best_i)      # 两步购买: 点卡选中 → 面板里点「买下」
 		await _sleep(0.4)
 		if not _alive(s):
 			return
 		var c_before := int(GameState.meta_deepsea_coins)
-		s.call("_on_buy", i)
-		bought.append({"id": eid, "paid": c_before - int(GameState.meta_deepsea_coins)})
-		await _sleep(0.5)
-		if bought.size() >= (1 if tut else 4):
+		var n_before := GameState.persistent_bench.size()
+		s.call("_on_buy", best_i)
+		bought.append({"id": eid, "paid": c_before - int(GameState.meta_deepsea_coins), "score": int(best_score)})
+		await _sleep(0.4)
+		if tut and bought.size() >= 1:
 			break
-	## 均衡: 剩的钱买一次经验
-	if style == 1 and not tut and _alive(s):
-		if int(GameState.meta_deepsea_coins) >= _P2.BUY_XP_COST and _buy_xp(s):
+		if c_before == int(GameState.meta_deepsea_coins) and n_before == GameState.persistent_bench.size():
+			break                                               # 产品没收这笔(背包满等), 别死循环
+	## ③ 剩下的钱: 速升 / 均衡 拿去买经验(留底钱); 追三星的号不升, 钱留到下一轮刷新
+	if not tut and style != 0:
+		while _alive(s) and int(GameState.season_level) < _P2.MAX_LEVEL \
+				and int(GameState.meta_deepsea_coins) >= _P2.BUY_XP_COST + _reserve() and xp_n < 10 \
+				and not _rolling_down():
+			if not _buy_xp(s):
+				break
 			xp_n += 1
-	## ★不攒钱(2026-10-06 第 1 批: p07/p09 出局时手里还有 91/98 币 —— 真人不会这么打):
-	##   货买完还剩得多, 就拿去买经验(升级 = 全队装备位变多), 留 6 币给下一轮。
-	while not tut and _alive(s) and int(GameState.meta_deepsea_coins) >= _P2.BUY_XP_COST + 6 			and int(GameState.season_level) < _P2.MAX_LEVEL and xp_n < 6:
-		if not _buy_xp(s):
-			break
-		xp_n += 1
-		await _sleep(0.3)
-	_ev("shop", {"visit": _shop_visits, "tutorial": tut, "style": style, "coins_before": coins0,
-		"coins_after": int(GameState.meta_deepsea_coins), "bought": bought, "xp_buys": xp_n,
+			await _sleep(0.3)
+	_ev("shop", {"visit": _shop_visits, "tutorial": tut, "style": style, "strategy": STRAT_NAMES[style],
+		"coins_before": coins0, "coins_after": int(GameState.meta_deepsea_coins), "bought": bought,
+		"refreshes": refreshes, "xp_buys": xp_n, "axe": [int(GameState.axe_stage), int(GameState.axe_exp_bar), str(GameState.axe_final)], "stars": _star_hist(), "battles": int(GameState.season_total_battles),
 		"level": [lv0, int(GameState.season_level)], "bench_n": GameState.persistent_bench.size()})
 	await _sleep(0.8)
 	if not _alive(s):
@@ -490,12 +531,342 @@ func _do_shop(s: Node) -> void:
 	s.call("_go_inventory")
 
 
+# ═══════════════════════ 购物策略(2026-10-12 用户「别搞蠢ai」) ═══════════════════════
+## 用户原话:「装备的话不止二星啊，最高是3星，策略得知道啥时候买3星，什么时候先升等级去找高费装备，
+##   你可以想想不同的策略，但千万别搞蠢ai」。方案书 docs/plans/20261012-模拟号购物策略.md。
+## 三种打法(槽位 mod 3; p01..p120 各 40 个):
+##   0 低费追三星: 停在 Lv5(全队 8 件位)狂刷, 把 1~2 费的同款凑到 ★3; 有 2 件 ★3 或打满 9 场后再往上升。
+##   1 均衡:       等级跟真人中位(bot 表 +1), 先凑同款, 没同款刷 2 次, 剩钱升级。
+##   2 速升找高费: 早升到 Lv7(第 5 场前后), 买当前能买到的最高费; Lv7 起才刷新去找 4~5 费并凑 ★2。
+## 共同规矩: 能合出 ★3 / ★2 的那一件永远先买; 追合成的件装统领(小将身上的不进合成池);
+##   装满后好件换掉差件、背包里落单的低值件卖掉; 攻装给输出、防装给坦克。
+const STRAT_NAMES := ["低费追三星", "均衡", "速升找高费"]
+const FAST_LV := [1, 3, 4, 5, 6, 7, 7, 8, 8, 8, 9, 9, 9, 10, 10, 10, 10]
+
+
+func _strategy() -> int:
+	return _slot % 3
+
+
+func _n_star3() -> int:
+	var n := 0
+	for it in _all_gear():
+		if int(it.get("star", 1)) >= 3:
+			n += 1
+	return n
+
+
+## 本策略此刻想到的等级。
+func _target_level() -> int:
+	var b := int(GameState.season_total_battles)
+	## ★用户 2026-10-12:「机器人打完第一把…手里有些钱就应该升一级然后买4件装备…因为3级有4件容量」
+	##   ⇒ 追三星 / 均衡: 前两场后只升到 3 级, 剩下的钱买满 4 件位(原来追三星第 1 场就把 16 币砸到 4 级, 只剩钱买 2 件)。
+	##   用户「这就是一个策略的例子」⇒ 不是人人都这么开: 速升照自己的激进曲线(第 2 场后就冲 4 级)。
+	if b <= 2 and _strategy() != 2:
+		return 3
+	match _strategy():
+		0:
+			if b <= 4:
+				return 4
+			if _n_star3() >= 2 or b >= 13:
+				return 8 if b >= 13 else 7
+			return 7 if b >= 9 else 5
+		1:
+			return clampi(_P2.bot_level_for_battles(b), 1, _P2.MAX_LEVEL)   # 真人中位(396 条真人快照量出来的那条曲线)
+		_:
+			var lv := int(FAST_LV[clampi(b, 0, FAST_LV.size() - 1)])
+			if lv > 8 and _n_high_cost() < 3:
+				lv = 8                       # 8 级先停, 刷出高费再升(见 _rolling_down)
+			return lv
+
+
+## 升级时留的底钱。
+func _reserve() -> int:
+	return [4, 4, 2][_strategy()]   # 本游戏存钱没有利息 ⇒ 不压钱(16 场推演: 均衡每场压着 12~15 币)
+
+
+## 刷新时至少留着能买一件的钱。
+func _refresh_floor() -> int:
+	return [1, 3, 3][_strategy()]
+
+
+func _cost_of(eid: String) -> int:
+	return maxi(1, int((DataRegistry.phase2_equipment_by_id.get(eid, {}) as Dictionary).get("cost", 1)))
+
+
+## 一件装备的「份量」= 费 × 3^(星-1)(与卖出退池的份数同一口径)。换装 / 卖件都按它比。
+func _gear_val(it: Dictionary) -> float:
+	return float(_cost_of(str(it.get("id", "")))) * pow(3.0, float(maxi(1, int(it.get("star", 1))) - 1))
+
+
+## 商店里一件货的分。<0 = 不买。
+func _offer_score(s: Node, d: Dictionary, tut: bool) -> float:
+	var eid := str(d.get("id", ""))
+	var cost := _cost_of(eid)
+	if tut:
+		return float(cost)
+	## 小木斧只能有一把; 已有再买 = 整笔化成 +20 砍伐经验(ShopScene._on_buy)。想养斧的号见斧就买, 进化到最终造物为止。
+	if eid == "p2eq_096" and GameState.axe_owned():
+		return 450.0 if _wants_one_piece(eid) and str(GameState.axe_final) == "" else -1.0
+	var own1 := int(s.call("_owned_count", eid, 1))
+	var own2 := int(s.call("_owned_count", eid, 2))
+	var style := _strategy()
+	## 速升到 8 级(大刷阶段): 4~5 费新货排在低费同款前面(16 场推演: 8 级后刷了 25 次只买到 1 件 4 费, 钱都拿去合低费 ★2)
+	if style == 2 and int(GameState.season_level) >= 8 and own1 == 0 and own2 == 0 and cost >= 4:
+		return 650.0 + cost * 20 + _syn_gain(eid)
+	if style == 2 and int(GameState.season_level) >= 8 and cost <= 2 and not (own2 >= 2 and own1 >= 2) and own1 < 2:
+		return 140.0 + cost * 10               # 低费同款往后排(差 1 件就合的照常优先)
+	if own2 >= 2 and own1 >= 2:
+		return 1000.0 + cost                   # 这一买直接合出 ★3
+	if own1 >= 2:
+		return 600.0 + cost * 10               # 这一买合出 ★2
+	if own1 == 1 or own2 >= 1:
+		if style == 0 and cost >= 3 and own2 == 0:
+			return 150.0 + cost                # 追三星的号: 高费同款排在低费同款后面
+		return 300.0 + cost * 10 + own2 * 50 + (20.0 if _is_core(eid) else 0.0)   # 往 ★2 / ★3 走一步
+	## 新款: 背包快满 / 装不下又不比身上最差那件好 ⇒ 不买
+	if GameState.persistent_bench.size() >= _P2.BENCH_CAP - 2:
+		return -1.0
+	## 位子已经被(身上 + 背包里待装的)占满: 只有明显更好的(≥ 手里最差那件 1.5 倍)才买, 且背包里最多压 1 件备用
+	##   ★10-12 离线首测: 原来拿「身上最差」比, 进店时身上还没装 ⇒ 最差 = 0 ⇒ 什么都过, 2 个位子买了 5 件
+	var room := int(GameState.team_equip_cap()) - int(GameState.team_equipped_count()) - _bench_gear_n()
+	if room <= 0:
+		var w := _worst_owned_val()
+		var future_syn := _syn_gain(eid) > 0.0 and _bench_gear_n() < 2     # 为以后的羁绊囤货(用户「或买未来羁绊要用到的装备」)
+		if not future_syn and (_bench_gear_n() >= 2 or w <= 0.0 or float(cost) < w * 1.5):
+			return -1.0
+	var syn := _syn_gain(eid)
+	match style:
+		0:
+			if (cost > 2 and not (syn > 0.0 and cost <= 3)) or _open_singles() >= 3:
+				return -1.0
+			return 100.0 + (3 - cost) * 5 + syn * 0.6      # 追三星: 走高为主, 羁绊只是加分
+		1:
+			if _open_singles() >= 5 and syn <= 0.0:
+				return -1.0
+			return 100.0 + cost * 10 + syn                 # 均衡: 更偏走宽(凑羁绊)
+		_:
+			var lvn := int(GameState.season_level)
+			var min_cost := 1 if lvn < 5 else (2 if lvn < 7 else (3 if lvn < 8 else 4))
+			if syn > 0.0:
+				min_cost -= 1                               # 对口羁绊的件放宽一档费
+			if cost < min_cost:
+				return -1.0
+			return 100.0 + cost * 20 + syn * 0.8
+	return -1.0
+
+
+## 手里(身上 + 背包)最差那件的份量。一件都没有 = 0。
+func _worst_owned_val() -> float:
+	var w := INF
+	for e in _equipped_list():
+		w = minf(w, _gear_val(e["it"]))
+	for it in GameState.persistent_bench:
+		if it is Dictionary and str((it as Dictionary).get("kind", "")) != "item":
+			w = minf(w, _gear_val(it))
+	return 0.0 if w == INF else w
+
+
+## 全队身上的装备: [{it, kind, pid / lane+idx, cell}]。羁绊赠送件不算(不能卸不能卖)。
+func _equipped_list() -> Array:
+	var out: Array = []
+	var dl: Dictionary = GameState.get_dual_lineup()
+	for lane in ["top", "bottom"]:
+		var arr: Array = dl.get(lane, [])
+		for i in range(arr.size()):
+			var u = arr[i]
+			if not (u is Dictionary):
+				continue
+			var eqs: Array = []
+			if str(u.get("kind", "")) == "leader":
+				eqs = GameState.persistent_equipped.get(str(u.get("id", "")), [])
+			else:
+				eqs = u.get("equips", []) if u.get("equips", null) is Array else []
+			for c in range(eqs.size()):
+				var it = eqs[c]
+				if it is Dictionary and not GameState.is_synergy_grant(it):
+					out.append({"it": it, "kind": str(u.get("kind", "")), "pid": str(u.get("id", "")),
+						"lane": lane, "idx": i, "cell": c})
+	return out
+
+
+# ═══════════════════════ 羁绊(2026-10-12 用户「有考虑羁绊吗」) ═══════════════════════
+## 规则(phase2_types.gd): 每件装备一个类型; 身上装的、按 id 去重的同类型件数到阈值即激活(3/6/9 或 2/5/8/10)。
+## 「走宽(凑羁绊) 与 走高(合 3★) 互斥」是设计本意(同一件带两件只算 1)⇒ 三种打法各有偏重:
+##   追三星偏走高(羁绊 ×0.6) / 均衡偏走宽(×1.0) / 速升找高费 ×0.8。
+## 每个号定一个主羁绊 + 一个副羁绊:
+##   主: 按三只统领的多数定位 —— 物理输出(刺客 / 射手 / 斗士)→ 剑 / 枪 / 弓箭; 法师 → 法器 / 药水;
+##       坦克 → 盾 / 奇械; 辅助 → 药水 / 食物; 同一类里按槽位错开。
+##   副: 灵物 / 遗物 / 奇械 / 法器(2 件就激活的那几类)里按槽位挑一个, 不与主相同。
+var _core_cache: Array = []
+var _core_season := -1
+
+
+func _core_types() -> Array:
+	if int(GameState.season_id) == _core_season and not _core_cache.is_empty():
+		return _core_cache
+	var votes := {"dps": 0, "mage": 0, "tank": 0, "sup": 0}
+	for pid in GameState.lineup_leader_ids():
+		var role := str(_TS.ROLE.get(str(pid), ""))
+		if role.contains("坦克"):
+			votes["tank"] += 1
+		elif role.contains("辅助"):
+			votes["sup"] += 1
+		elif role.contains("法师"):
+			votes["mage"] += 1
+		else:
+			votes["dps"] += 1
+	var top := "dps"
+	for k in ["dps", "mage", "tank", "sup"]:
+		if int(votes[k]) > int(votes[top]):
+			top = k
+	var pools := {"dps": ["剑", "枪", "弓箭"], "mage": ["法器", "药水"], "tank": ["盾", "奇械"], "sup": ["药水", "食物"]}
+	var prim_list: Array = pools[top]
+	var prim: String = prim_list[_slot % prim_list.size()]
+	var sec_list: Array = ["灵物", "遗物", "奇械", "法器"].filter(func(x): return x != prim)
+	var sec: String = sec_list[(_slot / 3) % sec_list.size()]
+	_core_cache = [prim, sec]
+	_core_season = int(GameState.season_id)
+	return _core_cache
+
+
+## 香火石(093·香火 1 件激活)与小木斧(096·斧头 1 件激活, 激活后抬高商店出货概率): 谁都值得带 1 件。
+const ONE_PIECE_SYN := ["p2eq_093", "p2eq_096"]
+
+
+## 用户 2026-10-12「不一定每个机器人都要买香火和小木斧, 真人不会这么做的」⇒ 只有部分号想要:
+##   用户「太多了，减半吧」⇒ 香火石 槽位 mod 10 ∈ {0,1}(20%) · 小木斧 槽位 mod 8 == 0(12.5%)。其余号把它们当普通货看。
+func _wants_one_piece(eid: String) -> bool:
+	if eid == "p2eq_093":
+		return _slot % 10 <= 1
+	if eid == "p2eq_096":
+		return _slot % 8 == 0
+	return false
+
+
+func _is_core(eid: String) -> bool:
+	if eid in ONE_PIECE_SYN and not _wants_one_piece(eid):
+		return false
+	if eid in ONE_PIECE_SYN:
+		for g in _all_gear():
+			if str(g.get("id", "")) == eid:
+				return false
+		return true
+	for ty in _P2T.types_of(eid):
+		if str(ty) in _core_types():
+			return true
+	return false
+
+
+## 买这件新款对羁绊的分: 不对口 / 已经有同 id = 0; 对口 = 主 60 / 副 35; 再买一件就升档 +40。
+func _syn_gain(eid: String) -> float:
+	if not _is_core(eid):
+		return 0.0
+	for g in _all_gear():
+		if str(g.get("id", "")) == eid:
+			return 0.0
+	if eid in ONE_PIECE_SYN:
+		return 70.0                          # 买到就激活一档
+	var core := _core_types()
+	var g := 0.0
+	var rows: Array = GameState.synergy_rows()
+	for ty in _P2T.types_of(eid):
+		var tys := str(ty)
+		if not (tys in core):
+			continue
+		g = maxf(g, 60.0 if tys == str(core[0]) else 35.0)
+		for r in rows:
+			if str(r["t"]) == tys and int(r["need"]) == 1:
+				g += 40.0
+		## 还一件都没装: 第一档阈值 2 的那类(副)买第 1 件也算往前一步, 不额外加
+	return g
+
+
+## 换装 / 选装用的「有效份量」: 对口羁绊 ×1.4。
+func _eff_val(it: Dictionary) -> float:
+	return _gear_val(it) * (1.4 if _is_core(str(it.get("id", ""))) else 1.0)
+
+
+## 速升打法的「8 级大刷」阶段: 已到 8 级、身上 ≥4 费的装备还不到 3 件。
+##   ★16 场推演(10-12)量到: 原来速升一路把钱全砸升级到 9 级, 4~5 费一件没买过、商店一次没刷 ——
+##   真人是升到 8 级就停下来刷, 找高费并合 ★2, 刷出来了再升 9。
+func _rolling_down() -> bool:
+	return _strategy() == 2 and int(GameState.season_level) >= 8 and _n_high_cost() < 3
+
+
+## 手里(身上 + 背包)≥4 费的装备件数(★2 / ★3 也按 1 件算)。
+func _n_high_cost() -> int:
+	var n := 0
+	for it in _all_gear():
+		if _cost_of(str(it.get("id", ""))) >= 4:
+			n += 1
+	for e in _equipped_list():
+		if str(e["kind"]) == "minion" and _cost_of(str(e["it"].get("id", ""))) >= 4:
+			n += 1
+	return n
+
+
 ## 买经验 —— 与商店那颗经验钮的 `pressed` 回调逐字同一段(`GameState.buy_season_xp()` 成功则 `_rebuild()`)。
 func _buy_xp(s: Node) -> bool:
 	if GameState.buy_season_xp():
 		s.call("_rebuild")
 		return true
 	return false
+
+
+## 已拥有的装备件数(背包 + 全队已装上)。
+func _owned_gear_n() -> int:
+	return _all_gear().size()
+
+
+## 还没凑齐的★1 款数(某 id 的 ★1 只有 1~2 件)。≥4 种时不再开新款, 只追同款 —— 摊太开永远合不出来。
+func _open_singles() -> int:
+	var c := {}
+	for it in _all_gear():
+		if int(it.get("star", 1)) == 1:
+			var k := str(it.get("id", ""))
+			c[k] = int(c.get(k, 0)) + 1
+	var n := 0
+	for k in c:
+		if int(c[k]) % 3 != 0:
+			n += 1
+	return n
+
+
+func _all_gear() -> Array:
+	var out: Array = []
+	for it in GameState.persistent_bench:
+		if it is Dictionary and str((it as Dictionary).get("kind", "")) != "item":
+			out.append(it)
+	for side in GameState.persistent_equipped:
+		var v = GameState.persistent_equipped[side]
+		if v is Array:
+			for it in v:
+				if it is Dictionary:
+					out.append(it)
+		elif v is Dictionary:
+			for k in v:
+				var arr = v[k]
+				if arr is Array:
+					for it in arr:
+						if it is Dictionary:
+							out.append(it)
+	return out
+
+
+## 全部装备的星级分布 {1: n, 2: n, 3: n}(记进 shop 事件, 用来量「是不是全是★1」)。
+func _star_hist() -> Dictionary:
+	var h := {1: 0, 2: 0, 3: 0}
+	var all: Array = []
+	for it in GameState.persistent_bench:
+		if it is Dictionary and str((it as Dictionary).get("kind", "")) != "item":
+			all.append(it)
+	for e in _equipped_list():
+		all.append(e["it"])
+	for it in all:
+		var st := int(it.get("star", 1))
+		h[st] = int(h.get(st, 0)) + 1
+	return h
 
 
 func _bench_gear_n() -> int:
@@ -515,13 +886,20 @@ func _do_inventory(v: Node) -> void:
 	_acted_id = v.get_instance_id()
 	var tut := bool(GameState.tutorial_active)
 	var equipped: Array = []
+	var swaps: Array = []
+	var sold: Array = []
+	var formed := {}
+	if not tut:
+		formed = await _arrange_lineup(v)
+		if not _alive(v):
+			return
 	for _k in range(14):
 		if not _alive(v):
 			return
-		var bi := _first_bench_gear()
+		var bi := _best_bench_gear()
 		if bi < 0:
 			break
-		var tgt := _equip_target()
+		var tgt := _equip_target(GameState.persistent_bench[bi])
 		if tgt.is_empty():
 			break
 		var before := GameState.persistent_bench.size()
@@ -544,9 +922,53 @@ func _do_inventory(v: Node) -> void:
 				"unit": unit_now, "team": [GameState.team_equipped_count(), GameState.team_equip_cap()]})
 			_shot("ANOMALY_inventory_equip")
 			break
-	_ev("inventory", {"tutorial": tut, "equipped": equipped,
+	## 全队装满后: 背包里最好那件比身上最差那件明显好(份量 ≥1.5 倍)⇒ 卸下差的、装上好的
+	if not tut:
+		for _w in range(4):
+			if not _alive(v):
+				return
+			var bi := _best_bench_gear()
+			if bi < 0 or GameState.team_has_equip_room():
+				break
+			var best_it: Dictionary = GameState.persistent_bench[bi]
+			var worst := _worst_equipped()
+			if worst.is_empty() or _eff_val(best_it) < _eff_val(worst["it"]) * 1.5:
+				break
+			var ops = v.get("_inv_ops")
+			if str(worst["kind"]) == "leader":
+				ops.call("_unequip_at", str(worst["pid"]), int(worst["cell"]))
+			else:
+				ops.call("_unequip_minion_at", str(worst["lane"]), int(worst["idx"]), int(worst["cell"]))
+			await _sleep(0.35)
+			var bi2 := _best_bench_gear()
+			var tgt := _equip_target(GameState.persistent_bench[bi2]) if bi2 >= 0 else {}
+			if tgt.is_empty():
+				break
+			v.call("_on_bench_click", bi2)
+			await _sleep(0.3)
+			v.call("_dl_click", str(tgt["lane"]), int(tgt["idx"]))
+			await _sleep(0.4)
+			swaps.append({"out": worst["it"], "in": best_it, "to": tgt})
+		## 背包快满: 卖掉落单的低值件(不卖正在凑合成的同款)
+		for _q in range(6):
+			if not _alive(v):
+				return
+			if GameState.persistent_bench.size() < _P2.BENCH_CAP - 3:
+				break
+			var si := _junk_bench_idx()
+			if si < 0:
+				break
+			var it: Dictionary = GameState.persistent_bench[si]
+			v.call("_on_bench_click", si)
+			await _sleep(0.3)
+			v.get("_inv_ops").call("_sell_selected")
+			await _sleep(0.35)
+			sold.append(it)
+	_ev("inventory", {"tutorial": tut, "equipped": equipped, "swaps": swaps, "sold": sold, "formation": formed,
+		"lineup": _lineup_record(), "battles": int(GameState.season_total_battles), "level": int(GameState.season_level),
 		"team_equipped": GameState.team_equipped_count(), "team_cap": GameState.team_equip_cap(),
-		"bench_n": GameState.persistent_bench.size()})
+		"bench_n": GameState.persistent_bench.size(), "stars": _star_hist(), "core": _core_types(),
+		"synergy": GameState.synergy_rows().slice(0, 3)})
 	if _shop_visits <= 2:
 		_shot("inventory_%02d" % _shop_visits)
 	await _sleep(0.8)
@@ -564,37 +986,278 @@ func _do_inventory(v: Node) -> void:
 		get_tree().change_scene_to_file(S_MENU)   # 顶栏返回钮绑的就是这一句
 
 
-func _first_bench_gear() -> int:
+## 本场整理完之后的完整阵容(用户 2026-10-12「每场得装备阵容有记录对吧」):
+##   [{lane, pos, kind, id(统领龟 id / 小将), role(小将前后排), gear: ["p2eq_xxx★n", ...]}] + 背包里没装的。
+func _lineup_record() -> Dictionary:
+	var units: Array = []
+	var dl: Dictionary = GameState.get_dual_lineup()
+	for lane in ["top", "bottom"]:
+		var arr: Array = dl.get(lane, [])
+		for i in range(arr.size()):
+			var u = arr[i]
+			if not (u is Dictionary):
+				continue
+			var kind := str(u.get("kind", ""))
+			var eqs: Array = []
+			if kind == "leader":
+				eqs = GameState.persistent_equipped.get(str(u.get("id", "")), [])
+			else:
+				eqs = u.get("equips", []) if u.get("equips", null) is Array else []
+			var gear: Array = []
+			for it in eqs:
+				if it is Dictionary:
+					gear.append("%s★%d" % [str(it.get("id", "")), int(it.get("star", 1))])
+			units.append({"lane": lane, "pos": i, "kind": kind, "id": str(u.get("id", "")),
+				"role": str(u.get("role", "")) if kind == "minion" else "", "gear": gear})
+	var bench: Array = []
+	for it in GameState.persistent_bench:
+		if it is Dictionary and str((it as Dictionary).get("id", "")) != "":
+			bench.append("%s★%d" % [str(it.get("id", "")), int(it.get("star", 1))])
+	return {"units": units, "bench": bench}
+
+## 背包里最值得装的那件(份量最大; 临时等级器不算)。
+func _best_bench_gear() -> int:
 	var bench: Array = GameState.persistent_bench
+	var best := -1
+	var bv := -1.0
 	for i in range(bench.size()):
-		if bench[i] is Dictionary and str((bench[i] as Dictionary).get("id", "")) != "":
-			return i
-	return -1
+		var it = bench[i]
+		if not (it is Dictionary) or str((it as Dictionary).get("id", "")) == "" \
+				or str((it as Dictionary).get("kind", "")) == "item":
+			continue
+		var val := _eff_val(it)
+		if val > bv:
+			bv = val
+			best = i
+	return best
 
 
-## 下一件装给谁: 统领优先(按 lane 顺序), 统领都满了给小将。全队满 ⇒ 空。
-func _equip_target() -> Dictionary:
+## 身上份量最小的那件。
+func _worst_equipped() -> Dictionary:
+	var w: Dictionary = {}
+	var wv := INF
+	for e in _equipped_list():
+		var val := _eff_val(e["it"])
+		if val < wv:
+			wv = val
+			w = e
+	return w
+
+
+## 背包里该卖的那件: ★1、手里同款只有这一件、份量最小。没有就 -1。
+func _junk_bench_idx() -> int:
+	var cnt := {}
+	for it in _all_gear():
+		var k := "%s|%d" % [str(it.get("id", "")), int(it.get("star", 1))]
+		cnt[k] = int(cnt.get(k, 0)) + 1
+	var bench: Array = GameState.persistent_bench
+	var best := -1
+	var bv := INF
+	for i in range(bench.size()):
+		var it = bench[i]
+		if not (it is Dictionary) or str((it as Dictionary).get("kind", "")) == "item" or GameState.is_synergy_grant(it):
+			continue
+		if int(it.get("star", 1)) != 1 or int(cnt.get("%s|1" % str(it.get("id", "")), 0)) > 1:
+			continue
+		var val := _gear_val(it)
+		if val < bv:
+			bv = val
+			best = i
+	return best
+
+
+## 装备是攻装还是防装: ★1 那档的数值里攻(atk + crit)和防(hp / def / mr)哪边大。1 = 攻, -1 = 防, 0 = 两边差不多。
+func _gear_side(eid: String) -> int:
+	var rows = _EQS.STATS.get(eid, [])
+	if not (rows is Array) or (rows as Array).is_empty() or not ((rows as Array)[0] is Dictionary):
+		return 0
+	var r: Dictionary = (rows as Array)[0]
+	var off := float(r.get("atk", 0)) + float(r.get("crit", 0)) * 60.0
+	var dfn := float(r.get("hp", 0)) / 8.0 + (float(r.get("def", 0)) + float(r.get("mr", 0))) * 1.5
+	if off > dfn * 1.3:
+		return 1
+	if dfn > off * 1.3:
+		return -1
+	return 0
+
+
+## 单位想要哪边的装备: 1 = 输出(刺客 / 射手 / 法师 / 后排小将), -1 = 坦克 / 辅助 / 前排小将, 0 = 斗士。
+func _unit_side(u: Dictionary) -> int:
+	if str(u.get("kind", "")) == "minion":
+		return 1 if str(u.get("role", "front")) == "back" else -1
+	var role := str(_TS.ROLE.get(str(u.get("id", "")), ""))
+	if role.contains("坦克") or role.contains("辅助"):
+		return -1
+	if role.contains("斗士"):
+		return 0
+	return 1
+
+
+## 这件装给谁: 有空位的单位里挑最对口的(攻装给输出、防装给坦克); 同分统领优先 ——
+##   追合成的件必须在统领身上(小将身上的不进合成池)。全队满 ⇒ 空。
+func _equip_target(it: Dictionary = {}) -> Dictionary:
 	if not GameState.team_has_equip_room():
 		return {}
+	var side := _gear_side(str(it.get("id", ""))) if not it.is_empty() else 0
+	var chasing := false
+	if not it.is_empty() and int(it.get("star", 1)) < 3:
+		var k := "%s" % str(it.get("id", ""))
+		var n := 0
+		for g in _all_gear():
+			if str(g.get("id", "")) == k and int(g.get("star", 1)) == int(it.get("star", 1)):
+				n += 1
+		chasing = n >= 2
 	var dl: Dictionary = GameState.get_dual_lineup()
-	for want in ["leader", "minion"]:
-		for lane in ["top", "bottom"]:
-			var arr: Array = dl.get(lane, [])
-			for i in range(arr.size()):
-				var u = arr[i]
-				if not (u is Dictionary) or str(u.get("kind", "")) != want:
+	var best: Dictionary = {}
+	var bs := -INF
+	for lane in ["top", "bottom"]:
+		var arr: Array = dl.get(lane, [])
+		for i in range(arr.size()):
+			var u = arr[i]
+			if not (u is Dictionary):
+				continue
+			var want := str(u.get("kind", ""))
+			var eqs: Array = []
+			if want == "leader":
+				var pid := str(u.get("id", ""))
+				if pid == "":
 					continue
-				var eqs: Array = []
-				if want == "leader":
-					var pid := str(u.get("id", ""))
-					if pid == "":
-						continue
-					eqs = GameState.persistent_equipped.get(pid, [])
+				eqs = GameState.persistent_equipped.get(pid, [])
+			elif want == "minion":
+				if chasing:
+					continue
+				eqs = u.get("equips", []) if u.get("equips", null) is Array else []
+			else:
+				continue
+			if GameState._cap_count(eqs) >= _P2.UNIT_EQUIP_CAP:
+				continue
+			var us := _unit_side(u)
+			var sc := 0.0
+			if side != 0 and us != 0:
+				sc = 2.0 if side == us else -2.0
+			sc += 1.0 if want == "leader" else 0.0
+			sc -= 0.1 * GameState._cap_count(eqs)
+			if sc > bs:
+				bs = sc
+				best = {"lane": lane, "idx": i, "kind": want, "id": str(u.get("id", ""))}
+	return best
+
+
+# ═══════════════════════ 布阵(2026-10-12 用户「小将和统领的站位…不能千篇一律」) ═══════════════════════
+## 原来 120 个号全是默认阵: 上路 2 统领 + 1 前排小将 / 下路 1 统领 + 前后排小将各 1。
+## 现在按三只统领的定位排:
+##   · 哪两只同路: 模板 A(槽位/3 偶数)把「最肉的 + 最能打的」放一路; 模板 B 把两只近战放一路、远程单走。
+##   · 两统领那路放 上路 还是 下路: 按槽位再错开一位。
+##   · 小将前后排: 同路统领全是远程 ⇒ 小将站前排挡刀; 全是近战 ⇒ 小将站后排输出; 混着 ⇒ 一前一后。
+## 每个大轮只排一次(换轮后阵容重选, 再排一次)。走产品真入口: 点两格互换(_dl_click)、点小将切前后排(_dl_toggle_role)。
+func _arrange_lineup(v: Node) -> Dictionary:
+	if int(GameState.season_id) == _formed_season:
+		return {}
+	var dl: Dictionary = GameState.get_dual_lineup()
+	var leaders: Array = []      # [{slot, id, melee, side}]
+	for lane in ["top", "bottom"]:
+		for u in dl.get(lane, []):
+			if u is Dictionary and str(u.get("kind", "")) == "leader" and str(u.get("id", "")) != "":
+				var pid := str(u.get("id", ""))
+				var st = _TS.STATS.get(pid, [])
+				var melee: bool = bool(st[0]) if st is Array and (st as Array).size() > 0 else true
+				if pid in _TS.ROLE_MELEE_EXEMPT:
+					melee = true
+				leaders.append({"slot": int(u.get("slot", 0)), "id": pid, "melee": melee, "side": _unit_side(u)})
+	if leaders.size() != 3:
+		return {}
+	## 选出同路的两只
+	var pair: Array = []
+	var tmpl := (_slot / 3) % 2
+	if tmpl == 0:
+		var tank: Dictionary = leaders[0]
+		var dps: Dictionary = leaders[0]
+		for l in leaders:
+			if int(l["side"]) < int(tank["side"]):
+				tank = l
+			if int(l["side"]) > int(dps["side"]):
+				dps = l
+		pair = [tank, dps] if tank != dps else [leaders[0], leaders[1]]
+	else:
+		var mel := leaders.filter(func(l): return bool(l["melee"]))
+		pair = [mel[0], mel[1]] if mel.size() >= 2 else ([leaders[0], leaders[1]] if mel.size() == 0 else [mel[0], leaders.filter(func(l): return not bool(l["melee"]))[0]])
+	var solo: Dictionary = leaders.filter(func(l): return l != pair[0] and l != pair[1])[0]
+	var pair_lane := "top" if ((_slot / 6) % 2 == 0) else "bottom"
+	var solo_lane := "bottom" if pair_lane == "top" else "top"
+	## 目标: 每格放哪只(统领按 slot 认; 小将按原来的顺序依次填)
+	var want := {pair_lane: [int(pair[0]["slot"]), int(pair[1]["slot"]), -1], solo_lane: [int(solo["slot"]), -1, -1]}
+	var order: Array = [["top", 0], ["top", 1], ["top", 2], ["bottom", 0], ["bottom", 1], ["bottom", 2]]
+	var swaps := 0
+	for k in range(order.size()):
+		var lane: String = order[k][0]
+		var pos: int = order[k][1]
+		var need: int = int(want[lane][pos])
+		var cur: Dictionary = GameState.get_dual_lineup()
+		if _unit_fits(cur, lane, pos, need):
+			continue
+		var found := -1
+		for j in range(k + 1, order.size()):
+			if _unit_fits(cur, str(order[j][0]), int(order[j][1]), need):
+				found = j
+				break
+		if found < 0:
+			continue
+		v.call("_dl_click", str(order[found][0]), int(order[found][1]))   # 点一格(选中)
+		await _sleep(0.25)
+		v.call("_dl_click", lane, pos)                                      # 点另一格(互换)
+		await _sleep(0.3)
+		swaps += 1
+		if not _alive(v):
+			return {}
+	## 小将前后排
+	var roles := []
+	var fin: Dictionary = GameState.get_dual_lineup()
+	for lane in ["top", "bottom"]:
+		var arr: Array = fin[lane]
+		var mel := 0
+		var rng := 0
+		for u in arr:
+			if u is Dictionary and str(u.get("kind", "")) == "leader":
+				var lid := str(u.get("id", ""))
+				var st = _TS.STATS.get(lid, [])
+				if (st is Array and (st as Array).size() > 0 and bool(st[0])) or lid in _TS.ROLE_MELEE_EXEMPT:
+					mel += 1
 				else:
-					eqs = u.get("equips", []) if u.get("equips", null) is Array else []
-				if GameState._cap_count(eqs) < _P2.UNIT_EQUIP_CAP:
-					return {"lane": lane, "idx": i, "kind": want, "id": str(u.get("id", ""))}
-	return {}
+					rng += 1
+		var mi := 0
+		for i in range(arr.size()):
+			var u = GameState.get_dual_lineup()[lane][i]
+			if not (u is Dictionary) or str(u.get("kind", "")) != "minion":
+				continue
+			var role := "front"
+			if mel > 0 and rng == 0:
+				role = "back"
+			elif mel > 0 and rng > 0:
+				role = "front" if mi % 2 == 0 else "back"
+			elif mel == 0 and rng == 0:
+				role = "front" if mi % 2 == 0 else "back"
+			if str(u.get("role", "front")) != role:
+				v.call("_dl_toggle_role", lane, i)
+				await _sleep(0.25)
+			roles.append("%s%d=%s" % [lane, i, role])
+			mi += 1
+	_formed_season = int(GameState.season_id)
+	var res := {"template": tmpl, "pair": [pair[0]["id"], pair[1]["id"]], "pair_lane": pair_lane,
+		"solo": solo["id"], "swaps": swaps, "minion_roles": roles}
+	_ev("formation", res)
+	return res
+
+
+## 这一格上的单位是不是 need 要的(need ≥0 = 那个 slot 的统领; -1 = 任一小将)。
+func _unit_fits(dl: Dictionary, lane: String, pos: int, need: int) -> bool:
+	var arr: Array = dl.get(lane, [])
+	if pos >= arr.size() or not (arr[pos] is Dictionary):
+		return false
+	var u: Dictionary = arr[pos]
+	if need >= 0:
+		return str(u.get("kind", "")) == "leader" and int(u.get("slot", -1)) == need
+	return str(u.get("kind", "")) == "minion"
+
 
 
 # ═══════════════════════════════ 图鉴 ═══════════════════════════════

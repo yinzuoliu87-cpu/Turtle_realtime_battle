@@ -1450,7 +1450,10 @@ func _ready() -> void:
 	##   全新空 user:// 下, **场景脚本拿到控制权时 `savegame.json` 已经写出来了**
 	##   (`ensure_season()` 滚赛季会 `save()`), 所以任何台子在自己 `_ready` 里置
 	##   `test_mode` 都**来不及**, 开机那一刻存档就被改写了。
-	apply_save_guard(DisplayServer.get_name() == "headless",
+	## ★2026-10-12: 无头的**模拟玩家**(SIM_DRIVER=1)不算门禁 —— 它们是真账号, 要存档、要同步、商店要真随机。
+	##   原来无头一律进 test_mode ⇒ 无头模拟号不写存档、不推云存档、120 个号商店同一个种子(全追同一批装备)。
+	##   门禁从不设 SIM_DRIVER, 判据不变。
+	apply_save_guard(DisplayServer.get_name() == "headless" and OS.get_environment("SIM_DRIVER") != "1",
 		OS.has_environment(NO_SAVE_ENV),
 		cmdline_scene_override(OS.get_cmdline_args(),
 			str(ProjectSettings.get_setting("application/run/main_scene", ""))))
