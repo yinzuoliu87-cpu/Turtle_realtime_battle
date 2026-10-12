@@ -143,6 +143,10 @@ func _trace(pairs: Array, frames: int, loadouts: Dictionary = {}, cast_probe: bo
 func _salvo_run(gseed: int) -> Array:
 	RB.DEBUG_EDIT = false          # ★上面的场景把它置真(调试场) ⇒ 不复位的话本局处于编辑态, _fight_on 恒假, 齐射永不结算
 	var s = load("res://scenes/RealtimeBattle3D.tscn").instantiate()
+	## ★2026-10-12: 这 40 帧原来按真实 delta 推战斗钟 ⇒ 进齐射时 `_t` 随机器快慢不同
+	##   (探针 tests/_probe_salvo_flaky.gd: 本机 6 遍全是 12,0,18,12 · --max-fps 15 下 6 遍全是 12,0,12,18,
+	##   正是 0.19.566 CI 红的那一份) ⇒ det 模式让每帧恰一步, 与帧率无关。
+	s._deterministic = true
 	add_child(s)
 	for _i in range(40):
 		await get_tree().process_frame
