@@ -453,9 +453,11 @@ func _do_shop(s: Node) -> void:
 	var fast_mid: bool = style == 2 and int(GameState.season_level) >= 8 and int(GameState.season_level) < _P2.MAX_LEVEL
 	var fast_rolls: int = _rng.randi_range(0, 4)
 	var fast_new_high := 0
+	## 速升: 升级前先把货架上「已有同款」的钱留出来 —— 原来钱几乎全进升级, 一场只买得起 0~2 件, 一路全是 ★1
+	var dup_hold := _dup_budget(s) if style == 2 else 0
 	if not tut and not fast_mid:      # 速升 8~9 级: 先看货架有没有 4~5 费 / 能合的, 剩下的钱才升级(见 ③)
 		while int(GameState.season_level) < _target_level() \
-				and int(GameState.meta_deepsea_coins) >= _P2.BUY_XP_COST + _reserve() and xp_n < 8:
+				and int(GameState.meta_deepsea_coins) >= _P2.BUY_XP_COST + _reserve() + dup_hold and xp_n < 8:
 			if not _buy_xp(s):
 				break
 			xp_n += 1
@@ -817,6 +819,22 @@ func _eff_val(it: Dictionary) -> float:
 ## 速升打法的「大刷」阶段 = 已到 10 级。
 ##   ★用户 2026-10-12:「凑出 3 件 4 费以上？这是不可以的概率太低了，得到10级才能追，但期间遇到需要得4费可以去拿」
 ##   ⇒ 8~9 级不停下刷: 钱先升级, 货架上刚好有 4~5 费 / 能合出 ★2 的才顺手买; 10 级才大刷找高费。
+## 货架上「手里已有同款」的那几件一共要多少钱(速升升级前先留出来)。
+func _dup_budget(s: Node) -> int:
+	var total := 0
+	var offer: Array = s.get("_offer")
+	for o in offer:
+		if o == null:
+			continue
+		var d: Dictionary = s.call("_deco", o)
+		var eid := str(d.get("id", ""))
+		if eid == "p2eq_096":
+			continue
+		if int(s.call("_owned_count", eid, 1)) >= 1 or int(s.call("_owned_count", eid, 2)) >= 1:
+			total += int(s.call("_price", d))
+	return total
+
+
 func _rolling_down() -> bool:
 	return _strategy() == 2 and int(GameState.season_level) >= _P2.MAX_LEVEL
 
@@ -1159,15 +1177,10 @@ func _equip_target(it: Dictionary = {}) -> Dictionary:
 					continue
 				eqs = GameState.persistent_equipped.get(pid, [])
 			elif want == "minion":
-				if chasing:
-					continue
+				## ★小将身上的装备【进】合成池(GameState.auto_merge_all 2026-07-18 起扫 dual_lineup)。
+				##   我原来照 equip_ops 里一句过时注释以为不进, 加了「追合成的件不给小将 / 小将不叠同款」两条限制
+				##   ⇒ 对子只能在背包里干等、装备位空着(用户 10-12「这一路下来没机会升星吗」)。已删。
 				eqs = u.get("equips", []) if u.get("equips", null) is Array else []
-				var dup_here := false
-				for e2 in eqs:
-					if e2 is Dictionary and str(e2.get("id", "")) == str(it.get("id", "")):
-						dup_here = true
-				if dup_here:
-					continue                          # 小将身上不叠同款(不进合成池, 两件同款永远合不成 ★2)
 			else:
 				continue
 			if GameState._cap_count(eqs) >= _P2.UNIT_EQUIP_CAP:
