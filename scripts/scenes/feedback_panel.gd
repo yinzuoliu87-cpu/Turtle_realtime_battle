@@ -55,7 +55,9 @@ static func open(host: Control) -> Control:
 	if rtex is StyleBoxTexture:
 		(rtex as StyleBoxTexture).modulate_color = UISkin.tint_of(Color("#5aa0ff"))
 	box.add_theme_stylebox_override("panel", rtex)
-	var home := Vector2(W / 2.0 - BOX.x / 2.0, H / 2.0 - BOX.y / 2.0)
+	## ★按实际可见区居中(宽屏手机可见区比 1280 设计宽更宽; 按 W/2 会偏左 —— 2026-10-12 实拍)
+	var vs: Vector2 = host.get_viewport_rect().size
+	var home := Vector2(vs.x / 2.0 - BOX.x / 2.0, vs.y / 2.0 - BOX.y / 2.0)
 	box.position = home; box.size = BOX
 	dim.add_child(box)
 

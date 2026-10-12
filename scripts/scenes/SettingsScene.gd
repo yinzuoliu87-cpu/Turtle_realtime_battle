@@ -517,7 +517,7 @@ func _open_conflict_dialog() -> void:
 	if ctex is StyleBoxTexture:
 		(ctex as StyleBoxTexture).modulate_color = UISkin.tint_of(Color("#ffb454"))
 	box.add_theme_stylebox_override("panel", ctex)
-	box.position = Vector2(W / 2.0 - 280, H / 2.0 - 170); box.size = Vector2(560, 340)
+	box.position = _dlg_origin() + Vector2(W / 2.0 - 280, H / 2.0 - 170); box.size = Vector2(560, 340)
 	dim.add_child(box)
 
 	var ttl := Label.new()
@@ -1234,6 +1234,13 @@ func _close_email_dialog(dim: Control) -> void:
 		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 
 
+## 弹框的设计框原点(2026-10-12): 与 `_email_relayout` 同一条公式(`UIFrame` 设计框居中于可用区)。
+##   宽屏手机可见区比 1280 设计宽更宽 ⇒ 不加这个原点, 按 W/2 摆的弹框整块偏左(实拍「问题反馈」那次抓到, 三个旧弹框同病)。
+func _dlg_origin() -> Vector2:
+	var o: Vector2 = ((_email_avail() - UIFrame.DESIGN) * 0.5).round()
+	return Vector2(maxf(0.0, o.x), maxf(0.0, o.y))
+
+
 func _email_relayout() -> void:
 	if _email_box == null or not is_instance_valid(_email_box):
 		return
@@ -1472,7 +1479,7 @@ func _ask_reset() -> void:
 		(rtex as StyleBoxTexture).modulate_color = UISkin.tint_of(Color("#ff5566"))
 	box.add_theme_stylebox_override("panel", rtex)
 	## 高 260→300: 两个键从 160x44(短边 44 < 81 触摸线)改成 210x52。
-	box.position = Vector2(W / 2.0 - 260, H / 2.0 - 150); box.size = Vector2(520, 300)
+	box.position = _dlg_origin() + Vector2(W / 2.0 - 260, H / 2.0 - 150); box.size = Vector2(520, 300)
 	dim.add_child(box)
 
 	var ttl := Label.new()
@@ -1799,7 +1806,7 @@ func _open_rename_dialog() -> void:
 		(rtex as StyleBoxTexture).modulate_color = UISkin.tint_of(Color("#5aa0ff"))
 	box.add_theme_stylebox_override("panel", rtex)
 	## 高 330: 标题 / 规则一行 / 名字框(81) / 状态一行 / 两颗键(81) —— 框与键都吃 44pt 触摸线。
-	box.position = Vector2(W / 2.0 - 260, H / 2.0 - 165); box.size = Vector2(520, 330)
+	box.position = _dlg_origin() + Vector2(W / 2.0 - 260, H / 2.0 - 165); box.size = Vector2(520, 330)
 	dim.add_child(box)
 
 	var ttl := Label.new()
