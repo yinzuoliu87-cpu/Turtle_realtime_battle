@@ -2210,6 +2210,13 @@ static func shop_tip(shop_open: bool, left_sec: int, has_bucket: bool) -> String
 	return "本轮备战已结束 · 等待开赛"
 
 
+## 备战那一行对这一组还适用吗。★2026-10-12 用户真机截图: 冠军杯赛已出冠军(顶部横幅),
+##   决赛格下面仍写「本轮备战已结束 · 等待开赛」—— 原来只判「组里不止一个人」,
+##   组**收盘**之后照样当成还有下一场。收盘 ⇒ 没有下一场可备战 ⇒ 这一行不出现。
+static func shop_row_applies(bucket: Dictionary) -> bool:
+	return int(bucket.get("size", 0)) > 1 and not bool(bucket.get("closed", false))
+
+
 ## 对手快照这一步该跟玩家说什么。★**纯函数**：喂一份 `opponent_cached()` 的产物
 ## 就能验，不用起网络。★每种 `reason` 说的话都不一样 —— 「这一轮你已经看过 3 号了」
 ## 和「你不在这个桶里」是两件完全不同的事，混成一句「取不到」等于没说。
@@ -2249,7 +2256,7 @@ func _on_poll() -> void:
 		##   拿它判「有组」会对没晋级的人念「本轮备战已结束 · 等开打」。
 		var lv := _live_dict()
 		var st := shop_tip(_SB.finals_shop_open_of(lv, _delta_now()), _SB.finals_shop_left_of(lv, _delta_now()),
-			int(lv.get("size", 0)) > 1)
+			shop_row_applies(lv))
 		_shop_row.text = st
 		_shop_row.visible = st != ""
 		if st != "":

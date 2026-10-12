@@ -182,6 +182,11 @@ func _t_shop_wiring() -> void:
 	_ok("②' ★★没桶 ⇒ 这一行**根本不出现**(空串), 不是显示一句废话",
 		MAP.shop_tip(true, 100, false) == "", MAP.shop_tip(true, 100, false))
 	_ok("②' ★三种状态说的不是同一句话", t_open != t_shut)
+	## 2026-10-12 用户真机截图: 冠军杯赛已出冠军, 决赛格下仍写「本轮备战已结束 · 等待开赛」
+	_ok("②' ★★组已收盘 ⇒ 备战那一行不适用(不再念「等待开赛」)",
+		not MAP.shop_row_applies({"size": 6, "closed": true}))
+	_ok("②' 分母: 没收盘的组照样适用", MAP.shop_row_applies({"size": 6, "closed": false}))
+	_ok("②' 分母: 一个人的组不适用", not MAP.shop_row_applies({"size": 1, "closed": false}))
 
 
 # ─────────────────────────────────────────────────────────────
