@@ -811,6 +811,9 @@ func _ev(kind: String, data: Dictionary) -> void:
 
 
 func _shot(name: String) -> void:
+	## 无头时没有渲染器(dummy 贴图恒 null): 硬取会报 `Parameter "t" is null`, 而那条会进生产的客户端报错表、混进真人玩家的报错里
+	if DisplayServer.get_name() == "headless":
+		return
 	var vp := get_viewport()
 	if vp == null:
 		return

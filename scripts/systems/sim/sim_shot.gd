@@ -21,6 +21,9 @@ static func attach(host: Node) -> Node:
 	load("res://scripts/systems/sim/sim_driver.gd").attach(host)
 	if not enabled():
 		return null
+	## 无头时没有画面可拍(dummy 贴图恒 null), 硬拍每 5 秒报一条 `Parameter "t" is null` 进生产报错表 ⇒ 不建
+	if DisplayServer.get_name() == "headless":
+		return null
 	var n := SimShot.new()
 	n.name = "SimShot"
 	host.add_child.call_deferred(n)
