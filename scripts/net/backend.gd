@@ -1441,7 +1441,7 @@ static var last_finals_report: Dictionary = {}
 ##     编译器帮着数(少传一个直接不编译), 不会再有第二个人在函数体里偷偷换尺子。
 ##   (`0` 的含义仍是「这一场没留下可复算的种子」—— 服务端 `coalesce(p_seed, 0)` 本来就收 0。)
 static func report_finals_result(bucket: int, round_no: int,
-		match_no: int, winner_side: int, seed_used: int) -> void:
+		match_no: int, winner_side: int, seed_used: int, loser_lanes: int = -1) -> void:
 	if GameState == null or bucket < 0 or round_no < 1 or match_no < 0:
 		return
 	var SB5 = load("res://scripts/net/supabase.gd")
@@ -1450,8 +1450,8 @@ static func report_finals_result(bucket: int, round_no: int,
 	var wk := int(GameState.week_anchor_ts)
 	## ★★留痕 —— 见 `last_finals_report` 的头注。写在**交接的那一刻**且无条件。
 	last_finals_report = {"week": wk, "bucket": bucket, "round": round_no,
-		"match": match_no, "side": winner_side, "seed": seed_used}
-	SB5.report_finals_async(wk, bucket, round_no, match_no, winner_side, seed_used)
+		"match": match_no, "side": winner_side, "seed": seed_used, "lanes": loser_lanes}
+	SB5.report_finals_async(wk, bucket, round_no, match_no, winner_side, seed_used, loser_lanes)
 
 
 ## E-B6: 这一局如果是决赛日对阵图里的某一场，把结果报上去；不是就什么都不做。
@@ -1494,11 +1494,13 @@ static func report_finals_if_any(won: bool) -> void:
 		##   各读一遍就是同一个量存两份, 而这两份一分岔, 补报报的就是另一场
 		##   (2026-09-28 查实: 补报那条路原来真的分岔了, 见 `report_finals_result` 头注)。
 		var sd := int(GameState.battle_seed)
+		## 2026-10-12 比分: 败方赢了几路(2:0 ⇒ 0 / 2:1 ⇒ 1 / 没打完 ⇒ -1 不报)。补报单里带着, 断网补报时一起补。
+		var ll: int = load("res://scripts/gamedata/phase2_duallane.gd").loser_lanes(GameState.lane_results)
 		GameState.finals_report_pending = {
 			"bucket": int(d.get("bucket", -1)), "round": r, "match": m,
-			"side": ws, "seed": sd,
+			"side": ws, "seed": sd, "lanes": ll,
 		}
-		report_finals_result(int(d.get("bucket", -1)), r, m, ws, sd)
+		report_finals_result(int(d.get("bucket", -1)), r, m, ws, sd, ll)
 	GameState.finals_match = {}
 
 
@@ -1541,7 +1543,7 @@ static func retry_finals_report() -> void:
 	## ★★★seed 取**单子上那份**, 不是 `GameState.battle_seed` ——
 	##   后者是「现在这一场」的, 而补报报的是过去某一场。探针量到过 4242 ↔ 999 的分岔。
 	report_finals_result(int(d2.get("bucket", -1)), r2, m2, sd2,
-		int(d2.get("seed", 0)))
+		int(d2.get("seed", 0)), int(d2.get("lanes", -1)))
 
 
 ## 玩家显示名 —— **全仓唯一出处**。有昵称用昵称, 没有用确定性兜底短码。

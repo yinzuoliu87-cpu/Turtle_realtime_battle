@@ -87,9 +87,14 @@ const MINE := Color("#ffd93d")         # 只有"我"用金色 —— 找自己�
 ## (UISkin.MIN_FRAME_PX 那条教训的同族), 参考图(Worlds 官方图)本来也是直角实心条。
 const SHADOW := Color("#04070e")       # 硬投影 —— 像素 UI 的招牌(不是模糊 box-shadow)
 const LINE_DIM := Color("#31405a")     # 连线: 还没决出
-const DASH := Color("#46566f")         # 虚线描边(「还没到」的空槽)
-const PLATE_WIN := Color(0.31, 0.94, 0.82, 0.13)   # 胜者那一行的底板
-const PLATE_LOSE := Color(0.0, 0.0, 0.0, 0.42)     # 败者那一行压暗
+## 2026-10-12 第二轮「每人一根实心条」的五种填色(参考 07 Brawlhalla: 胜者整条填色 / 败者深底 / 未定更暗)
+const BAR_IDLE := Color("#1b2536")     # 有人、还没结果
+const BAR_WIN := Color("#17594d")      # 胜者整条(青的暗调, 与 ACCENT 同色相)
+const BAR_LOSE := Color("#10161f")     # 败者压暗
+const BAR_EMPTY := Color("#121a27")    # 待定 / 还没到
+const BAR_BYE := Color("#0c1119")      # 轮空: 这里没人
+const BAR_GAP := 4.0                   # 同一场上下两根条之间的缝
+const SCORE_W := 40.0                  # 条右端比分方块的宽
 const LINE_W_LIT := 4.0                # 连线: 已决出 = 粗
 const LINE_W_DIM := 2.0                # 连线: 还没决出 = 细
 ## 节点右侧那条槽 —— 「你」/「冠」小签与开打标住这里; 名字条**不许伸进来**(会撞上)。
@@ -726,6 +731,7 @@ func _rebuild() -> void:
 	## ★横向铺满可用宽(手机比例不再缩在正中): 版式按「视口宽 - 两侧安全区」排。
 	var sm: Vector4 = SafeArea.margins(vp0, 0.0)
 	_L.view_w = maxf(_L.DESIGN.x, vp0.x - sm.x - sm.z)
+	_L.view_h = usable.y - 70.0       # 留出轮次标题 + 底部提示那一行(第二轮: 首轮场间距按它撑开)
 	_can_pan = _L.needs_pan(n, usable)
 	## ★★**要拖就不缩** —— 缩到放得下了就不需要拖, 两件事只能选一件。
 	##   实拍拓到: 32 人桶同时缩到 0.80 **又**能拖, 于是字被压成 12px 还要拖——
@@ -736,7 +742,7 @@ func _rebuild() -> void:
 	## ★★加入顺序 = 绘制顺序, 四层从后往前: 本轮竖带 → 连线 → 对阵格 → 轮次标签。
 	##   原来是「格子 → 连线」, 连线画在格子上面 —— 箭头顶进格子里就会糊在描边上。
 	var total := _B.rounds_for(n)
-	_make_round_band(n, total)
+	## (本轮竖带已去掉 —— 「条条框框」的一层, 第二轮; 本轮由轮次标题高亮表示)
 	_make_links(n, total)
 	for r in range(1, total + 1):
 		for m in range(_B.matches_in_round(n, r)):
@@ -1213,59 +1219,13 @@ func _outline(parent: Control, r: Rect2, t: float, col: Color) -> void:
 	_rect(parent, r.end.x - t, r.position.y, t, r.size.y, col)
 
 
-## 一段虚线(横 `horiz=true` / 竖)。★「还没到」的那一格靠它与实线描边区分 ——
-##   形态差别不靠颜色, 弱视/小屏/截图压缩下都还在。
-func _dash(parent: Control, x: float, y: float, len_px: float, t: float,
-		col: Color, horiz: bool, on: float = 6.0, off: float = 5.0) -> void:
-	var p := 0.0
-	while p < len_px:
-		var seg: float = minf(on, len_px - p)
-		if horiz:
-			_rect(parent, x + p, y, seg, t, col)
-		else:
-			_rect(parent, x, y + p, t, seg, col)
-		p += on + off
-
-
-func _dash_box(parent: Control, r: Rect2, t: float, col: Color) -> void:
-	_dash(parent, r.position.x, r.position.y, r.size.x, t, col, true)
-	_dash(parent, r.position.x, r.end.y - t, r.size.x, t, col, true)
-	_dash(parent, r.position.x, r.position.y, r.size.y, t, col, false)
-	_dash(parent, r.end.x - t, r.position.y, r.size.y, t, col, false)
-
-
-## 阶梯像素箭头(不是三角形多边形 —— 斜边会被抗锯齿糊掉, 像素风要的是台阶)。
-## `tip_x` 是尖端, `to_right` 决定往哪边张开; `steps` 由可用空档决定(空档窄就缩短)。
-func _arrow(parent: Control, tip_x: float, y: float, to_right: bool,
-		col: Color, steps: int) -> void:
-	for i in range(steps):
-		var hh: float = float(i + 1) * 4.0
-		var x: float = (tip_x - float(i + 1) * 3.0) if to_right else (tip_x + float(i) * 3.0)
-		_rect(parent, x, y - hh * 0.5, 3.0, hh, col)
-
-
-## 一格的底色与描边色。★**形态**(实线 / 实线加粗+角标 / 虚线)才是主判据,
-##   颜色只是帮忙 —— 用户要的是"一眼分得出", 不是"配色好看"。
-func _state_colors(st: String) -> Array:
-	match st:
-		ST_DONE:
-			return [Color("#111b24"), Color("#3f6579")]
-		ST_LIVE:
-			return [Color("#1a2437"), ACCENT]
-		ST_LOCKED:
-			return [Color("#0b0f17"), Color("#161d2b")]
-		ST_BYE:
-			return [Color("#0d1118"), Color("#1a2231")]
-	return [Color("#141b28"), Color("#2c3950")]
-
-
 ## 名字太长就截断。★不能用 `clip_text`: 那会被 `verify_ui_consistency` 判成
 ##   「被 clip_text 截断的文字」(它是对的 —— 硬裁出来的半个字读不出来)。
 ##   ⇒ 在**文字层**截, 留一个省略号。13px 的汉字≈13px 宽, 除得到能放几个。
 ## 对阵格里「 #XXXXXX」那一段大约占多宽(13px 字, 西文约 0.6 个字宽)。
 const TAG_PX := 80.0
 ## 对阵格里名字的字号(2026-10-07: 13 → 18, 主会话审图「名字约 13px 太小」)。汉字宽 ≈ 字号。
-const NAME_FS := 18.0
+const NAME_FS := 20.0
 
 
 ## ★2026-10-12(对阵图对照参考改版 §3): 原来按「每个字 = 字号宽」估 ⇒ 西文名(fish31 / haohao)
@@ -1281,23 +1241,6 @@ func _fit_name(nm: String, px: float, tick: bool, fs: float = NAME_FS) -> String
 	return nm.substr(0, maxi(1, k)) + "…"
 
 
-## 【本轮】那一列的竖带。★9 列的 32 人桶里"现在打到哪儿了"光靠标签变色看不出来,
-##   整列压一条极淡的带子, 眼睛一扫就落在对的那一列上。镜像布局两侧各一条。
-func _make_round_band(n: int, total: int) -> void:
-	var r0 := int(cur().get("round", 1))
-	if r0 < 1 or r0 > total:
-		return
-	var cnt := _B.matches_in_round(n, r0)
-	var picks: Array = [0] if r0 >= total else [0, cnt / 2]
-	var cs: Vector2 = _L.content_size(n)
-	for m in picks:
-		var rect: Rect2 = _L.node_rect(n, r0, m)
-		if rect.size == Vector2.ZERO:
-			continue
-		_rect(_canvas, rect.position.x - 10.0, -44.0, rect.size.x + 20.0, cs.y + 56.0,
-			Color(ACCENT.r, ACCENT.g, ACCENT.b, 0.05))
-
-
 func _make_round_labels(n: int, total: int) -> void:
 	for r in range(1, total + 1):
 		var txt := _L.round_label(n, r)
@@ -1310,19 +1253,16 @@ func _make_round_labels(n: int, total: int) -> void:
 			var rect: Rect2 = _L.node_rect(n, r, m)
 			if rect.size == Vector2.ZERO:
 				continue
-			## 标签底下压一条杠: 本轮是实心亮杠, 其余是一道暗槽 —— 与页签同一套语言。
-			var on: bool = r == int(cur().get("round", 1))
-			_rect(_canvas, rect.position.x + 6.0, -12.0, rect.size.x - 12.0,
-				3.0 if on else 1.0, ACCENT if on else Color("#222c3e"))
+			## (第二轮: 标签底下那道杠去掉 —— 参考 07/08 Brawlhalla 的列标题就是一行粗字, 不压线)
 			var lb := Label.new()
 			lb.text = txt
 			lb.position = Vector2(rect.position.x, -34.0)
 			lb.size = Vector2(rect.size.x, 24.0)
 			lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			lb.add_theme_font_size_override("font_size", 15)
+			lb.add_theme_font_size_override("font_size", 17)
 			## 当前轮用强调色 —— 其余淡下去, 免得九个标签一样抢眼(2026-10-07: 淡到 #8796a6 仍读得出, 原来 DIM 太暗)
 			lb.add_theme_color_override("font_color",
-				ACCENT if r == int(cur().get("round", 1)) else Color("#8796a6"))
+				ACCENT if r == int(cur().get("round", 1)) else Color("#b4c0cd"))
 			lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			_canvas.add_child(lb)
 			## ★决赛那一列(CRL / YouTuber Tournament 对阵图正中都是奖杯 + FINAL): 字放大成金色,
@@ -1494,70 +1434,52 @@ func _make_node(r: int, m: int) -> Control:
 	## ★格子本身不吃点击: 能点的那一场底下有一颗透明整格热区(见文末); 按在格子上拖图照样能拖。
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	## ★★「我在哪一格」= 这屏的头等大事(文件头 ★①)。原来只有**一圈 2px 金边**,
-	##   而已打完的格子也有亮底、当前轮也有亮框 ⇒ 32 人桶里根本挑不出来。
-	##   ⇒ 两层金色外环 往外撑 7px, 谁都不会长这样。
+	## ══ 2026-10-12 第二轮(方案书 20261012-对阵图对照参考改版 §二): 「框套框」→「每人一根实心条」 ══
+	## 用户:「整个界面条条框框都没有人家商业游戏感觉」。参考 07/08 Brawlhalla、01 VALORANT:
+	##   一场 = 上下两根**各自独立**的实心条(中间 3px 缝), 没有外框 / 投影 / 内斜面 / 虚线框;
+	##   胜者整条填色 + 左缘色条, 败者压暗; 正在打 / 我 / 决赛只在两根条外描一圈。
+	var gap: float = BAR_GAP
+	for side in range(2):
+		var cs: Dictionary = competitor(r, m, side)
+		var y0: float = float(side) * sh + (gap * 0.5 if side == 1 else 0.0)
+		var bh: float = sh - gap * 0.5
+		var fill: Color = BAR_IDLE
+		if bool(cs.get("bye", false)):
+			fill = BAR_BYE
+		elif ws >= 0:
+			fill = BAR_WIN if side == ws else BAR_LOSE
+		elif st == ST_LOCKED or int(cs.get("seed", -1)) < 0:
+			fill = BAR_EMPTY
+		_rect(holder, 0.0, y0, w, bh, fill)
+		## 左缘 4px 色条: 我 = 金 / 胜者 = 青(参考 01 VALORANT 每条左缘的队色条)
+		if _is_me_side(r, m, side):
+			_rect(holder, 0.0, y0, 4.0, bh, MINE)
+		elif ws >= 0 and side == ws:
+			_rect(holder, 0.0, y0, 4.0, bh, ACCENT)
+	## 外描一圈: 我 > 正在打 > 决赛(参考 08 Brawlhalla 进行中那场描亮边)
+	var ring := Color(0, 0, 0, 0)
 	if mine:
-		_outline(holder, Rect2(-7.0, -7.0, w + 14.0, h + 14.0), 2.0,
-			Color(MINE.r, MINE.g, MINE.b, 0.15))
-		_outline(holder, Rect2(-4.0, -4.0, w + 8.0, h + 8.0), 2.0,
-			Color(MINE.r, MINE.g, MINE.b, 0.45))
-
-	## ★硬投影(右下 4px, **不羽化**) —— 像素 UI 的招牌。
-	##   网页味的那种是 `box-shadow: 0 2px 8px rgba(...)`, 有羽化; 这里一格实心块。
-	_rect(holder, 4.0, 4.0, w, h, SHADOW)
-
-	var cols: Array = _state_colors(st)
-	var bd_w: int = 2 if st == ST_LIVE else 1
-	var bd_c: Color = cols[1]
-	## ★决赛是全图的焦点(CRL 那张正中的奖杯 + 决赛格): 金边 2px + 外面一圈淡金, 与「我」的双金环区分(那个是两圈)。
-	if r >= total and not mine:
-		bd_c = FINAL_GOLD
-		bd_w = 2
-		_outline(holder, Rect2(-5.0, -5.0, w + 10.0, h + 10.0), 3.0,
-			Color(FINAL_GOLD.r, FINAL_GOLD.g, FINAL_GOLD.b, 0.28))
-	if mine:
-		bd_c = MINE
-		bd_w = 2
-	var frame := Panel.new()
-	frame.size = rect.size
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = cols[0]
-	sb.border_color = bd_c
-	## ★「还没到」那一格描边宽度给 0 —— 它的边由下面的**虚线**画。
-	##   (我那一格例外: 金边压倒一切, 否则"我在哪"又看不见了。)
-	sb.set_border_width_all(0 if (st == ST_LOCKED and not mine) else bd_w)
-	## ★★2026-09-27 改**直角**: 原来 `set_corner_radius_all(3)`, 而圆角正是用户点名的
-	##   「很 ai 味和网页味」。参考图(Worlds 官方对阵图)的节点本来就是**直角横条**。
-	sb.set_corner_radius_all(0)
-	frame.add_theme_stylebox_override("panel", sb)
-	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.add_child(frame)
-	if st == ST_LOCKED and not mine:
-		_dash_box(holder, Rect2(0.0, 0.0, w, h), 2.0, DASH)
-	else:
-		## 内缘一亮一暗 = 像素浮雕。比 CSS 的渐变便宜, 而且缩放不糊。
-		_rect(holder, float(bd_w), float(bd_w), w - float(bd_w) * 2.0, 1.0, Color(1, 1, 1, 0.07))
-		_rect(holder, float(bd_w), h - float(bd_w) - 1.0, w - float(bd_w) * 2.0, 1.0,
-			Color(0, 0, 0, 0.30))
-
-	## ★已翻面: 两行的**明暗**就是结果(CRL Pocket 那张: 胜者那一行亮、败者压暗)。不剧透靠的是
-	##   `ws == -1`(当前轮拿不到), 所以这一整块在当前轮根本不画 —— 而不是"画了再藏起来"(文件头 ★②)。
-	if ws >= 0:
-		_rect(holder, 1.0, float(ws) * sh + 1.0, w - 2.0, sh - 2.0, PLATE_WIN)
-		_rect(holder, 1.0, float(1 - ws) * sh + 1.0, w - 2.0, sh - 2.0, PLATE_LOSE)
-		_rect(holder, 1.0, float(ws) * sh + 1.0, 4.0, sh - 2.0,
-			MINE if _is_me_side(r, m, ws) else ACCENT)
+		ring = MINE
+	elif st == ST_LIVE:
+		ring = ACCENT
+	elif r >= total:
+		ring = FINAL_GOLD
+	if ring.a > 0.0:
+		_outline(holder, Rect2(-3.0, -3.0, w + 6.0, h + 6.0), 2.0, ring)
 
 	## 两行: 上侧 / 下侧。每行 = [头像] [名字] …… [右槽小签]。
 	## ★2026-10-07 加头像(皇室战争 / CRL 对阵图每个坑都是头像 + 名字): 行高 39 ⇒ 头像 31。
 	var av_px: float = sh - 12.0
 	var name_x: float = 8.0 + av_px + 6.0
+	## ★比分(2026-10-12, 用户「比分呢」「要做」): 参考 07/08 Brawlhalla 每根条右端一个比分方块、01 VALORANT 名字右侧比分。
+	##   服务端只存「败方赢了几路」(0/1) ⇒ 胜方 2、败方 0/1。没有数据(旧场次 / 没报上来)⇒ 不画方块, 名字占满。
+	var sc_v: int = int((cur().get("scores", {}) as Dictionary).get("%d-%d" % [r, m], -1)) if ws >= 0 else -1
+	var sc_w: float = SCORE_W if sc_v >= 0 else 0.0
 	for side in range(2):
 		## ★小签只剩「你」(§1/§2: 「胜」「冠」去掉, 参考里没有一家用字标胜者)。
 		##   名字只在这一行真挂小签时才给槽让位 —— 原来每行都让, 名字被截成「fis…」(用户 10-12 真机截图)。
 		var me_row: bool = _is_me_side(r, m, side)
-		var name_w: float = maxf(28.0, w - name_x - PLAY_W - (GUTTER if me_row else 6.0))
+		var name_w: float = maxf(28.0, w - name_x - sc_w - 6.0 - (GUTTER if me_row else 0.0))
 		var c: Dictionary = competitor(r, m, side)
 		var nm := str(c.get("name", "神秘龟"))
 		var is_bye := bool(c.get("bye", false))
@@ -1605,7 +1527,7 @@ func _make_node(r: int, m: int) -> Control:
 		var badge := "你" if me_row else ""
 		var bcol := MINE
 		if badge != "":
-			var bx: float = w - GUTTER - PLAY_W + 2.0
+			var bx: float = w - sc_w - GUTTER + 2.0
 			var by: float = float(side) * sh + (sh - 22.0) * 0.5
 			_rect(holder, bx + 2.0, by + 2.0, 24.0, 22.0, SHADOW)
 			_rect(holder, bx, by, 24.0, 22.0, bcol)
@@ -1621,31 +1543,26 @@ func _make_node(r: int, m: int) -> Control:
 			bl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			holder.add_child(bl)
 
-	## ★中缝三种形态: 实线(打完/轮空) · 锯齿(正在打) · 虚线(还没到)。
-	var seam_y: float = sh - 1.0
-	if st == ST_LIVE:
-		var i := 0
-		var x := 6.0
-		while x < w - 9.0:
-			_rect(holder, x, seam_y + (-2.0 if i % 2 == 0 else 1.0), 4.0, 3.0,
-				MINE if mine else ACCENT)
-			x += 6.0
-			i += 1
-	elif st == ST_LOCKED:
-		_dash(holder, 6.0, seam_y, w - 12.0, 1.0, DASH, true, 5.0, 4.0)
-	else:
-		_rect(holder, 6.0, seam_y, w - 12.0, 1.0, Color("#2c3950"))
+	## 比分方块: 胜方 = 青底黑字, 败方 = 暗底灰字(参考 07 Brawlhalla 胜方方块填色)。
+	if sc_v >= 0:
+		for side2 in range(2):
+			var y2: float = float(side2) * sh + (BAR_GAP * 0.5 if side2 == 1 else 0.0)
+			var bh2: float = sh - BAR_GAP * 0.5
+			var win2: bool = side2 == ws
+			_rect(holder, w - SCORE_W, y2, SCORE_W, bh2, ACCENT if win2 else Color("#0b1018"))
+			var sl := Label.new()
+			sl.name = "Score%d" % side2
+			sl.text = "2" if win2 else str(sc_v)
+			sl.position = Vector2(w - SCORE_W, y2)
+			sl.size = Vector2(SCORE_W, bh2)
+			sl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			sl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			sl.add_theme_font_size_override("font_size", 22)
+			sl.add_theme_color_override("font_color", BG if win2 else Color("#7d8a9c"))
+			sl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			holder.add_child(sl)
 
-	## ★四角准星括号 = 「正在打」的形态标记(赛事直播里锁定镜头的那种)。
-	if st == ST_LIVE:
-		var cc: Color = MINE if mine else ACCENT
-		var al := 11.0
-		for sx in [0, 1]:
-			for sy in [0, 1]:
-				_rect(holder, 0.0 if sx == 0 else w - al, 0.0 if sy == 0 else h - 3.0,
-					al, 3.0, cc)
-				_rect(holder, 0.0 if sx == 0 else w - 3.0, 0.0 if sy == 0 else h - al,
-					3.0, al, cc)
+	## (中缝 / 四角准星括号已去掉: 两根条之间的缝就是分隔; 「正在打」由外描一圈表示 —— 第二轮)
 
 	## ══ 点哪儿: 整格就是热区(VALORANT Premier / 英雄联盟 Clash 的对阵图都是这样) ══
 	## ★★2026-10-07 审图第三版, 用户「哪个游戏观赛按钮会这样弄？」: 上一版在每格底下挂了一颗「观看」大木牌,
@@ -1661,9 +1578,9 @@ func _make_node(r: int, m: int) -> Control:
 		pm.position = Vector2(w - PLAY_W, 0.0)
 		pm.size = Vector2(PLAY_W, h)
 		holder.add_child(pm)
-		for i2 in range(4):
-			var hh: float = float(4 - i2) * 5.0
-			_rect(pm, 5.0 + float(i2) * 3.0, h * 0.5 - hh * 0.5, 3.0, hh, pc)
+		## (第二轮: 不再画阶梯 ▶ —— 参考 01/06/07 对阵条上都没有; 「能点」改由底部「点击对局观看」说。
+		##   节点保留: 它是「这一格能点」的标记, verify_weekend_watch 认它。)
+		pm.set_meta("color", pc)
 		if st == ST_PREMIERE:
 			## 开播窗口: 顶边一枚红色「开播」小签(与「对战」同一个位置、同一种做法)。
 			var pt := Label.new()
@@ -1910,12 +1827,7 @@ func _make_links(n: int, total: int) -> void:
 			_v_line(mid_x, ay, by, lit_a and lit_b, mine_a or mine_b)
 			var lit: bool = lit_a or lit_b
 			_h_line(mid_x, dst_x, my, lit, is_my_match(r, m))
-			if lit:
-				## 箭头长度受空档限制: 32 人桶列间只剩 19px, 4 级台阶(12px)会顶过
-				## 中线糊在竖线上 ⇒ 按可用空档收级数。
-				var room: float = absf(dst_x - mid_x)
-				_arrow(_canvas, dst_x, my, from_left,
-					_link_col(true, is_my_match(r, m)), clampi(int(room / 3.0), 2, 4))
+			## (终点小箭头已去掉 —— 参考 01/06/07 的连线都不带箭头, 第二轮)
 
 
 ## 一条来源 → 本场的直通连线(镜像布局里两个来源分居两侧时用): 横 → 竖 → 横 + 箭头。
@@ -1928,9 +1840,7 @@ func _link_one(src: Rect2, dst: Rect2, my: float, lit: bool, mine_src: bool, min
 	_h_line(src_x, mid_x, sy, lit, mine_src)
 	_v_line(mid_x, sy, my, lit, mine_src)
 	_h_line(mid_x, dst_x, my, lit, mine_src or mine_dst)
-	if lit:
-		var room: float = absf(dst_x - mid_x)
-		_arrow(_canvas, dst_x, my, from_left, _link_col(true, mine_src or mine_dst), clampi(int(room / 3.0), 2, 4))
+	## (终点小箭头已去掉, 同 _make_links —— 第二轮)
 
 
 ## 连线的颜色: 亮/暗两档 × 是不是我走的那条。

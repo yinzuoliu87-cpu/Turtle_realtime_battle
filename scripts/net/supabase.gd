@@ -1813,7 +1813,7 @@ static func finals_report_clear() -> void:
 
 
 static func report_finals_async(week: int, bucket: int, round_no: int,
-		match_no: int, winner_side: int, seed_used: int) -> void:
+		match_no: int, winner_side: int, seed_used: int, loser_lanes: int = -1) -> void:
 	var gs = _gs()
 	if gs == null or _report_inflight:
 		return
@@ -1841,11 +1841,11 @@ static func report_finals_async(week: int, bucket: int, round_no: int,
 		##   **可能把错的人送进下一轮**。
 		##   —— 与 v0.19.446 修掉的**报名漏报**同一个形状(「发了就不管」)。
 		## ⇒ 标记移进**成功**那一支(见 `report_finals` 的回调)。
-		n.report_finals(week, bucket, round_no, match_no, winner_side, seed_used)
+		n.report_finals(week, bucket, round_no, match_no, winner_side, seed_used, loser_lanes)
 
 
 func report_finals(week: int, bucket: int, round_no: int,
-		match_no: int, winner_side: int, seed_used: int) -> void:
+		match_no: int, winner_side: int, seed_used: int, loser_lanes: int = -1) -> void:
 	if not enabled() or not await _await_token():
 		_report_inflight = false
 		_bye()
@@ -1861,8 +1861,24 @@ func report_finals(week: int, bucket: int, round_no: int,
 			var code := int(res.get("code", 0))
 			if bool(res.get("ok", false)) and code >= 200 and code < 300:
 				_report_done["%d:%d-%d" % [bucket, round_no, match_no]] = true
+				## ★2026-10-12 比分: 结果报成了再补报比分。服务端只认 seed 与采纳那份相同的 ——
+				##   我这份没被采纳(对面先报)时它回 false, 无害; 发不出去就算了(比分只是展示, 不影响晋级)。
+				if loser_lanes == 0 or loser_lanes == 1:
+					_http("POST", base_url().rstrip("/") + "/rest/v1/rpc/finals_report_score",
+						JSON.stringify(finals_score_body(week, bucket, round_no, match_no, seed_used, loser_lanes)),
+						func(_r2):
+							_bye(),
+						"Content-Type: application/json")
+					return
 			_bye(),
 		"Content-Type: application/json")
+
+
+## 纯函数: 补报比分那一次的请求体(参数名 = 服务端 finals_report_score 的形参)。
+static func finals_score_body(week: int, bucket: int, round_no: int, match_no: int,
+		seed_used: int, loser_lanes: int) -> Dictionary:
+	return {"p_week": week, "p_bucket": bucket, "p_round": round_no, "p_match": match_no,
+		"p_seed": seed_used, "p_loser_lanes": loser_lanes}
 
 
 func fetch_opponent(week: int, bucket: int, round_no: int, seed: int) -> void:
@@ -2048,6 +2064,13 @@ static func _bucket_from(d: Dictionary, my_account: String, recv_at: int) -> Dic
 		if not closed and int(str(k).get_slice("-", 0)) >= rnd:
 			continue
 		done[str(k)] = int(raw_done[k])
+	## 2026-10-12 比分(败方赢了几路 0/1): 与 done 同一道过滤(当前轮不收 —— 服务端本来也不发)。没有 = 空。
+	var raw_sc: Dictionary = d.get("scores", {}) if d.get("scores", {}) is Dictionary else {}
+	var scores: Dictionary = {}
+	for k in raw_sc:
+		if not closed and int(str(k).get_slice("-", 0)) >= rnd:
+			continue
+		scores[str(k)] = int(raw_sc[k])
 	## ★倒计时用**服务端的时间差**, 不用本机绝对时钟 —— 设备时钟不对时倒计时照样准
 	var srv_now := int(d.get("now", 0))
 	var nxt := int(d.get("next_at", 0))
@@ -2056,7 +2079,7 @@ static func _bucket_from(d: Dictionary, my_account: String, recv_at: int) -> Dic
 	##   **真正的桶号只有回包里有**。而 `finals_opponent` 必须传准确的桶号 ——
 	##   没有它就只能再往返一次去问, 那会出现「查到桶号、桶却没了」的中间态
 	##   (服务端当初把这两件事并进一次往返, 正是为了避开它)。
-	return {"size": n, "round": rnd, "done": done,
+	return {"size": n, "round": rnd, "done": done, "scores": scores,
 		"names": names, "tags": tags, "accs": accs, "me": me, "closed": closed,
 		"left": left, "recv_at": recv_at, "bucket": int(d.get("bucket", -1)),
 		## ★E-B7 备战购物窗要的两个数。**都用服务端的** ——

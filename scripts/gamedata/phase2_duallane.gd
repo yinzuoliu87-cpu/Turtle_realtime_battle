@@ -61,6 +61,16 @@ static func final_winner(lane_results: Dictionary) -> String:
 	return str(lane_results.get("final", ""))
 
 
+## 比分里败方赢了几路(2026-10-12 周日对阵图比分): 两路同一方全胜 ⇒ 2:0 ⇒ 0; 1-1 打了终极 ⇒ 2:1 ⇒ 1;
+##   没打完 / 投降(lane_results 空)/ 1-1 而终极没结果 ⇒ -1(不报)。
+static func loser_lanes(lane_results: Dictionary) -> int:
+	if not lanes_done(lane_results):
+		return -1
+	if needs_final(lane_results):
+		return 1 if final_winner(lane_results) != "" else -1
+	return 0 if match_winner(lane_results) != "" else -1
+
+
 ## 整局最终胜者: 优先 final, 否则两路全胜方. 无平局(NO_DRAW) → 调用方在 final 强制分出.
 static func overall_winner(lane_results: Dictionary) -> String:
 	var fin := final_winner(lane_results)

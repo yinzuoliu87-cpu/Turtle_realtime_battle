@@ -19,6 +19,8 @@ func _week() -> Dictionary:
 	var body := JSON.stringify({"ok": true, "week": WEEK, "now": SUN_2130, "buckets": [],
 		"cup": {"bucket": 1000000, "n": 6, "round": 3, "closed": true,
 			"done": {"1-0": 0, "1-1": 0, "1-2": 0, "1-3": 1, "2-0": 1, "2-1": 0, "3-0": 1},
+			## 比分为示意(10-11 那晚比分还没上线, 服务端没有真值): 败方赢了几路
+			"scores": {"1-1": 1, "1-3": 0, "2-0": 1, "2-1": 0, "3-0": 1},
 			"entrants": [
 				{"seed": 0, "name": "破防了", "account_id": "uid-0"},
 				{"seed": 1, "name": "fish31", "account_id": "uid-1"},

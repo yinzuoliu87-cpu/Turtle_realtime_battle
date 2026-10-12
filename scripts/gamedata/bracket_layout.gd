@@ -48,6 +48,22 @@ const FINAL_W_MULT := 1.15
 ## ★★横向铺多宽(2026-10-07): 原来写死 1280 设计宽, 手机(视口 ≈1718×720)上整张图缩在正中、两边大片空着。
 ##   场景每次重画前把它设成**可用视口宽**; 不设 = 1280(纯函数门禁照旧按 1280 量)。
 static var view_w: float = DESIGN.x
+## ★2026-10-12 第二轮: 可用竖向高度。0 = 照旧用固定间距(纯函数门禁照旧按 GAP_IN_HALF 量)。
+##   用户「条条框框都没有人家商业游戏感觉」——6/8 人图只占屏幕中间一条、上下大片空;
+##   参考 01 VALORANT 8 队图把各场在竖向拉开铺满。⇒ 场景重画前设它, 首轮场间距按可用高度撑开。
+static var view_h: float = 0.0
+const GAP_FILL := 0.82             # 首轮那一列铺到可用高度的这么多
+const GAP_MAX_MULT := 1.6          # 场间距最多到一格高的这么多倍(再大就散了)
+
+
+## 首轮同半区两场之间的竖向间距。
+static func gap_in_half(n: int) -> float:
+	var per := matches_per_side(n, 1)
+	if view_h <= 0.0 or per <= 1:
+		return GAP_IN_HALF
+	var h := row_h()
+	var slots: float = float(per - 1) + ((GAP_HALF_MULT - 1.0) if per >= 4 else 0.0)
+	return clampf((view_h * GAP_FILL - float(per) * h) / slots, GAP_IN_HALF, h * GAP_MAX_MULT)
 ## ★★2026-10-07 审图第三版(用户「哪个游戏观赛按钮会这样弄？」): 格子底下挂「观看」大木牌那一版撤掉 ——
 ##   VALORANT Premier / 英雄联盟 Clash 的对阵图上没有任何按钮, 每场一条紧凑的对局条, 点对局条本身。
 ##   ⇒ 竖向单位回到「一格」; 一格 = 两行 × 56 = 112 高, 本身就是热区(短边 ≥ 81)。
@@ -149,11 +165,12 @@ static func _center_y(n: int, r: int, m: int) -> float:
 	if r == 1:
 		var i := idx_in_side(n, 1, m)
 		var per := matches_per_side(n, 1)
-		var pitch := h + GAP_IN_HALF
+		var g := gap_in_half(n)
+		var pitch := h + g
 		## ★本侧内部再分上下两个 1/4 区时, 中间那道缝拉成 3 倍(与参考图一致)
 		var extra := 0.0
 		if per >= 4 and i >= per / 2:
-			extra = GAP_IN_HALF * (GAP_HALF_MULT - 1.0)
+			extra = g * (GAP_HALF_MULT - 1.0)
 		return h * 0.5 + float(i) * pitch + extra
 	return (_center_y(n, r - 1, m * 2) + _center_y(n, r - 1, m * 2 + 1)) * 0.5
 
@@ -164,8 +181,9 @@ static func _span_mid(n: int) -> float:
 	if per <= 0:
 		return DESIGN.y * 0.5
 	var h := row_h()
-	var pitch := h + GAP_IN_HALF
-	var extra := GAP_IN_HALF * (GAP_HALF_MULT - 1.0) if per >= 4 else 0.0
+	var g := gap_in_half(n)
+	var pitch := h + g
+	var extra := g * (GAP_HALF_MULT - 1.0) if per >= 4 else 0.0
 	var last := h * 0.5 + float(per - 1) * pitch + extra
 	return (h * 0.5 + last) * 0.5
 
