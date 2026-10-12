@@ -1339,6 +1339,10 @@ static func finals_push_snapshot(bucket: int, now_unix: int) -> bool:
 	if GameState == null or bucket < 0 or now_unix - _finals_snap_at < 15:
 		return false
 	var leaders = GameState.season_leaders
+	## ★2026-10-12 实跑抓到: 本机阵容是空的(重装 / 赛季被重置)时推上去会把服务端里周六那份正式阵容覆盖成空阵容
+	##   ⇒ 统领不满 3 只一律不推(服务端 finals_update_snapshot 同样拒收没有统领的快照)。
+	if not (leaders is Array) or (leaders as Array).size() < 3:
+		return false
 	var gid := player_ghost_id(int(GameState.season_id), leaders, -1)
 	var av := str(leaders[0]) if (leaders is Array and (leaders as Array).size() > 0) else "basic"
 	var snap := build_ghost_snapshot(gid, {"name": player_display_name(), "avatar": av, "id": gid})

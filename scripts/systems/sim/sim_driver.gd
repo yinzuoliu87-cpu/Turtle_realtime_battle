@@ -67,6 +67,9 @@ static func enabled() -> bool:
 static func attach(host: Node) -> Node:
 	if not enabled():
 		return null
+	## 时钟偏移要在主菜单 _ready 之前就生效(本节点是延迟挂的, 它自己的 _ready 晚于主菜单)
+	if OS.get_environment("SIM_CLOCK_OFFSET") != "":
+		load("res://scripts/gamedata/phase2_config.gd").now_override_ts = int(Time.get_unix_time_from_system()) + int(OS.get_environment("SIM_CLOCK_OFFSET"))
 	var d = load("res://scripts/systems/sim/sim_driver.gd").new()
 	d.name = "SimDriver"
 	host.add_child.call_deferred(d)
@@ -88,7 +91,21 @@ var _shop_visits := 0
 var _acted_id := 0         # 已经处理过的场景实例(同一屏只做一次主动作, 防连点)
 
 
+## 时钟偏移(2026-10-12 周日统一结算实跑): `SIM_CLOCK_OFFSET=秒` ⇒ 每帧把赛程钟钉在「真实时间 + 偏移」。
+##   不走开发包的时间穿越 —— 那条会拦下一切写请求(结果报不上去); 服务端照常用真实时间, 与真实周日同一种关系。
+##   不设 = 0 = 什么都不做。
+var _clk_off: int = 0
+
+
+func _process(_dt: float) -> void:
+	if _clk_off != 0:
+		load("res://scripts/gamedata/phase2_config.gd").now_override_ts = int(Time.get_unix_time_from_system()) + _clk_off
+
+
 func _ready() -> void:
+	_clk_off = int(OS.get_environment("SIM_CLOCK_OFFSET")) if OS.get_environment("SIM_CLOCK_OFFSET") != "" else 0
+	if _clk_off != 0:
+		load("res://scripts/gamedata/phase2_config.gd").now_override_ts = int(Time.get_unix_time_from_system()) + _clk_off
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_slot = maxi(1, int(OS.get_environment("SIM_SLOT"))) if OS.get_environment("SIM_SLOT") != "" else 1
 	var sd := OS.get_environment("SIM_SEED")

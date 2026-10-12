@@ -2264,8 +2264,9 @@ language plpgsql security definer set search_path = public as $$
 declare b record; n int;
 begin
   if auth.uid() is null or p_snapshot is null or jsonb_typeof(p_snapshot) <> 'object'
-     or octet_length(p_snapshot::text) > 65536 then
-    return false;
+     or octet_length(p_snapshot::text) > 65536
+     or jsonb_typeof(p_snapshot->'leaders') <> 'array' or jsonb_array_length(p_snapshot->'leaders') < 3 then
+    return false;                       -- 没有 3 只统领的快照不收(防空阵容覆盖周六那份正式阵容)
   end if;
   select * into b from public.finals_buckets where season_week = p_week and bucket_no = p_bucket;
   if not found or b.closed then
@@ -2402,3 +2403,4 @@ revoke all on function public.finals_report(bigint, int, int, int, int, bigint, 
 grant execute on function public.finals_report(bigint, int, int, int, int, bigint, int) to authenticated;
 -- <<< END finals_settle_once 20261012 <<<
 -- finals_settle_once 20261012 已上生产(2026-10-12, 用户「做」「今天末必须发新包」); 事务回读: 购物窗内 opponent/report=shop_open、快照可改; 购物后上半区 ok、下半区 upper_first、无侧别 update_required、快照锁定; 宽限后下半区 ok、opponent settled; 全部回滚
+-- finals_update_snapshot 2026-10-12 实跑后加: 没有 3 只统领的快照拒收(已上生产)

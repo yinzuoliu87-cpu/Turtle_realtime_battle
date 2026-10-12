@@ -29,8 +29,9 @@ language plpgsql security definer set search_path = public as $$
 declare b record; n int;
 begin
   if auth.uid() is null or p_snapshot is null or jsonb_typeof(p_snapshot) <> 'object'
-     or octet_length(p_snapshot::text) > 65536 then
-    return false;
+     or octet_length(p_snapshot::text) > 65536
+     or jsonb_typeof(p_snapshot->'leaders') <> 'array' or jsonb_array_length(p_snapshot->'leaders') < 3 then
+    return false;                       -- 没有 3 只统领的快照不收(防空阵容覆盖周六那份正式阵容)
   end if;
   select * into b from public.finals_buckets where season_week = p_week and bucket_no = p_bucket;
   if not found or b.closed then

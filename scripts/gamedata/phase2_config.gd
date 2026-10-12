@@ -483,6 +483,13 @@ static func phase_pending_note(phase: String) -> String:
 ## ⚠ 只认 **> 0**: unix 0 (1970-01-01) 不是任何人想钉的时刻, 而"0 = 关"是上面三个先例的口径。
 static var now_override_ts: int = 0
 
+
+## 量「过了多久」用的钟(收包时刻与此刻必须读同一个)。产品里 now_override_ts 恒 0 ⇒ 就是系统时间。
+## ★2026-10-12 周日统一结算实跑抓到: 收包时刻原来读系统时间、此刻读钉住的钟 ⇒ 钉钟时两者差出几天,
+##   「购物还剩多久」永远算不对(模拟号时钟偏移时一场都开不了打)。不含服务器偏移与时间穿越 —— 那两层只管「现在几点」。
+static func delta_clock() -> int:
+	return now_override_ts if now_override_ts > 0 else int(Time.get_unix_time_from_system())
+
 ## 「现在」的 unix 秒(UTC)。优先级: `now_override_ts`(门禁钉死) > 开发包时间穿越 > 本机时钟 + 服务器偏移。
 ## ★三者都没有(没钉、没穿越、从没连上过服务器)时**逐字节等价**于 `int(Time.get_unix_time_from_system())`。
 static func now_utc() -> int:

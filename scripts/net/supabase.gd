@@ -2003,7 +2003,7 @@ func fetch_finals(week: int, bucket: int) -> void:
 			_finals_inflight = false
 			_finals_tried = true
 			var _pv: Dictionary = parse_finals(bool(res.get("ok", false)), int(res.get("code", 0)),
-				str(res.get("body", "")), mine, int(Time.get_unix_time_from_system()))
+				str(res.get("body", "")), mine, _P2S.delta_clock())
 			## ★★★**问不到就别动上一份好数据**。原来一律覆盖 ⇒ 周日打到一半网络抖一下,
 			##   签表**从屏幕上消失**, 换成「本周没有你的桶」, 30 秒后才回来。
 			##   ⇒ 只有「问到了」才换; 问不到时留着旧的继续画(下一拍会重试)。
@@ -2200,7 +2200,7 @@ func fetch_finals_week(week: int) -> void:
 			_finals_week_inflight = false
 			_finals_week_tried = true
 			var pw: Dictionary = parse_finals_week(bool(res.get("ok", false)), int(res.get("code", 0)),
-				str(res.get("body", "")), mine, int(Time.get_unix_time_from_system()))
+				str(res.get("body", "")), mine, _P2S.delta_clock())
 			## ★同 `fetch_finals`: 问不到就别抹掉上一份好数据(网络抖一下观赛图不许消失)。
 			if pw.has("buckets") or _finals_week.is_empty():
 				_finals_week = pw

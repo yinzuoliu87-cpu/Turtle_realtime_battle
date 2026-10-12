@@ -488,7 +488,7 @@ func _delta_now() -> int:
 	if _now_override > 0:
 		return _now_override
 	## 门禁钉死的钟(产品里恒 0)也认 —— 门禁把收包时刻对齐到它; 只排除服务器偏移/时间穿越那两层
-	return _P2C.now_override_ts if _P2C.now_override_ts > 0 else int(Time.get_unix_time_from_system())
+	return _P2C.delta_clock()
 
 
 ## 现在这一张的数据。★全屏所有判据都从这里取 —— 切 Tab 只换它, 其余一行不动。
@@ -550,7 +550,7 @@ func srv_now() -> int:
 	var sn := int(c.get("srv_now", 0))
 	var ra := int(c.get("recv_at", 0))
 	if sn > 0 and ra > 0:
-		return sn + (int(Time.get_unix_time_from_system()) - ra)
+		return sn + (_delta_now() - ra)
 	return int(_P2C.now_utc())
 
 

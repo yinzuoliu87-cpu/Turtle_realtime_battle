@@ -122,6 +122,9 @@ func _ready() -> void:
 	sent.clear()
 	SB.finals_snapshot_posts = 0
 	BE._finals_snap_at = 0
+	## 空阵容不推(防覆盖周六那份正式阵容) ⇒ 这里要有 3 只统领, 测完还原
+	var leaders0 = GameState.season_leaders.duplicate(true)
+	GameState.season_leaders = ["basic", "stone", "bamboo"]
 	var srv := int(Time.get_unix_time_from_system())
 	var mp = BMS.new()
 	add_child(mp)
@@ -148,6 +151,7 @@ func _ready() -> void:
 		await get_tree().process_frame
 	_ok("⑤ ★购物结束后不再推(阵容已锁定)", SB.finals_snapshot_posts == 0, "posts=%d" % SB.finals_snapshot_posts)
 	mp.queue_free()
+	GameState.season_leaders = leaders0
 	SB._transport_for_test = Callable()
 	SB.finals_report_clear()
 	SB._report_inflight = false
