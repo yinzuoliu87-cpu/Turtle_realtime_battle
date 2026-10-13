@@ -126,10 +126,10 @@
     "baseStats1": "+攻10/23/40·吸血15/24/33%·治疗增幅15/24/33%",
     "shopAvailable": 1,
     "emoji": "🌙",
-    "effectDesc1": "该法器法力条集满时连斩 5/6/8 次随机敌人，每次造成（40/50/70+0.5/0.7/1.0×攻击力）物理伤害，后续每次伤害逐渐衰减。\n自身的溢出治疗转化为血护盾，血护盾上限为 200/350/500。",
+    "effectDesc1": "【法力】充满时，连斩随机敌人 5/6/8 次，每次造成（40/50/70 + 50/70/100% 攻击力）物理伤害，伤害逐次衰减。\n被动：溢出的治疗转化为血护盾，至多 200/350/500。",
     "effectDesc3": "",
     "img": "equip/eq011-icon.png",
-    "effectBrief": "法力条集满时连斩 5/6/8 次随机敌人。溢出的治疗转化为血护盾。"
+    "effectBrief": "【法力】充满时连斩随机敌人 5/6/8 次。溢出的治疗转化为血护盾。"
   },
   {
     "id": "p2eq_012",
@@ -270,10 +270,10 @@
     "baseStats1": "+生命40/60/80·攻10/25/40·魔穿5/8/13",
     "shopAvailable": 1,
     "emoji": "🔥",
-    "effectDesc1": "被动：普通攻击命中时额外施加 2/5/8+攻击力 7/11/15% 层灼烧，并获得 {C:EquipSystem.CORAL_MANA_PER_HIT} 点法力。\n主动：法力条集满时自动释放。蓄力后朝敌方挥出一道火焰波，在 {C:EquipSystem.CORAL_ARC_DEG} 度扇形内缓慢推进 {C:EquipSystem.CORAL_TRAVEL} 码，对扫过的敌人各施加 40/60/90 层灼烧。主动施加的灼烧不获得法力。",
+    "effectDesc1": "被动：攻击命中时额外施加（2/5/8 + 7/11/15% 攻击力）层灼烧。\n【法力】充满时，蓄力后朝敌方挥出一道火焰波，在 {C:EquipSystem.CORAL_ARC_DEG} 度扇形内推进 {C:EquipSystem.CORAL_TRAVEL} 码，对扫过的敌人施加 40/60/90 层灼烧。\n<span style=\"color:#8a93a0\">攻击命中时回复 {C:EquipSystem.CORAL_MANA_PER_HIT} 点法力，火焰波施加的灼烧不回复法力。</span>",
     "effectDesc3": "",
     "img": "equip/dungeon-fire-coral.png",
-    "effectBrief": "普通攻击额外施加灼烧并积累法力。法力条集满时挥出火焰波，扩散灼烧。"
+    "effectBrief": "攻击额外施加灼烧。【法力】充满时挥出火焰波，扩散灼烧。"
   },
   {
     "id": "p2eq_024",
@@ -306,10 +306,10 @@
     "baseStats1": "+魔穿8/13/20",
     "shopAvailable": 1,
     "emoji": "🌩️",
-    "effectDesc1": "普通攻击为该法器充能 {C:EquipSystem.THUNDER_MANA_PER_HIT} 点法力。法力条集满时朝随机目标发射连锁闪电，造成 40/60/90 魔法伤害，在不同敌人间跳跃，最多命中 4/5/6 个目标。",
+    "effectDesc1": "【法力】充满时，朝随机敌人发射连锁闪电，造成 40/60/90 魔法伤害，在敌人之间跳跃，至多命中 4/5/6 个目标。\n<span style=\"color:#8a93a0\">攻击命中时回复 {C:EquipSystem.THUNDER_MANA_PER_HIT} 点法力。</span>",
     "effectDesc3": "",
     "img": "equip/equip-lightning-staff.png",
-    "effectBrief": "普通攻击积累法力，法力条集满时发射连锁闪电，最多命中 4/5/6 个目标。"
+    "effectBrief": "【法力】充满时发射连锁闪电，至多命中 4/5/6 个目标。"
   },
   {
     "id": "p2eq_027",
@@ -342,10 +342,10 @@
     "baseStats1": "+生命50/110/150·护甲9/15/25",
     "shopAvailable": 1,
     "emoji": "❄️",
-    "effectDesc1": "该法器法力条集满时为自身获得 100/160/250 点护盾并砸击地面，朝最近的敌人推出一条长 {C:IceSystem.FISSURE_REACH} 码、中线两侧各宽 {C:IceSystem.FISSURE_HALF_W} 码的冰道。冰道推进至敌人时才对其结算：造成 25/40/60 魔法伤害，将其竖直击飞约 {C:IceSystem.FISSURE_KNOCK_SEC} 秒并冰封 1/1.8/2.5 秒。",
+    "effectDesc1": "【法力】充满时，获得 100/160/250 护盾并砸击地面，朝最近的敌人推出一条冰道。冰道经过的敌人受到 25/40/60 魔法伤害，被击飞 {C:IceSystem.FISSURE_KNOCK_SEC} 秒并冰封 1/1.8/2.5 秒。\n<span style=\"color:#8a93a0\">冰道长 {C:IceSystem.FISSURE_REACH} 码，中线两侧各宽 {C:IceSystem.FISSURE_HALF_W} 码。</span>",
     "effectDesc3": "",
     "img": "equip/dungeon-jelly.png",
-    "effectBrief": "法力条集满时获得护盾并推出冰道，冰封命中的敌人 1/1.8/2.5 秒。"
+    "effectBrief": "【法力】充满时获得护盾并推出冰道，冰封命中的敌人 1/1.8/2.5 秒。"
   },
   {
     "id": "p2eq_030",
@@ -354,10 +354,10 @@
     "baseStats1": "+攻7/12/20·生命20/40/80·魔穿5/8/13",
     "shopAvailable": 1,
     "emoji": "🔮",
-    "effectDesc1": "该法器法力条集满时朝最近的敌人方向发射 2/2/3 段贯穿水晶光束，每段间隔 {C:CrystalSystem.LINE_SEG_GAP} 秒。每段对直线上中线两侧各 {C:CrystalSystem.LINE_HALF_W} 码内的每名敌人造成 30/35/40 魔法伤害，并施加 1 层迷你水晶。\n敌人身上的水晶达到 3 层时引爆，受到相当于其最大生命值 14/17/20% 的魔法伤害，并重置层数。",
+    "effectDesc1": "【法力】充满时，朝最近的敌人发射 2/2/3 道贯穿光束，每道对直线上的敌人造成 30/35/40 魔法伤害，并施加 1 层【迷你水晶】。\n【迷你水晶】达到 3 层时引爆，造成 14/17/20% 目标最大生命值的魔法伤害。\n<span style=\"color:#8a93a0\">每道间隔 {C:CrystalSystem.LINE_SEG_GAP} 秒，光束中线两侧各宽 {C:CrystalSystem.LINE_HALF_W} 码。</span>",
     "effectDesc3": "",
     "img": "equip/dungeon-mini-crystal.png",
-    "effectBrief": "法力条集满时发射贯穿水晶光束。敌人身上的水晶达到 3 层时引爆。"
+    "effectBrief": "【法力】充满时发射贯穿光束。【迷你水晶】达到 3 层时引爆。"
   },
   {
     "id": "p2eq_031",
@@ -366,10 +366,10 @@
     "baseStats1": "+攻7/12/20·生命20/40/80·魔穿3/6/10",
     "shopAvailable": 1,
     "emoji": "🔮",
-    "effectDesc1": "该法器法力条集满时以自身为中心，用水晶射线进行 {C:CrystalSystem.SWEEP_ARC_DEG}° 扫射，半径 {C:CrystalSystem.SWEEP_REACH} 码，耗时 {C:CrystalSystem.SWEEP_SEC} 秒，射线跟随自身移动。被扫中的敌人受到 60/130/250 魔法伤害并被施加 1 层迷你水晶，同时偷取目标 {C:CrystalSystem.MINI_MR_STEAL%}% 当前魔抗，目标减少、自身获得，持续到战斗结束。\n敌人身上的水晶达到 {C:CrystalSystem.MINI_STACK_MAX} 层水晶时引爆，受到相当于其最大生命值 14/17/20% 的魔法伤害，并重置层数。",
+    "effectDesc1": "【法力】充满时，以自身为中心进行 {C:CrystalSystem.SWEEP_ARC_DEG}° 水晶射线扫射，对扫中的敌人造成 60/130/250 魔法伤害，施加 1 层【迷你水晶】，并偷取其 {C:CrystalSystem.MINI_MR_STEAL%}% 魔抗，持续到战斗结束。\n【迷你水晶】达到 {C:CrystalSystem.MINI_STACK_MAX} 层时引爆，造成 14/17/20% 目标最大生命值的魔法伤害。\n<span style=\"color:#8a93a0\">射线半径 {C:CrystalSystem.SWEEP_REACH} 码，持续 {C:CrystalSystem.SWEEP_SEC} 秒，跟随自身移动。</span>",
     "effectDesc3": "",
     "img": "equip/dungeon-mini-crystal-b.png",
-    "effectBrief": "法力条集满时进行 {C:CrystalSystem.SWEEP_ARC_DEG}° 水晶射线扫射并偷取魔抗。敌人身上的水晶达到 {C:CrystalSystem.MINI_STACK_MAX} 层时引爆。"
+    "effectBrief": "【法力】充满时进行 {C:CrystalSystem.SWEEP_ARC_DEG}° 水晶射线扫射并偷取魔抗。【迷你水晶】达到 {C:CrystalSystem.MINI_STACK_MAX} 层时引爆。"
   },
   {
     "id": "p2eq_032",
@@ -510,10 +510,10 @@
     "baseStats1": "+生命80/200/5000·盾疗10/20/30%",
     "shopAvailable": 1,
     "emoji": "🌊",
-    "effectDesc1": "该法器法力条集满时，从身后 {C:EquipSystem.WAVE_BACK} 码涌起一道浪墙，朝敌方方向横扫全场。浪墙宽度固定，横向覆盖整个战场，对敌我双方均生效：友军获得 40/95/120 点护盾并永久获得 2/3/5 护甲与魔抗，敌人受到 60/110/200 魔法伤害并永久失去 2/3/5 护甲与魔抗。\n负面被动：该法器的法力条上限提升 50/25/0%。",
+    "effectDesc1": "【法力】充满时，从身后涌起一道横贯战场的浪墙并向前推进。友军获得 40/95/120 护盾，并永久获得 2/3/5 护甲与魔抗。敌人受到 60/110/200 魔法伤害，并永久失去 2/3/5 护甲与魔抗。\n负面被动：充满所需的法力提高 50/25/0%。\n<span style=\"color:#8a93a0\">浪墙从身后 {C:EquipSystem.WAVE_BACK} 码处涌起。</span>",
     "effectDesc3": "",
     "img": "equip/dungeon-wave.png",
-    "effectBrief": "法力满时涌起浪墙横扫全场：友军获得护盾与双抗，敌人失去双抗。"
+    "effectBrief": "【法力】充满时涌起浪墙横扫全场：友军获得护盾与双抗，敌人失去双抗。"
   },
   {
     "id": "p2eq_044",
@@ -1050,10 +1050,10 @@
     "baseStats1": "+法穿5/11/20·+龟能12/22/40",
     "shopAvailable": 1,
     "emoji": "🌊",
-    "effectDesc1": "该法器法力条集满时，在自身脚下立起一块潮汐碑，固定在原地，持续 {C:EqArcaneBatch.STELE_SEC} 秒，半径 {C:EqArcaneBatch.STELE_RADIUS} 码。\n碑内敌人每秒受到 15/25/40 魔法伤害。碑内友军每秒获得可叠加的 20/35/55 护盾，并获得 10/15/25%攻击速度，离开范围后失效。\n潮汐碑存在期间，该法器的法力条锁定，不再增长。",
+    "effectDesc1": "【法力】充满时，在脚下立起一块潮汐碑，持续 {C:EqArcaneBatch.STELE_SEC} 秒，半径 {C:EqArcaneBatch.STELE_RADIUS} 码。碑内敌人每秒受到 15/25/40 魔法伤害，碑内友军每秒获得 20/35/55 护盾，并获得 10/15/25% 攻击速度。\n<span style=\"color:#8a93a0\">护盾可叠加，攻击速度在离开范围后失效。潮汐碑存在期间不回复法力。</span>",
     "effectDesc3": "",
     "img": "equip/p2eq_088.png",
-    "effectBrief": "法力条集满时立起潮汐碑，持续 {C:EqArcaneBatch.STELE_SEC} 秒：碑内敌人持续受到伤害，友军获得护盾与攻击速度。"
+    "effectBrief": "【法力】充满时立起潮汐碑，持续 {C:EqArcaneBatch.STELE_SEC} 秒：碑内敌人持续受到伤害，友军获得护盾与攻击速度。"
   },
   {
     "id": "p2eq_089",
@@ -1062,10 +1062,10 @@
     "baseStats1": "+充能6/11/18%·+护甲6/13/22",
     "shopAvailable": 1,
     "emoji": "🌙",
-    "effectDesc1": "该法器法力条集满时，对一名敌人贴上符纸：在 {C:EqArcaneBatch.TALISMAN_SEC} 秒内共造成 400/700/1000 魔法伤害，并每秒削减其 1 点魔抗，削减的魔抗在本路内不恢复。\n符纸可叠加。\n被贴符的敌人死亡时，符纸转移至最近的敌人身上，仅转移剩余持续时间。",
+    "effectDesc1": "【法力】充满时，对一名敌人贴上【符纸】，在 {C:EqArcaneBatch.TALISMAN_SEC} 秒内共造成 400/700/1000 魔法伤害，并每秒降低其 1 点魔抗，本路内不恢复。\n<span style=\"color:#8a93a0\">【符纸】可叠加。目标死亡时，符纸以剩余持续时间转移给最近的敌人。</span>",
     "effectDesc3": "",
     "img": "equip/p2eq_089.png",
-    "effectBrief": "法力条集满时对敌人贴上符纸：{C:EqArcaneBatch.TALISMAN_SEC} 秒内造成 400/700/1000 魔法伤害并削减魔抗。"
+    "effectBrief": "【法力】充满时对敌人贴上【符纸】：{C:EqArcaneBatch.TALISMAN_SEC} 秒内造成 400/700/1000 魔法伤害并降低魔抗。"
   },
   {
     "id": "p2eq_090",
@@ -1074,10 +1074,10 @@
     "baseStats1": "+法穿18/42/110·+生命150/420/1200·+龟能45/80/150",
     "shopAvailable": 1,
     "emoji": "🔱",
-    "effectDesc1": "该法器法力条集满时，自身跃向空中后猛砸整个战场：对 {C:EqArcaneBatch.PESTLE_RADIUS} 码内的敌人造成 1 倍攻击力+150/300/4000 魔法伤害，并施加 2/3/8 秒眩晕与 1 秒击飞。\n造成伤害后才重新开始积累法力值。\n被动：自身每第三次普通攻击发射一道浪潮，浪潮飞向目标后持续弹向最近的、未被本次浪潮经过的友军或敌军，最多弹跳 4/5/8 次。\n命中敌人时造成 40/70/140 魔法伤害，命中友军时提供 20/40/80 治疗。",
+    "effectDesc1": "【法力】充满时，跃向空中后猛砸地面，对 {C:EqArcaneBatch.PESTLE_RADIUS} 码内的敌人造成（100% 攻击力 + 150/300/4000）魔法伤害，并使其眩晕 2/3/8 秒、击飞 1 秒。\n被动：每第三次攻击发射一道浪潮，在友军与敌军之间弹跳，至多 4/5/8 次，每个单位只命中一次。浪潮对敌人造成 40/70/140 魔法伤害，为友军回复 20/40/80 生命值。\n<span style=\"color:#8a93a0\">猛砸造成伤害后才开始回复法力。</span>",
     "effectDesc3": "",
     "img": "equip/p2eq_090.png",
-    "effectBrief": "法力条集满时跃起猛砸全场，造成伤害并眩晕 2/3/8 秒。"
+    "effectBrief": "【法力】充满时跃起猛砸地面，造成伤害并眩晕 2/3/8 秒。"
   },
   {
     "id": "p2eq_091",
