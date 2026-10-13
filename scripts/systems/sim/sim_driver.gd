@@ -213,6 +213,14 @@ func _do_menu(m: Node) -> void:
 		await _sleep(1.0)
 		return
 	_acted_id = m.get_instance_id()
+	## ★周日决赛日: 对阵图的自动驾驶(SimFinalsPilot)判定「本轮备战窗开着、还没买」才回到这里 ⇒ 进商店按自己的打法买、整理背包。
+	##   其余时候主菜单交给它(停 3 秒自动进对阵图), 驱动不 _finish —— 周日要一轮一轮打下去(用户 2026-10-12「周日也要跑」)。
+	if _P2.phase_at_utc(int(_P2.now_utc())) == _P2.PHASE_FINALS:
+		if SimFinalsPilot.shop_pending:
+			SimFinalsPilot.shop_pending = false
+			_ev("finals_shop", {"key": SimFinalsPilot.shopped_key, "stats": _stats()})
+			m.call("_open_shop")
+		return
 	var block := str(m.call("_battle_block_msg"))
 	var played := int(GameState.season_total_battles)
 	if _tour_wanted() and (played >= 1 or block != ""):

@@ -22,8 +22,38 @@ case "$DOW" in
   2) BATCHES="1 2 3 4 5 6 7 8" ;;
   4) BATCHES="9 10 11 12" ;;
   6) BATCHES="SAT" ;;
+  7) BATCHES="SUN" ;;
   *) echo "$(date -u +%FT%TZ) 今天(星期 $DOW)不排模拟号, 不跑"; exit 0 ;;
 esac
+
+## ★周日决赛(用户 2026-10-12「周日也要跑」): 17:50 UTC 起「闯关赛打满 4 胜 = 进了决赛日」的号, 全部同时在线
+##   (小组赛 18:00、冠军杯赛 20:00, 每轮备战 3 分钟; 不在线的号只能被快照代打 / 服务端兜底判, 没有录像)。
+##   窗口打完不退(SIM_QUIT_WHEN_DONE 空): 驱动在备战窗里进商店买, 其余由 SimFinalsPilot 一轮一轮点开战; 23:30 UTC 统一关掉。
+if [ "$BATCHES" = "SUN" ]; then
+  ELIG=$(python - <<'PYEOF'
+import json
+out = []
+for i in range(1, 121):
+    try:
+        d = json.load(open(rf'C:\tmp\turtle-sim60\p{i:02d}\Godot\app_userdata\斗龟场 实时版\savegame.json', encoding='utf-8'))
+    except Exception:
+        continue
+    if int(d.get('gauntlet_wins', 0)) >= 4:
+        out.append(str(i))
+print(' '.join(out))
+PYEOF
+)
+  echo "════ $(date -u +%FT%TZ) 周日决赛 · 进决赛日的槽位: ${ELIG:-无} · $(git rev-parse --short HEAD)"
+  [ -z "$ELIG" ] && exit 0
+  if [ -n "${DRY:-}" ]; then echo "[DRY] SIM_QUIT_WHEN_DONE= SLOTS=\"$ELIG\" sim60.sh start"; exit 0; fi
+  SIM_QUIT_WHEN_DONE="" SLOTS="$ELIG" bash tools/sim60.sh start 1
+  until [ "$((10#$(date -u +%H%M)))" -ge 2330 ]; do sleep 300; done
+  echo "$(date -u +%T)Z 决赛日收工, 关掉全部窗口"
+  bash tools/sim60.sh stop
+  for s in $ELIG; do bash tools/sim60.sh status 2>/dev/null | awk -v p="$(printf 'p%02d' "$s")" '$1==p'; done
+  echo "════ $(date -u +%FT%TZ) 周日结束"
+  exit 0
+fi
 
 ## ★周六闯关赛(用户 2026-10-12「周六我们这样，0点跑部分，早上9点跑部分，中午12点后每一小时跑部分直到下午6点」):
 ##   只起「积分赛已晋级、闯关赛还没打完(<4 胜且 <3 负)」的号; 按 (槽位-1) mod 9 分成 9 组,

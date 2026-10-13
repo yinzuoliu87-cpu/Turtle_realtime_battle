@@ -11,10 +11,19 @@ extends Node
 
 const _P2 := preload("res://scripts/gamedata/phase2_config.gd")
 const _BR := preload("res://scripts/gamedata/bracket.gd")
+const _SBF := preload("res://scripts/net/supabase.gd")
 
 static var menu_opens: int = 0      ## 账: 从主菜单进了几次对阵图
 static var match_opens: int = 0     ## 账: 在对阵图里点开了几场
 static var result_leaves: int = 0   ## 账: 结算屏自动返回了几次
+## ★周日备战购物(用户 2026-10-12「周日也要跑」; 原来这里「不买东西、不改阵」⇒ 3 分钟备战白白浪费):
+##   对阵图看到「本轮备战窗开着、还剩 ≥ SHOP_MIN_LEFT 秒、这一轮还没买过」⇒ 记下这一轮、回主菜单;
+##   sim_driver 在主菜单看到 shop_pending 就进商店按自己的打法买 → 背包 → 回主菜单 → 这里再进对阵图。
+##   只在带 SIM_DRIVER 时做(只开 SIM_AUTOPILOT 的旧用法不变)。
+const SHOP_MIN_LEFT := 40
+static var shopped_key := ""        ## 最近一次去买过的那一轮(桶号-轮次-开轮时刻)
+static var shop_pending := false    ## 对阵图已决定去买, 等主菜单上的 sim_driver 接手
+static var shop_trips: int = 0      ## 账: 回主菜单去买了几次
 
 var _host: Node = null
 var _mode := ""
@@ -74,6 +83,8 @@ func _poke_bracket() -> void:
 	if aw is Vector2i and (aw as Vector2i).x >= 0:
 		return                                  # 已经在等这一场的对手了
 	var c: Dictionary = _host.cur()
+	if _shop_trip_due(c):
+		return
 	var n := int(c.get("size", 0))      # parse_finals 的键是 size(不是 n)
 	var r := int(c.get("round", 0))
 	if n <= 1 or r <= 0:
@@ -84,6 +95,26 @@ func _poke_bracket() -> void:
 			print("[AUTOPILOT] finals: 点开第 %d 轮第 %d 场" % [r, m])
 			_host._on_match_opened(r, m)
 			return
+
+
+## 本轮备战窗开着、我在这一组、这一轮还没买过、剩的时间够 ⇒ 记账并回主菜单(由 sim_driver 去买)。
+func _shop_trip_due(c: Dictionary) -> bool:
+	if OS.get_environment("SIM_DRIVER") != "1" or c.is_empty() or bool(c.get("closed", false)):
+		return false
+	if int(c.get("me", -1)) < 0:
+		return false
+	var now_l: int = int(_P2.delta_clock())
+	if not _SBF.finals_shop_open_of(c, now_l) or _SBF.finals_shop_left_of(c, now_l) < SHOP_MIN_LEFT:
+		return false
+	var key := "%d-%d-%d" % [int(c.get("bucket", -1)), int(c.get("round", 0)), int(c.get("round_at", 0))]
+	if key == shopped_key:
+		return false
+	shopped_key = key
+	shop_pending = true
+	shop_trips += 1
+	print("[AUTOPILOT] finals: 备战窗开着(剩 %d 秒) → 回主菜单去买 %s" % [_SBF.finals_shop_left_of(c, now_l), key])
+	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+	return true
 
 
 func _wait(n: int) -> bool:
