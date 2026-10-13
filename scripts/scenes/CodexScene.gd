@@ -592,6 +592,11 @@ func _select(idx: int) -> void:
 		"equips": _codex_detail._show_equip(item)
 		"synergies": _codex_detail._show_type(item)
 		"status": _codex_detail._show_status(item)
+	## ★2026-10-13 内测截图: 镇海杵 / 银色箭袋 / 枪羁绊 的标题被详情框上沿挡住一截 ——
+	##   在上一条往下滚过, 换条目时详情区不归零。重画后内容高度会变, 下一帧排完版再归零一次。
+	if _detail_scroll != null:
+		_detail_scroll.scroll_vertical = 0
+		_detail_scroll.set_deferred("scroll_vertical", 0)
 
 
 # ══════════════════════════════════════════════════════════
