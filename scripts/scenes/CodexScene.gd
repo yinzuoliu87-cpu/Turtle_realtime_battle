@@ -297,7 +297,7 @@ func _fill_bg_and_center() -> void:
 			tile.size = Vector2(vp.x + 512, vp.y + 512)
 			tile.position = Vector2(-512, -512)
 			bg.add_child(tile)
-			var drift := tile.create_tween().set_loops()
+			var drift := TweenKit.loop_on(tile)
 			drift.tween_property(tile, "position", Vector2(0, 0), 25.0).from(Vector2(-512, -512)).set_trans(Tween.TRANS_LINEAR)
 		var grad := Gradient.new()
 		grad.offsets = PackedFloat32Array([0.0, 0.6, 1.0])
@@ -769,7 +769,7 @@ func _add_pet_portrait(cx: float, cy: float, pet: Dictionary, box: float) -> voi
 			var dur_ms: float = float(meta.get("duration", 800))
 			var fps: float = maxf(4.0, roundf(float(idle_n) * 1000.0 / maxf(200.0, dur_ms)))
 			var loop_dur: float = float(idle_n) / fps
-			var tw := spr.create_tween().set_loops()   # 绑 spr, 切龟清 detail 时自动停
+			var tw := TweenKit.loop_on(spr)   # 绑 spr, 切龟清 detail 时自动停
 			# ★同族钳制: idle_n 来自元数据, 贴图未必真有那么多帧
 			tw.tween_method(func(fr: float) -> void:
 				spr.frame = int(fr) % maxi(1, mini(idle_n, int(spr.hframes) * int(spr.vframes)))

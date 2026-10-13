@@ -368,7 +368,7 @@ func _bg() -> void:
 		tile.size = Vector2(vp.x + 512, vp.y + 512)
 		tile.position = Vector2(-512, -512)
 		add_child(tile)
-		var drift := tile.create_tween().set_loops()
+		var drift := TweenKit.loop_on(tile)
 		drift.tween_property(tile, "position", Vector2(0, 0), 25.0).from(Vector2(-512, -512)).set_trans(Tween.TRANS_LINEAR)
 	# 暗渐变遮罩 (顶 alpha.15 → 底 .40)
 	var grad := Gradient.new()

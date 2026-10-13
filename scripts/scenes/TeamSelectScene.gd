@@ -1104,7 +1104,7 @@ func _apply_pet_idle_texture(tr: TextureRect, pet: Dictionary, autoplay: bool = 
 			var dur_ms: float = float(meta.get("duration", 800))
 			var fps: float = maxf(4.0, roundf(float(n) * 1000.0 / maxf(200.0, dur_ms)))
 			var loop_dur: float = float(n) / fps
-			var atw := tr.create_tween().set_loops()
+			var atw := TweenKit.loop_on(tr)
 			atw.tween_method(
 				func(v: float) -> void:
 					if is_instance_valid(tr) and tr.texture is AtlasTexture:

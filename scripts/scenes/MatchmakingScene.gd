@@ -380,7 +380,7 @@ func _build_searching() -> void:
 	sub.size = Vector2(W, 28); sub.position = Vector2(0, 366); sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content_root.add_child(sub)
 	# 跳动的点
-	_dots_tween = create_tween().set_loops()
+	_dots_tween = TweenKit.loop_on(self)
 	for d in ["", ".", "..", "..."]:
 		_dots_tween.tween_callback(func(): if is_instance_valid(_dots_lbl): _dots_lbl.text = d)
 		_dots_tween.tween_interval(0.35)

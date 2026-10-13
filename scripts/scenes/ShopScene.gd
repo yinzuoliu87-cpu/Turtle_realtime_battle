@@ -953,7 +953,7 @@ func _card(idx: int, pos: Vector2) -> Control:
 		## ★`bind_node` 不能省(2026-09-01 门禁抓到): 不绑的话 `_rebuild()` 把卡片释放之后
 		##   这条**循环** tween 还活着, 目标没了 ⇒ 一圈瞬间跑完 ⇒ 引擎狂刷
 		##   `Infinite loop detected (tween.cpp:406)`。真实游戏里**每次买入/刷新货架都会触发**。
-		var bt := create_tween().bind_node(glow).set_loops()   # 呼吸: 让它活着, 不是一块死贴片
+		var bt := TweenKit.loop_bound(self, glow)   # 呼吸: 让它活着, 不是一块死贴片
 		bt.tween_property(glow, "modulate:a", 0.45, 0.9).set_trans(Tween.TRANS_SINE)
 		bt.tween_property(glow, "modulate:a", 1.0, 0.9).set_trans(Tween.TRANS_SINE)
 		## ★★★实拍抓到的真 bug(2026-09-28): 这道掠光**从来没被裁过**。
@@ -971,7 +971,7 @@ func _card(idx: int, pos: Vector2) -> Control:
 		shine.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		shine.position = Vector2(-40, -20)
 		shine_clip.add_child(shine)
-		var st2 := create_tween().bind_node(shine).set_loops()   # 同上: 必须绑节点
+		var st2 := TweenKit.loop_bound(self, shine)   # 同上: 必须绑节点
 		st2.tween_property(shine, "position:x", float(SLOT_W) + 40.0, 1.4).set_trans(Tween.TRANS_SINE)
 		st2.tween_interval(1.6)
 		st2.tween_callback(func() -> void:
@@ -1915,7 +1915,7 @@ func _glint_star(parent: Control, pos: Vector2, sz: float, phase: float) -> void
 	tr.z_index = 2
 	parent.add_child(tr)
 	# 12 帧 × 0.09 秒 ≈ 1.1 秒一轮
-	var tw := tr.create_tween().set_loops()
+	var tw := TweenKit.loop_on(tr)
 	if phase > 0.0:
 		tw.tween_interval(phase)
 	tw.tween_method(func(i: float) -> void:
