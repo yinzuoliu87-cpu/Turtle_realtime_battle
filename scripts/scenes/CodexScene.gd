@@ -488,6 +488,9 @@ static var _mono_cached: Font = null
 func _mono_font() -> Font:
 	if _mono_cached != null:
 		return _mono_cached
+	if not FontKit.system_fonts_ok():   # iOS 取不到系统字体(只会刷报错) ⇒ 直接用打包的 Noto; 见 font_kit.gd
+		_mono_cached = load("res://assets/fonts/NotoSansSC-Regular.otf")
+		return _mono_cached
 	var f := SystemFont.new()
 	f.font_names = PackedStringArray(["monospace", "Consolas", "Courier New"])
 	f.fallbacks = [load("res://assets/fonts/NotoSansSC-Regular.otf")]   # CJK 网页/iOS 兜底 (SystemFont 在 web 取不到系统字体→中文乱码)

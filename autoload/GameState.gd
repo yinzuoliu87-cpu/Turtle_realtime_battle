@@ -1443,6 +1443,7 @@ func _resolve_leader_slots(dl: Dictionary) -> void:
 
 
 func _ready() -> void:
+	FontKit.strip_theme_system_fonts()   # iOS: 主题回退链去掉取不到的系统字体(否则每个界面刷字体报错); 见 font_kit.gd
 	SimShot.attach(self)   # 模拟窗口自拍(只在 SIM_SHOT_DIR 设了时; 见 sim_shot.gd 头注)
 	## 客户端报错上报(2026-10-11): 越早装越好 —— 读档时的报错也要接住。
 	ErrorReporter.install(self)

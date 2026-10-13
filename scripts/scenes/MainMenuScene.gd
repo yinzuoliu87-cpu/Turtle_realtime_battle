@@ -864,8 +864,7 @@ func _bold_font() -> FontVariation:
 		_bold_font_cache.base_font = load("res://assets/fonts/m6x11.ttf") as FontFile   # 英文/数字像素打底
 		# 回退链: 系统雅黑Bold(桌面美观, 顺带给彩色emoji) → 【打包 Noto SC】(web/linux 无系统字体时的中文兜底)
 		#         → 【打包 Noto Emoji】(单色 emoji 兜底, 防豆腐块). 原来只挂 cjk(SystemFont) = 无系统字体时中文/emoji 全掉字形。
-		_bold_font_cache.fallbacks = [
-			cjk,
+		_bold_font_cache.fallbacks = ([cjk] if FontKit.system_fonts_ok() else []) + [   # iOS 取不到系统字体(只会刷报错) ⇒ 不挂; 见 font_kit.gd
 			load("res://assets/fonts/NotoSansSC-Regular.otf") as FontFile,
 			load("res://assets/fonts/NotoEmoji-Regular.ttf") as FontFile,
 		]

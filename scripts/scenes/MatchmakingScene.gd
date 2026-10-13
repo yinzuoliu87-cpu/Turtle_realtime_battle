@@ -347,8 +347,7 @@ func _bold_font() -> FontVariation:
 		## ═══ 关掉之后靠什么兜底 ═══
 		## 雅黑/苹方(桌面, 真 700) → 打包 Noto SC(web/iOS 取不到系统字体时的中文) →
 		## 打包 Noto Emoji(emoji 兜底, 防豆腐块)。实拍确认 🔍 在桌面仍是**彩色**的。
-		_font_cache.fallbacks = [
-			cjk,
+		_font_cache.fallbacks = ([cjk] if FontKit.system_fonts_ok() else []) + [   # iOS 取不到系统字体(只会刷报错) ⇒ 不挂; 见 font_kit.gd
 			load("res://assets/fonts/NotoSansSC-Regular.otf") as FontFile,
 			load("res://assets/fonts/NotoEmoji-Regular.ttf") as FontFile,
 		]
