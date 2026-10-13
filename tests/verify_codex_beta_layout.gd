@@ -280,7 +280,7 @@ func _check_f_lava() -> void:
 			var bar_rect := Rect2(bar.position, bar.size)
 			_ok("F %s 形态切换钮不压普攻条" % tag, btn_rect.size.x > 0.0 and not btn_rect.intersects(bar_rect),
 				"钮 %s / 普攻条 %s" % [str(btn_rect), str(bar_rect)])
-			var nm := _label_starting("普通攻击 · ")
+			var nm := _label_starting("攻击 · ")
 			var brief: RichTextLabel = null
 			for ch in _c.detail.get_children():
 				## 普攻简述 = 落在普攻条里面的那个定高富文本(两行条: 名字一行、简述一行)

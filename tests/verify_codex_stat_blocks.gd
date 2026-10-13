@@ -122,7 +122,7 @@ func _ready() -> void:
 	_ok("方块不越出左栏(右缘 ≤ %.0f)" % lcol_w, overflow.is_empty(), ", ".join(overflow.slice(0, 6)))
 	_ok("一行方块同一高度、从左往右不重叠", messy.is_empty(), ", ".join(messy.slice(0, 6)))
 	_ok("★分母: 扫过的标签数 %d(31 页)" % n_labels, n_labels > 31 * 10)
-	_ok("标签上没有「三选一/四选一/候选/普攻」这类说法(对齐「被动 / 普通攻击 / 技能」)", banned.is_empty(), ", ".join(banned.slice(0, 6)))
+	_ok("标签上没有「三选一/四选一/候选/普攻」这类说法(对齐「被动 / 攻击 / 技能」)", banned.is_empty(), ", ".join(banned.slice(0, 6)))
 
 	## 9-27 被否的长相: 空槽底轨。方块之外不许再有横贯整行的同色/暗色条 —— 只量左栏里比一格还宽的 ColorRect。
 	_c._select(0)

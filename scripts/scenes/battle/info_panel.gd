@@ -1833,7 +1833,7 @@ func _info_ability_row(vb: VBoxContainer, u: Dictionary) -> void:
 		var ent: Dictionary = e
 		var innate: bool = str(ent.get("name", "")).begins_with("被动 · ")
 		var basic: bool = str(ent.get("name", "")).find("(普攻)") >= 0
-		var role := "被动" if innate else ("普通攻击" if basic else "技能")
+		var role := "被动" if innate else ("攻击" if basic else "技能")
 		var cell := _slot_cell(rowc, str(ent.get("icon", "")), role, _ROLE_COL[role])
 		var cost: float = float(ent.get("cost", -1.0))
 		if cost >= 0.0:
@@ -1863,7 +1863,7 @@ func _info_ability_row(vb: VBoxContainer, u: Dictionary) -> void:
 
 
 ## ★用户 2026-10-06「普通攻击，不要叫普攻呢」⇒ 角色字写全称。
-const _ROLE_COL := {"被动": Color("#c9a8ff"), "普通攻击": Color("#b9c4cf"), "技能": Color("#ffce4d")}
+const _ROLE_COL := {"被动": Color("#c9a8ff"), "攻击": Color("#b9c4cf"), "技能": Color("#ffce4d")}
 
 
 func _open_skill_card(u: Dictionary, k: String, nm: String, role: String, cost: float,

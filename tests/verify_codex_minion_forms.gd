@@ -168,8 +168,8 @@ func _ready() -> void:
 	## 精英: 被动条 + 普通攻击条, 与龟页同名同构; 铁锁是一张签「被动」的卡
 	## (就在循环最后打开的这一页上量 —— 同一页连开两次, 新节点会撞上还没删掉的旧节点名而被引擎改名)
 	_ok("M elite 被动条(PassiveBar)", _named("PassiveBar") != null)
-	_ok("M elite 普通攻击条(BasicBar)", _named("BasicBar") != null)
-	_ok("M elite 普通攻击条写的是长手刃", _texts().has("普通攻击 · 长手刃"))
+	_ok("M elite 攻击条(BasicBar)", _named("BasicBar") != null)
+	_ok("M elite 攻击条写的是长手刃", _texts().has("攻击 · 长手刃"))
 	var en := _card_names()
 	_ok("M elite 技能卡 = 铁锤 + 铁锁", en.has("铁锤") and en.has("铁锁"), ", ".join(en))
 	## 点被动条展开 → 与龟页同一个展开态(「收起」), 重画回到的是小将页而不是别的龟

@@ -491,7 +491,7 @@ func _ready() -> void:
 					var _q2: Array = [_slot]
 					while not _q2.is_empty():
 						var _n2: Node = _q2.pop_back()
-						if _n2 is Label and ["被动", "普通攻击", "技能", "站位"].has(str((_n2 as Label).text)):
+						if _n2 is Label and ["被动", "攻击", "技能", "站位"].has(str((_n2 as Label).text)):
 							var _lr: Rect2 = (_n2 as Control).get_global_rect()
 							var _inside: bool = _slot.get_global_rect().grow(1.0).encloses(_lr)
 							_found = [str((_n2 as Label).text), (_n2 as Label).get_theme_color("font_color"),
@@ -500,7 +500,7 @@ func _ready() -> void:
 							_q2.append(_c2)
 					_roles.append(_found if not _found.is_empty() else ["", Color(0, 0, 0, 0), false])
 			if _roles.size() >= 3:
-				var _want := ["被动", "普通攻击", "技能"]
+				var _want := ["被动", "攻击", "技能"]
 				for _ri in range(3):
 					if str(_roles[_ri][0]) != str(_want[_ri]) or not bool(_roles[_ri][2]):
 						tint_bad.append("%s: 第 %d 格角色字「%s」(要「%s」, 可见且在槽内=%s)" % [pid, _ri,
@@ -845,7 +845,7 @@ func _ready() -> void:
 	_ok("★★血条/龟能条的九宫格框贴图真的加载上了(丢 .import 会静默失效)",
 		bar_noframe.is_empty(), "没贴图的: %s" % str(bar_noframe.slice(0, 4)))
 
-	_ok("★★被动槽与普攻/技能槽【看得出不一样】(角色字 被动/普通攻击/技能, 被动字色与另两格都不同)",
+	_ok("★★被动槽与普攻/技能槽【看得出不一样】(角色字 被动/攻击/技能, 被动字色与另两格都不同)",
 		tint_bad.is_empty(), "不对的: %s" % str(tint_bad.slice(0, 4)))
 
 	_ok("★分母: 真的逐个查了技能图标(0 个 = 空检查)", n_skill >= 20, "查了 %d 个技能" % n_skill)

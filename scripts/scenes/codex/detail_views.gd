@@ -661,12 +661,15 @@ func _render_skill_cards(pet: Dictionary, ctx: Dictionary, cards_y: float) -> vo
 		match _role_of(pet, sk):
 			"passive": chip_text = "被动"; chip_color = "#c77dff"
 			## 用户 2026-10-06「真的要说普攻这个吗，真的是商业游戏吗」「是被动，普通攻击，和技能啊」⇒ 全称, 与战斗信息面板同一个词。
-			"basic": chip_text = "普通攻击"; chip_color = "#58d3ff"
+			"basic": chip_text = "攻击"; chip_color = "#58d3ff"
 			## ★★2026-10-01: 原来写「3选1候选 · 龟能N」。用户:「3选1候选，这又是什么 ai 味描述」——
 			##   LoL 的技能头上只写**名字 + 消耗**。⇒ 与兄弟分支对齐成「角色 · 代价」;
 			##   「龟能 100」中间留空格(codex_text_lint「汉字贴着数字」)。
 			_: chip_text = "主动 · 龟能 %d" % _energy_of(pet, sk); chip_color = "#06d6a0"
-		nodes.append(host._add_text(text_x + nlbl.get_combined_minimum_size().x + 12.0, name_y + 1.0, chip_text, CARD_CHIP_PX, chip_color, 0.0, 0.5))
+		var chip_lbl = host._add_text(text_x + nlbl.get_combined_minimum_size().x + 12.0, name_y + 1.0, chip_text, CARD_CHIP_PX, chip_color, 0.0, 0.5)
+		if chip_lbl != null:
+			chip_lbl.set_meta("codex_chip", true)   # 门禁认卡片签用(「攻击」与属性栏「攻击」同字, 不能按文字认; 2026-10-13)
+		nodes.append(chip_lbl)
 		# 简述 — 富文本 BBCode, 多行 clamp。开头只有小标题的行(龟壳「主被动·潜影：」)跳过, 从效果那句起。
 		var brief = SkillText.render_bbcode(PreviewText.skip_lead_headings(_trim_tail(str(sk.get("brief", "")))), ctx, sk, PREVIEW_PX)
 		var rt = RichTextLabel.new()
@@ -733,7 +736,7 @@ func _basic_attack_bar(ctx: Dictionary, bsk: Dictionary, start_y: float) -> floa
 		host._add_image(RCOL_X + 30.0, bmid, "res://assets/sprites/%s" % bic, 28, 28)
 		btx = RCOL_X + ROW_TEXT_X
 	## 「普通攻击」全称(用户 2026-10-06, 战斗信息面板 info_panel.gd 同一个词); 2026-10-08 图鉴这里漏改, 用户实拍追问。
-	host._add_text(btx, bmid, "普通攻击 · %s" % str(bsk.get("name", "?")), 17, "#58d3ff", 0.0, 0.5, true)
+	host._add_text(btx, bmid, "攻击 · %s" % str(bsk.get("name", "?")), 17, "#58d3ff", 0.0, 0.5, true)
 	## ★★2026-10-02: 普攻简述用 `RichTextLabel` + `render_bbcode`(与被动条/三选一卡同一种上色)。
 	## 名字 17px 的 Label 下沿在 start_y + 33(中线 19 + 估高的一半); 简述从 35 起, 不相交(门禁 F 量过 0.95px 的重叠)。
 	var brt2 := _one_line_preview(start_y + 35.0)

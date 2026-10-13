@@ -60,7 +60,7 @@ func _battle_truth(pet: Dictionary, idx: int, volcano: bool) -> Dictionary:
 
 func _expected_chip(t: Dictionary) -> String:
 	match str(t["role"]):
-		"basic": return "普通攻击"
+		"basic": return "攻击"
 		"passive": return "被动"
 	return "主动 · 龟能 %d" % int(t["cost"])
 
@@ -72,7 +72,7 @@ func _chips() -> Array:
 			continue
 		if ch is Label:
 			var t := str((ch as Label).text)
-			if t == "被动" or t == "普通攻击" or t.begins_with("主动 · 龟能 "):
+			if ch.has_meta("codex_chip") and (t == "被动" or t == "攻击" or t.begins_with("主动 · 龟能 ")):   # 只认卡片签(属性栏也有「攻击」)
 				out.append(ch)
 	return out
 
@@ -173,7 +173,7 @@ func _check_roles_and_energy() -> void:
 	_ok("① 点名的五张都量到了", named.size() == 5, str(named))
 	for nm in named.keys():
 		print("      %s: 图鉴 %s" % [nm, named[nm]])
-	_ok("★① 卡片签(主动·龟能 N / 被动 / 普通攻击) == 战斗", bad_chip.is_empty(), "; ".join(bad_chip))
+	_ok("★① 卡片签(主动·龟能 N / 被动 / 攻击) == 战斗", bad_chip.is_empty(), "; ".join(bad_chip))
 	_ok("★① 详情页标题的「龟能 N」== 战斗(非主动不显)", bad_title.is_empty(), "; ".join(bad_title.slice(0, 6)))
 
 
