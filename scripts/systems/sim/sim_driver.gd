@@ -1062,7 +1062,8 @@ func _bench_gear_by_value() -> Array:
 	var bench: Array = GameState.persistent_bench
 	for i in range(bench.size()):
 		var it = bench[i]
-		if it is Dictionary and str((it as Dictionary).get("id", "")) != "" and str((it as Dictionary).get("kind", "")) != "item":
+		## 羁绊赠送件(圣光护盾 095)由 sync_synergy_grants 管, 装上会被收回背包 ⇒ 不碰(10-13 实跑 3 条 ANOMALY)
+		if it is Dictionary and str((it as Dictionary).get("id", "")) != "" and str((it as Dictionary).get("kind", "")) != "item" 				and not GameState.is_synergy_grant(it):
 			idx.append(i)
 	idx.sort_custom(func(a, b): return _eff_val(bench[a]) > _eff_val(bench[b]))
 	return idx
@@ -1076,7 +1077,7 @@ func _best_bench_gear() -> int:
 	for i in range(bench.size()):
 		var it = bench[i]
 		if not (it is Dictionary) or str((it as Dictionary).get("id", "")) == "" \
-				or str((it as Dictionary).get("kind", "")) == "item":
+				or str((it as Dictionary).get("kind", "")) == "item" or GameState.is_synergy_grant(it):
 			continue
 		var val := _eff_val(it)
 		if val > bv:
