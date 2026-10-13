@@ -1153,6 +1153,8 @@ func _dl_clear_units() -> void:
 	for tw in battle._sim_tweens:                    # 杀掉所有在跑的VFX tween(斩弧/曳光/召唤动画等), 别续进下一路
 		if tw != null and tw.is_valid(): tw.kill()
 	battle._sim_tweens.clear()
+	for fl in battle.get_tree().get_nodes_in_group(battle.SCREEN_FLASH_GROUP):   # 全屏白闪层兜底(10-13 内测「导弹爆炸同时战场结束⇒整个画面变白」)
+		if is_instance_valid(fl): fl.queue_free()
 	battle._float_dmg_window.clear(); battle._float_nd_window.clear(); battle._float_merge.clear()
 	# ★换路残留特效彻底清场(用户2026-07-19"上半→下半/终极 很多特效都没有清理"):
 	#   绝大多数VFX的 queue_free 是挂在 tween 的【最后一个 callback】上的, 而上面 tw.kill()

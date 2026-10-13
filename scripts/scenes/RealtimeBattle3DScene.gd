@@ -6252,6 +6252,7 @@ func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁�
 				_elite_sys._elite_slash_arc(tref["pos"], DetMath.norm(dv2) if DetMath.vlen(dv2) > 1.0 else Vector2.RIGHT))
 	, "src": u})
 
+const SCREEN_FLASH_GROUP := "battle_screen_flash"   # 全屏白闪层(换路清场按组兜底删; 见 _screen_flash_light)
 func _screen_flash_light() -> void:                              # 全屏轻白闪一拍(彗星撞击帧·0.06s淡入0.12s淡出·layer60盖UI下方一点)
 	var cl := CanvasLayer.new()
 	cl.layer = 55
@@ -6260,8 +6261,13 @@ func _screen_flash_light() -> void:                              # 全屏轻白�
 	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cl.add_child(rect)
+	cl.add_to_group(SCREEN_FLASH_GROUP)
 	add_child(cl)
-	var tw := _reg_tween()
+	## ★2026-10-13 内测反馈(b250de29):「如果远小将放的导弹爆炸同属战场结束，那么整个画面变白」。
+	##   原来走 _reg_tween(): 换路 `_dl_clear_units` 会 kill 全部 _sim_tweens, 整局结束后 sim 也不再喂 ⇒
+	##   淡出与 queue_free 都不执行, 遮罩停在 ≤28% 白一直盖着后面几路。白闪是纯画面(0.18 秒, 不影响结算 / 回放),
+	##   ⇒ 用裸 create_tween 按真实时间走完; 换路清场再按组兜底删(dual_lane_flow)。
+	var tw := create_tween()
 	tw.tween_property(rect, "color:a", 0.28, 0.06)
 	tw.tween_property(rect, "color:a", 0.0, UIPalette.T_TAP)
 	tw.tween_callback(cl.queue_free)
