@@ -51,7 +51,7 @@ QWD="${SIM_QUIT_WHEN_DONE-1}"
 ##   代价: 无头下自拍取不到画面(sim_shot 报 texture null, 无害), 证据改看 sim_events.jsonl。
 HL_ARG=""
 [ -n "${HEADLESS:-}" ] && [ "${HEADLESS}" != "0" ] && HL_ARG="'--headless',"
-MAX_SLOTS="${MAX_SLOTS:-120}"
+MAX_SLOTS="${MAX_SLOTS:-140}"   # 2026-10-13 +20(p121~p140, 英文昵称)
 
 slot_dir() { printf "%s/p%02d" "$SIM_ROOT" "$1"; }
 slot_save() { printf "%s/Godot/app_userdata/斗龟场 实时版/savegame.json" "$(slot_dir "$1")"; }

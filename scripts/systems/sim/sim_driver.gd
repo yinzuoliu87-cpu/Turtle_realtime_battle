@@ -184,6 +184,7 @@ func _account_only() -> void:
 	while is_inside_tree() and str(GameState.account_id) == "" and Time.get_ticks_msec() < until:
 		await _sleep(1.0)
 	var ok := str(GameState.account_id) != ""
+	_ensure_en_nick()
 	await _sleep(2.0)
 	_shot("account_menu")
 	_ev("account", {"ok": ok, "account": str(GameState.account_id), "waited_s": _since_start(),
@@ -199,7 +200,51 @@ func _since_start() -> float:
 
 # ═══════════════════════════════ 主菜单 ═══════════════════════════════
 
+## ★p121 起(2026-10-13 用户「现在来加入20个新机器人，不要弄那种中文id」): 昵称只用英文名 / 英文单词 + 数字。
+##   同一个生成器(nickname_suggest_at), 以账号哈希为种子逐个试, 只收「去掉数字 _ . 后每段字母都在
+##   en_names / en_words 里」的名字(拼音、拼音首字母、中文一律不要)。写进 nickname(= 自己起的名), 只写一次。
+const EN_NICK_FROM_SLOT := 121
+func _ensure_en_nick() -> void:
+	if _slot < EN_NICK_FROM_SLOT or str(GameState.account_id) == "" or str(GameState.nickname) != "":
+		return
+	var f := FileAccess.open(_P2.NICK_WORDS_PATH, FileAccess.READ)
+	if f == null:
+		return
+	var w = JSON.parse_string(f.get_as_text())
+	if not (w is Dictionary):
+		return
+	var en := {}
+	for k in ["en_names", "en_words"]:
+		for x in (w.get(k, []) as Array):
+			en[str(x).to_lower()] = true
+	var h := str(GameState.account_id).sha256_text()
+	var a := h.substr(0, 7).hex_to_int()
+	var b := h.substr(7, 7).hex_to_int()
+	var rx := RegEx.create_from_string("[A-Za-z]+")
+	for k in range(400):
+		var n: String = _P2.nickname_suggest_at(a + k * 7919, b + k * 104729)
+		if not _P2.nickname_valid(n) or not rx.search(n):
+			continue
+		var ok := true
+		for ch in n:
+			if ch.unicode_at(0) > 127:
+				ok = false
+				break
+		if ok:
+			for mt in rx.search_all(n):
+				if not en.has(mt.get_string().to_lower()):
+					ok = false
+					break
+		if ok:
+			GameState.nickname = n
+			GameState.save()
+			_ev("en_nick", {"name": n, "tries": k + 1})
+			return
+	_ev("ANOMALY", {"where": "en_nick", "what": "400 次没挑到纯英文昵称"})
+
+
 func _do_menu(m: Node) -> void:
+	_ensure_en_nick()
 	if _done:
 		return
 	if bool(GameState.tutorial_active):

@@ -33,7 +33,7 @@ if [ "$BATCHES" = "SUN" ]; then
   ELIG=$(python - <<'PYEOF'
 import json
 out = []
-for i in range(1, 121):
+for i in range(1, 141):
     try:
         d = json.load(open(rf'C:\tmp\turtle-sim60\p{i:02d}\Godot\app_userdata\斗龟场 实时版\savegame.json', encoding='utf-8'))
     except Exception:
@@ -68,7 +68,7 @@ if [ "$BATCHES" = "SAT" ]; then
 import json, sys
 g = int(sys.argv[1])
 out = []
-for i in range(1, 121):
+for i in range(1, 141):
     if (i - 1) % 9 != g:
         continue
     try:
