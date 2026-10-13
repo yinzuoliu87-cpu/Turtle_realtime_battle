@@ -208,7 +208,7 @@ func _make_pet_card(pet: Dictionary) -> Control:
 			sb.shadow_color = Color(1.0, 216.0 / 255.0, 107.0 / 255.0, 0.18)
 			sb.shadow_size = host._sp(6)
 			sb.shadow_offset = Vector2(0, host._sp(4))
-		var t = av.get_meta("idle_tw", null)
+		var t = (av.get_meta("idle_tw") if av.has_meta("idle_tw") else null)
 		if t is Tween and (t as Tween).is_valid(): (t as Tween).play()
 		var tw = card.create_tween()
 		tw.tween_property(card, "position:y", card.position.y - 2.0 * host._s(), 0.18).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT))
@@ -222,7 +222,7 @@ func _make_pet_card(pet: Dictionary) -> Control:
 			sb.border_color = base_border
 			sb.shadow_size = 0
 		if not selected:
-			var t = av.get_meta("idle_tw", null)
+			var t = (av.get_meta("idle_tw") if av.has_meta("idle_tw") else null)
 			if t is Tween and (t as Tween).is_valid():
 				(t as Tween).pause()
 				if av.texture is AtlasTexture:

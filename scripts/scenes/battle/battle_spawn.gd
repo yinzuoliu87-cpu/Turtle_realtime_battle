@@ -773,7 +773,7 @@ func _spawn_pirate_ship(u: Dictionary, tgt = null) -> void:   # 首次: 后方�
 	var from2d: Vector2 = (deco.get_meta("ship2d") if deco != null else u["pos"] + Vector2(0.0, -320.0))
 	var from_h: float = (deco.get_meta("ship_h") if deco != null else 6.0)
 	if deco != null:                                       # 杀掉驻场轻摇tween(要冲锋了)
-		var bt = deco.get_meta("bob_tw", null)
+		var bt = (deco.get_meta("bob_tw") if deco.has_meta("bob_tw") else null)
 		if bt != null and is_instance_valid(bt) and bt is Tween: bt.kill()
 	battle._pirate_sys._pirate_ship_muzzle(from2d, from_h); battle._pirate_sys._pirate_ship_muzzle(from2d + Vector2(30, 0), from_h)   # 蓄力: 炮口全闪
 	var uu: Dictionary = u

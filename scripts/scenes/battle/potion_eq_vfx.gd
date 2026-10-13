@@ -461,7 +461,7 @@ func brew_glow_tick(u: Dictionary, el: float) -> void:
 		if is_instance_valid(spr):
 			## ★2026-10-06 60 人实操 A3: 龟换动作表(帧数不同的贴图)时只抄帧号 ⇒ 光晕那张表越界, 每帧报
 			##   「Index p_frame = N is out of bounds」(一局 1934 条)。⇒ 源贴图变了就连剪影 + 切格一起重建, 再抄帧号。
-			if g.get_meta("src_tex", null) != spr.texture:
+			if (g.get_meta("src_tex") if g.has_meta("src_tex") else null) != spr.texture:
 				g.texture = _white_silhouette(spr.texture)
 				g.set_meta("src_tex", spr.texture)
 				g.hframes = spr.hframes

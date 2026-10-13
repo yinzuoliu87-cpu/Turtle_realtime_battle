@@ -2371,7 +2371,7 @@ func _step_sim_tweens(dt: float) -> void:
 	var ts_on: bool = not _timestop._ts_active.is_empty()
 	for tw in _sim_tweens.duplicate():   # duplicate: 回调里可能再建 tween 并 append, 边遍历边改会漏/错
 		if tw != null and tw.is_valid() and not (ts_on and tw in _timestop._ts_frozen_tweens):
-			_equip_sys.tally.use(tw.get_meta("_tl", null))   # ④ 演出链末尾的结算回调记回建 tween 时的装备
+			_equip_sys.tally.use((tw.get_meta("_tl") if tw.has_meta("_tl") else null))   # ④ 演出链末尾的结算回调记回建 tween 时的装备
 			tw.custom_step(dt)
 	_equip_sys.tally.use(null)
 
