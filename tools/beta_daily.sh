@@ -20,7 +20,7 @@ exec >>"$LOG" 2>&1
 DOW=${FORCE_DOW:-$(date -u +%u)}         # 1=周一 … 7=周日
 case "$DOW" in
   2) BATCHES="1 2 3 4 5 6 7 8" ;;
-  4) BATCHES="9 10 11 12" ;;
+  4) BATCHES="9 10 11 12 14" ;;   # 14 = p131~p140(10-13 追加的英文昵称号, 当晚来不及)
   6) BATCHES="SAT" ;;
   7) BATCHES="SUN" ;;
   *) echo "$(date -u +%FT%TZ) 今天(星期 $DOW)不排模拟号, 不跑"; exit 0 ;;
