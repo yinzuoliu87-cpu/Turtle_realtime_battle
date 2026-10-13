@@ -107,6 +107,22 @@ func show(item: Dictionary) -> void:
 	var y := 132.0
 	host._add_text(20, y, "羁绊效果", 17, "#58d3ff", 0.0, 0.0, true)
 	y += 32.0
+	## ★2026-10-13 机制只写一次(云顶羁绊小卡): TYPE_INTRO 一条一行, 下面逐档只列变化的数字。
+	var intro_w: float = float(host.DETAIL_W) - 40.0
+	for il in host.Phase2Types.intro_lines(tname):
+		var it := RichTextLabel.new()
+		it.bbcode_enabled = true; it.fit_content = true; it.scroll_active = false
+		it.position = Vector2(20, y)
+		it.custom_minimum_size = Vector2(intro_w, 0)
+		it.add_theme_font_size_override("normal_font_size", BODY_PX)
+		it.add_theme_color_override("default_color", Color("#e8f2ff"))
+		it.add_theme_constant_override("line_separation", 4)
+		it.text = line_bb(_normalize(SkillText.render_consts(str(il))))
+		it.set_meta("codex_syn_intro", tname)
+		host.detail.add_child(it)
+		y += maxf(22.0, it.get_combined_minimum_size().y) + LINE_GAP + 2.0
+	if not host.Phase2Types.intro_lines(tname).is_empty():
+		y += TIER_GAP
 	var descs: Array = host.Phase2Types.TIER_DESCS.get(tname, [])
 	var prev := PackedStringArray()
 	var body_x: float = 20.0 + TIER_COL_W

@@ -18,7 +18,7 @@ import io, os, re, sys
 sys.stdout.reconfigure(encoding='utf-8')
 
 SRC = 'scripts/gamedata/phase2_types.gd'
-TABLES = ['TYPES', 'TYPE_ICON', 'TYPE_NAME', 'TIER_DESCS']
+TABLES = ['TYPES', 'TYPE_ICON', 'TYPE_NAME', 'TIER_DESCS', 'TYPE_INTRO']   # TYPE_INTRO: 2026-10-13 羁绊机制说明
 
 ## ★★2026-09-28 `TYPE_EMOJI` → `TYPE_ICON`(类型图标 emoji → assets/sprites/tags 像素图)。
 ##   **光改表名是不够的** —— 键集一致守不住「值里到底是什么」:

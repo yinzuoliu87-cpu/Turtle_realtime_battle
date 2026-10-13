@@ -1185,6 +1185,9 @@ func _synergy_block(tname: String, tiers: Array, y: float) -> float:
 	y += maxf(24.0, head.get_combined_minimum_size().y) + 4.0
 	var descs: Array = host.Phase2Types.TIER_DESCS.get(tname, [])
 	var parts: PackedStringArray = []
+	## ★2026-10-13 机制只写一次(云顶羁绊小卡): TYPE_INTRO 在前, 逐档只列变化的数字。
+	for il in host.Phase2Types.intro_lines(tname):
+		parts.append(SkillText.render_consts(str(il)))
 	for i in range(tiers.size()):
 		var txt: String = SkillText.render_consts(str(descs[i])) if i < descs.size() else ""
 		parts.append("[color=%s][b]%d 件[/b][/color]  %s" % [tcol, int(tiers[i]), txt])

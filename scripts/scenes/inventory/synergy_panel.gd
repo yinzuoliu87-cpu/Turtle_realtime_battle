@@ -336,6 +336,9 @@ func _show_synergy_popup(type_key: String, cur_tier: int) -> void:
 	var thresh: Array = (host.Phase2Types.TYPES.get(type_key, {}) as Dictionary).get("tiers", [])
 	# 拼一段 bbcode：每档一小节，当前档高亮。★档数来自数据，不是写死的 [1,2,3]。
 	var bb := ""
+	## ★2026-10-13 机制只写一次(云顶羁绊小卡): 先放 TYPE_INTRO, 下面逐档只列变化的数字。
+	for il in host.Phase2Types.intro_lines(type_key):
+		bb += ("" if bb == "" else "\n") + "[color=#c8d4e0]%s[/color]" % SkillText.render_consts(str(il))
 	for i in range(descs.size()):
 		## ★2026-08-21 接上 {C:} 消费链: TIER_DESCS 原来是**直接拿原文显示**的,
 		##   写 `{C:类名.常量}` 会原样漏给玩家(这正是 verify_code_const_token ⑦ 在守的那类事故)。
@@ -358,6 +361,8 @@ func _show_synergy_popup(type_key: String, cur_tier: int) -> void:
 	var body_h: float = 0.0
 	for d in descs:
 		body_h += 26.0 + ceilf(float(str(d).length()) / 38.0) * 20.0
+	for il in host.Phase2Types.intro_lines(type_key):   # 机制说明(2026-10-13)也占高度
+		body_h += ceilf(float(str(il).length()) / 38.0) * 20.0
 	# ⚠ 上限用设计框高 `host.H`（1280×720 的那个 720），**不是 `host._vh`** ——
 	#   InventoryScene 上【没有 `_vh` 这个字段】（只有 `_vw`），写 `_vh` 会恒为 0
 	#   ⇒ maxf 兜到 280、每个类型的框都一样矮，等于白改。

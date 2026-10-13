@@ -123,12 +123,18 @@ func _ready() -> void:
 
 	# ★反向自证：最长的那条文案确实超过"一个固定 66px Label"能装的量 ——
 	#   否则这条门禁在未来文案变短后会退化成恒真式。
+	## ★2026-10-13 羁绊改成「机制说明一次 + 逐档只列数字」后单档变短(最长 93 字),
+	##   撑长弹框的是【一个类型的全部内容】⇒ 自证改量整块(机制说明 + 各档)。
 	var longest := 0
 	for t2 in Phase2Types.TIER_DESCS:
+		var whole := ""
+		for il in Phase2Types.intro_lines(t2):
+			whole += str(il)
 		for d2 in Phase2Types.TIER_DESCS[t2]:
-			longest = maxi(longest, str(d2).length())
-	_ok("★自证: 最长文案 %d 字, 确实超过旧的固定 66px Label(约 120 字)" % longest, longest > 120,
-		"最长才 %d 字 —— 这条门禁已退化成恒真式, 需要换判据" % longest)
+			whole += str(d2)
+		longest = maxi(longest, whole.length())
+	_ok("★自证: 最长一个类型的弹框内容 %d 字, 确实超过旧的固定 66px Label(约 120 字)" % longest, longest > 120,
+		"只有 %d 字 —— 这条门禁已退化成恒真式, 需要换判据" % longest if longest <= 120 else "")
 
 	host.queue_free()
 	print("")
