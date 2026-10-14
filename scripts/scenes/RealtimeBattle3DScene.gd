@@ -7854,6 +7854,17 @@ func _cam_handle_input(event: InputEvent) -> bool:
 			_cam_zoom *= 1.10; _apply_cam_zoom(); return true
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			_cam_zoom /= 1.10; _apply_cam_zoom(); return true
+	## ★Mac(内测 2026-10-14「mac 设备鼠标诸多问题」): 触控板和妙控鼠标的滚动, Godot 在 macOS 上
+	##   不发滚轮键, 发 PanGesture(有惯性阶段的滚动都走这条); 触控板双指捏合发 MagnifyGesture。
+	##   原来只认滚轮 ⇒ Mac 上战场根本缩放不了。delta.y > 0 = 往下滚 = 缩小, 与滚轮同向。
+	if event is InputEventPanGesture:
+		var py := clampf((event as InputEventPanGesture).delta.y, -3.0, 3.0)
+		if absf(py) > 0.0:
+			_cam_zoom /= pow(1.10, py); _apply_cam_zoom()
+		return true
+	if event is InputEventMagnifyGesture:
+		_cam_zoom *= clampf((event as InputEventMagnifyGesture).factor, 0.5, 2.0); _apply_cam_zoom()
+		return true
 	if event is InputEventScreenTouch:
 		if event.pressed:
 			_touch_pts[event.index] = event.position
