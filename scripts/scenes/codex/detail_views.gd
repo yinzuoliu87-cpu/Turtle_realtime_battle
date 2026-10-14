@@ -1176,7 +1176,7 @@ func _show_p2eq(eq: Dictionary) -> void:
 
 	# 分档表 —— 每个分档的量一行, 三档并排, 当前档亮、另两档暗(云顶技能卡底部那张表)。
 	if _tiered:
-		var lines: PackedStringArray = tier_breakdown_lines(_full_plain + "\n" + d3, _st_rows, star)
+		var lines: PackedStringArray = tier_breakdown_lines(_full_plain + "\n" + d3, _st_rows, star, _eid)
 		if not lines.is_empty():
 			_row_rule_full(y - BLOCK_GAP / 2.0)
 			var brt := RichTextLabel.new()
@@ -1372,13 +1372,19 @@ static func stat_row_bb(eid: String, star: int, font_px: int) -> String:
 ## 分档表的行: 先属性(三档不同的那几条), 再效果正文里每一句带分档的话。
 ## ★效果那一行【不另起名字】—— 名字从原句里截(按 ，。；、：换行 切句), 分档数换成「a / b / c」。
 ##   起名字要猜「这个数是什么」, 猜错就是在骗人; 原句本身就是这个数的说明。
-static func tier_breakdown_lines(plain: String, stat_rows: Array, star: int) -> PackedStringArray:
+static func tier_breakdown_lines(plain: String, stat_rows: Array, star: int, eid: String = "") -> PackedStringArray:
 	var out: PackedStringArray = []
 	for kv in stat_rows:
 		var v: String = str(kv[1])
 		if not v.contains("/"):
 			continue
 		out.append("[color=#c8d4e0]%s[/color]  %s" % [str(kv[0]), tier_triplet_bb(Array(v.split("/")), star)])
+	## ★2026-10-14 效果行改「短标签 + 各档数值」(EquipTierLabels, 照 LoL 分档表: 标签字数中位 4)。
+	##   条数与正文里的分档数对不上 ⇒ 不用标签, 退回下面的整句显示(门禁 verify_equip_tier_labels 会红)。
+	var labeled := tier_label_lines(plain, star, eid)
+	if not labeled.is_empty():
+		out.append_array(labeled)
+		return out
 	var seen := {}
 	for clause in _tier_clauses(plain):
 		if seen.has(clause):
@@ -1398,6 +1404,40 @@ static func tier_breakdown_lines(plain: String, stat_rows: Array, star: int) -> 
 			pos = m.get_end()
 		line += "[color=#c8d4e0]%s[/color]" % clause.substr(pos)
 		out.append(line.strip_edges())
+	return out
+
+
+## 该件正文里会随星级变化的数, 按拆句去重后的顺序(与 EquipTierLabels 每组的顺序同一口径)。
+static func tier_values_in_order(plain: String) -> Array:
+	var vals: Array = []
+	var seen := {}
+	for clause in _tier_clauses(plain):
+		if seen.has(clause):
+			continue
+		seen[clause] = true
+		for m in tier_matches(clause):
+			vals.append([m.get_string(1), m.get_string(2), m.get_string(3)])
+	return vals
+
+
+## 短标签行: 「标签 a / b / c 单位」。没有标签表或条数对不上 ⇒ 空数组(调用方退回整句显示)。
+static func tier_label_lines(plain: String, star: int, eid: String) -> PackedStringArray:
+	var out: PackedStringArray = []
+	var labels: Array = EquipTierLabels.LABELS.get(eid, [])
+	var vals := tier_values_in_order(plain)
+	if labels.is_empty() or labels.size() != vals.size():
+		return out
+	for i in range(labels.size()):
+		var parts: PackedStringArray = str(labels[i]).split("#")
+		var pre: String = parts[0].strip_edges()
+		var post: String = parts[1] if parts.size() > 1 else ""
+		## 「最大生命值 +#」: 正负号贴到每一档数上(与属性行「+150 / +420 / +1200」同一写法), 不悬在标签后面
+		var v3: Array = vals[i]
+		if pre.ends_with("+") or pre.ends_with("−"):
+			var sign: String = pre.right(1)
+			pre = pre.left(pre.length() - 1).strip_edges()
+			v3 = [sign + str(v3[0]), sign + str(v3[1]), sign + str(v3[2])]
+		out.append("[color=#c8d4e0]%s[/color]  %s[color=#c8d4e0]%s[/color]" % [pre, tier_triplet_bb(v3, star), post])
 	return out
 
 

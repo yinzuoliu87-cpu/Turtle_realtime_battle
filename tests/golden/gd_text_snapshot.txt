@@ -64,6 +64,193 @@ scripts/gamedata/equip_stats.gd|lit|闪避
 scripts/gamedata/equip_stats.gd|lit|魔抗
 scripts/gamedata/equip_stats.gd|lit|魔法穿透
 scripts/gamedata/equip_stats.gd|lit|龟能充能速率
+scripts/gamedata/equip_tier_labels.gd|lit|①回复 #% 最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|①最大生命值 +#
+scripts/gamedata/equip_tier_labels.gd|lit|②攻击力 +#
+scripts/gamedata/equip_tier_labels.gd|lit|③回复 #% 最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|③护盾 #
+scripts/gamedata/equip_tier_labels.gd|lit|③攻击速度 +#%
+scripts/gamedata/equip_tier_labels.gd|lit|中毒层数 # 层
+scripts/gamedata/equip_tier_labels.gd|lit|临时等级上限 # 级
+scripts/gamedata/equip_tier_labels.gd|lit|举盾时长 # 秒
+scripts/gamedata/equip_tier_labels.gd|lit|举盾阈值 #% 最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|伤害 #% 充能值
+scripts/gamedata/equip_tier_labels.gd|lit|伤害 #% 攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|伤害 #% 最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|伤害 #×攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|伤害 #×（护甲+魔抗）
+scripts/gamedata/equip_tier_labels.gd|lit|伤害倍率 #×
+scripts/gamedata/equip_tier_labels.gd|lit|伤害减免 #%
+scripts/gamedata/equip_tier_labels.gd|lit|伤害加成 #% 攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|伤害加成 #×攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|伤害转移 #%
+scripts/gamedata/equip_tier_labels.gd|lit|偷取间隔 # 秒
+scripts/gamedata/equip_tier_labels.gd|lit|偷取龟能 # 点
+scripts/gamedata/equip_tier_labels.gd|lit|充能上限 #% 最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|充能比例 #% 受到伤害
+scripts/gamedata/equip_tier_labels.gd|lit|光束伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|光束数 # 道
+scripts/gamedata/equip_tier_labels.gd|lit|冰封时长 # 秒
+scripts/gamedata/equip_tier_labels.gd|lit|冰道伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|减伤 # 点
+scripts/gamedata/equip_tier_labels.gd|lit|刃能充能 # 点
+scripts/gamedata/equip_tier_labels.gd|lit|分身属性 #%
+scripts/gamedata/equip_tier_labels.gd|lit|压载舱容量 #% 最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|友军双抗 +#
+scripts/gamedata/equip_tier_labels.gd|lit|友军护盾 #
+scripts/gamedata/equip_tier_labels.gd|lit|双抗 +#
+scripts/gamedata/equip_tier_labels.gd|lit|双穿 +#
+scripts/gamedata/equip_tier_labels.gd|lit|反伤阈值 # 点
+scripts/gamedata/equip_tier_labels.gd|lit|反击伤害 # 点
+scripts/gamedata/equip_tier_labels.gd|lit|召唤所需层数 # 层
+scripts/gamedata/equip_tier_labels.gd|lit|回复 #
+scripts/gamedata/equip_tier_labels.gd|lit|回复 # 生命值
+scripts/gamedata/equip_tier_labels.gd|lit|回复 #% 已损失生命值
+scripts/gamedata/equip_tier_labels.gd|lit|回复 #% 最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|回复加成 #% 已损失生命值
+scripts/gamedata/equip_tier_labels.gd|lit|回复加成 #% 最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|回复比例 #% 本次伤害
+scripts/gamedata/equip_tier_labels.gd|lit|坠毁伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|基础伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|基础回复 #
+scripts/gamedata/equip_tier_labels.gd|lit|基础回复 # 点
+scripts/gamedata/equip_tier_labels.gd|lit|基础护盾 #
+scripts/gamedata/equip_tier_labels.gd|lit|基础治疗 #
+scripts/gamedata/equip_tier_labels.gd|lit|基础灼烧层数 #
+scripts/gamedata/equip_tier_labels.gd|lit|基础真实伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|增伤 #%
+scripts/gamedata/equip_tier_labels.gd|lit|增伤 +#%
+scripts/gamedata/equip_tier_labels.gd|lit|大熊攻击力 #
+scripts/gamedata/equip_tier_labels.gd|lit|大熊生命值 #
+scripts/gamedata/equip_tier_labels.gd|lit|奶油护盾 #% 最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|子弹数 # 发
+scripts/gamedata/equip_tier_labels.gd|lit|孵化护盾 # 点
+scripts/gamedata/equip_tier_labels.gd|lit|射线伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|射线所需攻击 # 次
+scripts/gamedata/equip_tier_labels.gd|lit|小手枪攻击力 #
+scripts/gamedata/equip_tier_labels.gd|lit|小手枪生命值 #
+scripts/gamedata/equip_tier_labels.gd|lit|小熊伤害 #×攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|小熊基础伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|小虫攻击力 #
+scripts/gamedata/equip_tier_labels.gd|lit|小虫生命值 #
+scripts/gamedata/equip_tier_labels.gd|lit|幽灵护盾 #% 最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|弹珠数 # 颗
+scripts/gamedata/equip_tier_labels.gd|lit|总伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|扫击灼烧 # 层
+scripts/gamedata/equip_tier_labels.gd|lit|护甲与魔抗 +#
+scripts/gamedata/equip_tier_labels.gd|lit|护盾 #
+scripts/gamedata/equip_tier_labels.gd|lit|护盾 # 点
+scripts/gamedata/equip_tier_labels.gd|lit|护盾加成 #% 最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|护盾比例 #% 最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|护盾比例 #% 本次伤害
+scripts/gamedata/equip_tier_labels.gd|lit|抽取数量 # 个
+scripts/gamedata/equip_tier_labels.gd|lit|持枪敌人 # 名
+scripts/gamedata/equip_tier_labels.gd|lit|持续伤害 #% 最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|持续时间 # 秒
+scripts/gamedata/equip_tier_labels.gd|lit|攻击力 #% 最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|攻击力 +#
+scripts/gamedata/equip_tier_labels.gd|lit|攻击速度 +#%
+scripts/gamedata/equip_tier_labels.gd|lit|攻击附伤 #% 最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|攻击附毒 # 层
+scripts/gamedata/equip_tier_labels.gd|lit|敌人伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|敌人双抗 −#
+scripts/gamedata/equip_tier_labels.gd|lit|斩杀线 #% 最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|暴击伤害 +#%
+scripts/gamedata/equip_tier_labels.gd|lit|暴击加成 #×暴击率
+scripts/gamedata/equip_tier_labels.gd|lit|暴击率 +#%
+scripts/gamedata/equip_tier_labels.gd|lit|最大生命值 +#
+scripts/gamedata/equip_tier_labels.gd|lit|机炮数 # 发
+scripts/gamedata/equip_tier_labels.gd|lit|横斩伤害加成 #×攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|横斩基础伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|横波伤害加成 #×攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|横波基础伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|每个魔抗 +#
+scripts/gamedata/equip_tier_labels.gd|lit|每层双抗 +#
+scripts/gamedata/equip_tier_labels.gd|lit|每层增伤 #%
+scripts/gamedata/equip_tier_labels.gd|lit|每层强化 +#%
+scripts/gamedata/equip_tier_labels.gd|lit|每层所需治疗 # 点
+scripts/gamedata/equip_tier_labels.gd|lit|每层护甲 +#
+scripts/gamedata/equip_tier_labels.gd|lit|每层攻击速度 +#%
+scripts/gamedata/equip_tier_labels.gd|lit|每层生命值 +#
+scripts/gamedata/equip_tier_labels.gd|lit|每层魔抗 +#
+scripts/gamedata/equip_tier_labels.gd|lit|每次破甲 #
+scripts/gamedata/equip_tier_labels.gd|lit|每秒上限 # 龟能
+scripts/gamedata/equip_tier_labels.gd|lit|每秒伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|每秒回复 #
+scripts/gamedata/equip_tier_labels.gd|lit|每秒护盾 #
+scripts/gamedata/equip_tier_labels.gd|lit|每秒龟能 #
+scripts/gamedata/equip_tier_labels.gd|lit|每跳衰减 #%
+scripts/gamedata/equip_tier_labels.gd|lit|永久护盾 # 点
+scripts/gamedata/equip_tier_labels.gd|lit|治疗 #
+scripts/gamedata/equip_tier_labels.gd|lit|治疗 #% 最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|治疗加成 #×攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|法力护盾 #% 充能值
+scripts/gamedata/equip_tier_labels.gd|lit|法力需求 +#%
+scripts/gamedata/equip_tier_labels.gd|lit|流血层数 # 层
+scripts/gamedata/equip_tier_labels.gd|lit|流血层数 #×攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|浪潮伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|浪潮弹跳 # 次
+scripts/gamedata/equip_tier_labels.gd|lit|浪潮治疗 #
+scripts/gamedata/equip_tier_labels.gd|lit|浮游炮伤害 #×攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|深海币 # 枚
+scripts/gamedata/equip_tier_labels.gd|lit|溅射比例 #%
+scripts/gamedata/equip_tier_labels.gd|lit|火球伤害 #% 目标最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|火球目标 # 名
+scripts/gamedata/equip_tier_labels.gd|lit|灰血比例 #%
+scripts/gamedata/equip_tier_labels.gd|lit|灼烧加成 #% 攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|灼烧层数 # 层
+scripts/gamedata/equip_tier_labels.gd|lit|炮台双抗 #
+scripts/gamedata/equip_tier_labels.gd|lit|炮台攻击力 #
+scripts/gamedata/equip_tier_labels.gd|lit|炮台生命值 #
+scripts/gamedata/equip_tier_labels.gd|lit|炸弹伤害 #×攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|炸弹数 # 枚
+scripts/gamedata/equip_tier_labels.gd|lit|炸弹魔法伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|爆炸伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|爆炸伤害 #% 最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|爆炸时间 # 秒
+scripts/gamedata/equip_tier_labels.gd|lit|猛砸伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|生命偷取 #%
+scripts/gamedata/equip_tier_labels.gd|lit|生长充能 # 次
+scripts/gamedata/equip_tier_labels.gd|lit|电击伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|电击层数 # 层
+scripts/gamedata/equip_tier_labels.gd|lit|目标数 # 个
+scripts/gamedata/equip_tier_labels.gd|lit|目标数 # 名
+scripts/gamedata/equip_tier_labels.gd|lit|真实伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|真实伤害 # 点
+scripts/gamedata/equip_tier_labels.gd|lit|眩晕时长 # 秒
+scripts/gamedata/equip_tier_labels.gd|lit|破损层数 # 层
+scripts/gamedata/equip_tier_labels.gd|lit|破甲上限 #
+scripts/gamedata/equip_tier_labels.gd|lit|竖斩伤害加成 #×攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|竖斩基础伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|竖波伤害加成 #×攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|竖波基础伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|终极护盾 #% 最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|范围伤害 #% 最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|落雷数 # 道
+scripts/gamedata/equip_tier_labels.gd|lit|血护盾上限 #
+scripts/gamedata/equip_tier_labels.gd|lit|装备星级 # 星
+scripts/gamedata/equip_tier_labels.gd|lit|转化比例 #%
+scripts/gamedata/equip_tier_labels.gd|lit|近战增伤 #%
+scripts/gamedata/equip_tier_labels.gd|lit|远程减伤 #%
+scripts/gamedata/equip_tier_labels.gd|lit|连射数 # 发
+scripts/gamedata/equip_tier_labels.gd|lit|连斩次数 # 次
+scripts/gamedata/equip_tier_labels.gd|lit|追加伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|追加概率 #%
+scripts/gamedata/equip_tier_labels.gd|lit|金弹真实伤害 #%
+scripts/gamedata/equip_tier_labels.gd|lit|金弹间隔 # 次
+scripts/gamedata/equip_tier_labels.gd|lit|附带伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|霰弹伤害加成 #×攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|霰弹基础伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|额外伤害 #% 目标最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|额外攻击力 #% 攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|食用阈值 #% 生命值
+scripts/gamedata/equip_tier_labels.gd|lit|骷髅攻击力 #
+scripts/gamedata/equip_tier_labels.gd|lit|骷髅生命值 #
+scripts/gamedata/equip_tier_labels.gd|lit|魔法穿透 +# 点
+scripts/gamedata/equip_tier_labels.gd|lit|龟能 # 点
+scripts/gamedata/equip_tier_labels.gd|lit|龟能充能 #×
+scripts/gamedata/equip_tier_labels.gd|lit|龟能充能 +#%
 scripts/gamedata/glossary.gd|lit|【涨潮】结束后移除全部加成。此效果不会致死，生命值降至新的上限。
 scripts/gamedata/glossary.gd|lit|【融合】后获得的被动：每次受到一段攻击时永久获得一点护甲与魔抗，各有上限。
 scripts/gamedata/glossary.gd|lit|低血模式
