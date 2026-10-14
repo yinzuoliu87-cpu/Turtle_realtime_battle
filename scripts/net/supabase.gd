@@ -53,7 +53,21 @@ static var _notice: String = ""
 static var _asked: int = 0        # ★分母: 问过几次(0 = 压根没发过, 别把它当成"问到了 OK")
 
 
+## ★测试包(带调试场的 Windows 包, 2026-10-14):「不要干扰到内测里面的玩家」——
+##   目前只有一台正式服, 测试包只要连上就会上传快照(被真人匹配到)/ 进排行榜 / 报假时刻(测试时间)。
+##   ⇒ 带 `offline_dev` 特性标签的导出(预设 WinDevOffline)整层停用, 一个请求都不发; 环境变量也盖不过它。
+##   存档目录与窗口标题同一标签另分(project.godot 的 `.offline_dev` 覆盖)。守卫: tests/verify_offline_dev_build.gd
+const OFFLINE_FEATURE := "offline_dev"
+static var offline_override := false   # 仅门禁用: 无头进程没有导出特性标签
+
+
+static func offline_dev() -> bool:
+	return offline_override or OS.has_feature(OFFLINE_FEATURE)
+
+
 static func base_url() -> String:
+	if offline_dev():
+		return ""
 	if OS.has_environment(ENV_URL):
 		return OS.get_environment(ENV_URL).strip_edges()
 	return str(ProjectSettings.get_setting(SETTING_URL, "")).strip_edges()

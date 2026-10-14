@@ -155,6 +155,8 @@ static func ingest_remote(pool: Dictionary, arr) -> Dictionary:
 
 ## 本层是否启用。**空 URL = 停用 = 当前状态**。
 static func base_url() -> String:
+	if preload("res://scripts/net/supabase.gd").offline_dev():   # 测试包整层停用, 见 supabase.gd OFFLINE_FEATURE
+		return ""
 	if OS.has_environment(ENV_KEY):
 		return OS.get_environment(ENV_KEY).strip_edges()
 	var v = ProjectSettings.get_setting(SETTING_KEY, "")
