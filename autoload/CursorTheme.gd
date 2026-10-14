@@ -86,7 +86,42 @@ func _ready() -> void:
 		return   # 单测无显示
 	if OS.get_name() in ["Android", "iOS"]:
 		return   # 移动端触屏无鼠标 → 不建自绘光标(否则屏上残留一只绿龟爪·用户2026-07-18)
+	if uses_os_cursor():
+		_build_os_cursor()
+		return
 	_build_cursor()
+
+
+## ★Mac 不自绘, 把爪子交给系统当光标(2026-10-14 内测:「外部鼠标和绘制的鼠标图案重合」)。
+##   自绘这套靠 MOUSE_MODE_HIDDEN 藏系统光标, 而 macOS 上系统光标会自己回来
+##   (切窗口 / 碰 Dock / 从窗外移进来), 于是屏上同时两个箭头; 自绘的又比系统光标晚一帧, 一动就错开。
+##   系统光标由操作系统画: 不会有第二个, 也不拖帧。
+##   代价(已知): 没有悬停青光 / 浮动 / 按下缩小这些动画; 状态只剩「普通 / 可点 / 抓取 / 禁用」四张图。
+##   守卫: tests/verify_cursor_mac_os_cursor.gd
+static var platform_override := ""
+
+
+static func uses_os_cursor() -> bool:
+	var plat: String = platform_override if platform_override != "" else OS.get_name()
+	return plat == "macOS"
+
+
+func _build_os_cursor() -> void:
+	_enabled = false
+	set_process(false)
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	## 1 倍贴图 = 24 点, 与自绘那只同为 24 设计px(见 §CURSOR_SCALE); 热点同一个 HOT。
+	var point := _build(1, _point_cols, _point_rects, 24, 24)
+	var fist := _build(1, _fist_cols, _fist_rects, 24, 22)
+	var red_cols: Array = []
+	for c in _point_cols:
+		red_cols.append(Color(c.r, c.g * 0.45, c.b * 0.4, c.a))
+	var forbidden := _build(1, red_cols, _point_rects, 24, 24)
+	Input.set_custom_mouse_cursor(point, Input.CURSOR_ARROW, HOT)
+	Input.set_custom_mouse_cursor(point, Input.CURSOR_POINTING_HAND, HOT)
+	Input.set_custom_mouse_cursor(fist, Input.CURSOR_DRAG, HOT)
+	Input.set_custom_mouse_cursor(fist, Input.CURSOR_CAN_DROP, HOT)
+	Input.set_custom_mouse_cursor(forbidden, Input.CURSOR_FORBIDDEN, HOT)
 
 
 ## 建爪子(贴图 + 顶层 CanvasLayer + 跟随节点)。
