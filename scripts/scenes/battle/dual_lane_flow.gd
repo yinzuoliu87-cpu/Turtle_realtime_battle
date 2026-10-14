@@ -236,7 +236,22 @@ func _dl_build_present_overlay(mode: String) -> void:
 	hint.text = "点击继续"
 	if not battle._replay.is_playing():
 		vb.add_child(hint)
+	_dl_pass_clicks_to(back)
 	_dl_stagger_in(vb)
+
+
+## ★2026-10-14 内测反馈「切换下半战场时点中间的区域继续，没反应」:
+##   点击只接在底板 `back` 上, 而中间那块的 CenterContainer / 面板 / 对阵卡 / 头像框都是默认 STOP ⇒
+##   按下被它们吃掉、冒不到 `back`, 只有点四周空白才行。实测幕布里 45 个控件中心逐个点, 全部没反应。
+##   ⇒ 底板以下一律 PASS: 照样收悬停(装备格提示还在), 点击继续往上冒到 `back`。
+##   守卫: tests/verify_present_click_anywhere.gd(真点击走引擎拾取)。
+func _dl_pass_clicks_to(back: Control) -> void:
+	var stack: Array = back.get_children()
+	while not stack.is_empty():
+		var c = stack.pop_back()
+		stack.append_array(c.get_children())
+		if c is Control and (c as Control).mouse_filter == Control.MOUSE_FILTER_STOP:
+			(c as Control).mouse_filter = Control.MOUSE_FILTER_PASS
 
 
 ## 幕布内容逐个弹入 (2026-07-21): 原本整块一次性出现, 信息一股脑砸脸上。
