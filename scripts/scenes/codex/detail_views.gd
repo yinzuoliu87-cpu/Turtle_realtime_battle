@@ -1118,7 +1118,7 @@ func _show_p2eq(eq: Dictionary) -> void:
 	# 效果 —— 一段, 只写当前选中那一档的数(★2 时「150/310/1200+3/5/9×攻击力」读作「310+5×攻击力」)。
 	host._add_text(20, y, "效果", HEAD_SIZE, "#58d3ff", 0.0, 0.0, true)
 	y += 26.0
-	var bb: String = star_text_bb(_full_plain, star, 19)
+	var bb: String = star_text_bb(SkillText.equip_full_src(eq), star, 19)   # 正文走源文本: 灰字(规则补充)照样灰
 	## ★{C:} 要先展开(render_consts)—— 原来裸取 effectDesc3 会把 {C:类.常量} 原样显示给玩家。
 	if d3.strip_edges() != "":
 		bb += "\n\n" + star_text_bb(d3, star, 19)

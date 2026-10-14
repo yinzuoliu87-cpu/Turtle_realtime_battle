@@ -530,10 +530,31 @@ static func render_bbcode(template: String, f: Dictionary, s: Dictionary, font_p
 ##   memory `fb-hand-rolled-copies-drift`「手抄的副本必然落后 —— 抄一次永远落后一次」。
 ##   没有简述的装备(理论上不该有, 门禁守着)自动退回全文, 不会显示空白。
 static func equip_brief(edef: Dictionary) -> String:
+	return strip_markup(equip_brief_src(edef))
+
+
+## ★★纯文本 vs 源文本(2026-10-14 全量门禁 verify_equip_text_bb 抓到):
+##   法器文案 10-13 起在正文里带灰字 `<span style="color:#8a93a0">…</span>`(照 LoL / 云顶「规则补充写最后一行灰字」)。
+##   而 equip_full / equip_brief 的契约是【纯文本】—— 图鉴分星拆句(tier_breakdown_lines)直接把句子包进 [color],
+##   不转 HTML ⇒ 带分档数字的灰字句会把 `<span style=…>` 原样印给玩家。
+##   ⇒ 纯文本两口剥掉标记; 要上色的(BBCode 两口 / 图鉴正文)走 *_src, 灰字照样是灰字。
+static func equip_brief_src(edef: Dictionary) -> String:
 	## ★这两个是**共享入口** —— {C:...} 在这里展开, 所有消费方(图鉴/商店/战斗)一次全好,
 	##   不用每个调用点各记一次。(2026-08-20: 我先只补了商店和战斗, 图鉴走的是这里, 差点漏。)
 	var b := render_consts(str(edef.get("effectBrief", "")).strip_edges())
-	return b if b != "" else equip_full(edef)
+	return b if b != "" else equip_full_src(edef)
+
+
+static var _markup_re: RegEx = null
+
+
+## 剥掉 HTML 标记(只剥 `<…>`, 字一个不动)。
+static func strip_markup(t: String) -> String:
+	if not t.contains("<"):
+		return t
+	if _markup_re == null:
+		_markup_re = RegEx.create_from_string("<[^<>]+>")
+	return _markup_re.sub(t, "", true)
 
 
 ## 完整机制说明(图鉴详情 / 点开看全部 用)。
@@ -546,6 +567,10 @@ static func equip_brief(edef: Dictionary) -> String:
 ##   ★**按行切, 不解析文字** —— 认关键词那种写法一改文案就散。
 ##   ★四个最终造物留在 `effectDesc3`(图鉴那一段), 那里的框放得下。
 static func equip_full(edef: Dictionary) -> String:
+	return strip_markup(equip_full_src(edef))
+
+
+static func equip_full_src(edef: Dictionary) -> String:
 	var base := render_consts(str(edef.get("effectDesc1", "")))
 	var per_stage: String = str(edef.get("effectDesc2", "")).strip_edges()
 	if per_stage == "" or str(edef.get("id", "")) != "p2eq_096":
@@ -582,11 +607,11 @@ static func equip_full(edef: Dictionary) -> String:
 ##   装备 0 条、龟技能 0 条含方括号(方案书 §5.9 担心的那件事**不成立**, 分母是全库 369 段)。
 ##   将来真有人写了方括号, `verify_equip_text_bb` 里那条断言会红。
 static func equip_brief_bb(edef: Dictionary, font_px: int = 0) -> String:
-	return plain_to_bb(equip_brief(edef), font_px)
+	return plain_to_bb(equip_brief_src(edef), font_px)
 
 
 static func equip_full_bb(edef: Dictionary, font_px: int = 0) -> String:
-	return plain_to_bb(equip_full(edef), font_px)
+	return plain_to_bb(equip_full_src(edef), font_px)
 
 
 ## 已展开占位符的纯文本 → 上色 + 内联图标的 BBCode。

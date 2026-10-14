@@ -143,7 +143,12 @@ func _ready() -> void:
 		sc != null and sc.vertical_scroll_mode == ScrollContainer.SCROLL_MODE_AUTO)
 	## ★2026-10-11: 全量门禁满负载下连红两次、单跑次次绿 ⇒ 量的时候布局还没落定(上面选完末条只等了 4 帧)。
 	##   多等几帧再量; 失败信息带上横向与裁剪, 下次红了能直接看出是哪一项。
-	for _j in range(8):
+	## ★★2026-10-14 真因(上面「多等几帧」没治好, 全量门禁又红: 框右 1294 / 视口宽 1280):
+	##   每次切页签都重播详情框滑入 —— 从 +360 滑回原位, 延迟 0.25 + 0.42 秒, 走【真实时间】。
+	##   按帧数等 = 帧快时量在半路上(差 14px 就是滑到 96%)。⇒ 等它真的落位(墙钟上限 3 秒)。
+	var _base_x: float = float(inst._intro_base_x.get(frame, frame.position.x))
+	var _t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - _t0 < 3000 and (Time.get_ticks_msec() - _t0 < 700 or absf(frame.position.x - _base_x) > 0.5):
 		await get_tree().process_frame
 	var vp := inst.get_viewport().get_visible_rect().size
 	var fr := frame.get_global_rect()
