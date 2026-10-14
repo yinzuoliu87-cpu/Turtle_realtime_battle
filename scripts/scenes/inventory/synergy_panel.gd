@@ -53,6 +53,7 @@ const TITLE_ICON_PX := 32
 ##   `SettingsScene.ACCT_ROW_PREFIX` 同一个模式: **常量放产品这边**, 门禁 preload 来读,
 ##   门禁自己抄一份字符串就是 memory `fb-hand-rolled-copies-drift` 那条"抄一次永远落后"。
 const BODY_RT_NAME := "SynergyPopupBody"
+const BODY_SCROLL_NAME := "SynergyPopupScroll"   # 正文外面那层滚动容器(2026-10-13: 手指拖动要能滚)
 
 
 ## ── 「这一行点得开」的暗示: 一枚**逐像素画出来的**小箭头 ─────────────────
@@ -405,18 +406,27 @@ func _show_synergy_popup(type_key: String, cur_tier: int) -> void:
 	ttl.position = Vector2(24, 18); ttl.size = Vector2(bw - 48, 36); box.add_child(ttl)
 
 	# ★RichTextLabel + 滚动：文案再长也不会被吃掉（原来是固定 66px 的 Label，直接截断）
+	## ★★2026-10-13 内测反馈「背包页羁绊无法下滑」(iPhone15,4): RichTextLabel 自带的滚动只认滚轮 / 触控板 /
+	##   拖滚动条, **手指拖内容不滚**, 手机上那根滚动条又细得点不到 ⇒ 正文放进 ScrollContainer(与图鉴详情区同一做法,
+	##   手指拖动可滚), 正文按内容撑高(fit_content), 自己不再滚。
+	var sc := ScrollContainer.new()
+	sc.name = BODY_SCROLL_NAME
+	sc.position = Vector2(24, 62)
+	sc.size = Vector2(bw - 48, bh - 62 - 62)
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	box.add_child(sc)
 	var rt = RichTextLabel.new()
 	## ★★给正文一个**节点名**, 让门禁按名字找它 —— 见 `BODY_RT_NAME` 的长注释。
 	rt.name = BODY_RT_NAME
 	rt.bbcode_enabled = true
-	rt.fit_content = false
-	rt.scroll_active = true
+	rt.fit_content = true
+	rt.scroll_active = false
+	rt.mouse_filter = Control.MOUSE_FILTER_PASS   # 拖动交给外面的 ScrollContainer
 	rt.add_theme_font_size_override("normal_font_size", 15)
 	rt.add_theme_font_size_override("bold_font_size", 15)
-	rt.position = Vector2(24, 62)
-	rt.size = Vector2(bw - 48, bh - 62 - 62)
+	rt.custom_minimum_size = Vector2(bw - 48 - 12, 0)
 	rt.text = bb
-	box.add_child(rt)
+	sc.add_child(rt)
 
 	var ok = Button.new(); ok.text = "知道了"; ok.add_theme_font_size_override("font_size", 18)
 	ok.position = Vector2(bw / 2.0 - 60, bh - 52); ok.size = Vector2(120, 40)

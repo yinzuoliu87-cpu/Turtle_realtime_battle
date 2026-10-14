@@ -18,7 +18,7 @@ extends Node
 ##   ② ★每个类型的**每一档**都出现在弹框文本里（写死 3 档时四个类型立刻红）
 ##   ③ 文案**逐字完整**（不截断）—— 用 `TIER_DESCS` 原文去弹框文本里找
 ##   ④ 弹框不出设计框（1280×720）边界，且正文区高度 > 0
-##   ⑤ 正文控件必须**能滚动**（`scroll_active`）—— 内容比框高时不滚就是又一次截断
+##   ⑤ 正文控件必须**能滚动**（外层 ScrollContainer, 2026-10-13 起; 原为 `scroll_active`）—— 内容比框高时不滚就是又一次截断
 ##
 ## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_synergy_popup.tscn
 
@@ -97,7 +97,8 @@ func _ready() -> void:
 				% [tname, box.position.y, box.size.y, InvScene.H])
 		if rt.size.y <= 20.0:
 			geo_bad.append("%s 正文区高度只有 %.0f" % [tname, rt.size.y])
-		if not rt.scroll_active:
+		## ★2026-10-13: 正文改由外层 ScrollContainer 滚(手机手指拖动要能滚; RichTextLabel 自带滚动只认滚轮 / 滚动条)
+		if not (rt.get_parent() is ScrollContainer):
 			no_scroll.append(tname)
 		box_h[tname] = box.size.y
 		_clear(host)
