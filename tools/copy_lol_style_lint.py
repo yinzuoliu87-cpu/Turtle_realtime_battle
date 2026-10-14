@@ -38,6 +38,9 @@ BANNED = ['；', '——', '—', '…', '都算', '也算', '算作', '算一�
 PAREN_MAX = 28            # LoL 实测最长括号段
 PAREN_DENSITY_MAX = 15.0  # 每万字【含汉字】括号段数上限(LoL 同口径实测 9.4)
 CJK = re.compile(r'[\u4e00-\u9fff]')
+UNIT_SPAN = re.compile(r'<span class="([^"]+)">([^<]*)</span>')
+UNIT_END = re.compile(r'(\u79d2|\u7801|\u6b21|\u5c42)\s*$')
+UNIT_DMG = re.compile(r'\u4f24\u5bb3|\u62a4\u76fe|\u751f\u547d|\u653b\u51fb\u529b|\u6cbb\u7597|\u56de\u590d')
 
 
 def _strip(s):
@@ -57,6 +60,14 @@ def violations(text):
         core = _strip(inner)
         if len(core) > PAREN_MAX:
             out.append('括号过长「%s」' % core)
+    ## ★2026-10-14: 「N 秒 / 码 / 次 / 层」不上色。LoL 688 条详细版 tooltip 实测: 这类数字不在任何颜色标签里 952 处、
+    ##   在标签里 14 处(C:/tmp/lol_corpus_stats.py ②)。上色的是伤害 / 控制词 / 专名 / 属性词, 不是时长距离次数。
+    ##   val-emph 本来就不出色, 不算。
+    for m in UNIT_SPAN.finditer(text):
+        cls, inner = m.group(1), m.group(2)
+        if cls != 'val-emph' and UNIT_END.search(BRACE.sub('N', inner)) and (BRACE.search(inner) or re.search(r'\d', inner)) \
+                and not UNIT_DMG.search(inner):
+            out.append('数字带单位却上了色「%s」' % _strip(inner))
     return out
 
 
@@ -95,6 +106,11 @@ def selftest():
     vp, vn = violations(pos), violations(neg)
     assert any('都算' in x for x in vp) and any('；' in x for x in vp) and any('括号' in x for x in vp), vp
     assert vn == [], vn
+    ## 单位数字: 阳性 = 上色的「{C:X} 秒」; 阴性 = 不上色的同一句 / 上色的伤害数值 / val-emph
+    up = violations('护盾持续 <span class="val-atk">{C:A.SEC} 秒</span>。')
+    un = violations('护盾持续 {C:A.SEC} 秒，造成 <span class="val-atk">{N:ATK} 物理伤害</span>，<span class="val-emph">持续 3 秒</span>。')
+    assert any('单位' in x for x in up), up
+    assert un == [], un
 
 
 def main():
