@@ -408,7 +408,8 @@ func _render_right(pet: Dictionary, ctx: Dictionary) -> void:
 		## ★2026-10-08 两栏后右栏只剩 494 宽, 简述从「标题右边横着放」改成标题下面一整行。
 		var p_brief: String = str(passive.get("brief", passive.get("desc", "")))
 		var p_cut: bool = false
-		if p_brief.strip_edges() != "":
+		## ★2026-10-14: 展开时不画简述 —— 全文第一句就是同一句话, 两层同时显示 = 一屏说两遍(彩虹龟实拍)。
+		if p_brief.strip_edges() != "" and not host._codex_passive_view:
 			var brt := _one_line_preview(passive_y + 35.0)   # 标题 Label 下沿约 +34
 			## 开头若只是一行小标题(海盗龟「登场轰击：」), 预览从下面那句效果开始; 放不下就「…」截断。
 			p_cut = PreviewText.fit_one_line(brt, SkillText.render_bbcode(
@@ -987,7 +988,8 @@ func _render_skill_detail_inline(pet: Dictionary, ctx: Dictionary, sk: Dictionar
 	rt.add_theme_constant_override("line_separation", 5)
 	rt.add_theme_color_override("default_color", Color("#e8f2ff"))
 	var _sk_src: String = str(sk.get("detail", sk.get("brief", "")))
-	rt.text = SkillText.render_bbcode(_sk_src, ctx, sk, 17)
+	rt.text = _rich_detail(_sk_src, ctx, sk, 17)
+	_formula_toggle(_sk_src, top + 17.0)
 	## ★2026-10-01 专名解释行(用户「要，加在详细说明底部」)。只加在**详细**这一层:
 	##   商店那个 246px 的说明框实测加上之后要滚的从 3 件涨到 7 件 —— 那是销售文案, 不是资料页。
 	var _g := SkillText.glossary_bb(_sk_src, 17)
@@ -998,12 +1000,45 @@ func _render_skill_detail_inline(pet: Dictionary, ctx: Dictionary, sk: Dictionar
 	host.detail.add_child(rt)
 
 
+## 详情正文渲染: 推导式默认收起, 图鉴里点「显示公式」才展开(docs/plans/20261014-龟技能文案默认给结论.md)。
+## ★开关只在这一次渲染里打开, 渲染完立刻关回去 —— SkillText.show_formula 是全局静态,
+##   漏关就会让战斗信息面板 / 选龟页也跟着显示推导式(那两处按方案永远给结论)。
+func _rich_detail(src: String, ctx: Dictionary, sk: Dictionary, px: int) -> String:
+	SkillText.show_formula = bool(host._codex_show_formula)
+	var t: String = SkillText.render_bbcode(src, ctx, sk, px)
+	SkillText.show_formula = false
+	return t
+
+
+## 「显示公式 / 隐藏公式」切换钮(右端)。这段文字里没有可收起的推导式就不画, 返回 false。
+func _formula_toggle(src: String, cy: float) -> bool:
+	if SkillText.collapse_formulas(src) == src:
+		return false
+	var lab: String = "隐藏公式" if host._codex_show_formula else "显示公式"
+	var rx: float = host.DETAIL_W - 30 - CARD_PAD * 2.0
+	host._add_text(rx, cy, lab, HINT_PX, "#7fb5d8", 1.0, 0.5)
+	var fh := Control.new()
+	fh.position = Vector2(rx - 96.0, cy - 17.0)
+	fh.size = Vector2(100.0, 34.0)
+	fh.mouse_filter = Control.MOUSE_FILTER_STOP
+	fh.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	fh.set_meta("codex_formula_toggle", true)
+	fh.gui_input.connect(func(ev: InputEvent) -> void:
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			host._codex_show_formula = not host._codex_show_formula
+			_redraw())
+	host.detail.add_child(fh)
+	return true
+
+
 ## 内联被动详情 (1:1 PoC renderPassiveDetailSection CodexScene.ts:572-582): 完整 desc 占下方区
 func _render_passive_detail_inline(pet: Dictionary, ctx: Dictionary, top: float) -> void:
 	var passive: Dictionary = pet.get("passive", {})
 	if passive.is_empty():
 		return
 	var full_desc: String = str(passive.get("desc", passive.get("brief", "")))
+	if _formula_toggle(full_desc, top + 12.0):
+		top += 28.0
 	var rt = RichTextLabel.new()
 	rt.bbcode_enabled = true
 	rt.fit_content = true
@@ -1013,7 +1048,7 @@ func _render_passive_detail_inline(pet: Dictionary, ctx: Dictionary, top: float)
 	rt.add_theme_font_size_override("normal_font_size", 17)
 	rt.add_theme_constant_override("line_separation", 5)
 	rt.add_theme_color_override("default_color", Color("#e8f2ff"))
-	rt.text = SkillText.render_bbcode(full_desc, ctx, passive, 17)
+	rt.text = _rich_detail(full_desc, ctx, passive, 17)
 	var _g2 := SkillText.glossary_bb(full_desc, 17)   # 专名解释行(同上)
 	if _g2 != "":
 		rt.text += "

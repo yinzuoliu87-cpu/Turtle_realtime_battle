@@ -330,9 +330,50 @@ static func token_regex() -> RegEx:
 	return _token_re
 
 
+## ★推导式默认收起(2026-10-14 · docs/plans/20261014-龟技能文案默认给结论.md)。
+##   「（50%×攻击力(40) = 20）生命值」→「20（🗡）生命值」: 默认给结论, 系数来源只留属性小图标 ——
+##   照 LoL 默认态「74 (🔮) 魔法伤害」, 按 Shift 才是「74 = (60 + 80%🔮)」(ref/20260930-LoL文案体例.md §6.1)。
+##   只收「括号里有 `= {X:…}`」这一种形状(全库 159 处); 数据一个字不改, 打开 show_formula 原样恢复。
+##   图鉴详情页有「显示公式」切换钮; 战斗信息面板 / 选龟页永远给结论。守卫: tests/verify_skill_formula_collapse.gd
+static var show_formula := false
+const _FORMULA_ICONS := [["攻击力", "atk"], ["最大生命值", "hp"], ["已损失生命值", "hp"], ["护甲", "def"], ["魔抗", "mr"]]
+static var _formula_re: RegEx = null
+
+
+static func collapse_formulas(template: String) -> String:
+	if show_formula or not template.contains("="):
+		return template
+	if _formula_re == null:
+		_formula_re = RegEx.create_from_string("[（(]((?:[^（）()]|\\([^()]*\\))*?)=\\s*(\\{[A-Z]:[^}]+\\})\\s*[）)]")
+	var out := ""
+	var last := 0
+	for m in _formula_re.search_all(template):
+		var lhs := m.get_string(1)
+		var icons := ""
+		var seen := {}
+		for pair in _FORMULA_ICONS:
+			if lhs.contains(str(pair[0])) and not seen.has(pair[1]):
+				seen[pair[1]] = true
+				icons += "<img src=\"res://assets/sprites/stats/%s-icon.png\"/>" % str(pair[1])
+		var before := template.substr(last, m.get_start() - last)
+		var val := m.get_string(2)
+		if before != "" and not before.ends_with(" ") and not before.ends_with("\n"):
+			val = " " + val
+		if icons != "":
+			val += "（" + icons + "）"
+		else:
+			var nxt := template.substr(m.get_end(), 1)
+			if nxt != "" and not " \n，。、；：,.".contains(nxt):
+				val += " "
+		out += before + val
+		last = m.get_end()
+	return out + template.substr(last)
+
+
 ## 渲染模板 → HTML (1:1 PoC renderSkillTemplate: token 展开 + 关键词上色).
 static func render_html(template: String, f: Dictionary, s: Dictionary) -> String:
 	_ensure_re()
+	template = collapse_formulas(template)
 	var vars := build_vars(f, s)
 	# 1) token 展开
 	var result := ""

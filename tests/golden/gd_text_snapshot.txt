@@ -1433,6 +1433,7 @@ scripts/scenes/codex/detail_views.gd|lit|攻击力
 scripts/scenes/codex/detail_views.gd|lit|攻击射程
 scripts/scenes/codex/detail_views.gd|lit|攻击速度
 scripts/scenes/codex/detail_views.gd|lit|效果
+scripts/scenes/codex/detail_views.gd|lit|显示公式
 scripts/scenes/codex/detail_views.gd|lit|暴击伤害
 scripts/scenes/codex/detail_views.gd|lit|暴击率
 scripts/scenes/codex/detail_views.gd|lit|最大生命值
@@ -1454,6 +1455,7 @@ scripts/scenes/codex/detail_views.gd|lit|被动 · %s
 scripts/scenes/codex/detail_views.gd|lit|费用 %d
 scripts/scenes/codex/detail_views.gd|lit|闪避
 scripts/scenes/codex/detail_views.gd|lit|随后
+scripts/scenes/codex/detail_views.gd|lit|隐藏公式
 scripts/scenes/codex/detail_views.gd|lit|魔抗
 scripts/scenes/codex/detail_views.gd|lit|魔法穿透
 scripts/scenes/codex/detail_views.gd|lit|龟能充能速率
@@ -1852,7 +1854,12 @@ scripts/util/skill_text.gd|lit|(?<!\">)闪避(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)额外伤害(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)魔抗(?!穿透|<)
 scripts/util/skill_text.gd|lit|(?<!\">)魔法(?!伤害|穿透|波|光线|<)
+scripts/util/skill_text.gd|lit|已损失生命值
+scripts/util/skill_text.gd|lit|护甲
+scripts/util/skill_text.gd|lit|攻击力
+scripts/util/skill_text.gd|lit|最大生命值
 scripts/util/skill_text.gd|lit|物理伤害
 scripts/util/skill_text.gd|lit|真实伤害
 scripts/util/skill_text.gd|lit|防御力加成
+scripts/util/skill_text.gd|lit|魔抗
 scripts/util/skill_text.gd|lit|魔法伤害

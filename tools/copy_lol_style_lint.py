@@ -39,7 +39,7 @@ PAREN_MAX = 28            # LoL 实测最长括号段
 PAREN_DENSITY_MAX = 15.0  # 每万字【含汉字】括号段数上限(LoL 同口径实测 9.4)
 CJK = re.compile(r'[\u4e00-\u9fff]')
 UNIT_SPAN = re.compile(r'<span class="([^"]+)">([^<]*)</span>')
-UNIT_END = re.compile(r'(\u79d2|\u7801|\u6b21|\u5c42)\s*$')
+UNIT_END = re.compile(r'(\u79d2|\u7801|\u6b21|\u5c42|\u6bb5)\s*$')   # 秒码次层段(段 2026-10-14 补: 「共 N 段」)
 UNIT_DMG = re.compile(r'\u4f24\u5bb3|\u62a4\u76fe|\u751f\u547d|\u653b\u51fb\u529b|\u6cbb\u7597|\u56de\u590d')
 
 
