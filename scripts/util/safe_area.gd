@@ -11,8 +11,14 @@
 class_name SafeArea
 extends RefCounted
 
+## 仅门禁用: 无头进程拿不到真机安全区 ⇒ 按逻辑像素直接给(x < 0 = 不覆盖)。
+static var override_insets := Vector4(-1.0, -1.0, -1.0, -1.0)
+
+
 ## 各边内缩 (left, top, right, bottom), 单位 = 逻辑像素.
 static func insets(vp_size: Vector2) -> Vector4:
+	if override_insets.x >= 0.0:
+		return override_insets
 	if not is_mobile():
 		return Vector4.ZERO
 	var win := Vector2(DisplayServer.window_get_size())

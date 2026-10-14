@@ -435,6 +435,19 @@ func _stage_to_screen(p: Vector2) -> Vector2:
 		else:
 			# 盖不住 → 居中(此时留边是必然的, 由底垫色兜)
 			off[axis] += (vp[axis] - stage[axis]) * 0.5 - origin[axis]
+	## ★手机底部手势条(2026-10-13 内测「选龟页开始按钮偏移」, iPhone15,4):
+	##   「出战」绿牌烤在背景上、坐在内容带最底下; iPhone 横屏上它正好压在手势条里。
+	##   原来只把那个透明 Button 夹出手势条 ⇒ 字离开绿牌 53px, 绿牌原地不动。
+	##   ⇒ 整个舞台(背景 + 内容同一变换)往上抬, 抬多少受三条夹: 要抬的量 / 顶上内容带不越过顶部安全边距 /
+	##     舞台底边不许露缝。iPhone 15 实测抬 31.6, 剩 7px 压着手势条(顶上返回键已贴边, 抬不动了)。
+	##   桌面安全区恒 0 ⇒ 什么都不变。守卫: tests/verify_teamselect_start_on_plank.gd
+	var ins := SafeArea.insets(vp)
+	if ins.w > 0.0:
+		var oy: float = vp.y * 0.5 + off.y - center.y * s
+		var need: float = oy + band.end.y * s - (vp.y - ins.w)
+		var room: float = oy + band.position.y * s - (ins.y + 6.0)
+		var no_gap: float = oy + stage.y - vp.y
+		off.y -= clampf(minf(need, minf(room, no_gap)), 0.0, maxf(0.0, need))
 	return vp * 0.5 + off + (p - center) * s
 
 
@@ -761,8 +774,17 @@ func _build_ui() -> void:
 	for _st in ["normal", "hover", "pressed", "disabled", "focus"]:
 		_start_btn.add_theme_stylebox_override(_st, StyleBoxEmpty.new())
 	root.add_child(_start_btn)
-	_place_clamped(_start_btn, "start")
-	_grow_to_touch(_start_btn)
+	## ★不走 _place_clamped / _grow_to_touch 的安全区夹(2026-10-13 内测): 绿牌烤在背景上, 字必须跟牌走;
+	##   夹进安全区只会把字推离绿牌。牌本身已由 _stage_to_screen 抬出手势条, 这里只保证不出屏。
+	_place(_start_btn, "start")
+	_edge_btns.append(_start_btn)
+	var _need := Vector2(maxf(_start_btn.size.x, TOUCH_MIN), maxf(_start_btn.size.y, TOUCH_MIN))
+	_start_btn.position -= (_need - _start_btn.size) * 0.5
+	_start_btn.size = _need
+	_start_btn.custom_minimum_size = _need
+	var _vps := _vp()
+	_start_btn.position.x = clampf(_start_btn.position.x, 0.0, maxf(0.0, _vps.x - _need.x))
+	_start_btn.position.y = clampf(_start_btn.position.y, 0.0, maxf(0.0, _vps.y - _need.y))
 	_start_btn.pressed.connect(_on_start)
 
 	_raise_edge_btns()   # ★所有区域都建完了才提层 —— 早提会被后面的 slotBay/详情区盖回去
