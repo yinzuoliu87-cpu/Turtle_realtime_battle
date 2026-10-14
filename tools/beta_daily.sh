@@ -20,7 +20,11 @@ exec >>"$LOG" 2>&1
 DOW=${FORCE_DOW:-$(date -u +%u)}         # 1=周一 … 7=周日
 case "$DOW" in
   2) BATCHES="1 2 3 4 5 6 7 8" ;;
-  4) BATCHES="9 10 11 12 14" ;;   # 14 = p131~p140(10-13 追加的英文昵称号, 当晚来不及)
+  4) BATCHES="9 10 11 12"         # 用户 10-14「那就改为40个号吧，开始跑」: 只跑 p81~p120, p131~p140 本周四不跑
+     ## 同一周只跑一次: 10-14 23:10 手动提前开跑了, 00:00 的定时任务看到标记就退出(否则同一批号跑两遍)
+     WEEK_MARK="/c/tmp/turtle-sim60/thu-done-$(date -u +%G-W%V)"
+     if [ -f "$WEEK_MARK" ]; then echo "$(date -u +%FT%TZ) 本周周四批次已跑过($WEEK_MARK), 不再跑"; exit 0; fi
+     touch "$WEEK_MARK" ;;
   6) BATCHES="SAT" ;;
   7) BATCHES="SUN" ;;
   *) echo "$(date -u +%FT%TZ) 今天(星期 $DOW)不排模拟号, 不跑"; exit 0 ;;
@@ -103,7 +107,7 @@ PYEOF
   exit 0
 fi
 ROUNDS=""                   # 不设上限: 打到被拦
-STOP_AT=2240                # UTC HHMM: 到点不再起新批, 在跑的关掉(22:50 封盘)
+STOP_AT=${STOP_AT:-2240}    # UTC HHMM: 到点不再起新批, 在跑的关掉(22:50 封盘); 手动提前开跑时可用环境变量覆盖
 BATCH_CAP=5400              # 一批最多等 90 分钟, 超时关掉这一批(实测一批 45~50 分钟)
 
 echo "════ $(date -u +%FT%TZ) 开跑 · 星期 $DOW · 批次 $BATCHES · 每号打到被拦 · 版本 $(grep -o 'config/version="[^"]*"' project.godot) · $(git rev-parse --short HEAD)"
