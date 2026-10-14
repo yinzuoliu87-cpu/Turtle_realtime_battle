@@ -337,12 +337,14 @@ static func token_regex() -> RegEx:
 ##   图鉴详情页永远显示推导式(资料页没有具体单位, 结论只是示例数 —— 用户 10-14「图鉴里全部放显示公式的」);
 ##   战斗信息面板 / 选龟页给结论(对局里有具体单位, 照 LoL 对局悬浮提示)。守卫: tests/verify_skill_formula_collapse.gd
 static var show_formula := false
+## 推导式里「攻击力({ATK})」这类当前属性值: 结论在前之后不再需要(云顶技能卡「365 = 450% 🗡 + 50% 🔮」没有当前值)。
+static var _cur_stat_re: RegEx = null
 const _FORMULA_ICONS := [["攻击力", "atk"], ["最大生命值", "hp"], ["已损失生命值", "hp"], ["护甲", "def"], ["魔抗", "mr"]]
 static var _formula_re: RegEx = null
 
 
 static func collapse_formulas(template: String) -> String:
-	if show_formula or not template.contains("="):
+	if not template.contains("="):
 		return template
 	if _formula_re == null:
 		_formula_re = RegEx.create_from_string("[（(]((?:[^（）()]|\\([^()]*\\))*?)=\\s*(\\{[A-Z]:[^}]+\\})\\s*[）)]")
@@ -360,7 +362,14 @@ static func collapse_formulas(template: String) -> String:
 		var val := m.get_string(2)
 		if before != "" and not before.ends_with(" ") and not before.ends_with("\n"):
 			val = " " + val
-		if icons != "":
+		if show_formula:
+			## ★图鉴 / 选龟页: 结论在前、系数在括号里(2026-10-14 用户「改啊」: 照云顶技能卡与 LoL 的顺序,
+			##   「20（50% 攻击力）」而不是旧的「（50%×攻击力(40) = 20）」—— 先算式后结果是反的, 当前值 (40) 也不该在里面)。
+			if _cur_stat_re == null:
+				_cur_stat_re = RegEx.create_from_string("\\(\\{[A-Za-z_]+\\}\\)")
+			var ratio := _cur_stat_re.sub(lhs, "", true).replace("%×", "% ").strip_edges()
+			val += "（" + ratio + "）"
+		elif icons != "":
 			val += "（" + icons + "）"
 		else:
 			var nxt := template.substr(m.get_end(), 1)

@@ -4,7 +4,7 @@ extends Node
 ## 方案书: docs/plans/20261014-龟技能文案默认给结论.md
 ## 判据:
 ##   ① 全库括号推导组「（… = {X:…}）」默认全部收起(分母: 收起前 ≥ 150 组)
-##   ② 打开 show_formula 原样恢复(收起是渲染层的事, 数据一个字不改)
+##   ② 公式模式(图鉴/选龟页): 结论在前、系数在括号里, 不带当前属性值 ——「20（50% 攻击力）」, 不是「（50%×攻击力(40) = 20）」
 ##   ③ 彩虹龟「反射」默认渲染: 有结果数字 20, 没有「×攻击力(40)」推导
 ##   ④ 图鉴详情永远显示推导式; 渲染完全局开关回到 false(否则战斗面板 / 选龟页也会显示推导)
 ##   ⑤ 图鉴被动展开后, 简述行不再与全文同时出现(彩虹龟实拍: 同一句话一屏两遍)
@@ -54,17 +54,20 @@ func _ready() -> void:
 	var before := 0
 	var after := 0
 	var restored := true
+	var bad_fm := 0
 	for s in all:
 		var t := str(s)
 		before += grp.search_all(t).size()
 		SKT.show_formula = false
 		after += grp.search_all(SKT.collapse_formulas(t)).size()
 		SKT.show_formula = true
-		restored = restored and SKT.collapse_formulas(t) == t
+		var fm := SKT.collapse_formulas(t)
+		if grp.search_all(fm).size() > 0 or fm.contains("({ATK})") or fm.contains("({HP})"):
+			bad_fm += 1
 	SKT.show_formula = false
 	_ok("① 分母: 收起前全库推导组 ≥ 150", before >= 150, "%d 组" % before)
 	_ok("① ★默认全部收起", after == 0, "剩 %d 组" % after)
-	_ok("② 打开 show_formula 原样恢复", restored)
+	_ok("② ★公式模式: 结论在前、无当前属性值、无「= 」推导组", bad_fm == 0, "%d 段不合格" % bad_fm)
 
 	var rb: Dictionary = {}
 	for p in DataRegistry.all_pets:
@@ -101,7 +104,7 @@ func _ready() -> void:
 	_texts_under(inst.detail, det)
 	var has_formula := false
 	for t in det:
-		if str(t).contains("攻击力(40) = 20"):
+		if str(t).contains("20（50%"):
 			has_formula = true
 	_ok("④ ★图鉴详情永远显示推导式(用户 10-14「图鉴里全部放显示公式的」)", has_formula)
 	_ok("④ ★图鉴渲染完全局开关回到 false(战斗面板 / 选龟页仍给结论)", SKT.show_formula == false)
