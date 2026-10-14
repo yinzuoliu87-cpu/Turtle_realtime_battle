@@ -1620,7 +1620,6 @@ scripts/scenes/codex/detail_views.gd|lit|攻击力
 scripts/scenes/codex/detail_views.gd|lit|攻击射程
 scripts/scenes/codex/detail_views.gd|lit|攻击速度
 scripts/scenes/codex/detail_views.gd|lit|效果
-scripts/scenes/codex/detail_views.gd|lit|显示公式
 scripts/scenes/codex/detail_views.gd|lit|暴击伤害
 scripts/scenes/codex/detail_views.gd|lit|暴击率
 scripts/scenes/codex/detail_views.gd|lit|最大生命值
@@ -1642,7 +1641,6 @@ scripts/scenes/codex/detail_views.gd|lit|被动 · %s
 scripts/scenes/codex/detail_views.gd|lit|费用 %d
 scripts/scenes/codex/detail_views.gd|lit|闪避
 scripts/scenes/codex/detail_views.gd|lit|随后
-scripts/scenes/codex/detail_views.gd|lit|隐藏公式
 scripts/scenes/codex/detail_views.gd|lit|魔抗
 scripts/scenes/codex/detail_views.gd|lit|魔法穿透
 scripts/scenes/codex/detail_views.gd|lit|龟能充能速率

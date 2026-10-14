@@ -842,6 +842,4 @@ const MINION_INFO := MinionCodex.MINION_INFO
 ## 小将详情页 — 布局对齐 _codex_detail._show_pet(立绘左上 / 名字与属性右上 / 分隔线下技能被动).
 var _codex_form_view: bool = false   # 图鉴双形态: false=普通skillPool, true=形态(近战/火山)技能
 var _codex_skill_detail: Dictionary = {}   # 内联技能详情视图 (非空=显示该技能完整detail+返回钮, 1:1 PoC view={skillIdx}; 空=技能卡列表)
-## 图鉴详情「显示公式」(2026-10-14): 只在图鉴里渲染详情时生效, 见 detail_views._rich_detail。
-var _codex_show_formula: bool = false
 var _codex_passive_view: bool = false   # 内联被动展开 (true=下方区显示完整被动desc, 1:1 PoC view='passive'; false=技能卡列表)

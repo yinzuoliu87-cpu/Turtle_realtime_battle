@@ -989,7 +989,6 @@ func _render_skill_detail_inline(pet: Dictionary, ctx: Dictionary, sk: Dictionar
 	rt.add_theme_color_override("default_color", Color("#e8f2ff"))
 	var _sk_src: String = str(sk.get("detail", sk.get("brief", "")))
 	rt.text = _rich_detail(_sk_src, ctx, sk, 17)
-	_formula_toggle(_sk_src, top + 17.0)
 	## ★2026-10-01 专名解释行(用户「要，加在详细说明底部」)。只加在**详细**这一层:
 	##   商店那个 246px 的说明框实测加上之后要滚的从 3 件涨到 7 件 —— 那是销售文案, 不是资料页。
 	var _g := SkillText.glossary_bb(_sk_src, 17)
@@ -1000,35 +999,16 @@ func _render_skill_detail_inline(pet: Dictionary, ctx: Dictionary, sk: Dictionar
 	host.detail.add_child(rt)
 
 
-## 详情正文渲染: 推导式默认收起, 图鉴里点「显示公式」才展开(docs/plans/20261014-龟技能文案默认给结论.md)。
-## ★开关只在这一次渲染里打开, 渲染完立刻关回去 —— SkillText.show_formula 是全局静态,
-##   漏关就会让战斗信息面板 / 选龟页也跟着显示推导式(那两处按方案永远给结论)。
+## 详情正文渲染: 图鉴【永远显示推导式】(用户 2026-10-14「图鉴里全部放显示公式的」)。
+## ★为什么图鉴与战斗面板不一样: LoL「默认给结论、Shift 才展开推导」说的是【对局里】的悬浮提示 ——
+##   那里有具体的龟、等级、装备, 结论是真数。图鉴是资料页, 没有具体单位, 「结论」只是拿 1 级面板算的示例数,
+##   推导式(系数 × 属性)才是这页该给的信息。战斗信息面板 / 选龟页照旧只给结论(SkillText.show_formula 默认 false)。
+## ★开关只在这一次渲染里打开, 渲染完立刻关回去 —— SkillText.show_formula 是全局静态, 漏关会漏到战斗面板。
 func _rich_detail(src: String, ctx: Dictionary, sk: Dictionary, px: int) -> String:
-	SkillText.show_formula = bool(host._codex_show_formula)
+	SkillText.show_formula = true
 	var t: String = SkillText.render_bbcode(src, ctx, sk, px)
 	SkillText.show_formula = false
 	return t
-
-
-## 「显示公式 / 隐藏公式」切换钮(右端)。这段文字里没有可收起的推导式就不画, 返回 false。
-func _formula_toggle(src: String, cy: float) -> bool:
-	if SkillText.collapse_formulas(src) == src:
-		return false
-	var lab: String = "隐藏公式" if host._codex_show_formula else "显示公式"
-	var rx: float = host.DETAIL_W - 30 - CARD_PAD * 2.0
-	host._add_text(rx, cy, lab, HINT_PX, "#7fb5d8", 1.0, 0.5)
-	var fh := Control.new()
-	fh.position = Vector2(rx - 96.0, cy - 17.0)
-	fh.size = Vector2(100.0, 34.0)
-	fh.mouse_filter = Control.MOUSE_FILTER_STOP
-	fh.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	fh.set_meta("codex_formula_toggle", true)
-	fh.gui_input.connect(func(ev: InputEvent) -> void:
-		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			host._codex_show_formula = not host._codex_show_formula
-			_redraw())
-	host.detail.add_child(fh)
-	return true
 
 
 ## 内联被动详情 (1:1 PoC renderPassiveDetailSection CodexScene.ts:572-582): 完整 desc 占下方区
@@ -1037,8 +1017,6 @@ func _render_passive_detail_inline(pet: Dictionary, ctx: Dictionary, top: float)
 	if passive.is_empty():
 		return
 	var full_desc: String = str(passive.get("desc", passive.get("brief", "")))
-	if _formula_toggle(full_desc, top + 12.0):
-		top += 28.0
 	var rt = RichTextLabel.new()
 	rt.bbcode_enabled = true
 	rt.fit_content = true

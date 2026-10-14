@@ -6,7 +6,7 @@ extends Node
 ##   ① 全库括号推导组「（… = {X:…}）」默认全部收起(分母: 收起前 ≥ 150 组)
 ##   ② 打开 show_formula 原样恢复(收起是渲染层的事, 数据一个字不改)
 ##   ③ 彩虹龟「反射」默认渲染: 有结果数字 20, 没有「×攻击力(40)」推导
-##   ④ 图鉴「显示公式」只在图鉴渲染时生效, 渲染完全局开关回到 false(否则战斗面板 / 选龟页也会显示推导)
+##   ④ 图鉴详情永远显示推导式; 渲染完全局开关回到 false(否则战斗面板 / 选龟页也会显示推导)
 ##   ⑤ 图鉴被动展开后, 简述行不再与全文同时出现(彩虹龟实拍: 同一句话一屏两遍)
 
 const SKT := preload("res://scripts/util/skill_text.gd")
@@ -93,13 +93,18 @@ func _ready() -> void:
 		if str(inst._items[i].get("id", "")) == "rainbow":
 			idx = i
 	inst._select(idx)
-	inst._codex_show_formula = true
 	inst._codex_skill_detail = refl
 	inst._codex_detail._redraw()
 	for _i in range(4):
 		await get_tree().process_frame
-	_ok("④ ★图鉴开着「显示公式」渲染完, 全局开关回到 false", SKT.show_formula == false)
-	inst._codex_show_formula = false
+	var det: Array = []
+	_texts_under(inst.detail, det)
+	var has_formula := false
+	for t in det:
+		if str(t).contains("攻击力(40) = 20"):
+			has_formula = true
+	_ok("④ ★图鉴详情永远显示推导式(用户 10-14「图鉴里全部放显示公式的」)", has_formula)
+	_ok("④ ★图鉴渲染完全局开关回到 false(战斗面板 / 选龟页仍给结论)", SKT.show_formula == false)
 	inst._codex_skill_detail = {}
 	inst._codex_passive_view = true
 	inst._codex_detail._redraw()

@@ -334,7 +334,8 @@ static func token_regex() -> RegEx:
 ##   「（50%×攻击力(40) = 20）生命值」→「20（🗡）生命值」: 默认给结论, 系数来源只留属性小图标 ——
 ##   照 LoL 默认态「74 (🔮) 魔法伤害」, 按 Shift 才是「74 = (60 + 80%🔮)」(ref/20260930-LoL文案体例.md §6.1)。
 ##   只收「括号里有 `= {X:…}`」这一种形状(全库 159 处); 数据一个字不改, 打开 show_formula 原样恢复。
-##   图鉴详情页有「显示公式」切换钮; 战斗信息面板 / 选龟页永远给结论。守卫: tests/verify_skill_formula_collapse.gd
+##   图鉴详情页永远显示推导式(资料页没有具体单位, 结论只是示例数 —— 用户 10-14「图鉴里全部放显示公式的」);
+##   战斗信息面板 / 选龟页给结论(对局里有具体单位, 照 LoL 对局悬浮提示)。守卫: tests/verify_skill_formula_collapse.gd
 static var show_formula := false
 const _FORMULA_ICONS := [["攻击力", "atk"], ["最大生命值", "hp"], ["已损失生命值", "hp"], ["护甲", "def"], ["魔抗", "mr"]]
 static var _formula_re: RegEx = null
