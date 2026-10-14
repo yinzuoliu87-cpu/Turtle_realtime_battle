@@ -204,7 +204,7 @@ func _refresh_detail() -> void:
 		##   ⚠ 顺序: `set_script` 要在写 `tooltip_text` 之前 —— 换脚本不会丢 tooltip_text
 		##     (那是 Control 的原生属性, 不随脚本走), 但先挂再写读起来才是因果顺序。
 		chip.set_script(RichTooltip)
-		chip.tooltip_text = "%s\n%s" % [passive.get("name", "被动"), SkillText.render_bbcode(str(passive.get("brief", "")), fake_f, passive, 14)]
+		chip.tooltip_text = "%s\n%s" % [passive.get("name", "被动"), SkillText.render_bbcode_formula(str(passive.get("brief", "")), fake_f, passive, 14)]
 		# 内容 IGNORE 鼠标 → 整 chip 捕获 hover 出 tooltip
 		prow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		pnm.mouse_filter = Control.MOUSE_FILTER_IGNORE

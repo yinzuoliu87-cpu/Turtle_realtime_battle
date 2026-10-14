@@ -561,6 +561,16 @@ static func render_bbcode(template: String, f: Dictionary, s: Dictionary, font_p
 	return html_to_bbcode(render_html(template, f, s), ipx)
 
 
+## 同 render_bbcode, 但推导式照原样显示 —— 图鉴 / 选龟页用(资料页没有具体单位, 结论只是示例数;
+##   用户 10-14「图鉴里全部放显示公式的」「(选龟页)改」)。战斗信息面板仍走 render_bbcode 给结论。
+## ★开关只在这一次渲染里打开、渲染完关回: show_formula 是全局静态, 漏关会漏到战斗面板。
+static func render_bbcode_formula(template: String, f: Dictionary, s: Dictionary, font_px: int = 0) -> String:
+	show_formula = true
+	var t := render_bbcode(template, f, s, font_px)
+	show_formula = false
+	return t
+
+
 ## 便捷: 模板 → 纯文本 (无色, 仅展开数字; Label 用). 去掉所有 <…> 标签.
 ## 【装备文案的唯一取值口】—— 简述 / 全文。
 ##

@@ -1005,10 +1005,7 @@ func _render_skill_detail_inline(pet: Dictionary, ctx: Dictionary, sk: Dictionar
 ##   推导式(系数 × 属性)才是这页该给的信息。战斗信息面板 / 选龟页照旧只给结论(SkillText.show_formula 默认 false)。
 ## ★开关只在这一次渲染里打开, 渲染完立刻关回去 —— SkillText.show_formula 是全局静态, 漏关会漏到战斗面板。
 func _rich_detail(src: String, ctx: Dictionary, sk: Dictionary, px: int) -> String:
-	SkillText.show_formula = true
-	var t: String = SkillText.render_bbcode(src, ctx, sk, px)
-	SkillText.show_formula = false
-	return t
+	return SkillText.render_bbcode_formula(src, ctx, sk, px)
 
 
 ## 内联被动详情 (1:1 PoC renderPassiveDetailSection CodexScene.ts:572-582): 完整 desc 占下方区

@@ -109,7 +109,8 @@ func _test_no_plain_left() -> void:
 	_ok("读得到 TeamSelectScene.gd", src != "")
 	var code := _code_only(src)
 	var n_plain := code.count("render_plain(")
-	var n_bb := code.count("render_bbcode(")
+	## render_bbcode_formula(2026-10-14 选龟页改显示推导式)是 render_bbcode 的同一条上色管线, 一并算
+	var n_bb := code.count("render_bbcode(") + code.count("render_bbcode_formula(")
 	print("  [分母] TeamSelectScene 里 render_bbcode %d 处 / render_plain %d 处" % [n_bb, n_plain])
 	_ok("★选龟界面已改走 render_bbcode", n_bb >= 4, "只有 %d 处" % n_bb)
 	_ok("★没有残留的 render_plain(那条路径是灰字)", n_plain == 0, "还剩 %d 处" % n_plain)
