@@ -712,7 +712,17 @@ func _audit(root: Node) -> Dictionary:
 				d["lbl"] = int(d["lbl"]) + 1
 				var rr := rl.get_global_rect()
 				var used := minf(rl.get_content_height(), rr.size.y) if rl.get_content_height() > 0.0 else rr.size.y
-				labels.append([Rect2(rr.position, Vector2(rr.size.x, used)),
+				var shown := Rect2(rr.position, Vector2(rr.size.x, used))
+				## ★2026-10-14: 量【画出来的那块】—— 正文放进 ScrollContainer(fit_content 撑高)后,
+				##   滚动区下沿以下那几行被裁掉、要往下拖才看得到, 不是压在框边上。
+				##   原来正文自己滚(RTL 内部裁剪), 上面 minf(content, size) 量的就是可见那块; 搬进滚动容器后口径要跟着搬。
+				##   (背包羁绊弹框「剑士」最后一行: 正文 318 高、滚动区 264 高 ⇒ 旧尺子报压边带。)
+				var anc := rl.get_parent()
+				while anc != null and anc is Control:
+					if (anc as Control).clip_contents:
+						shown = shown.intersection((anc as Control).get_global_rect())
+					anc = anc.get_parent()
+				labels.append([shown,
 					str(rl.get_parsed_text()).strip_edges(), _is_toast(rl), n])
 			if n is Label and str((n as Label).text).strip_edges().length() >= 1:
 				var lb := n as Label
