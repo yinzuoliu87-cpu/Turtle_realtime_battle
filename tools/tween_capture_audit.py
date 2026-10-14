@@ -96,20 +96,14 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #        `_sim_tweens` 之后才扫 `_world`(门禁①守着, 变异两行都删 ⇒ 上千条报错)。
 #      真正的触发条件只有「两条时钟错开」: 顿帧(tween 走、延时/协程不走)与时停(定格的 tween 不走、
 #      携带者的协程/延时照走)。判无害 = 两种错开下捕获物都不会先于回调被释放。
-BASELINE = 31   # 2026-09-25: 94 → 47 · 2026-10-04: 47 → 31(尺子修 14 + 真修 2)
+BASELINE = 28   # 2026-09-25: 94 → 47 · 2026-10-04: 47 → 31(尺子修 14 + 真修 2) · 2026-10-14: 31 → 28(三处 UI 循环 tween 改走 TweenKit, 退出时随节点停)
 
 # ★每一处剩下的风险都要有一句**为什么无害**。键 = (文件, 被捕获的名字逗号串), 值 = (处数, 理由)。
 #   新冒出来一处没登记 → 红; 登记了但代码里没这处了(修掉了/改名了) → 也红, 逼着把台账跟着降。
 #   「本链」= 释放该节点的 queue_free 就在这条 tween 链(或它自己回调里新建的链)末尾 ⇒ 回调必然先于释放。
 HARMLESS = {
-    ("scripts/scenes/MatchmakingScene.gd", "_dots_lbl"):
-        (1, "成员变量不是捕获(lambda 捕获的是 self); tween 建在本场景上, 场景释放 tween 跟着死"),
     ("scripts/scenes/RealtimeBattle3DScene.gd", "ball, core, glow"):
         (1, "气波: 三个节点都只由本链末尾回调释放; sim tween 换路即 kill"),
-    ("scripts/scenes/ShopScene.gd", "tr"):
-        (1, "tr.create_tween() 绑在 tr 自己身上, tr 释放 tween 自动 kill"),
-    ("scripts/scenes/TeamSelectScene.gd", "tr"):
-        (1, "同上: tween 建在 tr 自己身上"),
     ("scripts/scenes/battle/battle_vfx.gd", "spr"):
         (1, "破蛋: spr 是蛋单位自己的立绘, 只在换路 _dl_clear_units 里释放, 而那里先 kill tween"),
     ("scripts/scenes/battle/synergy_vfx.gd", "blade"):

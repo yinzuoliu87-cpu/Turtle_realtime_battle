@@ -65,8 +65,10 @@ ALLOW = {
         2, "战后结算屏（UI 层，不在 `_world` 里）：暗幕淡入 + 胜负大字弹出。"
            "结算时战斗已经结束，冻它只会让结算屏卡在半透明"),
     "scripts/scenes/battle/battle_vfx.gd": (
-        3, "飘字（伤害/治疗数字，CanvasLayer）。时停期间只有携带者能动，"
-           "它打出的数字该正常飞；灰世界叠加层本来就压在 UI 之下（`layer = 5`）"),
+        4, "飘字（伤害/治疗数字，CanvasLayer）。时停期间只有携带者能动，"
+           "它打出的数字该正常飞；灰世界叠加层本来就压在 UI 之下（`layer = 5`）。"
+           "3 → 4（2026-10-14）: 全屏轻白闪 `screen_flash_light`（CanvasLayer 55, 0.18 秒纯画面）—— "
+           "走 `_reg_tween` 时换路 kill 全部 sim tween ⇒ 淡出与 queue_free 不执行, 内测「整个画面变白」(b250de29)"),
     "scripts/scenes/battle/dual_lane_flow.gd": (
         4, "双路换路流程的转场 UI，不在 `_world` 里"),
 }

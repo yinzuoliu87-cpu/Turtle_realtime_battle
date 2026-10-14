@@ -85,7 +85,7 @@ scripts/gamedata/glossary.gd|lit|地毯轰炸
 scripts/gamedata/glossary.gd|lit|奶油护盾
 scripts/gamedata/glossary.gd|lit|寒冰龟在地面留下的减速领域。冰柱层数会同时提升其范围与持续时间。
 scripts/gamedata/glossary.gd|lit|小木斧召唤的近战随从。属性随累计经验成长。
-scripts/gamedata/glossary.gd|lit|小龟每隔一段时间充能完成的一次强化普通攻击：造成额外伤害并击飞目标，并将此次伤害的一部分转化为自身的护盾。
+scripts/gamedata/glossary.gd|lit|小龟每隔一段时间充能完成的一次强化攻击：造成额外伤害并击飞目标，并将此次伤害的一部分转化为自身的护盾。
 scripts/gamedata/glossary.gd|lit|幽灵护盾
 scripts/gamedata/glossary.gd|lit|开战时为全队提供的护盾，永久不衰减。护盾被击破时对周围的敌人造成伤害。
 scripts/gamedata/glossary.gd|lit|弓箭系叠加在敌人身上的层数，与弓箭羁绊共用同一份层数。
@@ -93,6 +93,7 @@ scripts/gamedata/glossary.gd|lit|手半剑替换原技能的招式：先横斩�
 scripts/gamedata/glossary.gd|lit|扭曲空间
 scripts/gamedata/glossary.gd|lit|护心反伤
 scripts/gamedata/glossary.gd|lit|持续伤害的负面状态：每秒造成基于目标最大生命值百分比的真实伤害，无视护甲与魔抗。不可叠加，重复施加时累加剩余持续时间。
+scripts/gamedata/glossary.gd|lit|攻击对敌人施加的层数。达到最大层数时引爆，造成基于该敌人最大生命值的真实伤害。
 scripts/gamedata/glossary.gd|lit|敌人被己方击飞时获得的标记，不会自然消失。飞镖每个周期向所有带有标记的敌人各发射一枚，命中后移除标记。
 scripts/gamedata/glossary.gd|lit|斧头
 scripts/gamedata/glossary.gd|lit|斧头每进化一档额外获得的属性加成，售价也随之提高。
@@ -101,13 +102,14 @@ scripts/gamedata/glossary.gd|lit|时间停止
 scripts/gamedata/glossary.gd|lit|星波
 scripts/gamedata/glossary.gd|lit|星际龟的技能：以自身为中心释放一圈向外扩散的环形波。
 scripts/gamedata/glossary.gd|lit|星际龟的技能：扭曲一片区域的空间。
-scripts/gamedata/glossary.gd|lit|普通攻击对敌人施加的层数。达到最大层数时引爆，造成基于该敌人最大生命值的真实伤害。
 scripts/gamedata/glossary.gd|lit|最终造物
 scripts/gamedata/glossary.gd|lit|枪羁绊：每发射若干发普通子弹后发射一发金弹，金弹继承该发子弹的全部效果并额外造成真实伤害。
+scripts/gamedata/glossary.gd|lit|每件法器各自的法力条：每 2.5 秒回复 15 点，携带者用技能造成伤害或受到伤害时也会回复。充满时释放该法器的主动效果，随后重新回复。法器效果自身造成的伤害不回复法力。法器羁绊档位越高，充满所需的法力越少。
 scripts/gamedata/glossary.gd|lit|每次受到一段攻击时，对攻击者反弹一次魔法伤害。持续伤害不会触发此效果，多段攻击的每一段单独触发。
 scripts/gamedata/glossary.gd|lit|气环
-scripts/gamedata/glossary.gd|lit|永久不衰减的护盾。护盾存在期间，自身变为蛋糕礼盒：射程变为近战，普通攻击与技能也替换为礼盒专属版本。
+scripts/gamedata/glossary.gd|lit|永久不衰减的护盾。护盾存在期间，自身变为蛋糕礼盒：射程变为近战，攻击与技能也替换为礼盒专属版本。
 scripts/gamedata/glossary.gd|lit|沙漏释放的全场定格：除持有全场最高星级沙漏的龟之外，所有单位、弹道与特效全部静止。
+scripts/gamedata/glossary.gd|lit|法力
 scripts/gamedata/glossary.gd|lit|海胆护盾
 scripts/gamedata/glossary.gd|lit|海胆每次受到伤害时叠加一层硬化，层数达到上限时为自身提供的护盾，随后在数秒内逐渐衰减。
 scripts/gamedata/glossary.gd|lit|涨潮
@@ -115,19 +117,23 @@ scripts/gamedata/glossary.gd|lit|灵能冲击
 scripts/gamedata/glossary.gd|lit|猎人龟施加的猎杀印记。被标记的敌人处决线提高。
 scripts/gamedata/glossary.gd|lit|生命值低于阈值时获得的一次性护盾，在数秒内线性衰减。
 scripts/gamedata/glossary.gd|lit|登场一段时间后进入的强化状态：最大生命值与攻击力大幅提升，体型变大。
-scripts/gamedata/glossary.gd|lit|登场时给予敌人的枪。持枪者属性提升，但每次普通攻击会损失生命值。
+scripts/gamedata/glossary.gd|lit|登场时给予敌人的枪。持枪者属性提升，但每次攻击会损失生命值。
 scripts/gamedata/glossary.gd|lit|直升机龟的龟能充满时施放的大招：沿覆盖敌人最多的航线飞行，沿途投弹。
 scripts/gamedata/glossary.gd|lit|真火
 scripts/gamedata/glossary.gd|lit|破损
+scripts/gamedata/glossary.gd|lit|符纸
 scripts/gamedata/glossary.gd|lit|精准射击
 scripts/gamedata/glossary.gd|lit|精神干扰
 scripts/gamedata/glossary.gd|lit|终极护盾
 scripts/gamedata/glossary.gd|lit|腐蚀
+scripts/gamedata/glossary.gd|lit|蚀月符纸贴在敌人身上的持续伤害效果，期间每秒降低其魔抗。可叠加，目标死亡时以剩余持续时间转移给最近的敌人。
 scripts/gamedata/glossary.gd|lit|融合
 scripts/gamedata/glossary.gd|lit|诅咒
 scripts/gamedata/glossary.gd|lit|财神龟施放【梭哈】后，该技能槽转变成的护盾技能：护盾值基于当前金币数，不消耗金币，持有护盾期间锁定龟能。
 scripts/gamedata/glossary.gd|lit|赌神龟生命值低于阈值时【赌注】的替代效果：不甩牌、不消耗生命值，转而回复生命值。
 scripts/gamedata/glossary.gd|lit|进化被动
+scripts/gamedata/glossary.gd|lit|迷你水晶
+scripts/gamedata/glossary.gd|lit|迷你水晶球施加在敌人身上的层数。达到最大层数时引爆，造成基于该敌人最大生命值的魔法伤害，并重置层数。
 scripts/gamedata/glossary.gd|lit|退潮
 scripts/gamedata/glossary.gd|lit|金弹
 scripts/gamedata/glossary.gd|lit|金盾
@@ -139,9 +145,9 @@ scripts/gamedata/minion_codex.gd|lit|人体浪板
 scripts/gamedata/minion_codex.gd|lit|前排 · 近战
 scripts/gamedata/minion_codex.gd|lit|后排 · 远程
 scripts/gamedata/minion_codex.gd|lit|吞噬
-scripts/gamedata/minion_codex.gd|lit|普通攻击造成 1×攻击力 的物理伤害，每第 5 次攻击附带旋刃。
+scripts/gamedata/minion_codex.gd|lit|攻击造成 1×攻击力 的物理伤害，每第 5 次攻击附带旋刃。
 scripts/gamedata/minion_codex.gd|lit|每 5 秒一次：锁定 150~350 码之间的敌人，射出锁链，命中后将其眩晕 0.4 秒并拉至自身后方，造成 1×攻击力 的魔法伤害。
-scripts/gamedata/minion_codex.gd|lit|目标生命值低于 15% 时发动吞噬，持续 1.5 秒，期间自身获得 [color=#ff9f43]95% 伤害减免[/color]。吞噬完成后回复 [color=#ff9f43]目标剩余生命的 2 倍[/color]，获得 50% 攻击速度提升，持续 5 秒，并窃取目标的主动技能。普通攻击、铁锁与铁锤均可触发。
+scripts/gamedata/minion_codex.gd|lit|目标生命值低于 15% 时发动吞噬，持续 1.5 秒，期间自身获得 [color=#ff9f43]95% 伤害减免[/color]。吞噬完成后回复 [color=#ff9f43]目标剩余生命的 2 倍[/color]，获得 50% 攻击速度提升，持续 5 秒，并窃取目标的主动技能。攻击、铁锁与铁锤均可触发。
 scripts/gamedata/minion_codex.gd|lit|精英 · 近战
 scripts/gamedata/minion_codex.gd|lit|精英小将
 scripts/gamedata/minion_codex.gd|lit|近战小将
@@ -217,66 +223,105 @@ scripts/gamedata/phase2_minion.gd|lit|挥砍
 scripts/gamedata/phase2_minion.gd|lit|整排挥砍
 scripts/gamedata/phase2_minion.gd|lit|深海小将
 scripts/gamedata/phase2_minion.gd|lit|深海小将精英
+scripts/gamedata/phase2_types.gd|lit|【亡灵】友方单位阵亡时原地召唤 1 只亡魂，继承其一部分攻击力与生命值，自动攻击最近的敌人。亡魂阵亡后可再循环，每次属性 ×0.9。
+scripts/gamedata/phase2_types.gd|lit|【余韵】友军受到治疗时，额外获得相当于治疗量一定比例的护盾。
+scripts/gamedata/phase2_types.gd|lit|【僵硬】全队每段攻击为目标叠加 1 层僵硬，每层降低 2% 攻击力，至多 20 层，持续 5 秒，叠加时刷新持续时间。
+scripts/gamedata/phase2_types.gd|lit|【共鸣】每 7.5 秒，全队每个友军回复 15% 最大生命值，并净化 2 种减益，依次为眩晕、减速、灼烧、中毒、诅咒。
+scripts/gamedata/phase2_types.gd|lit|【冰封】全队攻击有概率冻结目标 1.5 秒。同一目标每 2.5 秒至多被冻结 1 次，解冻后 1.5 秒内免疫冻结。
+scripts/gamedata/phase2_types.gd|lit|【剑士】携带剑者每次攻击后追打目标，追打以 5 倍攻击速度的节奏出手，伤害随身上剑件数提高，可触发命中效果。
+scripts/gamedata/phase2_types.gd|lit|【圣光·强化】盾类装备为携带者提供护盾或治疗时，额外提供其 20% 的圣光护盾值，圣光护盾装备生成的圣光护盾值 +20%。
+scripts/gamedata/phase2_types.gd|lit|【圣光护盾】获得「圣光护盾」装备，可在背包自由装配，不占装备位与单只上限，羁绊掉档时消失。携带者 +250 最大生命值，每 3 秒获得 55 点圣光护盾值。圣光护盾存在时，每段受到的伤害对攻击者反击 2 点真实伤害。
+scripts/gamedata/phase2_types.gd|lit|【处决】全队攻击时，目标生命值百分比低于斩杀线则直接处决。斩杀线随攻击者的暴击率提高。
+scripts/gamedata/phase2_types.gd|lit|【学院】队伍全体额外获得最大生命值。
+scripts/gamedata/phase2_types.gd|lit|【怒气】全队每个单位每累计受到 400 点伤害，对最近的敌人释放一次冲击波，造成基于自身最大生命值的真实伤害，并获得该伤害 20% 的护盾。
+scripts/gamedata/phase2_types.gd|lit|【成长】每 2.5 秒，每件食物永久提高携带者的最大生命值，无上限，本场累积、跨路保留。
+scripts/gamedata/phase2_types.gd|lit|【战利品】每击杀 1 名猎物，全队攻击力永久提高，本场累积、跨路保留。
+scripts/gamedata/phase2_types.gd|lit|【拍击蓄能】触手每 {C:SpiritSynergySystem.SLAP_PERIOD} 秒获得 1 层拍击层数，无上限。空闲且射程内有敌人时消耗 1 层，朝最近的敌人拍下，对沿途敌人造成（{C:SpiritSynergySystem.HIT_HP_PCT%}% 目标最大生命值 + {C:SpiritSynergySystem.HIT_FLAT}）物理伤害。
+scripts/gamedata/phase2_types.gd|lit|【收殓】敌方单位阵亡时，为最近的携带盾者提供相当于该单位 30% 最大生命值的护盾。
+scripts/gamedata/phase2_types.gd|lit|【斩首】攻击生命值低于 20% 的猎物时，直接处决。
+scripts/gamedata/phase2_types.gd|lit|【易碎】被冻结或眩晕的敌人受到的伤害提高。
+scripts/gamedata/phase2_types.gd|lit|【灵泉】每 2.5 秒，全队回复已损失生命值的一定比例。
+scripts/gamedata/phase2_types.gd|lit|【炮台一】在我方前方生成一座炮台，每 2.5 秒朝最近的敌人轰击，对炮台与该敌人连线上的所有敌人造成 80 物理伤害，无视护甲，并为生命值最低的友军回复相当于造成伤害 30% 的生命值。
+scripts/gamedata/phase2_types.gd|lit|【炮台三·火控】在后方生成第三座炮台，为携带枪者接通火控，使其额外造成真实伤害。
+scripts/gamedata/phase2_types.gd|lit|【炮台二】在中心生成第二座炮台，每 5 秒产出能量，交替使用：一次转化为护盾均摊给全队，下一次化为弹幕，对敌方全体均摊造成等量的真实伤害。
+scripts/gamedata/phase2_types.gd|lit|【猎物】每 2.5 秒，将敌方当前生命值最高的 1 名单位标记为猎物，龟蛋除外，猎物死亡后下个周期重选。全队对猎物造成的伤害提高。
+scripts/gamedata/phase2_types.gd|lit|【生死界】携带遗物者生命值高于 50% 时攻击力提高，低于 50% 时生命偷取翻倍。
+scripts/gamedata/phase2_types.gd|lit|【盛宴】每 2.5 秒，全队回复已损失生命值的 3%。
+scripts/gamedata/phase2_types.gd|lit|【腐蚀·穿透】全队攻击无视目标一部分护甲与魔法抗性。
+scripts/gamedata/phase2_types.gd|lit|【腐蚀叠层】每 2.5 秒，所有敌方单位 +1 层【腐蚀】，每层提高其受到的伤害，至多 5 层。腐蚀满 5 层的敌人，受到的一部分伤害转化为真实伤害。
+scripts/gamedata/phase2_types.gd|lit|【血祭】全队每个单位每损失 1% 生命值，攻击力提高一定比例。
+scripts/gamedata/phase2_types.gd|lit|【觉醒】本路战斗开始 20 秒后，已累积的远古之力提高 50%。
+scripts/gamedata/phase2_types.gd|lit|【远古之力】每 2.5 秒，全队永久提高增伤，本场累积、跨路保留，有上限。
+scripts/gamedata/phase2_types.gd|lit|【金弹】每把枪射出若干发子弹后，额外射出 1 发金弹。金弹继承该枪子弹的全部效果并额外造成真实伤害，金弹本身不计入发数。
+scripts/gamedata/phase2_types.gd|lit|【铸币】每 2.5 秒为全队铸造深海币，战斗结算时进账，每场有上限。
+scripts/gamedata/phase2_types.gd|lit|【闪避蓄能】己方任一单位闪避成功时，每根触手获得 1 层拍击层数。
+scripts/gamedata/phase2_types.gd|lit|【龟蛋加固】本方龟蛋提高最大生命值，并开始还击，射程 420。
 scripts/gamedata/phase2_types.gd|lit|剑
 scripts/gamedata/phase2_types.gd|lit|剑系
 scripts/gamedata/phase2_types.gd|lit|奇械
 scripts/gamedata/phase2_types.gd|lit|奇械·魔抗
 scripts/gamedata/phase2_types.gd|lit|弓箭
 scripts/gamedata/phase2_types.gd|lit|弓箭·神射手
+scripts/gamedata/phase2_types.gd|lit|携带香火石即激活，只有 1 档
 scripts/gamedata/phase2_types.gd|lit|斧头
 scripts/gamedata/phase2_types.gd|lit|斧头·砍伐
+scripts/gamedata/phase2_types.gd|lit|无敌的触手登场作战。
 scripts/gamedata/phase2_types.gd|lit|枪
 scripts/gamedata/phase2_types.gd|lit|枪·神枪手
-scripts/gamedata/phase2_types.gd|lit|每件剑 +15 攻击力 · 【剑士】追打 1 次, 伤害 25%×身上剑件数 · 【血祭】本体每损失 1% 生命 → +0.3% 攻击力
-scripts/gamedata/phase2_types.gd|lit|每件剑 +25 攻击力 · 【剑士】追打 2 次, 每次伤害 40%×身上剑件数 · 【血祭】本体每损失 1% 生命 → +0.5% 攻击力
-scripts/gamedata/phase2_types.gd|lit|每件剑 +8 攻击力 · 【剑士】携带剑者每次普攻后, 以 18%×身上剑件数 的伤害追打 1 次(5倍攻速节奏, 触发命中效果) · 【血祭】全队每个单位: 本体每损失 1% 生命 → +0.1% 攻击力
-scripts/gamedata/phase2_types.gd|lit|每件奇械 +10 魔法抗性 · 【铸币】每 2.5 秒铸 2 枚(本场最多 9 枚) · 【冰封】全队攻击 15% 概率冻结目标 1.5 秒(同一目标每 2.5 秒最多被冻 1 次, 解冻后 1.5 秒免疫冻结)
-scripts/gamedata/phase2_types.gd|lit|每件奇械 +16 魔法抗性 · 【铸币】每 2.5 秒铸 3 枚(本场最多 14 枚) · 【冰封】25% 概率 · 【僵硬】全队每段攻击为目标叠 1 层僵硬(持续 5 秒, 叠加刷新时长; 每层 -2% 攻击力, 最多 20 层)
-scripts/gamedata/phase2_types.gd|lit|每件奇械 +23 魔法抗性 · 【铸币】每 2.5 秒铸 3 枚(本场最多 20 枚) · 【冰封】40% 概率 · 【僵硬】同上 · 【易碎】被冻结或眩晕的敌人, 受到的伤害 +25%
-scripts/gamedata/phase2_types.gd|lit|每件奇械 +4 魔法抗性 · 【铸币】每 2.5 秒全队铸造 1 枚深海币(本场最多 5 枚, 战斗结算时进账)
-scripts/gamedata/phase2_types.gd|lit|每件弓箭 +16% 暴击率 · 【处决】斩杀线 = 7% + 该单位暴击率 × 0.1 · 【腐蚀·穿透】全队攻击无视目标 10% 护甲与魔法抗性 · 【腐蚀叠层】每 2.5 秒, 所有敌方单位 +1 层腐蚀(每层使其受到的伤害 +3%, 最多 5 层); 腐蚀满 5 层的敌人, 其受到伤害的 20% 转化为真实伤害
-scripts/gamedata/phase2_types.gd|lit|每件弓箭 +22% 暴击率 · 【处决】斩杀线 = 10% + 该单位暴击率 × 0.1 · 【腐蚀·穿透】全队攻击无视目标 22% 护甲与魔法抗性 · 【腐蚀叠层】每 2.5 秒, 所有敌方单位 +1 层腐蚀(每层使其受到的伤害 +4%, 最多 5 层); 腐蚀满 5 层的敌人, 其受到伤害的 35% 转化为真实伤害
-scripts/gamedata/phase2_types.gd|lit|每件弓箭 +9% 暴击率 · 【处决】全队单位攻击时, 目标生命百分比低于斩杀线则直接处决(斩杀线 = 4% + 该单位暴击率 × 0.1) · 【腐蚀·穿透】全队攻击无视目标 4% 护甲与魔法抗性 · 【腐蚀叠层】每 2.5 秒, 所有敌方单位 +1 层腐蚀(每层使其受到的伤害 +2%, 最多 5 层); 腐蚀满 5 层的敌人, 其受到伤害的 10% 转化为真实伤害
-scripts/gamedata/phase2_types.gd|lit|每件枪 +20% 攻击速度 · 【金弹】每把枪射满 4 发额外射出 1 发金弹(继承该枪全部子弹效果, 另加 60% 真实伤害; 金弹不计入计数) · 【炮台一】我方前方生成第一座炮台: 每 2.5 秒朝最近的敌人轰击, 对炮台与该敌直线上所有敌人各造成 80 物理伤害(无视护甲), 并为我方最低血友军回复 30% × 造成伤害的生命
-scripts/gamedata/phase2_types.gd|lit|每件枪 +40% 攻击速度 · 【金弹】射满 3 发 → 金弹(+80% 真伤) · 【炮台二】中心生成第二座炮台: 每 5 秒产出 (100 + 20 × 全队枪件数) 能量, 交替使用 —— 一次转化为护盾均摊全队, 下一次化为弹幕由敌方全体均摊该能量值的真实伤害
-scripts/gamedata/phase2_types.gd|lit|每件枪 +66% 攻击速度 · 【金弹】射满 2 发 → 金弹(+100% 真伤) · 【炮台三·火控】后方生成第三座炮台, 为携带枪者接通火控: 额外造成 (10 + 携带者身上枪件数 × 10)% 真实伤害
-scripts/gamedata/phase2_types.gd|lit|每件法器 +11 魔法穿透、+8 最大龟能 · 法力条满 120 · 【灵泉】8% · 【余韵】友军受到治疗时, 额外获得等于治疗量 30% 的护盾
-scripts/gamedata/phase2_types.gd|lit|每件法器 +14 魔法穿透、+10 最大龟能 · 法力条满 80 · 【灵泉】12% · 【余韵】50% · 【共鸣】每 7.5 秒引动一次共鸣: 全队每个友军回复 15% 最大生命值, 并净化 2 种减益(眩晕/减速/灼烧/中毒/诅咒, 按此顺序)
-scripts/gamedata/phase2_types.gd|lit|每件法器 +4 魔法穿透、+4 最大龟能 · 每件法器拥有独立法力条, 满 180 触发其效果(未激活羁绊时满值 200)(每 2.5 秒 +15 法力, 另按造成的普攻与技能伤害 ×0.1、受到的伤害 ×0.1 累积)
-scripts/gamedata/phase2_types.gd|lit|每件法器 +7 魔法穿透、+6 最大龟能 · 法力条满 150 · 【灵泉】每 2.5 秒, 全队回复已损失生命的 5%
-scripts/gamedata/phase2_types.gd|lit|每件灵物 +13% 闪避率 · 2 个触手, 拍击伤害 +50% · 闪避蓄能同上 · 【亡灵】继承 65% 攻击力与生命 · 亡魂阵亡后再循环 2 次
-scripts/gamedata/phase2_types.gd|lit|每件灵物 +18% 闪避率 · 2 个触手, 拍击伤害 +100% · 闪避蓄能同上 · 【亡灵】继承 100% 攻击力与生命 · 亡魂阵亡后再循环 3 次
-scripts/gamedata/phase2_types.gd|lit|每件灵物 +5% 闪避率 · 1 个无敌触手登场 · 【拍击蓄能】触手每 {C:SpiritSynergySystem.SLAP_PERIOD} 秒获得 1 层拍击层数(无上限); 空闲且射程内有敌人时消耗 1 层, 朝最近的一名敌人拍下, 对沿途敌人造成 ({C:SpiritSynergySystem.HIT_HP_PCT%}% 目标最大生命 + {C:SpiritSynergySystem.HIT_FLAT}) 物理伤害 · 【亡灵】友方单位阵亡时原地召唤 1 只亡魂, 继承其 20% 攻击力与生命, 自动攻击最近敌人; 亡魂阵亡后不再循环
-scripts/gamedata/phase2_types.gd|lit|每件灵物 +9% 闪避率 · 2 个触手 · 【闪避蓄能】己方任一单位闪避成功 → 每根触手各获得 1 层拍击层数(不设上限) · 【亡灵】继承 38% 攻击力与生命 · 亡魂阵亡后再循环 1 次(每次属性 ×0.9)
-scripts/gamedata/phase2_types.gd|lit|每件盾 +13 护甲 · 【怒气】冲击波 6% · 【圣光护盾】获得第 2 件「圣光护盾」装备 · 【收殓】敌方单位阵亡时, 给最近的携带盾者罩上该单位 30% 最大生命值的护盾
-scripts/gamedata/phase2_types.gd|lit|每件盾 +22 护甲 · 【怒气】冲击波 8% · 【收殓】同上 · 【圣光·强化】盾类装备给携带者罩护盾或加血时, 再多给其 20% 的圣光护盾值; 且圣光护盾装备生成的所有圣盾值 +20%
-scripts/gamedata/phase2_types.gd|lit|每件盾 +5 护甲 · 【怒气】全队每个单位每累计受到 400 点伤害, 就对最近的敌人释放一次冲击波, 造成 4% 自身最大生命值的真实伤害, 并为自己获得该伤害 20% 的护盾值 · 【圣光护盾】获得 1 件「圣光护盾」装备(可在背包自由装配, 不占装备位与单只上限; 掉档即消失): +250 最大生命, 每 3 秒为携带者生成 55 点圣光护盾值, 圣光护盾存在时反击敌人的每段伤害造成 2 点真实伤害
-scripts/gamedata/phase2_types.gd|lit|每件药水 +12% 治疗强度、+12% 护盾强度、+4 最大龟能 · 【猎物】+25% · 【战利品】每击杀 1 名猎物 → 全队攻击力永久 +5(本场累积·跨路保留)
-scripts/gamedata/phase2_types.gd|lit|每件药水 +20% 治疗强度、+20% 护盾强度、+6 最大龟能 · 【猎物】+40% · 【战利品】每击杀 1 名猎物 → 全队攻击力永久 +8 · 【斩首】攻击猎物时, 若其生命低于 20% → 直接处决
-scripts/gamedata/phase2_types.gd|lit|每件药水 +6% 治疗强度、+6% 护盾强度、+2 最大龟能 · 【猎物】每 2.5 秒自动将敌方当前生命值最高的 1 名单位标记为猎物(龟蛋除外; 猎物死亡后下个周期重选); 全队对猎物造成的伤害 +15%
-scripts/gamedata/phase2_types.gd|lit|每件遗物 +10% 生命偷取 · 【生死界】>50% 时 +12% 攻击力(<50% 生命偷取翻倍) · 【远古之力】每 2.5 秒全队永久 +2% 增伤(上限 +35%) · 【龟蛋加固】本方龟蛋 +3600 最大生命值, 还击 140 攻击力 · 【觉醒】本路战斗开打满 20 秒后, 已累积的远古之力 +50%
-scripts/gamedata/phase2_types.gd|lit|每件遗物 +3% 生命偷取 · 【生死界】携带遗物者生命 >50% 时额外 +3% 攻击力; 生命 <50% 时其生命偷取【翻倍】
-scripts/gamedata/phase2_types.gd|lit|每件遗物 +5% 生命偷取 · 【生死界】>50% 时 +5% 攻击力(<50% 生命偷取翻倍) · 【远古之力】每 2.5 秒全队永久 +1% 增伤(本场累积·跨路保留, 上限 +15%) · 【龟蛋加固】本方龟蛋 +1200 最大生命值, 且龟蛋开始还击(40 攻击力, 射程 420)
-scripts/gamedata/phase2_types.gd|lit|每件遗物 +8% 生命偷取 · 【生死界】>50% 时 +8% 攻击力(<50% 生命偷取翻倍) · 【远古之力】每 2.5 秒全队永久 +1.5% 增伤(上限 +25%) · 【龟蛋加固】本方龟蛋 +2200 最大生命值, 还击 80 攻击力
+scripts/gamedata/phase2_types.gd|lit|每件剑 +15 攻击力 · 【剑士】追打 1 次，每次 25% × 身上剑件数 的伤害 · 【血祭】每损失 1% 生命值 +0.3% 攻击力
+scripts/gamedata/phase2_types.gd|lit|每件剑 +25 攻击力 · 【剑士】追打 2 次，每次 40% × 身上剑件数 的伤害 · 【血祭】每损失 1% 生命值 +0.5% 攻击力
+scripts/gamedata/phase2_types.gd|lit|每件剑 +8 攻击力 · 【剑士】追打 1 次，每次 18% × 身上剑件数 的伤害 · 【血祭】每损失 1% 生命值 +0.1% 攻击力
+scripts/gamedata/phase2_types.gd|lit|每件奇械 +10 魔法抗性 · 【铸币】每次 2 枚，每场至多 9 枚 · 【冰封】15% 概率
+scripts/gamedata/phase2_types.gd|lit|每件奇械 +16 魔法抗性 · 【铸币】每次 3 枚，每场至多 14 枚 · 【冰封】25% 概率 · 【僵硬】生效
+scripts/gamedata/phase2_types.gd|lit|每件奇械 +23 魔法抗性 · 【铸币】每次 3 枚，每场至多 20 枚 · 【冰封】40% 概率 · 【僵硬】生效 · 【易碎】受到的伤害 +25%
+scripts/gamedata/phase2_types.gd|lit|每件奇械 +4 魔法抗性 · 【铸币】每次 1 枚，每场至多 5 枚
+scripts/gamedata/phase2_types.gd|lit|每件弓箭 +16% 暴击率 · 【处决】斩杀线 7% + 10% × 暴击率 · 【腐蚀·穿透】10% · 【腐蚀叠层】每层 +3%，满层转化 20%
+scripts/gamedata/phase2_types.gd|lit|每件弓箭 +22% 暴击率 · 【处决】斩杀线 10% + 10% × 暴击率 · 【腐蚀·穿透】22% · 【腐蚀叠层】每层 +4%，满层转化 35%
+scripts/gamedata/phase2_types.gd|lit|每件弓箭 +9% 暴击率 · 【处决】斩杀线 4% + 10% × 暴击率 · 【腐蚀·穿透】4% · 【腐蚀叠层】每层 +2%，满层转化 10%
+scripts/gamedata/phase2_types.gd|lit|每件枪 +20% 攻击速度 · 【金弹】每 4 发 1 发，+60% 真实伤害 · 【炮台一】生效
+scripts/gamedata/phase2_types.gd|lit|每件枪 +40% 攻击速度 · 【金弹】每 3 发 1 发，+80% 真实伤害 · 【炮台二】每次产出 100 + 20 × 全队枪件数 能量
+scripts/gamedata/phase2_types.gd|lit|每件枪 +66% 攻击速度 · 【金弹】每 2 发 1 发，+100% 真实伤害 · 【炮台三·火控】额外造成 10% + 10% × 身上枪件数 真实伤害
+scripts/gamedata/phase2_types.gd|lit|每件法器 +11 魔法穿透、+8 最大龟能 · 【法力】充满需要 120 · 【灵泉】8% · 【余韵】30%
+scripts/gamedata/phase2_types.gd|lit|每件法器 +14 魔法穿透、+10 最大龟能 · 【法力】充满需要 80 · 【灵泉】12% · 【余韵】50% · 【共鸣】生效
+scripts/gamedata/phase2_types.gd|lit|每件法器 +4 魔法穿透、+4 最大龟能 · 【法力】充满需要 180，未激活时 200
+scripts/gamedata/phase2_types.gd|lit|每件法器 +7 魔法穿透、+6 最大龟能 · 【法力】充满需要 150 · 【灵泉】5%
+scripts/gamedata/phase2_types.gd|lit|每件法器拥有独立的【法力】，充满时释放该法器的主动效果。每 2.5 秒回复 15 点，携带者造成或受到伤害时也会回复。
+scripts/gamedata/phase2_types.gd|lit|每件灵物 +13% 闪避率 · 2 根触手，拍击伤害 +50% · 【闪避蓄能】生效 · 【亡灵】继承 65%，循环 2 次
+scripts/gamedata/phase2_types.gd|lit|每件灵物 +18% 闪避率 · 2 根触手，拍击伤害 +100% · 【闪避蓄能】生效 · 【亡灵】继承 100%，循环 3 次
+scripts/gamedata/phase2_types.gd|lit|每件灵物 +5% 闪避率 · 1 根触手 · 【亡灵】继承 20%，不循环
+scripts/gamedata/phase2_types.gd|lit|每件灵物 +9% 闪避率 · 2 根触手 · 【闪避蓄能】生效 · 【亡灵】继承 38%，循环 1 次
+scripts/gamedata/phase2_types.gd|lit|每件盾 +13 护甲 · 【怒气】冲击波 6% 最大生命值 · 【圣光护盾】2 件 · 【收殓】生效
+scripts/gamedata/phase2_types.gd|lit|每件盾 +22 护甲 · 【怒气】冲击波 8% 最大生命值 · 【圣光护盾】2 件 · 【收殓】生效 · 【圣光·强化】生效
+scripts/gamedata/phase2_types.gd|lit|每件盾 +5 护甲 · 【怒气】冲击波 4% 最大生命值 · 【圣光护盾】1 件
+scripts/gamedata/phase2_types.gd|lit|每件药水 +12% 治疗强度、+12% 护盾强度、+4 最大龟能 · 【猎物】伤害 +25% · 【战利品】每次 +5 攻击力
+scripts/gamedata/phase2_types.gd|lit|每件药水 +20% 治疗强度、+20% 护盾强度、+6 最大龟能 · 【猎物】伤害 +40% · 【战利品】每次 +8 攻击力 · 【斩首】生效
+scripts/gamedata/phase2_types.gd|lit|每件药水 +6% 治疗强度、+6% 护盾强度、+2 最大龟能 · 【猎物】伤害 +15%
+scripts/gamedata/phase2_types.gd|lit|每件遗物 +10% 生命偷取 · 【生死界】+12% 攻击力 · 【远古之力】每次 +2%，上限 +35% · 【龟蛋加固】+3600 最大生命值，还击 140 攻击力 · 【觉醒】生效
+scripts/gamedata/phase2_types.gd|lit|每件遗物 +3% 生命偷取 · 【生死界】+3% 攻击力
+scripts/gamedata/phase2_types.gd|lit|每件遗物 +5% 生命偷取 · 【生死界】+5% 攻击力 · 【远古之力】每次 +1%，上限 +15% · 【龟蛋加固】+1200 最大生命值，还击 40 攻击力
+scripts/gamedata/phase2_types.gd|lit|每件遗物 +8% 生命偷取 · 【生死界】+8% 攻击力 · 【远古之力】每次 +1.5%，上限 +25% · 【龟蛋加固】+2200 最大生命值，还击 80 攻击力
+scripts/gamedata/phase2_types.gd|lit|每道刻痕使香火石为携带者提供 0.2% 增伤与 0.1% 减伤，并使全队获得 0.1% 增伤与 0.05% 减伤。多件香火石共用同一条充能条与刻痕池。
 scripts/gamedata/phase2_types.gd|lit|法器
 scripts/gamedata/phase2_types.gd|lit|法器·法师
+scripts/gamedata/phase2_types.gd|lit|激活后商店更容易刷出小木斧：每次刷新至少出现一把的概率从 6% 起，本大轮每多打一局 +0.5%，至多 18%。重复买到的小木斧转化为砍伐经验。
 scripts/gamedata/phase2_types.gd|lit|灵物
 scripts/gamedata/phase2_types.gd|lit|灵物·召唤
 scripts/gamedata/phase2_types.gd|lit|盾
 scripts/gamedata/phase2_types.gd|lit|盾·守护
 scripts/gamedata/phase2_types.gd|lit|药水
 scripts/gamedata/phase2_types.gd|lit|药水·龟能
-scripts/gamedata/phase2_types.gd|lit|装备小木斧即激活 · 商店里更容易再碰见它: 每次刷新货架上至少出一把的概率 6% 起, 本大轮每多打一局 +0.5%, 最高 18% · 重复买到的化成砍伐经验
+scripts/gamedata/phase2_types.gd|lit|装备小木斧即激活
 scripts/gamedata/phase2_types.gd|lit|遗物
 scripts/gamedata/phase2_types.gd|lit|遗物·古物
-scripts/gamedata/phase2_types.gd|lit|队伍每件装备 +130 最大生命值(食物双倍 +260) · 【成长】每 2.5 秒每件食物给携带者永久 +30 · 【学院】队伍全体额外 +220 最大生命值 · 【盛宴】每 2.5 秒, 全队回复已损失生命的 3%
-scripts/gamedata/phase2_types.gd|lit|队伍每件装备 +70 最大生命值(食物双倍 +140) · 【成长】每 2.5 秒每件食物给携带者永久 +16 · 【学院】队伍全体额外 +100 最大生命值
-scripts/gamedata/phase2_types.gd|lit|队伍每件装备给携带者 +30 最大生命值(食物类装备双倍 +60) · 【成长】每 2.5 秒, 每件食物给携带者永久 +8 最大生命值(无上限, 本场累积·跨路保留)
+scripts/gamedata/phase2_types.gd|lit|队伍每件装备 +130 最大生命值，食物 +260 · 【成长】每件食物每次 +30 · 【学院】全体 +220 最大生命值 · 【盛宴】生效
+scripts/gamedata/phase2_types.gd|lit|队伍每件装备 +30 最大生命值，食物 +60 · 【成长】每件食物每次 +8
+scripts/gamedata/phase2_types.gd|lit|队伍每件装备 +70 最大生命值，食物 +140 · 【成长】每件食物每次 +16 · 【学院】全体 +100 最大生命值
+scripts/gamedata/phase2_types.gd|lit|队伍里每件装备为携带者提供最大生命值，食物类装备提供双倍。
 scripts/gamedata/phase2_types.gd|lit|食物
 scripts/gamedata/phase2_types.gd|lit|食物·增益
 scripts/gamedata/phase2_types.gd|lit|香火
 scripts/gamedata/phase2_types.gd|lit|香火·刻痕
-scripts/gamedata/phase2_types.gd|lit|香火石的携带者每造成 4000 点伤害, 刻下一道香火刻痕(最多 300 道, 跨对局保留, 赛季重置) · 每道刻痕让香火石多给携带者 0.2% 增伤与 0.1% 减伤, 并使全队获得 0.1% 增伤与 0.05% 减伤 · 多件香火石【共用同一条充能条与刻痕池】, 羁绊只激活 1 档
+scripts/gamedata/phase2_types.gd|lit|香火石的携带者每造成 4000 点伤害，刻下一道香火刻痕，至多 300 道，跨对局保留，赛季重置。
 scripts/gamedata/skill_forms.gd|lit|u[\"_hammer_n\"] % 3 == 2 → 下一发是第3次 → 形态1(强化); 否则形态0(普通)
 scripts/gamedata/skill_forms.gd|lit|u[\"ship_summoned\"] 为假 → 形态0(冲锋召船); 为真 → 形态1(霰弹)
 scripts/gamedata/skill_forms.gd|lit|举拳蓄力后砸地, 对身前锥形范围造成魔法伤害
@@ -1224,7 +1269,6 @@ scripts/scenes/battle/info_panel.gd|lit|星能
 scripts/scenes/battle/info_panel.gd|lit|普攻
 scripts/scenes/battle/info_panel.gd|lit|普攻和大多数技能伤害的基础。
 scripts/scenes/battle/info_panel.gd|lit|普攻的攻击距离。
-scripts/scenes/battle/info_panel.gd|lit|普通攻击
 scripts/scenes/battle/info_panel.gd|lit|暂无效果
 scripts/scenes/battle/info_panel.gd|lit|暴伤
 scripts/scenes/battle/info_panel.gd|lit|暴伤 
@@ -1384,12 +1428,11 @@ scripts/scenes/codex/detail_views.gd|lit|护甲穿透
 scripts/scenes/codex/detail_views.gd|lit|护盾增幅
 scripts/scenes/codex/detail_views.gd|lit|收起
 scripts/scenes/codex/detail_views.gd|lit|攻击
+scripts/scenes/codex/detail_views.gd|lit|攻击 · %s
 scripts/scenes/codex/detail_views.gd|lit|攻击力
 scripts/scenes/codex/detail_views.gd|lit|攻击射程
 scripts/scenes/codex/detail_views.gd|lit|攻击速度
 scripts/scenes/codex/detail_views.gd|lit|效果
-scripts/scenes/codex/detail_views.gd|lit|普通攻击
-scripts/scenes/codex/detail_views.gd|lit|普通攻击 · %s
 scripts/scenes/codex/detail_views.gd|lit|暴击伤害
 scripts/scenes/codex/detail_views.gd|lit|暴击率
 scripts/scenes/codex/detail_views.gd|lit|最大生命值
@@ -1699,26 +1742,44 @@ scripts/systems/replay/replay_recorder.gd|lit|校验点 %d: 一边在摆位一�
 scripts/systems/replay/replay_recorder.gd|lit|终局对不上
 scripts/systems/replay/replay_recorder.gd|lit|胜利
 scripts/systems/sim/sim_driver.gd|lit|(未进入)
+scripts/systems/sim/sim_driver.gd|lit|400 次没挑到纯英文昵称
 scripts/systems/sim/sim_driver.gd|lit|主菜单
+scripts/systems/sim/sim_driver.gd|lit|低费追三星
 scripts/systems/sim/sim_driver.gd|lit|前往商店
+scripts/systems/sim/sim_driver.gd|lit|剑
 scripts/systems/sim/sim_driver.gd|lit|商店
 scripts/systems/sim/sim_driver.gd|lit|回不到主菜单
 scripts/systems/sim/sim_driver.gd|lit|图鉴
+scripts/systems/sim/sim_driver.gd|lit|均衡
+scripts/systems/sim/sim_driver.gd|lit|坦克
+scripts/systems/sim/sim_driver.gd|lit|奇械
 scripts/systems/sim/sim_driver.gd|lit|完成新手教学
 scripts/systems/sim/sim_driver.gd|lit|帮助?
 scripts/systems/sim/sim_driver.gd|lit|开打钮不可点
+scripts/systems/sim/sim_driver.gd|lit|弓箭
 scripts/systems/sim/sim_driver.gd|lit|战绩(点玩家卡)
 scripts/systems/sim/sim_driver.gd|lit|排行榜
 scripts/systems/sim/sim_driver.gd|lit|教程里找不到「完成教程」钮
+scripts/systems/sim/sim_driver.gd|lit|斗士
+scripts/systems/sim/sim_driver.gd|lit|枪
+scripts/systems/sim/sim_driver.gd|lit|法器
+scripts/systems/sim/sim_driver.gd|lit|法师
+scripts/systems/sim/sim_driver.gd|lit|灵物
 scripts/systems/sim/sim_driver.gd|lit|点 ? 没弹出教程选择框
 scripts/systems/sim/sim_driver.gd|lit|点了装备+点了单位, 背包件数没少
+scripts/systems/sim/sim_driver.gd|lit|盾
 scripts/systems/sim/sim_driver.gd|lit|结算屏没有可按的按钮
 scripts/systems/sim/sim_driver.gd|lit|继续
 scripts/systems/sim/sim_driver.gd|lit|背包
+scripts/systems/sim/sim_driver.gd|lit|药水
 scripts/systems/sim/sim_driver.gd|lit|训龟大师
 scripts/systems/sim/sim_driver.gd|lit|设置
 scripts/systems/sim/sim_driver.gd|lit|赛程页
+scripts/systems/sim/sim_driver.gd|lit|辅助
 scripts/systems/sim/sim_driver.gd|lit|选择框里找不到「取消」
+scripts/systems/sim/sim_driver.gd|lit|速升找高费
+scripts/systems/sim/sim_driver.gd|lit|遗物
+scripts/systems/sim/sim_driver.gd|lit|食物
 scripts/systems/sim/sim_driver.gd|lit|首启选择框里找不到按钮
 scripts/systems/sim/sim_driver.gd|text|返回主菜单
 scripts/systems/skills/candy_system.gd|lit|投喂!

@@ -130,6 +130,10 @@ WHY = {
                                     "MATCH_FETCH_TIMEOUT_SEC 15 秒, verify_replay_watch ③ 把它压到 0.4 秒量「服务器不回话」那一支)",
     "stale_sec_for_test": "观赛「直播中断」时限注入(live_spectate.gd `_tick`; 产品用 gauntlet_board.LIVE_STALE_SEC 45 秒, "
                           "verify_live_spectate ⑤ 压到 6 秒量「打的人断线 ⇒ 直播中断」那一支)",
+    "offline_override": "测试包离线开关的门禁注入(supabase.gd `offline_dev()`; 产品走导出特性标签 offline_dev, "
+                        "无头进程没有导出标签 ⇒ verify_offline_dev_build ① 只能靠它把「整层停用」那一支真跑出来)",
+    "platform_override": "平台注入: FontKit(iOS 不挂系统字体, verify_ios_no_system_font) 与 CursorTheme(Mac 改用系统光标, "
+                         "verify_cursor_mac_os_cursor) 两处同名同义 —— 门禁跑在 Windows/Linux, 只能靠它走 iOS/macOS 那一支",
     ## ⚠ 这张表**只写核对过出处的理由** —— 一条实测教训, 留一句免得重犯:
     ##   2026-09-28 我顺手给 `_info_passive_lbl` / `_info_passive_tpl` 编了两条理由,
     ##   一查全错: 它们当时已经被删掉了, 而"tests 在写它"其实是判据把

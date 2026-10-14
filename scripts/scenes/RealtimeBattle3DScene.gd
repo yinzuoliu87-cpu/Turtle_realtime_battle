@@ -6253,24 +6253,8 @@ func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁�
 	, "src": u})
 
 const SCREEN_FLASH_GROUP := "battle_screen_flash"   # 全屏白闪层(换路清场按组兜底删; 见 _screen_flash_light)
-func _screen_flash_light() -> void:                              # 全屏轻白闪一拍(彗星撞击帧·0.06s淡入0.12s淡出·layer60盖UI下方一点)
-	var cl := CanvasLayer.new()
-	cl.layer = 55
-	var rect := ColorRect.new()
-	rect.color = Color(1.0, 0.98, 0.95, 0.0)
-	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
-	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	cl.add_child(rect)
-	cl.add_to_group(SCREEN_FLASH_GROUP)
-	add_child(cl)
-	## ★2026-10-13 内测反馈(b250de29):「如果远小将放的导弹爆炸同属战场结束，那么整个画面变白」。
-	##   原来走 _reg_tween(): 换路 `_dl_clear_units` 会 kill 全部 _sim_tweens, 整局结束后 sim 也不再喂 ⇒
-	##   淡出与 queue_free 都不执行, 遮罩停在 ≤28% 白一直盖着后面几路。白闪是纯画面(0.18 秒, 不影响结算 / 回放),
-	##   ⇒ 用裸 create_tween 按真实时间走完; 换路清场再按组兜底删(dual_lane_flow)。
-	var tw := create_tween()
-	tw.tween_property(rect, "color:a", 0.28, 0.06)
-	tw.tween_property(rect, "color:a", 0.0, UIPalette.T_TAP)
-	tw.tween_callback(cl.queue_free)
+func _screen_flash_light() -> void:   # 全屏轻白闪一拍 —— 实现在 BattleVfx.screen_flash_light(10-13 内测白屏修复后搬出主文件)
+	_vfx.screen_flash_light()
 func _slam_debris(at2d: Vector2) -> void:
 	var ps := GPUParticles3D.new()
 	ps.amount = 16; ps.lifetime = 0.6; ps.one_shot = true; ps.explosiveness = 1.0; ps.local_coords = false
@@ -7854,17 +7838,9 @@ func _cam_handle_input(event: InputEvent) -> bool:
 			_cam_zoom *= 1.10; _apply_cam_zoom(); return true
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			_cam_zoom /= 1.10; _apply_cam_zoom(); return true
-	## ★Mac(内测 2026-10-14「mac 设备鼠标诸多问题」): 触控板和妙控鼠标的滚动, Godot 在 macOS 上
-	##   不发滚轮键, 发 PanGesture(有惯性阶段的滚动都走这条); 触控板双指捏合发 MagnifyGesture。
-	##   原来只认滚轮 ⇒ Mac 上战场根本缩放不了。delta.y > 0 = 往下滚 = 缩小, 与滚轮同向。
-	if event is InputEventPanGesture:
-		var py := clampf((event as InputEventPanGesture).delta.y, -3.0, 3.0)
-		if absf(py) > 0.0:
-			_cam_zoom /= pow(1.10, py); _apply_cam_zoom()
-		return true
-	if event is InputEventMagnifyGesture:
-		_cam_zoom *= clampf((event as InputEventMagnifyGesture).factor, 0.5, 2.0); _apply_cam_zoom()
-		return true
+	var _gz := CamGesture.zoom_mult(event)   # Mac 触控板 / 妙控鼠标(10-14 内测), 见 cam_gesture.gd
+	if _gz > 0.0:
+		_cam_zoom *= _gz; _apply_cam_zoom(); return true
 	if event is InputEventScreenTouch:
 		if event.pressed:
 			_touch_pts[event.index] = event.position
