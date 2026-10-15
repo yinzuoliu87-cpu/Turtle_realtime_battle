@@ -67,10 +67,10 @@ func _sk_fortune_buyequip(u: Dictionary) -> void:              # 财神龟·招�
 		#   实测 `skill_energy.gd` 的 "fortuneBuyEquip": **10.0**(2026-08-20 核对时发现本注释
 		#   原来写的是 60, 与那张表对不上 —— 注释也是手抄的副本, 一样会漂)。
 		#   我 2026-07-29 一度把这组数说成"首释价", 是错的; 它是【第2、3次(升星)】的价。
-		battle._vfx._float_text(u["pos"] + Vector2(0, -72), "招财! " + str(DataRegistry.phase2_equipment_by_id.get(iid, {}).get("name", iid)), Color("#ffd93d"))
+		battle._vfx._float_text(u["pos"] + Vector2(0, -72), "招财 " + str(DataRegistry.phase2_equipment_by_id.get(iid, {}).get("name", iid)), Color("#ffd93d"))
 	elif star >= 3:                                             # 3★满: 回复1×ATK生命
 		battle._damage._heal(u, u["atk"] * BUY_FULL_HEAL_COEF)
-		battle._vfx._float_text(u["pos"] + Vector2(0, -72), "招财·满! 回血", Color("#ffd93d"))
+		battle._vfx._float_text(u["pos"] + Vector2(0, -72), "招财·满 回血", Color("#ffd93d"))
 	else:                                                       # 升星: 应用精确数值delta(旧星→新星) + 同步equips条目星级
 		var iid2: String = str(u.get("buyequip_id", ""))
 		battle._equip_sys._stats._eq_star_delta_stats(u, iid2, star, star + 1)          # 精确升星: 加(新星-旧星)属性差量(flag类缩放留F5)

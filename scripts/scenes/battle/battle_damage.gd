@@ -216,7 +216,7 @@ func _apply_damage(u: Dictionary, dmg: int, _col: Color, src = null, bucket: Str
 	##   就直接死(下面的锁血只管已经触发过的)。两条路同一写法(CLAUDE.md §3.3, 门禁 verify_headless_rage_once)。
 	if u["id"] == "headless" and u["hp"] <= 0.0 and not u.get("undead_used", false):
 		u["undead_used"] = true; u["deathfloor_until"] = battle._t + HeadlessSystem.UNDEAD_DEATHFLOOR
-		battle._vfx._float_text(u["pos"] + Vector2(0, -64), "亡灵!", Color("#9b6bff"))
+		battle._vfx._float_text(u["pos"] + Vector2(0, -64), "亡灵", Color("#9b6bff"))
 		battle._headless_sys._headless_undead_vfx(u)
 	if u["hp"] <= 0.0 and battle._t < float(u.get("deathfloor_until", 0.0)):
 		u["hp"] = 1.0
@@ -461,7 +461,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 	# headless 亡灵: 首次濒死→5秒内HP不降到1以下(免死), 5秒后正常死
 	if u["id"] == "headless" and u["hp"] <= 0.0 and not u.get("undead_used", false):
 		u["undead_used"] = true; u["deathfloor_until"] = battle._t + HeadlessSystem.UNDEAD_DEATHFLOOR
-		battle._vfx._float_text(u["pos"] + Vector2(0, -64), "亡灵!", Color("#9b6bff"))
+		battle._vfx._float_text(u["pos"] + Vector2(0, -64), "亡灵", Color("#9b6bff"))
 		battle._headless_sys._headless_undead_vfx(u)                                    # 免死金骨光环5秒(2026-07-17)
 	if battle._t < float(u.get("deathfloor_until", 0.0)):
 		u["hp"] = maxf(1.0, u["hp"])

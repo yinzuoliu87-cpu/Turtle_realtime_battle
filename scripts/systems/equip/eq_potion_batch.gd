@@ -174,7 +174,7 @@ func _eq_whale_brew(u: Dictionary, si: int, stt: Dictionary) -> void:
 	u["eq_state"]["p2eq_066"] = stt
 	_brew_immune(u)
 	_vfx.brew_glow_start(u)   # 金红体光(金圈已废, 用户 2026-08-11)
-	battle._vfx._float_text(u["pos"] + Vector2(0, -84), "浓浆!", Color(1.0, 0.88, 0.55))
+	battle._vfx._float_text(u["pos"] + Vector2(0, -84), "浓浆", Color(1.0, 0.88, 0.55))
 
 
 ## ★★「免疫控制效果」= 用户点名的**五条通道**(2026-08-05「免疫减速, 减攻速, 嘲讽, 击飞」+ 眩晕/冻结)。

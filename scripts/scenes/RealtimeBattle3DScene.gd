@@ -4004,7 +4004,7 @@ func _emit_basic(u: Dictionary, tgt: Dictionary, dmg: int, col: Color, i: int) -
 	if u.get("dice_fate_ls", false):
 		_ls = DiceSystem.FATE_LIFESTEAL
 		u["dice_fate_ls"] = false
-		_vfx._float_text(u["pos"] + Vector2(0, -58), "命运生命偷取!", Color("#ff6b6b"))
+		_vfx._float_text(u["pos"] + Vector2(0, -58), "命运生命偷取", Color("#ff6b6b"))
 	# 手半剑084近战携带→瞬发激光束(整段在 eq_blade_batch.beam_basic); 近战但射程被拉远的→弹道(见 BasicConsts.LONG_MELEE_RANGE); 其余近战→瞬发
 	if not _equip_sys._blade_sys.beam_basic(u, tgt, dmg, col, _ls, i):
 		if u["melee"] and _eff_range(u) < BasicConsts.LONG_MELEE_RANGE:
@@ -4571,7 +4571,7 @@ func _kill(u: Dictionary, killer = null) -> void:
 		_audio_sys._sfx_simple("rebirth")              # §AUDIO: 首死复活音 (天使圣光/凤凰涅槃, 低频不节流)
 		if u["id"] != "phoenix":
 			u["hp"] = u["maxHp"] * pct                 # 天使/宝箱雕像: 保持原来的"一帧复活"
-			_vfx._float_text(u["pos"] + Vector2(0, -64), "复活!", Color("#ffd93d"))
+			_vfx._float_text(u["pos"] + Vector2(0, -64), "复活", Color("#ffd93d"))
 			return
 		## ★★凤凰涅槃 = 一段 2.5 秒的演出(用户 2026-08-13)。整段住在 PhoenixSystem ——
 		##   它不在 _sim_step 调用链上, 按 CLAUDE.md §5 就不该进主文件(实测加进来超预算 18 行)。

@@ -118,7 +118,7 @@ func _ghost_phantom_hit(u: Dictionary, tgt) -> void:
 	if not u.get("alive", false): return
 	if not (tgt is Dictionary) or not tgt.get("alive", false): tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
-	battle._sk_dmg(u, tgt, {"magic": RAID_MAGIC, "hits": 1, "lifesteal": RAID_LIFESTEAL, "selfDodge": RAID_DODGE, "selfDodgeDur": RAID_DODGE_SEC, "name": "幻影!", "color": Color("#c77dff")})
+	battle._sk_dmg(u, tgt, {"magic": RAID_MAGIC, "hits": 1, "lifesteal": RAID_LIFESTEAL, "selfDodge": RAID_DODGE, "selfDodgeDur": RAID_DODGE_SEC, "name": "幻影", "color": Color("#c77dff")})
 	if tgt.get("alive", false):
 		battle._damage._knockback(u, tgt, 0.0, 1.4, 0.45)   # 击退抛飞
 

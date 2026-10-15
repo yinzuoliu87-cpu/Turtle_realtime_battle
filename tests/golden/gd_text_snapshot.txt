@@ -898,8 +898,6 @@ scripts/scenes/MainMenuScene.gd|lit|%s 截止
 scripts/scenes/MainMenuScene.gd|lit|不消耗生命
 scripts/scenes/MainMenuScene.gd|lit|今日休赛 · 积分赛周二开启
 scripts/scenes/MainMenuScene.gd|lit|今日已截止
-scripts/scenes/MainMenuScene.gd|lit|但你已晋级, 周六闯关赛见
-scripts/scenes/MainMenuScene.gd|lit|但你已过晋级线, 周六闯关赛见
 scripts/scenes/MainMenuScene.gd|lit|全场赛况
 scripts/scenes/MainMenuScene.gd|lit|冠军、亚军、四强、组冠军获得头衔
 scripts/scenes/MainMenuScene.gd|lit|决赛日 · 已晋级
@@ -916,7 +914,9 @@ scripts/scenes/MainMenuScene.gd|lit|场次已用完
 scripts/scenes/MainMenuScene.gd|lit|已出局
 scripts/scenes/MainMenuScene.gd|lit|已截止 · 停止匹配
 scripts/scenes/MainMenuScene.gd|lit|已晋级决赛日（%s）· 周日开赛
+scripts/scenes/MainMenuScene.gd|lit|已晋级周六闯关赛
 scripts/scenes/MainMenuScene.gd|lit|已结束
+scripts/scenes/MainMenuScene.gd|lit|已过晋级线，可参加周六闯关赛
 scripts/scenes/MainMenuScene.gd|lit|开始战斗
 scripts/scenes/MainMenuScene.gd|lit|排行榜
 scripts/scenes/MainMenuScene.gd|lit|晋级者参加周日决赛日
@@ -995,9 +995,9 @@ scripts/scenes/RealtimeBattle3DScene.gd|lit|冰川
 scripts/scenes/RealtimeBattle3DScene.gd|lit|凤凰雕像
 scripts/scenes/RealtimeBattle3DScene.gd|lit|口哨
 scripts/scenes/RealtimeBattle3DScene.gd|lit|命中叠金色闪电, 满 5 层引爆 1.0×ATK 真实伤害
-scripts/scenes/RealtimeBattle3DScene.gd|lit|命运生命偷取!
+scripts/scenes/RealtimeBattle3DScene.gd|lit|命运生命偷取
 scripts/scenes/RealtimeBattle3DScene.gd|lit|嗜血之刃
-scripts/scenes/RealtimeBattle3DScene.gd|lit|复活!
+scripts/scenes/RealtimeBattle3DScene.gd|lit|复活
 scripts/scenes/RealtimeBattle3DScene.gd|lit|大熊
 scripts/scenes/RealtimeBattle3DScene.gd|lit|大熊蓄力...
 scripts/scenes/RealtimeBattle3DScene.gd|lit|宝石甲
@@ -1234,7 +1234,7 @@ scripts/scenes/TrainerConfigScene.gd|text|取消
 scripts/scenes/TrainerConfigScene.gd|text|训龟大师
 scripts/scenes/battle/battle_damage.gd|lit|%s 单次承伤 %d (%s)
 scripts/scenes/battle/battle_damage.gd|lit|+%d 盾
-scripts/scenes/battle/battle_damage.gd|lit|亡灵!
+scripts/scenes/battle/battle_damage.gd|lit|亡灵
 scripts/scenes/battle/battle_damage.gd|lit|盾
 scripts/scenes/battle/battle_damage.gd|lit|闪避
 scripts/scenes/battle/battle_debug_arena.gd|lit|× 关闭
@@ -1581,7 +1581,7 @@ scripts/scenes/battle/settle_screen.gd|lit|造成总伤害
 scripts/scenes/battle/settle_screen.gd|lit|造成物理伤害
 scripts/scenes/battle/settle_screen.gd|lit|造成魔法伤害
 scripts/scenes/battle/settle_screen.gd|lit|阵亡
-scripts/scenes/battle/topbar_status.gd|lit|加时！
+scripts/scenes/battle/topbar_status.gd|lit|加时
 scripts/scenes/battle/topbar_status.gd|lit|加时：每 %d 秒全场伤害 +%d%%
 scripts/scenes/battle/topbar_status.gd|lit|加时：治疗效果 -%d%%
 scripts/scenes/battle/topbar_status.gd|lit|回放
@@ -1854,7 +1854,7 @@ scripts/systems/equip/eq_gadget_batch.gd|lit|施放成功
 scripts/systems/equip/eq_gun_batch.gd|lit|小手枪
 scripts/systems/equip/eq_gun_batch.gd|lit|急救塔
 scripts/systems/equip/eq_gun_batch.gd|lit|枪
-scripts/systems/equip/eq_potion_batch.gd|lit|浓浆!
+scripts/systems/equip/eq_potion_batch.gd|lit|浓浆
 scripts/systems/equip/equip_system.gd|lit|亡灵骷髅
 scripts/systems/equip/equip_system.gd|lit|墨遁
 scripts/systems/equip/equip_system.gd|lit|海螺虫
@@ -1966,19 +1966,19 @@ scripts/systems/sim/sim_driver.gd|lit|遗物
 scripts/systems/sim/sim_driver.gd|lit|食物
 scripts/systems/sim/sim_driver.gd|lit|首启选择框里找不到按钮
 scripts/systems/sim/sim_driver.gd|text|返回主菜单
-scripts/systems/skills/candy_system.gd|lit|投喂!
+scripts/systems/skills/candy_system.gd|lit|投喂
 scripts/systems/skills/candy_system.gd|lit|甜蜜掠夺 -
 scripts/systems/skills/candy_system.gd|lit|糖果炸弹
-scripts/systems/skills/chest_system.gd|lit|开箱! 
+scripts/systems/skills/chest_system.gd|lit|开箱 
 scripts/systems/skills/crystal_system.gd|lit|魔抗-%d
-scripts/systems/skills/cyber_system.gd|lit|侵入!
+scripts/systems/skills/cyber_system.gd|lit|侵入
 scripts/systems/skills/cyber_system.gd|lit|机甲
-scripts/systems/skills/dice_system.gd|lit|命运骰子! +%d%%暴击
-scripts/systems/skills/dice_system.gd|lit|稳定骰子! %d刺
-scripts/systems/skills/elite_system.gd|lit|吞噬! +50%攻速
-scripts/systems/skills/fortune_system.gd|lit|招财! 
+scripts/systems/skills/dice_system.gd|lit|命运骰子 +%d%% 暴击率
+scripts/systems/skills/dice_system.gd|lit|稳定骰子 %d刺
+scripts/systems/skills/elite_system.gd|lit|吞噬 +50% 攻击速度
+scripts/systems/skills/fortune_system.gd|lit|招财 
 scripts/systems/skills/fortune_system.gd|lit|招财·升星 %d★
-scripts/systems/skills/fortune_system.gd|lit|招财·满! 回血
+scripts/systems/skills/fortune_system.gd|lit|招财·满 回血
 scripts/systems/skills/fortune_system.gd|lit|掷骰 +%d金币
 scripts/systems/skills/fortune_system.gd|lit|金盾 +%d
 scripts/systems/skills/fortune_system.gd|lit|龟能 +%d
@@ -1986,14 +1986,14 @@ scripts/systems/skills/gambler_system.gd|lit|♠ 攻+3 血+10
 scripts/systems/skills/gambler_system.gd|lit|♣ 生命偷取+0.5% 攻速+2%
 scripts/systems/skills/gambler_system.gd|lit|♥ 护甲+1 魔抗+1
 scripts/systems/skills/gambler_system.gd|lit|♦ 暴击+2% 护穿+1
-scripts/systems/skills/ghost_system.gd|lit|幻影!
-scripts/systems/skills/hunter_system.gd|lit|处决!
-scripts/systems/skills/hunter_system.gd|lit|掠夺!
-scripts/systems/skills/phoenix_system.gd|lit|涅槃!
+scripts/systems/skills/ghost_system.gd|lit|幻影
+scripts/systems/skills/hunter_system.gd|lit|处决
+scripts/systems/skills/hunter_system.gd|lit|掠夺
+scripts/systems/skills/phoenix_system.gd|lit|涅槃
 scripts/systems/skills/rainbow_system.gd|lit|橙·全体生命偷取
-scripts/systems/skills/shell_system.gd|lit|破隐!
+scripts/systems/skills/shell_system.gd|lit|破隐
 scripts/systems/skills/shell_system.gd|lit|觉醒
-scripts/systems/trainer/trainer_system.gd|lit|归顺!
+scripts/systems/trainer/trainer_system.gd|lit|归顺
 scripts/systems/trainer/trainer_system.gd|lit|魔法石·共鸣 %s
 scripts/util/skill_text.gd|lit|(?<!\">)(?:主动|被动)：
 scripts/util/skill_text.gd|lit|(?<!\">)(?:伤害减免|减伤)(?!<)

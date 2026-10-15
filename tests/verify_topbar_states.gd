@@ -126,7 +126,7 @@ func _t_overtime() -> void:
 	s._sd_t0 = s._t - (s.SD_START - 0.05)
 	_go(0.2)
 	_ok("B0 ★分母: 进加时了(第 1 档)", s._sd_stacks == 1, "stacks=%d" % s._sd_stacks)
-	_ok("B1 ★一次性大字「加时！」出现了", tb.splash.visible and tb.splash_lab.text == "加时！")
+	_ok("B1 ★一次性大字「加时！」出现了", tb.splash.visible and tb.splash_lab.text == "加时")
 	_ok("B2 ★头顶那一排「决胜!」飘字不再出现", _count_float_text("决胜!") == floats0)
 	var t: String = s._dl_hud.text
 	_ok("B3 计时牌变成「加时 0:4x」(正着走, 接着这一路的钟)", _re("^加时 0:4\\d$", t), t)

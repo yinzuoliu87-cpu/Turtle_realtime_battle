@@ -1328,7 +1328,7 @@ func _tame_try_revive(u: Dictionary) -> bool:
 	#   _update_team_panels 每帧从单位读, 重建时会被重新赋值。
 	if battle._hud != null:
 		battle._hud._build_team_panels()
-	battle._vfx._float_text(u["pos"] + Vector2(0, -64), "归顺!", Color("#7de8c8"))
+	battle._vfx._float_text(u["pos"] + Vector2(0, -64), "归顺", Color("#7de8c8"))
 	_tame_revive_dramatize(u)
 	return true
 
@@ -1477,5 +1477,5 @@ func _tame_revive_dramatize(u: Dictionary) -> void:
 		_tame_rune(u)
 		rune = u.get("_tame_rune", null)
 	if is_instance_valid(rune):
-		(rune as Sprite3D).modulate = Color("#7de8c8")   # 与"归顺!"飘字同色
+		(rune as Sprite3D).modulate = Color("#7de8c8")   # 与"归顺"飘字同色
 	battle._vfx._float_text(u["pos"] + Vector2(0, -40), "+%d" % int(float(u["maxHp"]) * battle.TAME_REVIVE_PCT), Color("#7de8c8"))

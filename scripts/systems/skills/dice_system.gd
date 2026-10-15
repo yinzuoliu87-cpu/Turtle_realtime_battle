@@ -180,7 +180,7 @@ func _sk_dice_flash_strike(u: Dictionary) -> void:   # 稳定骰子(刀妹Irelia
 	# 用户2026-07-28: 4+d6(5~10段) → 7~11段。直接掷段数而不是"6+d5" —— 后者会让飘字显示 1~5 点,
 	# 与"骰子"的六面设定矛盾; 现在飘字直接报段数, 不再假装是点数。
 	var count: int = battle._battle_rng.randi_range(FLASH_SEG_MIN, FLASH_SEG_MAX)   # B 阶段: 掷几段=打几下, 对局结果走受控 PRNG
-	battle._vfx._float_text(u["pos"] + Vector2(0, -64), "稳定骰子! %d刺" % count, Color("#ffd93d"))
+	battle._vfx._float_text(u["pos"] + Vector2(0, -64), "稳定骰子 %d刺" % count, Color("#ffd93d"))
 	var t0 = _dice_pick_strike_target(u)
 	if t0 == null: return
 	u["dice_dash_active"] = true                    # 进入真冲刺连突态(逐帧穿刺, 见 _dice_dash_tick)
@@ -202,7 +202,7 @@ func _sk_dice_fate(u: Dictionary) -> void:
 	u["crit_fate_amt"] = add_crit
 	u["crit_dmg_fate_amt"] = add_cd
 	u["dice_fate_ls"] = true   # 用户2026-07-28: 释放后【首次攻击】附带 50% 生命偷取(在 _on_basic_hit 消费)
-	battle._vfx._float_text(u["pos"] + Vector2(0, -64), "命运骰子! +%d%%暴击" % int(roll * 100), Color("#ffd93d"))
+	battle._vfx._float_text(u["pos"] + Vector2(0, -64), "命运骰子 +%d%% 暴击率" % int(roll * 100), Color("#ffd93d"))
 
 # 龟壳·复制: 随机复制 2 个敌方可用技立即释放 (60%效果简化为全效, 留 batch3)
 # 龟壳复制期的"非伤害"效果乘数(护盾/治疗/DoT). 伤害走 src["dmg_out_mult"]. 两者都只覆盖【同步段】:

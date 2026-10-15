@@ -138,7 +138,7 @@ func _sk_cyber_hijack(u: Dictionary) -> void:                   # 赛博龟·侵
 	v["taunt_until"] = 0.0; v["taunt_by"] = null               # 清嘲讽残留(防倒戈期错误锁定)
 	v["stun_until"] = 0.0                                       # 解控(立即可倒戈行动)
 	battle._hijack_fx_attach(v)                                        # 全身红光 + 电流环绕(用户2026-07-22)
-	battle._vfx._float_text(v["pos"] + Vector2(0, -56), "侵入!", Color("#3fffd0"))
+	battle._vfx._float_text(v["pos"] + Vector2(0, -56), "侵入", Color("#3fffd0"))
 	battle._skill_ring(v["pos"], Color(0.25, 1.0, 0.82, 0.5), 52.0)
 	# 用户2026-07-28 削弱: 侵入期间【赛博自己】锁龟能不充能 —— 与水晶壁垒/石头岩石护盾/全色风暴
 	# 同一套写法(_tick_skill_cd 读 energy_lock_until)。这条同时压掉"可同时黑多个"的叠加上限:

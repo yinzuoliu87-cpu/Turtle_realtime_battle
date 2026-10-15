@@ -412,7 +412,7 @@ func nirvana_begin(u: Dictionary, pct: float) -> void:
 			if not u.get("alive", false):
 				return
 			u["hp"] = u["maxHp"] * pct                 # ★展翼那一刻才跳血条
-			battle._vfx._float_text(u["pos"] + Vector2(0, -64), "涅槃!", Color("#ffd93d"))
+			battle._vfx._float_text(u["pos"] + Vector2(0, -64), "涅槃", Color("#ffd93d"))
 			if u.get("_enh_rebirth", false):
 				u["base_atk"] = u["base_atk"] * (1.0 + NIRVANA_ENH_ATK); battle._recalc_stats(u)   # 强化涅槃: 永久+20%攻击
 			for o in battle._targeting._enemies_of(u):

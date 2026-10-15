@@ -192,7 +192,7 @@ func _sk_hunter_barrage(u: Dictionary, _tgt) -> void:          # 猎人龟·狩�
 			battle._ballistics._fire_hunter_arrow(uu, tgt, int(round(float(uu["atk"]) * BARRAGE_COEF)))   # 每箭0.36A(共3.6A)
 			})
 
-func _hunter_execute_fx(u: Dictionary) -> void:   # 被动猎杀·处决瞬间: 金色斩杀爆(环+金光pop+轻震)·配"处决!"金字(用户2026-07-14)
+func _hunter_execute_fx(u: Dictionary) -> void:   # 被动猎杀·处决瞬间: 金色斩杀爆(环+金光pop+轻震)·配"处决"金字(用户2026-07-14)
 	battle._skill_ring(u["pos"], Color(1.0, 0.84, 0.2, 0.7), 56.0)
 	battle._gambler_sys._gambler_pop(u["pos"], float(u.get("height", 0.0)) + 0.5, Color(1.0, 0.86, 0.3, 0.85))
 	battle._shake(0.05)
@@ -208,7 +208,7 @@ func _hunter_apply_steal(killer: Dictionary, victim: Dictionary) -> void:   # �
 	battle._recalc_stats(killer)
 	_hunter_steal_fx(killer, victim["pos"])
 
-func _hunter_steal_fx(killer: Dictionary, from2d: Vector2) -> void:   # 被动猎杀·窃取: 金色精华从死者流向猎人 + "掠夺!"金字 + 猎人金光环(累积变强可视化·用户2026-07-14)
+func _hunter_steal_fx(killer: Dictionary, from2d: Vector2) -> void:   # 被动猎杀·窃取: 金色精华从死者流向猎人 + "掠夺"金字 + 猎人金光环(累积变强可视化·用户2026-07-14)
 	if not killer.get("alive", false): return
 	var kp: Vector2 = killer["pos"]
 	for k in range(3):
@@ -220,7 +220,7 @@ func _hunter_steal_fx(killer: Dictionary, from2d: Vector2) -> void:   # 被动�
 		mv.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		tw.parallel().tween_property(mote, "scale", Vector3(0.4, 0.4, 0.4), 0.45)
 		tw.chain().tween_callback(mote.queue_free)
-	battle._vfx._float_text(kp + Vector2(0, -66), "掠夺!", Color("#ffd700"))
+	battle._vfx._float_text(kp + Vector2(0, -66), "掠夺", Color("#ffd700"))
 	battle._skill_ring(kp, Color(1.0, 0.84, 0.2, 0.55), 46.0)
 
 ## 单位当前是否【不可被选中/锁定】。
@@ -242,13 +242,13 @@ func _hunter_exec_arrow_hit(src, tgt) -> void:   # 强化箭命中: 目标仍<�
 		battle._vfx._hit_spark(tgt); return
 	if tgt.get("_hunt_demo_victim", false):   # 被动demo靶: 处决→窃取+复位残血(循环看·在deathfloor判前, demo也带deathfloor)
 		_hunter_execute_fx(tgt)
-		battle._vfx._float_text(tgt["pos"] + Vector2(0, -40), "处决!", Color("#ffd700"))
+		battle._vfx._float_text(tgt["pos"] + Vector2(0, -40), "处决", Color("#ffd700"))
 		_hunter_apply_steal(src, tgt)
 		tgt["hp"] = float(tgt["maxHp"]) * 0.12
 		return
 	if float(tgt.get("deathfloor_until", 0.0)) > battle._t:   # 临时免死(亡灵等)→免疫处决(命中但不斩)
 		battle._vfx._hit_spark(tgt); return
 	_hunter_execute_fx(tgt)
-	battle._vfx._float_text(tgt["pos"] + Vector2(0, -40), "处决!", Color("#ffd700"))
+	battle._vfx._float_text(tgt["pos"] + Vector2(0, -40), "处决", Color("#ffd700"))
 	tgt["hp"] = 0.0
 	battle._kill(tgt, src)

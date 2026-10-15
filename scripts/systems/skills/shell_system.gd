@@ -110,7 +110,7 @@ func _shell_basic(u: Dictionary, tgt: Dictionary) -> void:
 		battle._damage._apply_dot_stacks(tgt, "poison", maxi(1, int(round(u["atk"] * STEALTH_POISON_MULT))), u)
 		tgt["heal_reduce_until"] = battle._t + STEALTH_HEALCUT_SEC
 		tgt["heal_reduce_pct"] = maxf(float(tgt.get("heal_reduce_pct", 0.0)), STEALTH_HEALCUT_PCT)
-		battle._vfx._float_text(u["pos"] + Vector2(0, -58), "破隐!", Color("#9b3bff"))
+		battle._vfx._float_text(u["pos"] + Vector2(0, -58), "破隐", Color("#9b3bff"))
 	u["basic_alt"] = not u.get("basic_alt", false)
 	var is_true: bool = bool(u["basic_alt"])
 	# 主目标命中
@@ -157,7 +157,7 @@ func _sk_shell_absorb(u: Dictionary, tgt) -> void:              # 龟壳·吸收
 	u["maxHp"] = float(u["maxHp"]) + steal
 	u["hp"] = float(u["hp"]) + steal                            # 龟壳maxHp+当前同步增
 	battle._vfx._float_text(u["pos"] + Vector2(0, -52), "+%d" % int(steal), Color("#7fe3a0"))
-	var tp: Vector2 = tgt["pos"]                                # 2026-07-17: 4颗红色生命珠鱼贯从目标流向龟壳(删"吸收!"技能名飘字=UI规矩)
+	var tp: Vector2 = tgt["pos"]                                # 2026-07-17: 4颗红色生命珠鱼贯从目标流向龟壳(删"吸收"技能名飘字=UI规矩)
 	var uref: Dictionary = u
 	for i in range(4):
 		battle._pending_shots.append({"delay": 0.08 * float(i), "fn": func(): battle._headless_sys._headless_drain_dot(tp, uref), "src": u})

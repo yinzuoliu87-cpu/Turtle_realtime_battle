@@ -2392,8 +2392,8 @@ func _gauntlet_ahead_tail() -> String:
 	if not _gauntlet_ahead():
 		return ""
 	if GameState.gauntlet_eligible():
-		return "但你已晋级, 周六闯关赛见"
-	return "但你已过晋级线, 周六闯关赛见"
+		return "已晋级周六闯关赛"
+	return "已过晋级线，可参加周六闯关赛"
 
 
 func _msg_eliminated() -> String:

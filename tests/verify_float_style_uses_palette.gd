@@ -145,7 +145,7 @@ func _ready() -> void:
 	_ok("★分母⑥: 找到 %d 个 `_float_text` 调用点" % calls.size(), calls.size() >= 8,
 		"找不到调用点 ⇒ 下面是空检查")
 	# 白名单：表里和调色板里都**没有**对应语义的色，硬凑反而是错（判据要刚好卡住那个形状）
-	var lit_ok := ["亡灵!"]
+	var lit_ok := ["亡灵"]
 	var bad_lit: Array = []
 	for s in calls:
 		if s.find("Color(\"#") < 0:
@@ -162,7 +162,7 @@ func _ready() -> void:
 	# ★分母⑦：证明白名单里那条**确实还在**用字面量 —— 否则 ④ 是在放空
 	var found_excused := false
 	for s in calls:
-		if s.find("亡灵!") >= 0 and s.find("Color(\"#") >= 0:
+		if s.find("亡灵") >= 0 and s.find("Color(\"#") >= 0:
 			found_excused = true
 	_ok("★分母⑦: 白名单那条确实还写着字面量（证明 ④ 的豁免逻辑真被走到）",
 		found_excused, "白名单条目已经不存在了 ⇒ 该把它从白名单删掉")
