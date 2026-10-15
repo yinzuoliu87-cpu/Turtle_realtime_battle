@@ -372,8 +372,8 @@ pet|石头龟/岩石护盾|brief|石头龟为全体友军罩上 {E:StoneSystem.R
 pet|石头龟/岩石护盾|detail|石头龟岩甲护体：为全体友军施加（100%×攻击力({ATK}) + 6%×最大生命值({HP}) = {E:StoneSystem.RS_ATK_COEF*ATK+HP*StoneSystem.RS_MAXHP_PCT}）护盾，持续 4 秒。\n并使自身护甲、魔抗各提升 20%，持续 5 秒。
 pet|石头龟/打击|brief|石头龟重击当前目标，造成 {N:StoneSystem.HIT_ATK_COEF*ATK+StoneSystem.HIT_DEF_COEF*DEF+StoneSystem.HIT_MR_COEF*MR} 物理伤害。
 pet|石头龟/打击|detail|石头龟对目标打击，造成（70%×攻击力({ATK}) + 150%×护甲({DEF}) + 80%×魔抗({MR}) = {N:StoneSystem.HIT_ATK_COEF*ATK+StoneSystem.HIT_DEF_COEF*DEF+StoneSystem.HIT_MR_COEF*MR}）物理伤害。
-pet|石头龟/磐石之躯|brief|石头龟释放岩石冲击波，对一横排敌人造成 {N:(StoneSystem.ROCK_WAVE_DEF_COEF*DEF+StoneSystem.ROCK_WAVE_MR_COEF*MR)*(1+StoneSystem.ROCK_WAVE_PER_LAYER*rockLayers)} 物理伤害，并将其眩晕 2 秒。\n被动：石头龟每次受到伤害获得 1 层岩层（上限 30 层），每层提供 1% 伤害减免和 +2% 体型。
-pet|石头龟/磐石之躯|detail|被动效果：\n石头龟每次受到伤害会获得 1 层岩层，上限为 30 层。\n每层岩层提供 1% 伤害减免和 +2% 体型。\n主动释放：\n石头龟释放岩石冲击波，对一横排敌人造成 {N:(StoneSystem.ROCK_WAVE_DEF_COEF*DEF+StoneSystem.ROCK_WAVE_MR_COEF*MR)*(1+StoneSystem.ROCK_WAVE_PER_LAYER*rockLayers)} 物理伤害（50% 护甲 + 50% 魔抗，每层岩层再提高 4%），并必定使其眩晕 2 秒。\n<span style="color:#8a93a0">命中的敌人会被击飞</span>。
+pet|石头龟/磐石之躯|brief|石头龟释放岩石冲击波，对一横排敌人造成 {N:(StoneSystem.ROCK_WAVE_DEF_COEF*DEF+StoneSystem.ROCK_WAVE_MR_COEF*MR)*(1+StoneSystem.ROCK_WAVE_PER_LAYER*rockLayers)} 物理伤害，并将其眩晕 2 秒。\n被动：石头龟每次受到伤害获得 1 层岩层（上限 30 层），每层提供 1% 减伤和 2% 体型。
+pet|石头龟/磐石之躯|detail|被动效果：\n石头龟每次受到伤害会获得 1 层岩层，上限为 30 层。\n每层岩层提供 1% 减伤和 2% 体型。\n主动释放：\n石头龟释放岩石冲击波，对一横排敌人造成 {N:(StoneSystem.ROCK_WAVE_DEF_COEF*DEF+StoneSystem.ROCK_WAVE_MR_COEF*MR)*(1+StoneSystem.ROCK_WAVE_PER_LAYER*rockLayers)} 物理伤害（50% 护甲 + 50% 魔抗，每层岩层再提高 4%），并必定使其眩晕 2 秒。\n<span style="color:#8a93a0">命中的敌人会被击飞</span>。
 pet|竹叶龟/一叶刃|brief|竹叶龟甩出一道叶刃，造成 {N:BambooSystem.LEAF_ATK_COEF*ATK+HP*BambooSystem.LEAF_MAXHP_PCT} 物理伤害。
 pet|竹叶龟/一叶刃|detail|竹叶龟甩出叶刃，造成（40%×攻击力({ATK}) + 3%×最大生命值({HP}) = {N:BambooSystem.LEAF_ATK_COEF*ATK+HP*BambooSystem.LEAF_MAXHP_PCT}）物理伤害。
 pet|竹叶龟/生长|brief|竹叶龟每 6 秒蓄力一次，下次攻击额外造成 {M:ATK*BambooSystem.GROW_ATK_COEF+HP*BambooSystem.GROW_HP_PCT} 魔法伤害，飞回一颗生命球回复自身最大生命值 8%，并永久提升最大生命值。\n<span style="color:#8a93a0">最大生命值每次提升 0.6×基础攻击力，攻击力不会随之提升。\n</span>
@@ -452,8 +452,8 @@ pet|钻石龟/钻石切割|brief|钻石龟挥刃切割目标，造成 {N:Diamond
 pet|钻石龟/钻石切割|detail|钻石龟切割目标，造成（70%×攻击力({ATK}) = {N:DiamondSystem.CUT_ATK_COEF*ATK}）+（60%×护甲({DEF}) = {E:DiamondSystem.CUT_DEF_COEF*DEF}）+（60%×魔抗({MR}) = {M:DiamondSystem.CUT_MR_COEF*MR}）物理伤害。
 pet|钻石龟/钻石滚球|brief|钻石龟蜷成钻石球滚向最近的敌人，在 4 秒内从静止加速至满速。撞击时对落点敌人造成伤害，并将其击飞 1 秒、眩晕 0.5~3 秒。\n伤害与眩晕时长基于撞击时的移动速度：\n静止时造成 10% 护甲 + 10% 魔抗 + 目标最大生命值 2%，满速时造成 100% 护甲 + 100% 魔抗 + 目标最大生命值 20%。\n滚动期间不受眩晕与恐惧影响。\n当 200 码内没有敌人时，钻石龟自动启动滚球撞向最近的敌人，不消耗龟能。
 pet|钻石龟/钻石滚球|detail|钻石龟蜷成钻石球滚向最近的敌人，移动速度在 4 秒内从 0 加速至满速，滚动期间不受眩晕与恐惧影响。\n对撞击点 120 码内的敌人造成伤害，伤害基于当前移动速度：0 速时为 0.1 护甲+0.1 魔抗+2%<b>目标</b>最大生命值，满速时为 1 护甲+1 魔抗+20%<b>目标</b>最大生命值。命中的敌人被击飞 1 秒并眩晕 0.5~3 秒，眩晕时长基于移动速度。\n被动：<span class="val-emph">当 200 码内没有敌人时，钻石龟自动启动滚球撞向最近的敌人，不消耗龟能，冷却时间 0.8 秒。\n</span>
-pet|钻石龟/钻石结构|brief|钻石龟登场时，包括自身在内的全队护甲和魔抗各 +50%，并使自身受到的每段伤害固定减少 18%。
-pet|钻石龟/钻石结构|desc|钻石龟登场时包括自身在内的全队护甲、魔抗各 +50%。\n钻石龟自身受到的每段伤害固定减少 18%。\n<span style="color:#888">真实伤害与穿透伤害不受此减免影响。\n</span>
+pet|钻石龟/钻石结构|brief|钻石龟登场时，包括自身在内的全队护甲和魔抗各 +50%，并获得 18% 减伤。
+pet|钻石龟/钻石结构|desc|钻石龟登场时包括自身在内的全队护甲、魔抗各 +50%。\n钻石龟获得 18% 减伤。
 pet|闪电龟/涌动|brief|闪电龟在接下来的 8 秒内使被动电击造成的真实伤害提升 50%，并立即对目标打出一次 {T:ATK*LightningSystem.SURGE_HIT_COEF} 真实伤害。
 pet|闪电龟/涌动|detail|闪电龟之力涌动，接下来 8 秒内被动电击及其满层引爆造成的真实伤害额外提升 +50%，并立即对目标打出一次被动电击（100%×攻击力({ATK}) × 1.5 = {T:ATK*LightningSystem.SURGE_HIT_COEF}）真实伤害。
 pet|闪电龟/闪电|brief|闪电龟射出一道闪电，造成 {M:LightningSystem.BOLT_ATK_COEF*ATK} 魔法伤害，随后弹跳 2 次，每段各叠加 <span class="val-emph">1 层电击</span>。\n<span style="color:#8a93a0">每跳伤害在前一跳基础上 ×0.6 递减。\n</span>

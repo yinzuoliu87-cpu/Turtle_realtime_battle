@@ -153,8 +153,8 @@
         "cd": 0,
         "defScale": 0.5,
         "mrScale": 0.5,
-        "brief": "石头龟释放岩石冲击波，对一横排敌人造成 {N:(StoneSystem.ROCK_WAVE_DEF_COEF*DEF+StoneSystem.ROCK_WAVE_MR_COEF*MR)*(1+StoneSystem.ROCK_WAVE_PER_LAYER*rockLayers)} 物理伤害，并将其眩晕 {C:StoneSystem.ROCK_WAVE_STUN} 秒。\n被动：石头龟每次受到伤害获得 1 层岩层（上限 {C:StoneSystem.ROCK_LAYER_CAP} 层），每层提供 {C:StoneSystem.ROCK_DR_PER_LAYER%}% 伤害减免和 +{C:StoneSystem.ROCK_SIZE_PER_LAYER%}% 体型。",
-        "detail": "被动效果：\n石头龟每次受到伤害会获得 1 层岩层，上限为 {C:StoneSystem.ROCK_LAYER_CAP} 层。\n每层岩层提供 {C:StoneSystem.ROCK_DR_PER_LAYER%}% 伤害减免和 +{C:StoneSystem.ROCK_SIZE_PER_LAYER%}% 体型。\n主动释放：\n石头龟释放岩石冲击波，对一横排敌人造成 {N:(StoneSystem.ROCK_WAVE_DEF_COEF*DEF+StoneSystem.ROCK_WAVE_MR_COEF*MR)*(1+StoneSystem.ROCK_WAVE_PER_LAYER*rockLayers)} 物理伤害（{C:StoneSystem.ROCK_WAVE_DEF_COEF%}% 护甲 + {C:StoneSystem.ROCK_WAVE_MR_COEF%}% 魔抗，每层岩层再提高 {C:StoneSystem.ROCK_WAVE_PER_LAYER%}%），并必定使其眩晕 {C:StoneSystem.ROCK_WAVE_STUN} 秒。\n<span style=\"color:#8a93a0\">命中的敌人会被击飞</span>。",
+        "brief": "石头龟释放岩石冲击波，对一横排敌人造成 {N:(StoneSystem.ROCK_WAVE_DEF_COEF*DEF+StoneSystem.ROCK_WAVE_MR_COEF*MR)*(1+StoneSystem.ROCK_WAVE_PER_LAYER*rockLayers)} 物理伤害，并将其眩晕 {C:StoneSystem.ROCK_WAVE_STUN} 秒。\n被动：石头龟每次受到伤害获得 1 层岩层（上限 {C:StoneSystem.ROCK_LAYER_CAP} 层），每层提供 {C:StoneSystem.ROCK_DR_PER_LAYER%}% 减伤和 {C:StoneSystem.ROCK_SIZE_PER_LAYER%}% 体型。",
+        "detail": "被动效果：\n石头龟每次受到伤害会获得 1 层岩层，上限为 {C:StoneSystem.ROCK_LAYER_CAP} 层。\n每层岩层提供 {C:StoneSystem.ROCK_DR_PER_LAYER%}% 减伤和 {C:StoneSystem.ROCK_SIZE_PER_LAYER%}% 体型。\n主动释放：\n石头龟释放岩石冲击波，对一横排敌人造成 {N:(StoneSystem.ROCK_WAVE_DEF_COEF*DEF+StoneSystem.ROCK_WAVE_MR_COEF*MR)*(1+StoneSystem.ROCK_WAVE_PER_LAYER*rockLayers)} 物理伤害（{C:StoneSystem.ROCK_WAVE_DEF_COEF%}% 护甲 + {C:StoneSystem.ROCK_WAVE_MR_COEF%}% 魔抗，每层岩层再提高 {C:StoneSystem.ROCK_WAVE_PER_LAYER%}%），并必定使其眩晕 {C:StoneSystem.ROCK_WAVE_STUN} 秒。\n<span style=\"color:#8a93a0\">命中的敌人会被击飞</span>。",
         "energyCost": 80
       },
       {
@@ -707,8 +707,8 @@
       "type": "diamondStructure",
       "name": "钻石结构",
       "defBuffAmp": 50,
-      "brief": "钻石龟登场时，包括自身在内的全队护甲和魔抗各 +{C:DiamondSystem.STRUCT_RESIST_UP%}%，并使自身受到的每段伤害固定减少 {C:DiamondSystem.STRUCT_FLAT_DR%}%。",
-      "desc": "钻石龟登场时包括自身在内的全队护甲、魔抗各 +{C:DiamondSystem.STRUCT_RESIST_UP%}%。\n钻石龟自身受到的每段伤害固定减少 {C:DiamondSystem.STRUCT_FLAT_DR%}%。\n<span style=\"color:#888\">真实伤害与穿透伤害不受此减免影响。\n</span>"
+      "brief": "钻石龟登场时，包括自身在内的全队护甲和魔抗各 +{C:DiamondSystem.STRUCT_RESIST_UP%}%，并获得 {C:DiamondSystem.STRUCT_FLAT_DR%}% 减伤。",
+      "desc": "钻石龟登场时包括自身在内的全队护甲、魔抗各 +{C:DiamondSystem.STRUCT_RESIST_UP%}%。\n钻石龟获得 {C:DiamondSystem.STRUCT_FLAT_DR%}% 减伤。"
     },
     "skillPool": [
       {

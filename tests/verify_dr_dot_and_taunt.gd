@@ -129,6 +129,26 @@ func _ready() -> void:
 	_ok("②f ★总减伤封顶 90%: 已有 90% 再嘲讽, 挨打不再变少(原来另乘一道会降到 5%)",
 		hit_before > 5.0 and absf(hit_after - hit_before) <= 0.5, "%.1f → %.1f" % [hit_before, hit_after])
 
+	print("--- ③ 钻石结构 / 岩层 也并入减伤属性(同嘲讽) ---")
+	var dm := _mk("diamond", "left", Vector2(-200, 0), 0.0)
+	_s._units.clear()
+	_s._units.append_array([dm, foe])
+	_s._spawn._apply_spawn_passive_one(dm)
+	_ok("③a 钻石龟登场后减伤属性 = 结构 %d%%" % int(DiamondSystem.STRUCT_FLAT_DR * 100.0),
+		absf(float(dm["damage_reduction"]) - DiamondSystem.STRUCT_FLAT_DR) < 0.0001, "%.4f" % float(dm["damage_reduction"]))
+	var rk := _mk("stone", "left", Vector2(-200, 0), 0.0)
+	rk["stone_rockbody"] = true
+	rk["rock_layers"] = 0
+	var foe2 := _mk("green", "right", Vector2(200, 0), 0.0)
+	foe2["atk"] = 100.0
+	_s._units.clear()
+	_s._units.append_array([rk, foe2])
+	for _i in range(5):
+		_s._damage._apply_damage_from(foe2, rk, 10, Color.WHITE)
+	_ok("③b ★分母: 挨 5 下真长了 5 层岩层", int(rk.get("rock_layers", 0)) == 5, "层 %d" % int(rk.get("rock_layers", 0)))
+	_ok("③c 5 层岩层 ⇒ 减伤属性 5%", absf(float(rk["damage_reduction"]) - 5.0 * StoneSystem.ROCK_DR_PER_LAYER) < 0.0001,
+		"%.4f" % float(rk["damage_reduction"]))
+
 	print("=== %d 项, FAIL %d ===" % [_n, _fail])
 	if _fail == 0:
 		print("ALL PASS")

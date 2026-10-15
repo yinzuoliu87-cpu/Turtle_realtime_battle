@@ -44,7 +44,8 @@ func _ready() -> void:
 	await get_tree().process_frame
 	s._units.clear()
 	var c: Vector2 = s.ARENA.position + s.ARENA.size * 0.5
-	var t: Dictionary = s._spawn._make_unit("diamond", "right", c)   # 钻石龟「结构」受伤减免只对非真伤生效(_mitigate_incoming 的 not raw)
+	var t: Dictionary = s._spawn._make_unit("green", "right", c)
+	t["flat_dr"] = 10.0   # 016 铁壁盾式每段固定减免: 只对非真伤生效(_mitigate_incoming 的 not raw)。原用钻石结构, 2026-10-15 它并入了减伤属性
 	s._units.append(t)
 	t["maxHp"] = 1.0e6
 	t["hp"] = 1.0e6
@@ -53,7 +54,7 @@ func _ready() -> void:
 	t["hp"] = 1.0e6
 	s._damage._apply_damage(t, 100, Color.WHITE)
 	var dot: float = 1.0e6 - float(t["hp"])
-	_ok("★分母: 打钻石龟 tru 桶吃满、默认 dot 桶被「结构」减免(桶决定吃不吃受害者减免)", absf(tru - 100.0) < 0.5 and dot < tru - 0.5,
+	_ok("★分母: tru 桶吃满、默认 dot 桶被每段固定减免(桶决定吃不吃受害者减免)", absf(tru - 100.0) < 0.5 and dot < tru - 0.5,
 		"tru %.0f / dot %.0f" % [tru, dot])
 	var files: Array = []
 	_walk("res://scripts", files)

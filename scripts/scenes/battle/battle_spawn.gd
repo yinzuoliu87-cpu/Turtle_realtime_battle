@@ -724,6 +724,8 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 			for o in battle._targeting._allies_of(u):
 				battle._damage._buff(o, "def", DiamondSystem.STRUCT_RESIST_UP, true, 9999.0)
 				battle._damage._buff(o, "mr", DiamondSystem.STRUCT_RESIST_UP, true, 9999.0)
+			## 结构减伤并入【减伤】属性(用户 2026-10-15「肯定是并入啊」, 与嘲讽同一处理): 原来是 _mitigate_incoming 里另乘的 ×0.82。
+			u["damage_reduction"] = float(u.get("damage_reduction", 0.0)) + DiamondSystem.STRUCT_FLAT_DR
 			if "diamondSmash" in battle._chosen_skill_types(u["id"], u["side"] == "left"):   # 强化钻石结构(技三打包·选中才有): 自身护甲/魔抗额外+100%
 				battle._damage._buff(u, "def", DiamondSystem.SMASH_SELF_RESIST_BONUS, true, 9999.0)
 				battle._damage._buff(u, "mr", DiamondSystem.SMASH_SELF_RESIST_BONUS, true, 9999.0)

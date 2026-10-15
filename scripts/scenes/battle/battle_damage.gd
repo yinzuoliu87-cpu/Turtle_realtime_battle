@@ -503,6 +503,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 	var _refl_pct: float = StoneSystem.reflect_generic(u)   # 通用反伤(含石头龟坚壁); 015 由它的专属分支自己发, 不在这里
 	if u["id"] == "stone" and u.get("stone_rockbody", false) and not from_equip and dmg > 0 and int(u.get("rock_layers", 0)) < StoneSystem.ROCK_LAYER_CAP:
 		u["rock_layers"] = int(u.get("rock_layers", 0)) + 1   # 岩层(岩石之躯被动·选此才有): 每受伤+1层上限30
+		u["damage_reduction"] = float(u.get("damage_reduction", 0.0)) + StoneSystem.ROCK_DR_PER_LAYER   # 每层 1% 并入【减伤】属性(2026-10-15, 同嘲讽)
 		u["size_mult"] = 1.0 + StoneSystem.ROCK_SIZE_PER_LAYER * float(u["rock_layers"])   # +2%体型/层(回合制 rockShockwave.rockSizePctPerLayer=2·满30层=+60%)
 	if _refl_pct > 0.0 and not is_same(src, u) and src.get("alive", false) and not from_equip and dmg > 0:
 		var _refl = int(dmg * _refl_pct)

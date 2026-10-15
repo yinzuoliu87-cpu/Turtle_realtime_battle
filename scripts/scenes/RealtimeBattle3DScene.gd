@@ -4468,10 +4468,6 @@ func _mitigate_incoming(u: Dictionary, dmg: float, raw: bool, is_self: bool = fa
 													 #   在技能里乘只会覆盖其中一条。
 	if not is_self and u.get("_egg_final", false):
 		d *= 5.0                                     # 终极战场暴露蛋: ×5承伤(快速决胜)
-	if u["id"] == "diamond" and not raw:
-		d *= DiamondSystem.STRUCT_DR_MULT             # 钻石·结构减伤18%(真伤/穿透不减)
-	if u["id"] == "stone" and u.get("stone_rockbody", false) and not raw:
-		d *= (1.0 - StoneSystem.ROCK_DR_PER_LAYER * float(mini(StoneSystem.ROCK_LAYER_CAP, int(u.get("rock_layers", 0)))))   # 岩石之躯: 每层-1%, 上限30%
 	if not raw and float(u.get("flat_dr", 0.0)) > 0.0:
 		d = maxf(0.0, d - float(u["flat_dr"]))       # 铁壁盾016: 每段固定减 X 点(护盾前)
 	# ★训龟大师: 受到的【所有类型】伤害降为 1(用户2026-07-22 含真实伤害)。

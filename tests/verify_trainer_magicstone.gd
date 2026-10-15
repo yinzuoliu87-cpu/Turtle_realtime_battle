@@ -114,7 +114,7 @@ func _ready() -> void:
 		#   的分支(钻石 ×0.82、石头岩石之躯、靶向器标记 +20% ……)。我先只中性化了 id,
 		#   CI 上照样红 —— 说明还有没枚举到的分支。与其一个个猜, 不如【量出来再除掉】:
 		#   本条要验的是"魔法伤害公式 = (2+0.1×等级)% 最大生命", 目标挨打后打几折是另一回事。
-		var mit: float = s._mitigate_incoming(dummy, 10000.0, false, false) / 10000.0
+		var mit: float = s._mitigate_incoming(dummy, 10000.0, false, false) / 10000.0 * DamageMath.dr_mult(float(dummy.get("damage_reduction", 0.0)))   # 2026-10-15: 钻石结构/岩层并入减伤属性后, 它们在这里
 		var got_pct: float = dealt / float(dummy["maxHp"]) / maxf(0.01, mit)
 		var good: bool = absf(got_pct - want_pct) < 0.0006     # 取整误差
 		if not good:
