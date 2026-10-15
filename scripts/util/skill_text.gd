@@ -88,7 +88,7 @@ const KEYWORD_RULES := [
 	##   同色就彻底分不出。这条规则第一版写 val-def, `verify_stat_icon_color ⑦` 当场红 —— 它是对的。
 	["(?<!\">)护甲穿透(?!<)", "val-burn", "armorpen"],
 	["(?<!\">)护甲(?!穿透|<)", "val-def", "def"], ["(?<!\">)(?:魔法穿透|魔抗穿透|法穿)(?!<)", "val-dot", "magicpen"], ["(?<!\">)魔抗(?!穿透|<)", "val-magic", "mr"],
-	["(?<!\">)(?<=目标|敌人)最大生命值?(?!<)", "val-heal", ""], ["(?<!\">)(?<=其)最大生命值?(?!<)", "val-heal", ""], ["(?<!\">)最大生命值?(?!<)", "val-heal", "hp"], ["(?<!\">)最大HP(?!<)", "val-heal", "hp"],
+	["(?<!\">)(?<=目标|敌人)最大生命值?(?!<)", "val-emph", ""], ["(?<!\">)(?<=其)最大生命值?(?!<)", "val-emph", ""], ["(?<!\">)最大生命值?(?!<)", "val-heal", "hp"], ["(?<!\">)最大HP(?!<)", "val-heal", "hp"],
 	["(?<!\">)治疗削减(?!<)", "val-heal-reduce"], ["(?<!\">)灼烧(?!<)", "val-burn"],
 	["(?<!\">)生命偷取(?!<)", "val-lifesteal", "lifesteal"], ["(?<!\">)眩晕(?!<)", "val-stun"],
 	["(?<!\">)诅咒(?!<)", "val-dot"], ["(?<!\">)护盾(?!<)", "val-shield", "shield"],
@@ -393,10 +393,22 @@ static var _dmg_tok_re: RegEx = null
 static var _dmg_word_re: RegEx = null
 const _DMG_WORD_CLASS := {"物理伤害": "val-normal", "魔法伤害": "val-magic", "真实伤害": "val-true"}
 
+## ★2026-10-15 扩成三类(用户「被动没有吗」「弯刀又是什么情况」):
+##   ① 伤害: 另认「{C:X%}% … 最大生命值 … X伤害」开头的百分比(海盗龟被动「造成其 25% 最大生命值的真实伤害」,
+##      LoL 科加斯 E「2.5% of the target's max Health magic damage」整段魔法蓝)
+##   ② 回复: 「回复」后面紧跟的数值 / 公式组起, 到同一分句的「生命值」止, 整段回复色(LoL 索拉卡 W「95 = (90 +50%) Health」整段绿)
+##   ③ 护盾: 「获得」后面紧跟的数值 / 公式组 /「相当于…」起, 到同一分句的「护盾」止, 整段护盾色(LoL「# Shield」shield 标签 85 处)
+static var _heal_re: RegEx = null
+static var _shield_re: RegEx = null
+
 static func wrap_damage_phrases(t: String) -> String:
 	if _dmg_tok_re == null:
-		_dmg_tok_re = RegEx.create_from_string("\\{[NMTP]:[^}]+\\}")
+		_dmg_tok_re = RegEx.create_from_string("\\{[NMTP]:[^}]+\\}|\\{C:[^}]+%\\}%")
 		_dmg_word_re = RegEx.create_from_string("(物理伤害|魔法伤害|真实伤害)|[，。；\\n]")
+		## 数值: 占位符(可带收起后的「 =（系数）」) 或 未收起的整个公式组「（…）」
+		var val := "(?:\\{[A-Z]:[^}]+\\}%?(?:\\s*=\\s*（[^（）]*）)?|（[^（）]*）)"
+		_heal_re = RegEx.create_from_string("(?<=回复)(\\s*)(" + val + "[^，。；\\n（]{0,4}生命值)")
+		_shield_re = RegEx.create_from_string("(?<=获得)(\\s*)((?:相当于[^，。；\\n]{0,60}?的|" + val + ")\\s*(?:的)?护盾)")
 	var out := ""
 	var last := 0
 	var pos := 0
@@ -408,11 +420,18 @@ static func wrap_damage_phrases(t: String) -> String:
 		if w == null or w.get_string(1) == "":
 			pos = m.get_end()
 			continue
+		## 百分比常量开头的只认「…最大生命值…伤害」—— 「降低 30%…造成伤害」这类比例不是伤害量
+		if m.get_string(0).begins_with("{C:") and not t.substr(m.get_end(), w.get_start() - m.get_end()).contains("生命值"):
+			pos = m.get_end()
+			continue
 		var cls: String = _DMG_WORD_CLASS[w.get_string(1)]
 		out += t.substr(last, m.get_start() - last) + "<span class=\"%s\">" % cls + t.substr(m.get_start(), w.get_end() - m.get_start()) + "</span>"
 		last = w.get_end()
 		pos = last
-	return out + t.substr(last)
+	out += t.substr(last)
+	out = _heal_re.sub(out, "$1<span class=\"val-heal\">$2</span>", true)
+	out = _shield_re.sub(out, "$1<span class=\"val-shield\">$2</span>", true)
+	return out
 
 
 ## 渲染模板 → HTML (1:1 PoC renderSkillTemplate: token 展开 + 关键词上色).
@@ -451,6 +470,7 @@ static func render_html(template: String, f: Dictionary, s: Dictionary) -> Strin
 ##   LoL 实截 —— 目标的写字「2.5% of the target's max Health」(科加斯 E), 自己的才在公式里放♥(塞恩 W「+8%♥」)。
 ##   紧挨着的「目标最大生命值」靠 _KEYWORDS 里的回看规则; 这里补「其 25% 最大生命值」这种中间隔着数字 / 标签的。
 ##   中间只许出现空白、标签、占位符、数字、%、「的」—— 隔着别的字就不认(防止把同句里自己的属性也算成别人的)。
+##   也不上回复色(val-emph = 普通字): 它是伤害短语的一部分, 颜色跟整段伤害走(LoL 科加斯 E 整段魔法蓝)。
 static var _target_hp_re: RegEx = null
 
 static func _mark_target_hp(t: String) -> String:
@@ -458,7 +478,7 @@ static func _mark_target_hp(t: String) -> String:
 		return t
 	if _target_hp_re == null:
 		_target_hp_re = RegEx.create_from_string("(其|目标|敌人|该单位|对方)((?:\\s|<[^<>]*>|\\{[^{}]*\\}|[\\d.%]|的)+)(最大生命值?)(?!<)")
-	return _target_hp_re.sub(t, "$1$2<span class=\"val-heal\">$3</span>", true)
+	return _target_hp_re.sub(t, "$1$2<span class=\"val-emph\">$3</span>", true)
 
 
 static func colorize_keywords(result: String) -> String:

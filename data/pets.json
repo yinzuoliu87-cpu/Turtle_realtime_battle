@@ -1159,8 +1159,8 @@
     "passive": {
       "type": "pirateBarrage",
       "name": "掠夺",
-      "brief": "登场轰击：\n海盗龟登场瞬间轰击 1 名随机敌人，造成其 <span class=\"val-true\">{C:PirateSystem.PLUNDER_MAXHP_PCT%}% 最大生命值</span>的<span class=\"val-true\">真实伤害</span>。\n死亡钩索：\n海盗龟阵亡瞬间甩出钩索抓住击杀它的单位，将其拉到尸位附近，并造成该单位 <span class=\"val-true\">{C:PirateSystem.PLUNDER_MAXHP_PCT%}% 最大生命值</span>的<span class=\"val-true\">真实伤害</span>。",
-      "desc": "登场轰击：\n海盗龟登场瞬间轰击 1 名随机敌人，造成其 <span class=\"val-true\">{C:PirateSystem.PLUNDER_MAXHP_PCT%}% 最大生命值</span>的<span class=\"val-true\">真实伤害</span>。\n死亡钩索：\n海盗龟阵亡瞬间甩出钩索，抓住击杀它的单位，将其拉到尸位附近，并造成该单位 <span class=\"val-true\">{C:PirateSystem.PLUNDER_MAXHP_PCT%}% 最大生命值</span>的<span class=\"val-true\">真实伤害</span>。\n\n<span style=\"color:#8a93a0\">钩索拉拽期间，目标被<b>眩晕 {C:PirateSystem.HOOK_STUN} 秒</b>。\n</span>"
+      "brief": "海盗龟登场时轰击 1 名随机敌人，造成其 {C:PirateSystem.PLUNDER_MAXHP_PCT%}% 最大生命值的真实伤害。\n海盗龟阵亡时甩出钩索抓住击杀它的单位，将其拉到身旁并眩晕 {C:PirateSystem.HOOK_STUN} 秒，造成其 {C:PirateSystem.PLUNDER_MAXHP_PCT%}% 最大生命值的真实伤害。",
+      "desc": "海盗龟登场时轰击 1 名随机敌人，造成其 {C:PirateSystem.PLUNDER_MAXHP_PCT%}% 最大生命值的真实伤害。\n海盗龟阵亡时甩出钩索抓住击杀它的单位，将其拉到身旁并眩晕 {C:PirateSystem.HOOK_STUN} 秒，造成其 {C:PirateSystem.PLUNDER_MAXHP_PCT%}% 最大生命值的真实伤害。"
     },
     "skillPool": [
       {
@@ -1170,8 +1170,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "海盗龟挥舞弯刀劈砍目标，造成 {N:ATK} 物理伤害，并回复 {E:PirateSystem.BLADE_SELFHEAL*ATK} 生命值。",
-        "detail": "海盗龟挥舞弯刀劈砍目标，造成 {N:PirateSystem.BLADE_COEF*ATK} 物理伤害。每次攻击同时为自身回复（{C:PirateSystem.BLADE_SELFHEAL%}%×攻击力 = {E:PirateSystem.BLADE_SELFHEAL*ATK}）生命值。"
+        "brief": "海盗龟挥舞弯刀劈砍目标，造成 {N:PirateSystem.BLADE_COEF*ATK} 物理伤害并回复 {E:PirateSystem.BLADE_SELFHEAL*ATK} 生命值。",
+        "detail": "海盗龟挥舞弯刀劈砍目标，造成（{C:PirateSystem.BLADE_COEF%}%×攻击力({ATK}) = {N:PirateSystem.BLADE_COEF*ATK}）物理伤害并回复（{C:PirateSystem.BLADE_SELFHEAL%}%×攻击力({ATK}) = {E:PirateSystem.BLADE_SELFHEAL*ATK}）生命值。"
       },
       {
         "name": "火炮齐射",
@@ -1210,8 +1210,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "海盗龟首次龟能充满时召唤一艘实体海盗船，其生命值为 {E:HP*PirateSystem.SHIP_HP_SCALE}、攻击力为 {E:ATK}。\n海盗船登场冲锋撞击目标，造成 {M:ATK} 魔法伤害并击飞 {C:PirateSystem.SHIP_CHARGE_STUN} 秒，之后留在场上射击最近的敌人，每发造成 {N:PirateSystem.SHIP_SHOT_COEF*ATK} 物理伤害。\n此后海盗龟每次充能满便打出一轮霰弹，扇形射出 {C:PirateSystem.SHOT_PELLETS} 颗弹丸，每颗对命中的第一个敌人造成 {N:PirateSystem.VOLLEY_ATK_COEF*ATK} 物理伤害并击退。\n<span style=\"color:#8a93a0\">海盗船无护甲与魔抗，攻击速度 {C:PirateSystem.SHIP_ASPD}，射程 {C:PirateSystem.SHIP_RANGE}。\n</span>",
-        "detail": "海盗龟首次龟能充满时召唤一艘实体海盗船。海盗船生命值为 {E:HP*PirateSystem.SHIP_HP_SCALE}（{C:PirateSystem.SHIP_HP_SCALE%}% 海盗龟最大生命值），攻击力为 {E:ATK}（{C:PirateSystem.SHIP_ATK_SCALE%}% 海盗龟攻击力），无护甲与魔抗，攻击速度 {C:PirateSystem.SHIP_ASPD}，近战，射程 {C:PirateSystem.SHIP_RANGE}。\n海盗船登场时冲锋撞击目标，对命中的第一个敌人周围的敌人造成（100%×攻击力 = {M:ATK}）魔法伤害并击飞 {C:PirateSystem.SHIP_CHARGE_STUN} 秒，之后留在场上射击最近的敌人，每次造成（{C:PirateSystem.SHIP_SHOT_COEF%}%×攻击力 = {N:PirateSystem.SHIP_SHOT_COEF*ATK}）物理伤害。\n此后每次充能满，海盗龟本体朝当前目标发射霰弹，以 {C:PirateSystem.SHOT_ARC_DEG} 度扇形射出 {C:PirateSystem.SHOT_PELLETS} 颗子弹，每颗对路径上的第一个敌人造成（{C:PirateSystem.SHOT_COEF%}%×攻击力 = {N:PirateSystem.VOLLEY_ATK_COEF*ATK}）物理伤害并击退目标，射程 {C:PirateSystem.SHOT_RANGE}。"
+        "brief": "海盗龟首次龟能充满时召唤一艘海盗船。海盗船冲锋撞击目标，对其附近的敌人造成 {M:ATK} 魔法伤害并击飞 {C:PirateSystem.SHIP_CHARGE_STUN} 秒，之后留在场上攻击最近的敌人，每次造成 {N:PirateSystem.SHIP_SHOT_COEF*ATK*PirateSystem.SHIP_ATK_SCALE} 物理伤害。\n此后海盗龟每次龟能充满时朝目标扇形射出 {C:PirateSystem.SHOT_PELLETS} 颗霰弹，每颗对命中的第一个敌人造成 {N:PirateSystem.SHOT_COEF*ATK} 物理伤害并击退。\n<span style=\"color:#8a93a0\">海盗船的生命值为 {E:HP*PirateSystem.SHIP_HP_SCALE}，攻击力为 {E:ATK}，没有护甲与魔抗。</span>",
+        "detail": "海盗龟首次龟能充满时召唤一艘海盗船。海盗船冲锋撞击目标，对其附近的敌人造成（100%×攻击力({ATK}) = {M:ATK}）魔法伤害并击飞 {C:PirateSystem.SHIP_CHARGE_STUN} 秒，之后留在场上攻击最近的敌人，每次造成（{C:PirateSystem.SHIP_SHOT_COEF%}%×海盗船攻击力 = {N:PirateSystem.SHIP_SHOT_COEF*ATK*PirateSystem.SHIP_ATK_SCALE}）物理伤害。\n此后海盗龟每次龟能充满时朝目标扇形射出 {C:PirateSystem.SHOT_PELLETS} 颗霰弹，每颗对命中的第一个敌人造成（{C:PirateSystem.SHOT_COEF%}%×攻击力({ATK}) = {N:PirateSystem.SHOT_COEF*ATK}）物理伤害并击退。\n<span style=\"color:#8a93a0\">海盗船的生命值为 {E:HP*PirateSystem.SHIP_HP_SCALE}（{C:PirateSystem.SHIP_HP_SCALE%}% 海盗龟最大生命值），攻击力为 {E:ATK}（{C:PirateSystem.SHIP_ATK_SCALE%}% 海盗龟攻击力），没有护甲与魔抗。</span>"
       }
     ],
     "defaultSkills": [

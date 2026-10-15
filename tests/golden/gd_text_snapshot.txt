@@ -1420,6 +1420,7 @@ scripts/scenes/battle/info_panel.gd|lit|反伤
 scripts/scenes/battle/info_panel.gd|lit|受到伤害时，按比例反弹给攻击者。
 scripts/scenes/battle/info_panel.gd|lit|受到的所有伤害按比例降低。
 scripts/scenes/battle/info_panel.gd|lit|嘲讽
+scripts/scenes/battle/info_panel.gd|lit|回复
 scripts/scenes/battle/info_panel.gd|lit|增伤
 scripts/scenes/battle/info_panel.gd|lit|增伤 
 scripts/scenes/battle/info_panel.gd|lit|射程
@@ -1479,6 +1480,7 @@ scripts/scenes/battle/info_panel.gd|lit|灼烧
 scripts/scenes/battle/info_panel.gd|lit|熔岩形态
 scripts/scenes/battle/info_panel.gd|lit|物理
 scripts/scenes/battle/info_panel.gd|lit|物理伤害
+scripts/scenes/battle/info_panel.gd|lit|生命值
 scripts/scenes/battle/info_panel.gd|lit|生命偷取
 scripts/scenes/battle/info_panel.gd|lit|生命偷取 
 scripts/scenes/battle/info_panel.gd|lit|真实
@@ -2039,8 +2041,12 @@ scripts/util/skill_text.gd|lit|(?<!\">)闪避(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)额外伤害(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)魔抗(?!穿透|<)
 scripts/util/skill_text.gd|lit|(?<!\">)魔法(?!伤害|穿透|波|光线|<)
+scripts/util/skill_text.gd|lit|(?<=回复)(\\s*)(
+scripts/util/skill_text.gd|lit|(?<=获得)(\\s*)((?:相当于[^，。；\\n]{0,60}?的|
 scripts/util/skill_text.gd|lit|(其|目标|敌人|该单位|对方)((?:\\s|<[^<>]*>|\\{[^{}]*\\}|[\\d.%]|的)+)(最大生命值?)(?!<)
 scripts/util/skill_text.gd|lit|(物理伤害|魔法伤害|真实伤害)|[，。；\\n]
+scripts/util/skill_text.gd|lit|)\\s*(?:的)?护盾)
+scripts/util/skill_text.gd|lit|[^，。；\\n（]{0,4}生命值)
 scripts/util/skill_text.gd|lit|[（(]([^（）()]*%[^（）()]*)[）)]\\s*(物理伤害|魔法伤害|真实伤害)?
 scripts/util/skill_text.gd|lit|^(%s)(?:(%%)\\s*(攻击力|护甲|魔抗|最大生命值|目标最大生命值|该敌人最大生命值))?$
 scripts/util/skill_text.gd|lit|已损失生命值
@@ -2049,6 +2055,7 @@ scripts/util/skill_text.gd|lit|攻击力
 scripts/util/skill_text.gd|lit|最大生命
 scripts/util/skill_text.gd|lit|最大生命值
 scripts/util/skill_text.gd|lit|物理伤害
+scripts/util/skill_text.gd|lit|生命值
 scripts/util/skill_text.gd|lit|真实伤害
 scripts/util/skill_text.gd|lit|防御力加成
 scripts/util/skill_text.gd|lit|魔抗

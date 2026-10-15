@@ -1905,6 +1905,19 @@ func _skill_breakdown(u: Dictionary, sk: Dictionary, tpl: String) -> Array:
 	for m in re.search_all(tpl):
 		var letter := m.get_string(1)
 		var expr := m.get_string(2) if letter != "" else m.get_string(3)
+		## ★中性数值 {E:} 按上下文认回复 / 护盾(2026-10-15 用户「弯刀又是什么情况」: 弯刀「回复 8 生命值」拆解行里没有)。
+		##   回复与护盾的数值早先统一改成了 {E:}, 只看字母就永远进不了表。
+		if letter == "E":
+			var before := tpl.substr(maxi(0, m.get_start() - 6), mini(6, m.get_start()))
+			var after := tpl.substr(m.get_end(), 24)
+			for stop in ["，", "。", "；", "\n"]:
+				var k := after.find(stop)
+				if k >= 0:
+					after = after.substr(0, k)
+			if before.contains("回复") and after.contains("生命值"):
+				letter = "H"
+			elif after.contains("护盾"):
+				letter = "S"
 		if letter == "C" or not _BREAK_KIND.has(letter):
 			continue
 		var terms: Array = []
