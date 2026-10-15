@@ -394,11 +394,11 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 		if battle._last_atk_crit:
 			dmg = int(round(float(dmg) * DamageMath.crit_multiplier(float(src.get("crit", 0.0)), float(src.get("crit_dmg", 1.5)))))
 	var was_crit = battle._last_atk_crit          # §AUDIO: 先抓暴击态 (下方 hook 里嵌套 battle._atk_dmg 会改写它)
-	# 受伤被动(结算前改 dmg): 线条·墨迹(每层额外5%真实伤害·穿减伤穿盾) / 钻石·结构(受伤减免)
+	# 受伤被动(结算前改 dmg): 线条·墨迹(每层额外5%真实伤害·无视减伤, 护盾照吸) / 钻石·结构(受伤减免)
 	var _ink = int((u.get("stacks", {}) as Dictionary).get("ink", 0))
 	var _ink_true: float = 0.0
 	if _ink > 0:
-		_ink_true = float(dmg) * LineSystem.INK_TRUE_PER_STACK * float(_ink)   # 墨迹: 原伤害之外·每层额外承受5%【真实伤害】(穿减伤穿盾·满10层=50%·用户2026-07-10纠正: 非×1.05增伤)
+		_ink_true = float(dmg) * LineSystem.INK_TRUE_PER_STACK * float(_ink)   # 墨迹: 原伤害之外·每层额外承受5%【真实伤害】(无视减伤·护盾照吸·满10层=50%·用户2026-07-10纠正: 非×1.05增伤)
 	# ★受害者侧减伤(靶向器/暴露蛋/钻石/岩层/嘲讽/铁壁盾)全部收口到 §MITIGATE,
 	#   与 _apply_damage 共用 —— 原先这段只在本函数里, 导致 DOT 完全不吃任何减伤。
 	# 药水羁绊【猎物】: 全队对猎物造成的伤害 +15/25/40%。
@@ -430,13 +430,15 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 	if _gold > 0.0 and not raw:
 		d += float(dmg) * _gold
 		_gold_true = float(dmg) * _gold
+	## ★墨迹真伤与其他真实伤害一样被护盾吸收(2026-10-15 用户「改代码，这个明显bug啊」):
+	##   原来在护盾之后才加, 是全游戏唯一穿盾的真伤 —— 文案得专门写「穿透护盾」, 而玩家读到的是「真实伤害」。
+	if _ink_true > 0.0: d += _ink_true
 	var shield_before: float = u["shield"]
 	# 护盾吸收【全类型】伤害(物理/法术/真实): 1:1 回合制 damage.gd「真伤(true)也走护盾」+ 用户2026-07-11「真伤/反伤真伤要被盾档」。
-	#   真伤只无视护甲/魔抗/减伤(见上方 not raw 分支), 但护盾照吸。唯一穿盾=墨迹(_ink_true·在护盾后单独加·由线条被动设计)。
+	#   真伤只无视护甲/魔抗/减伤(见上方 not raw 分支), 但护盾照吸, 墨迹真伤也一样(10-15 起)。
 	d = MagicShield.absorb(u, d, _dtv == "magic" and not raw)   # 魔法护盾(012): 只挡魔法, 先于普通盾; §3.3 两路都接
 	d = ShieldMath.absorb(u, d)   # 普通盾+aura盾 吸全类型(§3.3 收口·两路共用)
 	d = battle._spec.absorb(u, d)  # ★特殊余额(幽灵/法力/灰条/奶油/终极盾)在普通盾之后扛; §3.3 两路都接
-	if _ink_true > 0.0: d += _ink_true   # 墨迹真伤: 穿减伤穿盾(唯一穿盾例外·护盾吸收后加), 直接进扣血并计入跳字
 	# 弓箭顶档【腐蚀满 5 层】: 受到伤害的 25% 转成真实伤害(无视护甲与护盾)。
 	# ⚠ 两条伤害路径【都要加】—— _apply_damage(DoT/真伤) 与 _apply_damage_from(普攻/技能)
 	#   各自独立扣血(CLAUDE.md §3.3), 只改一条会产生"只在某类伤害下才转真伤"的诡异行为。

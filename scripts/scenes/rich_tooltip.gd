@@ -35,6 +35,8 @@ func _make_custom_tooltip(for_text: String) -> Object:
 	rt.scroll_active = false
 	rt.custom_minimum_size = Vector2(300, 0)
 	rt.add_theme_font_size_override("normal_font_size", 12)
+	## 粗体(「被动：」「主动：」)与正文同字号 —— 不设就走主题默认, 选龟页实拍比正文大一号(2026-10-15 线条龟)
+	rt.add_theme_font_size_override("bold_font_size", 12)
 	rt.add_theme_color_override("default_color", Color("#dbe6f2"))
 	rt.text = for_text
 	pc.add_child(rt)

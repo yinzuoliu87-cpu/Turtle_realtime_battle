@@ -53,6 +53,15 @@ func _ready() -> void:
 		await get_tree().process_frame
 		cs.set("_codex_passive_view", true)
 		cs.get("_codex_detail").call("_show_pet", _find_pet(want))
+	## CODEX_SKILL=N: 点开第 N 个技能的详情(与点技能卡「查看全部」同一个状态位 _codex_skill_detail)
+	if OS.get_environment("CODEX_SKILL") != "" and tab == "pets":
+		await get_tree().process_frame
+		var _pp: Dictionary = _find_pet(want)
+		var _pool: Array = _pp.get("skillPool", [])
+		var _ki := int(OS.get_environment("CODEX_SKILL"))
+		if _ki >= 0 and _ki < _pool.size():
+			cs.set("_codex_skill_detail", _pool[_ki])
+			cs.get("_codex_detail").call("_show_pet", _pp)
 	## CODEX_STAR=1|2|3: 装备页切到那一档再截(走 CodexDetail._set_eq_star, 与点签牌同一个入口)
 	var want_star := OS.get_environment("CODEX_STAR")
 	if want_star != "" and tab == "equips":

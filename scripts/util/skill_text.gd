@@ -88,7 +88,7 @@ const KEYWORD_RULES := [
 	##   同色就彻底分不出。这条规则第一版写 val-def, `verify_stat_icon_color ⑦` 当场红 —— 它是对的。
 	["(?<!\">)护甲穿透(?!<)", "val-burn", "armorpen"],
 	["(?<!\">)护甲(?!穿透|<)", "val-def", "def"], ["(?<!\">)(?:魔法穿透|魔抗穿透|法穿)(?!<)", "val-dot", "magicpen"], ["(?<!\">)魔抗(?!穿透|<)", "val-magic", "mr"],
-	["(?<!\">)(?<=目标|敌人|其)最大生命值?(?!<)", "val-heal", ""], ["(?<!\">)最大生命值?(?!<)", "val-heal", "hp"], ["(?<!\">)最大HP(?!<)", "val-heal", "hp"],
+	["(?<!\">)(?<=目标|敌人)最大生命值?(?!<)", "val-heal", ""], ["(?<!\">)(?<=其)最大生命值?(?!<)", "val-heal", ""], ["(?<!\">)最大生命值?(?!<)", "val-heal", "hp"], ["(?<!\">)最大HP(?!<)", "val-heal", "hp"],
 	["(?<!\">)治疗削减(?!<)", "val-heal-reduce"], ["(?<!\">)灼烧(?!<)", "val-burn"],
 	["(?<!\">)生命偷取(?!<)", "val-lifesteal", "lifesteal"], ["(?<!\">)眩晕(?!<)", "val-stun"],
 	["(?<!\">)诅咒(?!<)", "val-dot"], ["(?<!\">)护盾(?!<)", "val-shield", "shield"],
@@ -530,9 +530,9 @@ static func html_to_bbcode(html: String, icon_px: int = ICON_PX) -> String:
 					##   —— `takes 55% reduced damage for 7 seconds` 里 55% 和 7 都是白的」。
 					## ⇒ 强调改成**只加粗不上色**: 与 2026-10-02 段标记那次同一个理由 ——
 					##   字重与颜色正交, 不往已经饱和的调色板里再添一种。
+					## ★★2026-10-15 再改: 加粗也不要 —— 粗体走另一套像素字, 选龟页实拍「1 层墨迹」「23%」比旁边大一号
+					##   (线条龟截图)。LoL 中性数字与普通字一样; 数据里手写的 103 处强调同日删掉。
 					elif tag.contains("val-emph"):
-						out += "[b]"
-						_bold_open = true
 						depth += 1
 						continue
 					out += "[color=%s]" % _span_color(tag)

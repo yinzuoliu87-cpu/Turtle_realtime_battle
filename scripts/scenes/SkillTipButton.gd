@@ -42,6 +42,8 @@ func _make_custom_tooltip(for_text: String) -> Object:
 		body.scroll_active = false
 		body.custom_minimum_size = Vector2(220, 0)   # PoC max-width 250 / min 180
 		body.add_theme_font_size_override("normal_font_size", 11)   # tip-body 11px
+		## 粗体(「被动：」「主动：」)与正文同字号 —— 不设就走主题默认, 选龟页实拍比正文大一号(2026-10-15 线条龟)
+		body.add_theme_font_size_override("bold_font_size", 11)
 		body.add_theme_color_override("default_color", Color("#bbccdd"))   # #bcd
 		body.text = "\n".join(rest)
 		vb.add_child(body)

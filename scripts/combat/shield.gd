@@ -9,7 +9,7 @@ extends RefCounted
 ## class_name 全局类在 import 扫描期注册 → CI 可靠解析(与 DamageMath 同族)。
 
 ## 普通盾 + aura 储能盾 都吸【全类型】伤害。扣减 u 的盾值(字典按引用), 返回穿盾后剩余伤害。
-## 墨迹穿盾(_ink_true)由调用方在盾后单独加, 不进本函数。
+## 墨迹真伤(_ink_true)由调用方在盾前加进 d, 与其他真伤一样被吸收(2026-10-15 起不再穿盾)。
 static func absorb(u: Dictionary, d: float) -> float:
 	if u["shield"] > 0.0:
 		var ab := minf(u["shield"], d)

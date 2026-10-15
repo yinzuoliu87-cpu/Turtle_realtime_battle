@@ -5,7 +5,7 @@ extends RefCounted
 
 ## ★线条数值单一事实源(用户2026-07-28 第三轮加强·整只 20.9%)。文案在 data/pets.json。
 ## 【画龙点睛(收尾)】对墨迹最多的敌人: (BASE + PER_INK×层数) ×ATK 物理, 不消耗墨迹。
-## 【被动·墨迹】每层墨迹让目标每次受伤额外承受 % 真实伤害(穿减伤穿盾)。
+## 【被动·墨迹】每层墨迹让目标每次受伤额外承受 % 真实伤害(无视减伤, 护盾照吸)。
 const INK_TRUE_PER_STACK := 0.05   # 每层额外承受的真实伤害比例
 const INK_CAP := 7                 # 层数上限
 const INK_CAP_BOMB := 10           # 选了「墨水炸弹」后的上限
@@ -146,14 +146,19 @@ func _ink_bomb_throw(from2d: Vector2, to2d: Vector2, on_land: Callable) -> void:
 		if on_land.is_valid(): on_land.call())
 
 # 线条·收尾·画龙点睛: 对墨迹最多敌 (0.7+0.45×层数)×ATK物理 (用户封板L466: 不消耗墨迹)
-# 线条·收尾·画龙点睛: 对墨迹最多敌 (0.7+0.45×层数)×ATK物理 (用户封板L466: 不消耗墨迹)
 func _sk_line_finish(u: Dictionary) -> void:
 	var best = null
 	var best_ink = -1
+	var best_d := INF
+	## ★先比墨迹层数, 层数相同打最近的(2026-10-15 用户「画龙点睛, 你觉得有bug吗」):
+	##   原来只有 `ink > best_ink`, 起始 -1 ⇒ 全场 0 层时选中的是【列表第一个】敌人(可能全场最远),
+	##   文案写的「场上无墨迹时转而攻击最近的敌人」那条下面的 _nearest_enemy 永远走不到; 并列时同理按列表顺序。
 	for o in battle._targeting._pick_enemies_of(u):
 		var ink = int((o.get("stacks", {}) as Dictionary).get("ink", 0))
-		if ink > best_ink:
+		var dd: float = DetMath.dist2(u["pos"], o["pos"])
+		if ink > best_ink or (ink == best_ink and dd < best_d):
 			best_ink = ink
+			best_d = dd
 			best = o
 	if best == null:
 		best = battle._targeting._nearest_enemy(u)
