@@ -1184,7 +1184,7 @@
         "aoe": true,
         "hpPct": 1.7,
         "brief": "海盗龟命令海盗船朝随机敌人发射 {C:PirateSystem.VOLLEY_SHOTS} 发炮弹，每发对落点附近的敌人造成 {N:PirateSystem.VOLLEY_ATK_COEF*ATK} 外加 {C:PirateSystem.VOLLEY_MAXHP_PCT%}% 目标最大生命值的物理伤害。",
-        "detail": "海盗龟命令海盗船朝随机敌人发射 {C:PirateSystem.VOLLEY_SHOTS} 发炮弹，每发对落点附近的敌人造成（{C:PirateSystem.VOLLEY_ATK_COEF%}%×攻击力({ATK}) = {N:PirateSystem.VOLLEY_ATK_COEF*ATK}）外加 {C:PirateSystem.VOLLEY_MAXHP_PCT%}% 目标最大生命值的物理伤害。\n{C:PirateSystem.VOLLEY_SHOTS} 发全部命中时共造成（{C:PirateSystem.VOLLEY_TOTAL_ATK%}%×攻击力({ATK}) = {N:PirateSystem.VOLLEY_ATK_COEF*ATK*PirateSystem.VOLLEY_SHOTS}）外加 {C:PirateSystem.VOLLEY_TOTAL_MAXHP%}% 目标最大生命值的物理伤害。\n此技能无法被闪避。\n<span style=\"color:#8a93a0\">每发炮弹单独造成伤害，位于多个落点重叠处的敌人会被多次命中。\n</span>"
+        "detail": "海盗龟命令海盗船朝随机敌人发射 {C:PirateSystem.VOLLEY_SHOTS} 发炮弹，每发对落点附近的敌人造成（{C:PirateSystem.VOLLEY_ATK_COEF%}%×攻击力({ATK}) = {N:PirateSystem.VOLLEY_ATK_COEF*ATK}）外加 {C:PirateSystem.VOLLEY_MAXHP_PCT%}% 目标最大生命值的物理伤害。\n{C:PirateSystem.VOLLEY_SHOTS} 发全部命中时共造成（{C:PirateSystem.VOLLEY_TOTAL_ATK%}%×攻击力({ATK}) = {N:PirateSystem.VOLLEY_ATK_COEF*ATK*PirateSystem.VOLLEY_SHOTS}）外加 {C:PirateSystem.VOLLEY_TOTAL_MAXHP%}% 目标最大生命值的物理伤害。\n<span style=\"color:#8a93a0\">每发炮弹单独造成伤害，位于多个落点重叠处的敌人会被多次命中。\n</span>"
       },
       {
         "name": "朗姆酒",

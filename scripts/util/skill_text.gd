@@ -447,8 +447,23 @@ static func render_html(template: String, f: Dictionary, s: Dictionary) -> Strin
 ## ★2026-10-01 从 render_html 里抽出来, 为的是**装备文案也能用同一份**。
 ##   抽出来而不是在装备那边另写一遍 —— memory `fb-hand-rolled-copies-drift`:
 ##   手抄的副本抄一次就永远落后一次(这张规则表 29 条, 而且还在长)。
+## ★别人的「最大生命值」不配图标(2026-10-15 用户「你看看lol里面怎么写是目标最大生命值还是有自己最大生命值加成」):
+##   LoL 实截 —— 目标的写字「2.5% of the target's max Health」(科加斯 E), 自己的才在公式里放♥(塞恩 W「+8%♥」)。
+##   紧挨着的「目标最大生命值」靠 _KEYWORDS 里的回看规则; 这里补「其 25% 最大生命值」这种中间隔着数字 / 标签的。
+##   中间只许出现空白、标签、占位符、数字、%、「的」—— 隔着别的字就不认(防止把同句里自己的属性也算成别人的)。
+static var _target_hp_re: RegEx = null
+
+static func _mark_target_hp(t: String) -> String:
+	if not t.contains("最大生命"):
+		return t
+	if _target_hp_re == null:
+		_target_hp_re = RegEx.create_from_string("(其|目标|敌人|该单位|对方)((?:\\s|<[^<>]*>|\\{[^{}]*\\}|[\\d.%]|的)+)(最大生命值?)(?!<)")
+	return _target_hp_re.sub(t, "$1$2<span class=\"val-heal\">$3</span>", true)
+
+
 static func colorize_keywords(result: String) -> String:
 	_ensure_re()
+	result = _mark_target_hp(result)
 	for kr in _keyword_re:
 		var re: RegEx = kr[0]
 		var cls: String = kr[1]

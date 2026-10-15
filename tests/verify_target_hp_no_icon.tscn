@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/verify_target_hp_no_icon.gd" id="1_thp"]
+
+[node name="VerifyTargetHpNoIcon" type="Node"]
+script = ExtResource("1_thp")
