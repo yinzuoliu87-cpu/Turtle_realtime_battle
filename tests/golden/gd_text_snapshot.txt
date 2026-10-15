@@ -76,9 +76,9 @@ scripts/gamedata/equip_tier_labels.gd|lit|举盾时长 # 秒
 scripts/gamedata/equip_tier_labels.gd|lit|举盾阈值 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|伤害 #% 充能值
+scripts/gamedata/equip_tier_labels.gd|lit|伤害 #% 护甲与魔抗之和
 scripts/gamedata/equip_tier_labels.gd|lit|伤害 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|伤害 #% 最大生命值
-scripts/gamedata/equip_tier_labels.gd|lit|伤害 #×（护甲+魔抗）
 scripts/gamedata/equip_tier_labels.gd|lit|伤害倍率 #×
 scripts/gamedata/equip_tier_labels.gd|lit|伤害减免 #%
 scripts/gamedata/equip_tier_labels.gd|lit|伤害加成 #% 攻击力
@@ -168,10 +168,9 @@ scripts/gamedata/equip_tier_labels.gd|lit|每层双抗 +#
 scripts/gamedata/equip_tier_labels.gd|lit|每层增伤 #%
 scripts/gamedata/equip_tier_labels.gd|lit|每层强化 +#%
 scripts/gamedata/equip_tier_labels.gd|lit|每层所需治疗 # 点
-scripts/gamedata/equip_tier_labels.gd|lit|每层护甲 +#
+scripts/gamedata/equip_tier_labels.gd|lit|每层护甲和魔抗 +#
 scripts/gamedata/equip_tier_labels.gd|lit|每层攻击速度 +#%
 scripts/gamedata/equip_tier_labels.gd|lit|每层生命值 +#
-scripts/gamedata/equip_tier_labels.gd|lit|每层魔抗 +#
 scripts/gamedata/equip_tier_labels.gd|lit|每次破甲 #
 scripts/gamedata/equip_tier_labels.gd|lit|每秒上限 # 龟能
 scripts/gamedata/equip_tier_labels.gd|lit|每秒伤害 #

@@ -45,7 +45,7 @@ eq|月之刃|effectDesc1	60.0 100.0 500.0 800.0 2000.0
 eq|木制长剑|effectBrief	3.0
 eq|木制长剑|effectDesc1	3.0
 eq|毒药瓶|effectBrief	6.0
-eq|毒药瓶|effectDesc1	6.0 400.0
+eq|毒药瓶|effectDesc1	6.0 50.0 400.0
 eq|毒蛾茧|effectDesc1	0.25 0.25 0.25 1.0 1.5 2.0 6.0 20.0
 eq|沙漏|effectBrief	10.0
 eq|沙漏|effectDesc1	1.0 10.0
@@ -103,7 +103,7 @@ eq|远古炮台|effectDesc1	0.5 4.0 10.0 100.0 400.0 2000.0
 eq|远古龟甲片|effectBrief	0.25 6.0 25.0
 eq|远古龟甲片|effectDesc1	0.25 6.0 25.0
 eq|连发弩|effectBrief	8.0
-eq|连发弩|effectDesc1	0.8 8.0 30.0 130.0
+eq|连发弩|effectDesc1	8.0 30.0 80.0 130.0
 eq|连发弩机|effectDesc1	0.15 3.0 8.0 25.0 25.0 2000.0
 eq|迷你水晶球A|effectDesc1	0.2 55.0
 eq|迷你水晶球B|effectBrief	3.0

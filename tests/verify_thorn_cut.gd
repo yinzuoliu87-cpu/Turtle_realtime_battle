@@ -261,7 +261,7 @@ func _g6_panel_and_text() -> void:
 	s._t = t0
 	var full: String = SkillText.equip_full(_edef())
 	var brief: String = SkillText.equip_brief(_edef())
-	_ok("★文案: 详细写出「治疗强度与护盾强度降低 50%，持续 3 秒」", full.find("治疗强度与护盾强度降低 50%，持续 3 秒") >= 0, full)
+	_ok("★文案: 详细写出「施加 50% 治疗削减和护盾削减，持续 3 秒」", full.find("施加 50% 治疗削减和护盾削减，持续 3 秒") >= 0, full)
 	_ok("★文案: 旧效果仍写着(累计反伤 → 护盾 + 流血)", full.find("300/270/230") >= 0 and full.find("30/50/90 层流血") >= 0, full)
-	_ok("★文案: 简述写出「治疗强度与护盾强度降低 50%，持续 3 秒」", brief.find("治疗强度与护盾强度降低 50%，持续 3 秒") >= 0, brief)
+	_ok("★文案: 简述写出「施加 50% 治疗削减和护盾削减，持续 3 秒」", brief.find("施加 50% 治疗削减和护盾削减，持续 3 秒") >= 0, brief)
 	_ok("★文案: 没有残留占位符", full.find("{C:") < 0 and brief.find("{C:") < 0)

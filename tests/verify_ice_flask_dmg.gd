@@ -93,7 +93,7 @@ func _ready() -> void:
 	_ok("图标路径不变", str(edef.get("img", "")) == "equip/frost-flask.png", str(edef.get("img", "")))
 	var full: String = SkillText.equip_full(edef)
 	var brief: String = SkillText.equip_brief(edef)
-	var frag := "（20/35/60+80/100/120% 攻击力+目标最大生命值 3/5/9%）魔法伤害"
+	var frag := "（20/35/60+80/100/120% 攻击力 + 3/5/9% 目标最大生命值）魔法伤害"
 	_ok("★★详细写出新公式", full.find(frag) >= 0, full)
 	_ok("★★简述写出新公式", brief.find(frag) >= 0, brief)
 	_ok("★没有残留占位符 / 旧数值", full.find("{C:") < 0 and brief.find("{C:") < 0 and full.find("40/60/100") < 0 and brief.find("40/60/100") < 0)

@@ -293,7 +293,7 @@ const SRC := {
 		{"k": "pet", "id": "chest", "sk": "chestTreasure", "at": "scenes/battle/battle_damage.gd:_post_hit_hooks", "v": "50% · 5 秒",
 			"link": "宝箱藏宝图 on-hit 战利品"},
 		{"k": "minion", "id": "back", "sk": "minionRocket", "at": "systems/skills/hiding_system.gd:_minion_rocket_nuke", "v": "50% · 4 秒"},
-		{"k": "eq", "id": "p2eq_067", "at": "systems/equip/eq_potion_batch.gd:_vial_debuff_on", "v": "50%"},
+		{"k": "eq", "id": "p2eq_067", "at": "systems/equip/eq_potion_batch.gd:_vial_debuff_on", "v": "{C:EqPotionBatch.VIAL_CUT%}%"},
 	],
 	"energy-lock": [
 		{"k": "pet", "id": "stone", "sk": "stoneTaunt", "at": "systems/skills/stone_system.gd:_sk_stone_taunt", "to": "self", "v": "{C:StoneSystem.SLAM_DELAY} 秒"},

@@ -37,6 +37,8 @@ const BeamVfx := preload("res://scripts/scenes/battle/mana_beam_vfx.gd")
 
 ## 067 减益的悬挂时长(秒): 每帧刷新, 中毒一结束就在这个窗口内自然失效。
 const VIAL_DEBUFF_HOLD := 0.30
+## 中毒期间的治疗削减与护盾削减(文案读它: 2026-10-15 前文案写「减半」而代码两处字面量 0.5)
+const VIAL_CUT := 0.5
 ## 068 激光的出伤节拍(秒)。★不逐帧出伤: `_dot_after_resist` 有 `maxi(1, …)` 下限,
 ##   逐帧结算会让"每帧至少 1 点"在高帧率下把总量顶上天。按固定节拍分段, 总量才守得住。
 const BEAM_TICK := 0.25
@@ -294,11 +296,11 @@ func _tick_vial_field(u: Dictionary, si: int) -> void:
 ##   多源取 max, 不把别人更强的削减改弱。
 ## ★护盾走 `shield_amp`, 但必须"撤了再算"才是 ×0.5 —— 理由见文件头。
 func _vial_debuff_on(o: Dictionary) -> void:
-	o["heal_reduce_pct"] = maxf(float(o.get("heal_reduce_pct", 0.0)), 0.5)
+	o["heal_reduce_pct"] = maxf(float(o.get("heal_reduce_pct", 0.0)), VIAL_CUT)
 	o["heal_reduce_until"] = maxf(float(o.get("heal_reduce_until", 0.0)), battle._t + VIAL_DEBUFF_HOLD)
 	var prev: float = float(o.get("_vial_sa", 0.0))
 	var base: float = float(o.get("shield_amp", 0.0)) - prev
-	var d: float = -0.5 * (1.0 + base)
+	var d: float = -VIAL_CUT * (1.0 + base)
 	o["shield_amp"] = base + d
 	o["_vial_sa"] = d
 	o["_vial_sa_until"] = battle._t + VIAL_DEBUFF_HOLD
