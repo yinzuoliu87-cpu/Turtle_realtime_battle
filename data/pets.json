@@ -581,7 +581,7 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "双头龟锁定当前形态不再切换，获得近战合体的生命值、双抗与护盾加成。\n主动释放魔法波，每段在 {C:TwoHeadSystem.FUSION_WAVE_COEF%}% 物理与真实伤害之间交替，并造成击飞。\n融合后获得双头坚韧：每受到一段伤害永久 +1 护甲、+1 魔抗，上限 {C:TwoHeadSystem.FUSION_TOUGH_CAP}。\n魔法波每次消耗 {C:TwoHeadSystem.FUSION_WAVE_ENERGY} 龟能，每次释放后波数 +1，持续累积至战斗结束。",
+        "brief": "双头龟锁定当前形态不再切换，获得额外的生命值、护甲、魔抗与护盾加成。\n主动释放魔法波，每段在 {C:TwoHeadSystem.FUSION_WAVE_COEF%}% 物理与真实伤害之间交替，并造成击飞。\n融合后获得双头坚韧：每受到一段伤害永久 +1 护甲、+1 魔抗，上限 {C:TwoHeadSystem.FUSION_TOUGH_CAP}。\n魔法波每次消耗 {C:TwoHeadSystem.FUSION_WAVE_ENERGY} 龟能，每次释放后波数 +1，持续累积至战斗结束。",
         "detail": "双头龟技能三【融合】：\n双头合体，登场即锁定形态不再自动切换，获得近战形态的额外（{C:TwoHeadSystem.MELEE_HP_COEF%}%×攻击力 = {E:ATK*TwoHeadSystem.MELEE_HP_COEF}）最大生命值、（{C:TwoHeadSystem.MELEE_DEF_COEF%}%×攻击力 = {E:ATK*TwoHeadSystem.MELEE_DEF_COEF}）护甲、（{C:TwoHeadSystem.MELEE_MR_COEF%}%×攻击力 = {M:ATK*TwoHeadSystem.MELEE_MR_COEF}）魔抗与（{C:TwoHeadSystem.MELEE_SHIELD_COEF%}%×攻击力 = {E:ATK*TwoHeadSystem.MELEE_SHIELD_COEF}）护盾，\n并获得【双头坚韧】被动：\n每受到一段攻击永久+1 护甲+1 魔抗（各上限 {C:TwoHeadSystem.FUSION_TOUGH_CAP}）。\n主动·魔法波：消耗 {C:TwoHeadSystem.FUSION_WAVE_ENERGY} 龟能，发射数段弧形魔法波，交替造成每段（{C:TwoHeadSystem.FUSION_WAVE_COEF%}%×攻击力 = {N:TwoHeadSystem.FUSION_WAVE_COEF*ATK}）物理 /（{C:TwoHeadSystem.FUSION_WAVE_COEF%}%×攻击力 = {T:TwoHeadSystem.FUSION_WAVE_COEF*ATK}）真实伤害，并附带击飞。\n波的数量基础 {C:TwoHeadSystem.FUSION_WAVE_BASE} 段，之后每次释放+1，持续累积到战斗结束。"
       }
     ],
@@ -746,7 +746,7 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "钻石龟蜷成钻石球滚向最近的敌人，在 {C:DiamondSystem.ROLL_ACCEL_SEC} 秒内从静止加速至满速。撞击时对落点敌人造成伤害，并将其击飞 {C:DiamondSystem.ROLL_KNOCK_SEC} 秒、眩晕 {C:DiamondSystem.ROLL_STUN_MIN}~{C:DiamondSystem.ROLL_STUN_MAX} 秒。\n伤害与眩晕时长基于撞击时的移动速度：\n静止时造成 {C:DiamondSystem.ROLL_RESIST_MIN%}% 护甲 + {C:DiamondSystem.ROLL_RESIST_MIN%}% 魔抗 + 目标最大生命值 {C:DiamondSystem.ROLL_MAXHP_MIN%}%，满速时造成 {C:DiamondSystem.ROLL_RESIST_MAX%}% 护甲 + {C:DiamondSystem.ROLL_RESIST_MAX%}% 魔抗 + 目标最大生命值 {C:DiamondSystem.ROLL_MAXHP_MAX%}%。\n滚动期间不受眩晕与恐惧影响。\n当 {C:DiamondSystem.ROLL_AUTO_RANGE} 码内没有敌人时，钻石龟自动启动滚球撞向最近的敌人，不消耗龟能。",
+        "brief": "钻石龟蜷成钻石球滚向最近的敌人，在 {C:DiamondSystem.ROLL_ACCEL_SEC} 秒内从静止加速至满速。撞击时对落点敌人造成随移动速度提升的伤害，并将其击飞 {C:DiamondSystem.ROLL_KNOCK_SEC} 秒、眩晕 {C:DiamondSystem.ROLL_STUN_MIN}~{C:DiamondSystem.ROLL_STUN_MAX} 秒。\n伤害与眩晕时长基于撞击时的移动速度：\n静止时造成 {C:DiamondSystem.ROLL_RESIST_MIN%}% 护甲 + {C:DiamondSystem.ROLL_RESIST_MIN%}% 魔抗 + 目标最大生命值 {C:DiamondSystem.ROLL_MAXHP_MIN%}%，满速时造成 {C:DiamondSystem.ROLL_RESIST_MAX%}% 护甲 + {C:DiamondSystem.ROLL_RESIST_MAX%}% 魔抗 + 目标最大生命值 {C:DiamondSystem.ROLL_MAXHP_MAX%}%。\n滚动期间不受眩晕与恐惧影响。\n当 {C:DiamondSystem.ROLL_AUTO_RANGE} 码内没有敌人时，钻石龟自动启动滚球撞向最近的敌人，不消耗龟能。",
         "detail": "钻石龟蜷成钻石球滚向最近的敌人，移动速度在 {C:DiamondSystem.ROLL_ACCEL_SEC} 秒内从 0 加速至满速，滚动期间不受眩晕与恐惧影响。\n对撞击点 {C:DiamondSystem.ROLL_HIT_RADIUS} 码内的敌人造成伤害，伤害基于当前移动速度：0 速时为 {C:DiamondSystem.ROLL_RESIST_MIN} 护甲+{C:DiamondSystem.ROLL_RESIST_MIN} 魔抗+{C:DiamondSystem.ROLL_MAXHP_MIN%}%<b>目标</b>最大生命值，满速时为 {C:DiamondSystem.ROLL_RESIST_MAX} 护甲+{C:DiamondSystem.ROLL_RESIST_MAX} 魔抗+{C:DiamondSystem.ROLL_MAXHP_MAX%}%<b>目标</b>最大生命值。命中的敌人被击飞 {C:DiamondSystem.ROLL_KNOCK_SEC} 秒并眩晕 {C:DiamondSystem.ROLL_STUN_MIN}~{C:DiamondSystem.ROLL_STUN_MAX} 秒，眩晕时长基于移动速度。\n被动：<span class=\"val-emph\">当 {C:DiamondSystem.ROLL_AUTO_RANGE} 码内没有敌人时，钻石龟自动启动滚球撞向最近的敌人，不消耗龟能，冷却时间 {C:DiamondSystem.ROLL_AUTO_CD} 秒。\n</span>",
         "energyCost": 100
       },
@@ -1058,7 +1058,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "被动：赌神龟登场损失自身最大生命值 {C:GamblerSystem.WHEEL_HP_COST%}%，基础多重打击概率由 {C:GamblerSystem.MULTI_BASE%}% 提升至 {C:GamblerSystem.MULTI_WHEEL%}%。\n\n主动：赌神龟每次释放进入抽取阶段，花色转盘落定后永久提升一项属性：\n♠ 黑桃：\n攻击力 +{C:GamblerSystem.WHEEL_SPADE_ATK}、最大生命值 +{C:GamblerSystem.WHEEL_SPADE_HP}。\n♥ 红心：\n护甲 +{C:GamblerSystem.WHEEL_HEART_RESIST}、魔抗 +{C:GamblerSystem.WHEEL_HEART_RESIST}。\n♦ 方块：\n暴击率 +{C:GamblerSystem.WHEEL_DIAMOND_CRIT%}%、护甲穿透 +{C:GamblerSystem.WHEEL_DIAMOND_PEN}。\n♣ 梅花：\n生命偷取 +{C:GamblerSystem.WHEEL_CLUB_LIFESTEAL%}%、攻击速度 +{C:GamblerSystem.WHEEL_CLUB_ASPD%}%。",
-        "detail": "被动：赌神龟登场时损失自身 {C:GamblerSystem.WHEEL_HP_COST%}% 最大生命值，换取额外 +{C:GamblerSystem.MULTI_BET_BONUS%}% 多重打击概率，基础概率由 {C:GamblerSystem.MULTI_BASE%}% 提升至 {C:GamblerSystem.MULTI_WHEEL%}%。\n\n主动：赌神龟的龟能满时自动释放，随机抽取一个花色，永久提升一项属性：♠黑桃 攻击力 +{C:GamblerSystem.WHEEL_SPADE_ATK}、最大生命值 +{C:GamblerSystem.WHEEL_SPADE_HP}。\n♥红心 护甲 +{C:GamblerSystem.WHEEL_HEART_RESIST}、魔抗 +{C:GamblerSystem.WHEEL_HEART_RESIST}。\n♦方块 暴击率 +{C:GamblerSystem.WHEEL_DIAMOND_CRIT%}%、护甲穿透 +{C:GamblerSystem.WHEEL_DIAMOND_PEN}。\n♣梅花 生命偷取 +{C:GamblerSystem.WHEEL_CLUB_LIFESTEAL%}%、攻击速度 +{C:GamblerSystem.WHEEL_CLUB_ASPD%}%。\n<span style=\"color:#8a93a0\">赌神龟抽到的花色在本大轮内跨场累积，并在下一场登场时自动生效。进入新大轮时重置。\n</span>\n<span style=\"color:#8a93a0\">抽取阶段持续约 {C:GamblerSystem.WHEEL_LOCK_SEC} 秒。\n</span>"
+        "detail": "被动：赌神龟登场时损失自身 {C:GamblerSystem.WHEEL_HP_COST%}% 最大生命值，换取额外 +{C:GamblerSystem.MULTI_BET_BONUS%}% 多重打击概率，基础概率由 {C:GamblerSystem.MULTI_BASE%}% 提升至 {C:GamblerSystem.MULTI_WHEEL%}%。\n\n主动：赌神龟的龟能满时自动释放，随机抽取一个花色，永久提升一项属性：♠黑桃 攻击力 +{C:GamblerSystem.WHEEL_SPADE_ATK}、最大生命值 +{C:GamblerSystem.WHEEL_SPADE_HP}。\n♥红心 护甲 +{C:GamblerSystem.WHEEL_HEART_RESIST}、魔抗 +{C:GamblerSystem.WHEEL_HEART_RESIST}。\n♦方块 暴击率 +{C:GamblerSystem.WHEEL_DIAMOND_CRIT%}%、护甲穿透 +{C:GamblerSystem.WHEEL_DIAMOND_PEN}。\n♣梅花 生命偷取 +{C:GamblerSystem.WHEEL_CLUB_LIFESTEAL%}%、攻击速度 +{C:GamblerSystem.WHEEL_CLUB_ASPD%}%。\n<span style=\"color:#8a93a0\">赌神龟抽到的花色在本大轮内跨场累积，并在下一场登场时自动生效。进入新大轮时重置。\n</span>\n<span style=\"color:#8a93a0\">抽取阶段持续 {C:GamblerSystem.WHEEL_LOCK_SEC} 秒。\n</span>"
       }
     ],
     "defaultSkills": [
@@ -1277,8 +1277,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "糖果龟在敌方最密集处降下糖衣炮弹雨，持续约 {C:CandySystem.BARRAGE_LIFE} 秒，每 {C:CandySystem.BARRAGE_TICK_SEC} 秒生效一次，共 {C:CandySystem.BARRAGE_TICKS} 跳。\n每次为友军提供糖果龟最大生命值 {C:CandySystem.BARRAGE_SHIELD_PCT%}% 的护盾，并对敌军造成（{C:CandySystem.BARRAGE_ATK_COEF%}% 攻击力 + {C:CandySystem.BARRAGE_HP_PCT%}% 自身最大生命值）魔法伤害，施加 {C:CandySystem.BARRAGE_SLOW_PCT%}% 减速。\n<span style=\"color:#8a93a0\">减速每跳重新施加，每次持续 {C:CandySystem.BARRAGE_SLOW_SEC} 秒。\n</span>",
-        "detail": "糖果龟在敌方最密集的区域降下糖衣炮弹雨。\n炮弹雨半径 {C:CandySystem.BARRAGE_RADIUS} 码，持续约 {C:CandySystem.BARRAGE_LIFE} 秒，每 <b>{C:CandySystem.BARRAGE_TICK_SEC} 秒</b>生效一次，共 {C:CandySystem.BARRAGE_TICKS} 跳。\n每跳：\n范围内友军获得糖果龟 {C:CandySystem.BARRAGE_SHIELD_PCT%}%最大生命值的护盾。\n范围内敌军受到（{C:CandySystem.BARRAGE_ATK_COEF%}%×攻击力({ATK}) = {N:CandySystem.BARRAGE_ATK_COEF*ATK}）+ {C:CandySystem.BARRAGE_HP_PCT%}%糖果龟最大生命值的魔法伤害，并被减速 {C:CandySystem.BARRAGE_SLOW_PCT%}%，每次受击时减速持续时间刷新为 {C:CandySystem.BARRAGE_SLOW_SEC} 秒。"
+        "brief": "糖果龟在敌方最密集处降下糖衣炮弹雨，每 {C:CandySystem.BARRAGE_TICK_SEC} 秒生效一次，共 {C:CandySystem.BARRAGE_TICKS} 次。\n每次为友军提供糖果龟最大生命值 {C:CandySystem.BARRAGE_SHIELD_PCT%}% 的护盾，并对敌军造成（{C:CandySystem.BARRAGE_ATK_COEF%}% 攻击力 + {C:CandySystem.BARRAGE_HP_PCT%}% 自身最大生命值）魔法伤害，施加 {C:CandySystem.BARRAGE_SLOW_PCT%}% 减速。\n<span style=\"color:#8a93a0\">减速每跳重新施加，每次持续 {C:CandySystem.BARRAGE_SLOW_SEC} 秒。\n</span>",
+        "detail": "糖果龟在敌方最密集的区域降下糖衣炮弹雨。\n炮弹雨半径 {C:CandySystem.BARRAGE_RADIUS} 码，每 <b>{C:CandySystem.BARRAGE_TICK_SEC} 秒</b>生效一次，共 {C:CandySystem.BARRAGE_TICKS} 跳。\n每跳：\n范围内友军获得糖果龟 {C:CandySystem.BARRAGE_SHIELD_PCT%}%最大生命值的护盾。\n范围内敌军受到（{C:CandySystem.BARRAGE_ATK_COEF%}%×攻击力({ATK}) = {N:CandySystem.BARRAGE_ATK_COEF*ATK}）+ {C:CandySystem.BARRAGE_HP_PCT%}%糖果龟最大生命值的魔法伤害，并被减速 {C:CandySystem.BARRAGE_SLOW_PCT%}%，每次受击时减速持续时间刷新为 {C:CandySystem.BARRAGE_SLOW_SEC} 秒。"
       },
       {
         "name": "糖果炸弹",
@@ -1288,8 +1288,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "糖果龟在战斗开始时召唤一颗糖果炸弹，其生命值为糖果龟 {C:CandySystem.BOMB_HP_PCT%}% 最大生命值。\n每当龟能充满，若炸弹存活，便为其提升糖果龟 {C:CandySystem.BOMB_FEED_MAXHP_PCT%}% 最大生命值的生命上限并治疗 {C:CandySystem.BOMB_FEED_HEAL_PCT%}%。\n若炸弹已阵亡，则召唤一颗生命值为自身 {C:CandySystem.BOMB_REVIVE_HP_PCT%}% 最大生命值的新炸弹。\n炸弹死亡时爆炸，对全体敌人均摊其 {C:CandySystem.BOMB_DEATH_AOE%}% 最大生命值的魔法伤害。\n<span style=\"color:#8a93a0\">炸弹每秒衰减 {C:CandySystem.BOMB_DECAY_PCT%}% 生命，不攻击也不移动。\n</span>",
-        "detail": "被动：糖果龟在战斗开始时召唤一颗实体糖果炸弹。炸弹最大生命值为糖果龟登场时最大生命值×{C:CandySystem.BOMB_HP_PCT%}%，攻击力、护甲与魔抗均为 0，不主动攻击，每秒衰减自身 {C:CandySystem.BOMB_DECAY_PCT%}% 最大生命值。\n\n主动：若炸弹存活，其最大生命值上限提升糖果龟最大生命值的 {C:CandySystem.BOMB_FEED_MAXHP_PCT%}%，并回复相当于糖果龟最大生命值 {C:CandySystem.BOMB_FEED_HEAL_PCT%}% 的生命值。\n若炸弹已阵亡，则召唤一颗新炸弹，生命值为糖果龟最大生命值的 {C:CandySystem.BOMB_REVIVE_HP_PCT%}%。\n炸弹因自身衰减或被击杀而死亡时爆炸，对全体敌人造成总计相当于炸弹 {C:CandySystem.BOMB_DEATH_AOE%}% 最大生命值的魔法伤害，由存活敌人均摊。"
+        "brief": "糖果龟登场时召唤一颗糖果炸弹，其生命值为糖果龟 {C:CandySystem.BOMB_HP_PCT%}% 最大生命值。\n每当龟能充满，若炸弹存活，便为其提升糖果龟 {C:CandySystem.BOMB_FEED_MAXHP_PCT%}% 最大生命值的生命上限并治疗 {C:CandySystem.BOMB_FEED_HEAL_PCT%}%。\n若炸弹已阵亡，则召唤一颗生命值为自身 {C:CandySystem.BOMB_REVIVE_HP_PCT%}% 最大生命值的新炸弹。\n炸弹死亡时爆炸，对全体敌人均摊其 {C:CandySystem.BOMB_DEATH_AOE%}% 最大生命值的魔法伤害。\n<span style=\"color:#8a93a0\">炸弹每秒衰减 {C:CandySystem.BOMB_DECAY_PCT%}% 生命，不攻击也不移动。\n</span>",
+        "detail": "被动：糖果龟登场时召唤一颗实体糖果炸弹。炸弹最大生命值为糖果龟登场时最大生命值×{C:CandySystem.BOMB_HP_PCT%}%，攻击力、护甲与魔抗均为 0，不主动攻击，每秒衰减自身 {C:CandySystem.BOMB_DECAY_PCT%}% 最大生命值。\n\n主动：若炸弹存活，其最大生命值上限提升糖果龟最大生命值的 {C:CandySystem.BOMB_FEED_MAXHP_PCT%}%，并回复相当于糖果龟最大生命值 {C:CandySystem.BOMB_FEED_HEAL_PCT%}% 的生命值。\n若炸弹已阵亡，则召唤一颗新炸弹，生命值为糖果龟最大生命值的 {C:CandySystem.BOMB_REVIVE_HP_PCT%}%。\n炸弹因自身衰减或被击杀而死亡时爆炸，对全体敌人造成总计相当于炸弹 {C:CandySystem.BOMB_DEATH_AOE%}% 最大生命值的魔法伤害，由存活敌人均摊。"
       }
     ],
     "defaultSkills": [
@@ -1682,8 +1682,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "熔岩龟在普通形态下消耗 {C:LavaSystem.ERUPT_ENERGY} 龟能智能冲刺，重置下一次攻击，并使下一发熔岩弹贯穿全场，对沿途每个敌人造成 {C:LavaSystem.PIERCE_ATK_COEF%}% 攻击力魔法伤害加 {C:LavaSystem.PIERCE_MAXHP_PCT%}% 最大生命值并施加灼烧层。\n在火山形态下消耗 {C:LavaSystem.RAMPAGE_ENERGY} 龟能，熔岩龟进入暴走，获得自身最大生命值 {C:LavaSystem.RAMPAGE_HP_PCT%}%、{C:LavaSystem.RAMPAGE_HASTE%}% 攻击速度和 {C:LavaSystem.RAMPAGE_SPD%}% 移动速度，均持续 {C:LavaSystem.RAMPAGE_SEC} 秒。\n<span style=\"color:#8a93a0\">智能冲刺会根据局势在残血时后撤保命，否则贴身追击。\n</span>",
-        "detail": "熔岩龟·技能三，分为两种形态：\n普通形态，消耗 {C:LavaSystem.ERUPT_ENERGY} 龟能：\n智能冲刺，残血或近身有威胁时背离敌人撤退保命，否则冲向目标贴身追击。\n重置下一次攻击的计时，并使下一发熔岩弹变为贯穿全场的岩浆光矢，对沿途每名敌人造成（{C:LavaSystem.PIERCE_ATK_COEF%}%×攻击力({ATK}) = {M:LavaSystem.BOLT_MAGIC*ATK}）魔法伤害 + {C:LavaSystem.PIERCE_MAXHP_PCT%}%目标最大生命值，并施加（{C:LavaSystem.PIERCE_BURN_COEF%}% 攻击力）层灼烧。\n火山形态，消耗 {C:LavaSystem.RAMPAGE_ENERGY} 龟能：烈焰暴走，自身获得 {C:LavaSystem.RAMPAGE_HP_PCT%}% 最大生命值、+{C:LavaSystem.RAMPAGE_HASTE%}% 攻击速度、+{C:LavaSystem.RAMPAGE_SPD%}% 移动速度，均持续 {C:LavaSystem.RAMPAGE_SEC} 秒。",
+        "brief": "熔岩龟在普通形态下消耗 {C:LavaSystem.ERUPT_ENERGY} 龟能冲刺，残血时后撤，否则贴身追击。随后重置攻击计时，并使下一发熔岩弹贯穿全场，对沿途每个敌人造成 {C:LavaSystem.PIERCE_ATK_COEF%}% 攻击力魔法伤害加 {C:LavaSystem.PIERCE_MAXHP_PCT%}% 最大生命值并施加灼烧层。\n在火山形态下消耗 {C:LavaSystem.RAMPAGE_ENERGY} 龟能，熔岩龟进入暴走，获得自身最大生命值 {C:LavaSystem.RAMPAGE_HP_PCT%}%、{C:LavaSystem.RAMPAGE_HASTE%}% 攻击速度和 {C:LavaSystem.RAMPAGE_SPD%}% 移动速度，均持续 {C:LavaSystem.RAMPAGE_SEC} 秒。",
+        "detail": "熔岩龟·技能三，分为两种形态：\n普通形态，消耗 {C:LavaSystem.ERUPT_ENERGY} 龟能：\n冲刺，残血或近身有威胁时背离敌人撤退保命，否则冲向目标贴身追击。\n重置下一次攻击的计时，并使下一发熔岩弹变为贯穿全场的岩浆光矢，对沿途每名敌人造成（{C:LavaSystem.PIERCE_ATK_COEF%}%×攻击力({ATK}) = {M:LavaSystem.BOLT_MAGIC*ATK}）魔法伤害 + {C:LavaSystem.PIERCE_MAXHP_PCT%}%目标最大生命值，并施加（{C:LavaSystem.PIERCE_BURN_COEF%}% 攻击力）层灼烧。\n火山形态，消耗 {C:LavaSystem.RAMPAGE_ENERGY} 龟能：烈焰暴走，自身获得 {C:LavaSystem.RAMPAGE_HP_PCT%}% 最大生命值、+{C:LavaSystem.RAMPAGE_HASTE%}% 攻击速度、+{C:LavaSystem.RAMPAGE_SPD%}% 移动速度，均持续 {C:LavaSystem.RAMPAGE_SEC} 秒。",
         "icon": "skills/lava-3.png"
       }
     ],
@@ -1986,7 +1986,7 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "星际龟短暂蓄力后发射一个缓慢移动的虫洞，沿目标所在的直线推进。\n沿途的敌人被吸向虫洞，距离更近的敌人被捕获并随虫洞一起移动。\n虫洞抵达地图边界时爆炸，对被捕获的敌人与爆炸点附近的敌人造成 {M:StarSystem.WORM_BOOM_COEF*ATK} ×（1+{C:StarSystem.WORM_BOOM_PER_SEC%}%×本路战斗已进行秒数）魔法伤害。\n<span style=\"color:#8a93a0\">吸取与捕获不造成伤害。\n本路战斗持续越久，爆炸伤害越高，伤害倍率在发射时确定。\n</span>",
+        "brief": "星际龟短暂蓄力后发射一个缓慢移动的虫洞，沿目标所在的直线推进。\n沿途的敌人被吸向虫洞，虫洞附近的敌人被捕获并随虫洞一起移动。\n虫洞抵达地图边界时爆炸，对被捕获的敌人与爆炸点附近的敌人造成 {M:StarSystem.WORM_BOOM_COEF*ATK} ×（1+{C:StarSystem.WORM_BOOM_PER_SEC%}%×本路战斗已进行秒数）魔法伤害。\n<span style=\"color:#8a93a0\">吸取与捕获不造成伤害。\n本路战斗持续越久，爆炸伤害越高，伤害倍率在发射时确定。\n</span>",
         "detail": "星际龟蓄力 {C:StarSystem.WORM_WINDUP} 秒后，朝目标所在的直线发射一个缓慢移动的虫洞。\n虫洞以 {C:StarSystem.WORM_SPD} 码/秒的速度直线飞向<b>地图边界</b>。沿途 {C:StarSystem.WORM_GRAV_R} 码内的敌人受重力牵引，沿弧线被卷向虫洞，<b>此过程不造成伤害</b>。{C:StarSystem.WORM_CAPTURE_R} 码内的敌人被捕获，随虫洞一起移动。\n虫洞抵达边界时<b>爆炸</b>，对被捕获的敌人与爆炸点 {C:StarSystem.WORM_GRAV_R} 码内的敌人造成 {M:StarSystem.WORM_BOOM_COEF*ATK}（{C:StarSystem.WORM_BOOM_COEF%}% 攻击力）魔法伤害，战斗每进行 1 秒，伤害提高 {C:StarSystem.WORM_BOOM_PER_SEC%}%。\n<span style=\"color:#8a93a0\">伤害倍率在发射时确定，战斗持续越久，虫洞伤害越高。\n</span>\n<span style=\"color:#8a93a0\">虫洞存在期间龟能不充能。</span>"
       },
       {
@@ -2040,8 +2040,8 @@
       "type": "summonAlly",
       "name": "喊龟",
       "hpPct": 40,
-      "brief": "缩头乌龟在战斗开始时，从全部 A/B/C 稀有度的龟中随机召唤一只作为<span class=\"val-emph\">随从</span>。\n随从拥有原龟 {C:HidingSystem.MINION_HP_SCALE%}% 最大生命值和 {C:HidingSystem.MINION_ATK_SCALE%}% 攻击力，并带着自己的整套技能与龟能自主作战。",
-      "desc": "缩头乌龟在战斗开始时，从全部 A/B/C 稀有度龟中随机召唤一只作为随从。\n随从的属性取自原龟：最大生命值 ×{C:HidingSystem.MINION_HP_SCALE%}%，攻击力 ×{C:HidingSystem.MINION_ATK_SCALE%}%，护甲、魔抗与暴击率保持原值，所有属性均随等级成长。\n随从的被动正常生效，并依靠自身的技能与龟能条自主释放技能。\n<span style=\"color:#8a93a0\">缩头乌龟阵亡时，随从一同阵亡。随从阵亡时触发其自身的死亡被动，并将【强化随从】的增益永久转移给缩头乌龟。\n</span>"
+      "brief": "缩头乌龟登场时，从全部 A/B/C 稀有度的龟中随机召唤一只作为<span class=\"val-emph\">随从</span>。\n随从拥有原龟 {C:HidingSystem.MINION_HP_SCALE%}% 最大生命值和 {C:HidingSystem.MINION_ATK_SCALE%}% 攻击力，并带着自己的整套技能与龟能自主作战。",
+      "desc": "缩头乌龟登场时，从全部 A/B/C 稀有度龟中随机召唤一只作为随从。\n随从的属性取自原龟：最大生命值 ×{C:HidingSystem.MINION_HP_SCALE%}%，攻击力 ×{C:HidingSystem.MINION_ATK_SCALE%}%，护甲、魔抗与暴击率保持原值，所有属性均随等级成长。\n随从的被动正常生效，并依靠自身的技能与龟能条自主释放技能。\n<span style=\"color:#8a93a0\">缩头乌龟阵亡时，随从一同阵亡。随从阵亡时触发其自身的死亡被动，并将【强化随从】的增益永久转移给缩头乌龟。\n</span>"
     },
     "skillPool": [
       {
@@ -2154,7 +2154,7 @@
         "pierce": 0,
         "cd": 0,
         "aoe": true,
-        "brief": "无头龟以自身为中心爆发出触须，几乎覆盖整个战场，伸出、停顿与收回共持续约 {C:HeadlessSystem.TENDRIL_SELF_STUN} 秒，施法期间额外获得 +{C:HeadlessSystem.TENDRIL_LIFESTEAL%}% 生命偷取。\n触须伸出时命中所有单位：对敌人造成 {C:HeadlessSystem.TENDRIL_PASS_FOE%}% 攻击力的物理伤害并眩晕，对友军造成 {C:HeadlessSystem.TENDRIL_PASS_ALLY%}% 攻击力的伤害并眩晕。\n触须收回时，对敌人造成 {C:HeadlessSystem.TENDRIL_DETACH_FOE%}% 攻击力的伤害，对友军造成 {C:HeadlessSystem.TENDRIL_DETACH_ALLY%}% 攻击力的伤害并解除其控制，使其恢复行动。\n<span style=\"color:#8a93a0\">施法期间无头龟自身也处于硬控状态。\n</span>",
+        "brief": "无头龟以自身为中心爆发出触须，几乎覆盖整个战场，伸出、停顿与收回共持续 {C:HeadlessSystem.TENDRIL_SELF_STUN} 秒，施法期间获得 {C:HeadlessSystem.TENDRIL_LIFESTEAL%}% 生命偷取。\n触须伸出时命中所有单位：对敌人造成 {C:HeadlessSystem.TENDRIL_PASS_FOE%}% 攻击力的物理伤害并眩晕，对友军造成 {C:HeadlessSystem.TENDRIL_PASS_ALLY%}% 攻击力的伤害并眩晕。\n触须收回时，对敌人造成 {C:HeadlessSystem.TENDRIL_DETACH_FOE%}% 攻击力的伤害，对友军造成 {C:HeadlessSystem.TENDRIL_DETACH_ALLY%}% 攻击力的伤害并解除其控制，使其恢复行动。\n<span style=\"color:#8a93a0\">施法期间无头龟自身也处于硬控状态。\n</span>",
         "detail": "无头龟亡灵暴走，以自身为中心爆发触须，几乎覆盖整个战场，半径约 {C:HeadlessSystem.TENDRIL_RADIUS} 码。\n本次技能获得 {C:HeadlessSystem.TENDRIL_LIFESTEAL%}% 生命偷取。\n施法后约 {C:HeadlessSystem.TENDRIL_PASS_SEC} 秒，触须<b>穿过时</b>命中所有单位：敌人受到（{C:HeadlessSystem.TENDRIL_PASS_FOE%}%×攻击力({ATK}) = {N:ATK}）物理伤害并被眩晕，友军受到（{C:HeadlessSystem.TENDRIL_PASS_ALLY%}%×攻击力 = {N:HeadlessSystem.TENDRIL_PASS_ALLY*ATK}）物理伤害并被眩晕。\n施法后约 {C:HeadlessSystem.TENDRIL_DETACH_SEC} 秒，触须<b>脱离时</b>：敌人受到（{C:HeadlessSystem.TENDRIL_DETACH_FOE%}%×攻击力 = {N:HeadlessSystem.TENDRIL_DETACH_FOE*ATK}）物理伤害，友军受到（{C:HeadlessSystem.TENDRIL_DETACH_ALLY%}%×攻击力 = {N:HeadlessSystem.TENDRIL_PASS_ALLY*ATK}）物理伤害，并解除眩晕、恢复行动。\n<span style=\"color:#8a93a0\">施法期间无头龟自身被硬控 {C:HeadlessSystem.TENDRIL_SELF_STUN} 秒，无法移动或攻击。\n</span>"
       },
       {
