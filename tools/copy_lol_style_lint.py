@@ -125,7 +125,7 @@ def collect():
     for f in ['data/pets.json', 'data/phase2-equipment.json', 'data/status.json']:   # status.json 2026-10-15 补: 状态页的「结算」「普攻」一直漏着
         _walk(json.load(io.open(os.path.join(ROOT, f), encoding='utf-8')), '', acc, f)
     ## ★2026-10-13 补 phase2_types.gd(羁绊机制 TYPE_INTRO + 逐档 TIER_DESCS): 原来不扫, 枪羁绊里的「；」「——」「→」一直漏着
-    for f in ['scripts/gamedata/minion_codex.gd', 'scripts/gamedata/glossary.gd', 'scripts/gamedata/phase2_types.gd']:
+    for f in ['scripts/gamedata/minion_codex.gd', 'scripts/gamedata/glossary.gd', 'scripts/gamedata/phase2_types.gd', 'scripts/scenes/TrainerConfigScene.gd']:   # 训龟大师技能说明 2026-10-15 补
         s = io.open(os.path.join(ROOT, f), encoding='utf-8').read()
         for m in re.finditer(r'"((?:[^"\\\n]|\\.)*[\u4e00-\u9fff](?:[^"\\\n]|\\.)*)"', s):
             ls = s.rfind('\n', 0, m.start()) + 1
