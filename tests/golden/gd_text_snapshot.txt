@@ -407,14 +407,14 @@ scripts/gamedata/phase2_minion.gd|lit|挥砍
 scripts/gamedata/phase2_minion.gd|lit|整排挥砍
 scripts/gamedata/phase2_minion.gd|lit|深海小将
 scripts/gamedata/phase2_minion.gd|lit|深海小将精英
-scripts/gamedata/phase2_types.gd|lit|【亡灵】友方单位阵亡时原地召唤 1 只亡魂，继承其一部分攻击力与生命值，自动攻击最近的敌人。亡魂阵亡后可再循环，每次属性 ×0.9。
+scripts/gamedata/phase2_types.gd|lit|【亡灵】友方单位阵亡时原地召唤 1 只亡魂，继承其一部分攻击力与生命值，自动攻击最近的敌人。亡魂阵亡后可再循环，每次属性降为 90%。
 scripts/gamedata/phase2_types.gd|lit|【余韵】友军受到治疗时，额外获得相当于治疗量一定比例的护盾。
 scripts/gamedata/phase2_types.gd|lit|【僵硬】全队每段攻击为目标叠加 1 层僵硬，每层降低 2% 攻击力，至多 20 层，持续 5 秒，叠加时刷新持续时间。
 scripts/gamedata/phase2_types.gd|lit|【共鸣】每 7.5 秒，全队每个友军回复 15% 最大生命值，并净化 2 种减益，依次为眩晕、减速、灼烧、中毒、诅咒。
-scripts/gamedata/phase2_types.gd|lit|【冰封】全队攻击有概率冻结目标 1.5 秒。同一目标每 2.5 秒至多被冻结 1 次，解冻后 1.5 秒内免疫冻结。
-scripts/gamedata/phase2_types.gd|lit|【剑士】携带剑者每次攻击后追打目标，追打以 5 倍攻击速度的节奏出手，伤害随身上剑件数提高，可触发命中效果。
+scripts/gamedata/phase2_types.gd|lit|【冰封】全队攻击有概率冰封目标 1.5 秒。同一目标每 2.5 秒至多被冰封 1 次，冰封结束后 1.5 秒内免疫冰封。
+scripts/gamedata/phase2_types.gd|lit|【剑士】携带剑者每次攻击后追打目标，追打以 500% 攻击速度出手，伤害随身上剑件数提高，可触发命中效果。
 scripts/gamedata/phase2_types.gd|lit|【圣光·强化】盾类装备为携带者提供护盾或治疗时，额外提供其 20% 的圣光护盾值，圣光护盾装备生成的圣光护盾值 +20%。
-scripts/gamedata/phase2_types.gd|lit|【圣光护盾】获得「圣光护盾」装备，可在背包自由装配，不占装备位与单只上限，羁绊掉档时消失。携带者 +250 最大生命值，每 3 秒获得 55 点圣光护盾值。圣光护盾存在时，每段受到的伤害对攻击者反击 2 点真实伤害。
+scripts/gamedata/phase2_types.gd|lit|【圣光护盾】获得【圣光护盾】装备，可在背包自由装配，不占装备位与单只上限，羁绊掉档时消失。携带者 +250 最大生命值，每 3 秒获得 55 点圣光护盾值。圣光护盾存在时，每段受到的伤害对攻击者反击 2 点真实伤害。
 scripts/gamedata/phase2_types.gd|lit|【处决】全队攻击时，目标生命值百分比低于斩杀线则直接处决。斩杀线随攻击者的暴击率提高。
 scripts/gamedata/phase2_types.gd|lit|【学院】队伍全体额外获得最大生命值。
 scripts/gamedata/phase2_types.gd|lit|【怒气】全队每个单位每累计受到 400 点伤害，对最近的敌人释放一次冲击波，造成基于自身最大生命值的真实伤害，并获得该伤害 20% 的护盾。
@@ -423,7 +423,7 @@ scripts/gamedata/phase2_types.gd|lit|【战利品】每击杀 1 名猎物，全�
 scripts/gamedata/phase2_types.gd|lit|【拍击蓄能】触手每 {C:SpiritSynergySystem.SLAP_PERIOD} 秒获得 1 层拍击层数，无上限。空闲且射程内有敌人时消耗 1 层，朝最近的敌人拍下，对沿途敌人造成（{C:SpiritSynergySystem.HIT_HP_PCT%}% 目标最大生命值 + {C:SpiritSynergySystem.HIT_FLAT}）物理伤害。
 scripts/gamedata/phase2_types.gd|lit|【收殓】敌方单位阵亡时，为最近的携带盾者提供相当于该单位 30% 最大生命值的护盾。
 scripts/gamedata/phase2_types.gd|lit|【斩首】攻击生命值低于 20% 的猎物时，直接处决。
-scripts/gamedata/phase2_types.gd|lit|【易碎】被冻结或眩晕的敌人受到的伤害提高。
+scripts/gamedata/phase2_types.gd|lit|【易碎】被冰封或眩晕的敌人受到的伤害提高。
 scripts/gamedata/phase2_types.gd|lit|【灵泉】每 2.5 秒，全队回复已损失生命值的一定比例。
 scripts/gamedata/phase2_types.gd|lit|【炮台一】在我方前方生成一座炮台，每 2.5 秒朝最近的敌人轰击，对炮台与该敌人连线上的所有敌人造成 80 物理伤害，无视护甲，并为生命值最低的友军回复相当于造成伤害 30% 的生命值。
 scripts/gamedata/phase2_types.gd|lit|【炮台三·火控】在后方生成第三座炮台，为携带枪者接通火控，使其额外造成真实伤害。
@@ -431,7 +431,7 @@ scripts/gamedata/phase2_types.gd|lit|【炮台二】在中心生成第二座炮�
 scripts/gamedata/phase2_types.gd|lit|【猎物】每 2.5 秒，将敌方当前生命值最高的 1 名单位标记为猎物，龟蛋除外，猎物死亡后下个周期重选。全队对猎物造成的伤害提高。
 scripts/gamedata/phase2_types.gd|lit|【生死界】携带遗物者生命值高于 50% 时攻击力提高，低于 50% 时生命偷取翻倍。
 scripts/gamedata/phase2_types.gd|lit|【盛宴】每 2.5 秒，全队回复已损失生命值的 3%。
-scripts/gamedata/phase2_types.gd|lit|【腐蚀·穿透】全队攻击无视目标一部分护甲与魔法抗性。
+scripts/gamedata/phase2_types.gd|lit|【腐蚀·穿透】全队攻击无视目标一部分护甲与魔抗。
 scripts/gamedata/phase2_types.gd|lit|【腐蚀叠层】每 2.5 秒，所有敌方单位 +1 层【腐蚀】，每层提高其受到的伤害，至多 5 层。腐蚀满 5 层的敌人，受到的一部分伤害转化为真实伤害。
 scripts/gamedata/phase2_types.gd|lit|【血祭】全队每个单位每损失 1% 生命值，攻击力提高一定比例。
 scripts/gamedata/phase2_types.gd|lit|【觉醒】本路战斗开始 20 秒后，已累积的远古之力提高 50%。
@@ -452,13 +452,13 @@ scripts/gamedata/phase2_types.gd|lit|斧头·砍伐
 scripts/gamedata/phase2_types.gd|lit|无敌的触手登场作战。
 scripts/gamedata/phase2_types.gd|lit|枪
 scripts/gamedata/phase2_types.gd|lit|枪·神枪手
-scripts/gamedata/phase2_types.gd|lit|每件剑 +15 攻击力 · 【剑士】追打 1 次，每次 25% × 身上剑件数 的伤害 · 【血祭】每损失 1% 生命值 +0.3% 攻击力
-scripts/gamedata/phase2_types.gd|lit|每件剑 +25 攻击力 · 【剑士】追打 2 次，每次 40% × 身上剑件数 的伤害 · 【血祭】每损失 1% 生命值 +0.5% 攻击力
-scripts/gamedata/phase2_types.gd|lit|每件剑 +8 攻击力 · 【剑士】追打 1 次，每次 18% × 身上剑件数 的伤害 · 【血祭】每损失 1% 生命值 +0.1% 攻击力
-scripts/gamedata/phase2_types.gd|lit|每件奇械 +10 魔法抗性 · 【铸币】每次 2 枚，每场至多 9 枚 · 【冰封】15% 概率
-scripts/gamedata/phase2_types.gd|lit|每件奇械 +16 魔法抗性 · 【铸币】每次 3 枚，每场至多 14 枚 · 【冰封】25% 概率 · 【僵硬】生效
-scripts/gamedata/phase2_types.gd|lit|每件奇械 +23 魔法抗性 · 【铸币】每次 3 枚，每场至多 20 枚 · 【冰封】40% 概率 · 【僵硬】生效 · 【易碎】受到的伤害 +25%
-scripts/gamedata/phase2_types.gd|lit|每件奇械 +4 魔法抗性 · 【铸币】每次 1 枚，每场至多 5 枚
+scripts/gamedata/phase2_types.gd|lit|每件剑 +15 攻击力 · 【剑士】追打 1 次，每次 25% × 身上剑件数的伤害 · 【血祭】每损失 1% 生命值 +0.3% 攻击力
+scripts/gamedata/phase2_types.gd|lit|每件剑 +25 攻击力 · 【剑士】追打 2 次，每次 40% × 身上剑件数的伤害 · 【血祭】每损失 1% 生命值 +0.5% 攻击力
+scripts/gamedata/phase2_types.gd|lit|每件剑 +8 攻击力 · 【剑士】追打 1 次，每次 18% × 身上剑件数的伤害 · 【血祭】每损失 1% 生命值 +0.1% 攻击力
+scripts/gamedata/phase2_types.gd|lit|每件奇械 +10 魔抗 · 【铸币】每次 2 枚，每场至多 9 枚 · 【冰封】15% 概率
+scripts/gamedata/phase2_types.gd|lit|每件奇械 +16 魔抗 · 【铸币】每次 3 枚，每场至多 14 枚 · 【冰封】25% 概率 · 【僵硬】生效
+scripts/gamedata/phase2_types.gd|lit|每件奇械 +23 魔抗 · 【铸币】每次 3 枚，每场至多 20 枚 · 【冰封】40% 概率 · 【僵硬】生效 · 【易碎】受到的伤害 +25%
+scripts/gamedata/phase2_types.gd|lit|每件奇械 +4 魔抗 · 【铸币】每次 1 枚，每场至多 5 枚
 scripts/gamedata/phase2_types.gd|lit|每件弓箭 +16% 暴击率 · 【处决】斩杀线 7% + 10% × 暴击率 · 【腐蚀·穿透】10% · 【腐蚀叠层】每层 +3%，满层转化 20%
 scripts/gamedata/phase2_types.gd|lit|每件弓箭 +22% 暴击率 · 【处决】斩杀线 10% + 10% × 暴击率 · 【腐蚀·穿透】22% · 【腐蚀叠层】每层 +4%，满层转化 35%
 scripts/gamedata/phase2_types.gd|lit|每件弓箭 +9% 暴击率 · 【处决】斩杀线 4% + 10% × 暴击率 · 【腐蚀·穿透】4% · 【腐蚀叠层】每层 +2%，满层转化 10%
@@ -470,10 +470,10 @@ scripts/gamedata/phase2_types.gd|lit|每件法器 +14 魔法穿透、+10 最大�
 scripts/gamedata/phase2_types.gd|lit|每件法器 +4 魔法穿透、+4 最大龟能 · 【法力】充满需要 180，未激活时 200
 scripts/gamedata/phase2_types.gd|lit|每件法器 +7 魔法穿透、+6 最大龟能 · 【法力】充满需要 150 · 【灵泉】5%
 scripts/gamedata/phase2_types.gd|lit|每件法器拥有独立的【法力】，充满时释放该法器的主动效果。每 2.5 秒回复 15 点，携带者造成或受到伤害时也会回复。
-scripts/gamedata/phase2_types.gd|lit|每件灵物 +13% 闪避率 · 2 根触手，拍击伤害 +50% · 【闪避蓄能】生效 · 【亡灵】继承 65%，循环 2 次
-scripts/gamedata/phase2_types.gd|lit|每件灵物 +18% 闪避率 · 2 根触手，拍击伤害 +100% · 【闪避蓄能】生效 · 【亡灵】继承 100%，循环 3 次
-scripts/gamedata/phase2_types.gd|lit|每件灵物 +5% 闪避率 · 1 根触手 · 【亡灵】继承 20%，不循环
-scripts/gamedata/phase2_types.gd|lit|每件灵物 +9% 闪避率 · 2 根触手 · 【闪避蓄能】生效 · 【亡灵】继承 38%，循环 1 次
+scripts/gamedata/phase2_types.gd|lit|每件灵物 +13% 闪避 · 2 根触手，拍击伤害 +50% · 【闪避蓄能】生效 · 【亡灵】继承 65%，循环 2 次
+scripts/gamedata/phase2_types.gd|lit|每件灵物 +18% 闪避 · 2 根触手，拍击伤害 +100% · 【闪避蓄能】生效 · 【亡灵】继承 100%，循环 3 次
+scripts/gamedata/phase2_types.gd|lit|每件灵物 +5% 闪避 · 1 根触手 · 【亡灵】继承 20%，不循环
+scripts/gamedata/phase2_types.gd|lit|每件灵物 +9% 闪避 · 2 根触手 · 【闪避蓄能】生效 · 【亡灵】继承 38%，循环 1 次
 scripts/gamedata/phase2_types.gd|lit|每件盾 +13 护甲 · 【怒气】冲击波 6% 最大生命值 · 【圣光护盾】2 件 · 【收殓】生效
 scripts/gamedata/phase2_types.gd|lit|每件盾 +22 护甲 · 【怒气】冲击波 8% 最大生命值 · 【圣光护盾】2 件 · 【收殓】生效 · 【圣光·强化】生效
 scripts/gamedata/phase2_types.gd|lit|每件盾 +5 护甲 · 【怒气】冲击波 4% 最大生命值 · 【圣光护盾】1 件

@@ -24,9 +24,9 @@ const Phase2Types := preload("res://scripts/gamedata/phase2_types.gd")
 
 ## 属性 key → 文案里用的中文名。★加新属性时这里也要加，否则 ② 会把它当"文案里多出来的"。
 const LABEL := {
-	"atk": "攻击力", "def": "护甲", "mr": "魔法抗性", "crit": "暴击率",
+	"atk": "攻击力", "def": "护甲", "mr": "魔抗", "crit": "暴击率",
 	"critDmg": "暴击伤害", "armorPen": "护甲穿透", "magicPen": "魔法穿透",   # 2026-10-07 统一成战斗面板的「魔法穿透」
-	"_lifestealPct": "生命偷取", "_maxEnergy": "最大龟能", "dodgePct": "闪避率",
+	"_lifestealPct": "生命偷取", "_maxEnergy": "最大龟能", "dodgePct": "闪避",
 	"_aspdPct": "攻击速度", "healAmp": "治疗强度", "shieldAmp": "护盾强度",
 }
 ## 这些 key 在文案里带 % 号

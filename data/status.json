@@ -4,21 +4,21 @@
     "name": "灼烧",
     "iconKey": "status-burn",
     "category": "dot",
-    "desc": "每秒受到魔法伤害：每层 1 点 + 自身最大生命值的 {C:CombatMath.STACK_DOT_MAXHP_PCT%}%。每秒结算后层数变为 {C:CombatMath.STACK_DECAY%}%（向下取整），归零后消失。"
+    "desc": "每秒受到魔法伤害：每层 1 点 + 自身最大生命值的 {C:CombatMath.STACK_DOT_MAXHP_PCT%}%。每秒造成伤害后层数变为 {C:CombatMath.STACK_DECAY%}%（向下取整），降到 0 层时消失。"
   },
   {
     "id": "poison",
     "name": "中毒",
     "iconKey": "status-poison",
     "category": "dot",
-    "desc": "每秒受到魔法伤害：每层 1 点。每秒结算后层数变为 {C:CombatMath.STACK_DECAY%}%（向下取整），归零后消失。"
+    "desc": "每秒受到魔法伤害：每层 1 点。每秒造成伤害后层数变为 {C:CombatMath.STACK_DECAY%}%（向下取整），降到 0 层时消失。"
   },
   {
     "id": "bleed",
     "name": "流血",
     "iconKey": "status-bleed",
     "category": "dot",
-    "desc": "每秒受到物理伤害：每层 1 点。每秒结算后层数变为 {C:CombatMath.STACK_DECAY%}%（向下取整），归零后消失。"
+    "desc": "每秒受到物理伤害：每层 1 点。每秒造成伤害后层数变为 {C:CombatMath.STACK_DECAY%}%（向下取整），降到 0 层时消失。"
   },
   {
     "id": "curse",
@@ -67,28 +67,28 @@
     "name": "魔法护盾",
     "iconKey": "status-magic-shield",
     "category": "buff",
-    "desc": "只吸收魔法伤害，先于护盾承受；物理伤害与真实伤害不受影响。不随时间消失。"
+    "desc": "只吸收魔法伤害，先于护盾承受。物理伤害与真实伤害不受影响。不随时间消失。"
   },
   {
     "id": "dodge",
     "name": "闪避",
     "iconKey": "status-dodge",
     "category": "buff",
-    "desc": "按闪避率完全躲开一次普攻或技能，闪避率上限 {C:RealtimeBattle3DScene.DODGE_CAP%}%。持续伤害与必中攻击无法闪避。"
+    "desc": "按闪避率完全躲开一次攻击或技能，闪避率上限 {C:RealtimeBattle3DScene.DODGE_CAP%}%。持续伤害与必中攻击无法闪避。"
   },
   {
     "id": "stealth",
     "name": "虚化",
     "iconKey": "status-stealth",
     "category": "buff",
-    "desc": "普攻和技能造成的物理伤害降低 {C:GhostSystem.PHASE_PHYS_CUT%}%。流血、魔法伤害和真实伤害不受影响。"
+    "desc": "攻击和技能造成的物理伤害降低 {C:GhostSystem.PHASE_PHYS_CUT%}%。流血、魔法伤害和真实伤害不受影响。"
   },
   {
     "id": "untargetable",
     "name": "不可选中",
     "iconKey": "status-untargetable",
     "category": "buff",
-    "desc": "无法被敌方普攻和指向型技能选为目标，范围伤害仍可命中。"
+    "desc": "无法被敌方攻击和指向型技能选为目标，范围伤害仍可命中。"
   },
   {
     "id": "reflect",
@@ -102,7 +102,7 @@
     "name": "充能",
     "iconKey": "status-cyber-charge",
     "category": "buff",
-    "desc": "赛博龟的充能层：登场 {C:CyberSystem.AI_START_CHARGE} 层，每次释放技能 +1 层；敌人贴近时消耗 1 层自动冲刺躲避。"
+    "desc": "赛博龟的充能层：登场 {C:CyberSystem.AI_START_CHARGE} 层，每次释放技能 +1 层。敌人贴近时消耗 1 层自动冲刺躲避。"
   },
   {
     "id": "chilled",
@@ -137,7 +137,7 @@
     "name": "真火",
     "iconKey": "status-true-fire",
     "category": "debuff",
-    "desc": "持续 {C:EquipSystem.EMBER_TRUEFIRE_SEC} 秒：受到的灼烧伤害改为真实伤害。"
+    "desc": "持续 {C:EquipSystem.EMBER_TRUEFIRE_SEC} 秒：受到的灼烧伤害转为真实伤害。"
   },
   {
     "id": "corrode",
