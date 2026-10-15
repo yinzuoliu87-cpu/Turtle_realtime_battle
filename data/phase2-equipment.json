@@ -570,7 +570,7 @@
     "baseStats1": "+攻12/25/41",
     "shopAvailable": 1,
     "emoji": "🔫",
-    "effectDesc1": "每 {C:EquipSystem.HANDGUN_IV} 秒依次射出 4/5/6 发子弹，每发命中沿途第一个敌人，可被前排单位阻挡，各造成 50/54/60% 攻击力的物理伤害。",
+    "effectDesc1": "每 {C:EquipSystem.HANDGUN_IV} 秒依次射出 4/5/6 发子弹，每发命中沿途第一个敌人，各造成 50/54/60% 攻击力的物理伤害。",
     "effectDesc3": "",
     "img": "equip/brass-pistol.png",
     "effectBrief": "每 {C:EquipSystem.HANDGUN_IV} 秒射出 4/5/6 发子弹，每发造成 50/54/60% 攻击力物理伤害。"
@@ -582,7 +582,7 @@
     "baseStats1": "+攻15/32/50·暴击15/25/40%",
     "shopAvailable": 1,
     "emoji": "🏹",
-    "effectDesc1": "每 {C:EquipSystem.XBOW_IV} 秒朝距离自己最远的敌人方向依次连射 1/2/3 发，每发命中沿途第一个敌人，可被前排单位阻挡，按目标已损失生命值造成 {C:EquipSystem.XBOW_MIN_COEF%}~{C:EquipSystem.XBOW_MAX_COEF%}% 攻击力的物理伤害，目标已损失 {C:EquipSystem.XBOW_LOST_FULL%}% 生命时伤害达到最大。",
+    "effectDesc1": "每 {C:EquipSystem.XBOW_IV} 秒朝距离自己最远的敌人方向依次连射 1/2/3 发，每发命中沿途第一个敌人，按目标已损失生命值造成 {C:EquipSystem.XBOW_MIN_COEF%}~{C:EquipSystem.XBOW_MAX_COEF%}% 攻击力的物理伤害，目标已损失 {C:EquipSystem.XBOW_LOST_FULL%}% 生命时伤害达到最大。",
     "effectDesc3": "",
     "img": "equip/repeat-crossbow.png",
     "effectBrief": "每 {C:EquipSystem.XBOW_IV} 秒朝最远的敌人连射 1/2/3 发，伤害随目标已损失生命值提升。"
