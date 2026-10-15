@@ -95,7 +95,7 @@ func _rock_chunk_erupt(pos2d: Vector2) -> void:   # 岩石破土冒起(石棕灰
 	tw.chain().tween_property(spr, "modulate:a", 0.0, 0.24)
 	tw.chain().tween_callback(spr.queue_free)
 
-func _sk_stone_taunt(u: Dictionary) -> void:                    # 石头龟·嘲讽(用户设计·120龟能): 500码敌4秒硬嘲讽 + 自身1A通用护盾(4秒) + 0.5×护甲减伤4秒 + 将结束砸地(400码1A魔法+击飞1.2s)
+func _sk_stone_taunt(u: Dictionary) -> void:                    # 石头龟·嘲讽(用户设计·120龟能): 500码敌4秒硬嘲讽 + 自身1A通用护盾(4秒) + (0.5×护甲)%减伤4秒(并入减伤属性) + 将结束砸地(400码1A魔法+击飞1.2s)
 	var victims: Array = []
 	for o in battle._targeting._enemies_of(u):
 		if o.get("alive", false) and DetMath.dist(o["pos"], u["pos"]) <= TAUNT_RADIUS:
@@ -103,7 +103,13 @@ func _sk_stone_taunt(u: Dictionary) -> void:                    # 石头龟·嘲
 	battle._taunt(u, victims, TAUNT_SEC)
 	## 用户 2026-10-15「代码上改为通用的护盾」: 原是封板文档点名的永久盾特例, 改为通用护盾(4 秒)。
 	battle._damage._grant_shield(u, u["atk"] * TAUNT_SHIELD_COEF, BattleDamage.COMMON_SHIELD_SEC)
-	u["stone_dr_until"] = battle._t + TAUNT_SEC            # 0.5×护甲%减伤4秒
+	## 嘲讽减伤并入【减伤】属性(用户 2026-10-15「肯定是并入啊」): 原来是 _mitigate_incoming 里另乘的一道,
+	##   面板「减伤」显示 0%、也不受 DamageMath.DR_CAP 90% 总上限约束。施放时按当时护甲算一次, 4 秒后原数扣回。
+	_taunt_dr_off(u)
+	var dr: float = clampf(TAUNT_DR_PER_DEF * float(u["def"]) * 0.01, 0.0, TAUNT_DR_CAP)
+	u["damage_reduction"] = float(u.get("damage_reduction", 0.0)) + dr
+	u["_taunt_dr"] = dr
+	battle._pending_shots.append({"delay": TAUNT_SEC, "fn": func() -> void: _taunt_dr_off(u), "src": u})
 	u["energy_lock_until"] = battle._t + SLAM_DELAY        # 砸击(3.5s)之后龟能才重新充能(用户#8"砸击后龟能才重新充能")
 	battle._aura_vfx("res://assets/sprites/vfx/fx-glow-ring.png", u, TAUNT_RADIUS, Color(0.86, 0.68, 0.42, 0.42), TAUNT_SEC)   # 500码仇恨光环(嘲讽4秒·贴地跟随·用户#8)
 	var uu = u
@@ -118,6 +124,14 @@ func _sk_stone_taunt(u: Dictionary) -> void:                    # 石头龟·嘲
 						o["knock_g"] = -36.111            # 配重力-36.111→ 滞空=2×21.667/36.111=1.2s·峰高=21.667²/(2×36.111)=6.5(解耦时长与抛高)
 		battle._shake(0.06)
 	battle._pending_shots.append({"delay": SLAM_DELAY, "fn": slam, "src": u})
+
+## 撤掉嘲讽给的那份减伤(只撤自己记的数, 不碰别的来源); 重复调用无害。
+func _taunt_dr_off(u: Dictionary) -> void:
+	var g: float = float(u.get("_taunt_dr", 0.0))
+	if g <= 0.0:
+		return
+	u["damage_reduction"] = maxf(0.0, float(u.get("damage_reduction", 0.0)) - g)
+	u["_taunt_dr"] = 0.0
 
 func _sk_rock_shockwave(u: Dictionary) -> void:                  # 石头龟·岩石之躯 主动: 前方带状(±90)岩脊向前破土推进, (0.5DEF+0.5MR)×(1+4%岩层)物理 + 【必中眩晕2s】+ 击退60
 #   (2026-07-19订正: 头注释原写"1%×层眩晕1.5s"是旧版, 用户2026-07-11已改成必中2秒, 见下方 battle._damage._stun 那行); 伤害随波前经过逐个同步(用户2026-07-11补VFX·原=只1个130px环)

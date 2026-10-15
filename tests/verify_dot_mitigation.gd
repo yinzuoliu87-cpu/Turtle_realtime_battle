@@ -93,10 +93,10 @@ func _check_shared_mitigation(src: String) -> void:
 			_fail("%s 没调 _mitigate_incoming —— 两条路径的减伤又分家了" % fn)
 	# 公共函数里必须真的含那几项减伤, 否则"调了"也是空壳
 	var mb := _code_only(_func_body(src, "_mitigate_incoming"))
-	for key in ["eq_marked_until", "_egg_final", "diamond", "stone_rockbody", "stone_dr_until", "flat_dr"]:
+	for key in ["eq_marked_until", "_egg_final", "diamond", "stone_rockbody", "flat_dr"]:
 		if mb.find(key) < 0:
 			_fail("_mitigate_incoming 里缺 %s —— 该项减伤对两条路径都会失效" % key)
-	print("  [共用减伤] 两条路径均调用, 公共函数含 6 项减伤 (调用方 N=%d)" % n)
+	print("  [共用减伤] 两条路径均调用, 公共函数含 5 项减伤 (调用方 N=%d)" % n)
 
 
 ## ② _apply_damage 曾经缺失的钩子

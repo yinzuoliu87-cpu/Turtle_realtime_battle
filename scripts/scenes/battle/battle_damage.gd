@@ -31,7 +31,7 @@ var _dt_wrongowner: Dictionary = {}     # 归属不符(比 fresh 更严)的记�
 ## ★哨兵的第三只眼(2026-08-29): 前两只都只管【飘字颜色对不对】,
 ##   管不了**这一发到底吃没吃护甲/魔抗**。
 ##   `_resolve_dmg` 才是算护甲的地方(effective_resist / resist_multiplier);
-##   `_mitigate_incoming` 只算【减伤类】(damage_reduction / flat_dr / 护盾 / 嘲讽),
+##   `_mitigate_incoming` 只算【受害者侧修正】(flat_dr / 钻石 / 岩层 / 易伤 …; 减伤属性 damage_reduction 不在这里),
 ##   **它没有护甲公式** —— 所以 `raw=false` 只保证"吃减伤", 不保证"吃护甲"。
 ##   ⇒ 一发伤害只要没经过 `_resolve_dmg`, 它就是【无视护甲与魔抗】的定额伤害,
 ##     而文案很可能写着"物理伤害"。用户 2026-08-27:「物理伤害为啥不吃护甲啊」。
@@ -984,6 +984,10 @@ func _dot_after_resist(u: Dictionary, dmg: float, magic: bool, src = null) -> in
 	var out = dmg * mult
 	if src is Dictionary:
 		out *= (1.0 + float(src.get("damage_amp", 0.0)))   # 攻击者增伤(信号放大器038 等)
+	## ★受害者【减伤】属性(用户 2026-10-15「不影响持续伤害（如流血、灼烧）？」): 原来流血/灼烧/中毒一概不吃减伤
+	##   (探针实测 50% 减伤与 0% 减伤掉血一样), 只有直接伤害在 _resolve_dmg 里吃。与直接伤害同一个封顶(DR_CAP 90%)。
+	##   ⚠ 别挪到 _mitigate_incoming: 直接伤害在 _resolve_dmg 已乘过一次, 放那里会重复扣。
+	out *= DamageMath.dr_mult(float(u.get("damage_reduction", 0.0)))
 	_dt_resolved = true                                    # 哨兵第三只眼: 这一段真算过抗性
 	return maxi(1, int(round(out)))
 

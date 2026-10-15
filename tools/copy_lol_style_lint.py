@@ -45,6 +45,11 @@ PAREN_DENSITY_MAX = 15.0  # 每万字【含汉字】括号段数上限(LoL 同�
 CJK = re.compile(r'[\u4e00-\u9fff]')
 UNIT_SPAN = re.compile(r'<span class="([^"]+)">([^<]*)</span>')
 UNIT_END = re.compile(r'(\u79d2|\u7801|\u6b21|\u5c42|\u6bb5)\s*$')   # 秒码次层段(段 2026-10-14 补: 「共 N 段」)
+## ★2026-10-15: 伤害红(物理色)只给伤害数值。用户看嘲讽截图「9% 减伤」是红的 —— {N:} 被当成「随便一个算出来的数」用,
+##   手写的 <span class="val-atk"> 也被拿来强调「永久」「首次」这类普通词(60 处)。中性数值用 {E:}, 回复用 {H:}。
+RED_SPAN_CLS = ('val-atk', 'val-normal')
+N_TAG = re.compile(r'\{N:[^}]*\}')
+CLAUSE_END = re.compile(r'[，。；\n]')
 UNIT_DMG = re.compile(r'\u4f24\u5bb3|\u62a4\u76fe|\u751f\u547d|\u653b\u51fb\u529b|\u6cbb\u7597|\u56de\u590d')
 
 
@@ -73,6 +78,14 @@ def violations(text):
         if cls != 'val-emph' and UNIT_END.search(BRACE.sub('N', inner)) and (BRACE.search(inner) or re.search(r'\d', inner)) \
                 and not UNIT_DMG.search(inner):
             out.append('数字带单位却上了色「%s」' % _strip(inner))
+    for m in UNIT_SPAN.finditer(text):
+        if m.group(1) in RED_SPAN_CLS and '伤害' not in _strip(m.group(2)):
+            out.append('伤害红用在非伤害上「%s」' % _strip(m.group(2)))
+    for m in N_TAG.finditer(text):
+        rest = HTML.sub('', text[m.end():])
+        e = CLAUSE_END.search(rest)
+        if '伤害' not in (rest[:e.start()] if e else rest):
+            out.append('{N:} 后面不是伤害「%s」' % _strip(rest[:12]))
     return out
 
 
@@ -116,6 +129,11 @@ def selftest():
     un = violations('护盾持续 {C:A.SEC} 秒，造成 <span class="val-atk">{N:ATK} 物理伤害</span>，<span class="val-emph">持续 3 秒</span>。')
     assert any('单位' in x for x in up), up
     assert un == [], un
+    ## 伤害红: 阳性 = 红色「永久」/ {N:} 跟减伤; 阴性 = {N:} 跟（公式）物理伤害 / {E:} 跟减伤
+    rp = violations('获得 <span class="val-atk">永久</span>护盾和 {N:DEF*0.5}% 减伤。')
+    rn = violations('造成（{C:A%}%×攻击力 = {N:ATK}）+（{C:B%}% 最大生命值）物理伤害，并获得 {E:DEF*0.5}% 减伤。')
+    assert any('永久' in x for x in rp) and any('{N:}' in x for x in rp), rp
+    assert rn == [], rn
 
 
 def main():
