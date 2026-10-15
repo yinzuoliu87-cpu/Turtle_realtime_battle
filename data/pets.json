@@ -1183,8 +1183,8 @@
         "cd": 0,
         "aoe": true,
         "hpPct": 1.7,
-        "brief": "海盗龟召唤海盗船朝随机敌人发射 {C:PirateSystem.VOLLEY_SHOTS} 发炮弹，每发落地对范围内敌人造成 {N:PirateSystem.VOLLEY_ATK_COEF*ATK} + {C:PirateSystem.VOLLEY_MAXHP_PCT%}% 目标最大生命值物理伤害。",
-        "detail": "海盗龟锁定一名目标，海盗船朝该目标高抛发射六发炮弹，每发对各自落点附近的敌人造成（{C:PirateSystem.VOLLEY_ATK_COEF%}%×攻击力({ATK}) = {N:PirateSystem.VOLLEY_ATK_COEF*ATK}）+ {C:PirateSystem.VOLLEY_MAXHP_PCT%}%目标最大生命值的物理伤害。\n{C:PirateSystem.VOLLEY_SHOTS} 发全部命中时共造成（{C:PirateSystem.VOLLEY_TOTAL_ATK%}%×攻击力({ATK}) = {N:PirateSystem.VOLLEY_ATK_COEF*ATK*PirateSystem.VOLLEY_SHOTS}）+ {C:PirateSystem.VOLLEY_TOTAL_MAXHP%}%目标最大生命值的物理伤害。\n此技能无法被闪避。\n<span style=\"color:#8a93a0\">每发炮弹单独造成伤害，位于多个落点重叠处的敌人会被多次命中。\n</span>"
+        "brief": "海盗龟命令海盗船朝随机敌人发射 {C:PirateSystem.VOLLEY_SHOTS} 发炮弹，每发对落点附近的敌人造成 {N:PirateSystem.VOLLEY_ATK_COEF*ATK} 外加 {C:PirateSystem.VOLLEY_MAXHP_PCT%}% 目标最大生命值的物理伤害。",
+        "detail": "海盗龟命令海盗船朝随机敌人发射 {C:PirateSystem.VOLLEY_SHOTS} 发炮弹，每发对落点附近的敌人造成（{C:PirateSystem.VOLLEY_ATK_COEF%}%×攻击力({ATK}) = {N:PirateSystem.VOLLEY_ATK_COEF*ATK}）外加 {C:PirateSystem.VOLLEY_MAXHP_PCT%}% 目标最大生命值的物理伤害。\n{C:PirateSystem.VOLLEY_SHOTS} 发全部命中时共造成（{C:PirateSystem.VOLLEY_TOTAL_ATK%}%×攻击力({ATK}) = {N:PirateSystem.VOLLEY_ATK_COEF*ATK*PirateSystem.VOLLEY_SHOTS}）外加 {C:PirateSystem.VOLLEY_TOTAL_MAXHP%}% 目标最大生命值的物理伤害。\n此技能无法被闪避。\n<span style=\"color:#8a93a0\">每发炮弹单独造成伤害，位于多个落点重叠处的敌人会被多次命中。\n</span>"
       },
       {
         "name": "朗姆酒",
@@ -1199,8 +1199,8 @@
           "pctMaxHp": 9,
           "turns": 4
         },
-        "brief": "海盗船扔来一瓶朗姆酒，海盗龟每秒回复 {E:HP*PirateSystem.RUM_HOT_PCT} 生命值，持续 {C:PirateSystem.RUM_SEC} 秒，合计 {E:HP*PirateSystem.RUM_HOT_TOTAL}，同时获得 {E:ATK*PirateSystem.RUM_DEF_COEF} 护甲和 {E:ATK*PirateSystem.RUM_MR_COEF} 魔抗，持续 {C:PirateSystem.RUM_SEC} 秒。",
-        "detail": "海盗船扔来一瓶朗姆酒。\n海盗龟每秒回复（{C:PirateSystem.RUM_HOT_PCT%}%×最大生命值({HP}) = {E:HP*PirateSystem.RUM_HOT_PCT}）生命值，持续 {C:PirateSystem.RUM_SEC} 秒，合计 {E:HP*PirateSystem.RUM_HOT_TOTAL}（{C:PirateSystem.RUM_HOT_TOTAL%}% 自身最大生命值）。\n魔抗提升 {E:ATK*PirateSystem.RUM_MR_COEF}（{C:PirateSystem.RUM_MR_COEF%}% 攻击力），护甲提升 {E:ATK*PirateSystem.RUM_DEF_COEF}（{C:PirateSystem.RUM_MR_COEF%}% + {C:PirateSystem.RUM_DEF_EXTRA%}% 攻击力），持续 {C:PirateSystem.RUM_SEC} 秒。\n<span style=\"color:#8a93a0\">持续回复效果可叠加。\n</span>"
+        "brief": "海盗龟命令海盗船扔来一瓶朗姆酒，每秒回复 {E:HP*PirateSystem.RUM_HOT_PCT} 生命值，持续 {C:PirateSystem.RUM_SEC} 秒，合计 {E:HP*PirateSystem.RUM_HOT_TOTAL}，同时获得 {E:ATK*PirateSystem.RUM_DEF_COEF} 护甲和 {E:ATK*PirateSystem.RUM_MR_COEF} 魔抗，持续 {C:PirateSystem.RUM_SEC} 秒。",
+        "detail": "海盗龟命令海盗船扔来一瓶朗姆酒，每秒回复（{C:PirateSystem.RUM_HOT_PCT%}%×最大生命值({HP}) = {E:HP*PirateSystem.RUM_HOT_PCT}）生命值，持续 {C:PirateSystem.RUM_SEC} 秒，合计 {E:HP*PirateSystem.RUM_HOT_TOTAL}，同时获得相当于 {C:PirateSystem.RUM_DEF_COEF%}% 攻击力的护甲和 {C:PirateSystem.RUM_MR_COEF%}% 攻击力的魔抗，持续 {C:PirateSystem.RUM_SEC} 秒。\n<span style=\"color:#8a93a0\">持续回复效果可叠加。\n</span>"
       },
       {
         "name": "海盗船",
