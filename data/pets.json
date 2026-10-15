@@ -981,7 +981,7 @@
         "cd": 0,
         "aoe": true,
         "brief": "彩虹龟射出一道彩虹光，从自身开始在敌我之间交替弹射共 {C:RainbowSystem.REFLECT_BOUNCES} 段：命中友军或自身时回复 {E:RainbowSystem.REFLECT_COEF*ATK} 生命值，命中敌人时造成 {M:RainbowSystem.REFLECT_COEF*ATK} 魔法伤害。",
-        "detail": "被动：彩虹龟每 {C:RainbowSystem.PRISM_PROC_SEC} 秒随机触发以下一种效果：\n• 橙色：全队获得 {C:RainbowSystem.PRISM_LIFESTEAL%}% 生命偷取，持续 {C:RainbowSystem.PRISM_BUFF_SEC} 秒。\n• 黄色：对随机敌人施加（{C:RainbowSystem.PRISM_BURN_COEF%}%×攻击力({ATK}) = {E:RainbowSystem.PRISM_BURN_COEF*ATK}）层灼烧。\n• 青色：对随机敌人施加冰寒，持续 {C:RainbowSystem.PRISM_BUFF_SEC} 秒。\n• 紫色：对随机敌人施加诅咒，持续 {C:RainbowSystem.PRISM_BUFF_SEC} 秒。\n\n主动：彩虹龟从自身开始射出一道彩虹光，在敌我之间交替弹射，共 {C:RainbowSystem.REFLECT_BOUNCES} 段：\n为友军与自身回复（{C:RainbowSystem.REFLECT_COEF%}%×攻击力({ATK}) = {E:RainbowSystem.REFLECT_COEF*ATK}）生命值，对敌人造成（{C:RainbowSystem.REFLECT_COEF%}%×攻击力({ATK}) = {M:RainbowSystem.REFLECT_COEF*ATK}）魔法伤害。",
+        "detail": "被动：彩虹龟每 {C:RainbowSystem.PRISM_PROC_SEC} 秒随机触发以下一种效果：\n橙色：全队获得 {C:RainbowSystem.PRISM_LIFESTEAL%}% 生命偷取，持续 {C:RainbowSystem.PRISM_BUFF_SEC} 秒。\n黄色：对随机敌人施加（{C:RainbowSystem.PRISM_BURN_COEF%}%×攻击力({ATK}) = {E:RainbowSystem.PRISM_BURN_COEF*ATK}）层灼烧。\n青色：对随机敌人施加冰寒，持续 {C:RainbowSystem.PRISM_BUFF_SEC} 秒。\n紫色：对随机敌人施加诅咒，持续 {C:RainbowSystem.PRISM_BUFF_SEC} 秒。\n\n主动：彩虹龟从自身开始射出一道彩虹光，在敌我之间交替弹射，共 {C:RainbowSystem.REFLECT_BOUNCES} 段：\n为友军与自身回复（{C:RainbowSystem.REFLECT_COEF%}%×攻击力({ATK}) = {E:RainbowSystem.REFLECT_COEF*ATK}）生命值，对敌人造成（{C:RainbowSystem.REFLECT_COEF%}%×攻击力({ATK}) = {M:RainbowSystem.REFLECT_COEF*ATK}）魔法伤害。",
         "energyCost": 110
       }
     ],
