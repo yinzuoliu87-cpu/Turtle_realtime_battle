@@ -51,7 +51,7 @@ const RS_RESIST_UP := 0.20       # 自身护甲与魔抗各 +(百分比)
 const RS_RESIST_SEC := 5.0       # 双抗持续(秒)
 const TAUNT_RADIUS := 500.0      # 嘲讽半径(码)
 const TAUNT_SEC := 4.0           # 嘲讽 / 自身减伤 的持续(秒)
-const TAUNT_SHIELD_COEF := 1.0   # 自身永久护盾 = ×ATK (dur=0, 不随嘲讽消失)
+const TAUNT_SHIELD_COEF := 1.0   # 自身通用护盾 = ×ATK (4 秒·COMMON_SHIELD_SEC)
 const TAUNT_DR_PER_DEF := 0.5    # 减伤% = 此系数 × 护甲(再 ×1%)
 const TAUNT_DR_CAP := 0.50       # 减伤上限
 const SLAM_DELAY := 3.5          # 嘲讽开始后第几秒砸地(砸完龟能才重新充能)
@@ -95,14 +95,14 @@ func _rock_chunk_erupt(pos2d: Vector2) -> void:   # 岩石破土冒起(石棕灰
 	tw.chain().tween_property(spr, "modulate:a", 0.0, 0.24)
 	tw.chain().tween_callback(spr.queue_free)
 
-func _sk_stone_taunt(u: Dictionary) -> void:                    # 石头龟·嘲讽(用户设计·120龟能): 500码敌4秒硬嘲讽 + 自身1A永久盾 + 0.5×护甲减伤4秒 + 将结束砸地(400码1A魔法+击飞1.2s)
+func _sk_stone_taunt(u: Dictionary) -> void:                    # 石头龟·嘲讽(用户设计·120龟能): 500码敌4秒硬嘲讽 + 自身1A通用护盾(4秒) + 0.5×护甲减伤4秒 + 将结束砸地(400码1A魔法+击飞1.2s)
 	var victims: Array = []
 	for o in battle._targeting._enemies_of(u):
 		if o.get("alive", false) and DetMath.dist(o["pos"], u["pos"]) <= TAUNT_RADIUS:
 			victims.append(o)
 	battle._taunt(u, victims, TAUNT_SEC)
-	# shield-perm-ok: 封板文档点名的特例 —— 「所有"通用护盾"持续=4秒(嘲讽的"永久护盾"是特例除外)」
-	battle._damage._grant_shield(u, u["atk"] * TAUNT_SHIELD_COEF)          # 1A永久盾(dur=0·不随嘲讽消失)
+	## 用户 2026-10-15「代码上改为通用的护盾」: 原是封板文档点名的永久盾特例, 改为通用护盾(4 秒)。
+	battle._damage._grant_shield(u, u["atk"] * TAUNT_SHIELD_COEF, BattleDamage.COMMON_SHIELD_SEC)
 	u["stone_dr_until"] = battle._t + TAUNT_SEC            # 0.5×护甲%减伤4秒
 	u["energy_lock_until"] = battle._t + SLAM_DELAY        # 砸击(3.5s)之后龟能才重新充能(用户#8"砸击后龟能才重新充能")
 	battle._aura_vfx("res://assets/sprites/vfx/fx-glow-ring.png", u, TAUNT_RADIUS, Color(0.86, 0.68, 0.42, 0.42), TAUNT_SEC)   # 500码仇恨光环(嘲讽4秒·贴地跟随·用户#8)
