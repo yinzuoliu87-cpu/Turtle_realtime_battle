@@ -4206,7 +4206,7 @@ func _resolve_dmg(u: Dictionary, base: float, tgt: Dictionary, magic: bool) -> i
 func _atk_dmg(u: Dictionary, scale: float, tgt: Dictionary, magic: bool = false) -> int:
 	var base: float = u["atk"] * scale
 	if u.get("_vs_fire_bonus", 0.0) > 0.0 and (str(tgt["id"]) == "lava" or str(tgt["id"]) == "phoenix"):
-		base *= 1.0 + float(u["_vs_fire_bonus"])   # 寒冰: 对熔岩/凤凰增伤(天生+20%, 选极寒技覆盖+40%)
+		base *= 1.0 + float(u["_vs_fire_bonus"])   # 寒冰: 对熔岩/凤凰增伤 +20%(寒域被动)
 	return _resolve_dmg(u, base, tgt, magic)
 
 # 只做物理减免(减甲/增伤/减伤/虚化), 不掷暴击 — 供已在上游算过暴击的伤害段(手里剑物理段)复用 _resolve_dmg 的减甲公式而不二次暴击

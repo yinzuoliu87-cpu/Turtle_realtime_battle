@@ -237,8 +237,8 @@ pet|宝箱龟/财宝风暴|brief|宝箱龟以当前目标为中心卷起一片�
 pet|宝箱龟/财宝风暴|detail|宝箱龟以当前目标位置为中心卷起一个，的圆形财宝风暴，持续 2.5 秒，每 0.5 秒造成一次伤害，共 5 次。\n风暴范围内的所有敌人每次受到（20%×攻击力({ATK}) = {N:ChestSystem.STORM_ATK_COEF*ATK}）物理伤害，5 次合计（100%×攻击力({ATK}) = {N:ChestSystem.STORM_ATK_COEF*ATK*ChestSystem.STORM_TICKS}）物理伤害。
 pet|寒冰龟/冰封|brief|寒冰龟冰封目标，造成 {M:IceSystem.FREEZE_DMG*ATK} 魔法伤害，并回复相当于自身护甲与魔抗之和的生命值。\n拥有 20 层冰柱后，额外眩晕目标 2.5 秒。
 pet|寒冰龟/冰封|detail|寒冰龟冰封目标，造成（250%×攻击力({ATK}) = {M:IceSystem.FREEZE_DMG*ATK}）魔法伤害，并回复相当于自身护甲与魔抗之和的生命值。\n拥有 20 层冰柱后，额外眩晕目标 2.5 秒。
-pet|寒冰龟/冰锥|brief|寒冰龟射出冰锥，交替造成 {P:IceSystem.CONE_ATK_COEF*ATK} 物理伤害或魔法伤害，每次命中获得 1 层冰柱。\n每层冰柱提供 5% 攻击速度、1% 护甲和 1% 魔抗，最多 20 层，每路战斗结束时重置。\n<span style="color:#8a93a0">若选择【冰霜】，每层冰柱使其范围 +20%、持续时间 +0.5 秒。</span>
-pet|寒冰龟/冰锥|detail|寒冰龟射出冰锥，交替造成（100%×攻击力({ATK}) = {P:IceSystem.CONE_ATK_COEF*ATK}）物理伤害或魔法伤害，每次命中获得 1 层冰柱。\n每层冰柱提供 5% 攻击速度、1% 护甲和 1% 魔抗，最多 20 层，每路战斗结束时重置。\n<span style="color:#8a93a0">若选择【冰霜】，每层冰柱使其范围 +20%、持续时间 +0.5 秒。</span>
+pet|寒冰龟/冰锥|brief|寒冰龟射出冰锥，交替造成 {P:IceSystem.CONE_ATK_COEF*ATK} 物理伤害或魔法伤害，每次攻击获得 1 层冰柱。\n每层冰柱提供 5% 攻击速度、1% 护甲和 1% 魔抗，最多 20 层，每路战斗结束时重置。\n<span style="color:#8a93a0">若选择【冰霜】，每层冰柱使其范围 +20%、持续时间 +0.5 秒。</span>
+pet|寒冰龟/冰锥|detail|寒冰龟射出冰锥，交替造成（100%×攻击力({ATK}) = {P:IceSystem.CONE_ATK_COEF*ATK}）物理伤害或魔法伤害，每次攻击获得 1 层冰柱。\n每层冰柱提供 5% 攻击速度、1% 护甲和 1% 魔抗，最多 20 层，每路战斗结束时重置。\n<span style="color:#8a93a0">若选择【冰霜】，每层冰柱使其范围 +20%、持续时间 +0.5 秒。</span>
 pet|寒冰龟/冰霜|brief|寒冰龟在目标处降下冰霜领域，持续 5 秒。领域内的敌人魔抗降低 25%，并每 0.5 秒受到 {M:IceSystem.FROST_ATK_COEF*ATK} 魔法伤害。\n每层冰柱使领域范围 +20%、持续时间 +0.5 秒。
 pet|寒冰龟/冰霜|detail|寒冰龟在目标处降下冰霜领域，持续 5 秒。领域内的敌人魔抗降低 25%，并每 0.5 秒受到（25%×攻击力({ATK}) = {M:IceSystem.FROST_ATK_COEF*ATK}）魔法伤害。\n每层冰柱使领域范围 +20%、持续时间 +0.5 秒。\n<span style="color:#8a93a0">满 20 层冰柱时持续 15 秒，共造成 {C:IceSystem.FROST_FULL_TICKS} 次伤害（0 层时 {C:IceSystem.FROST_BASE_TICKS} 次）。</span>
 pet|寒冰龟/团队护盾|brief|寒冰龟使包括自身在内的全体友军获得 {E:IceSystem.TEAM_SHIELD_PCT*HP} 护盾，持续 4 秒。\n护盾到期、被打破或持盾者阵亡时爆裂，对其附近的敌人造成 {M:IceSystem.TEAM_BURST_COEF*ATK} 魔法伤害。\n<span style="color:#8a93a0">场上没有其他友军时，护盾为 {E:IceSystem.TEAM_SHIELD_SOLO_PCT*HP}，爆裂伤害为 {M:IceSystem.TEAM_BURST_SOLO_COEF*ATK}。</span>
