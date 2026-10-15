@@ -901,6 +901,15 @@ func _is_cc_immune(u) -> bool:
 	return battle._t < float((u as Dictionary).get("cc_immune_until", 0.0))
 
 
+## ★施法定身(2026-10-15): 施法期间不能移动、攻击、充龟能 —— 但【不是眩晕】:
+##   不受免控 / 韧性影响, 不显示眩晕, 不吃「被眩晕的敌人受到伤害提高」(奇械易碎)这类加成。
+##   原来打击 / 龟派气波 / 万千触须 / 缩头四处都拿 _stun(自己) 当定身 ⇒ 带免控时定不住,
+##   施法期间又被当成「被眩晕」多挨 25%(用户 2026-10-15「打击这个技能的实现应该有问题吧」)。
+##   读它的只有两处: _tick_unit 的 stunned(不移动不出手) 与龟能充能门槛。
+func channel(u: Dictionary, sec: float) -> void:
+	u["channel_until"] = maxf(float(u.get("channel_until", 0.0)), battle._t + sec)
+
+
 func _stun(u: Dictionary, sec: float, src_tag: String, no_tenacity: bool = false) -> void:
 	# ★免控窗口(2026-07-28): 单位在 cc_immune_until 之前免疫一切眩晕/冻结。
 	#   加在【唯一入口】而不是各技能自己判 —— 财神梭哈投币期免控是第一个用例, 但这是通用能力,

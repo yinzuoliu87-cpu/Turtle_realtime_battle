@@ -71,9 +71,6 @@ const IGNORE := {
 	"shock-mark|scenes/RealtimeBattle3DScene.gd:_sk_dmg_wave#": "技能 elec 参数通道, 当前没有技能传 elec",
 	"untargetable|systems/equip/equip_system.gd:_eq_ink_sac#": "免死墨囊通道: 当前没有装备写 _ink_sac(原 063 已改成别的效果)",
 	# —— 施法者自己的施法定身 / 演出, 不是对敌控制 ——
-	"stun|scenes/RealtimeBattle3DScene.gd:_sk_basic_strike#": "小龟打击: 施法期间定身自己",
-	"stun|scenes/RealtimeBattle3DScene.gd:_sk_basic_chiwave#": "小龟龟派气波: 聚气时定身自己",
-	"stun|systems/skills/hiding_system.gd:_sk_hiding_shrink#": "缩头: 定身自己",
 	"stun|systems/skills/headless_system.gd:_sk_headless_fear#": "恐吓 = 带「恐惧」标记的眩晕, 列在恐惧页",
 	"airborne|systems/equip/eq_arcane_batch.gd:_pestle_leap#": "镇海杵: 携带者自己起跳",
 	"chilled|systems/skills/lava_system.gd:_sk_lava_erupt#": "烈焰暴走: 复用该计时给自己 +30% 移速, 不是冰寒",

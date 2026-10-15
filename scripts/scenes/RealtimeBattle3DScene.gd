@@ -2317,6 +2317,7 @@ const _TS_TIMER_FIELDS := [
 	"bubble_shield_until",
 	"bulwark_until",
 	"candle_hot_until",
+	"channel_until",
 	"crit_fate_until",
 	"deathfloor_until",
 	"diamond_fortify_until",
@@ -2475,7 +2476,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 		_equip_sys._eq_summon_turret(u, int(u.get("_turret_si", 0)))
 	if u.get("_slam", false):   # 火山砸地演出中: 锁AI/移动 (height/pos由slam tween驱动)
 		return
-	var stunned: bool = _t < u["stun_until"]
+	var stunned: bool = _t < u["stun_until"] or _t < float(u.get("channel_until", 0.0))   # channel = 施法定身(不是眩晕, 见 battle_damage.channel)
 
 	# --- 击飞真物理: vy 受重力, height 积分; 横向同时滑 (XZ 像素坐标方向) ---
 	if u["airborne"]:
@@ -2636,7 +2637,7 @@ func _tick_skill_cd(u: Dictionary, delta: float) -> void:
 		var _ie: float = float(u.get("init_energy_bonus", 0.0)) * 0.075   # 装备初始龟能→开局减冷却
 		for s in u.get("active_skills", []):
 			cds[str(s)] = maxf(0.0, _skill_cd(u, str(s)) - _ie)   # 初始龟能: 满冷却 - 初始龟能折算
-	if _t < float(u.get("stun_until", 0.0)) or u.get("airborne", false) or _t < float(u.get("storm_until", 0.0)) or _t < float(u.get("energy_lock_until", 0.0)):
+	if _t < float(u.get("stun_until", 0.0)) or _t < float(u.get("channel_until", 0.0)) or u.get("airborne", false) or _t < float(u.get("storm_until", 0.0)) or _t < float(u.get("energy_lock_until", 0.0)):
 		return   # 眩晕/击飞/风暴/显式龟能锁 → 龟能锁定不充(用户)
 	if _t < float(u.get("rock_shield_until", 0.0)) and float(u.get("shield", 0.0)) > 0.0:
 		return   # 石头岩石护盾: 持盾期锁龟能不充能, 盾破/到期即恢复(用户2026-07-11) → 屏障消失=你就知道盾没了
@@ -5510,29 +5511,8 @@ func _basic_first_blocker(u: Dictionary, dir: Vector2):          # 可被挡直�
 		if along < bestd: bestd = along; best = o
 	return best
 
-func _sk_basic_strike(u: Dictionary, _tgt = null) -> void:      # 小龟·打击(封板·10波序列驱动·80龟能): 全程定身·10波每0.15s·每波随机挑1存活敌当方向·气波可被挡(命中路径第一敌/蛋)·每波0.4A(吃不屈)·[慢飞弹道视觉留F5]
-	_damage._stun(u, BasicConsts.STRIKE_ROOT_SEC, "_sk_basic_strike", true)   # 全程定身(10波×0.15s)
-	for i in range(BasicConsts.STRIKE_WAVES):
-		var fn := func():
-			var es: Array = _targeting._targetable_enemies(u)   # ★方向只从可主动锁的敌里挑(排围栏未破的蛋); 穿过打到蛋仍算(_basic_first_blocker)
-			var dir: Vector2 = Vector2.RIGHT
-			if not es.is_empty():
-				var dt = es[i % es.size()]                       # 随机分布(轮询近似)挑1存活敌当方向
-				var dd: Vector2 = dt["pos"] - u["pos"]
-				if DetMath.vlen(dd) > 1.0: dir = DetMath.norm(dd)
-			var hit = _basic_first_blocker(u, dir)               # 命中路径第一个敌/蛋(可被挡)
-			var end_pos: Vector2 = u["pos"] + dir * 420.0
-			if hit != null:
-				end_pos = hit["pos"]                              # 打到人就停在人身上(不穿透飞满420码)
-			var flight: float = clampf(DetMath.dist(u["pos"], end_pos) / 380.0, 0.12, 1.2)   # 恒速~380码/秒(满420码≈1.1s·慢)
-			_fly_vfx("res://assets/sprites/vfx/qibo-ball.png", u["pos"], end_pos, 52.0, flight, 1.0)   # 打击气波弹
-			if hit != null:                                      # ★伤害同步到气波【视觉命中】(不再放技瞬间掉血·用户2026-07-11)
-				var _h: Dictionary = hit
-				_pending_shots.append({"delay": flight, "fn": func() -> void:
-					if _h.get("alive", false):
-						_damage._apply_damage_from(u, _h, _atk_dmg(u, BasicConsts.STRIKE_COEF, _h), Color("#ff4444"))
-					, "src": u})
-		_pending_shots.append({"delay": float(i) * BasicConsts.STRIKE_GAP, "fn": fn, "src": u})
+func _sk_basic_strike(u: Dictionary, _tgt = null) -> void:      # 小龟·打击(80龟能): 实现在 battle_ballistics.basic_strike(直线技能弹·420 码·随机方向·施法定身)
+	_ballistics.basic_strike(u)
 
 # 气波从 from2d 打向 tgt 时能命中几个敌 (带宽80·射程900) — 供智能位移冲刺评估
 func _chiwave_hits_from(u: Dictionary, from2d: Vector2, tgt: Dictionary) -> int:
@@ -5596,7 +5576,7 @@ func _sk_basic_chiwave(u: Dictionary, tgt) -> void:            # 小龟·龟派�
 	var dir: Vector2 = tgt["pos"] - u["pos"]
 	if DetMath.vlen(dir) < 1.0: dir = Vector2.RIGHT
 	dir = DetMath.norm(dir)
-	_damage._stun(u, 0.6, "_sk_basic_chiwave", true)   # 掌心聚气 0.6s 定身(生成动画期间)
+	_damage.channel(u, 0.6)   # 掌心聚气 0.6s 施法定身(生成动画期间·不是眩晕)
 	var start2: Vector2 = u["pos"]
 	var uu2: Dictionary = u
 	# ── 生成动画(掌心聚气): 回合制提取 chiwave-spawn 6帧×0.1s=0.6s 播一遍 ──

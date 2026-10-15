@@ -587,7 +587,7 @@ func _sk_hiding_shrink(u: Dictionary) -> void:                  # 缩头(封板�
 		mb.tween_interval(0.35)
 		mb.tween_callback(func() -> void:
 			if mref.get("alive", false): battle._skill_ring(mref["pos"], Color(0.6, 0.9, 1.0, 0.6), 50.0))
-	battle._damage._stun(u, SHRINK_SEC, "_sk_hiding_shrink", true)   # 缩头3秒: 不能攻击/移动(定身)
+	battle._damage.channel(u, SHRINK_SEC)   # 缩头3秒: 不能攻击/移动(定身)
 	## ★2026-10-11 全项目通读第五条: 原来是 `= SHRINK_DR` / 3 秒后 `= 0.0` ⇒ 盖掉并永久清掉别的来源的减伤
 	##   (011 / 香火石 / 060 水母伞 / 精英都是 += / -=)。改成同一口径(门禁 verify_shrink_dr_additive)。
 	u["damage_reduction"] = float(u.get("damage_reduction", 0.0)) + SHRINK_DR   # 80%减伤

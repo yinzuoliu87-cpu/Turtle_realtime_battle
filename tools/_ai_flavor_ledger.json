@@ -1,8 +1,6 @@
 {
  "_why": "本文件由 `python tools/codex_text_lint.py --update` 生成, 不要手改。键 = 类别|来源|实体|字段, 值 = 该条文案里的命中次数。**只减不增**。",
  "known": {
-  "固定值·实现备注|龟技能|diamond/坚不可摧|detail": 1,
-  "码·开发单位|状态|fear|desc": 1,
   "码·开发单位|装备|p2eq_003/锋利鲨齿|effectBrief": 1,
   "码·开发单位|装备|p2eq_003/锋利鲨齿|effectDesc1": 1,
   "码·开发单位|装备|p2eq_007/锈蚀阔剑|effectDesc1": 1,
@@ -77,12 +75,12 @@
   "码·开发单位|龟技能|line/墨水炸弹|detail": 1,
   "码·开发单位|龟技能|ninja/炸弹|detail": 1,
   "码·开发单位|龟技能|pirate/海盗船|brief": 1,
-  "码·开发单位|龟技能|pirate/海盗船|detail": 3,
+  "码·开发单位|龟技能|pirate/海盗船|detail": 2,
   "码·开发单位|龟技能|pirate/火炮齐射|detail": 1,
   "码·开发单位|龟技能|rainbow/全色风暴|detail": 1,
   "码·开发单位|龟技能|shell/攻击|detail": 1,
   "码·开发单位|龟技能|shell/暗影|brief": 1,
-  "码·开发单位|龟技能|shell/暗影|detail": 3,
+  "码·开发单位|龟技能|shell/暗影|detail": 2,
   "码·开发单位|龟技能|space/扭曲空间|detail": 1,
   "码·开发单位|龟技能|space/星波|detail": 1,
   "码·开发单位|龟技能|space/虫洞|detail": 4,
@@ -94,7 +92,6 @@
   "码·开发单位|龟被动|pirate|brief": 1,
   "码·开发单位|龟被动|pirate|desc": 1,
   "码·开发单位|龟被动|shell|desc": 1,
-  "码·开发单位|龟被动|two_head|desc": 3,
-  "规格书主语|龟技能|space/虫洞|detail": 1
+  "码·开发单位|龟被动|two_head|desc": 3
  }
 }

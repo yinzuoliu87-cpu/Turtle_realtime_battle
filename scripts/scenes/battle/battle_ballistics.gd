@@ -719,3 +719,124 @@ func fire_flyslash(src: Dictionary, tgt: Dictionary, dmg: int, col: Color) -> vo
 		"afterimage": 0.045,           # ④ 拖尾: 每 45ms 留一个半透明残影, 原地淡出(不画进贴图)
 		"_ai_t": 0.0,
 	})
+
+## ══════════════════════════════════════════════════════════════
+##  ★直线技能弹(skillshot · 2026-10-15)
+## ══════════════════════════════════════════════════════════════
+## 沿 dir 匀速飞 rng 码, 每 SKILLSHOT_STEP 秒往前推一截, 这一截上【第一个】敌人/龟蛋才结算并消失;
+## 一路没碰到就飞满消失。走 _pending_shots ⇒ sim 时间推进、时停按 src 冻结、换路随队列一起清。
+## 由来: 小龟·打击原来在【发射瞬间】用 _basic_first_blocker 定好打谁, 而它不看距离 ⇒
+##   全场射程 + 飞行中走开照样中 + 远处目标的画面被压进 1.2 秒(用户 2026-10-15「诸多不合理」)。
+const SKILLSHOT_STEP := 0.05
+
+func fire_skillshot(src: Dictionary, dir: Vector2, rng: float, speed: float, half_w: float,
+		tex_path: String, size_px: float, on_hit: Callable) -> void:
+	var spr: Sprite3D = _skillshot_sprite(tex_path, size_px, src["pos"], rng / maxf(1.0, speed))
+	## ★弹体节点只存 instance_id, 不让 lambda 捕获节点本身 —— 节点先被收掉、回调后跑时
+	##   Godot 报「Lambda capture was freed」(门禁 tween_capture 守着这一类)。
+	var st := {"pos": src["pos"], "left": rng, "spr_id": spr.get_instance_id() if spr != null else 0}
+	st["step"] = func() -> void:
+		var node: Sprite3D = instance_from_id(int(st["spr_id"])) as Sprite3D if int(st["spr_id"]) != 0 else null
+		var adv: float = minf(speed * SKILLSHOT_STEP, float(st["left"]))
+		var p0: Vector2 = st["pos"]
+		var p1: Vector2 = p0 + dir * adv
+		var hit = _first_on_segment(src, p0, dir, adv, half_w)
+		if hit != null:
+			_skillshot_move(node, p0, (hit as Dictionary)["pos"], SKILLSHOT_STEP)
+			_skillshot_free(node, SKILLSHOT_STEP)
+			on_hit.call(hit)
+			return
+		_skillshot_move(node, p0, p1, SKILLSHOT_STEP)
+		st["pos"] = p1
+		st["left"] = float(st["left"]) - adv
+		if float(st["left"]) <= 0.001:
+			_skillshot_free(node, SKILLSHOT_STEP)
+			return
+		battle._pending_shots.append({"delay": SKILLSHOT_STEP, "fn": st["step"], "src": src})
+	battle._pending_shots.append({"delay": 0.0, "fn": st["step"], "src": src})
+
+
+## 线段 p0 → p0+dir*adv 上离 p0 最近的存活敌人/龟蛋(_enemies_of 天然含蛋不含友 ⇒ 我方不挡)
+func _first_on_segment(src: Dictionary, p0: Vector2, dir: Vector2, adv: float, half_w: float):
+	var best = null
+	var bestd: float = INF
+	for o in battle._targeting._enemies_of(src):
+		if not o.get("alive", false):
+			continue
+		var rel: Vector2 = o["pos"] - p0
+		var along: float = DetMath.dot(rel, dir)
+		if along < 0.0 or along > adv:
+			continue
+		if DetMath.vlen(rel - dir * along) > half_w:
+			continue
+		if along < bestd:
+			bestd = along
+			best = o
+	return best
+
+
+func _skillshot_sprite(tex_path: String, size_px: float, at: Vector2, life: float) -> Sprite3D:
+	var t: Texture2D = load(tex_path)
+	if t == null or battle._world == null:
+		return null
+	var fh: int = maxi(1, t.get_height())
+	var s := Sprite3D.new()
+	s.texture = t
+	s.hframes = maxi(1, int(t.get_width() / fh))
+	s.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	s.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	s.shaded = false
+	s.transparent = true
+	s.pixel_size = (size_px * battle.WS) / float(fh)
+	s.position = battle._world_pos(at, 1.0)
+	battle._world.add_child(s)
+	if s.hframes > 1:
+		var ftw: Tween = battle._reg_tween()
+		ftw.bind_node(s)
+		ftw.tween_property(s, "frame", s.hframes - 1, life)
+	## 兜底: 换路会清 _pending_shots, 弹体节点不在任何列表里 ⇒ 满程时长后无论如何收掉。
+	##   bind_node: 节点先没了 tween 自动作废, 不会再回调到已释放的节点上。
+	var tw: Tween = battle._reg_tween()
+	tw.bind_node(s)
+	tw.tween_interval(life + 0.3)
+	tw.tween_callback(s.queue_free)
+	return s
+
+
+func _skillshot_move(spr: Sprite3D, a: Vector2, b: Vector2, dur: float) -> void:
+	if spr == null or not is_instance_valid(spr):
+		return
+	spr.position = battle._world_pos(a, 1.0)
+	var tw: Tween = battle._reg_tween()
+	tw.bind_node(spr)
+	tw.tween_property(spr, "position", battle._world_pos(b, 1.0), dur)
+
+
+func _skillshot_free(spr: Sprite3D, after: float) -> void:
+	if spr == null or not is_instance_valid(spr):
+		return
+	var tw: Tween = battle._reg_tween()
+	tw.bind_node(spr)
+	tw.tween_interval(after)
+	tw.tween_callback(spr.queue_free)
+
+
+## 小龟·打击: 施法定身, 每 STRIKE_GAP 秒朝【随机】一名可锁定敌人方向发一道直线气波。
+##   ★随机走 _battle_rng(受控 PRNG, 回放可复现)。原来是 es[i % size] 按列表轮流, 文案却写「随机」。
+##   ★小龟中途阵亡就不再发后面的波。
+func basic_strike(u: Dictionary) -> void:
+	battle._damage.channel(u, BasicConsts.STRIKE_ROOT_SEC)
+	for i in range(BasicConsts.STRIKE_WAVES):
+		battle._pending_shots.append({"delay": float(i) * BasicConsts.STRIKE_GAP, "src": u, "fn": func() -> void:
+			if not u.get("alive", false):
+				return
+			var es: Array = battle._targeting._targetable_enemies(u)
+			if es.is_empty():
+				return
+			var dt: Dictionary = es[battle._battle_rng.randi_range(0, es.size() - 1)]
+			var dd: Vector2 = dt["pos"] - u["pos"]
+			var dir: Vector2 = DetMath.norm(dd) if DetMath.vlen(dd) > 1.0 else Vector2.RIGHT
+			fire_skillshot(u, dir, BasicConsts.STRIKE_RANGE, BasicConsts.STRIKE_SPEED, BasicConsts.STRIKE_HALF_W,
+				"res://assets/sprites/vfx/qibo-ball.png", 52.0, func(o: Dictionary) -> void:
+					if o.get("alive", false):
+						battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, BasicConsts.STRIKE_COEF, o), Color("#ff4444")))})

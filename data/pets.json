@@ -59,8 +59,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "小龟随机朝敌人发射 {C:BasicConsts.STRIKE_WAVES} 道气波，每道气波对命中的第一个敌人造成 {N:BasicConsts.STRIKE_COEF*ATK} 物理伤害。\n<span style=\"color:#8a93a0\">施法期间小龟无法移动和攻击，每 {C:BasicConsts.STRIKE_GAP} 秒发射一道。气波可被拦截，可穿过障碍物，不会被友军阻挡。\n</span>",
-        "detail": "小龟举拳蓄力，施法期间无法移动和攻击，连发 {C:BasicConsts.STRIKE_WAVES} 道气波，每 {C:BasicConsts.STRIKE_GAP} 秒一道：\n每道气波随机朝向 1 名存活敌人，沿直线缓慢飞行，命中路径上的第一个敌人或龟蛋时造成（{C:BasicConsts.STRIKE_COEF%}%×攻击力({ATK}) = {N:BasicConsts.STRIKE_COEF*ATK}）物理伤害，此伤害同样受不屈的稀有度增伤加成。气波可被阻挡，可穿过障碍物，不会被友军阻挡。\n最后一道气波发出后恢复行动，龟能开始充能。",
+        "brief": "小龟在 {C:BasicConsts.STRIKE_ROOT_SEC} 秒内连续发射 {C:BasicConsts.STRIKE_WAVES} 道气波，每道朝随机一名敌人飞出，对命中的第一个敌人造成 {N:BasicConsts.STRIKE_COEF*ATK} 物理伤害。施法期间小龟无法移动和攻击。",
+        "detail": "小龟在 {C:BasicConsts.STRIKE_ROOT_SEC} 秒内连续发射 {C:BasicConsts.STRIKE_WAVES} 道气波，每道朝随机一名敌人飞出，对命中的第一个敌人或龟蛋造成（{C:BasicConsts.STRIKE_COEF%}%×攻击力({ATK}) = {N:BasicConsts.STRIKE_COEF*ATK}）物理伤害。施法期间小龟无法移动和攻击。",
         "energyCost": 80
       },
       {
@@ -2154,8 +2154,8 @@
         "pierce": 0,
         "cd": 0,
         "aoe": true,
-        "brief": "无头龟以自身为中心爆发出触须，几乎覆盖整个战场，伸出、停顿与收回共持续 {C:HeadlessSystem.TENDRIL_SELF_STUN} 秒，施法期间获得 {C:HeadlessSystem.TENDRIL_LIFESTEAL%}% 生命偷取。\n触须伸出时命中所有单位：对敌人造成 {C:HeadlessSystem.TENDRIL_PASS_FOE%}% 攻击力的物理伤害并眩晕，对友军造成 {C:HeadlessSystem.TENDRIL_PASS_ALLY%}% 攻击力的伤害并眩晕。\n触须收回时，对敌人造成 {C:HeadlessSystem.TENDRIL_DETACH_FOE%}% 攻击力的伤害，对友军造成 {C:HeadlessSystem.TENDRIL_DETACH_ALLY%}% 攻击力的伤害并解除其控制，使其恢复行动。\n<span style=\"color:#8a93a0\">施法期间无头龟自身也处于硬控状态。\n</span>",
-        "detail": "无头龟亡灵暴走，以自身为中心爆发触须，几乎覆盖整个战场，半径约 {C:HeadlessSystem.TENDRIL_RADIUS} 码。\n本次技能获得 {C:HeadlessSystem.TENDRIL_LIFESTEAL%}% 生命偷取。\n施法后约 {C:HeadlessSystem.TENDRIL_PASS_SEC} 秒，触须<b>穿过时</b>命中所有单位：敌人受到（{C:HeadlessSystem.TENDRIL_PASS_FOE%}%×攻击力({ATK}) = {N:ATK}）物理伤害并被眩晕，友军受到（{C:HeadlessSystem.TENDRIL_PASS_ALLY%}%×攻击力 = {N:HeadlessSystem.TENDRIL_PASS_ALLY*ATK}）物理伤害并被眩晕。\n施法后约 {C:HeadlessSystem.TENDRIL_DETACH_SEC} 秒，触须<b>脱离时</b>：敌人受到（{C:HeadlessSystem.TENDRIL_DETACH_FOE%}%×攻击力 = {N:HeadlessSystem.TENDRIL_DETACH_FOE*ATK}）物理伤害，友军受到（{C:HeadlessSystem.TENDRIL_DETACH_ALLY%}%×攻击力 = {N:HeadlessSystem.TENDRIL_PASS_ALLY*ATK}）物理伤害，并解除眩晕、恢复行动。\n<span style=\"color:#8a93a0\">施法期间无头龟自身被硬控 {C:HeadlessSystem.TENDRIL_SELF_STUN} 秒，无法移动或攻击。\n</span>"
+        "brief": "无头龟以自身为中心爆发出触须，几乎覆盖整个战场，伸出、停顿与收回共持续 {C:HeadlessSystem.TENDRIL_SELF_STUN} 秒，施法期间获得 {C:HeadlessSystem.TENDRIL_LIFESTEAL%}% 生命偷取。\n触须伸出时命中所有单位：对敌人造成 {C:HeadlessSystem.TENDRIL_PASS_FOE%}% 攻击力的物理伤害并眩晕，对友军造成 {C:HeadlessSystem.TENDRIL_PASS_ALLY%}% 攻击力的伤害并眩晕。\n触须收回时，对敌人造成 {C:HeadlessSystem.TENDRIL_DETACH_FOE%}% 攻击力的伤害，对友军造成 {C:HeadlessSystem.TENDRIL_DETACH_ALLY%}% 攻击力的伤害并解除其控制，使其恢复行动。\n<span style=\"color:#8a93a0\">施法期间无头龟无法移动或攻击。\n</span>",
+        "detail": "无头龟亡灵暴走，以自身为中心爆发触须，几乎覆盖整个战场，半径约 {C:HeadlessSystem.TENDRIL_RADIUS} 码。\n本次技能获得 {C:HeadlessSystem.TENDRIL_LIFESTEAL%}% 生命偷取。\n施法后约 {C:HeadlessSystem.TENDRIL_PASS_SEC} 秒，触须<b>穿过时</b>命中所有单位：敌人受到（{C:HeadlessSystem.TENDRIL_PASS_FOE%}%×攻击力({ATK}) = {N:ATK}）物理伤害并被眩晕，友军受到（{C:HeadlessSystem.TENDRIL_PASS_ALLY%}%×攻击力 = {N:HeadlessSystem.TENDRIL_PASS_ALLY*ATK}）物理伤害并被眩晕。\n施法后约 {C:HeadlessSystem.TENDRIL_DETACH_SEC} 秒，触须<b>脱离时</b>：敌人受到（{C:HeadlessSystem.TENDRIL_DETACH_FOE%}%×攻击力 = {N:HeadlessSystem.TENDRIL_DETACH_FOE*ATK}）物理伤害，友军受到（{C:HeadlessSystem.TENDRIL_DETACH_ALLY%}%×攻击力 = {N:HeadlessSystem.TENDRIL_PASS_ALLY*ATK}）物理伤害，并解除眩晕、恢复行动。\n<span style=\"color:#8a93a0\">施法期间无头龟 {C:HeadlessSystem.TENDRIL_SELF_STUN} 秒内无法移动或攻击。\n</span>"
       },
       {
         "name": "灵魂打击",

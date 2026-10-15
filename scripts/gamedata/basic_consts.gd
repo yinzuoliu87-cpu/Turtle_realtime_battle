@@ -57,6 +57,9 @@ const STRIKE_WAVES := 10          # 发几道
 const STRIKE_GAP := 0.15          # 每道间隔(秒)
 const STRIKE_COEF := 0.4          # 每道 ×ATK 物理(吃不屈稀有度增伤)
 const STRIKE_ROOT_SEC := STRIKE_WAVES * STRIKE_GAP   # 推导: 全程定身时长
+const STRIKE_RANGE := 420.0       # 每道气波沿直线飞多远(码) —— 2026-10-15 前命中判定不看距离 = 全场射程
+const STRIKE_SPEED := 380.0       # 匀速(码/秒): 满程 420 码 ≈ 1.1 秒; 不再把远处目标硬压进 1.2 秒
+const STRIKE_HALF_W := 55.0       # 弹道半宽(码): 中线两侧各 55 码内的敌人会被挡下
 const CHI_ATK_COEF := 2.0        # 沿途每敌 ×ATK 物理 (3.5 → 3.0 → 2.0, 第五轮)
 const CHI_KNOCK_SEC := 1.5       # 击飞滞空(秒)
 const CHI_BUFF_SEC := 3.0        # 施法期自增 buff 的持续(秒)

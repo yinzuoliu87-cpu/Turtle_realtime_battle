@@ -525,7 +525,7 @@ const TENDRIL_DETACH_FOE := 1.5   # 收回时 对敌 ×ATK
 const TENDRIL_DETACH_ALLY := 0.5  # 收回时 对友 ×ATK
 
 func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万千触须(封板·160龟能·虐杀原形毁灭者Q1): 1500码内无差别触须(用户2026-07-19; 原为全场)·伸0.3s→停→收3.0s·自身硬控·+22%吸血; 2026-07-17演出: 起手紫黑气爆+裂纹环→100根触须朝上半球随机方向爆出布满全场(Q9"特效得布满")波前由近及远爆出→痉挛定格→3.0s撕扯缩回+吸血红珠回流
-	battle._damage._stun(u, TENDRIL_SELF_STUN, "_sk_headless_tendrils", true)   # 自身硬控全程(施法动作·亡灵拉全场自己也搭进去)
+	battle._damage.channel(u, TENDRIL_SELF_STUN)   # 自身硬控全程(施法动作·亡灵拉全场自己也搭进去)
 	var center: Vector2 = u["pos"]
 	var uu: Dictionary = u
 	# 用户2026-07-17: 中心一个病毒状黑色球体随触须爆发脉动(变大变小)
