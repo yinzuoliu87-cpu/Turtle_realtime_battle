@@ -440,7 +440,7 @@ scripts/gamedata/phase2_types.gd|lit|【血祭】全队每个单位每损失 1% 
 scripts/gamedata/phase2_types.gd|lit|【觉醒】本路战斗开始 20 秒后，已累积的远古之力提高 50%。
 scripts/gamedata/phase2_types.gd|lit|【远古之力】每 2.5 秒，全队永久提高增伤，本场累积、跨路保留，有上限。
 scripts/gamedata/phase2_types.gd|lit|【金弹】每把枪射出若干发子弹后，额外射出 1 发金弹。金弹继承该枪子弹的全部效果并额外造成真实伤害，金弹本身不计入发数。
-scripts/gamedata/phase2_types.gd|lit|【铸币】每 2.5 秒为全队铸造深海币，战斗结算时进账，每场有上限。
+scripts/gamedata/phase2_types.gd|lit|【铸币】每 2.5 秒为全队铸造深海币，战斗结束时获得，每场有上限。
 scripts/gamedata/phase2_types.gd|lit|【闪避蓄能】己方任一单位闪避成功时，每根触手获得 1 层拍击层数。
 scripts/gamedata/phase2_types.gd|lit|【龟蛋加固】本方龟蛋提高最大生命值，并开始还击，射程 420。
 scripts/gamedata/phase2_types.gd|lit|剑

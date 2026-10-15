@@ -42,7 +42,7 @@
     "baseStats1": "+攻15/30/90·暴击25/35/60%·吸血5/9/15%",
     "shopAvailable": 1,
     "emoji": "😈",
-    "effectDesc1": "伤害可处决生命值低于斩杀线的敌人，斩杀线为目标最大生命值的 4/6/12%×（1+暴击率）。处决后回复 {C:EquipSystem.FANG_EXEC_ENERGY} 点龟能，无龟能的单位改为回复 {C:EquipSystem.FANG_EXEC_HEAL} 点生命值。\n此外，每 {C:EquipSystem.FANG_IV} 秒向最近的敌人射出一颗剧毒獠牙，造成 1/1.8/4×攻击力的魔法伤害，并回复相当于该伤害 {C:EquipSystem.FANG_LIFESTEAL%}% 的生命值。",
+    "effectDesc1": "伤害可处决生命值低于斩杀线的敌人，斩杀线为目标最大生命值的 4/6/12%×（1+暴击率）。处决后回复 {C:EquipSystem.FANG_EXEC_ENERGY} 点龟能，无龟能的单位转而回复 {C:EquipSystem.FANG_EXEC_HEAL} 点生命值。\n此外，每 {C:EquipSystem.FANG_IV} 秒向最近的敌人射出一颗剧毒獠牙，造成 1/1.8/4×攻击力的魔法伤害，并回复相当于该伤害 {C:EquipSystem.FANG_LIFESTEAL%}% 的生命值。",
     "effectDesc3": "",
     "img": "equip/tyrant-fang-new.png",
     "effectBrief": "伤害可处决生命值低于最大生命值 4/6/12% 的敌人。每 {C:EquipSystem.FANG_IV} 秒射出一颗毒牙并回复生命值。"
@@ -174,7 +174,7 @@
     "baseStats1": "+生命180/350/1000·反伤12/25/40%",
     "shopAvailable": 1,
     "emoji": "🦔",
-    "effectDesc1": "每累计反伤 300/270/230 点伤害，便获得 50/70/200 点护盾，并强化下一次攻击，使其命中时对目标施加 30/50/90 层流血。\n反伤命中时，目标的治疗强度与护盾强度降低 {C:ThornCut.AMP_CUT%}%，持续 {C:ThornCut.CUT_SEC} 秒。",
+    "effectDesc1": "每累计反伤 300/270/230 点伤害，便获得 50/70/200 点护盾，并使下次攻击命中时对目标施加 30/50/90 层流血。\n反伤命中时，目标的治疗强度与护盾强度降低 {C:ThornCut.AMP_CUT%}%，持续 {C:ThornCut.CUT_SEC} 秒。",
     "effectDesc3": "",
     "img": "equip/eq015-icon.png",
     "effectBrief": "每反伤 300/270/230 点获得护盾，并使下一次攻击施加 30/50/90 层流血。反伤命中时，目标的治疗强度与护盾强度降低 {C:ThornCut.AMP_CUT%}%，持续 {C:ThornCut.CUT_SEC} 秒。"
@@ -282,7 +282,7 @@
     "baseStats1": "+攻20/45/70·魔穿8/15/27·+20龟能",
     "shopAvailable": 1,
     "emoji": "🐲",
-    "effectDesc1": "装备时即拥有 3 层吐息，之后每 {C:RealtimeBattle3DScene.EQ_TICK} 秒获得 1 层。\n达到 3 层时重置层数并召唤喷火龙。龙从自身位置朝最靠近敌群中心的敌人拉出一条直线，飞至最远敌人身后，对直线两侧各 {C:DragonSystem.BREATH_HALF_W} 码内的单位按火柱经过的先后依次结算。敌人受到（45/80/120+1×攻击力）魔法伤害并被施加 20/35/50 层灼烧。\n友军回复（45/80/120+1×攻击力）生命值。",
+    "effectDesc1": "装备时即拥有 3 层吐息，之后每 {C:RealtimeBattle3DScene.EQ_TICK} 秒获得 1 层。\n达到 3 层时重置层数并召唤喷火龙。龙从自身位置朝最靠近敌群中心的敌人拉出一条直线，飞至最远敌人身后，对直线两侧各 {C:DragonSystem.BREATH_HALF_W} 码内的单位按火柱经过的先后依次受到效果。敌人受到（45/80/120+1×攻击力）魔法伤害并被施加 20/35/50 层灼烧。\n友军回复（45/80/120+1×攻击力）生命值。",
     "effectDesc3": "",
     "img": "equip/dungeon-dragon-egg.png",
     "effectBrief": "每 {C:RealtimeBattle3DScene.EQ_TICK} 秒积累 1 层吐息，达到 3 层时召唤喷火龙贯穿全场并施加灼烧。"
@@ -666,7 +666,7 @@
     "baseStats1": "+攻45/90/400",
     "shopAvailable": 1,
     "emoji": "🎯",
-    "effectDesc1": "任何敌人被己方击飞时，为其施加【靶子】标记，该标记不会自行消失。\n自身每 {C:RealtimeBattle3DScene.EQ_TICK} 秒向所有带有靶子的敌人各射出 1 枚飞镖，造成（130/190/600+1.5/3.0/9.0×攻击力）物理伤害并施加 {C:EquipSystem.DART_BLEED_COEF%}%攻击力的流血层数，命中后移除该敌人的靶子。\n此外提供 40/80/150%攻击速度，且自身每 {C:EquipSystem.DART_EVERY} 次攻击会强化下一次攻击，命中时将目标击飞 {C:EquipSystem.DART_KNOCKUP_SEC} 秒。",
+    "effectDesc1": "任何敌人被己方击飞时，为其施加【靶子】标记，该标记不会自行消失。\n自身每 {C:RealtimeBattle3DScene.EQ_TICK} 秒向所有带有靶子的敌人各射出 1 枚飞镖，造成（130/190/600+1.5/3.0/9.0×攻击力）物理伤害并施加 {C:EquipSystem.DART_BLEED_COEF%}%攻击力的流血层数，命中后移除该敌人的靶子。\n此外提供 40/80/150%攻击速度，且自身每 {C:EquipSystem.DART_EVERY} 次攻击后，下次攻击命中时将目标击飞 {C:EquipSystem.DART_KNOCKUP_SEC} 秒。",
     "effectDesc3": "",
     "img": "equip/dungeon-dart.png",
     "effectBrief": "被击飞的敌人获得靶子标记。每 {C:RealtimeBattle3DScene.EQ_TICK} 秒向所有带有靶子的敌人各射出一枚飞镖。"
@@ -702,7 +702,7 @@
     "baseStats1": "+生命100/210/1000·龟能充能+10%",
     "shopAvailable": 1,
     "emoji": "⏳",
-    "effectDesc1": "登场第 {C:TimestopSystem.TS_START_T} 秒开始蓄力，{C:TimestopSystem.TS_CHARGE} 秒后释放【时间停止】：全场其他单位、弹道与特效全部定格，持续 4/7/20 秒。\n此期间只有携带全场最高星级沙漏的龟可以自由攻击、施法与移动，敌我均适用，同星级的沙漏可并存，伤害即时结算，并额外获得 1.5/2/3 倍龟能充能速度，且在时间停止开始时立即获得 40/150/300 点龟能。\n若场上存在更高星级的沙漏，低星级的沙漏在本场不会生效。\n上路战场、下路战场与终极战场各可触发一次。",
+    "effectDesc1": "登场第 {C:TimestopSystem.TS_START_T} 秒开始蓄力，{C:TimestopSystem.TS_CHARGE} 秒后释放【时间停止】：全场其他单位、弹道与特效全部定格，持续 4/7/20 秒。\n此期间只有携带全场最高星级沙漏的龟可以自由攻击、施法与移动，敌我均适用，同星级的沙漏可并存，伤害立即生效，并额外获得 1.5/2/3 倍龟能充能速度，且在时间停止开始时立即获得 40/150/300 点龟能。\n若场上存在更高星级的沙漏，低星级的沙漏在本场不会生效。\n上路战场、下路战场与终极战场各可触发一次。",
     "effectDesc3": "",
     "img": "equip/dungeon-hourglass.png",
     "effectBrief": "登场第 {C:TimestopSystem.TS_START_T} 秒发动时间停止，全场定格 4/7/20 秒，每个战场各一次。"
@@ -741,7 +741,7 @@
     "effectDesc1": "闪避一次攻击后，强化自身的下一次攻击：额外造成 0.7/1/1.5 倍攻击力+目标最大生命值 6/8/13%的物理伤害，并回复此次攻击总伤害 {C:EqSpiritBatch.MANTIS_LEECH%}%的生命值。\n强化攻击有 2 秒冷却时间，冷却期间闪避不会触发强化。",
     "effectDesc3": "",
     "img": "equip/p2eq_062.png",
-    "effectBrief": "闪避后强化下一次攻击，额外造成伤害并回复其中 {C:EqSpiritBatch.MANTIS_LEECH%}% 的生命值。"
+    "effectBrief": "闪避后，下次攻击额外造成伤害并回复其中 {C:EqSpiritBatch.MANTIS_LEECH%}% 的生命值。"
   },
   {
     "id": "p2eq_063",
@@ -1002,7 +1002,7 @@
     "baseStats1": "+攻速10/18/30%·+移速7/13/22%",
     "shopAvailable": 1,
     "emoji": "🗡️",
-    "effectDesc1": "效果随自身为近战或远程而改变。\n近战携带：获得 {C:EqBladeBatch.HH_MELEE_RANGE} 码射程，攻击改为红色闪电激光，并获得 {C:EqBladeBatch.HH_MELEE_AMP%}% 增伤。技能替换为消耗 {C:EqBladeBatch.HH_ENERGY} 龟能的【十字斩】：横斩以 {C:BladeEqVfx.SLASH_REACH} 码、{C:BladeEqVfx.SLASH_DEG_WIDE} 度扫过，造成 40/70/130+0.6/0.9/1.4 倍攻击力的物理伤害，横波再造成 25/45/85+0.4/0.6/0.9 倍攻击力的物理伤害。随后竖斩造成 50/85/160+0.7/1.1/1.7 倍攻击力的物理伤害，竖波再造成 30/55/100+0.5/0.7/1.1 倍攻击力的物理伤害。\n远程携带：射程固定为 {C:EqBladeBatch.HH_RANGED_RANGE} 码，获得 {C:EqBladeBatch.HH_RANGED_DR%}% 减伤、{C:EqBladeBatch.HH_RANGED_HP} 最大生命值、登场时攻击力的 10/15/20%作为额外攻击力、10/12.5/15%生命偷取。每转化 {C:EqBladeBatch.HH_CONV_PER} 码射程，这些属性提升 {C:EqBladeBatch.HH_CONV_BONUS%}%。主动技能不替换。",
+    "effectDesc1": "效果随自身为近战或远程而改变。\n近战携带：获得 {C:EqBladeBatch.HH_MELEE_RANGE} 码射程，攻击变为红色闪电激光，并获得 {C:EqBladeBatch.HH_MELEE_AMP%}% 增伤。技能替换为消耗 {C:EqBladeBatch.HH_ENERGY} 龟能的【十字斩】：横斩以 {C:BladeEqVfx.SLASH_REACH} 码、{C:BladeEqVfx.SLASH_DEG_WIDE} 度扫过，造成 40/70/130+0.6/0.9/1.4 倍攻击力的物理伤害，横波再造成 25/45/85+0.4/0.6/0.9 倍攻击力的物理伤害。随后竖斩造成 50/85/160+0.7/1.1/1.7 倍攻击力的物理伤害，竖波再造成 30/55/100+0.5/0.7/1.1 倍攻击力的物理伤害。\n远程携带：射程固定为 {C:EqBladeBatch.HH_RANGED_RANGE} 码，获得 {C:EqBladeBatch.HH_RANGED_DR%}% 减伤、{C:EqBladeBatch.HH_RANGED_HP} 最大生命值、登场时攻击力的 10/15/20%作为额外攻击力、10/12.5/15%生命偷取。每转化 {C:EqBladeBatch.HH_CONV_PER} 码射程，这些属性提升 {C:EqBladeBatch.HH_CONV_BONUS%}%。主动技能不替换。",
     "effectDesc3": "",
     "img": "equip/p2eq_084.png",
     "effectBrief": "近战携带：技能替换为十字斩，攻击射出红色闪电激光并获得增伤。远程携带：射程转化为生命值、攻击力与生命偷取，并获得减伤。"
@@ -1147,9 +1147,9 @@
     "shopAvailable": 1,
     "emoji": "🪓",
     "effectDesc1": "登场时召唤近战【斧头】，攻击造成 1×攻击力物理伤害，{C:AxeEvolution.MINION_ASPD} 攻击速度、{C:AxeEvolution.MINION_DEF} 双抗，生命值 {C:AxeEvolution.MINION_HP_BASE}＋{C:AxeEvolution.MINION_HP_PER_EXP}×经验，攻击力 {C:AxeEvolution.MINION_ATK_BASE}＋{C:AxeEvolution.MINION_ATK_PER_EXP}×经验。斧头不随自身阵亡离场。\n龟能达 {C:AxeEvolution.ACTIVE_ENERGY} 时，按最大生命值回复 {C:AxeEvolution.ACTIVE_HEAL_PCT%}%并获得 {C:AxeEvolution.ACTIVE_SHIELD_PCT%}%护盾，攻击窃取目标 {C:AxeEvolution.SHIELD_STEAL_PCT%}%护盾（含特殊护盾）。\n砍伐经验：购买 +{C:AxeEvolution.EXP_ON_BUY}，每场 +{C:AxeEvolution.EXP_ON_MATCH}，斧头击杀或 {C:AxeEvolution.ASSIST_WINDOW} 秒内助攻 +{C:AxeEvolution.EXP_ON_KILL}。经验达 {C:AxeEvolution.STAGE_NEEDS} 时进化为石/铁/金/钻石斧并重置进度条，售价改变，经验只增不减。\n只能拥有一把，重复购买转为经验。不可升星，卡池无限，进度每大轮重置。",
-    "effectDesc3": "【最终造物】钻石斧再积累 {C:AxeEvolution.FINAL_NEED} 经验后，可进化为以下其中一种。选定后本大轮锁定，经验不再增长。\n亡灵之斧：+{C:AxeFinalStats.UNDEAD_HP} 生命、+{C:AxeFinalStats.UNDEAD_ATK} 攻击、+{C:AxeFinalStats.UNDEAD_DEF} 双抗。{C:AxeFinalStats.UNDEAD_RING_R} 码环内的敌人每秒受到其 {C:AxeFinalStats.UNDEAD_RING_MAXHP_PCT%}% 最大生命值的魔法伤害。环内每有一个敌人，每秒回复自身 {C:AxeFinalStats.UNDEAD_LEECH_PCT%}% 最大生命值。阵亡 {C:AxeFinalStats.UNDEAD_REVIVE_DELAY} 秒后，斧头以自身最大生命值的 {C:AxeFinalStats.UNDEAD_REVIVE_HP_PCT%}% 重生。\n炽天使：+{C:AxeFinalStats.SERAPH_HP} 生命、+{C:AxeFinalStats.SERAPH_ATK} 攻击、+{C:AxeFinalStats.SERAPH_DEF} 双抗，射程 {C:AxeFinalStats.SERAPH_RANGE} 码。攻击附带 {C:AxeFinalStats.SERAPH_BURN_ON_HIT} 层灼烧。主动技能改为在 {C:AxeFinalStats.SERAPH_CAST_TIME} 秒内投掷 {C:AxeFinalStats.SERAPH_BOOMERANGS} 把回旋镖，此期间不再获得减伤，回旋镖沿直线飞出后返回，半宽 {C:AxeFinalStats.SERAPH_BOOM_R} 码，命中造成 {C:AxeFinalStats.SERAPH_BOOM_ATK}×攻击力的魔法伤害与 {C:AxeFinalStats.SERAPH_BOOM_BURN} 层灼烧。\n全息斧：+{C:AxeFinalStats.HOLO_HP} 生命、+{C:AxeFinalStats.HOLO_ATK} 攻击、+{C:AxeFinalStats.HOLO_DEF} 双抗、+{C:AxeFinalStats.HOLO_ENERGY_RATE%}% 龟能充能速率。攻击为生命值最低的友军提供 {C:AxeFinalStats.HOLO_ONHIT_SHIELD} 护盾与 {C:AxeFinalStats.HOLO_ONHIT_ENERGY} 龟能。主动技能改为插地 {C:AxeFinalStats.HOLO_PLANT_TIME} 秒并获得 {C:AxeFinalStats.HOLO_PLANT_DR%}% 减伤，{C:AxeFinalStats.HOLO_AURA_R} 码内的友军每 {C:AxeFinalStats.HOLO_AURA_TICK} 秒回复 {C:AxeFinalStats.HOLO_AURA_HEAL} 生命值与 {C:AxeFinalStats.HOLO_AURA_ENERGY} 龟能，并获得 +{C:AxeFinalStats.HOLO_AURA_ASPD%}% 攻击速度。\n余烬：+{C:AxeFinalStats.EMBER_HP} 生命、+{C:AxeFinalStats.EMBER_ATK} 攻击、+{C:AxeFinalStats.EMBER_ASPD%}% 攻击速度、+{C:AxeFinalStats.EMBER_MOVE%}% 移速。攻击命中时施加 1 层余烬种子，每层 +{C:AxeFinalStats.EMBER_SEED_EXEC_PCT%}% 处决线（无上限），处决一个单位回复 {C:AxeFinalStats.EMBER_EXEC_ENERGY} 龟能。主动技能改为余烬之光，持续 {C:AxeFinalStats.EMBER_LIGHT_TIME} 秒：{C:AxeFinalStats.EMBER_LIGHT_LIFESTEAL%}% 生命偷取、{C:AxeFinalStats.EMBER_LIGHT_DR%}% 减伤、{C:AxeFinalStats.EMBER_LIGHT_ASPD%}% 攻击速度，免疫控制且不锁定龟能，再次释放时独立叠加。",
+    "effectDesc3": "【最终造物】钻石斧再积累 {C:AxeEvolution.FINAL_NEED} 经验后，可进化为以下其中一种。选定后本大轮锁定，经验不再增长。\n亡灵之斧：+{C:AxeFinalStats.UNDEAD_HP} 生命、+{C:AxeFinalStats.UNDEAD_ATK} 攻击、+{C:AxeFinalStats.UNDEAD_DEF} 双抗。{C:AxeFinalStats.UNDEAD_RING_R} 码环内的敌人每秒受到其 {C:AxeFinalStats.UNDEAD_RING_MAXHP_PCT%}% 最大生命值的魔法伤害。环内每有一个敌人，每秒回复自身 {C:AxeFinalStats.UNDEAD_LEECH_PCT%}% 最大生命值。阵亡 {C:AxeFinalStats.UNDEAD_REVIVE_DELAY} 秒后，斧头以自身最大生命值的 {C:AxeFinalStats.UNDEAD_REVIVE_HP_PCT%}% 重生。\n炽天使：+{C:AxeFinalStats.SERAPH_HP} 生命、+{C:AxeFinalStats.SERAPH_ATK} 攻击、+{C:AxeFinalStats.SERAPH_DEF} 双抗，射程 {C:AxeFinalStats.SERAPH_RANGE} 码。攻击附带 {C:AxeFinalStats.SERAPH_BURN_ON_HIT} 层灼烧。主动技能变为在 {C:AxeFinalStats.SERAPH_CAST_TIME} 秒内投掷 {C:AxeFinalStats.SERAPH_BOOMERANGS} 把回旋镖，此期间不再获得减伤，回旋镖沿直线飞出后返回，半宽 {C:AxeFinalStats.SERAPH_BOOM_R} 码，命中造成 {C:AxeFinalStats.SERAPH_BOOM_ATK}×攻击力的魔法伤害与 {C:AxeFinalStats.SERAPH_BOOM_BURN} 层灼烧。\n全息斧：+{C:AxeFinalStats.HOLO_HP} 生命、+{C:AxeFinalStats.HOLO_ATK} 攻击、+{C:AxeFinalStats.HOLO_DEF} 双抗、+{C:AxeFinalStats.HOLO_ENERGY_RATE%}% 龟能充能速率。攻击为生命值最低的友军提供 {C:AxeFinalStats.HOLO_ONHIT_SHIELD} 护盾与 {C:AxeFinalStats.HOLO_ONHIT_ENERGY} 龟能。主动技能变为插地 {C:AxeFinalStats.HOLO_PLANT_TIME} 秒并获得 {C:AxeFinalStats.HOLO_PLANT_DR%}% 减伤，{C:AxeFinalStats.HOLO_AURA_R} 码内的友军每 {C:AxeFinalStats.HOLO_AURA_TICK} 秒回复 {C:AxeFinalStats.HOLO_AURA_HEAL} 生命值与 {C:AxeFinalStats.HOLO_AURA_ENERGY} 龟能，并获得 +{C:AxeFinalStats.HOLO_AURA_ASPD%}% 攻击速度。\n余烬：+{C:AxeFinalStats.EMBER_HP} 生命、+{C:AxeFinalStats.EMBER_ATK} 攻击、+{C:AxeFinalStats.EMBER_ASPD%}% 攻击速度、+{C:AxeFinalStats.EMBER_MOVE%}% 移速。攻击命中时施加 1 层余烬种子，每层 +{C:AxeFinalStats.EMBER_SEED_EXEC_PCT%}% 处决线（无上限），处决一个单位回复 {C:AxeFinalStats.EMBER_EXEC_ENERGY} 龟能。主动技能变为余烬之光，持续 {C:AxeFinalStats.EMBER_LIGHT_TIME} 秒：{C:AxeFinalStats.EMBER_LIGHT_LIFESTEAL%}% 生命偷取、{C:AxeFinalStats.EMBER_LIGHT_DR%}% 减伤、{C:AxeFinalStats.EMBER_LIGHT_ASPD%}% 攻击速度，免疫控制且不锁定龟能，再次释放时独立叠加。",
     "img": "equip/axe-wood.png",
     "effectBrief": "登场时召唤近战斧头，斧头会回复生命值并获得护盾，攻击窃取目标护盾。",
-    "effectDesc2": "【进化被动】每档额外获得 {C:AxeEvolution.PASSIVE_HP} 生命、{C:AxeEvolution.PASSIVE_ATK} 攻击、{C:AxeEvolution.PASSIVE_DEF} 护甲、{C:AxeEvolution.PASSIVE_MR} 魔抗，售价 +1 费。石斧：每 {C:AxeEvolution.SMASH_IV} 秒强化下一次攻击，使其击飞并短暂击退目标，额外造成 {C:AxeEvolution.SMASH_ATK}×攻击力的物理伤害。\n铁斧：每第 2 次攻击改为竖劈，额外造成目标最大生命值 {C:AxeEvolution.CLEAVE_MAXHP_PCT%}% 的真实伤害，并施加 {C:AxeEvolution.CLEAVE_BLEED} 层流血。\n金斧：每第 1 次攻击改为 {C:AxeEvolution.SWEEP_ARC_DEG}° 横扫，与竖劈交替。每次命中叠加 1 层效率，持续 {C:AxeEvolution.EFF_DUR} 秒，可无限叠加，叠加时刷新持续时间。每层提供 +{C:AxeEvolution.EFF_ASPD%}% 攻击速度与 +{C:AxeEvolution.EFF_MOVE%}% 移动速度。\n钻石斧：释放治疗时改为蓄力，梯形预警区域每 {C:AxeEvolution.CHARGE_STEP} 秒增高 {C:AxeEvolution.CHARGE_H_PER_STEP} 码，共 {C:AxeEvolution.CHARGE_TIME} 秒。蓄力期间获得 {C:AxeEvolution.CHARGE_DR%}% 减伤，且效率计时中断。砸下时，对梯形区域内的每个敌人造成 {C:AxeEvolution.SLAM_ATK}×攻击力的物理伤害，将其高高击飞并眩晕 {C:AxeEvolution.SLAM_STUN} 秒。"
+    "effectDesc2": "【进化被动】每档额外获得 {C:AxeEvolution.PASSIVE_HP} 生命、{C:AxeEvolution.PASSIVE_ATK} 攻击、{C:AxeEvolution.PASSIVE_DEF} 护甲、{C:AxeEvolution.PASSIVE_MR} 魔抗，售价 +1 费。石斧：每 {C:AxeEvolution.SMASH_IV} 秒，下次攻击击飞并短暂击退目标，额外造成 {C:AxeEvolution.SMASH_ATK}×攻击力的物理伤害。\n铁斧：每第 2 次攻击变为竖劈，额外造成目标最大生命值 {C:AxeEvolution.CLEAVE_MAXHP_PCT%}% 的真实伤害，并施加 {C:AxeEvolution.CLEAVE_BLEED} 层流血。\n金斧：每第 1 次攻击变为 {C:AxeEvolution.SWEEP_ARC_DEG}° 横扫，与竖劈交替。每次命中叠加 1 层效率，持续 {C:AxeEvolution.EFF_DUR} 秒，可无限叠加，叠加时刷新持续时间。每层提供 +{C:AxeEvolution.EFF_ASPD%}% 攻击速度与 +{C:AxeEvolution.EFF_MOVE%}% 移动速度。\n钻石斧：释放治疗时变为蓄力，梯形预警区域每 {C:AxeEvolution.CHARGE_STEP} 秒增高 {C:AxeEvolution.CHARGE_H_PER_STEP} 码，共 {C:AxeEvolution.CHARGE_TIME} 秒。蓄力期间获得 {C:AxeEvolution.CHARGE_DR%}% 减伤，且效率计时中断。砸下时，对梯形区域内的每个敌人造成 {C:AxeEvolution.SLAM_ATK}×攻击力的物理伤害，将其高高击飞并眩晕 {C:AxeEvolution.SLAM_STUN} 秒。"
   }
 ]
