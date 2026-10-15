@@ -1879,7 +1879,6 @@ func _open_skill_card(u: Dictionary, k: String, nm: String, role: String, cost: 
 		"icon": str(ent.get("icon", "")), "title": nm,
 		"tag": tag, "tag_col": _ROLE_COL.get(role, Color("#ffce4d")),
 		"body": body,
-		"foot": SkillText.glossary_bb(battle._strip_html(src) if src != "" else body, 14),
 		"table": _skill_breakdown(u, sk, src),
 	})
 	if lv.has("body"):
@@ -2060,7 +2059,6 @@ func _open_equip_card(u: Dictionary, eid: String, star: int, anchor: Control) ->
 		"stats": stats,
 		"body": str(live["body"]),
 		"table": live["rows"],
-		"foot": SkillText.glossary_bb(SkillText.equip_full(edef), 14),
 		"extra_title": "本局",
 		"extra": st_txt if st_txt != "" else "暂无效果",
 	})

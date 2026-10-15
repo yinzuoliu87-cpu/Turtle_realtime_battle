@@ -269,7 +269,6 @@ scripts/gamedata/glossary.gd|lit|地毯轰炸
 scripts/gamedata/glossary.gd|lit|奶油护盾
 scripts/gamedata/glossary.gd|lit|寒冰龟在地面留下的减速领域。冰柱层数会同时提升其范围与持续时间。
 scripts/gamedata/glossary.gd|lit|小木斧召唤的近战随从。属性随累计经验成长。
-scripts/gamedata/glossary.gd|lit|小龟每隔一段时间充能完成的一次强化攻击：造成额外伤害并击飞目标，并将此次伤害的一部分转化为自身的护盾。
 scripts/gamedata/glossary.gd|lit|幽灵护盾
 scripts/gamedata/glossary.gd|lit|开战时为全队提供的护盾，永久不衰减。护盾被击破时对周围的敌人造成伤害。
 scripts/gamedata/glossary.gd|lit|弓箭系叠加在敌人身上的层数，与弓箭羁绊共用同一份层数。
@@ -323,7 +322,6 @@ scripts/gamedata/glossary.gd|lit|金弹
 scripts/gamedata/glossary.gd|lit|金盾
 scripts/gamedata/glossary.gd|lit|锤击
 scripts/gamedata/glossary.gd|lit|靶子
-scripts/gamedata/glossary.gd|lit|龟盾
 scripts/gamedata/minion_codex.gd|lit|人体浪板
 scripts/gamedata/minion_codex.gd|lit|前排 · 近战
 scripts/gamedata/minion_codex.gd|lit|后排 · 远程

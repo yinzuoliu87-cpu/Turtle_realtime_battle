@@ -245,8 +245,8 @@ pet|寒冰龟/团队护盾|brief|寒冰龟为包括自身在内的全体友军�
 pet|寒冰龟/团队护盾|detail|寒冰龟为包括自身在内的全体友军施加等于（5%×最大生命值({HP}) = {E:IceSystem.TEAM_SHIELD_PCT*HP}）的冰霜护盾，持续 4 秒。\n场上没有其他友军时护盾 ×4，即（20%×最大生命值({HP}) = {E:IceSystem.TEAM_SHIELD_SOLO_PCT*HP}）。\n护盾到期、被打破、或持盾者阵亡时爆裂，对持盾者周围的敌人造成（100%×攻击力({ATK}) = {M:IceSystem.TEAM_BURST_COEF*ATK}）魔法伤害，场上没有其他友军时转而为 500%。
 pet|寒冰龟/寒域|brief|寒冰龟登场时展开寒域，使全场所有敌人的攻击速度、龟能充能速度和移动速度各降低 30%。\n此外，寒冰龟对熔岩龟和凤凰龟造成的伤害额外提升 20%。
 pet|寒冰龟/寒域|desc|寒冰龟登场时对全场敌方施加寒域：-30% 攻击速度、-30% 龟能充能速度、-30% 移动速度，持续 12 秒。\n极寒：对熔岩龟与凤凰龟造成额外 +20% 伤害，并免疫灼烧。
-pet|小龟/不屈|brief|小龟对敌人造成的<span class="val-emph">所有伤害</span>按<span class="val-emph">目标的稀有度</span>提升：C +20% 至 SSS +34%。\n每 6 秒，小龟的下一次攻击附带【龟盾】，额外造成 {N:BasicConsts.SHIELD_ATK_COEF*ATK} + 13% 目标已损失生命值的物理伤害，将目标击飞，并获得该伤害 80% 的护盾。
-pet|小龟/不屈|desc|小龟对敌人造成的任何伤害按目标稀有度提高：\n<span style="color:#06d6a0">C</span> +20%　<span style="color:#4cc9f0">B</span> +23%　<span style="color:#3a9abf">A</span> +26%　<span style="color:#c77dff">S</span> +29%　<span style="color:#ffd93d">SS</span> +32%　<span style="color:#ff6b6b">SSS</span> +34%。\n【龟盾】：\n小龟每 6 秒蓄力一次，下次攻击额外造成（150%×攻击力({ATK}) = {N:BasicConsts.SHIELD_ATK_COEF*ATK}）+ 13% 目标已损失生命值的物理伤害，将目标击飞 0.55 秒并将其击退，并获得相当于这两段伤害之和 80% 的永久护盾。
+pet|小龟/不屈|brief|小龟对敌人造成的所有伤害按目标的稀有度提升：C +20% 至 SSS +34%。\n每 6 秒，小龟的下一次攻击额外造成 {N:BasicConsts.SHIELD_ATK_COEF*ATK} 外加 13% 目标已损失生命值的物理伤害，将目标击飞，并获得相当于该伤害 80% 的护盾。
+pet|小龟/不屈|desc|小龟对敌人造成的所有伤害按目标的稀有度提升：\n<span style="color:#06d6a0">C</span> +20%　<span style="color:#4cc9f0">B</span> +23%　<span style="color:#3a9abf">A</span> +26%　<span style="color:#c77dff">S</span> +29%　<span style="color:#ffd93d">SS</span> +32%　<span style="color:#ff6b6b">SSS</span> +34%。\n每 6 秒，小龟的下一次攻击额外造成（150%×攻击力({ATK}) = {N:BasicConsts.SHIELD_ATK_COEF*ATK}）外加 13% 目标已损失生命值的物理伤害，将目标击飞 0.55 秒，并获得相当于该伤害 80% 的护盾。
 pet|小龟/打击|brief|小龟在 1.5 秒内连续发射 10 道气波，每道朝随机一名敌人飞出，对命中的第一个敌人造成 {N:BasicConsts.STRIKE_COEF*ATK} 物理伤害。施法期间小龟无法移动和攻击。
 pet|小龟/打击|detail|小龟在 1.5 秒内连续发射 10 道气波，每道朝随机一名敌人飞出，对命中的第一个敌人造成（40%×攻击力({ATK}) = {N:BasicConsts.STRIKE_COEF*ATK}）物理伤害。施法期间小龟无法移动和攻击。
 pet|小龟/攻击|brief|小龟攻击当前目标，造成 {N:BasicConsts.ATTACK_ATK_COEF*ATK} 物理伤害。
