@@ -52,7 +52,7 @@ func _ready() -> void:
 			# ★反面: 文案里不许再留"随等级涨"的说法(否则玩家按旧文案理解)
 			["不许提大轮等级", "!大轮等级"],
 			# ↓2026-07-30 补: 每层攻速原来是 trainer_system 里的裸 0.05, 门禁不查
-			["每层攻速", "+%d%%攻速" % int(round(TK["MS_HASTE_PER_STACK"] * 100.0))],
+			["每层攻速", "+%d%%攻击速度" % int(round(TK["MS_HASTE_PER_STACK"] * 100.0))],
 		],
 		"hook": [
 			["射程", "%d" % int(K["HOOK_RANGE"])],
@@ -66,18 +66,18 @@ func _ready() -> void:
 			["射程", "%d" % int(SK["fury_potion"]["range"])],
 			["生效半径", "%d码" % int(TK["FURY_RADIUS"])],
 			["持续", "%d秒" % int(TK["FURY_SEC"])],
-			["攻速", "+%d%%攻速" % int(round((TK["FURY_HASTE"] - 1.0) * 100.0))],
+			["攻速", "+%d%%攻击速度" % int(round((TK["FURY_HASTE"] - 1.0) * 100.0))],
 			["龟能充能", "+%d%%龟能充能" % int(round((TK["FURY_ECHARGE"] - 1.0) * 100.0))],
-			["移速", "+%d%%移速" % int(round((TK["FURY_MOVE"] - 1.0) * 100.0))],
+			["移速", "+%d%%移动速度" % int(round((TK["FURY_MOVE"] - 1.0) * 100.0))],
 			["冷却", "冷却%d秒" % int(SK["fury_potion"]["cd"])],
 		],
 		"whistle": [
-			["临时生命", "%d临时生命" % int(TK["WHISTLE_TEMPHP"])],
+			["临时生命", "%d护盾" % int(TK["WHISTLE_TEMPHP"])],
 			# ★2026-07-30 用户改数值: 200 物理 → 100 + 15% 目标最大生命【真实伤害】
 			["气波定值段", "%d点" % int(TK["WHISTLE_WAVE_DMG"])],
 			["气波百分比段", "%d%%目标最大生命" % int(round(TK["WHISTLE_WAVE_MAXHP_PCT"] * 100.0))],
 			["气波射程", "%d码" % int(TK["WAVE_RANGE"])],
-			["削甲", "破甲%d%%" % int(round((1.0 - K["WHISTLE_SHRED_MULT"]) * 100.0))],
+			["削甲", "护甲降低%d%%" % int(round((1.0 - K["WHISTLE_SHRED_MULT"]) * 100.0))],
 			# ↓2026-07-30 补: 这两个时长原来【文案里根本没写】(常量注释自己标着"★文案没写这个时长")
 			["临时血时长", "%d秒" % int(TK["WHISTLE_TEMPHP_SEC"])],
 			["削甲时长", "持续%d秒" % int(TK["WHISTLE_SHRED_SEC"])],
@@ -94,7 +94,7 @@ func _ready() -> void:
 		"glacier": [
 			["长度", "%d码" % int(SK["glacier"]["range"])],
 			["持续", "%d秒" % int(K["GLACIER_SEC"])],
-			["减速", "-%d%%移速" % int(round((1.0 - TK["GLACIER_SLOW_MAG"]) * 100.0))],
+			["减速", "移动速度降低%d%%" % int(round((1.0 - TK["GLACIER_SLOW_MAG"]) * 100.0))],
 			["受伤加成", "+%d%%" % int(round((K["GLACIER_VULN_MULT"] - 1.0) * 100.0))],
 			["冷却", "冷却%d秒" % int(SK["glacier"]["cd"])],
 		],
