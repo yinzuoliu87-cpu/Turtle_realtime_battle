@@ -81,6 +81,11 @@ def violations(text):
     for m in UNIT_SPAN.finditer(text):
         if m.group(1) in RED_SPAN_CLS and '伤害' not in _strip(m.group(2)):
             out.append('伤害红用在非伤害上「%s」' % _strip(m.group(2)))
+    ## ★2026-10-15: 汉字与汉字之间不留空格(「秒 蓄力」「生命偷取 和」「回复 自身」63 处)。空格只挨着数值; 「X×攻击力 物理伤害」这种旧式算式例外。
+    for m in re.finditer(r'[一-鿿，。、）] +[一-鿿（]', HTML.sub('', text)):
+        seg = re.split(r'[，。；：\n]', HTML.sub('', text)[:m.start() + 1])[-1]
+        if '×' not in seg and not re.search('[♠♥♦♣]', seg):
+            out.append('汉字间多余空格「%s」' % m.group(0))
     for m in N_TAG.finditer(text):
         rest = HTML.sub('', text[m.end():])
         e = CLAUSE_END.search(rest)
@@ -134,6 +139,8 @@ def selftest():
     rn = violations('造成（{C:A%}%×攻击力 = {N:ATK}）+（{C:B%}% 最大生命值）物理伤害，并获得 {E:DEF*0.5}% 减伤。')
     assert any('永久' in x for x in rp) and any('{N:}' in x for x in rp), rp
     assert rn == [], rn
+    assert any('空格' in x for x in violations('每 {C:A} 秒 蓄力一次。')), '空格阳性'
+    assert not any('空格' in x for x in violations('每 {C:A} 秒蓄力一次，造成 {N:ATK} 物理伤害。')), '空格阴性'
 
 
 def main():
