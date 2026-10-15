@@ -197,7 +197,7 @@
       "type": "bambooCharge",
       "name": "生长",
       "brief": "竹叶龟每 {C:BambooSystem.GROW_CD} 秒蓄力一次，下次攻击额外造成 {M:ATK*BambooSystem.GROW_ATK_COEF+HP*BambooSystem.GROW_HP_PCT} 魔法伤害，回复 {C:BambooSystem.GROW_HEAL_PCT%}% 自身最大生命值并永久提升最大生命值。",
-      "desc": "竹叶龟每 {C:BambooSystem.GROW_CD} 秒蓄力一次，下次攻击额外造成（{C:BambooSystem.GROW_ATK_COEF%}%×攻击力({ATK}) + {C:BambooSystem.GROW_HP_PCT%}%×最大生命值({HP}) = {M:ATK*BambooSystem.GROW_ATK_COEF+HP*BambooSystem.GROW_HP_PCT}）魔法伤害，回复 {C:BambooSystem.GROW_HEAL_PCT%}% 自身最大生命值，并永久提升（{C:BambooSystem.GROW_MAXHP_PER_ATK%}%×基础攻击力({ATK}) = {E:ATK*BambooSystem.GROW_MAXHP_PER_ATK}）最大生命值。\n若出战时选择了【竹击】，强化效果提升为：造成 {C:BambooSystem.GROW_SMACK_ATK_COEF%}% 攻击力 + {C:BambooSystem.GROW_SMACK_HP_PCT%}% 自身最大生命值的魔法伤害，回复 {C:BambooSystem.GROW_SMACK_HEAL_PCT%}% 自身最大生命值，并永久提升 {C:BambooSystem.GROW_SMACK_MAXHP_PER_ATK%}% 基础攻击力的最大生命值。"
+      "desc": "竹叶龟每 {C:BambooSystem.GROW_CD} 秒蓄力一次，下次攻击额外造成（{C:BambooSystem.GROW_ATK_COEF%}%×攻击力({ATK}) + {C:BambooSystem.GROW_HP_PCT%}%×最大生命值({HP}) = {M:ATK*BambooSystem.GROW_ATK_COEF+HP*BambooSystem.GROW_HP_PCT}）魔法伤害，回复（{C:BambooSystem.GROW_HEAL_PCT%}%×最大生命值({HP}) = {E:BambooSystem.GROW_HEAL_PCT*HP}），并永久提升（{C:BambooSystem.GROW_MAXHP_PER_ATK%}%×基础攻击力({ATK}) = {E:ATK*BambooSystem.GROW_MAXHP_PER_ATK}）最大生命值。\n若出战时选择了【竹击】，强化效果提升为：造成（{C:BambooSystem.GROW_SMACK_ATK_COEF%}%×攻击力({ATK}) + {C:BambooSystem.GROW_SMACK_HP_PCT%}%×最大生命值({HP}) = {M:ATK*BambooSystem.GROW_SMACK_ATK_COEF+HP*BambooSystem.GROW_SMACK_HP_PCT}）魔法伤害，回复（{C:BambooSystem.GROW_SMACK_HEAL_PCT%}%×最大生命值({HP}) = {E:BambooSystem.GROW_SMACK_HEAL_PCT*HP}），并永久提升（{C:BambooSystem.GROW_SMACK_MAXHP_PER_ATK%}%×基础攻击力({ATK}) = {E:ATK*BambooSystem.GROW_SMACK_MAXHP_PER_ATK}）最大生命值。"
     },
     "skillPool": [
       {
@@ -314,7 +314,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "天使龟对目标打出 {C:AngelSystem.EQUAL_SEGMENTS} 道圣光斩弧，共造成 {N:ATK*2} 物理伤害，本次施法附带 {C:AngelSystem.EQUAL_LIFESTEAL%}% 生命偷取。\n若目标稀有度为 A 级及以上，则追加一段，额外造成 {T:AngelSystem.EQUAL_JUDGE_COEF*ATK} 加上 <span class=\"val-true\">{C:AngelSystem.EQUAL_JUDGE_LOST%}% 目标已损生命值</span>的真实伤害。",
-        "detail": "天使龟挥起圣裁，使本次施法获得 {C:AngelSystem.EQUAL_LIFESTEAL%}% 生命偷取。\n随后天使龟对目标打击 <b>{C:AngelSystem.EQUAL_SEGMENTS} 段</b>，每段为 {C:AngelSystem.EQUAL_SEG_COEF%}%攻击力，共造成（{C:AngelSystem.EQUAL_TOTAL%}%×攻击力 = {N:AngelSystem.EQUAL_TOTAL*ATK}）物理伤害。\n如果目标的稀有度是 A 级及以上，则追加一段攻击，造成（{C:AngelSystem.EQUAL_JUDGE_COEF%}%×攻击力 = {T:AngelSystem.EQUAL_JUDGE_COEF*ATK}）+ <span class=\"val-true\">{C:AngelSystem.EQUAL_JUDGE_LOST%}% 目标已损生命值</span>真实伤害。",
+        "detail": "天使龟挥起圣裁，使本次施法获得 {C:AngelSystem.EQUAL_LIFESTEAL%}% 生命偷取。\n随后天使龟对目标打击 <b>{C:AngelSystem.EQUAL_SEGMENTS} 段</b>，每段为（{C:AngelSystem.EQUAL_SEG_COEF%}%×攻击力({ATK}) = {E:AngelSystem.EQUAL_SEG_COEF*ATK}），共造成（{C:AngelSystem.EQUAL_TOTAL%}%×攻击力 = {N:AngelSystem.EQUAL_TOTAL*ATK}）物理伤害。\n如果目标的稀有度是 A 级及以上，则追加一段攻击，造成（{C:AngelSystem.EQUAL_JUDGE_COEF%}%×攻击力 = {T:AngelSystem.EQUAL_JUDGE_COEF*ATK}）+ <span class=\"val-true\">{C:AngelSystem.EQUAL_JUDGE_LOST%}% 目标已损生命值</span>真实伤害。",
         "energyCost": 60
       },
       {
@@ -407,7 +407,7 @@
         "selfCast": true,
         "shieldDuration": 3,
         "brief": "寒冰龟为包括自身在内的全体友军罩上冰霜护盾，护盾量等于自身 {C:IceSystem.TEAM_SHIELD_PCT%}% 最大生命值，持续 {C:IceSystem.TEAM_SHIELD_SEC} 秒。\n护盾到期、被打破或持盾者阵亡时爆裂，对其周围的敌人造成 {C:IceSystem.TEAM_BURST_COEF%}% 攻击力魔法伤害。\n若场上没有其他友军，护盾转而为自身最大生命值 {C:IceSystem.TEAM_SHIELD_SOLO_PCT%}%、爆裂伤害转而为 {C:IceSystem.TEAM_BURST_SOLO_COEF%}% 攻击力。",
-        "detail": "寒冰龟为包括自身在内的全体友军施加等于自身 {C:IceSystem.TEAM_SHIELD_PCT%}% 最大生命值的冰霜护盾，持续 {C:IceSystem.TEAM_SHIELD_SEC} 秒。\n场上没有其他友军时护盾 ×{C:IceSystem.TEAM_SHIELD_SOLO_MULT}，即自身 {C:IceSystem.TEAM_SHIELD_SOLO_PCT%}% 最大生命值。\n护盾到期、被打破、或持盾者阵亡时爆裂，对持盾者周围的敌人造成 {C:IceSystem.TEAM_BURST_COEF%}% 攻击力魔法伤害，场上没有其他友军时转而为 {C:IceSystem.TEAM_BURST_SOLO_COEF%}%。",
+        "detail": "寒冰龟为包括自身在内的全体友军施加等于（{C:IceSystem.TEAM_SHIELD_PCT%}%×最大生命值({HP}) = {E:IceSystem.TEAM_SHIELD_PCT*HP}）的冰霜护盾，持续 {C:IceSystem.TEAM_SHIELD_SEC} 秒。\n场上没有其他友军时护盾 ×{C:IceSystem.TEAM_SHIELD_SOLO_MULT}，即（{C:IceSystem.TEAM_SHIELD_SOLO_PCT%}%×最大生命值({HP}) = {E:IceSystem.TEAM_SHIELD_SOLO_PCT*HP}）。\n护盾到期、被打破、或持盾者阵亡时爆裂，对持盾者周围的敌人造成（{C:IceSystem.TEAM_BURST_COEF%}%×攻击力({ATK}) = {M:IceSystem.TEAM_BURST_COEF*ATK}）魔法伤害，场上没有其他友军时转而为 {C:IceSystem.TEAM_BURST_SOLO_COEF%}%。",
         "energyCost": 120
       }
     ],
@@ -462,7 +462,7 @@
       "name": "忍术",
       "armorPen": 10,
       "brief": "忍者龟获得 {C:NinjaSystem.INSTINCT_CRIT%}% 暴击率、{C:NinjaSystem.INSTINCT_CRIT_DMG%}% 暴击伤害和 {C:NinjaSystem.INSTINCT_ARMOR_PEN} 护甲穿透。\n<span class=\"val-emph\">冲击</span>：\n当附近出现可冲刺的敌人时，忍者龟自动朝最近的敌人冲刺斩击，对主目标造成 {C:NinjaSystem.DASH_MAIN_COEF%}% 攻击力、对路径上其余敌人造成 {C:NinjaSystem.DASH_SIDE_COEF%}% 攻击力物理伤害，并将命中的敌人全部击飞 {C:NinjaSystem.DASH_KNOCK_SEC} 秒。",
-      "desc": "忍者龟获得：\n暴击率 +{C:NinjaSystem.INSTINCT_CRIT%}%，暴击伤害 +{C:NinjaSystem.INSTINCT_CRIT_DMG%}%，护甲穿透 +{C:NinjaSystem.INSTINCT_ARMOR_PEN}。\n<span class=\"val-emph\">冲击</span>：自动进行冲刺斩。当附近出现可冲刺的敌人时，朝最近的敌人进行一次位移冲刺。\n对路径上宽附近的敌人造成物理伤害，主目标受到 {C:NinjaSystem.DASH_MAIN_COEF%}% 攻击力，其余敌人受到 {C:NinjaSystem.DASH_SIDE_COEF%}% 攻击力，并将其全部击飞 {C:NinjaSystem.DASH_KNOCK_SEC} 秒，此伤害不享受伤害递增。\n冲刺的冷却时间为 {C:NinjaSystem.DASH_SELF_CD} 秒，同一敌人被冲刺命中后 {C:NinjaSystem.DASH_TARGET_CD} 秒内不会再次成为冲刺目标。\n<span style=\"color:#888\">施放技能时不会被冲击打断。\n</span>"
+      "desc": "忍者龟获得：\n暴击率 +{C:NinjaSystem.INSTINCT_CRIT%}%，暴击伤害 +{C:NinjaSystem.INSTINCT_CRIT_DMG%}%，护甲穿透 +{C:NinjaSystem.INSTINCT_ARMOR_PEN}。\n<span class=\"val-emph\">冲击</span>：自动进行冲刺斩。当附近出现可冲刺的敌人时，朝最近的敌人进行一次位移冲刺。\n对路径上的敌人造成物理伤害，主目标受到（{C:NinjaSystem.DASH_MAIN_COEF%}%×攻击力({ATK}) = {N:NinjaSystem.DASH_MAIN_COEF*ATK}）物理伤害，其余敌人受到（{C:NinjaSystem.DASH_SIDE_COEF%}%×攻击力({ATK}) = {N:NinjaSystem.DASH_SIDE_COEF*ATK}）物理伤害，并将其全部击飞 {C:NinjaSystem.DASH_KNOCK_SEC} 秒，此伤害不享受伤害递增。\n冲刺的冷却时间为 {C:NinjaSystem.DASH_SELF_CD} 秒，同一敌人被冲刺命中后 {C:NinjaSystem.DASH_TARGET_CD} 秒内不会再次成为冲刺目标。\n<span style=\"color:#888\">施放技能时不会被冲击打断。\n</span>"
     },
     "skillPool": [
       {
@@ -537,7 +537,7 @@
       "hpScale": 2.5,
       "defScale": 0.25,
       "brief": "双头龟拥有远程和近战两种形态，各带一套技能组。\n<span class=\"val-emph\">技能一 / 技能二释放后会自动切换形态</span>，射程随之在 {C:TwoHeadSystem.RANGED_RANGE} ↔ {C:TwoHeadSystem.MELEE_RANGE} 之间切换。\n近战形态提升最大生命值、护甲和魔抗，远程形态则拥有更高的攻击力。\n每次切换都会为<span class=\"val-emph\">下一次攻击</span>附带强化。",
-      "desc": "双头龟拥有远程和近战两种形态与技能组。\n切换近战时：\n最大生命值增加（{C:TwoHeadSystem.MELEE_HP_COEF%}%×攻击力 = {E:ATK*TwoHeadSystem.MELEE_HP_COEF}）\n护甲增加（{C:TwoHeadSystem.MELEE_DEF_COEF%}%×攻击力 = {E:ATK*TwoHeadSystem.MELEE_DEF_COEF}）\n魔抗增加（{C:TwoHeadSystem.MELEE_MR_COEF%}%×攻击力 = {M:ATK*TwoHeadSystem.MELEE_MR_COEF}）\n攻击力降低（{C:TwoHeadSystem.MELEE_ATK_PENALTY%}%×攻击力 = {E:ATK*TwoHeadSystem.MELEE_ATK_PENALTY}）\n获得（{C:TwoHeadSystem.MELEE_SHIELD_COEF%}%×攻击力 = {E:ATK*TwoHeadSystem.MELEE_SHIELD_COEF}）护盾。\n<span class=\"val-emph\">切换时机</span>：\n技能一 / 技能二释放后自动切换形态。\n<span class=\"val-emph\">射程</span>：\n远程 {C:TwoHeadSystem.RANGED_RANGE} 码 ↔ 近战 {C:TwoHeadSystem.MELEE_RANGE} 码，切换为近战形态后需贴身攻击。\n<span class=\"val-emph\">切换强化</span>：切换形态后，下次攻击得到强化。切换为远程形态时，额外造成 {C:TwoHeadSystem.ENH_RANGED_COEF%}% 攻击力物理伤害并使目标 −{C:TwoHeadSystem.ENH_ARMOR_DOWN%}% 护甲，持续 {C:TwoHeadSystem.ENH_SEC} 秒。\n切换为近战形态时，额外造成 {C:TwoHeadSystem.ENH_MELEE_COEF%}% 攻击力魔法伤害并为自己获得 {C:TwoHeadSystem.ENH_SHIELD_COEF%}% 攻击力护盾，持续 {C:TwoHeadSystem.ENH_SEC} 秒。\n<span class=\"val-emph\">切远程时</span>会自动向远离目标的方向后撤。\n<span class=\"val-emph\">切近战时</span>最大生命值与当前生命值同时增加，切回远程时只降低最大生命值，因此生命值较低时每次切换为近战形态均可回复生命值。",
+      "desc": "双头龟拥有远程和近战两种形态与技能组。\n切换近战时：\n最大生命值增加（{C:TwoHeadSystem.MELEE_HP_COEF%}%×攻击力 = {E:ATK*TwoHeadSystem.MELEE_HP_COEF}）\n护甲增加（{C:TwoHeadSystem.MELEE_DEF_COEF%}%×攻击力 = {E:ATK*TwoHeadSystem.MELEE_DEF_COEF}）\n魔抗增加（{C:TwoHeadSystem.MELEE_MR_COEF%}%×攻击力 = {M:ATK*TwoHeadSystem.MELEE_MR_COEF}）\n攻击力降低（{C:TwoHeadSystem.MELEE_ATK_PENALTY%}%×攻击力 = {E:ATK*TwoHeadSystem.MELEE_ATK_PENALTY}）\n获得（{C:TwoHeadSystem.MELEE_SHIELD_COEF%}%×攻击力 = {E:ATK*TwoHeadSystem.MELEE_SHIELD_COEF}）护盾。\n<span class=\"val-emph\">切换时机</span>：\n技能一 / 技能二释放后自动切换形态。\n<span class=\"val-emph\">射程</span>：\n远程 {C:TwoHeadSystem.RANGED_RANGE} 码 ↔ 近战 {C:TwoHeadSystem.MELEE_RANGE} 码，切换为近战形态后需贴身攻击。\n<span class=\"val-emph\">切换强化</span>：切换形态后，下次攻击得到强化。切换为远程形态时，额外造成（{C:TwoHeadSystem.ENH_RANGED_COEF%}%×攻击力({ATK}) = {N:TwoHeadSystem.ENH_RANGED_COEF*ATK}）物理伤害并使目标 −{C:TwoHeadSystem.ENH_ARMOR_DOWN%}% 护甲，持续 {C:TwoHeadSystem.ENH_SEC} 秒。\n切换为近战形态时，额外造成（{C:TwoHeadSystem.ENH_MELEE_COEF%}%×攻击力({ATK}) = {M:TwoHeadSystem.ENH_MELEE_COEF*ATK}）魔法伤害并为自己获得 {C:TwoHeadSystem.ENH_SHIELD_COEF%}% 攻击力护盾，持续 {C:TwoHeadSystem.ENH_SEC} 秒。\n<span class=\"val-emph\">切远程时</span>会自动向远离目标的方向后撤。\n<span class=\"val-emph\">切近战时</span>最大生命值与当前生命值同时增加，切回远程时只降低最大生命值，因此生命值较低时每次切换为近战形态均可回复生命值。",
       "descMelee": "双头龟拥有远程和近战两种形态与技能组。\n切换远程时：最大生命值减少（250%×攻击力 = {E:ATK*TwoHeadSystem.MELEE_HP_COEF}），护甲减少（25%×攻击力 = {E:ATK*TwoHeadSystem.MELEE_DEF_COEF}），魔抗减少（25%×攻击力 = {M:ATK*TwoHeadSystem.MELEE_MR_COEF}），攻击力提升（30%×攻击力 = {E:ATK*TwoHeadSystem.MELEE_ATK_PENALTY}）。"
     },
     "skillPool": [
@@ -1012,7 +1012,7 @@
       "name": "多重打击",
       "dmgScale": 0.5,
       "brief": "赌神龟每次攻击命中后有 {C:GamblerSystem.MULTI_BASE%}% 概率<span class=\"val-emph\">立即以约 {E:1/GamblerSystem.MULTI_ASPD} 倍攻击速度再进行一次攻击</span>。\n再次命中可继续触发，每连锁一次，触发概率乘以 {C:GamblerSystem.MULTI_DECAY}，依次为 {C:GamblerSystem.MULTI_BASE%}% → {C:GamblerSystem.MULTI_CHAIN2%}% → {C:GamblerSystem.MULTI_CHAIN3%}%，以此类推。\n<span style=\"color:#8a93a0\">未触发时概率重置为基础值。\n</span>",
-      "desc": "赌神龟每次攻击命中后有 {C:GamblerSystem.MULTI_BASE%}% 概率<span class=\"val-emph\">立即以约 {E:1/GamblerSystem.MULTI_ASPD} 倍攻击速度再进行一次攻击</span>。\n再次命中可继续触发，每连锁一次，触发概率乘以 {C:GamblerSystem.MULTI_DECAY}，依次为 {C:GamblerSystem.MULTI_BASE%}% → {C:GamblerSystem.MULTI_CHAIN2%}% → {C:GamblerSystem.MULTI_CHAIN3%}%，以此类推。未触发时概率重置为基础值，等待下一次攻击。\n<span style=\"color:#8a93a0\">基础概率 {C:GamblerSystem.MULTI_BASE%}%。\n出战选择【命运之轮】时，基础概率变为 {C:GamblerSystem.MULTI_WHEEL%}%，代价是登场时损失自身 {C:GamblerSystem.WHEEL_HP_COST%}% 最大生命值。\n释放【赌注】后，{C:GamblerSystem.BET_BONUS_SEC} 秒内概率额外 +{C:GamblerSystem.MULTI_BET_BONUS%}%。\n</span>"
+      "desc": "赌神龟每次攻击命中后有 {C:GamblerSystem.MULTI_BASE%}% 概率<span class=\"val-emph\">立即以约 {E:1/GamblerSystem.MULTI_ASPD} 倍攻击速度再进行一次攻击</span>。\n再次命中可继续触发，每连锁一次，触发概率乘以 {C:GamblerSystem.MULTI_DECAY}，依次为 {C:GamblerSystem.MULTI_BASE%}% → {C:GamblerSystem.MULTI_CHAIN2%}% → {C:GamblerSystem.MULTI_CHAIN3%}%，以此类推。未触发时概率重置为基础值，等待下一次攻击。\n<span style=\"color:#8a93a0\">基础概率 {C:GamblerSystem.MULTI_BASE%}%。\n出战选择【命运之轮】时，基础概率变为 {C:GamblerSystem.MULTI_WHEEL%}%，代价是登场时损失（{C:GamblerSystem.WHEEL_HP_COST%}%×最大生命值({HP}) = {E:GamblerSystem.WHEEL_HP_COST*HP}）。\n释放【赌注】后，{C:GamblerSystem.BET_BONUS_SEC} 秒内概率额外 +{C:GamblerSystem.MULTI_BET_BONUS%}%。\n</span>"
     },
     "skillPool": [
       {
@@ -1036,7 +1036,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "赌神龟丢出一张万能牌，造成 <span class=\"val-emph\">1 段</span> {N:2*ATK} 物理伤害，自身获得 {E:1*ATK} 永久护盾并回复自身 {C:GamblerSystem.JOKER_HEAL%}% 最大生命值，同时使目标攻击力 -{C:GamblerSystem.JOKER_ATK_DOWN%}%。",
-        "detail": "赌神龟丢出一张万能牌，造成 <span class=\"val-emph\">1 段</span>（{C:GamblerSystem.JOKER_DMG%}%×攻击力({ATK}) = {N:GamblerSystem.JOKER_DMG*ATK}）物理伤害。\n自身获得（100%×攻击力 = {E:1*ATK}）永久护盾，回复自身 {C:GamblerSystem.JOKER_HEAL%}% 最大生命值，并使目标攻击力 -{C:GamblerSystem.JOKER_ATK_DOWN%}%。"
+        "detail": "赌神龟丢出一张万能牌，造成 <span class=\"val-emph\">1 段</span>（{C:GamblerSystem.JOKER_DMG%}%×攻击力({ATK}) = {N:GamblerSystem.JOKER_DMG*ATK}）物理伤害。\n自身获得（100%×攻击力 = {E:1*ATK}）永久护盾，回复（{C:GamblerSystem.JOKER_HEAL%}%×最大生命值({HP}) = {E:GamblerSystem.JOKER_HEAL*HP}），并使目标攻击力 -{C:GamblerSystem.JOKER_ATK_DOWN%}%。"
       },
       {
         "name": "赌注",
@@ -1047,7 +1047,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "赌神龟消耗自身当前 {C:GamblerSystem.BET_HP_COST%}% 生命值，将其化为 {C:GamblerSystem.BET_SEGMENTS} 段物理伤害打向目标，之后 {C:GamblerSystem.BET_BONUS_SEC} 秒内多重打击概率 +{C:GamblerSystem.MULTI_BET_BONUS%}%。\n<span style=\"color:#8a93a0\">当自身生命值低于 {C:GamblerSystem.BET_HP_COST%}% 时，转而回复自身 {C:GamblerSystem.BET_LOWHP_HEAL%}% 最大生命值，不甩出扑克牌。\n</span>",
-        "detail": "赌神龟消耗自身当前 {C:GamblerSystem.BET_HP_COST%}% 生命值，将其分为 <span class=\"val-emph\">{C:GamblerSystem.BET_SEGMENTS} 段</span>物理伤害打向目标，总伤害约等于所消耗的生命值。\n释放后 {C:GamblerSystem.BET_BONUS_SEC} 秒内多重打击概率额外 +{C:GamblerSystem.MULTI_BET_BONUS%}%。\n<span style=\"color:#8a93a0\">当前生命值<b>低于 {C:GamblerSystem.BET_HP_COST%}% 最大生命值</b>时进入【低血模式】：不甩牌且不消耗生命值，转而回复自身 {C:GamblerSystem.BET_LOWHP_HEAL%}% 最大生命值，同样获得 {C:GamblerSystem.BET_BONUS_SEC} 秒内多重打击概率 +{C:GamblerSystem.MULTI_BET_BONUS%}%。\n</span>"
+        "detail": "赌神龟消耗自身当前 {C:GamblerSystem.BET_HP_COST%}% 生命值，将其分为 <span class=\"val-emph\">{C:GamblerSystem.BET_SEGMENTS} 段</span>物理伤害打向目标，总伤害约等于所消耗的生命值。\n释放后 {C:GamblerSystem.BET_BONUS_SEC} 秒内多重打击概率额外 +{C:GamblerSystem.MULTI_BET_BONUS%}%。\n<span style=\"color:#8a93a0\">当前生命值<b>低于 {C:GamblerSystem.BET_HP_COST%}% 最大生命值</b>时进入【低血模式】：不甩牌且不消耗生命值，转而回复（{C:GamblerSystem.BET_LOWHP_HEAL%}%×最大生命值({HP}) = {E:GamblerSystem.BET_LOWHP_HEAL*HP}），同样获得 {C:GamblerSystem.BET_BONUS_SEC} 秒内多重打击概率 +{C:GamblerSystem.MULTI_BET_BONUS%}%。\n</span>"
       },
       {
         "name": "命运之轮",
@@ -1058,7 +1058,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "被动：赌神龟登场损失自身最大生命值 {C:GamblerSystem.WHEEL_HP_COST%}%，基础多重打击概率由 {C:GamblerSystem.MULTI_BASE%}% 提升至 {C:GamblerSystem.MULTI_WHEEL%}%。\n\n主动：赌神龟每次释放进入抽取阶段，花色转盘落定后永久提升一项属性：\n♠ 黑桃：\n攻击力 +{C:GamblerSystem.WHEEL_SPADE_ATK}、最大生命值 +{C:GamblerSystem.WHEEL_SPADE_HP}。\n♥ 红心：\n护甲 +{C:GamblerSystem.WHEEL_HEART_RESIST}、魔抗 +{C:GamblerSystem.WHEEL_HEART_RESIST}。\n♦ 方块：\n暴击率 +{C:GamblerSystem.WHEEL_DIAMOND_CRIT%}%、护甲穿透 +{C:GamblerSystem.WHEEL_DIAMOND_PEN}。\n♣ 梅花：\n生命偷取 +{C:GamblerSystem.WHEEL_CLUB_LIFESTEAL%}%、攻击速度 +{C:GamblerSystem.WHEEL_CLUB_ASPD%}%。",
-        "detail": "被动：赌神龟登场时损失自身 {C:GamblerSystem.WHEEL_HP_COST%}% 最大生命值，换取额外 +{C:GamblerSystem.MULTI_BET_BONUS%}% 多重打击概率，基础概率由 {C:GamblerSystem.MULTI_BASE%}% 提升至 {C:GamblerSystem.MULTI_WHEEL%}%。\n\n主动：赌神龟的龟能满时自动释放，随机抽取一个花色，永久提升一项属性：♠黑桃 攻击力 +{C:GamblerSystem.WHEEL_SPADE_ATK}、最大生命值 +{C:GamblerSystem.WHEEL_SPADE_HP}。\n♥红心 护甲 +{C:GamblerSystem.WHEEL_HEART_RESIST}、魔抗 +{C:GamblerSystem.WHEEL_HEART_RESIST}。\n♦方块 暴击率 +{C:GamblerSystem.WHEEL_DIAMOND_CRIT%}%、护甲穿透 +{C:GamblerSystem.WHEEL_DIAMOND_PEN}。\n♣梅花 生命偷取 +{C:GamblerSystem.WHEEL_CLUB_LIFESTEAL%}%、攻击速度 +{C:GamblerSystem.WHEEL_CLUB_ASPD%}%。\n<span style=\"color:#8a93a0\">赌神龟抽到的花色在本大轮内跨场累积，并在下一场登场时自动生效。进入新大轮时重置。\n</span>\n<span style=\"color:#8a93a0\">抽取阶段持续 {C:GamblerSystem.WHEEL_LOCK_SEC} 秒。\n</span>"
+        "detail": "被动：赌神龟登场时损失（{C:GamblerSystem.WHEEL_HP_COST%}%×最大生命值({HP}) = {E:GamblerSystem.WHEEL_HP_COST*HP}），换取额外 +{C:GamblerSystem.MULTI_BET_BONUS%}% 多重打击概率，基础概率由 {C:GamblerSystem.MULTI_BASE%}% 提升至 {C:GamblerSystem.MULTI_WHEEL%}%。\n\n主动：赌神龟的龟能满时自动释放，随机抽取一个花色，永久提升一项属性：♠黑桃 攻击力 +{C:GamblerSystem.WHEEL_SPADE_ATK}、最大生命值 +{C:GamblerSystem.WHEEL_SPADE_HP}。\n♥红心 护甲 +{C:GamblerSystem.WHEEL_HEART_RESIST}、魔抗 +{C:GamblerSystem.WHEEL_HEART_RESIST}。\n♦方块 暴击率 +{C:GamblerSystem.WHEEL_DIAMOND_CRIT%}%、护甲穿透 +{C:GamblerSystem.WHEEL_DIAMOND_PEN}。\n♣梅花 生命偷取 +{C:GamblerSystem.WHEEL_CLUB_LIFESTEAL%}%、攻击速度 +{C:GamblerSystem.WHEEL_CLUB_ASPD%}%。\n<span style=\"color:#8a93a0\">赌神龟抽到的花色在本大轮内跨场累积，并在下一场登场时自动生效。进入新大轮时重置。\n</span>\n<span style=\"color:#8a93a0\">抽取阶段持续 {C:GamblerSystem.WHEEL_LOCK_SEC} 秒。\n</span>"
       }
     ],
     "defaultSkills": [
@@ -1428,7 +1428,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "线条龟对<span class=\"val-emph\">墨迹层数最多</span>的敌人点下终笔，造成 {C:LineSystem.DOT_BASE_COEF%}% 攻击力的物理伤害，目标每层墨迹使该伤害额外增加 {C:LineSystem.DOT_PER_INK%}% 攻击力。\n<span style=\"color:#8a93a0\">该伤害不消耗墨迹。\n</span>",
-        "detail": "线条龟对<span class=\"val-emph\">墨迹层数最多</span>的敌人点下终笔，造成（{C:LineSystem.DOT_BASE_COEF%}% 攻击力 + 每层墨迹 {C:LineSystem.DOT_PER_INK%}% 攻击力）物理伤害。\n此伤害不消耗墨迹。\n<span style=\"color:#8a93a0\">墨迹达到 {C:LineSystem.INK_CAP} 层时为 {C:LineSystem.DOT_FULL_COEF%}% 攻击力。\n若选择【墨水炸弹】，上限提升至 {C:LineSystem.INK_CAP_BOMB} 层，满层时为 {C:LineSystem.DOT_FULL_COEF_BOMB%}% 攻击力。\n场上无墨迹时转而攻击最近的敌人，造成（{C:LineSystem.DOT_BASE_COEF%}% 攻击力）物理伤害。\n</span>"
+        "detail": "线条龟对<span class=\"val-emph\">墨迹层数最多</span>的敌人点下终笔，造成（{C:LineSystem.DOT_BASE_COEF%}% 攻击力 + 每层墨迹 {C:LineSystem.DOT_PER_INK%}% 攻击力）物理伤害。\n此伤害不消耗墨迹。\n<span style=\"color:#8a93a0\">墨迹达到 {C:LineSystem.INK_CAP} 层时为（{C:LineSystem.DOT_FULL_COEF%}%×攻击力({ATK}) = {E:LineSystem.DOT_FULL_COEF*ATK}）。\n若选择【墨水炸弹】，上限提升至 {C:LineSystem.INK_CAP_BOMB} 层，满层时为（{C:LineSystem.DOT_FULL_COEF_BOMB%}%×攻击力({ATK}) = {E:LineSystem.DOT_FULL_COEF_BOMB*ATK}）。\n场上无墨迹时转而攻击最近的敌人，造成（{C:LineSystem.DOT_BASE_COEF%}%×攻击力({ATK}) = {N:LineSystem.DOT_BASE_COEF*ATK}）物理伤害。\n</span>"
       },
       {
         "name": "墨水炸弹",
@@ -1539,8 +1539,8 @@
       "type": "phoenixRebirth",
       "name": "涅槃",
       "brief": "凤凰龟首次死亡时以 {C:PhoenixSystem.NIRVANA_HP_PCT%}% 自身最大生命值复活，并对全体敌人施加（{C:PhoenixSystem.NIRVANA_BURN_COEF%}% 攻击力）层灼烧，以及持续 {C:RealtimeBattle3DScene.BUFF_SEC} 秒的 {C:PhoenixSystem.NIRVANA_HEALCUT%}% 治疗削减。",
-      "desc": "凤凰龟首次死亡时以（{C:PhoenixSystem.NIRVANA_HP_PCT%}%×最大生命值({HP}) = {E:HP*PhoenixSystem.NIRVANA_HP_PCT}）生命值复活，并对全体敌人施加（{C:PhoenixSystem.NIRVANA_BURN_COEF%}% 攻击力）层灼烧，以及持续 {C:RealtimeBattle3DScene.BUFF_SEC} 秒的治疗削减（-{C:PhoenixSystem.NIRVANA_HEALCUT%}%）。",
-      "detail": "凤凰龟首次死亡时浴火重生，以（{C:PhoenixSystem.NIRVANA_HP_PCT%}%×最大生命值({HP}) = {E:HP*PhoenixSystem.NIRVANA_HP_PCT}）生命值复活，并对全体敌人施加（{C:PhoenixSystem.NIRVANA_BURN_COEF%}% 攻击力）层灼烧，以及持续 {C:RealtimeBattle3DScene.BUFF_SEC} 秒的 {C:PhoenixSystem.NIRVANA_HEALCUT%}% 治疗削减。"
+      "desc": "凤凰龟首次死亡时以（{C:PhoenixSystem.NIRVANA_HP_PCT%}%×最大生命值({HP}) = {E:HP*PhoenixSystem.NIRVANA_HP_PCT}）生命值复活，并对全体敌人施加（{C:PhoenixSystem.NIRVANA_BURN_COEF%}%×攻击力({ATK}) = {E:PhoenixSystem.NIRVANA_BURN_COEF*ATK}）层灼烧，以及持续 {C:RealtimeBattle3DScene.BUFF_SEC} 秒的治疗削减（-{C:PhoenixSystem.NIRVANA_HEALCUT%}%）。",
+      "detail": "凤凰龟首次死亡时浴火重生，以（{C:PhoenixSystem.NIRVANA_HP_PCT%}%×最大生命值({HP}) = {E:HP*PhoenixSystem.NIRVANA_HP_PCT}）生命值复活，并对全体敌人施加（{C:PhoenixSystem.NIRVANA_BURN_COEF%}%×攻击力({ATK}) = {E:PhoenixSystem.NIRVANA_BURN_COEF*ATK}）层灼烧，以及持续 {C:RealtimeBattle3DScene.BUFF_SEC} 秒的 {C:PhoenixSystem.NIRVANA_HEALCUT%}% 治疗削减。"
     },
     "skillPool": [
       {
@@ -1551,7 +1551,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "凤凰龟持续喷射火焰，每 {C:PhoenixSystem.FLAME_TICK_SEC} 秒对身前的敌人造成（{C:RealtimeBattle3DScene.PHX_FLAME_MAG_COEF}×攻击力×(1+攻击速度)）魔法伤害，并施加（{C:RealtimeBattle3DScene.PHX_FLAME_BURN_COEF%}% 攻击力）层灼烧。\n<span style=\"color:#8a93a0\">喷火不随攻击速度停顿，凤凰龟可边喷边走位。\n</span>",
-        "detail": "凤凰龟持续喷吐烈焰，喷火不随攻击速度停顿，可边喷边走位，喷火时移动速度 ×{C:PhoenixSystem.FLAME_MOVE_MULT}。\n每 {C:PhoenixSystem.FLAME_TICK_SEC} 秒对身前 {C:PhoenixSystem.FLAME_ARC_DEG}° 扇形、射程之内的所有敌人造成（{C:RealtimeBattle3DScene.PHX_FLAME_MAG_COEF}×攻击力×(1+攻击速度)）魔法伤害，并施加（{C:RealtimeBattle3DScene.PHX_FLAME_BURN_COEF%}% 攻击力）层灼烧。",
+        "detail": "凤凰龟持续喷吐烈焰，喷火不随攻击速度停顿，可边喷边走位，喷火时移动速度 ×{C:PhoenixSystem.FLAME_MOVE_MULT}。\n每 {C:PhoenixSystem.FLAME_TICK_SEC} 秒对身前 {C:PhoenixSystem.FLAME_ARC_DEG}° 扇形、射程之内的所有敌人造成（{C:RealtimeBattle3DScene.PHX_FLAME_MAG_COEF}×攻击力×(1+攻击速度)）魔法伤害，并施加（{C:RealtimeBattle3DScene.PHX_FLAME_BURN_COEF%}%×攻击力({ATK}) = {E:RealtimeBattle3DScene.PHX_FLAME_BURN_COEF*ATK}）层灼烧。",
         "energyCost": 0
       },
       {
@@ -1590,7 +1590,7 @@
         "shieldBreak": 50,
         "burn": true,
         "brief": "凤凰龟蓄力投掷火球，命中造成 {M:PhoenixSystem.SCALD_ATK_COEF*ATK} 魔法伤害，施加 {E:PhoenixSystem.SCALD_BURN_COEF*ATK} 层灼烧，并破坏目标 {C:PhoenixSystem.SCALD_SHIELD_BREAK%}% 护盾，\n同时使其攻击力、护甲、魔抗各降低 {C:PhoenixSystem.SCALD_STAT_DOWN%}% 并受到 {C:PhoenixSystem.SCALD_HEALCUT%}% 治疗削减，以上负面效果均持续 {C:RealtimeBattle3DScene.BUFF_SEC} 秒。",
-        "detail": "凤凰龟蓄力投掷火球：\n命中先破坏目标 {C:PhoenixSystem.SCALD_SHIELD_BREAK%}% 护盾，\n随后造成（{C:PhoenixSystem.SCALD_ATK_COEF%}%×攻击力({ATK}) = {M:PhoenixSystem.SCALD_ATK_COEF*ATK}）魔法伤害，并施加（{C:PhoenixSystem.SCALD_BURN_COEF%}% 攻击力）层灼烧，以及攻击力 -{C:PhoenixSystem.SCALD_STAT_DOWN%}%、护甲 -{C:PhoenixSystem.SCALD_STAT_DOWN%}%、魔抗 -{C:PhoenixSystem.SCALD_STAT_DOWN%}%、治疗削减 {C:PhoenixSystem.SCALD_HEALCUT%}%，均持续 {C:RealtimeBattle3DScene.BUFF_SEC} 秒。",
+        "detail": "凤凰龟蓄力投掷火球：\n命中先破坏目标 {C:PhoenixSystem.SCALD_SHIELD_BREAK%}% 护盾，\n随后造成（{C:PhoenixSystem.SCALD_ATK_COEF%}%×攻击力({ATK}) = {M:PhoenixSystem.SCALD_ATK_COEF*ATK}）魔法伤害，并施加（{C:PhoenixSystem.SCALD_BURN_COEF%}%×攻击力({ATK}) = {E:PhoenixSystem.SCALD_BURN_COEF*ATK}）层灼烧，以及攻击力 -{C:PhoenixSystem.SCALD_STAT_DOWN%}%、护甲 -{C:PhoenixSystem.SCALD_STAT_DOWN%}%、魔抗 -{C:PhoenixSystem.SCALD_STAT_DOWN%}%、治疗削减 {C:PhoenixSystem.SCALD_HEALCUT%}%，均持续 {C:RealtimeBattle3DScene.BUFF_SEC} 秒。",
         "energyCost": 100
       },
       {
@@ -1634,7 +1634,7 @@
       "transformMrScale": 0.2,
       "transformDuration": 15,
       "brief": "熔岩龟将造成伤害的 {C:LavaSystem.RAGE_GAIN_PCT%}% 与承受伤害的 {C:LavaSystem.RAGE_GAIN_PCT%}% 转化为<span class=\"val-emph\">怒气</span>。\n怒气积满 {rageMax} 时，熔岩龟变身为火山龟，转为近战形态、全属性提升并获得火山技能组，持续 {transformDuration} 秒。",
-      "desc": "熔岩龟将造成伤害的 {C:LavaSystem.RAGE_GAIN_PCT%}% 与承受伤害的 {C:LavaSystem.RAGE_GAIN_PCT%}% 转化为怒气。\n怒气满 {rageMax} 时变身为火山龟，持续 {transformDuration} 秒，变身时获得加成：\n最大生命值 +（{transformHpScale*100}%×攻击力({ATK}) = {E:ATK*transformHpScale}），攻击力 +（{transformAtkScale*100}%×攻击力({ATK}) = {E:ATK*transformAtkScale}），护甲 +（{transformDefScale*100}%×攻击力({ATK}) = {E:ATK*transformDefScale}），魔抗 +（{transformMrScale*100}%×攻击力({ATK}) = {M:ATK*transformMrScale}）\n转为近战形态，射程 {C:LavaSystem.VOLCANO_RANGE} 码，移动速度变为基础移动速度的 {C:LavaSystem.VOLCANO_SPD_MULT} 倍。\n变身瞬间：\n熔岩龟跃起，在敌人最密集处显示，的预警圈，随后砸地：\n圈内敌人全部被击飞约 {C:LavaSystem.SLAM_KNOCK_SEC} 秒，各受到（{C:LavaSystem.SLAM_ATK_COEF%}% 攻击力）魔法伤害与（{C:LavaSystem.SLAM_BURN_COEF%}% 攻击力）层灼烧。\n熔岩龟每命中一名敌人，便回复该敌人已损生命值的 {C:LavaSystem.ERUPT_HEAL_PCT%}%。\n{transformDuration} 秒后变回原来的远程形态。"
+      "desc": "熔岩龟将造成伤害的 {C:LavaSystem.RAGE_GAIN_PCT%}% 与承受伤害的 {C:LavaSystem.RAGE_GAIN_PCT%}% 转化为怒气。\n怒气满 {rageMax} 时变身为火山龟，持续 {transformDuration} 秒，变身时获得加成：\n最大生命值 +（{transformHpScale*100}%×攻击力({ATK}) = {E:ATK*transformHpScale}），攻击力 +（{transformAtkScale*100}%×攻击力({ATK}) = {E:ATK*transformAtkScale}），护甲 +（{transformDefScale*100}%×攻击力({ATK}) = {E:ATK*transformDefScale}），魔抗 +（{transformMrScale*100}%×攻击力({ATK}) = {M:ATK*transformMrScale}）\n转为近战形态，射程 {C:LavaSystem.VOLCANO_RANGE} 码，移动速度变为基础移动速度的 {C:LavaSystem.VOLCANO_SPD_MULT} 倍。\n变身瞬间：\n熔岩龟跃起，在敌人最密集处显示，的预警圈，随后砸地：\n圈内敌人全部被击飞约 {C:LavaSystem.SLAM_KNOCK_SEC} 秒，各受到（{C:LavaSystem.SLAM_ATK_COEF%}%×攻击力({ATK}) = {M:LavaSystem.SLAM_ATK_COEF*ATK}）魔法伤害与（{C:LavaSystem.SLAM_BURN_COEF%}%×攻击力({ATK}) = {E:LavaSystem.SLAM_BURN_COEF*ATK}）层灼烧。\n熔岩龟每命中一名敌人，便回复该敌人已损生命值的 {C:LavaSystem.ERUPT_HEAL_PCT%}%。\n{transformDuration} 秒后变回原来的远程形态。"
     },
     "skillPool": [
       {
@@ -1646,7 +1646,7 @@
         "cd": 0,
         "burn": true,
         "brief": "熔岩龟投出熔岩弹，造成 {M:LavaSystem.BOLT_MAGIC*ATK} + {C:LavaSystem.BOLT_TGT_HP%}%目标最大生命值的魔法伤害，并施加（{C:LavaSystem.BOLT_BURN_COEF%}% 攻击力）层灼烧。",
-        "detail": "熔岩龟投出熔岩弹，造成（{C:LavaSystem.BOLT_MAGIC%}%×攻击力({ATK}) = {M:LavaSystem.BOLT_MAGIC*ATK}）+ {C:LavaSystem.BOLT_TGT_HP%}%目标最大生命值 魔法伤害，并施加（{C:LavaSystem.BOLT_BURN_COEF%}% 攻击力）层灼烧。"
+        "detail": "熔岩龟投出熔岩弹，造成（{C:LavaSystem.BOLT_MAGIC%}%×攻击力({ATK}) = {M:LavaSystem.BOLT_MAGIC*ATK}）+ {C:LavaSystem.BOLT_TGT_HP%}%目标最大生命值 魔法伤害，并施加（{C:LavaSystem.BOLT_BURN_COEF%}%×攻击力({ATK}) = {E:LavaSystem.BOLT_BURN_COEF*ATK}）层灼烧。"
       },
       {
         "name": "地裂",
@@ -1662,7 +1662,7 @@
           "turns": 3
         },
         "brief": "熔岩龟在敌人最密集处生成一片岩浆池，持续 {C:LavaSystem.QUAKE_SEC} 秒。\n岩浆池每 {C:LavaSystem.QUAKE_TICK_SEC} 秒对池内敌人造成 {M:LavaSystem.QUAKE_ATK_COEF*ATK} + {C:LavaSystem.QUAKE_TGT_HP%}%目标最大生命值的魔法伤害，并使其减速 {C:LavaSystem.QUAKE_SLOW_PCT%}%、魔抗降低 {C:LavaSystem.QUAKE_MR_DOWN%}%。",
-        "detail": "熔岩龟撕裂大地，在敌人最密集处生成一个，的岩浆池，持续 {C:LavaSystem.QUAKE_SEC} 秒。\n每 {C:LavaSystem.QUAKE_TICK_SEC} 秒生效一次，共 {C:LavaSystem.QUAKE_TICKS} 跳：池内所有敌人各受到（{C:LavaSystem.QUAKE_ATK_COEF%}%×攻击力({ATK}) = {M:LavaSystem.QUAKE_ATK_COEF*ATK}）+ {C:LavaSystem.QUAKE_TGT_HP%}%目标最大生命值的魔法伤害，并被减速 {C:LavaSystem.QUAKE_SLOW_PCT%}%、魔抗 -{C:LavaSystem.QUAKE_MR_DOWN%}%。此效果每跳刷新，离开岩浆池即失效。\n火山形态下本技能变为【火山爆发】：\n一道熔岩浪从场地远端横扫到近端，波前每扫过一名敌人即将其击飞，并造成（{C:LavaSystem.ERUPT_ATK_COEF%}% 攻击力）魔法伤害与（{C:LavaSystem.ERUPT_BURN_COEF%}% 攻击力）层灼烧。\n熔岩龟每命中一名敌人回复 {C:LavaSystem.ERUPT_HEAL_PCT%}% 最大生命值。"
+        "detail": "熔岩龟撕裂大地，在敌人最密集处生成一个，的岩浆池，持续 {C:LavaSystem.QUAKE_SEC} 秒。\n每 {C:LavaSystem.QUAKE_TICK_SEC} 秒生效一次，共 {C:LavaSystem.QUAKE_TICKS} 跳：池内所有敌人各受到（{C:LavaSystem.QUAKE_ATK_COEF%}%×攻击力({ATK}) = {M:LavaSystem.QUAKE_ATK_COEF*ATK}）+ {C:LavaSystem.QUAKE_TGT_HP%}%目标最大生命值的魔法伤害，并被减速 {C:LavaSystem.QUAKE_SLOW_PCT%}%、魔抗 -{C:LavaSystem.QUAKE_MR_DOWN%}%。此效果每跳刷新，离开岩浆池即失效。\n火山形态下本技能变为【火山爆发】：\n一道熔岩浪从场地远端横扫到近端，波前每扫过一名敌人即将其击飞，并造成（{C:LavaSystem.ERUPT_ATK_COEF%}%×攻击力({ATK}) = {M:LavaSystem.ERUPT_ATK_COEF*ATK}）魔法伤害与（{C:LavaSystem.ERUPT_BURN_COEF%}%×攻击力({ATK}) = {E:LavaSystem.ERUPT_BURN_COEF*ATK}）层灼烧。\n熔岩龟每命中一名敌人回复（{C:LavaSystem.ERUPT_HEAL_PCT%}%×最大生命值({HP}) = {E:LavaSystem.ERUPT_HEAL_PCT*HP}）。"
       },
       {
         "name": "岩浆涌动",
@@ -1683,7 +1683,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "熔岩龟在普通形态下消耗 {C:LavaSystem.ERUPT_ENERGY} 龟能冲刺，残血时后撤，否则贴身追击。随后重置攻击计时，并使下一发熔岩弹贯穿全场，对沿途每个敌人造成 {C:LavaSystem.PIERCE_ATK_COEF%}% 攻击力魔法伤害加 {C:LavaSystem.PIERCE_MAXHP_PCT%}% 最大生命值并施加灼烧层。\n在火山形态下消耗 {C:LavaSystem.RAMPAGE_ENERGY} 龟能，熔岩龟进入暴走，获得自身最大生命值 {C:LavaSystem.RAMPAGE_HP_PCT%}%、{C:LavaSystem.RAMPAGE_HASTE%}% 攻击速度和 {C:LavaSystem.RAMPAGE_SPD%}% 移动速度，均持续 {C:LavaSystem.RAMPAGE_SEC} 秒。",
-        "detail": "熔岩龟·技能三，分为两种形态：\n普通形态，消耗 {C:LavaSystem.ERUPT_ENERGY} 龟能：\n冲刺，残血或近身有威胁时背离敌人撤退保命，否则冲向目标贴身追击。\n重置下一次攻击的计时，并使下一发熔岩弹变为贯穿全场的岩浆光矢，对沿途每名敌人造成（{C:LavaSystem.PIERCE_ATK_COEF%}%×攻击力({ATK}) = {M:LavaSystem.BOLT_MAGIC*ATK}）魔法伤害 + {C:LavaSystem.PIERCE_MAXHP_PCT%}%目标最大生命值，并施加（{C:LavaSystem.PIERCE_BURN_COEF%}% 攻击力）层灼烧。\n火山形态，消耗 {C:LavaSystem.RAMPAGE_ENERGY} 龟能：烈焰暴走，自身获得 {C:LavaSystem.RAMPAGE_HP_PCT%}% 最大生命值、+{C:LavaSystem.RAMPAGE_HASTE%}% 攻击速度、+{C:LavaSystem.RAMPAGE_SPD%}% 移动速度，均持续 {C:LavaSystem.RAMPAGE_SEC} 秒。",
+        "detail": "熔岩龟·技能三，分为两种形态：\n普通形态，消耗 {C:LavaSystem.ERUPT_ENERGY} 龟能：\n冲刺，残血或近身有威胁时背离敌人撤退保命，否则冲向目标贴身追击。\n重置下一次攻击的计时，并使下一发熔岩弹变为贯穿全场的岩浆光矢，对沿途每名敌人造成（{C:LavaSystem.PIERCE_ATK_COEF%}%×攻击力({ATK}) = {M:LavaSystem.BOLT_MAGIC*ATK}）魔法伤害 + {C:LavaSystem.PIERCE_MAXHP_PCT%}%目标最大生命值，并施加（{C:LavaSystem.PIERCE_BURN_COEF%}%×攻击力({ATK}) = {E:LavaSystem.PIERCE_BURN_COEF*ATK}）层灼烧。\n火山形态，消耗 {C:LavaSystem.RAMPAGE_ENERGY} 龟能：烈焰暴走，自身获得 {C:LavaSystem.RAMPAGE_HP_PCT%}% 最大生命值、+{C:LavaSystem.RAMPAGE_HASTE%}% 攻击速度、+{C:LavaSystem.RAMPAGE_SPD%}% 移动速度，均持续 {C:LavaSystem.RAMPAGE_SEC} 秒。",
         "icon": "skills/lava-3.png"
       }
     ],
@@ -1698,14 +1698,14 @@
         "icon": "skills/lava-0.png",
         "type": "lavaBolt",
         "brief": "火山形态下攻击变为烈焰重击：造成 {M:LavaSystem.MELEE_MAGIC*ATK} + {C:LavaSystem.MELEE_SELF_HP%}%自身最大生命值的魔法伤害，并施加（{C:LavaSystem.BOLT_BURN_COEF%}% 攻击力）层灼烧。\n射程缩短为 {C:LavaSystem.VOLCANO_RANGE} 码，转为近战。",
-        "detail": "火山形态下攻击变为烈焰重击，即单段近战重锤：造成（{C:LavaSystem.MELEE_MAGIC%}%×攻击力({ATK}) = {M:LavaSystem.MELEE_MAGIC*ATK}）+ {C:LavaSystem.MELEE_SELF_HP%}%熔岩龟自身最大生命值的魔法伤害，并施加（{C:LavaSystem.BOLT_BURN_COEF%}% 攻击力）层灼烧。\n变身后转为近战形态，射程 {C:LavaSystem.VOLCANO_RANGE} 码，移动速度为基础的 {C:LavaSystem.VOLCANO_SPD_MULT} 倍。变身获得的生命值加成越高，重击伤害越高。"
+        "detail": "火山形态下攻击变为烈焰重击，即单段近战重锤：造成（{C:LavaSystem.MELEE_MAGIC%}%×攻击力({ATK}) = {M:LavaSystem.MELEE_MAGIC*ATK}）+ {C:LavaSystem.MELEE_SELF_HP%}%熔岩龟自身最大生命值的魔法伤害，并施加（{C:LavaSystem.BOLT_BURN_COEF%}%×攻击力({ATK}) = {E:LavaSystem.BOLT_BURN_COEF*ATK}）层灼烧。\n变身后转为近战形态，射程 {C:LavaSystem.VOLCANO_RANGE} 码，移动速度为基础的 {C:LavaSystem.VOLCANO_SPD_MULT} 倍。变身获得的生命值加成越高，重击伤害越高。"
       },
       {
         "name": "火山爆发",
         "icon": "skills/volcano-2.png",
         "type": "volcanoErupt",
         "brief": "火山龟指定一个方向，竞技场外涌来一道熔岩浪横扫全场，击退沿途敌人并造成（{M:LavaSystem.ERUPT_ATK_COEF*ATK}）魔法伤害 + 灼烧层，每命中一名敌人回复自身 {C:LavaSystem.ERUPT_HEAL_PCT%}% 最大生命值。",
-        "detail": "对应小形态【地裂】。火山龟朝目标指定一个方向，出现一条超长矩形预警区。\n随后一道岩浆浪墙从场地远端推进到近端。\n波前每扫过一名敌人：将其击退，造成（{C:LavaSystem.ERUPT_ATK_COEF%}%×攻击力({ATK}) = {M:LavaSystem.ERUPT_ATK_COEF*ATK}）魔法伤害，施加（{C:LavaSystem.ERUPT_BURN_COEF%}% 攻击力）层灼烧，并使火山龟回复其 {C:LavaSystem.ERUPT_HEAL_PCT%}% 最大生命值。"
+        "detail": "对应小形态【地裂】。火山龟朝目标指定一个方向，出现一条超长矩形预警区。\n随后一道岩浆浪墙从场地远端推进到近端。\n波前每扫过一名敌人：将其击退，造成（{C:LavaSystem.ERUPT_ATK_COEF%}%×攻击力({ATK}) = {M:LavaSystem.ERUPT_ATK_COEF*ATK}）魔法伤害，施加（{C:LavaSystem.ERUPT_BURN_COEF%}%×攻击力({ATK}) = {E:LavaSystem.ERUPT_BURN_COEF*ATK}）层灼烧，并使火山龟回复其 {C:LavaSystem.ERUPT_HEAL_PCT%}% 最大生命值。"
       },
       {
         "name": "重击",
@@ -1738,7 +1738,7 @@
       "type": "cyberDrone",
       "name": "浮游炮",
       "brief": "赛博龟每 {C:CyberSystem.DRONE_SPAWN_SEC} 秒自动生成 1 个<span class=\"val-emph\">浮游炮</span>，每个浮游炮每 {C:CyberSystem.DRONE_FIRE_SEC} 秒对一名随机敌人发射一次攻击，造成（{C:CyberSystem.DRONE_SHOT_COEF%}%×赛博龟攻击力）的物理伤害。\n赛博龟阵亡时，所有浮游炮集结并各发射一道贯穿激光，各造成（{C:CyberSystem.VOLLEY_COEF%}% 攻击力）的魔法伤害，随后组装为近战机甲继续战斗。\n<span style=\"color:#8a93a0\">浮游炮上限 {C:CyberSystem.DRONE_CAP} 个，环绕赛博龟飞行，不是实体单位，不可被攻击。\n机甲拥有 {C:CyberSystem.MECH_ASSEMBLE_SEC} 秒组装期，期间属性逐渐提升至最终数值，且不可被选中。\n</span>",
-      "desc": "赛博龟每 {C:CyberSystem.DRONE_SPAWN_SEC} 秒自动生成 1 个浮游炮，上限 {C:CyberSystem.DRONE_CAP} 个，当前拥有 {E:droneCount} 个。\n浮游炮环绕赛博龟飞行，不是实体单位，不可被敌人选中或攻击。\n每个浮游炮每 {C:CyberSystem.DRONE_FIRE_SEC} 秒对一名随机敌人发射一次攻击，造成相当于赛博龟攻击力 {C:CyberSystem.DRONE_SHOT_COEF%}% 的伤害。浮游炮自身不具有独立的攻击力。\n赛博龟阵亡时：\n本体消散，所有浮游炮集结，各自对最近的敌人蓄力并发射一道贯穿直线的激光，造成（{C:CyberSystem.VOLLEY_COEF%}% 攻击力）的魔法伤害。\n随后浮游炮飞向集结点组装机甲。组装持续 {C:CyberSystem.MECH_ASSEMBLE_SEC} 秒，期间机甲的生命值、攻击力、护甲与魔抗逐渐提升至设定值，无法移动或攻击，且<b>不可被敌人选中</b>。组装完成后机甲为近战单位，射程 {C:CyberSystem.MECH_RANGE}。\n机甲生命 =（{C:CyberSystem.MECH_HP_BASE} + {C:CyberSystem.MECH_HP_PER_LV}×等级）×浮游炮数，攻击力 =（{C:CyberSystem.MECH_ATK_BASE} + {C:CyberSystem.MECH_ATK_PER_LV}×等级）×浮游炮数，护甲与魔抗 = {C:CyberSystem.MECH_DEF_BASE} + {C:CyberSystem.MECH_DEF_PER_LV}×等级。\n机甲每 {C:CyberSystem.MECH_BLAST_CD} 秒锁定生命值最低的敌人，造成 {C:CyberSystem.MECH_BLAST_COEF%}%×机甲攻击力的物理伤害。"
+      "desc": "赛博龟每 {C:CyberSystem.DRONE_SPAWN_SEC} 秒自动生成 1 个浮游炮，上限 {C:CyberSystem.DRONE_CAP} 个，当前拥有 {E:droneCount} 个。\n浮游炮环绕赛博龟飞行，不是实体单位，不可被敌人选中或攻击。\n每个浮游炮每 {C:CyberSystem.DRONE_FIRE_SEC} 秒对一名随机敌人发射一次攻击，造成相当于赛博龟攻击力 {C:CyberSystem.DRONE_SHOT_COEF%}% 的伤害。浮游炮自身不具有独立的攻击力。\n赛博龟阵亡时：\n本体消散，所有浮游炮集结，各自对最近的敌人蓄力并发射一道贯穿直线的激光，造成（{C:CyberSystem.VOLLEY_COEF%}%×攻击力({ATK}) = {M:CyberSystem.VOLLEY_COEF*ATK}）的魔法伤害。\n随后浮游炮飞向集结点组装机甲。组装持续 {C:CyberSystem.MECH_ASSEMBLE_SEC} 秒，期间机甲的生命值、攻击力、护甲与魔抗逐渐提升至设定值，无法移动或攻击，且<b>不可被敌人选中</b>。组装完成后机甲为近战单位，射程 {C:CyberSystem.MECH_RANGE}。\n机甲生命 =（{C:CyberSystem.MECH_HP_BASE} + {C:CyberSystem.MECH_HP_PER_LV}×等级）×浮游炮数，攻击力 =（{C:CyberSystem.MECH_ATK_BASE} + {C:CyberSystem.MECH_ATK_PER_LV}×等级）×浮游炮数，护甲与魔抗 = {C:CyberSystem.MECH_DEF_BASE} + {C:CyberSystem.MECH_DEF_PER_LV}×等级。\n机甲每 {C:CyberSystem.MECH_BLAST_CD} 秒锁定生命值最低的敌人，造成 {C:CyberSystem.MECH_BLAST_COEF%}%×机甲攻击力的物理伤害。"
     },
     "skillPool": [
       {
@@ -2143,7 +2143,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "无头龟发出咆哮威吓周围的所有敌人，施加恐惧 3 秒，期间敌人无法移动、攻击或释放技能。\n<span style=\"color:#8a93a0\">恐惧期间敌人的龟能也停止充能。\n</span>",
-        "detail": "无头龟咆哮威吓，对半径附近的所有敌人施加恐惧，持续 3 秒。\n恐惧期间，目标无法移动、攻击或释放技能，龟能停止充能。\n蛋类单位免疫此效果。"
+        "detail": "无头龟咆哮威吓，对附近的所有敌人施加恐惧，持续 3 秒。\n恐惧期间，目标无法移动、攻击或释放技能，龟能停止充能。\n蛋类单位免疫此效果。"
       },
       {
         "name": "万千触须",
@@ -2248,7 +2248,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "主被动·<span class=\"val-emph\">潜影</span>：\n龟壳 {C:ShellSystem.STEALTH_IDLE_SEC} 秒内未受到伤害时进入潜影，变为不可选中。\n范围伤害不会解除潜影，龟壳释放技能或进行攻击时解除。\n解除潜影后的首次攻击额外造成 {C:ShellSystem.STEALTH_BREAK_MAGIC%}% 攻击力的魔法伤害和 {C:ShellSystem.STEALTH_POISON_MULT%}% 攻击力的中毒伤害，并施加 {C:ShellSystem.STEALTH_HEALCUT_PCT%}% 治疗削减，持续 {C:ShellSystem.STEALTH_HEALCUT_SEC} 秒。\n主动·<span class=\"val-emph\">暗影俯冲</span>：\n龟壳向前俯冲，对路径上的敌人造成 {C:ShellSystem.DIVE_MAGIC%}% 攻击力的魔法伤害并将其击退，\n随后在落点生成一片暗影燃烧区，持续 {C:ShellSystem.BURN_LIFE} 秒，每 {C:ShellSystem.BURN_TICK_SEC} 秒对区内敌人施加 {C:ShellSystem.BURN_ATK_MULT%}% 攻击力的灼烧层并减速 {C:ShellSystem.BURN_SLOW_PCT%}%，龟壳随后进入潜影。",
-        "detail": "龟壳的主动与被动技能。\n<b>被动·潜影</b>：\n{C:ShellSystem.STEALTH_IDLE_SEC} 秒内未受到伤害时进入潜影，变为不可选中。潜影期间仍会受到范围伤害，但范围伤害不会解除潜影，只有龟壳释放技能或进行攻击时才会解除。\n解除潜影后的首次攻击额外附加：+{C:ShellSystem.STEALTH_BREAK_MAGIC%}%攻击力魔法伤害 + {C:ShellSystem.STEALTH_POISON_MULT%}% 攻击力层中毒 + {C:ShellSystem.STEALTH_HEALCUT_SEC} 秒 {C:ShellSystem.STEALTH_HEALCUT_PCT%}%治疗削减。\n<b>主动·暗影俯冲</b>：消耗 {C:ShellSystem.SHADOW_ENERGY} 龟能。\n朝目标俯冲，对路径上的敌人造成（{C:ShellSystem.DIVE_MAGIC%}%×攻击力({ATK}) = {M:ShellSystem.DIVE_MAGIC*ATK}）魔法伤害并将其击退，\n随后留下暗影燃烧区，持续 {C:ShellSystem.BURN_LIFE} 秒，每 {C:ShellSystem.BURN_TICK_SEC} 秒对区内敌人施加 {C:ShellSystem.BURN_ATK_MULT%}% 攻击力灼烧层并减速 {C:ShellSystem.BURN_SLOW_PCT%}%，随后龟壳进入潜影。",
+        "detail": "龟壳的主动与被动技能。\n<b>被动·潜影</b>：\n{C:ShellSystem.STEALTH_IDLE_SEC} 秒内未受到伤害时进入潜影，变为不可选中。潜影期间仍会受到范围伤害，但范围伤害不会解除潜影，只有龟壳释放技能或进行攻击时才会解除。\n解除潜影后的首次攻击额外附加：+{C:ShellSystem.STEALTH_BREAK_MAGIC%}%攻击力魔法伤害 + {C:ShellSystem.STEALTH_POISON_MULT%}% 攻击力层中毒 + {C:ShellSystem.STEALTH_HEALCUT_SEC} 秒 {C:ShellSystem.STEALTH_HEALCUT_PCT%}%治疗削减。\n<b>主动·暗影俯冲</b>：消耗 {C:ShellSystem.SHADOW_ENERGY} 龟能。\n朝目标俯冲，对路径上的敌人造成（{C:ShellSystem.DIVE_MAGIC%}%×攻击力({ATK}) = {M:ShellSystem.DIVE_MAGIC*ATK}）魔法伤害并将其击退，\n随后留下暗影燃烧区，持续 {C:ShellSystem.BURN_LIFE} 秒，每 {C:ShellSystem.BURN_TICK_SEC} 秒对区内敌人施加（{C:ShellSystem.BURN_ATK_MULT%}%×攻击力({ATK}) = {E:ShellSystem.BURN_ATK_MULT*ATK}）灼烧层并减速 {C:ShellSystem.BURN_SLOW_PCT%}%，随后龟壳进入潜影。",
         "energyCost": 130
       }
     ],
