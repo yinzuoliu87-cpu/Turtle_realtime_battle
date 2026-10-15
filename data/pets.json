@@ -1428,7 +1428,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "线条龟对墨迹层数最多的敌人点下终笔，造成 {N:LineSystem.DOT_BASE_COEF*ATK} 外加每层墨迹 {N:LineSystem.DOT_PER_INK*ATK} 物理伤害。\n<span style=\"color:#8a93a0\">该伤害不消耗墨迹。</span>",
-        "detail": "线条龟对墨迹层数最多的敌人点下终笔，造成（{C:LineSystem.DOT_BASE_COEF%}%×攻击力({ATK}) = {N:LineSystem.DOT_BASE_COEF*ATK}）外加每层墨迹（{C:LineSystem.DOT_PER_INK%}%×攻击力({ATK}) = {N:LineSystem.DOT_PER_INK*ATK}）物理伤害。\n<span style=\"color:#8a93a0\">该伤害不消耗墨迹。\n墨迹达到 {C:LineSystem.INK_CAP} 层时为（{C:LineSystem.DOT_FULL_COEF%}%×攻击力({ATK}) = {E:LineSystem.DOT_FULL_COEF*ATK}）。\n若选择【墨水炸弹】，上限提升至 {C:LineSystem.INK_CAP_BOMB} 层，满层时为（{C:LineSystem.DOT_FULL_COEF_BOMB%}%×攻击力({ATK}) = {E:LineSystem.DOT_FULL_COEF_BOMB*ATK}）。\n场上无墨迹时转而攻击最近的敌人，造成（{C:LineSystem.DOT_BASE_COEF%}%×攻击力({ATK}) = {N:LineSystem.DOT_BASE_COEF*ATK}）物理伤害。\n</span>"
+        "detail": "线条龟对墨迹层数最多的敌人点下终笔，造成（{C:LineSystem.DOT_BASE_COEF%}%×攻击力({ATK}) = {N:LineSystem.DOT_BASE_COEF*ATK}）外加每层墨迹（{C:LineSystem.DOT_PER_INK%}%×攻击力({ATK}) = {N:LineSystem.DOT_PER_INK*ATK}）物理伤害。\n<span style=\"color:#8a93a0\">该伤害不消耗墨迹。\n墨迹达到 {C:LineSystem.INK_CAP} 层时为（{C:LineSystem.DOT_FULL_COEF%}%×攻击力({ATK}) = {E:LineSystem.DOT_FULL_COEF*ATK}）。\n场上无墨迹时转而攻击最近的敌人，造成（{C:LineSystem.DOT_BASE_COEF%}%×攻击力({ATK}) = {N:LineSystem.DOT_BASE_COEF*ATK}）物理伤害。\n</span>"
       },
       {
         "name": "墨水炸弹",

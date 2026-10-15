@@ -29,7 +29,6 @@ const LINK_ATK_COEF := 0.8    # 每个目标 ×ATK 物理
 const DOT_BASE_COEF := 0.7    # 基础系数
 const DOT_PER_INK := 0.45     # 每层墨迹再加
 const DOT_FULL_COEF := DOT_BASE_COEF + DOT_PER_INK * INK_CAP           # 推导: 满 7 层
-const DOT_FULL_COEF_BOMB := DOT_BASE_COEF + DOT_PER_INK * INK_CAP_BOMB # 推导: 墨水炸弹满 10 层
 const ASPD_PER_ATK := 0.005   # 被动·墨迹: 自身获得 =(0.5×攻击力)% 的攻速 → 每1点攻击力 +0.5%
 
 var battle
