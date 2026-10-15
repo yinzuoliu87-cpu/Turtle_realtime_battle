@@ -726,7 +726,7 @@
     "baseStats1": "+射程50·+攻速15/30/50%",
     "shopAvailable": 1,
     "emoji": "🐌",
-    "effectDesc1": "每次攻击命中时额外造成目标最大生命值 2/2.5/3%的魔法伤害，并施加 1/1/2 层【破损】，单个目标最多叠加 {C:EqSpiritBatch.BREACH_CAP} 层，破损不会衰减。\n目标已有 {C:EqSpiritBatch.BREACH_CAP} 层破损时，此伤害转为真实伤害。",
+    "effectDesc1": "每次攻击命中时额外造成目标最大生命值 2/2.5/3%的魔法伤害，并施加 1/1/2 层【破损】，单个目标最多叠加 {C:EqSpiritBatch.BREACH_CAP} 层，破损永久保留。\n目标已有 {C:EqSpiritBatch.BREACH_CAP} 层破损时，此伤害转为真实伤害。",
     "effectDesc3": "",
     "img": "equip/p2eq_061.png",
     "effectBrief": "攻击额外造成目标 2/2.5/3% 最大生命值的魔法伤害并施加破损，在 {C:EqSpiritBatch.BREACH_CAP} 层时转为真实伤害。"
@@ -846,7 +846,7 @@
     "baseStats1": "+治疗与护盾14/26/45%·+双抗10/22/40",
     "shopAvailable": 1,
     "emoji": "🥛",
-    "effectDesc1": "战斗开始时，为包括自身在内的所有友军提供其最大生命值 10/18/25%的【奶油护盾】，该护盾不会衰减。\n奶油护盾被打破时，对自身 {C:EqFoodBatch.CREAM_BURST_R} 码内的敌人造成 70/100/150 点魔法伤害，随后自身获得+{C:EqFoodBatch.CREAM_RESIST} 双抗、+20/30/40%攻击速度与+{C:EqFoodBatch.CREAM_RANGE} 射程，持续整路。\n自身每累计损失 {C:EqFoodBatch.CREAM_LOSS_STEP%}%最大生命值，再次为全队提供一次奶油护盾，每路共 {C:EqFoodBatch.CREAM_TIMES} 次。",
+    "effectDesc1": "战斗开始时，为包括自身在内的所有友军提供其最大生命值 10/18/25%的【奶油护盾】，该护盾持续到被打破为止。\n奶油护盾被打破时，对自身 {C:EqFoodBatch.CREAM_BURST_R} 码内的敌人造成 70/100/150 点魔法伤害，随后自身获得+{C:EqFoodBatch.CREAM_RESIST} 双抗、+20/30/40%攻击速度与+{C:EqFoodBatch.CREAM_RANGE} 射程，持续整路。\n自身每累计损失 {C:EqFoodBatch.CREAM_LOSS_STEP%}%最大生命值，再次为全队提供一次奶油护盾，每路共 {C:EqFoodBatch.CREAM_TIMES} 次。",
     "effectDesc3": "",
     "img": "equip/p2eq_071.png",
     "effectBrief": "战斗开始时为全队提供各自最大生命值 10/18/25% 的奶油护盾，护盾破碎时对周围敌人造成伤害。"
@@ -858,7 +858,7 @@
     "baseStats1": "+生命200/550/1400·+双抗10/24/55",
     "shopAvailable": 1,
     "emoji": "🎂",
-    "effectDesc1": "获得最大生命值 50/80/120%的永久【终极护盾】。\n护盾存在时，自身化为蛋糕礼盒：属性不变，射程变为近战，攻击与技能替换为礼盒效果。\n礼盒嘲讽 {C:EqFoodBatch.BOX_TAUNT_PX} 码内所有敌人，每有一个敌人以自身为目标，实时获得+20/30/60 双抗。攻击造成 1 倍攻击力物理伤害。技能召唤 {C:EqFoodBatch.BOX_FIELD_PX} 码蛋糕法阵，持续 {C:EqFoodBatch.BOX_FIELD_SEC} 秒，每秒为其中友军回复 50/70/120 生命值与 2/4/6 龟能。\n终极护盾破碎时，自身脱离礼盒。\n自身阵亡时分裂出两个蛋糕礼盒，拥有自身 20/40/100%最大生命值及相同攻击力与双抗，其余属性为 0 或默认值，同样嘲讽并施放礼盒技能。",
+    "effectDesc1": "获得最大生命值 50/80/120%的永久【终极护盾】。\n护盾存在时，自身化为蛋糕礼盒：属性不变，射程变为近战，攻击与技能替换为礼盒效果。\n礼盒嘲讽 {C:EqFoodBatch.BOX_TAUNT_PX} 码内所有敌人，每有一个敌人以自身为目标，获得 +20/30/60 双抗。攻击造成 1 倍攻击力物理伤害。技能召唤 {C:EqFoodBatch.BOX_FIELD_PX} 码蛋糕法阵，持续 {C:EqFoodBatch.BOX_FIELD_SEC} 秒，每秒为其中友军回复 50/70/120 生命值与 2/4/6 龟能。\n终极护盾破碎时，自身脱离礼盒。\n自身阵亡时分裂出两个蛋糕礼盒，拥有自身 20/40/100%最大生命值及相同攻击力与双抗，其余属性为 0 或默认值，同样嘲讽并施放礼盒技能。",
     "effectDesc3": "",
     "img": "equip/p2eq_072.png",
     "effectBrief": "获得自身最大生命值 50/80/120% 的终极护盾，护盾存在期间化身蛋糕礼盒并嘲讽敌人。"
@@ -942,7 +942,7 @@
     "baseStats1": "+生命90/200/420·+治疗与护盾10/18/30%·+攻速8/15/25%",
     "shopAvailable": 1,
     "emoji": "🏥",
-    "effectDesc1": "在自身后方 {C:EqGunBatch.TOWER_BACK} 码生成一座医疗炮台：700/1200/2500 生命值、15/20/30 攻击力、50/70/100 双抗，攻击速度与自身实时同步。\n炮台攻击造成 1 倍攻击力的物理伤害+目标最大生命值 1/1.5/2%的魔法伤害，并为生命百分比最低的友军回复 10/15/20 生命值。\n炮台拥有独立的金弹计数，每攻击 4/3/2 次射出一发金弹，继承全部效果并附加 60/80/100%真实伤害，且金弹的治疗量翻倍。",
+    "effectDesc1": "在自身后方 {C:EqGunBatch.TOWER_BACK} 码生成一座医疗炮台：700/1200/2500 生命值、15/20/30 攻击力、50/70/100 双抗，攻击速度与自身相同。\n炮台攻击造成 1 倍攻击力的物理伤害+目标最大生命值 1/1.5/2%的魔法伤害，并为生命百分比最低的友军回复 10/15/20 生命值。\n炮台拥有独立的金弹计数，每攻击 4/3/2 次射出一发金弹，继承全部效果并附加 60/80/100%真实伤害，且金弹的治疗量翻倍。",
     "effectDesc3": "",
     "img": "equip/p2eq_079.png",
     "effectBrief": "在身后生成一座医疗炮台，攻击对敌人造成伤害，并为生命百分比最低的友军回复生命值。"
@@ -1002,7 +1002,7 @@
     "baseStats1": "+攻速10/18/30%·+移速7/13/22%",
     "shopAvailable": 1,
     "emoji": "🗡️",
-    "effectDesc1": "效果随自身为近战或远程而改变。\n近战携带：获得 {C:EqBladeBatch.HH_MELEE_RANGE} 码射程，攻击改为红色闪电激光，并获得 {C:EqBladeBatch.HH_MELEE_AMP%}% 增伤。技能替换为消耗 {C:EqBladeBatch.HH_ENERGY} 龟能的【十字斩】：横斩以 {C:BladeEqVfx.SLASH_REACH} 码、{C:BladeEqVfx.SLASH_DEG_WIDE} 度扫过，造成 40/70/130+0.6/0.9/1.4 倍攻击力的物理伤害，横波再造成 25/45/85+0.4/0.6/0.9 倍攻击力的物理伤害。随后竖斩造成 50/85/160+0.7/1.1/1.7 倍攻击力的物理伤害，竖波再造成 30/55/100+0.5/0.7/1.1 倍攻击力的物理伤害。\n远程携带：射程固定为 {C:EqBladeBatch.HH_RANGED_RANGE} 码，获得 {C:EqBladeBatch.HH_RANGED_DR%}% 减伤、{C:EqBladeBatch.HH_RANGED_HP} 最大生命值、登场时攻击力的 10/15/20%作为额外攻击力、10/12.5/15%生命偷取。每转化 {C:EqBladeBatch.HH_CONV_PER} 码射程，这些属性提升 {C:EqBladeBatch.HH_CONV_BONUS%}%，射程变化时实时重算。主动技能不替换。",
+    "effectDesc1": "效果随自身为近战或远程而改变。\n近战携带：获得 {C:EqBladeBatch.HH_MELEE_RANGE} 码射程，攻击改为红色闪电激光，并获得 {C:EqBladeBatch.HH_MELEE_AMP%}% 增伤。技能替换为消耗 {C:EqBladeBatch.HH_ENERGY} 龟能的【十字斩】：横斩以 {C:BladeEqVfx.SLASH_REACH} 码、{C:BladeEqVfx.SLASH_DEG_WIDE} 度扫过，造成 40/70/130+0.6/0.9/1.4 倍攻击力的物理伤害，横波再造成 25/45/85+0.4/0.6/0.9 倍攻击力的物理伤害。随后竖斩造成 50/85/160+0.7/1.1/1.7 倍攻击力的物理伤害，竖波再造成 30/55/100+0.5/0.7/1.1 倍攻击力的物理伤害。\n远程携带：射程固定为 {C:EqBladeBatch.HH_RANGED_RANGE} 码，获得 {C:EqBladeBatch.HH_RANGED_DR%}% 减伤、{C:EqBladeBatch.HH_RANGED_HP} 最大生命值、登场时攻击力的 10/15/20%作为额外攻击力、10/12.5/15%生命偷取。每转化 {C:EqBladeBatch.HH_CONV_PER} 码射程，这些属性提升 {C:EqBladeBatch.HH_CONV_BONUS%}%。主动技能不替换。",
     "effectDesc3": "",
     "img": "equip/p2eq_084.png",
     "effectBrief": "近战携带：技能替换为十字斩，攻击射出红色闪电激光并获得增伤。远程携带：射程转化为生命值、攻击力与生命偷取，并获得减伤。"

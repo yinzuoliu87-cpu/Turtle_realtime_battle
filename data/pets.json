@@ -928,7 +928,7 @@
       "type": "rainbowPrism",
       "name": "棱镜",
       "brief": "棱镜每 {C:RainbowSystem.PRISM_COLOR_SEC} 秒随机变为红、蓝、绿中的一种颜色，攻击附带对应效果：红色附加真实伤害，蓝色获得护盾，绿色回复生命值。彩虹龟的攻击力与攻击速度随最大生命值提升。",
-      "desc": "每 {C:RainbowSystem.PRISM_COLOR_SEC} 秒随机变为红、蓝、绿中的一种颜色，攻击附带对应效果：\n• 红色：额外造成（{C:RainbowSystem.PRISM_RED_TRUE%}%×攻击力({ATK}) = {T:RainbowSystem.PRISM_RED_TRUE*ATK}）真实伤害。\n• 蓝色：获得（{C:RainbowSystem.PRISM_BLUE_SHIELD%}%×攻击力({ATK}) = {S:RainbowSystem.PRISM_BLUE_SHIELD*ATK}）护盾，持续 {C:RainbowSystem.PRISM_BLUE_SEC} 秒。\n• 绿色：回复自身 {C:RainbowSystem.PRISM_GREEN_HEAL%}% 已损失生命值。\n彩虹龟获得相当于自身 {C:RainbowSystem.PRISM_ATK_FROM_HP%}% 最大生命值的攻击力，每点攻击力提供 {C:RainbowSystem.PRISM_ASPD_PER_ATK%}% 攻击速度。\n<span style=\"color:#8a93a0\">两者实时生效：战斗中最大生命值提升时，攻击力与攻击速度随之提升。</span>"
+      "desc": "每 {C:RainbowSystem.PRISM_COLOR_SEC} 秒随机变为红、蓝、绿中的一种颜色，攻击附带对应效果：\n• 红色：额外造成（{C:RainbowSystem.PRISM_RED_TRUE%}%×攻击力({ATK}) = {T:RainbowSystem.PRISM_RED_TRUE*ATK}）真实伤害。\n• 蓝色：获得（{C:RainbowSystem.PRISM_BLUE_SHIELD%}%×攻击力({ATK}) = {S:RainbowSystem.PRISM_BLUE_SHIELD*ATK}）护盾，持续 {C:RainbowSystem.PRISM_BLUE_SEC} 秒。\n• 绿色：回复自身 {C:RainbowSystem.PRISM_GREEN_HEAL%}% 已损失生命值。\n彩虹龟获得相当于自身 {C:RainbowSystem.PRISM_ATK_FROM_HP%}% 最大生命值的攻击力，每点攻击力提供 {C:RainbowSystem.PRISM_ASPD_PER_ATK%}% 攻击速度。"
     },
     "skillPool": [
       {
@@ -980,8 +980,8 @@
         "pierce": 0,
         "cd": 0,
         "aoe": true,
-        "brief": "射出一道彩虹光，从自身开始在敌我之间交替弹射 共 {C:RainbowSystem.REFLECT_BOUNCES} 段：命中友军或自身时回复 {H:RainbowSystem.REFLECT_COEF*ATK} 生命值，命中敌人时造成 {M:RainbowSystem.REFLECT_COEF*ATK} 魔法伤害。\n<span style=\"color:#8a93a0\">每段效果相同、不递减。\n</span>",
-        "detail": "被动：彩虹龟每 {C:RainbowSystem.PRISM_PROC_SEC} 秒额外抽取一种颜色：\n• 橙色：全队获得 {C:RainbowSystem.PRISM_LIFESTEAL%}% 生命偷取，持续 {C:RainbowSystem.PRISM_BUFF_SEC} 秒。\n• 黄色：对随机敌人施加（{C:RainbowSystem.PRISM_BURN_COEF%}%×攻击力({ATK}) = {E:RainbowSystem.PRISM_BURN_COEF*ATK}）层灼烧。\n• 青色：对随机敌人施加冰寒，持续 {C:RainbowSystem.PRISM_BUFF_SEC} 秒。\n• 紫色：对随机敌人施加诅咒，持续 {C:RainbowSystem.PRISM_BUFF_SEC} 秒。\n主动：彩虹龟从自身开始射出一道彩虹光，在敌我之间交替弹射，共 {C:RainbowSystem.REFLECT_BOUNCES} 段：\n为友军与自身回复（{C:RainbowSystem.REFLECT_COEF%}%×攻击力({ATK}) = {H:RainbowSystem.REFLECT_COEF*ATK}）生命值，对敌人造成（{C:RainbowSystem.REFLECT_COEF%}%×攻击力({ATK}) = {M:RainbowSystem.REFLECT_COEF*ATK}）魔法伤害。\n<span style=\"color:#8a93a0\">每段效果相同，不会递减。</span>",
+        "brief": "射出一道彩虹光，从自身开始在敌我之间交替弹射 共 {C:RainbowSystem.REFLECT_BOUNCES} 段：命中友军或自身时回复 {H:RainbowSystem.REFLECT_COEF*ATK} 生命值，命中敌人时造成 {M:RainbowSystem.REFLECT_COEF*ATK} 魔法伤害。",
+        "detail": "被动：彩虹龟每 {C:RainbowSystem.PRISM_PROC_SEC} 秒额外抽取一种颜色：\n• 橙色：全队获得 {C:RainbowSystem.PRISM_LIFESTEAL%}% 生命偷取，持续 {C:RainbowSystem.PRISM_BUFF_SEC} 秒。\n• 黄色：对随机敌人施加（{C:RainbowSystem.PRISM_BURN_COEF%}%×攻击力({ATK}) = {E:RainbowSystem.PRISM_BURN_COEF*ATK}）层灼烧。\n• 青色：对随机敌人施加冰寒，持续 {C:RainbowSystem.PRISM_BUFF_SEC} 秒。\n• 紫色：对随机敌人施加诅咒，持续 {C:RainbowSystem.PRISM_BUFF_SEC} 秒。\n主动：彩虹龟从自身开始射出一道彩虹光，在敌我之间交替弹射，共 {C:RainbowSystem.REFLECT_BOUNCES} 段：\n为友军与自身回复（{C:RainbowSystem.REFLECT_COEF%}%×攻击力({ATK}) = {H:RainbowSystem.REFLECT_COEF*ATK}）生命值，对敌人造成（{C:RainbowSystem.REFLECT_COEF%}%×攻击力({ATK}) = {M:RainbowSystem.REFLECT_COEF*ATK}）魔法伤害。",
         "energyCost": 110
       }
     ],
@@ -1393,8 +1393,8 @@
     "passive": {
       "type": "inkMark",
       "name": "墨迹",
-      "brief": "攻击与技能会为目标叠加<span class=\"val-emph\">墨迹</span>。\n目标每受到一次伤害，每层墨迹便使其在原伤害之外额外承受 <span class=\"val-atk\">{C:LineSystem.INK_TRUE_PER_STACK%}%</span> 真实伤害，此伤害穿透减伤与护盾。\n<span style=\"color:#8a93a0\">墨迹上限为 {C:LineSystem.INK_CAP} 层，选择【墨水炸弹】时提升至 {C:LineSystem.INK_CAP_BOMB} 层。满层时额外承受 {C:LineSystem.INK_TRUE_FULL_BOMB%}%。\n</span>\n线条龟自身实时获得<span class=\"val-atk\">({C:LineSystem.ASPD_PER_ATK%}×攻击力)%</span> 的额外攻击速度。",
-      "desc": "攻击与技能会为目标叠加墨迹，上限 {C:LineSystem.INK_CAP} 层，选择【墨水炸弹】时上限提升至 {C:LineSystem.INK_CAP_BOMB} 层。\n目标每受到一次伤害，每层墨迹使其在原伤害之外额外承受 <span class=\"val-true\">{C:LineSystem.INK_TRUE_PER_STACK%}% 真实伤害</span>，此伤害穿透减伤与护盾。墨迹达到 {C:LineSystem.INK_CAP_BOMB} 层时额外承受 {C:LineSystem.INK_TRUE_FULL_BOMB%}%。\n线条龟自身<span class=\"val-emph\">实时</span>获得<span class=\"val-atk\">({C:LineSystem.ASPD_PER_ATK%}×攻击力)%</span> 的额外攻击速度，攻击速度随攻击力提升同步提高。"
+      "brief": "攻击与技能会为目标叠加<span class=\"val-emph\">墨迹</span>。\n目标每受到一次伤害，每层墨迹便使其在原伤害之外额外承受 <span class=\"val-atk\">{C:LineSystem.INK_TRUE_PER_STACK%}%</span> 真实伤害，此伤害穿透减伤与护盾。\n<span style=\"color:#8a93a0\">墨迹上限为 {C:LineSystem.INK_CAP} 层，选择【墨水炸弹】时提升至 {C:LineSystem.INK_CAP_BOMB} 层。满层时额外承受 {C:LineSystem.INK_TRUE_FULL_BOMB%}%。\n</span>\n线条龟自身获得<span class=\"val-atk\">({C:LineSystem.ASPD_PER_ATK%}×攻击力)%</span> 的额外攻击速度。",
+      "desc": "攻击与技能会为目标叠加墨迹，上限 {C:LineSystem.INK_CAP} 层，选择【墨水炸弹】时上限提升至 {C:LineSystem.INK_CAP_BOMB} 层。\n目标每受到一次伤害，每层墨迹使其在原伤害之外额外承受 <span class=\"val-true\">{C:LineSystem.INK_TRUE_PER_STACK%}% 真实伤害</span>，此伤害穿透减伤与护盾。墨迹达到 {C:LineSystem.INK_CAP_BOMB} 层时额外承受 {C:LineSystem.INK_TRUE_FULL_BOMB%}%。\n线条龟自身获得<span class=\"val-atk\">({C:LineSystem.ASPD_PER_ATK%}×攻击力)%</span> 的额外攻击速度，攻击速度随攻击力提升同步提高。"
     },
     "skillPool": [
       {
@@ -1935,7 +1935,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "被动：宝箱龟每携带一件装备，便<span class=\"val-atk\">永久</span>获得 <span class=\"val-atk\">{C:ChestSystem.GREED_ATK_PER_EQ%}% 攻击力</span> 和自身 <span class=\"val-atk\">{C:ChestSystem.GREED_HP_PER_EQ%}%</span> 最大生命值。\n主动：蓄力后朝一条直线发射一道长能量射线，对直线上的所有敌人各造成 {N:ChestSystem.CANNON_COEF*ATK} 物理伤害，并将其<span class=\"val-atk\">击飞击退</span>。",
-        "detail": "被动：宝箱龟每携带一件装备便永久获得攻击力 +{C:ChestSystem.GREED_ATK_PER_EQ%}% 与最大生命值 +{C:ChestSystem.GREED_HP_PER_EQ%}%。藏宝图开出的装备亦计入，加成实时累计。\n主动：宝箱龟蓄力后朝一条直线发射一道长激光能量射线，对直线上的所有敌人各造成（{C:ChestSystem.CANNON_COEF%}%×攻击力({ATK}) = {N:ChestSystem.CANNON_COEF*ATK}）物理伤害，并将其击飞与击退。"
+        "detail": "被动：宝箱龟每携带一件装备便永久获得攻击力 +{C:ChestSystem.GREED_ATK_PER_EQ%}% 与最大生命值 +{C:ChestSystem.GREED_HP_PER_EQ%}%。藏宝图开出的装备也计入。\n主动：宝箱龟蓄力后朝一条直线发射一道长激光能量射线，对直线上的所有敌人各造成（{C:ChestSystem.CANNON_COEF%}%×攻击力({ATK}) = {N:ChestSystem.CANNON_COEF*ATK}）物理伤害，并将其击飞与击退。"
       }
     ],
     "defaultSkills": [
