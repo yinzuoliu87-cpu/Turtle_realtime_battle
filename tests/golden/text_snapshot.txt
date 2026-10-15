@@ -215,12 +215,12 @@ pet|双头龟/精神干扰/吸收|brief|远程形态：双头龟对目标造成 
 pet|双头龟/精神干扰/吸收|detail|远程形态：双头龟对目标造成（200%×攻击力({ATK}) = {T:TwoHeadSystem.DISRUPT_TRUE*ATK}）真实伤害，施加 50% 治疗削减，持续 5 秒，并破坏其 50% 护盾。\n近战形态：双头龟对目标造成（60%×攻击力({ATK}) = {N:TwoHeadSystem.ABSORB_ATK_COEF*ATK}）外加 8% 目标最大生命值的物理伤害，并回复（40%×攻击力({ATK}) = {E:ATK*TwoHeadSystem.ABSORB_HEAL_ATK}）外加 18% 自身已损失生命值。
 pet|双头龟/融合|brief|被动：双头龟两头合体，登场即锁定形态，获得近战形态的最大生命值、护甲、魔抗和护盾加成。每受到一段伤害永久获得 1 护甲和 1 魔抗，各最多 20。\n\n主动：双头龟发射 4 段魔法波，交替造成 {N:TwoHeadSystem.FUSION_WAVE_COEF*ATK} 物理伤害和 {T:TwoHeadSystem.FUSION_WAVE_COEF*ATK} 真实伤害并击飞敌人。每次释放后段数 +1，持续到战斗结束。
 pet|双头龟/融合|detail|被动：双头龟两头合体，登场即锁定形态，获得近战形态的最大生命值、护甲、魔抗和护盾加成。每受到一段伤害永久获得 1 护甲和 1 魔抗，各最多 20。\n\n主动：双头龟发射 4 段魔法波，交替造成（80%×攻击力({ATK}) = {N:TwoHeadSystem.FUSION_WAVE_COEF*ATK}）物理伤害和（80%×攻击力({ATK}) = {T:TwoHeadSystem.FUSION_WAVE_COEF*ATK}）真实伤害并击飞敌人。每次释放后段数 +1，持续到战斗结束。
-pet|天使龟/审判|brief|天使龟每段攻击命中敌人时，额外造成 8% 目标当前生命值的魔法伤害。
-pet|天使龟/审判|desc|天使龟每段攻击命中敌人时，额外造成 8% 目标当前生命值的魔法伤害。\n<span style="color:#8a93a0">该伤害不会暴击，也不叠加命中层数，但会触发目标的反伤与自身的生命偷取。</span>
+pet|天使龟/审判|brief|天使龟每段攻击命中敌人时，额外造成 8% 目标当前生命值的魔法伤害。\n<span style="color:#8a93a0">选择【平等】时，其每段伤害也会触发此效果。</span>
+pet|天使龟/审判|desc|天使龟每段攻击命中敌人时，额外造成 8% 目标当前生命值的魔法伤害。\n<span style="color:#8a93a0">选择【平等】时，其每段伤害也会触发此效果。\n该伤害不会暴击，也不叠加命中层数，但会触发目标的反伤与自身的生命偷取。</span>
 pet|天使龟/平等|brief|天使龟对目标斩出 4 道圣光，共造成 {N:AngelSystem.EQUAL_TOTAL*ATK} 物理伤害，本次施法获得 10% 生命偷取。\n若目标稀有度为 A 级及以上，额外造成 {T:AngelSystem.EQUAL_JUDGE_COEF*ATK} 外加 10% 目标已损失生命值的真实伤害。
 pet|天使龟/平等|detail|天使龟对目标斩出 4 道圣光，共造成（200%×攻击力({ATK}) = {N:AngelSystem.EQUAL_TOTAL*ATK}）物理伤害，本次施法获得 10% 生命偷取。\n若目标稀有度为 A 级及以上，额外造成（50%×攻击力({ATK}) = {T:AngelSystem.EQUAL_JUDGE_COEF*ATK}）外加 10% 目标已损失生命值的真实伤害。
-pet|天使龟/祝福|brief|被动：天使龟首次死亡时以自身 25% 最大生命值复活一次。\n\n主动：天使龟使当前输出最高的友军获得 {E:AngelSystem.BLESS_SHIELD*ATK} 护盾和 50% 攻击速度，持续 5 秒。
-pet|天使龟/祝福|detail|被动：天使龟首次死亡时以自身 25% 最大生命值复活一次。\n\n主动：天使龟使当前输出最高的友军获得（250%×攻击力({ATK}) = {E:AngelSystem.BLESS_SHIELD*ATK}）护盾和 50% 攻击速度，持续 5 秒。
+pet|天使龟/祝福|brief|被动：天使龟首次死亡时以自身 25% 最大生命值复活一次。\n\n主动：天使龟使当前输出最高的己方单位获得 {E:AngelSystem.BLESS_SHIELD*ATK} 护盾和 50% 攻击速度，持续 5 秒。
+pet|天使龟/祝福|detail|被动：天使龟首次死亡时以自身 25% 最大生命值复活一次。\n\n主动：天使龟使当前输出最高的己方单位获得（250%×攻击力({ATK}) = {E:AngelSystem.BLESS_SHIELD*ATK}）护盾和 50% 攻击速度，持续 5 秒。
 pet|天使龟/裁决|brief|天使龟攻击目标，造成 {N:AngelSystem.VERDICT_COEF*ATK} 物理伤害。
 pet|天使龟/裁决|detail|天使龟攻击目标，造成（100%×攻击力({ATK}) = {N:AngelSystem.VERDICT_COEF*ATK}）物理伤害。
 pet|天使龟/飞升|brief|被动：天使龟的攻击每次命中获得 5 龟能与 1% 攻击力，持续到战斗结束。\n\n主动：天使龟获得 20% 攻击速度、5% 移动速度和 25 码射程，持续到战斗结束，可无限叠加。
@@ -254,7 +254,7 @@ pet|小龟/攻击|detail|小龟攻击当前目标，造成（100%×攻击力({AT
 pet|小龟/过肩摔|brief|小龟将目标挑起并摔至身后，眩晕 0.5 秒，对其造成 {N:BasicConsts.SLAM_MAIN_ATK*ATK} 外加 {E:ATK*BasicConsts.SLAM_MAIN_HP_PER_ATK*100}% 目标最大生命值的物理伤害，并对落点附近的其他敌人造成 {N:BasicConsts.SLAM_SPLASH_ATK*ATK} 外加 {E:ATK*BasicConsts.SLAM_SPLASH_HP_PER_ATK*100}% 主目标最大生命值的物理伤害。\n<span style="color:#8a93a0">龟蛋免疫此控制。</span>
 pet|小龟/过肩摔|detail|小龟将目标挑起并摔至身后，眩晕 0.5 秒，对其造成（100%×攻击力({ATK}) = {N:BasicConsts.SLAM_MAIN_ATK*ATK}）外加（0.2%×攻击力({ATK}) = {E:ATK*BasicConsts.SLAM_MAIN_HP_PER_ATK*100}%）目标最大生命值的物理伤害，并对落点附近的其他敌人造成（30%×攻击力({ATK}) = {N:BasicConsts.SLAM_SPLASH_ATK*ATK}）外加（0.13%×攻击力({ATK}) = {E:ATK*BasicConsts.SLAM_SPLASH_HP_PER_ATK*100}%）主目标最大生命值的物理伤害。\n<span style="color:#8a93a0">龟蛋免疫此控制。</span>
 pet|小龟/龟派气波|brief|小龟打出一道贯穿气波，对沿途所有敌人造成 {N:BasicConsts.CHI_ATK_COEF*ATK} 物理伤害并将其击飞 1.5 秒。\n施法期间小龟获得 25% 暴击率、20% 生命偷取和 {E:BasicConsts.CHI_ARMOR_PEN_COEF*ATK} 护甲穿透，持续 3 秒。
-pet|小龟/龟派气波|detail|小龟打出一道贯穿气波，对沿途所有敌人造成（200%×攻击力({ATK}) = {N:BasicConsts.CHI_ATK_COEF*ATK}）物理伤害并将其击飞 1.5 秒。\n施法期间小龟获得 25% 暴击率、20% 生命偷取和相当于 10% 攻击力的护甲穿透，持续 3 秒。
+pet|小龟/龟派气波|detail|小龟打出一道贯穿气波，对沿途所有敌人造成（200%×攻击力({ATK}) = {N:BasicConsts.CHI_ATK_COEF*ATK}）物理伤害并将其击飞 1.5 秒。\n施法期间小龟获得 25% 暴击率、20% 生命偷取和（10%×攻击力({ATK}) = {E:BasicConsts.CHI_ARMOR_PEN_COEF*ATK}）护甲穿透，持续 3 秒。
 pet|幽灵龟/幽冥突袭|brief|幽灵龟突袭目标，造成 {M:GhostSystem.RAID_MAGIC*ATK} 魔法伤害并将其击飞，回复相当于该伤害 80% 的生命值，并获得 25% 闪避，持续 4 秒。
 pet|幽灵龟/幽冥突袭|detail|幽灵龟突袭目标，造成（150%×攻击力({ATK}) = {M:GhostSystem.RAID_MAGIC*ATK}）魔法伤害并将其击飞，回复相当于该伤害 80% 的生命值，并获得 25% 闪避，持续 4 秒。
 pet|幽灵龟/幽魂触碰|brief|幽灵龟攻击目标，造成 {N:GhostSystem.BASIC_PHYS*ATK} 物理伤害和 {T:GhostSystem.BASIC_TRUE*ATK} 真实伤害。
@@ -331,7 +331,7 @@ pet|海盗龟/弯刀|detail|海盗龟挥舞弯刀劈砍目标，造成（100%×�
 pet|海盗龟/掠夺|brief|海盗龟登场时轰击 1 名随机敌人，造成其 25% 最大生命值的真实伤害。\n海盗龟阵亡时甩出钩索抓住击杀它的单位，将其拉到身旁并眩晕 0.5 秒，造成其 25% 最大生命值的真实伤害。
 pet|海盗龟/掠夺|desc|海盗龟登场时轰击 1 名随机敌人，造成其 25% 最大生命值的真实伤害。\n海盗龟阵亡时甩出钩索抓住击杀它的单位，将其拉到身旁并眩晕 0.5 秒，造成其 25% 最大生命值的真实伤害。
 pet|海盗龟/朗姆酒|brief|海盗龟命令海盗船扔来一瓶朗姆酒，每秒回复 {E:HP*PirateSystem.RUM_HOT_PCT} 生命值，持续 6 秒，合计 {E:HP*PirateSystem.RUM_HOT_TOTAL}，同时获得 {E:ATK*PirateSystem.RUM_DEF_COEF} 护甲和 {E:ATK*PirateSystem.RUM_MR_COEF} 魔抗，持续 6 秒。
-pet|海盗龟/朗姆酒|detail|海盗龟命令海盗船扔来一瓶朗姆酒，每秒回复（4%×最大生命值({HP}) = {E:HP*PirateSystem.RUM_HOT_PCT}）生命值，持续 6 秒，合计 {E:HP*PirateSystem.RUM_HOT_TOTAL}，同时获得相当于 70% 攻击力的护甲和 20% 攻击力的魔抗，持续 6 秒。\n<span style="color:#8a93a0">持续回复效果可叠加。\n</span>
+pet|海盗龟/朗姆酒|detail|海盗龟命令海盗船扔来一瓶朗姆酒，每秒回复（4%×最大生命值({HP}) = {E:HP*PirateSystem.RUM_HOT_PCT}）生命值，持续 6 秒，合计 {E:HP*PirateSystem.RUM_HOT_TOTAL}，同时获得（70%×攻击力({ATK}) = {E:ATK*PirateSystem.RUM_DEF_COEF}）护甲和（20%×攻击力({ATK}) = {E:ATK*PirateSystem.RUM_MR_COEF}）魔抗，持续 6 秒。\n<span style="color:#8a93a0">持续回复效果可叠加。\n</span>
 pet|海盗龟/海盗船|brief|海盗龟首次龟能充满时召唤一艘海盗船。海盗船冲锋撞击目标，对其附近的敌人造成 {M:ATK} 魔法伤害并击飞 2 秒，之后留在场上攻击最近的敌人，每次造成 {N:PirateSystem.SHIP_SHOT_COEF*ATK*PirateSystem.SHIP_ATK_SCALE} 物理伤害。\n此后海盗龟每次龟能充满时朝目标扇形射出 8 颗霰弹，每颗对命中的第一个敌人造成 {N:PirateSystem.SHOT_COEF*ATK} 物理伤害并击退。\n<span style="color:#8a93a0">海盗船的生命值为 {E:HP*PirateSystem.SHIP_HP_SCALE}，攻击力为 {E:ATK}，没有护甲与魔抗。</span>
 pet|海盗龟/海盗船|detail|海盗龟首次龟能充满时召唤一艘海盗船。海盗船冲锋撞击目标，对其附近的敌人造成（100%×攻击力({ATK}) = {M:ATK}）魔法伤害并击飞 2 秒，之后留在场上攻击最近的敌人，每次造成（40%×海盗船攻击力 = {N:PirateSystem.SHIP_SHOT_COEF*ATK*PirateSystem.SHIP_ATK_SCALE}）物理伤害。\n此后海盗龟每次龟能充满时朝目标扇形射出 8 颗霰弹，每颗对命中的第一个敌人造成（50%×攻击力({ATK}) = {N:PirateSystem.SHOT_COEF*ATK}）物理伤害并击退。\n<span style="color:#8a93a0">海盗船的生命值为 {E:HP*PirateSystem.SHIP_HP_SCALE}（150% 海盗龟最大生命值），攻击力为 {E:ATK}（100% 海盗龟攻击力），没有护甲与魔抗。</span>
 pet|海盗龟/火炮齐射|brief|海盗龟命令海盗船朝随机敌人发射 6 发炮弹，每发对落点附近的敌人造成 {N:PirateSystem.VOLLEY_ATK_COEF*ATK} 外加 2% 目标最大生命值的物理伤害。

@@ -72,7 +72,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "小龟打出一道贯穿气波，对沿途所有敌人造成 {N:BasicConsts.CHI_ATK_COEF*ATK} 物理伤害并将其击飞 {C:BasicConsts.CHI_KNOCK_SEC} 秒。\n施法期间小龟获得 {C:BasicConsts.CHI_CRIT%}% 暴击率、{C:BasicConsts.CHI_LIFESTEAL%}% 生命偷取和 {E:BasicConsts.CHI_ARMOR_PEN_COEF*ATK} 护甲穿透，持续 {C:BasicConsts.CHI_BUFF_SEC} 秒。",
-        "detail": "小龟打出一道贯穿气波，对沿途所有敌人造成（{C:BasicConsts.CHI_ATK_COEF%}%×攻击力({ATK}) = {N:BasicConsts.CHI_ATK_COEF*ATK}）物理伤害并将其击飞 {C:BasicConsts.CHI_KNOCK_SEC} 秒。\n施法期间小龟获得 {C:BasicConsts.CHI_CRIT%}% 暴击率、{C:BasicConsts.CHI_LIFESTEAL%}% 生命偷取和相当于 {C:BasicConsts.CHI_ARMOR_PEN_COEF%}% 攻击力的护甲穿透，持续 {C:BasicConsts.CHI_BUFF_SEC} 秒。",
+        "detail": "小龟打出一道贯穿气波，对沿途所有敌人造成（{C:BasicConsts.CHI_ATK_COEF%}%×攻击力({ATK}) = {N:BasicConsts.CHI_ATK_COEF*ATK}）物理伤害并将其击飞 {C:BasicConsts.CHI_KNOCK_SEC} 秒。\n施法期间小龟获得 {C:BasicConsts.CHI_CRIT%}% 暴击率、{C:BasicConsts.CHI_LIFESTEAL%}% 生命偷取和（{C:BasicConsts.CHI_ARMOR_PEN_COEF%}%×攻击力({ATK}) = {E:BasicConsts.CHI_ARMOR_PEN_COEF*ATK}）护甲穿透，持续 {C:BasicConsts.CHI_BUFF_SEC} 秒。",
         "energyCost": 100
       },
       {
@@ -276,8 +276,8 @@
       "type": "judgement",
       "name": "审判",
       "hpPct": 8,
-      "brief": "天使龟每段攻击命中敌人时，额外造成 {C:AngelSystem.JUDGE_CURHP%}% 目标当前生命值的魔法伤害。",
-      "desc": "天使龟每段攻击命中敌人时，额外造成 {C:AngelSystem.JUDGE_CURHP%}% 目标当前生命值的魔法伤害。\n<span style=\"color:#8a93a0\">该伤害不会暴击，也不叠加命中层数，但会触发目标的反伤与自身的生命偷取。</span>"
+      "brief": "天使龟每段攻击命中敌人时，额外造成 {C:AngelSystem.JUDGE_CURHP%}% 目标当前生命值的魔法伤害。\n<span style=\"color:#8a93a0\">选择【平等】时，其每段伤害也会触发此效果。</span>",
+      "desc": "天使龟每段攻击命中敌人时，额外造成 {C:AngelSystem.JUDGE_CURHP%}% 目标当前生命值的魔法伤害。\n<span style=\"color:#8a93a0\">选择【平等】时，其每段伤害也会触发此效果。\n该伤害不会暴击，也不叠加命中层数，但会触发目标的反伤与自身的生命偷取。</span>"
     },
     "skillPool": [
       {
@@ -301,8 +301,8 @@
         "cd": 0,
         "shieldTurns": 3,
         "defBoostTurns": 4,
-        "brief": "被动：天使龟首次死亡时以自身 {C:AngelSystem.REVIVE_HP_PCT%}% 最大生命值复活一次。\n\n主动：天使龟使当前输出最高的友军获得 {E:AngelSystem.BLESS_SHIELD*ATK} 护盾和 {C:AngelSystem.BLESS_HASTE%}% 攻击速度，持续 {C:AngelSystem.BLESS_SEC} 秒。",
-        "detail": "被动：天使龟首次死亡时以自身 {C:AngelSystem.REVIVE_HP_PCT%}% 最大生命值复活一次。\n\n主动：天使龟使当前输出最高的友军获得（{C:AngelSystem.BLESS_SHIELD%}%×攻击力({ATK}) = {E:AngelSystem.BLESS_SHIELD*ATK}）护盾和 {C:AngelSystem.BLESS_HASTE%}% 攻击速度，持续 {C:AngelSystem.BLESS_SEC} 秒。",
+        "brief": "被动：天使龟首次死亡时以自身 {C:AngelSystem.REVIVE_HP_PCT%}% 最大生命值复活一次。\n\n主动：天使龟使当前输出最高的己方单位获得 {E:AngelSystem.BLESS_SHIELD*ATK} 护盾和 {C:AngelSystem.BLESS_HASTE%}% 攻击速度，持续 {C:AngelSystem.BLESS_SEC} 秒。",
+        "detail": "被动：天使龟首次死亡时以自身 {C:AngelSystem.REVIVE_HP_PCT%}% 最大生命值复活一次。\n\n主动：天使龟使当前输出最高的己方单位获得（{C:AngelSystem.BLESS_SHIELD%}%×攻击力({ATK}) = {E:AngelSystem.BLESS_SHIELD*ATK}）护盾和 {C:AngelSystem.BLESS_HASTE%}% 攻击速度，持续 {C:AngelSystem.BLESS_SEC} 秒。",
         "energyCost": 80
       },
       {
@@ -1200,7 +1200,7 @@
           "turns": 4
         },
         "brief": "海盗龟命令海盗船扔来一瓶朗姆酒，每秒回复 {E:HP*PirateSystem.RUM_HOT_PCT} 生命值，持续 {C:PirateSystem.RUM_SEC} 秒，合计 {E:HP*PirateSystem.RUM_HOT_TOTAL}，同时获得 {E:ATK*PirateSystem.RUM_DEF_COEF} 护甲和 {E:ATK*PirateSystem.RUM_MR_COEF} 魔抗，持续 {C:PirateSystem.RUM_SEC} 秒。",
-        "detail": "海盗龟命令海盗船扔来一瓶朗姆酒，每秒回复（{C:PirateSystem.RUM_HOT_PCT%}%×最大生命值({HP}) = {E:HP*PirateSystem.RUM_HOT_PCT}）生命值，持续 {C:PirateSystem.RUM_SEC} 秒，合计 {E:HP*PirateSystem.RUM_HOT_TOTAL}，同时获得相当于 {C:PirateSystem.RUM_DEF_COEF%}% 攻击力的护甲和 {C:PirateSystem.RUM_MR_COEF%}% 攻击力的魔抗，持续 {C:PirateSystem.RUM_SEC} 秒。\n<span style=\"color:#8a93a0\">持续回复效果可叠加。\n</span>"
+        "detail": "海盗龟命令海盗船扔来一瓶朗姆酒，每秒回复（{C:PirateSystem.RUM_HOT_PCT%}%×最大生命值({HP}) = {E:HP*PirateSystem.RUM_HOT_PCT}）生命值，持续 {C:PirateSystem.RUM_SEC} 秒，合计 {E:HP*PirateSystem.RUM_HOT_TOTAL}，同时获得（{C:PirateSystem.RUM_DEF_COEF%}%×攻击力({ATK}) = {E:ATK*PirateSystem.RUM_DEF_COEF}）护甲和（{C:PirateSystem.RUM_MR_COEF%}%×攻击力({ATK}) = {E:ATK*PirateSystem.RUM_MR_COEF}）魔抗，持续 {C:PirateSystem.RUM_SEC} 秒。\n<span style=\"color:#8a93a0\">持续回复效果可叠加。\n</span>"
       },
       {
         "name": "海盗船",
