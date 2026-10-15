@@ -462,10 +462,10 @@
     "baseStats1": "+生命80/140/200",
     "shopAvailable": 1,
     "emoji": "🎋",
-    "effectDesc1": "获得 6/10/15 次生长充能，在同一局对局内跨战场保留，开始新对局时重置。\n每 3 次攻击消耗 1 次充能，向最近的敌人射出一支强化竹箭，造成 25/30/35+{C:EquipSystem.BAMBOO_ARROW_MAXHP_PCT%}% 自身最大生命值的魔法伤害。命中后生成一颗绿色生命球飞回自身，抵达时回复自身 {C:EquipSystem.BAMBOO_ARROW_MAXHP_PCT%}% 最大生命值，并使自身最大生命值永久提升 50/70/90，此效果持续到本局对局结束。",
+    "effectDesc1": "获得 6/10/15 次生长充能，在同一局对局内跨战场保留，开始新对局时重置。\n每 3 次攻击消耗 1 次充能，向最近的敌人射出一支强化竹箭，造成 25/30/35+{C:EquipSystem.BAMBOO_ARROW_MAXHP_PCT%}% 自身最大生命值的魔法伤害。命中后回复自身 {C:EquipSystem.BAMBOO_ARROW_MAXHP_PCT%}% 最大生命值，并使自身最大生命值永久提升 50/70/90，此效果持续到本局对局结束。",
     "effectDesc3": "",
     "img": "equip/equip-bamboo-leaf.png",
-    "effectBrief": "每 3 次攻击射出竹箭，回收的生命球使最大生命值永久提升 50/70/90。"
+    "effectBrief": "每 3 次攻击射出竹箭，命中后永久提升最大生命值 50/70/90。"
   },
   {
     "id": "p2eq_040",

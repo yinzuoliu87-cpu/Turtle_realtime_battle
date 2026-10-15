@@ -119,8 +119,8 @@ eq|磷光水母伞|effectBrief|每 7 秒撑伞 2.5 秒，自身与附近的队�
 eq|磷光水母伞|effectDesc1|每 7 秒打开一次伞：自身与附近的队友获得 11/22/35% 减伤与 15% 闪避，持续 2.5 秒。\n效果结束时自身回复 50/80/130 生命值，7 秒后再次撑开。
 eq|祖龟碑|effectBrief|阵亡时立起祖龟碑：全队获得 +12/22/35% 增伤，并每 3 秒砸下石雷。
 eq|祖龟碑|effectDesc1|阵亡时在原地立起一座不可选中的祖龟碑，持续到本路结束。\n祖龟碑为全体友军提供 12/22/35% 增伤与 18/32/50 双抗，并每 3 秒向最近的敌人砸下一道石雷，造成 130/260/500 魔法伤害。
-eq|竹制弓箭|effectBrief|每 3 次攻击射出竹箭，回收的生命球使最大生命值永久提升 50/70/90。
-eq|竹制弓箭|effectDesc1|获得 6/10/15 次生长充能，在同一局对局内跨战场保留，开始新对局时重置。\n每 3 次攻击消耗 1 次充能，向最近的敌人射出一支强化竹箭，造成 25/30/35+6% 自身最大生命值的魔法伤害。命中后生成一颗绿色生命球飞回自身，抵达时回复自身 6% 最大生命值，并使自身最大生命值永久提升 50/70/90，此效果持续到本局对局结束。
+eq|竹制弓箭|effectBrief|每 3 次攻击射出竹箭，命中后永久提升最大生命值 50/70/90。
+eq|竹制弓箭|effectDesc1|获得 6/10/15 次生长充能，在同一局对局内跨战场保留，开始新对局时重置。\n每 3 次攻击消耗 1 次充能，向最近的敌人射出一支强化竹箭，造成 25/30/35+6% 自身最大生命值的魔法伤害。命中后回复自身 6% 最大生命值，并使自身最大生命值永久提升 50/70/90，此效果持续到本局对局结束。
 eq|荆棘海胆|effectBrief|每反伤 300/270/230 点获得护盾，并使下次攻击施加 30/50/90 层流血。反伤命中时，对目标施加 50% 治疗削减和护盾削减，持续 3 秒。
 eq|荆棘海胆|effectDesc1|每累计反伤 300/270/230 点伤害，便获得 50/70/200 点护盾，并使下次攻击命中时对目标施加 30/50/90 层流血。\n反伤命中时，对目标施加 50% 治疗削减和护盾削减，持续 3 秒。
 eq|草莓蛋糕|effectBrief|生命值首次低于 80/55/30% 时各食用一块蛋糕，分别提供生命值、攻击力与护盾。
@@ -376,8 +376,8 @@ pet|石头龟/磐石之躯|brief|石头龟释放岩石冲击波，对一横排�
 pet|石头龟/磐石之躯|detail|被动效果：\n石头龟每次受到伤害会获得 1 层岩层，上限为 30 层。\n每层岩层提供 1% 减伤和 2% 体型。\n主动释放：\n石头龟释放岩石冲击波，对一横排敌人造成 {N:(StoneSystem.ROCK_WAVE_DEF_COEF*DEF+StoneSystem.ROCK_WAVE_MR_COEF*MR)*(1+StoneSystem.ROCK_WAVE_PER_LAYER*rockLayers)} 物理伤害（50% 护甲 + 50% 魔抗，每层岩层再提高 4%），并必定使其眩晕 2 秒。\n<span style="color:#8a93a0">命中的敌人会被击飞</span>。
 pet|竹叶龟/一叶刃|brief|竹叶龟甩出一道叶刃，造成 {N:BambooSystem.LEAF_ATK_COEF*ATK+HP*BambooSystem.LEAF_MAXHP_PCT} 物理伤害。
 pet|竹叶龟/一叶刃|detail|竹叶龟甩出叶刃，造成（40%×攻击力({ATK}) + 3%×最大生命值({HP}) = {N:BambooSystem.LEAF_ATK_COEF*ATK+HP*BambooSystem.LEAF_MAXHP_PCT}）物理伤害。
-pet|竹叶龟/生长|brief|竹叶龟每 6 秒蓄力一次，下次攻击额外造成 {M:ATK*BambooSystem.GROW_ATK_COEF+HP*BambooSystem.GROW_HP_PCT} 魔法伤害，并飞回一颗生命球，回复 8% 自身最大生命值并永久提升最大生命值。
-pet|竹叶龟/生长|desc|竹叶龟每 6 秒蓄力一次，下次攻击额外造成（75%×攻击力({ATK}) + 8%×最大生命值({HP}) = {M:ATK*BambooSystem.GROW_ATK_COEF+HP*BambooSystem.GROW_HP_PCT}）魔法伤害。\n命中后一颗生命球飞回竹叶龟，抵达时回复 8% 自身最大生命值，并永久提升（60%×基础攻击力({ATK}) = {E:ATK*BambooSystem.GROW_MAXHP_PER_ATK}）最大生命值。\n若出战时选择了【竹击】，强化效果提升为：造成 100% 攻击力 + 13% 自身最大生命值的魔法伤害，回复 12% 自身最大生命值，并永久提升 105% 基础攻击力的最大生命值。\n<span style="color:#8a93a0">提升的最大生命值不会使攻击力随之提升。</span>
+pet|竹叶龟/生长|brief|竹叶龟每 6 秒蓄力一次，下次攻击额外造成 {M:ATK*BambooSystem.GROW_ATK_COEF+HP*BambooSystem.GROW_HP_PCT} 魔法伤害，回复 8% 自身最大生命值并永久提升最大生命值。
+pet|竹叶龟/生长|desc|竹叶龟每 6 秒蓄力一次，下次攻击额外造成（75%×攻击力({ATK}) + 8%×最大生命值({HP}) = {M:ATK*BambooSystem.GROW_ATK_COEF+HP*BambooSystem.GROW_HP_PCT}）魔法伤害，回复 8% 自身最大生命值，并永久提升（60%×基础攻击力({ATK}) = {E:ATK*BambooSystem.GROW_MAXHP_PER_ATK}）最大生命值。\n若出战时选择了【竹击】，强化效果提升为：造成 100% 攻击力 + 13% 自身最大生命值的魔法伤害，回复 12% 自身最大生命值，并永久提升 105% 基础攻击力的最大生命值。
 pet|竹叶龟/竹击|brief|竹叶龟伸出竹藤钩住<span class="val-emph">全场最远的敌人</span>，造成 {N:BambooSystem.SMACK_ATK_COEF*ATK} 物理伤害并眩晕 0.5 秒，同时将其拉拽到自己身前。\n被钩中的敌人陷入冰寒，攻击力和移动速度各降低 20%，持续 4 秒。
 pet|竹叶龟/竹击|detail|竹叶龟伸出一条竹藤，钩住<span class="val-emph">全场最远</span>的敌人，造成 {N:BambooSystem.SMACK_ATK_COEF*ATK} 物理伤害、眩晕 0.5 秒，并将其拉至竹叶龟身前。\n同时施加冰寒，使其攻击力和移动速度各降低 20%，持续 4 秒。\n<span style="color:#8a93a0">龟蛋免疫控制，仅受到伤害。</span>
 pet|竹叶龟/竹刺阵|brief|竹叶龟以当前目标为中心蓄力 0.6 秒，随后召唤竹刺破地而出，对范围内敌人造成 {N:BambooSystem.SPIKE_ATK_COEF*ATK} + 15% 自身最大生命值的物理伤害，并将其击飞 1.5 秒。

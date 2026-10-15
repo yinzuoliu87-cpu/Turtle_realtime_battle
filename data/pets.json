@@ -196,8 +196,8 @@
     "passive": {
       "type": "bambooCharge",
       "name": "生长",
-      "brief": "竹叶龟每 {C:BambooSystem.GROW_CD} 秒蓄力一次，下次攻击额外造成 {M:ATK*BambooSystem.GROW_ATK_COEF+HP*BambooSystem.GROW_HP_PCT} 魔法伤害，并飞回一颗生命球，回复 {C:BambooSystem.GROW_HEAL_PCT%}% 自身最大生命值并永久提升最大生命值。",
-      "desc": "竹叶龟每 {C:BambooSystem.GROW_CD} 秒蓄力一次，下次攻击额外造成（{C:BambooSystem.GROW_ATK_COEF%}%×攻击力({ATK}) + {C:BambooSystem.GROW_HP_PCT%}%×最大生命值({HP}) = {M:ATK*BambooSystem.GROW_ATK_COEF+HP*BambooSystem.GROW_HP_PCT}）魔法伤害。\n命中后一颗生命球飞回竹叶龟，抵达时回复 {C:BambooSystem.GROW_HEAL_PCT%}% 自身最大生命值，并永久提升（{C:BambooSystem.GROW_MAXHP_PER_ATK%}%×基础攻击力({ATK}) = {E:ATK*BambooSystem.GROW_MAXHP_PER_ATK}）最大生命值。\n若出战时选择了【竹击】，强化效果提升为：造成 {C:BambooSystem.GROW_SMACK_ATK_COEF%}% 攻击力 + {C:BambooSystem.GROW_SMACK_HP_PCT%}% 自身最大生命值的魔法伤害，回复 {C:BambooSystem.GROW_SMACK_HEAL_PCT%}% 自身最大生命值，并永久提升 {C:BambooSystem.GROW_SMACK_MAXHP_PER_ATK%}% 基础攻击力的最大生命值。\n<span style=\"color:#8a93a0\">提升的最大生命值不会使攻击力随之提升。</span>"
+      "brief": "竹叶龟每 {C:BambooSystem.GROW_CD} 秒蓄力一次，下次攻击额外造成 {M:ATK*BambooSystem.GROW_ATK_COEF+HP*BambooSystem.GROW_HP_PCT} 魔法伤害，回复 {C:BambooSystem.GROW_HEAL_PCT%}% 自身最大生命值并永久提升最大生命值。",
+      "desc": "竹叶龟每 {C:BambooSystem.GROW_CD} 秒蓄力一次，下次攻击额外造成（{C:BambooSystem.GROW_ATK_COEF%}%×攻击力({ATK}) + {C:BambooSystem.GROW_HP_PCT%}%×最大生命值({HP}) = {M:ATK*BambooSystem.GROW_ATK_COEF+HP*BambooSystem.GROW_HP_PCT}）魔法伤害，回复 {C:BambooSystem.GROW_HEAL_PCT%}% 自身最大生命值，并永久提升（{C:BambooSystem.GROW_MAXHP_PER_ATK%}%×基础攻击力({ATK}) = {E:ATK*BambooSystem.GROW_MAXHP_PER_ATK}）最大生命值。\n若出战时选择了【竹击】，强化效果提升为：造成 {C:BambooSystem.GROW_SMACK_ATK_COEF%}% 攻击力 + {C:BambooSystem.GROW_SMACK_HP_PCT%}% 自身最大生命值的魔法伤害，回复 {C:BambooSystem.GROW_SMACK_HEAL_PCT%}% 自身最大生命值，并永久提升 {C:BambooSystem.GROW_SMACK_MAXHP_PER_ATK%}% 基础攻击力的最大生命值。"
     },
     "skillPool": [
       {
