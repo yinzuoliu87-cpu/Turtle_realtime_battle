@@ -231,7 +231,7 @@ static func build_vars(f: Dictionary, s: Dictionary) -> Dictionary:
 	return {
 		"ATK": int(f.get("atk", 0)), "DEF": int(f.get("def", 0)),
 		"MR": int(f.get("mr", 0)), "HP": int(f.get("maxHp", 0)),
-		"LV": int(f.get("lv", f.get("_level", 1))),
+		"LV": int(f.get("lv", f.get("level", f.get("_level", 1)))),   # ★对局单位的等级在 "level"(battle_spawn); 原来只读 lv/_level ⇒ 对局里永远按 1 级算
 		"hits": fn.call("hits", 1.0), "power": fn.call("power"), "pierce": fn.call("pierce"), "cd": fn.call("cd"),
 		"atkScale": fn.call("atkScale"), "defScale": fn.call("defScale"), "dmgScale": fn.call("dmgScale"),
 		"hpPct": fn.call("hpPct"), "mrScale": fn.call("mrScale"), "arrowScale": fn.call("arrowScale"),
@@ -407,7 +407,8 @@ static func wrap_damage_phrases(t: String) -> String:
 		_dmg_word_re = RegEx.create_from_string("(物理伤害|魔法伤害|真实伤害)|[，。；\\n]")
 		## 数值: 占位符(可带收起后的「 =（系数）」) 或 未收起的整个公式组「（…）」
 		var val := "(?:\\{[A-Z]:[^}]+\\}%?(?:\\s*=\\s*（[^（）]*）)?|（[^（）]*）)"
-		_heal_re = RegEx.create_from_string("(?<=回复)(\\s*)(" + val + "[^，。；\\n（]{0,4}生命值)")
+		## 「相当于…的生命值」与「X 外加 Y% 自身已损失生命值」也算(寒冰冰封 / 幽冥突袭 / 双头吸收实拍漏了)
+		_heal_re = RegEx.create_from_string("(?<=回复)(\\s*)((?:相当于[^，。；\\n]{0,60}?的|" + val + "(?:\\s*外加[^，。；\\n]{0,50}?)?)[^，。；\\n（]{0,4}?生命值)")
 		_shield_re = RegEx.create_from_string("(?<=获得)(\\s*)((?:相当于[^，。；\\n]{0,60}?的|" + val + ")\\s*(?:的)?护盾)")
 	var out := ""
 	var last := 0

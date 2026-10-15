@@ -48,6 +48,11 @@ const SHURIKEN_COEF := 1.6        # ×ATK 物理(基础·未减甲未暴击)
 const SHURIKEN_TRUE_BASE := 40.0  # 暴击总伤转真实的起始百分比
 const SHURIKEN_TRUE_PER_LV := 2.0 # 每级再 +(百分点)
 const SHURIKEN_TRUE_CAP := 100.0  # 封顶(百分比)
+## 文案用的两端(推导, 不手写): 照 LoL「4% =（4% - 10%⬆）」写 1 级与满级的比例(用户 2026-10-15「lol怎么做的」)。
+##   满级 = Phase2Config.MAX_LEVEL(10) ⇒ 60%, 封顶 100% 正常等级下碰不到, 所以文案不写它。
+const _P2C := preload("res://scripts/gamedata/phase2_config.gd")
+const SHURIKEN_TRUE_LV1 := SHURIKEN_TRUE_BASE + SHURIKEN_TRUE_PER_LV
+const SHURIKEN_TRUE_LVMAX := SHURIKEN_TRUE_BASE + SHURIKEN_TRUE_PER_LV * _P2C.MAX_LEVEL
 ## 【忍者足】选手里剑后打包的登场被动。
 const FOOT_DODGE := 0.15          # 闪避 +
 const FOOT_CRIT := 0.30           # 暴击率 +

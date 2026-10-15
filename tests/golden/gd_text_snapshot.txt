@@ -249,22 +249,14 @@ scripts/gamedata/equip_tier_labels.gd|lit|龟能 # 点
 scripts/gamedata/equip_tier_labels.gd|lit|龟能充能 #×
 scripts/gamedata/equip_tier_labels.gd|lit|龟能充能 +#%
 scripts/gamedata/glossary.gd|lit|【涨潮】结束后移除全部加成。此效果不会致死，生命值降至新的上限。
-scripts/gamedata/glossary.gd|lit|【融合】后获得的被动：每次受到一段攻击时永久获得一点护甲与魔抗，各有上限。
 scripts/gamedata/glossary.gd|lit|低血模式
 scripts/gamedata/glossary.gd|lit|余烬施加的状态：期间该敌人受到的灼烧伤害全部转为真实伤害（不受魔抗减免）。
 scripts/gamedata/glossary.gd|lit|冰霜
 scripts/gamedata/glossary.gd|lit|剑士
 scripts/gamedata/glossary.gd|lit|剑羁绊：连续命中同一个目标时触发追打。
 scripts/gamedata/glossary.gd|lit|十字斩
-scripts/gamedata/glossary.gd|lit|双头坚韧
-scripts/gamedata/glossary.gd|lit|双头龟的技能三：两个头合体，登场即锁定形态，不再自动切换，并替换为一套合体后的招式。
-scripts/gamedata/glossary.gd|lit|双头龟近战形态的技能一：对目标砸下一锤。
-scripts/gamedata/glossary.gd|lit|双头龟近战形态的技能二：造成伤害，并将其中一部分转化回自身。
-scripts/gamedata/glossary.gd|lit|双头龟远程形态的技能一：射出一颗炮弹，命中第一个敌人时爆炸。
-scripts/gamedata/glossary.gd|lit|双头龟远程形态的技能二：造成真实伤害，并削减目标的治疗与护盾效果。
 scripts/gamedata/glossary.gd|lit|叠加在同一名敌人身上的层数，不会随时间衰减。达到最大层数后，此装备造成的伤害转为真实伤害。
 scripts/gamedata/glossary.gd|lit|古灵精怪枪
-scripts/gamedata/glossary.gd|lit|吸收
 scripts/gamedata/glossary.gd|lit|地毯轰炸
 scripts/gamedata/glossary.gd|lit|奶油护盾
 scripts/gamedata/glossary.gd|lit|寒冰龟在地面留下的减速领域。冰柱层数会同时提升其范围与持续时间。
@@ -296,7 +288,6 @@ scripts/gamedata/glossary.gd|lit|法力
 scripts/gamedata/glossary.gd|lit|海胆护盾
 scripts/gamedata/glossary.gd|lit|海胆每次受到伤害时叠加一层硬化，层数达到上限时为自身提供的护盾，随后在数秒内逐渐衰减。
 scripts/gamedata/glossary.gd|lit|涨潮
-scripts/gamedata/glossary.gd|lit|灵能冲击
 scripts/gamedata/glossary.gd|lit|猎人龟施加的猎杀印记。被标记的敌人处决线提高。
 scripts/gamedata/glossary.gd|lit|生命值低于阈值时获得的一次性护盾，在数秒内线性衰减。
 scripts/gamedata/glossary.gd|lit|登场一段时间后进入的强化状态：最大生命值与攻击力大幅提升，体型变大。
@@ -306,11 +297,9 @@ scripts/gamedata/glossary.gd|lit|真火
 scripts/gamedata/glossary.gd|lit|破损
 scripts/gamedata/glossary.gd|lit|符纸
 scripts/gamedata/glossary.gd|lit|精准射击
-scripts/gamedata/glossary.gd|lit|精神干扰
 scripts/gamedata/glossary.gd|lit|终极护盾
 scripts/gamedata/glossary.gd|lit|腐蚀
 scripts/gamedata/glossary.gd|lit|蚀月符纸贴在敌人身上的持续伤害效果，期间每秒降低其魔抗。可叠加，目标死亡时以剩余持续时间转移给最近的敌人。
-scripts/gamedata/glossary.gd|lit|融合
 scripts/gamedata/glossary.gd|lit|诅咒
 scripts/gamedata/glossary.gd|lit|财神龟施放【梭哈】后，该技能槽转变成的护盾技能：护盾值基于当前金币数，不消耗金币，持有护盾期间锁定龟能。
 scripts/gamedata/glossary.gd|lit|赌神龟生命值低于阈值时【赌注】的替代效果：不甩牌、不消耗生命值，转而回复生命值。
@@ -320,7 +309,6 @@ scripts/gamedata/glossary.gd|lit|迷你水晶球施加在敌人身上的层数�
 scripts/gamedata/glossary.gd|lit|退潮
 scripts/gamedata/glossary.gd|lit|金弹
 scripts/gamedata/glossary.gd|lit|金盾
-scripts/gamedata/glossary.gd|lit|锤击
 scripts/gamedata/glossary.gd|lit|靶子
 scripts/gamedata/minion_codex.gd|lit|人体浪板
 scripts/gamedata/minion_codex.gd|lit|前排 · 近战
@@ -1995,6 +1983,7 @@ scripts/systems/skills/shell_system.gd|lit|破隐
 scripts/systems/skills/shell_system.gd|lit|觉醒
 scripts/systems/trainer/trainer_system.gd|lit|归顺
 scripts/systems/trainer/trainer_system.gd|lit|魔法石·共鸣 %s
+scripts/util/skill_text.gd|lit|(?:\\s*外加[^，。；\\n]{0,50}?)?)[^，。；\\n（]{0,4}?生命值)
 scripts/util/skill_text.gd|lit|(?<!\">)(?:主动|被动)：
 scripts/util/skill_text.gd|lit|(?<!\">)(?:伤害减免|减伤)(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)(?:治疗效果提升|受到的治疗)(?!<)
@@ -2041,12 +2030,11 @@ scripts/util/skill_text.gd|lit|(?<!\">)闪避(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)额外伤害(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)魔抗(?!穿透|<)
 scripts/util/skill_text.gd|lit|(?<!\">)魔法(?!伤害|穿透|波|光线|<)
-scripts/util/skill_text.gd|lit|(?<=回复)(\\s*)(
+scripts/util/skill_text.gd|lit|(?<=回复)(\\s*)((?:相当于[^，。；\\n]{0,60}?的|
 scripts/util/skill_text.gd|lit|(?<=获得)(\\s*)((?:相当于[^，。；\\n]{0,60}?的|
 scripts/util/skill_text.gd|lit|(其|目标|敌人|该单位|对方)((?:\\s|<[^<>]*>|\\{[^{}]*\\}|[\\d.%]|的)+)(最大生命值?)(?!<)
 scripts/util/skill_text.gd|lit|(物理伤害|魔法伤害|真实伤害)|[，。；\\n]
 scripts/util/skill_text.gd|lit|)\\s*(?:的)?护盾)
-scripts/util/skill_text.gd|lit|[^，。；\\n（]{0,4}生命值)
 scripts/util/skill_text.gd|lit|[（(]([^（）()]*%[^（）()]*)[）)]\\s*(物理伤害|魔法伤害|真实伤害)?
 scripts/util/skill_text.gd|lit|^(%s)(?:(%%)\\s*(攻击力|护甲|魔抗|最大生命值|目标最大生命值|该敌人最大生命值))?$
 scripts/util/skill_text.gd|lit|已损失生命值
