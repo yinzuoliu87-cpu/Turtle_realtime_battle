@@ -738,7 +738,7 @@
     "baseStats1": "+攻12/30/66·+移速5/9/15%",
     "shopAvailable": 1,
     "emoji": "🦐",
-    "effectDesc1": "闪避一次攻击后，强化自身的下一次攻击：额外造成 0.7/1/1.5 倍攻击力+目标最大生命值 6/8/13%的物理伤害，并回复此次攻击总伤害 {C:EqSpiritBatch.MANTIS_LEECH%}%的生命值。\n强化攻击有 2 秒冷却时间，冷却期间闪避不会触发强化。",
+    "effectDesc1": "闪避一次攻击后，强化自身的下一次攻击：额外造成 70/100/150% 攻击力+目标最大生命值 6/8/13%的物理伤害，并回复此次攻击总伤害 {C:EqSpiritBatch.MANTIS_LEECH%}%的生命值。\n强化攻击有 2 秒冷却时间，冷却期间闪避不会触发强化。",
     "effectDesc3": "",
     "img": "equip/p2eq_062.png",
     "effectBrief": "闪避后，下次攻击额外造成伤害并回复其中 {C:EqSpiritBatch.MANTIS_LEECH%}% 的生命值。"
@@ -858,7 +858,7 @@
     "baseStats1": "+生命200/550/1400·+双抗10/24/55",
     "shopAvailable": 1,
     "emoji": "🎂",
-    "effectDesc1": "获得最大生命值 50/80/120%的永久【终极护盾】。\n护盾存在时，自身化为蛋糕礼盒：属性不变，射程变为近战，攻击与技能替换为礼盒效果。\n礼盒嘲讽 {C:EqFoodBatch.BOX_TAUNT_PX} 码内所有敌人，每有一个敌人以自身为目标，获得 +20/30/60 双抗。攻击造成 1 倍攻击力物理伤害。技能召唤 {C:EqFoodBatch.BOX_FIELD_PX} 码蛋糕法阵，持续 {C:EqFoodBatch.BOX_FIELD_SEC} 秒，每秒为其中友军回复 50/70/120 生命值与 2/4/6 龟能。\n终极护盾破碎时，自身脱离礼盒。\n自身阵亡时分裂出两个蛋糕礼盒，拥有自身 20/40/100%最大生命值及相同攻击力与双抗，其余属性为 0 或默认值，同样嘲讽并施放礼盒技能。",
+    "effectDesc1": "获得最大生命值 50/80/120%的永久【终极护盾】。\n护盾存在时，自身化为蛋糕礼盒：属性不变，射程变为近战，攻击与技能替换为礼盒效果。\n礼盒嘲讽 {C:EqFoodBatch.BOX_TAUNT_PX} 码内所有敌人，每有一个敌人以自身为目标，获得 +20/30/60 双抗。攻击造成 100% 攻击力物理伤害。技能召唤 {C:EqFoodBatch.BOX_FIELD_PX} 码蛋糕法阵，持续 {C:EqFoodBatch.BOX_FIELD_SEC} 秒，每秒为其中友军回复 50/70/120 生命值与 2/4/6 龟能。\n终极护盾破碎时，自身脱离礼盒。\n自身阵亡时分裂出两个蛋糕礼盒，拥有自身 20/40/100%最大生命值及相同攻击力与双抗，其余属性为 0 或默认值，同样嘲讽并施放礼盒技能。",
     "effectDesc3": "",
     "img": "equip/p2eq_072.png",
     "effectBrief": "获得自身最大生命值 50/80/120% 的终极护盾，护盾存在期间化身蛋糕礼盒并嘲讽敌人。"
@@ -894,7 +894,7 @@
     "baseStats1": "+攻12/30/68·+射程40/60/90",
     "shopAvailable": 1,
     "emoji": "📏",
-    "effectDesc1": "每 {C:EqBowBatch.RAIN_IV} 秒在敌人最密集处降下一轮箭雨，半径 {C:EqBowBatch.RAIN_RADIUS} 码，持续 {C:EqBowBatch.RAIN_SEC} 秒，每 {C:EqBowBatch.RAIN_HOP_IV} 秒造成 0.25/0.35/0.5 倍攻击力的物理伤害并施加 3/4/5 层流血。\n被动：目标与自身的距离每有 {C:EqBowBatch.AMP_PER_PX} 码，对其造成的伤害提升 3/4/5%，无上限。此效果同样作用于箭雨。",
+    "effectDesc1": "每 {C:EqBowBatch.RAIN_IV} 秒在敌人最密集处降下一轮箭雨，半径 {C:EqBowBatch.RAIN_RADIUS} 码，持续 {C:EqBowBatch.RAIN_SEC} 秒，每 {C:EqBowBatch.RAIN_HOP_IV} 秒造成 25/35/50% 攻击力的物理伤害并施加 3/4/5 层流血。\n被动：目标与自身的距离每有 {C:EqBowBatch.AMP_PER_PX} 码，对其造成的伤害提升 3/4/5%，无上限。此效果同样作用于箭雨。",
     "effectDesc3": "",
     "img": "equip/p2eq_075.png",
     "effectBrief": "每 {C:EqBowBatch.RAIN_IV} 秒在敌人最密集处降下一轮箭雨。目标每远离 {C:EqBowBatch.AMP_PER_PX} 码，伤害提升 3/4/5%。"
@@ -906,7 +906,7 @@
     "baseStats1": "+攻20/50/115·+吸血6/11/18%·+暴伤15/28/50%",
     "shopAvailable": 1,
     "emoji": "🎯",
-    "effectDesc1": "被动：仅在弓箭羁绊激活时生效，每第 {C:EqBowBatch.CORRODE_EVERY} 次攻击对目标施加 1 层【腐蚀】，与弓箭羁绊共用层数。\n主动：释放技能后，每 {C:EqBowBatch.VOLLEY_IV} 秒射出一支箭，箭数=本次技能消耗的龟能÷{C:EqBowBatch.ENERGY_PER_SHOT}。\n箭沿直线飞行 {C:EqBowBatch.PIERCE_RANGE} 码，贯穿沿途敌人，每支造成 0.05/0.06/0.08 倍攻击力的物理伤害加 9/13/16 点真实伤害。每穿过一个敌人，伤害降低 {C:BowEqVfx.PIERCE_DECAY_DOWN%}%（最低 {C:BowEqVfx.PIERCE_FLOOR%}%），并从该敌人身上为自身偷取 0.5/0.5/1 点龟能。",
+    "effectDesc1": "被动：仅在弓箭羁绊激活时生效，每第 {C:EqBowBatch.CORRODE_EVERY} 次攻击对目标施加 1 层【腐蚀】，与弓箭羁绊共用层数。\n主动：释放技能后，每 {C:EqBowBatch.VOLLEY_IV} 秒射出一支箭，箭数=本次技能消耗的龟能÷{C:EqBowBatch.ENERGY_PER_SHOT}。\n箭沿直线飞行 {C:EqBowBatch.PIERCE_RANGE} 码，贯穿沿途敌人，每支造成 5/6/8% 攻击力的物理伤害加 9/13/16 点真实伤害。每穿过一个敌人，伤害降低 {C:BowEqVfx.PIERCE_DECAY_DOWN%}%（最低 {C:BowEqVfx.PIERCE_FLOOR%}%），并从该敌人身上为自身偷取 0.5/0.5/1 点龟能。",
     "effectDesc3": "",
     "img": "equip/p2eq_076.png",
     "effectBrief": "释放技能后连续射出竹箭贯穿敌人，每穿过一个敌人偷取 0.5/0.5/1 点龟能。"
@@ -918,7 +918,7 @@
     "baseStats1": "+暴击10/18/30%·+破甲4/9/18",
     "shopAvailable": 1,
     "emoji": "🔫",
-    "effectDesc1": "生成一把迷你小手枪：30/60/100 生命值、10/20/30 攻击力、{C:EqGunBatch.PISTOL_RANGE} 码射程，每 {C:EqGunBatch.PISTOL_IV} 秒攻击一次，攻击造成 1 倍攻击力的物理伤害，拥有 {C:EqGunBatch.PISTOL_CRIT%}%暴击率。\n每次攻击使小手枪永久获得 {C:EqGunBatch.PISTOL_PEN_PER_SHOT} 点护甲穿透，该效果每路重置。\n小手枪没有护盾时，受到的所有伤害降为 2 点，真实伤害同样如此，自身阵亡后降为 {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} 点。小手枪受到的治疗效果上限为 1 点。\n小手枪的攻击会触发枪羁绊【金弹】。",
+    "effectDesc1": "生成一把迷你小手枪：30/60/100 生命值、10/20/30 攻击力、{C:EqGunBatch.PISTOL_RANGE} 码射程，每 {C:EqGunBatch.PISTOL_IV} 秒攻击一次，攻击造成 100% 攻击力的物理伤害，拥有 {C:EqGunBatch.PISTOL_CRIT%}%暴击率。\n每次攻击使小手枪永久获得 {C:EqGunBatch.PISTOL_PEN_PER_SHOT} 点护甲穿透，该效果每路重置。\n小手枪没有护盾时，受到的所有伤害降为 2 点，真实伤害同样如此，自身阵亡后降为 {C:EqGunBatch.PISTOL_DMG_CAP_DEAD} 点。小手枪受到的治疗效果上限为 1 点。\n小手枪的攻击会触发枪羁绊【金弹】。",
     "effectDesc3": "",
     "img": "equip/p2eq_077.png",
     "effectBrief": "生成一把迷你手枪协同攻击，其受到的所有伤害降为 2 点。"
@@ -930,7 +930,7 @@
     "baseStats1": "+攻12/30/68·+破甲5/11/22",
     "shopAvailable": 1,
     "emoji": "⚡",
-    "effectDesc1": "两管共享计数，每 {C:EqGunBatch.EEL_IV} 秒交替射击，仅在 {C:EqGunBatch.EEL_FIRE_RANGE} 码内有敌人时开火。\n左管发射 {C:EqGunBatch.EEL_CONE_RANGE} 码、{C:EqGunBatch.EEL_CONE_DEG} 度的锥形霰弹，造成 15/25/40 + 0.3/0.6/1.0 倍攻击力的物理伤害。\n右管发射电击弹，对首个目标造成 {C:EqGunBatch.EEL_BOLT_ATK} 倍攻击力的物理伤害+50/100/180 魔法伤害。魔法伤害依次连锁至所有未被击中的敌人，每跳降低 20/15/10%。\n金弹从轮到的那管射出并继承其效果，额外造成 60/80/100%真实伤害，对电击弹首个目标与每次跳跃均生效。",
+    "effectDesc1": "两管共享计数，每 {C:EqGunBatch.EEL_IV} 秒交替射击，仅在 {C:EqGunBatch.EEL_FIRE_RANGE} 码内有敌人时开火。\n左管发射 {C:EqGunBatch.EEL_CONE_RANGE} 码、{C:EqGunBatch.EEL_CONE_DEG} 度的锥形霰弹，造成 15/25/40 + 30/60/100% 攻击力的物理伤害。\n右管发射电击弹，对首个目标造成 {C:EqGunBatch.EEL_BOLT_ATK%}% 攻击力的物理伤害+50/100/180 魔法伤害。魔法伤害依次连锁至所有未被击中的敌人，每跳降低 20/15/10%。\n金弹从轮到的那管射出并继承其效果，额外造成 60/80/100%真实伤害，对电击弹首个目标与每次跳跃均生效。",
     "effectDesc3": "",
     "img": "equip/p2eq_078.png",
     "effectBrief": "{C:EqGunBatch.EEL_FIRE_RANGE} 码内有敌人时，每 2 秒左右两管交替开火：左管发射锥形霰弹，右管发射可连锁全场的电击弹。"
@@ -942,7 +942,7 @@
     "baseStats1": "+生命90/200/420·+治疗与护盾10/18/30%·+攻速8/15/25%",
     "shopAvailable": 1,
     "emoji": "🏥",
-    "effectDesc1": "在自身后方 {C:EqGunBatch.TOWER_BACK} 码生成一座医疗炮台：700/1200/2500 生命值、15/20/30 攻击力、50/70/100 双抗，攻击速度与自身相同。\n炮台攻击造成 1 倍攻击力的物理伤害+目标最大生命值 1/1.5/2%的魔法伤害，并为生命百分比最低的友军回复 10/15/20 生命值。\n炮台拥有独立的金弹计数，每攻击 4/3/2 次射出一发金弹，继承全部效果并附加 60/80/100%真实伤害，且金弹的治疗量翻倍。",
+    "effectDesc1": "在自身后方 {C:EqGunBatch.TOWER_BACK} 码生成一座医疗炮台：700/1200/2500 生命值、15/20/30 攻击力、50/70/100 双抗，攻击速度与自身相同。\n炮台攻击造成 100% 攻击力的物理伤害+目标最大生命值 1/1.5/2%的魔法伤害，并为生命百分比最低的友军回复 10/15/20 生命值。\n炮台拥有独立的金弹计数，每攻击 4/3/2 次射出一发金弹，继承全部效果并附加 60/80/100%真实伤害，且金弹的治疗量翻倍。",
     "effectDesc3": "",
     "img": "equip/p2eq_079.png",
     "effectBrief": "在身后生成一座医疗炮台，攻击对敌人造成伤害，并为生命百分比最低的友军回复生命值。"
@@ -954,7 +954,7 @@
     "baseStats1": "+攻30/90/260·+双抗12/28/60",
     "shopAvailable": 1,
     "emoji": "🚁",
-    "effectDesc1": "登场时召唤无法被选中且完全免疫的直升机，在战场上空盘旋，拥有独立龟能条。\n每 {C:EqGunBatch.HELI_FIRE_IV} 秒向正下方最近的敌人扫射 3/4/10 发机炮，每发造成 {C:EqGunBatch.HELI_SHOT_COEF} 倍攻击力的物理伤害，每发命中获得 {C:EqGunBatch.HELI_EN_PER_HIT} 点龟能（上限 {C:EqGunBatch.HELI_EN_MAX}）。\n龟能满时发动【地毯轰炸】：沿覆盖敌人最多的 {C:EqGunBatch.BOMB_LANE_LEN} 码长、{C:EqGunBatch.BOMB_LANE_W} 码宽航线飞过，投下 8/10/14 枚炸弹，每枚对落点 {C:EqGunBatch.BOMB_R} 码内敌人造成 0.8/1.1/1.5 倍攻击力的物理伤害+40/70/120 魔法伤害。\n机炮与炸弹均计入枪羁绊【金弹】计数。\n自身阵亡后，直升机继续飞行 {C:EqGunBatch.DOOM_SEC} 秒，随后坠向随机敌人并爆炸，对 {C:EqGunBatch.CRASH_R} 码内敌人造成 200/300/500 物理伤害并施加 {C:EqGunBatch.CRASH_BURN} 层灼烧。",
+    "effectDesc1": "登场时召唤无法被选中且完全免疫的直升机，在战场上空盘旋，拥有独立龟能条。\n每 {C:EqGunBatch.HELI_FIRE_IV} 秒向正下方最近的敌人扫射 3/4/10 发机炮，每发造成 {C:EqGunBatch.HELI_SHOT_COEF%}% 攻击力的物理伤害，每发命中获得 {C:EqGunBatch.HELI_EN_PER_HIT} 点龟能（上限 {C:EqGunBatch.HELI_EN_MAX}）。\n龟能满时发动【地毯轰炸】：沿覆盖敌人最多的 {C:EqGunBatch.BOMB_LANE_LEN} 码长、{C:EqGunBatch.BOMB_LANE_W} 码宽航线飞过，投下 8/10/14 枚炸弹，每枚对落点 {C:EqGunBatch.BOMB_R} 码内敌人造成 80/110/150% 攻击力的物理伤害+40/70/120 魔法伤害。\n机炮与炸弹均计入枪羁绊【金弹】计数。\n自身阵亡后，直升机继续飞行 {C:EqGunBatch.DOOM_SEC} 秒，随后坠向随机敌人并爆炸，对 {C:EqGunBatch.CRASH_R} 码内敌人造成 200/300/500 物理伤害并施加 {C:EqGunBatch.CRASH_BURN} 层灼烧。",
     "effectDesc3": "",
     "img": "equip/p2eq_080.png",
     "effectBrief": "登场时召唤一架直升机进行扫射。直升机龟能满时沿航线发动地毯轰炸。"
@@ -1002,7 +1002,7 @@
     "baseStats1": "+攻速10/18/30%·+移速7/13/22%",
     "shopAvailable": 1,
     "emoji": "🗡️",
-    "effectDesc1": "效果随自身为近战或远程而改变。\n近战携带：获得 {C:EqBladeBatch.HH_MELEE_RANGE} 码射程，攻击变为红色闪电激光，并获得 {C:EqBladeBatch.HH_MELEE_AMP%}% 增伤。技能替换为消耗 {C:EqBladeBatch.HH_ENERGY} 龟能的【十字斩】：横斩以 {C:BladeEqVfx.SLASH_REACH} 码、{C:BladeEqVfx.SLASH_DEG_WIDE} 度扫过，造成 40/70/130+0.6/0.9/1.4 倍攻击力的物理伤害，横波再造成 25/45/85+0.4/0.6/0.9 倍攻击力的物理伤害。随后竖斩造成 50/85/160+0.7/1.1/1.7 倍攻击力的物理伤害，竖波再造成 30/55/100+0.5/0.7/1.1 倍攻击力的物理伤害。\n远程携带：射程固定为 {C:EqBladeBatch.HH_RANGED_RANGE} 码，获得 {C:EqBladeBatch.HH_RANGED_DR%}% 减伤、{C:EqBladeBatch.HH_RANGED_HP} 最大生命值、登场时攻击力的 10/15/20%作为额外攻击力、10/12.5/15%生命偷取。每转化 {C:EqBladeBatch.HH_CONV_PER} 码射程，这些属性提升 {C:EqBladeBatch.HH_CONV_BONUS%}%。主动技能不替换。",
+    "effectDesc1": "效果随自身为近战或远程而改变。\n近战携带：获得 {C:EqBladeBatch.HH_MELEE_RANGE} 码射程，攻击变为红色闪电激光，并获得 {C:EqBladeBatch.HH_MELEE_AMP%}% 增伤。技能替换为消耗 {C:EqBladeBatch.HH_ENERGY} 龟能的【十字斩】：横斩以 {C:BladeEqVfx.SLASH_REACH} 码、{C:BladeEqVfx.SLASH_DEG_WIDE} 度扫过，造成 40/70/130+60/90/140% 攻击力的物理伤害，横波再造成 25/45/85+40/60/90% 攻击力的物理伤害。随后竖斩造成 50/85/160+70/110/170% 攻击力的物理伤害，竖波再造成 30/55/100+50/70/110% 攻击力的物理伤害。\n远程携带：射程固定为 {C:EqBladeBatch.HH_RANGED_RANGE} 码，获得 {C:EqBladeBatch.HH_RANGED_DR%}% 减伤、{C:EqBladeBatch.HH_RANGED_HP} 最大生命值、登场时攻击力的 10/15/20%作为额外攻击力、10/12.5/15%生命偷取。每转化 {C:EqBladeBatch.HH_CONV_PER} 码射程，这些属性提升 {C:EqBladeBatch.HH_CONV_BONUS%}%。主动技能不替换。",
     "effectDesc3": "",
     "img": "equip/p2eq_084.png",
     "effectBrief": "近战携带：技能替换为十字斩，攻击射出红色闪电激光并获得增伤。远程携带：射程转化为生命值、攻击力与生命偷取，并获得减伤。"
@@ -1026,7 +1026,7 @@
     "baseStats1": "+攻30/90/260·+充能12/22/38%",
     "shopAvailable": 1,
     "emoji": "🧭",
-    "effectDesc1": "登场后每 3 秒生成一个环绕自身的浮游炮，最多 {C:EqGadgetBatch.SEXT_CAP} 个。\n浮游炮每 2 秒攻击一次随机敌人，造成自身 0.3/0.4/0.5 倍攻击力的物理伤害。\n每个浮游炮为自身提供 10/15/20 魔抗。\n所有浮游炮累计发射 40/30/20 次攻击后，全部散开至战场随机位置，并向随机目标齐射紫色终极射线，每条造成 200/350/1000 魔法伤害。",
+    "effectDesc1": "登场后每 3 秒生成一个环绕自身的浮游炮，最多 {C:EqGadgetBatch.SEXT_CAP} 个。\n浮游炮每 2 秒攻击一次随机敌人，造成自身 30/40/50% 攻击力的物理伤害。\n每个浮游炮为自身提供 10/15/20 魔抗。\n所有浮游炮累计发射 40/30/20 次攻击后，全部散开至战场随机位置，并向随机目标齐射紫色终极射线，每条造成 200/350/1000 魔法伤害。",
     "effectDesc3": "",
     "img": "equip/p2eq_086.png",
     "effectBrief": "每 3 秒生成一个浮游炮（最多 {C:EqGadgetBatch.SEXT_CAP} 个），累计攻击次数达到后齐射终极射线。"

@@ -2154,7 +2154,7 @@
         "pierce": 0,
         "cd": 0,
         "aoe": true,
-        "brief": "无头龟以自身为中心爆发出触须，几乎覆盖整个战场，伸出、停顿与收回共持续约 {C:HeadlessSystem.TENDRIL_SELF_STUN} 秒，施法期间额外获得 <span class=\"val-heal\">+{C:HeadlessSystem.TENDRIL_LIFESTEAL%}% 生命偷取</span>。\n触须伸出时命中所有单位：对敌人造成 {C:HeadlessSystem.TENDRIL_PASS_FOE} 倍攻击力的物理伤害并眩晕，对友军造成 {C:HeadlessSystem.TENDRIL_PASS_ALLY} 倍攻击力的伤害并眩晕。\n触须收回时，对敌人造成 {C:HeadlessSystem.TENDRIL_DETACH_FOE} 倍攻击力的伤害，对友军造成 {C:HeadlessSystem.TENDRIL_DETACH_ALLY} 倍攻击力的伤害并解除其控制，使其恢复行动。\n<span style=\"color:#8a93a0\">施法期间无头龟自身也处于硬控状态。\n</span>",
+        "brief": "无头龟以自身为中心爆发出触须，几乎覆盖整个战场，伸出、停顿与收回共持续约 {C:HeadlessSystem.TENDRIL_SELF_STUN} 秒，施法期间额外获得 <span class=\"val-heal\">+{C:HeadlessSystem.TENDRIL_LIFESTEAL%}% 生命偷取</span>。\n触须伸出时命中所有单位：对敌人造成 {C:HeadlessSystem.TENDRIL_PASS_FOE%}% 攻击力的物理伤害并眩晕，对友军造成 {C:HeadlessSystem.TENDRIL_PASS_ALLY%}% 攻击力的伤害并眩晕。\n触须收回时，对敌人造成 {C:HeadlessSystem.TENDRIL_DETACH_FOE%}% 攻击力的伤害，对友军造成 {C:HeadlessSystem.TENDRIL_DETACH_ALLY%}% 攻击力的伤害并解除其控制，使其恢复行动。\n<span style=\"color:#8a93a0\">施法期间无头龟自身也处于硬控状态。\n</span>",
         "detail": "无头龟亡灵暴走，以自身为中心爆发触须，几乎覆盖整个战场，半径约 {C:HeadlessSystem.TENDRIL_RADIUS} 码。\n本次技能额外获得 +{C:HeadlessSystem.TENDRIL_LIFESTEAL%}% 生命偷取。\n施法后约 {C:HeadlessSystem.TENDRIL_PASS_SEC} 秒，触须<b>穿过时</b>命中所有单位：敌人受到（{C:HeadlessSystem.TENDRIL_PASS_FOE%}%×攻击力({ATK}) = {N:ATK}）物理伤害并被眩晕，友军受到（{C:HeadlessSystem.TENDRIL_PASS_ALLY%}%×攻击力 = {N:HeadlessSystem.TENDRIL_PASS_ALLY*ATK}）物理伤害并被眩晕。\n施法后约 {C:HeadlessSystem.TENDRIL_DETACH_SEC} 秒，触须<b>脱离时</b>：敌人受到（{C:HeadlessSystem.TENDRIL_DETACH_FOE%}%×攻击力 = {N:HeadlessSystem.TENDRIL_DETACH_FOE*ATK}）物理伤害，友军受到（{C:HeadlessSystem.TENDRIL_DETACH_ALLY%}%×攻击力 = {N:HeadlessSystem.TENDRIL_PASS_ALLY*ATK}）物理伤害，并解除眩晕、恢复行动。\n<span style=\"color:#8a93a0\">施法期间无头龟自身被硬控 {C:HeadlessSystem.TENDRIL_SELF_STUN} 秒，无法移动或攻击。眩晕效果不叠加，仅刷新持续时间。蛋类单位免疫眩晕。\n</span>"
       },
       {
@@ -2211,7 +2211,7 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "龟壳打击目标，造成 1 倍攻击力的伤害，伤害类型在物理与真实之间逐次交替，并对主目标周围的其他敌人造成 {C:ShellSystem.SPLASH_PCT%}% 的溅射伤害。\n<span style=\"color:#8a93a0\">溅射伤害的类型与本次攻击相同。\n</span>",
+        "brief": "龟壳打击目标，造成 {N:ShellSystem.BASIC_COEF*ATK} 伤害，伤害类型在物理与真实之间逐次交替，并对主目标周围的其他敌人造成 {C:ShellSystem.SPLASH_PCT%}% 的溅射伤害。\n<span style=\"color:#8a93a0\">溅射伤害的类型与本次攻击相同。\n</span>",
         "detail": "龟壳的攻击为单段打击，造成（{C:ShellSystem.BASIC_COEF%}%×攻击力({ATK}) = {N:ATK}）伤害。\n伤害类型逐次交替，本次为物理伤害，下一次为无视减伤的<span class=\"val-true\">真实</span>伤害。\n每次攻击都会对主目标 {C:RealtimeBattle3DScene.SHELL_SPLASH_RADIUS} 码内的其他敌人造成 {C:ShellSystem.SPLASH_PCT%}% 的溅射伤害，伤害类型与本次攻击相同。",
         "energyCost": 0
       },
@@ -2247,7 +2247,7 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "主被动·<span class=\"val-emph\">潜影</span>：\n龟壳 {C:ShellSystem.STEALTH_IDLE_SEC} 秒内未受到伤害时进入潜影，变为不可选中。\n范围伤害不会解除潜影，龟壳释放技能或进行攻击时解除。\n解除潜影后的首次攻击额外造成 {C:ShellSystem.STEALTH_BREAK_MAGIC} 倍攻击力的魔法伤害和 {C:ShellSystem.STEALTH_POISON_MULT} 倍攻击力的中毒伤害，并施加 {C:ShellSystem.STEALTH_HEALCUT_PCT%}% 治疗削减，持续 {C:ShellSystem.STEALTH_HEALCUT_SEC} 秒。\n主动·<span class=\"val-emph\">暗影俯冲</span>：\n龟壳向前俯冲 {C:ShellSystem.DIVE_RANGE} 码，对路径上的敌人造成 {C:ShellSystem.DIVE_MAGIC} 倍攻击力的魔法伤害并将其击退，\n随后在落点生成一片暗影燃烧区，持续 {C:ShellSystem.BURN_LIFE} 秒，每 {C:ShellSystem.BURN_TICK_SEC} 秒对区内敌人施加 <span style=\"color:#ff6600\">{C:ShellSystem.BURN_ATK_MULT} 倍攻击力的灼烧层</span>并减速 {C:ShellSystem.BURN_SLOW_PCT%}%，龟壳随后进入潜影。",
+        "brief": "主被动·<span class=\"val-emph\">潜影</span>：\n龟壳 {C:ShellSystem.STEALTH_IDLE_SEC} 秒内未受到伤害时进入潜影，变为不可选中。\n范围伤害不会解除潜影，龟壳释放技能或进行攻击时解除。\n解除潜影后的首次攻击额外造成 {C:ShellSystem.STEALTH_BREAK_MAGIC%}% 攻击力的魔法伤害和 {C:ShellSystem.STEALTH_POISON_MULT%}% 攻击力的中毒伤害，并施加 {C:ShellSystem.STEALTH_HEALCUT_PCT%}% 治疗削减，持续 {C:ShellSystem.STEALTH_HEALCUT_SEC} 秒。\n主动·<span class=\"val-emph\">暗影俯冲</span>：\n龟壳向前俯冲 {C:ShellSystem.DIVE_RANGE} 码，对路径上的敌人造成 {C:ShellSystem.DIVE_MAGIC%}% 攻击力的魔法伤害并将其击退，\n随后在落点生成一片暗影燃烧区，持续 {C:ShellSystem.BURN_LIFE} 秒，每 {C:ShellSystem.BURN_TICK_SEC} 秒对区内敌人施加 <span style=\"color:#ff6600\">{C:ShellSystem.BURN_ATK_MULT%}% 攻击力的灼烧层</span>并减速 {C:ShellSystem.BURN_SLOW_PCT%}%，龟壳随后进入潜影。",
         "detail": "龟壳的主动与被动技能。\n<b>被动·潜影</b>：\n{C:ShellSystem.STEALTH_IDLE_SEC} 秒内未受到伤害时进入潜影，变为不可选中。潜影期间仍会受到范围伤害，但范围伤害不会解除潜影，只有龟壳释放技能或进行攻击时才会解除。\n解除潜影后的首次攻击额外附加：+{C:ShellSystem.STEALTH_BREAK_MAGIC%}%攻击力魔法伤害 + {C:ShellSystem.STEALTH_POISON_MULT}×攻击力层中毒 + {C:ShellSystem.STEALTH_HEALCUT_SEC} 秒 {C:ShellSystem.STEALTH_HEALCUT_PCT%}%治疗削减。\n<b>主动·暗影俯冲</b>：消耗 {C:ShellSystem.SHADOW_ENERGY} 龟能。\n朝目标俯冲 {C:ShellSystem.DIVE_RANGE} 码，对路径上的敌人造成（{C:ShellSystem.DIVE_MAGIC%}%×攻击力({ATK}) = {M:ShellSystem.DIVE_MAGIC*ATK}）魔法伤害并将其击退，\n随后留下暗影燃烧区，半径 {C:ShellSystem.BURN_RADIUS} 码，持续 {C:ShellSystem.BURN_LIFE} 秒，每 {C:ShellSystem.BURN_TICK_SEC} 秒对区内敌人施加 {C:ShellSystem.BURN_ATK_MULT}×攻击力灼烧层并减速 {C:ShellSystem.BURN_SLOW_PCT%}%，随后龟壳进入潜影。",
         "energyCost": 130
       }
