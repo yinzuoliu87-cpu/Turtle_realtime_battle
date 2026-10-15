@@ -120,7 +120,7 @@ func _ready() -> void:
 	for t in texts:
 		if str(t).begins_with("棱镜每"):
 			brief_lines += 1
-		if str(t).contains("• 红色"):
+		if str(t).contains("红色："):
 			full += 1
 	_ok("⑤ 分母: 被动全文真画出来了", full >= 1, "全文 %d 段" % full)
 	_ok("⑤ ★展开后简述行不再同时出现", brief_lines == 0, "简述 %d 行" % brief_lines)
