@@ -48,7 +48,7 @@ func _ready() -> void:
 	if gs != null:
 		gs.test_mode = true
 	print("=== 龟技能文案默认给结论 ===")
-	var grp := RegEx.create_from_string("[（(]((?:[^（）()]|\\([^()]*\\))*?)=\\s*(\\{[A-Z]:[^}]+\\})\\s*[）)]")
+	var grp := RegEx.create_from_string("[（(]((?:[^（）()]|\\([^()]*\\))*?)=\\s*(\\{[A-Z]:[^}]+\\}%?)\\s*[）)]")
 	var all: Array = []
 	_strings(DataRegistry.all_pets, all)
 	var before := 0

@@ -347,7 +347,7 @@ static func collapse_formulas(template: String) -> String:
 	if not template.contains("="):
 		return template
 	if _formula_re == null:
-		_formula_re = RegEx.create_from_string("[（(]((?:[^（）()]|\\([^()]*\\))*?)=\\s*(\\{[A-Z]:[^}]+\\})\\s*[）)]")
+		_formula_re = RegEx.create_from_string("[（(]((?:[^（）()]|\\([^()]*\\))*?)=\\s*(\\{[A-Z]:[^}]+\\}%?)\\s*[）)]")
 	var out := ""
 	var last := 0
 	for m in _formula_re.search_all(template):

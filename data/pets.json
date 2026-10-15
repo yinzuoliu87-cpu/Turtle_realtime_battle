@@ -927,8 +927,8 @@
     "passive": {
       "type": "rainbowPrism",
       "name": "棱镜",
-      "brief": "棱镜每 {C:RainbowSystem.PRISM_COLOR_SEC} 秒随机变为红、蓝、绿中的一种颜色，攻击附带对应效果：红色附加真实伤害，蓝色获得护盾，绿色回复生命值。彩虹龟的攻击力与攻击速度随最大生命值提升。",
-      "desc": "每 {C:RainbowSystem.PRISM_COLOR_SEC} 秒随机变为红、蓝、绿中的一种颜色，攻击附带对应效果：\n• 红色：额外造成（{C:RainbowSystem.PRISM_RED_TRUE%}%×攻击力({ATK}) = {T:RainbowSystem.PRISM_RED_TRUE*ATK}）真实伤害。\n• 蓝色：获得（{C:RainbowSystem.PRISM_BLUE_SHIELD%}%×攻击力({ATK}) = {S:RainbowSystem.PRISM_BLUE_SHIELD*ATK}）护盾，持续 {C:RainbowSystem.PRISM_BLUE_SEC} 秒。\n• 绿色：回复自身 {C:RainbowSystem.PRISM_GREEN_HEAL%}% 已损失生命值。\n彩虹龟获得相当于自身 {C:RainbowSystem.PRISM_ATK_FROM_HP%}% 最大生命值的攻击力，每点攻击力提供 {C:RainbowSystem.PRISM_ASPD_PER_ATK%}% 攻击速度。"
+      "brief": "彩虹龟每 {C:RainbowSystem.PRISM_COLOR_SEC} 秒随机获得红、蓝、绿中的一种颜色，攻击附带对应效果：红色附加真实伤害，蓝色获得护盾，绿色回复生命值。彩虹龟获得基于最大生命值的攻击力，以及基于攻击力的攻击速度。",
+      "desc": "彩虹龟每 {C:RainbowSystem.PRISM_COLOR_SEC} 秒随机获得红、蓝、绿中的一种颜色，攻击附带对应效果：\n• 红色：额外造成（{C:RainbowSystem.PRISM_RED_TRUE%}%×攻击力({ATK}) = {T:RainbowSystem.PRISM_RED_TRUE*ATK}）真实伤害。\n• 蓝色：获得（{C:RainbowSystem.PRISM_BLUE_SHIELD%}%×攻击力({ATK}) = {S:RainbowSystem.PRISM_BLUE_SHIELD*ATK}）护盾，持续 {C:RainbowSystem.PRISM_BLUE_SEC} 秒。\n• 绿色：回复自身 {C:RainbowSystem.PRISM_GREEN_HEAL%}% 已损失生命值。\n\n彩虹龟获得（{C:RainbowSystem.PRISM_ATK_FROM_HP%}%×最大生命值({HP}) = {E:HP*RainbowSystem.PRISM_ATK_FROM_HP}）攻击力和（{C:RainbowSystem.PRISM_ASPD_PER_ATK%}%×攻击力({ATK}) = {E:ATK*RainbowSystem.PRISM_ASPD_PER_ATK*100}%）攻击速度。"
     },
     "skillPool": [
       {
