@@ -2047,6 +2047,9 @@ func _open_equip_card(u: Dictionary, eid: String, star: int, anchor: Control) ->
 		var ip := ("res://assets/sprites/stats/%s-icon.png" % ik) if ik != "" else ""
 		stats.append([ip, str(kv[1]) if ip != "" else "%s %s" % [kv[0], kv[1]], Color("#f4ead8")])
 	var st_txt := eq_stats_text_live(u, eid)
+	## ★对局里按结果写(用户 10-15「对局内就是按结果的写法」): 正文只留这一星的数、公式换成穿戴者算出来的结果,
+	##   公式进拆解行(与龟技能卡底部同一个样子)。图鉴那边没有穿戴者, 写公式不写结果。
+	var live: Dictionary = SkillText.equip_live_bb(edef, star, SkillText.build_vars(u, {}), 14)
 	var lv: Dictionary = card().open("eq:" + eid, anchor, {
 		"icon": ("res://assets/sprites/" + img) if img.ends_with(".png") else "",
 		"title": str(edef.get("name", eid)),
@@ -2055,7 +2058,8 @@ func _open_equip_card(u: Dictionary, eid: String, star: int, anchor: Control) ->
 		"title_col": battle._equip_cost_color(int(edef.get("cost", 1))),
 		"tag": "★".repeat(clampi(star, 1, 3)), "tag_col": Color("#ffd93d"),
 		"stats": stats,
-		"body": SkillText.highlight_star(SkillText.equip_full_bb(edef, 14), star),
+		"body": str(live["body"]),
+		"table": live["rows"],
 		"foot": SkillText.glossary_bb(SkillText.equip_full(edef), 14),
 		"extra_title": "本局",
 		"extra": st_txt if st_txt != "" else "暂无效果",

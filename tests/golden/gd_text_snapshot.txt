@@ -2001,6 +2001,7 @@ scripts/util/skill_text.gd|lit|(?<!\">)(?:治疗效果提升|受到的治疗)(?!
 scripts/util/skill_text.gd|lit|(?<!\">)(?:魔法穿透|魔抗穿透|法穿)(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)(?:龟能充能|充能速度)(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)(?<!泡泡)束缚(?!<)
+scripts/util/skill_text.gd|lit|(?<!\">)(?<=目标|敌人|其)最大生命值?(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)中毒(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)倒戈(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)冰寒(?!<)
@@ -2039,6 +2040,9 @@ scripts/util/skill_text.gd|lit|(?<!\">)闪避(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)额外伤害(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)魔抗(?!穿透|<)
 scripts/util/skill_text.gd|lit|(?<!\">)魔法(?!伤害|穿透|波|光线|<)
+scripts/util/skill_text.gd|lit|(物理伤害|魔法伤害|真实伤害)|[，。；\\n]
+scripts/util/skill_text.gd|lit|[（(]([^（）()]*%[^（）()]*)[）)]\\s*(物理伤害|魔法伤害|真实伤害)?
+scripts/util/skill_text.gd|lit|^(%s)(?:(%%)\\s*(攻击力|护甲|魔抗|最大生命值|目标最大生命值|该敌人最大生命值))?$
 scripts/util/skill_text.gd|lit|已损失生命值
 scripts/util/skill_text.gd|lit|护甲
 scripts/util/skill_text.gd|lit|攻击力

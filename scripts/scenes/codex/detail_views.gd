@@ -1264,7 +1264,7 @@ func _set_eq_star(eq: Dictionary, s: int) -> void:
 
 # ─── 分档文字的拆分(纯函数, 门禁直接调) ───
 ## 恰好三档的「a/b/c」: 前后都不许再贴着数字或斜杠 —— 「80/110/130/160」这种四段的(斧头进化阈值)不是星级分档。
-const TIER_PAT := "(?<![\\d./])(\\d+(?:\\.\\d+)?)/(\\d+(?:\\.\\d+)?)/(\\d+(?:\\.\\d+)?)(?![\\d/]|\\.\\d)"
+const TIER_PAT := SkillText.TIER_PAT
 const TIER_HI := "#ffd93d"      # 当前档(与签牌选中色同一个)。★只上色不加粗: 粗体走另一套像素字, 数字会小一号(实拍)
 ## 当前档数字两边的临时记号(私用区码点, 上色后就换掉, 不上屏)。用 char() 运行时造: 写成字面量会被 verify_fonts 当豆腐块扫出来。
 static func _mk_a() -> String:
@@ -1299,8 +1299,40 @@ static func collapse_tiers(t: String, star: int, mark: bool = false) -> String:
 
 ## 效果正文(纯文本) → 只剩当前档的数、数字加亮, 关键词上色与内联属性图标照 SkillText 同一条管线。
 static func star_text_bb(plain: String, star: int, font_px: int) -> String:
-	var bb: String = SkillText.plain_to_bb(collapse_tiers(plain, star, true), font_px)
+	var bb: String = SkillText.plain_to_bb(equip_formula_shape(collapse_tiers(plain, star, true)), font_px)
 	return bb.replace(_mk_a(), "[color=%s]" % TIER_HI).replace(_mk_b(), "[/color]")
+
+
+## ★装备图鉴正文的公式(2026-10-15 用户「图鉴里不写 X，只写公式「70 + 80% ⚔」。，但是记得随星级」
+##   「伤害怎么上色，按lol的来」): 照云顶约里克说明框, 图鉴没有穿戴者算不出结果, 只写公式。
+##   「（100+130% 攻击力）物理伤害」→「100 + 130% [攻击力图标] 物理伤害」, 自身属性只留图标;
+##   别人的属性(目标最大生命值)照写字。后面跟着伤害词 ⇒ 从第一个数到伤害词整段上伤害色(LoL 整段上色),
+##   段内的当前档高亮让位给伤害色。每一项都得是「数」或「数% 属性」才动, 认不出的括号原样留着。
+static func equip_formula_shape(t: String) -> String:
+	var out := ""
+	var last := 0
+	for m in SkillText.equip_formula_re().search_all(t):
+		var terms := SkillText.equip_formula_terms(m.get_string(1))
+		if terms.is_empty():
+			continue
+		var body := SkillText.equip_formula_text(terms)
+		var dmg := m.get_string(2)
+		var before := t.substr(last, m.get_start() - last)
+		out += before
+		## 括号拿掉之后数字直接贴着汉字 ⇒ 补全项目统一的「汉字 数字」间隔
+		if before != "" and not " 
+".contains(before.right(1)):
+			out += " "
+		if dmg == "" and m.get_end() < t.length() and not " 
+，。、；：".contains(t.substr(m.get_end(), 1)):
+			body += " "
+		if dmg != "":
+			body = body.replace(_mk_a(), "").replace(_mk_b(), "")
+			out += "<span class=\"%s\">%s %s</span>" % [SkillText.EQ_DMG_CLASS[dmg], body, dmg]
+		else:
+			out += body
+		last = m.get_end()
+	return out + t.substr(last)
 
 
 ## 一组三档 → 「a / b / c」, 第 star 档亮、另两档暗。

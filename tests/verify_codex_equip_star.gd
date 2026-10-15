@@ -125,7 +125,7 @@ func _ready() -> void:
 	await _open(EID)
 	_ok("★分母: 052 有 ★1/★2/★3 三块签牌", _star_node("EqStarHit1") != null and _star_node("EqStarHit3") != null)
 	var t1: String = _plain(_rtl_with("codex_eq_effect").text)
-	_ok("★★② ★1(默认)正文写「150+300%」, 不再是三档串", t1.find("150+300%") >= 0 and t1.find("150/310/1200") < 0,
+	_ok("★★② ★1(默认)正文写「150 + 300%」, 不再是三档串", t1.find("150 + 300%") >= 0 and t1.find("150/310/1200") < 0,
 		t1.substr(t1.find("造成"), 30))
 	var hit3: Control = _star_node("EqStarHit3")
 	if hit3 != null:
@@ -136,7 +136,7 @@ func _ready() -> void:
 		await _settle(3)
 	var e3 := _rtl_with("codex_eq_effect")
 	var t3: String = _plain(e3.text) if e3 != null else ""
-	_ok("★★★② 点 ★3 后正文写「1200+900%」(数真的换了)", t3.find("1200+900%") >= 0 and t3.find("150+300%") < 0,
+	_ok("★★★② 点 ★3 后正文写「1200 + 900%」(数真的换了)", t3.find("1200 + 900%") >= 0 and t3.find("150 + 300%") < 0,
 		t3.substr(maxi(0, t3.find("造成")), 30))
 	_ok("★② ★1 与 ★3 正文不同", t1 != t3 and t3 != "")
 	var srt := _rtl_with("codex_eq_stats")

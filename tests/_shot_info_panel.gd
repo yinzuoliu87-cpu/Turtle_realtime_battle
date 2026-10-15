@@ -71,7 +71,14 @@ func _ready() -> void:
 	##   而今晚每一张截图都喂了三件 ⇒ **空槽长什么样我一次都没看过**。
 	##   (产品代码里写着"空槽画灰框", 但"写着"不等于"画出来是对的"。)
 	## SHOT_EQ=1: 换成带局内读数的三件(087 压载舱 / 083 连击层 / 093 香火石刻痕)
-	if OS.has_environment("SHOT_NOEQ"):
+	## SHOT_EQIDS=p2eq_006:2,p2eq_011:1 —— 指定带哪几件、几星(2026-10-15 截千刃风暴的面板描述)
+	if OS.has_environment("SHOT_EQIDS"):
+		var _lst: Array = []
+		for _p in OS.get_environment("SHOT_EQIDS").split(","):
+			var _kv := _p.split(":")
+			_lst.append({"id": _kv[0], "star": int(_kv[1]) if _kv.size() > 1 else 1})
+		u["equips"] = _lst
+	elif OS.has_environment("SHOT_NOEQ"):
 		u["equips"] = []
 	elif OS.has_environment("SHOT_EQN"):
 		## SHOT_EQN=n: 只带 n 件 —— **混合场景**(装了几件、还空几格)才是"空槽要不要压暗"

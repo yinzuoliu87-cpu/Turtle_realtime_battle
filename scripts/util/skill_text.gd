@@ -88,7 +88,7 @@ const KEYWORD_RULES := [
 	##   同色就彻底分不出。这条规则第一版写 val-def, `verify_stat_icon_color ⑦` 当场红 —— 它是对的。
 	["(?<!\">)护甲穿透(?!<)", "val-burn", "armorpen"],
 	["(?<!\">)护甲(?!穿透|<)", "val-def", "def"], ["(?<!\">)(?:魔法穿透|魔抗穿透|法穿)(?!<)", "val-dot", "magicpen"], ["(?<!\">)魔抗(?!穿透|<)", "val-magic", "mr"],
-	["(?<!\">)最大生命值?(?!<)", "val-heal", "hp"], ["(?<!\">)最大HP(?!<)", "val-heal", "hp"],
+	["(?<!\">)(?<=目标|敌人|其)最大生命值?(?!<)", "val-heal", ""], ["(?<!\">)最大生命值?(?!<)", "val-heal", "hp"], ["(?<!\">)最大HP(?!<)", "val-heal", "hp"],
 	["(?<!\">)治疗削减(?!<)", "val-heal-reduce"], ["(?<!\">)灼烧(?!<)", "val-burn"],
 	["(?<!\">)生命偷取(?!<)", "val-lifesteal", "lifesteal"], ["(?<!\">)眩晕(?!<)", "val-stun"],
 	["(?<!\">)诅咒(?!<)", "val-dot"], ["(?<!\">)护盾(?!<)", "val-shield", "shield"],
@@ -370,7 +370,8 @@ static func collapse_formulas(template: String) -> String:
 			if _cur_stat_re == null:
 				_cur_stat_re = RegEx.create_from_string("\\(\\{[A-Za-z_]+\\}\\)")
 			var ratio := _cur_stat_re.sub(lhs, "", true).replace("%×", "% ").strip_edges()
-			val += "（" + ratio + "）"
+			## ★2026-10-15 照腕豪 R 的 Shift 说明「206 = (200 +120% bonus AD)」: 结果后面带「=」(用户「为什么不学他们的呢」)
+			val += " =（" + ratio + "）"
 		elif icons != "":
 			val += "（" + icons + "）"
 		else:
@@ -382,10 +383,42 @@ static func collapse_formulas(template: String) -> String:
 	return out + template.substr(last)
 
 
+## ★伤害整段一个颜色(2026-10-15 照腕豪 R 实截: 从「206」到「physical damage」整段橙色, 中间的系数和
+##   「40% of the grabbed enemy's bonus Health」也在里面 —— 用户「豪是整段伤害一个颜？是吗」)。
+##   做法: 伤害数值 {N:}/{M:}/{T:}/{P:} 起, 到同一分句里的「物理伤害 / 魔法伤害 / 真实伤害」止, 外面包一层该伤害色的 span。
+##   html_to_bbcode 是「最外层 span 颜色胜出」⇒ 里面的系数、图标、属性词都跟着变成伤害色; 图标照样显示。
+##   颜色按【伤害词】定(物理/魔法/真实), 不按数值标签 —— 两者不一致时以玩家读到的伤害类型为准。
+##   同句里找不到伤害词 ⇒ 不包(不是伤害的数值不该被染成伤害色)。
+static var _dmg_tok_re: RegEx = null
+static var _dmg_word_re: RegEx = null
+const _DMG_WORD_CLASS := {"物理伤害": "val-normal", "魔法伤害": "val-magic", "真实伤害": "val-true"}
+
+static func wrap_damage_phrases(t: String) -> String:
+	if _dmg_tok_re == null:
+		_dmg_tok_re = RegEx.create_from_string("\\{[NMTP]:[^}]+\\}")
+		_dmg_word_re = RegEx.create_from_string("(物理伤害|魔法伤害|真实伤害)|[，。；\\n]")
+	var out := ""
+	var last := 0
+	var pos := 0
+	while true:
+		var m := _dmg_tok_re.search(t, pos)
+		if m == null:
+			break
+		var w := _dmg_word_re.search(t, m.get_end())
+		if w == null or w.get_string(1) == "":
+			pos = m.get_end()
+			continue
+		var cls: String = _DMG_WORD_CLASS[w.get_string(1)]
+		out += t.substr(last, m.get_start() - last) + "<span class=\"%s\">" % cls + t.substr(m.get_start(), w.get_end() - m.get_start()) + "</span>"
+		last = w.get_end()
+		pos = last
+	return out + t.substr(last)
+
+
 ## 渲染模板 → HTML (1:1 PoC renderSkillTemplate: token 展开 + 关键词上色).
 static func render_html(template: String, f: Dictionary, s: Dictionary) -> String:
 	_ensure_re()
-	template = collapse_formulas(template)
+	template = wrap_damage_phrases(collapse_formulas(template))
 	var vars := build_vars(f, s)
 	# 1) token 展开
 	var result := ""
@@ -675,6 +708,111 @@ static func equip_brief_bb(edef: Dictionary, font_px: int = 0) -> String:
 
 static func equip_full_bb(edef: Dictionary, font_px: int = 0) -> String:
 	return plain_to_bb(equip_full_src(edef), font_px)
+
+
+## ── 装备公式括号(图鉴与对局共用·2026-10-15) ──────────────────────────
+## 用户 10-15: 装备照云顶约里克说明框; 「图鉴里不写 X，只写公式「70 + 80% ⚔」。，但是记得随星级」
+##   「对局内就是按结果的写法」「伤害怎么上色，按lol的来」。
+## 认的形状:「（A+B% 攻击力 …）物理伤害」, 括号里每一项都得是「数」或「数% 属性」, 认不出的括号原样留着。
+## 数字两边允许带图鉴的星级高亮记号(私用区 E000/E001)。
+const EQ_SELF_STAT := {"攻击力": ["atk", "ATK"], "护甲": ["def", "DEF"], "魔抗": ["mr", "MR"], "最大生命值": ["hp", "HP"]}
+const EQ_DMG_CLASS := {"物理伤害": "val-normal", "魔法伤害": "val-magic", "真实伤害": "val-true"}
+## 当前星级那一档(与图鉴 CodexDetail.TIER_PAT 同一个形状)
+const TIER_PAT := "(?<![\\d./])(\\d+(?:\\.\\d+)?)/(\\d+(?:\\.\\d+)?)/(\\d+(?:\\.\\d+)?)(?![\\d/]|\\.\\d)"
+static var _eq_fml_re: RegEx = null
+static var _eq_term_re: RegEx = null
+static var _tier_pick_re: RegEx = null
+
+
+static func equip_formula_re() -> RegEx:
+	if _eq_fml_re == null:
+		_eq_fml_re = RegEx.create_from_string("[（(]([^（）()]*%[^（）()]*)[）)]\\s*(物理伤害|魔法伤害|真实伤害)?")
+	return _eq_fml_re
+
+
+## 括号里面 → [[数字原文, 属性词或""], …]; 不是公式(或一项系数都没有)⇒ 空数组。
+static func equip_formula_terms(inner: String) -> Array:
+	if _eq_term_re == null:
+		var num := "%s?\\d+(?:\\.\\d+)?%s?" % [char(0xE000), char(0xE001)]
+		_eq_term_re = RegEx.create_from_string("^(%s)(?:(%%)\\s*(攻击力|护甲|魔抗|最大生命值|目标最大生命值|该敌人最大生命值))?$" % num)
+	var terms: Array = []
+	var has_ratio := false
+	for raw in inner.split("+"):
+		var tm := _eq_term_re.search(raw.strip_edges())
+		if tm == null:
+			return []
+		terms.append([tm.get_string(1), tm.get_string(3)])
+		if tm.get_string(3) != "":
+			has_ratio = true
+	return terms if has_ratio else []
+
+
+## 公式项 → 「100 + 130% [图标]」(自身属性只留图标, 别人的属性照写字)。
+static func equip_formula_text(terms: Array) -> String:
+	var ps: PackedStringArray = []
+	for t in terms:
+		var stat := str(t[1])
+		if stat == "":
+			ps.append(str(t[0]))
+		elif EQ_SELF_STAT.has(stat):
+			ps.append("%s%% <img src=\"res://assets/sprites/stats/%s-icon.png\"/>" % [str(t[0]), str(EQ_SELF_STAT[stat][0])])
+		else:
+			ps.append("%s%% %s" % [str(t[0]), stat])
+	return " + ".join(ps)
+
+
+## 三档「a/b/c」只留第 star 档(star 越界 ⇒ 原样)。
+static func pick_star(t: String, star: int) -> String:
+	if star < 1 or star > 3:
+		return t
+	if _tier_pick_re == null:
+		_tier_pick_re = RegEx.create_from_string(TIER_PAT)
+	var out := ""
+	var pos := 0
+	for m in _tier_pick_re.search_all(t):
+		out += t.substr(pos, m.get_start() - pos) + m.get_string(star)
+		pos = m.get_end()
+	return out + t.substr(pos)
+
+
+## 对局信息面板的装备正文(按结果写): 只留当前星级, 公式括号换成算出来的结果并整段上伤害色;
+##   公式本身进拆解行「物理伤害: 152 = 100 + 130% [图标]」(与龟技能卡底部那几行同一个样子)。
+##   vars 用 build_vars(穿戴者): ATK / DEF / MR / HP。目标的属性算不出 ⇒ 整个括号照旧写公式、不进拆解行。
+## 返回 {"body": BBCode 正文, "rows": [[行 BBCode, ""], …]}。
+static func equip_live_bb(edef: Dictionary, star: int, vars: Dictionary, font_px: int = 0) -> Dictionary:
+	var t := pick_star(equip_full_src(edef), star)
+	var ipx := ICON_PX if font_px <= 0 else maxi(12, roundi(float(font_px) * 1.15))
+	var rows: Array = []
+	var out := ""
+	var last := 0
+	for m in equip_formula_re().search_all(t):
+		var terms := equip_formula_terms(m.get_string(1))
+		var dmg := m.get_string(2)
+		if terms.is_empty() or dmg == "":
+			continue
+		var x := 0.0
+		var ok := true
+		for term in terms:
+			var stat := str(term[1])
+			if stat == "":
+				x += float(str(term[0]))
+			elif EQ_SELF_STAT.has(stat):
+				x += float(str(term[0])) / 100.0 * float(vars.get(str(EQ_SELF_STAT[stat][1]), 0))
+			else:
+				ok = false
+		var before := t.substr(last, m.get_start() - last)
+		var sp := " " if before != "" and not " \n".contains(before.right(1)) else ""
+		var cls := str(EQ_DMG_CLASS[dmg])
+		var fml := equip_formula_text(terms)
+		if ok:
+			var xs := str(roundi(x))
+			out += before + sp + "<span class=\"%s\">%s %s</span>" % [cls, xs, dmg]
+			rows.append([html_to_bbcode("%s: <span class=\"%s\">%s</span> = %s" % [dmg, cls, xs, fml], ipx), ""])
+		else:
+			out += before + sp + "<span class=\"%s\">%s %s</span>" % [cls, fml, dmg]
+		last = m.get_end()
+	out += t.substr(last)
+	return {"body": plain_to_bb(out, font_px), "rows": rows}
 
 
 ## 已展开占位符的纯文本 → 上色 + 内联图标的 BBCode。

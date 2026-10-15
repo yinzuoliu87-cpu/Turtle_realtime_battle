@@ -36,8 +36,8 @@
     "passive": {
       "type": "basicTurtle",
       "name": "不屈",
-      "brief": "小龟对敌人造成的<span class=\"val-emph\">所有伤害</span>按<span class=\"val-emph\">目标的稀有度</span>提升，攻击、技能与真实伤害均适用：C +{C:BasicConsts.RARITY_AMP_C%}% 至 SSS +{C:BasicConsts.RARITY_AMP_SSS%}%。\n每 {C:BasicConsts.SHIELD_CD} 秒，小龟的下一次攻击附带【龟盾】，额外造成 {N:BasicConsts.SHIELD_ATK_COEF*ATK} + {C:BasicConsts.SHIELD_LOST_PCT%}% 目标已损失生命值的物理伤害，将目标击飞，并获得该伤害 {C:BasicConsts.SHIELD_GAIN_PCT%}% 的护盾。",
-      "desc": "小龟对敌人造成的任何伤害均按目标稀有度提高，攻击、技能、真实伤害与固定伤害均适用，每次伤害仅加成一次：\n<span style=\"color:#06d6a0\">C</span> +{C:BasicConsts.RARITY_AMP_C%}%　<span style=\"color:#4cc9f0\">B</span> +{C:BasicConsts.RARITY_AMP_B%}%　<span style=\"color:#3a9abf\">A</span> +{C:BasicConsts.RARITY_AMP_A%}%　<span style=\"color:#c77dff\">S</span> +{C:BasicConsts.RARITY_AMP_S%}%　<span style=\"color:#ffd93d\">SS</span> +{C:BasicConsts.RARITY_AMP_SS%}%　<span style=\"color:#ff6b6b\">SSS</span> +{C:BasicConsts.RARITY_AMP_SSS%}%。\n【龟盾】：\n小龟每 {C:BasicConsts.SHIELD_CD} 秒蓄力一次，下次攻击额外造成（{C:BasicConsts.SHIELD_ATK_COEF%}%×攻击力({ATK}) = {N:BasicConsts.SHIELD_ATK_COEF*ATK}）+ {C:BasicConsts.SHIELD_LOST_PCT%}% 目标已损失生命值的物理伤害，将目标击飞 {C:BasicConsts.SHIELD_KNOCK_SEC} 秒并将其击退，\n并获得相当于这两段伤害之和 {C:BasicConsts.SHIELD_GAIN_PCT%}% 的永久护盾。"
+      "brief": "小龟对敌人造成的<span class=\"val-emph\">所有伤害</span>按<span class=\"val-emph\">目标的稀有度</span>提升：C +{C:BasicConsts.RARITY_AMP_C%}% 至 SSS +{C:BasicConsts.RARITY_AMP_SSS%}%。\n每 {C:BasicConsts.SHIELD_CD} 秒，小龟的下一次攻击附带【龟盾】，额外造成 {N:BasicConsts.SHIELD_ATK_COEF*ATK} + {C:BasicConsts.SHIELD_LOST_PCT%}% 目标已损失生命值的物理伤害，将目标击飞，并获得该伤害 {C:BasicConsts.SHIELD_GAIN_PCT%}% 的护盾。",
+      "desc": "小龟对敌人造成的任何伤害按目标稀有度提高：\n<span style=\"color:#06d6a0\">C</span> +{C:BasicConsts.RARITY_AMP_C%}%　<span style=\"color:#4cc9f0\">B</span> +{C:BasicConsts.RARITY_AMP_B%}%　<span style=\"color:#3a9abf\">A</span> +{C:BasicConsts.RARITY_AMP_A%}%　<span style=\"color:#c77dff\">S</span> +{C:BasicConsts.RARITY_AMP_S%}%　<span style=\"color:#ffd93d\">SS</span> +{C:BasicConsts.RARITY_AMP_SS%}%　<span style=\"color:#ff6b6b\">SSS</span> +{C:BasicConsts.RARITY_AMP_SSS%}%。\n【龟盾】：\n小龟每 {C:BasicConsts.SHIELD_CD} 秒蓄力一次，下次攻击额外造成（{C:BasicConsts.SHIELD_ATK_COEF%}%×攻击力({ATK}) = {N:BasicConsts.SHIELD_ATK_COEF*ATK}）+ {C:BasicConsts.SHIELD_LOST_PCT%}% 目标已损失生命值的物理伤害，将目标击飞 {C:BasicConsts.SHIELD_KNOCK_SEC} 秒并将其击退，并获得相当于这两段伤害之和 {C:BasicConsts.SHIELD_GAIN_PCT%}% 的永久护盾。"
     },
     "skillPool": [
       {
@@ -48,7 +48,7 @@
         "cd": 0,
         "icon": "skills/basic-attack.png",
         "brief": "小龟攻击当前目标，造成 {N:BasicConsts.ATTACK_ATK_COEF*ATK} 物理伤害。",
-        "detail": "小龟的攻击。\n对目标造成（{C:BasicConsts.ATTACK_ATK_COEF%}%×攻击力({ATK}) = {N:BasicConsts.ATTACK_ATK_COEF*ATK}）物理伤害。\n此伤害受被动·不屈影响，按目标稀有度提高。\n每 {C:BasicConsts.SHIELD_CD} 秒，下次攻击额外造成 {C:BasicConsts.SHIELD_ATK_COEF%}% 攻击力 + 目标 {C:BasicConsts.SHIELD_LOST_PCT%}% 已损失生命值的物理伤害，击飞目标并获得护盾。",
+        "detail": "小龟攻击当前目标，造成（{C:BasicConsts.ATTACK_ATK_COEF%}%×攻击力({ATK}) = {N:BasicConsts.ATTACK_ATK_COEF*ATK}）物理伤害。",
         "energyCost": 0
       },
       {
@@ -60,7 +60,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "小龟在 {C:BasicConsts.STRIKE_ROOT_SEC} 秒内连续发射 {C:BasicConsts.STRIKE_WAVES} 道气波，每道朝随机一名敌人飞出，对命中的第一个敌人造成 {N:BasicConsts.STRIKE_COEF*ATK} 物理伤害。施法期间小龟无法移动和攻击。",
-        "detail": "小龟在 {C:BasicConsts.STRIKE_ROOT_SEC} 秒内连续发射 {C:BasicConsts.STRIKE_WAVES} 道气波，每道朝随机一名敌人飞出，对命中的第一个敌人或龟蛋造成（{C:BasicConsts.STRIKE_COEF%}%×攻击力({ATK}) = {N:BasicConsts.STRIKE_COEF*ATK}）物理伤害。施法期间小龟无法移动和攻击。",
+        "detail": "小龟在 {C:BasicConsts.STRIKE_ROOT_SEC} 秒内连续发射 {C:BasicConsts.STRIKE_WAVES} 道气波，每道朝随机一名敌人飞出，对命中的第一个敌人造成（{C:BasicConsts.STRIKE_COEF%}%×攻击力({ATK}) = {N:BasicConsts.STRIKE_COEF*ATK}）物理伤害。施法期间小龟无法移动和攻击。",
         "energyCost": 80
       },
       {
@@ -71,8 +71,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "小龟打出一道贯穿气波，对沿途所有敌人造成 {N:BasicConsts.CHI_ATK_COEF*ATK} 物理伤害并将其击飞 {C:BasicConsts.CHI_KNOCK_SEC} 秒。\n施法期间小龟获得 {C:BasicConsts.CHI_CRIT%}% 暴击率、{C:BasicConsts.CHI_LIFESTEAL%}% 生命偷取和 {E:BasicConsts.CHI_ARMOR_PEN_COEF*ATK} 护甲穿透，持续 {C:BasicConsts.CHI_BUFF_SEC} 秒。\n<span style=\"color:#8a93a0\">发波前，小龟会先冲向能让气波贯穿最多敌人的位置。\n</span>",
-        "detail": "小龟获得 {C:BasicConsts.CHI_CRIT%}%暴击率、+{C:BasicConsts.CHI_LIFESTEAL%}%生命偷取、+（{C:BasicConsts.CHI_ARMOR_PEN_COEF%}%×攻击力 = {E:BasicConsts.CHI_ARMOR_PEN_COEF*ATK}）护甲穿透，持续 {C:BasicConsts.CHI_BUFF_SEC} 秒。\n随后朝当前目标发射一道青白气功波，贯穿沿途所有敌人与龟蛋，每次命中造成（{C:BasicConsts.CHI_ATK_COEF%}%×攻击力({ATK}) = {N:BasicConsts.CHI_ATK_COEF*ATK}）物理伤害并将其击飞 {C:BasicConsts.CHI_KNOCK_SEC} 秒，同时将其击退。\n<span style=\"color:#8a93a0\">蓄力时小龟会冲向能让气波命中最多敌人的位置。</span>",
+        "brief": "小龟打出一道贯穿气波，对沿途所有敌人造成 {N:BasicConsts.CHI_ATK_COEF*ATK} 物理伤害并将其击飞 {C:BasicConsts.CHI_KNOCK_SEC} 秒。\n施法期间小龟获得 {C:BasicConsts.CHI_CRIT%}% 暴击率、{C:BasicConsts.CHI_LIFESTEAL%}% 生命偷取和 {E:BasicConsts.CHI_ARMOR_PEN_COEF*ATK} 护甲穿透，持续 {C:BasicConsts.CHI_BUFF_SEC} 秒。",
+        "detail": "小龟打出一道贯穿气波，对沿途所有敌人造成（{C:BasicConsts.CHI_ATK_COEF%}%×攻击力({ATK}) = {N:BasicConsts.CHI_ATK_COEF*ATK}）物理伤害并将其击飞 {C:BasicConsts.CHI_KNOCK_SEC} 秒。\n施法期间小龟获得 {C:BasicConsts.CHI_CRIT%}% 暴击率、{C:BasicConsts.CHI_LIFESTEAL%}% 生命偷取和相当于 {C:BasicConsts.CHI_ARMOR_PEN_COEF%}% 攻击力的护甲穿透，持续 {C:BasicConsts.CHI_BUFF_SEC} 秒。",
         "energyCost": 100
       },
       {
@@ -83,8 +83,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "小龟将目标过肩摔到身后，眩晕 {C:BasicConsts.SLAM_STUN_SEC} 秒，造成 {N:BasicConsts.SLAM_MAIN_ATK*ATK} + {E:ATK*BasicConsts.SLAM_MAIN_HP_PER_ATK*100}% 目标最大生命值的物理伤害。\n落点周围的敌人受到 {N:BasicConsts.SLAM_SPLASH_ATK*ATK} + {E:ATK*BasicConsts.SLAM_SPLASH_HP_PER_ATK*100}% 主目标最大生命值的物理伤害。\n<span style=\"color:#8a93a0\">施法期间小龟处于霸体状态，不可被打断，但仍会受到伤害。龟蛋免疫此控制。\n</span>",
-        "detail": "小龟抓住目标施展过肩摔：\n将目标挑起并摔至身后，眩晕 {C:BasicConsts.SLAM_STUN_SEC} 秒，对主目标造成（{C:BasicConsts.SLAM_MAIN_ATK%}%×攻击力({ATK}) = {N:BasicConsts.SLAM_MAIN_ATK*ATK}）+（{C:BasicConsts.SLAM_MAIN_HP_PER_ATK%}%×攻击力({ATK}) = {E:ATK*BasicConsts.SLAM_MAIN_HP_PER_ATK*100}%）目标最大生命值的物理伤害。\n落点周围其余敌人受到（{C:BasicConsts.SLAM_SPLASH_ATK%}%×攻击力({ATK}) = {N:BasicConsts.SLAM_SPLASH_ATK*ATK}）+（{C:BasicConsts.SLAM_SPLASH_HP_PER_ATK%}%×攻击力({ATK}) = {E:ATK*BasicConsts.SLAM_SPLASH_HP_PER_ATK*100}%）主目标最大生命值的物理伤害。\n<span style=\"color:#8a93a0\">施法期间小龟处于霸体状态，不可被打断，但仍会受到伤害。龟蛋免疫此控制，仅在原地受到伤害。</span>",
+        "brief": "小龟将目标挑起并摔至身后，眩晕 {C:BasicConsts.SLAM_STUN_SEC} 秒，对其造成 {N:BasicConsts.SLAM_MAIN_ATK*ATK} 外加 {E:ATK*BasicConsts.SLAM_MAIN_HP_PER_ATK*100}% 目标最大生命值的物理伤害，并对落点附近的其他敌人造成 {N:BasicConsts.SLAM_SPLASH_ATK*ATK} 外加 {E:ATK*BasicConsts.SLAM_SPLASH_HP_PER_ATK*100}% 主目标最大生命值的物理伤害。\n<span style=\"color:#8a93a0\">龟蛋免疫此控制。</span>",
+        "detail": "小龟将目标挑起并摔至身后，眩晕 {C:BasicConsts.SLAM_STUN_SEC} 秒，对其造成（{C:BasicConsts.SLAM_MAIN_ATK%}%×攻击力({ATK}) = {N:BasicConsts.SLAM_MAIN_ATK*ATK}）外加（{C:BasicConsts.SLAM_MAIN_HP_PER_ATK%}%×攻击力({ATK}) = {E:ATK*BasicConsts.SLAM_MAIN_HP_PER_ATK*100}%）目标最大生命值的物理伤害，并对落点附近的其他敌人造成（{C:BasicConsts.SLAM_SPLASH_ATK%}%×攻击力({ATK}) = {N:BasicConsts.SLAM_SPLASH_ATK*ATK}）外加（{C:BasicConsts.SLAM_SPLASH_HP_PER_ATK%}%×攻击力({ATK}) = {E:ATK*BasicConsts.SLAM_SPLASH_HP_PER_ATK*100}%）主目标最大生命值的物理伤害。\n<span style=\"color:#8a93a0\">龟蛋免疫此控制。</span>",
         "energyCost": 120
       }
     ],
@@ -473,7 +473,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "忍者龟近战斩击，造成 {N:ATK} 物理伤害，并施加 2 层流血。\n<span style=\"color:#8a93a0\">若本次斩击暴击，则转而施加 3 层流血。\n</span>",
-        "detail": "忍者龟的攻击。\n近战挥刀斩击，造成 {N:NinjaSystem.SLASH_ATK_COEF*ATK} 物理伤害，并对目标施加固定 2 层流血，暴击时转而施加 3 层。"
+        "detail": "忍者龟近战挥刀斩击，造成 {N:NinjaSystem.SLASH_ATK_COEF*ATK} 物理伤害，并对目标施加固定 2 层流血，暴击时转而施加 3 层。"
       },
       {
         "name": "手里剑",
@@ -1099,7 +1099,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "猎人龟射出一箭，造成 {N:ATK} 物理伤害。\n当目标生命值低于 {C:HunterSystem.CHASE_HP_GATE%}% 时，猎人龟获得 {C:HunterSystem.CHASE_HASTE%}% 攻击速度追猎残血目标。",
-        "detail": "猎人龟的攻击。\n远程射出一箭，造成 {N:HunterSystem.BASIC_ATK_COEF*ATK} 物理伤害。\n残血追猎：\n当前目标生命值低于 {C:HunterSystem.CHASE_HP_GATE%}% 时，猎人龟攻击速度 +{C:HunterSystem.CHASE_HASTE%}%。\n被动会处决生命值低于 {C:HunterSystem.EXEC_BASE%}% 的目标。"
+        "detail": "猎人龟远程射出一箭，造成 {N:HunterSystem.BASIC_ATK_COEF*ATK} 物理伤害。\n残血追猎：\n当前目标生命值低于 {C:HunterSystem.CHASE_HP_GATE%}% 时，猎人龟攻击速度 +{C:HunterSystem.CHASE_HASTE%}%。\n被动会处决生命值低于 {C:HunterSystem.EXEC_BASE%}% 的目标。"
       },
       {
         "name": "精准射击",
@@ -1255,7 +1255,7 @@
           "turns": 2
         },
         "brief": "糖果龟挥拳砸向目标，造成 {N:CandySystem.PUNCH_ATK_COEF*ATK} 加 {N:HP*CandySystem.PUNCH_SELF_HP} 物理伤害，并使其攻击力降低 {C:CandySystem.PUNCH_ATK_DOWN%}%，持续 {C:RealtimeBattle3DScene.BUFF_SEC} 秒。",
-        "detail": "糖果龟的攻击。\n挥拳砸向目标，造成（{C:CandySystem.PUNCH_ATK_COEF%}%×攻击力({ATK}) = {N:CandySystem.PUNCH_ATK_COEF*ATK}）+（{C:CandySystem.PUNCH_SELF_HP%}%×自身最大生命值({HP}) = {N:HP*CandySystem.PUNCH_SELF_HP}）物理伤害，并使其攻击力 -{C:CandySystem.PUNCH_ATK_DOWN%}%，持续 {C:RealtimeBattle3DScene.BUFF_SEC} 秒。"
+        "detail": "糖果龟挥拳砸向目标，造成（{C:CandySystem.PUNCH_ATK_COEF%}%×攻击力({ATK}) = {N:CandySystem.PUNCH_ATK_COEF*ATK}）+（{C:CandySystem.PUNCH_SELF_HP%}%×自身最大生命值({HP}) = {N:HP*CandySystem.PUNCH_SELF_HP}）物理伤害，并使其攻击力 -{C:CandySystem.PUNCH_ATK_DOWN%}%，持续 {C:RealtimeBattle3DScene.BUFF_SEC} 秒。"
       },
       {
         "name": "糖果锤",
@@ -2132,7 +2132,7 @@
         "cd": 0,
         "hpPct": 3,
         "brief": "无头龟撕咬目标，造成 {N:ATK} 物理伤害外加<span class=\"val-magic\">目标最大生命值 {C:BasicConsts.HEADLESS_BITE_MAXHP%}%</span> 的魔法伤害。",
-        "detail": "无头龟的攻击。\n撕咬目标，造成 {N:BasicConsts.DEFAULT_BASIC_COEF*ATK} 物理伤害 + {C:BasicConsts.HEADLESS_BITE_MAXHP%}%目标最大生命值的魔法伤害。"
+        "detail": "无头龟撕咬目标，造成 {N:BasicConsts.DEFAULT_BASIC_COEF*ATK} 物理伤害 + {C:BasicConsts.HEADLESS_BITE_MAXHP%}%目标最大生命值的魔法伤害。"
       },
       {
         "name": "恐吓",
