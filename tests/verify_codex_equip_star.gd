@@ -125,7 +125,7 @@ func _ready() -> void:
 	await _open(EID)
 	_ok("★分母: 052 有 ★1/★2/★3 三块签牌", _star_node("EqStarHit1") != null and _star_node("EqStarHit3") != null)
 	var t1: String = _plain(_rtl_with("codex_eq_effect").text)
-	_ok("★★② ★1(默认)正文写「150+3×」, 不再是三档串", t1.find("150+3×") >= 0 and t1.find("150/310/1200") < 0,
+	_ok("★★② ★1(默认)正文写「150+300%」, 不再是三档串", t1.find("150+300%") >= 0 and t1.find("150/310/1200") < 0,
 		t1.substr(t1.find("造成"), 30))
 	var hit3: Control = _star_node("EqStarHit3")
 	if hit3 != null:
@@ -136,7 +136,7 @@ func _ready() -> void:
 		await _settle(3)
 	var e3 := _rtl_with("codex_eq_effect")
 	var t3: String = _plain(e3.text) if e3 != null else ""
-	_ok("★★★② 点 ★3 后正文写「1200+9×」(数真的换了)", t3.find("1200+9×") >= 0 and t3.find("150+3×") < 0,
+	_ok("★★★② 点 ★3 后正文写「1200+900%」(数真的换了)", t3.find("1200+900%") >= 0 and t3.find("150+300%") < 0,
 		t3.substr(maxi(0, t3.find("造成")), 30))
 	_ok("★② ★1 与 ★3 正文不同", t1 != t3 and t3 != "")
 	var srt := _rtl_with("codex_eq_stats")
@@ -146,7 +146,7 @@ func _ready() -> void:
 	var tb := _rtl_with("codex_eq_tiers")
 	var tbt: String = _plain(tb.text) if tb != null else ""
 	_ok("★★② 分档表在, 且「150 / 310 / 1200」三档并排写出", tb != null and int(tb.get_meta("codex_eq_tiers")) >= 2
-		and tbt.find("150 / 310 / 1200") >= 0 and tbt.find("3 / 5 / 9") >= 0, tbt.replace("\n", " | "))
+		and tbt.find("150 / 310 / 1200") >= 0 and tbt.find("300 / 500 / 900") >= 0, tbt.replace("\n", " | "))
 	_ok("★② 当前档(★3)在分档表里是亮色", tb != null and tb.text.find("[color=%s]1200[/color]" % CodexDetail.TIER_HI) >= 0)
 	## 全量: 每件会升星的装备, ★2 正文里不许再剩「a/b/c」三档串(拆分漏一处就是又一串乱码)
 	var n_t := 0

@@ -50,6 +50,13 @@ UNIT_END = re.compile(r'(\u79d2|\u7801|\u6b21|\u5c42|\u6bb5)\s*$')   # 秒码次
 RED_SPAN_CLS = ('val-atk', 'val-normal')
 N_TAG = re.compile(r'\{N:[^}]*\}')
 CLAUSE_END = re.compile(r'[，。；\n]')
+## ★2026-10-15: 只有伤害数值上色(用户 10-13「颜色按他们的规则来」: 其他数字一律白)。治疗/护盾/护甲/增益数值用 {E:},
+##   带色的 {H:}{S:}{D:}{B:} 一律不许(本次清掉 82 处)。
+COLORED_NONDMG = re.compile(r'\{[HSDB]:')
+## ★2026-10-15: 系数写成百分比「70% 攻击力」, 不写「0.7×攻击力」(LoL 中文 0 次)。公式组「（…= 结果）」里的 × 是算式, 不算;
+##   乘积式「×攻击力×目标最大生命值」与「×(1+攻击速度)」也不算。
+FORMULA_GROUP = re.compile(r'[\uff08(]((?:[^\uff08\uff09()]|\([^()]*\))*?)=\s*(\{[A-Z]:[^}]+\}%?)\s*[\uff09)]')
+TIMES_STAT = re.compile(r'\u00d7(\u653b\u51fb\u529b|\u6700\u5927\u751f\u547d\u503c|\u62a4\u7532|\u9b54\u6297)(?!\u00d7)')
 UNIT_DMG = re.compile(r'\u4f24\u5bb3|\u62a4\u76fe|\u751f\u547d|\u653b\u51fb\u529b|\u6cbb\u7597|\u56de\u590d')
 
 
@@ -65,7 +72,7 @@ def violations(text):
             out.append('禁用「%s」' % w)
     for m in PAREN.finditer(BRACE.sub('{}', text)):
         inner = m.group(1)
-        if '=' in inner or '×' in inner:
+        if '=' in inner or '×' in inner or re.search(r'%\s*(攻击力|最大生命值|护甲|魔抗)', inner):
             continue
         core = _strip(inner)
         if len(core) > PAREN_MAX:
@@ -86,6 +93,12 @@ def violations(text):
         seg = re.split(r'[，。；：\n]', HTML.sub('', text)[:m.start() + 1])[-1]
         if '×' not in seg and not re.search('[♠♥♦♣]', seg):
             out.append('汉字间多余空格「%s」' % m.group(0))
+    if COLORED_NONDMG.search(text):
+        out.append('非伤害数值上了色「%s」' % COLORED_NONDMG.search(text).group(0))
+    masked = FORMULA_GROUP.sub(lambda m: '_' * len(m.group(0)), text)
+    for m in TIMES_STAT.finditer(masked):
+        if not masked[m.end():m.end() + 2].startswith('\u00d7('):
+            out.append('系数写成了「×%s」' % m.group(1))
     for m in N_TAG.finditer(text):
         rest = HTML.sub('', text[m.end():])
         e = CLAUSE_END.search(rest)
@@ -139,6 +152,9 @@ def selftest():
     rn = violations('造成（{C:A%}%×攻击力 = {N:ATK}）+（{C:B%}% 最大生命值）物理伤害，并获得 {E:DEF*0.5}% 减伤。')
     assert any('永久' in x for x in rp) and any('{N:}' in x for x in rp), rp
     assert rn == [], rn
+    assert any('\u4e0a\u4e86\u8272' in x for x in violations('\u56de\u590d {H:HP} \u751f\u547d\u503c\u3002')), '\u975e\u4f24\u5bb3\u8272\u9633\u6027'
+    assert any('\u00d7' in x for x in violations('\u9020\u6210 0.7\u00d7\u653b\u51fb\u529b \u7269\u7406\u4f24\u5bb3\u3002')), '\u00d7\u9633\u6027'
+    assert not any('\u00d7' in x for x in violations('\u9020\u6210\uff08{C:A%}%\u00d7\u653b\u51fb\u529b({ATK}) = {N:ATK}\uff09\u7269\u7406\u4f24\u5bb3\u3002')), '\u00d7\u9634\u6027'
     assert any('空格' in x for x in violations('每 {C:A} 秒 蓄力一次。')), '空格阳性'
     assert not any('空格' in x for x in violations('每 {C:A} 秒蓄力一次，造成 {N:ATK} 物理伤害。')), '空格阴性'
 
@@ -151,7 +167,7 @@ def main():
     n_chars = 0
     for f, p, t in acc:
         n_chars += len(_strip(t))
-        n_par += sum(1 for m in PAREN.finditer(BRACE.sub('{}', t)) if '=' not in m.group(1) and '×' not in m.group(1)
+        n_par += sum(1 for m in PAREN.finditer(BRACE.sub('{}', t)) if '=' not in m.group(1) and '×' not in m.group(1) and not re.search(r'%\s*(攻击力|最大生命值|护甲|魔抗)', m.group(1))
                      and CJK.search(_strip(m.group(1))))
         for v in violations(t):
             bad.append('%s %s: %s' % (f, p, v))

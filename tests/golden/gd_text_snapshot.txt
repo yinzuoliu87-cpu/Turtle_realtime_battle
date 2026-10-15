@@ -78,12 +78,10 @@ scripts/gamedata/equip_tier_labels.gd|lit|伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|伤害 #% 充能值
 scripts/gamedata/equip_tier_labels.gd|lit|伤害 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|伤害 #% 最大生命值
-scripts/gamedata/equip_tier_labels.gd|lit|伤害 #×攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|伤害 #×（护甲+魔抗）
 scripts/gamedata/equip_tier_labels.gd|lit|伤害倍率 #×
 scripts/gamedata/equip_tier_labels.gd|lit|伤害减免 #%
 scripts/gamedata/equip_tier_labels.gd|lit|伤害加成 #% 攻击力
-scripts/gamedata/equip_tier_labels.gd|lit|伤害加成 #×攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|伤害转移 #%
 scripts/gamedata/equip_tier_labels.gd|lit|偷取间隔 # 秒
 scripts/gamedata/equip_tier_labels.gd|lit|偷取龟能 # 点
@@ -130,7 +128,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|射线伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|射线所需攻击 # 次
 scripts/gamedata/equip_tier_labels.gd|lit|小手枪攻击力 #
 scripts/gamedata/equip_tier_labels.gd|lit|小手枪生命值 #
-scripts/gamedata/equip_tier_labels.gd|lit|小熊伤害 #×攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|小熊伤害 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|小熊基础伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|小虫攻击力 #
 scripts/gamedata/equip_tier_labels.gd|lit|小虫生命值 #
@@ -161,9 +159,9 @@ scripts/gamedata/equip_tier_labels.gd|lit|暴击加成 #×暴击率
 scripts/gamedata/equip_tier_labels.gd|lit|暴击率 +#%
 scripts/gamedata/equip_tier_labels.gd|lit|最大生命值 +#
 scripts/gamedata/equip_tier_labels.gd|lit|机炮数 # 发
-scripts/gamedata/equip_tier_labels.gd|lit|横斩伤害加成 #×攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|横斩伤害加成 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|横斩基础伤害 #
-scripts/gamedata/equip_tier_labels.gd|lit|横波伤害加成 #×攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|横波伤害加成 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|横波基础伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|每个魔抗 +#
 scripts/gamedata/equip_tier_labels.gd|lit|每层双抗 +#
@@ -184,15 +182,15 @@ scripts/gamedata/equip_tier_labels.gd|lit|每跳衰减 #%
 scripts/gamedata/equip_tier_labels.gd|lit|永久护盾 # 点
 scripts/gamedata/equip_tier_labels.gd|lit|治疗 #
 scripts/gamedata/equip_tier_labels.gd|lit|治疗 #% 最大生命值
-scripts/gamedata/equip_tier_labels.gd|lit|治疗加成 #×攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|治疗加成 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|法力护盾 #% 充能值
 scripts/gamedata/equip_tier_labels.gd|lit|法力需求 +#%
 scripts/gamedata/equip_tier_labels.gd|lit|流血层数 # 层
-scripts/gamedata/equip_tier_labels.gd|lit|流血层数 #×攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|流血层数 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|浪潮伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|浪潮弹跳 # 次
 scripts/gamedata/equip_tier_labels.gd|lit|浪潮治疗 #
-scripts/gamedata/equip_tier_labels.gd|lit|浮游炮伤害 #×攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|浮游炮伤害 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|深海币 # 枚
 scripts/gamedata/equip_tier_labels.gd|lit|溅射比例 #%
 scripts/gamedata/equip_tier_labels.gd|lit|火球伤害 #% 目标最大生命值
@@ -203,7 +201,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|灼烧层数 # 层
 scripts/gamedata/equip_tier_labels.gd|lit|炮台双抗 #
 scripts/gamedata/equip_tier_labels.gd|lit|炮台攻击力 #
 scripts/gamedata/equip_tier_labels.gd|lit|炮台生命值 #
-scripts/gamedata/equip_tier_labels.gd|lit|炸弹伤害 #×攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|炸弹伤害 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|炸弹数 # 枚
 scripts/gamedata/equip_tier_labels.gd|lit|炸弹魔法伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|爆炸伤害 #
@@ -221,9 +219,9 @@ scripts/gamedata/equip_tier_labels.gd|lit|真实伤害 # 点
 scripts/gamedata/equip_tier_labels.gd|lit|眩晕时长 # 秒
 scripts/gamedata/equip_tier_labels.gd|lit|破损层数 # 层
 scripts/gamedata/equip_tier_labels.gd|lit|破甲上限 #
-scripts/gamedata/equip_tier_labels.gd|lit|竖斩伤害加成 #×攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|竖斩伤害加成 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|竖斩基础伤害 #
-scripts/gamedata/equip_tier_labels.gd|lit|竖波伤害加成 #×攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|竖波伤害加成 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|竖波基础伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|终极护盾 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|范围伤害 #% 最大生命值
@@ -240,7 +238,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|追加概率 #%
 scripts/gamedata/equip_tier_labels.gd|lit|金弹真实伤害 #%
 scripts/gamedata/equip_tier_labels.gd|lit|金弹间隔 # 次
 scripts/gamedata/equip_tier_labels.gd|lit|附带伤害 #
-scripts/gamedata/equip_tier_labels.gd|lit|霰弹伤害加成 #×攻击力
+scripts/gamedata/equip_tier_labels.gd|lit|霰弹伤害加成 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|霰弹基础伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|额外伤害 #% 目标最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|额外攻击力 #% 攻击力
@@ -327,13 +325,13 @@ scripts/gamedata/glossary.gd|lit|金盾
 scripts/gamedata/glossary.gd|lit|锤击
 scripts/gamedata/glossary.gd|lit|靶子
 scripts/gamedata/glossary.gd|lit|龟盾
-scripts/gamedata/minion_codex.gd|lit|500 码内有敌人时举拳蓄力 0.35 秒，随后砸向地面，对前方 60° 锥形范围内 500 码的敌人造成 [color=#ff9f43]4×攻击力[/color] 的魔法伤害。每第 3 次施放时转而高高跃起，在空中蓄力 1 秒后砸下，对 700 码内的全部敌人造成 [color=#ff9f43]6×攻击力[/color] 的魔法伤害。
+scripts/gamedata/minion_codex.gd|lit|500 码内有敌人时举拳蓄力 0.35 秒，随后砸向地面，对前方 60° 锥形范围内 500 码的敌人造成 400% 攻击力的魔法伤害。每 3 次施放时转而高高跃起，在空中蓄力 1 秒后砸下，对 700 码内的全部敌人造成 600% 攻击力的魔法伤害。
 scripts/gamedata/minion_codex.gd|lit|人体浪板
 scripts/gamedata/minion_codex.gd|lit|前排 · 近战
 scripts/gamedata/minion_codex.gd|lit|后排 · 远程
 scripts/gamedata/minion_codex.gd|lit|吞噬
-scripts/gamedata/minion_codex.gd|lit|攻击造成 1×攻击力 的物理伤害，每第 5 次攻击附带旋刃。
-scripts/gamedata/minion_codex.gd|lit|每 5 秒一次：锁定 150~350 码之间的敌人，射出锁链，命中后将其眩晕 0.4 秒并拉至自身后方，造成 1×攻击力 的魔法伤害。
+scripts/gamedata/minion_codex.gd|lit|攻击造成 100% 攻击力的物理伤害，每 5 次攻击附带旋刃。
+scripts/gamedata/minion_codex.gd|lit|每 5 秒一次：锁定 150~350 码之间的敌人，射出锁链，命中后将其眩晕 0.4 秒并拉至自身后方，造成 100% 攻击力的魔法伤害。
 scripts/gamedata/minion_codex.gd|lit|目标生命值低于 15% 时发动吞噬，持续 1.5 秒，期间自身获得 [color=#ff9f43]95% 伤害减免[/color]。吞噬完成后回复 [color=#ff9f43]目标剩余生命的 2 倍[/color]，获得 50% 攻击速度提升，持续 5 秒，并窃取目标的主动技能。攻击、铁锁与铁锤均可触发。
 scripts/gamedata/minion_codex.gd|lit|精英 · 近战
 scripts/gamedata/minion_codex.gd|lit|精英小将
@@ -342,8 +340,8 @@ scripts/gamedata/minion_codex.gd|lit|远程小将
 scripts/gamedata/minion_codex.gd|lit|追踪火箭筒
 scripts/gamedata/minion_codex.gd|lit|铁锁
 scripts/gamedata/minion_codex.gd|lit|铁锤
-scripts/gamedata/minion_codex.gd|lit|锁定 2000 码内的一个敌人并跃起，起跳时回复 2×攻击力 的生命值，距离过近时先向后跳开。随后射出铁链眩晕该敌人并将自身拉向目标，接触时造成 [color=#ff9f43]目标 10% 最大生命[/color] 的物理伤害。之后踩着目标滑行，对其持续造成 2×攻击力 的物理伤害，并对沿途敌人造成 1.5×攻击力 的物理伤害并将其击退，最后跳下。
-scripts/gamedata/minion_codex.gd|lit|锁定 2000 码内的敌人，蓄力 1.5 秒后发射一枚慢速追踪导弹，命中时引发核爆，对 400 码范围内的敌人造成 [color=#ff9f43]4×攻击力[/color] 的物理伤害，并使其受到的治疗效果降低 50%，持续 4 秒。
+scripts/gamedata/minion_codex.gd|lit|锁定 2000 码内的一个敌人并跃起，起跳时回复 200% 攻击力的生命值，距离过近时先向后跳开。随后射出铁链眩晕该敌人并将自身拉向目标，接触时造成 [color=#ff9f43]目标 10% 最大生命[/color] 的物理伤害。之后踩着目标滑行，对其持续造成 200% 攻击力的物理伤害，并对沿途敌人造成 150% 攻击力的物理伤害并将其击退，最后跳下。
+scripts/gamedata/minion_codex.gd|lit|锁定 2000 码内的敌人，蓄力 1.5 秒后发射一枚慢速追踪导弹，命中时引发核爆，对 400 码范围内的敌人造成 400% 攻击力的物理伤害，并使其受到的治疗效果降低 50%，持续 4 秒。
 scripts/gamedata/minion_codex.gd|lit|长手刃
 scripts/gamedata/phase2_config.gd|lit| · 不联网
 scripts/gamedata/phase2_config.gd|lit|\n未收到验证码？请检查垃圾邮件，或返回更换邮箱。
