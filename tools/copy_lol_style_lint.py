@@ -57,6 +57,10 @@ COLORED_NONDMG = re.compile(r'\{[HSDB]:')
 ##   乘积式「×攻击力×目标最大生命值」与「×(1+攻击速度)」也不算。
 FORMULA_GROUP = re.compile(r'[\uff08(]((?:[^\uff08\uff09()]|\([^()]*\))*?)=\s*(\{[A-Z]:[^}]+\}%?)\s*[\uff09)]')
 TIMES_STAT = re.compile(r'\u00d7(\u653b\u51fb\u529b|\u6700\u5927\u751f\u547d\u503c|\u62a4\u7532|\u9b54\u6297)(?!\u00d7)')
+## ★2026-10-15: 不写范围码数。LoL 865 个技能只有 25 个在正文写范围数值, 「命中第一个敌人」类 45 个写码数 0 个;
+##   写出来的都是范围本身就是效果的(射程增减 / 形态射程 / 按距离加伤)。本次删了 125 处。
+MA_NUM = re.compile(r'(\{[A-Z]:[^}]+\}|\d)\s*\u7801')
+MA_KEEP = re.compile(r'\u5c04\u7a0b|\u8ddd\u79bb\u6bcf\u6709|\u6bcf\u8fdc\u79bb|\u6bcf\u8f6c\u5316|\u2194|\u589e\u9ad8|\u534a\u5f84\u989d\u5916')
 UNIT_DMG = re.compile(r'\u4f24\u5bb3|\u62a4\u76fe|\u751f\u547d|\u653b\u51fb\u529b|\u6cbb\u7597|\u56de\u590d')
 
 
@@ -99,6 +103,9 @@ def violations(text):
     for m in TIMES_STAT.finditer(masked):
         if not masked[m.end():m.end() + 2].startswith('\u00d7('):
             out.append('系数写成了「×%s」' % m.group(1))
+    for sent in re.split(r'[\u3002\n]', HTML.sub('', text)):
+        if MA_NUM.search(sent) and not MA_KEEP.search(sent):
+            out.append('\u5199\u4e86\u8303\u56f4\u7801\u6570\u300c%s\u300d' % sent[:24])
     for m in N_TAG.finditer(text):
         rest = HTML.sub('', text[m.end():])
         e = CLAUSE_END.search(rest)
@@ -152,6 +159,8 @@ def selftest():
     rn = violations('造成（{C:A%}%×攻击力 = {N:ATK}）+（{C:B%}% 最大生命值）物理伤害，并获得 {E:DEF*0.5}% 减伤。')
     assert any('永久' in x for x in rp) and any('{N:}' in x for x in rp), rp
     assert rn == [], rn
+    assert any('\u7801\u6570' in x for x in violations('\u5bf9 {C:A.R} \u7801\u5185\u7684\u654c\u4eba\u9020\u6210 {N:ATK} \u7269\u7406\u4f24\u5bb3\u3002')), '\u7801\u6570\u9633\u6027'
+    assert not any('\u7801\u6570' in x for x in violations('\u83b7\u5f97 {C:A.R} \u7801\u5c04\u7a0b\u3002')), '\u7801\u6570\u9634\u6027'
     assert any('\u4e0a\u4e86\u8272' in x for x in violations('\u56de\u590d {H:HP} \u751f\u547d\u503c\u3002')), '\u975e\u4f24\u5bb3\u8272\u9633\u6027'
     assert any('\u00d7' in x for x in violations('\u9020\u6210 0.7\u00d7\u653b\u51fb\u529b \u7269\u7406\u4f24\u5bb3\u3002')), '\u00d7\u9633\u6027'
     assert not any('\u00d7' in x for x in violations('\u9020\u6210\uff08{C:A%}%\u00d7\u653b\u51fb\u529b({ATK}) = {N:ATK}\uff09\u7269\u7406\u4f24\u5bb3\u3002')), '\u00d7\u9634\u6027'

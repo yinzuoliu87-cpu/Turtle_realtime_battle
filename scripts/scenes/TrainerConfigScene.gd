@@ -10,12 +10,12 @@ const TopBar = preload("res://scripts/util/top_bar.gd")
 ## 全部技能池(被动 + 主动·**N 选 1**, N 就是本数组长度)。icon 供卡片显示; kind 显示"被动/主动"。
 const SKILLS := [
 	{"id": "magic_stone", "kind": "被动", "name": "魔法石", "icon": "res://assets/sprites/vfx/magic-stone-icon.png", "desc": "训龟大师的攻击额外造成 2% 目标最大生命值的魔法伤害。每次攻击获得 +3% 攻击速度，可无限叠加。层数达到 10、25、50 时亮起共鸣光效。"},
-	{"id": "hook", "kind": "主动", "name": "钩锁", "icon": "res://assets/sprites/vfx/hook-skill-icon.png", "desc": "训龟大师朝最近的敌人射出钩索，命中 2000 码内第一个敌人时将其眩晕 4 秒并拉至身边，期间目标受到的伤害 +25%。冷却 20 秒，未命中时冷却 10 秒。"},
-	{"id": "fury_potion", "kind": "主动", "name": "怒火药水", "icon": "res://assets/sprites/vfx/fury-potion-icon.png", "desc": "训龟大师朝最近的敌人投掷药水，射程 2000 码。落点 300 码内的友军获得 5 秒狂热：+30% 攻击速度、+25% 移动速度、+25% 龟能充能。冷却 16 秒。"},
-	{"id": "whistle", "kind": "主动", "name": "口哨", "icon": "res://assets/sprites/vfx/whistle-icon.png", "desc": "训龟大师吹响口哨，随机召唤以下一种。护盾：全体友军获得 700 护盾，5 秒后逐渐消退。灵龟：召出一只灵体小龟，蓄力后打出贯穿 2000 码的气波，对命中的敌人造成 100 点 + 15% 目标最大生命值的真实伤害并将其击飞，护甲降低 30%，持续 5 秒。狂暴：全体友军 4 秒内攻击力 +20%、生命偷取 +20%，且不会死亡。冷却 14 秒。"},
-	{"id": "glacier", "kind": "主动", "name": "冰川", "icon": "res://assets/sprites/vfx/glacier-icon.png", "desc": "训龟大师朝最近的敌人生成一条 2000 码长的冰川，持续 6 秒。冰面上的敌人移动速度降低 40%，受到的伤害 +20%。冷却 17 秒。"},
-	{"id": "hunt_order", "kind": "主动", "name": "猎龟令", "icon": "res://assets/sprites/vfx/hunt-order-icon.png", "desc": "训龟大师锁定 2000 码内最近的敌人，持续 15 秒：目标受到的伤害 +15%，其周围 400 码内的友军优先攻击该目标（范围随目标移动）。冷却 30 秒，未命中时冷却 15 秒。"},
-	{"id": "tame", "kind": "主动", "name": "驯服", "icon": "res://assets/sprites/vfx/tame-icon.png", "desc": "训龟大师标记 2000 码内最近的敌人。该敌人下次死亡时以 30% 最大生命值复活并加入我方，复活后 2.5 秒无敌，此后每秒损失 2% 最大生命值，持续作战至终极战场。冷却 60 秒，未命中时冷却 30 秒。"},
+	{"id": "hook", "kind": "主动", "name": "钩锁", "icon": "res://assets/sprites/vfx/hook-skill-icon.png", "desc": "训龟大师朝最近的敌人射出钩索，命中第一个敌人时将其眩晕 4 秒并拉至身边，期间目标受到的伤害 +25%。冷却 20 秒，未命中时冷却 10 秒。"},
+	{"id": "fury_potion", "kind": "主动", "name": "怒火药水", "icon": "res://assets/sprites/vfx/fury-potion-icon.png", "desc": "训龟大师朝最近的敌人投掷药水。落点附近的友军获得 5 秒狂热：+30% 攻击速度、+25% 移动速度、+25% 龟能充能。冷却 16 秒。"},
+	{"id": "whistle", "kind": "主动", "name": "口哨", "icon": "res://assets/sprites/vfx/whistle-icon.png", "desc": "训龟大师吹响口哨，随机召唤以下一种。护盾：全体友军获得 700 护盾，5 秒后逐渐消退。灵龟：召出一只灵体小龟，蓄力后打出一道贯穿气波，对命中的敌人造成 100 点 + 15% 目标最大生命值的真实伤害并将其击飞，护甲降低 30%，持续 5 秒。狂暴：全体友军 4 秒内攻击力 +20%、生命偷取 +20%，且不会死亡。冷却 14 秒。"},
+	{"id": "glacier", "kind": "主动", "name": "冰川", "icon": "res://assets/sprites/vfx/glacier-icon.png", "desc": "训龟大师朝最近的敌人生成一条冰川，持续 6 秒。冰面上的敌人移动速度降低 40%，受到的伤害 +20%。冷却 17 秒。"},
+	{"id": "hunt_order", "kind": "主动", "name": "猎龟令", "icon": "res://assets/sprites/vfx/hunt-order-icon.png", "desc": "训龟大师锁定最近的敌人，持续 15 秒：目标受到的伤害 +15%，其周围的友军优先攻击该目标（范围随目标移动）。冷却 30 秒，未命中时冷却 15 秒。"},
+	{"id": "tame", "kind": "主动", "name": "驯服", "icon": "res://assets/sprites/vfx/tame-icon.png", "desc": "训龟大师标记最近的敌人。该敌人下次死亡时以 30% 最大生命值复活并加入我方，复活后 2.5 秒无敌，此后每秒损失 2% 最大生命值，持续作战至终极战场。冷却 60 秒，未命中时冷却 30 秒。"},
 ]
 ## 三形象(2026-07-26 定稿·PixelLab)。sprite = 南向立绘, 用于选择卡缩略 + 大预览。
 const APPEARANCES := [

@@ -330,14 +330,14 @@ scripts/gamedata/minion_codex.gd|lit|后排 · 远程
 scripts/gamedata/minion_codex.gd|lit|吞噬
 scripts/gamedata/minion_codex.gd|lit|精英 · 近战
 scripts/gamedata/minion_codex.gd|lit|精英小将
-scripts/gamedata/minion_codex.gd|lit|精英小将在 500 码内有敌人时举拳蓄力 0.35 秒，随后砸向地面，对前方 60° 锥形范围内 500 码的敌人造成 400% 攻击力的魔法伤害。每 3 次施放时转而高高跃起，在空中蓄力 1 秒后砸下，对 700 码内的全部敌人造成 600% 攻击力的魔法伤害。
 scripts/gamedata/minion_codex.gd|lit|精英小将在目标生命值低于 15% 时发动吞噬，持续 1.5 秒，期间获得 95% 减伤。吞噬完成后回复相当于目标剩余生命值 2 倍的生命值，并获得 50% 攻击速度，持续 5 秒，并窃取目标的主动技能。攻击、铁锁与铁锤均可触发。
-scripts/gamedata/minion_codex.gd|lit|精英小将每 5 秒锁定 150~350 码之间的一个敌人，射出锁链，命中后将其眩晕 0.4 秒并拉至自身后方，造成 100% 攻击力的魔法伤害。
+scripts/gamedata/minion_codex.gd|lit|精英小将在附近有敌人时举拳蓄力 0.35 秒，随后砸向地面，对前方锥形范围内的敌人造成 400% 攻击力的魔法伤害。每 3 次施放时转而高高跃起，在空中蓄力 1 秒后砸下，对附近的全部敌人造成 600% 攻击力的魔法伤害。
+scripts/gamedata/minion_codex.gd|lit|精英小将每 5 秒锁定一个不贴身的敌人，射出锁链，命中后将其眩晕 0.4 秒并拉至自身后方，造成 100% 攻击力的魔法伤害。
 scripts/gamedata/minion_codex.gd|lit|精英小将的攻击造成 100% 攻击力的物理伤害，每 5 次攻击附带旋刃。
 scripts/gamedata/minion_codex.gd|lit|近战小将
-scripts/gamedata/minion_codex.gd|lit|近战小将锁定 2000 码内的一个敌人并跃起，起跳时回复 200% 攻击力的生命值，距离过近时先向后跳开。随后射出铁链眩晕该敌人并将自身拉向目标，接触时造成 10% 目标最大生命值的物理伤害。之后踩着目标滑行，对其持续造成 200% 攻击力的物理伤害，并对沿途敌人造成 150% 攻击力的物理伤害并将其击退，最后跳下。
+scripts/gamedata/minion_codex.gd|lit|近战小将锁定一个敌人并跃起，起跳时回复 200% 攻击力的生命值，距离过近时先向后跳开。随后射出铁链眩晕该敌人并将自身拉向目标，接触时造成 10% 目标最大生命值的物理伤害。之后踩着目标滑行，对其持续造成 200% 攻击力的物理伤害，并对沿途敌人造成 150% 攻击力的物理伤害并将其击退，最后跳下。
 scripts/gamedata/minion_codex.gd|lit|远程小将
-scripts/gamedata/minion_codex.gd|lit|远程小将锁定 2000 码内的敌人，蓄力 1.5 秒后发射一枚慢速追踪导弹，命中时引发核爆，对 400 码范围内的敌人造成 400% 攻击力的物理伤害，并施加 50% 治疗削减，持续 4 秒。
+scripts/gamedata/minion_codex.gd|lit|远程小将锁定一名敌人，蓄力 1.5 秒后发射一枚慢速追踪导弹，命中时引发核爆，对附近的敌人造成 400% 攻击力的物理伤害，并施加 50% 治疗削减，持续 4 秒。
 scripts/gamedata/minion_codex.gd|lit|追踪火箭筒
 scripts/gamedata/minion_codex.gd|lit|铁锁
 scripts/gamedata/minion_codex.gd|lit|铁锤
@@ -1217,13 +1217,13 @@ scripts/scenes/TrainerConfigScene.gd|lit|技能（%d 选 1）· 主动与被动�
 scripts/scenes/TrainerConfigScene.gd|lit|村民
 scripts/scenes/TrainerConfigScene.gd|lit|猎龟令
 scripts/scenes/TrainerConfigScene.gd|lit|被动
-scripts/scenes/TrainerConfigScene.gd|lit|训龟大师吹响口哨，随机召唤以下一种。护盾：全体友军获得 700 护盾，5 秒后逐渐消退。灵龟：召出一只灵体小龟，蓄力后打出贯穿 2000 码的气波，对命中的敌人造成 100 点 + 15% 目标最大生命值的真实伤害并将其击飞，护甲降低 30%，持续 5 秒。狂暴：全体友军 4 秒内攻击力 +20%、生命偷取 +20%，且不会死亡。冷却 14 秒。
-scripts/scenes/TrainerConfigScene.gd|lit|训龟大师朝最近的敌人射出钩索，命中 2000 码内第一个敌人时将其眩晕 4 秒并拉至身边，期间目标受到的伤害 +25%。冷却 20 秒，未命中时冷却 10 秒。
-scripts/scenes/TrainerConfigScene.gd|lit|训龟大师朝最近的敌人投掷药水，射程 2000 码。落点 300 码内的友军获得 5 秒狂热：+30% 攻击速度、+25% 移动速度、+25% 龟能充能。冷却 16 秒。
-scripts/scenes/TrainerConfigScene.gd|lit|训龟大师朝最近的敌人生成一条 2000 码长的冰川，持续 6 秒。冰面上的敌人移动速度降低 40%，受到的伤害 +20%。冷却 17 秒。
-scripts/scenes/TrainerConfigScene.gd|lit|训龟大师标记 2000 码内最近的敌人。该敌人下次死亡时以 30% 最大生命值复活并加入我方，复活后 2.5 秒无敌，此后每秒损失 2% 最大生命值，持续作战至终极战场。冷却 60 秒，未命中时冷却 30 秒。
+scripts/scenes/TrainerConfigScene.gd|lit|训龟大师吹响口哨，随机召唤以下一种。护盾：全体友军获得 700 护盾，5 秒后逐渐消退。灵龟：召出一只灵体小龟，蓄力后打出一道贯穿气波，对命中的敌人造成 100 点 + 15% 目标最大生命值的真实伤害并将其击飞，护甲降低 30%，持续 5 秒。狂暴：全体友军 4 秒内攻击力 +20%、生命偷取 +20%，且不会死亡。冷却 14 秒。
+scripts/scenes/TrainerConfigScene.gd|lit|训龟大师朝最近的敌人射出钩索，命中第一个敌人时将其眩晕 4 秒并拉至身边，期间目标受到的伤害 +25%。冷却 20 秒，未命中时冷却 10 秒。
+scripts/scenes/TrainerConfigScene.gd|lit|训龟大师朝最近的敌人投掷药水。落点附近的友军获得 5 秒狂热：+30% 攻击速度、+25% 移动速度、+25% 龟能充能。冷却 16 秒。
+scripts/scenes/TrainerConfigScene.gd|lit|训龟大师朝最近的敌人生成一条冰川，持续 6 秒。冰面上的敌人移动速度降低 40%，受到的伤害 +20%。冷却 17 秒。
+scripts/scenes/TrainerConfigScene.gd|lit|训龟大师标记最近的敌人。该敌人下次死亡时以 30% 最大生命值复活并加入我方，复活后 2.5 秒无敌，此后每秒损失 2% 最大生命值，持续作战至终极战场。冷却 60 秒，未命中时冷却 30 秒。
 scripts/scenes/TrainerConfigScene.gd|lit|训龟大师的攻击额外造成 2% 目标最大生命值的魔法伤害。每次攻击获得 +3% 攻击速度，可无限叠加。层数达到 10、25、50 时亮起共鸣光效。
-scripts/scenes/TrainerConfigScene.gd|lit|训龟大师锁定 2000 码内最近的敌人，持续 15 秒：目标受到的伤害 +15%，其周围 400 码内的友军优先攻击该目标（范围随目标移动）。冷却 30 秒，未命中时冷却 15 秒。
+scripts/scenes/TrainerConfigScene.gd|lit|训龟大师锁定最近的敌人，持续 15 秒：目标受到的伤害 +15%，其周围的友军优先攻击该目标（范围随目标移动）。冷却 30 秒，未命中时冷却 15 秒。
 scripts/scenes/TrainerConfigScene.gd|lit|选择形象
 scripts/scenes/TrainerConfigScene.gd|lit|钩锁
 scripts/scenes/TrainerConfigScene.gd|lit|驯服

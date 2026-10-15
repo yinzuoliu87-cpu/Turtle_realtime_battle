@@ -55,7 +55,7 @@ func _ready() -> void:
 			["每层攻速", "+%d%%攻击速度" % int(round(TK["MS_HASTE_PER_STACK"] * 100.0))],
 		],
 		"hook": [
-			["射程", "%d" % int(K["HOOK_RANGE"])],
+			["不写射程(LoL 写法·2026-10-15)", "!%d码" % int(K["HOOK_RANGE"])],
 			["眩晕", "%d秒" % int(K["HOOK_STUN"])],
 			["受伤加成", "+%d%%" % int(round((K["HOOK_VULN_MULT"] - 1.0) * 100.0))],
 			["冷却", "冷却%d秒" % int(SK["hook"]["cd"])],
@@ -63,8 +63,8 @@ func _ready() -> void:
 		# ↓2026-07-30 补: 原来这三个技能【只查射程和 CD】, 实质数值一个都不查 ——
 		#   因为数值是 trainer_system 里的裸字面量, 没有常量可以推。现已提成常量。
 		"fury_potion": [
-			["射程", "%d" % int(SK["fury_potion"]["range"])],
-			["生效半径", "%d码" % int(TK["FURY_RADIUS"])],
+			["不写射程(LoL 写法·2026-10-15)", "!%d码" % int(SK["fury_potion"]["range"])],
+			["不写半径", "!%d码" % int(TK["FURY_RADIUS"])],
 			["持续", "%d秒" % int(TK["FURY_SEC"])],
 			["攻速", "+%d%%攻击速度" % int(round((TK["FURY_HASTE"] - 1.0) * 100.0))],
 			["龟能充能", "+%d%%龟能充能" % int(round((TK["FURY_ECHARGE"] - 1.0) * 100.0))],
@@ -76,7 +76,7 @@ func _ready() -> void:
 			# ★2026-07-30 用户改数值: 200 物理 → 100 + 15% 目标最大生命【真实伤害】
 			["气波定值段", "%d点" % int(TK["WHISTLE_WAVE_DMG"])],
 			["气波百分比段", "%d%%目标最大生命" % int(round(TK["WHISTLE_WAVE_MAXHP_PCT"] * 100.0))],
-			["气波射程", "%d码" % int(TK["WAVE_RANGE"])],
+			["不写气波射程", "!%d码" % int(TK["WAVE_RANGE"])],
 			["削甲", "护甲降低%d%%" % int(round((1.0 - K["WHISTLE_SHRED_MULT"]) * 100.0))],
 			# ↓2026-07-30 补: 这两个时长原来【文案里根本没写】(常量注释自己标着"★文案没写这个时长")
 			["临时血时长", "%d秒" % int(TK["WHISTLE_TEMPHP_SEC"])],
@@ -92,7 +92,7 @@ func _ready() -> void:
 			["冷却", "冷却%d秒" % int(SK["whistle"]["cd"])],
 		],
 		"glacier": [
-			["长度", "%d码" % int(SK["glacier"]["range"])],
+			["不写长度", "!%d码" % int(SK["glacier"]["range"])],
 			["持续", "%d秒" % int(K["GLACIER_SEC"])],
 			["减速", "移动速度降低%d%%" % int(round((1.0 - TK["GLACIER_SLOW_MAG"]) * 100.0))],
 			["受伤加成", "+%d%%" % int(round((K["GLACIER_VULN_MULT"] - 1.0) * 100.0))],
@@ -104,17 +104,17 @@ func _ready() -> void:
 			["没锁中的冷却(=一半·从常量算)", "冷却%d秒" % int(K["HUNT_CD"] * 0.5)],
 			["不许写黑话「空放」", "!空放"],
 			["不许写黑话「返还」", "!返还"],
-			["射程", "%d码" % int(K["HUNT_RANGE"])],
+			["不写射程", "!%d码" % int(K["HUNT_RANGE"])],
 			["持续", "%d秒" % int(K["HUNT_SEC"])],
 			["受伤加成", "+%d%%" % int(round((K["HUNT_VULN"] - 1.0) * 100.0))],
-			["嘲讽半径", "%d码" % int(K["HUNT_TAUNT_R"])],
+			["不写半径", "!%d码" % int(K["HUNT_TAUNT_R"])],
 			["冷却", "冷却%d秒" % int(K["HUNT_CD"])],
 		],
 		"tame": [
 			["没标中的冷却(=一半·从常量算)", "冷却%d秒" % int(K["TAME_CD"] * 0.5)],
 			["不许写黑话「空放」", "!空放"],
 			["不许写黑话「返还」", "!返还"],
-			["射程", "%d码" % int(K["TAME_RANGE"])],
+			["不写射程", "!%d码" % int(K["TAME_RANGE"])],
 			["重生血量", "%d%%最大生命" % int(K["TAME_REVIVE_PCT"] * 100.0)],
 			["无敌时长", "%.1f秒无敌" % K["TAME_REVIVE_SEC"]],
 			["每秒衰减", "每秒损失%d%%最大生命" % int(K["TAME_DECAY_PCT"] * 100.0)],
@@ -166,8 +166,9 @@ func _ready() -> void:
 			d2.find("CD") < 0)
 		if rg2 > 0.0:
 			_derived += 1
-			_chk("①.5 「%s」文案里的射程与注册表一致(%d 码)" % [str(e2.get("name", sid2)), int(rg2)],
-				d2.find("%d码" % int(rg2)) >= 0 or d2.find("射程%d" % int(rg2)) >= 0)
+			## ★2026-10-15 反过来: LoL「命中第一个敌人」类 45 个技能写码数 0 个 ⇒ 文案【不许】写射程(原来要求必须写)
+			_chk("①.5 「%s」文案里不写射程(LoL 写法 · 注册表 %d 码)" % [str(e2.get("name", sid2)), int(rg2)],
+				d2.find("%d码" % int(rg2)) < 0 and d2.find("射程%d" % int(rg2)) < 0)
 	_chk("①.5 ★分母: 真的逐个技能对账了(0 条 = 空检查)", _derived >= 10)
 
 	# ── ② 描述里的数字必须与代码常量一致 ──
