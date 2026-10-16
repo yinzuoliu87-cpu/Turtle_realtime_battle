@@ -3942,6 +3942,11 @@ func _do_basic(u: Dictionary, tgt: Dictionary, spec: Dictionary) -> void:
 		raw_p += bonus
 	else:
 		raw_m += bonus
+	## ★寒域对火系增伤普攻也吃(用户 2026-10-16「寒冰龟的攻击和技能会」): 原来只在 _atk_dmg(技能路)乘,
+	##   普攻走这里没乘 ⇒ 冰锥打熔岩龟 41 / 技能 49(探针)。与 _atk_dmg 同一判据, 乘在减免之前。
+	if u.get("_vs_fire_bonus", 0.0) > 0.0 and (str(tgt["id"]) == "lava" or str(tgt["id"]) == "phoenix"):
+		var _vf: float = 1.0 + float(u["_vs_fire_bonus"])
+		raw_p *= _vf; raw_m *= _vf; raw_t *= _vf
 	var col: Color = Color("#4dabf7") if (raw_m > raw_p) else Color("#ff4444")
 	var vh: int = clampi(int(spec.get("hits", 1)), 1, 6)
 	if spec.get("alt_each", false) and raw_p > 0.0 and raw_m > 0.0:

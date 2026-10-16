@@ -225,7 +225,7 @@ func _frost_puff(pos2d: Vector2) -> void:
 ## 【冰锥(普攻)】单段, 物理/魔法逐次交替(两边同值)。真值在主场景普攻表, 那里引用本常量。
 const CONE_ATK_COEF := 1.0
 const ICICLE_MAX := 20
-const ICICLE_ASPD := 0.05      # 每层 +5% 攻速(3%→5%·用户2026-07-30 第六轮: 攒满20层 24.4→21.7 秒, 33秒内普攻 28→34 次)
+## ★冰柱不再给攻速(用户 2026-10-16「冰锥不再提供功速」; 原 ICICLE_ASPD 每层 +5%)。
 const ICICLE_DEFMR := 0.01     # 每层 +1% 护甲 & 魔抗
 const ICICLE_FROST_RADIUS := 0.20   # 每层 冰霜半径 +20%
 const ICICLE_FROST_SEC := 0.5       # 每层 冰霜持续 +0.5 秒
@@ -290,10 +290,6 @@ func _ice_gain_icicle(u: Dictionary) -> void:
 	if n >= ICICLE_MAX:
 		return
 	u["icicle"] = n + 1
-	# 攻速: atk_interval 越小越快 → 用总层数换算目标间隔, 避免逐层相乘的浮点漂移
-	var base_iv: float = float(u.get("_icicle_base_iv", u.get("atk_interval", 1.0)))
-	u["_icicle_base_iv"] = base_iv
-	u["atk_interval"] = base_iv / (1.0 + ICICLE_ASPD * float(u["icicle"]))
 	# 双抗: 按层数加百分比 —— ★2026-10-11 改由 `_recalc_stats`(唯一写入点)读 `icicle` 层数算,
 	#   原来在这里直接写 def/mr, 任何 buff 触发重算就被抹掉(门禁 verify_icicle_resist_survives_recalc)。
 	battle._recalc_stats(u)

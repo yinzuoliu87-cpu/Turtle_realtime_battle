@@ -1890,8 +1890,9 @@ func _open_skill_card(u: Dictionary, k: String, nm: String, role: String, cost: 
 ## ★系数不手抄: 对模板里每个占位符的表达式, 把一项属性置 1、其余属性置 0 去求值 ⇒ 那一项的系数。
 ##   模板是线性的(N×ATK + M×HP …), 这样拆是精确的; 一个属性都不含的占位符(秒数/层数)不进表。
 const _BREAK_STATS := [["ATK", "atk", "攻击"], ["DEF", "def", "护甲"], ["MR", "mr", "魔抗"], ["HP", "hp", "最大生命值"]]
+## ★{P:} 全库只有寒冰冰锥在用(物理 / 魔法逐次交替), 拆解行原来标成「穿透伤害」是错的(2026-10-16 实拍)
 const _BREAK_KIND := {"N": ["物理伤害", "val-normal"], "M": ["魔法伤害", "val-magic"],
-	"T": ["真实伤害", "val-true"], "P": ["穿透伤害", "val-pierce"], "H": ["治疗", "val-heal"],
+	"T": ["真实伤害", "val-true"], "P": ["物理 / 魔法伤害", "val-pierce"], "H": ["治疗", "val-heal"],
 	"S": ["护盾", "val-shield"]}
 
 

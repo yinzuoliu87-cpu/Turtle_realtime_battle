@@ -352,8 +352,8 @@
       "name": "寒域",
       "atkDownPct": 20,
       "atkDownTurns": 6,
-      "brief": "寒冰龟登场时使全场敌人的攻击速度、龟能充能速度和移动速度降低 {C:IceSystem.AURA_SLOW%}%，持续 {C:IceSystem.AURA_SEC} 秒。\n寒冰龟对熔岩龟和凤凰龟造成的伤害提升 {C:IceSystem.AURA_VS_FIRE%}%，并免疫灼烧。",
-      "desc": "寒冰龟登场时使全场敌人的攻击速度、龟能充能速度和移动速度降低 {C:IceSystem.AURA_SLOW%}%，持续 {C:IceSystem.AURA_SEC} 秒。\n寒冰龟对熔岩龟和凤凰龟造成的伤害提升 {C:IceSystem.AURA_VS_FIRE%}%，并免疫灼烧。"
+      "brief": "寒冰龟登场时使全场敌人的攻击速度、龟能充能速度和移动速度降低 {C:IceSystem.AURA_SLOW%}%，持续 {C:IceSystem.AURA_SEC} 秒。\n寒冰龟的攻击和技能对熔岩龟和凤凰龟造成的伤害提升 {C:IceSystem.AURA_VS_FIRE%}%，并免疫灼烧。",
+      "desc": "寒冰龟登场时使全场敌人的攻击速度、龟能充能速度和移动速度降低 {C:IceSystem.AURA_SLOW%}%，持续 {C:IceSystem.AURA_SEC} 秒。\n寒冰龟的攻击和技能对熔岩龟和凤凰龟造成的伤害提升 {C:IceSystem.AURA_VS_FIRE%}%，并免疫灼烧。"
     },
     "skillPool": [
       {
@@ -364,8 +364,8 @@
         "pierce": 0,
         "cd": 0,
         "totalScale": 1.4,
-        "brief": "寒冰龟射出冰锥，交替造成 {P:IceSystem.CONE_ATK_COEF*ATK} 物理伤害或魔法伤害，每次攻击获得 1 层冰柱。\n每层冰柱提供 {C:IceSystem.ICICLE_ASPD%}% 攻击速度、{C:IceSystem.ICICLE_DEFMR%}% 护甲和 {C:IceSystem.ICICLE_DEFMR%}% 魔抗，最多 {C:IceSystem.ICICLE_MAX} 层，每路战斗结束时重置。\n<span style=\"color:#8a93a0\">若选择【冰霜】，每层冰柱使其范围 +{C:IceSystem.ICICLE_FROST_RADIUS%}%、持续时间 +{C:IceSystem.ICICLE_FROST_SEC} 秒。</span>",
-        "detail": "寒冰龟射出冰锥，交替造成（{C:IceSystem.CONE_ATK_COEF%}%×攻击力({ATK}) = {P:IceSystem.CONE_ATK_COEF*ATK}）物理伤害或魔法伤害，每次攻击获得 1 层冰柱。\n每层冰柱提供 {C:IceSystem.ICICLE_ASPD%}% 攻击速度、{C:IceSystem.ICICLE_DEFMR%}% 护甲和 {C:IceSystem.ICICLE_DEFMR%}% 魔抗，最多 {C:IceSystem.ICICLE_MAX} 层，每路战斗结束时重置。\n<span style=\"color:#8a93a0\">若选择【冰霜】，每层冰柱使其范围 +{C:IceSystem.ICICLE_FROST_RADIUS%}%、持续时间 +{C:IceSystem.ICICLE_FROST_SEC} 秒。</span>",
+        "brief": "寒冰龟射出冰锥，交替造成 {P:IceSystem.CONE_ATK_COEF*ATK} 物理伤害或魔法伤害，每次攻击获得 1 层冰柱。\n每层冰柱提供 {C:IceSystem.ICICLE_DEFMR%}% 护甲和 {C:IceSystem.ICICLE_DEFMR%}% 魔抗，最多 {C:IceSystem.ICICLE_MAX} 层，每路战斗结束时重置。\n<span style=\"color:#8a93a0\">若选择【冰霜】，每层冰柱使其范围 +{C:IceSystem.ICICLE_FROST_RADIUS%}%、持续时间 +{C:IceSystem.ICICLE_FROST_SEC} 秒。</span>",
+        "detail": "寒冰龟射出冰锥，交替造成（{C:IceSystem.CONE_ATK_COEF%}%×攻击力({ATK}) = {P:IceSystem.CONE_ATK_COEF*ATK}）物理伤害或魔法伤害，每次攻击获得 1 层冰柱。\n每层冰柱提供 {C:IceSystem.ICICLE_DEFMR%}% 护甲和 {C:IceSystem.ICICLE_DEFMR%}% 魔抗，最多 {C:IceSystem.ICICLE_MAX} 层，每路战斗结束时重置。\n<span style=\"color:#8a93a0\">若选择【冰霜】，每层冰柱使其范围 +{C:IceSystem.ICICLE_FROST_RADIUS%}%、持续时间 +{C:IceSystem.ICICLE_FROST_SEC} 秒。</span>",
         "energyCost": 0
       },
       {

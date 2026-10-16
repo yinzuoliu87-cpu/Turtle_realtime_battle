@@ -26,7 +26,6 @@ extends Node
 
 # ── 需求值（用户口述的字面值）──
 const WANT_FROST_ATK := 0.25          # 冰霜每 0.5 秒 = 0.25×ATK（原 0.18）
-const WANT_ICICLE_ASPD := 0.05        # 每层冰柱 +5% 攻速（原 3%）
 const WANT_BARRAGE_ENERGY := 130.0    # 糖衣炮弹龟能（原 120）
 const WANT_BARRAGE_SHIELD := 0.015    # 糖衣炮弹每跳友军护盾 = 1.5% 自身最大生命（原 2%）
 const WANT_SCYTHE_CURSE := 3.0        # 镰刀横扫诅咒秒数（原 5）
@@ -89,9 +88,8 @@ func _nums() -> void:
 		is_equal_approx(IceSystem.FROST_ATK_COEF, WANT_FROST_ATK))
 	_chk("① 冰霜旧值 0.18 已消失", not is_equal_approx(IceSystem.FROST_ATK_COEF, 0.18))
 	# 2. 冰柱每层攻速
-	_chk("① 冰柱每层攻速 = %d%%" % int(WANT_ICICLE_ASPD * 100.0),
-		ic.contains("const ICICLE_ASPD := %.2f" % WANT_ICICLE_ASPD))
-	_chk("① 冰柱攻速旧值 0.03 已消失", not ic.contains("const ICICLE_ASPD := 0.03"))
+	## ★2026-10-16 用户「冰锥不再提供功速」: 冰柱攻速整条删掉 ⇒ 反过来守它别回来
+	_chk("① 冰柱不再给攻速(ICICLE_ASPD 已删)", not ic.contains("const ICICLE_ASPD"))
 	# 3. 糖衣炮弹龟能
 	_chk("① 糖衣炮弹龟能 = %d" % int(WANT_BARRAGE_ENERGY),
 		se.contains('"candyBarrage": %.1f' % WANT_BARRAGE_ENERGY))
@@ -168,8 +166,8 @@ func _text() -> void:
 			and (frost.contains("{M:IceSystem.FROST_ATK_COEF*ATK}") or frost.contains("{M:0.25*ATK}")))
 	_chk("② 文案·冰霜旧值 {M:0.18*ATK} 已消失", not frost.contains("{M:0.18*ATK}"))
 	# 冰柱攻速(写在普攻【冰锥】的文案里)
-	_chk("② 文案·冰柱每层 +5% 攻速",
-		spike.contains("+5% 攻击速度"))   # 2026-10-08 体例改写: 简述里的缩写「攻速」统一成「攻击速度」
+	## ★2026-10-16 用户「冰锥不再提供功速」⇒ 冰锥文案里不许再出现攻击速度
+	_chk("② 文案·冰锥不再提攻击速度", not spike.contains("攻击速度") and not spike.contains("攻速"))
 	_chk("② 文案·冰柱旧值 +3% 已消失",
 		not spike.contains("+3% 攻速") and not spike.contains("+3% 攻击速度"))
 	# 糖衣炮弹护盾（★"2%"在同段里还用于伤害, 所以连上下文一起查）

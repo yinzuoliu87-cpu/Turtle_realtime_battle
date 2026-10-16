@@ -1467,6 +1467,7 @@ scripts/scenes/battle/info_panel.gd|lit|火山形态 · 还剩 %.1f 秒
 scripts/scenes/battle/info_panel.gd|lit|灼烧
 scripts/scenes/battle/info_panel.gd|lit|熔岩形态
 scripts/scenes/battle/info_panel.gd|lit|物理
+scripts/scenes/battle/info_panel.gd|lit|物理 / 魔法伤害
 scripts/scenes/battle/info_panel.gd|lit|物理伤害
 scripts/scenes/battle/info_panel.gd|lit|生命值
 scripts/scenes/battle/info_panel.gd|lit|生命偷取
@@ -1479,7 +1480,6 @@ scripts/scenes/battle/info_panel.gd|lit|移动速度
 scripts/scenes/battle/info_panel.gd|lit|移动速度，受减速、加速效果影响。
 scripts/scenes/battle/info_panel.gd|lit|移速
 scripts/scenes/battle/info_panel.gd|lit|移速 %d
-scripts/scenes/battle/info_panel.gd|lit|穿透伤害
 scripts/scenes/battle/info_panel.gd|lit|站位
 scripts/scenes/battle/info_panel.gd|lit|缩短受到眩晕、减速等控制效果的持续时间。
 scripts/scenes/battle/info_panel.gd|lit|被动
