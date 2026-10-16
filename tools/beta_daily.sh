@@ -60,31 +60,38 @@ PYEOF
 fi
 
 ## ★周六闯关赛(用户 2026-10-12「周六我们这样，0点跑部分，早上9点跑部分，中午12点后每一小时跑部分直到下午6点」):
-##   只起「积分赛已晋级、闯关赛还没打完(<4 胜且 <3 负)」的号; 按 (槽位-1) mod 9 分成 9 组,
-##   UTC 00 / 09 / 12 / 13 / 14 / 15 / 16 / 17 / 18 点各跑一组, 每组一次 ≤10 个窗口, 打到底(闯关赛 23:00 截止)。
+##   只起「积分赛已晋级、闯关赛还没打完(<4 胜且 <3 负)」的号; 按 (槽位-1) mod 17 分成 17 组(10-17 改, 见下方 case),
+##   UTC 00~16 点(英国 01~17 点)每小时一组, 每组一次 ≤10 个窗口, 打到底(闯关赛 23:00 截止)。
 if [ "$BATCHES" = "SAT" ]; then
   HOUR=$((10#${FORCE_HOUR:-$(date -u +%H)}))
   case "$HOUR" in
-    0) G=0 ;; 9) G=1 ;; 12) G=2 ;; 13) G=3 ;; 14) G=4 ;; 15) G=5 ;; 16) G=6 ;; 17) G=7 ;; 18) G=8 ;;
+    ## 用户 2026-10-17「从1点到17点，每小时跑一些」(英国夏令时) = UTC 00~16 点, 共 17 组, 原 9 组排法作废
+    [0-9]|1[0-6]) G=$HOUR ;;
     *) echo "$(date -u +%FT%TZ) 周六 ${HOUR} 点不是排定时段, 不跑"; exit 0 ;;
   esac
   ELIG=$(python - "$G" <<'PYEOF'
-import json, sys
+import json, sys, re
 g = int(sys.argv[1])
+## ★晋级线照游戏自己的判据算(GameState.gauntlet_line_reached: 胜场 >= PROMOTE_WINS 且没出局)。
+##   存档里的 promoted 要等积分赛收盘后号第一次开游戏才写入 ⇒ 周六第一批之前全是 false(10-16 实测 140/140),
+##   只认它的话 9 组一个号都起不来。PROMOTE_WINS = RANKED_QUOTA - (HEARTS_MAX - 1), 从配置文件读, 不另抄数字。
+_cfg = open(r'scripts/gamedata/phase2_config.gd', encoding='utf-8').read()
+PW = int(re.search(r'const RANKED_QUOTA := (\d+)', _cfg).group(1)) - (int(re.search(r'const HEARTS_MAX := (\d+)', _cfg).group(1)) - 1)
 out = []
 for i in range(1, 141):
-    if (i - 1) % 9 != g:
+    if (i - 1) % 17 != g:
         continue
     try:
         d = json.load(open(rf'C:\tmp\turtle-sim60\p{i:02d}\Godot\app_userdata\斗龟场 实时版\savegame.json', encoding='utf-8'))
     except Exception:
         continue
-    if d.get('promoted') and int(d.get('gauntlet_wins', 0)) < 4 and int(d.get('gauntlet_losses', 0)) < 3:
+    line = d.get('promoted') or (int(d.get('season_wins', 0)) >= PW and int(d.get('hearts', 1)) > 0)
+    if line and int(d.get('gauntlet_wins', 0)) < 4 and int(d.get('gauntlet_losses', 0)) < 3:
         out.append(str(i))
 print(' '.join(out))
 PYEOF
 )
-  echo "════ $(date -u +%FT%TZ) 周六第 $((G+1))/9 组 · 晋级且没打完的槽位: ${ELIG:-无} · $(git rev-parse --short HEAD)"
+  echo "════ $(date -u +%FT%TZ) 周六第 $((G+1))/17 组 · 晋级且没打完的槽位: ${ELIG:-无} · $(git rev-parse --short HEAD)"
   set -- $ELIG
   while [ $# -gt 0 ]; do
     CHUNK=""

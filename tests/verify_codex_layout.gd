@@ -346,7 +346,7 @@ func _check_passive_consistency() -> void:
 	## 简述(brief)的头一段必须【已经画在屏幕上】—— 技能卡就是这么干的(卡上给 brief, 点开看 detail)。
 	## ★取到第一个 `<` 为止: brief 里混着 <span class="val-atk"> 这类标记, 会被 render_bbcode 换掉,
 	##   拿原串去比对是比不到的(这条踩过: 直接截前 10 个字符里正好含标记 ⇒ 永远找不到 ⇒ 假 FAIL)。
-	var brief: String = str(pv.get("brief", "")).split("<")[0].strip_edges()
+	var brief: String = str(pv.get("brief", "")).split("<")[0].split("{")[0].strip_edges()   # 同理截到第一个占位符: {C:…} 渲染后是数字, 原串比不到(10-16 小龟被动以数值开头后踩到)
 	_ok("★分母: 该被动有简述(且截得出不含标记的一段)", brief.length() >= 6, "「%s」" % brief)
 	_ok("★★★③ 被动简述【默认就画出来】(与技能卡同一种交互: 条上给简述, 点开看全文)",
 		brief.length() >= 6 and joined.find(brief) >= 0,

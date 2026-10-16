@@ -10,6 +10,7 @@ const FLAME_TICK_SEC := 0.5       # 每几秒结算一次
 const FLAME_ARC_DEG := 70.0       # 身前扇形张角(全角·度)·★事实源在这里
 const FLAME_ARC_HALF := FLAME_ARC_DEG * 0.5   # 推导, 不另写 35 —— 原来主场景存的就是这个半角
 const FLAME_MOVE_MULT := 0.5      # 喷火时移动速度 ×
+const FLAME_MOVE_SLOW := 1.0 - FLAME_MOVE_MULT   # 推导: 喷火时移动速度降低的比例(文案引用)
 const SCALD_ATK_COEF := 1.5       # ×ATK 魔法
 const SCALD_SHIELD_BREAK := 0.5   # 破坏目标护盾的比例
 const SCALD_STAT_DOWN := 0.15     # 攻击力/护甲/魔抗 各降低

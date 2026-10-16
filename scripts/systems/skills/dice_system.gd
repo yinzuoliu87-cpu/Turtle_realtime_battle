@@ -25,6 +25,7 @@ const FATE_CRIT_MAX := 1.30       # 区间上限
 ## 【稳定骰子】首段系数与逐段递减(段数上下限见上面 FLASH_SEG_*)。
 const FLASH_FIRST_COEF := 0.9     # 首段 ×ATK
 const FLASH_FALLOFF := 0.10       # 之后每段递减
+const FLASH_KEEP := 1.0 - FLASH_FALLOFF   # 推导: 每段为上一段的比例(文案引用)
 
 var battle
 

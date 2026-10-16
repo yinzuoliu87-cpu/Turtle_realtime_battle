@@ -126,7 +126,7 @@
     "baseStats1": "+攻10/23/40·吸血15/24/33%·治疗增幅15/24/33%·盾增15/24/33%",
     "shopAvailable": 1,
     "emoji": "🌙",
-    "effectDesc1": "【法力】充满时，连斩随机敌人 5/6/8 次，每次造成（40/50/70 + 50/70/100% 攻击力）物理伤害，并附带 33% 生命偷取。每刀伤害衰减为上一刀的 {C:EqBloodCombo.BLOOD_DECAY%}%。\n被动：溢出的治疗转化为血护盾，至多 200/350/500。",
+    "effectDesc1": "【法力】充满时，连斩随机敌人 5/6/8 次，每次造成（40/50/70 + 50/70/100% 攻击力）物理伤害，并附带 {C:EqBloodCombo.BLOOD_LIFESTEAL%}% 生命偷取。每刀伤害衰减为上一刀的 {C:EqBloodCombo.BLOOD_DECAY%}%。\n被动：溢出的治疗转化为血护盾，至多 200/350/500。",
     "effectDesc3": "",
     "img": "equip/eq011-icon.png",
     "effectBrief": "【法力】充满时连斩随机敌人 5/6/8 次。溢出的治疗转化为血护盾。"
@@ -141,7 +141,7 @@
     "effectDesc1": "登场时获得自身最大生命值 {C:MagicShield.SEAWEED_MAXHP_PCT%}% 的魔法护盾，该护盾只吸收魔法伤害。\n每 {C:EquipTickSystem.JELLY_IV} 秒获得护盾，护盾值为 {C:EquipTickSystem.JELLY_SHIELD}+自身最大生命值的 {C:EquipTickSystem.JELLY_MAXHP_PCT%}%，持续 {C:BattleDamage.COMMON_SHIELD_SEC} 秒。",
     "effectDesc3": "",
     "img": "equip/eq012-icon.png",
-    "effectBrief": "登场时获得只吸收魔法伤害的护盾。每 {C:EquipTickSystem.JELLY_IV} 秒获得护盾，持续 {C:BattleDamage.COMMON_SHIELD_SEC} 秒。"
+    "effectBrief": "登场时获得自身最大生命值 {C:MagicShield.SEAWEED_MAXHP_PCT%}% 的魔法护盾。每 {C:EquipTickSystem.JELLY_IV} 秒获得 {C:EquipTickSystem.JELLY_SHIELD}+自身最大生命值 {C:EquipTickSystem.JELLY_MAXHP_PCT%}% 的护盾，持续 {C:BattleDamage.COMMON_SHIELD_SEC} 秒。"
   },
   {
     "id": "p2eq_013",
@@ -174,10 +174,10 @@
     "baseStats1": "+生命180/350/1000·反伤12/25/40%",
     "shopAvailable": 1,
     "emoji": "🦔",
-    "effectDesc1": "每累计反伤 300/270/230 点伤害，便获得 50/70/200 点护盾，持续 {C:BattleDamage.COMMON_SHIELD_SEC} 秒，并使下次攻击命中时对目标施加 30/50/90 层流血。\n反伤命中时，使目标的治疗强度和护盾强度降低 {C:ThornCut.AMP_CUT%}%，持续 {C:ThornCut.CUT_SEC} 秒。",
+    "effectDesc1": "每累计反伤 300/270/230 点伤害，便获得 50/70/200 点护盾，持续 {C:BattleDamage.COMMON_SHIELD_SEC} 秒，并使下次攻击命中时对目标施加 30/50/90 层流血。\n反伤命中时，对目标施加 {C:ThornCut.AMP_CUT%}% 治疗削减和护盾削减，持续 {C:ThornCut.CUT_SEC} 秒。",
     "effectDesc3": "",
     "img": "equip/eq015-icon.png",
-    "effectBrief": "每反伤 300/270/230 点获得护盾，并使下次攻击施加 30/50/90 层流血。反伤命中时，使目标的治疗强度和护盾强度降低 {C:ThornCut.AMP_CUT%}%，持续 {C:ThornCut.CUT_SEC} 秒。"
+    "effectBrief": "每反伤 300/270/230 点获得护盾，并使下次攻击施加 30/50/90 层流血。反伤命中时，对目标施加 {C:ThornCut.AMP_CUT%}% 治疗削减和护盾削减，持续 {C:ThornCut.CUT_SEC} 秒。"
   },
   {
     "id": "p2eq_016",
@@ -822,10 +822,10 @@
     "baseStats1": "+生命偷取5/9/15%·+龟能充能8/14/24%",
     "shopAvailable": 1,
     "emoji": "🍥",
-    "effectDesc1": "携带 {C:EqFoodBatch.CAKE_COUNT} 块蛋糕，生命值首次低于 80%、55%、30% 时各吃下一块。\n第一块：获得 200/400/600 最大生命值，并在 {C:EqFoodBatch.CAKE_HOT1_SEC} 秒内每秒回复自身 0.6/0.8/1% 最大生命值。\n第二块：获得 {C:EqFoodBatch.CAKE_LIFESTEAL%}% 生命偷取与 10/21/40 攻击力。\n第三块：获得 150/250/400 护盾与 {C:EqFoodBatch.CAKE_ENERGY} 龟能，攻击速度提高 40/60/80%，持续 {C:EqFoodBatch.CAKE_ASPD_SEC} 秒，并在 {C:EqFoodBatch.CAKE_HOT3_SEC} 秒内每秒回复自身 1.3/1.6/2% 最大生命值。\n一次掉血跌过多条线时连续吃下多块。护盾直到被打破，其余加成持续到本路结束。",
+    "effectDesc1": "携带 {C:EqFoodBatch.CAKE_COUNT} 块蛋糕，生命值首次低于 {C:EqFoodBatch.CAKE_LINE_1%}%、{C:EqFoodBatch.CAKE_LINE_2%}%、{C:EqFoodBatch.CAKE_LINE_3%}% 时各吃下一块。\n第一块：获得 200/400/600 最大生命值，并在 {C:EqFoodBatch.CAKE_HOT1_SEC} 秒内每秒回复自身 0.6/0.8/1% 最大生命值。\n第二块：获得 {C:EqFoodBatch.CAKE_LIFESTEAL%}% 生命偷取与 10/21/40 攻击力。\n第三块：获得 150/250/400 护盾与 {C:EqFoodBatch.CAKE_ENERGY} 龟能，攻击速度提高 40/60/80%，持续 {C:EqFoodBatch.CAKE_ASPD_SEC} 秒，并在 {C:EqFoodBatch.CAKE_HOT3_SEC} 秒内每秒回复自身 1.3/1.6/2% 最大生命值。\n一次掉血跌过多条线时连续吃下多块。护盾直到被打破，其余加成持续到本路结束。",
     "effectDesc3": "",
     "img": "equip/p2eq_069.png",
-    "effectBrief": "生命值首次低于 80%、55%、30% 时各吃下一块蛋糕，依次获得最大生命值、攻击力与护盾。"
+    "effectBrief": "生命值首次低于 {C:EqFoodBatch.CAKE_LINE_1%}%、{C:EqFoodBatch.CAKE_LINE_2%}%、{C:EqFoodBatch.CAKE_LINE_3%}% 时各吃下一块蛋糕，依次获得最大生命值、攻击力与护盾。"
   },
   {
     "id": "p2eq_070",
@@ -1146,7 +1146,7 @@
     "baseStats1": "+生命20·+攻10·+护甲2·+魔抗2",
     "shopAvailable": 1,
     "emoji": "🪓",
-    "effectDesc1": "登场时召唤近战【斧头】，攻击造成 100% 攻击力物理伤害，{C:AxeEvolution.MINION_ASPD} 攻击速度、{C:AxeEvolution.MINION_DEF} 双抗，生命值 {C:AxeEvolution.MINION_HP_BASE}＋{C:AxeEvolution.MINION_HP_PER_EXP}×经验，攻击力 {C:AxeEvolution.MINION_ATK_BASE}＋{C:AxeEvolution.MINION_ATK_PER_EXP}×经验。斧头不随自身阵亡离场。\n斧头龟能达到 {C:AxeEvolution.ACTIVE_ENERGY} 时，回复斧头最大生命值 {C:AxeEvolution.ACTIVE_HEAL_PCT%}% 的生命值，并获得斧头最大生命值 {C:AxeEvolution.ACTIVE_SHIELD_PCT%}% 的护盾。\n斧头的攻击窃取目标 {C:AxeEvolution.SHIELD_STEAL_PCT%}% 的护盾。\n砍伐经验：购买 +{C:AxeEvolution.EXP_ON_BUY}，每场 +{C:AxeEvolution.EXP_ON_MATCH}，斧头击杀或 {C:AxeEvolution.ASSIST_WINDOW} 秒内助攻 +{C:AxeEvolution.EXP_ON_KILL}。经验达 {C:AxeEvolution.STAGE_NEEDS} 时进化为石/铁/金/钻石斧并重置进度条，售价改变，经验只增不减。\n只能拥有一把，重复购买转为经验。不可升星，卡池无限，进度每大轮重置。",
+    "effectDesc1": "登场时召唤近战【斧头】，攻击造成 100% 攻击力物理伤害，{C:AxeEvolution.MINION_ASPD} 攻击速度、{C:AxeEvolution.MINION_DEF} 双抗，生命值 {C:AxeEvolution.MINION_HP_BASE}＋{C:AxeEvolution.MINION_HP_PER_EXP}×经验，攻击力 {C:AxeEvolution.MINION_ATK_BASE}＋{C:AxeEvolution.MINION_ATK_PER_EXP}×经验。斧头不随自身阵亡离场。\n斧头龟能达 {C:AxeEvolution.ACTIVE_ENERGY} 时，按自身最大生命值回复 {C:AxeEvolution.ACTIVE_HEAL_PCT%}% 并获得 {C:AxeEvolution.ACTIVE_SHIELD_PCT%}% 护盾，攻击窃取目标 {C:AxeEvolution.SHIELD_STEAL_PCT%}% 护盾。\n砍伐经验：购买 +{C:AxeEvolution.EXP_ON_BUY}，每场 +{C:AxeEvolution.EXP_ON_MATCH}，斧头击杀或 {C:AxeEvolution.ASSIST_WINDOW} 秒内助攻 +{C:AxeEvolution.EXP_ON_KILL}。经验达 {C:AxeEvolution.STAGE_NEEDS} 时进化为石/铁/金/钻石斧并重置进度条，售价改变，经验只增不减。\n只能拥有一把，重复购买转为经验。不可升星，进度每大轮重置。",
     "effectDesc3": "【最终造物】钻石斧再积累 {C:AxeEvolution.FINAL_NEED} 经验后，可进化为以下其中一种。选定后本大轮锁定，经验不再增长。\n亡灵之斧：+{C:AxeFinalStats.UNDEAD_HP} 生命、+{C:AxeFinalStats.UNDEAD_ATK} 攻击、+{C:AxeFinalStats.UNDEAD_DEF} 双抗。周围的敌人每秒受到其 {C:AxeFinalStats.UNDEAD_RING_MAXHP_PCT%}% 最大生命值的魔法伤害。环内每有一个敌人，每秒回复自身 {C:AxeFinalStats.UNDEAD_LEECH_PCT%}% 最大生命值。阵亡 {C:AxeFinalStats.UNDEAD_REVIVE_DELAY} 秒后，斧头以自身最大生命值的 {C:AxeFinalStats.UNDEAD_REVIVE_HP_PCT%}% 重生。\n炽天使：+{C:AxeFinalStats.SERAPH_HP} 生命、+{C:AxeFinalStats.SERAPH_ATK} 攻击、+{C:AxeFinalStats.SERAPH_DEF} 双抗，射程 {C:AxeFinalStats.SERAPH_RANGE} 码。攻击附带 {C:AxeFinalStats.SERAPH_BURN_ON_HIT} 层灼烧。蓄力猛砸替换为在 {C:AxeFinalStats.SERAPH_CAST_TIME} 秒内投掷 {C:AxeFinalStats.SERAPH_BOOMERANGS} 把回旋镖，此期间不再获得减伤，回旋镖沿直线飞出后返回，命中造成 {C:AxeFinalStats.SERAPH_BOOM_ATK%}% 攻击力的魔法伤害与 {C:AxeFinalStats.SERAPH_BOOM_BURN} 层灼烧。\n全息斧：+{C:AxeFinalStats.HOLO_HP} 生命、+{C:AxeFinalStats.HOLO_ATK} 攻击、+{C:AxeFinalStats.HOLO_DEF} 双抗、+{C:AxeFinalStats.HOLO_ENERGY_RATE%}% 龟能充能速率。攻击为生命百分比最低的友军提供 {C:AxeFinalStats.HOLO_ONHIT_SHIELD} 护盾与 {C:AxeFinalStats.HOLO_ONHIT_ENERGY} 龟能。蓄力猛砸替换为插地 {C:AxeFinalStats.HOLO_PLANT_TIME} 秒并获得 {C:AxeFinalStats.HOLO_PLANT_DR%}% 减伤，附近的友军每 {C:AxeFinalStats.HOLO_AURA_TICK} 秒回复 {C:AxeFinalStats.HOLO_AURA_HEAL} 生命值与 {C:AxeFinalStats.HOLO_AURA_ENERGY} 龟能，并获得 {C:AxeFinalStats.HOLO_AURA_ASPD%}% 攻击速度。\n余烬：+{C:AxeFinalStats.EMBER_HP} 生命、+{C:AxeFinalStats.EMBER_ATK} 攻击、+{C:AxeFinalStats.EMBER_ASPD%}% 攻击速度、+{C:AxeFinalStats.EMBER_MOVE%}% 移速。攻击命中时施加 1 层余烬种子，每层 +{C:AxeFinalStats.EMBER_SEED_EXEC_PCT%}% 处决线（无上限），处决一个单位回复 {C:AxeFinalStats.EMBER_EXEC_ENERGY} 龟能。蓄力猛砸替换为余烬之光，持续 {C:AxeFinalStats.EMBER_LIGHT_TIME} 秒：{C:AxeFinalStats.EMBER_LIGHT_LIFESTEAL%}% 生命偷取、{C:AxeFinalStats.EMBER_LIGHT_DR%}% 减伤、{C:AxeFinalStats.EMBER_LIGHT_ASPD%}% 攻击速度，免疫控制且不锁定龟能，再次释放时独立叠加。",
     "img": "equip/axe-wood.png",
     "effectBrief": "登场时召唤近战斧头，斧头会回复生命值并获得护盾，攻击窃取目标护盾。",

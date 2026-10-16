@@ -30,6 +30,7 @@ const BIND_SHRED_LOW := 1.0    # 低档每次削
 const BIND_SHRED_HIGH := 2.0   # 高档每次削    # 单次束缚累计削减上限(护甲与魔抗各)
 ## 【泡泡爆破】消耗当前泡泡值的一部分, 在目标两侧张泡沫门。
 const BURST_CONSUME := 0.40     # 消耗当前泡泡值的比例
+const BURST_KEEP := 1.0 - BURST_CONSUME   # 推导: 施放后剩余的比例(文案引用)
 const BURST_MAGIC_MULT := 1.5   # 魔法伤害 = 消耗量 × (吃魔抗)
 const BURST_ATK_COEF := 1.5     # 另加 ×ATK 物理
 const BURST_RADIUS := 200.0     # 门间判定带半径(码)

@@ -51,7 +51,7 @@ func _ready() -> void:
 	var eq := FileAccess.get_file_as_string("res://data/phase2-equipment.json")
 	_ok("★龙蛋文案含 20/35/50 层灼烧", _has_txt(eq, "20/35/50层灼烧"))
 	_ok("★龙蛋文案含 45/80/120+100% 攻击力", eq.contains("（45/80/120+100% 攻击力）魔法伤害"))
-	_ok("★龙蛋 baseStats1 镜像已同步", eq.contains("+攻20/45/70·魔穿8/15/27·+20龟能"))
+	_ok("★龙蛋 baseStats1 镜像已同步", eq.contains("+攻20/45/70·魔穿8/15/27·+20初始龟能"))   # 10-16: 这 20 是开局龟能, 不是上限
 	_ok("★暴君文案含 100/180/400% 攻击力", eq.contains("100/180/400% 攻击力的魔法伤害"))   # 2026-10-08 技能/装备文案按 LoL 体例整体改写(copy_lol_style_lint)后, 句式变了、数值与归属没变
 	## ★2026-10-01 改: 原来钉的是「4/6/12%最大生命值×（1+暴击率）」。那句话**没说是谁的生命值**,
 	##   而代码是 `tgt["hp"] < tgt["maxHp"] * line`(equip_system.gd:1560) —— 读起来像自己的血量, 是反的。

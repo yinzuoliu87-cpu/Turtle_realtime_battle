@@ -123,7 +123,7 @@ func _ready() -> void:
 
 	print("=== 3. 源码级: 不再是「任意敌死→钩最近敌」 ===")
 	var src := _src("res://scripts/scenes/RealtimeBattle3DScene.gd") + "\n" + _src("res://scripts/systems/skills/pirate_system.gd")   # 钩索结算已抽到 skills/pirate_system.gd(2026-07-25)
-	_ok("触发条件是 u.id == pirate", src.find("u.get(\"id\", \"\") == \"pirate\" and not u.get(\"is_summon\", false) and killer is Dictionary") >= 0)
+	_ok("触发条件是 u.id == pirate", src.find("u.get(\"id\", \"\") == \"pirate\" and (not u.get(\"is_summon\", false) or u.get(\"minion_kind\", null) != null) and killer is Dictionary") >= 0)   # 10-16: 缩头的海盗随从也触发(文案「随从触发其自身的死亡被动」)
 	_ok("目标是 killer, 不是 _nearest_enemy", src.find("var kk: Dictionary = killer") >= 0)   # 2026-07-14钩索动画重做后变量改名
 
 	_done()

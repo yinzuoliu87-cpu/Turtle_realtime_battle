@@ -389,7 +389,7 @@ func _check_previews() -> void:
 	_ok("★③ 预览不以纯小标题行开头", bad_head.is_empty(), ", ".join(bad_head))
 	_ok("③ 点名: 海盗龟被动条从效果那句起(原来只有「登场轰击：」)", str(firsts.get("pirate#0", "")).begins_with("海盗龟登场"),
 		"「%s」" % str(firsts.get("pirate#0", "")))
-	_ok("③ 点名: 龟壳「暗影」卡从效果那句起(原来是「主被动·潜影：」)", str(firsts.get("shell/card2", "")).begins_with("龟壳"),
+	_ok("③ 点名: 龟壳「暗影」卡从效果那句起(原来是「主被动·潜影：」)", str(firsts.get("shell/card2", "")).trim_prefix("被动：").begins_with("龟壳"),   # 10-16 起主被动合卡统一以「被动：」开头(同水晶球 / 财宝炮击)
 		"「%s」" % str(firsts.get("shell/card2", "")))
 	_ok("★③ 被截的卡片, 可见的最后一行不是纯小标题", bad_tail.is_empty(), ", ".join(bad_tail))
 	_ok("③ 点名: 石头龟「磐石之躯」卡不停在「被动：」", stone_rock != "" and not _is_heading(stone_rock), "最后一行「%s」" % stone_rock.strip_edges())

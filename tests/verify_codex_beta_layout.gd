@@ -244,14 +244,14 @@ func _check_b_ninja_click() -> void:
 		return
 	var before := _rich()
 	## ★2026-10-08 技能/装备文案按 LoL 体例整体改写(copy_lol_style_lint)后, 句式变了、数值与归属没变: 「暴击时 3 层」→「暴击时改为 3 层」, 改认「暴击时」+「3 层」。 2026-10-15 再按 LoL 用词「改为→转而」(LoL 中文 改为 0 次 / 转而 37 次) ⇒「暴击时转而施加 3 层」。
-	_ok("B 反面: 点开前那句「暴击时…3 层」读不到", before.find("暴击时转而施加 3 层") < 0)
+	_ok("B 反面: 点开前那句「暴击时…3 层」读不到", before.find("暴击时转而施加") < 0)   # 10-16 用户「流血层数改为 4%ATK，暴击时为 6%」: 层数从固定 3 层变成公式
 	var ev := InputEventMouseButton.new()
 	ev.button_index = MOUSE_BUTTON_LEFT
 	ev.pressed = true
 	hit.gui_input.emit(ev)
 	await _settle(4)
 	var after := _rich()
-	_ok("B 点普攻条 ⇒ 进技能详情, 流血那句可见(「暴击时 3 层」)", after.find("暴击时转而施加 3 层") >= 0 and after.find("流血") >= 0,
+	_ok("B 点普攻条 ⇒ 进技能详情, 流血那句可见(「暴击时 3 层」)", after.find("暴击时转而施加") >= 0 and after.find("流血") >= 0,
 		after.substr(0, 60).replace("\n", "⏎"))
 	_c._codex_skill_detail = {}
 

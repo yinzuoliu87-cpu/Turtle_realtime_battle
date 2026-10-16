@@ -49,6 +49,7 @@ const BLOOD_SLASH_STEP := 2.0 / 60.0
 const BLOOD_BEAT := 0.3            # 一刀接一刀的间隔(游戏秒) = 18 × SIM_DT
 ## 「后续每发逐渐衰减」的那个数 —— **伤害与斩痕尺寸共用它**, 所以画面上读得出衰减。
 const BLOOD_DECAY := 0.85
+const BLOOD_LIFESTEAL := 0.33   # 每刀附带的生命偷取(文案 {C:} 引用本常量)
 const BLOOD_ENTER := 26.0          # 斩痕落点朝携带者一侧退多少码(刀是从他那边切进来的)
 
 
@@ -140,7 +141,7 @@ func _eq_blood_combo(u: Dictionary, si: int) -> void:
 		_blood_slash_play(k % BLOOD_SLASH_VARIANTS, blood_slash_at(u["pos"], o["pos"]),
 			BLOOD_SLASH_W)
 		battle._damage._apply_damage_from(u, o, blood_hit_dmg(u, si, o, k),
-			Color("#ff8aa0"), 0.33, false, true)
+			Color("#ff8aa0"), BLOOD_LIFESTEAL, false, true)
 		await battle._wait_sim(BLOOD_BEAT, u)   # 一段一段: 每 0.3s 一刀
 		if not is_instance_valid(battle): return   ## await 回来 battle 可能已被 queue_free(战斗结束)
 	if not is_instance_valid(self): return

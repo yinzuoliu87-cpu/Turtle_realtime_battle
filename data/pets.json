@@ -472,8 +472,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "忍者龟斩击目标，造成 {N:NinjaSystem.SLASH_ATK_COEF*ATK} 物理伤害并施加 {E:maxi(1, roundi(ATK*NinjaSystem.SLASH_BLEED_ATK))} 层流血，暴击时转而施加 {E:maxi(1, roundi(ATK*NinjaSystem.SLASH_BLEED_ATK_CRIT))} 层。",
-        "detail": "忍者龟斩击目标，造成（{C:NinjaSystem.SLASH_ATK_COEF%}%×攻击力({ATK}) = {N:NinjaSystem.SLASH_ATK_COEF*ATK}）物理伤害并施加（{C:NinjaSystem.SLASH_BLEED_ATK%}%×攻击力({ATK}) = {E:maxi(1, roundi(ATK*NinjaSystem.SLASH_BLEED_ATK))}）层流血，暴击时转而施加（{C:NinjaSystem.SLASH_BLEED_ATK_CRIT%}%×攻击力({ATK}) = {E:maxi(1, roundi(ATK*NinjaSystem.SLASH_BLEED_ATK_CRIT))}）层。"
+        "brief": "忍者龟斩击目标，造成 {N:NinjaSystem.SLASH_ATK_COEF*ATK} 物理伤害并施加 {E:NinjaSystem.SLASH_BLEED_ATK*ATK} 层流血，暴击时转而施加 {E:NinjaSystem.SLASH_BLEED_ATK_CRIT*ATK} 层。",
+        "detail": "忍者龟斩击目标，造成（{C:NinjaSystem.SLASH_ATK_COEF%}%×攻击力({ATK}) = {N:NinjaSystem.SLASH_ATK_COEF*ATK}）物理伤害并施加（{C:NinjaSystem.SLASH_BLEED_ATK%}%×攻击力({ATK}) = {E:NinjaSystem.SLASH_BLEED_ATK*ATK}）层流血，暴击时转而施加（{C:NinjaSystem.SLASH_BLEED_ATK_CRIT%}%×攻击力({ATK}) = {E:NinjaSystem.SLASH_BLEED_ATK_CRIT*ATK}）层。"
       },
       {
         "name": "手里剑",
@@ -903,8 +903,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "被动：骰子龟登场时将全部护甲与魔抗转化为等量护甲穿透，自身护甲与魔抗降为 0。\n\n主动：骰子龟对随机敌人突刺 {C:DiceSystem.FLASH_SEG_MIN}~{C:DiceSystem.FLASH_SEG_MAX} 次，首段造成 {N:DiceSystem.FLASH_FIRST_COEF*ATK} 物理伤害，此后每段伤害为上一段的 {E:(1-DiceSystem.FLASH_FALLOFF)*100}%。\n每穿刺一次获得 {E:DiceSystem.FLASH_SHIELD_PER_HIT*ATK} 护盾，持续 {C:DiceSystem.FLASH_SHIELD_SEC} 秒。",
-        "detail": "被动：骰子龟登场时将全部护甲与魔抗转化为等量护甲穿透，自身护甲与魔抗降为 0。\n\n主动：骰子龟对随机敌人突刺 {C:DiceSystem.FLASH_SEG_MIN}~{C:DiceSystem.FLASH_SEG_MAX} 次，首段造成（{C:DiceSystem.FLASH_FIRST_COEF%}%×攻击力({ATK}) = {N:DiceSystem.FLASH_FIRST_COEF*ATK}）物理伤害，此后每段伤害为上一段的 {E:(1-DiceSystem.FLASH_FALLOFF)*100}%。\n每穿刺一次获得（{C:DiceSystem.FLASH_SHIELD_PER_HIT%}%×攻击力({ATK}) = {E:DiceSystem.FLASH_SHIELD_PER_HIT*ATK}）护盾，持续 {C:DiceSystem.FLASH_SHIELD_SEC} 秒。"
+        "brief": "被动：骰子龟登场时将全部护甲与魔抗转化为等量护甲穿透，自身护甲与魔抗降为 0。\n\n主动：骰子龟对随机敌人突刺 {C:DiceSystem.FLASH_SEG_MIN}~{C:DiceSystem.FLASH_SEG_MAX} 次，首段造成 {N:DiceSystem.FLASH_FIRST_COEF*ATK} 物理伤害，此后每段伤害为上一段的 {C:DiceSystem.FLASH_KEEP%}%。\n每穿刺一次获得 {E:DiceSystem.FLASH_SHIELD_PER_HIT*ATK} 护盾，持续 {C:DiceSystem.FLASH_SHIELD_SEC} 秒。",
+        "detail": "被动：骰子龟登场时将全部护甲与魔抗转化为等量护甲穿透，自身护甲与魔抗降为 0。\n\n主动：骰子龟对随机敌人突刺 {C:DiceSystem.FLASH_SEG_MIN}~{C:DiceSystem.FLASH_SEG_MAX} 次，首段造成（{C:DiceSystem.FLASH_FIRST_COEF%}%×攻击力({ATK}) = {N:DiceSystem.FLASH_FIRST_COEF*ATK}）物理伤害，此后每段伤害为上一段的 {C:DiceSystem.FLASH_KEEP%}%。\n每穿刺一次获得（{C:DiceSystem.FLASH_SHIELD_PER_HIT%}%×攻击力({ATK}) = {E:DiceSystem.FLASH_SHIELD_PER_HIT*ATK}）护盾，持续 {C:DiceSystem.FLASH_SHIELD_SEC} 秒。"
       }
     ],
     "defaultSkills": [
@@ -1365,7 +1365,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "泡泡龟消耗 {C:BubbleSystem.BURST_CONSUME%}% 当前泡泡值，对目标周围的每个敌人造成相当于所消耗泡泡值 {C:BubbleSystem.BURST_MAGIC_MULT%}% 的魔法伤害，外加 {N:BubbleSystem.BURST_ATK_COEF*ATK} 物理伤害。",
-        "detail": "泡泡龟消耗 {C:BubbleSystem.BURST_CONSUME%}% 当前泡泡值，对目标周围的每个敌人造成相当于所消耗泡泡值 {C:BubbleSystem.BURST_MAGIC_MULT%}% 的魔法伤害，外加（{C:BubbleSystem.BURST_ATK_COEF%}%×攻击力({ATK}) = {N:BubbleSystem.BURST_ATK_COEF*ATK}）物理伤害。\n<span style=\"color:#8a93a0\">施放后剩余 {E:(1-BubbleSystem.BURST_CONSUME)*100}% 泡泡值。</span>"
+        "detail": "泡泡龟消耗 {C:BubbleSystem.BURST_CONSUME%}% 当前泡泡值，对目标周围的每个敌人造成相当于所消耗泡泡值 {C:BubbleSystem.BURST_MAGIC_MULT%}% 的魔法伤害，外加（{C:BubbleSystem.BURST_ATK_COEF%}%×攻击力({ATK}) = {N:BubbleSystem.BURST_ATK_COEF*ATK}）物理伤害。\n<span style=\"color:#8a93a0\">施放后剩余 {C:BubbleSystem.BURST_KEEP%}% 泡泡值。</span>"
       }
     ],
     "defaultSkills": [
@@ -1551,7 +1551,7 @@
         "pierce": 0,
         "cd": 0,
         "brief": "凤凰龟持续喷射火焰，每 {C:PhoenixSystem.FLAME_TICK_SEC} 秒对身前扇形内的敌人造成（{C:RealtimeBattle3DScene.PHX_FLAME_MAG_COEF%}%×攻击力×(1+攻击速度)）魔法伤害，并施加 {E:RealtimeBattle3DScene.PHX_FLAME_BURN_COEF*ATK} 层灼烧。\n<span style=\"color:#8a93a0\">喷火不受攻击间隔限制，凤凰龟可以边喷边移动。每次喷火视为一次攻击，只有扇形内离凤凰龟最近的敌人会触发攻击命中时的效果。</span>",
-        "detail": "凤凰龟持续喷射火焰，每 {C:PhoenixSystem.FLAME_TICK_SEC} 秒对身前 {C:PhoenixSystem.FLAME_ARC_DEG}° 扇形、射程内的所有敌人造成（{C:RealtimeBattle3DScene.PHX_FLAME_MAG_COEF%}%×攻击力×(1+攻击速度)）魔法伤害，并施加（{C:RealtimeBattle3DScene.PHX_FLAME_BURN_COEF%}%×攻击力({ATK}) = {E:RealtimeBattle3DScene.PHX_FLAME_BURN_COEF*ATK}）层灼烧。\n<span style=\"color:#8a93a0\">喷火不受攻击间隔限制，凤凰龟可以边喷边移动，喷火时移动速度降低 {E:(1-PhoenixSystem.FLAME_MOVE_MULT)*100}%。每次喷火视为一次攻击，只有扇形内离凤凰龟最近的敌人会触发攻击命中时的效果。</span>",
+        "detail": "凤凰龟持续喷射火焰，每 {C:PhoenixSystem.FLAME_TICK_SEC} 秒对身前 {C:PhoenixSystem.FLAME_ARC_DEG}° 扇形、射程内的所有敌人造成（{C:RealtimeBattle3DScene.PHX_FLAME_MAG_COEF%}%×攻击力×(1+攻击速度)）魔法伤害，并施加（{C:RealtimeBattle3DScene.PHX_FLAME_BURN_COEF%}%×攻击力({ATK}) = {E:RealtimeBattle3DScene.PHX_FLAME_BURN_COEF*ATK}）层灼烧。\n<span style=\"color:#8a93a0\">喷火不受攻击间隔限制，凤凰龟可以边喷边移动，喷火时移动速度降低 {C:PhoenixSystem.FLAME_MOVE_SLOW%}%。每次喷火视为一次攻击，只有扇形内离凤凰龟最近的敌人会触发攻击命中时的效果。</span>",
         "energyCost": 0
       },
       {

@@ -100,7 +100,10 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 # ══════════════════════════════════════════════════════════════════
 
 ## 三道阈值线(跌破即吃)。★写成三元数组供 tooltip_number_audit 对账文案里的 "80/55/30%"。
-const CAKE_LINES := [0.80, 0.55, 0.30]
+const CAKE_LINE_1 := 0.80   # 三道食用血线(文案 {C:} 逐个引用)
+const CAKE_LINE_2 := 0.55
+const CAKE_LINE_3 := 0.30
+const CAKE_LINES := [CAKE_LINE_1, CAKE_LINE_2, CAKE_LINE_3]
 ## 三块糖糕的其余固定值(按星级变的那些是数组, 见下面各分支)。
 const CAKE_COUNT := 3           # 带几块(= CAKE_LINES 的长度)
 const CAKE_HOT1_SEC := 30.0     # 一号糕的持续回复(秒)
