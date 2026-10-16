@@ -64,12 +64,6 @@ scripts/gamedata/equip_stats.gd|lit|闪避
 scripts/gamedata/equip_stats.gd|lit|魔抗
 scripts/gamedata/equip_stats.gd|lit|魔法穿透
 scripts/gamedata/equip_stats.gd|lit|龟能充能速率
-scripts/gamedata/equip_tier_labels.gd|lit|①回复 #% 最大生命值
-scripts/gamedata/equip_tier_labels.gd|lit|①最大生命值 +#
-scripts/gamedata/equip_tier_labels.gd|lit|②攻击力 +#
-scripts/gamedata/equip_tier_labels.gd|lit|③回复 #% 最大生命值
-scripts/gamedata/equip_tier_labels.gd|lit|③护盾 #
-scripts/gamedata/equip_tier_labels.gd|lit|③攻击速度 +#%
 scripts/gamedata/equip_tier_labels.gd|lit|中毒层数 # 层
 scripts/gamedata/equip_tier_labels.gd|lit|临时等级上限 # 级
 scripts/gamedata/equip_tier_labels.gd|lit|举盾时长 # 秒
@@ -222,6 +216,12 @@ scripts/gamedata/equip_tier_labels.gd|lit|竖斩伤害加成 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|竖斩基础伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|竖波伤害加成 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|竖波基础伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|第一块 最大生命值 +#
+scripts/gamedata/equip_tier_labels.gd|lit|第一块 每秒回复 #% 最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|第三块 护盾 #
+scripts/gamedata/equip_tier_labels.gd|lit|第三块 攻击速度 +#%
+scripts/gamedata/equip_tier_labels.gd|lit|第三块 每秒回复 #% 最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|第二块 攻击力 +#
 scripts/gamedata/equip_tier_labels.gd|lit|终极护盾 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|范围伤害 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|落雷数 # 道
