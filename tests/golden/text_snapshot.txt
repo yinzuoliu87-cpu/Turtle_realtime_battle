@@ -279,8 +279,8 @@ pet|忍者龟/忍术|brief|忍者龟获得 20% 暴击率、15% 暴击伤害和 1
 pet|忍者龟/忍术|desc|忍者龟获得 20% 暴击率、15% 暴击伤害和 10 护甲穿透。\n附近有敌人时，忍者龟自动冲刺斩击最近的敌人，对其造成（130%×攻击力({ATK}) = {N:NinjaSystem.DASH_MAIN_COEF*ATK}）物理伤害，对路径上的其他敌人造成（80%×攻击力({ATK}) = {N:NinjaSystem.DASH_SIDE_COEF*ATK}）物理伤害，并将命中的敌人击飞 0.8 秒。\n<span style="color:#8a93a0">同一敌人 10 秒内只会被冲刺一次。</span>
 pet|忍者龟/手里剑|brief|被动：忍者龟获得 15% 闪避和 30% 暴击率。\n\n主动：忍者龟向目标投掷手里剑，造成 {N:NinjaSystem.SHURIKEN_COEF*ATK} 物理伤害。暴击时其中 {E:NinjaSystem.SHURIKEN_TRUE_BASE+NinjaSystem.SHURIKEN_TRUE_PER_LV*LV}% 转为真实伤害。
 pet|忍者龟/手里剑|detail|被动：忍者龟获得 15% 闪避和 30% 暴击率。\n\n主动：忍者龟向目标投掷手里剑，造成（160%×攻击力({ATK}) = {N:NinjaSystem.SHURIKEN_COEF*ATK}）物理伤害。暴击时其中 {E:NinjaSystem.SHURIKEN_TRUE_BASE+NinjaSystem.SHURIKEN_TRUE_PER_LV*LV}% =（42% - {C:NinjaSystem.SHURIKEN_TRUE_LVMAX}%，随等级提升）转为真实伤害。
-pet|忍者龟/斩击|brief|忍者龟斩击目标，造成 {N:NinjaSystem.SLASH_ATK_COEF*ATK} 物理伤害并施加 2 层流血，暴击时转而施加 3 层。
-pet|忍者龟/斩击|detail|忍者龟斩击目标，造成（100%×攻击力({ATK}) = {N:NinjaSystem.SLASH_ATK_COEF*ATK}）物理伤害并施加 2 层流血，暴击时转而施加 3 层。
+pet|忍者龟/斩击|brief|忍者龟斩击目标，造成 {N:NinjaSystem.SLASH_ATK_COEF*ATK} 物理伤害并施加 {E:maxi(1, roundi(ATK*NinjaSystem.SLASH_BLEED_ATK))} 层流血，暴击时转而施加 {E:maxi(1, roundi(ATK*NinjaSystem.SLASH_BLEED_ATK_CRIT))} 层。
+pet|忍者龟/斩击|detail|忍者龟斩击目标，造成（100%×攻击力({ATK}) = {N:NinjaSystem.SLASH_ATK_COEF*ATK}）物理伤害并施加（4%×攻击力({ATK}) = {E:maxi(1, roundi(ATK*NinjaSystem.SLASH_BLEED_ATK))}）层流血，暴击时转而施加（6%×攻击力({ATK}) = {E:maxi(1, roundi(ATK*NinjaSystem.SLASH_BLEED_ATK_CRIT))}）层。
 pet|忍者龟/炸弹|brief|忍者龟扔出炸弹，对落点附近的敌人造成 {N:NinjaSystem.BOMB_ATK_COEF*ATK} 物理伤害并使其护甲降低 20%，持续 5 秒。
 pet|忍者龟/炸弹|detail|忍者龟扔出炸弹，对落点附近的敌人造成（200%×攻击力({ATK}) = {N:NinjaSystem.BOMB_ATK_COEF*ATK}）物理伤害并使其护甲降低 20%，持续 5 秒。
 pet|忍者龟/背刺|brief|忍者龟获得 15 护甲穿透，持续 5 秒，随后闪现到全场最远的敌人身后背刺 3 段，共造成 {N:NinjaSystem.BACKSTAB_SEG_COEF*ATK*NinjaSystem.BACKSTAB_SEGMENTS} 物理伤害，之后继续攻击该敌人。

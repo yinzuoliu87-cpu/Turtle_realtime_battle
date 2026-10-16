@@ -36,6 +36,13 @@ func _ninja_mark_shatter(spr) -> void:
 ## 【开局永久属性】真正的落点是 `battle_spawn.gd` 的 spawn 分支(不在本文件, 极难 grep 到)
 ## 【斩击(普攻)】近战单段 + 流血。真值在主场景普攻表, 那里引用本常量。
 const SLASH_ATK_COEF := 1.0       # ×ATK 物理
+## 斩击流血层数 = 攻击力 × 系数(四舍五入, 至少 1 层)。流血每层每秒 1 点物理 ⇒ 层数就是伤害量。
+## 用户 2026-10-16「斩击施加的流血层数改为4%ATK，暴击时为6%」(原固定 2 层 / 暴击 3 层)。
+const SLASH_BLEED_ATK := 0.04
+const SLASH_BLEED_ATK_CRIT := 0.06
+
+static func slash_bleed_stacks(u: Dictionary, crit: bool) -> int:
+	return maxi(1, roundi(float(u.get("atk", 0.0)) * (SLASH_BLEED_ATK_CRIT if crit else SLASH_BLEED_ATK)))
 const INSTINCT_CRIT := 0.20       # 暴击率 +
 const INSTINCT_CRIT_DMG := 0.15   # 暴击伤害 +
 const INSTINCT_ARMOR_PEN := 10.0  # 护甲穿透 +(flat)

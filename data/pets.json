@@ -472,8 +472,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "忍者龟斩击目标，造成 {N:NinjaSystem.SLASH_ATK_COEF*ATK} 物理伤害并施加 2 层流血，暴击时转而施加 3 层。",
-        "detail": "忍者龟斩击目标，造成（{C:NinjaSystem.SLASH_ATK_COEF%}%×攻击力({ATK}) = {N:NinjaSystem.SLASH_ATK_COEF*ATK}）物理伤害并施加 2 层流血，暴击时转而施加 3 层。"
+        "brief": "忍者龟斩击目标，造成 {N:NinjaSystem.SLASH_ATK_COEF*ATK} 物理伤害并施加 {E:maxi(1, roundi(ATK*NinjaSystem.SLASH_BLEED_ATK))} 层流血，暴击时转而施加 {E:maxi(1, roundi(ATK*NinjaSystem.SLASH_BLEED_ATK_CRIT))} 层。",
+        "detail": "忍者龟斩击目标，造成（{C:NinjaSystem.SLASH_ATK_COEF%}%×攻击力({ATK}) = {N:NinjaSystem.SLASH_ATK_COEF*ATK}）物理伤害并施加（{C:NinjaSystem.SLASH_BLEED_ATK%}%×攻击力({ATK}) = {E:maxi(1, roundi(ATK*NinjaSystem.SLASH_BLEED_ATK))}）层流血，暴击时转而施加（{C:NinjaSystem.SLASH_BLEED_ATK_CRIT%}%×攻击力({ATK}) = {E:maxi(1, roundi(ATK*NinjaSystem.SLASH_BLEED_ATK_CRIT))}）层。"
       },
       {
         "name": "手里剑",

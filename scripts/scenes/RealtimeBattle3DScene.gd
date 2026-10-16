@@ -2542,6 +2542,10 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 		u["face_right"] = _fdx > 0.0
 	if stunned:                     # 麻痹: 不移动/不出手 (但冷却已走)
 		return
+	## ★忍者冲刺滑行中不出手(用户 2026-10-16「冲刺的时候为啥还能攻击」): 滑行虽置了 no_basic, 但走完前摇的那一下照样打出,
+	##   探针实测滑行中普攻 2 次(verify_ninja_dash_cc)。滑行本身由 _ninja_glide 推位置, 这里整段让出。
+	if u.get("_ninja_gliding", false):
+		return
 	var to_t: Vector2 = tgt["pos"] - u["pos"]
 	var dist := DetMath.vlen(to_t)
 	var rng: float = _eff_range(u)
@@ -3992,7 +3996,7 @@ func _do_basic(u: Dictionary, tgt: Dictionary, spec: Dictionary) -> void:
 		"burn":    _damage._apply_dot_stacks(tgt, "burn", (maxi(1, int(round(float(u["atk"]) * float(spec.get("burnScale", 0.0))))) if spec.has("burnScale") else _default_burn_stacks(u)), u)
 		"atkdn":   _damage._buff(tgt, "atk", -CandySystem.PUNCH_ATK_DOWN, true)
 		"selfdef": _damage._buff(u, "def", 0.20, true)
-		"bleed":   _damage._apply_dot_stacks(tgt, "bleed", (3 if _last_atk_crit else 2), u)   # 忍者斩击: 2层流血(本次暴击→3层·封板·读_resolve_dmg设的_last_atk_crit)
+		"bleed":   _damage._apply_dot_stacks(tgt, "bleed", NinjaSystem.slash_bleed_stacks(u, _last_atk_crit), u)   # 忍者斩击: 4% 攻击力层流血, 暴击 6%(用户 2026-10-16; 原固定 2 / 3 层)
 		"shrink":  _hiding_sys._hiding_shell_harden(u)                             # 缩头缩壳: 每击+1甲+1抗(永久)+0.1A盾
 	# 特殊机制
 	match str(spec.get("mech", "")):
@@ -6803,7 +6807,8 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 	if u["id"] == "chest":
 		_chest_sys._chest_treasure_tick(u)
 	# --- 忍者·冲击(亚索E式被动auto-dash): 290码内有"可冲"敌(不在其10s冷却)且距上次冲刺≥0.4s → 自动朝最近敌冲刺斩(用户2026-07-06"半径500码，最近敌人") ---
-	if u["id"] == "ninja" and u.get("alive", false) and _t >= float(u.get("stun_until", 0.0)):
+	## ★被控时不冲刺(用户 2026-10-16「被控住还能冲刺吗」): 原来只排除眩晕, 被击飞 / 施法定身中探针实测照冲。与主循环 stunned + airborne 同一口径。
+	if u["id"] == "ninja" and u.get("alive", false) and _t >= float(u.get("stun_until", 0.0)) and _t >= float(u.get("channel_until", 0.0)) and not u.get("airborne", false):
 		if _t - float(u.get("_ninja_last_dash", -99.0)) >= NinjaSystem.DASH_SELF_CD and not u.get("_ninja_gliding", false):
 			var _nbest = null
 			var _nbd := NinjaSystem.DASH_SENSE   # 被动冲击触发射程(用户2026-07-11: 500→290码; <冲刺距离300→冲刺会略穿过目标)
