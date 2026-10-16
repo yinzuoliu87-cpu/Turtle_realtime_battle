@@ -17,6 +17,13 @@ LOG="$ROOT/daily-$(date -u +%Y%m%d).log"
 mkdir -p "$ROOT"
 exec >>"$LOG" 2>&1
 
+## ★模拟号必须跑【玩家手机上那个版本】的战斗代码(用户 2026-10-17「肯定要版本匹配啊」)。
+##   观赛 / 回放是在手机上按手机的规则重算再比校验点; 版本号相同而战斗代码不同 ⇒ 第一处差异就对不上、画面停住。
+##   发布版工作树 = tag(当前 v0.19.570) + 本仓库的 scripts/systems/sim/(模拟号购物 / 布阵逻辑) + tools/sim60.sh。
+##   发新版后要重建这棵树(git worktree add 新 tag → 拷 sim 目录与 sim60.sh → 拷 .godot 导入缓存)。
+SIM60="${SIM_TREE:-/c/tmp/turtle-v570}/tools/sim60.sh"
+if [ ! -f "$SIM60" ]; then echo "$(date -u +%FT%TZ) 发布版工作树不在($SIM60), 不跑 —— 不许退回用开发版代码跑"; exit 1; fi
+
 DOW=${FORCE_DOW:-$(date -u +%u)}         # 1=周一 … 7=周日
 case "$DOW" in
   2) BATCHES="1 2 3 4 5 6 7 8" ;;
@@ -47,14 +54,14 @@ for i in range(1, 141):
 print(' '.join(out))
 PYEOF
 )
-  echo "════ $(date -u +%FT%TZ) 周日决赛 · 进决赛日的槽位: ${ELIG:-无} · $(git rev-parse --short HEAD)"
+  echo "════ $(date -u +%FT%TZ) 周日决赛 · 进决赛日的槽位: ${ELIG:-无} · $(git -C "${SIM_TREE:-/c/tmp/turtle-v570}" describe --tags --always 2>/dev/null)(发布版工作树)"
   [ -z "$ELIG" ] && exit 0
   if [ -n "${DRY:-}" ]; then echo "[DRY] SIM_QUIT_WHEN_DONE= SLOTS=\"$ELIG\" sim60.sh start"; exit 0; fi
-  SIM_QUIT_WHEN_DONE="" SLOTS="$ELIG" bash tools/sim60.sh start 1
+  SIM_QUIT_WHEN_DONE="" SLOTS="$ELIG" bash "$SIM60" start 1
   until [ "$((10#$(date -u +%H%M)))" -ge 2330 ]; do sleep 300; done
   echo "$(date -u +%T)Z 决赛日收工, 关掉全部窗口"
-  bash tools/sim60.sh stop
-  for s in $ELIG; do bash tools/sim60.sh status 2>/dev/null | awk -v p="$(printf 'p%02d' "$s")" '$1==p'; done
+  bash "$SIM60" stop
+  for s in $ELIG; do bash "$SIM60" status 2>/dev/null | awk -v p="$(printf 'p%02d' "$s")" '$1==p'; done
   echo "════ $(date -u +%FT%TZ) 周日结束"
   exit 0
 fi
@@ -91,24 +98,24 @@ for i in range(1, 141):
 print(' '.join(out))
 PYEOF
 )
-  echo "════ $(date -u +%FT%TZ) 周六第 $((G+1))/17 组 · 晋级且没打完的槽位: ${ELIG:-无} · $(git rev-parse --short HEAD)"
+  echo "════ $(date -u +%FT%TZ) 周六第 $((G+1))/17 组 · 晋级且没打完的槽位: ${ELIG:-无} · $(git -C "${SIM_TREE:-/c/tmp/turtle-v570}" describe --tags --always 2>/dev/null)(发布版工作树)"
   set -- $ELIG
   while [ $# -gt 0 ]; do
     CHUNK=""
     for _k in 1 2 3 4 5 6 7 8 9 10; do [ $# -gt 0 ] && { CHUNK="$CHUNK $1"; shift; }; done
     if [ -n "${DRY:-}" ]; then echo "[DRY] SLOTS=\"$CHUNK\" sim60.sh start"; continue; fi
-    SLOTS="$CHUNK" bash tools/sim60.sh start 1
+    SLOTS="$CHUNK" bash "$SIM60" start 1
     t0=$(date +%s)
     while :; do
       left=0
-      for s in $CHUNK; do [ -n "$(bash tools/sim60.sh status 2>/dev/null | awk -v p="$(printf 'p%02d' "$s")" '$1==p && $2!="-"')" ] && left=$((left+1)); done
+      for s in $CHUNK; do [ -n "$(bash "$SIM60" status 2>/dev/null | awk -v p="$(printf 'p%02d' "$s")" '$1==p && $2!="-"')" ] && left=$((left+1)); done
       [ "$left" -eq 0 ] && break
       if [ $(( $(date +%s) - t0 )) -ge 5400 ] || [ "$((10#$(date -u +%H%M)))" -ge 2240 ]; then
-        echo "$(date -u +%T)Z 超时或到收工时间, 关掉剩下 $left 个"; bash tools/sim60.sh stop; break
+        echo "$(date -u +%T)Z 超时或到收工时间, 关掉剩下 $left 个"; bash "$SIM60" stop; break
       fi
       sleep 60
     done
-    for s in $CHUNK; do bash tools/sim60.sh status 2>/dev/null | awk -v p="$(printf 'p%02d' "$s")" '$1==p'; done
+    for s in $CHUNK; do bash "$SIM60" status 2>/dev/null | awk -v p="$(printf 'p%02d' "$s")" '$1==p'; done
   done
   echo "════ $(date -u +%FT%TZ) 周六本组结束"
   exit 0
@@ -117,27 +124,27 @@ ROUNDS=""                   # 不设上限: 打到被拦
 STOP_AT=${STOP_AT:-2240}    # UTC HHMM: 到点不再起新批, 在跑的关掉(22:50 封盘); 手动提前开跑时可用环境变量覆盖
 BATCH_CAP=5400              # 一批最多等 90 分钟, 超时关掉这一批(实测一批 45~50 分钟)
 
-echo "════ $(date -u +%FT%TZ) 开跑 · 星期 $DOW · 批次 $BATCHES · 每号打到被拦 · 版本 $(grep -o 'config/version="[^"]*"' project.godot) · $(git rev-parse --short HEAD)"
+echo "════ $(date -u +%FT%TZ) 开跑 · 星期 $DOW · 批次 $BATCHES · 每号打到被拦 · 版本 $(grep -o 'config/version="[^"]*"' project.godot) · $(git -C "${SIM_TREE:-/c/tmp/turtle-v570}" describe --tags --always 2>/dev/null)(发布版工作树)"
 for b in $BATCHES; do
   now=$(date -u +%H%M)
   if [ "$((10#$now))" -ge "$STOP_AT" ]; then
     echo "$(date -u +%T)Z 已到 ${STOP_AT} UTC, 第 $b 批起不再跑"; break
   fi
   if [ -n "${DRY:-}" ]; then
-    echo "[DRY] SIM_ROUNDS=$ROUNDS bash tools/sim60.sh start $b && wait $b"; continue
+    echo "[DRY] SIM_ROUNDS=$ROUNDS bash "$SIM60" start $b && wait $b"; continue
   fi
-  SIM_ROUNDS="$ROUNDS" bash tools/sim60.sh start "$b"
+  SIM_ROUNDS="$ROUNDS" bash "$SIM60" start "$b"
   ## 等这一批退出; 超时或撞上收工时间就关掉
   t0=$(date +%s)
   while :; do
-    left=$(bash tools/sim60.sh status "$b" 2>/dev/null | awk 'NR>1 && $2 != "-"' | wc -l)
+    left=$(bash "$SIM60" status "$b" 2>/dev/null | awk 'NR>1 && $2 != "-"' | wc -l)
     [ "$left" -eq 0 ] && { echo "$(date -u +%T)Z 第 $b 批全部退出"; break; }
     if [ $(( $(date +%s) - t0 )) -ge "$BATCH_CAP" ] || [ "$((10#$(date -u +%H%M)))" -ge "$STOP_AT" ]; then
-      echo "$(date -u +%T)Z 第 $b 批超时或到收工时间, 关掉剩下 $left 个"; bash tools/sim60.sh stop; break
+      echo "$(date -u +%T)Z 第 $b 批超时或到收工时间, 关掉剩下 $left 个"; bash "$SIM60" stop; break
     fi
     sleep 60
   done
-  bash tools/sim60.sh status "$b"
-  bash tools/sim60.sh scan "$b" | tail -25
+  bash "$SIM60" status "$b"
+  bash "$SIM60" scan "$b" | tail -25
 done
 echo "════ $(date -u +%FT%TZ) 今日结束"
