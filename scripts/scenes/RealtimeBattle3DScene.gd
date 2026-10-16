@@ -4255,9 +4255,8 @@ func _melee_lunge(u: Dictionary, tgt: Dictionary, amp: float = ATK_LUNGE_AMP) ->
 # ============================================================================
 
 const _PROJ_WAVE := {"angel": true}   # 这些龟普攻弹道用尖尖能量波(程序画), 缺则默认bolt
-func _summon_walking_bear(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   # 玩偶小熊仔: 召出走路动画小熊→走向敌→踢击动画(伤+击飞)→消失
-	if tgt == null:
-		return
+func _summon_walking_bear(u: Dictionary, tgt, dmg: int) -> void:   # 玩偶小熊仔: 召出走路动画小熊→走向敌→踢击动画(伤+击飞)→消失
+	if tgt == null: return
 	var bear := Sprite3D.new()
 	bear.texture = load("res://assets/sprites/vfx/teddy-walk.png")   # 7帧玩偶泰迪走路(独立小熊仔,非大熊图)
 	bear.hframes = 7
@@ -4274,8 +4273,10 @@ func _summon_walking_bear(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   #
 	var spd := 160.0   # 中等步速 px/s (龟约105~145)
 	var guard := 0.0
 	var wt := 0.0
-	while is_instance_valid(bear) and tgt != null and tgt.get("alive", false):
+	while is_instance_valid(bear):
 		await _dl_sys.lane_step()
+		if not (tgt is Dictionary and tgt.get("alive", false)): tgt = _targeting._nearest_enemy_from(u, pos)   # 目标走到一半死了: 改找离小熊最近的敌人(10-16: 原来小熊直接消失, 层数却照算)
+		if tgt == null: break
 		if _timestop.holds(u): continue   # 时停: 被定格的单位这一步不推进(携带者照常; 顿帧行为不变)
 		var dt := _frame_sim_dt
 		guard += dt; wt += dt
@@ -4289,7 +4290,7 @@ func _summon_walking_bear(u: Dictionary, tgt: Dictionary, dmg: int) -> void:   #
 		pos = DetMath.vmove_toward(pos, to, spd * dt)
 		bear.position = _world_pos(pos, GROUND_LIFT)
 	# 到位: 播踢击动画 (5帧), 第3帧接触→伤害+击飞
-	if tgt != null and tgt.get("alive", false) and is_instance_valid(bear):
+	if tgt is Dictionary and tgt.get("alive", false) and is_instance_valid(bear):
 		# ★先归零: 走路循环可能停在第 6 帧, 而踢击表只有 5 帧 ⇒ 设 hframes 那一瞬就越界。
 		bear.frame = 0
 		bear.texture = load("res://assets/sprites/vfx/teddy-kick.png")   # 玩偶泰迪踢击(5帧)

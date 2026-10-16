@@ -409,8 +409,9 @@ func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
 				#   且它自己只认【盾类】装备)。原来这条路没标 → 藤编圆盾 081 拿不到圣光转化。
 				battle._cur_eq_item = iid; var _tp: Array = tally.push(u, iid)
 				fire_equip_effect(u, iid, int(e2.get("star", 1)), stt)
+				stt["_dup"] = true   # 同一时刻的第二件起: 阶段类装备(037)同一阶段再触发, 不再往前推
 				battle._cur_eq_item = ""; tally.pop(_tp)   # ④ 装备统计 · 用完立刻清: 不清会让紧随其后的护盾/治疗被误判成这件装备给的
-		u["eq_state"][iid] = stt
+		stt.erase("_dup"); u["eq_state"][iid] = stt
 
 # 涟漪回血特效(AI生成动画): 青绿涟漪水波躺平贴地, 帧播一次扩散淡出. 用于涟漪药剂042每个受益友军
 func _eq_crossbow_volley(u: Dictionary, si: int) -> void:   # 连发弩049: 每8秒朝最远敌方向依次射1/2/3发, 命中沿途首敌(可被前排挡), 按已损血加伤
@@ -533,21 +534,21 @@ func _eq_revolver_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 func _eq_candle_tick(u: Dictionary, si: int, stt: Dictionary) -> void:
 	battle._ensure_candle(u)
 	var c = u.get("_candle_spr", null)
-	var ph: int = int(stt.get("candle", 0))
-	stt["candle"] = (ph + 1) % CANDLE_PHASES
+	var dup: bool = bool(stt.get("_dup", false))   # 带两件: 第二件同一阶段再触发一次(10-16: 原来共用计数各推一次, 一个周期跳两个阶段)
+	var ph: int = (int(stt.get("candle", 0)) + CANDLE_PHASES - 1) % CANDLE_PHASES if dup else int(stt.get("candle", 0))
+	if not dup: stt["candle"] = (ph + 1) % CANDLE_PHASES
 	if ph == 0:   # 熄灭: 蜡烛变暗(火苗弱下去, 无效果)
-		if c != null and is_instance_valid(c):
-			battle._reg_tween().tween_property(c, "modulate", Color(0.5, 0.5, 0.58, 1.0), 0.35)
+		if c != null and is_instance_valid(c): battle._reg_tween().tween_property(c, "modulate", Color(0.5, 0.5, 0.58, 1.0), 0.35)
 	elif ph == 1:   # 微弱: 蜡烛点亮 + 250码光圈 + 圈内友军5s逐渐回血
 		if c != null and is_instance_valid(c):
 			battle._reg_tween().tween_property(c, "modulate", Color(1, 1, 1, 1), 0.35)
 		var hv37: float = [20, 30, 44][si] + u["atk"] * [0.5, 0.7, 1.0][si]
 		battle._heal_circle_vfx(u["pos"], CANDLE_HEAL_R, CANDLE_IV)   # AI生成回血阵动画
-		u["candle_hot_rate"] = hv37 / CANDLE_IV
+		u["candle_hot_rate"] = hv37 / CANDLE_IV + (float(u.get("candle_hot_rate", 0.0)) if dup else 0.0)
 		u["candle_hot_until"] = battle._t + CANDLE_IV
 		for a37 in battle._targeting._allies_of(u, false):
 			if DetMath.dist(a37["pos"], u["pos"]) <= CANDLE_HEAL_R:
-				a37["candle_hot_rate"] = (hv37 * CANDLE_ALLY_HALF) / CANDLE_IV
+				a37["candle_hot_rate"] = (hv37 * CANDLE_ALLY_HALF) / CANDLE_IV + (float(a37.get("candle_hot_rate", 0.0)) if dup else 0.0)
 				a37["candle_hot_until"] = battle._t + CANDLE_IV
 	elif ph == 2:   # 燃烧: 火苗爆燃(蜡烛过亮+弹一下) + 原地爆炸, 500码内敌各受魔法伤+灼烧
 		if c != null and is_instance_valid(c):
