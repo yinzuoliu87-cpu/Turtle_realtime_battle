@@ -198,8 +198,8 @@ pet|凤凰龟/强化涅槃|detail|被动：涅槃复活时的生命值提升至 
 pet|凤凰龟/涅槃|brief|凤凰龟首次阵亡时以 25% 自身最大生命值复活，并对全体敌人施加 {E:PhoenixSystem.NIRVANA_BURN_COEF*ATK} 层灼烧与 50% 治疗削减，持续 5 秒。\n<span style="color:#8a93a0">复活过程持续 2.5 秒，期间凤凰龟无法行动、不可选中且不受伤害。</span>
 pet|凤凰龟/涅槃|desc|凤凰龟首次阵亡时以（25%×最大生命值({HP}) = {E:HP*PhoenixSystem.NIRVANA_HP_PCT}）生命值复活，并对全体敌人施加（30%×攻击力({ATK}) = {E:PhoenixSystem.NIRVANA_BURN_COEF*ATK}）层灼烧与 50% 治疗削减，持续 5 秒。\n<span style="color:#8a93a0">复活过程持续 2.5 秒，期间凤凰龟无法行动、不可选中且不受伤害。</span>
 pet|凤凰龟/涅槃|detail|凤凰龟首次死亡时浴火重生，以（25%×最大生命值({HP}) = {E:HP*PhoenixSystem.NIRVANA_HP_PCT}）生命值复活，并对全体敌人施加（30%×攻击力({ATK}) = {E:PhoenixSystem.NIRVANA_BURN_COEF*ATK}）层灼烧，以及持续 5 秒的 50% 治疗削减。
-pet|凤凰龟/灼烧|brief|凤凰龟持续喷射火焰，每 0.5 秒对身前扇形内的敌人造成（20%×攻击力×(1+攻击速度)）魔法伤害，并施加 {E:RealtimeBattle3DScene.PHX_FLAME_BURN_COEF*ATK} 层灼烧。\n<span style="color:#8a93a0">喷火不受攻击间隔限制，凤凰龟可以边喷边移动。</span>
-pet|凤凰龟/灼烧|detail|凤凰龟持续喷射火焰，每 0.5 秒对身前 70° 扇形、射程内的所有敌人造成（20%×攻击力×(1+攻击速度)）魔法伤害，并施加（4%×攻击力({ATK}) = {E:RealtimeBattle3DScene.PHX_FLAME_BURN_COEF*ATK}）层灼烧。\n<span style="color:#8a93a0">喷火不受攻击间隔限制，凤凰龟可以边喷边移动，喷火时移动速度降低 {E:(1-PhoenixSystem.FLAME_MOVE_MULT)*100}%。</span>
+pet|凤凰龟/灼烧|brief|凤凰龟持续喷射火焰，每 0.5 秒对身前扇形内的敌人造成（20%×攻击力×(1+攻击速度)）魔法伤害，并施加 {E:RealtimeBattle3DScene.PHX_FLAME_BURN_COEF*ATK} 层灼烧。\n<span style="color:#8a93a0">喷火不受攻击间隔限制，凤凰龟可以边喷边移动。每次喷火视为一次攻击，只有扇形内离凤凰龟最近的敌人会触发攻击命中时的效果。</span>
+pet|凤凰龟/灼烧|detail|凤凰龟持续喷射火焰，每 0.5 秒对身前 70° 扇形、射程内的所有敌人造成（20%×攻击力×(1+攻击速度)）魔法伤害，并施加（4%×攻击力({ATK}) = {E:RealtimeBattle3DScene.PHX_FLAME_BURN_COEF*ATK}）层灼烧。\n<span style="color:#8a93a0">喷火不受攻击间隔限制，凤凰龟可以边喷边移动，喷火时移动速度降低 {E:(1-PhoenixSystem.FLAME_MOVE_MULT)*100}%。每次喷火视为一次攻击，只有扇形内离凤凰龟最近的敌人会触发攻击命中时的效果。</span>
 pet|凤凰龟/烫伤|brief|凤凰龟投出火球，先破坏目标 50% 护盾，再造成 {M:PhoenixSystem.SCALD_ATK_COEF*ATK} 魔法伤害并施加 {E:PhoenixSystem.SCALD_BURN_COEF*ATK} 层灼烧。\n使目标的攻击力、护甲、魔抗各降低 15%，并施加 50% 治疗削减，持续 5 秒。
 pet|凤凰龟/烫伤|detail|凤凰龟投出火球，先破坏目标 50% 护盾，再造成（150%×攻击力({ATK}) = {M:PhoenixSystem.SCALD_ATK_COEF*ATK}）魔法伤害，并施加（50%×攻击力({ATK}) = {E:PhoenixSystem.SCALD_BURN_COEF*ATK}）层灼烧。\n使目标的攻击力、护甲、魔抗各降低 15%，并施加 50% 治疗削减，持续 5 秒。
 pet|凤凰龟/熔岩盾|brief|凤凰龟获得 {E:PhoenixSystem.LAVA_SHIELD_COEF*ATK} 护盾，持续 4 秒。\n护盾存在时，凤凰龟每受到一段攻击便反击攻击者，造成 {M:PhoenixSystem.LAVA_RETALIATE*ATK} 魔法伤害。

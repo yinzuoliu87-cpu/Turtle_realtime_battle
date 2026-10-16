@@ -1550,8 +1550,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "凤凰龟持续喷射火焰，每 {C:PhoenixSystem.FLAME_TICK_SEC} 秒对身前扇形内的敌人造成（{C:RealtimeBattle3DScene.PHX_FLAME_MAG_COEF%}%×攻击力×(1+攻击速度)）魔法伤害，并施加 {E:RealtimeBattle3DScene.PHX_FLAME_BURN_COEF*ATK} 层灼烧。\n<span style=\"color:#8a93a0\">喷火不受攻击间隔限制，凤凰龟可以边喷边移动。</span>",
-        "detail": "凤凰龟持续喷射火焰，每 {C:PhoenixSystem.FLAME_TICK_SEC} 秒对身前 {C:PhoenixSystem.FLAME_ARC_DEG}° 扇形、射程内的所有敌人造成（{C:RealtimeBattle3DScene.PHX_FLAME_MAG_COEF%}%×攻击力×(1+攻击速度)）魔法伤害，并施加（{C:RealtimeBattle3DScene.PHX_FLAME_BURN_COEF%}%×攻击力({ATK}) = {E:RealtimeBattle3DScene.PHX_FLAME_BURN_COEF*ATK}）层灼烧。\n<span style=\"color:#8a93a0\">喷火不受攻击间隔限制，凤凰龟可以边喷边移动，喷火时移动速度降低 {E:(1-PhoenixSystem.FLAME_MOVE_MULT)*100}%。</span>",
+        "brief": "凤凰龟持续喷射火焰，每 {C:PhoenixSystem.FLAME_TICK_SEC} 秒对身前扇形内的敌人造成（{C:RealtimeBattle3DScene.PHX_FLAME_MAG_COEF%}%×攻击力×(1+攻击速度)）魔法伤害，并施加 {E:RealtimeBattle3DScene.PHX_FLAME_BURN_COEF*ATK} 层灼烧。\n<span style=\"color:#8a93a0\">喷火不受攻击间隔限制，凤凰龟可以边喷边移动。每次喷火视为一次攻击，只有扇形内离凤凰龟最近的敌人会触发攻击命中时的效果。</span>",
+        "detail": "凤凰龟持续喷射火焰，每 {C:PhoenixSystem.FLAME_TICK_SEC} 秒对身前 {C:PhoenixSystem.FLAME_ARC_DEG}° 扇形、射程内的所有敌人造成（{C:RealtimeBattle3DScene.PHX_FLAME_MAG_COEF%}%×攻击力×(1+攻击速度)）魔法伤害，并施加（{C:RealtimeBattle3DScene.PHX_FLAME_BURN_COEF%}%×攻击力({ATK}) = {E:RealtimeBattle3DScene.PHX_FLAME_BURN_COEF*ATK}）层灼烧。\n<span style=\"color:#8a93a0\">喷火不受攻击间隔限制，凤凰龟可以边喷边移动，喷火时移动速度降低 {E:(1-PhoenixSystem.FLAME_MOVE_MULT)*100}%。每次喷火视为一次攻击，只有扇形内离凤凰龟最近的敌人会触发攻击命中时的效果。</span>",
         "energyCost": 0
       },
       {
