@@ -2426,7 +2426,8 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 		var _hp2: Vector2 = u["_home_pos"]
 		if DetMath.dist((u["pos"] as Vector2), _hp2) > 4.0:
 			u["pos"] = DetMath.vmove_toward((u["pos"] as Vector2), _hp2, 220.0 * delta)
-	if u.get("id") == "candy" and not u.get("_sweet_drained", false):   # 甜蜜掠夺: 战斗第8秒触发一次甜蜜吸取(用户2026-07-15改·原登场触发)
+	## ★被控时甜蜜掠夺不出手、计时暂停(用户 10-16 被控规则)
+	if u.get("id") == "candy" and not u.get("_sweet_drained", false) and not _damage.is_controlled(u):   # 甜蜜掠夺: 战斗第8秒触发一次甜蜜吸取(用户2026-07-15改·原登场触发)
 		u["_sweet_t"] = float(u.get("_sweet_t", 0.0)) + delta
 		if float(u["_sweet_t"]) >= CandySystem.DRAIN_AT:
 			u["_sweet_drained"] = true
@@ -2478,6 +2479,10 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 		return
 	var stunned: bool = _t < u["stun_until"] or _t < float(u.get("channel_until", 0.0))   # channel = 施法定身(不是眩晕, 见 battle_damage.channel)
 
+	## ★连续冲刺被控即中断剩下的段数(用户 10-16 被控规则「自己看」): 骰子稳定骰子 / 猎人翻滚的逐帧位移排在下方眩晕判断之前,
+	##   原来被晕、定身照冲, 被击飞则悬停到落地后接着冲(骰子还会因超时直接瞬移结算)。钻石滚球文案明写免疫眩晕, 不动。
+	if (u.get("dice_dash_active", false) or u.get("hunter_roll_active", false)) and _damage.is_controlled(u):
+		u["dice_dash_active"] = false; u["hunter_roll_active"] = false; u["state"] = "move"
 	# --- 击飞真物理: vy 受重力, height 积分; 横向同时滑 (XZ 像素坐标方向) ---
 	if u["airborne"]:
 		# 飞镖056: 任何单位被击飞→敌侧有飞镖携带者就标"靶子"(用户2026-07-18「很多被击飞没触发」: 原来只在_knockback里标·漏了直接设airborne的技能+已在空中再击飞的·这里按airborne态统一捕获·已标则跳过不重复)
@@ -3994,7 +3999,7 @@ func _do_basic(u: Dictionary, tgt: Dictionary, spec: Dictionary) -> void:
 	# 附带效果
 	match str(spec.get("rider", "")):
 		"burn":    _damage._apply_dot_stacks(tgt, "burn", (maxi(1, int(round(float(u["atk"]) * float(spec.get("burnScale", 0.0))))) if spec.has("burnScale") else _default_burn_stacks(u)), u)
-		"atkdn":   _damage._buff(tgt, "atk", -CandySystem.PUNCH_ATK_DOWN, true)
+		"atkdn":   _damage._buff_refresh(tgt, "atk", -CandySystem.PUNCH_ATK_DOWN, true, "candy_punch")   # 同来源刷新不叠(10-16)
 		"selfdef": _damage._buff(u, "def", 0.20, true)
 		"bleed":   _damage._apply_dot_stacks(tgt, "bleed", NinjaSystem.slash_bleed_stacks(u, _last_atk_crit), u)   # 忍者斩击: 4% 攻击力层流血, 暴击 6%(用户 2026-10-16; 原固定 2 / 3 层)
 		"shrink":  _hiding_sys._hiding_shell_harden(u)                             # 缩头缩壳: 每击+1甲+1抗(永久)+0.1A盾
@@ -4172,7 +4177,8 @@ func _barrage_bolt(u: Dictionary, cloud_h: float) -> void:   # 雷暴单道(用�
 	_vfx._hit_spark(e)
 	_shake(0.028)
 	_damage._apply_damage_from(u, e, _atk_dmg(u, LightningSystem.BARRAGE_BOLT_COEF, e, true), Color("#7ee8ff"))
-	_add_stack(e, "electric", 1, LightningSystem.SHOCK_STACK_MAX)
+	if e.get("alive", false):
+		_lightning_sys._lightning_electric(u, e)   # ★走 _lightning_electric(满层即引爆)·10-16: 原来直接 _add_stack 只截断不引爆, 叠满 8 层后多出的层作废
 
 func _barrage_cloud_fade(cloud: Sprite3D) -> void:
 	if not is_instance_valid(cloud):
@@ -5960,6 +5966,7 @@ func _is_untargetable(o: Dictionary) -> bool:
 
 func _update_hunter_passive(u: Dictionary) -> void:   # 被动猎杀(重做·用户2026-07-14): 每帧扫场→任一敌<斩杀线(蛋免疫)且无强化箭在飞→猎人自动射强化箭→命中处决
 	if not u.get("alive", false): return
+	if _damage.is_controlled(u): return   # ★被控时不自动射处决箭(用户 10-16 被控规则)
 	if _t - float(u.get("_hunt_scan_t", -1.0)) < HunterSystem.EXEC_SCAN_IV: return   # 节流0.1s
 	u["_hunt_scan_t"] = _t
 	for o in _targeting._pick_enemies_of(u):
@@ -6266,7 +6273,7 @@ func _absorb_mote_step(pf: float, mote, from2d: Vector2, to2d: Vector2) -> void:
 	mote.position = _world_pos(from2d.lerp(to2d, pf), DetMath.flerp(1.0, 1.25, pf))
 
 func _knock_up(o: Dictionary, center: Vector2, vy: float) -> void:
-	if o == null or not o.get("alive", false) or o.get("airborne", false) or o.get("_knock_immune", false):   # 免击飞(017不沉之锚): 直接设airborne会绕过_knockback的守卫(用户2026-07-19"修吧")
+	if o == null or not o.get("alive", false) or o.get("airborne", false) or o.get("_knock_immune", false) or _damage._is_cc_immune(o):   # 免击飞(017不沉之锚) / ★免控也免击飞(10-16): 直接设airborne会绕过_knockback的守卫(用户2026-07-19"修吧")
 		return
 	var dir: Vector2 = (o["pos"] - center)
 	dir = DetMath.norm(dir) if DetMath.vlen(dir) > 0.1 else Vector2.RIGHT
@@ -6399,7 +6406,7 @@ func _apply_rider(u: Dictionary, e: Dictionary, rider: String) -> void:
 		"stun":  _damage._stun(e, CTRL_SEC, "_cc_apply")
 		"slow":  e["slow_until"] = maxf(float(e.get("slow_until", 0.0)), _t + _cc_dur(e, BUFF_SEC)); e["slow_mag"] = 0.6
 		"curse": _damage._add_curse(e, BUFF_SEC, u)
-		"atkdn": _damage._buff(e, "atk", -CandySystem.PUNCH_ATK_DOWN, true)
+		"atkdn": _damage._buff_refresh(e, "atk", -CandySystem.PUNCH_ATK_DOWN, true, "candy_punch")   # 同来源刷新不叠(10-16)
 		"mrdn":  _damage._buff(e, "mr", -0.20, true)
 
 
@@ -6808,7 +6815,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 		_chest_sys._chest_treasure_tick(u)
 	# --- 忍者·冲击(亚索E式被动auto-dash): 290码内有"可冲"敌(不在其10s冷却)且距上次冲刺≥0.4s → 自动朝最近敌冲刺斩(用户2026-07-06"半径500码，最近敌人") ---
 	## ★被控时不冲刺(用户 2026-10-16「被控住还能冲刺吗」): 原来只排除眩晕, 被击飞 / 施法定身中探针实测照冲。与主循环 stunned + airborne 同一口径。
-	if u["id"] == "ninja" and u.get("alive", false) and _t >= float(u.get("stun_until", 0.0)) and _t >= float(u.get("channel_until", 0.0)) and not u.get("airborne", false):
+	if u["id"] == "ninja" and u.get("alive", false) and not _damage.is_controlled(u):
 		if _t - float(u.get("_ninja_last_dash", -99.0)) >= NinjaSystem.DASH_SELF_CD and not u.get("_ninja_gliding", false):
 			var _nbest = null
 			var _nbd := NinjaSystem.DASH_SENSE   # 被动冲击触发射程(用户2026-07-11: 500→290码; <冲刺距离300→冲刺会略穿过目标)
@@ -6833,7 +6840,11 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 
 	if u["id"] == "dice":   # 赌徒之血: 按已损血加暴击(损30%满+70%·用户2026-07-28 50→70); 暴击率>100%部分每1%→1.5%暴伤
 		var _lost: float = clampf(1.0 - u["hp"] / u["maxHp"], 0.0, 1.0)
-		u["crit"] = float(u.get("dice_base_crit", u["crit"])) + minf(_lost / DiceSystem.BLOOD_LOST_GATE, 1.0) * DICE_BLOOD_CRIT
+		## ★只增减【自己这一份】损血暴击(2026-10-16 十只龟核查): 原来每帧 u.crit = 基准 + 损血 ⇒ 命运骰子加的暴击率下一帧就被抹掉,
+		##   别的来源(缩头强化 / 龟派气波…)给骰子龟加的暴击率也一起没了。
+		var _blood: float = minf(_lost / DiceSystem.BLOOD_LOST_GATE, 1.0) * DICE_BLOOD_CRIT
+		u["crit"] = float(u["crit"]) + _blood - float(u.get("_dice_blood_amt", 0.0))
+		u["_dice_blood_amt"] = _blood
 		# (暴击率>100%转暴伤由 _resolve_dmg 全局处理, 这里只设暴击率)
 	# --- 赛博浮游炮(用户2026-07-15重构: 非实体·纯视觉跟随+攻击动作·不可被选中/打死): 每2秒+1 上限20 (用户2026-07-28削弱: 原每3秒+2) ---
 	if u["id"] == "cyber":
@@ -6884,7 +6895,8 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 		if u["chest_rum_t"] >= 1.0:
 			u["chest_rum_t"] -= 1.0; _damage._heal(u, u["maxHp"] * ChestSystem.RUM_HEAL_PCT)
 	# --- 钻石滚球被动(封板): 选滚球 且 200码内无敌 → 免费自动滚(不耗龟能不充能)撞向最近·防抖内CD ★2026-08-22订正: 原注释写"100码"而代码 07-12 就已是 200 ---
-	if u["id"] == "diamond" and not u.get("roll_active", false) and _t > float(u.get("roll_free_cd", 0.0)) and "diamondPowerball" in _chosen_skill_types(u["id"], u["side"] == "left"):
+	## ★被控时不自动滚(用户 10-16 被控规则): 原来被晕也会滚走 = 自己解控
+	if u["id"] == "diamond" and not u.get("roll_active", false) and not _damage.is_controlled(u) and _t > float(u.get("roll_free_cd", 0.0)) and "diamondPowerball" in _chosen_skill_types(u["id"], u["side"] == "left"):
 		var _dne = _targeting._nearest_enemy(u)
 		if _dne != null and DetMath.dist(_dne["pos"], u["pos"]) > DiamondSystem.ROLL_AUTO_RANGE:   # 200码内无敌=最近敌>200码(用户2026-07-12: 100→200)
 			u["roll_active"] = true; u["roll_start"] = _t; u["roll_free_cd"] = _t + DiamondSystem.ROLL_AUTO_CD
@@ -6913,7 +6925,8 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 				u["_epTimer"] = 0.0
 				_rainbow_sys._rainbow_enh_prism_proc(u)
 	# --- 泡泡·泡沫: 每5秒→泡泡值10%化魔法打最近敌 + 治疗自己10%泡泡值 (共消耗20%泡泡值·用户2026-07-15改3→5秒) ---
-	if u["id"] == "bubble":
+	## ★被控时泡沫不出手、计时暂停(用户 10-16 被控规则)
+	if u["id"] == "bubble" and not _damage.is_controlled(u):
 		u["_bbtimer"] = u.get("_bbtimer", 0.0) + delta
 		if u["_bbtimer"] >= BubbleSystem.FOAM_IV:                       # 用户2026-07-15: 3→5秒
 			u["_bbtimer"] = 0.0
@@ -6928,7 +6941,8 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 					_bubble_sys._bubble_rise(bt["pos"]); _bubble_sys._bubble_rise(bt["pos"])   # 命中泡沫破
 				u["bubble_store"] = bs * BubbleSystem.FOAM_KEEP          # 修: 消耗50%→共消耗20%(10%伤+10%治·封板)
 	# --- 闪电·雷电: 每4s 自动电击随机敌 (真伤) (用户) ---
-	if u["id"] == "lightning":
+	## ★被控时不自动电击、计时暂停(用户 10-16 被控规则)
+	if u["id"] == "lightning" and not _damage.is_controlled(u):
 		u["_ltimer"] = u.get("_ltimer", 0.0) + delta
 		if u["_ltimer"] >= LightningSystem.SHOCK_IV:
 			u["_ltimer"] = 0.0

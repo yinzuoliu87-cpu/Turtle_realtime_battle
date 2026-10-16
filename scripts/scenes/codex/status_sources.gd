@@ -259,8 +259,6 @@ const SRC := {
 			"v": "攻速 移速 龟能 −{C:IceSystem.AURA_SLOW%}% · {C:IceSystem.AURA_SEC} 秒"},
 		{"k": "pet", "id": "bamboo", "sk": "bambooSmack", "at": "systems/skills/bamboo_system.gd:_sk_bamboo_smack",
 			"v": "移速 −{C:BambooSystem.SMACK_CHILL_DOWN%}% · {C:BambooSystem.SMACK_CHILL_SEC} 秒"},
-		{"k": "pet", "id": "candy", "sk": "candyBarrage", "at": "systems/skills/candy_system.gd:_sk_candy_barrage",
-			"v": "移速 −{C:CandySystem.BARRAGE_SLOW_PCT%}%"},
 		{"k": "pet", "id": "crystal", "sk": "crystalBarrier", "at": "systems/skills/crystal_system.gd:_crystal_spike_line",
 			"v": "移速 −{C:CrystalSystem.SPIKE_SLOW_PCT%}% · {C:CrystalSystem.SPIKE_SLOW_SEC} 秒",
 			"lf": MAIN, "link": "func _tick_bulwark[\\s\\S]{0,900}_crystal_spike_line\\(u\\)"},
@@ -273,6 +271,9 @@ const SRC := {
 			"lf": EQS, "link": "# 028 冰冻药剂[^\\n]*\\nfunc _eq_ice_throw"},
 	],
 	"slow": [
+		## 糖衣炮弹 10-16 起走普通减速通道(原写寒冰共享槽 spd_dbf_until, 显示成冰寒)
+		{"k": "pet", "id": "candy", "sk": "candyBarrage", "at": "systems/skills/candy_system.gd:_sk_candy_barrage",
+			"v": "−{C:CandySystem.BARRAGE_SLOW_PCT%}% · {C:CandySystem.BARRAGE_SLOW_SEC} 秒"},
 		{"k": "pet", "id": "diamond", "sk": "diamondSmash", "at": "systems/skills/diamond_system.gd:_diamond_smash_impact",
 			"v": "−{C:DiamondSystem.SMASH_SLOW_PCT%}% · {C:DiamondSystem.SMASH_SLOW_SEC} 秒"},
 		{"k": "pet", "id": "lava", "sk": "lavaQuake", "at": "systems/skills/lava_system.gd:_tick_lava_zones", "v": "−35%",
@@ -326,8 +327,11 @@ const SRC := {
 	"shock-mark": [
 		{"k": "pet", "id": "lightning", "sk": "lightningStorm", "at": "systems/skills/lightning_system.gd:_lightning_electric",
 			"lf": MAIN, "link": "\"lightning\":\\s*\\n\\s*_lightning_sys\\._lightning_electric\\(u, tgt\\)"},
-		{"k": "pet", "id": "lightning", "sk": "lightningBarrage", "at": MAIN + ":_barrage_bolt", "link": "雷暴单道"},
-		{"k": "pet", "id": "lightning", "sk": "lightningShield", "at": "scenes/battle/battle_damage.gd:_apply_damage_from", "arm": "lightning"},
+		## 雷暴 / 雷盾 10-16 起改走 _lightning_electric(满层即引爆), 施加点随之移到这里
+		{"k": "pet", "id": "lightning", "sk": "lightningBarrage", "at": "systems/skills/lightning_system.gd:_lightning_electric",
+			"lf": MAIN, "link": "func _barrage_bolt[\\s\\S]{0,900}_lightning_sys\\._lightning_electric\\(u, e\\)"},
+		{"k": "pet", "id": "lightning", "sk": "lightningShield", "at": "systems/skills/lightning_system.gd:_lightning_electric",
+			"lf": "scenes/battle/battle_damage.gd", "link": "_lightning_sys\\._lightning_electric\\(u, src\\)"},
 	],
 	"hunt-mark": [
 		{"k": "pet", "id": "hunter", "sk": "hunterShot", "at": "systems/skills/hunter_system.gd:_sk_hunter_shot", "v": "{C:HunterSystem.MARK_SEC} 秒"},

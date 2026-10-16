@@ -35,9 +35,9 @@ func _ready() -> void:
 
 	# ── 灵能冲击炮弹爆炸(直接调 boom = 炮弹碰敌后的结算) ──
 	# 每敌 = _atk_dmg(100,1.0,def0)=100 + 10%maxHp(1000)×补偿 1.5(def0 不减)=150 → 250
-	# ★2026-10-11 全项目通读第四条: 「+10% 最大生命」段改成真吃护甲 + ×1.5 补平均强度(DamageMath.RESIST_COMP)
+	# ★「+10% 最大生命」段真吃护甲(2026-10-11); ×1.5 隐藏补偿 10-16 已删(用户「删」), 按文案数值打
 	sc._two_head_sys._two_head_cannon_boom(dh, land)
-	var _want: int = 100 + int(round(1000.0 * TwoHeadSystem.STRIKE_RANGED_MAXHP * DamageMath.RESIST_COMP))
+	var _want: int = 100 + int(round(1000.0 * TwoHeadSystem.STRIKE_RANGED_MAXHP))
 	_ok("圈内(≤200码)敌受伤 %d(1A+10%%maxHp×补偿·0 护甲)" % _want, int(near1["_st_taken"])==_want and int(near2["_st_taken"])==_want, "n1=%d n2=%d"%[int(near1["_st_taken"]),int(near2["_st_taken"])])
 	_ok("★圈外(>200码)敌 0(半径截断)", int(far1["_st_taken"])==0, "far=%d"%int(far1["_st_taken"]))
 

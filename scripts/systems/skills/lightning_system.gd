@@ -64,7 +64,7 @@ func _lightning_basic(u: Dictionary, tgt: Dictionary) -> void:
 
 func _lightning_electric(u: Dictionary, target: Dictionary) -> void:   # 叠1层电击; 满8引爆(天降+清零)
 	var lv = battle._add_stack(target, "electric", 1, SHOCK_STACK_MAX)
-	if lv >= 8:
+	if lv >= SHOCK_STACK_MAX:   # 原写死 8
 		battle._consume_stacks(target, "electric")
 		battle._damage._apply_damage_from(u, target, battle._shock_dmg(u), Color("#4dabf7"), 0.0, true)
 		_lightning_strike(target["pos"], Color("#cdfaff"))

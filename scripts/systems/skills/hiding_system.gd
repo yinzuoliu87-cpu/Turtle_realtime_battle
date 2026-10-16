@@ -334,7 +334,7 @@ func _minion_bodysurf_ride(u: Dictionary, tref: Dictionary) -> void:   # 拉己�
 			u["height"] = h0 - (h0 - 0.3) * kk * kk       # 高度按重力加速下落(前段高·末段猛扎)→路径成弧线俯冲, 不直线飞(用户2026-07-18"符合现实")
 	if not (u.get("alive", false) and tref.get("alive", false)):
 		u["_slam"] = false; return
-	battle._damage._apply_damage_from(u, tref, battle._phys_after_armor(u, float(tref["maxHp"]) * 0.10 * DamageMath.RESIST_COMP, tref), Color("#ff4444"))   # 接触: 10%目标最大生命(物理)
+	battle._damage._apply_damage_from(u, tref, battle._phys_after_armor(u, float(tref["maxHp"]) * 0.10, tref), Color("#ff4444"))   # 接触: 10%目标最大生命(物理)
 	battle._melee_anim(u, "surf")                                # 1.58-2.41 踩在目标身上滑行
 	battle._vfx._hit_spark(tref); battle._shake(0.14)
 	var sdir: Vector2 = ((tref["pos"] as Vector2) - from)

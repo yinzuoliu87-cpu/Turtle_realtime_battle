@@ -266,7 +266,7 @@ static func build_vars(f: Dictionary, s: Dictionary) -> Dictionary:
 		"totalScale": fn.call("totalScale"), "shieldTurns": fn.call("shieldTurns"),
 		"defBoostTurns": fn.call("defBoostTurns"), "stunAfter": fn.call("stunAfter"),
 		"transferPct": fn.call("transferPct"),
-		"goldCoins": int(f.get("_goldCoins", 0)),
+		"goldCoins": int(f.get("gold", f.get("_goldCoins", 0))),   # ★对局单位的金币在 "gold"(10-16): 原来只读没人写的 _goldCoins ⇒ 打击预览恒按 0 金币
 		"droneCount": drone_n,
 		"mechHp": drone_n * int(p.get("mechHpPer", 30)),
 		"mechAtk": drone_n * int(p.get("mechAtkPer", 5)),

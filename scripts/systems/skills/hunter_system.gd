@@ -162,6 +162,7 @@ func _sk_hunter_shot(u: Dictionary, tgt) -> void:              # 猎人龟·精�
 	# ② 0.4s后开火: 金色狙击曳光 → 到位(0.16s)才结算伤害+毒+印记+爆(命中才跳伤害)
 	battle._pending_shots.append({"delay": 0.4, "fn": func() -> void:
 		if not uu.get("alive", false) or not tref.get("alive", false): return
+		if battle._damage.is_controlled(uu): return   # ★被控就作废(用户 10-16 被控规则): 蓄力 / 延迟期间被眩晕、定身、击飞, 到点不再出手
 		var tp: Vector2 = tref["pos"]
 		battle._beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", uu["pos"], tp, 18.0, Color(1.0, 0.9, 0.45, 0.9), 0.18, 1.0)   # 金色狙击曳光(粗亮快)
 		battle._shake(0.06)
@@ -183,6 +184,7 @@ func _sk_hunter_barrage(u: Dictionary, _tgt) -> void:          # 猎人龟·狩�
 		var uu: Dictionary = u
 		battle._pending_shots.append({"delay": float(i) * BARRAGE_GAP, "src": u, "fn": func() -> void:   # 每0.2s射一发
 			if not uu.get("alive", false): return
+			if battle._damage.is_controlled(uu): return   # ★被控就作废(用户 10-16 被控规则): 蓄力 / 延迟期间被眩晕、定身、击飞, 到点不再出手(被控期间这几箭不射)
 			var cand: Array = []                                # 随机目标(非最残血): _enemies_of已跳围栏未破的蛋; 破栏后的蛋是合法目标(注意龟蛋)
 			for o in battle._targeting._pick_enemies_of(uu):
 				if o.get("alive", false) and not battle._is_untargetable(o):

@@ -447,7 +447,7 @@ func _lava_flame_strike(u: Dictionary, tgt: Dictionary) -> void: # 火山·重�
 		battle._vfx._impact_particles(tgt["pos"], 0.0)
 		_lava_burst_vfx(tgt["pos"])                  # AI生成爆裂火球
 		battle._knock_up(tgt, tgt["pos"] - dir * 10.0, 9.0)
-		battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, STRIKE_ATK_COEF, tgt) + battle._phys_after_armor(u, float(u["maxHp"]) * STRIKE_MAXHP_PCT * DamageMath.RESIST_COMP, tgt), Color("#ff7a33"), STRIKE_LIFESTEAL)
+		battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, STRIKE_ATK_COEF, tgt) + battle._phys_after_armor(u, float(u["maxHp"]) * STRIKE_MAXHP_PCT, tgt), Color("#ff7a33"), STRIKE_LIFESTEAL)
 	u["_slam"] = false
 
 
@@ -502,7 +502,7 @@ func _lava_pierce_bolt(u: Dictionary, tgt) -> void:             # 熔岩·穿透
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		if is_same(o, tgt) or battle._on_line(u["pos"], dir, o["pos"], 70.0):
-			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, PIERCE_ATK_COEF, o, true) + battle._damage._magic_after_mr(u, float(o["maxHp"]) * PIERCE_MAXHP_PCT * DamageMath.RESIST_COMP, o), Color("#ff7a3c"))
+			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, PIERCE_ATK_COEF, o, true) + battle._damage._magic_after_mr(u, float(o["maxHp"]) * PIERCE_MAXHP_PCT, o), Color("#ff7a3c"))
 			battle._damage._apply_dot_stacks(o, "burn", maxi(1, int(round(float(u["atk"]) * PIERCE_BURN_COEF))), u)
 
 func _lava_slam_telegraph(pos2d: Vector2, radius: float, dur: float) -> void:   # 落点预警(像素化·用户2026-07-15): 外硬边像素环+内环倒计时收缩到圆心+中心裂纹微光

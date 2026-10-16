@@ -151,7 +151,12 @@ func _sk_bubble_burst(u: Dictionary, tgt) -> void:              # 泡泡龟·泡
 		if not uu.get("alive", false): return
 		for o in battle._targeting._enemies_of(uu):
 			if o.get("alive", false) and DetMath.dist(o["pos"], cc) <= BURST_RADIUS:   # 门间200码带内敌
-				battle._damage._apply_damage_from(uu, o, int(battle._mitigate(uu, cons * BURST_MAGIC_MULT, o, true)) + battle._atk_dmg(uu, BURST_ATK_COEF, o), Color("#cdebff")))   # 魔法=消耗量×1.5(吃魔抗) + 物理1.5A(用户2026-07-29 第五轮·原 ×1.0 + 0.8A)
+				## ★魔法 / 物理分两次结算(10-16 十只龟核查): 原来两段加成一个数一次打, 后算的物理把类型盖成物理 ⇒
+				##   魔法那段不被魔法护盾吸、统计和飘字都算物理。魔法段先 set_dtype, 写法同被动泡沫弹。
+				if cons >= 1.0:
+					battle._damage.set_dtype("magic", o); battle._damage._apply_damage_from(uu, o, int(battle._mitigate(uu, cons * BURST_MAGIC_MULT, o, true)), Color("#cdebff"))   # 魔法=消耗量×1.5(吃魔抗)
+				if o.get("alive", false):
+					battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, BURST_ATK_COEF, o), Color("#ff4444")))   # (末尾多一个右括号 = 关闭外层 tween_callback(func…)) 物理1.5A(用户2026-07-29 第五轮·原 ×1.0 + 0.8A)
 				# ★物理段【不吃泡泡值】, 是开局(泡泡值=0)唯一稳定的伤害 —— 从 38 翻到 71, 第一发不再是空技能。
 
 func _sk_bubble_bind(u: Dictionary, tgt) -> void:

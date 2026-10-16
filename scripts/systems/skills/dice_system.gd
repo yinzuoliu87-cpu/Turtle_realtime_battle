@@ -17,6 +17,7 @@ const ALLIN_LIFESTEAL := 0.30     # 孤注一掷: 生命偷取
 const FLASH_SEG_MIN := 7          # 稳定骰子: 段数下限 (原 4+d6 = 5)
 const FLASH_SEG_MAX := 11         # 稳定骰子: 段数上限 (原 4+d6 = 10)
 const FLASH_SHIELD_PER_HIT := 0.2 # 稳定骰子: 每穿一次获得 ×ATK 护盾
+const FLASH_SHIELD_SEC := 6.0     # 稳定骰子护盾持续(秒)·原写死在 _grant_shield 里(10-16)
 const FATE_LIFESTEAL := 0.50      # 命运骰子: 释放后首次攻击的生命偷取
 ## 【命运骰子】掷出的暴击率提升区间(持续到下次释放本技能)。
 const FATE_CRIT_MIN := 0.40       # 区间下限
@@ -80,7 +81,7 @@ func _dice_dash_tick(u: Dictionary, delta: float) -> void:
 func _dice_dash_hit(u: Dictionary, tgt: Dictionary, dir: Vector2) -> void:
 	var scale_i: float = FLASH_FIRST_COEF * DetMath.dpow(1.0 - FLASH_FALLOFF, float(int(u.get("dice_dash_seg", 0))))   # 每段递减10%(回合制falloffPct=10)
 	battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, scale_i, tgt), Color("#ff4444"))
-	battle._damage._grant_shield(u, float(u["atk"]) * FLASH_SHIELD_PER_HIT, 6.0)   # 每穿一次 +0.2ATK 护盾(用户2026-07-28)
+	battle._damage._grant_shield(u, float(u["atk"]) * FLASH_SHIELD_PER_HIT, FLASH_SHIELD_SEC)   # 每穿一次 +0.2ATK 护盾(用户2026-07-28)
 	_dice_blade_slash(tgt["pos"], dir)   # AI挥剑斩(沿冲刺方向)
 	battle._melee_lunge(u, tgt)
 
@@ -195,7 +196,7 @@ func _sk_dice_fate(u: Dictionary) -> void:
 	var roll: float = DetMath.rrange(battle._battle_rng, FATE_CRIT_MIN, FATE_CRIT_MAX)   # B 阶段: 命运暴击的点数是对局结果(方案书 20260916c §2.3 点名的那一处)
 	var over: float = maxf(0.0, (u["crit"] + roll) - 1.0)   # 暴击封顶100%, 超出转暴伤
 	var add_crit: float = roll - over
-	var add_cd: float = over * 1.5
+	var add_cd: float = over * DamageMath.CRIT_OVERFLOW   # 原写死 1.5, 文案引用的是这个常量
 	u["crit"] += add_crit
 	u["crit_dmg"] += add_cd
 	u["crit_fate_until"] = battle._t + 999.0   # 持续到下次放技能(开头撤旧增益自然重掷·用户设计)

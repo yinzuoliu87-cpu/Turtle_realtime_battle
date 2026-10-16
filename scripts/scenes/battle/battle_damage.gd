@@ -209,6 +209,8 @@ func _apply_damage(u: Dictionary, dmg: int, _col: Color, src = null, bucket: Str
 	if u.get("_ink_sac", false) and d > 0.0 and float(u["hp"]) - d <= 0.0:
 		d = battle._equip_sys._eq_ink_sac(u, d)
 	u["hp"] = maxf(0.0, u["hp"] - d)
+	if u.get("_nonlethal_hit", false):   # 调用方临时置位的「这一下不致死」(甜蜜掠夺·10-16: 增伤乘区原来能把「留 1 点」打穿)
+		u["hp"] = maxf(1.0, u["hp"])
 	battle._blood_rite_refresh(u)   # 剑【血祭】: 血量百分比整数位变了才重算攻击力(无血祭的单位零开销)
 	battle._staff_syn.add_mana(u, float(dmg) * StaffSynergySystem.MANA_FROM_TAKEN)   # 法器: 受伤 ×0.1 涨法力
 	# 无头龟·亡灵免死锁血: 另一条路有(deathfloor_until), 这条路没有 → 免死光环亮着人被 DOT 烧死
@@ -451,6 +453,8 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 	if u.get("_ink_sac", false) and d > 0.0 and float(u["hp"]) - d <= 0.0:
 		d = battle._equip_sys._eq_ink_sac(u, d)
 	u["hp"] = maxf(0.0, u["hp"] - d)
+	if u.get("_nonlethal_hit", false):   # 同上一处(两条伤害路径都要有·§3.3)
+		u["hp"] = maxf(1.0, u["hp"])
 	battle._blood_rite_refresh(u)   # 剑【血祭】: 血量百分比整数位变了才重算攻击力(无血祭的单位零开销)
 	battle._staff_syn.add_mana(u, float(dmg) * StaffSynergySystem.MANA_FROM_TAKEN)   # 法器: 受伤 ×0.1 涨法力
 	if u.get("_review_dummy", false): u["hp"] = u["maxHp"]   # 训练靶: 受击即回满, 打不死不结算(看完整)
@@ -519,7 +523,8 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 	# 闪电雷盾: 盾在时对每段攻击反击 0.3×ATK 魔法(用户2026-07-29 平衡四轮: 0.1→0.3) + 给攻击者叠1层电击
 	if u["id"] == "lightning" and battle._t < float(u.get("thunder_shield_until", 0.0)) and float(u.get("shield", 0.0)) > 0.0 and not is_same(src, u) and src.get("alive", false) and not from_equip and dmg > 0:
 		_apply_damage_from(u, src, battle._atk_dmg(u, LightningSystem.SHIELD_RETALIATE, src, true), Color("#4dabf7"), 0.0, false, true)
-		battle._add_stack(src, "electric", 1, LightningSystem.SHOCK_STACK_MAX)
+		if src.get("alive", false):
+			battle._lightning_sys._lightning_electric(u, src)   # ★走 _lightning_electric(满层即引爆)·10-16: 原来直接 _add_stack 只截断不引爆, 叠满 8 层后多出的层作废
 	# §AUDIO: 命中音 (暴击→hit-crit / 否则→hit-physical, 节流防多段刷屏); 护盾刚被打没→shield-break (真伤现在也能打盾→去掉 not raw).
 	if shield_before > 0.0 and u["shield"] <= 0.0:
 		u["shield_until"] = 0.0   # 盾被打空→清限时标记(防陈旧到期误清后续永久盾)
@@ -642,6 +647,8 @@ func _knockback(by: Dictionary, tgt: Dictionary, _ignored_dist: float, vy_mult: 
 	if not tgt.get("alive", false):
 		return
 	if tgt["airborne"]:
+		return
+	if _is_cc_immune(tgt):   # ★免控也免击飞(用户 10-16 十只龟核查: 财神梭哈写「免疫控制」, 原来只挡得住眩晕, 被击飞后免控还会断)
 		return
 	if tgt.get("_knock_immune", false):   # 不沉之锚017免击飞(原flag只写不读=死标记, 用户2026-07-19"说好的免疫呢"补)
 		return
@@ -897,6 +904,15 @@ func _heal_flush(u: Dictionary) -> void:   # LoL式: 治疗累加器→静默0.1
 ##   调用方**拿不到"它被免疫了"这件事**。而近战小将的新机制需要"目标免控就改成
 ##   直接结算伤害、不把自己拉过去"(用户 2026-08-20 拍板), 没有这个查询就写不出来。
 ## ★读的是 `_stun` 用的**同一个字段**, 不另起一套 —— 手抄的副本必然落后。
+## ★被控 = 眩晕 / 施法定身 / 击飞(与主循环 _tick_unit 里 stunned + airborne 同一口径)。
+##   用户 2026-10-16: 被控时自动触发的被动、延迟出手的技能都不该出手(忍者冲刺那次起, 十只龟核查扫出同类 10+ 处)。
+##   所有「自动出手 / 延迟结算」的入口统一问这里, 不各自抄一份 stun_until。
+func is_controlled(u) -> bool:
+	if not (u is Dictionary):
+		return false
+	return battle._t < float(u.get("stun_until", 0.0)) or battle._t < float(u.get("channel_until", 0.0)) or bool(u.get("airborne", false))
+
+
 func _is_cc_immune(u) -> bool:
 	if not (u is Dictionary):
 		return false
@@ -932,6 +948,15 @@ func _stun(u: Dictionary, sec: float, src_tag: String, no_tenacity: bool = false
 
 func _buff(u: Dictionary, stat: String, amount: float, pct: bool, sec: float = battle.BUFF_SEC) -> void:
 	u["buffs"].append({"stat": stat, "amount": amount, "pct": pct, "until": battle._t + sec})
+	battle._recalc_stats(u)
+
+## 同一来源(tag)只留一条、再次施加只刷新时长(2026-10-16 十只龟核查: 糖果拳减攻原来每拳 append 一条, 5 秒内叠 3~4 层到 -45%~-60%)。
+func _buff_refresh(u: Dictionary, stat: String, amount: float, pct: bool, tag: String, sec: float = battle.BUFF_SEC) -> void:
+	for b in u["buffs"]:
+		if str((b as Dictionary).get("tag", "")) == tag:
+			b["until"] = battle._t + sec
+			return
+	u["buffs"].append({"stat": stat, "amount": amount, "pct": pct, "until": battle._t + sec, "tag": tag})
 	battle._recalc_stats(u)
 
 # 层数式 DoT 施加 (1:1 dot.gd apply_stacks). type∈[burn,poison,bleed]; 多次施加→累加层数. burn 检免疫.

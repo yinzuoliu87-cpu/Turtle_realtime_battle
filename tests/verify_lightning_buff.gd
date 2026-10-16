@@ -142,7 +142,7 @@ func _ready() -> void:
 	## ★文案里现在是占位符 {C:LightningSystem.SURGE_SEC} —— 要先渲染再比,
 	##   直接 grep 原文会因为"代码变干净了"而假红。
 	_chk("⑧ 涌动文案 = %d 秒" % int(WANT_SURGE_SEC),
-		_has_txt(SkillText.render_consts(pj), "接下来%d秒内被动电击" % int(WANT_SURGE_SEC)))
+		_has_txt(SkillText.render_consts(pj), "接下来的%d秒内使被动电击" % int(WANT_SURGE_SEC)))
 
 	# ── ⑨ 换算成人话, 打印出来给人看(数字不打出来就没法复核) ──
 	var A: float = float(lg["atk"])

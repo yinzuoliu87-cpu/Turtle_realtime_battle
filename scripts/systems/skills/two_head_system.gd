@@ -132,7 +132,7 @@ func _two_head_cannon_boom(u: Dictionary, at2d: Vector2) -> void:
 	battle._skill_ring(at2d, Color(0.86, 0.72, 1.0, 0.7), 110.0)
 	for o in battle._targeting._enemies_of(u):
 		if o.get("alive", false) and DetMath.dist(at2d, o["pos"]) <= STRIKE_BLAST_RADIUS:
-			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, STRIKE_RANGED_COEF, o) + battle._phys_after_armor(u, float(o["maxHp"]) * STRIKE_RANGED_MAXHP * DamageMath.RESIST_COMP, o), Color("#c0a0ff"))
+			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, STRIKE_RANGED_COEF, o) + battle._phys_after_armor(u, float(o["maxHp"]) * STRIKE_RANGED_MAXHP, o), Color("#c0a0ff"))
 			battle._vfx._flash(o, Color(0.8, 0.6, 1.0))
 
 # 双头·锤击(近战 技1·用户2026-07-11): 跳起→落在目标身前→地面锤击(1.4A物理+获50%伤害盾4s)+落地震屏/冲击环/尘爆
@@ -204,7 +204,7 @@ func _sk_two_head_disrupt(u: Dictionary, tgt) -> void:           # 双头·技�
 	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	if u["melee"]:
-		var dmg: int = battle._atk_dmg(u, ABSORB_ATK_COEF, tgt) + battle._phys_after_armor(u, float(tgt["maxHp"]) * ABSORB_MAXHP_PCT * DamageMath.RESIST_COMP, tgt)
+		var dmg: int = battle._atk_dmg(u, ABSORB_ATK_COEF, tgt) + battle._phys_after_armor(u, float(tgt["maxHp"]) * ABSORB_MAXHP_PCT, tgt)
 		battle._damage._apply_damage_from(u, tgt, dmg, Color("#c0d0ff"))
 		battle._damage._heal(u, u["atk"] * ABSORB_HEAL_ATK + (u["maxHp"] - u["hp"]) * ABSORB_HEAL_LOST)   # 回血40%攻击力+18%已损生命
 		_two_head_absorb_vfx(u, tgt)                               # 吸收VFX(用户2026-07-11): 生命虹吸束+微粒回流+回血绿环
@@ -354,6 +354,8 @@ func _two_head_fusion_onset(u: Dictionary) -> void:
 func _two_head_deferred_cast(u: Dictionary, tgt, stype: String) -> void:
 	if not u.get("alive", false):
 		return
+	if battle._damage.is_controlled(u):
+		return   # ★被控就作废(用户 10-16 被控规则): 蓄力 / 延迟期间被眩晕、定身、击飞, 到点不再出手
 	battle._cast_skill(u, tgt, stype)
 	var _tl0: Array = battle._equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原
 	battle._equip_sys._eq_on_cast(u, tgt)

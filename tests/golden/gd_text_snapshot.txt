@@ -249,7 +249,6 @@ scripts/gamedata/equip_tier_labels.gd|lit|龟能 # 点
 scripts/gamedata/equip_tier_labels.gd|lit|龟能充能 #×
 scripts/gamedata/equip_tier_labels.gd|lit|龟能充能 +#%
 scripts/gamedata/glossary.gd|lit|【涨潮】结束后移除全部加成。此效果不会致死，生命值降至新的上限。
-scripts/gamedata/glossary.gd|lit|低血模式
 scripts/gamedata/glossary.gd|lit|余烬施加的状态：期间该敌人受到的灼烧伤害全部转为真实伤害（不受魔抗减免）。
 scripts/gamedata/glossary.gd|lit|冰霜
 scripts/gamedata/glossary.gd|lit|剑士
@@ -288,7 +287,6 @@ scripts/gamedata/glossary.gd|lit|法力
 scripts/gamedata/glossary.gd|lit|海胆护盾
 scripts/gamedata/glossary.gd|lit|海胆每次受到伤害时叠加一层硬化，层数达到上限时为自身提供的护盾，随后在数秒内逐渐衰减。
 scripts/gamedata/glossary.gd|lit|涨潮
-scripts/gamedata/glossary.gd|lit|猎人龟施加的猎杀印记。被标记的敌人处决线提高。
 scripts/gamedata/glossary.gd|lit|生命值低于阈值时获得的一次性护盾，在数秒内线性衰减。
 scripts/gamedata/glossary.gd|lit|登场一段时间后进入的强化状态：最大生命值与攻击力大幅提升，体型变大。
 scripts/gamedata/glossary.gd|lit|登场时给予敌人的枪。持枪者属性提升，但每次攻击会损失生命值。
@@ -296,19 +294,15 @@ scripts/gamedata/glossary.gd|lit|直升机龟的龟能充满时施放的大招�
 scripts/gamedata/glossary.gd|lit|真火
 scripts/gamedata/glossary.gd|lit|破损
 scripts/gamedata/glossary.gd|lit|符纸
-scripts/gamedata/glossary.gd|lit|精准射击
 scripts/gamedata/glossary.gd|lit|终极护盾
 scripts/gamedata/glossary.gd|lit|腐蚀
 scripts/gamedata/glossary.gd|lit|蚀月符纸贴在敌人身上的持续伤害效果，期间每秒降低其魔抗。可叠加，目标死亡时以剩余持续时间转移给最近的敌人。
 scripts/gamedata/glossary.gd|lit|诅咒
-scripts/gamedata/glossary.gd|lit|财神龟施放【梭哈】后，该技能槽转变成的护盾技能：护盾值基于当前金币数，不消耗金币，持有护盾期间锁定龟能。
-scripts/gamedata/glossary.gd|lit|赌神龟生命值低于阈值时【赌注】的替代效果：不甩牌、不消耗生命值，转而回复生命值。
 scripts/gamedata/glossary.gd|lit|进化被动
 scripts/gamedata/glossary.gd|lit|迷你水晶
 scripts/gamedata/glossary.gd|lit|迷你水晶球施加在敌人身上的层数。达到最大层数时引爆，造成基于该敌人最大生命值的魔法伤害，并重置层数。
 scripts/gamedata/glossary.gd|lit|退潮
 scripts/gamedata/glossary.gd|lit|金弹
-scripts/gamedata/glossary.gd|lit|金盾
 scripts/gamedata/glossary.gd|lit|靶子
 scripts/gamedata/minion_codex.gd|lit|人体浪板
 scripts/gamedata/minion_codex.gd|lit|前排 · 近战
@@ -1701,6 +1695,7 @@ scripts/scenes/codex/status_sources.gd|lit|{C:StoneSystem.ROCK_WAVE_STUN} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:StoneSystem.SLAM_DELAY} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:StoneSystem.TAUNT_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:TwoHeadSystem.DISRUPT_HEALCUT_PCT%}% · {C:TwoHeadSystem.DISRUPT_HEALCUT_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|−{C:CandySystem.BARRAGE_SLOW_PCT%}% · {C:CandySystem.BARRAGE_SLOW_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|−{C:DiamondSystem.SMASH_SLOW_PCT%}% · {C:DiamondSystem.SMASH_SLOW_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|吞噬
 scripts/scenes/codex/status_sources.gd|lit|哑铃
@@ -1722,7 +1717,6 @@ scripts/scenes/codex/status_sources.gd|lit|登场 {C:CyberSystem.AI_START_CHARGE
 scripts/scenes/codex/status_sources.gd|lit|盾
 scripts/scenes/codex/status_sources.gd|lit|盾羁绊9档
 scripts/scenes/codex/status_sources.gd|lit|移速 −{C:BambooSystem.SMACK_CHILL_DOWN%}% · {C:BambooSystem.SMACK_CHILL_SEC} 秒
-scripts/scenes/codex/status_sources.gd|lit|移速 −{C:CandySystem.BARRAGE_SLOW_PCT%}%
 scripts/scenes/codex/status_sources.gd|lit|移速 −{C:CrystalSystem.SPIKE_SLOW_PCT%}% · {C:CrystalSystem.SPIKE_SLOW_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|移速 −{C:IceSystem.VIAL_MOVE_DOWN%}% · 攻速 −{C:IceSystem.VIAL_ASPD_DOWN%}% · {C:IceSystem.VIAL_CHILL_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|移速 −{C:ShellSystem.BURN_SLOW_PCT%}%
@@ -1730,7 +1724,6 @@ scripts/scenes/codex/status_sources.gd|lit|精英小将铁锁
 scripts/scenes/codex/status_sources.gd|lit|赛博龟阵亡 → 浮游炮组装成机甲
 scripts/scenes/codex/status_sources.gd|lit|铁锁
 scripts/scenes/codex/status_sources.gd|lit|锈蚀阔剑007
-scripts/scenes/codex/status_sources.gd|lit|雷暴单道
 scripts/scenes/codex/status_sources.gd|lit|霰弹贝古053
 scripts/scenes/codex/synergy_view.gd|lit|%d 件
 scripts/scenes/codex/synergy_view.gd|lit|同上

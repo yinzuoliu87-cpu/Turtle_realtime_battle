@@ -38,6 +38,7 @@ const JOKER_DMG := 2.0       # 万能牌: ×ATK 物理 (1.0→2.0)
 const JOKER_HEAL := 0.05     # 万能牌: 回复自身最大生命 ×
 const JOKER_ATK_DOWN := 0.15 # 万能牌: 目标攻击力 −
 const JOKER_SHIELD := 1.0    # 万能牌: ×ATK 永久护盾 (0.25→1.0)
+const BET_MULTI_HEAL := 0.3   # 赌注每张牌触发多重打击时回复 ×ATK(原写死 0.3·10-16); 追加的那一发 = 普攻系数 CARD_ATK_COEF
 
 var battle
 
@@ -49,9 +50,12 @@ func _gambler_multi_cd(u: Dictionary) -> float:
 	var base_ch: float = float(u.get("multi_base", MULTI_BASE))     # 命运之轮选中→0.60; 否则0.40
 	if battle._t < float(u.get("gambler_bet_until", 0.0)):
 		base_ch += MULTI_BET_BONUS                                       # 赌注放技→3秒内临时+20%(封顶示例0.80)
-	var ch: float = float(u.get("multi_chance", base_ch))
+	## ★按「已连几发」实时算(10-16 十只龟核查): 原来存上次的概率, 赌注 +20% 要等断一次链才生效, 过期后又多留一轮
+	var ch: float = base_ch
+	for _i in range(int(u.get("_multi_n", 0))):
+		ch *= MULTI_DECAY                                    # 递减: 每次连锁×0.8(连乘不用 pow·确定性)
 	if battle._battle_rng.randf() < ch:
-		u["multi_chance"] = ch * MULTI_DECAY                  # 递减: 每次连锁×0.8
+		u["_multi_n"] = int(u.get("_multi_n", 0)) + 1
 		# ★★2026-08-03 用户拍板:【连击不触发剑士】。
 		#   赌神本身就是"云顶剑士式连击", 而剑羁绊的【剑士】也是连击 ——
 		#   两者相乘会让赌神拿满剑达到普通龟的 2.1 倍(实测 576% vs 272%)。
@@ -60,23 +64,24 @@ func _gambler_multi_cd(u: Dictionary) -> float:
 		#   ⚠ 赌注 barrage(_gambler_bet_multi) 不走 _basic_attack(直接结算伤害) ⇒ 本来就不触发, 无需处理。
 		u["_chained_atk"] = true
 		return maxf(0.06, u["atk_interval"] * MULTI_ASPD)   # 快攻速再打 (用户2026-07-28: ~3.3×→~6×攻速)
-	u["multi_chance"] = base_ch                       # 没中→重置回基础(含命运之轮0.60/赌注+0.20), 等下一次普攻
+	u["_multi_n"] = 0                                 # 没中→链断, 下次从当前基础概率(含命运之轮 0.60 / 赌注 +0.20)起
 	u["_chained_atk"] = false                         # 链断了 → 下一次是正常普攻, 照常触发剑士
 	return u["atk_interval"]
 
 # 当前多重打击概率(命运之轮0.60/否则0.40 + 赌注放技3秒内+0.20)
 func _gambler_bet_ch(u: Dictionary) -> float:
 	var ch = float(u.get("multi_base", MULTI_BASE))
-	if battle._t < float(u.get("gambler_bet_until", 0.0)): ch += 0.20
+	if battle._t < float(u.get("gambler_bet_until", 0.0)): ch += MULTI_BET_BONUS   # 原写死 0.20
 	return ch
 
 # B(用户2026-07-14): 赌注每张牌命中掷多重打击→中则额外甩一发普攻(1.0A)+继续以×0.8递减连锁(滚雪球)
 # B(用户2026-07-14): 赌注每张牌命中掷多重打击→中则额外甩一发普攻(1.0A)+继续以×0.8递减连锁(滚雪球)
 func _gambler_bet_multi(u: Dictionary, tgt: Dictionary, ch: float) -> void:
 	if not u.get("alive", false) or tgt == null or not tgt.get("alive", false): return
+	if battle._damage.is_controlled(u): return   # ★被控就作废(用户 10-16 被控规则): 蓄力 / 延迟期间被眩晕、定身、击飞, 到点不再出手(追加牌是普攻)
 	if battle._battle_rng.randf() >= ch: return
-	battle._damage._heal(u, u["atk"] * 0.3)   # ★每触发一次多重打击回0.3ATK生命(用户2026-07-14·赌注期间回血本)
-	var bdmg: int = battle._atk_dmg(u, 1.0, tgt)   # 额外一发=普攻1.0A
+	battle._damage._heal(u, u["atk"] * BET_MULTI_HEAL)   # ★每触发一次多重打击回0.3ATK生命(用户2026-07-14·赌注期间回血本)
+	var bdmg: int = battle._atk_dmg(u, CARD_ATK_COEF, tgt)   # 额外一发=普攻1.0A
 	battle._pending_shots.append({"delay": 0.09, "fn": func() -> void:
 		_gambler_throw_hit(u, tgt, bdmg, false, false)   # 甩基础牌(普攻物理红·非穿透·自身不再掷·递归在下句续)
 		_gambler_bet_multi(u, tgt, ch * MULTI_DECAY)         # 连锁×0.8递减
@@ -246,7 +251,7 @@ func _sk_gambler_bet(u: Dictionary, tgt: Dictionary) -> void:    # 赌神龟·�
 	var cost: float = u["hp"] * BET_HP_COST
 	u["hp"] = maxf(1.0, u["hp"] - cost)
 	battle._vfx._flash(u, Color(1.7, 0.4, 0.4))                            # HP牺牲红闪(押上血本)
-	var per_raw: float = cost / float(BET_SEGMENTS) * DamageMath.RESIST_COMP   # ★10-11: 物理改真吃护甲(×1.5 补平均强度), 每张牌落地时按目标护甲结算
+	var per_raw: float = cost / float(BET_SEGMENTS)   # ★10-11: 物理改真吃护甲, 每张牌落地时按目标护甲结算(10-16 删掉 ×1.5 隐藏补偿, 用户「删」)
 	u["gambler_bet_until"] = battle._t + BET_BONUS_SEC                           # 3秒多重概率+20%(见_gambler_multi_cd·回补钩)
 	battle._skill_ring(u["pos"], Color(1.0, 0.85, 0.2, 0.55), 54.0)
 	for i in range(7):                                         # 7张牌barrage(错峰0.11s·命中才跳伤害·每张触发多重打击B·扣'七段')

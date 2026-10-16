@@ -25,6 +25,8 @@ const BARRAGE_HP_PCT := 0.02
 const BARRAGE_SLOW_PCT := 0.20   # 减速比例(语义值; 移速乘数由它推导)
 const BARRAGE_SLOW_MULT := 1.0 - BARRAGE_SLOW_PCT
 const BARRAGE_SLOW_SEC := 0.5    # 每次减速持续(每跳刷新)
+const BARRAGE_SHELLS := 8        # 每跳落几颗糖弹(每颗对落点附近单独结算)·原写死 range(8)(10-16)
+const BARRAGE_SHIELD_SEC := 2.0   # 每颗给友军的护盾持续(秒)·原写死 2.0(10-16)
 ## 总时长 = (跳数 − 1) × 间隔 ⇒ 文案里那个"约 3.4 秒"由它算, 不另写一份
 const BARRAGE_LIFE := (BARRAGE_TICKS - 1) * BARRAGE_TICK_SEC
 ## 【糖果炸弹】
@@ -76,6 +78,7 @@ func _sk_candy_hammer(u: Dictionary, tgt) -> void:              # 糖果龟·技
 	tw.tween_callback(func() -> void:   # 砸中: 沿线糖爆冲击+震屏+均分伤+回血
 		if hammer != null and is_instance_valid(hammer):
 			var ht = battle._reg_tween(); ht.tween_interval(0.06); ht.tween_property(hammer, "modulate:a", 0.0, 0.16); ht.tween_callback(hammer.queue_free)
+		if battle._damage.is_controlled(uu): return   # ★被控就作废(用户 10-16 被控规则): 蓄力 / 延迟期间被眩晕、定身、击飞, 到点不再出手
 		battle._shake(battle.JUICE_SHAKE_HEAVY)
 		for k in range(4):                                     # 沿线糖爆冲击带(从锤头往前铺·200码)
 			var at: Vector2 = uu["pos"] + d2 * (55.0 + float(k) * 48.0)
@@ -123,7 +126,7 @@ func _sk_candy_barrage(u: Dictionary, tgt) -> void:            # 糖果龟·技�
 	var uu: Dictionary = u; var ctr: Vector2 = center
 	for i in range(BARRAGE_TICKS):                              # 8跳·每跳8颗糖弹密集散落该区·落点局部结算(用户2026-07-15两次加密→3→6→8颗+炮弹/糖爆调大)
 		battle._pending_shots.append({"delay": float(i) * BARRAGE_TICK_SEC, "src": u, "fn": func() -> void:
-			for b in range(8):
+			for b in range(BARRAGE_SHELLS):
 				## ★2026-10-04: 落点决定谁吃伤害/谁拿盾 ⇒ 必须走战斗随机流(原来是全局 randf ⇒ 同种子两遍 945/1000 步分叉·首个分叉步 50)
 				var ang = battle._battle_rng.randf() * TAU
 				var land: Vector2 = ctr + Vector2(DetMath.dcos(ang), DetMath.dsin(ang)) * DetMath.rrange(battle._battle_rng, 15.0, 430.0)
@@ -133,12 +136,14 @@ func _sk_candy_barrage(u: Dictionary, tgt) -> void:            # 糖果龟·技�
 						if not o.get("alive", false): continue
 						if DetMath.dist(o["pos"], land) > 120.0: continue
 						if not battle._is_hostile(uu, o):
-							battle._damage._grant_shield(o, uu["maxHp"] * BARRAGE_SHIELD_PCT, 2.0)   # 友军护盾 2%→1.5% 自身最大生命/跳(用户2026-07-30 第六轮)
+							battle._damage._grant_shield(o, uu["maxHp"] * BARRAGE_SHIELD_PCT, BARRAGE_SHIELD_SEC)   # 友军护盾 2%→1.5% 自身最大生命/跳(用户2026-07-30 第六轮)
 							# ★削的是它"同时当辅助"那一半: 一场送出的护盾 2378→1647(−31%), 输出身份保留。
 							#   龟能同时 120→130 → 释放 4.22→3.90 次, 伤害也跟着 −8%。
 						else:
 							battle._damage._apply_damage_from(uu, o, battle._resolve_dmg(uu, uu["atk"] * BARRAGE_ATK_COEF + uu["maxHp"] * BARRAGE_HP_PCT, o, true), Color("#ff9ed6"), 0.0, false, true)
-							o["spd_move_mult"] = BARRAGE_SLOW_MULT; o["spd_dbf_until"] = battle._t + BARRAGE_SLOW_SEC)
+							## ★走普通减速通道(10-16): 原来写 spd_dbf_until 这条寒冰共享槽 ⇒ 缩短寒冰 12 秒减速, 还让过期的减攻速 / 减龟能重新生效
+							o["slow_mag"] = minf(float(o.get("slow_mag", 1.0)), BARRAGE_SLOW_MULT) if battle._t < float(o.get("slow_until", 0.0)) else BARRAGE_SLOW_MULT
+							o["slow_until"] = maxf(float(o.get("slow_until", 0.0)), battle._t + BARRAGE_SLOW_SEC))
 			})
 
 func _candy_shell_drop(land2d: Vector2, on_land: Callable) -> void:   # 糖衣炮弹: 从高空翻滚落下到落点→自销调on_land
@@ -197,9 +202,15 @@ func _candy_sweet_drain(u: Dictionary) -> void:   # 甜蜜掠夺·甜蜜吸取(�
 		if float(e["maxHp"]) > float(fat["maxHp"]): fat = e
 	var steal: float = minf(fat["maxHp"] * DRAIN_MAXHP_PCT, fat["hp"] - 1.0)
 	if steal > 0:
+		## ★回复按【实际扣掉的生命】(10-16 十只龟核查): 原来按计划量回 ⇒ 打在护盾上几乎不掉血也回满; 且增伤乘区能把「留 1 点」打穿
+		var _hp0: float = float(fat["hp"])
+		fat["_nonlethal_hit"] = true
 		battle._damage._apply_damage_from(u, fat, maxi(1, int(round(steal))), Color("#ff9ecb"), 0.0, true, false, true, true)   # 真伤·必中·不暴击
-		battle._damage._heal(u, steal)
-		_candy_drain_fx(u, fat, int(steal))
+		fat.erase("_nonlethal_hit")
+		var _took: float = maxf(0.0, _hp0 - float(fat["hp"]))
+		if _took > 0.0:
+			battle._damage._heal(u, _took)
+		_candy_drain_fx(u, fat, int(_took))
 
 func _candy_drain_fx(candy: Dictionary, fat: Dictionary, amt: int) -> void:   # 甜蜜掠夺: 粉色精华从最肥敌流向糖果龟+吸取字
 	if not candy.get("alive", false): return

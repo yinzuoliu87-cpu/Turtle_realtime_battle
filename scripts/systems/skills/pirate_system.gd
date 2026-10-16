@@ -133,7 +133,7 @@ func _sk_pirate_volley(u: Dictionary, tgt) -> void:              # 海盗龟·�
 				battle._skill_ring(land, Color(1.0, 0.55, 0.3, 0.5), VOLLEY_RADIUS)   # 落点250码范围环
 				for o in battle._targeting._enemies_of(u):                        # 落点250码内: 0.5A+2%目标maxHp 物理(红)
 					if o.get("alive", false) and DetMath.dist(o["pos"], land) <= VOLLEY_RADIUS:
-						battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, VOLLEY_ATK_COEF, o) + battle._phys_after_armor(u, float(o["maxHp"]) * VOLLEY_MAXHP_PCT * DamageMath.RESIST_COMP, o), Color("#ff4444")))
+						battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, VOLLEY_ATK_COEF, o) + battle._phys_after_armor(u, float(o["maxHp"]) * VOLLEY_MAXHP_PCT, o), Color("#ff4444")))
 			})
 
 func _pirate_get_ship(u: Dictionary) -> Sprite3D:   # 该海盗的持久演出船(一只·首次建后驻场·火炮/朗姆/登场轰击共用·不重复生成不淡出·用户2026-07-14"船是一只在的")

@@ -175,7 +175,8 @@ func _fire_ghost_wisp(u: Dictionary, tgt: Dictionary) -> void:
 	_push_proj({
 		"node": p, "from": world_from, "tgt": tgt, "src": u, "t": 0.0,
 		"dur": clampf(DetMath.dist(start2d, tgt["pos"]) / 620.0, 0.2, 0.62),
-		"ghost_touch": true, "gt_phys": 0.4 * atk, "gt_true": 0.9 * atk, "basic_onhit": true, "wisp_dir": true,
+		"ghost_touch": true, "gt_phys": GhostSystem.BASIC_PHYS * atk, "gt_true": GhostSystem.BASIC_TRUE * atk,   # ★读常量(10-16): 原写死 0.4 / 0.9, 文案引用的常量只被一张不生效的表读
+		 "basic_onhit": true, "wisp_dir": true,
 	})
 
 ## 战斗场还在不在树上。

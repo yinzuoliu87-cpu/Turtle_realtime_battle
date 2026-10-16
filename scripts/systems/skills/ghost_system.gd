@@ -116,6 +116,7 @@ func _ghost_curse_wisp(at2d: Vector2) -> void:
 # 幽冥突袭·延迟命中(第2帧): 1.5A魔法+80%吸血+25%闪避4s(经_sk_dmg保真)+击退抛飞
 func _ghost_phantom_hit(u: Dictionary, tgt) -> void:
 	if not u.get("alive", false): return
+	if battle._damage.is_controlled(u): return   # ★被控就作废(用户 10-16 被控规则): 蓄力 / 延迟期间被眩晕、定身、击飞, 到点不再出手
 	if not (tgt is Dictionary) or not tgt.get("alive", false): tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	battle._sk_dmg(u, tgt, {"magic": RAID_MAGIC, "hits": 1, "lifesteal": RAID_LIFESTEAL, "selfDodge": RAID_DODGE, "selfDodgeDur": RAID_DODGE_SEC, "name": "幻影", "color": Color("#c77dff")})
