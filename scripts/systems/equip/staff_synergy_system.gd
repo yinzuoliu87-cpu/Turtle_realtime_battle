@@ -136,6 +136,9 @@ func add_mana(u: Dictionary, n: float) -> void:
 		u["eq_state"][iid] = stt
 		if float(stt["mana"]) < full:
 			continue
+		if battle._damage.is_controlled(u):   # 携带者被控: 法力停在满值, 解控后下一次涨法力时放出(10-16 被控规则)
+			stt["mana"] = full
+			continue
 		stt["mana"] = 0.0
 		stt["mana_pct"] = 0.0
 		_fire(u, iid, int(e.get("star", 1)))

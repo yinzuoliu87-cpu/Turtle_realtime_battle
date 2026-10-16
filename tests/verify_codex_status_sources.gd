@@ -37,7 +37,7 @@ const SIG := {
 	"untargetable": ["\"untargetable_until\"\\]\\s*=\\s*(maxf|(battle\\.)?_t\\s*\\+)"],
 	"reflect": ["\"reflect\"\\]\\s*=\\s*float\\(u\\.get\\(\"reflect\"", "REFLECT_BASE \\+"],
 	"cyber-charge": ["\"cyber_ai_charge\"\\]\\s*=\\s*(CyberSystem\\.AI_START_CHARGE|int\\(u\\.get\\(\"cyber_ai_charge\"[^)]*\\)\\)\\s*\\+)"],
-	"chilled": ["\"spd_dbf_until\"\\]\\s*=\\s*(battle\\.)?_t\\s*\\+"],
+	"chilled": ["\"spd_dbf_until\"\\]\\s*=\\s*(battle\\.)?_t\\s*\\+", "\\bapply_chill\\("],
 	"slow": ["\"slow_until\"\\]\\s*=\\s*(maxf|(battle\\.)?_t\\s*\\+)"],
 	"heal-reduce": ["\"heal_reduce_until\"\\]\\s*=", "\"healCut\"\\s*:"],
 	"energy-lock": ["\"energy_lock_until\"\\]\\s*=\\s*(maxf|(battle\\.)?_t\\s*\\+)"],
@@ -73,8 +73,7 @@ const IGNORE := {
 	# —— 施法者自己的施法定身 / 演出, 不是对敌控制 ——
 	"stun|systems/skills/headless_system.gd:_sk_headless_fear#": "恐吓 = 带「恐惧」标记的眩晕, 列在恐惧页",
 	"airborne|systems/equip/eq_arcane_batch.gd:_pestle_leap#": "镇海杵: 携带者自己起跳",
-	"chilled|systems/skills/lava_system.gd:_sk_lava_erupt#": "烈焰暴走: 复用该计时给自己 +30% 移速, 不是冰寒",
-	"chilled|systems/skills/phoenix_system.gd:_sk_phoenix_haste#": "强化涅槃: 复用该计时给自己 +50% 移速, 不是冰寒",
+	"chilled|scenes/battle/battle_damage.gd:apply_chill#": "冰寒的唯一写入口本身, 来源按调用方登记",
 	# —— 不在图鉴里的单位 ——
 	"stun|systems/trainer/trainer_system.gd:_hook_grab#": "训龟大师(周末 Boss), 不在图鉴",
 	"slow|systems/trainer/trainer_system.gd:_tick_glaciers#": "训龟大师, 不在图鉴",

@@ -20,6 +20,7 @@ const SOUL_HITS := 3             # 强化几次普攻
 const SOUL_ATK_COEF := 0.5       # 每次额外 ×ATK 魔法
 const SOUL_CURHP_PCT := 0.10     # 每次额外 + 目标【当前】生命 × 魔法
 const SOUL_RANGE_BONUS := 60.0   # 强化窗口期间射程 +
+const SOUL_FALLBACK_SEC := 7.0   # 几秒内没打完强化攻击就强制镰刀收尾(防永锁龟能)
 const SCYTHE_ARC_DEG := 100.0    # 镰刀横扫: 正面锥角(半角 50°)
 const SCYTHE_RANGE := 300.0      # 镰刀横扫: 半径(码)
 const SCYTHE_KNOCK := 300.0      # 镰刀横扫: 击退(码·从龟朝外)
@@ -519,6 +520,7 @@ const TENDRIL_LIFESTEAL := 0.22   # 本次施法额外 + 生命偷取
 const TENDRIL_PASS_SEC := 0.3     # 伸出/穿过 在施法后第几秒
 const TENDRIL_DETACH_SEC := 3.0   # 收回/脱离 在施法后第几秒
 const TENDRIL_SELF_STUN := 4.0    # 自身硬控全程(秒)
+const TENDRIL_STUN_SEC := TENDRIL_DETACH_SEC - TENDRIL_PASS_SEC   # 推导: 命中者被缠住的眩晕时长(伸出到收回)
 const TENDRIL_PASS_FOE := 1.0     # 穿过时 对敌 ×ATK
 const TENDRIL_PASS_ALLY := 0.5    # 穿过时 对友 ×ATK
 const TENDRIL_DETACH_FOE := 1.5   # 收回时 对敌 ×ATK
@@ -585,28 +587,37 @@ func _sk_headless_tendrils(u: Dictionary, _tgt = null) -> void:  # 无头·万�
 		var dly: float = randf_range(0.0, 0.14)                  # 错峰爆出(炸开感)
 		_headless_tendril_shoot(center, od, elev, L, randf() < 0.4, dly, randf_range(2.0, 2.4))
 	var pass_fn = func():                                      # 伸/穿过(≈0.3s铺满): 无差别 敌1A+眩晕 / 友0.5A+眩晕(刷新不叠)
+		if not uu.get("alive", false): return                  # 施法者已阵亡: 触须不再伸出(10-16)
 		for o in battle._units:
 			if not o.get("alive", false) or is_same(o, uu): continue
 			if DetMath.dist((o["pos"] as Vector2), center) > TENDRIL_RADIUS: continue   # 射程1500码(用户2026-07-19; 原为全场无差别)
 			var sc: float = TENDRIL_PASS_FOE if battle._is_hostile(uu, o) else TENDRIL_PASS_ALLY
 			battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, sc, o), Color("#9b3bff"), TENDRIL_LIFESTEAL)
 			if not o.get("_eggImmune", false):
-				battle._damage._stun(o, 2.7, "_sk_headless_tendrils", true)   # 眩晕持续到脱离
+				battle._damage._stun(o, TENDRIL_STUN_SEC, "_sk_headless_tendrils", true)   # 眩晕持续到脱离
 				o["_tendril_stun"] = true
+				o["_tendril_stun_end"] = float(o.get("stun_until", 0.0))   # 触须给到的眩晕终点: 收回时只解到这里为止的(别的来源更长的眩晕保留)
 			_headless_tendril_shoot(center, DetMath.norm(((o["pos"] as Vector2) - center)) if DetMath.vlen(((o["pos"] as Vector2) - center)) > 1.0 else Vector2.RIGHT, deg_to_rad(18.0), maxf(90.0, DetMath.dist((o["pos"] as Vector2), center)), true, 0.0, 2.4)   # 命中者: 从龟身甩一根粗触须缠住
 			if battle._is_hostile(uu, o): _headless_drain_dot(o["pos"], uu)   # 吸血红珠回流
 	battle._pending_shots.append({"delay": TENDRIL_PASS_SEC, "fn": pass_fn, "src": u})
 	var detach_fn = func():                                    # 收/脱离(≈3.0s): 无差别 敌1.5A / 友0.5A + 回复行动(解眩晕)
 		battle._shake(0.12)
+		var caster_alive: bool = uu.get("alive", false)          # 施法者中途阵亡: 不再撕扯造成伤害, 只放开被缠住的人(10-16)
 		for o in battle._units:
 			if not o.get("alive", false) or is_same(o, uu): continue
+			if not caster_alive:
+				if o.get("_tendril_stun", false):
+					o["_tendril_stun"] = false
+					if float(o.get("stun_until", 0.0)) <= float(o.get("_tendril_stun_end", 0.0)) + 0.001: o["stun_until"] = battle._t
+				continue
 			if DetMath.dist((o["pos"] as Vector2), center) > TENDRIL_RADIUS: continue   # 射程1500码(用户2026-07-19; 原为全场无差别)
 			var sc: float = TENDRIL_DETACH_FOE if battle._is_hostile(uu, o) else TENDRIL_DETACH_ALLY
 			battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, sc, o), Color("#ff3b6b"), TENDRIL_LIFESTEAL)
 			battle._vfx._hit_spark(o)
 			if o.get("_tendril_stun", false):
 				o["_tendril_stun"] = false
-				o["stun_until"] = battle._t   # 解眩晕→回复行动
+				if float(o.get("stun_until", 0.0)) <= float(o.get("_tendril_stun_end", 0.0)) + 0.001:   # 只解触须给的; 期间又吃了更长的眩晕就留着(10-16: 原来一律清零)
+					o["stun_until"] = battle._t   # 解眩晕→回复行动
 			if battle._is_hostile(uu, o): _headless_drain_dot(o["pos"], uu)   # 脱离撕扯再吸一口
 	battle._pending_shots.append({"delay": TENDRIL_DETACH_SEC, "fn": detach_fn, "src": u})
 
@@ -635,6 +646,15 @@ func _sk_headless_soul_charge(u: Dictionary) -> void:           # 无头·灵魂
 			fl.position = battle._world_pos((uref["pos"] as Vector2) + Vector2(DetMath.dcos(aa), DetMath.dsin(aa)) * 26.0, 1.5 + DetMath.dsin(aa * 2.0) * 0.12)
 	, 0.0, 1.0, 0.9)
 	battle._skill_ring(u["pos"], Color(0.6, 0.23, 0.7, 0.5), 44.0)
-	battle._pending_shots.append({"delay": 7.0, "fn": func():            # 兜底: 7秒内没打完3下(无敌/被控)→强制镰刀收尾防永锁龟能
-		if int(uref.get("headless_soul_stacks", 0)) > 0: _headless_scythe(uref), "src": u})
+	battle._pending_shots.append({"delay": SOUL_FALLBACK_SEC, "fn": _scythe_fallback.bind(uref), "src": u})   # 兜底: 7秒内没打完3下(无敌/被控)→强制镰刀收尾防永锁龟能
+
+
+## 镰刀兜底: 到点仍被控就每 0.25 秒再看一次, 解控才扫(10-16 被控规则: 原来晕着也强制出手)。
+func _scythe_fallback(u: Dictionary) -> void:
+	if int(u.get("headless_soul_stacks", 0)) <= 0 or not u.get("alive", false):
+		return
+	if battle._damage.is_controlled(u):
+		battle._pending_shots.append({"delay": 0.25, "fn": _scythe_fallback.bind(u), "src": u})
+		return
+	_headless_scythe(u)
 

@@ -48,6 +48,42 @@ var battle
 func _init(b) -> void:
 	battle = b
 
+
+## ★10-16 被控规则(与龟被动、equip_system._tick_eq_intervals 同口径): 携带者被控时
+##   【自己定时出手】的装备不出手; 计时停在就绪, 解控后的第一帧立刻补那一发。
+##   到点后计时不清零, 解控那一帧照常出手并清零 ⇒ 晕 6 秒也只补一发。纯光环/回血/护盾类不走这里。
+func ctl_hold(u: Dictionary) -> bool:
+	return battle._damage.is_controlled(u)
+
+
+## 050 幽灵加特林: 永久减甲在【子弹飞到】时结算(2026-10-16; 原来发射瞬间就扣, 子弹还在路上目标已少了护甲)。
+## 延时 = `_spawn_eq_bolt` 里弹道时长的同一公式, 走游戏钟队列(不挂 tween, §3.5)。单目标累计上限 cap 不变。
+func gatling_shred_on_land(u: Dictionary, o: Dictionary, shred: float, cap: float) -> void:
+	var fly: float = clampf(DetMath.dist(u["pos"], o["pos"]) / 520.0, 0.22, 1.1)
+	schedule(fly, func() -> void:
+		if not o.get("alive", false):
+			return
+		var acc: float = float(o.get("gatling_shred_acc", 0.0))
+		if acc < cap:
+			var dec: float = minf(shred, cap - acc)
+			o["base_def"] = maxf(0.0, o["base_def"] - dec); o["gatling_shred_acc"] = acc + dec; battle._recalc_stats(o))
+
+
+## 「向 N 名随机敌人」: 先抽不同的人(抽到即拿掉); 敌人不够 N 个时池子抽空再重装, 数量照发。
+## 走 `_pick_enemies_of`(排训龟大师 / 不可选中) + `_battle_rng`(确定性)。045 用(2026-10-16 修「两颗火球打同一人」)。
+func _eq_pick_distinct(u: Dictionary, n: int) -> Array:
+	var out: Array = []
+	var pool: Array = []
+	for _i in range(n):
+		if pool.is_empty():
+			pool = battle._targeting._pick_enemies_of(u)
+		if pool.is_empty():
+			break
+		var k: int = battle._battle_rng.randi() % pool.size()
+		out.append(pool[k])
+		pool.remove_at(k)
+	return out
+
 # 数据驱动基础技能: 按 spec 算物/魔/真伤(含加成项)分段打出 + 附带/特殊机制 (1:1 原始 skillPool[0])
 func _tick_doll(u: Dictionary, delta: float) -> void:   # 玩偶小熊: 每4s派小熊+攒层; 满层→蓄力→召大熊(不与末只小熊同帧)
 	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
@@ -60,9 +96,16 @@ func _tick_doll(u: Dictionary, delta: float) -> void:   # 玩偶小熊: 每4s派
 	var _iv: float = 1.0 if OS.has_environment("EQDEMO_FAST") else DOLL_IV   # FAST=快速看波
 	stt["doll_t"] = float(stt.get("doll_t", 0.0)) + delta
 	if float(stt["doll_t"]) < _iv: return
-	stt["doll_t"] = 0.0
+	## ★2026-10-16 被控规则: 携带者被控时不派熊, 到点的那只留到解控后立刻补(计时封顶一个周期)。
+	if ctl_hold(u):
+		stt["doll_t"] = _iv
+		return
 	var mt = battle._targeting._nearest_enemy(u)
-	if mt == null: return
+	## ★2026-10-16: 没有目标时保持就绪, 不清计时 —— 原来先清零再判空, 这一只熊连同它的层数白白丢掉。
+	if mt == null:
+		stt["doll_t"] = _iv
+		return
+	stt["doll_t"] = 0.0
 	var bdm: int = battle._resolve_dmg(u, u["atk"] * [1.0, 2.0, 5.0][si] + [100.0, 210.0, 1000.0][si], mt, false)
 	battle._summon_walking_bear(u, mt, bdm)
 	stt["bear_layers"] = int(stt.get("bear_layers", 0)) + 1
@@ -131,6 +174,9 @@ func _tick_fortress(u: Dictionary, delta: float) -> void:   # 深海堡垒甲p2e
 			continue
 		e["fortress_t"] = float(e.get("fortress_t", 0.0)) + delta
 		if float(e["fortress_t"]) < FORTRESS_IV: continue
+		if ctl_hold(u):
+			e["fortress_t"] = FORTRESS_IV
+			continue
 		e["fortress_t"] = 0.0
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
 		# ★用户 2026-07-30 削弱: 汲取倍率 0.9/1.6/3.0 → 0.8/1/2.5;
@@ -318,6 +364,9 @@ func _tick_thunder(u: Dictionary, delta: float) -> void:
 		battle._equip_sys.tally.push(u, "p2eq_025")   # ④ 这一段是这件装备的效果
 		e["thunder_t"] = float(e.get("thunder_t", 0.0)) + delta
 		if float(e["thunder_t"]) < THUNDER_IV: continue
+		if ctl_hold(u):
+			e["thunder_t"] = THUNDER_IV
+			continue
 		e["thunder_t"] = 0.0
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
 		## ★★2026-09-13: 道间错峰原来是 `tween_interval` —— tween 走**未钳制的真实 delta**,
@@ -447,6 +496,9 @@ func _tick_dumbbell(u: Dictionary, delta: float) -> void:   # 哑铃p2eq_020: �
 		battle._equip_sys.tally.push(u, "p2eq_020")   # ④ 这一段是这件装备的效果
 		e["dumbbell_t"] = float(e.get("dumbbell_t", 0.0)) + delta
 		if float(e["dumbbell_t"]) < DUMBBELL_IV: continue   # 每10秒→每8秒(用户2026-07-19)
+		if ctl_hold(u):
+			e["dumbbell_t"] = DUMBBELL_IV
+			continue
 		e["dumbbell_t"] = 0.0
 		if u.get("_slam", false): continue   # 正在别的channel中→跳过本次
 		battle._equip_sys._eq_dumbbell_routine(u, battle._equip_sys._eq_si(int(e.get("star", 1))))
@@ -537,6 +589,7 @@ func _tick_rustblade(u: Dictionary, delta: float) -> void:   # 木制长剑p2eq_
 		battle._equip_sys.tally.push(u, "p2eq_001")   # ④ 这一段是这件装备的效果
 		e["rust_t"] = float(e.get("rust_t", 0.0)) + delta   # 计时存装备条目→每副本独立就绪
 		if float(e["rust_t"]) < RUST_IV: continue           # 该件未就绪(每3s就绪一次)
+		if ctl_hold(u): continue
 		if not got:                                          # 目标懒求(多件共用同一最近敌)
 			t = battle._targeting._nearest_enemy(u); got = true
 		if t == null or DetMath.vlen((t["pos"] - u["pos"])) > rng: continue   # 射程内无敌→保持就绪等待
@@ -554,6 +607,7 @@ func _tick_coral(u: Dictionary, delta: float) -> void:   # 双穿珊瑚刺p2eq_0
 		battle._equip_sys.tally.push(u, "p2eq_008")   # ④ 这一段是这件装备的效果
 		e["coral_t"] = float(e.get("coral_t", 0.0)) + delta
 		if float(e["coral_t"]) < CORAL_IV: continue
+		if ctl_hold(u): continue
 		var far = null; var fd = -1.0
 		for o in battle._targeting._pick_enemies_of(u):   # ★单体定向(挑最远一个)必须走 battle._targeting._pick_enemies_of: 排除训龟大师(场外监视者·永远最远)+不可选中; 见 §PICK-TARGET 铁律。原用 battle._targeting._enemies_of → 珊瑚刺永远锁大师(用户2026-07-24)
 			var dd2: float = DetMath.len2((o["pos"] - u["pos"]))
@@ -570,6 +624,7 @@ func _tick_broadsword(u: Dictionary, delta: float) -> void:   # 锈蚀阔剑p2eq
 		battle._equip_sys.tally.push(u, "p2eq_007")   # ④ 这一段是这件装备的效果
 		e["bsw_t"] = float(e.get("bsw_t", 0.0)) + delta
 		if float(e["bsw_t"]) < BROADSWORD_IV: continue
+		if ctl_hold(u): continue
 		if battle._targeting._nearest_enemy(u) == null: continue
 		e["bsw_t"] = 0.0
 		battle._equip_sys._eq_broadsword(u, battle._equip_sys._eq_si(int(e.get("star", 1))))
@@ -582,6 +637,7 @@ func _tick_sword_storm(u: Dictionary, delta: float) -> void:   # 千刃风暴p2e
 		battle._equip_sys.tally.push(u, "p2eq_006")   # ④ 这一段是这件装备的效果
 		e["storm_t"] = float(e.get("storm_t", 0.0)) + delta
 		if float(e["storm_t"]) < SWORD_STORM_IV: continue
+		if ctl_hold(u): continue
 		if battle._targeting._nearest_enemy(u) == null: continue
 		e["storm_t"] = 0.0
 		battle._equip_sys._eq_sword_storm(u, battle._equip_sys._eq_si(int(e.get("star", 1))))
@@ -594,6 +650,7 @@ func _tick_laser(u: Dictionary, delta: float) -> void:   # 激光长刃p2eq_010:
 		battle._equip_sys.tally.push(u, "p2eq_010")   # ④ 这一段是这件装备的效果
 		e["laser_t"] = float(e.get("laser_t", 0.0)) + delta
 		if float(e["laser_t"]) < maxf(0.3, float(u.get("atk_interval", 1.0))): continue
+		if ctl_hold(u): continue
 		var t = battle._targeting._nearest_enemy(u)
 		if t == null: continue
 		e["laser_t"] = 0.0

@@ -320,6 +320,10 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 	u["_g078_t"] = float(u.get("_g078_t", 0.0)) + delta
 	if float(u["_g078_t"]) < EEL_IV:
 		return
+	## ★10-16 被控规则: 携带者被控时不开枪, 计时停在满格, 解控后立刻补这一发
+	if battle._damage.is_controlled(u):
+		u["_g078_t"] = EEL_IV
+		return
 	## ★敌人进 EEL_FIRE_RANGE 码才开火(用户 2026-09-15:「敌人没有进范围为什么开枪，应该设定个范围的」)。
 	##   原来到点就朝最近的敌人开, 不管它在多远 ⇒ 霰弹在空地上炸、电击弹隔着半个战场打人。
 	##   计时攒满后【停在满格等着】, 有人进范围立刻开这一发 —— 不空放、也不白丢一拍。
@@ -1025,7 +1029,8 @@ const HELI_APPROACH_MAX := 2.2
 func _heli_begin_bomb(h: Dictionary) -> void:
 	var owner: Dictionary = h["owner"]
 	var pts: Array = []
-	for o in battle._targeting._enemies_of(owner):
+	## ★2026-10-16: 挑轰炸航线 = 选靶 ⇒ 排训龟大师(结算仍扫全体, 见下方 BOMB_R 那段)
+	for o in battle._targeting._pick_enemies_of(owner):
 		if o.get("alive", false):
 			pts.append(Vector2(o["pos"]))
 	if pts.is_empty():
@@ -1157,7 +1162,8 @@ func heli_bomb_hit(h: Dictionary, si: int, at: Vector2) -> int:
 func _heli_begin_crash(h: Dictionary) -> void:
 	var owner: Dictionary = h["owner"]
 	var foes: Array = []
-	for o in battle._targeting._enemies_of(owner):
+	## ★2026-10-16: 随机挑坠毁目标 = 选靶 ⇒ 排训龟大师(结算仍扫全体, 见下方 CRASH_R 那段)
+	for o in battle._targeting._pick_enemies_of(owner):
 		if o.get("alive", false):
 			foes.append(o)
 	if foes.is_empty():

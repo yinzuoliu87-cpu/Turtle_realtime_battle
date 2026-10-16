@@ -501,15 +501,17 @@ func _hiding_legacy_vfx(from_pos: Vector2, owner: Dictionary) -> void:   # 遗�
 			battle._skill_ring(oref["pos"], Color(1.0, 0.85, 0.4, 0.7), 70.0))
 
 func _sk_hiding_defend(u: Dictionary) -> void:                   # 缩头乌龟·防御(封板·100龟能): 缩壳20%maxHp盾(4秒)+护甲+20%(5秒)·到期剩余盾20%转生命; 2026-07-17用户: 持盾锁龟能+盾段壳青绿特殊色
+	u["_hiding_floor"] = float(u.get("shield", 0.0))   # 施放前已有的盾(护盾是一个总池): 「剩余护盾」「持盾锁龟能」只看本技这一份(10-16: 原来看总盾)
 	battle._damage._grant_shield(u, u["maxHp"] * DEFEND_SHIELD_PCT, DEFEND_SHIELD_SEC)
-	u["_hidingShellVal"] = u["maxHp"] * 0.20                     # 血条壳青绿特殊盾段(hp_bar照圣盾段收敛)
+	u["_hidingShellVal"] = u["maxHp"] * DEFEND_SHIELD_PCT                     # 血条壳青绿特殊盾段(hp_bar照圣盾段收敛)
 	u["hiding_shield_until"] = battle._t + DEFEND_SHIELD_SEC                          # 持盾锁龟能(石头rock_shield四连判据同款·盾破/到期恢复)
 	battle._damage._buff(u, "def", DEFEND_DEF_UP, true, DEFEND_DEF_SEC)
 	var uu: Dictionary = u
-	battle._pending_shots.append({"delay": 3.95, "fn": func(): battle._damage._heal(uu, float(uu.get("shield", 0.0)) * DEFEND_CONVERT), "src": u})   # 到期前读剩余盾×20%转生命
-	battle._pending_shots.append({"delay": 4.0, "fn": func(): uu["_hidingShellVal"] = 0.0, "src": u})   # 到期清特殊段标记
-	_hiding_dome(u, Color(0.55, 0.85, 0.6, 1.0), 4.0)          # 壳青绿护罩4秒呼吸→碎裂(2026-07-17: 原零画面)
-	battle._pending_shots.append({"delay": 4.0, "fn": func(): _hiding_legacy_heal_vfx(uu), "src": u})   # 碎裂后: 绿光点流入(剩盾转血可视)
+	var cap: float = u["maxHp"] * DEFEND_SHIELD_PCT
+	battle._pending_shots.append({"delay": DEFEND_SHIELD_SEC - 0.05, "fn": func(): battle._damage._heal(uu, clampf(float(uu.get("shield", 0.0)) - float(uu.get("_hiding_floor", 0.0)), 0.0, cap) * DEFEND_CONVERT), "src": u})   # 到期前读【本技那份】剩余盾×20%转生命
+	battle._pending_shots.append({"delay": DEFEND_SHIELD_SEC, "fn": func(): uu["_hidingShellVal"] = 0.0, "src": u})   # 到期清特殊段标记
+	_hiding_dome(u, Color(0.55, 0.85, 0.6, 1.0), DEFEND_SHIELD_SEC)          # 壳青绿护罩4秒呼吸→碎裂(2026-07-17: 原零画面)
+	battle._pending_shots.append({"delay": DEFEND_SHIELD_SEC, "fn": func(): _hiding_legacy_heal_vfx(uu), "src": u})   # 碎裂后: 绿光点流入(剩盾转血可视)
 
 func _hiding_legacy_heal_vfx(u: Dictionary) -> void:            # 防御盾到期转血: 绿光点绕身流入
 	if not u.get("alive", false): return

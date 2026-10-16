@@ -86,8 +86,9 @@ func _ready() -> void:
 	_ok("★★普攻弹道的追加真伤系数 = 0.12",
 		is_equal_approx(StarSystem.ENERGY_TRUE_PCT, 0.12)
 			and src_bal.find('StarSystem.ENERGY_TRUE_PCT') >= 0
-			and src_rb.find('StarSystem.ENERGY_TRUE_PCT') >= 0)
-	_ok("★★施法后的追加真伤系数 = 0.12", src_rb.find('star_energy", 0.0)) > 0.0') >= 0)
+			and FileAccess.get_file_as_string("res://scripts/systems/skills/star_system.gd").find('se0 * ENERGY_TRUE_PCT') >= 0)   # 10-16: 施法后追加移到 StarSystem.after_cast
+	## 10-16: 施法后追加改按【施法前】的星能(_se0) —— 强化星波 / 扭曲空间施放即清空星能, 原来追加恒为 0
+	_ok("★★施法后的追加真伤系数 = 0.12", src_rb.find('_star_sys.after_cast(u, tgt, _se0)') >= 0)
 	## 文案必须与代码一致 —— 2026-07-16 削过 30%→12% 但文案停在 30%, 玩家预期是实际 2.5 倍。
 	var pets := FileAccess.get_file_as_string("res://data/pets.json")
 	var i_space: int = pets.find('"id": "space"')

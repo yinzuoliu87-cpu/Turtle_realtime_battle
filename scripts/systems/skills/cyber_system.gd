@@ -83,8 +83,9 @@ func _sk_cyber_cannon(u: Dictionary, tgt) -> void:              # 赛博龟·能
 		st.tween_property(sp, "position", battle._world_pos(u["pos"], 0.9), 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		st.parallel().tween_property(sp, "modulate:a", 0.0, 0.35)
 		st.tween_callback(sp.queue_free)
+	var cg := {}                                                # 蓄力组: 期间赛博被晕 / 击飞 / 阵亡 ⇒ 瞄准线与发射一并取消(10-16)
 	for k in range(3):                                          # 蓄力期: 细青瞄准线(参考Lux R的细线预警·3段脉冲)
-		battle._pending_shots.append({"delay": 0.05 + 0.28 * float(k), "fn": func() -> void:
+		battle._pending_shots.append({"delay": 0.05 + 0.28 * float(k), "cc": cg, "fn": func() -> void:
 			if uu.get("alive", false):
 				battle._bolt_line(uu["pos"], uu["pos"] + dir * 1300.0, Color(0.5, 0.9, 1.0, 0.35))
 		, "src": u})
@@ -94,7 +95,7 @@ func _sk_cyber_cannon(u: Dictionary, tgt) -> void:              # 赛博龟·能
 			if not o.get("alive", false): continue
 			if not battle._on_line(uu["pos"], dir, o["pos"], CANNON_BAND): continue    # 直线判定带宽±70码
 			if DetMath.dist(o["pos"], uu["pos"]) > CANNON_RANGE: continue
-			battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, 1.0, o), Color("#9bf0ff"))                          # 1A物理
+			battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, CANNON_PHYS, o), Color("#9bf0ff"))                          # 1A物理
 			if drones > 0:
 				battle._damage._apply_damage_from(uu, o, int(uu["atk"] * CANNON_TRUE_PER_DRONE * drones), Color("#d0ffff"), 0.0, true)  # 0.1A×浮游炮数真伤
 			battle._vfx._hit_spark(o)
@@ -118,12 +119,12 @@ func _sk_cyber_cannon(u: Dictionary, tgt) -> void:              # 赛博龟·能
 			gt.tween_property(gk, "modulate:a", 0.0, 0.6)
 			gt.chain().tween_callback(gk.queue_free)
 	battle._muzzle_flash(u["pos"], dir, Color("#9bf0ff"))             # 起手枪口闪
-	battle._pending_shots.append({"delay": 0.9, "fn": fire, "src": u})   # 蓄力0.9s→发射(Lux R节奏)
+	battle._pending_shots.append({"delay": 0.9, "fn": fire, "src": u, "cc": cg})   # 蓄力0.9s→发射(Lux R节奏)
 
 func _sk_cyber_hijack(u: Dictionary) -> void:                   # 赛博龟·侵入(135龟能·HIJACK_SEC=4秒·用户2026-07-16 4→5, 2026-07-28 削弱回 4·Botworld黑客): 黑1随机敌4秒倒戈(side改赛博方·标hijacked→打原队友+被原队友打·不算存活数·击杀归赛博·蛋免控·可黑多个)
 	var es: Array = []
 	for o in battle._targeting._pick_enemies_of(u):
-		if o.get("alive", false) and not o.get("_eggImmune", false) and not o.get("hijacked", false):
+		if o.get("alive", false) and not o.get("_eggImmune", false) and not o.get("hijacked", false) and not battle._damage._is_cc_immune(o):   # 免控的不被侵入(10-16)
 			es.append(o)
 	if es.is_empty(): return
 	var v: Dictionary = es[battle._battle_rng.randi() % es.size()]

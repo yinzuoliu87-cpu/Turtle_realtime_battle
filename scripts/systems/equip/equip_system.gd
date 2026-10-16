@@ -394,6 +394,12 @@ func _tick_eq_intervals(u: Dictionary, delta: float) -> void:
 		if iid == "p2eq_037": battle._ensure_candle(u)   # 蜡烛从开局就悬在头顶(不等首次tick)
 		var stt: Dictionary = u["eq_state"].get(iid, {})
 		stt["iv_t"] = float(stt.get("iv_t", 0.0)) + delta
+		## ★携带者被控(眩晕 / 定身 / 击飞)时周期装备不出手, 到点的那一发留到解控后立即补(10-16 被控规则, 与龟的被动同一口径)。
+		##   计时封顶在一个周期: 晕 6 秒不会攒出两发。
+		if battle._damage.is_controlled(u):
+			stt["iv_t"] = minf(float(stt["iv_t"]), iv)
+			u["eq_state"][iid] = stt
+			continue
 		if float(stt["iv_t"]) >= iv:
 			stt["iv_t"] = float(stt["iv_t"]) - iv
 			for e2 in u["equips"]:
@@ -433,10 +439,7 @@ func _eq_gatling_burst(u: Dictionary, si: int) -> void:   # 幽灵加特林050: 
 		var o50 = es50[battle._battle_rng.randi() % es50.size()]
 		battle._muzzle_flash(u["pos"], (o50["pos"] - u["pos"]), Color("#d0ffff"))
 		battle._spawn_eq_bolt(u, o50, battle._atk_dmg(u, g_mul, o50), "res://assets/sprites/vfx/bullet.png", Color("#d0ffff"), false, 0, 0.02)
-		var g_acc: float = float(o50.get("gatling_shred_acc", 0.0))
-		if g_acc < g_cap:
-			var g_dec: float = minf(g_shred, g_cap - g_acc)
-			o50["base_def"] = maxf(0.0, o50["base_def"] - g_dec); o50["gatling_shred_acc"] = g_acc + g_dec; battle._recalc_stats(o50)
+		battle._equip_tick_sys.gatling_shred_on_land(u, o50, g_shred, g_cap)
 	battle._queue_shots([20, 30, 60][si], 0.03, fire50, u, "p2eq_050")
 
 func _eq_laser_pistol(u: Dictionary, si: int) -> void:   # 激光手枪051: 每8秒穿透红激光, 首敌满伤+流血, 身后敌半伤半流血
@@ -1352,7 +1355,7 @@ func _eq_grant_energy(u: Dictionary, amount: float) -> void:   # 给龟能=存"�
 
 # 娜美式潮浪(海浪护符043): 朝敌人2D方向的对角潮浪 — 从敌人反方向(身后)400码涌起 → 沿"朝敌人"方向慢速推过全场 → 连续宽浪墙(垂直于行进方向铺开)翻涌 → 命中击飞(用户2026-07-04: 全场横扫+2D对角朝敌)
 func _eq_water_wave(u: Dictionary, si: int) -> void:
-	var enemies = battle._targeting._enemies_of(u)
+	var enemies = battle._targeting._pick_enemies_of(u)
 	var allies = battle._targeting._allies_of(u)
 	var ec: Vector2 = u["pos"] + Vector2(500.0, 0.0)   # 敌人质心(默认右)
 	if not enemies.is_empty():
@@ -1410,7 +1413,8 @@ func _eq_first_in_line(u: Dictionary, dir: Vector2, width: float):
 	return best
 
 func _eq_farthest_enemies(u: Dictionary, half: bool) -> Array:
-	var es = battle._targeting._enemies_of(u)
+	## ★2026-10-16: 挑方向 = 选靶 ⇒ 排训龟大师(原来场外的大师永远最远, 049 一直朝他射)
+	var es = battle._targeting._pick_enemies_of(u)
 	es.sort_custom(func(a, b): return DetMath.len2((a["pos"] - u["pos"])) > DetMath.len2((b["pos"] - u["pos"])))
 	if half:
 		return es.slice(0, maxi(1, es.size() / 2))
@@ -1426,8 +1430,6 @@ func _eq_charge(stt: Dictionary, key: String, amt: float, cap: float, on_full: C
 	else:
 		stt[key] = v
 
-# ============================================================================
-#  on-hit (每段命中后, attacker 视角)
 # ============================================================================
 #  on-hit (每段命中后, attacker 视角)
 # ============================================================================
@@ -1478,7 +1480,8 @@ func _conch_grant_equips(worm: Dictionary, si: int) -> void:
 	var pool: Array = []
 	for it in DataRegistry.phase2_equipment:
 		var c: int = int(it.get("cost", 0))
-		if c == CONCH_COST_MIN or c == CONCH_COST_MAX:
+		## ★2026-10-16: 排除复活海螺自己 —— 它本身是 5 费, 抽到就会「小虫死了再变小虫」无限套娃。
+		if (c == CONCH_COST_MIN or c == CONCH_COST_MAX) and str(it.get("id", "")) != "p2eq_033":
 			pool.append(str(it.get("id", "")))
 	if pool.is_empty():
 		push_warning("[复活海螺] 4/5 费装备池为空 —— 小虫不带装备(不静默塞别的费用)")
@@ -2140,7 +2143,7 @@ func _eq_fire_coral_active(src: Dictionary, si: int) -> void:
 	##   波变长就**多摆几个(整数个)** ⇒ 不需要连续缩放。形状是被约束逼出来的。
 	##   推进走**游戏钟**(`_wait_sim`), 伤害抽成 `_fire_coral_wave_hit()` 供门禁直调。
 	if not src.get("alive", false): return
-	var es = battle._targeting._enemies_of(src)
+	var es = battle._targeting._pick_enemies_of(src)
 	var dir := Vector2.RIGHT
 	if not es.is_empty():
 		var cen := Vector2.ZERO
@@ -2258,9 +2261,11 @@ func _eq_on_target(u: Dictionary, src: Dictionary, dmg: int) -> void:
 					if cur >= hcap and not bool(stt.get("harden_given", false)):
 						if iid == "p2eq_013":   # 013满层: 海胆护盾(特殊紫色) 100/170/250 + 5/12/20%最大生命(用户2026-07-19; 原50/60/80金盾)
 							var _usb: float = float(u.get("shield", 0.0))
+							var _uhb: float = float(u.get("_holyShieldVal", 0.0))
 							# shield-perm-ok: 013 是【特殊护盾】—— 文案写了「该护盾在 10 秒内逐渐衰减」, 下一行的 urchin_sh_rate 就是它自己的衰减机制; 走通用 4 秒过期会变成"第4秒直接归零"与文案不符
 							battle._damage._grant_shield(u, [100.0, 170.0, 250.0][si] + u["maxHp"] * [0.05, 0.12, 0.20][si])
-							var _ugot: float = float(u.get("shield", 0.0)) - _usb   # 实际获盾(经shield_amp/上限后)
+							## ★10-16: 实际获盾(经 shield_amp 后)且扣掉同次转出的盾羁绊圣光盾 —— 否则 10 秒衰减会连圣光盾一起扣
+							var _ugot: float = maxf(0.0, float(u.get("shield", 0.0)) - _usb - maxf(0.0, float(u.get("_holyShieldVal", 0.0)) - _uhb))
 							u["urchin_sh_left"] = _ugot
 							u["urchin_sh_rate"] = _ugot / URCHIN_DECAY   # 10秒内线性衰减完(用户2026-07-19"慢慢衰减")
 							battle._urchin_shield_fx(u)   # 紫刺环+紫字, 与普通金盾区分
@@ -2545,7 +2550,7 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 			for e2 in o.get("equips", []):
 				if str(e2["id"]) == "p2eq_052":
 					var rst: Dictionary = o["eq_state"].get("p2eq_052", {})
-					rst["revolver_bullets"] = mini(REVOLVER_AMMO, int(rst.get("revolver_bullets", 0)) + 1)
+					rst["revolver_bullets"] = mini(REVOLVER_AMMO * EquipStatsApply.eq_copies(o, "p2eq_052"), int(rst.get("revolver_bullets", 0)) + 1)
 					o["eq_state"]["p2eq_052"] = rst
 	# ★这里原来是「064 深渊招魂螺: 友方阵亡 → 额外召一只亡魂」。2026-08-05 用户把 064
 	#   整条重做成【溺者的浮囊】(残血幽灵护盾 + 破盾诅咒爆炸), 新设计里**没有亡魂** ——
@@ -2553,8 +2558,6 @@ func _eq_on_death(u: Dictionary, _killer) -> void:
 	battle._cur_eq_item = ""   # ★分发结束立刻清: 不清的话紧随其后的 _grant_shield/_heal(比如盾羁绊冲击波)
 							   #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
 
-# ============================================================================
-#  HP阈值 (首次<50%) — 深海项链 / 珍珠耳环
 # ============================================================================
 #  HP阈值 (首次<50%) — 深海项链 / 珍珠耳环
 # ============================================================================
@@ -2586,10 +2589,7 @@ func _eq_check_hp_threshold(u: Dictionary) -> void:
 				_eq_start_hot(u, u["maxHp"] * [0.30, 0.60, 1.00][si], EARRING_HOT_SEC)
 				battle._heal_ascend(u)   # 绿光环上浮(045专属, 不复用044)
 				var balls: int = [1, 1, 2][si]
-				var es = battle._targeting._pick_enemies_of(u)
-				for b in range(balls):
-					if es.is_empty(): break
-					var o = es[battle._battle_rng.randi() % es.size()]
+				for o in battle._equip_tick_sys._eq_pick_distinct(u, balls):
 					battle._spawn_fireball(u, o, int(o["maxHp"] * [0.08, 0.17, 0.30][si]), [30, 70, 150][si])
 				fired = true
 	if fired:
@@ -2597,8 +2597,6 @@ func _eq_check_hp_threshold(u: Dictionary) -> void:
 	battle._cur_eq_item = ""   # ★分发结束立刻清: 不清的话紧随其后的 _grant_shield/_heal(比如盾羁绊冲击波)
 							   #   会被误判成"这件装备给的"而白拿 9 档的 20% 转化(实测: 护盾 11 变成 13)
 
-# ============================================================================
-#  周期 tick (每 2.5 秒) — A类回合节拍效果
 # ============================================================================
 #  周期 tick (每 2.5 秒) — A类回合节拍效果
 # ============================================================================

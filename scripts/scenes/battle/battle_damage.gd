@@ -213,6 +213,17 @@ func _apply_damage(u: Dictionary, dmg: int, _col: Color, src = null, bucket: Str
 		u["hp"] = maxf(1.0, u["hp"])
 	battle._blood_rite_refresh(u)   # 剑【血祭】: 血量百分比整数位变了才重算攻击力(无血祭的单位零开销)
 	battle._staff_syn.add_mana(u, float(dmg) * StaffSynergySystem.MANA_FROM_TAKEN)   # 法器: 受伤 ×0.1 涨法力
+	## 龟壳储能 / 潜影「6 秒未受伤」: 原来只在 _apply_damage_from 里记 ⇒ 持续伤害既不储能、也不打断入隐计时(10-16)
+	if u["id"] == "shell" and not is_self and float(dmg) > 0.0:
+		if u.get("shell_phase", "store") == "store":
+			u["store_energy"] = minf(u["maxHp"] * ShellSystem.STORE_CAP_PCT, float(u.get("store_energy", 0.0)) + float(dmg))
+			u["_auraEnergy"] = u["store_energy"]
+		u["shell_last_dmg_t"] = battle._t
+	## 熔岩怒气: 文案「造成伤害与承受伤害」不分来源, 原来只在 _apply_damage_from 里攒 ⇒ 灼烧 / 中毒 / 真伤都不算(10-16 第二批核查)。
+	if u["id"] == "lava" and not u.get("volcano", false) and not is_self:
+		u["rage"] = minf(battle.RAGE_MAX, float(u.get("rage", 0.0)) + float(dmg) * LavaSystem.RAGE_GAIN_PCT)
+	if src is Dictionary and str(src.get("id", "")) == "lava" and not src.get("volcano", false) and not is_same(src, u):
+		src["rage"] = minf(battle.RAGE_MAX, float(src.get("rage", 0.0)) + float(dmg) * LavaSystem.RAGE_GAIN_PCT)
 	# 无头龟·亡灵免死锁血: 另一条路有(deathfloor_until), 这条路没有 → 免死光环亮着人被 DOT 烧死
 	## ★2026-10-11 全项目通读第六条: 亡灵的【首次触发】原来只写在 _apply_damage_from ⇒ 第一下致命伤来自 DoT/真伤
 	##   就直接死(下面的锁血只管已经触发过的)。两条路同一写法(CLAUDE.md §3.3, 门禁 verify_headless_rage_once)。
@@ -518,7 +529,7 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 			ThornCut.on_reflect(u, src, battle._t)   # 带 015 的单位: 任何来源的反伤都削目标 3 秒治疗强度/护盾强度(没带=空操作)
 	# 凤凰熔岩盾: 持盾窗口内对每段攻击反击 LAVA_RETALIATE×ATK 魔法 (from_equip守卫防循环)
 	# ★注释原写"5秒"是过期的 —— 真值是 PhoenixSystem.LAVA_SHIELD_SEC(4 秒·与护盾同步)。
-	if u["id"] == "phoenix" and battle._t < float(u.get("lava_shield_until", 0.0)) and not is_same(src, u) and src.get("alive", false) and not from_equip and dmg > 0:
+	if u["id"] == "phoenix" and battle._t < float(u.get("lava_shield_until", 0.0)) and float(u.get("shield", 0.0)) > 0.0 and not is_same(src, u) and src.get("alive", false) and not from_equip and dmg > 0:
 		_apply_damage_from(u, src, battle._atk_dmg(u, PhoenixSystem.LAVA_RETALIATE, src, true), Color("#ff7a3c"), 0.0, false, true)
 	# 闪电雷盾: 盾在时对每段攻击反击 0.3×ATK 魔法(用户2026-07-29 平衡四轮: 0.1→0.3) + 给攻击者叠1层电击
 	if u["id"] == "lightning" and battle._t < float(u.get("thunder_shield_until", 0.0)) and float(u.get("shield", 0.0)) > 0.0 and not is_same(src, u) and src.get("alive", false) and not from_equip and dmg > 0:
@@ -910,7 +921,7 @@ func _heal_flush(u: Dictionary) -> void:   # LoL式: 治疗累加器→静默0.1
 func is_controlled(u) -> bool:
 	if not (u is Dictionary):
 		return false
-	return battle._t < float(u.get("stun_until", 0.0)) or battle._t < float(u.get("channel_until", 0.0)) or bool(u.get("airborne", false))
+	return battle._t < float(u.get("stun_until", 0.0)) or battle._t < float(u.get("channel_until", 0.0)) or bool(u.get("airborne", false)) or bool(u.get("_assembling", false))
 
 
 func _is_cc_immune(u) -> bool:
@@ -958,6 +969,22 @@ func _buff_refresh(u: Dictionary, stat: String, amount: float, pct: bool, tag: S
 			return
 	u["buffs"].append({"stat": stat, "amount": amount, "pct": pct, "until": battle._t + sec, "tag": tag})
 	battle._recalc_stats(u)
+
+
+## 冰寒(spd_move_mult / spd_aspd_mult / spd_dbf_until)的唯一写入口。
+## 2026-10-16 第二批龟核查: 竹子 / 水晶刺 / 龟壳燃烧区 / 寒冰药瓶各自直接覆盖这三个字段 ⇒
+##   后来的弱冰寒把先前的强冰寒冲掉, 只写移速的那条还会把别人留下的攻速减益续上整段时长。
+##   ⇒ 冰寒仍生效时各项取更强(更小)的那个, 时长取更晚的那个; 已过期就从头写。
+## 只管减益: 增益(凤凰迅捷 / 熔岩暴走)走 move_buff_mult 与 haste_mult, 不进这里。
+func apply_chill(o: Dictionary, move_mult: float, aspd_mult: float, sec: float) -> void:
+	if battle._t < float(o.get("spd_dbf_until", 0.0)):
+		o["spd_move_mult"] = minf(float(o.get("spd_move_mult", 1.0)), move_mult)
+		o["spd_aspd_mult"] = minf(float(o.get("spd_aspd_mult", 1.0)), aspd_mult)
+		o["spd_dbf_until"] = maxf(float(o.get("spd_dbf_until", 0.0)), battle._t + sec)
+	else:
+		o["spd_move_mult"] = move_mult
+		o["spd_aspd_mult"] = aspd_mult
+		o["spd_dbf_until"] = battle._t + sec
 
 # 层数式 DoT 施加 (1:1 dot.gd apply_stacks). type∈[burn,poison,bleed]; 多次施加→累加层数. burn 检免疫.
 ## 诅咒每秒伤害 = 目标最大生命 × 这个比例(所有诅咒源统一: 幽灵/无头触须/彩虹)
@@ -1025,6 +1052,8 @@ func _dot_after_resist(u: Dictionary, dmg: float, magic: bool, src = null) -> in
 	##   (探针实测 50% 减伤与 0% 减伤掉血一样), 只有直接伤害在 _resolve_dmg 里吃。与直接伤害同一个封顶(DR_CAP 90%)。
 	##   ⚠ 别挪到 _mitigate_incoming: 直接伤害在 _resolve_dmg 已乘过一次, 放那里会重复扣。
 	out *= DamageMath.dr_mult(float(u.get("damage_reduction", 0.0)))
+	if magic and str(u.get("id", "")) == "crystal":
+		out *= CrystalSystem.MAGIC_DR_MULT   # 结晶共鸣「受到的魔法伤害」不分直接 / 持续(10-16: 原来只在 _resolve_dmg 里减)
 	_dt_resolved = true                                    # 哨兵第三只眼: 这一段真算过抗性
 	return maxi(1, int(round(out)))
 

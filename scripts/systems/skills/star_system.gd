@@ -62,6 +62,13 @@ func _init(b) -> void:
 const WORMHOLE_LOCK_FALLBACK := 25.0
 
 
+## 施法后追加真伤 = 施法【前】星能 × ENERGY_TRUE_PCT(用户 2026-07-16: 30%→12%)。
+## ★按施法前的储量: 强化星波 / 扭曲空间施放即清空星能, 原来按施法后读, 追加恒为 0(10-16 第二批核查)。
+func after_cast(u: Dictionary, tgt, se0: float) -> void:
+	if se0 > 0.0 and tgt is Dictionary and tgt.get("alive", false):
+		battle._damage._apply_damage_from(u, tgt, int(se0 * ENERGY_TRUE_PCT), Color("#ffffff"), 0.0, true)
+
+
 func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭曲空间「奇点」(封板数值不动: 普通=敌阵中心500码全体0.8A魔法; 强化星能满=+过中心镜像换位(落点=center*2-pos, 钳进 ARENA)+清空星能; 120龟能)
 	# 演出重设计照发条R官方逐帧(C:/tmp/ori_burst: b13施放三件套/b13-b24吸入0.37s/b25-27屏息/b28爆发帧/b29-b34拉拽0.2s)·星际×2放慢换算
 	# 用户2026-07-16批准: 伤害挪到爆发帧结算+施法锁(技2先例); 同日整改: ①普通版施法可积攒星能·强化版才锁星能 ②强化换位=重力抛物线甩飞过中心点落对端·落地即恢复行动("延中心点到对端") ③特效范围=伤害范围500码对齐 ④节奏再减慢30%→吸入1.03s/爆发帧1.24s/拉拽0.57s
@@ -72,7 +79,7 @@ func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭�
 	var center := Vector2.ZERO
 	for o in es: center += o["pos"]
 	center /= float(es.size())
-	var charged: bool = float(u.get("star_energy", 0.0)) >= u["maxHp"] * 0.40   # 星能满→强化
+	var charged: bool = float(u.get("star_energy", 0.0)) >= u["maxHp"] * ENERGY_CAP_PCT   # 星能满→强化
 	var uu := u
 	u["energy_lock_until"] = maxf(float(u.get("energy_lock_until", 0.0)), battle._t + 2.4)   # 施法锁龟能(爆发/拽完提前恢复·兜底防永锁)
 	if charged:
@@ -322,7 +329,7 @@ func _sk_star_gravity_warp(u: Dictionary) -> void:             # 星际龟·扭�
 	master.tween_callback(do_burst)
 
 func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·星波(封板数值·2026-07-16演出重设计"星潮扩散/天崩"): 普通=扩散环1.16s波扫到才结算1.0A魔法; 星能满追加巨彗星敌阵中心【真伤=100%消耗的星能】(落地结算·400码)+清空星能
-	var charged: bool = float(u.get("star_energy", 0.0)) >= u["maxHp"] * 0.40
+	var charged: bool = float(u.get("star_energy", 0.0)) >= u["maxHp"] * ENERGY_CAP_PCT
 	var uu2 := u
 	var origin: Vector2 = u["pos"]
 	u["energy_lock_until"] = maxf(float(u.get("energy_lock_until", 0.0)), battle._t + (3.2 if charged else 1.8))   # 施法锁龟能(用户2026-07-16)·②③提前恢复
@@ -426,7 +433,7 @@ func _sk_star_wave(u: Dictionary) -> void:                       # 星际龟·�
 				wt3.tween_property(ws3, "position", battle._world_pos(origin + Vector2(DetMath.dcos(wa3), DetMath.dsin(wa3)) * 580.0, 0.1), 0.6).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 				wt3.tween_property(ws3, "modulate:a", 0.0, 0.6)
 				wt3.chain().tween_callback(ws3.queue_free))
-	battle._pending_shots.append({"delay": 0.4, "fn": wave, "src": u})
+	battle._pending_shots.append({"delay": 0.4, "fn": wave, "src": u, "cc": {}})   # 起手期被控 / 阵亡即取消(10-16)
 	if charged:                                                   # ── 强化: 巨彗星「天崩」(逐帧订正asol_hi a30/a38/a44)
 		var es: Array = []
 		for o in battle._targeting._pick_enemies_of(u):   # ★10-11 A3: 选落点/目标走 _pick_enemies_of(排除站在岛外的大师, §PICK-TARGET); 结算仍按范围扫到谁算谁
@@ -818,4 +825,4 @@ func _sk_star_wormhole(u: Dictionary, tgt) -> void:                # 星际龟·
 		var tw = battle._reg_tween()
 		tw.tween_method(step, 0.0, end_d, end_d / 140.0).set_trans(Tween.TRANS_LINEAR)   # 140码/s推进到边界
 		tw.chain().tween_callback(boom)
-	battle._pending_shots.append({"delay": WORM_WINDUP, "fn": fire, "src": u})   # 蓄力→发射
+	battle._pending_shots.append({"delay": WORM_WINDUP, "fn": fire, "src": u, "cc": {}})   # 蓄力→发射; 蓄力期被控 / 阵亡即取消(10-16)

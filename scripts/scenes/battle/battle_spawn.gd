@@ -695,7 +695,7 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 				u["chest_greed"] = true
 				u["chest_greed_atk_unit"] = u["base_atk"] * ChestSystem.GREED_ATK_PER_EQ
 				u["chest_greed_hp_unit"] = u["maxHp"] * ChestSystem.GREED_HP_PER_EQ
-				battle._chest_sys._chest_greed_apply(u, (u.get("equips", []) as Array).size())   # 登场先按已带装备数结算
+				battle._chest_sys._chest_greed_apply(u, (u.get("equips", []) as Array).size() + (u.get("chest_treasures", {}) as Dictionary).size())   # 登场先按已带装备数 + 本轮已开出的战利品结算(10-16: 战利品在上面先回装, 那时贪婪还没开, 原来漏算)
 		"hiding":
 			_spawn_hiding_minion(u)
 		"cyber":

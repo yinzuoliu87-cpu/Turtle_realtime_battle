@@ -138,7 +138,7 @@ func _compute_special_bars(f: Dictionary) -> Array:
 	elif pt == "stoneWall":
 		var gained := float(f.get("_stoneDefGained", 0))
 		var initdef := float(f.get("_initDef", f.get("baseDef", f.get("def", 1))))
-		var pct := float(passive.get("maxDefInitPct", 100)) if passive is Dictionary else 100.0
+		var pct := StoneSystem.BULWARK_CAP_PCT * 100.0   # 10-16: 原读 pets.json 旧字段 maxDefInitPct(早已不是真值)
 		var maxcap := roundf(initdef * pct / 100.0)
 		out.append({"frac": gained / maxf(1.0, maxcap), "bg": Color8(0xff, 0xc8, 0x50), "fill": Color8(0xff, 0xd4, 0x5c), "bga": 0.22, "fa": 0.85})
 	return out

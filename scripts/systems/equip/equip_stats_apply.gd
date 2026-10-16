@@ -15,6 +15,16 @@ func _init(b) -> void:
 ##   中毒期间压载层一变, 缓速被抹掉; 先中毒再首次同步压载层, 毒清后留下永久减速。
 ## ⇒ 各件只写自己的倍率字段, 由这一处乘出来。`_mp_base` 在第一次合成时记下(那时还没有任何动态倍率)。
 ## ★以后再有「战斗中改 move_perm」的效果, 加一个 `_mp_xxx` 字段并走这里, 别再整体改写。
+## 某单位身上【这件装备有几件】(至少按 1 算)。eq_state 按装备 id 只有一槽 ⇒
+## 多件共槽的计数类(052 子弹)要按件数放大初值与上限(2026-10-16)。
+static func eq_copies(u: Dictionary, iid: String) -> int:
+	var n: int = 0
+	for e in u.get("equips", []):
+		if e is Dictionary and str((e as Dictionary).get("id", "")) == iid:
+			n += 1
+	return maxi(1, n)
+
+
 static func recompose_move_perm(u: Dictionary) -> void:
 	if not u.has("_mp_base"):
 		u["_mp_base"] = float(u.get("move_perm", 1.0))
@@ -222,7 +232,8 @@ func _eq_apply_flags(u: Dictionary, item_id: String, star: int) -> void:
 		"p2eq_039":   # 竹制弓箭: 生长充能数 (6/10/15 次·用户2026-07-19 从 1/1/3 提上来)
 			stt["bamboo_charges"] = [6, 10, 15][si]   # 用户2026-07-19: 1/1/3 → 6/10/15 (一局重置: eq_state每场重建)
 		"p2eq_052":   # 左轮: 6发子弹
-			stt["revolver_bullets"] = EquipSystem.REVOLVER_AMMO
+			## ★2026-10-16: 多把左轮共用 eq_state 一槽 ⇒ 弹数按件数放大(原来两把共 6 发, 等于第二把没带弹)
+			stt["revolver_bullets"] = EquipSystem.REVOLVER_AMMO * eq_copies(u, "p2eq_052")
 		"p2eq_027":   # 电棍: 3/4/5 层电击(逐星)
 			stt["baton_charges"] = [3, 4, 5][si]
 		"p2eq_058":   # 穿甲遗弹(重做·用户2026-07-19): 登场召唤炮台 (延到首帧spawn, 同032)

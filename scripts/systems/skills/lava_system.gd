@@ -35,6 +35,8 @@ const ERUPT_ENERGY := 80.0   # ★与 skill_energy.gd 的 "lavaErupt" 同值;
 ## ★怒气获取比例(2026-08-22 文案根除): 造成/承受伤害各按此比例转怒气。
 ##   原来是 `battle_damage.gd` 里两个裸 0.10, 文案又手写"10%" ⇒ 三份副本。
 const RAGE_GAIN_PCT := 0.10
+## 岩浆涌动 / 重击的蓄力时长(秒)。期间被控即取消(原来是 tween 等 0.5 秒, 到点无条件砸下)。
+const CAST_WINDUP := 0.5
 ## 火山形态的近战射程(码)。原来是 `_lava_volcano_form` 里的裸 70.0。
 ## 【熔岩弹(普攻)】两形态两套数, 都写在【主场景】的普攻表里(那里引用本组常量)。
 const BOLT_MAGIC := 0.6         # 远程形态: ×ATK 魔法
@@ -107,8 +109,10 @@ func _tick_lava_zones(_delta: float) -> void:   # 每帧: 周期结算池内敌 
 						continue
 					## 每跳 = ATK×QUAKE_ATK_COEF + 目标maxHp×QUAKE_TGT_HP, 两段一起吃魔抗(魔法)
 					battle._damage._apply_damage_from(src, o, _quake_tick_dmg(src, o), Color("#ff7a33"))
-					o["slow_until"] = maxf(float(o.get("slow_until", 0.0)), battle._t + 0.6); o["slow_mag"] = 0.65   # 地裂减速35%(move×0.65·用户2026-07-09"35"·≥0.6s续)
-					battle._damage._buff(o, "mr", -QUAKE_MR_DOWN, true, 0.6)                                              # 魔抗-30% (每跳刷新)
+					## 减速取更强: 原来直接写 slow_mag=0.65, 会把别人给的更强减速冲淡(10-16)
+					var _qs: float = float(o.get("slow_mag", 1.0)) if battle._t < float(o.get("slow_until", 0.0)) else 1.0
+					o["slow_until"] = maxf(float(o.get("slow_until", 0.0)), battle._t + QUAKE_TICK_SEC + 0.1); o["slow_mag"] = minf(_qs, 1.0 - QUAKE_SLOW_PCT)   # 地裂减速35%(用户2026-07-09"35")
+					battle._damage._buff_refresh(o, "mr", -QUAKE_MR_DOWN, true, "lava_quake_mr", QUAKE_TICK_SEC + 0.1)   # 魔抗-30%, 同源只留一条(10-16: 原来每跳追加, 两跳重叠的 0.1 秒里是 -60%)
 		if battle._t >= float(z["until"]):
 			var disc = z.get("disc", null)
 			if disc != null and is_instance_valid(disc):
@@ -175,6 +179,10 @@ func _lava_volcano_erupt(u: Dictionary) -> void:                 # 火山·火�
 	tt.tween_property(tel, "modulate:a", 0.42, 0.18)
 	tt.tween_interval(0.42)
 	await tt.finished
+	if not is_instance_valid(battle): return
+	if not u.get("alive", false) or battle._damage.is_controlled(u):   # 预警期被打断(10-16)
+		if is_instance_valid(tel): tel.queue_free()
+		return
 	# 2) 浪头飞沫 (GPUParticles3D·点缀): 随波前移动; 主体=下方shader浪丘
 	var wave := GPUParticles3D.new()
 	wave.amount = 220
@@ -312,7 +320,7 @@ func _lava_volcano_erupt(u: Dictionary) -> void:                 # 火山·火�
 				continue                                          # 波前尚未扫到
 			hit.append(o)                                         # 命中一次 (each-once; 用 Array 不用 Dictionary-key, 见下方注释)
 			_lava_burst_vfx(o["pos"])                             # 命中飞溅(娜美R观察: 每敌一团泡沫飞溅·浪不停穿过)
-			if not o.get("airborne", false) and not o.get("_knock_immune", false):                      # 击飞+击退加强(用户2026-07-15: vy 4→6·推力×1.6)
+			if not o.get("airborne", false) and not o.get("_knock_immune", false) and not battle._damage._is_cc_immune(o):                      # 击飞+击退加强(用户2026-07-15: vy 4→6·推力×1.6)
 				o["airborne"] = true
 				o["vy"] = 6.0
 				o["vx"] = tdir.x * battle.KNOCK_PUSH * 1.6
@@ -377,8 +385,11 @@ func _lava_magma_surge(u: Dictionary, tgt: Dictionary) -> void:  # 小·岩浆�
 	cg.parallel().tween_property(glow, "scale", Vector3(1.6, 1.6, 1.6), 0.5)
 	cg.tween_property(glow, "modulate:a", 0.0, 0.15)
 	cg.chain().tween_callback(glow.queue_free)
-	var charge = battle._reg_tween(); charge.tween_interval(0.5)
-	await charge.finished
+	await battle._wait_sim(CAST_WINDUP, u)
+	if not is_instance_valid(battle): return
+	if not u.get("alive", false) or battle._damage.is_controlled(u):   # 蓄力被打断(10-16 被控规则)
+		u["_slam"] = false
+		return
 	# 目标可能中途死亡 → 在原落点继续演出/给盾, 不强求命中
 	if tgt != null and tgt.get("alive", false):
 		center = tgt["pos"]
@@ -437,8 +448,11 @@ func _lava_flame_strike(u: Dictionary, tgt: Dictionary) -> void: # 火山·重�
 	cg.parallel().tween_property(glow, "scale", Vector3(1.8, 1.8, 1.8), 0.5)
 	cg.tween_property(glow, "modulate:a", 0.0, 0.15)
 	cg.chain().tween_callback(glow.queue_free)
-	var charge = battle._reg_tween(); charge.tween_interval(0.5)
-	await charge.finished
+	await battle._wait_sim(CAST_WINDUP, u)
+	if not is_instance_valid(battle): return
+	if not u.get("alive", false) or battle._damage.is_controlled(u):   # 蓄力被打断(10-16 被控规则)
+		u["_slam"] = false
+		return
 	# 2) 猛砸: 击飞目标 + 震屏顿帧 + (已正确的)伤害
 	battle._shake(battle.JUICE_SHAKE_BIG); battle._add_hitstop(battle.JUICE_HITSTOP_KNOCK)
 	if tgt != null and tgt.get("alive", false):
@@ -658,7 +672,7 @@ func _lava_slam_impact(u: Dictionary, center: Vector2) -> void:   # 落地: 击�
 	for o in battle._targeting._enemies_of(u):
 		if not o.get("alive", false): continue
 		if DetMath.vlen((o["pos"] - center)) > battle.LAVA_SLAM_RADIUS: continue
-		if not o.get("airborne", false) and not o.get("_knock_immune", false):
+		if not o.get("airborne", false) and not o.get("_knock_immune", false) and not battle._damage._is_cc_immune(o):
 			var dir: Vector2 = (o["pos"] - center)
 			dir = DetMath.norm(dir) if DetMath.vlen(dir) > 0.1 else Vector2.RIGHT
 			o["airborne"] = true
@@ -691,10 +705,8 @@ func _sk_lava_erupt(u: Dictionary, tgt) -> void:                # 熔岩龟·技
 		u["_lava_ult_hp"] = float(u.get("_lava_ult_hp", 0.0)) + gain
 		u["maxHp"] += gain; u["hp"] += gain
 		u["haste_mult"] = RAMPAGE_HASTE_MULT; u["haste_until"] = battle._t + RAMPAGE_SEC        # +30%攻速
-		u["spd_move_mult"] = RAMPAGE_SPD_MULT; u["spd_dbf_until"] = battle._t + RAMPAGE_SEC   # +30%移速
-		var tw = battle._reg_tween()
-		tw.tween_interval(5.0)
-		tw.tween_callback(_lava_ult_revert.bind(u))
+		u["move_buff_mult"] = RAMPAGE_SPD_MULT; u["move_buff_until"] = battle._t + RAMPAGE_SEC   # +30%移速(移速增益通道, 不借冰寒字段)
+		battle._pending_shots.append({"delay": RAMPAGE_SEC, "src": u, "fn": _lava_ult_revert.bind(u)})
 		battle._skill_ring(u["pos"], Color(1.0, 0.4, 0.1, 0.6), 62.0); battle._vfx._flash(u, Color(1.6, 0.9, 0.4))
 		return
 	var danger: bool = u["hp"] < u["maxHp"] * 0.35

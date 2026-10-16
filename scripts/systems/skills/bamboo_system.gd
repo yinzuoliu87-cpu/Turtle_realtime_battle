@@ -118,7 +118,7 @@ func _sk_bamboo_smack(u: Dictionary, tgt) -> void:              # 竹叶龟·竹
 	if not far.get("_eggImmune", false):                        # 蛋/免控只吃伤
 		battle._damage._stun(far, SMACK_STUN, "_sk_bamboo_smack")
 		battle._damage._buff(far, "atk", -SMACK_CHILL_DOWN, true, SMACK_CHILL_SEC)                     # 冰寒-20%攻4秒
-		far["spd_move_mult"] = SMACK_CHILL_MULT; far["spd_dbf_until"] = battle._t + SMACK_CHILL_SEC   # 冰寒-20%移速4秒
+		battle._damage.apply_chill(far, SMACK_CHILL_MULT, 1.0, SMACK_CHILL_SEC)   # 冰寒-20%移速4秒
 		battle._hitstop = maxf(battle._hitstop, 0.05)                          # 抓住瞬间小顿(用户2026-07-11: 拽住得顿一下)
 		var ff = far
 		var uu = u
@@ -130,7 +130,7 @@ func _sk_bamboo_smack(u: Dictionary, tgt) -> void:              # 竹叶龟·竹
 			battle._bolt_line(uu["pos"], ff["pos"], Color(0.22, 0.83, 0.33))   # 收藤(收线感)
 			battle._vfx._impact_particles(ff["pos"], float(ff.get("height", 0.0)))
 			battle._skill_ring(uu["pos"], Color(0.22, 0.83, 0.33, 0.4), 54.0)   # 拉到脸上落点环
-		battle._pending_shots.append({"delay": 0.2, "src": u, "fn": pull_fn})
+		battle._pending_shots.append({"delay": 0.2, "src": u, "fn": pull_fn, "cc": {}})   # 拽之前被控 / 阵亡就不拽了(10-16)
 
 func _sk_bamboo_spikes(u: Dictionary, tgt) -> void:            # 竹叶龟·竹刺阵(用户封板·130龟能·科加斯Q式): 当前目标为心300码·蓄力0.6s→竹刺·90%A+15%maxHp物理·击飞1.5s
 	if tgt == null: return
@@ -144,17 +144,21 @@ func _sk_bamboo_spikes(u: Dictionary, tgt) -> void:            # 竹叶龟·竹�
 			battle._spawn_bamboo_spike(c + Vector2(DetMath.dcos(ang), DetMath.dsin(ang)) * rr, randf_range(0.85, 1.3), 0.5)
 		for o in battle._targeting._enemies_of(uu):
 			if o.get("alive", false) and DetMath.dist(o["pos"], c) <= SPIKE_RADIUS:
-				battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, SPIKE_ATK_COEF, o) + int(uu["maxHp"] * SPIKE_MAXHP_PCT), Color("#39d353"))
+				battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, SPIKE_ATK_COEF, o) + battle._phys_after_armor(uu, float(uu["maxHp"]) * SPIKE_MAXHP_PCT, o), Color("#39d353"))   # 10-16: 生命值那段原来裸加, 不过护甲
 				battle._spawn_bamboo_spike(o["pos"], 1.5, 0.5)   # 命中点更粗一根竹刺
 				if not o.get("_eggImmune", false):
 					battle._damage._knockback(uu, o, 70.0, 2.75)                # 击飞【1.5秒】(用户#12"击飞1.5秒"·滞空=2×(6.0×2.75)/22=1.5s·原vy_mult=1.5只给0.82s)
 		battle._shake(0.06)
 		battle._hitstop = maxf(battle._hitstop, 0.05)
 	battle._skill_ring(c, Color(0.22, 0.83, 0.33, 0.4), SPIKE_RADIUS)         # 蓄力预警圈
-	battle._pending_shots.append({"delay": SPIKE_WINDUP, "fn": spikes, "src": u})
+	battle._pending_shots.append({"delay": SPIKE_WINDUP, "fn": spikes, "src": u, "cc": {}})   # 蓄力期被控 / 阵亡即取消(10-16)
 
 func _sk_bamboo_heal(u: Dictionary) -> void:                     # 竹叶龟·自然恢复 ✅
-	var allies = battle._targeting._allies_of(u, false)
+	## 队友 = 场上的龟(不含训龟大师、龟蛋、召唤物): 原来它们都算 ⇒ 大师永远在场, 「无队友」那一档从来触发不了(10-16)。
+	var allies: Array = []
+	for o in battle._targeting._allies_of(u, false):
+		if not o.get("is_trainer", false) and not o.get("_isEgg", false) and not o.get("is_summon", false):
+			allies.append(o)
 	battle._vfx._play_heal_glow(u["pos"])
 	if allies.is_empty():
 		battle._damage._heal(u, u["maxHp"] * REGEN_SOLO)

@@ -12,6 +12,8 @@ const PRISM_PROC_SEC := 5.0
 const PRISM_LIFESTEAL := 0.10    # 橙: 全队 + 生命偷取
 const PRISM_BUFF_SEC := 5.0      # 橙/青/紫 的持续(秒)
 const PRISM_BURN_COEF := 0.67    # 黄: 随机敌灼烧层数 = ×ATK
+const PRISM_CHILL_DOWN := 0.30   # 青: 冰寒降低攻速(语义值)
+const PRISM_CHILL_ASPD := 1.0 - PRISM_CHILL_DOWN   # 推导: 代码要的剩余倍率
 const PRISM_SHIELD_SCALE := 1.0     # 棱镜护盾: 每人 ×ATK 护盾 (0.65→1.0)
 ## 【全色风暴】自身周围的持续区域, 每跳打伤害 + 削双抗 + 治友军。
 const STORM_SEC := 4.0              # 风暴持续(秒)·期间锁龟能不被打断
@@ -75,7 +77,7 @@ func _rainbow_enh_prism_proc(u: Dictionary) -> void:          # 强化棱镜4色
 		2:
 			if not es.is_empty():
 				var t2 = es[battle._battle_rng.randi() % es.size()]
-				t2["spd_aspd_mult"] = 0.7; t2["spd_dbf_until"] = battle._t + PRISM_BUFF_SEC   # 冰寒-30%攻速5秒
+				battle._damage.apply_chill(t2, 1.0, PRISM_CHILL_ASPD, PRISM_BUFF_SEC)   # 冰寒-30%攻速5秒(走统一入口: 原来直接覆盖, 会把别人给的移速冰寒续上 5 秒)
 		3:
 			if not es.is_empty():
 				var t3 = es[battle._battle_rng.randi() % es.size()]
@@ -132,8 +134,8 @@ func _rainbow_storm_tick(u: Dictionary, center: Vector2, radius: float, ti: int)
 		if not o.get("alive", false):
 			continue
 		if DetMath.dist(o["pos"], center) <= radius:
-			battle._damage._buff(o, "def", -STORM_SHRED, true, 0.65)   # 圈内-20%护甲
-			battle._damage._buff(o, "mr", -STORM_SHRED, true, 0.65)    # 圈内-20%魔抗
+			battle._damage._buff_refresh(o, "def", -STORM_SHRED, true, "rainbow_storm_def", STORM_TICK_SEC + 0.15)   # 圈内-20%护甲(同源只留一条·10-16: 原来每跳追加一条, 0.65 秒窗口里叠到 -40%)
+			battle._damage._buff_refresh(o, "mr", -STORM_SHRED, true, "rainbow_storm_mr", STORM_TICK_SEC + 0.15)    # 圈内-20%魔抗
 			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, STORM_MAGIC_COEF, o, true), Color("#ff8ad8"))
 			battle._damage._apply_damage_from(u, o, int(u["atk"] * STORM_TRUE_COEF), Color("#fff0a0"), 0.0, true)   # 8跳共0.8魔+0.4真=原值
 			battle._storm_shred(o)   # ★碎甲: 把"削护甲魔抗"可视化
@@ -233,6 +235,7 @@ func _sk_rainbow_reflect(u: Dictionary) -> void:               # 彩虹龟·反�
 		var tw = battle._reg_tween()
 		tw.tween_interval(float(i) * 0.22)      # 逐段错峰=看得见弹射依次跳(0.09→0.22减慢·用户2026-07-14)
 		tw.tween_callback(func() -> void:
+			if not u.get("alive", false) or battle._damage.is_controlled(u): return   # 弹射途中彩虹龟阵亡 / 被控: 剩下几段不再发(10-16)
 			battle._beam_vfx("res://assets/sprites/vfx/fx-energy-beam.png", from_p, tp, 30.0, Color(_col.r, _col.g, _col.b, 0.9), 0.55, 0.9)   # 棱镜反射光束(当跳色·时长0.3→0.55更慢更看得清)
 			if _ally:
 				if tref.get("alive", false): battle._damage._heal(tref, u["atk"] * REFLECT_COEF)

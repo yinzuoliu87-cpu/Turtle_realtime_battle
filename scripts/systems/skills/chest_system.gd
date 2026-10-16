@@ -340,7 +340,7 @@ func _sk_chest_cannon(u: Dictionary, tgt) -> void:              # 技三·财宝
 			pt.tween_callback(pk.queue_free)
 	battle._muzzle_flash(u["pos"], dir, Color("#ffd93d"))
 	battle._anticipate(u)
-	battle._pending_shots.append({"delay": 0.4, "fn": fire, "src": u})
+	battle._pending_shots.append({"delay": 0.4, "fn": fire, "src": u, "cc": {}})   # 蓄力期被控 / 阵亡即取消(10-16)
 
 func _sk_chest_storm(u: Dictionary, tgt) -> void:              # 技二·财宝风暴(2026-07-16重做·照Janna Q龙卷j006形成/j012风柱/j018螺旋盘): 金币龙卷风; 判定不变(400码·5跳各0.2A物理)
 	if tgt == null: tgt = battle._targeting._nearest_enemy(u)

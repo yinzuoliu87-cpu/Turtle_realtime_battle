@@ -744,7 +744,8 @@ func _hh_self_drive(u: Dictionary, _delta: float) -> void:
 		return                                   # 龟能没满(冷却由引擎 _tick_skill_cd 扣, 不是我自己扣)
 	if battle._t < float(u.get("skill_gcd_until", 0.0)):
 		return
-	if battle._t < float(u.get("stun_until", 0.0)) or u.get("airborne", false):
+	## ★10-16: 被控判据统一走 is_controlled(眩晕 / 击飞 / 施法定身 / 组装期), 原来只认前两样
+	if battle._damage.is_controlled(u):
 		return
 	var tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null or not (tgt as Dictionary).get("alive", false):

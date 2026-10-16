@@ -111,7 +111,7 @@ func hand_out(u: Dictionary, si: int) -> int:
 	var foes: Array = []
 	var my_side: String = str(u.get("side", ""))
 	for o in battle._units:
-		if o is Dictionary and o.get("alive", false) and str(o.get("side", "")) != my_side 				and not o.get("_isEgg", false):
+		if o is Dictionary and o.get("alive", false) and str(o.get("side", "")) != my_side 				and not o.get("_isEgg", false) and not o.get("is_trainer", false):
 			foes.append(o)
 	if foes.is_empty():
 		return 0

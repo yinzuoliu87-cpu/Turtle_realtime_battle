@@ -358,6 +358,7 @@ frames_for () {
     verify_tutorial_flow_v2) echo 3000 ;;   # 真走一遍新手教程(2026-10-07): 开场演出 2×5 秒按真实时间走(测试钉 60fps) + 五屏; 实测 895 帧
     # tween 捕获物先释放(换路/顿帧/时停 三段): 每推一步 sim 等一帧, 共约 1050 步 ⇒ 给 3000
     verify_tween_capture_lane) echo 3000 ;;
+    verify_ninja_dash_cc) echo 2500 ;;   # 逐帧采样 1200 帧真 sim(2026-10-16): 默认 500 帧会在一半处被掐断, 表现为没打 ALL PASS
     *)             echo 500  ;;
   esac
 }

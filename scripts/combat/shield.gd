@@ -19,6 +19,9 @@ static func absorb(u: Dictionary, d: float) -> float:
 		##   它存在的唯一目的是让到期时能只清这一份、不把永久盾一起抹掉。
 		if float(u.get("shield_timed", 0.0)) > 0.0:
 			u["shield_timed"] = maxf(0.0, float(u["shield_timed"]) - ab)
+		## 013 海胆盾(10 秒线性衰减)也先吃: 原来被打掉的部分不记, 之后的衰减就去扣别人给的护盾(10-16)
+		if float(u.get("urchin_sh_left", 0.0)) > 0.0:
+			u["urchin_sh_left"] = maxf(0.0, float(u["urchin_sh_left"]) - ab)
 	if d > 0.0 and float(u.get("_auraShieldVal", 0.0)) > 0.0:
 		var ab2 := minf(float(u["_auraShieldVal"]), d)
 		u["_auraShieldVal"] = float(u["_auraShieldVal"]) - ab2

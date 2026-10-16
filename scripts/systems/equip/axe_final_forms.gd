@@ -598,8 +598,9 @@ func begin_active(ax: Dictionary) -> String:
 		"holo":
 			ax["_holo_until"] = float(battle._t) + AF.HOLO_PLANT_TIME
 			ax["_holo_next"] = float(battle._t)
-			ax["_holo_dr_bak"] = float(ax.get("damage_reduction", 0.0))
-			ax["damage_reduction"] = maxf(float(ax.get("damage_reduction", 0.0)), AF.HOLO_PLANT_DR)
+			## ★2026-10-16 改成【差量】(同 _ember_apply): 只记实际抬了多少, 到期只扣这么多, 不整值写回
+			ax["_holo_dr_bak"] = maxf(0.0, AF.HOLO_PLANT_DR - float(ax.get("damage_reduction", 0.0)))
+			ax["damage_reduction"] = float(ax.get("damage_reduction", 0.0)) + float(ax["_holo_dr_bak"])
 			## ★★插在地里就不走(2026-09-15 方案书 20260915g「E 的出入」): 结算的圆心是 `ax.pos`,
 			##   斧头若在这 4 秒里走动, 「法阵钉在插地点」与「范围 = 判定」只能二选一。
 			##   走既有的 no_move 通道(主循环在读), 备份/还原同被动 6 蓄力; 普攻不禁(「每次普攻给盾」照常)。
@@ -657,7 +658,7 @@ func _end_holo(ax: Dictionary) -> void:
 	ax.erase("_holo_next")
 	## ★减伤**必须还原** —— 不还原就是个永久 30% 减伤的怪物(被动6踩过同一个坑)
 	if ax.has("_holo_dr_bak"):
-		ax["damage_reduction"] = float(ax["_holo_dr_bak"])
+		ax["damage_reduction"] = maxf(0.0, float(ax.get("damage_reduction", 0.0)) - float(ax["_holo_dr_bak"]))
 		ax.erase("_holo_dr_bak")
 	## ★不许走也要还原(插地期间的 no_move, 同上)
 	if ax.has("_holo_nm_bak"):

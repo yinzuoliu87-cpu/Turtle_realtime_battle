@@ -32,7 +32,7 @@ func _ice_fissure_hit(u: Dictionary, o: Dictionary, si: int) -> void:
 	if not o.get("alive", false):
 		return
 	battle._damage._apply_damage_from(u, o, battle._resolve_dmg(u, float([25, 40, 60][si]), o, true), Color("#bfe9ff"), 0.0, false, true)   # 魔法伤
-	if not o.get("airborne", false) and not o.get("_knock_immune", false):   # 免击飞(017不沉之锚): 直接设airborne会绕过_knockback的守卫(用户2026-07-19"修吧")
+	if not o.get("airborne", false) and not o.get("_knock_immune", false) and not battle._damage._is_cc_immune(o):   # 免击飞(017不沉之锚) / 免控(10-16): 直接设airborne会绕过_knockback的守卫(用户2026-07-19"修吧")
 		o["airborne"] = true; o["vy"] = 6.6; o["vx"] = 0.0; o["vz"] = 0.0   # 竖直击飞~0.6s(2*6.6/22)
 	var fz: float = [1.0, 1.8, 2.5][si]   # freeze dur per star (user 2026-07-03)
 	battle._freeze(o, fz)
@@ -152,7 +152,7 @@ func _ice_bottle_hit(spr: Sprite3D, u: Dictionary, t: Dictionary, si: int) -> vo
 	if is_instance_valid(spr): spr.queue_free()
 	if not t.get("alive", false): return
 	battle._damage._apply_damage_from(u, t, battle._resolve_dmg(u, vial_raw_dmg(u, t, si), t, true), Color("#bfe9ff"), 0.0, false, true)   # magic=true ⇒ 吃魔抗
-	t["spd_move_mult"] = VIAL_MOVE_MULT; t["spd_aspd_mult"] = VIAL_ASPD_MULT; t["spd_dbf_until"] = battle._t + VIAL_CHILL_SEC
+	battle._damage.apply_chill(t, VIAL_MOVE_MULT, VIAL_ASPD_MULT, VIAL_CHILL_SEC)
 	_ice_burst(t["pos"])
 	_frost_puff(t["pos"])
 	battle._shake(0.06)

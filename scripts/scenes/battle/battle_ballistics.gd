@@ -6,6 +6,7 @@ extends RefCounted
 var battle
 ## 延时结算队列的两个【静默丢弃点】记账(探针2026-08-22)
 var _ps_drop_invalid := 0    # 回调失效
+var _ps_cc_cancel := 0       # 蓄力被打断(条目带 cc): 施法者死亡 / 眩晕 / 击飞 ⇒ 整组取消
 var _ps_drop_cleared := 0    # 换路清空队列
 ## 暴击对账(仅 DMGSENTINEL): drift=病的频率(分母) / applied_wrong=修完必须恒 0
 var _crit_drift := 0
@@ -402,13 +403,30 @@ func _step_pending_shots(delta: float) -> void:
 		var s: Dictionary = battle._pending_shots[i]
 		if ts_on and not battle._arr_has_unit(battle._timestop._ts_active, s.get("src")):   # is_same引用比较(Array.has对字典是深比较=053卡死同族; 上轮扫雷因它不是裸标识符而漏网)
 			continue   # 时停: 非active携带者的依次射击冻结
+		## ★蓄力打断(2026-10-16 第二批龟核查): 技能的「蓄力 X 秒后出手」原来到点无条件结算 ⇒ 被晕住、被击飞、甚至死了照样开炮。
+		##   条目带 "cc"(一个共享 Dictionary 当组标记)= 这是施法者自己的后续动作; 等待期间施法者被打断就取消,
+		##   同组后续段一并取消。只认敌方施加的控制(眩晕 / 击飞)与死亡 —— 不认 channel_until(那是施法者给自己上的定身)。
+		if s.has("cc"):
+			var cg: Dictionary = s["cc"]
+			var cs = s.get("src")
+			if bool(cg.get("cancelled", false)) or not (cs is Dictionary) or not cs.get("alive", false) or battle._t < float(cs.get("stun_until", 0.0)) or cs.get("airborne", false):
+				cg["cancelled"] = true
+				battle._pending_shots.remove_at(i)
+				_ps_cc_cancel += 1
+				continue
 		s["delay"] = float(s["delay"]) - delta
 		if float(s["delay"]) <= 0.0:
 			battle._pending_shots.remove_at(i)
 			var fn = s["fn"]
 			if fn is Callable and fn.is_valid():
 				battle._equip_sys.tally.use(s.get("_tl", null))
-				fn.call()
+				if s.has("_copy") and s.get("src") is Dictionary:   # 龟壳复制出来的技能的延后段: 照样按 60% 结算(见 ShellSystem._mark_copy_tail)
+					var _cs: Dictionary = s["src"]
+					battle._copy_fx_mult = float(s["_copy"]); _cs["dmg_out_mult"] = float(s["_copy"])
+					fn.call()
+					battle._copy_fx_mult = 1.0; _cs["dmg_out_mult"] = 1.0
+				else:
+					fn.call()
 				battle._equip_sys.tally.use(_tl0)
 			else:
 				## 静默丢弃点(探针·2026-08-22): 回调失效 ⇒ 演出照演、结算永不发生。

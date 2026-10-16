@@ -2477,11 +2477,8 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 		_equip_sys._eq_summon_turret(u, int(u.get("_turret_si", 0)))
 	if u.get("_slam", false):   # 火山砸地演出中: 锁AI/移动 (height/pos由slam tween驱动)
 		return
-	var stunned: bool = _t < u["stun_until"] or _t < float(u.get("channel_until", 0.0))   # channel = 施法定身(不是眩晕, 见 battle_damage.channel)
-
-	## ★连续冲刺被控即中断剩下的段数(用户 10-16 被控规则「自己看」): 骰子稳定骰子 / 猎人翻滚的逐帧位移排在下方眩晕判断之前,
-	##   原来被晕、定身照冲, 被击飞则悬停到落地后接着冲(骰子还会因超时直接瞬移结算)。钻石滚球文案明写免疫眩晕, 不动。
-	if (u.get("dice_dash_active", false) or u.get("hunter_roll_active", false)) and _damage.is_controlled(u):
+	var stunned: bool = _t < u["stun_until"] or _t < float(u.get("channel_until", 0.0)) or u.get("_assembling", false)   # channel = 施法定身(不是眩晕, 见 battle_damage.channel); _assembling = 机甲组装 / 凤凰涅槃演出期(10-16: 原来免伤却照常走动出手)
+	if (u.get("dice_dash_active", false) or u.get("hunter_roll_active", false)) and _damage.is_controlled(u):   # ★连续冲刺被控即中断剩下的段数(10-16 被控规则): 骰子 / 猎人的逐帧位移排在眩晕判断之前, 原来被晕照冲; 钻石滚球文案写明免疫眩晕, 不动
 		u["dice_dash_active"] = false; u["hunter_roll_active"] = false; u["state"] = "move"
 	# --- 击飞真物理: vy 受重力, height 积分; 横向同时滑 (XZ 像素坐标方向) ---
 	if u["airborne"]:
@@ -2611,6 +2608,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 					u["state"] = "move"   # LoL忠实: 伤害点后立即自由(可动/被分离=orb walk), 无rooted后摇; 后摇=视觉lunge回收+squash不锁移动; 下次普攻等atk_cd(=1/攻速)
 				else:
 					var stype := p.substr(2)
+					var _se0: float = float(u.get("star_energy", 0.0))   # 星能追加按【施法前】的储量: 强化星波 / 扭曲空间施放即清空星能, 原来追加恒为 0(10-16)
 					if u["id"] == "two_head" and stype != "twoHeadFusion":   # 双头双生(用户2026-07-11反序): 龟能满→①先切形态+位移(铺垫)→②顿→③再放该形态技(非收尾)
 						u["skill_cd"][stype] = _skill_cd(u, stype)
 						u["skill_gcd_until"] = _t + SKILL_GCD
@@ -2624,8 +2622,7 @@ func _tick_unit(u: Dictionary, delta: float) -> void:
 						var _tl0: Array = _equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原
 						_equip_sys._eq_on_cast(u, tgt)
 						_equip_sys.tally.pop(_tl0)
-						if u["id"] == "space" and float(u.get("star_energy", 0.0)) > 0.0:   # 星能: 施法后追加12%当前星能真伤(用户2026-07-16: 30%→12%)
-							_damage._apply_damage_from(u, tgt, int(u["star_energy"] * StarSystem.ENERGY_TRUE_PCT), Color("#ffffff"), 0.0, true)
+						if u["id"] == "space": _star_sys.after_cast(u, tgt, _se0)   # 星能: 施法后追加星能真伤
 						if u["id"] == "shell":                   # 潜影: 自己放技能→破隐(下次普攻附破隐bonus)
 							_shell_sys._shell_break_stealth(u)
 					else:
@@ -2648,15 +2645,15 @@ func _tick_skill_cd(u: Dictionary, delta: float) -> void:
 			cds[str(s)] = maxf(0.0, _skill_cd(u, str(s)) - _ie)   # 初始龟能: 满冷却 - 初始龟能折算
 	if _t < float(u.get("stun_until", 0.0)) or _t < float(u.get("channel_until", 0.0)) or u.get("airborne", false) or _t < float(u.get("storm_until", 0.0)) or _t < float(u.get("energy_lock_until", 0.0)):
 		return   # 眩晕/击飞/风暴/显式龟能锁 → 龟能锁定不充(用户)
-	if _t < float(u.get("rock_shield_until", 0.0)) and float(u.get("shield", 0.0)) > 0.0:
-		return   # 石头岩石护盾: 持盾期锁龟能不充能, 盾破/到期即恢复(用户2026-07-11) → 屏障消失=你就知道盾没了
+	if str(u.get("id", "")) == "stone" and _t < float(u.get("rock_shield_until", 0.0)) and float(u.get("shield", 0.0)) > 0.0:
+		return   # 石头岩石护盾(只锁石头自己 —— 10-16: 原来全队拿到盾的友军都被锁龟能, 文案没有这条): 持盾期锁龟能不充能, 盾破/到期即恢复(用户2026-07-11) → 屏障消失=你就知道盾没了
 	if _t < float(u.get("diamond_fortify_until", 0.0)) and float(u.get("shield", 0.0)) > 0.0:
 		return   # 钻石坚不可摧: 持盾期锁龟能不充能, 盾破/到期即恢复(用户2026-07-12·60龟能改制)
 	if _t < float(u.get("gold_shield_until", 0.0)) and float(u.get("shield", 0.0)) > 0.0:
 		return   # 财神金盾: 持盾期锁龟能不充能, 盾破/到期即恢复(用户2026-07-12·梭哈后该技变金盾)
-	if u.get("_bulwark_armed", false) and _t < float(u.get("bulwark_until", 0.0)) and float(u.get("shield", 0.0)) > 0.0:
+	if u.get("_bulwark_armed", false) and _t < float(u.get("bulwark_until", 0.0)) and float(u.get("shield", 0.0)) > float(u.get("_bulwark_floor", 0.0)):
 		return   # 水晶壁垒: 持盾期锁龟能, 盾破/到期→放直线水晶刺后恢复(用户2026-07-16)
-	if _t < float(u.get("hiding_shield_until", 0.0)) and float(u.get("shield", 0.0)) > 0.0:
+	if _t < float(u.get("hiding_shield_until", 0.0)) and float(u.get("shield", 0.0)) > float(u.get("_hiding_floor", 0.0)):
 		return   # 缩头防御特殊盾: 持盾期锁龟能, 盾破/到期即恢复(用户2026-07-17)
 	var _ecm: float = maxf(1.0, float(u.get("echarge_mult", 1.0))) if _t < float(u.get("echarge_until", 0.0)) else 1.0   # 龟能充能加速buff —— 目前【无任何来源】: 天使祝福原有的30%龟能充能已于2026-07-11被用户删除, 此读取分支是残留(留作将来接口)
 	if _t < float(u.get("spd_dbf_until", 0.0)):
@@ -2936,13 +2933,13 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 		_on_basic_hit(u, tgt)
 		return
 	if u["id"] == "headless":       # 撕咬: 1A物理(红) + 3%目标最大生命魔法(蓝·按UI规则); 灵魂强化窗口(用户2026-07-17机制大改): 下3次攻击各额外0.5A魔法+10%当前生命魔法(蓝)+牙齿闭合, 第3下→镰刀横扫
-		_damage._apply_damage_from(u, tgt, _atk_dmg(u, 1.0, tgt), Color("#ff4444"))
+		_damage._apply_basic_hit_from(u, tgt, _atk_dmg(u, 1.0, tgt), Color("#ff4444"))   # 10-16: 标普攻(原来不带 basic ⇒ 只认普攻的装备 / 吸血对撕咬无效)
 		if tgt.get("alive", false): _damage.set_dtype("magic", tgt, null, true); _damage._apply_damage_from(u, tgt, _damage._dot_after_resist(tgt, float(tgt["maxHp"]) * BasicConsts.HEADLESS_BITE_MAXHP, true, u), Color("#9bdcff"))   # 3%maxHp魔法(蓝)·★2026-08-29 改成真吃魔抗: 原来只设类型不走抗性公式=一发画成蓝色的真实伤害(老注释说"由 verify_turtle_balance_r6 焊着"是过期的, 那门禁焊的是冰/糖/龟派, 没碰这条)
 		if int(u.get("headless_soul_stacks", 0)) > 0:              # 灵魂强化: 下3次攻击各附加(用户2026-07-17)
 			u["headless_soul_stacks"] = int(u["headless_soul_stacks"]) - 1
 			if tgt.get("alive", false):
 				_damage._apply_damage_from(u, tgt, _atk_dmg(u, HeadlessSystem.SOUL_ATK_COEF, tgt, true), Color("#9bdcff"))   # 额外0.5A魔法
-				_damage.set_dtype("magic", tgt); _damage._apply_damage_from(u, tgt, int(tgt["hp"] * HeadlessSystem.SOUL_CURHP_PCT), Color("#9bdcff"))          # 额外10%当前生命魔法(同上·只设类型不改数值)
+				if tgt.get("alive", false): _damage._apply_damage_from(u, tgt, _damage._magic_after_mr(u, float(tgt["hp"]) * HeadlessSystem.SOUL_CURHP_PCT, tgt), Color("#9bdcff"), 0.0, false, false, true)   # 额外10%当前生命魔法(10-16: 原来只设类型不过魔抗)
 				_headless_sys._headless_soul_bite(tgt)                            # 像素牙齿闭合命中特效
 			if int(u["headless_soul_stacks"]) <= 0:
 				_headless_sys._headless_scythe(u)                                 # 第3下打完→蓄力→镰刀横扫
@@ -6111,7 +6108,8 @@ func _update_headless_flame(u: Dictionary) -> void:            # 亡灵残血: �
 
 func _tick_bulwark(u: Dictionary) -> void:   # 壁垒监视: 盾到期或被打破→罩碎+朝目标放直线水晶刺(用户2026-07-16)
 	if not u.get("_bulwark_armed", false): return
-	if _t < float(u.get("bulwark_until", 0.0)) and float(u.get("shield", 0.0)) > 0.0: return
+	if _t < float(u.get("bulwark_until", 0.0)) and float(u.get("shield", 0.0)) > float(u.get("_bulwark_floor", 0.0)): return
+	if _damage.is_controlled(u) and u.get("alive", false): return   # 被控时先不放水晶刺, 解控后立即放(10-16)
 	u["_bulwark_armed"] = false
 	u["bulwark_until"] = 0.0
 	var dome = u.get("_bulwark_dome", null)
@@ -6714,7 +6712,7 @@ func _on_basic_hit(u: Dictionary, tgt: Dictionary) -> void:
 		"lightning":
 			_lightning_sys._lightning_electric(u, tgt)   # 普攻主目标叠电击+可引爆(连锁跳由_lightning_hop叠)
 		"crystal":
-			_damage._apply_damage_from(u, tgt, _mitigate(u, tgt["maxHp"] * CrystalSystem.BASIC_MAXHP_MAGIC, tgt, true), Color("#9bdcff"), 0.0, false)   # 水晶刺附1.5%目标最大生命魔法(吃魔抗·封板L559·原折进物理=类型错)
+			_damage._apply_damage_from(u, tgt, _damage._magic_after_mr(u, tgt["maxHp"] * CrystalSystem.BASIC_MAXHP_MAGIC, tgt), Color("#9bdcff"), 0.0, false, false, true)   # 10-16: 定额段不掷暴击(原走 _mitigate 与物理段各掷一次)   # 水晶刺附1.5%目标最大生命魔法(吃魔抗·封板L559·原折进物理=类型错)
 			_crystal_sys._crystal_stack(u, tgt, CrystalSystem.BASIC_STACKS)   # 普攻叠1层结晶(满5引爆·封板)·与水晶球共享层数走同一helper(引爆改吃魔抗)
 		"angel":                                          # 审判: 每段攻击额外 +目标当前HP 8% 魔法(2026-07-22订正: 注释原写11%, 代码一直是 0.08)
 			_damage._apply_damage_from(u, tgt, _mitigate(u, tgt["hp"] * AngelSystem.JUDGE_CURHP, tgt, true), Color("#9be7ff"), 0.0, false)   # 魔法(吃魔抗+蓝字), 原flat固定值绕魔抗+错色=bug
@@ -6805,7 +6803,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 			u["basic_enh_t"] = 0.0
 			u["basic_enh_ready"] = true
 	# --- 熔岩变身: 怒气满100 → 变火山15秒 (被动 熔岩之心) ---
-	if u["id"] == "lava" and u["rage"] >= RAGE_MAX and not u.get("volcano", false):
+	if u["id"] == "lava" and u["rage"] >= RAGE_MAX and not u.get("volcano", false) and not _damage.is_controlled(u):   # 被控时不变身, 解控后立即变(10-16)
 		_lava_sys._lava_transform(u)
 	if u["id"] == "lava" and u.get("volcano", false):             # 火山期: 怒气条=形态倒计时·15秒匀速流失到0(用户2026-07-15)
 		u["rage"] = RAGE_MAX * clampf((float(u.get("volcano_until", 0.0)) - _t) / maxf(0.1, float(u.get("_volcano_dur", 15.0))), 0.0, 1.0)
@@ -6833,9 +6831,12 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 		var _hb: float = float(u.get("headless_base_atk", 0.0))
 		if _hb > 0.0:
 			var _hlost: float = clampf(1.0 - float(u["hp"]) / maxf(1.0, float(u["maxHp"])), 0.0, 1.0)
-			var _want: float = _hb * (1.0 + _hlost * HeadlessSystem.UNDEAD_ATK_PER_LOST)
-			if not is_equal_approx(float(u.get("base_atk", 0.0)), _want):
-				u["base_atk"] = _want
+			## ★只增减【自己这一份】(10-16, 同骰子 _dice_blood_amt): 原来每帧 base_atk = 基准×(1+损血), 别处给的永久攻击力下一帧就被抹掉。
+			var _add: float = _hb * _hlost * HeadlessSystem.UNDEAD_ATK_PER_LOST
+			var _old: float = float(u.get("_headless_atk_amt", 0.0))
+			if not is_equal_approx(_add, _old):
+				u["base_atk"] = float(u.get("base_atk", 0.0)) + _add - _old
+				u["_headless_atk_amt"] = _add
 				_recalc_stats(u)
 
 	if u["id"] == "dice":   # 赌徒之血: 按已损血加暴击(损30%满+70%·用户2026-07-28 50→70); 暴击率>100%部分每1%→1.5%暴伤
@@ -6852,7 +6853,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 			u["_ptimer"] = 0.0
 			u["drone_n"] = mini(CyberSystem.DRONE_CAP, int(u.get("drone_n", 0)) + 1)
 		_tick_cyber_drones(u, delta)
-		if not u.get("_slam", false) and "cyberSmartAI" in _chosen_skill_types(u["id"], u["side"] == "left"):   # 常驻走位闪避(用户2026-07-16: 被动冲刺是消耗充能层数的): 敌贴近130码+有层数→消耗1层自动躲避冲刺(冷却2.5s)
+		if not u.get("_slam", false) and not _damage.is_controlled(u) and "cyberSmartAI" in _chosen_skill_types(u["id"], u["side"] == "left"):   # 常驻走位闪避(用户2026-07-16: 被动冲刺是消耗充能层数的): 敌贴近130码+有层数→消耗1层自动躲避冲刺(冷却2.5s)
 			var _ne5 = _targeting._nearest_enemy(u)
 			if _ne5 != null and int(u.get("cyber_ai_charge", 0)) > 0 and DetMath.dist((u["pos"] as Vector2), _ne5["pos"]) < 130.0 and _t >= float(u.get("_ai_dodge_cd", 0.0)):
 				u["_ai_dodge_cd"] = _t + 2.5
@@ -6871,7 +6872,8 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 				_skill_ring(u["pos"], Color(0.79, 0.64, 0.42, 0.4), 42.0)   # 视觉: 硬化贴地褐环 (不飘名字文字)
 	# --- 竹叶生长: 每N秒充能 → 永久+ATK/HP ---
 	elif u["id"] == "bamboo":
-		if u["_ptimer"] >= BambooSystem.GROW_CD and not u.get("bamboo_charge", false):
+		if u.get("bamboo_charge", false): u["_ptimer"] = 0.0   # 蓄满待放期间不计时: 放出后重新数 6 秒(10-16: 原来照走, 放完下一发立即又蓄满)
+		elif u["_ptimer"] >= BambooSystem.GROW_CD:
 			u["_ptimer"] = 0.0
 			u["bamboo_charge"] = true
 	# --- 龟壳气场觉醒 + 储能消耗周期 ---
@@ -6921,7 +6923,7 @@ func _tick_periodic_passive(u: Dictionary, delta: float) -> void:
 			_vfx._flash(u, Color(_pcc.r + 0.4, _pcc.g + 0.4, _pcc.b + 0.4))
 		if u["id"] == "rainbow" and u.get("_enh_prism", false):   # 强化棱镜(选反射打包): 每5秒抽1色(橙吸血/黄灼烧/青冰寒/紫诅咒)
 			u["_epTimer"] = float(u.get("_epTimer", 0.0)) + delta
-			if u["_epTimer"] >= RainbowSystem.PRISM_PROC_SEC:
+			if u["_epTimer"] >= RainbowSystem.PRISM_PROC_SEC and not _damage.is_controlled(u):   # 被控时不出手, 解控后立即补(10-16)
 				u["_epTimer"] = 0.0
 				_rainbow_sys._rainbow_enh_prism_proc(u)
 	# --- 泡泡·泡沫: 每5秒→泡泡值10%化魔法打最近敌 + 治疗自己10%泡泡值 (共消耗20%泡泡值·用户2026-07-15改3→5秒) ---
@@ -6979,7 +6981,7 @@ func _on_unit_death(u: Dictionary, killer) -> void:
 	#   ★2026-07-10 修真bug: 原实装写成「任意敌人阵亡 → 存活海盗龟钩索【最近敌】」, 触发条件与目标都与原版不符。
 	#   依据: 回合制原版逐字(pets.json passive.desc)「死亡时钩锁击杀者，同样造成25%最大生命值真实伤害」
 	#         + 用户〖#15〗「掠夺我是说被动的【原版】海盗被动」+ 用户〖2026-07-10〗「死亡的伤害值同上」。
-	if u.get("id", "") == "pirate" and not u.get("is_summon", false) and killer is Dictionary and killer.get("alive", false) and not is_same(killer, u):
+	if u.get("id", "") == "pirate" and (not u.get("is_summon", false) or u.get("minion_kind", null) != null) and killer is Dictionary and killer.get("alive", false) and not is_same(killer, u):
 		_pirate_sys._pirate_death_grapple(u, killer)                         # 死亡钩索: 甩钩爪(带链)抓击杀者→拉回尸位90码+25%击杀者maxHp真伤
 	# 缩头随从先死 → 主人永久继承"强化随从"增益(可多次随从累积·把力量传给主人)
 	if u.get("minion_kind", null) != null:
@@ -7081,7 +7083,7 @@ func _tick_cyber_drones(u: Dictionary, delta: float) -> void:   # 浮游炮纯�
 		spr.position = spr.position.lerp(_world_pos(u["pos"] + off, hh), clampf(delta * 6.0, 0.0, 1.0))
 		spr.flip_h = off.x < 0.0
 		d["fire_t"] = float(d["fire_t"]) - delta                  # 各自1.6秒射击(错峰)
-		if d["fire_t"] <= 0.0:
+		if d["fire_t"] <= 0.0 and not _damage.is_controlled(u):   # 本体被控时浮游炮不开火(10-16 被控规则), 解控后立即补上这一发
 			d["fire_t"] = CyberSystem.DRONE_FIRE_SEC + _battle_rng.randf() * 0.2   # B 阶段: 开火间隔决定伤害落在哪一步
 			var es := _targeting._pick_enemies_of(u)
 			var tgt = null
@@ -7154,7 +7156,7 @@ func _tick_summon_special(u: Dictionary, delta: float) -> void:
 	if special == "" or u.get("special_cd", 0.0) <= 0.0:
 		return
 	u["special_timer"] = u.get("special_timer", 0.0) + delta
-	if u["special_timer"] < u["special_cd"]:
+	if u["special_timer"] < u["special_cd"] or _damage.is_controlled(u):   # 被控时不放(10-16): 水晶球 / 海盗船 / 机甲原来晕着照射
 		return
 	u["special_timer"] = 0.0
 	var owner = u.get("summon_owner", u)
@@ -7176,8 +7178,8 @@ func _tick_summon_special(u: Dictionary, delta: float) -> void:
 			var t = _targeting._nearest_enemy(u)
 			if t == null: return
 			_crystal_sys._crystal_ray_vfx(u, t, func(sr: Dictionary, tr: Dictionary, last: bool) -> void:
-				_damage._apply_damage_from(sr, tr, _atk_dmg(sr, sr.get("special_scale", 1.0), tr, true), Color("#9bdcff"), 0.0, true, false, true)   # ★10-11: pre_crit —— _atk_dmg 已掷过暴击
-				if last: _crystal_sys._crystal_stack(sr, tr, 2))   # 与本体共享满5引爆(引爆改吃魔抗)
+				_damage._apply_damage_from(sr, tr, _atk_dmg(sr, sr.get("special_scale", 1.0), tr, true), Color("#9bdcff"))   # 10-16: 原 raw=true 把魔法段当真伤   # ★10-11: pre_crit —— _atk_dmg 已掷过暴击
+				if last: _crystal_sys._crystal_stack(sr, tr, CrystalSystem.ORB_RAY_STACKS))   # 与本体共享满5引爆(引爆改吃魔抗)
 		"random_hit":
 			var es2 := _targeting._pick_enemies_of(u)
 			if es2.is_empty(): return

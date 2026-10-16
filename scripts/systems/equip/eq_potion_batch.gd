@@ -487,7 +487,11 @@ func _tick_pressure_can(u: Dictionary, si: int, delta: float) -> void:
 	_eq_beam_step(u, delta)
 	var due: float = float(stt["can_t0"]) + CAN_PERIOD * float(int(stt.get("can_fired", 0)) + 1)
 	if battle._t >= due:
-		_eq_pressure_release(u, si, stt)
+		## ★10-16 被控规则: 携带者被控时不放激光; 把本路 t0 往后推到「刚好到点」⇒ 解控那一帧补这一发, 后续周期从那里续
+		if battle._damage.is_controlled(u):
+			stt["can_t0"] = float(stt["can_t0"]) + (battle._t - due)
+		else:
+			_eq_pressure_release(u, si, stt)
 
 
 ## 法力激光的持续推进: 转向 + 扫掠伤害 + 演出。**纯同步**, 门禁直接喂 delta, 不等任何演出。

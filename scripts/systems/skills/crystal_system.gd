@@ -460,8 +460,7 @@ func _crystal_spike_line(u: Dictionary) -> void:   # 照小菊R第三击(2026-07
 				battle._damage._apply_damage_from(uu, o, int(maxf(1.0, uu["atk"] * SPIKE_TRUE_COEF)), Color("#ffffff"), 0.0, true)
 				_crystal_stack(uu, o, SPIKE_STACKS)                              # +2层结晶
 				battle._knock_up(o, pref, 8.8)                               # 击飞0.8s(滞空=2×8.8/22)
-				o["spd_move_mult"] = SPIKE_SLOW_MULT
-				o["spd_dbf_until"] = battle._t + SPIKE_SLOW_SEC                         # 50%减速3秒
+				battle._damage.apply_chill(o, SPIKE_SLOW_MULT, 1.0, SPIKE_SLOW_SEC)
 		, "src": u})
 
 # 水晶结晶叠层+满5引爆 (普攻/水晶球ray/本体主动共享·同一目标"crystal"层→天然共享层数): 叠n层(上限5)·满5→清零+22%目标最大生命魔法(吃魔抗·封板)+削魔抗-20%+紫辉爆
@@ -472,7 +471,7 @@ func _crystal_stack(src: Dictionary, tgt: Dictionary, n: int) -> void:
 	var cv = battle._add_stack(tgt, "crystal", n, STACK_MAX)
 	if cv >= STACK_MAX:
 		battle._consume_stacks(tgt, "crystal")
-		battle._damage._apply_damage_from(src, tgt, battle._mitigate(src, tgt["maxHp"] * BURST_MAXHP_PCT, tgt, true), Color("#9bdcff"), 0.0, false)   # 引爆22%最大生命魔法(吃魔抗·19%→22% 用户2026-07-29 第五轮)
+		battle._damage._apply_damage_from(src, tgt, battle._damage._magic_after_mr(src, tgt["maxHp"] * BURST_MAXHP_PCT, tgt), Color("#9bdcff"), 0.0, false, false, true)   # 引爆22%最大生命魔法(吃魔抗·19%→22% 用户2026-07-29 第五轮)
 		battle._damage._buff(tgt, "mr", -BURST_MR_SHRED, true)
 		_crystal_detonate(tgt["pos"])
 
@@ -508,9 +507,10 @@ func _crystal_ray_vfx(src: Dictionary, tgt: Dictionary, seg_dmg_fn: Callable) ->
 		if is_instance_valid(ch): ch.queue_free())
 	var sref: Dictionary = src
 	var tref: Dictionary = tgt
+	var cg := {}
 	for seg in range(2):
 		var last: bool = seg == 1
-		battle._pending_shots.append({"delay": 0.25 + 0.15 * float(seg), "fn": func() -> void:
+		battle._pending_shots.append({"delay": 0.25 + 0.15 * float(seg), "cc": cg, "fn": func() -> void:
 			if not sref.get("alive", false): return
 			var a2: Vector2 = sref["pos"]
 			var ldir: Vector2 = ((tref["pos"] as Vector2) - a2) if tref.get("alive", false) else Vector2.RIGHT * (1.0 if str(sref.get("side", "left")) == "left" else -1.0)
@@ -530,6 +530,7 @@ func _crystal_ray_vfx(src: Dictionary, tgt: Dictionary, seg_dmg_fn: Callable) ->
 # 水晶龟·水晶球 本体主动(封板L571·70龟能): 朝目标射一道水晶光线=2段共1.0A魔法 + 叠2层结晶(与水晶球随从共享满5引爆)·水晶球随从在spawn gate召唤
 
 func _sk_crystal_bulwark(u: Dictionary) -> void:                 # 水晶龟·水晶壁垒(用户2026-07-16改制/2026-07-28加强): 2A+10%maxHp护盾4秒·持盾锁龟能·盾结束/被打破→700码直线水晶刺·全体友军甲抗+15%4秒
+	u["_bulwark_floor"] = float(u.get("shield", 0.0))   # 施放前已有的盾: 总池跌回这个数 = 壁垒那份被打光了(10-16: 原来看总盾, 带别的盾就永远「没破」)
 	battle._damage._grant_shield(u, u["atk"] * BULWARK_ATK + u["maxHp"] * BULWARK_HP_PCT, BULWARK_SEC)
 	u["bulwark_until"] = battle._t + BULWARK_SEC
 	u["_bulwark_armed"] = true
@@ -595,7 +596,7 @@ func _sk_crystal_orb(u: Dictionary, tgt) -> void:
 		return
 	battle._skill_ring(u["pos"], Color(0.72, 0.92, 1.0, 0.6), 34.0)     # 本体施法环
 	_crystal_ray_vfx(u, tgt, func(sr: Dictionary, tr: Dictionary, last: bool) -> void:
-		battle._damage._apply_damage_from(sr, tr, battle._atk_dmg(sr, 0.5, tr, true), Color("#9bdcff"), 0.0, true, false, true)   # ★10-11: pre_crit=true —— _atk_dmg 已掷过暴击, raw 路不许再掷一次   # 每段0.5A魔法(raw避免二次减免·封板)
+		battle._damage._apply_damage_from(sr, tr, battle._atk_dmg(sr, ORB_RAY_COEF * 0.5, tr, true), Color("#9bdcff"))   # 每段 = 两段合计的一半; 10-16: 原 raw=true 把魔法段当真伤结算(不吃护盾以外的一切、类型记成真实)   # ★10-11: pre_crit=true —— _atk_dmg 已掷过暴击, raw 路不许再掷一次   # 每段0.5A魔法(raw避免二次减免·封板)
 		if last: _crystal_stack(sr, tr, ORB_RAY_STACKS))                      # 末段叠2层结晶(封板)
 
 # 宝箱藏宝图·15件专属战利品池 (封板L592-594·效果取自Phaser chest.js实时适配): 基础/进阶/传说三档

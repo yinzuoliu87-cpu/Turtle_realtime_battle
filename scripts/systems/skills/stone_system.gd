@@ -119,11 +119,11 @@ func _sk_stone_taunt(u: Dictionary) -> void:                    # 石头龟·嘲
 		for o in battle._targeting._enemies_of(uu):
 			if o.get("alive", false) and DetMath.dist(o["pos"], uu["pos"]) <= SLAM_RADIUS:
 				battle._damage._apply_damage_from(uu, o, battle._atk_dmg(uu, SLAM_ATK_COEF, o, true), Color("#c8a878"))
-				if not o.get("airborne", false):
+				if not o.get("airborne", false) and not o.get("_eggImmune", false):   # 蛋免控只吃伤(10-16)
 						battle._damage._knockback(uu, o, 80.0, 3.6111)   # 击飞【1.2秒·峰高6.5】(用户2026-07-11) — vy=6.0×3.6111=21.667
-						o["knock_g"] = -36.111            # 配重力-36.111→ 滞空=2×21.667/36.111=1.2s·峰高=21.667²/(2×36.111)=6.5(解耦时长与抛高)
+						if o.get("airborne", false): o["knock_g"] = -36.111   # 只在真被击飞时改重力(10-16: 免控时 _knockback 直接返回, 这一行原来照写 ⇒ 下一次别人的击飞吃到这份重力)            # 配重力-36.111→ 滞空=2×21.667/36.111=1.2s·峰高=21.667²/(2×36.111)=6.5(解耦时长与抛高)
 		battle._shake(0.06)
-	battle._pending_shots.append({"delay": SLAM_DELAY, "fn": slam, "src": u})
+	battle._pending_shots.append({"delay": SLAM_DELAY, "fn": slam, "src": u, "cc": {}})   # 蓄力期被控 / 阵亡即取消(10-16)
 
 ## 撤掉嘲讽给的那份减伤(只撤自己记的数, 不碰别的来源); 重复调用无害。
 func _taunt_dr_off(u: Dictionary) -> void:

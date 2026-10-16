@@ -55,6 +55,7 @@ const BURN_LIFE := BURN_TICKS * BURN_TICK_SEC
 const BASIC_COEF := 1.0        # 主段 ×ATK(类型物理/真实逐发交替)
 ## 【复制】抄两个敌方技能轮流放, 各打折。
 const COPY_EFFECT := 0.6       # 复制出来的技能只发挥这么多效果(伤害/护盾/治疗/DoT 共用)
+const COPY_SECOND_DELAY := 0.6 # 第二个复制技能隔几秒放(错峰, 不同帧糊在一起)
 ## 「抄袭图标」的尺寸与高度(用户 2026-08-27 要的头顶图标演出)。
 ## ★放这里不放主文件 —— 主文件行数是冻结的(arch_budget 8958/8958 零余量),
 ##   而且 CLAUDE.md §5:「不在 _sim_step 调用链上的, 不进主文件」。
@@ -111,8 +112,8 @@ func _shell_basic(u: Dictionary, tgt: Dictionary) -> void:
 		tgt["heal_reduce_until"] = battle._t + STEALTH_HEALCUT_SEC
 		tgt["heal_reduce_pct"] = maxf(float(tgt.get("heal_reduce_pct", 0.0)), STEALTH_HEALCUT_PCT)
 		battle._vfx._float_text(u["pos"] + Vector2(0, -58), "破隐", Color("#9b3bff"))
-	u["basic_alt"] = not u.get("basic_alt", false)
-	var is_true: bool = bool(u["basic_alt"])
+	var is_true: bool = bool(u.get("basic_alt", false))         # 物理 → 真实 → 物理…(10-16: 原来先翻转再取, 第一发就是真实伤害)
+	u["basic_alt"] = not is_true
 	# 主目标命中
 	if is_true:
 		battle._damage._apply_basic_hit_from(u, tgt, int(u["atk"] * BASIC_COEF), Color("#ffffff"), 0.0, true)   # 真实(穿减伤)
@@ -297,8 +298,7 @@ func _sk_shell_shadow_dive(u: Dictionary, tgt) -> void:        # 龟壳·暗影�
 			for o in battle._targeting._enemies_of(u):
 				if o.get("alive", false) and DetMath.dist(o["pos"], zc) <= BURN_RADIUS:
 					battle._damage._apply_dot_stacks(o, "burn", maxi(1, int(round(u["atk"] * BURN_ATK_MULT))), u)
-					o["spd_move_mult"] = BURN_SLOW_MULT
-					o["spd_dbf_until"] = battle._t + BURN_TICK_SEC
+					battle._damage.apply_chill(o, BURN_SLOW_MULT, 1.0, BURN_TICK_SEC)
 		battle._pending_shots.append({"delay": float(i) * BURN_TICK_SEC, "fn": fn, "src": u})
 	battle._beam_vfx("res://assets/sprites/vfx/fx-trail.png", start, dest, 60.0, Color(0.62, 0.22, 0.72, 0.7), 0.34)   # 暗影猛扑拖影
 
@@ -311,6 +311,13 @@ func _sk_shell_shadow_dive(u: Dictionary, tgt) -> void:        # 龟壳·暗影�
 #   引信到 0.8s 引爆(震屏+伤害·此刻帧正好走到爆炸帧8)→蘑菇云再0.4s播完销毁(1.2s)。
 #   ★爆炸 = 落点 NINJA_BOMB_RADIUS(400码) 半径内敌人 1.1×ATK 物理 + -25%护甲(5秒·BUFF_SEC)。
 #     半径=用户指定(回合制原"对全体敌方"无半径·用户2026-07-11「400码半径」)。放技射程2000码(远程扔·见 _SKILL_CAST_RANGE)。
+## 复制出来的技能里【延后结算】的那几段(蓄力 / 错峰 / 落点…)原来出了 _do_skill 就按 100% 结算 ——
+## 60% 只管住了立即那一段(10-16 第二批核查)。⇒ 施放期间新入队的延后条目打上 _copy, 到点结算时再套 60%。
+func _mark_copy_tail(from_idx: int) -> void:
+	for i in range(from_idx, battle._pending_shots.size()):
+		battle._pending_shots[i]["_copy"] = COPY_EFFECT
+
+
 func _sk_shell_copy(u: Dictionary, tgt) -> void:
 	print("[CP] CAST copy")               # 龟壳·复制(封板·130龟能): 复制2敌方可用技(_COPYABLE白名单)·轮流依次释放(不同帧糊); 60%效果=伤害(dmg_out_mult)+护盾/治疗/DoT(battle._copy_fx_mult)
 	var pool: Array = []
@@ -373,7 +380,9 @@ func _sk_shell_copy(u: Dictionary, tgt) -> void:
 		##   在 `_do_skill` 之前调 —— 玩家先看见"抄到了什么", 再看见技能打出来。
 		##   ★形态钉已经打好了, 所以多形态技能这里取到的就是【被偷者当时那一态】的图标。
 		battle._vfx.copy_steal_icon(u, s0, COPY_ICON_HOLD)
+		var _ps0: int = battle._pending_shots.size()
 		battle._do_skill(u, t0, s0)                                   # 第1个立即
+		_mark_copy_tail(_ps0)
 		SkillForms.unpin_form(u, s0)                                  # ★成对解钉, 否则形态卡住
 		battle._copy_fx_mult = 1.0
 		u["dmg_out_mult"] = 1.0
@@ -402,11 +411,13 @@ func _sk_shell_copy(u: Dictionary, tgt) -> void:
 			## ★第二发同样先出图标 —— 它隔了 0.6 秒才发, 原来是**凭空出现**的,
 			##   玩家看不出这一段是哪来的(①-E 记的三个硬伤之一)。
 			battle._vfx.copy_steal_icon(uu, p1, COPY_ICON_HOLD)
+			var _ps1: int = battle._pending_shots.size()
 			battle._do_skill(uu, t2, p1)
+			_mark_copy_tail(_ps1)
 			SkillForms.unpin_form(uu, p1)
 			battle._copy_fx_mult = 1.0
 			uu["dmg_out_mult"] = 1.0
-		battle._pending_shots.append({"delay": 0.6, "fn": fn, "src": u})
+		battle._pending_shots.append({"delay": COPY_SECOND_DELAY, "fn": fn, "src": u, "cc": {}})   # 等待期被控 / 阵亡即取消(10-16)
 
 # ============================================================================
 #  效果积木 (可复用) — 治疗/护盾/控制/buff/DoT/吸血/累积/净化/叠层 (1:1 搬自 2D 版).
@@ -477,7 +488,7 @@ func _shell_phase_tick(u: Dictionary, delta: float) -> void:
 	var phase: String = u.get("shell_phase", "store")
 	u["shell_timer"] = float(u.get("shell_timer", 0.0)) + delta
 	if phase == "store":
-		if u["shell_timer"] >= battle.SHELL_STORE_SEC:
+		if u["shell_timer"] >= battle.SHELL_STORE_SEC and not battle._damage.is_controlled(u):   # 被控时先攒着, 解控后立即释放(10-16)
 			u["shell_timer"] = 0.0
 			u["shell_phase"] = "cd"
 			_shell_release(u)

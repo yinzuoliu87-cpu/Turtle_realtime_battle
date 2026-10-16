@@ -206,8 +206,10 @@ func begin_charge(ax: Dictionary) -> bool:
 	var dir: Vector2 = ((t.get("pos", Vector2.ZERO) as Vector2) - (ax.get("pos", Vector2.ZERO) as Vector2)) if not t.is_empty() else Vector2.RIGHT
 	ax["_axe_charge_dir"] = (DetMath.norm(dir) if dir != Vector2.ZERO else Vector2.RIGHT)
 	## 70% 减伤 —— 走既有的 damage_reduction 通道(_mitigate_incoming 读它)
-	ax["_axe_dr_bak"] = float(ax.get("damage_reduction", 0.0))
-	ax["damage_reduction"] = maxf(float(ax.get("damage_reduction", 0.0)), AE.CHARGE_DR)
+	## ★2026-10-16 改成【差量】(同 _ember_apply): 原来记下施放前的值、结束时整值写回 ——
+	##   蓄力期间别处新加/撤掉的减伤会被这次写回抹掉。现在只记【实际抬了多少】, 结束只减这么多。
+	ax["_axe_dr_bak"] = maxf(0.0, AE.CHARGE_DR - float(ax.get("damage_reduction", 0.0)))
+	ax["damage_reduction"] = float(ax.get("damage_reduction", 0.0)) + float(ax["_axe_dr_bak"])
 	## ★★蓄力期间【不许普攻、不许移动】—— 用户 2026-09-03 当场指出「蓄力的时候为什么能攻击」。
 	##   需求原话没有明写这一条, 但「**效率计时器中断**」这句是决定性的:
 	##   效率层是"每次普攻命中 +1 层、5 秒过期", 如果蓄力期间照常普攻, 层数一直在刷新,
@@ -296,5 +298,5 @@ func _end_charge(ax: Dictionary) -> void:
 	ax.erase("_axe_field")
 	ax.erase("_axe_charge_t0")
 	if ax.has("_axe_dr_bak"):
-		ax["damage_reduction"] = float(ax["_axe_dr_bak"])       # 还原, 不许把 70% 留下
+		ax["damage_reduction"] = maxf(0.0, float(ax.get("damage_reduction", 0.0)) - float(ax["_axe_dr_bak"]))       # 还原: 只扣回自己抬的那份, 不许把 70% 留下
 		ax.erase("_axe_dr_bak")

@@ -364,6 +364,10 @@ func _tick_sextant(u: Dictionary, delta: float, si: int) -> void:
 			d["fe"] = float(d.get("fe", 0.0)) + delta          # 飞散行程(错峰: 各自的延迟与时长)
 			continue
 		d["ft"] = float(d.get("ft", 0.0)) + delta
+		## ★10-16 被控规则: 携带者被控时炮不开火, 计时停在满格, 解控后立刻补这一发
+		if float(d["ft"]) >= SEXT_FIRE_IV and battle._damage.is_controlled(u):
+			d["ft"] = SEXT_FIRE_IV
+			continue
 		if float(d["ft"]) >= SEXT_FIRE_IV:
 			d["ft"] = float(d["ft"]) - SEXT_FIRE_IV
 			if sext_fire_one(u, atk_mult, di):

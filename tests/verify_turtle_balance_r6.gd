@@ -176,8 +176,8 @@ func _text() -> void:
 	##   纯赘词焊进了断言, 于是 2026-08-17 文案精简(删掉 28 处"相当于")时当场判红,
 	##   而数字一个都没动。断言该守的是 1.5% 这个数, 不是我当初怎么造句。
 	_chk("② 文案·糖衣炮弹护盾 1.5%",
-		_has_txt(barrage, "1.5%最大生命值的护盾")
-		and _has_txt(barrage, "范围内友军获得糖果龟1.5%最大生命值的护盾"))
+		_has_txt(barrage, "1.5%×最大生命值")
+		and _has_txt(barrage, "落点附近的友军获得"))   # 10-16 糖果文案改写: 护盾写成公式「1.5%×最大生命值(…) = …」
 	_chk("② 文案·糖衣炮弹护盾旧值 2% 已消失（伤害那处的 2% 不算）",
 		not barrage.contains("2% 最大生命值的护盾")
 		and not barrage.contains("范围内友军获得糖果龟2%最大生命值的护盾"))
@@ -196,7 +196,7 @@ func _text() -> void:
 			and (soul.contains("{M:HeadlessSystem.SOUL_ATK_COEF*ATK}") or soul.contains("{M:0.5*ATK}"))
 			and not soul.contains("{N:0.9*ATK}"))
 	_chk("② 文案·灵魂打击 = 10% 目标当前生命(不是 20%)",
-		soul.contains("10% 目标当前生命") or soul.contains("10%目标当前生命"))
+		soul.contains("10% 目标当前生命") or soul.contains("10%目标当前生命") or soul.contains("目标 10% 当前生命"))
 	_chk("② ★文案·补上了此前完全没写的镰刀横扫", soul.contains("镰刀横扫"))
 	_chk("② ★文案·镰刀横扫写明 3 秒诅咒", soul.contains("3 秒诅咒") or soul.contains("3秒诅咒"))
 	_chk("② ★文案·镰刀横扫写明击退", soul.contains("击退"))

@@ -73,7 +73,7 @@ func _phoenix_flame_channel(u: Dictionary, tgt: Dictionary, delta: float) -> voi
 # 喷火伤害结算: 扇形内全部敌人 PHX_FLAME_MAG_COEF(0.2)ATK×(1+攻速) 魔法 + round(PHX_FLAME_BURN_COEF(0.04)×ATK) 灼烧层 (用户2026-06-30; 灼烧 0.07→0.04 用户2026-07-28削弱)
 func _phoenix_flame_cone(u: Dictionary, tgt: Dictionary) -> void:
 	var atk: float = u["atk"]
-	var aspd: float = 1.0 / maxf(0.05, float(u.get("atk_interval", 0.5)))   # 攻速=1/间隔
+	var aspd: float = battle._damage.aspd_mult(u) / maxf(0.05, float(u.get("atk_interval", 0.5)))   # 攻速 = 面板攻速(含加成·aspd_mult 是单一事实源)
 	var mag: float = battle.PHX_FLAME_MAG_COEF * atk * (1.0 + aspd)
 	var burn_stacks: int = maxi(1, roundi(atk * battle.PHX_FLAME_BURN_COEF))
 	var origin: Vector2 = u["pos"]
@@ -350,8 +350,8 @@ func _sk_phoenix_lavashield(u: Dictionary) -> void:              # 凤凰龟·�
 
 func _sk_phoenix_haste(u: Dictionary) -> void:                   # 凤凰龟·技三主动 (用户2026-07-07: 自身+50%攻速+50%移速4秒·配合喷火随攻速增伤; 强化涅槃被动在spawn施加)
 	u["haste_mult"] = NIRVANA_ENH_ASPD_MULT; u["haste_until"] = battle._t + NIRVANA_ENH_SEC          # +50%攻速(复用祝福haste机制)
-	u["spd_move_mult"] = 1.5; u["spd_dbf_until"] = battle._t + 4.0     # +50%移速(复用spd_move_mult机制)
-	battle._aura_vfx("res://assets/sprites/vfx/fx-glow-ring.png", u, 84.0, Color(1.0, 0.55, 0.15, 0.6), 4.0)   # 烈焰加速火环(强化涅槃+50%攻速移速4秒)
+	u["move_buff_mult"] = NIRVANA_ENH_SPD_MULT; u["move_buff_until"] = battle._t + NIRVANA_ENH_SEC     # +50%移速(移速增益通道, 不借冰寒字段)
+	battle._aura_vfx("res://assets/sprites/vfx/fx-glow-ring.png", u, 84.0, Color(1.0, 0.55, 0.15, 0.6), NIRVANA_ENH_SEC)   # 烈焰加速火环(强化涅槃+50%攻速移速4秒)
 
 
 ## 涅槃三拍演出。★不用 tween: 计时走 `_pending_shots`(sim 时钟) ——
