@@ -92,7 +92,6 @@ scripts/gamedata/equip_tier_labels.gd|lit|光束数 # 道
 scripts/gamedata/equip_tier_labels.gd|lit|冰封时长 # 秒
 scripts/gamedata/equip_tier_labels.gd|lit|冰道伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|减伤 # 点
-scripts/gamedata/equip_tier_labels.gd|lit|刃能充能 # 点
 scripts/gamedata/equip_tier_labels.gd|lit|分身属性 #%
 scripts/gamedata/equip_tier_labels.gd|lit|压载舱容量 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|友军双抗 +#
@@ -172,6 +171,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|每层护甲和魔抗 +#
 scripts/gamedata/equip_tier_labels.gd|lit|每层攻击速度 +#%
 scripts/gamedata/equip_tier_labels.gd|lit|每层生命值 +#
 scripts/gamedata/equip_tier_labels.gd|lit|每次破甲 #
+scripts/gamedata/equip_tier_labels.gd|lit|每段充能 # 点
 scripts/gamedata/equip_tier_labels.gd|lit|每秒上限 # 龟能
 scripts/gamedata/equip_tier_labels.gd|lit|每秒伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|每秒回复 #
@@ -241,7 +241,6 @@ scripts/gamedata/equip_tier_labels.gd|lit|霰弹伤害加成 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|霰弹基础伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|额外伤害 #% 目标最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|额外攻击力 #% 攻击力
-scripts/gamedata/equip_tier_labels.gd|lit|食用阈值 #% 生命值
 scripts/gamedata/equip_tier_labels.gd|lit|骷髅攻击力 #
 scripts/gamedata/equip_tier_labels.gd|lit|骷髅生命值 #
 scripts/gamedata/equip_tier_labels.gd|lit|魔法穿透 +# 点
