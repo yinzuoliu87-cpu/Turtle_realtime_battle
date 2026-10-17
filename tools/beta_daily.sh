@@ -111,7 +111,7 @@ PYEOF
       for s in $CHUNK; do [ -n "$(bash "$SIM60" status 2>/dev/null | awk -v p="$(printf 'p%02d' "$s")" '$1==p && $2!="-"')" ] && left=$((left+1)); done
       [ "$left" -eq 0 ] && break
       if [ $(( $(date +%s) - t0 )) -ge 5400 ] || [ "$((10#$(date -u +%H%M)))" -ge 2240 ]; then
-        echo "$(date -u +%T)Z 超时或到收工时间, 关掉剩下 $left 个"; bash "$SIM60" stop; break
+        echo "$(date -u +%T)Z 超时或到收工时间, 关掉剩下 $left 个"; SLOTS="$CHUNK" bash "$SIM60" stop; break
       fi
       sleep 60
     done

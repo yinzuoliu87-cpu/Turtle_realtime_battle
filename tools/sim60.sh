@@ -124,7 +124,8 @@ cmd_wait() {
 
 cmd_stop() {
   local n=0 i pid
-  for i in $(seq 1 "$MAX_SLOTS"); do
+  ## SLOTS 给了就只关这几个(周六各组时段重叠, 一组超时不许关掉别的组 —— 10-17)
+  for i in ${SLOTS:-$(seq 1 "$MAX_SLOTS")}; do
     pid="$(slot_pid "$i")"
     if [ -n "$pid" ]; then
       powershell -NoProfile -Command "Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue" 2>/dev/null
