@@ -26,7 +26,7 @@ const SHOP_GD = preload("res://scripts/scenes/ShopScene.gd")
 
 var _fail := 0
 var _n := 0
-const MIN_ASSERTS := 16
+const MIN_ASSERTS := 17
 const SENTINEL := [{"id": "p2eq_001"}, {"id": "p2eq_002"}, null, {"id": "p2eq_003"}, {"id": "p2eq_004"},
 	{"id": "p2eq_005"}, {"id": "p2eq_006"}, {"id": "p2eq_007"}, {"id": "p2eq_008"}, {"id": "p2eq_009"}]
 
@@ -120,7 +120,8 @@ func _ready() -> void:
 			and lb.position.x + lb.size.x <= SHOP_GD.GRID_X + 5.0 * SHOP_GD.SLOT_W + 30.0,   # 不伸出货架(2026-10-18 货架在右)
 			"rf=%s+%s lb=%s+%s" % [rf.position, rf.size, lb.position, lb.size])
 		_ok("L0 锁钮够大(高 ≥ 44 触控下限)", lb.size.y >= 44.0, str(lb.size))
-		_ok("L0 锁钮图标是现成的 icon-lock(不新画)", lb.icon != null and str(lb.icon.resource_path).ends_with("ui/icon-lock.png"),
+		## 2026-10-18 用户「不要用之前的金木框按钮，重新设计一个更好的」⇒ 锁钮换成新画的两态挂锁(未锁 = 开着的锁)
+		_ok("L0 未锁态图标是【开着的】那把锁", lb.icon != null and str(lb.icon.resource_path).ends_with("shop/icon-lock-open.png"),
 			str(lb.icon.resource_path) if lb.icon != null else "null")
 	_leave(sc)
 
@@ -139,6 +140,8 @@ func _ready() -> void:
 	_ok("L3 点锁钮 → meta_shop_locked = true", bool(gs.meta_shop_locked))
 	lb = sc._lock_btn   # ★不按名字找: _rebuild 只 queue_free 旧钮, 这一帧旧钮还挂在树上
 	_ok("L3 已锁态文案「已锁」", lb != null and lb.text == "已锁定", lb.text if lb != null else "null")
+	_ok("L3 已锁态图标是【合上的】那把锁", lb != null and lb.icon != null and str(lb.icon.resource_path).ends_with("shop/icon-lock-closed.png"),
+		str(lb.icon.resource_path) if lb != null and lb.icon != null else "null")
 	_leave(sc)
 	s0 = _shelf()
 	_ok("L2 前提: 锁的就是哨兵货架", s0 == JSON.stringify(SENTINEL))

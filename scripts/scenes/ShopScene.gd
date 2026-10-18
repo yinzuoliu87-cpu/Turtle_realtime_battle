@@ -40,12 +40,12 @@ const GRID_X := 722.0        # 货架左沿
 const GRID_Y := 128.0        # 上层商品格的顶(底 270 = 板沿)
 const GRID_GAP_X := 0.0
 const GRID_GAP_Y := 38.0       # 下层格顶 308, 底 450 = 下层板沿
-const PANEL_X := 762.0       # 详情卡: 盖在货架那一侧, 左边场地整个露出来(卡上的图标可直接拖到龟身上)
+const PANEL_X := 762.0       # 详情卡: 盖在货架那一侧, 左边店主和宝箱露出来
 const PANEL_W := 440.0
 const PANEL_Y := 100.0
 const PANEL_H := 592.0
 ## 羁绊总览条(货架与底部按钮之间那条空带)。★进 verify_shop_layout 的越界检查
-const SYN_BAR_Y := 508.0
+const SYN_BAR_Y := 100.0
 const SYN_X := 40.0          # 羁绊条左沿 = 场地左沿
 const SYN_CHIP_W := 176.0
 ## 羁绊 chip 的字号 / 行高 / 行内类型图标边长。
@@ -83,7 +83,7 @@ var _sel_own_star: int = 1
 ##   因为装/卸/卖直接复用背包页那套 `InvOps`, 它按这个名字读写宿主。
 var _sel_bench: int = -1
 var _inv_ops := InvOps.new(self)
-var _lineup := ShopLineup.new(self)
+var _chest := ShopChest.new(self)
 var _toast_node: Label = null   # 一句话提示(见 _toast); 同时只留一条
 
 func _ready() -> void:
@@ -335,8 +335,8 @@ func _toast(msg: String) -> void:
 	##   ⚠ 弹层(z=20)仍被它压住 —— 那是故意的, 见下面 z_index 那行。
 	## ★★2026-10-18: 底栏换成背包条(552..657), 右侧阵容面板常驻(x 800 起) ⇒
 	##   提示收进卡区宽度 40..780、背包条之下 664..708, 不压背包格也不压面板。
-	## ★2026-10-18 整页重做: 提示在储物箱下方(场地宽度内), 不压龟、储物格和货架。
-	t.position = Vector2(40.0, 676.0)
+	## ★2026-10-18 整页重做: 提示在左上(羁绊条下面、店主头顶), 不压店主、宝箱和货架。
+	t.position = Vector2(40.0, 136.0)
 	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	t.z_index = 30       # 底栏弹层是 20 —— 提示必须压得住它
 	var bgp := Panel.new()
@@ -414,13 +414,6 @@ func _rebuild() -> void:
 		ext.size = Vector2(_nat * W / SHOP_BG.get_width(), H)
 		ext.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(ext)
-	## 货架整块是「卖出」落点(储物箱里的东西拖回货架 = 卖掉)
-	var shelf_zone := Control.new(); shelf_zone.name = "ShelfZone"
-	shelf_zone.position = Vector2(GRID_X - 8.0, GRID_Y - 8.0)
-	shelf_zone.size = Vector2(5.0 * SLOT_W + 16.0, 2.0 * SLOT_H + GRID_GAP_Y + 16.0)
-	shelf_zone.mouse_filter = Control.MOUSE_FILTER_PASS
-	shelf_zone.set_drag_forwarding(Callable(), _can_sell_drop, _sell_drop)
-	add_child(shelf_zone)
 
 	# ── 头部 y 0–96 ──
 	## ★标题「🛒 深海商店」删掉(用户 2026-08-15)。玩家是自己点进来的, 不需要一块牌子告诉他站在哪;
@@ -584,28 +577,25 @@ func _rebuild() -> void:
 	## (旧注: 「刷新 -2」→「换一批 2」: 「刷新」是浏览器的词, 「-2」是账本的写法。)
 	##   摊主的说法是"给我换一批货"; 价钱由按钮上那枚深海币图标讲(`_coin_button_icon`),
 	##   不需要再打一个负号 —— 图标本身就说明这 2 是要付出去的。
-	var rf := Button.new(); rf.text = "刷新  %d" % REFRESH_COST
-	rf.add_theme_font_size_override("font_size", 22)
-	# 纵向节奏: 卡区止于 420 → 刷新 448(隔 28) → 底部按钮 552(隔 28) → 收于 648, 页底留 72
-	rf.position = Vector2(GRID_X + 20.0, 466.0); rf.size = Vector2(240, 76)
-	_coin_button_icon(rf, 20)
-	## ★★买不起时这颗按钮**原来照样是亮的**(实测 coins=0 → `disabled=false`) ——
-	##   点下去走 `_on_refresh` 的裸 return, 玩家看到的就是"点了没反应"。
-	##   照满级那颗买经验按钮的做法办: `disabled` + `modulate` 一起。
-	##   ⚠ 只设 `disabled` 不够 —— 价钱那枚币图标是【子节点】, 不吃 `disabled` 的
-	##     `font_disabled_color`, 只有 `modulate` 会往子节点传(见 bxp 处同一条注释)。
+	## ★2026-10-18 用户「说了几遍了不要用之前的金木框按钮，重新设计一个更好的」:
+	##   刷新 / 锁定改成【无框图标钮】—— 新画的像素图标在上、描边字在下, 悬停 / 按下靠亮度变化,
+	##   立在货架下沿的沙地上。图标: assets/sprites/shop/icon-refresh / icon-lock-closed / icon-lock-open。
+	var rf := _icon_button("ShopRefreshBtn", REFRESH_ICON, "刷新  %d" % REFRESH_COST,
+		Vector2(GRID_X + 120.0, 458.0), Vector2(130, 96))
+	_coin_after_text(rf)
+	## ★★买不起时: disabled + 整颗压暗(价钱那枚币是子节点, 只有 modulate 会往下传)。
 	var _rf_afford: bool = int(GameState.meta_deepsea_coins) >= REFRESH_COST
 	rf.disabled = not _rf_afford
 	rf.modulate = Color(1, 1, 1, 1) if _rf_afford else Color(1, 1, 1, 0.42)
-	rf.pressed.connect(_on_refresh); _skin_button(rf); add_child(rf)
+	rf.pressed.connect(_on_refresh); add_child(rf)
 	_build_lock_button(rf.position + Vector2(rf.size.x + LOCK_GAP, 0.0), rf.size.y)
 
 	_build_synergy_bar()    # ★羁绊总览: 当前激活了哪些 + 距下一档还差几件(2026-08-12 用户点名)
 	## ★右侧: 常驻【出战阵容】; 选中货架卡 / 已有装备时, 详情盖在它上面(带关闭)。
 	##   底部: 原来两颗只读弹层按钮 → 可点的背包条(点一件 → 点龟 = 装上)。
-	_lineup.build_field(self)
-	_lineup.build_bench(self)
-	_lineup.build_actions(self)
+	_chest.build_keeper(self)
+	_chest.build_bench(self)
+	_chest.build_actions(self)
 	if _detail_wanted():
 		_build_detail_panel()
 		_build_detail_close()
@@ -711,13 +701,13 @@ func _card(idx: int, pos: Vector2) -> Control:
 	var afford := int(GameState.meta_deepsea_coins) >= price
 	## 选中: 物品身后一圈金光
 	if sel:
-		var sg := ShopLineup.ellipse(SLOT_W - 8.0, 96.0, 26, 22, Color(1.0, 0.86, 0.35, 0.45)); sg.name = "SelGlow"
+		var sg := ShopChest.ellipse(SLOT_W - 8.0, 96.0, 26, 22, Color(1.0, 0.86, 0.35, 0.45)); sg.name = "SelGlow"
 		sg.position = Vector2(4, 22); box.add_child(sg)
 	## 已拥有同款: 身后一团呼吸的淡金光(原卡片镀层的同一个意思, 换成不带框的光)
 	var owned := _owned_count(str(edef.get("id", "")))
 	if owned > 0:
 		## 用户 2026-08-14「背包里有的装备在货架栏出现时要有镀层闪光效果」: 身后一团呼吸淡金光 + 一道斜掠高光。
-		var glow := ShopLineup.ellipse(SLOT_W - 20.0, 84.0, 24, 20, Color(1.0, 0.84, 0.35, 0.30)); glow.name = "OwnedGlow"
+		var glow := ShopChest.ellipse(SLOT_W - 20.0, 84.0, 24, 20, Color(1.0, 0.84, 0.35, 0.30)); glow.name = "OwnedGlow"
 		glow.position = Vector2(10, 22); box.add_child(glow)
 		var bt := TweenKit.loop_bound(self, glow)
 		bt.tween_property(glow, "modulate:a", 0.12, 0.9).set_trans(Tween.TRANS_SINE)
@@ -779,16 +769,10 @@ func _card(idx: int, pos: Vector2) -> Control:
 			(ch as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.tooltip_text = str(edef.get("name", ""))
 	_wire_tap(box, func(): _on_select(idx))
-	box.set_drag_forwarding(
-		func(_at: Vector2) -> Variant:
-			if int(GameState.meta_deepsea_coins) < _price(_deco(_offer[idx])) if _offer[idx] != null else true:
-				return null
-			return _begin_drag({"src": "shop", "idx": idx}, _deco(_offer[idx])),
-		_can_sell_drop, _sell_drop)
 	return box
 
 
-## 点按 = 松手时位移很小(按下就触发的话, 一拖动就先重建了页面, 拖动源当场被释放)。
+## 点按 = 松手时位移很小(手指在屏上滑一下不算点)。
 func _wire_tap(ct: Control, fn: Callable) -> void:
 	var st := {"p": Vector2.ZERO}
 	ct.gui_input.connect(func(ev: InputEvent):
@@ -798,74 +782,6 @@ func _wire_tap(ct: Control, fn: Callable) -> void:
 			elif (ev.position - st["p"]).length() < 12.0 and not get_viewport().gui_is_dragging():
 				fn.call())
 
-
-## 开始拖: 指针下挂一个物品图标。
-func _begin_drag(data: Dictionary, edef: Dictionary) -> Variant:
-	var pv := EquipIcon.make(edef, Vector2(64, 58))
-	pv.modulate = Color(1, 1, 1, 0.9)
-	var holder := Control.new()
-	holder.add_child(pv); pv.position = Vector2(-32, -29)
-	set_drag_preview(holder)
-	return data
-
-
-## 拖着的是哪一件(规则判断用)。
-func _drag_item(data: Variant) -> Dictionary:
-	if not (data is Dictionary):
-		return {}
-	var src := str(data.get("src", ""))
-	var i: int = int(data.get("idx", -1))
-	if src == "shop":
-		if i < 0 or i >= _offer.size() or _offer[i] == null:
-			return {}
-		return {"id": str(_deco(_offer[i]).get("id", "")), "star": 1}
-	if src == "bench":
-		var b: Array = GameState.persistent_bench
-		return b[i] if i >= 0 and i < b.size() else {}
-	return {}
-
-
-## 货架拖到某个单位 = 买下并装上。会合成的(已有 2 件同款)只买下, 合成就是结果。
-func _buy_and_equip(idx: int, lane: String, uidx: int) -> void:
-	if idx < 0 or idx >= _offer.size() or _offer[idx] == null:
-		return
-	var eid := str(_deco(_offer[idx]).get("id", ""))
-	if _purchase_merge_star(eid) >= 2:
-		_on_buy(idx, false)
-		return
-	var n0: int = GameState.persistent_bench.size()
-	_on_buy(idx, false)
-	if GameState.persistent_bench.size() <= n0:
-		return
-	var bi := -1
-	for k in range(GameState.persistent_bench.size() - 1, -1, -1):
-		var it = GameState.persistent_bench[k]
-		if it is Dictionary and str(it.get("id", "")) == eid and int(it.get("star", 1)) == 1:
-			bi = k; break
-	if bi >= 0 and _lineup.equip_bench_to(lane, uidx, bi):
-		_toast("已买下并装上")
-
-
-## 货架拖到储物箱 = 只买下。
-func _buy_to_bench(idx: int) -> void:
-	_on_buy(idx, false)
-
-
-## 储物箱里的东西拖回货架 = 卖出。
-func _can_sell_drop(_at: Vector2, data: Variant) -> bool:
-	return data is Dictionary and str(data.get("src", "")) == "bench"
-
-
-func _sell_drop(_at: Vector2, data: Variant) -> void:
-	_lineup.sell_bench_at(int(data.get("idx", -1)))
-
-
-## 拖动开始 / 结束: 场地上能接的单位亮起, 不能接的变暗(只改高亮, 不重建)。
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_DRAG_BEGIN:
-		_lineup.set_drag_highlight(get_viewport().gui_get_drag_data())
-	elif what == NOTIFICATION_DRAG_END:
-		_lineup.set_drag_highlight(null)
 
 
 
@@ -912,8 +828,7 @@ func _on_select(idx: int) -> void:
 		return
 	_sel = -1 if _sel == idx else idx
 	_sel_own = ""          # 与"已拥有"选中互斥 —— 同一块面板同时只讲一件事
-	_sel_bench = -1        # 看货架就不再处于「待装」
-	_lineup.pick_eq = {}
+	_sel_bench = -1        # 看货架就不再选着宝箱里那件
 	_rebuild()
 
 
@@ -1114,17 +1029,6 @@ func _build_detail_panel() -> void:
 	var ic2 := EquipIcon.make(edef, Vector2(66, 58))
 	ic2.position = Vector2(34, 32)
 	box.add_child(ic2)
-	## 货架上的那件: 卡上的图标就是拖动源(拖到龟身上 = 买下并装上), 不用先关卡片。
-	if not own_mode and _sel >= 0 and _sel < _offer.size() and _offer[_sel] != null:
-		var _si: int = _sel
-		ic2.mouse_filter = Control.MOUSE_FILTER_STOP
-		ic2.tooltip_text = "拖到龟身上"
-		ic2.set_drag_forwarding(
-			func(_at: Vector2) -> Variant:
-				if _si >= _offer.size() or _offer[_si] == null or int(GameState.meta_deepsea_coins) < _price(_deco(_offer[_si])):
-					return null
-				return _begin_drag({"src": "shop", "idx": _si}, _deco(_offer[_si])),
-			Callable(), Callable())
 	var nm := Label.new(); nm.text = str(edef.get("name", "?"))
 	nm.add_theme_font_size_override("font_size", 26)
 	nm.add_theme_color_override("font_color", _cost_color(cost))
@@ -1418,7 +1322,7 @@ func _rich_desc(edef: Dictionary, star: int = 1) -> String:
 	return SkillText.highlight_star(raw, star)
 
 
-func _on_buy(idx: int, arm: bool = true) -> void:
+func _on_buy(idx: int) -> void:
 	if idx < 0 or idx >= _offer.size() or _offer[idx] == null:
 		return
 	var edef: Dictionary = _deco(_offer[idx])
@@ -1471,23 +1375,6 @@ func _on_buy(idx: int, arm: bool = true) -> void:
 		_toast("购买成功 · 「%s」合成 ★%d" % [_nm, _will_star])
 	elif _axe_dup:
 		_toast("已拥有「%s」· 转化为砍伐经验 +%d" % [_nm, int(AxeEvo.EXP_ON_BUY)])
-	elif arm and not _tut_on() and GameState.team_has_equip_room():
-		## ★买下的这件直接成为「待装」: 关掉详情、阵容里能装的单位亮起 ⇒ 再点一只龟就装上。
-		##   合成掉的(上一支)不走这里 —— 那件已经并进别的星级里了, 没有一件"新东西"可装。
-		##   教程里不改流程(教程按新流程重写是下一份方案书)。
-		var _bi := -1
-		var _bn: Array = GameState.persistent_bench
-		for _k in range(_bn.size() - 1, -1, -1):
-			if _bn[_k] is Dictionary and str(_bn[_k].get("id", "")) == _eid and int(_bn[_k].get("star", 1)) == 1:
-				_bi = _k; break
-		_sel = -1
-		_sel_bench = _bi
-		_rebuild()
-		_toast("购买成功 · 「%s」点一只龟装上" % _nm)
-	elif not arm:
-		_toast("购买成功 · 「%s」已放入背包" % _nm)
-	elif not _tut_on():
-		_toast("购买成功 · 「%s」已放入背包（全队装备已满）" % _nm)
 	else:
 		_toast("购买成功 · 「%s」已放入背包" % _nm)
 	_tut_notify("item_bought")   # 教程「购买 1 件装备」: 成交才前进(方案书 B2)
@@ -1497,35 +1384,67 @@ func _on_buy(idx: int, arm: bool = true) -> void:
 ## ★没有「开着的锁」那张图 ⇒ 两态靠**整颗按钮的亮暗 + 金边**区分:
 ##   未锁 = 图标压暗(半透) + 普通冷色皮 + 字「锁货」; 已锁 = 图标全亮 + 金色主按钮皮 + 字「已锁」。
 ## ★字是必须的: 只有一把锁的图标, 光看图标分不出"点了会锁"还是"现在锁着"。
-const LOCK_ICON := preload("res://assets/sprites/ui/icon-lock.png")
+const REFRESH_ICON := preload("res://assets/sprites/shop/icon-refresh.png")
+const LOCK_CLOSED_ICON := preload("res://assets/sprites/shop/icon-lock-closed.png")
+const LOCK_OPEN_ICON := preload("res://assets/sprites/shop/icon-lock-open.png")
 const LOCK_GAP := 12.0
 ## ★宽 200 不是随手定的: verify_ui_consistency 的「热区不足」判据是 短边 < 81px(44pt) **且** 长边 < 200px。
 ##   高度要跟「换一批」(76)对齐一行, 只能靠长边 ≥ 200 过线(「换一批」240×76 也是这么过的)。
-const LOCK_W := 200.0
+const LOCK_W := 130.0
 var _lock_btn: Button = null
 
 func _build_lock_button(pos: Vector2, h: float) -> void:
 	var locked: bool = bool(GameState.meta_shop_locked)
-	var lb := Button.new()
-	lb.name = "ShopLockBtn"
-	lb.text = "已锁定" if locked else "锁定"
-	lb.add_theme_font_size_override("font_size", 20)
-	lb.position = pos; lb.size = Vector2(LOCK_W, h)
-	lb.icon = LOCK_ICON
-	lb.expand_icon = true
-	lb.add_theme_constant_override("icon_max_width", 32)
-	## 图标在左、字在右, 一行排开(竖排时 76 高的皮框上下边带会压住图标和字 —— 实拍过)
-	lb.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	lb.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	## 锁着: 锁是合上的、亮的, 脚下一圈金光; 没锁: 锁是开着的、压暗 —— 一眼分得清两态。
+	if locked:
+		var gl := ShopChest.ellipse(LOCK_W - 20.0, 22.0, 24, 5, Color(1.0, 0.82, 0.3, 0.55)); gl.name = "LockGlow"
+		gl.position = pos + Vector2(10.0, 56.0)
+		add_child(gl)
+	var lb := _icon_button("ShopLockBtn", LOCK_CLOSED_ICON if locked else LOCK_OPEN_ICON,
+		"已锁定" if locked else "锁定", pos, Vector2(LOCK_W, h))
 	lb.tooltip_text = "已锁定 · 点击解锁" if locked else "锁定商品：下场战斗后不刷新"
-	_skin_button(lb, locked)
-	## 未锁时图标压暗(按钮本身不 disabled —— 它随时都能点)
-	lb.add_theme_color_override("icon_normal_color", Color(1, 1, 1, 1) if locked else Color(1, 1, 1, 0.45))
-	lb.add_theme_color_override("icon_hover_color", Color(1, 1, 1, 1) if locked else Color(1, 1, 1, 0.7))
-	lb.add_theme_color_override("icon_pressed_color", Color(1, 1, 1, 1))
+	lb.add_theme_color_override("icon_normal_color", Color(1, 1, 1, 1) if locked else Color(0.75, 0.75, 0.8, 0.85))
+	lb.add_theme_color_override("font_color", Color("#ffe27a") if locked else Color("#e8dcc4"))
 	lb.pressed.connect(_on_toggle_lock)
 	add_child(lb)
 	_lock_btn = lb
+
+
+## 无框图标钮: 图标在上(像素图 ×2, 最近邻)、描边字在下; 五种状态的底都是空的(不是金木框, 也不是网页盒)。
+func _icon_button(nm: String, tex: Texture2D, label: String, pos: Vector2, sz: Vector2) -> Button:
+	var b := Button.new(); b.name = nm
+	b.text = label
+	b.icon = tex
+	b.expand_icon = true
+	b.add_theme_constant_override("icon_max_width", 64)
+	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+	b.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	b.add_theme_font_size_override("font_size", 18)
+	b.add_theme_color_override("font_color", Color("#e8dcc4"))
+	b.add_theme_color_override("font_hover_color", Color("#fff4dc"))
+	b.add_theme_color_override("font_pressed_color", Color("#ffe27a"))
+	b.add_theme_color_override("font_outline_color", Color("#1a0e05"))
+	b.add_theme_constant_override("outline_size", 6)
+	b.add_theme_color_override("icon_hover_color", Color(1.15, 1.15, 1.15, 1))
+	b.add_theme_color_override("icon_pressed_color", Color(0.85, 0.85, 0.85, 1))
+	for st in ["normal", "hover", "pressed", "disabled", "focus"]:
+		b.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	b.position = pos; b.size = sz
+	return b
+
+
+## 刷新钮字后面跟一枚深海币(子节点, 跟着按钮一起压暗)。
+func _coin_after_text(b: Button) -> void:
+	var c := TextureRect.new(); c.texture = COIN_TEX
+	c.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; c.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	c.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	## 量字宽再放: 「刷新  2」居中, 币紧贴在字的右边(写死偏移会压在数字上 —— 实拍过)
+	var f: Font = b.get_theme_font("font")
+	var tw: float = f.get_string_size(b.text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, b.get_theme_font_size("font_size")).x if f != null else 60.0
+	c.position = Vector2(b.size.x * 0.5 + tw * 0.5 + 4.0, b.size.y - 29.0); c.size = Vector2(20, 20)
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(c)
 
 
 func _on_toggle_lock() -> void:
@@ -1864,5 +1783,5 @@ func _center_middle(desc: RichTextLabel, nodes: Array) -> void:
 			(n as Control).position.y -= shift
 
 
-# §底栏 —— 2026-10-18 起是可点的背包条 + 右侧常驻阵容(买和装同一屏), 见 scripts/scenes/shop/shop_lineup.gd。
+# §左半 —— 2026-10-18 起是店主 + 宝箱(背包), 见 scripts/scenes/shop/shop_chest.gd。装备在背包页做。
 #   原来那两颗只读弹层按钮(备战席 / 出战阵容)已删: 弹层只能看不能装, 装还得换页。

@@ -22,7 +22,7 @@ const SHOP := preload("res://scenes/Shop.tscn")
 ## ★★这两个 preload 是为了【从产品自己身上回读常量】, 不在这里手抄一份副本
 ##   (memory [[fb-hand-rolled-copies-drift]]: 手抄的副本必然落后)。
 const SHOP_GD = preload("res://scripts/scenes/ShopScene.gd")
-const LINEUP_GD = preload("res://scripts/scenes/shop/shop_lineup.gd")
+const CHEST_GD = preload("res://scripts/scenes/shop/shop_chest.gd")
 const P2CFG = preload("res://scripts/gamedata/phase2_config.gd")
 const SCREEN_W := 1280.0
 const SCREEN_H := 720.0
@@ -47,7 +47,7 @@ var _n := 0
 ## 全绿时的断言条数【地板】。低于它 = 有协程在半路被掐断 / 静默 abort ⇒ 判红
 ## (fb-null-readback-makes-test-silently-abort: 读一个不存在的成员会让协程就地返回,
 ##  后面的断言一条不跑, 而进程 rc=0 还照样打 ALL PASS)。加/删断言时同步改这个数。
-const MIN_ASSERTS := 94
+const MIN_ASSERTS := 86
 
 
 func _ready() -> void:
@@ -324,23 +324,27 @@ func _ready() -> void:
 			if panel == null:
 				panel = c
 	print("")
-	## ★2026-10-18 整页重做: 队伍站在左半场地上(6 个单位格), 货架在右。
-	##   判据: 6 个单位格都在、都在货架左沿以左、彼此不重叠、都不出 1280×720。
-	var tiles: Array = []
+	## ★2026-10-18 整页重做(第三版): 左半是店主 + 宝箱, 右半货架; 阵容不在商店里(用户「左边的阵容不放商店」)。
+	var keeper: Control = null
+	var bz: Control = null
+	var units := 0
 	for c in all:
-		if str(c.name).begins_with("LineupRow_"):
-			tiles.append(c)
-	_chk("⑧ ★分母: 场地上画出了 6 个单位(实测 %d)" % tiles.size(), tiles.size() == 6)
-	var tbad: Array = []
-	for a in range(tiles.size()):
-		var ra := Rect2((tiles[a] as Control).global_position, (tiles[a] as Control).size)
-		if ra.end.x > SHOP_GD.GRID_X - 4.0 or ra.position.x < 0.0 or ra.end.y > 720.0:
-			tbad.append("%s 出界 %s" % [str(tiles[a].name), str(ra)])
-		for b in range(a + 1, tiles.size()):
-			var rb := Rect2((tiles[b] as Control).global_position, (tiles[b] as Control).size)
-			if ra.intersects(rb):
-				tbad.append("%s 压 %s" % [str(tiles[a].name), str(tiles[b].name)])
-	_chk("⑧ ★单位都在货架以左、互不重叠、不出屏: %s" % ("无" if tbad.is_empty() else str(tbad.slice(0, 4))), tbad.is_empty())
+		if str(c.name) == "Shopkeeper":
+			keeper = c
+		elif str(c.name) == "BenchHeader":
+			bz = c
+		elif str(c.name).begins_with("LineupRow_"):
+			units += 1
+	_chk("⑧ ★分母: 店主和宝箱都在场", keeper != null and bz != null)
+	_chk("⑧ 阵容不在商店里(单位格 %d 个)" % units, units == 0)
+	var kbad: Array = []
+	for c in [keeper, bz]:
+		if c == null:
+			continue
+		var r := Rect2((c as Control).global_position, (c as Control).size)
+		if r.end.x > SHOP_GD.GRID_X - 4.0 or r.end.y > 720.5 or r.position.x < -0.5:
+			kbad.append("%s %s" % [str(c.name), str(r)])
+	_chk("⑧ ★店主 / 宝箱都在货架以左、不出屏: %s" % ("无" if kbad.is_empty() else str(kbad)), kbad.is_empty())
 	if panel == null:
 		print("  [FAIL] ⑧ ★分母: 找不到详情面板(%.0f×%.0f)" % [PANEL_W, PANEL_H]); _fail += 1
 	else:
@@ -519,17 +523,16 @@ func _ready() -> void:
 	scanned += _scan_dangle(all, dangle)
 	var pop_lines := 0
 	## ★2026-10-18 起没有弹层了; 「点了才出现」的文字换成两种状态:
-	##   背包条里选中一件(提示行 + 每个单位的不能装原因) / 点了龟身上一件(提示行 + 卸下/详情)。
+	##   宝箱里选中一件(提示行 + 详情 / 卖出 / 去背包装上)。
 	var _sel0 = sc.get("_sel")
 	GameState.season_leaders = ["basic", "stone", "bamboo"]
 	GameState.dual_lineup = {}
 	GameState.persistent_bench = [{"id": "p2eq_001", "star": 1}]
 	GameState.persistent_equipped = {"basic": [{"id": "p2eq_002", "star": 1}]}
-	for st in ["bench", "pick"]:
+	for st in ["bench"]:
 		sc.set("_sel", -1)
 		sc.set("_sel_own", "")
-		sc.set("_sel_bench", 0 if st == "bench" else -1)
-		sc.get("_lineup").pick_eq = {} if st == "bench" else {"lane": "top", "idx": 0, "ci": 0}
+		sc.set("_sel_bench", 0)
 		sc._rebuild()
 		for _i in range(3):
 			await get_tree().process_frame
@@ -537,7 +540,6 @@ func _ready() -> void:
 		_collect(sc, plist)
 		pop_lines += _scan_dangle(plist, dangle)
 	sc.set("_sel_bench", -1)
-	sc.get("_lineup").pick_eq = {}
 	sc.set("_sel", _sel0)        # 还原现场: 后面 SHARED_SKIN 要数详情卡上的按钮
 	sc._rebuild()
 	await get_tree().process_frame
@@ -635,15 +637,15 @@ func _chk(what: String, ok: bool) -> void:
 func _check_owned_shine(sc) -> void:
 	var src := FileAccess.get_file_as_string("res://scripts/scenes/ShopScene.gd")
 	_chk("镀层挂在【已拥有】这个条件下(owned > 0)", src.find("if owned > 0:") >= 0)
-	## 2026-10-18: 镀层改成像素椭圆(ShopLineup.ellipse), 它自己就是 MOUSE_FILTER_IGNORE
-	var src_l := FileAccess.get_file_as_string("res://scripts/scenes/shop/shop_lineup.gd")
-	_chk("镀层不挡点击(MOUSE_FILTER_IGNORE)", src.find("var glow := ShopLineup.ellipse(") >= 0
+	## 2026-10-18: 镀层改成像素椭圆(ShopChest.ellipse), 它自己就是 MOUSE_FILTER_IGNORE
+	var src_l := FileAccess.get_file_as_string("res://scripts/scenes/shop/shop_chest.gd")
+	_chk("镀层不挡点击(MOUSE_FILTER_IGNORE)", src.find("var glow := ShopChest.ellipse(") >= 0
 		and src_l.find("r.mouse_filter = Control.MOUSE_FILTER_IGNORE") >= 0)
 	_chk("镀层会呼吸(循环 tween 改 modulate:a)", src.find("bt.tween_property(glow, \"modulate:a\"") >= 0)
 	_chk("有一道斜掠高光(ColorRect 扫过卡面)", src.find("shine.rotation = -0.5") >= 0)
 	## 反面: 源码里这段必须在 `owned > 0` 之内 —— 若被挪到条件外, 每张卡都会镀。
 	var i_cond: int = src.find("if owned > 0:")
-	var i_glow: int = src.find("var glow := ShopLineup.ellipse(")
+	var i_glow: int = src.find("var glow := ShopChest.ellipse(")
 	_chk("★反面: 镀层在条件【之内】(不是每张卡都镀)", i_cond > 0 and i_glow > i_cond and i_glow - i_cond < 900)
 	await _check_no_diagonal_spill(sc)
 
@@ -753,7 +755,7 @@ func _done(sc) -> void:
 	## ★下面四条各自改 GameState(等级/背包/身上的装备), 所以一律放在前面那些
 	##   "看现场版式"的判据【之后】—— 顺序反了会把它们的现场掀掉。
 	_check_sell_nonzero()
-	await _check_name_not_truncated(sc)
+	## NAME_NOT_TRUNCATED 撤掉(2026-10-18): 商店不再画龟名(阵容不在商店)、货架不写装备名 —— 被测对象不在场
 	await _check_equip_cap_same_source(sc)
 	await _check_bag_popup_all(sc)
 	await _check_maxlevel_xp()      # ★台账 ⑷: 满级不许印哨兵分母 / 死按钮要长得像死的
@@ -895,7 +897,8 @@ func _check_shared_skin(sc) -> void:
 		print("     %-22s %5.0fx%-4.0f %s" % [str((b2 as Button).text).substr(0, 20),
 			(b2 as Button).get_global_rect().size.x, (b2 as Button).get_global_rect().size.y,
 			str(s2.texture.resource_path).get_file()])
-	_chk("SHARED_SKIN ★分母: 商店里带贴图皮的按钮 ≥5 颗(N=0 是空检查)", skinned.size() >= 5)
+	## 2026-10-18: 刷新 / 锁定换成无框图标钮(不再是贴图皮), 带皮的剩买经验 / 详情卡关闭 / 购买等
+	_chk("SHARED_SKIN ★分母: 商店里带贴图皮的按钮 ≥2 颗(N=0 是空检查)", skinned.size() >= 2)
 	_chk("SHARED_SKIN ★没有屏幕专用的一次性皮(assets/sprites/shop/ 下的贴图不许当按钮皮): %s"
 		% ("无" if from_shop.is_empty() else str(from_shop)), from_shop.is_empty())
 	_chk("SHARED_SKIN ★★每颗的皮 == UISkin.button() 对同尺寸会挑的那张: %s"
@@ -978,142 +981,6 @@ func _check_sell_nonzero() -> void:
 	_chk("SELL_NONZERO ★单一事实源: 卖价只从 Phase2Config.sell_value 取, 代码里没有手写的取整式 %s"
 		% ("" if handrolled.is_empty() else str(handrolled)),
 		routed and handrolled.is_empty())
-
-
-# ══════════════════════════════════════════════════════════════════════
-#  NAME_NOT_TRUNCATED —— 出战阵容里那行装备名不许被裁
-# ══════════════════════════════════════════════════════════════════════
-## ★由来(台账 ⑺): 那行字**就是为了「手机没有 hover、别只靠 tooltip」才加的**,
-##   而它当初画在 36px 宽的格子上 ⇒ 只看得见前 3 个字。讽刺就在这里。
-##
-## ★★判据量的是**真实渲染宽度**, 不是数字数 —— 中文/拉丁/数字每个字的宽都不一样,
-##   「N 个字以内」这种判据换一件带 A/B 后缀的装备就骗过去了。
-## ★七条断言, 每条能单独红:
-##   ① [分母] 96 件全扫到, 并打出最长名字/最宽像素
-##   ② 现宽度下**一件都不超**
-##   ③ 现宽度下没有两个不同的名字被裁成**同一个词**(守护贝壳/守护贝母 →「守护贝」那一族)
-##   ④⑤ [分母·反证] 同一套量法, 把宽度换回改版前的 36px 会量出一堆超宽 + 好几组同词
-##      ⇒ 量法不是恒真式
-##   ⑥⑦ 屏上那个控件**真的**是这个宽度和字号(常量对得上而控件没读它 = 判据白跑,
-##      memory [[fb-gate-subject-never-constructed]])
-func _check_name_not_truncated(sc) -> void:
-	## ★2026-10-18: 量的对象从「弹层里每件装备名」换成「阵容行里的龟名」——
-	##   装备在阵容里只画图标(点了在提示行出全名), 名字一格留给龟。28 只全量。
-	var box_w := float(LINEUP_GD.NAME_W)
-	## 反证宽度: 一个字宽。龟名比装备名短得多, 原来那把 36px 的反证尺子量龟名量不出撞词。
-	const REV_W := 18.0
-	var fsz := int(LINEUP_GD.NAME_FONT)
-	## 量尺 = 产品那行字自己的字体/字号。这颗 Label 只借来拿 Font, 不参与版式。
-	var ruler := Label.new()
-	ruler.add_theme_font_size_override("font_size", fsz)
-	add_child(ruler)
-	await get_tree().process_frame
-	var f: Font = ruler.get_theme_font("font")
-	## ★键名是 "font_size" 不是 "font" —— 写错会静默拿到主题默认的 16 号,
-	##   量出来的宽度全部偏大 45%(第一版探针就是这么量的, 那个 96px 是假数)。
-	var fs: int = ruler.get_theme_font_size("font_size")
-	ruler.queue_free()
-	var dr := get_node_or_null("/root/DataRegistry")
-	var eqs: Array = dr.launch_pets if dr != null else []
-	var over: Array = []
-	var over36 := 0
-	var worst := 0.0
-	var worst_nm := ""
-	var maxchars := 0
-	var vis_now: Dictionary = {}
-	var vis_36: Dictionary = {}
-	var names := 0
-	for e in eqs:
-		var nm := str((e as Dictionary).get("name", ""))
-		if nm == "":
-			continue
-		names += 1
-		maxchars = maxi(maxchars, nm.length())
-		var w: float = f.get_string_size(nm, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs).x
-		if w > worst:
-			worst = w
-			worst_nm = nm
-		if w > box_w + 0.5:
-			over.append("%s 需 %.0fpx" % [nm, w])
-		if w > REV_W + 0.5:
-			over36 += 1
-		_bump(vis_now, _visible_prefix(f, fs, nm, box_w), nm)
-		_bump(vis_36, _visible_prefix(f, fs, nm, REV_W), nm)
-	var dup_now := _dup_groups(vis_now)
-	var dup_36 := _dup_groups(vis_36)
-	print("")
-	print("  [NAME_NOT_TRUNCATED 分母] 扫到 %d 个龟名; 最长 %d 个字; 最宽「%s」= %.0fpx; 框宽 %.0fpx / 字号 %d"
-		% [names, maxchars, worst_nm, worst, box_w, fs])
-	_chk("NAME_NOT_TRUNCATED ★分母: 28 只龟名全扫到, 字体/字号取到了(%d 号)" % fs,
-		names >= 28 and f != null and fs == fsz)
-	_chk("NAME_NOT_TRUNCATED ★★现框宽 %.0fpx 下一件都不超(最宽的「%s」占 %.0fpx): %s"
-		% [box_w, worst_nm, worst, "无" if over.is_empty() else str(over.slice(0, 6))], over.is_empty())
-	_chk("NAME_NOT_TRUNCATED ★★没有两个不同的龟被裁成同一个词: %s"
-		% ("无" if dup_now.is_empty() else str(dup_now)), dup_now.is_empty())
-	print("     反证(同一套量法·把框宽压到 18px): %d 件超宽 / %d 组撞成同词 %s"
-		% [over36, dup_36.size(), str(dup_36.slice(0, 3))])
-	_chk("NAME_NOT_TRUNCATED ★分母·反证: 18px 下量出 %d 件超宽(>0 ⇒ 量法不是恒真式)" % over36,
-		over36 > 0)
-	## ★龟名第一个字两两不同(28 只实测) ⇒ 龟名本身裁到多窄都撞不了词, 上面那条天然成立。
-	##   撞词的量法拿一对历史上真撞过的名字(守护贝壳 / 守护贝母, 36px 下都成「守护贝」)标定。
-	var cal: Dictionary = {}
-	for nm2 in ["守护贝壳", "守护贝母"]:
-		_bump(cal, _visible_prefix(f, fs, nm2, 36.0), nm2)
-	_chk("NAME_NOT_TRUNCATED ★分母·反证: 撞词量法在「守护贝壳 / 守护贝母」@36px 上量出 %d 组(>0 ⇒ 不是恒真式)"
-		% _dup_groups(cal).size(), _dup_groups(cal).size() > 0)
-	## ── 屏上那个控件真的用这个宽度和字号吗 ────────────────────────
-	var long_id := ""
-	for e in eqs:
-		if str((e as Dictionary).get("name", "")) == worst_nm:
-			long_id = str((e as Dictionary).get("id", ""))
-	GameState.season_leaders = [long_id, "stone", "bamboo"]
-	GameState.dual_lineup = {}          # 让 get_dual_lineup 重建成合法默认结构
-	sc._rebuild()
-	for _i in range(4):
-		await get_tree().process_frame
-	var hits: Array = []
-	for c in _labels_in(sc):
-		if str((c as Label).text) == worst_nm and str(c.name) == "UnitName":
-			hits.append(c)
-	_chk("NAME_NOT_TRUNCATED ★分母: 阵容里真的画出了「%s」那行字(%d 个) —— 找不到就说明上面全白量"
-		% [worst_nm, hits.size()], hits.size() >= 1)
-	if hits.size() >= 1:
-		var lb: Label = hits[0]
-		_chk("NAME_NOT_TRUNCATED ★★屏上那个控件宽 %.0fpx == NAME_W(%.0f)"
-			% [lb.size.x, box_w], absf(lb.size.x - box_w) < 0.5)
-		_chk("NAME_NOT_TRUNCATED ★★屏上那个控件字号 %d == NAME_FONT(%d)"
-			% [lb.get_theme_font_size("font_size"), fsz], lb.get_theme_font_size("font_size") == fsz)
-		var wr: float = f.get_string_size(str(lb.text), HORIZONTAL_ALIGNMENT_LEFT, -1.0,
-			lb.get_theme_font_size("font_size")).x
-		_chk("NAME_NOT_TRUNCATED ★★那行字在自己的控件里放得下(%.0f ≤ %.0f, 省略号一次都不该出现)"
-			% [wr, lb.size.x], wr <= lb.size.x + 0.5)
-
-
-## 宽度 w 装得下的最长前缀 = 玩家实际看得见的那个词
-func _visible_prefix(f: Font, fs: int, nm: String, w: float) -> String:
-	if f.get_string_size(nm, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs).x <= w + 0.5:
-		return nm
-	var k := 0
-	while k < nm.length():
-		if f.get_string_size(nm.substr(0, k + 1), HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs).x > w + 0.5:
-			break
-		k += 1
-	return nm.substr(0, k)
-
-
-func _bump(d: Dictionary, key: String, val: String) -> void:
-	if not d.has(key):
-		d[key] = []
-	(d[key] as Array).append(val)
-
-
-## 同一个可见词对应 >1 个装备名 = 玩家看到两件「同名」的东西
-func _dup_groups(d: Dictionary) -> Array:
-	var out: Array = []
-	for k in d.keys():
-		if (d[k] as Array).size() > 1:
-			out.append("「%s」= %s" % [str(k), str(d[k])])
-	return out
 
 
 func _labels_in(n: Node) -> Array:
@@ -1229,7 +1096,7 @@ func _check_bag_popup_all(sc) -> void:
 	## ★2026-10-18: 弹层换成底部背包条。一行 BENCH_PER_ROW 格; 放得下就一件不少,
 	##   放不下就画 PER_ROW−1 格 + 一颗「+N」(点了去背包页) —— 截断可以, 不说话不行。
 	print("")
-	var per_row := int(LINEUP_GD.BENCH_PER_ROW)
+	var per_row := int(CHEST_GD.BENCH_PER_ROW)
 	print("  [BAG_POPUP_ALL 分母] 背包条一行 %d 格" % per_row)
 	for n in [per_row - 3, per_row + 8]:
 		var bench: Array = []
@@ -1242,7 +1109,7 @@ func _check_bag_popup_all(sc) -> void:
 			await get_tree().process_frame
 		var cells: Array = []
 		var more: Button = null
-		var lp: Control = null
+		var lp: Control = sc if sc is Control and is_instance_valid(sc) else null   # 货架矩形按常量 + 画面偏移算
 		var all2: Array = []
 		_collect(sc, all2)
 		for c in all2:
@@ -1250,8 +1117,6 @@ func _check_bag_popup_all(sc) -> void:
 				cells.append(c)
 			elif str(c.name) == "BenchMore":
 				more = c
-			elif str(c.name) == "ShelfZone":
-				lp = c
 		var want: int = int(n) if int(n) <= per_row else per_row - 1
 		print("     背包 %d 件 → 背包条画出 %d 格(该画 %d)  「+N」%s" % [n, cells.size(), want, more.text if more != null else "无"])
 		_chk("BAG_POPUP_ALL ★分母: 背包真塞了 %d 件, 货架区在场" % n, GameState.persistent_bench.size() == n and lp != null)
@@ -1266,7 +1131,11 @@ func _check_bag_popup_all(sc) -> void:
 			items.append(more)
 		for c in items:
 			var r: Rect2 = Rect2((c as Control).global_position, (c as Control).size)
-			if lp != null and r.intersects(Rect2(lp.global_position, lp.size)):
+			## 货架矩形按常量算(背景整张图不是货架)
+			## ★不按节点名找背景: 重建时旧节点还占着名字, 新节点会被引擎改名(⑧ 那条注释记过同一个坑)
+			var shelf := Rect2(sc._frame_off() + Vector2(SHOP_GD.GRID_X, SHOP_GD.GRID_Y),
+				Vector2(5.0 * SHOP_GD.SLOT_W, 2.0 * SHOP_GD.SLOT_H + SHOP_GD.GRID_GAP_Y)) if lp != null else Rect2()
+			if lp != null and r.intersects(shelf):
 				spill.append("格@(%.0f,%.0f) 伸进货架" % [r.position.x, r.position.y])
 		_chk("BAG_POPUP_ALL ★每一格都不伸进右侧货架: %s" % ("无" if spill.is_empty() else str(spill.slice(0, 3))), spill.is_empty())
 	GameState.persistent_bench = []
