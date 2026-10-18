@@ -40,9 +40,9 @@ const GRID_X := 722.0        # 货架左沿
 const GRID_Y := 128.0        # 上层商品格的顶(底 270 = 板沿)
 const GRID_GAP_X := 0.0
 const GRID_GAP_Y := 38.0       # 下层格顶 308, 底 450 = 下层板沿
-const PANEL_X := 250.0       # 详情卡: 点货架上的东西时盖在场地上(× 关)
+const PANEL_X := 762.0       # 详情卡: 盖在货架那一侧, 左边场地整个露出来(卡上的图标可直接拖到龟身上)
 const PANEL_W := 440.0
-const PANEL_Y := 104.0
+const PANEL_Y := 100.0
 const PANEL_H := 592.0
 ## 羁绊总览条(货架与底部按钮之间那条空带)。★进 verify_shop_layout 的越界检查
 const SYN_BAR_Y := 508.0
@@ -1114,6 +1114,17 @@ func _build_detail_panel() -> void:
 	var ic2 := EquipIcon.make(edef, Vector2(66, 58))
 	ic2.position = Vector2(34, 32)
 	box.add_child(ic2)
+	## 货架上的那件: 卡上的图标就是拖动源(拖到龟身上 = 买下并装上), 不用先关卡片。
+	if not own_mode and _sel >= 0 and _sel < _offer.size() and _offer[_sel] != null:
+		var _si: int = _sel
+		ic2.mouse_filter = Control.MOUSE_FILTER_STOP
+		ic2.tooltip_text = "拖到龟身上"
+		ic2.set_drag_forwarding(
+			func(_at: Vector2) -> Variant:
+				if _si >= _offer.size() or _offer[_si] == null or int(GameState.meta_deepsea_coins) < _price(_deco(_offer[_si])):
+					return null
+				return _begin_drag({"src": "shop", "idx": _si}, _deco(_offer[_si])),
+			Callable(), Callable())
 	var nm := Label.new(); nm.text = str(edef.get("name", "?"))
 	nm.add_theme_font_size_override("font_size", 26)
 	nm.add_theme_color_override("font_color", _cost_color(cost))
