@@ -1125,6 +1125,7 @@ scripts/scenes/ShopScene.gd|lit|已达最高等级 Lv%d
 scripts/scenes/ShopScene.gd|lit|已锁定
 scripts/scenes/ShopScene.gd|lit|已锁定 · 下场战斗后不刷新
 scripts/scenes/ShopScene.gd|lit|斧头
+scripts/scenes/ShopScene.gd|lit|无属性加成
 scripts/scenes/ShopScene.gd|lit|深海币不足 · 「%s」需要 %d，还差 %d
 scripts/scenes/ShopScene.gd|lit|深海币不足（需要 %d）
 scripts/scenes/ShopScene.gd|lit|等级已满
@@ -1133,22 +1134,15 @@ scripts/scenes/ShopScene.gd|lit|购买成功 · 「%s」已放入背包
 scripts/scenes/ShopScene.gd|lit|这件
 scripts/scenes/ShopScene.gd|lit|锁定
 scripts/scenes/ShopScene.gd|lit|🎒 背包
-scripts/scenes/ShopScene.gd|text|%d 深海币%s
 scripts/scenes/ShopScene.gd|text|%d 费 %d%%
-scripts/scenes/ShopScene.gd|text|▼ 下面还有
-scripts/scenes/ShopScene.gd|text|前往背包
-scripts/scenes/ShopScene.gd|text|另外还有 %d 项
 scripts/scenes/ShopScene.gd|text|商品
 scripts/scenes/ShopScene.gd|text|商店未解锁\n\n本大轮首战后解锁
-scripts/scenes/ShopScene.gd|text|属性
 scripts/scenes/ShopScene.gd|text|已满级
-scripts/scenes/ShopScene.gd|text|无属性加成
 scripts/scenes/ShopScene.gd|text|经验 %d/%d
 scripts/scenes/ShopScene.gd|text|羁绊
 scripts/scenes/ShopScene.gd|text|装备 %d/%d
 scripts/scenes/ShopScene.gd|text|购买  %d
 scripts/scenes/ShopScene.gd|text|还差 %d 枚深海币
-scripts/scenes/ShopScene.gd|text|选择装备查看详情
 scripts/scenes/ShopScene.gd|tooltip_text|各费用出货概率
 scripts/scenes/ShopScene.gd|tooltip_text|已锁定 · 点击解锁
 scripts/scenes/ShopScene.gd|tooltip_text|经验 +%d

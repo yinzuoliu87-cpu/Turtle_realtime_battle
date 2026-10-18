@@ -1277,13 +1277,6 @@ func _coin_icon(parent: Control, pos: Vector2, sz: float) -> TextureRect:
 	return t
 
 
-## 给按钮挂深海币图标(按钮里没法插 TextureRect, 用 Button 自带的 icon 槽)。
-## 图标靠右 —— 读作「购买 2 ◎」, 价格跟货币符号挨着。
-func _coin_button_icon(b: Button, px: int) -> void:
-	b.icon = COIN_TEX
-	b.expand_icon = true
-	b.add_theme_constant_override("icon_max_width", px)
-	b.icon_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 
 
 ## 一条【像素槽】进度条: 九宫格金属槽 + 槽内填充。取代「两个 ColorRect 摞一起」。
