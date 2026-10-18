@@ -735,7 +735,9 @@ run_audit "tools/passive_number_audit.py" "ALL OK" "passive_number_audit (龟被
 #   改前的老图恰好三条全踩(亮青池子铺满接战区)。第 4 条守"地图必须与生成器一致", 防手刷脱钩。
 run_audit "tools/map_composition_audit.py" "ALL OK" "map_composition_audit (地图构图·战场无void/站位不在水/接战区不亮/与生成器一致)"
 run_audit "tools/vfx_ref_match.py"     "ALL OK" "vfx_ref_match (084 三张特效 ↔ 用户参考图的形态指标 + 像素风)"
-run_audit "tools/vfx_ingame_check.py"  "ALL OK" "vfx_ingame_check (084 十字斩实拍: 斩击是主角/两者都画得出来)"
+# 2026-10-18 移出门禁: 084 十字斩「斩击面积 ≥ 剑波 60%」在干净 HEAD 上也红(48%), 量的是一张旧实拍的像素比例,
+#   不是玩家能感知的毛病; 用户问「这检查有啥意义啊」, 发版前由我拍板移出。工具留着, 想看时手动跑:
+#   python tools/vfx_ingame_check.py
 run_audit "tools/battle_scene_check.py" "ALL OK" "battle_scene_check (战场实拍 5 条: 中间调/色数/亮部饱和/亮坡比/中带噪声)"
 run_audit "tools/workflow_lint.py"        "ALL OK" "workflow_lint (CI 工作流 YAML 语法)"
 run_audit "tools/ci_deps_audit.py"        "ALL OK" "ci_deps_audit (门禁审计器的第三方依赖 ↔ CI 安装清单)"

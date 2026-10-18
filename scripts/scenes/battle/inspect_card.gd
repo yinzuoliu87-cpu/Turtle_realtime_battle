@@ -21,6 +21,15 @@ const EQ_STAT_ICON := {"攻击力": "atk", "最大生命值": "hp", "护甲": "d
 	"治疗与护盾增幅": "shieldheal", "初始龟能": "maxenergy", "龟能充能速率": "echarge", "射程": "range",
 	"攻击速度": "aspd", "移动速度": "move", "攻击射程": "range"}
 
+
+## 装备属性一行 [名, 值] → 小卡 `stats` 的一项 [图标路径, 文字, 颜色]。
+##   有图标 ⇒ 只写数值(图标就是属性名); 没有 ⇒ 「名 值」。图标在 `open()` 里按属性染色(stat_icon_color_of)。
+static func eq_stat_row(kv: Array, col: Color) -> Array:
+	var ik := str(EQ_STAT_ICON.get(str(kv[0]), ""))
+	if ik == "":
+		return ["", "%s %s" % [kv[0], kv[1]], col]
+	return ["res://assets/sprites/stats/%s-icon.png" % ik, str(kv[1]), col]
+
 const C_TITLE := Color("#f4ead8")
 const C_BODY := Color("#d2c7b4")
 const C_DIM := Color("#8c7f6c")

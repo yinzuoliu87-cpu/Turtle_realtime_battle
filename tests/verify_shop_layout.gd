@@ -27,18 +27,6 @@ const P2CFG = preload("res://scripts/gamedata/phase2_config.gd")
 const SCREEN_W := 1280.0
 const SCREEN_H := 720.0
 const MIN_TOUCH_H := 44.0     # 移动端触摸目标最低高度
-## 第⑥条用: 必须与 ShopScene._build_detail_panel 里描述框的口径一致
-const DESC_W := 372.0         # PANEL_W(440) - 左右各 34
-## ★264 → 246(2026-08-14): 底部 18px 永久留给滚动提示, 提示不再压住正文最后一行。
-## 这两个常量必须与 ShopScene 的真值一致 —— 手抄的副本必然落后, 所以第⑥条会【从源码回读】校对。
-const DESC_H := 246.0
-const DESC_FONT := 20
-## 与 ShopScene.DESC_FONT_STEPS 同口径: 放不下就先缩字号, 缩到底才开滚。
-const DESC_FONT_STEPS := [20, 18, 16, 15]
-## 第⑧条用: 必须与 ShopScene 的 PANEL_* 一致
-const PANEL_W := 440.0
-const PANEL_H := 592.0
-const PANEL_MARGIN := 25.0
 ## 第⑩条用: 头部右侧三组(币/等级/买经验)共用的竖直中心线
 const HEADER_CY := 48.0
 
@@ -225,104 +213,10 @@ func _ready() -> void:
 	for cv in covered.slice(0, 6):
 		print("       ★盖住: " + cv)
 
-	# ── ⑥ ★59 件装备的完整描述, 右侧面板【写不写得完】──
-	#    由来: 用户 2026-07-28 砍掉卡面摘要时问「右边能写完整吗，这么小的字？」。
-	#    这个不该由我目测/按字数估, 直接【量内容高度】: 用与商店同口径的 RichTextLabel
-	#    (同字号 18 / 同框宽 400), 逐件填进去看 get_content_height() 会不会超出框高。
-	#    ★超框不判 FAIL —— 面板开了 scroll_active, 超了是"要滚一下"不是"看不到"。
-	#      但必须【把数字打出来】, 否则就是无声上限(CLAUDE.md: 静默截断 = 假装覆盖全了)。
-	#      判 FAIL 的只有"超得离谱"(内容高 > 框高 ×3, 滚起来太痛苦)。
-	# ★取 phase2_equipment —— 商店货源就是它(ShopScene:132 `var pool := DataRegistry.phase2_equipment`),
-	#   不是 all_equipment(那是另一套旧数据), 拿错表这条就白测了。
-	var dr := get_node_or_null("/root/DataRegistry")
-	var eqs: Array = dr.phase2_equipment if dr != null else []
-	print("")
-	## ★口径必须与产品一致, 否则量的是我脑子里的版式不是屏幕上的版式。
-	##   先从 ShopScene 源码回读框高与字号阶梯, 对不上就直接红(手抄的副本必然落后)。
+	## (原 ⑥「59 件描述写不写得完旧右侧面板」2026-10-18 删: 说明改成高度随内容的小卡, 没有固定框可超;
+	##   小卡的高度 = 内容高由 ⑧ 量。)
 	var src_shop := FileAccess.get_file_as_string("res://scripts/scenes/ShopScene.gd")
-	_chk("⑥ ★口径自检: 框高与 ShopScene.DESC_BOX_H 一致",
-		src_shop.find("const DESC_BOX_H := %.1f" % DESC_H) >= 0)
-	_chk("⑥ ★口径自检: 字号阶梯与 ShopScene.DESC_FONT_STEPS 一致",
-		src_shop.find("const DESC_FONT_STEPS := [20, 18, 16, 15]") >= 0)
-	## ★★2026-10-01 补这一条: 上面两条只对了【框与字号】, 没对**量的是哪一串文字**。
-	##   这条判据原来自己算 `render_consts(effectDesc1)`, 而商店真正显示的是
-	##   `SkillText.equip_full_bb(edef, 20)` —— P2 给装备接上内联属性图标之后, 两者**不是一回事**
-	##   (实测: 按老写法 3 件要滚, 按真入口 4 件), 而这条判据会一直绿着。
-	##   ⇒ 现在下面取文字用的就是那一行; 这里焊住"商店确实还在用它", 它一改这条就红。
-	_chk("⑥ ★口径自检: 取文字走的与 ShopScene._rich_desc 同一个口(equip_full_bb(edef, 20))",
-		src_shop.find("SkillText.equip_full_bb(edef, 20)") >= 0)
-	print("  ⑥ 描述容纳体检: 框 %.0f×%.0f / 字号阶梯 %s / 装备 %d 件 (★分母)" % [
-		DESC_W, DESC_H, str(DESC_FONT_STEPS), eqs.size()])
-	if eqs.is_empty():
-		print("  [FAIL] 取不到装备表 —— 本条是空检查"); _fail += 1
-	else:
-		var probe := RichTextLabel.new()
-		probe.bbcode_enabled = true
-		probe.size = Vector2(DESC_W, DESC_H)
-		add_child(probe)
-		var over: Array = []
-		var shrunk := 0
-		var worst := 0.0
-		var worst_nm := ""
-		for e in eqs:
-			var ed: Dictionary = e if e is Dictionary else {}
-			## ★★2026-10-01 修【判据没跑真入口】: 这里原来是
-			##   `SkillText.render_consts(str(ed.get("effectDesc1", "")))` —— 自己另算一份,
-			##   而商店真正显示的是 `ShopScene._rich_desc` ⇒ `SkillText.equip_full_bb(edef, 20)`。
-			##   P2 给装备文案接上内联属性图标之后, **图标比字高**, 正是会撑爆这个 246px 框的东西,
-			##   而这条判据按老写法量的是没有图标的纯文本 —— 它会一直绿着, 说的却是另一件事。
-			##   (memory `fb-verify-must-run-the-real-path` / `fb-hand-rolled-copies-drift`)
-			## ⚠ 与真入口仍差两点, 都不影响高度: ① 数据损坏时的空态兜底 ② highlight_star 只加色标记。
-			var raw := SkillText.equip_full_bb(ed, 20)
-			if raw == "":
-				continue
-			## 逐档缩字号 —— 复刻 ShopScene._fit_desc_font 的行为, 不是量"字号 20 放不放得下"。
-			var used := 0
-			var ch := 0.0
-			for fs in DESC_FONT_STEPS:
-				probe.add_theme_font_size_override("normal_font_size", int(fs))
-				probe.text = raw
-				await get_tree().process_frame
-				ch = probe.get_content_height()
-				used = int(fs)
-				if ch <= DESC_H + 0.5:
-					break
-			if used != int(DESC_FONT_STEPS[0]):
-				shrunk += 1
-			if ch > worst:
-				worst = ch; worst_nm = str(ed.get("name", ed.get("id", "?")))
-			if ch > DESC_H + 0.5:
-				over.append("%s 缩到 %d 号仍需 %.0fpx" % [str(ed.get("name", "?")), used, ch])
-		print("     缩字号后一屏放得下: %d / %d 件 (其中 %d 件靠缩字号才放下)   最难的「%s」需 %.0fpx (框 %.0f)" % [
-			eqs.size() - over.size(), eqs.size(), shrunk, worst_nm, worst, DESC_H])
-		for o in over.slice(0, 8):
-			print("       ↕仍需滚动: " + o)
-		if over.size() > 8:
-			print("       …另有 %d 件仍需滚动" % (over.size() - 8))
-		probe.queue_free()
-		## ★判据从"别超 3 倍"收紧成"缩到底之后最多 3 件要滚"——
-		##   用户 2026-08-14 抱怨的正是"断在半句"。开滚是退路不是常态。
-		_chk("⑥ ★缩字号后仍需滚动的 ≤ 3 件", over.size() <= 3)
 
-	# ── ⑧ ★详情面板的内容不许压进面板框的边框 ──
-	#    由来: 购买按钮 y=512 高 68 → 下沿 580, 而面板框九宫格 margin=25,
-	#    内容安全区下界只有 592-25=567 —— 压进下边框 13px, 看着就是"按钮太低"。
-	#    前面几条都在量【屏幕】边界和【控件之间】的重叠, 谁也管不到"控件压到自己父框的边框上"。
-	var panel: Control = null
-	for c in all:
-		# ★2026-08-01: 原判据是 `c.get_parent() == sc`(必须是场景根的直接子节点)。
-		#   UI 双端适配后内容装进了 UIFrame 的 DesignFrame(见 scripts/util/ui_frame.gd),
-		#   面板就多隔了一层, 这条会红 —— 而版式一点没变。判据的本意是"找那个 440×592 的面板",
-		#   不是"找直接子节点", 所以认【根 或 设计框】两层。
-		var par: Node = c.get_parent()
-		# ★按【类型】认框, 不按名字: 旧框 queue_free 后仍占着 "DesignFrame" 这个名字, Godot 会把
-		#   新框改名成 @Control@NNN —— 按名字认会认不出来(实测就是这么红的)。
-		var par_ok: bool = (par == sc) or (par is UIFrame and par.get_parent() == sc)
-		if par_ok and absf(c.size.x - PANEL_W) < 1.0 and absf(c.size.y - PANEL_H) < 1.0:
-			## ★2026-10-18 起同一块位置有两张: 常驻的「出战阵容」(LineupPanel) 与选中后盖上去的详情。
-			##   两张都要过「不压框」—— 阵容面板第一版标题就压进上边框 5px, 是这条抓到的。
-			if panel == null:
-				panel = c
 	print("")
 	## ★2026-10-18 整页重做(第三版): 左半是店主 + 宝箱, 右半货架; 阵容不在商店里(用户「左边的阵容不放商店」)。
 	var keeper: Control = null
@@ -509,6 +403,44 @@ func _ready() -> void:
 		_collect(sc, plist)
 		pop_lines += _scan_dangle(plist, dangle)
 	sc.set("_sel_bench", -1)
+	## ── ⑯ ★小木斧的说明也走小卡(2026-10-18: 原来是 440×592 旧大面板, 打开时盖住刷新 / 锁定 / 买经验,
+	##   verify_ios_ui 抓到) ──
+	var axe_exp0: int = int(GameState.axe_exp_total)
+	GameState.axe_exp_total = 10          # 攒过经验 ⇒ AxePanel.should_show
+	sc.set("_sel", -1)
+	sc.set("_sel_own", "p2eq_096")
+	sc._rebuild()
+	for _i in range(4):
+		await get_tree().process_frame
+	var al: Array = []
+	_collect(sc, al)
+	var acard: Control = null
+	var prog: Control = null
+	var big := 0
+	for c in al:
+		if str(c.name) == "InspectCard":
+			acard = c
+		elif str(c.name) == "AxeProgress":
+			prog = c
+		elif c is Panel and absf(c.size.x - 440.0) < 1.0 and absf(c.size.y - 592.0) < 1.0:
+			big += 1
+	_chk("⑯ ★分母: 选中小木斧 ⇒ 说明小卡在场", acard != null)
+	_chk("⑯ 小卡里有砍伐进度", prog != null and prog.custom_minimum_size.y > 0.0)
+	_chk("⑯ ★旧 440×592 大面板不再出现(%d 块)" % big, big == 0)
+	if acard != null:
+		var cr := Rect2(acard.global_position, acard.size)
+		var hit: Array = []
+		var seen := 0
+		for nm in ["ShopRefreshBtn", "ShopLockBtn", "ShopBuyXpBtn"]:
+			var b = sc.find_child(nm, true, false)
+			if b is Control:
+				seen += 1
+				if cr.intersects(Rect2((b as Control).global_position, (b as Control).size)):
+					hit.append(nm)
+		_chk("⑯ ★分母: 底部三颗键都在(%d)" % seen, seen == 3)
+		_chk("⑯ ★小卡不盖刷新 / 锁定 / 买经验 %s" % str(hit), hit.is_empty())
+	GameState.axe_exp_total = axe_exp0
+	sc.set("_sel_own", "")
 	sc.set("_sel", _sel0)        # 还原现场: 后面 SHARED_SKIN 要数详情卡上的按钮
 	sc._rebuild()
 	await get_tree().process_frame

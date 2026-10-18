@@ -40,10 +40,8 @@ const GRID_X := 722.0        # 货架左沿
 const GRID_Y := 128.0        # 上层商品格的顶(底 270 = 板沿)
 const GRID_GAP_X := 0.0
 const GRID_GAP_Y := 38.0       # 下层格顶 308, 底 450 = 下层板沿
-const PANEL_X := 762.0       # 详情卡: 盖在货架那一侧, 左边店主和宝箱露出来
-const PANEL_W := 440.0
-const PANEL_Y := 100.0
-const PANEL_H := 592.0
+## 小卡里小木斧进度块的宽度(= 小卡宽 360 - 左右内边距)
+const AXE_IN_CARD_W := 330.0
 ## 羁绊总览条(货架与底部按钮之间那条空带)。★进 verify_shop_layout 的越界检查
 const SYN_BAR_Y := 100.0
 const SYN_X := 40.0          # 羁绊条左沿 = 场地左沿
@@ -411,7 +409,8 @@ func _rebuild() -> void:
 	##   两侧多出来的宽度 = 图边上同宽的一段【镜像翻过来】接上(拉伸边缘像素会成一道道花条纹)。
 	var _vs: Vector2 = get_viewport().get_visible_rect().size
 	var _side: float = maxf(0.0, (_vs.x * H / maxf(1.0, _vs.y) - W) * 0.5)
-	var _nat: float = ceilf((_side + 4.0) * float(SHOP_BG.get_width()) / W)   # 这段宽度在原图里是几列
+	## 这段宽度在原图里是几列。★不取整、不多留: 多出来的会伸出视口(verify_ui_layout「不溢出视口」@1560×720 溢出 7px)
+	var _nat: float = _side * float(SHOP_BG.get_width()) / W
 	for _sd in ([0, 1] if _side >= 1.0 else []):   # 16:9 不加(否则伸出 1280 设计框)
 		var at := AtlasTexture.new(); at.atlas = SHOP_BG
 		at.region = Rect2(0.0 if _sd == 0 else SHOP_BG.get_width() - _nat, 0, _nat, SHOP_BG.get_height())
@@ -495,12 +494,10 @@ func _rebuild() -> void:
 	_chest.build_keeper(self)
 	_chest.build_bench(self)
 	## ★2026-10-18: 说明 = 局内信息面板那张已认可的小卡(InspectCard), 贴着被点的东西弹出、高度随内容。
-	##   旧的 440×592 大面板只留给小木斧(砍伐进度 / 最终造物四选一), 它的内容放不进小卡。
+	##   小木斧的砍伐进度 / 最终造物四选一也装进这张小卡(原来是 440×592 的旧大面板, 打开时盖住
+	##   底下刷新 / 锁定 / 买经验三颗键 —— verify_ios_ui「按钮被后画的面板盖住」)。
 	_insp.card = null; _insp.key = ""      # 上面整页清过一遍, 那张旧卡已在释放队列里
-	if _axe_detail_wanted():
-		_build_detail_panel()
-		_build_detail_close()
-	elif _detail_wanted():
+	if _detail_wanted():
 		_open_detail_card()
 	# ★UI 双端适配(用户2026-08-01「有些画面都没有居中」): 内容装进 1280×720 设计框并居中于真实视口。
 	# ★放在 _rebuild 末尾而不是 _ready 末尾 —— 本函数开头会 free 掉【所有】子节点(买一件装备
@@ -541,7 +538,6 @@ func _build_odds_row() -> void:
 		var cc := Color(cost_cols[c])
 		chip.add_theme_color_override("font_color", cc if pct > 0 else Color(0.55, 0.5, 0.45))
 		row.add_child(chip)
-
 
 
 # 已拥有该装备件数(背包+统领已装+小将已装): 商店卡标"已有N"→知道再买几件凑3合1升星(用户2026-07-18"看不到已装备/不知道多少件才2/3星")
@@ -683,8 +679,6 @@ func _wire_tap(ct: Control, fn: Callable) -> void:
 				fn.call())
 
 
-
-
 ## 一张【卡大小的剪刀】: 装那些"斜着画、必然超出卡片轮廓"的东西(掠光 / 斜纹)。
 ##
 ## ★为什么必须有它: Godot 的 Control **默认不裁子节点**。一条旋转过的长条只要比卡长,
@@ -732,21 +726,14 @@ func _on_select(idx: int) -> void:
 	_rebuild()
 
 
-## 小木斧那几种情况仍走旧的大面板(砍伐进度 / 四选一放不进小卡)。
-func _axe_detail_wanted() -> bool:
-	if _sel >= 0 and _sel < _offer.size() and _offer[_sel] != null and str(_deco(_offer[_sel]).get("id", "")) == AxePanel.EID:
-		return true
-	if _sel_own == AxePanel.EID:
-		return true
-	return _sel < 0 and _sel_own == "" and AxePanel.should_show(GameState) and AxeEvo.final_ready(
-		int(GameState.axe_exp_bar), int(GameState.axe_stage), str(GameState.axe_final))
-
-
 ## 说明小卡。货架上的 = 卡底一颗「购买」; 宝箱里的 = 只看(卖出在宝箱格旁)。
 func _open_detail_card() -> void:
 	_ui_layer = self
-	var own: bool = _sel_own != ""
-	var edef: Dictionary = _deco(DataRegistry.phase2_equipment_by_id.get(_sel_own, {})) if own else _deco(_offer[_sel])
+	## 什么都没选、但小木斧攒够了待选最终造物 ⇒ 直接弹小木斧自己那张(这一步错过就做不了最终进化)
+	var axe_only: bool = _sel < 0 and _sel_own == ""
+	var own: bool = _sel_own != "" or axe_only
+	var own_id: String = AxePanel.EID if axe_only else _sel_own
+	var edef: Dictionary = _deco(DataRegistry.phase2_equipment_by_id.get(own_id, {})) if own else _deco(_offer[_sel])
 	if edef.is_empty():
 		return
 	var eid := str(edef.get("id", ""))
@@ -756,9 +743,10 @@ func _open_detail_card() -> void:
 	var stats: Array = []
 	## 属性行 = 图标 + 数值(与局内信息面板的装备小卡同一种写法, 同一张对照表)
 	for kv in EquipStats.stat_lines(eid, star):
-		var ik := str(InspectCard.EQ_STAT_ICON.get(str(kv[0]), ""))
-		var ip := ("res://assets/sprites/stats/%s-icon.png" % ik) if ik != "" else ""
-		stats.append([ip, str(kv[1]) if ip != "" else "%s %s" % [kv[0], kv[1]], Color("#f4ead8")])
+		stats.append(InspectCard.eq_stat_row(kv, Color("#f4ead8")))
+	## 没属性的装备明说(与背包 `_stat_block` 逐字同一句, verify_shop_layout ⑭)
+	if stats.is_empty():
+		stats.append(["", "无属性加成", Color("#a89c86")])
 	var img := str(edef.get("img", ""))
 	var tp := str(Phase2Types.type_of(eid))
 	## 标签 = 「N 深海币  ·  [类型图标] 类型」(与旧详情面板的价格行同一格式, 门禁 ⑫ 解析它)
@@ -776,6 +764,13 @@ func _open_detail_card() -> void:
 	})
 	if not lv.has("vbox"):
 		return
+	## 小木斧: 砍伐进度条 + (攒够时)最终造物四选一, 接在说明下面
+	if AxePanel.should_show(GameState) and (eid == AxePanel.EID or AxeEvo.final_ready(
+			int(GameState.axe_exp_bar), int(GameState.axe_stage), str(GameState.axe_final))):
+		var hold := Control.new(); hold.name = "AxeProgress"
+		(lv["vbox"] as VBoxContainer).add_child(hold)
+		var ah: float = _axe_panel.build(hold, 0.0, 0.0, AXE_IN_CARD_W)
+		hold.custom_minimum_size = Vector2(AXE_IN_CARD_W, ah)
 	if own:
 		_refit_card.call_deferred()
 		return
@@ -829,7 +824,7 @@ func _refit_card() -> void:
 ## InspectCard 的定位回调: 货架上的贴在货架左边、与那件同高; 宝箱里的弹在宝箱那一排上方。
 func inspect_card_pos(card: Control, h: float) -> Vector2:
 	var w: float = card.size.x
-	if _sel_own != "":
+	if _sel_own != "" or _sel < 0:
 		return Vector2(clampf(40.0, 8.0, W - w - 8.0), clampf(ShopChest.BENCH_Y - h - 12.0, 8.0, H - h - 8.0))
 	var sp := _shelf_pos(maxi(0, _sel))
 	return Vector2(GRID_X - w - 14.0, clampf(sp.y - 10.0, 96.0, H - h - 8.0))
@@ -845,23 +840,6 @@ func _detail_wanted() -> bool:
 		int(GameState.axe_exp_bar), int(GameState.axe_stage), str(GameState.axe_final))
 
 
-## 详情卡右上角的关闭键 —— 关掉就回到阵容。
-func _build_detail_close() -> void:
-	var cb := Button.new(); cb.name = "DetailClose"
-	cb.text = "×"
-	cb.add_theme_font_size_override("font_size", 26)
-	## 81 = 44pt 触控下限(verify_ui_consistency「热区不足」), 贴着框的内角放。
-	cb.position = Vector2(PANEL_X + PANEL_W - 25.0 - 81.0, PANEL_Y + 25.0); cb.size = Vector2(81, 81)
-	cb.z_index = 2
-	cb.pressed.connect(func():
-		_sel = -1
-		_sel_own = ""
-		_rebuild())
-	_skin_button(cb); add_child(cb)
-
-
-
-
 func _on_select_own(eid: String, star: int) -> void:
 	if _sel_own == eid and _sel_own_star == star:
 		_sel_own = ""                       # 再点一次 = 取消
@@ -872,10 +850,6 @@ func _on_select_own(eid: String, star: int) -> void:
 	_rebuild()
 
 
-## ★右侧常驻详情面板 —— 本次重设计的核心。
-## 用户 2026-07-28:「商店页面看不到装备的描述」+「你要一劳永逸的改」
-## → 所以详情是【常驻可见的面板】, 不是又一个"要触发才出现"的提示(tooltip/弹窗都不行:
-##   图鉴当初就是因为 hover 在手机上不存在, 才补的点击弹窗; 商店这里直接做成常驻)。
 ## 羁绊总览条(货架下方): 当前激活的每一系 + 距下一档还差几件。
 ## ★口径与战斗/背包完全一致: 只数【装在身上】的、按 id 去重(GameState.team_p2_equips_for_synergy)。
 ##   ⚠ 不数背包 —— "买到 ≠ 装上"(2026-08-12 圣光护盾白送 bug 的同一条教训)。
@@ -964,336 +938,6 @@ func _build_synergy_bar() -> void:
 		chip.size = Vector2(_cw, SYN_CHIP_H)
 		add_child(chip)
 		x += _cw + 6.0
-
-
-func _build_detail_panel() -> void:
-	var box := Panel.new()
-	var sb := StyleBoxFlat.new()
-	# 底板只负责填色; 外框改用新生成的 panel-frame.png(海带/贝壳纹 + 金角托 + 青内框)
-	sb.bg_color = Color("#0e1a26")
-	## ★同上: 底板而已, 边由 `panel-frame.png` 画(下面那行 `_nine(...)`)。掉剩下那 1 个。
-	sb.set_corner_radius_all(0)
-	box.add_theme_stylebox_override("panel", sb)
-	box.position = Vector2(PANEL_X, PANEL_Y); box.size = Vector2(PANEL_W, PANEL_H)
-	add_child(box)
-	_nine(box, PANEL_TEX, PANEL_MARGIN, Vector2.ZERO, Vector2(PANEL_W, PANEL_H), 1)
-
-	# ★面板有两种来源: 货架格(可买) / 已拥有的某件(只看)。同一块面板, 不新开弹窗 ——
-	#   底部背包格和龟身格原来只有 tooltip_text 能看名字, 手机没 hover = 看不到。
-	var own_mode := false
-	var own_star := 1
-	var edef: Dictionary = {}
-	if _sel_own != "":
-		## ★背包那条路**也要走 `_deco`**(2026-09-01 补): 原来它直接拿 DataRegistry 的原件,
-		##   于是进化到石斧之后, 货架上画的是石斧、而背包里那件还画「小木斧」+ 木斧图标
-		##   —— 同一件东西在同一个界面上两个样子。
-		edef = _deco(DataRegistry.phase2_equipment_by_id.get(_sel_own, {}))
-		own_mode = not edef.is_empty()
-		own_star = _sel_own_star
-	if not own_mode and (_sel < 0 or _sel >= _offer.size() or _offer[_sel] == null):
-		## ★★攒够 400 待选最终造物时, **就算什么都没选中也要把四选一画出来** ——
-		##   否则这一步会被"得先在货架上找到小木斧"挡住, 而错过就再也做不了最终进化。
-		if AxePanel.should_show(GameState) and AxeEvo.final_ready(
-				int(GameState.axe_exp_bar), int(GameState.axe_stage), str(GameState.axe_final)):
-			_axe_panel.build(box, 34.0, 40.0, PANEL_W - 68.0)
-			return
-		var hint := Label.new()
-		## ★★原句是「← 点货架卡片看详情 / 点下面的格子看已有装备」——
-		##   两条"点 X 看 Y"的操作说明是网页空状态页的标准写法(而且在说界面构件的名字:
-		##   "货架卡片""格子"都不是玩家脑子里的东西)。改成摊主招呼客人的两句。
-		## ★`←` 留着 —— 它不是装饰, 是**指方向**的(详情面板在右, 货架在左)。
-		hint.text = "选择装备查看详情"
-		hint.add_theme_font_size_override("font_size", 18)
-		hint.add_theme_color_override("font_color", Color("#5b7a92"))
-		hint.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		box.add_child(hint)
-		return
-
-	if not own_mode:
-		edef = _deco(_offer[_sel])
-	var cost := int(edef.get("cost", 1))
-	var price := _price(edef)
-	var owned := _owned_count(str(edef.get("id", "")), own_star if own_mode else 1)
-	var coins := int(GameState.meta_deepsea_coins)
-
-	# 图标 + 名称 + 费用
-	## ★走 EquipIcon: 无图时退化成 emoji 而不是空白(EquipIcon.make 的 else 分支)
-##   ⚠"060~095 有 36 件没配图"这句已作废: 实测 phase2-equipment.json 95 件**全部**有 img,
-##     且 95 张图在盘上一个不缺(060~095 那 36 件也是) ⇒ emoji 兜底现在一次都不会触发。
-##     留着这条调用仍然对(数据缺图时不至于开天窗), 但别再拿它当"有 36 件没图"的证据。
-	var ic2 := EquipIcon.make(edef, Vector2(66, 58))
-	ic2.position = Vector2(34, 32)
-	box.add_child(ic2)
-	var nm := Label.new(); nm.text = str(edef.get("name", "?"))
-	nm.add_theme_font_size_override("font_size", 26)
-	nm.add_theme_color_override("font_color", _cost_color(cost))
-	nm.position = Vector2(112, 36); nm.size = Vector2(PANEL_W - 148, 32)
-	box.add_child(nm)
-	# 直接写清单位: 「2 深海币」比「费用 2」更明确 —— 费用和售价在本作恒等(PRICE_MULT=1),
-	# 与其用一个抽象档位名, 不如告诉玩家【要付多少、付的是什么】。(用户 2026-07-29)
-	## ★类型直接跟在价格后面写一行平白的事实 ——「1 深海币 · 🏹弓箭」。
-	##   原来右上角挂着一个两行小签(×N / 阈值 / 一句带感叹号的推销话术)。用户 2026-08-15:
-	##   「不要小签啊, 搞让人反感 ai 味的东西干嘛」——整块删掉, 连带那句带感叹号的推销话术。
-	##   羁绊阈值与逐档效果在【图鉴·羁绊页】写全了, 商店不需要再教一遍。
-	var _tp2: String = Phase2Types.type_of(str(edef.get("id", "")))
-	## ★只写羁绊名本身(「弓箭」), 不用 `display_name`——那个返回「弓箭·神射手」,
-	##   而"神射手"是 TYPE_NAME 里的花名, 游戏里根本没有这个东西(用户 2026-08-15 当场指出)。
-	## ★★2026-09-28 类型图标从 emoji 换成 `tags/` 像素图 ⇒ 这一行从 `Label` 换 `RichTextLabel`
-	##   (Label 画不了行内图)。**与图鉴装备详情的副标是同一个形状**, 所以照那边抄:
-	##   `codex/detail_views.gd` 的 `SUB_ICON_PX = 16` + `[img=16x16]` + NEAREST 过滤。
-	## ★图标 16 而不是跟着字号 17: 源图 32×32 硬边像素画, 只有 16(1:2)/32(1×) 落在像素网格上;
-	##   17 会把硬边插值糊掉。16 也最贴这一行的字高。
-	const DETAIL_TYPE_ICON_PX := 16
-	var _tps: String = ("  ·  %s%s" % [Phase2Types.icon_bb(_tp2, DETAIL_TYPE_ICON_PX), _tp2]) if _tp2 != "" else ""
-	var cl := RichTextLabel.new()
-	cl.bbcode_enabled = true
-	cl.fit_content = false
-	cl.scroll_active = false
-	cl.autowrap_mode = TextServer.AUTOWRAP_OFF
-	cl.clip_contents = true                                 # 原 Label 的 clip_text
-	cl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	cl.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	cl.text = "%d 深海币%s" % [_price(edef), _tps]
-	cl.add_theme_font_size_override("normal_font_size", 17)  # ★RTL 的键名不是 font_size
-	cl.add_theme_color_override("default_color", Color("#9fb6c9"))
-	## ★高 22 → 26: 17px 字的行高实测 **25**(探针量的), 原来 22 是够 Label 画的
-	##   (Label 不纵向裁), 换 RTL + clip_contents 之后 22 就是**底下 3px 被切掉**。
-	cl.position = Vector2(112, 70); cl.size = Vector2(PANEL_W - 148, 26)
-	box.add_child(cl)
-
-	_panel_sep(box, 104)
-
-	# ★完整效果描述(常驻可见) —— 富文本走 RichTextLabel, 与图鉴同口径
-	var desc := RichTextLabel.new()
-	desc.bbcode_enabled = true
-	desc.fit_content = false
-	desc.scroll_active = true
-	# 字号 16 → 18(用户 2026-07-28:「这么小的字?」)。卡面摘要砍掉后, 完整描述全靠这一块。
-	desc.add_theme_font_size_override("normal_font_size", 20)
-	## ★框高 264 → 246: 【底部 18px 永久留给滚动提示】。
-	##   原来提示画在 `y + height - 16`(**框内**), 与正文最后一行像素级重叠 ——
-	##   实拍就是「▼ 下滑看完整描述」和「并使携带者获得20/25/30%」糊成一团, 正是用户说的"乱七八糟"。
-	##   留白区不显示提示时就是空的, 比"叠在字上"好看得多。
-	desc.position = Vector2(34, 112); desc.size = Vector2(PANEL_W - 68, DESC_BOX_H)
-	desc.text = _rich_desc(edef, own_star if own_mode else 1)
-	box.add_child(desc)
-	## ★096 小木斧的【砍伐进度条 + 最终造物四选一】(用户 2026-09-01:
-	##   「用户难道就这么玩吗，则怎么选择最终造物呢，进度条呢」)。
-	##   到 v0.19.311 为止机制全做完了、门禁也全绿, 但玩家一样都看不见 ——
-	##   经验在涨屏幕上没地方显示、final_ready 变 true 却没有任何入口能选。
-	## ★两个显示条件:
-	##   · 选中的就是小木斧 ⇒ 在它自己的详情里看进度, 最自然
-	##   · **攒够 400 待选最终造物 ⇒ 不管选中的是什么都画出来** —— 这一步错过就
-	##     再也做不了最终进化了, 不能让它藏在"得先在货架上找到小木斧"后面
-	if AxePanel.should_show(GameState):
-		var _ready4: bool = AxeEvo.final_ready(int(GameState.axe_exp_bar),
-			int(GameState.axe_stage), str(GameState.axe_final))
-		if str(edef.get("id", "")) == "p2eq_096" or _ready4:
-			_axe_panel.build(box, 34.0, 112.0 + DESC_BOX_H + 14.0, PANEL_W - 68.0)
-	# ★装备从 59 件涨到 95 件后, 探针实测 **13 件(14%)** 放不下 —— 而这行注释一直写着"只剩 1 件"。
-	#   先自动缩字号让它放下(20→18→16→15), 真放不下才挂提示; 提示落在框【外】的留白区。
-	_fit_desc_font(desc, box)
-
-	var _sep_a := _panel_sep(box, 384)
-
-	# ★属性数值 —— 商店原先【一个数字都不显示】: 花钱买之前看不到它加多少攻/血/暴击。
-	#   截图才发现这块本来是 235px 的空白。
-	#   复用 EquipStats.stat_lines(背包/图鉴同一个格式化函数) —— 不自己写第二份会漂的镜像。
-	var _stat_hdr := Label.new(); _stat_hdr.text = "属性"
-	_stat_hdr.add_theme_font_size_override("font_size", 15)
-	_stat_hdr.add_theme_color_override("font_color", Color("#58d3ff"))
-	_stat_hdr.position = Vector2(34, 390); _stat_hdr.size = Vector2(80, 18)
-	box.add_child(_stat_hdr)
-	var _stat_nodes: Array = _build_stat_rows(box, str(edef.get("id", "")), own_star if own_mode else 1)
-
-
-	# 合成进度: 「已有 N/3」+ 三颗圆点。
-	# ★原来这里还有一句 _merge_hint()「集齐 3 件同款可合成 ★2」——【删了】。
-	#   用户 2026-07-28:「这 3 合 1 为啥还有提示呢，你不是参考了商业游戏吗」。
-	#   云顶/酒馆战棋都不在每件商品上重复全局规则, 只显示进度。圆点就是进度。
-	# ★详情面板【不再显示合成块】(用户 2026-07-29「干脆不要合成了」)。
-	#   卡片右上角那两三颗星仍在 —— 那是"这一买会升到几星"的即时提示, 在做购买决定的
-	#   那一眼就看得到; 面板里再画一遍算式属于重复, 而且占掉的正是描述最缺的高度。
-	#   省下来的 ~76px 全给描述框(字号加大后原本有 7 件要滚, 现在只剩 1 件)。
-	# ★描述短时把下面几块【居中收拢】(用户 2026-07-29 反馈中段空太多)。
-	#   我先前试过"往上顶"并否决了 —— 购买按钮钉死在底部, 上顶会让空洞从"文字后的留白"
-	#   变成"合成进度与按钮之间的悬空洞", 更难看。
-	#   现在改成【把中间那一坨在剩余空间里居中】: 上下各分一半, 看起来像是有意留的,
-	#   而不是某一侧漏了东西。购买按钮仍然不动(CTA 位置不该随内容长短跳)。
-	_center_middle(desc, [_sep_a, _stat_hdr] + _stat_nodes)
-
-
-
-	# ★购买按钮(第二步确认) —— 花钱的按钮做最大
-	var buy := Button.new()
-	buy.add_theme_font_size_override("font_size", 22)
-	# ★按钮加高 56 → 68 → 78(用户 2026-07-29「购买按钮你不觉得很扁吗」/「按钮重新做吧」)。
-	#   372×56 = 6.6:1 → 68 = 5.5:1 → 78 = 4.8:1。它是全页最主要的动作, 本来就该是最大的可点物,
-	#   所以宽度不收(372 = 面板宽的 85%), 只往上长。
-	# ★下沿焊在 565: 面板框九宫格 margin=25 → 内容安全区下界 567(门禁⑧会查)。
-	#   上沿因此落在 487, 距属性区末行(止于 470)留 17px。再高就压属性了。
-	buy.position = Vector2(34, PANEL_H - 105); buy.size = Vector2(PANEL_W - 68, 78)
-	if own_mode:
-		# 看的是自己已有的那件 —— 商店不做装备/合星/卖, 那些在背包页。这里给一条去路。
-		## ★「背包页」里的"页"是网页的量词(本作没有"页"这个概念, 只有背包这个地方);
-		##   「装备 / 卖」用斜杠把两个动作并排列着, 是按钮组的写法不是一句话。
-		buy.text = "前往背包"
-		buy.add_theme_font_size_override("font_size", 19)
-		buy.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Inventory.tscn"))
-		_skin_button(buy, true)
-		box.add_child(buy)
-		return
-	_coin_button_icon(buy, 24)
-	if coins >= price:
-		## ★「购买」是收银台的词, 「买下」是摊子前说的话。价钱与币图标不动。
-		buy.text = "购买  %d" % price
-		buy.pressed.connect(func(): _on_buy(_sel))
-		_tut_buy_btn = buy
-	else:
-		# 买不起要说清【原因和差多少】, 不是只把按钮变灰(用户 P1-4)
-		## ★原句是「深海币不足 (还差 3)」—— 半角括号包一个计数, 那是报错串的格式。
-		##   ⚠ 差多少这个数【不能丢】(上面那条 P1-4 就是为它写的), 只把括号拆成一句话。
-		buy.text = "还差 %d 枚深海币" % (price - coins)
-		buy.disabled = true
-	_skin_button(buy, true)
-	box.add_child(buy)
-
-
-
-
-## 描述放不下就【先缩字号再说滚动】(20→18→16→15)。
-##
-## ★为什么不是直接开滚: 滚动是"玩家得动手才看得全", 而商店是做购买决定的地方 ——
-##   看不全 = 决策信息缺失。95 件里 13 件溢出, 缩一档字号绝大多数就进去了。
-## ★必须等一帧才问 get_content_height()(刚 add_child 时还没排版, 拿到 0 ⇒ 永远判"放得下"),
-##   与 `_add_scroll_hint` 同一个坑。
-## ★`box` 不是可选装饰: 缩完字号才知道"到底还需不需要滚动提示"。
-##   两个协程各自 `await` 一帧并发跑的话, 提示会拿【还没缩完】的高度判 —— 挂上一个多余的提示。
-func _fit_desc_font(desc: RichTextLabel, box: Control) -> void:
-	await get_tree().process_frame
-	if not is_instance_valid(desc):
-		return
-	for fs in DESC_FONT_STEPS:
-		desc.add_theme_font_size_override("normal_font_size", int(fs))
-		await get_tree().process_frame
-		if not is_instance_valid(desc):
-			return
-		if desc.get_content_height() <= desc.size.y + 0.5:
-			break                                    # 放下了, 停在这一档
-	_add_scroll_hint(box, desc)
-
-
-## 描述一屏放不下时, 在框右下角挂一个"▼ 下滑"提示。
-##
-## ★必须等一帧才问 get_content_height() —— 刚 add_child 时还没排版, 拿到的是 0,
-##   于是永远判"放得下"、提示永远不出现(这就是个不会红的假检查)。
-func _add_scroll_hint(box: Control, desc: RichTextLabel) -> void:
-	await get_tree().process_frame
-	if not is_instance_valid(box) or not is_instance_valid(desc):
-		return
-	if desc.get_content_height() <= desc.size.y + 0.5:
-		return
-	var h := Label.new()
-	## ★原句「▼ 下滑看完整描述」里, 「下滑」是手势名、「完整描述」是字段名 —— 这两样去掉。
-	##   ★`▼` 留着: 它不是装饰性 chevron, 是**"这里还能滚"**这个功能的唯一提示,
-	##     去掉就只剩一句没有指向的话。改完还短一半, 在那条 18px 的留白里不挤。
-	h.text = "▼ 下面还有"
-	h.add_theme_font_size_override("font_size", 12)
-	h.add_theme_color_override("font_color", Color("#7fb5d8"))
-	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	## ★落在框【外】下方的留白区(+2px), 不再是 `+ size.y - 16`(框内、压住正文最后一行)。
-	h.position = Vector2(desc.position.x, desc.position.y + desc.size.y + 2.0)
-	h.size = Vector2(desc.size.x, 16)
-	box.add_child(h)
-
-
-## 详情面板的属性数值块(★1)。两列, 最多 3 行 = 6 项。
-##
-## 由来: 商店原先【一个装备属性数字都不显示】—— 花钱买之前看不到它加多少攻/血/暴击。
-## 是把整页截出来放大看, 发现右侧面板中间空着 235px 才注意到的。
-##
-## ★复用 EquipStats.stat_lines() —— 背包(_stat_block)和图鉴(stat_line_all_stars)用的同一个函数,
-##   量纲/名称/百分号全在那一处定义。自己在这里再写一遍格式化就是又造一份会漂的镜像。
-##   (实测量纲不能靠数值范围猜: crit 存 0~1, 而 dodgePct/healAmp 存 0~100, 都是百分比。)
-## 两列 x。★右列 226 + 宽 180 = 406 < 面板框安全区右界 415(PANEL_W 440 - margin 25)。
-## 原来宽 196 → 右端 422, 压进右边框 7px, 是门禁⑧挖出来的(肉眼看不出)。
-## 描述框高。★底部 18px 是【永久留给滚动提示】的留白 —— 提示原来画在框内、压住正文最后一行。
-const DESC_BOX_H := 246.0
-## 描述自动缩字号的候选(从大往小试)。下限 15 —— 再小就回到用户 2026-07-28 骂过的「这么小的字?」。
-const DESC_FONT_STEPS := [20, 18, 16, 15]
-
-const STAT_COL_X := [34.0, 226.0]
-const STAT_ROW_Y := [412.0, 431.0, 450.0]   # 紧跟「属性」标题(y390, 高18) —— 隔 4px 不断开
-
-
-func _build_stat_rows(box: Control, eid: String, star: int = 1) -> Array:
-	var made: Array = []
-	# ★星级跟着来源走: 货架永远卖 ★1, 但点的是自己已有的 ★2/★3 时必须显示【那一星】的数值。
-	#   写死 1 的话, 玩家看到的是"我这件的属性"却其实是 ★1 的数字 —— 又一处显示与事实不符。
-	var rows: Array = EquipStats.stat_lines(eid, star)
-	if rows.is_empty():
-		var none := Label.new()
-		## ★★与背包共用的定稿句(2026-09-28)。原文「（本件不提供属性加成，只有效果）」是
-		##   公文体: 全角括号把整句降级成批注、「本件」「提供」「加成」三个词都是说明书口气。
-		## ★★★这一句**必须与 `InventoryScene.gd` 逐字相同**(那边三处: 渲染文/量高平文/`_stat_block`)。
-		##   同一句话出现两个版本, 比两边都留着原文更糟 —— 玩家会以为商店和背包讲的不是一回事。
-		##   改这句就得两个文件一起改; `verify_shop_layout` 第⑭条把两个文件对着量, 只改一边直接红。
-		none.text = "无属性加成"
-		none.add_theme_font_size_override("font_size", 15)
-		none.add_theme_color_override("font_color", Color("#5b7a92"))
-		none.position = Vector2(34, STAT_ROW_Y[0]); none.size = Vector2(PANEL_W - 68, 22)
-		box.add_child(none)
-		return [none]
-	var cap: int = STAT_COL_X.size() * STAT_ROW_Y.size()
-	for i in range(mini(rows.size(), cap)):
-		var kv: Array = rows[i]
-		var lb := Label.new()
-		lb.text = "%s %s" % [str(kv[0]), str(kv[1])]
-		lb.add_theme_font_size_override("font_size", 17)
-		lb.add_theme_color_override("font_color", Color("#9fe8c4"))
-		lb.clip_text = true      # ★先于 size: 否则 Label 最小尺寸=文字全宽, 会把 size 顶开(踩过)
-		lb.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		lb.position = Vector2(STAT_COL_X[i % 2], STAT_ROW_Y[i / 2])
-		lb.size = Vector2(180, 22)
-		box.add_child(lb); made.append(lb)
-	# ★装不下就明说, 不要静默截断(CLAUDE.md: 无声上限=假装覆盖全了)
-	if rows.size() > cap:
-		var more := Label.new()
-		## ★行首的「…」是省略号占位(网页里"更多"那一套), 而这句本来是**明说装不下**的。
-		##   ⚠ 不许改成静默截断 —— 这个数字存在的理由就是"无声上限 = 假装覆盖全了"。
-		more.text = "另外还有 %d 项" % (rows.size() - cap)
-		more.add_theme_font_size_override("font_size", 13)
-		more.add_theme_color_override("font_color", Color("#5b7a92"))
-		more.position = Vector2(STAT_COL_X[0], STAT_ROW_Y[2] + 20.0); more.size = Vector2(PANEL_W - 68, 18)
-		box.add_child(more); made.append(more)
-	return made
-
-
-## 面板里的分割线。★★2026-09-28 从「1px 半透明白线」改成【两像素刻线】——
-##   `rgba(255,255,255,.1)` 的 1px 细线是 CSS `<hr>` 的长相, 而像素界面里的分隔
-##   一律是"一道暗刻 + 一道高光"(凹进去的錾痕), 材质上才和金属面板是一家。
-## ★返回的是**容器**而不是那条线: `_center_middle` 要整体位移它, 两条线必须一起走
-##   (分开返回两个节点 = 将来谁忘了加进数组就错开 1px, 而那种错位没人看得出是 bug)。
-func _panel_sep(parent: Control, y: float) -> Control:
-	var grp := Control.new()
-	grp.position = Vector2(34, y)
-	grp.size = Vector2(PANEL_W - 68, 2)
-	grp.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	parent.add_child(grp)
-	var dark := ColorRect.new()                      # 上面一道暗 = 刻进去
-	dark.color = Color(0, 0, 0, 0.42)
-	dark.position = Vector2.ZERO; dark.size = Vector2(PANEL_W - 68, 1)
-	dark.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	grp.add_child(dark)
-	var lite := ColorRect.new()                      # 下面一道亮 = 錾口的高光
-	lite.color = Color(0.62, 0.78, 0.90, 0.20)
-	lite.position = Vector2(0, 1); lite.size = Vector2(PANEL_W - 68, 1)
-	lite.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	grp.add_child(lite)
-	return grp
 
 
 ## 完整描述。★实测: 95 件装备的 effectDesc1 【全是纯文本】—— 无 HTML 标签、无方括号
@@ -1607,11 +1251,12 @@ func _tutorial_anchor(anchor: String) -> Rect2:
 				if _offer[i] != null and _price(_deco(_offer[i])) <= int(GameState.meta_deepsea_coins):
 					var cp := _shelf_pos(i)
 					return Rect2(cp + _frame_off(), Vector2(SLOT_W, SLOT_H))
-		"offer":   # 货架 5×2 + 右侧详情面板(「购买」在面板里, 两步购买都得在洞里)
+		"offer":   # 货架 5×2 + 说明小卡(「购买」在小卡里, 两步购买都得在洞里; 没选中时没有小卡)
 			var grid := Rect2(GRID_X, GRID_Y, 5.0 * SLOT_W + 4.0 * GRID_GAP_X, 2.0 * SLOT_H + GRID_GAP_Y)
-			var panel := Rect2(PANEL_X, PANEL_Y, PANEL_W, PANEL_H)
-			var u := grid.merge(panel)
-			return Rect2(u.position + _frame_off(), u.size)
+			var u := Rect2(grid.position + _frame_off(), grid.size)
+			if _insp.card != null and is_instance_valid(_insp.card):
+				u = u.merge(TutorialGuide.vis_rect(_insp.card))
+			return u
 		"bag_button":
 			if _top_bar != null and not _top_bar.action_btns.is_empty():
 				return TutorialGuide.vis_rect(_top_bar.action_btns[0])
@@ -1667,8 +1312,6 @@ func _pixel_bar(parent: Control, pos: Vector2, sz: Vector2, ratio: float, fill: 
 	parent.add_child(fl)
 
 
-
-
 # ════════════════════════════════════════════════════════════════════════
 #  皮肤: 卡框 / 面板框 —— 【本项目新生成】的像素框 (assets/sprites/shop/)
 #
@@ -1711,14 +1354,12 @@ const CARD_TEX_SEL = preload("res://assets/sprites/shop/card-frame-s.png")
 ##   两处都是"框的形状要在、但不该讲费用档"的场合, 正好是它。
 ##   ⇒ 先搜库再动手: 不为这两件事新生成贴图(assets/sprites/shop/ 已有 9 张框)。
 const CARD_TEX_N = preload("res://assets/sprites/shop/card-frame-n.png")
-const PANEL_TEX = preload("res://assets/sprites/shop/panel-frame.png")
 const CARD_MARGIN := 8       # 量的: 新框 72×72, 边框 7px
 ## 合成指示星(像素·12 帧闪光循环)。★只在「已有 2 件、再买 1 件就合成」时出现 ——
 ## 装备本身就有 ★1/★2/★3 星级, 画一颗星会被读成"这是 ★1 装备", 而每张货架卡都是 ★1 = 零信息。
 const STAR_TEX = preload("res://assets/sprites/shop/star-glint.png")
 const STAR_FRAMES := 12
 const STAR_FRAME_W := 32
-const PANEL_MARGIN := 25
 
 
 ## 给按钮上皮 —— **一律走共享层 `UISkin.button`**, 商店不再有自己的一套。
@@ -1823,47 +1464,6 @@ func _purchase_merge_star(eid: String) -> int:
 			n[st + 1] += 1
 			top = st + 1
 	return top
-
-
-## 描述短时, 把它【下面那一坨】(分隔线/属性/合成进度)在剩余空间里【居中】。
-##
-## 由来: 描述框按最长的那件(玩偶小熊 297px)留高, 而中位数只有 4 行 ≈ 90px ——
-## 短描述下面会空出约 150px(用户 2026-07-29 反馈"中段空太多")。
-##
-## ★为什么是"居中"而不是"上顶": 上顶试过并否决 —— 购买按钮钉死在面板底部(CTA 位置
-##   不该随内容长短跳), 上顶只会把空洞从"文字后的留白"搬到"合成进度与按钮之间",
-##   那更像漏了东西。居中则上下各分一半, 看起来是有意留的。
-## ★必须等一帧再问 get_content_height(): 刚 add_child 时还没排版, 拿到 0 会把这一坨
-##   一路顶到描述正下方、和描述叠在一起(这是 CLAUDE.md §3.5 那类坑的近亲)。
-func _center_middle(desc: RichTextLabel, nodes: Array) -> void:
-	## ★等 6 帧不是 1 帧: `_fit_desc_font` 最多要试 4 档字号(每档一帧), 只等 1 帧会拿到
-	##   缩之前的内容高度 ⇒ 算出来的 slack 是错的, 属性块会被移错位置。
-	for _f in range(6):
-		await get_tree().process_frame
-	# ★去重: 同一个节点若在数组里出现两次会被【移两倍】。
-	#   实测踩过 —— _stat_hdr 既被 append 进 _stat_nodes、调用时又单独列了一次,
-	#   于是"属性"标题跑到属性行上方 110px(本该只隔 22px), 看着像布局崩了。
-	var uniq: Array = []
-	for n in nodes:
-		var dup := false
-		for u in uniq:
-			if is_same(u, n):
-				dup = true; break
-		if not dup:
-			uniq.append(n)
-	nodes = uniq
-	if not is_instance_valid(desc):
-		return
-	var ch: float = desc.get_content_height()
-	if ch <= 0.0:
-		return                                  # 还没排版好, 宁可不动也不要算错
-	var slack: float = maxf(0.0, desc.size.y - ch - 12.0)   # 文字没用掉的高度(留 12 呼吸)
-	if slack < 16.0:
-		return                                  # 差得不多就别动, 免得每次选中都轻微跳
-	var shift: float = floorf(slack * 0.5)      # ★只上移一半 = 上下各分一半空白
-	for n in nodes:
-		if is_instance_valid(n) and n is Control:
-			(n as Control).position.y -= shift
 
 
 # §左半 —— 2026-10-18 起是店主 + 宝箱(背包), 见 scripts/scenes/shop/shop_chest.gd。装备在背包页做。

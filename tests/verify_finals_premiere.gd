@@ -299,8 +299,12 @@ func _t_player_map() -> void:
 	for i in range(4):
 		ents.append({"seed": i, "name": nm[i], "account_id": ME if i == 0 else "acct-x%d" % i})
 	var bk: Dictionary = SB.parse_finals(true, 200, JSON.stringify({"ok": true, "bucket": 0, "n": 4, "round": 2, "closed": false,
-		"round_at": flip, "revealed_at": flip, "next_at": flip + 480, "now": _now, "entrants": ents,
-		"done": {"1-0": 0, "1-1": 1}}), ME, int(Time.get_unix_time_from_system()))
+		"round_at": _now - P2C.FINALS_SHOP_SEC - 10, "revealed_at": flip, "next_at": flip + 480, "now": _now, "entrants": ents,
+		"done": {"1-0": 0, "1-1": 1}}), ME, _now)
+	## ★2026-10-18: 收包时刻必须用同一把钟(_now)。原来这里用真实时钟, 而对阵图的钟被钉在「本周日 20:00」
+	##   ⇒ 周日 20:00 之后跑门禁, 服务器时刻被倒推几个小时 ⇒ 购物窗看起来还开着 ⇒ ③ 只在周日晚上红。
+	##   ★而原来别的时候绿是**撞对的**: round_at = flip(30 秒前开轮)时购物窗本该开着、不能开打(10-12 统一结算),
+	##   是钟错把时刻往后推了几天才「打得了」。⇒ round_at 改成购物窗已关(上半区可打); 开播窗口仍按 revealed_at = flip。
 	_gs.account_id = ME
 	var m: Node = await _open_map({"buckets": []}, _now, bk)
 	_ok("③ 分母: 我那一组(4 人, 我是 0 号, 第 2 轮)", int(m.cur().get("me", -1)) == 0 and int(m.cur().get("round", 0)) == 2)
