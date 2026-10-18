@@ -12,7 +12,7 @@ extends Node
 ##   C0  分母: 商店开店、店主在、宝箱落点在、阵容【不】在商店里
 ##   C1  ★买下 → 进背包、还在商店、不自动选中(不再有「待装」)
 ##   C2  ★没有拖拽: 买 = 点货架 → 购买; 卖 = 点宝箱里一件 → 卖出
-##   C3  点宝箱里一件 → 操作区有「详情 / 卖出 / 去背包装上」三颗
+##   C3  点宝箱里一件 → 操作区只有「详情 / 卖出」两颗
 ##   C4  ★刷新 / 锁定是无框图标钮(不是金木框): 五态 StyleBox 都是空的, 有图标
 
 const SHOP := preload("res://scenes/Shop.tscn")
@@ -140,8 +140,8 @@ func _ready() -> void:
 		var b = _find(sc, "LineupAct%d" % k)
 		if b != null:
 			labels.append(str((b as Button).text))
-	_ok("C3 操作区: 详情 / 卖出 / 去背包装上", labels.size() == 3 and labels[0] == "详情"
-		and str(labels[1]).begins_with("卖出") and labels[2] == "去背包装上", str(labels))
+	_ok("C3 操作区: 详情 / 卖出(没有「去背包装上」)", labels.size() == 2 and labels[0] == "详情"
+		and str(labels[1]).begins_with("卖出"), str(labels))
 
 	# ── C4 刷新 / 锁定: 无框图标钮 ──
 	var bad: Array = []

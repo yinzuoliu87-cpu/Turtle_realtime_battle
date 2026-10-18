@@ -455,116 +455,6 @@ func _rebuild() -> void:
 	coin.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; add_child(coin)
 	_tut_coin = coin   # 教学高亮"币"锚点
 
-	# 组2: 等级 + 经验进度条。宽度从 122 → 240(空间铺开了就别再挤), 条高 8 → 12。
-	var _need: int = maxi(1, P2.xp_to_next(int(GameState.season_level)))
-	var _have: int = int(GameState.season_xp)
-	## ★组宽 240 → 170: 铺开不等于把一组【拉长】。240 宽时「Lv1」与「经验 0/2」
-	##   中间空着 180px 的死档, 进度条也变成一条长空线 —— 实拍一眼就是散的。
-	var _lx := 560.0
-	## ★教程: 右上角要让给「跳过教程」(TutorialChrome 走 _tutorial_skip_slot) ⇒ 等级条缩短、
-	##   买经验那一组整体左移 TUT_SKIP_W + 间隙。非教程一个像素不动(verify_shop_layout 量的是非教程)。
-	var _tsh: float = (TUT_SKIP_W + 18.0) if _tut_on() else 0.0
-	var _lw := 340.0 - _tsh
-	var lv := Label.new(); lv.text = "Lv%d" % int(GameState.season_level)
-	lv.add_theme_font_size_override("font_size", 28); lv.add_theme_color_override("font_color", Color("#ffd93d"))
-	lv.position = Vector2(_lx, HDR_CY - 27.0); lv.size = Vector2(76, 32)
-	lv.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; add_child(lv)
-	## ★★满级不印哨兵分母。`xp_to_next()` 在 level≥MAX_LEVEL 时返回 **999999**,
-	##   它的注释写着「极大(不可升)」—— 那是**代码内部表示"升不了了"的约定**,
-	##   而原样印到屏幕上变成「经验 0/999999」—— 玩家读出来是"还差好多, 继续攒"。
-	##   同一个数在两边意思**正好相反**。(2026-09-29 用户点名; 实测一个只看屏幕的
-	##   agent 在满级后反复去点那颗已经死了的按钮 —— 真玩家会做一模一样的事。)
-	var _maxed: bool = int(GameState.season_level) >= P2.MAX_LEVEL
-	var xpn := Label.new()
-	xpn.text = "已满级" if _maxed else ("经验 %d/%d" % [_have, _need])
-	xpn.add_theme_font_size_override("font_size", 19); xpn.add_theme_color_override("font_color", Color("#9fb4c8"))
-	xpn.position = Vector2(_lx + 76.0, HDR_CY - 26.0); xpn.size = Vector2(_lw - 76.0, 30)
-	xpn.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	xpn.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; add_child(xpn)
-	## ★★2026-09-28 换成【像素金属槽】—— 原来是「底一块 ColorRect + 填一块 ColorRect」,
-	##   即 CSS 进度条的长相。战斗 HUD 的血条/龟能条 2026-08-17 就为同一句用户原话
-	##   (「血条，龟能条都跟网页一样」)换过槽框了, 这一条一直漏着。
-	##   ★外沿矩形一个像素没动(560,55)–(900,75): 门禁⑩量的是头部三组的并集矩形共心 y=48,
-	##     换皮不许把版式带跑。
-	_pixel_bar(self, Vector2(_lx, HDR_CY + 7.0), Vector2(_lw, 20),
-		1.0 if _maxed else (float(_have) / float(_need)), Color("#ffd93d"))
-
-	# 组3: 买经验。两行 —— 上行【拿到什么】, 下行【花多少】。
-	## ★原文案「买经验 4 → +4XP」把两个 4 摆在一行还夹着英文 XP, 一眼分不清哪个是花的哪个是拿的。
-	## ★两行不是 Button 自带的 —— 用两个 Label 当子节点(mouse_filter=IGNORE 不吃点击),
-	##   这样字号可以一大一小, 且两行都在按钮框内 ⇒ 三组的并集矩形仍然共心(门禁⑩量这个)。
-	## ★数值从 P2 常量取, 不写死 —— 手抄的副本必然落后。
-	var _xp_gain: int = int(P2.BUY_XP_AMOUNT)
-	var _xp_cost: int = int(P2.BUY_XP_COST)
-	## 买经验 —— 用户 2026-08-15 逐字指定:「购买4xp 放在按钮左侧, 4图标放在按钮上」。
-	##   ⇒ 「购买 4xp」是按钮【左边】的一行说明文字, 按钮本身只放价格「4💠」。
-	var _bw := 140.0
-	var _bx := W - 28.0 - _bw - _tsh
-	## ★★「xp」这两个英文字母是本屏唯一的外文缩写(2026-09-28 去 ai 味):
-	##   同一屏左边已经写着「经验 0/2」, 右边却叫它 xp —— 一个概念两个名字, 是机翻味的来源。
-	##   ⚠ 用户 2026-08-15 的原话是「**购买4xp** 放在按钮左侧, 4图标放在按钮上」,
-	##     他定的是**位置**(说明文字在左 / 价格在按钮上), 我只改称呼不动位置。
-	##     称呼这一改**要用户回头确认一句** —— 见报告的「待拍板」。
-	## ★满级时这行说明也要跟着改口 —— 右边那颗按钮已经是死的了, 这里还写着「买经验 +4」
-	##   等于继续吆喝一个买不到的东西(2026-09-29 那个 agent 连点 8 下的直接诱因)。
-	var pl := Label.new(); pl.text = "等级已满" if _maxed else ("买经验 +%d" % _xp_gain)
-	pl.add_theme_font_size_override("font_size", 24)
-	pl.add_theme_color_override("font_color", Color("#cfe4f0"))
-	pl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	pl.position = Vector2(_bx - 172.0, HDR_CY - 18.0); pl.size = Vector2(156, 36)
-	add_child(pl)
-
-	var bxp := Button.new()
-	## ★不用 Button 自带的 text + icon: `icon_alignment = RIGHT` 会把图标顶到右边框、
-	##   文字留在正中 —— 中间空一大条(用户 2026-08-15:「4和图标为什么隔这么远」)。
-	##   改成两个子节点手动排成【一个贴紧的组】, 再把这个组在按钮里上下左右居中。
-	##   数字宽 24 + 间隙 6 + 图标 30 = 60 ⇒ 起点 (140-60)/2 = 40, 组中心正好落在按钮中心 70。
-	## ★68 → 81(44pt): 绕 HDR_CY 对称长, 上下各多 6.5 —— 头部这一条本来就是空的。
-	##   ⚠ 下面两个子节点的 y 是拿 BXP_H 算的居中偏移, 所以改这一个常量就够, 不会偏。
-	## ★★81 → 92(2026-09-29 换共享皮之后**量出来必须改**): 新皮 `menu/frame-rect.png`
-	##   的边带实测 **28**(旧的 shop/btn-frame 只有 15) ⇒ 上下吃掉 56, 81 高只剩 25px 内容区,
-	##   而这里那个 28 号字的数字**整行高 36** ⇒ `verify_ui_consistency`「Shop 文字压边带」
-	##   当场从 0 变 1(实测 +5)。92 ⇒ 内容区 36, 正好装得下, 不用把数字改小。
-	##   ⚠ 下界: 绕 HDR_CY=48 对称 ⇒ 下沿 94, 而出货概率行从 96 起 —— **再高就压上去了**。
-	const BXP_H := 92.0
-	bxp.size = Vector2(_bw, BXP_H); bxp.position = Vector2(_bx, HDR_CY - BXP_H * 0.5)
-	## ★满级后这颗按钮本来就按不动(`buy_season_xp()` 会拒)—— 但它**看着还能点**,
-	##   那就是在骗人。死按钮要**长得像死的**。
-	bxp.disabled = _maxed
-	## ★★`disabled` 只换 StyleBox 与 `font_disabled_color` —— 而这颗按钮的字**不是**
-	##   `Button.text`: 价格是两个【子节点】(数字 Label + 币图标)。子节点不吃 disabled,
-	##   所以只设 disabled 的话满级后那个「4💠」照样是亮的, 看着还能按 ⇒
-	##   上面那句「死按钮要长得像死的」并没有兑现。`CanvasItem.modulate` 会往子节点传,
-	##   整颗(含价格)一起暗下来才算。
-	bxp.modulate = Color(1, 1, 1, 0.42) if _maxed else Color(1, 1, 1, 1)
-	## ★★★`disabled` 是【点不动】, 不等于【说清了为什么】(用户 2026-09-29:「满级后买经验
-	##   是死按钮, 点了零反馈」)。原来的 false 分支**什么都不做**, 而 `buy_season_xp()`
-	##   会为【两个】理由返回 false —— 满级 / 币不够 ⇒ 两个理由各给一句话。
-	##   满级那句不是"到不了的分支": 按钮被程序触发、或哪天 disabled 的条件漂了, 它就是唯一的出口。
-	bxp.pressed.connect(func():
-		var _lv0: int = int(GameState.season_level)
-		if GameState.buy_season_xp():
-			_rebuild()
-			if int(GameState.season_level) > _lv0:
-				_tut_notify("level_up")   # 教程「购买经验，升到 2 级」
-		elif int(GameState.season_level) >= int(P2.MAX_LEVEL):
-			_toast("已达最高等级 Lv%d" % int(P2.MAX_LEVEL))
-		else:
-			_toast("深海币不足（需要 %d）" % int(P2.BUY_XP_COST)))
-	_skin_button(bxp); add_child(bxp)
-	_tut_xp_btn = bxp
-	var _gw2 := 60.0
-	var _gx := (_bw - _gw2) * 0.5
-	var bn := Label.new(); bn.text = "%d" % _xp_cost
-	bn.add_theme_font_size_override("font_size", 28)
-	bn.add_theme_color_override("font_color", Color("#ffe9a8"))
-	bn.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	bn.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	bn.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bn.position = Vector2(_gx, (BXP_H - 34.0) * 0.5); bn.size = Vector2(24, 34)
-	bxp.add_child(bn)
-	_coin_icon(bxp, Vector2(_gx + 30.0, (BXP_H - 30.0) * 0.5), 30.0)
-
 	_build_odds_row()   # 出货概率行 y 96–124 (原在 116, 现紧贴卡区上方)
 
 	# ── 卡区 5×2  x 40–780 / y 124–420 ──
@@ -581,7 +471,7 @@ func _rebuild() -> void:
 	##   刷新 / 锁定改成【无框图标钮】—— 新画的像素图标在上、描边字在下, 悬停 / 按下靠亮度变化,
 	##   立在货架下沿的沙地上。图标: assets/sprites/shop/icon-refresh / icon-lock-closed / icon-lock-open。
 	var rf := _icon_button("ShopRefreshBtn", REFRESH_ICON, "刷新  %d" % REFRESH_COST,
-		Vector2(GRID_X + 120.0, 458.0), Vector2(130, 96))
+		Vector2(ROW_X, ROW_BTN_Y), Vector2(ROW_BTN_W, ROW_BTN_H))
 	_coin_after_text(rf)
 	## ★★买不起时: disabled + 整颗压暗(价钱那枚币是子节点, 只有 modulate 会往下传)。
 	var _rf_afford: bool = int(GameState.meta_deepsea_coins) >= REFRESH_COST
@@ -589,13 +479,13 @@ func _rebuild() -> void:
 	rf.modulate = Color(1, 1, 1, 1) if _rf_afford else Color(1, 1, 1, 0.42)
 	rf.pressed.connect(_on_refresh); add_child(rf)
 	_build_lock_button(rf.position + Vector2(rf.size.x + LOCK_GAP, 0.0), rf.size.y)
+	_build_level_row(rf.position + Vector2(2.0 * (rf.size.x + LOCK_GAP), 0.0))
 
 	_build_synergy_bar()    # ★羁绊总览: 当前激活了哪些 + 距下一档还差几件(2026-08-12 用户点名)
 	## ★右侧: 常驻【出战阵容】; 选中货架卡 / 已有装备时, 详情盖在它上面(带关闭)。
 	##   底部: 原来两颗只读弹层按钮 → 可点的背包条(点一件 → 点龟 = 装上)。
 	_chest.build_keeper(self)
 	_chest.build_bench(self)
-	_chest.build_actions(self)
 	if _detail_wanted():
 		_build_detail_panel()
 		_build_detail_close()
@@ -1391,6 +1281,15 @@ const LOCK_GAP := 12.0
 ## ★宽 200 不是随手定的: verify_ui_consistency 的「热区不足」判据是 短边 < 81px(44pt) **且** 长边 < 200px。
 ##   高度要跟「换一批」(76)对齐一行, 只能靠长边 ≥ 200 过线(「换一批」240×76 也是这么过的)。
 const LOCK_W := 130.0
+## ★2026-10-18 用户「你没发现下面是空的吗」: 货架下面那块沙地空着, 而顶栏挤着等级 / 经验 / 买经验。
+##   参考云顶: 刷新、买经验、等级都在商店那一排 ⇒ 底部一排 = 刷新 · 锁定 · 买经验, 上面一行是等级 + 经验条 + 装备数。
+const ROW_X := 736.0
+const ROW_BTN_Y := 604.0
+const ROW_BTN_W := 130.0
+const ROW_BTN_H := 96.0
+const ROW_INFO_Y := 556.0
+const XP_ICON := preload("res://assets/sprites/shop/icon-xp.png")
+const DETAIL_ICON := preload("res://assets/sprites/shop/icon-detail.png")
 var _lock_btn: Button = null
 
 func _build_lock_button(pos: Vector2, h: float) -> void:
@@ -1408,6 +1307,62 @@ func _build_lock_button(pos: Vector2, h: float) -> void:
 	lb.pressed.connect(_on_toggle_lock)
 	add_child(lb)
 	_lock_btn = lb
+
+
+## 买经验(无框图标钮, 与刷新 / 锁定同一种) + 上面一行: 等级 · 经验条 · 装备数。
+func _build_level_row(btn_pos: Vector2) -> void:
+	var _need: int = maxi(1, P2.xp_to_next(int(GameState.season_level)))
+	var _have: int = int(GameState.season_xp)
+	## ★★满级不印哨兵分母(xp_to_next 满级返回 999999 = 「升不了」, 印出来读成「还差好多」)
+	var _maxed: bool = int(GameState.season_level) >= P2.MAX_LEVEL
+	var lv := Label.new(); lv.name = "LevelLabel"; lv.text = "Lv%d" % int(GameState.season_level)
+	lv.add_theme_font_size_override("font_size", 26); lv.add_theme_color_override("font_color", Color("#ffd93d"))
+	lv.add_theme_color_override("font_outline_color", Color("#1a0e05")); lv.add_theme_constant_override("outline_size", 6)
+	lv.position = Vector2(ROW_X, ROW_INFO_Y); lv.size = Vector2(62, 34)
+	lv.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; add_child(lv)
+	var bar_x := ROW_X + 66.0
+	var bar_w := 170.0
+	_pixel_bar(self, Vector2(bar_x, ROW_INFO_Y + 7.0), Vector2(bar_w, 20),
+		1.0 if _maxed else (float(_have) / float(_need)), Color("#ffd93d"))
+	var xpn := Label.new(); xpn.name = "XpLabel"
+	xpn.text = "已满级" if _maxed else ("经验 %d/%d" % [_have, _need])
+	xpn.add_theme_font_size_override("font_size", 16); xpn.add_theme_color_override("font_color", Color("#fff4dc"))
+	xpn.add_theme_color_override("font_outline_color", Color("#1a0e05")); xpn.add_theme_constant_override("outline_size", 5)
+	## 字放在条的右边, 不压在槽框的金属边带上(verify_ui_consistency「文字压边带」)
+	xpn.position = Vector2(bar_x + bar_w + 8.0, ROW_INFO_Y + 4.0); xpn.size = Vector2(110, 26)
+	xpn.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	xpn.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; add_child(xpn)
+	var used: int = int(GameState.team_equipped_count())
+	var cap: int = int(GameState.team_equip_cap())
+	var cnt := Label.new(); cnt.name = "TeamEquipCount"
+	cnt.text = "装备 %d/%d" % [used, cap]
+	cnt.add_theme_font_size_override("font_size", 18)
+	cnt.add_theme_color_override("font_color", Color("#ffb454") if used >= cap else Color("#ffe3a3"))
+	cnt.add_theme_color_override("font_outline_color", Color("#1a0e05")); cnt.add_theme_constant_override("outline_size", 6)
+	cnt.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	cnt.position = Vector2(bar_x + bar_w + 120.0, ROW_INFO_Y); cnt.size = Vector2(1250.0 - (bar_x + bar_w + 120.0), 34)
+	cnt.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; add_child(cnt)
+
+	var bxp := _icon_button("ShopBuyXpBtn", XP_ICON, "等级已满" if _maxed else ("买经验  %d" % int(P2.BUY_XP_COST)),
+		btn_pos, Vector2(ROW_BTN_W, ROW_BTN_H))
+	if not _maxed:
+		_coin_after_text(bxp)
+	## ★满级: 点不动 + 整颗压暗(价钱那枚币是子节点, 只有 modulate 往下传) + 被程序按下也要说一句
+	bxp.disabled = _maxed
+	bxp.modulate = Color(1, 1, 1, 0.42) if _maxed else Color(1, 1, 1, 1)
+	bxp.tooltip_text = "经验 +%d" % int(P2.BUY_XP_AMOUNT)
+	bxp.pressed.connect(func():
+		var _lv0: int = int(GameState.season_level)
+		if GameState.buy_season_xp():
+			_rebuild()
+			if int(GameState.season_level) > _lv0:
+				_tut_notify("level_up")   # 教程「购买经验，升到 2 级」
+		elif int(GameState.season_level) >= int(P2.MAX_LEVEL):
+			_toast("已达最高等级 Lv%d" % int(P2.MAX_LEVEL))
+		else:
+			_toast("深海币不足（需要 %d）" % int(P2.BUY_XP_COST)))
+	add_child(bxp)
+	_tut_xp_btn = bxp
 
 
 ## 无框图标钮: 图标在上(像素图 ×2, 最近邻)、描边字在下; 五种状态的底都是空的(不是金木框, 也不是网页盒)。
@@ -1485,12 +1440,6 @@ func _go_inventory() -> void:
 
 const TUT_SKIP_W := 132.0
 
-func _tut_on() -> bool:
-	var td = get_node_or_null("/root/TutorialDirector")
-	return td != null and td.is_active()
-
-
-## 右上「跳过教程」的位置: 头部最右那一格(教程里买经验组已左移让出来, 见 _rebuild)。
 func _tutorial_skip_slot() -> Rect2:
 	return Rect2(Vector2(W - 28.0 - TUT_SKIP_W, 48.0 - 28.0) + _frame_off(), Vector2(TUT_SKIP_W, 56.0))
 
@@ -1572,7 +1521,8 @@ func _pixel_bar(parent: Control, pos: Vector2, sz: Vector2, ratio: float, fill: 
 	##   我第一版按"框压住填充两端"的直觉把框画在后面, 实拍 14/36 的经验条**一格都不涨**
 	##   (截图里那条槽全黑)。空心框(card-frame 那种)能后画, 实心的不能 ——
 	##   ⇒ 判断依据是**贴图中间透不透**, 不是"框该不该压着内容"。
-	_nine_xy(parent, BAR_TEX, BAR_MARGIN_X, BAR_MARGIN_Y, pos, sz, 0)
+	var _slot := _nine_xy(parent, BAR_TEX, BAR_MARGIN_X, BAR_MARGIN_Y, pos, sz, 0)
+	_slot.name = "XpBarSlot"
 	var slot_x := float(BAR_MARGIN_X)
 	var slot_y := float(BAR_MARGIN_Y)
 	var inner := Vector2(maxf(1.0, sz.x - slot_x * 2.0), maxf(1.0, sz.y - slot_y * 2.0))

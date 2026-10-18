@@ -1,13 +1,13 @@
 class_name ShopChest
 extends RefCounted
-## 商店左半【店主 + 宝箱】+ 右下操作区(2026-10-18 整页重做·第三版)。
+## 商店左半【店主 + 宝箱】(2026-10-18 整页重做·第三版)。
 ##
 ## 用户 10-18:「整个页面就应该重做啊，没有任何游戏搞的这种浏览器网页感」→ 商店改成货铺场景;
 ##   接着「我并不觉得左边的阵容可以放在商店里吧」→ 选「店主 + 宝箱」:
 ##   商店只管买 / 卖 / 看; 买下的东西进宝箱(= 背包), 装到龟身上回背包页做。
 ## ⇒ 左半: 店主站在地毯上(待机轻晃) + 左下角宝箱(背景图里本来就有) 旁边一排已有装备。
 ##   只有点按, 没有拖拽(用户 10-18「为什么要拖入宝箱去购买？」): 点货架 → 说明卡 → 购买;
-##   点宝箱里一件 → 详情 / 卖出 / 去背包装上。
+##   点宝箱里一件 → 详情 / 卖出。
 ## ★卖走背包页同一套 `InvOps`(私人池退张、羁绊赠送件不可卖、存盘都在里面)。
 ## ★触控尺寸(verify_ui_consistency「热区不足」): 宝箱格 81、按钮 81 高。
 ## ★照 CLAUDE.md §5 拆分模板: RefCounted + 构造注入宿主(ShopScene)。
@@ -22,12 +22,6 @@ const BENCH_Y := 590.0
 const BENCH_CELL := 81.0       # = 44pt 触控下限
 const BENCH_STEP := 89.0
 const BENCH_PER_ROW := 6       # 6 × 89 = 534: 168..702
-## ── 右下操作区 ──
-const ACT_X := 730.0
-const ACT_W := 520.0
-const ACT_HINT_Y := 556.0
-const ACT_BTN_Y := 596.0
-const ACT_BTN_H := 81.0
 
 var host = null
 static var _ell_cache: Dictionary = {}
@@ -129,6 +123,22 @@ func build_bench(parent: Control) -> void:
 		cell.mouse_filter = Control.MOUSE_FILTER_STOP
 		var _j := j
 		host._wire_tap(cell, func(): _on_bench(_j))
+	## 选中一件: 「详情 / 卖出」两颗无框图标钮浮在那一格正上方(不放到屏幕另一头)
+	var bi: int = int(host._sel_bench)
+	if bi >= 0 and bi < shown:
+		var it2: Dictionary = bench[bi]
+		var cx: float = BENCH_X + bi * BENCH_STEP + BENCH_CELL * 0.5
+		var acts: Array = [["LineupAct0", host.DETAIL_ICON, "详情", Callable(self, "_detail_bench")]]
+		if not GameState.is_synergy_grant(it2):
+			acts.append(["LineupAct1", host.COIN_TEX, "卖出 +%d" % int(host._inv_ops._sell_value(it2)), Callable(self, "_sell_bench")])
+		var aw := 96.0
+		var x0: float = clampf(cx - aw * acts.size() * 0.5, 8.0, 700.0 - aw * acts.size())
+		for k in range(acts.size()):
+			var ab: Button = host._icon_button(acts[k][0], acts[k][1], acts[k][2],
+				Vector2(x0 + k * aw, BENCH_Y - 100.0), Vector2(aw, 96))
+			ab.z_index = 3
+			ab.pressed.connect(acts[k][3])
+			parent.add_child(ab)
 	if overflow:
 		var mb := Button.new(); mb.name = "BenchMore"
 		mb.text = "+%d" % (bench.size() - shown)
@@ -168,52 +178,3 @@ func sell_bench_at(bi: int) -> void:
 	host._sel_bench = bi
 	host._inv_ops._sell_selected()
 	host._toast("已卖出 +%d" % sv)
-
-
-# ══════════════════════════════════════════════════════════════
-#  右下操作区: 此刻该做什么 + 按钮
-# ══════════════════════════════════════════════════════════════
-
-func build_actions(parent: Control) -> void:
-	var used: int = int(GameState.team_equipped_count())
-	var cap: int = int(GameState.team_equip_cap())
-	var bench: Array = GameState.persistent_bench
-	var bi: int = int(host._sel_bench)
-	var sel_item: Dictionary = bench[bi] if bi >= 0 and bi < bench.size() else {}
-
-	var cnt := Label.new(); cnt.name = "TeamEquipCount"
-	cnt.text = "装备 %d/%d" % [used, cap]
-	cnt.add_theme_font_size_override("font_size", 20)
-	cnt.add_theme_color_override("font_color", Color("#ffb454") if used >= cap else Color("#ffe3a3"))
-	cnt.add_theme_color_override("font_outline_color", Color("#1a0e05")); cnt.add_theme_constant_override("outline_size", 6)
-	cnt.position = Vector2(ACT_X, ACT_HINT_Y); cnt.size = Vector2(120, 30)
-	parent.add_child(cnt)
-	var hint := Label.new(); hint.name = "LineupHint"
-	hint.add_theme_font_size_override("font_size", 16)
-	hint.add_theme_color_override("font_outline_color", Color("#1a0e05")); hint.add_theme_constant_override("outline_size", 5)
-	hint.position = Vector2(ACT_X + 126, ACT_HINT_Y + 2); hint.size = Vector2(ACT_W - 126, 28)
-	hint.clip_text = true; hint.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	var acts: Array = []   # [文字, Callable]
-	if not sel_item.is_empty():
-		var ed: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(sel_item.get("id", "")), {})
-		hint.text = "「%s」★%d" % [str(ed.get("name", "?")), int(sel_item.get("star", 1))]
-		hint.add_theme_color_override("font_color", Color("#ffd93d"))
-		acts.append(["详情", Callable(self, "_detail_bench")])
-		if not GameState.is_synergy_grant(sel_item):
-			acts.append(["卖出 +%d" % int(host._inv_ops._sell_value(sel_item)), Callable(self, "_sell_bench")])
-		acts.append(["去背包装上", Callable(host, "_go_inventory")])
-	else:
-		hint.text = "点货架上的东西购买 · 去背包给龟装上"
-		hint.add_theme_color_override("font_color", Color("#cfe4f0"))
-	parent.add_child(hint)
-	if acts.is_empty():
-		return
-	var bw: float = (ACT_W - 10.0 * float(acts.size() - 1)) / float(acts.size())
-	for k in range(acts.size()):
-		var ab := Button.new(); ab.name = "LineupAct%d" % k
-		ab.text = str(acts[k][0])
-		ab.add_theme_font_size_override("font_size", 16)
-		ab.position = Vector2(ACT_X + k * (bw + 10.0), ACT_BTN_Y); ab.size = Vector2(bw, ACT_BTN_H)
-		ab.clip_text = true
-		ab.pressed.connect(acts[k][1])
-		host._skin_button(ab); parent.add_child(ab)

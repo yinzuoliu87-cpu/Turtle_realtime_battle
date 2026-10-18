@@ -400,8 +400,9 @@ func _ready() -> void:
 	#    由来 (用户 2026-07-29「右上角需要改」): 币 中心 41 / 等级 中心 41 / 买经验 中心 48,
 	#    三组各走各的。这类"差几像素"的错位越界/重叠一条都不会响, 但肉眼一看就是没对齐。
 	#    按 x 区间收三组的【并集矩形】, 不依赖各组内部怎么搭(图标+数字, 或 文字+进度条)。
-	var grp := {"币": Rect2(), "等级": Rect2(), "买经验": Rect2()}
-	var ghit := {"币": 0, "等级": 0, "买经验": 0}
+	## ★2026-10-18: 等级 / 经验 / 买经验挪到货架下面那一排(用户「你没发现下面是空的吗」), 顶栏只剩金币一组。
+	var grp := {"币": Rect2()}
+	var ghit := {"币": 0}
 	for c in all:
 		var cc: Control = c
 		var r := Rect2(cc.global_position, cc.size)
@@ -416,9 +417,9 @@ func _ready() -> void:
 		if r.position.x >= 300.0 and r.position.x < 540.0:
 			key = "币"
 		elif r.position.x >= 540.0 and r.position.x < 930.0:
-			key = "等级"
+			key = ""
 		elif r.position.x >= 930.0:
-			key = "买经验"
+			key = ""
 		if key == "":
 			continue
 		grp[key] = r if ghit[key] == 0 else (grp[key] as Rect2).merge(r)
@@ -434,7 +435,7 @@ func _ready() -> void:
 		#   反向验证时发现极差是【稀释】过的: 把币图标上移 7px, 并集矩形反而被撑大,
 		#   中心只挪了 2.5px → 极差 ≤4 照样 PASS。拿固定基准线量才抓得住。
 		var off_max := 0.0
-		for k in ["币", "等级", "买经验"]:
+		for k in ["币"]:
 			var r2: Rect2 = grp[k]
 			var cy: float = r2.position.y + r2.size.y * 0.5
 			off_max = maxf(off_max, absf(cy - HEADER_CY))
@@ -1201,9 +1202,7 @@ func _check_maxlevel_xp() -> void:
 		## ★ratio 是从**渲染出来的矩形**算的, 不是回读我传给 `_pixel_bar` 的参数。
 		var slot: NinePatchRect = null
 		for c in all2:
-			if c is NinePatchRect and (c as NinePatchRect).texture != null \
-				and str((c as NinePatchRect).texture.resource_path).find("bar-frame") >= 0 \
-				and (c as Control).position.y < 110.0:
+			if c is NinePatchRect and str(c.name) == "XpBarSlot":   # 2026-10-18 条挪到底部一排, 按名字找
 				slot = c
 		var ratio := -1.0
 		if slot != null:
@@ -1221,8 +1220,7 @@ func _check_maxlevel_xp() -> void:
 		var bxp: Button = null
 		for c in all2:
 			var gr: Rect2 = Rect2((c as Control).position, (c as Control).size)
-			if c is Button and gr.position.x > SCREEN_W - 200.0 and gr.position.y < 110.0 \
-				and str((c as Button).text) == "":
+			if c is Button and str(c.name) == "ShopBuyXpBtn":   # 2026-10-18 挪到底部一排, 按名字找
 				bxp = c
 		seen[lv] = {
 			"sentinel": joined.find(str(sentinel)) >= 0,
