@@ -13,6 +13,8 @@ extends Logger
 ## ★没配后端(门禁 / 离线)= 只进队列不发; 时间穿越中由 SupabaseNet._http 按写请求拦下。
 
 const _SB := preload("res://scripts/net/supabase.gd")
+## 回放对不上那条警告的开头(与 `ReplayRecorder._diverge` 的 push_warning 同一个字面量)。
+const REPLAY_MISMATCH_TAG := "[Replay] 第 "
 
 const MAX_SIGS := 30
 const FLUSH_SEC := 10.0
@@ -84,6 +86,11 @@ static func kind_of(error_type: int) -> String:
 			return KIND_ERROR
 
 
+## 纯函数: 这条警告是不是「回放对不上」(唯一上报的警告)。
+static func is_replay_mismatch(code: String, rationale: String) -> bool:
+	return code.begins_with(REPLAY_MISMATCH_TAG) or rationale.begins_with(REPLAY_MISMATCH_TAG)
+
+
 ## 纯函数: 一条报错 → 要上传的那一行(场景 / 版本 / 平台在主线程补)。
 static func row_of(function: String, file: String, line: int, code: String, rationale: String,
 		error_type: int, backtrace: String) -> Dictionary:
@@ -99,7 +106,11 @@ static func row_of(function: String, file: String, line: int, code: String, rati
 
 func _log_error(function: String, file: String, line: int, code: String, rationale: String,
 		_editor_notify: bool, error_type: int, script_backtraces: Array[ScriptBacktrace]) -> void:
-	if error_type == Logger.ERROR_TYPE_WARNING:
+	## 警告一律不收, 只有一种例外: 回放对不上(`ReplayRecorder._diverge` 的「[Replay] 第 N 步…停止播放」)。
+	##   ★2026-10-19: 结果改由服务器算之后, 手机看录像 = 本机照录像重算; iPhone(ARM)与服务器(x86)只要分叉,
+	##   玩家就会看到「录像里赢、服务器判输」。原来这条只显示在屏幕上、不上报 ⇒ 内测一周 iOS 1102 条报错里
+	##   一条回放的都没有, 证明不了没出过。收进来后每看一次录像都是一次真机核对。
+	if error_type == Logger.ERROR_TYPE_WARNING and not is_replay_mismatch(code, rationale):
 		return
 	var bt := ""
 	for b in script_backtraces:

@@ -72,6 +72,18 @@ func _ready() -> void:
 		_ok("场景", str(row["p_scene"]) == "SomeScene.tscn")
 		_ok("★详情带调用栈(找得到出事的测试函数)", str(row["p_detail"]).find("_emit_probe") >= 0, str(row["p_detail"]).left(200))
 
+	## ②b ★2026-10-19 回放对不上 = 唯一上报的警告(服务器裁判: 每看一次录像都是一次真机核对)
+	var qw: int = ER.queued_total
+	push_warning("普通警告不上报 probe")
+	_ok("②b 普通警告不进队列", ER.queued_total == qw, "排了 %d" % (ER.queued_total - qw))
+	push_warning("[Replay] 第 4321 步: 终局对不上 —— 停止播放")
+	_ok("②b ★★回放对不上的警告进队列", ER.queued_total == qw + 1, "排了 %d" % (ER.queued_total - qw))
+	var rows_w: Array = r.drain("RealtimeBattle3D.tscn")
+	_ok("②b 那一行的消息是回放对不上原文", rows_w.size() == 1 and str(rows_w[0]["p_message"]).begins_with(ER.REPLAY_MISMATCH_TAG), str(rows_w.size()))
+	var rec_src := FileAccess.get_file_as_string("res://scripts/systems/replay/replay_recorder.gd")
+	_ok("②b ★口径: 录像器真的用这个开头报对不上(改了那边这条就红)",
+		rec_src.find('push_warning("%s%%d 步' % ER.REPLAY_MISMATCH_TAG) >= 0)
+
 	## ③ 去重 —— 同一行、消息带不同数值(原来按「文件:行:原文」签名时这会刷出 100 个签名)
 	var q1: int = ER.queued_total
 	for i in range(100):
