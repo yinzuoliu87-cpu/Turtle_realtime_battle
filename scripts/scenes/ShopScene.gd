@@ -42,34 +42,7 @@ const PANEL_X := 800.0       # 右侧详情面板
 const PANEL_W := 440.0
 const PANEL_Y := 124.0
 const PANEL_H := 592.0
-const BENCH_Y := 484.0       # 备战席(现只在弹层里用, 主页面是按钮)
-## 备战席格子的排布。★★2026-09-29: 原来写死 `mini(10, bench.size())` ——
-##   背包 18 件时**只画 10 格**, 剩下 8 件在弹层里一点痕迹都没有(标题还写着
-##   「背包里有 18 件, 点一下看看」, 点开却只有 10 个)。那不是"放不下", 是**静默截断**:
-##   一行 10 格才占 720px, 而弹层面板 820 宽 / 300 高, 多的那些**换行就放得下**。
-##   ⇒ 改成换行铺, 弹层高度跟着行数长; 真到放不下的量(>PER_ROW×MAX_ROWS)才截,
-##     而且**必须把剩下几件写在屏上** —— 截断本身不是 bug, 不说话才是。
-const BENCH_CELL := 64.0      # 一格边长(点击靶)
-const BENCH_STEP := 72.0      # 格距 = 64 + 8 间隙
-const BENCH_PER_ROW := 10     # 一行 10 格 = 720px ≤ 左栏可用宽 740
-const BENCH_MAX_ROWS := 4     # 4 行 = 40 件; 更多就写「还有 N 件」
-## §弹层「出战阵容」里每个单位的三件装备 —— **竖排**, 一行一件: [36 图标格] + 名字。
-## ★★2026-09-29 从横排改竖排的理由(真机实测): 原来 3 格横着摆(40px 一格), 名字标签只有
-##   **36px 宽 / 字号 10** ⇒ 96 件里 **71 件**显示不全, 而且 **3 对被裁成同一个词**
-##   (守护贝壳 / 守护贝母 → 都成「守护贝」, 另两对同理)。
-##   讽刺的是这行名字当初就是为了「手机没 hover, 别只靠 tooltip」才加的 —— 裁成前 3 个字之后
-##   它既没说清是哪一件, 又占着位置, 比不写更坏。
-##   竖排之后名字拿到 LINEUP_NAME_W 的宽度, 96 件一个不裁(门禁 NAME_NOT_TRUNCATED 量的是
-##   **真实渲染宽度**而不是数字数)。图标格尺寸/点击靶/星级一个像素没动。
-## ⚠ 竖排三行的总高 = 22 + 3×LINEUP_ROW_H = 142; 弹层里这块从 y=68 起 ⇒ 底沿 210,
-##   而「收起」按钮在 y=234 —— 别把行高再往上加。
-const LINEUP_ROW_H := 40.0    # 一件一行的行高(36 格 + 4 间隙)
-const LINEUP_CELL := 36.0     # 图标格边长(点击靶 + 星级都画在它上面)
-const LINEUP_NAME_X := 40.0   # 名字相对该单位列左边的偏移
-const LINEUP_NAME_W := 78.0   # 名字可用宽度 = 列宽 118 − LINEUP_NAME_X
-const LINEUP_NAME_FONT := 11  # 名字字号(原横排时是 10)
 const BOTTOM_BTN_Y := 552.0  # 底部两个摘要按钮
-const LINEUP_Y := 580.0      # 阵容装备(横排)
 ## 羁绊总览条(货架与底部按钮之间那条空带)。★进 verify_shop_layout 的越界检查
 const SYN_BAR_Y := 528.0
 const SYN_CHIP_W := 176.0
@@ -102,7 +75,12 @@ var _sel: int = -1            # 当前选中的货架格(两步购买: 点卡选
 ##   现在点一下就把详情送进右侧同一块面板, 不新开弹窗。
 var _sel_own: String = ""
 var _sel_own_star: int = 1
-var _popup: Control = null   # 底栏弹层(备战席/出战阵容)
+## ★买和装同一屏(2026-10-18·方案书 20261018-商店背包合一.md): 右侧常驻阵容 + 底部背包条。
+##   `_sel_bench` = 背包条里选中的「待装」那件(下标), 名字与 InventoryScene 同 ——
+##   因为装/卸/卖直接复用背包页那套 `InvOps`, 它按这个名字读写宿主。
+var _sel_bench: int = -1
+var _inv_ops := InvOps.new(self)
+var _lineup := ShopLineup.new(self)
 var _toast_node: Label = null   # 一句话提示(见 _toast); 同时只留一条
 
 func _ready() -> void:
@@ -159,9 +137,6 @@ func _shop_selfshot() -> void:
 	if OS.get_environment("SHOT_SEL") != "":
 		_sel = int(OS.get_environment("SHOT_SEL"))
 	_rebuild()
-	# SHOT_POPUP=bench|lineup: 直接把底栏弹层打开 —— 否则截不到它(不能靠嘴说"点开会显示")
-	if OS.get_environment("SHOT_POPUP") != "":
-		_open_bottom_popup(OS.get_environment("SHOT_POPUP"))
 	await get_tree().create_timer(delay).timeout
 	await RenderingServer.frame_post_draw
 	var img: Image = get_viewport().get_texture().get_image()
@@ -349,13 +324,15 @@ func _toast(msg: String) -> void:
 	t.add_theme_color_override("font_color", Color("#ffe9a8"))
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	t.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	t.size = Vector2(760, 44)
+	t.size = Vector2(740, 44)
 	## ★★y 430 → 656(2026-09-30): 430..474 **正好盖住「换一批」按钮的上沿**
 	##   (按钮 y 448..524) —— 而现在最常出现的提示之一就是"深海币不够 · 换一批要 2",
 	##   等于一句话挡住它解释的那颗按钮。656..700 落在底栏两颗按钮(552..648)之下、
 	##   720 设计框之内, 是本屏唯一一条谁都不压的横带(门禁 BUY_FEEDBACK 会穷举核这一条)。
 	##   ⚠ 弹层(z=20)仍被它压住 —— 那是故意的, 见下面 z_index 那行。
-	t.position = Vector2((W - 760.0) * 0.5, 656.0)
+	## ★★2026-10-18: 底栏换成背包条(552..657), 右侧阵容面板常驻(x 800 起) ⇒
+	##   提示收进卡区宽度 40..780、背包条之下 664..708, 不压背包格也不压面板。
+	t.position = Vector2(GRID_X, 664.0)
 	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	t.z_index = 30       # 底栏弹层是 20 —— 提示必须压得住它
 	var bgp := Panel.new()
@@ -587,8 +564,13 @@ func _rebuild() -> void:
 	_build_lock_button(rf.position + Vector2(rf.size.x + LOCK_GAP, 0.0), rf.size.y)
 
 	_build_synergy_bar()    # ★羁绊总览: 当前激活了哪些 + 距下一档还差几件(2026-08-12 用户点名)
-	_build_detail_panel()   # ★右侧常驻详情面板(本次重设计的核心: 描述不再藏在 tooltip 里)
-	_build_bottom_buttons()
+	## ★右侧: 常驻【出战阵容】; 选中货架卡 / 已有装备时, 详情盖在它上面(带关闭)。
+	##   底部: 原来两颗只读弹层按钮 → 可点的背包条(点一件 → 点龟 = 装上)。
+	_build_lineup_panel()
+	if _detail_wanted():
+		_build_detail_panel()
+		_build_detail_close()
+	_lineup.build_bench(self, GRID_X, BOTTOM_BTN_Y)
 	# ★UI 双端适配(用户2026-08-01「有些画面都没有居中」): 内容装进 1280×720 设计框并居中于真实视口。
 	# ★放在 _rebuild 末尾而不是 _ready 末尾 —— 本函数开头会 free 掉【所有】子节点(买一件装备
 	#   就触发一次), 框和框里的内容会被一起清掉。attach 是幂等的, 重复调只重新收编+居中。
@@ -620,195 +602,7 @@ func _build_odds_row() -> void:
 		chip.add_theme_color_override("font_color", cc if pct > 0 else Color(cc.r, cc.g, cc.b, 0.28))
 		row.add_child(chip)
 
-## 商店下部背包预览 (设计§十一: 显装备管理方便对照/3合1; 详细操作回背包页).
-## 备战席格子。★host/ox/oy: 既能画在主页面, 也能画进弹层(用户 2026-07-29
-## 「把这两个打包成按钮式的, 点击展示完整的」)。
-func _build_bench_preview(host: Node = null, ox: float = 0.0, oy: float = 0.0) -> void:
-	if host == null:
-		host = self
-	var bench: Array = GameState.persistent_bench
-	var bh := Label.new()
-	# ★原文案是「我的背包 (N 件) — 回 🎒 背包页 装备/合星/卖」——
-	#   用户 2026-07-28:「你那下面写背包那么多字意义在哪里」。确实没意义:
-	#   顶部已经有一个「🎒 背包」按钮, 后半句只是在解释背包页能干嘛 = 教程文字不是界面。
-	#   删掉, 改成告诉玩家【这里能点】(因为现在它真的能点了)。
-	## ★★2026-09-28 再改一次口气: 上一版「我的背包 N 件   · 点格子看详情」还是
-	##   「标题 + 计数 + 操作说明」三段拼的**控件说明**(「点格子」是在说界面构件的名字,
-	##   而玩家眼里那不是"格子"是"东西")。改成一句人话。
-	bh.text = ("背包 %d 件" % bench.size()) if bench.size() > 0 else "背包为空"
-	bh.add_theme_font_size_override("font_size", 15); bh.add_theme_color_override("font_color", Color("#9fb6c9"))
-	bh.position = Vector2(ox + GRID_X, (oy + BENCH_Y)); bh.size = Vector2(740, 22); host.add_child(bh)   # 原(80,560)宽900会伸进详情面板
-	## ★画得下的件数 = 一行 BENCH_PER_ROW × 最多 BENCH_MAX_ROWS 行。
-	##   真超了才截, 并且**在屏上写清楚还剩几件**(见函数尾)。
-	var shown := mini(BENCH_PER_ROW * BENCH_MAX_ROWS, bench.size())
-	for j in range(shown):
-		var it: Dictionary = bench[j]
-		var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(it.get("id", "")), {})
-		var cell := Panel.new()
-		## ★★2026-09-28 换像素槽框。原来是「2px 纯色描边 + 6px 圆角」= CSS 卡片,
-		##   全项目唯一还这么画的两处就在本函数和 `_build_lineup_equips`。
-		##   走共享层 `UISkin.slot`(背包页 `InventoryScene:607` 同一个调用) ——
-		##   不在这里手写 StyleBox, 手抄的副本必然落后。
-		## ★★选中态必须**在建 StyleBox 之前**定好: `UISkin.slot` 返回的是 StyleBoxTexture,
-		##   事后再改 `csb.border_color` 一点用都没有(原代码就是那么写的, 换皮后会静默失效)。
-		var _bsel: bool = str(it.get("id", "")) == _sel_own and int(it.get("star", 1)) == _sel_own_star
-		var csb := StyleBoxFlat.new()
-		csb.bg_color = Color("#162230")
-		csb.border_color = Color("#ffd93d") if _bsel else _cost_color(int(edef.get("cost", 1)))
-		csb.set_border_width_all(3 if _bsel else 2)
-		csb.set_corner_radius_all(0)   # 贴图缺失时的兜底也走直角, 不留圆角
-		cell.add_theme_stylebox_override("panel", UISkin.slot(csb, UISkin.tint_of(csb.border_color)))
-		cell.position = Vector2(ox + GRID_X + float(j % BENCH_PER_ROW) * BENCH_STEP,
-			(oy + BENCH_Y) + 26.0 + float(j / BENCH_PER_ROW) * BENCH_STEP)
-		cell.size = Vector2(BENCH_CELL, BENCH_CELL); host.add_child(cell)
-		_wire_own_tap(cell, str(it.get("id", "")), int(it.get("star", 1)))
-		## ★走 EquipIcon: 无图时退化成 emoji 而不是空白(EquipIcon.make 的 else 分支)
-##   ⚠"060~095 有 36 件没配图"这句已作废: 实测 phase2-equipment.json 95 件**全部**有 img,
-##     且 95 张图在盘上一个不缺(060~095 那 36 件也是) ⇒ emoji 兜底现在一次都不会触发。
-##     留着这条调用仍然对(数据缺图时不至于开天窗), 但别再拿它当"有 36 件没图"的证据。
-		var ic2 := EquipIcon.make(edef, Vector2(36, 32))
-		ic2.position = Vector2(14, 6)
-		cell.add_child(ic2)
-		var st := Label.new(); st.text = "★".repeat(int(it.get("star", 1)))
-		st.add_theme_font_size_override("font_size", 11); st.add_theme_color_override("font_color", Color("#ffd93d"))
-		## ★宽度跟着 BENCH_CELL 走(星级那一行就画在格子底下) —— 别在这里再留一个裸 64。
-		st.position = Vector2(0, 44); st.size = Vector2(BENCH_CELL, 16); st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		cell.add_child(st)
-	## ★★装不下的那些**必须有一句话** —— 原来是静默截断(标题写 18 件、格子只有 10 个,
-	##   而屏上没有任何东西告诉玩家"还有"。玩家只会以为东西丢了)。
-	if bench.size() > shown:
-		var more := Label.new()
-		more.text = "另有 %d 件" % (bench.size() - shown)
-		more.add_theme_font_size_override("font_size", 14)
-		more.add_theme_color_override("font_color", Color("#ffb454"))
-		more.position = Vector2(ox + GRID_X,
-			(oy + BENCH_Y) + 26.0 + float(BENCH_MAX_ROWS) * BENCH_STEP - 4.0)
-		more.size = Vector2(460, 22); host.add_child(more)
-	if bench.is_empty():
-		## ★去掉全角括号 + 破折号(「（空 — …）」是排版符号堆出来的空状态提示, 典型 ai 味)。
-		var e := Label.new(); e.text = "背包为空"
-		e.add_theme_font_size_override("font_size", 14); e.add_theme_color_override("font_color", Color("#5a6675"))
-		e.position = Vector2(ox + GRID_X + 4, (oy + BENCH_Y) + 28); e.size = Vector2(400, 22); host.add_child(e)
 
-# 右侧只读面板: 出战阵容(上/下路6单位)每个龟/小将身上装了什么(用户2026-07-18「商店里看不到装备在龟身上的东西」)。在🎒背包页调整; 这里只看。
-## 出战阵容各单位已装的装备。★同上, 可画进弹层。
-func _build_lineup_equips(host: Node = null, ox: float = 0.0, oy: float = 0.0) -> void:
-	if host == null:
-		host = self
-	var lineup: Dictionary = GameState.get_dual_lineup() if GameState.has_method("get_dual_lineup") else {}
-	# ★竖排 6 行(原 px=730 / y=178+row*56) → 横排 6 列, 挪到底部 (oy + LINEUP_Y)。
-	#   原位置在右侧 x730, 与本次新增的详情面板(x800)和第5列卡片重叠 —— 截图才看出来。
-	# 「回背包页调整」那半句删掉 —— 顶部本来就有背包按钮, 那是教程文字不是界面
-	#   (用户 2026-07-28 已就同类文案说过一次)。
-	## ★「· 已装备」是字段名(被动式的状态标注), 换成一句说人话的定语。
-	var hdr := Label.new(); hdr.text = "出战阵容 · 已装备"
-	hdr.add_theme_font_size_override("font_size", 15); hdr.add_theme_color_override("font_color", Color("#9fb6c9"))
-	hdr.position = Vector2(ox + GRID_X, (oy + LINEUP_Y)); hdr.size = Vector2(740, 20); host.add_child(hdr)
-	var row := 0
-	for lk in ["top", "bottom"]:
-		for u in (lineup.get(lk, []) as Array):
-			if not (u is Dictionary): continue
-			var cx := GRID_X + row * 124.0    # 横排: 每格 124px 宽 × 6 = 744 ≈ 左栏宽
-			var y := (oy + LINEUP_Y) + 24.0
-			row += 1
-			var is_leader := str(u.get("kind", "")) == "leader"
-			var nm := ""
-			if is_leader:
-				## ★★实拍(2026-09-28·弹层里才看见)抓到的真 bug: 还没选龟时这一列写的是
-				##   **「上·」** —— 点号后面空着一片, 一眼就是"这里没做完"。
-				##   ★根因不是"没写兜底", 是兜底【永远轮不到】: 原句写的是
-				##     `.get("name", u.get("id", "龟"))`, 而没选龟时 `u["id"]` 是
-				##     **空串而不是缺键** ⇒ `u.get("id", "龟")` 返回 ""(不是 "龟")
-				##     ⇒ 默认值 "龟" 一次也没生效过。探针实测: 六列里【三列】长这样,
-				##        而那正是新玩家第一次进商店的默认样子。
-				##   ⇒ 拿到空名就明说"还没选龟" —— 既补掉吊着的点号, 又告诉玩家下一步该干嘛
-				##     (与本页别处「还没点兵, 先去选龟那边排一路人马」同一口气)。
-				nm = str(DataRegistry.pet_by_id.get(str(u.get("id", "")), {}).get("name", ""))
-				if nm.strip_edges() == "":
-					nm = "未选择龟"
-			elif bool(u.get("elite", false)):
-				nm = "精英小将"
-			else:
-				nm = "近战小将" if str(u.get("role", "front")) == "front" else "远程小将"
-			var nl := Label.new(); nl.text = "%s·%s" % ["上" if lk == "top" else "下", nm]
-			nl.add_theme_font_size_override("font_size", 13); nl.add_theme_color_override("font_color", Color("#e8f2ff"))
-			nl.position = Vector2(ox + cx, y); nl.size = Vector2(118, 20); nl.clip_text = true; host.add_child(nl)
-			var eqs: Array = []
-			if is_leader:
-				var pe = GameState.persistent_equipped.get(str(u.get("id", "")), []) if GameState.persistent_equipped is Dictionary else []
-				if pe is Array: eqs = pe
-			elif u.get("equips") is Array:
-				eqs = u["equips"]
-			# ★空位画【3 个空槽方框】而不是写「（无装备）」——
-			#   原来这里是一行小灰字, 6 只龟全空时底部就是 6 行同样的灰字, 一大片死区。
-			#   空槽方框既占住位置说明"这里能放 3 件", 又和有装备时的格子对齐, 一眼看懂。
-			if eqs.is_empty():
-				for ci0 in range(int(P2.UNIT_EQUIP_CAP)):
-					var hole := Panel.new()
-					var hsb := StyleBoxFlat.new()
-					hsb.bg_color = Color(1, 1, 1, 0.03)
-					hsb.border_color = Color(1, 1, 1, 0.10)
-					## ★★直角(2026-09-28)。这一格只有 36px —— 低于 `UISkin.MIN_FRAME_PX`(40),
-					##   **不该**套金属槽框(2026-08-18 背包那 26px 迷你格实拍退回过: 四角铆钉
-					##   吃掉大半格、费用色从整块实心退化成一圈细边, 而那块实心色本身就是信息)。
-					##   ⇒ 保持纯色块, 只把圆角去掉; 走 `nine_if_big` 让尺寸哪天变大时自动升级,
-					##     而不是我在这里替未来拍一个死结论。
-					hsb.set_border_width_all(1); hsb.set_corner_radius_all(0)
-					hole.add_theme_stylebox_override("panel",
-						UISkin.nine_if_big(36.0, 36.0, "slot-frame.png", 12, hsb))
-					hole.position = Vector2(ox + cx, y + 22 + ci0 * LINEUP_ROW_H)
-					hole.size = Vector2(LINEUP_CELL, LINEUP_CELL)
-					hole.mouse_filter = Control.MOUSE_FILTER_IGNORE
-					host.add_child(hole)
-			else:
-				for ci in range(mini(eqs.size(), int(P2.UNIT_EQUIP_CAP))):   # 竖排 3 行 = 单只装备上限
-					var it: Dictionary = eqs[ci]
-					var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(it.get("id", "")), {})
-					var cell := Panel.new()
-					## ★同上: 36px 格保持纯色块但改**直角**; 选中态在建 StyleBox 前定好。
-					var _lsel: bool = str(it.get("id", "")) == _sel_own and int(it.get("star", 1)) == _sel_own_star
-					var csb := StyleBoxFlat.new(); csb.bg_color = Color("#162230")
-					csb.border_color = Color("#ffd93d") if _lsel else _cost_color(int(edef.get("cost", 1)))
-					csb.set_border_width_all(3 if _lsel else 2); csb.set_corner_radius_all(0)
-					cell.add_theme_stylebox_override("panel",
-						UISkin.nine_if_big(36.0, 36.0, "slot-frame.png", 12, csb))
-					cell.position = Vector2(ox + cx, y + 22 + ci * LINEUP_ROW_H)
-					cell.size = Vector2(LINEUP_CELL, LINEUP_CELL)
-					# ★不要只靠 tooltip —— 手机没有 hover, 这正是本次重设计要根治的坑
-					#   (货架卡片的描述原来就藏在 tooltip 里)。这里补一行常驻的名字。
-					#   tooltip 保留给桌面端当补充, 但不再是【唯一】途径。
-					cell.tooltip_text = "%s ★%d" % [str(edef.get("name", "?")), int(it.get("star", 1))]
-					host.add_child(cell)
-					_wire_own_tap(cell, str(it.get("id", "")), int(it.get("star", 1)))
-					var enm := Label.new(); enm.text = str(edef.get("name", "?"))
-					enm.add_theme_font_size_override("font_size", LINEUP_NAME_FONT)
-					enm.add_theme_color_override("font_color", Color("#9fb4c8"))
-					## ★裁切**留着**(哪天进了更长的名字, 宁可省略号也别糊到隔壁那一列),
-					##   但门禁 NAME_NOT_TRUNCATED 会穷举 96 件保证它一次都不该触发。
-					enm.clip_text = true
-					enm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-					enm.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-					enm.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-					enm.mouse_filter = Control.MOUSE_FILTER_IGNORE
-					enm.position = Vector2(ox + cx + LINEUP_NAME_X, y + 22 + ci * LINEUP_ROW_H)
-					enm.size = Vector2(LINEUP_NAME_W, LINEUP_CELL)
-					host.add_child(enm)
-					## ★走 EquipIcon: 无图时退化成 emoji 而不是空白(EquipIcon.make 的 else 分支)
-##   ⚠"060~095 有 36 件没配图"这句已作废: 实测 phase2-equipment.json 95 件**全部**有 img,
-##     且 95 张图在盘上一个不缺(060~095 那 36 件也是) ⇒ emoji 兜底现在一次都不会触发。
-##     留着这条调用仍然对(数据缺图时不至于开天窗), 但别再拿它当"有 36 件没图"的证据。
-					var ic2 := EquipIcon.make(edef, Vector2(28, 24), true)
-					ic2.position = Vector2(4, 2)
-					cell.add_child(ic2)
-					var st := Label.new(); st.text = "★".repeat(int(it.get("star", 1)))
-					st.add_theme_font_size_override("font_size", 10); st.add_theme_color_override("font_color", Color("#ffd93d"))
-					st.position = Vector2(0, 24); st.size = Vector2(36, 12); st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-					st.mouse_filter = Control.MOUSE_FILTER_IGNORE; cell.add_child(st)
-	if row == 0:
-		## ★「尚未编排」是公文体, 「去背包/选龟」用斜杠把两个去处并排堆着(表单写法)。
-		var e2 := Label.new(); e2.text = "未配置阵容"
-		e2.add_theme_font_size_override("font_size", 14); e2.add_theme_color_override("font_color", Color("#5a6675"))
-		e2.position = Vector2(ox + GRID_X, (oy + LINEUP_Y) + 24); e2.size = Vector2(400, 22); host.add_child(e2)
 
 # 已拥有该装备件数(背包+统领已装+小将已装): 商店卡标"已有N"→知道再买几件凑3合1升星(用户2026-07-18"看不到已装备/不知道多少件才2/3星")
 ## 已拥有的【指定星级】件数。★star 参数不是可有可无的 ——
@@ -1074,19 +868,47 @@ func _on_select(idx: int) -> void:
 		return
 	_sel = -1 if _sel == idx else idx
 	_sel_own = ""          # 与"已拥有"选中互斥 —— 同一块面板同时只讲一件事
+	_sel_bench = -1        # 看货架就不再处于「待装」
+	_lineup.pick_eq = {}
 	_rebuild()
 
 
-## 把"已拥有的某件装备"接成可点。
-## ★只认 mouse: 触屏由 emulate_mouse_from_touch(默认开)自动转 mouse; 若同时收 touch 会
-##   【双触发】, 而这是 toggle → 点一下等于选中又取消(背包页 _wire_bench_tap 就踩过这个)。
-func _wire_own_tap(cell: Control, eid: String, star: int) -> void:
-	if eid == "":
-		return
-	cell.mouse_filter = Control.MOUSE_FILTER_STOP
-	cell.gui_input.connect(func(ev: InputEvent):
-		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			_on_select_own(eid, star))
+## 详情卡要不要盖在阵容上: 选了货架卡 / 点了「详情」看已有那件 / 斧头四选一待选。
+func _detail_wanted() -> bool:
+	if _sel >= 0 and _sel < _offer.size() and _offer[_sel] != null:
+		return true
+	if _sel_own != "":
+		return true
+	return AxePanel.should_show(GameState) and AxeEvo.final_ready(
+		int(GameState.axe_exp_bar), int(GameState.axe_stage), str(GameState.axe_final))
+
+
+## 右侧常驻阵容面板(与详情卡同一块位置、同一张框)。
+func _build_lineup_panel() -> void:
+	var box := Panel.new(); box.name = "LineupPanel"
+	var sb := StyleBoxFlat.new(); sb.bg_color = Color("#0e1a26"); sb.set_corner_radius_all(0)
+	box.add_theme_stylebox_override("panel", sb)
+	box.position = Vector2(PANEL_X, PANEL_Y); box.size = Vector2(PANEL_W, PANEL_H)
+	add_child(box)
+	_nine(box, PANEL_TEX, PANEL_MARGIN, Vector2.ZERO, Vector2(PANEL_W, PANEL_H), 1)
+	_lineup.build_panel(box, PANEL_W)
+
+
+## 详情卡右上角的关闭键 —— 关掉就回到阵容。
+func _build_detail_close() -> void:
+	var cb := Button.new(); cb.name = "DetailClose"
+	cb.text = "×"
+	cb.add_theme_font_size_override("font_size", 26)
+	## 81 = 44pt 触控下限(verify_ui_consistency「热区不足」), 贴着框的内角放。
+	cb.position = Vector2(PANEL_X + PANEL_W - 25.0 - 81.0, PANEL_Y + 25.0); cb.size = Vector2(81, 81)
+	cb.z_index = 2
+	cb.pressed.connect(func():
+		_sel = -1
+		_sel_own = ""
+		_rebuild())
+	_skin_button(cb); add_child(cb)
+
+
 
 
 func _on_select_own(eid: String, star: int) -> void:
@@ -1604,6 +1426,21 @@ func _on_buy(idx: int) -> void:
 		_toast("购买成功 · 「%s」合成 ★%d" % [_nm, _will_star])
 	elif _axe_dup:
 		_toast("已拥有「%s」· 转化为砍伐经验 +%d" % [_nm, int(AxeEvo.EXP_ON_BUY)])
+	elif not _tut_on() and GameState.team_has_equip_room():
+		## ★买下的这件直接成为「待装」: 关掉详情、阵容里能装的单位亮起 ⇒ 再点一只龟就装上。
+		##   合成掉的(上一支)不走这里 —— 那件已经并进别的星级里了, 没有一件"新东西"可装。
+		##   教程里不改流程(教程按新流程重写是下一份方案书)。
+		var _bi := -1
+		var _bn: Array = GameState.persistent_bench
+		for _k in range(_bn.size() - 1, -1, -1):
+			if _bn[_k] is Dictionary and str(_bn[_k].get("id", "")) == _eid and int(_bn[_k].get("star", 1)) == 1:
+				_bi = _k; break
+		_sel = -1
+		_sel_bench = _bi
+		_rebuild()
+		_toast("购买成功 · 「%s」点一只龟装上" % _nm)
+	elif not _tut_on():
+		_toast("购买成功 · 「%s」已放入背包（全队装备已满）" % _nm)
 	else:
 		_toast("购买成功 · 「%s」已放入背包" % _nm)
 	_tut_notify("item_bought")   # 教程「购买 1 件装备」: 成交才前进(方案书 B2)
@@ -1800,14 +1637,6 @@ func _pixel_bar(parent: Control, pos: Vector2, sz: Vector2, ratio: float, fill: 
 #    九宫格 margin 大于控件一半会把中间压没。
 # ════════════════════════════════════════════════════════════════════════
 ## ★★2026-09-29 **按钮皮已全部交给共享层 `UISkin.button`** —— 见下方 `_skin_button`。
-##   原来这里有 `BTN_TEX`(shop/btn-frame.png) 与 `BUY_BTN_TEX`(shop/buy-btn.png),
-##   那是**全项目唯一一套屏幕专用的按钮皮**。卡框/面板框仍是商店自己的(它们没有共享层对应物)。
-## ★`shop/btn-frame.png` **没有退场** —— 它还有第二个身份: 底栏弹层的底板
-##   (`_open_bottom_popup` 那张 820×300 的横板, 见那里的注释)。那是**面板**不是按钮,
-##   所以常量改名成 `POPUP_TEX`, 名字现在和用途对得上了。
-const POPUP_TEX = preload("res://assets/sprites/shop/btn-frame.png")
-## 量的: 源图 128×64, 边框 L14 R14 T17 B16 → 18
-const POPUP_MARGIN := 18
 ## ★卡框换新(2026-07-29)。旧的 card-frame.png 是珊瑚/藤壶纹, 两个问题:
 ##   ① 132px 下那些碎装饰就是噪点, 十张并排还形成很强的重复图案
 ##   ② 它同时背着"费用档"和"选中态"两个颜色职责, 而 modulate 是【乘法】——
@@ -1988,119 +1817,5 @@ func _center_middle(desc: RichTextLabel, nodes: Array) -> void:
 			(n as Control).position.y -= shift
 
 
-
-
-# ══════════════════════════════════════════════════════════════
-# §底栏 备战席 / 出战阵容 —— 打包成两个按钮, 点开看全部
-#
-# 用户 2026-07-29:「需要备战席和出战席位的, 但你可以把这两个打包成按钮式的,
-# 点击展示完整的」。
-#
-# 原来这两栏平铺在底部占 190px, 而它们【只读】(真正的装备操作在背包页) ——
-# 常驻这么大面积不划算。改成摘要按钮 + 点开弹层: 信息一条不少, 屏幕还回来了。
-# ══════════════════════════════════════════════════════════════
-
-## 出战阵容【已装件数 / 全队装备上限】。
-## ★★2026-09-29 改成与背包页**同源**。原来这里自己数: `slots += 3` × 6 个单位 ⇒ 分母
-##   **恒等于 18**, 而真上限是 `GameState.team_equip_cap()` = `(赛季等级−1)×2`
-##   (Lv1..Lv10 = 0,2,4,6,8,10,12,14,16,18) —— 只有 Lv10 才碰巧对上。
-##   实测 Lv7 时商店写「已装 12/18」、背包写「12/12」, 玩家照 18 去买了 4 件,
-##   回来点空槽**毫无反应**(拦人的是 12 那个数)。
-## ★分子也是同一个病: 手数会把羁绊赠品(圣光护盾)算进去 ⇒ 满编时出现「已装 19/18」;
-##   而 `GameState.team_equipped_count()` 走 `_cap_count()`, 明确跳过赠品。
-## ⇒ 两个数都从 GameState 取: **商店显示的分母 == 真正拦人的那个上限, 同一个函数**
-##   (memory [[fb-hand-rolled-copies-drift]]: 手抄的副本必然落后)。
-func _lineup_equip_count() -> Array:
-	return [int(GameState.team_equipped_count()), int(GameState.team_equip_cap())]
-
-
-func _build_bottom_buttons() -> void:
-	var bench: Array = GameState.persistent_bench
-	var lc: Array = _lineup_equip_count()
-	# ★宽高比: 原 360×52 = 6.9:1, 是全页最扁的两个(用户 2026-07-29「太扁了」)。
-	#   现 360×96 = 3.75:1。底栏把两个平铺栏收成按钮后腾出 190px, 高度管够。
-	# ★左右边缘【与卡区对齐】: 卡区 x 40..780(5×132 + 4×20 = 740)。
-	#   上一版用 GRID_X+40 起、间距 40, 跨 80..720 → 中心 400 而卡区中心 410, 差 10px 看着就是歪的。
-	#   现在两按钮各 (740-20)/2 = 360, 起 40 与 420, 正好铺满卡区宽度 —— 边缘对齐比居中更稳。
-	var bw := (740.0 - 20.0) * 0.5
-	var bh2 := 96.0
-	var b1 := Button.new()
-	b1.text = "背包  %d 件" % bench.size()
-	b1.add_theme_font_size_override("font_size", 21)
-	b1.position = Vector2(GRID_X, BOTTOM_BTN_Y); b1.size = Vector2(bw, bh2)
-	b1.pressed.connect(func(): _open_bottom_popup("bench"))
-	_skin_button(b1); add_child(b1)
-
-	var b2 := Button.new()
-	## ★「已装 3 / 9」中间那两个空格是表格对齐的写法; 收成 `3/9` 才像一个读数。
-	b2.text = "出战阵容  装备 %d/%d" % [int(lc[0]), int(lc[1])]
-	b2.add_theme_font_size_override("font_size", 21)
-	b2.position = Vector2(GRID_X + bw + 20.0, BOTTOM_BTN_Y); b2.size = Vector2(bw, bh2)
-	b2.pressed.connect(func(): _open_bottom_popup("lineup"))
-	_skin_button(b2); add_child(b2)
-
-
-## 弹层: 半透明遮罩 + 面板 + 关闭。点遮罩或按 ESC 都能关。
-func _open_bottom_popup(kind: String) -> void:
-	if _popup != null and is_instance_valid(_popup):
-		_popup.queue_free()
-	var lay := Control.new()
-	lay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	lay.mouse_filter = Control.MOUSE_FILTER_STOP     # ★吃掉点击, 否则会穿透到底下的卡片
-	# ★z_index 必须高过 10 —— 卡框和详情面板框都设了 z_index=1(好让内容不溢出到框上),
-	#   弹层不抬 z 就会被它们【画在上面】: 遮罩盖不住卡片, 卡片从弹层里透出来。
-	lay.z_index = 20
-	add_child(lay)
-	_popup = lay
-	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.62)
-	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	lay.add_child(dim)
-	lay.gui_input.connect(func(ev: InputEvent):
-		if ev is InputEventMouseButton and ev.pressed:
-			lay.queue_free())
-
-	var pw := 820.0
-	## ★★高度**跟着内容长**(2026-09-29)。写死 300 时 11 件起就有一行画到「收起」按钮上,
-	##   而当时代码正好把件数砍到 10 ⇒ 版式看着没问题, 代价是 8 件东西从界面上消失。
-	##   现在件数不砍了, 高度就得自己涨: 头 44 + 标题 26 + N 行×72 + 按钮区 74。
-	var ph := 300.0
-	if kind == "bench":
-		var _rows: int = clampi(int(ceil(float(GameState.persistent_bench.size()) / float(BENCH_PER_ROW))),
-			1, BENCH_MAX_ROWS)
-		if GameState.persistent_bench.size() > BENCH_PER_ROW * BENCH_MAX_ROWS:
-			_rows += 1     # 「还有 N 件」那行也要留地方
-		ph = maxf(300.0, 136.0 + float(_rows) * BENCH_STEP)
-	var px := (W - pw) * 0.5
-	var py := (H - ph) * 0.5
-	var pan := Panel.new()
-	var psb := StyleBoxFlat.new()
-	## ★★直角(2026-09-28)。这块只是**底板** —— 看得见的边是下面那行 `_nine(pan, POPUP_TEX…)`
-	##   画的不透明像素框, 10px 圆角本来就被它盖住 ⇒ 视觉零变化, 但少一个圆角盒。
-	##   (与 2026-09-27 把货架卡底板/详情面板底板改直角是同一条理由。)
-	psb.bg_color = Color("#0e1a26"); psb.set_corner_radius_all(0)
-	pan.add_theme_stylebox_override("panel", psb)
-	pan.position = Vector2(px, py); pan.size = Vector2(pw, ph)
-	pan.mouse_filter = Control.MOUSE_FILTER_STOP     # 面板内点击不关弹层
-	lay.add_child(pan)
-	# ★用 POPUP_TEX(shop/btn-frame.png) 而不是 PANEL_TEX: 面板框源图 191×246 是竖长条,
-	#   拉成 820×300 的横板会把边饰扯变形(截图上很明显)。这张 128×64 是 2:1, 与这里的 2.7:1 接近得多。
-	#   ★z 传 0 不是 1: 它是【实心】板(中间不透明), z=1 会把它画在内容之上、
-	#     整块盖住(卡框能透是因为它中间是透明的)。弹层的底板本来就该在内容【后面】。
-	_nine(pan, POPUP_TEX, POPUP_MARGIN, Vector2.ZERO, Vector2(pw, ph), 0)
-
-	# ★把原来那两个构建函数【原样画进弹层】—— 它们已经改成接受 host/ox/oy,
-	#   所以这里不需要复制一份布局代码(复制就会有两份会漂的实现)。
-	if kind == "bench":
-		_build_bench_preview(pan, 40.0 - GRID_X, 44.0 - BENCH_Y)
-	else:
-		_build_lineup_equips(pan, 40.0 - GRID_X, 44.0 - LINEUP_Y)
-
-	var cl := Button.new()
-	## ★「关闭」是窗口管理器的词。这一层是把摊位下面那排东西摊开看, 看完是"收起来"。
-	cl.text = "收起"
-	cl.add_theme_font_size_override("font_size", 18)
-	cl.position = Vector2(pw - 150.0, ph - 66.0); cl.size = Vector2(110, 46)
-	cl.pressed.connect(func(): lay.queue_free())
-	_skin_button(cl); pan.add_child(cl)
+# §底栏 —— 2026-10-18 起是可点的背包条 + 右侧常驻阵容(买和装同一屏), 见 scripts/scenes/shop/shop_lineup.gd。
+#   原来那两颗只读弹层按钮(备战席 / 出战阵容)已删: 弹层只能看不能装, 装还得换页。
