@@ -62,6 +62,18 @@ func _ready() -> void:
 	_ok("③ ★★开战入口调了 stamp_finals_match", body.find("stamp_finals_match(") >= 0)
 	_ok("③ 开战入口不再就地写 finals_match(只写一半的那种)", body.find("GameState.finals_match =") < 0)
 
+	## ③b ★2026-10-18: 拿对手失败后必须清掉「在等这一场」(杯赛半决赛 / 决赛因此挂一小时被代判)
+	var SBF = load("res://scripts/net/supabase.gd")
+	var mp = MAP.new()
+	mp._await_match = Vector2i(2, 1)
+	SBF._opp = {"ok": false, "reason": "wrong_round"}
+	SBF._opp_tried = true
+	var started: bool = mp._try_start_match()
+	_ok("③b ★分母: 拿对手失败 ⇒ 不开打", not started)
+	_ok("③b ★★拿对手失败 ⇒ 等待标记清掉(再点就是重新问)", mp._await_match == Vector2i(-1, -1), str(mp._await_match))
+	SBF.opponent_clear()
+	mp.free()
+
 	## ★2026-10-11: 2 人一组只有决赛一场, 倒计时不许写「下一轮」
 	var t2: String = MAP.round_tip(1, 2, 322)
 	_ok("④ ★★2 人组第 1 轮 = 决赛, 不写「下一轮」", t2.begins_with("决赛") and t2.find("下一轮") < 0, t2)

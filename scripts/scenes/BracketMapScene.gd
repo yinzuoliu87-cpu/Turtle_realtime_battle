@@ -2110,6 +2110,10 @@ func _try_start_match() -> bool:
 		return false
 	var res: Dictionary = _SB.opponent_cached()
 	if not bool(res.get("ok", false)):
+		## ★2026-10-18 冠军杯赛实测: 原来这里不清 `_await_match` ⇒ 一直挂着「在等这一场」,
+		##   自动驾驶见它就不再重点, 半决赛 / 决赛挂了一个多小时被服务端到点代判。
+		##   拿过且没拿到 = 这一次结束了; 清掉, 再点一次就是重新问。
+		_await_match = Vector2i(-1, -1)
 		return false                  # 拿不到 ⇒ `_tip` 那边照 reason 说话，不开打
 	var r := _await_match.x
 	var m := _await_match.y
