@@ -20,7 +20,7 @@ const SHOP := preload("res://scenes/Shop.tscn")
 
 var _fail := 0
 var _n := 0
-const MIN_ASSERTS := 17
+const MIN_ASSERTS := 21
 const ITEM := "p2eq_001"
 
 var gs
@@ -74,6 +74,12 @@ func _tap(ct: Control) -> void:
 	ev.pressed = true
 	ev.position = ct.size * 0.5
 	ct.gui_input.emit(ev)
+	## 产品在【松手】时才算点按(按下就触发会把拖动源当场重建掉), 所以要送一对
+	var up := InputEventMouseButton.new()
+	up.button_index = MOUSE_BUTTON_LEFT
+	up.pressed = false
+	up.position = ev.position
+	ct.gui_input.emit(up)
 	await get_tree().process_frame
 
 
@@ -115,7 +121,7 @@ func _ready() -> void:
 	_reset(5)
 	var sc = await _enter()
 	_ok("E0 分母: 商店开店(货架 10 格)", (sc._offer as Array).size() == 10, "格数 %d" % (sc._offer as Array).size())
-	_ok("E0 分母: 右侧阵容面板在", _find(sc, "LineupPanel") != null)
+	_ok("E0 分母: 场地上有背包条", _find(sc, "BenchZone") != null)
 	_ok("E0 分母: 6 个单位行", _count_prefix(sc, "LineupRow_") == 6, "实测 %d" % _count_prefix(sc, "LineupRow_"))
 	var top0: Dictionary = gs.get_dual_lineup()["top"][0]
 	var pid := str(top0.get("id", ""))
@@ -200,6 +206,26 @@ func _ready() -> void:
 	if row != null:
 		await _tap(row)
 	_ok("E6 未选龟的统领位接不了装备(背包仍是 1 件)", gs.persistent_bench.size() == 1, str(gs.persistent_bench))
+	_leave(sc)
+
+	# ── E7 拖拽(走产品的落点处理函数, 与拖放回调里调的是同一个) ──
+	_reset(5)
+	sc = await _enter()
+	var pid7 := str(gs.get_dual_lineup()["top"][0].get("id", ""))
+	sc._buy_and_equip(0, "top", 0)
+	await get_tree().process_frame
+	_ok("E7 ★货架拖到龟身上 = 买下并装上", (gs.persistent_equipped.get(pid7, []) as Array).size() == 1 and gs.persistent_bench.is_empty(),
+		"身上 %s / 背包 %s" % [str(gs.persistent_equipped.get(pid7, [])), str(gs.persistent_bench)])
+	sc._buy_to_bench(1)
+	await get_tree().process_frame
+	_ok("E7 货架拖进背包 = 只买下(不进入待装)", gs.persistent_bench.size() == 1 and int(sc._sel_bench) == -1,
+		"背包 %s sel=%d" % [str(gs.persistent_bench), int(sc._sel_bench)])
+	var c0: int = int(gs.meta_deepsea_coins)
+	sc._sell_drop(Vector2.ZERO, {"src": "bench", "idx": 0})
+	await get_tree().process_frame
+	_ok("E7 背包拖回货架 = 卖出(背包空、币变多)", gs.persistent_bench.is_empty() and int(gs.meta_deepsea_coins) > c0,
+		"背包 %s 币 %d → %d" % [str(gs.persistent_bench), c0, int(gs.meta_deepsea_coins)])
+	_ok("E7 货架拒收货架上的东西(只收背包里的)", not sc._can_sell_drop(Vector2.ZERO, {"src": "shop", "idx": 2}))
 	_leave(sc)
 
 	print("")

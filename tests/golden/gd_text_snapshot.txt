@@ -1116,6 +1116,7 @@ scripts/scenes/SettingsScene.gd|text|验证码已发送至 %s
 scripts/scenes/ShopScene.gd|lit|  可进化
 scripts/scenes/ShopScene.gd|lit|[color=#5b7a92]暂无说明[/color]
 scripts/scenes/ShopScene.gd|lit|「%s」已失效 · 请刷新
+scripts/scenes/ShopScene.gd|lit|已买下并装上
 scripts/scenes/ShopScene.gd|lit|已拥有「%s」· 转化为砍伐经验 +%d
 scripts/scenes/ShopScene.gd|lit|已解锁 · 下场战斗后刷新
 scripts/scenes/ShopScene.gd|lit|已达最高等级 Lv%d
@@ -1141,7 +1142,6 @@ scripts/scenes/ShopScene.gd|text|商品
 scripts/scenes/ShopScene.gd|text|商店未解锁\n\n本大轮首战后解锁
 scripts/scenes/ShopScene.gd|text|属性
 scripts/scenes/ShopScene.gd|text|已满级
-scripts/scenes/ShopScene.gd|text|已购买
 scripts/scenes/ShopScene.gd|text|已锁定
 scripts/scenes/ShopScene.gd|text|无属性加成
 scripts/scenes/ShopScene.gd|text|等级已满
@@ -1785,22 +1785,18 @@ scripts/scenes/shop/shop_lineup.gd|lit|未选龟
 scripts/scenes/shop/shop_lineup.gd|lit|没选装备
 scripts/scenes/shop/shop_lineup.gd|lit|精英小将
 scripts/scenes/shop/shop_lineup.gd|lit|统领%d
+scripts/scenes/shop/shop_lineup.gd|lit|羁绊赠送装备不可出售
 scripts/scenes/shop/shop_lineup.gd|lit|详情
-scripts/scenes/shop/shop_lineup.gd|text|%s · 点下方卸下
 scripts/scenes/shop/shop_lineup.gd|text|%s · 还没有装备
-scripts/scenes/shop/shop_lineup.gd|text|上战场
-scripts/scenes/shop/shop_lineup.gd|text|下战场
+scripts/scenes/shop/shop_lineup.gd|text|%s · 选一件卸下
+scripts/scenes/shop/shop_lineup.gd|text|上\n战\n场
+scripts/scenes/shop/shop_lineup.gd|text|下\n战\n场
 scripts/scenes/shop/shop_lineup.gd|text|全队已满 · 升级可多装
 scripts/scenes/shop/shop_lineup.gd|text|全队已满 · 升级或先卸下一件
-scripts/scenes/shop/shop_lineup.gd|text|出战阵容
-scripts/scenes/shop/shop_lineup.gd|text|前排
-scripts/scenes/shop/shop_lineup.gd|text|后排
-scripts/scenes/shop/shop_lineup.gd|text|未选龟
+scripts/scenes/shop/shop_lineup.gd|text|拖装备到龟身上 · 等级越高可装越多
 scripts/scenes/shop/shop_lineup.gd|text|点一只龟装上「%s」
-scripts/scenes/shop/shop_lineup.gd|text|等级越高，全队可装越多
-scripts/scenes/shop/shop_lineup.gd|text|统领
 scripts/scenes/shop/shop_lineup.gd|text|背包 %d 件
-scripts/scenes/shop/shop_lineup.gd|text|背包为空
+scripts/scenes/shop/shop_lineup.gd|text|背包 · 空
 scripts/scenes/shop/shop_lineup.gd|text|装备 %d/%d
 scripts/scenes/team_select/detail_panel.gd|lit|攻击力
 scripts/scenes/team_select/detail_panel.gd|lit|生命值

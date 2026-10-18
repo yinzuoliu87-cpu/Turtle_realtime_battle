@@ -117,7 +117,7 @@ func _ready() -> void:
 		_ok("L0 未锁态文案「锁货」", lb.text == "锁定", lb.text)
 		_ok("L0 锁钮与「刷新」同一行、贴在它右边、不重叠",
 			absf(lb.position.y - rf.position.y) < 0.5 and lb.position.x >= rf.position.x + rf.size.x
-			and lb.position.x + lb.size.x <= SHOP_GD.PANEL_X,
+			and lb.position.x + lb.size.x <= SHOP_GD.GRID_X + 5.0 * SHOP_GD.SLOT_W + 30.0,   # 不伸出货架(2026-10-18 货架在右)
 			"rf=%s+%s lb=%s+%s" % [rf.position, rf.size, lb.position, lb.size])
 		_ok("L0 锁钮够大(高 ≥ 44 触控下限)", lb.size.y >= 44.0, str(lb.size))
 		_ok("L0 锁钮图标是现成的 icon-lock(不新画)", lb.icon != null and str(lb.icon.resource_path).ends_with("ui/icon-lock.png"),

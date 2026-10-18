@@ -47,7 +47,7 @@ var _n := 0
 ## 全绿时的断言条数【地板】。低于它 = 有协程在半路被掐断 / 静默 abort ⇒ 判红
 ## (fb-null-readback-makes-test-silently-abort: 读一个不存在的成员会让协程就地返回,
 ##  后面的断言一条不跑, 而进程 rc=0 还照样打 ALL PASS)。加/删断言时同步改这个数。
-const MIN_ASSERTS := 95
+const MIN_ASSERTS := 94
 
 
 func _ready() -> void:
@@ -309,7 +309,6 @@ func _ready() -> void:
 	#    内容安全区下界只有 592-25=567 —— 压进下边框 13px, 看着就是"按钮太低"。
 	#    前面几条都在量【屏幕】边界和【控件之间】的重叠, 谁也管不到"控件压到自己父框的边框上"。
 	var panel: Control = null
-	var lineup_panel: Control = null
 	for c in all:
 		# ★2026-08-01: 原判据是 `c.get_parent() == sc`(必须是场景根的直接子节点)。
 		#   UI 双端适配后内容装进了 UIFrame 的 DesignFrame(见 scripts/util/ui_frame.gd),
@@ -322,28 +321,26 @@ func _ready() -> void:
 		if par_ok and absf(c.size.x - PANEL_W) < 1.0 and absf(c.size.y - PANEL_H) < 1.0:
 			## ★2026-10-18 起同一块位置有两张: 常驻的「出战阵容」(LineupPanel) 与选中后盖上去的详情。
 			##   两张都要过「不压框」—— 阵容面板第一版标题就压进上边框 5px, 是这条抓到的。
-			if str(c.name) == "LineupPanel":
-				lineup_panel = c
-			elif panel == null:
+			if panel == null:
 				panel = c
 	print("")
-	_chk("⑧ ★分母: 右侧常驻「出战阵容」面板在场", lineup_panel != null)
-	if lineup_panel != null:
-		var lsafe := Rect2(PANEL_MARGIN, PANEL_MARGIN, PANEL_W - PANEL_MARGIN * 2.0, PANEL_H - PANEL_MARGIN * 2.0)
-		var lspill: Array = []
-		var lrows := 0
-		for c in lineup_panel.get_children():
-			if not (c is Control) or not (c as Control).visible:
-				continue
-			var r: Rect2 = Rect2((c as Control).position, (c as Control).size)
-			if absf(r.size.x - PANEL_W) < 1.5 and absf(r.size.y - PANEL_H) < 1.5:
-				continue
-			if str(c.name).begins_with("LineupRow_"):
-				lrows += 1
-			if not lsafe.encloses(r):
-				lspill.append("%s %s @(%.0f,%.0f) %.0f×%.0f" % [c.get_class(), str(c.name), r.position.x, r.position.y, r.size.x, r.size.y])
-		_chk("⑧ ★分母: 阵容面板画出了 6 个单位行(实测 %d)" % lrows, lrows == 6)
-		_chk("⑧ ★阵容面板内容不压到面板框的边框上: %s" % ("无" if lspill.is_empty() else str(lspill.slice(0, 4))), lspill.is_empty())
+	## ★2026-10-18 整页重做: 队伍站在左半场地上(6 个单位格), 货架在右。
+	##   判据: 6 个单位格都在、都在货架左沿以左、彼此不重叠、都不出 1280×720。
+	var tiles: Array = []
+	for c in all:
+		if str(c.name).begins_with("LineupRow_"):
+			tiles.append(c)
+	_chk("⑧ ★分母: 场地上画出了 6 个单位(实测 %d)" % tiles.size(), tiles.size() == 6)
+	var tbad: Array = []
+	for a in range(tiles.size()):
+		var ra := Rect2((tiles[a] as Control).global_position, (tiles[a] as Control).size)
+		if ra.end.x > SHOP_GD.GRID_X - 4.0 or ra.position.x < 0.0 or ra.end.y > 720.0:
+			tbad.append("%s 出界 %s" % [str(tiles[a].name), str(ra)])
+		for b in range(a + 1, tiles.size()):
+			var rb := Rect2((tiles[b] as Control).global_position, (tiles[b] as Control).size)
+			if ra.intersects(rb):
+				tbad.append("%s 压 %s" % [str(tiles[a].name), str(tiles[b].name)])
+	_chk("⑧ ★单位都在货架以左、互不重叠、不出屏: %s" % ("无" if tbad.is_empty() else str(tbad.slice(0, 4))), tbad.is_empty())
 	if panel == null:
 		print("  [FAIL] ⑧ ★分母: 找不到详情面板(%.0f×%.0f)" % [PANEL_W, PANEL_H]); _fail += 1
 	else:
@@ -638,12 +635,15 @@ func _chk(what: String, ok: bool) -> void:
 func _check_owned_shine(sc) -> void:
 	var src := FileAccess.get_file_as_string("res://scripts/scenes/ShopScene.gd")
 	_chk("镀层挂在【已拥有】这个条件下(owned > 0)", src.find("if owned > 0:") >= 0)
-	_chk("镀层不挡点击(MOUSE_FILTER_IGNORE)", src.find("glow.mouse_filter = Control.MOUSE_FILTER_IGNORE") >= 0)
+	## 2026-10-18: 镀层改成像素椭圆(ShopLineup.ellipse), 它自己就是 MOUSE_FILTER_IGNORE
+	var src_l := FileAccess.get_file_as_string("res://scripts/scenes/shop/shop_lineup.gd")
+	_chk("镀层不挡点击(MOUSE_FILTER_IGNORE)", src.find("var glow := ShopLineup.ellipse(") >= 0
+		and src_l.find("r.mouse_filter = Control.MOUSE_FILTER_IGNORE") >= 0)
 	_chk("镀层会呼吸(循环 tween 改 modulate:a)", src.find("bt.tween_property(glow, \"modulate:a\"") >= 0)
 	_chk("有一道斜掠高光(ColorRect 扫过卡面)", src.find("shine.rotation = -0.5") >= 0)
 	## 反面: 源码里这段必须在 `owned > 0` 之内 —— 若被挪到条件外, 每张卡都会镀。
 	var i_cond: int = src.find("if owned > 0:")
-	var i_glow: int = src.find("var glow := Panel.new()")
+	var i_glow: int = src.find("var glow := ShopLineup.ellipse(")
 	_chk("★反面: 镀层在条件【之内】(不是每张卡都镀)", i_cond > 0 and i_glow > i_cond and i_glow - i_cond < 900)
 	await _check_no_diagonal_spill(sc)
 
@@ -710,7 +710,7 @@ func _check_no_diagonal_spill(sc) -> void:
 ## 子节点收编进居中框, 卡片不再是场景根的直接子节点(只看直接子节点 ⇒ 扫到 0 张 ⇒ 空检查)。
 func _collect_cards(n: Node, out: Array) -> void:
 	for c in n.get_children():
-		if c is Panel and absf((c as Panel).size.x - 132.0) < 1.0 and absf((c as Panel).size.y - 136.0) < 1.0:
+		if str(c.name).begins_with("ShelfItem"):   # 2026-10-18: 货架格不再是 132×136 的方框卡
 			out.append(c)
 		else:
 			_collect_cards(c, out)
@@ -1250,11 +1250,11 @@ func _check_bag_popup_all(sc) -> void:
 				cells.append(c)
 			elif str(c.name) == "BenchMore":
 				more = c
-			elif str(c.name) == "LineupPanel":
+			elif str(c.name) == "ShelfZone":
 				lp = c
 		var want: int = int(n) if int(n) <= per_row else per_row - 1
 		print("     背包 %d 件 → 背包条画出 %d 格(该画 %d)  「+N」%s" % [n, cells.size(), want, more.text if more != null else "无"])
-		_chk("BAG_POPUP_ALL ★分母: 背包真塞了 %d 件, 阵容面板在场" % n, GameState.persistent_bench.size() == n and lp != null)
+		_chk("BAG_POPUP_ALL ★分母: 背包真塞了 %d 件, 货架区在场" % n, GameState.persistent_bench.size() == n and lp != null)
 		_chk("BAG_POPUP_ALL ★★背包 %d 件 → 背包条该画 %d 格(实测 %d)" % [n, want, cells.size()], cells.size() == want)
 		if n > per_row:
 			_chk("BAG_POPUP_ALL ★★放不下时屏上写着「+%d」" % (n - want), more != null and str(more.text) == "+%d" % (n - want))
@@ -1267,8 +1267,8 @@ func _check_bag_popup_all(sc) -> void:
 		for c in items:
 			var r: Rect2 = Rect2((c as Control).global_position, (c as Control).size)
 			if lp != null and r.intersects(Rect2(lp.global_position, lp.size)):
-				spill.append("格@(%.0f,%.0f) 伸进阵容面板" % [r.position.x, r.position.y])
-		_chk("BAG_POPUP_ALL ★每一格都不伸进右侧阵容面板: %s" % ("无" if spill.is_empty() else str(spill.slice(0, 3))), spill.is_empty())
+				spill.append("格@(%.0f,%.0f) 伸进货架" % [r.position.x, r.position.y])
+		_chk("BAG_POPUP_ALL ★每一格都不伸进右侧货架: %s" % ("无" if spill.is_empty() else str(spill.slice(0, 3))), spill.is_empty())
 	GameState.persistent_bench = []
 	sc._rebuild()
 	await get_tree().process_frame
