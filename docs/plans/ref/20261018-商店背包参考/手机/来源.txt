@@ -1,0 +1,21 @@
+苹果 App Store 官方截图（itunes.apple.com/lookup 公开接口），2026-10-18 下载。共 37 款手机游戏 298 张逐张看过，以下是含商店/装备界面的。
+A=商店与队伍同屏  B=装备页（角色居中）  C=拖放/选择/价签细节
+⚠ 金铲铲之战、王者万象棋、多多自走棋、千机阵的商店图只放宣传图，没有一张拍到商店界面（金铲铲只有 05 一张带装备说明）。
+A01 Arcane Rush ｜ apps.apple.com/us/app/id6448436365 ｜ 第 1,2,4 张 ｜ 商店行+阵容同屏
+A02 Backpack Brawl ｜ apps.apple.com/us/app/id6479175676 ｜ 第 1,5 张 ｜ 商店货架+背包+储物同屏
+A03 BagMaster ｜ apps.apple.com/us/app/id6760184819 ｜ 第 3 张 ｜ 选中弹说明卡+商店行+刷新
+A04 Super Auto Pets ｜ apps.apple.com/us/app/id1597449908 ｜ 第 3 张 ｜ 队伍上商店下+可放位箭头
+A05 Dota Underlords ｜ apps.apple.com/us/app/id1465996312 ｜ 第 6 张 ｜ 商店一行5张+锁定刷新
+A06 Hearthstone 酒馆战棋 ｜ apps.apple.com/us/app/id625257520 ｜ 第 6 张 ｜ 酒馆上+己方中+手牌下
+B07 Bag Fight ｜ apps.apple.com/us/app/id6474043641 ｜ 第 0 张 ｜ 角色居中装备槽围一圈
+B08 Backpack Rush ｜ apps.apple.com/us/app/id6736857029 ｜ 第 5 张 ｜ 角色居中+储物区
+B09 Weapon Master ｜ apps.apple.com/us/app/id6502547569 ｜ 第 5 张 ｜ 角色居中+在用筛选
+B10 Card Guardians ｜ apps.apple.com/us/app/id1566663161 ｜ 第 4 张 ｜ 角色居中+属性变化箭头
+B11 Heroll ｜ apps.apple.com/us/app/id6737821799 ｜ 第 2 张 ｜ 角色居中4槽+物品格
+B12 BagMaster ｜ apps.apple.com/us/app/id6760184819 ｜ 第 1 张 ｜ 角色居中4槽+物品格
+B13 Rumble Bag ｜ apps.apple.com/us/app/id6547851442 ｜ 第 8 张 ｜ 已装备8-8+未装备分区
+C14 Epic Idle War ｜ apps.apple.com/us/app/id6760803330 ｜ 第 4 张 ｜ 可放格高亮+箭头
+C15 Rumble Bag ｜ apps.apple.com/us/app/id6547851442 ｜ 第 9 张 ｜ 三选一+刷新
+C16 Rush Royale ｜ apps.apple.com/us/app/id1526121033 ｜ 第 7 张 ｜ 价签在卡上
+C17 King God Castle ｜ apps.apple.com/us/app/id1526791430 ｜ 第 4 张 ｜ 备用名册
+C18 金铲铲之战 ｜ apps.apple.com/cn/app/id1478101301 ｜ 第 5 张 ｜ 装备说明弹在左侧
