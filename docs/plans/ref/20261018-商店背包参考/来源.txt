@@ -1,0 +1,3 @@
+Steam 商店官方截图（store.steampowered.com/api/appdetails），2026-10-18 下载：
+背包乱斗 Backpack Battles 2427700 · The Bazaar 1617400 · Super Auto Pets 1714040 · Balatro 2379780
+云顶参考见 ../20261006-云顶装备弹窗/
