@@ -2044,11 +2044,8 @@ func _insp_slot_box() -> StyleBox:
 
 
 ## 装备小卡(照用户屏幕上那张云顶装备卡: 图标+名字 → 属性行 → 细线 → 效果 → 灰斜体脚注), 再加「本局」统计。
-const _EQ_STAT_ICON := {"攻击力": "atk", "最大生命值": "hp", "护甲": "def", "魔抗": "mr", "暴击率": "crit",
-	"暴击伤害": "crit-dmg", "护甲穿透": "armorpen", "魔法穿透": "magicpen", "生命偷取": "lifesteal",
-	"闪避": "dodge", "反伤": "reflect", "治疗增幅": "healamp", "护盾增幅": "shieldamp",
-	"治疗与护盾增幅": "shieldheal", "初始龟能": "maxenergy", "龟能充能速率": "echarge", "射程": "range",
-	"攻击速度": "aspd", "移动速度": "move", "攻击射程": "range"}
+## 属性名 → 图标: 搬到 InspectCard.EQ_STAT_ICON(商店的装备小卡也读它, 2026-10-18)。
+const _EQ_STAT_ICON := InspectCard.EQ_STAT_ICON
 
 
 func _open_equip_card(u: Dictionary, eid: String, star: int, anchor: Control) -> void:

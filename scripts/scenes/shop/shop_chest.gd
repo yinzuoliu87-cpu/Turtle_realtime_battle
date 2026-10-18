@@ -105,10 +105,11 @@ func build_bench(parent: Control) -> void:
 		var ed: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(it.get("id", "")), {})
 		var sel: bool = j == int(host._sel_bench)
 		var cell := Panel.new(); cell.name = "BenchCell%d" % j
-		var csb := StyleBoxFlat.new(); csb.bg_color = Color("#162230")
+		## 木格: 不透明深木底 + 费用色边(选中 = 金边); 冷青色金属槽框跟暖色货铺不搭
+		var csb := StyleBoxFlat.new(); csb.bg_color = Color("#2a1a0e")
 		csb.border_color = Color("#ffd93d") if sel else host._cost_color(int(ed.get("cost", 1)))
-		csb.set_border_width_all(3 if sel else 2); csb.set_corner_radius_all(0)
-		cell.add_theme_stylebox_override("panel", UISkin.slot(csb, UISkin.tint_of(csb.border_color)))
+		csb.set_border_width_all(4 if sel else 3); csb.set_corner_radius_all(0)
+		cell.add_theme_stylebox_override("panel", csb)
 		cell.position = Vector2(BENCH_X + j * BENCH_STEP, BENCH_Y + 22.0); cell.size = Vector2(BENCH_CELL, BENCH_CELL)
 		if sel:
 			cell.position.y -= 8.0       # 拿起来了: 抬高一截, 槽框是金色
@@ -123,29 +124,34 @@ func build_bench(parent: Control) -> void:
 		cell.mouse_filter = Control.MOUSE_FILTER_STOP
 		var _j := j
 		host._wire_tap(cell, func(): _on_bench(_j))
-	## 选中一件: 「详情 / 卖出」两颗无框图标钮浮在那一格正上方(不放到屏幕另一头)
+	## 选中一件: 「详情 / 卖出」两颗无框图标钮排在宝箱这一排的末尾(浮在上方会压到商人的袍子)
 	var bi: int = int(host._sel_bench)
 	if bi >= 0 and bi < shown:
 		var it2: Dictionary = bench[bi]
-		var cx: float = BENCH_X + bi * BENCH_STEP + BENCH_CELL * 0.5
 		var acts: Array = [["LineupAct0", host.DETAIL_ICON, "详情", Callable(self, "_detail_bench")]]
 		if not GameState.is_synergy_grant(it2):
-			acts.append(["LineupAct1", host.COIN_TEX, "卖出 +%d" % int(host._inv_ops._sell_value(it2)), Callable(self, "_sell_bench")])
+			acts.append(["LineupAct1", host.SELL_ICON, "卖出 +%d" % int(host._inv_ops._sell_value(it2)), Callable(self, "_sell_bench")])
 		var aw := 96.0
-		var x0: float = clampf(cx - aw * acts.size() * 0.5, 8.0, 700.0 - aw * acts.size())
+		var x0: float = minf(BENCH_X + shown * BENCH_STEP + 4.0, 704.0 - aw * acts.size())
 		for k in range(acts.size()):
 			var ab: Button = host._icon_button(acts[k][0], acts[k][1], acts[k][2],
-				Vector2(x0 + k * aw, BENCH_Y - 100.0), Vector2(aw, 96))
+				Vector2(x0 + k * aw, BENCH_Y + 4.0), Vector2(aw, 96))
 			ab.z_index = 3
 			ab.pressed.connect(acts[k][3])
 			parent.add_child(ab)
 	if overflow:
 		var mb := Button.new(); mb.name = "BenchMore"
 		mb.text = "+%d" % (bench.size() - shown)
-		mb.add_theme_font_size_override("font_size", 18)
+		mb.add_theme_font_size_override("font_size", 22)
 		mb.position = Vector2(BENCH_X + shown * BENCH_STEP, BENCH_Y + 22.0); mb.size = Vector2(BENCH_CELL, BENCH_CELL)
 		mb.pressed.connect(func(): host._go_inventory())
-		host._skin_button(mb); parent.add_child(mb)
+		## 与宝箱格同一种木格(不用金木框按钮)
+		for st in [["normal", "#2a1a0e"], ["hover", "#3a2414"], ["pressed", "#1e1209"], ["focus", "#2a1a0e"]]:
+			var sb := StyleBoxFlat.new(); sb.bg_color = Color(st[1]); sb.border_color = Color("#8a5a32")
+			sb.set_border_width_all(3); sb.set_corner_radius_all(0)
+			mb.add_theme_stylebox_override(st[0], sb)
+		mb.add_theme_color_override("font_color", Color("#ffe3a3"))
+		parent.add_child(mb)
 
 
 func _on_bench(j: int) -> void:

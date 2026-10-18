@@ -345,56 +345,24 @@ func _ready() -> void:
 		if r.end.x > SHOP_GD.GRID_X - 4.0 or r.end.y > 720.5 or r.position.x < -0.5:
 			kbad.append("%s %s" % [str(c.name), str(r)])
 	_chk("⑧ ★店主 / 宝箱都在货架以左、不出屏: %s" % ("无" if kbad.is_empty() else str(kbad)), kbad.is_empty())
-	if panel == null:
-		print("  [FAIL] ⑧ ★分母: 找不到详情面板(%.0f×%.0f)" % [PANEL_W, PANEL_H]); _fail += 1
-	else:
-		var safe := Rect2(PANEL_MARGIN, PANEL_MARGIN, PANEL_W - PANEL_MARGIN * 2.0, PANEL_H - PANEL_MARGIN * 2.0)
-		print("  ⑧ 面板内容安全区 = x %.0f..%.0f  y %.0f..%.0f (框 margin %d)" % [
-			safe.position.x, safe.end.x, safe.position.y, safe.end.y, PANEL_MARGIN])
-		var nkid := panel.get_children().size()
-		print("     面板子控件 %d 个 (★分母: ≤3 说明没选中卡片, 这条是空检查)" % nkid)
-		if nkid <= 3:
-			print("  [FAIL] ⑧ ★分母不足 —— 详情面板没建全(是不是没选中卡片?)"); _fail += 1
-		var spill: Array = []
-		for c in panel.get_children():
-			if not (c is Control) or not (c as Control).visible:
-				continue
-			var r: Rect2 = Rect2((c as Control).position, (c as Control).size)
-			if r.size.x < 2.0 or r.size.y < 2.0:
-				continue
-			if absf(r.size.x - PANEL_W) < 1.5 and absf(r.size.y - PANEL_H) < 1.5:
-				continue   # 框自己(NinePatchRect 铺满)
-			if r.position.y < safe.position.y - 0.5 or r.end.y > safe.end.y + 0.5 					or r.position.x < safe.position.x - 0.5 or r.end.x > safe.end.x + 0.5:
-				spill.append("%s(%s) @(%.0f,%.0f) %.0f×%.0f → 下沿 %.0f" % [
-					c.get_class(), (c as Button).text.substr(0, 8) if c is Button else "",
-					r.position.x, r.position.y, r.size.x, r.size.y, r.end.y])
-		_chk("⑧ ★面板内容不压到面板框的边框上", spill.is_empty())
-
-		# ── ⑨ ★「属性」标题必须贴着它的内容 ──
-		#    由来: _center_middle 收拢时同一个节点在数组里出现了两次 → 被移了【两倍】,
-		#    标题跑到属性行上方 110px(本该 22px)。这种"位移量翻倍"肉眼看是"布局崩了",
-		#    但越界/重叠检查一条都不会响 —— 两个控件都在安全区内、也不重叠。
-		var hdr: Label = null
-		var first_stat: Label = null
-		for c in panel.get_children():
-			if not (c is Label):
-				continue
-			var lb2: Label = c
-			if str(lb2.text) == "属性":
-				hdr = lb2
-			elif hdr != null and lb2.position.y > hdr.position.y and (first_stat == null or lb2.position.y < first_stat.position.y):
-				first_stat = lb2
-		if hdr == null:
-			print("  [FAIL] ⑨ ★分母: 找不到「属性」标题"); _fail += 1
-		elif first_stat == null:
-			print("     ⑨ (这件装备没有属性行, 跳过)")
-		else:
-			var gap: float = first_stat.position.y - (hdr.position.y + hdr.size.y)
-			print("     ⑨ 「属性」标题底 %.0f → 首条属性顶 %.0f, 间距 %.0f px" % [
-				hdr.position.y + hdr.size.y, first_stat.position.y, gap])
-			_chk("⑨ ★标题与内容间距 ≤ 16px(超了说明位移被重复施加)", gap >= -2.0 and gap <= 16.0)
-		for sp in spill.slice(0, 6):
-			print("       ★压框: " + sp)
+	## ★2026-10-18: 说明改成局内信息面板那张小卡(InspectCard, 高度随内容)。旧的 440×592 大面板只留给小木斧。
+	##   判据: 小卡在、在屏内、贴在货架左边不压货架、不压底下那排按钮、高度 = 内容高(下面没有空一大块)、有「购买」。
+	var card: Control = null
+	for c in all:
+		if str(c.name) == "InspectCard":
+			card = c
+	_chk("⑧ ★分母: 选中货架上一件 → 说明小卡在场", card != null)
+	if card != null:
+		var cr := Rect2(card.position, card.size)
+		var shelf := Rect2(SHOP_GD.GRID_X, SHOP_GD.GRID_Y, 5.0 * SHOP_GD.SLOT_W, 2.0 * SHOP_GD.SLOT_H + SHOP_GD.GRID_GAP_Y)
+		var row := Rect2(SHOP_GD.ROW_X, SHOP_GD.ROW_BTN_Y, 3.0 * SHOP_GD.ROW_BTN_W + 2.0 * SHOP_GD.LOCK_GAP, SHOP_GD.ROW_BTN_H)
+		print("     ⑧ 小卡 %s  货架 %s" % [str(cr), str(shelf)])
+		_chk("⑧ ★小卡在 1280×720 内", Rect2(0, 0, 1280, 720).encloses(cr))
+		_chk("⑧ ★小卡不压货架", not cr.intersects(shelf))
+		_chk("⑧ ★小卡不压底部那排按钮", not cr.intersects(row))
+		var want_h: float = card.get_combined_minimum_size().y
+		_chk("⑧ ★小卡高度 = 内容高(差 %.0fpx; 下面空一大块就是没收)" % (cr.size.y - want_h), absf(cr.size.y - want_h) <= 4.0)
+		_chk("⑧ 小卡里有「购买」", card.find_child("BuyBtn", true, false) != null)
 
 	# ── ⑩ ★右上角三组必须坐在同一条水平线上 ──
 	#    由来 (用户 2026-07-29「右上角需要改」): 币 中心 41 / 等级 中心 41 / 买经验 中心 48,
@@ -799,7 +767,7 @@ func _type_line_checks(all: Array) -> void:
 		elif c is Label and str((c as Label).text).find("深海币") >= 0 \
 			and str((c as Label).text).find("·") >= 0:
 			as_label += 1
-	_chk("⑫ ★分母: 详情面板的价格行建出来了, 而且是 RichTextLabel(%d 条; Label 版 %d 条)"
+	_chk("⑫ ★分母: 说明小卡的价格行建出来了, 而且是 RichTextLabel(%d 条; Label 版 %d 条)"
 		% [lines.size(), as_label], lines.size() >= 1 and as_label == 0)
 	if lines.is_empty():
 		return
@@ -898,8 +866,10 @@ func _check_shared_skin(sc) -> void:
 		print("     %-22s %5.0fx%-4.0f %s" % [str((b2 as Button).text).substr(0, 20),
 			(b2 as Button).get_global_rect().size.x, (b2 as Button).get_global_rect().size.y,
 			str(s2.texture.resource_path).get_file()])
-	## 2026-10-18: 刷新 / 锁定换成无框图标钮(不再是贴图皮), 带皮的剩买经验 / 详情卡关闭 / 购买等
-	_chk("SHARED_SKIN ★分母: 商店里带贴图皮的按钮 ≥2 颗(N=0 是空检查)", skinned.size() >= 2)
+	## 2026-10-18 用户「说了几遍了不要用之前的金木框按钮」: 商店里一颗贴图皮(金木框)按钮都不许有。
+	##   分母: 按钮总数 ≥ 4(刷新 / 锁定 / 买经验 / 购买), 否则下面那条是空检查。
+	_chk("SHARED_SKIN ★分母: 扫到的按钮 ≥ 4 颗(实测 %d)" % btns.size(), btns.size() >= 4)
+	_chk("SHARED_SKIN ★★商店里没有金木框按钮(贴图皮按钮 %d 颗)" % skinned.size(), skinned.is_empty())
 	_chk("SHARED_SKIN ★没有屏幕专用的一次性皮(assets/sprites/shop/ 下的贴图不许当按钮皮): %s"
 		% ("无" if from_shop.is_empty() else str(from_shop)), from_shop.is_empty())
 	_chk("SHARED_SKIN ★★每颗的皮 == UISkin.button() 对同尺寸会挑的那张: %s"
@@ -1200,13 +1170,13 @@ func _check_maxlevel_xp() -> void:
 		## 头部那条等级经验条: 先找它自己的槽框(bar-frame 贴图, 落在头部 y<110),
 		## 再拿槽里那块填充 ColorRect 的宽度 ÷ 槽内宽 = 真实填充比例。
 		## ★ratio 是从**渲染出来的矩形**算的, 不是回读我传给 `_pixel_bar` 的参数。
-		var slot: NinePatchRect = null
+		var slot: Control = null
 		for c in all2:
-			if c is NinePatchRect and str(c.name) == "XpBarSlot":   # 2026-10-18 条挪到底部一排, 按名字找
+			if c is Control and str(c.name) == "XpBarSlot":   # 2026-10-18 木槽经验条(Panel), 按名字找
 				slot = c
 		var ratio := -1.0
 		if slot != null:
-			var inner_w: float = slot.size.x - 2.0 * float(SHOP_GD.BAR_MARGIN_X)
+			var inner_w: float = slot.size.x - 2.0 * float(SHOP_GD.XP_BAR_PAD)
 			## ★一律用【局部】坐标: 无头视口是方形的, `UIFrame.attach` 把内容收编进设计框
 			##   再居中 ⇒ 全局 y 会整体偏 (视口高−720)/2(实测偏 280, 判据当场找不到条)。
 			##   本文件其余判据也都用局部坐标, 保持同一口径。

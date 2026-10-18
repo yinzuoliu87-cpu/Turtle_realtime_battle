@@ -14,6 +14,13 @@ const HUD_TEX := "res://assets/sprites/battlehud/"
 const CARD_W := 300.0
 const GAP := 8.0                      # 小卡右沿与面板左沿的间距
 const ICON := 44.0                    # 头部图标边长
+## 装备属性名 → 属性图标(assets/sprites/stats/<x>-icon.png)。局内信息面板与商店小卡共用这一份。
+const EQ_STAT_ICON := {"攻击力": "atk", "最大生命值": "hp", "护甲": "def", "魔抗": "mr", "暴击率": "crit",
+	"暴击伤害": "crit-dmg", "护甲穿透": "armorpen", "魔法穿透": "magicpen", "生命偷取": "lifesteal",
+	"闪避": "dodge", "反伤": "reflect", "治疗增幅": "healamp", "护盾增幅": "shieldamp",
+	"治疗与护盾增幅": "shieldheal", "初始龟能": "maxenergy", "龟能充能速率": "echarge", "射程": "range",
+	"攻击速度": "aspd", "移动速度": "move", "攻击射程": "range"}
+
 const C_TITLE := Color("#f4ead8")
 const C_BODY := Color("#d2c7b4")
 const C_DIM := Color("#8c7f6c")
@@ -24,6 +31,7 @@ var card: PanelContainer = null
 var key: String = ""
 ## 每帧刷新要改的节点(技能正文 / 装备本局统计 / 属性数值), 由调用方按 key 取。
 var live: Dictionary = {}
+var _w: float = CARD_W
 
 
 func _init(b) -> void:
@@ -58,15 +66,18 @@ func open(k: String, anchor: Control, spec: Dictionary) -> Dictionary:
 		close()                          # 再点一次 = 收起
 		return {}
 	close()
-	if battle._ui_layer == null or battle._info_panel == null or not is_instance_valid(battle._info_panel):
+	## ★宿主若提供 inspect_card_pos(card, h) 就由它定位置(商店 2026-10-18 复用这张卡), 此时不需要信息面板。
+	var _custom: bool = battle.has_method("inspect_card_pos")
+	if battle._ui_layer == null or (not _custom and (battle._info_panel == null or not is_instance_valid(battle._info_panel))):
 		return {}
+	_w = float(spec.get("width", CARD_W))
 	key = k
 	card = PanelContainer.new()
 	card.name = "InspectCard"
 	card.add_theme_stylebox_override("panel", _frame(spec.get("frame_col", null)))
 	card.mouse_filter = Control.MOUSE_FILTER_STOP   # 点在卡上不穿到战场(否则会关掉面板)
-	card.custom_minimum_size = Vector2(CARD_W, 0)
-	card.size = Vector2(CARD_W, 0)
+	card.custom_minimum_size = Vector2(_w, 0)
+	card.size = Vector2(_w, 0)
 	battle._ui_layer.add_child(card)
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 6)
@@ -79,7 +90,7 @@ func open(k: String, anchor: Control, spec: Dictionary) -> Dictionary:
 	var body := str(spec.get("body", ""))
 	if body != "":
 		_line(vb)
-		live["body"] = _rtl(vb, body, 14, C_BODY)
+		live["body"] = _rtl(vb, body, int(spec.get("body_px", 14)), C_BODY)
 	var foot := str(spec.get("foot", ""))
 	if foot != "":
 		_rtl(vb, foot, 12, C_DIM)
@@ -96,6 +107,7 @@ func open(k: String, anchor: Control, spec: Dictionary) -> Dictionary:
 		ex.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		live["extra"] = ex
 		live["extra_title"] = et
+	live["vbox"] = vb
 	_place(anchor)
 	return live
 
@@ -165,7 +177,11 @@ func _head(vb: VBoxContainer, spec: Dictionary) -> void:
 	tl.name = "Title"
 	tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var tag := str(spec.get("tag", ""))
-	if tag != "":
+	if spec.has("tag_bb"):                # 带行内图标的标签(商店: 价格 · 类型图标 + 类型名)
+		var tr2 := _rtl(col, str(spec["tag_bb"]), 13, spec.get("tag_col", C_DIM))
+		tr2.name = "Tag"
+		tr2.custom_minimum_size = Vector2(0, 0)
+	elif tag != "":
 		_label(col, tag, 12, spec.get("tag_col", C_DIM)).name = "Tag"
 
 
@@ -218,7 +234,7 @@ func _rtl(vb: Control, bb: String, px: int, col: Color) -> RichTextLabel:
 	t.add_theme_font_size_override("bold_font_size", px)
 	t.add_theme_font_size_override("italics_font_size", px)
 	t.add_theme_color_override("default_color", col)
-	t.custom_minimum_size = Vector2(CARD_W - 28.0, 0)
+	t.custom_minimum_size = Vector2(_w - 28.0, 0)
 	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	t.text = bb
 	vb.add_child(t)
@@ -276,12 +292,16 @@ func _place(anchor: Control) -> void:
 	if not is_instance_valid(battle):
 		return
 	if c == card and is_instance_valid(c):
-		c.size = Vector2(CARD_W, 0)          # 让容器按内容重算高度
+		c.size = Vector2(_w, 0)              # 让容器按内容重算高度
 		_place_now(anchor)
 
 
 func _place_now(anchor: Control) -> void:
 	if card == null or not is_instance_valid(card):
+		return
+	var h0: float = maxf(card.get_combined_minimum_size().y, card.size.y)
+	if battle.has_method("inspect_card_pos"):
+		card.position = battle.inspect_card_pos(card, h0)
 		return
 	var vp: Vector2 = Vector2(battle.get_viewport().get_visible_rect().size)
 	var pr: Rect2 = (battle._info_panel as Control).get_global_rect()

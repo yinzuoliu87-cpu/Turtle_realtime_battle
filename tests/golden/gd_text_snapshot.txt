@@ -1114,6 +1114,7 @@ scripts/scenes/SettingsScene.gd|text|邮箱绑定成功
 scripts/scenes/SettingsScene.gd|text|重置存档？
 scripts/scenes/SettingsScene.gd|text|验证码已发送至 %s
 scripts/scenes/ShopScene.gd|lit|  可进化
+scripts/scenes/ShopScene.gd|lit|%d 深海币
 scripts/scenes/ShopScene.gd|lit|[color=#5b7a92]暂无说明[/color]
 scripts/scenes/ShopScene.gd|lit|「%s」已失效 · 请刷新
 scripts/scenes/ShopScene.gd|lit|买经验  %d
@@ -1137,7 +1138,6 @@ scripts/scenes/ShopScene.gd|text|%d 费 %d%%
 scripts/scenes/ShopScene.gd|text|▼ 下面还有
 scripts/scenes/ShopScene.gd|text|前往背包
 scripts/scenes/ShopScene.gd|text|另外还有 %d 项
-scripts/scenes/ShopScene.gd|text|同类装备达到件数后激活羁绊
 scripts/scenes/ShopScene.gd|text|商品
 scripts/scenes/ShopScene.gd|text|商店未解锁\n\n本大轮首战后解锁
 scripts/scenes/ShopScene.gd|text|属性
@@ -1149,6 +1149,7 @@ scripts/scenes/ShopScene.gd|text|装备 %d/%d
 scripts/scenes/ShopScene.gd|text|购买  %d
 scripts/scenes/ShopScene.gd|text|还差 %d 枚深海币
 scripts/scenes/ShopScene.gd|text|选择装备查看详情
+scripts/scenes/ShopScene.gd|tooltip_text|各费用出货概率
 scripts/scenes/ShopScene.gd|tooltip_text|已锁定 · 点击解锁
 scripts/scenes/ShopScene.gd|tooltip_text|经验 +%d
 scripts/scenes/ShopScene.gd|tooltip_text|锁定商品：下场战斗后不刷新
@@ -1382,7 +1383,6 @@ scripts/scenes/battle/info_panel.gd|lit|冰寒
 scripts/scenes/battle/info_panel.gd|lit|减伤
 scripts/scenes/battle/info_panel.gd|lit|减伤 
 scripts/scenes/battle/info_panel.gd|lit|减速
-scripts/scenes/battle/info_panel.gd|lit|初始龟能
 scripts/scenes/battle/info_panel.gd|lit|反伤
 scripts/scenes/battle/info_panel.gd|lit|反伤 
 scripts/scenes/battle/info_panel.gd|lit|受到伤害时，按比例反弹给攻击者。
@@ -1404,16 +1404,12 @@ scripts/scenes/battle/info_panel.gd|lit|护甲穿透
 scripts/scenes/battle/info_panel.gd|lit|护甲穿透 %d
 scripts/scenes/battle/info_panel.gd|lit|护盾
 scripts/scenes/battle/info_panel.gd|lit|护盾 %d
-scripts/scenes/battle/info_panel.gd|lit|护盾增幅
 scripts/scenes/battle/info_panel.gd|lit|护盾强度
 scripts/scenes/battle/info_panel.gd|lit|护盾强度 
 scripts/scenes/battle/info_panel.gd|lit|护盾效果的倍率。
 scripts/scenes/battle/info_panel.gd|lit|攻击
 scripts/scenes/battle/info_panel.gd|lit|攻击 %d
-scripts/scenes/battle/info_panel.gd|lit|攻击力
-scripts/scenes/battle/info_panel.gd|lit|攻击射程
 scripts/scenes/battle/info_panel.gd|lit|攻击打出暴击的几率。
-scripts/scenes/battle/info_panel.gd|lit|攻击速度
 scripts/scenes/battle/info_panel.gd|lit|攻速
 scripts/scenes/battle/info_panel.gd|lit|攻速 每秒 %s 次
 scripts/scenes/battle/info_panel.gd|lit|星能
@@ -1425,18 +1421,14 @@ scripts/scenes/battle/info_panel.gd|lit|暴伤
 scripts/scenes/battle/info_panel.gd|lit|暴伤 
 scripts/scenes/battle/info_panel.gd|lit|暴击
 scripts/scenes/battle/info_panel.gd|lit|暴击 
-scripts/scenes/battle/info_panel.gd|lit|暴击伤害
 scripts/scenes/battle/info_panel.gd|lit|暴击时造成的伤害倍率。暴击率超过 100% 的部分会折算进来。
-scripts/scenes/battle/info_panel.gd|lit|暴击率
 scripts/scenes/battle/info_panel.gd|lit|最大生命值
 scripts/scenes/battle/info_panel.gd|lit|本局
 scripts/scenes/battle/info_panel.gd|lit|每点 +2% 攻击
 scripts/scenes/battle/info_panel.gd|lit|每秒普攻次数。
 scripts/scenes/battle/info_panel.gd|lit|治疗
 scripts/scenes/battle/info_panel.gd|lit|治疗 %d
-scripts/scenes/battle/info_panel.gd|lit|治疗与护盾增幅
 scripts/scenes/battle/info_panel.gd|lit|治疗削减
-scripts/scenes/battle/info_panel.gd|lit|治疗增幅
 scripts/scenes/battle/info_panel.gd|lit|治疗强度
 scripts/scenes/battle/info_panel.gd|lit|治疗强度 
 scripts/scenes/battle/info_panel.gd|lit|治疗效果的倍率。
@@ -1456,7 +1448,6 @@ scripts/scenes/battle/info_panel.gd|lit|真实
 scripts/scenes/battle/info_panel.gd|lit|真实伤害
 scripts/scenes/battle/info_panel.gd|lit|真火
 scripts/scenes/battle/info_panel.gd|lit|眩晕
-scripts/scenes/battle/info_panel.gd|lit|移动速度
 scripts/scenes/battle/info_panel.gd|lit|移动速度，受减速、加速效果影响。
 scripts/scenes/battle/info_panel.gd|lit|移速
 scripts/scenes/battle/info_panel.gd|lit|移速 %d
@@ -1493,7 +1484,6 @@ scripts/scenes/battle/info_panel.gd|lit|龟能
 scripts/scenes/battle/info_panel.gd|lit|龟能 %d / %d
 scripts/scenes/battle/info_panel.gd|lit|龟能充能
 scripts/scenes/battle/info_panel.gd|lit|龟能充能 
-scripts/scenes/battle/info_panel.gd|lit|龟能充能速率
 scripts/scenes/battle/info_panel.gd|lit|龟能积攒速度倍率。龟能满时释放技能。
 scripts/scenes/battle/info_panel.gd|lit|龟能锁
 scripts/scenes/battle/info_panel.gd|text|前排
@@ -1501,6 +1491,26 @@ scripts/scenes/battle/info_panel.gd|text|后排
 scripts/scenes/battle/info_panel.gd|text|收起
 scripts/scenes/battle/info_panel.gd|text|生命  %d / %d
 scripts/scenes/battle/info_panel.gd|text|详细
+scripts/scenes/battle/inspect_card.gd|lit|初始龟能
+scripts/scenes/battle/inspect_card.gd|lit|反伤
+scripts/scenes/battle/inspect_card.gd|lit|射程
+scripts/scenes/battle/inspect_card.gd|lit|护甲
+scripts/scenes/battle/inspect_card.gd|lit|护甲穿透
+scripts/scenes/battle/inspect_card.gd|lit|护盾增幅
+scripts/scenes/battle/inspect_card.gd|lit|攻击力
+scripts/scenes/battle/inspect_card.gd|lit|攻击射程
+scripts/scenes/battle/inspect_card.gd|lit|攻击速度
+scripts/scenes/battle/inspect_card.gd|lit|暴击伤害
+scripts/scenes/battle/inspect_card.gd|lit|暴击率
+scripts/scenes/battle/inspect_card.gd|lit|最大生命值
+scripts/scenes/battle/inspect_card.gd|lit|治疗与护盾增幅
+scripts/scenes/battle/inspect_card.gd|lit|治疗增幅
+scripts/scenes/battle/inspect_card.gd|lit|生命偷取
+scripts/scenes/battle/inspect_card.gd|lit|移动速度
+scripts/scenes/battle/inspect_card.gd|lit|闪避
+scripts/scenes/battle/inspect_card.gd|lit|魔抗
+scripts/scenes/battle/inspect_card.gd|lit|魔法穿透
+scripts/scenes/battle/inspect_card.gd|lit|龟能充能速率
 scripts/scenes/battle/replay_controls.gd|lit|%s  对  %s
 scripts/scenes/battle/replay_controls.gd|lit|上路
 scripts/scenes/battle/replay_controls.gd|lit|下路

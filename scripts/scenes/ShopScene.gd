@@ -85,6 +85,9 @@ var _sel_bench: int = -1
 var _inv_ops := InvOps.new(self)
 var _chest := ShopChest.new(self)
 var _toast_node: Label = null   # 一句话提示(见 _toast); 同时只留一条
+var _insp := InspectCard.new(self)   # 说明小卡(与局内信息面板同一张)
+var _ui_layer: Node = null           # InspectCard 往这里挂卡(= 本场景)
+var _show_odds := false         # 点「Lv」切换: 等级行上方显示各费用出货概率
 
 func _ready() -> void:
 	var _td = get_node_or_null("/root/TutorialDirector")
@@ -341,8 +344,8 @@ func _toast(msg: String) -> void:
 	t.z_index = 30       # 底栏弹层是 20 —— 提示必须压得住它
 	var bgp := Panel.new()
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.03, 0.09, 0.14, 0.92)
-	sb.border_color = Color("#2b6b7d")
+	sb.bg_color = Color("#2a1a0e")          # 木色: 与经验条 / 宝箱格同一套
+	sb.border_color = Color("#8a5a32")
 	sb.set_border_width_all(2)
 	sb.set_corner_radius_all(0)   # 全屏统一直角
 	bgp.add_theme_stylebox_override("panel", sb)
@@ -390,6 +393,12 @@ func _rebuild() -> void:
 	##   左边场地站队伍、右边墙上两层货架、左下储物箱。PixelLab 原生 384×216, 最近邻放大。
 	var bgc := ColorRect.new(); bgc.color = Color("#06141c")
 	bgc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(bgc)
+	## 点空白处 = 收起说明 / 取消选中(没有「×」)
+	bgc.mouse_filter = Control.MOUSE_FILTER_STOP
+	_wire_tap(bgc, func():
+		if _sel >= 0 or _sel_own != "" or _sel_bench >= 0:
+			_sel = -1; _sel_own = ""; _sel_bench = -1
+			_rebuild())
 	var bg := TextureRect.new(); bg.name = "ShopBackdrop"
 	bg.texture = SHOP_BG
 	bg.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -455,7 +464,6 @@ func _rebuild() -> void:
 	coin.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; add_child(coin)
 	_tut_coin = coin   # 教学高亮"币"锚点
 
-	_build_odds_row()   # 出货概率行 y 96–124 (原在 116, 现紧贴卡区上方)
 
 	# ── 卡区 5×2  x 40–780 / y 124–420 ──
 	for i in range(_offer.size()):
@@ -486,9 +494,14 @@ func _rebuild() -> void:
 	##   底部: 原来两颗只读弹层按钮 → 可点的背包条(点一件 → 点龟 = 装上)。
 	_chest.build_keeper(self)
 	_chest.build_bench(self)
-	if _detail_wanted():
+	## ★2026-10-18: 说明 = 局内信息面板那张已认可的小卡(InspectCard), 贴着被点的东西弹出、高度随内容。
+	##   旧的 440×592 大面板只留给小木斧(砍伐进度 / 最终造物四选一), 它的内容放不进小卡。
+	_insp.card = null; _insp.key = ""      # 上面整页清过一遍, 那张旧卡已在释放队列里
+	if _axe_detail_wanted():
 		_build_detail_panel()
 		_build_detail_close()
+	elif _detail_wanted():
+		_open_detail_card()
 	# ★UI 双端适配(用户2026-08-01「有些画面都没有居中」): 内容装进 1280×720 设计框并居中于真实视口。
 	# ★放在 _rebuild 末尾而不是 _ready 末尾 —— 本函数开头会 free 掉【所有】子节点(买一件装备
 	#   就触发一次), 框和框里的内容会被一起清掉。attach 是幂等的, 重复调只重新收编+居中。
@@ -498,18 +511,25 @@ func _rebuild() -> void:
 func _build_odds_row() -> void:
 	var odds: Array = P2.shop_cost_odds(_shop_level())   # [费1% .. 费5%]
 	var cost_cols := ["#9aa0b0", "#4ade80", "#60a5fa", "#c084fc", "#fbbf24"]   # 费1-5: 普通灰/精良绿/稀有蓝/史诗紫/传说金
-	## ★2026-10-18 整页重做: 这行压在背景图的灯笼/木梁上, 底下垫一条半透明暗条才读得清。
-	_scrim(Vector2(GRID_X - 6.0, 96.0), Vector2(5.0 * SLOT_W + 12.0, 26.0))   # y 从 96 起: 头部那条 y<96 的版式门禁不收它
-	var row := HBoxContainer.new()
-	row.position = Vector2(GRID_X, 96); row.size = Vector2(5.0 * SLOT_W, 24)
+	## ★2026-10-18: 不再常驻在货架上(浮在横梁上看不清, 4/5 费几乎看不见); 点「Lv」时弹在等级行上方。
+	var row := HBoxContainer.new(); row.name = "OddsRow"
+	row.position = Vector2(ROW_X, ROW_INFO_Y - 40.0); row.size = Vector2(514, 30)
 	row.add_theme_constant_override("separation", 14)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	var bgp := Panel.new()
+	var bsb := StyleBoxFlat.new(); bsb.bg_color = Color("#2a1a0e"); bsb.border_color = Color("#8a5a32")
+	bsb.set_border_width_all(2); bsb.set_corner_radius_all(0)
+	bgp.add_theme_stylebox_override("panel", bsb)
+	bgp.position = row.position - Vector2(6, 2); bgp.size = row.size + Vector2(12, 4)
+	bgp.mouse_filter = Control.MOUSE_FILTER_IGNORE; bgp.name = "OddsPlate"
+	add_child(bgp)
 	add_child(row)
 	## ★★文案去网页味(2026-09-28)。原来这一行是「出货概率 / 费用1 45% / 费用2 30% …」——
 	##   一个统计学名词加五组 `label: value`, 读起来是后台报表, 不是摊位。
 	##   改成摊主挂的牌子「今日货源」+「1费 45%」: 数字一个不少(用户 2026-08-12 点名要数字),
 	##   但把字段名那一半去掉 —— 颜色已经在讲"这是哪一档"(与卡框同一套 5 色)。
 	var lbl := Label.new(); lbl.text = "商品"
-	lbl.add_theme_font_size_override("font_size", 15); lbl.add_theme_color_override("font_color", Color("#8aa0b4"))
+	lbl.add_theme_font_size_override("font_size", 16); lbl.add_theme_color_override("font_color", Color("#e8dcc4"))
 	row.add_child(lbl)
 	for c in range(5):
 		var pct: int = int(odds[c]) if c < odds.size() else 0
@@ -519,7 +539,7 @@ func _build_odds_row() -> void:
 		chip.text = "%d 费 %d%%" % [c + 1, pct]
 		chip.add_theme_font_size_override("font_size", 16)
 		var cc := Color(cost_cols[c])
-		chip.add_theme_color_override("font_color", cc if pct > 0 else Color(cc.r, cc.g, cc.b, 0.28))
+		chip.add_theme_color_override("font_color", cc if pct > 0 else Color(0.55, 0.5, 0.45))
 		row.add_child(chip)
 
 
@@ -561,16 +581,6 @@ func _cost_color(cost: int) -> Color:   # 按费用上色(用户2026-07-19: 稀�
 		5: return Color("#fbbf24")
 		_: return Color("#9aa6b4")   # 1费 = 灰
 
-## 压在场景图上的一行字底下垫的半透明暗条(不是面板, 没有边框)。
-func _scrim(pos: Vector2, sz: Vector2) -> void:
-	var s := ColorRect.new()
-	s.color = Color(0.02, 0.05, 0.07, 0.62)
-	s.position = pos; s.size = sz
-	s.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(s)
-
-
-## 货架上第 i 件的格子位置(两层板, 每层 5 件)。教程锚点与门禁也用它, 别另算一份。
 func _shelf_pos(i: int) -> Vector2:
 	return Vector2(GRID_X + (i % 5) * (SLOT_W + GRID_GAP_X), GRID_Y + (i / 5) * (SLOT_H + GRID_GAP_Y))
 
@@ -722,6 +732,109 @@ func _on_select(idx: int) -> void:
 	_rebuild()
 
 
+## 小木斧那几种情况仍走旧的大面板(砍伐进度 / 四选一放不进小卡)。
+func _axe_detail_wanted() -> bool:
+	if _sel >= 0 and _sel < _offer.size() and _offer[_sel] != null and str(_deco(_offer[_sel]).get("id", "")) == AxePanel.EID:
+		return true
+	if _sel_own == AxePanel.EID:
+		return true
+	return _sel < 0 and _sel_own == "" and AxePanel.should_show(GameState) and AxeEvo.final_ready(
+		int(GameState.axe_exp_bar), int(GameState.axe_stage), str(GameState.axe_final))
+
+
+## 说明小卡。货架上的 = 卡底一颗「购买」; 宝箱里的 = 只看(卖出在宝箱格旁)。
+func _open_detail_card() -> void:
+	_ui_layer = self
+	var own: bool = _sel_own != ""
+	var edef: Dictionary = _deco(DataRegistry.phase2_equipment_by_id.get(_sel_own, {})) if own else _deco(_offer[_sel])
+	if edef.is_empty():
+		return
+	var eid := str(edef.get("id", ""))
+	var star: int = _sel_own_star if own else 1
+	var cost: int = int(edef.get("cost", 1))
+	var col: Color = _cost_color(cost)
+	var stats: Array = []
+	## 属性行 = 图标 + 数值(与局内信息面板的装备小卡同一种写法, 同一张对照表)
+	for kv in EquipStats.stat_lines(eid, star):
+		var ik := str(InspectCard.EQ_STAT_ICON.get(str(kv[0]), ""))
+		var ip := ("res://assets/sprites/stats/%s-icon.png" % ik) if ik != "" else ""
+		stats.append([ip, str(kv[1]) if ip != "" else "%s %s" % [kv[0], kv[1]], Color("#f4ead8")])
+	var img := str(edef.get("img", ""))
+	var tp := str(Phase2Types.type_of(eid))
+	## 标签 = 「N 深海币  ·  [类型图标] 类型」(与旧详情面板的价格行同一格式, 门禁 ⑫ 解析它)
+	var tag_bb := ("[color=#ffd93d]%s[/color]" % "★".repeat(clampi(star, 1, 3))) if own else ("%d 深海币" % _price(edef))
+	if tp != "":
+		tag_bb += "  ·  " + Phase2Types.icon_bb(tp, 16) + " " + tp
+	var lv: Dictionary = _insp.open(("own:" if own else "shop:") + eid, null, {
+		"icon": ("res://assets/sprites/" + img) if img.ends_with(".png") else "",
+		"title": str(edef.get("name", eid)), "title_col": col,
+		"icon_border": col, "frame_col": col,
+		"tag_bb": tag_bb, "tag_col": Color("#e8dcc4"),
+		"stats": stats,
+		"body": _rich_desc(edef, star), "body_px": 16,
+		"width": 360.0,
+	})
+	if not lv.has("vbox"):
+		return
+	if own:
+		_refit_card.call_deferred()
+		return
+	var price := _price(edef)
+	var coins := int(GameState.meta_deepsea_coins)
+	var buy := Button.new(); buy.name = "BuyBtn"
+	buy.custom_minimum_size = Vector2(0, 52)
+	buy.add_theme_font_size_override("font_size", 20)
+	for st in [["normal", "#6a3f1c", "#d89a48"], ["hover", "#7d4b22", "#f0b45a"], ["pressed", "#4e2d12", "#d89a48"],
+			["disabled", "#3a2a1e", "#6a5440"], ["focus", "#6a3f1c", "#ffe27a"]]:
+		var sb := StyleBoxFlat.new(); sb.bg_color = Color(st[1]); sb.border_color = Color(st[2])
+		sb.set_border_width_all(3); sb.set_corner_radius_all(0)
+		buy.add_theme_stylebox_override(st[0], sb)
+	buy.add_theme_color_override("font_color", Color("#fff1d6"))
+	buy.add_theme_color_override("font_hover_color", Color("#fff8e8"))
+	buy.add_theme_color_override("font_disabled_color", Color("#c9a98a"))
+	if coins >= price:
+		buy.text = "购买  %d" % price
+		buy.pressed.connect(func(): _on_buy(_sel))
+		_tut_buy_btn = buy
+	else:
+		buy.text = "还差 %d 枚深海币" % (price - coins)
+		buy.disabled = true
+	(lv["vbox"] as VBoxContainer).add_child(buy)
+	_refit_card.call_deferred()
+
+
+## 卡里塞了按钮后高度要按内容重算(容器只会长不会缩), 等两帧排完版再收。
+func _refit_card() -> void:
+	for _i in range(2):
+		await get_tree().process_frame
+	var c = _insp.card
+	if c == null or not is_instance_valid(c):
+		return
+	(c as Control).size = Vector2((c as Control).size.x, 0)
+	(c as Control).position = inspect_card_pos(c, (c as Control).get_combined_minimum_size().y)
+	## 购买钮: 币紧跟在数字后面(按钮自带的 icon 只能贴边)
+	var b = c.find_child("BuyBtn", true, false)
+	if b is Button and not (b as Button).disabled and (b as Button).get_node_or_null("Coin") == null:
+		var f: Font = (b as Button).get_theme_font("font")
+		var tw: float = f.get_string_size((b as Button).text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 20).x if f != null else 60.0
+		var ci := TextureRect.new(); ci.name = "Coin"; ci.texture = COIN_TEX
+		ci.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; ci.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		ci.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		ci.size = Vector2(26, 26)
+		ci.position = Vector2((b as Button).size.x * 0.5 + tw * 0.5 + 6.0, ((b as Button).size.y - 26.0) * 0.5)
+		ci.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		(b as Button).add_child(ci)
+
+
+## InspectCard 的定位回调: 货架上的贴在货架左边、与那件同高; 宝箱里的弹在宝箱那一排上方。
+func inspect_card_pos(card: Control, h: float) -> Vector2:
+	var w: float = card.size.x
+	if _sel_own != "":
+		return Vector2(clampf(40.0, 8.0, W - w - 8.0), clampf(ShopChest.BENCH_Y - h - 12.0, 8.0, H - h - 8.0))
+	var sp := _shelf_pos(maxi(0, _sel))
+	return Vector2(GRID_X - w - 14.0, clampf(sp.y - 10.0, 96.0, H - h - 8.0))
+
+
 ## 详情卡要不要盖在阵容上: 选了货架卡 / 点了「详情」看已有那件 / 斧头四选一待选。
 func _detail_wanted() -> bool:
 	if _sel >= 0 and _sel < _offer.size() and _offer[_sel] != null:
@@ -773,23 +886,17 @@ func _build_synergy_bar() -> void:
 	var rows: Array = GameState.synergy_rows()
 
 	var y: float = SYN_BAR_Y
-	_scrim(Vector2(SYN_X - 6.0, y - 3.0), Vector2(662.0, 28.0))
+	## ★2026-10-18: 没有羁绊时整条不画(原来是一条暗条 + 一句操作说明横在水上);
+	##   有羁绊时只画标签, 描边字直接压在场景上, 不垫暗条。
+	if rows.is_empty():
+		return
 	var hdr := Label.new()
 	hdr.text = "羁绊"
 	hdr.add_theme_font_size_override("font_size", 15)
-	hdr.add_theme_color_override("font_color", Color("#9fb6c9"))
+	hdr.add_theme_color_override("font_color", Color("#ffe3a3"))
+	hdr.add_theme_color_override("font_outline_color", Color("#1a0e05")); hdr.add_theme_constant_override("outline_size", 5)
 	hdr.position = Vector2(SYN_X, y); hdr.size = Vector2(44, 20)
 	add_child(hdr)
-	if rows.is_empty():
-		var none := Label.new()
-		## ★原句三个毛病一次改掉: 全角括号包一句、「任何」这种法条语气、「即可激活」是后台动词。
-		##   ⚠ 只改说法不改口径: 阈值仍然是"同类 3 件"(`Phase2Types` 那份事实源), 没有新承诺。
-		none.text = "同类装备达到件数后激活羁绊"
-		none.add_theme_font_size_override("font_size", 13)
-		none.add_theme_color_override("font_color", Color("#5a6675"))
-		none.position = Vector2(SYN_X + 46, y + 1); none.size = Vector2(700, 20)
-		add_child(none)
-		return
 	var x: float = SYN_X + 46.0
 	for r in rows:
 		if x > SYN_X + 700.0:
@@ -1290,19 +1397,16 @@ const ROW_BTN_H := 96.0
 const ROW_INFO_Y := 556.0
 const XP_ICON := preload("res://assets/sprites/shop/icon-xp.png")
 const DETAIL_ICON := preload("res://assets/sprites/shop/icon-detail.png")
+const SELL_ICON := preload("res://assets/sprites/shop/icon-sell.png")
 var _lock_btn: Button = null
 
 func _build_lock_button(pos: Vector2, h: float) -> void:
 	var locked: bool = bool(GameState.meta_shop_locked)
-	## 锁着: 锁是合上的、亮的, 脚下一圈金光; 没锁: 锁是开着的、压暗 —— 一眼分得清两态。
-	if locked:
-		var gl := ShopChest.ellipse(LOCK_W - 20.0, 22.0, 24, 5, Color(1.0, 0.82, 0.3, 0.55)); gl.name = "LockGlow"
-		gl.position = pos + Vector2(10.0, 56.0)
-		add_child(gl)
+	## 锁着: 合上的锁 + 金色「已锁定」; 没锁: 开着的锁 + 普通字 —— 靠图案和字分两态。
 	var lb := _icon_button("ShopLockBtn", LOCK_CLOSED_ICON if locked else LOCK_OPEN_ICON,
 		"已锁定" if locked else "锁定", pos, Vector2(LOCK_W, h))
 	lb.tooltip_text = "已锁定 · 点击解锁" if locked else "锁定商品：下场战斗后不刷新"
-	lb.add_theme_color_override("icon_normal_color", Color(1, 1, 1, 1) if locked else Color(0.75, 0.75, 0.8, 0.85))
+	## 两态靠图案区分(开着的锁 / 合上的锁), 不压暗 —— 压暗看着像点不了
 	lb.add_theme_color_override("font_color", Color("#ffe27a") if locked else Color("#e8dcc4"))
 	lb.pressed.connect(_on_toggle_lock)
 	add_child(lb)
@@ -1320,10 +1424,20 @@ func _build_level_row(btn_pos: Vector2) -> void:
 	lv.add_theme_color_override("font_outline_color", Color("#1a0e05")); lv.add_theme_constant_override("outline_size", 6)
 	lv.position = Vector2(ROW_X, ROW_INFO_Y); lv.size = Vector2(62, 34)
 	lv.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; add_child(lv)
+	## 点等级行 = 看各费用出货概率(参考云顶: 概率挂在等级旁, 不常驻在货架上)
+	var lvhit := Control.new(); lvhit.name = "LevelTap"
+	lvhit.position = Vector2(ROW_X, ROW_INFO_Y - 4.0); lvhit.size = Vector2(300, 42)
+	lvhit.mouse_filter = Control.MOUSE_FILTER_STOP
+	lvhit.tooltip_text = "各费用出货概率"
+	_wire_tap(lvhit, func():
+		_show_odds = not _show_odds
+		_rebuild())
+	add_child(lvhit)
+	if _show_odds:
+		_build_odds_row()
 	var bar_x := ROW_X + 66.0
 	var bar_w := 170.0
-	_pixel_bar(self, Vector2(bar_x, ROW_INFO_Y + 7.0), Vector2(bar_w, 20),
-		1.0 if _maxed else (float(_have) / float(_need)), Color("#ffd93d"))
+	_wood_bar(Vector2(bar_x, ROW_INFO_Y + 8.0), Vector2(bar_w, 18), 1.0 if _maxed else (float(_have) / float(_need)))
 	var xpn := Label.new(); xpn.name = "XpLabel"
 	xpn.text = "已满级" if _maxed else ("经验 %d/%d" % [_have, _need])
 	xpn.add_theme_font_size_override("font_size", 16); xpn.add_theme_color_override("font_color", Color("#fff4dc"))
@@ -1365,6 +1479,25 @@ func _build_level_row(btn_pos: Vector2) -> void:
 	_tut_xp_btn = bxp
 
 
+## 经验条: 木槽 + 暖黄填充(不再借战斗 HUD 的蓝边血条槽)。不透明底 = 不是网页盒。
+const XP_BAR_PAD := 3.0
+func _wood_bar(pos: Vector2, sz: Vector2, ratio: float) -> void:
+	var slot := Panel.new(); slot.name = "XpBarSlot"
+	var sb := StyleBoxFlat.new(); sb.bg_color = Color("#22130a"); sb.border_color = Color("#8a5a32")
+	sb.set_border_width_all(int(XP_BAR_PAD)); sb.set_corner_radius_all(0)
+	slot.add_theme_stylebox_override("panel", sb)
+	slot.position = pos; slot.size = sz; slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(slot)
+	var w: float = (sz.x - 2.0 * XP_BAR_PAD) * clampf(ratio, 0.0, 1.0)
+	if w >= 1.0:
+		var fl := ColorRect.new(); fl.color = Color("#f2b44a")
+		fl.position = pos + Vector2(XP_BAR_PAD, XP_BAR_PAD); fl.size = Vector2(w, sz.y - 2.0 * XP_BAR_PAD)
+		fl.mouse_filter = Control.MOUSE_FILTER_IGNORE; add_child(fl)
+		var hl := ColorRect.new(); hl.color = Color("#ffe39a")
+		hl.position = fl.position; hl.size = Vector2(w, 2)
+		hl.mouse_filter = Control.MOUSE_FILTER_IGNORE; add_child(hl)
+
+
 ## 无框图标钮: 图标在上(像素图 ×2, 最近邻)、描边字在下; 五种状态的底都是空的(不是金木框, 也不是网页盒)。
 func _icon_button(nm: String, tex: Texture2D, label: String, pos: Vector2, sz: Vector2) -> Button:
 	var b := Button.new(); b.name = nm
@@ -1397,7 +1530,7 @@ func _coin_after_text(b: Button) -> void:
 	## 量字宽再放: 「刷新  2」居中, 币紧贴在字的右边(写死偏移会压在数字上 —— 实拍过)
 	var f: Font = b.get_theme_font("font")
 	var tw: float = f.get_string_size(b.text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, b.get_theme_font_size("font_size")).x if f != null else 60.0
-	c.position = Vector2(b.size.x * 0.5 + tw * 0.5 + 4.0, b.size.y - 29.0); c.size = Vector2(20, 20)
+	c.position = Vector2(b.size.x * 0.5 + tw * 0.5 + 2.0, b.size.y - 32.0); c.size = Vector2(24, 24)
 	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(c)
 
