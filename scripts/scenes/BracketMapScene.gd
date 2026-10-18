@@ -61,6 +61,7 @@ const _B := preload("res://scripts/gamedata/bracket.gd")
 const _L := preload("res://scripts/gamedata/bracket_layout.gd")
 const _RF := preload("res://scripts/systems/replay/replay_fetcher.gd")
 const _RU := preload("res://scripts/systems/replay/replay_uploader.gd")
+const DL_SCORE := preload("res://scripts/gamedata/phase2_duallane.gd")   # 比分代码 → 两枚数字
 const _LS := preload("res://scripts/systems/replay/live_spectate.gd")
 ## 头像 / 提示框 / 像素按钮 —— 与战绩页、周六赛况板同一套共享件(2026-10-07 周末观战第三轮)。
 const MatchCard := preload("res://scripts/scenes/record/match_card.gd")
@@ -1478,8 +1479,10 @@ func _make_node(r: int, m: int) -> Control:
 	var name_x: float = 8.0 + av_px + 6.0
 	## ★比分(2026-10-12, 用户「比分呢」「要做」): 参考 07/08 Brawlhalla 每根条右端一个比分方块、01 VALORANT 名字右侧比分。
 	##   服务端只存「败方赢了几路」(0/1) ⇒ 胜方 2、败方 0/1。没有数据(旧场次 / 没报上来)⇒ 不画方块, 名字占满。
-	var sc_v: int = int((cur().get("scores", {}) as Dictionary).get("%d-%d" % [r, m], -1)) if ws >= 0 else -1
-	var sc_w: float = SCORE_W if sc_v >= 0 else 0.0
+	## 2026-10-18: 值是比分代码(0=2:0 / 1=2:1 / 一路碎蛋 1:0 / 1:1 碎蛋), 由 score_pair 译成两枚数字。
+	var sc_raw = (cur().get("scores", {}) as Dictionary).get("%d-%d" % [r, m], null)
+	var sc_pair: Array = DL_SCORE.score_pair(int(sc_raw)) if (ws >= 0 and sc_raw != null) else []
+	var sc_w: float = SCORE_W if not sc_pair.is_empty() else 0.0
 	for side in range(2):
 		## ★小签只剩「你」(§1/§2: 「胜」「冠」去掉, 参考里没有一家用字标胜者)。
 		##   名字只在这一行真挂小签时才给槽让位 —— 原来每行都让, 名字被截成「fis…」(用户 10-12 真机截图)。
@@ -1549,7 +1552,7 @@ func _make_node(r: int, m: int) -> Control:
 			holder.add_child(bl)
 
 	## 比分方块: 胜方 = 青底黑字, 败方 = 暗底灰字(参考 07 Brawlhalla 胜方方块填色)。
-	if sc_v >= 0:
+	if not sc_pair.is_empty():
 		for side2 in range(2):
 			var y2: float = float(side2) * sh + (BAR_GAP * 0.5 if side2 == 1 else 0.0)
 			var bh2: float = sh - BAR_GAP * 0.5
@@ -1557,7 +1560,7 @@ func _make_node(r: int, m: int) -> Control:
 			_rect(holder, w - SCORE_W, y2, SCORE_W, bh2, ACCENT if win2 else Color("#0b1018"))
 			var sl := Label.new()
 			sl.name = "Score%d" % side2
-			sl.text = "2" if win2 else str(sc_v)
+			sl.text = str(sc_pair[0] if win2 else sc_pair[1])
 			sl.position = Vector2(w - SCORE_W, y2)
 			sl.size = Vector2(SCORE_W, bh2)
 			sl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

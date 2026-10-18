@@ -32,6 +32,19 @@ func _ready() -> void:
 	_ok("① ★投降(空)⇒ -1 不报", DL.loser_lanes({}) == -1)
 	_ok("① ★1:1 而终极没结果 ⇒ -1 不报", DL.loser_lanes({"top": "left", "bottom": "right"}) == -1)
 	_ok("① 只打了一路 ⇒ -1", DL.loser_lanes({"top": "left"}) == -1)
+	## ①b 比分代码(2026-10-18 用户「一路碎蛋不就是1：0」)
+	var eggs_ok := {"left": 4000.0, "right": 3000.0}
+	_ok("①b 上路碎蛋 ⇒ 1:0", DL.score_code({"top": "left"}, {"left": 6000.0, "right": 0.0}) == DL.SCORE_1_0)
+	_ok("①b ★上路碎蛋(右方赢)也是 1:0", DL.score_code({"top": "right"}, {"left": 0.0, "right": 6000.0}) == DL.SCORE_1_0)
+	_ok("①b 1:1 时下路碎蛋 ⇒ 1:1", DL.score_code({"top": "left", "bottom": "right"}, {"left": 0.0, "right": 2000.0}) == DL.SCORE_1_1)
+	_ok("①b 下路碎蛋且上路同一方 ⇒ 2:0(老码 0)", DL.score_code({"top": "left", "bottom": "left"}, {"left": 2000.0, "right": 0.0}) == 0)
+	_ok("①b 终极碎蛋 ⇒ 2:1(老码 1)", DL.score_code({"top": "left", "bottom": "right", "final": "left"}, {"left": 100.0, "right": 0.0}) == 1)
+	_ok("①b 正常两路 2:0 ⇒ 0", DL.score_code({"top": "left", "bottom": "left"}, eggs_ok) == 0)
+	_ok("①b ★下路投降(只剩上路一条、蛋都在)⇒ -1 不报", DL.score_code({"top": "left"}, eggs_ok) == -1)
+	_ok("①b ★投降(空)⇒ -1", DL.score_code({}, eggs_ok) == -1)
+	_ok("①b ★蛋血没初始化(双方 0)不算碎蛋 ⇒ -1", DL.score_code({"top": "left"}, {"left": 0.0, "right": 0.0}) == -1)
+	_ok("①b 码 → 数字", DL.score_pair(0) == [2, 0] and DL.score_pair(1) == [2, 1] 		and DL.score_pair(DL.SCORE_1_0) == [1, 0] and DL.score_pair(DL.SCORE_1_1) == [1, 1] and DL.score_pair(-1).is_empty())
+	_ok("①b ★新码是负数(老包只画 >=0 ⇒ 不会画出假比分)", DL.SCORE_1_0 < 0 and DL.SCORE_1_1 < 0)
 
 	## ② 解析
 	var body := JSON.stringify({"ok": true, "bucket": 3, "n": 4, "round": 2, "closed": false,
@@ -100,6 +113,14 @@ func _ready() -> void:
 	txt.sort()
 	_ok("④ ★有比分 ⇒ 两场四枚方块(2,2 与败方 1,0)", txt == ["0", "1", "2", "2"], str(txt))
 	m.set_data({"size": 4, "round": 2, "me": -1, "names": ["甲", "乙", "丙", "丁"],
+		"done": {"1-0": 0, "1-1": 1}, "scores": {"1-0": DL.SCORE_1_0, "1-1": DL.SCORE_1_1}, "bucket": 3}, {}, 0)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var labs1: Array = m.find_children("Score*", "Label", true, false).filter(func(x): return is_instance_valid(x) and not x.is_queued_for_deletion())
+	var txt1: Array = labs1.map(func(x): return (x as Label).text)
+	txt1.sort()
+	_ok("④ ★一路碎蛋画 1:0、下路碎蛋画 1:1", txt1 == ["0", "1", "1", "1"], str(txt1))
+	m.set_data({"size": 4, "round": 2, "me": -1, "names": ["甲", "乙", "丙", "丁"],
 		"done": {"1-0": 0, "1-1": 1}, "bucket": 3}, {}, 0)
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -112,6 +133,9 @@ func _ready() -> void:
 	_ok("⑤ ★分母: 迁移文件在", sql.length() > 1000)
 	_ok("⑤ ★★只认 seed 与采纳那份相同的(and seed_used = p_seed)", sql.find("and seed_used = p_seed and loser_lanes is null") >= 0)
 	_ok("⑤ 两个视图都下发 scores(组 / 杯 / 我那组 共 3 处)", sql.count("'scores', ") == 3, str(sql.count("'scores', ")))
+	var sql2 := FileAccess.get_file_as_string("res://server/supabase/migrations/20261018_finals_score_one_lane.sql")
+	_ok("⑤ ★一路碎蛋迁移: 约束与 RPC 都认 -10 / -11", sql2.count("(0, 1, -10, -11)") == 2, str(sql2.count("(0, 1, -10, -11)")))
+	_ok("⑤ ★迁移里的码与客户端常量同一张表", sql2.find("%d = 1:0" % DL.SCORE_1_0) >= 0 and sql2.find("%d = 1:1" % DL.SCORE_1_1) >= 0)
 	_ok("⑤ anon 没有执行权", sql.find("finals_report_score(bigint, int, int, int, bigint, int) from public, anon") >= 0)
 
 	if _fail == 0:

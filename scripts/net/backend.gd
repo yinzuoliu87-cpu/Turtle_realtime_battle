@@ -1516,7 +1516,8 @@ static func report_finals_if_any(won: bool) -> void:
 		##   (2026-09-28 查实: 补报那条路原来真的分岔了, 见 `report_finals_result` 头注)。
 		var sd := int(GameState.battle_seed)
 		## 2026-10-12 比分: 败方赢了几路(2:0 ⇒ 0 / 2:1 ⇒ 1 / 没打完 ⇒ -1 不报)。补报单里带着, 断网补报时一起补。
-		var ll: int = load("res://scripts/gamedata/phase2_duallane.gd").loser_lanes(GameState.lane_results)
+		## 2026-10-18: 一路碎蛋 = 1:0(用户原话), 用比分代码(phase2_duallane.score_code)。
+		var ll: int = load("res://scripts/gamedata/phase2_duallane.gd").score_code(GameState.lane_results, GameState.egg_hp)
 		## 2026-10-12 统一结算: 报的人是哪一侧(`side` = 开局时 `my_side()` 算好的那一侧)。服务端据此定先后。
 		GameState.finals_report_pending = {
 			"bucket": int(d.get("bucket", -1)), "round": r, "match": m,

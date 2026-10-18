@@ -1907,7 +1907,7 @@ func report_finals(week: int, bucket: int, round_no: int,
 				_report_done["%d:%d-%d" % [bucket, round_no, match_no]] = true
 				## ★2026-10-12 比分: 结果报成了再补报比分。服务端只认 seed 与采纳那份相同的 ——
 				##   我这份没被采纳(对面先报)时它回 false, 无害; 发不出去就算了(比分只是展示, 不影响晋级)。
-				if loser_lanes == 0 or loser_lanes == 1:
+				if not load("res://scripts/gamedata/phase2_duallane.gd").score_pair(loser_lanes).is_empty():
 					_http("POST", base_url().rstrip("/") + "/rest/v1/rpc/finals_report_score",
 						JSON.stringify(finals_score_body(week, bucket, round_no, match_no, seed_used, loser_lanes)),
 						func(_r2):

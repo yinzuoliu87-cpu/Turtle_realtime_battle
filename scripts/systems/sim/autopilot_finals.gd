@@ -81,6 +81,12 @@ func _ready() -> void:
 func _poke_bracket() -> void:
 	var aw = _host.get("_await_match")
 	if aw is Vector2i and (aw as Vector2i).x >= 0:
+		## ★2026-10-18 冠军杯赛实测: 拿对手失败(时机不对)后 `_try_start_match` 不清 `_await_match`,
+		##   这里又见「已在等」就永不重试 ⇒ 半决赛 / 决赛挂了一小时、被服务端到点代判。
+		##   拿过且没拿到 ⇒ 清掉等待, 下一拍重新点开。
+		if _SBF.opponent_tried() and not bool(_SBF.opponent_cached().get("ok", false)):
+			_host.set("_await_match", Vector2i(-1, -1))
+			print("[AUTOPILOT] finals: 拿对手没拿到(%s) → 清等待, 稍后重试" % str(_SBF.opponent_cached().get("reason", "")))
 		return                                  # 已经在等这一场的对手了
 	var c: Dictionary = _host.cur()
 	if _shop_trip_due(c):

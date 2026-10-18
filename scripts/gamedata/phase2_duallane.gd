@@ -71,6 +71,53 @@ static func loser_lanes(lane_results: Dictionary) -> int:
 	return 0 if match_winner(lane_results) != "" else -1
 
 
+## ★比分代码(2026-10-18 用户「一路碎蛋不就是1：0」): 服务端 `finals_results.loser_lanes` 存的就是它。
+##   0 = 2:0 / 1 = 2:1(原义「败方赢了几路」, 胜方默认 2 路)。
+##   碎蛋 = 整场当场结束(用户 2026-07-12), 胜方不一定拿满 2 路 ⇒ 另给两个码:
+##   SCORE_1_0 = 上路就碎蛋 1:0 / SCORE_1_1 = 1:1 时下路碎蛋 1:1。
+##   ★取负数: v0.19.570 及更早的客户端只画 ≥0 的比分 ⇒ 老包看到这两个码是「不画」, 不会画出个假的 2:x。
+const SCORE_1_0 := -10
+const SCORE_1_1 := -11
+
+
+## 比分代码; -1 = 不报。`egg_hp` = 结算那一刻的双方蛋血(GameState.egg_hp)。
+##   ★碎蛋判据用败方蛋血归零, 不用「只记了一路」: 下路投降后 lane_results 也只剩上路一条, 形状与上路碎蛋相同。
+static func score_code(lane_results: Dictionary, egg_hp: Dictionary) -> int:
+	var w := overall_winner(lane_results)
+	## 恰好一方蛋血为 0 才算碎蛋(双方都是 0 = 蛋血还没初始化, 不是碎蛋)
+	var l_broke: bool = float(egg_hp.get("left", 1.0)) <= 0.0
+	var r_broke: bool = float(egg_hp.get("right", 1.0)) <= 0.0
+	var broke := ""
+	if l_broke != r_broke:
+		broke = "left" if l_broke else "right"
+	if broke == "" or w != "":
+		return loser_lanes(lane_results)
+	## 碎蛋提前结束: 胜方 = 碎了对面蛋的那一方(碎蛋那一路已记在 lane_results 里)
+	var win_side := "right" if broke == "left" else "left"
+	var wl := 0
+	var ll := 0
+	for k in lane_results:
+		if str(lane_results[k]) == win_side:
+			wl += 1
+		else:
+			ll += 1
+	if wl == 1 and ll == 0:
+		return SCORE_1_0
+	if wl == 1 and ll == 1:
+		return SCORE_1_1
+	return -1
+
+
+## 比分代码 → [胜方路数, 败方路数]; 不认识的码 → []。
+static func score_pair(code: int) -> Array:
+	match code:
+		0: return [2, 0]
+		1: return [2, 1]
+		SCORE_1_0: return [1, 0]
+		SCORE_1_1: return [1, 1]
+	return []
+
+
 ## 整局最终胜者: 优先 final, 否则两路全胜方. 无平局(NO_DRAW) → 调用方在 final 强制分出.
 static func overall_winner(lane_results: Dictionary) -> String:
 	var fin := final_winner(lane_results)
