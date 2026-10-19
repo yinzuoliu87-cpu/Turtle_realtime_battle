@@ -67,9 +67,9 @@ VERIFIED_FAR = {
     #    纯搬迁·数值一个没改(移动前均在册通过)·逐条核对数组仍在对应装备的效果码里。 ──
     ('p2eq_006', '80/130/400'):  '_eq_sword_storm 千刃风暴(reorg远)',
     ('p2eq_006', '70/100/400'):   '_eq_sword_storm 千刃风暴(reorg远)',
-    ('p2eq_010', '35/80/100'):    '激光长刃 _tick_laser/_eq_laser_* (reorg远)',
-    ('p2eq_010', '60/100/800'):  '_eq_laser_chop/sweep 激光 [0.6,1.0,8.0](equip_system:968)',
-    ('p2eq_010', '15/32/200'):    '_eq_laser_chop/sweep 激光 [15,32,200](equip_system:968)',
+    ('p2eq_010', '35/80/60'):    '激光长刃 _tick_laser/_eq_laser_* (reorg远)',
+    ('p2eq_010', '60/100/400'):  '_eq_laser_chop/sweep 激光 [0.6,1.0,4.0](10-19 削弱)',
+    ('p2eq_010', '15/32/100'):    '_eq_laser_chop/sweep 激光 [15,32,100](10-19 削弱)',
     ('p2eq_029', '100/160/250'):  '冰封水母 p2eq_029 case(reorg远)',
     ('p2eq_030', '30/35/40'):     '迷你水晶球A p2eq_030(reorg远)',
     ('p2eq_029', '1/1.8/2.5'):    '冰封水母 p2eq_029 冰效果[1.0,1.8,2.5](随_ice_搬到ice_system·reorg远·数值未改)',
