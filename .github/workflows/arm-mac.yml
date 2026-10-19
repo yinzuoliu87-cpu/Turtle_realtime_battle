@@ -151,7 +151,7 @@ jobs:
             dump=""
             [ "$t" = "verify_determinism_cross" ] && dump="1"
             s0=$(date +%s)
-            TURTLE_DET_DUMP="$dump" TURTLE_BACKEND=" " TURTLE_SUPABASE=" " QUIET=1 APPDATA="$ad" XDG_DATA_HOME="$ad" \
+            TURTLE_DET_DUMP="$dump" TURTLE_BACKEND=" " TURTLE_SUPABASE=" " QUIET=1 APPDATA="$ad" XDG_DATA_HOME="$ad" HOME="$ad" \
               arch -arm64 "$GODOT" --headless --audio-driver Dummy --path . "res://tests/$t.tscn" \
               --quit-after "$fr" > "$LOGS/$t.log" 2>&1
             rc=$?
