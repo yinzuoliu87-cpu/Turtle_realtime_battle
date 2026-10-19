@@ -252,7 +252,10 @@ const BOLT_HIT_DELAY := 0.25      # 025 伤害落在闪电动画中段(秒·游�
 var _bolt_q: Array = []
 
 const THUNDER_IV := 4.0         # 025 雷鸣贝壳: 每几秒降一次雷
-const GEAR_IV := 6.0            # 035 黄铜齿轮: 每几秒进一次深海币
+## 035 黄铜齿轮(用户 2026-10-19「每10/8/6秒获得一枚深海币，在一个对局内最多获得3/5/8枚深海币」):
+##   按星级: 每 GEAR_IV 秒 +1 枚, 每件每场(上路+下路+决胜)至多 GEAR_CAP 枚。
+const GEAR_IV := [10, 8, 6]
+const GEAR_CAP := [3, 5, 8]
 const BARNACLE_IV := 5.0        # 每几秒重连一次并给 buff
 const BARNACLE_ENERGY := 10.0   # 每次给自己和该友军的龟能
 const BARNACLE_ASPD := 0.10     # 每次给自己和该友军的攻速 +(永久本场·可叠)
@@ -416,6 +419,12 @@ func gear_minted() -> int:
 ## 整场结束(**不是**换路): 归零。与 `_gadget_syn.reset_match()` 同一时机、同一理由。
 func reset_match() -> void:
 	_gear_coins = 0
+	_gear_made.clear()
+
+
+## 每件齿轮本场已产几枚(上限按件算)。★换路单位会重建、eq_state 跟着重来 ⇒ 计数放在本系统里, 跨路保留, 整场结束清。
+##   键 = 方 | 龟 id | 装备格序号(同一只龟带两件 = 两份额度)。小将 id 相同, 不同路的小将各带一件会共用一份额度(罕见, 宁少不多)。
+var _gear_made := {}
 
 
 func _tick_gear(u: Dictionary, delta: float) -> void:   # 黄铜齿轮035(用户2026-07-18改: 随时间铸币·每6秒左队携带者直接+1/2/3深海币+飘字·跟死亡无关·原"攒齿轮层战斗结束折币"改掉)
@@ -428,9 +437,15 @@ func _tick_gear(u: Dictionary, delta: float) -> void:   # 黄铜齿轮035(用户
 		var si: int = battle._equip_sys._eq_si(int(e.get("star", 1)))
 		var stt: Dictionary = u["eq_state"].get("p2eq_035", {})
 		stt["gear_t"] = float(stt.get("gear_t", 0.0)) + delta
-		if float(stt["gear_t"]) >= GEAR_IV:
-			stt["gear_t"] = float(stt["gear_t"]) - GEAR_IV   # ★读常量不写死(原来是 6.0, 与 GEAR_IV 两份)
-			var coins: int = [1, 2, 3][si]
+		var iv: float = float(GEAR_IV[si])
+		var gkey := "%s|%s|%d" % [str(u.get("side", "")), str(u.get("id", "")), (u["equips"] as Array).find(e)]
+		if int(_gear_made.get(gkey, 0)) >= int(GEAR_CAP[si]):
+			u["eq_state"]["p2eq_035"] = stt
+			continue                     # 这件本场已满额
+		if float(stt["gear_t"]) >= iv:
+			stt["gear_t"] = float(stt["gear_t"]) - iv   # ★读常量不写死
+			var coins: int = 1
+			_gear_made[gkey] = int(_gear_made.get(gkey, 0)) + coins
 			_gear_coins += coins   # ★进【本场账本】, 不直接写 meta —— 见 _gear_coins 上方长注释
 			battle._vfx._float_text(u["pos"], "+%d💠" % coins, Color("#5fd0e0"))   # 可见反馈(用户: 之前无反馈以为没生效)
 			battle._vfx.coin_pop(u, coins)   # 头顶旋转金币(用户2026-09-13: 「做一个头顶获得金币旋转的特效」)

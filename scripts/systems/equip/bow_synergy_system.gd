@@ -22,9 +22,10 @@ extends RefCounted
 
 var battle
 
-## 处决斩杀线基数（逐档）。实际线 = 基数 + 该单位暴击率 × CRIT_TO_LINE
-const EXEC_BASE := [0.04, 0.07, 0.10]
-const CRIT_TO_LINE := 0.1
+## 处决斩杀线（逐档）。实际线 = 基数 + 该单位暴击率 × CRIT_TO_LINE[档]
+## 用户 2026-10-19「弓箭羁绊的斩杀线改为2%+5%暴击率/4%+7%暴击率/6+10%暴击率」(原 4/7/10% + 10%×暴击率)。
+const EXEC_BASE := [0.02, 0.04, 0.06]
+const CRIT_TO_LINE := [0.05, 0.07, 0.10]
 ## ★★2026-08-03 用户定稿：**三条腐蚀效果【每一档都有】，只是数值随档位涨**。
 ##   这是回到学派原设计的形状 —— 我之前把它拆成"档2 才有穿透、档3 才有叠层"，
 ##   那是我按「每档解锁一条新机制」的梯度原则**自己加的框架**，不是原设计。
@@ -77,7 +78,7 @@ func on_hit(src, tgt) -> void:
 		return
 	# ★2026-08-03 用户改：处决给【全队】，不再要求身上带弓箭。
 	#   斩杀线仍按各自的暴击率算 —— 不带弓箭的队友暴击通常是 0，线就是基数。
-	var line: float = EXEC_BASE[clampi(tier - 1, 0, 2)] + float(src.get("crit", 0.0)) * CRIT_TO_LINE
+	var line: float = EXEC_BASE[clampi(tier - 1, 0, 2)] + float(src.get("crit", 0.0)) * float(CRIT_TO_LINE[clampi(tier - 1, 0, 2)])
 	if tgt.get("eq_exec_immune", false):
 		return                       # 免疫处决(龟蛋/大师等)
 	if float(tgt.get("maxHp", 0.0)) <= 0.0:

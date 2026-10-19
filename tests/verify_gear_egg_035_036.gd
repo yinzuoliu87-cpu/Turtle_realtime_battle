@@ -4,7 +4,7 @@ extends Node
 ## ════════════════════════════════════════════════════════════════════════
 ##  ★文案就是规格
 ## ════════════════════════════════════════════════════════════════════════
-## 【035 黄铜齿轮】「每 `GEAR_IV`(6) 秒获得 **1/2/3** 枚深海币。」
+## 【035 黄铜齿轮】「每 `GEAR_IV`(10/8/6) 秒获得 1 枚深海币，每场至多 `GEAR_CAP`(3/5/8) 枚。」(用户 2026-10-19 改; 原每 6 秒 1/2/3 枚)
 ##
 ## 【036 温泉蛋】「每秒回复 2/5/10 + 0.3/0.8/1.2% 最大生命值;
 ##   并持续获得孵化进度(每 EQ_TICK 秒 +`EGG_PER_CYCLE`(5)、敌方死亡 +`EGG_ON_FOE_DEATH`(10)、
@@ -21,7 +21,8 @@ extends Node
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const ET := preload("res://scripts/systems/equip/equip_tick_system.gd")
 
-const GEAR_COINS := [1, 2, 3]
+const WANT_IV := [10, 8, 6]
+const WANT_CAP := [3, 5, 8]
 const EGG_CAP := [3, 4, 5]
 const EGG_SHIELD := [300.0, 400.0, 600.0]
 
@@ -57,7 +58,7 @@ func _ready() -> void:
 	if gs == null:
 		print("  [FAIL] 缺 autoload"); get_tree().quit(1); return
 	gs.test_mode = true
-	print("=== 035 黄铜齿轮(每 %.0f 秒产币) + 036 温泉蛋(孵满 %.0f 进度 +1 级) ===" % [ET.GEAR_IV, ET.EGG_FULL])
+	print("=== 035 黄铜齿轮(每 %.0f 秒产币) + 036 温泉蛋(孵满 %.0f 进度 +1 级) ===" % [ET.GEAR_IV[2], ET.EGG_FULL])
 	RB.DEBUG_EDIT = true
 	_s = RB.new()
 	add_child(_s)
@@ -68,44 +69,46 @@ func _ready() -> void:
 	var ets = _s._equip_tick_sys
 
 	# ══════════════ 035 黄铜齿轮 ══════════════
-	_ok("① ★分母: 产币周期 %.0f 秒" % ET.GEAR_IV, absf(ET.GEAR_IV - 6.0) < 0.01)
+	_ok("① ★分母: 产币周期 10/8/6 秒、每场上限 3/5/8 枚(用户 10-19)", ET.GEAR_IV == WANT_IV and ET.GEAR_CAP == WANT_CAP,
+		"%s / %s" % [ET.GEAR_IV, ET.GEAR_CAP])
 	for si in [0, 1, 2]:
 		_s._units.clear()
 		var c: Dictionary = _mk(500.0, 400.0, "left")
 		c["equips"] = [{"id": "p2eq_035", "star": [1, 2, 3][si]}]
 		c["eq_state"] = {}
 		_s._units.append(c)
-		## ★★ 2026-09-29: 齿轮产的币不再直接写 meta, 而是进**本场账本** `gear_minted()`,
-		##   结算时随 `_last_reward` 一起进钱包 —— 奇械铸币本来就这么走, 齿轮是唯一绕过去的。
-		##   绕过去的后果: **结算屏少算**(真机受控对照 屏显 +30 / 存档 +34)。
-		##   ⇒ 这几条改成量**产品自己的账本**。⚠ 这不是放宽:
-		##   钱包那一步由 `verify_tick_equips_exact` 与冒烟测试走真结算路径守着。
+		## ★★ 2026-09-29: 齿轮产的币进**本场账本** `gear_minted()`, 结算时随 `_last_reward` 一起进钱包。
 		ets.reset_match()
+		var iv: float = float(WANT_IV[si])
 		var before: int = int(ets.gear_minted())
-		ets._tick_gear(c, ET.GEAR_IV - 0.2)
-		_ok("① ★分母(%d 星): 差 0.2 秒时还没到账(+%d)"
-			% [si + 1, int(ets.gear_minted()) - before],
-			int(ets.gear_minted()) == before,
-			"卡住「每 %.0f 秒」那个数" % ET.GEAR_IV)
+		ets._tick_gear(c, iv - 0.2)
+		_ok("① ★分母(%d 星): 差 0.2 秒时还没到账(+%d)" % [si + 1, int(ets.gear_minted()) - before],
+			int(ets.gear_minted()) == before, "卡住「每 %.0f 秒」那个数" % iv)
 		ets._tick_gear(c, 0.3)
-		var got: int = int(ets.gear_minted()) - before
-		_ok("① ★★★%d 星: 满周期进 %d 枚深海币(应 %d)" % [si + 1, got, GEAR_COINS[si]],
-			got == GEAR_COINS[si],
-			"这条量 `gear_minted()` —— 产品自己的本场账本(钱包由结算路径守)")
-	## ★★扣周期必须读 GEAR_IV 而不是写死的 6.0 —— 连喂两个周期, 第二枚必须准时到
-	_s._units.clear()
-	var c2: Dictionary = _mk(500.0, 400.0, "left")
-	c2["equips"] = [{"id": "p2eq_035", "star": 3}]
-	c2["eq_state"] = {}
-	_s._units.append(c2)
+		_ok("① ★★%d 星: 满周期进 1 枚(实 +%d)" % [si + 1, int(ets.gear_minted()) - before],
+			int(ets.gear_minted()) - before == 1)
+		## 连喂远超上限的周期数 ⇒ 停在上限
+		for _k in range(20):
+			ets._tick_gear(c, iv + 0.01)
+		_ok("① ★★★%d 星: 本场至多 %d 枚(实 %d)" % [si + 1, WANT_CAP[si], int(ets.gear_minted()) - before],
+			int(ets.gear_minted()) - before == WANT_CAP[si])
+	## ★★上限按【整场】算: 换路单位重建(新的 eq_state)后仍记得已产多少; 开新一场(reset_match)才清
 	ets.reset_match()
-	var b2: int = int(ets.gear_minted())
+	var lane1: Dictionary = _mk(500.0, 400.0, "left")
+	lane1["equips"] = [{"id": "p2eq_035", "star": 1}]
+	lane1["eq_state"] = {}
 	for _k in range(2):
-		ets._tick_gear(c2, ET.GEAR_IV + 0.01)
-	_ok("① ★★连喂两个周期进两次账(+%d, 应 %d)"
-		% [int(ets.gear_minted()) - b2, GEAR_COINS[2] * 2],
-		int(ets.gear_minted()) - b2 == GEAR_COINS[2] * 2,
-		"扣周期原来写死 `- 6.0`, 与常量 GEAR_IV 是两份")
+		ets._tick_gear(lane1, 10.01)
+	var lane2: Dictionary = _mk(500.0, 400.0, "left")      # 同一只龟, 下一路重建
+	lane2["id"] = lane1["id"]
+	lane2["equips"] = [{"id": "p2eq_035", "star": 1}]
+	lane2["eq_state"] = {}
+	for _k in range(5):
+		ets._tick_gear(lane2, 10.01)
+	_ok("① ★★换路不重置额度: 上路 2 枚 + 下路只再进 1 枚 = 3(实 %d)" % int(ets.gear_minted()), int(ets.gear_minted()) == 3)
+	ets.reset_match()
+	ets._tick_gear(lane2, 10.01)
+	_ok("① ★开新一场额度清零(重新进 1 枚)", int(ets.gear_minted()) == 1)
 	## ★右队不产币(文案口径: 深海币是玩家侧 meta 货币)
 	_s._units.clear()
 	var cr: Dictionary = _mk(500.0, 400.0, "right")
@@ -113,7 +116,7 @@ func _ready() -> void:
 	cr["eq_state"] = {}
 	_s._units.append(cr)
 	var b3: int = int(gs.meta_deepsea_coins)
-	ets._tick_gear(cr, ET.GEAR_IV + 0.01)
+	ets._tick_gear(cr, 10.01)
 	_ok("① ★★右队(敌方)携带者**不**产币(+%d 应 0)" % (int(gs.meta_deepsea_coins) - b3),
 		int(gs.meta_deepsea_coins) == b3)
 
@@ -258,8 +261,8 @@ func _ready() -> void:
 		ets._tick_gear(cu, 0.05)
 		cn += 1
 	var coins: int = ets.gear_minted() - minted0
-	_ok("⑤ ★分母: 产币真的发生了(否则下面全是空检查) —— 3★ 应得 3 枚, 实得 %d 枚(推了 %d 步)"
-		% [coins, cn], coins == 3)
+	_ok("⑤ ★分母: 产币真的发生了(否则下面全是空检查) —— 每次 1 枚(用户 10-19), 实得 %d 枚(推了 %d 步)"
+		% [coins, cn], coins == 1)
 	_ok("⑤ ★★GEAR_COIN_SPIN: 头顶金币**建出来了** —— 每枚币一个精灵(实得 %d 个)"
 		% _s._coin_fx.size(), _s._coin_fx.size() == coins,
 		"coins=%d fx=%d" % [coins, _s._coin_fx.size()])

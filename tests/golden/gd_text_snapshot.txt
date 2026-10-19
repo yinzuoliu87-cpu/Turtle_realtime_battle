@@ -434,13 +434,13 @@ scripts/gamedata/phase2_types.gd|lit|枪·神枪手
 scripts/gamedata/phase2_types.gd|lit|每件剑 +15 攻击力 · 【剑士】追打 1 次，每次 25% × 身上剑件数的伤害 · 【血祭】每损失 1% 生命值 +0.3% 攻击力
 scripts/gamedata/phase2_types.gd|lit|每件剑 +25 攻击力 · 【剑士】追打 2 次，每次 40% × 身上剑件数的伤害 · 【血祭】每损失 1% 生命值 +0.5% 攻击力
 scripts/gamedata/phase2_types.gd|lit|每件剑 +8 攻击力 · 【剑士】追打 1 次，每次 18% × 身上剑件数的伤害 · 【血祭】每损失 1% 生命值 +0.1% 攻击力
-scripts/gamedata/phase2_types.gd|lit|每件奇械 +10 魔抗 · 【铸币】每次 2 枚，每场至多 9 枚 · 【冰封】15% 概率
-scripts/gamedata/phase2_types.gd|lit|每件奇械 +16 魔抗 · 【铸币】每次 3 枚，每场至多 14 枚 · 【冰封】25% 概率 · 【僵硬】生效
-scripts/gamedata/phase2_types.gd|lit|每件奇械 +23 魔抗 · 【铸币】每次 3 枚，每场至多 20 枚 · 【冰封】40% 概率 · 【僵硬】生效 · 【易碎】受到的伤害 +25%
-scripts/gamedata/phase2_types.gd|lit|每件奇械 +4 魔抗 · 【铸币】每次 1 枚，每场至多 5 枚
-scripts/gamedata/phase2_types.gd|lit|每件弓箭 +16% 暴击率 · 【处决】斩杀线 7% + 10% × 暴击率 · 【腐蚀·穿透】10% · 【腐蚀叠层】每层 +3%，满层转化 20%
-scripts/gamedata/phase2_types.gd|lit|每件弓箭 +22% 暴击率 · 【处决】斩杀线 10% + 10% × 暴击率 · 【腐蚀·穿透】22% · 【腐蚀叠层】每层 +4%，满层转化 35%
-scripts/gamedata/phase2_types.gd|lit|每件弓箭 +9% 暴击率 · 【处决】斩杀线 4% + 10% × 暴击率 · 【腐蚀·穿透】4% · 【腐蚀叠层】每层 +2%，满层转化 10%
+scripts/gamedata/phase2_types.gd|lit|每件奇械 +10 魔抗 · 【铸币】每次 2 枚，每场至多 7 枚 · 【冰封】15% 概率
+scripts/gamedata/phase2_types.gd|lit|每件奇械 +16 魔抗 · 【铸币】每次 3 枚，每场至多 11 枚 · 【冰封】25% 概率 · 【僵硬】生效
+scripts/gamedata/phase2_types.gd|lit|每件奇械 +23 魔抗 · 【铸币】每次 3 枚，每场至多 15 枚 · 【冰封】40% 概率 · 【僵硬】生效 · 【易碎】受到的伤害 +25%
+scripts/gamedata/phase2_types.gd|lit|每件奇械 +4 魔抗 · 【铸币】每次 1 枚，每场至多 3 枚
+scripts/gamedata/phase2_types.gd|lit|每件弓箭 +16% 暴击率 · 【处决】斩杀线 4% + 7% × 暴击率 · 【腐蚀·穿透】10% · 【腐蚀叠层】每层 +3%，满层转化 20%
+scripts/gamedata/phase2_types.gd|lit|每件弓箭 +22% 暴击率 · 【处决】斩杀线 6% + 10% × 暴击率 · 【腐蚀·穿透】22% · 【腐蚀叠层】每层 +4%，满层转化 35%
+scripts/gamedata/phase2_types.gd|lit|每件弓箭 +9% 暴击率 · 【处决】斩杀线 2% + 5% × 暴击率 · 【腐蚀·穿透】4% · 【腐蚀叠层】每层 +2%，满层转化 10%
 scripts/gamedata/phase2_types.gd|lit|每件枪 +20% 攻击速度 · 【金弹】每 4 发 1 发，+60% 真实伤害 · 【炮台一】生效
 scripts/gamedata/phase2_types.gd|lit|每件枪 +40% 攻击速度 · 【金弹】每 3 发 1 发，+80% 真实伤害 · 【炮台二】每次产出 100 + 20 × 全队枪件数 能量
 scripts/gamedata/phase2_types.gd|lit|每件枪 +66% 攻击速度 · 【金弹】每 2 发 1 发，+100% 真实伤害 · 【炮台三·火控】额外造成 10% + 10% × 身上枪件数 真实伤害
@@ -646,6 +646,7 @@ scripts/gamedata/vfxlab_cases.gd|lit|遗物
 scripts/gamedata/vfxlab_cases.gd|lit|靠命中触发 ⇒ attacker 必开。★★2026-09-14 订正三处: ①`ui` → `bars` —— `ui: true` 会把**飘字连同整层 UI 一起关掉**, 而这件「满 20 层转真实伤害」的读法**正是飘字变色**(蓝→白), 配 ui 等于把要看的东西关了(第四批栽过同一个坑)。②`dur` 12 → 24 + `aspd` 2.0: 每击叠 2 层, 12 秒攒不到 20 层, **满层转真伤那一下一帧都拍不到**。③敌人 40 万血, 不然它先被打死。
 scripts/gamedata/vfxlab_cases.gd|lit|食物
 scripts/net/backend.gd|lit|玩家阵容
+scripts/net/error_reporter.gd|lit|[Replay] 第 
 scripts/net/error_reporter.gd|lit|\n最近报错: 无
 scripts/net/error_reporter.gd|lit|\n最近报错:\n
 scripts/net/error_reporter.gd|lit|上次启动: 

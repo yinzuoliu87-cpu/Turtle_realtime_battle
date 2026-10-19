@@ -414,10 +414,10 @@
     "baseStats1": "+生命100/130/180·攻5/13/22",
     "shopAvailable": 1,
     "emoji": "⚙️",
-    "effectDesc1": "每 {C:EquipTickSystem.GEAR_IV} 秒获得 1/2/3 枚深海币。",
+    "effectDesc1": "每 {C:EquipTickSystem.GEAR_IV} 秒获得 1 枚深海币，每场至多 {C:EquipTickSystem.GEAR_CAP} 枚。",
     "effectDesc3": "",
     "img": "equip/brass-gear.png",
-    "effectBrief": "每 {C:EquipTickSystem.GEAR_IV} 秒获得 1/2/3 枚深海币。"
+    "effectBrief": "每 {C:EquipTickSystem.GEAR_IV} 秒获得 1 枚深海币，每场至多 {C:EquipTickSystem.GEAR_CAP} 枚。"
   },
   {
     "id": "p2eq_036",

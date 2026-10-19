@@ -50,17 +50,17 @@ func _ready() -> void:
 	_run(s, [arch, mate, _mk("left", BW.slice(3, 6)), _mk("left", BW.slice(6, 9)), t1, t2])
 	arch["crit"] = 0.66                          # 顶档带3件的暴击
 	mate["crit"] = 0.0
-	# 斩杀线: arch = 10% + 6.6% = 16.6% / mate = 10%
+	# 斩杀线(用户 10-19 顶档 6% + 10%×暴击率): arch = 6% + 6.6% = 12.6% / mate = 6%
 	t1["hp"] = t1["maxHp"] * 0.12                # 12% 血: arch 能处决, mate 不能
 	s._bow_syn.on_hit(mate, t1)
-	_ok("② ★不带弓箭的队友也有处决, 但线是基数 10%%(12%% 血 → 杀不掉)",
+	_ok("② ★不带弓箭的队友也有处决, 但线是基数 6%%(12%% 血 → 杀不掉)",
 		t1.get("alive", false), "存活=%s" % str(t1.get("alive", false)))
 	s._bow_syn.on_hit(arch, t1)
-	_ok("② ★★带3件弓箭者线是 16.6%%(12%% 血 → 处决)", not t1.get("alive", true),
+	_ok("② ★★带3件弓箭者线是 12.6%%(12%% 血 → 处决)", not t1.get("alive", true),
 		"存活=%s" % str(t1.get("alive", true)))
-	t2["hp"] = t2["maxHp"] * 0.08                # 8% 血: mate 也能杀
+	t2["hp"] = t2["maxHp"] * 0.05                # 5% 血: mate(线 6%)也能杀
 	s._bow_syn.on_hit(mate, t2)
-	_ok("② ★★8%% 血时【不带弓箭的队友】也能处决 —— 这就是改成全员的意义",
+	_ok("② ★★5%% 血时【不带弓箭的队友】也能处决 —— 这就是改成全员的意义",
 		not t2.get("alive", true), "存活=%s" % str(t2.get("alive", true)))
 	# 对照: 未激活时谁都不处决
 	var lone := _mk("left", BW.slice(0, 2))
