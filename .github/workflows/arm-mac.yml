@@ -11,8 +11,9 @@
 #   · 帧预算: 直接从 run-tests.sh 里截 frames_for() 那一段 eval 进来
 #   · 致命正则: 直接从 run-tests.sh 里取 FATAL= 那一行
 #   · 判 PASS = 退出码 0 且 致命报错 0 条 且 日志里有 ALL PASS(与 run_test 逐字同一判据)
-#   · 每个测试一份 user://: macOS 上 Godot 的 user:// 默认在 ~/Library/Application Support,
-#     但它与 Linux 一样认 XDG_DATA_HOME ⇒ 两个变量都设成 $GATE_APPDATA/<测试名>,
+#   · 每个测试一份 user://: macOS 上 Godot 的 user:// 在 $HOME/Library/Application Support,
+#     ★它【不认】XDG_DATA_HOME(第一次 CI 实测: 设了照样落在 /Users/runner/Library/...)
+#     ⇒ 每个测试把 HOME 也设成 $GATE_APPDATA/<测试名>(XDG/APPDATA 照设, 与 run-tests.sh 一致),
 #     并跑 verify_gate_isolation 量引擎自己报的 OS.get_user_data_dir() 证明真隔离(不靠我猜)。
 #
 # 【ARM 分叉时怎么出逐步 diff】
@@ -105,22 +106,22 @@ jobs:
           P="$RUNNER_TEMP/probe_userdir"
           mkdir -p "$P"
           TURTLE_BACKEND=" " TURTLE_SUPABASE=" " QUIET=1 arch -arm64 "$GODOT" --headless --audio-driver Dummy --path . -s res://_ci_arch_probe.gd > probe.log 2>&1 || true
-          TURTLE_BACKEND=" " TURTLE_SUPABASE=" " QUIET=1 XDG_DATA_HOME="$P" arch -arm64 "$GODOT" --headless --audio-driver Dummy --path . -s res://_ci_arch_probe.gd > probe_xdg.log 2>&1 || true
+          TURTLE_BACKEND=" " TURTLE_SUPABASE=" " QUIET=1 HOME="$P" XDG_DATA_HOME="$P" arch -arm64 "$GODOT" --headless --audio-driver Dummy --path . -s res://_ci_arch_probe.gd > probe_xdg.log 2>&1 || true
           cat probe.log
-          echo "--- 设了 XDG_DATA_HOME=$P 之后:"
+          echo "--- 设了 HOME=XDG_DATA_HOME=$P 之后:"
           cat probe_xdg.log
           A="$(grep -m1 'engine_arch=' probe.log | sed 's/^\[ARCH\] //')"
           U0="$(grep -m1 'user_data_dir=' probe.log | sed 's/^.*user_data_dir=//')"
           U1="$(grep -m1 'user_data_dir=' probe_xdg.log | sed 's/^.*user_data_dir=//')"
           echo "::notice title=engine::$A"
-          echo "::notice title=userdir::默认 user://=$U0 | 设 XDG_DATA_HOME 后 user://=$U1"
+          echo "::notice title=userdir::默认 user://=$U0 | 设 HOME+XDG_DATA_HOME 后 user://=$U1"
           case "$A" in
             *engine_arch=arm64*) ;;
             *) echo "::error title=engine::Godot 不是以 arm64 原生在跑($A)"; exit 1 ;;
           esac
           case "$U1" in
             "$P"*) ;;
-            *) echo "::error title=userdir::XDG_DATA_HOME 在 macOS 上不生效(user://=$U1) —— 隔离要换做法"; exit 1 ;;
+            *) echo "::error title=userdir::设了 HOME 仍没落进隔离目录(user://=$U1)"; exit 1 ;;
           esac
           rm -f _ci_arch_probe.gd _ci_arch_probe.gd.uid
 
