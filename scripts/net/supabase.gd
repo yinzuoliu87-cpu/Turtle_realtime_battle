@@ -1628,7 +1628,7 @@ func _headers(extra: String = "") -> PackedStringArray:
 ##   回到真实时间后照常补发。快照队列另外认 `BLOCKED_CODE`, 不为这次「没发」记退避。
 ## 判定成「读」的 RPC。★白名单而不是黑名单: 新加的 RPC 默认算写(漏登记的代价是假时间里读不到, 不是写进生产)。
 ##   ⚠ `finals_opponent` **不是**读 —— 它往 `finals_scout` 插一行(每人每轮只能问一个种子), 所以不在这里。
-const READ_RPCS := ["finals_view", "finals_replay", "week_leaderboard", "week_leaderboard_page", "finals_week_view"]   # ★10-11: 补 finals_week_view(纯读, 原漏 ⇒ 时间穿越测周日时观赛/杯赛页拿不到数据)
+const READ_RPCS := ["finals_view", "finals_replay", "week_leaderboard", "week_leaderboard_page", "finals_week_view", "referee_flags", "referee_job_status"]   # ★10-11: 补 finals_week_view(纯读, 原漏 ⇒ 时间穿越测周日时观赛/杯赛页拿不到数据)
 ## 快照上传被时间穿越拦下时交给回调的 code(区别于没网的 0)。
 const BLOCKED_CODE := -1
 ## 本进程里被拦下的写请求条数(观测量 / 门禁分母)。

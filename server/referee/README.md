@@ -115,6 +115,9 @@
    （`a_account` 为 null 时只落 `matches`、不记周六账本；冒烟完删掉这一行与对应 matches 行。）
 
 9. 翻开关（客户端那一侧做完、内测服彩排过之后）
+   ★先上 `server/supabase/migrations/20261019b_referee_client_flags.sql`（`referee_flags()`, 只读两个布尔）: 客户端靠它知道开关开没开;
+     没上之前客户端问到 404 = 两个开关都关 ⇒ 开关在库里翻开了客户端也照走老路(周日本机打 / 周六本机记)。
+     客户端: `scripts/net/referee_net.gd` / `scripts/systems/replay/referee_watch.gd` / `referee_run.gd`(门禁 verify_finals_watch_only / verify_gauntlet_via_referee / verify_offline_no_local_result)。
    ```sql
    -- 周日: 先定这周用哪个版本算(= 当周锁定的客户端版本, 且已在 referee_versions)
    update public.referee_config set finals_version = '0.19.5xx', finals_on = true, updated_at = now() where id = 1;

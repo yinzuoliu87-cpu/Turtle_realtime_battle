@@ -98,7 +98,9 @@ const PLAY_READS_NOT_RECORDED := ["test_mode", "tutorial", "current_lane", "egg_
 const BACKUP_SKIP := ["test_mode", "auth_refresh", "account_email", "install_uid", "cloud_rev",
 	"match_history", "finals_report_pending", "replay_pending_id",
 	## S2 上传队列: 播放时不许被覆盖(V5)。E7 快照上传队列同理。
-	"replay_upload_pending", "ghost_upload_pending"]
+	"replay_upload_pending", "ghost_upload_pending",
+	## 服务器裁判: 开关 / 待记账单(周六裁判局在播之前就记完账; 播放期间别的路径真改了它们, 还原成旧值反而写坏)。
+	"referee_flags", "referee_pending"]
 const Uploader := preload("res://scripts/systems/replay/replay_uploader.gd")
 ## 实时观赛(2026-10-07, docs/plans/20261007-实时观赛.md): 打的人边打边传(`live_upload`) / 看的人按观赛方式跟播(`live_spectate`)。
 const LiveUp := preload("res://scripts/systems/replay/live_upload.gd")

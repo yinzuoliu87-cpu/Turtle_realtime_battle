@@ -285,7 +285,8 @@ func _build_center() -> void:
 	bar.add_child(prow)
 	## 回放时: 路名牌左边一枚「回放」小签(2026-10-07 代替回放左上那块与顶栏重复的铭牌);
 	##   右边垫一块同宽的空位 ⇒ 路名牌仍正对 VS。
-	var rp_on: bool = battle._replay != null and battle._replay.is_playing()
+	## ★服务器裁判局(周六看自己那一场, `live_spectate.KIND_REFEREE`)小签是空字 ⇒ 不挂(不写「回放」)。
+	var rp_on: bool = battle._replay != null and battle._replay.is_playing() and battle._replay.mark_text() != ""
 	if rp_on:
 		prow.add_child(_mk_replay_mark())
 	badge_amp = _mk_badge(ICON_AMP, "amp")

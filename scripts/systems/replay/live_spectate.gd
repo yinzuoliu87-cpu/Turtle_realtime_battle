@@ -33,6 +33,10 @@ const Board := preload("res://scripts/systems/replay/gauntlet_board.gd")
 
 const KIND_LIVE := "live"
 const KIND_PREMIERE := "premiere"
+## 服务器裁判局(2026-10-19, 周六闯关交给服务器算): 玩家看自己那一场「正在打」—— 服务器早已算完、账也记了,
+##   这里只是把录像按 1 倍从头放给他看。没有小签(不写「回放」/「直播」)、没有播放控件; 放完走正常结算屏(按服务器的结果)。
+##   见 `scripts/systems/replay/referee_watch.gd`。
+const KIND_REFEREE := "referee"
 ## 屏上的字(短名词 / 短指令; 不拟人、不加语气词)。
 const TAG_LIVE := "直播"
 const TAG_PREMIERE := "开播"
@@ -103,6 +107,8 @@ var _last_adv_ms := 0
 ## 最近一次**服务端回了这一场的行**(不管涨没涨)的时刻 —— 「对方真的停了」只认它作证。
 var _last_ok_ms := 0
 var _inflight := false
+## 裁判局: 服务器给的结果(`RefereeWatch.settled_view`: won / reward / gw / gl), 结算屏按它画。
+var result: Dictionary = {}
 
 
 func _init(r, p: Dictionary) -> void:
@@ -116,6 +122,7 @@ func _init(r, p: Dictionary) -> void:
 	srv_ref = int(p.get("srv_now", 0))
 	ref_ms = int(p.get("t_ms", Time.get_ticks_msec()))
 	key = str(p.get("key", ""))
+	result = (p.get("result", {}) as Dictionary).duplicate(true) if p.get("result", null) is Dictionary else {}
 	_last_adv_ms = Time.get_ticks_msec()
 	_last_ok_ms = _last_adv_ms
 
@@ -143,6 +150,8 @@ static func take(r) -> RefCounted:
 
 
 func tag() -> String:
+	if kind == KIND_REFEREE:
+		return ""                      # 自己那一场「正在打」: 不挂小签
 	return TAG_PREMIERE if kind == KIND_PREMIERE else TAG_LIVE
 
 
@@ -171,6 +180,8 @@ func feed(rd: float) -> float:
 	if broken or rp.finished or rp.diverged_at >= 0:
 		battle._sim_accum = 0.0
 		return 0.0
+	if kind == KIND_REFEREE:
+		return rd                      # 裁判局: 录像是全的, 1 倍照真实帧时长放(不追帧、不等数据)
 	var n: int = int(battle._sim_step_n)
 	var tgt := target_step()
 	var cap := cap_step()
@@ -212,7 +223,7 @@ func _note_ahead(n_after: int, cap: int) -> void:
 func _tick() -> void:
 	if broken:
 		return
-	if rp.finished:
+	if rp.finished or kind == KIND_REFEREE:
 		status = ""
 		return
 	if kind == KIND_LIVE and not ended:

@@ -66,6 +66,10 @@ const _LS := preload("res://scripts/systems/replay/live_spectate.gd")
 ## 头像 / 提示框 / 像素按钮 —— 与战绩页、周六赛况板同一套共享件(2026-10-07 周末观战第三轮)。
 const MatchCard := preload("res://scripts/scenes/record/match_card.gd")
 const _Board := preload("res://scripts/systems/replay/gauntlet_board.gd")
+## 服务器裁判(2026-10-19, 方案书 docs/plans/20261019-服务器裁判.md §3 ① / 20261018-周日只看不打.md):
+##   开关 `finals_on` 开着时, 点开自己那一场 = 看服务器算的那一局(不在本机打、不报结果)。
+const _RW := preload("res://scripts/systems/replay/referee_watch.gd")
+const _RN := preload("res://scripts/net/referee_net.gd")
 ## 看完回放回到对阵图。
 const SELF_SCENE := "res://scenes/BracketMap.tscn"
 
@@ -330,6 +334,7 @@ func set_data(bucket: Dictionary, finals: Dictionary, now: int = 0) -> void:
 	_record_progress()
 	if is_inside_tree():
 		_rebuild()
+		_check_referee_watch()
 
 
 ## ★★★把「我在决赛日走到第几轮 / 有没有夺冠」记进存档, 并对一次头衔账。
@@ -639,7 +644,17 @@ const REPLAY_LIVE := true
 func can_open(r: int, m: int) -> bool:
 	if REPLAY_LIVE and (match_state(r, m) == ST_DONE or match_state(r, m) == ST_PREMIERE):
 		return true
-	return should_fetch_opponent(r, m)
+	return should_fetch_opponent(r, m) or referee_watch_open(r, m)
+
+
+## 服务器裁判(开关开): 点开自己这一场 = 看服务器算的那一局(还没揭晓 ⇒「正在结算」, 揭晓即播)。
+##   条件与「开打」那条同一组(当前轮 / 我的场 / 对手已定 / 不是上周), 只是不在本机打。
+func referee_watch_open(r: int, m: int) -> bool:
+	if not _RN.finals_on() or _viewing_past():
+		return false
+	if match_state(r, m) != ST_LIVE or r != int(cur().get("round", 1)):
+		return false
+	return my_opponent_seed(r, m) >= 0
 
 
 ## 这一场是不是**我的** —— 判据是「我是这一场的某一侧」。
@@ -1441,6 +1456,8 @@ func my_opponent_seed(r: int, m: int) -> int:
 func should_fetch_opponent(r: int, m: int) -> bool:
 	if _viewing_past():
 		return false                  # 周一看的是上周: 一场都不开打
+	if _RN.finals_on():
+		return false                  # ★服务器裁判: 结果由服务器算, 本机不打、不报(点开 = 看, 见 referee_watch_open)
 	if match_state(r, m) != ST_LIVE:
 		return false                  # 已翻面的场次不用问，轮空/未开打也问不出东西
 	if r != int(cur().get("round", 1)):
@@ -1725,6 +1742,7 @@ func _open_popup(r: int, m: int) -> void:
 		return
 	_close_popup()
 	var play: bool = should_fetch_opponent(r, m)
+	var rwatch: bool = referee_watch_open(r, m)
 	var prem: bool = match_state(r, m) == ST_PREMIERE
 	var ws := winner_side(r, m)
 	var vp := get_viewport().get_visible_rect().size
@@ -1749,7 +1767,7 @@ func _open_popup(r: int, m: int) -> void:
 	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(vb)
 	var info := "%s · %s" % [_L.round_label(int(cur().get("size", 0)), r), sheet_name(cur())]
-	if play:
+	if play or rwatch:
 		vb.add_child(MatchCard.banner("本轮对战", info, Color("#5a4a1c"), Color("#2a2008"), MINE, Color("#e8d9b0")))
 	elif prem:
 		## 开播窗口: 横幅只写「开播」, 不写谁赢(文件头 ★⑤)。
@@ -2077,6 +2095,7 @@ func _fetch_portraits() -> void:
 
 func _pull() -> void:
 	_fetch_left = REFRESH_SEC
+	_RN.refresh_flags_async()          # 服务器裁判开关(开着 ⇒ 点开自己那一场只看不打)
 	_SB.fetch_finals_async(feed_week(), -1)
 	## ★观赛 / 冠军页: 本周所有组。服务端没部署时回 404 ⇒ 缓存里没有 buckets ⇒ 屏幕照旧, 不报错。
 	_SB.fetch_finals_week_async(feed_week())
@@ -2100,6 +2119,9 @@ var _await_view := ""
 
 
 func _on_match_opened(r: int, m: int) -> void:
+	if referee_watch_open(r, m):
+		start_referee_watch(r, m)
+		return
 	if not should_fetch_opponent(r, m):
 		if REPLAY_LIVE and (match_state(r, m) == ST_DONE or match_state(r, m) == ST_PREMIERE):
 			open_replay(r, m)
@@ -2111,6 +2133,46 @@ func _on_match_opened(r: int, m: int) -> void:
 	_await_match = Vector2i(r, m)
 	_await_view = _view
 	_SB.fetch_opponent_async(feed_week(), bk, r, my_opponent_seed(r, m), m)
+
+
+## ─────────────────────────────────────────────────────────────
+## 服务器裁判(2026-10-19): 点开自己这一场 ⇒ 等服务器的结果揭晓 ⇒ 播那一份
+## ─────────────────────────────────────────────────────────────
+## 正在等哪一场揭晓(`Vector2i(-1, -1)` = 没在等)与在哪一页点的(换页签就作废)。
+var await_watch := Vector2i(-1, -1)
+var _await_watch_view := ""
+
+
+## 购物窗还开着 ⇒ 说一句(阵容还在变, 服务器还没开算); 关了 ⇒ 给封存那部分(轮次币等, 同一场只给一次),
+##   挂上等待, 对阵图每 FINALS_POLL_SEC 秒拉一次, 揭晓那一刻自动播(`_check_referee_watch`)。
+##   ★服务端 `finals_view` 只下发已翻面的轮次 ⇒ 本轮的结果要等开播时刻才拿得到, 与所有人同一刻看。
+func start_referee_watch(r: int, m: int) -> void:
+	var lv := cur()
+	if _P2C.finals_shop_open(int(lv.get("round_at", 0)), srv_now()):
+		_show_replay_msg(_RW.TXT_SHOP, ACCENT)
+		return
+	_RW.finals_seal(GameState, int(lv.get("bucket", -1)), r, m)
+	await_watch = Vector2i(r, m)
+	_await_watch_view = _view
+	_show_replay_msg(_RW.TXT_SETTLING, ACCENT)
+	_fetch_left = minf(_fetch_left, _RW.FINALS_POLL_SEC)
+	_check_referee_watch()
+
+
+## 轮询 / 喂数据之后调: 在等的那一场揭晓了 ⇒ 播(开播窗口里 = 开播跟播, 过了 = 回放)。
+func _check_referee_watch() -> void:
+	if await_watch.x < 0:
+		return
+	if _await_watch_view != _view:
+		await_watch = Vector2i(-1, -1)
+		return
+	var st := match_state(await_watch.x, await_watch.y)
+	if st == ST_DONE or st == ST_PREMIERE:
+		var rm := await_watch
+		await_watch = Vector2i(-1, -1)
+		open_replay(rm.x, rm.y)
+		return
+	_fetch_left = minf(_fetch_left, _RW.FINALS_POLL_SEC)
 
 
 ## ─────────────────────────────────────────────────────────────
@@ -2249,6 +2311,8 @@ func settle_wait_tip(lv: Dictionary) -> String:
 	var f := my_focus()
 	if f.x != int(lv.get("round", 1)) or not is_my_match(f.x, f.y) or winner_side(f.x, f.y) >= 0:
 		return ""
+	if _RN.finals_on():
+		return "本场结算中 · 结果于开播时公布"   # 服务器裁判: 两侧都等服务器
 	var side := my_side(f.x, f.y)
 	if side != 1 or _P2C.finals_fight_open(ra, srv, side) or played_awaiting_reveal(f.x, f.y):
 		return ""
@@ -2308,6 +2372,7 @@ static func opponent_tip(res: Dictionary, tried: bool) -> String:
 ## ★轮询缓存而不是接回调: 回调在网络那一侧, 接过来就得处理"场景已经被切掉了"的情况。
 ##   轮询这边只读一个静态字典, 场景没了定时器也就没了。
 func _on_poll() -> void:
+	_check_referee_watch()
 	## ★★E-B6: 对手快照回来了就开打。放在轮询里而不是接回调 —— 理由同下面那段:
 	##   回调在网络那一侧, 接过来就得自己处理"场景已经被切掉了"。
 	##   `_try_start_match()` 自己会判"到底能不能开"; 开了就换场景, 这一拍不用再往下走。

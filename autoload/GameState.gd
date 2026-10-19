@@ -1485,7 +1485,7 @@ func _ready() -> void:
 ##   · ghost_upload_pending —— 快照上传队列(E7): 两台设备各补一遍同一行是白发; 单子跟着打出它的那台设备走
 const DEVICE_LOCAL_KEYS := ["bgm_volume", "sfx_volume", "fullscreen",
 	"install_uid", "account_id", "account_email", "auth_refresh", "cloud_rev",
-	"replay_upload_pending", "ghost_upload_pending"]
+	"replay_upload_pending", "ghost_upload_pending", "referee_flags", "referee_pending"]
 
 
 ## 要上云的那一份: 全部字段减去设备本地键。
@@ -1609,6 +1609,13 @@ var replay_upload_pending: Array = []
 ## E7: 还没**回读确认**传上服务端的对手快照单子(积分赛 ghosts / 周六 gauntlet_ghosts)。
 ## ★进存档、设备本地(见 DEVICE_LOCAL_KEYS)。写入/销单都在 `scripts/net/ghost_uploader.gd`, 形状说明也在那里。
 var ghost_upload_pending: Array = []
+## 服务器裁判(2026-10-19 · scripts/net/referee_net.gd / scripts/systems/replay/referee_watch.gd):
+##   referee_flags   —— 最后一次问到的服务端开关 {finals_on, gauntlet_on}。断网冷启动时据它判「这一场要不要交给服务器」。
+##   referee_pending —— 周六交给服务器、还没记账的那一场 {job_id, match_id, week, foe, foe_name}。
+##                      杀进程 / 断网后下次开主菜单查任务状态补记(`RefereeWatch.resume_if_any`)。
+## ★两者都进存档、设备本地(见 DEVICE_LOCAL_KEYS): 开关跟着这台设备问到的走; 待记账单跟着交出它的那台设备走(两台各记一遍 = 记两次)。
+var referee_flags: Dictionary = {}
+var referee_pending: Dictionary = {}
 
 func record_match(result: String, lineup: Array, mode_str: String, turn_num: int) -> void:
 	match_history.insert(0, {"result": result, "lineup": lineup, "mode": mode_str, "turn": turn_num})
@@ -1770,6 +1777,8 @@ func _save_dict() -> Dictionary:
 		"finals_report_pending": finals_report_pending,
 		"replay_upload_pending": replay_upload_pending,   # 回放 S2 上传队列(设备本地, 不上云)
 		"ghost_upload_pending": ghost_upload_pending,     # E7 快照上传队列(设备本地, 不上云)
+		"referee_flags": referee_flags,                   # 服务器裁判开关(设备本地)
+		"referee_pending": referee_pending,               # 周六待记账的裁判局(设备本地)
 		"finals_deepest_round": finals_deepest_round,
 		"finals_rounds_total": finals_rounds_total,
 		"finals_champion": finals_champion,
@@ -1948,6 +1957,10 @@ func _apply_save_dict(data: Dictionary) -> void:
 	replay_upload_pending = (_rup as Array).duplicate(true) if _rup is Array else []
 	var _gup = data.get("ghost_upload_pending", [])
 	ghost_upload_pending = (_gup as Array).duplicate(true) if _gup is Array else []
+	var _rfl = data.get("referee_flags", {})
+	referee_flags = (_rfl as Dictionary).duplicate(true) if _rfl is Dictionary else {}
+	var _rpd = data.get("referee_pending", {})
+	referee_pending = (_rpd as Dictionary).duplicate(true) if _rpd is Dictionary else {}
 	finals_deepest_round = int(data.get("finals_deepest_round", 0))
 	finals_rounds_total = int(data.get("finals_rounds_total", 0))
 	finals_champion = bool(data.get("finals_champion", false))
@@ -2134,6 +2147,7 @@ func reset_save() -> void:
 	##   (头衔本身 `titles` **不清**, 那是永久荣誉; 清的只是"本周走到第几轮"。)
 	finals_pending_reveal = {}
 	finals_report_pending = {}
+	referee_pending = {}                  # 服务器裁判: 上周交的那一场不记进本周
 	finals_deepest_round = 0
 	finals_rounds_total = 0
 	finals_champion = false
@@ -2683,6 +2697,7 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	##   (头衔本身 `titles` **不清**, 那是永久荣誉; 清的只是"本周走到第几轮"。)
 	finals_pending_reveal = {}
 	finals_report_pending = {}
+	referee_pending = {}                  # 服务器裁判: 上周交的那一场不记进本周
 	finals_deepest_round = 0
 	finals_rounds_total = 0
 	finals_champion = false

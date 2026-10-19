@@ -27,6 +27,8 @@ const SHOP_SCENE := "res://scenes/Shop.tscn"
 const SHOP_BTN_TEXT := "前往商店"
 ## 战后结算屏(三页)的本体 —— 2026-10-04 从本文件拆出去(本文件离 3000 行上限只差几行)
 const SettleScreenS := preload("res://scripts/scenes/battle/settle_screen.gd")
+## 服务器裁判(2026-10-19): 周六看自己那一场 = 放完走正常结算屏(服务器的结果)。
+const _RW := preload("res://scripts/systems/replay/referee_watch.gd")
 ## 顶部栏的头像/名字/路点/计时牌/加时/团灭/蛋碎那一层(2026-10-07 拆出去: 本文件只留血条本体)
 const TopbarStatusS := preload("res://scripts/scenes/battle/topbar_status.gd")
 
@@ -1129,9 +1131,14 @@ func _show_banner(won: bool, _sealed_hint: bool = false) -> void:
 	if battle._settled:
 		return
 	if battle._replay.is_playing():   # 回放: 不出结算卡(它的按钮会去商店/主菜单/下一场), 只出回放自己的收尾
-		battle._settled = true
-		show_replay_end(won)
-		return
+		## ★服务器裁判局(周六看自己那一场): 账在播之前已按服务器结果记完 ⇒ 放完走正常结算屏, 胜负以服务器为准。
+		if not _RW.dress_settle(battle):
+			battle._settled = true
+			show_replay_end(won)
+			return
+		won = _RW.server_won(battle)
+		if _replay_ui != null and _replay_ui.root != null and is_instance_valid(_replay_ui.root):
+			_replay_ui.root.visible = false   # 「退出」与状态牌收起(结算屏有自己的按钮)
 	battle._settled = true
 	# ★仍然解除 get_tree().paused —— 暂停按钮虽已移除(用户2026-07-30), 但树可能被别处暂停,
 	#   结算屏必须能动。这里不假设"没人会暂停"。
@@ -2324,6 +2331,11 @@ func build_replay_bar() -> void:
 
 ## Q7(用户授权按推荐): 校验点对不上 ⇒ **停下提示**, 不许默默播一场和实战不同的比赛。
 func show_replay_mismatch() -> void:
+	## 服务器裁判局: 录像在本机对不上 ⇒ 结算屏照样按服务器结果出, 加一行「录像无法在本设备播放」(战绩已按服务器记)。
+	if _RW.is_watch(battle):
+		_show_banner(_RW.server_won(battle))
+		_RW.note_unplayable(_settle)
+		return
 	if _replay_ui != null:
 		_replay_ui.show_mismatch()
 

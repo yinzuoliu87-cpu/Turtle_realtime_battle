@@ -46,6 +46,10 @@ const FAKE_NAMES := [
 	"佛系养龟", "头号玩家", "水深危险", "乌龟跑得快", "退役龟皇", "龟龟不下班", "南极来的", "稳健型选手",
 ]
 const Backend := preload("res://scripts/net/backend.gd")
+## 服务器裁判(2026-10-19, 方案书 docs/plans/20261019-服务器裁判.md §3 ②): 周六开关开着时这一场交给服务器算。
+const _RW := preload("res://scripts/systems/replay/referee_watch.gd")
+const _RN := preload("res://scripts/net/referee_net.gd")
+const _RUN := preload("res://scripts/systems/replay/referee_run.gd")
 
 ## 撮合结束去哪 —— **单一出处**。下面那条缝把它当入参交给回调, 回调只读不改。
 const BATTLE_SCENE := "res://scenes/RealtimeBattle3D.tscn"
@@ -82,6 +86,11 @@ var _dots_lbl: Label = null
 var _dots_tween: Tween = null
 var _cancelled := false
 var _cancel_btn: Button = null   # 跟着设计框走(见 _center)
+## 这一场是周六闯关赛(与选对手同一个分流判据, 在 `_ready` 里定一次)。
+var _gauntlet_now := false
+## 服务器裁判: 进行中的那一场(`referee_run.gd`)与屏上那一行。
+var _ref_run = null
+var _ref_lb: Label = null
 var _searching := false   # 雷达环循环的闸: _build_vs 里置 false 立即断. 原先靠 is_instance_valid(_dots_lbl) 判断,
                           #   但 queue_free 是延迟的 → 换幕后还会多播一圈残留弧.
 
@@ -120,8 +129,10 @@ func _ready() -> void:
 	## ★2026-10-04 改走全局时间缝 `now_utc()`(原来就地读系统钟): 开发包时间穿越到周六时,
 	##   主菜单说「闯关赛」而这里照旧按真实星期几分流 ⇒ 匹配走错了那条。两个开关都关着时逐字节等价。
 	var _now_mm: int = int(_P2C_MM.now_utc())
-	if _P2C_MM.phase_at_utc(_now_mm) == _P2C_MM.PHASE_GAUNTLET \
-			and _P2C_MM.phase_mode_live(_P2C_MM.PHASE_GAUNTLET):
+	_gauntlet_now = _P2C_MM.phase_at_utc(_now_mm) == _P2C_MM.PHASE_GAUNTLET \
+			and _P2C_MM.phase_mode_live(_P2C_MM.PHASE_GAUNTLET)
+	if _gauntlet_now:
+		_RN.refresh_flags_async()   # 服务器裁判开关: 匹配动画这几秒里问一次(下面交阵容前读它)
 		GameState.dual_ghost = Backend.find_gauntlet_opponent(
 			int(GameState.gauntlet_wins), int(GameState.gauntlet_losses), exclude, _rng)
 	else:
@@ -147,6 +158,11 @@ func _ready() -> void:
 	await get_tree().create_timer(2.6).timeout
 	if _cancelled or not is_inside_tree():
 		return
+	## ★服务器裁判(周六 + 开关开): 不在本机打 —— 交阵容给服务器, 等结果, 播服务器那一份录像。
+	##   排在下面那条门禁缝之前: 那条缝只管「什么时候去战斗场」, 而这条路根本不去(本机不打)。
+	if _gauntlet_now and _RW.gauntlet_on():
+		_start_referee()
+		return
 	## 【门禁注入点】见文件顶部 `_may_leave_for_test` 的长注释。
 	## 默认是无效 Callable ⇒ 这两行对玩家路径等于不存在。
 	if _may_leave_for_test.is_valid() and not bool(_may_leave_for_test.call(BATTLE_SCENE)):
@@ -155,6 +171,35 @@ func _ready() -> void:
 	if _cancelled or not is_inside_tree():
 		return
 	get_tree().change_scene_to_file(BATTLE_SCENE)
+
+
+## 服务器裁判: VS 卡下面一行字说进度(提交 / 结算 / 原因); 断网等停下时就停在这一屏, 左上「←」回主菜单。
+func _start_referee() -> void:
+	_ref_lb = _font(24, Color("#ffd93d"))
+	_ref_lb.name = "RefereeStatus"
+	_ref_lb.size = Vector2(W, 34)
+	_ref_lb.position = Vector2(0, CARD_Y + CARD_H + 26.0)
+	_ref_lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	content_root.add_child(_ref_lb)
+	_ref_run = _RUN.new()
+	_ref_run.name = "RefereeRun"
+	add_child(_ref_run)
+	_ref_run.changed.connect(_on_referee_changed)
+	_ref_run.start(GameState.dual_ghost if GameState.dual_ghost is Dictionary else {})
+
+
+func _on_referee_changed() -> void:
+	if _ref_run == null or _cancelled or not is_inside_tree():
+		return
+	if str(_ref_run.state) == _RW.ST_LOCAL:
+		## 服务端说开关已关 ⇒ 老路: 本机打(与开关关着时一字不差)。
+		await _fade_to_black(0.4)
+		if _cancelled or not is_inside_tree():
+			return
+		get_tree().change_scene_to_file(BATTLE_SCENE)
+		return
+	if _ref_lb != null and is_instance_valid(_ref_lb):
+		_ref_lb.text = str(_ref_run.msg)
 
 
 # ---------------------------------------------------------------------------

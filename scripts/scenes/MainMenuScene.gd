@@ -221,6 +221,10 @@ func _ready() -> void:
 	_BE.retry_finals_report()
 	## 回放 S2: 没回读确认传上去的周六录像补传一次(同上一句同一个理由; 判据全在 ReplayUploader 里)。
 	_RU.retry()
+	## 服务器裁判(2026-10-19): 问一次开关(落进存档, 断网冷启动也知道该不该本机打);
+	##   周六交给服务器、还没记账的那一场(杀进程 / 断网)在这里查任务状态补记。判据全在 referee_watch.gd。
+	load("res://scripts/net/referee_net.gd").refresh_flags_async()
+	load("res://scripts/systems/replay/referee_watch.gd").resume_if_any(_on_referee_resumed)
 	load("res://scripts/net/ghost_uploader.gd").retry()   # E7: 没回读确认的对手快照补传(判据全在 ghost_uploader 里)
 	## ★★中途退出的那一局(杀进程 / 闪退 / 断电)在这里打完并结算(2026-10-10 用户「学习他们的做法」,
 	##   docs/plans/20261010-中途退出自动结算.md)。必须在登录墙之前、在任何能开新局的入口之前 —— 理由同上面那几句。
@@ -2589,6 +2593,12 @@ func _now_ts() -> int:
 ## ★恰好 1 而不是“≤N”: 数到 0 说明这一屏根本没建起来(空检查),
 ##   数到 ≥2 说明又有人自己去问钟了。
 var _clock_reads: int = 0
+
+
+## 上一场周六裁判局补记完了: 说一句结果(不另开弹窗)。
+func _on_referee_resumed(view: Dictionary) -> void:
+	if is_inside_tree():
+		_toast(load("res://scripts/systems/replay/referee_watch.gd").resume_text(view))
 
 
 func _start_battle_flow() -> void:

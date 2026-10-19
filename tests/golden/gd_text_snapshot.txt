@@ -1880,6 +1880,23 @@ scripts/systems/replay/live_spectate.gd|lit|版本不同，无法观赛
 scripts/systems/replay/live_spectate.gd|lit|直播
 scripts/systems/replay/live_spectate.gd|lit|直播中断
 scripts/systems/replay/live_spectate.gd|lit|观赛
+scripts/systems/replay/referee_watch.gd|lit|上一场闯关：失败
+scripts/systems/replay/referee_watch.gd|lit|上一场闯关：胜利
+scripts/systems/replay/referee_watch.gd|lit|备战阶段 · 结束后开赛
+scripts/systems/replay/referee_watch.gd|lit|失败
+scripts/systems/replay/referee_watch.gd|lit|实时
+scripts/systems/replay/referee_watch.gd|lit|录像无法在本设备播放
+scripts/systems/replay/referee_watch.gd|lit|本周闯关已结束
+scripts/systems/replay/referee_watch.gd|lit|正在提交阵容
+scripts/systems/replay/referee_watch.gd|lit|正在结算
+scripts/systems/replay/referee_watch.gd|lit|版本过旧，请更新
+scripts/systems/replay/referee_watch.gd|lit|结算失败，请重新开战
+scripts/systems/replay/referee_watch.gd|lit|结算未完成，下次打开时补记
+scripts/systems/replay/referee_watch.gd|lit|胜利
+scripts/systems/replay/referee_watch.gd|lit|连接服务器后才能比赛
+scripts/systems/replay/referee_watch.gd|lit|闯关 %s · %s
+scripts/systems/replay/referee_watch.gd|lit|闯关赛仅限周六
+scripts/systems/replay/referee_watch.gd|lit|阵容无效，请检查背包
 scripts/systems/replay/replay_fetcher.gd|lit|分组已失效
 scripts/systems/replay/replay_fetcher.gd|lit|回放不存在（每周二清理上周回放）
 scripts/systems/replay/replay_fetcher.gd|lit|回放数据损坏
