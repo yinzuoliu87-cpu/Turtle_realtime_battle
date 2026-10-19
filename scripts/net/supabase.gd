@@ -1664,7 +1664,7 @@ func _headers(extra: String = "") -> PackedStringArray:
 ##   回到真实时间后照常补发。快照队列另外认 `BLOCKED_CODE`, 不为这次「没发」记退避。
 ## 判定成「读」的 RPC。★白名单而不是黑名单: 新加的 RPC 默认算写(漏登记的代价是假时间里读不到, 不是写进生产)。
 ##   ⚠ `finals_opponent` **不是**读 —— 它往 `finals_scout` 插一行(每人每轮只能问一个种子), 所以不在这里。
-const READ_RPCS := ["finals_view", "finals_replay", "week_leaderboard", "finals_week_view"]   # ★10-11: 补 finals_week_view(纯读, 原漏 ⇒ 时间穿越测周日时观赛/杯赛页拿不到数据)
+const READ_RPCS := ["finals_view", "finals_replay", "week_leaderboard", "week_leaderboard_page", "finals_week_view"]   # ★10-11: 补 finals_week_view(纯读, 原漏 ⇒ 时间穿越测周日时观赛/杯赛页拿不到数据)
 ## 快照上传被时间穿越拦下时交给回调的 code(区别于没网的 0)。
 const BLOCKED_CODE := -1
 ## 本进程里被拦下的写请求条数(观测量 / 门禁分母)。
@@ -2845,6 +2845,46 @@ static func fetch_week_leaderboard_async(week: int, limit: int, done: Callable) 
 			var acc := str(g2.account_id) if g2 != null else ""
 			return parse_week_leaderboard(bool(res.get("ok", false)), int(res.get("code", 0)),
 				str(res.get("body", "")), acc))
+	return true
+
+
+# ─────────────────────────────────────────────────────────────
+# 周榜按名次区间取 —— 2026-10-19 · 用户「排行榜你学一下其他游戏的，开放所有排名」
+#
+# ★为什么: `week_leaderboard` 只回前 N 名(服务端夹在 100 以内), 榜上第 N+1 名起翻不到。
+#   ⇒ 新 RPC `week_leaderboard_page(p_week, p_offset, p_limit)`(SQL 见 schema.sql 同名段 /
+#   migrations/20261019_leaderboard_all_ranks.sql): 口径与 v3 逐字相同, 只按名次区间切。
+# ★回包形状 = 旧函数 + `offset` ⇒ 解析直接复用 `parse_week_leaderboard`(行形状、`me`、错误码同一套)。
+# ★没部署(404 → err "unavailable")⇒ 排行榜屏退回旧函数(前 WEEK_LB_LEGACY_LIMIT 名 + 我)。
+# ─────────────────────────────────────────────────────────────
+## 一页多少名。服务端每页上限 100, 这里取 50: 一屏 10 行, 翻五屏才要下一页。
+const WEEK_LB_PAGE := 50
+## 新函数没部署时退回旧函数, 一次拿满旧函数的上限(100)。
+const WEEK_LB_LEGACY_LIMIT := 100
+
+
+## 纯函数: 请求体。键名与服务端参数逐个对上(门禁直接验它)。
+static func week_leaderboard_page_body(week: int, offset: int, limit: int) -> Dictionary:
+	return {"p_week": week, "p_offset": maxi(offset, 0), "p_limit": limit}
+
+
+## 取第 offset+1 .. offset+limit 名。返回 false = 没配后端 / 周号不对, 一个请求都不发。
+## `done.call(res)` 恰好一次; 形状同 `parse_week_leaderboard`, 另带 "offset"(请求时的 offset)。
+static func fetch_week_leaderboard_page_async(week: int, offset: int, limit: int, done: Callable) -> bool:
+	if not enabled() or week <= 0:
+		return false
+	var n = _spawn()
+	if n == null:
+		return false
+	n._get_once("/rest/v1/rpc/week_leaderboard_page", "POST",
+		JSON.stringify(week_leaderboard_page_body(week, offset, limit)), done,
+		func(res: Dictionary) -> Dictionary:
+			var g2 = _gs()
+			var acc := str(g2.account_id) if g2 != null else ""
+			var out := parse_week_leaderboard(bool(res.get("ok", false)), int(res.get("code", 0)),
+				str(res.get("body", "")), acc)
+			out["offset"] = maxi(offset, 0)
+			return out)
 	return true
 
 

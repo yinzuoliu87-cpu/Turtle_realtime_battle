@@ -50,6 +50,11 @@ const STALE_TERMS := ["蛋数", "击杀蛋"]
 ## ★分母下限: 灌了 14 条真人行 + 自己, 面板画得下 11 行。少于这个数 = 量到了占位屏。
 const MIN_DATA_ROWS := 8
 
+## ★2026-10-19 全部名次: 自己那一行另外**钉在列表下沿**(`LbPin`, 照荒野乱斗/使命召唤手游)。
+##   它是「我」的复写, 不是榜上的第 N+1 行 ⇒ 量「整块榜的先后/名次递增」时不算它
+##   (不排掉的话「第 7 名」会在第 10 名后面再出现一次)。钉住那一行本身由 verify_leaderboard_all_ranks 量。
+const PIN_NODE := "LbPin"
+
 var _pass := 0
 var _fail := 0
 var _seed = null
@@ -98,6 +103,8 @@ func _bands(board: Control) -> Array:
 					and rc.size.x <= 24.0 and rc.size.y <= 24.0 and rc.size.x >= 8.0:
 				items.append({"k": "T", "n": c, "y": rc.get_center().y, "x": rc.position.x})
 		for ch in n.get_children():
+			if str(ch.name) == PIN_NODE:
+				continue
 			st.append(ch)
 	items.sort_custom(func(a, b): return float(a["y"]) < float(b["y"]))
 	var out: Array = []
@@ -138,6 +145,8 @@ func _wide_bands(board: Control) -> Array:
 				if sb is StyleBoxTexture:
 					out.append({"y": r.get_center().y, "c": (sb as StyleBoxTexture).modulate_color})
 		for ch in n.get_children():
+			if str(ch.name) == PIN_NODE:
+				continue
 			st.append(ch)
 	return out
 

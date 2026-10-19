@@ -28,6 +28,10 @@ var _top_bar = null
 ## ④ 成绩从拼接串「0胜 · ♥8 · 0横扫」改成**三格「图标 + 数字」**, 该量是 0 就把图标压暗。
 ## ⑤ **空席**: 全新档的榜本来就只有自己一行(产品行为, 不是 bug), 而只画一行看着像坏掉的界面
 ##    ⇒ 剩下的名次照画, 名次/牌位在、名字与成绩位是破折号。**不补零**(补零 = 造假对手)。
+## ═══ 2026-10-19 全部名次(用户「开放所有排名」, 方案书 docs/plans/20261019-排行榜开放全部名次.md) ═══
+## 原来只画 11 行(前 9 名 + ⋯ + 我)、服务端只回前 30 名。现在: 滚动列表一路翻到最后一名(按页取, 只建露出来的行),
+## 「我」钉在列表下沿, 顶栏「我的位置」把列表滚到我那一段。门禁 tests/verify_leaderboard_all_ranks.gd。
+##
 ## 判据同一轮搬家: `tests/verify_leaderboard_header.gd` 原来量表头, 表头没了之后那两条
 ## 分母当场红 —— 产品对了判据还在量旧样子。已改成**在数据行上**量同一件事。
 
@@ -40,10 +44,28 @@ const ROW_H := 40.0
 const ROW_TOP := 68.0
 ## 底部给"提示行"留一行的位置 —— 空数据态/自己 0 蛋时要说人话, 不能只剩一屏 0。
 const FOOT_H := 30.0
-const ROWS := 11
-## ★面板高度是【按内容反算】的, 不是拍脑袋: 表头到首行 68 + 11 行×40 + 提示行 30 + 下内边距。
-##   第一版随手写 584, 于是 floor(可用高/行高) 之后余下一条 24px 的空带子夹在末行和提示行之间。
-const PANEL_H := ROW_TOP + float(ROWS) * ROW_H + FOOT_H + PAD
+
+## ═══ 全部名次 (2026-10-19 · 用户「排行榜你学一下其他游戏的，开放所有排名」) ═══
+## 参考(docs/plans/ref/20261019-排行榜参考/, 逐张看过): 荒野乱斗 / 使命召唤手游 / Flash Party 三款同一个结构 ——
+##   ① 名次列表**整条可滚动**, 一屏只露一段, 往下拖能一直拖到最后一名;
+##   ② **自己那一行钉在列表下沿**, 与列表隔开、整行高亮, 滚到哪儿它都在; 没上榜时名次位写「—」(CoD「NOT ON LEADERBOARD」);
+##   ③ Golf Clash: 列表直接滚到自己所在那一段, 自己那行在列表里同样高亮。
+## ⇒ 列表 = ScrollContainer, 一屏 VIS_ROWS 行; 下沿钉一行「我」; 顶栏一枚「我的位置」把列表滚到我附近。
+## ★只建**看得见的那几行**(按滚动位置现建现拆): 全部名次可能上千行, 一次全建出来是上千个节点。
+## ★服务端那一路按页取(`SupabaseNet.fetch_week_leaderboard_page_async`, 一页 WEEK_LB_PAGE 名), 滚到哪页取哪页。
+const VIS_ROWS := 10
+## 列表与钉住那一行之间的空隙(中间一条分隔线)。
+const PIN_GAP := 12.0
+## 列表(滚动区)的上沿与高度。行内元素都按「行顶 + ROW_Y」摆, 与原来 `ROW_TOP` 那套坐标逐像素相同。
+const ROW_Y := 5.0
+const LIST_Y := ROW_TOP - ROW_Y
+const LIST_H := float(VIS_ROWS) * ROW_H
+## 钉住那一行的文字基线(与列表里的行同一套 y 约定: 底签牌画在 y-5)。
+const PIN_Y := ROW_TOP + LIST_H + PIN_GAP
+## ★面板高度是【按内容反算】的: 表头到首行 68 + 10 行×40 + 空隙 12 + 钉住一行 36 + 提示行 30 + 下内边距。
+const PANEL_H := PIN_Y + ROW_H - 4.0 + FOOT_H + PAD
+## 顶栏那枚「我的位置」(名词, 不口语化)。
+const JUMP_TEXT := "我的位置"
 const PANEL_X := (W - PANEL_W) / 2.0
 const PANEL_Y := 86.0
 const Backend = preload("res://scripts/net/backend.gd")
@@ -191,12 +213,36 @@ var day_phase: String = ""
 var board_week_ts: int = 0
 ## 顶栏右侧那个入口(周六/周日才有), 门禁读它。
 var entry_btn: Button = null
+## 顶栏全部入口(周一两枚: 周六赛况 / 周日对阵图), 门禁读它。
+var entry_btns: Array = []
 ## account_id → {"id": 头衔 id, "closed": 那一组打完没有}(决赛日那一周的 finals_week_view 现算)。
 var _fin_titles: Dictionary = {}
 var _last_total: int = -1
 ## 每次重画都整块换掉的那一层(表面板 + 分隔线 + 顶栏不动)。
 var _panel: Panel = null
 var _body: Control = null
+## ── 全部名次那一套(门禁读这些当分母; 屏幕上的字才是判据) ──
+## 顶栏「我的位置」。
+var jump_btn: Button = null
+## 滚动区 / 滚动区里那条撑高的长条 / 钉住「我」那一行。
+var _scroll: ScrollContainer = null
+var _list: Control = null
+var _pin: Control = null
+## 列表一共多少行(= 能翻到的名次数)。服务端那一路 = 全榜人数; 退回旧函数时 = 拿到的行数。
+var list_len: int = 0
+## 名次 → 那一行的数据(服务端按页陆续补进来; 本机那一路一次全有)。
+var _by_rank: Dictionary = {}
+## 「我」那一行(名次 < 1 = 本周榜上没有我)。
+var me_row: Dictionary = {}
+## 正在取 / 取失败的页(页号 = (名次-1) / WEEK_LB_PAGE)。取失败的不自动重试(断网时不刷请求)。
+var _pending: Dictionary = {}
+var _failed: Dictionary = {}
+## 新函数没部署(404) ⇒ 退回旧函数, 只能翻到它给的那些名次, 不再按页取。
+var _legacy: bool = false
+## 现在建着的行: 名次 → 节点。
+var _row_nodes: Dictionary = {}
+## 本屏发出去的页请求(offset 列表, 门禁分母)。
+var page_offsets: Array = []
 
 func _ready() -> void:
 	_bg()
@@ -208,9 +254,10 @@ func _ready() -> void:
 	var now: int = int(_P2C.now_utc())
 	day_phase = _P2C.phase_at_utc(now)
 	board_week_ts = board_week(now)
-	var acts: Array = []
-	var ent := day_entry(day_phase)
-	if not ent.is_empty():
+	## ★「我的位置」排第一枚(最左), 周六/周日的入口排在它右边(那颗仍是最后一枚, 见下面 entry_btn)。
+	var acts: Array = [[JUMP_TEXT, jump_to_me]]
+	var ents := day_entries(day_phase)
+	for ent in ents:
 		acts.append([str(ent["text"]), _open_gauntlet_board if str(ent["scene"]) == _MM.GAUNTLET_BOARD_SCENE
 			else _open_bracket_map])
 	_top_bar = TopBar.new(self, {
@@ -225,9 +272,18 @@ func _ready() -> void:
 		"on_back": func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"),
 		"actions": acts,
 	})
-	if not acts.is_empty() and _top_bar.action_btns.size() > 0:
-		entry_btn = _top_bar.action_btns[_top_bar.action_btns.size() - 1] as Button
-		entry_btn.name = "LbDayEntry"
+	if _top_bar.action_btns.size() > 0:
+		jump_btn = _top_bar.action_btns[0] as Button
+		jump_btn.name = "LbJumpMe"
+	## 入口按钮 = 「我的位置」之后那几枚, 顺序同 day_entries。entry_btn = 最后一枚(周六/周日只有一枚)。
+	entry_btns.clear()
+	for ei in range(ents.size()):
+		if ei + 1 < _top_bar.action_btns.size():
+			var eb := _top_bar.action_btns[ei + 1] as Button
+			eb.name = "LbDayEntry" if ei == ents.size() - 1 else "LbDayEntry%d" % ei
+			entry_btns.append(eb)
+	if not entry_btns.is_empty():
+		entry_btn = entry_btns[entry_btns.size() - 1]
 
 	# 表面板 —— 金属九宫格(和背包/图鉴/战绩同一张 panel-frame)。冷蓝调走 modulate,
 	# ★ modulate 别超 1.3: 过了会把框芯冲亮、金属细节糊平(实拍确认过)。
@@ -282,11 +338,27 @@ static func board_title(phase: String) -> String:
 ## 顶栏右侧入口: 周六 → 全场赛况(GauntletBoard) / 周日 → 查看对阵图(BracketMap) / 其余 → 无。
 ## ★目标场景与文字都取主菜单那两扇门的常量 —— 同一个入口不许有两份地址。
 static func day_entry(phase: String) -> Dictionary:
+	var es := day_entries(phase)
+	return es[0] if not es.is_empty() else {}
+
+
+## 顶栏右侧全部入口(从左到右)。
+## ★★2026-10-19 用户「周六 / 周日赛况保留到周一」: 周一(休赛)两扇门都给 —— 「周六赛况」→ GauntletBoard、
+##   「周日对阵图」→ BracketMap(看的是上周那一场; 与主菜单周一那两扇门同名同目标)。
+##   ⚠ 主线已有 `Phase2Config.weekend_view_week(now_utc)`(周一 = 上周周号), 本工作区基于更早的提交没有它,
+##   这里按「周一 = PHASE_REST」判; 合并时由主会话对接到 weekend_view_week。
+const MON_GAUNTLET_LINE := "周六赛况"
+const MON_BRACKET_LINE := "周日对阵图"
+
+static func day_entries(phase: String) -> Array:
 	if phase == _P2C.PHASE_GAUNTLET:
-		return {"text": _MM.GAUNTLET_BOARD_LINE, "scene": _MM.GAUNTLET_BOARD_SCENE}
+		return [{"text": _MM.GAUNTLET_BOARD_LINE, "scene": _MM.GAUNTLET_BOARD_SCENE}]
 	if phase == _P2C.PHASE_FINALS:
-		return {"text": BRACKET_LINE, "scene": _MM.BRACKET_SCENE}
-	return {}
+		return [{"text": BRACKET_LINE, "scene": _MM.BRACKET_SCENE}]
+	if phase == _P2C.PHASE_REST:
+		return [{"text": MON_GAUNTLET_LINE, "scene": _MM.GAUNTLET_BOARD_SCENE},
+			{"text": MON_BRACKET_LINE, "scene": _MM.BRACKET_SCENE}]
+	return []
 
 
 ## 具名方法(门禁量 `pressed.get_connections()` 能看到方法名)。走主菜单同一条路径规则 `res://scenes/<X>.tscn`。
@@ -398,18 +470,80 @@ func _fetch_now() -> void:
 		return
 	if day_phase == _P2C.PHASE_REST or day_phase == _P2C.PHASE_FINALS:
 		SB.fetch_finals_week_cb(board_week_ts, _on_finals_week)
-	if not SB.fetch_week_leaderboard_async(board_week_ts, SB.WEEK_LB_LIMIT, _on_server_lb):
+	## ★先问按页取的新函数(第 1 页); 它没部署(404)再退回旧函数; 都问不到才退回本机。
+	if not _request_page(0, true):
 		_render(_local_rows(), SRC_LOCAL, -1)
 
 
+## 发一页请求(第 page 页 = 名次 page*WEEK_LB_PAGE+1 起)。`first` = 开屏那一页, 回包决定走哪一路。
+## ★`_pending` 在发之前记: 门禁的假传输会**同步**回包, 记在后面就会把刚回来的那页永远标成「正在取」。
+func _request_page(page: int, first: bool = false) -> bool:
+	var off: int = page * SB.WEEK_LB_PAGE
+	_pending[page] = true
+	var sent: bool = SB.fetch_week_leaderboard_page_async(board_week_ts, off, SB.WEEK_LB_PAGE,
+		func(res: Dictionary) -> void: _on_server_page(res, page, first))
+	if sent:
+		page_offsets.append(off)
+	else:
+		_pending.erase(page)
+	return sent
+
+
+func _on_server_page(res: Dictionary, page: int, first: bool) -> void:
+	if not is_inside_tree():
+		return
+	_pending.erase(page)
+	var ok: bool = str(res.get("err", "?")) == "" and res.get("rows", null) is Array
+	if first:
+		if ok:
+			var tot: int = int(res.get("total", 0))
+			_render(res["rows"] as Array, SRC_SERVER, tot, _me_of(res), tot)
+			return
+		## 新函数没部署(老服务端) ⇒ 退回旧函数: 前 WEEK_LB_LEGACY_LIMIT 名 + 我。
+		if str(res.get("err", "")) == "unavailable":
+			print("[LB] 按页取的函数没部署(404) ⇒ 退回旧函数 week_leaderboard")
+			_legacy = true
+			if SB.fetch_week_leaderboard_async(board_week_ts, SB.WEEK_LB_LEGACY_LIMIT, _on_server_lb):
+				return
+		print("[LB] 服务端榜没拿到(%s) ⇒ 退回本机记录" % str(res.get("err", res.get("reason", "?"))))
+		_render(_local_rows(), SRC_LOCAL, -1)
+		return
+	if source != SRC_SERVER:
+		return
+	if not ok:
+		## ★不自动重试: 断网时每滚一下就重发一遍, 只会把请求刷爆。这几行保持「只有名次」的待取样子。
+		_failed[page] = true
+		print("[LB] 第 %d 页没拿到(%s)" % [page + 1, str(res.get("err", "?"))])
+		return
+	for r in (res["rows"] as Array):
+		var rk := int((r as Dictionary).get("rank", 0))
+		if rk >= 1:
+			_by_rank[rk] = r
+	_recount_dups()
+	_rebuild_rows()
+
+
+## 旧函数那一路(新函数没部署时)。只给前 N 名 ⇒ 列表只到连续拿到的那一名, 「共 X 人上榜」照旧写全榜人数。
 func _on_server_lb(res: Dictionary) -> void:
 	if not is_inside_tree():
 		return
 	if str(res.get("err", "?")) == "" and res.get("rows", null) is Array:
-		_render(_server_rows(res), SRC_SERVER, int(res.get("total", 0)))
+		var rows: Array = res["rows"]
+		_render(rows, SRC_SERVER, int(res.get("total", 0)), _me_of(res), _contiguous(rows))
 		return
 	print("[LB] 服务端榜没拿到(%s) ⇒ 退回本机记录" % str(res.get("err", res.get("reason", "?"))))
 	_render(_local_rows(), SRC_LOCAL, -1)
+
+
+## rows 里从第 1 名起连续有几名(旧函数把「我」也可能塞在 rows 末尾, 那一行不算进列表长度)。
+static func _contiguous(rows: Array) -> int:
+	var have: Dictionary = {}
+	for r in rows:
+		have[int((r as Dictionary).get("rank", 0))] = true
+	var k := 0
+	while have.has(k + 1):
+		k += 1
+	return k
 
 
 func _on_finals_week(res: Dictionary) -> void:
@@ -421,7 +555,7 @@ func _on_finals_week(res: Dictionary) -> void:
 	_fin_titles = finals_titles(res["buckets"] as Array,
 		res.get("cup", {}) if res.get("cup", {}) is Dictionary else {})
 	if source == SRC_SERVER or source == SRC_LOCAL:
-		_render(shown_rows, source, _last_total)
+		_rebuild_rows()
 
 
 ## 本机那一路(原来唯一的一路)。名次 = 全量下标 + 1。
@@ -435,7 +569,7 @@ func _local_rows() -> Array:
 	var rows: Array = Backend.leaderboard(pool, Backend.player_display_name(), int(GameState.season_wins),
 		int(GameState.hearts), int(GameState.season_sweeps), 1 << 30)
 	## 自己那行的总场次(`leaderboard()` 只认别人的快照字段, 自己的从存档补)。
-	## ★2026-10-11 全项目通读 B4: 周一看的是**上周**的榜, 而存档已滚到本周(清零) ⇒ 与 `_server_rows` 同一口径,
+	## ★2026-10-11 全项目通读 B4: 周一看的是**上周**的榜, 而存档已滚到本周(清零) ⇒ 与服务端那一路同一口径,
 	##   自己那一行不许拿本周成绩冒充上周 —— 一律 -1(画「—」)。门禁 verify_leaderboard_monday_local。
 	var last_week: bool = day_phase == _P2C.PHASE_REST
 	for r in rows:
@@ -448,26 +582,23 @@ func _local_rows() -> Array:
 	return rows
 
 
-## 服务端那一路: 前 N 名 + 「我」(不在前 N 名里就接在末尾, 名次是服务端给的全榜真名次)。
+## 服务端回包里的「我」: `me` 优先, 其次 rows 里标了 is_self 的那行。
 ## ★本周一份都没传过(服务端榜上没有我)⇒ 仍然钉一行自己, 名次画「—」(不编一个名次)。
-func _server_rows(res: Dictionary) -> Array:
-	var rows: Array = (res.get("rows", []) as Array).duplicate(true)
-	for r in rows:
-		if bool((r as Dictionary).get("is_self", false)):
-			return rows
+func _me_of(res: Dictionary) -> Dictionary:
 	var me: Dictionary = res.get("me", {}) if res.get("me", {}) is Dictionary else {}
 	if not me.is_empty():
-		rows.append(me)
-	else:
-		## ★周一看的是**上周**的榜: 存档里的成绩已经滚到本周了, 不许拿来冒充上周 ⇒ 只钉一行空名次。
-		var last_week: bool = day_phase == _P2C.PHASE_REST
-		rows.append({"rank": 0, "name": Backend.player_display_name(),
-			"wins": -1 if last_week else int(GameState.season_wins),
-			"hearts": -1 if last_week else int(GameState.hearts),
-			"sweeps": 0 if last_week else int(GameState.season_sweeps),
-			"battles": -1 if last_week else int(GameState.season_total_battles),
-			"is_self": true, "tag": Backend.my_tag()})
-	return rows
+		return me
+	for r in (res.get("rows", []) as Array):
+		if bool((r as Dictionary).get("is_self", false)):
+			return r
+	## ★周一看的是**上周**的榜: 存档里的成绩已经滚到本周了, 不许拿来冒充上周。
+	var last_week: bool = day_phase == _P2C.PHASE_REST
+	return {"rank": 0, "name": Backend.player_display_name(),
+		"wins": -1 if last_week else int(GameState.season_wins),
+		"hearts": -1 if last_week else int(GameState.hearts),
+		"sweeps": 0 if last_week else int(GameState.season_sweeps),
+		"battles": -1 if last_week else int(GameState.season_total_battles),
+		"is_self": true, "tag": Backend.my_tag()}
 
 
 ## 这一行的名次: 服务端那一路带 `rank`(全榜真名次), 本机那一路就是下标 + 1。
@@ -475,11 +606,18 @@ static func _rank_of(r: Dictionary, idx: int) -> int:
 	return int(r.get("rank", idx + 1))
 
 
-## 整块重画(表面板/分隔线/顶栏不动)。`total` = 上榜人数(<0 ⇒ 用 rows.size())。
-func _render(rows: Array, src: String, total: int) -> void:
+## 整块重画(表面板/分隔线/顶栏不动)。
+##   `total` = 上榜人数(<0 ⇒ 用 rows.size()); `me` = 钉住的「我」(空 ⇒ 从 rows 里找 is_self);
+##   `n_list` = 列表能翻到第几名(<0 ⇒ rows.size())。
+func _render(rows: Array, src: String, total: int, me: Dictionary = {}, n_list: int = -1) -> void:
 	source = src
 	shown_rows = rows
 	_last_total = total
+	_by_rank.clear()
+	_row_nodes.clear()
+	_scroll = null
+	_list = null
+	_pin = null
 	if _body != null:
 		_panel.remove_child(_body)
 		_body.queue_free()
@@ -533,58 +671,67 @@ func _render(rows: Array, src: String, total: int) -> void:
 		mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		panel.add_child(mark)
 	if src == SRC_LOADING:
+		list_len = 0
+		me_row = {}
+		_update_jump()
 		return
 
-	# ★能画几行是【算出来】的, 不是写死的阈值 —— 写死那次末行正好压在金属边带上。
-	var body_h: float = PANEL_H - PAD - FOOT_H - ROW_TOP
-	var cap: int = maxi(1, int(floor(body_h / ROW_H)))
-	print("[LB] src=%s rows=%d total=%d cap=%d body_h=%.0f" % [src, rows.size(), n_on_board, cap, body_h])   # 分母: 0 行 = 空检查
-	var self_idx := _self_index(rows)
-	var shown := _pick_rows(rows, cap, self_idx)
-	## ★重名按**全量** rows 判, 不按画出来的那几行 —— 第 3 名和第 40 名同名, 第 3 名照样该带号。
-	var _all_names: Array = []
-	for rr in rows:
-		_all_names.append(str((rr as Dictionary).get("name", "")))
-	_dup_names = Backend._P2.names_needing_tag(_all_names)
+	for i in range(rows.size()):
+		var rk: int = _rank_of(rows[i] as Dictionary, i)
+		if rk >= 1:
+			_by_rank[rk] = rows[i]
+	list_len = n_list if n_list >= 0 else rows.size()
+	me_row = me
+	if me_row.is_empty():
+		for i2 in range(rows.size()):
+			if bool((rows[i2] as Dictionary).get("is_self", false)):
+				me_row = (rows[i2] as Dictionary).duplicate()
+				me_row["rank"] = _rank_of(rows[i2] as Dictionary, i2)
+				break
+	if me_row.is_empty():
+		me_row = _me_of({})
+	_recount_dups()
+	print("[LB] src=%s rows=%d total=%d list=%d me=%d" % [src, rows.size(), n_on_board, list_len,
+		int(me_row.get("rank", 0))])   # 分母: 0 行 = 空检查
 
-	var y := ROW_TOP
-	var max_rank := 0
-	for item in shown:
-		var idx: int = int(item)
-		if idx < 0:                     # -1 = 省略号占位(自己被钉到末行时, 中间断开的地方)
-			var gap := Label.new(); gap.text = "⋯"
-			gap.add_theme_font_size_override("font_size", 18)
-			gap.add_theme_color_override("font_color", Color("#4a5a6b"))
-			gap.position = Vector2(PAD, y); gap.size = Vector2(PANEL_W - PAD * 2.0, ROW_H - 6.0)
-			gap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			panel.add_child(gap)
-			y += ROW_H
-			continue
-		_draw_row(panel, y, idx, rows[idx] as Dictionary)
-		max_rank = maxi(max_rank, _rank_of(rows[idx] as Dictionary, idx))
-		y += ROW_H
+	## ── 名次列表(滚动区) ──
+	## ★滚动条不画(SHOW_NEVER, 照参考三款): 手指拖、滚轮滚照常; 一条竖滚动条会压在成绩列的右沿上。
+	_scroll = ScrollContainer.new()
+	_scroll.name = "LbScroll"
+	_scroll.position = Vector2(0.0, LIST_Y)
+	_scroll.size = Vector2(PANEL_W, LIST_H)
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	_scroll.clip_contents = true
+	panel.add_child(_scroll)
+	_list = Control.new()
+	_list.name = "LbList"
+	_list.mouse_filter = Control.MOUSE_FILTER_PASS
+	_list.custom_minimum_size = Vector2(PANEL_W, float(maxi(list_len, VIS_ROWS)) * ROW_H)
+	_scroll.add_child(_list)
+	_scroll.get_v_scroll_bar().value_changed.connect(_on_scrolled)
 
-	## ★★空席(2026-09-28)。用户那张实拍上整屏就是「一条金色长条 + 一行字」——
-	##   那**不是画错了**, 那就是全新档的真榜: `rows.size() == 1`(只有自己)。
-	##   一块只画了一行的榜看起来像坏掉的界面。⇒ 剩下的名次照样画出来, 画成**空席**:
-	##   名次在、牌位在(前三名的金银铜压暗), 名字位置一道破折号。
-	##   一眼能读出"这是一块 11 名的榜, 位置都空着", 而不是"这屏只有一行"。
-	##   ⚠ 空席**不带成绩数字** —— 补零会造出"别人 0 胜"的假数据。
-	var drawn: int = shown.size()
-	var vacant: int = max_rank + 1
-	while drawn < cap:
-		_draw_vacant(panel, y, vacant)
-		y += ROW_H
-		drawn += 1
-		vacant += 1
+	## ── 钉住「我」那一行(列表下沿, 中间一条分隔线) ──
+	var psep := ColorRect.new()
+	psep.name = "LbPinSep"
+	psep.color = Color(0.35, 0.55, 0.70, 0.45)
+	psep.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	psep.position = Vector2(PAD, LIST_Y + LIST_H + PIN_GAP * 0.5 - 1.0)
+	psep.size = Vector2(PANEL_W - PAD * 2.0, 2)
+	panel.add_child(psep)
+	_pin = Control.new()
+	_pin.name = "LbPin"
+	_pin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pin.position = Vector2(0.0, PIN_Y - ROW_Y)
+	_pin.size = Vector2(PANEL_W, ROW_H)
+	panel.add_child(_pin)
 
 	# 底部提示行 —— 三种态各说各的话(原来只有"池子只有我一个"那一种才出提示)。
 	## ★「上传阵容」是**接口词**(那是 `upload_ghost` 在做的事, 不是玩家在做的事) ——
 	##   用户 2026-09-28 点的就是这个:「文字语言也是」。玩家侧只看得见"打了一场"。
-	##   (改这句之前 grep 过 `tests/` `tools/`: 没有任何判据钉这句文案;
-	##    `tests/_probe_newuser.gd:100` 里有一份手抄的同串, 那是探针的自印, 不是断言。)
 	## ★服务端那一路: 问到了就是 REACH_OK(「打完一场对手就会上来」此时是真的)。
 	var hint := Label.new()
+	hint.name = "LbHint"
 	hint.text = hint_text(n_on_board,
 		Backend.REACH_OK if src == SRC_SERVER else Backend.pool_reach())
 	hint.add_theme_font_size_override("font_size", 15)
@@ -596,6 +743,135 @@ func _render(rows: Array, src: String, total: int) -> void:
 		panel.add_child(hint)
 	else:
 		hint.free()
+
+	_rebuild_rows()
+	_update_jump()
+
+
+## 重名按**全部已拿到的行 + 我**判(不按画出来的那几行) —— 第 3 名和第 40 名同名, 第 3 名照样该带号。
+func _recount_dups() -> void:
+	var names: Array = []
+	for rk in _by_rank.keys():
+		var r: Dictionary = _by_rank[rk]
+		if bool(r.get("is_self", false)):
+			continue
+		names.append(str(r.get("name", "")))
+	names.append(str(me_row.get("name", "")))
+	_dup_names = Backend._P2.names_needing_tag(names)
+
+
+func _on_scrolled(_v: float) -> void:
+	_refresh_window()
+
+
+## 滚动区现在露出来的是第几行到第几行(下标, 含两端)。
+func _window() -> Vector2i:
+	var n: int = maxi(list_len, VIS_ROWS)
+	var s: float = float(_scroll.scroll_vertical) if _scroll != null else 0.0
+	var first: int = clampi(floori(s / ROW_H), 0, maxi(n - 1, 0))
+	var last: int = mini(n, ceili((s + LIST_H) / ROW_H)) - 1
+	return Vector2i(first, last)
+
+
+## 只建露出来的那几行: 滚出去的拆掉、滚进来的现建; 没拿到的那页顺手去取(往下多预取一屏)。
+func _refresh_window() -> void:
+	if _list == null or not is_instance_valid(_list):
+		return
+	var w := _window()
+	for rk in _row_nodes.keys():
+		var i: int = int(rk) - 1
+		if i < w.x or i > w.y:
+			_drop_row(_row_nodes[rk])
+			_row_nodes.erase(rk)
+	for i in range(w.x, w.y + 1):
+		if not _row_nodes.has(i + 1):
+			_row_nodes[i + 1] = _build_row(i + 1)
+	if source != SRC_SERVER or _legacy:
+		return
+	var want: Array = []
+	for rk2 in range(w.x + 1, mini(list_len, w.y + 1 + VIS_ROWS) + 1):
+		if _by_rank.has(rk2):
+			continue
+		var pg: int = floori(float(rk2 - 1) / float(SB.WEEK_LB_PAGE))
+		if not _pending.has(pg) and not _failed.has(pg) and not want.has(pg):
+			want.append(pg)
+	for pg2 in want:
+		_request_page(int(pg2))
+
+
+func _drop_row(nd) -> void:
+	if is_instance_valid(nd) and nd is Node:
+		(nd as Node).get_parent().remove_child(nd)
+		(nd as Node).queue_free()
+
+
+## 整份行重建(新的一页到了 / 头衔到了): 列表里露出来的行 + 钉住那一行。
+func _rebuild_rows() -> void:
+	if _list == null or not is_instance_valid(_list):
+		return
+	for rk in _row_nodes.keys():
+		_drop_row(_row_nodes[rk])
+	_row_nodes.clear()
+	if _pin != null and is_instance_valid(_pin):
+		for ch in _pin.get_children():
+			_drop_row(ch)
+		var mrk: int = int(me_row.get("rank", 0))
+		_draw_row(_pin, ROW_Y, maxi(mrk - 1, 0), me_row)
+		_ignore_mouse(_pin)
+	_refresh_window()
+
+
+## 列表里的一行(名次 rk)。拿到了画整行; 还没拿到只画一个压暗的名次号(不编名字、不编成绩);
+## 名次超出榜上人数 ⇒ 空席(榜不满一屏时)。
+func _build_row(rk: int) -> Control:
+	var row := Control.new()
+	row.name = "LbRow_%d" % rk
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.position = Vector2(0.0, float(rk - 1) * ROW_H)
+	row.size = Vector2(PANEL_W, ROW_H)
+	_list.add_child(row)
+	if rk > list_len:
+		_draw_vacant(row, ROW_Y, rk)
+	elif _by_rank.has(rk):
+		_draw_row(row, ROW_Y, rk - 1, _by_rank[rk] as Dictionary)
+	else:
+		var n := _cell(row, str(rk), RANK_X, ROW_Y, RANK_W, 16, Color(COL_RANK), HORIZONTAL_ALIGNMENT_CENTER)
+		n.modulate.a = 0.42
+	_ignore_mouse(row)
+	return row
+
+
+## 行里的签牌/斑马纹默认会吞掉触摸 ⇒ 手指按在行上拖不动列表。一律放行给滚动区。
+func _ignore_mouse(n: Node) -> void:
+	if n is Control:
+		(n as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for ch in n.get_children():
+		_ignore_mouse(ch)
+
+
+## 顶栏「我的位置」: 把列表滚到我所在那一段(我在第 JUMP_ABOVE+1 行)。榜上没有我 / 我在拿不到的名次 ⇒ 按钮置灰。
+const JUMP_ABOVE := 4
+
+func jump_to_me() -> void:
+	var rk: int = int(me_row.get("rank", 0))
+	if _scroll == null or rk < 1 or rk > list_len:
+		return
+	var max_s: float = maxf(0.0, float(maxi(list_len, VIS_ROWS) - VIS_ROWS) * ROW_H)
+	var target: int = int(clampf(float(rk - 1 - JUMP_ABOVE) * ROW_H, 0.0, max_s))
+	_scroll.scroll_vertical = target
+	## ★列表刚换过长度、滚动区还没重新排版时, 上一句会被旧的上限夹住 ⇒ 下一帧再设一次。
+	if _scroll.scroll_vertical != target:
+		_scroll.set_deferred("scroll_vertical", target)
+	_refresh_window()
+
+
+func _update_jump() -> void:
+	if jump_btn == null or not is_instance_valid(jump_btn):
+		return
+	var rk: int = int(me_row.get("rank", 0))
+	var can: bool = rk >= 1 and rk <= list_len
+	jump_btn.disabled = not can
+	jump_btn.modulate = Color(1, 1, 1, 1.0 if can else 0.45)
 
 
 ## 背景 = 主菜单那张平铺底(深绿 #1a3a2a + menu-bg-tile + 暗渐变遮罩)。
@@ -659,34 +935,6 @@ static func hint_text(rows_n: int, reach: String) -> String:
 		Backend.REACH_UNKNOWN:
 			return HINT_ONLY_YOU_UNKNOWN
 	return HINT_ONLY_YOU_OFF
-
-
-## 自己在 rows 里的下标(没有 = -1)。
-func _self_index(rows: Array) -> int:
-	for i in range(rows.size()):
-		if bool((rows[i] as Dictionary).get("is_self", false)):
-			return i
-	return -1
-
-
-## 挑出要画的行下标; `-1` 表示"这里插一个省略号"。
-##
-## ★为什么要这一步: 榜单能取 30 条, 面板只画得下 12 行左右。原来是"画到装不下就 break",
-##   于是**自己排在第 13 名开外时整屏看不到自己** —— 而**胜场**并列 0 的开局,
-##   自己排第几完全看排序稳定性(实拍那张就一个「◀ 你」都没有)。
-##   ⇒ 自己不在可见段里就把**末行让给自己**, 中间用 ⋯ 断开(通用榜单做法)。
-func _pick_rows(rows: Array, cap: int, self_idx: int) -> Array:
-	var out: Array = []
-	var n: int = mini(rows.size(), cap)
-	if self_idx < 0 or self_idx < cap:
-		for i in range(n):
-			out.append(i)
-		return out
-	for i in range(maxi(0, cap - 2)):
-		out.append(i)
-	out.append(-1)
-	out.append(self_idx)
-	return out
 
 
 ## 一行: 底签牌 + 名次牌 + 名字(+「你」签) + 三个「图标 数字」。

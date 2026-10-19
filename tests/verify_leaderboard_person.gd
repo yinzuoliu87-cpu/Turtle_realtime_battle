@@ -291,6 +291,9 @@ func _seg3(sid: int) -> void:
 		if n is Label and (n as Label).is_visible_in_tree():
 			labels.append(n as Label)
 		for ch in n.get_children():
+			## ★2026-10-19: 列表下沿钉住的「我」(`LbPin`)是自己那一行的复写, 不是另一个人 ⇒ 数人头时不算它。
+			if str(ch.name) == "LbPin":
+				continue
 			st.append(ch)
 	_chk("③ ★分母: 屏上找到 %d 个可见 Label(0 个 = 屏根本没画出来)" % labels.size(),
 		labels.size() >= 8, "%d 个" % labels.size())

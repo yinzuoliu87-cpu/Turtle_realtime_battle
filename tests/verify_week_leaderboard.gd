@@ -253,9 +253,16 @@ func _stale_pool() -> Dictionary:
 	return pool
 
 
+## 按页取那条新 RPC(2026-10-19 · 全部名次)回什么: "ok" = 从 `_srv_full()` 按 offset/limit 切 /
+##   "404" = 函数没部署(⇒ 屏应退回旧函数 week_leaderboard) / "offline" = 断网。
+var _pmode := "ok"
+
+
 func _spy(method, url, headers, body, cb) -> void:
 	_reqs.append({"method": str(method), "url": str(url), "body": str(body), "headers": str(headers)})
-	if str(url).ends_with("/rest/v1/rpc/week_leaderboard"):
+	if str(url).ends_with("/rest/v1/rpc/week_leaderboard_page"):
+		cb.call(_page_reply(str(body)))
+	elif str(url).ends_with("/rest/v1/rpc/week_leaderboard"):
 		cb.call(_reply)
 	elif str(url).ends_with("/rest/v1/rpc/finals_week_view"):
 		cb.call(_freply)
@@ -292,65 +299,78 @@ func _close(inst: Node) -> void:
 	await get_tree().process_frame
 
 
-## 屏上画出来的数据行(按 y 从上到下): {rank, name, s0, s1, s2(三列成绩文本), mark, you: bool}
-## ★读 `_body` 下真建出来的 Label, 位置用本屏自己的列常量认列(判据不另抄一份坐标)。
+## 屏上画出来的数据行: 先是列表里露出来的那几行(按名次从上到下), 末尾是**钉住的「我」**(带 "pin": true)。
+##   每行 = {rank, name, s0, s1, s2(三列成绩文本), mark, you: bool}
+## ★读真建出来的行节点(`LbList` 下的 `LbRow_N` / `LbPin`)里的 Label, 位置用本屏自己的列常量认列(判据不另抄坐标)。
+## ★2026-10-19 换形状: 原来所有格子都直接挂在 `_body` 下、按 y 聚行; 全部名次改成滚动列表后每行是一个节点,
+##   空席(名字「—」)与还没取到的行(没有名字格)不算数据行。
 func _screen_rows(inst: Node) -> Array:
-	var body: Control = inst.get("_body")
-	if body == null:
-		return []
-	var by_y := {}
-	var you_ys: Array = []
-	for ch in body.get_children():
-		var y := -1.0
-		var col := ""
-		var txt := ""
+	var out: Array = []
+	var lst = inst.get("_list")
+	if lst is Control:
+		var rows_n: Array = []
+		for ch in (lst as Control).get_children():
+			if str(ch.name).begins_with("LbRow_") and not ch.is_queued_for_deletion():
+				rows_n.append(ch)
+		rows_n.sort_custom(func(a, b): return (a as Control).position.y < (b as Control).position.y)
+		for rn in rows_n:
+			var r := _read_row(rn as Control)
+			if r.has("name") and str(r["name"]) != "—":
+				out.append(r)
+	var pin = inst.get("_pin")
+	if pin is Control:
+		var pr := _read_row(pin as Control)
+		if pr.has("name"):
+			pr["pin"] = true
+			out.append(pr)
+	return out
+
+
+func _read_row(row: Control) -> Dictionary:
+	var r := {"you": false}
+	for ch in row.get_children():
 		if ch is Label:
 			var l := ch as Label
-			y = l.position.y
-			txt = str(l.text)
 			if absf(l.position.x - LB.NAME_X) < 0.5:
-				col = "name"
+				r["name"] = str(l.text)
 			elif absf(l.position.x - LB.RANK_X) < 0.5:
-				col = "rank"
+				r["rank"] = str(l.text)
 			elif str(l.name).begins_with("RowMark_"):
-				col = "mark"
-				y -= 1.0
+				r["mark"] = str(l.text)
 			else:
 				for i in range(3):
-					if absf(l.position.x - (LB.STAT_X0 + float(i) * LB.STAT_CELL)) < 0.5 and y >= LB.ROW_TOP - 1.0:
-						col = "s%d" % i
+					if absf(l.position.x - (LB.STAT_X0 + float(i) * LB.STAT_CELL)) < 0.5:
+						r["s%d" % i] = str(l.text)
 		elif ch is Panel and absf((ch as Panel).position.x - LB.RANK_X) < 0.5:
-			y = (ch as Panel).position.y
-			col = "rank"
 			for g in ch.get_children():
 				if g is Label:
-					txt = str((g as Label).text)
+					r["rank"] = str((g as Label).text)
 		elif ch is Panel and (ch as Panel).position.x > LB.NAME_X:
 			for g in ch.get_children():
 				if g is Label and str((g as Label).text) == "你":
-					you_ys.append((ch as Panel).position.y)
-		if col == "" or y < 0.0:
-			continue
-		var k := int(round(y))
-		if not by_y.has(k):
-			by_y[k] = {"y": k}
-		(by_y[k] as Dictionary)[col] = txt
-	var out: Array = []
-	var ys := []
-	for k in by_y.keys():
-		if (by_y[k] as Dictionary).has("name") and str((by_y[k] as Dictionary)["name"]) != "—":
-			ys.append(k)
-	ys.sort()
-	for k in ys:
-		var r: Dictionary = by_y[k]
-		r["you"] = false
-		for yy in you_ys:
-			if absf(float(yy) - float(k)) < ROW_TOL:
-				r["you"] = true
-		out.append(r)
-	return out
+					r["you"] = true
+	return r
 
-const ROW_TOL := 10.0
+
+func _list_rows(rows: Array) -> Array:
+	return rows.filter(func(r): return not bool((r as Dictionary).get("pin", false)))
+
+
+func _pin_row(rows: Array) -> Dictionary:
+	for r in rows:
+		if bool((r as Dictionary).get("pin", false)):
+			return r
+	return {}
+
+
+## 屏上所有 Label(递归) —— 行格子住在行节点里, 不再是 `_body` 的直接子节点。
+func _labels_under(n: Node) -> Array:
+	var out: Array = []
+	for ch in n.get_children():
+		if ch is Label:
+			out.append(ch)
+		out.append_array(_labels_under(ch))
+	return out
 
 
 func _label_named(inst: Node, nm: String) -> Label:
@@ -395,11 +415,12 @@ func _check_heads(tag: String, inst: Node, rows_n: int) -> void:
 		heads.append(str(h.text) if h != null else "(缺)")
 		if h == null or body == null:
 			continue
-		var hr: float = h.position.x + h.size.x
-		for ch in body.get_children():
-			if ch is Label and str(ch.name).begins_with("RowStat%d_" % i):
+		## ★量**全局**右沿: 行格子住在滚动列表的行节点里, 与表头不在同一个父节点下。
+		var hr: float = h.get_global_rect().end.x
+		for ch in _labels_under(body):
+			if str(ch.name).begins_with("RowStat%d_" % i):
 				seen += 1
-				var cr: float = (ch as Label).position.x + (ch as Label).size.x
+				var cr: float = (ch as Label).get_global_rect().end.x
 				if absf(cr - hr) > 1.0:
 					right_bad.append("列%d %.1f≠%.1f" % [i, cr, hr])
 	_ok("%s ★★表头三列 = 「剩余生命」「胜场」「总场次」(用户原词, 顺序不许乱)" % tag,
@@ -407,9 +428,12 @@ func _check_heads(tag: String, inst: Node, rows_n: int) -> void:
 	_ok("%s 表头与数字右沿对齐(≤1px)" % tag, right_bad.is_empty() and rows_n > 0 and seen >= rows_n * 3,
 		"量了 %d 格 %s" % [seen, str(right_bad.slice(0, 3))])
 	var icons := 0
-	for ch in (body.get_children() if body != null else []):
-		if ch is TextureRect:
+	var stk: Array = [body] if body != null else []
+	while not stk.is_empty():
+		var nd: Node = stk.pop_back()
+		if nd is TextureRect:
 			icons += 1
+		stk.append_array(nd.get_children())
 	_ok("%s 格里不画图标(用户「排行榜里的奖杯是？」)" % tag, icons == 0, "%d 个" % icons)
 
 
@@ -473,6 +497,36 @@ func _me_row() -> Dictionary:
 		"battles": 9, "title": null}
 
 
+## 全榜 57 人(按页取那条 RPC 的数据源): 第 1~11 名 = `_srv_row`, 第 20 名 = 我, 其余是路人。
+func _srv_full() -> Array:
+	var out := []
+	for rk in range(1, TOTAL + 1):
+		if rk <= 11:
+			out.append(_srv_row(rk - 1))
+		elif rk == 20:
+			out.append(_me_row())
+		else:
+			out.append({"rank": rk, "name": "路人%02d" % rk, "tag": "", "account_id": "uid-fill-%d" % rk,
+				"wins": 3 if rk < 20 else 2, "hearts": 4 if rk < 20 else 2, "sweeps": 0, "battles": 9,
+				"title": null})
+	return out
+
+
+## 按页取: 照请求体里的 p_offset / p_limit 从全榜切一段(服务端 SQL 的 `rk > off and rk <= off + lim`)。
+func _page_reply(body: String) -> Dictionary:
+	if _pmode == "404":
+		return {"ok": true, "code": 404,
+			"body": '{"code":"PGRST202","message":"Could not find the function public.week_leaderboard_page"}'}
+	if _pmode == "offline":
+		return {"ok": false, "code": 0, "body": ""}
+	var bj = JSON.parse_string(body)
+	var off: int = int((bj as Dictionary).get("p_offset", 0)) if bj is Dictionary else 0
+	var lim: int = int((bj as Dictionary).get("p_limit", 50)) if bj is Dictionary else 50
+	var rows := _srv_full().filter(func(r): return int(r["rank"]) > off and int(r["rank"]) <= off + lim)
+	return {"ok": true, "code": 200, "body": JSON.stringify(
+		{"ok": true, "week": WEEK, "total": TOTAL, "offset": off, "rows": rows, "me": _me_row()})}
+
+
 func _srv_reply(with_me_in_rows: bool) -> Dictionary:
 	var rows := []
 	for i in range(11):
@@ -489,20 +543,22 @@ func _check_server_screen(label: String, inst: Node, cap_word: String = "本周"
 	print("    [屏上] ", rows.map(func(r): return "%s/%s/%s/%s/%s%s%s" % [r.get("rank", "?"), r.get("name", "?"),
 		r.get("s0", "?"), r.get("s1", "?"), r.get("s2", "?"), (" [" + str(r["mark"]) + "]") if r.has("mark") else "",
 		" 你" if bool(r.get("you", false)) else ""]))
-	## 面板画得下 11 行, 我在第 20 名 ⇒ 前 9 名 + ⋯ + 我 = 10 行数据
-	_ok("%s ★分母: 屏上数据行 = 前 9 名 + 我 = 10" % label, rows.size() == 10, "%d 行" % rows.size())
+	## ★2026-10-19 全部名次: 列表一屏露 VIS_ROWS(10) 行 = 第 1~10 名; 我在第 20 名 ⇒ 列表外, 钉在列表下沿。
+	var lr := _list_rows(rows)
+	_ok("%s ★分母: 列表露出 %d 行(第 1~%d 名)" % [label, LB.VIS_ROWS, LB.VIS_ROWS], lr.size() == LB.VIS_ROWS,
+		"%d 行" % lr.size())
 	var bad := []
-	for i in range(mini(9, rows.size())):
-		var r: Dictionary = rows[i]
+	for i in range(mini(LB.VIS_ROWS, lr.size())):
+		var r: Dictionary = lr[i]
 		var want := _srv_row(i)
 		var got := [str(r.get("rank", "")), str(r.get("name", "")), str(r.get("s0", "")), str(r.get("s1", "")),
 			str(r.get("s2", ""))]
 		var exp := [str(want["rank"]), str(want["name"]), str(want["hearts"]), str(want["wins"]), str(want["battles"])]
 		if got != exp:
 			bad.append("第%d行 屏上 %s ≠ 服务端 %s" % [i + 1, str(got), str(exp)])
-	_ok("%s ★★前 9 行逐行 = 服务端的 名次/名字/剩余生命/胜场/总场次" % label, bad.is_empty() and rows.size() >= 9, str(bad))
-	var last: Dictionary = rows[rows.size() - 1] if not rows.is_empty() else {}
-	_ok("%s ★★我钉在末行: 名字是我、带「你」签" % label,
+	_ok("%s ★★列表逐行 = 服务端的 名次/名字/剩余生命/胜场/总场次" % label, bad.is_empty() and lr.size() >= 9, str(bad))
+	var last: Dictionary = _pin_row(rows)
+	_ok("%s ★★我钉在列表下沿: 名字是我、带「你」签" % label,
 		str(last.get("name", "")) == ME_NAME and bool(last.get("you", false)), str(last))
 	_ok("%s ★★我的名次是服务端给的 20(不是屏上下标)" % label, str(last.get("rank", "")) == "20",
 		str(last.get("rank", "")))
@@ -517,7 +573,16 @@ func _check_server_screen(label: String, inst: Node, cap_word: String = "本周"
 	_check_heads(label, inst, rows.size())
 
 
+## 周榜请求(按页取那条为主; 它 404 时退回的旧函数也算 —— 两条都带 p_week)。
 func _wl_reqs() -> Array:
+	return _page_reqs() + _legacy_reqs()
+
+
+func _page_reqs() -> Array:
+	return _reqs.filter(func(r): return str(r["url"]).ends_with("/rest/v1/rpc/week_leaderboard_page"))
+
+
+func _legacy_reqs() -> Array:
 	return _reqs.filter(func(r): return str(r["url"]).ends_with("/rest/v1/rpc/week_leaderboard"))
 
 
@@ -536,28 +601,52 @@ func _t_server() -> void:
 	GameState.account_id = ME
 	P2C.now_override_ts = WEEK + DAY + 10 * 3600
 	_ok("③ ★分母: 后端真的打开了(关着的话下面全是空检查)", SB.enabled())
+	_pmode = "ok"
 	_reply = _srv_reply(true)
 	_reqs.clear()
 	var inst := await _open()
-	var wl := _wl_reqs()
-	_ok("③ ★分母: 真的发了 week_leaderboard 请求(恰好一次)", wl.size() == 1, "%d 条" % wl.size())
+	var wl := _page_reqs()
+	## ★列表露第 1~10 名、往下预取一屏到第 20 名 —— 都在第 1 页(1~WEEK_LB_PAGE)里 ⇒ 恰好一次。
+	_ok("③ ★分母: 真的发了 week_leaderboard_page 请求(恰好一次), 旧函数一次没问", wl.size() == 1
+		and _legacy_reqs().is_empty(), "%d 条 / 旧 %d 条" % [wl.size(), _legacy_reqs().size()])
 	if not wl.is_empty():
 		var rq: Dictionary = wl[0]
 		var bj = JSON.parse_string(str(rq["body"]))
 		_ok("③ 请求 = POST, 带登录令牌", str(rq["method"]) == "POST"
 			and str(rq["headers"]).find("Bearer gate-token") >= 0, str(rq["method"]))
-		_ok("③ ★请求体键名与服务端参数对得上: p_week = 本周锚点, p_limit = %d" % SB.WEEK_LB_LIMIT,
+		_ok("③ ★请求体键名与服务端参数对得上: p_week = 本周锚点, p_offset = 0, p_limit = %d" % SB.WEEK_LB_PAGE,
 			bj is Dictionary and int((bj as Dictionary).get("p_week", 0)) == WEEK
-			and int((bj as Dictionary).get("p_limit", 0)) == SB.WEEK_LB_LIMIT, str(rq["body"]))
+			and int((bj as Dictionary).get("p_offset", -1)) == 0
+			and int((bj as Dictionary).get("p_limit", 0)) == SB.WEEK_LB_PAGE, str(rq["body"]))
 		_ok("③ 这条 RPC 算「读」(时间穿越期间不拦)", not SB.is_write_request("POST", str(rq["url"])))
 	_check_server_screen("③", inst)
 	await _close(inst)
 
-	print("── ③b 我不在 rows 里, 只在 me 里 ──")
+	## ③b/③c: 新函数没部署(404) ⇒ 退回旧函数 week_leaderboard(前 WEEK_LB_LEGACY_LIMIT 名 + 我), 屏上同样的榜。
+	print("── ③b 新函数 404 ⇒ 退回旧函数; 我不在 rows 里, 只在 me 里 ──")
+	_pmode = "404"
 	_reply = _srv_reply(false)
+	_reqs.clear()
 	var inst2 := await _open()
+	var lg := _legacy_reqs()
+	_ok("③b ★分母: 先问了新函数, 404 后问了旧函数(各一次)", _page_reqs().size() == 1 and lg.size() == 1,
+		"新 %d / 旧 %d" % [_page_reqs().size(), lg.size()])
+	if not lg.is_empty():
+		var bj2 = JSON.parse_string(str((lg[0] as Dictionary)["body"]))
+		_ok("③b 旧函数请求体: p_week = 本周锚点, p_limit = %d(旧函数的上限)" % SB.WEEK_LB_LEGACY_LIMIT,
+			bj2 is Dictionary and int((bj2 as Dictionary).get("p_week", 0)) == WEEK
+			and int((bj2 as Dictionary).get("p_limit", 0)) == SB.WEEK_LB_LEGACY_LIMIT, str((lg[0] as Dictionary)["body"]))
 	_check_server_screen("③b", inst2)
 	await _close(inst2)
+
+	print("── ③c 新函数 404 ⇒ 旧函数; 我也在 rows 末尾 ──")
+	_reply = _srv_reply(true)
+	var inst3 := await _open()
+	_check_server_screen("③c", inst3)
+	_ok("③c 旧函数那一路: 列表只到连续拿到的第 11 名(第 20 名的我不算进列表长度)",
+		int(inst3.get("list_len")) == 11, str(inst3.get("list_len")))
+	await _close(inst3)
+	_pmode = "ok"
 
 
 # ─────────────────────────────────────────────────────────────
@@ -567,10 +656,12 @@ func _t_fail() -> void:
 	print("── ④ 请求失败 ──")
 	_backend_on(true)
 	GameState.account_id = ME
-	for cs in [["断网", {"ok": false, "code": 0, "body": ""}],
+	## ★新函数 404 会再问旧函数 ⇒ 「没部署」那一档两条都 404 才退回本机。
+	for cs in [["断网", {"ok": false, "code": 0, "body": ""}, "offline"],
 			["没部署(404)", {"ok": true, "code": 404,
-				"body": '{"code":"PGRST202","message":"Could not find the function public.week_leaderboard"}'}]]:
+				"body": '{"code":"PGRST202","message":"Could not find the function public.week_leaderboard"}'}, "404"]]:
 		_reply = cs[1]
+		_pmode = str(cs[2])
 		_reqs.clear()
 		var inst := await _open()
 		_ok("④[%s] ★分母: 请求真的发了" % cs[0], _reqs.size() >= 1, "%d 条" % _reqs.size())
@@ -644,6 +735,7 @@ func _entry_method(inst: Node) -> String:
 
 func _t_days() -> void:
 	_backend_on(true)
+	_pmode = "ok"
 	GameState.account_id = ME
 	var pw: int = P2C.PROMOTE_WINS
 	var n_prom := 0
@@ -668,7 +760,19 @@ func _t_days() -> void:
 	var fw := _fw_reqs()
 	_ok("⑤一 决赛头衔也问的是上周那一周", fw.size() == 1 and _p_week_of(fw[0]) == WEEK, "%d 条" % fw.size())
 	_ok("⑤一 ★标题 = 🏆 上周终榜", _title_of(mon) == LB.TITLE_ICON + "上周终榜", _title_of(mon))
-	_ok("⑤一 周一没有顶栏入口", mon.get("entry_btn") == null)
+	## ★2026-10-19 用户「周六 / 周日赛况保留到周一」: 周一给两扇门(与主菜单周一那两扇同名同目标)。
+	var meb: Array = mon.get("entry_btns")
+	var mtx: Array = meb.map(func(b): return str((b as Button).text))
+	var mmeth: Array = meb.map(func(b):
+		for c in (b as Button).pressed.get_connections():
+			return str((c["callable"] as Callable).get_method())
+		return "(未连接)")
+	_ok("⑤一 ★★周一顶栏两扇门: 「周六赛况」→ _open_gauntlet_board / 「周日对阵图」→ _open_bracket_map",
+		mtx == [LB.MON_GAUNTLET_LINE, LB.MON_BRACKET_LINE] and mtx == ["周六赛况", "周日对阵图"]
+		and mmeth == ["_open_gauntlet_board", "_open_bracket_map"], "%s / %s" % [str(mtx), str(mmeth)])
+	var mvp := Rect2(Vector2.ZERO, Vector2(get_viewport().get_visible_rect().size)).grow(0.5)
+	var mbad: Array = meb.filter(func(b): return (b as Button).size.y < 81.0 or not mvp.encloses((b as Button).get_global_rect()))
+	_ok("⑤一 两扇门都在屏内且热区 ≥ 81", meb.size() == 2 and mbad.is_empty(), str(mbad.size()))
 	_check_server_screen("⑤一", mon, "上周")
 	var mk := _marks(_screen_rows(mon))
 	print("    [头衔] ", mk)
@@ -690,7 +794,7 @@ func _t_days() -> void:
 	_ok("⑤二 不问决赛", _fw_reqs().is_empty())
 	_ok("⑤二 没有顶栏入口", tue.get("entry_btn") == null)
 	var tr := _screen_rows(tue)
-	_ok("⑤二 ★分母: 有行", tr.size() == 10, "%d" % tr.size())
+	_ok("⑤二 ★分母: 有行(列表 10 行 + 钉住的我)", tr.size() == LB.VIS_ROWS + 1, "%d" % tr.size())
 	_ok("⑤二 ★积分赛进行中 ⇒ 一个标记都不挂(胜场够了也不挂)", _marks(tr).is_empty(), str(_marks(tr)))
 	await _close(tue)
 
@@ -710,7 +814,7 @@ func _t_days() -> void:
 		var want := ""      # ★2026-10-10 用户拍板: 周六周日不挂「已晋级」(与赛况板的「已晋级」= 进周日 撞词)
 		if str(r.get("mark", "")) != want:
 			prom_bad.append("%s 胜%d 挂「%s」" % [r.get("name", "?"), w, r.get("mark", "")])
-	_ok("⑤六 ★★周六谁都不挂「已晋级」(逐行, 含胜场 ≥ %d 的 %d 人)" % [pw, n_prom], prom_bad.is_empty() and sr.size() == 10, str(prom_bad))
+	_ok("⑤六 ★★周六谁都不挂「已晋级」(逐行, 含胜场 ≥ %d 的 %d 人)" % [pw, n_prom], prom_bad.is_empty() and sr.size() == LB.VIS_ROWS + 1, str(prom_bad))
 	_ok("⑤六 ★分母: 榜上确有 %d 个胜场过线的人(不然上一条是空检查)" % n_prom, n_prom > 0, str(smk))
 	var sb = sat.get("entry_btn")
 	_ok("⑤六 ★★顶栏入口 = 「全场赛况」(与主菜单那扇门同一个字)",

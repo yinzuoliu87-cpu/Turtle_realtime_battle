@@ -156,6 +156,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|横斩伤害加成 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|横斩基础伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|横波伤害加成 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|横波基础伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|每 # 秒
 scripts/gamedata/equip_tier_labels.gd|lit|每个魔抗 +#
 scripts/gamedata/equip_tier_labels.gd|lit|每层双抗 +#
 scripts/gamedata/equip_tier_labels.gd|lit|每层增伤 #%
@@ -184,7 +185,6 @@ scripts/gamedata/equip_tier_labels.gd|lit|浪潮伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|浪潮弹跳 # 次
 scripts/gamedata/equip_tier_labels.gd|lit|浪潮治疗 #
 scripts/gamedata/equip_tier_labels.gd|lit|浮游炮伤害 #% 攻击力
-scripts/gamedata/equip_tier_labels.gd|lit|深海币 # 枚
 scripts/gamedata/equip_tier_labels.gd|lit|溅射比例 #%
 scripts/gamedata/equip_tier_labels.gd|lit|火球伤害 #% 目标最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|火球目标 # 名
@@ -223,6 +223,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|第三块 攻击速度 +#%
 scripts/gamedata/equip_tier_labels.gd|lit|第三块 每秒回复 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|第二块 攻击力 +#
 scripts/gamedata/equip_tier_labels.gd|lit|终极护盾 #% 最大生命值
+scripts/gamedata/equip_tier_labels.gd|lit|至多 # 枚
 scripts/gamedata/equip_tier_labels.gd|lit|范围伤害 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|落雷数 # 道
 scripts/gamedata/equip_tier_labels.gd|lit|血护盾上限 #
@@ -840,8 +841,11 @@ scripts/scenes/InventoryScene.gd|tooltip_text|切换站位：前排近战 / 后�
 scripts/scenes/InventoryScene.gd|tooltip_text|单位装备上限 %d 件\n全队上限由赛季等级决定（当前 Lv%d：%d 件）%s
 scripts/scenes/LeaderboardScene.gd|lit|上周终榜
 scripts/scenes/LeaderboardScene.gd|lit|剩余生命
+scripts/scenes/LeaderboardScene.gd|lit|周六赛况
+scripts/scenes/LeaderboardScene.gd|lit|周日对阵图
 scripts/scenes/LeaderboardScene.gd|lit|已晋级
 scripts/scenes/LeaderboardScene.gd|lit|总场次
+scripts/scenes/LeaderboardScene.gd|lit|我的位置
 scripts/scenes/LeaderboardScene.gd|lit|本周共 %d 人上榜
 scripts/scenes/LeaderboardScene.gd|lit|本周排行
 scripts/scenes/LeaderboardScene.gd|lit|本地记录 · 非实时排名
