@@ -7,6 +7,7 @@ extends RefCounted
 ## 44×44 装备格的 tooltip 正文带颜色与内联属性图标, 不挂它就是纯 Label 原样印标记。
 const RichTooltip = preload("res://scripts/scenes/rich_tooltip.gd")
 const SettleScreenS := preload("res://scripts/scenes/battle/settle_screen.gd")
+const _BE := preload("res://scripts/net/backend.gd")   # 对手快照的赛季等级判据(ghost_level)
 
 var battle
 
@@ -367,6 +368,7 @@ func _dl_unit_card(spec, is_mine: bool) -> Control:
 	nr.add_child(nm)
 	var lvl = 1
 	if GameState != null and GameState.season_level != null: lvl = maxi(1, int(GameState.season_level))
+	if not is_mine: lvl = _dl_foe_level(lvl)   # 对手卡写对手自己的等级(快照带; 旧快照 = 与我同级)
 	var lv = Label.new(); lv.text = "Lv.%d" % lvl; lv.add_theme_font_size_override("font_size", 17); lv.add_theme_color_override("font_color", Color("#ffd93d")); lv.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	nr.add_child(lv)
 	var eqs = _dl_spec_equips(spec, is_mine)
@@ -539,13 +541,14 @@ func _dl_build_lane_field() -> void:
 	else:
 		mine = GameState.get_dual_lineup().get(lane, [])
 		foe = battle._dual_foe_lane(lane)   # 确定性(读固定 ghost 快照/固定 bot 池) → 与预览显示一致
+	## ★右方等级 = 对手快照自带的(用户 2026-10-19「赛季等级」双方各用各的); 旧快照没有 ⇒ 与左方同级(老口径, 结果逐位不变)。
+	var flvl: int = _dl_foe_level(lvl)
 	battle._spawn._spawn_lane_side(mine, "left", lvl, Vector2(_cx - 420.0, _cy))
-	battle._spawn._spawn_lane_side(foe, "right", lvl, Vector2(_cx + 420.0, _cy))
-	# 两端基地各 spawn 一颗蛋(围栏罩住). egg_hp 跨路累积(缺则按平均等级初始化); hp_max=原始满血→血条显跨路累积伤害.
-	_dl_ensure_egg_hp(lvl)
-	var egg_max: float = 3000.0 + 300.0 * float(lvl)   # 蛋原始满血(用户2026-07-19: 2000+100/级 → 3000+300/级) = maxHp 基准
-	battle._units.append(battle._spawn._make_unit("__egg__", "left", Vector2(battle.ARENA.position.x + 70.0, _cy), {"egg": true, "egg_side": "left", "hp": _dl_egg_hp("left"), "hp_max": egg_max}))
-	battle._units.append(battle._spawn._make_unit("__egg__", "right", Vector2(battle.ARENA.end.x - 70.0, _cy), {"egg": true, "egg_side": "right", "hp": _dl_egg_hp("right"), "hp_max": egg_max}))
+	battle._spawn._spawn_lane_side(foe, "right", flvl, Vector2(_cx + 420.0, _cy))
+	# 两端基地各 spawn 一颗蛋(围栏罩住). egg_hp 跨路累积(缺则按**各自**等级初始化); hp_max=原始满血→血条显跨路累积伤害.
+	_dl_ensure_egg_hp(lvl, flvl)
+	battle._units.append(battle._spawn._make_unit("__egg__", "left", Vector2(battle.ARENA.position.x + 70.0, _cy), {"egg": true, "egg_side": "left", "hp": _dl_egg_hp("left"), "hp_max": egg_max_for(lvl)}))
+	battle._units.append(battle._spawn._make_unit("__egg__", "right", Vector2(battle.ARENA.end.x - 70.0, _cy), {"egg": true, "egg_side": "right", "hp": _dl_egg_hp("right"), "hp_max": egg_max_for(flvl)}))
 	battle._spawn._spawn_trainers()    # 双方场外监视者。★放在这里 = 每路 spawn 一次, 而 _dl_next_lane 会先
 						 #   _dl_clear_units() 再重 spawn → 血量【天然每场重置】(用户要的), 不用另写重置逻辑。
 						 #   另见 _dl_snapshot_survivors: 训龟大师不进幸存名单, 否则会带残血去终极战场+重复 spawn。
@@ -654,14 +657,28 @@ func _dl_build_lane_field() -> void:
 						  #   必须在 _eq_apply_all_stats 之【后】: 它会把 eq_state 重置成初始值, 放前面会被它盖掉。
 	battle._hud._build_team_panels()   # ★双路补建左右头像框(装备图标随之显示): 原只在非双路分支L1051调·双路早退绕过→装了装备头像框空白(用户2026-07-11 #5)
 
-func _dl_ensure_egg_hp(lvl: int) -> void:   # egg_hp 缺则按 3000+300×平均等级 初始化(两侧·用户2026-07-19)
+## egg_hp 缺则按 3000+300×等级 初始化(用户2026-07-19)。
+## ★2026-10-19 起**各按各的等级**(左 = 我的 season_level, 右 = 对手快照的): 原来两侧共用左方一个数
+##   (旧注释写「平均等级」, 代码其实一直是左方等级)。对手快照没带等级 ⇒ flvl == lvl, 与原来逐位相同。
+func _dl_ensure_egg_hp(lvl: int, flvl: int) -> void:
 	if GameState == null:
 		return
 	if not (GameState.egg_hp is Dictionary):
 		return
 	for s in ["left", "right"]:
 		if float(GameState.egg_hp.get(s, 0.0)) <= 0.0:
-			GameState.egg_hp[s] = 3000.0 + 300.0 * float(lvl)
+			GameState.egg_hp[s] = egg_max_for(lvl if s == "left" else flvl)
+
+
+## 蛋原始满血(用户2026-07-19: 2000+100/级 → 3000+300/级) = maxHp 基准。
+static func egg_max_for(lv: int) -> float:
+	return 3000.0 + 300.0 * float(lv)
+
+
+## 右方(对手)的等级: 快照带 `season_level` 就用它, 否则 = `mine`(左方等级, 老口径)。判据在 `Backend.ghost_level`。
+func _dl_foe_level(mine: int) -> int:
+	var fl: int = _BE.ghost_level(GameState.dual_ghost) if GameState != null else -1
+	return fl if fl >= 1 else mine
 
 func _dl_egg_hp(side_lr: String) -> float:
 	if GameState != null and GameState.egg_hp is Dictionary:

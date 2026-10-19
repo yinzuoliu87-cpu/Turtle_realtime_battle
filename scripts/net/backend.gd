@@ -195,6 +195,18 @@ static func is_sparring(g) -> bool:
 ##   同一个对手上路是 bot 的龟、下路是鬼影的小将, 拼出来的对手根本不存在。
 ## ⚠ 这里是**第二道**。第一道在 `Backend.pool_find_battles`(坏快照压根选不上),
 ##   留两道是因为 `dual_ghost` 还能从别处被写(调试台/教程/手工录入)。
+## 对手快照自带的赛季等级(1 ~ MAX_LEVEL); 没带 / 不是数 = -1(旧快照 ⇒ 调用方退回「与左方同级」的老口径)。
+## ★用户 2026-10-19「赛季等级」: 双方各用各自的等级 —— 右方读这里, 左方照旧读 GameState。
+##   快照是别人传上来的数据 ⇒ 一律夹到 1 ~ MAX_LEVEL, 不信越界值。
+static func ghost_level(g) -> int:
+	if not (g is Dictionary):
+		return -1
+	var v = (g as Dictionary).get("season_level", null)
+	if not (v is int or v is float) or int(v) < 1:
+		return -1
+	return clampi(int(v), 1, _P2.MAX_LEVEL)
+
+
 static func ghost_lanes_broken(g) -> bool:
 	if not (g is Dictionary):
 		return false
@@ -430,6 +442,9 @@ static func make_bot(battles: int, rng: RandomNumberGenerator, gw: int = -1, gl:
 		## 敌方大师读它(`battle_spawn.gd`)。从玩家**能选的那张表**里抽, 真人谁都在这七个里。
 		"trainer_skill": _bot_trainer_skill(rng),
 		"season_total_battles": battles,
+		## 赛季等级(2026-10-19 用户「赛季等级」: 右方按快照自己的等级打)。= 装备预算用的同一个 `bot_lv`
+		##   (`bot_level_for_battles`: 由真人快照按场次量出来的曲线) ⇒ 等级与装备件数自洽, 真人产得出来。
+		"season_level": bot_lv,
 		"season_eggs_killed": int(rec["wins"]),
 		"season_wins": int(rec["wins"]),
 		"hearts": int(rec["hearts"]),
@@ -899,7 +914,10 @@ static func _load_seed() -> Dictionary:
 		return parsed
 	return {POOL_KEY: {}}
 
-const SEED_VER := 16  # ★★2026-10-07 v16: 种子文件没动, 陪练入池时的名字换成新昵称生成器(真人用户名的长相)。
+const SEED_VER := 17  # ★★2026-10-19 v17: 种子文件没动, 陪练入池时**保留**文件里的 `season_level`(原来删掉)。
+                      #   用户 10-19「赛季等级」: 快照带等级、对手按自己的等级打; 真人快照从此带这个键,
+                      #   不升版老池里那 396 条没有它 ⇒ 与真人不同形, 而且打起来还是「跟着我的等级」。
+                      # ★★2026-10-07 v16: 种子文件没动, 陪练入池时的名字换成新昵称生成器(真人用户名的长相)。
                       #   不升版老池里那 396 条还叫「石头统领」这类旧名, 而真人的默认名已经换了 ⇒ 一眼分得出谁是陪练。
                       # ★★2026-10-04 v15: 种子文件没动, 陪练入池时多盖一个 `profile.tag`(玩家 ID, 与真人同一套算法 ——
                       #   `fake_person_tag`)。不升版老池里那 396 条没有这个键, 与真人快照不同形。
@@ -1009,8 +1027,12 @@ static func _seed_season_id() -> int:
 ##   (`_dual_foe_lane` 对空数组与缺键走同一条: 敌方 `_dl_spec_equips` 都返回 `[]`)。
 ##   `pet_levels` 战斗侧没人读(见 `make_bot` 头注)。门禁拿**战斗场自己的** `_dual_foe_lane`
 ##   把 396 支原样/转换后各读一遍, 逐字相同。
-## ★`_strategy` / `season_level` 只删在**池子里这一份**: 种子文件原样保留, 量 bot 强度曲线的
+## ★`_strategy` 只删在**池子里这一份**: 种子文件原样保留, 量 bot 强度曲线的
 ##   `tools/bot_level_fit_audit.py`、`verify_seed_battles_gear`、流派报表都读文件, 不读池子。
+## ★★2026-10-19 `season_level` **改为保留**(用户「赛季等级」: 快照带等级、对手按自己的等级打)。
+##   真人快照从此也带它 ⇒ 不再是「多键」; 值 = 种子文件里队列模拟那一支**真实升到的**等级
+##   (文件 396 支全有; 万一缺 ⇒ `bot_level_for_battles(场次)`, 与 `make_bot` 同一把尺子)。
+##   ⇒ 陪练的**战斗强度会变**: 原来右方一律跟左方同级, 现在用它自己的等级(这正是要的改动)。
 ## ★`ghost_id` 保留 `seed_` 前缀: 那是 `is_sparring` 的唯一判据(陪练不上榜 / 匹配记账分真人陪练 /
 ##   升版清旧种子), 而它只在本机 —— 出站两条路都过 `ReplayUploader.GHOST_STRIP` 摘掉(与 `is_bot` 同)。
 ## ★同一个「人」(ghost_id 去掉 `_b<场次>`)各场次: uid / 名字相同, 胜场随场次不减 ——
@@ -1076,6 +1098,7 @@ static func seed_as_human(g: Dictionary, season_id: int) -> Dictionary:
 		"pet_levels": levels,
 		"trainer_skill": str(g.get("trainer_skill", "")),
 		"season_total_battles": battles,
+		"season_level": _seed_level(g, battles),
 		"season_eggs_killed": int(rec["wins"]),
 		"season_wins": int(rec["wins"]),
 		"hearts": int(rec["hearts"]),
@@ -1093,6 +1116,12 @@ static func seed_as_human(g: Dictionary, season_id: int) -> Dictionary:
 	LineupPos.fill_bot_offsets(snap, gid)
 	## 与真人对手同一个 JSON 往返(数字一律 float)。
 	return JSON.parse_string(JSON.stringify(snap))
+
+
+## 陪练的赛季等级: 种子文件里那一支真实升到的(队列模拟); 缺 ⇒ 按场次(`bot_level_for_battles`, 与 `make_bot` 同一把尺子)。
+static func _seed_level(g: Dictionary, battles: int) -> int:
+	var lv := ghost_level(g)
+	return lv if lv >= 1 else _P2.bot_level_for_battles(battles)
 
 
 ## 陪练的「这个人」= ghost_id 去掉末尾的 `_b<场次>`(同一只队列机器人在各场次的快照)。
@@ -1947,6 +1976,10 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 		##    判据都一样 —— 消费侧在读, 生产侧没写。)
 		"trainer_skill": str(GameState.trainer_skill) if GameState != null else "",
 		"season_total_battles": int(GameState.season_total_battles),
+		## ★赛季等级(2026-10-19 用户「赛季等级」): 对手那边按**我的**等级给我的单位缩放 / 定蛋血 / 定小将等级。
+		##   原来快照不带, 战斗里右方一律吃左方(打的人)的等级 ⇒ 同一份阵容碰到高等级的人就跟着变强。
+		##   读的一侧见 `ghost_level`(缺 ⇒ 退回老口径)。
+		"season_level": maxi(1, int(GameState.season_level)),
 		"season_eggs_killed": int(GameState.season_eggs_killed),
 		## ★★A8(2026-09-19) 终榜三键。排序换成字典序「胜场 → 余命 → 横扫」,
 		##   原来只比 `season_eggs_killed`(碎蛋数)。三个都要带, 否则榜上排不出先后。

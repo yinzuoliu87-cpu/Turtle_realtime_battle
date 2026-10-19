@@ -1,15 +1,17 @@
 extends Node
-## verify_battle_ui.gd — 守卫 R2a/R2b: 战斗内 UX (结束按钮化 / 投降 / 战斗日志)
+## verify_battle_ui.gd — 守卫 R2a/R2b: 战斗内 UX (结束按钮化 / 投降已删 / 战斗日志)
 ## 用户〖2026-07-11〗:「战斗结束不要什么点R/ESC, 要按钮的形式, 暂停, ...日志等都通吗」
 ## 用户〖2026-07-30〗:「战斗日志按钮移除掉，暂停按钮移除掉，局内不再有退出去或暂停的按钮了，
 ##   新增投降按钮，点击后有确认认输的提示框」→ A 组从"暂停"改为"投降 + 暂停不许回来"。
+## 用户〖2026-10-19〗:「投降不要了」→ A 组投降那一半改成反向断言(键 / 框 / 开收确认三个方法都不许回来),
+##   详细的(含旧录像能播)在 verify_no_surrender。判负三件套仍由 `_forfeit_match`(补打用)走, 照旧验。
 ##
 ## 断言(功能层, 像素布局仍需 F5 眼验):
 ##   A. ★暂停按钮/面板/开关【必须不存在】(反向断言 —— 不是删掉旧断言, 否则谁加回来都没人知道);
-##      投降按钮/确认框已建; 弹框→取消不结算 / 弹框→确认走判负三件套; _settled 后不响应。
+##      投降按钮/确认框/开收确认【必须不存在】; `_forfeit_match` 走判负三件套。
 ##   B. 战斗日志 _log 追加 + 封顶 _LOG_CAP(200); _toggle_log 显隐面板且开时重建文本。
 ##      （U3: 只删了 📜 按钮, _log()/面板/_toggle_log 全保留 —— 所以本组照旧。）
-##   C. 结算 _show_banner 生成 2 个操作 Button(再战/返回菜单), 且结算后【投降】按钮被禁。
+##   C. 结算 _show_banner 生成 2 个操作 Button(再战/返回菜单)。
 ##
 ## ★注意: 测试根节点 process_mode=ALWAYS, 且结尾复位 paused=false(否则暂停态会冻住后续 await)。
 
@@ -75,30 +77,16 @@ func _ready() -> void:
 	_ok("★_toggle_pause 已移除", not scene.has_method("_toggle_pause"))
 	_ok("★_CamInputRelay 内部类已移除(它只为暂停存在)",
 		not FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd").contains("class _CamInputRelay extends Node:"))
-	# 投降按钮 + 确认框
-	_ok("投降按钮已建", scene._surrender_btn != null)
-	_ok("投降确认框已建且默认隐藏",
-		scene._surrender_panel != null and not scene._surrender_panel.visible)
-	scene._show_surrender_confirm()
-	_ok("点投降: 确认框弹出", scene._surrender_panel.visible == true)
-	# ★弹框【不暂停】战斗(U6: 用户说"不再有暂停")
-	_ok("★弹框期间战斗没被暂停", get_tree().paused == false)
-	# 取消 = 什么都不发生
-	scene._hide_surrender_confirm()
-	_ok("点取消: 确认框收起", scene._surrender_panel.visible == false)
-	_ok("★点取消【不】结算(_over 仍 false)", scene._over == false)
-	_ok("★点取消【不】结算(_settled 仍 false)", scene._settled == false)
-	# 确认认输 = 判负三件套(_over / 喂赛季 / 显横幅)
-	scene._show_surrender_confirm()
-	scene._do_surrender()
+	# ★投降(2026-10-19 用户「投降不要了」): 同样写成反向断言
+	_ok("★投降按钮字段不存在", not ("_surrender_btn" in scene))
+	_ok("★投降确认框字段不存在", not ("_surrender_panel" in scene))
+	_ok("★开 / 收 / 确认投降三个方法都已移除", not scene.has_method("_show_surrender_confirm")
+		and not scene.has_method("_hide_surrender_confirm") and not scene.has_method("_do_surrender"))
+	# 判负三件套(_over / 喂赛季 / 显横幅) —— 现在只有补打的「开局即判负」走它
+	scene._forfeit_match()
 	await get_tree().process_frame
-	_ok("★点确认认输: _over=true(判负)", scene._over == true)
-	_ok("★点确认认输: 确认框已收起", scene._surrender_panel.visible == false)
-	_ok("★点确认认输: 走了横幅路径(_settled=true)", scene._settled == true)
-	# _settled 后不响应
-	scene._surrender_panel.visible = false
-	scene._show_surrender_confirm()
-	_ok("★结算后点投降不响应(框不弹)", scene._surrender_panel.visible == false)
+	_ok("★判负收尾: _over=true(判负)", scene._over == true)
+	_ok("★判负收尾: 走了横幅路径(_settled=true)", scene._settled == true)
 	scene._settled = false
 	scene._over = false
 
@@ -189,7 +177,6 @@ func _ready() -> void:
 	await get_tree().process_frame
 	var btns := _count_buttons(scene._ui_layer)
 	_ok("结算后 UI 层有操作按钮(再战/返回菜单等 ≥2)", btns >= 2, "共 %d 个 Button" % btns)
-	_ok("结算后投降按钮被禁", scene._surrender_btn.disabled == true)
 
 	# ── C2. ★结算页「前往商店」(2026-08-03) ──────────────────────────────
 	# 自走棋的循环是【打 → 买 → 再打】, 而原来结算页只有"返回主菜单":
@@ -198,7 +185,7 @@ func _ready() -> void:
 	# ⚠ 赛季淘汰(hearts<=0)时【商店是锁的】(MainMenuScene 里锁匹配+商店),
 	#   所以那时不能给这个按钮 —— 否则点进去是个锁死的页面。
 	# 下面三条: ①按钮在 ②它指的场景真存在 ③★淘汰时不长出来(差分, 不是空检查)。
-	# ★用【差分】不用总数: 这个测试前面已经结算过一次(_do_surrender), UI 层里本来就躺着
+	# ★用【差分】不用总数: 这个测试前面已经结算过一次(_forfeit_match), UI 层里本来就躺着
 	#   一张旧结算卡 —— 数总数会把它算进来(实测 2 个, 而每张卡只有 1 个)。
 	#   差分 = "再建一张卡, 这张卡里多长出几个" —— 与历史残留无关。
 	var gs2 = get_node_or_null("/root/GameState")
@@ -257,7 +244,7 @@ func _done() -> void:
 	get_tree().paused = false
 	print("")
 	if _fail == 0:
-		print("ALL PASS — 战斗内 UX(结束按钮/投降/日志) 功能守卫通过")
+		print("ALL PASS — 战斗内 UX(结束按钮/投降已删/日志) 功能守卫通过")
 	else:
 		print("FAIL x", _fail)
 	get_tree().quit(1 if _fail > 0 else 0)

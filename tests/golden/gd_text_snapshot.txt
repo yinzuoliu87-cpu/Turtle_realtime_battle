@@ -957,7 +957,7 @@ scripts/scenes/RealtimeBattle3DScene.gd|lit|%s 攻击 %.0f → %.0f (%.1f×)
 scripts/scenes/RealtimeBattle3DScene.gd|lit|%s 最大生命 %.0f → %.0f (%.1f×)
 scripts/scenes/RealtimeBattle3DScene.gd|lit|%s 被控锁 %.0fs(采样) 期间共被上控 %d 次  剩余=%.1f 最后来源=%s 全场来源=%s
 scripts/scenes/RealtimeBattle3DScene.gd|lit|%s 连续浮空 %.0fs
-scripts/scenes/RealtimeBattle3DScene.gd|lit|[color=#ff6b6b]🏳 认输 —— 本场判负[/color]
+scripts/scenes/RealtimeBattle3DScene.gd|lit|[color=#ff6b6b]本场判负[/color]
 scripts/scenes/RealtimeBattle3DScene.gd|lit|[color=#ff9a5a]☠ %s[/color] 被击败
 scripts/scenes/RealtimeBattle3DScene.gd|lit|[color=%s]◆ %s[/color] 施放 [color=#ffe08a]%s[/color]
 scripts/scenes/RealtimeBattle3DScene.gd|lit|_world 子节点=%d (特效没清)
@@ -1274,7 +1274,6 @@ scripts/scenes/battle/battle_hud.gd|lit|练习赛 · 不计入赛季进度
 scripts/scenes/battle/battle_hud.gd|lit|胜利
 scripts/scenes/battle/battle_hud.gd|lit|表演赛 · 不消耗生命
 scripts/scenes/battle/battle_hud.gd|lit|装备星级
-scripts/scenes/battle/battle_hud.gd|lit|认输
 scripts/scenes/battle/battle_hud.gd|lit|赛季等级
 scripts/scenes/battle/battle_hud.gd|lit|赛季胜场
 scripts/scenes/battle/battle_hud.gd|lit|赛季胜场 +1
@@ -1287,12 +1286,9 @@ scripts/scenes/battle/battle_hud.gd|lit|闯关战绩
 scripts/scenes/battle/battle_hud.gd|lit|阵容上传
 scripts/scenes/battle/battle_hud.gd|text|← 手指横滑挑龟(共28只+小将+大师) →   点一格选笔刷 → 点战场连点连摆 · 点已摆的龟→出配置面板
 scripts/scenes/battle/battle_hud.gd|text|友军
-scripts/scenes/battle/battle_hud.gd|text|已获得的战报与奖励将保留
 scripts/scenes/battle/battle_hud.gd|text|战斗日志
 scripts/scenes/battle/battle_hud.gd|text|敌方
 scripts/scenes/battle/battle_hud.gd|text|点空地=摆(龟/小将) · 点单位=选中配装 · 拖拽=挪位 · 满龟能开→秒放技看效果
-scripts/scenes/battle/battle_hud.gd|text|确认认输？
-scripts/scenes/battle/battle_hud.gd|text|认输后本场判负，且无法撤销
 scripts/scenes/battle/battle_hud.gd|text|阵容已上传
 scripts/scenes/battle/battle_hud.gd|text|🛠 调试场
 scripts/scenes/battle/battle_hud.gd|tooltip_text|%s · %d 档

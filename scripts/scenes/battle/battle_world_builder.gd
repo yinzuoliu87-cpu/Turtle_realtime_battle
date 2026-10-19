@@ -1583,8 +1583,8 @@ func _is_dev_tool_battle() -> bool:
 
 
 ## 这一局打完会不会进赛季结算(扣命 / 记闯关战绩 / 发奖)。条件与 `_settle_season` 开头那几条 early return 一致。
-## ★给键盘用(2026-10-10 实操查实): R 重开 / ESC 回主菜单原来**不分场合** ⇒ 计分对局里一按就把这一局抹掉,
-##   负场不记、命不扣 —— 与用户 2026-07-30「认输 = 整场负, 不许直接回主菜单」相反。
+## ★给键盘用(2026-10-10 实操查实): R 重开原来**不分场合** ⇒ 计分对局里一按就把这一局抹掉(重开 = 新开一局, 待结算单被覆盖),
+##   负场不记、命不扣。
 func _is_scored_match() -> bool:
 	if battle._replay != null and battle._replay.is_playing():
 		return false
@@ -1594,22 +1594,15 @@ func _is_scored_match() -> bool:
 	return (gs.get("season_leaders") is Array) and (gs.get("season_leaders") as Array).size() >= 1
 
 
-## 键盘守卫(`_unhandled_input` 第一句调): 计分对局没打完时吞掉 R / ESC 并返回 true。
-##   ESC = 弹认输确认(框开着再按 = 收起); R 什么都不做。其余情况返回 false, 主文件照旧处理。
+## 键盘守卫(`_unhandled_input` 第一句调): 计分对局没打完时吞掉 R 并返回 true(R 什么都不做)。其余情况返回 false, 主文件照旧处理。
+## ★ESC 不再拦(2026-10-19 用户「投降不要了」: 原来 ESC = 弹认输确认, 认输整个删了)。
+##   ESC 走主文件的老路 = 回主菜单; 计分对局那一刻已落了「待结算单」(`AbandonedMatch`, 开局时写),
+##   主菜单一进来就把这一局**按正常规则打完并结算**(用户 2026-10-10「学习他们的做法」: 退出不作废、也不直接判负)
+##   ⇒ ESC 既不会抹掉这一局, 也不会凭空判负, 而且不留一个按了没反应的键。门禁 verify_scored_match_keys。
 func _scored_key_guard(keycode: int) -> bool:
-	if keycode != KEY_R and keycode != KEY_ESCAPE:
+	if keycode != KEY_R:
 		return false
-	if battle._settled or not _is_scored_match():
-		return false
-	if keycode == KEY_ESCAPE:
-		if battle._info_panel != null and is_instance_valid(battle._info_panel):
-			return false                     # 详情面板开着 → 交给主文件先关面板
-		var sp = battle._surrender_panel
-		if sp != null and is_instance_valid(sp) and sp.visible:
-			battle._hide_surrender_confirm()
-		else:
-			battle._show_surrender_confirm()
-	return true
+	return not battle._settled and _is_scored_match()
 
 
 ## 这一场是不是**教学战斗**(GameState.tutorial_active 且走双路)。

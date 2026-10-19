@@ -2,7 +2,7 @@ extends Node
 ## verify_replay_roundtrip.gd — 回放 S1: 本机录、本机播, 逐步一致(方案书 docs/plans/20261003-跨设备回放.md §6)
 ##
 ## 用户 2026-10-03:「我希望……我能在其他设备上看到比赛回放」。第一步只做「本机录、本机播」:
-##   真实交互对局(**非 det 模式**、帧长乱跳、有人点幕布/拖站位/按开打/认输)
+##   真实交互对局(**非 det 模式**、帧长乱跳、有人点幕布/拖站位/按开打/判负收尾)
 ##   → 录一份记录 → 把 GameState 改成另一份 → 照记录重算 → **每一个 sim 步**的全场指纹都要和原局一样。
 ##
 ## ★这把尺子量的是「实战可复现」, 所以录制那一局必须是**交互模式**:
@@ -12,7 +12,7 @@ extends Node
 ##
 ## 对应验收:
 ##   V1 实战可复现: 逐步指纹一致 + 产品自己的校验点一个不差 + 终局一致
-##      反证: 种子改一位 / 一个站位挪 40 码 / 删掉那条认输 ⇒ 都必须停下(diverged_at ≥ 0)
+##      反证: 种子改一位 / 一个站位挪 40 码 / 删掉那条判负收尾 ⇒ 都必须停下(diverged_at ≥ 0)
 ##   V2 指纹不吃演出随机: 两遍的 `_juice_rng` 种子不同(分母), 指纹照样一致
 ##   V3 录制字段完整: 播之前把 GameState 改成另一份合法阵容, 并且**所有不在 STATE_KEYS 里的变量**都换成另一份 ⇒ 仍一致;
 ##      反证: 从记录里删掉 `persistent_equipped`(那件装备真的在场上) / `season_level` ⇒ 必须对不上
@@ -35,7 +35,7 @@ extends Node
 ##      实测: 周六赛况板 92 场录像 37 场在斧头登场后的第一个校验点分叉(多为「第 660 步 校验点 10」)。
 ##      录制方带 096 + 非零进度; V3 篡改把本机进度 +7 ⇒ 不录就分叉。反证: 录像里删掉 axe_exp_total ⇒ 必须停下。
 ##
-## ★分母: 录到的校验点数 > 0, 每类输入(fight / present / surrender)至少一条, 两路都开打过。
+## ★分母: 录到的校验点数 > 0, 每类输入(fight / present / forfeit)至少一条, 两路都开打过。
 
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const Backend := preload("res://scripts/net/backend.gd")
@@ -195,7 +195,7 @@ func _ready() -> void:
 	var gs = get_node_or_null("/root/GameState")
 	OS.set_environment("TURTLE_SEED", "")       # ★交互模式: 不许 det
 	_setup_gs(gs)
-	print("=== 录: 交互模式真实对局(帧长乱跳 + 人点幕布/拖站位/按开打/认输) ===")
+	print("=== 录: 交互模式真实对局(帧长乱跳 + 人点幕布/拖站位/按开打/判负收尾) ===")
 	var rec_run: Dictionary = await _run(PAT_REC, true)
 	var hist: Array = gs.match_history
 	var rid: String = str((hist[0] as Dictionary).get("replay_id", "")) if not hist.is_empty() else ""
@@ -214,8 +214,8 @@ func _ready() -> void:
 	for e in rec["events"]:
 		kinds[str(e["k"])] = int(kinds.get(str(e["k"]), 0)) + 1
 	fights = int(kinds.get("fight", 0))
-	_ok("分母 · 每类输入至少一条(fight=%d present=%d surrender=%d)" % [fights, int(kinds.get("present", 0)), int(kinds.get("surrender", 0))],
-		fights >= 2 and int(kinds.get("present", 0)) >= 1 and int(kinds.get("surrender", 0)) == 1)
+	_ok("分母 · 每类输入至少一条(fight=%d present=%d forfeit=%d)、新录像里没有 surrender(投降 2026-10-19 已删)" % [fights, int(kinds.get("present", 0)), int(kinds.get("forfeit", 0))],
+		fights >= 2 and int(kinds.get("present", 0)) >= 1 and int(kinds.get("forfeit", 0)) == 1 and not kinds.has("surrender"))
 	_ok("分母 · 录到 %d 个校验点 > 0" % (rec["cps"] as Array).size(), (rec["cps"] as Array).size() > 0)
 	_ok("分母 · 记录带版本号 = 本机版本", str(rec.get("client_version", "")) == ReplayRecorder.client_version())
 	_ok("分母 · 站位是背包里摆过的(开打时上路统领 ≠ 默认队形)", bool(rec_run["dragged"]))
@@ -375,10 +375,10 @@ func _ready() -> void:
 	var r3: Dictionary = rec.duplicate(true)
 	var evs: Array = []
 	for e in r3["events"]:
-		if str(e["k"]) != "surrender":
+		if str(e["k"]) != "forfeit":
 			evs.append(e)
 	r3["events"] = evs
-	await _reverse("V1-③ 删掉那条认输", r3)
+	await _reverse("V1-③ 删掉那条判负收尾", r3)
 	var r4: Dictionary = rec.duplicate(true)
 	(r4["state"] as Dictionary).erase("persistent_equipped")
 	await _reverse("V3 记录里删掉 persistent_equipped(那件装备真的在场上)", r4)
@@ -397,7 +397,7 @@ func _reverse(name: String, r: Dictionary) -> void:
 	_ok("★反证 · %s ⇒ 必须停下(diverged_at=%d · %s)" % [name, int(res["div"]), str(res["why"])], int(res["div"]) >= 0)
 
 
-## 跑一局。rec=true 时扮演玩家(点幕布/第二路打一会儿认输; 开打是自动的, 2026-10-19 起对局里没有摆位屏)。
+## 跑一局。rec=true 时扮演玩家(点幕布/第二路打一会儿判负收尾; 开打是自动的, 2026-10-19 起对局里没有摆位屏)。
 ## hold=true(V1b): 从第一路预览期到开打后 40 帧不 await 引擎帧 ⇒ 这段里物理帧一个都不走。
 func _run(pat: Array, as_player: bool, hold: bool = false, tr = null, gs = null) -> Dictionary:
 	var s = RB.new()
@@ -440,7 +440,7 @@ func _run(pat: Array, as_player: bool, hold: bool = false, tr = null, gs = null)
 						var cy: float = s.ARENA.position.y + s.ARENA.size.y * 0.5
 						dragged = (u["pos"] as Vector2) != Vector2(cx - 420.0, cy - 77.0)
 			elif st == "fight" and fights >= 2 and st_frames == 300 and not surrendered:
-				s._do_surrender()                          # 第二路打一会儿认输(真入口: 确认钮调的就是它)
+				s._forfeit_match()                          # 第二路打一会儿判负收尾(补打「开局即判负」走的同一个入口; 投降键 2026-10-19 已删)
 				surrendered = true
 		var before: int = int(s._sim_step_n)
 		s._process(float(pat[i % pat.size()]))

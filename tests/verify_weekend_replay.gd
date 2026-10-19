@@ -207,7 +207,7 @@ func _play_one(tag: String) -> String:
 			## 2026-10-19 对局里没有摆位屏: 演出完同一步自动开打(原来这里按「开始战斗」)。
 			fights += 1
 		elif st == "fight" and fights >= 2 and stf == 120 and not surrendered:
-			s._do_surrender()
+			s._forfeit_match()
 			surrendered = true
 		s._process(0.05)
 		await get_tree().process_frame

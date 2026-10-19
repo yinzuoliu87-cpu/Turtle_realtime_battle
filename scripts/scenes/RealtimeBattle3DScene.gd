@@ -605,8 +605,6 @@ var _glacier_zones: Array = []            # 冰川带(训龟大师·用户2026-0
 
 # --- 暂停 + 战斗日志 (R2b, 用户 2026-07-11) ---
 var _spell_disc: SpellDisc = null         # 法术圆盘: 右下角·**只读**(U2: 冷却 + 魔法石层数显示, 不再能点/拖施法)
-var _surrender_panel: Control = null      # 投降确认浮层(取消/确认认输), 默认隐; 取代原暂停浮层(用户2026-07-30)
-var _surrender_btn: Button = null          # 🏳 投降按钮(原 ⏸ 暂停位); 结算后 disabled
 var _battle_log: Array = []               # 战斗日志 bbcode 行, 封顶 _LOG_CAP(参 soak 教训防无限增长)
 var _log_panel: Control = null            # 日志浮层(可滚动), 默认隐
 var _log_rt: RichTextLabel = null         # 日志文本(面板开着才实时追加)
@@ -915,8 +913,8 @@ func _ready() -> void:
 	_hud._build_ui_layer()
 	# ★PC 板(用户2026-08-01:「pc端要随便拉，支持全屏」): 战斗场景是全项目【唯一不接 size_changed
 	#   的场景】—— 主菜单/匹配/选龟都接。不接的后果是拉窗口/切全屏后 HUD 还按进场那一刻的视口摆:
-	#   PK 条宽度、右上投降/统计键停在旧位置, 而战场画面已经跟着新视口重画了。
-	#   重排逻辑见 battle_hud.on_viewport_resized(PK 条重建 · 右上两键重摆)。
+	#   PK 条宽度、右上统计键停在旧位置, 而战场画面已经跟着新视口重画了。
+	#   重排逻辑见 battle_hud.on_viewport_resized(PK 条重建 · 右上键重摆)。
 	if not get_viewport().size_changed.is_connected(_hud.on_viewport_resized):
 		get_viewport().size_changed.connect(_hud.on_viewport_resized)
 	_review_console._build_debug_panel()   # 🛠 调试面板(评审demo·技能/装备/星级·用户2026-07-11)
@@ -1152,58 +1150,15 @@ func _style_hud_btn(b: Button) -> void:
 	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 
 
-## (投降确认浮层的【构建】已搬到 scripts/scenes/battle/battle_hud.gd::_build_surrender_panel ——
-##  它只建 Control/ColorRect/Label/Button, 是纯 UI, 本来就该在 HUD 侧;
-##  而且主文件有 arch_budget 行数棘轮(欠债只减不增), 往这里加代码=违规。
-##  开/收/确认那三个【行为】函数留在本文件, 因为它们要动 _settled/_over/_dl_sys。)
-
-## 清掉拖动/捏合的脏态。
-##
-## ★这段原来长在 _toggle_pause 里, 是【搬过来的不是新写的】——
-##   verify_cam_pan 有一条 _test_pause_clears_drag_state 专门守着它, 所以它有实测价值:
-##   若"打断"发生在拖动【中途】, release 事件永远收不到, _pan_active 会带着 true 活到之后,
-##   表现为【手指松开了镜头还在跑】。
-##
-## 原来的"打断"是暂停; 暂停移除后, 新的打断源是**投降确认框的暗幕**(MOUSE_FILTER_STOP
-## 会吃掉 release), 完全同形。所以这段逻辑没有随暂停一起消失, 只是换了调用者。
-func _clear_input_dirty() -> void:
-	_pan_active = false
-	_pan_moved = false
-	_touch_pts.clear()
-	_pinch_prev = -1.0
-
-
-## 弹出投降确认框。结算后不响应(已经分出胜负了, 没什么可投降的)。
-func _show_surrender_confirm() -> void:
-	if _settled:
+## 整场判负 → 进结算屏(三件套: _over → _settle_season(false) → 横幅; 双路走 _dl_finish(false))。
+## ★2026-10-19 用户「投降不要了」: 认输键 / 确认框 / 原认输函数全删。这里剩下的**不是**投降,
+##   只给 `ReplayRecorder` 用: ①中途退出补打的「开局即判负」(`resume_loss`: 版本已更新 / 补打闪退过两次)
+##   ②补打推到步数上限仍未结算的收尾 ③播放**旧录像**里的 `surrender` 事件(v0.19.x 认输键录下的, 照旧能播完)。
+##   `kind` = 录像事件名: 新录的一律 "forfeit"; 播旧录像时传 "surrender", 与记录里那一条对上。
+func _forfeit_match(kind: String = "forfeit") -> void:
+	if _settled or _over or not _replay.allow_input(kind):   # 回放: 录下步号 / 播放时只认记录里那一下
 		return
-	_clear_input_dirty()      # ★见该函数注释: 暗幕会吃掉 release, 不清就会"松手后镜头还在跑"
-	if _surrender_panel != null and is_instance_valid(_surrender_panel):
-		_surrender_panel.visible = true
-
-
-## 收起投降确认框(点"取消"或战斗已结算)。★不做任何结算 —— 取消就是什么都不发生。
-func _hide_surrender_confirm() -> void:
-	_clear_input_dirty()
-	if _surrender_panel != null and is_instance_valid(_surrender_panel):
-		_surrender_panel.visible = false
-
-
-## 确认认输 → 判【整场】负并进结算屏。
-##
-## ★用户 2026-07-30 拍板"整场负，直接进结算屏"(不是只判本路负, 也不是直接回主菜单):
-##   · 只判本路负 = 可以刷掉不利的那一路保留阵容 → 新的策略后门
-##   · 直接回主菜单 = 拿不到本场奖励/记录, 也看不到自己输在哪
-##
-## ★不能只调 _settle_season(false) —— 它只做赛季记账(命/币/胜场/XP/ghost上传), 不显结算屏。
-##   正常判负是【三件套】: _over=true → _settle_season(won) → _hud._show_banner(won)
-##   (单路见 _check_over: 7353-7357; 双路见 dual_lane_flow._dl_finish: 726-733)。
-##   双路还要额外置 _dl_state="done", 所以双路直接走 _dl_finish(false) 复用它, 别自己拼。
-func _do_surrender() -> void:
-	if _settled or _over or not _replay.allow_input("surrender"):   # 回放: 录下步号 / 播放时只认记录里那一下
-		return
-	_hide_surrender_confirm()
-	_log("[color=#ff6b6b]🏳 认输 —— 本场判负[/color]")
+	_log("[color=#ff6b6b]本场判负[/color]")
 	if _is_dual_lane_mode():
 		_dl_sys._dl_finish(false)      # 双路: 内部会置 _over/_dl_state/喂赛季/显横幅
 	else:
@@ -1593,7 +1548,7 @@ func _season_leaders() -> Array:
 			break
 	return out
 
-# 单位等级 (血条左侧牌): 玩家队(left)读 GameState.season_level; bot 队随机 1-5 (展示用). 0=不显牌.
+# 单位等级 (血条左侧牌 + 属性缩放): 左方读 GameState.season_level; 右方读对手快照的 season_level(缺 ⇒ 同左方).
 func _unit_level(side: String) -> int:
 	var _gsd = get_node_or_null("/root/GameState")
 	if _gsd != null:
@@ -1609,12 +1564,13 @@ func _unit_level(side: String) -> int:
 			if lv != null:
 				return maxi(1, int(lv))
 		return 1
-	# 右队 bot: 给个合理等级 (与玩家相近), 演示血条牌不空
+	# 右队: 双路对手快照自带赛季等级 ⇒ 用它(用户 2026-10-19「赛季等级」双方各用各的); 旧快照 / 非双路 ⇒ 与左方同级(老口径)
 	var gs2 = get_node_or_null("/root/GameState")
 	var base := 1
 	if gs2 != null and gs2.get("season_level") != null:
 		base = maxi(1, int(gs2.get("season_level")))
-	return base
+	var fl: int = Backend.ghost_level(gs2.get("dual_ghost")) if gs2 != null and _is_dual_lane_mode() else -1
+	return fl if fl >= 1 else base
 
 # 等级乘数: 该单位/召唤体所属侧的等级 → 主属性 +5%/级 (与 _spawn._make_unit spawn 缩放同公式).
 #   装备 flat 加值 + 固定值召唤体(随从/海螺虫/大熊) 用它"吃等级"; owner 派生召唤体已间接吃, 不用.
@@ -7557,7 +7513,7 @@ func _settle_season(won: bool) -> void:
 		## ★★E-A4 快照上传: **记完战绩之后**才传, 标签取的是打完这一场的新战绩 ——
 		##   下一场要找的是"跟我现在同样几胜几负"的人。传打之前那个标签等于把自己
 		##   挂在上一格上, 别人永远找不到我, 而且**一声不吭**(表现成"周六老是打机器人")。
-		## ★投降局不传(与积分赛 E18 同一条): 判据是 `lane_results` 为空。
+		## ★没打的局不传(与积分赛 E18 同一条): 判据是 `lane_results` 为空(投降 2026-10-19 已删, 只剩补打的「开局即判负」)。
 		if gs.lane_results is Dictionary and not (gs.lane_results as Dictionary).is_empty():
 			Backend.upload_gauntlet_ghost(int(gs.gauntlet_wins), int(gs.gauntlet_losses))
 			## ★E-B3 决赛日报到: 这一场把我打成「晋级」时, 把阵容快照交给服务端。
@@ -7607,7 +7563,7 @@ func _settle_season(won: bool) -> void:
 			## ★★A3: 横扫(2-0)计数 —— 终榜排序的第三键「胜场 > 余命 > 横扫」。
 			## 判据写在 `GameState.dual_lane_was_sweep()` 里(那一层才持有 lane_results 与
 			## 双路逻辑壳), 这里只调它 —— 在主场景另 preload 一份壳 = 同一判据存两份。
-			## ⚠ 它内部已经挡住了**投降局的空 lane_results**, 别在这里重复判。
+			## ⚠ 它内部已经挡住了**空 lane_results**(没打完的局), 别在这里重复判。
 			if gs.dual_lane_was_sweep():
 				gs.season_sweeps += 1
 			if gs.get("left_team") is Array and (gs.left_team as Array).is_empty():
@@ -7625,13 +7581,12 @@ func _settle_season(won: bool) -> void:
 		## ★为什么要改: 只传赢的 ⇒ **同场次的池子里只有赢家, 越往后越偏强**。
 		##   而 D5 的匹配硬条件是「双方总场次相同」, 池子偏了就配不到势均力敌的对手。
 		##
-		## ★**投降局不传**(E18 第②条)。判据 = `lane_results` 是空字典 ——
-		##   实测过(`tests/_probe_draw_surrender.gd`): 投降不会写任何一路的结果。
-		##   代价 E18 也记了, 不是没想到: 等于给了「不想让别人打到我的阵容就投降」的口子,
-		##   但投降要付**一条命 + 一个配额**, 成本是真的。真发现有人这么玩再回头看那一行。
-		var _surrendered: bool = not (gs.lane_results is Dictionary) \
+		## ★**没打的局不传**(E18 第②条原是「投降局不传」)。判据 = `lane_results` 是空字典 ——
+		##   2026-10-19 投降已删(用户「投降不要了」), 走得到这里的只剩中途退出补打的「开局即判负」
+		##   (`ReplayRecorder.resume_loss` → `_forfeit_match`): 一路都没打, 不该当成一份阵容快照传上去。
+		var _unfought: bool = not (gs.lane_results is Dictionary) \
 			or (gs.lane_results as Dictionary).is_empty()
-		if not _surrendered:
+		if not _unfought:
 			var _gid := Backend.player_ghost_id(int(gs.season_id), gs.season_leaders, int(gs.season_total_battles))
 			var _av := str(gs.season_leaders[0]) if (gs.season_leaders as Array).size() > 0 else "basic"
 			Backend.upload_ghost(Backend.build_ghost_snapshot(_gid,
@@ -7901,7 +7856,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_map_ed_paint(event.position)
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
-		if _world_builder._scored_key_guard(event.keycode):   # 计分对局里 R / ESC 不许抹掉这一局(见该函数头注)
+		if _world_builder._scored_key_guard(event.keycode):   # 计分对局里 R 不许抹掉这一局(ESC 照常回主菜单 ⇒ 中途退出补打, 见该函数头注)
 			return
 		if event.keycode == KEY_R:
 			get_tree().reload_current_scene()

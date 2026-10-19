@@ -155,7 +155,7 @@ func _run(surrender: bool, as_player: bool, tr = null, gs = null) -> Dictionary:
 				s._dl_go_btn.pressed.emit()
 				fights += 1
 			elif surrender and st == "fight" and fights >= 2 and st_frames == 300 and not surrendered:
-				s._do_surrender()
+				s._forfeit_match()
 				surrendered = true
 		s._process(float(PAT[i % PAT.size()]))
 		await get_tree().process_frame

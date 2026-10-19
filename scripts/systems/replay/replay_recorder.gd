@@ -20,7 +20,9 @@ extends RefCounted
 ##   events                局内【改结果的】人为输入, 按 sim 步号:
 ##                           fight     开打(带那一刻双方全部单位的站位)
 ##                           present   点掉呈现幕布(它决定下一路在哪一步建场)
-##                           surrender 认输
+##                           forfeit   判负收尾(只有中途退出补打会按: 开局即判负 / 推到步数上限)
+##                           surrender 旧录像才有(v0.19.x 的认输键; 2026-10-19 用户「投降不要了」已删)。
+##                                     新录像不再产生; 播放端照旧认它(`_fire_due`), 旧录像能播完。
 ##                         ★训龟大师移动/施法**没有**: 母方案书 U2 已把大师改成不由人操控。
 ##   cps                   每 CP_EVERY 个 sim 步一个指纹摘要(校验点)
 ##   end                   结算那一刻的步号 + 指纹
@@ -128,7 +130,7 @@ var live_up = null              # 直播(打): `live_upload` 实例; null = 这�
 var _pending_on := false        # 录制: 这一局落了待结算单(每条输入覆盖写一次)
 var _pending_meta: Dictionary = {}
 var _resume_evs: Array = []     # 复算: 原局已发生的输入(按步号重放); 放完之后没有人的输入
-var resume_loss := false        # 复算: 不打了, 开局即认输(版本不同 / 复算闪退过两次)
+var resume_loss := false        # 复算: 不打了, 开局即判负(版本不同 / 复算闪退过两次)
 var resume_text := ""           # 复算: 结算屏顶上那一行
 var resume_steps := 0           # 复算: 已推的 sim 步(观测量 + 防卡死上限)
 var resume_dropped := ""        # 复算: 原局前缀对不上时的原因(继续打完, 结果照算)
@@ -136,18 +138,18 @@ var _cover = null
 var _revealed := false
 ## 复算每帧推 sim 的时间预算(微秒): 帧切法不改结果(回放倍速已证), 只决定多快打完。遮罩是静止的, 一帧 40ms(25 帧/秒)看不出卡。
 const RESUME_BUDGET_US := 40000
-## 防卡死: 推了这么多步还没结算 ⇒ 认输收尾(正常对局远不到: 实测 9457 场没有超 4 分钟的)。
+## 防卡死: 推了这么多步还没结算 ⇒ 判负收尾(正常对局远不到: 实测 9457 场没有超 4 分钟的)。
 const RESUME_STEP_CAP := 60 * 60 * 20
 ## ── 服务器裁判(2026-10-19, docs/plans/20261019-服务器裁判.md §1) ──
 ## 裁判入口(`scripts/referee/referee_runner.gd`)写、战斗场 `_ready` 里 `start()` 读走: {seed, id}。
-##   与 "resume" 同一套「没有人的输入」: 幕布 5 秒自己走(sim 里的), 摆位屏立刻按快照站位开打, 没有认输。
+##   与 "resume" 同一套「没有人的输入」: 幕布 5 秒自己走(sim 里的), 摆位屏立刻按快照站位开打, 没有判负。
 ##   与 "rec" 同一份录像格式(v / client_version / seed / state / events / cps / end) ⇒ 手机 `play` 直接播。
 ##   ★结算一律跳过(同 "play"): 裁判只出结果与录像, 记账由服务端写回 RPC 做。
 static var pending_referee: Dictionary = {}
 ## 裁判每帧推 sim 的时间预算(微秒)。帧切法不改结果(门禁 verify_referee_job_roundtrip 换预算比过), 只决定多快跑完。
 static var referee_budget_us := 100000
 var referee_steps := 0          # 裁判: 已推的 sim 步
-var referee_stuck := false      # 裁判: 推到 RESUME_STEP_CAP 还没结算(不认输收尾: 结果交给调用方当错误处理)
+var referee_stuck := false      # 裁判: 推到 RESUME_STEP_CAP 还没结算(不判负收尾: 结果交给调用方当错误处理)
 
 
 func _init(b) -> void:
@@ -214,7 +216,7 @@ func _start_resume() -> void:
 	rec["cps"] = []
 	rec.erase("end")
 	if resume_loss:
-		rec["client_version"] = client_version()   # 判负那一份是本机这一版录的(开局即认输)
+		rec["client_version"] = client_version()   # 判负那一份是本机这一版录的(开局即判负)
 	battle._battle_rng.seed = GameState.note_battle_seed(int(rec.get("seed", 0)))
 	## 直播行(周六): 原局开打过 ⇒ 观众那边挂着一行「正在打」, 结算时补一行 ended。复算途中不发心跳(快进)。
 	if not resume_loss and LiveUp.wanted():
@@ -358,9 +360,9 @@ func _resume_frame(rd: float) -> float:
 		battle._sim_step(battle.SIM_DT, frozen, in_ts)
 		resume_steps += 1
 		if resume_steps >= RESUME_STEP_CAP and not finished:
-			push_warning("[Abandoned] 复算 %d 步仍未结算 ⇒ 认输收尾" % resume_steps)
+			push_warning("[Abandoned] 复算 %d 步仍未结算 ⇒ 判负收尾" % resume_steps)
 			_firing = true
-			battle._do_surrender()
+			battle._forfeit_match()
 			_firing = false
 		if Time.get_ticks_usec() - t0 > RESUME_BUDGET_US:
 			break
@@ -421,7 +423,7 @@ func pre_step() -> bool:
 		fired = _referee_inputs()
 	if s > 0 and s % CP_EVERY == 0 and diverged_at < 0:
 		_checkpoint(s)
-		## 录制那一局在第 E 步就结算了, 本机却还在打 ⇒ 结局已经不同(例如漏了一条认输)。
+		## 录制那一局在第 E 步就结算了, 本机却还在打 ⇒ 结局已经不同(例如漏了一条判负)。
 		var end_s: int = int((rec.get("end", {}) as Dictionary).get("s", -1))
 		if end_s >= 0 and s > end_s and not finished and diverged_at < 0:
 			_diverge(s, "录制那一局在第 %d 步已经结束, 本机还没结束" % end_s)
@@ -430,7 +432,7 @@ func pre_step() -> bool:
 	return fired
 
 
-## 复算: 这一步开头该发的输入。①判负 ⇒ 开局即认输; ②原局前缀按步号重放(与回放同一套 `_fire_due`);
+## 复算: 这一步开头该发的输入。①判负 ⇒ 开局即判负(`_forfeit_match`, 不是投降 —— 投降 2026-10-19 已删); ②原局前缀按步号重放(与回放同一套 `_fire_due`);
 ##   ③前缀放完之后没有人的输入 —— 幕布 5 秒自己走(sim 里的), 走完同一步自动开打(`_resume_allow` 放行步内开打);
 ##     这里只留一道兜底: 万一停在 "place"(开打被拒过)就按当前站位开打, 不按就永远不打。
 func _resume_inputs(s: int) -> bool:
@@ -439,7 +441,7 @@ func _resume_inputs(s: int) -> bool:
 	_firing = true
 	var fired := false
 	if resume_loss:
-		battle._do_surrender()
+		battle._forfeit_match()
 		fired = true
 	else:
 		if _ev_i < _resume_evs.size():
@@ -505,7 +507,8 @@ func _fire_due(s: int) -> bool:
 		match str(e.get("k", "")):
 			"fight": battle._dl_sys._dl_start_fight()
 			"present": battle._dl_sys._dl_present_click()
-			"surrender": battle._do_surrender()
+			"forfeit": battle._forfeit_match("forfeit")
+			"surrender": battle._forfeit_match("surrender")   # 旧录像(认输键时代)的那一条: 照旧判负收尾, 能播完
 		_firing = false
 		if _ev_i < evs.size() and is_same(evs[_ev_i], e):
 			_diverge(s, "事件 %s 在本机没能发生" % str(e.get("k", "?")))
@@ -558,7 +561,7 @@ func _record_event(kind: String) -> void:
 		Abandoned.write(rec, _pending_meta)   # 待结算单跟着输入走: 复算要重放到退出那一刻为止的全部输入
 
 
-## 复算: 前缀没放完 ⇒ 只认原局下一条(同回放); 放完之后只认本模块自己按的(判负认输 / 兜底开打)
+## 复算: 前缀没放完 ⇒ 只认原局下一条(同回放); 放完之后只认本模块自己按的(判负收尾 / 兜底开打)
 ##   与 sim 步里自己发生的开打(2026-10-19 起对局里没有摆位屏: 对阵预览在步里走完 ⇒ 同一步直接开打,
 ##   与原局在同一步、同一种 i=true 记法)。人的输入一律不认。
 func _resume_allow(kind: String) -> bool:

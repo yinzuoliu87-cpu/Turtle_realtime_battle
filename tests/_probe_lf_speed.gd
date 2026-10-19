@@ -87,7 +87,7 @@ func _ready() -> void:
 			s._dl_go_btn.pressed.emit()
 			fights += 1
 		elif st == "fight" and fights >= 2 and stf == 200:
-			s._do_surrender()
+			s._forfeit_match()
 		s._process(0.05)
 		if i % 4 == 0:
 			await get_tree().process_frame

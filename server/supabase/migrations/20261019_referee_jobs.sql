@@ -111,8 +111,8 @@ begin
 end $$;
 revoke all on function public.referee_new_seed() from public, anon, authenticated;
 
--- 快照里的等级（1~10；没有 / 不合法 = null ⇒ 裁判按 A 的场次推算）。
--- ⚠ 客户端 build_ghost_snapshot 现在不带 season_level（未决点，见 README）。
+-- 快照里的等级（1~10；没有 / 不合法 = null ⇒ 裁判按 A 的场次推算）。任务单 level = A（左方）的等级。
+-- 2026-10-19 起客户端 build_ghost_snapshot 带 season_level；右方（B）的等级由裁判里的战斗场直接读 B 快照（双方各用各的）。
 create or replace function public.referee_level_of(p_snap jsonb) returns int
 language sql immutable as $$
   select case when jsonb_typeof(p_snap->'season_level') = 'number'

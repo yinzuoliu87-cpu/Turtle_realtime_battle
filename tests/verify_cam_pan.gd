@@ -201,24 +201,13 @@ func _test_pause_path_gone(s) -> void:
 ## ★"打断"发生在拖动中途时要清掉拖动脏态: release 事件永远收不到, _pan_active 会
 ##   带着 true 活到之后 → 表现为【手指松开了镜头还在跑】。
 ##
-## 原来的打断源是【暂停】(_toggle_pause 里清); 2026-07-30 暂停移除后, 新的打断源是
-## 【投降确认框的暗幕】—— 它 MOUSE_FILTER_STOP 会吃掉 release, 与暂停完全同形。
-## 所以那段清脏态逻辑没有随暂停消失, 只是搬成了 _clear_input_dirty() 并换了调用者。
-## 这条测试的判据一个都没丢, 只是换了触发方式。
+## 打断源的历史: 暂停(2026-07-30 删) → 投降确认框的暗幕(MOUSE_FILTER_STOP 吃 release)
+##   → 2026-10-19 用户「投降不要了」, 确认框也删了 ⇒ 战斗里**没有**会吃 release 的打断源了,
+##   清脏态的 `_clear_input_dirty()` 没有调用者, 一并删。
+## ⇒ 这条改成守「打断源没有偷偷回来」: 哪天再加一个吃 release 的浮层, 这里红, 逼着把清脏态一起加回来。
 func _test_dialog_clears_drag_state(s) -> void:
-	s._pan_active = true
-	s._pan_moved = true
-	s._touch_pts[0] = Vector2(10, 10)
-	s._pinch_prev = 123.0
-	s._show_surrender_confirm()      # 弹投降确认框 = 新的"打断"
-	_ok("★开投降框清掉 _pan_active(否则松手后镜头还在跑)", not s._pan_active)
-	_ok("★开投降框清掉 _pan_moved", not s._pan_moved)
-	_ok("★开投降框清掉多点触摸表", s._touch_pts.is_empty(), "剩 %d 点" % s._touch_pts.size())
-	_ok("★开投降框重置捏合基线", s._pinch_prev < 0.0, "%.1f" % s._pinch_prev)
-	# 收框也要清(点取消时可能又在拖)
-	s._pan_active = true
-	s._hide_surrender_confirm()
-	_ok("★收投降框也清脏态", not s._pan_active)
+	_ok("★战斗里没有吃 release 的确认浮层(投降框已删)", not ("_surrender_panel" in s))
+	_ok("★清脏态函数随之移除(没有调用者)", not s.has_method("_clear_input_dirty"))
 	get_tree().paused = false
 
 

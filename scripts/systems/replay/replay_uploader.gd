@@ -194,9 +194,11 @@ static func build_row(e: Dictionary, rec: Dictionary, acc: String) -> Dictionary
 	var end: Dictionary = rec.get("end", {})
 	var st: Dictionary = rec.get("state", {})
 	var foe = st.get("dual_ghost", {})
+	## `surrendered` = 这一局是**判负收尾**的(没打完)。键名沿用(服务端已有的行里就是它, 没有读者按名字以外的方式区分);
+	##   2026-10-19 投降删掉后只剩补打的「开局即判负」(forfeit); 旧录像里的 surrender 照旧算。
 	var surrendered := false
 	for ev in rec.get("events", []):
-		if ev is Dictionary and str((ev as Dictionary).get("k", "")) == "surrender":
+		if ev is Dictionary and str((ev as Dictionary).get("k", "")) in ["forfeit", "surrender"]:
 			surrendered = true
 	var won := bool(end.get("won", false))
 	var result := {"won": won, "steps": int(end.get("s", 0)), "surrendered": surrendered}

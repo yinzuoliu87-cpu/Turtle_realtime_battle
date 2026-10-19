@@ -341,7 +341,7 @@ func _full_pass() -> void:
 	_ok("★★B1: 演出期间一帧提示都没出", shown_in_present == 0, "%d 帧" % shown_in_present)
 	_ok("★★演出完直接开打(没人按任何东西, 不停在摆位)", str(bt._dl_state) == "fight" and place_frames == 0,
 		"state=%s 摆位 %d 帧" % [str(bt._dl_state), place_frames])
-	_ok("★认输键藏起来了", bt._surrender_btn != null and not (bt._surrender_btn as Control).visible)
+	_ok("★战斗里没有认输键(2026-10-19 整个删了)", not ("_surrender_btn" in bt))
 	_check_exits(bt, "战斗")
 	_disk_untouched("战斗")
 	await _frames(30)

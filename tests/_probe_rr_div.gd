@@ -148,7 +148,7 @@ func _run_rich(pat: Array, as_player: bool) -> Dictionary:
 				s._dl_go_btn.pressed.emit()
 				fights += 1
 			elif st == "fight" and fights >= 2 and st_frames == 300 and not surrendered:
-				s._do_surrender()
+				s._forfeit_match()
 				surrendered = true
 		fr[0] = i
 		s._process(float(pat[i % pat.size()]))

@@ -231,8 +231,8 @@ func _ready() -> void:
 		and int(post_e["ranked_used"]) == int(pre_l["ranked_used"]) + 1 and int(post_e["hist_n"]) == int(pre_l["hist_n"]) + 1)
 	var rec_e: Dictionary = ReplayRecorder.load_record(rid)
 	var ee: Array = rec_e.get("events", [])
-	_ok("★★E 判负走的是认输结算: 录像里只有一条开局认输(%s · 结束步 %s)、录像版本 = 本机" % [_ev_str(ee), str((rec_e.get("end", {}) as Dictionary).get("s", "?"))],
-		ee.size() == 1 and str(ee[0]["k"]) == "surrender" and int(ee[0]["s"]) <= 1
+	_ok("★★E 判负走的是判负收尾(forfeit, 不是已删的投降): 录像里只有一条开局判负(%s · 结束步 %s)、录像版本 = 本机" % [_ev_str(ee), str((rec_e.get("end", {}) as Dictionary).get("s", "?"))],
+		ee.size() == 1 and str(ee[0]["k"]) == "forfeit" and int(ee[0]["s"]) <= 1
 		and str(rec_e.get("client_version", "")) == ReplayRecorder.client_version())
 	_ok("★E 结算屏顶上写着判负原因「%s」" % str(re["header"]), str(re["header"]) == AM.TXT_LOSS_VERSION)
 	_ok("★E 判负那一局也只结一次、单子删了", _count_id(gs, rid) == 1 and not AM.exists())

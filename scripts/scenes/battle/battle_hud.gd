@@ -76,7 +76,7 @@ func _build_ui_layer() -> void:
 	## ★路名计时牌(battle._dl_hud)、三路点、加时徽章都由 PK 条里的 topbar_status 建(2026-10-07 顶部栏重做):
 	##   它们摆在 VS 下面, 跟着条的宽度走; 换视口时随条一起重建(原来是这里单独建一块牌子)。
 	_build_pk_bar()   # 顶部双方总血量 PK 条 (用户2026-07-30 需求1)
-	_build_topright_btns()   # 📊 统计 + 🏳 投降 (原 ⏸暂停/📜日志 已移除·用户2026-07-30)
+	_build_topright_btns()   # 📊 统计 (原 ⏸暂停/📜日志 已移除·用户2026-07-30; 🏳 投降 2026-10-19 移除)
 
 
 ## 右上角顶栏按钮.
@@ -87,11 +87,11 @@ func _build_ui_layer() -> void:
 ##
 ## 移除的连带影响(不只是"删两个按钮" —— 方案书 §4.2 穷举了 11 处):
 ##   · "退出去"原本【只存在于暂停面板里】(🏠返回菜单 / ⚔重开) → 一并消失, 逃生口改为投降
+##     (★2026-10-19 用户「投降不要了」: 投降也删了。计分对局里 ESC 回主菜单 = 中途退出, 下次进主菜单自动补打完结算)
 ##   · _CamInputRelay 是【纯粹为暂停而存在】的 ALWAYS 中继(暂停时根节点 PAUSABLE 收不到
 ##     _unhandled_input) → 暂停没了它就是死代码, 已删
-##   · _toggle_pause 里"清拖动/捏合脏态"那段【不能删只能搬】—— verify_cam_pan 有专门的
-##     _test_pause_clears_drag_state 守着它。已搬成 battle._clear_input_dirty(),
-##     由投降确认框接管: 弹框遮罩 MOUSE_FILTER_STOP 会吃掉 release, 与暂停打断拖动同形。
+##   · _toggle_pause 里"清拖动/捏合脏态"那段曾搬成 battle._clear_input_dirty() 由投降确认框接管;
+##     2026-10-19 投降删掉后它没有调用者了, 一并删除(verify_cam_pan 那一条同时撤掉)。
 ##
 ## 日志(U3): 只删按钮, _log()/_log_panel/_toggle_log 全保留 —— _log() 被战斗各处调用,
 ##   且 verify_battle_ui B 组守着它。📜 按钮只在调试场(DEBUG_EDIT)下出现, 正式对局没有。
@@ -121,101 +121,9 @@ func _build_topright_btns() -> void:
 	_stats_btn.pressed.connect(battle._on_dmg_stats_toggle)
 	battle._ui_layer.add_child(_stats_btn)
 
-	# 🏳 投降: 最右 —— 肌肉记忆上"最右是退出类操作"。
-	## ★2026-09-28「投降认输」→「认输」: 投降和认输是同一件事的两个说法, 叠在一起
-	##   既不更清楚也更啰嗦。确认框里的三行字负责把后果说全, 这个键只需要说它是什么。
-	##   ⚠ `RealtimeBattle3DScene.gd:1224` 的战斗日志里还写着「🏳 投降认输 —— 本场判负」,
-	##     那个文件不在本轮地盘 —— 登记在案, 别当成"已经统一了"。
-	battle._surrender_btn = _mk_icon_btn(ICON_SURRENDER, _pos["surrender"], "认输")
-	battle._surrender_btn.pressed.connect(battle._show_surrender_confirm)
-	battle._ui_layer.add_child(battle._surrender_btn)
-	## ★教程里没有退出入口(用户 2026-10-07「教程里就不应该有返回键啊」): 认输 = 离场, 藏起。
-	var _tds = battle.get_node_or_null("/root/TutorialDirector")
-	if _tds != null and _tds.is_active():
-		battle._surrender_btn.visible = false
-
-	_build_surrender_panel()
+	## ★2026-10-19 用户「投降不要了」: 认输键与确认框整个删掉(服务器算的对局里没有投降)。
+	##   这一格(战报键正下方)空出来, 教程的「跳过教程」照旧摆在这里(`tutorial_skip_slot`)。
 	_build_log_panel()
-
-
-## 投降确认浮层: 半透明黑幕 + 居中盒(取消 / 确认认输). 默认隐.
-##
-## ★取代原来的暂停浮层(用户 2026-07-30:「局内不再有退出去或暂停的按钮了，新增投降按钮，
-##   点击后有确认认输的提示框」)。原暂停浮层里的 ▶继续/⚔重开/🏠返回菜单 一并移除 ——
-##   "退出去"原本【只存在于那个面板里】, 现在唯一的离场路径就是投降。
-##
-## ★暗幕【必须 STOP】(与原暂停浮层相反): 这个框弹出时战斗【仍在跑】(U6: 不暂停),
-##   所以暗幕不吃事件的话点击会穿到战场上去选龟/放技能。
-##   代价是 release 事件被暗幕吃掉 → 开框时必须调 _clear_input_dirty(), 见该函数注释。
-func _build_surrender_panel() -> void:
-	battle._surrender_panel = Control.new()
-	battle._surrender_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
-	battle._surrender_panel.visible = false
-	battle._surrender_panel.process_mode = Node.PROCESS_MODE_ALWAYS   # 将来若有别处暂停, 这框仍要能点
-	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.66)
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.mouse_filter = Control.MOUSE_FILTER_STOP               # ★吃掉点击: 战斗没暂停, 不吃就会穿到战场
-	battle._surrender_panel.add_child(dim)
-	# ★锚点自适应, 不写死 1280×720 —— 手机分辨率不同, 写死会跑偏出屏
-	#   (2026-07-21 结算横幅就是踩了这个, 见 _show_banner 注释)
-	var box := VBoxContainer.new()
-	box.set_anchors_preset(Control.PRESET_CENTER)
-	box.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	box.grow_vertical = Control.GROW_DIRECTION_BOTH
-	box.custom_minimum_size = Vector2(520, 0)
-	box.add_theme_constant_override("separation", 14)
-	box.alignment = BoxContainer.ALIGNMENT_CENTER
-	battle._surrender_panel.add_child(box)
-	## ══════════════════════════════════════════════════════════════════
-	##  ★★2026-09-28 三行文案重写(用户:「文字语言也是 ai 味网页味」)
-	## ══════════════════════════════════════════════════════════════════
-	## 改前原文:
-	##   「确认认输？」/「投降将直接判定本场失败，不可撤销。」
-	##   /「（确认后进入结算，本场奖励与记录仍会结算）」
-	## 三条毛病, 一条比一条要紧:
-	##   ① **标点是全角的** `，（）` —— 而这个游戏别处的 UI 一律半角 + `·`
-	##     (「练习赛 · 不计入赛季进度」「阵容已上传 · 别人可能会打到你」)。
-	##     全角逗号+括号是文档/公告的排版, 不是游戏界面的排版。
-	##   ② **"判定/撤销/结算"是条款语气** —— "将直接判定本场失败，不可撤销"
-	##     读起来像用户协议的免责条款, 而玩家此刻想知道的只有"我按下去会怎样"。
-	##   ③ 括号里那句自己打自己: 「进入结算…仍会结算」同一个词用了两遍,
-	##     而且括号包起来 = 开发者备注的长相(结算屏 2026-08-02 就为这条整页重做过,
-	##     当时删掉的正是 `(练习赛 · 无赛季奖励)` `(失一命)` 这种括号口语 —— 这里是漏的一处)。
-	## ★现在: 标题是一句人话的问句(去掉"确认"这个按钮词);
-	##   第二行说**后果**(这一场就算输了, 按下去就收不回来);
-	##   第三行说**玩家真正会担心的那件事** —— 认输不等于白打, 该结的照结。
-	var title := Label.new()
-	title.text = "确认认输？"
-	title.add_theme_font_size_override("font_size", 40)
-	title.add_theme_color_override("font_color", Color("#ffb3b3"))
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(title)
-	var tip := Label.new()
-	tip.text = "认输后本场判负，且无法撤销"
-	tip.add_theme_font_size_override("font_size", 19)
-	tip.add_theme_color_override("font_color", Color("#cfe6ff"))
-	tip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(tip)
-	var tip2 := Label.new()
-	tip2.text = "已获得的战报与奖励将保留"
-	tip2.add_theme_font_size_override("font_size", 15)
-	tip2.add_theme_color_override("font_color", Color("#8a93a0"))
-	tip2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(tip2)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 24)
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	box.add_child(row)
-	## ★两个按钮的字也换了口气: 「取消」/「确认认输」是对话框的通用词(OK/Cancel 的中译),
-	##   换成【说清各自要干什么】——「再打」是留下来继续打, 「认输」是走。
-	##   ★门禁不看这两个字: `verify_battle_ui` 走的是 `_hide_surrender_confirm()` /
-	##     `_do_surrender()` 两个方法, 不按文字找按钮(已核实), 所以改字是安全的。
-	row.add_child(battle._make_result_btn("再来一局", Color("#8a93a0"), Color("#12161f"),
-		func() -> void: battle._hide_surrender_confirm()))
-	row.add_child(battle._make_result_btn("认输", Color("#ff6b6b"), Color("#3a0000"),
-		func() -> void: battle._do_surrender()))
-	battle._ui_layer.add_child(battle._surrender_panel)
 
 
 ## ── PK 条状态(2026-07-30 从主战斗文件搬进来) ──
@@ -386,7 +294,6 @@ const PK_VS_EMBLEM := "res://assets/sprites/ui/pk-vs-emblem.png"   # 中央 VS �
 ##   用户问「图标有新弄美术吗」时才对上号: 在像素风游戏里塞两个彩色系统 emoji,
 ##   字形还随系统字体变, 风格本来就是脱节的。
 const ICON_STATS := "res://assets/sprites/ui/hud-stats.png"
-const ICON_SURRENDER := "res://assets/sprites/ui/hud-surrender.png"
 ## ★配色: 我方【绿】/ 敌方【紫】, 不用全项目的"我方蓝/敌方红"(用户 2026-07-30 拍板「只换 PK 条」)。
 ## 理由(用户先看出来的): 战场背景是【深蓝海底】, 蓝条打在深蓝上对比度天然差 ——
 ##   实拍里蓝段边框与背景的区分明显不如红段。绿/紫在这个背景上都不撞。
@@ -1199,7 +1106,7 @@ func _build_passive_ring(disc: Control) -> void:
 ## ★没真图时【退回占位并 push_warning】而不是静默兜底: 占位是小龟, 和冒险家长得完全不一样,
 ##   悄悄用会让人(包括我自己)以为形象已经做完了。门禁 verify_trainer 也断言这条 warning 存在。
 ## 这一局的结果**封存了吗** —— 封存 = 存档里记着一场「待揭晓」的决赛场。
-## ★★三个调用点(双路 `_dl_finish` / 投降 / 单路结束)都**不传**这个判据, 由本函数自己问:
+## ★★三个调用点(双路 `_dl_finish` / 判负收尾 `_forfeit_match` / 单路结束)都**不传**这个判据, 由本函数自己问:
 ##   各判一次必然有一处落后, 而落后的后果就是屏幕说的和账上记的对不上。
 ## ★判据是**存档里真的有待揭晓**, 不是"今天星期几": 后者会让横幅与结算各判一次,
 ##   而那两处一旦漂开, 屏幕说的和账上记的就对不上了。
@@ -1226,15 +1133,10 @@ func _show_banner(won: bool, _sealed_hint: bool = false) -> void:
 		show_replay_end(won)
 		return
 	battle._settled = true
-	# 结算: 收掉投降确认框并禁用投降按钮(已经结算了, 没什么可投降的); 记一条日志.
 	# ★仍然解除 get_tree().paused —— 暂停按钮虽已移除(用户2026-07-30), 但树可能被别处暂停,
 	#   结算屏必须能动。这里不假设"没人会暂停"。
 	if battle.get_tree().paused:
 		battle.get_tree().paused = false
-	if battle._surrender_panel != null and is_instance_valid(battle._surrender_panel):
-		battle._surrender_panel.visible = false
-	if battle._surrender_btn != null and is_instance_valid(battle._surrender_btn):
-		battle._surrender_btn.disabled = true
 	## ══════════════════════════════════════════════════════════════
 	##  ★★2026-08-10 收掉【战中伤害统计面板】—— 不收它玩家会被卡在结算屏
 	## ══════════════════════════════════════════════════════════════
@@ -2143,7 +2045,7 @@ func _show_unit_info_panel(u: Dictionary) -> void:
 ##
 ## ★PK 条【重建】: 它的宽度/安全区逻辑全写在 _build_pk_bar 里, 另写一套"resize 时怎么挪"
 ##   等于同一份布局知识存两处, 迟早对不上。它有单一根节点 _pk_bar, 重建干净。
-## ★右上两键【只重摆不重建】: _build_topright_btns 末尾还会建【投降确认框和日志面板】,
+## ★右上键【只重摆不重建】: _build_topright_btns 末尾还会建【日志面板】,
 ##   整个重建会把那两个面板再建一份(我第一版就是这么写的)。摆位算式抽成 _topright_positions(),
 ##   建的时候和重摆的时候读同一处, 不会分叉。
 func on_viewport_resized() -> void:
@@ -2159,18 +2061,16 @@ func on_viewport_resized() -> void:
 	var pos: Dictionary = _topright_positions()
 	if is_instance_valid(_stats_btn):
 		(_stats_btn as Control).position = pos["stats"]
-	if is_instance_valid(battle._surrender_btn):
-		(battle._surrender_btn as Control).position = pos["surrender"]
 
 
 ## 教程右上「跳过教程」的位置(TutorialChrome 找宿主的 `_hud.tutorial_skip_slot`):
-##   教程里认输键是藏起来的 ⇒ 用它那一格(战报键正下方), 右沿对齐; 顶部对阵条上全是名字/血量, 没有空位。
+##   用战报键正下方那一格(原认输键的位置, 2026-10-19 认输删了), 右沿对齐; 顶部对阵条上全是名字/血量, 没有空位。
 func tutorial_skip_slot() -> Rect2:
 	var pos: Dictionary = _topright_positions()
 	var vp: Vector2 = Vector2(battle.get_viewport().get_visible_rect().size)
 	var m: Vector4 = SafeArea.margins(vp, 12.0)
 	var sz := Vector2(132, 44)
-	return Rect2(Vector2(vp.x - m.z - sz.x, (pos["surrender"] as Vector2).y), sz)
+	return Rect2(Vector2(vp.x - m.z - sz.x, (pos["below"] as Vector2).y), sz)
 
 
 ## 右上角两个键的摆位(按右边缘 + 安全区反算)。★建与重摆共用这一处, 别在两边各算一遍。
@@ -2178,11 +2078,11 @@ func _topright_positions() -> Dictionary:
 	var vp: Vector2 = Vector2(battle.get_viewport().get_visible_rect().size)
 	var m: Vector4 = SafeArea.margins(vp, 12.0)
 	## ★2026-10-07 顶部栏重做: 条拉到几乎整屏宽, 右端是对手头像 ⇒ 两个键挪到【右头像正下方】竖排,
-	##   右沿 = 右边缘 - 安全区(与头像右沿同一个边距), 上沿 = 头像底 + 6。战报在上、认输在下(退出类放远一点)。
+	##   右沿 = 右边缘 - 安全区(与头像右沿同一个边距), 上沿 = 头像底 + 6。战报在上; "below" = 它正下方那一格(原认输键, 现给教程的「跳过」)。
 	var bw := 52.0
 	var x: float = vp.x - bw - m.z
 	var top: float = SafeArea.margins(vp, 0.0).y + PK_Y + TopbarStatusS.PORT_Y + TopbarStatusS.PORT + 6.0
-	return {"stats": Vector2(x, top), "surrender": Vector2(x, top + 38.0 + 6.0)}
+	return {"stats": Vector2(x, top), "below": Vector2(x, top + 38.0 + 6.0)}
 
 ## 装备格底下的一条充能条(黑底 + 彩色填充)。★一件装备可以有【多条】——
 ## 023 灼热火珊瑚 / 026 雷电法杖 身上同时跑着两条真条子: 它自己的老充能
@@ -2409,7 +2309,7 @@ func _st_merge_all(pages: Array, side: String) -> Array:
 var _replay_bar: Control = null
 
 
-## 回放模式进场后第一步调(ReplayRecorder.pre_step)。投降钮藏起来 —— 回放里人什么都改不了。
+## 回放模式进场后第一步调(ReplayRecorder.pre_step)。
 ## 2026-10-05 回放体验打磨: 铭牌 / 操作条(暂停·倍速·进度·退出)/ 收尾卡 全在 `replay_controls.gd`,
 ##   `_replay_bar` 指向它的根节点(门禁从这里往下按节点名找按钮)。
 var _replay_ui: ReplayControls = null
@@ -2418,8 +2318,6 @@ var _replay_ui: ReplayControls = null
 func build_replay_bar() -> void:
 	if battle._ui_layer == null or (_replay_bar != null and is_instance_valid(_replay_bar)):
 		return
-	if battle._surrender_btn != null and is_instance_valid(battle._surrender_btn):
-		battle._surrender_btn.visible = false
 	_replay_ui = ReplayControls.new(battle)
 	_replay_bar = _replay_ui.build()
 

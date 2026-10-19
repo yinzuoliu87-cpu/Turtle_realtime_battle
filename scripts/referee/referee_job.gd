@@ -13,8 +13,10 @@ extends RefCounted
 ##   key             这一场是谁(原样带回; 写回 RPC 用它落账, 裁判不读)
 ##   seed            1 ~ 2^53-1 的整数(`_battle_rng` 种子; 服务端生成, 不由客户端给)
 ##   client_version  这份任务要求的游戏版本; 与本机不等 ⇒ 拒算(wrong_version) —— 结果只在同版本里成立
-##   level           可选: 双方共用的等级。★客户端口径就是「左方 season_level 同时给两边」(dual_lane_flow._dl_build_lane_field)
-##                   缺 ⇒ A 方快照里的 season_level ⇒ 按 A 的场次推算(bot_level_for_battles)。见 `level_for` 头注的未决点。
+##   level           可选: **左方(A)**的等级(服务端 `referee_level_of(A 快照)` 填的就是 A 的 season_level)。
+##                   以 A 快照里的 season_level 为准; A 没带才用它; 都没有才按 A 的场次推算(bot_level_for_battles, 只给缺字段的旧快照兜底)。
+##                   ★右方(B)的等级不在这里: 战斗场自己读 B 快照(`dual_ghost`)里的 season_level(用户 2026-10-19「赛季等级」双方各用各的);
+##                     B 是没带等级的旧快照 ⇒ 战斗场退回「与左方同级」的老口径(客户端同一条, 手机播录像时一致)。
 ##   a / b           双方快照(`Backend.build_ghost_snapshot` 同一形状)。A 在左、B 在右。
 ##   a_state         可选: A 方开局那一刻的 `ReplayRecorder.capture_state()`(以后「本地先播、服务器落账」用) —— 有它就不从快照推
 ##
@@ -99,17 +101,16 @@ static func _lanes_ok(snap) -> bool:
 	return not BE.ghost_lanes_broken(snap)
 
 
-## 双方共用的等级(1 ~ MAX_LEVEL)。
-## ⚠ 未决(写进报告): 快照现在**不带** `season_level`(`build_ghost_snapshot` 没这个键), 而战斗里两方都吃左方等级。
-##   ⇒ 服务端建任务时要么在快照里补 `season_level`, 要么在任务单上给 `level`; 都没有才按场次推算(只是估计)。
+## 左方(A)的等级(1 ~ MAX_LEVEL)。右方的等级战斗场从 B 快照读(见文件头 `level` 一条)。
+## ★2026-10-19 起快照带 `season_level`(`build_ghost_snapshot`); 按场次推算只给缺这个键的旧快照兜底。
 static func level_for(j: Dictionary) -> int:
+	var a: Dictionary = j.get("a", {})
+	var sl := BE.ghost_level(a)                  # A 快照自带的(与右方读 B 快照同一个判据)
+	if sl >= 1:
+		return sl
 	var lv = j.get("level", null)
 	if (lv is int or lv is float) and int(lv) >= 1:
 		return clampi(int(lv), 1, P2.MAX_LEVEL)
-	var a: Dictionary = j.get("a", {})
-	var sl = a.get("season_level", null)
-	if (sl is int or sl is float) and int(sl) >= 1:
-		return clampi(int(sl), 1, P2.MAX_LEVEL)
 	var b = a.get("season_total_battles", 0)
 	return clampi(P2.bot_level_for_battles(int(b) if (b is int or b is float) else 0), 1, P2.MAX_LEVEL)
 

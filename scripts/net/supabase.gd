@@ -1904,7 +1904,7 @@ static func report_finals_async(week: int, bucket: int, round_no: int,
 		return
 	## ★同一场只报一次：服务端是 `on conflict do nothing`（先到先得），
 	##   客户端这边再挡一层是为了**不把重复请求当成正常流量**——
-	##   结算路径会被重入（投降/重开结算屏），没这道闸就会一场报好几次。
+	##   结算路径会被重入（判负收尾/重开结算屏），没这道闸就会一场报好几次。
 	if finals_reported(round_no, match_no, bucket):
 		return
 	var n = _spawn()

@@ -289,6 +289,10 @@ func _value_problem(b: Dictionary, battles: int, gw: int, gl: int, skill_ids: Di
 		return "积分赛胜 %d + 负 %d ≠ %d 场" % [ladder_w, int(P2.HEARTS_MAX) - h, ladder]
 	if gw >= 0 and ladder_w < mini(int(P2.PROMOTE_WINS), ladder):
 		return "打周六却没晋级(积分赛胜 %d)" % ladder_w
+	## 赛季等级(2026-10-19 起快照带, 右方按它打): 真人是 1 ~ MAX_LEVEL 的整数。
+	var slv = b.get("season_level", null)
+	if not (slv is int or slv is float) or float(slv) != floor(float(slv)) or int(slv) < 1 or int(slv) > int(P2.MAX_LEVEL):
+		return "赛季等级 %s 不是 1~%d 的整数" % [str(slv), int(P2.MAX_LEVEL)]
 	if not skill_ids.has(str(b.get("trainer_skill", ""))):
 		return "大师技能 %s 不在玩家选项里" % str(b.get("trainer_skill"))
 	for k in (b.get("pet_levels", {}) as Dictionary).keys():
@@ -496,7 +500,7 @@ func _check_seeds(human: Dictionary, skill_ids: Dictionary) -> int:
 	for b in (old_pool[BE.POOL_KEY] as Dictionary).keys():
 		for g in (old_pool[BE.POOL_KEY][b] as Array):
 			n_all += 1
-			if (g as Dictionary).has("_strategy") or (g as Dictionary).has("season_level"):
+			if (g as Dictionary).has("_strategy"):          # season_level 2026-10-19 起是真人也带的键, 不再算旧形状
 				left_old += 1
 			if str((g as Dictionary).get("ghost_id", "")) == str(human.get("ghost_id", "")):
 				human_kept = true
@@ -543,7 +547,8 @@ func _battle_view(rb, g) -> String:
 	var top := _effective_specs(rb._dual_foe_lane("top"))
 	var bot := _effective_specs(rb._dual_foe_lane("bottom"))
 	var d: Dictionary = g
-	return JSON.stringify([top, bot, GameState.foe_loadouts, str(d.get("trainer_skill", "")),
+	## 赛季等级(2026-10-19): 右方单位 / 小将 / 蛋按它缩放 ⇒ 也是战斗强度的一部分, 读法用战斗侧同一个判据。
+	return JSON.stringify([top, bot, GameState.foe_loadouts, str(d.get("trainer_skill", "")), BE.ghost_level(d),
 		d.get("chest_treasures_won", []) if d.has("chest_treasures_won") else [],
 		float(d.get("chest_treasure_value", 0.0)), d.get("leaders", [])], "", true)
 

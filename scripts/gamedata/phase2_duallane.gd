@@ -62,7 +62,7 @@ static func final_winner(lane_results: Dictionary) -> String:
 
 
 ## 比分里败方赢了几路(2026-10-12 周日对阵图比分): 两路同一方全胜 ⇒ 2:0 ⇒ 0; 1-1 打了终极 ⇒ 2:1 ⇒ 1;
-##   没打完 / 投降(lane_results 空)/ 1-1 而终极没结果 ⇒ -1(不报)。
+##   没打完 / 判负收尾(lane_results 空)/ 1-1 而终极没结果 ⇒ -1(不报)。
 static func loser_lanes(lane_results: Dictionary) -> int:
 	if not lanes_done(lane_results):
 		return -1
@@ -81,7 +81,7 @@ const SCORE_1_1 := -11
 
 
 ## 比分代码; -1 = 不报。`egg_hp` = 结算那一刻的双方蛋血(GameState.egg_hp)。
-##   ★碎蛋判据用败方蛋血归零, 不用「只记了一路」: 下路投降后 lane_results 也只剩上路一条, 形状与上路碎蛋相同。
+##   ★碎蛋判据用败方蛋血归零, 不用「只记了一路」: 下路判负收尾后 lane_results 也只剩上路一条, 形状与上路碎蛋相同。
 static func score_code(lane_results: Dictionary, egg_hp: Dictionary) -> int:
 	var w := overall_winner(lane_results)
 	## 恰好一方蛋血为 0 才算碎蛋(双方都是 0 = 蛋血还没初始化, 不是碎蛋)

@@ -141,7 +141,7 @@ func _record() -> void:
 		elif st == "fight" and stf == 60 and not _egg_checked:
 			_check_egg_and_lane(s)
 		elif st == "fight" and fights >= 2 and stf == 120 and not surrendered:
-			s._do_surrender()
+			s._forfeit_match()
 			surrendered = true
 		s._process(0.05)
 		await get_tree().process_frame

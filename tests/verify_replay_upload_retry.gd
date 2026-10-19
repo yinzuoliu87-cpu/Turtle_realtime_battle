@@ -221,7 +221,7 @@ func _t_offline_battle() -> void:
 	for _i in range(20):
 		s._process(0.016)
 		await get_tree().process_frame
-	s._do_surrender()                       # 真入口: 认输确认钮调的就是它
+	s._forfeit_match()                       # 判负收尾(补打用的同一个入口; 投降键 2026-10-19 已删)
 	var w := 0
 	while w < 600 and (_gs.match_history as Array).size() == hist0:
 		await get_tree().process_frame

@@ -7,9 +7,9 @@ extends RefCounted
 ##  什么时候发
 ## ══════════════════════════════════════════════════════════════════════
 ##   · 第一路开打(fight 事件)那一下建行 —— 之前什么都不发(没开打的人不算「正在打」)。
-##   · 之后每出现一个事件(present / fight / surrender)发一次。
+##   · 之后每出现一个事件(present / fight)发一次。
 ##   · 每 HEARTBEAT_STEPS 个 sim 步心跳一次: 带上「已推进到的步号」horizon。
-##     ★观众只许重算到 horizon(`live_spectate.gd` 的 cap): 过了它, 打的人可能在中间按过认输 / 点过幕布,
+##     ★观众只许重算到 horizon(`live_spectate.gd` 的 cap): 过了它, 打的人可能在中间点过幕布,
 ##       观众先跑过去就分叉了。心跳就是把「这段时间里什么都没按」这件事告诉观众。
 ##   · 结算那一刻(on_settle)发最后一次: 带 end、ended = true。
 ##

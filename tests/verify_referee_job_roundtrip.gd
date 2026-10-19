@@ -92,6 +92,7 @@ func _snap_a(gs, strong: bool) -> Dictionary:
 	}
 	gs.loadouts = {"basic": 1, "stone": 2}
 	gs.trainer_skill = "hook"
+	gs.season_level = LEVEL                  # 快照带赛季等级(2026-10-19): 左方等级从 A 快照取
 	return Backend.build_ghost_snapshot("g_referee_a", {"name": "甲方", "avatar": "basic", "id": "g_referee_a"})
 
 
@@ -222,7 +223,21 @@ func _ready() -> void:
 		str(rec.get("client_version", "")) == ReplayRecorder.client_version() and int(rec.get("v", 0)) == ReplayRecorder.FORMAT_V
 		and int(rec.get("seed", 0)) == seed1 and str(rec.get("id", "")) == str(job1["match_id"]))
 	_ok("R9 录像在上传上限内(%d ≤ %d)" % [str(r1["replay_b64"]).length(), RU.REPLAY_MAX_B64], bool(r1["replay_ok_size"]))
-	_ok("R9 等级 = 任务单 level(%d)" % int(st.get("season_level", -1)), int(st.get("season_level", -1)) == LEVEL)
+	_ok("R9 左方等级 = A 快照的 season_level(%d)" % int(st.get("season_level", -1)),
+		int(st.get("season_level", -1)) == LEVEL and int(a.get("season_level", -1)) == LEVEL)
+	## 左方等级的取法(纯函数): A 快照优先 > 任务单 level > 按 A 场次估(只给没带等级的旧快照)
+	var _a3 := a.duplicate(true)
+	_a3["season_level"] = 3
+	var _a0 := a.duplicate(true)
+	_a0.erase("season_level")
+	var _j3: Dictionary = _job(_a3, b, 1)
+	var _j0: Dictionary = _job(_a0, b, 1)
+	var _j00: Dictionary = _job(_a0, b, 1)
+	_j00.erase("level")
+	_ok("★R9 左方等级取法: A 快照 3 > 任务单 %d / A 没带 ⇒ 任务单 / 都没有 ⇒ 按场次估" % LEVEL,
+		RefereeJob.level_for(_j3) == 3 and RefereeJob.level_for(_j0) == LEVEL
+		and RefereeJob.level_for(_j00) == P2C.bot_level_for_battles(int(_a0.get("season_total_battles", 0))),
+		"%d / %d / %d" % [RefereeJob.level_for(_j3), RefereeJob.level_for(_j0), RefereeJob.level_for(_j00)])
 	var dl: Dictionary = st.get("dual_lineup", {})
 	_ok("R9 左方每路规整到 3 个单位(%d / %d)" % [(dl.get("top", []) as Array).size(), (dl.get("bottom", []) as Array).size()],
 		(dl.get("top", []) as Array).size() == 3 and (dl.get("bottom", []) as Array).size() == 3)

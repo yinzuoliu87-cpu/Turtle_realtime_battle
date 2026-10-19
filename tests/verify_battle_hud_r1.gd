@@ -518,20 +518,21 @@ func ", _tp_i + 1) if _tp_i >= 0 else -1
 	#   改了代码里的坐标它看不见。我第一版就是这样: 把按钮改回写死 1208, 门禁【照样绿】。
 	#   现在: ①量真实矩形不相交 ②证明真实 x 就是"右边缘-按钮宽-安全区" → 模拟才站得住。
 	var vp0: Vector2 = Vector2(s.get_viewport().get_visible_rect().size)
-	var sb = s._surrender_btn
-	_ok("⑨ ★分母: 投降键真的建出来了", sb != null and is_instance_valid(sb))
+	## ★2026-10-19 认输键删了(用户「投降不要了」), 右上只剩战报键 ⇒ 量它。
+	var sb = h._stats_btn
+	_ok("⑨ ★分母: 战报键真的建出来了", sb != null and is_instance_valid(sb))
 	if sb != null and is_instance_valid(sb):
 		var real_sur := Rect2(sb.position, sb.size)
 		# ★用 get_global_rect() 而不是自己按 position+offset 拼 —— PK 条是【锚定居中】的 Control,
 		#   position 已经含了锚点解算, 我第一版又加了一次 offset_left+vp/2 → 算出 x[320..1280](错的),
 		#   把一条本来不相交的判成相交。要量就量引擎给的最终矩形。
 		var real_bar := (h._pk_bar as Control).get_global_rect()
-		print("     [真实测量] 视口 %.0f  投降键 x[%.0f..%.0f]  PK条 x[%.0f..%.0f]" % [
+		print("     [真实测量] 视口 %.0f  战报键 x[%.0f..%.0f]  PK条 x[%.0f..%.0f]" % [
 			vp0.x, real_sur.position.x, real_sur.end.x, real_bar.position.x, real_bar.end.x])
 		_ok("⑨ ★★真实按钮与真实 PK 条不相交(当前视口)", not real_bar.intersects(real_sur))
 		var m0: Vector4 = SafeArea.margins(vp0, 12.0)
 		var want_x: float = vp0.x - sb.size.x - m0.z
-		_ok("⑨ ★★投降键 x 就是「右边缘-按钮宽-安全区」(证明下面的公式模拟站得住)",
+		_ok("⑨ ★★战报键 x 就是「右边缘-按钮宽-安全区」(证明下面的公式模拟站得住)",
 			absf(sb.position.x - want_x) < 0.5, "实际 %.0f / 公式 %.0f" % [sb.position.x, want_x])
 	## ★2026-10-07 顶部栏重做: 两键挪到右头像下面竖排, 条两端是头像 —— 原来这圈"按公式模拟条宽 vs 键"的比较,
 	##   公式本身已不存在(PK_BTN_ZONE 删了), 再模拟就是拿一份手抄副本比自己。
@@ -547,7 +548,7 @@ func ", _tp_i + 1) if _tp_i >= 0 else -1
 		h.on_viewport_resized()
 		await get_tree().process_frame
 		var vp: Vector2 = Vector2(s.get_viewport().get_visible_rect().size)
-		var btns: Array = [(h._stats_btn as Control).get_global_rect(), (s._surrender_btn as Control).get_global_rect()]
+		var btns: Array = [(h._stats_btn as Control).get_global_rect()]
 		var hit := ""
 		var n_parts := 0
 		for c in _visible_controls(h._pk_bar):
@@ -561,10 +562,10 @@ func ", _tp_i + 1) if _tp_i >= 0 else -1
 			if bb.position.x < 0.0 or bb.end.x > vp.x + 0.5 or bb.position.y < 0.0 or bb.end.y > vp.y:
 				inside = false
 		w_by[str(pair[0])] = float(h._pk_w_cur)
-		print("     %-7s 视口 %.0fx%.0f  条宽 %.0f  统计 %s  认输 %s  顶栏控件 %d 块  %s" % [str(pair[0]), vp.x, vp.y,
-			h._pk_w_cur, str(btns[0]), str(btns[1]), n_parts, ("★撞上 " + hit) if hit != "" else "ok"])
-		_ok("⑨ %s 两键与顶部栏任何一块都不相交(分母 %d 块)" % [str(pair[0]), n_parts], hit == "" and n_parts >= 8, hit)
-		_ok("⑨ %s 两键都在视口内" % str(pair[0]), inside)
+		print("     %-7s 视口 %.0fx%.0f  条宽 %.0f  统计 %s  顶栏控件 %d 块  %s" % [str(pair[0]), vp.x, vp.y,
+			h._pk_w_cur, str(btns[0]), n_parts, ("★撞上 " + hit) if hit != "" else "ok"])
+		_ok("⑨ %s 右上键与顶部栏任何一块都不相交(分母 %d 块)" % [str(pair[0]), n_parts], hit == "" and n_parts >= 8, hit)
+		_ok("⑨ %s 右上键在视口内" % str(pair[0]), inside)
 	_ok("⑨ PK 条宽度自适应(视口越宽条越长)", float(w_by["20:9"]) > float(w_by["16:9"]) + 200.0,
 		"16:9 %.0f / 20:9 %.0f" % [float(w_by["16:9"]), float(w_by["20:9"])])
 	root.size = size0

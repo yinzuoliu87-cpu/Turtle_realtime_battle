@@ -90,7 +90,7 @@ def main():
     print("  当天新注册 %s 个(游客 %s / 已绑定 %s)" % (r["new_all"], r["new_anon"], r["new_bound"]))
     print("  当天传过对局 / 快照 / 直播的 %s 个" % act["n"])
 
-    ## ② 对局(matches = 录像上传成功的那些; 投降局 / 没传上去的不在这里)
+    ## ② 对局(matches = 录像上传成功的那些; 没传上去的不在这里)
     ## ★对手是不是真人: `right_account` 故意恒为 null(填了机器人就露馅, replay_uploader.gd 头注)。
     ##   ⇒ 用赛况板同一条规则: 对手的 #ID 自己传过录像 = 真人(机器人一场一个新号, 从不当录像方)。
     m = q("select case when m.left_account::text in %s then '模拟号' else '其他人' end who, m.phase, "

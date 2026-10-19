@@ -114,7 +114,7 @@ func _run_surrender(s, gs) -> void:
 		return
 
 	## ★走真入口: HUD 的投降按钮回调就是这一句(battle_hud.gd:187)
-	s._do_surrender()
+	s._forfeit_match()
 	await get_tree().process_frame
 	await get_tree().process_frame
 

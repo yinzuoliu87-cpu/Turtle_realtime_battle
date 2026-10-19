@@ -6,7 +6,7 @@ extends RefCounted
 ## 走的是**真入口**(战斗场 `RealtimeBattle3D.tscn` 原样实例化), 不另起一套模拟:
 ##   · GameState 按 A 方快照摆好(左), `dual_ghost` = B 方快照(右);
 ##   · `ReplayRecorder` 以 "referee" 模式开局: 种子从任务单来, 录像格式与客户端录制逐字段相同;
-##   · 没有人的输入: 换路幕布 5 秒自己走(sim 里的 `DL_PRESENT_SEC`), 摆位屏一出现就按快照站位开打, 没有认输;
+##   · 没有人的输入: 换路幕布 5 秒自己走(sim 里的 `DL_PRESENT_SEC`), 摆位屏一出现就按快照站位开打, 没有判负;
 ##   · 每帧在时间预算内直接推 sim(`ReplayRecorder.referee_budget_us`), 3D 不渲染、音效静音 —— 都不改结果;
 ##   · 结算一律跳过(记账是服务端写回 RPC 的事), 打完把 GameState 还原成跑之前那一份(门禁里同一进程连跑多局)。
 

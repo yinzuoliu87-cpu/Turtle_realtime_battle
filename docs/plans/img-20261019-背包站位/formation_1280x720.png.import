@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dbff736c2q1k8"
-path="res://.godot/imported/hud-surrender.png-7d28a08988c6634aa14dfa5af451a665.ctex"
+uid="uid://ne1rpwd4jxy8"
+path="res://.godot/imported/formation_1280x720.png-2db57a057e18e3253fa463cf8dcd8439.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/ui/hud-surrender.png"
-dest_files=["res://.godot/imported/hud-surrender.png-7d28a08988c6634aa14dfa5af451a665.ctex"]
+source_file="res://docs/plans/img-20261019-背包站位/formation_1280x720.png"
+dest_files=["res://.godot/imported/formation_1280x720.png-2db57a057e18e3253fa463cf8dcd8439.ctex"]
 
 [params]
 
