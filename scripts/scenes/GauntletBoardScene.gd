@@ -46,6 +46,12 @@ const REFRESH_SEC := 30.0
 const WATCH_LABEL := "观看"
 const WATCH_BUSY := "读取中"
 const ALL_GAMES := "最近对局"
+## 顶上那一行的开头: 周一看的是上周(刚结束的那个周末)。
+const WEEK_NOW := "本周闯关赛"
+const WEEK_PAST := "上周闯关赛"
+## 点人之后: 他自己打的那几场 + 战绩里有、录像没传上来的那几场(一行一场, 写明无录像)。
+const NO_REPLAY := "无录像"
+const N_MISSING_CARD := "MissingCard"
 const LIVE_HEAD := "正在打"
 const LIVE_REFRESH_SEC := 10.0
 const LIVE_RED := Color("#d8473f")
@@ -73,6 +79,8 @@ var data: Dictionary = {}
 var focus_tag := ""
 var load_state := ""            # "" 还没问 / loading / ok / 原因码
 var last_replay_code := ""
+## 门禁读: 这一屏问的是哪一周(周锚点)。
+var view_week := 0
 var last_replay_msg := ""
 var _busy := ""
 var _inflight := false
@@ -153,7 +161,9 @@ func refresh() -> void:
 	if _inflight or _busy != "":
 		return
 	var now: int = P2C.now_utc()
-	var wk: int = P2C.week_anchor_utc(now)
+	## ★周一看上周(用户 2026-10-19「保留到周一」); 周二起看本周。判据只在 `Phase2Config.weekend_view_week` 一处。
+	var wk: int = P2C.weekend_view_week(now)
+	view_week = wk
 	_closed = now >= P2C.gauntlet_close_ts(wk)
 	if not SB.enabled():
 		_set_status("no_backend")
@@ -173,8 +183,11 @@ func _refresh_live() -> void:
 	if _live_inflight or not SB.enabled():
 		return
 	var now: int = P2C.now_utc()
+	## 周一看的是已经结束的周末: 没有「正在打」可言(服务端 live_read_week 也只给本周), 不发。
+	if P2C.weekend_view_is_past(now):
+		return
 	_live_inflight = true
-	if not SB.fetch_live_board_async(P2C.week_anchor_utc(now), now - SB.LIVE_BOARD_WINDOW_SEC, _on_live_rows):
+	if not SB.fetch_live_board_async(P2C.weekend_view_week(now), now - SB.LIVE_BOARD_WINDOW_SEC, _on_live_rows):
 		_live_inflight = false
 
 
@@ -257,10 +270,13 @@ func _set_status(code: String) -> void:
 					n_in += 1 if str(pp.get("state", "")) == P2C.GAUNTLET_IN else 0
 					n_out += 1 if str(pp.get("state", "")) == P2C.GAUNTLET_OUT else 0
 				var tail := ""
-				if _closed:
-					var seat: int = P2C.week_anchor_utc(P2C.now_utc()) + 6 * 86400 + int(P2C.FINALS_SEAT_HOUR_UTC) * 3600
+				var past: bool = P2C.weekend_view_is_past(P2C.now_utc())
+				if past:
+					tail = " · 已结束"
+				elif _closed:
+					var seat: int = P2C.weekend_view_week(P2C.now_utc()) + 6 * 86400 + int(P2C.FINALS_SEAT_HOUR_UTC) * 3600
 					tail = " · 已截止 · 周日 %s %s开打" % [P2C.local_hhmm(seat), P2C.STAGE_GROUP]
-				t = "本周闯关赛 · %d 人 · %d 场 · 晋级 %d · 出局 %d%s%s" % [pn, gn, n_in, n_out,
+				t = "%s · %d 人 · %d 场 · 晋级 %d · 出局 %d%s%s" % [WEEK_PAST if past else WEEK_NOW, pn, gn, n_in, n_out,
 					(" · 正在打 %d 场" % ln) if ln > 0 else "", tail]
 			c = Color("#9fb0c4")
 		"unavailable":
@@ -310,8 +326,10 @@ func _render_games() -> void:
 	var games: Array = data.get("games", [])
 	var lives: Array = live_games
 	if focus_tag != "":
-		games = Board.games_of(games, focus_tag)
-		lives = Board.games_of(lives, focus_tag)
+		## ★★只列**他自己打的**(录像方 = 他) + 战绩里有而录像缺的占位行 ⇒ 行数永远 = 战绩场次(用户 2026-10-19
+		##   「随便看一个人的对局，怎么就和4-1不符」: 原来还混进了「别人挑战他的快照」那几场, 4-1 的人列出 12 场)。
+		games = Board.player_games(games, _player_of(focus_tag))
+		lives = Board.own_games(lives, focus_tag)
 		var nm := focus_tag
 		for p in data.get("players", []):
 			if str(p["tag"]) == focus_tag:
@@ -331,8 +349,41 @@ func _render_games() -> void:
 		_games_box.add_child(sh)
 	var i := 0
 	for g in games:
-		_games_box.add_child(_game_card(g, i))
+		_games_box.add_child(_missing_card(g, i) if bool(g.get("missing", false)) else _game_card(g, i))
 		i += 1
+
+
+## 战绩榜里那个人(没有 ⇒ {})。
+func _player_of(tag: String) -> Dictionary:
+	for p in data.get("players", []):
+		if str(p["tag"]) == tag:
+			return p
+	return {}
+
+
+## 战绩里有、录像没传上来的那一场: 一行写「第 N 场 · 胜/负 · 无录像」, 不放「观看」(没有可播的)。
+func _missing_card(g: Dictionary, idx: int) -> Control:
+	var pc := PanelContainer.new()
+	pc.name = N_MISSING_CARD + str(idx)
+	pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pc.add_theme_stylebox_override("panel", MatchCard.card_style(Color(0.62, 0.66, 0.72)))
+	pc.custom_minimum_size = Vector2(RIGHT_W - 12.0, 0)
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 14)
+	hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pc.add_child(hb)
+	var res := str(g.get("res", ""))
+	var head := "第 %d 场" % int(g.get("n", 0)) if int(g.get("n", 0)) > 0 else "另一场"
+	var rt := "胜" if res == "w" else ("负" if res == "l" else "")
+	var l1 := _label("%s%s" % [head, (" · " + rt) if rt != "" else ""], 18, Color("#c9d6e4"))
+	l1.custom_minimum_size = Vector2(0, 48)
+	hb.add_child(l1)
+	var sp := Control.new()
+	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hb.add_child(sp)
+	hb.add_child(_chip(NO_REPLAY, STATE_CHIP["out"]))
+	return pc
 
 
 ## 一栏 = 小标题 + 滚动列表。返回列表本体(小标题挂在 meta 上)。

@@ -781,6 +781,21 @@ static func ranked_close_ts(week_anchor: int) -> int:
 static func gauntlet_close_ts(week_anchor: int) -> int:
 	return week_anchor + (GAUNTLET_CLOSE_WD - 1) * 86400 + WEEK_CLOSE_HOUR_UTC * 3600
 
+## 周末那几页(周六赛况板 / 周日对阵图含冠军杯赛 / 它们的回放)在 `ts` 这一刻该展示哪一周(周锚点)。
+## 用户 2026-10-19:「周六，周日的对战情况能也一直保留到周一」「现在玩家都看不到周六，周日的赛况」。
+## ★周一(休赛) = 上周(刚结束的那个周末); 周二起 = 本周。
+##   原来三处都拿 `week_anchor_utc(now)` 去问 ⇒ 周一 00:00 一过就问新一周 ⇒ 全是空的
+##   (2026-10-19 生产实测: 新周 1792368000 一行都没有, 上周 1791763200 有闯关 206 行 / 决赛 26 行 / 7 个组)。
+## ★服务端本来就留到周二 00:00 UTC(`purge_old_matches` cron '0 0 * * 2'), 不需要改服务端。
+## ★与 `LeaderboardScene.board_week` 同一个口径(周一看上周)。
+static func weekend_view_week(ts: int) -> int:
+	var a: int = week_anchor_utc(ts)
+	return a - 7 * 86400 if phase_at_utc(ts) == PHASE_REST else a
+
+## 此刻展示的是不是**已经过去**的那个周末(= 周一)。是 ⇒ 只能看: 不记进度、不问对手、不发直播请求。
+static func weekend_view_is_past(ts: int) -> bool:
+	return weekend_view_week(ts) != week_anchor_utc(ts)
+
 ## 距本阶段收盘还有几秒(UTC)。没有收盘概念的阶段返回 -1。
 ## 积分赛在**周五** 23:00 收盘、闯关赛在**周六** 23:00 —— 所以要先算"还有几天到收盘日"。
 static func close_left_sec(ts: int) -> int:

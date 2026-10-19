@@ -117,6 +117,9 @@ var _bucket: Dictionary = {}           # 上午: 我自己那个桶
 ## 观赛: 本周**所有组**(服务端 `finals_week_view`)。被喂过就用喂进来的这份, 否则读网络缓存。
 var _week: Dictionary = {}
 var _spec_idx := 0                     # 观赛时正在看第几组(下标, 不是组号)
+## ★选手看别的组(用户 2026-10-19「周日查看不了其他小组？」): true ⇒ 「小组赛」页签画的是 `_spectate_bucket()`
+##   (别人那一组, 只能看), false ⇒ 画我那一组。只有我有组(EK_SEATED / EK_GROUP_SOLO)时才会变 true。
+var _peek := false
 var _spec_bar: HBoxContainer = null
 var _spec_lb: Label = null
 var _finals: Dictionary = {}           # 晚上: 冠军杯赛(全部组冠军那一张; 没成表 = 空 / 1 人 = 直接夺冠)
@@ -169,7 +172,7 @@ func _ready() -> void:
 
 	var sm: Vector4 = SafeArea.margins(Vector2(get_viewport().get_visible_rect().size), 18.0)
 	_top_bar = TopBar.new(self, {
-		"title": "周日 · 决赛日",
+		"title": TITLE_PAST if _viewing_past() else TITLE_NOW,
 		"palette": TopBar.DEEP,
 		## ★原来传的是 `"safe": sm` —— TopBar 根本不认这个键(它读 safe_left / safe_right),
 		##   于是这一屏的返回键从来没让过刘海。2026-10-04 顶栏宽度那次一起查出来的。
@@ -342,6 +345,10 @@ func set_data(bucket: Dictionary, finals: Dictionary, now: int = 0) -> void:
 ## ★两条路都调它: 联网那条(`_on_poll` 指纹变了)与喂数据那条(`set_data`)。
 ##   只挂一条的话, 门禁验的就不是玩家真走的那条(memory fb-verify-must-run-the-real-path)。
 func _record_progress() -> void:
+	## ★★周一看的是上周(用户 2026-10-19「保留到周一」): 头衔 / 进度写进的是**本周**的账(`GameState.week_anchor_ts`)
+	##   ⇒ 拿上周的结果去记 = 新一周平白多一个冠军头衔。周一只看, 不记。
+	if _viewing_past():
+		return
 	record_progress_from(_bucket)
 	record_cup_from(_finals)
 
@@ -349,7 +356,8 @@ func _record_progress() -> void:
 ## 这一刻默认该看哪一张。★20:00 UTC 之后看冠军杯赛(`default_view`); 但冠军杯赛还没成表就退回小组赛 ——
 ##   别让人开屏就看到一张空图(1 人表不算空: 那一页写着谁直接夺冠)。
 func _pick_default_view() -> String:
-	var v := _L.default_view(_clock())
+	## 周一看上周: 整个周日都打完了 ⇒ 与周日晚上一样先看冠军杯赛(没成表照旧退回小组赛)。
+	var v := _L.VIEW_FINALS if _viewing_past() else _L.default_view(_clock())
 	if v == _L.VIEW_FINALS and int(_finals.get("size", 0)) < 1:
 		v = _L.VIEW_BUCKET
 	return v
@@ -482,6 +490,29 @@ func _clock() -> int:
 	return _now_override if _now_override > 0 else int(_P2C.now_utc())
 
 
+## 顶栏标题: 周一看的是上周日(用户 2026-10-19「保留到周一」)。
+const TITLE_NOW := "周日 · 决赛日"
+const TITLE_PAST := "上周日 · 决赛日"
+
+
+## 这一屏问服务端要哪一周(周锚点)。★周一 = 上周(刚结束的那个周末), 其余 = 本周。
+##   判据只在 `Phase2Config.weekend_view_week` 一处; 名册 / 各组 / 冠军杯赛 / 头像 / 回放 全用这一个。
+func feed_week() -> int:
+	return _P2C.weekend_view_week(_clock())
+
+
+## 现在看的是不是已经结束的那个周末(周一)。是 ⇒ 只能看: 不开打、不记进度、不推阵容。
+func _viewing_past() -> bool:
+	return _P2C.weekend_view_is_past(_clock())
+
+
+## 冠军杯赛开赛的绝对时刻。周日当天 = 当天 20:00 UTC(与原来逐字节相同); 周一看上周 ⇒ 上周日那一刻(早就过了)。
+func _cup_start_ts() -> int:
+	if _viewing_past():
+		return feed_week() + 6 * 86400 + int(_P2C.FINALS_START_HOUR_UTC) * 3600
+	return int(_L.finals_start_ts(_clock()))
+
+
 ## 算【时间差】用的钟: 与 `recv_at`(收包那一刻的**原始系统钟**)同一把尺子。
 ## ★2026-10-11 全项目通读(赛制第 6 条): 倒计时/购物窗原来传 `_clock()`(= 原始钟 + 服务器偏移/穿越偏移)
 ##   ⇒ 时间差里多出一整个偏移(手机钟偏 10 分钟 ⇒ 倒计时差 10 分钟; 穿越时恒 0)。门禁 verify_bracket_clock_delta。
@@ -500,6 +531,8 @@ func cur() -> Dictionary:
 	if _view == _L.VIEW_FINALS:
 		return _finals
 	if int(_bucket.get("size", 0)) <= 1 and _bucket_kind() == EK_SPECTATE:
+		return _spectate_bucket()
+	if _peek and _can_peek():
 		return _spectate_bucket()
 	return _bucket
 
@@ -858,7 +891,7 @@ func _empty_kind() -> String:
 			return EK_WAIT
 		if int(_finals.get("size", 0)) == 1:
 			return EK_CUP_SOLO
-		if _clock() < int(_L.finals_start_ts(_clock())):
+		if _clock() < _cup_start_ts():
 			return EK_FINALS_SOON
 		return EK_FINALS_LOCAL
 	return _bucket_kind()
@@ -938,29 +971,70 @@ func _spectate_bucket() -> Dictionary:
 
 
 func _spec_step(d: int) -> void:
-	var n := _spectate_list().size()
+	var lst := _spectate_list()
+	var n := lst.size()
+	if _can_peek():
+		## 选手: 「我这一组」也是这一圈里的一站(按组号排好的那份名单里它在哪就在哪)。
+		## 1 人组不在名单里 ⇒ 我那一站排在名单末尾之后(一圈 n + 1 站), 翻得回来。
+		var mine := _my_index_in(lst)
+		var ring: int = n if mine >= 0 else n + 1
+		var home: int = mine if mine >= 0 else n
+		var at: int = _spec_idx if _peek else home
+		var nx: int = posmod(at + d, ring)
+		_peek = nx != home
+		if _peek:
+			_spec_idx = nx
+		_rebuild()
+		return
 	if n <= 1:
 		return
 	_spec_idx = posmod(_spec_idx + d, n)
 	_rebuild()
 
 
+## 我有组吗(分好了 / 1 人组)。有 ⇒ 我也能翻去看别的组(只要还有别的组可看)。
+func _can_peek() -> bool:
+	var k := _bucket_kind()
+	if k != EK_SEATED and k != EK_GROUP_SOLO:
+		return false
+	var lst := _spectate_list()
+	for b in lst:
+		if int((b as Dictionary).get("bucket", -1)) != int(_bucket.get("bucket", -2)):
+			return true
+	return false
+
+
+## 我那一组在各组名单里的下标(1 人组不在名单里 ⇒ -1: 从 -1 往前翻正好落到第一组 / 最后一组)。
+func _my_index_in(lst: Array) -> int:
+	for i in range(lst.size()):
+		if int((lst[i] as Dictionary).get("bucket", -1)) == int(_bucket.get("bucket", -2)):
+			return i
+	return -1
+
+
 ## 观赛那一行。★只在「我这一组」页签 + 观赛那一档可见; 一组时不给换组按钮。
 func _sync_spec() -> void:
 	if _spec_bar == null:
 		return
-	var on: bool = _view == _L.VIEW_BUCKET and _bucket_kind() == EK_SPECTATE
+	var peekable := _can_peek()
+	var on: bool = _view == _L.VIEW_BUCKET and (_bucket_kind() == EK_SPECTATE or peekable)
 	_spec_bar.visible = on
 	if not on:
 		return
 	var lst := _spectate_list()
-	var sb: Dictionary = _spectate_bucket()
-	var grp := int(sb.get("bucket", _spec_idx)) + 1
-	_spec_lb.text = ("本周未晋级 · 观战 · 第 %d 组" % grp) + (
-		"  (%d/%d)" % [_spec_idx + 1, lst.size()] if lst.size() > 1 else "")
+	if peekable:
+		## 选手: 在看自己那组 ⇒「我这一组 · 第 N 组」; 翻到别的组 ⇒「观战 · 第 N 组」(只能看)。
+		var sb2: Dictionary = _spectate_bucket() if _peek else _bucket
+		var g2 := int(sb2.get("bucket", 0)) + 1
+		_spec_lb.text = ("观战 · 第 %d 组" % g2) if _peek else ("我这一组 · 第 %d 组" % g2)
+	else:
+		var sb: Dictionary = _spectate_bucket()
+		var grp := int(sb.get("bucket", _spec_idx)) + 1
+		_spec_lb.text = ("%s · 观战 · 第 %d 组" % ["上周未晋级" if _viewing_past() else "本周未晋级", grp]) + (
+			"  (%d/%d)" % [_spec_idx + 1, lst.size()] if lst.size() > 1 else "")
 	for i in [0, 2]:
 		var bb := _spec_bar.get_child(i) as Button
-		bb.visible = lst.size() > 1
+		bb.visible = lst.size() > 1 or peekable
 		_fit_tab(bb)
 	var tw: float = _tabs.get_combined_minimum_size().x if _tabs != null else 300.0
 	_spec_bar.position = Vector2(_tabs.position.x + tw + 24.0, _tabs.position.y)
@@ -1077,12 +1151,12 @@ func _empty_text() -> String:
 			return "无法连接服务器 · 30 秒后自动刷新"
 		EK_NOT_SEATED:
 			return "未分组 · %s 自动分组" % _P2C.local_hhmm(
-				_P2C.week_anchor_utc(_clock()) + 6 * 86400 + int(_P2C.FINALS_SEAT_HOUR_UTC) * 3600)
+				feed_week() + 6 * 86400 + int(_P2C.FINALS_SEAT_HOUR_UTC) * 3600)
 		EK_TOO_FEW:
 			return "本周晋级人数不足（%d 人）· 决赛日取消 · 晋级记录保留" % int(_feed_view().get("entered", 0))
 		EK_FINALS_SOON:
 			## 开赛倒计时 + 已产生的组冠军(谁会进冠军杯赛)。
-			var left: int = int(_L.finals_start_ts(_clock())) - _clock()
+			var left: int = _cup_start_ts() - _clock()
 			return cup_soon_head(left) + "\n" + champion_text(champion_summary(_champ_buckets(),
 				_week_view().has("buckets")))
 		EK_FINALS_LOCAL:
@@ -1094,7 +1168,7 @@ func _empty_text() -> String:
 		EK_GROUP_SOLO:
 			## 1 人组: 没有对局 ⇒ 说清去向与开赛时刻(本地时间)。
 			return "%s仅 1 人 · 直接晋级%s\n%s %s 开赛" % [sheet_name(_bucket), _P2C.STAGE_CUP, _P2C.STAGE_CUP,
-				_P2C.local_hhmm(int(_L.finals_start_ts(_clock())))]
+				_P2C.local_hhmm(_cup_start_ts())]
 		EK_SEATED:
 			return "正在生成对阵"
 		EK_SPECTATE:
@@ -1365,6 +1439,8 @@ func my_opponent_seed(r: int, m: int) -> int:
 ##   每人每轮只有一次机会，替别人点一下就把它烧掉了。
 ##   这一条是纯判定，与网络无关 ⇒ 门禁能穷举，不用起网络。
 func should_fetch_opponent(r: int, m: int) -> bool:
+	if _viewing_past():
+		return false                  # 周一看的是上周: 一场都不开打
 	if match_state(r, m) != ST_LIVE:
 		return false                  # 已翻面的场次不用问，轮空/未开打也问不出东西
 	if r != int(cur().get("round", 1)):
@@ -1996,14 +2072,14 @@ func _start_feed() -> void:
 
 
 func _fetch_portraits() -> void:
-	_SB.fetch_gauntlet_board_async(_P2C.week_anchor_utc(_clock()), _on_board_rows)
+	_SB.fetch_gauntlet_board_async(feed_week(), _on_board_rows)
 
 
 func _pull() -> void:
 	_fetch_left = REFRESH_SEC
-	_SB.fetch_finals_async(_P2C.week_anchor_utc(_clock()), -1)
+	_SB.fetch_finals_async(feed_week(), -1)
 	## ★观赛 / 冠军页: 本周所有组。服务端没部署时回 404 ⇒ 缓存里没有 buckets ⇒ 屏幕照旧, 不报错。
-	_SB.fetch_finals_week_async(_P2C.week_anchor_utc(_clock()))
+	_SB.fetch_finals_week_async(feed_week())
 
 
 # ─────────────────────────────────────────────────────────────
@@ -2034,7 +2110,7 @@ func _on_match_opened(r: int, m: int) -> void:
 	_SB.opponent_clear()
 	_await_match = Vector2i(r, m)
 	_await_view = _view
-	_SB.fetch_opponent_async(_P2C.week_anchor_utc(_clock()), bk, r, my_opponent_seed(r, m), m)
+	_SB.fetch_opponent_async(feed_week(), bk, r, my_opponent_seed(r, m), m)
 
 
 ## ─────────────────────────────────────────────────────────────
@@ -2065,7 +2141,7 @@ func open_replay(r: int, m: int) -> void:
 		_LS.pending = _LS.premiere_session(cur(), r, m, srv_now())
 	var wn := str(competitor(r, m, ws).get("name", "")) if ws >= 0 else ""
 	replay_busy = Vector2i(r, m)
-	var wk: int = _P2C.week_anchor_utc(_clock())
+	var wk: int = feed_week()
 	last_replay_ask = {"week": wk, "bucket": bk, "round": r, "match": m}
 	_show_replay_msg("读取中…", ACCENT)
 	## 2026-10-05: 多带这一场的两个人(`pair`)⇒ 回放铭牌能写出「谁 对 谁」(录像方是谁由录像里的对手快照认出来, 见 `ReplayRecorder.side_names`)。

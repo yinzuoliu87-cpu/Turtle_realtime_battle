@@ -1857,6 +1857,7 @@ func week_card_info(ph: String, now: int) -> Dictionary:
 		"chips": [],
 		"points": [],
 		"door": "",
+		"door2": "",
 	}
 	## ── 上沿那条暗带的时间 ──
 	if state == "now":
@@ -1931,6 +1932,14 @@ func week_card_info(ph: String, now: int) -> Dictionary:
 		elif ph == _P2C.PHASE_GAUNTLET and _P2C.phase_mode_live(_P2C.PHASE_GAUNTLET) \
 				and kind in [BK_COUNTDOWN, BK_LOCKED, BK_CLOSED_TODAY]:
 			info["door"] = WEEK_DOOR_BOARD
+		elif ph == _P2C.PHASE_REST and _P2C.weekend_view_is_past(now):
+			## ★★周一: 刚结束那个周末还看得到(用户 2026-10-19「周六，周日的对战情况能也一直保留到周一」)。
+			##   两扇门挂在今天(休赛日)这张卡上 —— 周六 / 周日那两张卡此刻说的是**新一周**, 不挂旧周的门。
+			##   门后两页自己按 `Phase2Config.weekend_view_week` 取上周。
+			if _P2C.phase_mode_live(_P2C.PHASE_GAUNTLET):
+				info["door"] = WEEK_DOOR_BOARD
+			if _finals_live():
+				info["door2"] = WEEK_DOOR_BRACKET
 	info["chips"] = chips
 	info["points"] = pts
 	return info
@@ -2039,7 +2048,9 @@ func _week_card(info: Dictionary) -> Control:
 	if not chips.is_empty():
 		y += CARD_CHIP_SIZE.y + 10.0
 	var door := str(info["door"])
-	var text_w: float = sz.x - CARD_PAD * 2.0 - ((150.0 + 12.0) if door != "" else 0.0)
+	var door2 := str(info.get("door2", ""))
+	var n_doors: int = (1 if door != "" else 0) + (1 if door2 != "" else 0)
+	var text_w: float = sz.x - CARD_PAD * 2.0 - (150.0 + 12.0) * float(n_doors)
 	var pts: Array = info["points"]
 	for k in range(pts.size()):
 		var pl := _place_outlined(str(pts[k]), 17, Color("#b4ada6") if locked else Color("#ecdcbc"),
@@ -2047,10 +2058,18 @@ func _week_card(info: Dictionary) -> Control:
 		pl.name = "CardPoint%d" % k
 		body.add_child(pl)
 	## 门: 周六「全场赛况」/ 周日「查看对阵图」。目标与原赛程条那两扇门同一处(`_open_gauntlet_board` / `_open_bracket_map`)。
-	if door != "":
-		var d: Button = _finals_entry() if door == WEEK_DOOR_BRACKET else _gauntlet_board_door()
-		d.position = Vector2(sz.x - CARD_PAD - 150.0, body_h - 81.0 - 12.0)
+	## 周一休赛那张卡: 两扇门并排(周六赛况 / 周日对阵图), 门上的字说清是哪一天的。
+	var past_week: bool = ph == _P2C.PHASE_REST
+	var slot := 0
+	for dk in [door2, door]:
+		if str(dk) == "":
+			continue
+		var d: Button = _finals_entry() if str(dk) == WEEK_DOOR_BRACKET else _gauntlet_board_door()
+		if past_week:
+			d.text = PAST_BRACKET_LINE if str(dk) == WEEK_DOOR_BRACKET else PAST_BOARD_LINE
+		d.position = Vector2(sz.x - CARD_PAD - 150.0 - float(slot) * (150.0 + 12.0), body_h - 81.0 - 12.0)
 		body.add_child(d)
+		slot += 1
 	if str(info["state"]) == "past":
 		card.modulate = Color(0.72, 0.72, 0.72)
 	return card
@@ -2158,6 +2177,9 @@ func _finals_entry() -> Control:
 ## ★与周日「看对阵图」**同一扇门**(`_door`: 同一张 `ui/panel-wide.png`、同一个尺寸) —— 不另造一种长相。
 const GAUNTLET_BOARD_SCENE := "GauntletBoard"
 const GAUNTLET_BOARD_LINE := "全场赛况"
+## 周一那两扇门上的字(看的是刚结束的那个周末)。
+const PAST_BOARD_LINE := "周六赛况"
+const PAST_BRACKET_LINE := "周日对阵图"
 
 
 ## 周六卡上那扇门: 与周日「查看对阵图」同一扇门(`_door`: 同一张黄铜门牌、同一个尺寸)。

@@ -83,8 +83,14 @@ static func build(rows: Array, my_tag: String, closed: bool) -> Dictionary:
 		var t := iso_to_unix(str(r.get("created_at", "")))
 		var lt := tag_of(r.get("lp", null))
 		var rt := tag_of(r.get("rp", null))
-		games.append({"id": str(r.get("match_id", "")), "t": t, "lw": lw, "ver": _ver(r),
-			"l": _side(r.get("lp", null), lt, r.get("la", null)), "r": _side(r.get("rp", null), rt, r.get("ra", null))})
+		var g := {"id": str(r.get("match_id", "")), "t": t, "lw": lw, "ver": _ver(r),
+			"l": _side(r.get("lp", null), lt, r.get("la", null)), "r": _side(r.get("rp", null), rt, r.get("ra", null))}
+		## 录像方这一局打完后的战绩(gw/gl) ⇒ 这是他第几场(`n`) —— 点人时按它对账、补「无录像」那几行。
+		if res.has("gw") and res.has("gl"):
+			g["gw"] = maxi(0, int(res.get("gw", 0)))
+			g["gl"] = maxi(0, int(res.get("gl", 0)))
+			g["n"] = int(g["gw"]) + int(g["gl"])
+		games.append(g)
 		if lt != "":
 			var p: Dictionary = _person(ppl, lt, r.get("lp", null), t)
 			p["own"] = true
@@ -130,6 +136,68 @@ static func games_of(games: Array, tag: String) -> Array:
 	for g in games:
 		if g is Dictionary and (str(g["l"].get("tag", "")) == tag or str(g["r"].get("tag", "")) == tag):
 			out.append(g)
+	return out
+
+
+## 某个人**自己打的**那几场(录像方 = 他)。★别人挑战他的快照那几场不算他打的(他根本不在场)。
+static func own_games(games: Array, tag: String) -> Array:
+	var out: Array = []
+	for g in games:
+		if g is Dictionary and str(g["l"].get("tag", "")) == tag:
+			out.append(g)
+	return out
+
+
+## 点人之后右栏那一列: 他自己打的 + 战绩里有而录像没传上来的占位行(`missing = true`)。
+## ★★行数永远 = 战绩榜上那个 w + l(用户 2026-10-19「随便看一个人的对局，怎么就和4-1不符」)。
+##   原来列的是 `games_of`(他打的 + 别人打他快照的): 生产 2026-10-17 那周 rsq0417 4-1 列出 12 场
+##   (自己 5 场 + 别人挑战他快照 7 场), LouisT01 4-1 列出 14 场。
+## ★占位行: {missing, n(第几场, 不知道 = 0), res("w"/"l"/""), l(他), r(空), t}。胜负按相邻两场的战绩差推出, 推不出就不写。
+## `p` = 战绩榜那一行(`build` 的 players 元素); 空 ⇒ 只回他自己打的。
+static func player_games(games: Array, p: Dictionary) -> Array:
+	if p.is_empty():
+		return []
+	var tag := str(p.get("tag", ""))
+	var own := own_games(games, tag)
+	var total: int = int(p.get("w", 0)) + int(p.get("l", 0))
+	## 第 k 场打完后的战绩(k = 0 是开赛前)。
+	var st := {0: Vector2i(0, 0), total: Vector2i(int(p.get("w", 0)), int(p.get("l", 0)))}
+	var have := {}
+	for g in own:
+		if not (g as Dictionary).has("n"):
+			continue
+		var k := int(g["n"])
+		have[k] = true
+		var a := Vector2i(int(g["gw"]), int(g["gl"]))
+		st[k] = a
+		st[k - 1] = a - (Vector2i(1, 0) if bool(g.get("lw", false)) else Vector2i(0, 1))
+	var lack: int = maxi(0, total - own.size())
+	var out: Array = own.duplicate()
+	var me: Dictionary = {"tag": tag, "name": str(p.get("name", "?")), "avatar": str(p.get("avatar", "")), "lineup": []}
+	var k2 := 1
+	while lack > 0 and k2 <= total:
+		if not have.has(k2):
+			var res := ""
+			if st.has(k2 - 1) and st.has(k2):
+				var d: Vector2i = st[k2] - st[k2 - 1]
+				res = "w" if d == Vector2i(1, 0) else ("l" if d == Vector2i(0, 1) else "")
+			out.append({"id": "", "missing": true, "n": k2, "res": res, "t": 0, "lw": res == "w",
+				"l": me, "r": {"tag": "", "name": "?", "avatar": "", "lineup": []}})
+			lack -= 1
+		k2 += 1
+	while lack > 0:          # 他自己的行都没带场次(老行) ⇒ 只知道少了几场
+		out.append({"id": "", "missing": true, "n": 0, "res": "", "t": 0, "lw": false,
+			"l": me, "r": {"tag": "", "name": "?", "avatar": "", "lineup": []}})
+		lack -= 1
+	## 第几场倒序(最近一场在上); 不知道场次的排最后, 同场次按时间。
+	out.sort_custom(func(a, b) -> bool:
+		var na := int((a as Dictionary).get("n", 0))
+		var nb := int((b as Dictionary).get("n", 0))
+		if na != nb:
+			if na <= 0 or nb <= 0:
+				return nb <= 0
+			return na > nb
+		return int(a["t"]) > int(b["t"]))
 	return out
 
 

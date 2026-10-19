@@ -207,7 +207,9 @@ func _mk(d: Dictionary) -> Control:
 		d = d.duplicate()
 		d["round_at"] = 1
 		d["srv_now"] = 100000
-	_map.set_bucket(d)
+	## ★2026-10-19: 钉在一个已知的周日(SUN_AM)。原来 now=0 ⇒ 跟着真实时钟走, 而周一起对阵图看的是**上周**、只能看不能打
+	##   (用户「保留到周一」, `Phase2Config.weekend_view_is_past`) ⇒ 这一段在周一跑会把「当前轮可点」判红 —— 判据挂在星期几上。
+	_map.set_data(d, {}, SUN_AM)
 	await get_tree().process_frame
 	return _map
 
