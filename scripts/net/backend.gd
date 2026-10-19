@@ -451,6 +451,8 @@ static func make_bot(battles: int, rng: RandomNumberGenerator, gw: int = -1, gl:
 		snap["gl_w"] = gw
 		snap["gl_l"] = maxi(0, gl)
 		snap["gl_ts"] = int(_P2.now_utc()) - rng.randi_range(60, 25 * 60)
+	## 站位(2026-10-19): 真人快照带站位, 机器人也要带(不带 = 一眼认得出, verify_bot_snapshot_shape)。
+	LineupPos.fill_bot_offsets(snap, ghost_id)
 	## ★最后一步: 过一遍真人对手走过的同一个 JSON 往返(服务端拉回 `snapshots_from_body` / `load_pool` 读盘)。
 	##   不做的话数字是 int 而真人是 float, `var_to_bytes` 的录像里类型是保留的。
 	return JSON.parse_string(JSON.stringify(snap))
@@ -1087,6 +1089,8 @@ static func seed_as_human(g: Dictionary, season_id: int) -> Dictionary:
 		"axe_final": str(_axe_prog["final"]),
 		ORIGIN_KEY: ORIGIN_REMOTE,
 	}
+	## 站位: 原快照摆过的照抄(上面 leader_off / 小将 off), 没摆过的按机器人队形补(不带 = 一眼认得出)。
+	LineupPos.fill_bot_offsets(snap, gid)
 	## 与真人对手同一个 JSON 往返(数字一律 float)。
 	return JSON.parse_string(JSON.stringify(snap))
 

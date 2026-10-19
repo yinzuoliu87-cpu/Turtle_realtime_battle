@@ -149,6 +149,12 @@ func _setup_human(battles: int) -> void:
 		for u in gs.dual_lineup[lk]:
 			if str((u as Dictionary).get("kind", "")) != "leader":
 				u["equips"] = [gs.mk_eq(str(shop[1]), 2)]
+	## 站位(2026-10-19 起在背包里摆, 真人快照带 leader_off / 小将 off): 真人样本摆过站位, 才量得到这两层。
+	for lk in ["top", "bottom"]:
+		var k := 0
+		for u in gs.dual_lineup[lk]:
+			(u as Dictionary)["off"] = [20 * k - 40, 150 * k - 150]
+			k += 1
 	gs.persistent_equipped = {}
 	for i in range(3):
 		gs.persistent_equipped[ids[i]] = [gs.mk_eq(str(shop[0]), 1), gs.mk_eq(str(shop[2]), 3)]
@@ -555,5 +561,9 @@ func _effective_specs(specs: Array) -> Array:
 	for sp in specs:
 		var c: Dictionary = (sp as Dictionary).duplicate(true)
 		c["equips"] = c.get("equips", []) if c.get("equips") is Array else []
+		## 站位(2026-10-19)不在「强度」里比: 陪练原样(10-18 前录的真人快照)没有站位, 转换时按机器人队形补上
+		##   —— 是有意加的(真人快照带站位之后, 不带 = 一眼认得出, 用户 10-04「不能让玩家知道是机器人」)。
+		##   阵容 / 装备 / 技能 / 大师 / 宝箱仍逐字比。
+		c.erase("off")
 		out.append(c)
 	return out

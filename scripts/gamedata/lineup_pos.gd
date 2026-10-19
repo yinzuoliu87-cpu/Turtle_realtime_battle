@@ -49,3 +49,46 @@ static func to_field(base: Vector2, off: Vector2i, side: String) -> Vector2:
 static func pack(o: Vector2i) -> Array:
 	var c := clamp_off(o)
 	return [c.x, c.y]
+
+
+## ── 机器人的站位(2026-10-19) ──
+## 用户 10-04「不能让玩家知道是机器人」: 真人快照带站位之后, 机器人一个不带 = 一眼认得出
+##   (门禁 verify_bot_snapshot_shape 逐层比键)。⇒ 机器人从几种常见队形里挑一种, 再加一点抖动, 像人摆的。
+## ★用 ghost_id 的哈希做种子, **不吃** make_bot 的 rng —— 吃了会改变它后面所有随机(名字 / 号 / 装备)。
+const BOT_FORMATIONS := [
+	[Vector2i(0, -154), Vector2i(0, 0), Vector2i(0, 154)],          # 竖排(默认)
+	[Vector2i(-60, -150), Vector2i(80, 0), Vector2i(-60, 150)],     # 楔形
+	[Vector2i(-120, -120), Vector2i(40, 0), Vector2i(-120, 120)],   # 后压
+	[Vector2i(0, -240), Vector2i(0, 0), Vector2i(0, 240)],          # 拉开
+	[Vector2i(120, -140), Vector2i(160, 0), Vector2i(120, 140)],    # 前压
+]
+const BOT_JITTER := 24
+
+
+## 第 i 个单位(该路按「统领在前、小将在后」排)的机器人站位。
+static func bot_off(seed_str: String, lane: String, i: int) -> Vector2i:
+	var h: int = hash("%s|%s" % [seed_str, lane])
+	var f: Array = BOT_FORMATIONS[absi(h) % BOT_FORMATIONS.size()]
+	var base: Vector2i = f[clampi(i, 0, f.size() - 1)]
+	var hj: int = hash("%s|%s|%d" % [seed_str, lane, i])
+	var jx: int = (absi(hj) % (BOT_JITTER * 2 + 1)) - BOT_JITTER
+	var jy: int = (absi(hj / 97) % (BOT_JITTER * 2 + 1)) - BOT_JITTER
+	return clamp_off(base + Vector2i(jx, jy))
+
+
+## 给一份(机器人)快照补站位: 统领写 `leader_off`, 小将写各自的 `off`。已有的不动。
+static func fill_bot_offsets(snap: Dictionary, seed_str: String) -> void:
+	var la: Dictionary = snap.get("lane_assign", {}) if snap.get("lane_assign") is Dictionary else {}
+	var mn: Dictionary = snap.get("minions", {}) if snap.get("minions") is Dictionary else {}
+	var lo: Dictionary = snap.get("leader_off", {}) if snap.get("leader_off") is Dictionary else {}
+	for lane in ["top", "bottom"]:
+		var i := 0
+		for pid in (la.get(lane, []) if la.get(lane) is Array else []):
+			if not lo.has(str(pid)):
+				lo[str(pid)] = pack(bot_off(seed_str, lane, i))
+			i += 1
+		for m in (mn.get(lane, []) if mn.get(lane) is Array else []):
+			if m is Dictionary and not (m as Dictionary).has("off"):
+				(m as Dictionary)["off"] = pack(bot_off(seed_str, lane, i))
+			i += 1
+	snap["leader_off"] = lo
