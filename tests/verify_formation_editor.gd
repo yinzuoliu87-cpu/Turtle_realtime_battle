@@ -159,6 +159,22 @@ func _layout_pass(w: int, tag: String) -> void:
 		if b != fb and b is Button and (b as Button).is_visible_in_tree() and (b as Button).get_global_rect().intersects(fr):
 			overl.append(str((b as Button).text))
 	_ok("[%s] 「站位」签不与同排别的签重叠" % tag, overl.is_empty(), str(overl))
+	## ★2026-10-19 实拍抓到: 「站位」签压住了右上「全队装备 8/10」(那是 Label 不是 Button, 上一条量不到)。
+	##   ⇒ 量顶栏高度内所有可见的文字 / 图标(背包页自己加在顶部那一条的币、容量、图标)。
+	var hit: Array = []
+	var nshown := 0
+	for c in sc.find_children("*", "Control", true, false):
+		var cc: Control = c
+		if cc == fb or fb.is_ancestor_of(cc) or not cc.is_visible_in_tree() or not (cc is Label or cc is TextureRect):
+			continue
+		var cr: Rect2 = cc.get_global_rect()
+		if cr.position.y > TopBar.BAR_H or cr.size.x < 2.0:
+			continue
+		nshown += 1
+		if cr.intersects(fr.grow(-2.0)):
+			hit.append("%s「%s」" % [cc.name, (cc as Label).text if cc is Label else "图"])
+	_ok("[%s] ★分母: 顶栏里量到了文字 / 图标(%d 个)" % [tag, nshown], nshown >= 3)
+	_ok("[%s] ★★「站位」签不压顶栏里的文字 / 图标(全队装备 / 深海币)" % tag, hit.is_empty(), str(hit))
 	var ed := await _open_editor(sc)
 	_ok("[%s] ★点「站位」⇒ 站位面板打开" % tag, ed != null and ed.is_visible_in_tree())
 	if ed == null:

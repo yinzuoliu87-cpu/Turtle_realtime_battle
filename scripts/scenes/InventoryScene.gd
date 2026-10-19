@@ -52,6 +52,8 @@ const LANE_TOP := 116.0        # 上战场单位框的 y (带子从 y-24 开始)
 const LANE_GAP := 146.0        # 上→下战场的行距
 const SYN_X := 828.0           # 右侧羁绊列左沿(原 952 → 左移 124, 顺带吃掉阵容右边那块 138px 空白)
 const SYN_W := 424.0           # 羁绊列宽(原 300)
+## 顶栏「站位」签占的宽度 + 间距(右上「币 / 全队装备」这一组为它左移这么多)。
+const FORMATION_BTN_ROOM := 112.0
 const SYN_TOP := 94.0          # 羁绊列顶(原 100→74→94), 与上战场带顶齐平(带顶 = LANE_TOP-24)
 const SYN_BOTTOM := 382.0      # 羁绊列底 = 下战场带的底边, 两侧齐平
 const BENCH_HDR_Y := 386.0     # 「装备背包」标题(22 号字实测占 30 高, 给够别压到第一排格子)
@@ -247,7 +249,8 @@ func _rebuild() -> void:
 	ci.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	ci.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	## ★教程: 右上「?」那一格让给「跳过教程」(132 宽 > 「?」的 81) ⇒ 币/容量这一组左移让位。
-	var _tsh: float = 80.0 if _tut_on() else 0.0
+	## ★2026-10-19 顶栏「?」左边多了「站位」签(非教程时) ⇒ 这一组再左移一格让位(实拍: 原位置被「站位」压住「全队装备」)。
+	var _tsh: float = 80.0 if _tut_on() else FORMATION_BTN_ROOM
 	ci.position = Vector2(SYN_X - _tsh, 24); ci.size = Vector2(36, 36)
 	add_child(ci)
 	var coin := Label.new()
