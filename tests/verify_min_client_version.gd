@@ -101,7 +101,7 @@ func _t_pure() -> void:
 		["", "0.19.1", false],
 	]
 	for c in cases:
-		var got: bool = SB.version_less(str(c[0]), str(c[1]))
+		var got: bool = VersionGate.version_less(str(c[0]), str(c[1]))
 		_ok("① %s < %s ⇒ %s" % [c[0], c[1], str(c[2])], got == bool(c[2]), "实际 %s" % str(got))
 	var r := SB.state_from_response(true, 200, '[{"id":1,"maintenance":false,"notice":"","min_client_version":"0.20.1"}]')
 	_ok("① 回包里那一列被读出来了", str(r.get("min", "")) == "0.20.1", str(r))

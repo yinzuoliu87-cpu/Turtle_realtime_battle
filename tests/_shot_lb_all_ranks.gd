@@ -21,7 +21,7 @@ func _row(rk: int) -> Dictionary:
 			"battles": 11, "title": null}
 	var nm: String = str(NAMES[(rk - 1) % NAMES.size()]) + ("" if rk <= NAMES.size() else str(rk))
 	return {"rank": rk, "name": nm, "tag": "", "account_id": "uid-shot-%d" % rk,
-		"wins": maxi(0, 15 - rk / 10), "hearts": 8 - (rk % 8), "sweeps": rk % 2, "battles": 16 - (rk % 5), "title": null}
+		"wins": maxi(0, 15 - rk / 10), "hearts": P2C.HEARTS_MAX - (rk % P2C.HEARTS_MAX), "sweeps": rk % 2, "battles": 16 - (rk % 5), "title": null}
 
 
 func _spy(_m, url, _h, body, cb) -> void:

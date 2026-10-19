@@ -189,7 +189,7 @@ static func drop_reason(e, now: int, acc: String, min_ver: String = "") -> Strin
 		return "gave_up:%s" % k
 	## 强制最低版本(2026-10-19): 旧版本打出来的快照 —— 规则可能已经变了, 服务端也会拒(RLS 按行里的 client_version)。
 	##   不销的话更新后它会被一遍遍 403 直到 MAX_TRIES。
-	if min_ver != "" and SB.version_less(str(d.get("cv", "")), min_ver):
+	if min_ver != "" and VersionGate.version_less(str(d.get("cv", "")), min_ver):
 		return "old_version:%s" % k
 	return ""
 

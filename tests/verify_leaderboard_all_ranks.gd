@@ -88,7 +88,7 @@ func _row(rk: int) -> Dictionary:
 		return {"rank": rk, "name": ME_NAME, "tag": "", "account_id": ME, "wins": 2, "hearts": 3,
 			"sweeps": 0, "battles": 11, "title": null}
 	return {"rank": rk, "name": "龟友%03d" % rk, "tag": "", "account_id": "uid-ar-%d" % rk,
-		"wins": maxi(0, 15 - rk / 10), "hearts": 8 - (rk % 8), "sweeps": rk % 2, "battles": 16 - (rk % 5),
+		"wins": maxi(0, 15 - rk / 10), "hearts": P2C.HEARTS_MAX - (rk % P2C.HEARTS_MAX), "sweeps": rk % 2, "battles": 16 - (rk % 5),
 		"title": null}
 
 
@@ -381,7 +381,7 @@ func _t_local() -> void:
 	for i in range(LOCAL_N):
 		BE.pool_add(pool, {"schema_ver": BE.SCHEMA_VER, "ghost_id": "lbar_%d" % i, "is_bot": false,
 			"origin": BE.ORIGIN_REMOTE, "profile": {"name": "本机龟%03d" % i},
-			"season_wins": 20 - i / 6, "hearts": 8 - (i % 8), "season_sweeps": 0, "season_total_battles": 9})
+			"season_wins": 20 - i / 6, "hearts": P2C.HEARTS_MAX - (i % P2C.HEARTS_MAX), "season_sweeps": 0, "season_total_battles": 9})
 	BE.pool_override = pool
 	var w0 := int(GameState.season_wins)
 	var h0 := int(GameState.hearts)

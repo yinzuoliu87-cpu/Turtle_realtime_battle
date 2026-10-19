@@ -119,7 +119,7 @@ func _t_pure() -> void:
 		[" 0.19.9 ", "0.19.10", true],
 	]
 	for c in fixed:
-		var got: bool = SB.version_less(str(c[0]), str(c[1]))
+		var got: bool = VersionGate.version_less(str(c[0]), str(c[1]))
 		_ok("① %s < %s ⇒ %s" % [c[0], c[1], str(c[2])], got == bool(c[2]), "实际 %s" % str(got))
 	## 穷举: 每段取 {0,1,9,10,19,99,100}, 三段 ⇒ 343 个版本, 两两 117649 对。对照元组比较。
 	var vals := [0, 1, 9, 10, 19, 99, 100]
@@ -137,7 +137,7 @@ func _t_pure() -> void:
 			var want: bool = x[0] < y[0] or (x[0] == y[0] and (x[1] < y[1] or (x[1] == y[1] and x[2] < y[2])))
 			if want:
 				n_less += 1
-			if SB.version_less(sx, "%d.%d.%d" % y) != want:
+			if VersionGate.version_less(sx, "%d.%d.%d" % y) != want:
 				bad += 1
 				if first_bad == "":
 					first_bad = "%s vs %d.%d.%d" % [sx, y[0], y[1], y[2]]
@@ -163,11 +163,11 @@ func _t_decision() -> void:
 	for c in cases:
 		var got: bool = SB.wall_decision(str(c[0]), str(c[1]), cur, bool(c[2]))
 		_ok("② %s" % c[4], got == bool(c[3]), "state=%s min=%s said=%s ⇒ %s" % [c[0], c[1], str(c[2]), str(got)])
-	_ok("② 426 回包 = 要更新", SB.is_update_required_response({"code": 426, "body": ""}))
+	_ok("② 426 回包 = 要更新", VersionGate.is_update_required_response({"code": 426, "body": ""}))
 	_ok("② RPC 拒收 reason=update_required = 要更新",
-		SB.is_update_required_response({"code": 200, "body": '{"ok":false,"reason":"update_required"}'}))
-	_ok("② 普通 403 不算", not SB.is_update_required_response({"code": 403, "body": '{"code":"42501"}'}))
-	_ok("② 没发出去(code 0)不算", not SB.is_update_required_response({"code": 0, "body": "update_required"}))
+		VersionGate.is_update_required_response({"code": 200, "body": '{"ok":false,"reason":"update_required"}'}))
+	_ok("② 普通 403 不算", not VersionGate.is_update_required_response({"code": 403, "body": '{"code":"42501"}'}))
+	_ok("② 没发出去(code 0)不算", not VersionGate.is_update_required_response({"code": 0, "body": "update_required"}))
 	## 规则版本: 拉对手只拉同一规则版本; 排队单子带自己入队时的规则版本; 旧版本打出来的单子销掉
 	var rv := int(preload("res://scripts/gamedata/phase2_config.gd").RULES_VER)
 	var tag := "rules_ver=eq.%d" % rv
