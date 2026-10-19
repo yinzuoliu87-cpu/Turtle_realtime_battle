@@ -47,7 +47,8 @@ func _setup_gs(gs) -> void:
 	gs.season_leaders = ["basic", "stone", "bamboo"]
 	gs.left_team.assign(gs.season_leaders)
 	gs.dual_lineup = {
-		"top": [{"kind": "leader", "slot": 0, "id": "basic"}, {"kind": "minion", "role": "front", "equips": []}],
+		## basic 带 off = 背包里摆过的站位(2026-10-19 起站位在背包里摆, 对局里没有拖动)
+		"top": [{"kind": "leader", "slot": 0, "id": "basic", "off": [-70, 40]}, {"kind": "minion", "role": "front", "equips": []}],
 		"bottom": [{"kind": "leader", "slot": 1, "id": "stone", "equips": []},
 			{"kind": "leader", "slot": 2, "id": "bamboo", "equips": []}, {"kind": "minion", "role": "back", "equips": []}],
 	}
@@ -130,9 +131,9 @@ func _ready() -> void:
 	# ── A 参照: 正常打完的那一局(中途在第一路开打后 KILL_AFTER 步把盘上的待结算单抄下来 = 那一刻被杀会留下的) ──
 	_setup_gs(gs)
 	var pre: Dictionary = _snap(gs)
-	print("=== A 参照: 正常打完(拖站位 + 点幕布 + 每路一进摆位就开打) ===")
+	print("=== A 参照: 正常打完(背包站位 + 点幕布 + 每路演出完自动开打) ===")
 	var ref: Dictionary = await _run_ref()
-	_ok("分母 · 参照那一局打完了(%s)、开打 %d 次、点过幕布、拖过站位" % [str(ref["state"]), int(ref["fights"])],
+	_ok("分母 · 参照那一局打完了(%s)、开打 %d 次、点过幕布、站位是背包里摆过的" % [str(ref["state"]), int(ref["fights"])],
 		str(ref["state"]) == "done" and int(ref["fights"]) >= 2 and bool(ref["clicked"]) and bool(ref["dragged"]))
 	_ok("★F 开局就落了待结算单, id = 这一局录像 id", bool(ref["pending_at_start"]), str(ref["pid0"]))
 	var kill: PackedByteArray = ref["kill"]
@@ -336,8 +337,8 @@ func _ev_str(evs: Array) -> String:
 	return str(out)
 
 
-## 参照局: det 模式(一帧恰一步), 扮演玩家。每路一进摆位就开打 —— 与复算「摆位屏立刻开打」同一个时刻;
-##   第一路开打前拖一只龟、开局总览点一下幕布(这两条是复算要从单子里重放的前缀输入)。
+## 参照局: det 模式(一帧恰一步), 扮演玩家。每路演出完自动开打(2026-10-19 起对局里没有摆位屏, 与复算同一个时刻);
+##   站位来自阵容里的 off(背包里摆的), 开局总览点一下幕布(复算要从单子里重放的前缀输入)。
 func _run_ref() -> Dictionary:
 	var s = RB.new()
 	add_child(s)
@@ -364,19 +365,17 @@ func _run_ref() -> Dictionary:
 		if st == "overview" and st_frames == 9 and not clicked:
 			s._dl_sys._dl_present_click()
 			clicked = true
-		elif st == "place" and st_frames == 1:
-			if fights == 0:
-				for u in s._units:
-					if str(u.get("side", "")) == "left" and s._can_place_drag(u):
-						var q0: Vector2 = u["pos"]
-						u["pos"] = s._dl_sys._dl_clamp_place(q0 + Vector2(-70.0, 40.0))
-						dragged = (u["pos"] as Vector2) != q0
-						break
-			s._dl_sys._dl_start_fight()
+		s._process(s.SIM_DT)
+		## ★2026-10-19 对局里没有摆位屏: 演出完同一步自动开打 ⇒ 开打在 _process 里发生, 在这之后数。
+		if st != "fight" and str(s._dl_state) == "fight":
 			fights += 1
 			if fights == 1:
 				fight1 = int(s._sim_step_n)
-		s._process(s.SIM_DT)
+				for u in s._units:
+					if str(u.get("side", "")) == "left" and str(u.get("id", "")) == "basic":
+						var cx: float = s.ARENA.position.x + s.ARENA.size.x * 0.5
+						var cy: float = s.ARENA.position.y + s.ARENA.size.y * 0.5
+						dragged = (u["pos"] as Vector2) != Vector2(cx - 420.0, cy - 77.0)
 		await get_tree().process_frame
 		if kill.is_empty() and fight1 >= 0 and int(s._sim_step_n) >= fight1 + KILL_AFTER:
 			kill = FileAccess.get_file_as_bytes(AM.PATH)

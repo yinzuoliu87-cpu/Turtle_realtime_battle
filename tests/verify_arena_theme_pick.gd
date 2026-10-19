@@ -170,8 +170,6 @@ func _run_formal(seed_v: int, frames: int, tutorial: bool = false) -> Dictionary
 		st_frames += 1
 		if (st == "overview" or st == "lane_settle") and st_frames == 9:
 			s._dl_sys._dl_present_click()
-		elif st == "place" and st_frames == 25 and is_instance_valid(s._dl_go_btn):
-			s._dl_go_btn.pressed.emit()
 		s._process(1.0 / 60.0)
 		if str(s._dl_state) == "fight":
 			fought = true

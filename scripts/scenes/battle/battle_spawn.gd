@@ -235,7 +235,7 @@ func _spawn_dual_lane() -> void:
 	# 这样呈现时后面根本没有战场, 从源头杜绝上下路串场(用户2026-07-12「不能预览后再加载好战场吗，非要遮住是为啥」).
 	if OS.has_environment("DL_AUTOFIGHT"):
 		battle._dl_sys._dl_build_lane_field()
-		battle._dl_state = "place"; battle._dl_sys._dl_enter_place()   # 测试: 跳呈现直接加载战场→放置→自动打
+		battle._dl_state = "place"; battle._dl_sys._dl_enter_place()   # 测试: 跳呈现直接加载战场→开打
 	elif not battle._dl_overview_shown:
 		battle._dl_overview_shown = true
 		battle._dl_sys._dl_enter_present("overview")   # 匹配后首次: 3路总览→预览→(加载战场)→放置

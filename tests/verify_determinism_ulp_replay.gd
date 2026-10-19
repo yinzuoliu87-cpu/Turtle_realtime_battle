@@ -141,8 +141,6 @@ func _run(pat: Array, as_player: bool) -> Dictionary:
 		if as_player:
 			if (st == "overview" or st == "lane_settle") and st_frames == 9:
 				s._dl_sys._dl_present_click()
-			elif st == "place" and st_frames == 25 and is_instance_valid(s._dl_go_btn):
-				s._dl_go_btn.pressed.emit()
 		s._process(float(pat[i % pat.size()]))
 		await get_tree().process_frame
 		i += 1

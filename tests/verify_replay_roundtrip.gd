@@ -83,7 +83,7 @@ func _setup_gs(gs) -> void:
 	gs.left_team.assign(gs.season_leaders)
 	gs.dual_lineup = {
 		"top": [
-			{"kind": "leader", "slot": 0, "id": "basic"},          # 不带 equips ⇒ 读 persistent_equipped
+			{"kind": "leader", "slot": 0, "id": "basic", "off": [-70, 30]},   # 不带 equips ⇒ 读 persistent_equipped; off = 背包里摆过的站位(2026-10-19)
 			{"kind": "minion", "role": "front", "equips": []},
 		],
 		"bottom": [
@@ -218,7 +218,7 @@ func _ready() -> void:
 		fights >= 2 and int(kinds.get("present", 0)) >= 1 and int(kinds.get("surrender", 0)) == 1)
 	_ok("分母 · 录到 %d 个校验点 > 0" % (rec["cps"] as Array).size(), (rec["cps"] as Array).size() > 0)
 	_ok("分母 · 记录带版本号 = 本机版本", str(rec.get("client_version", "")) == ReplayRecorder.client_version())
-	_ok("分母 · 站位被我拖过(开打时的站位 ≠ 出生点)", bool(rec_run["dragged"]))
+	_ok("分母 · 站位是背包里摆过的(开打时上路统领 ≠ 默认队形)", bool(rec_run["dragged"]))
 	var raw_size: int = ReplayRecorder.encode(rec).size()
 	print("  [量] 一局记录 %d 字节(deflate 后) · 事件 %d 条 · 校验点 %d 个 · 结束步 %d" % [
 		raw_size, (rec["events"] as Array).size(), (rec["cps"] as Array).size(), int(rec["end"]["s"])])
@@ -397,7 +397,7 @@ func _reverse(name: String, r: Dictionary) -> void:
 	_ok("★反证 · %s ⇒ 必须停下(diverged_at=%d · %s)" % [name, int(res["div"]), str(res["why"])], int(res["div"]) >= 0)
 
 
-## 跑一局。rec=true 时扮演玩家(点幕布/拖站位/按开打/第二路打一会儿认输)。
+## 跑一局。rec=true 时扮演玩家(点幕布/第二路打一会儿认输; 开打是自动的, 2026-10-19 起对局里没有摆位屏)。
 ## hold=true(V1b): 从第一路预览期到开打后 40 帧不 await 引擎帧 ⇒ 这段里物理帧一个都不走。
 func _run(pat: Array, as_player: bool, hold: bool = false, tr = null, gs = null) -> Dictionary:
 	var s = RB.new()
@@ -430,16 +430,15 @@ func _run(pat: Array, as_player: bool, hold: bool = false, tr = null, gs = null)
 			if (st == "overview" or st == "lane_settle") and st_frames == 9:
 				s._dl_sys._dl_present_click()            # 人点掉幕布(真入口: 幕布 gui_input 调的就是它)
 				present_clicked += 1
-			elif st == "place" and st_frames == 6:
-				for u in s._units:                        # 人拖一只我方龟(真入口写的就是 _dl_clamp_place 的结果)
-					if str(u.get("side", "")) == "left" and s._can_place_drag(u):
-						var p0: Vector2 = u["pos"]
-						u["pos"] = s._dl_sys._dl_clamp_place(p0 + Vector2(-70.0, 30.0 + 20.0 * fights))
-						dragged = dragged or (u["pos"] as Vector2) != p0
-						break
-			elif st == "place" and st_frames == 25 and is_instance_valid(s._dl_go_btn):
-				s._dl_go_btn.pressed.emit()               # 人按「开打」
+			elif st == "fight" and st_frames == 1:
+				## ★2026-10-19 对局里没有摆位屏: 演出完同一步自动开打。站位来自背包里摆的 `off`(上面阵容第一格),
+				##   这里只量「开打那一刻它真的不在默认队形」—— 录像要把这个站位原样带到看的人那边。
 				fights += 1
+				for u in s._units:
+					if str(u.get("side", "")) == "left" and str(u.get("id", "")) == "basic" and fights == 1:
+						var cx: float = s.ARENA.position.x + s.ARENA.size.x * 0.5
+						var cy: float = s.ARENA.position.y + s.ARENA.size.y * 0.5
+						dragged = (u["pos"] as Vector2) != Vector2(cx - 420.0, cy - 77.0)
 			elif st == "fight" and fights >= 2 and st_frames == 300 and not surrendered:
 				s._do_surrender()                          # 第二路打一会儿认输(真入口: 确认钮调的就是它)
 				surrendered = true

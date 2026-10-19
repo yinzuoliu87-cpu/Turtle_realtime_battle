@@ -14,7 +14,7 @@ extends Node
 ##   ② 赛况板: 「正在打」卡(直播横幅 / 双方名字 / VS / 「观赛」, **不写胜负**); 战绩榜那个人是红色「直播」签;
 ##      断了的(updated_at 太旧)/ 已结束的 / 已经打完上了「最近对局」的都不出
 ##   ③ 观众(跟播): 观赛模式 + 顶栏「直播」; **没有**暂停 / 倍速 / 进度条 / 全场时长 / 再看一遍, 有「退出」;
-##      追帧时一帧 8 步、屏上「同步中」; 任何时刻都不越过 horizon; 换路摆位时「下路准备中」, 事件来了接着打;
+##      追帧时一帧 8 步、屏上「同步中」; 任何时刻都不越过 horizon; 换路演出时「下路准备中」, 事件来了接着打;
 ##      收尾之前屏上没有「获胜」; ★校验点逐个与打的人比过(个数 = 打的人全部非摆位校验点)、终局一致
 ##   ④ 收尾卡: 「X 获胜」, 没有「再看一遍」, 有「返回赛况」
 ##   ⑤ 中断: 行停在某一步不再更新 ⇒ 「直播中断」收尾卡; 行没了 ⇒ 同; 打开时就已经断了 ⇒ 不进场, 说「直播中断」
@@ -41,8 +41,9 @@ const MARK_BEGIN := "-- >>> BEGIN live_matches 20261007 >>>"
 const MARK_END := "-- <<< END live_matches 20261007 <<<"
 const ME := "11111111-2222-4333-8444-555555555555"
 const DT := 1.0 / 60.0
-## 第二路摆位多停一会儿(步): 观众要在「下路准备中」里停够看得见的一段。
-const PLACE2_STEPS := 1200
+## ★2026-10-19 对局里没有摆位屏了(站位在背包里摆): 演出完同一步自动开打。
+##   原来「打的人在第二路摆位屏多停一会儿」造出「下路准备中」; 现在打的人在第一路结算幕布上不点
+##   (幕布 5 秒 + 对阵预览 5 秒自己走完), 观众在这段演出里放完了已知事件 ⇒ 「下路准备中」。
 
 var _fail := 0
 var _n := 0
@@ -179,13 +180,14 @@ func _transport(m, u, h, b, cb) -> void:
 		if method == "POST":
 			var j := JSON.new()
 			var row: Dictionary = j.data if j.parse(str(b)) == OK and j.data is Dictionary else {}
-			if _rec_fights == 0:
+			var nf := _fights_rec()
+			if nf == 0:
 				_pre_fight_posts += 1
 			for hh in h:
 				if str(hh).begins_with("Prefer:") and str(hh).contains("resolution=merge-duplicates"):
 					_prefer_ok += 1
 			_snaps.append({"row": row, "st": str(_rec_b._dl_state) if _rec_b != null and is_instance_valid(_rec_b) else "",
-				"fights": _rec_fights})
+				"fights": nf})
 			cb.call({"ok": true, "code": 201, "body": ""})
 			return
 		if url.find("match_id=eq.") >= 0:
@@ -226,6 +228,17 @@ func _rec_of(snap: Dictionary) -> Dictionary:
 	return LS.decode_row(str((snap["row"] as Dictionary).get("replay", "")), str((snap["row"] as Dictionary).get("match_id", "")))
 
 
+## 打的人这一局已经录下的开打次数(产品自己的账: 录像事件)。
+func _fights_rec() -> int:
+	if _rec_b == null or not is_instance_valid(_rec_b):
+		return _rec_fights
+	var k := 0
+	for e in (_rec_b._replay.rec.get("events", []) as Array):
+		if str((e as Dictionary).get("k", "")) == "fight":
+			k += 1
+	return k
+
+
 # ① ─────────────────────────────────────────────────────────────
 func _record() -> void:
 	print("── ① 打的人: 真战斗场打一局周六闯关赛(后端开着) ──")
@@ -246,13 +259,11 @@ func _record() -> void:
 			last = st
 			stf = 0
 		stf += 1
-		if (st == "overview" or st == "lane_settle") and stf == 9:
+		## 第一路结算幕布不点(让它自己走 5 秒 + 对阵预览 5 秒): 观众要在「下路准备中」里停够看得见的一段。
+		if (st == "overview" or (st == "lane_settle" and _rec_fights != 1)) and stf == 9:
 			s._dl_sys._dl_present_click()
-		elif st == "place" and is_instance_valid(s._dl_go_btn) and s._dl_go_btn.visible \
-				and ((_rec_fights == 0 and stf == 20) or (_rec_fights == 1 and stf == PLACE2_STEPS / 3) or (_rec_fights >= 2 and stf == 20)):
-			_rec_fights += 1
-			s._dl_go_btn.pressed.emit()
 		s._process(0.05)
+		_rec_fights = _fights_rec()
 		if i % 4 == 0:
 			await get_tree().process_frame
 		i += 1
@@ -278,9 +289,9 @@ func _t_uploads() -> void:
 	for e0 in ev0:
 		if str(e0.get("k", "")) == "fight":
 			nf0 += 1
-	_ok("① ★第一份 = 第一路开打那一下: 最后一条是 fight(只有这一条 fight)、horizon = 开打步号",
+	_ok("① ★第一份 = 第一路开打那一下: 最后一条是 fight(只有这一条 fight)、horizon = 开打步号(步内开打 = 步号 - 1)",
 		not ev0.is_empty() and nf0 == 1 and str(ev0.back().get("k", "")) == "fight"
-		and int(first["row"]["horizon"]) == int(ev0.back().get("s", -1)),
+		and int(first["row"]["horizon"]) == int(ev0.back().get("s", -1)) - (1 if bool(ev0.back().get("i", false)) else 0),
 		"%d 条 h=%d" % [ev0.size(), int(first["row"]["horizon"])])
 	var row0: Dictionary = first["row"]
 	var ls: Dictionary = row0.get("left_snapshot", {})
@@ -310,7 +321,8 @@ func _t_uploads() -> void:
 			if k >= evs.size() or int(evs[k]["s"]) != int(prev_ev[k]["s"]) or str(evs[k]["k"]) != str(prev_ev[k]["k"]):
 				prefix = false
 		for e in evs:
-			if int(e.get("s", 0)) > h:
+			## 步内记的事件(i=true, 例如演出完同一步自动开打)步号 = horizon + 1: 那一步打的人还没走完(live_upload 头注)
+			if int(e.get("s", 0)) > h + (1 if bool(e.get("i", false)) else 0):
 				ev_le_h = false
 		if (r.get("cps", []) as Array).size() < maxi(0, (h - 1) / ReplayRecorder.CP_EVERY):
 			cps_ok = false
@@ -324,7 +336,7 @@ func _t_uploads() -> void:
 		prev_ev = evs
 	_ok("① ★horizon 逐份不减", mono)
 	_ok("① ★已发过的事件逐份原样保留(只往后追加)", prefix)
-	_ok("① ★每一份里的事件步号都 ≤ horizon(观众跑到 horizon 不会漏事件)", ev_le_h)
+	_ok("① ★每一份里的事件步号都 ≤ horizon(步内事件 ≤ horizon + 1; 观众跑到 horizon 不会漏事件)", ev_le_h)
 	_ok("① ★每一份都带齐观众跑到 horizon 要比的校验点; 心跳都落在 %d 步的整数倍上" % LU.HEARTBEAT_STEPS, cps_ok)
 	_ok("① 分母: 心跳 %d 次(> 5)" % beats, beats > 5)
 	var fe: Array = _final_rec.get("events", [])
@@ -349,9 +361,9 @@ func _t_uploads() -> void:
 		str(_final_rec.get("id", "")) == _id and (_gs.replay_upload_pending as Array).any(func(e): return str(e.get("id", "")) == _id))
 	var place_wait := 0
 	for sn in _snaps:
-		if int(sn["fights"]) == 1 and str(sn["st"]) == "place":
+		if int(sn["fights"]) == 1 and (str(sn["st"]) == "lane_settle" or str(sn["st"]) == "preview"):
 			place_wait += 1
-	_ok("① 分母: 打的人第二路摆位期间也在心跳(%d 份)" % place_wait, place_wait >= 3)
+	_ok("① 分母: 打的人第二路开打前的演出期间也在心跳(%d 份)" % place_wait, place_wait >= 3)
 
 
 # ② ③ ④ ─────────────────────────────────────────────────────────
@@ -536,7 +548,7 @@ func _t_board_and_watch() -> void:
 			first_sync = str(lv.status)
 		if not lv.ended and n > int(lv.horizon):
 			ahead += 1
-		if str(lv.status) == LS.TXT_WAIT and str(b._dl_state) == "place":
+		if str(lv.status) == LS.TXT_WAIT and (str(b._dl_state) == "lane_settle" or str(b._dl_state) == "preview"):
 			waited += 1
 		if waited > 0 and str(b._dl_state) == "fight":
 			fought_after_wait = true
@@ -551,7 +563,7 @@ func _t_board_and_watch() -> void:
 		"快帧 %d / 「%s」" % [catch_fast, first_sync])
 	_ok("③ ★任何时刻都没越过 horizon(没打完时)", ahead == 0 and int(lv.max_ahead) <= 0, "越过 %d 帧 / max_ahead %d" % [ahead, int(lv.max_ahead)])
 	_ok("③ 分母: 轮询合并进来新数据 %d 次(> 5)" % int(lv.merges), int(lv.merges) > 5)
-	_ok("③ ★换路摆位、打的人还没开打 ⇒ 「下路准备中」(%d 帧)" % waited, waited >= 30)
+	_ok("③ ★换路演出、打的人还没开打 ⇒ 「下路准备中」(%d 帧)" % waited, waited >= 30)
 	_ok("③ ★事件追加进来以后接着打(第二路开打了)", fought_after_wait)
 	_ok("③ ★收尾之前屏上没有「获胜」", winner_early == 0, "%d 次" % winner_early)
 	var real_cp := 0

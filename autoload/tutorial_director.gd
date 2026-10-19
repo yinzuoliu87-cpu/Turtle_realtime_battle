@@ -322,8 +322,7 @@ func steps_key_for(scene: String) -> String:
 	var st := stage()
 	if scene == "team_select" and st == "match1_pick":
 		return "team_select"
-	if scene == "battle" and st == "match1":
-		return "place"
+	## ★2026-10-19 起对局里没有摆位屏(站位在背包里摆): 战斗中途不挂引导, 开场演出完直接开打。
 	if scene == "settle" and st == "match1":
 		return "settle"
 	if scene == "shop" and st == "shop":

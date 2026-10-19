@@ -67,6 +67,7 @@ frames_for () {
     verify_topbar_states) echo 3000 ;;   # 五次重建场之间各等 0.4 秒真实时间(开打前介绍幕按真实时间淡出) —— 快机器上这段帧数不定, 给足
     verify_debug_equip_pick) echo 1200 ;;   # 鼠标一遍 + 触屏两种比例各一遍(2026-10-05), 实测 ~350 帧
     verify_autopilot_finals) echo 1500 ;;   # 默认关 140 帧 + 开着等 400 帧(驾驶每 120 帧看一次)
+    verify_no_place_stage) echo 3000 ;;   # 2026-10-19 两遍 × (10 秒开场演出 600 步 + 开打后 90 步), 每帧恰 1 步; 实测 ~1400 帧
     verify_bracket_spectate) echo 4000 ;;
     verify_champion_cup) echo 1500 ;;   # 冠军杯赛端到端: 5 次建对阵图(各等几帧) + 假传输, 实测 ~100 帧, 给足 CI   # 两种窗口尺寸 × 7 屏逐个实例化(各等 30 帧) ⇒ 500 帧中途被掐断
     # ★2026-08-15 新增的三个版式门禁: 都要【逐个实例化整屏场景 + 等入场 tween 落定】,
@@ -271,6 +272,8 @@ frames_for () {
     verify_replay_watch) echo 12000 ;;
     # 周末看回放: 录两局(每帧 1 步 sim, 各约 600 帧) + 赛况板 / 对阵图各进一次回放再退出; 本地实测 1930 帧, 给足 4 倍
     verify_weekend_replay) echo 8000 ;;
+    # 周末赛况留到周一(2026-10-19): 赛况板 / 对阵图 / 主菜单各实例化两三次 + 假传输同步回包; 给足 CI
+    verify_weekend_visible_monday) echo 3000 ;;
     # 回放体验打磨: 录一局积分赛(每帧 3 步) + 4 倍速播完 + 1/2/4 倍各播一遍(多数帧不 await) + 收尾卡与主菜单入场各等一段墙钟;
     #   本地实测 2806 帧。墙钟那两段在快机器上帧数会涨 ⇒ 给 20000
     verify_replay_controls) echo 20000 ;;

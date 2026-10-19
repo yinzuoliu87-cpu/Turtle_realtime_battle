@@ -203,8 +203,8 @@ func _play_one(tag: String) -> String:
 		stf += 1
 		if (st == "overview" or st == "lane_settle") and stf == 9:
 			s._dl_sys._dl_present_click()
-		elif st == "place" and stf == 20 and is_instance_valid(s._dl_go_btn):
-			s._dl_go_btn.pressed.emit()
+		elif st == "fight" and stf == 1:
+			## 2026-10-19 对局里没有摆位屏: 演出完同一步自动开打(原来这里按「开始战斗」)。
 			fights += 1
 		elif st == "fight" and fights >= 2 and stf == 120 and not surrendered:
 			s._do_surrender()
@@ -498,8 +498,9 @@ func _t_board_screen() -> void:
 	_reqs.clear()
 	var bs: Node = await _open_scene(BOARD_SCENE)
 	await _frames(10)
-	_ok("② 分母: 真去问了赛况(带本周周号)", _reqs.any(func(r): return str(r["u"]).find(
-		"season_week=eq.%d" % P2C.week_anchor_utc(P2C.now_utc())) >= 0))
+	## ★2026-10-19: 赛况板问的是 `weekend_view_week`(周一 = 上周, 用户「保留到周一」); 原来写死本周 ⇒ 周一跑必红。
+	_ok("② 分母: 真去问了赛况(带要看的那一周)", _reqs.any(func(r): return str(r["u"]).find(
+		"season_week=eq.%d" % P2C.weekend_view_week(P2C.now_utc())) >= 0))
 	var prow: Array = bs.find_children("PlayerBtn", "Button", true, false)
 	var grow: Array = bs.find_children("GameBtn", "Button", true, false)
 	print("    状态行: ", (bs.get("_status") as Label).text)
@@ -538,7 +539,15 @@ func _t_board_screen() -> void:
 		pa.pressed.emit()
 		await _frames(3)
 		var g2: Array = bs.find_children("GameBtn", "Button", true, false)
-		_ok("② ★点甲 ⇒ 右栏只剩他的 3 场", g2.size() == 3 and str(bs.focus_tag) == a_tag, "%d 场" % g2.size())
+		var m2: int = 0
+		for c in (bs.get("_games_box") as Node).get_children():
+			if str(c.name).begins_with(bs.N_MISSING_CARD):
+				m2 += 1
+		## ★2026-10-19 用户「随便看一个人的对局，怎么就和4-1不符」: 点人只列**他自己打的** + 战绩里有而录像缺的占位行,
+		##   行数 == 战绩场次。甲 4-1: 自己传了 1 场(4-1 那局) ⇒ 1 张可看 + 4 行「无录像」= 5;
+		##   原来那 3 场里另外 2 场是乙、丁挑战他的快照(他不在场), 不再算他的。
+		_ok("② ★点甲(4-1) ⇒ 右栏 5 行 = 1 场可看 + 4 场无录像", g2.size() == 1 and m2 == 4 and str(bs.focus_tag) == a_tag,
+			"%d 场可看 / %d 行无录像" % [g2.size(), m2])
 		_ok("② 小标题说清是谁的", str((bs.get("_games_title") as Label).text).find("甲龟") >= 0)
 		_ok("② 「看全部」出现", bool((bs.get("_all_btn") as Button).visible))
 		(bs.get("_all_btn") as Button).pressed.emit()
@@ -646,7 +655,9 @@ func _t_bracket() -> void:
 	print("── ⑤ 对阵图点格看回放 ──")
 	_ok("⑤ 开关开了", MAP.REPLAY_LIVE)
 	_ok("⑤ finals_replay 是读(时间穿越期间不拦)", not SB.is_write_request("POST", "http://x/rest/v1/rpc/finals_replay"))
-	var now := int(Time.get_unix_time_from_system())
+	## ★2026-10-19: 钉在本周的周日正午。原来用真实时钟 ⇒ 周一起对阵图看上周、只能看不能打(用户「保留到周一」)
+	##   ⇒ 周一跑「我这一场仍是上场开打」与「问的是本周」必红 —— 判据挂在星期几上。
+	var now := P2C.week_anchor_utc(int(Time.get_unix_time_from_system())) + 6 * 86400 + 12 * 3600
 	var wk := P2C.week_anchor_utc(now)
 	## 8 人组, 第 2 轮进行中: 第 1 轮 4 场已翻面, 第 2 轮 2 场当前轮, 第 3 轮未到。
 	var ents: Array = []

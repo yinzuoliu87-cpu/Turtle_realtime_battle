@@ -316,8 +316,11 @@ func _full_pass() -> void:
 	_ok("分母: 进了战斗", bt != null)
 	if bt == null:
 		return
+	## ★2026-10-19 对局里没有摆位环节了(用户「我想在背包里实现站位修改，这样在对局内将不再有拖动站位环节」):
+	##   原来这里教「拖动龟调整站位 → 点击开始战斗」两步。现在开场演出完直接开打 ⇒ 量「不卡住 + 全程无提示」。
 	var present_frames := 0
 	var shown_in_present := 0
+	var place_frames := 0
 	var wait_f := 0
 	while wait_f < 3000:
 		var st := str(bt._dl_state)
@@ -327,25 +330,22 @@ func _full_pass() -> void:
 			present_frames += 1
 			if _guide_text() != "":
 				shown_in_present += 1
-		elif st == "place" and _guide_text() != "":
+		elif st == "place":
+			place_frames += 1
+		elif st == "fight":
 			break
 		await get_tree().process_frame
 		wait_f += 1
 	print("    [B1] 演出期间 %d 帧 · 其中提示在屏 %d 帧 · 共等 %d 帧" % [present_frames, shown_in_present, wait_f])
 	_ok("★分母 B1: 真的经历了开场演出(三路总览/对阵卡)", present_frames > 30, "%d 帧" % present_frames)
 	_ok("★★B1: 演出期间一帧提示都没出", shown_in_present == 0, "%d 帧" % shown_in_present)
-	_ok("★提示「拖动龟调整站位」", _guide_text() == "拖动龟调整站位", "实测「%s」" % _guide_text())
+	_ok("★★演出完直接开打(没人按任何东西, 不停在摆位)", str(bt._dl_state) == "fight" and place_frames == 0,
+		"state=%s 摆位 %d 帧" % [str(bt._dl_state), place_frames])
 	_ok("★认输键藏起来了", bt._surrender_btn != null and not (bt._surrender_btn as Control).visible)
-	_check_exits(bt, "摆位")
-	_disk_untouched("摆位")
+	_check_exits(bt, "战斗")
+	_disk_untouched("战斗")
 	await _frames(30)
-	_ok("★不拖就不前进", _guide_text() == "拖动龟调整站位")
-	await _real_drag(bt)
-	w = await _wait_text("点击开始战斗", 120)
-	_ok("★★真拖了一只龟 ⇒ 提示「点击开始战斗」", w >= 0, "实测「%s」" % _guide_text())
-	(bt._dl_go_btn as Button).emit_signal("pressed")
-	await _frames(10)
-	_ok("★开始战斗之后全程无提示", _guide_text() == "" and str(bt._dl_state) == "fight")
+	_ok("★开打之后全程无提示", _guide_text() == "" and str(bt._dl_state) == "fight")
 	## 三路整场要 ~140 游戏秒; 这里量的是教程的结算这一屏 —— 直接走产品的结算入口。
 	bt._hud._show_banner(true)
 	await _frames(2)
@@ -440,43 +440,6 @@ func _full_pass() -> void:
 	_ok("★★X3: 教程后选龟屏是全部龟(不是教学 3 只)", cnt > 3, "%d 只" % cnt)
 	ts2.queue_free()
 	await _frames(2)
-
-
-## 真拖一只我方龟: 走真输入(引导暗幕 → 战斗 _unhandled_input → 摆位拖动)。
-func _real_drag(bt: Node) -> void:
-	var r: Rect2 = bt._dl_sys._tut_anchor("my_unit")
-	_ok("分母: 找得到一只能拖的我方龟", r.size.x > 0.0, str(r))
-	if r.size.x <= 0.0:
-		return
-	var xf: Transform2D = get_viewport().get_final_transform()
-	var a: Vector2 = r.get_center()
-	var b: Vector2 = a + Vector2(110, -40)
-	_btn(xf * a, true)
-	await get_tree().process_frame
-	var _hov = get_viewport().gui_get_hovered_control()
-	print("    [拖] 直接命中测试 unit_at(a)=%s  hovered=%s  dl_state=%s" % [str(bt._edit_unit_at_screen(a) != null), str(_hov.get_path()) if _hov != null else "无", str(bt._dl_state)])
-	print("    [拖] 按下后 drag_unit=%s  mask_left=%s  xf=%s  a=%s" % [str(bt._edit_drag_unit != null),
-		str(Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)), str(xf), str(a)])
-	for i in range(1, 11):
-		var mm := InputEventMouseMotion.new()
-		mm.position = xf * a.lerp(b, float(i) / 10.0)
-		mm.global_position = mm.position
-		mm.button_mask = MOUSE_BUTTON_MASK_LEFT
-		_send(mm)
-		await get_tree().process_frame
-	_btn(xf * b, false)
-	await _frames(2)
-
-
-func _btn(p: Vector2, down: bool) -> void:
-	var e := InputEventMouseButton.new()
-	e.button_index = MOUSE_BUTTON_LEFT
-	e.pressed = down
-	e.position = p
-	e.global_position = p
-	e.button_mask = MOUSE_BUTTON_MASK_LEFT if down else 0
-	Input.parse_input_event(e)     # 只为让 Input.is_mouse_button_pressed 跟着变(摆位拖动要读它)
-	_send(e)
 
 
 ## 无头下 Input.parse_input_event 不往视口派发 ⇒ 直接推进根视口(GUI 命中 → _input → _unhandled_input, 与真点击同一条链)。

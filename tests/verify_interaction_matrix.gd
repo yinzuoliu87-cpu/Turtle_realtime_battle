@@ -7,6 +7,7 @@ extends Node
 ##   · 暂停 × 拖动     → 拖不动(process_mode)
 ##   · 暂停 × 移动鼠标 → 光标不动(autoload process_mode)
 ##   · 放置 × 拖单位   → 龟停在半路、镜头跑了(相机块 return true 吞掉事件)
+##     (2026-10-19 起对局里没有放置阶段, 这一行只是由来)
 ##
 ## 我原来的 verify_cam_pan 写了 14 条事件序列断言, 【一条都没覆盖放置阶段】——
 ## 因为我只测"我想到的路径"。矩阵的意义就是逼着把每一格都列出来, 空着的格子一眼可见。
@@ -44,8 +45,6 @@ func _ready() -> void:
 		return
 	print("  [分母] 场上单位 %d 个" % s._units.size())
 
-	_cell_place_drag_unit(s, u)
-	_cell_place_drag_empty(s)
 	_cell_fight_drag(s)
 	_cell_paused_drag(s)
 	_cell_wheel_zoom(s)
@@ -84,24 +83,8 @@ func _drag(s, use_cam_only: bool = false) -> float:
 	return p0.distance_to(s._cam_pan)
 
 
-## ① 放置阶段 × 拖我方单位 → 镜头必须完全让路(否则龟停半路、镜头跑)
-##    ★只问相机块: 走完整 _unhandled_input 的话, 放置处理器会因为
-##      Input.is_mouse_button_pressed() 在无头下为 false 而自行清掉 _edit_drag_unit,
-##      从第 2 次移动起这道闸就不成立了 —— 那是无头环境的产物, 不是代码的问题。
-func _cell_place_drag_unit(s, u) -> void:
-	s._dl_state = "place"
-	s._edit_drag_unit = u
-	var d := _drag(s, true)
-	_ok("放置 × 拖我方单位", "镜头不动", d < 0.001, "平移 %.4f 米" % d)
-	s._edit_drag_unit = null
-
-
-## ② 放置阶段 × 拖空地 → 镜头照常能平移(防矫枉过正: 放置阶段整个禁掉平移也是错的)
-func _cell_place_drag_empty(s) -> void:
-	s._dl_state = "place"
-	s._edit_drag_unit = null
-	var d := _drag(s, true)
-	_ok("放置 × 拖空地", "镜头能动", d > 0.001, "平移 %.4f 米" % d)
+## (原 ① ② 「放置阶段 × 拖单位 / 拖空地」两格: 2026-10-19 对局里没有放置阶段了(站位在背包里摆),
+##   相机块里那道「拖龟时镜头让路」的闸随之删除 ⇒ 这两格没有被测对象, 一并删掉。)
 
 
 ## ③ 战斗中 × 拖动 → 镜头能动, 且【手里的残留引用不该影响它】
@@ -125,14 +108,14 @@ func _cell_paused_drag(s) -> void:
 
 ## ⑤ 滚轮缩放 —— 各阶段都该生效
 func _cell_wheel_zoom(s) -> void:
-	for st in ["place", "fight"]:
+	for st in ["fight"]:
 		s._dl_state = st
 		var z0: float = s._cam_zoom
 		var w := InputEventMouseButton.new()
 		w.button_index = MOUSE_BUTTON_WHEEL_UP
 		w.pressed = true
 		s._cam_handle_input(w)
-		_ok("%s × 滚轮" % ("放置" if st == "place" else "战斗"), "缩放变化",
+		_ok("战斗 × 滚轮", "缩放变化",
 			absf(s._cam_zoom - z0) > 0.0001, "zoom %.3f → %.3f" % [z0, s._cam_zoom])
 		s._cam_zoom = z0
 		s._apply_cam_zoom()
@@ -194,7 +177,8 @@ func _report() -> void:
 		print("  │ [%s] %-22s 期望: %-14s %s" % [mark, str(r[0]), str(r[1]), str(r[3])])
 	print("  └────────────────────────────────────────────────────────")
 	print("  [分母] 矩阵共 %d 格" % _rows.size())
-	if _rows.size() < 8:
+	## 2026-10-19 删掉放置阶段三格(拖单位 / 拖空地 / 放置×滚轮) ⇒ 9 → 6 格。
+	if _rows.size() < 6:
 		_fail += 1
 		print("  [FAIL] 矩阵只有 %d 格 —— 格子少了就是漏测(空检查不是通过)" % _rows.size())
 	print("ALL PASS — 交互矩阵(阶段 × 手势)" if _fail == 0 else "FAILED: %d 格不通过" % _fail)

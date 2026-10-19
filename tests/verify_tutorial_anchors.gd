@@ -117,13 +117,14 @@ func _ready() -> void:
 	var bsrc: String = FileAccess.get_file_as_string("res://scripts/scenes/RealtimeBattle3DScene.gd")
 	var dsrc: String = FileAccess.get_file_as_string("res://scripts/scenes/battle/dual_lane_flow.gd")
 	var hsrc: String = FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_hud.gd")
-	_ok("battle 定义 _tutorial_anchor 且有 field / go_button 分支",
-		bsrc.contains("func _tutorial_anchor") and bsrc.contains("\"field\"") and bsrc.contains("\"go_button\""))
-	_ok("dual_lane_flow 有 my_unit 锚点(手势指针指一只我方龟)", dsrc.contains("func _tut_anchor") and dsrc.contains("\"my_unit\""))
+	## ★2026-10-19 对局里没有摆位环节了(站位在背包里摆): 摆位那三个锚点(field / my_unit / go_button)连同
+	##   `_tutorial_anchor` / `_tut_anchor` 一起删掉。量「真删干净了」: 留着就是没人调的死锚点。
+	_ok("★分母: 读到战斗源码与双路流程源码", bsrc.length() > 10000 and dsrc.length() > 10000)
+	_ok("战斗不再有摆位锚点(_tutorial_anchor / go_button 已删)",
+		not bsrc.contains("func _tutorial_anchor") and not bsrc.contains("\"go_button\""))
+	_ok("dual_lane_flow 不再有 my_unit 锚点", not dsrc.contains("func _tut_anchor") and not dsrc.contains("\"my_unit\""))
 	_ok("battle_hud 结算有 settle_shop 锚点", hsrc.contains("\"settle_shop\""))
-	var place_names: Array = hl.get("place", [])
-	_ok("★place 步声明了 field / my_unit / go_button", ("field" in place_names) and ("my_unit" in place_names)
-		and ("go_button" in place_names), str(place_names))
+	_ok("★步骤表里没有 place 了(对局里没有摆位)", not hl.has("place"), str(hl.keys()))
 	_ok("★settle 步声明了 settle_shop", "settle_shop" in (hl.get("settle", []) as Array))
 
 	GameState.tutorial_active = false; GameState.tutorial_stage = ""

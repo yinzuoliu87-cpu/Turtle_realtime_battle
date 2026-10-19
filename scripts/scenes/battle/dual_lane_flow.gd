@@ -35,11 +35,8 @@ func _init(b) -> void:
 ##   换路时 `_dl_clear_units` 把 `_sim_tweens` 全部 kill, 被 kill 的 tween 永不发 finished、
 ##   回调永不再调 ⇒ 它们本来就在换路那一刻作废了(这是对的: 上一路已经结束)。
 var lane_epoch: int = 0
-## 教程「拖动龟调整站位」: 本次拖动的起点(战场像素) / 位移超过这么多才算拖过(防把一次点按当成拖动)。
-var _drag_from := Vector2.ZERO
 ## 正在淡出的对阵幕布(淡出完自己 queue_free ⇒ is_instance_valid 变假)。
 var present_fading: Node = null
-const DRAG_MIN_PX := 20.0
 
 ## 等一个 sim 步; 这一步里换了路 ⇒ 永不返回(调用方那条协程就此作废)。
 func lane_step() -> void:
@@ -55,7 +52,7 @@ func lane_step() -> void:
 func parked_count() -> int:
 	return battle.get_signal_connection_list("_lane_parked").size()
 
-# ── 场内放置阶段 (每战场开打前: 拖我方单位到你半场任意位置) ──
+# ── 呈现阶段(三路总览 / 对阵预览 / 一路结算) ──
 func _dl_is_present() -> bool:
 	return battle._dl_state == "overview" or battle._dl_state == "preview" or battle._dl_state == "lane_settle"
 
@@ -74,8 +71,6 @@ func _dl_enter_present(mode: String) -> void:
 		return
 	battle._dl_state = mode
 	battle._dl_present_t = 0.0
-	if is_instance_valid(battle._dl_go_btn): battle._dl_go_btn.visible = false
-	if is_instance_valid(battle._dl_place_hint): battle._dl_place_hint.visible = false
 	_dl_build_present_overlay(mode)
 	# ★幕布淡入(用户 2026-07-21 要"更好的动画与展示效果")。原来是瞬间 battle.add_child 硬切。
 	#   ★★必须用裸 battle.create_tween 而不是 battle._reg_tween: 换路时 _dl_clear_units 会 kill 掉
@@ -461,93 +456,21 @@ func _dl_spec_equips(spec, is_mine: bool) -> Array:
 				return pe[id]
 	return []
 
+## 本路战场已建好(单位按阵容格子的 `off` 站好, 见 `battle_spawn._spawn_lane_side`) ⇒ 立刻开打。
+## ★2026-10-19 用户「我想在背包里实现站位修改，这样在对局内将不再有拖动站位环节」:
+##   原来这里建「开始战斗」钮 + 拖龟摆位, 停在 `_dl_state == "place"` 等人点。站位改在背包里摆、随快照上传
+##   (`LineupPos`), 对局里没有摆位屏了 —— 所有模式(正式 / 教程 / 回放 / 复算 / 模拟号)同一条路。
+## ★回放 / 复算: `_dl_start_fight` 第一行问 `ReplayRecorder.allow_input("fight")`;
+##   播放时那一步对不上就不放行, 状态留在 "place", 由 `_fire_due` 在录下的那一步再按(同原来的协议)。
 func _dl_enter_place() -> void:
-	if OS.has_environment("DL_AUTOFIGHT"):   # 测试开关: 跳过放置直接开打 (headless 跑通整局流程用)
-		_dl_start_fight()
-		return
-	## ★回放播放中: 不建「开打」钮、不挂引导/自动驾驶 —— 开打由 ReplayRecorder 在录制时那一步替人按
-	##   (连同录下的站位一起), 人在这一屏什么都改不了。
-	if battle._replay.blocks_input():   # 复算上一局(中途退出)同样: 开打由 ReplayRecorder 自动按
-		return
-	battle._edit_drag_unit = null
-	if not is_instance_valid(battle._dl_go_btn):
-		battle._dl_go_btn = Button.new()
-		## ★2026-10-05: 原来是「▶  开  打」+ Godot 默认深色方块。换成结算屏主按钮同一块木牌(`SettleScreen.dress_btn` → `UISkin.button`),
-		##   字去掉「▶」(字体链里的兜底字形)和字间空格。
-		battle._dl_go_btn.name = "GoBtn"
-		battle._dl_go_btn.text = "开始战斗"
-		SettleScreenS.dress_btn(battle._dl_go_btn, Color("#ffd27a"), Color("#ffe7a0"))
-		battle._dl_go_btn.pressed.connect(_dl_start_fight)
-		if battle._ui_layer != null:
-			battle._ui_layer.add_child(battle._dl_go_btn)
-	if not is_instance_valid(battle._dl_place_hint):
-		battle._dl_place_hint = Label.new()
-		battle._dl_place_hint.add_theme_font_size_override("font_size", 16)
-		battle._dl_place_hint.add_theme_color_override("font_color", Color("#ffd93d"))
-		battle._dl_place_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		if battle._ui_layer != null:
-			battle._ui_layer.add_child(battle._dl_place_hint)
-	var vp: Vector2 = battle.get_viewport().get_visible_rect().size
-	battle._dl_go_btn.position = Vector2(vp.x * 0.5 - SettleScreenS.BTN_SIZE.x * 0.5, vp.y - 104.0)
-	battle._dl_place_hint.position = Vector2(vp.x * 0.5 - 230.0, vp.y - 140.0)
-	battle._dl_place_hint.size = Vector2(460, 24)
-	## ★原文案 "【放置】拖我方单位到你半场(左侧)任意位置 → 点「开打」" —— 三处网页/编辑器味:
-	##   ① 「【放置】」是编辑器模式名(玩家不在"模式"里, 他就是在摆龟)
-	##   ② 「(左侧)」是坐标注释 —— 自己那半场眼睛看得见, 而且 _dl_clamp_place 本来就拦着过不了中线
-	##   ③ 「单位」是 unit 直译, 场上就是龟
-	## v2(2026-10-05): 「拖我方的龟在自己半场摆好站位 → 点「开打」」带箭头 + 引号按钮名 = 说明书口吻。
-	battle._dl_place_hint.text = "拖动单位调整站位"
-	battle._dl_go_btn.visible = true
-	battle._dl_place_hint.visible = true
-	## ★自动驾驶(`SIM_AUTOPILOT=1`): 停 `DWELL_PLACE` 帧让人看清双方站位,
-	##   再替人按上面那颗「▶ 开 打」。**不带开关时 `attach()` 第二行就 return、一行都不跑。**
-	##   ★接在这里(而不是另起一条旁路): 按的就是上面刚建好的那颗按钮,
-	##     所以「摆位阶段真的结束了吗」量得到(`_dl_state` 从 place 走到 fight)。
-	##   ★与本函数开头那条 `DL_AUTOFIGHT` 不会互相顶: 那条已经 return 了(根本不建按钮),
-	##     而且它还会跳掉「3 路总览 → 对阵预览」整段演出(`battle_spawn.gd:234`) —— 那不是“少按一下键”。
-	##   ★在这一屏停多久不影响战斗结果: `_dl_state == "place"` 时 `_fight_on` 恒假
-	##     (`RealtimeBattle3DScene.gd:2219`) ⇒ `_t` 不涨、单位不 tick。
-	SimAutopilot.attach(battle)
-	# ★教程: 摆位 UI 就绪 → 挂「place」引导(拖动龟 → 点击开始战斗)。只挂一次(首路; 后两路不再提示)。
-	## ★host 必须是 `battle`(Node), 不是 `self`(RefCounted) —— 2026-09-30 台账 ⑧(传 self 运行期报错中止整段)。
-	## ★ready_fn: 只在 `_dl_state == "place"` 时显示 —— 三路总览 / 对阵卡演出期间不出提示(方案书 B1)。
-	## ★anchor_fn: `my_unit`(手势指针指着一只我方龟)在这里算; 其余交给 battle._tutorial_anchor。
-	if not battle._tut_place_shown:
-		var _tdp = battle.get_node_or_null("/root/TutorialDirector")
-		if _tdp != null and _tdp.is_active() and str(_tdp.stage()) == "match1":
-			battle._tut_place_shown = true
-			battle._dl_place_hint.visible = false     # 引导条说的就是这一句, 不重复两遍
-			battle._tutorial = _tdp.attach_guide(battle, "battle", _tut_anchor, _tut_ready)
-
-## 教程摆位引导「可以出现了吗」: 摆位阶段 + 对阵幕布已经淡出完(方案书 B1)。
-func _tut_ready() -> bool:
-	return str(battle._dl_state) == "place" and not is_instance_valid(present_fading) \
-		and not is_instance_valid(battle._dl_present_root)
-
-
-## 教程摆位引导的锚点: `my_unit` = 第一只能拖的我方龟头顶附近的屏幕矩形; 其余走 battle._tutorial_anchor。
-func _tut_anchor(nm: String) -> Rect2:
-	if nm == "my_unit":
-		for u in battle._units:
-			if battle._can_place_drag(u) and u.get("alive", true) and battle._cam != null:
-				var head: Vector3 = battle._world_pos(u["pos"], float(u.get("height", 1.0)) + 1.0)   # 与 _edit_unit_at_screen 命中点同口径
-				if battle._cam.is_position_behind(head):
-					continue
-				var sp: Vector2 = battle._cam.unproject_position(head)
-				return Rect2(sp - Vector2(36, 36), Vector2(72, 72))
-		return Rect2()
-	return battle._tutorial_anchor(nm)
-
-# ── 摆位阶段的新手引导高亮锚点(用户2026-07-23 D): 名字→屏幕矩形, 解析不到返回空 Rect2(本步不挖洞)。
-#    ★实现在 `RealtimeBattle3DScene._tutorial_anchor()` —— host 是 battle, **本文件没有这个函数**。
-#    (这段说明原来紧贴在下面 `_dl_start_fight` 头上, 像是它的文档, 其实是上面那段引导的延续。)
+	_dl_start_fight()
 
 
 func _dl_start_fight() -> void:
 	## ★回放: 开打是改结果的输入(站位就在这一刻定死)。录 = 记步号 + 双方全部站位; 播 = 只认记录里那一下并写回站位。
 	if not battle._replay.allow_input("fight"):
 		return
-	## ★开打这一刻朝向归位: 摆位期拖动的**过程**不进对局(回放只写回终点站位), 拖的方向不许留在 face_right 里。
+	## ★开打这一刻朝向归位(回放只写回站位, 朝向由这里定)。
 	for _fu in battle._units:
 		_fu["face_right"] = str(_fu.get("side", "")) == "left"; _fu["_face_x"] = (_fu["pos"] as Vector2).x
 	battle._sd_t0 = battle._t          # ★每个战场各自计时(battle._t 跨路累加, 见 §SUDDEN)
@@ -558,21 +481,8 @@ func _dl_start_fight() -> void:
 	#   用户选了"改行为对齐文案"而不是"改文案对齐行为"。
 	#   ★平衡影响: 层数不再回落, 决胜战场会带着上路+下路攒的全部层进场(每层 +5% 攻速)。
 	#     verify_trainer_magicstone ⑦ 组焊死这条, 谁再加回清零就红。
-	battle._edit_drag_unit = null
 	battle._dl_state = "fight"
 	fence_down.clear()   # ★每路开打: 破罩幂等账归零(罩子本身由 _reset_domes / 新蛋复原)
-	if is_instance_valid(battle._dl_go_btn): battle._dl_go_btn.visible = false
-	if is_instance_valid(battle._dl_place_hint): battle._dl_place_hint.visible = false
-	## ★教学「摆位」第三步等的就是这个动作(`tutorial-steps.json` place[2] 的 advanceOn: fight_started)。
-	##   不发这一下会怎样(修台账 ⑧ 让那层浮层第一次真出场后才暴露出来, 实测):
-	##     ① 那一步的 highlight 是 `go_button`, 而上面刚把开打钮 `visible=false`
-	##        ⇒ `_tutorial_anchor` 返回空 Rect2 ⇒ `_apply_highlight` 每帧刷一条 push_warning;
-	##     ② 屏上继续挂着「摆好了就点开打」——而开打已经按过了, 教学在说假话。
-	##   `notify()` 自己会比对当前步的 advanceOn, 名字不对什么都不做(TutorialGuide:46)
-	##   ⇒ 第二把(match2)挂的是 "battle" 那套, 这一下对它是空操作, 不会误推进。
-	var _tdf = battle.get_node_or_null("/root/TutorialDirector")
-	if _tdf != null:
-		_tdf.notify("fight_started")
 	_dl_fight_start_dramatize()
 
 
@@ -590,35 +500,8 @@ func _dl_fight_start_dramatize() -> void:
 	battle._splash_ring_bold(Vector2(battle._arena_center.x - half_w * 0.55, cy), Color(0.36, 0.66, 1.0), 150.0)
 	battle._splash_ring_bold(Vector2(battle._arena_center.x + half_w * 0.55, cy), Color(1.0, 0.42, 0.42), 150.0)
 
-func _dl_handle_place_input(event: InputEvent) -> void:
-	if battle._replay.blocks_input():
-		return   # 回放 / 复算: 站位以记录为准, 人拖不动
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		if event.pressed:
-			var hit = battle._edit_unit_at_screen(event.position)   # 只拖我方(left)非蛋非召唤
-			if battle._can_place_drag(hit):
-				battle._edit_drag_unit = hit
-				_drag_from = hit["pos"]
-			else:
-				battle._edit_drag_unit = null
-		else:
-			## ★教程「拖动龟调整站位」等的就是这一下: 松手时这只龟真的被挪动过(不是点一下)。
-			if battle._edit_drag_unit != null and DetMath.dist((battle._edit_drag_unit["pos"] as Vector2), _drag_from) > DRAG_MIN_PX:
-				var _tdd = battle.get_node_or_null("/root/TutorialDirector")
-				if _tdd != null:
-					_tdd.notify("unit_dragged")
-			battle._edit_drag_unit = null
-	elif event is InputEventMouseMotion and battle._edit_drag_unit != null:
-		if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-			battle._edit_drag_unit = null
-			return
-		battle._edit_drag_unit["pos"] = _dl_clamp_place(battle._screen_to_field(event.position))
-
-func _dl_clamp_place(fp: Vector2) -> Vector2:
-	return clamp_place_side(fp, "left")
-
-
-## 摆位落点夹取(哪一方都用这一个)。★2026-10-19: 背包里摆好的站位要在开打时按这张图夹一遍, 对手那一方也是 ⇒ 带上 side。
+## 开打站位夹取(双方都用这一个)。★2026-10-19: 背包里摆好的站位(`LineupPos`)在建场时按这张图夹一遍 ⇒ 带上 side。
+##   背包站位编辑(`InvFormation.clamp_world`)用同一组数(岛形 pad 60 / 中线 120), 只是不管障碍(每张图不同)。
 ##   右方只换「不越中线」那一条的方向; 岛形与障碍对两方相同(障碍不一定左右对称, 所以不能拿左方镜像)。
 func clamp_place_side(fp: Vector2, side: String) -> Vector2:
 	## ★★2026-10-03 圆岛: 摆位要**两个约束都满足** —— ①在岛上 ②不越中线。

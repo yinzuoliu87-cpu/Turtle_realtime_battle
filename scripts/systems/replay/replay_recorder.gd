@@ -212,11 +212,6 @@ func _start_resume() -> void:
 				break
 
 
-## 人的输入进不来(回放 / 复算): 摆位屏不建开打钮、拖不动。
-func blocks_input() -> bool:
-	return mode == "play" or mode == "resume"
-
-
 ## 这一局录不录。Q3(用户授权按推荐): 先只录周六闯关赛;
 ## 2026-10-04 周末看回放(docs/plans/20261004-周末看回放.md): **周日决赛场也录** —— 对阵图点已揭晓那一格要看它。
 ##   决赛场的身份是 `finals_match`(对阵图开打时盖章, 结算尾部才清; `on_settle` 在它之前跑)。
@@ -379,7 +374,8 @@ func pre_step() -> bool:
 
 
 ## 复算: 这一步开头该发的输入。①判负 ⇒ 开局即认输; ②原局前缀按步号重放(与回放同一套 `_fire_due`);
-##   ③前缀放完之后没有人的输入 —— 幕布 5 秒自己走(sim 里的), **摆位屏立刻按当前站位开打**(摆位没有时限, 不按就永远不打)。
+##   ③前缀放完之后没有人的输入 —— 幕布 5 秒自己走(sim 里的), 走完同一步自动开打(`_resume_allow` 放行步内开打);
+##     这里只留一道兜底: 万一停在 "place"(开打被拒过)就按当前站位开打, 不按就永远不打。
 func _resume_inputs(s: int) -> bool:
 	if finished:
 		return false
@@ -489,7 +485,9 @@ func _record_event(kind: String) -> void:
 		Abandoned.write(rec, _pending_meta)   # 待结算单跟着输入走: 复算要重放到退出那一刻为止的全部输入
 
 
-## 复算: 前缀没放完 ⇒ 只认原局下一条(同回放); 放完之后只认本模块自己按的(自动开打 / 判负认输)。人的输入一律不认。
+## 复算: 前缀没放完 ⇒ 只认原局下一条(同回放); 放完之后只认本模块自己按的(判负认输 / 兜底开打)
+##   与 sim 步里自己发生的开打(2026-10-19 起对局里没有摆位屏: 对阵预览在步里走完 ⇒ 同一步直接开打,
+##   与原局在同一步、同一种 i=true 记法)。人的输入一律不认。
 func _resume_allow(kind: String) -> bool:
 	if _ev_i < _resume_evs.size():
 		var e2: Dictionary = _resume_evs[_ev_i]
@@ -503,7 +501,7 @@ func _resume_allow(kind: String) -> bool:
 			return false
 		_record_event(kind)
 		return true
-	if not _firing:
+	if not _firing and not (kind == "fight" and _in_step):
 		return false
 	_record_event(kind)
 	return true

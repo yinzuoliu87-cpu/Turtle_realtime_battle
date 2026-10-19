@@ -79,6 +79,7 @@ var _sel_bench: int = -1   # 当前选中的背包装备索引 (-1=无)
 var _sel_jar: bool = false
 var _inv_ops := InvOps.new(self)   # 背包·装备/卸下/卖出 业务逻辑(2026-07-25 抽出)
 var _inv_jar := InvCandyJar.new(self)   # 背包·糖果罐(打碎领奖)(2026-07-25 抽出)
+var _formation := InvFormation.new(self)   # 背包·站位编辑(2026-10-19)
 var _inv_synergy := InvSynergy.new(self)   # 背包·类型羁绊面板+详情弹框(2026-07-25 抽出)
 var _dl_sel: Dictionary = {}   # 双路布阵选中框 {lane, idx} (点两个互换分路)
 var _vw: float = 1280.0   # 实际视口宽(手机expand后可达~1560): 顶栏/背包按真实宽铺开·不再左挤留空(2026-07-18)
@@ -330,6 +331,19 @@ func _build_lineup(_leaders: Array) -> void:
 	if _top_bar != null:
 		var _hb = _top_bar.add_right_action("?", func(): _show_lineup_help(), {"tooltip": "阵容说明"})
 		_hb.position = Vector2(SYN_X + SYN_W - 81.0, (TopBar.BAR_H - TopBar.TOUCH_MIN) / 2.0)
+		## ★2026-10-19 站位在背包里摆(用户「我想在背包里实现站位修改，这样在对局内将不再有拖动站位环节」)。
+		##   与「?」同一种顶栏签, 排在它左边。
+		var _fb = _top_bar.add_right_action("站位", func(): _formation.open(), {"tooltip": "设置开战站位"})
+		_fb.name = "FormationBtn"
+		_fb.position = Vector2(_hb.position.x - 8.0 - _fb.size.x, _hb.position.y)
+		##   顶栏换宽度时按「离右沿多远」重排右侧签(`TopBar._fit_to_viewport`), 记的是添加那一刻的默认位
+		##   ⇒ 两枚会叠在一起。把「站位」那一格的离右沿距离改成「?」的再往左一格。
+		var _ib: int = _top_bar.action_btns.find(_hb)
+		var _if: int = _top_bar.action_btns.find(_fb)
+		if _ib >= 0 and _if >= 0 and _if < _top_bar._right_off.size():
+			_top_bar._right_off[_if] = float(_top_bar._right_off[_ib]) + 8.0 + _fb.size.x
+		if _tut_on():
+			_fb.visible = false
 		## ★教程: 「?」让位给右上「跳过教程」(见 _tutorial_skip_slot); 返回键的位置换成「完成教程」。
 		if _tut_on():
 			_hb.visible = false
@@ -766,7 +780,7 @@ func _show_lineup_help() -> void:
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	dim.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed: dim.queue_free())
 	add_child(dim)
-	var bw := 560.0; var bh := 306.0
+	var bw := 560.0; var bh := 330.0   # 2026-10-19 多一行「站位」: 306 → 330
 	var box := Panel.new()
 	var sb := StyleBoxFlat.new(); sb.bg_color = Color("#1c2836"); sb.border_color = Color("#ffd93d")
 	sb.set_border_width_all(3); sb.set_corner_radius_all(12)
@@ -781,7 +795,7 @@ func _show_lineup_help() -> void:
 	var body := Label.new()
 	## ★原文每条都是「X = Y」的对照表式("点两个单位 = 互换它们的战场 / 位置"),
 	##   那是策划表的写法。改成直接对玩家说"你点了会怎样" —— 同样是六条, 一条不少。
-	body.text = "· 上路、下路独立作战\n· 依次点击两个单位：交换位置\n· 小将【前排 / 后排】：切换近战 / 远程\n· 选择背包装备后点击单位：装备\n· 点击单位装备格：卸下\n· 3 件同名同星装备自动合成升星"
+	body.text = "· 上路、下路独立作战\n· 依次点击两个单位：交换位置\n· 右上「站位」：拖动单位设置开战站位\n· 小将【前排 / 后排】：切换近战 / 远程\n· 选择背包装备后点击单位：装备\n· 点击单位装备格：卸下\n· 3 件同名同星装备自动合成升星"
 	body.add_theme_font_size_override("font_size", 15); body.add_theme_color_override("font_color", Color("#cfe0ef"))
 	body.position = Vector2(24, 58); body.size = Vector2(bw - 48, bh - 120); body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; box.add_child(body)
 	var ok := Button.new(); ok.text = "知道了"; ok.add_theme_font_size_override("font_size", 17)

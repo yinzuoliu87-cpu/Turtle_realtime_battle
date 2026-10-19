@@ -248,8 +248,8 @@ func _lane(pat: Array, poison: bool) -> Dictionary:
 		st_frames += 1
 		if (st == "overview" or st == "lane_settle") and st_frames == 9:
 			s._dl_sys._dl_present_click()
-		elif st == "place" and st_frames == 6 and is_instance_valid(s._dl_go_btn):
-			s._dl_go_btn.pressed.emit()
+		elif st == "fight" and st_frames == 1:
+			## 2026-10-19 对局里没有摆位屏: 演出完同一步自动开打(原来这里按「开始战斗」)。
 			fought = true
 		var saved: Array = []
 		if poison:

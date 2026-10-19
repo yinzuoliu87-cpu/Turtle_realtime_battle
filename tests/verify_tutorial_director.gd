@@ -61,7 +61,8 @@ func _ready() -> void:
 	_ok("★弱 ghost 有合法分路(上/下路非空)", la is Dictionary and not (la.get("top", []) as Array).is_empty()
 		and not (la.get("bottom", []) as Array).is_empty(), str(la))
 	_ok("★弱 ghost 无装备(必赢沙包)", (ghost.get("equipped", {}) as Dictionary).is_empty())
-	_ok("战斗阶段: 摆位挂 place, 结算挂 settle", td.steps_key_for("battle") == "place" and td.steps_key_for("settle") == "settle")
+	## 2026-10-19 对局里没有摆位环节(站位在背包里摆) ⇒ 战斗这一屏不挂引导, 只有结算那一句。
+	_ok("战斗阶段: 战斗中不挂引导, 结算挂 settle", td.steps_key_for("battle") == "" and td.steps_key_for("settle") == "settle")
 	var d2: String = td.next_scene_after("battle")
 	_ok("★★战斗打完 → 商店(只有一把, 不再有第二把)", d2.ends_with("Shop.tscn"), d2)
 	_ok("推进到 shop, 挂 shop 那套", td.stage() == "shop" and td.steps_key_for("shop") == "shop")

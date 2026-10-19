@@ -576,8 +576,6 @@ var _dl_present_root: Control = null   # 呈现overlay根节点
 const DL_PRESENT_SEC := 5.0
 var _st_lane_hist: Array = []   # 已结束战场的统计快照(纯数据行, 不引单位字典): [{lane,left:[row],right:[row]}] — 结算表要含前面战场(用户2026-07-19"只展示了当前战场的总结")
 var _dl_hud: Label = null   # 双路 HUD: 当前路 + 双方蛋血
-var _dl_go_btn: Button = null      # 场内放置阶段「开打」钮
-var _dl_place_hint: Label = null   # 放置阶段提示(拖我方单位到位→开打)
 var _t := 0.0
 var _settled := false                       # 结果只喂赛季一次的守卫
 var _had_season := false                     # 本局有赛季态(玩家配了season_leaders); demo=false→不喂只显横幅
@@ -607,8 +605,6 @@ var _glacier_zones: Array = []            # 冰川带(训龟大师·用户2026-0
 
 # --- 暂停 + 战斗日志 (R2b, 用户 2026-07-11) ---
 var _spell_disc: SpellDisc = null         # 法术圆盘: 右下角·**只读**(U2: 冷却 + 魔法石层数显示, 不再能点/拖施法)
-var _tutorial: Node = null                # 教程摆位引导(dual_lane_flow._dl_enter_place 挂); null=不在教程里
-var _tut_place_shown: bool = false        # 教学 match1: 摆位引导只挂一次(首路), 别每路都弹
 var _surrender_panel: Control = null      # 投降确认浮层(取消/确认认输), 默认隐; 取代原暂停浮层(用户2026-07-30)
 var _surrender_btn: Button = null          # 🏳 投降按钮(原 ⏸ 暂停位); 结算后 disabled
 var _battle_log: Array = []               # 战斗日志 bbcode 行, 封顶 _LOG_CAP(参 soak 教训防无限增长)
@@ -1441,16 +1437,6 @@ func _nav_dir(u: Dictionary, tgt_pos: Vector2, straight: Vector2) -> Vector2:
 		return straight
 	return DetMath.norm(to_wp)
 
-func _tutorial_anchor(anchor: String) -> Rect2:
-	var vp: Vector2 = get_viewport().get_visible_rect().size
-	match anchor:
-		"go_button":   # 「开打」钮
-			if _dl_go_btn != null and is_instance_valid(_dl_go_btn) and _dl_go_btn.visible:
-				return _dl_go_btn.get_global_rect()
-		"field":       # 我方半场(左侧) —— 3D 战场无精确 UI 矩形, 用左中区域近似示意
-			return Rect2(vp.x * 0.05, vp.y * 0.30, vp.x * 0.45, vp.y * 0.42)
-	return Rect2()
-
 # ══════════════════════════════════════════════════════════════
 # §SUDDEN 战场决胜机制 (用户2026-07-19「存活40秒后, 治疗效果降低50%, 并每5秒获得25%增伤持续到战场结束」)
 #
@@ -1698,12 +1684,6 @@ func _my_trainer():
 			return u
 	return null
 
-
-## 摆位阶段能不能拖这个单位: 只拖我方(left)非蛋非召唤非训龟大师(用户2026-07-23 点6)。
-func _can_place_drag(hit) -> bool:
-	return hit != null and str(hit.get("side", "")) == "left" \
-		and not hit.get("_isEgg", false) and not hit.get("is_summon", false) \
-		and not hit.get("is_trainer", false)
 
 ## 训龟大师的移动/攻击 tick 现在该不该跑: 战斗结束/摆位/呈现/编辑期都不跑(用户2026-07-23 点6)。
 ## ★摆位期投掷石头/被键盘摇杆推动都是 bug —— 移动/攻击是玩法动作, 非战斗期该停。抽成纯函数便于门禁测。
@@ -2162,9 +2142,7 @@ func _process(delta: float) -> void:
 	## ★心跳两种模式都要涨 —— 漏接会让看门狗恒报 FROZEN(踩过, 见 battle_watchdog.gd 头注)。
 	if _stress or _wd_on:
 		_hb += 1
-	if _stress:                # 卡死猎手: 自动开打(跳摆位) + 一局结束/超时→重开
-		if _dl_state == "place":
-			_dl_sys._dl_start_fight()          # 无头无玩家→自动开打(present阶段自己计时推进)
+	if _stress:                # 卡死猎手: 一局结束/超时→重开(开打是自动的: 对局里没有摆位屏)
 		if _over or _dl_state == "done" or _t > 240.0:   # 上限 240: 一场三路合法时长可超120s(上路含破蛋窗口+呈现就要60s+)
 			_stress_reload(); return
 		_dbg_op = "process"
@@ -7880,12 +7858,6 @@ func _cam_handle_input(event: InputEvent) -> bool:
 	#     插太后收不到事件(那些分支都 return)。
 	#   ★与点选共存的关键: 按下先记起点, 位移超过 PAN_THRESHOLD 才算拖动;
 	#     没超阈值的抬起仍按点选处理(否则每次拖屏都会误开/误关详情面板)。
-	# ★放置阶段正在拖龟摆位 → 镜头【完全让路】(用户 2026-07-22:「开局拖动是什么情况」)。
-	#   机制: 按下时相机与放置逻辑各记各的状态; 鼠标一移超 PAN_THRESHOLD, 相机块就 _cam_pan_by()
-	#   并【return true】→ _unhandled_input 当场返回 → 放置逻辑再也收不到后续 motion
-	#   → 龟停在半路、镜头却跑了。所以只要 _edit_drag_unit 在手, 这里就直接放弃本事件。
-	if _edit_drag_unit != null and _dl_state == "place":
-		return false
 	if not _map_editor:
 		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
@@ -7946,17 +7918,6 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_tree().quit()
 				return
 			get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
-		return
-	# 双路场内放置阶段: 拖我方(left)非蛋单位到位 (clamp 我方半场+避障); 「开打」钮在 GUI 层.
-	if _dl_state == "place" and _is_dual_lane_mode():
-		# ★放置阶段也要能点空白关面板 —— 否则这阶段开了详情面板就只剩 ESC 能关
-		#   (用户 2026-07-21 要「点空白就退出」, 这条早退曾把它挡掉)。
-		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT \
-				and _info_panel != null and is_instance_valid(_info_panel):
-			var _pp: Vector2 = get_viewport().get_mouse_position() if get_viewport() != null else event.position
-			if _edit_unit_at_screen(_pp) == null:
-				_hud._close_info_panel()
-		_dl_sys._dl_handle_place_input(event)
 		return
 	# 普通战斗模式: 点战场单位 (立绘头顶 unproject 命中) → 弹详情面板; 框上的点击由框自己的 gui_input 接.
 	if not DEBUG_EDIT or not _edit_mode:

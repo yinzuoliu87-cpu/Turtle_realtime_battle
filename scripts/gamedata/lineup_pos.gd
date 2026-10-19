@@ -8,7 +8,7 @@ extends RefCounted
 ##      相对【本方队形中心】(左方 = 场地中心 x - FORMATION_DX)的偏移, 以左方视角记; 右方镜像 x。
 ##   没有 `off`(旧存档 / 旧快照 / 机器人)⇒ 原来的固定队形(竖排, 间距 ROW_DY)。
 ## ★整数: 跨设备逐位一致(服务器裁判与手机重算要同一个数), 进快照前就取整, 不让 JSON 往返带出小数尾巴。
-## ★这里只定「想站哪」; 真正落点在开打时再按那张地图的岛形 + 障碍夹一遍(`DualLaneFlow._dl_clamp_place`)。
+## ★这里只定「想站哪」; 真正落点在开打时再按那张地图的岛形 + 障碍夹一遍(`DualLaneFlow.clamp_place_side`)。
 
 ## 队形中心离场地中心多远(与 `dual_lane_flow._dl_build_lane_field` 的 ±420 同一个数)。
 const FORMATION_DX := 420

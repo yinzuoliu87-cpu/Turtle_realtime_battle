@@ -253,13 +253,8 @@ func _record() -> void:
 		stf += 1
 		if (st == "overview" or st == "lane_settle") and stf == 9:
 			s._dl_sys._dl_present_click()
-		elif st == "place" and stf == 6:
-			for u in s._units:
-				if str(u.get("side", "")) == "left" and s._can_place_drag(u):
-					u["pos"] = s._dl_sys._dl_clamp_place((u["pos"] as Vector2) + Vector2(-60.0, 25.0 + 20.0 * fights))
-					break
-		elif st == "place" and stf == 20 and is_instance_valid(s._dl_go_btn):
-			s._dl_go_btn.pressed.emit()
+		elif st == "fight" and stf == 1:
+			## 2026-10-19 对局里没有摆位屏: 演出完同一步自动开打(原来这里按「开始战斗」)。
 			fights += 1
 		elif st == "fight" and fights >= 2 and stf == 120 and not surrendered:
 			s._do_surrender()

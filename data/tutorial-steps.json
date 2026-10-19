@@ -3,7 +3,6 @@
   "_schema": "每步: text(必填, 一句祈使句, 单行) / highlight(必填: 宿主 _tutorial_anchor 认得的锚点名, 挖洞高亮) / advanceOn(必填: 玩家做了这个动作才前进, 由产品代码 TutorialDirector.notify 发) / point(可选: 手势指针指的锚点, 缺省=highlight) / hand(可选: tap|drag, 缺省 tap) / anchor(可选: top|bottom|right, 提示条位置)",
   "_anchors": {
     "team_select": "roster(候选龟) / roster_pet(第一只没上阵的龟) / confirm(出战钮)",
-    "place": "field(我方半场) / my_unit(我方一只龟) / go_button(开始战斗钮)",
     "settle": "settle_shop(结算「前往商店」钮)",
     "shop": "xp_button(买经验钮) / offer(货架 + 详情面板) / offer_pick(第一张买得起的卡; 选中后=「购买」钮) / bag_button(顶栏「背包」)",
     "inventory": "backpack(装备背包) / first_item(背包第一件) / lanes(上下战场) / first_leader(第一只统领) / finish_button(完成教程钮)"
@@ -19,20 +18,6 @@
       "text": "点击出战",
       "highlight": "confirm",
       "advanceOn": "team_confirmed"
-    }
-  ],
-  "place": [
-    {
-      "text": "拖动龟调整站位",
-      "highlight": "field",
-      "point": "my_unit",
-      "hand": "drag",
-      "advanceOn": "unit_dragged"
-    },
-    {
-      "text": "点击开始战斗",
-      "highlight": "go_button",
-      "advanceOn": "fight_started"
     }
   ],
   "settle": [

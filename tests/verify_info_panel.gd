@@ -432,49 +432,16 @@ func _test_no_close_button() -> void:
 	var src := _src()
 	var has_btn := src.contains("close_btn")
 	_ok("★面板不再有 ✖ 关闭按钮", not has_btn, "仍有 close_btn" if has_btn else "")
-	# 点空白关闭的逻辑要在(普通战斗 + 放置阶段 都要能关)
+	# 点空白关闭的逻辑要在(普通战斗)。
+	# ★2026-10-19 对局里没有摆位阶段了(站位在背包里摆): `_unhandled_input` 里那条「放置阶段早退」整段删掉,
+	#   原来这里量的「放置阶段也能点空白关面板」随之没有被测对象 ⇒ 改成量「那条早退真的没了」——
+	#   它要是被加回来, 摆位期点空白关面板那个老坑也会一起回来。
 	var n_close := src.count("_close_info_panel()")
-	_ok("点空白/ESC 关闭逻辑仍在", n_close >= 3, "_close_info_panel 调用 %d 处" % n_close)
-	# ★要在 _unhandled_input 里面找那处放置阶段早退 —— 全文搜 `_dl_state == "place"`
-	#   会命中别处(第一次我就这么搜错了, 报了假 FAIL)。
-	# ★字符窗口两头都是坑, 2026-07-22 一天之内两个方向都踩了:
-	#   窗口太小 → substr(ui,4000) 再 substr(pl,700) 实际只剩 255 字符, 把 _close_info_panel()
-	#              切在窗口外 → 假 FAIL(我差点据此去"修"一个根本没坏的功能);
-	#   窗口太大 → 放开成 substr(pl) 取到函数尾, 而 _unhandled_input 里 _close_info_panel()
-	#              共 3 处, 后面普通战斗分支那处顶包 → 把放置分支的调用删掉照样绿(实测过), 断言变哑。
-	#   所以必须【按缩进精确切出这一个分支】, 且下面留了一条自检不许再放宽。
+	_ok("点空白/ESC 关闭逻辑仍在", n_close >= 2, "_close_info_panel 调用 %d 处" % n_close)
 	var ui_body := _func_body(src, "_unhandled_input")
-	var pl_body := _branch_body(ui_body, "_dl_state == \"place\"")
-	_ok("★放置阶段也能点空白关面板(这条早退曾把它挡掉)",
-		pl_body.contains("_close_info_panel()"),
-		"放置阶段仍只能靠 ESC 关(切出的分支 %d 字符)" % pl_body.length())
-	# ★自检: 切出来的必须【只是这一个分支】。放置分支自己以 _dl_handle_place_input 收尾,
-	#   若切片漏到了后面的普通战斗分支, 就会把 unproject/_open_info_panel 那些一起框进来。
-	_ok("切片没漏到隔壁分支(否则上一条会变成恒真的哑断言)",
-		pl_body.contains("_dl_handle_place_input") and not pl_body.contains("_open_info_panel"),
-		"切出 %d 字符, 含隔壁分支内容" % pl_body.length())
-
-
-## 按【缩进】切出 anchor 所在的那一个分支: 从含 anchor 的行起, 到下一条缩进
-## ≤ 该行缩进的非空行为止。字符数窗口切不准分支边界(小了漏内容、大了框进隔壁)。
-func _branch_body(body: String, anchor: String) -> String:
-	var lines := body.split("\n")
-	var start := -1
-	var base := 0
-	var out := ""
-	for i in lines.size():
-		var l := str(lines[i])
-		if start < 0:
-			if l.contains(anchor):
-				start = i
-				base = l.length() - l.lstrip("\t").length()
-				out = l + "\n"
-			continue
-		var stripped := l.strip_edges()
-		if stripped != "" and (l.length() - l.lstrip("\t").length()) <= base:
-			break
-		out += l + "\n"
-	return out
+	_ok("★分母: 切到了 _unhandled_input(%d 字符)" % ui_body.length(), ui_body.length() > 500)
+	_ok("★对局里不再有摆位分支(`_dl_state == \"place\"` 早退已删)", not ui_body.contains("_dl_state == \"place\""),
+		"_unhandled_input 里还有摆位分支")
 
 
 ## 精确取某个顶层函数的函数体(从它的 func 行到【下一个顶层 func】为止)。

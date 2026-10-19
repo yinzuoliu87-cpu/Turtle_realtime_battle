@@ -110,11 +110,11 @@ func _test_obstacle_vs_visual() -> void:
 			break
 	_ok("★navmesh 障碍外扩用 OBSTACLE_MARGIN", nav_line.contains("OBSTACLE_MARGIN"),
 		nav_line.strip_edges().substr(0, 100))
-	var clamp_idx := src.find("func _dl_clamp_place")
+	var clamp_idx := src.find("func clamp_place_side")   # 2026-10-19 原 _dl_clamp_place(对局里拖动)删了, 开打站位夹取只剩这一个
 	var clamp_body := src.substr(clamp_idx, 700) if clamp_idx >= 0 else ""
 	_ok("★放置 clamp 障碍外扩用同一个 OBSTACLE_MARGIN",
 		clamp_body.contains("OBSTACLE_MARGIN") and not clamp_body.contains("+ 26.0"),
-		"_dl_clamp_place 里仍有独立数值" if not clamp_body.contains("OBSTACLE_MARGIN") else "")
+		"clamp_place_side 里仍有独立数值" if not clamp_body.contains("OBSTACLE_MARGIN") else "")
 
 	scene.queue_free()
 
