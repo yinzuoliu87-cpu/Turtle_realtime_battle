@@ -110,133 +110,119 @@ const TYPE_NAME := {
 ##   机制只在 TYPE_INTRO 写一次(一条一行, 【专名】开头), TIER_DESCS 每档只写变化的数字 / 「生效」。
 ##   原来每档把所有子机制重讲一遍、夹着半角「; ( ) →」与「——」「同上」(copy_lol_style_lint 原来不扫这里)。
 ##   ★数字一个不改; data_integrity 的「每件X +N ↔ TYPES.stats」对账照旧(每档首条保留「每件X +N」)。
+## ★★2026-10-19 二次重写(用户「图鉴里的羁绊描述……描述太差了」)。
+##   10-13 那版把机制全塞进 TYPE_INTRO(每个羁绊 2~4 条长句、「一定比例」「提高」不给数),
+##   逐档只剩「【僵硬】生效」「【冰封】15% 概率」这种碎片 ⇒ 读一个数要上下来回对照, 读不出「凑几件有什么用」。
+##   现在照云顶羁绊卡(docs/plans/ref/20261006-云顶装备弹窗/3-tft手游-点羁绊弹小卡.png):
+##   · TYPE_INTRO = 一句总述(这个羁绊干什么), 不放机制细节;
+##   · TIER_DESCS = 该档**新增 / 变化**的东西, 一条一行(「 · 」分隔); 机制在**第一次出现的那一档**用整句讲清,
+##     更高档只写变化后的数(「提高至 X」), 没变化的不重复(云顶惯例: 高档包含低档)。
+##   · 数字一律用代码常量占位符(C 占位符, 数组带下标 [档] 取那一档)直接读代码; 只有下面几类仍是字面量:
+##     每档首条的属性(读 TYPES.stats, 由 data_integrity 与 verify_synergy_text 逐档对账)、
+##     枪【金弹】的 4/3/2 发与 60/80/100%(RealtimeBattle3DScene._queue_shots 里的行内数组, 没有常量)、
+##     圣光护盾 1/2 件(GameState.shield_grant_count 行内数组)与 +250 最大生命值(EquipStats.STATS 字典)、
+##     食物「双倍」、奇械【易碎】25%(代码存的是倍率 1.25)。
+##   ★改这里先跑 python tools/copy_lol_style_lint.py 与 tests/verify_codex_synergy_card.tscn。
 const TYPE_INTRO := {
 	"剑": [
-		"【剑士】携带剑者每次攻击后追打目标，追打以 500% 攻击速度出手，伤害随身上剑件数提高，可触发命中效果。",
-		"【血祭】全队每个单位每损失 1% 生命值，攻击力提高一定比例。",
+		"剑提高携带者的攻击力，并让携带者攻击后追打目标。全队单位生命值越低，攻击力越高。",
 	],
 	"奇械": [
-		"【铸币】每 2.5 秒为全队铸造深海币，战斗结束时获得，每场有上限。",
-		"【冰封】全队攻击有概率冰封目标 1.5 秒。同一目标每 2.5 秒至多被冰封 1 次，冰封结束后 1.5 秒内免疫冰封。",
-		"【僵硬】全队每段攻击为目标叠加 1 层僵硬，每层降低 2% 攻击力，至多 20 层，持续 5 秒，叠加时刷新持续时间。",
-		"【易碎】被冰封或眩晕的敌人受到的伤害提高。",
+		"奇械提高携带者的魔抗，并为全队铸造深海币。档位越高，全队攻击越能冰封与削弱敌人。",
 	],
 	"食物": [
-		"队伍里每件装备为携带者提供最大生命值，食物类装备提供双倍。",
-		"【成长】每 2.5 秒，每件食物永久提高携带者的最大生命值，无上限，本场累积、跨路保留。",
-		"【学院】队伍全体额外获得最大生命值。",
-		"【盛宴】每 2.5 秒，全队回复已损失生命值的 3%。",
+		"队伍里每件装备为携带者提供最大生命值，食物提供双倍。食物还让最大生命值在战斗中持续成长。",
 	],
 	"盾": [
-		"【怒气】全队每个单位每累计受到 400 点伤害，对最近的敌人释放一次冲击波，造成基于自身最大生命值的真实伤害，并获得该伤害 20% 的护盾。",
-		"【圣光护盾】获得【圣光护盾】装备，可在背包自由装配，不占装备位与单只上限，羁绊掉档时消失。携带者 +250 最大生命值，每 3 秒获得 55 点圣光护盾值。圣光护盾存在时，每段受到的伤害对攻击者反击 2 点真实伤害。",
-		"【收殓】敌方单位阵亡时，为最近的携带盾者提供相当于该单位 30% 最大生命值的护盾。",
-		"【圣光·强化】盾类装备为携带者提供护盾或治疗时，额外提供其 20% 的圣光护盾值，圣光护盾装备生成的圣光护盾值 +20%。",
+		"盾提高携带者的护甲。全队承受伤害后对敌人释放冲击波，并获得圣光护盾装备。",
 	],
 	"药水": [
-		"【猎物】每 2.5 秒，将敌方当前生命值最高的 1 名单位标记为猎物，龟蛋除外，猎物死亡后下个周期重选。全队对猎物造成的伤害提高。",
-		"【战利品】每击杀 1 名猎物，全队攻击力永久提高，本场累积、跨路保留。",
-		"【斩首】攻击生命值低于 20% 的猎物时，直接处决。",
+		"药水提高携带者的治疗与护盾强度。全队集火被标记的猎物，击杀猎物后攻击力提高。",
 	],
 	"枪": [
-		"【金弹】每把枪射出若干发子弹后，额外射出 1 发金弹。金弹继承该枪子弹的全部效果并额外造成真实伤害，金弹本身不计入发数。",
-		"【炮台一】在我方前方生成一座炮台，每 2.5 秒朝最近的敌人轰击，对炮台与该敌人连线上的所有敌人造成 80 物理伤害，无视护甲，并为生命值最低的友军回复相当于造成伤害 30% 的生命值。",
-		"【炮台二】在中心生成第二座炮台，每 5 秒产出能量，交替使用：一次转化为护盾均摊给全队，下一次化为弹幕，对敌方全体均摊造成等量的真实伤害。",
-		"【炮台三·火控】在后方生成第三座炮台，为携带枪者接通火控，使其额外造成真实伤害。",
+		"枪提高携带者的攻击速度。每把枪定期射出金弹，档位越高，我方生成的炮台越多。",
 	],
 	"弓箭": [
-		"【处决】全队攻击时，目标生命值百分比低于斩杀线则直接处决。斩杀线随攻击者的暴击率提高。",
-		"【腐蚀·穿透】全队攻击无视目标一部分护甲与魔抗。",
-		"【腐蚀叠层】每 2.5 秒，所有敌方单位 +1 层【腐蚀】，每层提高其受到的伤害，至多 5 层。腐蚀满 5 层的敌人，受到的一部分伤害转化为真实伤害。",
+		"弓箭提高携带者的暴击率。全队攻击可处决低生命值的敌人，并持续腐蚀敌方全体。",
 	],
 	"法器": [
-		"每件法器拥有独立的【法力】，充满时释放该法器的主动效果。每 2.5 秒回复 15 点，携带者造成或受到伤害时也会回复。",
-		"【灵泉】每 2.5 秒，全队回复已损失生命值的一定比例。",
-		"【余韵】友军受到治疗时，额外获得相当于治疗量一定比例的护盾。",
-		"【共鸣】每 7.5 秒，全队每个友军回复 15% 最大生命值，并净化 2 种减益，依次为眩晕、减速、灼烧、中毒、诅咒。",
+		"法器提高携带者的魔法穿透与最大龟能。每件法器充满法力后释放自己的主动效果，档位越高充满越快。",
 	],
 	"灵物": [
-		"无敌的触手登场作战。",
-		"【拍击蓄能】触手每 {C:SpiritSynergySystem.SLAP_PERIOD} 秒获得 1 层拍击层数，无上限。空闲且射程内有敌人时消耗 1 层，朝最近的敌人拍下，对沿途敌人造成（{C:SpiritSynergySystem.HIT_HP_PCT%}% 目标最大生命值 + {C:SpiritSynergySystem.HIT_FLAT}）物理伤害。",
-		"【闪避蓄能】己方任一单位闪避成功时，每根触手获得 1 层拍击层数。",
-		"【亡灵】友方单位阵亡时原地召唤 1 只亡魂，继承其一部分攻击力与生命值，自动攻击最近的敌人。亡魂阵亡后可再循环，每次属性降为 90%。",
+		"灵物提高携带者的闪避。无法被击杀的触手为我方作战，阵亡的友军化为亡魂继续战斗。",
 	],
 	"香火": [
-		"香火石的携带者每造成 4000 点伤害，刻下一道香火刻痕，至多 300 道，跨对局保留，赛季重置。",
-		"每道刻痕使香火石为携带者提供 0.2% 增伤与 0.1% 减伤，并使全队获得 0.1% 增伤与 0.05% 减伤。多件香火石共用同一条充能条与刻痕池。",
+		"香火石的携带者造成伤害时刻下刻痕。刻痕跨对局保留，每道刻痕永久提高全队的增伤与减伤。",
 	],
 	"斧头": [
-		"激活后商店更容易刷出小木斧：每次刷新至少出现一把的概率从 6% 起，本大轮每多打一局 +0.5%，至多 18%。重复买到的小木斧转化为砍伐经验。",
+		"装备小木斧即激活。激活后商店更容易刷出小木斧。",
 	],
 	"遗物": [
-		"【生死界】携带遗物者生命值高于 50% 时攻击力提高，低于 50% 时生命偷取翻倍。",
-		"【远古之力】每 2.5 秒，全队永久提高增伤，本场累积、跨路保留，有上限。",
-		"【龟蛋加固】本方龟蛋提高最大生命值，并开始还击，射程 420。",
-		"【觉醒】本路战斗开始 20 秒后，已累积的远古之力提高 50%。",
+		"遗物提供生命偷取。携带者按生命值高低切换攻击与续航，全队增伤随战斗时间累积，龟蛋也加入战斗。",
 	],
 }
 
-# 逐档效果: 每档只写变化的数字(机制说明见 TYPE_INTRO)。条目之间用「 · 」分隔, 图鉴 / 背包按它拆行。
+# 逐档效果: 该档新增 / 变化的内容(总述见 TYPE_INTRO)。条目之间用「 · 」分隔, 图鉴 / 背包按它拆行。
 const TIER_DESCS := {
 	"剑": [
-		"每件剑 +8 攻击力 · 【剑士】追打 1 次，每次 18% × 身上剑件数的伤害 · 【血祭】每损失 1% 生命值 +0.1% 攻击力",
-		"每件剑 +15 攻击力 · 【剑士】追打 1 次，每次 25% × 身上剑件数的伤害 · 【血祭】每损失 1% 生命值 +0.3% 攻击力",
-		"每件剑 +25 攻击力 · 【剑士】追打 2 次，每次 40% × 身上剑件数的伤害 · 【血祭】每损失 1% 生命值 +0.5% 攻击力",
+		"每件剑为携带者提供 +8 攻击力 · 【剑士】携带者每次攻击后追打目标 {C:SwordsmanSystem.HITS[0]} 次，身上每件剑使追打造成 {C:SwordsmanSystem.PCT[0]%}% 攻击伤害。追打速度为攻击速度的 {C:SwordsmanSystem.ASPD_MULT%}%，可触发命中效果 · 【血祭】全队单位每损失 1% 生命值，攻击力提高 {C:SynergySystem.BLOOD_RITE[0]}%",
+		"每件剑为携带者提供 +15 攻击力 · 【剑士】身上每件剑使追打造成 {C:SwordsmanSystem.PCT[1]%}% 攻击伤害 · 【血祭】每损失 1% 生命值，攻击力提高 {C:SynergySystem.BLOOD_RITE[1]}%",
+		"每件剑为携带者提供 +25 攻击力 · 【剑士】追打 {C:SwordsmanSystem.HITS[2]} 次，身上每件剑使每次追打造成 {C:SwordsmanSystem.PCT[2]%}% 攻击伤害 · 【血祭】每损失 1% 生命值，攻击力提高 {C:SynergySystem.BLOOD_RITE[2]}%",
 	],
 	"奇械": [
-		"每件奇械 +4 魔抗 · 【铸币】每次 1 枚，每场至多 3 枚",
-		"每件奇械 +10 魔抗 · 【铸币】每次 2 枚，每场至多 7 枚 · 【冰封】15% 概率",
-		"每件奇械 +16 魔抗 · 【铸币】每次 3 枚，每场至多 11 枚 · 【冰封】25% 概率 · 【僵硬】生效",
-		"每件奇械 +23 魔抗 · 【铸币】每次 3 枚，每场至多 15 枚 · 【冰封】40% 概率 · 【僵硬】生效 · 【易碎】受到的伤害 +25%",
+		"每件奇械为携带者提供 +4 魔抗 · 【铸币】每 {C:GadgetSynergySystem.PERIOD} 秒铸造 {C:GadgetSynergySystem.COIN_PER_TICK[0]} 枚深海币，每局至多 {C:GadgetSynergySystem.COIN_CAP[0]} 枚，本局结束时获得",
+		"每件奇械为携带者提供 +10 魔抗 · 【铸币】每次铸造 {C:GadgetSynergySystem.COIN_PER_TICK[1]} 枚，每局至多 {C:GadgetSynergySystem.COIN_CAP[1]} 枚 · 【冰封】全队攻击有 {C:GadgetSynergySystem.FREEZE_CHANCE[1]%}% 概率冰封目标 {C:GadgetSynergySystem.FREEZE_SEC} 秒。同一目标每 {C:GadgetSynergySystem.FREEZE_CD} 秒至多被冰封 1 次，冰封结束后 {C:GadgetSynergySystem.FREEZE_IMMUNE} 秒内免疫冰封",
+		"每件奇械为携带者提供 +16 魔抗 · 【铸币】每次铸造 {C:GadgetSynergySystem.COIN_PER_TICK[2]} 枚，每局至多 {C:GadgetSynergySystem.COIN_CAP[2]} 枚 · 【冰封】概率提高至 {C:GadgetSynergySystem.FREEZE_CHANCE[2]%}% · 【僵硬】全队每段攻击使目标叠加 1 层僵硬，每层降低 {C:GadgetSynergySystem.STIFF_PER_STACK%}% 攻击力，至多 {C:GadgetSynergySystem.STIFF_MAX} 层，持续 {C:GadgetSynergySystem.STIFF_SEC} 秒，叠加时刷新",
+		"每件奇械为携带者提供 +23 魔抗 · 【铸币】每局至多 {C:GadgetSynergySystem.COIN_CAP[3]} 枚 · 【冰封】概率提高至 {C:GadgetSynergySystem.FREEZE_CHANCE[3]%}% · 【易碎】被冰封或眩晕的敌人受到的伤害提高 25%",
 	],
 	"食物": [
-		"队伍每件装备 +30 最大生命值，食物 +60 · 【成长】每件食物每次 +8",
-		"队伍每件装备 +70 最大生命值，食物 +140 · 【成长】每件食物每次 +16 · 【学院】全体 +100 最大生命值",
-		"队伍每件装备 +130 最大生命值，食物 +260 · 【成长】每件食物每次 +30 · 【学院】全体 +220 最大生命值 · 【盛宴】生效",
+		"队伍每件装备为携带者提供 +30 最大生命值，每件食物 +60 · 【成长】每 {C:FoodSynergySystem.PERIOD} 秒，每件食物使携带者永久 +{C:FoodSynergySystem.GROW_PER_FOOD[0]} 最大生命值，无上限，持续到本局结束",
+		"队伍每件装备为携带者提供 +70 最大生命值，每件食物 +140 · 【成长】每次 +{C:FoodSynergySystem.GROW_PER_FOOD[1]} 最大生命值 · 【学院】全队 +{C:FoodSynergySystem.ACADEMY[1]} 最大生命值",
+		"队伍每件装备为携带者提供 +130 最大生命值，每件食物 +260 · 【成长】每次 +{C:FoodSynergySystem.GROW_PER_FOOD[2]} 最大生命值 · 【学院】全队 +{C:FoodSynergySystem.ACADEMY[2]} 最大生命值 · 【盛宴】每 {C:SynergySystem.PULSE} 秒，全队回复 {C:SynergySystem.FEAST_PCT[2]%}% 已损失生命值",
 	],
 	"盾": [
-		"每件盾 +5 护甲 · 【怒气】冲击波 4% 最大生命值 · 【圣光护盾】1 件",
-		"每件盾 +13 护甲 · 【怒气】冲击波 6% 最大生命值 · 【圣光护盾】2 件 · 【收殓】生效",
-		"每件盾 +22 护甲 · 【怒气】冲击波 8% 最大生命值 · 【圣光护盾】2 件 · 【收殓】生效 · 【圣光·强化】生效",
+		"每件盾为携带者提供 +5 护甲 · 【怒气】全队单位每受到 {C:ShieldSynergySystem.RAGE_THRESHOLD} 点伤害，对最近的敌人释放冲击波，造成 {C:ShieldSynergySystem.WAVE_PCT[0]%}% 自身最大生命值的真实伤害，并获得该伤害 {C:ShieldSynergySystem.SHIELD_FROM_DMG%}% 的护盾 · 【圣光护盾】获得 1 件圣光护盾装备，不占装备位，档位降低时收回。携带者 +250 最大生命值，每 {C:ShieldSynergySystem.HOLY_PERIOD} 秒获得 {C:ShieldSynergySystem.HOLY_AMOUNT} 点圣光护盾值。有圣光护盾值时，每段受到的伤害对攻击者造成 {C:ShieldSynergySystem.RIPOSTE_FLAT} 点真实伤害",
+		"每件盾为携带者提供 +13 护甲 · 【怒气】冲击波伤害提高至 {C:ShieldSynergySystem.WAVE_PCT[1]%}% 自身最大生命值 · 【圣光护盾】再获得 1 件，共 2 件 · 【收殓】敌方单位阵亡时，最近的携带盾者获得相当于该单位 {C:ShieldSynergySystem.REAP_PCT%}% 最大生命值的护盾",
+		"每件盾为携带者提供 +22 护甲 · 【怒气】冲击波伤害提高至 {C:ShieldSynergySystem.WAVE_PCT[2]%}% 自身最大生命值 · 【圣光·强化】盾类装备提供护盾或治疗时，额外提供其 {C:ShieldSynergySystem.T3_CONVERT%}% 的圣光护盾值。圣光护盾装备生成的圣光护盾值提高 {C:ShieldSynergySystem.T3_SHIELD_BONUS%}%",
 	],
 	"药水": [
-		"每件药水 +6% 治疗强度、+6% 护盾强度、+2 最大龟能 · 【猎物】伤害 +15%",
-		"每件药水 +12% 治疗强度、+12% 护盾强度、+4 最大龟能 · 【猎物】伤害 +25% · 【战利品】每次 +5 攻击力",
-		"每件药水 +20% 治疗强度、+20% 护盾强度、+6 最大龟能 · 【猎物】伤害 +40% · 【战利品】每次 +8 攻击力 · 【斩首】生效",
+		"每件药水为携带者提供 +6% 治疗强度、+6% 护盾强度、+2 最大龟能 · 【猎物】将生命值最高的敌人标记为猎物，龟蛋除外。猎物阵亡后 {C:PotionSynergySystem.PERIOD} 秒内重新标记。全队对猎物造成的伤害提高 {C:PotionSynergySystem.PREY_AMP[0]%}%",
+		"每件药水为携带者提供 +12% 治疗强度、+12% 护盾强度、+4 最大龟能 · 【猎物】伤害提高至 {C:PotionSynergySystem.PREY_AMP[1]%}% · 【战利品】每击杀 1 名猎物，全队永久 +{C:PotionSynergySystem.HARVEST_ATK[1]} 攻击力，持续到本局结束",
+		"每件药水为携带者提供 +20% 治疗强度、+20% 护盾强度、+6 最大龟能 · 【猎物】伤害提高至 {C:PotionSynergySystem.PREY_AMP[2]%}% · 【战利品】每击杀 1 名猎物 +{C:PotionSynergySystem.HARVEST_ATK[2]} 攻击力 · 【斩首】攻击生命值低于 {C:PotionSynergySystem.BEHEAD_HP_PCT%}% 的猎物时直接处决",
 	],
 	"枪": [
-		"每件枪 +20% 攻击速度 · 【金弹】每 4 发 1 发，+60% 真实伤害 · 【炮台一】生效",
-		"每件枪 +40% 攻击速度 · 【金弹】每 3 发 1 发，+80% 真实伤害 · 【炮台二】每次产出 100 + 20 × 全队枪件数 能量",
-		"每件枪 +66% 攻击速度 · 【金弹】每 2 发 1 发，+100% 真实伤害 · 【炮台三·火控】额外造成 10% + 10% × 身上枪件数 真实伤害",
+		"每件枪为携带者提供 +20% 攻击速度 · 【金弹】每把枪每射出 4 发子弹，额外射出 1 发金弹。金弹继承该枪子弹的全部效果，并额外造成本次伤害 60% 的真实伤害 · 【炮台一】我方前方生成一座炮台，每 {C:GunSynergySystem.TICK} 秒对它与最近敌人连线上的所有敌人造成 {C:GunSynergySystem.T1_DMG} 物理伤害，无视护甲，并为生命值最低的友军回复造成伤害 {C:GunSynergySystem.T1_HEAL_SHARE%}% 的生命值",
+		"每件枪为携带者提供 +40% 攻击速度 · 【金弹】每 3 发射出 1 发，额外造成 80% 真实伤害 · 【炮台二】我方中心生成第二座炮台，每 {C:GunSynergySystem.T2_PERIOD} 秒产出 {C:GunSynergySystem.T2_BASE_ENERGY} 点能量，全队每件枪再 +{C:GunSynergySystem.T2_PER_GUN} 点。能量交替转化为全队均摊的护盾，或对敌方全体均摊的真实伤害",
+		"每件枪为携带者提供 +66% 攻击速度 · 【金弹】每 2 发射出 1 发，额外造成 100% 真实伤害 · 【炮台三·火控】我方后方生成第三座炮台，使携带枪者额外造成 {C:GunSynergySystem.T3_BASE%}% 真实伤害，身上每件枪再 +{C:GunSynergySystem.T3_PER_GUN%}%",
 	],
 	"弓箭": [
-		"每件弓箭 +9% 暴击率 · 【处决】斩杀线 2% + 5% × 暴击率 · 【腐蚀·穿透】4% · 【腐蚀叠层】每层 +2%，满层转化 10%",
-		"每件弓箭 +16% 暴击率 · 【处决】斩杀线 4% + 7% × 暴击率 · 【腐蚀·穿透】10% · 【腐蚀叠层】每层 +3%，满层转化 20%",
-		"每件弓箭 +22% 暴击率 · 【处决】斩杀线 6% + 10% × 暴击率 · 【腐蚀·穿透】22% · 【腐蚀叠层】每层 +4%，满层转化 35%",
+		"每件弓箭为携带者提供 +9% 暴击率 · 【处决】全队攻击生命值低于 {C:BowSynergySystem.EXEC_BASE[0]%}% 的敌人时直接处决。攻击者暴击率的 {C:BowSynergySystem.CRIT_TO_LINE[0]%}% 计入这条处决线 · 【穿透】全队攻击无视目标 {C:BowSynergySystem.PEN_PCT[0]%}% 护甲与魔抗 · 【腐蚀】每 {C:BowSynergySystem.CORRODE_PERIOD} 秒，敌方全体叠加 1 层腐蚀，至多 {C:BowSynergySystem.CORRODE_MAX} 层。每层使其受到的伤害提高 {C:BowSynergySystem.CORRODE_PER_STACK[0]%}%，满层时受到的伤害有 {C:BowSynergySystem.CORRODE_TRUE_PCT[0]%}% 转化为真实伤害",
+		"每件弓箭为携带者提供 +16% 暴击率 · 【处决】处决线提高至 {C:BowSynergySystem.EXEC_BASE[1]%}%，暴击率计入 {C:BowSynergySystem.CRIT_TO_LINE[1]%}% · 【穿透】提高至 {C:BowSynergySystem.PEN_PCT[1]%}% · 【腐蚀】每层提高至 {C:BowSynergySystem.CORRODE_PER_STACK[1]%}%，满层转化提高至 {C:BowSynergySystem.CORRODE_TRUE_PCT[1]%}%",
+		"每件弓箭为携带者提供 +22% 暴击率 · 【处决】处决线提高至 {C:BowSynergySystem.EXEC_BASE[2]%}%，暴击率计入 {C:BowSynergySystem.CRIT_TO_LINE[2]%}% · 【穿透】提高至 {C:BowSynergySystem.PEN_PCT[2]%}% · 【腐蚀】每层提高至 {C:BowSynergySystem.CORRODE_PER_STACK[2]%}%，满层转化提高至 {C:BowSynergySystem.CORRODE_TRUE_PCT[2]%}%",
 	],
 	"法器": [
-		"每件法器 +4 魔法穿透、+4 最大龟能 · 【法力】充满需要 180，未激活时 200",
-		"每件法器 +7 魔法穿透、+6 最大龟能 · 【法力】充满需要 150 · 【灵泉】5%",
-		"每件法器 +11 魔法穿透、+8 最大龟能 · 【法力】充满需要 120 · 【灵泉】8% · 【余韵】30%",
-		"每件法器 +14 魔法穿透、+10 最大龟能 · 【法力】充满需要 80 · 【灵泉】12% · 【余韵】50% · 【共鸣】生效",
+		"每件法器为携带者提供 +4 魔法穿透、+4 最大龟能 · 【法力】每件法器有独立的法力，充满 {C:StaffSynergySystem.MANA_FULL_BY_TIER[1]} 点时释放该法器的主动效果。每 {C:RealtimeBattle3DScene.EQ_TICK} 秒回复 {C:StaffSynergySystem.MANA_PER_TICK} 点，携带者造成或受到伤害时也会回复。未激活羁绊时需要 {C:StaffSynergySystem.MANA_FULL_BY_TIER[0]} 点",
+		"每件法器为携带者提供 +7 魔法穿透、+6 最大龟能 · 【法力】充满所需降低至 {C:StaffSynergySystem.MANA_FULL_BY_TIER[2]} 点 · 【灵泉】每 {C:RealtimeBattle3DScene.EQ_TICK} 秒，全队回复 {C:StaffSynergySystem.SPRING_PCT[1]%}% 已损失生命值",
+		"每件法器为携带者提供 +11 魔法穿透、+8 最大龟能 · 【法力】充满所需降低至 {C:StaffSynergySystem.MANA_FULL_BY_TIER[3]} 点 · 【灵泉】提高至 {C:StaffSynergySystem.SPRING_PCT[2]%}% · 【余韵】友军受到治疗时，额外获得相当于治疗量 {C:StaffSynergySystem.ECHO_PCT[2]%}% 的护盾",
+		"每件法器为携带者提供 +14 魔法穿透、+10 最大龟能 · 【法力】充满所需降低至 {C:StaffSynergySystem.MANA_FULL_BY_TIER[4]} 点 · 【灵泉】提高至 {C:StaffSynergySystem.SPRING_PCT[3]%}% · 【余韵】提高至 {C:StaffSynergySystem.ECHO_PCT[3]%}% · 【共鸣】每 {C:StaffSynergySystem.RESONANCE_PERIOD} 秒，全队回复 {C:StaffSynergySystem.RESONANCE_HEAL%}% 最大生命值，并净化 {C:StaffSynergySystem.RESONANCE_DISPEL[3]} 种减益，依次为眩晕、减速、灼烧、中毒、诅咒",
 	],
 	"灵物": [
-		"每件灵物 +5% 闪避 · 1 根触手 · 【亡灵】继承 20%，不循环",
-		"每件灵物 +9% 闪避 · 2 根触手 · 【闪避蓄能】生效 · 【亡灵】继承 38%，循环 1 次",
-		"每件灵物 +13% 闪避 · 2 根触手，拍击伤害 +50% · 【闪避蓄能】生效 · 【亡灵】继承 65%，循环 2 次",
-		"每件灵物 +18% 闪避 · 2 根触手，拍击伤害 +100% · 【闪避蓄能】生效 · 【亡灵】继承 100%，循环 3 次",
+		"每件灵物为携带者提供 +5% 闪避 · 【触手】召唤 {C:SpiritSynergySystem.TENTACLES[0]} 根无法被击杀的触手。触手每 {C:SpiritSynergySystem.SLAP_PERIOD} 秒获得 1 层拍击，无上限。射程内有敌人时消耗 1 层，朝最近的敌人拍下，对沿途敌人造成 {C:SpiritSynergySystem.HIT_FLAT} 外加 {C:SpiritSynergySystem.HIT_HP_PCT%}% 目标最大生命值的物理伤害 · 【亡灵】友方单位阵亡时原地召唤 1 只亡魂，继承其 {C:SpiritSynergySystem.WRAITH_INHERIT[0]%}% 攻击力与生命值，自动攻击最近的敌人",
+		"每件灵物为携带者提供 +9% 闪避 · 【触手】增加至 {C:SpiritSynergySystem.TENTACLES[1]} 根 · 【闪避蓄能】我方任一单位闪避成功时，每根触手获得 1 层拍击 · 【亡灵】继承提高至 {C:SpiritSynergySystem.WRAITH_INHERIT[1]%}%。亡魂阵亡后可再召唤 {C:SpiritSynergySystem.WRAITH_LOOPS[1]} 次，每次继承的属性为上一次的 {C:SpiritSynergySystem.WRAITH_DECAY%}%",
+		"每件灵物为携带者提供 +13% 闪避 · 【触手】拍击伤害变为原来的 {C:SpiritSynergySystem.HIT_MULT[2]%}% · 【亡灵】继承提高至 {C:SpiritSynergySystem.WRAITH_INHERIT[2]%}%，可再召唤 {C:SpiritSynergySystem.WRAITH_LOOPS[2]} 次",
+		"每件灵物为携带者提供 +18% 闪避 · 【触手】拍击伤害变为原来的 {C:SpiritSynergySystem.HIT_MULT[3]%}% · 【亡灵】继承提高至 {C:SpiritSynergySystem.WRAITH_INHERIT[3]%}%，可再召唤 {C:SpiritSynergySystem.WRAITH_LOOPS[3]} 次",
 	],
 	"香火": [
-		"携带香火石即激活，只有 1 档",
+		"【刻痕】携带者每造成 {C:IncenseStoneSystem.PER_MARK} 点伤害，刻下 1 道刻痕，至多 {C:IncenseStoneSystem.MARK_CAP} 道，跨对局保留，赛季重置。多件香火石共用同一份刻痕 · 每道刻痕使携带者获得 {C:IncenseStoneSystem.ITEM_AMP%}% 增伤与 {C:IncenseStoneSystem.ITEM_DR%}% 减伤，全队获得 {C:IncenseStoneSystem.TEAM_AMP%}% 增伤与 {C:IncenseStoneSystem.TEAM_DR%}% 减伤",
 	],
 	"斧头": [
-		"装备小木斧即激活",
+		"商店每次刷新至少出现一把小木斧的概率为 {C:AxeEvolution.SHELF_P_BASE%}%，本大轮每多打一局提高 {C:AxeEvolution.SHELF_P_PER_MATCH%}%，至多 {C:AxeEvolution.SHELF_P_CAP%}% · 重复买到的小木斧转化为砍伐经验",
 	],
 	"遗物": [
-		"每件遗物 +3% 生命偷取 · 【生死界】+3% 攻击力",
-		"每件遗物 +5% 生命偷取 · 【生死界】+5% 攻击力 · 【远古之力】每次 +1%，上限 +15% · 【龟蛋加固】+1200 最大生命值，还击 40 攻击力",
-		"每件遗物 +8% 生命偷取 · 【生死界】+8% 攻击力 · 【远古之力】每次 +1.5%，上限 +25% · 【龟蛋加固】+2200 最大生命值，还击 80 攻击力",
-		"每件遗物 +10% 生命偷取 · 【生死界】+12% 攻击力 · 【远古之力】每次 +2%，上限 +35% · 【龟蛋加固】+3600 最大生命值，还击 140 攻击力 · 【觉醒】生效",
+		"每件遗物为携带者提供 +3% 生命偷取 · 【生死界】携带遗物的单位生命值高于 {C:RelicSynergySystem.HP_GATE%}% 时攻击力提高 {C:RelicSynergySystem.ATK_BONUS[0]%}%，低于 {C:RelicSynergySystem.HP_GATE%}% 时生命偷取翻倍",
+		"每件遗物为携带者提供 +5% 生命偷取 · 【生死界】攻击力提高至 {C:RelicSynergySystem.ATK_BONUS[1]%}% · 【远古之力】每 {C:RelicSynergySystem.PERIOD} 秒，全队永久 +{C:RelicSynergySystem.ANCIENT_PER_TICK[1]%}% 增伤，至多 {C:RelicSynergySystem.ANCIENT_CAP[1]%}%，持续到本局结束 · 【龟蛋加固】我方龟蛋 +{C:RelicSynergySystem.EGG_HP[1]} 最大生命值，并以 {C:RelicSynergySystem.EGG_ATK[1]} 攻击力还击射程 {C:RelicSynergySystem.EGG_RANGE} 内的敌人",
+		"每件遗物为携带者提供 +8% 生命偷取 · 【生死界】攻击力提高至 {C:RelicSynergySystem.ATK_BONUS[2]%}% · 【远古之力】每次 +{C:RelicSynergySystem.ANCIENT_PER_TICK[2]%}%，至多 {C:RelicSynergySystem.ANCIENT_CAP[2]%}% · 【龟蛋加固】+{C:RelicSynergySystem.EGG_HP[2]} 最大生命值，还击攻击力 {C:RelicSynergySystem.EGG_ATK[2]}",
+		"每件遗物为携带者提供 +10% 生命偷取 · 【生死界】攻击力提高至 {C:RelicSynergySystem.ATK_BONUS[3]%}% · 【远古之力】每次 +{C:RelicSynergySystem.ANCIENT_PER_TICK[3]%}%，至多 {C:RelicSynergySystem.ANCIENT_CAP[3]%}% · 【龟蛋加固】+{C:RelicSynergySystem.EGG_HP[3]} 最大生命值，还击攻击力 {C:RelicSynergySystem.EGG_ATK[3]} · 【觉醒】每路战场开始 {C:RelicSynergySystem.AWAKEN_SEC} 秒后，已累积的远古之力提高 {C:RelicSynergySystem.AWAKEN_BOOST%}%",
 	],
 }
 

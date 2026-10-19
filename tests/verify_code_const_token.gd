@@ -32,6 +32,20 @@ func _ready() -> void:
 	var st := ST.const_of("VenomDroneSystem.POISON_STACKS")
 	_ok("② 数组渲染成三档 a/b/c", st == "3/5/8", "POISON_STACKS → %s" % st)
 
+	# ②b 下标取数组第 i 项(羁绊逐档文案每档一行, 2026-10-19)
+	_ok("②b {C:类.常量[i]} 取第 i 项", ST.const_of("VenomDroneSystem.POISON_STACKS[1]") == "5",
+		ST.const_of("VenomDroneSystem.POISON_STACKS[1]"))
+	_ok("②b ★分母: 下标取到的值与代码数组本体一致",
+		float(ST.const_of("VenomDroneSystem.POISON_STACKS[2]")) == float(VenomDroneSystem.POISON_STACKS[2]),
+		ST.const_of("VenomDroneSystem.POISON_STACKS[2]"))
+	_ok("②b 下标 + % 逐项 ×100", ST.const_of("BowSynergySystem.EXEC_BASE[2]%") == str(int(round(BowSynergySystem.EXEC_BASE[2] * 100.0))),
+		ST.const_of("BowSynergySystem.EXEC_BASE[2]%"))
+	_ok("②b ★下标越界 → 原样吐回(不静默变 0)",
+		ST.const_of("VenomDroneSystem.POISON_STACKS[9]").begins_with("{C:"),
+		ST.const_of("VenomDroneSystem.POISON_STACKS[9]"))
+	_ok("②b ★标量带下标 → 原样吐回", ST.const_of("VenomDroneSystem.FOG_LIFE[0]").begins_with("{C:"),
+		ST.const_of("VenomDroneSystem.FOG_LIFE[0]"))
+
 	# ③ 整数不拖 .0
 	_ok("③ 6.0 渲染成 6 不是 6.0", not fog.contains("."), fog)
 

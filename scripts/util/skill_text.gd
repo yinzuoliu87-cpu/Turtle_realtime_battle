@@ -1060,6 +1060,16 @@ static func const_of(ref: String) -> String:
 		return "{C:%s}" % ref
 	var cls := ref.substr(0, dot).strip_edges()
 	var key := ref.substr(dot + 1).strip_edges()
+	## ★下标 `{C:类.常量[i]}` 取数组第 i 项(2026-10-19 羁绊逐档文案: 每档一行只写这一档的数,
+	##   整个数组渲染成 a/b/c 放不进「第 2 档」那一行)。下标越界 / 不是数组 ⇒ 原样吐回。
+	var idx := -1
+	if key.ends_with("]") and key.contains("["):
+		var lb := key.find("[")
+		var idx_s := key.substr(lb + 1, key.length() - lb - 2)
+		if not idx_s.is_valid_int():
+			return "{C:%s}" % (ref + ("%" if as_pct else ""))
+		idx = int(idx_s)
+		key = key.substr(0, lb)
 	if not _const_cache.has(cls):
 		var path := ""
 		for c in ProjectSettings.get_global_class_list():
@@ -1072,6 +1082,10 @@ static func const_of(ref: String) -> String:
 	if not m.has(key):
 		return "{C:%s}" % ref
 	var v = m[key]
+	if idx >= 0:
+		if not (v is Array) or idx >= (v as Array).size():
+			return "{C:%s}" % ref
+		v = (v as Array)[idx]
 	if as_pct and (v is float or v is int):
 		return _fmt_num(float(v) * 100.0)
 	if v is Array:
