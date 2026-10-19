@@ -6,7 +6,7 @@ extends RefCounted
 ##   门禁注入 `_transport_for_test` / 等令牌 / 看门狗, 一样都不另写。
 ##
 ## 三条 RPC(服务端 `20261019_referee_jobs.sql` + `20261019b_referee_client_flags.sql`):
-##   referee_flags()                     开关 {finals_on, gauntlet_on}(只读)
+##   referee_flags()                     开关 {finals_on, gauntlet_on}(只读); 20261019c 起多两个: stream_on / stream_version(逐帧直播 S5)
 ##   referee_submit_gauntlet(...)        周六点开战: 交阵容 + 对手快照 → 任务号 / 录像号(写)
 ##   referee_job_status(p_job_id)        查自己那一场算完没有(只读)
 ## 录像本体按录像号走老路(`SupabaseNet.fetch_match_async`, `matches` 表)。
@@ -18,6 +18,11 @@ const SB := preload("res://scripts/net/supabase.gd")
 
 const K_FINALS := "finals_on"
 const K_GAUNTLET := "gauntlet_on"
+## 逐帧直播 S5(docs/plans/20261019-服务器逐帧直播.md §4 接线 / §5 录像): 开 ⇒ 看服务器算的局一律播状态流(手机一步 sim 都不跑);
+##   关 / 问不到 / 服务端还没上 20261019c(回包里没有这两个键)⇒ 现行行为(录像本机重算), 一字不变。
+##   `stream_version` = 裁判机从哪个客户端版本起才录流(""= 不限)。本机版本低于它 ⇒ 当作关(那一版服务器没录, 拉不到)。
+const K_STREAM := "stream_on"
+const K_STREAM_VER := "stream_version"
 
 ## 观测量(门禁分母): 本进程问过几次开关 / 交过几次阵容 / 查过几次任务。
 static var flag_asks := 0
@@ -43,20 +48,33 @@ static func gauntlet_on() -> bool:
 	return bool(flags().get(K_GAUNTLET, false))
 
 
+## 看服务器算的局要不要走状态流(开关开 且 本机版本 ≥ stream_version)。
+static func stream_on() -> bool:
+	var f := flags()
+	if not bool(f.get(K_STREAM, false)):
+		return false
+	var v := str(f.get(K_STREAM_VER, ""))
+	return v == "" or not VersionGate.version_less(str(ProjectSettings.get_setting("application/config/version", "")), v)
+
+
 ## 纯函数: `referee_flags` 回包 → {finals_on, gauntlet_on}; 问不到 ⇒ {}(保留上一次的)。
 ##   ★404 = 服务端没有这个函数(迁移没上)⇒ 明确是「关」, 不是「不知道」。
 static func parse_flags(ok: bool, code: int, body: String) -> Dictionary:
 	if not ok:
 		return {}
 	if code == 404:
-		return {K_FINALS: false, K_GAUNTLET: false}
+		return {K_FINALS: false, K_GAUNTLET: false, K_STREAM: false, K_STREAM_VER: ""}
 	if code < 200 or code >= 300:
 		return {}
 	var j := JSON.new()
 	if j.parse(body) != OK or not (j.data is Dictionary):
 		return {}
 	var d: Dictionary = j.data
-	return {K_FINALS: bool(d.get(K_FINALS, false)), K_GAUNTLET: bool(d.get(K_GAUNTLET, false))}
+	## stream_* 缺(服务端还是 20261019b 那一版)⇒ 关
+	var sv = d.get(K_STREAM_VER, "")
+	return {K_FINALS: bool(d.get(K_FINALS, false)), K_GAUNTLET: bool(d.get(K_GAUNTLET, false)),
+		K_STREAM: bool(d.get(K_STREAM, false)) if d.get(K_STREAM, false) is bool else false,
+		K_STREAM_VER: str(sv) if sv is String else ""}
 
 
 ## 问一次开关, 问到就写进存档(变了才存)。`done.call(flags)` 恰好一次({} = 没问到)。返回 false = 没发(没配后端)。
@@ -82,6 +100,10 @@ static func note_flags(f: Dictionary) -> void:
 	if GameState == null or not f.has(K_FINALS):
 		return
 	var nf := {K_FINALS: bool(f[K_FINALS]), K_GAUNTLET: bool(f.get(K_GAUNTLET, false))}
+	## 只改周日 / 周六其中一个的调用方(周六服务端回 off)不带 stream_* ⇒ 沿用存档里那份, 别把直播开关顺手关掉
+	var old: Dictionary = GameState.referee_flags if GameState.referee_flags is Dictionary else {}
+	nf[K_STREAM] = bool(f.get(K_STREAM, old.get(K_STREAM, false)))
+	nf[K_STREAM_VER] = str(f.get(K_STREAM_VER, old.get(K_STREAM_VER, "")))
 	if nf == GameState.referee_flags:
 		return
 	GameState.referee_flags = nf

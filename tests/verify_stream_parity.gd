@@ -6,7 +6,7 @@ extends Node
 ## 在**同一批步号**拍同样的快照, 逐项比:
 ##   · 采样步(服务器每 2 步跑一次渲染步、采一次样的那些步, 每秒取一个):
 ##       单位: 集合相同; 位置 / 高度 / 血 / 盾 / 最大血 在量化容差内, 存活完全相同
-##       镜像节点: id 集合相同; 类名 / 显隐 / 帧号 / 贴图完全相同(程序贴图占位是已知例外, 计数); 位置 / 旋转 / 缩放 / 颜色在量化容差内
+##       镜像节点: id 集合相同; 类名 / 显隐 / 帧号 / 贴图 / 网格完全相同(程序贴图 / 程序网格比内容签名: 像素 / 顶点, S3); 位置 / 旋转 / 缩放 / 颜色在量化容差内
 ##       `_world` 全量普查(按类名计数, 含地图 / 单位外观 / 手机渲染步按状态造的特效): 完全相同
 ##   · 采样步后一步(两次采样中间, 手机在插值): 单位位置与原生 sim 的差 ≤ 插值容差(剖面量出来的)
 ##   · 飘字: 整局「新冒出来的飘字 Label 文本」序列完全相同(两边都按 `_ui_layer` 新加的 Label 普查, 不经录流器)
@@ -135,8 +135,9 @@ func _play_and_compare(tag: String, chunks: Array, meta: Dictionary, nat: Dictio
 	print("  [量] %s 播放: 解块 %d / 应用 %d 步 / 镜像建 %d 删 %d 改 %d · 占位 程序贴图 %d 程序网格 %d 其它 %d · 父兜底 %d · 事件 %s · 状态 %s %s" % [tag,
 		p.chunks_decoded, p.steps_applied, p.mirror.built, p.mirror.deleted, p.mirror.sets, p.mirror.ph_gen_tex, p.mirror.ph_proc_mesh,
 		p.mirror.ph_other, p.mirror.parent_fallback, str(p.events), p.state, p.err])
-	print("  [量] %s 换父节点 %d 次 · keyframe 兜底删 %d" % [tag, p.mirror.reparents, p.mirror.kf_dropped])
-	print("  [量] %s 采样点 %d · 单位·点 %d · 节点·点 %d · 误差上限 位置 %.5f 旋转 %.6f 缩放 %.6f 颜色 %.5f 单位 %.5f · 已知例外(S3) 程序贴图 节点·点 %d / 程序网格 节点·点 %d" % [tag,
+	print("  [量] %s 换父节点 %d 次 · keyframe 兜底删 %d · 时停全屏层 开过 %d 次(流里 %d 次)、在时停里的采样点 %d · 出处键参数别名 %d" % [tag,
+		p.mirror.reparents, p.mirror.kf_dropped, p.mirror.fx_built, int(meta.get("ts_screen", 0)), int(st.get("ts_n", 0)), p.mirror.gen_alias])
+	print("  [量] %s 采样点 %d · 单位·点 %d · 节点·点 %d · 误差上限 位置 %.5f 旋转 %.6f 缩放 %.6f 颜色 %.5f 单位 %.5f · 程序贴图 节点·点 %d / 程序网格 节点·点 %d(S3 起逐个比内容)" % [tag,
 		int(st["cmp"]), int(st["u_n"]), int(st["n_n"]), float(st["pos_max"]), float(st["rot_max"]), float(st["scl_max"]), float(st["col_max"]),
 		float(st["ux_max"]), int(st["tex_gen"]), int(st["mesh_proc"])])
 	var il: Array = st["i_list"]
@@ -153,6 +154,14 @@ func _play_and_compare(tag: String, chunks: Array, meta: Dictionary, nat: Dictio
 	_ok("★★%s 镜像节点: id 集合 / 类名 / 显隐 / 帧号 / 贴图一致, 变换与颜色在量化容差内" % tag, (st["n_bad"] as Array).is_empty(),
 		"缺 %d 多 %d · %s" % [int(st["missing_n"]), int(st["extra_n"]), str((st["n_bad"] as Array).slice(0, 4))])
 	_ok("★★%s _world 全量普查(按类名计数)一致" % tag, (st["c_bad"] as Array).is_empty(), str((st["c_bad"] as Array).slice(0, 3)))
+	## S3: 占位清零 —— 程序贴图 / 程序网格全部按出处键现生成(占位次数 = 0, 生成失败 = 0); 分母: 现生成过 > 0 次
+	_ok("分母 · %s 程序网格比过内容的节点·点 %d > 流里还没发新一代(按自己频率发)而没比的 %d" % [tag, int(st["mesh_proc"]), int(st.get("mesh_lag", 0))],
+		int(st["mesh_proc"]) >= int(st.get("mesh_lag", 0)))
+	_ok("★%s 时停全屏层: 手机开过的次数 %d = 流里服务器时停次数 %d" % [tag, p.mirror.fx_built, int(meta.get("ts_screen", 0))],
+		p.mirror.fx_built == int(meta.get("ts_screen", 0)))
+	_ok("★★%s 占位 = 0: 程序贴图 %d / 程序网格 %d / 其它 %d / 生成失败 %d %s; 现生成 %d 次、复用 %d 次" % [tag, p.mirror.ph_gen_tex,
+		p.mirror.ph_proc_mesh, p.mirror.ph_other, p.mirror.gen_fail, str(p.mirror.gen_fail_ids), p.mirror.gen_built, p.mirror.gen_reused],
+		p.mirror.ph_gen_tex == 0 and p.mirror.ph_proc_mesh == 0 and p.mirror.ph_other == 0 and p.mirror.gen_fail == 0 and p.mirror.gen_built > 0)
 	_ok("★%s 插值: 采样中间一步手机插出的 = 前后两次采样的中点(偏离 > %.2f 的 %d / %d 点, 最大偏离 %.4f), 与原生真位置差最大 %.3f ≤ %.1f 像素" % [tag,
 		TOL_MID, int(st.get("i_over", 0)), int(st.get("i_seg", 0)), float(st.get("i_mid_max", 0.0)), float(st["i_max"]), TOL_INTERP],
 		int(st.get("i_over", 0)) == 0 and int(st.get("i_seg", 0)) > 0 and float(st["i_max"]) <= TOL_INTERP)
@@ -258,15 +267,17 @@ func _cmp(s: int, a: Dictionary, b: Dictionary, st: Dictionary) -> void:
 			why = "显隐 %s/%s" % [x[1], y[1]]
 		elif int(x[5]) != int(y[5]):
 			why = "帧 %d/%d" % [int(x[5]), int(y[5])]
-		elif str(x[6]) != str(y[6]) and not str(x[6]).begins_with("<gen:"):
+		elif str(x[6]) != str(y[6]):
 			why = "贴图 %s/%s" % [x[6], y[6]]
-		elif str(x[9]) != str(y[9]) and not str(x[9]).begins_with("<proc:"):
+		elif str(x[9]) != str(y[9]) and str(x[9]) != "<lag>":
 			why = "网格 %s/%s" % [x[9], y[9]]
-		## 已知例外(S3): 原生是程序贴图 / 程序网格 ⇒ 手机只能画占位(同尺寸软圆 / 空网格)。计数, 不判红。
+		## S3 起不再豁免: 程序贴图 / 程序网格按出处键现生成, 比**内容签名**(像素 / 顶点)必须相同。下面只计数(分母)。
 		if str(x[6]).begins_with("<gen:"):
 			st["tex_gen"] = int(st["tex_gen"]) + 1
 		if str(x[9]).begins_with("<proc:"):
 			st["mesh_proc"] = int(st["mesh_proc"]) + 1
+		if str(x[9]) == "<lag>":
+			st["mesh_lag"] = int(st.get("mesh_lag", 0)) + 1
 		if why == "" and x[2] != null:
 			var dp: float = (x[2] as Vector3).distance_to(y[2])
 			var dr := 0.0
@@ -298,6 +309,11 @@ func _cmp(s: int, a: Dictionary, b: Dictionary, st: Dictionary) -> void:
 		if not na.has(id):
 			st["extra_n"] = int(st["extra_n"]) + 1
 			(st["n_bad"] as Array).append("步%d 节点%d(%s) 原生没有" % [s, id, str(nb[id][0])])
+	## S3: 时停全屏层(CanvasLayer, 不在 _world 里): 服务器在时停里 ⇔ 手机全屏层开着
+	if bool(a.get("ts_screen", false)):
+		st["ts_n"] = int(st.get("ts_n", 0)) + 1
+	if bool(a.get("ts_screen", false)) != bool(b.get("ts_screen", false)):
+		(st["n_bad"] as Array).append("步%d 时停全屏层 原生 %s / 播放 %s" % [s, str(a.get("ts_screen")), str(b.get("ts_screen"))])
 	var ca: Dictionary = a["census"]
 	var cb: Dictionary = b["census"]
 	var diff := {}

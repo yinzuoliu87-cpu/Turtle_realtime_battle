@@ -269,6 +269,8 @@ const GROUND_Y := 0.07
 ## 节点记账用的 meta 键(同 SynergyVfx.META_KEY 的做法: 程序生成的网格没有 resource_path,
 ## 按名字数不可靠, 一律打 meta)
 const META_KEY := "venom_drone_vfx"
+## S3 逐帧直播出处键: 本文件生成函数的路径(VfxTex.tag 第 4 个参数)
+const SRC := "res://scripts/scenes/battle/venom_drone_vfx.gd"
 
 ## 配色: 毒绿 / 尾焰青绿 / 脚环黄绿
 const COL_FOG := Color(0.42, 0.92, 0.30, 1.0)
@@ -425,8 +427,13 @@ static func tail_phase_speed(f: float = FLAP_HZ) -> float:
 ## 做法: 16x16 径向衰减 + **量化成 5 档**(像素风要台阶不要高斯糊) + NEAREST。
 var _tex_puff: ImageTexture = null
 func _puff_tex() -> ImageTexture:
-	if _tex_puff != null:
-		return _tex_puff
+	if _tex_puff == null:
+		_tex_puff = gen_puff_tex()
+	return _tex_puff
+
+
+## 雾颗粒贴图的纯函数(S3: 手机按出处键调同一个函数现生成)
+static func gen_puff_tex() -> ImageTexture:
 	var n: int = 16
 	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
 	var c: float = float(n - 1) * 0.5
@@ -437,8 +444,7 @@ func _puff_tex() -> ImageTexture:
 			a = a * a
 			a = floor(a * 5.0) / 5.0
 			img.set_pixel(x, y, Color(1.0, 1.0, 1.0, a))
-	_tex_puff = ImageTexture.create_from_image(img)
-	return _tex_puff
+	return VfxTex.tag(ImageTexture.create_from_image(img), "gen_puff_tex", [], SRC)
 
 
 ## 一团雾的粒子体。发射盘半径每帧由 `apply_fog` 按 `fog_sigma(t)` 写。
@@ -494,6 +500,15 @@ func _make_fog_particles() -> GPUParticles3D:
 	ps.draw_pass_1 = qm
 	ps.emitting = true
 	return ps
+
+
+## S3 出处键包装: 缓存网格挂上「调哪个纯函数能重建它」(网格本身仍由 _build_* 建, 门禁也直接调那几个)
+static func gen_fog_mesh() -> ArrayMesh:
+	return VfxTex.tag(_build_fog_mesh(), "gen_fog_mesh", [], SRC)
+
+
+static func gen_body_mesh() -> ArrayMesh:
+	return VfxTex.tag(_build_body_mesh(), "gen_body_mesh", [], SRC)
 
 
 static func _build_fog_mesh() -> ArrayMesh:
@@ -616,7 +631,7 @@ func make_fog(pos2d: Vector2):
 	if battle == null or not is_instance_valid(battle._world):
 		return null
 	if _cache_fog == null:
-		_cache_fog = _build_fog_mesh()
+		_cache_fog = gen_fog_mesh()
 	if _cache_rim == null:
 		_cache_rim = _build_rim_mesh()
 	var root := Node3D.new()
@@ -679,7 +694,7 @@ func make_drone():
 	if battle == null or not is_instance_valid(battle._world):
 		return null
 	if _cache_body == null:
-		_cache_body = _build_body_mesh()
+		_cache_body = gen_body_mesh()
 	var root := Node3D.new()
 	root.set_meta(META_KEY, "venom_drone")
 	## ── 蛾体三段 ── 全用同一个单位球网格, 只差 scale/position/颜色 ⇒ 零额外网格。
@@ -689,25 +704,21 @@ func make_drone():
 	_add_seg(root, "head", HEAD_X, HEAD_R, COL_HEAD, 7)
 	## 触角: 全身唯一的冷色高光, 静态几何(不随扇翅变) ⇒ 建一次就够
 	var ant := MeshInstance3D.new()
-	ant.mesh = ImmediateMesh.new()
+	ant.mesh = gen_antenna_mesh()
 	ant.material_override = _mat(false, 8)
 	(ant.material_override as StandardMaterial3D).albedo_color = COL_ANTENNA
 	ant.name = "antenna"
 	root.add_child(ant)
-	var ia := ant.mesh as ImmediateMesh
-	ia.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
-	_emit_antennae(ia)
-	ia.surface_end()
 	## 翅膀: 半透明(MIX) —— 昆虫翅是透的, 扇动时能看见开合
 	var wing := MeshInstance3D.new()
-	wing.mesh = ImmediateMesh.new()
+	wing.mesh = VfxTex.gen_empty_mesh()
 	wing.material_override = _mat(false, 4, false)
 	(wing.material_override as StandardMaterial3D).albedo_color = COL_WING
 	wing.name = "wing"
 	root.add_child(wing)
 	## 尾巴: 加性发光 —— 它是毒雾的出口。★亮度已压到头部之下(见 COL_TAIL 那段)
 	var flap := MeshInstance3D.new()
-	flap.mesh = ImmediateMesh.new()
+	flap.mesh = VfxTex.gen_empty_mesh()
 	flap.material_override = _mat(false, 3)
 	(flap.material_override as StandardMaterial3D).albedo_color = COL_TAIL
 	flap.name = "flap"
@@ -736,24 +747,41 @@ func apply_drone(root, pos2d: Vector2, hd: float, t: float) -> void:
 		return
 	root.position = battle._world_pos(pos2d, FLY_H + bob(t))
 	root.basis = Basis(Vector3.UP, -hd)
+	## S3: 每次新建一份赋给节点(原地 clear_surfaces 重画录流看不见: 网格对象没换)
 	var wing = root.get_node_or_null("wing")
 	if wing != null:
-		var iw := (wing as MeshInstance3D).mesh as ImmediateMesh
-		if iw != null:
-			iw.clear_surfaces()
-			iw.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
-			_emit_wings(iw, t)
-			iw.surface_end()
+		(wing as MeshInstance3D).mesh = gen_drone_wings(t)
 	var flap = root.get_node_or_null("flap")
 	if flap == null:
 		return
-	var im := (flap as MeshInstance3D).mesh as ImmediateMesh
-	if im == null:
-		return
-	im.clear_surfaces()
+	(flap as MeshInstance3D).mesh = gen_drone_tail(t)
+
+
+## 触角网格(静态几何, 建一次)
+static func gen_antenna_mesh() -> ImmediateMesh:
+	var ia := ImmediateMesh.new()
+	ia.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+	_emit_antennae(ia)
+	ia.surface_end()
+	return VfxTex.tag(ia, "gen_antenna_mesh", [], SRC)
+
+
+## t 时刻的双翅网格
+static func gen_drone_wings(t: float) -> ImmediateMesh:
+	var iw := ImmediateMesh.new()
+	iw.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+	_emit_wings(iw, t)
+	iw.surface_end()
+	return VfxTex.tag(iw, "gen_drone_wings", [t], SRC)
+
+
+## t 时刻的尾焰网格
+static func gen_drone_tail(t: float) -> ImmediateMesh:
+	var im := ImmediateMesh.new()
 	im.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
 	_emit_tail(im, t)
 	im.surface_end()
+	return VfxTex.tag(im, "gen_drone_tail", [t], SRC)
 
 
 ## 一对触角: 从头前斜向前上方伸出。**静态**几何(不参与扇翅), 只负责钉住"哪边是头"。
@@ -854,7 +882,7 @@ func make_ring():
 	if battle == null or not is_instance_valid(battle._world):
 		return null
 	var mi := MeshInstance3D.new()
-	mi.mesh = ImmediateMesh.new()
+	mi.mesh = gen_ring_marks(0, 0.0, 0.0)
 	mi.material_override = _mat(true, 9)
 	mi.set_meta(META_KEY, "venom_ring")
 	mi.set_meta("marks", -1)
@@ -876,12 +904,17 @@ func apply_ring(mi, pos2d: Vector2, n: int) -> void:
 	if int(mi.get_meta("marks", -1)) == nn:
 		return
 	mi.set_meta("marks", nn)
-	var im := (mi as MeshInstance3D).mesh as ImmediateMesh
-	im.clear_surfaces()
-	if nn <= 0:
-		return
 	var rin: float = RING_R * float(battle.WS) * 0.74
 	var rout: float = RING_R * float(battle.WS)
+	## S3: 层数变了就新建一份(原地 clear_surfaces 重画录流看不见)
+	(mi as MeshInstance3D).mesh = gen_ring_marks(nn, rin, rout)
+
+
+## 脚环刻痕网格: nn 个刻痕(nn <= 0 = 空网格)
+static func gen_ring_marks(nn: int, rin: float, rout: float) -> ImmediateMesh:
+	var im := ImmediateMesh.new()
+	if nn <= 0:
+		return VfxTex.tag(im, "gen_ring_marks", [nn, rin, rout], SRC)
 	im.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
 	for k in range(nn):
 		var th: float = float(k) / float(RING_MARK_MAX) * TAU
@@ -894,3 +927,4 @@ func apply_ring(mi, pos2d: Vector2, n: int) -> void:
 		_emit_tri(im, p0, p1, p2, 0.55, 1.0, 1.0)
 		_emit_tri(im, p0, p2, p3, 0.55, 1.0, 0.55)
 	im.surface_end()
+	return VfxTex.tag(im, "gen_ring_marks", [nn, rin, rout], SRC)

@@ -88,7 +88,8 @@ class CovRec extends StreamRecorder:
 	func _ensure(rid: int) -> void:
 		if rid > 0 and not _res_sent.has(rid):
 			var o = (_res_ref[rid] as WeakRef).get_ref()
-			host._on_res(rid, int(_res_kind[rid]), o, ctx)
+			## 种类按资源此刻的样子重算(先见到、后挂出处键的, 录流器在 _ensure 里才升级种类)
+			host._on_res(rid, StreamRecorder._kind_of(o) if o != null else int(_res_kind[rid]), o, ctx)
 		super._ensure(rid)
 
 
@@ -540,7 +541,8 @@ func _on_alarm(prop_key: String, t) -> void:
 	_hit("alarm|%s|%s" % [prop_key, str(s[0])], str(s[1]))
 
 
-const RES_NAMES := {2: "程序贴图", 3: "程序网格", 4: "内联shader", 5: "其它无路径资源"}
+## 手机画不出来的几种(带出处键的 RES_GEN 能现生成、内联 shader 带源码能编 ⇒ 都不算; S3 起内联 shader 不再列, 2026-10-19)
+const RES_NAMES := {2: "程序贴图", 3: "程序网格", 5: "其它无路径资源"}
 func _on_res(_rid: int, kind: int, o, t) -> void:
 	if not RES_NAMES.has(kind):
 		return
@@ -657,7 +659,8 @@ func _judge(pick: Array) -> void:
 	var zero_ok := {}
 	for z in known.get("zero_den", []):
 		zero_ok[str(z)] = true
-	_ok("分母 · 已知清单读到了(%d 项)" % kset.size(), kset.size() > 0)
+	## S3 起已知清单清零(2026-10-19): 判「读到了」看文件解析出 known 数组, 不再要求非空(空 = 全部补完)
+	_ok("分母 · 已知清单读到了(%d 项; 0 = S3 已清零)" % kset.size(), known.get("known") is Array)
 	_ok("分母 · 跑了 %d 个对象" % pick.size(), pick.size() > 0 and _results.size() == pick.size())
 	var no_den: Array = []
 	var no_nodes: Array = []

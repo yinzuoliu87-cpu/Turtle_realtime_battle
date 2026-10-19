@@ -279,8 +279,13 @@ frames_for () {
     #   no_sim = 录一局 + 引擎每帧真驱动播完(倍速 40) + 两遍坏块; seek = 两局各录一遍 + 每局 3 个目标各顺播 / 跳播一遍。
     #   本地实测 parity 2357 帧 / 220 秒、seek 1904 帧、no_sim 512 帧(2026-10-19); 慢机器每帧步数少、帧数涨 ⇒ 都给 20000
     verify_stream_parity) echo 20000 ;;
+    verify_stream_hud_parity) echo 20000 ;;   # 播放端 HUD(2026-10-19): 同 parity 两局裁判局, 每 30 步让一帧
+    verify_stream_end_exit) echo 20000 ;;   # 播放端收尾与退出(2026-10-19): 录一局 + 播两遍到结尾, 实测约 1000 帧
     verify_stream_no_sim) echo 20000 ;;
     verify_stream_seek) echo 20000 ;;
+    # 逐帧直播 S5: 录一局(约 10 秒)+ 本机 HTTP 服务上按墙钟等退避 / 断网 / 426(钉 120 帧/秒, 本机约 1.1 万帧 · 90 秒)
+    verify_stream_transport) echo 40000 ;;
+    verify_referee_watch_stream) echo 40000 ;;
     # 录流覆盖扫描(2026-10-19): 200 个对象(28 龟×3 技 / 95 件装备 / 12 羁绊 / 小将 / 大师)拆四片, 每片约 50 局 × (每 60 步让一帧 ≈ 22 帧 + 建场 4 帧) ≈ 1300 帧、本地约 80 秒; 给到 6000
     verify_stream_coverage|verify_stream_coverage_2|verify_stream_coverage_3|verify_stream_coverage_4) echo 6000 ;;
     # 投降删除(2026-10-19): 录两局(各到第一路开打后 90 帧判负收尾, 每局约 300 帧) + 播一局(约 500 帧) + 主菜单前一场; 给到 8000

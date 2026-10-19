@@ -133,6 +133,13 @@ func _on_match(res: Dictionary) -> void:
 		return
 	RW.RF._cache(match_id, raw)            # 战绩页之后能在本机直接看
 	_to(RW.ST_PLAY, "")
-	var why: String = RW.play_settled(get_tree(), rec, view)
-	if why != "":
-		_to(RW.ST_ERROR, RW.result_line(view) + " · " + RW.TXT_UNPLAYABLE)
+	## 逐帧直播 S5: 开关关 ⇒ 同步走 `play_settled`(本机重算, 与改之前一样); 开 ⇒ 播服务器的状态流
+	RW.play_settled_route(get_tree(), rec, view, _on_routed)
+
+
+## `play_settled_route` 的回调, 恰好一次(匹配屏已离场 ⇒ 不回调)。
+func _on_routed(code: String, msg: String) -> void:
+	if code == "":
+		return
+	var tail := msg if (code == "update_required" or code == "offline" or code == "no_stream") else RW.TXT_UNPLAYABLE
+	_to(RW.ST_ERROR, RW.result_line(view) + " · " + tail)

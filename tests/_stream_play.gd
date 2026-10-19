@@ -31,10 +31,39 @@ static func _tex_key(t) -> String:
 	var p := str((t as Resource).resource_path)
 	if p != "" and p.find("::") < 0:
 		return p
-	return "<gen:%s>" % (t as Object).get_class()
+	## S3: 没有路径的贴图(程序生成 / 渐变)比**像素内容**: 手机按出处键现生成的必须与服务器那张逐像素相同
+	return "<gen:%s:%s>" % [(t as Object).get_class(), _content_sig(t)]
 
 
-static func _nodes_of(nodes_by_id: Dictionary) -> Dictionary:
+## 内容签名(按对象缓存: 同一张贴图 / 同一代网格只算一次)。贴图 = 尺寸 + 像素; 网格 = 每个面的顶点 / 颜色 / UV / 索引。
+static var _sig_cache := {}
+static func _content_sig(r) -> String:
+	var iid: int = (r as Object).get_instance_id()
+	var gm = (r as Object).get_meta(&"stream_gen") if (r as Object).has_meta(&"stream_gen") else null
+	var ck: Array = _sig_cache.get(iid, [])
+	if not ck.is_empty() and is_same(ck[0], gm) and is_same(ck[2], r):
+		return str(ck[1])
+	var sig := ""
+	if r is Texture2D:
+		var img: Image = (r as Texture2D).get_image()
+		sig = "%dx%d#%d" % [img.get_width(), img.get_height(), hash(img.get_data())] if img != null and not img.is_empty() else "empty"
+	elif r is Mesh:
+		var m: Mesh = r
+		var parts := PackedStringArray()
+		for si in range(m.get_surface_count()):
+			var arr: Array = m.surface_get_arrays(si)
+			var keep: Array = []
+			for ai in [Mesh.ARRAY_VERTEX, Mesh.ARRAY_COLOR, Mesh.ARRAY_TEX_UV, Mesh.ARRAY_INDEX]:
+				keep.append(arr[ai] if ai < arr.size() else null)
+			parts.append("%d" % hash(keep))   # 不带类名 / 图元: 服务器的 ImmediateMesh 在手机上按数组重建成 ArrayMesh(VfxTex.snap), 比的是内容
+		sig = "s%d[%s]" % [m.get_surface_count(), ",".join(parts)]
+	_sig_cache[iid] = [gm, sig, r]
+	return sig
+
+
+## `lag`(原生一侧): 节点 id → true = 这一步节点上的生成网格比流里发出去的那一代新(每步重建的网格在流里按自己的频率发,
+##   触手待机 15 Hz)。这种点不比网格内容, 记成 "<lag>"(门禁另数: 比过的必须多于没比的, 防「从来不发」也全绿)。
+static func _nodes_of(nodes_by_id: Dictionary, lag: Dictionary = {}) -> Dictionary:
 	var out := {}
 	for id in nodes_by_id:
 		var n = nodes_by_id[id]
@@ -57,9 +86,11 @@ static func _nodes_of(nodes_by_id: Dictionary) -> Dictionary:
 			row[7] = (n as Label3D).modulate
 		elif n is MeshInstance3D:
 			var m: Mesh = (n as MeshInstance3D).mesh
-			if m != null:
+			if lag.has(int(id)):
+				row[9] = "<lag>"
+			elif m != null:
 				var mp := str(m.resource_path)
-				row[9] = mp if (mp != "" and mp.find("::") < 0) else ("<proc:%s>" % m.get_class() if (m is ArrayMesh or m is ImmediateMesh) else "<param:%s>" % m.get_class())
+				row[9] = mp if (mp != "" and mp.find("::") < 0) else ("<proc:%s>" % _content_sig(m) if (m is ArrayMesh or m is ImmediateMesh) else "<param:%s>" % m.get_class())
 		out[int(id)] = row
 	return out
 
@@ -89,11 +120,17 @@ static func snap_native(rec: StreamRecorder) -> Dictionary:
 				break
 	var nb := {}
 	var own := {}
+	var mo := {}
 	for t in rec._tn:
 		nb[(t as StreamRecorder.TN).id] = (t as StreamRecorder.TN).n
+		var tt: StreamRecorder.TN = t
+		if tt.gm != null and tt.kind == StreamRecorder.K_MESH and is_instance_valid(tt.n) and not is_same((tt.n as MeshInstance3D).mesh, tt.mesh):
+			mo[tt.id] = true
 		if (t as StreamRecorder.TN).unit != null:
 			own[(t as StreamRecorder.TN).id] = "%d %s" % [(t as StreamRecorder.TN).uidx, (t as StreamRecorder.TN).ukey]
-	var out := {"units": _units_of(ub), "nodes": _nodes_of(nb), "census": census(rec.battle._world), "own": own}
+	## S3: 时停全屏层此刻该不该开着(服务器 = 在时停里)
+	var ts_on: bool = not (rec.battle._timestop._ts_active as Array).is_empty()
+	var out := {"units": _units_of(ub), "nodes": _nodes_of(nb, mo), "census": census(rec.battle._world), "own": own, "ts_screen": ts_on}
 	if OS.get_environment("S2_DIAG") != "":
 		out["loose"] = loose(rec.battle._world, nb)
 	return out
@@ -101,7 +138,10 @@ static func snap_native(rec: StreamRecorder) -> Dictionary:
 
 ## 播放一侧
 static func snap_player(p: StreamPlayer) -> Dictionary:
-	var out := {"units": _units_of(p.units), "nodes": _nodes_of(p.mirror.nodes), "census": census(p.battle._world)}
+	## S3: 手机的时停全屏层真开着(伪节点在 + 灰世界层可见)
+	var ov = p.battle._timestop._ts_overlay
+	var ts_on: bool = not p.mirror.fx_nodes.is_empty() and ov != null and is_instance_valid(ov) and bool(ov.visible)
+	var out := {"units": _units_of(p.units), "nodes": _nodes_of(p.mirror.nodes), "census": census(p.battle._world), "ts_screen": ts_on}
 	if OS.get_environment("S2_DIAG") != "":
 		out["loose"] = loose(p.battle._world, p.mirror.nodes)
 	return out

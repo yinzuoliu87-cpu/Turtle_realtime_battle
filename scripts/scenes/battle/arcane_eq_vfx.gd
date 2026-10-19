@@ -1,5 +1,7 @@
 class_name ArcaneEqVfx
 extends RefCounted
+## 录流出处键: 本文件的生成函数路径(VfxTex.tag 用)
+const SRC := "res://scripts/scenes/battle/arcane_eq_vfx.gd"
 ## arcane_eq_vfx.gd — 法器三件新装备的演出层
 ## 088 涨潮碑 · 089 蚀月符纸 · 090 镇海杵
 ##
@@ -415,8 +417,13 @@ func _talisman_tex() -> Texture2D:
 	if _tex_talisman_file != null:
 		return _tex_talisman_file
 	if _tex_talisman == null:
-		_tex_talisman = ImageTexture.create_from_image(talisman_tex_image())
+		_tex_talisman = gen_talisman_tex()
 	return _tex_talisman
+
+
+## 符纸兜底贴图(纯函数; 录流出处键 gen_talisman_tex, 手机按它现生成)。
+static func gen_talisman_tex() -> ImageTexture:
+	return VfxTex.tag(ImageTexture.create_from_image(talisman_tex_image()), "gen_talisman_tex", [], SRC)
 
 
 ## ⑦ 起跳影子的收缩比例。性质(门禁逐条验): f(0) ≡ 1 · f(apex) ≡ LEAP_SHADOW_MIN · 严格单调减。
@@ -478,8 +485,13 @@ static func _build_ring() -> ArrayMesh:
 
 func _ring_mesh() -> ArrayMesh:
 	if _mesh_ring == null:
-		_mesh_ring = _build_ring()
+		_mesh_ring = gen_arcane_ring()
 	return _mesh_ring
+
+
+## 录流出处键入口: `_build_ring` 建出来挂 stream_gen(手机按它现生成)。
+static func gen_arcane_ring() -> ArrayMesh:
+	return VfxTex.tag(_build_ring(), "gen_arcane_ring", [], SRC)
 
 
 ## 088 专用的【区域边界】环(单位半径)。★与 `_build_ring` 分开是**有意的**:
@@ -515,8 +527,13 @@ static func _build_boundary_ring() -> ArrayMesh:
 
 func _boundary_mesh() -> ArrayMesh:
 	if _mesh_boundary == null:
-		_mesh_boundary = _build_boundary_ring()
+		_mesh_boundary = gen_arcane_boundary()
 	return _mesh_boundary
+
+
+## 录流出处键入口: `_build_boundary_ring` 建出来挂 stream_gen(手机按它现生成)。
+static func gen_arcane_boundary() -> ArrayMesh:
+	return VfxTex.tag(_build_boundary_ring(), "gen_arcane_boundary", [], SRC)
 
 
 ## 边界环的材质: **MIX 而不是 ADD**。ADD 会把硬边和刻度一起加成一片白, 边界反而更糊
@@ -850,8 +867,13 @@ func _splash_sheet() -> Texture2D:
 ## 做法: 16×16 径向衰减 + **量化成 5 档**(像素风要的是台阶不是高斯糊) + NEAREST。
 var _tex_mist: ImageTexture = null
 func _mist_tex() -> ImageTexture:
-	if _tex_mist != null:
-		return _tex_mist
+	if _tex_mist == null:
+		_tex_mist = gen_mist_tex()
+	return _tex_mist
+
+
+## 雾粒贴图的画图本体(纯函数; 录流出处键 gen_mist_tex, 手机按它现生成)。
+static func gen_mist_tex() -> ImageTexture:
 	var n: int = 16
 	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
 	var c: float = float(n - 1) * 0.5
@@ -863,8 +885,7 @@ func _mist_tex() -> ImageTexture:
 			## 量化: 连续渐变 → 5 档台阶(像素风)
 			a = floor(a * 5.0) / 5.0
 			img.set_pixel(x, y, Color(1.0, 1.0, 1.0, a))
-	_tex_mist = ImageTexture.create_from_image(img)
-	return _tex_mist
+	return VfxTex.tag(ImageTexture.create_from_image(img), "gen_mist_tex", [], SRC)
 
 
 ## 预警范围内的**雷雾粒子**。整个圆盘都在冒, 不是一圈边。
@@ -1017,7 +1038,8 @@ func _warn_band(root: Node3D, a: Vector2, b: Vector2, half_w_px: float, col: Col
 	for idx in [0, 1, 2, 0, 2, 3]:
 		st.add_vertex(v[idx])
 	var mi := MeshInstance3D.new()
-	mi.mesh = st.commit()
+	## 建一次、6 个顶点 ⇒ 拍下来当出处键(录流时才干活)
+	mi.mesh = VfxTex.snap(st.commit())
 	mi.material_override = _mat(col, 11)
 	root.add_child(mi)
 
@@ -1260,6 +1282,8 @@ func wave_path(pts: Array) -> Node3D:
 	var quads: Array = []
 	for k2 in range(FLOW_SEGS - 1):
 		var mi := MeshInstance3D.new()
+		## 第一次 tick 画之前先挂一份带出处键的空网格(录流不会把它当占位)
+		mi.mesh = VfxTex.gen_empty_mesh()
 		var wm := _mat_solid(COL_WATER, 12)
 		## ⚠ 带子必须**双面可见**: `_mat_solid` 默认 CULL_BACK, 而这些四边形是每帧按
 		##   `perp` 现算顶点的 —— 头尾方向一变绕向就翻, 整条带子会被剔掉。
@@ -1466,23 +1490,15 @@ func tick(delta: float) -> void:
 					var f1: float = float(k2 + 1) / float(maxi(1, quads.size()))
 					var w0: float = lerpf(FLOW_HEAD_PX, FLOW_TAIL_PX, f0)
 					var w1: float = lerpf(FLOW_HEAD_PX, FLOW_TAIL_PX, f1)
-					var st := SurfaceTool.new()
-					st.begin(Mesh.PRIMITIVE_TRIANGLES)
-					var v: Array = [
-						battle._world_pos(p0 + perp * w0, float(c0["h"])),
-						battle._world_pos(p1 + perp * w1, float(c1["h"])),
-						battle._world_pos(p1 - perp * w1, float(c1["h"])),
-						battle._world_pos(p0 - perp * w0, float(c0["h"]))]
 					## 沿身体的不透明度: 头 1.0 → 尾 0.15(一股水的头是实的, 尾巴散开)
 					var a0v: float = lerpf(1.0, 0.15, f0)
 					var a1v: float = lerpf(1.0, 0.15, f1)
-					var vc: Array = [
-						Color(1, 1, 1, a0v), Color(1, 1, 1, a1v),
-						Color(1, 1, 1, a1v), Color(1, 1, 1, a0v)]
-					for idx in [0, 1, 2, 0, 2, 3]:
-						st.set_color(vc[idx])
-						st.add_vertex(v[idx])
-					(qn as MeshInstance3D).mesh = st.commit()
+					## ★每帧新建一份(录流按网格对象判换没换); 顶点在这里算好当参数传进纯函数
+					(qn as MeshInstance3D).mesh = gen_water_quad(
+						battle._world_pos(p0 + perp * w0, float(c0["h"])),
+						battle._world_pos(p1 + perp * w1, float(c1["h"])),
+						battle._world_pos(p1 - perp * w1, float(c1["h"])),
+						battle._world_pos(p0 - perp * w0, float(c0["h"])), a0v, a1v)
 					# 行波: 高光沿身体往后跑 ⇒ 水面在"流"而不是整条一个色
 					var ph: float = fposmod(f0 + t * FLOW_WAVE_SPD, 1.0)
 					var lit: float = pow(1.0 - ph, 3.0)
@@ -1552,6 +1568,20 @@ func tick(delta: float) -> void:
 				_set_alpha(n, 1.0 - clampf(t / life, 0.0, 1.0))
 				if t >= life:
 					_free_fx(i)
+
+
+## 水流带的一节四边形(纯函数; 录流出处键 gen_water_quad)。v0..v3 = 世界坐标四角, a0v/a1v = 头端/尾端顶点 alpha。
+static func gen_water_quad(v0: Vector3, v1: Vector3, v2: Vector3, v3: Vector3, a0v: float, a1v: float) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var v: Array = [v0, v1, v2, v3]
+	var vc: Array = [
+		Color(1, 1, 1, a0v), Color(1, 1, 1, a1v),
+		Color(1, 1, 1, a1v), Color(1, 1, 1, a0v)]
+	for idx in [0, 1, 2, 0, 2, 3]:
+		st.set_color(vc[idx])
+		st.add_vertex(v[idx])
+	return VfxTex.tag(st.commit(), "gen_water_quad", [v0, v1, v2, v3, a0v, a1v], SRC)
 
 
 func _set_alpha(n, a: float) -> void:

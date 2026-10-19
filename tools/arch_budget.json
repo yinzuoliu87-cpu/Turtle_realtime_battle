@@ -7,9 +7,9 @@
   "autoload"
  ],
  "file_ratchet": {
-  "scripts/scenes/RealtimeBattle3DScene.gd": 8563
+  "scripts/scenes/RealtimeBattle3DScene.gd": 8540
  },
- "_debt_note": "8561→8563(2026-10-19·逐帧直播 S1·增债 2 行待主会话评审): 震屏 `_shake` / 顿帧 `_add_hitstop` 是事件层的唯一实现函数, 各加一行 `StreamRecorder.cur.ev(...)`(方案书 20261019-服务器逐帧直播 §1「事件层: 6 个总闸各加一行」); `_process` 的渲染步那行原地改成「录流时不跑」(不增行)。录流器本体全在 scripts/systems/stream/。 8476→8629→8461(2026-07-26·已还债): 训龟大师返工先把瞄准指示器+施法分派+光环加进主文件(8629·超档), 同日把【瞄准指示器整块】(_on_spell_aim/_disc_off_to_field/_draw_aim_indicator/_aim_band/_ring/_arrow/_free/_clear/_begin/_end/_update_q_aim ~168行)抽到 scripts/scenes/battle/battle_aim.gd(RefCounted+battle注入·状态仍挂场景)→档降到8461(反而低于原8476)。仍留主文件的施法分派(_cast_fury/whistle/glacier)+_buff_aura/_body_glow 属sim-adjacent薄封装, 暂不动。见 memory project-god-file-decomposition。",
+ "_debt_note": "8563→8540(2026-10-19·逐帧直播 S3·还债 23 行): 主文件里 5 处程序网格改成调纯函数(VfxTex.gen_line / gen_tris / gen_empty_mesh)、删掉已无人调用的 _phx_fan_pt(搬到 PhoenixSystem._fan_pt)。 8561→8563(2026-10-19·逐帧直播 S1·增债 2 行待主会话评审): 震屏 `_shake` / 顿帧 `_add_hitstop` 是事件层的唯一实现函数, 各加一行 `StreamRecorder.cur.ev(...)`(方案书 20261019-服务器逐帧直播 §1「事件层: 6 个总闸各加一行」); `_process` 的渲染步那行原地改成「录流时不跑」(不增行)。录流器本体全在 scripts/systems/stream/。 8476→8629→8461(2026-07-26·已还债): 训龟大师返工先把瞄准指示器+施法分派+光环加进主文件(8629·超档), 同日把【瞄准指示器整块】(_on_spell_aim/_disc_off_to_field/_draw_aim_indicator/_aim_band/_ring/_arrow/_free/_clear/_begin/_end/_update_q_aim ~168行)抽到 scripts/scenes/battle/battle_aim.gd(RefCounted+battle注入·状态仍挂场景)→档降到8461(反而低于原8476)。仍留主文件的施法分派(_cast_fury/whistle/glacier)+_buff_aura/_body_glow 属sim-adjacent薄封装, 暂不动。见 memory project-god-file-decomposition。",
  "func_ratchet": {
   "scripts/systems/skills/star_system.gd::_sk_star_wave": 330,
   "scripts/systems/skills/star_system.gd::_sk_star_gravity_warp": 260

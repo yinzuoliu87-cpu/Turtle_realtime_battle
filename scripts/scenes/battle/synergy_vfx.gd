@@ -35,6 +35,8 @@ extends RefCounted
 ## ★门禁按 meta 数而不是按节点名/贴图路径数 —— 程序生成的贴图 resource_path 是空串,
 ##   按路径数会全部数成 0 (verify_ms_tier_vfx.gd:164 那条注释记的就是这个坑)。
 const META_KEY := "synergy_vfx"
+## S3 逐帧直播: 本文件里程序贴图 / 网格的出处键路径(gen_* / _make_* 静态函数所在脚本)
+const SRC := "res://scripts/scenes/battle/synergy_vfx.gd"
 
 ## _owned 的上限, 照 RB:_reg_tween 的 512 一样是"最后一道闸"(方案书 R12 手机端预算)。
 const OWNED_CAP := 256
@@ -284,7 +286,7 @@ static func _make_poly_ring_tex(sides: int) -> ImageTexture:
 				continue
 			var a: float = clampf(1.0 - maxf(0.0, d - half_w) / soft, 0.0, 1.0)
 			img.set_pixel(x, y, Color(1, 1, 1, a))
-	var t := ImageTexture.create_from_image(img)
+	var t: ImageTexture = VfxTex.tag(ImageTexture.create_from_image(img), "_make_poly_ring_tex", [n], SRC)
 	_poly_tex_cache[n] = t
 	return t
 
@@ -610,6 +612,12 @@ func gun_laser(from2d: Vector2, dir2d: Vector2, len_px: float) -> MeshInstance3D
 	if d.length() < 1e-6:
 		d = Vector2.RIGHT
 	d = d.normalized()
+	var n := _fade_node(gen_gun_laser(from2d, d, len_px, battle._arena_center, battle.WS), _mat_add(), "gun_laser", LASER_SEC)
+	return n
+
+
+## S3 逐帧直播: 激光网格(纯函数, 手机按出处键现生成)。`d` = 已归一化方向。
+static func gen_gun_laser(from2d: Vector2, d: Vector2, len_px: float, center: Vector2, ws: float) -> ArrayMesh:
 	var perp := Vector2(-d.y, d.x)
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -624,14 +632,13 @@ func gun_laser(from2d: Vector2, dir2d: Vector2, len_px: float) -> MeshInstance3D
 		var c: Color = layer[1]
 		## 尾端(炮口)最亮, 远端稍收 —— 激光是从炮口射出去的, 不是两头一样亮
 		var c_far := Color(c.r, c.g, c.b, c.a * 0.55)
-		VfxGeom.tri(st, [battle._world_pos(a - perp * w, ya), c], [battle._world_pos(a + perp * w, ya), c],
-			[battle._world_pos(b + perp * w * 0.6, ya), c_far])
-		VfxGeom.tri(st, [battle._world_pos(a - perp * w, ya), c], [battle._world_pos(b + perp * w * 0.6, ya), c_far],
-			[battle._world_pos(b - perp * w * 0.6, ya), c_far])
+		VfxGeom.tri(st, [VfxTex.wpos(center, ws, a - perp * w, ya), c], [VfxTex.wpos(center, ws, a + perp * w, ya), c],
+			[VfxTex.wpos(center, ws, b + perp * w * 0.6, ya), c_far])
+		VfxGeom.tri(st, [VfxTex.wpos(center, ws, a - perp * w, ya), c], [VfxTex.wpos(center, ws, b + perp * w * 0.6, ya), c_far],
+			[VfxTex.wpos(center, ws, b - perp * w * 0.6, ya), c_far])
 	var mesh := ArrayMesh.new()
 	st.commit(mesh)
-	var n := _fade_node(mesh, _mat_add(), "gun_laser", LASER_SEC)
-	return n
+	return VfxTex.tag(mesh, "gen_gun_laser", [from2d, d, len_px, center, ws], SRC)
 
 
 ## 激光命中点的【冲击花】: 十字亮芯 + 一圈细环 + 溅射火花。
@@ -639,6 +646,14 @@ func gun_laser_hit(at2d: Vector2, dir2d: Vector2) -> MeshInstance3D:
 	if not _has_world():
 		return null
 	var d: Vector2 = dir2d.normalized() if dir2d.length() > 1e-6 else Vector2.RIGHT
+	var n := _fade_node(gen_gun_laser_hit(at2d, d, battle._arena_center, battle.WS), _mat_add(), "gun_laser_hit", LASER_HIT_SEC)
+	## 溅射火花(复用现成的 spark_burst, 颜色跟激光同支)
+	spark_burst(at2d, Color(1.0, 0.78, 0.42, 0.95), 0.7, 9)
+	return n
+
+
+## S3 逐帧直播: 激光命中冲击花网格(纯函数, 手机按出处键现生成)。`d` = 已归一化方向。
+static func gen_gun_laser_hit(at2d: Vector2, d: Vector2, center: Vector2, ws: float) -> ArrayMesh:
 	var perp := Vector2(-d.y, d.x)
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -649,30 +664,27 @@ func gun_laser_hit(at2d: Vector2, dir2d: Vector2) -> MeshInstance3D:
 	for ax in [[d, perp], [perp, d]]:
 		var u: Vector2 = ax[0]
 		var v: Vector2 = ax[1]
-		VfxGeom.tri(st, [battle._world_pos(at2d - u * LASER_HIT_ARM, ya), Color(hot.r, hot.g, hot.b, 0.0)],
-			[battle._world_pos(at2d + v * 4.0, ya), hot],
-			[battle._world_pos(at2d - v * 4.0, ya), hot])
-		VfxGeom.tri(st, [battle._world_pos(at2d + u * LASER_HIT_ARM, ya), Color(hot.r, hot.g, hot.b, 0.0)],
-			[battle._world_pos(at2d + v * 4.0, ya), hot],
-			[battle._world_pos(at2d - v * 4.0, ya), hot])
+		VfxGeom.tri(st, [VfxTex.wpos(center, ws, at2d - u * LASER_HIT_ARM, ya), Color(hot.r, hot.g, hot.b, 0.0)],
+			[VfxTex.wpos(center, ws, at2d + v * 4.0, ya), hot],
+			[VfxTex.wpos(center, ws, at2d - v * 4.0, ya), hot])
+		VfxGeom.tri(st, [VfxTex.wpos(center, ws, at2d + u * LASER_HIT_ARM, ya), Color(hot.r, hot.g, hot.b, 0.0)],
+			[VfxTex.wpos(center, ws, at2d + v * 4.0, ya), hot],
+			[VfxTex.wpos(center, ws, at2d - v * 4.0, ya), hot])
 	## 外环(细): 命中处炸开的一圈
 	for k in range(20):
 		var t0: float = float(k) * TAU / 20.0
 		var t1: float = float(k + 1) * TAU / 20.0
 		var r0 := LASER_HIT_ARM * 0.52
 		var r1 := LASER_HIT_ARM * 0.66
-		VfxGeom.tri(st, [battle._world_pos(at2d + Vector2(cos(t0), sin(t0)) * r0, ya), warm],
-			[battle._world_pos(at2d + Vector2(cos(t0), sin(t0)) * r1, ya), Color(warm.r, warm.g, warm.b, 0.0)],
-			[battle._world_pos(at2d + Vector2(cos(t1), sin(t1)) * r1, ya), Color(warm.r, warm.g, warm.b, 0.0)])
-		VfxGeom.tri(st, [battle._world_pos(at2d + Vector2(cos(t0), sin(t0)) * r0, ya), warm],
-			[battle._world_pos(at2d + Vector2(cos(t1), sin(t1)) * r1, ya), Color(warm.r, warm.g, warm.b, 0.0)],
-			[battle._world_pos(at2d + Vector2(cos(t1), sin(t1)) * r0, ya), warm])
+		VfxGeom.tri(st, [VfxTex.wpos(center, ws, at2d + Vector2(cos(t0), sin(t0)) * r0, ya), warm],
+			[VfxTex.wpos(center, ws, at2d + Vector2(cos(t0), sin(t0)) * r1, ya), Color(warm.r, warm.g, warm.b, 0.0)],
+			[VfxTex.wpos(center, ws, at2d + Vector2(cos(t1), sin(t1)) * r1, ya), Color(warm.r, warm.g, warm.b, 0.0)])
+		VfxGeom.tri(st, [VfxTex.wpos(center, ws, at2d + Vector2(cos(t0), sin(t0)) * r0, ya), warm],
+			[VfxTex.wpos(center, ws, at2d + Vector2(cos(t1), sin(t1)) * r1, ya), Color(warm.r, warm.g, warm.b, 0.0)],
+			[VfxTex.wpos(center, ws, at2d + Vector2(cos(t1), sin(t1)) * r0, ya), warm])
 	var mesh := ArrayMesh.new()
 	st.commit(mesh)
-	var n := _fade_node(mesh, _mat_add(), "gun_laser_hit", LASER_HIT_SEC)
-	## 溅射火花(复用现成的 spark_burst, 颜色跟激光同支)
-	spark_burst(at2d, Color(1.0, 0.78, 0.42, 0.95), 0.7, 9)
-	return n
+	return VfxTex.tag(mesh, "gen_gun_laser_hit", [at2d, d, center, ws], SRC)
 
 
 ## 被治疗友军的【绿光回复】: 中上半身(胸口高度)升起一根绿光柱 + 上浮绿点。
@@ -910,7 +922,7 @@ func gun_wave_release(key: String, shield_phase: bool) -> Dictionary:
 		(h as Dictionary)["charge"] = 0.0
 		(h as Dictionary)["kick"] = 1.0        # 释放那一下炮台自身的膨胀
 	if _mesh_star_wave == null:
-		_mesh_star_wave = _build_star_wave()
+		_mesh_star_wave = gen_star_wave()
 	var col: Color = COL_WAVE_SHIELD if shield_phase else COL_WAVE_DMG
 	var mi := MeshInstance3D.new()
 	mi.mesh = _mesh_star_wave
@@ -1036,7 +1048,7 @@ func firectrl_enchant_one(pos2d: Vector2) -> int:
 	if not _has_world():
 		return 0
 	if _mesh_rune == null:
-		_mesh_rune = _build_rune_ring()
+		_mesh_rune = gen_rune_ring()
 	var made := 0
 	var mat := _mat_add()
 	mat.albedo_color = Color(COL_ENCHANT.r, COL_ENCHANT.g, COL_ENCHANT.b, 1.0)
@@ -1144,7 +1156,7 @@ func blood_rite_update(u: Dictionary, lost: float, t: float) -> int:
 	var arr: Array = hh.get("wisps", [])
 	arr = arr.filter(func(x): return is_instance_valid(x))
 	if _mesh_blood == null:
-		_mesh_blood = _build_blood_wisp()
+		_mesh_blood = gen_blood_wisp()
 	while arr.size() < BLOOD_WISPS:
 		var mat := _mat_add()
 		mat.albedo_color = Color(BLOOD_COL.r, BLOOD_COL.g, BLOOD_COL.b, 0.0)
@@ -1179,7 +1191,7 @@ func blood_rite_update(u: Dictionary, lost: float, t: float) -> int:
 	var pool = hh.get("pool", null)
 	if not is_instance_valid(pool):
 		if _mesh_ring_flat == null:
-			_mesh_ring_flat = _build_rune_ring()
+			_mesh_ring_flat = gen_rune_ring()
 		var pm := _mat_add()
 		pm.albedo_color = Color(BLOOD_COL.r, BLOOD_COL.g, BLOOD_COL.b, 0.0)
 		pool = MeshInstance3D.new()
@@ -1272,7 +1284,7 @@ func reap_orb(from2d: Vector2, to_unit: Dictionary) -> MeshInstance3D:
 	if not _has_world():
 		return null
 	if _mesh_reap == null:
-		_mesh_reap = _build_reap_orb()
+		_mesh_reap = gen_reap_orb()
 	var mat := _mat_add()
 	mat.albedo_color = COL_REAP_ORB
 	var mi := MeshInstance3D.new()
@@ -1345,6 +1357,39 @@ static func _build_turret_barrel() -> ArrayMesh:
 	return _commit3(st)
 
 
+## S3 逐帧直播: 缓存的无参网格挂出处键(手机按同名静态函数现生成)。
+static func gen_turret_base() -> ArrayMesh:
+	return VfxTex.tag(_build_turret_base(), "gen_turret_base", [], SRC)
+
+
+static func gen_turret_barrel() -> ArrayMesh:
+	return VfxTex.tag(_build_turret_barrel(), "gen_turret_barrel", [], SRC)
+
+
+static func gen_turret_dish() -> ArrayMesh:
+	return VfxTex.tag(_build_turret_dish(), "gen_turret_dish", [], SRC)
+
+
+static func gen_emitter_rings() -> ArrayMesh:
+	return VfxTex.tag(_build_emitter_rings(), "gen_emitter_rings", [], SRC)
+
+
+static func gen_star_wave() -> ArrayMesh:
+	return VfxTex.tag(_build_star_wave(), "gen_star_wave", [], SRC)
+
+
+static func gen_rune_ring() -> ArrayMesh:
+	return VfxTex.tag(_build_rune_ring(), "gen_rune_ring", [], SRC)
+
+
+static func gen_blood_wisp() -> ArrayMesh:
+	return VfxTex.tag(_build_blood_wisp(), "gen_blood_wisp", [], SRC)
+
+
+static func gen_reap_orb() -> ArrayMesh:
+	return VfxTex.tag(_build_reap_orb(), "gen_reap_orb", [], SRC)
+
+
 static func _commit3(st: SurfaceTool) -> ArrayMesh:
 	var m := ArrayMesh.new()
 	st.commit(m)
@@ -1363,9 +1408,9 @@ func gun_turret_ensure(key: String, pos2d: Vector2, kind: int = 0, shield_phase:
 		rt0.position = battle._world_pos(pos2d, 0.0)
 		return rt0
 	if _mesh_tur_base == null:
-		_mesh_tur_base = _build_turret_base()
+		_mesh_tur_base = gen_turret_base()
 	if _mesh_tur_barrel == null:
-		_mesh_tur_barrel = _build_turret_barrel()
+		_mesh_tur_barrel = gen_turret_barrel()
 	var col: Color = _turret_col(kind, shield_phase)
 	var ws: float = float(battle.WS)
 	var root := Node3D.new()
@@ -1390,7 +1435,7 @@ func gun_turret_ensure(key: String, pos2d: Vector2, kind: int = 0, shield_phase:
 			## 炮台二: **没有炮管**(用户 2026-08-12 点名) —— 它是【放射体】:
 			## 一圈共振环立在底座上, 蓄力时收紧发亮, 释放时炸出星浪。
 			if _mesh_emitter == null:
-				_mesh_emitter = _build_emitter_rings()
+				_mesh_emitter = gen_emitter_rings()
 			var em := MeshInstance3D.new()
 			em.mesh = _mesh_emitter
 			em.material_override = mr
@@ -1400,7 +1445,7 @@ func gun_turret_ensure(key: String, pos2d: Vector2, kind: int = 0, shield_phase:
 		2:
 			## 炮台三·火控: 不是炮 —— 一面【雷达碟】(竖立的薄环)常年在转
 			if _mesh_tur_dish == null:
-				_mesh_tur_dish = _build_turret_dish()
+				_mesh_tur_dish = gen_turret_dish()
 			var dish := MeshInstance3D.new()
 			dish.mesh = _mesh_tur_dish
 			dish.material_override = mr

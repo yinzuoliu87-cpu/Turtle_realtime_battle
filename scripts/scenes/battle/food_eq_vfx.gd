@@ -388,14 +388,46 @@ static func _mat(no_depth: bool, prio: int) -> StandardMaterial3D:
 
 func _ring_mesh() -> ArrayMesh:
 	if _cache_ring == null:
-		_cache_ring = _build_ring_mesh()
+		_cache_ring = _gen_ring_mesh()
 	return _cache_ring
 
 
 func _crown_mesh() -> ArrayMesh:
 	if _cache_crown == null:
-		_cache_crown = _build_crown_mesh()
+		_cache_crown = _gen_crown_mesh()
 	return _cache_crown
+
+
+## S3 逐帧直播出处键: 缓存网格 / 贴图挂上「调哪个纯函数能重建它」, 手机按白名单调同一个函数现生成。
+const SRC := "res://scripts/scenes/battle/food_eq_vfx.gd"
+
+
+static func _gen_ring_mesh() -> ArrayMesh:
+	return VfxTex.tag(_build_ring_mesh(), "_gen_ring_mesh", [], SRC)
+
+
+static func _gen_crown_mesh() -> ArrayMesh:
+	return VfxTex.tag(_build_crown_mesh(), "_gen_crown_mesh", [], SRC)
+
+
+static func _gen_cake_tex() -> ImageTexture:
+	return _cake_tex()
+
+
+static func _gen_cream_shell_tex() -> ImageTexture:
+	return _cream_shell_tex()
+
+
+static func _gen_cream_drop_tex() -> ImageTexture:
+	return _cream_drop_tex()
+
+
+static func _gen_cake_dollop_tex() -> ImageTexture:
+	return _cake_dollop_tex()
+
+
+static func _gen_smoke_tex() -> ImageTexture:
+	return _smoke_tex()
 
 
 func _mk_node(mesh: ArrayMesh, mat: StandardMaterial3D, org: Vector3) -> MeshInstance3D:
@@ -458,7 +490,7 @@ static func _cake_tex() -> ImageTexture:
 		img.set_pixel(x, 8, dark)
 	for x in range(3, 8):
 		img.set_pixel(x, 9, dark)
-	_cake_tex_cache = ImageTexture.create_from_image(img)
+	_cake_tex_cache = VfxTex.tag(ImageTexture.create_from_image(img), "_gen_cake_tex", [], SRC)
 	return _cake_tex_cache
 
 
@@ -656,7 +688,7 @@ static func _cream_shell_tex() -> ImageTexture:
 			if edge:
 				col = Color(col.r * 0.80, col.g * 0.78, col.b * 0.72)
 			img.set_pixel(x, y, col)
-	_cream_shell_tex_cache = ImageTexture.create_from_image(img)
+	_cream_shell_tex_cache = VfxTex.tag(ImageTexture.create_from_image(img), "_gen_cream_shell_tex", [], SRC)
 	return _cream_shell_tex_cache
 
 
@@ -677,7 +709,7 @@ static func _cream_drop_tex() -> ImageTexture:
 				continue
 			var col := Color(1.00, 0.96, 0.88) if y <= 4 else Color(0.92, 0.80, 0.62)
 			img.set_pixel(x, y, col)
-	_cream_drop_tex_cache = ImageTexture.create_from_image(img)
+	_cream_drop_tex_cache = VfxTex.tag(ImageTexture.create_from_image(img), "_gen_cream_drop_tex", [], SRC)
 	return _cream_drop_tex_cache
 
 
@@ -858,7 +890,7 @@ static func _cake_dollop_tex() -> ImageTexture:
 			if (x + y) % 3 == 0: col = Color(1.00, 0.83, 0.90)       # 螺旋纹亮条
 			if y >= 8: col = Color(0.84, 0.50, 0.64)                 # 底沿阴影
 			img.set_pixel(x, y, col)
-	_cake_dollop_tex_cache = ImageTexture.create_from_image(img)
+	_cake_dollop_tex_cache = VfxTex.tag(ImageTexture.create_from_image(img), "_gen_cake_dollop_tex", [], SRC)
 	return _cake_dollop_tex_cache
 
 
@@ -898,7 +930,7 @@ static func _smoke_tex() -> ImageTexture:
 			elif (x * 3 + y * 5) % 7 == 0:
 				col = dark                       # 絮状杂点(确定性, 无 randf)
 			img.set_pixel(x, y, col)
-	_smoke_tex_cache = ImageTexture.create_from_image(img)
+	_smoke_tex_cache = VfxTex.tag(ImageTexture.create_from_image(img), "_gen_smoke_tex", [], SRC)
 	return _smoke_tex_cache
 
 

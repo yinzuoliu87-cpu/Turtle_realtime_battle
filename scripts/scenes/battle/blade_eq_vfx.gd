@@ -142,6 +142,8 @@ const GROUND_Y := 0.07
 ## 本层节点上打的 meta 键 —— 门禁按 meta 数, 不按节点名/贴图路径
 ## (程序生成贴图 resource_path 是空串, 按路径数会全数成 0)
 const META_KEY := "blade_eq_vfx"
+## S3 逐帧直播: 本文件里程序贴图 / 网格的出处键路径(gen_* / _make_* 静态函数所在脚本)
+const SRC := "res://scripts/scenes/battle/blade_eq_vfx.gd"
 ## _owned 上限(最后一道闸, 同 SynergyVfx.OWNED_CAP 的口径)
 const OWNED_CAP := 256
 
@@ -260,6 +262,12 @@ static func shell_pos(a: Vector2, b: Vector2, i: int, n: int) -> Vector2:
 static func vine_shield_tex() -> ImageTexture:
 	if _tex_vine_shield != null:
 		return _tex_vine_shield
+	_tex_vine_shield = _make_vine_shield_tex()
+	return _tex_vine_shield
+
+
+## S3 逐帧直播: 画图本体(纯函数, 挂出处键; 手机按出处键现生成)。
+static func _make_vine_shield_tex() -> ImageTexture:
 	var n := 96
 	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
@@ -287,8 +295,7 @@ static func vine_shield_tex() -> ImageTexture:
 				col = VINE_RIM
 				a = 1.0
 			img.set_pixel(x, y, Color(col.r, col.g, col.b, a))
-	_tex_vine_shield = ImageTexture.create_from_image(img)
-	return _tex_vine_shield
+	return VfxTex.tag(ImageTexture.create_from_image(img), "_make_vine_shield_tex", [], SRC)
 
 
 ## 084 十字斩的**剑刃弧**。★为什么不继续用共享的 `VfxTex._make_slash_texture`:
@@ -299,6 +306,12 @@ static func vine_shield_tex() -> ImageTexture:
 static func cross_blade_tex() -> ImageTexture:
 	if _tex_blade != null:
 		return _tex_blade
+	_tex_blade = _make_cross_blade_tex()
+	return _tex_blade
+
+
+## S3 逐帧直播: 画图本体(纯函数, 挂出处键; 手机按出处键现生成)。
+static func _make_cross_blade_tex() -> ImageTexture:
 	var n := 128
 	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
@@ -323,14 +336,19 @@ static func cross_blade_tex() -> ImageTexture:
 			# 刀锋那一层白热(最外 30%), 其余是本色 —— 两级台阶, 不是连续渐变
 			var edge: bool = (R - d) < th * 0.30
 			img.set_pixel(x, y, Color(1, 1, 1, 1.0) if edge else Color(0.92, 0.96, 1.0, 0.98))
-	_tex_blade = ImageTexture.create_from_image(img)
-	return _tex_blade
+	return VfxTex.tag(ImageTexture.create_from_image(img), "_make_cross_blade_tex", [], SRC)
 
 
 ## 084 剑波: 一条**前刃硬、后缘阶梯收**的直波(不是软椭圆透镜)。
 static func cross_wave_tex() -> ImageTexture:
 	if _tex_wave != null:
 		return _tex_wave
+	_tex_wave = _make_cross_wave_tex()
+	return _tex_wave
+
+
+## S3 逐帧直播: 画图本体(纯函数, 挂出处键; 手机按出处键现生成)。
+static func _make_cross_wave_tex() -> ImageTexture:
 	# ★★第一版把内容**铺满整张贴图**, 再乘 250 码的板 ⇒ 屏上是一块比龟还大四倍的
 	#   **梯形水杯**(实拍 _vfxlab_p2eq_084_melee 第一轮)。剑波的剪影是**一道弓形的薄刃**,
 	#   不是一块板 ⇒ 内容只占纵向中间一小条, 其余留空; 板再大也只是"更长的一道刃"。
@@ -370,8 +388,7 @@ static func cross_wave_tex() -> ImageTexture:
 			if yy < 0 or yy >= h:
 				continue
 			img.set_pixel(x, yy, Color(0.62, 0.80, 1.0, a))
-	_tex_wave = ImageTexture.create_from_image(img)
-	return _tex_wave
+	return VfxTex.tag(ImageTexture.create_from_image(img), "_make_cross_wave_tex", [], SRC)
 
 
 ## 举盾的贴地环: **断续的藤条环**(16 段), 不是平滑细圆环。
@@ -379,6 +396,12 @@ static func cross_wave_tex() -> ImageTexture:
 static func vine_ring_tex() -> ImageTexture:
 	if _tex_vine_ring != null:
 		return _tex_vine_ring
+	_tex_vine_ring = _make_vine_ring_tex()
+	return _tex_vine_ring
+
+
+## S3 逐帧直播: 画图本体(纯函数, 挂出处键; 手机按出处键现生成)。
+static func _make_vine_ring_tex() -> ImageTexture:
 	var n := 256
 	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
@@ -399,14 +422,19 @@ static func vine_ring_tex() -> ImageTexture:
 				continue
 			var col: Color = VINE_BODY.lerp(VINE_RIM, clampf(band, 0.0, 1.0) * 0.55)
 			img.set_pixel(x, y, Color(col.r, col.g, col.b, clampf(a, 0.0, 1.0)))
-	_tex_vine_ring = ImageTexture.create_from_image(img)
-	return _tex_vine_ring
+	return VfxTex.tag(ImageTexture.create_from_image(img), "_make_vine_ring_tex", [], SRC)
 
 
 ## 082 反伤的一枚**贝壳弧**: 带径向肋的扇形(尖端朝 +X)。
 static func shell_tex() -> ImageTexture:
 	if _tex_shell != null:
 		return _tex_shell
+	_tex_shell = _make_shell_tex()
+	return _tex_shell
+
+
+## S3 逐帧直播: 画图本体(纯函数, 挂出处键; 手机按出处键现生成)。
+static func _make_shell_tex() -> ImageTexture:
 	var n := 64
 	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
@@ -427,8 +455,7 @@ static func shell_tex() -> ImageTexture:
 			if a <= 0.02:
 				continue
 			img.set_pixel(x, y, Color(1, 1, 1, clampf(a, 0.0, 1.0)))
-	_tex_shell = ImageTexture.create_from_image(img)
-	return _tex_shell
+	return VfxTex.tag(ImageTexture.create_from_image(img), "_make_shell_tex", [], SRC)
 
 
 ## 083 的**层数进度环**: 20 格刻度, 点亮 `stacks` 格。★每个层数各一张(最多 21 张), 静态缓存。
@@ -437,6 +464,13 @@ static func stack_ring_tex(stacks: int) -> ImageTexture:
 	var k: int = clampi(stacks, 0, int(STACK_CAP))
 	if _tex_stack.has(k):
 		return _tex_stack[k]
+	var t := _make_stack_ring_tex(k)
+	_tex_stack[k] = t
+	return t
+
+
+## S3 逐帧直播: 层数环画图本体(纯函数, 挂出处键; 手机按出处键现生成)。`k` = 已钳过的层数。
+static func _make_stack_ring_tex(k: int) -> ImageTexture:
 	var n := 192
 	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
@@ -463,9 +497,7 @@ static func stack_ring_tex(stacks: int) -> ImageTexture:
 			if on and slot == lit - 1:                       # 弧头再亮一档(读得出"刚涨的是这一格")
 				col = Color(1.0, 1.0, 1.0)
 			img.set_pixel(x, y, Color(col.r, col.g, col.b, clampf(a, 0.0, 1.0)))
-	var t := ImageTexture.create_from_image(img)
-	_tex_stack[k] = t
-	return t
+	return VfxTex.tag(ImageTexture.create_from_image(img), "_make_stack_ring_tex", [k], SRC)
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -521,16 +553,8 @@ func _quad_along(a2: Vector2, b2: Vector2, half_w: float, y_m: float,
 	if dir.length() < 0.001:
 		return null
 	var p: Vector2 = Vector2(-dir.y, dir.x).normalized() * half_w
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var v: Array = [battle._world_pos(a2 + p, y_m), battle._world_pos(b2 + p, y_m),
-					battle._world_pos(b2 - p, y_m), battle._world_pos(a2 - p, y_m)]
-	var uv: Array = [Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]
-	for idx in [0, 1, 2, 0, 2, 3]:
-		st.set_uv(uv[idx])
-		st.add_vertex(v[idx])
 	var mi := MeshInstance3D.new()
-	mi.mesh = st.commit()
+	mi.mesh = gen_quad_along(a2, b2, p, y_m, battle._arena_center, battle.WS)
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -542,6 +566,19 @@ func _quad_along(a2: Vector2, b2: Vector2, half_w: float, y_m: float,
 	mat.albedo_color = col
 	mi.material_override = mat
 	return mi
+
+
+## S3 逐帧直播: `_quad_along` 的网格(纯函数, 手机按出处键现生成)。`p` = 已乘 half_w 的法向偏移。
+static func gen_quad_along(a2: Vector2, b2: Vector2, p: Vector2, y_m: float, center: Vector2, ws: float) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var v: Array = [VfxTex.wpos(center, ws, a2 + p, y_m), VfxTex.wpos(center, ws, b2 + p, y_m),
+					VfxTex.wpos(center, ws, b2 - p, y_m), VfxTex.wpos(center, ws, a2 - p, y_m)]
+	var uv: Array = [Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]
+	for idx in [0, 1, 2, 0, 2, 3]:
+		st.set_uv(uv[idx])
+		st.add_vertex(v[idx])
+	return VfxTex.tag(st.commit(), "gen_quad_along", [a2, b2, p, y_m, center, ws], SRC)
 
 
 ## 面向相机的公告板(斩击/盾面/能量束都用它)。
@@ -998,6 +1035,10 @@ func sword_swing(u: Dictionary, dir: Vector2, seg: int) -> void:
 	if not _has_world():
 		return
 	var sw := Sword3D.build(SWORD_M * battle.WS / Sword3D.total_len())
+	## S3 逐帧直播: 刀身 / 刃口是 Sword3D._stitch 现缝的小网格(每把几十个顶点) ⇒ 整份拍下当出处键
+	for _c in sw.get_children():
+		if _c is MeshInstance3D and (_c as MeshInstance3D).mesh is ArrayMesh:
+			VfxTex.snap((_c as MeshInstance3D).mesh)
 	## 握把钉在龟手上(竖斩跟着刀光往前推 CHOP_FWD)
 	var org: Vector2 = (u["pos"] as Vector2) + (Vector2.ZERO if seg == 1 else dir.normalized() * CHOP_FWD)
 	## ★竖斩的剑要抬高一点: 实拍 t=1.90~2.40 那段几乎看不到剑,

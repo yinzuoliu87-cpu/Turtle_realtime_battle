@@ -185,6 +185,8 @@ const FADE_HOLD := 0.7
 ## 本层节点上打的 meta 键 —— 门禁按 meta 数, 不按节点名/贴图路径
 ## (程序生成贴图 resource_path 是空串, 按路径数会全数成 0)。
 const META_KEY := "bow_eq_vfx"
+## S3 逐帧直播: 本文件里程序网格的出处键路径(gen_* 静态函数所在脚本)
+const SRC := "res://scripts/scenes/battle/bow_eq_vfx.gd"
 ## _owned 上限, 同 SynergyVfx.OWNED_CAP 的口径(最后一道闸)
 const OWNED_CAP := 256
 
@@ -435,6 +437,27 @@ static func _build_plate() -> ArrayMesh:
 	return mesh
 
 
+## S3 逐帧直播: 缓存的无参网格挂出处键(手机按同名静态函数现生成)。
+static func gen_plate() -> ArrayMesh:
+	return VfxTex.tag(_build_plate(), "gen_plate", [], SRC)
+
+
+static func gen_rain_field() -> ArrayMesh:
+	return VfxTex.tag(_build_rain_field(), "gen_rain_field", [], SRC)
+
+
+static func gen_flying_arrow() -> ArrayMesh:
+	return VfxTex.tag(_build_flying_arrow(), "gen_flying_arrow", [], SRC)
+
+
+static func gen_trail() -> ArrayMesh:
+	return VfxTex.tag(_build_trail(), "gen_trail", [], SRC)
+
+
+static func gen_shadow_disc() -> ArrayMesh:
+	return VfxTex.tag(_build_shadow_disc(), "gen_shadow_disc", [], SRC)
+
+
 ## 加性发光材质(顶点色当亮度), 零素材。
 static func _mat(no_depth: bool, prio: int) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
@@ -511,6 +534,17 @@ func ensure_orb(u: Dictionary) -> Node3D:
 ## ★材质走 MIX 不走加色: 深绿是【比球暗】的颜色, 加色只会把它加没(乘没/加爆同族坑)。
 func _orb_wrap(orb: Node3D) -> void:
 	var r: float = ORB_R_PX * float(battle.WS) * 1.08
+	var mi := MeshInstance3D.new()
+	mi.mesh = gen_orb_wrap(r)
+	var m2 := _mat(false, 9)
+	m2.blend_mode = BaseMaterial3D.BLEND_MODE_MIX
+	mi.material_override = m2
+	mi.set_meta(META_KEY, "vine_orb_wrap")
+	orb.add_child(mi)                            # 子节点: 跟着球走, 球 free 它也 free
+
+
+## S3 逐帧直播: 藤蔓缠绕的网格(纯函数, 手机按出处键现生成)。`r` = 缠绕半径(米)。
+static func gen_orb_wrap(r: float) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var vine := Color(0.13, 0.42, 0.12, 0.95)
@@ -535,13 +569,7 @@ func _orb_wrap(orb: Node3D) -> void:
 				[q * (dl * (r * 1.65)), Color(leaf.r, leaf.g, leaf.b, 0.0)])
 	var mesh := ArrayMesh.new()
 	st.commit(mesh)
-	var mi := MeshInstance3D.new()
-	mi.mesh = mesh
-	var m2 := _mat(false, 9)
-	m2.blend_mode = BaseMaterial3D.BLEND_MODE_MIX
-	mi.material_override = m2
-	mi.set_meta(META_KEY, "vine_orb_wrap")
-	orb.add_child(mi)                            # 子节点: 跟着球走, 球 free 它也 free
+	return VfxTex.tag(mesh, "gen_orb_wrap", [r], SRC)
 
 
 ## 每帧推进小球(临界阻尼跟随)。★纯同步, 门禁可以喂任意 delta。
@@ -583,6 +611,12 @@ func _streak(a: Vector2, b: Vector2, col: Color, half_w_px: float) -> MeshInstan
 	var d: Vector2 = b - a
 	if d.length() < 0.5:
 		return null
+	return _node(gen_vine_streak(a, b, col, half_w_px, battle._arena_center, battle.WS), _mat(true, 12), Vector3.ZERO, "vine_streak")
+
+
+## S3 逐帧直播: 藤蔓箭的网格(纯函数, 手机按出处键现生成)。
+static func gen_vine_streak(a: Vector2, b: Vector2, col: Color, half_w_px: float, center: Vector2, ws: float) -> ArrayMesh:
+	var d: Vector2 = b - a
 	var dirn: Vector2 = d.normalized()
 	var perp: Vector2 = Vector2(-dirn.y, dirn.x)
 	var st := SurfaceTool.new()
@@ -591,28 +625,28 @@ func _streak(a: Vector2, b: Vector2, col: Color, half_w_px: float) -> MeshInstan
 	var head_len: float = minf(16.0, d.length() * 0.25)   # 箭头长(码); 贴脸短箭不越过目标
 	var neck: Vector2 = b - dirn * head_len               # 箭头根部(杆到这里为止)
 	var w: Vector2 = perp * half_w_px
-	var p0 := [battle._world_pos(a - w, ya), Color(col.r, col.g, col.b, 0.0)]
-	var p1 := [battle._world_pos(a + w, ya), Color(col.r, col.g, col.b, 0.0)]
-	var p2 := [battle._world_pos(neck + w, ya), Color(col.r, col.g, col.b, col.a)]
-	var p3 := [battle._world_pos(neck - w, ya), Color(col.r, col.g, col.b, col.a)]
+	var p0 := [VfxTex.wpos(center, ws, a - w, ya), Color(col.r, col.g, col.b, 0.0)]
+	var p1 := [VfxTex.wpos(center, ws, a + w, ya), Color(col.r, col.g, col.b, 0.0)]
+	var p2 := [VfxTex.wpos(center, ws, neck + w, ya), Color(col.r, col.g, col.b, col.a)]
+	var p3 := [VfxTex.wpos(center, ws, neck - w, ya), Color(col.r, col.g, col.b, col.a)]
 	VfxGeom.tri(st, p0, p1, p2)
 	VfxGeom.tri(st, p0, p2, p3)
 	## 箭头: 底边 = 3 倍杆宽、尖恰在 b —— 加色混合下三角重叠处自然比杆亮一档
 	var hw: Vector2 = perp * (half_w_px * 3.0)
-	VfxGeom.tri(st, [battle._world_pos(neck - hw, ya), Color(col.r, col.g, col.b, col.a)],
-		[battle._world_pos(neck + hw, ya), Color(col.r, col.g, col.b, col.a)],
-		[battle._world_pos(b, ya), Color(col.r, col.g, col.b, col.a)])
+	VfxGeom.tri(st, [VfxTex.wpos(center, ws, neck - hw, ya), Color(col.r, col.g, col.b, col.a)],
+		[VfxTex.wpos(center, ws, neck + hw, ya), Color(col.r, col.g, col.b, col.a)],
+		[VfxTex.wpos(center, ws, b, ya), Color(col.r, col.g, col.b, col.a)])
 	## 两对倒刺(藤蔓的荆棘): 杆长 45%/70% 处, 斜向后伸、尖端渐隐
 	for f in [0.45, 0.70]:
 		var root: Vector2 = a + d * float(f)
 		for s in [1.0, -1.0]:
 			var tip: Vector2 = root - dirn * (half_w_px * 4.0) + perp * (half_w_px * 3.2 * float(s))
-			VfxGeom.tri(st, [battle._world_pos(root - dirn * half_w_px, ya), Color(col.r, col.g, col.b, col.a * 0.8)],
-				[battle._world_pos(root + dirn * half_w_px, ya), Color(col.r, col.g, col.b, col.a * 0.8)],
-				[battle._world_pos(tip, ya), Color(col.r, col.g, col.b, 0.0)])
+			VfxGeom.tri(st, [VfxTex.wpos(center, ws, root - dirn * half_w_px, ya), Color(col.r, col.g, col.b, col.a * 0.8)],
+				[VfxTex.wpos(center, ws, root + dirn * half_w_px, ya), Color(col.r, col.g, col.b, col.a * 0.8)],
+				[VfxTex.wpos(center, ws, tip, ya), Color(col.r, col.g, col.b, 0.0)])
 	var mesh := ArrayMesh.new()
 	st.commit(mesh)
-	return _node(mesh, _mat(true, 12), Vector3.ZERO, "vine_streak")
+	return VfxTex.tag(mesh, "gen_vine_streak", [a, b, col, half_w_px, center, ws], SRC)
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -721,7 +755,7 @@ func dome_break(u: Dictionary) -> int:
 	var made := 0
 	if _has_world():
 		if _mesh_shard == null:
-			_mesh_shard = _build_plate()          # 骨片复用甲片网格(同一件的同一块骨)
+			_mesh_shard = gen_plate()          # 骨片复用甲片网格(同一件的同一块骨)
 		var base: Vector3 = battle._world_pos(u["pos"], 0.05)
 		for i in range(DOME_SHARDS):
 			var th: float = float(i) * TAU / float(DOME_SHARDS) + 0.11
@@ -758,7 +792,7 @@ func plates_refresh(u: Dictionary, frac: float, layers: int) -> int:
 	var arr: Array = u.get("_bone_plates", [])
 	arr = arr.filter(func(x): return is_instance_valid(x))
 	if _mesh_plate == null:
-		_mesh_plate = _build_plate()
+		_mesh_plate = gen_plate()
 	while arr.size() < want:
 		## ★MIX 不走加色(2026-08-11): 骨头是实体不是光, 加色在暗底上把象牙白直接白化
 		##   (实拍读成白纸屑; 同族: 073 小球加爆成白那条注释)。
@@ -879,7 +913,7 @@ func rain_marker(center: Vector2, radius_px: float, life: float) -> MeshInstance
 	if not _has_world():
 		return null
 	if _mesh_rain_field == null:
-		_mesh_rain_field = _build_rain_field()
+		_mesh_rain_field = gen_rain_field()
 	var m := _mat(true, 11)
 	m.albedo_color = Color(SILVER_MID.r, SILVER_MID.g, SILVER_MID.b, 0.85)
 	var n := _node(_mesh_rain_field, m, battle._world_pos(center, 0.0), "rain_ring")
@@ -917,11 +951,11 @@ func rain_arrows(center: Vector2, radius_px: float, n_arrows: int) -> int:
 	## ★网格只建一次(同一轮雨里每支箭形状一样, 差的只是变换) —— 一轮 6 跳 × 7 支 = 42 支,
 	##   不缓存就是 42 次现算几何(手机端预算同 shockwave_vfx)。
 	if _mesh_rain == null:
-		_mesh_rain = _build_flying_arrow()
+		_mesh_rain = gen_flying_arrow()
 	if _mesh_shadow == null:
-		_mesh_shadow = _build_shadow_disc()
+		_mesh_shadow = gen_shadow_disc()
 	if _mesh_trail == null:
-		_mesh_trail = _build_trail()
+		_mesh_trail = gen_trail()
 	var made := 0
 	for i in range(maxi(0, n_arrows)):
 		var off: Vector2 = scatter_offset(sigma)
@@ -1113,9 +1147,9 @@ func pierce_tracer(from: Vector2, dir: Vector2, len_px: float, cuts: Array) -> M
 		d = Vector2.RIGHT
 	d = d.normalized()
 	if _mesh_bolt == null:
-		_mesh_bolt = _build_flying_arrow()
+		_mesh_bolt = gen_flying_arrow()
 	if _mesh_trail == null:
-		_mesh_trail = _build_trail()
+		_mesh_trail = gen_trail()
 	var col := Color(1.0, 0.72, 0.35)
 	var m := _mat(true, 12)
 	m.albedo_color = Color(col.r, col.g, col.b, 1.0)
@@ -1142,30 +1176,35 @@ func _bolt_hit_mark(at: Vector2, dirn: Vector2, k: int) -> MeshInstance3D:
 	if not _has_world():
 		return null
 	var d: Vector2 = dirn.normalized()
+	var a: float = tracer_alpha(k)
+	var col := Color(1.0, 0.86, 0.55, a)
+	var m := _mat(true, 13)
+	m.albedo_color = Color(1, 1, 1, 1)
+	var n := _node(gen_bolt_hit_mark(at, d, col, battle._arena_center, battle.WS), m, Vector3.ZERO, "bolt_hit")
+	_fx.append({"node": n, "t": 0.0, "life": 0.30, "kind": "bolt_hit"})
+	return n
+
+
+## S3 逐帧直播: 弩矢命中 X 记号的网格(纯函数)。`d` = 已归一化的飞行方向。
+static func gen_bolt_hit_mark(at: Vector2, d: Vector2, col: Color, center: Vector2, ws: float) -> ArrayMesh:
 	var perp: Vector2 = Vector2(-d.y, d.x)
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var a: float = tracer_alpha(k)
-	var col := Color(1.0, 0.86, 0.55, a)
 	var ya: float = 0.75
 	var arm: float = 26.0
 	var w: float = 4.0
 	for axis in [[d, perp], [perp, d]]:
 		var ax: Vector2 = axis[0]
 		var px: Vector2 = axis[1]
-		var p0 := [battle._world_pos(at - ax * arm - px * w, ya), col]
-		var p1 := [battle._world_pos(at - ax * arm + px * w, ya), col]
-		var p2 := [battle._world_pos(at + ax * arm + px * w, ya), col]
-		var p3 := [battle._world_pos(at + ax * arm - px * w, ya), col]
+		var p0 := [VfxTex.wpos(center, ws, at - ax * arm - px * w, ya), col]
+		var p1 := [VfxTex.wpos(center, ws, at - ax * arm + px * w, ya), col]
+		var p2 := [VfxTex.wpos(center, ws, at + ax * arm + px * w, ya), col]
+		var p3 := [VfxTex.wpos(center, ws, at + ax * arm - px * w, ya), col]
 		VfxGeom.tri(st, p0, p1, p2)
 		VfxGeom.tri(st, p0, p2, p3)
 	var mesh := ArrayMesh.new()
 	st.commit(mesh)
-	var m := _mat(true, 13)
-	m.albedo_color = Color(1, 1, 1, 1)
-	var n := _node(mesh, m, Vector3.ZERO, "bolt_hit")
-	_fx.append({"node": n, "t": 0.0, "life": 0.30, "kind": "bolt_hit"})
-	return n
+	return VfxTex.tag(mesh, "gen_bolt_hit_mark", [at, d, col, center, ws], SRC)
 
 
 ## 贯穿的【读数强化】(2026-08-11 补验收, 与光迹同寿命):

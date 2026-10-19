@@ -68,6 +68,13 @@ var sim_calls := 0                # 播放模式下 `_sim_step` 被调用的次�
 var seeks := 0
 var layout_cleared := 0
 var on_applied: Callable = Callable()   # 门禁: 每应用完一步回调(步号)
+## 播放端 HUD(头像框栏 / 法术圆盘 / 羁绊 chips / 路名计时牌的状态): 见 stream_hud.gd
+var hud: StreamHud
+## 播放入口给了阵容(`state`)⇒ 入口负责事后还原 GameState(与录像回放同一套 capture_all / 还原), 这里才许写 GameState
+var _sandbox := false
+## 这一步的事件放不放(快进 / 跳转时 false): HUD 里「到某个状态才播一次」的演出(加时大字)跟着它
+var firing := true
+var _bar_built := false
 
 
 func _init(b, opts: Dictionary) -> void:
@@ -77,6 +84,8 @@ func _init(b, opts: Dictionary) -> void:
 		battle._battle_rng.seed = int(opts["seed"])     # 只为选同一张地图(ArenaTheme 读种子整数做哈希, 不从 rng 取数)
 	battle._deterministic = false                       # TURTLE_SEED 设了也不许走「每帧一步 sim」那条
 	mirror = StreamMirror.new(battle._world)
+	hud = StreamHud.new(battle, self)
+	_sandbox = opts.has("state") and opts["state"] is Dictionary and not (opts["state"] as Dictionary).is_empty()
 	mirror.unit_parent = func(idx: int, key: String):
 		var u = units.get(idx)
 		return u.get(key) if u is Dictionary else null
@@ -86,8 +95,13 @@ func _init(b, opts: Dictionary) -> void:
 #  每帧(ReplayRecorder.sim_feed 调; 返回 0 ⇒ 战斗场的 sim 累加器一步都不推)
 # ═══════════════════════════════════════════════════════════════════════
 func advance(rd: float) -> float:
+	if not _bar_built and battle._hud != null and battle._ui_layer != null:
+		_bar_built = true
+		battle._hud.build_replay_bar()     # 「退出」(缓冲 / 同步中也要能走)与收尾卡的容器, 见 replay_controls.gd
 	var h0 := head
 	_tick(rd)
+	if state == "ended":
+		hud.on_ended()
 	var adv := maxf(0.0, head - h0) if h0 >= 0.0 else 0.0
 	_render(adv * SIM_DT)
 	_update_label()
@@ -187,6 +201,7 @@ func _apply_until(s: int, fire: bool) -> void:
 # ═══════════════════════════════════════════════════════════════════════
 func _apply_step(st: Array, fire: bool) -> void:
 	var key := bool(st[1])
+	firing = fire
 	mirror.restore()
 	if key:
 		_in_kf = true
@@ -221,10 +236,14 @@ func _apply_step(st: Array, fire: bool) -> void:
 			if not _kf_units.has(idx):
 				_unit_del(int(idx))
 		_in_kf = false
-	_finish_units()
 	applied = int(st[0])
-	if key or (applied - first_step) % F.CONT_EVERY == 1:
+	var cont := key or (applied - first_step) % F.CONT_EVERY == 1
+	## ★血条 / 头像框只在采样步(全字段都到了)建: 非采样步登场的单位流里只带 id / 阵营,
+	##   是不是大师 / 蛋 / 召唤物、名字、装备要到下一个采样步才到 ⇒ 早建会给大师建出血条、头像框写成「__trainer__」
+	_finish_units(cont)
+	if cont:
 		_last_cont = applied        # 最近一次采了连续量的步(插值的起点; keyframe 之后下一个采样只隔 1 步)
+		hud.after_step(units)
 	steps_applied += 1
 	if on_applied.is_valid():
 		on_applied.call(applied)
@@ -246,10 +265,11 @@ func _globals(g: Dictionary) -> void:
 				if v is PackedVector3Array:
 					_layout_clear(v)
 			"theme": _theme_seen = str(v)
+			_ when str(k).begins_with("h."):
+				hud.apply_glob({str(k).substr(2): v})   # 播放端 HUD 的全局项(stream_hud.gd glob), 一项一项来
 			"lane":
-				var gs = battle.get_node_or_null("/root/GameState")
-				if gs != null and bool(gs.test_mode):
-					gs.current_lane = str(v)
+				if gs_sandboxed():
+					battle.get_node_or_null("/root/GameState").current_lane = str(v)
 
 
 # ── 单位代理 ──
@@ -279,6 +299,9 @@ func _unit_set(idx: int, kv: Dictionary) -> void:
 			continue                  # 帧号由镜像给, 代理恒手动帧(见文件头)
 		if ks == "@n":
 			d["@n"] = v
+			continue
+		if ks == "@eq" or ks == "@hud":
+			hud.apply_unit(d, ks, v)
 			continue
 		if ks == "@mv":
 			d["vel"] = Vector2(BattleVfx.BOB_STILL_SPD * 2.0, 0.0) if bool(v) else Vector2.ZERO   # 渲染步只拿 vel 判「走着不呼吸」
@@ -313,7 +336,7 @@ func _unit_del(idx: int) -> void:
 
 
 ## 一步应用完: 认领外观节点(`@n` 里的镜像 id → 节点), 给新登场的单位建血条。
-func _finish_units() -> void:
+func _finish_units(bars: bool = true) -> void:
 	for idx in units:
 		var u: Dictionary = units[idx]
 		var ids = u.get("@n")
@@ -322,6 +345,8 @@ func _finish_units() -> void:
 				var nid := int(ids[i])
 				var nd = mirror.nodes.get(nid) if nid > 0 else null
 				u[APPEAR_KEYS[i]] = nd if (nd != null and is_instance_valid(nd)) else null
+	if not bars:
+		return
 	for u in _new_units:
 		var d: Dictionary = u
 		if not units.has(int(d.get("_stream_idx", -1))):
@@ -374,6 +399,9 @@ func _event(kind: String, a: Array) -> void:
 		"layout_clear":
 			if a.size() >= 1:
 				_layout_clear(a[0])
+		"finish":
+			if a.size() >= 2:
+				hud.on_finish(bool(a[0]), float(a[1]))
 
 
 ## 换路建场时删掉压在障碍上的地图摆件: 地图是手机按同一张图自己建的, 按位置删同一批(全局 `lc` 在 keyframe 里也带, 跳进来照样删)。
@@ -441,7 +469,14 @@ func _sweep_own(keep_bands: bool) -> void:
 ## 幕布内容按 GameState 里的阵容建; 播放入口没给阵容(state)就不建(只留战场画面), 免得读到本机自己的阵容。
 func _curtain_ok() -> bool:
 	var gs = battle.get_node_or_null("/root/GameState")
-	return gs != null and bool(gs.get("dual_active")) and bool(gs.test_mode)
+	return gs != null and bool(gs.get("dual_active")) and gs_sandboxed()
+
+
+## 许不许写 GameState(当前路 / 各路胜负): 播放入口给了阵容(它负责事后还原)或测试模式。
+##   没给 ⇒ GameState 是看的人自己的存档, 一个字都不许动(路名计时牌 / 路点就停在它原来的值)。
+func gs_sandboxed() -> bool:
+	var gs = battle.get_node_or_null("/root/GameState")
+	return gs != null and (_sandbox or bool(gs.test_mode))
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -503,6 +538,13 @@ func _render(dt: float) -> void:
 	## 时停: 服务器那边哪几个单位在时停里能动(`@ts`)。手机只拿它决定谁的形变计时继续衰减(`_juice_decay` 自己读这张表);
 	##   时停的全屏视觉(钟表 / 暗角, `_ts_tick_visual`)读的是 sim 里建的覆盖层, 手机没有 ⇒ in_ts 仍传 false(S3 长尾)。
 	_set_ts_active()
+	## 时停全屏层(S3 伪节点 @ts_screen → StreamMirror.ScreenFx): 由播放头推(跟暂停 / 倍速 / 跳转走), 不按真实帧自己推
+	for fx in mirror.fx_nodes.values():
+		if fx != null and is_instance_valid(fx) and fx.get("ts") != null:
+			if (fx as Node).is_processing():
+				(fx as Node).set_process(false)
+			if dt > 0.0:
+				fx.ts.ts_screen_tick(dt)
 	battle._render._render_step(dt, float(battle._hitstop) > 0.0, false)
 
 
@@ -573,6 +615,7 @@ func _reset_all() -> void:
 	battle._anim_fx.clear()
 	battle._coin_fx.clear()
 	battle._dl_sys._dl_clear_present_overlay()
+	hud.reset()
 	applied = -1
 
 

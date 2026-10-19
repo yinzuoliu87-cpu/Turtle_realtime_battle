@@ -2170,7 +2170,7 @@ func _check_referee_watch() -> void:
 	if st == ST_DONE or st == ST_PREMIERE:
 		var rm := await_watch
 		await_watch = Vector2i(-1, -1)
-		open_replay(rm.x, rm.y)
+		open_replay(rm.x, rm.y, true)
 		return
 	_fetch_left = minf(_fetch_left, _RW.FINALS_POLL_SEC)
 
@@ -2187,7 +2187,8 @@ var last_replay_ask: Dictionary = {}
 var _replay_lb: Label = null
 
 
-func open_replay(r: int, m: int) -> void:
+## `own` = 自己那一场(裁判算的, 等揭晓后自动播): 逐帧直播开着而服务器没有这份流时不播、也不重算(stream_watch `known`)。
+func open_replay(r: int, m: int, own: bool = false) -> void:
 	var st := match_state(r, m)
 	if replay_busy.x >= 0 or not (REPLAY_LIVE and (st == ST_DONE or st == ST_PREMIERE)):
 		return
@@ -2208,7 +2209,7 @@ func open_replay(r: int, m: int) -> void:
 	_show_replay_msg("读取中…", ACCENT)
 	## 2026-10-05: 多带这一场的两个人(`pair`)⇒ 回放铭牌能写出「谁 对 谁」(录像方是谁由录像里的对手快照认出来, 见 `ReplayRecorder.side_names`)。
 	var pair := [str(competitor(r, m, 0).get("name", "")), str(competitor(r, m, 1).get("name", ""))]
-	_RF.open_finals(get_tree(), wk, bk, r, m, _on_replay_done, SELF_SCENE, {"l": wn, "r": wn, "pair": pair})
+	_RF.open_finals(get_tree(), wk, bk, r, m, _on_replay_done, SELF_SCENE, {"l": wn, "r": wn, "pair": pair}, own and _RN.finals_on())
 
 
 func _on_replay_done(code: String, msg: String) -> void:

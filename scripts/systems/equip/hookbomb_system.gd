@@ -1,5 +1,8 @@
 class_name HookBombSystem
 extends RefCounted
+
+## S3 逐帧直播出处键: 本文件生成函数的路径(VfxTex.tag 第 4 个参数)
+const SRC := "res://scripts/systems/equip/hookbomb_system.gd"
 ## 靶向器 p2eq_055 ·【钩索炸弹】(用户 2026-08-01 整条重做)
 ##
 ## 用户原文:「携带者在首次造成了400点伤害后，会向最近的1/1/2名敌人发射钩索炸弹，
@@ -448,8 +451,7 @@ func _fireball(epi: Vector2, r_yards: float, life: float) -> void:
 	if battle._world == null or battle._cam == null:
 		return
 	var im := MeshInstance3D.new()
-	var imesh := ImmediateMesh.new()
-	im.mesh = imesh
+	im.mesh = VfxTex.gen_empty_mesh()
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -485,80 +487,88 @@ func _fireball(epi: Vector2, r_yards: float, life: float) -> void:
 	tw.tween_method(func(q: float) -> void:
 		if not is_instance_valid(im):
 			return
-		imesh.clear_surfaces()
-		var t: float = q * life
-		# 胀开: 极快起势(0.12 秒到八成)再缓慢外扩 —— 爆炸的力量感全在这条曲线上
-		var grow: float = (1.0 - DetMath.dpow(1.0 - clampf(t / 0.12, 0.0, 1.0), 3.0)) * 0.80 + q * 0.34
-		var fade: float = clampf(1.0 - DetMath.dpow(q, 1.35), 0.0, 1.0)   # 收得快一点: 爆炸是一瞬, 不是一直烧
-		var cy: float = R * grow * FIRE_SQUASH * 0.92      # 球心抬到半高 ⇒ 底边刚好坐在地上
-		var c0: Vector3 = battle._world_pos(epi, cy)
-		var to_cam: Vector3 = (battle._cam.global_position - c0).normalized()
-		var ax: Vector3 = Vector3.UP.cross(to_cam)
-		if ax.length() < 0.0001:
-			ax = Vector3.RIGHT
-		ax = ax.normalized()
-		var ay: Vector3 = to_cam.cross(ax).normalized() * FIRE_SQUASH
-		# 由外向内画: 暗紫肉 → 品红 → 炽白紫心 (后画的盖在前面 = 层次)
-		for li in range(FIRE_LOBES + 1):
-			var inner: bool = li == FIRE_LOBES
-			var la: float = TAU * float(li) / float(FIRE_LOBES) + t * 0.9
-			var lr: float = 0.0 if inner else R * grow * 0.44
-			var lc: Vector3 = c0 + (ax * DetMath.dcos(la) + ay * DetMath.dsin(la)) * lr
-			var rad: float = R * grow * (0.42 if inner else DetMath.flerp(0.50, 0.44, q))   # 肉块收小(别连成饼)/核放大(要看得见)
-			# ★★2026-08-02 改配色(用户:「这是病毒的拉在一起，这个爆炸颜色和样式合适吗」):
-			#   整套设定是【病毒】—— 触手紫黑、尸壳病毒化、病毒巢紫肉, 唯独高潮炸出一团
-			#   汽油味的橙色火球, 观感是断的。这是我照搬"爆炸=火"的惯性, 没跟自己的设定走。
-			#   改成【生物质迸发】: 炽白紫心 → 品红血肉 → 暗紫黑腐坏。参数与火球版一致,
-			#   只换颜色曲线 —— 节奏(0.12 涨开 / 1.35 收尾)你已经说过没问题, 不动。
-			var col: Color
-			if inner:
-				# 核(加色层): 炽紫白 → 品红。范围小 ⇒ 只有中心一点在发光, 不糊满整团
-				col = Color(0.96, 0.74, 1.00).lerp(Color(0.88, 0.14, 0.72), clampf(q * 1.6, 0.0, 1.0))
-			else:
-				var heat: float = clampf(q * 1.25 + float(li) * 0.045, 0.0, 1.0)
-				# 外层(不透明层): 深品红血肉 → 紫黑腐坏。★压暗压饱和 —— 上一版 0.78/0.62
-				#   在加色下冲成了粉。现在走 MIX, 深色才有肉的分量。
-				col = Color(0.46, 0.05, 0.34).lerp(Color(0.13, 0.02, 0.17), heat)
-			# ★★径向剖面分三层, 不是"中心不透明→边缘 0"的线性衰减。
-			#   线性衰减(我第一版)= 亮度铺得又宽又淡 ⇒ 实拍只看得见中间那颗白心, 外层火舌全是
-			#   一层薄雾, 还把底下的紫色触手加色染成了粉红(截图确认)。
-			#   现在: 0~62% 满亮(实心火) / 62~86% 半亮 / 86~100% 收到 0(软边)。
-			# ★alpha 要按"6 团加色会互相叠加"来定, 不是单团好看就行。
-			#   0.80 那版实拍整片过曝成白, 把龟都冲没了(截图确认)。
-			# ★MIX 层 0.88 太实: 它 no_depth_test ⇒ 恒盖在龟前面, 实拍整片把敌人全糊没了。
-			#   0.58 = 看得出是块暗紫肉、又透得出后面的龟。发光核反过来给足(它面积小)。
-			var a_core: float = fade * (1.00 if inner else 0.58)
-			var BANDS := [0.0, 0.62, 0.86, 1.0]
-			var ALPHA := [a_core, a_core, a_core * 0.55, 0.0]
-			imesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, mat_glow if inner else mat)
-			for bi in range(BANDS.size() - 1):
-				var r0: float = float(BANDS[bi])
-				var r1: float = float(BANDS[bi + 1])
-				var cA := col; cA.a = float(ALPHA[bi])
-				var cB := col; cB.a = float(ALPHA[bi + 1])
-				var p0l := Vector3.ZERO
-				var p0r := Vector3.ZERO
-				for k in range(FIRE_SIDES + 1):
-					var a: float = TAU * float(k) / float(FIRE_SIDES)
-					# 极径扰动: 火舌。相位随时间滚 ⇒ 在翻滚, 不是一个静止的圆
-						# ★轮廓也要改: 火舌是【圆润翻滚】的, 生物质是【尖锐撕裂】的。
-					#   加一条高频谐波(11 次)并抬高振幅 ⇒ 边缘长出肉刺, 不再是一团圆火。
-					var wob: float = 1.0 + DetMath.dsin(a * 3.0 + t * 5.5 + float(li)) * 0.30 						+ DetMath.dsin(a * 6.0 - t * 3.4 + float(li) * 2.1) * 0.17 						+ absf(DetMath.dsin(a * 11.0 + float(li) * 0.7)) * 0.22
-					var dirv: Vector3 = ax * DetMath.dcos(a) + ay * DetMath.dsin(a)
-					var q0: Vector3 = lc + dirv * (rad * wob * r0)
-					var q1: Vector3 = lc + dirv * (rad * wob * r1)
-					if k > 0:
-						imesh.surface_set_color(cA); imesh.surface_add_vertex(p0l)
-						imesh.surface_set_color(cB); imesh.surface_add_vertex(p0r)
-						imesh.surface_set_color(cB); imesh.surface_add_vertex(q1)
-						imesh.surface_set_color(cA); imesh.surface_add_vertex(p0l)
-						imesh.surface_set_color(cB); imesh.surface_add_vertex(q1)
-						imesh.surface_set_color(cA); imesh.surface_add_vertex(q0)
-					p0l = q0
-					p0r = q1
-			imesh.surface_end()
+		## S3: 每帧新建一份赋给节点(原地 clear_surfaces 重画录流看不见)
+		im.mesh = gen_fireball(q, life, R, epi, battle._cam.global_position, mat, mat_glow, battle._arena_center, battle.WS)
 	, 0.0, 1.0, maxf(0.1, life))
 	tw.tween_callback(im.queue_free)
+
+
+## S3 逐帧直播: q 时刻的生物质爆团网格(纯函数; 手机按出处键调同一个函数现生成)
+static func gen_fireball(q: float, life: float, R: float, epi: Vector2, cam_p: Vector3, mat: Material, mat_glow: Material,
+		center: Vector2, ws: float) -> ImmediateMesh:
+	var imesh := ImmediateMesh.new()
+	var t: float = q * life
+	# 胀开: 极快起势(0.12 秒到八成)再缓慢外扩 —— 爆炸的力量感全在这条曲线上
+	var grow: float = (1.0 - DetMath.dpow(1.0 - clampf(t / 0.12, 0.0, 1.0), 3.0)) * 0.80 + q * 0.34
+	var fade: float = clampf(1.0 - DetMath.dpow(q, 1.35), 0.0, 1.0)   # 收得快一点: 爆炸是一瞬, 不是一直烧
+	var cy: float = R * grow * FIRE_SQUASH * 0.92      # 球心抬到半高 ⇒ 底边刚好坐在地上
+	var c0: Vector3 = VfxTex.wpos(center, ws, epi, cy)
+	var to_cam: Vector3 = (cam_p - c0).normalized()
+	var ax: Vector3 = Vector3.UP.cross(to_cam)
+	if ax.length() < 0.0001:
+		ax = Vector3.RIGHT
+	ax = ax.normalized()
+	var ay: Vector3 = to_cam.cross(ax).normalized() * FIRE_SQUASH
+	# 由外向内画: 暗紫肉 → 品红 → 炽白紫心 (后画的盖在前面 = 层次)
+	for li in range(FIRE_LOBES + 1):
+		var inner: bool = li == FIRE_LOBES
+		var la: float = TAU * float(li) / float(FIRE_LOBES) + t * 0.9
+		var lr: float = 0.0 if inner else R * grow * 0.44
+		var lc: Vector3 = c0 + (ax * DetMath.dcos(la) + ay * DetMath.dsin(la)) * lr
+		var rad: float = R * grow * (0.42 if inner else DetMath.flerp(0.50, 0.44, q))   # 肉块收小(别连成饼)/核放大(要看得见)
+		# ★★2026-08-02 改配色(用户:「这是病毒的拉在一起，这个爆炸颜色和样式合适吗」):
+		#   整套设定是【病毒】—— 触手紫黑、尸壳病毒化、病毒巢紫肉, 唯独高潮炸出一团
+		#   汽油味的橙色火球, 观感是断的。这是我照搬"爆炸=火"的惯性, 没跟自己的设定走。
+		#   改成【生物质迸发】: 炽白紫心 → 品红血肉 → 暗紫黑腐坏。参数与火球版一致,
+		#   只换颜色曲线 —— 节奏(0.12 涨开 / 1.35 收尾)你已经说过没问题, 不动。
+		var col: Color
+		if inner:
+			# 核(加色层): 炽紫白 → 品红。范围小 ⇒ 只有中心一点在发光, 不糊满整团
+			col = Color(0.96, 0.74, 1.00).lerp(Color(0.88, 0.14, 0.72), clampf(q * 1.6, 0.0, 1.0))
+		else:
+			var heat: float = clampf(q * 1.25 + float(li) * 0.045, 0.0, 1.0)
+			# 外层(不透明层): 深品红血肉 → 紫黑腐坏。★压暗压饱和 —— 上一版 0.78/0.62
+			#   在加色下冲成了粉。现在走 MIX, 深色才有肉的分量。
+			col = Color(0.46, 0.05, 0.34).lerp(Color(0.13, 0.02, 0.17), heat)
+		# ★★径向剖面分三层, 不是"中心不透明→边缘 0"的线性衰减。
+		#   线性衰减(我第一版)= 亮度铺得又宽又淡 ⇒ 实拍只看得见中间那颗白心, 外层火舌全是
+		#   一层薄雾, 还把底下的紫色触手加色染成了粉红(截图确认)。
+		#   现在: 0~62% 满亮(实心火) / 62~86% 半亮 / 86~100% 收到 0(软边)。
+		# ★alpha 要按"6 团加色会互相叠加"来定, 不是单团好看就行。
+		#   0.80 那版实拍整片过曝成白, 把龟都冲没了(截图确认)。
+		# ★MIX 层 0.88 太实: 它 no_depth_test ⇒ 恒盖在龟前面, 实拍整片把敌人全糊没了。
+		#   0.58 = 看得出是块暗紫肉、又透得出后面的龟。发光核反过来给足(它面积小)。
+		var a_core: float = fade * (1.00 if inner else 0.58)
+		var BANDS := [0.0, 0.62, 0.86, 1.0]
+		var ALPHA := [a_core, a_core, a_core * 0.55, 0.0]
+		imesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, mat_glow if inner else mat)
+		for bi in range(BANDS.size() - 1):
+			var r0: float = float(BANDS[bi])
+			var r1: float = float(BANDS[bi + 1])
+			var cA := col; cA.a = float(ALPHA[bi])
+			var cB := col; cB.a = float(ALPHA[bi + 1])
+			var p0l := Vector3.ZERO
+			var p0r := Vector3.ZERO
+			for k in range(FIRE_SIDES + 1):
+				var a: float = TAU * float(k) / float(FIRE_SIDES)
+				# 极径扰动: 火舌。相位随时间滚 ⇒ 在翻滚, 不是一个静止的圆
+					# ★轮廓也要改: 火舌是【圆润翻滚】的, 生物质是【尖锐撕裂】的。
+				#   加一条高频谐波(11 次)并抬高振幅 ⇒ 边缘长出肉刺, 不再是一团圆火。
+				var wob: float = 1.0 + DetMath.dsin(a * 3.0 + t * 5.5 + float(li)) * 0.30 						+ DetMath.dsin(a * 6.0 - t * 3.4 + float(li) * 2.1) * 0.17 						+ absf(DetMath.dsin(a * 11.0 + float(li) * 0.7)) * 0.22
+				var dirv: Vector3 = ax * DetMath.dcos(a) + ay * DetMath.dsin(a)
+				var q0: Vector3 = lc + dirv * (rad * wob * r0)
+				var q1: Vector3 = lc + dirv * (rad * wob * r1)
+				if k > 0:
+					imesh.surface_set_color(cA); imesh.surface_add_vertex(p0l)
+					imesh.surface_set_color(cB); imesh.surface_add_vertex(p0r)
+					imesh.surface_set_color(cB); imesh.surface_add_vertex(q1)
+					imesh.surface_set_color(cA); imesh.surface_add_vertex(p0l)
+					imesh.surface_set_color(cB); imesh.surface_add_vertex(q1)
+					imesh.surface_set_color(cA); imesh.surface_add_vertex(q0)
+				p0l = q0
+				p0r = q1
+		imesh.surface_end()
+	return VfxTex.tag(imesh, "gen_fireball", [q, life, R, epi, cam_p, mat, mat_glow, center, ws], SRC)
 
 
 ## 尸壳抽动: 触手在往外抽, 壳会跟着一颤一颤地泄下去。活到爆炸那一刻。
@@ -790,11 +800,7 @@ func _tendril_draw(from2d: Vector2, to2d: Vector2, t01: float, phase: float, tip
 	var dist: float = DetMath.vlen(d)
 	if dist < 6.0:
 		return
-	var dir: Vector2 = d / dist
-	var perp := Vector2(-dir.y, dir.x)
 	var im := MeshInstance3D.new()
-	var imesh := ImmediateMesh.new()
-	im.mesh = imesh
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -804,9 +810,24 @@ func _tendril_draw(from2d: Vector2, to2d: Vector2, t01: float, phase: float, tip
 	mat.render_priority = prio   # ★render_priority 在【材质】上, MeshInstance3D 没有这个属性
 	                             #   爆炸时甩出的肉刺要传 11(压在火球两层之上), 否则被盖住看不见
 	im.material_override = mat
+	## S3: 网格由纯函数 gen_tendril 按参数建(每条触手一份), 手机按出处键调同一个函数现生成
+	im.mesh = gen_tendril(from2d, to2d, t01, phase, tip_h, battle._cam.global_position, mat, battle._arena_center, battle.WS)
 	battle._world.add_child(im)
+	var tw = battle._reg_tween()
+	tw.tween_interval(0.06)
+	tw.tween_property(im, "transparency", 1.0, 0.16)
+	tw.tween_callback(im.queue_free)
+
+
+## S3 逐帧直播: 一条触手的管状带网格(纯函数)。距离 < 6 的早退由调用方先判。
+static func gen_tendril(from2d: Vector2, to2d: Vector2, t01: float, phase: float, tip_h: float, cam_p: Vector3,
+		mat: Material, center: Vector2, ws: float) -> ImmediateMesh:
+	var d: Vector2 = to2d - from2d
+	var dist: float = DetMath.vlen(d)
+	var dir: Vector2 = d / dist
+	var perp := Vector2(-dir.y, dir.x)
+	var imesh := ImmediateMesh.new()
 	var reach: float = dist * clampf(t01, 0.0, 1.0)
-	var cam_p: Vector3 = battle._cam.global_position
 
 	# ── ① 先把【脊线】采出来(世界坐标), 顺带记录每点的半宽
 	var spine: Array[Vector3] = []
@@ -818,13 +839,13 @@ func _tendril_draw(from2d: Vector2, to2d: Vector2, t01: float, phase: float, tip
 		var p2: Vector2 = from2d + dir * (f * reach) + perp * bend
 		# ★Y 方向拱起 —— 这一条是"立体"与"贴纸"的分界。两端锚在身体中心高度。
 		var h: float = DetMath.flerp(TENT_ANCHOR_H, tip_h, f) + DetMath.dsin(f * PI) * TENT_ARCH + DetMath.dsin(f * 9.0 + phase * 1.3) * 0.05
-		spine.append(battle._world_pos(p2, h))
+		spine.append(VfxTex.wpos(center, ws, p2, h))
 		# 有机鼓包: 粗细不是平滑锥形, 一节一节像肌肉
 		var bulge: float = 1.0 + DetMath.dsin(f * 11.0 + phase * 1.7) * TENT_BULGE
 		# ★出口【收颈】: 从伤口钻出来的那一小段是最细的, 出来一点才鼓成最粗。
 		#   不收颈 ⇒ 几条触手在根部都是满宽, 叠成一整块紫板(实拍确认)。
 		var neck: float = 1.0 if f > 0.12 else DetMath.flerp(0.42, 1.0, f / 0.12)
-		half.append(DetMath.flerp(TENT_W_ROOT, TENT_W_TIP, f * f) * bulge * neck * battle.WS)
+		half.append(DetMath.flerp(TENT_W_ROOT, TENT_W_TIP, f * f) * bulge * neck * ws)
 
 	# ── ② 沿脊线铺【正对镜头】的管状带: 横截面 7 条, 暗边→肉→高光脊→肉→暗边
 	#     偏移方向 = 切线 × 指向相机 ⇒ 无论触手朝哪个方向, 看上去都一样粗(不再被 z 压扁)
@@ -875,10 +896,7 @@ func _tendril_draw(from2d: Vector2, to2d: Vector2, t01: float, phase: float, tip
 		imesh.surface_set_color(cr)
 		imesh.surface_add_vertex(rings[i][2])
 	imesh.surface_end()
-	var tw = battle._reg_tween()
-	tw.tween_interval(0.06)
-	tw.tween_property(im, "transparency", 1.0, 0.16)
-	tw.tween_callback(im.queue_free)
+	return VfxTex.tag(imesh, "gen_tendril", [from2d, to2d, t01, phase, tip_h, cam_p, mat, center, ws], SRC)
 
 
 ## ★★病毒巢(用户 2026-08-01 截图:「压根和人物中心没配合」的另一半)。
@@ -892,8 +910,7 @@ func _virus_nest(epi: Vector2, life: float) -> void:
 	if battle._world == null or battle._cam == null:
 		return
 	var im := MeshInstance3D.new()
-	var imesh := ImmediateMesh.new()
-	im.mesh = imesh
+	im.mesh = VfxTex.gen_empty_mesh()
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -911,39 +928,47 @@ func _virus_nest(epi: Vector2, life: float) -> void:
 	tw.tween_method(func(q: float) -> void:
 		if not is_instance_valid(im):
 			return
-		imesh.clear_surfaces()
-		var t: float = q * life
-		var grow: float = clampf(t / 0.14, 0.0, 1.0)                       # 破体而出: 瞬间涨开
-		var pulse: float = 1.0 + DetMath.dsin(t * 12.0) * 0.10 + DetMath.dsin(t * 5.0) * 0.05  # 搏动
-		var rr: float = NEST_R * grow * pulse * battle.WS
-		var c: Vector3 = battle._world_pos(epi, TENT_ANCHOR_H)
-		var to_cam: Vector3 = (battle._cam.global_position - c).normalized()
-		var ax: Vector3 = Vector3.UP.cross(to_cam)
-		if ax.length() < 0.0001:
-			ax = Vector3.RIGHT
-		ax = ax.normalized()
-		var ay: Vector3 = to_cam.cross(ax).normalized()
-		var pts: Array[Vector3] = []
-		for k in range(NEST_SIDES):
-			var a: float = TAU * float(k) / float(NEST_SIDES)
-			var wob: float = 1.0 + DetMath.dsin(a * 3.0 + t * 2.4) * 0.30 + DetMath.dsin(a * 5.0 - t * 1.9) * 0.17
-			pts.append(c + (ax * DetMath.dcos(a) + ay * DetMath.dsin(a)) * (rr * wob))
-		var a_f: float = 0.95 * clampf((life - t) / 0.18, 0.0, 1.0)
-		var cc := TENT_EDGE;  cc.a = a_f
-		var ce := TENT_BODY;  ce.a = a_f
-		imesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, mat)
-		for k in range(NEST_SIDES):
-			imesh.surface_set_color(cc); imesh.surface_add_vertex(c)
-			imesh.surface_set_color(ce); imesh.surface_add_vertex(pts[k])
-			imesh.surface_set_color(ce); imesh.surface_add_vertex(pts[(k + 1) % NEST_SIDES])
-		imesh.surface_end()
-		imesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP, mat)          # 湿润的边
-		var cr := TENT_RIDGE; cr.a = a_f * 0.8
-		for k in range(NEST_SIDES + 1):
-			imesh.surface_set_color(cr); imesh.surface_add_vertex(pts[k % NEST_SIDES])
-		imesh.surface_end()
+		## S3: 每帧新建一份赋给节点(原地 clear_surfaces 重画录流看不见)
+		im.mesh = gen_virus_nest(q, life, epi, battle._cam.global_position, mat, battle._arena_center, battle.WS)
 	, 0.0, 1.0, maxf(0.1, life))
 	tw.tween_callback(im.queue_free)
+
+
+## S3 逐帧直播: q 时刻的病毒巢网格(纯函数)
+static func gen_virus_nest(q: float, life: float, epi: Vector2, cam_p: Vector3, mat: Material,
+		center: Vector2, ws: float) -> ImmediateMesh:
+	var imesh := ImmediateMesh.new()
+	var t: float = q * life
+	var grow: float = clampf(t / 0.14, 0.0, 1.0)                       # 破体而出: 瞬间涨开
+	var pulse: float = 1.0 + DetMath.dsin(t * 12.0) * 0.10 + DetMath.dsin(t * 5.0) * 0.05  # 搏动
+	var rr: float = NEST_R * grow * pulse * ws
+	var c: Vector3 = VfxTex.wpos(center, ws, epi, TENT_ANCHOR_H)
+	var to_cam: Vector3 = (cam_p - c).normalized()
+	var ax: Vector3 = Vector3.UP.cross(to_cam)
+	if ax.length() < 0.0001:
+		ax = Vector3.RIGHT
+	ax = ax.normalized()
+	var ay: Vector3 = to_cam.cross(ax).normalized()
+	var pts: Array[Vector3] = []
+	for k in range(NEST_SIDES):
+		var a: float = TAU * float(k) / float(NEST_SIDES)
+		var wob: float = 1.0 + DetMath.dsin(a * 3.0 + t * 2.4) * 0.30 + DetMath.dsin(a * 5.0 - t * 1.9) * 0.17
+		pts.append(c + (ax * DetMath.dcos(a) + ay * DetMath.dsin(a)) * (rr * wob))
+	var a_f: float = 0.95 * clampf((life - t) / 0.18, 0.0, 1.0)
+	var cc := TENT_EDGE;  cc.a = a_f
+	var ce := TENT_BODY;  ce.a = a_f
+	imesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, mat)
+	for k in range(NEST_SIDES):
+		imesh.surface_set_color(cc); imesh.surface_add_vertex(c)
+		imesh.surface_set_color(ce); imesh.surface_add_vertex(pts[k])
+		imesh.surface_set_color(ce); imesh.surface_add_vertex(pts[(k + 1) % NEST_SIDES])
+	imesh.surface_end()
+	imesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP, mat)          # 湿润的边
+	var cr := TENT_RIDGE; cr.a = a_f * 0.8
+	for k in range(NEST_SIDES + 1):
+		imesh.surface_set_color(cr); imesh.surface_add_vertex(pts[k % NEST_SIDES])
+	imesh.surface_end()
+	return VfxTex.tag(imesh, "gen_virus_nest", [q, life, epi, cam_p, mat, center, ws], SRC)
 
 
 # ============================================================================

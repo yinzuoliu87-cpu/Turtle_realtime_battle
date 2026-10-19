@@ -1,5 +1,7 @@
 class_name IncenseVfx
 extends RefCounted
+## 录流出处键: 本文件的生成函数路径(VfxTex.tag 用)
+const SRC := "res://scripts/scenes/battle/incense_vfx.gd"
 ## incense_vfx.gd — 093 香火石的演出层
 ##
 ## 三个入口:
@@ -163,8 +165,13 @@ static func seal_tex() -> Texture2D:
 ##   看上去就是"四支没点着的香"。同一件装备的两个入口**剪影撞车**, 比看不见更糟:
 ##   看得见, 但读成了别的东西。⇒ 刻痕转 90°, 与香在剪影上正交。
 static func tally_tex() -> ImageTexture:
-	if _tex_tally != null:
-		return _tex_tally
+	if _tex_tally == null:
+		_tex_tally = gen_tally_tex()
+	return _tex_tally
+
+
+## 画图本体(纯函数; 录流出处键 gen_tally_tex, 手机按它现生成)。
+static func gen_tally_tex() -> ImageTexture:
 	var w := 64
 	var h := 24
 	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
@@ -187,14 +194,18 @@ static func tally_tex() -> ImageTexture:
 			if core > 0.66:
 				c = c.lerp(Color(1.0, 0.98, 0.90), (core - 0.66) / 0.34)
 			img.set_pixel(x, y, Color(c.r, c.g, c.b, clampf(0.40 + 0.60 * core, 0.0, 1.0)))
-	_tex_tally = ImageTexture.create_from_image(img)
-	return _tex_tally
+	return VfxTex.tag(ImageTexture.create_from_image(img), "gen_tally_tex", [], SRC)
 
 
 ## 一粒上飘的火星(菱形小粒, 免得又是圆点)。
 static func spark_tex() -> ImageTexture:
-	if _tex_spark != null:
-		return _tex_spark
+	if _tex_spark == null:
+		_tex_spark = gen_spark_tex()
+	return _tex_spark
+
+
+## 画图本体(纯函数; 录流出处键 gen_spark_tex, 手机按它现生成)。
+static func gen_spark_tex() -> ImageTexture:
 	var n := 32
 	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
@@ -207,15 +218,19 @@ static func spark_tex() -> ImageTexture:
 			var a: float = clampf((1.0 - m) * 2.6, 0.0, 1.0)
 			var col: Color = EMBER.lerp(GOLD, clampf((0.5 - m) * 2.0, 0.0, 1.0))
 			img.set_pixel(x, y, Color(col.r, col.g, col.b, a))
-	_tex_spark = ImageTexture.create_from_image(img)
-	return _tex_spark
+	return VfxTex.tag(ImageTexture.create_from_image(img), "gen_spark_tex", [], SRC)
 
 
 ## 火头的光晕: 一团中心亮、边缘 0 的软圆(加色混合用)。
 ## ★内容**不铺满整张** —— 铺满的话缩放采样会在边界切出一圈硬边。
 static func glow_tex() -> ImageTexture:
-	if _tex_glow != null:
-		return _tex_glow
+	if _tex_glow == null:
+		_tex_glow = gen_glow_tex()
+	return _tex_glow
+
+
+## 画图本体(纯函数; 录流出处键 gen_glow_tex, 手机按它现生成)。
+static func gen_glow_tex() -> ImageTexture:
 	var n := 32
 	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
@@ -235,8 +250,7 @@ static func glow_tex() -> ImageTexture:
 			if core > 0.55:
 				col = col.lerp(Color(1.0, 0.98, 0.90), (core - 0.55) / 0.45)
 			img.set_pixel(x, y, Color(col.r, col.g, col.b, a))
-	_tex_glow = ImageTexture.create_from_image(img)
-	return _tex_glow
+	return VfxTex.tag(ImageTexture.create_from_image(img), "gen_glow_tex", [], SRC)
 
 
 # ══════════════════════════════════════════════════════════════════

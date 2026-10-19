@@ -63,6 +63,8 @@ extends RefCounted
 ## 重力(码/秒²)。★不是 9.8: 本项目的长度单位是"码"(≈像素), 这里取的是让
 ## 直升机高度 220 码时落弹约 0.42 秒的量级 —— 读得出"投下去→炸开"这个节拍。
 const G_PX := 2500.0
+## S3 逐帧直播: 本文件里程序网格的出处键路径(gen_* 静态函数所在脚本)
+const SRC := "res://scripts/scenes/battle/gun_eq_vfx.gd"
 ## 直升机的飞行高度(演出用世界高度, 米)与它在 2D 场上的"影子"偏移(码)
 ## ★2.6 → 5.2: 用户 2026-08-07 问「高度？」。龟约 **2.4 米**高(实测 80 屏幕像素 ÷ 33.5 px/米),
 ##   2.6 米等于**贴着龟头顶飞** —— 读起来不像空中单位, 也解释不了"它为什么打不到"。
@@ -246,14 +248,7 @@ func _band(a2: Vector2, b2: Vector2, h: float, half_w: float, col: Color,
 	if dir.length() < 0.001:
 		dir = Vector2.RIGHT
 	var p: Vector2 = Vector2(-dir.y, dir.x).normalized() * half_w
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var v: Array = [
-		battle._world_pos(a2 + p, h), battle._world_pos(b2 + p, hb),
-		battle._world_pos(b2 - p, hb), battle._world_pos(a2 - p, h)]
-	for idx in [0, 1, 2, 0, 2, 3]:
-		st.add_vertex(v[idx])
-	mi.mesh = st.commit()
+	mi.mesh = gen_band(a2, b2, h, hb, p, battle._arena_center, battle.WS)
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -264,6 +259,30 @@ func _band(a2: Vector2, b2: Vector2, h: float, half_w: float, col: Color,
 	mat.albedo_color = col
 	mi.material_override = mat
 	return mi
+
+
+## S3 逐帧直播: `_band` 的网格(纯函数, 手机按出处键现生成)。`p` = 已乘 half_w 的法向偏移。
+static func gen_band(a2: Vector2, b2: Vector2, h: float, hb: float, p: Vector2, center: Vector2, ws: float) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var v: Array = [
+		VfxTex.wpos(center, ws, a2 + p, h), VfxTex.wpos(center, ws, b2 + p, hb),
+		VfxTex.wpos(center, ws, b2 - p, hb), VfxTex.wpos(center, ws, a2 - p, h)]
+	for idx in [0, 1, 2, 0, 2, 3]:
+		st.add_vertex(v[idx])
+	return VfxTex.tag(st.commit(), "gen_band", [a2, b2, h, hb, p, center, ws], SRC)
+
+
+## S3 逐帧直播: 直升机几何旋翼(无参数, 手机按出处键现生成)。
+static func gen_heli_rotor() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var hw := 0.06
+	var hl := 1.05
+	var quad: Array = [Vector3(-hl, 0, -hw), Vector3(hl, 0, -hw), Vector3(hl, 0, hw), Vector3(-hl, 0, hw)]
+	for idx in [0, 1, 2, 0, 2, 3]:
+		st.add_vertex(quad[idx])
+	return VfxTex.tag(st.commit(), "gen_heli_rotor", [], SRC)
 
 
 func _sprite(tex: Texture2D, pos3: Vector3, px: float, col: Color, flat: bool) -> Sprite3D:
@@ -918,14 +937,7 @@ func heli_spawn(h: Dictionary) -> void:
 		body.scale = Vector3(1.4, 0.9, 1.0)
 	root.add_child(body)
 	var rotor := MeshInstance3D.new()
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var hw := 0.06
-	var hl := 1.05
-	var quad: Array = [Vector3(-hl, 0, -hw), Vector3(hl, 0, -hw), Vector3(hl, 0, hw), Vector3(-hl, 0, hw)]
-	for idx in [0, 1, 2, 0, 2, 3]:
-		st.add_vertex(quad[idx])
-	rotor.mesh = st.commit()
+	rotor.mesh = gen_heli_rotor()
 	var rm := StandardMaterial3D.new()
 	rm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	rm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA

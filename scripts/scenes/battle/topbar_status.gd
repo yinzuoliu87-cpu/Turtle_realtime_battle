@@ -102,6 +102,8 @@ func side_names() -> Dictionary:
 		return {"l": "", "r": ""}
 	if battle._replay != null and battle._replay.is_playing():
 		return ReplayRecorder.side_names(battle._replay.rec, ReplayRecorder.viewer_name)
+	if battle._replay != null and str(battle._replay.mode) == "stream":
+		return StreamHud.side_names()      # 逐帧直播播放端: 同回放(入口给的两个人名), 不是看的人自己
 	var foe := ""
 	var g = GameState.dual_ghost if GameState != null else {}
 	if g is Dictionary and (g as Dictionary).get("profile", null) is Dictionary:

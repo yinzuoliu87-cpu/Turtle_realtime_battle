@@ -1,5 +1,8 @@
 class_name TentacleVfx
 extends RefCounted
+
+## 本文件路径(逐帧直播 S3 出处键: 网格生成函数 `gen_tentacle_*` 由手机按路径 + 函数名调, 见 VfxTex.tag)
+const SRC := "res://scripts/systems/equip/tentacle_vfx.gd"
 ## 灵物【触手】演出 —— **常驻实体 + 状态机**（2026-08-04）
 ##
 ## ══════════════════════════════════════════════════════════════════════
@@ -577,8 +580,6 @@ const IDLE_REBUILD_HZ := 12.0
 
 ## 常驻触手：key = "side|idx" → 状态字典
 var _tents: Dictionary = {}
-## 本帧正在重建的这根触手是不是攻击态 —— 攻击时辉光半径 1.16→1.34 倍、alpha 0.20→0.26(官方整条在发光)
-var _halo_hot := false
 ## 【调试台专用】锁住根数：预览自己 ensure 之后，别让 `spirit_synergy_system` 每帧
 ## 按真实档位把它撤掉（真实档位在调试台里是 0）。只有 VFXPREVIEW 会打开它。
 var preview_lock := false
@@ -646,7 +647,7 @@ func _base_glow(t: Dictionary) -> void:
 func _spawn(side: String, idx: int) -> void:
 	var mi := MeshInstance3D.new()
 	mi.name = "Tentacle_%s_%d" % [side, idx]
-	mi.mesh = ArrayMesh.new()
+	mi.mesh = VfxTex.gen_empty_mesh()
 	var mat := StandardMaterial3D.new()
 	# ★unshaded + 加色 + 半透明 —— 参考图上触手是【能看到背后城镇的发光能量体】。
 	#   开光照会有连续明暗渐变，跟限色像素立绘立刻打架。
@@ -686,7 +687,7 @@ func _spawn(side: String, idx: int) -> void:
 	#   做法是同一条曲线再画一遍、半径放大、加色混合、很淡 —— 便宜且有效。
 	var halo := MeshInstance3D.new()
 	halo.name = "TentacleHalo_%s_%d" % [side, idx]
-	halo.mesh = ArrayMesh.new()
+	halo.mesh = VfxTex.gen_empty_mesh()
 	var hm := StandardMaterial3D.new()
 	hm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	hm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -906,26 +907,24 @@ func _warn_alpha(t: Dictionary) -> float:
 	return lerpf(0.40, 0.80, (wq - 0.80) / 0.20)
 
 
-func _rebuild_halo(t: Dictionary, pts: Array, rs: Array) -> void:
-	var halo = t.get("halo", null)
-	if not is_instance_valid(halo) or pts.size() < 2:
-		return
-	var hmesh: ArrayMesh = halo.mesh
-	hmesh.clear_surfaces()
-	_halo_hot = int(t["state"]) == ST_SLAM
+## 外发光壳网格(纯函数, 与本体同一组参数; 逐帧直播出处键)。原来是 `_rebuild_halo` 往同一份网格里 clear + commit。
+static func gen_tentacle_halo(q: PackedInt32Array, root: Vector3, fix_i: PackedInt32Array, fix_t: PackedVector3Array,
+		curl: float, phase: float, stt: int, ts: float, camp: Vector3, camp_ok: bool, up: Vector3, lat: Vector3) -> ArrayMesh:
+	var hmesh := ArrayMesh.new()
+	var rows: Array = _tent_rows(q, root, fix_i, fix_t, curl, phase, stt, ts)
+	if rows.size() < 2:
+		return hmesh
+	## 攻击态(拍击)辉光半径 1.16→1.34 倍、更青(官方整条在发光)
+	var hot: bool = stt == ST_SLAM
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var RN := 7
-	var camp := Vector3.ZERO
-	var camp_ok := false
-	if battle._cam != null and is_instance_valid(battle._cam):
-		camp = (battle._cam as Camera3D).global_position
-		camp_ok = true
 	var prev: Array = []
-	for i in range(pts.size()):
-		var c: Vector3 = pts[i][0]
-		var sv: Vector3 = pts[i][1]
-		var uv: Vector3 = pts[i][2]
+	for i in range(rows.size()):
+		var c: Vector3 = rows[i][0]
+		var sdu: Array = _tent_side(c, rows[i][1], camp, camp_ok, up, lat)
+		var sv: Vector3 = sdu[0]
+		var uv: Vector3 = sdu[1]
 		# ★★2026-08-04【探针 + 时间对齐对比抓到的真凶】：
 		#   上一版 `hk=3.1 / +0.34 / alpha 0.55 / 近白色` 的加色外壳，把整条触手糊成
 		#   **一块纯白实心板**（截图里本体的青色一点不剩）。
@@ -934,11 +933,11 @@ func _rebuild_halo(t: Dictionary, pts: Array, rs: Array) -> void:
 		#   ⇒ 辉光退回"薄薄一层雾"：倍率 1.9、偏移 0.14，只把轮廓托出来，不吃掉本体。
 		# ★★2026-08-04【归一化裁切逐帧对照看出来的】：辉光壳占了包围盒一半以上、
 		#   糊成一片，官方的辉光是**贴着本体**的一薄层。收敛。
-		var hk: float = 1.34 if _halo_hot else 1.16
+		var hk: float = 1.34 if hot else 1.16
 		# ★★2026-08-04：本体加粗到 R_BASE 0.94 之后，`hk=2.9` 让根部辉光宽到
 		#   **4.1 世界单位** ⇒ 截图上是一大片【扇形淡雾】(官方根部是紧凑一团, 没有这个)。
 		#   辉光倍率必须跟着本体粗细走 —— 本体越粗, 倍率越要小。
-		var r: float = float(rs[i]) * hk + (0.05 if _halo_hot else 0.03)
+		var r: float = float(rows[i][2]) * hk + (0.05 if hot else 0.03)
 		# ★★2026-08-04【放大对比抓到的第二只】：本体改成扁带之后，**辉光还在绕环** ——
 		#   于是那根细光带外面套着一圈宽的、边界很硬的暗青板（放大图里那个"宽边框"）。
 		#   官方那条根本没有"外壳"这个东西，只有【亮芯往两侧化开】。
@@ -953,10 +952,10 @@ func _rebuild_halo(t: Dictionary, pts: Array, rs: Array) -> void:
 			var f2: float = float(k) / float(RN - 1) * 2.0 - 1.0
 			ring.append(c + sd * (f2 * r))
 		if not prev.is_empty():
-			var f: float = float(i) / float(pts.size())
+			var f: float = float(i) / float(rows.size())
 			# ★梢端不再往白里提 —— 那是并排比对时那个突兀的白点的来源
 			# 攻击时辉光【更青、不更白】—— 白是留给命中点的
-			var base: Color = (Color(0.24, 0.86, 0.96) if _halo_hot
+			var base: Color = (Color(0.24, 0.86, 0.96) if hot
 				else Color(0.26, 0.78, 0.76).lerp(Color(0.40, 0.88, 0.90), f * 0.45))
 			for k2 in range(RN - 1):
 				var k3: int = k2 + 1
@@ -973,6 +972,7 @@ func _rebuild_halo(t: Dictionary, pts: Array, rs: Array) -> void:
 				st.set_color(c2); st.add_vertex(ring[k2])
 		prev = ring
 	st.commit(hmesh)
+	return hmesh
 
 
 ## 命中冲击（贴地版）。
@@ -1097,7 +1097,7 @@ func _telegraph_tick(t: Dictionary, ts: float) -> void:
 	if not is_instance_valid(mi):
 		mi = MeshInstance3D.new()
 		mi.name = "TentacleWarn_%s_%d" % [str(t["side"]), int(t["idx"])]
-		mi.mesh = ArrayMesh.new()
+		mi.mesh = VfxTex.gen_empty_mesh()
 		var m := StandardMaterial3D.new()
 		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -1131,8 +1131,14 @@ func _telegraph_tick(t: Dictionary, ts: float) -> void:
 	#   按亮背景的实测值重新标定，不再拿黑底当基准。
 	mm.albedo_color = Color(1, 1, 1, clampf(0.72 * amp, 0.0, 1.0))
 	# 网格：沿方向分 N(12) 段的贴地长条，横向 alpha 渐隐（中间亮、两侧化开）
-	var mesh: ArrayMesh = mi.mesh
-	mesh.clear_surfaces()
+	## ★S3(逐帧直播): 每步新建一份(纯函数 `gen_tentacle_warn`), 原来同一份 clear + commit 录流看不见
+	var col0: Color = WARN_COL_ALLY if str(t.get("side", "left")) == "left" else WARN_COL_FOE
+	mi.mesh = gen_tentacle_warn(from2, end2, perp, col0, ts, battle._arena_center, battle.WS, battle.GROUND_LIFT)
+
+
+static func gen_tentacle_warn(from2: Vector2, end2: Vector2, perp: Vector2, col: Color, ts: float,
+		center: Vector2, ws: float, lift: float) -> ArrayMesh:
+	var mesh := ArrayMesh.new()
 	var stool := SurfaceTool.new()
 	stool.begin(Mesh.PRIMITIVE_TRIANGLES)
 	# ★★2026-08-04 重写：上一版的 lane 循环写错了（第二片从 HALF_W 画到 0，
@@ -1145,8 +1151,7 @@ func _telegraph_tick(t: Dictionary, ts: float) -> void:
 	## ★2026-08-20 用户:「精美的蓝色（如果对方则红色）」—— 原来敌我**同一个蓝**, 分不出这一下是谁的。
 	##   照 090 镇海杵的现成做法按阵营取色(arcane_eq_vfx.gd:226-227 WARN_ALLY/WARN_FOE),
 	##   **只借"按阵营分色"这个做法, 不复用它的素材**。
-	## 蓝: 量出来的 ΔG:ΔB = 26:52 = 1:2，是【蓝】不是青绿。
-	var col: Color = WARN_COL_ALLY if str(t.get("side", "left")) == "left" else WARN_COL_FOE
+	## 蓝: 量出来的 ΔG:ΔB = 26:52 = 1:2，是【蓝】不是青绿。(颜色由调用方按阵营取好传进来)
 	var prev_row: Array = []
 	for i in range(N + 1):
 		var u: float = float(i) / float(N)
@@ -1170,7 +1175,7 @@ func _telegraph_tick(t: Dictionary, ts: float) -> void:
 			var av: float = (pow(core, 1.5) * 0.52 + pow(1.0 - af, 2.0) * 0.48) * fade_u
 			## UV: u 沿带长(重复 WARN_TILE_N 次并随时间滚 = 箭头朝目标流), v 横向
 			var uv := Vector2(u * WARN_TILE_N + ts * WARN_SCROLL, float(j) / float(LAT - 1))
-			row.append([battle._world_pos(pos2, battle.GROUND_LIFT + 0.04),
+			row.append([VfxTex.wpos(center, ws, pos2, lift + 0.04),
 				Color(col.r, col.g, col.b, av), uv])
 		if not prev_row.is_empty():
 			for j2 in range(LAT - 1):
@@ -1184,6 +1189,7 @@ func _telegraph_tick(t: Dictionary, ts: float) -> void:
 				stool.set_uv(a10[2]); stool.set_color(a10[1]); stool.add_vertex(a10[0])
 		prev_row = row
 	stool.commit(mesh)
+	return VfxTex.tag(mesh, "gen_tentacle_warn", [from2, end2, perp, col, ts, center, ws, lift], SRC)
 
 
 func _telegraph_hide(t: Dictionary) -> void:
@@ -1523,12 +1529,13 @@ func _arc_for(t: Dictionary, stt: int) -> float:
 ##      **明暗差在、白不在**；我曾写死成一片近白 ⇒「实心板」。
 ##   ② 真正把它变白的是 **R 通道**：官方 R 只有 G·B 的 1/6~1/2，
 ##      我写过 0.80 ≈ G ⇒ 必然是白。量了却没照着用。
-func _body_color(t: Dictionary, st2: int, u: float, rimf: float) -> Color:
+## ★S3: 静态版(网格函数是纯函数, 只拿得到状态号与状态计时 ts)。
+static func _body_color_s(st2: int, ts: float, u: float, rimf: float) -> Color:
 	var col: Color
 	if st2 == ST_SLAM:
 		col = Color(0.52, 1.06, 1.10).lerp(Color(0.10, 0.60, 0.62), pow(rimf, 1.3))
 	elif st2 == ST_REAR:
-		var kk: float = clampf(float(t["ts"]) / T_REAR, 0.0, 1.0)
+		var kk: float = clampf(ts / T_REAR, 0.0, 1.0)
 		col = Color(0.46, 1.00, 1.04).lerp(Color(0.09, 0.56, 0.58), pow(rimf, 1.4))
 		col = col.lerp(Color(0.70, 1.26, 1.32), 0.5 * kk)
 	else:
@@ -1844,8 +1851,6 @@ func _rebuild(t: Dictionary) -> void:
 	var mi: MeshInstance3D = t["mi"]
 	if not is_instance_valid(mi):
 		return
-	var mesh: ArrayMesh = mi.mesh
-	mesh.clear_surfaces()
 	var side: String = str(t["side"])
 	var from2: Vector2 = root_pos(side, int(t["idx"]))
 	var to2: Vector2 = t["aim"]
@@ -1885,138 +1890,165 @@ func _rebuild(t: Dictionary) -> void:
 	if SIM_ON:
 		simpts = _sim_chain(t, root3, fwd, lat, up, ds, ts_now, stt, swayt)
 
-	var stool := SurfaceTool.new()
-	stool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	## ★S3(逐帧直播): 几何**按行**收集(中心点 + 求不出切向时的备用切向), 网格交给纯函数 `gen_tentacle_body` / `gen_tentacle_halo` 建 ——
+	##   每步新建一份赋给节点(原来是同一份 clear + commit, 录流看不见); 手机按出处键调同一个函数。
+	##   中心点先量化成整数(相对根部 1/64 米 ≈ 0.37 屏幕像素, 1 像素 ≈ 0.0426 米)再建: 服务器和手机都从同一组整数建网格, 逐位相同;
+	##   录流对上一代逐个做差(StreamFormat.T_IDIFF): 待机摇曳一次采样只挪几毫米 ⇒ 差多半是 0。
 	var pos: Vector3 = root3
-	var prev: Array = []
-	var prev_cols: Array = []
-	var prev_uvs: Array = []
-	var halo_pts: Array = []      # 外发光壳用: 每段的环心 + 切/侧/上
-	var halo_r: Array = []
-	var any := false
+	var rows := PackedVector3Array()
+	var tans := PackedVector3Array()
+	var halo_pts: Array = []      # 门禁读的中心线(`_record_probe`, 未量化的真几何)
 	for sidx in range(SEG + 1):
 		var u: float = float(sidx) / float(SEG)
-		# ★切角沿长度插值；梢端那一段额外多转 → 卷成钩
-		# ★弯曲集中在【中后段】—— 实机根部一截是相对直的，弧度往梢端堆。
-		#   原来用 smoothstep(0,1,u) 是对称的，从根就开始弯。
-		# ★★★逐段滞后：这一段比根部晚 `u × WHIP_LAG` 秒才收到发力。
-		#   同一时刻根部已经甩过去、梢端还在上一阶段 ⇒ 中段被"带"出 S 形。
-		# ★★★滞后只在【非拍击】态生效：
-		#   官方拍击时触手是**一条绷直的光带**（我量过曲率变号 0 次）—— 不该有 S 形；
-		#   而滞后的时间尺度(0.035~0.085s)和**余振周期**(2~3 帧)同量级，
-		#   开在拍击上会让不同段的余振互相抵消，端点二次峰被抹平（门禁 ② 直接红）。
-		#   ⇒ 待机/预警/收回要 S 形（中下部发力带动全身），拍击要绷直。
 		var seg: Array = _seg_angle(t, stt, u, ts_now, swayt, kacc_run)
 		var ang: float = float(seg[0])
 		var yaw: float = float(seg[1])
-		var curl_u: float = float(seg[2])
 		kacc_run = float(seg[3])
 		var ar: float = deg_to_rad(ang)
 		var tan: Vector3 = (fwd * cos(ar) * cos(yaw) + lat * sin(yaw) * cos(ar) + up * sin(ar)).normalized()
 		if SIM_ON and simpts.size() == SEG + 1:   # 模拟接管几何(见 _rebuild 上方长注)
 			pos = simpts[sidx]
-			var ia: int = maxi(0, sidx - 1)
-			var ib: int = mini(SEG, sidx + 1)
-			var dd: Vector3 = simpts[ib] - simpts[ia]
-			if dd.length() > 0.0001:
-				tan = dd.normalized()
-		# ══ 截面：★★★2026-08-04【放大看图之后的路线更换】═════════════
-		#   原来是【闭合圆环】(RING 个点绕切向一圈) + `CULL_DISABLED` ⇒
-		#   放大之后是**两根空心塑料水管**：看得见内壁、看得见圆周多边形棱、
-		#   而且为了"有体积"必须做粗 —— 三个毛病同一个根：**它是个管**。
-		#   而参考根本没有"管"这个概念，它是**一条细的发光带**。
-		#   ⇒ 改成【朝向相机的扁带】(side = 切向 × 视线)：
-		#     · 没有背面 ⇒ 内壁消失
-		#     · 没有圆周 ⇒ 多边形棱消失
-		#     · 不靠体积撑存在感 ⇒ 可以做细
-		var vdir: Vector3 = (pos - camp).normalized() if camp_ok else Vector3(0, -1, 0)
-		var sidev: Vector3 = tan.cross(vdir)
-		if sidev.length() < 0.001:
-			sidev = tan.cross(up)
-		if sidev.length() < 0.001:
-			sidev = lat
-		sidev = sidev.normalized()
-		var up2: Vector3 = sidev.cross(tan).normalized()
-		# ★收细曲线 0.72 → 0.42：实机是【根粗、迅速变细、梢端成尖】，
-		#   0.72 那条几乎是等粗的一根管子（并排对比时最明显的差异之一）。
-		# 粗壮体型：收细放缓（0.42 是细长鞭子的曲线，粗触手要更饱满）
-		# ★★★2026-08-04【归一化裁切逐帧对照看出来的形状核心差异】
-		#   官方**待机/预警**的触手是【中间鼓、两头收】的纺锤/团（像水母、像一坨），
-		#   **拍击**才是【根粗梢细】的锥（那时它是抽出去的能量带）。
-		#   我原来全程都用锥形剖面 ⇒ 待机看着像根上尖下宽的萝卜，不是团。
-		# ★★★2026-08-05【用户："整套动作都用的相同建模对吗，都是 idle 的变化里的吗"】
-		#   原来这里是 `if 待机/预警 → 纺锤 else → 锥` 的**硬切换**：
-		#   状态一变剖面就跳，等于"两个模型"，而不是同一个模型的变化。
-		#   （很可能就是拍击 +9 帧那次 0.395 异常跳变的来源。）
-		#   ⇒ 改成【连续插值】：用"抻直度"在纺锤与锥之间平滑过渡。
-		#     抻直度由**卷曲量**派生 —— 卷得紧=团(纺锤)、抻直了=鞭(锥)，
-		#     和整套动作同一个驱动源，不再有额外的状态分支。
+		rows.append(pos)
+		tans.append(tan)
+		halo_pts.append([pos])
+		if not SIM_ON or simpts.size() != SEG + 1:   # 旧路径(仅关掉模拟时走)
+			var gy: float = root3.y
+			if pos.y <= gy + 0.001 and tan.y < 0.0:
+				tan.y = 0.0
+				tan = tan.normalized() if tan.length() > 0.001 else fwd
+			pos += tan * ds
+			if pos.y < gy:
+				pos.y = gy
+	## ★2026-08-21 句7: 把**梢端的真实世界高度**记下来, 给门禁读。
+	##   判据必须量真几何, 不是量我重推一遍的公式(重推的副本会和渲染漂开)。
+	##   新门禁 `verify_tentacle_soft` 断言: 下砸期这个值**单调不上升**。
+	##   —— 当年"拍下去两次"的真因就是梢端在下压中途往回抬; 盯住它, 就不必禁止 S 形。
+	_record_probe(t, halo_pts)
+	var q: PackedInt32Array = _q_rows(rows, root3)
+	## 切向: 模拟路径下 = 相邻量化点差分(网格函数里自己算); 差分太短(出土那一瞬全挤在根上, 量化后方向会跳)或旧路径 ⇒ 用这里的解析切向
+	var deq: PackedVector3Array = _dq_rows(q, root3)
+	var fix_i := PackedInt32Array()
+	var fix_t := PackedVector3Array()
+	var sim_geo: bool = SIM_ON and simpts.size() == SEG + 1
+	for sidx2 in range(SEG + 1):
+		if not sim_geo or _diff_tan(deq, sidx2).length() < TAN_MIN:
+			fix_i.append(sidx2)
+			fix_t.append(tans[sidx2])
+	var ph5: float = float(t["phase"])
+	var args: Array = [q, root3, fix_i, fix_t, curl, ph5, stt, ts_now, camp, camp_ok, up, lat]
+	## 录流里每几步发一代: 拍击 / 前摇快(30 Hz, 与变换同频), 其余慢动作 15 Hz(触手本体是整局体积的大头, 见方案书 §2.4 体积)
+	var sev: int = 2 if (stt == ST_SLAM or stt == ST_REAR) else 4
+	mi.mesh = VfxTex.tag(gen_tentacle_body(q, root3, fix_i, fix_t, curl, ph5, stt, ts_now, camp, camp_ok, up, lat),
+		"gen_tentacle_body", args, SRC, sev)
+	var halo = t.get("halo", null)
+	if is_instance_valid(halo):
+		## 外发光壳: 同一份参数(同一个 Array 对象 ⇒ 录流只发一遍, 见 StreamRecorder 出处键别名)
+		(halo as MeshInstance3D).mesh = VfxTex.tag(gen_tentacle_halo(q, root3, fix_i, fix_t, curl, ph5, stt, ts_now,
+			camp, camp_ok, up, lat), "gen_tentacle_halo", args, SRC, sev)
+
+
+## 中心点量化成整数(相对根部, 1/64 米; x, y, z 依次; 第 0 个点之后存与前一点之差)。服务器与手机都从这组整数解出同一组点。
+##   存「相邻点之差」而不是绝对坐标: 整条触手摆动 / 平移时各段的方向变得慢, 录流对上一代再做差(T_IDIFF)时多半是 0 / ±1。
+const Q_ROW := 32.0
+const TAN_MIN := 0.05             # 相邻两点(隔一点)差分短于这个(米)就不拿它当切向: 1/64 米的量化会让方向跳
+static func _q_rows(rows: PackedVector3Array, root: Vector3) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	var last := Vector3i.ZERO
+	for p in rows:
+		var d: Vector3 = (p - root) * Q_ROW
+		var qi := Vector3i(roundi(d.x), roundi(d.y), roundi(d.z))
+		out.append(qi.x - last.x)
+		out.append(qi.y - last.y)
+		out.append(qi.z - last.z)
+		last = qi
+	return out
+
+
+static func _dq_rows(q: PackedInt32Array, root: Vector3) -> PackedVector3Array:
+	var out := PackedVector3Array()
+	var acc := Vector3i.ZERO
+	for i in range(0, q.size() - 2, 3):
+		acc += Vector3i(q[i], q[i + 1], q[i + 2])
+		out.append(root + Vector3(float(acc.x), float(acc.y), float(acc.z)) / Q_ROW)
+	return out
+
+
+static func _diff_tan(pts: PackedVector3Array, i: int) -> Vector3:
+	var ia: int = maxi(0, i - 1)
+	var ib: int = mini(pts.size() - 1, i + 1)
+	return pts[ib] - pts[ia]
+
+
+## 每行的 [中心点, 切向, 半径](两个网格函数共用; 半径的式子原样从 `_rebuild` 搬来, 注释见那里的历史版本 / git log)。
+static func _tent_rows(q: PackedInt32Array, root: Vector3, fix_i: PackedInt32Array, fix_t: PackedVector3Array,
+		curl: float, phase: float, stt: int, ts: float) -> Array:
+	var pts: PackedVector3Array = _dq_rows(q, root)
+	var out: Array = []
+	var fk := 0
+	for sidx in range(pts.size()):
+		var u: float = float(sidx) / float(SEG)
+		var pos: Vector3 = pts[sidx]
+		var tan: Vector3
+		if fk < fix_i.size() and fix_i[fk] == sidx:
+			tan = fix_t[fk]
+			fk += 1
+		else:
+			tan = _diff_tan(pts, sidx).normalized()
+		## 抻直度在纺锤(蜷着 = 团)与锥(抻直 = 鞭)之间连续插值(2026-08-05 用户「整套动作都用的相同建模」)
 		var straight: float = clampf(1.0 - curl / CURL_TIGHT, 0.0, 1.0)
 		var spindle: float = R_BASE * (0.42 + 0.58 * pow(sin(PI * clampf(u, 0.0, 1.0)), 0.72))
 		var taper: float = lerpf(R_BASE, R_TIP, pow(u, 0.85))
 		var r: float = lerpf(spindle, taper, smoothstep(0.0, 1.0, straight))
-		# ★★官方轮廓是【毛的】(不规则起伏)，我是光滑的数学曲线 ——
-		#   沿长度给半径加一点点确定性起伏（不用随机：确定性演出，换路可复现）。
-		r *= 1.0 + 0.055 * sin(u * 21.0 + float(t["phase"]) * 3.1) 			+ 0.032 * sin(u * 47.0 + float(t["phase"]))
-		# ★最底下那一小段【快速收窄】—— 官方是"从地里钻出来"，
-		#   等粗到底会变成一只方底的脚（并排比对时很假）。
+		## 沿长度确定性起伏(官方轮廓是毛的) / 根部收窄(从地里钻出来) / 粗细随抻直度(待机 ×1.75, 拍击 ×1.72 倍于待机)
+		r *= 1.0 + 0.055 * sin(u * 21.0 + phase * 3.1) + 0.032 * sin(u * 47.0 + phase)
 		if u < 0.10:
 			r *= 0.42 + 0.58 * (u / 0.10)
-		# ★★攻击时它不是"变长的触手"，是**一条粗光带** ——
-		#   时间对齐对比里官方那条从根到目标粗细几乎不变、又粗又亮。
-		#   所以攻击态把锥度压平（往均匀靠）并整体加粗。
-		#   ★但"压平锥度"上一版压过头了(0.92/0.80 → 几乎等粗的一根白管)。
-		#   官方逐帧量下来：横向弦宽 35px / 投影长 188px ≈ **0.14 的粗细比**，
-		#   而且**梢端仍然收**（它是触手，不是激光柱）。⇒ 保留 1/5 左右的锥度。
-		# ★★★粗细是【量出来的】不是看出来的（`ttmeasure.py`：把光带做 PCA，
-		#   短轴/长轴 = 粗细比，官方 `wfull/041,043` 单条臂 = **0.30~0.35**）。
-		#   我一路眼看着"我的好像更胖"，实测却是 **0.18 —— 反而太细**：
-		#   截图里显胖只是因为两条臂张成 V 之后包围盒变宽，每条臂被缩得又短又粗。
-		#   （memory [[fb-probe-before-claiming-rootcause]]：推理出来的不算根因。）
-		# ★★待机与预警期本体要【厚】—— 官方那是个圆钝饱满的半透明团/粗钩，
-		#   我原来是根细弯钩。只有【拍击】才该细而亮（那时它是能量不是肉）。
-		# ★粗细倍数同样改成【跟抻直度连续变】：蜷着的时候厚(是"肉")、
-		#   抻直的时候细(是"能量")。不再按状态分支。
-		# ★★★2026-08-05【用户："拍击的时候触手变这么细吗，跟 idle 不同啊"】—— 我做反了。
-		#   量官方带宽：**待机 0.0252 / 拍击 0.0432 ⇒ 拍击是待机的 1.72 倍（更粗）**。
-		#   而我写的是 `lerp(1.75 → 1.00)`：待机 ×1.75、拍击 ×1.00 ⇒ 拍击只有待机的 0.57 倍。
-		#   （能量涌过去的时候那条带子是**鼓起来**的，不是勒细的。）
-		# ⚠ 改比值时**必须锚住待机的绝对值** —— 我上一版写 lerp(0.86→1.48)：
-		#   比值 1.72 对了，但待机从 ×1.75 掉到 ×0.86，**待机被搞细了一半**（用户当场看出来）。
-		#   正确写法：待机锚在 1.75，拍击 = 1.75 × 1.72。
 		r *= lerpf(1.75, 3.01, smoothstep(0.0, 1.0, straight))
-		# （原来这里还有一句"预警期 ×0.92"的状态分支，现已并入上面那条连续插值：
-		#   预警期卷得比待机松 ⇒ 抻直度更高 ⇒ 自动更细，钩口自然露得出来。）
-		if int(t["state"]) == ST_RECOVER:
-			# ★收细【延续到恢复期】—— 官方 +12 带宽仍在 0.0288 一路细下去，
-			#   我上一版恢复期恒定 0.0354 ⇒ 收回来的是一根还很粗的棍子。
-			var _te: float = T_SLAM + float(t["ts"])
-			var _bl: float = clampf(float(t["ts"]) / T_RECOVER, 0.0, 1.0)
+		if stt == ST_RECOVER:
+			var _te: float = T_SLAM + ts
+			var _bl: float = clampf(ts / T_RECOVER, 0.0, 1.0)
 			r *= lerpf(W_PEAK * _env(SLAM_W_CURVE, _te), 1.0, pow(_bl, 3.0))
-		if int(t["state"]) == ST_SLAM:
-			# ★★★2026-08-04【距离变换沿臂量出来的第三只】
-			#   官方 `wfull/041` 单臂：**根 0.0585 → 梢 0.0319（锥度 1.83:1，根粗）**
-			#   我上一版：      **根 0.0238 → 梢 0.0316（0.75 —— 锥度是【反】的）**
-			#   两个抹平锥度的元凶：
-			#     ① 这里原本 `lerpf(r, R_BASE*1.35, 0.75)` 把全长往同一个数拉 ⇒ 等宽霓虹管
-			#     ② 辉光半径的**常数偏移**给全长等量加宽 ⇒ 越细的地方占比越大，越抹越平
-			#   ⇒ ① 改等比放大（形状守住）；② 偏移砍到 1/4。
-			# ★官方拍击【带宽也在变细】: +2 峰值 0.051 → +6 0.030（×0.59）。
-			#   我上一版是恒定 ×1.50 ⇒ 抽出去之后杵着不动、更像根管子。
-			# ★★★官方带宽曲线：+0 **0.0396(细)** → +2 **0.0508(峰)** → +6 0.0296 → +12 0.0288。
-			#   ——【甩出去那一瞬间是细的，之后才鼓起来，再收细】。
-			#   我上一版是"起点最粗、一路细下去" = **方向反的**（+0 实测 0.0622，官方 1.57 倍）。
-			#   这是能量"涌过去"和"戳过去"的区别。
-			r *= W_PEAK * _env(SLAM_W_CURVE, float(t["ts"]))
-		# ★梢端【收成尖】—— 时间对齐对比里我的攻击态是一根**平头管子**，
-		#   官方那两条都是从粗到尖收干净的（它是触手，不是水管）。
+		if stt == ST_SLAM:
+			r *= W_PEAK * _env(SLAM_W_CURVE, ts)
+		## 梢端收成尖
 		if u > 0.86:
 			r *= 1.0 - 0.86 * pow((u - 0.86) / 0.14, 1.4)
+		out.append([pos, tan, r])
+	return out
 
+
+## 截面朝向(朝向相机的扁带): [side, up2]。
+static func _tent_side(pos: Vector3, tan: Vector3, camp: Vector3, camp_ok: bool, up: Vector3, lat: Vector3) -> Array:
+	var vdir: Vector3 = (pos - camp).normalized() if camp_ok else Vector3(0, -1, 0)
+	var sidev: Vector3 = tan.cross(vdir)
+	if sidev.length() < 0.001:
+		sidev = tan.cross(up)
+	if sidev.length() < 0.001:
+		sidev = lat
+	sidev = sidev.normalized()
+	return [sidev, sidev.cross(tan).normalized()]
+
+
+## 触手本体网格(纯函数: 逐帧直播出处键 —— 手机按同一组参数调它)。
+static func gen_tentacle_body(q: PackedInt32Array, root: Vector3, fix_i: PackedInt32Array, fix_t: PackedVector3Array,
+		curl: float, phase: float, stt: int, ts: float, camp: Vector3, camp_ok: bool, up: Vector3, lat: Vector3) -> ArrayMesh:
+	var mesh := ArrayMesh.new()
+	var rows: Array = _tent_rows(q, root, fix_i, fix_t, curl, phase, stt, ts)
+	var stool := SurfaceTool.new()
+	stool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var prev: Array = []
+	var prev_cols: Array = []
+	var prev_uvs: Array = []
+	var any := false
+	for sidx in range(rows.size()):
+		var u: float = float(sidx) / float(SEG)
+		var pos: Vector3 = rows[sidx][0]
+		var r: float = rows[sidx][2]
+		var sidev: Vector3 = _tent_side(pos, rows[sidx][1], camp, camp_ok, up, lat)[0]
 		var ring: Array = []
 		var cols: Array = []
 		var uvs: Array = []
-		var st2: int = int(t["state"])
+		var st2: int = stt
 		for k in range(RING):
 			# ★横向铺开的一条直线（不是绕一圈）—— f∈[-1,1]，0 是芯、±1 是边
 			var f: float = float(k) / float(RING - 1) * 2.0 - 1.0
@@ -2031,7 +2063,7 @@ func _rebuild(t: Dictionary) -> void:
 			# ★扁带上所有点法线相同 ⇒ 菲涅尔失效。改用【横向到边的距离】：
 			#   芯部(f=0) rim=0、边缘(|f|=1) rim=1 —— 这正是"暗芯 + 亮边"的那条梯度。
 			var rimf: float = clampf(absf(f), 0.0, 1.0)
-			var col: Color = _body_color(t, st2, u, rimf)
+			var col: Color = _body_color_s(st2, ts, u, rimf)
 			# ★★2026-08-04【放大对比】：扁带解决了"空心管/多边棱"，但芯变成了一条
 			#   **硬边白条** —— 边界是切出来的。官方那条是【亮芯往两侧化开】，
 			#   边界糊的。色梯度做不到这件事，得靠**顶点 alpha 横向渐隐**。
@@ -2062,28 +2094,13 @@ func _rebuild(t: Dictionary) -> void:
 				stool.set_color(prev_cols[k3]); stool.set_uv(u3b); stool.add_vertex(prev[k3])
 				stool.set_color(cols[k3]);      stool.set_uv(u3d); stool.add_vertex(ring[k3])
 				stool.set_color(cols[k2]);      stool.set_uv(u3c); stool.add_vertex(ring[k2])
-		halo_pts.append([pos, sidev, up2])
-		halo_r.append(r)
 		prev = ring
 		prev_cols = cols
 		prev_uvs = uvs
-		if not SIM_ON or simpts.size() != SEG + 1:   # 旧路径(仅关掉模拟时走)
-			var gy: float = root3.y
-			if pos.y <= gy + 0.001 and tan.y < 0.0:
-				tan.y = 0.0
-				tan = tan.normalized() if tan.length() > 0.001 else fwd
-			pos += tan * ds
-			if pos.y < gy:
-				pos.y = gy
-	## ★2026-08-21 句7: 把**梢端的真实世界高度**记下来, 给门禁读。
-	##   判据必须量真几何, 不是量我重推一遍的公式(重推的副本会和渲染漂开)。
-	##   新门禁 `verify_tentacle_soft` 断言: 下砸期这个值**单调不上升**。
-	##   —— 当年"拍下去两次"的真因就是梢端在下压中途往回抬; 盯住它, 就不必禁止 S 形。
-	_record_probe(t, halo_pts)
 	if any:
 		stool.generate_normals()
 		stool.commit(mesh)
-	_rebuild_halo(t, halo_pts, halo_r)
+	return mesh
 
 
 ## 场上现有几根（给门禁与调试用）

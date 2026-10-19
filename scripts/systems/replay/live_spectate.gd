@@ -30,6 +30,7 @@ const SB := preload("res://scripts/net/supabase.gd")
 const RF := preload("res://scripts/systems/replay/replay_fetcher.gd")
 const P2C := preload("res://scripts/gamedata/phase2_config.gd")
 const Board := preload("res://scripts/systems/replay/gauntlet_board.gd")
+const SW := preload("res://scripts/systems/replay/stream_watch.gd")
 
 const KIND_LIVE := "live"
 const KIND_PREMIERE := "premiere"
@@ -385,9 +386,13 @@ static func _on_live_fetched(tree: SceneTree, id: String, res: Dictionary, done:
 		_fallback_replay(tree, id, done, back, names)
 		return
 	## 已经打完 ⇒ 就是一场回放(带控件), 不挂观赛会话。
-	if not e:
-		pending = {"kind": KIND_LIVE, "id": id, "horizon": int(res.get("horizon", 0)),
-			"t_ms": Time.get_ticks_msec()}
+	##   ★逐帧直播 S5: 打完的这一份与赛况板「观看」同一个分流口(开关关 ⇒ 下面那一行原样; 开着而服务器有状态流 ⇒ 播流)。
+	##   还在打的(直播行 = 打的人本机边打边传的输入)只能是本机局 —— 服务器裁判局没有直播行(referee 模式不挂 live_upload)。
+	if e:
+		SW.route(tree, rec, back, names, false, func() -> String: return ReplayRecorder.play(tree, rec, back, names), done)
+		return
+	pending = {"kind": KIND_LIVE, "id": id, "horizon": int(res.get("horizon", 0)),
+		"t_ms": Time.get_ticks_msec()}
 	var w := ReplayRecorder.play(tree, rec, back, names)
 	if w != "":
 		pending = {}

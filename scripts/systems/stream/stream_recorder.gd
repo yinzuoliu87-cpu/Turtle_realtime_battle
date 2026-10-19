@@ -44,12 +44,16 @@ const K_LABEL := 5
 ## 跟踪属性(S0 实测「建出来之后真的变过」的 30 种, 2026-10-19; Node3D 的变换 / 显隐另算, 见 N3D_TRACKED)。
 ## ShaderMaterial 的 shader_parameter/* 全部跟踪(参数表本来就是拿来每步改的)。
 ## ★加一项 = 改对应的取值路径(`_samp` / `_res_check`) + 方案书 §2.2 白名单那一行。
+## S3(2026-10-19, 覆盖扫描 200 局的 7 处白名单外报警): + Sprite3D.flip_v(过肩摔倒立)、Label3D.text(钩爆计数 / 赌徒轮盘)、
+##   MeshInstance3D.transparency(钩爆触须淡出)、GPUParticles3D.speed_scale(时停冻粒子 / 毒雾)、
+##   ParticleProcessMaterial.emission_ring_radius(毒雾扩圈)。
 const TRACKED := {
-	"Sprite3D": ["frame", "texture", "hframes", "region_enabled", "flip_h", "modulate", "region_rect", "offset", "pixel_size"],
-	"Label3D": ["modulate"],
-	"MeshInstance3D": ["mesh"],
-	"GPUParticles3D": ["emitting"],
+	"Sprite3D": ["frame", "texture", "hframes", "region_enabled", "flip_h", "flip_v", "modulate", "region_rect", "offset", "pixel_size"],
+	"Label3D": ["modulate", "text"],
+	"MeshInstance3D": ["mesh", "transparency"],
+	"GPUParticles3D": ["emitting", "speed_scale"],
 	"StandardMaterial3D": ["albedo_color", "uv1_offset"],
+	"ParticleProcessMaterial": ["emission_ring_radius"],
 }
 const N3D_TRACKED := ["position", "rotation", "scale", "visible"]
 const SKIP_PROPS := ["frame_coords", "resource_local_to_scene", "resource_path", "resource_name",
@@ -99,11 +103,16 @@ class TN extends RefCounted:
 	var hf := 1
 	var reg := false
 	var fh := false
+	var fv := false           # S3: flip_v
+	var txt := ""             # S3: Label3D.text
+	var trn := 0.0            # S3: GeometryInstance3D.transparency(MeshInstance3D)
+	var spd := 1.0            # S3: GPUParticles3D.speed_scale
 	var mod := Color.WHITE
 	var rr := Rect2()
 	var off := Vector2.ZERO
 	var ps := 0.0
 	var mesh: Object = null
+	var gm = null             # S3: 当前网格的出处键 meta(非空 = 生成网格)
 	var emit := false
 	var par := 0              # 父节点 instance id(S2: 换父节点要发 `@par`)
 	var unit = null           # S2: 单位外观节点的主人(单位字典); 主人活着时变换 / 颜色 / 朝向由手机渲染步按单位字段算, 不发
@@ -139,6 +148,7 @@ var _tn: Array = []
 var _tn_by_iid := {}
 var _pending: Array = []
 var _next_id := 1
+var _ts_fx_id := 0            # S3: 时停全屏层伪节点的 id(0 = 没开)
 var _ua := {}                 # 单位外观节点 iid → [单位字典, 键]
 var _ua_n := -1
 var _ua_step := -999
@@ -152,6 +162,11 @@ var _res_sent := {}           # 本 keyframe 段已发过定义的 rid
 var _res_track := {}          # rid → PackedStringArray(逐 30Hz 比的属性)
 var _res_last := {}           # rid → Array(上次发出的原值)
 var _res_base := {}           # rid → Dictionary(白名单外属性 → 比较键)
+var _gen_ref := 0             # S3: 本次定义可以拿来做参数差分的上一代 rid(_samp 换网格时设, 用完清零)
+var _gen_fn_of := {}          # S3: rid → 出处(脚本:函数)(本 keyframe 段)
+var _gen_args_of := {}        # S3: rid → 参数 Array(本 keyframe 段; 只记不含资源的)
+var _gen_recent: Array = []    # S3: 本 keyframe 段最近发过的几份出处键参数 [参数 Array, rid](参数别名用; keyframe 清零)
+var _gen_prev := {}           # S3: rid → 上一代 rid(每步重建的网格换代、旧的已释放; 第一次发定义时带上, 手机释放旧的)
 ## 规格缓存
 var _specs := {}              # 类名 → Array[[StringName, 类型, 跟踪?]]
 var _defs := {}               # 类名 → Array(默认值)
@@ -199,6 +214,7 @@ func start() -> void:
 		DirAccess.make_dir_recursive_absolute(out_dir)
 	battle.get_tree().node_added.connect(_on_added)
 	cur = self
+	VfxTex.recording = true       # S3: 小网格的「整份拍下」只在录流时做(VfxTex.snap)
 
 
 func pre_step() -> void:
@@ -239,6 +255,7 @@ func finish(extra: Dictionary = {}) -> Dictionary:
 		tr.node_added.disconnect(_on_added)
 	if cur == self:
 		cur = null
+		VfxTex.recording = false
 	meta["steps"] = _step_n
 	meta["units"] = _uk.size()
 	meta["us_render"] = _us_render
@@ -305,6 +322,9 @@ func _sample_pre(step_n: int) -> bool:
 			key = true
 			enc.strs.clear()
 			_res_sent.clear()
+			_gen_recent.clear()
+			_gen_fn_of.clear()
+			_gen_args_of.clear()
 	if int(meta["first_step"]) < 0:
 		meta["first_step"] = step_n
 	meta["last_step"] = step_n
@@ -334,11 +354,36 @@ func _sample_post(cont: bool) -> void:
 		_nodes(cont)
 	_us_new += t2 - t1
 	_us_nodes += Time.get_ticks_usec() - t2
+	_screen_fx(key)
 	_events()
 	meta["nodes_peak"] = maxi(int(meta["nodes_peak"]), _tn.size())
 	_chunk_steps += 1
 	if _chunk_steps >= F.CHUNK_STEPS:
 		_flush()
+
+
+## S3: 时停的全屏层(灰世界 / 能量波 / 停摆钟)挂在 CanvasLayer 上, 不在 `_world` 里 ⇒ 节点层看不见它。
+##   服务器在时停里(`_ts_active` 非空)就在节点层放一个伪节点 `@ts_screen`(带服务器此刻的释放后秒数 `el`), 时停结束删掉;
+##   keyframe 时重发(跳进来的手机照样开)。手机的 StreamMirror 认出这个类名, 调同一个 TimestopSystem 把全屏层开起来自己演。
+##   它不进 `_tn`(不是真节点, 没有属性可比), 服务器那边的世界里也没有它。
+func _screen_fx(key: bool) -> void:
+	var on := not (battle._timestop._ts_active as Array).is_empty()
+	if on and (_ts_fx_id == 0 or key):
+		if _ts_fx_id == 0:
+			_ts_fx_id = _next_id
+			_next_id += 1
+			meta["ts_screen"] = int(meta.get("ts_screen", 0)) + 1
+		enc.u8(F.OP_NODE_NEW)
+		enc.vu(_ts_fx_id)
+		enc.u8(F.PAR_WORLD)
+		enc.s(F.FX_TS_SCREEN)
+		enc.vu(1)
+		enc.s("el")
+		enc.val(float(battle._timestop._ts_wave_t))
+	elif not on and _ts_fx_id != 0:
+		enc.u8(F.OP_NODE_DEL)
+		enc.vu(_ts_fx_id)
+		_ts_fx_id = 0
 
 
 func _flush() -> void:
@@ -391,6 +436,10 @@ func _globals(cont: bool) -> void:
 		n += _g("t", float(battle._t))   # S2: 有事件的步也发 —— 飘字合并 / 排行窗按 _t 判(差一步就合并错)
 	if cont:
 		n += _g("hs", float(battle._hitstop))
+	if cont or StreamHud.wants_glob(_evs):
+		var hg: Dictionary = StreamHud.glob(battle)   # 播放端 HUD(羁绊 / 路点 / 计时牌 / 幕布), 见 stream_hud.gd; 逐项比、变了才发
+		for hk in hg:
+			n += _g("h." + str(hk), hg[hk])
 	if n == 0:
 		enc.rewind(p0)
 	else:
@@ -600,6 +649,20 @@ func _unit_fields(u: Dictionary, idx: int, cont: bool) -> void:
 			enc.s("@n")
 			enc.val(ids)
 			n += 1
+		## 播放端 HUD 要的合成字段(头像框装备格 / 读数 / 蛋副条 / 侵入阵营), 纯值, 由 stream_hud.gd 算
+		for hk in StreamHud.UNIT_KEYS:
+			var hv = StreamHud.unit_field(u, hk)
+			var oldh = c.get(hk)
+			if typeof(oldh) != typeof(hv) or oldh != hv:
+				c[hk] = hv
+				if n == 0:
+					enc.u8(F.OP_UNIT_SET)
+					enc.vu(idx)
+					pc = enc.pos()
+					enc.u8(0)
+				enc.s(hk)
+				enc.val(hv)
+				n += 1
 	if n > 0:
 		enc.patch_u8(pc, n)
 
@@ -703,11 +766,27 @@ func _samp(t: TN, cont: bool) -> void:
 			_ensure(tex_rid)
 	elif t.kind == K_MESH:
 		var mi0: MeshInstance3D = t.n
-		if mi0.mesh != t.mesh:
-			t.mesh = mi0.mesh
-			mesh_rid = _rid(t.mesh)
-			_ensure(mesh_rid)
-			t.mats = _collect_mats(t.n)
+		var m0 = mi0.mesh
+		if m0 != t.mesh:
+			var g0 = _gen_meta(m0)
+			## S3: 生成网格换成另一份生成网格(每步重建一次的触手 / 触须 / 水带)⇒ 与变换同频(30 Hz)发, 不逐步发;
+			##   出处键可以自己带「每几步发一代」(meta 第 4 项, 见 VfxTex.tag 的 every: 触手待机 / 预警 / 收回 15 Hz)
+			var gev: int = int((g0 as Array)[3]) if g0 != null and (g0 as Array).size() > 3 else F.CONT_EVERY
+			if (_step_n % maxi(1, gev)) == 0 or g0 == null or t.gm == null:
+				var old_rid := 0
+				if t.gm != null and t.mesh != null and is_instance_valid(t.mesh):
+					old_rid = int(_rid_of.get((t.mesh as Object).get_instance_id(), 0))
+				t.mesh = m0
+				t.gm = g0
+				mesh_rid = _rid(m0)
+				## 上一代没人要了(服务器上已释放: 本表那份强引用是最后一个)⇒ 告诉手机释放它(每步一份的触手网格不能在手机上攒到下一个 keyframe)
+				if old_rid > 0 and mesh_rid > 0 and not _res_sent.has(mesh_rid) and (_res_ref[old_rid] as WeakRef).get_ref() == null:
+					_gen_prev[mesh_rid] = old_rid
+					meta["gen_release"] = int(meta.get("gen_release", 0)) + 1
+				_gen_ref = old_rid if _res_sent.has(old_rid) else 0
+				_ensure(mesh_rid)
+				_gen_ref = 0
+				t.mats = _collect_mats(t.n)
 	_cur_id = t.id
 	_sn = 0
 	## S2: 换了父节点(特效常见的「父节点要删, 先把粒子挪到世界上让它放完」)⇒ 发 `@par` + 当场的变换(本地坐标跟着父节点变了)
@@ -792,6 +871,10 @@ func _samp(t: TN, cont: bool) -> void:
 				t.fh = sp.flip_h
 				_k(&"flip_h")
 				enc.val(t.fh)
+			if sp.flip_v != t.fv:
+				t.fv = sp.flip_v
+				_k(&"flip_v")
+				enc.val(t.fv)
 			if cont:
 				if sp.modulate != t.mod and not ren:
 					t.mod = sp.modulate
@@ -810,8 +893,12 @@ func _samp(t: TN, cont: bool) -> void:
 					_k(&"pixel_size")
 					enc.val(t.ps)
 		K_LABEL:
+			var lb: Label3D = t.n
+			if lb.text != t.txt:
+				t.txt = lb.text
+				_k(&"text")
+				enc.val(t.txt)
 			if cont:
-				var lb: Label3D = t.n
 				if lb.modulate != t.mod:
 					t.mod = lb.modulate
 					_k(&"modulate")
@@ -820,12 +907,22 @@ func _samp(t: TN, cont: bool) -> void:
 			if mesh_rid >= 0:
 				_k(&"mesh")
 				enc.res(mesh_rid)
+			if cont:
+				var mi2: MeshInstance3D = t.n
+				if mi2.transparency != t.trn:
+					t.trn = mi2.transparency
+					_k(&"transparency")
+					enc.val(t.trn)
 		K_PART:
 			var gp: GPUParticles3D = t.n
 			if gp.emitting != t.emit:
 				t.emit = gp.emitting
 				_k(&"emitting")
 				enc.val(t.emit)
+			if gp.speed_scale != t.spd:
+				t.spd = gp.speed_scale
+				_k(&"speed_scale")
+				enc.val(t.spd)
 	if _sn > 0:
 		enc.patch_u8(_spc, _sn)
 		_node_sets += 1
@@ -864,16 +961,21 @@ func _cache_tracked(t: TN) -> void:
 			t.hf = sp.hframes
 			t.reg = sp.region_enabled
 			t.fh = sp.flip_h
+			t.fv = sp.flip_v
 			t.mod = sp.modulate
 			t.rr = sp.region_rect
 			t.off = sp.offset
 			t.ps = sp.pixel_size
 		K_LABEL:
 			t.mod = (t.n as Label3D).modulate
+			t.txt = (t.n as Label3D).text
 		K_MESH:
 			t.mesh = (t.n as MeshInstance3D).mesh
+			t.gm = _gen_meta(t.mesh)
+			t.trn = (t.n as MeshInstance3D).transparency
 		K_PART:
 			t.emit = (t.n as GPUParticles3D).emitting
+			t.spd = (t.n as GPUParticles3D).speed_scale
 
 
 ## 节点建立(或 keyframe 重发): 只发与类默认值不同的属性; 同时记下白名单外属性的比较键(报警基线)。
@@ -1018,6 +1120,8 @@ func _rid(o) -> int:
 
 
 static func _kind_of(r: Resource) -> int:
+	if r.has_meta(F.GEN_META):
+		return F.RES_GEN
 	if r.resource_path != "" and r.resource_path.find("::") < 0:
 		return F.RES_PATH
 	if r is Texture2D:
@@ -1046,6 +1150,9 @@ func _ensure(rid: int) -> void:
 	var kind := int(_res_kind[rid])
 	if o == null:
 		kind = F.RES_OTHER
+	elif kind != F.RES_GEN and (o as Object).has_meta(F.GEN_META):
+		kind = F.RES_GEN          # S3: 先见到、后挂出处键的(建好再打标签)
+		_res_kind[rid] = kind
 	var rd: Dictionary = meta["res_defs"]
 	rd[kind] = int(rd.get(kind, 0)) + 1
 	match kind:
@@ -1087,11 +1194,109 @@ func _ensure(rid: int) -> void:
 			enc.vu(rid)
 			enc.u8(kind)
 			enc.s((o as Shader).code)
+		F.RES_GEN:
+			_ensure_gen(rid, o)
 		_:
 			enc.u8(F.OP_RES_DEF)
 			enc.vu(rid)
 			enc.u8(F.RES_OTHER)
 			enc.s((o as Object).get_class() if o != null else "")
+
+
+## S3 出处键: 资源上的 meta `stream_gen` = [脚本路径, 静态函数名, 参数 Array](见 VfxTex.tag)。
+##   参数里的资源(材质 / 贴图 …)先定义、写 rid; 其余逐位精确写(`Enc.gval`)。手机按白名单调同一个函数现生成。
+func _ensure_gen(rid: int, o: Object) -> void:
+	var gm: Array = o.get_meta(F.GEN_META)
+	var gargs: Array = gm[2] if gm.size() > 2 and gm[2] is Array else []
+	var rids := PackedInt32Array()
+	for a in gargs:
+		var r2 := -1
+		if typeof(a) == TYPE_OBJECT:
+			r2 = _rid(a)
+			_ensure(r2)
+		rids.append(r2)
+	var p0 := enc.pos()
+	enc.u8(F.OP_RES_DEF)
+	enc.vu(rid)
+	enc.u8(F.RES_GEN)
+	enc.s(o.get_class())
+	enc.s("%s:%s" % [str(gm[0]), str(gm[1])])
+	enc.vu(int(_gen_prev.get(rid, 0)))
+	_gen_prev.erase(rid)
+	var gid := "%s:%s" % [str(gm[0]), str(gm[1])]
+	var plain := rids.count(-1) == rids.size()      # 参数里没有资源(才记下来给后面做差分)
+	## 参数别名: 同一个参数 Array 对象这一段里刚发过(触手本体与外发光壳共用一份)⇒ 只写「同 rid X」
+	var alias := 0
+	for e in _gen_recent:
+		if is_same(e[0], gargs):
+			alias = int(e[1])
+			break
+	## 参数差分: 这个节点上一代网格(每步重建的触手 / 触须 / 水带)本段发过、同一个生成函数、参数个数相同
+	##   ⇒ 没变的参数写一个字节 T_SAME, 等长字节数组写异或(大半是 0, ZSTD 压得很小), 其余照写
+	var ref := _gen_ref
+	var delta: bool = alias == 0 and plain and ref > 0 and str(_gen_fn_of.get(ref, "")) == gid \
+		and _gen_args_of.has(ref) and (_gen_args_of[ref] as Array).size() == gargs.size()
+	if alias > 0:
+		enc.vu(F.GEN_ALIAS)
+		enc.vu(alias)
+		meta["gen_alias"] = int(meta.get("gen_alias", 0)) + 1
+	elif delta:
+		var base: Array = _gen_args_of[ref]
+		enc.vu(F.GEN_DELTA)
+		enc.vu(ref)
+		enc.vu(gargs.size())
+		for i in range(gargs.size()):
+			var a = gargs[i]
+			var b = base[i]
+			if typeof(a) == typeof(b) and a == b:
+				enc.u8(F.T_SAME)
+			elif a is PackedByteArray and b is PackedByteArray and (a as PackedByteArray).size() == (b as PackedByteArray).size():
+				var x := PackedByteArray(a)
+				var bb: PackedByteArray = b
+				for j in range(x.size()):
+					x[j] = x[j] ^ bb[j]
+				enc.u8(F.T_BXOR)
+				enc.vu(x.size())
+				enc.buf.put_data(x)
+			elif a is PackedInt32Array and b is PackedInt32Array and (a as PackedInt32Array).size() == (b as PackedInt32Array).size():
+				var ia: PackedInt32Array = a
+				var ib: PackedInt32Array = b
+				enc.u8(F.T_IDIFF)
+				enc.vu(ia.size())
+				for j in range(ia.size()):
+					enc.vi(ia[j] - ib[j])
+			else:
+				enc.gval(a)
+		meta["gen_delta"] = int(meta.get("gen_delta", 0)) + 1
+	else:
+		enc.vu(F.GEN_FULL)
+		enc.vu(gargs.size())
+		for i in range(gargs.size()):
+			if rids[i] >= 0:
+				enc.res(rids[i])
+			else:
+				enc.gval(gargs[i])
+	if alias == 0:
+		_gen_recent.push_front([gargs, rid])
+		if _gen_recent.size() > 4:
+			_gen_recent.pop_back()
+	_gen_fn_of[rid] = gid
+	if plain:
+		_gen_args_of[rid] = gargs
+	meta["gen_bytes"] = int(meta.get("gen_bytes", 0)) + enc.pos() - p0
+	## 按生成函数分账(R1 重算要知道是哪一个涨了): 函数名 → [次数, 原始字节]
+	var gb: Dictionary = meta.get("gen_by", {})
+	var gk := str(gm[1])
+	var gr: Array = gb.get(gk, [0, 0])
+	gb[gk] = [int(gr[0]) + 1, int(gr[1]) + enc.pos() - p0]
+	meta["gen_by"] = gb
+
+
+static func _gen_meta(o):
+	if o == null or not is_instance_valid(o) or not (o as Object).has_meta(F.GEN_META):
+		return null
+	return (o as Object).get_meta(F.GEN_META)
+
 
 
 ## 参数型资源的非默认属性(子资源先 _ensure), 顺便登记跟踪属性的原值与报警基线。返回 [[名, 值, 子 rid 或 -1]]。
@@ -1205,6 +1410,9 @@ func _alarm_node(t: TN) -> void:
 	for nm in t.base_x:
 		var v2 = t.n.get(nm)
 		var o2 = t.base_x[nm]
+		## 换成面数更少的网格(每步重建的网格先挂一份空网格)时这个属性不存在了: 读回 nil, 与「没设覆盖材质」(null 对象)是同一个意思
+		if v2 == null and o2 == null:
+			continue
 		if typeof(v2) != typeof(o2) or v2 != o2:
 			t.base_x[nm] = v2
 			_alarm_hit("%s.%s" % [t.cls, str(nm)])

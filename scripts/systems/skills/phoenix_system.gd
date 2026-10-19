@@ -1,5 +1,8 @@
 class_name PhoenixSystem
 extends RefCounted
+
+## S3 逐帧直播出处键: 本文件生成函数的路径(VfxTex.tag 第 4 个参数)
+const SRC := "res://scripts/systems/skills/phoenix_system.gd"
 ## 凤凰·烈焰扇/灼烧系统(从主场景抽出)
 ## 类内簇函数名不变→内部互调零改动;外部名加 battle. 前缀。
 
@@ -219,7 +222,7 @@ func _phoenix_sector_indicator(u: Dictionary, tgt: Dictionary) -> void:
 	var sect = u.get("flame_sector", null)
 	if sect == null or not is_instance_valid(sect):
 		sect = MeshInstance3D.new()
-		sect.mesh = ImmediateMesh.new()
+		sect.mesh = VfxTex.gen_empty_mesh()
 		var mat := ShaderMaterial.new()
 		mat.shader = load("res://assets/shaders/flame_cone.gdshader")
 		sect.material_override = mat
@@ -239,10 +242,10 @@ func _phoenix_sector_indicator(u: Dictionary, tgt: Dictionary) -> void:
 func _phoenix_build_flame_mesh(u: Dictionary) -> bool:   # 分环建扇形mesh: 第r环回放r×飞行时间前的(角,开)→火锋推进/停喷外飘/转向弯流全自然涌现; 返回false=全灭
 	var sect = u.get("flame_sector", null)
 	if sect == null or not is_instance_valid(sect): return false
-	var im: ImmediateMesh = sect.mesh
-	im.clear_surfaces()
 	var hist: Array = u.get("phx_hist", [])
-	if hist.is_empty(): return false
+	if hist.is_empty():
+		_phoenix_clear_flame_mesh(sect)
+		return false
 	var R := 12
 	var N := 12
 	var ring_a: Array = []
@@ -252,32 +255,55 @@ func _phoenix_build_flame_mesh(u: Dictionary) -> bool:   # 分环建扇形mesh: 
 		var s: Array = battle._phx_hist_sample(hist, battle._t - (float(i) / float(R)) * battle.PHX_FLIGHT_T)
 		ring_a.append(float(s[0])); ring_on.append(float(s[1]))
 		if float(s[1]) > 0.02: any = true
-	if not any: return false
+	if not any:
+		_phoenix_clear_flame_mesh(sect)
+		return false
 	var origin: Vector2 = u["pos"]
 	var half: float = deg_to_rad(FLAME_ARC_HALF)
 	var rng: float = battle._eff_range(u) * 0.92
 	var mouth: Vector2 = origin + Vector2(DetMath.dcos(ring_a[0]), DetMath.dsin(ring_a[0])) * 18.0
+	## S3 逐帧直播: 每次新建一份赋给节点(原地 clear_surfaces 重画录流看不见); 网格由纯函数按参数建
+	sect.mesh = gen_phoenix_flame(mouth, ring_a, ring_on, half, rng, R, N, battle._arena_center, battle.WS)
+	return true
+
+
+## 原来是 clear_surfaces 留一份空网格; 现在换成带出处键的空网格(已经是就不重换)
+func _phoenix_clear_flame_mesh(sect) -> void:
+	if not (sect.mesh is ArrayMesh):
+		sect.mesh = VfxTex.gen_empty_mesh()
+
+
+## S3 逐帧直播: 喷火扇形网格(纯函数)。ring_a / ring_on = 各环回放出的(中心角, 开度), 由调用方按喷射历史采好。
+static func gen_phoenix_flame(mouth: Vector2, ring_a: Array, ring_on: Array, half: float, rng: float, R: int, N: int,
+		center: Vector2, ws: float) -> ImmediateMesh:
+	var im := ImmediateMesh.new()
 	im.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
 	for i in range(R):
 		for j in range(N):
 			var f0: float = float(j) / float(N)
 			var f1: float = float(j + 1) / float(N)
-			var v00: Vector2 = battle._phx_fan_pt(mouth, ring_a[i], half, rng, float(i) / float(R), f0)
-			var v01: Vector2 = battle._phx_fan_pt(mouth, ring_a[i], half, rng, float(i) / float(R), f1)
-			var v10: Vector2 = battle._phx_fan_pt(mouth, ring_a[i + 1], half, rng, float(i + 1) / float(R), f0)
-			var v11: Vector2 = battle._phx_fan_pt(mouth, ring_a[i + 1], half, rng, float(i + 1) / float(R), f1)
+			var v00: Vector2 = _fan_pt(mouth, ring_a[i], half, rng, float(i) / float(R), f0)
+			var v01: Vector2 = _fan_pt(mouth, ring_a[i], half, rng, float(i) / float(R), f1)
+			var v10: Vector2 = _fan_pt(mouth, ring_a[i + 1], half, rng, float(i + 1) / float(R), f0)
+			var v11: Vector2 = _fan_pt(mouth, ring_a[i + 1], half, rng, float(i + 1) / float(R), f1)
 			var c0 := Color(1, 1, 1, ring_on[i])
 			var c1 := Color(1, 1, 1, ring_on[i + 1])
 			var r0: float = float(i) / float(R)
 			var r1: float = float(i + 1) / float(R)
-			im.surface_set_color(c0); im.surface_set_uv(Vector2(f0, r0)); im.surface_add_vertex(battle._world_pos(v00, 0.12))
-			im.surface_set_color(c1); im.surface_set_uv(Vector2(f0, r1)); im.surface_add_vertex(battle._world_pos(v10, 0.12))
-			im.surface_set_color(c1); im.surface_set_uv(Vector2(f1, r1)); im.surface_add_vertex(battle._world_pos(v11, 0.12))
-			im.surface_set_color(c0); im.surface_set_uv(Vector2(f0, r0)); im.surface_add_vertex(battle._world_pos(v00, 0.12))
-			im.surface_set_color(c1); im.surface_set_uv(Vector2(f1, r1)); im.surface_add_vertex(battle._world_pos(v11, 0.12))
-			im.surface_set_color(c0); im.surface_set_uv(Vector2(f1, r0)); im.surface_add_vertex(battle._world_pos(v01, 0.12))
+			im.surface_set_color(c0); im.surface_set_uv(Vector2(f0, r0)); im.surface_add_vertex(VfxTex.wpos(center, ws, v00, 0.12))
+			im.surface_set_color(c1); im.surface_set_uv(Vector2(f0, r1)); im.surface_add_vertex(VfxTex.wpos(center, ws, v10, 0.12))
+			im.surface_set_color(c1); im.surface_set_uv(Vector2(f1, r1)); im.surface_add_vertex(VfxTex.wpos(center, ws, v11, 0.12))
+			im.surface_set_color(c0); im.surface_set_uv(Vector2(f0, r0)); im.surface_add_vertex(VfxTex.wpos(center, ws, v00, 0.12))
+			im.surface_set_color(c1); im.surface_set_uv(Vector2(f1, r1)); im.surface_add_vertex(VfxTex.wpos(center, ws, v11, 0.12))
+			im.surface_set_color(c0); im.surface_set_uv(Vector2(f1, r0)); im.surface_add_vertex(VfxTex.wpos(center, ws, v01, 0.12))
 	im.surface_end()
-	return true
+	return VfxTex.tag(im, "gen_phoenix_flame", [mouth, ring_a, ring_on, half, rng, R, N, center, ws], SRC)
+
+
+## 扇形上(径向 r, 角向 f)的 2D 点(环各自的历史中心角 → 弯流)。原来是主场景的 `_phx_fan_pt`, S3 搬到这里改成静态(网格生成函数要用)、原处删掉。
+static func _fan_pt(mouth: Vector2, center_ang: float, half: float, rng: float, r: float, f: float) -> Vector2:
+	var aa: float = center_ang - half + 2.0 * half * f
+	return mouth + Vector2(DetMath.dcos(aa), DetMath.dsin(aa)) * (rng * r)
 
 func _phoenix_scald_hit(u: Dictionary, tgt, fb) -> void:
 	if is_instance_valid(fb):

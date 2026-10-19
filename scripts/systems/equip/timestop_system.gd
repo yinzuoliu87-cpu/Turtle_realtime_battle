@@ -77,6 +77,7 @@ var _ts_charge_casters: Array = []
 var _ts_fired := false                    # 本战场一次(2026-09-16 用户拍板: 上路/下路/终极各一次) —— 换路由 reset_for_lane() 清
 var _ts_maxstar := 0                      # 生效沙漏星级(定时长 5/10/30 秒·用户2026-07-19: 1★ 4→5)
 var _ts_frozen_tweens: Array = []         # 时停开始那一刻已存在的 sim tween: 时停期间 `_step_sim_tweens` 不喂它们(之后新建的照喂)
+var _ts_hg_tweens: Array = []             # 蓄力沙漏虚影的 tween(走 sim 步, 但**不进**冻结名单: 它横跨蓄力末尾, 冻住会让虚影定在头顶整段时停)
 var _ts_frozen_particles: Array = []      # 时停期间被暂停的GPUParticles3D(speed_scale归零, 结束还原)
 var _ts_overlay: CanvasLayer = null       # 时停灰世界叠加层(压暗褪色从携带者扩散; layer5=在UI下→只灰3D世界, 数字/血条保彩)
 var _ts_rect: ColorRect = null
@@ -231,8 +232,9 @@ func _ts_begin_freeze() -> void:   # 冻住时停开始时已有的所有VFX twe
 	##   按 sim 步喂 ⇒ 这里不能再挑 `is_running()`(恒假, 一个都挑不到), 也不能 `play()` 回去
 	##   (那会让 SceneTree 按真实 delta 再推一遍)。改成登记名单, 由喂的那一侧跳过名单里的。
 	_ts_frozen_tweens = []
+	_ts_hg_tweens = _ts_hg_tweens.filter(func(x): return x != null and x.is_valid())
 	for t in battle._sim_tweens:
-		if t != null and t.is_valid():
+		if t != null and t.is_valid() and not (t in _ts_hg_tweens):
 			_ts_frozen_tweens.append(t)
 	_ts_frozen_particles = []
 	_ts_freeze_particles_in(battle._world)
@@ -334,6 +336,16 @@ func _ts_casters_screen_uv() -> Vector2:   # active携带者质心的屏幕UV(�
 
 # 释放: 环出去 → 染紫 → 色相翻转 → 收回(扫过的变暗灰) → 中心白光, 全部由 `_ts_wave_step` 逐帧驱动
 func _ts_visual_start() -> void:
+	ts_screen_begin(0.0)
+	for c in _ts_active:
+		_ts_caster_sand(c)             # 时之砂(替掉原来那颗白球)
+	_ts_spawn_clock()                  # 停摆钟浮现
+
+
+## 【全屏那一层】(灰世界 / 能量波 / 扭曲 / 染色 —— 都在 CanvasLayer 上, 不在 `_world` 里): 打开并从释放后第 `wave_t` 秒起演。
+##   本机 / 服务器由 `_ts_visual_start` 调(wave_t = 0); 逐帧直播的手机由 StreamMirror 的「时停全屏」伪节点调
+##   (服务器那边在时停里 ⇒ 流里有这个伪节点, 带着服务器此刻的 wave_t; 手机一步 sim 都不跑, 全屏层只能这样开)。
+func ts_screen_begin(wave_t: float) -> void:
 	_ts_ensure_overlay()
 	## ★★2026-09-16: 换路清场把这两层 `visible = false` 了(dual_lane_flow._dl_clear_units),
 	##   而全仓【没有任何一处】把它写回 true, `_ts_ensure_overlay()` 又是"对象还在就直接 return"
@@ -353,13 +365,16 @@ func _ts_visual_start() -> void:
 	##   **没有全屏白闪**: 爆开的白只在人物胸口(10.83~10.97 秒), 画面是被那一道环【染】过去的。
 	## ★灰色只由收回的波前铺(用户原话「能量波经过的地方变灰」), 不另起 tween。
 	mat.set_shader_parameter("grey_front", 1.0)
-	_ts_wave_step(0.0)
-	for c in _ts_active:
-		_ts_caster_sand(c)             # 时之砂(替掉原来那颗白球)
-	_ts_spawn_clock()                  # 停摆钟浮现
+	_ts_wave_t = wave_t
+	_ts_wave_step(wave_t)
 
 func _ts_visual_end() -> void:   # 解除: 反色再闪 + 回色(时间恢复流动)
 	_ts_clear_visual_nodes()
+	ts_screen_end()
+
+
+## 全屏那一层的收尾(反色再闪 + 回色)。停摆钟的淡出在 `_ts_clear_visual_nodes` / `ts_screen_drop_clock` 里。
+func ts_screen_end() -> void:
 	if _ts_rect != null and is_instance_valid(_ts_rect) and _ts_rect.material != null:
 		for _k in ["wave_a", "warp", "violet", "hue_flip", "zoom_blur", "core_flash"]:
 			(_ts_rect.material as ShaderMaterial).set_shader_parameter(_k, 0.0)
@@ -475,6 +490,18 @@ func _ts_tick_visual(_delta: float) -> void:   # 每帧喂携带者屏幕位置�
 	for g in _ts_glow_sprs:
 		if is_instance_valid(g):
 			g.frame = _sf
+	_ts_screen_casters()
+
+
+## 逐帧直播的手机: 全屏层每帧推进(只推全屏那一层; 时之砂 / 光点是 `_world` 里的节点, 走节点镜像)。
+func ts_screen_tick(delta: float) -> void:
+	_ts_wave_t += delta
+	_ts_wave_step(_ts_wave_t)
+	_ts_screen_casters()
+
+
+## 携带者的屏幕位置喂给灰 shader(彩色泡跟着时之主)。按**本机相机**算: 手机平移 / 缩放后泡仍套在人身上。
+func _ts_screen_casters() -> void:
 	if _ts_rect == null or not is_instance_valid(_ts_rect) or battle._cam == null:
 		return
 	var vp = battle.get_viewport().get_visible_rect().size
@@ -676,6 +703,11 @@ func _ts_clear_visual_nodes() -> void:
 	_ts_glow_sprs = []
 	_ts_free_cores()
 	_ts_free_auras()
+	ts_screen_drop_clock()
+
+
+## 停摆钟淡出(全屏层上的, 不在 `_world` 里)。
+func ts_screen_drop_clock() -> void:
 	if _ts_clock != null and is_instance_valid(_ts_clock):
 		var clk := _ts_clock
 		var tw = battle.create_tween()
@@ -696,7 +728,12 @@ func _ts_charge_vfx(c: Dictionary) -> void:
 	hg.pixel_size = (54.0 * battle.WS) / float(maxi(1, hg.texture.get_height()))
 	hg.position = battle._world_pos(c["pos"], 2.4)
 	battle._world.add_child(hg)
-	var tw = battle.create_tween(); tw.set_parallel(true)
+	## ★S3(逐帧直播): 原来是 `battle.create_tween()` —— SceneTree 按真实帧推, 是 sim 步与渲染步之外的「第三条钟」,
+	##   服务器一帧推几十步时录流只能在 sim 步后看到它晚一拍 / 漏掉(覆盖扫描 ext|transform / ext|modulate)。
+	##   改走 sim tween(按 sim 步喂); 只改演出节奏的出处, 不碰结果(tween 里只有虚影的位置 / 透明度 / 释放)。
+	var tw: Tween = battle._reg_tween()
+	_ts_hg_tweens.append(tw)
+	tw.set_parallel(true)
 	tw.tween_property(hg, "modulate:a", 0.95, 0.4)
 	tw.tween_property(hg, "position", battle._world_pos(c["pos"], 3.0), 1.0).set_ease(Tween.EASE_OUT)
 	tw.chain().tween_property(hg, "modulate:a", 0.0, 0.2)

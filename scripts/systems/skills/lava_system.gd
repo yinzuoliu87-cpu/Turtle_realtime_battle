@@ -1,5 +1,8 @@
 class_name LavaSystem
 extends RefCounted
+
+## S3 逐帧直播出处键: 本文件生成函数的路径(VfxTex.tag 第 4 个参数)
+const SRC := "res://scripts/systems/skills/lava_system.gd"
 ## 熔岩带/火山系统(从 RealtimeBattle3DScene 抽出·2026-07-25)。持 battle 引用回调场景。
 ## 类内 _lava_*/_tick_lava_zones 名字与主场景一字不差 → 内部互调零改动;只外部名加 battle. 前缀。
 
@@ -220,8 +223,6 @@ func _lava_volcano_erupt(u: Dictionary) -> void:                 # 火山·火�
 	battle._world.add_child(wave)
 	wave.emitting = true
 	var wall := MeshInstance3D.new()                              # ★浪体: 世界空间3D浪壳mesh(用户2026-07-15"就一个图在动?四面八方?"→非billboard平面图; 横轴⊥行进·剖面前脚→上升→浪尖前卷·任何方向朝向自动正确)
-	var wim := ImmediateMesh.new()
-	wall.mesh = wim
 	var wsm := ShaderMaterial.new()
 	wsm.shader = load("res://assets/shaders/lava_wave.gdshader")
 	wall.material_override = wsm
@@ -229,39 +230,8 @@ func _lava_volcano_erupt(u: Dictionary) -> void:                 # 火山·火�
 	var wall_w: float = (half_w * 2.0 + 60.0) * battle.WS                # 浪宽(横向·世界)
 	var wall_len: float = wall_w * 1.05                           # 浪长(沿行进)=1.05×宽(用户2026-07-15: 前后变窄0.7倍·原1.5×)
 	var wall_h: float = wall_w * 0.16                             # 低矮(观察: 高<1英雄·非墙)
-	# 低矮拉长鼓包剖面(局部: +X=行进, Y=高, Z=横向): 前缘→鼓顶→长尾(闭环包过顶·两端捏合)
-	var prof: Array = [Vector2(0.5, 0.0), Vector2(0.42, 0.55), Vector2(0.26, 0.95), Vector2(0.0, 1.0), Vector2(-0.28, 0.8), Vector2(-0.46, 0.35), Vector2(-0.5, 0.0)]   # (x前后±0.5×浪长, y高)
-	var M := 16                                                   # 横向分段
-	wim.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
-	for j in range(M):
-		var z0: float = (float(j) / float(M) - 0.5) * wall_w
-		var z1: float = (float(j + 1) / float(M) - 0.5) * wall_w
-		var cx0: float = float(j) / float(M) * 2.0 - 1.0
-		var cx1: float = float(j + 1) / float(M) * 2.0 - 1.0
-		var hf0: float = sqrt(maxf(0.0, 1.0 - DetMath.dpow(absf(cx0), 3.0)))   # 中段平坦成板(slab)·两端圆角捏合(体自闭合)
-		var hf1: float = sqrt(maxf(0.0, 1.0 - DetMath.dpow(absf(cx1), 3.0)))
-		for k in range(prof.size() - 1):
-			var pa: Vector2 = prof[k]
-			var pb: Vector2 = prof[k + 1]
-			var va0 := Vector3(pa.x * wall_len * hf0, pa.y * wall_h * hf0, z0)
-			var va1 := Vector3(pa.x * wall_len * hf1, pa.y * wall_h * hf1, z1)
-			var vb0 := Vector3(pb.x * wall_len * hf0, pb.y * wall_h * hf0, z0)
-			var vb1 := Vector3(pb.x * wall_len * hf1, pb.y * wall_h * hf1, z1)
-			var ua: float = float(k) / float(prof.size() - 1)              # v=剖面弧位置0(前脚)→0.33(浪尖)→0.5(顶)→1(背脚): 白沫只给浪尖前缘一圈(按高度会把整个顶面刷白)
-			var ub: float = float(k + 1) / float(prof.size() - 1)
-			var u0: float = float(j) / float(M)
-			var u1: float = float(j + 1) / float(M)
-			var na0: Vector3 = (va0 - Vector3(0.0, wall_h * 0.25, z0)).normalized()   # 法线≈从浪芯轴向外(顶面朝上/前脸朝前)→shader按面向明暗=立体感
-			var na1: Vector3 = (va1 - Vector3(0.0, wall_h * 0.25, z1)).normalized()
-			var nb0: Vector3 = (vb0 - Vector3(0.0, wall_h * 0.25, z0)).normalized()
-			var nb1: Vector3 = (vb1 - Vector3(0.0, wall_h * 0.25, z1)).normalized()
-			wim.surface_set_normal(na0); wim.surface_set_uv(Vector2(u0, ua)); wim.surface_add_vertex(va0)
-			wim.surface_set_normal(na1); wim.surface_set_uv(Vector2(u1, ua)); wim.surface_add_vertex(va1)
-			wim.surface_set_normal(nb1); wim.surface_set_uv(Vector2(u1, ub)); wim.surface_add_vertex(vb1)
-			wim.surface_set_normal(na0); wim.surface_set_uv(Vector2(u0, ua)); wim.surface_add_vertex(va0)
-			wim.surface_set_normal(nb1); wim.surface_set_uv(Vector2(u1, ub)); wim.surface_add_vertex(vb1)
-			wim.surface_set_normal(nb0); wim.surface_set_uv(Vector2(u0, ub)); wim.surface_add_vertex(vb0)
-	wim.surface_end()
+	## S3 逐帧直播: 浪壳网格由纯函数 gen_lava_wall 按 3 个尺寸建(576 个顶点不进流), 手机按出处键调同一个函数
+	wall.mesh = gen_lava_wall(wall_w, wall_len, wall_h)
 	wall.rotation = Vector3(0.0, ang, 0.0)                        # 朝向行进方向(世界空间·四面八方都对)
 	wall.position = battle._world_pos(start, 0.04)                      # 底边贴地·从自己脚前出发
 	battle._world.add_child(wall)
@@ -363,6 +333,45 @@ func _lava_volcano_erupt(u: Dictionary) -> void:                 # 火山·火�
 		if not is_instance_valid(battle): return   ## ★await 期间战斗可能已结束(场景 free), 回来必须重新确认
 		if is_instance_valid(wave):
 			wave.queue_free()
+
+## S3 逐帧直播: 火山爆发浪壳网格(纯函数; 局部 +X=行进, Y=高, Z=横向)。参数 = 浪宽 / 浪长 / 浪高(世界米)。
+static func gen_lava_wall(wall_w: float, wall_len: float, wall_h: float) -> ImmediateMesh:
+	var wim := ImmediateMesh.new()
+	# 低矮拉长鼓包剖面(局部: +X=行进, Y=高, Z=横向): 前缘→鼓顶→长尾(闭环包过顶·两端捏合)
+	var prof: Array = [Vector2(0.5, 0.0), Vector2(0.42, 0.55), Vector2(0.26, 0.95), Vector2(0.0, 1.0), Vector2(-0.28, 0.8), Vector2(-0.46, 0.35), Vector2(-0.5, 0.0)]   # (x前后±0.5×浪长, y高)
+	var M := 16                                                   # 横向分段
+	wim.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+	for j in range(M):
+		var z0: float = (float(j) / float(M) - 0.5) * wall_w
+		var z1: float = (float(j + 1) / float(M) - 0.5) * wall_w
+		var cx0: float = float(j) / float(M) * 2.0 - 1.0
+		var cx1: float = float(j + 1) / float(M) * 2.0 - 1.0
+		var hf0: float = sqrt(maxf(0.0, 1.0 - DetMath.dpow(absf(cx0), 3.0)))   # 中段平坦成板(slab)·两端圆角捏合(体自闭合)
+		var hf1: float = sqrt(maxf(0.0, 1.0 - DetMath.dpow(absf(cx1), 3.0)))
+		for k in range(prof.size() - 1):
+			var pa: Vector2 = prof[k]
+			var pb: Vector2 = prof[k + 1]
+			var va0 := Vector3(pa.x * wall_len * hf0, pa.y * wall_h * hf0, z0)
+			var va1 := Vector3(pa.x * wall_len * hf1, pa.y * wall_h * hf1, z1)
+			var vb0 := Vector3(pb.x * wall_len * hf0, pb.y * wall_h * hf0, z0)
+			var vb1 := Vector3(pb.x * wall_len * hf1, pb.y * wall_h * hf1, z1)
+			var ua: float = float(k) / float(prof.size() - 1)              # v=剖面弧位置0(前脚)→0.33(浪尖)→0.5(顶)→1(背脚): 白沫只给浪尖前缘一圈(按高度会把整个顶面刷白)
+			var ub: float = float(k + 1) / float(prof.size() - 1)
+			var u0: float = float(j) / float(M)
+			var u1: float = float(j + 1) / float(M)
+			var na0: Vector3 = (va0 - Vector3(0.0, wall_h * 0.25, z0)).normalized()   # 法线≈从浪芯轴向外(顶面朝上/前脸朝前)→shader按面向明暗=立体感
+			var na1: Vector3 = (va1 - Vector3(0.0, wall_h * 0.25, z1)).normalized()
+			var nb0: Vector3 = (vb0 - Vector3(0.0, wall_h * 0.25, z0)).normalized()
+			var nb1: Vector3 = (vb1 - Vector3(0.0, wall_h * 0.25, z1)).normalized()
+			wim.surface_set_normal(na0); wim.surface_set_uv(Vector2(u0, ua)); wim.surface_add_vertex(va0)
+			wim.surface_set_normal(na1); wim.surface_set_uv(Vector2(u1, ua)); wim.surface_add_vertex(va1)
+			wim.surface_set_normal(nb1); wim.surface_set_uv(Vector2(u1, ub)); wim.surface_add_vertex(vb1)
+			wim.surface_set_normal(na0); wim.surface_set_uv(Vector2(u0, ua)); wim.surface_add_vertex(va0)
+			wim.surface_set_normal(nb1); wim.surface_set_uv(Vector2(u1, ub)); wim.surface_add_vertex(vb1)
+			wim.surface_set_normal(nb0); wim.surface_set_uv(Vector2(u0, ub)); wim.surface_add_vertex(vb0)
+	wim.surface_end()
+	return VfxTex.tag(wim, "gen_lava_wall", [wall_w, wall_len, wall_h], SRC)
+
 
 func _lava_magma_surge(u: Dictionary, tgt: Dictionary) -> void:  # 小·岩浆涌动: 蓄力 → 目标脚下岩浆柱击飞 (1.5ATK魔 + 0.8ATK永久护盾)
 	if tgt == null or not tgt.get("alive", false):

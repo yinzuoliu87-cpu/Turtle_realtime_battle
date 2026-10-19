@@ -29,10 +29,50 @@ var sets := 0
 var ph_gen_tex := 0           # 程序贴图占位(定义次数)
 var ph_proc_mesh := 0         # 程序网格占位(定义次数)
 var ph_other := 0             # 其它无路径资源(给 null)
+## S3 出处键(`RES_GEN`): 手机调同一个生成函数现生成
+var gen_built := 0            # 调生成函数现生成的次数
+var gen_reused := 0           # 同一份出处键 / 同 rid 复用的次数(keyframe 重发、缓存命中)
+var gen_fail := 0             # 出处键不在白名单 / 函数不存在 / 返回的不是资源 ⇒ 退回占位(门禁要求为 0)
+var gen_fail_ids := {}        # 出处 → 次数(诊断)
+var _gen_cache := {}          # 没有资源参数的出处键(贴图为主) → 资源: 服务器每次 new 一张同参数的贴图, 手机只生成一次
+var _gen_sig := {}            # rid → 出处键签名(同 rid 的 keyframe 重发对得上就复用)
+var _gen_raw := {}            # rid → 原始参数表(参数别名查它; keyframe 清零)
+var gen_alias := 0            # 参数别名次数
+var gen_delta := 0            # 参数差分次数
 var parent_fallback := 0      # 父节点找不到、挂到 _world 的
 var reparents := 0            # 跟着服务器换过父节点的次数
 var kf_dropped := 0           # keyframe 里没出现、被兜底删掉的(顺播时应为 0)
 var unit_parent: Callable = Callable()   # (单位 idx, 键名) → Node; 播放器注入
+## S3 伪节点(全屏演出, 见 StreamRecorder._screen_fx): id → ScreenFx。不进 `nodes`(不是镜像节点、不在 `_world` 里)。
+var fx_nodes := {}
+var fx_built := 0             # 开过几次全屏演出(门禁分母)
+
+
+## 时停全屏层的手机端驱动: 进树时打开(从服务器给的释放后秒数起演), 每帧推进, 删掉时收尾(反色闪 + 回色)。
+##   挂在 `_world` 的父节点(SubViewport)下: 不进 `_world` 普查, 也不是镜像节点。
+class ScreenFx extends Node:
+	var ts = null             # 战斗场的 TimestopSystem
+	var el := 0.0
+	var quiet := false        # 跳转 / 清场删掉的: 不放解除的反色闪(那不是服务器那边的「时停结束」)
+
+	func _ready() -> void:
+		if ts != null:
+			ts.ts_screen_begin(el)
+			ts._ts_spawn_clock()
+
+	func _process(delta: float) -> void:
+		if ts != null:
+			ts.ts_screen_tick(delta)
+
+	func _exit_tree() -> void:
+		if ts == null:
+			return
+		ts.ts_screen_drop_clock()
+		if quiet:
+			if is_instance_valid(ts._ts_overlay):
+				ts._ts_overlay.visible = false
+		else:
+			ts.ts_screen_end()
 
 
 func _init(w: Node3D) -> void:
@@ -41,6 +81,9 @@ func _init(w: Node3D) -> void:
 
 # ── 资源 ──
 func res_def(rid: int, kind: int, a, b, c) -> void:
+	if kind == F.RES_GEN:
+		_gen_def(rid, str(a), str(b), c as Array)
+		return
 	var old = _res_prev.get(rid, res.get(rid))
 	if old != null and kind != F.RES_GEN_TEX:
 		## 同一个 rid 已经有对象(顺播经过 keyframe): 复用, 只把参数再设一遍
@@ -82,6 +125,120 @@ func res_set(rid: int, props: Array) -> void:
 		_apply_props(r as Object, props)
 
 
+## S3: 出处键 → 调同一个静态生成函数。`pa` = [上一代 rid, [[参数, 是否资源 rid], …]]。
+func _gen_def(rid: int, cls: String, gid: String, pa: Array) -> void:
+	var prev := int(pa[0]) if pa.size() > 0 else 0
+	var mode := int(pa[3]) if pa.size() > 3 else F.GEN_FULL
+	var gref := int(pa[2]) if pa.size() > 2 else 0
+	var raw: Array = []
+	if mode == F.GEN_ALIAS:
+		raw = _gen_raw.get(gref, [])            # 参数别名: 与本段那个 rid 同一份参数
+		gen_alias += 1
+	elif mode == F.GEN_DELTA:
+		var base: Array = _gen_raw.get(gref, [])   # 参数差分: 照参照那一代补全
+		gen_delta += 1
+		var lst: Array = pa[1]
+		for i in range(lst.size()):
+			var e: Array = lst[i]
+			if int(e[2]) == 1 and i < base.size():
+				raw.append(base[i])
+			elif int(e[2]) == 2 and i < base.size() and base[i][0] is PackedByteArray:
+				var x := PackedByteArray(e[0])
+				var bb: PackedByteArray = base[i][0]
+				for j in range(mini(x.size(), bb.size())):
+					x[j] = x[j] ^ bb[j]
+				raw.append([x, false])
+			elif int(e[2]) == 3 and i < base.size() and base[i][0] is PackedInt32Array:
+				var y := PackedInt32Array(base[i][0])
+				var dv: PackedInt32Array = e[0]
+				for j in range(mini(y.size(), dv.size())):
+					y[j] = y[j] + dv[j]
+				raw.append([y, false])
+			else:
+				raw.append([e[0], e[1]])
+	else:
+		for e in (pa[1] as Array):
+			raw.append([e[0], e[1]])
+	_gen_raw[rid] = raw
+	var args: Array = []
+	var has_res := false
+	for e in raw:
+		if bool(e[1]):
+			has_res = true
+			args.append(res.get(int(e[0])))
+		else:
+			args.append(e[0])
+	## 签名: 出处 + 参数(资源参数按 rid 记) —— 同 rid 的 keyframe 重发 / 同参数的另一张贴图都能对上
+	var sig := gid + "|" + var_to_str(raw)
+	if prev > 0:
+		res.erase(prev)               # 原地重建的网格换代: 旧的一代不再有人引用(节点随后改指新 rid)
+		_gen_sig.erase(prev)
+	var old = _res_prev.get(rid, res.get(rid))
+	if old != null and str(_gen_sig.get(rid, "")) == sig:
+		res[rid] = old
+		gen_reused += 1
+		return
+	if not has_res and _gen_cache.has(sig):
+		res[rid] = _gen_cache[sig]
+		_gen_sig[rid] = sig
+		gen_reused += 1
+		return
+	var r: Resource = gen_call(gid, args)
+	if r == null:
+		gen_fail += 1
+		gen_fail_ids[gid] = int(gen_fail_ids.get(gid, 0)) + 1
+		r = _ph_tex(16, 16) if cls.contains("Texture") else ArrayMesh.new()
+	else:
+		gen_built += 1
+		if not has_res and r is Texture2D:
+			_gen_cache[sig] = r
+	res[rid] = r
+	_gen_sig[rid] = sig
+
+
+## 白名单: 只认本项目 scripts/ 下的 .gd、函数名以 gen_ / _make_ / _gen_ 开头(流是服务器发的, 但不许它借此调任意函数)。
+static func gen_ok(gid: String) -> bool:
+	var i := gid.rfind(":")
+	if i <= 0:
+		return false
+	var path := gid.substr(0, i)
+	var fn := gid.substr(i + 1)
+	return path.begins_with("res://scripts/") and path.ends_with(".gd") and not path.contains("..") \
+		and (fn.begins_with("gen_") or fn.begins_with("_make_") or fn.begins_with("_gen_"))
+
+
+## 调生成函数(服务器 / 手机同一个入口: 生成方自己也走它, 见 VfxTex.gen)。返回 Texture2D / Mesh; 生成函数返回 Image 时包成 ImageTexture。
+static func gen_call(gid: String, args: Array) -> Resource:
+	if not gen_ok(gid):
+		return null
+	var i := gid.rfind(":")
+	var path := gid.substr(0, i)
+	var fn := gid.substr(i + 1)
+	if not ResourceLoader.exists(path):
+		return null
+	var sc = load(path)
+	if not (sc is Script) or not _has_static(sc as Script, fn):
+		return null
+	var out = (sc as Script).callv(fn, args)
+	if out is Image:
+		out = ImageTexture.create_from_image(out)
+	return out as Resource if out is Resource else null
+
+
+static var _static_ok := {}       # 「脚本路径:函数」→ 是不是静态函数(查一次记住)
+static func _has_static(sc: Script, fn: String) -> bool:
+	var k := "%s:%s" % [sc.resource_path, fn]
+	if _static_ok.has(k):
+		return bool(_static_ok[k])
+	var ok := false
+	for m in sc.get_script_method_list():
+		if str((m as Dictionary).get("name", "")) == fn:
+			ok = (int((m as Dictionary).get("flags", 0)) & METHOD_FLAG_STATIC) != 0
+			break
+	_static_ok[k] = ok
+	return ok
+
+
 func _ph_tex(w: int, h: int) -> Texture2D:
 	var k := "%dx%d" % [w, h]
 	if _ph_tex_cache.has(k):
@@ -103,6 +260,9 @@ func _ph_tex(w: int, h: int) -> Texture2D:
 # ── 节点 ──
 func node_new(id: int, pk: int, pid: int, pkey: String, cls: String, props: Array) -> void:
 	_kf_seen[id] = true
+	if cls == F.FX_TS_SCREEN:
+		_fx_new(id, props)
+		return
 	var ex = nodes.get(id)
 	if ex != null and is_instance_valid(ex):
 		## keyframe 重发一个已经在的节点: 只把属性对一遍(顺播时这些值本来就一样)
@@ -149,6 +309,9 @@ func node_set(id: int, props: Array) -> void:
 
 
 func node_del(id: int) -> void:
+	if fx_nodes.has(id):
+		_fx_del(id, false)
+		return
 	var n = nodes.get(id)
 	nodes.erase(id)
 	_truth.erase(id)
@@ -162,6 +325,7 @@ func node_del(id: int) -> void:
 func kf_begin() -> void:
 	_res_prev = res
 	res = {}
+	_gen_raw = {}
 	_kf_seen = {}
 
 
@@ -171,6 +335,9 @@ func kf_end() -> void:
 		if not _kf_seen.has(id):
 			kf_dropped += 1
 			node_del(int(id))
+	for id in fx_nodes.keys():
+		if not _kf_seen.has(id):
+			_fx_del(int(id), true)
 	_res_prev = {}
 	_kf_seen = {}
 
@@ -178,8 +345,47 @@ func kf_end() -> void:
 func clear() -> void:
 	for id in nodes.keys():
 		node_del(int(id))
+	for id in fx_nodes.keys():
+		_fx_del(int(id), true)
 	res = {}
 	_res_prev = {}
+	_gen_sig = {}
+	_gen_raw = {}
+
+
+# ── S3 伪节点: 全屏演出 ──
+func _fx_new(id: int, props: Array) -> void:
+	if fx_nodes.has(id):
+		return                        # keyframe 重发: 已经在演了
+	var b := _battle()
+	if b == null:
+		return
+	var fx := ScreenFx.new()
+	fx.ts = b.get("_timestop")
+	for e in props:
+		if str(e[0]) == "el":
+			fx.el = float(e[1])
+	fx_nodes[id] = fx
+	fx_built += 1
+	var host: Node = world.get_parent() if world.get_parent() != null else world
+	host.add_child(fx)
+
+
+func _fx_del(id: int, quiet: bool) -> void:
+	var fx = fx_nodes.get(id)
+	fx_nodes.erase(id)
+	if fx != null and is_instance_valid(fx):
+		(fx as ScreenFx).quiet = quiet
+		(fx as Node).get_parent().remove_child(fx)    # 当场出树: 收尾(或安静地关掉)这一帧就做, 不等帧末
+		(fx as Node).queue_free()
+
+
+## 战斗场: `_world` 往上找第一个带 `_timestop` 的节点。
+func _battle() -> Node:
+	var n: Node = world
+	while n != null and not ("_timestop" in n):
+		n = n.get_parent()
+	return n
 
 
 ## Sprite3D 的帧号要等 hframes / vframes 设好再设(setter 立即按新乘积校验, 见 RealtimeBattle3DScene._set_anim_sheet 的长注释)。

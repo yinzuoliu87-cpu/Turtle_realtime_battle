@@ -1,5 +1,8 @@
 class_name CrystalSystem
 extends RefCounted
+
+## 本文件路径(逐帧直播 S3 出处键, 见 VfxTex.tag)
+const SRC := "res://scripts/systems/skills/crystal_system.gd"
 ## 水晶龟技能系统
 ## 类内名不变;外部名加 battle.
 
@@ -272,22 +275,34 @@ func clear_all() -> void:
 	_sweeps.clear()
 
 
-func _crystal_sweep_step(ang: float, u: Dictionary, si: int, reach: float, state: Dictionary, im: MeshInstance3D, imesh: ImmediateMesh, mat: StandardMaterial3D) -> void:
+func _crystal_sweep_step(ang: float, u: Dictionary, si: int, reach: float, state: Dictionary, im: MeshInstance3D, _imesh: ImmediateMesh, mat: StandardMaterial3D) -> void:
 	if not is_instance_valid(im): return
 	var center: Vector2 = u["pos"]   # 跟随携带者当前位置(非施法点定死)
 	var col = Color("#c9b0ff")
 	var dir2: Vector2 = Vector2(DetMath.dcos(ang), DetMath.dsin(ang))
 	var perp: Vector2 = dir2.orthogonal()
 	var tip2: Vector2 = center + dir2 * reach
-	imesh.clear_surfaces()
 	# 水晶射线本体: 根部宽→尖端细的发光光束(加色), 是"一道会转的射线"非扇面
-	imesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, mat)
 	var cb = Color(col.r, col.g, col.b, 0.5)    # 根部亮
 	var ct = Color(col.r, col.g, col.b, 0.06)   # 尖端淡
 	var vA: Vector3 = battle._world_pos(center + perp * 8.0, 1.0)
 	var vB: Vector3 = battle._world_pos(center - perp * 8.0, 1.0)
 	var vD: Vector3 = battle._world_pos(tip2 + perp * 2.5, 1.0)
 	var vE: Vector3 = battle._world_pos(tip2 - perp * 2.5, 1.0)
+	## ★S3(逐帧直播): 每步新建一份网格(原来同一份 clear 再画, 录流看不见), 由纯函数按顶点建
+	im.mesh = gen_crystal_sweep(vA, vB, vD, vE, battle._world_pos(center, 1.0), battle._world_pos(tip2, 1.0), cb, ct,
+		Color(col.r, col.g, col.b, 0.22), mat)
+	# 沿射线拖水晶碎片(节流每3步)
+	state["spk"] = int(state.get("spk", 0)) + 1
+	if int(state["spk"]) % 3 == 0:
+		_crystal_spark(center + dir2 * (reach * 0.4))
+	_crystal_sweep_hits(u, si, reach, state, center, ang)
+
+
+static func gen_crystal_sweep(vA: Vector3, vB: Vector3, vD: Vector3, vE: Vector3, c0: Vector3, c1: Vector3,
+		cb: Color, ct: Color, cl: Color, mat: Material) -> ImmediateMesh:
+	var imesh := ImmediateMesh.new()
+	imesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, mat)
 	imesh.surface_set_color(cb); imesh.surface_add_vertex(vA)
 	imesh.surface_set_color(cb); imesh.surface_add_vertex(vB)
 	imesh.surface_set_color(ct); imesh.surface_add_vertex(vD)
@@ -297,13 +312,14 @@ func _crystal_sweep_step(ang: float, u: Dictionary, si: int, reach: float, state
 	imesh.surface_end()
 	# 亮白核线(脆生生一道射线中轴)
 	imesh.surface_begin(Mesh.PRIMITIVE_LINES, mat)
-	imesh.surface_set_color(Color(1, 0.97, 1, 1.0)); imesh.surface_add_vertex(battle._world_pos(center, 1.0))
-	imesh.surface_set_color(Color(col.r, col.g, col.b, 0.22)); imesh.surface_add_vertex(battle._world_pos(tip2, 1.0))
+	imesh.surface_set_color(Color(1, 0.97, 1, 1.0)); imesh.surface_add_vertex(c0)
+	imesh.surface_set_color(cl); imesh.surface_add_vertex(c1)
 	imesh.surface_end()
-	# 沿射线拖水晶碎片(节流每3步)
-	state["spk"] = int(state.get("spk", 0)) + 1
-	if int(state["spk"]) % 3 == 0:
-		_crystal_spark(center + dir2 * (reach * 0.4))
+	return VfxTex.tag(imesh, "gen_crystal_sweep", [vA, vB, vD, vE, c0, c1, cb, ct, cl, mat], SRC)
+
+
+## 扫射的伤害结算(原来在 `_crystal_sweep_step` 尾部, 原样搬出: 演出那段改成纯函数之后这里单独成段)。
+func _crystal_sweep_hits(u: Dictionary, si: int, reach: float, state: Dictionary, center: Vector2, ang: float) -> void:
 	if u.get("alive", false):        # 携带者死亡后仅转完视觉, 不再从尸体结算伤害
 		var prev: float = float(state["prev"])
 		for o in battle._targeting._enemies_of(u):

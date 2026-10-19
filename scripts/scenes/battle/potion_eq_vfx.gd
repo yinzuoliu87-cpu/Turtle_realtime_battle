@@ -1,5 +1,7 @@
 class_name PotionEqVfx
 extends RefCounted
+## 录流出处键: 本文件的生成函数路径(VfxTex.tag 用)
+const SRC := "res://scripts/scenes/battle/potion_eq_vfx.gd"
 ## potion_eq_vfx.gd — 药水四件(065/066/067/068)的演出层。零素材, 全程序化 ArrayMesh + 顶点色。
 ##
 ## ══════════════════════════════════════════════════════════════════════
@@ -276,8 +278,13 @@ static func _flat(r: float, th: float, a: float) -> Array:
 ## 单位半径的毒云盘。★顶点 alpha **就是**自相似剖面 e^(−ρ²) ——
 ##   扩散解的自相似性让这张网格与时间无关, 每帧只改 scale 与整体亮度。
 func _cloud_mesh() -> ArrayMesh:
-	if _m_cloud != null:
-		return _m_cloud
+	if _m_cloud == null:
+		_m_cloud = gen_cloud_mesh()
+	return _m_cloud
+
+
+## 毒云盘的生成本体(纯函数; 录流出处键 gen_cloud_mesh, 手机按它现生成)。
+static func gen_cloud_mesh() -> ArrayMesh:
 	var mesh := ArrayMesh.new()
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -296,14 +303,18 @@ func _cloud_mesh() -> ArrayMesh:
 			VfxGeom.tri(st, a, b, c)
 			VfxGeom.tri(st, a, c, d)
 	st.commit(mesh)
-	_m_cloud = mesh
-	return mesh
+	return VfxTex.tag(mesh, "gen_cloud_mesh", [], SRC)
 
 
 ## 单位长度 × 单位半宽的贴地光柱(沿 +X, 起点在原点)。中轴白热、两侧渐隐。
 func _beam_mesh() -> ArrayMesh:
-	if _m_beam != null:
-		return _m_beam
+	if _m_beam == null:
+		_m_beam = gen_potion_beam_mesh()
+	return _m_beam
+
+
+## 光柱的生成本体(纯函数; 录流出处键 gen_potion_beam_mesh)。
+static func gen_potion_beam_mesh() -> ArrayMesh:
 	var mesh := ArrayMesh.new()
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -326,8 +337,7 @@ func _beam_mesh() -> ArrayMesh:
 			VfxGeom.tri(st, a, b, c)
 			VfxGeom.tri(st, a, c, d)
 	st.commit(mesh)
-	_m_beam = mesh
-	return mesh
+	return VfxTex.tag(mesh, "gen_potion_beam_mesh", [], SRC)
 
 
 static func _mat(no_depth: bool, prio: int, additive: bool = true) -> StandardMaterial3D:
@@ -420,8 +430,16 @@ static func _white_silhouette(tex: Texture2D) -> ImageTexture:
 			if c.a > 0.01:
 				img.set_pixel(x, y, Color(1, 1, 1, c.a))
 	var out := ImageTexture.create_from_image(img)
+	## 录流出处键: 源贴图有路径才挂(手机按路径 load 再白化一遍); 没路径的照旧(录流画占位)
+	if tex.resource_path != "":
+		VfxTex.tag(out, "gen_white_silhouette", [tex.resource_path], SRC)
 	_sil_cache[key] = out
 	return out
+
+
+## 白剪影的出处键入口: 参数是源立绘的**路径**(不传贴图对象), 手机端 load 后走同一份白化。
+static func gen_white_silhouette(path: String) -> ImageTexture:
+	return _white_silhouette(load(path) as Texture2D)
 
 
 func brew_glow_start(u: Dictionary) -> void:
@@ -482,7 +500,8 @@ func brew_glow_tick(u: Dictionary, el: float) -> void:
 
 ## 药瓶网格: 十字双片瓶形剪影(瓶身绿玻璃 + 下半瓶液更亮 + 瓶颈 + 软木塞)。
 ## ★旧投掷物是 _ring_mesh 圆环 —— 飞行中读成"一个绿圈", 既是程序圆又不像瓶(2026-08-11 用户线)。
-static func _bottle_mesh() -> ArrayMesh:
+## 录流出处键 gen_bottle_mesh(纯函数, 手机按它现生成)。
+static func gen_bottle_mesh() -> ArrayMesh:
 	var mesh := ArrayMesh.new()
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -504,11 +523,12 @@ static func _bottle_mesh() -> ArrayMesh:
 			st.set_color(c); st.add_vertex(b + Vector3(0, y1, 0))
 			st.set_color(c); st.add_vertex(a + Vector3(0, y1, 0))
 	st.commit(mesh)
-	return mesh
+	return VfxTex.tag(mesh, "gen_bottle_mesh", [], SRC)
 
 
 ## 落地液滴迸溅: 8 颗绿液滴向外放射(小菱形), 0.35s 弹开淡出
-static func _splash_mesh() -> ArrayMesh:
+## 录流出处键 gen_splash_mesh(纯函数, 手机按它现生成)。
+static func gen_splash_mesh() -> ArrayMesh:
 	var mesh := ArrayMesh.new()
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -525,14 +545,14 @@ static func _splash_mesh() -> ArrayMesh:
 			st.set_color(bright); st.add_vertex(c + v_)
 			st.set_color(dim); st.add_vertex(c + u_)
 	st.commit(mesh)
-	return mesh
+	return VfxTex.tag(mesh, "gen_splash_mesh", [], SRC)
 
 
 ## 抛出一个药瓶(纯演出)。落地结算由调用方用 battle._pending_shots 定时 —— **不是 tween**。
 func vial_throw(p0: Vector2, p1: Vector2) -> Dictionary:
 	if not _alive_world():
 		return {}
-	var nd := _node(_bottle_mesh(), _mat(true, 12), battle._world_pos(p0, 0.0))
+	var nd := _node(gen_bottle_mesh(), _mat(true, 12), battle._world_pos(p0, 0.0))
 	var h := {"kind": "vial", "nd": nd, "p0": p0, "p1": p1, "t": 0.0, "dur": VIAL_FLIGHT}
 	apply_at(h, 0.0)
 	_live.append(h)
@@ -544,7 +564,7 @@ func vial_throw(p0: Vector2, p1: Vector2) -> Dictionary:
 func vial_cloud(pos: Vector2) -> Dictionary:
 	if not _alive_world():
 		return {}
-	var sp := _node(_splash_mesh(), _mat(true, 13), battle._world_pos(pos, 0.2))
+	var sp := _node(gen_splash_mesh(), _mat(true, 13), battle._world_pos(pos, 0.2))
 	var hs := {"kind": "vsplash", "nd": sp, "t": 0.0, "dur": 0.35}
 	apply_at(hs, 0.0)
 	_live.append(hs)

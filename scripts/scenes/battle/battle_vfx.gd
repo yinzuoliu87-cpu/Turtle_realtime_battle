@@ -1,5 +1,8 @@
 class_name BattleVfx
 extends RefCounted
+
+## 本文件路径(逐帧直播 S3 出处键: 程序网格的生成函数 `gen_*` 由手机按这个路径 + 函数名调, 见 VfxTex.tag)
+const SRC := "res://scripts/scenes/battle/battle_vfx.gd"
 ## 战斗视觉特效(飘字/命中火花/冲击/挥击juice/技能vfx·纯表现·不改战斗态)
 ## 类内名不变;外部名加 battle.
 
@@ -1481,8 +1484,6 @@ func bolt_line(a2d: Vector2, b2d: Vector2, col: Color) -> void:
 	if span <= 0.001:
 		return
 	var im := MeshInstance3D.new()
-	var imesh := ImmediateMesh.new()
-	im.mesh = imesh
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.albedo_color = col
@@ -1508,7 +1509,22 @@ func bolt_line(a2d: Vector2, b2d: Vector2, col: Color) -> void:
 	if is_instance_valid(cam):
 		rgt = cam.global_transform.basis.x.normalized()
 		upv = cam.global_transform.basis.y.normalized()
-	var n: int = maxi(2, int(span / BOLT_GAP_M))
+	im.mesh = gen_bolt_line(pa, pb, col, rgt, upv, mat)
+	battle._world.add_child(im)
+	## ①满亮 hold(等值 tween 占住这一段) → ②才淡出。少了第一段, chain 会紧跟着排 ⇒ 又变回一出生就淡。
+	## ★写显式类型: `battle` 无类型, `:=` 推不出来 ⇒ Parse Error
+	##   (spec《装备特效制作流程》001 那轮就栏在这一行上)
+	var tw: Tween = battle._reg_tween()
+	tw.tween_property(mat, "albedo_color:a", col.a, BOLT_HOLD_T)
+	tw.tween_property(mat, "albedo_color:a", 0.0, BOLT_FADE_T)
+	tw.tween_callback(im.queue_free)
+
+
+
+## bolt_line 的网格: 两端点之间一串面朝相机的方点。纯函数(逐帧直播 S3: 手机按出处键调同一个函数现生成)。
+static func gen_bolt_line(pa: Vector3, pb: Vector3, col: Color, rgt: Vector3, upv: Vector3, mat: Material) -> ImmediateMesh:
+	var imesh := ImmediateMesh.new()
+	var n: int = maxi(2, int(pa.distance_to(pb) / BOLT_GAP_M))
 	var h: float = BOLT_DOT_M * 0.5
 	imesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, mat)
 	for k in range(n + 1):
@@ -1521,15 +1537,7 @@ func bolt_line(a2d: Vector2, b2d: Vector2, col: Color) -> void:
 				imesh.surface_set_color(col)
 				imesh.surface_add_vertex(q[vi])
 	imesh.surface_end()
-	battle._world.add_child(im)
-	## ①满亮 hold(等值 tween 占住这一段) → ②才淡出。少了第一段, chain 会紧跟着排 ⇒ 又变回一出生就淡。
-	## ★写显式类型: `battle` 无类型, `:=` 推不出来 ⇒ Parse Error
-	##   (spec《装备特效制作流程》001 那轮就栏在这一行上)
-	var tw: Tween = battle._reg_tween()
-	tw.tween_property(mat, "albedo_color:a", col.a, BOLT_HOLD_T)
-	tw.tween_property(mat, "albedo_color:a", 0.0, BOLT_FADE_T)
-	tw.tween_callback(im.queue_free)
-
+	return VfxTex.tag(imesh, "gen_bolt_line", [pa, pb, col, rgt, upv, mat], SRC)
 
 
 ## ══════════════════════════════════════════════════════════════════════
@@ -1808,7 +1816,7 @@ func barnacle_line(u: Dictionary, target) -> void:   # 守护贝母021: 携带�
 		return
 	if not is_instance_valid(im):
 		im = MeshInstance3D.new()
-		im.mesh = ImmediateMesh.new()
+		im.mesh = VfxTex.gen_empty_mesh()
 		var mat := StandardMaterial3D.new()
 		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -1865,12 +1873,16 @@ func _barnacle_rope(im: MeshInstance3D, u: Dictionary, target: Dictionary) -> vo
 		var gx: Basis = battle._cam.global_transform.basis
 		cam_r = gx.x
 		cam_u = gx.y
-	var h: float = BIND_BEAD_M * 0.5
 	var pulse: float = 0.86 + 0.14 * sin(battle._t * 5.0)
-	var col := Color(1.0, 1.0, 1.0, pulse)
-	var imesh: ImmediateMesh = im.mesh
-	imesh.clear_surfaces()
-	imesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, im.material_override)
+	## ★S3(逐帧直播): 每步新建一份赋给节点(原来同一份 clear_surfaces 再画, 录流看不见), 网格由纯函数按参数算
+	im.mesh = gen_barnacle_rope(a, b, sag, n, ph, cam_r, cam_u, Color(1.0, 1.0, 1.0, pulse), im.material_override)
+
+
+static func gen_barnacle_rope(a: Vector3, b: Vector3, sag: float, n: int, ph: float, cam_r: Vector3, cam_u: Vector3,
+		col: Color, mat: Material) -> ImmediateMesh:
+	var h: float = BIND_BEAD_M * 0.5
+	var imesh := ImmediateMesh.new()
+	imesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, mat)
 	for i in range(n + 1):
 		var tt: float = (float(i) + ph) / float(n)
 		if tt > 1.0:
@@ -1898,6 +1910,7 @@ func _barnacle_rope(im: MeshInstance3D, u: Dictionary, target: Dictionary) -> vo
 		imesh.surface_set_color(col); imesh.surface_set_uv(Vector2(u1, 0.0)); imesh.surface_add_vertex(p2)
 		imesh.surface_set_color(col); imesh.surface_set_uv(Vector2(u0, 0.0)); imesh.surface_add_vertex(p3)
 	imesh.surface_end()
+	return VfxTex.tag(imesh, "gen_barnacle_rope", [a, b, sag, n, ph, cam_r, cam_u, col, mat], SRC)
 
 
 
@@ -2508,6 +2521,7 @@ func line_band_ground(a2d: Vector2, dir: Vector2, half_w: float, reach: float,
 		imesh.surface_set_color(c1); imesh.surface_add_vertex(b1)
 		imesh.surface_set_color(c0); imesh.surface_add_vertex(b0)
 	imesh.surface_end()
+	VfxTex.snap(imesh)              # S3 逐帧直播: 建一次、顶点少(几十个)⇒ 整份拍下当出处键
 	im.sorting_offset = -1.0        # 排在立绘后面: 这是地上的印子, 不该盖住龟
 	battle._world.add_child(im)
 	## ★hold → fade, 不是一出生就线性淡出(memory [[fb-vfx-defect-families]] 淡出病):
@@ -2664,7 +2678,7 @@ const TIDE_RAMP: Array[Color] = [
 
 ## 浪的横截面: t ∈ [0,1] 从**背面最尾**到**迎面最前**, 返回归一化高度 [0,1]。
 ## 形状是"后面拖很长的水体 → 抬到浪峰 → 前面一坡陡降" —— 海浪就是这个不对称。
-func _tide_profile(t: float) -> float:
+static func _tide_profile(t: float) -> float:
 	if t <= 0.0 or t >= 1.0:
 		return 0.0
 	var crest: float = 0.78                       # 浪峰落在靠前 78% 处(不是正中)
@@ -2676,19 +2690,21 @@ func _tide_profile(t: float) -> float:
 
 
 ## 重建这道浪的网格。`rise` = 整体高度倍率(蓄浪/退去用), `trav` = 已推进多少码。
+## ★S3(逐帧直播): 每步**新建一份**网格赋给节点(原来是同一份 clear_surfaces 再画 —— 录流按网格对象判「换了没有」, 原地画看不见),
+##   网格本身由纯函数 `gen_tide_wall` 按参数算, 手机按出处键调同一个函数(3456 个顶点不进流, 只进 9 个参数)。
 func tide_wall_build(w: Dictionary, rise: float, trav: float) -> void:
 	var im = w.get("im", null)
 	if not is_instance_valid(im):
 		return
-	var mesh: ImmediateMesh = w["mesh"]
-	var mat: StandardMaterial3D = w["mat"]
-	var start: Vector2 = w["start"]
-	var dir: Vector2 = w["dir"]
-	var perp: Vector2 = w["perp"]
-	var half: float = float(w["half"])
-	mesh.clear_surfaces()
-	if rise <= 0.001:
-		return
+	var mesh: Mesh = VfxTex.gen_empty_mesh() if rise <= 0.001 else gen_tide_wall(w["start"], w["dir"], w["perp"],
+		float(w["half"]), rise, trav, w["mat"], battle._arena_center, battle.WS)
+	w["mesh"] = mesh
+	(im as MeshInstance3D).mesh = mesh
+
+
+static func gen_tide_wall(start: Vector2, dir: Vector2, perp: Vector2, half: float, rise: float, trav: float,
+		mat: Material, center: Vector2, ws: float) -> ImmediateMesh:
+	var mesh := ImmediateMesh.new()
 	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, mat)
 	for li in range(TIDE_NL - 1):
 		var u0: float = float(li) / float(TIDE_NL - 1)
@@ -2696,11 +2712,12 @@ func tide_wall_build(w: Dictionary, rise: float, trav: float) -> void:
 		for ci in range(TIDE_NC - 1):
 			var t0: float = float(ci) / float(TIDE_NC - 1)
 			var t1: float = float(ci + 1) / float(TIDE_NC - 1)
-			_tide_quad(mesh, start, dir, perp, half, rise, trav, u0, u1, t0, t1)
+			_tide_quad(mesh, start, dir, perp, half, rise, trav, u0, u1, t0, t1, center, ws)
 	mesh.surface_end()
+	return VfxTex.tag(mesh, "gen_tide_wall", [start, dir, perp, half, rise, trav, mat, center, ws], SRC)
 
 
-func _tide_vert(start: Vector2, dir: Vector2, perp: Vector2, half: float,
+static func _tide_vert(start: Vector2, dir: Vector2, perp: Vector2, half: float,
 				rise: float, trav: float, u: float, t: float) -> Array:
 	## 沿浪墙方向的相位: 让浪脊起伏、峰位左右错开 ⇒ 不是一把直尺。
 	var lat: float = lerpf(-half, half, u)
@@ -2719,9 +2736,9 @@ func _tide_vert(start: Vector2, dir: Vector2, perp: Vector2, half: float,
 	return [p2, clampf(hn, 0.0, 1.35) * rise]
 
 
-func _tide_quad(mesh: ImmediateMesh, start: Vector2, dir: Vector2, perp: Vector2,
+static func _tide_quad(mesh: ImmediateMesh, start: Vector2, dir: Vector2, perp: Vector2,
 				half: float, rise: float, trav: float,
-				u0: float, u1: float, t0: float, t1: float) -> void:
+				u0: float, u1: float, t0: float, t1: float, center: Vector2, ws: float) -> void:
 	var a: Array = _tide_vert(start, dir, perp, half, rise, trav, u0, t0)
 	var b: Array = _tide_vert(start, dir, perp, half, rise, trav, u1, t0)
 	var c: Array = _tide_vert(start, dir, perp, half, rise, trav, u1, t1)
@@ -2743,7 +2760,7 @@ func _tide_quad(mesh: ImmediateMesh, start: Vector2, dir: Vector2, perp: Vector2
 	for q in [[a, b, c], [a, c, d]]:
 		for e in q:
 			mesh.surface_set_color(col)
-			mesh.surface_add_vertex(battle._world_pos(e[0] as Vector2,
+			mesh.surface_add_vertex(VfxTex.wpos(center, ws, e[0] as Vector2,
 								   float(e[1]) * TIDE_CREST_H))
 
 
@@ -2753,7 +2770,7 @@ func tide_wall_spawn(start: Vector2, dir: Vector2, half: float, dist: float,
 	if battle._world == null:
 		return {}
 	var im := MeshInstance3D.new()
-	var mesh := ImmediateMesh.new()
+	var mesh: Mesh = VfxTex.gen_empty_mesh()
 	im.mesh = mesh
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED

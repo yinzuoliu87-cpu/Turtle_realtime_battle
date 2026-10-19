@@ -11,7 +11,9 @@ extends RefCounted
 
 ## v1(S1): 首版。v2(S2, 2026-10-19): 字节语法不变; 单位外观节点进节点层 + 单位合成字段 `@n` + 全局 `seed`(手机选图) ——
 ##   v1 的流里没有单位外观, v2 的播放器播不出单位, 所以算格式变更。
-const VERSION := 2
+## v3(S3, 2026-10-19): 资源种类加 `RES_GEN`(程序贴图 / 程序网格带「出处键」= 生成函数 + 参数, 手机调同一个函数现生成);
+##   值标签加 `T_F64` / `T_COLF`(出处键的参数要逐位相同: 双精度浮点 / 不量化的颜色)。v2 播放器不认这两样 ⇒ 格式变更。
+const VERSION := 3
 const MAGIC := "TSTR"
 const HEADER_BYTES := 21          # magic 4 + 版本 u16 + 块序号 u32 + 首步 u32 + 步数 u16 + 标志 u8 + 原始长度 u32 —— 不含后面的 ZSTD 负载
 
@@ -51,6 +53,20 @@ const RES_GEN_TEX := 2            # 程序生成贴图: + 类名 + 宽 + 高(出
 const RES_PROC_MESH := 3          # 程序生成网格: + 类名 + 面数(出处键 / 驱动标量 S3 再补; 顶点不传)
 const RES_SHADER := 4             # 内联 shader: + 源码
 const RES_OTHER := 5              # 其它无路径资源: + 类名
+## S3: 带出处键的程序资源(贴图 / 网格): + 类名 + 出处(「res://脚本路径:静态函数名」) + 上一版 rid(0 = 无; 原地重建的网格换代时手机释放旧的)
+##   + 方式 + …: GEN_FULL = n + [参数]×n(资源参数写 T_RES, 子资源先定义; 其余 `Enc.gval` 逐位精确写);
+##   GEN_ALIAS = rid(参数与本 keyframe 段里那个 rid 的完全相同: 触手本体与外发光壳共用一份);
+##   GEN_DELTA = 参照 rid + n + [参数]×n, 参数可以写 T_SAME(= 参照那一个) / T_BXOR(与参照的等长字节数组逐字节异或)
+##     / T_IDIFF(与参照的等长整数数组逐个相减)
+##   —— 每步重建的网格(触手 / 触须 / 水带)多半只有一两个参数在变。参照必须在本 keyframe 段里定义过。
+##   出处键由生成方在资源上挂 meta `stream_gen` = [脚本路径, 函数名, 参数 Array](见 VfxTex.tag); 手机按白名单(StreamMirror.gen_ok)调同一个函数。
+const RES_GEN := 6
+## S3: 伪节点类名(NODE_NEW 的类名是它 ⇒ 不是引擎类, 手机按它开对应的全屏演出; 见 StreamRecorder._screen_fx)
+const FX_TS_SCREEN := "@ts_screen"
+const GEN_META := &"stream_gen"
+const GEN_ALIAS := 0
+const GEN_FULL := 1
+const GEN_DELTA := 2
 
 ## 值标签(每个值前一个字节)
 const T_NIL := 0
@@ -68,6 +84,11 @@ const T_STR := 11                 # 字符串表引用(见 Enc.s)
 const T_RES := 12                 # 资源 rid(varint, 0 = null)
 const T_RAW := 13                 # 其它类型: varint 长度 + var_to_bytes
 const T_SCALE := 14               # Vector3 缩放: 3 × zigzag varint, 量化 1/4096
+const T_F64 := 15                 # S3: float64 原样(出处键参数)
+const T_COLF := 16                # S3: 颜色 4 × float32 原样(出处键参数; T_COLOR 是 1/255 量化的)
+const T_SAME := 17                # S3: 出处键差分 —— 与参照的同一位参数相同(无负载)
+const T_BXOR := 18                # S3: 出处键差分 —— varint 长度 + 与参照字节数组逐字节异或
+const T_IDIFF := 19               # S3: 出处键差分 —— varint 个数 + 与参照等长 PackedInt32Array 逐个相减(zigzag varint; 触手中心点)
 
 const Q_POS := 128.0
 const Q_ROT := 1024.0
@@ -195,6 +216,29 @@ class Enc extends RefCounted:
 		buf.put_u8(T_RES)
 		vu(rid)
 
+	## S3 出处键参数: 逐位精确(手机拿它调同一个生成函数, 差一位网格 / 贴图就不是同一份)。
+	##   float → 双精度; 颜色 → 4 × float32(不量化); 整数 / 布尔 / 字符串 / Vector2 / Vector3 同 val(本来就无损);
+	##   其余(Packed 数组 / Array / Dictionary …)走 var_to_bytes。资源由调用方先换成 rid 写 `res()`。
+	func gval(v) -> void:
+		match typeof(v):
+			TYPE_FLOAT:
+				buf.put_u8(T_F64)
+				buf.put_double(v)
+			TYPE_COLOR:
+				var c: Color = v
+				buf.put_u8(T_COLF)
+				buf.put_float(c.r)
+				buf.put_float(c.g)
+				buf.put_float(c.b)
+				buf.put_float(c.a)
+			TYPE_NIL, TYPE_BOOL, TYPE_INT, TYPE_VECTOR2, TYPE_VECTOR3, TYPE_STRING, TYPE_STRING_NAME:
+				val(v)
+			_:
+				var b := var_to_bytes(v)
+				buf.put_u8(T_RAW)
+				vu(b.size())
+				buf.put_data(b)
+
 
 ## ═══════════════════════════════════════════════════════════════════════
 ##  解码器: 一块文件 → {ok, err, version, seq, first_step, steps, key, raw_len, ops{op: 次数}, op_bytes{op: 字节},
@@ -283,6 +327,19 @@ static func decode_chunk(data: PackedByteArray, st: Dictionary = {}) -> Dictiona
 					RES_PROC_MESH:
 						r.s()
 						r.vu()
+					RES_GEN:
+						r.s()
+						r.s()
+						r.vu()
+						var gmode := r.vu()
+						if gmode == GEN_ALIAS:
+							r.vu()
+						else:
+							if gmode == GEN_DELTA:
+								r.vu()
+							var gn := r.vu()
+							for _g in range(gn):
+								r.val()
 					_:
 						r.err = "res kind %d" % kind
 			OP_RES_SET:
@@ -322,7 +379,8 @@ static func decode_chunk(data: PackedByteArray, st: Dictionary = {}) -> Dictiona
 ##  list = 按步排好的 [步号, 是否 keyframe, ops]; 每条 op 是一个 Array, 第一个元素是操作码:
 ##    [GLOBAL, {键: 值}] · [UNIT_NEW, idx, 龟id, 阵营] · [UNIT_SET, idx, {键: 值}] · [UNIT_DEL, idx]
 ##    [NODE_NEW, id, 父种类, 父id, 父键, 类名, props] · [NODE_SET, id, props] · [NODE_DEL, id]
-##    [RES_DEF, rid, 种类, a, b, c](按种类: PATH 路径 / PARAM 类名+props / GEN_TEX 类名+宽+高 / PROC_MESH 类名+面数 / SHADER 源码 / OTHER 类名)
+##    [RES_DEF, rid, 种类, a, b, c](按种类: PATH 路径 / PARAM 类名+props / GEN_TEX 类名+宽+高 / PROC_MESH 类名+面数 / SHADER 源码 / OTHER 类名
+##      / GEN 类名+出处+[上一版 rid, [[参数, 是否资源 rid], …] 或 null(别名), 别名 rid])
 ##    [RES_SET, rid, props] · [EVENT, 类型, 参数 Array]
 ##  props = [[属性名, 值, 是否资源 rid], …](资源值是 rid 整数, 第三项为 true)。
 ##  `st` 与 decode_chunk 同一个约定(字符串表跨块、keyframe 块清零)。
@@ -407,6 +465,27 @@ static func parse_chunk(data: PackedByteArray, st: Dictionary = {}) -> Dictionar
 					RES_PROC_MESH:
 						var c4 := r.s()
 						_push(cur, [op, rid, kind, c4, r.vu(), null], r)
+					RES_GEN:
+						## [op, rid, 种类, 类名, 出处, [上一版 rid, 参数表 或 null(别名), 别名 / 差分参照 rid, 方式]]
+						##   参数表 = [[值, 是否资源 rid, 0 原样 / 1 同参照 / 2 与参照异或 / 3 与参照相减], …]
+						var c5 := r.s()
+						var gid := r.s()
+						var prev := r.vu()
+						var gmode := r.vu()
+						var gref := 0
+						var gargs = null
+						if gmode == GEN_ALIAS:
+							gref = r.vu()
+						else:
+							if gmode == GEN_DELTA:
+								gref = r.vu()
+							gargs = []
+							var gn := r.vu()
+							for _g in range(gn):
+								var gv = r.val()
+								var gop := 1 if r.last_tag == T_SAME else (2 if r.last_tag == T_BXOR else (3 if r.last_tag == T_IDIFF else 0))
+								(gargs as Array).append([gv, r.last_tag == T_RES, gop])
+						_push(cur, [op, rid, kind, c5, gid, [prev, gargs, gref, gmode]], r)
 					_:
 						r.err = "res kind %d" % kind
 			OP_EVENT:
@@ -527,6 +606,33 @@ class Rd extends RefCounted:
 				return Vector3(f32(), f32(), f32())
 			T_COLOR:
 				return Color(vi() / Q_COL, vi() / Q_COL, vi() / Q_COL, vi() / Q_COL)
+			T_F64:
+				if p + 8 > b.size():
+					err = "eof f64 @%d" % p
+					return 0.0
+				var d := b.decode_double(p)
+				p += 8
+				return d
+			T_COLF:
+				return Color(f32(), f32(), f32(), f32())
+			T_SAME:
+				return null
+			T_BXOR:
+				var nb := vu()
+				if p + nb > b.size():
+					err = "eof bxor @%d" % p
+					return null
+				var xb := b.slice(p, p + nb)
+				p += nb
+				return xb
+			T_IDIFF:
+				var ni := vu()
+				var dv := PackedInt32Array()
+				for _k in range(ni):
+					dv.append(vi())
+					if err != "":
+						return null
+				return dv
 			T_RECT:
 				return Rect2(f32(), f32(), f32(), f32())
 			T_STR:

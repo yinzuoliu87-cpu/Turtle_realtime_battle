@@ -29,6 +29,7 @@ const SHOP_BTN_TEXT := "前往商店"
 const SettleScreenS := preload("res://scripts/scenes/battle/settle_screen.gd")
 ## 服务器裁判(2026-10-19): 周六看自己那一场 = 放完走正常结算屏(服务器的结果)。
 const _RW := preload("res://scripts/systems/replay/referee_watch.gd")
+const StreamWatchS := preload("res://scripts/systems/replay/stream_watch.gd")   # 逐帧直播入口(会话 current: kind / 服务器结果)
 ## 顶部栏的头像/名字/路点/计时牌/加时/团灭/蛋碎那一层(2026-10-07 拆出去: 本文件只留血条本体)
 const TopbarStatusS := preload("res://scripts/scenes/battle/topbar_status.gd")
 
@@ -1049,7 +1050,8 @@ func _build_log_panel() -> void:
 ## 也不会挤进战线影响分离/避障。
 ## ★幂等: 已经有了就不重复建 —— _spawn._spawn_teams 与 battle._dl_sys._dl_build_lane_field 都会调, 双路模式下
 ##   若两边都跑到会 spawn 两个(实测双路走的是后者, 但留这道闸防将来改动)。
-func _build_spell_disc() -> void:
+## `act` / `pas` 非 null 时用它们(逐帧直播播放端: 按流里我方大师的 `_tr_active` / `_tr_passive` 建, 不读看的人自己的 GameState)。
+func _build_spell_disc(act = null, pas = null) -> void:
 	if battle._spell_disc != null and is_instance_valid(battle._spell_disc):
 		return
 	if battle._ui_layer == null:
@@ -1062,8 +1064,8 @@ func _build_spell_disc() -> void:
 	#   而 TRAINER_SKILLS 里【根本没有 magic_stone 条目】(它只收主动技),
 	#   被动的图标另存在 TrainerConfigScene.SKILLS 里 —— 两张表各存一半, 这本身就是分歧源。
 	#   这里按【装配的那个 id】直接取图, 主动被动一视同仁。
-	var _act: String = GameState.trainer_active_skill()
-	var _pas: String = GameState.trainer_passive_skill()
+	var _act: String = str(act) if act != null else GameState.trainer_active_skill()
+	var _pas: String = str(pas) if pas != null else GameState.trainer_passive_skill()
 	var sid: String = battle._valid_active(_act) if _act != "" else ""
 	var ipath: String = PASSIVE_ICONS.get(_pas, "") if sid == "" else str(battle.TRAINER_SKILLS.get(sid, {}).get("icon", battle.HOOK_ICON))
 	if ipath == "":
@@ -2351,6 +2353,28 @@ func show_replay_end(won: bool) -> void:
 		return   # 已经停下并提示过
 	if _replay_ui != null:
 		_replay_ui.show_end(won)
+
+
+## 逐帧直播播放端播完(流里的 `finish` 事件, 或跳过了那一步直接播到结尾): 出收尾。
+##   · 周六看自己那一场(入口 stream_watch 给了服务器结果 `current.result`): 账在播之前已按服务器结果记完 ⇒ 走正常结算屏, 胜负以服务器为准
+##     (与重算那条路 `referee_watch.dress_settle` 同一套口径)。
+##   · 其余(周日 / 别人的局 / 战绩页): 回放收尾卡(「X 获胜」+「返回」), 胜负 = 流里服务器那一局 `_dl_finish` 的结果。
+func show_stream_end(won: bool) -> void:
+	if battle == null or not is_instance_valid(battle) or not battle.is_inside_tree() or battle._settled:
+		return
+	var sess: Dictionary = StreamWatchS.current
+	var res = sess.get("result", {})
+	if str(sess.get("kind", "")) == StreamWatchS.KIND_REFEREE and res is Dictionary and not (res as Dictionary).is_empty():
+		battle._had_season = true
+		battle._last_settle_kind = _P2C_HUD.SETTLE_GAUNTLET
+		battle._last_was_exhibition = false
+		battle._last_reward = int((res as Dictionary).get("reward", 0))
+		if _replay_ui != null and _replay_ui.root != null and is_instance_valid(_replay_ui.root):
+			_replay_ui.root.visible = false   # 「退出」收起(结算屏有自己的按钮)
+		_show_banner(bool((res as Dictionary).get("won", won)))
+		return
+	battle._settled = true
+	show_replay_end(won)
 
 
 ## 离场即还原 GameState(主场景 `_exit_tree` 里调 `ReplayRecorder.end_play()`), 这里只管换场景。

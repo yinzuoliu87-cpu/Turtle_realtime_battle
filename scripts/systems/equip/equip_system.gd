@@ -254,8 +254,8 @@ func _eq_crystal_sweep(u: Dictionary, si: int) -> void:
 	var center: Vector2 = u["pos"]
 	var reach: float = CrystalSystem.SWEEP_REACH
 	var im := MeshInstance3D.new()
-	var imesh := ImmediateMesh.new()
-	im.mesh = imesh
+	var imesh: ImmediateMesh = null   # S3 逐帧直播: 网格每步由 CrystalSystem.gen_crystal_sweep 新建一份
+	im.mesh = VfxTex.gen_empty_mesh()
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA

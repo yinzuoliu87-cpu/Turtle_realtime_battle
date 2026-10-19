@@ -15,6 +15,10 @@ extends RefCounted
 ##     交上去之后才断网 ⇒ 待记账单留着, 下次开主菜单 `resume_if_any` 查任务状态补记。
 ##   ★服务端回 `off`(开关刚关)⇒ 记下开关, 退回老路本机打(行为与开关关着一样)。
 ##   ★录像在本机重算对不上(`_diverge`)⇒ 结算屏照样按服务器结果出, 加一行「录像无法在本设备播放」。
+##   ★★逐帧直播 S5(docs/plans/20261019-服务器逐帧直播.md §4): 开关 `stream_on` 开着时「播放」这一步改成**播服务器的状态流**
+##     (`play_settled_route` → stream_watch.gd; 手机一步 sim 都不跑, 不存在「对不上」)。录像仍然先取: 种子 / 开局状态 / 版本号 /
+##     认场都靠它, 但不再拿它重算。服务器那边没有这份流 ⇒ 不播、也不重算, 屏上「结果 · 画面无法播放」(账已记完)。
+##     开关关 ⇒ `play_settled` 原样(本机重算)。
 ##
 ## ══════════════════════════════════════════════════════════════════════
 ##  周日决赛(开关 `finals_on`): 判据与界面在 BracketMapScene(点开自己那一场 = 看), 这里只放它要的记账 `finals_seal`
@@ -26,6 +30,7 @@ const RF := preload("res://scripts/systems/replay/replay_fetcher.gd")
 const LS := preload("res://scripts/systems/replay/live_spectate.gd")
 const P2C := preload("res://scripts/gamedata/phase2_config.gd")
 const BE := preload("res://scripts/net/backend.gd")
+const SW := preload("res://scripts/systems/replay/stream_watch.gd")
 
 ## 屏上的字(短、名词化; 不拟人)。
 const TXT_SUBMITTING := "正在提交阵容"
@@ -145,6 +150,14 @@ static func play_settled(tree: SceneTree, rec: Dictionary, view: Dictionary) -> 
 	if why != "":
 		LS.pending = {}
 	return why
+
+
+## 同上, 但先过逐帧直播的分流口(S5)。`done.call(code, msg)` 恰好一次: "" = 已进战斗场。
+##   开关关 ⇒ 同步走 `play_settled`(与改之前逐字一致); 开 ⇒ 有流播流, 没有流 / 断网 / 版本过旧 ⇒ 不进场(绝不本机重算)。
+##   ★这一场确知是服务器裁判局(`known`): 没有流时**不**退回重算。
+static func play_settled_route(tree: SceneTree, rec: Dictionary, view: Dictionary, done: Callable) -> void:
+	SW.route(tree, rec, MAIN_MENU, {}, true, func() -> String: return play_settled(tree, rec, view), done,
+		{"kind": SW.KIND_REFEREE, "result": view.duplicate()})
 
 
 ## 结算之后的一句话(播不了录像时屏上写它)。

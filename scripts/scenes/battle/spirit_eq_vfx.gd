@@ -1,5 +1,7 @@
 class_name SpiritEqVfx
 extends RefCounted
+## 录流出处键: 本文件的生成函数路径(VfxTex.tag 用)
+const SRC := "res://scripts/scenes/battle/spirit_eq_vfx.gd"
 ## spirit_eq_vfx.gd — 灵物五件新装备(060~064)的演出层
 ## (方案书 docs/plans/20260805-装备逐件重做.md §0.5 · 实装契约 docs/plans/20260805-实装契约.md §6)
 ##
@@ -727,20 +729,39 @@ static func _sph_vert(phi: float, th: float) -> Array:
 	return [p, Color(1, 1, 1, a)]
 
 
+## 录流出处键: 按名字分派到上面那些 `_build_*`(纯函数, 只看参数), 建出来挂 stream_gen ⇒ 手机按同名同参现生成。
+## `p` 只有 upf(放大倍数) 与 cracks(第几带) 用到, 其余忽略。
+static func gen_spirit_mesh(kind: String, p: float = 0.0) -> ArrayMesh:
+	var m: ArrayMesh = null
+	match kind:
+		"bell": m = _build_bell()
+		"ring": m = _build_ring()
+		"disc": m = _build_disc()
+		"torus": m = _build_torus()
+		"sphere": m = _build_sphere()
+		"plank": m = _build_plank()
+		"upf": m = _build_upf(p)
+		"cracks": m = _build_cracks(int(p))
+		"chips": m = _build_chips()
+		"claw": m = _build_claw()
+		"torus_thin": m = _build_torus_thin()
+	return VfxTex.tag(m, "gen_spirit_mesh", [kind, p], SRC)
+
+
 func _ensure_meshes() -> void:
-	if _m_bell == null: _m_bell = _build_bell()
-	if _m_ring == null: _m_ring = _build_ring()
-	if _m_disc == null: _m_disc = _build_disc()
-	if _m_torus == null: _m_torus = _build_torus()
-	if _m_sphere == null: _m_sphere = _build_sphere()
-	if _m_plank == null: _m_plank = _build_plank()
-	if _m_upf == null: _m_upf = _build_upf()
-	if _m_upf_big == null: _m_upf_big = _build_upf(3.0)
+	if _m_bell == null: _m_bell = gen_spirit_mesh("bell")
+	if _m_ring == null: _m_ring = gen_spirit_mesh("ring")
+	if _m_disc == null: _m_disc = gen_spirit_mesh("disc")
+	if _m_torus == null: _m_torus = gen_spirit_mesh("torus")
+	if _m_sphere == null: _m_sphere = gen_spirit_mesh("sphere")
+	if _m_plank == null: _m_plank = gen_spirit_mesh("plank")
+	if _m_upf == null: _m_upf = gen_spirit_mesh("upf", 1.0)
+	if _m_upf_big == null: _m_upf_big = gen_spirit_mesh("upf", 3.0)
 	if _m_cracks.is_empty():
-		for b in range(4): _m_cracks.append(_build_cracks(b))
-	if _m_chips == null: _m_chips = _build_chips()
-	if _m_claw == null: _m_claw = _build_claw()
-	if _m_torus_thin == null: _m_torus_thin = _build_torus_thin()
+		for b in range(4): _m_cracks.append(gen_spirit_mesh("cracks", float(b)))
+	if _m_chips == null: _m_chips = gen_spirit_mesh("chips")
+	if _m_claw == null: _m_claw = gen_spirit_mesh("claw")
+	if _m_torus_thin == null: _m_torus_thin = gen_spirit_mesh("torus_thin")
 
 
 ## 节点上打的自定义 meta 键 —— 门禁按 meta 数点数, **不按名字/贴图路径**:

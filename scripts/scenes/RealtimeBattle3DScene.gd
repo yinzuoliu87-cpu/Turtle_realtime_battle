@@ -2971,16 +2971,12 @@ func _bear_claw_fx(pos2d: Vector2) -> void:   # 熊爪拍击命中: 三道金爪
 		var a: Vector2 = pos2d + off + Vector2(-22.0, 16.0)
 		var b: Vector2 = pos2d + off + Vector2(22.0, -16.0)
 		var im := MeshInstance3D.new()
-		var imesh := ImmediateMesh.new(); im.mesh = imesh
 		var mat := StandardMaterial3D.new()
 		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		mat.vertex_color_use_as_albedo = true
 		mat.no_depth_test = true
-		imesh.surface_begin(Mesh.PRIMITIVE_LINES, mat)
-		imesh.surface_set_color(Color(1.0, 0.92, 0.55, 0.95)); imesh.surface_add_vertex(_world_pos(a, 1.0))
-		imesh.surface_set_color(Color(1.0, 0.8, 0.35, 0.2)); imesh.surface_add_vertex(_world_pos(b, 1.0))
-		imesh.surface_end()
+		im.mesh = VfxTex.gen_line(_world_pos(a, 1.0), _world_pos(b, 1.0), Color(1.0, 0.92, 0.55, 0.95), Color(1.0, 0.8, 0.35, 0.2), mat)   # 纯函数出网格(逐帧直播出处键)
 		_world.add_child(im)
 		var tw := _reg_tween()
 		tw.tween_property(mat, "albedo_color:a", 0.0, 0.18)
@@ -3208,7 +3204,7 @@ func _stress_start() -> void:
 ## ⚠ 这条只影响 STRESS 无头压测的【退出阶段】，不影响对局逻辑 —— 但它会让人误判成
 ##   "我刚改的东西把压测跑崩了"，所以补掉。
 func _exit_tree() -> void:
-	if _replay.is_playing(): ReplayRecorder.end_play()   # 回放: 不论从哪条路离场, GameState 都还原成播之前那一份
+	if _replay.is_playing() or _replay.player != null: ReplayRecorder.end_play()   # 回放 / 逐帧直播播放端: 不论从哪条路离场, GameState 都还原成播之前那一份(重复调是空转)
 	if _wd != null:
 		_stress = false
 		_wd_on = false                       # 让看门狗的 while 自己退出(它每秒醒一次)
@@ -3244,7 +3240,7 @@ func _update_turret_line(tr) -> void:   # 058: 炮台↔当前锁定目标的细
 		return
 	if not is_instance_valid(im):
 		im = MeshInstance3D.new()
-		im.mesh = ImmediateMesh.new()
+		im.mesh = VfxTex.gen_empty_mesh()
 		var mat := StandardMaterial3D.new()
 		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -3255,16 +3251,11 @@ func _update_turret_line(tr) -> void:   # 058: 炮台↔当前锁定目标的细
 		_world.add_child(im)
 		tr["_turret_line"] = im
 	im.visible = true
-	var imesh: ImmediateMesh = im.mesh
 	var col := Color(1.0, 0.26, 0.26, 0.55 + 0.25 * DetMath.dsin(_t * 7.0))   # 细红线+呼吸
 	var a := _world_pos(tr["pos"], 1.35)
 	var b := _world_pos(target["pos"], 1.35)
 	if (b - a).length() < 0.01: return
-	imesh.clear_surfaces()
-	imesh.surface_begin(Mesh.PRIMITIVE_LINES, im.material_override)
-	imesh.surface_set_color(col); imesh.surface_add_vertex(a)
-	imesh.surface_set_color(col); imesh.surface_add_vertex(b)
-	imesh.surface_end()
+	im.mesh = VfxTex.gen_line(a, b, col, col, im.material_override)   # 每步新建一份(原地重画录流看不见·逐帧直播 S3)
 
 func _necro_burst(pos2d: Vector2, radius: float) -> void:
 	_skill_ring(pos2d, Color(0.4, 1.0, 0.55, 0.7), radius * 0.55)
@@ -4035,10 +4026,6 @@ func _phx_hist_sample(hist: Array, tq: float) -> Array:   # 采样喷射历史�
 			return [DetMath.lerp_ang(float(a[1]), float(b[1]), f), DetMath.flerp(float(a[2]), float(b[2]), f)]
 	return [float(hist[0][1]), float(hist[0][2])]
 
-func _phx_fan_pt(mouth: Vector2, center_ang: float, half: float, rng: float, r: float, f: float) -> Vector2:   # 扇形上(径向r,角向f)的2D点(环各自的历史中心角→弯流)
-	var aa: float = center_ang - half + 2.0 * half * f
-	return mouth + Vector2(DetMath.dcos(aa), DetMath.dsin(aa)) * (rng * r)
-
 func _scald_arc(t: float, fb, p0: Vector2, p1: Vector2) -> void:
 	if not is_instance_valid(fb):
 		return
@@ -4358,18 +4345,13 @@ func _laser_beam(a2d: Vector2, b2d: Vector2, col: Color, half_w: float = 0.16, d
 	var wb := _world_pos(b2d, h)
 	var up := Vector3(0.0, half_w, 0.0)
 	var im := MeshInstance3D.new()
-	var imesh := ImmediateMesh.new()
-	im.mesh = imesh
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	mat.vertex_color_use_as_albedo = true
-	imesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, mat)
-	for v in [wa - up, wa + up, wb + up, wa - up, wb + up, wb - up]:
-		imesh.surface_set_color(col); imesh.surface_add_vertex(v)
-	imesh.surface_end()
+	im.mesh = VfxTex.gen_tris(PackedVector3Array([wa - up, wa + up, wb + up, wa - up, wb + up, wb - up]), col, mat)   # 纯函数出网格(逐帧直播出处键)
 	_world.add_child(im)
 	var tw := _reg_tween()
 	tw.tween_property(mat, "albedo_color:a", 0.0, dur)
@@ -4802,8 +4784,7 @@ func _bolt_line(a2d: Vector2, b2d: Vector2, col: Color) -> void:
 
 func _surf_chain_shoot(from2d: Vector2, fromh: float, to2d: Vector2, col: Color) -> void:   # 从小将(空中)射铁链向目标: 端点快速伸长(射出感)→保持→淡出(用户2026-07-18"绳子从小将射向目标")
 	var im := MeshInstance3D.new()
-	var imesh := ImmediateMesh.new()
-	im.mesh = imesh
+	im.mesh = VfxTex.gen_empty_mesh()
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.albedo_color = col; mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; mat.vertex_color_use_as_albedo = true
@@ -4815,11 +4796,7 @@ func _surf_chain_shoot(from2d: Vector2, fromh: float, to2d: Vector2, col: Color)
 	tw.bind_node(im)
 	tw.tween_method(func(q: float) -> void:              # 伸长: 端点从小将→目标(射出)
 		if not is_instance_valid(im): return
-		imesh.clear_surfaces()
-		imesh.surface_begin(Mesh.PRIMITIVE_LINES, mat)
-		imesh.surface_add_vertex(a)
-		imesh.surface_add_vertex(a.lerp(b, q))
-		imesh.surface_end()
+		im.mesh = VfxTex.gen_line(a, a.lerp(b, q), Color.WHITE, Color.WHITE, mat, false)   # 每次新建一份(逐帧直播 S3)
 	, 0.0, 1.0, 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.tween_interval(UIPalette.T_TAP)
 	tw.tween_property(mat, "albedo_color:a", 0.0, UIPalette.T_BASE)

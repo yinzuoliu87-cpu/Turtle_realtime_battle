@@ -1,5 +1,8 @@
 class_name SignalWaveSystem
 extends RefCounted
+
+## S3 逐帧直播出处键: 本文件生成函数的路径(VfxTex.tag 第 4 个参数)
+const SRC := "res://scripts/systems/equip/signal_wave_system.gd"
 ## 信号放大器038 的【弧形电磁波】—— 效果重做(用户 2026-07-30)。
 ##
 ## 需求原文:
@@ -199,7 +202,7 @@ func _place_nodes(w: Dictionary, r: float) -> void:
 	if im == null:
 		im = MeshInstance3D.new()
 		imesh = ImmediateMesh.new()
-		im.mesh = imesh
+		im.mesh = VfxTex.gen_empty_mesh()
 		var mat := StandardMaterial3D.new()
 		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -216,7 +219,16 @@ func _place_nodes(w: Dictionary, r: float) -> void:
 	var from2d: Vector2 = w["from"]
 	var base: float = DetMath.angle((w["dir"] as Vector2))
 	var half: float = float(w["half"])
-	var segs: int = clampi(int(float(w["deg"]) / 6.0), 8, 90)    # 6° 一段 → 弧看着是圆的不是折线
+	## S3: 每步新建一份赋给节点(原地 clear_surfaces 重画录流看不见)
+	imesh = gen_signal_wave(from2d, base, half, float(w["deg"]), r, float(w["t"]), mat2, battle._arena_center, battle.WS)
+	im.mesh = imesh
+	w["imesh"] = imesh
+
+
+## S3 逐帧直播: 电磁波扇带网格(纯函数; 手机按出处键调同一个函数现生成)。wt = 波的已飞行时间 w["t"]。
+static func gen_signal_wave(from2d: Vector2, base: float, half: float, deg: float, r: float, wt: float, mat2: Material,
+		center: Vector2, ws: float) -> ImmediateMesh:
+	var segs: int = clampi(int(deg / 6.0), 8, 90)    # 6° 一段 → 弧看着是圆的不是折线
 	var fade: float = clampf(1.0 - r / WAVE_RANGE, 0.12, 1.0)
 	# ★视觉厚度【比判定厚度薄】: 判定是 ±WAVE_BAND(70码), 但画满 140 码宽会糊成一坨云。
 	#   画 0.62 倍 → 看着是"一道冲击波"而不是"一片雾"。判定不变(不是改玩法)。
@@ -229,7 +241,7 @@ func _place_nodes(w: Dictionary, r: float) -> void:
 	var c_in := Color(0.02, 0.34, 0.90, 0.04 * fade)             # 内缘: 几乎透明(拖尾)
 	var c_mid := Color(0.06, 0.78, 1.00, 0.16 * fade)   # 迭代四: 再压薄内部, 让波前+电弧主导(原来像一块平板)
 	var c_out := Color(0.24, 0.96, 1.00, 0.52 * fade)            # 波前: 高饱和青
-	imesh.clear_surfaces()
+	var imesh := ImmediateMesh.new()
 	imesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, mat2)
 	for i in range(segs):
 		var t0: float = float(i) / float(segs) * 2.0 - 1.0
@@ -240,12 +252,12 @@ func _place_nodes(w: Dictionary, r: float) -> void:
 		var d1 := Vector2(DetMath.dcos(a1), DetMath.dsin(a1))
 		# ★波前【锯齿脉动】= 电磁的"炸毛"感。用角度+时间的确定性函数, 不用随机 ——
 		#   本项目有 rng_discipline 门禁(裸随机会破坏对局确定性), 演出也一并守这条。
-		var j0: float = DetMath.dsin(a0 * 17.0 + float(w["t"]) * 34.0) * 7.0
-		var j1: float = DetMath.dsin(a1 * 17.0 + float(w["t"]) * 34.0) * 7.0
-		var vi0: Vector3 = battle._world_pos(from2d + d0 * r_in, 0.55)
-		var vi1: Vector3 = battle._world_pos(from2d + d1 * r_in, 0.55)
-		var vo0: Vector3 = battle._world_pos(from2d + d0 * (r_out + j0), 0.55)
-		var vo1: Vector3 = battle._world_pos(from2d + d1 * (r_out + j1), 0.55)
+		var j0: float = DetMath.dsin(a0 * 17.0 + wt * 34.0) * 7.0
+		var j1: float = DetMath.dsin(a1 * 17.0 + wt * 34.0) * 7.0
+		var vi0: Vector3 = VfxTex.wpos(center, ws, from2d + d0 * r_in, 0.55)
+		var vi1: Vector3 = VfxTex.wpos(center, ws, from2d + d1 * r_in, 0.55)
+		var vo0: Vector3 = VfxTex.wpos(center, ws, from2d + d0 * (r_out + j0), 0.55)
+		var vo1: Vector3 = VfxTex.wpos(center, ws, from2d + d1 * (r_out + j1), 0.55)
 		# 内→外两个三角(带渐变: 内暗外亮)
 		imesh.surface_set_color(c_in);  imesh.surface_add_vertex(vi0)
 		imesh.surface_set_color(c_in);  imesh.surface_add_vertex(vi1)
@@ -259,24 +271,24 @@ func _place_nodes(w: Dictionary, r: float) -> void:
 	for i in range(segs + 1):
 		var tt: float = float(i) / float(segs) * 2.0 - 1.0
 		var aa: float = base + half * tt
-		var jj: float = DetMath.dsin(aa * 17.0 + float(w["t"]) * 34.0) * 7.0
+		var jj: float = DetMath.dsin(aa * 17.0 + wt * 34.0) * 7.0
 		imesh.surface_set_color(Color(0.86, 0.99, 1.00, 0.92 * fade))   # crest 只有这一条近白
-		imesh.surface_add_vertex(battle._world_pos(from2d + Vector2(DetMath.dcos(aa), DetMath.dsin(aa)) * (r_out + jj), 0.6))
+		imesh.surface_add_vertex(VfxTex.wpos(center, ws, from2d + Vector2(DetMath.dcos(aa), DetMath.dsin(aa)) * (r_out + jj), 0.6))
 	imesh.surface_end()
 	# ★径向电弧: 沿张角每隔几段拉一条内→外的亮线, 是"电磁"而不是"水波"的关键特征。
 	#   条数随张角走(90°约4条, 360°约16条), 相位随时间滚动 → 看着在噼啪窜。
-	var spokes: int = clampi(int(float(w["deg"]) / 22.0), 3, 18)
+	var spokes: int = clampi(int(deg / 22.0), 3, 18)
 	imesh.surface_begin(Mesh.PRIMITIVE_LINES, mat2)
 	for k in range(spokes):
 		var ts: float = (float(k) + 0.5) / float(spokes) * 2.0 - 1.0
 		var as_: float = base + half * ts
 		var ds := Vector2(DetMath.dcos(as_), DetMath.dsin(as_))
-		var flick: float = 0.45 + 0.55 * absf(DetMath.dsin(float(k) * 2.3 + float(w["t"]) * 26.0))
+		var flick: float = 0.45 + 0.55 * absf(DetMath.dsin(float(k) * 2.3 + wt * 26.0))
 		var cs := Color(0.55, 0.98, 1.00, 0.80 * fade * flick)
 		imesh.surface_set_color(Color(cs.r, cs.g, cs.b, 0.0))
-		imesh.surface_add_vertex(battle._world_pos(from2d + ds * r_in, 0.58))
+		imesh.surface_add_vertex(VfxTex.wpos(center, ws, from2d + ds * r_in, 0.58))
 		imesh.surface_set_color(cs)
-		imesh.surface_add_vertex(battle._world_pos(from2d + ds * (r_out + DetMath.dsin(as_ * 17.0 + float(w["t"]) * 34.0) * 7.0), 0.58))
+		imesh.surface_add_vertex(VfxTex.wpos(center, ws, from2d + ds * (r_out + DetMath.dsin(as_ * 17.0 + wt * 34.0) * 7.0), 0.58))
 	imesh.surface_end()
 	# 中段稍暗的一条, 给扇带一点"体积"
 	imesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP, mat2)
@@ -284,9 +296,10 @@ func _place_nodes(w: Dictionary, r: float) -> void:
 		var tm: float = float(i) / float(segs) * 2.0 - 1.0
 		var am: float = base + half * tm
 		imesh.surface_set_color(c_mid)
-		imesh.surface_add_vertex(battle._world_pos(from2d + Vector2(DetMath.dcos(am), DetMath.dsin(am)) * ((r_in + r_out) * 0.5), 0.57))
+		imesh.surface_add_vertex(VfxTex.wpos(center, ws, from2d + Vector2(DetMath.dcos(am), DetMath.dsin(am)) * ((r_in + r_out) * 0.5), 0.57))
 	imesh.surface_end()
 
+	return VfxTex.tag(imesh, "gen_signal_wave", [from2d, base, half, deg, r, wt, mat2, center, ws], SRC)
 
 func _free_nodes(w: Dictionary) -> void:
 	for nd in (w.get("nodes", []) as Array):

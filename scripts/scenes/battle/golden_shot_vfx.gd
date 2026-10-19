@@ -78,6 +78,8 @@ const BODY_Y := 0.95
 
 ## 节点身份标记(程序生成贴图 `resource_path` 是空串, 按路径数会全数成 0)
 const META_KEY := "golden_shot_vfx"
+## S3 逐帧直播: 本文件里程序贴图 / 网格的出处键路径(gen_* / _make_* 静态函数所在脚本)
+const SRC := "res://scripts/scenes/battle/golden_shot_vfx.gd"
 ## 最后一道闸: 同时在场的本层节点上限
 const OWNED_CAP := 192
 
@@ -145,6 +147,12 @@ static func hit_radius(q: float, pct: float) -> float:
 static func bead_tex() -> ImageTexture:
 	if _tex_bead != null:
 		return _tex_bead
+	_tex_bead = _make_bead_tex()
+	return _tex_bead
+
+
+## S3 逐帧直播: 画图本体(纯函数, 挂出处键; 手机按出处键现生成)。
+static func _make_bead_tex() -> ImageTexture:
 	var n := 64
 	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
@@ -161,14 +169,19 @@ static func bead_tex() -> ImageTexture:
 			img.set_pixel(x, y, Color(
 				lerpf(GOLD.r, CORE.r, core), lerpf(GOLD.g, CORE.g, core),
 				lerpf(GOLD.b, CORE.b, core), a))
-	_tex_bead = ImageTexture.create_from_image(img)
-	return _tex_bead
+	return VfxTex.tag(ImageTexture.create_from_image(img), "_make_bead_tex", [], SRC)
 
 
 ## 菱形【外框】(空心)。命中时炸开的就是它 —— 空心菱 vs 场上一切圆环, 剪影一眼分得开。
 static func frame_tex() -> ImageTexture:
 	if _tex_frame != null:
 		return _tex_frame
+	_tex_frame = _make_frame_tex()
+	return _tex_frame
+
+
+## S3 逐帧直播: 画图本体(纯函数, 挂出处键; 手机按出处键现生成)。
+static func _make_frame_tex() -> ImageTexture:
 	var n := 128
 	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
@@ -180,14 +193,19 @@ static func frame_tex() -> ImageTexture:
 			if band <= 0.0:
 				continue
 			img.set_pixel(x, y, Color(GOLD.r, GOLD.g, GOLD.b, clampf(band, 0.0, 1.0)))
-	_tex_frame = ImageTexture.create_from_image(img)
-	return _tex_frame
+	return VfxTex.tag(ImageTexture.create_from_image(img), "_make_frame_tex", [], SRC)
 
 
 ## 双人字箭簇「»」: 两道 V 形折线, 尖指 +X。枪口用。
 static func chevron_tex() -> ImageTexture:
 	if _tex_chevron != null:
 		return _tex_chevron
+	_tex_chevron = _make_chevron_tex()
+	return _tex_chevron
+
+
+## S3 逐帧直播: 画图本体(纯函数, 挂出处键; 手机按出处键现生成)。
+static func _make_chevron_tex() -> ImageTexture:
 	var n := 64
 	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
@@ -206,8 +224,7 @@ static func chevron_tex() -> ImageTexture:
 				continue
 			var a: float = clampf((0.13 - best) / 0.13, 0.0, 1.0)
 			img.set_pixel(x, y, Color(CORE.r, CORE.g, CORE.b, a * 0.95))
-	_tex_chevron = ImageTexture.create_from_image(img)
-	return _tex_chevron
+	return VfxTex.tag(ImageTexture.create_from_image(img), "_make_chevron_tex", [], SRC)
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -257,16 +274,9 @@ func _quad_along(a2: Vector2, b2: Vector2, half_w: float, y_m: float,
 	if dir.length() < 0.001:
 		dir = Vector2.RIGHT
 	var p: Vector2 = Vector2(-dir.y, dir.x).normalized() * half_w
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var v: Array = [battle._world_pos(a2 + p, y_m), battle._world_pos(b2 + p, y_m),
-					battle._world_pos(b2 - p, y_m), battle._world_pos(a2 - p, y_m)]
-	var uv: Array = [Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]
-	for idx in [0, 1, 2, 0, 2, 3]:
-		st.set_uv(uv[idx])
-		st.add_vertex(v[idx])
 	var mi := MeshInstance3D.new()
-	mi.mesh = st.commit()
+	## S3 逐帧直播: 网格与 blade_eq_vfx 的 `_quad_along` 是同一个式子 ⇒ 共用那一份纯函数(不再抄第二份)
+	mi.mesh = BladeEqVfx.gen_quad_along(a2, b2, p, y_m, battle._arena_center, battle.WS)
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA

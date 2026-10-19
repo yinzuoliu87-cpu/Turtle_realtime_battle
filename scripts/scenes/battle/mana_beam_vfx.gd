@@ -1,5 +1,7 @@
 extends RefCounted
 class_name ManaBeamVfx
+## 录流出处键: 本文件的生成函数路径(VfxTex.tag 用)
+const SRC := "res://scripts/scenes/battle/mana_beam_vfx.gd"
 ## mana_beam_vfx.gd — 068 深海气压罐【可转向法力射线】的演出层(2026-08-11)
 ##
 ## ══════════════════════════════════════════════════════════════════
@@ -473,6 +475,20 @@ func _node(mesh: Mesh, mat: Material, org: Vector3) -> MeshInstance3D:
 	return mi
 
 
+## 录流出处键: 按名字分派到本文件的静态网格函数(纯函数, 只看 k), 建出来挂 stream_gen ⇒ 手机按同名同参现生成。
+static func gen_beam_mesh(kind: String, k: int = 0) -> ArrayMesh:
+	var m: ArrayMesh = null
+	match kind:
+		"shell": m = _shell_mesh_k(k)
+		"star": m = _star_mesh(k)
+		"burst": m = _burst_mesh(k)
+		"burst_ring": m = _burst_ring_mesh(k)
+		"fil": m = _fil_mesh(k)
+		"ribbon": m = _ribbon_mesh(k)
+		"ground": m = _ground_mesh()
+	return VfxTex.tag(m, "gen_beam_mesh", [kind, k], SRC)
+
+
 ## 束身细丝: FIL_N 股, 各有垂向偏移与微角差(两端偏移不同 ⇒ 与轴不严格平行),
 ## 每股一对十字鳍薄带。seed 换一套排布(实测: 脊的位置沿束变化、逐帧重排)。
 ## 单位空间与壳一致: x∈[0,1], 半径 1 = 束半宽。
@@ -633,25 +649,25 @@ func fire(origin: Vector2, ang: float, length: float, half_w: float) -> Dictiona
 	var shells: Array = []
 	for i in range(SHELL_U.size()):
 		# 从外到内建, render_priority 递增 ⇒ 芯画在最上面
-		var nd := _node(_shell_mesh_k(i), _beam_mat(30 + i), battle._world_pos(origin, 0.0))
+		var nd := _node(gen_beam_mesh("shell", i), _beam_mat(30 + i), battle._world_pos(origin, 0.0))
 		nd.scale = Vector3(length * ws, half_w * ws, half_w * ws)
 		shells.append(nd)
 	# 细丝: 两套排布轮换(换 mesh 不换节点 ⇒ 热路径零分配)。节点放进 shells,
 	# aim/set_progress/stop/node_count 就全部顺带管到了。细丝同吃束身 shader 的闪变/呼吸。
-	var fil_meshes: Array = [_fil_mesh(1), _fil_mesh(2)]
+	var fil_meshes: Array = [gen_beam_mesh("fil", 1), gen_beam_mesh("fil", 2)]
 	var fil := _node(fil_meshes[0], _beam_mat(35), battle._world_pos(origin, 0.0))
 	fil.scale = Vector3(length * ws, half_w * ws, half_w * ws)
 	shells.append(fil)
 	# 地面反照条(同吃束身 shader 的包络/闪变; 放 shells 里 ⇒ aim/清场自动管到)
-	var gq := _node(_ground_mesh(), _beam_mat(29), battle._world_pos(origin, 0.0))
+	var gq := _node(gen_beam_mesh("ground"), _beam_mat(29), battle._world_pos(origin, 0.0))
 	gq.scale = Vector3(length * ws, half_w * ws, half_w * ws)
 	shells.append(gq)
-	var mz := _node(_star_mesh(9), _mat(36), battle._world_pos(origin, 0.0))
+	var mz := _node(gen_beam_mesh("star", 9), _mat(36), battle._world_pos(origin, 0.0))
 	mz.scale = Vector3(MUZZLE_R * ws, 1.0, MUZZLE_R * ws)
 	# 枪口飘带: RIBBON_N 条彗尾弧带绕施法者公转(每条自己的相位与形状)
 	var ribbons: Array = []
 	for i in range(RIBBON_N):
-		var rb := _node(_ribbon_mesh(i + 1), _mat(34, true), battle._world_pos(origin, 0.0))
+		var rb := _node(gen_beam_mesh("ribbon", i + 1), _mat(34, true), battle._world_pos(origin, 0.0))
 		rb.scale = Vector3.ONE * ws
 		rb.rotation.y = TAU * float(i) / float(RIBBON_N)
 		# 每条平面各歪一点(±14°): 参考的弧带不是同平面圆环, 是歪着绕的大弧
@@ -666,8 +682,8 @@ func fire(origin: Vector2, ang: float, length: float, half_w: float) -> Dictiona
 		"hit_meshes": [], "ring_mesh": null,
 	}
 	for i in range(HIT_PATTERNS):
-		(h["hit_meshes"] as Array).append(_burst_mesh(i + 1))
-	h["ring_mesh"] = _burst_ring_mesh(7)
+		(h["hit_meshes"] as Array).append(gen_beam_mesh("burst", i + 1))
+	h["ring_mesh"] = gen_beam_mesh("burst_ring", 7)
 	aim(h, ang)
 	set_progress(h, 0.0)
 	_live.append(h)
@@ -793,7 +809,7 @@ func _make_mark(u: Dictionary, h: Dictionary, envk: float) -> Dictionary:
 	var ws: float = float(battle.WS)
 	var p: Vector3 = battle._world_pos(u.get("pos", Vector2.ZERO), HIT_H)
 	var meshes: Array = h.get("hit_meshes", [])
-	var star := _node(meshes[0] if meshes.size() > 0 else _burst_mesh(1), _mat(38), p)
+	var star := _node(meshes[0] if meshes.size() > 0 else gen_beam_mesh("burst", 1), _mat(38), p)
 	var glows: Array = []
 	for g in GLOW_SHELLS:
 		var sm := SphereMesh.new()

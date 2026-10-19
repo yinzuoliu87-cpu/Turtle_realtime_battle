@@ -103,12 +103,15 @@ func build() -> Control:
 	cl.layer = int(battle._ui_layer.layer) + 1
 	battle.add_child(cl)
 	cl.add_child(root)
-	_names = ReplayRecorder.side_names(battle._replay.rec, ReplayRecorder.viewer_name)
+	var _stream: bool = str(battle._replay.mode) == "stream"   # 逐帧直播播放端(StreamPlayer): 没有输入录像, 不能暂停 / 倍速 / 再看一遍(那会本机重算)
+	_names = StreamHud.side_names() if _stream else ReplayRecorder.side_names(battle._replay.rec, ReplayRecorder.viewer_name)
 	## 对阵图那一场: 认不出谁是录像方(对手快照的名字对不上这一场的两个人)时, 收尾卡至少按对阵图上的顺序写出两个人。
 	var pair = ReplayRecorder.play_names.get("pair", [])
 	if str(_names.get("l", "")) == "" and str(_names.get("r", "")) == "" and pair is Array and (pair as Array).size() == 2:
 		_names = {"l": str(pair[0]), "r": str(pair[1])}
-	if battle._replay.is_live():
+	if _stream:
+		_build_stream_exit(vp, m)
+	elif battle._replay.is_live():
 		_build_live(vp, m)
 	else:
 		_build_strip(vp, m)
@@ -257,6 +260,17 @@ func _build_live(vp: Vector2, m: Vector4) -> void:
 	root.add_child(live_status)
 
 
+## 逐帧直播播放端: 只有左下角一颗「退出」(与观赛那颗同位置同样子); 行为与回放「退出回放」相同(`_replay_exit`)。
+func _build_stream_exit(vp: Vector2, m: Vector4) -> void:
+	exit_btn = _btn("退出", LIVE_BTN.x, Color(0.80, 0.84, 0.90))
+	exit_btn.name = N_EXIT
+	exit_btn.custom_minimum_size = LIVE_BTN
+	exit_btn.size = LIVE_BTN
+	exit_btn.position = Vector2(m.x, vp.y - m.w - LIVE_BTN.y)
+	exit_btn.pressed.connect(battle._hud._replay_exit)
+	root.add_child(exit_btn)
+
+
 func _sync_live() -> void:
 	if live_status == null or not is_instance_valid(live_status):
 		return
@@ -318,6 +332,8 @@ func refresh() -> void:
 	if root == null or not is_instance_valid(root):
 		return
 	var rp = battle._replay
+	if str(rp.mode) == "stream":
+		return
 	if rp.is_live():
 		_sync_live()
 		return
@@ -392,6 +408,9 @@ func _end_card(won: bool, broken: bool) -> void:
 		battle._dmg_stats.panel.visible = false
 	if live_exit != null:
 		live_exit.visible = false          # 收尾卡上有「返回」, 左下角那颗不再留着
+	var stream: bool = str(battle._replay.mode) == "stream"
+	if stream and exit_btn != null:
+		exit_btn.visible = false
 	if live_shade != null:
 		live_shade.visible = false
 	var dim := ColorRect.new()
@@ -445,7 +464,7 @@ func _end_card(won: bool, broken: bool) -> void:
 	hb.alignment = BoxContainer.ALIGNMENT_CENTER
 	hb.add_theme_constant_override("separation", 18)
 	vb.add_child(hb)
-	if not broken and lv == null:          # 「再看一遍」只有回放有
+	if not broken and lv == null and not stream:          # 「再看一遍」只有回放有(状态流没有输入录像, 再看一遍会变成本机重算)
 		var ag := Button.new()
 		ag.name = N_AGAIN
 		ag.text = "再看一遍"

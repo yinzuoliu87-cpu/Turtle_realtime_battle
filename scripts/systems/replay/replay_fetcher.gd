@@ -18,6 +18,8 @@ extends RefCounted
 
 const SB := preload("res://scripts/net/supabase.gd")
 const P2C := preload("res://scripts/gamedata/phase2_config.gd")
+## 逐帧直播 S5: 拿到录像之后「播状态流还是本机重算」由它分流(开关关 ⇒ 同步走原来那一行, 一字不变)。
+const SW := preload("res://scripts/systems/replay/stream_watch.gd")
 
 ## 一周的秒数(UTC 没有夏令时, 一周恒为 7×86400)。
 const WEEK_SEC := 7 * 86400
@@ -214,20 +216,21 @@ static func open(tree: SceneTree, id: String, done: Callable, back: String = "",
 ## 周日对阵图点已揭晓那一格: 按 (周, 组, 轮, 场) 问服务端要**裁判采纳的那一份**(`finals_replay()`),
 ##   拿到 match_id + 录像之后与 `open` 同一条路(认场 / 存本机 / 播)。`done` 约定同 `open`。
 ##   ★不先看本机: 本机那份可能是**没被采纳**的那一场(双方各在本机打一场), 播错了比不播更糟。
+## `known` = 这是服务器裁判算的那一场(周日点开自己那一场): 逐帧直播开着而没有状态流时不播、也不重算(SW.route)。
 static func open_finals(tree: SceneTree, week: int, bucket: int, round_no: int, match_no: int,
-		done: Callable, back: String = "", names: Dictionary = {}) -> void:
+		done: Callable, back: String = "", names: Dictionary = {}, known: bool = false) -> void:
 	if not SB.enabled():
 		_reply(done, "no_backend", message("no_backend"))
 		return
 	var started: bool = SB.fetch_finals_replay_async(week, bucket, round_no, match_no,
 		func(res: Dictionary) -> void:
-			_on_fetched(tree, str(res.get("match_id", "")), res, done, back, names))
+			_on_fetched(tree, str(res.get("match_id", "")), res, done, back, names, known))
 	if not started:
 		_reply(done, "corrupt", message("corrupt"))
 
 
 static func _on_fetched(tree: SceneTree, id: String, res: Dictionary, done: Callable,
-		back: String = "", names: Dictionary = {}) -> void:
+		back: String = "", names: Dictionary = {}, known: bool = false) -> void:
 	if not done.is_valid():
 		return
 	var err := str(res.get("err", ""))
@@ -243,16 +246,15 @@ static func _on_fetched(tree: SceneTree, id: String, res: Dictionary, done: Call
 		_reply(done, "corrupt", message("corrupt"))
 		return
 	_cache(id, raw)
-	_play(tree, rec, done, back, names)
+	_play(tree, rec, done, back, names, known)
 
 
+## ★逐帧直播 S5: 先过 `SW.route` —— 开关关 ⇒ 同步调下面这个 lambda(= 原来的 `ReplayRecorder.play`), 回调形状不变;
+##   开关开 ⇒ 有状态流就播流(本机不算), 没有才回到这一行(积分赛本机局 / 开流之前的局, 方案书 §5)。
 static func _play(tree: SceneTree, rec: Dictionary, done: Callable, back: String = "",
-		names: Dictionary = {}) -> void:
-	var why := ReplayRecorder.play(tree, rec, back, names)
-	if why != "":
-		_reply(done, "unplayable", why)
-		return
-	_reply(done, "", "")
+		names: Dictionary = {}, known: bool = false) -> void:
+	SW.route(tree, rec, back, names, known,
+		func() -> String: return ReplayRecorder.play(tree, rec, back, names), done)
 
 
 static func _reply(done: Callable, code: String, msg: String) -> void:

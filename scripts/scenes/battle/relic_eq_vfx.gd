@@ -1,5 +1,7 @@
 class_name RelicEqVfx
 extends RefCounted
+## 录流出处键: 本文件的生成函数路径(VfxTex.tag 用)
+const SRC := "res://scripts/scenes/battle/relic_eq_vfx.gd"
 ## relic_eq_vfx.gd — 遗物两件新装备(091 远古龟甲片 / 094 祖龟碑)的演出层
 ## (规格 `docs/plans/20260805-装备逐件重做.md` §0.5 ★091 / ★094 · 契约 `20260806-实装契约-批④.md` §7)
 ##
@@ -563,15 +565,27 @@ func _mesh_node(mesh: ArrayMesh, mat: StandardMaterial3D) -> MeshInstance3D:
 	return mi
 
 
+## 录流出处键: 按名字分派到上面那些 `_build_*`(纯函数), 建出来挂 stream_gen ⇒ 手机按同名同参现生成。
+## `args` 只有 annulus [inner, seg] 与 plates [sides, inner, gap_deg] 用到。
+static func gen_relic_mesh(kind: String, args: Array = []) -> ArrayMesh:
+	var m: ArrayMesh = null
+	match kind:
+		"hex": m = _build_hex()
+		"hex_v": m = _build_hex_v()
+		"annulus": m = _build_annulus(float(args[0]), int(args[1]))
+		"plates": m = _build_plate_ring(int(args[0]), float(args[1]), float(args[2]))
+	return VfxTex.tag(m, "gen_relic_mesh", [kind, args], SRC)
+
+
 func _ensure_meshes() -> void:
 	if _m_hex == null:
-		_m_hex = _build_hex()
+		_m_hex = gen_relic_mesh("hex")
 	if _m_ring == null:
-		_m_ring = _build_annulus(0.74, 48)
+		_m_ring = gen_relic_mesh("annulus", [0.74, 48])
 	if _m_hexv == null:
-		_m_hexv = _build_hex_v()
+		_m_hexv = gen_relic_mesh("hex_v")
 	if _m_plates == null:
-		_m_plates = _build_plate_ring(BASE_SIDES, BASE_INNER, BASE_GAP_DEG)
+		_m_plates = gen_relic_mesh("plates", [BASE_SIDES, BASE_INNER, BASE_GAP_DEG])
 
 
 ## 094 的两张立绘。★缺图时返回 null 而不是崩 —— 调用侧一律判 null 再建节点。
@@ -1021,8 +1035,22 @@ func _blast(pos2d: Vector2, col: Color) -> void:
 	if h.is_empty():
 		return
 	for k in ShockwaveVfx.NODE_KEYS:
+		## 录流出处键: 三张网格是 ShockwaveVfx 的单位尺寸缓存(本层自己那个实例的), 挂上 gen_relic_blast_mesh
+		var bmi = h[k]
+		if bmi is MeshInstance3D:
+			VfxTex.tag((bmi as MeshInstance3D).mesh, "gen_relic_blast_mesh", [str(k)], SRC)
 		_adopt(h[k], "blast")
 	_shocks.append(h)
+
+
+## 点爆三张网格的出处键入口(纯函数): 节点键 → ShockwaveVfx 的同一个静态建网格函数。
+static func gen_relic_blast_mesh(k: String) -> ArrayMesh:
+	var m: ArrayMesh = null
+	match k:
+		"shock": m = ShockwaveVfx._build_shell_mesh()
+		"ring": m = ShockwaveVfx._build_ring_mesh()
+		"dust": m = ShockwaveVfx._build_dust_mesh()
+	return VfxTex.tag(m, "gen_relic_blast_mesh", [k], SRC)
 
 
 ## 全队光环的头顶印记 —— **名单由系统侧给**(全场生效、不设半径)。

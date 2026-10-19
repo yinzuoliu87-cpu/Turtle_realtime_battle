@@ -232,7 +232,7 @@ func _dl_build_present_overlay(mode: String) -> void:
 	##   回放里点了也没用(只认录像里那一下) ⇒ 回放不出这一行。
 	hint.name = "PresentHint"
 	hint.text = "点击继续"
-	if not battle._replay.is_playing():
+	if not battle._replay.is_playing() and str(battle._replay.mode) != "stream":   # 逐帧直播播放端也点不动(只认服务器那一下)
 		vb.add_child(hint)
 	_dl_pass_clicks_to(back)
 	_dl_stagger_in(vb)
@@ -313,9 +313,10 @@ func _dl_matchup_row(lane: String) -> Control:
 
 
 func _side_headers() -> Dictionary:
-	if not battle._replay.is_playing() or ReplayRecorder.play_names.is_empty():
+	var _stream: bool = str(battle._replay.mode) == "stream"
+	if not (battle._replay.is_playing() or _stream) or ReplayRecorder.play_names.is_empty():
 		return {"l": "我方", "r": "对方"}
-	var nm: Dictionary = ReplayRecorder.side_names(battle._replay.rec)
+	var nm: Dictionary = StreamHud.side_names() if _stream else ReplayRecorder.side_names(battle._replay.rec)
 	return {"l": str(nm["l"]) if str(nm["l"]) != "" else "我方", "r": str(nm["r"]) if str(nm["r"]) != "" else "对方"}
 
 # 总览一路: 【上路】 [我方小头像…] vs [对方小头像…]
@@ -1109,6 +1110,7 @@ func _dl_next_lane(finished_lane: String = "") -> void:
 ## ★只推迟【画面】: 胜负/结算账(_settle_season)仍在这一刻立即落定, 防"等的那 1 秒里退出 = 没结算"。
 const EGG_BREAK_BANNER_DELAY := 1.2
 func _dl_finish(won: bool, banner_delay: float = 0.0) -> void:
+	if StreamRecorder.cur != null: StreamRecorder.cur.ev("finish", [won, banner_delay])   # 逐帧直播: 手机播到这一步出收尾(结算屏 / 收尾卡)
 	if battle._over:
 		return
 	if OS.has_environment("XDBG"): print("XDBG_DL finish won=", won, " t=", battle._t, " egg_hp=", (GameState.egg_hp if GameState != null else {}))

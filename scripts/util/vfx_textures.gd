@@ -4,9 +4,99 @@
 class_name VfxTex
 extends RefCounted
 
+## ── S3 逐帧直播「出处键」(方案书 docs/plans/20261019-服务器逐帧直播.md §2.4) ──
+## 程序生成的贴图 / 网格没有 resource_path, 录流只能告诉手机「这是一张 W×H 的图」⇒ 手机画占位。
+## 这里给生成出来的资源挂 meta `stream_gen` = [生成函数所在脚本, 静态函数名, 参数]: 录流把它原样发出去(StreamRecorder._ensure_gen),
+## 手机按白名单(StreamMirror.gen_ok)调**同一个函数**现生成 —— 一份实现, 两端逐位相同, 几十字节代替整张像素。
+## ★生成函数必须是**纯函数**: 只看参数(不读 battle / 相机 / 随机数 / 时钟), 否则手机生成的和服务器不是同一份。
+const SELF := "res://scripts/util/vfx_textures.gd"
+
+
+## 给资源挂出处键(已挂过的不再挂: 缓存的贴图每次调用都会经过这里)。`src` 缺省 = 本文件。返回原资源, 方便 `return tag(…)`。
+## `every` > 0: 每步重建的网格在录流里**每几步发一代**(缺省 = 与变换同频的 2 步 / 30 Hz)。只影响流, 不影响本机画面。
+static func tag(r, fn: String, args: Array = [], src: String = SELF, every: int = 0):
+	if r is Resource and not (r as Resource).has_meta(&"stream_gen"):
+		var m: Array = [src, fn, args]
+		if every > 0:
+			m.append(every)
+		(r as Resource).set_meta(&"stream_gen", m)
+	return r
+
+
+
+## 一份空网格(每步重建的网格第一次画之前挂在节点上的那份): 也挂出处键, 录流就不会把它当成画不出来的占位。
+static func gen_empty_mesh() -> ArrayMesh:
+	return tag(ArrayMesh.new(), "gen_empty_mesh")
+
+
+## 与 RealtimeBattle3DScene._world_pos 逐字同一个式子(静态生成函数里没有 battle: 战场中心与比例作参数传进来)。
+static func wpos(center: Vector2, ws: float, pos: Vector2, height: float) -> Vector3:
+	return Vector3((pos.x - center.x) * ws, height, (pos.y - center.y) * ws)
+
+
+## 两点一条线(PRIMITIVE_LINES)。`with_col` = false 时不写顶点色(与「只加顶点」的原写法逐位相同)。
+static func gen_line(a: Vector3, b: Vector3, ca: Color, cb: Color, mat: Material, with_col: bool = true) -> ImmediateMesh:
+	var im := ImmediateMesh.new()
+	im.surface_begin(Mesh.PRIMITIVE_LINES, mat)
+	if with_col:
+		im.surface_set_color(ca)
+	im.surface_add_vertex(a)
+	if with_col:
+		im.surface_set_color(cb)
+	im.surface_add_vertex(b)
+	im.surface_end()
+	return tag(im, "gen_line", [a, b, ca, cb, mat, with_col])
+
+
+## 一组三角形(顶点按 3 个一组), 统一顶点色。
+static func gen_tris(verts: PackedVector3Array, col: Color, mat: Material) -> ImmediateMesh:
+	var im := ImmediateMesh.new()
+	im.surface_begin(Mesh.PRIMITIVE_TRIANGLES, mat)
+	for v in verts:
+		im.surface_set_color(col)
+		im.surface_add_vertex(v)
+	im.surface_end()
+	return tag(im, "gen_tris", [verts, col, mat])
+
+
+## 录流开着没有(StreamRecorder.start / finish 设)。`snap` 只在录流时干活: 本机对局不需要, 而读回网格数据在真显卡上要等 GPU。
+static var recording := false
+
+## **建一次、顶点少**的程序网格(几十到一两百个顶点): 建好之后把每个面整份「拍下来」当出处键(图元 / 顶点数组 / 面材质, 最多 4 个面),
+##   手机按 `gen_arrays` 原样重建。一行接入, 不用改生成代码。
+## ★每步重建、或者顶点多的网格**不许**用它(体积按顶点算): 写专门的纯函数 `gen_*` 传几个参数(例: BattleVfx.gen_bolt_line)。
+## ★拍完以后不许再原地改这份网格(clear_surfaces 再画): 要改就新建一份再拍, 赋给节点(录流按网格对象判「换了没有」)。
+static func snap(m: Mesh) -> Mesh:
+	if not recording or m == null or m.has_meta(&"stream_gen"):
+		return m
+	var args: Array = []
+	for si in range(mini(4, m.get_surface_count())):
+		var d: Dictionary = RenderingServer.mesh_get_surface(m.get_rid(), si)
+		args.append(int(d.get("primitive", Mesh.PRIMITIVE_TRIANGLES)))
+		args.append(m.surface_get_arrays(si))
+		args.append(m.surface_get_material(si))
+	m.set_meta(&"stream_gen", [SELF, "gen_arrays", args])
+	return m
+
+
+## `snap` 拍下来的网格原样重建(参数按面排: 图元, 数组, 材质 × 至多 4 面; 材质是资源参数, 录流按 rid 发)。
+static func gen_arrays(p0: int = -1, a0: Array = [], m0: Material = null, p1: int = -1, a1: Array = [], m1: Material = null,
+		p2: int = -1, a2: Array = [], m2: Material = null, p3: int = -1, a3: Array = [], m3: Material = null) -> ArrayMesh:
+	var am := ArrayMesh.new()
+	var ps := [p0, p1, p2, p3]
+	var arrs := [a0, a1, a2, a3]
+	var ms := [m0, m1, m2, m3]
+	for i in range(4):
+		if int(ps[i]) < 0 or (arrs[i] as Array).is_empty():
+			continue
+		am.add_surface_from_arrays(int(ps[i]), arrs[i])
+		if ms[i] != null:
+			am.surface_set_material(am.get_surface_count() - 1, ms[i])
+	return am
+
 static var _tile_tex_cache: ImageTexture = null
 static func _make_tile_texture() -> ImageTexture:   # 斜网格weave(菱形地砖) + tile内边框(格线), 灰度→材质albedo_color上色
-	if _tile_tex_cache != null: return _tile_tex_cache
+	if _tile_tex_cache != null: return tag(_tile_tex_cache, "_make_tile_texture", [])
 	var N := 32
 	var img := Image.create(N, N, false, Image.FORMAT_RGBA8)
 	for y in range(N):
@@ -18,14 +108,14 @@ static func _make_tile_texture() -> ImageTexture:   # 斜网格weave(菱形地�
 				v = 0.66
 			img.set_pixel(x, y, Color(v, v, v, 1.0))
 	_tile_tex_cache = ImageTexture.create_from_image(img)
-	return _tile_tex_cache
+	return tag(_tile_tex_cache, "_make_tile_texture", [])
 
 # 龟蛋小图标(PK 条副条的行标签)。★程序生成而非复用现有素材 ——
 # 用户铁律「不要复用素材」; 这么小的一个 UI 标签没必要去生成图片资源, 逐像素画即可。
 # 画法: 蛋形 = 上窄下宽的椭圆(y 方向偏心), 壳色米黄 + 两点更暗的斑, 1px 深色描边。
 static var _egg_icon_cache: ImageTexture = null
 static func _make_egg_icon_texture() -> ImageTexture:
-	if _egg_icon_cache != null: return _egg_icon_cache
+	if _egg_icon_cache != null: return tag(_egg_icon_cache, "_make_egg_icon_texture", [])
 	var W := 12
 	var H := 16
 	var img := Image.create(W, H, false, Image.FORMAT_RGBA8)
@@ -50,7 +140,7 @@ static func _make_egg_icon_texture() -> ImageTexture:
 			else:
 				img.set_pixel(x, y, shell)
 	_egg_icon_cache = ImageTexture.create_from_image(img)
-	return _egg_icon_cache
+	return tag(_egg_icon_cache, "_make_egg_icon_texture", [])
 
 static func _make_lightshaft_texture() -> ImageTexture:
 	var w := 40; var h := 200
@@ -62,7 +152,7 @@ static func _make_lightshaft_texture() -> ImageTexture:
 			var hx: float = absf(float(x) / float(w - 1) * 2.0 - 1.0)
 			var hfall: float = 1.0 - smoothstep(0.15, 1.0, hx)
 			img.set_pixel(x, y, Color(0.62, 0.86, 1.0, vfall * hfall))
-	return ImageTexture.create_from_image(img)
+	return tag(ImageTexture.create_from_image(img), "_make_lightshaft_texture", [])
 
 # 气泡贴图: 透明中空 + 亮环(泡壁) + 左上高光点 → 像真气泡不是实心发光球.
 static func _make_bubble_texture() -> ImageTexture:
@@ -78,7 +168,7 @@ static func _make_bubble_texture() -> ImageTexture:
 			var hl: float = (1.0 - smoothstep(0.0, 1.0, hr)) * 0.85                          # 左上高光点
 			var a: float = clampf(maxf(maxf(rim * 0.85, fill), hl), 0.0, 1.0)
 			img.set_pixel(x, y, Color(0.82, 0.93, 1.0, a))
-	return ImageTexture.create_from_image(img)
+	return tag(ImageTexture.create_from_image(img), "_make_bubble_texture", [])
 
 # blob 影贴图: radial 渐变 中心黑→边缘透明 (优化: 中段加点过渡, 边缘更柔不硬切)
 # 亮光晕贴图 (命中火花用): 白心→透明 (modulate 上色才会亮; blob 是黑的不能拿来当火花)
@@ -88,7 +178,7 @@ static func _make_bubble_texture() -> ImageTexture:
 static var _glow_tex_cache: ImageTexture = null
 static func _make_glow_texture() -> ImageTexture:
 	if _glow_tex_cache != null:
-		return _glow_tex_cache
+		return tag(_glow_tex_cache, "_make_glow_texture", [])
 	var N := 96
 	var img := Image.create(N, N, false, Image.FORMAT_RGBA8)
 	var c := float(N - 1) / 2.0
@@ -104,12 +194,12 @@ static func _make_glow_texture() -> ImageTexture:
 				a = lerp(0.18, 0.0, (d - 0.75) / 0.25)
 			img.set_pixel(x, y, Color(1, 1, 1, a))
 	_glow_tex_cache = ImageTexture.create_from_image(img)
-	return _glow_tex_cache
+	return tag(_glow_tex_cache, "_make_glow_texture", [])
 
 static var _blob_tex_cache: ImageTexture = null
 static func _make_blob_texture() -> ImageTexture:   # Image真圆软影(角alpha=0不显方块, 替FILL_RADIAL方角bug); 黑底,modulate控浓度,缓存
 	if _blob_tex_cache != null:
-		return _blob_tex_cache
+		return tag(_blob_tex_cache, "_make_blob_texture", [])
 	var N := 128
 	var img := Image.create(N, N, false, Image.FORMAT_RGBA8)
 	var c := float(N - 1) / 2.0
@@ -121,7 +211,7 @@ static func _make_blob_texture() -> ImageTexture:   # Image真圆软影(角alpha
 				a = 0.58 * pow(1.0 - d, 1.25)
 			img.set_pixel(x, y, Color(0, 0, 0, a))
 	_blob_tex_cache = ImageTexture.create_from_image(img)
-	return _blob_tex_cache
+	return tag(_blob_tex_cache, "_make_blob_texture", [])
 
 # 接触核影贴图: 比 blob 更小更实的深核 (紧贴脚下盖立绘/地面交界 → 强化接地)
 static func _make_contact_texture() -> GradientTexture2D:
@@ -151,15 +241,15 @@ static func _make_ring_texture(_col: Color) -> ImageTexture:   # 共享技能环
 ##   ★峰值亮度由 `RealtimeBattle3DScene.RING_PEAK_A` 承接(1.0 → 0.6), 感知亮度与换前等价 ——
 ##     这一轮**不顺手把全游戏调亮**, 那是另一个决定。
 	if _ring_tex_cache != null:
-		return _ring_tex_cache
+		return tag(_ring_tex_cache, "_make_ring_texture", [_col])
 	var img: Image = (load("res://assets/sprites/vfx/skill-ring.png") as Texture2D).get_image()
 	_ring_tex_cache = ImageTexture.create_from_image(img)
-	return _ring_tex_cache
+	return tag(_ring_tex_cache, "_make_ring_texture", [_col])
 
 static var _star_tex_cache: ImageTexture = null
 static func _make_star_texture() -> ImageTexture:   # 4尖火花星(眩晕圈用·黄白·中心亮+四轴尖); 缓存
 	if _star_tex_cache != null:
-		return _star_tex_cache
+		return tag(_star_tex_cache, "_make_star_texture", [])
 	var N := 48
 	var img := Image.create(N, N, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
@@ -178,7 +268,7 @@ static func _make_star_texture() -> ImageTexture:   # 4尖火花星(眩晕圈用
 			if a <= 0.02: continue
 			img.set_pixel(x, y, Color(1.0, 0.94, 0.5, a))
 	_star_tex_cache = ImageTexture.create_from_image(img)
-	return _star_tex_cache
+	return tag(_star_tex_cache, "_make_star_texture", [])
 
 static func _make_slash_texture(col: Color) -> ImageTexture:   # 斜劈斩弧: 一段新月弧(左上→右下), 亮核软边
 	var S := 64
@@ -198,7 +288,7 @@ static func _make_slash_texture(col: Color) -> ImageTexture:   # 斜劈斩弧: �
 			var c := col.lerp(Color(1, 1, 1), clampf(edge * 1.4, 0.0, 1.0) * 0.75)
 			c.a = edge * edge * taper
 			img.set_pixel(x, y, c)
-	return ImageTexture.create_from_image(img)
+	return tag(ImageTexture.create_from_image(img), "_make_slash_texture", [col])
 
 static func _make_flyslash_texture(col: Color) -> ImageTexture:   # 飞斩剑气(彗星新月): 前刃凸面朝上(+Y=行进方向·配wisp_dir令尖朝目标)+白热芯+向后(下)渐隐拖尾
 	var W := 72; var H := 128
@@ -236,7 +326,7 @@ static func _make_flyslash_texture(col: Color) -> ImageTexture:   # 飞斩剑气
 					if ta > acc.a: acc = Color(tc.r, tc.g, tc.b, ta)
 			if acc.a > 0.003:
 				img.set_pixel(x, y, acc)
-	return ImageTexture.create_from_image(img)
+	return tag(ImageTexture.create_from_image(img), "_make_flyslash_texture", [col])
 
 static func _make_sword_texture(col: Color) -> ImageTexture:   # 剑刃(尖指+X): 柄→刃身→尖
 	var W := 56; var H := 14
@@ -253,7 +343,7 @@ static func _make_sword_texture(col: Color) -> ImageTexture:   # 剑刃(尖指+X
 				var c := col.lerp(Color(1, 1, 1), clampf(edge * 1.5, 0.0, 1.0) * 0.85)
 				c.a = clampf(edge + 0.35, 0.0, 1.0)
 				img.set_pixel(x, y, c)
-	return ImageTexture.create_from_image(img)
+	return tag(ImageTexture.create_from_image(img), "_make_sword_texture", [col])
 
 static func _make_qi_texture(col: Color) -> ImageTexture:   # 竖剑气: 竖向弯月能量刃(前凸/两端尖/亮核软光)
 	var W := 34; var H := 88
@@ -271,7 +361,7 @@ static func _make_qi_texture(col: Color) -> ImageTexture:   # 竖剑气: 竖向�
 				var c := col.lerp(Color(1, 1, 1), clampf(edge * 1.6, 0.0, 1.0) * 0.8)
 				c.a = edge * edge * (0.35 + 0.65 * taper)
 				img.set_pixel(x, y, c)
-	return ImageTexture.create_from_image(img)
+	return tag(ImageTexture.create_from_image(img), "_make_qi_texture", [col])
 
 static func _make_vblade_texture(col: Color) -> ImageTexture:   # 竖剑刃(尖朝上): 尖→刃身→柄
 	var W := 18; var H := 76
@@ -288,7 +378,7 @@ static func _make_vblade_texture(col: Color) -> ImageTexture:   # 竖剑刃(尖�
 				var c := col.lerp(Color(1, 1, 1), clampf(edge * 1.5, 0.0, 1.0) * 0.85)
 				c.a = clampf(edge + 0.35, 0.0, 1.0)
 				img.set_pixel(x, y, c)
-	return ImageTexture.create_from_image(img)
+	return tag(ImageTexture.create_from_image(img), "_make_vblade_texture", [col])
 
 ## 处决铡刀(刃朝【下】): 上宽下窄的厚重刀身 + 底缘一条白热刃线 + 顶部握柄座。
 ## ★★为什么专门画一张而不是拿 `_make_vblade_texture` 翻个面(用户 2026-08-03 铁律
@@ -324,7 +414,7 @@ static func _make_cleaver_texture(col: Color) -> ImageTexture:
 				c = col * shade
 				c.a = clampf(0.80 + shade * 0.2, 0.0, 1.0)
 			img.set_pixel(x, y, c)
-	return ImageTexture.create_from_image(img)
+	return tag(ImageTexture.create_from_image(img), "_make_cleaver_texture", [col])
 
 
 ## 处决碎片: 不规则多边碎块(轮廓崩裂用)。seed_i 换形状, 六种循环。
@@ -362,7 +452,7 @@ static func _make_shard_texture(col: Color, seed_i: int) -> ImageTexture:
 			var c := col.lerp(Color(1, 1, 1), clampf(1.0 - d / 7.0, 0.0, 1.0) * 0.5)
 			c.a = 1.0
 			img.set_pixel(x, y, c)
-	return ImageTexture.create_from_image(img)
+	return tag(ImageTexture.create_from_image(img), "_make_shard_texture", [col, seed_i])
 
 
 ## 糖粒(菱形方糖·带斜条纹与高光): 糖果龟【甜蜜掠夺】把生命抽成一颗颗糖粒飞走。
@@ -393,7 +483,7 @@ static func _make_candy_bit_texture(col: Color) -> ImageTexture:
 				cc = cc.lerp(Color(1, 1, 1), 0.75)
 			cc.a = clampf(0.35 + edge * 0.9, 0.0, 1.0)
 			img.set_pixel(x, y, cc)
-	return ImageTexture.create_from_image(img)
+	return tag(ImageTexture.create_from_image(img), "_make_candy_bit_texture", [col])
 
 
 static func _make_bladewall_texture(col: Color) -> ImageTexture:   # 阔剑007剑气墙: 宽幅浅新月(凸刃朝上=纹理+Y=行进方向·配wisp_dir朝向)·白蓝亮刃+向后短拖
@@ -429,7 +519,7 @@ static func _make_bladewall_texture(col: Color) -> ImageTexture:   # 阔剑007�
 					if ta > acc.a: acc = Color(tc.r, tc.g, tc.b, ta)
 			if acc.a > 0.003:
 				img.set_pixel(x, y, acc)
-	return ImageTexture.create_from_image(img)
+	return tag(ImageTexture.create_from_image(img), "_make_bladewall_texture", [col])
 
 static func _make_shellhalf_texture() -> ImageTexture:   # 守护贝壳018: **烤好的像素半壳**(玉青壳身+壳沟+奶金壳缘+深描边)
 ## ★★2026-09-11 换掉逐像素现算。从 Godot 导出真产物量过: 原来是 76×42 / **706 色** / 159 半透 ——
@@ -437,7 +527,7 @@ static func _make_shellhalf_texture() -> ImageTexture:   # 守护贝壳018: **�
 ##   现在由 `tools/blender_shellguard.py` 烤成 **6 色 / 0 半透**, 尺寸 76×42 一字未动
 ##   ⇒ 调用点的 pixel_size 换算不用改。
 	var img: Image = (load("res://assets/sprites/vfx/shell-guard.png") as Texture2D).get_image()
-	return ImageTexture.create_from_image(img)
+	return tag(ImageTexture.create_from_image(img), "_make_shellhalf_texture", [])
 
 static func _make_coralspike_texture() -> ImageTexture:   # 珊瑚尖刺: 锯齿珊瑚橙尖刺(尖朝上=纹理+Y=行进方向·配wisp_dir)·浅珊瑚白尖
 	var W := 44; var H := 78
@@ -457,7 +547,7 @@ static func _make_coralspike_texture() -> ImageTexture:   # 珊瑚尖刺: 锯齿
 			var a := clampf(lat * 1.4, 0.0, 1.0) * clampf(1.12 - ty * 0.28, 0.0, 1.0)
 			if a > img.get_pixel(x, y).a:
 				img.set_pixel(x, y, Color(c.r, c.g, c.b, a))
-	return ImageTexture.create_from_image(img)
+	return tag(ImageTexture.create_from_image(img), "_make_coralspike_texture", [])
 
 # 霰弹弹珠: 一颗小铅丸从muzzle沿扇形方向喷出+淡出(霰弹散射, 一次喷一片)
 static func _make_pellet_texture() -> ImageTexture:   # 小圆金属铅丸: 亮心+硬边圆
@@ -473,7 +563,7 @@ static func _make_pellet_texture() -> ImageTexture:   # 小圆金属铅丸: 亮�
 				var a := 1.0 if t < 0.82 else clampf((1.0 - t) / 0.18, 0.0, 1.0)
 				var br := clampf(1.25 - t * 0.85, 0.45, 1.0)
 				img.set_pixel(x, y, Color(1.0 * br, 0.9 * br, 0.5 * br, a))
-	return ImageTexture.create_from_image(img)
+	return tag(ImageTexture.create_from_image(img), "_make_pellet_texture", [])
 
 # 尖尖能量波弹道贴图 (程序画: 透镜状两端尖, 白核+col边, 按伤害色上色)
 static func _make_wave_texture(col: Color) -> ImageTexture:
@@ -494,13 +584,13 @@ static func _make_wave_texture(col: Color) -> ImageTexture:
 				var c := col.lerp(Color(1, 1, 1), clampf(edge * 1.4, 0.0, 1.0) * 0.75)   # 核心偏白
 				c.a = edge * edge   # 软边
 				img.set_pixel(x, y, c)
-	return ImageTexture.create_from_image(img)
+	return tag(ImageTexture.create_from_image(img), "_make_wave_texture", [col])
 
 ## ★#6修: 子弹从 GradientTexture2D(radial 露方角) → Image 逐像素真圆(角 alpha=0). 按颜色缓存.
 static func _make_bolt_texture(col: Color) -> ImageTexture:
 	var key := "%d" % col.to_rgba32()
 	if _bolt_tex_cache.has(key):
-		return _bolt_tex_cache[key]
+		return tag(_bolt_tex_cache[key], "_make_bolt_texture", [col])
 	var N := 32
 	var img := Image.create(N, N, false, Image.FORMAT_RGBA8)
 	var c := float(N - 1) / 2.0
@@ -515,7 +605,7 @@ static func _make_bolt_texture(col: Color) -> ImageTexture:
 			img.set_pixel(x, y, Color(col.r, col.g, col.b, a))
 	var tex := ImageTexture.create_from_image(img)
 	_bolt_tex_cache[key] = tex
-	return tex
+	return tag(tex, "_make_bolt_texture", [col])
 
 static func _make_venomfang_texture() -> ImageTexture:   # 双生毒牙: 两枚向内弯的獠牙(紫品红身+毒绿白尖·尖朝上=纹理+Y=行进方向配wisp_dir)
 	var W := 56; var H := 76
@@ -538,7 +628,7 @@ static func _make_venomfang_texture() -> ImageTexture:   # 双生毒牙: 两枚�
 				var a := clampf(lat * 1.35, 0.0, 1.0) * clampf(1.12 - ty * 0.35, 0.0, 1.0)
 				if a > img.get_pixel(x, y).a:
 					img.set_pixel(x, y, Color(c.r, c.g, c.b, a))
-	return ImageTexture.create_from_image(img)
+	return tag(ImageTexture.create_from_image(img), "_make_venomfang_texture", [])
 
 # 水平冰锥贴图(程序画: 后宽前尖朝右, 冰蓝+白核; 修竖冰柱方向错)
 static func _make_ice_cone_texture() -> ImageTexture:
@@ -559,12 +649,12 @@ static func _make_ice_cone_texture() -> ImageTexture:
 				var c := Color(0.45, 0.78, 1.0).lerp(Color(0.92, 0.98, 1.0), clampf(edge * 1.3, 0.0, 1.0) * 0.8)
 				c.a = clampf(edge * 1.2, 0.0, 1.0)
 				img.set_pixel(x, y, c)
-	return ImageTexture.create_from_image(img)
+	return tag(ImageTexture.create_from_image(img), "_make_ice_cone_texture", [])
 
 static var _disc_tex_cache: ImageTexture = null
 static func _make_disc_texture() -> ImageTexture:   # Image真圆(角alpha=0); 白底modulate上色; 缓存
 	if _disc_tex_cache != null:
-		return _disc_tex_cache
+		return tag(_disc_tex_cache, "_make_disc_texture", [])
 	var N := 128
 	var img := Image.create(N, N, false, Image.FORMAT_RGBA8)
 	var c := float(N - 1) / 2.0
@@ -576,12 +666,12 @@ static func _make_disc_texture() -> ImageTexture:   # Image真圆(角alpha=0); �
 				a = (1.0 - d) * 0.55                              # 软径向衰减, 边=0
 			img.set_pixel(x, y, Color(1, 1, 1, a))
 	_disc_tex_cache = ImageTexture.create_from_image(img)
-	return _disc_tex_cache
+	return tag(_disc_tex_cache, "_make_disc_texture", [])
 
 static var _fire_glow_cache: ImageTexture = null
 static func _make_fire_glow_tex() -> ImageTexture:   # Image真圆软发光(亮核软边, 角alpha=0不显方块); 火焰blob用, 缓存
 	if _fire_glow_cache != null:
-		return _fire_glow_cache
+		return tag(_fire_glow_cache, "_make_fire_glow_tex", [])
 	var N := 128
 	var img := Image.create(N, N, false, Image.FORMAT_RGBA8)
 	var c := float(N - 1) / 2.0
@@ -593,13 +683,13 @@ static func _make_fire_glow_tex() -> ImageTexture:   # Image真圆软发光(亮�
 				a = pow(1.0 - d, 1.5)
 			img.set_pixel(x, y, Color(1, 1, 1, a))
 	_fire_glow_cache = ImageTexture.create_from_image(img)
-	return _fire_glow_cache
+	return tag(_fire_glow_cache, "_make_fire_glow_tex", [])
 
 static var _thin_ring_cache: ImageTexture = null
 static var _cone_tex_cache: ImageTexture = null
 static func _make_cone_tex() -> ImageTexture:   # 实心扇形(Camille W式·apex在中心·朝上·半角50度·外半环更亮·2026-07-17)
 	if _cone_tex_cache != null:
-		return _cone_tex_cache
+		return tag(_cone_tex_cache, "_make_cone_tex", [])
 	var N := 256
 	var img := Image.create(N, N, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
@@ -619,11 +709,11 @@ static func _make_cone_tex() -> ImageTexture:   # 实心扇形(Camille W式·ape
 			if dist > 0.5: a += 0.30 * edge * rim           # 外半环加成区更亮
 			img.set_pixel(x, y, Color(1, 1, 1, clampf(a, 0.0, 1.0)))
 	_cone_tex_cache = ImageTexture.create_from_image(img)
-	return _cone_tex_cache
+	return tag(_cone_tex_cache, "_make_cone_tex", [])
 
 static func _make_thin_ring_tex() -> ImageTexture:   # 高分细线圆环(256px·细带2px软边; 大范围预告圈用——48px像素环放大到1000码会糊成格子; 白色modulate上色)
 	if _thin_ring_cache != null:
-		return _thin_ring_cache
+		return tag(_thin_ring_cache, "_make_thin_ring_tex", [])
 	var N := 256
 	var img := Image.create(N, N, false, Image.FORMAT_RGBA8)
 	var c := float(N - 1) / 2.0
@@ -633,12 +723,12 @@ static func _make_thin_ring_tex() -> ImageTexture:   # 高分细线圆环(256px�
 			var a := clampf(1.0 - absf(d - 124.0) / 2.2, 0.0, 1.0)
 			img.set_pixel(x, y, Color(1, 1, 1, a))
 	_thin_ring_cache = ImageTexture.create_from_image(img)
-	return _thin_ring_cache
+	return tag(_thin_ring_cache, "_make_thin_ring_tex", [])
 
 static var _pixel_ring_cache: ImageTexture = null
 static func _make_pixel_ring_tex() -> ImageTexture:   # 硬边像素圆环(48px低分辨率·无AA·NEAREST放大=像素锯齿边; 白色modulate上色)
 	if _pixel_ring_cache != null:
-		return _pixel_ring_cache
+		return tag(_pixel_ring_cache, "_make_pixel_ring_tex", [])
 	var N := 48
 	var img := Image.create(N, N, false, Image.FORMAT_RGBA8)
 	var c := float(N - 1) / 2.0
@@ -647,16 +737,16 @@ static func _make_pixel_ring_tex() -> ImageTexture:   # 硬边像素圆环(48px�
 			var d := Vector2(float(x) - c, float(y) - c).length()
 			img.set_pixel(x, y, Color(1, 1, 1, 1.0 if (d >= 18.5 and d <= 23.0) else 0.0))   # 硬边环带(无渐变)
 	_pixel_ring_cache = ImageTexture.create_from_image(img)
-	return _pixel_ring_cache
+	return tag(_pixel_ring_cache, "_make_pixel_ring_tex", [])
 
 static var _pixel_block_cache: ImageTexture = null
 static func _make_pixel_block_tex() -> ImageTexture:   # 6px实心像素块(尘土/碎屑用·白色modulate上色)
 	if _pixel_block_cache != null:
-		return _pixel_block_cache
+		return tag(_pixel_block_cache, "_make_pixel_block_tex", [])
 	var img := Image.create(6, 6, false, Image.FORMAT_RGBA8)
 	img.fill(Color(1, 1, 1, 1))
 	_pixel_block_cache = ImageTexture.create_from_image(img)
-	return _pixel_block_cache
+	return tag(_pixel_block_cache, "_make_pixel_block_tex", [])
 
 # 瞄准/锁定框贴图: 圆环 + 上下左右四刻线(跨圈), 中心留空(不挡脸)
 static func _make_reticle_texture(col: Color) -> ImageTexture:
@@ -679,7 +769,7 @@ static func _make_reticle_texture(col: Color) -> ImageTexture:
 				a = maxf(a, 1.0)                                             # 左右横刻线
 			if a > 0.0:
 				img.set_pixel(x, y, Color(col.r, col.g, col.b, a))
-	return ImageTexture.create_from_image(img)
+	return tag(ImageTexture.create_from_image(img), "_make_reticle_texture", [col])
 
 # 目标锁定角标([ ]四角方括号) — 持续标记(靶向器055/飞镖056)专用, 视觉区别于054十字准星圆环
 static func _make_target_bracket_texture(col: Color) -> ImageTexture:
@@ -706,7 +796,7 @@ static func _make_target_bracket_texture(col: Color) -> ImageTexture:
 						on = true              # 竖臂
 			if on:
 				img.set_pixel(x, y, Color(col.r, col.g, col.b, 1.0))
-	return ImageTexture.create_from_image(img)
+	return tag(ImageTexture.create_from_image(img), "_make_target_bracket_texture", [col])
 
 
 
@@ -726,7 +816,7 @@ static func _make_laser_beam_tex(col: Color) -> ImageTexture:   # 激光束(白�
 			var c := Color(1, 1, 1).lerp(col, 1.0 - core)
 			c.a = clampf((core + glow * 0.55) * taper, 0.0, 1.0)
 			img.set_pixel(x, y, c)
-	return ImageTexture.create_from_image(img)
+	return tag(ImageTexture.create_from_image(img), "_make_laser_beam_tex", [col])
 
 
 ## 灵物触手的表皮贴图（沿长度平铺）。★逐像素画，**不是复用任何现成图**
@@ -789,7 +879,7 @@ static func _make_tentacle_flow() -> ImageTexture:
 				g += float(st[2]) * falloff * (0.45 + 0.55 * wave)     # 沿长度明暗不均 = 流动
 			g = clampf(g, 0.0, 1.0)
 			img.set_pixel(x, y, Color(g, g, g, 1.0))
-	return ImageTexture.create_from_image(img)
+	return tag(ImageTexture.create_from_image(img), "_make_tentacle_flow", [])
 
 
 static func _make_tentacle_skin() -> ImageTexture:
@@ -832,5 +922,5 @@ static func _make_tentacle_skin() -> ImageTexture:
 	for s in strands:
 		put.call(int(s[0]), 0, int(s[1]), H, mid.lerp(lit, float(s[2])))
 	var t := ImageTexture.create_from_image(img)
-	return t
+	return tag(t, "_make_tentacle_skin", [])
 
