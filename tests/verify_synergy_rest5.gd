@@ -155,14 +155,15 @@ func _ready() -> void:
 	for i in range(9):
 		_s._gadget_syn._t_coin = 0.0
 		_s._gadget_syn.tick(2.6)
-	_ok("铸币(首档): 每跳 1 枚, 跳 9 次但【本场上限 5 枚】→ 停在 5",
-		_s._gadget_syn.minted("left") == 5, "铸了 %d 枚" % _s._gadget_syn.minted("left"))
+	## 上限读产品常量(用户 10-19 改为 3/7/11/15, 原 5/9/14/20)
+	_ok("铸币(首档): 每跳 1 枚, 跳 9 次但【本场上限 %d 枚】→ 停在上限" % int(_s._gadget_syn.COIN_CAP[0]),
+		_s._gadget_syn.minted("left") == int(_s._gadget_syn.COIN_CAP[0]), "铸了 %d 枚" % _s._gadget_syn.minted("left"))
 	var g2 := _run([_mk("left", ga.slice(0, 5))])
 	_s._gadget_syn.reset_match()
 	for i2 in range(20):
 		_s._gadget_syn._t_coin = 0.0
 		_s._gadget_syn.tick(2.6)
-	_ok("铸币(档2): 每跳 2 枚, 上限 9 枚", _s._gadget_syn.minted("left") == 9,
+	_ok("铸币(档2): 每跳 2 枚, 停在上限 %d 枚" % int(_s._gadget_syn.COIN_CAP[1]), _s._gadget_syn.minted("left") == int(_s._gadget_syn.COIN_CAP[1]),
 		"铸了 %d 枚" % _s._gadget_syn.minted("left"))
 
 	# 僵硬: 档3(8 件) 每次命中叠 1 层, 20 层 = ×0.60 攻击力

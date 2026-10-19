@@ -140,8 +140,6 @@ eq|鲸涎浓浆|effectBrief	11.0
 eq|鲸涎浓浆|effectDesc1	11.0 40.0
 eq|黄铜手铳|effectBrief	8.0
 eq|黄铜手铳|effectDesc1	8.0
-eq|黄铜齿轮|effectBrief	6.0
-eq|黄铜齿轮|effectDesc1	6.0
 eq|龙蛋|effectBrief	2.5
 eq|龙蛋|effectDesc1	2.5
 pet|凤凰龟/强化涅槃|brief	4.0 20.0 50.0 50.0 60.0

@@ -33,6 +33,8 @@ func _map(round_at: int, srv_now: int, me: int) -> Node:
 	await get_tree().process_frame
 	m.set_bucket({"size": 2, "round": 1, "me": me, "names": ["甲龟", "乙龟"], "done": {}, "bucket": 4,
 		"round_at": round_at, "srv_now": srv_now})
+	## ★2026-10-19: 对阵图周一只看不打(用户「保留到周一」) ⇒ 钉在本周日(set_bucket / _ready 都会清, 所以放最后)。
+	m._now_override = P2C.week_anchor_utc(int(Time.get_unix_time_from_system())) + 6 * 86400 + 20 * 3600
 	await get_tree().process_frame
 	return m
 

@@ -611,10 +611,11 @@ func _t_runner_up() -> void:
 		GameState.finals_pending_reveal = {}
 		GameState._clear_cup_progress()
 		var map = _BMS.new()
+		## ★2026-10-19: 周一对阵图只看不记头衔(用户「保留到周一」) ⇒ 钉在本周日 21:00(冠军杯赛已出结果)。
 		map.set_data({"size": 6, "round": 3, "me": me, "names": names, "accs": accs, "done": live,
 			"bucket": 0, "closed": true},
 			{"size": 1, "round": 1, "me": 0 if me == 2 else -1, "names": ["p03"], "accs": ["a03"],
-				"bucket": P2C.FINALS_CUP_BUCKET, "closed": true, "done": {}})
+				"bucket": P2C.FINALS_CUP_BUCKET, "closed": true, "done": {}}, wk + 6 * 86400 + 21 * 3600)   # set_data 的第三参就是这屏的钟
 		map.free()
 		got[me] = GameState.titles.duplicate(true)
 	_ok("⑦c ★分母: 周日玩法开着(关着的话下面几条只能验「发不出来」)", P2C.phase_mode_live(P2C.PHASE_FINALS))

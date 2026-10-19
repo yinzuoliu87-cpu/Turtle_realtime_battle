@@ -22,7 +22,7 @@ const MAX_CHARS := 14
 var _fail := 0
 var _n := 0
 ## ★断言条数地板: 协程半路被 SCRIPT ERROR 掐断时照样会打 ALL PASS(memory fb-null-readback-makes-test-silently-abort)。
-const MIN_ASSERTS := 70
+const MIN_ASSERTS := 64   # 2026-10-19 摆位 2 步删去, 每步的逐条断言随之少了(实测 67 条; 原 70)
 
 
 func _ok(n: String, c: bool, d: String = "") -> void:
@@ -80,7 +80,8 @@ func _check_data(d: Dictionary) -> Array:
 			if str(s.get("advanceOn", "")) != "":
 				events.append(str(s.get("advanceOn", "")))
 	print("  [分母] 步骤 %d 步 / 事件 %d 个" % [n, events.size()])
-	_ok("★分母: 步骤数 = 方案书 §4.1 的 11 步(选择框不算)", n == 11, "n=%d" % n)
+	## 2026-10-19 对局内拖动站位环节去掉(站位改在背包里摆), 教程 place 两步随之删去: 11 → 9
+	_ok("★分母: 步骤数 = 方案书 §4.1 的 11 步减去已删的摆位 2 步 = 9 步(选择框不算)", n == 9, "n=%d" % n)
 	return events
 
 

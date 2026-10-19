@@ -85,7 +85,7 @@ func _ready() -> void:
 	_ok("★★019 到点【真的回血了】", float(u19["hp"]) > hp0 + 1.0,
 		"血 %.0f → %.0f (+%.0f)" % [hp0, float(u19["hp"]), float(u19["hp"]) - hp0])
 
-	# ── 035 黄铜齿轮: 每 6 秒 +[1,2,3][si] 深海币 ────────────────────────────
+	# ── 035 黄铜齿轮: ★3 每 6 秒 +1 枚(用户 10-19: 每 10/8/6 秒 1 枚, 每场至多 3/5/8) ──
 	var u35: Dictionary = _stage(s, "p2eq_035", 3)
 	## ★★ 2026-09-29: 齿轮产币不再直接写 meta, 改进本场账本 `gear_minted()`,
 	##   结算时随 `_last_reward` 进钱包(与奇械铸币同一条路)。绕过去会让结算屏少算。
@@ -96,9 +96,9 @@ func _ready() -> void:
 		int(tk.gear_minted()) == coin0,
 		"币 %d → %d" % [coin0, int(tk.gear_minted())])
 	tk._tick_gear(u35, 0.2)
-	_ok("★★035 到点 ★3 产 3 枚深海币(从 [1,2,3][si] 推导)",
-		int(tk.gear_minted()) == coin0 + 3,
-		"币 %d → %d(应 +3)" % [coin0, int(tk.gear_minted())])
+	_ok("★★035 到点 ★3 产 1 枚深海币",
+		int(tk.gear_minted()) == coin0 + 1,
+		"币 %d → %d(应 +1)" % [coin0, int(tk.gear_minted())])
 	## ★反面: 右队(敌方)携带者不该产币 —— 深海币是玩家侧 meta 货币。
 	var c2: Vector2 = s.ARENA.position + s.ARENA.size * 0.5
 	var ur: Dictionary = s._spawn._make_unit("basic", "right", c2 + Vector2(200, 0))
