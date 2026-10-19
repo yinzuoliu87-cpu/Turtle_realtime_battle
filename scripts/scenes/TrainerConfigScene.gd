@@ -4,7 +4,7 @@ const TopBar = preload("res://scripts/util/top_bar.gd")
 
 ## 训龟大师 配置界面 (用户2026-07-26: 主菜单独立入口, 选形象 + 配【全部技能 N 选 1·单个】)。
 ## ★设计: 被动+主动放一起, 只能选 1 个。选被动=没有主动Q; 选主动=没有被动。
-## 技能用【图标卡片】展示(图标+名+被动/主动标签), 居中排版, 说明卡带底板。
+## 版式见下方「2026-10-19 整页重做」一节。
 ## 选择写 GameState.trainer_appearance/trainer_skill + save(), 战斗时读取。
 
 ## 全部技能池(被动 + 主动·**N 选 1**, N 就是本数组长度)。icon 供卡片显示; kind 显示"被动/主动"。
@@ -24,54 +24,69 @@ const APPEARANCES := [
 	{"id": "girl", "name": "少女", "sprite": "res://assets/sprites/trainer/trainer-girl.png"},
 ]
 
-const GOLD := Color(1.0, 0.86, 0.4)
+## ══════════════════════════════════════════════════════════════════════
+##  2026-10-19 整页重做(用户「训龟大师页面你找人来优化好」)
+## ══════════════════════════════════════════════════════════════════════
+## 方案书: docs/plans/20261019-训龟大师页优化.md(参考图、验收清单、未决点都在那里)。
+##
+## 版式(1280×720 设计框, UIFrame 居中; 顶栏自己铺满视口宽):
+##   ┌ 顶栏: ← 训龟大师 ─────────────────────────────────────────────┐
+##   │ 左 = 形象展台: 聚光 + 石台 + 6 倍大立绘 + 形象名 + 3 个形象槽     │
+##   │ 右 = 技能: 「被动 | 主动」两组一行 7 槽 + 下方选中技能的详情       │
+##   └────────────────────────────────────────────────────────────────┘
+## ★点一下 = 装配(并存盘), 不再有「保存 / 取消」两个键 —— 参考里的角色/技能装配页
+##   (Darkest Dungeon 名册页、Archero 英雄页)都是点选即生效、左上返回。
+##   旧版「取消」会静默丢掉改动, 而离开的唯一出口是顶栏返回 ⇒ 返回时同样再存一次。
+## ★逻辑不动: 仍然是 SKILLS 里 N 选 1、写 GameState.trainer_skill / trainer_appearance。
 
-## ═══ 2026-08-19 实拍复看(真渲染截图 1560×720 + 1280×720)修掉的四件事 ═══
-## ① **1280×720(=16:9 基准分辨率)上整块面板超出屏幕**: 实测金色面板边框 bbox x 0..1279,
-##    左右两条竖边**都在屏幕外**; 最右那张「驯服」卡右边框落在 x=1277, 离屏幕边 3px。
-##    算式: 22×2 内边距 + 左栏 260 + 间隔 26+2+26 + 技能行 7×124+6×12=940 = **1298 > 1280**。
-##    ⇒ 技能改成 **4+3 两行**(单行宽 532), 面板min宽降到 ~1020, 16:9 上两边各留 130px。
-## ② 全屏还是"深色圆角矩形 + 1~2px 细边" —— 背包/图鉴/选龟早换金属九宫格了。
-## ③ 底部两个按钮是 **Godot 默认皮**(圆角纯色), 且 200×54 = 29pt < 44pt 触控下限。
-## ④ 形象卡 80×96: 短边 80 < 81px(=44pt)。差 1px 也是不达标, 而且白给。
-const CARD_W := 124.0     # 技能卡
-## ★★CARD_H 106 → 120（2026-09-28）。**这个数是算出来的, 不是调出来的** ——
-##   剖面探针 `tests/_probe_trainer_card2.gd` 打出来的三行:
-##     卡内容最小高 = 图标 52 + 间隔 4 + 名字 24(fs16) + 间隔 4 + 标签 18(fs12) = **102**
-##     106 的卡扣掉两条 6px 金属边带, 内容区只有 **94**
-##     ⇒ **内容比内容区高 8px** —— 这才是"文字压在边带上"的真因。
-##   102 + 2×CARD_INSET(7) + 4(居中余量) = **120**, 四边各留 3px 不碰边带。
-##   竖向够不够: 同一份探针量的是「视口 1280×720 上内容 bbox y 40~679, 上下共 81px 余量」,
-##   两行各长 14 = 28 < 81 ⇒ 装得下(改后实测余量 26/27)。
-const CARD_H := 120.0
-## slot-frame.png 的金属边带 —— **从贴图量出来的 6px**(与门禁 `_band_of` 同一把尺子)。
-## ⚠ 不是九宫格那个 12: 那个是「从哪切开去拉伸」, 不是「画了多宽的边」。
-const CARD_BAND := 6.0
-## 再往里让 1px, 好让"一根像素都不压在边带上"有余量。
-const CARD_INSET := CARD_BAND + 1.0
-const SKILL_PER_ROW := 4  # 见上面 ① —— 7 张一行在 16:9 上装不下
-const APP_W := 84.0       # 形象卡: 81px = 44pt 触控下限, 取 84 留 3px 余量
+const TPSkin := preload("res://scripts/scenes/trainer/trainer_page_skin.gd")
+
+const GOLD := TPSkin.GOLD
+
+## ── 版式常量(设计坐标) ──────────────────────────────────────────
+const TOP := 102.0                 # 顶栏 87 + 15
+const BOTTOM := 704.0
+const L_X := 24.0                  # 左栏(形象展台)
+const L_W := 404.0
+const R_X := 448.0                 # 右栏(技能)
+const R_W := 808.0
+const PAD := 24.0                  # 面板内边距(贴图边带 9, 留足 15 的余量)
+
+## 技能槽: 92 ≥ 81(44pt 触控下限)。7 个 + 组间距 30 = 724 ≤ 右栏内宽 760。
+const CARD_W := 92.0
+const CARD_H := 92.0
+const CARD_GAP := 10.0
+const GROUP_GAP := 30.0
+## 形象槽: 104, 立绘 ×2 放进去。
+const APP_W := 104.0
 const APP_H := 104.0
-## 说明卡固定高 = 最长那条(口哨)的行数. 见 `_build_ui` 里那段"钉死"的理由。
-## 100 是**量出来的**: 钉 92 时口哨 638 / 钩锁 631 还差 7px(口哨 4 行实际 98), 钉 100 才真齐。
-const DESC_H := 100.0
+const APP_GAP := 18.0
+## 大立绘倍率: 原生 20×~40 ⇒ ×6 ≈ 120×240, 是这一页的主角。
+const HERO_SCALE := 6.0
+## 详情图标槽: 图标 64 原生 ×2 = 128(图标四周本身有透明边, 136 的槽不会让画面压到边带)。
+const DETAIL_SLOT := 136.0
+## 说明文字字号。
+const DESC_PX := 19
 
 var _sel_skill: String = "hook"
 var _sel_appearance: String = "villager"
 var _desc_label: RichTextLabel = null
-var _skill_cards: Array = []        # [ [Button, id], ... ]
-var _appear_cards: Array = []       # [ [Button, id], ... ]
+var _skill_cards: Array = []        # [ [Button, id, 名字 Label, 已装配徽记], ... ]
+var _appear_cards: Array = []       # [ [Button, id, 名字 Label], ... ]
 var _preview_rect: TextureRect = null
+var _hero_home_y: float = 0.0
+var _app_name_label: Label = null
+var _detail_icon: TextureRect = null
+var _detail_name: Label = null
+var _detail_kind_box: HBoxContainer = null
+var _top_bar = null
 
 func _ready() -> void:
 	_sel_skill = _valid_skill(str(GameState.trainer_skill))
 	_sel_appearance = _valid_appearance(str(GameState.trainer_appearance))
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	_build_ui()
-	# ★UI 双端适配(用户2026-08-01「有些画面都没有居中」): 把内容装进 1280×720 设计框并居中于真实视口。
-	#   本屏原先直接按设计坐标画在视口(0,0) → 21:9 上内容整体坐在左边 200px(审计器实测)。
-	#   ★必须放在 _ready 最后 —— UIFrame 收编的是【已经建出来的】子节点。
-	#   (异步晚建的节点由 UIFrame._process 的孤儿收编兜住。)
+	# ★UI 双端适配: 内容装进 1280×720 设计框并居中于真实视口(放在 _ready 最后)。
 	UIFrame.attach(self)
 
 func _valid_skill(id: String) -> String:
@@ -87,374 +102,347 @@ func _valid_appearance(id: String) -> String:
 			return id
 	return "villager"
 
+func _skill_of(id: String) -> Dictionary:
+	for s in SKILLS:
+		if str(s["id"]) == id:
+			return s
+	return {}
+
+
 func _build_ui() -> void:
 	_bg()
-
-	# CenterContainer 直接铺满 → 面板水平+垂直居中(PC/手机通用·游戏横屏锁定·1280×720 stretch)。
-	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(center)
-
-	# SafeArea: 居中面板本就远离边缘(刘海在横屏两侧)；再把面板宽度夹进安全区双保险。
-	var vp := Vector2(get_viewport().get_visible_rect().size)
-	var m: Vector4 = SafeArea.margins(vp, 12.0)
-	var pw: float = minf(1060.0, vp.x - m.x - m.z)   # 横屏用横向空间(两栏)·夹进安全区
-
-	var panel := PanelContainer.new()
-	## 金属大框(背包/图鉴/战绩同一张 panel-frame)。这屏是暖金调 ——
-	## ★要暖靠**压蓝**不靠加亮: modulate 一过 1.3 会把框芯冲亮、金属细节糊平(实拍确认过)。
-	panel.add_theme_stylebox_override("panel", _nine("panel-frame.png", 20,
-		_sb(Color(0.09, 0.12, 0.17, 0.96), GOLD.darkened(0.2), 2, 14), Color(1.06, 0.98, 0.76, 1.0)))
-	panel.custom_minimum_size = Vector2(pw, 0)
-	center.add_child(panel)
-
-	var pad := MarginContainer.new()
-	for s in ["left", "right"]:
-		pad.add_theme_constant_override("margin_" + s, 22)
-	for s in ["top", "bottom"]:
-		pad.add_theme_constant_override("margin_" + s, 10)
-	panel.add_child(pad)
-
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 8)
-	pad.add_child(box)
-
-	var title := Label.new()
-	## ★★没有 emoji(2026-09-28, 用户「全是 ai 味和网页味, 文字语言也是」)。
-	##   像素游戏的屏名就是屏名 —— 标题前挂一个彩色 emoji 是**网页/AI 排版的指纹**,
-	##   而且它是系统字体画的, 和这一屏的像素字体、金属框根本不是同一套东西。
-	title.text = "训龟大师"
-	title.add_theme_font_size_override("font_size", 34)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(title)
-
-	# ── 主体两栏(横屏用横向空间): 左=形象  右=技能+说明 ──
-	var main := HBoxContainer.new()
-	main.alignment = BoxContainer.ALIGNMENT_CENTER
-	main.add_theme_constant_override("separation", 26)
-	box.add_child(main)
-
-	# 左栏: 形象
-	var col_l := VBoxContainer.new()
-	col_l.add_theme_constant_override("separation", 8)
-	col_l.add_child(_heading("选择形象"))
-	col_l.add_child(_appearance_section())
-	main.add_child(col_l)
-
-	# 竖分隔线
-	var vsep := Panel.new()
-	vsep.add_theme_stylebox_override("panel", _sb(Color(0.28, 0.32, 0.40, 0.55), Color(0, 0, 0, 0), 0, 0))
-	vsep.custom_minimum_size = Vector2(2, 0)
-	vsep.size_flags_vertical = Control.SIZE_FILL
-	main.add_child(vsep)
-
-	# 右栏: 技能 + 说明
-	var col_r := VBoxContainer.new()
-	col_r.add_theme_constant_override("separation", 8)
-	## ★★数字**现算**不手写(2026-09-19 实拍巡检): 屏上长期写着「五选一」
-	##   而 `SKILLS` 已经是 **7 条** —— 同一个文件里 `:20` 的注释自己都写着
-	##   「技能行 7×124」, `battle_render.gd:26` 也写着「【七选一】」。
-	##   手写的数字迟早会漂; 从数组算就永远不会。
-	## ★★2026-09-28 去掉那对全角括号里的说明书腔(原文「技能 （7 选 1 · 被动或主动只能带一样）」)。
-	##   括号 + "N 选 1" + "只能带一样"是**表单帮助文字**的口气, 不是游戏的口气。
-	## ⚠ 这一行的形状被 `tests/verify_trainer_skill_count.gd` 钉着, 改文案要守三条:
-	##   ① 必须以「技能」开头  ② 必须含「选」  ③ 第一串阿拉伯数字必须 == SKILLS.size()
-	##   (它当年抓到的正是这一行长期写着「五选一」而数组已经 7 条)。
-	col_r.add_child(_heading("技能（%d 选 1）· 主动与被动不可同时选择" % SKILLS.size()))
-	col_r.add_child(_skill_row())
-	var desc_panel := PanelContainer.new()
-	desc_panel.add_theme_stylebox_override("panel", _nine("panel-frame.png", 20,
-		_sb(Color(0.05, 0.07, 0.11, 0.9), Color(0.3, 0.36, 0.46), 1, 8), Color(0.82, 0.94, 1.06, 1.0)))
-	col_r.add_child(desc_panel)
-	var dpad := MarginContainer.new()
-	for s in ["left", "right", "top", "bottom"]:
-		dpad.add_theme_constant_override("margin_" + s, 12)
-	desc_panel.add_child(dpad)
-	_desc_label = RichTextLabel.new()
-	_desc_label.bbcode_enabled = true
-	_desc_label.fit_content = true
-	## 宽 620: 技能改 4 张一行后单行只要 532, 说明卡自己成了右栏最宽的东西 ——
-	## 它直接决定面板总宽(见顶部 ①), 620 让总宽落在 ~1100, 16:9 上两边各留 90px。
-	##
-	## ★高度必须**按最长那条技能钉死**(原来是 50 + fit_content 自由长):
-	##   实测面板总高「钩锁」649px、「口哨」674px —— **点一张技能卡, 整块面板就长/缩 25px 并重新居中**,
-	##   卡片在手指底下跟着挪。手机上这是会点错的。
-	##   钉成最长那条的高度 ⇒ 换技能只换字, 版式一动不动。
-	##   (仍然保留 fit_content: 万一以后有更长的文案, 宁可把面板撑高, 也不许**静默切掉**。)
-	_desc_label.custom_minimum_size = Vector2(620, DESC_H)
-	_desc_label.add_theme_font_size_override("normal_font_size", 17)
-	dpad.add_child(_desc_label)
+	var sm: Vector4 = SafeArea.margins(Vector2(get_viewport().get_visible_rect().size), 18.0)
+	_top_bar = TopBar.new(self, {
+		"title": "训龟大师",
+		"palette": TopBar.DEEP,
+		"width": 1280.0,
+		"safe_left": sm.x,
+		"safe_right": sm.z,
+		"on_back": _save_and_back,
+	})
+	_build_stage()
+	_build_skills()
+	_refresh_appearance()
+	_refresh_cards()
 	_refresh_desc()
-	main.add_child(col_r)
-
-	# ── 按钮 ──
-	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 24)
-	box.add_child(row)
-	## ★两个按钮原来是 **Godot 默认皮**(圆角纯色 —— "没游戏味"最直接的来源), 且 200×54。
-	##   54px 只有 29pt, 低于 44pt 触控下限(视口恒 720 高 ↔ iPhone 横屏 390pt ⇒ 44pt = 81px)。
-	var save_btn := Button.new()
-	## ★★2026-09-28 文案去网页味: 「保存并返回」/「返回(不保存)」是**表单的 Save / Cancel**,
-	##   而且第二个用括号做否定 —— 那对括号是网页帮助文字的标志。
-	##   游戏里玩家说的是「就这么定了」和「算了不改了」。两条**都说清了会不会留下改动**,
-	##   所以不是把信息换成了氛围, 是换了个说法把同一件事说完。
-	## ⚠ 主 CTA 的文字里不要再出现「返回 / ← / ‹」: `tests/verify_top_bar.gd` 的规则是
-	##   「厚签牌只给主 CTA」, 它靠**文字里带返回字样**去认返回键(并靠"含保存"把这个按钮排掉)。
-	##   这一屏目前不在它的 SCREENS 里, 但别给以后埋一个"主 CTA 被当成返回键"的坑。
-	save_btn.text = "保存"
-	save_btn.add_theme_font_size_override("font_size", 19)
-	save_btn.custom_minimum_size = Vector2(210, 81)
-	save_btn.focus_mode = Control.FOCUS_NONE
-	UISkin.button(save_btn, Color(1.10, 0.98, 0.66))   # 主操作: 暖金签牌
-	save_btn.pressed.connect(_save_and_back)
-	row.add_child(save_btn)
-	var back_btn := Button.new()
-	back_btn.text = "取消"
-	back_btn.custom_minimum_size = Vector2(210, 81)
-	back_btn.focus_mode = Control.FOCUS_NONE
-	## ★次操作走薄片皮; **主 CTA「保存并返回」保留厚金属签牌** ——
-	##   146 款参考里厚框正是只给主 CTA 的, 不是“全换掉”。
-	TopBar.apply_chip_skin(back_btn, TopBar.WOOD)
-	back_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
-	row.add_child(back_btn)
-
-## 把卡里那摞内容收进【金属边带以内】—— 技能卡与形象卡共用一处, 别再各写一份。
-##
-## ★★2026-09-28 重做。前三版都是**猜** offset(四边 8 / 只给底 -12 / 再加顶 10),
-##   越界在 7→3→7 之间弹, 一次也没归零。剖面探针
-##   `tests/_probe_trainer_card2.gd` 打出来才看清为什么猜不中:
-##   · `VBoxContainer` 的**最小高是 102**(图标 52 + 4 + 名 24 + 4 + 标签 18),
-##     而 `Control` 会把自己的尺寸**夹到 `get_combined_minimum_size()`** ⇒
-##     `offset_bottom = -12` 根本没让它变矮(实测改完它照旧是 102 高), 那一版等于没改。
-##   · 给 top 加 inset 只是把整摞内容**往下推**, 于是"越界从 +4 涨到 +10"。
-##     当时归因成"名字换行把标签顶下去了"——**错的**: 名字 ink 最宽 64px,
-##     Label 的最小宽就是文字宽, 110 的内容区里永远不会换行。
-## ⇒ 正解是**先让内容区装得下**(CARD_H 106→120, 见常量处的算式), 再把 VBox
-##   钉成内容区本身。形象卡内容 80 高、内容区 90, 套上去位置**逐像素不变**(实测 +12~+92)。
-func _fit_inside_band(vb: Control) -> void:
-	vb.offset_left = CARD_INSET
-	vb.offset_top = CARD_INSET
-	vb.offset_right = -CARD_INSET
-	vb.offset_bottom = -CARD_INSET
 
 
-func _heading(t: String) -> Label:
-	var lb := Label.new()
-	lb.text = t
-	lb.add_theme_font_size_override("font_size", 20)
-	lb.modulate = GOLD
+## 一块大面板(不透明、直角、像素铆钉框)。
+func _panel(x: float, y: float, w: float, h: float) -> Panel:
+	var p := Panel.new()
+	p.add_theme_stylebox_override("panel", TPSkin.box("panel.png", TPSkin.PANEL_MARGIN))
+	p.position = Vector2(x, y)
+	p.size = Vector2(w, h)
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(p)
+	return p
+
+
+## 区块标题: 金字 + 一条通到右沿的细线(Darkest Dungeon 名册页的分区写法, 不用括号说明)。
+func _section_head(parent: Control, txt: String, y: float, w: float) -> Label:
+	var lb := TPSkin.label(txt, 20, GOLD)
+	lb.position = Vector2(PAD, y)
+	parent.add_child(lb)
+	var rule := ColorRect.new()
+	rule.color = Color(GOLD.r, GOLD.g, GOLD.b, 0.28)
+	rule.position = Vector2(PAD, y + 32.0)
+	rule.size = Vector2(w - PAD * 2.0, 2.0)
+	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(rule)
 	return lb
 
-## 形象区(竖排·用于左栏): 上=大预览(选中形象站投影上), 下=3 个可选形象卡(缩略+名·选中金框)。
-func _appearance_section() -> Control:
-	var h := VBoxContainer.new()
-	h.alignment = BoxContainer.ALIGNMENT_CENTER
-	h.add_theme_constant_override("separation", 10)
 
-	# 大预览(左·带框)
-	var prev_panel := PanelContainer.new()
-	prev_panel.add_theme_stylebox_override("panel", _nine("panel-frame.png", 20,
-		_sb(Color(0.05, 0.07, 0.11, 0.9), Color(0.32, 0.38, 0.48), 1, 8), Color(0.82, 0.94, 1.06, 1.0)))
-	var pm := MarginContainer.new()
-	for s in ["left", "right", "top", "bottom"]:
-		pm.add_theme_constant_override("margin_" + s, 8)
-	prev_panel.add_child(pm)
-	# 舞台: 人物底对齐"站"在椭圆投影上(不再垂直居中贴墙)。呼吸待机动画留 R6。
-	var stage := VBoxContainer.new()
-	stage.alignment = BoxContainer.ALIGNMENT_END
-	stage.add_theme_constant_override("separation", 0)
-	stage.custom_minimum_size = Vector2(120, 126)
+## ── 左栏: 形象展台 ────────────────────────────────────────────────
+func _build_stage() -> void:
+	var p := _panel(L_X, TOP, L_W, BOTTOM - TOP)
+	_section_head(p, "形象", 14.0, L_W)
+
+	var cx := L_W * 0.5
+	## 聚光(像素抖动的三档光, 不是软渐变) —— 让人物从底色里站出来。
+	var lt := TPSkin.pixel_rect(TPSkin.tex("spotlight.png"), Vector2(320, 280))
+	lt.position = Vector2(cx - 160.0, 60.0)
+	p.add_child(lt)
+	## 石台: 原生 60×20 ×4。
+	var ped := TPSkin.pixel_rect(TPSkin.tex("pedestal.png"), Vector2(240, 80))
+	ped.position = Vector2(cx - 120.0, 300.0)
+	p.add_child(ped)
+	## 立绘: 用原生尺寸 × 整数倍, 像素不变形。脚落在石台顶面中线(石台顶面椭圆中心在原生 y=7 ⇒ ×4 = 28)。
 	_preview_rect = TextureRect.new()
 	_preview_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_preview_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_preview_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_preview_rect.custom_minimum_size = Vector2(102, 104)
-	_preview_rect.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_preview_rect.stretch_mode = TextureRect.STRETCH_SCALE
 	_preview_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stage.add_child(_preview_rect)
-	var shadow := Panel.new()
-	shadow.add_theme_stylebox_override("panel", _oval(Color(0, 0, 0, 0.42)))
-	shadow.custom_minimum_size = Vector2(66, 13)
-	shadow.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stage.add_child(shadow)
-	pm.add_child(stage)
-	h.add_child(prev_panel)
+	p.add_child(_preview_rect)
 
-	# 3 形象选择卡(右)
+	_app_name_label = TPSkin.label("", 28, TPSkin.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	_app_name_label.position = Vector2(0, 392.0)
+	_app_name_label.size = Vector2(L_W, 40)
+	p.add_child(_app_name_label)
+
 	_appear_cards.clear()
-	var cardrow := HBoxContainer.new()
-	cardrow.add_theme_constant_override("separation", 10)
-	cardrow.alignment = BoxContainer.ALIGNMENT_CENTER
-	for opt in APPEARANCES:
+	var total := APP_W * APPEARANCES.size() + APP_GAP * (APPEARANCES.size() - 1)
+	var x0 := (L_W - total) * 0.5
+	var y0 := 448.0
+	for i in range(APPEARANCES.size()):
+		var opt: Dictionary = APPEARANCES[i]
 		var oid: String = str(opt["id"])
 		var card := Button.new()
 		card.toggle_mode = true
-		## 80×96 → 84×104: 短边 80 差 1px 够不到 44pt(=81px) 触控下限。
 		card.custom_minimum_size = Vector2(APP_W, APP_H)
-		_skin_card(card)
-		var vb := VBoxContainer.new()
-		vb.set_anchors_preset(Control.PRESET_FULL_RECT)
-		_fit_inside_band(vb)
-		vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		vb.alignment = BoxContainer.ALIGNMENT_CENTER
-		vb.add_theme_constant_override("separation", 1)
-		var thumb := TextureRect.new()
+		card.size = Vector2(APP_W, APP_H)
+		card.position = Vector2(x0 + i * (APP_W + APP_GAP), y0)
+		TPSkin.skin_slot(card)
 		var sp: String = str(opt["sprite"])
-		thumb.texture = load(sp) if ResourceLoader.exists(sp) else null
-		thumb.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		thumb.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		thumb.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		thumb.custom_minimum_size = Vector2(46, 56)
-		thumb.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		thumb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		thumb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		vb.add_child(thumb)
-		var nm := Label.new()
-		nm.text = str(opt["name"])
-		nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		nm.add_theme_font_size_override("font_size", 15)
-		nm.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		vb.add_child(nm)
-		card.add_child(vb)
-		card.pressed.connect(func():
-			_sel_appearance = oid
-			_refresh_appearance())
-		cardrow.add_child(card)
-		_appear_cards.append([card, oid])
-	h.add_child(cardrow)
-	_refresh_appearance()
-	return h
+		var t: Texture2D = load(sp) if ResourceLoader.exists(sp) else null
+		## 缩略: 原生 ×2(整数倍), 居中放进槽里。
+		var ts := Vector2(40, 80)
+		if t != null:
+			ts = Vector2(t.get_width(), t.get_height()) * 2.0
+		var th := TPSkin.pixel_rect(t, ts)
+		th.stretch_mode = TextureRect.STRETCH_SCALE
+		th.position = ((Vector2(APP_W, APP_H) - ts) * 0.5).round()
+		card.add_child(th)
+		var nm := TPSkin.label(str(opt["name"]), 17, TPSkin.TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER)
+		nm.position = Vector2(card.position.x - 10.0, y0 + APP_H + 8.0)
+		nm.size = Vector2(APP_W + 20.0, 26)
+		p.add_child(nm)
+		card.pressed.connect(_on_appearance.bind(oid))
+		p.add_child(card)
+		_appear_cards.append([card, oid, nm])
 
-## 刷新: 大预览换成选中形象立绘 + 卡片选中金框。
+
+## ── 右栏: 技能 ────────────────────────────────────────────────────
+func _build_skills() -> void:
+	var p := _panel(R_X, TOP, R_W, BOTTOM - TOP)
+	## ★这一行被 `tests/verify_trainer_skill_count.gd` 钉着: 以「技能」开头、含「选」、
+	##   第一串阿拉伯数字 == SKILLS.size()(数字现算, 不手写)。
+	_section_head(p, "技能 · %d 选 1" % SKILLS.size(), 14.0, R_W)
+	var rule_hint := TPSkin.label("被动与主动只能装配其一", 16, TPSkin.TEXT_DIM, HORIZONTAL_ALIGNMENT_RIGHT)
+	rule_hint.position = Vector2(R_W - PAD - 360.0, 18.0)
+	rule_hint.size = Vector2(360, 26)
+	p.add_child(rule_hint)
+
+	## 分组: 被动在前, 主动在后, 中间留宽缝 —— 「二者只能装一个」靠排版就看得出来。
+	var passive: Array = []
+	var active: Array = []
+	for s in SKILLS:
+		if str(s["kind"]) == "被动":
+			passive.append(s)
+		else:
+			active.append(s)
+	var n := SKILLS.size()
+	var total := CARD_W * n + CARD_GAP * (n - 2) + GROUP_GAP
+	if passive.is_empty() or active.is_empty():
+		total = CARD_W * n + CARD_GAP * (n - 1)
+	var x := (R_W - total) * 0.5
+	var cap_y := 54.0
+	var card_y := 80.0
+	_skill_cards.clear()
+	for grp in [passive, active]:
+		if (grp as Array).is_empty():
+			continue
+		var gw: float = CARD_W * (grp as Array).size() + CARD_GAP * ((grp as Array).size() - 1)
+		var kind: String = str((grp as Array)[0]["kind"])
+		var tag := TPSkin.kind_tag(kind, 15)
+		tag.position = Vector2(x, cap_y)
+		p.add_child(tag)
+		## 组线: 从签后一直画到组尾, 标出这一组管几张。
+		var gl := ColorRect.new()
+		gl.color = (TPSkin.KIND_PASSIVE if kind == "被动" else TPSkin.KIND_ACTIVE) * Color(1, 1, 1, 0.35)
+		gl.position = Vector2(x, card_y - 6.0)
+		gl.size = Vector2(gw, 2.0)
+		gl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		p.add_child(gl)
+		for s in grp:
+			_add_skill_card(p, s, Vector2(x, card_y))
+			x += CARD_W + CARD_GAP
+		x += GROUP_GAP - CARD_GAP
+
+	## 详情区: 一条分隔线下面, 左边大图标槽、右边名字与类别签, 说明在下面通栏(长说明不挤成窄条)。
+	var div := ColorRect.new()
+	div.color = Color(0.36, 0.44, 0.55, 0.45)
+	div.position = Vector2(PAD, 212.0)
+	div.size = Vector2(R_W - PAD * 2.0, 2.0)
+	div.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(div)
+
+	var slot := Panel.new()
+	slot.add_theme_stylebox_override("panel", TPSkin.box("slot-selected.png", TPSkin.SLOT_MARGIN))
+	slot.position = Vector2(PAD, 228.0)
+	slot.size = Vector2(DETAIL_SLOT, DETAIL_SLOT)
+	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(slot)
+	_detail_icon = TPSkin.pixel_rect(null, Vector2(128, 128))
+	_detail_icon.position = ((Vector2(DETAIL_SLOT, DETAIL_SLOT) - Vector2(128, 128)) * 0.5).round()
+	slot.add_child(_detail_icon)
+
+	var tx := PAD + DETAIL_SLOT + 24.0
+	var tw := R_W - tx - PAD
+	_detail_name = TPSkin.label("", 32, TPSkin.TEXT)
+	_detail_name.position = Vector2(tx, 238.0)
+	_detail_name.size = Vector2(tw * 0.6, 46)
+	p.add_child(_detail_name)
+	## 名字后面: 类别签 + 已装配。名字长度不定 ⇒ 用 HBox 跟着排, 不手算宽度。
+	_detail_kind_box = HBoxContainer.new()
+	_detail_kind_box.add_theme_constant_override("separation", 12)
+	_detail_kind_box.position = Vector2(tx, 292.0)
+	_detail_kind_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(_detail_kind_box)
+
+	_desc_label = RichTextLabel.new()
+	_desc_label.bbcode_enabled = true
+	_desc_label.fit_content = true
+	_desc_label.scroll_active = false
+	_desc_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_desc_label.add_theme_font_size_override("normal_font_size", DESC_PX)
+	_desc_label.add_theme_font_size_override("bold_font_size", DESC_PX)
+	_desc_label.add_theme_constant_override("line_separation", 4)
+	_desc_label.add_theme_color_override("default_color", Color(0.84, 0.88, 0.94))
+	_desc_label.position = Vector2(PAD, 378.0)
+	_desc_label.custom_minimum_size = Vector2(R_W - PAD * 2.0, 0)
+	_desc_label.size = Vector2(R_W - PAD * 2.0, (BOTTOM - TOP) - 378.0 - PAD)
+	p.add_child(_desc_label)
+
+
+func _add_skill_card(parent: Control, opt: Dictionary, pos: Vector2) -> void:
+	var oid: String = str(opt["id"])
+	var card := Button.new()
+	card.toggle_mode = true
+	card.custom_minimum_size = Vector2(CARD_W, CARD_H)
+	card.size = Vector2(CARD_W, CARD_H)
+	card.position = pos
+	card.pivot_offset = Vector2(CARD_W, CARD_H) * 0.5
+	TPSkin.skin_slot(card)
+	var ip: String = str(opt["icon"])
+	var icon := TPSkin.pixel_rect(load(ip) if ResourceLoader.exists(ip) else null, Vector2(64, 64))
+	icon.position = ((Vector2(CARD_W, CARD_H) - Vector2(64, 64)) * 0.5).round()
+	card.add_child(icon)
+	## 已装配徽记: 压在右上角(选中才显示)。
+	var badge := TPSkin.pixel_rect(TPSkin.tex("badge-check.png"), Vector2(33, 33))
+	badge.position = Vector2(CARD_W - 24.0, -9.0)
+	badge.visible = false
+	card.add_child(badge)
+	var nm := TPSkin.label(str(opt["name"]), 16, TPSkin.TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER)
+	nm.position = Vector2(pos.x - 8.0, pos.y + CARD_H + 6.0)
+	nm.size = Vector2(CARD_W + 16.0, 24)
+	parent.add_child(nm)
+	card.pressed.connect(_on_skill.bind(oid))
+	parent.add_child(card)
+	_skill_cards.append([card, oid, nm, badge])
+
+
+## ── 交互 ──────────────────────────────────────────────────────────
+func _on_skill(oid: String) -> void:
+	var changed := oid != _sel_skill
+	_sel_skill = oid
+	_refresh_cards()
+	_refresh_desc()
+	if changed:
+		_write_loadout()
+		for c in _skill_cards:
+			if str(c[1]) == oid:
+				_pop(c[0])
+
+func _on_appearance(oid: String) -> void:
+	var changed := oid != _sel_appearance
+	_sel_appearance = oid
+	_refresh_appearance()
+	if changed:
+		_write_loadout()
+		_hop_hero()
+
+
+## 点中反馈: 槽轻轻一弹(缩放 1.08 → 1), 只动这一张。
+func _pop(c: Control) -> void:
+	if not is_instance_valid(c):
+		return
+	c.scale = Vector2(1.08, 1.08)
+	var tw := c.create_tween()
+	tw.tween_property(c, "scale", Vector2.ONE, UIPalette.T_TAP).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+## 换形象: 人物在石台上跳一下(一个立绘像素 = HERO_SCALE 设计像素, 跳 3 格)。
+func _hop_hero() -> void:
+	if _preview_rect == null:
+		return
+	_preview_rect.position.y = _hero_home_y
+	var tw := _preview_rect.create_tween()
+	tw.tween_property(_preview_rect, "position:y", _hero_home_y - HERO_SCALE * 3.0, UIPalette.T_TAP).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(_preview_rect, "position:y", _hero_home_y, UIPalette.T_TAP).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+
+
+## 刷新: 大立绘换成选中形象 + 形象名 + 槽的选中态。
 func _refresh_appearance() -> void:
 	for c in _appear_cards:
-		c[0].button_pressed = (str(c[1]) == _sel_appearance)
-	if _preview_rect != null:
-		for opt in APPEARANCES:
-			if str(opt["id"]) == _sel_appearance:
-				var sp: String = str(opt["sprite"])
-				_preview_rect.texture = load(sp) if ResourceLoader.exists(sp) else null
-				return
+		var on := str(c[1]) == _sel_appearance
+		(c[0] as Button).button_pressed = on
+		(c[2] as Label).add_theme_color_override("font_color", GOLD if on else TPSkin.TEXT_DIM)
+	for opt in APPEARANCES:
+		if str(opt["id"]) != _sel_appearance:
+			continue
+		if _app_name_label != null:
+			_app_name_label.text = str(opt["name"])
+		if _preview_rect != null:
+			var sp: String = str(opt["sprite"])
+			var t: Texture2D = load(sp) if ResourceLoader.exists(sp) else null
+			_preview_rect.texture = t
+			var sz := Vector2(20, 40) * HERO_SCALE
+			if t != null:
+				sz = Vector2(t.get_width(), t.get_height()) * HERO_SCALE
+			_preview_rect.size = sz
+			## 脚底 = 石台顶面中线(面板坐标 300 + 28), 立绘底下有 1 原生像素透明边。
+			_hero_home_y = 300.0 + 28.0 - sz.y + HERO_SCALE
+			_preview_rect.position = Vector2(round(L_W * 0.5 - sz.x * 0.5), _hero_home_y)
+		return
 
-## 技能卡片(居中·图标+名+被动/主动标签·单选高亮)。
-##
-## ★**4 张一行, 换行排** —— 原来 7 张一行 = 940px, 加上左栏和内边距整块面板要 1298px,
-##   而 16:9 基准视口只有 1280: 实拍 1280×720 量到金色面板边框 bbox **x 0..1279**
-##   (左右两条竖边全在屏幕外), 最右那张「驯服」的右边框落在 x=1277。
-##   这类"只在某个宽高比下露出来"的溢出, 在 1560×720 上一点看不出来 —— 必须两个分辨率都拍。
-func _skill_row() -> Control:
-	var col := VBoxContainer.new()
-	col.alignment = BoxContainer.ALIGNMENT_CENTER
-	col.add_theme_constant_override("separation", 10)
-	var h := HBoxContainer.new()
-	h.alignment = BoxContainer.ALIGNMENT_CENTER
-	h.add_theme_constant_override("separation", 12)
-	col.add_child(h)
-	_skill_cards.clear()
-	for opt in SKILLS:
-		if _skill_cards.size() == SKILL_PER_ROW:
-			h = HBoxContainer.new()
-			h.alignment = BoxContainer.ALIGNMENT_CENTER
-			h.add_theme_constant_override("separation", 12)
-			col.add_child(h)
-		var oid: String = str(opt["id"])
-		var card := Button.new()
-		card.toggle_mode = true
-		card.custom_minimum_size = Vector2(CARD_W, CARD_H)
-		card.button_pressed = (oid == _sel_skill)
-		_skin_card(card)
-		var vb := VBoxContainer.new()
-		vb.set_anchors_preset(Control.PRESET_FULL_RECT)
-		_fit_inside_band(vb)
-		vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		vb.alignment = BoxContainer.ALIGNMENT_CENTER
-		vb.add_theme_constant_override("separation", 4)
-		var icon := TextureRect.new()
-		var ip: String = str(opt["icon"])
-		icon.texture = load(ip) if ResourceLoader.exists(ip) else null
-		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE          # 忽略贴图原尺寸(否则大图撑爆卡片)
-		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		icon.custom_minimum_size = Vector2(52, 52)
-		icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER    # 钉死 60×60·居中, 不随卡片拉伸
-		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		vb.add_child(icon)
-		var nm := Label.new()
-		nm.text = str(opt["name"])
-		nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		nm.add_theme_font_size_override("font_size", 16)
-		nm.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		vb.add_child(nm)
-		var kd := Label.new()
-		kd.text = str(opt["kind"])
-		kd.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		kd.add_theme_font_size_override("font_size", 12)
-		kd.modulate = Color(0.5, 0.85, 1.0) if str(opt["kind"]) == "被动" else Color(1.0, 0.7, 0.5)
-		kd.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		vb.add_child(kd)
-		card.add_child(vb)
-		card.pressed.connect(func():
-			_sel_skill = oid
-			_refresh_cards()
-			_refresh_desc())
-		h.add_child(card)
-		_skill_cards.append([card, oid])
-	_refresh_cards()
-	return col
-
-## 刷新卡片选中态: 选中=金框高亮(pressed 样式), 其余=普通底板。
+## 刷新技能槽选中态: 金框 + 右上徽记 + 名字变金。
 func _refresh_cards() -> void:
 	for c in _skill_cards:
-		var card: Button = c[0]
-		card.button_pressed = (str(c[1]) == _sel_skill)
+		var on := str(c[1]) == _sel_skill
+		(c[0] as Button).button_pressed = on
+		(c[2] as Label).add_theme_color_override("font_color", GOLD if on else TPSkin.TEXT_DIM)
+		(c[3] as Control).visible = on
 
 func _refresh_desc() -> void:
 	if _desc_label == null:
 		return
-	for s in SKILLS:
-		if str(s["id"]) == _sel_skill:
-			var kc: String = "5cc6ff" if str(s["kind"]) == "被动" else "ffb27f"
-			## ★名字在前、被动/主动的签在后(2026-09-28)。原来是「主动  钩锁」——
-			##   **属性写在名字前面**是数据表的读法; 游戏里先说这门技叫什么, 再挂类别签。
-			_desc_label.text = "[b]%s[/b]  [color=#%s]%s[/color]\n%s" % [s["name"], kc, s["kind"], s["desc"]]
-			return
-	_desc_label.text = ""
-
-## 九宫格金属框; 贴图缺失时**优雅退回** `fallback`(UISkin 的铁律①)。`tint` 走 modulate。
-func _nine(tex: String, margin: int, fallback: StyleBox, tint: Color) -> StyleBox:
-	var sb := UISkin.nine(tex, margin, fallback)
-	if sb is StyleBoxTexture:
-		(sb as StyleBoxTexture).modulate_color = tint
-	return sb
-
-
-## 可选卡(技能卡 / 形象卡)的四态皮: 一张中性槽框 + modulate 出状态。
-##
-## ★为什么不是四张图: UISkin 铁律② —— 状态色走 modulate, 否则"按状态配色"这套信息会被贴图吃掉。
-## ★选中态靠**金色 modulate**(不是靠明暗) —— 原来的做法是换 StyleBoxFlat 的边框色,
-##   那就是"深色圆角矩形 + 1px 细边"本体。
-func _skin_card(card: Button) -> void:
-	var states := {
-		"normal": [Color(0.13, 0.16, 0.22, 1), Color(0.30, 0.34, 0.42), 1, Color(0.86, 0.92, 1.0)],
-		"hover": [Color(0.17, 0.21, 0.28, 1), GOLD.darkened(0.35), 1, Color(1.02, 1.02, 0.94)],
-		"pressed": [Color(0.21, 0.24, 0.15, 1), GOLD, 3, Color(1.20, 1.04, 0.56)],
-		"hover_pressed": [Color(0.24, 0.28, 0.17, 1), GOLD, 3, Color(1.26, 1.10, 0.62)],
-	}
-	for st in states.keys():
-		var v: Array = states[st]
-		card.add_theme_stylebox_override(str(st),
-			_nine("slot-frame.png", 12, _sb(v[0], v[1], int(v[2]), 9), v[3]))
-	card.add_theme_stylebox_override("focus", _sb(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 0, 0))
-	card.focus_mode = Control.FOCUS_NONE
+	var s: Dictionary = _skill_of(_sel_skill)
+	if s.is_empty():
+		_desc_label.text = ""
+		return
+	if _detail_name != null:
+		_detail_name.text = str(s["name"])
+	if _detail_icon != null:
+		var ip: String = str(s["icon"])
+		_detail_icon.texture = load(ip) if ResourceLoader.exists(ip) else null
+	if _detail_kind_box != null:
+		for ch in _detail_kind_box.get_children():
+			_detail_kind_box.remove_child(ch)
+			ch.queue_free()
+		_detail_kind_box.add_child(TPSkin.kind_tag(str(s["kind"]), 16))
+		var eq := HBoxContainer.new()
+		eq.add_theme_constant_override("separation", 6)
+		eq.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var bd := TPSkin.pixel_rect(TPSkin.tex("badge-check.png"), Vector2(24, 24))
+		bd.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		eq.add_child(bd)
+		eq.add_child(TPSkin.label("已装配", 16, GOLD))
+		_detail_kind_box.add_child(eq)
+	## 说明走全项目同一个文案渲染(关键词上色 + 属性小图标), 与图鉴/商店一个口径。
+	_desc_label.text = SkillText.plain_to_bb(_layout_desc(str(s["desc"])), DESC_PX)
 
 
-## 背景 = 主菜单那张平铺底。原来只有一层 `ColorRect(0.04,0.06,0.10,0.86)` 的遮罩 ——
-## 本屏是【独立场景】不是弹窗, 遮罩底下什么都没有, 实拍就是一整块纯黑。
-## (主菜单/图鉴/战绩/设置四屏早就是这张平铺底了, 这屏只是没跟上。)
+## 说明的排版(只动换行, 一个字不改):
+##   · 冷却那一句另起一行 —— 参考里技能说明都把冷却单独放, 玩家扫一眼就找得到。
+##   · 「随机召唤以下一种」那类说明, 每个分支另起一行(口哨 150 字挤成一坨时找不到分支从哪开始)。
+func _layout_desc(d: String) -> String:
+	var out := d.replace("。冷却", "。\n冷却")
+	if out.contains("以下一种"):
+		var re := RegEx.create_from_string("。([^。： ]{2,4})：")
+		out = re.sub(out, "。\n$1：", true)
+	return out
+
+
+## 背景 = 全屏共用的平铺底 + 一层更深的压暗(这一页的主角是面板里的立绘与图标)。
 func _bg() -> void:
 	var base := ColorRect.new()
 	base.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -475,9 +463,9 @@ func _bg() -> void:
 	var grad := Gradient.new()
 	grad.offsets = PackedFloat32Array([0.0, 0.6, 1.0])
 	grad.colors = PackedColorArray([
-		Color(0.031, 0.047, 0.078, 0.24),
-		Color(0.031, 0.047, 0.078, 0.36),
-		Color(0.031, 0.047, 0.078, 0.50),
+		Color(0.031, 0.047, 0.078, 0.55),
+		Color(0.031, 0.047, 0.078, 0.66),
+		Color(0.031, 0.047, 0.078, 0.78),
 	])
 	var gt := GradientTexture2D.new()
 	gt.gradient = grad; gt.fill_from = Vector2(0, 0); gt.fill_to = Vector2(0, 1)
@@ -491,34 +479,13 @@ func _bg() -> void:
 	add_child(ov)
 
 
-## 造一个圆角描边底板 StyleBox。
-func _sb(bg: Color, border: Color, bw: int, radius: int) -> StyleBoxFlat:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = bg
-	sb.border_color = border
-	sb.set_border_width_all(bw)
-	sb.set_corner_radius_all(radius)
-	return sb
-
-## 椭圆投影(全圆角矮条 ≈ 椭圆)。
-##
-## ★★这是本屏**唯一**一个带圆角的 StyleBoxFlat(2026-09-28 实测: 门禁 round=1 就是它,
-##   66x13 r=7 a=0.42 无字), **刻意留着**: 它是人物脚下的投影, 不是"深色圆角矩形面板"。
-##   本仓 `verify_ui_consistency` 的 TeamSelect 条目记着同一个判断 ——
-##   用户点名的 ai 味是 border-radius 的**圆角矩形盒**, 正圆/椭圆不是。
-##   ⇒ 别为了把这个数字刷成 0 去改它(那是改判据不是改东西)。
-func _oval(c: Color) -> StyleBoxFlat:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = c
-	sb.set_corner_radius_all(7)
-	return sb
-
 ## 写回 GameState + 存盘(抽出来便于门禁测, 不含切场景)。
 func _write_loadout() -> void:
 	GameState.trainer_appearance = _sel_appearance
 	GameState.trainer_skill = _sel_skill
 	GameState.save()
 
+## 顶栏返回: 点选时已存过, 这里再存一次兜底(异常退出前最后一次机会)。
 func _save_and_back() -> void:
 	_write_loadout()
 	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
