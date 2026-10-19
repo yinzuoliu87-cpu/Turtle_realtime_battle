@@ -266,6 +266,7 @@ func _float_row_offset(key: String, kind: String, dmg_type: String, fsize: float
 # 飘字 (1:1 回合制 _spawn_float_text): kind=damage → 爆大pop(1.6~2.5)+抛物弹射(重力200,朝屏边跳); 否则(heal/shield/label) → pop1.2+缓升50px(sine)1.5s淡出
 # 飘字 (1:1 回合制 _spawn_float_text): kind=damage → 爆大pop(1.6~2.5)+抛物弹射(重力200,朝屏边跳); 否则(heal/shield/label) → pop1.2+缓升50px(sine)1.5s淡出
 func _float_text(pos2d: Vector2, text: String, col: Color, is_crit: bool = false, kind: String = "label", dmg_type: String = "physical", jump_dir: float = 0.0) -> void:
+	if StreamRecorder.cur != null: StreamRecorder.cur.ev("float", [pos2d, text, col, is_crit, kind, dmg_type, jump_dir])   # 逐帧直播: 记世界坐标, 屏幕位置由手机相机算
 	if battle._cam == null:
 		return
 	var head = battle._world_pos(pos2d, 2.2)
@@ -2879,6 +2880,7 @@ func shotgun_muzzle_fx(u: Dictionary, dir53: Vector2) -> void:
 
 ## 全屏轻白闪一拍(彗星撞击帧 / 躲藏龟)。2026-10-14 从主文件搬来(纯画面, 不在 _sim_step 链上)。
 func screen_flash_light() -> void:                              # 全屏轻白闪一拍(彗星撞击帧·0.06s淡入0.12s淡出·layer60盖UI下方一点)
+	if StreamRecorder.cur != null: StreamRecorder.cur.ev("flash", ["light"])   # 逐帧直播事件层(S1)
 	var cl := CanvasLayer.new()
 	cl.layer = 55
 	var rect := ColorRect.new()

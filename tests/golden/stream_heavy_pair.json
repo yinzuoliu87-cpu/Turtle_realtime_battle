@@ -1,0 +1,300 @@
+{
+ "_doc": "逐帧直播 S1 门禁样本: 本机 ghost_pool.json 打满赛季的两份快照(#0 vs #1, 2026-10-19 取), 三统领各 3 件装备、小将带装备; S0 的「裁判局② 真实快照」就是这一对(种子 2000023, 三路打满)。profile / ghost_id 已换成占位, 其余逐字未动。",
+ "seed": 2000023,
+ "a": {
+  "axe_exp_total": 525.0,
+  "axe_final": "",
+  "axe_stage": 4.0,
+  "chest_treasure_value": 0.0,
+  "chest_treasures_won": [],
+  "equipped": {
+   "basic": [
+    {
+     "id": "p2eq_056",
+     "star": 2.0
+    },
+    {
+     "id": "p2eq_071",
+     "star": 2.0
+    },
+    {
+     "id": "p2eq_072",
+     "star": 2.0
+    }
+   ],
+   "diamond": [
+    {
+     "id": "p2eq_046",
+     "star": 2.0
+    },
+    {
+     "id": "p2eq_033",
+     "star": 1.0
+    },
+    {
+     "id": "p2eq_090",
+     "star": 2.0
+    }
+   ],
+   "ice": [
+    {
+     "id": "p2eq_010",
+     "star": 2.0
+    },
+    {
+     "id": "p2eq_056",
+     "star": 2.0
+    },
+    {
+     "id": "p2eq_087",
+     "star": 2.0
+    }
+   ]
+  },
+  "ghost_id": "g_stream_a",
+  "hearts": 1.0,
+  "is_bot": false,
+  "lane_assign": {
+   "bottom": [],
+   "top": [
+    "basic",
+    "diamond",
+    "ice"
+   ]
+  },
+  "leaders": [
+   "basic",
+   "diamond",
+   "ice"
+  ],
+  "loadouts": {
+   "basic": 2.0,
+   "diamond": 3.0,
+   "ice": 1.0
+  },
+  "minions": {
+   "bottom": [
+    {
+     "elite": true,
+     "equips": [
+      {
+       "id": "p2eq_061",
+       "star": 1.0
+      },
+      {
+       "id": "p2eq_025",
+       "star": 1.0
+      },
+      {
+       "id": "p2eq_037",
+       "star": 1.0
+      }
+     ],
+     "role": "back"
+    },
+    {
+     "elite": false,
+     "equips": [
+      {
+       "id": "p2eq_069",
+       "star": 1.0
+      },
+      {
+       "id": "p2eq_027",
+       "star": 1.0
+      },
+      {
+       "id": "p2eq_059",
+       "star": 1.0
+      }
+     ],
+     "role": "back"
+    },
+    {
+     "elite": false,
+     "equips": [
+      {
+       "id": "p2eq_068",
+       "star": 1.0
+      },
+      {
+       "id": "p2eq_086",
+       "star": 2.0
+      },
+      {
+       "id": "p2eq_052",
+       "star": 2.0
+      }
+     ],
+     "role": "front"
+    }
+   ],
+   "top": []
+  },
+  "origin": "remote",
+  "pet_levels": {
+   "basic": 1.0,
+   "diamond": 1.0,
+   "ice": 1.0
+  },
+  "profile": {
+   "avatar": "basic",
+   "id": "g_stream_a",
+   "name": "甲方"
+  },
+  "schema_ver": 2.0,
+  "season_eggs_killed": 30.0,
+  "season_sweeps": 20.0,
+  "season_total_battles": 35.0,
+  "season_wins": 30.0,
+  "trainer_skill": "magic_stone"
+ },
+ "b": {
+  "axe_exp_total": 510.0,
+  "axe_final": "",
+  "axe_stage": 4.0,
+  "chest_treasure_value": 0.0,
+  "chest_treasures_won": [],
+  "equipped": {
+   "basic": [
+    {
+     "id": "p2eq_056",
+     "star": 2.0
+    },
+    {
+     "id": "p2eq_071",
+     "star": 2.0
+    },
+    {
+     "id": "p2eq_072",
+     "star": 2.0
+    }
+   ],
+   "diamond": [
+    {
+     "id": "p2eq_046",
+     "star": 2.0
+    },
+    {
+     "id": "p2eq_033",
+     "star": 1.0
+    },
+    {
+     "id": "p2eq_090",
+     "star": 2.0
+    }
+   ],
+   "ice": [
+    {
+     "id": "p2eq_010",
+     "star": 2.0
+    },
+    {
+     "id": "p2eq_056",
+     "star": 2.0
+    },
+    {
+     "id": "p2eq_087",
+     "star": 2.0
+    }
+   ]
+  },
+  "ghost_id": "g_stream_b",
+  "hearts": 1.0,
+  "is_bot": false,
+  "lane_assign": {
+   "bottom": [],
+   "top": [
+    "basic",
+    "diamond",
+    "ice"
+   ]
+  },
+  "leaders": [
+   "basic",
+   "diamond",
+   "ice"
+  ],
+  "loadouts": {
+   "basic": 2.0,
+   "diamond": 3.0,
+   "ice": 1.0
+  },
+  "minions": {
+   "bottom": [
+    {
+     "elite": true,
+     "equips": [
+      {
+       "id": "p2eq_061",
+       "star": 1.0
+      },
+      {
+       "id": "p2eq_025",
+       "star": 1.0
+      },
+      {
+       "id": "p2eq_037",
+       "star": 1.0
+      }
+     ],
+     "role": "back"
+    },
+    {
+     "elite": false,
+     "equips": [
+      {
+       "id": "p2eq_069",
+       "star": 1.0
+      },
+      {
+       "id": "p2eq_027",
+       "star": 1.0
+      },
+      {
+       "id": "p2eq_059",
+       "star": 1.0
+      }
+     ],
+     "role": "back"
+    },
+    {
+     "elite": false,
+     "equips": [
+      {
+       "id": "p2eq_068",
+       "star": 1.0
+      },
+      {
+       "id": "p2eq_086",
+       "star": 2.0
+      },
+      {
+       "id": "p2eq_052",
+       "star": 2.0
+      }
+     ],
+     "role": "front"
+    }
+   ],
+   "top": []
+  },
+  "origin": "remote",
+  "pet_levels": {
+   "basic": 1.0,
+   "diamond": 1.0,
+   "ice": 1.0
+  },
+  "profile": {
+   "avatar": "basic",
+   "id": "g_stream_b",
+   "name": "乙方"
+  },
+  "schema_ver": 2.0,
+  "season_eggs_killed": 29.0,
+  "season_sweeps": 20.0,
+  "season_total_battles": 34.0,
+  "season_wins": 29.0,
+  "trainer_skill": "magic_stone"
+ }
+}

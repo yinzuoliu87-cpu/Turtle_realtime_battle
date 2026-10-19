@@ -65,6 +65,7 @@ func _dl_is_present() -> bool:
 static var NO_PRESENT := false
 
 func _dl_enter_present(mode: String) -> void:
+	if StreamRecorder.cur != null: StreamRecorder.cur.ev("curtain_in", [mode])   # 逐帧直播事件层(S1): 幕布内容手机按同一份阵容自己建
 	if NO_PRESENT:
 		battle._dl_state = mode
 		battle._dl_present_t = 0.0
@@ -117,6 +118,7 @@ func _dl_clear_present_overlay() -> void:
 	# ★淡出再销毁(原来是瞬间 queue_free 硬切)。先摘掉引用, 免得淡出期间又被当成"当前幕"。
 	#   同样用裸 battle.create_tween(见 _dl_enter_present 的说明)。
 	if battle._dl_present_root != null and is_instance_valid(battle._dl_present_root):
+		if StreamRecorder.cur != null: StreamRecorder.cur.ev("curtain_out", [])   # 逐帧直播事件层(S1)
 		var old = battle._dl_present_root
 		old.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 淡出期间不再吃点击
 		var tw = battle.create_tween()
@@ -771,6 +773,7 @@ func _dl_egg_break_dramatize(broken_side_lr: String) -> void:
 
 ## 全屏一次性闪光(仿 _smolder_sys._smolder_flash 的写法; 用于段落切换)
 func _dl_flash_screen(col: Color, dur: float) -> void:
+	if StreamRecorder.cur != null: StreamRecorder.cur.ev("flash", ["lane", col, dur])   # 逐帧直播事件层(S1)
 	if battle._ui_layer == null or not is_instance_valid(battle._ui_layer):
 		return
 	var r = ColorRect.new()

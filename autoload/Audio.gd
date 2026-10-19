@@ -99,6 +99,7 @@ func apply_bgm_volume() -> void:
 ##   破单调利器: 同一个音 5% 随机 pitch + 5% 随机 volume → 听感天差地别
 func play_sfx(name: String, volume_scale: float = 1.0, pitch_base: float = 1.0,
 		pitch_jitter: float = 0.05, vol_jitter: float = 0.05) -> void:
+	if StreamRecorder.cur != null: StreamRecorder.cur.ev("sfx", [name, volume_scale, pitch_base])   # 逐帧直播事件层(S1): 裁判机静音也照录
 	var stream: AudioStream = _sfx_cache.get(name)
 	if stream == null or mute_sfx:
 		return

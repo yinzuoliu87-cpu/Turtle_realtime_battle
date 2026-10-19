@@ -152,6 +152,8 @@ static var pending_referee: Dictionary = {}
 static var referee_budget_us := 100000
 var referee_steps := 0          # 裁判: 已推的 sim 步
 var referee_stuck := false      # 裁判: 推到 RESUME_STEP_CAP 还没结算(不判负收尾: 结果交给调用方当错误处理)
+## 裁判录状态流(逐帧直播 S1, scripts/systems/stream/): 任务里带 `stream` 选项才有; 有它时渲染步由它按 2 步一次对齐跑。
+var stream: StreamRecorder = null
 
 
 func _init(b) -> void:
@@ -248,6 +250,9 @@ func _start_referee() -> void:
 	}
 	var id := str(job.get("id", ""))
 	rec["id"] = id if Uploader.SB.is_uuid(id) else new_id()
+	if job.get("stream") is Dictionary:
+		stream = StreamRecorder.new(battle, job["stream"])
+		stream.start()
 
 
 ## 这一局录不录。Q3(用户授权按推荐): 先只录周六闯关赛;
@@ -379,7 +384,11 @@ func _referee_frame() -> float:
 	while not finished:
 		var frozen: bool = battle._hitstop > 0.0
 		var in_ts: bool = not battle._timestop._ts_active.is_empty()
+		if stream != null:
+			stream.pre_step()
 		battle._sim_step(battle.SIM_DT, frozen, in_ts)
+		if stream != null:
+			stream.post_step()      # ★在 _sim_step 返回之后采样: sim_stepped 上同步醒来的协程续段也算这一步(S0 修正)
 		referee_steps += 1
 		if referee_steps >= RESUME_STEP_CAP and not finished:
 			referee_stuck = true

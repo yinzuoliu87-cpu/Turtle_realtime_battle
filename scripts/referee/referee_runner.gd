@@ -16,8 +16,10 @@ const MAX_FRAMES := 200000
 
 
 ## 跑一局。`host` = 挂战斗场的节点(要在树里); `on_battle` = 可选, 战斗场进树之前回调一次(门禁拿它接每步指纹)。
+## `stream` = 可选, 非空 ⇒ 同时录状态流(逐帧直播 S1, `StreamRecorder` 的选项: dir = 写块文件的目录 / keep = 块字节留在内存);
+##   录流的元数据放进结果单的 `stream` 键(块字节在 keep 时放 `stream_chunks`)。不传 ⇒ 行为与原来逐字相同。
 ## 返回结果单(`RefereeJob.ok_result` / `error_result`)。
-static func run(host: Node, job: Dictionary, on_battle: Callable = Callable()) -> Dictionary:
+static func run(host: Node, job: Dictionary, on_battle: Callable = Callable(), stream: Dictionary = {}) -> Dictionary:
 	var t0 := Time.get_ticks_msec()
 	var why := RefereeJob.validate(job)
 	if why != "":
@@ -38,6 +40,8 @@ static func run(host: Node, job: Dictionary, on_battle: Callable = Callable()) -
 	ReplayRecorder.apply_state(st)
 	ReplayRecorder.pending_play = {}
 	ReplayRecorder.pending_referee = {"seed": RefereeJob.seed_of(job), "id": str(job.get("match_id", ""))}
+	if not stream.is_empty():
+		ReplayRecorder.pending_referee["stream"] = stream
 	var au := host.get_node_or_null("/root/Audio")
 	var muted0 := false
 	if au != null and au.get("mute_sfx") != null:
@@ -70,6 +74,11 @@ static func run(host: Node, job: Dictionary, on_battle: Callable = Callable()) -
 			(gs.lane_results as Dictionary).duplicate(true), (gs.egg_hp as Dictionary).duplicate(true),
 			Time.get_ticks_msec() - t0, frames)
 		res["sim_steps"] = int(rr.referee_steps)
+	if rr != null and rr.stream != null:
+		res["stream"] = rr.stream.finish({"match_id": str(job.get("match_id", "")), "ok": why == "",
+			"digest": str(res.get("digest", "")), "client_version": ReplayRecorder.client_version()})
+		if bool(stream.get("keep", false)):
+			res["stream_chunks"] = rr.stream.chunks
 	battle.queue_free()
 	await host.get_tree().process_frame
 	await host.get_tree().process_frame

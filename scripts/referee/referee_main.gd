@@ -2,6 +2,7 @@ extends Node
 ## 服务器裁判 —— 命令行入口(场景 `res://scenes/Referee.tscn`)。方案书 docs/plans/20261019-服务器裁判.md §1。
 ##
 ##   godot --headless --audio-driver Dummy --path <工程> res://scenes/Referee.tscn -- --job=<任务单.json> --out=<结果单.json>
+##   可选 `--stream=<目录>`: 同时录状态流(逐帧直播 S1), 块文件与 end.json 写进那个目录(传输 S4 再做)。
 ##
 ## 读一份任务单(形状见 `referee_job.gd` 头注) → `RefereeRunner.run` 跑完整一局 → 写结果单 → 退出。
 ## 退出码: 0 = 算完(结果单 ok=true) / 2 = 拒算(任务单本身不对, 重算也不会变, 结果单 permanent=true)
@@ -37,7 +38,8 @@ func _ready() -> void:
 	await get_tree().process_frame
 	var res: Dictionary
 	if job is Dictionary:
-		res = await RefereeRunner.run(self, job)
+		var sd := str(args.get("stream", OS.get_environment("REFEREE_STREAM")))
+		res = await RefereeRunner.run(self, job, Callable(), {"dir": sd} if sd != "" else {})
 	else:
 		res = RefereeJob.error_result({}, "bad_job")
 	var f := FileAccess.open(op, FileAccess.WRITE)
