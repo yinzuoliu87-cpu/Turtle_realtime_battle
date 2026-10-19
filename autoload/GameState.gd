@@ -281,7 +281,7 @@ func reset_dual_lane() -> void:
 ##
 ## ⚠ **诚实边界 —— 登记了种子不等于那一场就能复算。** 正式对局**不开** `_deterministic`
 ##   (`battle_world_builder.gd` 只在 `TURTLE_SEED` 设时才开 ⇒ 帧长随机器抖), 且 `_juice_rng`
-##   与另外五处落点无条件 `randomize()`(清单见 `tests/_det_scenarios.gd` ⑧)。
+##   与另外五处落点无条件 `randomize()`(清单见 `scripts/referee/det_scenarios.gd` ⑧)。
 ##   ⇒ 这里只保证「种子被如实记下」, 完整复算是 B 阶段的事。**但种子丢了 B 阶段就永远补不回来**,
 ##   所以先记下来是对的; 不许反过来拿这个函数声称「决赛已可服务端复算」。
 const BATTLE_SEED_MAX: int = 9007199254740991   # 2^53-1: double 能精确表示的整数上限(JSON 往返不掉精度)

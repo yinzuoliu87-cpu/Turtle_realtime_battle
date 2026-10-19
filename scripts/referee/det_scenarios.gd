@@ -1,6 +1,10 @@
 extends RefCounted
 class_name DetScenarios
-## _det_scenarios.gd — 确定性门禁的**场景表，全仓唯一一份**
+## det_scenarios.gd — 确定性门禁的**场景表，全仓唯一一份**
+##
+## ★2026-10-19 从 `tests/_det_scenarios.gd` 搬进产品代码: 设置页隐藏的「设备自检」(`device_selfcheck.gd`)
+##   在玩家手机上跑的就是这同一张表、同一个建场 `run()`、同一个指纹 `fp()`, 金标同一份
+##   (`data/determinism_cross.json`, 原 `tests/golden/`; 导出包排除 `tests/*`, 搬到 `data/` 才进得了包)。
 ##
 ## ══════════════════════════════════════════════════════════════════════
 ##  为什么抽出来
@@ -292,7 +296,8 @@ const PIN_WEEK_ANCHOR := 1789948800
 ## 跑一个场景 → [摘要, 逐步指纹数组, 不同指纹数, 累计承伤]。
 ## ★`verify_determinism_cross` 与 `verify_determinism_ulp` 共用这一份建场(原来写在 cross 里;
 ##   ulp 门禁要跑「同一局、只差扰动开关」, 建场分家 = 两边跑的不是同一局)。
-static func run(host: Node, sc: Dictionary) -> Array:
+## `stop`(可省)= 每帧问一次, 返回 true 就提前收手(设备自检的「取消」); 门禁不传 ⇒ 行为不变。
+static func run(host: Node, sc: Dictionary, stop: Callable = Callable()) -> Array:
 	var RB = load("res://scripts/scenes/RealtimeBattle3DScene.gd")
 	RB.DEBUG_EDIT = true
 	var s = RB.new()
@@ -329,6 +334,8 @@ static func run(host: Node, sc: Dictionary) -> Array:
 	s._debug._edit_start_battle()
 	var tr: Array = []
 	for _i in range(int(sc["frames"])):
+		if stop.is_valid() and bool(stop.call()):
+			break
 		await host.get_tree().process_frame
 		tr.append(fp(s))
 	var taken := 0.0

@@ -24,7 +24,7 @@ extends Node
 ##   否则 tween 时钟这条修不修都不会被量到。
 
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
-const SC := preload("res://tests/_det_scenarios.gd")
+const SC := preload("res://scripts/referee/det_scenarios.gd")
 const CopyRules := preload("res://scripts/gamedata/copy_rules.gd")
 
 var _fail := 0
@@ -40,7 +40,7 @@ func _ok(name: String, cond: bool, detail: String = "") -> void:
 
 ## 全场快照: 按 _units 下标排(不排序 —— 生成顺序本身也是确定性的一部分)。
 func _fp(scene) -> String:
-	return SC.fp(scene)   # ★两个门禁共用一份(见 `_det_scenarios.fp` 头注: 位模式, 不走 %.Nf)
+	return SC.fp(scene)   # ★两个门禁共用一份(见 `det_scenarios.fp` 头注: 位模式, 不走 %.Nf)
 
 
 ## pairs = [[turtle_id, side, x, y, [装备 id...]], ...]
@@ -75,7 +75,7 @@ func _trace(pairs: Array, frames: int, loadouts: Dictionary = {}, cast_probe: bo
 			for e in (p[4] as Array):
 				el.append({"id": str(e), "star": 3})
 			u["_edit_equips"] = el
-		## 第 6 项 = 给右队假人恢复真实主动技(见 `_det_scenarios.gd` 的说明)。
+		## 第 6 项 = 给右队假人恢复真实主动技(见 `det_scenarios.gd` 的说明)。
 		## ★用产品自己的解析器, 不在表里手写技能名。
 		if (p as Array).size() > 5 and bool(p[5]):
 			u["active_skills"] = s._resolve_active_skills(pid, false)
@@ -296,7 +296,7 @@ func _ready() -> void:
 		gs.week_anchor_ts = int(SC.PIN_WEEK_ANCHOR)
 
 	## ══════════════════════════════════════════════════════════════════
-	## ★★★2026-09-26 场景表搬到 `tests/_det_scenarios.gd`, **两个门禁共用一份**:
+	## ★★★2026-09-26 场景表搬到 `scripts/referee/det_scenarios.gd`, **两个门禁共用一份**:
 	##   · 本门禁            —— 同种子**同进程**两遍, 逐步指纹必须逐字相同
 	##   · verify_determinism_cross —— 逐步指纹压成摘要, 与钉住的金标比
 	##     (⇒ 换进程 / 换 OS / 换 libm 都得一样, 那是周日「服务端结算一次 + 双方看

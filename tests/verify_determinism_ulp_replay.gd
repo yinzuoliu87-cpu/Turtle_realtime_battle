@@ -89,7 +89,7 @@ func _setup_gs(gs, m: Dictionary) -> void:
 
 
 func _u3(m: Dictionary) -> void:
-	## ★静态的 DEBUG_EDIT 若被别处(场景表 `_det_scenarios.run`)置了真, 双路对局会以调试场方式建场,
+	## ★静态的 DEBUG_EDIT 若被别处(场景表 `det_scenarios.run`)置了真, 双路对局会以调试场方式建场,
 	##   第一路打完就卡在 _dl_state="" 永远打不完(实测: 跑满 30000 帧、727 个校验点、state 空)。拆文件后照样防一手。
 	RB.DEBUG_EDIT = false
 	var gs = get_node_or_null("/root/GameState")

@@ -6,7 +6,7 @@ extends Node
 ## 输出: 每个场景一行 [PERF] tag | 步数 | 合计 ms | 每步 us(最小一遍) , 最后一行总计。
 
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
-const SC := preload("res://tests/_det_scenarios.gd")
+const SC := preload("res://scripts/referee/det_scenarios.gd")
 
 
 func _run(sc: Dictionary) -> Array:

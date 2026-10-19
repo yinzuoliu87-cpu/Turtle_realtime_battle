@@ -23,7 +23,7 @@ extends Node
 ## | `verify_determinism_b` | 同种子**同进程**两遍逐步逐字相同 | 换个进程 / 换台机器 |
 ## | **本门禁** | 逐步指纹的摘要 == **钉住的常量** ⇒ 换进程、换 OS、换 libm 都得一样 | 换 CPU 架构(ARM) —— CI 没有 ARM runner, 见 §缺口 |
 ##
-## ★同一份场景表(`tests/_det_scenarios.gd`), 两个门禁共用 —— 抄第二份必然漂。
+## ★同一份场景表(`scripts/referee/det_scenarios.gd`), 两个门禁共用 —— 抄第二份必然漂。
 ##
 ## ══════════════════════════════════════════════════════════════════════
 ##  为什么「与金标比」这个形状是对的
@@ -52,9 +52,9 @@ extends Node
 ## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_determinism_cross.tscn --quit-after 12000
 
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
-const SC := preload("res://tests/_det_scenarios.gd")
+const SC := preload("res://scripts/referee/det_scenarios.gd")
 
-const GOLDEN_PATH := "res://tests/golden/determinism_cross.json"
+const GOLDEN_PATH := DeviceSelfcheck.GOLDEN_PATH   # ★与设备自检同一份金标(data/, 进导出包)
 
 ## ══════════════════════════════════════════════════════════════════════
 ##  ★★★已知跨平台分叉台账(2026-09-27) —— 存量记着, **只减不增**
@@ -75,7 +75,7 @@ const GOLDEN_PATH := "res://tests/golden/determinism_cross.json"
 ##   Windows 往远离零舍(658.13), glibc 银行家舍入(658.12)。探针(位模式逐步写盘, WSL 里跑
 ##   同版本 Linux Godot 对比)实测: ③ 600 步、⑬ 1000 步, 九个字段的**位模式两边逐位相同**,
 ##   只有格式化后的串不同(③ 101 步、⑬ 1 步: 右队 basic x = 1274.125)。
-##   ⇒ 指纹改走位模式(`_det_scenarios.fp`), 金标随之重生; 台账这一条划掉。
+##   ⇒ 指纹改走位模式(`det_scenarios.fp`), 金标随之重生; 台账这一条划掉。
 ##   「三件同时在场才飘」也就说得通了: 只是那个组合恰好把某个坐标走到了 .xx5。
 ##
 ## ⚠ **它不阻塞周日的玩法**: v0.19.450 起周日打完不当场宣布胜负, 权威只有服务端的
@@ -101,17 +101,17 @@ func _ok(name: String, cond: bool, detail: String = "") -> void:
 
 
 ## 全场快照 —— ★与 `verify_determinism_b._fp()` **同一个口径**。
-## ⚠ 两处必须一致, 否则两个门禁量的不是同一个东西。`_det_scenarios.gd` 只能抽数据,
+## ⚠ 两处必须一致, 否则两个门禁量的不是同一个东西。`det_scenarios.gd` 只能抽数据,
 ##   抽不了这个函数(它读 `scene._units`, 而两边建场的方式不同) ⇒ 用下面那条
 ##   「字段清单」断言把口径钉住: 加了字段就得两边一起加。
 const FP_FIELDS := ["hp", "pos.x", "pos.y", "alive", "shield", "gold", "energy",
 	"prism_color", "crit"]
 
 func _fp(scene) -> String:
-	return SC.fp(scene)   # ★两个门禁共用一份(见 `_det_scenarios.fp` 头注: 位模式, 不走 %.Nf)
+	return SC.fp(scene)   # ★两个门禁共用一份(见 `det_scenarios.fp` 头注: 位模式, 不走 %.Nf)
 
 
-## 跑一个场景 → 返回 [摘要, 逐步指纹数组, 不同指纹数, 累计承伤]。建场在 `_det_scenarios.run`(与 verify_determinism_ulp 共用)。
+## 跑一个场景 → 返回 [摘要, 逐步指纹数组, 不同指纹数, 累计承伤]。建场在 `det_scenarios.run`(与 verify_determinism_ulp 共用)。
 func _run(sc: Dictionary) -> Array:
 	return await SC.run(self, sc)
 
@@ -123,7 +123,7 @@ func _ready() -> void:
 	if gs != null:
 		gs.test_mode = true
 		## ★★钉死一个**绝对**周锚点, 不用"今天那一周" —— 否则下周一金标集体失效,
-		##   而失效的理由跟确定性一点关系都没有(见 `_det_scenarios.PIN_WEEK_ANCHOR` 头注)。
+		##   而失效的理由跟确定性一点关系都没有(见 `det_scenarios.PIN_WEEK_ANCHOR` 头注)。
 		gs.week_anchor_ts = int(SC.PIN_WEEK_ANCHOR)
 
 	var scs: Array = SC.all()
@@ -140,7 +140,7 @@ func _ready() -> void:
 		OS.set_environment("TURTLE_SEED", "")
 		var dig: String = str(r[0])
 		_digests[tag] = dig
-		## ★重生金标用(战斗规则有意改动之后): TURTLE_DET_PRINT_FULL=1 ⇒ 打出完整摘要, 抄回 golden/determinism_cross.json
+		## ★重生金标用(战斗规则有意改动之后): TURTLE_DET_PRINT_FULL=1 ⇒ 打出完整摘要, 抄回 data/determinism_cross.json
 		if OS.get_environment("TURTLE_DET_PRINT_FULL") != "":
 			print("[FULL] %s	%s" % [tag, dig])
 		## 分母: 这一局真的在推进(不然摘要是"静止画面"的摘要, 稳定得毫无意义)

@@ -59,6 +59,8 @@ const FOOT_LABEL := "FootInfo"
 const FEEDBACK_BTN := "Feedback"
 ## 「问题反馈」弹框本体(2026-10-12): 面板与上传都在自己的文件里, 这一页只放按钮。
 const _FB_PANEL := preload("res://scripts/scenes/feedback_panel.gd")
+## 「设备自检」弹框(2026-10-19, 诊断用): 版本号那一行连点 5 次打开。
+const _SELFCHECK := preload("res://scripts/scenes/settings/selfcheck_panel.gd")
 
 ## 【门禁注入点】true = 当作正式包(release 模板)来建 —— 无头门禁跑不出 release 模板,
 ##   而「调试场不许漏给玩家」这条要量**真建出来的页面**, 不是量源码里有没有那句 gate。
@@ -346,6 +348,9 @@ func _footer() -> void:
 	fl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	fl.position = Vector2(_L_X, _STRIP_CY - 14.0)
 	fl.size = Vector2(400.0, 28.0)
+	## 隐藏入口: 版本号这一行连点 5 次 ⇒「设备自检」(诊断用, 见 `settings/selfcheck_panel.gd`)。不画成按钮。
+	fl.mouse_filter = Control.MOUSE_FILTER_PASS
+	fl.gui_input.connect(_on_foot_input)
 	add_child(fl)
 
 	## 调试场 — 用户 2026-09-17:「调试场可以塞到设置里, 正式上线的不会要调试场」。
@@ -377,6 +382,18 @@ func _footer() -> void:
 	rb.name = RESET_BTN
 	for s in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
 		rb.add_theme_color_override(s, Color("#ff8a94"))
+
+
+var _foot_taps: Array = []
+
+
+func _on_foot_input(ev: InputEvent) -> void:
+	if not (ev is InputEventMouseButton) or not (ev as InputEventMouseButton).pressed 			or (ev as InputEventMouseButton).button_index != MOUSE_BUTTON_LEFT:
+		return
+	_foot_taps = _SELFCHECK.note_tap(_foot_taps, Time.get_ticks_msec())
+	if _foot_taps.size() >= _SELFCHECK.TAPS:
+		_foot_taps = []
+		_SELFCHECK.open(self)
 
 
 ## 一块金属框(战斗信息面板 / 结算屏同一张 `panel-frame` 九宫格, 不新增素材)。

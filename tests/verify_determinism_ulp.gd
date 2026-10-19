@@ -18,7 +18,7 @@ extends Node
 ## DetMath 有个门禁专用开关 `perturb = N`: 每 N 次**平台相关**的调用, 给结果加/减 1 ulp ——
 ## 正是另一块芯片会差的那一位。`raw = true` 让 DetMath 退回引擎原版(= 加固之前)。
 ##   U1 raw(加固前)+ 扰动 ⇒ **必须分叉** —— 证明扰动模型咬得住真实的那类 bug(尺子会咬人)。
-##   U2 默认(加固后)+ 扰动 ⇒ 15 个场景的逐步指纹摘要 == `tests/golden/determinism_cross.json`(那份金标是
+##   U2 默认(加固后)+ 扰动 ⇒ 15 个场景的逐步指纹摘要 == `data/determinism_cross.json`(那份金标是
 ##      verify_determinism_cross 不带扰动跑出来、并在 CI Linux 上复核的) ⇒ 扰动一位都没改到结果。
 ##      (原来写成「同一进程跑两遍比」, 要多跑一整张表; 金标已经是那一遍的结果, 直接比它。对不上时才补跑一遍找首个分叉步)
 ##   U3 产品自己的回放校验在 `verify_determinism_ulp_replay.gd`(拆开是为了门禁并行: 两份各约 3~4 分钟)。
@@ -30,13 +30,13 @@ extends Node
 ## 跑法: <godot> --headless --path . res://tests/verify_determinism_ulp.tscn --quit-after 60000
 ##   ULP_ONLY=u4 只跑 U4 · ULP_SCEN=⑬ 只跑这一个场景(变异验证用)
 
-const SC := preload("res://tests/_det_scenarios.gd")
+const SC := preload("res://scripts/referee/det_scenarios.gd")
 
 ## 扰动步长: 每 7 次平台相关调用扰动一次(稀疏 —— 比真实的 FMA 差异还稀, 照样必须咬得住)。
 const STRIDE := 7
 ## raw 证据跑这几个场景(角度/弹道/环绕/抛物线/位移最多的): ③ 满装备 ⑧ 受控 PRNG 落点 ⑬ 凤凰/熔岩/宝箱/星际/无头
 const RAW_TAGS := ["③", "⑧", "⑬"]
-const GOLDEN_PATH := "res://tests/golden/determinism_cross.json"
+const GOLDEN_PATH := DeviceSelfcheck.GOLDEN_PATH   # ★与设备自检同一份金标(data/, 进导出包)
 ## U4 金标: DetMath 在固定输入集上全部输出的位模式摘要(见 `_math_digest`)。
 const GOLDEN_MATH := "a1bfb101c1670aed0921de344a53d272115857f805a54b6e181d7fcd676d6ebb"
 

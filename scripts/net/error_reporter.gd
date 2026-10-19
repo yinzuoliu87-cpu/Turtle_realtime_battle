@@ -104,6 +104,25 @@ static func row_of(function: String, file: String, line: int, code: String, rati
 	}
 
 
+## 主动上报一条诊断(不是引擎报错; 现在只有设备自检 `DeviceSelfcheck.report` 用)。
+## 签名 = kind + key 的摘要: 同一进程同一签名只排一次; 不占 MAX_SIGS(那是给每帧刷的报错设的顶)。
+## 返回 true = 进了上传队列(没装上报器 / 已排过 ⇒ false)。版本 / 平台在 `drain` 里补。
+static func report(kind: String, message: String, detail: String, key: String) -> bool:
+	if _inst == null:
+		return false
+	var sig := ("%s|%s" % [kind, key]).md5_text().left(16)
+	_inst._mx.lock()
+	if _inst._seen.has(sig):
+		_inst._mx.unlock()
+		return false
+	_inst._seen[sig] = true
+	_inst._queue.append({"p_sig": sig, "p_kind": kind, "p_message": message.left(MSG_MAX),
+		"p_detail": detail.left(DETAIL_MAX)})
+	queued_total += 1
+	_inst._mx.unlock()
+	return true
+
+
 func _log_error(function: String, file: String, line: int, code: String, rationale: String,
 		_editor_notify: bool, error_type: int, script_backtraces: Array[ScriptBacktrace]) -> void:
 	## 警告一律不收, 只有一种例外: 回放对不上(`ReplayRecorder._diverge` 的「[Replay] 第 N 步…停止播放」)。

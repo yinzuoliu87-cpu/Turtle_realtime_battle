@@ -16,7 +16,7 @@ extends Node
 ##
 ## ⚠ 诚实边界: 本门禁**不声称**「决赛已可服务端复算」。正式对局不开 `_deterministic`
 ##   (只有 `TURTLE_SEED` 设时才开), 且 `_juice_rng` 等落点无条件 `randomize()`
-##   (清单见 `tests/_det_scenarios.gd` ⑧)。这里只守「种子被如实记下、且如实传到上报那一层」。
+##   (清单见 `scripts/referee/det_scenarios.gd` ⑧)。这里只守「种子被如实记下、且如实传到上报那一层」。
 ##
 ## 重场景按 BSOD 记忆**顺序**建/free, 不同时开(与 verify_battle_determinism 同做法)。
 

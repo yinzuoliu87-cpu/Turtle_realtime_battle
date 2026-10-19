@@ -92,7 +92,7 @@ func _ready() -> void:
 	## ② 换算方向与单位: 独立整数算式对账
 	var bias: int = int(Time.get_time_zone_from_system().get("bias", 0))
 	print("  [信息] 本机时区偏移 bias = %d 分钟(CI/UTC 上为 0, 见头注的诚实登记)" % bias)
-	## 1789948800 = 2026-09-21 周一 00:00 UTC(= `_det_scenarios.PIN_WEEK_ANCHOR`) ⇒ 减一天 = 周日 00:00 UTC
+	## 1789948800 = 2026-09-21 周一 00:00 UTC(= `det_scenarios.PIN_WEEK_ANCHOR`) ⇒ 减一天 = 周日 00:00 UTC
 	var sun0: int = 1789948800 - 86400
 	var samples: Array = [sun0 + 8 * 3600, sun0 + 20 * 3600, sun0 + 23 * 3600 + 59 * 60, sun0]
 	var bad: Array = []

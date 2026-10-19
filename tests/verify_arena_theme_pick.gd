@@ -22,7 +22,7 @@ extends Node
 
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const AT := preload("res://scripts/gamedata/arena_theme.gd")
-const SC := preload("res://tests/_det_scenarios.gd")
+const SC := preload("res://scripts/referee/det_scenarios.gd")
 const Backend := preload("res://scripts/net/backend.gd")
 
 const FORMAL_SEED := 4242             # 正式双路那一局的种子

@@ -46,7 +46,7 @@ extends Node
 ##   「红在哪一步、第几个 sim 步开始分叉」比强行改绿有价值得多 —— 照实报。
 
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
-const SC := preload("res://tests/_det_scenarios.gd")
+const SC := preload("res://scripts/referee/det_scenarios.gd")
 
 ## ══════════════════════════════════════════════════════════════════════════
 ##  ★★★已知差距台账(2026-10-02 本机实测) —— **只减不增**
@@ -206,7 +206,7 @@ func _ready() -> void:
 	var gs = get_node_or_null("/root/GameState")
 	if gs != null:
 		gs.test_mode = true
-		## 钉死周锚点(与 `_det_scenarios` 同一个常量): 滚一次大轮会清等级/装备 ⇒
+		## 钉死周锚点(与 `det_scenarios` 同一个常量): 滚一次大轮会清等级/装备 ⇒
 		## 两遍跑的根本不是同一局, 而失效的理由跟确定性一点关系都没有。
 		gs.week_anchor_ts = int(SC.PIN_WEEK_ANCHOR)
 
