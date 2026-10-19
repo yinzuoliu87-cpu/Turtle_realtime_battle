@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/referee/referee_main.gd" id="1_referee"]
+
+[node name="Referee" type="Node"]
+script = ExtResource("1_referee")

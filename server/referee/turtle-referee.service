@@ -1,0 +1,29 @@
+# 服务器裁判轮询器（部署步骤见同目录 README.md）。放到 /etc/systemd/system/turtle-referee.service。
+[Unit]
+Description=Turtle referee poller (headless Godot, claims referee_jobs via PostgREST)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=turtle-referee
+Group=turtle-referee
+EnvironmentFile=/etc/turtle-referee/env
+ExecStart=/usr/bin/python3 /opt/turtle/referee/referee_poller.py
+Restart=always
+RestartSec=5
+# 停服时让手上那一局跑完再退(一局 ≤ JOB_TIMEOUT_SEC=120)
+KillSignal=SIGTERM
+TimeoutStopSec=150
+Nice=5
+# 加固: 只给工作目录与工程目录写权限(Godot 在工程目录下 .godot/ 里可能要写缓存)
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/turtle-referee /opt/turtle
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

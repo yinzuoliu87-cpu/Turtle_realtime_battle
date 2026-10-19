@@ -1,0 +1,11 @@
+# 裁判机健康检查(积压 / 心跳)。由 turtle-referee-health.timer 每分钟拉一次; 失败 = 退出码 1, 进 journald。
+# 告警通道(邮件 / Telegram / 别的)还没定 —— 见 README「未决点」。
+[Unit]
+Description=Turtle referee health check (referee_backlog)
+
+[Service]
+Type=oneshot
+User=turtle-referee
+Group=turtle-referee
+EnvironmentFile=/etc/turtle-referee/env
+ExecStart=/usr/bin/python3 /opt/turtle/referee/referee_poller.py --health

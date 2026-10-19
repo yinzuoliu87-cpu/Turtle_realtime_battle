@@ -112,7 +112,7 @@ static var _backup_test_mode := false
 static var _has_backup := false
 
 var battle
-var mode := ""                 # "rec" 录 / "play" 播 / "resume" 把上一局中途退出的打完(见 abandoned_match.gd) / "" 都不是
+var mode := ""                 # "rec" 录 / "play" 播 / "resume" 把上一局中途退出的打完(见 abandoned_match.gd) / "referee" 服务器裁判(见 scripts/referee/) / "" 都不是
 var rec: Dictionary = {}
 var _ev_i := 0                 # 播放: 下一条待发事件下标
 var _firing := false           # 播放: 正在由本模块自己触发事件(放行 allow_input)
@@ -138,6 +138,16 @@ var _revealed := false
 const RESUME_BUDGET_US := 40000
 ## 防卡死: 推了这么多步还没结算 ⇒ 认输收尾(正常对局远不到: 实测 9457 场没有超 4 分钟的)。
 const RESUME_STEP_CAP := 60 * 60 * 20
+## ── 服务器裁判(2026-10-19, docs/plans/20261019-服务器裁判.md §1) ──
+## 裁判入口(`scripts/referee/referee_runner.gd`)写、战斗场 `_ready` 里 `start()` 读走: {seed, id}。
+##   与 "resume" 同一套「没有人的输入」: 幕布 5 秒自己走(sim 里的), 摆位屏立刻按快照站位开打, 没有认输。
+##   与 "rec" 同一份录像格式(v / client_version / seed / state / events / cps / end) ⇒ 手机 `play` 直接播。
+##   ★结算一律跳过(同 "play"): 裁判只出结果与录像, 记账由服务端写回 RPC 做。
+static var pending_referee: Dictionary = {}
+## 裁判每帧推 sim 的时间预算(微秒)。帧切法不改结果(门禁 verify_referee_job_roundtrip 换预算比过), 只决定多快跑完。
+static var referee_budget_us := 100000
+var referee_steps := 0          # 裁判: 已推的 sim 步
+var referee_stuck := false      # 裁判: 推到 RESUME_STEP_CAP 还没结算(不认输收尾: 结果交给调用方当错误处理)
 
 
 func _init(b) -> void:
@@ -159,6 +169,9 @@ func start() -> void:
 		##   (录制那边 `seed = note_battle_seed(seed)` 同样是「重设 seed ⇒ 状态归位」, 两边起点一致。)
 		battle._battle_rng.seed = GameState.note_battle_seed(int(rec.get("seed", 0)))
 		live = Live.take(self)      # 观赛会话(赛况板「观赛」/ 对阵图开播时挂上的); 没有 = 普通回放
+		return
+	if not pending_referee.is_empty():
+		_start_referee()
 		return
 	if not Abandoned.pending_resume.is_empty():
 		_start_resume()
@@ -210,6 +223,27 @@ func _start_resume() -> void:
 				live_up = LiveUp.new(self)
 				live_up.started = true
 				break
+
+
+## 服务器裁判开局: 种子从任务里来(同 "play": 此刻还没有人从 `_battle_rng` 取过数); GameState 已由裁判入口按 A 方快照摆好,
+##   这里照录制那样抓一份 `capture_state()` 进录像 ⇒ 手机播的时候拿同一份状态。
+func _start_referee() -> void:
+	var job: Dictionary = pending_referee
+	pending_referee = {}
+	mode = "referee"
+	battle._battle_rng.seed = GameState.note_battle_seed(int(job.get("seed", 0)))
+	rec = {
+		"v": FORMAT_V,
+		"client_version": client_version(),
+		"plat": OS.get_name(),
+		"arch": Engine.get_architecture_name(),
+		"seed": int(battle._battle_rng.seed),
+		"state": capture_state(),
+		"events": [],
+		"cps": [],
+	}
+	var id := str(job.get("id", ""))
+	rec["id"] = id if Uploader.SB.is_uuid(id) else new_id()
 
 
 ## 这一局录不录。Q3(用户授权按推荐): 先只录周六闯关赛;
@@ -302,6 +336,8 @@ func sim_feed(rd: float) -> float:
 		return live.feed(rd)
 	if mode == "resume":
 		return _resume_frame(rd)
+	if mode == "referee":
+		return _referee_frame()
 	return rd * time_mult()
 
 
@@ -327,6 +363,25 @@ func _resume_frame(rd: float) -> float:
 			battle._do_surrender()
 			_firing = false
 		if Time.get_ticks_usec() - t0 > RESUME_BUDGET_US:
+			break
+	return 0.0
+
+
+## 裁判的一帧: 在时间预算内直接推 sim(返回 0, 累加器这一帧不再推)。结算之后 / 卡死之后一步都不再推。
+func _referee_frame() -> float:
+	if finished or referee_stuck:
+		return 0.0
+	var t0 := Time.get_ticks_usec()
+	while not finished:
+		var frozen: bool = battle._hitstop > 0.0
+		var in_ts: bool = not battle._timestop._ts_active.is_empty()
+		battle._sim_step(battle.SIM_DT, frozen, in_ts)
+		referee_steps += 1
+		if referee_steps >= RESUME_STEP_CAP and not finished:
+			referee_stuck = true
+			push_warning("[Referee] %d 步仍未结算 —— 停下, 交给调用方当错误处理" % referee_steps)
+			break
+		if Time.get_ticks_usec() - t0 > referee_budget_us:
 			break
 	return 0.0
 
@@ -362,6 +417,8 @@ func pre_step() -> bool:
 		fired = _fire_due(s)
 	elif mode == "resume":
 		fired = _resume_inputs(s)
+	elif mode == "referee":
+		fired = _referee_inputs()
 	if s > 0 and s % CP_EVERY == 0 and diverged_at < 0:
 		_checkpoint(s)
 		## 录制那一局在第 E 步就结算了, 本机却还在打 ⇒ 结局已经不同(例如漏了一条认输)。
@@ -396,6 +453,16 @@ func _resume_inputs(s: int) -> bool:
 	return fired
 
 
+## 裁判: 唯一的「输入」是摆位屏立刻开打(站位 = 快照里的 off, 开打时已按岛形 / 障碍夹好)。幕布 5 秒自己走, 不点。
+func _referee_inputs() -> bool:
+	if finished or str(battle._dl_state) != "place":
+		return false
+	_firing = true
+	battle._dl_sys._dl_start_fight()
+	_firing = false
+	return true
+
+
 ## `_sim_step` 末尾(sim_stepped 信号)调。
 func post_step() -> void:
 	_in_step = false
@@ -406,7 +473,7 @@ func _checkpoint(s: int) -> void:
 	##   它不进对局 —— 开打那一刻的站位由 fight 事件逐个比对(`_apply_positions`)。
 	##   ⇒ 摆位期的校验点记成占位, 两边都不比。
 	var h := PLACE_CP if str(battle._dl_state) == "place" else digest(battle)
-	if mode == "rec" or mode == "resume":
+	if mode == "rec" or mode == "resume" or mode == "referee":
 		(rec["cps"] as Array).append(h)
 		return
 	var idx: int = s / CP_EVERY - 1
@@ -454,6 +521,12 @@ func allow_input(kind: String) -> bool:
 		return true
 	if mode == "resume":
 		return _resume_allow(kind)
+	if mode == "referee":
+		## 只认本模块自己按的(自动开打); 照录制那样记下来(i=false: 发生在步开头, 与人在两步之间按的同一口径)。
+		if not _firing:
+			return false
+		_record_event(kind)
+		return true
 	if mode != "play":
 		return true
 	var evs: Array = rec.get("events", [])
@@ -511,6 +584,12 @@ func _resume_allow(kind: String) -> bool:
 
 ## `_settle_season` 第一行调。返回 true = 这是回放, 结算一律跳过(V5 零副作用)。
 func on_settle(won: bool) -> bool:
+	if mode == "referee":
+		## 裁判: 记下终局(与录制同一口径), 结算一律跳过 —— 记账是服务端写回 RPC 的事。
+		if not finished:
+			finished = true
+			rec["end"] = {"s": int(battle._sim_step_n), "h": digest(battle), "won": won}
+		return true
 	if (mode == "rec" or mode == "resume") and not finished:
 		finished = true
 		rec["end"] = {"s": int(battle._sim_step_n), "h": digest(battle), "won": won}
