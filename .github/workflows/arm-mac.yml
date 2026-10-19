@@ -1,0 +1,396 @@
+# ARM(Apple Silicon) 确定性验证 (2026-10-19)
+#
+# 【为什么要有】玩家跑 iOS(ARM64), 而提交门禁 tests.yml 只在 ubuntu(x86-64) 上跑。
+#   verify_determinism_cross 的头注把这一条登记成缺口:「ARM 没验 —— 在那之前不许声称跨设备确定」。
+#   用户 10-19 问「手机测试…能不用我的手机吗」⇒ 用 GitHub 的苹果芯片 macOS runner(与 iPhone 同为 ARM64)
+#   跑 Mac 版 Godot 无头测试, 把那 15 个场景的金标(data/determinism_cross.json)在 ARM 上量一遍。
+#
+# 【只在这两种情况跑】推到 ci/arm-* 分支, 或手动 dispatch。不进 main 的门禁(macOS runner 贵且慢)。
+#
+# 【判定口径 = run-tests.sh, 不另抄一份】
+#   · 帧预算: 直接从 run-tests.sh 里截 frames_for() 那一段 eval 进来
+#   · 致命正则: 直接从 run-tests.sh 里取 FATAL= 那一行
+#   · 判 PASS = 退出码 0 且 致命报错 0 条 且 日志里有 ALL PASS(与 run_test 逐字同一判据)
+#   · 每个测试一份 user://: macOS 上 Godot 的 user:// 在 $HOME/Library/Application Support,
+#     ★它【不认】XDG_DATA_HOME(第一次 CI 实测: 设了照样落在 /Users/runner/Library/...)
+#     ⇒ 每个测试把 HOME 也设成 $GATE_APPDATA/<测试名>(XDG/APPDATA 照设, 与 run-tests.sh 一致),
+#     并跑 verify_gate_isolation 量引擎自己报的 OS.get_user_data_dir() 证明真隔离(不靠我猜)。
+#
+# 【ARM 分叉时怎么出逐步 diff】
+#   ARM 那一侧: verify_determinism_cross 带 TURTLE_DET_DUMP=1 ⇒ 不一致的场景把逐步指纹写到 user://det_dump_*.txt。
+#   x86 那一侧: linux-dump 作业(只在 ARM 有不一致时才跑)把金标改坏(仅 CI 工作区·不提交)⇒ 15 个场景全部"不一致"
+#   ⇒ 全部写出逐步指纹。report 作业逐行比两边, 报「哪个场景 / 第几步 / 哪只单位 / 哪个字段 / 两边的值」。
+name: ARM Mac 确定性(Apple Silicon)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['ci/arm-*']
+
+permissions:
+  contents: write   # 失败时把日志推到 ci-logs 分支(与 tests.yml 同一条逃生口)
+
+env:
+  GODOT_VERSION: "4.6.3-stable"
+
+jobs:
+  arm:
+    runs-on: macos-14
+    timeout-minutes: 120
+    outputs:
+      mismatch: ${{ steps.run.outputs.mismatch }}
+    env:
+      ARM_TESTS: >-
+        verify_gate_isolation
+        verify_determinism_cross
+        verify_device_selfcheck
+        verify_determinism_ulp
+        verify_determinism_ulp_replay
+        verify_referee_job_roundtrip
+        verify_replay_roundtrip
+        verify_stream_capture_inert
+        verify_stream_size_budget
+        verify_stream_whitelist_alarm
+      LC_ALL: en_US.UTF-8
+      LANG: en_US.UTF-8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 架构(必须是 arm64)
+        run: |
+          M="$(uname -m)"
+          CPU="$(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo '?')"
+          echo "uname -m = $M"
+          echo "CPU = $CPU"
+          sw_vers || true
+          echo "::notice title=arch::runner uname -m=$M / CPU=$CPU"
+          if [ "$M" != "arm64" ]; then
+            echo "::error title=arch::不是 arm64(实得 $M) —— 这台 runner 量不了 ARM"
+            exit 1
+          fi
+
+      - name: 装 Godot (macOS 通用版, 以 arm64 原生跑)
+        run: |
+          mkdir -p "$RUNNER_TEMP/godot"
+          curl -fL -o "$RUNNER_TEMP/godot/godot.zip" \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_macos.universal.zip"
+          unzip -q "$RUNNER_TEMP/godot/godot.zip" -d "$RUNNER_TEMP/godot"
+          BIN="$RUNNER_TEMP/godot/Godot.app/Contents/MacOS/Godot"
+          file "$BIN"
+          echo "GODOT=$BIN" >> "$GITHUB_ENV"
+          arch -arm64 "$BIN" --version
+
+      - name: 导入资源 (注册 class_name / 生成 .godot)
+        run: |
+          # 与 tests.yml 同一做法: 冷缓存下 --import 会随机段错误, 重试到导够为止
+          for i in 1 2 3 4 5; do
+            arch -arm64 "$GODOT" --headless --import --path . && rc=0 || rc=$?
+            n=$(ls .godot/imported/ 2>/dev/null | wc -l | tr -d ' ')
+            echo "导入第 $i 遍: rc=$rc 产物 $n 个"
+            if [ "$n" -ge 50 ]; then break; fi
+          done
+          if [ "$(ls .godot/imported/ 2>/dev/null | wc -l | tr -d ' ')" -lt 50 ]; then
+            echo "::error::导入产物过少, 导入没完成"; exit 1
+          fi
+
+      - name: 引擎自报架构 + user:// 落点
+        run: |
+          # 探针只写在 CI 工作区, 不提交
+          cat > _ci_arch_probe.gd <<'GD'
+          extends SceneTree
+          func _init():
+              print("[ARCH] engine_arch=%s os=%s cpu=%s cores=%d" % [Engine.get_architecture_name(), OS.get_name(), OS.get_processor_name(), OS.get_processor_count()])
+              print("[ARCH] user_data_dir=%s" % OS.get_user_data_dir())
+              quit(0)
+          GD
+          P="$RUNNER_TEMP/probe_userdir"
+          mkdir -p "$P"
+          TURTLE_BACKEND=" " TURTLE_SUPABASE=" " QUIET=1 arch -arm64 "$GODOT" --headless --audio-driver Dummy --path . -s res://_ci_arch_probe.gd > probe.log 2>&1 || true
+          TURTLE_BACKEND=" " TURTLE_SUPABASE=" " QUIET=1 HOME="$P" XDG_DATA_HOME="$P" arch -arm64 "$GODOT" --headless --audio-driver Dummy --path . -s res://_ci_arch_probe.gd > probe_xdg.log 2>&1 || true
+          cat probe.log
+          echo "--- 设了 HOME=XDG_DATA_HOME=$P 之后:"
+          cat probe_xdg.log
+          A="$(grep -m1 'engine_arch=' probe.log | sed 's/^\[ARCH\] //')"
+          U0="$(grep -m1 'user_data_dir=' probe.log | sed 's/^.*user_data_dir=//')"
+          U1="$(grep -m1 'user_data_dir=' probe_xdg.log | sed 's/^.*user_data_dir=//')"
+          echo "::notice title=engine::$A"
+          echo "::notice title=userdir::默认 user://=$U0 | 设 HOME+XDG_DATA_HOME 后 user://=$U1"
+          case "$A" in
+            *engine_arch=arm64*) ;;
+            *) echo "::error title=engine::Godot 不是以 arm64 原生在跑($A)"; exit 1 ;;
+          esac
+          case "$U1" in
+            "$P"*) ;;
+            *) echo "::error title=userdir::设了 HOME 仍没落进隔离目录(user://=$U1)"; exit 1 ;;
+          esac
+          rm -f _ci_arch_probe.gd _ci_arch_probe.gd.uid
+
+      - name: 跑 ARM 测试(判据与 run-tests.sh 逐字相同)
+        id: run
+        run: |
+          set +e
+          # ★不抄第二份: 帧预算与致命正则都从 run-tests.sh 现取
+          eval "$(awk '/^frames_for /,/^}/' run-tests.sh)"
+          eval "$(grep -m1 '^FATAL=' run-tests.sh)"
+          if ! type frames_for >/dev/null 2>&1 || [ -z "$FATAL" ]; then
+            echo "::error::没从 run-tests.sh 取到 frames_for / FATAL"; exit 1
+          fi
+          echo "FATAL=$FATAL"
+          export GATE_APPDATA="$RUNNER_TEMP/gate_appdata"
+          rm -rf "$GATE_APPDATA"; mkdir -p "$GATE_APPDATA"
+          LOGS="$RUNNER_TEMP/armlogs"
+          rm -rf "$LOGS"; mkdir -p "$LOGS"
+          : > "$LOGS/results.txt"
+          PASS=0; FAIL=0
+          for t in $ARM_TESTS; do
+            if [ ! -f "tests/$t.tscn" ]; then
+              echo "SKIP $t (无 .tscn)"; echo "SKIP $t" >> "$LOGS/results.txt"; continue
+            fi
+            ad="$GATE_APPDATA/$t"; mkdir -p "$ad"
+            fr="$(frames_for "$t")"
+            dump=""
+            [ "$t" = "verify_determinism_cross" ] && dump="1"
+            s0=$(date +%s)
+            TURTLE_DET_DUMP="$dump" TURTLE_BACKEND=" " TURTLE_SUPABASE=" " QUIET=1 APPDATA="$ad" XDG_DATA_HOME="$ad" HOME="$ad" \
+              arch -arm64 "$GODOT" --headless --audio-driver Dummy --path . "res://tests/$t.tscn" \
+              --quit-after "$fr" > "$LOGS/$t.log" 2>&1
+            rc=$?
+            sec=$(( $(date +%s) - s0 ))
+            fatal="$(grep -cE "$FATAL" "$LOGS/$t.log" 2>/dev/null)"
+            [ -n "$fatal" ] || fatal=0
+            if [ "$rc" -eq 0 ] && [ "$fatal" -eq 0 ] && grep -q "ALL PASS" "$LOGS/$t.log"; then
+              PASS=$((PASS+1)); echo "PASS $t (${sec}s, 预算 $fr 帧)" | tee -a "$LOGS/results.txt"
+            else
+              FAIL=$((FAIL+1)); echo "FAIL $t (rc=$rc 致命=$fatal ${sec}s 预算 $fr 帧)" | tee -a "$LOGS/results.txt"
+              grep -E "\[FAIL\]|✗|$FATAL" "$LOGS/$t.log" | head -8 | sed 's/^/      /'
+            fi
+          done
+          # 逐步指纹 dump(只有不一致的场景才有)
+          mkdir -p "$LOGS/dumps"
+          find "$GATE_APPDATA" -name 'det_dump_*.txt' -exec cp {} "$LOGS/dumps/" \; 2>/dev/null
+          echo "dump 文件: $(ls "$LOGS/dumps" | wc -l | tr -d ' ') 个"
+          # 15 场景逐个: 从 verify_determinism_cross 的「摘要 == 金标」行里取
+          python3 - "$LOGS/verify_determinism_cross.log" "$LOGS/scenarios.txt" <<'PY'
+          import io, re, sys
+          src, out = sys.argv[1], sys.argv[2]
+          try:
+              lines = io.open(src, encoding='utf-8', errors='replace').read().splitlines()
+          except OSError:
+              lines = []
+          rows = []
+          for ln in lines:
+              m = re.match(r'^\s*\[(PASS|FAIL)\]\s*★★★(.+?) · 摘要 == 金标\s*(.*)$', ln)
+              if m:
+                  ok = m.group(1) == 'PASS'
+                  rows.append(('一致' if ok else '不一致', m.group(2).strip(), m.group(3).strip()))
+          with io.open(out, 'w', encoding='utf-8') as f:
+              for r in rows:
+                  f.write('%s\t%s\t%s\n' % r)
+          print('场景行 %d 条' % len(rows))
+          PY
+          NSC=$(wc -l < "$LOGS/scenarios.txt" | tr -d ' ')
+          NSAME=$(grep -c '^一致' "$LOGS/scenarios.txt")
+          NDIFF=$(grep -c '^不一致' "$LOGS/scenarios.txt")
+          echo "15 场景 ARM vs 金标: 一致 $NSAME / 不一致 $NDIFF / 共 $NSC 行"
+          cat "$LOGS/scenarios.txt"
+          if [ "$NDIFF" -gt 0 ]; then echo "mismatch=1" >> "$GITHUB_OUTPUT"; else echo "mismatch=0" >> "$GITHUB_OUTPUT"; fi
+          # 注解(无 token 也能经 check-runs API 读到)。每步每类最多 10 条 ⇒ 合并成少数几条, 用 %0A 换行
+          R="$(sed 's/$/%0A/' "$LOGS/results.txt" | tr -d '\n')"
+          echo "::notice title=tests::PASS $PASS / FAIL $FAIL%0A$R"
+          S="$(awk -F'\t' '{printf "%s %s%s%%0A", $1, $2, ($1=="不一致" ? " ["$3"]" : "")}' "$LOGS/scenarios.txt")"
+          echo "::notice title=scenarios::ARM 15 场景 vs 金标: 一致 $NSAME / 不一致 $NDIFF / 共 $NSC 行%0A$S"
+          {
+            echo "## ARM(Apple Silicon) 确定性"
+            echo ""
+            echo "- runner: \`$(uname -m)\`"
+            echo "- 测试: PASS $PASS / FAIL $FAIL"
+            echo ""
+            echo '```'
+            cat "$LOGS/results.txt"
+            echo '```'
+            echo ""
+            echo "### 15 场景 ARM vs 金标: 一致 $NSAME / 不一致 $NDIFF"
+            echo ""
+            echo '```'
+            cat "$LOGS/scenarios.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "PASS=$PASS FAIL=$FAIL" > "$LOGS/verdict.txt"
+          # 失败测试的 FAIL 行做成 error 注解(最多 10 条)
+          for t in $ARM_TESTS; do
+            grep -q "^FAIL $t " "$LOGS/results.txt" || continue
+            grep -E "\[FAIL\]|$FATAL" "$LOGS/$t.log" | head -3 | while IFS= read -r line; do
+              echo "::error title=$t::${line}"
+            done
+          done
+          # 场景行必须是 15 条(分母), 否则这份摘要是空检查
+          if [ "$NSC" -ne 15 ]; then
+            echo "::error title=scenarios::从 verify_determinism_cross 日志里只取到 $NSC 条场景行(应 15) —— 场景摘要不可信"
+            FAIL=$((FAIL+1))
+          fi
+          [ "$FAIL" -eq 0 ]
+
+      - name: 留日志(给 report 作业)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: armlogs
+          path: ${{ runner.temp }}/armlogs
+          retention-days: 7
+          if-no-files-found: warn
+
+  # x86 那一侧的逐步指纹: 只在 ARM 有场景不一致时跑
+  linux-dump:
+    needs: arm
+    if: always() && needs.arm.outputs.mismatch == '1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: 装 Godot (linux headless)
+        run: |
+          mkdir -p "$RUNNER_TEMP/godot"
+          curl -fL -o "$RUNNER_TEMP/godot/godot.zip" \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          unzip -q "$RUNNER_TEMP/godot/godot.zip" -d "$RUNNER_TEMP/godot"
+          BIN="$(ls "$RUNNER_TEMP"/godot/Godot_v*_linux.x86_64 | head -1)"
+          chmod +x "$BIN"
+          echo "GODOT=$BIN" >> "$GITHUB_ENV"
+      - name: 导入资源
+        run: |
+          for i in 1 2 3 4 5; do
+            "$GODOT" --headless --import --path . && rc=0 || rc=$?
+            n=$(ls .godot/imported/ 2>/dev/null | wc -l)
+            echo "导入第 $i 遍: rc=$rc 产物 $n 个"
+            if [ "$n" -ge 50 ]; then break; fi
+          done
+      - name: 金标改坏(仅 CI 工作区) ⇒ 15 个场景全部写出逐步指纹
+        run: |
+          set +e
+          python3 - data/determinism_cross.json <<'PY'
+          import io, json, sys
+          p = sys.argv[1]
+          d = json.load(io.open(p, encoding='utf-8'))
+          for k in d:
+              d[k] = '0' * len(str(d[k]))
+          io.open(p, 'w', encoding='utf-8').write(json.dumps(d, ensure_ascii=False, indent=2))
+          print('金标 %d 条已改坏(只为让每个场景都写 dump)' % len(d))
+          PY
+          eval "$(awk '/^frames_for /,/^}/' run-tests.sh)"
+          AD="$RUNNER_TEMP/ud/verify_determinism_cross"
+          mkdir -p "$AD"
+          TURTLE_DET_DUMP=1 TURTLE_BACKEND=" " TURTLE_SUPABASE=" " QUIET=1 APPDATA="$AD" XDG_DATA_HOME="$AD" \
+            "$GODOT" --headless --audio-driver Dummy --path . res://tests/verify_determinism_cross.tscn \
+            --quit-after "$(frames_for verify_determinism_cross)" > "$RUNNER_TEMP/linux_cross.log" 2>&1
+          echo "rc=$? (预期非 0: 金标被故意改坏)"
+          mkdir -p "$RUNNER_TEMP/linuxdumps"
+          find "$RUNNER_TEMP/ud" -name 'det_dump_*.txt' -exec cp {} "$RUNNER_TEMP/linuxdumps/" \;
+          cp "$RUNNER_TEMP/linux_cross.log" "$RUNNER_TEMP/linuxdumps/linux_cross.log"
+          echo "x86 dump: $(ls "$RUNNER_TEMP/linuxdumps" | grep -c det_dump_) 个"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linuxdumps
+          path: ${{ runner.temp }}/linuxdumps
+          retention-days: 7
+
+  report:
+    needs: [arm, linux-dump]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: armlogs
+          path: ${{ runner.temp }}/armlogs
+      - uses: actions/download-artifact@v4
+        if: needs.linux-dump.result == 'success'
+        continue-on-error: true
+        with:
+          name: linuxdumps
+          path: ${{ runner.temp }}/linuxdumps
+      - name: ARM vs x86 逐步指纹 diff
+        if: needs.linux-dump.result == 'success'
+        run: |
+          python3 - "$RUNNER_TEMP/armlogs/dumps" "$RUNNER_TEMP/linuxdumps" "$RUNNER_TEMP/armlogs/stepdiff.txt" <<'PY'
+          import io, os, sys
+          arm_dir, x86_dir, out = sys.argv[1], sys.argv[2], sys.argv[3]
+          FIELDS = ['hp', 'pos.x', 'pos.y', 'alive', 'shield', 'gold', 'energy', 'prism_color', 'crit']
+          def load(p):
+              rows = []
+              for ln in io.open(p, encoding='utf-8', errors='replace').read().splitlines():
+                  if '\t' in ln:
+                      rows.append(ln.split('\t', 1)[1])
+              return rows
+          res = []
+          names = sorted(f for f in os.listdir(arm_dir) if f.startswith('det_dump_')) if os.path.isdir(arm_dir) else []
+          res.append('ARM 不一致场景的 dump: %d 个' % len(names))
+          for f in names:
+              a = load(os.path.join(arm_dir, f))
+              xp = os.path.join(x86_dir, f)
+              if not os.path.exists(xp):
+                  res.append('%s: x86 侧没有同名 dump' % f)
+                  continue
+              x = load(xp)
+              first = None
+              for i in range(min(len(a), len(x))):
+                  if a[i] != x[i]:
+                      first = i
+                      break
+              if first is None:
+                  res.append('%s: %d/%d 步逐字相同(步数%s)' % (f, len(a), len(x), '相同' if len(a) == len(x) else '不同'))
+                  continue
+              ua, ux = a[first].split('|'), x[first].split('|')
+              diffs = []
+              for k in range(min(len(ua), len(ux))):
+                  if ua[k] != ux[k]:
+                      pa, px = ua[k].split(':'), ux[k].split(':')
+                      who = pa[0]
+                      for j in range(1, min(len(pa), len(px))):
+                          if pa[j] != px[j]:
+                              fn = FIELDS[j - 1] if j - 1 < len(FIELDS) else 'f%d' % j
+                              diffs.append('%s.%s ARM=%s x86=%s' % (who, fn, pa[j], px[j]))
+              ndiff = sum(1 for i in range(min(len(a), len(x))) if a[i] != x[i])
+              res.append('%s: 第 %d 步起分叉(共 %d 步里 %d 步不同); 那一步: %s' % (f, first, min(len(a), len(x)), ndiff, '; '.join(diffs[:8])))
+          io.open(out, 'w', encoding='utf-8').write('\n'.join(res) + '\n')
+          print('\n'.join(res))
+          for r in res[:10]:
+              print('::error title=ARM-diff::' + r)
+          PY
+
+      - name: 失败时把日志推到 ci-logs 分支
+        if: needs.arm.result != 'success'
+        continue-on-error: true
+        run: |
+          mkdir -p /tmp/cilog
+          L="$RUNNER_TEMP/armlogs"
+          cp -f "$L/results.txt" "$L/scenarios.txt" "$L/verdict.txt" "$L/stepdiff.txt" /tmp/cilog/ 2>/dev/null || true
+          for f in "$L"/verify_*.log; do
+            [ -e "$f" ] || continue
+            tail -n 4000 "$f" > "/tmp/cilog/arm-$(basename "$f")"
+          done
+          mkdir -p /tmp/cilog/arm-dumps
+          cp -f "$L"/dumps/* /tmp/cilog/arm-dumps/ 2>/dev/null || true
+          if [ -d "$RUNNER_TEMP/linuxdumps" ]; then
+            mkdir -p /tmp/cilog/x86-dumps
+            cp -f "$RUNNER_TEMP"/linuxdumps/* /tmp/cilog/x86-dumps/ 2>/dev/null || true
+          fi
+          echo "::notice::cilog 内容: $(ls -A /tmp/cilog 2>/dev/null | tr '\n' ' ')"
+          git config user.name "ci"; git config user.email "ci@local"
+          git checkout --orphan ci-logs-tmp
+          git rm -rf --cached . >/dev/null 2>&1 || true
+          rm -rf $(ls -A | grep -v '^\.git$') 2>/dev/null || true
+          cp -rf /tmp/cilog/* . 2>/dev/null || true
+          echo "arm-mac $GITHUB_REF_NAME run $GITHUB_RUN_ID $(date -u +%FT%TZ)" > gate-failed-at.txt
+          git add -A && git commit -m "arm-mac failed $(date -u +%FT%TZ)" || true
+          if git push -f origin HEAD:ci-logs > /tmp/push.out 2>&1; then
+            echo "::notice::ARM 失败日志已推到 ci-logs 分支"
+          else
+            echo "::error::推 ci-logs 失败 —— 下面是 git 自己说的话"
+            while IFS= read -r line; do
+              echo "::error title=cilog-push::${line}"
+            done < /tmp/push.out
+            exit 1
+          fi
