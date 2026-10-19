@@ -910,12 +910,9 @@ static func play_again(tree: SceneTree, r: Dictionary) -> void:
 ## 播一份记录。返回 "" = 已进战斗场; 否则是不能播的原因(V6: 版本不同就不进战斗场)。
 ## `back` = 看完回哪一页(空 = 战绩页); `names` 见 `play_names`。
 static func play(tree: SceneTree, r: Dictionary, back: String = "", names: Dictionary = {}) -> String:
-	if r.is_empty():
-		return "回放读取失败"
-	if str(r.get("client_version", "")) != client_version():
-		return "回放版本（%s）与当前版本（%s）不兼容" % [str(r.get("client_version", "?")), client_version()]
-	if int(r.get("v", 0)) != FORMAT_V:
-		return "回放格式无效"
+	var why := play_check(r)
+	if why != "":
+		return why
 	return_scene = back
 	play_names = names.duplicate()
 	## 看的人自己的名字(看自己的录像时铭牌左边写它)。★在 begin_play 之前读:
@@ -924,6 +921,17 @@ static func play(tree: SceneTree, r: Dictionary, back: String = "", names: Dicti
 	begin_play(r)
 	if tree != null:
 		tree.change_scene_to_file(BATTLE_SCENE)
+	return ""
+
+
+## 能不能播这份记录(V6 版本闸): "" = 能; 否则是屏上那句原因。逐帧直播(`StreamWatch.check`)也走这一套闸、同一句话。
+static func play_check(r: Dictionary) -> String:
+	if r.is_empty():
+		return "回放读取失败"
+	if str(r.get("client_version", "")) != client_version():
+		return "回放版本（%s）与当前版本（%s）不兼容" % [str(r.get("client_version", "?")), client_version()]
+	if int(r.get("v", 0)) != FORMAT_V:
+		return "回放格式无效"
 	return ""
 
 

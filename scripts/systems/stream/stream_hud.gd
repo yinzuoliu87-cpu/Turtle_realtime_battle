@@ -227,7 +227,7 @@ func apply_glob(g: Dictionary) -> void:
 ##   · 头像框栏: 本机在每路建场(`_dl_build_lane_field` 末尾)和驯服归顺时重建 —— 都是「该进栏的单位多了 / 换了阵营」。
 ##     ★单位**少了**不重建: 本机一路里死掉的单位留在 `_units`(框变暗), 换路清场后旧框也是留到下一路建场才换。
 ##   · 法术圆盘: 本机在第一次摆出我方大师时建(`_build_spell_disc` 自带「建过就不再建」)。
-func after_step(units: Dictionary) -> void:
+func after_step() -> void:
 	var sig: Array = []
 	for u in battle._units:
 		if not (u is Dictionary):
@@ -280,7 +280,14 @@ func _show_end(delay: float) -> void:
 		return
 	end_shown = true
 	if delay > 0.0 and battle.is_inside_tree():
-		battle.get_tree().create_timer(delay).timeout.connect(battle._hud.show_stream_end.bind(won))   # 与本机 `_dl_finish` 同: 蛋碎后晚一点出
+		## 与本机 `_dl_finish` 同: 蛋碎后晚一点出。Timer 挂在战斗场景上 ⇒ 场景没了它跟着没(树级计时器会活过场景释放)。
+		var bt := Timer.new()
+		bt.one_shot = true
+		bt.wait_time = delay
+		bt.process_mode = Node.PROCESS_MODE_ALWAYS
+		battle.add_child(bt)
+		bt.timeout.connect(battle._hud.show_stream_end.bind(won))
+		bt.start()
 	else:
 		battle._hud.show_stream_end(won)
 

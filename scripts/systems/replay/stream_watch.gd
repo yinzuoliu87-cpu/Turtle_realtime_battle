@@ -76,12 +76,12 @@ static func route(tree: SceneTree, rec: Dictionary, back: String, names: Diction
 	if not wanted():
 		legacy_calls += 1
 		var w: String = legacy.call()
-		_reply(done, "" if w == "" else "unplayable", w)
+		load(RF_PATH)._reply(done, "" if w == "" else "unplayable", w)
 		return
 	## 版本闸与回放同一句话(V6): 不同版本的流格式也不同(R7), 拉下来也播不了
 	var why := check(rec)
 	if why != "":
-		_reply(done, "unplayable", why)
+		load(RF_PATH)._reply(done, "unplayable", why)
 		return
 	var id := str(rec.get("id", ""))
 	probes += 1
@@ -98,30 +98,24 @@ static func _on_probe(code: int, tree: SceneTree, rec: Dictionary, back: String,
 	match code:
 		200:
 			var w2 := enter(tree, rec, back, names, sess)
-			_reply(done, "" if w2 == "" else "unplayable", w2)
+			load(RF_PATH)._reply(done, "" if w2 == "" else "unplayable", w2)
 		404:
 			if known:
-				_reply(done, "no_stream", StreamPlayer.TXT_ERROR)
+				load(RF_PATH)._reply(done, "no_stream", StreamPlayer.TXT_ERROR)
 			else:
 				legacy_calls += 1
 				var w3: String = legacy.call()
-				_reply(done, "" if w3 == "" else "unplayable", w3)
+				load(RF_PATH)._reply(done, "" if w3 == "" else "unplayable", w3)
 		426:
 			SB._note_update_signal({"code": 426})
-			_reply(done, "update_required", TXT_UPDATE)
+			load(RF_PATH)._reply(done, "update_required", TXT_UPDATE)
 		_:
-			_reply(done, "offline", load(RF_PATH).message("offline"))
+			load(RF_PATH)._reply(done, "offline", load(RF_PATH).message("offline"))
 
 
 ## 与 `ReplayRecorder.play` 同一套闸、同一句话。
 static func check(rec: Dictionary) -> String:
-	if rec.is_empty():
-		return "回放读取失败"
-	if str(rec.get("client_version", "")) != ReplayRecorder.client_version():
-		return "回放版本（%s）与当前版本（%s）不兼容" % [str(rec.get("client_version", "?")), ReplayRecorder.client_version()]
-	if int(rec.get("v", 0)) != ReplayRecorder.FORMAT_V:
-		return "回放格式无效"
-	return ""
+	return ReplayRecorder.play_check(rec)
 
 
 ## 进战斗场播状态流。返回 "" = 已进场(tree 为 null 时只挂好待播, 门禁自己实例化战斗场)。
@@ -157,11 +151,6 @@ static func enter(tree: SceneTree, rec: Dictionary, back: String, names: Diction
 	if tree != null:
 		tree.change_scene_to_file(ReplayRecorder.BATTLE_SCENE)
 	return ""
-
-
-static func _reply(done: Callable, code: String, msg: String) -> void:
-	if done.is_valid():
-		done.call(code, msg)
 
 
 # ─────────────────────────────── 守卫 ───────────────────────────────

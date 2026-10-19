@@ -602,7 +602,7 @@ func _unit_fields(u: Dictionary, idx: int, cont: bool) -> void:
 			enc.val(dots)
 			n += 1
 		## S2 `@mv`: 走没走得比「呼吸阈值」快(渲染步只拿 vel 判这一件; 发整个 vel 每一采样都在变, 太贵)。
-		var mv: bool = (u.get("vel", Vector2.ZERO) as Vector2).length() > BattleVfx.BOB_STILL_SPD
+		var mv: bool = DetMath.vlen(u.get("vel", Vector2.ZERO) as Vector2) > BattleVfx.BOB_STILL_SPD
 		var oldm = c.get("@mv")
 		if typeof(oldm) != TYPE_BOOL or oldm != mv:
 			c["@mv"] = mv

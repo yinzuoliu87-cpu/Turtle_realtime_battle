@@ -330,7 +330,7 @@ class Probe extends Node:
 		if tries >= TRIES:
 			_reply(0)
 			return
-		_wait = Http.RETRY_MIN * pow(2.0, float(tries - 1))
+		_wait = Http.RETRY_MIN * DetMath.dpow(2.0, float(tries - 1))
 
 	func _reply(code: int) -> void:
 		if _replied:

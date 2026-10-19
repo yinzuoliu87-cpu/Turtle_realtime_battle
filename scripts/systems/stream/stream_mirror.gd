@@ -250,7 +250,7 @@ func _ph_tex(w: int, h: int) -> Texture2D:
 	var cy := (hh - 1) * 0.5
 	for y in range(hh):
 		for x in range(ww):
-			var d := Vector2((x - cx) / maxf(1.0, cx), (y - cy) / maxf(1.0, cy)).length()
+			var d := DetMath.vlen(Vector2((x - cx) / maxf(1.0, cx), (y - cy) / maxf(1.0, cy)))
 			img.set_pixel(x, y, Color(1, 1, 1, clampf(1.0 - d, 0.0, 1.0)))
 	var t := ImageTexture.create_from_image(img)
 	_ph_tex_cache[k] = t
@@ -472,9 +472,11 @@ func lerp_to(id: int, props: Array, k: float) -> void:
 			continue
 		var a = tr[i]
 		if i == 1 and a is Vector3 and v is Vector3:
-			out[i] = Vector3(lerp_angle(a.x, v.x, k), lerp_angle(a.y, v.y, k), lerp_angle(a.z, v.z, k))
-		elif typeof(a) == typeof(v) and (a is Vector3 or a is Color):
-			out[i] = a.lerp(v, k)
+			out[i] = Vector3(DetMath.lerp_ang(a.x, v.x, k), DetMath.lerp_ang(a.y, v.y, k), DetMath.lerp_ang(a.z, v.z, k))
+		elif typeof(a) == typeof(v) and a is Vector3:
+			out[i] = (a as Vector3).lerp(v, k)
+		elif typeof(a) == typeof(v) and a is Color:
+			out[i] = (a as Color).lerp(v, k)
 		else:
 			continue
 		any = true

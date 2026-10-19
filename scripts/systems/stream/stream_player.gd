@@ -243,7 +243,7 @@ func _apply_step(st: Array, fire: bool) -> void:
 	_finish_units(cont)
 	if cont:
 		_last_cont = applied        # 最近一次采了连续量的步(插值的起点; keyframe 之后下一个采样只隔 1 步)
-		hud.after_step(units)
+		hud.after_step()
 	steps_applied += 1
 	if on_applied.is_valid():
 		on_applied.call(applied)
@@ -515,15 +515,15 @@ func _interp() -> void:
 					if u2 is Dictionary and _utruth.has(int(op[1])):
 						var tr2: Array = _utruth[int(op[1])]
 						if kv.has("pos") and kv["pos"] is Vector2:
-							u2["pos"] = (tr2[0] as Vector2).lerp(kv["pos"], k)
+							u2["pos"] = DetMath.vlerp(tr2[0] as Vector2, kv["pos"], k)
 							u2["_prev_pos"] = u2["pos"]
 						if kv.has("height"):
-							u2["height"] = lerpf(float(tr2[1]), float(kv["height"]), k)
+							u2["height"] = DetMath.flerp(float(tr2[1]), float(kv["height"]), k)
 							u2["_prev_height"] = u2["height"]
 				F.OP_GLOBAL:
 					var g: Dictionary = op[1]
 					if g.has("t"):
-						battle._t = lerpf(_gt, float(g["t"]), k)
+						battle._t = DetMath.flerp(_gt, float(g["t"]), k)
 
 
 # ═══════════════════════════════════════════════════════════════════════
