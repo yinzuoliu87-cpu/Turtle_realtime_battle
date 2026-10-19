@@ -1045,6 +1045,8 @@ static func seed_as_human(g: Dictionary, season_id: int) -> Dictionary:
 				var meq = md.get("equips", null)
 				if meq is Array and not (meq as Array).is_empty():
 					m2["equips"] = (meq as Array).duplicate(true)
+				if md.get("off") is Array:
+					m2["off"] = (md["off"] as Array).duplicate()        # 站位(2026-10-19)跟着阵容走
 				(minions[lk] as Array).append(m2)
 	## 统领装备 / 等级: 按统领序, 只收非空的(同 `build_ghost_snapshot`)。
 	var src_eq: Dictionary = g.get("equipped", {}) if g.get("equipped") is Dictionary else {}
@@ -1066,6 +1068,7 @@ static func seed_as_human(g: Dictionary, season_id: int) -> Dictionary:
 		"leaders": leaders,
 		"lane_assign": lane_assign,
 		"minions": minions,
+		"leader_off": (g.get("leader_off", {}) as Dictionary).duplicate(true) if g.get("leader_off") is Dictionary else {},
 		"loadouts": (g.get("loadouts", {}) as Dictionary).duplicate(true) if g.get("loadouts") is Dictionary else {},
 		"equipped": equipped,
 		"pet_levels": levels,
@@ -1838,6 +1841,9 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 	var lane_assign := {"top": [], "bottom": []}
 	# 小将(dual_lineup)配置+装备也存进快照(用户2026-07-18"快照里小将也应该有装备")→对手小将不再裸装
 	var minions := {"top": [], "bottom": []}
+	## ★2026-10-19 站位进快照(用户「站位改为在背包里做好了」): 统领的站位按龟 id 记(一只龟只在一路),
+	##   小将的记在各自那一条里。没摆过的不写 ⇒ 对手那边照旧用固定队形。
+	var leader_off := {}
 	for lk in ["top", "bottom"]:
 		var arr: Array = dl.get(lk, []) if dl.get(lk) is Array else []
 		## ★精英判据与战斗侧**逐字相同**(`battle_spawn._spawn_lane_side`:「该路 0 统领 ⇒ 首个小将精英」)。
@@ -1860,12 +1866,16 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 				##   传上去会让对手场上多一只 id="" 的龟 ⇒ 跳过, 让 normalize 补小将。
 				if str(ud.get("id", "")) != "":
 					(lane_assign[lk] as Array).append(str(ud.get("id", "")))
+					if ud.get("off") is Array:
+						leader_off[str(ud.get("id", ""))] = LineupPos.pack(LineupPos.off_of(ud, 0, 1))
 			else:
 				var m := {"role": str(ud.get("role", "front")),
 					"elite": (lead_n == 0 and m_seen == 0)}
 				var meq = ud.get("equips", null)
 				if meq is Array and not (meq as Array).is_empty():
 					m["equips"] = (meq as Array).duplicate(true)
+				if ud.get("off") is Array:
+					m["off"] = LineupPos.pack(LineupPos.off_of(ud, 0, 1))
 				(minions[lk] as Array).append(m)
 				m_seen += 1
 	## ★统领名单与分路**同源**。原来读 `GameState.left_team`, 而它只在【赢了】那支分支里
@@ -1919,6 +1929,7 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 		"leaders": leaders,
 		"lane_assign": lane_assign,
 		"minions": minions,
+		"leader_off": leader_off,
 		"loadouts": lo_out,
 		"equipped": equipped,
 		"pet_levels": levels,

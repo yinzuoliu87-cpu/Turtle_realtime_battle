@@ -262,6 +262,10 @@ func _spawn_lane_side(units: Array, side: String, lvl: int, base: Vector2) -> vo
 	for i in range(n):
 		var u: Dictionary = units[i] if units[i] is Dictionary else {}
 		var pos = base + Vector2(0.0, (float(i) - float(n - 1) / 2.0) * 154.0)
+		## ★2026-10-19 站位在背包里摆好(用户「站位改为在背包里做好了」): 格子带 `off` ⇒ 按它站, 再按这张图的岛形 + 障碍夹一遍。
+		##   没有 `off` 的照旧走上面那行(旧存档 / 旧快照 / 机器人 —— 结果与改前逐位相同, 跨平台金标不动)。
+		if u.get("off") is Array:
+			pos = battle._dl_sys.clamp_place_side(LineupPos.to_field(base, LineupPos.off_of(u, i, n), side), side)
 		var made: Dictionary
 		if str(u.get("kind", "")) == "leader":
 			made = _make_unit(str(u.get("id", "basic")), side, pos)

@@ -1533,9 +1533,12 @@ func _dual_foe_lane(lane: String) -> Array:
 			##   见 `scripts/net/backend.gd` 的 `ghost_lanes_broken()` 头注(2026-09-29 搬过去)。
 			if not Backend.ghost_lanes_broken(dg):
 				var geq: Dictionary = dg.get("equipped", {}) if dg.get("equipped") is Dictionary else {}
+				var loff: Dictionary = dg.get("leader_off", {}) if dg.get("leader_off") is Dictionary else {}   # 站位(2026-10-19, 没有 = 固定队形)
 				var specs: Array = []
 				for pid in lane_leaders:
 					var spec: Dictionary = {"kind": "leader", "id": str(pid)}
+					if loff.get(str(pid)) is Array:
+						spec["off"] = (loff[str(pid)] as Array).duplicate()
 					if geq.has(str(pid)) and geq[str(pid)] is Array:
 						spec["equips"] = (geq[str(pid)] as Array).duplicate(true)   # 对手按档装备
 					specs.append(spec)
@@ -1545,6 +1548,8 @@ func _dual_foe_lane(lane: String) -> Array:
 						var meq = (m as Dictionary).get("equips", null)   # 对手小将装备(用户2026-07-18)→_spawn_lane_side转_dl_equips注入
 						if meq is Array and not (meq as Array).is_empty():
 							mspec["equips"] = (meq as Array).duplicate(true)
+						if (m as Dictionary).get("off") is Array:
+							mspec["off"] = ((m as Dictionary)["off"] as Array).duplicate()
 						specs.append(mspec)
 				return _foe_normalize_lane(specs)               # ★每路规整到3单位=minions(3-统领)·与玩家同(用户2026-07-18)
 	# 兜底 bot(无快照/冷启动): 每路3单位·上路2统领+1小将 / 下路1统领+2小将(normalize补齐·与玩家默认同·用户2026-07-18)

@@ -615,10 +615,19 @@ func _dl_handle_place_input(event: InputEvent) -> void:
 		battle._edit_drag_unit["pos"] = _dl_clamp_place(battle._screen_to_field(event.position))
 
 func _dl_clamp_place(fp: Vector2) -> Vector2:
+	return clamp_place_side(fp, "left")
+
+
+## 摆位落点夹取(哪一方都用这一个)。★2026-10-19: 背包里摆好的站位要在开打时按这张图夹一遍, 对手那一方也是 ⇒ 带上 side。
+##   右方只换「不越中线」那一条的方向; 岛形与障碍对两方相同(障碍不一定左右对称, 所以不能拿左方镜像)。
+func clamp_place_side(fp: Vector2, side: String) -> Vector2:
 	## ★★2026-10-03 圆岛: 摆位要**两个约束都满足** —— ①在岛上 ②不越中线。
 	##   原来两条都是轴向夹, 岛变圆之后光夹矩形会把龟摆到**海里**。
 	fp = ArenaShape.clamp_in(fp, battle.ARENA, 60.0)                                   # ①先钳进岛形(超椭圆)
-	fp.x = minf(fp.x, battle._arena_center.x - 120.0)                   # ②只在我方半场(不越中线)
+	if side == "left":
+		fp.x = minf(fp.x, battle._arena_center.x - 120.0)               # ②只在我方半场(不越中线)
+	else:
+		fp.x = maxf(fp.x, battle._arena_center.x + 120.0)
 	for ob in battle._obstacles:   # 避开障碍footprint(椭圆内→推到边)
 		var c: Vector2 = ob["c"]
 		var rx: float = float(ob["rx"]) + battle.OBSTACLE_MARGIN
