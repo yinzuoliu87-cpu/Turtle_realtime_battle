@@ -544,12 +544,15 @@ func _juice_scale_for(u: Dictionary) -> Vector2:
 
 # idle 呼吸 bob: 仅待机时(不击飞/不快移/无 juice 相位) 立绘极轻上下浮
 # idle 呼吸 bob: 仅待机时(不击飞/不快移/无 juice 相位) 立绘极轻上下浮
+## 走得比这快(像素/秒)就不呼吸。状态流(逐帧直播 S2)只发「快没快过它」(`@mv`), 两边同一个常量。
+const BOB_STILL_SPD := 6.0
+
 func _juice_bob_for(u: Dictionary) -> float:
 	if u.get("airborne", false):
 		return 0.0
 	# 移动中不 bob (vel 速度阈值: 像素/s)
 	var v: Vector2 = u.get("vel", Vector2.ZERO)
-	if v.length() > 6.0:
+	if v.length() > BOB_STILL_SPD:
 		return 0.0
 	# 出招/受击/落地相位中不 bob (避免叠加抖)
 	if u.get("land_t", 0.0) > 0.0 or u.get("hitsq_t", 0.0) > 0.0 or u.get("swing_t", 0.0) > 0.0 or u.get("windup_t", 0.0) > 0.0:

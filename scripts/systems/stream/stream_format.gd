@@ -9,7 +9,9 @@ extends RefCounted
 ## ★改格式(加操作码 / 改值标签 / 改量化)必须把 `VERSION` +1, 并同步改方案书 §2.2 那张表。
 ##   手机端只认同版本的流(方案 R7: 状态流和录像一样绑定版本)。
 
-const VERSION := 1
+## v1(S1): 首版。v2(S2, 2026-10-19): 字节语法不变; 单位外观节点进节点层 + 单位合成字段 `@n` + 全局 `seed`(手机选图) ——
+##   v1 的流里没有单位外观, v2 的播放器播不出单位, 所以算格式变更。
+const VERSION := 2
 const MAGIC := "TSTR"
 const HEADER_BYTES := 21          # magic 4 + 版本 u16 + 块序号 u32 + 首步 u32 + 步数 u16 + 标志 u8 + 原始长度 u32 —— 不含后面的 ZSTD 负载
 
@@ -315,12 +317,132 @@ static func decode_chunk(data: PackedByteArray, st: Dictionary = {}) -> Dictiona
 	return out
 
 
+## ═══════════════════════════════════════════════════════════════════════
+##  播放用的完整解码(S2): 一块 → {ok, err, version, seq, first_step, steps, key, list}。
+##  list = 按步排好的 [步号, 是否 keyframe, ops]; 每条 op 是一个 Array, 第一个元素是操作码:
+##    [GLOBAL, {键: 值}] · [UNIT_NEW, idx, 龟id, 阵营] · [UNIT_SET, idx, {键: 值}] · [UNIT_DEL, idx]
+##    [NODE_NEW, id, 父种类, 父id, 父键, 类名, props] · [NODE_SET, id, props] · [NODE_DEL, id]
+##    [RES_DEF, rid, 种类, a, b, c](按种类: PATH 路径 / PARAM 类名+props / GEN_TEX 类名+宽+高 / PROC_MESH 类名+面数 / SHADER 源码 / OTHER 类名)
+##    [RES_SET, rid, props] · [EVENT, 类型, 参数 Array]
+##  props = [[属性名, 值, 是否资源 rid], …](资源值是 rid 整数, 第三项为 true)。
+##  `st` 与 decode_chunk 同一个约定(字符串表跨块、keyframe 块清零)。
+## ═══════════════════════════════════════════════════════════════════════
+static func parse_chunk(data: PackedByteArray, st: Dictionary = {}) -> Dictionary:
+	var out := {"ok": false, "err": "", "list": []}
+	if data.size() < HEADER_BYTES:
+		out["err"] = "short"
+		return out
+	if data.slice(0, 4).get_string_from_ascii() != MAGIC:
+		out["err"] = "magic"
+		return out
+	var hb := StreamPeerBuffer.new()
+	hb.big_endian = false
+	hb.data_array = data.slice(4, HEADER_BYTES)
+	out["version"] = hb.get_u16()
+	out["seq"] = hb.get_u32()
+	out["first_step"] = hb.get_u32()
+	out["steps"] = hb.get_u16()
+	out["key"] = (hb.get_u8() & FLAG_KEY) != 0
+	var raw_len := int(hb.get_u32())
+	if int(out["version"]) != VERSION:
+		out["err"] = "version %d != %d" % [int(out["version"]), VERSION]
+		return out
+	var raw := data.slice(HEADER_BYTES).decompress(raw_len, FileAccess.COMPRESSION_ZSTD)
+	if raw.size() != raw_len:
+		out["err"] = "zstd %d != %d" % [raw.size(), raw_len]
+		return out
+	var r := Rd.new(raw)
+	if bool(out["key"]) or not st.has("strs"):
+		st["strs"] = [""]
+	r.strs = st["strs"]
+	var list: Array = out["list"]
+	var cur: Array = []
+	while not r.eof() and r.err == "":
+		var op := r.u8()
+		match op:
+			OP_STEP:
+				cur = [r.vu(), false, []]
+				list.append(cur)
+			OP_KEYFRAME:
+				if not cur.is_empty():
+					cur[1] = true
+			OP_GLOBAL:
+				_push(cur, [op, r.kv()], r)
+			OP_UNIT_NEW:
+				_push(cur, [op, r.vu(), r.s(), r.s()], r)
+			OP_UNIT_SET:
+				_push(cur, [op, r.vu(), r.kv()], r)
+			OP_UNIT_DEL, OP_NODE_DEL:
+				_push(cur, [op, r.vu()], r)
+			OP_NODE_NEW:
+				var id := r.vu()
+				var pk := r.u8()
+				var pid := 0
+				var pkey := ""
+				match pk:
+					PAR_NODE:
+						pid = r.vu()
+					PAR_UNIT:
+						pid = r.vu()
+						pkey = r.s()
+					PAR_PATH:
+						pkey = r.s()
+				var cls := r.s()
+				_push(cur, [op, id, pk, pid, pkey, cls, r.plist()], r)
+			OP_NODE_SET, OP_RES_SET:
+				_push(cur, [op, r.vu(), r.plist()], r)
+			OP_RES_DEF:
+				var rid := r.vu()
+				var kind := r.u8()
+				match kind:
+					RES_PATH, RES_SHADER, RES_OTHER:
+						_push(cur, [op, rid, kind, r.s(), null, null], r)
+					RES_PARAM:
+						var c2 := r.s()
+						_push(cur, [op, rid, kind, c2, r.plist(), null], r)
+					RES_GEN_TEX:
+						var c3 := r.s()
+						var w := r.vu()
+						_push(cur, [op, rid, kind, c3, w, r.vu()], r)
+					RES_PROC_MESH:
+						var c4 := r.s()
+						_push(cur, [op, rid, kind, c4, r.vu(), null], r)
+					_:
+						r.err = "res kind %d" % kind
+			OP_EVENT:
+				var et := r.s()
+				var n := r.vu()
+				var args: Array = []
+				for _i in range(n):
+					args.append(r.val())
+				_push(cur, [op, et, args], r)
+			_:
+				r.err = "op 0x%02x @%d" % [op, r.p - 1]
+	if r.err != "":
+		out["err"] = r.err
+		return out
+	if list.size() != int(out["steps"]):
+		out["err"] = "step marks %d != header %d" % [list.size(), int(out["steps"])]
+		return out
+	out["st"] = st
+	out["ok"] = true
+	return out
+
+
+static func _push(cur: Array, op: Array, r: Rd) -> void:
+	if cur.is_empty():
+		r.err = "op before step"
+		return
+	(cur[2] as Array).append(op)
+
+
 ## 读游标(解码器用)
 class Rd extends RefCounted:
 	var b: PackedByteArray
 	var p := 0
 	var err := ""
 	var strs: Array = [""]
+	var last_tag := 0             # 最近一次 val() 读到的值标签(播放端据此分辨「资源 rid」和「普通整数」)
 
 	func _init(data: PackedByteArray) -> void:
 		b = data
@@ -381,6 +503,7 @@ class Rd extends RefCounted:
 
 	func val():
 		var t := u8()
+		last_tag = t
 		match t:
 			T_NIL:
 				return null
@@ -428,3 +551,27 @@ class Rd extends RefCounted:
 			val()
 			if err != "":
 				return
+
+	## 播放端: [[名, 值, 是否资源 rid], …]
+	func plist() -> Array:
+		var out: Array = []
+		var n := vu()
+		for _i in range(n):
+			var k := s()
+			var v = val()
+			if err != "":
+				return out
+			out.append([k, v, last_tag == T_RES])
+		return out
+
+	## 播放端: {名: 值}(全局 / 单位字段: 没有资源值)
+	func kv() -> Dictionary:
+		var out := {}
+		var n := vu()
+		for _i in range(n):
+			var k := s()
+			var v = val()
+			if err != "":
+				return out
+			out[k] = v
+		return out

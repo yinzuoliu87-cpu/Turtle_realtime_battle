@@ -4,7 +4,9 @@ extends RefCounted
 ##
 ## 三层(方案「路线 C」):
 ##   ① 单位层: 单位字典里画面要的字段(30 Hz; 存活 / 动作逐步)
-##   ② 节点层: **sim 步里**挂进 `_world` 子树的特效节点(单位外观除外) —— 建 / 改 / 删。
+##   ② 节点层: **sim 步里**挂进 `_world` 子树的特效节点 —— 建 / 改 / 删。
+##      格式 v2(S2, 2026-10-19): 单位外观(立绘 / 影 / 核影 / 环)也进节点层(单位第一次出现时收, 开打前摆好的也收),
+##      单位字段 `@n` = 这四件对应的镜像节点 id。原因: 死亡淡出 / 隐身 / 换帧表都是 sim 直接改立绘节点, 手机只靠单位字段画不出来。
 ##      跟踪的属性 = S0 实测白名单(`TRACKED`) ∪ 所有 Node3D 的 position / rotation / scale / visible;
 ##      离散量(帧号 / 贴图 / 显隐 / 网格 / 发射)逐步比, 连续量(变换 / 颜色 / 标量)每 2 步(30 Hz)比。
 ##      其余属性只在建节点时发一次(只发与类默认值不同的), 再在每个 keyframe 与节点删除时**全量核一次**:
@@ -60,13 +62,25 @@ const UKEYS := ["_active_cd", "_anemoneShield", "_appearance", "_atk_voff", "_au
 	"_holyShieldVal", "_initDef", "_isEgg", "_lavaRage", "_lavaShieldVal", "_manaShieldVal", "_manual_anim",
 	"_mark_until", "_ms_stacks", "_ninja_dash_until", "_ninja_mark_pulse", "_phase_ai_t", "_slam_voff", "_starEnergy",
 	"_stoneDefGained", "_tr_active", "_tr_face", "_tr_passive", "_tr_speed", "_tr_throw_t0", "_tr_throw_until",
-	"_tr_throw_vec", "_ultShieldVal", "anim_t", "anim_t0", "baseDef", "base_def",
+	"_tr_throw_vec", "_ultShieldVal", "baseDef", "base_def",
 	"baton_zap_until", "bubbleShieldVal", "bubbleStore", "bubble_store", "def", "energy", "energyMaxStorePct",
 	"face_right", "flash_col", "flash_t", "height", "hp", "is_big_bear", "is_summon", "is_trainer",
 	"magic_shield", "maxChargePct", "maxEnergy", "maxHp", "phase_until", "pos", "rage", "rageMax", "rum_glow_until",
 	"shield", "size_mult", "skill_cd", "spd_dbf_until", "star_energy", "stone_init_def", "store_energy",
 	"true_fire_until", "type", "urchin_sh_left", "stacks", "_eff_side", "level"]
+## (S2 拿掉了 anim_t / anim_t0: 渲染步每次都推它、每次采样都在变, 而手机不推立绘帧(帧号走镜像), 用不上。)
 const UKEYS_STEP := ["alive", "anim_action", "side"]   # 逐步(离散)
+## S2 补(2026-10-19, 手机播放端实测缺的): 血条 / 龟能条 / 等级牌要的、小将 / 召唤物身份。
+##   (外观本身的变换 / 帧号 / 颜色不走单位字段: 单位外观节点整体进了节点层, 见 APPEAR_KEYS。)
+const UKEYS_S2 := ["bar_head_h", "hp_w", "maxEnergy", "active_skills", "energy_cost", "_isMinion", "minion_role", "is_elite",
+	"tamed_side", "id", "name", "untargetable_until", "_assembling", "egg", "summon_kind",
+	## 渲染步算立绘变换 / 呼吸 / 形变要的(单位外观节点主人活着时不镜像, 见 `_samp`)
+	"bob_phase", "spr_base_scale", "shadow_base_scale", "contact_base_scale", "airborne", "vy",
+	"hitsq_t", "land_t", "swing_t", "windup_t", "_lunge_t", "_lunge_amp", "_lunge_dir", "_lunge_dur"]
+## 允许整份发的数组键(纯值数组; 其余数组键里装的是单位字典 / 节点, 一律不发)。
+const UARR := {"active_skills": true}
+## 单位外观节点: 单位第一次出现时(不论是不是 sim 步里建的)整体收进节点层; 单位字段 `@n` 告诉手机「哪个镜像节点是这个单位的哪一件」。
+const APPEAR_KEYS := ["sprite", "shadow", "contact", "ring"]
 
 
 class TN extends RefCounted:
@@ -91,6 +105,10 @@ class TN extends RefCounted:
 	var ps := 0.0
 	var mesh: Object = null
 	var emit := false
+	var par := 0              # 父节点 instance id(S2: 换父节点要发 `@par`)
+	var unit = null           # S2: 单位外观节点的主人(单位字典); 主人活着时变换 / 颜色 / 朝向由手机渲染步按单位字段算, 不发
+	var ukey := ""            # S2: 它是主人的哪一件(sprite / shadow …); 主人换了这一件之后它就不归渲染步管了
+	var uidx := -1            # S2: 主人的单位 idx; 主人不在 battle._units 里了(被移出场)渲染步也不管它
 	var mats := PackedInt32Array()
 	var base: Array = []      # 报警基线: 与类规格逐项对齐的原值(只核白名单外那些项)
 	var base_x := {}          # 报警基线: 规格外的伪属性(MeshInstance3D 的 surface_material_override/i)
@@ -120,7 +138,6 @@ var _alarm_checked := 0
 var _tn: Array = []
 var _tn_by_iid := {}
 var _pending: Array = []
-var _add_step := {}           # 本步新生节点 iid → true(判单位外观用)
 var _next_id := 1
 var _ua := {}                 # 单位外观节点 iid → [单位字典, 键]
 var _ua_n := -1
@@ -143,9 +160,15 @@ var _uk: Array = []           # idx → 单位字典(见过的全部)
 var _ucache: Array = []       # idx → Dictionary(键 → 上次发出的值)
 var _ucur: Array = []         # 上一步 battle._units 的顺序
 var _ucur_idx := PackedInt32Array()
+var _ucur_set := {}           # 当前在 battle._units 里的单位 idx
 var _gcache := {}
-var _ukeys_all: Array = UKEYS_STEP + UKEYS
+var _ukeys_all: Array = UKEYS_STEP + UKEYS + UKEYS_S2
+## 采样完(含渲染步对齐)回调一次: 门禁拿它在同一时刻拍「原生」快照(播放端在同一步对照)。
+var on_sampled: Callable = Callable()
 var _cur_id := 0
+var _cur_key := false
+var _lc_pos := PackedVector3Array()   # S2: 换路建场时删掉的地图摆件位置(累计)
+var _lane_clears := 0                 # S2: 换路清场次数(全局 lcn; 跳转时手机据此决定地图前景带还在不在)
 ## 事件
 var _evs: Array = []
 ## 计时(微秒)
@@ -186,16 +209,24 @@ func pre_step() -> void:
 func post_step() -> void:
 	_ph = PH_OUT
 	_step_n += 1
+	var step_n := int(battle._sim_step_n)
 	var t0 := Time.get_ticks_usec()
+	## S2: 单位层在渲染步**之前**采 —— 渲染步会改它读的那些字段(闪白 / 形变计时衰减、血条资源镜像 …),
+	##   手机拿到「渲染步之前」的状态, 再跑同一个渲染步(同一个 rd), 算出来的立绘变换 / 颜色与服务器逐位相同。
+	var cont := _sample_pre(step_n)
+	var t1 := Time.get_ticks_usec()
 	if _step_n % F.CONT_EVERY == 0:
 		_ph = PH_REN
 		battle._render._render_step(F.CONT_EVERY * SIM_DT, float(battle._hitstop) > 0.0,
 			not (battle._timestop._ts_active as Array).is_empty())
 		_ph = PH_OUT
-	var t1 := Time.get_ticks_usec()
-	_sample(int(battle._sim_step_n))
-	_us_render += t1 - t0
-	_us_sample += Time.get_ticks_usec() - t1
+		_cache_after_render()
+	var t2 := Time.get_ticks_usec()
+	_sample_post(cont)
+	_us_render += t2 - t1
+	_us_sample += (t1 - t0) + (Time.get_ticks_usec() - t2)
+	if on_sampled.is_valid():
+		on_sampled.call(int(battle._sim_step_n))
 
 
 ## 收尾: 封最后一块、写 end.json、卸挂点。`extra` 并进元数据(结果单里的胜方 / 指纹等)。返回元数据。
@@ -234,7 +265,20 @@ func ev(kind: String, args: Array) -> void:
 	if _ph == PH_REN:
 		meta["ev_render_dropped"] = int(meta["ev_render_dropped"]) + 1
 		return
+	if kind == "lane_clear":
+		_lane_clears += 1
+	if kind == "layout_clear" and not args.is_empty():
+		_lc_pos.append_array(args[0])     # 地图状态: 进全局 `lc`, keyframe 也带(跳进来的手机照样删)
 	_evs.append([kind, args])
+
+
+## 带单位的事件(S2): 单位字典不能进字节流, 写的时候换成单位 idx(参数表第一个)。
+##   单位可能是这一步才登场的 ⇒ 等 `_events()`(单位层已处理完)再换。
+func ev_unit(kind: String, u: Dictionary, args: Array) -> void:
+	if _ph == PH_REN:
+		meta["ev_render_dropped"] = int(meta["ev_render_dropped"]) + 1
+		return
+	_evs.append([kind, args, u])
 
 
 func _on_added(n: Node) -> void:
@@ -243,7 +287,6 @@ func _on_added(n: Node) -> void:
 	if _ph == PH_SIM:
 		if _world.is_ancestor_of(n):
 			_pending.append(n)
-			_add_step[n.get_instance_id()] = true
 	elif _ph == PH_OUT and _step_n > 0 and _world.is_ancestor_of(n):
 		meta["world_add_outside_sim"] = int(meta["world_add_outside_sim"]) + 1
 
@@ -251,7 +294,8 @@ func _on_added(n: Node) -> void:
 # ═══════════════════════════════════════════════════════════════════════
 #  每步采样
 # ═══════════════════════════════════════════════════════════════════════
-func _sample(step_n: int) -> void:
+## 前半(渲染步之前): 步头 / keyframe / 全局 / 单位层。返回这一步是否采连续量。
+func _sample_pre(step_n: int) -> bool:
 	var cont := (_step_n % F.CONT_EVERY) == 0
 	var key := false
 	if _chunk_steps == 0:
@@ -273,6 +317,14 @@ func _sample(step_n: int) -> void:
 	_globals(cont)
 	var t0 := Time.get_ticks_usec()
 	_units(cont, key)
+	_us_units += Time.get_ticks_usec() - t0
+	_cur_key = key
+	return cont
+
+
+## 后半(渲染步之后): 节点层(sim 步生的节点 + 渲染步对齐后的样子)/ 事件 / 封块。
+func _sample_post(cont: bool) -> void:
+	var key := _cur_key
 	var t1 := Time.get_ticks_usec()
 	_take_pending(key)
 	var t2 := Time.get_ticks_usec()
@@ -280,7 +332,6 @@ func _sample(step_n: int) -> void:
 		_keyframe_nodes()
 	else:
 		_nodes(cont)
-	_us_units += t1 - t0
 	_us_new += t2 - t1
 	_us_nodes += Time.get_ticks_usec() - t2
 	_events()
@@ -332,8 +383,13 @@ func _globals(cont: bool) -> void:
 	n += _g("lane", str(_gs.current_lane) if _gs != null else "")
 	n += _g("over", bool(battle._over))
 	n += _g("ts", (battle._timestop._ts_active as Array).size())
+	n += _g("seed", int(battle._battle_rng.seed))   # S2: 手机按它选同一张地图(只在 keyframe 重发)
+	n += _g("theme", str(ArenaTheme.active))       # S2: 手机核对自己建的是不是同一张图
+	n += _g("lc", _lc_pos)                          # S2: 已删的地图摆件(见 battle_world_builder._clear_layout_on_obstacles)
+	n += _g("lcn", _lane_clears)
+	if cont or not _evs.is_empty():
+		n += _g("t", float(battle._t))   # S2: 有事件的步也发 —— 飘字合并 / 排行窗按 _t 判(差一步就合并错)
 	if cont:
-		n += _g("t", float(battle._t))
 		n += _g("hs", float(battle._hitstop))
 	if n == 0:
 		enc.rewind(p0)
@@ -345,7 +401,7 @@ func _g(k: String, v) -> int:
 	var old = _gcache.get(k)
 	if old != null and typeof(old) == typeof(v) and old == v:
 		return 0
-	_gcache[k] = v
+	_gcache[k] = v.duplicate() if v is PackedVector3Array else v   # ★缓存要拷贝: 累计数组原地 append 会让缓存跟着变 ⇒ 永远「没变」
 	enc.s(k)
 	enc.val(v)
 	return 1
@@ -370,6 +426,7 @@ func _units(cont: bool, key: bool) -> void:
 				_uk.append(u)
 				_ucache.append({})
 				_unit_new(idx, u)
+				_adopt_appearance(u, idx, key)
 			elif key:
 				_ucache[idx] = {}
 				_unit_new(idx, u)
@@ -381,8 +438,47 @@ func _units(cont: bool, key: bool) -> void:
 				enc.vu(oi)
 		_ucur = ul.duplicate()
 		_ucur_idx = nidx
+		_ucur_set = seen
 	for i in range(ul.size()):
 		_unit_fields(ul[i], _ucur_idx[i], cont)
+
+
+## S2: 单位外观节点(立绘 / 影 / 核影 / 环)进节点层。单位第一次出现时收; 开打前就摆好的(det 场景 / 调试场)也一样收。
+##   死亡淡出、隐身、换帧表这些都是 sim 直接改立绘节点的, 只有镜像它才看得见(渲染步只管活着的单位的变换)。
+func _adopt_appearance(u: Dictionary, idx: int, key: bool) -> void:
+	for k in APPEAR_KEYS:
+		var v = u.get(k)
+		if typeof(v) != TYPE_OBJECT or not is_instance_valid(v) or not (v is Node3D):
+			continue
+		var nd: Node = v
+		if _tn_by_iid.has(nd.get_instance_id()) or not nd.is_inside_tree() or not _world.is_ancestor_of(nd):
+			continue
+		var t := _make_tn(nd)
+		t.unit = u
+		t.ukey = k
+		t.uidx = idx
+		meta["unit_owned"] = int(meta["unit_owned"]) + 1
+		if not key:
+			_node_new(t)
+
+
+func _make_tn(nd: Node) -> TN:
+	var t := TN.new()
+	t.n = nd
+	t.iid = nd.get_instance_id()
+	t.id = _next_id
+	_next_id += 1
+	t.cls = nd.get_class()
+	match t.cls:
+		"Sprite3D": t.kind = K_SPRITE
+		"MeshInstance3D": t.kind = K_MESH
+		"GPUParticles3D": t.kind = K_PART
+		"Label3D": t.kind = K_LABEL
+		_: t.kind = K_N3D if nd is Node3D else K_OTHER
+	_tn.append(t)
+	_tn_by_iid[t.iid] = t
+	meta["nodes_new"] = int(meta["nodes_new"]) + 1
+	return t
 
 
 func _uidx(u) -> int:
@@ -399,6 +495,22 @@ func _unit_new(idx: int, u: Dictionary) -> void:
 	enc.s(str(u.get("side", "")))
 
 
+## 渲染步会改、手机的渲染步也照样改的那几个字段(形变 / 闪白计时衰减, 血条资源镜像):
+##   比对缓存要记成**渲染步之后**的值 —— 那才是手机下一次收到之前手上的值。
+##   否则「服务器渲染步把 0.1 衰减到 0.07、sim 又把它设回 0.1」这一下不会发(和上次发的 0.1 一样), 手机却停在 0.07。
+const UKEYS_RENDER := ["flash_t", "hitsq_t", "land_t", "swing_t", "windup_t", "_lunge_t", "_lunge_amp", "_atk_voff",
+	"_auraEnergy", "_lavaRage", "_starEnergy", "bubbleStore", "_stoneDefGained", "_initDef"]
+
+
+func _cache_after_render() -> void:
+	for i in range(mini(_ucur.size(), _ucur_idx.size())):
+		var u: Dictionary = _ucur[i]
+		var c: Dictionary = _ucache[_ucur_idx[i]]
+		for k in UKEYS_RENDER:
+			if c.has(k):
+				c[k] = u.get(k)
+
+
 ## 一个单位这一步变了的字段。操作头等到第一个变化才写(没变的单位一个字节都不写、也不回退)。
 ## 名单 < 128 项 ⇒ 计数恒为一字节, 可以事后回填。
 func _unit_fields(u: Dictionary, idx: int, cont: bool) -> void:
@@ -411,9 +523,9 @@ func _unit_fields(u: Dictionary, idx: int, cont: bool) -> void:
 		var old = c.get(k)
 		if typeof(old) == t and (t == TYPE_NIL or old == v):
 			continue
-		if t == TYPE_OBJECT or t == TYPE_ARRAY or t == TYPE_CALLABLE:
+		if t == TYPE_OBJECT or t == TYPE_CALLABLE or (t == TYPE_ARRAY and not UARR.has(k)):
 			continue
-		c[k] = v.duplicate() if t == TYPE_DICTIONARY else v
+		c[k] = v.duplicate() if (t == TYPE_DICTIONARY or t == TYPE_ARRAY) else v
 		if n == 0:
 			enc.u8(F.OP_UNIT_SET)
 			enc.vu(idx)
@@ -422,6 +534,72 @@ func _unit_fields(u: Dictionary, idx: int, cont: bool) -> void:
 		enc.s(k)
 		enc.val(v)
 		n += 1
+	if cont:
+		## S2 `@dot`: 三个 DOT 桶此刻是否还在(就是渲染步判「常驻 DOT 数字该不该飞走」的那个函数算的); 手机代理没有 dot_stacks / dots。
+		var dots: Array = [false, false, false]
+		var dfl = u.get("_dot_float")
+		if dfl is Dictionary and not (dfl as Dictionary).is_empty():
+			for bi in range(3):
+				dots[bi] = battle._damage._dot_bucket_active(u, BattleDamage.DOT_BUCKETS[bi])
+		var oldd = c.get("@dot")
+		if not (oldd is Array) or oldd != dots:
+			c["@dot"] = dots
+			if n == 0:
+				enc.u8(F.OP_UNIT_SET)
+				enc.vu(idx)
+				pc = enc.pos()
+				enc.u8(0)
+			enc.s("@dot")
+			enc.val(dots)
+			n += 1
+		## S2 `@mv`: 走没走得比「呼吸阈值」快(渲染步只拿 vel 判这一件; 发整个 vel 每一采样都在变, 太贵)。
+		var mv: bool = (u.get("vel", Vector2.ZERO) as Vector2).length() > BattleVfx.BOB_STILL_SPD
+		var oldm = c.get("@mv")
+		if typeof(oldm) != TYPE_BOOL or oldm != mv:
+			c["@mv"] = mv
+			if n == 0:
+				enc.u8(F.OP_UNIT_SET)
+				enc.vu(idx)
+				pc = enc.pos()
+				enc.u8(0)
+			enc.s("@mv")
+			enc.val(mv)
+			n += 1
+		## S2 `@ts`: 时停里能动的那几个(渲染步按它决定谁的形变计时继续衰减、谁定格)
+		var tsa: Array = battle._timestop._ts_active
+		var its: bool = (not tsa.is_empty()) and battle._arr_has_unit(tsa, u)
+		var oldt = c.get("@ts")
+		if typeof(oldt) != TYPE_BOOL or oldt != its:
+			c["@ts"] = its
+			if n == 0:
+				enc.u8(F.OP_UNIT_SET)
+				enc.vu(idx)
+				pc = enc.pos()
+				enc.u8(0)
+			enc.s("@ts")
+			enc.val(its)
+			n += 1
+		## S2 `@n`: 这个单位的外观件对应哪个镜像节点 id(0 = 没有 / 不在镜像里)。换立绘节点时也会变。
+		var ids: Array = []
+		for k2 in APPEAR_KEYS:
+			var nv = u.get(k2)
+			var tid := 0
+			if typeof(nv) == TYPE_OBJECT and is_instance_valid(nv):
+				var tt = _tn_by_iid.get((nv as Object).get_instance_id())
+				if tt != null:
+					tid = (tt as TN).id
+			ids.append(tid)
+		var oldn = c.get("@n")
+		if not (oldn is Array) or oldn != ids:
+			c["@n"] = ids
+			if n == 0:
+				enc.u8(F.OP_UNIT_SET)
+				enc.vu(idx)
+				pc = enc.pos()
+				enc.u8(0)
+			enc.s("@n")
+			enc.val(ids)
+			n += 1
 	if n > 0:
 		enc.patch_u8(pc, n)
 
@@ -444,28 +622,11 @@ func _take_pending(key: bool) -> void:
 		var iid := nd.get_instance_id()
 		if _tn_by_iid.has(iid):
 			continue
-		if _unit_owned(nd):
-			meta["unit_owned"] = int(meta["unit_owned"]) + 1
-			continue
-		var t := TN.new()
-		t.n = nd
-		t.iid = iid
-		t.id = _next_id
-		_next_id += 1
-		t.cls = nd.get_class()
-		match t.cls:
-			"Sprite3D": t.kind = K_SPRITE
-			"MeshInstance3D": t.kind = K_MESH
-			"GPUParticles3D": t.kind = K_PART
-			"Label3D": t.kind = K_LABEL
-			_: t.kind = K_N3D if nd is Node3D else K_OTHER
-		_tn.append(t)
-		_tn_by_iid[iid] = t
-		meta["nodes_new"] = int(meta["nodes_new"]) + 1
+		## S2: 单位外观不再排除 —— 已在 `_units` 里按单位收过的这里跳过(上面那行), 挂在外观下面的子节点照常进节点层。
+		var t := _make_tn(nd)
 		if not key:
 			_node_new(t)
 	_pending.clear()
-	_add_step.clear()
 
 
 func _refresh_ua() -> void:
@@ -480,25 +641,18 @@ func _refresh_ua() -> void:
 	_ua_step = _step_n
 
 
-## 单位外观: 这个节点(或它某个祖先)挂在单位字典上、而且和它同一步生 ⇒ 单位登场时一起建的, 手机按单位层自己造。
-func _unit_owned(n: Node) -> bool:
-	var a: Node = n
-	while a != null and a != _world:
-		var ai := a.get_instance_id()
-		if _ua.has(ai) and _add_step.has(ai):
-			return true
-		a = a.get_parent()
-	return false
-
-
 func _nodes(cont: bool) -> void:
 	var j := 0
+	var dead := {}
 	for i in range(_tn.size()):
 		var t: TN = _tn[i]
 		if not is_instance_valid(t.n):
 			_node_del(t, false)
 			continue
-		if t.n.is_queued_for_deletion() or not t.n.is_inside_tree():
+		## S2: 父节点排进删除队列时子节点自己的 is_queued_for_deletion() 还是 false, 但帧末会一起被删 ——
+		##   跟着父节点同一步删(`_tn` 按建立顺序排, 父在子前)。否则服务器一帧推几十步, 这几十步里子节点在流里「还活着」。
+		if t.n.is_queued_for_deletion() or not t.n.is_inside_tree() or dead.has(t.par):
+			dead[t.iid] = true
 			_node_del(t, true)
 			continue
 		_samp(t, cont)
@@ -556,13 +710,49 @@ func _samp(t: TN, cont: bool) -> void:
 			t.mats = _collect_mats(t.n)
 	_cur_id = t.id
 	_sn = 0
+	## S2: 换了父节点(特效常见的「父节点要删, 先把粒子挪到世界上让它放完」)⇒ 发 `@par` + 当场的变换(本地坐标跟着父节点变了)
+	var pn: Node = t.n.get_parent()
+	var piid := pn.get_instance_id() if pn != null else 0
+	if piid != t.par:
+		t.par = piid
+		_k(&"@par")
+		enc.val(_par_ref(pn))
+		meta["reparent"] = int(meta.get("reparent", 0)) + 1
+		if t.kind != K_OTHER:
+			var r3: Node3D = t.n
+			t.org = r3.position
+			t.bas = r3.transform.basis
+			t.rot = r3.rotation
+			t.scl = r3.scale
+			_k(&"position")
+			enc.v3q(F.T_POS, t.org, F.Q_POS)
+			_k(&"rotation")
+			enc.v3q(F.T_ROT, t.rot, F.Q_ROT)
+			_k(&"scale")
+			enc.v3q(F.T_SCALE, t.scl, F.Q_SCALE)
+	## 主人活着的单位外观: 位置 / 缩放 / 颜色 / 朝向是渲染步按单位字段每帧写的(`_update_world_transforms`), 手机同一个渲染步算得出来 ⇒ 不发;
+	##   主人死了渲染步就不管它了(死亡淡出是 sim tween) ⇒ 照常全发。
+	var ren := false
+	if t.unit != null:
+		var ou: Dictionary = t.unit
+		ren = bool(ou.get("alive", false)) and is_same(ou.get(t.ukey), t.n) and _ucur_set.has(t.uidx)
 	if t.kind != K_OTHER:
 		var v3: Node3D = t.n
 		if v3.visible != t.vis:
 			t.vis = v3.visible
 			_k(&"visible")
 			enc.val(t.vis)
-		if cont:
+		if ren:
+			## 不发, 但缓存要跟着走: 手机的渲染步此刻算出来的就是这些值(主人死了之后从这里开始比)
+			var rx := v3.transform
+			t.org = rx.origin
+			t.bas = rx.basis
+			t.rot = v3.rotation
+			t.scl = v3.scale
+			if t.kind == K_SPRITE:
+				t.mod = (t.n as Sprite3D).modulate
+				t.fh = (t.n as Sprite3D).flip_h
+		if cont and not ren:
 			var xf := v3.transform
 			if xf.origin != t.org:
 				t.org = xf.origin
@@ -598,12 +788,12 @@ func _samp(t: TN, cont: bool) -> void:
 				t.reg = sp.region_enabled
 				_k(&"region_enabled")
 				enc.val(t.reg)
-			if sp.flip_h != t.fh:
+			if sp.flip_h != t.fh and not ren:
 				t.fh = sp.flip_h
 				_k(&"flip_h")
 				enc.val(t.fh)
 			if cont:
-				if sp.modulate != t.mod:
+				if sp.modulate != t.mod and not ren:
 					t.mod = sp.modulate
 					_k(&"modulate")
 					enc.col(t.mod)
@@ -723,23 +913,11 @@ func _node_new(t: TN) -> void:
 	t.mats = _collect_mats(n)
 	## 父引用(先算好: 可能要写字符串)
 	var par: Node = n.get_parent()
-	var pk := F.PAR_PATH
-	var pid := 0
-	var pkey := ""
-	if par == _world:
-		pk = F.PAR_WORLD
-	elif par != null and _tn_by_iid.has(par.get_instance_id()):
-		pk = F.PAR_NODE
-		pid = (_tn_by_iid[par.get_instance_id()] as TN).id
-	elif par != null and _ua.has(par.get_instance_id()):
-		var ua: Array = _ua[par.get_instance_id()]
-		pid = _uidx(ua[0])
-		if pid >= 0:
-			pk = F.PAR_UNIT
-			pkey = str(ua[1])
-	if pk == F.PAR_PATH:
-		pkey = str(_world.get_path_to(par)) if par != null else ""
-		meta["parent_by_path"] = int(meta["parent_by_path"]) + 1
+	t.par = par.get_instance_id() if par != null else 0
+	var pr := _par_ref(par)
+	var pk: int = pr[0]
+	var pid: int = pr[1]
+	var pkey: String = pr[2]
 	enc.u8(F.OP_NODE_NEW)
 	enc.vu(t.id)
 	enc.u8(pk)
@@ -765,6 +943,30 @@ func _node_new(t: TN) -> void:
 			enc.v3q(F.T_SCALE, e[1], F.Q_SCALE)
 		else:
 			enc.val(e[1])
+
+
+## 父引用 [种类, id, 键](见 StreamFormat.PAR_*)。
+func _par_ref(par: Node) -> Array:
+	var pk := F.PAR_PATH
+	var pid := 0
+	var pkey := ""
+	if par == _world:
+		pk = F.PAR_WORLD
+	elif par != null and _tn_by_iid.has(par.get_instance_id()):
+		pk = F.PAR_NODE
+		pid = (_tn_by_iid[par.get_instance_id()] as TN).id
+	elif par != null and _ua.has(par.get_instance_id()):
+		var ua: Array = _ua[par.get_instance_id()]
+		pid = _uidx(ua[0])
+		if pid >= 0:
+			pk = F.PAR_UNIT
+			pkey = str(ua[1])
+		else:
+			pid = 0
+	if pk == F.PAR_PATH:
+		pkey = str(_world.get_path_to(par)) if par != null else ""
+		meta["parent_by_path"] = int(meta["parent_by_path"]) + 1
+	return [pk, pid, pkey]
 
 
 func _collect_mats(n: Node) -> PackedInt32Array:
@@ -1101,6 +1303,8 @@ func _events() -> void:
 	for e in _evs:
 		var kind: String = e[0]
 		var args: Array = e[1]
+		if (e as Array).size() > 2:
+			args = [_uidx(e[2])] + args
 		ec[kind] = int(ec.get(kind, 0)) + 1
 		enc.u8(F.OP_EVENT)
 		enc.s(kind)

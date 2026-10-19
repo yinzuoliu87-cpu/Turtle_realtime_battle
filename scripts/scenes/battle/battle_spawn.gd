@@ -17,6 +17,8 @@ func _init(b) -> void:
 #  阵容 spawn — 读 GameState.season_leaders, 没有就 demo (1:1 复用 2D 解析)
 # ============================================================================
 func _spawn_teams() -> void:
+	if battle._replay != null and str(battle._replay.mode) == "stream":
+		return   # 手机播状态流(逐帧直播 S2): 单位全由流里来, 本机不建
 	# 🛠 调试场: 空场进编辑模式 (不自动出生; 用户点击摆位). 默认关 → 走正常 spawn.
 	if battle.DEBUG_EDIT:
 		battle._edit_mode = true

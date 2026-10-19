@@ -2117,7 +2117,7 @@ func _process(delta: float) -> void:
 	# 演出每帧一次(真实时间·立绘动画/相机随真实帧走→平滑)。frozen/in_ts 用 sim 后最新态。
 	var r_frozen: bool = _hitstop > 0.0
 	var r_in_ts: bool = not _timestop._ts_active.is_empty()
-	if _replay.stream == null: _render._render_step(rd, r_frozen, r_in_ts)   # 裁判录状态流时渲染步改由录流器每 2 步对齐跑(scripts/systems/stream/)
+	if _replay.stream == null and _replay.player == null: _render._render_step(rd, r_frozen, r_in_ts)   # 裁判录状态流时渲染步改由录流器每 2 步对齐跑; 手机播状态流时由播放器自己跑(scripts/systems/stream/)
 
 ## Phase4切片2: 交互固定步长累加器。攒够 SIM_DT 就跑一步 sim → 总 sim 时间只取决于 Σ钳制delta,
 ## 与"帧被切成多大块"无关(60/144/300fps 落到同样的整步序列)→ 交互游玩帧率无关。

@@ -1087,6 +1087,7 @@ func _dl_clear_units() -> void:
 	#   绝大多数VFX的 queue_free 是挂在 tween 的【最后一个 callback】上的, 而上面 tw.kill()
 	#   一杀, 那个 callback 就永远不会执行 → 精灵永久留在 _world 里跨路残留。
 	#   这里按建场快照兜底: 凡不在常驻集内的 _world 子节点一律释放。
+	if StreamRecorder.cur != null: StreamRecorder.cur.ev("lane_clear", [])   # 逐帧直播事件层(S2): 手机清自己造的那部分
 	var _swept = battle._sweep_world_vfx()
 	## ★UI 层也扫(2026-08-13 用户第 9 条「很多特效或数字残留到下一个战场」):
 	##   飘字挂在 `_ui_layer`, 而上面那句只扫 `_world` ⇒ 伤害/治疗数字换路后照样留着。

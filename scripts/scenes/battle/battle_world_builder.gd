@@ -2100,7 +2100,10 @@ func _clear_layout_on_obstacles() -> void:
 	var lp: Node = battle._world.find_child("LayoutProps", true, false)
 	if lp == null:
 		return
-	for ch in lp.get_children():
+	var cleared := PackedVector3Array()
+	var kids := lp.get_children()
+	for ci in range(kids.size()):
+		var ch: Node = kids[ci]
 		if not (ch is Node3D):
 			continue
 		var p: Vector3 = (ch as Node3D).position
@@ -2112,7 +2115,10 @@ func _clear_layout_on_obstacles() -> void:
 				ch.set_meta("cleared_on_obstacle", true)
 				ch.visible = false
 				ch.queue_free()
+				cleared.append((ch as Node3D).position)
 				break
+	## 逐帧直播(S2): 这是 sim 里(换路建场)删地图层节点的唯一一处; 地图是两边各自按同一张图建的, 只发「删掉的那几个摆件的位置」。
+	if StreamRecorder.cur != null and not cleared.is_empty(): StreamRecorder.cur.ev("layout_clear", [cleared])
 
 
 ## 挡路障碍换外观: 按**原图的视觉宽**反推主题素材的高度 ⇒ 看起来多宽就挡多宽(footprint 一个数不动)。

@@ -154,6 +154,8 @@ var referee_steps := 0          # 裁判: 已推的 sim 步
 var referee_stuck := false      # 裁判: 推到 RESUME_STEP_CAP 还没结算(不判负收尾: 结果交给调用方当错误处理)
 ## 裁判录状态流(逐帧直播 S1, scripts/systems/stream/): 任务里带 `stream` 选项才有; 有它时渲染步由它按 2 步一次对齐跑。
 var stream: StreamRecorder = null
+## 手机播放状态流(逐帧直播 S2, scripts/systems/stream/stream_player.gd): mode = "stream", 一步 sim 都不跑, 画面全由它驱动。
+var player: StreamPlayer = null
 
 
 func _init(b) -> void:
@@ -166,6 +168,11 @@ func _init(b) -> void:
 func start() -> void:
 	if not battle.sim_stepped.is_connected(post_step):
 		battle.sim_stepped.connect(post_step)   # ★最先连上 ⇒ 每步末尾第一个跑(先于任何协程)
+	if not StreamPlayer.pending.is_empty():
+		mode = "stream"
+		player = StreamPlayer.new(battle, StreamPlayer.pending)
+		StreamPlayer.pending = {}
+		return
 	if not pending_play.is_empty():
 		mode = "play"
 		rec = pending_play
@@ -341,6 +348,8 @@ func fight_steps() -> Array:
 ## 这一帧喂给 sim 累加器多少秒(战斗场 `_process` 调)。观赛由 `live_spectate.feed` 定(追帧 / 跟播 / 停在 horizon),
 ##   其余照旧 = 真实帧时长 × 倍速(`time_mult`)。★两条路都只改「这一帧跑几步」, 不改步长。
 func sim_feed(rd: float) -> float:
+	if mode == "stream":
+		return player.advance(rd)   # 播放状态流: 返回 0 ⇒ 累加器一步 sim 都不推
 	if live != null and mode == "play":
 		return live.feed(rd)
 	if mode == "resume":
@@ -418,6 +427,9 @@ func mark_text() -> String:
 func pre_step() -> bool:
 	_in_step = true
 	if mode == "":
+		return false
+	if mode == "stream":
+		player.sim_calls += 1      # 不该发生(门禁 verify_stream_no_sim 要求恒 0)
 		return false
 	var s: int = int(battle._sim_step_n)
 	if mode == "play" and not _ui_built:
@@ -541,6 +553,8 @@ func allow_input(kind: String) -> bool:
 			return false
 		_record_event(kind)
 		return true
+	if mode == "stream":
+		return false                # 播状态流: 人的输入一律不收(画面全来自服务器)
 	if mode != "play":
 		return true
 	var evs: Array = rec.get("events", [])

@@ -275,6 +275,14 @@ frames_for () {
     verify_stream_capture_inert) echo 20000 ;;
     verify_stream_size_budget) echo 20000 ;;
     verify_stream_whitelist_alarm) echo 20000 ;;
+    # 逐帧直播 S2 手机播放(2026-10-19): parity = 两局裁判局录流 + det 15 场景, 各再按流播一遍(播放端每 30 步让一帧);
+    #   no_sim = 录一局 + 引擎每帧真驱动播完(倍速 40) + 两遍坏块; seek = 两局各录一遍 + 每局 3 个目标各顺播 / 跳播一遍。
+    #   本地实测 parity 2357 帧 / 220 秒、seek 1904 帧、no_sim 512 帧(2026-10-19); 慢机器每帧步数少、帧数涨 ⇒ 都给 20000
+    verify_stream_parity) echo 20000 ;;
+    verify_stream_no_sim) echo 20000 ;;
+    verify_stream_seek) echo 20000 ;;
+    # 录流覆盖扫描(2026-10-19): 200 个对象(28 龟×3 技 / 95 件装备 / 12 羁绊 / 小将 / 大师)拆四片, 每片约 50 局 × (每 60 步让一帧 ≈ 22 帧 + 建场 4 帧) ≈ 1300 帧、本地约 80 秒; 给到 6000
+    verify_stream_coverage|verify_stream_coverage_2|verify_stream_coverage_3|verify_stream_coverage_4) echo 6000 ;;
     # 投降删除(2026-10-19): 录两局(各到第一路开打后 90 帧判负收尾, 每局约 300 帧) + 播一局(约 500 帧) + 主菜单前一场; 给到 8000
     verify_no_surrender) echo 8000 ;;
     # 双方各用各的赛季等级(2026-10-19): 四遍建场(每遍开场演出约 600 步, 20 步一帧) + 两遍各打 600 步(20 步一帧); 实测见报告, 给到 6000

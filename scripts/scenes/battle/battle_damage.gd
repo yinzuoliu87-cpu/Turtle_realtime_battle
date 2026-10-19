@@ -686,6 +686,9 @@ func _knockback(by: Dictionary, tgt: Dictionary, _ignored_dist: float, vy_mult: 
 # 每 tick 累加(总数越变越大、字号随量·1→2→3→4), 该桶所有 DOT 结束才触发弹射跳走(复用伤害飘字动画)。
 # 分桶=伤害类型: mag(灼烧+中毒同桶·蓝) / phy(流血·红) / tru(诅咒+真火·紫)。多桶并存左右错开。
 # ══════════════════════════════════════════════════════════════
+## DOT 数字的三个桶(顺序 = 状态流单位字段 `@dot` 的顺序, 见 stream_recorder)。
+const DOT_BUCKETS := ["phy", "mag", "tru"]
+
 func _dot_bucket_col(bucket: String) -> Color:
 	# ★语义色走 UIPalette 单一色表(用户2026-07-22「全统一」): 物理红#ff4444 / 法术蓝#4dabf7 / 真实白#ffffff。
 	#   原来这里没跟调色板走, 硬编码 phy#ff6b6b / tru 紫#b48cff —— 与结算面板+调色板「真实=白」不一致
@@ -698,6 +701,8 @@ func _dot_bucket_col(bucket: String) -> Color:
 
 ## 该桶是否还有活着的 DOT 在供养(结束检测)。mag=灼烧(非真火)或中毒; phy=流血; tru=真火灼烧或任一 flat DoT(诅咒)。
 func _dot_bucket_active(u: Dictionary, bucket: String) -> bool:
+	if u.has("@dot"):   # 手机播状态流(逐帧直播 S2)的单位代理: 没有 dot_stacks / dots, 服务器按本函数算好的结果放在 @dot 里
+		return bool((u["@dot"] as Array)[DOT_BUCKETS.find(bucket)]) if DOT_BUCKETS.has(bucket) else false
 	var ds: Dictionary = u.get("dot_stacks", {})
 	var true_fire: bool = battle._t < float(u.get("true_fire_until", 0.0))
 	match bucket:
@@ -715,6 +720,7 @@ func _dot_bucket_active(u: Dictionary, bucket: String) -> bool:
 
 ## 累加一次 DOT 伤害进对应桶的常驻数字。首次建 Label(挂 battle._ui_layer), 之后每帧由 _render._update_dot_floats 跟头顶。
 func _dot_accumulate(u: Dictionary, bucket: String, dmg: int) -> void:
+	if StreamRecorder.cur != null: StreamRecorder.cur.ev_unit("dotacc", u, [bucket, dmg])   # 逐帧直播事件层(S2): 常驻 DOT 数字是 sim 里直接建的 UI
 	if not (u.get("_dot_float") is Dictionary):
 		u["_dot_float"] = {}
 	var df: Dictionary = u["_dot_float"]

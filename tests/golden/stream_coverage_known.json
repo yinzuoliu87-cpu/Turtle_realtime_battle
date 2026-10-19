@@ -1,0 +1,1219 @@
+{
+	"_说明": "录流覆盖扫描的已知清单(S3 待补)。门禁 verify_stream_coverage(四片): 观测到的出处键必须 ⊆ known, 新出处即红。S3 每补一项就删一项, 最终清零(清零即方案书验收「镜像全覆盖」完成)。键 = 类别|属性或资源|文件:函数。由全量扫描(COV_ALL=1 COV_OUT=…)生成, 2026-10-19; 报告 docs/plans/ref/20261019-逐帧直播覆盖扫描.md。",
+	"known": [
+		{
+			"key": "alarm|GPUParticles3D.speed_scale|scripts/scenes/battle/battle_vfx.gd:_impact_particles",
+			"n": 7,
+			"objs": 2,
+			"ex": [
+				"scripts/scenes/battle/battle_vfx.gd:735 <- scripts/scenes/RealtimeBattle3DScene.gd:6669",
+				"scripts/scenes/battle/battle_vfx.gd:735 <- scripts/scenes/battle/battle_vfx.gd:596",
+				"scripts/scenes/battle/battle_vfx.gd:735 <- scripts/systems/equip/dragon_system.gd:116"
+			]
+		},
+		{
+			"key": "alarm|GPUParticles3D.speed_scale|scripts/scenes/battle/venom_drone_vfx.gd:make_fog",
+			"n": 24,
+			"objs": 1,
+			"ex": [
+				"scripts/scenes/battle/venom_drone_vfx.gd:637 <- scripts/systems/equip/eq_venom_drone.gd:451"
+			]
+		},
+		{
+			"key": "alarm|Label3D.text|scripts/systems/equip/hookbomb_system.gd:_hb_counter_refresh",
+			"n": 6,
+			"objs": 2,
+			"ex": [
+				"scripts/systems/equip/hookbomb_system.gd:1012 <- scripts/systems/equip/hookbomb_system.gd:199"
+			]
+		},
+		{
+			"key": "alarm|Label3D.text|scripts/systems/skills/gambler_system.gd:_gambler_wheel_vfx",
+			"n": 2,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/gambler_system.gd:148 <- scripts/systems/skills/gambler_system.gd:271"
+			]
+		},
+		{
+			"key": "alarm|MeshInstance3D.transparency|scripts/systems/equip/hookbomb_system.gd:_tendril_draw",
+			"n": 792,
+			"objs": 2,
+			"ex": [
+				"scripts/systems/equip/hookbomb_system.gd:807 <- scripts/systems/equip/hookbomb_system.gd:431",
+				"scripts/systems/equip/hookbomb_system.gd:807 <- scripts/systems/equip/hookbomb_system.gd:700",
+				"scripts/systems/equip/hookbomb_system.gd:807 <- scripts/systems/equip/hookbomb_system.gd:714",
+				"scripts/systems/equip/hookbomb_system.gd:807 <- scripts/systems/equip/hookbomb_system.gd:746"
+			]
+		},
+		{
+			"key": "alarm|ParticleProcessMaterial.emission_ring_radius|scripts/scenes/battle/venom_drone_vfx.gd:make_fog",
+			"n": 165,
+			"objs": 2,
+			"ex": [
+				"scripts/scenes/battle/venom_drone_vfx.gd:637 <- scripts/systems/equip/eq_venom_drone.gd:451"
+			]
+		},
+		{
+			"key": "alarm|Sprite3D.flip_v|scripts/scenes/battle/battle_spawn.gd:_make_unit",
+			"n": 2,
+			"objs": 1,
+			"ex": [
+				"scripts/scenes/battle/battle_spawn.gd:383 <- scripts/scenes/battle/battle_debug_arena.gd:83"
+			]
+		},
+		{
+			"key": "ext|modulate|scripts/systems/equip/timestop_system.gd:_ts_charge_vfx",
+			"n": 18,
+			"objs": 3,
+			"ex": [
+				"scripts/systems/equip/timestop_system.gd:698 <- scripts/systems/equip/timestop_system.gd:183"
+			]
+		},
+		{
+			"key": "ext|transform|scripts/systems/equip/timestop_system.gd:_ts_charge_vfx",
+			"n": 25,
+			"objs": 3,
+			"ex": [
+				"scripts/systems/equip/timestop_system.gd:698 <- scripts/systems/equip/timestop_system.gd:183"
+			]
+		},
+		{
+			"key": "ph|内联shader:Shader|scripts/scenes/battle/battle_spawn.gd:_make_unit",
+			"n": 507,
+			"objs": 200,
+			"ex": [
+				"scripts/scenes/battle/battle_spawn.gd:383 <- scripts/scenes/battle/battle_debug_arena.gd:64",
+				"scripts/scenes/battle/battle_spawn.gd:383 <- scripts/scenes/battle/battle_debug_arena.gd:79",
+				"scripts/scenes/battle/battle_spawn.gd:383 <- scripts/scenes/battle/battle_debug_arena.gd:83"
+			]
+		},
+		{
+			"key": "ph|程序网格:ArrayMesh|scripts/scenes/battle/arcane_eq_vfx.gd:_adopt",
+			"n": 2,
+			"objs": 2,
+			"ex": [
+				"scripts/scenes/battle/arcane_eq_vfx.gd:586 <- scripts/scenes/battle/arcane_eq_vfx.gd:597"
+			]
+		},
+		{
+			"key": "ph|程序网格:ArrayMesh|scripts/scenes/battle/arcane_eq_vfx.gd:pestle_leap",
+			"n": 2,
+			"objs": 1,
+			"ex": [
+				"scripts/scenes/battle/arcane_eq_vfx.gd:1042 <- scripts/systems/equip/eq_arcane_batch.gd:589"
+			]
+		},
+		{
+			"key": "ph|程序网格:ArrayMesh|scripts/scenes/battle/arcane_eq_vfx.gd:stele_raise",
+			"n": 3,
+			"objs": 2,
+			"ex": [
+				"scripts/scenes/battle/arcane_eq_vfx.gd:636 <- scripts/systems/equip/eq_arcane_batch.gd:349"
+			]
+		},
+		{
+			"key": "ph|程序网格:ArrayMesh|scripts/scenes/battle/arcane_eq_vfx.gd:wave_path",
+			"n": 2691,
+			"objs": 2,
+			"ex": [
+				"scripts/scenes/battle/arcane_eq_vfx.gd:1271 <- scripts/systems/equip/eq_arcane_batch.gd:779"
+			]
+		},
+		{
+			"key": "ph|程序网格:ArrayMesh|scripts/scenes/battle/blade_eq_vfx.gd:_adopt",
+			"n": 88,
+			"objs": 2,
+			"ex": [
+				"scripts/scenes/battle/blade_eq_vfx.gd:488 <- scripts/scenes/battle/blade_eq_vfx.gd:1007",
+				"scripts/scenes/battle/blade_eq_vfx.gd:488 <- scripts/scenes/battle/blade_eq_vfx.gd:1189",
+				"scripts/scenes/battle/blade_eq_vfx.gd:488 <- scripts/scenes/battle/blade_eq_vfx.gd:668"
+			]
+		},
+		{
+			"key": "ph|程序网格:ArrayMesh|scripts/scenes/battle/bow_eq_vfx.gd:_adopt",
+			"n": 148,
+			"objs": 5,
+			"ex": [
+				"scripts/scenes/battle/bow_eq_vfx.gd:456 <- scripts/scenes/battle/bow_eq_vfx.gd:467"
+			]
+		},
+		{
+			"key": "ph|程序网格:ArrayMesh|scripts/scenes/battle/bow_eq_vfx.gd:_orb_wrap",
+			"n": 5,
+			"objs": 2,
+			"ex": [
+				"scripts/scenes/battle/bow_eq_vfx.gd:544 <- scripts/scenes/battle/bow_eq_vfx.gd:500"
+			]
+		},
+		{
+			"key": "ph|程序网格:ArrayMesh|scripts/scenes/battle/food_eq_vfx.gd:_mk_node",
+			"n": 11,
+			"objs": 4,
+			"ex": [
+				"scripts/scenes/battle/food_eq_vfx.gd:407 <- scripts/scenes/battle/food_eq_vfx.gd:526",
+				"scripts/scenes/battle/food_eq_vfx.gd:407 <- scripts/scenes/battle/food_eq_vfx.gd:527",
+				"scripts/scenes/battle/food_eq_vfx.gd:407 <- scripts/scenes/battle/food_eq_vfx.gd:769",
+				"scripts/scenes/battle/food_eq_vfx.gd:407 <- scripts/scenes/battle/food_eq_vfx.gd:960"
+			]
+		},
+		{
+			"key": "ph|程序网格:ArrayMesh|scripts/scenes/battle/golden_shot_vfx.gd:_adopt",
+			"n": 48,
+			"objs": 1,
+			"ex": [
+				"scripts/scenes/battle/golden_shot_vfx.gd:219 <- scripts/scenes/battle/golden_shot_vfx.gd:308",
+				"scripts/scenes/battle/golden_shot_vfx.gd:219 <- scripts/scenes/battle/golden_shot_vfx.gd:323",
+				"scripts/scenes/battle/golden_shot_vfx.gd:219 <- scripts/scenes/battle/golden_shot_vfx.gd:327"
+			]
+		},
+		{
+			"key": "ph|程序网格:ArrayMesh|scripts/scenes/battle/gun_eq_vfx.gd:_adopt",
+			"n": 1575,
+			"objs": 5,
+			"ex": [
+				"scripts/scenes/battle/gun_eq_vfx.gd:224 <- scripts/scenes/battle/gun_eq_vfx.gd:515",
+				"scripts/scenes/battle/gun_eq_vfx.gd:224 <- scripts/scenes/battle/gun_eq_vfx.gd:518",
+				"scripts/scenes/battle/gun_eq_vfx.gd:224 <- scripts/scenes/battle/gun_eq_vfx.gd:628",
+				"scripts/scenes/battle/gun_eq_vfx.gd:224 <- scripts/scenes/battle/gun_eq_vfx.gd:675",
+				"scripts/scenes/battle/gun_eq_vfx.gd:224 <- scripts/scenes/battle/gun_eq_vfx.gd:722",
+				"scripts/scenes/battle/gun_eq_vfx.gd:224 <- scripts/scenes/battle/gun_eq_vfx.gd:726"
+			]
+		},
+		{
+			"key": "ph|程序网格:ArrayMesh|scripts/scenes/battle/mana_beam_vfx.gd:_node",
+			"n": 16,
+			"objs": 1,
+			"ex": [
+				"scripts/scenes/battle/mana_beam_vfx.gd:472 <- scripts/scenes/battle/mana_beam_vfx.gd:636",
+				"scripts/scenes/battle/mana_beam_vfx.gd:472 <- scripts/scenes/battle/mana_beam_vfx.gd:642",
+				"scripts/scenes/battle/mana_beam_vfx.gd:472 <- scripts/scenes/battle/mana_beam_vfx.gd:646",
+				"scripts/scenes/battle/mana_beam_vfx.gd:472 <- scripts/scenes/battle/mana_beam_vfx.gd:649",
+				"scripts/scenes/battle/mana_beam_vfx.gd:472 <- scripts/scenes/battle/mana_beam_vfx.gd:654",
+				"scripts/scenes/battle/mana_beam_vfx.gd:472 <- scripts/scenes/battle/mana_beam_vfx.gd:796"
+			]
+		},
+		{
+			"key": "ph|程序网格:ArrayMesh|scripts/scenes/battle/potion_eq_vfx.gd:_node",
+			"n": 15,
+			"objs": 2,
+			"ex": [
+				"scripts/scenes/battle/potion_eq_vfx.gd:356 <- scripts/scenes/battle/potion_eq_vfx.gd:535",
+				"scripts/scenes/battle/potion_eq_vfx.gd:356 <- scripts/scenes/battle/potion_eq_vfx.gd:547",
+				"scripts/scenes/battle/potion_eq_vfx.gd:356 <- scripts/scenes/battle/potion_eq_vfx.gd:551"
+			]
+		},
+		{
+			"key": "ph|程序网格:ArrayMesh|scripts/scenes/battle/relic_eq_vfx.gd:_adopt",
+			"n": 17,
+			"objs": 3,
+			"ex": [
+				"scripts/scenes/battle/relic_eq_vfx.gd:315 <- scripts/scenes/battle/relic_eq_vfx.gd:1024",
+				"scripts/scenes/battle/relic_eq_vfx.gd:315 <- scripts/scenes/battle/relic_eq_vfx.gd:658",
+				"scripts/scenes/battle/relic_eq_vfx.gd:315 <- scripts/scenes/battle/relic_eq_vfx.gd:832",
+				"scripts/scenes/battle/relic_eq_vfx.gd:315 <- scripts/scenes/battle/relic_eq_vfx.gd:934"
+			]
+		},
+		{
+			"key": "ph|程序网格:ArrayMesh|scripts/scenes/battle/spirit_eq_vfx.gd:_spawn_node",
+			"n": 44,
+			"objs": 5,
+			"ex": [
+				"scripts/scenes/battle/spirit_eq_vfx.gd:757 <- scripts/scenes/battle/spirit_eq_vfx.gd:776",
+				"scripts/scenes/battle/spirit_eq_vfx.gd:757 <- scripts/scenes/battle/spirit_eq_vfx.gd:778",
+				"scripts/scenes/battle/spirit_eq_vfx.gd:757 <- scripts/scenes/battle/spirit_eq_vfx.gd:779",
+				"scripts/scenes/battle/spirit_eq_vfx.gd:757 <- scripts/scenes/battle/spirit_eq_vfx.gd:805",
+				"scripts/scenes/battle/spirit_eq_vfx.gd:757 <- scripts/scenes/battle/spirit_eq_vfx.gd:846",
+				"scripts/scenes/battle/spirit_eq_vfx.gd:757 <- scripts/scenes/battle/spirit_eq_vfx.gd:876"
+			]
+		},
+		{
+			"key": "ph|程序网格:ArrayMesh|scripts/scenes/battle/synergy_vfx.gd:_adopt",
+			"n": 17,
+			"objs": 3,
+			"ex": [
+				"scripts/scenes/battle/synergy_vfx.gd:87 <- scripts/scenes/battle/synergy_vfx.gd:1154",
+				"scripts/scenes/battle/synergy_vfx.gd:87 <- scripts/scenes/battle/synergy_vfx.gd:1188",
+				"scripts/scenes/battle/synergy_vfx.gd:87 <- scripts/scenes/battle/synergy_vfx.gd:1284",
+				"scripts/scenes/battle/synergy_vfx.gd:87 <- scripts/scenes/battle/synergy_vfx.gd:746",
+				"scripts/scenes/battle/synergy_vfx.gd:87 <- scripts/scenes/battle/synergy_vfx.gd:922"
+			]
+		},
+		{
+			"key": "ph|程序网格:ArrayMesh|scripts/scenes/battle/synergy_vfx.gd:gun_turret_ensure",
+			"n": 9,
+			"objs": 1,
+			"ex": [
+				"scripts/scenes/battle/synergy_vfx.gd:1381 <- scripts/systems/equip/gun_synergy_system.gd:137",
+				"scripts/scenes/battle/synergy_vfx.gd:1398 <- scripts/systems/equip/gun_synergy_system.gd:137",
+				"scripts/scenes/battle/synergy_vfx.gd:1416 <- scripts/systems/equip/gun_synergy_system.gd:137"
+			]
+		},
+		{
+			"key": "ph|程序网格:ArrayMesh|scripts/scenes/battle/venom_drone_vfx.gd:make_drone",
+			"n": 5,
+			"objs": 2,
+			"ex": [
+				"scripts/scenes/battle/venom_drone_vfx.gd:715 <- scripts/systems/equip/eq_venom_drone.gd:402"
+			]
+		},
+		{
+			"key": "ph|程序网格:ArrayMesh|scripts/scenes/battle/venom_drone_vfx.gd:make_fog",
+			"n": 6,
+			"objs": 2,
+			"ex": [
+				"scripts/scenes/battle/venom_drone_vfx.gd:637 <- scripts/systems/equip/eq_venom_drone.gd:451"
+			]
+		},
+		{
+			"key": "ph|程序网格:ArrayMesh|scripts/systems/equip/tentacle_vfx.gd:_spawn",
+			"n": 12,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/equip/tentacle_vfx.gd:684 <- scripts/systems/equip/tentacle_vfx.gd:631",
+				"scripts/systems/equip/tentacle_vfx.gd:698 <- scripts/systems/equip/tentacle_vfx.gd:631"
+			]
+		},
+		{
+			"key": "ph|程序网格:ArrayMesh|scripts/systems/equip/tentacle_vfx.gd:_telegraph_tick",
+			"n": 6,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/equip/tentacle_vfx.gd:1118 <- scripts/systems/equip/tentacle_vfx.gd:784"
+			]
+		},
+		{
+			"key": "ph|程序网格:ImmediateMesh|scripts/scenes/RealtimeBattle3DScene.gd:_bear_claw_fx",
+			"n": 12,
+			"objs": 2,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:2984 <- scripts/systems/equip/equip_tick_system.gd:817"
+			]
+		},
+		{
+			"key": "ph|程序网格:ImmediateMesh|scripts/scenes/RealtimeBattle3DScene.gd:_laser_beam",
+			"n": 9,
+			"objs": 2,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:4373 <- scripts/scenes/RealtimeBattle3DScene.gd:8183",
+				"scripts/scenes/RealtimeBattle3DScene.gd:4373 <- scripts/scenes/battle/battle_vfx.gd:2536",
+				"scripts/scenes/RealtimeBattle3DScene.gd:4373 <- scripts/scenes/battle/battle_vfx.gd:2537",
+				"scripts/scenes/RealtimeBattle3DScene.gd:4373 <- scripts/scenes/battle/battle_vfx.gd:2844",
+				"scripts/scenes/RealtimeBattle3DScene.gd:4373 <- scripts/scenes/battle/battle_vfx.gd:2859",
+				"scripts/scenes/RealtimeBattle3DScene.gd:4373 <- scripts/scenes/battle/battle_vfx.gd:2860"
+			]
+		},
+		{
+			"key": "ph|程序网格:ImmediateMesh|scripts/scenes/RealtimeBattle3DScene.gd:_surf_chain_shoot",
+			"n": 2,
+			"objs": 1,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:4811 <- scripts/systems/skills/hiding_system.gd:300"
+			]
+		},
+		{
+			"key": "ph|程序网格:ImmediateMesh|scripts/scenes/RealtimeBattle3DScene.gd:_update_turret_line",
+			"n": 6,
+			"objs": 2,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:3255 <- scripts/systems/equip/equip_system.gd:313"
+			]
+		},
+		{
+			"key": "ph|程序网格:ImmediateMesh|scripts/scenes/battle/battle_vfx.gd:barnacle_line",
+			"n": 6,
+			"objs": 2,
+			"ex": [
+				"scripts/scenes/battle/battle_vfx.gd:1816 <- scripts/scenes/RealtimeBattle3DScene.gd:3758"
+			]
+		},
+		{
+			"key": "ph|程序网格:ImmediateMesh|scripts/scenes/battle/battle_vfx.gd:bolt_line",
+			"n": 1126,
+			"objs": 25,
+			"ex": [
+				"scripts/scenes/battle/battle_vfx.gd:1521 <- scripts/scenes/RealtimeBattle3DScene.gd:4801"
+			]
+		},
+		{
+			"key": "ph|程序网格:ImmediateMesh|scripts/scenes/battle/battle_vfx.gd:line_band_ground",
+			"n": 8,
+			"objs": 3,
+			"ex": [
+				"scripts/scenes/battle/battle_vfx.gd:2509 <- scripts/scenes/battle/battle_vfx.gd:2538",
+				"scripts/scenes/battle/battle_vfx.gd:2509 <- scripts/systems/skills/crystal_system.gd:107"
+			]
+		},
+		{
+			"key": "ph|程序网格:ImmediateMesh|scripts/scenes/battle/battle_vfx.gd:tide_wall_spawn",
+			"n": 4,
+			"objs": 2,
+			"ex": [
+				"scripts/scenes/battle/battle_vfx.gd:2761 <- scripts/systems/equip/equip_tick_system.gd:955"
+			]
+		},
+		{
+			"key": "ph|程序网格:ImmediateMesh|scripts/scenes/battle/venom_drone_vfx.gd:make_drone",
+			"n": 15,
+			"objs": 2,
+			"ex": [
+				"scripts/scenes/battle/venom_drone_vfx.gd:715 <- scripts/systems/equip/eq_venom_drone.gd:402"
+			]
+		},
+		{
+			"key": "ph|程序网格:ImmediateMesh|scripts/scenes/battle/venom_drone_vfx.gd:make_ring",
+			"n": 10,
+			"objs": 2,
+			"ex": [
+				"scripts/scenes/battle/venom_drone_vfx.gd:861 <- scripts/systems/equip/eq_venom_drone.gd:255"
+			]
+		},
+		{
+			"key": "ph|程序网格:ImmediateMesh|scripts/systems/equip/equip_system.gd:_eq_crystal_sweep",
+			"n": 3,
+			"objs": 2,
+			"ex": [
+				"scripts/systems/equip/equip_system.gd:266 <- scripts/systems/equip/equip_system.gd:2835"
+			]
+		},
+		{
+			"key": "ph|程序网格:ImmediateMesh|scripts/systems/equip/hookbomb_system.gd:_fireball",
+			"n": 7,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/equip/hookbomb_system.gd:478 <- scripts/systems/equip/hookbomb_system.gd:291",
+				"scripts/systems/equip/hookbomb_system.gd:478 <- scripts/systems/equip/hookbomb_system.gd:293"
+			]
+		},
+		{
+			"key": "ph|程序网格:ImmediateMesh|scripts/systems/equip/hookbomb_system.gd:_tendril_draw",
+			"n": 873,
+			"objs": 2,
+			"ex": [
+				"scripts/systems/equip/hookbomb_system.gd:807 <- scripts/systems/equip/hookbomb_system.gd:431",
+				"scripts/systems/equip/hookbomb_system.gd:807 <- scripts/systems/equip/hookbomb_system.gd:700",
+				"scripts/systems/equip/hookbomb_system.gd:807 <- scripts/systems/equip/hookbomb_system.gd:714",
+				"scripts/systems/equip/hookbomb_system.gd:807 <- scripts/systems/equip/hookbomb_system.gd:746"
+			]
+		},
+		{
+			"key": "ph|程序网格:ImmediateMesh|scripts/systems/equip/hookbomb_system.gd:_virus_nest",
+			"n": 4,
+			"objs": 2,
+			"ex": [
+				"scripts/systems/equip/hookbomb_system.gd:905 <- scripts/systems/equip/hookbomb_system.gd:257"
+			]
+		},
+		{
+			"key": "ph|程序网格:ImmediateMesh|scripts/systems/equip/signal_wave_system.gd:_place_nodes",
+			"n": 3,
+			"objs": 2,
+			"ex": [
+				"scripts/systems/equip/signal_wave_system.gd:212 <- scripts/systems/equip/signal_wave_system.gd:119"
+			]
+		},
+		{
+			"key": "ph|程序网格:ImmediateMesh|scripts/systems/skills/lava_system.gd:_lava_volcano_erupt",
+			"n": 2,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/lava_system.gd:267 <- scripts/scenes/RealtimeBattle3DScene.gd:2314"
+			]
+		},
+		{
+			"key": "ph|程序网格:ImmediateMesh|scripts/systems/skills/phoenix_system.gd:_phoenix_sector_indicator",
+			"n": 6,
+			"objs": 3,
+			"ex": [
+				"scripts/systems/skills/phoenix_system.gd:227 <- scripts/systems/skills/phoenix_system.gd:60"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/RealtimeBattle3DScene.gd:_big_bear_charge_and_spawn",
+			"n": 1,
+			"objs": 1,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:2937 <- scripts/systems/equip/equip_tick_system.gd:115"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/RealtimeBattle3DScene.gd:_bone_speck",
+			"n": 2,
+			"objs": 2,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:3301 <- scripts/systems/equip/equip_system.gd:332"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/RealtimeBattle3DScene.gd:_chain_windup",
+			"n": 1,
+			"objs": 1,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:8104 <- scripts/systems/equip/equip_system.gd:2878"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/RealtimeBattle3DScene.gd:_conch_transform",
+			"n": 1,
+			"objs": 1,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:3321 <- scripts/systems/equip/equip_system.gd:2522"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/RealtimeBattle3DScene.gd:_ember_drop",
+			"n": 2,
+			"objs": 1,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:3509 <- scripts/scenes/RealtimeBattle3DScene.gd:3498"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/RealtimeBattle3DScene.gd:_glow_bb",
+			"n": 45,
+			"objs": 26,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:5004 <- scripts/scenes/RealtimeBattle3DScene.gd:5544",
+				"scripts/scenes/RealtimeBattle3DScene.gd:5004 <- scripts/scenes/RealtimeBattle3DScene.gd:5568",
+				"scripts/scenes/RealtimeBattle3DScene.gd:5004 <- scripts/systems/skills/candy_system.gd:263",
+				"scripts/scenes/RealtimeBattle3DScene.gd:5004 <- scripts/systems/skills/gambler_system.gd:197",
+				"scripts/scenes/RealtimeBattle3DScene.gd:5004 <- scripts/systems/skills/ice_system.gd:421",
+				"scripts/scenes/RealtimeBattle3DScene.gd:5004 <- scripts/systems/skills/pirate_system.gd:205"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/RealtimeBattle3DScene.gd:_heal_ascend",
+			"n": 1,
+			"objs": 1,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:7316 <- scripts/systems/equip/equip_system.gd:2592"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/RealtimeBattle3DScene.gd:_heal_body_glow",
+			"n": 2,
+			"objs": 1,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:7263 <- scripts/systems/equip/equip_system.gd:2589",
+				"scripts/scenes/RealtimeBattle3DScene.gd:7281 <- scripts/systems/equip/equip_system.gd:2589"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/RealtimeBattle3DScene.gd:_mark_vfx",
+			"n": 3,
+			"objs": 2,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:7237 <- scripts/scenes/battle/battle_damage.gd:681"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/RealtimeBattle3DScene.gd:_mud_mark",
+			"n": 20,
+			"objs": 12,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:3747 <- scripts/scenes/RealtimeBattle3DScene.gd:5309"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/RealtimeBattle3DScene.gd:_muzzle_flash",
+			"n": 16,
+			"objs": 12,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:4323 <- scripts/scenes/RealtimeBattle3DScene.gd:7115",
+				"scripts/scenes/RealtimeBattle3DScene.gd:4323 <- scripts/systems/equip/equip_system.gd:427",
+				"scripts/scenes/RealtimeBattle3DScene.gd:4323 <- scripts/systems/equip/equip_system.gd:441",
+				"scripts/scenes/RealtimeBattle3DScene.gd:4323 <- scripts/systems/equip/equip_system.gd:506",
+				"scripts/scenes/RealtimeBattle3DScene.gd:4323 <- scripts/systems/skills/chest_system.gd:341",
+				"scripts/scenes/RealtimeBattle3DScene.gd:4323 <- scripts/systems/skills/cyber_system.gd:121"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/RealtimeBattle3DScene.gd:_particle_burst",
+			"n": 2,
+			"objs": 2,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:7420 <- scripts/scenes/RealtimeBattle3DScene.gd:3528",
+				"scripts/scenes/RealtimeBattle3DScene.gd:7420 <- scripts/systems/equip/hookbomb_system.gd:299"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/RealtimeBattle3DScene.gd:_px_ground_sprite",
+			"n": 9,
+			"objs": 6,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:6250 <- scripts/systems/skills/headless_system.gd:572",
+				"scripts/scenes/RealtimeBattle3DScene.gd:6250 <- scripts/systems/skills/lava_system.gd:523",
+				"scripts/scenes/RealtimeBattle3DScene.gd:6250 <- scripts/systems/skills/star_system.gd:246",
+				"scripts/scenes/RealtimeBattle3DScene.gd:6250 <- scripts/systems/skills/star_system.gd:317",
+				"scripts/scenes/RealtimeBattle3DScene.gd:6250 <- scripts/systems/skills/star_system.gd:357"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/RealtimeBattle3DScene.gd:_reticle_flash",
+			"n": 4,
+			"objs": 2,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:7214 <- scripts/systems/equip/equip_system.gd:1664"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/RealtimeBattle3DScene.gd:_sniper_charge_fx",
+			"n": 1,
+			"objs": 1,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:8196 <- scripts/systems/equip/equip_system.gd:2443"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/RealtimeBattle3DScene.gd:_spawn_burn_ember",
+			"n": 14,
+			"objs": 9,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:3998 <- scripts/scenes/RealtimeBattle3DScene.gd:2717"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/RealtimeBattle3DScene.gd:_spawn_fireball",
+			"n": 1,
+			"objs": 1,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:7353 <- scripts/systems/equip/equip_system.gd:2595"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/RealtimeBattle3DScene.gd:_spawn_poison_bubble",
+			"n": 22,
+			"objs": 11,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:4017 <- scripts/scenes/RealtimeBattle3DScene.gd:2723",
+				"scripts/scenes/RealtimeBattle3DScene.gd:4017 <- scripts/systems/skills/hunter_system.gd:177"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/RealtimeBattle3DScene.gd:_tick_cyber_drones",
+			"n": 10,
+			"objs": 3,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:7038 <- scripts/scenes/RealtimeBattle3DScene.gd:6795",
+				"scripts/scenes/RealtimeBattle3DScene.gd:7047 <- scripts/scenes/RealtimeBattle3DScene.gd:6795"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/RealtimeBattle3DScene.gd:_update_bamboo_charge_dots",
+			"n": 5,
+			"objs": 4,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:3723 <- scripts/scenes/RealtimeBattle3DScene.gd:2384"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/RealtimeBattle3DScene.gd:_update_dice_blood_aura",
+			"n": 6,
+			"objs": 3,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:5727 <- scripts/scenes/RealtimeBattle3DScene.gd:2335"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/RealtimeBattle3DScene.gd:_update_headless_flame",
+			"n": 2,
+			"objs": 2,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:6039 <- scripts/scenes/RealtimeBattle3DScene.gd:2341"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/RealtimeBattle3DScene.gd:_update_rainbow_prism_aura",
+			"n": 6,
+			"objs": 3,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:5754 <- scripts/scenes/RealtimeBattle3DScene.gd:2336"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/RealtimeBattle3DScene.gd:_update_stun_vfx",
+			"n": 10,
+			"objs": 7,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:3692 <- scripts/scenes/RealtimeBattle3DScene.gd:2383"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/RealtimeBattle3DScene.gd:_venom_splat",
+			"n": 2,
+			"objs": 1,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:4777 <- scripts/scenes/battle/battle_ballistics.gd:363"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/RealtimeBattle3DScene.gd:_weapon_slash",
+			"n": 20,
+			"objs": 4,
+			"ex": [
+				"scripts/scenes/RealtimeBattle3DScene.gd:3769 <- scripts/scenes/RealtimeBattle3DScene.gd:2892",
+				"scripts/scenes/RealtimeBattle3DScene.gd:3769 <- scripts/systems/skills/line_system.gd:168"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/battle/arcane_eq_vfx.gd:pestle_leap",
+			"n": 3,
+			"objs": 2,
+			"ex": [
+				"scripts/scenes/battle/arcane_eq_vfx.gd:1060 <- scripts/systems/equip/eq_arcane_batch.gd:589"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/battle/battle_ballistics.gd:_fire_bolt_from",
+			"n": 68,
+			"objs": 29,
+			"ex": [
+				"scripts/scenes/battle/battle_ballistics.gd:150 <- scripts/scenes/RealtimeBattle3DScene.gd:3965",
+				"scripts/scenes/battle/battle_ballistics.gd:150 <- scripts/scenes/RealtimeBattle3DScene.gd:7116"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/battle/battle_ballistics.gd:_fire_ice_shard",
+			"n": 6,
+			"objs": 1,
+			"ex": [
+				"scripts/scenes/battle/battle_ballistics.gd:508 <- scripts/systems/skills/ice_system.gd:496"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/battle/battle_ballistics.gd:_shotgun_pellet",
+			"n": 4,
+			"objs": 3,
+			"ex": [
+				"scripts/scenes/battle/battle_ballistics.gd:448 <- scripts/systems/equip/equip_system.gd:482",
+				"scripts/scenes/battle/battle_ballistics.gd:448 <- scripts/systems/equip/equip_system.gd:486",
+				"scripts/scenes/battle/battle_ballistics.gd:448 <- scripts/systems/skills/pirate_system.gd:244"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/battle/battle_spawn.gd:_make_unit",
+			"n": 1014,
+			"objs": 200,
+			"ex": [
+				"scripts/scenes/battle/battle_spawn.gd:398 <- scripts/scenes/battle/battle_debug_arena.gd:64",
+				"scripts/scenes/battle/battle_spawn.gd:398 <- scripts/scenes/battle/battle_debug_arena.gd:79",
+				"scripts/scenes/battle/battle_spawn.gd:398 <- scripts/scenes/battle/battle_debug_arena.gd:83",
+				"scripts/scenes/battle/battle_spawn.gd:425 <- scripts/scenes/battle/battle_debug_arena.gd:64",
+				"scripts/scenes/battle/battle_spawn.gd:425 <- scripts/scenes/battle/battle_debug_arena.gd:79",
+				"scripts/scenes/battle/battle_spawn.gd:425 <- scripts/scenes/battle/battle_debug_arena.gd:83"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/battle/battle_vfx.gd:_hit_spark",
+			"n": 417,
+			"objs": 195,
+			"ex": [
+				"scripts/scenes/battle/battle_vfx.gd:678 <- scripts/scenes/RealtimeBattle3DScene.gd:4113",
+				"scripts/scenes/battle/battle_vfx.gd:678 <- scripts/scenes/RealtimeBattle3DScene.gd:6155",
+				"scripts/scenes/battle/battle_vfx.gd:678 <- scripts/scenes/battle/battle_vfx.gd:592",
+				"scripts/scenes/battle/battle_vfx.gd:678 <- scripts/scenes/battle/battle_vfx.gd:646",
+				"scripts/scenes/battle/battle_vfx.gd:678 <- scripts/systems/skills/hiding_system.gd:302"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/battle/battle_vfx.gd:_play_heal_glow",
+			"n": 8,
+			"objs": 5,
+			"ex": [
+				"scripts/scenes/battle/battle_vfx.gd:367 <- scripts/systems/skills/bamboo_system.gd:162"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/battle/blade_eq_vfx.gd:_adopt",
+			"n": 35,
+			"objs": 5,
+			"ex": [
+				"scripts/scenes/battle/blade_eq_vfx.gd:488 <- scripts/scenes/battle/blade_eq_vfx.gd:579",
+				"scripts/scenes/battle/blade_eq_vfx.gd:488 <- scripts/scenes/battle/blade_eq_vfx.gd:583",
+				"scripts/scenes/battle/blade_eq_vfx.gd:488 <- scripts/scenes/battle/blade_eq_vfx.gd:668",
+				"scripts/scenes/battle/blade_eq_vfx.gd:488 <- scripts/scenes/battle/blade_eq_vfx.gd:692",
+				"scripts/scenes/battle/blade_eq_vfx.gd:488 <- scripts/scenes/battle/blade_eq_vfx.gd:759",
+				"scripts/scenes/battle/blade_eq_vfx.gd:488 <- scripts/scenes/battle/blade_eq_vfx.gd:795"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/battle/food_eq_vfx.gd:_mk_sprite",
+			"n": 16,
+			"objs": 4,
+			"ex": [
+				"scripts/scenes/battle/food_eq_vfx.gd:422 <- scripts/scenes/battle/food_eq_vfx.gd:469",
+				"scripts/scenes/battle/food_eq_vfx.gd:422 <- scripts/scenes/battle/food_eq_vfx.gd:689",
+				"scripts/scenes/battle/food_eq_vfx.gd:422 <- scripts/scenes/battle/food_eq_vfx.gd:772",
+				"scripts/scenes/battle/food_eq_vfx.gd:422 <- scripts/scenes/battle/food_eq_vfx.gd:951"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/battle/gadget_eq_vfx.gd:sextant_shot",
+			"n": 5,
+			"objs": 2,
+			"ex": [
+				"scripts/scenes/battle/gadget_eq_vfx.gd:510 <- scripts/systems/equip/eq_gadget_batch.gd:405"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/battle/golden_shot_vfx.gd:_adopt",
+			"n": 9,
+			"objs": 1,
+			"ex": [
+				"scripts/scenes/battle/golden_shot_vfx.gd:219 <- scripts/scenes/battle/golden_shot_vfx.gd:308",
+				"scripts/scenes/battle/golden_shot_vfx.gd:219 <- scripts/scenes/battle/golden_shot_vfx.gd:323",
+				"scripts/scenes/battle/golden_shot_vfx.gd:219 <- scripts/scenes/battle/golden_shot_vfx.gd:344"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/battle/gun_eq_vfx.gd:_adopt",
+			"n": 31,
+			"objs": 5,
+			"ex": [
+				"scripts/scenes/battle/gun_eq_vfx.gd:224 <- scripts/scenes/battle/gun_eq_vfx.gd:291",
+				"scripts/scenes/battle/gun_eq_vfx.gd:224 <- scripts/scenes/battle/gun_eq_vfx.gd:522",
+				"scripts/scenes/battle/gun_eq_vfx.gd:224 <- scripts/scenes/battle/gun_eq_vfx.gd:570",
+				"scripts/scenes/battle/gun_eq_vfx.gd:224 <- scripts/scenes/battle/gun_eq_vfx.gd:836"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/battle/gun_eq_vfx.gd:pistol_fire",
+			"n": 1,
+			"objs": 1,
+			"ex": [
+				"scripts/scenes/battle/gun_eq_vfx.gd:402 <- scripts/systems/equip/eq_gun_batch.gd:442"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/battle/incense_vfx.gd:_adopt",
+			"n": 3,
+			"objs": 2,
+			"ex": [
+				"scripts/scenes/battle/incense_vfx.gd:280 <- scripts/scenes/battle/incense_vfx.gd:324",
+				"scripts/scenes/battle/incense_vfx.gd:280 <- scripts/scenes/battle/incense_vfx.gd:371"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/battle/incense_vfx.gd:empower_burst",
+			"n": 2,
+			"objs": 2,
+			"ex": [
+				"scripts/scenes/battle/incense_vfx.gd:362 <- scripts/systems/equip/incense_stone_system.gd:193"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/battle/potion_eq_vfx.gd:brew_glow_start",
+			"n": 5,
+			"objs": 2,
+			"ex": [
+				"scripts/scenes/battle/potion_eq_vfx.gd:449 <- scripts/systems/equip/eq_potion_batch.gd:176"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/battle/synergy_vfx.gd:_adopt",
+			"n": 89,
+			"objs": 16,
+			"ex": [
+				"scripts/scenes/battle/synergy_vfx.gd:87 <- scripts/scenes/battle/synergy_vfx.gd:192",
+				"scripts/scenes/battle/synergy_vfx.gd:87 <- scripts/scenes/battle/synergy_vfx.gd:238",
+				"scripts/scenes/battle/synergy_vfx.gd:87 <- scripts/scenes/battle/synergy_vfx.gd:312",
+				"scripts/scenes/battle/synergy_vfx.gd:87 <- scripts/scenes/battle/synergy_vfx.gd:402",
+				"scripts/scenes/battle/synergy_vfx.gd:87 <- scripts/scenes/battle/synergy_vfx.gd:436",
+				"scripts/scenes/battle/synergy_vfx.gd:87 <- scripts/scenes/battle/synergy_vfx.gd:694"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/scenes/battle/venom_drone_vfx.gd:make_fog",
+			"n": 6,
+			"objs": 2,
+			"ex": [
+				"scripts/scenes/battle/venom_drone_vfx.gd:637 <- scripts/systems/equip/eq_venom_drone.gd:451"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/equip/dragon_system.gd:_dragon_windup",
+			"n": 1,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/equip/dragon_system.gd:76 <- scripts/systems/equip/equip_system.gd:2767"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/equip/tentacle_vfx.gd:_spawn",
+			"n": 6,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/equip/tentacle_vfx.gd:684 <- scripts/systems/equip/tentacle_vfx.gd:631"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/bamboo_system.gd:_bamboo_hit_splash",
+			"n": 1,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/bamboo_system.gd:58 <- scripts/scenes/battle/battle_ballistics.gd:324"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/bamboo_system.gd:_bamboo_trail_dot",
+			"n": 1,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/bamboo_system.gd:89 <- scripts/systems/skills/bamboo_system.gd:78"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/candy_system.gd:_candy_drain_fx",
+			"n": 7,
+			"objs": 5,
+			"ex": [
+				"scripts/systems/skills/candy_system.gd:244 <- scripts/systems/skills/candy_system.gd:213"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/chest_system.gd:_chest_basic",
+			"n": 4,
+			"objs": 2,
+			"ex": [
+				"scripts/systems/skills/chest_system.gd:190 <- scripts/scenes/RealtimeBattle3DScene.gd:2840"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/chest_system.gd:_sk_chest_storm",
+			"n": 2,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/chest_system.gd:387 <- scripts/scenes/RealtimeBattle3DScene.gd:5410"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/crystal_system.gd:_crystal_detonate",
+			"n": 3,
+			"objs": 2,
+			"ex": [
+				"scripts/systems/skills/crystal_system.gd:156 <- scripts/systems/equip/equip_system.gd:2409",
+				"scripts/systems/skills/crystal_system.gd:156 <- scripts/systems/skills/crystal_system.gd:476"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/crystal_system.gd:_crystal_ray_vfx",
+			"n": 2,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/crystal_system.gd:502 <- scripts/systems/skills/crystal_system.gd:598"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/crystal_system.gd:_crystal_spike_line",
+			"n": 2,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/crystal_system.gd:356 <- scripts/scenes/RealtimeBattle3DScene.gd:6065"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/cyber_system.gd:_sk_cyber_cannon",
+			"n": 2,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/cyber_system.gd:79 <- scripts/scenes/RealtimeBattle3DScene.gd:5378"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/elite_system.gd:_elite_mist",
+			"n": 1,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/elite_system.gd:77 <- scripts/systems/skills/elite_system.gd:356"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/ghost_system.gd:_ghost_curse_wisp",
+			"n": 6,
+			"objs": 4,
+			"ex": [
+				"scripts/systems/skills/ghost_system.gd:108 <- scripts/scenes/RealtimeBattle3DScene.gd:2703"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/ghost_system.gd:_ghost_touch_hit",
+			"n": 2,
+			"objs": 2,
+			"ex": [
+				"scripts/systems/skills/ghost_system.gd:69 <- scripts/scenes/battle/battle_ballistics.gd:348"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/headless_system.gd:<anonymous lambda>",
+			"n": 1,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/headless_system.gd:193 <- scripts/scenes/RealtimeBattle3DScene.gd:2314"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/headless_system.gd:_headless_drain_dot",
+			"n": 2,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/headless_system.gd:146 <- scripts/systems/skills/shell_system.gd:164"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/headless_system.gd:_headless_scythe_telegraph",
+			"n": 1,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/headless_system.gd:230 <- scripts/systems/skills/headless_system.gd:283"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/headless_system.gd:_headless_undead_vfx",
+			"n": 2,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/headless_system.gd:420 <- scripts/scenes/battle/battle_damage.gd:482"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/headless_system.gd:_sk_headless_fear",
+			"n": 3,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/headless_system.gd:438 <- scripts/scenes/RealtimeBattle3DScene.gd:5365",
+				"scripts/systems/skills/headless_system.gd:452 <- scripts/scenes/RealtimeBattle3DScene.gd:5365",
+				"scripts/systems/skills/headless_system.gd:472 <- scripts/scenes/RealtimeBattle3DScene.gd:5365"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/headless_system.gd:_sk_headless_soul_charge",
+			"n": 1,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/headless_system.gd:637 <- scripts/scenes/RealtimeBattle3DScene.gd:5412"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/headless_system.gd:_sk_headless_tendrils",
+			"n": 1,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/headless_system.gd:565 <- scripts/scenes/RealtimeBattle3DScene.gd:5411"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/hiding_system.gd:_hiding_apply_buff",
+			"n": 2,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/hiding_system.gd:563 <- scripts/systems/skills/hiding_system.gd:604"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/hiding_system.gd:_hiding_legacy_heal_vfx",
+			"n": 1,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/hiding_system.gd:529 <- scripts/systems/skills/hiding_system.gd:514"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/hiding_system.gd:_hiding_shell_harden",
+			"n": 2,
+			"objs": 2,
+			"ex": [
+				"scripts/systems/skills/hiding_system.gd:641 <- scripts/scenes/RealtimeBattle3DScene.gd:3941"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/hiding_system.gd:_sk_hiding_buff",
+			"n": 1,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/hiding_system.gd:615 <- scripts/scenes/RealtimeBattle3DScene.gd:5425"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/ice_system.gd:_frost_mist",
+			"n": 2,
+			"objs": 2,
+			"ex": [
+				"scripts/systems/skills/ice_system.gd:109 <- scripts/systems/equip/equip_tick_system.gd:762"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/lava_system.gd:_lava_charge_vfx",
+			"n": 1,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/lava_system.gd:545 <- scripts/systems/skills/lava_system.gd:597"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/lava_system.gd:_lava_magma_surge",
+			"n": 1,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/lava_system.gd:382 <- scripts/systems/skills/lava_system.gd:697"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/lava_system.gd:_lava_volcano_erupt",
+			"n": 1,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/lava_system.gd:220 <- scripts/scenes/RealtimeBattle3DScene.gd:2314"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/lava_system.gd:_lava_volcano_slam",
+			"n": 3,
+			"objs": 3,
+			"ex": [
+				"scripts/systems/skills/lava_system.gd:585 <- scripts/systems/skills/lava_system.gd:492"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/line_system.gd:_ink_bomb_throw",
+			"n": 2,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/line_system.gd:135 <- scripts/systems/skills/line_system.gd:115"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/phoenix_system.gd:_phoenix_nozzle_flash",
+			"n": 2,
+			"objs": 2,
+			"ex": [
+				"scripts/systems/skills/phoenix_system.gd:165 <- scripts/systems/skills/phoenix_system.gd:64"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/phoenix_system.gd:_sk_phoenix_scald",
+			"n": 1,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/phoenix_system.gd:339 <- scripts/scenes/RealtimeBattle3DScene.gd:5406"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/rocket_system.gd:<anonymous lambda>",
+			"n": 1,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/rocket_system.gd:39 <- scripts/scenes/battle/battle_ballistics.gd:429"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/rocket_system.gd:_rocket_charge_vfx",
+			"n": 1,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/rocket_system.gd:20 <- scripts/systems/skills/hiding_system.gd:57"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/shell_system.gd:<anonymous lambda>",
+			"n": 2,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/shell_system.gd:284 <- scripts/scenes/RealtimeBattle3DScene.gd:2314"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/shell_system.gd:_shell_burn_patch",
+			"n": 1,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/shell_system.gd:190 <- scripts/systems/skills/shell_system.gd:276"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/shell_system.gd:_shell_dark_flame",
+			"n": 1,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/shell_system.gd:176 <- scripts/systems/skills/shell_system.gd:260"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/shell_system.gd:_shell_guard_fx",
+			"n": 4,
+			"objs": 2,
+			"ex": [
+				"scripts/systems/skills/shell_system.gd:90 <- scripts/systems/equip/equip_tick_system.gd:466"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/shell_system.gd:_shell_spawn_shockwave",
+			"n": 2,
+			"objs": 2,
+			"ex": [
+				"scripts/systems/skills/shell_system.gd:570 <- scripts/systems/skills/shell_system.gd:510"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/shell_system.gd:_sk_shell_copy",
+			"n": 2,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/shell_system.gd:362 <- scripts/scenes/RealtimeBattle3DScene.gd:5426"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/star_system.gd:<anonymous lambda>",
+			"n": 7,
+			"objs": 3,
+			"ex": [
+				"scripts/systems/skills/star_system.gd:192 <- scripts/scenes/RealtimeBattle3DScene.gd:2314",
+				"scripts/systems/skills/star_system.gd:367 <- scripts/scenes/battle/battle_ballistics.gd:429",
+				"scripts/systems/skills/star_system.gd:392 <- scripts/scenes/RealtimeBattle3DScene.gd:2314",
+				"scripts/systems/skills/star_system.gd:776 <- scripts/scenes/RealtimeBattle3DScene.gd:2314",
+				"scripts/systems/skills/star_system.gd:805 <- scripts/scenes/RealtimeBattle3DScene.gd:2314"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/star_system.gd:_sk_star_gravity_warp",
+			"n": 4,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/star_system.gd:106 <- scripts/scenes/RealtimeBattle3DScene.gd:5417",
+				"scripts/systems/skills/star_system.gd:119 <- scripts/scenes/RealtimeBattle3DScene.gd:5417"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/two_head_system.gd:_two_head_absorb_vfx",
+			"n": 1,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/two_head_system.gd:270 <- scripts/systems/skills/two_head_system.gd:210"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/skills/two_head_system.gd:_two_head_cannon",
+			"n": 2,
+			"objs": 1,
+			"ex": [
+				"scripts/systems/skills/two_head_system.gd:99 <- scripts/systems/skills/two_head_system.gd:87"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/trainer/trainer_system.gd:_hunt_dramatize",
+			"n": 2,
+			"objs": 2,
+			"ex": [
+				"scripts/systems/trainer/trainer_system.gd:1189 <- scripts/systems/trainer/trainer_system.gd:1143"
+			]
+		},
+		{
+			"key": "ph|程序贴图:ImageTexture|scripts/systems/trainer/trainer_system.gd:_tame_dramatize",
+			"n": 3,
+			"objs": 3,
+			"ex": [
+				"scripts/systems/trainer/trainer_system.gd:1397 <- scripts/systems/trainer/trainer_system.gd:1294"
+			]
+		}
+	],
+	"zero_den": []
+}
