@@ -1,0 +1,14 @@
+# 逐帧直播 · 过期流目录清理。口径 = 库里录像 purge_old_matches：每周二 00:00 UTC 删掉本周一 00:00 UTC 之前的。
+# 由 turtle-stream-purge.timer 触发（每小时；逻辑幂等，截止线由日期算，不由触发时刻算）。部署见 README.md。
+[Unit]
+Description=Turtle stream: purge expired stream directories
+
+[Service]
+Type=oneshot
+User=turtle-referee
+Group=turtle-referee
+ExecStart=/usr/bin/python3 /opt/turtle/stream/stream_ops.py purge
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/turtle-referee

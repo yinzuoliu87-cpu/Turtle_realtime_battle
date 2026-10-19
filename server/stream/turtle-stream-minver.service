@@ -1,0 +1,11 @@
+# 逐帧直播 · 最低版本同步：service_status.min_client_version → /etc/caddy/turtle-min-version.caddy（变了才 reload caddy）。
+# 由 turtle-stream-minver.timer 每分钟拉一次。读不到库 ⇒ 退出码 1、片段不动（沿用上次的最低版本）。部署见 README.md。
+[Unit]
+Description=Turtle stream: sync min_client_version into Caddy gate
+After=network-online.target caddy.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# root：要写 /etc/caddy、要 systemctl reload caddy；只做一次只读 GET（service_status）
+ExecStart=/usr/bin/python3 /opt/turtle/stream/stream_ops.py minver

@@ -1,0 +1,82 @@
+# 逐帧直播 · 状态流静态分发（方案书 docs/plans/20261019-服务器逐帧直播.md §3 ④ / S4；部署见同目录 README.md）
+# 放到 /etc/caddy/Caddyfile。改完：caddy validate --config /etc/caddy/Caddyfile && systemctl reload caddy
+#
+# URL：https://stream.turtlearena.xyz/streams/<match_id>/<块序号 6 位>.bin  与  …/<match_id>/end.json
+#      match_id = referee_jobs.match_id（uuid，gen_random_uuid，猜不到）；目录不列出。
+# 版本闸：/streams/* 要求请求头 X-Client-Version ≥ service_status.min_client_version，否则 426。
+#      口径与 PostgREST 钩子 check_client_version 相同（不带头 / 看不懂 ⇒ 按 0.0.0 ⇒ 拒）。
+#      最低版本由 turtle-stream-minver.timer 每分钟写进 /etc/caddy/turtle-min-version.caddy（stream_ops.py minver）。
+# /healthz 不过版本闸。
+
+{
+	# 证书只走 Let's Encrypt（不回落 ZeroSSL）；账号不登记邮箱
+	cert_issuer acme
+	admin localhost:2019
+}
+
+(stream_site) {
+	header -Server
+
+	route {
+		@health path /healthz
+		header @health Cache-Control no-store
+		respond @health "ok" 200
+
+		@bad_method not method GET HEAD
+		header @bad_method Cache-Control no-store
+		respond @bad_method 405
+
+		# 版本闸（片段里定义 @stream_old + 426 响应）
+		import /etc/caddy/turtle-min-version.caddy
+
+		@chunk path_regexp chunk `^/streams/[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+/[0-9]+\.bin$`
+		@endjson path_regexp endjson `^/streams/[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+/end\.json$`
+
+		# 块：写完一个 rename 一个，之后永不改 ⇒ 长缓存（保留期最长约 8 天）
+		handle @chunk {
+			uri strip_prefix /streams
+			root * /var/lib/turtle-referee/streams
+			header Content-Type application/octet-stream
+			header Cache-Control "public, max-age=604800, immutable"
+			file_server {
+				browse off
+			}
+		}
+		# end.json：一局收尾才出现 ⇒ 短缓存；JSON 才压缩（块已经是 ZSTD，不再压）
+		handle @endjson {
+			uri strip_prefix /streams
+			root * /var/lib/turtle-referee/streams
+			header Content-Type "application/json; charset=utf-8"
+			header Cache-Control "public, max-age=10"
+			encode {
+				gzip
+				match {
+					header Content-Type application/json*
+				}
+			}
+			file_server {
+				browse off
+			}
+		}
+		# 其余一律 404（不暴露目录结构）
+		header Cache-Control no-store
+		respond 404
+	}
+
+	# 文件不在（块还没写到 / 已过保留期）⇒ 404 且不许缓存（否则手机会一直拿缓存里的 404）
+	handle_errors {
+		header -Server
+		header Cache-Control no-store
+		respond "{err.status_code}" {err.status_code}
+	}
+}
+
+stream.turtlearena.xyz {
+	import stream_site
+}
+
+# 本机自检用（只听回环、不走 TLS）：curl -s http://127.0.0.1:8081/healthz
+http://127.0.0.1:8081 {
+	bind 127.0.0.1
+	import stream_site
+}

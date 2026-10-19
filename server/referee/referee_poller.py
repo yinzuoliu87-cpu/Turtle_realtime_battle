@@ -14,8 +14,13 @@
   WORK_DIR               默认 /var/lib/turtle-referee（每个线程一个子目录：任务单 / 结果单 / user:// / 日志）
   WORKERS                默认 = CPU 核数
   POLL_SEC               空闲时多久领一次，默认 2
-  JOB_TIMEOUT_SEC        一局的墙钟上限，默认 120（实测 3 路打满约 10 秒）
+  JOB_TIMEOUT_SEC        一局的墙钟上限，默认 600（10-19 CX33 实测: 真实满装备快照三路打满不录约 150 秒; 原默认 120 会把重局判超时）
   WORKER_NAME            默认 = 主机名（线程号会接在后面）
+  STREAM_ROOT            逐帧直播状态流的对外目录（Caddy 只读分发，见 server/stream/README.md）。
+                         ★默认空 = 不录流（不给 Godot 传 --stream）。设了也只对含 scripts/systems/stream/ 的工程版本生效。
+                         每局：Godot 写 <STREAM_TMP>/<match_id>/，轮询器边算边把**写完的块**一个一个原子 rename 到
+                         <STREAM_ROOT>/<match_id>/（块 N 在块 N+1 出现时才算写完），最后挪 end.json。
+  STREAM_TMP             默认 <STREAM_ROOT>-tmp（必须与 STREAM_ROOT 同一文件系统，rename 才是原子的）
 
 子命令：
   referee_poller.py                 常驻轮询（systemd 用这个）
@@ -43,6 +48,9 @@ SCENE = "res://scenes/Referee.tscn"
 QUIT_AFTER_FRAMES = "20000"            # 防卡死第三道（裁判自己有步数 / 帧数上限）；100ms 预算下一局 < 200 帧
 HEALTH_MAX_PENDING_SEC = 120
 HEALTH_MAX_HEARTBEAT_SEC = 120
+STREAM_PUMP_SEC = 0.25                 # 边算边播: 多久扫一次临时目录
+_UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+_CHUNK_RE = re.compile(r"^[0-9]{6}\.bin$")
 
 _stop = threading.Event()
 
@@ -107,10 +115,79 @@ def rpc(fn: str, body: dict, timeout: float = 20.0):
     return json.loads(raw) if raw else None
 
 
+# ─────────────────────────────── 状态流发布（逐帧直播 S4） ───────────────────────────────
+
+class StreamPublisher:
+    """Godot 往临时目录写块；本类把写完的块一个一个原子 rename 到对外目录（Caddy 只读分发）。
+
+    判「写完」：录流器按序号顺序写、每块 open → store → close 之后才开下一块 ⇒ 块 N+1 出现时块 N 已写完；
+    end.json 出现或进程已退出 ⇒ 剩下的块都写完了。对外目录里**只会出现完整的文件**。
+    """
+
+    def __init__(self, root: str, tmp_root: str, match_id: str):
+        self.pub = os.path.join(root, match_id)
+        self.tmp = os.path.join(tmp_root, match_id)
+        self.moved = 0
+
+    @staticmethod
+    def for_job(job: dict, proj: str):
+        """开关没开 / 这个版本没有录流 / match_id 不是 uuid / 这局早已完整发布过 ⇒ None（不录）。"""
+        root = env("STREAM_ROOT").rstrip("/")
+        if not root:
+            return None
+        if not os.path.isfile(os.path.join(proj, "scripts", "systems", "stream", "stream_recorder.gd")):
+            return None
+        mid = str(job.get("match_id", "")).lower()
+        if not _UUID_RE.match(mid):
+            log("WARN job=%s match_id 不是 uuid, 不录流" % job.get("job_id"))
+            return None
+        sp = StreamPublisher(root, env("STREAM_TMP") or root + "-tmp", mid)
+        if os.path.isfile(os.path.join(sp.pub, "end.json")):
+            # 重领(写回失败后)的同一局: 结果确定性相同, 已发布的那份照样有效 —— 别换成特效随机不同的另一份
+            log("job=%s 状态流已完整发布过, 本次不再录" % job.get("job_id"))
+            return None
+        return sp
+
+    def prepare(self) -> None:
+        shutil.rmtree(self.tmp, ignore_errors=True)
+        shutil.rmtree(self.pub, ignore_errors=True)    # 上次失败留下的半截
+        os.makedirs(self.tmp, exist_ok=True)
+        os.makedirs(self.pub, mode=0o755, exist_ok=True)
+        os.chmod(self.pub, 0o755)
+
+    def pump(self, final: bool = False) -> None:
+        try:
+            names = sorted(n for n in os.listdir(self.tmp) if _CHUNK_RE.match(n))
+        except OSError:
+            return
+        if not (final or os.path.exists(os.path.join(self.tmp, "end.json"))):
+            names = names[:-1]                         # 最新那块可能还在写
+        for n in names:
+            src = os.path.join(self.tmp, n)
+            os.chmod(src, 0o644)
+            os.replace(src, os.path.join(self.pub, n))
+            self.moved += 1
+
+    def finish(self, ok: bool) -> None:
+        """进程已退出后调。成功 ⇒ 挪完剩下的块、最后挪 end.json；失败 ⇒ 撤掉半截（重领会从头再录）。"""
+        if ok:
+            self.pump(final=True)
+            ej = os.path.join(self.tmp, "end.json")
+            if os.path.exists(ej):
+                os.chmod(ej, 0o644)
+                os.replace(ej, os.path.join(self.pub, "end.json"))
+            else:
+                log("WARN %s: 局算完了但没有 end.json" % self.tmp)
+        else:
+            shutil.rmtree(self.pub, ignore_errors=True)
+        shutil.rmtree(self.tmp, ignore_errors=True)
+        log("stream %s: %s, 发布 %d 块" % (os.path.basename(self.pub), "ok" if ok else "撤回", self.moved))
+
+
 # ─────────────────────────────── 跑一局 ───────────────────────────────
 
 def run_godot(job: dict, proj: str, wdir: str, timeout_sec: int) -> tuple:
-    """写任务单 → 调 Godot → 读结果单。返回 (rc, result_dict_or_None, log_tail)。"""
+    """写任务单 → 调 Godot（录流开着时边算边发布块）→ 读结果单。返回 (rc, result_dict_or_None, log_tail)。"""
     os.makedirs(wdir, exist_ok=True)
     jp = os.path.join(wdir, "job.json")
     rp = os.path.join(wdir, "result.json")
@@ -129,14 +206,34 @@ def run_godot(job: dict, proj: str, wdir: str, timeout_sec: int) -> tuple:
               "TURTLE_SUPABASE": " ", "TURTLE_BACKEND": " "})
     for k in ("TURTLE_SEED", "DL_AUTOFIGHT", "STRESS", "SIM_AUTOPILOT"):
         e.pop(k, None)
+    e.pop("REFEREE_STREAM", None)
     cmd = [env("GODOT_BIN", "/opt/godot/godot"), "--headless", "--audio-driver", "Dummy", "--path", proj, SCENE,
            "--quit-after", QUIT_AFTER_FRAMES, "--", "--job=" + jp, "--out=" + rp]
+    sp = StreamPublisher.for_job(job, proj)
+    if sp is not None:
+        sp.prepare()
+        cmd.append("--stream=" + sp.tmp)
     t0 = time.time()
     with open(lp, "w", encoding="utf-8", errors="replace") as lf:
-        try:
-            rc = subprocess.run(cmd, stdout=lf, stderr=subprocess.STDOUT, env=e, timeout=timeout_sec).returncode
-        except subprocess.TimeoutExpired:
-            rc = -9
+        p = subprocess.Popen(cmd, stdout=lf, stderr=subprocess.STDOUT, env=e)
+        while True:
+            try:
+                rc = p.wait(timeout=STREAM_PUMP_SEC)
+                break
+            except subprocess.TimeoutExpired:
+                pass
+            if time.time() - t0 > timeout_sec:
+                p.kill()
+                p.wait()
+                rc = -9
+                break
+            if sp is not None:
+                try:
+                    sp.pump()
+                except OSError as ex:      # 发布出错不影响算结果: 这一局放弃录流
+                    log("WARN 发布块失败, 本局不再发布: %r" % ex)
+                    sp.finish(False)
+                    sp = None
     tail = ""
     try:
         with open(lp, encoding="utf-8", errors="replace") as lf:
@@ -150,6 +247,11 @@ def run_godot(job: dict, proj: str, wdir: str, timeout_sec: int) -> tuple:
                 res = json.load(f)
         except (OSError, ValueError):
             res = None
+    if sp is not None:
+        try:
+            sp.finish(rc == 0 and isinstance(res, dict) and res.get("ok") is True)
+        except OSError as ex:
+            log("WARN 收尾发布失败: %r" % ex)
     log("godot rc=%s %.1fs job=%s" % (rc, time.time() - t0, job.get("job_id")))
     return rc, res, tail
 
@@ -162,7 +264,7 @@ def handle(job: dict, versions: dict, worker: str, wdir: str) -> None:
         # 领活时已按版本过滤, 走到这里 = 工程目录在两次扫描之间被删了 —— 放回去给别的裁判
         rpc("referee_fail", {"p_job_id": jid, "p_worker": worker, "p_error": "no_project:" + ver, "p_permanent": False})
         return
-    rc, res, tail = run_godot(job, proj, wdir, int(env("JOB_TIMEOUT_SEC", "120")))
+    rc, res, tail = run_godot(job, proj, wdir, int(env("JOB_TIMEOUT_SEC", "600")))
     if rc == 0 and isinstance(res, dict) and res.get("ok") is True:
         if str(res.get("match_id")) != str(job.get("match_id")):
             rpc("referee_fail", {"p_job_id": jid, "p_worker": worker, "p_error": "match_id_mismatch", "p_permanent": False})
@@ -229,7 +331,7 @@ def main() -> int:
             print("本机没有版本 %s 的工程（VERSIONS_DIR=%s）" % (job.get("client_version"), env("VERSIONS_DIR", "/opt/turtle")))
             return 2
         rc, res, tail = run_godot(job, proj, os.path.join(env("WORK_DIR", "/var/lib/turtle-referee"), "local"),
-                                  int(env("JOB_TIMEOUT_SEC", "120")))
+                                  int(env("JOB_TIMEOUT_SEC", "600")))
         if a.out and res is not None:
             with open(a.out, "w", encoding="utf-8") as f:
                 json.dump(res, f, ensure_ascii=False)
