@@ -1,17 +1,18 @@
 extends Node
 ## verify_min_client_version.gd — E15 最低客户端版本(母方案书 §8.5 E15「客户端版本旧于服务端」)
 ##
-## 判据原文: 服务端 `service_status.min_client_version` 高于本机 `application/config/version` ⇒
-##   主菜单出一句**非阻塞**的「有新版本，请更新」; 不高于 ⇒ 一个字都不出。
+## 判据原文(2026-10-19 改): 服务端 `service_status.min_client_version` 高于本机 `application/config/version` ⇒
+##   整屏挡墙(GameState 下的 VersionWall)挡住、主菜单开局闸拒; 不高于 ⇒ 不挡。
+##   (10-04 那一版是主菜单飘一句「发现新版本」不拦人; 用户 10-19「需要强制最低版本」⇒ 换成挡墙。
+##    挡墙本身的全部判据在 tests/verify_min_version_wall.gd, 这里保留「主菜单自己去问 → 墙起不起」那条端到端。)
 ##   版本按段比整数: 0.19.10 > 0.19.9(按字符串比会反过来)。
 ##
-## ★走真入口: 假服务器回 `service_status` 那一行 → 实例化 MainMenu.tscn → 主菜单自己去问、自己轮询、自己飘字。
-##   量的是**屏幕上那个 Label 出没出现**, 不是我插的计数器。不向任何外部服务发请求。
-## ★分母: 「不该提示」的两种情形(相等 / 字典序更大但数值更小)必须**一个字都不出** —— 否则「找得到」是恒真式。
+## ★走真入口: 假服务器回 `service_status` 那一行 → 实例化 MainMenu.tscn → 主菜单自己去问、自己轮询。
+##   量的是**那面墙挡没挡**, 不是我插的计数器。不向任何外部服务发请求。
+## ★分母: 「不该挡」的两种情形(相等 / 字典序更大但数值更小)必须不挡 —— 否则「挡得住」是恒真式。
 ##
 ## 会 FAIL 的证明(反向验证):
 ##   · `version_less` 改成字符串比较       ⇒ ① 0.19.10/0.19.9 红, ③ 字典序那一格红
-##   · 主菜单 `_sb_poll` 不调 take_update_hint ⇒ ② 红
 ##   · `state_from_response` 不读那一列      ⇒ ② 红
 
 const SB := preload("res://scripts/net/supabase.gd")
@@ -60,16 +61,16 @@ func _ready() -> void:
 	_ok("★分母: 本机版本是三段整数(%s)" % cv, parts.size() == 3 and parts[2].is_valid_int())
 	var newer := "%s.%s.%d" % [parts[0], parts[1], int(parts[2]) + 1]
 	var a := await _menu_case(newer)
-	_ok("② ★★服务端要求 %s > 本机 %s ⇒ 主菜单出了那句提示" % [newer, cv], a["seen"], str(a))
-	_ok("② 提示不挡手: 它是一个不吃点击的 Label(不是弹窗/遮罩)", a["ignore_mouse"], str(a))
+	_ok("② ★★服务端要求 %s > 本机 %s ⇒ 挡墙挡住" % [newer, cv], a["seen"], str(a))
 	var b := await _menu_case(cv)
 	_ok("③ 分母: 服务端真的回过话(相等那一格)", int(b["reqs"]) >= 1000, str(b))
-	_ok("③ ★相等 ⇒ 一个字都不出", not b["seen"], str(b))
+	_ok("③ ★相等 ⇒ 不挡", not b["seen"], str(b))
 	if str(parts[2]).length() >= 2:
 		var lex := "%s.%s.%s" % [parts[0], parts[1], "9".repeat(str(parts[2]).length() - 1)]
 		var c := await _menu_case(lex)
-		_ok("③ ★字典序更大、数值更小(%s vs %s) ⇒ 不提示(按字符串比就会错提示)" % [lex, cv], not c["seen"], str(c))
-	_ok("② 开局拦截不受影响(提示与不提示时开局闸给的话一样)", str(a["block"]) == str(b["block"]),
+		_ok("③ ★字典序更大、数值更小(%s vs %s) ⇒ 不挡(按字符串比就会错挡)" % [lex, cv], not c["seen"], str(c))
+	_ok("② 挡住时主菜单开局闸拒(理由是需要更新); 不挡时不因版本拒",
+		str(a["block"]) == VersionWall.TXT_TITLE and str(b["block"]) != VersionWall.TXT_TITLE,
 		"%s | %s" % [a["block"], b["block"]])
 
 	SB._transport_for_test = Callable()
@@ -116,7 +117,6 @@ func _menu_case(minv: String) -> Dictionary:
 	var menu = load("res://scenes/MainMenu.tscn").instantiate()
 	get_tree().root.add_child(menu)
 	var seen := false
-	var ignore := false
 	## 主菜单 _ready 自己发了那次 service_status(假服务器同步回包)。
 	## ★不等那个 1 秒的轮询 Timer 自己响: 无头帧率极高, 1 秒墙钟会吃掉上千帧、撞门禁的帧预算。
 	##   改成「确认 Timer 接的就是 _sb_poll」+ 替它响一次 —— 量的仍是主菜单自己的处理函数。
@@ -133,12 +133,15 @@ func _menu_case(minv: String) -> Dictionary:
 	menu._sb_poll()
 	for _i in range(3):
 		await get_tree().process_frame
-	for ch in menu.get_children():
-		if ch is Label and (ch as Label).text == SB.UPDATE_HINT:
-			seen = true
-			ignore = (ch as Label).mouse_filter == Control.MOUSE_FILTER_IGNORE
+	var wall: VersionWall = GameState.get_node_or_null(VersionWall.NODE_NAME) as VersionWall
+	if wall != null:
+		wall.refresh()
+		seen = wall.is_blocking()
 	var block: String = menu._battle_block_msg()
 	menu.queue_free()
 	for _i in range(4):
 		await get_tree().process_frame
-	return {"seen": seen, "ignore_mouse": ignore, "reqs": _reqs, "block": block, "min": minv}
+	if wall != null:
+		SB._reset_for_test()
+		wall.refresh()
+	return {"seen": seen, "reqs": _reqs, "block": block, "min": minv}

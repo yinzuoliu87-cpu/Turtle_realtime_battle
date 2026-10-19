@@ -1464,6 +1464,8 @@ func _ready() -> void:
 	_pc_window_setup()
 	ensure_season()   # V2: 初始化/滚动赛季 (阶段4)
 	_start_net_keepalive()
+	## 强制最低版本(2026-10-19): 整屏挡墙常驻在这里(跨场景), 开机问一次服务状态、回前台再问。
+	VersionWall.install(self)
 	# 把存档音量同步给 Audio autoload
 	if Engine.has_singleton("Audio") or get_node_or_null("/root/Audio"):
 		Audio.bgm_volume = bgm_volume

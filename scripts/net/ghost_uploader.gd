@@ -25,6 +25,7 @@ extends RefCounted
 ##     gw/gl 周六战绩标签(gauntlet_ghosts 的主键维; 积分赛 = -1)
 ##     snap 那一刻的快照(`Backend.build_ghost_snapshot` 产物)
 ##     cv   那一刻的客户端版本
+##     rv   那一刻的战斗规则版本(`phase2_config.RULES_VER`; 2026-10-19 前入队的单子没有 ⇒ 0 ⇒ 新客户端拉不到)
 ##     acc  那一刻的账号("" = 那时还没登录过 ⇒ 发的时候用当前账号)
 ##     t    入队时刻(只用于日志)
 ##     n    服务端回过话、却没回读确认的次数(到 MAX_TRIES 就放弃)
@@ -96,6 +97,8 @@ static func _enqueue(e: Dictionary) -> bool:
 		return false
 	e["acc"] = str(gs.account_id)
 	e["t"] = _now()
+	if not e.has("rv"):
+		e["rv"] = int(P2.RULES_VER)
 	e["n"] = 0
 	if _malformed(e) != "":
 		print("[GhostUp] 不排队(单子残缺): %s" % _malformed(e))
@@ -137,7 +140,7 @@ static func retry() -> void:
 	var keep: Array = []
 	var dropped := false
 	for e in q:
-		var why := drop_reason(e, now, acc)
+		var why := drop_reason(e, now, acc, SB.min_client_version())
 		if why != "":
 			print("[GhostUp] 上传单子销掉(发不出去): %s" % why)
 			dropped = true
@@ -165,7 +168,8 @@ static func retry() -> void:
 
 
 ## "" = 这条还发得出去; 否则是销单原因(英文短码: 只进日志, 不是玩家文案)。纯判据。
-static func drop_reason(e, now: int, acc: String) -> String:
+## `min_ver` = 服务端要求的最低客户端版本("" = 不知道 ⇒ 不按版本销)。
+static func drop_reason(e, now: int, acc: String, min_ver: String = "") -> String:
 	if not (e is Dictionary):
 		return "not_dict"
 	var d: Dictionary = e
@@ -183,6 +187,10 @@ static func drop_reason(e, now: int, acc: String) -> String:
 		return "other_account:%s" % k
 	if int(d.get("n", 0)) >= MAX_TRIES:
 		return "gave_up:%s" % k
+	## 强制最低版本(2026-10-19): 旧版本打出来的快照 —— 规则可能已经变了, 服务端也会拒(RLS 按行里的 client_version)。
+	##   不销的话更新后它会被一遍遍 403 直到 MAX_TRIES。
+	if min_ver != "" and SB.version_less(str(d.get("cv", "")), min_ver):
+		return "old_version:%s" % k
 	return ""
 
 
@@ -206,8 +214,8 @@ static func build_row(e: Dictionary, acc: String) -> Dictionary:
 	var a := str(e.get("acc", ""))
 	var who := a if a != "" else acc
 	if str(e.get("tbl", "")) == TBL_LADDER:
-		return SB.ghost_row_from_snapshot(e["snap"], who, int(e["wk"]), int(e["b"]), str(e.get("cv", "")))
-	return SB.gauntlet_row_from_snapshot(e["snap"], who, int(e["wk"]), int(e["gw"]), int(e["gl"]), str(e.get("cv", "")))
+		return SB.ghost_row_from_snapshot(e["snap"], who, int(e["wk"]), int(e["b"]), str(e.get("cv", "")), int(e.get("rv", 0)))
+	return SB.gauntlet_row_from_snapshot(e["snap"], who, int(e["wk"]), int(e["gw"]), int(e["gl"]), str(e.get("cv", "")), int(e.get("rv", 0)))
 
 
 ## 回调: 只有回读确认了才销单; 否则记一次失败、推后下次尝试。

@@ -73,6 +73,15 @@ const CLOSE_LOCKOUT_SEC := 600
 ##   **一个字都不许读** —— 有 `tools/nine_bracket_audit.py` 守着。
 const PULL_BATTLES_AHEAD := 1
 
+## ★战斗规则版本(2026-10-19 强制最低版本 · 方案书 20261019-服务器裁判 §4「拉对手只拉同一战斗规则版本」)。
+##   快照只在**同一套战斗规则**下才算得出同一局 ⇒ 上传时写进 `ghosts` / `gauntlet_ghosts` 的 `rules_ver` 列,
+##   拉对手只拉 `rules_ver = 本值` 的行(`supabase.opponents_query` / `gauntlet_query`)。
+## ★什么时候 +1: 这一版改了任何会改变对局结果的东西(龟/装备数值、技能、羁绊、sim 步进、确定性数学)。
+##   +1 的同时把服务端 `service_status.min_client_version` 抬到这一版(发版流程那一步)。
+##   只改 UI / 文案 / 特效 ⇒ 不动。
+## ★旧行没有这一列 ⇒ 迁移给的默认值 0 ⇒ 永远拉不到(见 migrations/20261019_min_version_gate.sql)。
+const RULES_VER := 1
+
 ## 积分赛(周二~周五)
 const RANKED_QUOTA := 16               # 场次配额(用户 2026-09-30 定: 16 场 / 6 命)
 

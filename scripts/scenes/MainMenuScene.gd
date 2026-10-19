@@ -1720,7 +1720,7 @@ var _sb_state_shown: String = ""
 ## D-1: 服务状态变了就重建赛程页(维护态要盖掉倒计时)。
 ## ★判据是**状态变了**而不是"每秒都重建" —— 后者会让主菜单每秒扔一堆节点。
 func _sb_poll() -> void:
-	if _SB.take_update_hint(): _toast(_SB.UPDATE_HINT)   # E15: 服务端要求的最低版本高于本机 ⇒ 非阻塞提示一次
+	## (E15 那句「发现新版本」飘字 2026-10-19 撤掉: 低于最低版本现在由 GameState 下的整屏挡墙 VersionWall 接管。)
 	var s: String = _SB.service_state()
 	## ★★2026-10-03 周六实操 S16: 原来**只在服务状态变了才重画** ⇒ 倒计时停在打开主菜单那一刻
 	##   (22:36 与 22:49 两张截图都写「距收盘 24 分 18 秒」), 22:50 的「已封盘」也永远出不来。
@@ -2522,6 +2522,10 @@ func _battle_block_msg(now: int = 0) -> String:
 	## ★兜底同样走 `_now_ts()`(2026-09-28): 否则这里就是本文件的第三条时钟。
 	##   产品路径(`_start_battle_flow`)本来就传 `_now_ts()` ∴ 行为逐字节不变。
 	var ts: int = now if now > 0 else _now_ts()
+	## ★强制最低版本(2026-10-19): 第一条。整屏挡墙盖住时本来点不到这里, 这一条是第二道 ——
+	##   墙没来得及画出来的那一帧 / 别的代码路径直接调 `_start_battle_flow` 也进不了对局。
+	if _SB.update_required():
+		return VersionWall.TXT_TITLE
 	## ★周一休赛(用户原稿: 周一 = 休赛期·发奖/终榜公示; 2026-10-05「周一哪来的比赛」)。
 	##   原来周一照常能打积分赛且计入本周场次 —— 实现漏洞, 不是设计。
 	if _P2C.phase_at_utc(ts) == _P2C.PHASE_REST:

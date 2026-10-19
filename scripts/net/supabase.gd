@@ -395,8 +395,10 @@ static func _reset_upload_for_test() -> void:
 
 ## 纯函数: 阵容快照 + 身份 → 要写进 `ghosts` 的那一行。**这才是要被逐条验的东西**。
 ## 返回 {} 表示**不该传**(缺身份 / 缺场次), 调用方据此跳过 —— 不许凑一行残的上去。
+## `rules_ver` = 打出这份快照时的战斗规则版本(`phase2_config.RULES_VER`); -1 = 取本机当前值。
+##   上传队列里的单子带着自己入队时的那个值(`ghost_uploader` 的 `rv`), 不在发的那一刻改写成当前值。
 static func ghost_row_from_snapshot(snapshot: Dictionary, account_id: String,
-		season_week: int, battles: int, client_version: String) -> Dictionary:
+		season_week: int, battles: int, client_version: String, rules_ver: int = -1) -> Dictionary:
 	## ★三条缺一不可的前提, 缺了就**不传**而不是填个默认值:
 	##   填 0 / 填空串会在服务端造出一行"看起来是合法数据"的垃圾, 而且会把别人的行覆盖掉
 	##   (主键撞上 `("", 0, 0)`)。宁可这一场不传。
@@ -413,6 +415,7 @@ static func ghost_row_from_snapshot(snapshot: Dictionary, account_id: String,
 		"hearts": int(snapshot.get("hearts", 8)),
 		"season_sweeps": int(snapshot.get("season_sweeps", 0)),
 		"client_version": client_version,
+		"rules_ver": rules_ver if rules_ver >= 0 else int(_P2S.RULES_VER),
 	}
 
 
@@ -584,7 +587,7 @@ static func _log_upload_fail(table: String, res: Dictionary) -> void:
 ## ★三条缺一不可的前提, 缺了就**不传**而不是填默认值 —— 填 0/空串会在服务端造出
 ##   一行"看起来合法"的垃圾, 还可能撞主键覆盖别人(与 `ghost_row_from_snapshot` 同一个理由)。
 static func gauntlet_row_from_snapshot(snapshot: Dictionary, account_id: String,
-		season_week: int, gw: int, gl: int, client_version: String) -> Dictionary:
+		season_week: int, gw: int, gl: int, client_version: String, rules_ver: int = -1) -> Dictionary:
 	if account_id == "" or season_week <= 0 or gw < 0 or gl < 0:
 		return {}
 	if snapshot == null or snapshot.is_empty():
@@ -596,6 +599,7 @@ static func gauntlet_row_from_snapshot(snapshot: Dictionary, account_id: String,
 		"gl": gl,
 		"snapshot": snapshot,
 		"client_version": client_version,
+		"rules_ver": rules_ver if rules_ver >= 0 else int(_P2S.RULES_VER),
 	}
 
 
@@ -622,9 +626,10 @@ func upload_gauntlet(row: Dictionary, done: Callable = Callable()) -> void:
 static func gauntlet_query(season_week: int, gw: int, gl: int, account_id: String) -> String:
 	if season_week <= 0 or gw < 0 or gl < 0 or account_id == "":
 		return ""
-	return ("season_week=eq.%d&gw=eq.%d&gl=eq.%d&account_id=neq.%s" \
+	## ★`rules_ver=eq.<本机>`: 只拉同一战斗规则版本的快照(2026-10-19 强制最低版本)。
+	return ("season_week=eq.%d&gw=eq.%d&gl=eq.%d&account_id=neq.%s&rules_ver=eq.%d" \
 		+ "&select=snapshot,uploaded_at&order=uploaded_at.desc&limit=%d") % [
-		season_week, gw, gl, account_id, PULL_LIMIT]
+		season_week, gw, gl, account_id, int(_P2S.RULES_VER), PULL_LIMIT]
 
 
 static func pull_gauntlet_async(season_week: int, gw: int, gl: int,
@@ -758,9 +763,10 @@ static func opponents_query(season_week: int, battles: int, account_id: String) 
 	for n in range(battles, battles + ahead + 1):
 		if n >= 0 and not vals.has(n):
 			vals.append(n)
-	return ("season_week=eq.%d&battles=in.(%s)&account_id=neq.%s" \
+	## ★`rules_ver=eq.<本机>`: 只拉同一战斗规则版本的快照(2026-10-19 强制最低版本)。
+	return ("season_week=eq.%d&battles=in.(%s)&account_id=neq.%s&rules_ver=eq.%d" \
 		+ "&select=snapshot&order=uploaded_at.desc&limit=%d") % [
-		season_week, ",".join(vals.map(func(x): return str(x))), account_id, PULL_LIMIT]
+		season_week, ",".join(vals.map(func(x): return str(x))), account_id, int(_P2S.RULES_VER), PULL_LIMIT]
 
 
 ## 纯函数: 从 REST 回包正文里把【快照】抽出来。
@@ -1383,24 +1389,31 @@ static func _reset_for_test() -> void:
 	_notice = ""
 	_asked = 0
 	_min_client = ""
-	_update_hinted = false
+	_server_said_update = false
 
 
 # ─────────────────────────────────────────────────────────────
-# E15 最低客户端版本(母方案书 §8.5 E15「客户端版本旧于服务端」)
-#   服务端 `service_status.min_client_version`(schema.sql §5)早就有了, 客户端原来一直不读。
-#   ★只**提示**、不拦: 方案书 E15 写的是「无设计」, 没有任何一处拍板过「旧版本不许打」;
-#     拦人是另一个决定(还要配商店跳转与停服文案), 不由这一层顺手做掉。
+# 强制最低版本(2026-10-19 · 方案书 docs/plans/20261019-服务器裁判.md §4)
+#   用户 10-19「需要强制最低版本」。服务端 `service_status.min_client_version`(schema.sql §5)。
+#   ★原来(E15, 10-04)只在主菜单飘一句「发现新版本」、不拦人; 现在低于它 ⇒ 整屏挡住(`version_wall.gd`)。
+#   ★判据只有 `update_required()` 一处, 三道闸都读它: 整屏挡墙(version_wall.gd) / 主菜单开局闸 / 出口 `_http` 拦写。
+#   ★服务端另一道: 请求头 `X-Client-Version` → pre-request 钩子拒旧包(migrations/20261019_min_version_gate.sql)。
+#   ★★离线不判旧: 只有这一进程真的问到了服务端才挡; 问不到 ⇒ 不挡。
 # ─────────────────────────────────────────────────────────────
 ## 服务端要求的最低版本("" = 还没问到 / 没要求)。
 static var _min_client: String = ""
-## 本进程已经提示过一次了(主菜单每秒轮询一次, 不能每秒弹一句)。
-static var _update_hinted := false
-const UPDATE_HINT := "发现新版本，请更新"
+## 服务端在别的请求上明确回了 update_required(426 / reason=update_required)。
+##   ★它本身就是「问到了服务端」的证据 ⇒ 状态行没问到也挡。下一次问到状态且不再要求 ⇒ 清掉。
+static var _server_said_update := false
+## 请求头: 每个 Supabase 请求都带(`_headers`)。服务端 pre-request 钩子与 RLS 读它。
+const HDR_CLIENT_VERSION := "X-Client-Version"
+const HDR_RULES_VER := "X-Rules-Ver"
+## 挡住期间仍放行的写(诊断用, 服务端钩子同一张白名单): 报错上报 / 玩家反馈。
+const UPDATE_EXEMPT_RPCS := ["report_client_error", "submit_feedback"]
 
 
 ## 纯函数: 版本串 a 是否**严格低于** b。按「.」分段逐段比**整数**(0.19.10 > 0.19.9),
-##   段数不同时缺的段当 0(0.19 == 0.19.0)。任何一段不是纯数字 ⇒ 判 false(看不懂就不提示, 不吓人)。
+##   段数不同时缺的段当 0(0.19 == 0.19.0)。任何一段不是纯数字 ⇒ 判 false(看不懂就不挡, 不吓人)。
 static func version_less(a: String, b: String) -> bool:
 	var pa := a.strip_edges().split(".")
 	var pb := b.strip_edges().split(".")
@@ -1415,16 +1428,57 @@ static func version_less(a: String, b: String) -> bool:
 	return false
 
 
-## 该不该提示「有新版本」。没配后端 / 没问到 / 服务端没要求 ⇒ false。
-static func update_available() -> bool:
-	return enabled() and _min_client != "" and version_less(str(ProjectSettings.get_setting("application/config/version", "")), _min_client)
-
-
-## 主菜单轮询用: 该提示且本进程还没提示过 ⇒ true(并记下已提示)。
-static func take_update_hint() -> bool:
-	if _update_hinted or not update_available():
+## 纯函数: 挡不挡。没配后端 ⇒ 不挡; 服务端在别的请求上明说过(`server_said`)⇒ 挡;
+##   问到了(OK / 维护)且 cur < minv ⇒ 挡; 没问到 / 问不到 ⇒ 不挡(离线不判旧)。
+static func wall_decision(state: String, minv: String, cur: String, server_said: bool) -> bool:
+	if state == ST_OFF:
 		return false
-	_update_hinted = true
+	if server_said:
+		return true
+	if state != ST_OK and state != ST_MAINTENANCE:
+		return false
+	return minv != "" and version_less(cur, minv)
+
+
+## 现在要不要挡(唯一判据, 三道闸都读它)。
+static func update_required() -> bool:
+	return wall_decision(service_state(), _min_client, ReplayRecorder.client_version(), _server_said_update)
+
+
+## 服务端要求的最低版本(挡墙文案 / 上传队列按它销旧单)。
+static func min_client_version() -> String:
+	return _min_client
+
+
+## 纯函数: 这个回包是不是服务端在说「客户端太旧」。
+##   426 = pre-request 钩子(`PT426`); 短回包里的 `"update_required"` = 各 RPC 自己的拒收(finals_report 等)。
+##   ★只看短回包: 录像 / 快照正文里恰好有这串字的话不能误判。
+static func is_update_required_response(res: Dictionary) -> bool:
+	var code := int(res.get("code", 0))
+	if code == 426:
+		return true
+	if code <= 0:
+		return false
+	var body := str(res.get("body", ""))
+	return body.length() <= 512 and body.find("\"update_required\"") >= 0
+
+
+static func _note_update_signal(res: Dictionary) -> void:
+	if is_update_required_response(res):
+		if not _server_said_update:
+			print("[SupabaseNet] 服务端要求更新客户端(本机 %s)" % ReplayRecorder.client_version())
+		_server_said_update = true
+
+
+## 挡住期间 + 写请求(白名单除外)⇒ 不发。
+static func update_blocks(method: String, url: String) -> bool:
+	if not update_required() or not is_write_request(method, url):
+		return false
+	var i := url.find("/rest/v1/rpc/")
+	if i >= 0:
+		var rpc := url.substr(i + "/rest/v1/rpc/".length()).split("?")[0]
+		if UPDATE_EXEMPT_RPCS.has(rpc):
+			return false
 	return true
 
 
@@ -1471,6 +1525,9 @@ static func apply_status_response(ok: bool, code: int, body: String) -> String:
 	## ★问不到时**保留上一次问到的**最低版本(不把「不知道」说成「没要求」, 也不凭空提示)。
 	if r.has("min"):
 		_min_client = str(r["min"])
+		## 问到了、而且这一版不再低于最低版本(运维把它调回来了)⇒ 之前那句「要更新」作废, 墙撤掉。
+		if not version_less(ReplayRecorder.client_version(), _min_client):
+			_server_said_update = false
 	_asked += 1
 	return _state
 
@@ -1581,6 +1638,10 @@ func _headers(extra: String = "") -> PackedStringArray:
 		"apikey: " + k,
 		"Authorization: Bearer " + bearer,
 		"Accept: application/json",
+		## 强制最低版本(2026-10-19): 每个请求都报版本 —— 服务端 pre-request 钩子按它拒旧包,
+		##   读写都管得到(REST 表的 GET 没有地方放参数, 头是唯一能跟着每个请求走的位置)。
+		HDR_CLIENT_VERSION + ": " + ReplayRecorder.client_version(),
+		HDR_RULES_VER + ": " + str(int(_P2S.RULES_VER)),
 	])
 	if extra != "":
 		h.append(extra)
@@ -1608,6 +1669,8 @@ const READ_RPCS := ["finals_view", "finals_replay", "week_leaderboard", "finals_
 const BLOCKED_CODE := -1
 ## 本进程里被拦下的写请求条数(观测量 / 门禁分母)。
 static var travel_blocked_count: int = 0
+## 同上, 因客户端版本过旧被拦下的写请求条数。
+static var update_blocked_count: int = 0
 
 ## 纯函数: 这个请求会不会**写**服务器。
 static func is_write_request(method: String, url: String) -> bool:
@@ -1645,9 +1708,16 @@ func _http(method: String, url: String, body: String, cb: Callable, extra: Strin
 		print("[SupabaseNet] 测试时间中, 写请求不发(回到真实时间后补): %s %s" % [method, url.get_slice("?", 0)])
 		cb.call({"ok": false, "code": 0, "body": "", "blocked": true})
 		return
+	## 强制最低版本: 挡墙在的时候写请求不发(同上一条的形状: 回 blocked ⇒ 各队列不销单、不记失败)。
+	if update_blocks(method, url):
+		update_blocked_count += 1
+		print("[SupabaseNet] 客户端版本过旧, 写请求不发: %s %s" % [method, url.get_slice("?", 0)])
+		cb.call({"ok": false, "code": 0, "body": "", "blocked": true})
+		return
 	if _transport.is_valid():
 		_transport.call(method, url, _headers(extra), body, func(res):
 			_note_server_clock(res)
+			_note_update_signal(res)
 			cb.call(res))
 		return
 	## ★`is_inside_tree()` 必须判: HTTPRequest 不在树上时 `request()` 直接报错
@@ -1662,6 +1732,7 @@ func _http(method: String, url: String, body: String, cb: Callable, extra: Strin
 		var okk: bool = (result == HTTPRequest.RESULT_SUCCESS)
 		var res := {"ok": okk, "code": code, "body": data.get_string_from_utf8(), "headers": _h}
 		_note_server_clock(res)
+		_note_update_signal(res)
 		cb.call(res)
 		req.queue_free())
 	var err := req.request(url, _headers(extra), _method_of(method), body)
