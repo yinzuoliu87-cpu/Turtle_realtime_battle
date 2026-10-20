@@ -19,9 +19,9 @@ exec >>"$LOG" 2>&1
 
 ## ★模拟号必须跑【玩家手机上那个版本】的战斗代码(用户 2026-10-17「肯定要版本匹配啊」)。
 ##   观赛 / 回放是在手机上按手机的规则重算再比校验点; 版本号相同而战斗代码不同 ⇒ 第一处差异就对不上、画面停住。
-##   发布版工作树 = tag(当前 v0.19.570) + 本仓库的 scripts/systems/sim/(模拟号购物 / 布阵逻辑) + tools/sim60.sh。
+##   发布版工作树 = tag(当前 v0.21.0) + 本仓库的 scripts/systems/sim/(模拟号购物 / 布阵逻辑) + tools/sim60.sh。
 ##   发新版后要重建这棵树(git worktree add 新 tag → 拷 sim 目录与 sim60.sh → 拷 .godot 导入缓存)。
-SIM60="${SIM_TREE:-/c/tmp/turtle-v570}/tools/sim60.sh"
+SIM60="${SIM_TREE:-/c/tmp/turtle-v0210}/tools/sim60.sh"
 if [ ! -f "$SIM60" ]; then echo "$(date -u +%FT%TZ) 发布版工作树不在($SIM60), 不跑 —— 不许退回用开发版代码跑"; exit 1; fi
 
 DOW=${FORCE_DOW:-$(date -u +%u)}         # 1=周一 … 7=周日
@@ -54,7 +54,7 @@ for i in range(1, 141):
 print(' '.join(out))
 PYEOF
 )
-  echo "════ $(date -u +%FT%TZ) 周日决赛 · 进决赛日的槽位: ${ELIG:-无} · $(git -C "${SIM_TREE:-/c/tmp/turtle-v570}" describe --tags --always 2>/dev/null)(发布版工作树)"
+  echo "════ $(date -u +%FT%TZ) 周日决赛 · 进决赛日的槽位: ${ELIG:-无} · $(git -C "${SIM_TREE:-/c/tmp/turtle-v0210}" describe --tags --always 2>/dev/null)(发布版工作树)"
   [ -z "$ELIG" ] && exit 0
   if [ -n "${DRY:-}" ]; then echo "[DRY] SIM_QUIT_WHEN_DONE= SLOTS=\"$ELIG\" sim60.sh start"; exit 0; fi
   SIM_QUIT_WHEN_DONE="" SLOTS="$ELIG" bash "$SIM60" start 1
@@ -98,7 +98,7 @@ for i in range(1, 141):
 print(' '.join(out))
 PYEOF
 )
-  echo "════ $(date -u +%FT%TZ) 周六第 $((G+1))/17 组 · 晋级且没打完的槽位: ${ELIG:-无} · $(git -C "${SIM_TREE:-/c/tmp/turtle-v570}" describe --tags --always 2>/dev/null)(发布版工作树)"
+  echo "════ $(date -u +%FT%TZ) 周六第 $((G+1))/17 组 · 晋级且没打完的槽位: ${ELIG:-无} · $(git -C "${SIM_TREE:-/c/tmp/turtle-v0210}" describe --tags --always 2>/dev/null)(发布版工作树)"
   set -- $ELIG
   while [ $# -gt 0 ]; do
     CHUNK=""
@@ -124,7 +124,7 @@ ROUNDS=""                   # 不设上限: 打到被拦
 STOP_AT=${STOP_AT:-2240}    # UTC HHMM: 到点不再起新批, 在跑的关掉(22:50 封盘); 手动提前开跑时可用环境变量覆盖
 BATCH_CAP=5400              # 一批最多等 90 分钟, 超时关掉这一批(实测一批 45~50 分钟)
 
-echo "════ $(date -u +%FT%TZ) 开跑 · 星期 $DOW · 批次 $BATCHES · 每号打到被拦 · 版本 $(grep -o 'config/version="[^"]*"' project.godot) · $(git -C "${SIM_TREE:-/c/tmp/turtle-v570}" describe --tags --always 2>/dev/null)(发布版工作树)"
+echo "════ $(date -u +%FT%TZ) 开跑 · 星期 $DOW · 批次 $BATCHES · 每号打到被拦 · 版本 $(grep -o 'config/version="[^"]*"' project.godot) · $(git -C "${SIM_TREE:-/c/tmp/turtle-v0210}" describe --tags --always 2>/dev/null)(发布版工作树)"
 for b in $BATCHES; do
   now=$(date -u +%H%M)
   if [ "$((10#$now))" -ge "$STOP_AT" ]; then
