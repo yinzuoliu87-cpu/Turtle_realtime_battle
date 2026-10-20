@@ -1,11 +1,12 @@
 {
-  "_note": "新手教程步骤(2026-10-07 重做, 方案书 docs/plans/20261007-新手教程重做.md §4.1)。由 scripts/scenes/TutorialGuide.gd 读取; 教程导演 TutorialDirector.steps_key_for 决定当前阶段用哪套。",
-  "_schema": "每步: text(必填, 一句祈使句, 单行) / highlight(必填: 宿主 _tutorial_anchor 认得的锚点名, 挖洞高亮) / advanceOn(必填: 玩家做了这个动作才前进, 由产品代码 TutorialDirector.notify 发) / point(可选: 手势指针指的锚点, 缺省=highlight) / hand(可选: tap|drag, 缺省 tap) / anchor(可选: top|bottom|right, 提示条位置)",
+  "_note": "新手教程步骤(v3: 2026-10-20 重写, 方案书 docs/plans/20261020-教程重写.md §1; 骨架沿用 2026-10-07 那版 docs/plans/20261007-新手教程重做.md)。由 scripts/scenes/TutorialGuide.gd 读取; 教程导演 TutorialDirector.steps_key_for 决定当前阶段用哪套。",
+  "_schema": "每步: text(必填, 一句祈使句, 单行) / highlight(必填: 宿主锚点名, 挖洞高亮) / advanceOn(必填: 玩家做了这个动作才前进, 由产品代码 TutorialDirector.notify 发) / point(可选: 手势指针指的锚点, 缺省=highlight) / hand(可选: tap|drag|none, 缺省 tap) / anchor(可选: top|bottom|right|left, 提示条位置) / auto(可选: 秒。有它 = 不阻塞的提示: 不压暗、不挡点击、不出手势, 显示这么久后自己淡出并前进; 此时 advanceOn 只作记账名, 不需要产品代码发)",
   "_anchors": {
     "team_select": "roster(候选龟) / roster_pet(第一只没上阵的龟) / confirm(出战钮)",
+    "battle": "lane_plate(顶部当前战场计时牌) / foe_egg(顶部 PK 条下敌方的蛋血副条) —— 导演 TutorialDirector._battle_anchor 解析",
     "settle": "settle_shop(结算「前往商店」钮)",
-    "shop": "xp_button(买经验钮) / offer(货架 + 详情面板) / offer_pick(第一张买得起的卡; 选中后=「购买」钮) / bag_button(顶栏「背包」)",
-    "inventory": "backpack(装备背包) / first_item(背包第一件) / lanes(上下战场) / first_leader(第一只统领) / finish_button(完成教程钮)"
+    "shop": "xp_button(买经验钮) / shelf(货架) / offer_card(第一张买得起的卡) / detail_card(选中后的整张说明卡) / buy_button(说明卡里的「购买」钮) / bag_button(顶栏「背包」)",
+    "inventory": "backpack(装备背包) / first_item(背包第一件) / lanes(上下战场) / first_leader(第一只统领) / formation_button(顶栏「站位」) / formation_field(站位面板·上战场) / formation_token(站位面板·上战场第一只) / formation_done(站位面板「完成」) / finish_button(完成教程钮)"
   },
   "team_select": [
     {
@@ -18,6 +19,23 @@
       "text": "点击出战",
       "highlight": "confirm",
       "advanceOn": "team_confirmed"
+    }
+  ],
+  "battle": [
+    {
+      "text": "赢两个战场获胜，1:1 进入终极战场",
+      "highlight": "lane_plate",
+      "anchor": "left",
+      "advanceOn": "tip_lanes_seen",
+      "hand": "none",
+      "auto": 3.5
+    },
+    {
+      "text": "击碎敌方的蛋直接获胜",
+      "highlight": "foe_egg",
+      "advanceOn": "tip_egg_seen",
+      "hand": "none",
+      "auto": 3.5
     }
   ],
   "settle": [
@@ -34,10 +52,16 @@
       "advanceOn": "level_up"
     },
     {
-      "text": "购买 1 件装备",
-      "highlight": "offer",
+      "text": "点击一件装备",
+      "highlight": "shelf",
+      "advanceOn": "offer_selected",
+      "point": "offer_card"
+    },
+    {
+      "text": "点击购买",
+      "highlight": "detail_card",
       "advanceOn": "item_bought",
-      "point": "offer_pick"
+      "point": "buy_button"
     },
     {
       "text": "点击背包",
@@ -58,6 +82,23 @@
       "highlight": "lanes",
       "advanceOn": "item_equipped",
       "point": "first_leader"
+    },
+    {
+      "text": "点击站位",
+      "highlight": "formation_button",
+      "advanceOn": "formation_opened"
+    },
+    {
+      "text": "拖动龟调整站位",
+      "highlight": "formation_field",
+      "advanceOn": "formation_dragged",
+      "point": "formation_token",
+      "hand": "drag"
+    },
+    {
+      "text": "点击完成",
+      "highlight": "formation_done",
+      "advanceOn": "formation_closed"
     },
     {
       "text": "点击完成教程",

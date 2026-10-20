@@ -1,0 +1,4 @@
+# 大陆中转正式入口（README「切 DNS」）。Porkbun 上 A 记录 cn.turtlearena.xyz 生效之后才装到 /etc/caddy/relay-cn.caddy。
+cn.turtlearena.xyz {
+	import relay
+}

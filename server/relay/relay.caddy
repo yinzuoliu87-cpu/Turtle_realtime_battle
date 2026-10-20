@@ -1,0 +1,82 @@
+# 大陆中转 · 纯转发（方案书 docs/plans/20261020-大陆中转.md §2 / 第一阶段；部署见同目录 README.md）
+# 放到 /etc/caddy/relay.caddy，由 /etc/caddy/Caddyfile 末尾的 `import /etc/caddy/relay.caddy` 引入。
+# 改完：caddy validate --config /etc/caddy/Caddyfile && systemctl reload caddy（validate 不过就别 reload）
+#
+# 规则（只有这些）：
+#   路径白名单  /rest/v1/*  /auth/v1/*  → Supabase（只改 Host；apikey / Authorization / X-Client-Version / X-Rules-Ver 原样透传）
+#              /streams/*              → stream.turtlearena.xyz（版本闸照常在那边生效）
+#              /healthz                → 本机 200
+#              其余一律 404（不暴露 /storage、/functions、/realtime、/pg 等没用到的接口；上游写死，不是开放代理）
+#   方法白名单  GET HEAD POST PATCH PUT DELETE OPTIONS，其余 405
+#   请求体      ≤ 10 MB（客户端最大的一类是 matches 录像上传）
+#   上游超时    连上 5 秒、等回包头 20 秒
+#   日志        不开访问日志（本文件没有 `log` 指令）；Caddy 错误日志默认隐去 Authorization / Cookie（README 有实测）
+#   密钥        本机不持有任何密钥：公开 key 与玩家令牌都是客户端自己带来的，service key 从不经过这里
+#   速率        Caddy 官方包没有按请求限速的模块 ⇒ 按来源 IP 的新建连接限速在 nftables（同目录 turtle-relay.nft）
+#
+# ⚠ 上游 Supabase 地址在下面写死（= project.godot turtle/supabase_url）。换项目时两处一起改。
+
+(relay) {
+	header -Server
+
+	request_body {
+		max_size 10MB
+	}
+
+	@relay_health path /healthz
+	@relay_bad_method not method GET HEAD POST PATCH PUT DELETE OPTIONS
+	# 带 .. 的路径（含 %2e%2e 编码形态）一律 404。★要看原始路径 {http.request.orig_uri.path}：
+	#   path / path_regexp 匹配器比的是清理过的路径（/streams/../rest/v1/x 在它们眼里就是 /rest/v1/x），
+	#   而转给上游的是原始 URI ⇒ 两边对「这是哪条路径」的理解可能不一样。10-20 实测抓到过这一条。
+	@relay_dots vars_regexp relay_dots {http.request.orig_uri.path} \.\.
+	@relay_sb path /rest/v1/* /auth/v1/*
+	@relay_stream path /streams/*
+
+	route {
+		header @relay_health Cache-Control no-store
+		respond @relay_health "ok" 200
+
+		header @relay_bad_method Cache-Control no-store
+		respond @relay_bad_method 405
+
+		header @relay_dots Cache-Control no-store
+		respond @relay_dots 404
+
+		reverse_proxy @relay_sb https://cjefldecsfpnclhfwriw.supabase.co {
+			header_up Host {upstream_hostport}
+			header_up -X-Forwarded-Host
+			transport http {
+				dial_timeout 5s
+				response_header_timeout 20s
+			}
+		}
+
+		reverse_proxy @relay_stream https://stream.turtlearena.xyz {
+			header_up Host {upstream_hostport}
+			header_up -X-Forwarded-Host
+			transport http {
+				dial_timeout 5s
+				response_header_timeout 20s
+			}
+		}
+
+		header Cache-Control no-store
+		respond 404
+	}
+}
+
+# 第一阶段的公网入口（cn.turtlearena.xyz 的 DNS 还没加）：复用 stream 那张 Let's Encrypt 证书，开在 8443。
+#   客户端验证用 TURTLE_RELAY=https://stream.turtlearena.xyz:8443。cn 上线后可删（README「切 DNS」第 4 步）。
+stream.turtlearena.xyz:8443 {
+	import relay
+}
+
+# 本机自检口（只听回环、不走 TLS）：curl -s http://127.0.0.1:8082/healthz
+http://127.0.0.1:8082 {
+	bind 127.0.0.1
+	import relay
+}
+
+# cn.turtlearena.xyz 正式入口：DNS 加好之后才装 /etc/caddy/relay-cn.caddy（同目录 relay-cn.caddy）。
+#   在那之前装会让 Caddy 对一个解析不到的名字反复申请证书（Let's Encrypt 有失败次数限制）。
+import /etc/caddy/relay-cn*.caddy

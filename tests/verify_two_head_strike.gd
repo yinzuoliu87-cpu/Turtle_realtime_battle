@@ -2,6 +2,8 @@ extends Node
 ## verify_two_head_strike.gd — 双头技1(用户2026-07-11重设计)自证
 ##   远程灵能冲击炮弹爆炸: 200码内敌 1A+10%maxHp物理·圈外0(半径截断)
 ##   近战锤击落地: 目标受1.4A物理·双头获50%伤害盾
+##   ★2026-10-20 锤击改范围(用户「这样，改为aoe」「范围200码」): 以锤头落点(TwoHeadSystem.hammer_point)为圆心
+##     STRIKE_MELEE_RADIUS 内每个敌人各吃 1.4A 物理(各算各的护甲)、圈外 0; 护盾只按主目标那一下 × 50%(不随人数叠加)
 ##   炮弹飞行/跳跃弧线观感由用户 F5(走tween/async·headless不推进)
 
 const RTScene := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
@@ -47,6 +49,52 @@ func _ready() -> void:
 	sc._two_head_sys._two_head_hammer_land(dh, near1, near1["pos"], 140)
 	_ok("锤击目标受伤 140", int(near1["_st_taken"])==140, "taken=%d"%int(near1["_st_taken"]))
 	_ok("锤击双头获50%伤害盾(70)", int(round(float(dh["shield"])))==70, "shield=%.0f"%float(dh["shield"]))
+
+	# ── 锤击范围(2026-10-20): 圆心 = 锤头落点, 半径边界两侧各放一只 ──
+	for u in sc._units.duplicate():
+		if str(u.get("side", "")) == "right":
+			sc._units.erase(u)
+	var L := Vector2(500.0, 400.0)
+	dh["face_right"] = true; dh["shield"] = 0.0
+	var H: Vector2 = TwoHeadSystem.hammer_point(L, true)
+	var R: float = TwoHeadSystem.STRIKE_MELEE_RADIUS
+	var spots := {
+		"主目标": [H + Vector2(11.0, 0.0), true, 0.0],
+		"圈内·上方": [H + Vector2(0.0, -R * 0.6), true, 0.0],
+		"圈内·边内5码": [H + Vector2(R - 5.0, 0.0), true, 0.0],
+		"圈内·斜向·带护甲": [H + Vector2(-R * 0.5, R * 0.5), true, 50.0],
+		"圈外·边外5码": [H + Vector2(R + 5.0, 0.0), false, 0.0],
+		"圈外·远": [H + Vector2(0.0, R * 1.6), false, 0.0],
+	}
+	var mk := {}
+	for k in spots:
+		var e: Dictionary = sc._spawn._make_unit("basic", "right", spots[k][0])
+		e["def"] = float(spots[k][2]); e["base_def"] = float(spots[k][2]); e["damage_reduction"] = 0.0; e["shield"] = 0.0
+		e["maxHp"] = 5000.0; e["hp"] = 5000.0; e["no_basic"] = true; e["no_move"] = true; e["_st_taken"] = 0
+		sc._units.append(e)
+		mk[k] = e
+	var main_dmg: int = 140
+	sc._two_head_sys._two_head_hammer_land(dh, mk["主目标"], L, main_dmg)
+	var in_n := 0; var in_hit := 0; var out_n := 0; var out_zero := 0; var lines := []
+	for k in spots:
+		var got: int = int(mk[k]["_st_taken"])
+		lines.append("%s=%d" % [k, got])
+		if bool(spots[k][1]):
+			in_n += 1
+			var want: int = main_dmg if k == "主目标" else int(sc._atk_dmg(dh, TwoHeadSystem.STRIKE_MELEE_COEF, mk[k]))
+			if got == want and got > 0:
+				in_hit += 1
+		else:
+			out_n += 1
+			if got == 0:
+				out_zero += 1
+	_ok("分母: 圈内 ≥ 4 只(含边内 5 码与带护甲的)、圈外 ≥ 2 只(含边外 5 码)", in_n >= 4 and out_n >= 2, "圈内 %d · 圈外 %d" % [in_n, out_n])
+	_ok("★锤击范围: 锤头落点 %.0f 码内每个敌人各吃一次 1.4A 物理(各算各的护甲)" % R, in_hit == in_n, "%d/%d · %s" % [in_hit, in_n, ", ".join(lines)])
+	_ok("★锤击范围: 圈外(含边外 5 码)不吃", out_zero == out_n, "%d/%d" % [out_zero, out_n])
+	_ok("分母: 带护甲那只确实比 0 护甲的少吃(护甲真的参与了)", int(mk["圈内·斜向·带护甲"]["_st_taken"]) < int(mk["圈内·上方"]["_st_taken"]) and int(mk["圈内·斜向·带护甲"]["_st_taken"]) > 0,
+		"带甲 %d · 无甲 %d" % [int(mk["圈内·斜向·带护甲"]["_st_taken"]), int(mk["圈内·上方"]["_st_taken"])])
+	_ok("★护盾只按主目标那一下 × 50%(不随命中人数叠加)", int(round(float(dh["shield"]))) == int(round(main_dmg * TwoHeadSystem.STRIKE_SHIELD_PCT)),
+		"护盾 %.0f · 主目标伤害 %d · 命中 %d 只" % [float(dh["shield"]), main_dmg, in_hit])
 
 	print("")
 	print(("ALL PASS — 双头技1 正常" if _fail==0 else "FAIL x%d"%_fail))

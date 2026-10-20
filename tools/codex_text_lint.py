@@ -476,6 +476,73 @@ def mech_gaps():
     return gaps
 
 
+## ══════════════════════════════════════════════════════════════════════
+##  路名纪律(2026-10-20 补): 三路屏上只叫「上路战场 / 下路战场 / 终极战场」
+## ══════════════════════════════════════════════════════════════════════
+## 用户 2026-10-07:「我们叫上路战场，下路战场，终极战场」。代码里「路」是内部叫法
+## (lane), 屏上一律「战场」:「本路胜利」→「本战场胜利」。「决胜」是 10-05 我起的
+## 第三路旧名, 而 40 秒后增伤那一档叫「加时」—— 两样都不许再上屏。
+## 扫 `.gd` 屏幕字符串(共享抽取器 gd_text_scan) + 四份 data 文案, 硬零。
+LANE_WORDS = ['本路', '每路', '这一路', '上一路', '下一路', '决胜']
+## 「战斗」的范围说不清: 一局 = 上路战场 + 下路战场 + 终极战场, 单位字典每个战场重建。
+## 每个战场重置的写「本战场 / 每个战场」, 跨战场保留到对局结束的写「本局」。
+## (2026-10-20 逐条核代码: 天使/变脸龟/猎人龟/迷你水晶球B/FPGA板/炼乳罐全是每个战场重置。)
+SCOPE_WORDS = ['战斗结束', '战斗开始', '开战时']
+## 拿不准的: 列依据, 不改字。键 = (出处, 词)。
+SCOPE_ALLOW = {
+    ('龟技能 fortune/招财进宝.brief', '战斗结束'):
+        '临时装备追加进 u.equips, 存活单位的 equips 随幸存快照带进终极战场'
+        '(dual_lane_flow._dl_snapshot_survivors), 对局结束才真正消失 ⇒ 实为「本局」; '
+        '但带进终极战场后 buyequip_star 归零会再抽一件, 设计意图待定, 不改字',
+    ('龟技能 fortune/招财进宝.detail', '战斗结束'): '同上',
+}
+
+
+def lane_word_gate():
+    import gd_text_scan as G
+    rows, st = G.scan(GD_ROOTS)
+    hits = []
+    for path, ln, sink, txt, why in rows:
+        for w in LANE_WORDS:
+            if w in txt:
+                hits.append(('%s:%d' % (path, ln), w, txt))
+                break
+    data_rows = collect()
+    for tag, ident, field, txt in data_rows:
+        for w in LANE_WORDS:
+            if w in txt:
+                hits.append(('%s %s.%s' % (tag, ident, field), w, txt[:40]))
+                break
+    allow_used = set()
+    for path, ln, sink, txt, why in rows:
+        for w in SCOPE_WORDS:
+            if w in txt:
+                hits.append(('%s:%d' % (path, ln), w, txt[:60]))
+                break
+    for tag, ident, field, txt in data_rows:
+        where = '%s %s.%s' % (tag, ident, field)
+        for w in SCOPE_WORDS:
+            if w in txt:
+                if (where, w) in SCOPE_ALLOW:
+                    allow_used.add((where, w))
+                    print('  [豁免] %s 「%s」 —— %s' % (where, w, SCOPE_ALLOW[(where, w)]))
+                else:
+                    hits.append((where, w, txt[:60]))
+                break
+    for k in SCOPE_ALLOW:
+        if k not in allow_used:
+            hits.append(('SCOPE_ALLOW 已烂', k[1], k[0]))
+    print('')
+    print('=== 路名纪律(屏上只叫 上路战场/下路战场/终极战场, 加时不叫决胜) ===')
+    print('  [分母] .gd 屏幕字符串 %d 条 + data 文案 %d 段' % (st['lits'], len(data_rows)))
+    if st['lits'] < 400 or len(data_rows) < 300:
+        print('  [FAIL] 取料失效(分母过小) —— 这是空检查不是通过')
+        return 1
+    for where, w, txt in hits:
+        print('  [FAIL] %s 「%s」 %s' % (where, w, txt))
+    return 1 if hits else 0
+
+
 def main():
     rows = collect()
     hits = collections.defaultdict(list)
@@ -582,6 +649,7 @@ def main():
 
     ## 洞①: `.gd` 屏幕文案那一节(在此之前本脚本一行 .gd 都不读)
     gd_rc = gd_devnote_gate()
+    lane_rc = lane_word_gate()
 
     # 2026-08-20 补上真正的判定行 + 非零退出码。
     #   在此之前本脚本从不打 ALL OK、恒返回 0, 是个报告工具 —— 而我今晚多次声称把
@@ -594,6 +662,8 @@ def main():
         return ai_rc
     if gd_rc != 0:
         return gd_rc
+    if lane_rc != 0:
+        return lane_rc
     if '--update' in sys.argv:
         print(chr(10) + "已重写 .gd 开发备注台账。")
         return 0

@@ -45,7 +45,10 @@ const WINDUP_CLIPS := ["ranged_attack", "melee_attack", "to_melee_a", "to_ranged
 ##   现在: 普攻前摇开始时若还在这里登记的招式上、且没播到第 N 帧, 先把它播到第 N 帧(锤贴地)再接普攻;
 ##   普攻关键帧之前的帧照旧均摊到剩下的前摇里 ⇒ 出手帧仍落在结算那一步(门禁焊着)。
 ##   最多占用前摇的 HOLD_MAX_SHARE(其余留给普攻自己的举锤)。
-const HOLD := {"melee_strike": 9}
+##   ★融合(2026-10-20 三轮): 融合推出后紧跟的远程普攻前摇把收手的第 14~21 帧截掉(推出后直接跳成抬手),
+##   登记成停到最后一帧。停的窗口仍受 HOLD_MAX_SHARE 管 ⇒ 窗口不够播完时, 剩下的帧【加速】播满窗口
+##   (每一帧都上屏), 而不是播到哪算哪被截掉。锤击同一套规则。
+const HOLD := {"melee_strike": 9, "fusion_cast": 21}
 const HOLD_MAX_SHARE := 0.5
 ## 死亡走 battle_vfx._play_action 的单位自带表 `_act_rows`(死亡后渲染步不再管这只龟)
 const DEATH_FPS := 22.0
@@ -132,8 +135,14 @@ func _observe(u: Dictionary, t: float, form: String) -> void:
 				var ts := t
 				var cur := str(u.get("_tha_clip", ""))
 				if HOLD.has(cur) and t >= float(u.get("_tha_tk", t)):
-					var th: float = float(u["_tha_tk"]) + float(int(HOLD[cur]) - int(CLIPS[cur][0]) + 1) / float(CLIPS[cur][1])
+					var th: float = float(u["_tha_tk"]) + float(int(HOLD[cur]) - int(CLIPS[cur][0]) + 1) / _fps(u, cur)
 					ts = minf(th, t + (tk - t) * HOLD_MAX_SHARE)
+					var fc: int = _clip_frame(u, cur, t)
+					if fc >= 0 and fc <= int(HOLD[cur]) and ts > t + 0.0005:
+						## 窗口里把 当前帧 … 停帧 均摊播完(只加速不减速): 改这条动作的帧率与关键时刻基准
+						var f2: float = maxf(_fps(u, cur), float(int(HOLD[cur]) - fc + 1) / (ts - t))
+						u["_tha_fps"] = f2
+						u["_tha_tk"] = t - (float(fc - int(CLIPS[cur][0])) + 0.001) / f2
 				if ts > t + 0.0005:
 					u["_tha_q"] = [[form + "_attack", ts, tk]]
 					u["_tha_cut"] = ts
@@ -146,6 +155,14 @@ func _observe(u: Dictionary, t: float, form: String) -> void:
 					_play(u, "fusion_cast", t, tk)
 				else:
 					_play(u, "to_melee_a" if form == "ranged" else "to_ranged_a", t, tk)
+		elif u.has("_tha_cut"):
+			## 还停在登记的招式上(锤击 / 融合)、普攻在排队时前摇被冻住(关键时刻往后挪)⇒ 不再停, 立刻交给普攻(由它按下面那条冻住规则停帧)
+			## ★必须排在下面那条之前: 融合本身也在 WINDUP_CLIPS 里, 排在后面的话停帧期间会被当成「融合的前摇还在继续」,
+			##   关键时刻被改成普攻的 ⇒ 融合倒回前摇帧(2026-10-20 实测 13 → 3)。
+			var q0: Array = u.get("_tha_q", [])
+			if not q0.is_empty() and tk > float(q0[0][2]) + 0.0005:
+				q0[0] = [q0[0][0], t, tk]
+				u["_tha_cut"] = t
 		elif str(u.get("_tha_clip", "")) in WINDUP_CLIPS:
 			## 同一段前摇还在继续。★前摇被冻住(眩晕 / 钩住 / 时停)时 state_t 不走而 _t 照走 ⇒
 			##   关键时刻跟着往后挪; 开播时刻挪同样多 ⇒ 画面停在当前帧, 解冻后接着播, 出手帧仍对齐。
@@ -154,12 +171,6 @@ func _observe(u: Dictionary, t: float, form: String) -> void:
 			if tk > otk + 0.0005:
 				u["_tha_t0"] = float(u.get("_tha_t0", t)) + (tk - otk)
 			u["_tha_tk"] = tk
-		elif u.has("_tha_cut"):
-			## 还停在锤击上、普攻在排队时前摇被冻住(关键时刻往后挪)⇒ 不再停, 立刻交给普攻(由它按上面那条冻住规则停帧)
-			var q0: Array = u.get("_tha_q", [])
-			if not q0.is_empty() and tk > float(q0[0][2]) + 0.0005:
-				q0[0] = [q0[0][0], t, tk]
-				u["_tha_cut"] = t
 	elif u.has("_tha_cut"):
 		# 普攻还在排队时前摇就被打断 ⇒ 这一下没打出去: 撤掉排队, 锤击照常播完
 		var q1: Array = u.get("_tha_q", [])
@@ -197,6 +208,7 @@ func _observe(u: Dictionary, t: float, form: String) -> void:
 
 func _play(u: Dictionary, key: String, ts: float, tk: float) -> void:
 	u.erase("_tha_cut")
+	u.erase("_tha_fps")
 	u["_tha_clip"] = key
 	u["_tha_t0"] = ts
 	u["_tha_tk"] = maxf(ts, tk)
@@ -206,13 +218,20 @@ func _play(u: Dictionary, key: String, ts: float, tk: float) -> void:
 func _clip_frame(u: Dictionary, key: String, t: float) -> int:
 	var n := frames_of(key)
 	var k: int = int(CLIPS[key][0])
-	var fps: float = float(CLIPS[key][1])
+	var fps: float = _fps(u, key)
 	var ts: float = float(u.get("_tha_t0", t))
 	var tk: float = float(u.get("_tha_tk", t))
 	if t < tk and k > 0:
 		return clampi(int(float(k) * (t - ts) / maxf(0.001, tk - ts)), 0, k - 1)
 	var f: int = k + int((t - tk) * fps)
 	return f if f < n else -1
+
+
+## 关键帧之后的帧率: 停帧窗口里可能被加速过(见 HOLD), 否则用动作表的帧率。
+func _fps(u: Dictionary, key: String) -> float:
+	if str(u.get("_tha_clip", "")) == key and u.has("_tha_fps"):
+		return float(u["_tha_fps"])
+	return float(CLIPS[key][1])
 
 
 ## 走路判据: 0.1 游戏秒窗口内的位移速度(与通用走路同一档阈值)。

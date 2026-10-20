@@ -325,8 +325,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "被动：天使龟的攻击每次命中获得 {C:AngelSystem.ASCEND_ENERGY_PER_HIT} 龟能与 {C:AngelSystem.ASCEND_ATK_PER_HIT%}% 攻击力，持续到战斗结束。\n\n主动：天使龟获得 {C:AngelSystem.ASCEND_ASPD%}% 攻击速度、{C:AngelSystem.ASCEND_MOVE%}% 移动速度和 {C:AngelSystem.ASCEND_RANGE} 码射程，持续到战斗结束，可无限叠加。",
-        "detail": "被动：天使龟的攻击每次命中获得 {C:AngelSystem.ASCEND_ENERGY_PER_HIT} 龟能与 {C:AngelSystem.ASCEND_ATK_PER_HIT%}% 攻击力，持续到战斗结束。\n\n主动：天使龟获得 {C:AngelSystem.ASCEND_ASPD%}% 攻击速度、{C:AngelSystem.ASCEND_MOVE%}% 移动速度和 {C:AngelSystem.ASCEND_RANGE} 码射程，持续到战斗结束，可无限叠加。",
+        "brief": "被动：天使龟的攻击每次命中获得 {C:AngelSystem.ASCEND_ENERGY_PER_HIT} 龟能与 {C:AngelSystem.ASCEND_ATK_PER_HIT%}% 攻击力，持续到本战场结束。\n\n主动：天使龟获得 {C:AngelSystem.ASCEND_ASPD%}% 攻击速度、{C:AngelSystem.ASCEND_MOVE%}% 移动速度和 {C:AngelSystem.ASCEND_RANGE} 码射程，持续到本战场结束，可无限叠加。",
+        "detail": "被动：天使龟的攻击每次命中获得 {C:AngelSystem.ASCEND_ENERGY_PER_HIT} 龟能与 {C:AngelSystem.ASCEND_ATK_PER_HIT%}% 攻击力，持续到本战场结束。\n\n主动：天使龟获得 {C:AngelSystem.ASCEND_ASPD%}% 攻击速度、{C:AngelSystem.ASCEND_MOVE%}% 移动速度和 {C:AngelSystem.ASCEND_RANGE} 码射程，持续到本战场结束，可无限叠加。",
         "energyCost": 80
       }
     ],
@@ -559,8 +559,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "远程形态：变脸龟射出灵能炮弹，命中第一个敌人时爆炸，对附近的敌人造成 {N:TwoHeadSystem.STRIKE_RANGED_COEF*ATK} 外加 {C:TwoHeadSystem.STRIKE_RANGED_MAXHP%}% 目标最大生命值的物理伤害。\n近战形态：变脸龟锤击目标，造成 {N:TwoHeadSystem.STRIKE_MELEE_COEF*ATK} 物理伤害，并获得相当于该伤害 {C:TwoHeadSystem.STRIKE_SHIELD_PCT%}% 的护盾，持续 {C:TwoHeadSystem.STRIKE_SHIELD_SEC} 秒。",
-        "detail": "· 远程形态【灵能冲击】：\n变脸龟射出灵能炮弹，命中第一个敌人时爆炸，对附近的敌人造成（{C:TwoHeadSystem.STRIKE_RANGED_COEF%}%×攻击力({ATK}) = {N:TwoHeadSystem.STRIKE_RANGED_COEF*ATK}）外加 {C:TwoHeadSystem.STRIKE_RANGED_MAXHP%}% 目标最大生命值的物理伤害。\n· 近战形态【锤击】：\n变脸龟锤击目标，造成（{C:TwoHeadSystem.STRIKE_MELEE_COEF%}%×攻击力({ATK}) = {N:TwoHeadSystem.STRIKE_MELEE_COEF*ATK}）物理伤害，并获得相当于该伤害 {C:TwoHeadSystem.STRIKE_SHIELD_PCT%}% 的护盾，持续 {C:TwoHeadSystem.STRIKE_SHIELD_SEC} 秒。"
+        "brief": "远程形态：变脸龟射出灵能炮弹，命中第一个敌人时爆炸，对附近的敌人造成 {N:TwoHeadSystem.STRIKE_RANGED_COEF*ATK} 外加 {C:TwoHeadSystem.STRIKE_RANGED_MAXHP%}% 目标最大生命值的物理伤害。\n近战形态：变脸龟跃向目标并锤击地面，对附近的敌人造成 {N:TwoHeadSystem.STRIKE_MELEE_COEF*ATK} 物理伤害，并获得相当于对目标所造成伤害 {C:TwoHeadSystem.STRIKE_SHIELD_PCT%}% 的护盾，持续 {C:TwoHeadSystem.STRIKE_SHIELD_SEC} 秒。",
+        "detail": "· 远程形态【灵能冲击】：\n变脸龟射出灵能炮弹，命中第一个敌人时爆炸，对附近的敌人造成（{C:TwoHeadSystem.STRIKE_RANGED_COEF%}%×攻击力({ATK}) = {N:TwoHeadSystem.STRIKE_RANGED_COEF*ATK}）外加 {C:TwoHeadSystem.STRIKE_RANGED_MAXHP%}% 目标最大生命值的物理伤害。\n· 近战形态【锤击】：\n变脸龟跃向目标并锤击地面，对附近的敌人造成（{C:TwoHeadSystem.STRIKE_MELEE_COEF%}%×攻击力({ATK}) = {N:TwoHeadSystem.STRIKE_MELEE_COEF*ATK}）物理伤害，并获得相当于对目标所造成伤害 {C:TwoHeadSystem.STRIKE_SHIELD_PCT%}% 的护盾，持续 {C:TwoHeadSystem.STRIKE_SHIELD_SEC} 秒。"
       },
       {
         "name": "精神干扰/吸收",
@@ -581,8 +581,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "被动：变脸龟登场后不再切换形态，始终远程作战，也没有切换后的强化攻击。变脸龟获得近战时的最大生命值、护甲、魔抗与护盾加成，攻击力同样降低 {C:TwoHeadSystem.MELEE_ATK_PENALTY%}%。每受到一段攻击或技能伤害永久获得 1 护甲和 1 魔抗，各最多 {C:TwoHeadSystem.FUSION_TOUGH_CAP}。\n\n主动：变脸龟发射 {C:TwoHeadSystem.FUSION_WAVE_BASE} 段灵能波，交替造成 {N:TwoHeadSystem.FUSION_WAVE_COEF*ATK} 物理伤害和 {T:TwoHeadSystem.FUSION_WAVE_COEF*ATK} 真实伤害并击飞目标。每次释放后段数 +1，持续到战斗结束。",
-        "detail": "被动：变脸龟登场后不再切换形态，始终远程作战，也没有切换后的强化攻击。变脸龟获得近战时的最大生命值、护甲、魔抗与护盾加成，攻击力同样降低 {C:TwoHeadSystem.MELEE_ATK_PENALTY%}%。每受到一段攻击或技能伤害永久获得 1 护甲和 1 魔抗，各最多 {C:TwoHeadSystem.FUSION_TOUGH_CAP}。\n\n主动：变脸龟发射 {C:TwoHeadSystem.FUSION_WAVE_BASE} 段灵能波，交替造成（{C:TwoHeadSystem.FUSION_WAVE_COEF%}%×攻击力({ATK}) = {N:TwoHeadSystem.FUSION_WAVE_COEF*ATK}）物理伤害和（{C:TwoHeadSystem.FUSION_WAVE_COEF%}%×攻击力({ATK}) = {T:TwoHeadSystem.FUSION_WAVE_COEF*ATK}）真实伤害并击飞目标。每次释放后段数 +1，持续到战斗结束。"
+        "brief": "被动：变脸龟登场后不再切换形态，始终远程作战，也没有切换后的强化攻击。变脸龟获得近战时的最大生命值、护甲、魔抗与护盾加成，攻击力同样降低 {C:TwoHeadSystem.MELEE_ATK_PENALTY%}%。每受到一段攻击或技能伤害永久获得 1 护甲和 1 魔抗，各最多 {C:TwoHeadSystem.FUSION_TOUGH_CAP}。\n\n主动：变脸龟发射 {C:TwoHeadSystem.FUSION_WAVE_BASE} 段灵能波，交替造成 {N:TwoHeadSystem.FUSION_WAVE_COEF*ATK} 物理伤害和 {T:TwoHeadSystem.FUSION_WAVE_COEF*ATK} 真实伤害并击飞目标。每次释放后段数 +1，持续到本战场结束。",
+        "detail": "被动：变脸龟登场后不再切换形态，始终远程作战，也没有切换后的强化攻击。变脸龟获得近战时的最大生命值、护甲、魔抗与护盾加成，攻击力同样降低 {C:TwoHeadSystem.MELEE_ATK_PENALTY%}%。每受到一段攻击或技能伤害永久获得 1 护甲和 1 魔抗，各最多 {C:TwoHeadSystem.FUSION_TOUGH_CAP}。\n\n主动：变脸龟发射 {C:TwoHeadSystem.FUSION_WAVE_BASE} 段灵能波，交替造成（{C:TwoHeadSystem.FUSION_WAVE_COEF%}%×攻击力({ATK}) = {N:TwoHeadSystem.FUSION_WAVE_COEF*ATK}）物理伤害和（{C:TwoHeadSystem.FUSION_WAVE_COEF%}%×攻击力({ATK}) = {T:TwoHeadSystem.FUSION_WAVE_COEF*ATK}）真实伤害并击飞目标。每次释放后段数 +1，持续到本战场结束。"
       }
     ],
     "defaultSkills": [
@@ -1087,8 +1087,8 @@
       "type": "hunterKill",
       "name": "猎杀",
       "lifesteal": 8,
-      "brief": "场上有敌人生命值低于 {C:HunterSystem.EXEC_BASE%}% 时，猎人龟自动射出一支强化箭，命中时将其处决。\n猎人龟处决或击杀敌人时，窃取该敌人 {C:HunterSystem.EXEC_STEAL%}% 基础属性并获得 {C:HunterSystem.EXEC_LIFESTEAL%}% 生命偷取，持续到战斗结束。",
-      "desc": "场上有敌人生命值低于 {C:HunterSystem.EXEC_BASE%}% 时，猎人龟自动射出一支强化箭，命中时将其处决。\n猎人龟处决或击杀敌人时，窃取该敌人 {C:HunterSystem.EXEC_STEAL%}% 基础属性并获得 {C:HunterSystem.EXEC_LIFESTEAL%}% 生命偷取，持续到战斗结束。\n<span style=\"color:#8a93a0\">目标被猎杀印记标记时，处决线提升至 {C:HunterSystem.EXEC_MARKED%}%。若箭矢飞行途中目标被治疗至处决线以上，则不处决。</span>"
+      "brief": "场上有敌人生命值低于 {C:HunterSystem.EXEC_BASE%}% 时，猎人龟自动射出一支强化箭，命中时将其处决。\n猎人龟处决或击杀敌人时，窃取该敌人 {C:HunterSystem.EXEC_STEAL%}% 基础属性并获得 {C:HunterSystem.EXEC_LIFESTEAL%}% 生命偷取，持续到本战场结束。",
+      "desc": "场上有敌人生命值低于 {C:HunterSystem.EXEC_BASE%}% 时，猎人龟自动射出一支强化箭，命中时将其处决。\n猎人龟处决或击杀敌人时，窃取该敌人 {C:HunterSystem.EXEC_STEAL%}% 基础属性并获得 {C:HunterSystem.EXEC_LIFESTEAL%}% 生命偷取，持续到本战场结束。\n<span style=\"color:#8a93a0\">目标被猎杀印记标记时，处决线提升至 {C:HunterSystem.EXEC_MARKED%}%。若箭矢飞行途中目标被治疗至处决线以上，则不处决。</span>"
     },
     "skillPool": [
       {

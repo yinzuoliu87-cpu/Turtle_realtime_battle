@@ -12,17 +12,20 @@ extends Node
 ##   ③ 引导条节点里**没有任何 Button**(B2/B3 都是「下一步/知道了」造的)
 ##   ④ 只在动作事件上前进: 不相干的事件不动; 越级事件(做了后面那步的动作)直接跳过去, 不卡死
 ##   ⑤ 导演 steps_key_for 用到的每个 key 在 json 里都有, json 里的 key 也都有人用(不留死步骤集)
+##   ⑥ v3(2026-10-20): 不阻塞提示(`auto`)只在战斗里; 它们**不压暗、不挡点击、不出手势**, 到点自己前进
 
 const TutorialGuide := preload("res://scripts/scenes/TutorialGuide.gd")
 const STEPS_JSON := "res://data/tutorial-steps.json"
 ## 方案书 §6.1 禁用词 + 第二人称(「你」) —— 口语化/说明书腔的来源。
 const BANNED := ["啦", "吧", "呢", "哦", "咱", "我教你", "试试", "就行", "搞", "热身", "练练", "!", "！", "你", "<b>", "\n"]
 const MAX_CHARS := 14
+## 战斗里的不阻塞提示是一句规则(不是一个动作), 放宽到 18 字; 仍是单行。
+const MAX_TIP_CHARS := 18
 
 var _fail := 0
 var _n := 0
 ## ★断言条数地板: 协程半路被 SCRIPT ERROR 掐断时照样会打 ALL PASS(memory fb-null-readback-makes-test-silently-abort)。
-const MIN_ASSERTS := 64   # 2026-10-19 摆位 2 步删去, 每步的逐条断言随之少了(实测 67 条; 原 70)
+const MIN_ASSERTS := 100  # v3 15 步(2026-10-20 实测 107 条); 原 64
 
 
 func _ok(n: String, c: bool, d: String = "") -> void:
@@ -45,6 +48,7 @@ func _ready() -> void:
 	_check_notify_sites(events)
 	_check_keys(parsed as Dictionary)
 	await _check_guide_behaviour()
+	await _check_tip_behaviour()
 	_end()
 
 
@@ -71,17 +75,28 @@ func _check_data(d: Dictionary) -> Array:
 			var tag := "%s「%s」" % [key, t]
 			_ok("%s 有 advanceOn(做了才前进)" % tag, str(s.get("advanceOn", "")) != "")
 			_ok("%s 有 highlight(高亮目标)" % tag, str(s.get("highlight", "")) != "")
-			_ok("%s 一句话: ≤%d 字" % [tag, MAX_CHARS], t.length() > 0 and t.length() <= MAX_CHARS, "%d 字" % t.length())
+			var is_tip: bool = float(s.get("auto", 0.0)) > 0.0
+			var cap: int = MAX_TIP_CHARS if is_tip else MAX_CHARS
+			_ok("%s 一句话: ≤%d 字" % [tag, cap], t.length() > 0 and t.length() <= cap, "%d 字" % t.length())
+			_ok("%s hand 取值合法" % tag, str(s.get("hand", "tap")) in ["tap", "drag", "none"], str(s.get("hand", "")))
+			if is_tip:
+				_ok("%s 不阻塞提示只在战斗里" % tag, str(key) == "battle")
+				_ok("%s 不阻塞提示不出手势" % tag, str(s.get("hand", "")) == "none")
 			var bad: Array = []
 			for w in BANNED:
 				if t.contains(str(w)):
 					bad.append(str(w).c_escape())
 			_ok("%s 无禁用词/标记" % tag, bad.is_empty(), str(bad))
-			if str(s.get("advanceOn", "")) != "":
+			## 不阻塞提示到点自己前进 ⇒ advanceOn 只是记账名, 不要求产品代码发
+			if str(s.get("advanceOn", "")) != "" and not is_tip:
 				events.append(str(s.get("advanceOn", "")))
 	print("  [分母] 步骤 %d 步 / 事件 %d 个" % [n, events.size()])
-	## 2026-10-19 对局内拖动站位环节去掉(站位改在背包里摆), 教程 place 两步随之删去: 11 → 9
-	_ok("★分母: 步骤数 = 方案书 §4.1 的 11 步减去已删的摆位 2 步 = 9 步(选择框不算)", n == 9, "n=%d" % n)
+	## v3(方案书 20261020-教程重写 §1): 选龟 2 + 战斗不阻塞提示 2 + 结算 1 + 商店 4 + 背包 6(含站位 3) = 15
+	_ok("★分母: 步骤数 = 方案书 v3 表 1~15 步(选择框与主菜单首次提示不算)", n == 15, "n=%d" % n)
+	var raw: Dictionary = d
+	for need in ["offer_selected", "formation_opened", "formation_dragged", "formation_closed"]:
+		_ok("★v3 新事件「%s」在步骤表里" % need, need in events)
+	_ok("★v3 战斗里有 2 句不阻塞提示", (raw.get("battle", []) as Array).size() == 2)
 	return events
 
 
@@ -170,6 +185,39 @@ func _check_guide_behaviour() -> void:
 		var tip: Vector2 = hand.position + TutorialGuide.HAND_TIP * TutorialGuide.HAND_SCALE
 		_ok("★指尖落在目标矩形里", Rect2(100, 100, 200, 60).grow(24).has_point(tip), str(tip))
 	g3.queue_free()
+
+
+## ⑥ 不阻塞提示: 显示时不压暗、不挡点击、无手势; 到点自己前进; 宿主没就绪时不偷跑计时
+func _check_tip_behaviour() -> void:
+	var steps := [
+		{"text": "甲", "highlight": "t", "advanceOn": "tip_a", "hand": "none", "auto": 0.4},
+		{"text": "乙", "highlight": "t", "advanceOn": "ev_b"},
+	]
+	var ready := [false]
+	var g = TutorialGuide.new()
+	add_child(g)
+	g.start(steps, func() -> void: pass, func(_n: String) -> Rect2: return Rect2(300, 300, 120, 60),
+		func() -> bool: return ready[0])
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 700:
+		await get_tree().process_frame
+	_ok("★宿主没就绪 ⇒ 不阻塞提示不显示、也不偷跑(0.7 秒后仍在第 1 步)", not g.is_showing() and int(g._idx) == 0,
+		"showing=%s idx=%d" % [str(g.is_showing()), int(g._idx)])
+	ready[0] = true
+	for _i in range(TutorialGuide.STABLE_FRAMES + 3):
+		await get_tree().process_frame
+	_ok("★分母: 就绪后不阻塞提示显示出来了", g.is_showing() and g.current_text() == "甲" and g.is_tip())
+	_ok("★★不阻塞提示: 本层没有任何能吃点击的控件(暗幕不显示)", not g.is_blocking())
+	var hand: TextureRect = g.find_child("TutorialHand", true, false)
+	_ok("★不阻塞提示不出手势", hand == null or not hand.visible)
+	var t1 := Time.get_ticks_msec()
+	while int(g._idx) == 0 and Time.get_ticks_msec() - t1 < 3000:
+		await get_tree().process_frame
+	_ok("★★到点自己前进(没人发事件)", int(g._idx) == 1, "idx=%d 用时 %d ms" % [int(g._idx), Time.get_ticks_msec() - t1])
+	for _i in range(TutorialGuide.STABLE_FRAMES + 3):
+		await get_tree().process_frame
+	_ok("★下一步是普通步骤 ⇒ 暗幕回来(挡洞外点击)", g.is_showing() and g.is_blocking() and g.current_text() == "乙")
+	g.queue_free()
 
 
 func _collect_gd(dir: String, out: Array) -> void:

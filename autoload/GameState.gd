@@ -150,6 +150,9 @@ var tutorial_stage: String = ""
 ## tutorial_active: 沙盒开关 —— 为真时 GameState 里是**教程专用的全新状态**(导演换进来的),
 ##   `save()` / 云同步一律不动盘与云端。【不进存档】(运行时态)
 var tutorial_active: bool = false
+## first_tips_seen: 账号侧「第一次遇到」提示看过哪几条({key: true}, 见 scripts/systems/onboarding/first_tips.gd)。
+##   进存档 / 云存档。★不在教程导演的 PASSTHROUGH 里: 教程期间它随沙盒换成空表、结束换回(教程里也不出这些提示)。
+var first_tips_seen: Dictionary = {}
 ## (tutorial_mandatory「首次强制无跳过」2026-10-07 删除: 教程随时可跳, 见方案书 20261007-新手教程重做 §4.3)
 
 ## 技能说明看【详细】还是【简明】(用户需求1 两级描述)。存这里而不是战斗场的成员变量,
@@ -1815,6 +1818,7 @@ func _save_dict() -> Dictionary:
 		"lane_loadout": lane_loadout,
 		"dual_lineup": dual_lineup,
 		"onboarded": onboarded,   # 走完首次教学 → 不再触发
+		"first_tips_seen": first_tips_seen,   # 「第一次遇到」提示看过哪几条
 		"trainer_appearance": trainer_appearance,   # 训龟大师装配(局外持久)
 		"trainer_skill": trainer_skill,
 		"cloud_rev": cloud_rev,          # D-8 云存档版本号(设备本地, 不上云)
@@ -1915,6 +1919,7 @@ func _read_save_file(path: String):
 ## ★D-8: 把一份存档字典应用到内存。本机开机读档与【云存档取回】共用这一个函数。
 func _apply_save_dict(data: Dictionary) -> void:
 	onboarded = data.get("onboarded", false)
+	first_tips_seen = data.get("first_tips_seen", {}) if data.get("first_tips_seen", {}) is Dictionary else {}
 	trainer_appearance = str(data.get("trainer_appearance", "default"))   # 训龟大师装配(缺键=旧档默认)
 	# 迁移: 新键 trainer_skill 优先; 旧档只有 trainer_active → 用它(旧的两槽合成一个·取旧主动)。
 	trainer_skill = str(data.get("trainer_skill", data.get("trainer_active", "hook")))

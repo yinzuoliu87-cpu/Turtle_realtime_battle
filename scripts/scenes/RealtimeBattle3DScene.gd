@@ -1437,7 +1437,7 @@ func _sd_tick() -> void:
 func _announce_sudden() -> void:
 	if _hud != null and _hud._topbar != null:
 		_hud._topbar.show_splash()
-	_log("⚔ 决胜阶段: 治疗效果 -50%, 每 5 秒全场 +25% 增伤")
+	_log("加时：治疗效果 -%d%%，每 %d 秒全场伤害 +%d%%" % [int(round((1.0 - SD_HEAL_MULT) * 100.0)), int(SD_STEP), int(round(SD_AMP_PER * 100.0))])   # 2026-10-20 原「决胜阶段」: 与终极战场撞名, 统一叫加时(同 topbar_status)
 
 func _foe_normalize_lane(raw: Array) -> Array:   # 对手每路规整到"恰好3单位"(用户2026-07-18"每条路都是3个单位·跟玩家一样"): 保留全部统领(≤3), 小将补/裁到 3-统领数(=玩家逻辑). 3统领→0小将 / 空统领→3小将 皆合规
 	var leaders: Array = []

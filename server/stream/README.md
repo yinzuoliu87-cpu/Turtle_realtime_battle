@@ -38,7 +38,7 @@ Caddy（stream.turtlearena.xyz，Let's Encrypt 自动证书）
 
 | 文件 | 去哪 | 是什么 |
 |---|---|---|
-| `Caddyfile` | `/etc/caddy/Caddyfile`（装包时的默认版备份在 `/etc/caddy/Caddyfile.dist`） | 站点 + 本机自检口 `http://127.0.0.1:8081`（只听回环、不走 TLS） |
+| `Caddyfile` | `/etc/caddy/Caddyfile`（装包时的默认版备份在 `/etc/caddy/Caddyfile.dist`） | 站点 + 本机自检口 `http://127.0.0.1:8081`（只听回环、不走 TLS）；末尾 `import /etc/caddy/relay.caddy` = 大陆中转（2026-10-20，见 [server/relay/README.md](../relay/README.md)） |
 | `stream_ops.py` | `/opt/turtle/stream/stream_ops.py`（root 所有） | `minver` / `purge` / `selftest` / `regex <版本>` |
 | `turtle-stream-minver.service` + `.timer` | `/etc/systemd/system/` | 每分钟：只读 GET `service_status` → 生成 `/etc/caddy/turtle-min-version.caddy`（变了才写，`caddy validate` 过了才 `systemctl reload caddy`，不过就还原）。读不到库 ⇒ 片段不动 |
 | `turtle-stream-purge.service` + `.timer` | `/etc/systemd/system/` | 每小时 :05 UTC（`Persistent=true`）删过期局目录，以 `turtle-referee` 身份跑 |

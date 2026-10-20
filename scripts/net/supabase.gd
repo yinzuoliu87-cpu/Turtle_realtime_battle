@@ -27,10 +27,11 @@ extends Node
 ## ★方向是单向的：`phase2_config` 里**零处**引用本文件，不会循环。
 const _P2S := preload("res://scripts/gamedata/phase2_config.gd")
 const _MF := preload("res://scripts/net/match_fetch.gd")   # 取录像的两条读的纯函数(查询串 / 判回包), 2026-10-20 挪出
+const _NR := preload("res://scripts/net/net_route.gd")    # 多入口选路(直连 + 大陆中转, 2026-10-20 · 方案书 20261020-大陆中转.md)
 
-const SETTING_URL := "turtle/supabase_url"
+const SETTING_URL := _NR.SETTING_URL
 const SETTING_KEY := "turtle/supabase_anon_key"
-const ENV_URL := "TURTLE_SUPABASE"
+const ENV_URL := _NR.ENV_URL
 
 const TIMEOUT_SEC := 6.0
 
@@ -66,12 +67,11 @@ static func offline_dev() -> bool:
 	return offline_override or OS.has_feature(OFFLINE_FEATURE)
 
 
+## 当前选中的入口(`net_route.gd`: 环境变量 > 设置; 只有一条时就是它, 与改之前相同)。
 static func base_url() -> String:
 	if offline_dev():
 		return ""
-	if OS.has_environment(ENV_URL):
-		return OS.get_environment(ENV_URL).strip_edges()
-	return str(ProjectSettings.get_setting(SETTING_URL, "")).strip_edges()
+	return _NR.current_base()
 
 
 static func anon_key() -> String:
@@ -1679,11 +1679,33 @@ func _http(method: String, url: String, body: String, cb: Callable, extra: Strin
 		print("[SupabaseNet] 客户端版本过旧, 写请求不发: %s %s" % [method, url.get_slice("?", 0)])
 		cb.call({"ok": false, "code": 0, "body": "", "blocked": true})
 		return
+	## 多入口(net_route.gd): 第一次启动还没选出入口 ⇒ 等竞速(≤ RACE_SEC 秒)再发; 发的那一刻才换到当前入口上。
+	_NR.kick(_headers())
+	var me: WeakRef = weakref(self)
+	_NR.when_ready(func() -> void:
+		var n = me.get_ref()
+		if n != null:
+			n._send(method, _NR.rebase(url), body, cb, extra, 0)
+		else:
+			cb.call({"ok": false, "code": 0, "body": ""}))
+
+
+## 真发一次。传输失败 ⇒ 记给选路; 只读请求(`_NR.retry_safe`)换另一条入口再发一次(hop 1), 写请求绝不重发。
+func _send(method: String, url: String, body: String, cb: Callable, extra: String, hop: int) -> void:
+	var base := _NR.base_of(url)
+	_NR.note_send(base)
+	var fin := func(res: Dictionary) -> void:
+		_NR.note(base, res, _headers())
+		var alt := _NR.alt_of(base)
+		if hop == 0 and alt != "" and _NR.transport_failed(res) and _NR.retry_safe(method, url):
+			_NR.alt_retries += 1
+			_send(method, alt + url.substr(base.length()), body, cb, extra, 1)
+			return
+		_note_server_clock(res)
+		_note_update_signal(res)
+		cb.call(res)
 	if _transport.is_valid():
-		_transport.call(method, url, _headers(extra), body, func(res):
-			_note_server_clock(res)
-			_note_update_signal(res)
-			cb.call(res))
+		_transport.call(method, url, _headers(extra), body, fin)
 		return
 	## ★`is_inside_tree()` 必须判: HTTPRequest 不在树上时 `request()` 直接报错
 	##   (旧后端那层踩过, 见 remote_pool 的同位置注释)。
@@ -1695,14 +1717,11 @@ func _http(method: String, url: String, body: String, cb: Callable, extra: Strin
 	add_child(req)
 	req.request_completed.connect(func(result: int, code: int, _h: PackedStringArray, data: PackedByteArray):
 		var okk: bool = (result == HTTPRequest.RESULT_SUCCESS)
-		var res := {"ok": okk, "code": code, "body": data.get_string_from_utf8(), "headers": _h}
-		_note_server_clock(res)
-		_note_update_signal(res)
-		cb.call(res)
+		fin.call({"ok": okk, "code": code, "body": data.get_string_from_utf8(), "headers": _h})
 		req.queue_free())
 	var err := req.request(url, _headers(extra), _method_of(method), body)
 	if err != OK:
-		cb.call({"ok": false, "code": 0, "body": ""})
+		fin.call({"ok": false, "code": 0, "body": ""})
 		req.queue_free()
 
 

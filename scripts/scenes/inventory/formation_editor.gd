@@ -15,6 +15,7 @@ extends RefCounted
 const LP := preload("res://scripts/gamedata/lineup_pos.gd")
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const Phase2Minion := preload("res://scripts/gamedata/phase2_minion.gd")
+const TutorialGuide := preload("res://scripts/scenes/TutorialGuide.gd")   # 教程锚点: vis_rect
 
 ## 场地显示比例(世界像素 → 屏幕像素)。半场 798×728 ⇒ 479×437, 两块并排放得进 1280。
 const S := 0.6
@@ -153,12 +154,40 @@ func open() -> void:
 	var done := _btn("FormationDone", "完成", Vector2(x0 + w_all - 200.0, by), Vector2(200, TopBar.TOUCH_MIN), Color("#6a3f1c"), Color("#d89a48"))
 	done.pressed.connect(close)
 	_body.add_child(done)
+	_tut_notify("formation_opened")   # 教程 v3「点击站位」
+
+
+## 教程 v3 的事件(非教程 / 没有引导 ⇒ 导演什么都不做)。
+func _tut_notify(ev: String) -> void:
+	var td = host.get_node_or_null("/root/TutorialDirector") if host != null and host.is_inside_tree() else null
+	if td != null:
+		td.notify(ev)
+
+
+## 拖动松手时位移超过这么多屏幕像素才算「拖了一下」(教程「拖动龟调整站位」; 点一下不算)。
+const TUT_DRAG_MIN := 24.0
+
+
+## 教程 v3 锚点: formation_field(上战场小场地) / formation_token(上战场第一只) / formation_done(「完成」)。
+func tut_anchor(nm: String) -> Rect2:
+	if not is_open() or _body == null:
+		return Rect2()
+	var n: Node = null
+	match nm:
+		"formation_field":
+			n = _body.find_child("Field_top", true, false)
+		"formation_token":
+			n = _body.find_child("Token_top_0", true, false)
+		"formation_done":
+			n = _body.find_child("FormationDone", true, false)
+	return TutorialGuide.vis_rect(n)
 
 
 func close() -> void:
 	_drop_dim()
 	_drag = {}
 	host._rebuild()
+	_tut_notify("formation_closed")   # 教程 v3「点击完成」
 
 
 ## 摘掉旧面板。★先改名再 queue_free: 同一帧里立刻重开时新面板才拿得到「FormationEditor」这个名字
@@ -275,11 +304,14 @@ func _on_token_input(lane: String, idx: int, t: Control, ev: InputEvent) -> void
 		var mb := ev as InputEventMouseButton
 		var local: Vector2 = field.get_global_transform().affine_inverse() * mb.global_position
 		if mb.pressed:
-			_drag = {"lane": lane, "idx": idx, "grab": (t.position + t.size * 0.5) - local}
+			_drag = {"lane": lane, "idx": idx, "grab": (t.position + t.size * 0.5) - local, "from": mb.global_position}
 			t.z_index = 5
 		elif not _drag.is_empty():
 			var o: Vector2i = _off_at(local)
+			var moved: float = (mb.global_position - (_drag.get("from", mb.global_position) as Vector2)).length()
 			commit(lane, idx, o)
+			if moved >= TUT_DRAG_MIN:
+				_tut_notify("formation_dragged")   # 教程 v3「拖动龟调整站位」: 松手且真拖了一段
 			t.position = _to_field(world_from_off(o)) - t.size * 0.5
 			t.z_index = 0
 			_drag = {}

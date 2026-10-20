@@ -88,6 +88,9 @@ func _ready() -> void:
 	_build_ui()
 	# ★UI 双端适配: 内容装进 1280×720 设计框并居中于真实视口(放在 _ready 最后)。
 	UIFrame.attach(self)
+	## 首次提示「训龟大师在战斗中施放所选技能」, 圈展台上的训龟大师本人(账号侧, 教程中不出; 判据与文案在 FirstTips)。
+	##   ★不圈技能卡: 技能卡一排上下左右都是字(分组签 / 相邻卡 / 详情名), 提示条无处可放(门禁 verify_first_tips ⑦d 量过)。
+	FirstTips.show(self, FirstTips.FIRST_TRAINER, _preview_rect)
 
 func _valid_skill(id: String) -> String:
 	for s in SKILLS:

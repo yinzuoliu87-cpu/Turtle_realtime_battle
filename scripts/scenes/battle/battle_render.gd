@@ -29,7 +29,7 @@ const RENDER_OWNED_KEYS := [
 	"bear_anim", "bear_anim_t", "_bear_sheet", "_bear_pp",
 	## 变脸龟动作驱动(TwoHeadArt, 2026-10-20): 当前动作 / 排队动作 / 认过的前摇 / 认过的形态 / 走路判据
 	"_tha_clip", "_tha_t0", "_tha_tk", "_tha_q", "_tha_ws", "_tha_pend", "_tha_form",
-	"_tha_lp", "_tha_lt", "_tha_walk", "_tha_loop_t0", "_tha_cut",
+	"_tha_lp", "_tha_lt", "_tha_walk", "_tha_loop_t0", "_tha_cut", "_tha_fps",
 ]
 
 var battle
@@ -288,6 +288,9 @@ func _tick_anim_fx() -> void:
 		## `base`: 同一张精灵表里放了不止一段动画时, 这一段从第几帧起(默认 0)。
 		## 041 的 `tide-swell.png` 就是 0~5 涨 / 6~11 退 —— 两段是同一件效果的两个方向。
 		spr.frame = int(f.get("base", 0)) + maxi(0, fr)
+		## `show_at`: 延后开播的那几张(t0 在未来)在开播前藏起来, 否则会钳在第 0 帧提前露出(变脸龟锤击圈边尘团)
+		if not spr.visible and f.has("show_at") and battle._t >= float(f["show_at"]):
+			spr.visible = true
 
 
 

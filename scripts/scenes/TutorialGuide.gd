@@ -15,7 +15,11 @@ const STEPS_PATH := "res://data/tutorial-steps.json"
 ## ⇒ **等宿主可以引导了才显示**(B6 那一类: 屏有入场动画时, 提示比内容先到):
 ##   宿主给 ready_fn 就用它; 没给 ⇒ 等本步目标矩形连续 STABLE_FRAMES 帧不动。
 ##
-## steps = [{ "text", "highlight", "advanceOn", "point"?, "hand"?("tap"|"drag"), "anchor"?("top"|"bottom"|"right") }]
+## steps = [{ "text", "highlight", "advanceOn", "point"?, "hand"?("tap"|"drag"|"none"), "anchor"?("top"|"bottom"|"right"|"left"), "auto"?(秒) }]
+##
+## ★v3(2026-10-20, 方案书 docs/plans/20261020-教程重写.md D7): 带 `auto` 的步 = **不阻塞的提示**(战斗里那两句)。
+##   不压暗、不挡点击(本层所有控件 MOUSE_FILTER_IGNORE, 暗幕不显示)、不出手势、不暂停战斗;
+##   淡入 → 停 `auto` 秒 → 淡出 → 自己前进。门禁量 `is_blocking()` 恒假。
 
 const HAND_TEX := "res://assets/sprites/ui/tut-hand.png"
 const HAND_SCALE := 3.0
@@ -44,6 +48,8 @@ var _last_rect := Rect2()
 var _t: float = 0.0
 var _hl_empty_frames: int = 0
 var _hl_warned: bool = false
+var _tip_t: float = 0.0              # 本步(不阻塞提示)已显示的秒数
+const TIP_FADE := 0.35               # 不阻塞提示淡入 / 淡出各用的秒数
 
 
 func start(steps: Array, on_done: Callable, anchor_fn: Callable = Callable(), ready_fn: Callable = Callable()) -> void:
@@ -63,6 +69,29 @@ func is_showing() -> bool:
 
 func current_text() -> String:
 	return _text.text if _text != null else ""
+
+
+## 当前这一步是不是不阻塞的提示(带 `auto`)。
+func is_tip() -> bool:
+	return _idx < _steps.size() and float((_steps[_idx] as Dictionary).get("auto", 0.0)) > 0.0
+
+
+## ★门禁用: 本层此刻有没有**能吃到点击**的可见控件(暗幕 / 任何非 IGNORE 的控件)。不阻塞提示期间必须恒假。
+func is_blocking() -> bool:
+	if _layer == null or not _layer.visible:
+		return false
+	for c in _layer.find_children("*", "Control", true, false):
+		var ctl := c as Control
+		if ctl.is_visible_in_tree() and ctl.mouse_filter != Control.MOUSE_FILTER_IGNORE:
+			return true
+	return false
+
+
+## 提示条此刻的屏幕矩形(没显示 = 空)。门禁量「不压别的控件」用。
+func panel_rect() -> Rect2:
+	if not is_showing() or _panel == null:
+		return Rect2()
+	return Rect2(_panel.position, _panel.size)
 
 
 func notify(event: String) -> void:
@@ -135,6 +164,7 @@ func _render() -> void:
 	_last_rect = Rect2()
 	_hl_empty_frames = 0
 	_hl_warned = false
+	_tip_t = 0.0
 	_show(false)
 
 
@@ -161,7 +191,8 @@ func _process(dt: float) -> void:
 		return
 	_hl_empty_frames = 0
 	if not _shown:
-		if rect.is_equal_approx(_last_rect):
+		## 不阻塞提示的目标会跟着战斗镜头走(蛋), 不要求「不动」—— 宿主就绪且连续几帧解析得出即可。
+		if rect.is_equal_approx(_last_rect) or is_tip():
 			_stable_n += 1
 		else:
 			_stable_n = 0
@@ -173,16 +204,41 @@ func _process(dt: float) -> void:
 	_show(true)
 	_apply_highlight(rect)
 	_place_panel(rect)
+	if is_tip():
+		_hand.visible = false
+		_tick_tip(dt)
+		return
 	_place_hand(rect)
+
+
+## 不阻塞提示: 淡入 → 停 → 淡出 → 前进。★时间只在真显示时累计(宿主没准备好时不偷跑)。
+func _tick_tip(dt: float) -> void:
+	var dur: float = float((_steps[_idx] as Dictionary).get("auto", 3.0))
+	_tip_t += dt
+	var a: float = clampf(minf(_tip_t / TIP_FADE, (dur + TIP_FADE - _tip_t) / TIP_FADE), 0.0, 1.0)
+	_panel.modulate.a = a
+	_ring.modulate.a = a
+	if _tip_t >= dur + TIP_FADE:
+		_panel.modulate.a = 1.0
+		_ring.modulate.a = 1.0
+		_idx += 1
+		if _idx >= _steps.size():
+			_finish()
+		else:
+			_render()
 
 
 ## 显示 / 收起整条引导。★暗幕本身也一起关: 只关图层的话, 暗幕节点的 visible 仍是 true,
 ##   而它们是 MOUSE_FILTER_STOP 的 —— 不能指望引擎对「图层隐藏」的命中判定替我们挡住。
+## ★不阻塞提示(`auto`)从不显示暗幕: 暗幕挡点击, 而战斗里不许挡。
 func _show(on: bool) -> void:
 	_layer.visible = on
+	var tip := is_tip()
 	for m in _mask:
-		(m as Control).visible = on
+		(m as Control).visible = on and not tip
 	_ring.visible = on
+	if not on and _hand != null:
+		_hand.visible = false
 
 
 func _target_rect(hl_name: String) -> Rect2:
@@ -229,6 +285,13 @@ func _place_panel(target: Rect2) -> void:
 		if rx + sz.x + 12.0 <= vp.x and ry >= 8.0 and ry + sz.y + 8.0 <= vp.y:
 			_panel.position = Vector2(round(rx), round(ry))
 			return
+	## "left": 贴在目标左侧、垂直居中(战斗里顶部计时牌: 下方是战场, 提示条不许压单位与血条)。左侧放不下才退回常规规则。
+	if where == "left":
+		var lx: float = target.position.x - GAP - sz.x
+		var ly: float = target.get_center().y - sz.y * 0.5
+		if lx >= 12.0 and ly >= 8.0:
+			_panel.position = Vector2(round(lx), round(ly))
+			return
 	if where == "top":
 		y = 22.0
 	elif where == "bottom":
@@ -249,6 +312,9 @@ func _place_hand(target: Rect2) -> void:
 		_hand.visible = false
 		return
 	var step: Dictionary = _steps[_idx]
+	if str(step.get("hand", "tap")) == "none":
+		_hand.visible = false
+		return
 	var pr := target
 	var pt_name := str(step.get("point", ""))
 	if pt_name != "":

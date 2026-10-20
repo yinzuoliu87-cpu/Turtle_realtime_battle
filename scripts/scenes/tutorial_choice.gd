@@ -88,6 +88,9 @@ static func open(host: Node, first_launch: bool) -> Control:
 		if first_launch:
 			var td2 = host.get_node_or_null("/root/TutorialDirector")
 			if td2 != null:
-				td2.end_tutorial("skipped"))
+				td2.end_tutorial("skipped")
+			## 跳过之后当场给账号侧首次提示(主菜单不重建, 不在这里补就要等下次进主菜单)
+			if host.has_method("first_tip_now"):
+				host.call("first_tip_now"))
 	host.add_child(ov)
 	return ov

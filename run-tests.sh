@@ -209,6 +209,7 @@ frames_for () {
     verify_info_panel_stats) echo 2000 ;;
     # 背包文案放不放得下: 建 Inventory 场景 + 选中最长那件 + 量真实屏幕矩形
     verify_inventory_text_fit) echo 1500 ;;
+    verify_inventory_name_fit) echo 1500 ;;   # 全部 96 件装备进背包再建格: 与 text_fit 同档
     # 071 全队奶油护盾: 建战斗场 + 造 3 友军 + 走 tick_unit 真入口(纯同步)
     verify_cream_shell_all) echo 2000 ;;
     # 072 礼盒形态: 建战斗场 + 造携带者 + 进/出盒各一次(纯同步, 量真实 texture)
@@ -402,7 +403,9 @@ frames_for () {
     #   无头帧率越高这段吃的帧越多 ⇒ 500 帧会半路掐断 = 没打 ALL PASS。测试跑完自己退出, 给大不花钱。
     verify_axe_batch10) echo 20000 ;;
     verify_settle_pages) echo 1500 ;;   # 两个视口 × 建 3 次结算屏 + 推鼠标点页签/滑动; 实测 342 帧
-    verify_tutorial_flow_v2) echo 3000 ;;   # 真走一遍新手教程(2026-10-07): 开场演出 2×5 秒按真实时间走(测试钉 60fps) + 五屏; 实测 895 帧
+    verify_tutorial_flow_v3) echo 5000 ;;   # 新手教程 v3 整条(2026-10-20): v2 那条 + 战斗两句不阻塞提示(~8 秒真实时间) + 站位三步; 测试钉 60fps
+    verify_first_tips) echo 5000 ;;   # 首次提示(2026-10-20): 「5 秒自己收起」按真实时间等; 测试钉 60fps。10-20 扩到 7 条(背包 / 商店 / 训龟大师页各开两次), 实测 <3000 帧
+    verify_tutorial_battle_short) echo 50000 ;;   # 教程战斗(2026-10-20): 6 次真战斗从开场演出打到结算(每次 ~5500 帧) + 一场正式对局开打
     # tween 捕获物先释放(换路/顿帧/时停 三段): 每推一步 sim 等一帧, 共约 1050 步 ⇒ 给 3000
     verify_tween_capture_lane) echo 3000 ;;
     verify_ninja_dash_cc) echo 2500 ;;   # 逐帧采样 1200 帧真 sim(2026-10-16): 默认 500 帧会在一半处被掐断, 表现为没打 ALL PASS

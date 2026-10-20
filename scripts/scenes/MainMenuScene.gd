@@ -292,6 +292,30 @@ func _ready() -> void:
 	if _AM.notice != "":
 		_toast(_AM.notice)
 		_AM.notice = ""
+	_first_tip(paint_ts)
+
+
+## 「第一次遇到」一行提示(方案书 20261020-教程重写 §3; 判据与文案都在 FirstTips)。一次只出一条:
+##   周六 / 周日先说今天的赛制(模式卡); 平日教程刚结束、本大轮 0 场 ⇒ 指「开始战斗」。
+##   首启选择框在场时不出(选择框是这一屏唯一的事)。
+var _hero_btn: Control = null
+var _hero_locked := false
+
+func _first_tip(now: int) -> void:
+	var _ch := get_node_or_null("TutorialChoice")
+	if _ch != null and not _ch.is_queued_for_deletion():
+		return
+	var wk: String = FirstTips.weekend_key(_P2C.phase_at_utc(now))
+	if wk != "" and is_instance_valid(_mode_box):
+		FirstTips.show(self, wk, _mode_box)
+		return
+	if wk == "" and int(GameState.season_total_battles) <= 0 and not _hero_locked and is_instance_valid(_hero_btn):
+		FirstTips.show(self, FirstTips.START_BATTLE, _hero_btn)
+
+
+## 首启选择框里点「跳过」之后当场补一次(TutorialChoice 调)。
+func first_tip_now() -> void:
+	_first_tip(_now_ts())
 
 
 ## 内容框居中于真实视口 (1:1 PoC FIT 居中); bg 在 self 上随视口自适应
@@ -459,6 +483,8 @@ func _build_page_buttons(now: int = 0) -> void:
 	#    横屏手机右手拇指的落点(荒野乱斗 / 使命召唤 / 刀塔霸业 三张参考同位)。
 	var hero := _frame_button("开始战斗", func(): _start_battle_flow(), false, HERO_SIZE, FONT_HERO, "", battle_locked, true)
 	hero.position = HERO_POS
+	_hero_btn = hero
+	_hero_locked = battle_locked
 	page_box.add_child(hero)
 	## ★锁要**看得见地静态存在**: 灰框 + 🔒 角标(不画亮黄面)。原来只有"点下去飘一行字"。
 	if battle_locked:

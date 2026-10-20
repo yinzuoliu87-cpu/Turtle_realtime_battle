@@ -1,0 +1,13 @@
+[Unit]
+Description=Turtle relay per-IP connection limits (nftables table inet turtle_relay)
+After=network-pre.target
+Before=caddy.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/nft -f /etc/turtle-relay.nft
+ExecStop=/usr/sbin/nft delete table inet turtle_relay
+
+[Install]
+WantedBy=multi-user.target

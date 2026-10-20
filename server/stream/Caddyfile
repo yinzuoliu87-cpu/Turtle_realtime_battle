@@ -80,3 +80,6 @@ http://127.0.0.1:8081 {
 	bind 127.0.0.1
 	import stream_site
 }
+
+# 大陆中转（server/relay/README.md）
+import /etc/caddy/relay.caddy

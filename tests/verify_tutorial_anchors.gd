@@ -89,6 +89,20 @@ func _ready() -> void:
 		var scn = load(CONTROL_SCENES[key])
 		var inst = scn.instantiate()
 		add_child(inst)
+		## v3: 「点击购买」的锚点只在选中一张买得起的卡后才有; 站位那三处只在站位面板开着时才有
+		##   ⇒ 走产品自己的入口把它们造出来(不是直接给锚点函数喂假状态)。
+		if key == "shop":
+			await get_tree().process_frame
+			for i in range((inst._offer as Array).size()):
+				if inst._offer[i] != null and inst._price(inst._deco(inst._offer[i])) <= int(GameState.meta_deepsea_coins):
+					inst._on_select(i)
+					break
+		if key == "inventory":
+			await get_tree().process_frame
+			var fb := inst.find_child("FormationBtn", true, false) as Button
+			_ok("★v3 教程里顶栏「站位」在且可见(10-19 起站位只能在这里改)", fb != null and fb.is_visible_in_tree())
+			if fb != null:
+				fb.emit_signal("pressed")
 		# ★锚点只认【真看得见】的控件(TutorialGuide.vis_rect: 入场淡入完才算) ⇒ 轮询到解析得出, 上限 90 帧
 		for _i in range(90):
 			await get_tree().process_frame

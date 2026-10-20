@@ -39,12 +39,14 @@ const RN := preload("res://scripts/net/referee_net.gd")
 const SB := preload("res://scripts/net/supabase.gd")
 const F := preload("res://scripts/systems/stream/stream_format.gd")
 const BE := preload("res://scripts/net/backend.gd")
+const NR := preload("res://scripts/net/net_route.gd")
 ## 运行期才 load(不 preload): replay_fetcher / live_spectate 都 preload 本文件, 反过来再 preload 就成环。
 const RF_PATH := "res://scripts/systems/replay/replay_fetcher.gd"
 const LS_PATH := "res://scripts/systems/replay/live_spectate.gd"
 
 ## 裁判机上的 Caddy(server/stream/README.md)。环境变量 TURTLE_STREAM_BASE 可改(门禁指到本进程起的 HTTP 服务)。
-const BASE := "https://stream.turtlearena.xyz/streams"
+## ★没设环境变量时跟 API 走同一条入口(net_route.gd `stream_base`: 走中转 ⇒ 中转/streams, 2026-10-20 大陆中转)。
+const BASE := NR.STREAM_DIRECT
 const ENV_BASE := "TURTLE_STREAM_BASE"
 
 const KIND_REFEREE := "referee"
@@ -75,7 +77,7 @@ static var live_enters := 0
 
 static func base_url() -> String:
 	var e := OS.get_environment(ENV_BASE).strip_edges()
-	return e if e != "" else BASE
+	return e if e != "" else NR.stream_base()
 
 
 static func wanted() -> bool:

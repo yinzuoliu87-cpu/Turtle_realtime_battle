@@ -16,6 +16,8 @@ var _eq_stats_lbl: Label = null
 var _eq_stats_unit = null
 var _eq_stats_eid: String = ""
 
+const _TUT_BUFF := preload("res://scripts/systems/onboarding/tutorial_buff.gd")
+
 func _init(b) -> void:
 	battle = b
 
@@ -1030,6 +1032,9 @@ func _info_status_chips(vb: VBoxContainer, u: Dictionary) -> void:
 	var chips: Array = []   # [文字, 颜色, 图标路径]
 	## ★形态排在最前 —— 它决定这只龟此刻的射程/移速/技能组, 是"当前状态"里最该先看到的一条。
 	##   实拍证据: 熔岩龟在火山形态下面板只有射程 70/移速 120 两个数, 没有一个字说它变身了。
+	## 新手教程那一把: 我方单位的「教程加成」(明示的教程模式机制, 见 tutorial_buff.gd)
+	if bool(u.get(_TUT_BUFF.MARK, false)):
+		chips.append([_TUT_BUFF.text(), "#ffd27a", ""])
 	var _fc: Array = _form_chip(u)
 	if not _fc.is_empty():
 		chips.append([str(_fc[0]), str(_fc[1]), ""])

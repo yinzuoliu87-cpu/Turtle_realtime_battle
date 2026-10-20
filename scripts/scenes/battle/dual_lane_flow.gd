@@ -212,7 +212,7 @@ func _dl_build_present_overlay(mode: String) -> void:
 		var r = Label.new(); r.add_theme_font_size_override("font_size", 26)
 		r.add_theme_color_override("font_color", Color("#9ae6b0") if win_lr == "left" else Color("#ff9b9b"))
 		r.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		r.text = "本路胜利" if win_lr == "left" else "本路失败"
+		r.text = "本战场胜利" if win_lr == "left" else "本战场失败"
 		vb.add_child(r)
 		var rec = Label.new(); rec.add_theme_font_size_override("font_size", 19); rec.add_theme_color_override("font_color", Color("#ffe9a8"))
 		rec.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

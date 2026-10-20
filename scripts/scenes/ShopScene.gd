@@ -724,6 +724,8 @@ func _on_select(idx: int) -> void:
 	_sel_own = ""          # 与"已拥有"选中互斥 —— 同一块面板同时只讲一件事
 	_sel_bench = -1        # 看货架就不再选着宝箱里那件
 	_rebuild()
+	if _sel >= 0:
+		_tut_notify("offer_selected")   # 教程 v3「点击一件装备」(两步购买的第一步; 取消选中不算)
 
 
 ## 说明小卡。货架上的 = 卡底一颗「购买」; 宝箱里的 = 只看(卖出在宝箱格旁)。
@@ -1014,11 +1016,28 @@ func _on_buy(idx: int) -> void:
 	##     合成那条最要紧 —— 卡片消失了而背包里【多出来的是另一件东西】, 不说就是"我的钱去哪了"。
 	if _will_star >= 2:
 		_toast("购买成功 · 「%s」合成 ★%d" % [_nm, _will_star])
+		## 首次提示「3 件同名同星装备自动合成升星」, 圈左下宝箱里升星的那一格(教程中不出)。
+		##   ★不圈顶栏「背包」: 那里提示条只能放进顶栏, 压住深海币读数(10-20 实拍)。宝箱放不下那一件(溢出)时才退回顶栏。
+		FirstTips.show(self, FirstTips.FIRST_MERGE, merge_tip_target(_eid, _will_star))
 	elif _axe_dup:
 		_toast("已拥有「%s」· 转化为砍伐经验 +%d" % [_nm, int(AxeEvo.EXP_ON_BUY)])
 	else:
 		_toast("购买成功 · 「%s」已放入背包" % _nm)
 	_tut_notify("item_bought")   # 教程「购买 1 件装备」: 成交才前进(方案书 B2)
+
+## 合成升星那一件在左下宝箱里的格子(首次提示圈它; 门禁 verify_first_tips ⑦b 也读它)。没摆出来 ⇒ 顶栏「背包」。
+func merge_tip_target(eid: String, star: int) -> Control:
+	var bench: Array = GameState.persistent_bench
+	for j in range(bench.size()):
+		var it = bench[j]
+		if it is Dictionary and str((it as Dictionary).get("id", "")) == eid and int((it as Dictionary).get("star", 1)) == star:
+			var cell := find_child("BenchCell%d" % j, true, false) as Control
+			if cell != null:
+				return cell
+	if _top_bar != null and not _top_bar.action_btns.is_empty():
+		return _top_bar.action_btns[0]
+	return null
+
 
 ## ── 货架锁(用户 2026-10-04 · 学云顶) ─────────────────────────────────
 ## 「换一批」右边一颗方钮, 图标复用 `icon-lock.png`(不新画: 背包页/对阵图同一张)。
@@ -1243,15 +1262,19 @@ func _tutorial_anchor(anchor: String) -> Rect2:
 				return _tut_coin.get_global_rect()
 		"xp_button":
 			return TutorialGuide.vis_rect(_tut_xp_btn)
-		"offer_pick":   # 手势指针: 已选中且买得起 ⇒ 指「购买」; 否则指第一张买得起的卡
-			var br := TutorialGuide.vis_rect(_tut_buy_btn)
-			if br.size.x > 0.0:
-				return br
+		"buy_button":   # 教程 v3「点击购买」: 说明卡里的「购买」钮(买得起才有)
+			return TutorialGuide.vis_rect(_tut_buy_btn)
+		"detail_card":  # 教程 v3「点击购买」的高亮: 整张说明卡(买之前要看得清买的是什么; 实拍 10-20 只挖「购买」时说明被压暗)
+			if _insp.card != null and is_instance_valid(_insp.card):
+				return TutorialGuide.vis_rect(_insp.card)
+		"offer_card":   # 教程 v3「点击一件装备」的手势指针: 第一张买得起的卡
 			for i in range(_offer.size()):
 				if _offer[i] != null and _price(_deco(_offer[i])) <= int(GameState.meta_deepsea_coins):
-					var cp := _shelf_pos(i)
-					return Rect2(cp + _frame_off(), Vector2(SLOT_W, SLOT_H))
-		"offer":   # 货架 5×2 + 说明小卡(「购买」在小卡里, 两步购买都得在洞里; 没选中时没有小卡)
+					return Rect2(_shelf_pos(i) + _frame_off(), Vector2(SLOT_W, SLOT_H))
+		"shelf":        # 货架 5×2(不含说明卡: 这一步只点卡)
+			var gr := Rect2(GRID_X, GRID_Y, 5.0 * SLOT_W + 4.0 * GRID_GAP_X, 2.0 * SLOT_H + GRID_GAP_Y)
+			return Rect2(gr.position + _frame_off(), gr.size)
+		"offer":   # 货架 5×2 + 说明小卡(v2 那一步用的; v3 拆成 shelf / buy_button 两步后只剩 verify_tutorial 的版面声称还读它)
 			var grid := Rect2(GRID_X, GRID_Y, 5.0 * SLOT_W + 4.0 * GRID_GAP_X, 2.0 * SLOT_H + GRID_GAP_Y)
 			var u := Rect2(grid.position + _frame_off(), grid.size)
 			if _insp.card != null and is_instance_valid(_insp.card):

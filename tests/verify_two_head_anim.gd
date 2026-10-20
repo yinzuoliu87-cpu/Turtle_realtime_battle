@@ -16,6 +16,9 @@ extends Node
 ##  F 二轮画面(2026-10-20): ①变脸龟自己那几次给盾的通用护盾罩排在立绘之前画(不洗白变脸/砸地/挥锤)
 ##     ②锤击: 裂地画在【锤头落点】(按素材量出来的锤头位置, 不读常量)且画在单位上面; 挥锤弧同一步出、也在上面;
 ##       落地后紧跟的普攻前摇不许把锤贴地那几帧吞掉 ③融合施法: 红斗篷在出现之后每一帧都在(推杖帧不许闪没)
+##  F⑥ 锤击砸地重做(2026-10-20, 锤击改范围技): 贴地冲击环画多大 = 判定半径(量素材环半径 × 运行期 pixel_size);
+##     落地起 0.1 秒内落点爆点白核够亮且画在单位上面; 冲击环由内向外扩到满径; 碎石/尘团真的往外散开;
+##     圈边尘团正好落在判定半径上、冲击环到之前不露 —— 全按【素材像素 + 运行期节点】量, 不读 TwoHeadVfx 常量
 ## 每条断言都配一条分母断言(这一类事件真的发生过 ≥ N 次)。
 
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
@@ -133,6 +136,168 @@ func _hammer_ground() -> Array:
 				dx = FRAME * 0.5 - sx / sn
 			frames.append(i)
 	return [frames, dx]
+
+
+## F⑥: 一张帧表每帧的量: 冲击环半径(离帧中心 > 半边 60% 的不透明像素 ≥150 个才算有环, 取到中心距离的中位数;
+##   ★≥150 是反向验证收紧的: 第一版 ≥40 把冷却期地裂伸出去的几十个像素也算成"环", 素材倒放时没红) / 亮像素数(亮度 > 200) / 不透明 bbox 宽。
+var _sheet_cache := {}
+func _sheet_stats(name: String, fw: int) -> Array:
+	if _sheet_cache.has(name):
+		return _sheet_cache[name]
+	var im := _img("res://assets/sprites/vfx/" + name + ".png")
+	var out: Array = []
+	if im == null:
+		return out
+	im.convert(Image.FORMAT_RGBA8)
+	var n: int = im.get_width() / fw
+	var fh: int = im.get_height()
+	var cx := fw * 0.5; var cy := fh * 0.5
+	for i in range(n):
+		var ds: Array = []
+		var bright := 0; var x0 := 99999; var x1 := -1; var y0 := 99999; var y1 := -1; var cnt := 0
+		for y in range(fh):
+			for x in range(fw):
+				var c := im.get_pixel(i * fw + x, y)
+				if c.a8 == 0:
+					continue
+				x0 = mini(x0, x); x1 = maxi(x1, x); y0 = mini(y0, y); y1 = maxi(y1, y); cnt += 1
+				if (c.r8 + c.g8 + c.b8) / 3 > 200:
+					bright += 1
+				var dd := Vector2(x - cx, y - cy).length()
+				if dd > cx * 0.6:
+					ds.append(dd)
+		ds.sort()
+		out.append({"ring": float(ds[ds.size() / 2]) if ds.size() >= 150 else 0.0, "bright": bright, "w": (x1 - x0 + 1) if x1 >= 0 else 0, "n": cnt, "h": (y1 - y0 + 1) if y1 >= 0 else 0})
+	_sheet_cache[name] = out
+	return out
+
+
+func _slam_checks(r1: Array, hg: Array) -> void:
+	print("── F⑥ 锤击砸地: 冲击环 = 判定半径 / 爆点不被挡 / 向外扩散 / 圈边尘团 ──")
+	var gs: Array = _sheet_stats("twohead-slam-ring", 208)
+	var bs: Array = _sheet_stats("twohead-slam-burst", 168)
+	var xs: Array = _sheet_stats("twohead-slam-boom", 123)
+	var ok_boom := 0; var boom_detail := ""
+	var ring_px := 0.0
+	for e in gs:
+		ring_px = maxf(ring_px, float(e["ring"]))
+	var R: float = TwoHeadSystem.STRIKE_MELEE_RADIUS
+	var n_land := 0; var ok_radius := 0; var ok_center := 0; var ok_flash := 0; var ok_expand := 0; var ok_spread := 0
+	var ok_dust := 0; var dust_n := 0
+	var detail := ""; var flash_detail := ""; var exp_detail := ""; var spread_detail := ""; var dust_detail := ""
+	for i in range(1, r1.size()):
+		var a: Dictionary = r1[i - 1]; var b: Dictionary = r1[i]
+		if not (a["slam"] and not b["slam"] and b["form"] == "melee"):
+			continue
+		n_land += 1
+		var fwd: float = 1.0 if bool(b["face_right"]) else -1.0
+		var hx: float = float(b["x"]) + fwd * float(hg[1]) * float(b["idle_px"]) / RB.WS     # 锤头落点(按立绘素材量)
+		var hy: float = float(b["y"])
+		var seen0 := {}
+		for nd in a["slam_nodes"]:
+			seen0[nd["id"]] = true
+		var g = null; var bu = null; var bo = null; var dusts: Array = []
+		for nd in b["slam_nodes"]:
+			if seen0.has(nd["id"]):
+				continue
+			if nd["name"] == "twohead-slam-ring":
+				g = nd
+			elif nd["name"] == "twohead-slam-burst":
+				bu = nd
+			elif nd["name"] == "twohead-slam-edgedust":
+				dusts.append(nd)
+			elif nd["name"] == "twohead-slam-boom":
+				bo = nd
+		if g == null or bu == null:
+			detail = "落地那一步没建贴地层/爆点 g=%s b=%s" % [str(g != null), str(bu != null)]
+			continue
+		## ① 冲击环满径(素材量) × 运行期 pixel_size == 判定半径
+		var r_world: float = ring_px * float(g["px"]) / RB.WS
+		detail = "素材环半径 %.1f 像素 × pixel_size %.4f = %.1f 码 · 判定 %.0f 码" % [ring_px, float(g["px"]), r_world, R]
+		if absf(r_world - R) <= R * 0.05 and bool(g["flat"]):
+			ok_radius += 1
+		## ② 贴地层 / 爆点都在锤头落点(= 结算圆心)
+		if Vector2(float(g["x"]) - hx, float(g["z"]) - hy).length() <= 8.0 and Vector2(float(bu["x"]) - hx, float(bu["z"]) - hy).length() <= 8.0:
+			ok_center += 1
+		else:
+			detail += " · 圆心偏: 地(%.0f,%.0f) 爆(%.0f,%.0f) 应(%.0f,%.0f)" % [float(g["x"]), float(g["z"]), float(bu["x"]), float(bu["z"]), hx, hy]
+		## 往后逐步跟这三类节点显示的帧(按游戏钟算时刻: 顿帧期间钟不走)
+		var t0: float = float(b["t"])
+		var max_bright := 0; var ring_seq: Array = []; var w_after: Array = []
+		var dust_vis_early := 0; var dust_vis_late := 0
+		var boom_n := 0; var boom_h := 0
+		var dust_ids := {}
+		for dd in dusts:
+			dust_ids[dd["id"]] = true
+		for j in range(i, mini(r1.size(), i + 120)):
+			var c: Dictionary = r1[j]
+			var dt: float = float(c["t"]) - t0
+			for nd in c["slam_nodes"]:
+				var f: int = int(nd["frame"])
+				if nd["id"] == bu["id"]:
+					if dt <= 0.1 + 1e-6 and f < bs.size():
+						max_bright = maxi(max_bright, int(bs[f]["bright"]))
+					if f >= 4 and f < bs.size():
+						w_after.append(int(bs[f]["w"]))
+				elif bo != null and nd["id"] == bo["id"]:
+					if dt <= 0.5 + 1e-6 and f < xs.size():
+						boom_n = maxi(boom_n, int(xs[f]["n"])); boom_h = maxi(boom_h, int(xs[f]["h"]))
+				elif nd["id"] == g["id"]:
+					if dt <= 0.3 + 1e-6 and f < gs.size():
+						ring_seq.append(float(gs[f]["ring"]))
+				elif dust_ids.has(nd["id"]):
+					if dt < 0.05 and bool(nd["vis"]):
+						dust_vis_early += 1
+					if dt >= 0.15 and dt <= 0.3 and bool(nd["vis"]):
+						dust_vis_late += 1
+		## ③ 落地起 0.1 秒内爆点白核够亮(≥ 600 亮像素)且画在所有单位上面
+		flash_detail = "0.1 秒内最亮帧亮像素 %d · 关深度测试 %s · 优先级 %d > 立绘 %d" % [max_bright, str(bu["ndt"]), int(bu["prio"]), int(b["unit_prio_max"])]
+		if max_bright >= 600 and bool(bu["ndt"]) and int(bu["prio"]) > int(b["unit_prio_max"]):
+			ok_flash += 1
+		## ④ 冲击环由内向外: 到满径 90% 之前显示过的环半径不缩, 0.3 秒内到过满径 90%
+		var mono := true; var top := 0.0; var prev := -1.0; var first := -1.0
+		for rv in ring_seq:
+			if float(rv) > 0.0:
+				if first < 0.0:
+					first = float(rv)
+				if prev > 0.0 and float(rv) + 0.5 < prev and top < ring_px * 0.9:
+					mono = false
+				prev = float(rv)
+				top = maxf(top, float(rv))
+		exp_detail = "0.3 秒内显示过的环半径 %s · 首次出现 %.1f / 满径 %.1f" % [str(ring_seq.slice(0, 12)), first, ring_px]
+		if mono and top >= ring_px * 0.9 and ring_seq.size() >= 3 and first > 0.0 and first <= ring_px * 0.75:
+			ok_expand += 1
+		## ⑤ 碎石 / 尘团往外散: 闪光过后, 显示过的最宽一帧 ≥ 闪光刚过那帧的 1.8 倍
+		spread_detail = "闪光后显示过的 bbox 宽 %s" % str(w_after.slice(0, 12))
+		if w_after.size() >= 4 and float(w_after.max()) >= 1.8 * float(w_after[0]):
+			ok_spread += 1
+		## ⑦ 落点爆炸(用户「起码要有爆炸的特效吧」): 与冲击环同一步建、在锤头落点、画在所有单位上面,
+		##   0.5 秒内显示过的帧里火球体积够大(不透明 ≥ 5000 像素、高 ≥ 80 像素 ≈ 2 米 = 龟身 1.5 倍以上)
+		if bo == null:
+			boom_detail = "落地那一步没建爆炸"
+		else:
+			boom_detail = "0.5 秒内最大面积 %d 像素 · 最高 %d 像素 · 离落点 %.1f 码 · 关深度 %s · 优先级 %d" % [boom_n, boom_h,
+				Vector2(float(bo["x"]) - hx, float(bo["z"]) - hy).length(), str(bo["ndt"]), int(bo["prio"])]
+			if boom_n >= 5000 and boom_h >= 80 and Vector2(float(bo["x"]) - hx, float(bo["z"]) - hy).length() <= 8.0 and bool(bo["ndt"]) and int(bo["prio"]) > int(b["unit_prio_max"]):
+				ok_boom += 1
+		## ⑥ 圈边尘团: 离锤头落点 = 判定半径 × (0.85~1.0), 冲击环到之前不露、到了之后露
+		var on_ring := 0
+		for dd in dusts:
+			var rr: float = Vector2(float(dd["x"]) - hx, float(dd["z"]) - hy).length()
+			if rr >= R * 0.85 and rr <= R * 1.0:
+				on_ring += 1
+		dust_n += dusts.size()
+		dust_detail = "圈边尘团 %d 个 · 在判定半径 85~100%% 处 %d 个 · 提前露 %d 次 · 环到后露 %d 次" % [dusts.size(), on_ring, dust_vis_early, dust_vis_late]
+		if dusts.size() >= 4 and on_ring == dusts.size() and dust_vis_early == 0 and dust_vis_late >= dusts.size():
+			ok_dust += 1
+	_ok("分母: 锤击落地 ≥ 1 次 · 素材量得到冲击环半径 ≥ 80 像素 · 爆点表 ≥ 8 帧", n_land >= 1 and ring_px >= 80.0 and bs.size() >= 8, "落地 %d · 环 %.1f 像素 · 爆点 %d 帧" % [n_land, ring_px, bs.size()])
+	_ok("★特效即判定: 冲击环满径(素材量 × 运行期 pixel_size) == 锤击判定半径 ±5%, 且贴地平躺", ok_radius == n_land and n_land > 0, detail)
+	_ok("★贴地层与爆点都在锤头落点(= 结算圆心)", ok_center == n_land and n_land > 0, "%d/%d" % [ok_center, n_land])
+	_ok("★落地起 0.1 秒内落点白核够亮(≥600 亮像素)且画在所有单位上面", ok_flash == n_land and n_land > 0, flash_detail)
+	_ok("★冲击环由内向外扩到满径(首次出现 ≤ 满径 75%, 0.3 秒内到 90%, 中途不缩)", ok_expand == n_land and n_land > 0, exp_detail)
+	_ok("★碎石 / 尘团往外散开(闪光后最宽帧 ≥ 1.8 × 起始)", ok_spread == n_land and n_land > 0, spread_detail)
+	_ok("★落点爆炸: 与冲击环同一步起爆、在锤头落点、画在单位上面, 0.5 秒内火球 ≥ 5000 像素且高 ≥ 80 像素", ok_boom == n_land and n_land > 0 and xs.size() >= 10, boom_detail)
+	_ok("★圈边尘团落在判定半径上, 冲击环到之前不露", ok_dust == n_land and n_land > 0 and dust_n >= 4, dust_detail)
 
 
 ## F③: 融合施法红斗篷(战士斗篷两色: 暗红 108,24,22 / 亮红 172,55,49)在脖子以下的像素数, 逐帧。
@@ -297,17 +462,27 @@ func _run(skill: int, steps: int) -> Array:
 		for c in s._world.get_children():
 			if c is Sprite3D and (c as Sprite3D).texture != null and not seen_fx.has(c.get_instance_id()):
 				var fp := str((c as Sprite3D).texture.resource_path)
-				if fp.ends_with("twohead-hammer-slam.png") or fp.ends_with("twohead-hammer-swing.png"):
+				if fp.ends_with("twohead-slam-burst.png") or fp.ends_with("twohead-hammer-swing.png"):
 					seen_fx[c.get_instance_id()] = true
 					fx_props.append({"name": fp.get_file().get_basename(), "ndt": (c as Sprite3D).no_depth_test, "prio": (c as Sprite3D).render_priority,
 						"x": (c as Sprite3D).position.x / s.WS + float(s._arena_center.x)})
+		## F⑥: 锤击砸地三张表的节点(每步都记: 帧号 / 显隐 / 场地坐标 / 像素尺寸 / 绘制属性)
+		var slam_nodes: Array = []
+		for c in s._world.get_children():
+			if c is Sprite3D and (c as Sprite3D).texture != null:
+				var sp3 := c as Sprite3D
+				var fp3 := str(sp3.texture.resource_path)
+				if fp3.contains("/vfx/twohead-slam-"):
+					slam_nodes.append({"id": c.get_instance_id(), "name": fp3.get_file().get_basename(), "frame": sp3.frame, "vis": sp3.visible,
+						"px": sp3.pixel_size, "x": sp3.position.x / s.WS + float(s._arena_center.x), "z": sp3.position.z / s.WS + float(s._arena_center.y),
+						"ndt": sp3.no_depth_test, "prio": sp3.render_priority, "flat": sp3.billboard == BaseMaterial3D.BILLBOARD_DISABLED})
 		var unit_prio_max := -999
 		for uu in s._units:
 			var us = uu.get("sprite", null)
 			if is_instance_valid(us) and us is Sprite3D:
 				unit_prio_max = maxi(unit_prio_max, int(((us as Sprite3D).material_override as Material).render_priority) if (us as Sprite3D).material_override != null else (us as Sprite3D).render_priority)
-		rec.append({"shells": shells, "body_prio": body_prio, "fx": fx_props, "unit_prio_max": unit_prio_max,
-			"x": float((th["pos"] as Vector2).x), "face_right": bool(th.get("face_right", true)),
+		rec.append({"shells": shells, "body_prio": body_prio, "fx": fx_props, "unit_prio_max": unit_prio_max, "slam_nodes": slam_nodes,
+			"x": float((th["pos"] as Vector2).x), "y": float((th["pos"] as Vector2).y), "face_right": bool(th.get("face_right", true)),
 			"t": float(s._t), "form": str(th.get("two_form", "")), "state": str(th.get("state", "")),
 			"pending": str(th.get("pending", "")), "clip": str(th.get("_tha_clip", "")),
 			"tex": str((spr.texture as Texture2D).resource_path.get_file().get_basename()) if spr.texture != null else "",
@@ -382,7 +557,7 @@ func _ready() -> void:
 				print("    切形态前一步: t=%.3f tex=%s frame=%d" % [a["t"], a["tex"], a["frame"]])
 		if a["slam"] and not b["slam"] and b["form"] == "melee":
 			land += 1
-			if b["tex"] == "melee_strike" and absi(int(b["frame"]) - 6) <= 1 and "twohead-hammer-slam" in b["fresh"] and int(b["taken"]) > int(a["taken"]):
+			if b["tex"] == "melee_strike" and absi(int(b["frame"]) - 6) <= 1 and "twohead-slam-burst" in b["fresh"] and int(b["taken"]) > int(a["taken"]):
 				land_ok += 1
 			else:
 				print("    落地步: t=%.3f tex=%s frame=%d fresh=%s dmg=%s" % [b["t"], b["tex"], b["frame"], str(b["fresh"]), str(int(b["taken"]) > int(a["taken"]))])
@@ -429,7 +604,7 @@ func _ready() -> void:
 			land_fx += 1
 			var has_slam := false; var has_swing := false; var over := true
 			for fx in b["fx"]:
-				if fx["name"] == "twohead-hammer-slam":
+				if fx["name"] == "twohead-slam-burst":
 					has_slam = true
 					var fwd: float = 1.0 if bool(b["face_right"]) else -1.0
 					var want: float = float(b["x"]) + fwd * float(hg[1]) * float(b["idle_px"]) / RB.WS
@@ -454,6 +629,7 @@ func _ready() -> void:
 	_ok("★锤击落地那一步: 裂地 + 挥锤弧同一步出, 都画在所有单位立绘上面(关深度测试 + 优先级更高)", land_fx_ok == land_fx, "%d/%d" % [land_fx_ok, land_fx])
 	_ok("★裂地画在锤头落点(按素材量出的锤头位置), 不在施法者脚下", anchor_ok == land_fx, anchor_detail)
 	_ok("★落地后锤贴地帧播满 ≥ 0.15 秒(不被紧跟的普攻前摇吞掉)", hold_n >= 1 and hold_steps >= 9 * hold_n, "%d 步 / %d 次落地" % [hold_steps, hold_n])
+	_slam_checks(r1, hg)
 
 	print("── D 技二(精神干扰 / 吸收) ──")
 	var r2: Array = await _run(2, 1500)
@@ -503,6 +679,75 @@ func _ready() -> void:
 			if b["tex"] != "fusion_cast":
 				fu_bad += 1
 	_ok("★融合施法整段都在 fusion_cast 表上(没有中途换表)", fu_steps >= 30 and fu_bad == 0, "%d 步里换表 %d 步" % [fu_steps, fu_bad])
+	## F④ 融合停帧(2026-10-20 三轮): 融合施法后紧跟的远程普攻前摇曾把融合第 14~21 帧(推出后收手回立绘)截掉 ——
+	##   画面上双脸推出后直接跳成术士抬手。按锤击那套停帧(TwoHeadArt.HOLD)把融合播完再接普攻:
+	##   每次融合, 从关键帧到最后一帧【每一帧都上过屏】, 而且其后第一次普攻出手那一步仍在掌心出手帧(结算不动)。
+	var fz_n := 0; var fz_ok := 0; var fz_detail := ""; var fz_rel := 0; var fz_rel_ok := 0
+	var fz_last: int = int((load(TwoHeadArt.DIR + "fusion_cast.png") as Texture2D).get_width()) / FRAME - 1
+	var fz_k: int = int(TwoHeadArt.CLIPS["fusion_cast"][0])
+	for i in range(1, r3.size()):
+		var a: Dictionary = r3[i - 1]; var b: Dictionary = r3[i]
+		if not (b["tex"] == "fusion_cast" and int(b["frame"]) >= fz_k and not (a["tex"] == "fusion_cast" and int(a["frame"]) >= fz_k)):
+			continue
+		fz_n += 1
+		var shown := {}
+		var j := i
+		while j < r3.size() and r3[j]["tex"] == "fusion_cast":
+			shown[int(r3[j]["frame"])] = true
+			j += 1
+		var miss: Array = []
+		for f in range(fz_k, fz_last + 1):
+			if not shown.has(f):
+				miss.append(f)
+		if miss.is_empty():
+			fz_ok += 1
+		else:
+			fz_detail = "t=%.2f 漏帧 %s · 之后接 %s" % [float(b["t"]), str(miss), (r3[j]["tex"] if j < r3.size() else "-")]
+		## 其后第一次普攻出手: 前摇结束那一步(state 离开 windup 且 pending 是 B)立绘应在攻击关键帧
+		for m in range(maxi(j, 1), mini(r3.size(), j + 240)):
+			var c0: Dictionary = r3[m - 1]; var c1: Dictionary = r3[m]
+			if c0["state"] == "windup" and c0["pending"] == "B" and c1["state"] != "windup":
+				fz_rel += 1
+				if c1["tex"] == "ranged_attack" and absi(int(c1["frame"]) - int(TwoHeadArt.CLIPS["ranged_attack"][0])) <= 1:
+					fz_rel_ok += 1
+				else:
+					print("    融合后首次普攻出手步: t=%.3f tex=%s frame=%d" % [float(c1["t"]), c1["tex"], int(c1["frame"])])
+				break
+	_ok("分母: 融合推出(到关键帧)≥ 2 次", fz_n >= 2, "%d" % fz_n)
+	_ok("★融合停帧: 关键帧 %d 到第 %d 帧每一帧都上过屏(不被紧跟的普攻前摇截掉)" % [fz_k, fz_last], fz_ok == fz_n, "%d/%d %s" % [fz_ok, fz_n, fz_detail])
+	_ok("★融合之后第一次普攻出手那一步立绘仍在掌心出手帧(停帧不挪结算)", fz_rel >= 1 and fz_rel_ok == fz_rel, "%d/%d" % [fz_rel_ok, fz_rel])
+
+	print("── F⑤ 切近战后的强化普攻: 不画无含义的地面环 ──")
+	## 原来近战强化那一下在自己脚下画 62 码的 _skill_ring —— 不是射程也不是判定(特效九类毛病④)。
+	## 量真对象: 直接走强化普攻入口, 数这一下新建的地面环(skill-ring 贴图)节点; 分母 = 同一下确实给了盾、建了护盾罩。
+	if true:
+		var s = RB.new()
+		add_child(s)
+		await get_tree().process_frame
+		await get_tree().process_frame
+		var u: Dictionary = s._spawn._make_unit("two_head", "left", Vector2(300, 400))
+		var tg: Dictionary = s._spawn._make_unit("basic", "right", Vector2(360, 400))
+		s._units.append(u)
+		s._units.append(tg)
+		var before := {}
+		for c in s._world.get_children():
+			before[c.get_instance_id()] = true
+		var sh0: float = float(u.get("shield", 0.0))
+		s._two_head_sys._two_head_enhanced_basic(u, tg, "melee")
+		var rings := 0; var shells := 0
+		for c in s._world.get_children():
+			if before.has(c.get_instance_id()) or not (c is Sprite3D) or (c as Sprite3D).texture == null:
+				continue
+			var tp := str((c as Sprite3D).texture.resource_path)
+			if tp.ends_with("skill-ring-10f.png"):
+				rings += 1
+			elif tp == BattleVfx.SHELL_TEX:
+				shells += 1
+		_ok("分母: 近战强化那一下确实给了盾(护盾 %.0f → %.0f)且建了护盾罩 %d 个" % [sh0, float(u.get("shield", 0.0)), shells],
+			float(u.get("shield", 0.0)) > sh0 and shells >= 1)
+		_ok("★近战强化普攻不在脚下画地面环(无含义圆环)", rings == 0, "新建地面环 %d 个" % rings)
+		s.queue_free()
+		await get_tree().process_frame
 
 	print("── E 死亡(按形态) ──")
 	for form in ["ranged", "melee"]:

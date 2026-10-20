@@ -366,7 +366,7 @@
     "baseStats1": "+攻7/12/20·生命20/40/80·魔穿3/6/10",
     "shopAvailable": 1,
     "emoji": "🔮",
-    "effectDesc1": "【法力】充满时，以自身为中心进行 {C:CrystalSystem.SWEEP_ARC_DEG}° 水晶射线扫射，对扫中的敌人造成 60/130/250 魔法伤害，施加 1 层【迷你水晶】，并偷取其 {C:CrystalSystem.MINI_MR_STEAL%}% 魔抗，持续到战斗结束。\n【迷你水晶】达到 {C:CrystalSystem.MINI_STACK_MAX} 层时引爆，造成 14/17/20% 目标最大生命值的魔法伤害。\n<span style=\"color:#8a93a0\">扫射持续 {C:CrystalSystem.SWEEP_SEC} 秒，跟随自身移动。</span>",
+    "effectDesc1": "【法力】充满时，以自身为中心进行 {C:CrystalSystem.SWEEP_ARC_DEG}° 水晶射线扫射，对扫中的敌人造成 60/130/250 魔法伤害，施加 1 层【迷你水晶】，并偷取其 {C:CrystalSystem.MINI_MR_STEAL%}% 魔抗，持续到本战场结束。\n【迷你水晶】达到 {C:CrystalSystem.MINI_STACK_MAX} 层时引爆，造成 14/17/20% 目标最大生命值的魔法伤害。\n<span style=\"color:#8a93a0\">扫射持续 {C:CrystalSystem.SWEEP_SEC} 秒，跟随自身移动。</span>",
     "effectDesc3": "",
     "img": "equip/dungeon-mini-crystal-b.png",
     "effectBrief": "【法力】充满时进行 {C:CrystalSystem.SWEEP_ARC_DEG}° 水晶射线扫射并偷取魔抗。【迷你水晶】达到 {C:CrystalSystem.MINI_STACK_MAX} 层时引爆。"
@@ -378,10 +378,10 @@
     "baseStats1": "+生命50/60/70",
     "shopAvailable": 1,
     "emoji": "🐌",
-    "effectDesc1": "开战时召唤一只亡灵骷髅，最大生命值 16/31/55，攻击力 3/5/8，护甲与魔抗为 0。骷髅受到的任何攻击均只造成 1 点伤害，真实伤害同样如此。骷髅死亡或存活 13/17/23 秒后爆炸，对周围的敌人造成相当于目标最大生命值 8/13/20% 的真实伤害。",
+    "effectDesc1": "登场时召唤一只亡灵骷髅，最大生命值 16/31/55，攻击力 3/5/8，护甲与魔抗为 0。骷髅受到的任何攻击均只造成 1 点伤害，真实伤害同样如此。骷髅死亡或存活 13/17/23 秒后爆炸，对周围的敌人造成相当于目标最大生命值 8/13/20% 的真实伤害。",
     "effectDesc3": "",
     "img": "equip/bone-talisman.png",
-    "effectBrief": "开战时召唤一只亡灵骷髅，其受到的任何攻击均只造成 1 点伤害。"
+    "effectBrief": "登场时召唤一只亡灵骷髅，其受到的任何攻击均只造成 1 点伤害。"
   },
   {
     "id": "p2eq_033",
@@ -474,7 +474,7 @@
     "baseStats1": "+生命100/200/500",
     "shopAvailable": 1,
     "emoji": "🔧",
-    "effectDesc1": "每 {C:EquipSystem.FPGA_IV} 秒随机抽取 {C:EquipSystem.FPGA_PICKS} 个可重复的 2-bit 状态：00=回复自身最大生命值 {C:EquipSystem.FPGA_00_HEAL_PCT%}%，累计提升 {C:EquipSystem.FPGA_00_RESIST} 双抗。\n01=累计提升 {C:EquipSystem.FPGA_01_ATK} 攻击力与 {C:EquipSystem.FPGA_01_LIFESTEAL%}% 生命偷取。\n10={C:EquipSystem.FPGA_BUFF_SEC} 秒内增伤 {C:EquipSystem.FPGA_10_AMP%}%。11={C:EquipSystem.FPGA_BUFF_SEC} 秒内减伤 {C:EquipSystem.FPGA_11_DR%}%（真实伤害除外）。\n00、01 的加成于战斗结束时重置。\n登场时给随机 1/2/3 名敌人各一把【古灵精怪枪】：持枪者获得 {C:GremlinGun.ATK_PER_GUN} 攻击力、{C:GremlinGun.HP_PER_GUN} 最大生命值和 {C:GremlinGun.ASPD_PCT_PER_GUN%}% 攻击速度，但每次攻击对自身造成最大生命值 {C:GremlinGun.SELF_TRUE_PCT%}% 的真实伤害，可致死。",
+    "effectDesc1": "每 {C:EquipSystem.FPGA_IV} 秒随机抽取 {C:EquipSystem.FPGA_PICKS} 个可重复的 2-bit 状态：00=回复自身最大生命值 {C:EquipSystem.FPGA_00_HEAL_PCT%}%，累计提升 {C:EquipSystem.FPGA_00_RESIST} 双抗。\n01=累计提升 {C:EquipSystem.FPGA_01_ATK} 攻击力与 {C:EquipSystem.FPGA_01_LIFESTEAL%}% 生命偷取。\n10={C:EquipSystem.FPGA_BUFF_SEC} 秒内增伤 {C:EquipSystem.FPGA_10_AMP%}%。11={C:EquipSystem.FPGA_BUFF_SEC} 秒内减伤 {C:EquipSystem.FPGA_11_DR%}%（真实伤害除外）。\n00、01 的加成持续到本战场结束。\n登场时给随机 1/2/3 名敌人各一把【古灵精怪枪】：持枪者获得 {C:GremlinGun.ATK_PER_GUN} 攻击力、{C:GremlinGun.HP_PER_GUN} 最大生命值和 {C:GremlinGun.ASPD_PCT_PER_GUN%}% 攻击速度，但每次攻击对自身造成最大生命值 {C:GremlinGun.SELF_TRUE_PCT%}% 的真实伤害，可致死。",
     "effectDesc3": "",
     "img": "equip/dungeon-fpga.png",
     "effectBrief": "登场时给予 1/2/3 名敌人各一把古灵精怪枪。之后每 {C:EquipSystem.FPGA_IV} 秒随机抽取 1/2/4 个状态。"
@@ -846,10 +846,10 @@
     "baseStats1": "+治疗与护盾14/26/45%·+双抗10/22/40",
     "shopAvailable": 1,
     "emoji": "🥛",
-    "effectDesc1": "战斗开始时，为包括自身在内的所有友军提供其最大生命值 10/18/25% 的【奶油护盾】，该护盾持续到被打破为止。\n奶油护盾被打破时，对附近的敌人造成 70/100/150 点魔法伤害，随后该友军获得 {C:EqFoodBatch.CREAM_RESIST} 双抗、20/30/40% 攻击速度和 {C:EqFoodBatch.CREAM_RANGE} 射程，持续到本战场结束。\n自身每累计受到相当于自身最大生命值 {C:EqFoodBatch.CREAM_LOSS_STEP%}% 的伤害，再次为全队提供一次奶油护盾，每个战场共 {C:EqFoodBatch.CREAM_TIMES} 次。",
+    "effectDesc1": "每个战场开始时，为包括自身在内的所有友军提供其最大生命值 10/18/25% 的【奶油护盾】，该护盾持续到被打破为止。\n奶油护盾被打破时，对附近的敌人造成 70/100/150 点魔法伤害，随后该友军获得 {C:EqFoodBatch.CREAM_RESIST} 双抗、20/30/40% 攻击速度和 {C:EqFoodBatch.CREAM_RANGE} 射程，持续到本战场结束。\n自身每累计受到相当于自身最大生命值 {C:EqFoodBatch.CREAM_LOSS_STEP%}% 的伤害，再次为全队提供一次奶油护盾，每个战场共 {C:EqFoodBatch.CREAM_TIMES} 次。",
     "effectDesc3": "",
     "img": "equip/p2eq_071.png",
-    "effectBrief": "战斗开始时为全队提供各自最大生命值 10/18/25% 的奶油护盾，护盾破碎时对周围敌人造成伤害。"
+    "effectBrief": "每个战场开始时为全队提供各自最大生命值 10/18/25% 的奶油护盾，护盾破碎时对周围敌人造成伤害。"
   },
   {
     "id": "p2eq_072",

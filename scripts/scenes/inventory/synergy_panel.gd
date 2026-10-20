@@ -4,6 +4,8 @@ extends RefCounted
 ## 类内名不变;外部名加 battle.
 
 var host
+## 本次重建里第一条已激活的羁绊行(首次提示「羁绊已激活」圈它; 没有激活的 ⇒ null)。
+var first_on_chip: Control = null
 
 func _init(b) -> void:
 	host = b
@@ -145,6 +147,7 @@ func _next_tier_text(typ: String, n: int) -> String:
 ##      一件都没有的类型不列(10 个全列是噪音)。
 ## ★按钮高度 44 —— 手机触摸目标下限(用户在商店骂过"又矮又扁")。
 func _build_synergy_panel(_leaders: Array) -> void:
+	first_on_chip = null
 	var w: float = host.SYN_W
 	var x0: float = host.SYN_X
 	var hdr = Label.new(); hdr.text = "羁绊"
@@ -242,6 +245,8 @@ func _build_synergy_panel(_leaders: Array) -> void:
 		##   (产品自己写的 tooltip, 不是为测试加的标记) —— 改后半句可以, 这个前缀别动。
 		chip.tooltip_text = "查看羁绊详情"
 		inner.add_child(chip)
+		if on and first_on_chip == null:
+			first_on_chip = chip
 		## ★★2026-09-28 类型图标 emoji → `tags/` 像素图 ⇒ `Label` 换 `RichTextLabel`
 		##   (Label 画不了行内图)。写法走 `Phase2Types.icon_bb()`, 与商店/出战/图鉴同一份。
 		## ★图标 16: 源图 32×32 硬边像素画, 只有 16(1:2)/32(1×) 落在像素网格上;

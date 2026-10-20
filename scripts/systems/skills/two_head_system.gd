@@ -39,6 +39,14 @@ const STRIKE_BLAST_RADIUS := 200.0 # 爆点半径(码)
 const STRIKE_MELEE_COEF := 1.4     # ×ATK 物理
 const STRIKE_SHIELD_PCT := 0.5     # 获得 = 所造成伤害 × 的护盾
 const STRIKE_SHIELD_SEC := 4.0     # 护盾持续(秒)
+## ★锤击是范围技(用户 2026-10-20「锤击是单体技能吗」→「这样，改为aoe」→「范围200码」):
+##   以【锤头落点】为圆心、这个半径(码)内的每个敌人各吃一次 STRIKE_MELEE_COEF×ATK 物理;
+##   护盾只按【主目标】那一下的伤害算(不随命中人数叠加)。砸地特效的扩散半径读的也是这个常量(特效即判定)。
+const STRIKE_MELEE_RADIUS := 200.0
+## 锤头落点 = 施法者落点往立绘朝向前方这么多码(立绘是公告板, 锤头在画面里永远是左右伸出去的)。
+##   由立绘量出: melee_strike 第 6~8 帧锤头(石灰色)重心离中线 ≈39 像素 × 0.025 米 ÷ WS 0.024 ≈ 41 码。
+##   门禁 verify_two_head_anim F② 按素材量, 不读这个常量。
+const STRIKE_MELEE_HEAD_FWD := 41.0
 const DISRUPT_HEALCUT_PCT := 0.5   # 治疗削减比例
 const DISRUPT_HEALCUT_SEC := 5.0   # 治疗削减持续(秒)
 const DISRUPT_SHIELD_BREAK := 0.5  # 破除目标护盾的比例
@@ -97,7 +105,7 @@ func _two_head_apply_melee(u: Dictionary, on: bool) -> void:
 		u["base_atk"] += float(u.get("_th_atk", 0.0))
 		battle._recalc_stats(u)
 
-func _sk_two_head_strike(u: Dictionary, tgt) -> void:            # 双头·技能一 form-variant(用户2026-07-11重设计): 远程=灵能冲击(大紫炮弹→碰第一敌爆炸200码AOE 1A+10%maxHp物理) / 近战=锤击(跳起落地砸·1.4A物理+50%伤害盾4s)
+func _sk_two_head_strike(u: Dictionary, tgt) -> void:            # 双头·技能一 form-variant(用户2026-07-11重设计): 远程=灵能冲击(大紫炮弹→碰第一敌爆炸200码AOE 1A+10%maxHp物理) / 近战=锤击(跳起落地砸·锤头落点200码内各1.4A物理+主目标伤害50%盾4s)
 	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
 	if tgt == null: return
 	if u["melee"]:
@@ -140,8 +148,7 @@ func _two_head_cannon_boom(u: Dictionary, at2d: Vector2) -> void:
 			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, STRIKE_RANGED_COEF, o) + battle._phys_after_armor(u, float(o["maxHp"]) * STRIKE_RANGED_MAXHP, o), Color("#c0a0ff"))
 			battle._vfx._flash(o, Color(0.8, 0.6, 1.0))
 
-# 双头·锤击(近战 技1·用户2026-07-11): 跳起→落在目标身前→地面锤击(1.4A物理+获50%伤害盾4s)+落地震屏/冲击环/尘爆
-# 双头·锤击(近战 技1·用户2026-07-11): 跳起→落在目标身前→地面锤击(1.4A物理+获50%伤害盾4s)+落地震屏/冲击环/尘爆
+# 变脸龟·锤击(近战 技1): 跳起→落在目标身前→锤头落点 200 码内敌人各 1.4A 物理(2026-10-20 改范围)+获主目标那一下伤害 50% 的盾 4s
 func _two_head_hammer(u: Dictionary, tgt: Dictionary) -> void:
 	var from2d: Vector2 = u["pos"]
 	var d: Vector2 = tgt["pos"] - from2d
@@ -164,7 +171,8 @@ func _two_head_hammer_land(u: Dictionary, tgt: Dictionary, at2d: Vector2, dmg: i
 	u["_slam_voff"] = Vector3.ZERO
 	u["_slam"] = false
 	u["pos"] = at2d
-	_two_head_slam_impact(at2d, bool(u.get("face_right", true)))   # 砸地: 震屏+顿帧+锤头落点裂地+挥锤弧(画在目标上面)
+	var hit_at: Vector2 = hammer_point(at2d, bool(u.get("face_right", true)))
+	_two_head_slam_impact(at2d, bool(u.get("face_right", true)))   # 砸地: 震屏+顿帧+锤头落点冲击(范围 = STRIKE_MELEE_RADIUS)+挥锤弧
 	if tgt.get("alive", false):
 		if dt != "":
 			## ★resolved=true: 伤害是【举锤那一刻】`_atk_dmg`(→`_resolve_dmg`)算好的,
@@ -172,16 +180,28 @@ func _two_head_hammer_land(u: Dictionary, tgt: Dictionary, at2d: Vector2, dmg: i
 			##   会把它误报成"不吃护甲"(它只看落地那一刻)。
 			battle._damage.set_dtype(dt, tgt, null, true)
 		battle._damage._apply_damage_from(u, tgt, dmg, Color("#ffb05c"))
-		battle._damage._grant_shield(u, dmg * STRIKE_SHIELD_PCT, STRIKE_SHIELD_SEC)                        # 获造成伤害50%护盾(4秒)
+		battle._damage._grant_shield(u, dmg * STRIKE_SHIELD_PCT, STRIKE_SHIELD_SEC)                        # 获造成伤害50%护盾(4秒)·只按主目标这一下
 		vfx.shell_behind(u)                                    # 护盾罩退到立绘后面一层, 不盖砸地
 		battle._vfx._flash(tgt)
+	## 范围: 锤头落点 STRIKE_MELEE_RADIUS 码内的其余敌人各吃一次 1.4×ATK 物理(各自现算护甲; 主目标上面已经打过, 不重复)
+	for o in battle._targeting._enemies_of(u):
+		if is_same(o, tgt) or not o.get("alive", false):
+			continue
+		if DetMath.dist(hit_at, o["pos"]) <= STRIKE_MELEE_RADIUS:
+			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, STRIKE_MELEE_COEF, o), Color("#ffb05c"))
+			battle._vfx._flash(o)
 
 
-# 锤击落地: 震屏 + 顿帧 + 符文裂地(2026-10-20 重做: 原来的三层冲击环像范围技, 而锤击是单体)
+## 锤头落点(场地坐标): 结算圆心与砸地特效同一点。
+static func hammer_point(at2d: Vector2, face_right: bool) -> Vector2:
+	return at2d + Vector2((1.0 if face_right else -1.0) * STRIKE_MELEE_HEAD_FWD, 0.0)
+
+
+# 锤击落地: 震屏 + 顿帧 + 锤头落点砸地冲击(2026-10-20 改范围技后重做: 冲击扩到 STRIKE_MELEE_RADIUS = 判定半径)
 func _two_head_slam_impact(at2d: Vector2, face_right: bool = true) -> void:
 	battle._shake(battle.JUICE_SHAKE_BIG)
 	battle._hitstop = maxf(battle._hitstop, 0.06)
-	vfx.hammer_slam(at2d, face_right)      # 锤头落点砸地: 符文绿光沿地缝炸开 + 尘 + 碎石 + 挥锤弧(单体技 ⇒ 不画范围环; 落点见 TwoHeadVfx.HAMMER_HEAD_FWD)
+	vfx.hammer_slam(at2d, face_right)      # 锤头落点砸地: 白核闪 + 贴地冲击波扩到判定半径 + 符文地裂 + 碎石 + 尘 + 挥锤弧(落点见 hammer_point)
 
 # 砸地岩屑: 灰褐碎块一次性向上+四散迸溅+重力回落(0.75s后回收)
 func _sk_two_head_disrupt(u: Dictionary, tgt) -> void:           # 双头·技能二 form-variant(封板): 远程=精神干扰(2.0A真伤+治疗削减50%5s+破盾50%·用户2026-07-28加强) / 近战=吸收(0.6A+8%maxHp物理+回血40%A+18%已损)
@@ -350,7 +370,9 @@ func _two_head_enhanced_basic(u: Dictionary, tgt: Dictionary, form: String) -> v
 			battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, ENH_MELEE_COEF, tgt, true), Color("#ffb05c"))   # 近战强化: +0.6A魔法伤害
 		battle._damage._grant_shield(u, u["atk"] * ENH_SHIELD_COEF, ENH_SEC)                                            # + 自己获 1.1×ATK 护盾(4s)
 		vfx.shell_behind(u)                                    # 护盾罩退到立绘后面一层, 不盖挥锤
-		battle._skill_ring(u["pos"], Color(0.72, 0.8, 1.0, 0.6), 62.0)
+		## (2026-10-20 删: 原来这里在自己脚下画一圈 62 码的地面环 —— 既不是射程也不是判定范围,
+		##  玩家只会读成「这里有个范围」(特效九类毛病④)。这一下的两件事各自已有演出:
+		##  0.6×ATK 魔法伤害 = 目标身上的命中与伤害数字, 1.1×ATK 护盾 = 上一行的护盾罩。)
 	else:
 		if tgt.get("alive", false):
 			battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, ENH_RANGED_COEF, tgt), Color("#c0d0ff"))          # 远程强化: +1.4A物理伤害

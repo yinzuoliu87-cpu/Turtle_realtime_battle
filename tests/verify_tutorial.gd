@@ -437,7 +437,7 @@ func _harvest(key: String) -> Dictionary:
 	out["vp"] = get_viewport().get_visible_rect().size
 	_walk_texts(inst, out["texts"], "A")
 	if inst.has_method("_tutorial_anchor"):
-		for nm in ["roster", "slots", "confirm", "offer", "coins", "xp_button", "bag_button", "lanes", "backpack", "finish_button"]:
+		for nm in ["roster", "slots", "confirm", "offer", "shelf", "offer_card", "coins", "xp_button", "bag_button", "lanes", "backpack", "finish_button", "formation_button"]:
 			var r: Rect2 = inst.call("_tutorial_anchor", nm)
 			if r.size != Vector2.ZERO:
 				(out["anchors"] as Dictionary)[nm] = r
@@ -958,7 +958,8 @@ func _test_guide_host() -> void:
 	_ok("★分母 GUIDE_HOST: 教学沙盒真的武装了(stage=match1 + 弱 ghost + 双路)",
 		td.is_active() and str(td.stage()) == "match1" and bool(gs.dual_active)
 			and str(gs.dual_ghost.get("ghost_id", "")) == "tutorial_weak")
-	_ok("★GUIDE_HOST: 战斗这一屏导演不给引导(steps_key 为空)", td.steps_key_for("battle") == "",
+	## v3(2026-10-20): 战斗这一屏只给两句**不阻塞**提示(开打后才出、不挡点击), 不再是空。
+	_ok("★GUIDE_HOST: 战斗这一屏导演只给不阻塞提示那一套(battle)", td.steps_key_for("battle") == "battle",
 		"steps_key=%s" % td.steps_key_for("battle"))
 	_ok("★分母 GUIDE_HOST: 结算那一句还在(只删了摆位)", td.steps_key_for("settle") == "settle")
 
@@ -973,20 +974,29 @@ func _test_guide_host() -> void:
 		w += 1
 		if str(s._dl_state) == "place":
 			place_f += 1
-		if not get_tree().get_nodes_in_group("tut_overlay").is_empty():
+		if _blocking_overlays() > 0:
 			overlay_f += 1
 	_ok("★★GUIDE_HOST: 教学第一把自己开打了(等了 %d 帧)" % w,
 		str(s._dl_state) == "fight", "_dl_state=%s" % str(s._dl_state))
 	_ok("★★GUIDE_HOST: 一帧都没停在摆位(%d 帧)" % place_f, place_f == 0)
 	for _k in range(30):
 		await get_tree().process_frame
-		if not get_tree().get_nodes_in_group("tut_overlay").is_empty():
+		if _blocking_overlays() > 0:
 			overlay_f += 1
-	_ok("★★GUIDE_HOST: 开打前后场上一个教学浮层都没有(%d 帧)" % overlay_f, overlay_f == 0)
+	_ok("★★GUIDE_HOST: 开打前后场上没有任何挡点击的教学浮层(%d 帧)" % overlay_f, overlay_f == 0)
 	_ok("★GUIDE_HOST: 教学阶段没被推走(仍是 match1, 结算后才进商店)", str(td.stage()) == "match1")
 	s.queue_free()
 	await get_tree().process_frame
 	_guide_host_restore(gs, snap, no_present0)
+
+
+## 场上「挡点击」的教学浮层个数(v3 的战斗提示是不阻塞的, 不算; 暗幕 / 吃点击的控件才算)。
+func _blocking_overlays() -> int:
+	var n := 0
+	for o in get_tree().get_nodes_in_group("tut_overlay"):
+		if is_instance_valid(o) and o.has_method("is_blocking") and o.is_blocking():
+			n += 1
+	return n
 
 
 ## 还原本节改过的全局态 + static。★不还原会波及同进程后面的一切(本仓栽过 static 没还原那一类)。

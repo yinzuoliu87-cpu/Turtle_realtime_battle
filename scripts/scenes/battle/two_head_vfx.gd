@@ -23,7 +23,13 @@ const BLAST := ["twohead-psi-blast.png", 12, 16.0, 2]       # 灵能冲击·爆�
 const CREST := ["twohead-mind-crest.png", 6, 30.0, 1]       # 精神干扰·精神波一道波峰
 const MIND_HIT := ["twohead-mind-burst.png", 8, 18.0, 1]    # 精神干扰·命中头部(末帧空白不播)
 const SWING := ["twohead-hammer-swing.png", 7, 20.0, 1]     # 近战普攻·挥锤弧
-const SLAM := ["twohead-hammer-slam.png", 12, 14.0, 1]      # 锤击·落地符文裂地
+## 锤击·砸地(2026-10-20 重做 + 改范围技, 逐帧研究 docs/studies/20261020b-变脸龟锤击砸地逐帧.md):
+const SLAM_RING := ["twohead-slam-ring.png", 7, 20.0, 2]      # 贴地(2× texel): 地闪 → 冲击环减速扩到判定半径 → 环碎
+const SLAM_CRACK := ["twohead-slam-crack.png", 13, 20.0, 1]   # 贴地(1× texel, 与龟同细): 符文地裂从落点窜出 → 薄荷冷却成暗绿 → 碎散
+const SLAM_BURST := ["twohead-slam-burst.png", 13, 20.0, 1]    # 竖立: 白核 + 光刺 → 碎石上抛落地 → 尘团鼓起散去
+const SLAM_DUST := ["twohead-slam-edgedust.png", 8, 20.0, 2]
+## 落点爆炸(10-20 用户看视频后「冲击环没问题，但是起码要有爆炸的特效吧」): 尖刺闪 → 白热团 → 橙红分瓣火球 → 外缘碎裂翻卷 → 灰烟碎散
+const SLAM_BOOM := ["twohead-slam-boom.png", 15, 20.0, 1]   # 圈边小尘团(冲击环扫到判定半径边缘时踢起)
 const PULL := ["twohead-siphon-pull.png", 8, 20.0, 1]       # 吸收·目标身上生命被攥出
 const WISP := ["twohead-siphon-wisp.png", 6, 18.0, 1]       # 吸收·生命精魄飞回(朝飞行方向)
 const SWAP := ["twohead-face-swap.png", 7, 20.0, 1]         # 变脸·斗篷甩过那一下的两色烟
@@ -40,7 +46,20 @@ const WAVE_PHYS_TINT := Color(0.78, 0.55, 1.0, 1.0)   # 物理段染紫, 真实�
 ##   —— 目标在 52 码处, 锤头正好砸在目标身前那一截(门禁 verify_two_head_anim F② 按素材量, 不读这个常量)。
 ##   旧版裂地画在【施法者脚下】、挥锤只靠立绘自带那道绿弧 ⇒ 两样都被目标立绘挡住一半(目标离镜头更近时)。
 ##   现在: 裂地画在锤头落点; 另起一道挥锤弧收在落点上; 两者都画在两只龟【上面】(OVER_UNITS)。
-const HAMMER_HEAD_FWD := 41.0
+## (锤头落点常量 2026-10-20 搬进 TwoHeadSystem.STRIKE_MELEE_HEAD_FWD: 改范围技后它也是伤害圆心, 归结算侧所有)
+## ★特效即判定: 贴地表里冲击环满径那几帧的环半径(像素, 量素材第 3~5 帧中位数 96.4)。
+##   贴地层 pixel_size = STRIKE_MELEE_RADIUS × WS ÷ 它 ⇒ 环画多大 = 判定多大(现值 200 码 ⇒ 0.05 米/像素 = 龟 texel 的整 2 倍)。
+##   门禁 verify_two_head_anim F⑥ 按素材重新量环半径再乘运行期 pixel_size, 不读这个常量。
+const SLAM_RING_PX := 96.0
+## 竖立两张表里"落点"(画布锚点)在帧中心下方多少像素 ⇒ 用 offset 把锚点对到节点原点(地面)
+const SLAM_BURST_FOOT := 36.0
+const SLAM_DUST_FOOT := 16.0
+## 爆炸表里火球底边(第 7~10 帧最低处 y≈100)在帧中心(73)下方多少像素 ⇒ 火球坐在地面上往上长
+const SLAM_BOOM_FOOT := 27.0
+## 圈边尘团: 几团、离圆心 = 判定半径 × 多少、冲击环扫到那里的时刻(贴地表第 2 帧, 环已到 92%)
+const SLAM_DUST_N := 8
+const SLAM_DUST_AT := 0.92
+const SLAM_DUST_DELAY := 0.1
 ## 挥锤弧(SWING 62×82)下端在帧内 x≈12 ⇒ 中心要往回挪 19 像素 ≈ 20 码, 弧尾才正好落在锤头上
 const SWING_TAIL_BACK := 20.0
 ## 挥锤弧从第几帧起播: 第 2 帧 = 完整的 C 形(砸地那一步锤已经挥完, 不该再从弧头起手)
@@ -192,16 +211,50 @@ func mind_wave(u: Dictionary, tgt: Dictionary) -> void:
 
 
 # ═══════════════════════════════════════════════════════════════════
-#  锤击: 落地符文裂地(单体技 ⇒ 不画范围环)
+#  锤击: 砸地冲击(范围技 ⇒ 冲击环 = 判定半径)
 # ═══════════════════════════════════════════════════════════════════
-## `at2d` = 施法者落点(sim), `face_right` = 立绘朝向(sim 字段) ⇒ 锤头落点 = 落点往朝向前方 HAMMER_HEAD_FWD 码。
-## ★只往屏幕横向偏: 立绘是公告板, 锤头在画面里永远是左右伸出去的, 跟目标在哪个方位无关。
+## `at2d` = 施法者落点(sim), `face_right` = 立绘朝向(sim 字段) ⇒ 锤头落点 = TwoHeadSystem.hammer_point(结算圆心同一点)。
+## 分段(逐帧研究 20261020b): 命中 = 白核 + 光刺(2 帧, 画在所有单位上面) · 地面响应 = 冲击环 0.15 秒减速扩到判定半径、
+##   符文地裂从落点窜出、碎石上抛、圈边尘团在环到达时踢起 · 余韵 = 地裂由白冷却成符文绿再碎散、尘团上升散去。
 func hammer_slam(at2d: Vector2, face_right: bool) -> Vector2:
-	var fwd := 1.0 if face_right else -1.0
-	var hit: Vector2 = at2d + Vector2(fwd * HAMMER_HEAD_FWD, 0.0)
-	over_units(_once(SLAM, hit, 0.08))
+	var hit: Vector2 = TwoHeadSystem.hammer_point(at2d, face_right)
+	var R: float = TwoHeadSystem.STRIKE_MELEE_RADIUS
+	## ① 贴地两层: 平躺在地面(测深度: 站在环上的龟挡住它身后那段地面)。冲击环 pixel_size 由判定半径算出; 地裂 1× texel(与龟同细, 2× 时读成白色粗折线)
+	var g := _once(SLAM_RING, hit, 0.03)
+	if g != null:
+		g.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+		g.axis = Vector3.AXIS_Y
+		g.pixel_size = R * battle.WS / SLAM_RING_PX
+		g.render_priority = 5
+	var k := _once(SLAM_CRACK, hit, 0.02)
+	if k != null:
+		k.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+		k.axis = Vector3.AXIS_Y
+		k.render_priority = 5
+	## ② 竖立爆点: 锚点(落点)对到地面, 画在所有单位上面(目标就站在落点旁, 不许被挡)
+	var b := _once(SLAM_BURST, hit, 0.0, not face_right)
+	if b != null:
+		b.offset = Vector2(0.0, SLAM_BURST_FOOT)
+		over_units(b)
+	## ②b 落点爆炸: 与冲击环同一步起爆, 立着、画在所有单位上面(目标就站在旁边)
+	var bm := _once(SLAM_BOOM, hit, 0.0, not face_right)
+	if bm != null:
+		bm.offset = Vector2(0.0, SLAM_BOOM_FOOT)
+		over_units(bm)
+	## ③ 圈边尘团: 正好落在判定半径上, 冲击环扫到时踢起(在场地外的那几团不放)
+	for i in range(SLAM_DUST_N):
+		var p: Vector2 = hit + DetMath.rotated(Vector2(R * SLAM_DUST_AT, 0.0), TAU * (float(i) + 0.5) / float(SLAM_DUST_N))
+		if not ArenaShape.in_rect_shape(p, battle.ARENA):
+			continue
+		var d := _once(SLAM_DUST, p, 0.0, p.x < hit.x)
+		if d != null:
+			d.offset = Vector2(0.0, SLAM_DUST_FOOT)
+			d.visible = false                                    # 环到之前不露(帧推进前 _tick_anim_fx 会钳在第 0 帧)
+			battle._anim_fx[battle._anim_fx.size() - 1]["t0"] = battle._t + SLAM_DUST_DELAY
+			battle._anim_fx[battle._anim_fx.size() - 1]["show_at"] = battle._t + SLAM_DUST_DELAY
 	## 挥锤弧: 从完整 C 形那一帧起播(砸地这一步锤已经挥下来了), 弧尾收在锤头落点
-	var sw := _once(SWING, at2d + Vector2(fwd * (HAMMER_HEAD_FWD - SWING_TAIL_BACK), 0.0), CHEST_H, face_right)
+	var fwd := 1.0 if face_right else -1.0
+	var sw := _once(SWING, at2d + Vector2(fwd * (TwoHeadSystem.STRIKE_MELEE_HEAD_FWD - SWING_TAIL_BACK), 0.0), CHEST_H, face_right)
 	if sw != null:
 		over_units(sw)
 		battle._anim_fx[battle._anim_fx.size() - 1]["t0"] = battle._t - float(SWING_START_FRAME) / float(SWING[2])

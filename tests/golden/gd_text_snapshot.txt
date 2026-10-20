@@ -261,7 +261,6 @@ scripts/gamedata/glossary.gd|lit|奶油护盾
 scripts/gamedata/glossary.gd|lit|寒冰龟在地面留下的减速领域。冰柱层数会同时提升其范围与持续时间。
 scripts/gamedata/glossary.gd|lit|小木斧召唤的近战随从。属性随累计经验成长。
 scripts/gamedata/glossary.gd|lit|幽灵护盾
-scripts/gamedata/glossary.gd|lit|开战时为全队提供的护盾，永久不衰减。护盾被击破时对周围的敌人造成伤害。
 scripts/gamedata/glossary.gd|lit|弓箭系叠加在敌人身上的层数，与弓箭羁绊共用同一份层数。
 scripts/gamedata/glossary.gd|lit|手半剑替换原技能的招式：先横斩并释放一道横波，随后竖斩。
 scripts/gamedata/glossary.gd|lit|扭曲空间
@@ -278,6 +277,7 @@ scripts/gamedata/glossary.gd|lit|星际龟的技能：以自身为中心释放�
 scripts/gamedata/glossary.gd|lit|星际龟的技能：扭曲一片区域的空间。
 scripts/gamedata/glossary.gd|lit|最终造物
 scripts/gamedata/glossary.gd|lit|枪羁绊：每发射若干发普通子弹后发射一发金弹，金弹继承该发子弹的全部效果并额外造成真实伤害。
+scripts/gamedata/glossary.gd|lit|每个战场开始时为全队提供的护盾，永久不衰减。护盾被击破时对周围的敌人造成伤害。
 scripts/gamedata/glossary.gd|lit|每件法器各自的法力条：每 2.5 秒回复 15 点，携带者用技能造成伤害或受到伤害时也会回复。充满时释放该法器的主动效果，随后重新回复。法器效果自身造成的伤害不回复法力。法器羁绊档位越高，充满所需的法力越少。
 scripts/gamedata/glossary.gd|lit|每次受到一段攻击时，对攻击者反弹一次魔法伤害。持续伤害不会触发此效果，多段攻击的每一段单独触发。
 scripts/gamedata/glossary.gd|lit|气环
@@ -980,11 +980,11 @@ scripts/scenes/RealtimeBattle3DScene.gd|lit|[color=#ff6b6b]本场判负[/color]
 scripts/scenes/RealtimeBattle3DScene.gd|lit|[color=#ff9a5a]☠ %s[/color] 被击败
 scripts/scenes/RealtimeBattle3DScene.gd|lit|[color=%s]◆ %s[/color] 施放 [color=#ffe08a]%s[/color]
 scripts/scenes/RealtimeBattle3DScene.gd|lit|_world 子节点=%d (特效没清)
-scripts/scenes/RealtimeBattle3DScene.gd|lit|⚔ 决胜阶段: 治疗效果 -50%, 每 5 秒全场 +25% 增伤
 scripts/scenes/RealtimeBattle3DScene.gd|lit|上路战场
 scripts/scenes/RealtimeBattle3DScene.gd|lit|下路战场
 scripts/scenes/RealtimeBattle3DScene.gd|lit|冰川
 scripts/scenes/RealtimeBattle3DScene.gd|lit|凤凰雕像
+scripts/scenes/RealtimeBattle3DScene.gd|lit|加时：治疗效果 -%d%%，每 %d 秒全场伤害 +%d%%
 scripts/scenes/RealtimeBattle3DScene.gd|lit|口哨
 scripts/scenes/RealtimeBattle3DScene.gd|lit|命中叠金色闪电, 满 5 层引爆 1.0×ATK 真实伤害
 scripts/scenes/RealtimeBattle3DScene.gd|lit|命运生命偷取
@@ -1367,8 +1367,8 @@ scripts/scenes/battle/dual_lane_flow.gd|text|%s  对阵
 scripts/scenes/battle/dual_lane_flow.gd|text|%s  战果
 scripts/scenes/battle/dual_lane_flow.gd|text|三路开战
 scripts/scenes/battle/dual_lane_flow.gd|text|上下路幸存单位
-scripts/scenes/battle/dual_lane_flow.gd|text|本路失败
-scripts/scenes/battle/dual_lane_flow.gd|text|本路胜利
+scripts/scenes/battle/dual_lane_flow.gd|text|本战场失败
+scripts/scenes/battle/dual_lane_flow.gd|text|本战场胜利
 scripts/scenes/battle/dual_lane_flow.gd|text|点击继续
 scripts/scenes/battle/dual_lane_flow.gd|text|龟蛋生命  我方 %d  ·  对方 %d
 scripts/scenes/battle/dual_lane_flow.gd|text|（无装备）
@@ -1932,6 +1932,14 @@ scripts/systems/equip/swordsman_system.gd|lit|剑
 scripts/systems/equip/synergy_system.gd|lit|剑
 scripts/systems/equip/synergy_system.gd|lit|食物
 scripts/systems/equip/timestop_system.gd|lit|+%d龟能
+scripts/systems/onboarding/first_tips.gd|lit|%s · 点击查看规则
+scripts/systems/onboarding/first_tips.gd|lit|3 件同名同星装备自动合成升星
+scripts/systems/onboarding/first_tips.gd|lit|开始第一场对战
+scripts/systems/onboarding/first_tips.gd|lit|本场由服务器判定 · 退出不影响结果
+scripts/systems/onboarding/first_tips.gd|lit|羁绊已激活 · 点击查看详情
+scripts/systems/onboarding/first_tips.gd|lit|训龟大师在战斗中施放所选技能
+scripts/systems/onboarding/tutorial_buff.gd|lit|教程加成
+scripts/systems/onboarding/tutorial_buff.gd|lit|新手教程：增伤 %d%%，减伤 %d%%
 scripts/systems/replay/abandoned_match.gd|lit|上一局判负 · 版本已更新
 scripts/systems/replay/abandoned_match.gd|lit|上一局判负 · 结算异常
 scripts/systems/replay/abandoned_match.gd|lit|上一局已作废 · 已换周

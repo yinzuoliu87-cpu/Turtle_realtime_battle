@@ -42,6 +42,11 @@ const SLOT := 96.0
 ## ★槽框贴图的金属边带**实测 6px 厚**(不是配置边距 12 —— 那是切九宫格的位置, 不是画了多宽)。
 ##   原来装备名摆在 x=2、底边贴着格底 ⇒ 名字压在边带上(判据 13 量到 4px)。
 const SLOT_PAD := 7.0
+## 格内名字两侧再留的呼吸(px)。贴着边带排「放得下」但看着顶边(10-20「迷你水晶球A」末尾 A 贴边)。
+const NAME_BREATH := 3.0
+## 格内名字字号: 默认 12, 放不下逐级缩到 10; 10 号还放不下才允许换行。
+const NAME_FS := 12
+const NAME_FS_MIN := 10
 ## ── 本屏的几条布局基准线(2026-08-15 重排, 用户「利用这个空间可以把右边的排版过来」)──
 ##   原来顶部有一整行「🎒 背包 / 出战配置」的牌子 —— 玩家是自己点进来的, 不需要被告知
 ##   自己在哪一页 ⇒ 删掉, 整屏内容上提, 右侧那条从 y≈180 空到底的死列由羁绊区补上。
@@ -54,6 +59,8 @@ const SYN_X := 828.0           # 右侧羁绊列左沿(原 952 → 左移 124, �
 const SYN_W := 424.0           # 羁绊列宽(原 300)
 ## 顶栏「站位」签占的宽度 + 间距(右上「币 / 全队装备」这一组为它左移这么多)。
 const FORMATION_BTN_ROOM := 112.0
+## 教程里右上「跳过教程」(132 宽)比它占的「?」(81 宽)多出的那截, 再加两格间距的余量。
+const TUT_SKIP_EXTRA := 80.0
 const SYN_TOP := 94.0          # 羁绊列顶(原 100→74→94), 与上战场带顶齐平(带顶 = LANE_TOP-24)
 const SYN_BOTTOM := 382.0      # 羁绊列底 = 下战场带的底边, 两侧齐平
 const BENCH_HDR_Y := 386.0     # 「装备背包」标题(22 号字实测占 30 高, 给够别压到第一排格子)
@@ -250,7 +257,8 @@ func _rebuild() -> void:
 	ci.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	## ★教程: 右上「?」那一格让给「跳过教程」(132 宽 > 「?」的 81) ⇒ 币/容量这一组左移让位。
 	## ★2026-10-19 顶栏「?」左边多了「站位」签(非教程时) ⇒ 这一组再左移一格让位(实拍: 原位置被「站位」压住「全队装备」)。
-	var _tsh: float = 80.0 if _tut_on() else FORMATION_BTN_ROOM
+	## ★教程 v3(2026-10-20): 教程里「站位」也在(教程要教它) ⇒ 让位 = 跳过钮多出的那截 + 「站位」那一格。
+	var _tsh: float = (TUT_SKIP_EXTRA + FORMATION_BTN_ROOM) if _tut_on() else FORMATION_BTN_ROOM
 	ci.position = Vector2(SYN_X - _tsh, 24); ci.size = Vector2(36, 36)
 	add_child(ci)
 	var coin := Label.new()
@@ -314,6 +322,9 @@ func _rebuild() -> void:
 	#   正好等于框的居中偏移量)。attach 是幂等的, 重复调只重新收编+居中。
 	#   ★同样的坑商店踩过一次(见 ShopScene._rebuild 末尾), 当时没横向查其它屏 —— 这次补齐。
 	UIFrame.attach(self)
+	## 首次提示「羁绊已激活」(账号侧, 教程中不出; 判据与文案在 FirstTips)
+	if _inv_synergy.first_on_chip != null:
+		FirstTips.show(self, FirstTips.FIRST_SYNERGY, _inv_synergy.first_on_chip)
 
 ## 取出战 3 统领: season_leaders 优先, 空则 lastLineup.json.
 ## ★2026-08-11 本体收拢进 GameState.lineup_leader_ids(商店/背包共用, 副本会漂)。
@@ -345,11 +356,16 @@ func _build_lineup(_leaders: Array) -> void:
 		var _if: int = _top_bar.action_btns.find(_fb)
 		if _ib >= 0 and _if >= 0 and _if < _top_bar._right_off.size():
 			_top_bar._right_off[_if] = float(_top_bar._right_off[_ib]) + 8.0 + _fb.size.x
-		if _tut_on():
-			_fb.visible = false
 		## ★教程: 「?」让位给右上「跳过教程」(见 _tutorial_skip_slot); 返回键的位置换成「完成教程」。
+		## ★教程 v3: 「站位」不再藏(10-19 起站位只能在这里改, 教程第 12~14 步就教它) ⇒ 排到跳过钮左边。
 		if _tut_on():
 			_hb.visible = false
+			## 跳过钮(132 宽)占「?」(81 宽)那一格并向左多出一截 ⇒ 「站位」再往左让这一截。
+			##   跳过钮自己的位置反过来跟着「站位」走(`_tutorial_skip_slot`), 宽屏上两者一起贴右沿, 不会叠。
+			var _extra: float = 132.0 - 81.0
+			_fb.position.x -= _extra
+			if _ib >= 0 and _if >= 0 and _if < _top_bar._right_off.size():
+				_top_bar._right_off[_if] = float(_top_bar._right_off[_ib]) + _extra + 8.0 + _fb.size.x
 			_build_tut_finish()
 	# 两条"战场带"(染色圆角底 + 战场名 + 编成计数) → 一眼看出上/下是两个各自开打的战场
 	for lane_info in [["上战场", "top", LANE_TOP, Color("#ffd93d"), Color(0.24, 0.19, 0.06)], ["下战场", "bottom", LANE_TOP + LANE_GAP, Color("#7fd0ff"), Color(0.05, 0.14, 0.24)]]:
@@ -1294,6 +1310,34 @@ func _empty_bench_cell(pos: Vector2) -> Control:
 	box.mouse_filter = Control.MOUSE_FILTER_PASS   # 空格也透传拖动→可滑动
 	return box
 
+## 格内名字排版: 宽度 = 格宽 − 两侧(边带 + 呼吸), 拿 Label 实际字体量真宽,
+## 12 号放不下逐级缩到 10 号, 单行居中; 10 号仍放不下才换行(两行仍在 32px 高里)。
+## ★不用 clip_text / 省略号: 装备名是辨认依据, 截掉一个字就成了另一件(迷你水晶球A/B)。
+## 判据: tests/verify_inventory_name_fit.gd 逐件量全部装备名。
+func _fit_cell_name(nm: Label) -> void:
+	var inset: float = SLOT_PAD + NAME_BREATH
+	var avail: float = SLOT - inset * 2.0
+	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	## ★字体直接从项目主题取: 这一刻 Label 还没进场景树, 不靠它自己的主题查找。
+	var fnt: Font = null
+	var th: Theme = ThemeDB.get_project_theme()
+	if th != null and th.has_default_font():
+		fnt = th.default_font
+	if fnt == null:
+		fnt = nm.get_theme_font("font")
+	var fs: int = NAME_FS
+	if fnt != null:
+		while fs > NAME_FS_MIN and fnt.get_string_size(nm.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > avail:
+			fs -= 1
+	nm.add_theme_font_size_override("font_size", fs)
+	## 一直开换行: 放得下就是一行; 关掉换行的话 Label 会按最小尺寸把自己撑宽、冲出留白。
+	nm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	## ★尺寸最后设: 先设的话 Label 会按【当时】的最小尺寸(没换行、字号还是主题默认 16)把宽度撑大且不再缩回
+	##   (实测「迷你水晶球A」字宽 65px、框被撑到 87px = 65×16/12; 「六分仪浮游炮」撑到 96px, 字墨压进边带)。
+	nm.position = Vector2(inset, SLOT - 36 - 3.0)
+	nm.size = Vector2(avail, 32)
+
+
 func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	if str(it.get("kind", "")) == "candy_jar":  # 糖果罐: 以装备卡的形式排进背包(用户 2026-08-14)
 		return _candy_jar_cell(it, pos)
@@ -1313,11 +1357,9 @@ func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	box.add_child(ic2)
 	var nm := Label.new()
 	nm.text = str(edef.get("name", eid))
-	nm.add_theme_font_size_override("font_size", 12)
+	nm.name = "CellName"
 	nm.add_theme_color_override("font_color", Color("#e8f2ff"))
-	nm.position = Vector2(SLOT_PAD, SLOT - 36 - 3.0); nm.size = Vector2(SLOT - SLOT_PAD * 2.0, 32)
-	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	nm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_fit_cell_name(nm)
 	box.add_child(nm)
 	var star := int(it.get("star", 1))
 	var st := Label.new()
@@ -1401,11 +1443,9 @@ func _item_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	box.add_child(ic)
 	var nm := Label.new()
 	nm.text = "临时等级器"
-	nm.add_theme_font_size_override("font_size", 12)
+	nm.name = "CellName"
 	nm.add_theme_color_override("font_color", Color("#e6d8ff"))
-	nm.position = Vector2(SLOT_PAD, SLOT - 36 - 3.0); nm.size = Vector2(SLOT - SLOT_PAD * 2.0, 32)
-	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	nm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_fit_cell_name(nm)
 	box.add_child(nm)
 	for ch in box.get_children():
 		ch.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1514,7 +1554,12 @@ func _build_tut_finish() -> void:
 ## 右上「跳过教程」的位置: 教程里藏起来的「?」那一格(顶栏右端, 已知空位; 方案书 B7)。
 func _tutorial_skip_slot() -> Rect2:
 	var r := Rect2(Vector2(SYN_X + SYN_W - 132.0, (TopBar.BAR_H - TopBar.TOUCH_MIN) / 2.0), Vector2(132, TopBar.TOUCH_MIN))
-	return Rect2(r.position + _frame_off(), r.size)
+	r = Rect2(r.position + _frame_off(), r.size)
+	## ★教程 v3: 「站位」在教程里也显示, 顶栏右侧签跟着视口右沿走 ⇒ 跳过钮紧挨在它右边(同一条右沿规则, 宽屏不叠)。
+	var fb := find_child("FormationBtn", true, false) as Control
+	if fb != null and fb.is_visible_in_tree():
+		r.position.x = fb.get_global_rect().end.x + 8.0
+	return r
 
 
 ## 设计框(UIFrame)的屏幕偏移 —— 本屏按 1280×720 设计坐标画, 宽屏上整体居中平移。
@@ -1540,6 +1585,10 @@ func _tutorial_anchor(anchor: String) -> Rect2:
 			return TutorialGuide.vis_rect(_tut_first_item)
 		"first_leader":
 			return TutorialGuide.vis_rect(_tut_first_leader)
+		"formation_button":   # 教程 v3: 顶栏「站位」
+			return TutorialGuide.vis_rect(find_child("FormationBtn", true, false))
+		"formation_field", "formation_token", "formation_done":   # 教程 v3: 站位面板里的三处
+			return _formation.tut_anchor(anchor)
 		_:
 			return Rect2()
 	return Rect2(r.position + _frame_off(), r.size)
@@ -1578,11 +1627,9 @@ func _candy_jar_cell(it: Dictionary, pos: Vector2) -> Control:
 	##   **一大轮只能碎一次**; `candy_jar_count` 是累积糖数、**决定档位**, 不是"N 个罐子"。
 	##   写成 ×N 会被读成一叠可碎 N 次的消耗品。改成显示【档位】, 糖数放 tooltip。
 	jnm.text = "糖果罐 %d档" % GameState.candy_jar_tier()
-	jnm.add_theme_font_size_override("font_size", 12)
+	jnm.name = "CellName"
 	jnm.add_theme_color_override("font_color", Color("#e79bd6"))
-	jnm.position = Vector2(SLOT_PAD, SLOT - 36 - 3.0); jnm.size = Vector2(SLOT - SLOT_PAD * 2.0, 32)
-	jnm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	jnm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_fit_cell_name(jnm)
 	jnm.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	jbox.add_child(jnm)
 	## ★★★点它 = 【选中】, 和点装备完全一样(用户 2026-08-14:

@@ -9,8 +9,10 @@ extends Node
 ##   「缩」(一把战斗、删图鉴站) /「打三路」/「是点击啊」
 ##   「教程里就不应该有返回键啊，要一直跟着教程走啊」
 ##
-## 流程: 首启选择框 →(开始教程)→ 选龟 → 战斗(三路) → 结算 → 商店(买经验升 2 级 + 买 1 件装备)
-##       → 背包(点装备 → 点龟装上) → 完成教程 → 主菜单。
+## 流程(v3, 2026-10-20 方案书 docs/plans/20261020-教程重写.md §1):
+##   首启选择框 →(开始教程)→ 选龟 → 战斗(三路; 开打后两句不阻塞提示: 三路规则 / 碎蛋) → 结算
+##   → 商店(买经验升 2 级 → 点一件装备 → 点购买 → 点背包)
+##   → 背包(点装备 → 点龟装上 → 点站位 → 拖一只龟 → 点完成 → 完成教程) → 主菜单。
 ##
 ## ★★教程 = 完全隔离的沙盒(`enter()` / `end_tutorial()`):
 ##   进教程时把 GameState 的**全部**脚本变量深拷贝进内存(不挑字段), 再把 GameState 换成一份
@@ -32,6 +34,12 @@ const FIXED_TEAM := ["basic", "stone", "bamboo"]
 const WEAK_FOE := ["basic"]
 ## 教学沙盒里的深海币: 买一次经验(4) 升到 2 级 + 买一件低费装备。沙盒丢弃时一起丢弃。
 const TUT_COINS := 20
+
+## ★教程加成(用户 2026-10-20「你可以在新手教程里给我方单位50%增伤和30减伤啊，最为教程模式的特殊机制啊」):
+##   教学战斗里我方所有单位 增伤 / 减伤, 明示在战斗里(「教程加成」签 + 详情状态)。施加与显示见
+##   scripts/systems/onboarding/tutorial_buff.gd。对局规则(对手、补小将、分路结算)一律不变。
+const TUTORIAL_DMG_AMP := 0.5
+const TUTORIAL_DR := 0.3
 
 ## ★沙盒不碰的键 —— 「你是谁」「这台设备」, 不是「这局游戏」。
 ##   教程期间它们照常活着(例: 首启时异步登录拿到 account_id), 结束时**保留现值**, 不被拷贝盖回去。
@@ -64,6 +72,9 @@ var _sandbox_left_menu: bool = false
 var _chrome_scene_id: int = 0
 ## 当前这一屏的引导条(TutorialGuide)。`notify()` 转给它 —— 各屏不必自己留引用。
 var _guide: Node = null
+## 教学战斗里那两句不阻塞提示(v3 第 3、4 步)。与 `_guide` 分开: 结算引导挂上来时它要先收掉。
+var _battle_tips: Node = null
+var _battle_tips_scene_id: int = 0
 
 
 func _ready() -> void:
@@ -82,6 +93,9 @@ func _process(_dt: float) -> void:
 	if cs != null and cs.get_instance_id() != _chrome_scene_id and now != MAIN_MENU and now != "":
 		_chrome_scene_id = cs.get_instance_id()
 		_attach_chrome(cs)
+	if cs != null and now == BATTLE and cs.get_instance_id() != _battle_tips_scene_id:
+		_battle_tips_scene_id = cs.get_instance_id()
+		_attach_battle_tips(cs)
 	## ★空路径不记也不判 —— 换场那一瞬间 current_scene 是 null(2026-09-29 实测踩过)。
 	if now == "" or now == _last_scene_path:
 		return
@@ -304,6 +318,10 @@ func attach_guide(host: Node, scene_id: String, anchor_fn: Callable = Callable()
 	var key := steps_key_for(scene_id)
 	if key == "":
 		return null
+	## 结算引导上来 ⇒ 战斗里还没放完的不阻塞提示一并收掉(不与结算屏叠在一起)。
+	if _battle_tips != null and is_instance_valid(_battle_tips):
+		_battle_tips.queue_free()
+	_battle_tips = null
 	var TG = load("res://scripts/scenes/TutorialGuide.gd")
 	_guide = TG.attach(host, key, Callable(), anchor_fn, ready_fn)
 	return _guide
@@ -322,7 +340,10 @@ func steps_key_for(scene: String) -> String:
 	var st := stage()
 	if scene == "team_select" and st == "match1_pick":
 		return "team_select"
-	## ★2026-10-19 起对局里没有摆位屏(站位在背包里摆): 战斗中途不挂引导, 开场演出完直接开打。
+	## ★2026-10-19 起对局里没有摆位屏(站位在背包里摆): 开场演出完直接开打。
+	## ★v3: 开打后两句**不阻塞**提示(三路规则 / 碎蛋), 不暂停、不挡点击、自己淡出(方案书 D7)。
+	if scene == "battle" and st == "match1":
+		return "battle"
 	if scene == "settle" and st == "match1":
 		return "settle"
 	if scene == "shop" and st == "shop":
@@ -330,6 +351,66 @@ func steps_key_for(scene: String) -> String:
 	if scene == "inventory" and st == "inventory":
 		return "inventory"
 	return ""
+
+
+# ═══════════════════════════════ 战斗里的不阻塞提示 ═══════════════════════════════
+
+## 教学战斗一进场就挂上(导演 `_process` 看到战斗场景时调)。提示要等开场演出(三路总览 / 对阵卡)
+##   完全淡出、真正开打之后才出现(`_battle_ready`) —— 10-07 B1 那条: 演出卡上不许压提示。
+## ★战斗场景一行都不用改: 锚点与就绪判据都在这里读战斗的只读状态。
+func _attach_battle_tips(bt: Node) -> void:
+	var key := steps_key_for("battle")
+	if key == "":
+		return
+	var TG = load("res://scripts/scenes/TutorialGuide.gd")
+	_battle_tips = TG.attach(bt, key, Callable(), _battle_anchor.bind(bt), _battle_ready.bind(bt))
+	load("res://scripts/systems/onboarding/tutorial_buff.gd").attach_badge(bt)   # 「教程加成」签(用 load: 那边 preload 了本文件)
+
+
+## 开打了、演出幕布全淡出、还没结束。
+func _battle_ready(bt: Node) -> bool:
+	if bt == null or not is_instance_valid(bt) or bool(bt.get("_over")):
+		return false
+	if str(bt.get("_dl_state")) != "fight":
+		return false
+	var pr = bt.get("_dl_present_root")
+	if pr != null and is_instance_valid(pr):
+		return false
+	var dl = bt.get("_dl_sys")
+	if dl != null and dl.present_fading != null and is_instance_valid(dl.present_fading):
+		return false
+	## 开打那一下的演出(定格 + 闪屏 +「开 战」大字)放完再出, 不和它叠在一起。按本战场自己的钟(`_sd_t0`, CLAUDE.md §3.4)。
+	return float(bt.get("_t")) - float(bt.get("_sd_t0")) >= TIP_AFTER_FIGHT_SEC
+
+
+## 开打后多少游戏秒才出第一句(「开 战」大字约 1 秒)。
+const TIP_AFTER_FIGHT_SEC := 1.5
+
+
+## 战斗里的锚点: lane_plate = 顶部那块当前战场计时牌; foe_egg = 顶部 PK 条下方敌方那一段**蛋血副条**(带蛋图标)。
+## ★不圈场上的蛋本体: 实拍(10-20)蛋在战场右沿、被右侧队伍卡压住一半, 环圈出来像在指「小将」那张卡。
+func _battle_anchor(nm: String, bt: Node) -> Rect2:
+	if bt == null or not is_instance_valid(bt):
+		return Rect2()
+	match nm:
+		"lane_plate":
+			var TG = load("res://scripts/scenes/TutorialGuide.gd")
+			return TG.vis_rect(bt.get("_dl_hud"))
+		"foe_egg":
+			var hud = bt.get("_hud")
+			if hud == null:
+				return Rect2()
+			var TG2 = load("res://scripts/scenes/TutorialGuide.gd")
+			var r: Rect2 = TG2.vis_rect(hud.get("_pk_egg_r"))
+			if r.size.x <= 0.0:
+				return Rect2()
+			## 连同那一端的蛋图标一起圈(图标在副条外沿)
+			for ic in hud.get("_pk_egg_icons"):
+				var ir: Rect2 = TG2.vis_rect(ic)
+				if ir.size.x > 0.0 and ir.get_center().x > r.get_center().x:
+					r = r.merge(ir)
+			return r
+	return Rect2()
 
 
 # ═══════════════════════════════ 外壳(跳过钮 + 吞返回键) ═══════════════════════════════

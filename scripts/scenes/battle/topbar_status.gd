@@ -353,6 +353,8 @@ func _build_center() -> void:
 	badge_amp.visible = false
 	badge_heal.visible = false
 	_build_popup()
+	## 首次提示「本场由服务器判定 · 退出不影响结果」(第一次看周六服务器局; 判据与文案在 FirstTips)
+	FirstTips.server_match_tip(battle, plate)
 
 
 ## 「回放」小签: 与路名牌同一张银边石板, 染成暗红 + 左边一颗红方点(录像标记)。

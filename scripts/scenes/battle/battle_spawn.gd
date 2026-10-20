@@ -7,6 +7,7 @@ extends RefCounted
 ## 原默认 120 会让无名召唤物比大多数龟都快, 与"近战>远程"的结构保证冲突。
 ## 有明确设计理由的召唤物照旧各自硬写(水晶球90 / 海盗船40 —— 注释里有出处)。
 const SUMMON_DEFAULT_SPD := 100.0
+const _TUT_BUFF := preload("res://scripts/systems/onboarding/tutorial_buff.gd")   # 新手教程加成(只在教程那一把生效)
 
 var battle
 
@@ -554,6 +555,7 @@ func _make_unit(id: String, side: String, pos: Vector2, spec: Dictionary = {}) -
 		# ★当前血=跨路累积受损值(maxHp保持原始满血) → 血条显示 累积伤害 1800/2500 而非满条(用户2026-07-12「明明蛋掉血了到第二战场还满血」)
 		u["hp"] = clampf(float(spec.get("hp", u["maxHp"])), 1.0, float(u["maxHp"]))
 		u["no_move"] = true; u["no_basic"] = true
+	_TUT_BUFF.apply(u)   # 教程加成: 只在新手教程那一把、只给我方(见 tutorial_buff.gd 头注)
 	return u
 
 func _spawn_trainers() -> void:
@@ -933,6 +935,7 @@ func _spawn_summon(owner: Dictionary, kind: String, hp: float, atk: float, behav
 		"bob_phase": randf() * TAU,
 	}
 	battle._equip_sys.tally.tag(su, owner)   # ④ 装备上下文里召出来的召唤物: 它之后造成的伤害记给那件装备
+	_TUT_BUFF.apply(su)   # 教程加成: 召唤体同样算我方单位
 	battle._units.append(su)
 	return su
 
