@@ -18,4 +18,3 @@ res://scripts/systems/skills/diamond_system.gd	_sk_diamond_powerball	tgt
 res://scripts/systems/skills/dice_system.gd	_dice_scythe_sweep	u
 res://scripts/systems/skills/phoenix_system.gd	_phoenix_sector_indicator	tgt
 res://scripts/systems/skills/smolder_system.gd	_smolder_fire_wave	si
-res://scripts/systems/skills/two_head_system.gd	_two_head_disrupt_vfx	u
