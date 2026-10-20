@@ -26,9 +26,14 @@ const TXT_VER := "当前版本 %s　·　最低版本 %s"
 ##   上架前内测走 TestFlight 公开链接 `https://testflight.apple.com/join/<代码>`。
 ##   Android 包名取 export_presets.cfg 的 `package/unique_name`(com.turtlebattle.realtime)。
 ##   桌面 / 网页包没有商店 ⇒ 退回 iOS 那一条(桌面测试包本来就整层离线, 碰不到这面墙)。
+## ★2026-10-20 留好两个链接位(方案书 docs/plans/20261020-AppStore上架.md §4.6):
+##   · APP_STORE_APP_ID: App Store Connect → App 信息 → 「Apple ID」那串纯数字; 上架后填。
+##   · TESTFLIGHT_JOIN_CODE: TestFlight 外部测试组开「公开链接」后 join/ 后面那段; 公测期填。
+##   两个都空 ⇒ 退回 STORE_URL_IOS(TestFlight 首页)。拿到真值之前不许乱填。
+const APP_STORE_APP_ID := ""
+const TESTFLIGHT_JOIN_CODE := ""
 const STORE_URL_IOS := "https://testflight.apple.com/"
 const STORE_URL_ANDROID := "https://play.google.com/store/apps/details?id=com.turtlebattle.realtime"
-const STORE_URL_OTHER := STORE_URL_IOS
 ## 从后台回前台(或重新拿到焦点)后再问服务状态的最小间隔: 焦点在桌面上会频繁进出。
 const REFETCH_MIN_SEC := 5.0
 
@@ -53,14 +58,21 @@ static func install(host: Node) -> VersionWall:
 	return w
 
 
+## 纯函数: iOS 该去哪。优先级: App Store 正式页 > TestFlight 公开链接 > TestFlight 首页。
+static func ios_store_url(app_id: String = APP_STORE_APP_ID, tf_code: String = TESTFLIGHT_JOIN_CODE) -> String:
+	if app_id.strip_edges() != "":
+		return "https://apps.apple.com/app/id%s" % app_id.strip_edges()
+	if tf_code.strip_edges() != "":
+		return "https://testflight.apple.com/join/%s" % tf_code.strip_edges()
+	return STORE_URL_IOS
+
+
 ## 纯函数: 当前平台用哪条商店链接。
 static func store_url_for(os_name: String) -> String:
 	match os_name:
-		"iOS":
-			return STORE_URL_IOS
 		"Android":
 			return STORE_URL_ANDROID
-	return STORE_URL_OTHER
+	return ios_store_url()
 
 
 func _ready() -> void:

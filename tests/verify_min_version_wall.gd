@@ -186,6 +186,13 @@ func _t_decision() -> void:
 	_ok("② 商店链接: iOS / Android 都是 https", VersionWall.store_url_for("iOS").begins_with("https://")
 		and VersionWall.store_url_for("Android").begins_with("https://"),
 		"%s | %s" % [VersionWall.store_url_for("iOS"), VersionWall.store_url_for("Android")])
+	## 链接位优先级(2026-10-20 · 方案书 20261020-AppStore上架 §4.6): 正式页 > TestFlight 公开链接 > 首页。
+	_ok("② iOS 链接位: 有 App ID ⇒ App Store 正式页", VersionWall.ios_store_url("123", "abc") == "https://apps.apple.com/app/id123",
+		VersionWall.ios_store_url("123", "abc"))
+	_ok("② iOS 链接位: 只有 TestFlight 代码 ⇒ 公开链接", VersionWall.ios_store_url("", "abc") == "https://testflight.apple.com/join/abc",
+		VersionWall.ios_store_url("", "abc"))
+	_ok("② iOS 链接位: 都空 ⇒ TestFlight 首页", VersionWall.ios_store_url("", "") == VersionWall.STORE_URL_IOS)
+	_ok("② 桌面 / 网页退回 iOS 那一条", VersionWall.store_url_for("Windows") == VersionWall.store_url_for("iOS"))
 
 
 ## 让墙自己去问一次服务状态(走产品的 `_fetch` → `fetch_status_async`), 等回包落地。
