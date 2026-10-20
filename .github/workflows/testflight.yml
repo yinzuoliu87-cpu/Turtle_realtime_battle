@@ -96,6 +96,7 @@ jobs:
           MAJOR=$(xcodebuild -version | head -1 | sed -E 's/^Xcode ([0-9]+).*/\1/')
           SDK=$(xcrun --sdk iphoneos --show-sdk-version | cut -d. -f1)
           echo "选用 $PICK · Xcode 主版本 $MAJOR · iOS SDK $SDK"
+          echo "::notice title=Xcode::$(xcodebuild -version | paste -sd' ' -) · iOS SDK $(xcrun --sdk iphoneos --show-sdk-version) · $PICK"
           if [ "$MAJOR" -lt 26 ] || [ "$SDK" -lt 26 ]; then
             if [ "$HAS_ASC" = "true" ]; then
               echo "[FAIL] Apple 2026-04-28 起上传须 Xcode 26 + iOS 26 SDK, 这台 runner 只有 Xcode $MAJOR / SDK $SDK"; exit 1
