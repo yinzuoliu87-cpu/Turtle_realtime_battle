@@ -32,6 +32,7 @@ const SCREENS := ["Record", "Settings", "Leaderboard", "Inventory", "Codex", "Sh
 var _pass := 0
 var _fail := 0
 var _btns := 0
+var _cjk_btns := 0
 
 
 func _ok(label: String, cond: bool, extra: String = "") -> void:
@@ -128,9 +129,30 @@ func _ready() -> void:
 				webby = f.border_width_left > 0 and f.border_width_right > 0 					and f.border_width_top > 0 and f.border_width_bottom > 0 and f.bg_color.a < 1.0
 			_ok("③ %s 返回键不是网页盒/圆角盒" % scn, not webby and not rounded,
 				"stylebox=%s 圆角=%s 网页盒=%s" % [sb.get_class(), str(rounded), str(webby)])
+		## ④ 顶栏里带汉字的键必须是【文字薄片】: 有底板、字号不大于页名(26)。
+		##   ★2026-10-20: 「≤2 字符=图标」把「商店」「站位」判成图标 ⇒ 零底板 + 38 号字,
+		##   背包顶栏读起来像「背包」「商店」两个页名(App Store 截图上发现)。
+		var tb_node: Node = inst.find_child("TopBar", true, false)
+		if tb_node != null:
+			var tbs: Array = []
+			_walk(tb_node, tbs)
+			for b3 in tbs:
+				var bb3: Button = b3
+				if not bb3.is_visible_in_tree() or TopBar.is_icon_text(bb3.text):
+					continue
+				_cjk_btns += 1
+				var sb3: StyleBox = bb3.get_theme_stylebox("normal")
+				var fs3: int = bb3.get_theme_font_size("font_size")
+				_ok("④ %s 顶栏文字键「%s」是文字薄片" % [scn, bb3.text], not (sb3 is StyleBoxEmpty) and fs3 <= 26,
+					"stylebox=%s 字号=%d" % [sb3.get_class(), fs3])
 		inst.queue_free()
 
 	## ── 全局分母 ─────────────────────────────────────────────
+	## ★分母: 背包「商店」「站位」+ 排行榜「我的位置」至少 3 枚文字键被量到。
+	_ok("★分母: 顶栏文字键量到 ≥3 枚", _cjk_btns >= 3, "实得 %d" % _cjk_btns)
+	_ok("④ 纯函数: 「商店」「站位」不是图标、「←」「?」「⌂」「✕」是",
+		not TopBar.is_icon_text("商店") and not TopBar.is_icon_text("站位") and not TopBar.is_icon_text("OK")
+		and TopBar.is_icon_text("←") and TopBar.is_icon_text("?") and TopBar.is_icon_text("⌂") and TopBar.is_icon_text("✕"))
 	_ok("★分母: 七屏各认出一个返回键", _btns >= 7, "实得 %d" % _btns)
 	_ok("★分母: 至少 7 个真是返回类(判据真作用在它们身上)", back_total >= 7,
 		"实得 %d" % back_total)

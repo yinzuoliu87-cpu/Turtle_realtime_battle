@@ -35,6 +35,23 @@ const HEAD_H := 1.75                 # 头部高度(米)
 const CREST_GAP := 46.0              # 精神波波峰间距(码)
 const WISP_GAP := 40.0               # 生命精魄间距(码)
 const WAVE_PHYS_TINT := Color(0.78, 0.55, 1.0, 1.0)   # 物理段染紫, 真实段保持白
+## ★锤头落点(2026-10-20 二轮): 锤击落点在目标身前 52 码(sim 位移, 不许动), 而立绘里锤头砸在身体中线前方
+##   melee_strike 第 6~8 帧锤头(石灰色)重心 x≈24.6~25.7 / 中线 64 ⇒ ≈39 像素 × 0.025 米 ÷ WS 0.024 ≈ 41 码
+##   —— 目标在 52 码处, 锤头正好砸在目标身前那一截(门禁 verify_two_head_anim F② 按素材量, 不读这个常量)。
+##   旧版裂地画在【施法者脚下】、挥锤只靠立绘自带那道绿弧 ⇒ 两样都被目标立绘挡住一半(目标离镜头更近时)。
+##   现在: 裂地画在锤头落点; 另起一道挥锤弧收在落点上; 两者都画在两只龟【上面】(OVER_UNITS)。
+const HAMMER_HEAD_FWD := 41.0
+## 挥锤弧(SWING 62×82)下端在帧内 x≈12 ⇒ 中心要往回挪 19 像素 ≈ 20 码, 弧尾才正好落在锤头上
+const SWING_TAIL_BACK := 20.0
+## 挥锤弧从第几帧起播: 第 2 帧 = 完整的 C 形(砸地那一步锤已经挥完, 不该再从弧头起手)
+const SWING_START_FRAME := 2
+## 画在单位上面: 单位立绘是 depth_prepass_alpha(会写深度), 只抬渲染优先级挡不住深度 ⇒ 关深度测试 + 抬优先级。
+const OVER_UNITS_PRIO := 8
+## ★通用护盾罩【退后一层】(只给变脸龟自己那三次给盾): 切近战送盾 / 锤击落地按伤害给盾 / 切近战强化普攻给盾,
+##   三次都正好落在变脸龟自己的招牌帧上(变脸挡脸 / 砸地 / 挥锤), 0.3 秒满亮的叠加罩把两只龟连同特效一起洗白。
+##   罩本身是全游戏 45 个给盾点共用的、用户 09-11 拍板过的统一语言(叠加混合、实心半透) ⇒ 不改原语,
+##   只把这三次的罩排到龟立绘【之前】画: 龟立绘盖住罩心, 罩只在身体四周露出一圈光 —— 仍读得出"拿到盾了"。
+const SHELL_BEHIND_PRIO := -1
 
 var battle
 var _tex := {}
@@ -111,7 +128,14 @@ func bolt_hit(tgt: Dictionary) -> void:
 func hammer_swing(u: Dictionary, tgt: Dictionary) -> void:
 	var d: Vector2 = tgt["pos"] - u["pos"]
 	var mid: Vector2 = u["pos"] + d * 0.6
-	_once(SWING, mid, CHEST_H, d.x > 0.0)
+	over_units(_once(SWING, mid, CHEST_H, d.x > 0.0))       # 挥锤弧就落在目标身上 ⇒ 画在目标上面(否则离镜头近的目标挡一半)
+
+
+## 把一张特效精灵排到所有单位立绘上面(见 OVER_UNITS_PRIO)。
+func over_units(sp) -> void:
+	if sp is Sprite3D:
+		(sp as Sprite3D).no_depth_test = true
+		(sp as Sprite3D).render_priority = OVER_UNITS_PRIO
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -170,8 +194,38 @@ func mind_wave(u: Dictionary, tgt: Dictionary) -> void:
 # ═══════════════════════════════════════════════════════════════════
 #  锤击: 落地符文裂地(单体技 ⇒ 不画范围环)
 # ═══════════════════════════════════════════════════════════════════
-func hammer_slam(at2d: Vector2) -> void:
-	_once(SLAM, at2d, 0.08)
+## `at2d` = 施法者落点(sim), `face_right` = 立绘朝向(sim 字段) ⇒ 锤头落点 = 落点往朝向前方 HAMMER_HEAD_FWD 码。
+## ★只往屏幕横向偏: 立绘是公告板, 锤头在画面里永远是左右伸出去的, 跟目标在哪个方位无关。
+func hammer_slam(at2d: Vector2, face_right: bool) -> Vector2:
+	var fwd := 1.0 if face_right else -1.0
+	var hit: Vector2 = at2d + Vector2(fwd * HAMMER_HEAD_FWD, 0.0)
+	over_units(_once(SLAM, hit, 0.08))
+	## 挥锤弧: 从完整 C 形那一帧起播(砸地这一步锤已经挥下来了), 弧尾收在锤头落点
+	var sw := _once(SWING, at2d + Vector2(fwd * (HAMMER_HEAD_FWD - SWING_TAIL_BACK), 0.0), CHEST_H, face_right)
+	if sw != null:
+		over_units(sw)
+		battle._anim_fx[battle._anim_fx.size() - 1]["t0"] = battle._t - float(SWING_START_FRAME) / float(SWING[2])
+		sw.frame = SWING_START_FRAME
+	return hit
+
+
+## 刚由 `_grant_shield` 给这只龟建的通用护盾罩(同一步、同一单位、贴图是 BattleVfx.SHELL_TEX)排到立绘之前画。
+## 返回改了几个(门禁用)。罩的材质是 shield_shell 每次新建的, 改它的优先级不影响别的单位。
+func shell_behind(u: Dictionary) -> int:
+	var n := 0
+	for e in battle._follow_vfx:
+		if not is_same(e.get("unit", null), u) or absf(float(e.get("anim_t0", -1.0)) - float(battle._t)) > 1e-6:
+			continue
+		var s = e.get("spr", null)
+		if not is_instance_valid(s) or not (s is Sprite3D) or (s as Sprite3D).texture == null:
+			continue
+		if (s as Sprite3D).texture.resource_path != BattleVfx.SHELL_TEX:
+			continue
+		var m = (s as Sprite3D).material_override
+		if m is BaseMaterial3D:
+			(m as BaseMaterial3D).render_priority = SHELL_BEHIND_PRIO
+			n += 1
+	return n
 
 
 # ═══════════════════════════════════════════════════════════════════

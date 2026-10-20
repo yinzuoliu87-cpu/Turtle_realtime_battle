@@ -44,10 +44,19 @@ const _SLD_W := 406.0          # 音量槽宽 = 两段分段钮 + 中缝, 两种
 const _SLD_HIT_H := 48.0       # 滑条的透明触摸带高(26pt, 见 _slider 末尾那段)
 ## 右框的行距。★2026-10-07 去掉「画质」那一行后右框只剩 2~3 行, 原来 72 的行距会在框底空出半块 ⇒
 ##   行距放宽, 让内容铺开到与左框按钮区大致同高(桌面端最后一行底 ≈534, 左框按钮底 596)。
-const _ROW_PITCH := 104.0
-## 手机(没有「画面」组)时右框只剩「声音」一块 ⇒ 整块(小标题 + 两行)在框内竖向居中, 行距再放宽一点,
+## ★★2026-10-20 加「支持」组后桌面端三组(声音 2 行 / 画面 1 行 / 支持 1 行)要装进同一块框:
+##   末行中线 = 212 + 行距 + 2×(组间) + 216 ⇒ 末行按钮下沿 ≤ 596(与左框按钮下沿齐)
+##   ⇒ 行距 + 2×组间 ≤ 148 ⇒ 取 80 / 30(标题下到首行中线 48)。原来的 104 / 52 / 64 装不下。
+const _ROW_PITCH_TRI := 80.0
+const _HEAD_TO_ROW_TRI := 48.0
+const _GROUP_GAP_TRI := 30.0
+## 手机端(两组)沿用原来的间距: 标题分隔线下沿到首行中线 64 / 组间 52。
+const _HEAD_TO_ROW := 64.0
+const _GROUP_GAP := 52.0
+## 手机(没有「画面」组)时右框是「声音」「支持」两组(2026-10-20 前只有「声音」) ⇒ 整块在框内竖向居中, 行距再放宽一点,
 ##   免得上半块挤着、下半块空着(2026-10-07 主会话看 2532×1061 实拍后定)。
-const _ROW_PITCH_SOLO := 136.0
+## ★2026-10-20 加「支持」组后块里不再只有两行音量, 136 的行距让两条音量之间空出一大段 ⇒ 回到 104(原桌面行距)。
+const _ROW_PITCH_SOLO := 104.0
 const _STRIP_CY := 672.0       # 底部一条的中线
 const _STRIP_BTN := Vector2(200.0, 48.0)   # 底部小按钮(长边 200 过触摸线, 理由同 `_SEG_W`)
 
@@ -338,17 +347,23 @@ func _settings_panel(x: float, w: float) -> void:
 	## 「画面」组建不建(只桌面端有「显示」一行)决定「声音」块怎么放: 有 ⇒ 顶对齐(与左框「账号」同高);
 	##   没有 ⇒ 整块竖向居中。块高 = 小标题+分隔线 34 + 到第一行中线 64 + 行距 + 末行触摸带下半。
 	var solo := not _display_row_on()
-	var pitch := _ROW_PITCH_SOLO if solo else _ROW_PITCH
+	## ★2026-10-20 加了第三组「支持」(联系邮箱, App Store 审核指南 1.2)。桌面端三组装进同一块框,
+	##   原来的行距(标题下 64 / 行距 104 / 组间 52)量下来末行中线落到 670, 出框 ⇒ 桌面端整体收紧一档;
+	##   手机端只有「声音」「支持」两组, 照旧放宽并整块竖向居中。
+	var pitch := _ROW_PITCH_SOLO if solo else _ROW_PITCH_TRI
+	var g_row := _HEAD_TO_ROW if solo else _HEAD_TO_ROW_TRI
+	var g_grp := _GROUP_GAP if solo else _GROUP_GAP_TRI
 	var head_top := _TOP + _HEAD_DY
 	if solo:
-		var block_h := 34.0 + 64.0 + pitch + _SLD_HIT_H / 2.0
+		## 块高 = 声音(标题 34 + 到首行 + 行距) + 组间 + 支持(标题 34 + 到首行) + 末行按钮下半
+		var block_h := 34.0 + g_row + pitch + _SLD_HIT_H / 2.0 + g_grp + 34.0 + g_row + _ROW_H / 2.0
 		head_top = (_TOP + _BOT) / 2.0 - block_h / 2.0
 	var y := _heading(cx, head_top, cw, "声音")
 
 	## ★★2026-09-28 文案去"网页/开发者味": 原来是「🎵 BGM 音量」「🔊 音效音量」 ——
 	##   BGM 是开发者黑话, 玩家的词是「音乐」; 右边就写着 45%, 「音量」两个字多余。
 	# 音乐 — 拖动实时生效; 写盘只在松手时一次 (原来每帧 save() = 拖一下写几十次盘)
-	var cy := y + 64.0
+	var cy := y + g_row
 	_row_label(cx, cy, "音乐")
 	_slider(ctl_x, cy, _SLD_W, GameState.bgm_volume,
 		func(v): GameState.bgm_volume = v; Audio.bgm_volume = v; Audio.apply_bgm_volume(),   # ★补: 原来只设变量没调 apply → 拖动对正在播的BGM无效(用户2026-07-19"音量键根本没效果")
@@ -365,12 +380,56 @@ func _settings_panel(x: float, w: float) -> void:
 	## ★「画质 低/高」2026-10-07 整个删了(用户「我们为什么有画质这个东西，应该去掉吧」):
 	##   桌面 A/B 实测测不出差别, 移动端本来就自动关 MSAA(`battle._is_mobile()`), 这个开关没有可选的意义。
 	if not solo:
-		y = _heading(cx, cy + _SLD_HIT_H / 2.0 + 52.0, cw, "画面")
-		cy = y + 64.0
+		y = _heading(cx, cy + _SLD_HIT_H / 2.0 + g_grp, cw, "画面")
+		cy = y + g_row
 		_row_label(cx, cy, "显示")
 		_seg_display = _segmented(ctl_x, cy, SEG_DISPLAY,
 			[["Window", "窗口"], ["Full", "全屏"]], 1 if _is_full() else 0,
 			func(i: int): _set_fullscreen(i == 1))
+
+	## 「支持」组: 公开联系方式(App Store 审核指南 1.2 用户生成内容四样之一, 方案书
+	##   `docs/plans/20261020-AppStore上架.md` D8)。邮箱就写在按钮上, 点按复制到剪贴板,
+	##   右边值栏出「已复制」。不跳外链(不开邮件客户端), 玩家自己粘到任何邮箱里。
+	var half := _SLD_HIT_H / 2.0 if solo else _ROW_H / 2.0
+	y = _heading(cx, cy + half + g_grp, cw, "支持")
+	cy = y + g_row
+	_row_label(cx, cy, "联系我们")
+	var cb := _pix_button(Rect2(ctl_x, cy - _ROW_H / 2.0, _SLD_W, _ROW_H), CONTACT_EMAIL,
+		UISkin.PX_SLATE, _copy_contact)
+	cb.name = CONTACT_BTN
+	var done := _stroked_label("", 17, "#7fe0b0", "#0a0d16", 3)
+	done.name = CONTACT_DONE
+	done.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	done.position = Vector2(ctl_x + _SLD_W + 8.0, cy - 14.0)
+	done.size = Vector2(cx + cw - (ctl_x + _SLD_W + 8.0), 28.0)
+	add_child(done)
+	_contact_done = done
+
+
+# ─── 联系方式 (2026-10-20 · App Store 审核指南 1.2) ───────────────────
+## 公开联系邮箱。★与 `docs/隐私政策.md` 抬头那一行同一个地址; `verify_contact_email` 对账两处。
+const CONTACT_EMAIL := "turtlesupport32@gmail.com"
+const CONTACT_BTN := "ContactEmail"
+const CONTACT_DONE := "ContactCopied"
+const CONTACT_COPIED := "已复制"
+## 【门禁注入点】有效 ⇒ 复制时把文本交给它而不是系统剪贴板(无头 DisplayServer 没有剪贴板)。
+##   默认无效 = 玩家路径一字不动(与 `release_override` 同一个模式)。
+static var clipboard_sink: Callable = Callable()
+var _contact_done: Label = null
+
+
+## 点按邮箱: 复制到剪贴板 + 值栏出「已复制」。★剪贴板不可用时**不说已复制**(说了就是假话)。
+func _copy_contact() -> void:
+	var ok := false
+	if clipboard_sink.is_valid():
+		clipboard_sink.call(CONTACT_EMAIL)
+		ok = true
+	elif DisplayServer.has_feature(DisplayServer.FEATURE_CLIPBOARD):
+		## ★不回读校验: iOS 读剪贴板会弹系统的「已粘贴」横幅。
+		DisplayServer.clipboard_set(CONTACT_EMAIL)
+		ok = true
+	if _contact_done != null and is_instance_valid(_contact_done):
+		_contact_done.text = CONTACT_COPIED if ok else ""
 
 
 ## 底部一条。左: 版本 · 玩家 ID(小字, 报问题时对得上号 —— Angry Birds Journey 同位置);
@@ -542,7 +601,14 @@ func _segmented(x: float, cy: float, base: String, opts: Array, sel: int, cb: Ca
 
 ## 「显示」那一行该不该有: 手机(iOS/Android)上没有窗口模式。
 func _display_row_on() -> bool:
+	if display_row_override >= 0:
+		return display_row_override == 1
 	return not OS.has_feature("mobile")
+
+
+## 【门禁注入点】-1 = 真实(按平台) / 0 = 当作手机(没有「画面」组) / 1 = 当作桌面。
+##   无头门禁跑在桌面上 ⇒ 手机那套竖向排法(两组整块居中)不注入就一次都量不到。默认 -1 = 玩家路径不变。
+static var display_row_override: int = -1
 
 
 func _is_full() -> bool:

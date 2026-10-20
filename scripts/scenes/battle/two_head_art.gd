@@ -40,6 +40,13 @@ const CLIPS := {
 }
 ## 前摇期间播的动作(关键帧 = 前摇结束那一刻)
 const WINDUP_CLIPS := ["ranged_attack", "melee_attack", "to_melee_a", "to_ranged_a", "fusion_cast"]
+## ★落地后要停住的招式(2026-10-20 二轮): 锤击落地后近战普攻的前摇几乎紧跟着就开始(实测落地后 0.07 秒),
+##   旧写法前摇一开就换普攻动作 ⇒ 砸地那一下只露出第 6 帧一帧, 锤贴地的 7~11 帧一张都没播。
+##   现在: 普攻前摇开始时若还在这里登记的招式上、且没播到第 N 帧, 先把它播到第 N 帧(锤贴地)再接普攻;
+##   普攻关键帧之前的帧照旧均摊到剩下的前摇里 ⇒ 出手帧仍落在结算那一步(门禁焊着)。
+##   最多占用前摇的 HOLD_MAX_SHARE(其余留给普攻自己的举锤)。
+const HOLD := {"melee_strike": 9}
+const HOLD_MAX_SHARE := 0.5
 ## 死亡走 battle_vfx._play_action 的单位自带表 `_act_rows`(死亡后渲染步不再管这只龟)
 const DEATH_FPS := 22.0
 ## 锤击跳跃时长 —— 与 TwoHeadSystem 里锤击弧线的 tween 时长同一个常量
@@ -87,6 +94,8 @@ func tick(u: Dictionary) -> bool:
 	var clip := str(u.get("_tha_clip", ""))
 	if clip != "":
 		var f := _clip_frame(u, clip, t)
+		if u.has("_tha_cut") and t >= float(u["_tha_cut"]):
+			f = -1                                   # 停住的招式到点交给排队的普攻(见 HOLD)
 		if f >= 0:
 			_show(u, clip, f)
 			return true
@@ -120,7 +129,16 @@ func _observe(u: Dictionary, t: float, form: String) -> void:
 		if not was_wu:
 			var p := str(u.get("pending", ""))
 			if p == "B":
-				_play(u, form + "_attack", t, tk)
+				var ts := t
+				var cur := str(u.get("_tha_clip", ""))
+				if HOLD.has(cur) and t >= float(u.get("_tha_tk", t)):
+					var th: float = float(u["_tha_tk"]) + float(int(HOLD[cur]) - int(CLIPS[cur][0]) + 1) / float(CLIPS[cur][1])
+					ts = minf(th, t + (tk - t) * HOLD_MAX_SHARE)
+				if ts > t + 0.0005:
+					u["_tha_q"] = [[form + "_attack", ts, tk]]
+					u["_tha_cut"] = ts
+				else:
+					_play(u, form + "_attack", t, tk)
 			elif p.begins_with("K:"):
 				var st := p.substr(2)
 				u["_tha_pend"] = st
@@ -136,6 +154,18 @@ func _observe(u: Dictionary, t: float, form: String) -> void:
 			if tk > otk + 0.0005:
 				u["_tha_t0"] = float(u.get("_tha_t0", t)) + (tk - otk)
 			u["_tha_tk"] = tk
+		elif u.has("_tha_cut"):
+			## 还停在锤击上、普攻在排队时前摇被冻住(关键时刻往后挪)⇒ 不再停, 立刻交给普攻(由它按上面那条冻住规则停帧)
+			var q0: Array = u.get("_tha_q", [])
+			if not q0.is_empty() and tk > float(q0[0][2]) + 0.0005:
+				q0[0] = [q0[0][0], t, tk]
+				u["_tha_cut"] = t
+	elif u.has("_tha_cut"):
+		# 普攻还在排队时前摇就被打断 ⇒ 这一下没打出去: 撤掉排队, 锤击照常播完
+		var q1: Array = u.get("_tha_q", [])
+		if q1.is_empty() or t < float(q1[0][2]) - 0.05:
+			u["_tha_q"] = []
+			u.erase("_tha_cut")
 	elif str(u.get("_tha_clip", "")) in WINDUP_CLIPS:
 		# 前摇被打断(击飞等让状态离开 windup): 关键时刻还没到就离开了 ⇒ 这一下没打出去, 动作作废
 		if t < float(u.get("_tha_tk", 0.0)) - 0.05:
@@ -166,6 +196,7 @@ func _observe(u: Dictionary, t: float, form: String) -> void:
 
 
 func _play(u: Dictionary, key: String, ts: float, tk: float) -> void:
+	u.erase("_tha_cut")
 	u["_tha_clip"] = key
 	u["_tha_t0"] = ts
 	u["_tha_tk"] = maxf(ts, tk)

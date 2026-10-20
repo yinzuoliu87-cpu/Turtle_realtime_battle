@@ -87,6 +87,7 @@ func _two_head_apply_melee(u: Dictionary, on: bool) -> void:
 		u["base_def"] += u["_th_def"]; u["base_mr"] += u["_th_mr"]
 		u["base_atk"] = maxf(1.0, u["base_atk"] - u["_th_atk"])
 		battle._recalc_stats(u); battle._damage._grant_shield(u, a * MELEE_SHIELD_COEF)
+		vfx.shell_behind(u)                                    # 护盾罩退到立绘后面一层(正好落在变脸挡脸那一帧, 见 TwoHeadVfx.SHELL_BEHIND_PRIO)
 	elif not on and buffed:
 		u["two_melee_buffed"] = false
 		u["maxHp"] = maxf(1.0, u["maxHp"] - float(u.get("_th_hp", 0.0)))
@@ -163,7 +164,7 @@ func _two_head_hammer_land(u: Dictionary, tgt: Dictionary, at2d: Vector2, dmg: i
 	u["_slam_voff"] = Vector3.ZERO
 	u["_slam"] = false
 	u["pos"] = at2d
-	_two_head_slam_impact(at2d)                                # 高质量砸地冲击(AI星爆+三层环+尘+岩屑+顿帧+大震屏·用户2026-07-11)
+	_two_head_slam_impact(at2d, bool(u.get("face_right", true)))   # 砸地: 震屏+顿帧+锤头落点裂地+挥锤弧(画在目标上面)
 	if tgt.get("alive", false):
 		if dt != "":
 			## ★resolved=true: 伤害是【举锤那一刻】`_atk_dmg`(→`_resolve_dmg`)算好的,
@@ -172,14 +173,15 @@ func _two_head_hammer_land(u: Dictionary, tgt: Dictionary, at2d: Vector2, dmg: i
 			battle._damage.set_dtype(dt, tgt, null, true)
 		battle._damage._apply_damage_from(u, tgt, dmg, Color("#ffb05c"))
 		battle._damage._grant_shield(u, dmg * STRIKE_SHIELD_PCT, STRIKE_SHIELD_SEC)                        # 获造成伤害50%护盾(4秒)
+		vfx.shell_behind(u)                                    # 护盾罩退到立绘后面一层, 不盖砸地
 		battle._vfx._flash(tgt)
 
 
 # 锤击落地: 震屏 + 顿帧 + 符文裂地(2026-10-20 重做: 原来的三层冲击环像范围技, 而锤击是单体)
-func _two_head_slam_impact(at2d: Vector2) -> void:
+func _two_head_slam_impact(at2d: Vector2, face_right: bool = true) -> void:
 	battle._shake(battle.JUICE_SHAKE_BIG)
 	battle._hitstop = maxf(battle._hitstop, 0.06)
-	vfx.hammer_slam(at2d)      # 锤头砸地: 符文绿光沿地缝炸开 + 尘 + 碎石(单体技 ⇒ 不画范围环, 2026-10-20 重做)
+	vfx.hammer_slam(at2d, face_right)      # 锤头落点砸地: 符文绿光沿地缝炸开 + 尘 + 碎石 + 挥锤弧(单体技 ⇒ 不画范围环; 落点见 TwoHeadVfx.HAMMER_HEAD_FWD)
 
 # 砸地岩屑: 灰褐碎块一次性向上+四散迸溅+重力回落(0.75s后回收)
 func _sk_two_head_disrupt(u: Dictionary, tgt) -> void:           # 双头·技能二 form-variant(封板): 远程=精神干扰(2.0A真伤+治疗削减50%5s+破盾50%·用户2026-07-28加强) / 近战=吸收(0.6A+8%maxHp物理+回血40%A+18%已损)
@@ -347,6 +349,7 @@ func _two_head_enhanced_basic(u: Dictionary, tgt: Dictionary, form: String) -> v
 		if tgt.get("alive", false):
 			battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, ENH_MELEE_COEF, tgt, true), Color("#ffb05c"))   # 近战强化: +0.6A魔法伤害
 		battle._damage._grant_shield(u, u["atk"] * ENH_SHIELD_COEF, ENH_SEC)                                            # + 自己获 1.1×ATK 护盾(4s)
+		vfx.shell_behind(u)                                    # 护盾罩退到立绘后面一层, 不盖挥锤
 		battle._skill_ring(u["pos"], Color(0.72, 0.8, 1.0, 0.6), 62.0)
 	else:
 		if tgt.get("alive", false):

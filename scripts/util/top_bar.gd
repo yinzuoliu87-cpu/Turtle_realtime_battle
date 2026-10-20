@@ -306,13 +306,29 @@ static func apply_chip_skin(b: Button, pal: Dictionary, icon_only: bool = false)
 	b.add_theme_stylebox_override("disabled", sb)
 
 
+## 纯图标判定：≤2 个字符**且一个字(汉字/字母/数字)都没有**。
+## ★★2026-10-20 修: 原来只看「≤2 字符」⇒ 两个汉字的「商店」「站位」也被当成图标 ——
+##   走了图标皮(零底板 + 38 号字), 背包顶栏上「商店」比页名「背包」(26 号)还大、也没有薄片底,
+##   读起来像并排两个页名(App Store 截图上发现)。它是 9-28 把「🛒 商店」去掉 🛒 那一刻起就错的。
+static func is_icon_text(txt: String) -> bool:
+	if txt.length() == 0 or txt.length() > 2:
+		return false
+	for i in range(txt.length()):
+		var c := txt.unicode_at(i)
+		if (c >= 0x30 and c <= 0x39) or (c >= 0x41 and c <= 0x5A) or (c >= 0x61 and c <= 0x7A):
+			return false
+		if (c >= 0x2E80 and c <= 0x9FFF) or (c >= 0xAC00 and c <= 0xD7AF) or (c >= 0xF900 and c <= 0xFAFF):
+			return false
+	return true
+
+
 ## 一枚薄片。纯图标 → 正方(≥触控线)；带字 → 按字宽撑开。
 func _chip(txt: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = txt
 	b.focus_mode = Control.FOCUS_NONE
-	## 宽：纯图标(≤2 字符)取正方且不低于触控线；带字按内容算再夹一次下限。
-	var icon_only: bool = txt.length() <= 2
+	## 宽：纯图标(← ? ⌂ ✕ 这类符号)取正方且不低于触控线；带字按内容算再夹一次下限。
+	var icon_only: bool = is_icon_text(txt)
 	var w: float = CHIP_MIN_W
 	if not icon_only:
 		w = maxf(CHIP_MIN_W, float(txt.length()) * 17.0 + 44.0)

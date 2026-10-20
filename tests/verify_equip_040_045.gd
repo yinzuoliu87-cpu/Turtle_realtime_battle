@@ -312,7 +312,7 @@ func _ready() -> void:
 		c5["hp"] = float(c5["maxHp"]) * 0.1
 		c5["eq_hots"] = {}
 		_s._equip_sys._eq_check_hp_threshold(c5)
-		_ok("⑤ ★★★%s **每场战斗只触发一次**(再掉到 10%% 也不再起)" % item,
+		_ok("⑤ ★★★%s **每个战场只触发一次**(再掉到 10%% 也不再起)" % item,
 			_hot(c5, item, "rate") == 0.0,
 			"靠 hp50_fired 拦着")
 		if item == "p2eq_045":

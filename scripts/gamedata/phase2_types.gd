@@ -221,7 +221,7 @@ const TIER_DESCS := {
 		"每件遗物为携带者提供 +3% 生命偷取 · 【生死界】携带遗物的单位生命值高于 {C:RelicSynergySystem.HP_GATE%}% 时攻击力提高 {C:RelicSynergySystem.ATK_BONUS[0]%}%，低于 {C:RelicSynergySystem.HP_GATE%}% 时生命偷取翻倍",
 		"每件遗物为携带者提供 +5% 生命偷取 · 【生死界】攻击力提高至 {C:RelicSynergySystem.ATK_BONUS[1]%}% · 【远古之力】每 {C:RelicSynergySystem.PERIOD} 秒，全队永久 +{C:RelicSynergySystem.ANCIENT_PER_TICK[1]%}% 增伤，至多 {C:RelicSynergySystem.ANCIENT_CAP[1]%}%，持续到本局结束 · 【龟蛋加固】我方龟蛋 +{C:RelicSynergySystem.EGG_HP[1]} 最大生命值，并以 {C:RelicSynergySystem.EGG_ATK[1]} 攻击力还击射程 {C:RelicSynergySystem.EGG_RANGE} 内的敌人",
 		"每件遗物为携带者提供 +8% 生命偷取 · 【生死界】攻击力提高至 {C:RelicSynergySystem.ATK_BONUS[2]%}% · 【远古之力】每次 +{C:RelicSynergySystem.ANCIENT_PER_TICK[2]%}%，至多 {C:RelicSynergySystem.ANCIENT_CAP[2]%}% · 【龟蛋加固】+{C:RelicSynergySystem.EGG_HP[2]} 最大生命值，还击攻击力 {C:RelicSynergySystem.EGG_ATK[2]}",
-		"每件遗物为携带者提供 +10% 生命偷取 · 【生死界】攻击力提高至 {C:RelicSynergySystem.ATK_BONUS[3]%}% · 【远古之力】每次 +{C:RelicSynergySystem.ANCIENT_PER_TICK[3]%}%，至多 {C:RelicSynergySystem.ANCIENT_CAP[3]%}% · 【龟蛋加固】+{C:RelicSynergySystem.EGG_HP[3]} 最大生命值，还击攻击力 {C:RelicSynergySystem.EGG_ATK[3]} · 【觉醒】每路战场开始 {C:RelicSynergySystem.AWAKEN_SEC} 秒后，已累积的远古之力提高 {C:RelicSynergySystem.AWAKEN_BOOST%}%",
+		"每件遗物为携带者提供 +10% 生命偷取 · 【生死界】攻击力提高至 {C:RelicSynergySystem.ATK_BONUS[3]%}% · 【远古之力】每次 +{C:RelicSynergySystem.ANCIENT_PER_TICK[3]%}%，至多 {C:RelicSynergySystem.ANCIENT_CAP[3]%}% · 【龟蛋加固】+{C:RelicSynergySystem.EGG_HP[3]} 最大生命值，还击攻击力 {C:RelicSynergySystem.EGG_ATK[3]} · 【觉醒】每个战场开始 {C:RelicSynergySystem.AWAKEN_SEC} 秒后，已累积的远古之力提高 {C:RelicSynergySystem.AWAKEN_BOOST%}%",
 	],
 }
 

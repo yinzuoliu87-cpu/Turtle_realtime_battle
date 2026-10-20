@@ -9,6 +9,7 @@ extends RefCounted
 ##   referee_flags()                     开关 {finals_on, gauntlet_on}(只读); 20261019c 起多两个: stream_on / stream_version(逐帧直播 S5)
 ##   referee_gauntlet_start(...)         周六点开战: 交阵容 + 第几场 → 任务号 / 录像号 / 对手卡片(写; 对手与种子服务端定, 20261020c)
 ##   referee_job_status(p_job_id)        查自己那一场算完没有(只读; 20261020c 起多回 coins = 这一局的战斗内铸币)
+##   referee_finals_coins(...)           周日查我在这一场的战斗内铸币(只读; 20261020d, 翻面之前回 pending)
 ## 逐帧直播(20261020 迁移, 只写文件、未上生产; 没上 = 404 ⇒ 两条都当没有):
 ##   referee_live_gauntlet()             本周周六正在算的裁判局(赛况板「观赛」, 只读): match_id / 双方名字 / 开始时刻 / 种子 / 版本
 ##   referee_request_restream(p_match_id) 开流之前算的裁判局请求补流(排一份「重放录流」任务; 写)
@@ -34,6 +35,7 @@ static var submits := 0
 static var status_asks := 0
 static var live_asks := 0
 static var restream_asks := 0
+static var coins_asks := 0
 
 
 # ─────────────────────────────── 开关 ───────────────────────────────
@@ -305,4 +307,50 @@ static func request_restream_async(match_id: String, done: Callable) -> bool:
 	n._get_once("/rest/v1/rpc/referee_request_restream", "POST", JSON.stringify({"p_match_id": match_id}), done,
 		func(res: Dictionary) -> Dictionary:
 			return parse_restream(bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", ""))))
+	return true
+
+
+# ─────────────────────────────── 周日: 我在这一场的战斗内铸币 ───────────────────────────────
+## ★2026-10-20(服务端 `20261020d_finals_coins.sql`): 周日服务器算的局, 裁判结果单带两侧各自的铸币(coins / coins_b),
+##   服务端按 auth.uid() 认我是哪一侧、翻面之前不回数。客户端只报「哪一场」, 不报侧、不报数。
+
+## 纯函数: 请求体(键名 = 服务端形参)。
+static func finals_coins_body(week: int, bucket: int, r: int, m: int) -> Dictionary:
+	return {"p_week": week, "p_bucket": bucket, "p_round": r, "p_match": m}
+
+
+## 纯函数: `referee_finals_coins` 回包 → {"err": "", "status": pending / done, "coins"} 或 {"err": 原因码}。
+##   原因码: offline · server · unavailable(404: 服务端没上 20261020d)· 服务端 reason 原样(not_signed_in / no_bucket / not_in_match)。
+##   `coins` 缺 / 不是非负整数 ⇒ 0。
+static func parse_finals_coins(ok: bool, code: int, body: String) -> Dictionary:
+	if not ok:
+		return {"err": "offline"}
+	if code == 404:
+		return {"err": "unavailable"}
+	if code < 200 or code >= 300:
+		return {"err": "server", "code": code}
+	var j := JSON.new()
+	if j.parse(body) != OK or not (j.data is Dictionary):
+		return {"err": "server", "code": code}
+	var d: Dictionary = j.data
+	if not bool(d.get("ok", false)):
+		var why := str(d.get("reason", "server"))
+		return {"err": why if why != "" else "server"}
+	var st := str(d.get("status", ""))
+	if st != "pending" and st != "done":
+		return {"err": "server", "code": code}
+	var c = d.get("coins", null)
+	return {"err": "", "status": st, "coins": maxi(0, int(c)) if (c is float or c is int) else 0}
+
+
+static func finals_coins_async(week: int, bucket: int, r: int, m: int, done: Callable) -> bool:
+	if not SB.enabled():
+		return false
+	var n = SB._spawn()
+	if n == null:
+		return false
+	coins_asks += 1
+	n._get_once("/rest/v1/rpc/referee_finals_coins", "POST", JSON.stringify(finals_coins_body(week, bucket, r, m)), done,
+		func(res: Dictionary) -> Dictionary:
+			return parse_finals_coins(bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", ""))))
 	return true

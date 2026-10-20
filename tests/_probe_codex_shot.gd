@@ -22,6 +22,7 @@ func _ready() -> void:
 				await get_tree().process_frame
 			var iid := str((its[i] as Dictionary).get("id", str(i)))
 			get_viewport().get_texture().get_image().save_png("%s/%s.png" % [all_dir, iid])
+			print("[CODEX] %s hints=%d" % [iid, _count_hints(cs)])   # “查看全部” = 被截断的条数
 			var sc: ScrollContainer = cs.get("_detail_scroll")
 			if sc != null and sc.get_v_scroll_bar().max_value > sc.size.y + 2.0:
 				sc.scroll_vertical = int(sc.get_v_scroll_bar().max_value)
@@ -93,3 +94,12 @@ func _find_pet(pid: String) -> Dictionary:
 		if str((p as Dictionary).get("id", "")) == pid:
 			return p
 	return {}
+
+
+func _count_hints(n: Node) -> int:
+	var k := 0
+	if n is Label and (n as Label).text == "查看全部" and (n as Label).is_visible_in_tree():
+		k += 1
+	for c in n.get_children():
+		k += _count_hints(c)
+	return k

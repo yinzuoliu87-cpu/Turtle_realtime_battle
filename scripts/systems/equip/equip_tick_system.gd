@@ -407,26 +407,30 @@ func _tick_thunder(u: Dictionary, delta: float) -> void:
 ##   借它 = ① 凭空给齿轮加一条上限 ② 齿轮的币**吃掉奇械羁绊自己的额度**
 ##   —— 两条都是数值改动, 这一轮不许改数值。所以另记一份计数, 在结算处与它
 ##   **汇进同一个 `_last_reward`** —— 记账路同一条, 数值一个不动。
-var _gear_coins: int = 0
+## ★★2026-10-20 各方各记一份(与 `GadgetSynergySystem._coins` 同形): 周日决赛两边都是真人,
+##   服务器裁判要把右方(B)那一侧的铸币也写进结果单(`coins_b`)。右方只记数, 不出飘字 / 头顶金币 / 徽章
+##   (平时右方是对手快照, 画面与原来逐帧相同); 不进 sim 状态(指纹只看血量 / 位置 / 盾 / 龟能)。
+var _gear_coins := {"left": 0, "right": 0}
 
 
 ## 本场(上路+下路+决胜)齿轮铸出来的深海币。结算时由 `RealtimeBattle3DScene._settle_season`
-## 加进 `_last_reward` —— 与 `GadgetSynergySystem.minted()` 同一个位置、同一行。
-func gear_minted() -> int:
-	return _gear_coins
+## 加进 `_last_reward` —— 与 `GadgetSynergySystem.minted()` 同一个位置、同一行。`side` 缺省 = 左方(玩家)。
+func gear_minted(side: String = "left") -> int:
+	return int(_gear_coins.get(side, 0))
 
 
-## ★本场战斗内铸币的**唯一出口**(左方 = 玩家; 奇械羁绊 + 035 齿轮)。两个读者, 读同一个函数:
-##   ① 本机打完 `_settle_season` 把它加进 `_last_reward`;
-##   ② 服务器裁判 `RefereeRunner` 把它写进结果单 `coins`(周六服务器局按它发币, 2026-10-20)。
+## ★本场战斗内铸币的**唯一出口**(奇械羁绊 + 035 齿轮)。两个读者, 读同一个函数:
+##   ① 本机打完 `_settle_season` 把左方(玩家)的加进 `_last_reward`;
+##   ② 服务器裁判 `RefereeRunner` 把左方写进结果单 `coins`、右方写进 `coins_b`
+##      (周六服务器局按 coins 发币; 周日决赛 A / B 两个真人各按自己那一侧, 2026-10-20)。
 ##   ⇒ 下一件会产币的装备接到这里, 两条路同时生效; 别在任何一处就地再写一份加法。
-static func match_minted(battle) -> int:
-	return int(battle._gadget_syn.minted("left")) + int(battle._equip_tick_sys.gear_minted())
+static func match_minted(battle, side: String = "left") -> int:
+	return int(battle._gadget_syn.minted(side)) + int(battle._equip_tick_sys.gear_minted(side))
 
 
 ## 整场结束(**不是**换路): 归零。与 `_gadget_syn.reset_match()` 同一时机、同一理由。
 func reset_match() -> void:
-	_gear_coins = 0
+	_gear_coins = {"left": 0, "right": 0}
 	_gear_made.clear()
 
 
@@ -438,7 +442,8 @@ var _gear_made := {}
 func _tick_gear(u: Dictionary, delta: float) -> void:   # 黄铜齿轮035(用户2026-07-18改: 随时间铸币·每6秒左队携带者直接+1/2/3深海币+飘字·跟死亡无关·原"攒齿轮层战斗结束折币"改掉)
 	battle._equip_sys.tally.use(null)   # ④ 装备统计: 进每个装备 tick 先清归因上下文(上一个 tick 的不许串过来; 主场景 tick 块末尾还原)
 	if u.get("equips", []).is_empty(): return
-	if str(u.get("side", "")) != "left": return   # 深海币=玩家侧meta货币, 只玩家(左队)携带者产币
+	var side := str(u.get("side", ""))
+	if side != "left" and side != "right": return   # 召唤物等没有阵营的不产币
 	for e in u["equips"]:
 		if str(e["id"]) != "p2eq_035": continue
 		battle._equip_sys.tally.push(u, "p2eq_035")   # ④ 这一段是这件装备的效果
@@ -454,10 +459,11 @@ func _tick_gear(u: Dictionary, delta: float) -> void:   # 黄铜齿轮035(用户
 			stt["gear_t"] = float(stt["gear_t"]) - iv   # ★读常量不写死
 			var coins: int = 1
 			_gear_made[gkey] = int(_gear_made.get(gkey, 0)) + coins
-			_gear_coins += coins   # ★进【本场账本】, 不直接写 meta —— 见 _gear_coins 上方长注释
-			battle._vfx._float_text(u["pos"], "+%d💠" % coins, Color("#5fd0e0"))   # 可见反馈(用户: 之前无反馈以为没生效)
-			battle._vfx.coin_pop(u, coins)   # 头顶旋转金币(用户2026-09-13: 「做一个头顶获得金币旋转的特效」)
-			stt["coins_made"] = int(stt.get("coins_made", 0)) + coins   # 头像装备格徽章显示本局累计产币(用户2026-07-19)
+			_gear_coins[side] = int(_gear_coins.get(side, 0)) + coins   # ★进【本场账本】(各方一份), 不直接写 meta —— 见 _gear_coins 上方长注释
+			if side == "left":   # 深海币=玩家侧meta货币: 画面反馈只给左方(右方只记数, 供周日裁判结果单 coins_b)
+				battle._vfx._float_text(u["pos"], "+%d💠" % coins, Color("#5fd0e0"))   # 可见反馈(用户: 之前无反馈以为没生效)
+				battle._vfx.coin_pop(u, coins)   # 头顶旋转金币(用户2026-09-13: 「做一个头顶获得金币旋转的特效」)
+				stt["coins_made"] = int(stt.get("coins_made", 0)) + coins   # 头像装备格徽章显示本局累计产币(用户2026-07-19)
 		u["eq_state"]["p2eq_035"] = stt
 
 func _tick_shell(u: Dictionary, delta: float) -> void:   # 守护贝壳p2eq_018: 每8秒自回(30/45/60+5/9/15%maxHP)生命(受治疗增幅); 每件独立(用户2026-07-02, 原2.5s)

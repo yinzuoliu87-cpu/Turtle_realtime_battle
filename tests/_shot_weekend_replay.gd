@@ -34,6 +34,7 @@ func _ready() -> void:
 	gs.gauntlet_wins = 2
 	gs.gauntlet_losses = 1
 	gs.week_phase = "gauntlet"
+	gs.nickname = "芝士奶盖"   # App Store 截图: 与 _setup_appstore 同一个人(不种就是兜底默认名)
 	var mon: int = P2C.week_anchor_utc(int(Time.get_unix_time_from_system()))
 	var sat: int = mon + 5 * 86400 + 15 * 3600
 
@@ -50,7 +51,7 @@ func _ready() -> void:
 	var bs = (load("res://scenes/GauntletBoard.tscn") as PackedScene).instantiate()
 	add_child(bs)
 	await get_tree().process_frame
-	bs.set_rows(_rows(sat))
+	bs.set_rows(_rows(int(Time.get_unix_time_from_system()) + 6 * 3600 - 14 * 1500 - 600))   # 末场约 10 分钟前(「刚刚」×14 不像真的)
 	await _shot("board_all")
 	var focus := ""
 	for p in bs.data.get("players", []):
@@ -92,15 +93,21 @@ func _iso(t: int) -> String:
 func _rows(sat: int) -> Array:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 42
-	var me := {"name": Backend.player_display_name(), "tag": Backend.my_tag(), "avatar": "basic", "id": "g_me"}
-	var a := _prof("石头统领", "a", "stone")
-	var b := _prof("海风小将", "b", "bamboo")
-	var c := _prof("竹林隐士", "c", "angel")
-	var d := _prof("老船长", "d", "basic")
+	var me := {"name": Backend.player_display_name(), "tag": Backend.my_tag(), "avatar": "two_head", "id": "g_me"}
+	var a := _prof("不吃香菜", "a", "stone")
+	var b := _prof("Leo_0712", "b", "bamboo")
+	var c := _prof("摸鱼达人", "c", "angel")
+	var d := _prof("夜猫子阿杰", "d", "basic")
 	var bots: Array = []
+	## ★对局卡阵容格读行里的 `la` / `ra`(真回包 = left/right_snapshot->leaders, 见 supabase.gd gauntlet_board_query)。
+	##   2026-10-20 之前这份假数据只喂了 lp/rp ⇒ 卡上六个空格(App Store 截图草稿瑕疵 ②, 是环境不是产品)。
+	var lu := {str(me["tag"]): ["two_head", "phoenix", "lightning"], str(a["tag"]): ["stone", "diamond", "shell"],
+		str(b["tag"]): ["bamboo", "pirate", "bubble"], str(c["tag"]): ["angel", "ice", "rainbow"],
+		str(d["tag"]): ["basic", "gambler", "lava"]}
 	for i in range(3):
 		var bt: Dictionary = Backend.make_bot(8, rng, i, 1)
 		bots.append(bt["profile"])
+		lu[str((bt["profile"] as Dictionary).get("tag", ""))] = (bt["leaders"] as Array).duplicate()
 	var rows: Array = []
 	var t := sat - 6 * 3600
 	var seq := [
@@ -115,5 +122,6 @@ func _rows(sat: int) -> Array:
 		k += 1
 		var res := {"won": bool(s[2]), "steps": 3000, "surrendered": false, "gw": int(s[3]), "gl": int(s[4])}
 		rows.append({"match_id": "%08x-0000-4000-8000-%012x" % [k, k], "created_at": _iso(t + k * 1500),
-			"result": res, "lp": s[0], "rp": s[1], "rw": s[5], "rl": s[6]})
+			"result": res, "lp": s[0], "rp": s[1], "rw": s[5], "rl": s[6],
+			"la": lu.get(str(s[0]["tag"]), []), "ra": lu.get(str(s[1]["tag"]), [])})
 	return rows

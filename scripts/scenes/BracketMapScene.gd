@@ -360,6 +360,13 @@ func _record_progress() -> void:
 		return
 	record_progress_from(_bucket)
 	record_cup_from(_finals)
+	## 周日服务器局的战斗内铸币(2026-10-20): 待取单翻面了就按服务器的数发(判据全在 referee_watch.gd; 没单子不发请求)。
+	_RW.claim_finals_coins(_on_finals_coins)
+
+
+func _on_finals_coins(n: int) -> void:
+	if is_inside_tree():
+		_show_replay_msg(_RW.TXT_FINALS_COINS % n, ACCENT)
 
 
 ## 这一刻默认该看哪一张。★20:00 UTC 之后看冠军杯赛(`default_view`); 但冠军杯赛还没成表就退回小组赛 ——
@@ -2172,7 +2179,7 @@ func start_referee_watch(r: int, m: int) -> void:
 	if _P2C.finals_shop_open(int(lv.get("round_at", 0)), srv_now()):
 		_show_replay_msg(_RW.TXT_SHOP, ACCENT)
 		return
-	_RW.finals_seal(GameState, int(lv.get("bucket", -1)), r, m)
+	_RW.finals_seal(GameState, int(lv.get("bucket", -1)), r, m, feed_week())
 	await_watch = Vector2i(r, m)
 	_await_watch_view = _view
 	_show_replay_msg(_RW.TXT_SETTLING, ACCENT)

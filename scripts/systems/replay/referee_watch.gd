@@ -23,6 +23,7 @@ extends RefCounted
 ##
 ## ══════════════════════════════════════════════════════════════════════
 ##  周日决赛(开关 `finals_on`): 判据与界面在 BracketMapScene(点开自己那一场 = 看), 这里只放它要的记账 `finals_seal`
+##  与战斗内铸币的待取单(`claim_finals_coins`: 翻面后按服务器给的数发, 2026-10-20)
 ## ══════════════════════════════════════════════════════════════════════
 
 const RN := preload("res://scripts/net/referee_net.gd")
@@ -49,6 +50,7 @@ const TXT_NO_MATCH := "匹配失败，请稍后重试"
 const TXT_SHOP := "备战阶段 · 结束后开赛"
 const TXT_RESUMED_WIN := "上一场闯关：胜利"
 const TXT_RESUMED_LOSE := "上一场闯关：失败"
+const TXT_FINALS_COINS := "战斗内铸币 +%d"
 const MAIN_MENU := "res://scenes/MainMenu.tscn"
 
 ## 查任务的间隔(秒)与上限(次): 一局 ≤ 15 秒 + 排队; 3 分钟还没算完 ⇒ 不再干等, 待记账单留着下次补。
@@ -271,7 +273,8 @@ static func note_unplayable(scr: Node) -> void:
 ## 周日点开自己那一场(购物窗已关、交给服务器算): 与胜负无关的那部分(场次 / 经验 / 轮次币)此刻就给,
 ##   吃胜负的等对阵图揭晓(`finals_pending_reveal` → `BracketMapScene._reveal_sealed_from`, 老路同一条)。
 ##   ★同一场只给一次(待揭晓单就是凭据)。返回 true = 这一次真给了。
-static func finals_seal(gs, bucket: int, r: int, m: int) -> bool:
+## `week` = 对阵图那一周(`BracketMapScene.feed_week`); > 0 ⇒ 同时记一张战斗内铸币的待取单(翻面后 `claim_finals_coins` 取)。
+static func finals_seal(gs, bucket: int, r: int, m: int, week: int = -1) -> bool:
 	if gs == null or bucket < 0 or r < 1 or m < 0:
 		return false
 	var p = gs.get("finals_pending_reveal")
@@ -284,5 +287,108 @@ static func finals_seal(gs, bucket: int, r: int, m: int) -> bool:
 		reward = 0
 	gs.meta_deepsea_coins += reward
 	gs.battles_total += 1
+	if week > 0:
+		_add_coins_ticket(gs, {"week": week, "bucket": bucket, "round": r, "match": m})
 	gs.save()
 	return true
+
+
+# ─────────────────────────────── 周日: 战斗内铸币 ───────────────────────────────
+## ★2026-10-20(方案书 docs/plans/20261019-服务器裁判.md R8): 老路本机打完 `_settle_season` 把奇械羁绊 / 035 齿轮的铸币加进奖励;
+##   服务器算的周日局原来一枚都没发。现在: 裁判结果单带两侧各自的铸币(`coins` = A 上侧 / `coins_b` = B 下侧, 同一个出口
+##   `EquipTickSystem.match_minted`), 服务端记账本; 点开自己那一场时记一张待取单, 翻面后问 `referee_finals_coins`
+##   (服务端按账号认侧、翻面之前回 pending), 按回包发、发完把单子标成已发(同一场只发一次; 单子随周清)。
+##   ★客户端不报数、不报侧, 也不拿本机任何计数补(老服务端 / 没有裁判局 ⇒ 0)。出局那一局不发(与 `_settle_season` 同一条)。
+
+## 一次只问一张; 有一张发完就接着问下一张。
+static var _coins_busy := false
+
+
+## 待取单的四个坐标(全是合法的非负整数 ⇒ 键; 否则 "")。
+static func _coins_ticket_key(t) -> String:
+	if not (t is Dictionary):
+		return ""
+	var d: Dictionary = t
+	for k in ["week", "bucket", "round", "match"]:
+		var v = d.get(k, null)
+		if not (v is int or v is float):
+			return ""
+	if int(d["week"]) <= 0 or int(d["bucket"]) < 0 or int(d["round"]) < 1 or int(d["match"]) < 0:
+		return ""
+	return "%d:%d:%d:%d" % [int(d["week"]), int(d["bucket"]), int(d["round"]), int(d["match"])]
+
+
+static func _add_coins_ticket(gs, t: Dictionary) -> void:
+	var k := _coins_ticket_key(t)
+	var l = gs.get("finals_coins_pending")
+	if k == "" or not (l is Array):
+		return
+	for x in (l as Array):
+		if _coins_ticket_key(x) == k:
+			return                            # 同一场已有单子(发没发过都算): 不重记
+	var nt := t.duplicate()
+	nt["paid"] = false
+	(l as Array).append(nt)
+
+
+## 按服务器的数发一张单子的币。返回发了几枚; -1 = 没有这张单子 / 已经发过(不重复发)。
+static func finals_coins_settle(gs, t: Dictionary, coins: int) -> int:
+	if gs == null:
+		return -1
+	var k := _coins_ticket_key(t)
+	var l = gs.get("finals_coins_pending")
+	if k == "" or not (l is Array):
+		return -1
+	for x in (l as Array):
+		if _coins_ticket_key(x) == k and not bool((x as Dictionary).get("paid", false)):
+			var n := maxi(0, coins)
+			if gs.is_eliminated():
+				n = 0                         # 与 `_settle_season` 同一条: 出局那一局不发币
+			(x as Dictionary)["paid"] = true
+			(x as Dictionary)["coins"] = n
+			gs.meta_deepsea_coins += n
+			gs.save()
+			return n
+	return -1
+
+
+## 有没发的待取单 ⇒ 问服务端(一次一张)。`done.call(n)` 每发出一张非 0 的调一次。
+##   返回 false = 没发请求(没有单子 / 正在问 / 没配后端)。
+static func claim_finals_coins(done: Callable = Callable()) -> bool:
+	if GameState == null or _coins_busy:
+		return false
+	var l = GameState.get("finals_coins_pending")
+	if not (l is Array):
+		return false
+	var t: Dictionary = {}
+	for x in (l as Array):
+		if _coins_ticket_key(x) != "" and not bool((x as Dictionary).get("paid", false)):
+			t = (x as Dictionary).duplicate()
+			break
+	if t.is_empty():
+		return false
+	_coins_busy = true
+	var sent: bool = RN.finals_coins_async(int(t["week"]), int(t["bucket"]), int(t["round"]), int(t["match"]),
+		func(res: Dictionary) -> void:
+			_coins_busy = false
+			on_finals_coins(t, res, done))
+	if not sent:
+		_coins_busy = false
+	return sent
+
+
+## 回包 → 发 / 销 / 留(门禁直接喂它)。返回发了几枚; -1 = 留着下次(问不到 / 还没翻面 / 没有这张单子)。
+static func on_finals_coins(t: Dictionary, res: Dictionary, done: Callable = Callable()) -> int:
+	var err := str(res.get("err", ""))
+	var n := -1
+	if err == "no_bucket" or err == "not_in_match":
+		n = finals_coins_settle(GameState, t, 0)   # 服务端说这一场与我无关: 销单(一枚不发)
+	elif err == "" and str(res.get("status", "")) == "done":
+		n = finals_coins_settle(GameState, t, int(res.get("coins", 0)))
+	else:
+		return -1                             # 问不到 / 还没翻面: 留着下次
+	if n > 0 and done.is_valid():
+		done.call(n)
+	if n >= 0:
+		claim_finals_coins(done)              # 接着问下一张
+	return n

@@ -322,6 +322,8 @@ frames_for () {
     verify_gauntlet_via_referee) echo 60000 ;;
     # 周六服务器局铸币(2026-10-20): 裁判真算两局(100ms/帧) + 同一局本机复算到结算(40ms/帧); 本地实测 208 帧 / 19 秒
     verify_referee_coins) echo 8000 ;;
+    # 周日决赛服务器局铸币(2026-10-20): 裁判真算两局 + 同一局本机复算到结算(逐帧读两侧出口)
+    verify_finals_coins) echo 8000 ;;
     # 断网不出本地成绩: 匹配屏真计时器 4.8 秒 × 3 次 + 超时看门狗 1.5 秒 + 每段多等 90 帧; 本地实测 2197 帧 / 21 秒
     verify_offline_no_local_result) echo 20000 ;;
     # UI 双端适配: 10 屏 × 4 比例 = 40 次场景实例化, 每次等 150 帧让入场 tween 落定 → ≥6000 帧。

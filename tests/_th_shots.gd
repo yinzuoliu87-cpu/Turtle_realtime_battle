@@ -44,9 +44,6 @@ func _ready() -> void:
 	var logf := FileAccess.open(out.path_join("log.txt"), FileAccess.WRITE)
 	for n in range(steps):
 		await get_tree().process_frame
-		## ★det 模式(每帧恰 1 步)从不调 _snapshot_render_prev, 而渲染插值 alpha=0 取的是【prev】⇒
-		##   被 tween 搬动的单位(锤击跳跃 / 切远程滑退)画面上一动不动。这里每帧 sim 之前补存一次(画面滞后 1 步)。
-		_s._snapshot_render_prev()
 		if _s._ui_layer != null:
 			_s._ui_layer.visible = false
 		var th = null

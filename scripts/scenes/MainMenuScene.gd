@@ -225,6 +225,8 @@ func _ready() -> void:
 	##   周六交给服务器、还没记账的那一场(杀进程 / 断网)在这里查任务状态补记。判据全在 referee_watch.gd。
 	load("res://scripts/net/referee_net.gd").refresh_flags_async()
 	load("res://scripts/systems/replay/referee_watch.gd").resume_if_any(_on_referee_resumed)
+	## 周日服务器局的战斗内铸币: 待取单(杀进程 / 断网时没取到的)在这里补取。判据全在 referee_watch.gd; 没单子不发请求。
+	load("res://scripts/systems/replay/referee_watch.gd").claim_finals_coins()
 	load("res://scripts/net/ghost_uploader.gd").retry()   # E7: 没回读确认的对手快照补传(判据全在 ghost_uploader 里)
 	## 昵称被管理员重置过(举报处理, 2026-10-20) ⇒ 换回默认昵称并提示一句。判据全在 report_net 里; 没起过名不发请求。
 	load("res://scripts/net/report_net.gd").check_nickname_reset(_on_nickname_reset)

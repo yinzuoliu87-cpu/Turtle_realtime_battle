@@ -226,6 +226,21 @@ func _ready() -> void:
 				var m: String = FV.marked_name(str((sk as Dictionary).get("detail", "")), f)
 				_ok("T 拆名对得上详述标记 %s 形态%d: %s == %s" % [str(sk["name"]), f, a, m], a == m and a != "")
 	_ok("T 分母: 认到 2 条随形态变招的技能", n_var == 2, "实 %d" % n_var)
+	## ★2026-10-20: 拆出来的每一行正文开头不许剩「：」(简述写成「远程形态：…」时, 只去形态词会留下冒号)。
+	_ok("T 纯函数: 「远程形态：X」拆成「X」", FV.form_text("远程形态：甲\n近战形态：乙", 0) == "甲" and FV.form_text("远程形态：甲\n近战形态：乙", 1) == "乙",
+		FV.form_text("远程形态：甲\n近战形态：乙", 0))
+	var colon_lead: PackedStringArray = []
+	var n_lines := 0
+	for sk2 in th.get("skillPool", []):
+		if not FV.is_variant(sk2):
+			continue
+		for f2 in [0, 1]:
+			for ln2 in FV.form_text(str((sk2 as Dictionary).get("brief", "")), f2).split("\n"):
+				n_lines += 1
+				var t2: String = ln2.strip_edges()
+				if t2.begins_with("：") or t2.begins_with(":"):
+					colon_lead.append(t2.substr(0, 12))
+	_ok("T 变招技能两形态简述没有以「：」开头的行", colon_lead.is_empty() and n_lines >= 4, "行数 %d · %s" % [n_lines, ", ".join(colon_lead)])
 	## 点开锤击 → 详情页只讲锤击
 	var pool_m: Array = FV.pool(th, 1)
 	var hammer: Dictionary = {}

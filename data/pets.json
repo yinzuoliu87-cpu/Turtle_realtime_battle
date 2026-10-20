@@ -364,8 +364,8 @@
         "pierce": 0,
         "cd": 0,
         "totalScale": 1.4,
-        "brief": "寒冰龟射出冰锥，交替造成 {P:IceSystem.CONE_ATK_COEF*ATK} 物理伤害或魔法伤害，每次攻击获得 1 层冰柱。\n每层冰柱提供 {C:IceSystem.ICICLE_DEFMR%}% 护甲和 {C:IceSystem.ICICLE_DEFMR%}% 魔抗，最多 {C:IceSystem.ICICLE_MAX} 层，每路战斗结束时重置。\n<span style=\"color:#8a93a0\">若选择【冰霜】，每层冰柱使其范围 +{C:IceSystem.ICICLE_FROST_RADIUS%}%、持续时间 +{C:IceSystem.ICICLE_FROST_SEC} 秒。</span>",
-        "detail": "寒冰龟射出冰锥，交替造成（{C:IceSystem.CONE_ATK_COEF%}%×攻击力({ATK}) = {P:IceSystem.CONE_ATK_COEF*ATK}）物理伤害或魔法伤害，每次攻击获得 1 层冰柱。\n每层冰柱提供 {C:IceSystem.ICICLE_DEFMR%}% 护甲和 {C:IceSystem.ICICLE_DEFMR%}% 魔抗，最多 {C:IceSystem.ICICLE_MAX} 层，每路战斗结束时重置。\n<span style=\"color:#8a93a0\">若选择【冰霜】，每层冰柱使其范围 +{C:IceSystem.ICICLE_FROST_RADIUS%}%、持续时间 +{C:IceSystem.ICICLE_FROST_SEC} 秒。</span>",
+        "brief": "寒冰龟射出冰锥，交替造成 {P:IceSystem.CONE_ATK_COEF*ATK} 物理伤害或魔法伤害，每次攻击获得 1 层冰柱。\n每层冰柱提供 {C:IceSystem.ICICLE_DEFMR%}% 护甲和 {C:IceSystem.ICICLE_DEFMR%}% 魔抗，最多 {C:IceSystem.ICICLE_MAX} 层，每个战场结束时重置。\n<span style=\"color:#8a93a0\">若选择【冰霜】，每层冰柱使其范围 +{C:IceSystem.ICICLE_FROST_RADIUS%}%、持续时间 +{C:IceSystem.ICICLE_FROST_SEC} 秒。</span>",
+        "detail": "寒冰龟射出冰锥，交替造成（{C:IceSystem.CONE_ATK_COEF%}%×攻击力({ATK}) = {P:IceSystem.CONE_ATK_COEF*ATK}）物理伤害或魔法伤害，每次攻击获得 1 层冰柱。\n每层冰柱提供 {C:IceSystem.ICICLE_DEFMR%}% 护甲和 {C:IceSystem.ICICLE_DEFMR%}% 魔抗，最多 {C:IceSystem.ICICLE_MAX} 层，每个战场结束时重置。\n<span style=\"color:#8a93a0\">若选择【冰霜】，每层冰柱使其范围 +{C:IceSystem.ICICLE_FROST_RADIUS%}%、持续时间 +{C:IceSystem.ICICLE_FROST_SEC} 秒。</span>",
         "energyCost": 0
       },
       {
@@ -790,8 +790,8 @@
     "passive": {
       "type": "fortuneGold",
       "name": "聚宝盆",
-      "brief": "财神龟每 {C:FortuneSystem.COIN_IV} 秒获得 {C:FortuneSystem.COIN_MIN}~{C:FortuneSystem.COIN_MAX} 枚金币，场上任意单位阵亡时额外获得 {C:FortuneSystem.COIN_ON_DEATH} 枚。金币越多，财神龟的攻击伤害越高。\n财神龟首次生命值降至 {C:FortuneSystem.LOWHP_PCT%}% 以下时，立即获得 {C:FortuneSystem.LOWHP_ENERGY} 点龟能。\n<span style=\"color:#8a93a0\">金币只在本场战斗内有效。</span>",
-      "desc": "财神龟每 {C:FortuneSystem.COIN_IV} 秒获得 {C:FortuneSystem.COIN_MIN}~{C:FortuneSystem.COIN_MAX} 枚金币，场上任意单位阵亡时额外获得 {C:FortuneSystem.COIN_ON_DEATH} 枚。金币越多，财神龟的攻击伤害越高。\n财神龟首次生命值降至 {C:FortuneSystem.LOWHP_PCT%}% 以下时，立即获得 {C:FortuneSystem.LOWHP_ENERGY} 点龟能。\n<span style=\"color:#8a93a0\">金币只在本场战斗内有效。</span>"
+      "brief": "财神龟每 {C:FortuneSystem.COIN_IV} 秒获得 {C:FortuneSystem.COIN_MIN}~{C:FortuneSystem.COIN_MAX} 枚金币，场上任意单位阵亡时额外获得 {C:FortuneSystem.COIN_ON_DEATH} 枚。金币越多，财神龟的攻击伤害越高。\n财神龟首次生命值降至 {C:FortuneSystem.LOWHP_PCT%}% 以下时，立即获得 {C:FortuneSystem.LOWHP_ENERGY} 点龟能。\n<span style=\"color:#8a93a0\">金币只在本战场内有效。</span>",
+      "desc": "财神龟每 {C:FortuneSystem.COIN_IV} 秒获得 {C:FortuneSystem.COIN_MIN}~{C:FortuneSystem.COIN_MAX} 枚金币，场上任意单位阵亡时额外获得 {C:FortuneSystem.COIN_ON_DEATH} 枚。金币越多，财神龟的攻击伤害越高。\n财神龟首次生命值降至 {C:FortuneSystem.LOWHP_PCT%}% 以下时，立即获得 {C:FortuneSystem.LOWHP_ENERGY} 点龟能。\n<span style=\"color:#8a93a0\">金币只在本战场内有效。</span>"
     },
     "skillPool": [
       {
@@ -823,8 +823,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 999,
-        "brief": "财神龟蓄力后逐枚投出全部金币，每枚造成 {N:ATK*FortuneSystem.ALLIN_COIN_COEF} 物理伤害和 {T:ATK*FortuneSystem.ALLIN_COIN_COEF} 真实伤害。目标阵亡时改投最近的敌人，投币期间免疫控制。\n首次释放时获得等于金币数的护盾，持续 {C:FortuneSystem.ALLIN_SHIELD_SEC} 秒。\n<span style=\"color:#8a93a0\">每场战斗只能投一次。此后本技能变为：消耗 {C:FortuneSystem.GOLD_SHIELD_COST} 龟能，获得金币数 ×{C:FortuneSystem.GOLD_SHIELD_MULT} 的护盾，持续 {C:FortuneSystem.GOLD_SHIELD_SEC} 秒，不消耗金币，没有金币时不释放。持有该护盾期间龟能停止充能。</span>",
-        "detail": "财神龟蓄力后逐枚投出全部金币，每枚造成（{C:FortuneSystem.ALLIN_COIN_COEF%}%×攻击力({ATK}) = {N:ATK*FortuneSystem.ALLIN_COIN_COEF}）物理伤害和（{C:FortuneSystem.ALLIN_COIN_COEF%}%×攻击力({ATK}) = {T:ATK*FortuneSystem.ALLIN_COIN_COEF}）真实伤害。目标阵亡时改投最近的敌人，投币期间免疫控制。\n首次释放时获得等于金币数的护盾，持续 {C:FortuneSystem.ALLIN_SHIELD_SEC} 秒。\n<span style=\"color:#8a93a0\">每场战斗只能投一次。此后本技能变为：消耗 {C:FortuneSystem.GOLD_SHIELD_COST} 龟能，获得金币数 ×{C:FortuneSystem.GOLD_SHIELD_MULT} 的护盾，持续 {C:FortuneSystem.GOLD_SHIELD_SEC} 秒，不消耗金币，没有金币时不释放。持有该护盾期间龟能停止充能。</span>"
+        "brief": "财神龟蓄力后逐枚投出全部金币，每枚造成 {N:ATK*FortuneSystem.ALLIN_COIN_COEF} 物理伤害和 {T:ATK*FortuneSystem.ALLIN_COIN_COEF} 真实伤害。目标阵亡时改投最近的敌人，投币期间免疫控制。\n首次释放时获得等于金币数的护盾，持续 {C:FortuneSystem.ALLIN_SHIELD_SEC} 秒。\n<span style=\"color:#8a93a0\">每个战场只能投一次。此后本技能变为：消耗 {C:FortuneSystem.GOLD_SHIELD_COST} 龟能，获得金币数 ×{C:FortuneSystem.GOLD_SHIELD_MULT} 的护盾，持续 {C:FortuneSystem.GOLD_SHIELD_SEC} 秒，不消耗金币，没有金币时不释放。持有该护盾期间龟能停止充能。</span>",
+        "detail": "财神龟蓄力后逐枚投出全部金币，每枚造成（{C:FortuneSystem.ALLIN_COIN_COEF%}%×攻击力({ATK}) = {N:ATK*FortuneSystem.ALLIN_COIN_COEF}）物理伤害和（{C:FortuneSystem.ALLIN_COIN_COEF%}%×攻击力({ATK}) = {T:ATK*FortuneSystem.ALLIN_COIN_COEF}）真实伤害。目标阵亡时改投最近的敌人，投币期间免疫控制。\n首次释放时获得等于金币数的护盾，持续 {C:FortuneSystem.ALLIN_SHIELD_SEC} 秒。\n<span style=\"color:#8a93a0\">每个战场只能投一次。此后本技能变为：消耗 {C:FortuneSystem.GOLD_SHIELD_COST} 龟能，获得金币数 ×{C:FortuneSystem.GOLD_SHIELD_MULT} 的护盾，持续 {C:FortuneSystem.GOLD_SHIELD_SEC} 秒，不消耗金币，没有金币时不释放。持有该护盾期间龟能停止充能。</span>"
       },
       {
         "name": "招财进宝",
@@ -1890,7 +1890,7 @@
       "type": "chestTreasure",
       "name": "藏宝图",
       "brief": "宝箱龟根据造成的伤害积累财宝值，每达到一个阈值便从战利品池中随机获得一件装备，并回复生命值。\n<span style=\"color:#8a93a0\"><b>一大轮</b>内最多获得 {C:ChestSystem.CHEST_MAX_OPEN} 件装备，跨场累积，新的大轮开始时重置。\n</span>",
-      "desc": "宝箱龟造成的伤害转化为财宝值，并随一大轮持续累积。\n财宝值达到 {C:RealtimeBattle3DScene._CHEST_THRESH} 时开箱：\n第 1-2 箱开出基础池装备，第 3-4 箱开出进阶池装备，第 {C:ChestSystem.CHEST_MAX_OPEN} 箱开出传说池装备。战利品共 {C:ChestSystem.TREASURE_TOTAL} 件，均为专属且不会重复，开箱时额外回复自身最大生命值的 {C:ChestSystem.CHEST_HEAL_PCT%}%。\n开出的战利品为一大轮常驻装备，在本轮的每场战斗中自动生效，新的大轮开始时重置。"
+      "desc": "宝箱龟造成的伤害转化为财宝值，并随一大轮持续累积。\n财宝值达到 {C:RealtimeBattle3DScene._CHEST_THRESH} 时开箱：\n第 1-2 箱开出基础池装备，第 3-4 箱开出进阶池装备，第 {C:ChestSystem.CHEST_MAX_OPEN} 箱开出传说池装备。战利品共 {C:ChestSystem.TREASURE_TOTAL} 件，均为专属且不会重复，开箱时额外回复自身最大生命值的 {C:ChestSystem.CHEST_HEAL_PCT%}%。\n开出的战利品为一大轮常驻装备，在本轮的每局对局中自动生效，新的大轮开始时重置。"
     },
     "skillPool": [
       {
@@ -1986,8 +1986,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "星际龟蓄力 {C:StarSystem.WORM_WINDUP} 秒后朝目标发射一个缓慢移动的虫洞。虫洞沿直线飞向场地边缘，将沿途的敌人吸向虫洞，附近的敌人被捕获并随虫洞移动。\n虫洞抵达边缘时爆炸，对被捕获的敌人与附近的敌人造成 {M:StarSystem.WORM_BOOM_COEF*ATK} 魔法伤害，本路战斗每进行 1 秒，伤害提高 {C:StarSystem.WORM_BOOM_PER_SEC%}%。",
-        "detail": "星际龟蓄力 {C:StarSystem.WORM_WINDUP} 秒后朝目标发射一个缓慢移动的虫洞。虫洞沿直线飞向场地边缘，将沿途的敌人吸向虫洞，附近的敌人被捕获并随虫洞移动。\n虫洞抵达边缘时爆炸，对被捕获的敌人与附近的敌人造成（{C:StarSystem.WORM_BOOM_COEF%}%×攻击力({ATK}) = {M:StarSystem.WORM_BOOM_COEF*ATK}）魔法伤害，本路战斗每进行 1 秒，伤害提高 {C:StarSystem.WORM_BOOM_PER_SEC%}%。\n<span style=\"color:#8a93a0\">伤害提高量在发射时确定。虫洞存在期间龟能不充能。蓄力期间被控制则技能取消。</span>"
+        "brief": "星际龟蓄力 {C:StarSystem.WORM_WINDUP} 秒后朝目标发射一个缓慢移动的虫洞。虫洞沿直线飞向场地边缘，将沿途的敌人吸向虫洞，附近的敌人被捕获并随虫洞移动。\n虫洞抵达边缘时爆炸，对被捕获的敌人与附近的敌人造成 {M:StarSystem.WORM_BOOM_COEF*ATK} 魔法伤害，本战场每进行 1 秒，伤害提高 {C:StarSystem.WORM_BOOM_PER_SEC%}%。",
+        "detail": "星际龟蓄力 {C:StarSystem.WORM_WINDUP} 秒后朝目标发射一个缓慢移动的虫洞。虫洞沿直线飞向场地边缘，将沿途的敌人吸向虫洞，附近的敌人被捕获并随虫洞移动。\n虫洞抵达边缘时爆炸，对被捕获的敌人与附近的敌人造成（{C:StarSystem.WORM_BOOM_COEF%}%×攻击力({ATK}) = {M:StarSystem.WORM_BOOM_COEF*ATK}）魔法伤害，本战场每进行 1 秒，伤害提高 {C:StarSystem.WORM_BOOM_PER_SEC%}%。\n<span style=\"color:#8a93a0\">伤害提高量在发射时确定。虫洞存在期间龟能不充能。蓄力期间被控制则技能取消。</span>"
       },
       {
         "name": "星波",

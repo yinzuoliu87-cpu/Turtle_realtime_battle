@@ -13,6 +13,9 @@ extends Node
 ##     锤击: 落地砸下那一步立绘在第 6 帧, 同一步出裂地特效、目标掉血
 ##     精神干扰 / 吸收 / 灵能冲击 / 融合: 结算那一步立绘在关键帧, 同一步出对应特效
 ##  E 死亡: 按形态播死亡帧表
+##  F 二轮画面(2026-10-20): ①变脸龟自己那几次给盾的通用护盾罩排在立绘之前画(不洗白变脸/砸地/挥锤)
+##     ②锤击: 裂地画在【锤头落点】(按素材量出来的锤头位置, 不读常量)且画在单位上面; 挥锤弧同一步出、也在上面;
+##       落地后紧跟的普攻前摇不许把锤贴地那几帧吞掉 ③融合施法: 红斗篷在出现之后每一帧都在(推杖帧不许闪没)
 ## 每条断言都配一条分母断言(这一类事件真的发生过 ≥ N 次)。
 
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
@@ -108,6 +111,46 @@ func _reach_set(key: String) -> Array:
 	return out
 
 
+## F②: 锤头在立绘里的位置(量素材, 不读 TwoHeadVfx 常量 —— 否则改常量判据跟着改 = 恒真)。
+##   锤头 = 帧左半边的石灰色像素(r≈g≈b, 100~230)。返回 [贴地帧集合, 第一张贴地帧里锤头重心离帧中线多少像素]。
+func _hammer_ground() -> Array:
+	var sh := _img(TwoHeadArt.DIR + "melee_strike.png")
+	var n: int = sh.get_width() / FRAME
+	var frames: Array = []
+	var dx := 0.0
+	for i in range(n):
+		var f := _frame(sh, i)
+		var low := -1; var sx := 0.0; var sn := 0
+		for y in range(FRAME):
+			for x in range(0, 60):
+				var c := f.get_pixel(x, y)
+				if c.a8 == 0:
+					continue
+				if absi(c.r8 - c.g8) < 15 and absi(c.g8 - c.b8) < 20 and c.r8 > 100 and c.r8 < 230:
+					low = maxi(low, y); sx += x; sn += 1
+		if low >= 118 and sn >= 40:
+			if frames.is_empty():
+				dx = FRAME * 0.5 - sx / sn
+			frames.append(i)
+	return [frames, dx]
+
+
+## F③: 融合施法红斗篷(战士斗篷两色: 暗红 108,24,22 / 亮红 172,55,49)在脖子以下的像素数, 逐帧。
+func _cloak_counts() -> Array:
+	var sh := _img(TwoHeadArt.DIR + "fusion_cast.png")
+	var out: Array = []
+	for i in range(sh.get_width() / FRAME):
+		var f := _frame(sh, i)
+		var c := 0
+		for y in range(80, FRAME):
+			for x in range(FRAME):
+				var p := f.get_pixel(x, y)
+				if p.a8 == 255 and ((p.r8 == 108 and p.g8 == 24 and p.b8 == 22) or (p.r8 == 172 and p.g8 == 55 and p.b8 == 49)):
+					c += 1
+		out.append(c)
+	return out
+
+
 func _static_checks() -> void:
 	print("── A 素材 / B 归一 / C 朝向 ──")
 	var keys: Array = TwoHeadArt.CLIPS.keys() + ["ranged_death", "melee_death"]
@@ -175,6 +218,21 @@ func _static_checks() -> void:
 		else:
 			_ok("★朝向(出手方向): %s" % k, false, "包围盒 左 %d / 右 %d · 新像素重心 %.1f" % [best_l, best_r, cdx])
 	_ok("★朝向: 7 条攻击/技能的关键帧都往左出手(= 原图朝左口径)", reach_n == 7, "%d/7" % reach_n)
+	## F③ 融合红斗篷: 从第一次出现(≥150 像素)到最后一次出现之间, 每一帧都不许掉到两端平均的一半以下(推杖帧闪没)
+	var cc: Array = _cloak_counts()
+	var cf := -1; var cl := -1
+	for i in range(cc.size()):
+		if int(cc[i]) >= 150:
+			if cf < 0:
+				cf = i
+			cl = i
+	var ref_n: float = (float(cc[cf]) + float(cc[cl])) * 0.5 if cf >= 0 else 0.0
+	var holes: Array = []
+	for i in range(maxi(0, cf), cl + 1):
+		if float(cc[i]) < ref_n * 0.5:
+			holes.append("%d:%d" % [i, int(cc[i])])
+	_ok("分母: 融合施法红斗篷出现跨 ≥ 10 帧", cf >= 0 and cl - cf >= 10, "第 %d~%d 帧 · 逐帧 %s" % [cf, cl, str(cc)])
+	_ok("★融合施法红斗篷连续(推杖帧不闪没)", holes.is_empty(), "掉帧 %s / 参照 %.0f" % [str(holes), ref_n])
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -202,6 +260,7 @@ func _run(skill: int, steps: int) -> Array:
 	s._deterministic = true
 	var rec: Array = []
 	var seen := {}
+	var seen_fx := {}
 	var th = null
 	for _n in range(steps):
 		await get_tree().process_frame
@@ -222,7 +281,34 @@ func _run(skill: int, steps: int) -> Array:
 				fresh.append(now[id])
 				seen[id] = true
 		var spr = th["sprite"]
-		rec.append({"t": float(s._t), "form": str(th.get("two_form", "")), "state": str(th.get("state", "")),
+		## F①: 这一步新给这只龟建的通用护盾罩(按节点认新旧, 不按时刻)的材质优先级 / 立绘自己材质的优先级
+		var shells: Array = []
+		for e in s._follow_vfx:
+			if is_same(e.get("unit", null), th):
+				var sp_e = e.get("spr", null)
+				if not is_instance_valid(sp_e) or seen_fx.has(sp_e.get_instance_id()):
+					continue
+				seen_fx[sp_e.get_instance_id()] = true
+				if sp_e is Sprite3D and (sp_e as Sprite3D).texture != null and (sp_e as Sprite3D).texture.resource_path == BattleVfx.SHELL_TEX:
+					shells.append(int(((sp_e as Sprite3D).material_override as Material).render_priority) if (sp_e as Sprite3D).material_override != null else 0)
+		var body_prio: int = int((spr.material_override as Material).render_priority) if spr.material_override != null else int(spr.render_priority)
+		## F②: 这一步新出现的锤击 / 挥锤特效节点的绘制属性与位置(码)
+		var fx_props: Array = []
+		for c in s._world.get_children():
+			if c is Sprite3D and (c as Sprite3D).texture != null and not seen_fx.has(c.get_instance_id()):
+				var fp := str((c as Sprite3D).texture.resource_path)
+				if fp.ends_with("twohead-hammer-slam.png") or fp.ends_with("twohead-hammer-swing.png"):
+					seen_fx[c.get_instance_id()] = true
+					fx_props.append({"name": fp.get_file().get_basename(), "ndt": (c as Sprite3D).no_depth_test, "prio": (c as Sprite3D).render_priority,
+						"x": (c as Sprite3D).position.x / s.WS + float(s._arena_center.x)})
+		var unit_prio_max := -999
+		for uu in s._units:
+			var us = uu.get("sprite", null)
+			if is_instance_valid(us) and us is Sprite3D:
+				unit_prio_max = maxi(unit_prio_max, int(((us as Sprite3D).material_override as Material).render_priority) if (us as Sprite3D).material_override != null else (us as Sprite3D).render_priority)
+		rec.append({"shells": shells, "body_prio": body_prio, "fx": fx_props, "unit_prio_max": unit_prio_max,
+			"x": float((th["pos"] as Vector2).x), "face_right": bool(th.get("face_right", true)),
+			"t": float(s._t), "form": str(th.get("two_form", "")), "state": str(th.get("state", "")),
 			"pending": str(th.get("pending", "")), "clip": str(th.get("_tha_clip", "")),
 			"tex": str((spr.texture as Texture2D).resource_path.get_file().get_basename()) if spr.texture != null else "",
 			"frame": int(spr.frame), "px": float(spr.pixel_size), "offy": float(spr.offset.y), "idle_px": float(th.get("idle_px", 0.0)),
@@ -316,6 +402,59 @@ func _ready() -> void:
 	_ok("★法球出手那一步立绘在双臂推出帧", orb_ok == orb, "%d/%d" % [orb_ok, orb])
 	_ok("★法球爆炸特效与 200 码内掉血同一步", blast >= 1, "%d" % blast)
 
+	print("── F 二轮画面: 护盾罩层级 / 锤头落点 / 砸地停帧 ──")
+	## F① 变脸龟自己那几次给盾(切近战 / 锤击落地 / 强化普攻)建的罩, 必须排在立绘之前画(优先级 < 立绘材质)
+	var sh_n := 0; var sh_bad := 0; var sh_sw := 0; var sh_land := 0
+	for i in range(1, r1.size()):
+		var a: Dictionary = r1[i - 1]; var b: Dictionary = r1[i]
+		for pr in b["shells"]:
+			sh_n += 1
+			if int(pr) >= int(b["body_prio"]):
+				sh_bad += 1
+		if not (b["shells"] as Array).is_empty():
+			if a["form"] == "ranged" and b["form"] == "melee":
+				sh_sw += 1
+			if a["slam"] and not b["slam"]:
+				sh_land += 1
+	_ok("分母: 切近战那一步 / 锤击落地那一步 各给过盾(建过通用护盾罩)", sh_sw >= 1 and sh_land >= 1, "切近战 %d · 落地 %d · 共 %d 个罩" % [sh_sw, sh_land, sh_n])
+	_ok("★变脸龟给自己的护盾罩排在立绘之前画(不洗白变脸 / 砸地 / 挥锤)", sh_bad == 0, "违例 %d/%d" % [sh_bad, sh_n])
+	## F② 锤击落地那一步: 裂地 + 挥锤弧都出, 都关深度测试且优先级高于场上所有单位立绘; 裂地在锤头落点
+	var hg: Array = _hammer_ground()
+	var g_frames: Array = hg[0]
+	var land_fx := 0; var land_fx_ok := 0; var anchor_ok := 0; var hold_steps := 0; var hold_n := 0
+	var anchor_detail := ""
+	for i in range(1, r1.size()):
+		var a: Dictionary = r1[i - 1]; var b: Dictionary = r1[i]
+		if a["slam"] and not b["slam"] and b["form"] == "melee":
+			land_fx += 1
+			var has_slam := false; var has_swing := false; var over := true
+			for fx in b["fx"]:
+				if fx["name"] == "twohead-hammer-slam":
+					has_slam = true
+					var fwd: float = 1.0 if bool(b["face_right"]) else -1.0
+					var want: float = float(b["x"]) + fwd * float(hg[1]) * float(b["idle_px"]) / RB.WS
+					anchor_detail = "裂地 x=%.1f · 落点 x=%.1f · 素材锤头应在 x=%.1f(锤头离中线 %.1f 像素)" % [float(fx["x"]), float(b["x"]), want, float(hg[1])]
+					if absf(float(fx["x"]) - want) <= 8.0:
+						anchor_ok += 1
+				elif fx["name"] == "twohead-hammer-swing":
+					has_swing = true
+				if not bool(fx["ndt"]) or int(fx["prio"]) <= int(b["unit_prio_max"]):
+					over = false
+			if has_slam and has_swing and over:
+				land_fx_ok += 1
+			## 落地后到切走之前, 锤贴地那几帧(量素材)一共播了多少步
+			for j in range(i, mini(r1.size(), i + 90)):
+				var c: Dictionary = r1[j]
+				if c["tex"] != "melee_strike":
+					break
+				if int(c["frame"]) in g_frames:
+					hold_steps += 1
+			hold_n += 1
+	_ok("分母: 素材里量得到锤贴地帧 ≥ 3 张、锤击落地 ≥ 1 次", g_frames.size() >= 3 and land_fx >= 1, "贴地帧 %s · 落地 %d" % [str(g_frames), land_fx])
+	_ok("★锤击落地那一步: 裂地 + 挥锤弧同一步出, 都画在所有单位立绘上面(关深度测试 + 优先级更高)", land_fx_ok == land_fx, "%d/%d" % [land_fx_ok, land_fx])
+	_ok("★裂地画在锤头落点(按素材量出的锤头位置), 不在施法者脚下", anchor_ok == land_fx, anchor_detail)
+	_ok("★落地后锤贴地帧播满 ≥ 0.15 秒(不被紧跟的普攻前摇吞掉)", hold_n >= 1 and hold_steps >= 9 * hold_n, "%d 步 / %d 次落地" % [hold_steps, hold_n])
+
 	print("── D 技二(精神干扰 / 吸收) ──")
 	var r2: Array = await _run(2, 1500)
 	var dis := 0; var dis_ok := 0; var ab := 0; var ab_ok := 0
@@ -356,6 +495,14 @@ func _ready() -> void:
 	_ok("分母: 魔法波 ≥ 4 道", fw >= 4, "%d" % fw)
 	_ok("分母: 融合施放 ≥ 1 次", fw_first >= 1, "%d" % fw_first)
 	_ok("★第一道魔法波出手那一步立绘在双脸推出帧", fw_ok == fw_first, "%d/%d" % [fw_ok, fw_first])
+	## F③ 换表时序: 融合施法那一段里立绘贴图不许中途换成别的表(斗篷闪没若是换表造成的, 这里会抓到)
+	var fu_steps := 0; var fu_bad := 0
+	for b in r3:
+		if b["clip"] == "fusion_cast":
+			fu_steps += 1
+			if b["tex"] != "fusion_cast":
+				fu_bad += 1
+	_ok("★融合施法整段都在 fusion_cast 表上(没有中途换表)", fu_steps >= 30 and fu_bad == 0, "%d 步里换表 %d 步" % [fu_steps, fu_bad])
 
 	print("── E 死亡(按形态) ──")
 	for form in ["ranged", "melee"]:

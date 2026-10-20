@@ -159,7 +159,10 @@
   机器人快照池离线生成（`scripts/referee/bot_pool.gd`）、`--bot-pool` 上传。旧接口在 `referee_config.gauntlet_server_pick = true` 后一律回 `update_required`。
   上线顺序见迁移文件末尾；行为检查 `server/supabase/tests/20261020c_…_check.sql`（`node tools/sql_sandbox.mjs` 本机 PGlite 59 条全过）。
 - **周六战斗内铸币**（奇械羁绊 / 035 齿轮）：2026-10-20 起裁判结果单带 `coins`（`EquipTickSystem.match_minted`，与本机结算同一个出口），
-  `referee_complete` 记进 `ledger.coins`、`referee_job_status` 回给客户端。★周日服务器局仍不发（只记了 A 一侧；B 一侧的齿轮只给左方产币，要另做）。
+  `referee_complete` 记进 `ledger.coins`、`referee_job_status` 回给客户端。
+- **周日战斗内铸币**（2026-10-20 · 迁移 `20261020d_finals_coins.sql`，只写文件未上生产）：结果单多 `coins_b`（右方 B，同一个出口
+  `EquipTickSystem.match_minted(battle, "right")`），周日任务记进 `ledger.coins_b`；双方客户端翻面后调 `referee_finals_coins`（服务端按账号认侧）取自己那一份。
+  轮询器不用改（结果单原样转交 `referee_complete`）；裁判机要装带 `coins_b` 的客户端版本，之前 B 一律 0。检查脚本 `server/supabase/tests/20261020d_finals_coins_check.sql`。
 - **投降**（方案书 U4，用户 10-19「投降不要了」）：整个功能已从客户端删掉；裁判局里本来就没有投降事件。
 - **告警通道**没定（现在只进 journald）。
 - SQL 只做了语法核对（libpg_query 解析 + plpgsql 解析通过），**没在真库上跑过**；上线前在内测服按第 8 步冒烟。

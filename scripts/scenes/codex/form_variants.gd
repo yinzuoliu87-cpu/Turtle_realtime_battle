@@ -124,7 +124,9 @@ static func _strip_lead(ln: String, form_word: String) -> String:
 	var i: int = ln.find(form_word)
 	var head: String = ln.substr(0, i)
 	if head.strip_edges() == "" or head.strip_edges().ends_with("："):
-		return ln.substr(i + form_word.length())
+		## ★2026-10-20: 简述改成「远程形态：变脸龟射出…」(带冒号)后, 只去形态词会在卡片正文开头留一个孤零零的「：」
+		##   (App Store 截图上看见的)。形态词后面紧跟的冒号/空白一起去掉。
+		return ln.substr(i + form_word.length()).lstrip(" ：:")
 	return ln
 
 ## 立绘: 近战形态页换成战斗近战形态那张图(取 TwoHeadSystem.FORM_ART, 不另写路径); 其余原样返回同一个字典。

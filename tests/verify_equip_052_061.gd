@@ -341,7 +341,7 @@ func _ready() -> void:
 		_ok("⑥ ★★★没到 %d 点累计伤害时不挂弹(hookbomb_pct = %.3f)"
 			% [EXP_TRIGGER_DMG, float(e6.get("hookbomb_pct", 0.0))],
 			float(e6.get("hookbomb_pct", 0.0)) <= 0.0,
-			"文案: 本场累计造成 400 点伤害后才发钩索炸弹")
+			"文案: 本战场累计造成 400 点伤害后才发钩索炸弹")
 		c6["_st_dealt"] = EXP_TRIGGER_DMG
 		_s._equip_tick_sys._tick_targeter(c6, 0.1)
 		_ok("⑥ ★★★够 %d 点后挂上了炸弹(每秒 %.0f%% 目标最大生命, 文案 %.0f%%)"
@@ -364,7 +364,7 @@ func _ready() -> void:
 		_s._equip_tick_sys._tick_targeter(c6, 0.1)
 		_ok("⑥ ★★同一件只挂一次(新来的敌人没被挂: %.3f)" % float(e6b.get("hookbomb_pct", 0.0)),
 			float(e6b.get("hookbomb_pct", 0.0)) <= 0.0,
-			"文案: 本场累计造成 400 点伤害后(首次)")
+			"文案: 本战场累计造成 400 点伤害后(首次)")
 
 	# ══════════════ 057 狙击: 蓄力锁定的目标就是开枪打的那个 ══════════════
 	## ★★这一条钉住 2026-09-14 的修复: 原来蓄力时选最低血画瞄准线, 1 秒后开火**重新选一遍**,

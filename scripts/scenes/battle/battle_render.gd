@@ -29,7 +29,7 @@ const RENDER_OWNED_KEYS := [
 	"bear_anim", "bear_anim_t", "_bear_sheet", "_bear_pp",
 	## 变脸龟动作驱动(TwoHeadArt, 2026-10-20): 当前动作 / 排队动作 / 认过的前摇 / 认过的形态 / 走路判据
 	"_tha_clip", "_tha_t0", "_tha_tk", "_tha_q", "_tha_ws", "_tha_pend", "_tha_form",
-	"_tha_lp", "_tha_lt", "_tha_walk", "_tha_loop_t0",
+	"_tha_lp", "_tha_lt", "_tha_walk", "_tha_loop_t0", "_tha_cut",
 ]
 
 var battle

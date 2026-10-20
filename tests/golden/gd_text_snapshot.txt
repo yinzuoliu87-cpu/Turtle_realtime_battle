@@ -430,7 +430,7 @@ scripts/gamedata/phase2_types.gd|lit|每件盾为携带者提供 +5 护甲 · �
 scripts/gamedata/phase2_types.gd|lit|每件药水为携带者提供 +12% 治疗强度、+12% 护盾强度、+4 最大龟能 · 【猎物】伤害提高至 {C:PotionSynergySystem.PREY_AMP[1]%}% · 【战利品】每击杀 1 名猎物，全队永久 +{C:PotionSynergySystem.HARVEST_ATK[1]} 攻击力，持续到本局结束
 scripts/gamedata/phase2_types.gd|lit|每件药水为携带者提供 +20% 治疗强度、+20% 护盾强度、+6 最大龟能 · 【猎物】伤害提高至 {C:PotionSynergySystem.PREY_AMP[2]%}% · 【战利品】每击杀 1 名猎物 +{C:PotionSynergySystem.HARVEST_ATK[2]} 攻击力 · 【斩首】攻击生命值低于 {C:PotionSynergySystem.BEHEAD_HP_PCT%}% 的猎物时直接处决
 scripts/gamedata/phase2_types.gd|lit|每件药水为携带者提供 +6% 治疗强度、+6% 护盾强度、+2 最大龟能 · 【猎物】将生命值最高的敌人标记为猎物，龟蛋除外。猎物阵亡后 {C:PotionSynergySystem.PERIOD} 秒内重新标记。全队对猎物造成的伤害提高 {C:PotionSynergySystem.PREY_AMP[0]%}%
-scripts/gamedata/phase2_types.gd|lit|每件遗物为携带者提供 +10% 生命偷取 · 【生死界】攻击力提高至 {C:RelicSynergySystem.ATK_BONUS[3]%}% · 【远古之力】每次 +{C:RelicSynergySystem.ANCIENT_PER_TICK[3]%}%，至多 {C:RelicSynergySystem.ANCIENT_CAP[3]%}% · 【龟蛋加固】+{C:RelicSynergySystem.EGG_HP[3]} 最大生命值，还击攻击力 {C:RelicSynergySystem.EGG_ATK[3]} · 【觉醒】每路战场开始 {C:RelicSynergySystem.AWAKEN_SEC} 秒后，已累积的远古之力提高 {C:RelicSynergySystem.AWAKEN_BOOST%}%
+scripts/gamedata/phase2_types.gd|lit|每件遗物为携带者提供 +10% 生命偷取 · 【生死界】攻击力提高至 {C:RelicSynergySystem.ATK_BONUS[3]%}% · 【远古之力】每次 +{C:RelicSynergySystem.ANCIENT_PER_TICK[3]%}%，至多 {C:RelicSynergySystem.ANCIENT_CAP[3]%}% · 【龟蛋加固】+{C:RelicSynergySystem.EGG_HP[3]} 最大生命值，还击攻击力 {C:RelicSynergySystem.EGG_ATK[3]} · 【觉醒】每个战场开始 {C:RelicSynergySystem.AWAKEN_SEC} 秒后，已累积的远古之力提高 {C:RelicSynergySystem.AWAKEN_BOOST%}%
 scripts/gamedata/phase2_types.gd|lit|每件遗物为携带者提供 +3% 生命偷取 · 【生死界】携带遗物的单位生命值高于 {C:RelicSynergySystem.HP_GATE%}% 时攻击力提高 {C:RelicSynergySystem.ATK_BONUS[0]%}%，低于 {C:RelicSynergySystem.HP_GATE%}% 时生命偷取翻倍
 scripts/gamedata/phase2_types.gd|lit|每件遗物为携带者提供 +5% 生命偷取 · 【生死界】攻击力提高至 {C:RelicSynergySystem.ATK_BONUS[1]%}% · 【远古之力】每 {C:RelicSynergySystem.PERIOD} 秒，全队永久 +{C:RelicSynergySystem.ANCIENT_PER_TICK[1]%}% 增伤，至多 {C:RelicSynergySystem.ANCIENT_CAP[1]%}%，持续到本局结束 · 【龟蛋加固】我方龟蛋 +{C:RelicSynergySystem.EGG_HP[1]} 最大生命值，并以 {C:RelicSynergySystem.EGG_ATK[1]} 攻击力还击射程 {C:RelicSynergySystem.EGG_RANGE} 内的敌人
 scripts/gamedata/phase2_types.gd|lit|每件遗物为携带者提供 +8% 生命偷取 · 【生死界】攻击力提高至 {C:RelicSynergySystem.ATK_BONUS[2]%}% · 【远古之力】每次 +{C:RelicSynergySystem.ANCIENT_PER_TICK[2]%}%，至多 {C:RelicSynergySystem.ANCIENT_CAP[2]%}% · 【龟蛋加固】+{C:RelicSynergySystem.EGG_HP[2]} 最大生命值，还击攻击力 {C:RelicSynergySystem.EGG_ATK[2]}
@@ -1077,7 +1077,9 @@ scripts/scenes/SettingsScene.gd|lit|发送验证码
 scripts/scenes/SettingsScene.gd|lit|声音
 scripts/scenes/SettingsScene.gd|lit|处理存档冲突
 scripts/scenes/SettingsScene.gd|lit|存档已重置
+scripts/scenes/SettingsScene.gd|lit|已复制
 scripts/scenes/SettingsScene.gd|lit|已绑定 · %s
+scripts/scenes/SettingsScene.gd|lit|支持
 scripts/scenes/SettingsScene.gd|lit|昵称已修改为「%s」
 scripts/scenes/SettingsScene.gd|lit|显示
 scripts/scenes/SettingsScene.gd|lit|更换邮箱
@@ -1098,6 +1100,7 @@ scripts/scenes/SettingsScene.gd|lit|窗口
 scripts/scenes/SettingsScene.gd|lit|绑定后可在其他设备恢复账号与进度（龟、装备、排名、战绩）。\n
 scripts/scenes/SettingsScene.gd|lit|绑定后同步云端进度
 scripts/scenes/SettingsScene.gd|lit|绑定邮箱
+scripts/scenes/SettingsScene.gd|lit|联系我们
 scripts/scenes/SettingsScene.gd|lit|设置
 scripts/scenes/SettingsScene.gd|lit|设置昵称（%d~%d 个字）· 显示于排行榜，可随时修改
 scripts/scenes/SettingsScene.gd|lit|调试场
@@ -1953,6 +1956,7 @@ scripts/systems/replay/referee_watch.gd|lit|备战阶段 · 结束后开赛
 scripts/systems/replay/referee_watch.gd|lit|失败
 scripts/systems/replay/referee_watch.gd|lit|实时
 scripts/systems/replay/referee_watch.gd|lit|录像无法在本设备播放
+scripts/systems/replay/referee_watch.gd|lit|战斗内铸币 +%d
 scripts/systems/replay/referee_watch.gd|lit|战绩已同步，请重新开战
 scripts/systems/replay/referee_watch.gd|lit|本周闯关已结束
 scripts/systems/replay/referee_watch.gd|lit|正在提交阵容

@@ -220,6 +220,7 @@ static func _state_from_snapshot(a: Dictionary, normalize: Callable) -> Dictiona
 ## 打完的结果单。`rec` = 裁判录下的那一份(已带 end); `lane_results` / `egg_hp` = 结算那一刻 GameState 里的。
 ## ★`coins`(左方 A 的战斗内铸币)由 `RefereeRunner` 在这之后补上(它要读战斗场里的系统对象, 这里是纯函数);
 ##   服务端 `referee_complete` 记进账本 `ledger.coins`, 客户端 `RefereeWatch.settle` 按它发币(客户端不自报)。
+##   `coins_b`(右方 B 的, 2026-10-20d)同理: 周日记进 `ledger.coins_b`, B 的客户端经 `referee_finals_coins` 取。
 static func ok_result(j: Dictionary, rec: Dictionary, lane_results: Dictionary, egg_hp: Dictionary,
 		elapsed_ms: int, frames: int) -> Dictionary:
 	var end: Dictionary = rec.get("end", {})
