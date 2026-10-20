@@ -529,7 +529,7 @@ func _update_world_transforms() -> void:
 		if not is_instance_valid(spr):
 			continue
 		# ★Phase4切片2b 渲染插值: 立绘/影/环用【上一步pos↔当前pos】按 battle._render_alpha lerp 的位置 → 消固定步长在高帧率下的卡顿。
-		#   battle._render_alpha=0(det模式/正好整步)时 = 当前 pos, 与不插值一致。朝向/last_x 仍用真 pos(朝向不卡)。
+		#   det 模式 alpha=1 ⇒ = 当前 pos(alpha=0 取的是 prev; det 不存 prev, 交互几帧后切 det 时 prev 是陈的)。朝向/last_x 仍用真 pos(朝向不卡)。
 		var _rpos: Vector2 = (u.get("_prev_pos", u["pos"]) as Vector2).lerp(u["pos"] as Vector2, battle._render_alpha)
 		var _rh: float = lerpf(float(u.get("_prev_height", u.get("height", 0.0))), float(u.get("height", 0.0)), battle._render_alpha)
 		# 朝向: 有战斗目标→由_tick_unit锁定朝敌(死区防抖); 无目标→随移动方向(battle._face_by_motion, sim 步末尾); 初始左队朝右/右队朝左

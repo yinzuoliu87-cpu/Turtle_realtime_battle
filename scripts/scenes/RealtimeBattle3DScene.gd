@@ -2111,7 +2111,10 @@ func _process(delta: float) -> void:
 		var in_ts: bool = not _timestop._ts_active.is_empty()
 		_sim_step(SIM_DT, frozen, in_ts)
 		_frame_sim_dt = SIM_DT   # B 阶段: det 模式恒 1 步/帧
-		_render_alpha = 0.0   # det/headless: 无渲染·不插值
+		## det: 不插值 ⇒ 立绘取【当前】pos。★必须是 1 不是 0: 渲染取 lerp(_prev_pos, pos, alpha), 而 det 分支从不存 _prev_pos ——
+		##   场景先按交互累加器跑过几帧(存下了 _prev_pos)再切 det 的(审阅台 / 自拍台 / 不少门禁), alpha=0 会让全场立绘
+		##   永远停在切换那一帧(探针 tests/_tw_motion_probe.gd C: pos 走 75.8 像素、立绘 0.000 米)。纯画面, sim 不读它。
+		_render_alpha = 1.0
 	else:
 		_advance_sim_accum(_replay.sim_feed(rd))   # ★切片2: 交互累加器(verify_interactive_determinism 直接驱动·证帧率无关); 回放摆位期快进 / 倍速 / 观赛追帧(replay_recorder.sim_feed)
 	# 演出每帧一次(真实时间·立绘动画/相机随真实帧走→平滑)。frozen/in_ts 用 sim 后最新态。
