@@ -7570,8 +7570,8 @@ func _settle_season(won: bool) -> void:
 	# ★加在 `_last_reward` 上而不是直接加 meta —— 结算屏显示的就是 _last_reward,
 	#   直接加 meta 会出现"钱多了但结算屏没说是哪来的", 玩家看不到因果。
 	# ★★2026-09-29: 齿轮那笔原来**就是**直接加 meta 的(绕过这里) ⇒ 结算屏少算,
-	#   真机受控对照 结算屏 +30 / 存档 +34。**下一件会产币的装备也接到这一行**, 别再自己写 meta。
-	var _minted: int = _gadget_syn.minted("left") + _equip_tick_sys.gear_minted()
+	#   真机受控对照 结算屏 +30 / 存档 +34。**下一件会产币的装备接进 `EquipTickSystem.match_minted`**, 别再自己写 meta。
+	var _minted: int = EquipTickSystem.match_minted(self)   # 唯一出口(裁判写结果单读同一个)
 	if _minted > 0:
 		_last_reward += _minted
 	_gadget_syn.reset_match()

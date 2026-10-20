@@ -64,6 +64,7 @@ PASS=0; FAIL=0
 frames_for () {
   case "$1" in
     verify_ios_ui) echo 4000 ;;
+    verify_report_block) echo 1500 ;;   # 2026-10-20 举报 / 拉黑: 排行榜 / 赛况板 / 对阵图 / 双路对局各建一次(对局等 40 帧), 实测 <500 帧, 给足 CI
     verify_topbar_states) echo 3000 ;;   # 五次重建场之间各等 0.4 秒真实时间(开打前介绍幕按真实时间淡出) —— 快机器上这段帧数不定, 给足
     verify_debug_equip_pick) echo 1200 ;;   # 鼠标一遍 + 触屏两种比例各一遍(2026-10-05), 实测 ~350 帧
     verify_autopilot_finals) echo 1500 ;;   # 默认关 140 帧 + 开着等 400 帧(驾驶每 120 帧看一次)
@@ -319,6 +320,8 @@ frames_for () {
     verify_finals_watch_only) echo 8000 ;;
     # 周六闯关交给服务器: 匹配屏真计时器 4.8 秒 × 6 次 + 裁判真算一局 + 播三局(两整局 + 一局到第 5 校验点停) + 轮询按墙钟等; 本地实测 5574 帧 / 59 秒(墙钟等待在快机器上帧数会涨)
     verify_gauntlet_via_referee) echo 60000 ;;
+    # 周六服务器局铸币(2026-10-20): 裁判真算两局(100ms/帧) + 同一局本机复算到结算(40ms/帧); 本地实测 208 帧 / 19 秒
+    verify_referee_coins) echo 8000 ;;
     # 断网不出本地成绩: 匹配屏真计时器 4.8 秒 × 3 次 + 超时看门狗 1.5 秒 + 每段多等 90 帧; 本地实测 2197 帧 / 21 秒
     verify_offline_no_local_result) echo 20000 ;;
     # UI 双端适配: 10 屏 × 4 比例 = 40 次场景实例化, 每次等 150 帧让入场 tween 落定 → ≥6000 帧。

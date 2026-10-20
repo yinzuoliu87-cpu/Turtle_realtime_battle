@@ -262,6 +262,11 @@ func _record() -> void:
 		## 第一路结算幕布不点(让它自己走 5 秒 + 对阵预览 5 秒): 观众要在「下路准备中」里停够看得见的一段。
 		if (st == "overview" or (st == "lane_settle" and _rec_fights != 1)) and stf == 9:
 			s._dl_sys._dl_present_click()
+		## ★第二路对阵预览快走完时点一下(stf 80 / 约 100): 保证「第一份之后」至少还有一条非开打事件(present)。
+		##   原来只靠第二路结算幕布那一下 ⇒ 2:0 两路收官的局根本没有那一幕, 事件只剩一条开打 ⇒ 分母随种子红(CI 2026-10-20)。
+		##   放在 80 而不是 9: 换路演出几乎整段还在, 观众「下路准备中」那一段照样量得到。
+		if st == "preview" and _rec_fights == 1 and stf == 80:
+			s._dl_sys._dl_present_click()
 		s._process(0.05)
 		_rec_fights = _fights_rec()
 		if i % 4 == 0:

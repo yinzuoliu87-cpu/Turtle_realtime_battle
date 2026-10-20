@@ -6,7 +6,9 @@ extends Node
 ##   「服务器」那一份录像由 RefereeRunner(裁判机上跑的同一套代码)按客户端真交上来的两份快照真算出来。
 ##
 ## 段落:
-##   A 开关开 · 一致: 交阵容(请求体四个形参)→ 轮询 → done ⇒ 播之前账已按服务器记完(战绩 = 服务器账本 / 币 / 战绩页挂录像号 / 单子清掉)
+##   A 开关开 · 一致: 交阵容(请求体五个形参: 周 / 阵容 / 第几场 / 版本 / 规则版本 —— 没有对手、没有种子; 2026-10-20 起对手由服务端挑)
+##     → VS 卡画的是服务端回的对手 → 轮询 → done ⇒ 播之前账已按服务器记完(战绩 = 服务器账本 / 币 = 场次币 + 服务器那一局的战斗内铸币 /
+##     战绩页挂录像号 / 单子清掉)
 ##     ⇒ 进战斗场是「播」(裁判局: 没有「回放」小签、没有播放控件)⇒ 放完走正常结算屏, 胜负 = 服务器
 ##   B ★服务器说输、本地重算说赢 ⇒ 记输、结算屏写「失败」(以服务器为准)
 ##   C 录像在本机对不上(改坏一个校验点)⇒ 停下, 结算屏照样按服务器结果出 + 「录像无法在本设备播放」; 战绩照记
@@ -28,6 +30,8 @@ const MMK := preload("res://scripts/scenes/MatchmakingScene.gd")
 const MMK_SCENE := "res://scenes/Matchmaking.tscn"
 const ME := "11111111-2222-4333-8444-555555555555"
 const MID := "5b2c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b"
+const BP := preload("res://scripts/referee/bot_pool.gd")
+const START := "referee_gauntlet_start"
 
 var _fail := 0
 var _n := 0
@@ -43,6 +47,8 @@ var _srv_gl := 0
 var _offline_submit := false
 var _offline_status := false
 var _rec_b64 := ""                # 服务器 matches 行里的录像
+var _srv_b: Dictionary = {}       # 门禁当服务器: 服务端挑的对手(机器人池那一份 + gl_ts)
+var _srv_coins := 0               # 服务器那一局的战斗内铸币(裁判结果单 coins)
 var _rec: Dictionary = {}
 var _a_won := false
 var _left_hook := 0
@@ -116,15 +122,16 @@ func _setup_gs() -> void:
 	}
 	## 我方每只统领 3 件 3 星(与 verify_referee_job_roundtrip R6 的强方同一造法) ⇒ 录像里甲方(我)赢 ——
 	##   B 段要的正是「本机重算说赢、服务器说输」那一个方向。
+	## ★第一件是 035 黄铜齿轮(2026-10-20): 服务器那一局要有战斗内铸币, A 段才量得到「币 = 场次币 + 服务器的铸币」。
 	var shop: Array = []
 	for e in DataRegistry.phase2_equipment:
-		if int((e as Dictionary).get("shopAvailable", 0)) == 1:
+		if int((e as Dictionary).get("shopAvailable", 0)) == 1 and str((e as Dictionary)["id"]) != "p2eq_035":
 			shop.append(str((e as Dictionary)["id"]))
 	var k := 0
 	var pe := {}
 	for pid in _gs.season_leaders:
-		var l: Array = []
-		for _j in range(3):
+		var l: Array = [{"id": "p2eq_035", "star": 3}]
+		for _j in range(2):
 			l.append({"id": str(shop[k % shop.size()]), "star": 3})
 			k += 1
 		pe[pid] = l
@@ -166,13 +173,19 @@ func _transport(m, u, _h, b, cb) -> void:
 		"referee_flags":
 			cb.call({"ok": true, "code": 200, "body": _flags_body} if _flags_body != "" else {"ok": false, "code": 0, "body": ""})
 			return
-		"referee_submit_gauntlet":
+		START:
 			if _offline_submit:
 				cb.call({"ok": false, "code": 0, "body": ""})
 				return
 			var j = JSON.parse_string(str(b))
 			_submit_body = j if j is Dictionary else {}
-			cb.call({"ok": true, "code": 200, "body": JSON.stringify({"ok": true, "job_id": _job, "match_id": MID})})
+			## 服务端挑对手: 本周这一格没有真人 ⇒ 机器人池(场次 = max(本大轮场次, gw + gl), 与 SQL referee_gauntlet_pick 同口径)
+			var gw := int(_gs.gauntlet_wins)
+			var gl := int(_gs.gauntlet_losses)
+			_srv_b = BP.one(maxi(int(_gs.season_total_battles), gw + gl), gw, gl, 0)
+			_srv_b["gl_ts"] = int(P2C.now_utc()) - 300
+			cb.call({"ok": true, "code": 200, "body": JSON.stringify({"ok": true, "job_id": _job, "match_id": MID,
+				"opp": {"profile": _srv_b["profile"], "leaders": _srv_b["leaders"]}, "gw": gw, "gl": gl})})
 			return
 		"referee_job_status":
 			if _offline_status:
@@ -182,7 +195,7 @@ func _transport(m, u, _h, b, cb) -> void:
 				cb.call({"ok": true, "code": 200, "body": JSON.stringify({"ok": true, "status": "pending", "match_id": MID})})
 				return
 			cb.call({"ok": true, "code": 200, "body": JSON.stringify({"ok": true, "status": "done", "match_id": MID,
-				"won": _srv_won, "score": 0, "gw": _srv_gw, "gl": _srv_gl, "error": null})})
+				"won": _srv_won, "score": 0, "gw": _srv_gw, "gl": _srv_gl, "coins": _srv_coins, "error": null})})
 			return
 	if str(m) == "GET" and url.find("/rest/v1/matches?") >= 0 and url.find("match_id=eq." + MID) >= 0:
 		_hits["matches_get"] = _hit("matches_get") + 1
@@ -194,20 +207,22 @@ func _transport(m, u, _h, b, cb) -> void:
 # ─────────────────────────────────────────────────────────────
 func _t_pure() -> void:
 	print("── 纯函数: 交阵容 / 查任务 回包 ──")
-	var s := RN.parse_submit(true, 200, JSON.stringify({"ok": true, "job_id": 7, "match_id": MID}))
-	_ok("交阵容: 任务号 + 录像号", str(s.get("err", "?")) == "" and int(s.get("job_id", 0)) == 7 and str(s.get("match_id", "")) == MID)
-	_ok("交阵容: 服务端 reason 原样(off / update_required / closed …)", str(RN.parse_submit(true, 200, "{\"ok\":false,\"reason\":\"off\"}").get("err", "")) == "off"
-		and str(RN.parse_submit(true, 200, "{\"ok\":false,\"reason\":\"closed\"}").get("err", "")) == "closed")
-	_ok("交阵容: 断网 = offline / 404 = unavailable / 回包缺任务号 = server", str(RN.parse_submit(false, 0, "").get("err", "")) == "offline"
-		and str(RN.parse_submit(true, 404, "").get("err", "")) == "unavailable"
-		and str(RN.parse_submit(true, 200, "{\"ok\":true}").get("err", "")) == "server")
+	var opp := {"profile": {"name": "kevin_99", "avatar": "ninja", "id": "g_x", "tag": "#ABCDEF"}, "leaders": ["ninja", "dice", "pirate"]}
+	var s := RN.parse_start(true, 200, JSON.stringify({"ok": true, "job_id": 7, "match_id": MID, "opp": opp}))
+	_ok("交阵容: 任务号 + 录像号 + 对手卡片", str(s.get("err", "?")) == "" and int(s.get("job_id", 0)) == 7 and str(s.get("match_id", "")) == MID
+		and str(((s.get("opp", {}) as Dictionary).get("profile", {}) as Dictionary).get("name", "")) == "kevin_99")
+	_ok("交阵容: 服务端 reason 原样(off / update_required / closed …)", str(RN.parse_start(true, 200, "{\"ok\":false,\"reason\":\"off\"}").get("err", "")) == "off"
+		and str(RN.parse_start(true, 200, "{\"ok\":false,\"reason\":\"closed\"}").get("err", "")) == "closed")
+	_ok("交阵容: 断网 = offline / 404 = unavailable / 回包缺任务号 = server", str(RN.parse_start(false, 0, "").get("err", "")) == "offline"
+		and str(RN.parse_start(true, 404, "").get("err", "")) == "unavailable"
+		and str(RN.parse_start(true, 200, "{\"ok\":true}").get("err", "")) == "server")
 	var st := RN.parse_status(true, 200, JSON.stringify({"ok": true, "status": "done", "match_id": MID, "won": false, "gw": 3, "gl": 2}))
 	_ok("查任务: done + 输 + 账本 3-2", str(st.get("status", "")) == "done" and int(st.get("won", -9)) == 0
 		and int(st.get("gw", -1)) == 3 and int(st.get("gl", -1)) == 2)
 	var st2 := RN.parse_status(true, 200, JSON.stringify({"ok": true, "status": "pending", "match_id": MID, "won": null}))
 	_ok("查任务: 还在算 ⇒ 胜负不明(-1)", str(st2.get("status", "")) == "pending" and int(st2.get("won", 0)) == -1)
-	var body := RN.submit_body(1, {"a": 1}, {"b": 2}, "9.9.9")
-	_ok("请求体键名 = 服务端形参", body.has("p_week") and body.has("p_snapshot") and body.has("p_opponent") and body.has("p_client_version"))
+	var body := RN.start_body(1, {"a": 1}, 0, "9.9.9", 1)
+	_ok("请求体键名 = 服务端形参(没有对手 / 种子)", body.keys() == ["p_week", "p_snapshot", "p_match_no", "p_client_version", "p_rules_ver"], str(body.keys()))
 
 
 # ─────────────────────────────────────────────────────────────
@@ -253,23 +268,29 @@ func _snap() -> Dictionary:
 func _one_match(srv_won_fn: Callable, tamper: bool = false) -> Node:
 	_done = false
 	_submit_body = {}
-	var subs0 := _hit("referee_submit_gauntlet")
+	var subs0 := _hit(START)
 	var m: Node = await _open_mmk()
-	var got := await _wait(func() -> bool: return _hit("referee_submit_gauntlet") > subs0)
+	var got := await _wait(func() -> bool: return _hit(START) > subs0)
 	_ok("分母: 匹配屏交了阵容", got)
 	if not got:
 		return null
-	await _wait(func() -> bool: return _status_text(m) == RW.TXT_SETTLING, 5000)
+	await _wait(func() -> bool: return _status_text(m) == RW.TXT_SETTLING, 8000)
 	_ok("等结果时屏上「%s」、单子已落存档" % RW.TXT_SETTLING, _status_text(m) == RW.TXT_SETTLING
 		and int((_gs.referee_pending as Dictionary).get("job_id", -1)) == _job, _status_text(m))
+	var nm := str((_srv_b.get("profile", {}) as Dictionary).get("name", ""))
+	await _wait(func() -> bool: return _has_label(m, nm), 8000)
+	_ok("★VS 卡上是服务端挑的对手「%s」(本机没挑)" % nm, nm != "" and _has_label(m, nm)
+		and str((_gs.dual_opponent as Dictionary).get("name", "")) == nm)
+	_ok("VS 卡下面那一行仍是「%s」(翻卡没把进度行弄丢)" % RW.TXT_SETTLING, _status_text(m) == RW.TXT_SETTLING, _status_text(m))
 	if _rec.is_empty():
 		## 第一次: 按客户端真交上来的两份快照, 由裁判程序真算(与裁判机同一套代码)
 		var job: Dictionary = JSON.parse_string(JSON.stringify({"v": 1, "job_id": _job, "match_id": MID, "mode": "gauntlet",
 			"key": {"week": 1}, "seed": 2000023, "client_version": str(_submit_body.get("p_client_version", "")),
-			"a": _submit_body.get("p_snapshot", {}), "b": _submit_body.get("p_opponent", {})}))
+			"a": _submit_body.get("p_snapshot", {}), "b": _srv_b}))
 		var res: Dictionary = await RefereeRunner.run(self, job)
 		_rec_b64 = str(res.get("replay_b64", ""))
 		_a_won = bool(res.get("a_won", false))
+		_srv_coins = int(res.get("coins", 0))
 		var raw: PackedByteArray = load("res://scripts/systems/replay/replay_fetcher.gd").decode_b64(_rec_b64)
 		_rec = ReplayRecorder.decode(raw) if not raw.is_empty() else {}
 		_ok("分母: 裁判按交上来的快照算完一场(%d 步, 甲方%s)" % [int(res.get("steps", 0)), "胜" if _a_won else "负"],
@@ -287,6 +308,13 @@ func _one_match(srv_won_fn: Callable, tamper: bool = false) -> Node:
 	_done = true
 	var ok := await _wait(func() -> bool: return _is_battle(get_tree().current_scene), 20000)
 	return get_tree().current_scene if ok else null
+
+
+func _has_label(root: Node, text: String) -> bool:
+	for c in root.find_children("*", "Label", true, false):
+		if is_instance_valid(c) and not (c as Node).is_queued_for_deletion() and str((c as Label).text) == text:
+			return true
+	return false
 
 
 func _play_to_end(b: Node) -> void:
@@ -318,11 +346,14 @@ func _t_a() -> void:
 	_flags_body = "{\"finals_on\":false,\"gauntlet_on\":true}"
 	var s0 := _snap()
 	var b: Node = await _one_match(func() -> bool: return _a_won)
-	_ok("A ★请求体: 本周 / 我的阵容(三统领)/ 对手快照 / 本机版本",
+	_ok("A ★请求体: 本周 / 我的阵容(三统领)/ 第几场 = gw + gl / 本机版本 / 规则版本",
 		int(_submit_body.get("p_week", 0)) == P2C.week_anchor_utc(P2C.now_utc())
 		and ((_submit_body.get("p_snapshot", {}) as Dictionary).get("leaders", []) as Array).size() == 3
-		and (_submit_body.get("p_opponent", {}) as Dictionary).has("lane_assign")
-		and str(_submit_body.get("p_client_version", "")) == ReplayRecorder.client_version(), str(_submit_body.keys()))
+		and int(_submit_body.get("p_match_no", -1)) == int(s0["gw"]) + int(s0["gl"])
+		and str(_submit_body.get("p_client_version", "")) == ReplayRecorder.client_version()
+		and int(_submit_body.get("p_rules_ver", 0)) == int(P2C.RULES_VER), str(_submit_body.keys()))
+	_ok("A ★请求体里没有对手 / 种子(客户端指定不了)", not _submit_body.has("p_opponent") and not _submit_body.has("p_seed")
+		and _submit_body.size() == 5, str(_submit_body.keys()))
 	_ok("A ★进了战斗场, 是「播」服务器那一份(裁判局), 不是本机打", b != null and b._replay.is_playing()
 		and b._replay.is_live() and str(b._replay.live.kind) == LS.KIND_REFEREE and str(b._replay.rec.get("id", "")) == MID)
 	if b == null:
@@ -330,8 +361,10 @@ func _t_a() -> void:
 	var s1 := _snap()
 	_ok("A ★播之前账已按服务器记完: 战绩 = 服务器账本 %d-%d" % [_srv_gw, _srv_gl],
 		int(s1["gw"]) == _srv_gw and int(s1["gl"]) == _srv_gl)
-	_ok("A 币 +%d、场次 +1、本大轮场次 +1" % P2C.GAUNTLET_COINS_PER_MATCH, int(s1["coins"]) == int(s0["coins"]) + int(P2C.GAUNTLET_COINS_PER_MATCH)
-		and int(s1["bt"]) == int(s0["bt"]) + 1 and int(s1["stb"]) == int(s0["stb"]) + 1)
+	_ok("分母: 服务器那一局有战斗内铸币(我方带 035 齿轮: %d 枚)" % _srv_coins, _srv_coins > 0)
+	_ok("A ★币 + 场次币 %d + 服务器那一局的铸币 %d、场次 +1、本大轮场次 +1" % [P2C.GAUNTLET_COINS_PER_MATCH, _srv_coins],
+		int(s1["coins"]) == int(s0["coins"]) + int(P2C.GAUNTLET_COINS_PER_MATCH) + _srv_coins
+		and int(s1["bt"]) == int(s0["bt"]) + 1 and int(s1["stb"]) == int(s0["stb"]) + 1, "%d → %d" % [int(s0["coins"]), int(s1["coins"])])
 	var row: Dictionary = (_gs.match_history as Array)[0] if not (_gs.match_history as Array).is_empty() else {}
 	_ok("A 战绩页多一行、挂服务器录像号、结果 = 服务器", int(s1["mh"]) == int(s0["mh"]) + 1 and str(row.get("replay_id", "")) == MID
 		and str(row.get("result", "")) == ("win" if _srv_won else "lose"), str(row))
@@ -395,10 +428,10 @@ func _t_d() -> void:
 	_offline_submit = true
 	_flags_body = ""                  # 问开关也问不到(存档里那份: 开)
 	var s0 := _snap()
-	var subs0 := _hit("referee_submit_gauntlet")
+	var subs0 := _hit(START)
 	var m: Node = await _open_mmk()
 	await _wait(func() -> bool: return _status_text(m) == RW.TXT_NEED_SERVER, 15000)
-	_ok("D 分母: 真去交了(断网)", _hit("referee_submit_gauntlet") == subs0 + 1)
+	_ok("D 分母: 真去交了(断网)", _hit(START) == subs0 + 1)
 	_ok("D ★屏上「%s」" % RW.TXT_NEED_SERVER, _status_text(m) == RW.TXT_NEED_SERVER, _status_text(m))
 	await _frames(60)
 	_ok("D ★没进战斗场(没有本地对局)", not _is_battle(get_tree().current_scene) and get_tree().current_scene == m)
@@ -412,9 +445,9 @@ func _t_e() -> void:
 	_flags_body = "{\"finals_on\":false,\"gauntlet_on\":true}"
 	_done = false
 	var s0 := _snap()
-	var subs0 := _hit("referee_submit_gauntlet")
+	var subs0 := _hit(START)
 	var m: Node = await _open_mmk()
-	await _wait(func() -> bool: return _hit("referee_submit_gauntlet") > subs0)
+	await _wait(func() -> bool: return _hit(START) > subs0)
 	_offline_status = true
 	await _wait(func() -> bool: return _status_text(m) == RW.TXT_LATER, 20000)
 	_ok("E ★问不到结果 ⇒「%s」" % RW.TXT_LATER, _status_text(m) == RW.TXT_LATER, _status_text(m))
@@ -432,8 +465,8 @@ func _t_e() -> void:
 	var sent: bool = RW.resume_if_any(func(v: Dictionary) -> void: got.append(v))
 	await _wait(func() -> bool: return not got.is_empty(), 5000)
 	_ok("E ★下次开主菜单: 查任务 ⇒ 补记一次(胜)", sent and got.size() == 1 and bool((got[0] as Dictionary).get("won", false)))
-	_ok("E 补记后战绩 = 服务器账本、币 +%d、单子清掉" % P2C.GAUNTLET_COINS_PER_MATCH, int(_gs.gauntlet_wins) == _srv_gw
-		and int(_gs.gauntlet_losses) == _srv_gl and int(_gs.meta_deepsea_coins) == int(s0["coins"]) + int(P2C.GAUNTLET_COINS_PER_MATCH)
+	_ok("E 补记后战绩 = 服务器账本、币 +%d + 铸币 %d、单子清掉" % [P2C.GAUNTLET_COINS_PER_MATCH, _srv_coins], int(_gs.gauntlet_wins) == _srv_gw
+		and int(_gs.gauntlet_losses) == _srv_gl and int(_gs.meta_deepsea_coins) == int(s0["coins"]) + int(P2C.GAUNTLET_COINS_PER_MATCH) + _srv_coins
 		and (_gs.referee_pending as Dictionary).is_empty())
 	var s1 := _snap()
 	var again: bool = RW.resume_if_any(func(v: Dictionary) -> void: got.append(v))
@@ -456,7 +489,7 @@ func _t_f() -> void:
 	print("── F 开关关 ⇒ 老路 ──")
 	_flags_body = "{\"finals_on\":false,\"gauntlet_on\":false}"
 	_gs.referee_flags = {RN.K_FINALS: false, RN.K_GAUNTLET: false}
-	var subs0 := _hit("referee_submit_gauntlet")
+	var subs0 := _hit(START)
 	_left_hook = 0
 	MMK._may_leave_for_test = func(_dest: String) -> bool:
 		_left_hook += 1
@@ -464,7 +497,7 @@ func _t_f() -> void:
 	var m: Node = await _open_mmk()
 	await _wait(func() -> bool: return _left_hook > 0, 15000)
 	_ok("F ★开关关: 走到「去战斗场」那一步(老路本机打)", _left_hook == 1)
-	_ok("F ★一次都没交给服务器、屏上没有裁判那一行", _hit("referee_submit_gauntlet") == subs0 and _status_text(m) == "")
+	_ok("F ★一次都没交给服务器、屏上没有裁判那一行", _hit(START) == subs0 and _status_text(m) == "")
 	MMK._may_leave_for_test = Callable()
 	m.queue_free()
 	await _frames(3)

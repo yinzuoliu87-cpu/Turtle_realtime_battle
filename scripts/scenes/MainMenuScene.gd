@@ -226,6 +226,8 @@ func _ready() -> void:
 	load("res://scripts/net/referee_net.gd").refresh_flags_async()
 	load("res://scripts/systems/replay/referee_watch.gd").resume_if_any(_on_referee_resumed)
 	load("res://scripts/net/ghost_uploader.gd").retry()   # E7: 没回读确认的对手快照补传(判据全在 ghost_uploader 里)
+	## 昵称被管理员重置过(举报处理, 2026-10-20) ⇒ 换回默认昵称并提示一句。判据全在 report_net 里; 没起过名不发请求。
+	load("res://scripts/net/report_net.gd").check_nickname_reset(_on_nickname_reset)
 	## ★★中途退出的那一局(杀进程 / 闪退 / 断电)在这里打完并结算(2026-10-10 用户「学习他们的做法」,
 	##   docs/plans/20261010-中途退出自动结算.md)。必须在登录墙之前、在任何能开新局的入口之前 —— 理由同上面那几句。
 	##   判据全在 `AbandonedMatch` 里; 只在自己就是 current_scene 时跳(门禁把主菜单挂成子节点量东西时不跳, 同登录墙那条)。
@@ -2617,6 +2619,11 @@ func _start_battle_flow() -> void:
 ## 右上「?」: 弹新手教程选择框(「开始教程 / 取消」)。与首启同一个框(scripts/scenes/tutorial_choice.gd)。
 ## ★2026-10-07 方案书 §4.3: 原来这里是一块单独手写的弹窗, 文案口语化(「先下场练练 / 来一场热身局, 我教你挑龟、摆阵 /
 ##   开打 / 等会儿」), 且是全游戏唯一重开教程的入口 —— 与首启各走各的。现在两处共用一个框。
+func _on_nickname_reset(hit: bool) -> void:
+	if hit and is_inside_tree():
+		_toast(load("res://scripts/net/report_net.gd").MSG_NICK_RESET)
+
+
 func _on_tutorial() -> void:
 	TutorialChoice.open(self, false)
 

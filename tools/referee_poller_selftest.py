@@ -78,6 +78,9 @@ class Env:
         os.environ.pop('STREAM_TMP', None)
         os.environ['JOB_TIMEOUT_SEC'] = '30'
         os.environ['VERSIONS_DIR'] = self.tmp
+        # ★工作目录也必须指到临时目录: 不设就落到轮询器默认的 /var/lib/turtle-referee ——
+        #   Windows 上静默建出 C:\var\lib\... (本机绿), Linux CI 上没权限 ⇒ PermissionError ⇒ ⑥⑧红(2026-10-20)。
+        os.environ['WORK_DIR'] = os.path.join(self.tmp, 'work')
         env = self
 
         def fake_rpc(fn, body, timeout=20.0):

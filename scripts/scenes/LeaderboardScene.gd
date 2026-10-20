@@ -147,6 +147,10 @@ const BRACKET_LINE := "查看对阵图"
 const _P2C := preload("res://scripts/gamedata/phase2_config.gd")
 const _BR := preload("res://scripts/gamedata/bracket.gd")
 const _MM := preload("res://scripts/scenes/MainMenuScene.gd")
+## 举报 / 拉黑(2026-10-20 · App Store 审核指南 1.2): 点别人的名字 ⇒ 玩家菜单; 被拉黑的人显示默认昵称。
+const _PM := preload("res://scripts/scenes/social/player_menu.gd")
+const _BL := preload("res://scripts/util/blocklist.gd")
+const _RPT := preload("res://scripts/net/report_net.gd")
 
 ## 金/银/铜。`modulate_color` 是**乘**在 chip-frame 上的(它是一块暗底 + 一圈银边:
 ## 实测底 (52,58,69)、边 (158,164,179)) ⇒ 乘出来就是"暗底 + 金/银/铜边框"的签牌,
@@ -610,9 +614,13 @@ static func _rank_of(r: Dictionary, idx: int) -> int:
 ##   `total` = 上榜人数(<0 ⇒ 用 rows.size()); `me` = 钉住的「我」(空 ⇒ 从 rows 里找 is_self);
 ##   `n_list` = 列表能翻到第几名(<0 ⇒ rows.size())。
 func _render(rows: Array, src: String, total: int, me: Dictionary = {}, n_list: int = -1) -> void:
+	_BL.mask(rows)
+	_BL.mask(me)
 	source = src
 	shown_rows = rows
 	_last_total = total
+	_last_me = me
+	_last_n_list = n_list
 	_by_rank.clear()
 	_row_nodes.clear()
 	_scroll = null
@@ -976,6 +984,9 @@ func _draw_row(parent: Control, y: float, idx: int, r: Dictionary) -> void:
 		nw -= MARK_W
 	var nm := _cell(parent, str(r.get("name", "?")), NAME_X, y, nw, 18,
 		Color(COL_SELF if is_self else COL_ROW), HORIZONTAL_ALIGNMENT_LEFT)
+	if not is_self:
+		_PM.hotspot(parent, Rect2(NAME_X, y, nw, ROW_H - 12.0),
+			{"name": _BL.raw_name(r), "tag": tag_s, "ctx": _RPT.CTX_LEADERBOARD}, _rerender)
 	## ghost 名来自玩家自定义 profile, 长度不受控 —— 截断加省略号, 别让它糊到成绩列上。
 	nm.clip_text = true
 	nm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -996,6 +1007,16 @@ func _draw_row(parent: Control, y: float, idx: int, r: Dictionary) -> void:
 		var k := str(COL_KEYS[ci])
 		var dv: int = -1 if k == "battles" else 0
 		_stat_cell(parent, y, ci, int(r.get(k, dv)), is_self)
+
+
+## 拉黑 / 移出之后原地重画(同一份行, 名字由 `_BL.mask` 换 / 换回)。
+var _last_me: Dictionary = {}
+var _last_n_list: int = -1
+
+
+func _rerender() -> void:
+	if is_inside_tree():
+		_render(shown_rows, source, _last_total, _last_me, _last_n_list)
 
 
 ## 空席: 名次 + 牌位(压暗) + 破折号。

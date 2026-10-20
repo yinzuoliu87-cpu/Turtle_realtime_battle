@@ -1,8 +1,10 @@
 extends Node
 ## 服务器裁判 · 周六一场: 提交 → 等结果 → 记账 → 取录像 → 播(2026-10-19 · 流程说明见 referee_watch.gd 头注)。
-## 挂在匹配屏上(`MatchmakingScene._start_referee`); 匹配屏离场它就跟着没了 —— 交上去之后的单子在存档里
+## 挂在匹配屏上(`MatchmakingScene._server_pick`); 匹配屏离场它就跟着没了 —— 交上去之后的单子在存档里
 ##   (`GameState.referee_pending`), 下次开主菜单 `RefereeWatch.resume_if_any` 补记。
 ## 状态: submit → wait → fetch → play; 停下 = error(屏上 msg 说清原因, 没有本地成绩) / local(服务端说开关已关 ⇒ 调用方走老路)。
+## ★2026-10-20 起对手由服务端挑(`referee_gauntlet_start`): 这里只交「我的阵容 + 第几场」, 对手卡片从回包里来(`opp`),
+##   匹配屏拿它画 VS 卡。客户端不再有任何途径指定对手或种子。
 
 const RW := preload("res://scripts/systems/replay/referee_watch.gd")
 
@@ -14,19 +16,20 @@ var match_id := ""
 var polls := 0
 var offline := 0
 var view: Dictionary = {}
-var _foe: Dictionary = {}
+var opp: Dictionary = {}          # 服务端挑的对手卡片 {profile{name, avatar, id, tag}, leaders}; 交上去之前是空的
 var _tm: Timer = null
 var _inflight := false
 
-func start(foe: Dictionary) -> void:
-	_foe = foe.duplicate(true) if foe is Dictionary else {}
+func start() -> void:
+	opp = {}
 	_to(RW.ST_SUBMIT, RW.TXT_SUBMITTING)
 	var snap: Dictionary = RW.my_snapshot()
 	if snap.is_empty():
 		_to(RW.ST_ERROR, RW.TXT_BAD_LINEUP)
 		return
 	var wk: int = RW.P2C.week_anchor_utc(int(RW.P2C.now_utc()))
-	if not RW.RN.submit_gauntlet_async(wk, snap, _foe, func(res: Dictionary) -> void: _on_submit(wk, res)):
+	var nth: int = int(GameState.gauntlet_wins) + int(GameState.gauntlet_losses)
+	if not RW.RN.start_gauntlet_async(wk, snap, nth, func(res: Dictionary) -> void: _on_submit(wk, res)):
 		_to(RW.ST_ERROR, RW.TXT_NEED_SERVER)
 
 func _to(s: String, m: String) -> void:
@@ -42,7 +45,8 @@ func _on_submit(wk: int, res: Dictionary) -> void:
 		"":
 			job_id = int(res.get("job_id", -1))
 			match_id = str(res.get("match_id", ""))
-			GameState.referee_pending = RW.pending_for(job_id, match_id, wk, _foe)
+			opp = (res.get("opp", {}) as Dictionary).duplicate(true)
+			GameState.referee_pending = RW.pending_for(job_id, match_id, wk, opp)
 			GameState.save()
 			_to(RW.ST_WAIT, RW.TXT_SETTLING)
 			_tm = Timer.new()
@@ -62,6 +66,12 @@ func _on_submit(wk: int, res: Dictionary) -> void:
 			_to(RW.ST_ERROR, RW.TXT_FINISHED)
 		"bad_snapshot", "bad_opponent":
 			_to(RW.ST_ERROR, RW.TXT_BAD_LINEUP)
+		"stale":
+			## 本机战绩落后于服务端账本(上一场的账没补上): 以账本为准对齐, 让玩家重新开战(那一场按账本上的第 N 场重交)。
+			RW.adopt_ledger(GameState, int(res.get("gw", -1)), int(res.get("gl", -1)))
+			_to(RW.ST_ERROR, RW.TXT_STALE)
+		"no_opponent":
+			_to(RW.ST_ERROR, RW.TXT_NO_MATCH)
 		_:
 			_to(RW.ST_ERROR, RW.TXT_NEED_SERVER)   # offline / timeout / no_token / server / unavailable / not_signed_in
 

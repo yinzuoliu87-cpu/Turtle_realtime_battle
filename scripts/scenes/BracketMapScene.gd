@@ -70,6 +70,10 @@ const _Board := preload("res://scripts/systems/replay/gauntlet_board.gd")
 ##   开关 `finals_on` 开着时, 点开自己那一场 = 看服务器算的那一局(不在本机打、不报结果)。
 const _RW := preload("res://scripts/systems/replay/referee_watch.gd")
 const _RN := preload("res://scripts/net/referee_net.gd")
+## 举报 / 拉黑(2026-10-20 · App Store 审核指南 1.2): 对局卡弹窗里每一方名字下面一颗「举报 / 拉黑」; 被拉黑的人显示默认昵称。
+const _PM := preload("res://scripts/scenes/social/player_menu.gd")
+const _BLK := preload("res://scripts/util/blocklist.gd")
+const _RPT := preload("res://scripts/net/report_net.gd")
 ## 看完回放回到对阵图。
 const SELF_SCENE := "res://scenes/BracketMap.tscn"
 
@@ -1407,13 +1411,16 @@ func competitor(r: int, m: int, side: int) -> Dictionary:
 			return {"name": "待定", "seed": -1, "bye": false}
 	if sd < 0:
 		return {"name": "待定", "seed": -1, "bye": false}
-	var nm := str(names[sd]) if sd < names.size() else "神秘龟"
+	var raw := str(names[sd]) if sd < names.size() else "神秘龟"
 	## ★玩家 ID 只在**本组里真有人重名**时才带出来(名字允许重复 · 2026-10-04), 不往每格都贴号。
 	var tags: Array = cur().get("tags", []) if cur().get("tags") is Array else []
-	var tg := str(tags[sd]) if sd < tags.size() else ""
-	if tg != "" and not _P2C.names_needing_tag(names).has(nm):
+	var rtag := str(tags[sd]) if sd < tags.size() else ""
+	var tg := rtag
+	if tg != "" and not _P2C.names_needing_tag(names).has(raw):
 		tg = ""
-	return {"name": nm, "seed": sd, "bye": false, "tag": tg}
+	## 被拉黑的人: 显示默认昵称(`raw` / `rtag` 留给举报菜单)。
+	var nm := _BLK.shown_name(raw, rtag)
+	return {"name": nm, "seed": sd, "bye": false, "tag": tg, "raw": raw, "rtag": rtag}
 
 
 ## 本轮这一场里，**我的对手**是几号种子。`-1` = 拿不到。
@@ -1841,7 +1848,21 @@ func _popup_side(r: int, m: int, side: int, ws: int) -> Control:
 	tg.add_theme_color_override("font_color", Color("#8796a6"))
 	tg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(tg)
+	if sd >= 0 and not _is_me_side(r, m, side):
+		var eb := _PM.entry_button({"name": str(c.get("raw", nm)), "tag": str(c.get("rtag", "")),
+			"ctx": _RPT.CTX_BRACKET}, _on_block_changed)
+		if eb != null:
+			eb.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+			col.add_child(eb)
 	return col
+
+
+## 拉黑 / 移出之后: 关掉对局卡、整张图重画(名字由 `competitor` 现换)。
+func _on_block_changed() -> void:
+	if not is_inside_tree():
+		return
+	_close_popup()
+	_rebuild()
 
 
 func _close_popup() -> void:

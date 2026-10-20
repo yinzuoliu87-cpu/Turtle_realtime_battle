@@ -38,6 +38,11 @@ const STAMP_TEXT := "团灭"
 const POPUP_LIFE := 3.0      # 说明小框自己消失的时间(秒)
 const REPLAY_MARK := "ReplayMark"   # 回放时路名牌左边的小签(门禁按名字找)
 const REPLAY_MARK_TEXT := "回放"
+## 举报 / 拉黑(2026-10-20 · App Store 审核指南 1.2): 正常对局里点对手头像 ⇒ 玩家菜单; 被拉黑的对手显示默认昵称。
+##   回放 / 观赛不挂(两边都可能不是对手, 录像里也没有玩家 ID); 那些人在赛况板 / 对阵图上有入口。
+const _PM := preload("res://scripts/scenes/social/player_menu.gd")
+const _BLK := preload("res://scripts/util/blocklist.gd")
+const _RPT := preload("res://scripts/net/report_net.gd")
 
 var hud
 var battle
@@ -87,6 +92,10 @@ func build(b: Control) -> void:
 	var nm: Dictionary = side_names()
 	name_l = _mk_name(str(nm["l"]), true)
 	name_r = _mk_name(str(nm["r"]), false)
+	var foe: Dictionary = foe_info()
+	if not foe.is_empty() and port_r != null and port_r.get_parent() is Control:
+		_PM.hotspot(port_r.get_parent() as Control, Rect2(Vector2.ZERO, Vector2(PORT, PORT)), foe,
+			func() -> void: name_r.text = str(side_names()["r"]))
 	for side in ["left", "right"]:
 		stamps[side] = _mk_stamp(side)
 	_build_splash()
@@ -107,8 +116,25 @@ func side_names() -> Dictionary:
 	var foe := ""
 	var g = GameState.dual_ghost if GameState != null else {}
 	if g is Dictionary and (g as Dictionary).get("profile", null) is Dictionary:
-		foe = str(((g as Dictionary)["profile"] as Dictionary).get("name", ""))
+		var prof: Dictionary = (g as Dictionary)["profile"]
+		foe = _BLK.shown_name(str(prof.get("name", "")), str(battle.Backend.profile_tag(prof)))
 	return {"l": str(battle.Backend.player_display_name()), "r": foe}
+
+
+## 对手(正常对局才有): {name 原名, tag, ctx}; 回放 / 观赛 / 单路 ⇒ {}。
+func foe_info() -> Dictionary:
+	if not battle._is_dual_lane_mode():
+		return {}
+	if battle._replay != null and (battle._replay.is_playing() or str(battle._replay.mode) == "stream"):
+		return {}
+	var g = GameState.dual_ghost if GameState != null else {}
+	if not (g is Dictionary) or not ((g as Dictionary).get("profile", null) is Dictionary):
+		return {}
+	var prof: Dictionary = (g as Dictionary)["profile"]
+	var tag := str(battle.Backend.profile_tag(prof))
+	if not _PM.can_open(tag):
+		return {}
+	return {"name": str(prof.get("name", "")), "tag": tag, "ctx": _RPT.CTX_BATTLE}
 
 
 func _mk_portrait(pos: Vector2, flip: bool) -> TextureRect:

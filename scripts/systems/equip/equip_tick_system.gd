@@ -416,6 +416,14 @@ func gear_minted() -> int:
 	return _gear_coins
 
 
+## ★本场战斗内铸币的**唯一出口**(左方 = 玩家; 奇械羁绊 + 035 齿轮)。两个读者, 读同一个函数:
+##   ① 本机打完 `_settle_season` 把它加进 `_last_reward`;
+##   ② 服务器裁判 `RefereeRunner` 把它写进结果单 `coins`(周六服务器局按它发币, 2026-10-20)。
+##   ⇒ 下一件会产币的装备接到这里, 两条路同时生效; 别在任何一处就地再写一份加法。
+static func match_minted(battle) -> int:
+	return int(battle._gadget_syn.minted("left")) + int(battle._equip_tick_sys.gear_minted())
+
+
 ## 整场结束(**不是**换路): 归零。与 `_gadget_syn.reset_match()` 同一时机、同一理由。
 func reset_match() -> void:
 	_gear_coins = 0

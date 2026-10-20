@@ -515,7 +515,7 @@ func _ready() -> void:
 			["_potion_syn.on_death(", src_main], ["_spirit_syn.on_death(", src_main],
 			["RelicSynergySystem.atk_mult(", src_main], ["GadgetSynergySystem.stiff_mult(", src_main],
 			["RelicSynergySystem.lifesteal_bonus(", src_main], ["_gadget_syn.brittle_mult(", src_main],
-			["_gadget_syn.minted(", src_main], ["_potion_syn.reset_match(", src_main],
+			["EquipTickSystem.match_minted(", src_main], ["_gadget_syn.minted(", FileAccess.get_file_as_string("res://scripts/systems/equip/equip_tick_system.gd")], ["_potion_syn.reset_match(", src_main],
 			["_relic_syn.reset_match(", src_main],
 			["_potion_syn.amp_for(", src_dmg], ["_potion_syn.try_behead(", src_dmg],
 			["_gadget_syn.on_hit(", src_dmg], ["_spirit_syn.on_dodge(", src_dmg]]:

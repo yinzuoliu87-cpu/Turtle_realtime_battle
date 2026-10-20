@@ -283,12 +283,50 @@ func _account_panel(x: float, w: float) -> void:
 	btns.append(["BtnRecover", "邮箱登录", func(): _open_email_dialog(_SB_ACC.FLOW_RECOVER)])
 	if aid != "":
 		btns.append(["BtnRename", RENAME_LABEL, _open_rename_dialog])
-	var by := _BOT - 30.0 - float(btns.size()) * _ROW_H - float(btns.size() - 1) * _BTN_GAP
+	## ★2026-10-20 最底下一行两颗半宽键「黑名单」「删除账号」(App Store 审核指南 1.2 / 5.1.1(v))。
+	##   只在拿到账号之后建: 没有账号就没有可删的, 也看不到别人的昵称。
+	var pair_row := aid != ""
+	var nrow: int = btns.size() + (1 if pair_row else 0)
+	var by := _BOT - 30.0 - float(nrow) * _ROW_H - float(nrow - 1) * _BTN_GAP
 	for row in btns:
 		var accent: String = UISkin.PX_GOLD if str(row[0]) == primary else UISkin.PX_SLATE
 		var bt := _pix_button(Rect2(cx, by, cw, _ROW_H), str(row[1]), accent, row[2])
 		bt.name = ACCT_ROW_PREFIX + str(row[0])
 		by += _ROW_H + _BTN_GAP
+	if pair_row:
+		var hw := (cw - _BTN_GAP) / 2.0
+		_pix_button(Rect2(cx, by, hw, _ROW_H), BLOCKLIST_LABEL, UISkin.PX_SLATE,
+			func() -> void: _BLP.open(self)).name = ACCT_ROW_PREFIX + BTN_BLOCKLIST
+		## 破坏性 ⇒ 石板底 + 红字(同「重置存档」: 实心红留给确认框里真正动手的那一下)。
+		var dbt := _pix_button(Rect2(cx + hw + _BTN_GAP, by, hw, _ROW_H), DELETE_LABEL, UISkin.PX_SLATE,
+			_open_account_delete)
+		dbt.name = ACCT_ROW_PREFIX + BTN_DELETE
+		for fs in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
+			dbt.add_theme_color_override(fs, Color("#ff8a94"))
+
+
+# ─── 删除账号 / 黑名单 (2026-10-20 · 方案书 docs/plans/20261020-AppStore上架.md §4.2 / D8) ───
+const _ACCT_DEL := preload("res://scripts/scenes/settings/account_delete_dialog.gd")
+const _BLP := preload("res://scripts/scenes/settings/blocklist_panel.gd")
+const DELETE_LABEL := "删除账号"
+const BLOCKLIST_LABEL := "黑名单"
+const BTN_DELETE := "BtnDelete"
+const BTN_BLOCKLIST := "BtnBlocklist"
+## 删号成功后去哪: 主菜单(存档已回到全新安装的样子 ⇒ onboarded=false ⇒ 首次进入流程弹教程选择框)。
+const AFTER_DELETE_SCENE := "res://scenes/MainMenu.tscn"
+## 【门禁注入点】有效 ⇒ 删号成功后调它而不换场景(门禁不能把自己的场景树换掉)。默认无效 = 玩家路径。
+var after_delete_hook: Callable = Callable()
+
+
+func _open_account_delete() -> void:
+	_ACCT_DEL.open(self, _acct_mail(), _after_account_deleted)
+
+
+func _after_account_deleted() -> void:
+	if after_delete_hook.is_valid():
+		after_delete_hook.call(AFTER_DELETE_SCENE)
+		return
+	get_tree().change_scene_to_file(AFTER_DELETE_SCENE)
 
 
 ## 右框「声音 / 画面」。每项一行: 左名 · 中控件 · 右值(参考 Mirrorverse / Bomberman)。

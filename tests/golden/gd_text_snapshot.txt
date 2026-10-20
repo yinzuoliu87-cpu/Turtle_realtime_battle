@@ -641,6 +641,7 @@ scripts/net/remote_pool.gd|lit|缺 ghost_id
 scripts/net/remote_pool.gd|lit|装备 id `%s` 不在白名单
 scripts/net/remote_pool.gd|lit|龟 id `%s` 不在白名单
 scripts/net/remote_pool.gd|lit|（部署不存在）
+scripts/net/report_net.gd|lit|昵称已被重置为默认昵称
 scripts/net/supabase.gd|lit|不支持该邮箱域名
 scripts/net/supabase.gd|lit|发送失败（%d），请稍后重试
 scripts/net/supabase.gd|lit|操作过于频繁，请稍后再试
@@ -1071,6 +1072,7 @@ scripts/scenes/SettingsScene.gd|lit|修改昵称
 scripts/scenes/SettingsScene.gd|lit|修改邮箱
 scripts/scenes/SettingsScene.gd|lit|全屏
 scripts/scenes/SettingsScene.gd|lit|关闭
+scripts/scenes/SettingsScene.gd|lit|删除账号
 scripts/scenes/SettingsScene.gd|lit|发送验证码
 scripts/scenes/SettingsScene.gd|lit|声音
 scripts/scenes/SettingsScene.gd|lit|处理存档冲突
@@ -1109,6 +1111,7 @@ scripts/scenes/SettingsScene.gd|lit|重置存档
 scripts/scenes/SettingsScene.gd|lit|问题反馈
 scripts/scenes/SettingsScene.gd|lit|音乐
 scripts/scenes/SettingsScene.gd|lit|音效
+scripts/scenes/SettingsScene.gd|lit|黑名单
 scripts/scenes/SettingsScene.gd|placeholder_text|输入昵称
 scripts/scenes/SettingsScene.gd|placeholder_text|输入邮箱
 scripts/scenes/SettingsScene.gd|placeholder_text|输入验证码
@@ -1776,6 +1779,27 @@ scripts/scenes/map_editor.gd|text|重载
 scripts/scenes/map_editor.gd|text|💾保存
 scripts/scenes/map_editor.gd|text|🖌 地图编辑器 (左键刷格 · MAPEDIT)
 scripts/scenes/record/match_card.gd|lit|版本不同
+scripts/scenes/settings/account_delete_dialog.gd|lit|下一步
+scripts/scenes/settings/account_delete_dialog.gd|lit|删除中
+scripts/scenes/settings/account_delete_dialog.gd|lit|删除内容：账号与玩家 ID · 云端存档 · 阵容快照\n排行榜与赛事记录 · 举报与反馈记录 · 本机存档。\n
+scripts/scenes/settings/account_delete_dialog.gd|lit|删除后无法恢复。
+scripts/scenes/settings/account_delete_dialog.gd|lit|删除失败：当前版本不可提交，请更新后重试
+scripts/scenes/settings/account_delete_dialog.gd|lit|删除失败：未连接服务器
+scripts/scenes/settings/account_delete_dialog.gd|lit|删除失败：网络不可用，账号未删除
+scripts/scenes/settings/account_delete_dialog.gd|lit|删除账号
+scripts/scenes/settings/account_delete_dialog.gd|lit|取消
+scripts/scenes/settings/account_delete_dialog.gd|lit|已完成对局的录像保留，其中的昵称与头像显示为「已注销玩家」。\n
+scripts/scenes/settings/account_delete_dialog.gd|lit|登录已失效，请先通过「邮箱登录」重新登录
+scripts/scenes/settings/account_delete_dialog.gd|lit|确认删除
+scripts/scenes/settings/account_delete_dialog.gd|lit|确认删除账号
+scripts/scenes/settings/account_delete_dialog.gd|lit|绑定的邮箱 %s 同时解除。
+scripts/scenes/settings/account_delete_dialog.gd|lit|账号删除后无法恢复，进度不可找回。
+scripts/scenes/settings/account_delete_dialog.gd|lit|账号已删除
+scripts/scenes/settings/blocklist_panel.gd|lit|关闭
+scripts/scenes/settings/blocklist_panel.gd|lit|移出
+scripts/scenes/settings/blocklist_panel.gd|lit|黑名单
+scripts/scenes/settings/blocklist_panel.gd|lit|黑名单中的玩家昵称显示为默认昵称。名单仅保存在本设备。
+scripts/scenes/settings/blocklist_panel.gd|lit|黑名单为空
 scripts/scenes/settings/selfcheck_panel.gd|lit|一致
 scripts/scenes/settings/selfcheck_panel.gd|lit|不一致
 scripts/scenes/settings/selfcheck_panel.gd|lit|共 %d 项 · 预计 5 分钟
@@ -1808,6 +1832,21 @@ scripts/scenes/shop/shop_chest.gd|lit|羁绊赠送装备不可出售
 scripts/scenes/shop/shop_chest.gd|lit|详情
 scripts/scenes/shop/shop_chest.gd|text|背包 %d 件
 scripts/scenes/shop/shop_chest.gd|text|背包 · 空
+scripts/scenes/social/player_menu.gd|lit|24 小时内已举报过该玩家
+scripts/scenes/social/player_menu.gd|lit|举报 / 拉黑
+scripts/scenes/social/player_menu.gd|lit|举报失败，请检查网络后重试
+scripts/scenes/social/player_menu.gd|lit|举报昵称
+scripts/scenes/social/player_menu.gd|lit|今日举报次数已达上限
+scripts/scenes/social/player_menu.gd|lit|关闭
+scripts/scenes/social/player_menu.gd|lit|已举报
+scripts/scenes/social/player_menu.gd|lit|已拉黑 · 昵称显示为默认昵称
+scripts/scenes/social/player_menu.gd|lit|已移出黑名单
+scripts/scenes/social/player_menu.gd|lit|拉黑
+scripts/scenes/social/player_menu.gd|lit|提交中
+scripts/scenes/social/player_menu.gd|lit|无法举报自己
+scripts/scenes/social/player_menu.gd|lit|移出黑名单
+scripts/scenes/social/player_menu.gd|lit|黑名单已满
+scripts/scenes/social/player_menu.gd|text|玩家 ID %s
 scripts/scenes/team_select/detail_panel.gd|lit|攻击力
 scripts/scenes/team_select/detail_panel.gd|lit|生命值
 scripts/scenes/team_select/detail_panel.gd|lit|防御力
@@ -1909,10 +1948,12 @@ scripts/systems/replay/live_spectate.gd|lit|直播中断
 scripts/systems/replay/live_spectate.gd|lit|观赛
 scripts/systems/replay/referee_watch.gd|lit|上一场闯关：失败
 scripts/systems/replay/referee_watch.gd|lit|上一场闯关：胜利
+scripts/systems/replay/referee_watch.gd|lit|匹配失败，请稍后重试
 scripts/systems/replay/referee_watch.gd|lit|备战阶段 · 结束后开赛
 scripts/systems/replay/referee_watch.gd|lit|失败
 scripts/systems/replay/referee_watch.gd|lit|实时
 scripts/systems/replay/referee_watch.gd|lit|录像无法在本设备播放
+scripts/systems/replay/referee_watch.gd|lit|战绩已同步，请重新开战
 scripts/systems/replay/referee_watch.gd|lit|本周闯关已结束
 scripts/systems/replay/referee_watch.gd|lit|正在提交阵容
 scripts/systems/replay/referee_watch.gd|lit|正在结算

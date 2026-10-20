@@ -91,6 +91,7 @@ var _gauntlet_now := false
 ## 服务器裁判: 进行中的那一场(`referee_run.gd`)与屏上那一行。
 var _ref_run = null
 var _ref_lb: Label = null
+var _local_args: Array = []   # 服务端说开关已关时本机挑对手要的 [排除名单, rng]
 var _searching := false   # 雷达环循环的闸: _build_vs 里置 false 立即断. 原先靠 is_instance_valid(_dots_lbl) 判断,
                           #   但 queue_free 是延迟的 → 换幕后还会多播一圈残留弧.
 
@@ -132,9 +133,14 @@ func _ready() -> void:
 	_gauntlet_now = _P2C_MM.phase_at_utc(_now_mm) == _P2C_MM.PHASE_GAUNTLET \
 			and _P2C_MM.phase_mode_live(_P2C_MM.PHASE_GAUNTLET)
 	if _gauntlet_now:
-		_RN.refresh_flags_async()   # 服务器裁判开关: 匹配动画这几秒里问一次(下面交阵容前读它)
-		GameState.dual_ghost = Backend.find_gauntlet_opponent(
-			int(GameState.gauntlet_wins), int(GameState.gauntlet_losses), exclude, _rng)
+		_RN.refresh_flags_async()   # 服务器裁判开关: 匹配动画这几秒里问一次(存档里那份给下一次用)
+	## ★服务器裁判(周六 + 开关开, 2026-10-20 起): 对手由服务端挑(`referee_gauntlet_start`) —— 本机不挑、不写 dual_ghost,
+	##   交阵容与「找对手」动画同时进行, 回包里的对手卡片画 VS 卡。服务端说开关已关 ⇒ 退回下面的老路(本机挑、本机打)。
+	if _gauntlet_now and _RW.gauntlet_on():
+		_server_pick(exclude, _rng)
+		return
+	if _gauntlet_now:
+		_pick_gauntlet_local(exclude, _rng)
 	else:
 		## ★★2026-09-25: 直接把**场次**传进去。原来这里 `bracket_for_battles(...)`
 		##   把细的那一维扔了、只留粗格子, 而 `find_opponent` 里又自己读一遍真场次
@@ -144,10 +150,7 @@ func _ready() -> void:
 		##   (方案书 `docs/plans/20260926-删掉9档进度档.md`)
 		GameState.dual_ghost = Backend.find_opponent(
 			int(GameState.season_total_battles), exclude, _rng)
-	var _gid := str((GameState.dual_ghost as Dictionary).get("ghost_id", "")) if GameState.dual_ghost is Dictionary else ""
-	if _gid != "":
-		GameState.recent_ghost_ids.append(_gid)
-		while GameState.recent_ghost_ids.size() > 8: GameState.recent_ghost_ids.pop_front()   # 3→8(用户2026-07-18): 配合档窗口~21候选, 循环过大半池才重复(防总撞同一支)
+	_note_recent()
 	var opp := _opponent_from_ghost(GameState.dual_ghost)
 	GameState.dual_opponent = opp
 	_build_searching()
@@ -157,11 +160,6 @@ func _ready() -> void:
 	_build_vs(opp)
 	await get_tree().create_timer(2.6).timeout
 	if _cancelled or not is_inside_tree():
-		return
-	## ★服务器裁判(周六 + 开关开): 不在本机打 —— 交阵容给服务器, 等结果, 播服务器那一份录像。
-	##   排在下面那条门禁缝之前: 那条缝只管「什么时候去战斗场」, 而这条路根本不去(本机不打)。
-	if _gauntlet_now and _RW.gauntlet_on():
-		_start_referee()
 		return
 	## 【门禁注入点】见文件顶部 `_may_leave_for_test` 的长注释。
 	## 默认是无效 Callable ⇒ 这两行对玩家路径等于不存在。
@@ -173,33 +171,76 @@ func _ready() -> void:
 	get_tree().change_scene_to_file(BATTLE_SCENE)
 
 
-## 服务器裁判: VS 卡下面一行字说进度(提交 / 结算 / 原因); 断网等停下时就停在这一屏, 左上「←」回主菜单。
-func _start_referee() -> void:
-	_ref_lb = _font(24, Color("#ffd93d"))
-	_ref_lb.name = "RefereeStatus"
-	_ref_lb.size = Vector2(W, 34)
-	_ref_lb.position = Vector2(0, CARD_Y + CARD_H + 26.0)
-	_ref_lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	content_root.add_child(_ref_lb)
+## 周六本机挑对手(老路: 开关关着 / 服务端说开关已关)。
+func _pick_gauntlet_local(exclude: Array, rng: RandomNumberGenerator) -> void:
+	GameState.dual_ghost = Backend.find_gauntlet_opponent(
+		int(GameState.gauntlet_wins), int(GameState.gauntlet_losses), exclude, rng)
+
+
+## 刚挑到的对手记进「最近对手」(下一次本机挑时排除)。
+func _note_recent() -> void:
+	var _gid := str((GameState.dual_ghost as Dictionary).get("ghost_id", "")) if GameState.dual_ghost is Dictionary else ""
+	if _gid != "":
+		GameState.recent_ghost_ids.append(_gid)
+		while GameState.recent_ghost_ids.size() > 8: GameState.recent_ghost_ids.pop_front()   # 3→8(用户2026-07-18): 配合档窗口~21候选, 循环过大半池才重复(防总撞同一支)
+
+
+## ★服务器裁判 · 周六(2026-10-20 起对手由服务端挑): 「找对手」动画与交阵容同时开始;
+##   动画至少放满 2.2 秒、且服务端回了包, 才翻到 VS 卡(卡片 = 服务端回的对手, 真人与机器人同一形状)。
+##   交不上(断网 / 拒收)⇒ 停在找对手那一屏, 下面一行字说原因, 左上「←」回主菜单(没有本地成绩)。
+##   服务端说开关已关(ST_LOCAL)⇒ `_on_referee_changed` 走老路: 本机挑、本机打。
+func _server_pick(exclude: Array, rng: RandomNumberGenerator) -> void:
+	_local_args = [exclude, rng]
+	_build_searching()
 	_ref_run = _RUN.new()
 	_ref_run.name = "RefereeRun"
 	add_child(_ref_run)
 	_ref_run.changed.connect(_on_referee_changed)
-	_ref_run.start(GameState.dual_ghost if GameState.dual_ghost is Dictionary else {})
+	_ref_run.start()
+	var t0 := Time.get_ticks_msec()
+	while not _cancelled and is_inside_tree() and _ref_run != null \
+			and (Time.get_ticks_msec() - t0 < 2200 or str(_ref_run.state) == _RW.ST_SUBMIT):
+		await get_tree().process_frame
+	if _cancelled or not is_inside_tree() or _ref_run == null or (_ref_run.opp as Dictionary).is_empty():
+		return
+	var card := _opponent_from_ghost(_ref_run.opp)
+	GameState.dual_opponent = card
+	_build_vs(card)
+	_ref_label()
+
+
+## VS 卡(或找对手那一屏)下面那一行字。`_build_vs` / `_build_searching` 会清掉 content_root ⇒ 每次用前确认还在。
+func _ref_label() -> Label:
+	if _ref_lb == null or not is_instance_valid(_ref_lb) or _ref_lb.is_queued_for_deletion():
+		if _ref_lb != null and is_instance_valid(_ref_lb):
+			_ref_lb.name = "RefereeStatusOld"   # 旧的这一帧末才释放: 不让名会把新的挤成 @Label@N(按名找不到)
+		_ref_lb = _font(24, Color("#ffd93d"))
+		_ref_lb.name = "RefereeStatus"
+		_ref_lb.size = Vector2(W, 34)
+		_ref_lb.position = Vector2(0, CARD_Y + CARD_H + 26.0)
+		_ref_lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		content_root.add_child(_ref_lb)
+	if _ref_run != null:
+		_ref_lb.text = str(_ref_run.msg)
+	return _ref_lb
 
 
 func _on_referee_changed() -> void:
 	if _ref_run == null or _cancelled or not is_inside_tree():
 		return
 	if str(_ref_run.state) == _RW.ST_LOCAL:
-		## 服务端说开关已关 ⇒ 老路: 本机打(与开关关着时一字不差)。
+		## 服务端说开关已关 ⇒ 老路: 本机挑、本机打(与开关关着时同一条)。
+		var ex: Array = _local_args[0] if _local_args.size() == 2 else []
+		var rng: RandomNumberGenerator = _local_args[1] if _local_args.size() == 2 else Backend.make_match_rng()
+		_pick_gauntlet_local(ex, rng)
+		_note_recent()
+		GameState.dual_opponent = _opponent_from_ghost(GameState.dual_ghost)
 		await _fade_to_black(0.4)
 		if _cancelled or not is_inside_tree():
 			return
 		get_tree().change_scene_to_file(BATTLE_SCENE)
 		return
-	if _ref_lb != null and is_instance_valid(_ref_lb):
-		_ref_lb.text = str(_ref_run.msg)
+	_ref_label()
 
 
 # ---------------------------------------------------------------------------

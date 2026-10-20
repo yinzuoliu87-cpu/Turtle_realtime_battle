@@ -29,6 +29,10 @@ const MatchCard := preload("res://scripts/scenes/record/match_card.gd")
 const Live := preload("res://scripts/systems/replay/live_spectate.gd")
 const RN := preload("res://scripts/net/referee_net.gd")
 const SW := preload("res://scripts/systems/replay/stream_watch.gd")
+## 举报 / 拉黑(2026-10-20 · App Store 审核指南 1.2): 点一个人 ⇒ 右栏顶上一颗「举报 / 拉黑」; 被拉黑的人显示默认昵称。
+const PM := preload("res://scripts/scenes/social/player_menu.gd")
+const BL := preload("res://scripts/util/blocklist.gd")
+const RPT := preload("res://scripts/net/report_net.gd")
 
 ## 看完回放回到这一页。
 const SELF_SCENE := "res://scenes/GauntletBoard.tscn"
@@ -267,6 +271,8 @@ func _apply_live() -> void:
 		ids.append(str(g["id"]))
 	live_games = Board.live_games(_live_rows + _ref_rows, ids, P2C.now_utc())
 	Board.mark_live(data, live_games, BE.my_tag())
+	BL.mask(data)
+	BL.mask(live_games)
 
 
 func _set_status(code: String) -> void:
@@ -365,6 +371,12 @@ func _render_games() -> void:
 	else:
 		_games_title.text = LIVE_HEAD if not lives.is_empty() else ALL_GAMES
 	_all_btn.visible = focus_tag != ""
+	if focus_tag != "":
+		var fp := _player_of(focus_tag)
+		var eb := PM.entry_button({"name": BL.raw_name(fp), "tag": focus_tag, "ctx": RPT.CTX_BOARD}, _on_block_changed)
+		if eb != null:
+			eb.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+			_games_box.add_child(eb)
 	## 正在打的在最上面; 下面一条小标题「最近对局」隔开打完的(只在两种都有时出)。
 	var k := 0
 	for g in lives:
@@ -693,6 +705,15 @@ func _on_player_pressed(tag: String) -> void:
 	if _busy != "":
 		return
 	focus_tag = "" if focus_tag == tag else tag
+	_render()
+
+
+## 拉黑 / 移出之后: 同一份数据重新换名(BL.mask 会换回原名)再画。
+func _on_block_changed() -> void:
+	if not is_inside_tree():
+		return
+	BL.mask(data)
+	BL.mask(live_games)
 	_render()
 
 

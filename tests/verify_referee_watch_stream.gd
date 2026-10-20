@@ -34,6 +34,8 @@ var _gs
 var _http: Node = null
 var _hits := {}
 var _submit_body: Dictionary = {}
+var _srv_b: Dictionary = {}       # 门禁当服务器: 服务端挑的对手(机器人池那一份)
+const BP := preload("res://scripts/referee/bot_pool.gd")
 var _job := 300
 var _done := false
 var _srv_won := false
@@ -168,10 +170,15 @@ func _transport(m, u, _h, b, cb) -> void:
 		"referee_flags":
 			cb.call({"ok": true, "code": 200, "body": JSON.stringify(_flags)})
 			return
-		"referee_submit_gauntlet":
+		"referee_gauntlet_start":
 			var j = JSON.parse_string(str(b))
 			_submit_body = j if j is Dictionary else {}
-			cb.call({"ok": true, "code": 200, "body": JSON.stringify({"ok": true, "job_id": _job, "match_id": MID})})
+			## 2026-10-20 起对手由服务端挑: 门禁当服务器, 从机器人池取一份(与 SQL referee_gauntlet_pick 同口径), 回卡片
+			_srv_b = BP.one(maxi(int(_gs.season_total_battles), int(_gs.gauntlet_wins) + int(_gs.gauntlet_losses)),
+				int(_gs.gauntlet_wins), int(_gs.gauntlet_losses), 0)
+			_srv_b["gl_ts"] = int(Time.get_unix_time_from_system()) - 300
+			cb.call({"ok": true, "code": 200, "body": JSON.stringify({"ok": true, "job_id": _job, "match_id": MID,
+				"opp": {"profile": _srv_b["profile"], "leaders": _srv_b["leaders"]}})})
 			return
 		"referee_job_status":
 			if not _done:
@@ -224,15 +231,15 @@ func _snap() -> Dictionary:
 ## 匹配屏 → 交阵容 → (门禁当服务器) → done。第一次由裁判程序真算并录流。返回是否交上去了。
 func _submit_and_finish(m: Node) -> bool:
 	_done = false
-	var subs0 := _hit("referee_submit_gauntlet")
-	var got := await _wait(func() -> bool: return _hit("referee_submit_gauntlet") > subs0)
+	var subs0 := _hit("referee_gauntlet_start")
+	var got := await _wait(func() -> bool: return _hit("referee_gauntlet_start") > subs0)
 	if not got:
 		return false
 	await _wait(func() -> bool: return _status_text(m) == RW.TXT_SETTLING, 5000)
 	if _rec.is_empty():
 		var job: Dictionary = JSON.parse_string(JSON.stringify({"v": 1, "job_id": _job, "match_id": MID, "mode": "gauntlet",
 			"key": {"week": 1}, "seed": 2000023, "client_version": str(_submit_body.get("p_client_version", "")),
-			"a": _submit_body.get("p_snapshot", {}), "b": _submit_body.get("p_opponent", {})}))
+			"a": _submit_body.get("p_snapshot", {}), "b": _srv_b}))
 		var res: Dictionary = await RefereeRunner.run(self, job, Callable(), {"keep": true})
 		_rec_b64 = str(res.get("replay_b64", ""))
 		_chunks = res.get("stream_chunks", [])

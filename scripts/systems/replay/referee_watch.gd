@@ -5,9 +5,10 @@ extends RefCounted
 ## ══════════════════════════════════════════════════════════════════════
 ##  周六闯关(开关 `gauntlet_on` 开着时; 关着时一字不变走老路 = 本机打、本机记)
 ## ══════════════════════════════════════════════════════════════════════
-##   匹配屏(选对手照旧, 未决点见方案书)→ `Run`:
-##     提交 ── referee_submit_gauntlet(我的快照, 对手快照) ──► 拿到任务号 ⇒ 落「待记账单」(GameState.referee_pending, 进存档)
-##     等待 ── 每 POLL_SEC 秒 referee_job_status ──► done ⇒ 按服务器的胜负 / 战绩记账(`settle`, 清单 + 存档同一刻)
+##   匹配屏(本机不挑对手)→ `Run`:
+##     提交 ── referee_gauntlet_start(我的快照, 第几场) ──► 服务端挑对手(同标签真人 → 机器人)、定种子、建任务
+##             ⇒ 回任务号 + 对手卡片(匹配屏画 VS 卡) ⇒ 落「待记账单」(GameState.referee_pending, 进存档)
+##     等待 ── 每 POLL_SEC 秒 referee_job_status ──► done ⇒ 按服务器的胜负 / 战绩 / 战斗内铸币记账(`settle`, 清单 + 存档同一刻)
 ##     播放 ── 按录像号取录像(matches)──► ReplayRecorder.play + 观赛会话 KIND_REFEREE:
 ##             1 倍从头放、没有「回放」小签、没有播放控件; 放完走正常结算屏, 胜负 / 战绩 / 奖励都是服务器那一份
 ##   ★账在播之前就记完: 播到一半杀进程 / 退出, 账也不会丢、不会记两次。
@@ -43,6 +44,8 @@ const TXT_CLOSED := "闯关赛仅限周六"
 const TXT_FINISHED := "本周闯关已结束"
 const TXT_BAD_LINEUP := "阵容无效，请检查背包"
 const TXT_UNPLAYABLE := "录像无法在本设备播放"
+const TXT_STALE := "战绩已同步，请重新开战"
+const TXT_NO_MATCH := "匹配失败，请稍后重试"
 const TXT_SHOP := "备战阶段 · 结束后开赛"
 const TXT_RESUMED_WIN := "上一场闯关：胜利"
 const TXT_RESUMED_LOSE := "上一场闯关：失败"
@@ -95,7 +98,9 @@ static func pending_for(job_id: int, match_id: String, week: int, foe: Dictionar
 ## ★记账: 服务器算完的这一场(周六口径, 与 `_settle_season` 的闯关分支 + 收尾同一套)。
 ##   只认待记账单上那一个任务号 ⇒ 匹配屏与主菜单补记两条路谁先到谁记, 另一条什么都不做(不会记两次)。
 ##   战绩(gw / gl)以服务器账本为准(`referee_job_status` 回的是记完这一场之后的数)。
-##   返回结算屏要的 {won, reward, gw, gl}; {} = 不是这一单 / 结果不明 / 已经记过。
+##   ★战斗内铸币(奇械羁绊 / 035 齿轮)= 服务器那一局算出来的 `coins`(裁判写进账本), 与本机打完 `_settle_season`
+##     同一个位置加进奖励、同一条「出局那一局不发」。客户端不重算、不自报(2026-10-20; 之前服务器局一枚都不发)。
+##   返回结算屏要的 {won, reward, coins, gw, gl}; {} = 不是这一单 / 结果不明 / 已经记过。
 static func settle(gs, job_id: int, st: Dictionary) -> Dictionary:
 	if gs == null:
 		return {}
@@ -111,12 +116,13 @@ static func settle(gs, job_id: int, st: Dictionary) -> Dictionary:
 		gs.save()
 		return {}
 	var won := wi == 1
-	var reward: int = gs.gauntlet_settle(won)
+	var coins := maxi(0, int(st.get("coins", 0)))
+	var reward: int = gs.gauntlet_settle(won) + coins   # 与 `_settle_season` 同序: 场次币 + 战斗内铸币
 	if int(st.get("gw", -1)) >= 0 and int(st.get("gl", -1)) >= 0:
 		gs.gauntlet_wins = int(st["gw"])
 		gs.gauntlet_losses = int(st["gl"])
 	if gs.is_eliminated():
-		reward = 0                        # 与 `_settle_season` 同一条: 出局那一局不发币
+		reward = 0                        # 与 `_settle_season` 同一条: 出局那一局不发币(含战斗内铸币)
 	gs.meta_deepsea_coins += reward
 	gs.battles_total += 1
 	if won:
@@ -139,7 +145,21 @@ static func settle(gs, job_id: int, st: Dictionary) -> Dictionary:
 	## 快照池: 以服务器给的新战绩标签再传一份(服务端写回时挂进池的那份没有 gl_* 标签, 本机匹配层认不出)。
 	BE.upload_gauntlet_ghost(int(gs.gauntlet_wins), int(gs.gauntlet_losses))
 	BE.report_finals_entry()
-	return {"won": won, "reward": reward, "gw": int(gs.gauntlet_wins), "gl": int(gs.gauntlet_losses)}
+	return {"won": won, "reward": reward, "coins": coins, "gw": int(gs.gauntlet_wins), "gl": int(gs.gauntlet_losses)}
+
+
+## 开战时服务端说「第几场」对不上(stale): 以账本为准。上一场的账还挂着 ⇒ 先补记那一场(它带着服务器的战绩与铸币);
+##   没挂着 ⇒ 直接把本机战绩对齐到账本。
+static func adopt_ledger(gs, gw: int, gl: int) -> void:
+	if gs == null or gw < 0 or gl < 0:
+		return
+	var p = gs.get("referee_pending")
+	if p is Dictionary and not (p as Dictionary).is_empty():
+		resume_if_any()
+		return
+	gs.gauntlet_wins = gw
+	gs.gauntlet_losses = gl
+	gs.save()
 
 
 ## 播服务器那一份录像(账已记完)。返回 "" = 已进战斗场; 否则是不能播的原因。

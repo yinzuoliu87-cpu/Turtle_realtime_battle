@@ -15,7 +15,7 @@ extends Node
 ##   G 赛况板: G1 正在算的裁判局出「正在打」卡(不写胜负; 版本不同灰签); G2 点「观赛」⇒ stream 模式、会话 live、没有操作条;
 ##     G3 服务器还没算完(只到 3 块、没有 end.json)⇒ 停在「同步中」, 不判没有、不报错; G4 算完 ⇒ 播到结尾、收尾卡揭晓胜方、不报全场时长;
 ##     G5 离场还原 GameState; G6 列表 404 ⇒ 没有裁判局卡、不报错; G7 开关关 ⇒ 不问列表
-##   S 迁移 SQL 静态: 文件在、CRLF、schema.sql 末尾逐字同一段(只一次); 权限(anon 不可 / authenticated 可 / 裁判机两个只给 service_role);
+##   S 迁移 SQL 静态: 文件在、行尾不混且与 schema.sql 同一种(随平台检出)、schema.sql 末尾逐字同一段(只一次); 权限(anon 不可 / authenticated 可 / 裁判机两个只给 service_role);
 ##     列表函数不回快照整列; finals_replay 最后一版回 referee; 补流任务单键名 = 轮询器读的那几个
 
 const SB := preload("res://scripts/net/supabase.gd")
@@ -456,6 +456,17 @@ func _t_g() -> void:
 
 
 # S ─────────────────────────────────────────────────────────────
+## 行尾种类: 全 CRLF / 全 LF / 混着。
+func _eol_kind(t: String) -> String:
+	var crlf := t.count("\r\n")
+	var lf := t.count("\n")
+	if crlf == lf:
+		return "crlf"
+	if crlf == 0:
+		return "lf"
+	return "mixed"
+
+
 func _seg(t: String) -> String:
 	var a := t.find(MARK_BEGIN)
 	var b2 := t.find(MARK_END)
@@ -476,12 +487,16 @@ func _t_sql() -> void:
 	var mig := raw.get_string_from_utf8()
 	var sch := FileAccess.get_file_as_string(SCHEMA)
 	_ok("分母 · 迁移文件与 schema.sql 都读得到", mig.length() > 2000 and sch.length() > 100000, "%d / %d 字" % [mig.length(), sch.length()])
-	var crlf := mig.count("\r\n")
-	_ok("S 迁移文件行尾 CRLF(与 schema.sql 相同), 首尾标记各一", crlf > 50 and crlf == mig.count("\n")
-		and mig.count(MARK_BEGIN) == 1 and mig.count(MARK_END) == 1)
+	## ★行尾: 仓库里存的是 LF, 检出时随平台(Windows autocrlf ⇒ CRLF, Linux CI ⇒ LF)。
+	##   原判据写死「CRLF」⇒ 本机绿、CI 必红(2026-10-20)。要量的是需求本身: 迁移文件不混行尾、且与 schema.sql 同一种
+	##   (下一条「逐字同一段」要靠它成立), 与在哪个平台检出无关。
+	var mig_eol := _eol_kind(mig)
+	var sch_eol := _eol_kind(sch)
+	_ok("S 迁移文件行尾不混、与 schema.sql 同一种(随平台检出), 首尾标记各一", mig.count("\n") > 50 and mig_eol != "mixed"
+		and mig_eol == sch_eol and mig.count(MARK_BEGIN) == 1 and mig.count(MARK_END) == 1, "%s / %s" % [mig_eol, sch_eol])
 	var seg := _seg(mig)
-	_ok("S ★schema.sql 末尾逐字同一段(只一次)", seg != "" and sch.count(MARK_BEGIN) == 1 and _seg(sch) == seg
-		and sch.strip_edges().ends_with(MARK_END))
+	_ok("S ★schema.sql 里逐字同一段(只一次·之后可接更晚的迁移)", seg != "" and sch.count(MARK_BEGIN) == 1 and _seg(sch) == seg
+		and sch.find(MARK_END) > sch.find(MARK_BEGIN))
 	var live := _fn(seg, "referee_live_gauntlet")
 	_ok("S ★列表函数: anon 不可、authenticated 可", live != "" and seg.contains("revoke all on function public.referee_live_gauntlet() from public, anon;")
 		and seg.contains("grant execute on function public.referee_live_gauntlet() to authenticated;")

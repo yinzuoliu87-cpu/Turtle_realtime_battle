@@ -88,10 +88,11 @@ func _ready() -> void:
 
 func _transport(_m, u, _h, _b, cb) -> void:
 	var url := str(u)
-	if url.find("/rpc/referee_submit_gauntlet") >= 0:
+	if url.find("/rpc/referee_gauntlet_start") >= 0:
 		_submits += 1
 		if _mode == "online":
-			cb.call({"ok": true, "code": 200, "body": "{\"ok\":true,\"job_id\":5,\"match_id\":\"5b2c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b\"}"})
+			cb.call({"ok": true, "code": 200, "body": "{\"ok\":true,\"job_id\":5,\"match_id\":\"5b2c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b\","
+				+ "\"opp\":{\"profile\":{\"name\":\"kevin_99\",\"avatar\":\"ninja\",\"id\":\"g_x\",\"tag\":\"#ABCDEF\"},\"leaders\":[\"ninja\",\"dice\",\"pirate\"]}}"})
 			return
 	if _mode == "hang":
 		_hung.append(cb)                # 发出去了, 一直没回

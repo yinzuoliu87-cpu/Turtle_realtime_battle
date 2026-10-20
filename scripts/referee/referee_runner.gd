@@ -74,6 +74,9 @@ static func run(host: Node, job: Dictionary, on_battle: Callable = Callable(), s
 			(gs.lane_results as Dictionary).duplicate(true), (gs.egg_hp as Dictionary).duplicate(true),
 			Time.get_ticks_msec() - t0, frames)
 		res["sim_steps"] = int(rr.referee_steps)
+		## 左方(A)这一局的战斗内铸币(奇械羁绊 + 035 齿轮): 结算被跳过(`on_settle` 裁判分支), 计数还在系统对象上 ⇒ 这里读。
+		##   与本机 `_settle_season` 读的是同一个出口 `EquipTickSystem.match_minted`(门禁 verify_referee_coins 比两边相等)。
+		res["coins"] = EquipTickSystem.match_minted(battle)
 	if rr != null and rr.stream != null:
 		res["stream"] = rr.stream.finish({"match_id": str(job.get("match_id", "")), "ok": why == "",
 			"digest": str(res.get("digest", "")), "client_version": ReplayRecorder.client_version()})

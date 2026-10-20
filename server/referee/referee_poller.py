@@ -36,6 +36,11 @@
                                     不连库：拿本地任务单直接调 Godot（版本取任务单里的 client_version）
   referee_poller.py --health        打印 rpc/referee_backlog；积压或心跳超阈值时退出码 1（给 systemd timer / 外部告警）
   referee_poller.py --versions      打印本机装了哪些版本
+  referee_poller.py --bot-pool [--version V] [--out DIR]
+                                    周六机器人快照池（迁移 20261020c，2026-10-20 · ★只改了仓库文件、未部署）：
+                                    对每个装了的版本（或只 V）调 Godot 生成（scripts/referee/bot_pool.gd = Backend.make_bot 同一个函数），
+                                    分批 rpc/referee_bot_pool_load 上传（第一批清掉同规则版本的旧池）；给了 --out 就只写文件不上传。
+                                    ★每装一个新版本都要跑一次（服务端按 rules_ver 挑机器人；池子空 ⇒ 挑不到机器人 ⇒ 玩家开不了战，--health 报警）。
 """
 import argparse
 import json
@@ -409,6 +414,90 @@ def worker_loop(idx: int, once: bool) -> None:
             return
 
 
+BOT_POOL_BATCH = 200                    # 一批几行（每行约 1.4 KB 快照）
+
+
+def gen_bot_pool(proj: str, out_path: str, timeout_sec: int = 600) -> dict:
+    """调 Godot 生成一份机器人池（同一个版本的代码），返回解析后的 json；失败抛 RuntimeError。"""
+    wdir = os.path.join(env("WORK_DIR", "/var/lib/turtle-referee"), "botpool")
+    ud = os.path.join(wdir, "userdata")
+    shutil.rmtree(ud, ignore_errors=True)
+    os.makedirs(ud, exist_ok=True)
+    e = dict(os.environ)
+    e.pop("SUPABASE_SERVICE_KEY", None)
+    e.update({"XDG_DATA_HOME": ud, "APPDATA": ud, "HOME": ud, "TURTLE_SUPABASE": " ", "TURTLE_BACKEND": " "})
+    if os.path.exists(out_path):
+        os.remove(out_path)
+    cmd = [env("GODOT_BIN", "/opt/godot/godot"), "--headless", "--audio-driver", "Dummy", "--path", proj, SCENE,
+           "--quit-after", QUIT_AFTER_FRAMES, "--", "--bot-pool=" + out_path]
+    r = subprocess.run(cmd, env=e, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout_sec)
+    if r.returncode != 0 or not os.path.exists(out_path):
+        raise RuntimeError("godot rc=%s %s" % (r.returncode, (r.stdout + r.stderr)[-400:]))
+    with open(out_path, encoding="utf-8") as f:
+        pool = json.load(f)
+    if not isinstance(pool, dict) or not isinstance(pool.get("rows"), list) or not pool["rows"] \
+            or int(pool.get("rules_ver", 0)) < 1:
+        raise RuntimeError("池子形状不对: %s" % out_path)
+    return pool
+
+
+def upload_bot_pool(pool: dict) -> dict:
+    """分批上传；第一批 p_replace = true（清掉同规则版本的旧池）。返回最后一批的回包（含 total）。"""
+    rows = pool["rows"]
+    last = {}
+    for i in range(0, len(rows), BOT_POOL_BATCH):
+        last = rpc("referee_bot_pool_load", {"p_client_version": str(pool["client_version"]),
+                                              "p_rules_ver": int(pool["rules_ver"]),
+                                              "p_rows": rows[i:i + BOT_POOL_BATCH], "p_replace": i == 0}, timeout=60.0) or {}
+        if not last.get("ok") or int(last.get("rejected", 0)) > 0:
+            raise RuntimeError("第 %d 批被拒: %s" % (i // BOT_POOL_BATCH, json.dumps(last, ensure_ascii=False)))
+    if int(last.get("total", -1)) != len(rows):
+        raise RuntimeError("上传后池子行数 %s ≠ 生成的 %d" % (last.get("total"), len(rows)))
+    return last
+
+
+def bot_pool_cmd(versions: dict, only: str, out_dir: str) -> int:
+    targets = {v: p for v, p in versions.items() if not only or v == only}
+    if not targets:
+        print("没有要生成的版本（VERSIONS_DIR=%s, --version=%s）" % (env("VERSIONS_DIR", "/opt/turtle"), only))
+        return 2
+    rc = 0
+    for ver, proj in sorted(targets.items()):
+        path = os.path.join(out_dir or os.path.join(env("WORK_DIR", "/var/lib/turtle-referee"), "botpool"),
+                            "bot_pool_%s.json" % ver)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        try:
+            pool = gen_bot_pool(proj, path)
+            if str(pool.get("client_version")) != ver:
+                raise RuntimeError("生成的版本 %s ≠ 工程版本 %s" % (pool.get("client_version"), ver))
+            if out_dir:
+                log("bot-pool %s: rules_ver=%s rows=%d → %s（只写文件）" % (ver, pool["rules_ver"], len(pool["rows"]), path))
+                continue
+            r = upload_bot_pool(pool)
+            log("bot-pool %s: rules_ver=%s rows=%d 上传完 → %s" % (ver, pool["rules_ver"], len(pool["rows"]), json.dumps(r)))
+        except (RuntimeError, OSError, ValueError, subprocess.TimeoutExpired, urllib.error.URLError) as ex:
+            log("ERROR bot-pool %s: %s" % (ver, ex))
+            rc = 1
+    return rc
+
+
+def health_problems(b: dict) -> list:
+    """referee_backlog 回包 → 要报警的问题（空 = 健康）。"""
+    out = []
+    if int((b or {}).get("oldest_pending_sec", 0)) > HEALTH_MAX_PENDING_SEC:
+        out.append("积压: 最老的任务等了 %s 秒" % (b or {}).get("oldest_pending_sec"))
+    ws = (b or {}).get("workers") or []
+    if not ws or min(int(w.get("seen_sec", 1 << 30)) for w in ws) > HEALTH_MAX_HEARTBEAT_SEC:
+        out.append("心跳: 没有裁判在线")
+    ## 20261020c: 周六开着而某个启用版本的机器人池是空的 ⇒ 那个版本的玩家挑不到机器人就开不了战
+    if (b or {}).get("gauntlet_on"):
+        for p in (b or {}).get("bot_pool") or []:
+            if int(p.get("rows", 0)) <= 0:
+                out.append("机器人池空: 版本 %s（rules_ver=%s）—— 跑 referee_poller.py --bot-pool" % (
+                    p.get("client_version"), p.get("rules_ver")))
+    return out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="服务器裁判轮询器")
     ap.add_argument("--once", action="store_true")
@@ -416,6 +505,8 @@ def main() -> int:
     ap.add_argument("--out")
     ap.add_argument("--health", action="store_true")
     ap.add_argument("--versions", action="store_true")
+    ap.add_argument("--bot-pool", action="store_true")
+    ap.add_argument("--version", default="")
     a = ap.parse_args()
     versions = discover_versions(env("VERSIONS_DIR", "/opt/turtle"))
     if a.versions:
@@ -436,16 +527,20 @@ def main() -> int:
         brief = {k: (res or {}).get(k) for k in ("ok", "error", "winner", "score_code", "steps", "digest", "elapsed_ms")}
         print(json.dumps({"rc": rc, **brief}, ensure_ascii=False))
         return 0 if rc == 0 else 1
+    if a.bot_pool and a.out:
+        return bot_pool_cmd(versions, a.version, a.out)      # 只写文件: 不需要钥匙
     if not env("SUPABASE_URL") or not env("SUPABASE_SERVICE_KEY"):
         print("缺 SUPABASE_URL / SUPABASE_SERVICE_KEY")
         return 2
+    if a.bot_pool:
+        return bot_pool_cmd(versions, a.version, "")
     if a.health:
         b = rpc("referee_backlog", {})
         print(json.dumps(b, ensure_ascii=False))
-        stale = int((b or {}).get("oldest_pending_sec", 0)) > HEALTH_MAX_PENDING_SEC
-        ws = (b or {}).get("workers") or []
-        dead = not ws or min(int(w.get("seen_sec", 1 << 30)) for w in ws) > HEALTH_MAX_HEARTBEAT_SEC
-        return 1 if (stale or dead) else 0
+        probs = health_problems(b)
+        for s in probs:
+            log("HEALTH " + s)
+        return 1 if probs else 0
     n = int(env("WORKERS", str(os.cpu_count() or 1)))
     log("referee poller: %d workers, versions=%s" % (1 if a.once else n, sorted(versions)))
     signal.signal(signal.SIGTERM, lambda *_: _stop.set())

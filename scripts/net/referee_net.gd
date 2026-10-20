@@ -7,8 +7,8 @@ extends RefCounted
 ##
 ## 三条 RPC(服务端 `20261019_referee_jobs.sql` + `20261019b_referee_client_flags.sql`):
 ##   referee_flags()                     开关 {finals_on, gauntlet_on}(只读); 20261019c 起多两个: stream_on / stream_version(逐帧直播 S5)
-##   referee_submit_gauntlet(...)        周六点开战: 交阵容 + 对手快照 → 任务号 / 录像号(写)
-##   referee_job_status(p_job_id)        查自己那一场算完没有(只读)
+##   referee_gauntlet_start(...)         周六点开战: 交阵容 + 第几场 → 任务号 / 录像号 / 对手卡片(写; 对手与种子服务端定, 20261020c)
+##   referee_job_status(p_job_id)        查自己那一场算完没有(只读; 20261020c 起多回 coins = 这一局的战斗内铸币)
 ## 逐帧直播(20261020 迁移, 只写文件、未上生产; 没上 = 404 ⇒ 两条都当没有):
 ##   referee_live_gauntlet()             本周周六正在算的裁判局(赛况板「观赛」, 只读): match_id / 双方名字 / 开始时刻 / 种子 / 版本
 ##   referee_request_restream(p_match_id) 开流之前算的裁判局请求补流(排一份「重放录流」任务; 写)
@@ -18,6 +18,7 @@ extends RefCounted
 ##   不会因为「问不到」就退回本地打出一场成绩(问题总表 B1)。从没问到过(全新安装 + 断网)⇒ 当作关(老路)。
 
 const SB := preload("res://scripts/net/supabase.gd")
+const P2C := preload("res://scripts/gamedata/phase2_config.gd")
 
 const K_FINALS := "finals_on"
 const K_GAUNTLET := "gauntlet_on"
@@ -115,17 +116,45 @@ static func note_flags(f: Dictionary) -> void:
 	GameState.save()
 
 
-# ─────────────────────────────── 周六: 交阵容 ───────────────────────────────
+# ─────────────────────────────── 周六: 开战(服务器挑对手) ───────────────────────────────
+## ★2026-10-20(方案书 docs/plans/20261019-服务器裁判.md 决策记录「10-20 用户授权自定：周六对手改服务器挑」):
+##   客户端只交「我的阵容 + 我要打第 N 场」; 对手(同标签真人 → 机器人)、种子都由服务端 `referee_gauntlet_start` 定,
+##   客户端**没有任何参数位**能指定对手或种子。回包里带对手卡片(名字 / 头像 / 号 / 三统领), 真人与机器人同一形状。
+##   旧的交阵容接口(客户端连对手快照一起交, 20261019 那一版)在服务端开了 `gauntlet_server_pick` 之后一律回 update_required。
 
-## 纯函数: 请求体(键名 = 服务端形参)。
-static func submit_body(week: int, snapshot: Dictionary, opponent: Dictionary, client_version: String) -> Dictionary:
-	return {"p_week": week, "p_snapshot": snapshot, "p_opponent": opponent, "p_client_version": client_version}
+## 纯函数: 请求体(键名 = 服务端形参)。`match_no` = 我认为这是本周第几场闯关(0 起 = gw + gl), 服务端拿它对账本防重交。
+static func start_body(week: int, snapshot: Dictionary, match_no: int, client_version: String, rules_ver: int) -> Dictionary:
+	return {"p_week": week, "p_snapshot": snapshot, "p_match_no": match_no,
+		"p_client_version": client_version, "p_rules_ver": rules_ver}
 
 
-## 纯函数: 交阵容的回包 → {"err": "" / 原因码, "job_id", "match_id", "gw", "gl"}。
+## 纯函数: 对手卡片(服务端回的 `opp`)⇒ 匹配屏 `_opponent_from_ghost` 吃的形状 {profile{name, avatar, id, tag}, leaders}。
+##   只留这几个键(服务端也只回这几个); 形状不对 ⇒ {}。
+static func card_of(opp) -> Dictionary:
+	if not (opp is Dictionary):
+		return {}
+	var o: Dictionary = opp
+	var pf: Dictionary = {}
+	if o.get("profile") is Dictionary:
+		for k in ["name", "avatar", "id", "tag"]:
+			var v = (o["profile"] as Dictionary).get(k, null)
+			if v is String:
+				pf[k] = v
+	var ldr: Array = []
+	if o.get("leaders") is Array:
+		for x in (o["leaders"] as Array):
+			if x is String and ldr.size() < 3:
+				ldr.append(x)
+	if ldr.is_empty():
+		return {}
+	return {"profile": pf, "leaders": ldr}
+
+
+## 纯函数: 开战的回包 → {"err": "" / 原因码, "job_id", "match_id", "opp"(卡片), "gw", "gl"}。
 ##   原因码: offline(没发出去 / 没回来 / 被拦)· server · unavailable(404: 服务端没部署)·
-##           服务端 reason 原样(off / update_required / wrong_week / closed / bad_snapshot / bad_opponent / finished / not_signed_in)。
-static func parse_submit(ok: bool, code: int, body: String) -> Dictionary:
+##           服务端 reason 原样(off / update_required / wrong_week / closed / bad_snapshot / finished / stale / no_opponent / not_signed_in)。
+##   ★stale = 我报的第 N 场与服务端账本对不上(本机战绩落后), 回包带账本上的 gw / gl。
+static func parse_start(ok: bool, code: int, body: String) -> Dictionary:
 	if not ok:
 		return {"err": "offline"}
 	if code == 404:
@@ -136,33 +165,37 @@ static func parse_submit(ok: bool, code: int, body: String) -> Dictionary:
 	if j.parse(body) != OK or not (j.data is Dictionary):
 		return {"err": "server", "code": code}
 	var d: Dictionary = j.data
+	var gw := int(d.get("gw", -1)) if (d.get("gw", null) is float or d.get("gw", null) is int) else -1
+	var gl := int(d.get("gl", -1)) if (d.get("gl", null) is float or d.get("gl", null) is int) else -1
 	if not bool(d.get("ok", false)):
 		var why := str(d.get("reason", "server"))
-		return {"err": why if why != "" else "server", "gw": int(d.get("gw", -1)), "gl": int(d.get("gl", -1))}
+		return {"err": why if why != "" else "server", "gw": gw, "gl": gl}
 	var jid = d.get("job_id", null)
 	var mid := str(d.get("match_id", ""))
-	if not (jid is int or jid is float) or int(jid) <= 0 or not SB.is_uuid(mid):
+	var card := card_of(d.get("opp", null))
+	if not (jid is int or jid is float) or int(jid) <= 0 or not SB.is_uuid(mid) or card.is_empty():
 		return {"err": "server", "code": code}
-	return {"err": "", "job_id": int(jid), "match_id": mid}
+	return {"err": "", "job_id": int(jid), "match_id": mid, "opp": card, "gw": gw, "gl": gl}
 
 
-static func submit_gauntlet_async(week: int, snapshot: Dictionary, opponent: Dictionary, done: Callable) -> bool:
+static func start_gauntlet_async(week: int, snapshot: Dictionary, match_no: int, done: Callable) -> bool:
 	if not SB.enabled():
 		return false
 	var n = SB._spawn()
 	if n == null:
 		return false
 	submits += 1
-	n._get_once("/rest/v1/rpc/referee_submit_gauntlet", "POST",
-		JSON.stringify(submit_body(week, snapshot, opponent, ReplayRecorder.client_version())), done,
+	n._get_once("/rest/v1/rpc/referee_gauntlet_start", "POST",
+		JSON.stringify(start_body(week, snapshot, match_no, ReplayRecorder.client_version(), int(P2C.RULES_VER))), done,
 		func(res: Dictionary) -> Dictionary:
-			return parse_submit(bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", ""))))
+			return parse_start(bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", ""))))
 	return true
 
 
 # ─────────────────────────────── 查任务 ───────────────────────────────
 
-## 纯函数: `referee_job_status` 回包 → {"err": "", "status", "match_id", "won"(-1 不知道 / 0 / 1), "gw", "gl", "error"}。
+## 纯函数: `referee_job_status` 回包 → {"err": "", "status", "match_id", "won"(-1 不知道 / 0 / 1), "gw", "gl", "coins", "error"}。
+##   `coins` = 服务器算的这一局里我方(左)的战斗内铸币(奇械 / 齿轮); 缺 / 不是非负整数(服务端还没上 20261020c)⇒ 0。
 ##   原因码同上; 服务端 reason(no_job / not_signed_in)原样。
 static func parse_status(ok: bool, code: int, body: String) -> Dictionary:
 	if not ok:
@@ -183,6 +216,7 @@ static func parse_status(ok: bool, code: int, body: String) -> Dictionary:
 		"won": (1 if bool(w) else 0) if w is bool else -1,
 		"gw": int(d.get("gw", -1)) if d.get("gw", null) is float or d.get("gw", null) is int else -1,
 		"gl": int(d.get("gl", -1)) if d.get("gl", null) is float or d.get("gl", null) is int else -1,
+		"coins": maxi(0, int(d.get("coins", 0))) if d.get("coins", null) is float or d.get("coins", null) is int else 0,
 		"error": str(d.get("error", "")) if d.get("error", null) is String else ""}
 
 

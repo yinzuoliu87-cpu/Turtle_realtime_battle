@@ -132,7 +132,11 @@
 1. `/opt/turtle/v<新版本>/` 放工程 + `--import` + 第 3 步两个门禁；
 2. `insert into referee_versions …`；轮询器每轮自动重扫目录，**不用重启**；
 3. 周日用的版本改 `referee_config.finals_version`；
-4. 旧版本的任务清空之后（`select client_version, count(*) from referee_jobs where status in ('pending','claimed') group by 1`）再删旧目录、`update referee_versions set enabled = false`。
+4. **周六机器人池**（20261020c 起；周六对手由服务端挑，挑不到同标签真人就从池里取机器人）：
+   `referee_poller.py --bot-pool --version <新版本>`（调这个版本的 Godot 生成 2052 份 = `Backend.make_bot` 同一个函数，分批上传，
+   同时把 `referee_versions.rules_ver` 登记上）。回读 `select public.referee_backlog()->'bot_pool';` 新版本 `rows` = 2052。
+   ★忘了这一步：那个版本的玩家挑不到机器人 ⇒ 开战回 `no_opponent`（屏上「匹配失败，请稍后重试」）；`--health` 在周六开着时报警。
+5. 旧版本的任务清空之后（`select client_version, count(*) from referee_jobs where status in ('pending','claimed') group by 1`）再删旧目录、`update referee_versions set enabled = false`。
 
 ## 运维
 
@@ -149,7 +153,13 @@
 - **R1 真机确定性**：服务器（Linux x86）算的录像要在 iPhone（ARM）上逐步重算。x86↔x86 已逐位一致（金标 + 本门禁），ARM 没验过（方案书 §0，`verify_referee_device_parity` 未做）。不一致时手机播放会在第一个对不上的校验点停下并上报（不会默默播错的），但玩家就看不了那一场。
 - **等级**（用户 10-19「赛季等级」已拍板）：快照带 `season_level`（`Backend.build_ghost_snapshot` / 机器人 `make_bot` = 按场次曲线 / 陪练 = 种子文件里的真实等级），战斗里**双方各用各的**：左方 = A 快照的等级（裁判 `level_for`；任务单 `level` 只在 A 没带时用，都没有才按 A 的场次估），右方 = 战斗场直接读 B 快照。B 是没带等级的旧快照 ⇒ 右方退回与左方同级（老口径）。
 - **左方从快照推出来的状态**与 A 自己手机上打会有差：快照里没有的（糖果临时等级、赌神命运之轮层数、093 香火刻痕 / 充能、斧头进度条、大师形象）按右方的口径取 0 / 空。要「本地先播、服务器落账」逐步一致，客户端得把开局 `capture_state()` 一起交上来（任务单已留 `a_state` 字段，表里还没有这一列）。
-- **周六对手是客户端挑的**（`referee_submit_gauntlet` 的 `p_opponent`）：能挑弱对手。服务端挑对手要把机器人生成也搬上来（`Backend.make_bot` 是客户端代码）。
+- ~~**周六对手是客户端挑的**（`referee_submit_gauntlet` 的 `p_opponent`）：能挑弱对手。~~
+  ⇒ 2026-10-20 已改（迁移 `20261020c_gauntlet_server_pick_and_coins.sql`，只写文件未上生产）：客户端调 `referee_gauntlet_start`，
+  只交「我的阵容 + 第几场」，对手（同标签真人 30 分钟内优先 → 隔夜 → 机器人池）与种子都由服务端定；
+  机器人快照池离线生成（`scripts/referee/bot_pool.gd`）、`--bot-pool` 上传。旧接口在 `referee_config.gauntlet_server_pick = true` 后一律回 `update_required`。
+  上线顺序见迁移文件末尾；行为检查 `server/supabase/tests/20261020c_…_check.sql`（`node tools/sql_sandbox.mjs` 本机 PGlite 59 条全过）。
+- **周六战斗内铸币**（奇械羁绊 / 035 齿轮）：2026-10-20 起裁判结果单带 `coins`（`EquipTickSystem.match_minted`，与本机结算同一个出口），
+  `referee_complete` 记进 `ledger.coins`、`referee_job_status` 回给客户端。★周日服务器局仍不发（只记了 A 一侧；B 一侧的齿轮只给左方产币，要另做）。
 - **投降**（方案书 U4，用户 10-19「投降不要了」）：整个功能已从客户端删掉；裁判局里本来就没有投降事件。
 - **告警通道**没定（现在只进 journald）。
 - SQL 只做了语法核对（libpg_query 解析 + plpgsql 解析通过），**没在真库上跑过**；上线前在内测服按第 8 步冒烟。
