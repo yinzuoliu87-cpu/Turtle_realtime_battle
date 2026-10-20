@@ -1,0 +1,301 @@
+{
+ "_doc": "逐帧直播白名单报警样本(2026-10-20): 本机 ghost_pool.json 里真人快照的一对(pool22-23), 种子 2174241, 等级 10。原生跑一局 3731 步, 0.21.0 录流器报 Sprite3D.vframes 1 次(072 蛋糕礼盒变身换立绘表: eq_food_batch._box_enter → RealtimeBattle3DScene._set_anim_sheet 改 vframes)。profile / ghost_id 已换成占位, 其余逐字未动。门禁 verify_stream_whitelist_alarm 要求它的白名单外变化 = 0, 且 vframes 真的变过(分母)。",
+ "seed": 2174241,
+ "level": 10,
+ "a": {
+  "axe_exp_total": 450.0,
+  "axe_final": "",
+  "axe_stage": 3.0,
+  "chest_treasure_value": 0.0,
+  "chest_treasures_won": [],
+  "equipped": {
+   "line": [
+    {
+     "id": "p2eq_070",
+     "star": 2.0
+    },
+    {
+     "id": "p2eq_052",
+     "star": 1.0
+    },
+    {
+     "id": "p2eq_056",
+     "star": 1.0
+    }
+   ],
+   "shell": [
+    {
+     "id": "p2eq_087",
+     "star": 1.0
+    },
+    {
+     "id": "p2eq_068",
+     "star": 1.0
+    },
+    {
+     "id": "p2eq_072",
+     "star": 1.0
+    }
+   ],
+   "space": [
+    {
+     "id": "p2eq_033",
+     "star": 1.0
+    },
+    {
+     "id": "p2eq_010",
+     "star": 1.0
+    },
+    {
+     "id": "p2eq_034",
+     "star": 1.0
+    }
+   ]
+  },
+  "ghost_id": "g_alarm_a",
+  "hearts": 1.0,
+  "is_bot": false,
+  "lane_assign": {
+   "bottom": [],
+   "top": [
+    "line",
+    "shell",
+    "space"
+   ]
+  },
+  "leaders": [
+   "line",
+   "shell",
+   "space"
+  ],
+  "loadouts": {
+   "line": 1.0,
+   "shell": 1.0,
+   "space": 1.0
+  },
+  "minions": {
+   "bottom": [
+    {
+     "elite": true,
+     "equips": [
+      {
+       "id": "p2eq_024",
+       "star": 1.0
+      },
+      {
+       "id": "p2eq_053",
+       "star": 2.0
+      },
+      {
+       "id": "p2eq_011",
+       "star": 1.0
+      }
+     ],
+     "role": "front"
+    },
+    {
+     "elite": false,
+     "equips": [
+      {
+       "id": "p2eq_047",
+       "star": 2.0
+      },
+      {
+       "id": "p2eq_063",
+       "star": 1.0
+      },
+      {
+       "id": "p2eq_055",
+       "star": 2.0
+      }
+     ],
+     "role": "back"
+    },
+    {
+     "elite": false,
+     "equips": [
+      {
+       "id": "p2eq_069",
+       "star": 2.0
+      },
+      {
+       "id": "p2eq_010",
+       "star": 1.0
+      },
+      {
+       "id": "p2eq_056",
+       "star": 1.0
+      }
+     ],
+     "role": "back"
+    }
+   ],
+   "top": []
+  },
+  "origin": "remote",
+  "pet_levels": {
+   "line": 1.0,
+   "shell": 1.0,
+   "space": 1.0
+  },
+  "profile": {
+   "name": "样本甲",
+   "avatar": "line",
+   "id": "g_alarm_a"
+  },
+  "schema_ver": 2.0,
+  "season_eggs_killed": 25.0,
+  "season_sweeps": 14.0,
+  "season_total_battles": 30.0,
+  "season_wins": 25.0,
+  "trainer_skill": "glacier"
+ },
+ "b": {
+  "axe_exp_total": 435.0,
+  "axe_final": "",
+  "axe_stage": 3.0,
+  "chest_treasure_value": 0.0,
+  "chest_treasures_won": [],
+  "equipped": {
+   "chest": [
+    {
+     "id": "p2eq_057",
+     "star": 2.0
+    },
+    {
+     "id": "p2eq_038",
+     "star": 2.0
+    },
+    {
+     "id": "p2eq_010",
+     "star": 2.0
+    }
+   ],
+   "hunter": [
+    {
+     "id": "p2eq_086",
+     "star": 1.0
+    },
+    {
+     "id": "p2eq_056",
+     "star": 1.0
+    },
+    {
+     "id": "p2eq_059",
+     "star": 1.0
+    }
+   ],
+   "ice": [
+    {
+     "id": "p2eq_090",
+     "star": 1.0
+    },
+    {
+     "id": "p2eq_017",
+     "star": 1.0
+    },
+    {
+     "id": "p2eq_052",
+     "star": 1.0
+    }
+   ]
+  },
+  "ghost_id": "g_alarm_b",
+  "hearts": 1.0,
+  "is_bot": false,
+  "lane_assign": {
+   "bottom": [],
+   "top": [
+    "chest",
+    "hunter",
+    "ice"
+   ]
+  },
+  "leaders": [
+   "chest",
+   "hunter",
+   "ice"
+  ],
+  "loadouts": {
+   "chest": 2.0,
+   "hunter": 3.0,
+   "ice": 1.0
+  },
+  "minions": {
+   "bottom": [
+    {
+     "elite": true,
+     "equips": [
+      {
+       "id": "p2eq_025",
+       "star": 1.0
+      },
+      {
+       "id": "p2eq_027",
+       "star": 2.0
+      },
+      {
+       "id": "p2eq_053",
+       "star": 2.0
+      }
+     ],
+     "role": "front"
+    },
+    {
+     "elite": false,
+     "equips": [
+      {
+       "id": "p2eq_003",
+       "star": 1.0
+      },
+      {
+       "id": "p2eq_055",
+       "star": 1.0
+      },
+      {
+       "id": "p2eq_023",
+       "star": 2.0
+      }
+     ],
+     "role": "back"
+    },
+    {
+     "elite": false,
+     "equips": [
+      {
+       "id": "p2eq_040",
+       "star": 1.0
+      },
+      {
+       "id": "p2eq_080",
+       "star": 1.0
+      },
+      {
+       "id": "p2eq_024",
+       "star": 2.0
+      }
+     ],
+     "role": "back"
+    }
+   ],
+   "top": []
+  },
+  "origin": "remote",
+  "pet_levels": {
+   "chest": 1.0,
+   "hunter": 1.0,
+   "ice": 1.0
+  },
+  "profile": {
+   "name": "样本乙",
+   "avatar": "chest",
+   "id": "g_alarm_b"
+  },
+  "schema_ver": 2.0,
+  "season_eggs_killed": 24.0,
+  "season_sweeps": 11.0,
+  "season_total_battles": 29.0,
+  "season_wins": 24.0,
+  "trainer_skill": "fury_potion"
+ }
+}

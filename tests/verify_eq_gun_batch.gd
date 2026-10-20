@@ -1169,10 +1169,14 @@ func _t_vfx_models() -> void:
 	var rb: String = _strip("res://scripts/scenes/RealtimeBattle3DScene.gd")
 	var qbody: String = _fn_body(rb, "func _queue_shots")
 	_ok("⑥ ★分母: _queue_shots 的函数体读得到", qbody.length() > 200, "len=%d" % qbody.length())
+	## ★2026-10-20 两张逐档表从 _queue_shots 的行内数组抽到 GunSynergySystem(羁绊文案要读它)。
+	##   判据不变: 出口读的是那张表, 而那张表的字面值仍是 60/80/100% 与 4/3/2。
+	var gsrc: String = _strip("res://scripts/systems/equip/gun_synergy_system.gd")
 	_ok("⑥ 我文案/演出用的 60/80/100% 与羁绊源码里那张表逐档相同",
-		qbody.contains("[0.60, 0.80, 1.00]"), "羁绊表: %s" % ("在" if qbody.contains("0.60") else "找不到"))
+		qbody.contains("GunSynergySystem.GOLD_TRUE_PCT[") and gsrc.contains("GOLD_TRUE_PCT := [0.60, 0.80, 1.00]"),
+		"羁绊表: %s" % ("在" if gsrc.contains("0.60") else "找不到"))
 	_ok("⑥ 金弹门槛 4/3/2 也与羁绊源码一致(079 的充能条读它)",
-		qbody.contains("[4, 3, 2]"))
+		qbody.contains("GunSynergySystem.GOLD_EVERY[") and gsrc.contains("GOLD_EVERY := [4, 3, 2]"))
 
 
 func _t_vfx_nodes() -> void:

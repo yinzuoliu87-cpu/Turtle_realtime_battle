@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://2mxkrmgj1peh"
-path="res://.godot/imported/psychic-blast.png-d5cc31b928980f361e7e17f61e132b41.ctex"
+uid="uid://dj8ge3g57q3o3"
+path="res://.godot/imported/twohead-psi-orb-grow.png-ca9fbe6185ac403394682a062f47d743.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/vfx/psychic-blast.png"
-dest_files=["res://.godot/imported/psychic-blast.png-d5cc31b928980f361e7e17f61e132b41.ctex"]
+source_file="res://assets/sprites/vfx/twohead-psi-orb-grow.png"
+dest_files=["res://.godot/imported/twohead-psi-orb-grow.png-ca9fbe6185ac403394682a062f47d743.ctex"]
 
 [params]
 

@@ -27,6 +27,9 @@ const RENDER_OWNED_KEYS := [
 	"_hhot_owner", "_mark_spr", "_phase_ai_t",
 	"_auraEnergy", "_lavaRage", "_starEnergy", "bubbleStore", "_stoneDefGained", "_initDef",
 	"bear_anim", "bear_anim_t", "_bear_sheet", "_bear_pp",
+	## 变脸龟动作驱动(TwoHeadArt, 2026-10-20): 当前动作 / 排队动作 / 认过的前摇 / 认过的形态 / 走路判据
+	"_tha_clip", "_tha_t0", "_tha_tk", "_tha_q", "_tha_ws", "_tha_pend", "_tha_form",
+	"_tha_lp", "_tha_lt", "_tha_walk", "_tha_loop_t0",
 ]
 
 var battle
@@ -225,6 +228,8 @@ func _render_step(rd: float, frozen: bool, in_ts: bool) -> void:
 			if u.get("alive", false):
 				if u.get("is_big_bear", false):
 					battle._equip_tick_sys._tick_bear_anim(u, rd)
+				elif str(u.get("id", "")) == "two_head" and battle._two_head_sys.art.tick(u):
+					pass                                            # 变脸龟: 动作按游戏钟对齐结算时刻(TwoHeadArt)
 				else:
 					_advance_anim(u, rd)
 		battle._timestop._ts_tick_visual(rd)                 # 时停视觉维持(钟表脉动/暗角等)
@@ -236,6 +241,8 @@ func _render_step(rd: float, frozen: bool, in_ts: bool) -> void:
 					battle._equip_tick_sys._tick_bear_anim(u, rd)   # 大熊: 状态机(走路/停顿/熊爪拍/砸地)
 				elif u.get("is_trainer", false):
 					_update_trainer_anim(u, rd)                     # 训龟大师: 真4方向(走路/扔石头/待机)·R6-B
+				elif str(u.get("id", "")) == "two_head" and battle._two_head_sys.art.tick(u):
+					pass                                            # 变脸龟: 两套形态的站/走/攻击/技能/变脸(TwoHeadArt)
 				else:
 					_update_run_anim(u, rd)
 					_advance_anim(u, rd)
@@ -464,9 +471,13 @@ func _update_dot_floats() -> void:
 		for bucket in df:
 			var st: Dictionary = df[bucket]
 			var node = st.get("node", null)
-			if not is_instance_valid(node):
+			if not is_instance_valid(node) or (node as Node).is_queued_for_deletion():   # 排队释放中的当作没了(释放落在哪一帧取决于一帧推几步)
 				dead.append(bucket); continue
-			if not u.get("alive", false) or not battle._damage._dot_bucket_active(u, bucket):
+			## 逐帧直播播放端: 「桶结束 ⇒ 弹射飘字」只在采样步上判(服务器的渲染步就只在采样步跑, `@dot` 也只在采样步更新);
+			##   采样步之间的那几帧只挪位置。否则 60 帧手机一步一判会多出飘字、低帧率会少(2026-10-20 实测 2430 / 2415)
+			if battle._replay != null and battle._replay.player != null and not battle._replay.player.at_sample:
+				pass
+			elif not u.get("alive", false) or not battle._damage._dot_bucket_active(u, bucket):
 				battle._damage._dot_float_flyaway(u, bucket, st)
 				dead.append(bucket); continue
 			var head = battle._world_pos(u["pos"], 2.7)   # 比伤害飘字(2.2)高一截, 不挡血条

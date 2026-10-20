@@ -27,6 +27,8 @@ const Board := preload("res://scripts/systems/replay/gauntlet_board.gd")
 const ReplayFetcher := preload("res://scripts/systems/replay/replay_fetcher.gd")
 const MatchCard := preload("res://scripts/scenes/record/match_card.gd")
 const Live := preload("res://scripts/systems/replay/live_spectate.gd")
+const RN := preload("res://scripts/net/referee_net.gd")
+const SW := preload("res://scripts/systems/replay/stream_watch.gd")
 
 ## 看完回放回到这一页。
 const SELF_SCENE := "res://scenes/GauntletBoard.tscn"
@@ -89,6 +91,9 @@ var _closed := false
 var live_games: Array = []
 var _live_rows: Array = []
 var _live_inflight := false
+## 逐帧直播(2026-10-20): 服务器正在算的裁判局(`referee_live_gauntlet`)。开关 stream_on 关着时不问。
+var _ref_rows: Array = []
+var _ref_inflight := false
 var _base: Dictionary = {}
 
 
@@ -189,6 +194,22 @@ func _refresh_live() -> void:
 	_live_inflight = true
 	if not SB.fetch_live_board_async(P2C.weekend_view_week(now), now - SB.LIVE_BOARD_WINDOW_SEC, _on_live_rows):
 		_live_inflight = false
+	## 周六交给服务器算的局没有直播行(打的人本机不再上传): 另问一次「正在算的裁判局」, 观赛播状态流
+	if SW.wanted() and not _ref_inflight:
+		_ref_inflight = true
+		if not RN.live_gauntlet_async(_on_ref_rows):
+			_ref_inflight = false
+
+
+func _on_ref_rows(res: Dictionary) -> void:
+	_ref_inflight = false
+	if not is_inside_tree():
+		return
+	if res.has("rows"):
+		set_ref_rows(res["rows"])
+	elif str(res.get("reason", "")) == "unavailable":
+		set_ref_rows([])           # 服务端没部署(404): 照旧只有直播行
+	## 断网 / 超时: 留着上一份
 
 
 func _on_live_rows(res: Dictionary) -> void:
@@ -230,6 +251,12 @@ func set_live_rows(rows: Array) -> void:
 	_render()
 
 
+## 喂「正在算的裁判局」行(门禁也直接调它)。与直播行同一个形状, 同一张卡。
+func set_ref_rows(rows: Array) -> void:
+	_ref_rows = rows.duplicate()
+	set_live_rows(_live_rows)
+
+
 ## 「最近对局」那份 + 直播行 ⇒ 屏上那份(`data`): 筛出还在打的卡, 战绩榜标「直播」(没上榜的补一行 0-0)。
 func _apply_live() -> void:
 	data = _base.duplicate(true)
@@ -238,7 +265,7 @@ func _apply_live() -> void:
 	var ids: Array = []
 	for g in data.get("games", []):
 		ids.append(str(g["id"]))
-	live_games = Board.live_games(_live_rows, ids, P2C.now_utc())
+	live_games = Board.live_games(_live_rows + _ref_rows, ids, P2C.now_utc())
 	Board.mark_live(data, live_games, BE.my_tag())
 
 
@@ -557,7 +584,7 @@ func _live_card(g: Dictionary, idx: int) -> Control:
 	var bt := MatchCard.big_btn(Live.BTN_WATCH, N_LIVE_BTN, MatchCard.WATCH_SIZE, MatchCard.BTN_LIVE)
 	bt.set_meta("key", str(g["id"]))
 	bt.set_meta("label", Live.BTN_WATCH)
-	_tap_or_scroll(bt, _on_live_pressed.bind(str(g["id"]), names))
+	_tap_or_scroll(bt, _on_live_pressed.bind(str(g["id"]), names, g))
 	body.add_child(bt)
 	return pc
 
@@ -675,11 +702,15 @@ func _show_all() -> void:
 
 
 ## 点「观赛」⇒ 取那一行直播 → 版本 / 还在不在打 → 进战斗场按观赛方式跟播(`live_spectate.gd`)。
-func _on_live_pressed(id: String, names: Dictionary) -> void:
+##   服务器正在算的裁判局(`g.referee`)⇒ 播状态流(stream_watch.open_live), 边算边播, 手机不算。
+func _on_live_pressed(id: String, names: Dictionary, g: Dictionary = {}) -> void:
 	if _busy != "":
 		return
 	_busy = id
 	_set_busy(id, true)
+	if bool(g.get("referee", false)):
+		SW.open_live(get_tree(), g, _on_replay_done, SELF_SCENE, names)
+		return
 	Live.open_live(get_tree(), id, _on_replay_done, SELF_SCENE, names)
 
 

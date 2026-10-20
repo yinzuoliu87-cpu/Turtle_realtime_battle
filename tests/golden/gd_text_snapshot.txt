@@ -413,9 +413,9 @@ scripts/gamedata/phase2_types.gd|lit|每件奇械为携带者提供 +4 魔抗 ·
 scripts/gamedata/phase2_types.gd|lit|每件弓箭为携带者提供 +16% 暴击率 · 【处决】处决线提高至 {C:BowSynergySystem.EXEC_BASE[1]%}%，暴击率计入 {C:BowSynergySystem.CRIT_TO_LINE[1]%}% · 【穿透】提高至 {C:BowSynergySystem.PEN_PCT[1]%}% · 【腐蚀】每层提高至 {C:BowSynergySystem.CORRODE_PER_STACK[1]%}%，满层转化提高至 {C:BowSynergySystem.CORRODE_TRUE_PCT[1]%}%
 scripts/gamedata/phase2_types.gd|lit|每件弓箭为携带者提供 +22% 暴击率 · 【处决】处决线提高至 {C:BowSynergySystem.EXEC_BASE[2]%}%，暴击率计入 {C:BowSynergySystem.CRIT_TO_LINE[2]%}% · 【穿透】提高至 {C:BowSynergySystem.PEN_PCT[2]%}% · 【腐蚀】每层提高至 {C:BowSynergySystem.CORRODE_PER_STACK[2]%}%，满层转化提高至 {C:BowSynergySystem.CORRODE_TRUE_PCT[2]%}%
 scripts/gamedata/phase2_types.gd|lit|每件弓箭为携带者提供 +9% 暴击率 · 【处决】全队攻击生命值低于 {C:BowSynergySystem.EXEC_BASE[0]%}% 的敌人时直接处决。攻击者暴击率的 {C:BowSynergySystem.CRIT_TO_LINE[0]%}% 计入这条处决线 · 【穿透】全队攻击无视目标 {C:BowSynergySystem.PEN_PCT[0]%}% 护甲与魔抗 · 【腐蚀】每 {C:BowSynergySystem.CORRODE_PERIOD} 秒，敌方全体叠加 1 层腐蚀，至多 {C:BowSynergySystem.CORRODE_MAX} 层。每层使其受到的伤害提高 {C:BowSynergySystem.CORRODE_PER_STACK[0]%}%，满层时受到的伤害有 {C:BowSynergySystem.CORRODE_TRUE_PCT[0]%}% 转化为真实伤害
-scripts/gamedata/phase2_types.gd|lit|每件枪为携带者提供 +20% 攻击速度 · 【金弹】每把枪每射出 4 发子弹，额外射出 1 发金弹。金弹继承该枪子弹的全部效果，并额外造成本次伤害 60% 的真实伤害 · 【炮台一】我方前方生成一座炮台，每 {C:GunSynergySystem.TICK} 秒对它与最近敌人连线上的所有敌人造成 {C:GunSynergySystem.T1_DMG} 物理伤害，无视护甲，并为生命值最低的友军回复造成伤害 {C:GunSynergySystem.T1_HEAL_SHARE%}% 的生命值
-scripts/gamedata/phase2_types.gd|lit|每件枪为携带者提供 +40% 攻击速度 · 【金弹】每 3 发射出 1 发，额外造成 80% 真实伤害 · 【炮台二】我方中心生成第二座炮台，每 {C:GunSynergySystem.T2_PERIOD} 秒产出 {C:GunSynergySystem.T2_BASE_ENERGY} 点能量，全队每件枪再 +{C:GunSynergySystem.T2_PER_GUN} 点。能量交替转化为全队均摊的护盾，或对敌方全体均摊的真实伤害
-scripts/gamedata/phase2_types.gd|lit|每件枪为携带者提供 +66% 攻击速度 · 【金弹】每 2 发射出 1 发，额外造成 100% 真实伤害 · 【炮台三·火控】我方后方生成第三座炮台，使携带枪者额外造成 {C:GunSynergySystem.T3_BASE%}% 真实伤害，身上每件枪再 +{C:GunSynergySystem.T3_PER_GUN%}%
+scripts/gamedata/phase2_types.gd|lit|每件枪为携带者提供 +20% 攻击速度 · 【金弹】每把枪每射出 {C:GunSynergySystem.GOLD_EVERY[0]} 发子弹，额外射出 1 发金弹。金弹继承该枪子弹的全部效果，并额外造成本次伤害 {C:GunSynergySystem.GOLD_TRUE_PCT[0]%}% 的真实伤害 · 【炮台一】我方前方生成一座炮台，每 {C:GunSynergySystem.TICK} 秒对它与最近敌人连线上的所有敌人造成 {C:GunSynergySystem.T1_DMG} 物理伤害，无视护甲，并为生命值最低的友军回复造成伤害 {C:GunSynergySystem.T1_HEAL_SHARE%}% 的生命值
+scripts/gamedata/phase2_types.gd|lit|每件枪为携带者提供 +40% 攻击速度 · 【金弹】每 {C:GunSynergySystem.GOLD_EVERY[1]} 发射出 1 发，额外造成 {C:GunSynergySystem.GOLD_TRUE_PCT[1]%}% 真实伤害 · 【炮台二】我方中心生成第二座炮台，每 {C:GunSynergySystem.T2_PERIOD} 秒产出 {C:GunSynergySystem.T2_BASE_ENERGY} 点能量，全队每件枪再 +{C:GunSynergySystem.T2_PER_GUN} 点。能量交替转化为全队均摊的护盾，或对敌方全体均摊的真实伤害
+scripts/gamedata/phase2_types.gd|lit|每件枪为携带者提供 +66% 攻击速度 · 【金弹】每 {C:GunSynergySystem.GOLD_EVERY[2]} 发射出 1 发，额外造成 {C:GunSynergySystem.GOLD_TRUE_PCT[2]%}% 真实伤害 · 【炮台三·火控】我方后方生成第三座炮台，使携带枪者额外造成 {C:GunSynergySystem.T3_BASE%}% 真实伤害，身上每件枪再 +{C:GunSynergySystem.T3_PER_GUN%}%
 scripts/gamedata/phase2_types.gd|lit|每件法器为携带者提供 +11 魔法穿透、+8 最大龟能 · 【法力】充满所需降低至 {C:StaffSynergySystem.MANA_FULL_BY_TIER[3]} 点 · 【灵泉】提高至 {C:StaffSynergySystem.SPRING_PCT[2]%}% · 【余韵】友军受到治疗时，额外获得相当于治疗量 {C:StaffSynergySystem.ECHO_PCT[2]%}% 的护盾
 scripts/gamedata/phase2_types.gd|lit|每件法器为携带者提供 +14 魔法穿透、+10 最大龟能 · 【法力】充满所需降低至 {C:StaffSynergySystem.MANA_FULL_BY_TIER[4]} 点 · 【灵泉】提高至 {C:StaffSynergySystem.SPRING_PCT[3]%}% · 【余韵】提高至 {C:StaffSynergySystem.ECHO_PCT[3]%}% · 【共鸣】每 {C:StaffSynergySystem.RESONANCE_PERIOD} 秒，全队回复 {C:StaffSynergySystem.RESONANCE_HEAL%}% 最大生命值，并净化 {C:StaffSynergySystem.RESONANCE_DISPEL[3]} 种减益，依次为眩晕、减速、灼烧、中毒、诅咒
 scripts/gamedata/phase2_types.gd|lit|每件法器为携带者提供 +4 魔法穿透、+4 最大龟能 · 【法力】每件法器有独立的法力，充满 {C:StaffSynergySystem.MANA_FULL_BY_TIER[1]} 点时释放该法器的主动效果。每 {C:RealtimeBattle3DScene.EQ_TICK} 秒回复 {C:StaffSynergySystem.MANA_PER_TICK} 点，携带者造成或受到伤害时也会回复。未激活羁绊时需要 {C:StaffSynergySystem.MANA_FULL_BY_TIER[0]} 点
@@ -1950,6 +1950,7 @@ scripts/systems/replay/replay_recorder.gd|lit|校验点 %d: 一边在摆位一�
 scripts/systems/replay/replay_recorder.gd|lit|终局对不上
 scripts/systems/replay/replay_recorder.gd|lit|胜利
 scripts/systems/replay/stream_watch.gd|lit|版本过旧，请更新
+scripts/systems/replay/stream_watch.gd|lit|画面生成中
 scripts/systems/sim/sim_driver.gd|lit|(未进入)
 scripts/systems/sim/sim_driver.gd|lit|400 次没挑到纯英文昵称
 scripts/systems/sim/sim_driver.gd|lit|主菜单

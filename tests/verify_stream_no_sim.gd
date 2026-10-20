@@ -11,6 +11,8 @@ extends Node
 ## ★判据: 整个过程 `_sim_step_n` 恒 0、`sim_stepped` 信号 0 次、`ReplayRecorder.pre_step`(只在 `_sim_step` 第一行调)0 次。
 ## ★分母: 播放器真的应用了全部步数、解了全部块、建过 > 1000 个镜像节点、放过 > 100 个事件、单位代理 > 0 ——
 ##   否则「0 次 sim」可能只是什么都没播。
+## ★⑤(2026-10-20)整局播放期间引擎报错 = 0: 用 Logger 接引擎输出(不靠 run-tests 的致命正则 —— 那条正则不认
+##   `Cannot set material emission intensity…`, 原来一局刷 500 条照样全绿)。先打一条探针警告证明接得到(分母)。
 
 const J := preload("res://tests/_stream_jobs.gd")
 const P := preload("res://tests/_stream_play.gd")
@@ -18,6 +20,26 @@ const F := preload("res://scripts/systems/stream/stream_format.gd")
 
 var _fail := 0
 var _n := 0
+
+
+## 引擎报错计数(播放期间)。警告不算; 探针那条单独数(证明 Logger 真的接到了引擎输出)。
+class ErrTap extends Logger:
+	const PROBE := "ERRTAP_PROBE_STREAMNOSIM"
+	var err := 0
+	var probe := 0
+	var first := ""
+	var mx := Mutex.new()
+
+	func _log_error(_function: String, _file: String, _line: int, code: String, rationale: String,
+			_editor_notify: bool, error_type: int, _script_backtraces: Array) -> void:
+		mx.lock()
+		if code.contains(PROBE) or rationale.contains(PROBE):
+			probe += 1
+		elif error_type != Logger.ERROR_TYPE_WARNING:
+			err += 1
+			if first == "":
+				first = (code + " | " + rationale).substr(0, 160)
+		mx.unlock()
 
 
 func _ok(name: String, cond: bool, detail: String = "") -> void:
@@ -69,10 +91,14 @@ func _live_play(chunks: Array, meta: Dictionary, nat: Dictionary) -> void:
 	var au = get_node_or_null("/root/Audio")
 	if au != null:
 		au.mute_sfx = true
+	var tap := ErrTap.new()
+	OS.add_logger(tap)
+	push_warning(ErrTap.PROBE + " 门禁自检: 证明 Logger 接得到引擎输出(警告, 不是报错)")
 	var b: Node = P.make_player_battle(self, chunks, meta, int(nat["seed"]), nat.get("state", {}), 2)
 	var p: StreamPlayer = b._replay.player
 	_ok("分母 · 播放模式建起来了(mode=stream)", p != null and str(b._replay.mode) == "stream")
 	if p == null:
+		OS.remove_logger(tap)
 		return
 	var src = p.src
 	var emits := [0]
@@ -120,6 +146,9 @@ func _live_play(chunks: Array, meta: Dictionary, nat: Dictionary) -> void:
 		p.mirror.built > 1000 and evn > 100 and p.units.size() > 0)
 	_ok("★★播放全程 _sim_step 一次都没跑: 步号 %d、sim_stepped %d 次、pre_step %d 次" % [int(b._sim_step_n), emits[0], p.sim_calls],
 		int(b._sim_step_n) == 0 and emits[0] == 0 and p.sim_calls == 0)
+	OS.remove_logger(tap)
+	_ok("分母 · ⑤ Logger 接到了探针警告(%d 条)" % tap.probe, tap.probe >= 1)
+	_ok("★⑤ 整局播放期间引擎报错 0 条(实测 %d 条; 第一条: %s)" % [tap.err, tap.first], tap.err == 0)
 	b.queue_free()
 	await get_tree().process_frame
 	await get_tree().process_frame

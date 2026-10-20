@@ -129,6 +129,9 @@ frames_for () {
     #   墙钟不是帧数 —— CI 无头帧率极高, 帧给少了会在还没等到换表时被掐断
     #   ⇒ 没打 ALL PASS, 看着像断言失败(CLAUDE.md §2 那个坑)。
     verify_axe_anim_runtime)  echo 12000 ;;
+    # 变脸龟动作+特效: 四场 REVIEW 单技能台各跑 900~1500 帧(每帧恰 1 步 sim) + 两场死亡, 合计 ~5300 帧。
+    #   默认 500 帧连第一场都跑不完 ⇒ 没打 ALL PASS, 看着像断言失败(CLAUDE.md §2 那个坑)。
+    verify_two_head_anim)     echo 9000 ;;
     # 斧头被动: ⑧「龟能真的会涨」**只推时间不喂数** —— 要真跑到 140 龟能攒满(10.5 游戏秒),
     #   实测 ~2300 帧。默认 500 帧会在这一节半路被掐断 ⇒ 没打 ALL PASS, 看着像断言失败。
     #   ★这一节的全部价值就在"不喂数"上, 所以它天生慢, 只能给帧。
@@ -274,18 +277,20 @@ frames_for () {
     #   whitelist_alarm = 最重那局录一遍 + DetScenarios 15 场景每 60 步一帧(约 700 帧)。慢机器每帧步数少、帧数涨 ⇒ 都给 20000
     verify_stream_capture_inert) echo 20000 ;;
     verify_stream_size_budget) echo 20000 ;;
-    verify_stream_whitelist_alarm) echo 20000 ;;
+    verify_stream_whitelist_alarm) echo 30000 ;;   # 2026-10-20 +真人快照样本(072)+两个正对照
     # 逐帧直播 S2 手机播放(2026-10-19): parity = 两局裁判局录流 + det 15 场景, 各再按流播一遍(播放端每 30 步让一帧);
     #   no_sim = 录一局 + 引擎每帧真驱动播完(倍速 40) + 两遍坏块; seek = 两局各录一遍 + 每局 3 个目标各顺播 / 跳播一遍。
     #   本地实测 parity 2357 帧 / 220 秒、seek 1904 帧、no_sim 512 帧(2026-10-19); 慢机器每帧步数少、帧数涨 ⇒ 都给 20000
-    verify_stream_parity) echo 20000 ;;
+    verify_stream_parity) echo 30000 ;;   # 2026-10-20 +低帧率(一帧 1/3/4 步)两局各三遍
     verify_stream_hud_parity) echo 20000 ;;   # 播放端 HUD(2026-10-19): 同 parity 两局裁判局, 每 30 步让一帧
-    verify_stream_end_exit) echo 20000 ;;   # 播放端收尾与退出(2026-10-19): 录一局 + 播两遍到结尾, 实测约 1000 帧
+    verify_stream_end_exit) echo 20000 ;;
+    verify_stream_replay_controls) echo 20000 ;;   # 状态流回放操作条(2026-10-20): 录一局 + 播两遍到结尾   # 播放端收尾与退出(2026-10-19): 录一局 + 播两遍到结尾, 实测约 1000 帧
     verify_stream_no_sim) echo 20000 ;;
     verify_stream_seek) echo 20000 ;;
     # 逐帧直播 S5: 录一局(约 10 秒)+ 本机 HTTP 服务上按墙钟等退避 / 断网 / 426(钉 120 帧/秒, 本机约 1.1 万帧 · 90 秒)
     verify_stream_transport) echo 40000 ;;
     verify_referee_watch_stream) echo 40000 ;;
+    verify_stream_referee_paths) echo 40000 ;;   # 裁判局识别 / 补流 / 观赛正在算的裁判局(2026-10-20): 录一局 + 播三遍
     # 录流覆盖扫描(2026-10-19): 200 个对象(28 龟×3 技 / 95 件装备 / 12 羁绊 / 小将 / 大师)拆四片, 每片约 50 局 × (每 60 步让一帧 ≈ 22 帧 + 建场 4 帧) ≈ 1300 帧、本地约 80 秒; 给到 6000
     verify_stream_coverage|verify_stream_coverage_2|verify_stream_coverage_3|verify_stream_coverage_4) echo 6000 ;;
     # 投降删除(2026-10-19): 录两局(各到第一路开打后 90 帧判负收尾, 每局约 300 帧) + 播一局(约 500 帧) + 主菜单前一场; 给到 8000
@@ -791,6 +796,9 @@ run_audit "tools/server_rule_sync.py"     "ALL OK" "server_rule_sync (服务端�
 #   "没部署"挡住的只是部署, 挡不住逻辑。仍然没验的只剩"云上真部署"(要腾讯云账号+实名)。
 #   没有 node 会 SKIP 但**大声打出来**; CI 的 ubuntu runner 自带 node, 线上必跑。
 run_audit "tools/server_logic_gate.py"    "ALL OK" "server_logic_gate (云函数逻辑·V2往返/V3六类伪造/去重)"
+# 裁判机轮询器的「补流」任务(逐帧直播 §5, 2026-10-20): 假 rpc + 假 Godot 子进程, 发布 / 撤流 / 领活顺序是真代码。
+#   ★补流只产出状态流, 一次 referee_complete 都不许有(不写回结果、不改账); 重算胜方 / 指纹对不上 ⇒ 撤流。
+run_audit "tools/referee_poller_selftest.py" "ALL OK" "referee_poller_selftest (补流只录流不记账·对不上撤流·正常任务优先)"
 # 龟壳「复制」链路的四方对账(pets.json / _do_skill 分派 / _IMPL / 白名单 / 小将技)。
 #   2026-08-28 首跑报出 17 处: 白名单里 13 个**普攻位技能永远不会被执行**(占名额虚报可抄数)、
 #   1 个幽灵条目、3 个小将技漏掉。★判据落在 `_do_skill` 的 **match 块 case 标签**,

@@ -131,7 +131,7 @@ func _on_match(res: Dictionary) -> void:
 			or not (rec.get("cps", null) is Array) or not (rec.get("end", null) is Dictionary):
 		_to(RW.ST_ERROR, RW.result_line(view) + " · " + RW.TXT_UNPLAYABLE)
 		return
-	RW.RF._cache(match_id, raw)            # 战绩页之后能在本机直接看
+	RW.RF._cache(match_id, raw, true)      # 战绩页之后能在本机直接看(true = 服务器裁判局: 永不本机重算)
 	_to(RW.ST_PLAY, "")
 	## 逐帧直播 S5: 开关关 ⇒ 同步走 `play_settled`(本机重算, 与改之前一样); 开 ⇒ 播服务器的状态流
 	RW.play_settled_route(get_tree(), rec, view, _on_routed)

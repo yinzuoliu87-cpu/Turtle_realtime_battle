@@ -45,7 +45,7 @@ const TYPES := {
 	# ★弓箭【只给暴击率, 不给暴伤】(用户 2026-08-03 定)。
 	#   代价要写明: DPS 倍率 = 1 + 暴击×(暴伤−1), 暴伤基础只有 1.5
 	#   ⇒ 顶档带 3 件 = 暴击 +66%, 只等于 DPS ×1.33 —— 属性档在全表偏弱。
-	#   ⇒ 弓箭的强度【压在三条机制上】(处决 / 腐蚀穿透 / 腐蚀叠层), 不在属性上。
+	#   ⇒ 弓箭的强度【压在三条机制上】(处决 / 穿透 / 腐蚀), 不在属性上。
 	"弓箭": {"tiers": [3, 6, 9],     "stats": [{"crit": 0.09}, {"crit": 0.16}, {"crit": 0.22}]},
 	"法器": {"tiers": [2, 5, 8, 10], "stats": [{"magicPen": 4, "_maxEnergy": 4}, {"magicPen": 7, "_maxEnergy": 6}, {"magicPen": 11, "_maxEnergy": 8}, {"magicPen": 14, "_maxEnergy": 10}]},
 	"灵物": {"tiers": [2, 5, 8, 10], "stats": [{"dodgePct": 5}, {"dodgePct": 9}, {"dodgePct": 13}, {"dodgePct": 18}]},
@@ -119,7 +119,6 @@ const TYPE_NAME := {
 ##     更高档只写变化后的数(「提高至 X」), 没变化的不重复(云顶惯例: 高档包含低档)。
 ##   · 数字一律用代码常量占位符(C 占位符, 数组带下标 [档] 取那一档)直接读代码; 只有下面几类仍是字面量:
 ##     每档首条的属性(读 TYPES.stats, 由 data_integrity 与 verify_synergy_text 逐档对账)、
-##     枪【金弹】的 4/3/2 发与 60/80/100%(RealtimeBattle3DScene._queue_shots 里的行内数组, 没有常量)、
 ##     圣光护盾 1/2 件(GameState.shield_grant_count 行内数组)与 +250 最大生命值(EquipStats.STATS 字典)、
 ##     食物「双倍」、奇械【易碎】25%(代码存的是倍率 1.25)。
 ##   ★改这里先跑 python tools/copy_lol_style_lint.py 与 tests/verify_codex_synergy_card.tscn。
@@ -191,9 +190,9 @@ const TIER_DESCS := {
 		"每件药水为携带者提供 +20% 治疗强度、+20% 护盾强度、+6 最大龟能 · 【猎物】伤害提高至 {C:PotionSynergySystem.PREY_AMP[2]%}% · 【战利品】每击杀 1 名猎物 +{C:PotionSynergySystem.HARVEST_ATK[2]} 攻击力 · 【斩首】攻击生命值低于 {C:PotionSynergySystem.BEHEAD_HP_PCT%}% 的猎物时直接处决",
 	],
 	"枪": [
-		"每件枪为携带者提供 +20% 攻击速度 · 【金弹】每把枪每射出 4 发子弹，额外射出 1 发金弹。金弹继承该枪子弹的全部效果，并额外造成本次伤害 60% 的真实伤害 · 【炮台一】我方前方生成一座炮台，每 {C:GunSynergySystem.TICK} 秒对它与最近敌人连线上的所有敌人造成 {C:GunSynergySystem.T1_DMG} 物理伤害，无视护甲，并为生命值最低的友军回复造成伤害 {C:GunSynergySystem.T1_HEAL_SHARE%}% 的生命值",
-		"每件枪为携带者提供 +40% 攻击速度 · 【金弹】每 3 发射出 1 发，额外造成 80% 真实伤害 · 【炮台二】我方中心生成第二座炮台，每 {C:GunSynergySystem.T2_PERIOD} 秒产出 {C:GunSynergySystem.T2_BASE_ENERGY} 点能量，全队每件枪再 +{C:GunSynergySystem.T2_PER_GUN} 点。能量交替转化为全队均摊的护盾，或对敌方全体均摊的真实伤害",
-		"每件枪为携带者提供 +66% 攻击速度 · 【金弹】每 2 发射出 1 发，额外造成 100% 真实伤害 · 【炮台三·火控】我方后方生成第三座炮台，使携带枪者额外造成 {C:GunSynergySystem.T3_BASE%}% 真实伤害，身上每件枪再 +{C:GunSynergySystem.T3_PER_GUN%}%",
+		"每件枪为携带者提供 +20% 攻击速度 · 【金弹】每把枪每射出 {C:GunSynergySystem.GOLD_EVERY[0]} 发子弹，额外射出 1 发金弹。金弹继承该枪子弹的全部效果，并额外造成本次伤害 {C:GunSynergySystem.GOLD_TRUE_PCT[0]%}% 的真实伤害 · 【炮台一】我方前方生成一座炮台，每 {C:GunSynergySystem.TICK} 秒对它与最近敌人连线上的所有敌人造成 {C:GunSynergySystem.T1_DMG} 物理伤害，无视护甲，并为生命值最低的友军回复造成伤害 {C:GunSynergySystem.T1_HEAL_SHARE%}% 的生命值",
+		"每件枪为携带者提供 +40% 攻击速度 · 【金弹】每 {C:GunSynergySystem.GOLD_EVERY[1]} 发射出 1 发，额外造成 {C:GunSynergySystem.GOLD_TRUE_PCT[1]%}% 真实伤害 · 【炮台二】我方中心生成第二座炮台，每 {C:GunSynergySystem.T2_PERIOD} 秒产出 {C:GunSynergySystem.T2_BASE_ENERGY} 点能量，全队每件枪再 +{C:GunSynergySystem.T2_PER_GUN} 点。能量交替转化为全队均摊的护盾，或对敌方全体均摊的真实伤害",
+		"每件枪为携带者提供 +66% 攻击速度 · 【金弹】每 {C:GunSynergySystem.GOLD_EVERY[2]} 发射出 1 发，额外造成 {C:GunSynergySystem.GOLD_TRUE_PCT[2]%}% 真实伤害 · 【炮台三·火控】我方后方生成第三座炮台，使携带枪者额外造成 {C:GunSynergySystem.T3_BASE%}% 真实伤害，身上每件枪再 +{C:GunSynergySystem.T3_PER_GUN%}%",
 	],
 	"弓箭": [
 		"每件弓箭为携带者提供 +9% 暴击率 · 【处决】全队攻击生命值低于 {C:BowSynergySystem.EXEC_BASE[0]%}% 的敌人时直接处决。攻击者暴击率的 {C:BowSynergySystem.CRIT_TO_LINE[0]%}% 计入这条处决线 · 【穿透】全队攻击无视目标 {C:BowSynergySystem.PEN_PCT[0]%}% 护甲与魔抗 · 【腐蚀】每 {C:BowSynergySystem.CORRODE_PERIOD} 秒，敌方全体叠加 1 层腐蚀，至多 {C:BowSynergySystem.CORRODE_MAX} 层。每层使其受到的伤害提高 {C:BowSynergySystem.CORRODE_PER_STACK[0]%}%，满层时受到的伤害有 {C:BowSynergySystem.CORRODE_TRUE_PCT[0]%}% 转化为真实伤害",

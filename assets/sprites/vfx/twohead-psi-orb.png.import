@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://du0lxh17ht8fg"
-path="res://.godot/imported/magic-wave.png-68e7b4055e3b952f83e7099860fd53ff.ctex"
+uid="uid://yut54r33e3ef"
+path="res://.godot/imported/twohead-psi-orb.png-c0440f0a963f980b7bf130fe844321fa.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/vfx/magic-wave.png"
-dest_files=["res://.godot/imported/magic-wave.png-68e7b4055e3b952f83e7099860fd53ff.ctex"]
+source_file="res://assets/sprites/vfx/twohead-psi-orb.png"
+dest_files=["res://.godot/imported/twohead-psi-orb.png-c0440f0a963f980b7bf130fe844321fa.ctex"]
 
 [params]
 

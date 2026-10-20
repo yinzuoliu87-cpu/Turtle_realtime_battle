@@ -21,17 +21,24 @@ extends RefCounted
 ## 缓冲: 开播前攒够 START_STEPS 步(3 秒)或服务器已录完; 播到直播边沿停住显示「同步中」, 新块到了接着播。
 ## 跳转: `seek(步号)` 从最近的 keyframe 块重解(清空全部镜像状态 → 快进不放事件、不跑渲染 → 到目标步)。
 ## ★出错(版本不符 / 块坏 / 解不开): 停在「无法播放」, **绝不改成本机重算**。
+## 回放 / 观赛(2026-10-20, memory fb-spectate-is-not-replay): 入口给 `controls = true`(已打完的回放)⇒ 底部操作条
+##   暂停 / 倍速 / 进度条拖动(拖动 = `seek`, 从 keyframe 解); 观赛(正在算 / 周六自己那一场 / 周日开播)不给, 只有「退出」。
+##   操作条就是回放那一条(replay_controls.gd), 它在 stream 模式下改的是本播放器的 `paused` / `speed`。
 
 const F := preload("res://scripts/systems/stream/stream_format.gd")
 const Live := preload("res://scripts/systems/replay/live_spectate.gd")
 const SIM_DT := 1.0 / 60.0
 const START_STEPS := 180          # 开播前缓冲 3 秒
 const RESUME_STEPS := 60          # 卡在直播边沿后, 攒够 1 秒再接着播
+## 一帧推的步数不超过它时, 中间每个采样步补跑渲染步(_apply_paced); 超过 = 快进(15 帧手机 × 4 倍速 = 16 步)
+const PACED_MAX_STEPS := 16
 const TXT_ERROR := "画面无法播放"
 ## 单位外观件的键(与录流器 APPEAR_KEYS 同序; `@n` 按这个顺序给 id)。
 const APPEAR_KEYS := ["sprite", "shadow", "contact", "ring"]
 
-## 播放入口写、战斗场 `_ready` 里 `ReplayRecorder.start()` 读走: {source(块来源), seed(int), state(可选: GameState 那几个键, 换路幕布要读阵容)}。
+## 播放入口写、战斗场 `_ready` 里 `ReplayRecorder.start()` 读走: {source(块来源), seed(int), state(可选: GameState 那几个键, 换路幕布要读阵容),
+##   controls(可选: 回放操作条), wait_text(可选: 一块都还没到时屏上那句, 例如补流时「画面生成中」), fights / total(可选: 进度条的
+##   路名刻度与全场步数, 取自录像), no_curtain(可选: 入口没有阵容 —— 观赛正在算的局 —— 不建换路幕布)}。
 static var pending: Dictionary = {}
 
 var battle
@@ -75,6 +82,22 @@ var _sandbox := false
 ## 这一步的事件放不放(快进 / 跳转时 false): HUD 里「到某个状态才播一次」的演出(加时大字)跟着它
 var firing := true
 var _bar_built := false
+## 回放操作条(暂停 / 倍速 / 进度条)。false = 观赛, 只有「退出」。
+var controls := false
+## 一块都还没到时屏上那句(空 = 照常「同步中」)。
+var wait_text := ""
+## 进度条: 每一路开打的步号、全场步数(流的 end.json 到了以它为准)。
+var fights: Array = []
+var total_hint := -1
+var _no_curtain := false
+## 上一次跑渲染步时的播放头(这一帧的渲染步只补「从那以后」的那一段时长)
+var _rh := -1.0
+## 一帧推多步时, 在中间的采样步上补跑的渲染步次数(观测量)
+var mid_renders := 0
+## 这一次渲染步是不是落在采样步上(服务器只在采样步跑渲染步): 渲染步里「按状态冒东西」的判定只在它为真时做(battle_render._update_dot_floats)
+var at_sample := true
+## 正在应用 / 最近应用的那一步的步号(飘字合并的步号窗用, 同服务器 `_sim_step_n`)
+var cur_step := -1
 
 
 func _init(b, opts: Dictionary) -> void:
@@ -86,6 +109,12 @@ func _init(b, opts: Dictionary) -> void:
 	mirror = StreamMirror.new(battle._world)
 	hud = StreamHud.new(battle, self)
 	_sandbox = opts.has("state") and opts["state"] is Dictionary and not (opts["state"] as Dictionary).is_empty()
+	controls = bool(opts.get("controls", false))
+	speed = float(opts.get("speed", 1.0))       # 回放: 入口给的上一次选的倍速(与重算回放同一个 ReplayRecorder._pref_speed)
+	wait_text = str(opts.get("wait_text", ""))
+	fights = (opts.get("fights", []) as Array).duplicate() if opts.get("fights", null) is Array else []
+	total_hint = int(opts.get("total", -1))
+	_no_curtain = bool(opts.get("no_curtain", false))
 	mirror.unit_parent = func(idx: int, key: String):
 		var u = units.get(idx)
 		return u.get(key) if u is Dictionary else null
@@ -99,11 +128,13 @@ func advance(rd: float) -> float:
 		_bar_built = true
 		battle._hud.build_replay_bar()     # 「退出」(缓冲 / 同步中也要能走)与收尾卡的容器, 见 replay_controls.gd
 	var h0 := head
+	_rh = h0
 	_tick(rd)
 	if state == "ended":
 		hud.on_ended()
-	var adv := maxf(0.0, head - h0) if h0 >= 0.0 else 0.0
+	var adv := maxf(0.0, head - _rh) if _rh >= 0.0 else 0.0
 	_render(adv * SIM_DT)
+	_rh = head
 	_update_label()
 	return 0.0
 
@@ -137,7 +168,7 @@ func _tick(rd: float) -> void:
 		target = float(_last_step)
 		if _bad == "" and not (src.ended() and _next_seq >= src.available()):
 			state = "stalled"        # 追上了服务器: 停在缓冲尾部「同步中」, 新块到了接着播(绝不本机补算)
-	_apply_until(int(floor(target)), true)
+	_apply_paced(int(floor(target)))
 	head = target
 	if _bad != "" and _steps.is_empty() and applied >= _last_step:
 		_fail(_bad)
@@ -184,6 +215,30 @@ func _fail(why: String) -> void:
 	push_warning("[StreamPlayer] 无法播放: " + why)
 
 
+## 正常播放推到第 s 步(放全部事件)。★一帧推多步(低帧率手机 / 慢机 / 倍速 / 追帧)时, 每越过一个采样步就照服务器的节奏
+##   在那一步跑一次渲染步(服务器录流时每 2 步按 2·SIM_DT 跑一次, `StreamRecorder` 渲染步对齐) —— 渲染步里按状态冒的东西
+##   (DOT 常驻数字结束时的弹射飘字 `_update_dot_floats`、闪白 / 形变衰减 …)才与帧率无关。原来一帧只跑一次渲染步,
+##   一帧推 4 步时中间那个采样步上的「桶结束」看不到 ⇒ 少一条飘字(2026-10-20 CI 慢机 verify_stream_parity 红)。
+##   一帧最多越过 1 个采样步时(60 帧 / 秒、门禁一次推 2 步)与原来逐字相同。跳转(seek)的快进不走这里。
+func _apply_paced(s: int) -> void:
+	if s - applied > PACED_MAX_STEPS:
+		_apply_until(s, true)      # 一帧推得更多(门禁 40 倍速 / 追帧): 当快进, 只在帧尾跑一次渲染步(事件照样全放)
+		return
+	while _rh >= 0.0 and first_step >= 0 and not _steps.is_empty():
+		var nx := applied + 1 if ((applied + 1 - first_step) % F.CONT_EVERY) == 1 else applied + 2
+		if nx >= s or int(_steps[0][0]) > nx:
+			break
+		_apply_until(nx, true)
+		if applied != nx:
+			break
+		head = float(nx)
+		_interp()
+		_render((head - _rh) * SIM_DT)
+		_rh = head
+		mid_renders += 1
+	_apply_until(s, true)
+
+
 func _apply_until(s: int, fire: bool) -> void:
 	while not _steps.is_empty() and int(_steps[0][0]) <= s:
 		var st: Array = _steps.pop_front()
@@ -201,6 +256,7 @@ func _apply_until(s: int, fire: bool) -> void:
 # ═══════════════════════════════════════════════════════════════════════
 func _apply_step(st: Array, fire: bool) -> void:
 	var key := bool(st[1])
+	cur_step = int(st[0])          # 这一步的事件放的时候, 「现在是第几步」= 服务器 sim 那一步(_sim_step 开头就 +1 了)
 	firing = fire
 	mirror.restore()
 	if key:
@@ -469,7 +525,7 @@ func _sweep_own(keep_bands: bool) -> void:
 ## 幕布内容按 GameState 里的阵容建; 播放入口没给阵容(state)就不建(只留战场画面), 免得读到本机自己的阵容。
 func _curtain_ok() -> bool:
 	var gs = battle.get_node_or_null("/root/GameState")
-	return gs != null and bool(gs.get("dual_active")) and gs_sandboxed()
+	return not _no_curtain and gs != null and bool(gs.get("dual_active")) and gs_sandboxed()
 
 
 ## 许不许写 GameState(当前路 / 各路胜负): 播放入口给了阵容(它负责事后还原)或测试模式。
@@ -532,6 +588,7 @@ func _interp() -> void:
 func _render(dt: float) -> void:
 	if not is_instance_valid(battle) or battle._render == null:
 		return
+	at_sample = applied >= 0 and applied == _last_cont
 	if dt > 0.0:
 		battle._step_sim_tweens(dt)   # 手机自己造的演出(渲染步里按状态建的特效)的 tween; 流里的镜像节点不挂 tween
 	battle._render_alpha = 0.0
@@ -626,10 +683,21 @@ func _restore_curtain() -> void:
 		battle._dl_sys._dl_enter_present(dl)
 
 
+## 全场步数(进度条 / 全场时长): 流录完了(end.json)按它, 否则按入口给的(录像结算那一步); 都没有 = -1。
+func total_steps() -> int:
+	if src != null and src.ended():
+		var ls := int((src.end_meta() as Dictionary).get("last_step", -1))
+		if ls > 0:
+			return ls
+	return total_hint
+
+
 # ── 「同步中」/「无法播放」 ──
 func status_text() -> String:
 	match state:
 		"buffering", "stalled":
+			if first_step < 0 and wait_text != "":
+				return wait_text
 			return Live.TXT_SYNC
 		"error":
 			return TXT_ERROR

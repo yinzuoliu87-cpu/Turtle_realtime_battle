@@ -9,6 +9,9 @@ extends RefCounted
 ##   referee_flags()                     开关 {finals_on, gauntlet_on}(只读); 20261019c 起多两个: stream_on / stream_version(逐帧直播 S5)
 ##   referee_submit_gauntlet(...)        周六点开战: 交阵容 + 对手快照 → 任务号 / 录像号(写)
 ##   referee_job_status(p_job_id)        查自己那一场算完没有(只读)
+## 逐帧直播(20261020 迁移, 只写文件、未上生产; 没上 = 404 ⇒ 两条都当没有):
+##   referee_live_gauntlet()             本周周六正在算的裁判局(赛况板「观赛」, 只读): match_id / 双方名字 / 开始时刻 / 种子 / 版本
+##   referee_request_restream(p_match_id) 开流之前算的裁判局请求补流(排一份「重放录流」任务; 写)
 ## 录像本体按录像号走老路(`SupabaseNet.fetch_match_async`, `matches` 表)。
 ##
 ## ★★开关的落盘副本 `GameState.referee_flags`: 断网冷启动也知道「上次问到时开着」⇒ 周六断网点开战照样拦住,
@@ -28,6 +31,8 @@ const K_STREAM_VER := "stream_version"
 static var flag_asks := 0
 static var submits := 0
 static var status_asks := 0
+static var live_asks := 0
+static var restream_asks := 0
 
 
 # ─────────────────────────────── 开关 ───────────────────────────────
@@ -191,4 +196,79 @@ static func job_status_async(job_id: int, done: Callable) -> bool:
 	n._get_once("/rest/v1/rpc/referee_job_status", "POST", JSON.stringify({"p_job_id": job_id}), done,
 		func(res: Dictionary) -> Dictionary:
 			return parse_status(bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", ""))))
+	return true
+
+
+# ─────────────────────────────── 逐帧直播: 正在算的裁判局 / 补流 ───────────────────────────────
+
+## 纯函数: `referee_live_gauntlet` 回包 → {"rows": [...]}(形状同赛况板的直播行 `live_board_query`: match_id / started_at /
+##   updated_at / client_version / lp / rp, 另有 referee = true 与 seed); 拿不到 ⇒ {"reason": unavailable(404 没部署) / offline / server}。
+##   ★服务端只回双方 profile 的名字 / 头像 / #ID, 不回快照(阵容 / 装备)。
+static func parse_live(ok: bool, code: int, body: String) -> Dictionary:
+	if not ok:
+		return {"reason": "offline"}
+	if code == 404:
+		return {"reason": "unavailable"}
+	if code < 200 or code >= 300:
+		return {"reason": "server"}
+	var j := JSON.new()
+	if j.parse(body) != OK or not (j.data is Array):
+		return {"reason": "server"}
+	var rows: Array = []
+	for r0 in (j.data as Array):
+		if not (r0 is Dictionary) or not SB.is_uuid(str((r0 as Dictionary).get("match_id", ""))):
+			continue
+		var r: Dictionary = (r0 as Dictionary).duplicate(true)
+		var sd = r.get("seed", null)
+		if not (sd is float or sd is int) or int(sd) <= 0:
+			continue
+		r["seed"] = int(sd)
+		r["referee"] = true
+		rows.append(r)
+	return {"rows": rows}
+
+
+static func live_gauntlet_async(done: Callable) -> bool:
+	if not SB.enabled():
+		return false
+	var n = SB._spawn()
+	if n == null:
+		return false
+	live_asks += 1
+	n._get_once("/rest/v1/rpc/referee_live_gauntlet", "POST", "{}", done,
+		func(res: Dictionary) -> Dictionary:
+			return parse_live(bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", ""))))
+	return true
+
+
+## 纯函数: `referee_request_restream` 回包 → {"err": "", "status": pending / claimed / done / failed} 或 {"err": 原因码}。
+##   原因码: offline · server · unavailable(404: 服务端没部署)· 服务端 reason 原样(not_signed_in / no_match / not_referee /
+##           no_job / no_version / busy)。
+static func parse_restream(ok: bool, code: int, body: String) -> Dictionary:
+	if not ok:
+		return {"err": "offline"}
+	if code == 404:
+		return {"err": "unavailable"}
+	if code < 200 or code >= 300:
+		return {"err": "server"}
+	var j := JSON.new()
+	if j.parse(body) != OK or not (j.data is Dictionary):
+		return {"err": "server"}
+	var d: Dictionary = j.data
+	if not bool(d.get("ok", false)):
+		var why := str(d.get("reason", "server"))
+		return {"err": why if why != "" else "server"}
+	return {"err": "", "status": str(d.get("status", ""))}
+
+
+static func request_restream_async(match_id: String, done: Callable) -> bool:
+	if not SB.enabled() or not SB.is_uuid(match_id):
+		return false
+	var n = SB._spawn()
+	if n == null:
+		return false
+	restream_asks += 1
+	n._get_once("/rest/v1/rpc/referee_request_restream", "POST", JSON.stringify({"p_match_id": match_id}), done,
+		func(res: Dictionary) -> Dictionary:
+			return parse_restream(bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", ""))))
 	return true

@@ -726,7 +726,7 @@ func _dot_accumulate(u: Dictionary, bucket: String, dmg: int) -> void:
 	var df: Dictionary = u["_dot_float"]
 	var col: Color = _dot_bucket_col(bucket)
 	var st: Dictionary = df.get(bucket, {})
-	if st.is_empty() or not is_instance_valid(st.get("node", null)):
+	if st.is_empty() or not is_instance_valid(st.get("node", null)) or (st["node"] as Node).is_queued_for_deletion():   # 排队释放中的不再累加(同 _float_text 合并那条)
 		var lbl = battle._make_num_label("0", col, 20)
 		if battle._ui_layer != null:
 			battle._ui_layer.add_child(lbl)

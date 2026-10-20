@@ -11,6 +11,10 @@ extends Node
 ##   · 采样步后一步(两次采样中间, 手机在插值): 单位位置与原生 sim 的差 ≤ 插值容差(剖面量出来的)
 ##   · 飘字: 整局「新冒出来的飘字 Label 文本」序列完全相同(两边都按 `_ui_layer` 新加的 Label 普查, 不经录流器)
 ## 覆盖: tests/_stream_jobs.gd 两局(三路打满) + DetScenarios 前 4 个场景。
+## ★2026-10-20 低帧率: 同一份流再按「一帧推 K 步」(K = CADENCE_K: 1 = 60 帧手机一步一帧 / 3 / 4 = 慢机、低帧率手机)各播一遍,
+##   飘字序列必须与原生相同(步号容差 TOL_FLOAT_STEP + K)。由来: v0.21.0 CI(慢机)这一条红「原生 2422 / 播放 2415」;
+##   本机探针量出播放端飘字条数随 K 变(K=1 2430、K=2 2415、K=3 2422)—— 渲染步里按状态冒的飘字(DOT 常驻数字结束时弹射)
+##   跟着手机帧率走。修法见 stream_player._apply_paced / at_sample。分母: 每一遍都播到结尾、真的一帧推了 K 步。
 ## ★分母: 每局比过的采样点数、单位数、镜像节点数、飘字数都 > 0; 播放端真的应用了全部步数。
 
 const J := preload("res://tests/_stream_jobs.gd")
@@ -31,6 +35,7 @@ const TOL_INTERP := 12.0
 const TOL_MID := 0.01
 const DET_N := 15
 const TOL_FLOAT_STEP := 2
+const CADENCE_K := [1, 3, 4]
 
 var _pl: StreamPlayer = null
 var _fail := 0
@@ -66,6 +71,10 @@ func _ready() -> void:
 		_ok("分母 · %s 原生一遍三路打满、录到块" % str(jj[0]), bool(res.get("ok", false)) and int(res.get("fights", 0)) == 3
 			and (res.get("stream_chunks", []) as Array).size() > 100, "开打 %d 块 %d" % [int(res.get("fights", 0)), (res.get("stream_chunks", []) as Array).size()])
 		await _play_and_compare(str(jj[0]), res.get("stream_chunks", []), res.get("stream", {}), nat)
+		for kk in CADENCE_K:
+			await _cadence(str(jj[0]), res.get("stream_chunks", []), res.get("stream", {}), nat, int(kk))
+		if str(jj[1]) == "h":
+			await _native_budget(job, nat)
 	if only == "" or only == "d":
 		var k := 0
 		var det_n: int = int(OS.get_environment("S2_DET_N")) if OS.get_environment("S2_DET_N") != "" else DET_N
@@ -105,7 +114,8 @@ func _play_and_compare(tag: String, chunks: Array, meta: Dictionary, nat: Dictio
 	var keys: Array = snaps.keys()
 	keys.sort()
 	var st := {"cmp": 0, "interp": 0, "u_n": 0, "n_n": 0, "u_bad": [], "n_bad": [], "c_bad": [], "i_max": 0.0, "i_list": [],
-		"pos_max": 0.0, "rot_max": 0.0, "scl_max": 0.0, "col_max": 0.0, "ux_max": 0.0, "tex_gen": 0, "mesh_proc": 0, "missing_n": 0, "extra_n": 0}
+		"pos_max": 0.0, "rot_max": 0.0, "scl_max": 0.0, "col_max": 0.0, "ux_max": 0.0, "tex_gen": 0, "mesh_proc": 0, "missing_n": 0, "extra_n": 0,
+		"dot_n": 0, "dot_bad": []}
 	var ki := 0
 	var guard := 0
 	p.advance(0.0)
@@ -154,6 +164,10 @@ func _play_and_compare(tag: String, chunks: Array, meta: Dictionary, nat: Dictio
 	_ok("★★%s 镜像节点: id 集合 / 类名 / 显隐 / 帧号 / 贴图一致, 变换与颜色在量化容差内" % tag, (st["n_bad"] as Array).is_empty(),
 		"缺 %d 多 %d · %s" % [int(st["missing_n"]), int(st["extra_n"]), str((st["n_bad"] as Array).slice(0, 4))])
 	_ok("★★%s _world 全量普查(按类名计数)一致" % tag, (st["c_bad"] as Array).is_empty(), str((st["c_bad"] as Array).slice(0, 3)))
+	_ok("★★%s 头顶常驻 DOT 累计数字一致(比过 %d 个单位·点, 不同 %d)" % [tag, int(st["dot_n"]), (st["dot_bad"] as Array).size()],
+		(st["dot_bad"] as Array).is_empty(), str((st["dot_bad"] as Array).slice(0, 4)))
+	if tag.contains("最重"):
+		_ok("分母 · %s 采样点上挂着 DOT 累计数字的单位·点 %d > 0" % [tag, int(st["dot_n"])], int(st["dot_n"]) > 0)
 	## S3: 占位清零 —— 程序贴图 / 程序网格全部按出处键现生成(占位次数 = 0, 生成失败 = 0); 分母: 现生成过 > 0 次
 	_ok("分母 · %s 程序网格比过内容的节点·点 %d > 流里还没发新一代(按自己频率发)而没比的 %d" % [tag, int(st["mesh_proc"]), int(st.get("mesh_lag", 0))],
 		int(st["mesh_proc"]) >= int(st.get("mesh_lag", 0)))
@@ -210,6 +224,96 @@ func _play_and_compare(tag: String, chunks: Array, meta: Dictionary, nat: Dictio
 		au.mute_sfx = muted0
 
 
+## 原生那一侧自己也得与机器快慢无关(2026-10-20 CI 2422 / 本机 2415 的另一半根因): 同一张任务单, 裁判每帧计算预算从 100 ms
+##   压到 1 ms(一帧只推一两步, 像慢机)再录一遍, 飘字序列必须逐条相同。判据只看原生, 不经过播放器。
+func _native_budget(job: Dictionary, nat: Dictionary) -> void:
+	var b0: int = ReplayRecorder.referee_budget_us
+	ReplayRecorder.referee_budget_us = 1000
+	var nat2: Dictionary = await P.record_referee(self, job, func(_n2: int) -> bool: return false)
+	ReplayRecorder.referee_budget_us = b0
+	var fa: Array = _flat(nat["floats"])
+	var fb: Array = _flat(nat2["floats"])
+	var first := -1
+	for i in range(mini(fa.size(), fb.size())):
+		if str(fa[i][1]) != str(fb[i][1]) or int(fa[i][0]) != int(fb[i][0]):
+			first = i
+			break
+	_ok("★★原生飘字与裁判每帧预算无关(100 ms %d 条 / 1 ms %d 条)" % [fa.size(), fb.size()], fa.size() == fb.size() and first < 0 and fa.size() > 0,
+		"第一处不同 #%d: %s / %s" % [first, str(fa[first]) if first >= 0 else "", str(fb[first]) if first >= 0 and first < fb.size() else ""])
+
+
+## 低帧率: 一次推 k 步(与引擎每帧调 advance(k·SIM_DT) 同一条路), 只比飘字序列。
+func _cadence(tag: String, chunks: Array, meta: Dictionary, nat: Dictionary, k: int) -> void:
+	var gs = get_node_or_null("/root/GameState")
+	var backup: Dictionary = ReplayRecorder.capture_all()
+	var au = get_node_or_null("/root/Audio")
+	if au != null:
+		au.mute_sfx = true
+	var b: Node = P.make_player_battle(self, chunks, meta, int(nat["seed"]), nat.get("state", {}))
+	b.set_process(false)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var p: StreamPlayer = b._replay.player
+	if p == null:
+		_ok("%s · 一帧 %d 步 播放模式建起来了" % [tag, k], false)
+		return
+	var cur := [-1]
+	var floats := {}
+	var fl := P._float_hook(floats, cur)
+	get_tree().node_added.connect(fl)
+	p.on_applied = func(s: int) -> void: cur[0] = s
+	p.advance(0.0)
+	var g := 0
+	var max_jump := 0
+	var snaps: Dictionary = nat["snaps"]
+	var dot_n := 0
+	var dot_bad: Array = []
+	var seen := {}
+	while p.state != "ended" and p.state != "error" and g < 400000:
+		g += 1
+		var a0: int = p.applied
+		p.advance(float(k) * SIM_DT)
+		if a0 >= 0:
+			max_jump = maxi(max_jump, p.applied - a0)
+		## 头顶常驻 DOT 累计数字: 播放头正好停在原生拍过快照的采样步上时比(截图验收: 一帧一步时播放端小 4~14)
+		var s: int = p.applied
+		if p.at_sample and snaps.has(s) and not seen.has(s):
+			seen[s] = true
+			var nu: Dictionary = (snaps[s] as Dictionary)["units"]
+			for idx in nu:
+				var da: String = str((nu[idx] as Array)[7]) if (nu[idx] as Array).size() > 7 else ""
+				var u = p.units.get(idx)
+				var db: String = P._dot_sig(u) if u is Dictionary else ""
+				if da != "":
+					dot_n += 1
+				if da != db and dot_bad.size() < 6:
+					dot_bad.append("步%d 单位%d 原生「%s」播放「%s」" % [s, idx, da, db])
+		if g % 30 == 0:
+			await get_tree().process_frame
+	get_tree().node_added.disconnect(fl)
+	var fa: Array = _flat(nat["floats"])
+	var fb: Array = _flat(floats)
+	var first := -1
+	for i in range(mini(fa.size(), fb.size())):
+		if str(fa[i][1]) != str(fb[i][1]) or absi(int(fa[i][0]) - int(fb[i][0])) > TOL_FLOAT_STEP + k:
+			first = i
+			break
+	_ok("分母 · %s · 一帧 %d 步: 播到结尾(应用 %d 步)、一帧最多真推了 %d 步、中间采样步补跑渲染步 %d 次" % [tag, k, p.steps_applied, max_jump, p.mid_renders],
+		p.state == "ended" and p.steps_applied == int(meta.get("steps", -1)) and max_jump == k)
+	_ok("★★%s · 一帧 %d 步: 头顶常驻 DOT 累计数字与原生一致(比过 %d 个单位·点)" % [tag, k, dot_n], dot_bad.is_empty()
+		and (dot_n > 0 or not tag.contains("最重")), str(dot_bad))
+	_ok("★★%s · 一帧 %d 步: 飘字序列与原生一致(原生 %d 条 / 播放 %d 条)" % [tag, k, fa.size(), fb.size()],
+		fa.size() == fb.size() and first < 0 and fa.size() > 0,
+		"第一处不同 #%d: %s / %s" % [first, str(fa[first]) if first >= 0 else "", str(fb[first]) if first >= 0 and first < fb.size() else ""])
+	b.queue_free()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	for kk in backup:
+		var v = backup[kk]
+		gs.set(str(kk), v.duplicate(true) if (v is Array or v is Dictionary) else v)
+	gs.test_mode = true
+
+
 func _flat(d: Dictionary) -> Array:
 	var ks: Array = d.keys()
 	ks.sort()
@@ -240,6 +344,13 @@ func _cmp(s: int, a: Dictionary, b: Dictionary, st: Dictionary) -> void:
 		st["ux_max"] = maxf(float(st["ux_max"]), m)
 		if bool(x[4]) != bool(y[4]) or m > TOL_UNIT:
 			(st["u_bad"] as Array).append("步%d 单位%d 原生%s 播放%s" % [s, idx, str(x), str(y)])
+		## 头顶常驻 DOT 累计数字(2026-10-20 截图验收: 播放端比本机小 4~14)
+		var dxa: String = str(x[7]) if x.size() > 7 else ""
+		var dxb: String = str(y[7]) if y.size() > 7 else ""
+		if dxa != "":
+			st["dot_n"] = int(st["dot_n"]) + 1
+		if dxa != dxb:
+			(st["dot_bad"] as Array).append("步%d 单位%d 原生「%s」播放「%s」" % [s, idx, dxa, dxb])
 	for idx in ub:
 		if not ua.has(idx):
 			(st["u_bad"] as Array).append("步%d 单位%d 原生没有" % [s, idx])

@@ -22,6 +22,13 @@
                          <STREAM_ROOT>/<match_id>/（块 N 在块 N+1 出现时才算写完），最后挪 end.json。
   STREAM_TMP             默认 <STREAM_ROOT>-tmp（必须与 STREAM_ROOT 同一文件系统，rename 才是原子的）
 
+补流（逐帧直播 §5，迁移 20261020_referee_live_list.sql，2026-10-20 · ★只改了仓库文件、未部署）：
+  正常任务领不到时，再领一份「补流」任务（rpc/referee_claim_restream；任务单 = 原任务 + task = "restream"）。
+  用原快照 + 种子再算一遍，**只产出状态流**：不调 referee_complete（不写回结果、不改账），算完 rpc/referee_restream_done。
+  重算的胜方 / 指纹必须等于原结果（expect_winner / expect_digest），对不上 ⇒ 撤掉这份流、判永久失败。
+  没设 STREAM_ROOT / 工程没有录流代码 ⇒ 补不了，判永久失败；对外目录已有 end.json ⇒ 不重算，直接记 done。
+  服务端没部署（rpc 404）⇒ 本进程不再领补流。
+
 子命令：
   referee_poller.py                 常驻轮询（systemd 用这个）
   referee_poller.py --once          领一份、跑完、写回就退（上线前手测）
@@ -53,6 +60,8 @@ _UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f
 _CHUNK_RE = re.compile(r"^[0-9]{6}\.bin$")
 
 _stop = threading.Event()
+TASK_RESTREAM = "restream"
+_restream_off = threading.Event()      # rpc/referee_claim_restream 回过 404（服务端没上 20261020）⇒ 本进程不再领补流
 
 
 def log(msg: str) -> None:
@@ -186,8 +195,12 @@ class StreamPublisher:
 
 # ─────────────────────────────── 跑一局 ───────────────────────────────
 
-def run_godot(job: dict, proj: str, wdir: str, timeout_sec: int) -> tuple:
-    """写任务单 → 调 Godot（录流开着时边算边发布块）→ 读结果单。返回 (rc, result_dict_or_None, log_tail)。"""
+def run_godot(job: dict, proj: str, wdir: str, timeout_sec: int, accept=None, sp="auto") -> tuple:
+    """写任务单 → 调 Godot（录流开着时边算边发布块）→ 读结果单。返回 (rc, result_dict_or_None, log_tail)。
+
+    accept(res) -> bool：额外判「这份流算不算数」（补流用：重算结果必须等于原结果），False ⇒ 撤掉这份流。
+    sp：调用方已经决定好的发布器（补流先判过「能不能录」）；"auto" = 按任务单自己判。
+    """
     os.makedirs(wdir, exist_ok=True)
     jp = os.path.join(wdir, "job.json")
     rp = os.path.join(wdir, "result.json")
@@ -209,7 +222,8 @@ def run_godot(job: dict, proj: str, wdir: str, timeout_sec: int) -> tuple:
     e.pop("REFEREE_STREAM", None)
     cmd = [env("GODOT_BIN", "/opt/godot/godot"), "--headless", "--audio-driver", "Dummy", "--path", proj, SCENE,
            "--quit-after", QUIT_AFTER_FRAMES, "--", "--job=" + jp, "--out=" + rp]
-    sp = StreamPublisher.for_job(job, proj)
+    if sp == "auto":
+        sp = StreamPublisher.for_job(job, proj)
     if sp is not None:
         sp.prepare()
         cmd.append("--stream=" + sp.tmp)
@@ -249,7 +263,8 @@ def run_godot(job: dict, proj: str, wdir: str, timeout_sec: int) -> tuple:
             res = None
     if sp is not None:
         try:
-            sp.finish(rc == 0 and isinstance(res, dict) and res.get("ok") is True)
+            good = rc == 0 and isinstance(res, dict) and res.get("ok") is True
+            sp.finish(good and (accept is None or bool(accept(res))))
         except OSError as ex:
             log("WARN 收尾发布失败: %r" % ex)
     log("godot rc=%s %.1fs job=%s" % (rc, time.time() - t0, job.get("job_id")))
@@ -280,6 +295,79 @@ def handle(job: dict, versions: dict, worker: str, wdir: str) -> None:
     log("fail job=%s permanent=%s err=%s → %s" % (jid, permanent, err[:200], json.dumps(r)))
 
 
+def restream_check(job: dict, res) -> str:
+    """补流重算的结果与原结果对不对得上。"" = 对得上；否则是原因。"""
+    if not isinstance(res, dict) or res.get("ok") is not True:
+        return "not_ok"
+    if str(res.get("match_id")) != str(job.get("match_id")):
+        return "match_id_mismatch"
+    ew = job.get("expect_winner")
+    if ew and str(res.get("winner")) != str(ew):
+        return "winner_mismatch:%s!=%s" % (res.get("winner"), ew)
+    ed = job.get("expect_digest")
+    if ed and str(res.get("digest")) != str(ed):
+        return "digest_mismatch"
+    return ""
+
+
+def handle_restream(job: dict, versions: dict, worker: str, wdir: str) -> None:
+    """补流：原快照 + 种子再算一遍，只发布状态流。★不调 referee_complete（不写回结果、不改账）。"""
+    mid = str(job.get("match_id", ""))
+    ver = str(job.get("client_version", ""))
+
+    def done(ok: bool, err: str = "", permanent: bool = False) -> None:
+        r = rpc("referee_restream_done", {"p_match_id": mid, "p_worker": worker, "p_ok": ok,
+                                          "p_error": err or None, "p_permanent": permanent})
+        log("restream %s %s %s → %s" % (mid, "ok" if ok else "fail", err[:200], json.dumps(r)))
+
+    proj = versions.get(ver)
+    if proj is None:
+        done(False, "no_project:" + ver)
+        return
+    if not env("STREAM_ROOT").rstrip("/") or not os.path.isfile(
+            os.path.join(proj, "scripts", "systems", "stream", "stream_recorder.gd")):
+        done(False, "stream_off", permanent=True)
+        return
+    root = env("STREAM_ROOT").rstrip("/")
+    if os.path.isfile(os.path.join(root, mid.lower(), "end.json")):
+        done(True)                     # 已经有完整的一份（别的线程 / 上一次补过）: 不再重算
+        return
+    sp = StreamPublisher.for_job(job, proj)
+    if sp is None:
+        done(False, "no_publisher", permanent=True)
+        return
+    why = {"v": ""}
+
+    def accept(res) -> bool:
+        why["v"] = restream_check(job, res)
+        return why["v"] == ""
+
+    rc, res, tail = run_godot(job, proj, wdir, int(env("JOB_TIMEOUT_SEC", "600")), accept=accept, sp=sp)
+    if rc == 0 and isinstance(res, dict) and res.get("ok") is True:
+        if why["v"] == "":
+            done(True)
+        else:
+            done(False, why["v"], permanent=True)     # 同版本同快照同种子却算出不同的结果: 重试也一样, 流已撤
+        return
+    permanent = isinstance(res, dict) and bool(res.get("permanent"))
+    err = (res or {}).get("error") if isinstance(res, dict) else None
+    done(False, err or ("rc=%s %s" % (rc, tail[-400:].replace("\n", " | "))), permanent)
+
+
+def claim_restream(worker: str, versions: dict) -> list:
+    """领一份补流任务；服务端没部署（404）⇒ 本进程以后不再领。"""
+    if _restream_off.is_set():
+        return []
+    try:
+        return rpc("referee_claim_restream", {"p_worker": worker, "p_versions": sorted(versions), "p_limit": 1}) or []
+    except urllib.error.HTTPError as ex:
+        if ex.code == 404:
+            _restream_off.set()
+            log("referee_claim_restream 404（服务端没上 20261020）: 本进程不再领补流")
+            return []
+        raise
+
+
 def worker_loop(idx: int, once: bool) -> None:
     worker = "%s-%d" % (env("WORKER_NAME", socket.gethostname()), idx)
     wdir = os.path.join(env("WORK_DIR", "/var/lib/turtle-referee"), "w%d" % idx)
@@ -297,6 +385,13 @@ def worker_loop(idx: int, once: bool) -> None:
             _stop.wait(max(poll, 5))
             continue
         if not jobs:
+            ## 正常任务空了才领补流（真比赛永远优先）
+            try:
+                jobs = claim_restream(worker, versions)
+            except (urllib.error.URLError, OSError, ValueError) as ex:
+                log("WARN %s 领补流失败: %s" % (worker, ex))
+                jobs = []
+        if not jobs:
             if once:
                 log("%s: 没有待算的任务" % worker)
                 return
@@ -304,7 +399,10 @@ def worker_loop(idx: int, once: bool) -> None:
             continue
         for job in jobs:
             try:
-                handle(job, versions, worker, wdir)
+                if str(job.get("task", "")) == TASK_RESTREAM:
+                    handle_restream(job, versions, worker, wdir)
+                else:
+                    handle(job, versions, worker, wdir)
             except Exception as ex:      # 网络 / 意外: 不写回 ⇒ 租期一过别的裁判重领
                 log("ERROR %s job=%s: %r" % (worker, job.get("job_id"), ex))
         if once:

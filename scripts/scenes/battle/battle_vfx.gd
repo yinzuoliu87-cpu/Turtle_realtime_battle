@@ -267,6 +267,15 @@ func _float_row_offset(key: String, kind: String, dmg_type: String, fsize: float
 	return float(extra) * 22.0
 
 # 飘字 (1:1 回合制 _spawn_float_text): kind=damage → 爆大pop(1.6~2.5)+抛物弹射(重力200,朝屏边跳); 否则(heal/shield/label) → pop1.2+缓升50px(sine)1.5s淡出
+## 飘字合并用的步号: 本机 = sim 步号(`_sim_step` 开头 +1, 这一步里放的东西都记这一步); 播状态流的手机(一步 sim 都不跑)=
+##   播放器正在应用的那一步(`cur_step`, 不是「已应用到」—— 差一步就会把服务器并掉的那一跳单独冒出来, 2026-10-20 实测)。
+func _float_clock() -> int:
+	var rp = battle._replay
+	if rp != null and rp.player != null:
+		return int(rp.player.cur_step)
+	return int(battle._sim_step_n)
+
+
 # 飘字 (1:1 回合制 _spawn_float_text): kind=damage → 爆大pop(1.6~2.5)+抛物弹射(重力200,朝屏边跳); 否则(heal/shield/label) → pop1.2+缓升50px(sine)1.5s淡出
 func _float_text(pos2d: Vector2, text: String, col: Color, is_crit: bool = false, kind: String = "label", dmg_type: String = "physical", jump_dir: float = 0.0) -> void:
 	if StreamRecorder.cur != null: StreamRecorder.cur.ev("float", [pos2d, text, col, is_crit, kind, dmg_type, jump_dir])   # 逐帧直播: 记世界坐标, 屏幕位置由手机相机算
@@ -284,9 +293,13 @@ func _float_text(pos2d: Vector2, text: String, col: Color, is_crit: bool = false
 	if kind == "damage" and amount > 0:
 		_mk = "%d_%d_%s" % [roundi(pos2d.x), roundi(pos2d.y), dmg_type]
 		var _m: Dictionary = battle._float_merge.get(_mk, {})
-		if not _m.is_empty() and battle._t - float(_m.get("t", -9.0)) < 0.04 and is_instance_valid(_m.get("lbl", null)):
+		## ★已排队释放(换路清场 / 收卡时 queue_free)的那个数字不许再合并进去: 它这一帧末尾就没了 ⇒ 这一跳等于被吞掉;
+		##   而「排队到真释放」隔不隔帧取决于这一帧推了几步 sim ⇒ 慢机 / 快机冒出来的飘字条数不同(2026-10-20 CI 2422 / 本机 2415 的根因)
+		##   ★再加一道「步号」窗(2 步内): `_t` 在换路之间的幕布期不走, 只看 `_t` 就会把整段幕布期的冰霜跳伤全并进一个数字,
+		##   能并几跳取决于那个数字的飞行 tween(按真实时间)还活不活着 ⇒ 同一局飘字条数随机器快慢变(实测本机 2416 / 2417、CI 2422)
+		if not _m.is_empty() and battle._t - float(_m.get("t", -9.0)) < 0.04 and _float_clock() - int(_m.get("s", -99)) <= 2 				and is_instance_valid(_m.get("lbl", null)) and not (_m["lbl"] as Node).is_queued_for_deletion():
 			var _na: int = int(_m["amount"]) + amount
-			_m["amount"] = _na; _m["t"] = battle._t
+			_m["amount"] = _na; _m["t"] = battle._t; _m["s"] = _float_clock()
 			var _l: Label = _m["lbl"]
 			_l.text = str(_na)
 			_l.add_theme_font_size_override("font_size", _float_size(_na, bool(_m.get("crit", false))))
@@ -317,7 +330,7 @@ func _float_text(pos2d: Vector2, text: String, col: Color, is_crit: bool = false
 	##   飘字的 queue_free 挂在 create_tween 的回调上, 换路演出期一顿就一直挂着。
 	fly.add_to_group(BattleHud.UI_TRANSIENT_GROUP)
 	if _mk != "" and num_lbl != null:   # 注册本帧该目标该类型的数字, 供同帧后续伤害合并
-		battle._float_merge[_mk] = {"lbl": num_lbl, "amount": amount, "t": battle._t, "crit": is_dmg_crit}
+		battle._float_merge[_mk] = {"lbl": num_lbl, "amount": amount, "t": battle._t, "crit": is_dmg_crit, "s": _float_clock()}
 	# 居中起跳 + pivot 居中 (pop 绕中心, 1:1 PoC origin 0.5)
 	var tsz = _float_num_font().get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fsize)
 	var unit_sz = Vector2(20.0 + 1.0 + tsz.x, maxf(20.0, tsz.y)) if is_dmg_crit else tsz

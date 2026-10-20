@@ -107,7 +107,17 @@ func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, ba
 	var p = Sprite3D.new()
 	var oriented = false
 	var card_spin = false
-	if src is Dictionary and str(src.get("id", "")) == "gambler":   # 赌神: 甩旋转扑克牌(黑桃A)
+	var th_bolt := false
+	if src is Dictionary and str(src.get("id", "")) == "two_head" and not bool(src.get("melee", false)):   # 变脸龟远程: 灵能弹(弹头朝前·2026-10-20)
+		var _ths: Sprite3D = battle._two_head_sys.vfx.sprite(TwoHeadVfx.BOLT, false)
+		if _ths != null:
+			p.free()
+			p = _ths
+			oriented = true
+			th_bolt = true
+	if th_bolt:
+		pass
+	elif src is Dictionary and str(src.get("id", "")) == "gambler":   # 赌神: 甩旋转扑克牌(黑桃A)
 		p.texture = load("res://assets/sprites/vfx/gambler-card.png")
 		p.pixel_size = 0.9 / 54.0   # ~0.9m 高扑克牌
 		p.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
@@ -158,6 +168,8 @@ func _fire_bolt_from(src, tgt: Dictionary, dmg: int, col: Color, from = null, ba
 		"src": src, "t": 0.0, "dur": pdur, "basic_onhit": basic_onhit, "star_true": _stt,
 		"oriented": oriented, "card_spin": card_spin, "dtype": battle._last_dmg_type,
 	})
+	if th_bolt:
+		battle._projectiles[battle._projectiles.size() - 1]["th_bolt"] = true   # 命中时播变脸龟灵能弹的命中特效
 
 # 幽灵普攻·幽魂弹道(专属ghost-wisp): 携物理+真实, 命中同发红白两数字(修不同时跳)+灵体怨气
 func _fire_ghost_wisp(u: Dictionary, tgt: Dictionary) -> void:
@@ -377,6 +389,8 @@ func _step_projectiles(delta: float) -> void:
 				else:
 					battle._damage._apply_damage(tgt, pr["dmg"], pr["col"])
 				battle._vfx._flash(tgt)
+				if pr.get("th_bolt", false):
+					battle._two_head_sys.vfx.bolt_hit(tgt)
 				if pr.get("basic_onhit", false) and pr["src"] != null:
 					battle._on_basic_hit(pr["src"], tgt)   # 远程普攻附带(审判等)弹道命中时触发→与裁决同帧跳数字
 				if pr.get("freeze_on_hit", 0.0) > 0.0:

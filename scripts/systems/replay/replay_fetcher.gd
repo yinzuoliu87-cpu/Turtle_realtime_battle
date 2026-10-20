@@ -15,6 +15,9 @@ extends RefCounted
 ## ★取回来的录像**存一份到本机** user://replays/<id>.rpl(方案书 R11: 整份拉到本地, 之后不再依赖服务端;
 ##   服务端每周二清掉之后本机照样能播)。只有解码 + 认出是这一场之后才存 —— 坏数据不落盘。
 ## ★本机缓存的清理: 进战绩页时 `prune_cache()`(见那里的头注)。
+## ★★裁判局(2026-10-20, 逐帧直播): 取回来的那一行 `matches.result.referee == true`(match_fetch.gd `referee_of`)⇒
+##   这一场是服务器算的 ⇒ 交给 `SW.route` 时按「已知裁判局」(`known`): 没有状态流就请求补流、**永不本机重算**。
+##   缓存到本机时旁边多放一个空文件 `<id>.ref` 记住这一点(本机有录像时不再去问服务端, 只能靠它认出来)。
 
 const SB := preload("res://scripts/net/supabase.gd")
 const P2C := preload("res://scripts/gamedata/phase2_config.gd")
@@ -28,6 +31,8 @@ const WEEK_SEC := 7 * 86400
 ##   周二 00:00 删掉「本周一 00:00 UTC 之前」的全部对局 ⇒ 服务端任何时刻留着的只有
 ##   「本周的」+「(还没到本周二时)上周的」。
 const PURGE_AFTER_MONDAY_SEC := 86400
+## 裁判局标记文件的扩展名(与 `<id>.rpl` 并排; 空文件, 只看在不在)。
+const REF_EXT := ".ref"
 
 ## 原因码 → 玩家看到的那句话。原因码来自 `SupabaseNet.parse_fetched_match` / `fetch_match` 与下面的解码。
 ## ★"unplayable" 没有固定文案: 用 `ReplayRecorder.play` 自己给的原因(版本不同 / 格式不认识),
@@ -120,6 +125,11 @@ static func local_available(id: String) -> bool:
 	return _safe_id(id) and FileAccess.file_exists(ReplayRecorder.SAVE_DIR + id + ".rpl")
 
 
+## 本机缓存的那一份是不是服务器裁判局(缓存时记下的 `<id>.ref`)。
+static func referee_cached(id: String) -> bool:
+	return _safe_id(id) and FileAccess.file_exists(ReplayRecorder.SAVE_DIR + id + REF_EXT)
+
+
 ## ── 本机缓存清理(进战绩页时调) ─────────────────────────────────────
 ## `user://replays/` 里的录像(本机录的 + 从服务端取回来缓存的)原来**从不清理**。
 ## 删哪些 —— 三条**同时**成立才删:
@@ -155,6 +165,7 @@ static func prune_cache(now: int) -> Array:
 	for id in gone:
 		if dir.remove(str(id) + ".rpl") == OK:
 			removed.append(id)
+			dir.remove(str(id) + REF_EXT)
 	return removed
 
 
@@ -202,7 +213,7 @@ static func open(tree: SceneTree, id: String, done: Callable, back: String = "",
 	if local_available(id):
 		var rec: Dictionary = ReplayRecorder.load_record(id)
 		if not rec.is_empty():
-			_play(tree, rec, done, back, names)
+			_play(tree, rec, done, back, names, referee_cached(id))
 			return
 		## 本机那份读不出(文件坏了) ⇒ 往下走服务端那条, 而不是直接报坏。
 	if not SB.enabled():
@@ -245,12 +256,13 @@ static func _on_fetched(tree: SceneTree, id: String, res: Dictionary, done: Call
 			or not (rec.get("cps", null) is Array) or not (rec.get("end", null) is Dictionary):
 		_reply(done, "corrupt", message("corrupt"))
 		return
-	_cache(id, raw)
-	_play(tree, rec, done, back, names, known)
+	var ref := known or bool(res.get("referee", false))
+	_cache(id, raw, ref)
+	_play(tree, rec, done, back, names, ref)
 
 
 ## ★逐帧直播 S5: 先过 `SW.route` —— 开关关 ⇒ 同步调下面这个 lambda(= 原来的 `ReplayRecorder.play`), 回调形状不变;
-##   开关开 ⇒ 有状态流就播流(本机不算), 没有才回到这一行(积分赛本机局 / 开流之前的局, 方案书 §5)。
+##   开关开 ⇒ 有状态流就播流(本机不算); 没有流时: 裁判局(`known`)请求补流、等画面生成, 本机局(积分赛)才回到这一行(方案书 §5)。
 static func _play(tree: SceneTree, rec: Dictionary, done: Callable, back: String = "",
 		names: Dictionary = {}, known: bool = false) -> void:
 	SW.route(tree, rec, back, names, known,
@@ -279,10 +291,16 @@ static func decode_b64(b64: String) -> PackedByteArray:
 	return raw
 
 
-static func _cache(id: String, raw: PackedByteArray) -> void:
-	if not _safe_id(id) or local_available(id):
+static func _cache(id: String, raw: PackedByteArray, referee: bool = false) -> void:
+	if not _safe_id(id):
 		return
 	DirAccess.make_dir_recursive_absolute(ReplayRecorder.SAVE_DIR)
+	if referee and not referee_cached(id):
+		var fr := FileAccess.open(ReplayRecorder.SAVE_DIR + id + REF_EXT, FileAccess.WRITE)
+		if fr != null:
+			fr.close()
+	if local_available(id):
+		return
 	var f := FileAccess.open(ReplayRecorder.SAVE_DIR + id + ".rpl", FileAccess.WRITE)
 	if f == null:
 		return

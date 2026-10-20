@@ -212,7 +212,7 @@ func _spawn_teams() -> void:
 	_apply_spawn_passives()   # 登场被动 (开战即生效: 忍术暴击/怨灵诅咒/冰寒减攻/召唤等)
 	battle._equip_sys._stats._eq_apply_all_stats()     # 开战: 全装备纯属性 / 永久 flag 加到携带者 (spawn 被动之后, 不被覆盖)
 	battle._synergy.apply_all()   # ★类型羁绊(批4-1): 必须在单件属性【之后】—— 羁绊是加在单件属性上面的
-	battle._bow_syn.apply_all()   # 弓箭【腐蚀·穿透】写进 armor_pen_pct/magic_pen_pct(休眠通道, 消费侧零改动)
+	battle._bow_syn.apply_all()   # 弓箭【穿透】写进 armor_pen_pct/magic_pen_pct(休眠通道, 消费侧零改动)
 	battle._gun_syn.apply_all()   # 枪【火控】(第三座炮台): 给带枪者标 _fire_ctrl
 	battle._food_syn.apply_all()  # 食物【学院】: 队伍全体额外 +100/220 最大生命(只加一次)
 	battle._food_syn.restore()    # 食物【成长】: 上一路攒的最大生命重放回来(以场重置, 不是以路)
@@ -722,6 +722,7 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 					battle._crystal_sys._crystal_orb_halo(_orb)
 		"two_head":
 			u["two_form"] = "ranged"; u["melee"] = false; u["atk_range"] = 400.0   # 双生: 远程起手
+			battle._two_head_sys.art.attach(u)                 # 变脸龟: 死亡帧表按形态 + 动作帧与立绘同像素尺寸
 			if "twoHeadFusion" in battle._chosen_skill_types(u["id"], u["side"] == "left"):
 				u["two_fused"] = true                          # 融合: 锁形态(保持远程)+坚韧+合体近战属性
 				battle._two_head_sys._two_head_apply_melee(u, true)

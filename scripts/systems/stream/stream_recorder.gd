@@ -47,10 +47,13 @@ const K_LABEL := 5
 ## S3(2026-10-19, 覆盖扫描 200 局的 7 处白名单外报警): + Sprite3D.flip_v(过肩摔倒立)、Label3D.text(钩爆计数 / 赌徒轮盘)、
 ##   MeshInstance3D.transparency(钩爆触须淡出)、GPUParticles3D.speed_scale(时停冻粒子 / 毒雾)、
 ##   ParticleProcessMaterial.emission_ring_radius(毒雾扩圈)。
+## 2026-10-20(v0.21.0 生产冒烟局: 两份上周决赛真人快照, alarm 38 次): + Sprite3D.vframes、MeshInstance3D.material_override。
+##   ★格式不升: 改属性操作本来就是「属性名 + 值(资源引用 / 普通值)」, 手机端按名字 set(StreamMirror._apply_node_props),
+##   v3 播放器(v0.21.0)照样认 —— 新录流器录出的流老播放器能播, 老录流器的流新播放器也能播(只是少了这两项变化)。
 const TRACKED := {
-	"Sprite3D": ["frame", "texture", "hframes", "region_enabled", "flip_h", "flip_v", "modulate", "region_rect", "offset", "pixel_size"],
+	"Sprite3D": ["frame", "texture", "hframes", "vframes", "region_enabled", "flip_h", "flip_v", "modulate", "region_rect", "offset", "pixel_size"],
 	"Label3D": ["modulate", "text"],
-	"MeshInstance3D": ["mesh", "transparency"],
+	"MeshInstance3D": ["mesh", "transparency", "material_override"],
 	"GPUParticles3D": ["emitting", "speed_scale"],
 	"StandardMaterial3D": ["albedo_color", "uv1_offset"],
 	"ParticleProcessMaterial": ["emission_ring_radius"],
@@ -101,6 +104,8 @@ class TN extends RefCounted:
 	var tex: Object = null
 	var fr := 0
 	var hf := 1
+	var vf := 1               # 2026-10-20: Sprite3D.vframes
+	var mo: Object = null     # 2026-10-20: MeshInstance3D.material_override
 	var reg := false
 	var fh := false
 	var fv := false           # S3: flip_v
@@ -201,7 +206,7 @@ func _init(b: Node, opts: Dictionary = {}) -> void:
 	meta = {"format": F.VERSION, "hz": F.HZ, "chunk_steps": F.CHUNK_STEPS, "key_steps": F.KEY_STEPS,
 		"chunks": 0, "steps": 0, "first_step": -1, "last_step": -1, "raw_bytes": 0, "z_bytes": 0, "max_chunk_bytes": 0,
 		"nodes_new": 0, "nodes_del": 0, "nodes_peak": 0, "node_sets": 0, "res_defs": {}, "events": {},
-		"ev_render_dropped": 0, "alarm": 0, "alarm_props": {}, "alarm_first": {}, "alarm_checked": 0,
+		"ev_render_dropped": 0, "alarm": 0, "alarm_props": {}, "alarm_first": {}, "alarm_where": {}, "alarm_checked": 0, "vframes_sets": 0, "mo_sets": 0,
 		"parent_by_path": 0, "unit_owned": 0, "ephemeral": 0, "world_add_outside_sim": 0, "units": 0,
 		"us_render": 0, "us_sample": 0, "us_units": 0, "us_new": 0, "us_nodes": 0}
 
@@ -787,6 +792,15 @@ func _samp(t: TN, cont: bool) -> void:
 				_ensure(mesh_rid)
 				_gen_ref = 0
 				t.mats = _collect_mats(t.n)
+	var mo_rid := -1
+	if t.kind == K_MESH:
+		var mo0 = (t.n as MeshInstance3D).material_override
+		if mo0 != t.mo:
+			## 换了覆盖材质(sim 步里给特效换一张材质): 离散量, 逐步发; 新材质先定义, 它的跟踪属性从此按 t.mats 核
+			t.mo = mo0
+			mo_rid = _rid(mo0)
+			_ensure(mo_rid)
+			t.mats = _collect_mats(t.n)
 	_cur_id = t.id
 	_sn = 0
 	## S2: 换了父节点(特效常见的「父节点要删, 先把粒子挪到世界上让它放完」)⇒ 发 `@par` + 当场的变换(本地坐标跟着父节点变了)
@@ -863,6 +877,11 @@ func _samp(t: TN, cont: bool) -> void:
 				t.hf = sp.hframes
 				_k(&"hframes")
 				enc.val(t.hf)
+			if sp.vframes != t.vf:
+				t.vf = sp.vframes
+				_k(&"vframes")
+				enc.val(t.vf)
+				meta["vframes_sets"] = int(meta["vframes_sets"]) + 1
 			if sp.region_enabled != t.reg:
 				t.reg = sp.region_enabled
 				_k(&"region_enabled")
@@ -907,6 +926,10 @@ func _samp(t: TN, cont: bool) -> void:
 			if mesh_rid >= 0:
 				_k(&"mesh")
 				enc.res(mesh_rid)
+			if mo_rid >= 0:
+				_k(&"material_override")
+				enc.res(mo_rid)
+				meta["mo_sets"] = int(meta["mo_sets"]) + 1
 			if cont:
 				var mi2: MeshInstance3D = t.n
 				if mi2.transparency != t.trn:
@@ -959,6 +982,7 @@ func _cache_tracked(t: TN) -> void:
 			t.tex = sp.texture
 			t.fr = sp.frame
 			t.hf = sp.hframes
+			t.vf = sp.vframes
 			t.reg = sp.region_enabled
 			t.fh = sp.flip_h
 			t.fv = sp.flip_v
@@ -971,6 +995,7 @@ func _cache_tracked(t: TN) -> void:
 			t.txt = (t.n as Label3D).text
 		K_MESH:
 			t.mesh = (t.n as MeshInstance3D).mesh
+			t.mo = (t.n as MeshInstance3D).material_override
 			t.gm = _gen_meta(t.mesh)
 			t.trn = (t.n as MeshInstance3D).transparency
 		K_PART:
@@ -1396,6 +1421,7 @@ func _res_check(rid: int) -> void:
 ## 原值比(不量化): 没人碰的属性不会自己漂, 碰过的就该报。
 func _alarm_node(t: TN) -> void:
 	_alarm_checked += 1
+	_alarm_t = t
 	var spec: Array = _specs[t.cls]
 	var b: Array = t.base
 	for i in range(mini(spec.size(), b.size())):
@@ -1418,6 +1444,7 @@ func _alarm_node(t: TN) -> void:
 			_alarm_hit("%s.%s" % [t.cls, str(nm)])
 	for rid in t.mats:
 		_alarm_res(rid)
+	_alarm_t = null
 
 
 func _alarm_res(rid: int) -> void:
@@ -1452,10 +1479,22 @@ func _alarm_res(rid: int) -> void:
 			_alarm_hit("%s.%s" % [cls, str(nm)])
 
 
+## 报警时正在核的那个节点(诊断用: 报警是在 keyframe / 删节点时核出来的, 不在改它的那一行, 只能靠节点长相反查是谁建的)。
+var _alarm_t: TN = null
+
+
 func _alarm_hit(key: String) -> void:
 	_alarm += 1
 	var ap: Dictionary = meta["alarm_props"]
 	ap[key] = int(ap.get(key, 0)) + 1
+	## 诊断(2026-10-20 生产冒烟局 alarm 38 次, 门禁那几局是 0): 每个键记前 4 个不同的节点长相(名字 / 父 / 贴图或网格 / 主人)
+	var aw: Dictionary = meta["alarm_where"]
+	var lst: Array = aw.get(key, [])
+	if lst.size() < 4 and _alarm_t != null and is_instance_valid(_alarm_t.n):
+		var w := _where(_alarm_t)
+		if not lst.has(w):
+			lst.append(w)
+			aw[key] = lst
 	var af: Dictionary = meta["alarm_first"]
 	if not af.has(key):
 		af[key] = int(battle._sim_step_n)
@@ -1472,7 +1511,33 @@ func _prune_res() -> void:
 			(d as Dictionary).erase(rid)
 
 
+static func _res_tag(o) -> String:
+	if o == null or not is_instance_valid(o):
+		return "-"
+	var p := str((o as Resource).resource_path) if o is Resource else ""
+	return (o as Object).get_class() + ("(" + p.get_file() + ")" if p != "" else "")
+
+
+func _where(t: TN) -> String:
+	var n: Node = t.n
+	var par := n.get_parent()
+	var vis := ""
+	if n is Sprite3D:
+		vis = "tex=" + _res_tag((n as Sprite3D).texture)
+	elif n is MeshInstance3D:
+		vis = "mesh=" + _res_tag((n as MeshInstance3D).mesh) + " mat=" + _res_tag((n as MeshInstance3D).material_override)
+	var own := ""
+	if t.unit is Dictionary:
+		own = " unit=%s.%s" % [str((t.unit as Dictionary).get("id", "?")), t.ukey]
+	return "%s %s <- %s %s %s%s meta=%s" % [t.cls, str(n.name), par.get_class() if par != null else "-",
+		str(par.name) if par != null else "-", vis, own, str(n.get_meta_list())]
+
+
 ## 类的属性规格(ClassDB 存盘属性, 到 Node3D / Resource 为止) + 默认值。Node3D 的变换 / 显隐手工补在最前面。
+## ★默认值: ClassDB 问不出(null)的属性, 取一个新建实例上的值(手机镜像也是 `ClassDB.instantiate` 新建再写属性, 同一个基线)。
+##   2026-10-20 根因: `emission_intensity`(BaseMaterial3D)ClassDB 默认值是 null(它只在开了物理光照单位时才可见),
+##   于是「≠ 默认」恒真、每个材质定义都发它; 手机照着 set ⇒ 引擎每次报 `Cannot set material emission intensity when
+##   Physical Light Units disabled`(一局 500 条)。新建实例上它是 1000 = 录到的值 ⇒ 不再发。门禁 verify_stream_no_sim ⑤。
 func _spec(cls: String, is3d: bool) -> Array:
 	if _specs.has(cls):
 		return _specs[cls]
@@ -1487,6 +1552,7 @@ func _spec(cls: String, is3d: bool) -> Array:
 	var tracked: Array = TRACKED.get(cls, [])
 	var stop := ["Node3D", "Node", "Resource", "RefCounted", "Object", ""]
 	var c := cls
+	var fresh: Object = null
 	while not (c in stop):
 		for p in ClassDB.class_get_property_list(c, true):
 			var d: Dictionary = p
@@ -1496,8 +1562,16 @@ func _spec(cls: String, is3d: bool) -> Array:
 			if nm in SKIP_PROPS or int(d["type"]) == TYPE_NIL:
 				continue
 			out.append([StringName(nm), int(d["type"]), nm in tracked])
-			defs.append(ClassDB.class_get_property_default_value(cls, nm))   # ★按具体类问: 抽象父类(GeometryInstance3D / BaseMaterial3D …)问出来全是 null
+			var dv = ClassDB.class_get_property_default_value(cls, nm)   # ★按具体类问: 抽象父类(GeometryInstance3D / BaseMaterial3D …)问出来全是 null
+			if dv == null:
+				if fresh == null and ClassDB.can_instantiate(cls):
+					fresh = ClassDB.instantiate(cls)
+				if fresh != null:
+					dv = fresh.get(nm)
+			defs.append(dv)
 		c = str(ClassDB.get_parent_class(c))
+	if fresh is Node:
+		(fresh as Node).free()
 	_specs[cls] = out
 	_defs[cls] = defs
 	return out

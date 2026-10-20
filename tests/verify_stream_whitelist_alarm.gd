@@ -10,6 +10,9 @@ extends Node
 ## ★分母: 节点层建过的节点数、做过全量核对的节点数都 > 0(否则「0 报警」只是没核)。
 ## ★正对照(证明这条判据会红): 在 sim 步里挂一个 Sprite3D 进 _world, 过几步改它的 billboard(白名单外)再删掉 ⇒
 ##   报警恰 1 次、键是 Sprite3D.billboard; 同样的流程改 modulate(白名单内) ⇒ 不报警, 而且流里录到了那次改动。
+## ★2026-10-20(v0.21.0 生产冒烟局 alarm 38: MeshInstance3D.material_override 34 / Sprite3D.vframes 4): 两项进白名单。
+##   · 真人快照样本 tests/golden/stream_alarm_pair_072.json(072 蛋糕礼盒变身换立绘表 ⇒ vframes): 报警 = 0 且 vframes 真的录到过(分母)
+##   · 正对照「vframes」「material_override」: sim 步里改这两项 ⇒ 不报警、流里各录到恰 1 次
 
 const J := preload("res://tests/_stream_jobs.gd")
 const SC := preload("res://scripts/referee/det_scenarios.gd")
@@ -49,6 +52,16 @@ func _ready() -> void:
 		int(mh.get("nodes_new", 0)) > 5000 and int(mh.get("alarm_checked", 0)) > 5000)
 	_ok("★★真实快照局 白名单外变化 = 0", mh.has("alarm") and int(mh.get("alarm", -1)) == 0, str(mh.get("alarm_props", {})))
 
+	print("=== 真人快照样本(072 蛋糕礼盒: 立绘换表改 vframes) ===")
+	var r72: Dictionary = await RefereeRunner.run(self, J.alarm_072(), Callable(), {"keep": false})
+	var m72: Dictionary = r72.get("stream", {})
+	print("  [量] 072 样本: ok=%s 步 %d 节点 %d 核对 %d 报警 %d %s vframes 录了 %d 次" % [str(r72.get("ok")), int(m72.get("steps", 0)),
+		int(m72.get("nodes_new", 0)), int(m72.get("alarm_checked", 0)), int(m72.get("alarm", 0)), str(m72.get("alarm_props", {})),
+		int(m72.get("vframes_sets", 0))])
+	_ok("分母 · 072 样本算完、vframes 真的变过并录进流(%d 次)" % int(m72.get("vframes_sets", 0)),
+		bool(r72.get("ok", false)) and int(m72.get("vframes_sets", 0)) > 0)
+	_ok("★★072 样本 白名单外变化 = 0", m72.has("alarm") and int(m72.get("alarm", -1)) == 0, str(m72.get("alarm_props", {})))
+
 	print("=== 正对照: 白名单外的改动必须报出来 ===")
 	var sc0: Dictionary = SC.all()[0]
 	var c1: Dictionary = await _run_det(sc0, "billboard")
@@ -58,6 +71,12 @@ func _ready() -> void:
 	_ok("★正对照 · 改 modulate(白名单内) ⇒ 不报警, 且这一改被录成节点改动", int(c2.get("alarm", -1)) == 0
 		and int(c2.get("node_sets", 0)) > int(c1.get("node_sets", 0)), "alarm=%s sets %d vs %d" % [str(c2.get("alarm")),
 		int(c2.get("node_sets", 0)), int(c1.get("node_sets", 0))])
+	var c3: Dictionary = await _run_det(sc0, "vframes")
+	_ok("★正对照 · sim 步里改 Sprite3D.vframes ⇒ 不报警、流里录到恰 1 次", int(c3.get("alarm", -1)) == 0
+		and int(c3.get("vframes_sets", 0)) == 1, "alarm=%s %s vframes_sets=%d" % [str(c3.get("alarm")), str(c3.get("alarm_props")), int(c3.get("vframes_sets", 0))])
+	var c4: Dictionary = await _run_det(sc0, "material_override")
+	_ok("★正对照 · sim 步里换 MeshInstance3D.material_override ⇒ 不报警、流里录到恰 1 次", int(c4.get("alarm", -1)) == 0
+		and int(c4.get("mo_sets", 0)) == 1, "alarm=%s %s mo_sets=%d" % [str(c4.get("alarm")), str(c4.get("alarm_props")), int(c4.get("mo_sets", 0))])
 
 	print("=== DetScenarios 全部场景 ===")
 	var tot := {"alarm": 0, "nodes_new": 0, "alarm_checked": 0, "steps": 0}
@@ -126,20 +145,38 @@ func _run_det(sc: Dictionary, control: String) -> Dictionary:
 	s.set_process(false)
 	var rec := StreamRecorder.new(s, {})
 	rec.start()
-	var probe: Sprite3D = null
+	var probe: Node3D = null
 	for i in range(int(sc["frames"])):
 		if i % 60 == 0:
 			await get_tree().process_frame
 		rec.pre_step()
 		if control != "":
 			if i == 10:
-				probe = Sprite3D.new()
+				if control == "material_override":
+					var mi := MeshInstance3D.new()
+					mi.mesh = BoxMesh.new()
+					var m0 := StandardMaterial3D.new()
+					m0.albedo_color = Color(1, 0, 0)
+					mi.material_override = m0
+					probe = mi
+				else:
+					var sp := Sprite3D.new()
+					sp.texture = PlaceholderTexture2D.new()
+					sp.hframes = 2
+					probe = sp
 				s._world.add_child(probe)
 			elif i == 20 and is_instance_valid(probe):
-				if control == "billboard":
-					probe.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
-				else:
-					probe.modulate = Color(0.2, 0.4, 0.6, 0.5)
+				match control:
+					"billboard":
+						(probe as Sprite3D).billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+					"vframes":
+						(probe as Sprite3D).vframes = 2
+					"material_override":
+						var m1 := StandardMaterial3D.new()
+						m1.albedo_color = Color(0, 0, 1)
+						(probe as MeshInstance3D).material_override = m1
+					_:
+						(probe as Sprite3D).modulate = Color(0.2, 0.4, 0.6, 0.5)
 			elif i == 30 and is_instance_valid(probe):
 				probe.queue_free()
 		s._sim_step(SIM_DT, float(s._hitstop) > 0.0, not (s._timestop._ts_active as Array).is_empty())

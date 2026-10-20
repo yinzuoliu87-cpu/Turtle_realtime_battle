@@ -333,11 +333,15 @@ func cycle_speed() -> float:
 
 ## 这一场一共多少 sim 步(录制那一局结算时的步号; 读不到 = -1)。进度条与「全场时长」用它。
 func total_steps() -> int:
+	if mode == "stream":
+		return player.total_steps()      # 状态流: 没有输入录像, 由播放器给(流的 end.json / 入口给的录像结算步)
 	return int((rec.get("end", {}) as Dictionary).get("s", -1))
 
 
 ## 每一路开打的步号(进度条上的刻度: 上路 / 下路 / 终极)。
 func fight_steps() -> Array:
+	if mode == "stream":
+		return player.fights.duplicate()
 	var out: Array = []
 	for e in rec.get("events", []):
 		if e is Dictionary and str((e as Dictionary).get("k", "")) == "fight":

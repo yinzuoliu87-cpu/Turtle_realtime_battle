@@ -300,10 +300,13 @@ func _t_route(chunks: Array, meta: Dictionary, nat: Dictionary) -> void:
 	await _wait(func() -> bool: return not got.is_empty(), 15000)
 	_ok("R 开 · 没有这份流 · 不知道是不是裁判局 ⇒ 老路(积分赛本机局 / 开流之前的局)", legacy[0] == 3 and got.size() == 1 and str(got[0][1]) == "LEGACY", str(got))
 	got.clear()
+	var ra0: int = RN.restream_asks
 	SW.route(null, r2, "", {}, true, lg, func(c: String, m: String) -> void: got.append([c, m]))
 	await _wait(func() -> bool: return not got.is_empty(), 15000)
-	_ok("R ★开 · 没有这份流 · 确知是裁判局 ⇒ 不播、**不**重算(%s)" % str(got), legacy[0] == 3 and got.size() == 1
-		and str(got[0][0]) == "no_stream" and str(got[0][1]) == StreamPlayer.TXT_ERROR)
+	## 2026-10-20: 已知裁判局没有流 ⇒ 先请求补流(stream_watch._restream); 这里服务端排不上(注入传输回的不是补流回包)⇒ 不进场。
+	##   补流排上之后进场等画面那一支在 verify_stream_referee_paths F2 量。
+	_ok("R ★开 · 没有这份流 · 确知是裁判局 ⇒ 请求补流、没排上就不播、**不**重算(%s)" % str(got), legacy[0] == 3 and got.size() == 1
+		and RN.restream_asks == ra0 + 1 and str(got[0][0]) in ["no_stream", "offline"] and StreamPlayer.pending.is_empty())
 	## 426 / 断网
 	SB._server_said_update = false
 	_http.mode = "426"

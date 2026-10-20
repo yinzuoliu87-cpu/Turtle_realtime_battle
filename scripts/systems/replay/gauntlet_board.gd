@@ -254,7 +254,9 @@ static func live_games(rows: Array, finished_ids: Array, now: int) -> Array:
 			continue
 		out.append({"id": id, "t": iso_to_unix(str(r.get("started_at", ""))), "ver": _ver(r),
 			"l": _side(r.get("lp", null), tag_of(r.get("lp", null)), r.get("la", null)),
-			"r": _side(r.get("rp", null), tag_of(r.get("rp", null)), r.get("ra", null))})
+			"r": _side(r.get("rp", null), tag_of(r.get("rp", null)), r.get("ra", null)),
+			## 逐帧直播: 服务器正在算的裁判局(`referee_live_gauntlet` 那一行)⇒ 观赛走状态流(stream_watch.open_live), 种子选地图
+			"referee": bool(r.get("referee", false)), "seed": int(r.get("seed", 0))})
 	out.sort_custom(func(a, b) -> bool:
 		if int(a["t"]) != int(b["t"]):
 			return int(a["t"]) > int(b["t"])

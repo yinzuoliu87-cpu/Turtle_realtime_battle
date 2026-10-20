@@ -5,6 +5,8 @@ extends RefCounted
 
 const Backend := preload("res://scripts/net/backend.gd")
 const HEAVY := "res://tests/golden/stream_heavy_pair.json"
+## 2026-10-20: 白名单报警样本(真人快照一对, 带 072 蛋糕礼盒 ⇒ 立绘换表改 vframes), 见 verify_stream_whitelist_alarm
+const ALARM_072 := "res://tests/golden/stream_alarm_pair_072.json"
 const LEVEL := 6
 const SEED := 2000023
 
@@ -50,6 +52,15 @@ static func mirror(gs) -> Dictionary:
 	b["profile"] = {"name": "乙方", "avatar": "stone", "id": "g_stream_m_b"}
 	b["ghost_id"] = "g_stream_m_b"
 	return job(a, b, SEED)
+
+
+static func alarm_072() -> Dictionary:
+	var d = JSON.parse_string(FileAccess.get_file_as_string(ALARM_072))
+	if not (d is Dictionary):
+		return {}
+	var j := job((d as Dictionary)["a"], (d as Dictionary)["b"], int((d as Dictionary)["seed"]))
+	j["level"] = int((d as Dictionary).get("level", LEVEL))
+	return j
 
 
 static func heavy() -> Dictionary:

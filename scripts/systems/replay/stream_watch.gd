@@ -12,8 +12,11 @@ extends RefCounted
 ##       ⇒ **同步**调调用方给的 `legacy`(就是原来那一行 `ReplayRecorder.play`)——与改之前逐字一致。
 ##     开关开 ⇒ 问一次 end.json(`StreamSource.probe`):
 ##       200 有流         ⇒ 播状态流(`ReplayRecorder.mode == "stream"`, 手机一步 sim 都不跑)
-##       404 没有这份流   ⇒ 已知是服务器裁判局(`known`: 周六自己那一场 / 周日自己那一场)⇒ 不播, 说「画面无法播放」;
-##                          不知道(别人的、战绩页的)⇒ 这一场不是服务器录的(积分赛本机局 / 开流之前裁判算的)⇒ 老路
+##       404 没有这份流   ⇒ 服务器裁判局(`known`: 调用方确知, 或 `matches.result.referee` / `finals_replay` 回的 referee)
+##                          ⇒ 请求补流(`referee_request_restream`, 裁判机按原快照 + 种子重算一遍只录流), 进场显示「画面生成中」,
+##                            块按 404 退避等着(`RESTREAM_GIVEUP_SEC` 内没出来 ⇒「画面无法播放」); 补流请求被拒 / 服务端没部署 ⇒ 不播,
+##                            说「画面无法播放」。★裁判局永不本机重算(2026-10-20)。
+##                          不是裁判局(积分赛本机局: 那一行没有 referee 标记)⇒ 老路(本机重算)
 ##       426 版本过旧     ⇒ 交给版本墙, 不播
 ##       网络问题        ⇒ 不播, 说网络那句话 —— ★不许当成 404 去走本机重算
 ##   ★录像(matches.replay)照样先取: 它给出种子(选同一张地图)、开局状态(幕布上的阵容)、版本号(版本闸)、
@@ -27,6 +30,10 @@ extends RefCounted
 ##   · `current`: 这一场的会话(kind = referee / premiere / replay、服务器结果 `result`、match_id)—— 收尾屏(HUD)读它。
 ##   · 周日开播窗口(premiere): 迟到的人从「翻面至今」那一步看(LoL 观战: 跳到最近的 keyframe 再往后放)。
 ##     守卫先让播放器停着, 拉到够用的块之后 `seek` 过去再放。开播窗口已经过了 ⇒ 当回放从头放。
+##   · 回放 / 观赛(memory fb-spectate-is-not-replay): 只有 kind = replay(已打完、结果公开)给操作条(暂停 / 倍速 / 进度条拖动,
+##     `controls_for`); 观赛(live 正在算 / referee 周六自己那一场 / premiere 周日开播)只有「退出」。
+##   · 周六「观赛」正在算的裁判局(`open_live`, 20261020 迁移 `referee_live_gauntlet`): 边算边播(块没到就「同步中」等, 永不判没有)。
+##     那一场还没有录像(matches 里没有这一行), 种子 / 名字 / 版本取自列表那一行; 没有阵容 ⇒ 不建换路幕布(`no_curtain`)。
 
 const RN := preload("res://scripts/net/referee_net.gd")
 const SB := preload("res://scripts/net/supabase.gd")
@@ -43,8 +50,14 @@ const ENV_BASE := "TURTLE_STREAM_BASE"
 const KIND_REFEREE := "referee"
 const KIND_PREMIERE := "premiere"
 const KIND_REPLAY := "replay"
+const KIND_LIVE := "live"
 ## 屏上的字(短、名词化; 不拟人)。
 const TXT_UPDATE := "版本过旧，请更新"
+const TXT_GENERATING := "画面生成中"
+## 补流: 等第一块等多久就算没有(墙钟秒)。= 裁判机一局的墙钟上限(轮询器 JOB_TIMEOUT_SEC 默认 600)。
+const RESTREAM_GIVEUP_SEC := 600.0
+## 补流请求服务端回了这些状态才进场等(failed = 补过而且失败了 ⇒ 不等)。
+const RESTREAM_WAIT := ["pending", "claimed", "done"]
 ## 守卫等战斗场出现的时限(换场景没成就别把 GameState 一直留在回放那一份上)。
 const GUARD_TTL_MS := 30000
 
@@ -56,6 +69,8 @@ static var legacy_calls := 0
 static var probes := 0
 static var enters := 0
 static var probe_codes: Array = []
+static var restreams := 0
+static var live_enters := 0
 
 
 static func base_url() -> String:
@@ -65,6 +80,11 @@ static func base_url() -> String:
 
 static func wanted() -> bool:
 	return RN.stream_on()
+
+
+## 这一种会话给不给回放操作条(暂停 / 倍速 / 进度条)。只有已打完的回放给; 观赛三种(正在算 / 周六自己那一场 / 周日开播)不给。
+static func controls_for(kind: String) -> bool:
+	return kind == KIND_REPLAY
 
 
 ## ★唯一分流口。`legacy.call() -> String` = 原来那一行(`ReplayRecorder.play`, 返回 "" 已进场 / 否则原因);
@@ -101,7 +121,7 @@ static func _on_probe(code: int, tree: SceneTree, rec: Dictionary, back: String,
 			load(RF_PATH)._reply(done, "" if w2 == "" else "unplayable", w2)
 		404:
 			if known:
-				load(RF_PATH)._reply(done, "no_stream", StreamPlayer.TXT_ERROR)
+				_restream(tree, rec, back, names, done, sess)   # ★裁判局: 补流等画面, 永不本机重算
 			else:
 				legacy_calls += 1
 				var w3: String = legacy.call()
@@ -118,13 +138,37 @@ static func check(rec: Dictionary) -> String:
 	return ReplayRecorder.play_check(rec)
 
 
+## 裁判局没有流(开流之前算的 / 录流失败过): 请求服务器补流, 排上了就进场等画面(「画面生成中」), 没排上就说「画面无法播放」。
+static func _restream(tree: SceneTree, rec: Dictionary, back: String, names: Dictionary, done: Callable, sess: Dictionary) -> void:
+	restreams += 1
+	var id := str(rec.get("id", ""))
+	var cb := func(res: Dictionary) -> void:
+		if not done.is_valid():
+			return
+		var err := str(res.get("err", ""))
+		if err == "" and str(res.get("status", "")) in RESTREAM_WAIT:
+			var w := enter(tree, rec, back, names, sess, true)
+			load(RF_PATH)._reply(done, "" if w == "" else "unplayable", w)
+		elif err == "offline" or err == "timeout" or err == "no_token":
+			load(RF_PATH)._reply(done, "offline", load(RF_PATH).message("offline"))
+		else:
+			load(RF_PATH)._reply(done, "no_stream", StreamPlayer.TXT_ERROR)
+	if not RN.request_restream_async(id, cb):
+		load(RF_PATH)._reply(done, "no_stream", StreamPlayer.TXT_ERROR)
+
+
 ## 进战斗场播状态流。返回 "" = 已进场(tree 为 null 时只挂好待播, 门禁自己实例化战斗场)。
-static func enter(tree: SceneTree, rec: Dictionary, back: String, names: Dictionary, sess: Dictionary = {}) -> String:
+##   `restream` = 刚请求了补流: 块还没生成 ⇒ 屏上「画面生成中」, 404 等到 RESTREAM_GIVEUP_SEC 才算没有。
+static func enter(tree: SceneTree, rec: Dictionary, back: String, names: Dictionary, sess: Dictionary = {},
+		restream: bool = false) -> String:
 	var why := check(rec)
 	if why != "":
 		return why
 	var id := str(rec.get("id", ""))
-	var src := StreamSource.Http.new(base_url(), id, {"finished": true})
+	var so := {"finished": true}
+	if restream:
+		so["giveup_sec"] = RESTREAM_GIVEUP_SEC
+	var src := StreamSource.Http.new(base_url(), id, so)
 	src.on_update_required = func() -> void: SB._note_update_signal({"code": 426})
 	## 周日开播: 对阵图在取录像之前挂的观赛会话(重算那条路由 `Live.take` 取走)⇒ 改由守卫按它跳转
 	var s := sess.duplicate(true)
@@ -139,14 +183,60 @@ static func enter(tree: SceneTree, rec: Dictionary, back: String, names: Diction
 		s["kind"] = KIND_REPLAY
 	s["id"] = id
 	s["t_ms"] = Time.get_ticks_msec()
+	if restream:
+		s["restream"] = true
 	ReplayRecorder.return_scene = back
 	ReplayRecorder.play_names = names.duplicate()
 	ReplayRecorder.viewer_name = BE.player_display_name()
 	ReplayRecorder.begin_play(rec)
 	ReplayRecorder.pending_play = {}    # ★begin_play 挂的是「重算」待播; 这里只要它的备份 / 写状态那一半
-	StreamPlayer.pending = {"source": src, "seed": int(rec.get("seed", 0))}
+	var fights: Array = []
+	for e in rec.get("events", []):
+		if e is Dictionary and str((e as Dictionary).get("k", "")) == "fight":
+			fights.append(int((e as Dictionary).get("s", 0)))
+	StreamPlayer.pending = {"source": src, "seed": int(rec.get("seed", 0)), "controls": controls_for(str(s["kind"])),
+		"speed": ReplayRecorder._pref_speed if controls_for(str(s["kind"])) else 1.0,
+		"wait_text": TXT_GENERATING if restream else "", "fights": fights,
+		"total": int((rec.get("end", {}) as Dictionary).get("s", -1)) if rec.get("end", null) is Dictionary else -1}
 	current = s
 	enters += 1
+	_guard(tree)
+	if tree != null:
+		tree.change_scene_to_file(ReplayRecorder.BATTLE_SCENE)
+	return ""
+
+
+# ─────────────────────────────── 周六观赛: 正在算的裁判局 ───────────────────────────────
+
+## 赛况板「观赛」点了正在算的裁判局(`referee_live_gauntlet` 那一行, gauntlet_board.live_games 的形状 + referee / seed)。
+##   `done.call(code, msg)` 恰好一次(同步): "" = 已进场。观赛: 没有操作条; 块没到 ⇒「同步中」一直等(服务器还在算, 不判没有)。
+static func open_live(tree: SceneTree, g: Dictionary, done: Callable, back: String = "", names: Dictionary = {}) -> void:
+	var w := enter_live(tree, g, back, names)
+	load(RF_PATH)._reply(done, "" if w == "" else ("version" if w == load(LS_PATH).TXT_VERSION else "unplayable"), w)
+
+
+## 返回 "" = 已进场(tree 为 null 时只挂好待播)。
+static func enter_live(tree: SceneTree, g: Dictionary, back: String, names: Dictionary) -> String:
+	if not wanted():
+		return StreamPlayer.TXT_ERROR
+	if str(g.get("ver", "")) != ReplayRecorder.client_version():
+		return load(LS_PATH).TXT_VERSION     # 流格式绑版本(R7): 版本不同拉下来也播不了
+	var id := str(g.get("id", ""))
+	if not SB.is_uuid(id) or int(g.get("seed", 0)) <= 0:
+		return StreamPlayer.TXT_ERROR
+	var src := StreamSource.Http.new(base_url(), id, {"finished": false})
+	src.on_update_required = func() -> void: SB._note_update_signal({"code": 426})
+	load(LS_PATH).pending = {}
+	ReplayRecorder.return_scene = back
+	ReplayRecorder.play_names = names.duplicate()
+	ReplayRecorder.viewer_name = BE.player_display_name()
+	## 这一场还没有录像: 只把 GameState 备份起来、存盘空转(离场还原), 开局状态只给「双路」这一项 —— 阵容不知道, 不建换路幕布
+	ReplayRecorder.begin_play({"state": {"dual_active": true}})
+	ReplayRecorder.pending_play = {}
+	StreamPlayer.pending = {"source": src, "seed": int(g["seed"]), "controls": controls_for(KIND_LIVE), "no_curtain": true}
+	current = {"kind": KIND_LIVE, "id": id, "t_ms": Time.get_ticks_msec()}
+	enters += 1
+	live_enters += 1
 	_guard(tree)
 	if tree != null:
 		tree.change_scene_to_file(ReplayRecorder.BATTLE_SCENE)

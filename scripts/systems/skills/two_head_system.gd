@@ -51,11 +51,31 @@ const ABSORB_HEAL_LOST := 0.18     # 回血 + 自身已损生命 ×
 const FUSION_WAVE_BASE := 4        # 魔法波基础段数(每次释放 +1, 累积到战斗结束)
 const FUSION_WAVE_COEF := 0.8      # 每段 ×ATK (物理与真实交替)
 const FUSION_TOUGH_CAP := 20       # 双头坚韧: 护甲/魔抗各自的上限
+const FUSION_WAVE_FLY_SEC := 0.27  # 每道魔法波飞到目标的时长(秒·到达才结算该段)
+
+## 【锤击跳跃】从起跳到落地砸下的时长(秒)。动作驱动 TwoHeadArt 拿它对齐"砸地"那一帧。
+const HAMMER_LEAP_SEC := 0.42
 
 var battle
+var vfx: TwoHeadVfx      # 技能特效(sim 步里建节点, 直播录得到)
+var art: TwoHeadArt      # 动作驱动(渲染层, 只读 sim 状态)
 
 func _init(b) -> void:
 	battle = b
+	vfx = TwoHeadVfx.new(b)
+	art = TwoHeadArt.new(b)
+
+
+## 普攻(从主场景整段搬来, 结算一字未改): 远程 1.2A 物理灵能弹 / 近战 0.9A 物理挥锤。
+func basic(u: Dictionary, tgt: Dictionary) -> void:
+	var _thsc: float = BASIC_MELEE_COEF if u["melee"] else BASIC_RANGED_COEF
+	battle._emit_basic(u, tgt, battle._atk_dmg(u, _thsc, tgt), Color("#c0a0ff"), 0)
+	if u["melee"]:
+		vfx.hammer_swing(u, tgt)                                 # 挥锤弧(命中那一刻, 与伤害同一步)
+	if str(u.get("_th_enh", "")) != "":                      # 双生强化普攻: 搬旧切形态那一下的伤害+效果(就这1下·用户2026-07-11 B案)
+		_two_head_enhanced_basic(u, tgt, str(u["_th_enh"]))
+		u["_th_enh"] = ""
+	battle._on_basic_hit(u, tgt)
 
 func _two_head_apply_melee(u: Dictionary, on: bool) -> void:
 	var buffed: bool = u.get("two_melee_buffed", false)
@@ -89,14 +109,7 @@ func _sk_two_head_strike(u: Dictionary, tgt) -> void:            # 双头·技�
 # 双头·灵能冲击炮弹(用户2026-07-11): 大紫炮弹朝目标方向飞(射程2000·760码/s)→碰第一敌(46码)爆炸→200码内敌 1A+10%目标maxHp 物理
 # 双头·灵能冲击炮弹(用户2026-07-11): 大紫炮弹朝目标方向飞(射程2000·760码/s)→碰第一敌(46码)爆炸→200码内敌 1A+10%目标maxHp 物理
 func _two_head_cannon(u: Dictionary, from2d: Vector2, dir: Vector2) -> void:
-	var spr = Sprite3D.new()
-	spr.texture = VfxTex._make_glow_texture()
-	spr.modulate = Color(0.78, 0.5, 1.0, 0.96)              # 灵能紫
-	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	spr.shaded = false; spr.transparent = true
-	spr.pixel_size = (66.0 * battle.WS) / float(maxi(1, spr.texture.get_width()))   # 大炮弹
-	spr.position = battle._world_pos(from2d, 1.1)
-	battle._world.add_child(spr)
+	var spr = vfx.orb_new(from2d)                           # 法球: 出手后先胀大, 再转飞行循环(按已飞行时间切帧)
 	var traveled = 0.0
 	var pos = from2d
 	var hit = null
@@ -107,7 +120,9 @@ func _two_head_cannon(u: Dictionary, from2d: Vector2, dir: Vector2) -> void:
 		traveled = minf(2000.0, traveled + 760.0 * battle._frame_sim_dt)
 		pos = from2d + dir * traveled
 		pos = ArenaShape.clamp_in(pos, battle.ARENA)
-		if is_instance_valid(spr): spr.position = battle._world_pos(pos, 1.1)
+		if is_instance_valid(spr):
+			spr.position = battle._world_pos(pos, TwoHeadVfx.CHEST_H)
+			vfx.orb_step(spr, traveled / 760.0)
 		for o in battle._targeting._enemies_of(u):
 			if o.get("alive", false) and DetMath.dist(pos, o["pos"]) <= 46.0:
 				hit = o; break
@@ -117,19 +132,8 @@ func _two_head_cannon(u: Dictionary, from2d: Vector2, dir: Vector2) -> void:
 
 func _two_head_cannon_boom(u: Dictionary, at2d: Vector2) -> void:
 	battle._shake(0.13)
-	var g = VfxTex._make_glow_texture()
-	var sp = Sprite3D.new()
-	sp.texture = g; sp.modulate = Color(0.82, 0.56, 1.0, 0.95)
-	sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED; sp.shaded = false; sp.transparent = true
-	sp.pixel_size = (58.0 * battle.WS) / float(maxi(1, g.get_width()))
-	sp.position = battle._world_pos(at2d, 0.85)
-	battle._world.add_child(sp)
-	var tw = battle._reg_tween(); tw.set_parallel(true)
-	tw.tween_property(sp, "pixel_size", sp.pixel_size * 3.4, 0.32).set_ease(Tween.EASE_OUT)
-	tw.tween_property(sp, "modulate:a", 0.0, 0.32)
-	tw.chain().tween_callback(sp.queue_free)
-	battle._skill_ring(at2d, Color(0.76, 0.55, 1.0, 0.9), STRIKE_BLAST_RADIUS)       # 200码爆炸范围冲击波
-	battle._skill_ring(at2d, Color(0.86, 0.72, 1.0, 0.7), 110.0)
+	vfx.orb_blast(at2d)                                                              # 爆炸: 闪→壳→火球→烟→碎(像素表)
+	battle._skill_ring(at2d, Color(0.76, 0.55, 1.0, 0.9), STRIKE_BLAST_RADIUS)       # 地面环 = 真实判定半径 200 码(谁在圈里谁挨炸)
 	for o in battle._targeting._enemies_of(u):
 		if o.get("alive", false) and DetMath.dist(at2d, o["pos"]) <= STRIKE_BLAST_RADIUS:
 			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, STRIKE_RANGED_COEF, o) + battle._phys_after_armor(u, float(o["maxHp"]) * STRIKE_RANGED_MAXHP, o), Color("#c0a0ff"))
@@ -145,7 +149,7 @@ func _two_head_hammer(u: Dictionary, tgt: Dictionary) -> void:
 	u["_anim_lock_until"] = battle._t + 0.46                           # 跳跃期AI不出手/不移动
 	var dmg: int = battle._atk_dmg(u, STRIKE_MELEE_COEF, tgt)
 	var tw = battle._reg_tween()
-	tw.tween_method(_two_head_hammer_arc.bind(u, from2d, land2d), 0.0, 1.0, 0.42)
+	tw.tween_method(_two_head_hammer_arc.bind(u, from2d, land2d), 0.0, 1.0, HAMMER_LEAP_SEC)
 	tw.tween_callback(_two_head_hammer_land.bind(u, tgt, land2d, dmg, battle._last_dmg_type))   # 捕获举锤时的伤害类型(空中会被覆写)
 
 func _two_head_hammer_arc(pf: float, u: Dictionary, from2d: Vector2, land2d: Vector2) -> void:
@@ -171,33 +175,11 @@ func _two_head_hammer_land(u: Dictionary, tgt: Dictionary, at2d: Vector2, dmg: i
 		battle._vfx._flash(tgt)
 
 
-# 高质量砸地冲击(用户2026-07-11「搞质量高的·AI跑特效」): AI冲击星爆(PixelLab生成) + 三层地面冲击波环 + 大尘爆 + 岩屑迸溅 + 顿帧 + 大震屏
-# 高质量砸地冲击(用户2026-07-11「搞质量高的·AI跑特效」): AI冲击星爆(PixelLab生成) + 三层地面冲击波环 + 大尘爆 + 岩屑迸溅 + 顿帧 + 大震屏
+# 锤击落地: 震屏 + 顿帧 + 符文裂地(2026-10-20 重做: 原来的三层冲击环像范围技, 而锤击是单体)
 func _two_head_slam_impact(at2d: Vector2) -> void:
 	battle._shake(battle.JUICE_SHAKE_BIG)
 	battle._hitstop = maxf(battle._hitstop, 0.06)
-	var burst = Sprite3D.new()                                # ① AI 冲击星爆(billboard·由小爆大→亮闪→褪)
-	burst.texture = load("res://assets/sprites/vfx/slam-impact.png")
-	burst.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	burst.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	burst.shaded = false; burst.transparent = true
-	burst.pixel_size = (300.0 * battle.WS) / 128.0
-	burst.position = battle._world_pos(at2d, 0.7)
-	burst.modulate = Color(1.0, 0.96, 0.82, 1.0)
-	battle._world.add_child(burst)
-	var bt = battle._reg_tween()
-	bt.tween_property(burst, "scale", Vector3.ONE * 1.35, 0.13).from(Vector3.ONE * 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	bt.tween_interval(0.05)
-	bt.tween_property(burst, "modulate:a", 0.0, 0.22)
-	bt.tween_callback(burst.queue_free)
-	battle._skill_ring(at2d, Color(1.0, 0.72, 0.34, 0.92), 108.0)     # ② 地面冲击波环 ×3(依次外扩)
-	battle._skill_ring(at2d, Color(1.0, 0.86, 0.5, 0.6), 58.0)
-	var rtw = battle._reg_tween()
-	rtw.tween_interval(0.09)
-	rtw.tween_callback(battle._skill_ring.bind(at2d, Color(1.0, 0.58, 0.26, 0.5), 156.0))
-	battle._burst_vfx("res://assets/sprites/vfx/dust-impact.png", at2d, 230.0, 0.35)   # ③ 大尘爆
-	battle._slam_debris(at2d)                                         # ④ 岩屑迸溅
-	battle._vfx._impact_particles(at2d, 0.0)                               # ⑤ 冲击尘粒
+	vfx.hammer_slam(at2d)      # 锤头砸地: 符文绿光沿地缝炸开 + 尘 + 碎石(单体技 ⇒ 不画范围环, 2026-10-20 重做)
 
 # 砸地岩屑: 灰褐碎块一次性向上+四散迸溅+重力回落(0.75s后回收)
 func _sk_two_head_disrupt(u: Dictionary, tgt) -> void:           # 双头·技能二 form-variant(封板): 远程=精神干扰(2.0A真伤+治疗削减50%5s+破盾50%·用户2026-07-28加强) / 近战=吸收(0.6A+8%maxHp物理+回血40%A+18%已损)
@@ -216,15 +198,9 @@ func _sk_two_head_disrupt(u: Dictionary, tgt) -> void:           # 双头·技�
 		tgt["heal_reduce_pct"] = maxf(float(tgt.get("heal_reduce_pct", 0.0)), DISRUPT_HEALCUT_PCT)             # 治疗削减50%5秒
 		_two_head_disrupt_vfx(u, tgt, broke)                       # 精神干扰VFX(用户2026-07-11): 精神波+紫涟漪+(破盾)盾碎裂+裂心标记
 
-# 精神干扰VFX(用户2026-07-11「AI跑素材」): 头顶精神波(AI psychic-blast) + 紫色心灵涟漪环×2 + 破盾时盾碎裂(AI shield-shatter) + 治疗削减裂心标记
-# 精神干扰VFX(用户2026-07-11「AI跑素材」): 头顶精神波(AI psychic-blast) + 紫色心灵涟漪环×2 + 破盾时盾碎裂(AI shield-shatter) + 治疗削减裂心标记
+# 精神干扰VFX: 额头符文眼→目标头部的精神波(2026-10-20 重做) + 破盾时盾碎裂(shield-shatter) + 治疗削减裂心标记
 func _two_head_disrupt_vfx(u: Dictionary, tgt: Dictionary, broke_shield: bool) -> void:
-	var head: Vector2 = tgt["pos"]
-	battle._burst_vfx("res://assets/sprites/vfx/psychic-blast.png", head, 155.0, 1.5)
-	battle._skill_ring(head, Color(0.72, 0.36, 1.0, 0.78), 66.0)
-	var r2 = battle._reg_tween()
-	r2.tween_interval(0.09)
-	r2.tween_callback(battle._skill_ring.bind(head, Color(0.6, 0.3, 0.95, 0.5), 110.0))
+	vfx.mind_wave(u, tgt)                                       # 精神波: 从额头符文眼到目标头部同一刻铺开(伤害当场结算, 波不许后到)
 	battle._shake(0.06)
 	if broke_shield:
 		battle._burst_vfx("res://assets/sprites/vfx/shield-shatter.png", tgt["pos"], 135.0, 1.0)
@@ -251,28 +227,9 @@ func _two_head_heal_reduce_mark(tgt: Dictionary) -> void:
 	mtw.tween_property(m, "modulate:a", 0.0, 0.5)
 	mtw.tween_callback(m.queue_free)
 
-# 吸收VFX(用户2026-07-11): 敌→自 红紫生命虹吸束 + 生命微粒回流 + 自身回血绿环
-# 吸收VFX(用户2026-07-11): 敌→自 红紫生命虹吸束 + 生命微粒回流 + 自身回血绿环
+# 吸收VFX(2026-10-20 重做): 目标身上攥出生命 + 一股血流涌回自己
 func _two_head_absorb_vfx(u: Dictionary, tgt: Dictionary) -> void:
-	battle._bolt_line(tgt["pos"], u["pos"], Color(0.92, 0.26, 0.52))
-	var gt = VfxTex._make_glow_texture()
-	var from2d: Vector2 = tgt["pos"]
-	var to2d: Vector2 = u["pos"]
-	for k in range(4):
-		var mote = Sprite3D.new()
-		mote.texture = gt
-		mote.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-		mote.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		mote.shaded = false; mote.transparent = true
-		mote.modulate = Color(1.0, 0.36, 0.56, 0.9)
-		mote.pixel_size = (26.0 * battle.WS) / float(maxi(1, gt.get_height()))
-		mote.position = battle._world_pos(from2d, 1.0)
-		battle._world.add_child(mote)
-		var mtw = battle._reg_tween()
-		mtw.tween_interval(float(k) * 0.05)
-		mtw.tween_method(battle._absorb_mote_step.bind(mote, from2d, to2d), 0.0, 1.0, 0.3)
-		mtw.tween_callback(mote.queue_free)
-	battle._skill_ring(u["pos"], Color(0.32, 0.92, 0.5, 0.62), 66.0)
+	vfx.siphon(u, tgt)          # 目标身上攥出生命 + 一股血流涌回自己(回血当场结算, 精魄不慢飞)
 
 func _sk_two_head_fusion(u: Dictionary, tgt) -> void:            # 双头·技能三融合(封板): 主动魔法波(4段·物理80%+真实80%共1.6A); 锁形态/坚韧/合体近战属性在登场gate
 	if tgt == null: tgt = battle._targeting._nearest_enemy(u)
@@ -282,32 +239,22 @@ func _sk_two_head_fusion(u: Dictionary, tgt) -> void:            # 双头·技�
 		battle._pending_shots.append({"delay": float(i) * 0.11, "src": u, "fn": _two_head_fusion_wave.bind(u, tgt, i % 2 == 1)})
 	u["two_wave_count"] = n + 1                                 # 后续释放波数量+1
 
-# 融合·魔法波: 一道弧形波(magic-wave AI图)从双头飞向目标, 到达时结算该段伤害+紫/白冲击环
-# 融合·魔法波: 一道弧形波(magic-wave AI图)从双头飞向目标, 到达时结算该段伤害+紫/白冲击环
+# 融合·魔法波: 一道弧形波(twohead-fusion-wave 像素表)飞向目标, 到达时结算该段伤害+紫/白冲击环
 func _two_head_fusion_wave(u: Dictionary, tgt: Dictionary, is_true: bool) -> void:
 	if not u.get("alive", false) or not tgt.get("alive", false):
 		return
-	var col: Color = Color(1.0, 1.0, 1.0, 1.0) if is_true else Color(0.74, 0.46, 1.0, 1.0)   # 真实白/物理紫
 	var from2d: Vector2 = u["pos"]
 	var to2d: Vector2 = tgt["pos"]
-	var wv = Sprite3D.new()
-	wv.texture = load("res://assets/sprites/vfx/magic-wave.png")
-	wv.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	wv.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	wv.shaded = false; wv.transparent = true
-	wv.modulate = col
-	wv.pixel_size = (95.0 * battle.WS) / 128.0
-	wv.position = battle._world_pos(from2d, 1.0)
-	battle._world.add_child(wv)
+	var wv = vfx.fusion_wave_new(from2d, to2d, is_true)        # 魔法波: 真实段白 / 物理段紫
 	var wtw = battle._reg_tween()
-	wtw.tween_method(_two_head_wave_step.bind(wv, from2d, to2d), 0.0, 1.0, 0.27)   # 移速降40%(用户2026-07-11: 0.16→0.27s)
+	wtw.tween_method(_two_head_wave_step.bind(wv, from2d, to2d), 0.0, 1.0, FUSION_WAVE_FLY_SEC)   # 移速降40%(用户2026-07-11: 0.16→0.27s)
 	wtw.tween_callback(_two_head_fusion_wave_hit.bind(u, tgt, is_true, wv))
 
 func _two_head_wave_step(pf: float, wv, from2d: Vector2, to2d: Vector2) -> void:
 	if not is_instance_valid(wv):
 		return
-	wv.position = battle._world_pos(from2d.lerp(to2d, pf), DetMath.flerp(1.0, 1.15, pf))
-	wv.scale = Vector3.ONE * DetMath.flerp(0.7, 1.15, pf)
+	wv.position = battle._world_pos(from2d.lerp(to2d, pf), TwoHeadVfx.CHEST_H)
+	vfx.fusion_wave_frame(wv, pf * FUSION_WAVE_FLY_SEC)        # 像素表只切帧, 不缩放(vfx_discipline A)
 
 func _two_head_fusion_wave_hit(u: Dictionary, tgt: Dictionary, is_true: bool, wv) -> void:
 	if is_instance_valid(wv):
@@ -369,6 +316,7 @@ func _two_head_after_cast(u: Dictionary, tgt) -> void:          # 被动·双生
 	u["atk_range"] = RANGED_RANGE if to_ranged else MELEE_RANGE
 	u["_th_enh"] = "ranged" if to_ranged else "melee"          # 挂强化: 下1下普攻搬旧切形态那一下的伤害+效果(远程=1.4A物理+破甲 / 近战=0.6A魔法+1.1A盾)
 	_two_head_form_art(u)
+	vfx.face_swap(u)                                           # 斗篷甩过脸那一下的两色烟(换脸就在这一刻)
 	if to_ranged:
 		var et = (tgt if (tgt is Dictionary and tgt.get("alive", false)) else battle._targeting._nearest_enemy(u))
 		_two_head_retreat(u, et)                               # 切远程: 纯平滑滑退200码到射程(伤害/破甲已挪到强化普攻)
@@ -423,6 +371,7 @@ func _two_head_form_art(u: Dictionary) -> void:
 	if p == "" or not ResourceLoader.exists(p):
 		return
 	var sd: Dictionary = battle._sprite_dict_from(load(p), null, false)
+	art.attach(u)                                              # 死亡帧表按形态换
 	if u.has("_cake_o_idle_sd"):
 		u["_cake_o_idle_sd"] = sd
 		return

@@ -21,8 +21,27 @@ static func _units_of(units_by_idx: Dictionary) -> Dictionary:
 			"%s/%s land=%s hitsq=%s swing=%s windup=%s air=%s vy=%s fl=%s hs=%s" % [str(u.get("id", "")), str(u.get("side", "")),
 				str(u.get("land_t")), str(u.get("hitsq_t")), str(u.get("swing_t")), str(u.get("windup_t")), str(u.get("airborne")),
 				str(u.get("vy")), str(u.get("flash_t")), str(u.get("hp"))] + " @n=%s spr=%s alive=%s manual=%s" % [str(u.get("@n")),
-				str(u.get("sprite")), str(u.get("alive")), str(u.get("_manual_anim"))]]
+				str(u.get("sprite")), str(u.get("alive")), str(u.get("_manual_anim"))], _dot_sig(u)]
 	return out
+
+
+## 2026-10-20: 头顶常驻 DOT 累计数字(`_dot_float`, 桶 → 累计值; 只算还挂着、没排队释放的那几个)。截图验收量到播放端比本机小 4~14。
+static func _dot_sig(u: Dictionary) -> String:
+	var df = u.get("_dot_float")
+	if not (df is Dictionary):
+		return ""
+	var ks: Array = (df as Dictionary).keys()
+	ks.sort()
+	var parts := PackedStringArray()
+	for k in ks:
+		var st = df[k]
+		if not (st is Dictionary):
+			continue
+		var nd = (st as Dictionary).get("node")
+		if nd == null or not is_instance_valid(nd) or (nd as Node).is_queued_for_deletion():
+			continue
+		parts.append("%s:%d" % [str(k), int((st as Dictionary).get("total", 0))])
+	return ",".join(parts)
 
 
 static func _tex_key(t) -> String:

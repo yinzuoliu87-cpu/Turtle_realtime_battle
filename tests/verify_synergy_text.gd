@@ -109,7 +109,83 @@ func _ready() -> void:
 		"%d 条: %s" % [extra.size(), str(extra.slice(0, 4))])
 	_ok("④ 文案段数 == 档数, 且每段非空", seg_bad.is_empty(), str(seg_bad))
 
+	_wording_1020()
+
 	print("")
 	print("  (共 %d 条断言)" % _n)
 	print("ALL PASS — 羁绊文案与实装一致" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)
+
+
+## ⑤~⑨ 羁绊描述措辞五点(待拍板清单 三、2; 用户 2026-10-20「你自己推进不要等我」⇒ 按建议全部执行)。
+##   ⑤ 「每场 / 本场」统一成「每局 / 本局」
+##   ⑥ 词条名【腐蚀·穿透】→【穿透】、【腐蚀叠层】→【腐蚀】
+##   ⑦ 高档不重复写已解锁且没变的效果: 高档里每个 {C:类.常量[k]} 的值必须 ≠ 上一档 [k-1]
+##      (值没变还写出来 = 重复; 判的是【渲染出来的值】, 不是字面量)
+##   ⑧ 灵物触手高档写「变为原来的 X%」, X 读 SpiritSynergySystem.HIT_MULT
+##   ⑨ 枪【金弹】逐档的发数与真伤比例读 GunSynergySystem.GOLD_EVERY / GOLD_TRUE_PCT, 不写字面量
+func _wording_1020() -> void:
+	var all_txt: Array = []
+	for t in Phase2Types.TIER_DESCS:
+		for d in Phase2Types.TIER_DESCS[t]:
+			all_txt.append(str(d))
+	for t in Phase2Types.TYPE_INTRO:
+		for d in Phase2Types.TYPE_INTRO[t]:
+			all_txt.append(str(d))
+	_ok("⑤⑥ ★分母: 扫了 %d 段羁绊文案" % all_txt.size(), all_txt.size() >= 30)
+	var bad_word: Array = []
+	for s in all_txt:
+		for w in ["每场", "本场", "腐蚀·穿透", "腐蚀叠层"]:
+			if str(s).contains(w):
+				bad_word.append(w)
+	_ok("⑤⑥ 羁绊文案里没有「每场/本场/腐蚀·穿透/腐蚀叠层」", bad_word.is_empty(), str(bad_word))
+
+	var re := RegEx.create_from_string("\\{C:([A-Za-z0-9_]+\\.[A-Z0-9_]+)\\[(\\d+)\\](%?)\\}")
+	var compared := 0
+	var repeated: Array = []
+	for t in Phase2Types.TIER_DESCS:
+		var descs: Array = Phase2Types.TIER_DESCS[t]
+		for i in range(1, descs.size()):
+			for m in re.search_all(str(descs[i])):
+				var k: int = int(m.get_string(2))
+				if k < 1:
+					continue
+				var ref: String = m.get_string(1)
+				var pc: String = m.get_string(3)
+				var cur: String = SkillText.const_of("%s[%d]%s" % [ref, k, pc])
+				var prev: String = SkillText.const_of("%s[%d]%s" % [ref, k - 1, pc])
+				compared += 1
+				if cur.begins_with("{C:") or cur == prev:
+					repeated.append("%s 档%d %s[%d]=%s 上一档=%s" % [t, i + 1, ref, k, cur, prev])
+	_ok("⑦ ★分母: 比了 %d 个高档占位符" % compared, compared >= 40, "只比到 %d 个" % compared)
+	_ok("⑦ 高档没有重复写值没变的效果(且每个占位符都解析得出)", repeated.is_empty(), str(repeated))
+
+	var spirit: Array = Phase2Types.TIER_DESCS.get("灵物", [])
+	var mult_ok := spirit.size() == 4
+	for i in [2, 3]:
+		if i < spirit.size():
+			var s: String = str(spirit[i])
+			mult_ok = mult_ok and s.contains("变为原来的 {C:SpiritSynergySystem.HIT_MULT[%d]%%}%%" % i)
+	_ok("⑧ 灵物 3/4 档触手写「变为原来的 {C:HIT_MULT[i]%}%」", mult_ok)
+	_ok("⑧ 渲染出来是「变为原来的 150%」(第 3 档)",
+		SkillText.render_consts(str(spirit[2]) if spirit.size() > 2 else "").contains(
+			"变为原来的 %s%%" % SkillText.const_of("SpiritSynergySystem.HIT_MULT[2]%")))
+
+	var gun: Array = Phase2Types.TIER_DESCS.get("枪", [])
+	var gold_ok := gun.size() == 3
+	var gold_lit: Array = []
+	var dig := RegEx.create_from_string("[0-9]+")
+	for i in range(gun.size()):
+		var seg := ""
+		for part in str(gun[i]).split(" · "):
+			if str(part).begins_with("【金弹】"):
+				seg = str(part)
+		gold_ok = gold_ok and seg.contains("{C:GunSynergySystem.GOLD_EVERY[%d]}" % i) \
+			and seg.contains("{C:GunSynergySystem.GOLD_TRUE_PCT[%d]%%}%%" % i)
+		## 去掉占位符后剩下的数字只许是「1 发」的 1
+		var bare: String = RegEx.create_from_string("\\{C:[^}]+\\}").sub(seg, "", true)
+		for m in dig.search_all(bare):
+			if m.get_string(0) != "1":
+				gold_lit.append("档%d:%s" % [i + 1, m.get_string(0)])
+	_ok("⑨ 枪【金弹】三档都读 GOLD_EVERY[i] / GOLD_TRUE_PCT[i]", gold_ok)
+	_ok("⑨ 枪【金弹】段里没有手写数字(除「1 发」)", gold_lit.is_empty(), str(gold_lit))

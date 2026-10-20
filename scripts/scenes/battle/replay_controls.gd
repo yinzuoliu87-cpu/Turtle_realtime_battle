@@ -30,6 +30,11 @@ extends RefCounted
 ##   观赛(`ReplayRecorder.is_live()`: 周六直播 / 周日开播)**不建**操作条与「已暂停」签牌 ——
 ##   没有暂停 / 倍速 / 进度条 / 全场时长; 只有左下角「退出」与底部一行状态(同步中 / 下路准备中)。
 ##   收尾卡只揭晓谁赢 + 「返回」, 没有「再看一遍」(那是回放)。参考: 皇室战争观战(同一套 HUD + Live 小签, 无播放控制)。
+##
+## ★★2026-10-20 逐帧直播(状态流, `ReplayRecorder.mode == "stream"`): 回放(播放器 `controls`: 已打完的局)用**同一条**操作条,
+##   暂停 / 倍速改的是播放器(StreamPlayer.paused / speed), 进度条**可以拖**: 松手那一刻 `StreamPlayer.seek`(从最近的 keyframe 解,
+##   不重算; 播放模式本来就没有 sim)。观赛(正在算 / 周六自己那一场 / 周日开播)照旧只有左下角「退出」。
+##   「再看一遍」仍然没有(收尾卡那一条不变)。
 
 const SettleScreenS := preload("res://scripts/scenes/battle/settle_screen.gd")
 
@@ -56,6 +61,7 @@ const N_CARD := "ReplayEndCard"
 const N_PAUSED := "ReplayPausedTag"
 const N_TIME := "ReplayTime"
 const N_TICK_LBL := "ReplayTickLabel"   # + 下标 0/1/2(上路/下路/终极)
+const N_TRACK := "ReplayTrack"           # 进度槽(状态流回放时可拖)
 const N_LIVE_EXIT := "LiveExit"          # 观赛: 左下角「退出」
 const N_LIVE_STATUS := "LiveStatus"      # 观赛: 底部状态(同步中 / 下路准备中)
 const N_LIVE_SHADE := "LiveSyncShade"    # 观赛: 追帧时盖住战场的暗幕(追帧一帧 8 步, 幕布 / 演出叠成一团, 不给人看)
@@ -78,6 +84,9 @@ var live_exit: Button = null
 var live_status: PanelContainer = null
 var live_shade: ColorRect = null
 var _live_lb: Label = null
+## 状态流回放: 进度条正在被拖(松手才跳), 拖到的横坐标(_track 里)
+var _drag := false
+var _drag_x := 0.0
 
 
 func _init(b) -> void:
@@ -103,14 +112,17 @@ func build() -> Control:
 	cl.layer = int(battle._ui_layer.layer) + 1
 	battle.add_child(cl)
 	cl.add_child(root)
-	var _stream: bool = str(battle._replay.mode) == "stream"   # 逐帧直播播放端(StreamPlayer): 没有输入录像, 不能暂停 / 倍速 / 再看一遍(那会本机重算)
+	var _stream: bool = str(battle._replay.mode) == "stream"   # 逐帧直播播放端(StreamPlayer): 回放有操作条(拖动 = seek), 观赛只有「退出」; 都没有「再看一遍」
 	_names = StreamHud.side_names() if _stream else ReplayRecorder.side_names(battle._replay.rec, ReplayRecorder.viewer_name)
 	## 对阵图那一场: 认不出谁是录像方(对手快照的名字对不上这一场的两个人)时, 收尾卡至少按对阵图上的顺序写出两个人。
 	var pair = ReplayRecorder.play_names.get("pair", [])
 	if str(_names.get("l", "")) == "" and str(_names.get("r", "")) == "" and pair is Array and (pair as Array).size() == 2:
 		_names = {"l": str(pair[0]), "r": str(pair[1])}
-	if _stream:
+	if _stream and not _stream_ctl():
 		_build_stream_exit(vp, m)
+	elif _stream:
+		_build_strip(vp, m)            # 起播倍速由入口挂进 pending(StreamWatch.enter: 沿用上一次选的), 这里不改 —— 建条比播放晚一帧, 改了会盖掉已经在播的倍速
+		_build_paused_tag(vp)
 	elif battle._replay.is_live():
 		_build_live(vp, m)
 	else:
@@ -159,9 +171,14 @@ func _build_strip(vp: Vector2, m: Vector4) -> void:
 	hb.add_child(speed_btn)
 	## 进度条: 深色槽 + 金色填充 + 每一路开打处一道刻度, 刻度下面写路名。
 	_track = Control.new()
+	_track.name = N_TRACK
 	_track.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_track.custom_minimum_size = Vector2(160, BTN_H)
 	_track.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if _stream_ctl():
+		_track.mouse_filter = Control.MOUSE_FILTER_STOP          # 状态流回放: 进度条可拖(重算回放不行: 只能从第 0 步往前算)
+		_track.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		_track.gui_input.connect(_on_track_input)
 	hb.add_child(_track)
 	time_lb = _lbl("", 20, COL_TEXT)
 	time_lb.name = N_TIME
@@ -310,16 +327,64 @@ func _build_paused_tag(vp: Vector2) -> void:
 
 # ─────────────────────────────── 操作 ───────────────────────────────
 
+## 状态流回放(有操作条)吗。观赛 / 普通重算回放 ⇒ false。
+func _stream_ctl() -> bool:
+	var rp = battle._replay
+	return rp != null and str(rp.mode) == "stream" and rp.player != null and bool(rp.player.controls)
+
+
+## 暂停 / 倍速作用在谁身上: 状态流 ⇒ 播放器; 重算回放 ⇒ ReplayRecorder(它们的 paused / speed 同名同义)。
+func _clock_owner():
+	return battle._replay.player if _stream_ctl() else battle._replay
+
+
 func toggle_pause() -> void:
-	if battle._replay.finished or battle._replay.diverged_at >= 0:
+	if _stream_ctl():
+		var st := str(battle._replay.player.state)
+		if st == "ended" or st == "error":
+			return
+	elif battle._replay.finished or battle._replay.diverged_at >= 0:
 		return
-	battle._replay.paused = not battle._replay.paused
+	var o = _clock_owner()
+	o.paused = not o.paused
 	refresh()
 
 
 func cycle_speed() -> void:
 	battle._replay.cycle_speed()
+	if _stream_ctl():
+		battle._replay.player.speed = float(battle._replay.speed)
 	refresh()
+
+
+## 状态流回放: 跳到全场的 f(0..1)处。返回播放器 seek 的结果。
+func seek_frac(f: float) -> bool:
+	if not _stream_ctl():
+		return false
+	var tot: int = battle._replay.total_steps()
+	if tot <= 0:
+		return false
+	var ok: bool = battle._replay.player.seek(int(roundf(clampf(f, 0.0, 1.0) * float(tot))))
+	refresh()
+	return ok
+
+
+## 进度槽上的按下 / 拖 / 松手(触屏由引擎转成鼠标事件)。拖的时候只挪金色填充, 松手才跳(跳一次要从 keyframe 解)。
+func _on_track_input(ev: InputEvent) -> void:
+	if card != null or _track == null:
+		return
+	if ev is InputEventMouseButton and (ev as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+		var mb := ev as InputEventMouseButton
+		_drag_x = mb.position.x
+		if mb.pressed:
+			_drag = true
+		elif _drag:
+			_drag = false
+			seek_frac(_drag_x / maxf(1.0, _track.size.x))
+		refresh()
+	elif ev is InputEventMouseMotion and _drag:
+		_drag_x = (ev as InputEventMouseMotion).position.x
+		refresh()
 
 
 static func clock(steps: int) -> String:
@@ -332,19 +397,24 @@ func refresh() -> void:
 	if root == null or not is_instance_valid(root):
 		return
 	var rp = battle._replay
-	if str(rp.mode) == "stream":
+	var sctl := _stream_ctl()
+	if str(rp.mode) == "stream" and not sctl:
 		return
 	if rp.is_live():
 		_sync_live()
 		return
+	var o = _clock_owner()
 	if pause_btn != null:
-		pause_btn.text = "继续" if rp.paused else "暂停"
+		pause_btn.text = "继续" if o.paused else "暂停"
 	if speed_btn != null:
 		speed_btn.text = "%d 倍速" % int(rp.speed)
 	if paused_tag != null:
-		paused_tag.visible = rp.paused and card == null
+		paused_tag.visible = o.paused and card == null
 	var tot: int = rp.total_steps()
-	var cur: int = mini(int(battle._sim_step_n), tot) if tot > 0 else int(battle._sim_step_n)
+	var now_step: int = maxi(0, int(rp.player.applied)) if sctl else int(battle._sim_step_n)
+	if sctl and _drag and _track != null and tot > 0:
+		now_step = int(roundf(clampf(_drag_x / maxf(1.0, _track.size.x), 0.0, 1.0) * float(tot)))
+	var cur: int = mini(now_step, tot) if tot > 0 else now_step
 	if time_lb != null:
 		time_lb.text = "%s / %s" % [clock(cur), clock(tot)] if tot > 0 else clock(cur)
 	if _fill != null and is_instance_valid(_fill) and _track != null and tot > 0:
@@ -456,7 +526,7 @@ func _end_card(won: bool, broken: bool) -> void:
 		if l != "" and r != "":
 			sub = "%s  对  %s" % [l, r]
 		var tot: int = battle._replay.total_steps()
-		if tot > 0 and lv == null:       # 观赛不报全场时长
+		if tot > 0 and lv == null and (not stream or _stream_ctl()):       # 观赛不报全场时长(状态流只有回放报)
 			sub += ("  ·  " if sub != "" else "") + "全场 " + clock(tot)
 	if sub != "":
 		vb.add_child(_lbl(sub, 20, COL_SUB, HORIZONTAL_ALIGNMENT_CENTER))

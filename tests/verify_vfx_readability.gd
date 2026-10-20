@@ -132,8 +132,11 @@ func _g1_gold_wired() -> void:
 		_ok("② %d 档: GoldenShotVfx.glow(%.2f) ≡ %.2f" % [i + 1, p, p], is_equal_approx(GSV.glow(p), p))
 		_ok("② %d 档: 与 GunEqVfx.gold_glow 逐档相等" % (i + 1),
 			is_equal_approx(GSV.glow(p), GEV.gold_glow(p)))
+	## ★2026-10-20 逐档表从 _queue_shots 行内抽到 GunSynergySystem.GOLD_TRUE_PCT(羁绊文案读它)。
+	var gsrc: String = _read("res://scripts/systems/equip/gun_synergy_system.gd")
 	_ok("② 源码里那张逐档表就是 [0.60, 0.80, 1.00]",
-		body.contains("[0.60, 0.80, 1.00]"), "表改了演出亮度就跟着错")
+		body.contains("GunSynergySystem.GOLD_TRUE_PCT[") and gsrc.contains("GOLD_TRUE_PCT := [0.60, 0.80, 1.00]"),
+		"表改了演出亮度就跟着错")
 
 
 # ══════════════════════════════════════════════════════════════════

@@ -522,7 +522,7 @@
   },
   {
     "id": "two_head",
-    "name": "双头龟",
+    "name": "变脸龟",
     "emoji": "🐢🐢",
     "rarity": "B",
     "hp": 872,
@@ -536,20 +536,20 @@
       "name": "双生",
       "hpScale": 2.5,
       "defScale": 0.25,
-      "brief": "双头龟有远程和近战两种形态。释放技能时自动切换形态，再施放该形态的技能。\n近战形态获得额外的最大生命值、护甲、魔抗和护盾，但攻击力降低。\n切换形态后的下一次攻击会得到强化。",
-      "desc": "双头龟有远程和近战两种形态，远程形态射程 {C:TwoHeadSystem.RANGED_RANGE}，近战形态射程 {C:TwoHeadSystem.MELEE_RANGE}。释放技能时自动切换形态，再施放该形态的技能。\n切换为近战形态时获得（{C:TwoHeadSystem.MELEE_HP_COEF%}%×攻击力({ATK}) = {E:ATK*TwoHeadSystem.MELEE_HP_COEF}）最大生命值、（{C:TwoHeadSystem.MELEE_DEF_COEF%}%×攻击力({ATK}) = {E:ATK*TwoHeadSystem.MELEE_DEF_COEF}）护甲、（{C:TwoHeadSystem.MELEE_MR_COEF%}%×攻击力({ATK}) = {E:ATK*TwoHeadSystem.MELEE_MR_COEF}）魔抗和（{C:TwoHeadSystem.MELEE_SHIELD_COEF%}%×攻击力({ATK}) = {E:ATK*TwoHeadSystem.MELEE_SHIELD_COEF}）护盾，攻击力降低（{C:TwoHeadSystem.MELEE_ATK_PENALTY%}%×攻击力({ATK}) = {E:ATK*TwoHeadSystem.MELEE_ATK_PENALTY}）。\n切换为远程形态后的下一次攻击额外造成（{C:TwoHeadSystem.ENH_RANGED_COEF%}%×攻击力({ATK}) = {N:TwoHeadSystem.ENH_RANGED_COEF*ATK}）物理伤害，并使目标护甲降低 {C:TwoHeadSystem.ENH_ARMOR_DOWN%}%，持续 {C:TwoHeadSystem.ENH_SEC} 秒。\n切换为近战形态后的下一次攻击额外造成（{C:TwoHeadSystem.ENH_MELEE_COEF%}%×攻击力({ATK}) = {M:TwoHeadSystem.ENH_MELEE_COEF*ATK}）魔法伤害，并获得（{C:TwoHeadSystem.ENH_SHIELD_COEF%}%×攻击力({ATK}) = {E:TwoHeadSystem.ENH_SHIELD_COEF*ATK}）护盾，持续 {C:TwoHeadSystem.ENH_SEC} 秒。\n<span style=\"color:#8a93a0\">切换为远程形态时会向后撤离目标。切换为近战形态时最大生命值与当前生命值同时增加，切回远程形态时只降低最大生命值。</span>",
-      "descMelee": "双头龟拥有远程和近战两种形态与技能组。\n切换远程时：最大生命值减少（250%×攻击力 = {E:ATK*TwoHeadSystem.MELEE_HP_COEF}），护甲减少（25%×攻击力 = {E:ATK*TwoHeadSystem.MELEE_DEF_COEF}），魔抗减少（25%×攻击力 = {M:ATK*TwoHeadSystem.MELEE_MR_COEF}），攻击力提升（30%×攻击力 = {E:ATK*TwoHeadSystem.MELEE_ATK_PENALTY}）。"
+      "brief": "变脸龟有远程和近战两种形态。释放技能时自动切换形态，再施放该形态的技能。\n近战形态获得额外的最大生命值、护甲、魔抗和护盾，但攻击力降低。\n切换形态后的下一次攻击会得到强化。",
+      "desc": "变脸龟有远程和近战两种形态，远程形态射程 {C:TwoHeadSystem.RANGED_RANGE}，近战形态射程 {C:TwoHeadSystem.MELEE_RANGE}。释放技能时自动切换形态，再施放该形态的技能。\n切换为近战形态时获得（{C:TwoHeadSystem.MELEE_HP_COEF%}%×攻击力({ATK}) = {E:ATK*TwoHeadSystem.MELEE_HP_COEF}）最大生命值、（{C:TwoHeadSystem.MELEE_DEF_COEF%}%×攻击力({ATK}) = {E:ATK*TwoHeadSystem.MELEE_DEF_COEF}）护甲、（{C:TwoHeadSystem.MELEE_MR_COEF%}%×攻击力({ATK}) = {E:ATK*TwoHeadSystem.MELEE_MR_COEF}）魔抗和（{C:TwoHeadSystem.MELEE_SHIELD_COEF%}%×攻击力({ATK}) = {E:ATK*TwoHeadSystem.MELEE_SHIELD_COEF}）护盾，攻击力降低（{C:TwoHeadSystem.MELEE_ATK_PENALTY%}%×攻击力({ATK}) = {E:ATK*TwoHeadSystem.MELEE_ATK_PENALTY}）。\n切换为远程形态后的下一次攻击额外造成（{C:TwoHeadSystem.ENH_RANGED_COEF%}%×攻击力({ATK}) = {N:TwoHeadSystem.ENH_RANGED_COEF*ATK}）物理伤害，并使目标护甲降低 {C:TwoHeadSystem.ENH_ARMOR_DOWN%}%，持续 {C:TwoHeadSystem.ENH_SEC} 秒。\n切换为近战形态后的下一次攻击额外造成（{C:TwoHeadSystem.ENH_MELEE_COEF%}%×攻击力({ATK}) = {M:TwoHeadSystem.ENH_MELEE_COEF*ATK}）魔法伤害，并获得（{C:TwoHeadSystem.ENH_SHIELD_COEF%}%×攻击力({ATK}) = {E:TwoHeadSystem.ENH_SHIELD_COEF*ATK}）护盾，持续 {C:TwoHeadSystem.ENH_SEC} 秒。\n<span style=\"color:#8a93a0\">切换为远程形态时会向后撤离目标。切换为近战形态时最大生命值与当前生命值同时增加，切回远程形态时只降低最大生命值。</span>",
+      "descMelee": "变脸龟拥有远程和近战两种形态与技能组。\n切换远程时：最大生命值减少（250%×攻击力 = {E:ATK*TwoHeadSystem.MELEE_HP_COEF}），护甲减少（25%×攻击力 = {E:ATK*TwoHeadSystem.MELEE_DEF_COEF}），魔抗减少（25%×攻击力 = {M:ATK*TwoHeadSystem.MELEE_MR_COEF}），攻击力提升（30%×攻击力 = {E:ATK*TwoHeadSystem.MELEE_ATK_PENALTY}）。"
     },
     "skillPool": [
       {
-        "name": "双头攻击",
+        "name": "变脸攻击",
         "type": "twoHeadBasic",
         "icon": "skills/twohead-magicwave.png",
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "双头龟远程形态射出灵能弹，近战形态挥砍，分别造成 {N:TwoHeadSystem.BASIC_RANGED_COEF*ATK} 和 {N:TwoHeadSystem.BASIC_MELEE_COEF*ATK} 物理伤害。",
-        "detail": "双头龟远程形态射出灵能弹，造成（{C:TwoHeadSystem.BASIC_RANGED_COEF%}%×攻击力({ATK}) = {N:TwoHeadSystem.BASIC_RANGED_COEF*ATK}）物理伤害。\n近战形态挥砍，造成（{C:TwoHeadSystem.BASIC_MELEE_COEF%}%×攻击力({ATK}) = {N:TwoHeadSystem.BASIC_MELEE_COEF*ATK}）物理伤害。"
+        "brief": "变脸龟远程形态射出灵能弹，近战形态挥砍，分别造成 {N:TwoHeadSystem.BASIC_RANGED_COEF*ATK} 和 {N:TwoHeadSystem.BASIC_MELEE_COEF*ATK} 物理伤害。",
+        "detail": "变脸龟远程形态射出灵能弹，造成（{C:TwoHeadSystem.BASIC_RANGED_COEF%}%×攻击力({ATK}) = {N:TwoHeadSystem.BASIC_RANGED_COEF*ATK}）物理伤害。\n近战形态挥砍，造成（{C:TwoHeadSystem.BASIC_MELEE_COEF%}%×攻击力({ATK}) = {N:TwoHeadSystem.BASIC_MELEE_COEF*ATK}）物理伤害。"
       },
       {
         "name": "灵能冲击/锤击",
@@ -559,8 +559,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "远程形态：双头龟射出灵能炮弹，命中第一个敌人时爆炸，对附近的敌人造成 {N:TwoHeadSystem.STRIKE_RANGED_COEF*ATK} 外加 {C:TwoHeadSystem.STRIKE_RANGED_MAXHP%}% 目标最大生命值的物理伤害。\n近战形态：双头龟锤击目标，造成 {N:TwoHeadSystem.STRIKE_MELEE_COEF*ATK} 物理伤害，并获得相当于该伤害 {C:TwoHeadSystem.STRIKE_SHIELD_PCT%}% 的护盾，持续 {C:TwoHeadSystem.STRIKE_SHIELD_SEC} 秒。",
-        "detail": "· 远程形态【灵能冲击】：\n双头龟射出灵能炮弹，命中第一个敌人时爆炸，对附近的敌人造成（{C:TwoHeadSystem.STRIKE_RANGED_COEF%}%×攻击力({ATK}) = {N:TwoHeadSystem.STRIKE_RANGED_COEF*ATK}）外加 {C:TwoHeadSystem.STRIKE_RANGED_MAXHP%}% 目标最大生命值的物理伤害。\n· 近战形态【锤击】：\n双头龟锤击目标，造成（{C:TwoHeadSystem.STRIKE_MELEE_COEF%}%×攻击力({ATK}) = {N:TwoHeadSystem.STRIKE_MELEE_COEF*ATK}）物理伤害，并获得相当于该伤害 {C:TwoHeadSystem.STRIKE_SHIELD_PCT%}% 的护盾，持续 {C:TwoHeadSystem.STRIKE_SHIELD_SEC} 秒。"
+        "brief": "远程形态：变脸龟射出灵能炮弹，命中第一个敌人时爆炸，对附近的敌人造成 {N:TwoHeadSystem.STRIKE_RANGED_COEF*ATK} 外加 {C:TwoHeadSystem.STRIKE_RANGED_MAXHP%}% 目标最大生命值的物理伤害。\n近战形态：变脸龟锤击目标，造成 {N:TwoHeadSystem.STRIKE_MELEE_COEF*ATK} 物理伤害，并获得相当于该伤害 {C:TwoHeadSystem.STRIKE_SHIELD_PCT%}% 的护盾，持续 {C:TwoHeadSystem.STRIKE_SHIELD_SEC} 秒。",
+        "detail": "· 远程形态【灵能冲击】：\n变脸龟射出灵能炮弹，命中第一个敌人时爆炸，对附近的敌人造成（{C:TwoHeadSystem.STRIKE_RANGED_COEF%}%×攻击力({ATK}) = {N:TwoHeadSystem.STRIKE_RANGED_COEF*ATK}）外加 {C:TwoHeadSystem.STRIKE_RANGED_MAXHP%}% 目标最大生命值的物理伤害。\n· 近战形态【锤击】：\n变脸龟锤击目标，造成（{C:TwoHeadSystem.STRIKE_MELEE_COEF%}%×攻击力({ATK}) = {N:TwoHeadSystem.STRIKE_MELEE_COEF*ATK}）物理伤害，并获得相当于该伤害 {C:TwoHeadSystem.STRIKE_SHIELD_PCT%}% 的护盾，持续 {C:TwoHeadSystem.STRIKE_SHIELD_SEC} 秒。"
       },
       {
         "name": "精神干扰/吸收",
@@ -570,8 +570,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "远程形态：双头龟对目标造成 {T:TwoHeadSystem.DISRUPT_TRUE*ATK} 真实伤害，施加 {C:TwoHeadSystem.DISRUPT_HEALCUT_PCT%}% 治疗削减，持续 {C:TwoHeadSystem.DISRUPT_HEALCUT_SEC} 秒，并破坏其 {C:TwoHeadSystem.DISRUPT_SHIELD_BREAK%}% 护盾。\n近战形态：双头龟对目标造成 {N:TwoHeadSystem.ABSORB_ATK_COEF*ATK} 外加 {C:TwoHeadSystem.ABSORB_MAXHP_PCT%}% 目标最大生命值的物理伤害，并回复 {E:ATK*TwoHeadSystem.ABSORB_HEAL_ATK} 外加 {C:TwoHeadSystem.ABSORB_HEAL_LOST%}% 自身已损失生命值。",
-        "detail": "· 远程形态【精神干扰】：\n双头龟对目标造成（{C:TwoHeadSystem.DISRUPT_TRUE%}%×攻击力({ATK}) = {T:TwoHeadSystem.DISRUPT_TRUE*ATK}）真实伤害，施加 {C:TwoHeadSystem.DISRUPT_HEALCUT_PCT%}% 治疗削减，持续 {C:TwoHeadSystem.DISRUPT_HEALCUT_SEC} 秒，并破坏其 {C:TwoHeadSystem.DISRUPT_SHIELD_BREAK%}% 护盾。\n· 近战形态【吸收】：\n双头龟对目标造成（{C:TwoHeadSystem.ABSORB_ATK_COEF%}%×攻击力({ATK}) = {N:TwoHeadSystem.ABSORB_ATK_COEF*ATK}）外加 {C:TwoHeadSystem.ABSORB_MAXHP_PCT%}% 目标最大生命值的物理伤害，并回复（{C:TwoHeadSystem.ABSORB_HEAL_ATK%}%×攻击力({ATK}) = {E:ATK*TwoHeadSystem.ABSORB_HEAL_ATK}）外加 {C:TwoHeadSystem.ABSORB_HEAL_LOST%}% 自身已损失生命值。"
+        "brief": "远程形态：变脸龟对目标造成 {T:TwoHeadSystem.DISRUPT_TRUE*ATK} 真实伤害，施加 {C:TwoHeadSystem.DISRUPT_HEALCUT_PCT%}% 治疗削减，持续 {C:TwoHeadSystem.DISRUPT_HEALCUT_SEC} 秒，并破坏其 {C:TwoHeadSystem.DISRUPT_SHIELD_BREAK%}% 护盾。\n近战形态：变脸龟对目标造成 {N:TwoHeadSystem.ABSORB_ATK_COEF*ATK} 外加 {C:TwoHeadSystem.ABSORB_MAXHP_PCT%}% 目标最大生命值的物理伤害，并回复 {E:ATK*TwoHeadSystem.ABSORB_HEAL_ATK} 外加 {C:TwoHeadSystem.ABSORB_HEAL_LOST%}% 自身已损失生命值。",
+        "detail": "· 远程形态【精神干扰】：\n变脸龟对目标造成（{C:TwoHeadSystem.DISRUPT_TRUE%}%×攻击力({ATK}) = {T:TwoHeadSystem.DISRUPT_TRUE*ATK}）真实伤害，施加 {C:TwoHeadSystem.DISRUPT_HEALCUT_PCT%}% 治疗削减，持续 {C:TwoHeadSystem.DISRUPT_HEALCUT_SEC} 秒，并破坏其 {C:TwoHeadSystem.DISRUPT_SHIELD_BREAK%}% 护盾。\n· 近战形态【吸收】：\n变脸龟对目标造成（{C:TwoHeadSystem.ABSORB_ATK_COEF%}%×攻击力({ATK}) = {N:TwoHeadSystem.ABSORB_ATK_COEF*ATK}）外加 {C:TwoHeadSystem.ABSORB_MAXHP_PCT%}% 目标最大生命值的物理伤害，并回复（{C:TwoHeadSystem.ABSORB_HEAL_ATK%}%×攻击力({ATK}) = {E:ATK*TwoHeadSystem.ABSORB_HEAL_ATK}）外加 {C:TwoHeadSystem.ABSORB_HEAL_LOST%}% 自身已损失生命值。"
       },
       {
         "name": "融合",
@@ -581,8 +581,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "被动：双头龟登场后不再切换形态，始终远程作战，也没有切换后的强化攻击。双头龟获得近战时的最大生命值、护甲、魔抗与护盾加成，攻击力同样降低 {C:TwoHeadSystem.MELEE_ATK_PENALTY%}%。每受到一段攻击或技能伤害永久获得 1 护甲和 1 魔抗，各最多 {C:TwoHeadSystem.FUSION_TOUGH_CAP}。\n\n主动：双头龟发射 {C:TwoHeadSystem.FUSION_WAVE_BASE} 段灵能波，交替造成 {N:TwoHeadSystem.FUSION_WAVE_COEF*ATK} 物理伤害和 {T:TwoHeadSystem.FUSION_WAVE_COEF*ATK} 真实伤害并击飞目标。每次释放后段数 +1，持续到战斗结束。",
-        "detail": "被动：双头龟登场后不再切换形态，始终远程作战，也没有切换后的强化攻击。双头龟获得近战时的最大生命值、护甲、魔抗与护盾加成，攻击力同样降低 {C:TwoHeadSystem.MELEE_ATK_PENALTY%}%。每受到一段攻击或技能伤害永久获得 1 护甲和 1 魔抗，各最多 {C:TwoHeadSystem.FUSION_TOUGH_CAP}。\n\n主动：双头龟发射 {C:TwoHeadSystem.FUSION_WAVE_BASE} 段灵能波，交替造成（{C:TwoHeadSystem.FUSION_WAVE_COEF%}%×攻击力({ATK}) = {N:TwoHeadSystem.FUSION_WAVE_COEF*ATK}）物理伤害和（{C:TwoHeadSystem.FUSION_WAVE_COEF%}%×攻击力({ATK}) = {T:TwoHeadSystem.FUSION_WAVE_COEF*ATK}）真实伤害并击飞目标。每次释放后段数 +1，持续到战斗结束。"
+        "brief": "被动：变脸龟登场后不再切换形态，始终远程作战，也没有切换后的强化攻击。变脸龟获得近战时的最大生命值、护甲、魔抗与护盾加成，攻击力同样降低 {C:TwoHeadSystem.MELEE_ATK_PENALTY%}%。每受到一段攻击或技能伤害永久获得 1 护甲和 1 魔抗，各最多 {C:TwoHeadSystem.FUSION_TOUGH_CAP}。\n\n主动：变脸龟发射 {C:TwoHeadSystem.FUSION_WAVE_BASE} 段灵能波，交替造成 {N:TwoHeadSystem.FUSION_WAVE_COEF*ATK} 物理伤害和 {T:TwoHeadSystem.FUSION_WAVE_COEF*ATK} 真实伤害并击飞目标。每次释放后段数 +1，持续到战斗结束。",
+        "detail": "被动：变脸龟登场后不再切换形态，始终远程作战，也没有切换后的强化攻击。变脸龟获得近战时的最大生命值、护甲、魔抗与护盾加成，攻击力同样降低 {C:TwoHeadSystem.MELEE_ATK_PENALTY%}%。每受到一段攻击或技能伤害永久获得 1 护甲和 1 魔抗，各最多 {C:TwoHeadSystem.FUSION_TOUGH_CAP}。\n\n主动：变脸龟发射 {C:TwoHeadSystem.FUSION_WAVE_BASE} 段灵能波，交替造成（{C:TwoHeadSystem.FUSION_WAVE_COEF%}%×攻击力({ATK}) = {N:TwoHeadSystem.FUSION_WAVE_COEF*ATK}）物理伤害和（{C:TwoHeadSystem.FUSION_WAVE_COEF%}%×攻击力({ATK}) = {T:TwoHeadSystem.FUSION_WAVE_COEF*ATK}）真实伤害并击飞目标。每次释放后段数 +1，持续到战斗结束。"
       }
     ],
     "defaultSkills": [

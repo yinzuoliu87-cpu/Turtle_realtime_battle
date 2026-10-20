@@ -26,6 +26,7 @@ extends Node
 ## 赛程规则（E-B7 备战购物窗的判据住在那边，这一层只凑时刻不重写规则）。
 ## ★方向是单向的：`phase2_config` 里**零处**引用本文件，不会循环。
 const _P2S := preload("res://scripts/gamedata/phase2_config.gd")
+const _MF := preload("res://scripts/net/match_fetch.gd")   # 取录像的两条读的纯函数(查询串 / 判回包), 2026-10-20 挪出
 
 const SETTING_URL := "turtle/supabase_url"
 const SETTING_KEY := "turtle/supabase_anon_key"
@@ -1628,7 +1629,7 @@ func _headers(extra: String = "") -> PackedStringArray:
 ##   回到真实时间后照常补发。快照队列另外认 `BLOCKED_CODE`, 不为这次「没发」记退避。
 ## 判定成「读」的 RPC。★白名单而不是黑名单: 新加的 RPC 默认算写(漏登记的代价是假时间里读不到, 不是写进生产)。
 ##   ⚠ `finals_opponent` **不是**读 —— 它往 `finals_scout` 插一行(每人每轮只能问一个种子), 所以不在这里。
-const READ_RPCS := ["finals_view", "finals_replay", "week_leaderboard", "week_leaderboard_page", "finals_week_view", "referee_flags", "referee_job_status"]   # ★10-11: 补 finals_week_view(纯读, 原漏 ⇒ 时间穿越测周日时观赛/杯赛页拿不到数据)
+const READ_RPCS := ["finals_view", "finals_replay", "week_leaderboard", "week_leaderboard_page", "finals_week_view", "referee_flags", "referee_job_status", "referee_live_gauntlet"]   # ★10-11: 补 finals_week_view(纯读, 原漏 ⇒ 时间穿越测周日时观赛/杯赛页拿不到数据)
 ## 快照上传被时间穿越拦下时交给回调的 code(区别于没网的 0)。
 const BLOCKED_CODE := -1
 ## 本进程里被拦下的写请求条数(观测量 / 门禁分母)。
@@ -2514,37 +2515,8 @@ const MATCH_FETCH_TIMEOUT_SEC := 15.0
 static var match_fetch_timeout_for_test := 0.0
 
 
-## 纯函数: 取那一行要问的查询串。只要 `replay` 一列 —— 版本号在录像里, 解出来由
-##   `ReplayRecorder.play` 统一比(只有一处判据, 不在列上再比一遍)。
-static func match_fetch_query(match_id: String) -> String:
-	if not is_uuid(match_id):
-		return ""
-	return "match_id=eq.%s&select=match_id,replay" % match_id
-
-
-## 纯函数: 一次取回的回包 → {"err": 原因码, "b64": 录像, "code": HTTP 码}。
-##   原因码: "" 取到了 / "offline" 请求没出去或没回来 / "server" 服务端非 2xx 或回了不是 JSON 数组 /
-##          "missing" 没有这一行(到期被清了或从没传上来) / "corrupt" 有这一行但录像列是空的。
-## ★每一种都要给玩家**不同的一句话**(见 replay_fetcher.gd 的 MSG) —— 归成一句「出错了」等于没说。
-static func parse_fetched_match(ok: bool, code: int, body: String, match_id: String) -> Dictionary:
-	if not ok:
-		return {"err": "offline", "code": code}
-	if code < 200 or code >= 300:
-		return {"err": "server", "code": code}
-	var j := JSON.new()
-	if j.parse(body) != OK or not (j.data is Array):
-		return {"err": "server", "code": code}
-	for r in (j.data as Array):
-		if r is Dictionary and str((r as Dictionary).get("match_id", "")) == match_id:
-			var b = (r as Dictionary).get("replay", null)
-			if b is String and (b as String) != "":
-				return {"err": "", "b64": b, "code": code}
-			return {"err": "corrupt", "code": code}
-	return {"err": "missing", "code": code}
-
-
 ## 取一行录像。返回 false = 连节点都没建(没配后端 / id 不是 uuid), 调用方自己出提示。
-## `done.call(res: Dictionary)`(形状同 `parse_fetched_match`, 另有 "no_token" / "timeout")——
+## `done.call(res: Dictionary)`(形状同 match_fetch.gd `parse_fetched_match`, 另有 "no_token" / "timeout")——
 ##   **每一条走掉的路恰好回调一次**; 调用方已经离场(`done` 失效)就不回调。
 static func fetch_match_async(match_id: String, done: Callable) -> bool:
 	if not enabled() or not is_uuid(match_id):
@@ -2581,10 +2553,10 @@ func fetch_match(match_id: String, done: Callable) -> void:
 	if bool(st["done"]):
 		_bye()                 # 看门狗已经替它回过话了; 别再发请求
 		return
-	var url := base_url().rstrip("/") + "/rest/v1/matches?" + match_fetch_query(match_id)
+	var url := base_url().rstrip("/") + "/rest/v1/matches?" + _MF.match_fetch_query(match_id)
 	_http("GET", url, "",
 		func(res):
-			var r := parse_fetched_match(bool(res.get("ok", false)), int(res.get("code", 0)),
+			var r: Dictionary = _MF.parse_fetched_match(bool(res.get("ok", false)), int(res.get("code", 0)),
 				str(res.get("body", "")), match_id)
 			if str(r.get("err", "")) != "":
 				print("[SupabaseNet] 录像没取到(matches) %s code=%d" % [str(r["err"]), int(r.get("code", 0))])
@@ -2649,34 +2621,6 @@ static func fetch_gauntlet_board_async(season_week: int, done: Callable) -> bool
 	return true
 
 
-## 纯函数: `finals_replay` 的请求体。键名与服务端对不上是这类接口最常见的死法, 门禁直接验它。
-static func finals_replay_body(week: int, bucket: int, round_no: int, match_no: int) -> Dictionary:
-	return {"p_week": week, "p_bucket": bucket, "p_round": round_no, "p_match": match_no}
-
-
-## 纯函数: `finals_replay` 回包 → {"err": "", "b64", "match_id"} 或 {"err": 原因码}。
-##   原因码: offline / server / unavailable(函数没部署: 404) / not_revealed / no_result / no_replay / no_bucket / corrupt。
-static func parse_finals_replay(ok: bool, code: int, body: String) -> Dictionary:
-	if not ok:
-		return {"err": "offline", "code": code}
-	if code == 404:
-		return {"err": "unavailable", "code": code}
-	if code < 200 or code >= 300:
-		return {"err": "server", "code": code}
-	var j := JSON.new()
-	if j.parse(body) != OK or not (j.data is Dictionary):
-		return {"err": "server", "code": code}
-	var d: Dictionary = j.data
-	if not bool(d.get("ok", false)):
-		var why := str(d.get("reason", "server"))
-		return {"err": why if why != "" else "server", "code": code}
-	var mid := str(d.get("match_id", ""))
-	var b = d.get("replay", null)
-	if not is_uuid(mid) or not (b is String) or (b as String) == "":
-		return {"err": "corrupt", "code": code}
-	return {"err": "", "b64": b, "match_id": mid, "code": code}
-
-
 static func fetch_finals_replay_async(week: int, bucket: int, round_no: int, match_no: int,
 		done: Callable) -> bool:
 	if not enabled() or week <= 0 or bucket < 0 or round_no < 1 or match_no < 0:
@@ -2685,9 +2629,9 @@ static func fetch_finals_replay_async(week: int, bucket: int, round_no: int, mat
 	if n == null:
 		return false
 	n._get_once("/rest/v1/rpc/finals_replay", "POST",
-		JSON.stringify(finals_replay_body(week, bucket, round_no, match_no)), done,
+		JSON.stringify(_MF.finals_replay_body(week, bucket, round_no, match_no)), done,
 		func(res: Dictionary) -> Dictionary:
-			return parse_finals_replay(bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", ""))))
+			return _MF.parse_finals_replay(bool(res.get("ok", false)), int(res.get("code", 0)), str(res.get("body", ""))))
 	return true
 
 
@@ -2930,7 +2874,7 @@ static func live_fetch_query(match_id: String) -> String:
 
 
 ## 纯函数: 回包 → {"err": "", "b64", "horizon", "ended", "updated_at"(ISO 串)} 或 {"err": 原因码}。
-##   原因码同 `parse_fetched_match`, 另有 "unavailable"(表没部署: 404)。
+##   原因码同 match_fetch.gd `parse_fetched_match`, 另有 "unavailable"(表没部署: 404)。
 static func parse_live_row(ok: bool, code: int, body: String, match_id: String) -> Dictionary:
 	if not ok:
 		return {"err": "offline", "code": code}

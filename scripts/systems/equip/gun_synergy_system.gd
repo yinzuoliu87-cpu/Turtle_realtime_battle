@@ -44,6 +44,12 @@ const T2_PER_GUN := 20.0
 ##   ⇒ 同时它奖励"把 3 把枪堆在一只龟身上"，与专精主题一致。
 const T3_BASE := 0.10
 const T3_PER_GUN := 0.10
+## 【金弹】逐档(第 1/2/3 档): 每把枪射满多少发额外射出 1 发金弹 / 金弹额外造成本次伤害多少比例的真实伤害。
+## ★2026-10-20 从 `RealtimeBattle3DScene._queue_shots` 的行内数组抽出来(数值零改动),
+##   让羁绊文案 `TIER_DESCS["枪"]` 用 {C:GunSynergySystem.GOLD_EVERY[i]} 直接读它。
+##   ⚠ `eq_gun_batch.gd` 的 078 / 079 里还各有一份手抄(它们在装备文案的锚点窗口里), 未并入。
+const GOLD_EVERY := [4, 3, 2]
+const GOLD_TRUE_PCT := [0.60, 0.80, 1.00]
 
 ## 各阵营的节拍与第二座的相位（true = 这次转护盾，false = 这次化弹幕）
 var _t_acc := 0.0

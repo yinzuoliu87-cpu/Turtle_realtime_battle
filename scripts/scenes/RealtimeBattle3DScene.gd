@@ -685,7 +685,7 @@ const Phase2Cfg := preload("res://scripts/gamedata/phase2_config.gd")
 var _synergy := SynergySystem.new(self)   # ★类型羁绊【战斗侧实装】(2026-08-03 批4-1) —— 在此之前羁绊零效果
 var _swordsman := SwordsmanSystem.new(self)   # 剑羁绊【剑士】追打(2026-08-03·取代原设计的"回响")
 var _shield_syn := ShieldSynergySystem.new(self)   # 盾羁绊【怒气冲击波/反击/收殓】(2026-08-03)
-var _bow_syn := BowSynergySystem.new(self)   # 弓箭羁绊【处决/腐蚀穿透/腐蚀叠层】(2026-08-03)
+var _bow_syn := BowSynergySystem.new(self)   # 弓箭羁绊【处决/穿透/腐蚀】(2026-08-03)
 var _gun_syn := GunSynergySystem.new(self)   # 枪羁绊【三座炮台 + 火控】(2026-08-03)
 var _staff_syn := StaffSynergySystem.new(self)   # 法器羁绊【法力条/灵泉/余韵/共鸣】(2026-08-03)
 var _potion_syn := PotionSynergySystem.new(self)   # 药水羁绊【猎物/猎获/斩首】(2026-08-03)
@@ -2168,7 +2168,7 @@ func _sim_step(dt: float, frozen: bool, in_ts: bool) -> void:
 		_synergy.tick(dt)   # ★类型羁绊的周期效果(批4-1: 法器潮涌 / 食物盛宴 / 盾圣光) —— 走 dt 不走墙钟
 		_swordsman.tick(dt)   # 剑士追打队列(以 5 倍攻速依次打出)
 		_shield_syn.tick(dt)  # 圣光护盾装备: 每 3 秒 55 点护盾
-		_bow_syn.tick(dt)     # 弓箭顶档【腐蚀叠层】: 每 2.5 秒给全场敌人 +1 层
+		_bow_syn.tick(dt)     # 弓箭【腐蚀】: 每 2.5 秒给全场敌人 +1 层
 		_crystal_sys.tick(dt) # 031 水晶球B 扫描推进(结算走 sim 时钟, 不走 tween)
 		_equip_tick_sys.tick_delayed(dt)  # 装备【延时结算】共享队列(024/025/026: 走 sim 钟不走 tween)
 		_gun_syn.tick(dt)     # 枪羁绊: 第一座炮台轰击(每 2.5 秒·TICK) / 第二座能量循环(每 5 秒·T2_PERIOD)
@@ -2840,13 +2840,8 @@ func _basic_attack(u: Dictionary, tgt: Dictionary) -> void:
 		_chest_sys._chest_basic(u, tgt)
 		_on_basic_hit(u, tgt)
 		return
-	if u["id"] == "two_head":       # 双头(封板): 普攻随形态 — 远程1.2A物理(灵能弹)/近战0.9A物理(挥砍)
-		var _thsc: float = TwoHeadSystem.BASIC_MELEE_COEF if u["melee"] else TwoHeadSystem.BASIC_RANGED_COEF
-		_emit_basic(u, tgt, _atk_dmg(u, _thsc, tgt), Color("#c0a0ff"), 0)
-		if str(u.get("_th_enh", "")) != "":                      # 双生强化普攻: 搬旧切形态那一下的伤害+效果(就这1下·用户2026-07-11 B案)
-			_two_head_sys._two_head_enhanced_basic(u, tgt, str(u["_th_enh"]))
-			u["_th_enh"] = ""
-		_on_basic_hit(u, tgt)
+	if u["id"] == "two_head":       # 变脸龟: 普攻随形态(远程灵能弹 / 近战挥锤), 整段在 TwoHeadSystem.basic
+		_two_head_sys.basic(u, tgt)
 		return
 	if u["id"] == "ghost":          # 幽灵普攻幽魂触碰(封板): 远程灵体触碰·专属幽魂弹道·命中同发0.4A物理(红)+0.9A真实(白)+灵体怨气(用户2026-07-11修:原真实段瞬发/物理段随弹道→不同时跳)
 		_ballistics._fire_ghost_wisp(u, tgt)
@@ -4244,8 +4239,9 @@ func _summon_walking_bear(u: Dictionary, tgt, dmg: int) -> void:   # 玩偶小�
 ## ★2026-08-03 加了 `gun_id` —— 枪羁绊【金弹】挂在这里。
 ##   五把枪(黄铜手铳/激光手枪/加特林/狙击/左轮)的齐射【共用这一个出口】,
 ##   所以金弹只需要在这里数一次, 不用去改五套各不相同的开火逻辑。
-##   金弹规格(类型原生): 每把枪【射满 4/3/2 发】额外射出一发, 效果与原子弹完全相同
-##   (伤害/流血/减甲/击杀连锁全继承), 并额外造成 60/80/100% 真实伤害; 金弹本身不计入计数。
+##   金弹规格(类型原生): 每把枪【射满 GunSynergySystem.GOLD_EVERY 发】额外射出一发, 效果与原子弹完全相同
+##   (伤害/流血/减甲/击杀连锁全继承), 并额外造成 GOLD_TRUE_PCT 的真实伤害; 金弹本身不计入计数。
+##   (两张逐档表 2026-10-20 从本函数的行内数组抽到 GunSynergySystem, 羁绊文案直接读它。)
 ##   ⇒ 实现: 复用同一个 fn(所以"效果完全相同"是天然的), 期间把 _golden_pct 标在单位上,
 ##     伤害管线读它加一段真伤。★不递归: 金弹那一发不再累加计数(下面 _gun_shot_ct 只在正常发数)。
 ## `muzzle`: 可选的**出膛点回调**(返回 Vector2 场地坐标)。
@@ -4266,8 +4262,8 @@ func _queue_shots(count: int, interval: float, fn: Callable, src = null, gun_id:
 	if gun_id != "" and src is Dictionary:
 		var tier: int = int(_synergy.tier_for(src, "枪"))
 		if tier > 0:
-			per = [4, 3, 2][clampi(tier - 1, 0, 2)]
-			gpct = [0.60, 0.80, 1.00][clampi(tier - 1, 0, 2)]
+			per = int(GunSynergySystem.GOLD_EVERY[clampi(tier - 1, 0, 2)])
+			gpct = float(GunSynergySystem.GOLD_TRUE_PCT[clampi(tier - 1, 0, 2)])
 	if not (src is Dictionary) or not src.has("_gun_shot_ct"):
 		if src is Dictionary:
 			src["_gun_shot_ct"] = {}
@@ -4383,7 +4379,7 @@ func _mitigate_incoming(u: Dictionary, dmg: float, raw: bool, is_self: bool = fa
 	if not is_self and _t < u.get("eq_marked_until", 0.0):
 		d *= 1.2                                     # 靶向器055: 被标记目标受伤 +20%
 	if not is_self and int(u.get("corrode_stacks", 0)) > 0:
-		d *= BowSynergySystem.vuln_mult(u)           # 弓箭顶档【腐蚀叠层】: 每层受伤 +5%(最多 5 层)
+		d *= BowSynergySystem.vuln_mult(u)           # 弓箭【腐蚀】: 每层受伤 +5%(最多 5 层)
 	if not is_self and _t < float(u.get("stun_until", 0.0)):
 		d *= _gadget_syn.brittle_mult(u)             # 奇械顶档【易碎】: 被冻结/眩晕的敌人受伤 +25%
 	# ★2026-07-30(需求3 大师技能审核抓到的): 这两行原本是【硬编码字面量】1.25 / 1.2,
@@ -6181,11 +6177,6 @@ func _slam_debris(at2d: Vector2) -> void:
 	_world.add_child(ps)
 	ps.emitting = true
 	var ftw := _reg_tween(); ftw.tween_interval(0.75); ftw.tween_callback(ps.queue_free)
-
-func _absorb_mote_step(pf: float, mote, from2d: Vector2, to2d: Vector2) -> void:
-	if not is_instance_valid(mote):
-		return
-	mote.position = _world_pos(from2d.lerp(to2d, pf), DetMath.flerp(1.0, 1.25, pf))
 
 func _knock_up(o: Dictionary, center: Vector2, vy: float) -> void:
 	if o == null or not o.get("alive", false) or o.get("airborne", false) or o.get("_knock_immune", false) or _damage._is_cc_immune(o):   # 免击飞(017不沉之锚) / ★免控也免击飞(10-16): 直接设airborne会绕过_knockback的守卫(用户2026-07-19"修吧")

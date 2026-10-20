@@ -164,7 +164,8 @@ func _dl_build_present_overlay(mode: String) -> void:
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	## 看回放时底部有一条操作条(replay_controls, 高 ReplayControls.STRIP_H): 幕布上的牌子在它上面那块里居中, 不被它压住。
 	var _rp_inset: float = 0.0
-	if battle._replay != null and battle._replay.is_playing() and not battle._replay.is_live():   # 观赛没有操作条
+	if battle._replay != null and ((battle._replay.is_playing() and not battle._replay.is_live())
+			or (battle._replay.player != null and battle._replay.player.controls)):   # 观赛没有操作条; 状态流回放有
 		_rp_inset = ReplayControls.STRIP_H + 4.0
 	center.offset_bottom = -_rp_inset
 	back.add_child(center)
