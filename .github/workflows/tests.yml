@@ -25,7 +25,9 @@ permissions:
 jobs:
   gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # ★30 → 60(2026-10-21): 10-20 起每轮都在 30 分钟整被掐成 cancelled(最后一次跑完用了 29 分钟),
+    #   CI 两天没给出结论而看着只是"取消"。测试在涨, 4 核 runner 上全套已超 30 分钟。公开仓库不计费。
+    timeout-minutes: 60
     env:
       GODOT_VERSION: "4.6.3-stable"
     steps:
