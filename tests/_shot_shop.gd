@@ -11,6 +11,11 @@ func _ready() -> void:
 		(ct.get("_layer") as CanvasLayer).visible = false
 	load("res://tests/_setup_appstore.gd").run()
 	GameState.season_total_battles = maxi(1, int(GameState.season_total_battles))
+	## SHOT_OWN_STAR=N: 往背包塞一件「货架第 0 格那件」的 ★N(录「背包已有」提示用, 用户 10-22「背包里有二星，不提示吗」)
+	if OS.get_environment("SHOT_OWN_STAR").is_valid_int() and GameState.meta_shop_offer is Array \
+			and not (GameState.meta_shop_offer as Array).is_empty() and GameState.meta_shop_offer[0] is Dictionary:
+		GameState.persistent_bench.append({"id": str(GameState.meta_shop_offer[0].get("id", "")),
+			"star": int(OS.get_environment("SHOT_OWN_STAR"))})
 	if OS.get_environment("SHOT_SEQ") != "":
 		var rec := SeqRec.new(); rec.dir = OS.get_environment("SHOT_SEQ")
 		if OS.get_environment("SHOT_N").is_valid_int():
