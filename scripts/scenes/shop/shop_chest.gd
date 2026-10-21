@@ -29,6 +29,9 @@ const KEEPER_FRAME_SEC := 0.16
 ## 每帧提灯火苗的位置(原生, 逐帧量的), 提灯光跟着火苗走
 const KEEPER_FLAME := [Vector2(94, 69), Vector2(95, 69), Vector2(95, 68), Vector2(94, 68), Vector2(94, 68), Vector2(93, 68), Vector2(93, 69), Vector2(94, 69)]
 const KEEPER_SIZE := KEEPER_REGION.size * KEEPER_SCALE
+## 人形最右像素(提灯外沿, 原生, 相对 KEEPER_REGION 左沿 = 99 - 20)与它到货柜左沿的留白(设计像素)。
+const KEEPER_BODY_R := 79.0
+const KEEPER_CAB_GAP := 6.0
 const KEEPER_POS := Vector2(4.0, 682.0 - 124.0 * KEEPER_SCALE)
 
 var host = null
@@ -85,31 +88,53 @@ func keeper_x() -> float:
 	var off_x: float = roundf((hs.x - 1280.0) * 0.5)
 	var gap_w: float = float(host.CAB_X) + off_x                 # 屏幕左沿到货柜左沿
 	var want_screen: float = (gap_w - KEEPER_SIZE.x) * 0.5
+	## 用户 2026-10-21「商店老板的位置」: 16:9 上空地比店主窄, 原来硬塞进屏内 ⇒ 压在货柜左立柱上。
+	##   ⇒ 空地放不下时让他退到屏幕左沿外(背包那半身出画), 身体右沿离货柜留 KEEPER_CAB_GAP, 不压货柜。
+	if want_screen < KEEPER_POS.x:
+		var right_edge: float = gap_w - KEEPER_CAB_GAP                  # 屏幕坐标: 身体右沿
+		want_screen = right_edge - KEEPER_BODY_R * KEEPER_SCALE
+		return roundf(want_screen - off_x)
 	return roundf(clampf(want_screen, KEEPER_POS.x, KEEPER_POS.x + off_x) - off_x)
 
 
+## 店主左沿出画时(16:9 / 4:3)屏幕外那段的宽(设计像素); 0 = 整个人在屏内。
+func _keeper_cut(kx: float) -> float:
+	var vs: Vector2 = Vector2(host.get_viewport().get_visible_rect().size)
+	var hs: Vector2 = host.size if (host.size.x >= 1280.0 and host.size.y >= 360.0) else vs
+	var off_x: float = roundf((hs.x - 1280.0) * 0.5)
+	## 原生像素整数倍裁, 不裁半个像素
+	return ceilf(maxf(0.0, -(kx + off_x)) / KEEPER_SCALE) * KEEPER_SCALE
+
+
 func build_keeper(parent: Control) -> void:
-	var kpos := Vector2(keeper_x(), KEEPER_POS.y)
+	var kx: float = keeper_x()
+	## ★出画那段不画(只画视口里看得见的部分, 与底图 / 木箱同理): 控件不伸出视口(verify_ui_layout / verify_shop_layout ①)
+	var cut: float = _keeper_cut(kx)
+	var cut_n: float = cut / KEEPER_SCALE
+	var kpos := Vector2(kx + cut, KEEPER_POS.y)
 	var sh := ellipse(180.0, 24.0, 30, 5, Color(0.1, 0.05, 0.02, 0.45)); sh.name = "KeeperShadow"
-	sh.position = kpos + Vector2((59.5 - KEEPER_REGION.position.x) * KEEPER_SCALE - 90.0, 124.0 * KEEPER_SCALE - 14.0)   # 人形中线 x59.5 / 脚底 y124(原生)
+	sh.position = Vector2(kx, kpos.y) + Vector2((59.5 - KEEPER_REGION.position.x) * KEEPER_SCALE - 90.0, 124.0 * KEEPER_SCALE - 14.0)   # 人形中线 x59.5 / 脚底 y124(原生)
+	## 出画时(16:9 / 4:3)影子会被切成半截椭圆、还压到底部木牌的边带(verify_ui_consistency) ⇒ 只在整个人在屏内时画
+	sh.visible = cut <= 0.0
 	parent.add_child(sh)
 	var k := TextureRect.new(); k.name = "Shopkeeper"
-	var kat := AtlasTexture.new(); kat.atlas = KEEPER_IDLE_TEX; kat.region = KEEPER_REGION
+	var reg0 := Rect2(KEEPER_REGION.position + Vector2(cut_n, 0.0), KEEPER_REGION.size - Vector2(cut_n, 0.0))
+	var kat := AtlasTexture.new(); kat.atlas = KEEPER_IDLE_TEX; kat.region = reg0
 	k.texture = kat
 	k.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	k.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	k.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	k.position = kpos; k.size = KEEPER_SIZE
+	k.position = kpos; k.size = reg0.size * KEEPER_SCALE
 	k.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(k)
-	var glow: Control = host._amb.keeper_glow(k, KEEPER_SCALE, KEEPER_REGION.position.x, KEEPER_FLAME[0])
+	var glow: Control = host._amb.keeper_glow(k, KEEPER_SCALE, reg0.position.x, KEEPER_FLAME[0])
 	## 待机: 逐帧换 AtlasTexture 的区域(不做整张图平移 —— 那样看不出在动)
 	var st := {"f": 0}
 	var tm := Timer.new(); tm.name = "KeeperIdle"; tm.wait_time = KEEPER_FRAME_SEC
 	tm.timeout.connect(func() -> void:
 		st["f"] = (int(st["f"]) + 1) % KEEPER_FRAMES
-		kat.region = Rect2(KEEPER_REGION.position + Vector2(128.0 * float(st["f"]), 0.0), KEEPER_REGION.size)
+		kat.region = Rect2(reg0.position + Vector2(128.0 * float(st["f"]), 0.0), reg0.size)
 		if glow != null and is_instance_valid(glow):
-			host._amb.place_keeper_glow(glow, KEEPER_SCALE, KEEPER_REGION.position.x, KEEPER_FLAME[int(st["f"])]))
+			host._amb.place_keeper_glow(glow, KEEPER_SCALE, reg0.position.x, KEEPER_FLAME[int(st["f"])]))
 	k.add_child(tm)
 	tm.start()

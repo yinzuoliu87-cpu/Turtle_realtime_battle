@@ -1929,7 +1929,7 @@ scripts/systems/equip/timestop_system.gd|lit|+%d龟能
 scripts/systems/onboarding/first_tips.gd|lit|%s · 点击查看规则
 scripts/systems/onboarding/first_tips.gd|lit|3 件同名同星装备自动合成升星
 scripts/systems/onboarding/first_tips.gd|lit|开始第一场对战
-scripts/systems/onboarding/first_tips.gd|lit|斗龟场每周是一个赛季：周二到周五是%s，周六是%s，周日是%s，争夺本周冠军。每到周一，所有人从同一起点重新开始。
+scripts/systems/onboarding/first_tips.gd|lit|斗龟场每周是一个赛季：周二到周五是%s，周六是%s，周日是%s，争夺冠军。每到周一，所有人从同一起点重新开始。
 scripts/systems/onboarding/first_tips.gd|lit|本场由服务器判定 · 退出不影响结果
 scripts/systems/onboarding/first_tips.gd|lit|羁绊已激活 · 点击查看详情
 scripts/systems/onboarding/first_tips.gd|lit|训龟大师在战斗中施放所选技能

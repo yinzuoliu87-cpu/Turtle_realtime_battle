@@ -57,8 +57,10 @@ func _ready() -> void:
 		src_ts.count("_refresh_synergy_chips()") >= 3,
 		"实得 %d 处(建 1 + 刷新 2)" % src_ts.count("_refresh_synergy_chips()"))
 	var src_shop: String = FileAccess.get_file_as_string("res://scripts/scenes/ShopScene.gd")
-	_ok("① ★商店也改用同一份(抽走之后没留一份手抄的在原地)",
-		src_shop.find("GameState.synergy_rows()") >= 0
+	## ★2026-10-21 商店不再画羁绊(用户「商店里为什么会显示背包的装备和羁绊？」→「商店要这么搞」):
+	##   不许回来一份手抄的(那正是这条要防的), 也不再调 synergy_rows。
+	_ok("① ★商店里没有羁绊(既没调同一份, 也没有手抄的)",
+		src_shop.length() > 1000 and src_shop.find("GameState.synergy_rows()") < 0
 			and src_shop.find('rows.append({"t": t2') < 0)
 
 	# ══ ② synergy_rows 的算法本身 ═════════════════════════════════════════
