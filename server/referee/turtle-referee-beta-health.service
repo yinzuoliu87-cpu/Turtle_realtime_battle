@@ -1,0 +1,11 @@
+# 内测服裁判机健康检查（积压 / 心跳）。由 turtle-referee-beta-health.timer 每 5 分钟拉一次；失败只进 journald，
+# 不进正式服的报警口径（方案书 §6.4）。
+[Unit]
+Description=Turtle referee BETA health check (referee_backlog on turtle-beta)
+
+[Service]
+Type=oneshot
+User=turtle-referee
+Group=turtle-referee
+EnvironmentFile=/etc/turtle-referee/env-beta
+ExecStart=/usr/bin/python3 /opt/turtle-beta/referee/referee_poller.py --health

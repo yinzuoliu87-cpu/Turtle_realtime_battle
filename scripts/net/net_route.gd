@@ -34,6 +34,8 @@ const SETTING_RELAY := "turtle/relay_url"
 const DEFAULT_RELAY := "https://cn.turtlearena.xyz"
 ## 直连的直播入口(server/stream/)。走中转时 = 中转 + "/streams"(server/relay/relay.caddy 转过去)。
 const STREAM_DIRECT := "https://stream.turtlearena.xyz/streams"
+## 直播地址的设置项(默认 = STREAM_DIRECT; 内测服包读 `turtle/stream_base.beta_server`, 方案书 20261020-内测服.md §4.4)。
+const SETTING_STREAM := "turtle/stream_base"
 const PROBE_PATH := "/rest/v1/service_status?select=*&limit=1"
 const RACE_SEC := 4.0
 const FAIL_SWITCH := 2
@@ -41,6 +43,8 @@ const SAVE_PATH := "user://net_route.cfg"
 ## 只读 RPC 表就用 `SupabaseNet.READ_RPCS`(不另抄一份)。运行期才 load: supabase.gd preload 本文件, 反过来 preload 就成环。
 const SB_PATH := "res://scripts/net/supabase.gd"
 const SELF_PATH := "res://scripts/net/net_route.gd"
+## 正式服 / 内测服(构建期切, 地址与 key 一起换): `server_env.gd`。
+const _SE := preload("res://scripts/net/server_env.gd")
 
 const RACE_IDLE := "idle"
 const RACE_RUNNING := "running"
@@ -79,13 +83,16 @@ static func routes() -> PackedStringArray:
 	if OS.has_environment(ENV_URL):
 		direct = _norm(OS.get_environment(ENV_URL))
 	else:
-		direct = _norm(str(ProjectSettings.get_setting(SETTING_URL, "")))
+		direct = _norm(str(_SE.setting(SETTING_URL, "")))
 	if direct == "":
 		return PackedStringArray()
 	var out := PackedStringArray([direct])
 	var relay := ""
 	if OS.has_environment(ENV_RELAY):
 		relay = _norm(OS.get_environment(ENV_RELAY))
+	elif _SE.is_beta():
+		## ★内测服不走大陆中转: cn.turtlearena.xyz 只转发到正式服那台 Supabase(server/relay/), 走它 = 连回正式服。
+		relay = ""
 	elif not OS.has_environment(ENV_URL):
 		relay = _norm(str(ProjectSettings.get_setting(SETTING_RELAY, DEFAULT_RELAY)))
 	if relay != "" and relay != direct:
@@ -111,13 +118,19 @@ static func current_base() -> String:
 	return _cur
 
 
-## 直播入口: 当前走直连 ⇒ stream 自己的地址; 走中转 ⇒ 中转/streams。
+## 直播入口: 当前走直连 ⇒ stream 自己的地址(内测服包 = `/beta/streams`); 走中转 ⇒ 中转/streams。
 static func stream_base() -> String:
 	var rs := routes()
 	var c := current_base()
 	if rs.size() > 1 and c != rs[0]:
 		return c + "/streams"
-	return STREAM_DIRECT
+	return stream_direct()
+
+
+## 直连的直播地址: 设置 `turtle/stream_base`(内测服包换成 `.beta_server` 那一项), 没设 = STREAM_DIRECT。
+static func stream_direct() -> String:
+	var v := _norm(str(_SE.setting(SETTING_STREAM, STREAM_DIRECT)))
+	return v if v != "" else STREAM_DIRECT
 
 
 ## 当前入口是不是中转(网络诊断 / 日志用)。

@@ -28,6 +28,8 @@ extends Node
 const _P2S := preload("res://scripts/gamedata/phase2_config.gd")
 const _MF := preload("res://scripts/net/match_fetch.gd")   # 取录像的两条读的纯函数(查询串 / 判回包), 2026-10-20 挪出
 const _NR := preload("res://scripts/net/net_route.gd")    # 多入口选路(直连 + 大陆中转, 2026-10-20 · 方案书 20261020-大陆中转.md)
+## 正式服 / 内测服(构建特性 `beta_server` / 开发进程 TURTLE_SERVER=beta): 地址与 key 一起换(方案书 20261020-内测服.md §4)。
+const _SE := preload("res://scripts/net/server_env.gd")
 
 const SETTING_URL := _NR.SETTING_URL
 const SETTING_KEY := "turtle/supabase_anon_key"
@@ -75,7 +77,8 @@ static func base_url() -> String:
 
 
 static func anon_key() -> String:
-	return str(ProjectSettings.get_setting(SETTING_KEY, "")).strip_edges()
+	## 内测服读 `turtle/supabase_anon_key.beta_server` —— 与地址(net_route `_SE.setting`)同一个判据, 不会只换一半。
+	return str(_SE.setting(SETTING_KEY, "")).strip_edges()
 
 
 ## 本层是否启用。★URL **与** key 都要有 —— 只有 URL 没有 key 的话每条请求都会被
@@ -1478,8 +1481,21 @@ static func state_from_response(ok: bool, code: int, body: String) -> Dictionary
 	var mv = (row as Dictionary).get("min_client_version", "")
 	var minv := str(mv) if mv is String else ""
 	if bool(m):
-		return {"state": ST_MAINTENANCE, "notice": str((row as Dictionary).get("notice", "")), "min": minv}
-	return {"state": ST_OK, "notice": "", "min": minv}
+		return {"state": ST_MAINTENANCE, "notice": str((row as Dictionary).get("notice", "")), "min": minv, "clock": _clock_of(row)}
+	return {"state": ST_OK, "notice": "", "min": minv, "clock": _clock_of(row)}
+
+
+## 内测服的服务端假时间偏移(`service_status.clock_offset_sec`, schema 20261021)。列缺失 / 不是数 ⇒ 0。
+## ★这里只解析; 叠不叠到时钟上由 `_P2S.note_server_clock_offset` 判(正式包恒不叠)。
+static func _clock_of(row) -> int:
+	if not (row is Dictionary):
+		return 0
+	var v = (row as Dictionary).get("clock_offset_sec", 0)
+	if v is int or v is float:
+		return int(v)
+	if v is String and (v as String).is_valid_int():
+		return int(v)
+	return 0
 
 
 ## 把一次回包应用到全局状态上。返回新状态。
@@ -1493,6 +1509,8 @@ static func apply_status_response(ok: bool, code: int, body: String) -> String:
 		## 问到了、而且这一版不再低于最低版本(运维把它调回来了)⇒ 之前那句「要更新」作废, 墙撤掉。
 		if not VersionGate.version_less(ReplayRecorder.client_version(), _min_client):
 			_server_said_update = false
+	if r.has("clock"):
+		_P2S.note_server_clock_offset(int(r["clock"]))
 	_asked += 1
 	return _state
 
@@ -1650,7 +1668,11 @@ static func is_write_request(method: String, url: String) -> bool:
 	return true
 
 ## 时间穿越中 + 写请求 ⇒ 不发。
+## ★内测服包(构建特性 `beta_server`)放行: 内测服就是拿来测周末的, 报名 / 交阵容 / 闯关上报正是要测的东西
+##   (方案书 20261020-内测服.md §2.4)。判据是构建特性, 不是地址字符串; 正式包行为一字不变。
 static func travel_blocks(method: String, url: String) -> bool:
+	if _SE.is_beta():
+		return false
 	return _P2S.travel_active() and is_write_request(method, url)
 
 

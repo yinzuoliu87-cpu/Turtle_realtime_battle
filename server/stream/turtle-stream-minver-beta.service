@@ -1,0 +1,14 @@
+# 内测服直播的版本闸同步：turtle-beta 的 service_status.min_client_version → /etc/caddy/turtle-min-version-beta.caddy
+# （管 /beta/streams/*，匹配器 @stream_old_beta）。方案书 docs/plans/20261020-内测服.md §6.3。
+[Unit]
+Description=Turtle stream BETA: sync min_client_version into Caddy gate (/beta/streams)
+After=network-online.target caddy.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+Environment=STREAM_ENV_FILE=/etc/turtle-referee/env-beta
+Environment=STREAM_SNIPPET=/etc/caddy/turtle-min-version-beta.caddy
+Environment=STREAM_GATE_PATH=/beta/streams/*
+Environment=STREAM_MATCHER=stream_old_beta
+ExecStart=/usr/bin/python3 /opt/turtle-beta/stream/stream_ops.py minver

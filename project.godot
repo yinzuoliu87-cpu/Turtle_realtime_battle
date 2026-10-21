@@ -27,6 +27,9 @@ config/icon="res://icon.png"
 config/name.offline_dev="斗龟场 测试包（离线）"
 config/use_custom_user_dir.offline_dev=true
 config/custom_user_dir_name.offline_dev="斗龟场 测试包"
+config/name.beta_server="斗龟场 内测服"
+config/use_custom_user_dir.beta_server=true
+config/custom_user_dir_name.beta_server="斗龟场 内测服"
 
 [autoload]
 
@@ -72,6 +75,11 @@ backend_url=""
 ; 环境变量 TURTLE_SUPABASE 覆盖 url; 空白串 = 整层停用(门禁进程一律传空白)。
 supabase_url="https://cjefldecsfpnclhfwriw.supabase.co"
 supabase_anon_key="sb_publishable_tvCm2DPO9SflJHME9K_MGA_u04tG8bi"
+; 内测服 turtle-beta(2026-10-21 · 方案书 docs/plans/20261020-内测服.md §4)。只有带特性标签 beta_server 的导出(预设 WinBeta)
+; 或 debug 进程设了 TURTLE_SERVER=beta 才读这一组(scripts/net/server_env.gd 显式读 .beta_server, 不回落到上面的正式服值)。
+supabase_url.beta_server="https://twxkroptuqbfhmlojjgl.supabase.co"
+supabase_anon_key.beta_server="sb_publishable_bLKRe9xrtS5knJhyDRK4jg_Pc7NZJ-f"
+stream_base.beta_server="https://stream.turtlearena.xyz/beta/streams"
 
 [internationalization]
 

@@ -131,6 +131,8 @@ WHY = {
                                     "MATCH_FETCH_TIMEOUT_SEC 15 秒, verify_replay_watch ③ 把它压到 0.4 秒量「服务器不回话」那一支)",
     "stale_sec_for_test": "观赛「直播中断」时限注入(live_spectate.gd `_tick`; 产品用 gauntlet_board.LIVE_STALE_SEC 45 秒, "
                           "verify_live_spectate ⑤ 压到 6 秒量「打的人断线 ⇒ 直播中断」那一支)",
+    "beta_override": "内测服包开关的门禁注入(server_env.gd `is_beta()`; 产品走导出特性标签 beta_server / debug 进程 TURTLE_SERVER, "
+                     "无头进程没有导出标签 ⇒ verify_beta_server_build 只能靠它把「内测服包」那一支真跑出来)",
     "offline_override": "测试包离线开关的门禁注入(supabase.gd `offline_dev()`; 产品走导出特性标签 offline_dev, "
                         "无头进程没有导出标签 ⇒ verify_offline_dev_build ① 只能靠它把「整层停用」那一支真跑出来)",
     "platform_override": "平台注入: FontKit(iOS 不挂系统字体, verify_ios_no_system_font) 与 CursorTheme(Mac 改用系统光标, "

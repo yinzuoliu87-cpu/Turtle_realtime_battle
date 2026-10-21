@@ -1049,6 +1049,7 @@ func _right_column(now: int = 0) -> void:
 	_status_row(now)       # 左上玩家信息卡
 	_version_stamp()
 	_travel_badge()
+	_beta_badge()
 
 
 ## 右下角版本号 —— 版本号最大的实际价值就是【测试者报 bug 时能说清是哪个版本】。
@@ -1096,6 +1097,31 @@ func _travel_badge() -> void:
 	l.size = Vector2(300, 24)
 	l.custom_minimum_size = Vector2(300, 24)
 	l.position = Vector2(W - WALL - 200 - 12 - 300, H - 27)   # 版本号左边同一行(主 CTA 底下)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	content_root.add_child(l)
+
+
+## 【内测服包】角标的节点名 —— 门禁 `verify_beta_server_build` 按名字找它。
+const BETA_BADGE_NAME := "BetaServerBadge"
+
+## 内测服包常驻一行「内测服」(服务端在假时间上 ⇒ 「内测服 · 服务端时间 周日 18:05 UTC」), 2026-10-21 方案书 20261020-内测服.md §4.5。
+## ★为什么必须有: 内测服包与正式包长得一样, 截图报 bug 时看不出连的是哪台、时间是不是假的。
+## ★正式包 ⇒ `beta_badge_text()` 返回 "" ⇒ 一个节点都不建(玩家路径一字不动)。
+## 位置: 版本号同一行, 测试时间角标那一格(没穿越时)或再往左一格(穿越着时)。
+func _beta_badge() -> void:
+	var t: String = _P2C.beta_badge_text()
+	if t == "":
+		return
+	var l := _menu_label(t, FONT_VERSION, Color("#6ec6ff"))
+	l.name = BETA_BADGE_NAME
+	l.set_anchors_preset(Control.PRESET_TOP_LEFT)   # 同 `_version_stamp`: 先掰回锚点再设 size
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	l.size = Vector2(360, 24)
+	l.custom_minimum_size = Vector2(360, 24)
+	var x: float = W - WALL - 200 - 12 - 360
+	if _P2C.travel_badge_text() != "":
+		x -= 300 + 12
+	l.position = Vector2(x, H - 27)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	content_root.add_child(l)
 

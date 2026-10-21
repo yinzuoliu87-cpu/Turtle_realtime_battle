@@ -508,7 +508,7 @@ static func now_utc() -> int:
 	var tr: int = _travel_offset(real)
 	if tr != 0:
 		return real + tr
-	return real + server_offset()
+	return real + server_offset() + beta_clock_offset()
 
 ## ══════════════════════════════════════════════════════════════════════
 ##  【服务器时钟偏移】周赛程跟服务器时间走, 不信手机时钟 (2026-10-05, 方案书 20260916 §8 E1 / Q2 选 b)
@@ -556,6 +556,37 @@ static func note_server_time(srv_ts: int, device_ts: int) -> void:
 	cf.set_value("clock", "offset", off)
 	cf.set_value("clock", "measured_at", srv_ts)
 	cf.save(SERVER_CLOCK_PATH)
+
+## ══════════════════════════════════════════════════════════════════════
+##  【内测服的服务端假时间】(2026-10-21 · 方案书 docs/plans/20261020-内测服.md §2.3)
+## ══════════════════════════════════════════════════════════════════════
+## 内测服的服务端有一条时钟缝 `app_now() = now() + 偏移`(schema 20261021), 偏移由 tools/beta_ops.py 设,
+##   镜像到 `service_status.clock_offset_sec`。客户端问服务状态时顺手带回来, 叠到 `now_utc()` 上
+##   ⇒ 所有内测服客户端与服务端看到同一个假时间(赛程条 / 倒计时 / 周六开门 / 周号), 不再各穿各的。
+## ★只有内测服包叠(`server_env.gd` `is_beta()`: 构建特性 beta_server / debug 进程 TURTLE_SERVER=beta)。
+##   正式包即使服务端误回一个非 0 值也**不叠**(读的时候判, 不是存的时候判)。不落盘: 每次启动重新问。
+const _SE := preload("res://scripts/net/server_env.gd")
+static var beta_clock_offset_sec: int = 0
+
+static func beta_clock_offset() -> int:
+	if beta_clock_offset_sec == 0 or not _SE.is_beta():
+		return 0
+	return beta_clock_offset_sec
+
+## 服务状态回包里带回的偏移(`SupabaseNet.apply_status_response` 调)。
+static func note_server_clock_offset(off: int) -> void:
+	beta_clock_offset_sec = off
+
+## 主菜单「内测服」角标的字。不是内测服 ⇒ ""(角标不建); 服务端在假时间上 ⇒ 带上「服务端时间 周X hh:mm UTC」。
+static func beta_badge_text() -> String:
+	if not _SE.is_beta():
+		return ""
+	if beta_clock_offset() == 0:
+		return _SE.BADGE_TEXT
+	var ts: int = now_utc()
+	var d: Dictionary = Time.get_datetime_dict_from_unix_time(ts)
+	return "%s · 服务端时间 周%s %02d:%02d UTC" % [_SE.BADGE_TEXT, WEEKDAY_CN[iso_weekday_utc(ts) - 1],
+		int(d.get("hour", 0)), int(d.get("minute", 0))]
 
 ## 门禁用: 清掉内存与落盘(回到「从没连上过」)。
 static func server_clock_reset() -> void:
@@ -724,7 +755,8 @@ static func travel_label(ts: int) -> String:
 static func travel_badge_text() -> String:
 	if not travel_active():
 		return ""
-	return travel_label(now_utc()) + TRAVEL_OFFLINE_SUFFIX
+	## 内测服包穿越时写请求照发(supabase.gd `travel_blocks`) ⇒ 不挂「不联网」。
+	return travel_label(now_utc()) + ("" if _SE.is_beta() else TRAVEL_OFFLINE_SUFFIX)
 
 ## 角标尾巴。门禁按它断言, 两边不各写一份。
 const TRAVEL_OFFLINE_SUFFIX := " · 不联网"

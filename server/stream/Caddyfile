@@ -7,6 +7,9 @@
 #      口径与 PostgREST 钩子 check_client_version 相同（不带头 / 看不懂 ⇒ 按 0.0.0 ⇒ 拒）。
 #      最低版本由 turtle-stream-minver.timer 每分钟写进 /etc/caddy/turtle-min-version.caddy（stream_ops.py minver）。
 # /healthz 不过版本闸。
+# 内测服（2026-10-21 · 方案书 docs/plans/20261020-内测服.md §6.3 / D5）：同一站点多一段 /beta/streams/*，
+#   根目录 /var/lib/turtle-referee-beta/streams，版本闸用第二个片段 /etc/caddy/turtle-min-version-beta.caddy
+#   （turtle-stream-minver-beta.timer 生成，匹配器 @stream_old_beta）。不新增 DNS。改完一律 validate 再 reload（R7）。
 
 {
 	# 证书只走 Let's Encrypt（不回落 ZeroSSL）；账号不登记邮箱
@@ -46,6 +49,34 @@
 		handle @endjson {
 			uri strip_prefix /streams
 			root * /var/lib/turtle-referee/streams
+			header Content-Type "application/json; charset=utf-8"
+			header Cache-Control "public, max-age=10"
+			encode {
+				gzip
+				match {
+					header Content-Type application/json*
+				}
+			}
+			file_server {
+				browse off
+			}
+		}
+		# ── 内测服 /beta/streams/*（与上面两段同形状，只换前缀、根目录与版本闸片段）──
+		import /etc/caddy/turtle-min-version-beta.caddy
+		@beta_chunk path_regexp beta_chunk `^/beta/streams/[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+/[0-9]+\.bin$`
+		@beta_endjson path_regexp beta_endjson `^/beta/streams/[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+/end\.json$`
+		handle @beta_chunk {
+			uri strip_prefix /beta/streams
+			root * /var/lib/turtle-referee-beta/streams
+			header Content-Type application/octet-stream
+			header Cache-Control "public, max-age=604800, immutable"
+			file_server {
+				browse off
+			}
+		}
+		handle @beta_endjson {
+			uri strip_prefix /beta/streams
+			root * /var/lib/turtle-referee-beta/streams
 			header Content-Type "application/json; charset=utf-8"
 			header Cache-Control "public, max-age=10"
 			encode {

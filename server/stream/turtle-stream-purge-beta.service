@@ -1,0 +1,14 @@
+# 内测服直播的过期流目录清理（口径同正式服：每周二 00:00 UTC 删本周一之前的；按真实时间）。
+[Unit]
+Description=Turtle stream BETA: purge expired stream directories
+
+[Service]
+Type=oneshot
+User=turtle-referee
+Group=turtle-referee
+Environment=STREAM_ROOT=/var/lib/turtle-referee-beta/streams
+ExecStart=/usr/bin/python3 /opt/turtle-beta/stream/stream_ops.py purge
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/turtle-referee-beta

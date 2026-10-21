@@ -46,6 +46,8 @@ const LS_PATH := "res://scripts/systems/replay/live_spectate.gd"
 
 ## 裁判机上的 Caddy(server/stream/README.md)。环境变量 TURTLE_STREAM_BASE 可改(门禁指到本进程起的 HTTP 服务)。
 ## ★没设环境变量时跟 API 走同一条入口(net_route.gd `stream_base`: 走中转 ⇒ 中转/streams, 2026-10-20 大陆中转)。
+## ★直连地址读设置 `turtle/stream_base`(默认 = 下面这个常量, 逐字等于原来的写死值); 内测服包读
+##   `turtle/stream_base.beta_server` = `…/beta/streams`(方案书 20261020-内测服.md §4.4, 取值走 NR.stream_direct)。
 const BASE := NR.STREAM_DIRECT
 const ENV_BASE := "TURTLE_STREAM_BASE"
 

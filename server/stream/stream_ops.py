@@ -20,6 +20,8 @@
   STREAM_CADDYFILE   默认 /etc/caddy/Caddyfile
   STREAM_ROOT        默认 /var/lib/turtle-referee/streams（对外目录）
   STREAM_TMP         默认 <STREAM_ROOT>-tmp（裁判边算边写的临时目录，不对外）
+  STREAM_GATE_PATH   默认 /streams/*（版本闸管的路径；内测服那份 = /beta/streams/*，2026-10-21 方案书 20261020-内测服.md §6）
+  STREAM_MATCHER     默认 stream_old（片段里的具名匹配器；同一站点里两份片段必须不同名，内测服 = stream_old_beta）
 """
 import datetime as dt
 import json
@@ -154,6 +156,22 @@ def selftest() -> int:
         if bool(rx.match(cv)) != want:
             bad += 1
             print("PROBE FAIL %r want %s" % (cv, want))
+    # 片段：默认（正式服）与原来写死的形状逐字相同；内测服换路径 / 匹配器名
+    env0 = {k: os.environ.pop(k, None) for k in ("STREAM_MATCHER", "STREAM_GATE_PATH")}
+    sp = render_snippet("0.21.3")
+    if "@stream_old {\n\tpath /streams/*\n" not in sp or "respond @stream_old `" not in sp or "beta" in sp:
+        bad += 1
+        print("SNIPPET FAIL 正式服默认片段变了")
+    os.environ["STREAM_MATCHER"] = "stream_old_beta"
+    os.environ["STREAM_GATE_PATH"] = "/beta/streams/*"
+    sb = render_snippet("0.21.3")
+    if "@stream_old_beta {\n\tpath /beta/streams/*\n" not in sb or "@stream_old " in sb or "respond @stream_old_beta `" not in sb:
+        bad += 1
+        print("SNIPPET FAIL 内测服片段")
+    for k, v in env0.items():
+        os.environ.pop(k, None)
+        if v is not None:
+            os.environ[k] = v
     print("selftest: %d 条对拍, %d 条不一致" % (n, bad))
     return 0 if (bad == 0 and n > 10000) else 1
 
@@ -187,20 +205,23 @@ def fetch_min_version() -> str:
 
 def render_snippet(min_version: str) -> str:
     rx = version_regex(min_version)
+    # 默认值 = 原来写死的两个字面量 ⇒ 正式服那份生成的片段逐字节不变（selftest 量它）
+    m = os.environ.get("STREAM_MATCHER", "stream_old")
+    gp = os.environ.get("STREAM_GATE_PATH", "/streams/*")
     head = ("# 由 stream_ops.py minver 生成（每分钟从 service_status.min_client_version 读一次）。别手改。\n"
             "# min_client_version = %s\n" % json.dumps(min_version))
     if rx is None:
         # 与 SQL 同：最低版本看不懂 / 全 0 ⇒ 不设闸
-        return head + "# 最低版本看不懂或为 0 ⇒ 不设闸\n@stream_old expression `false`\n"
+        return head + "# 最低版本看不懂或为 0 ⇒ 不设闸\n@%s expression `false`\n" % m
     body = json.dumps({"message": "update_required", "min_client_version": min_version}, ensure_ascii=False)
     return (head +
-            "@stream_old {\n"
-            "\tpath /streams/*\n"
+            "@%s {\n"
+            "\tpath %s\n"
             "\tnot header_regexp X-Client-Version `%s`\n"
             "}\n"
-            "header @stream_old Cache-Control no-store\n"
-            "header @stream_old X-Min-Client-Version `%s`\n"
-            "respond @stream_old `%s` 426\n") % (rx, min_version, body)
+            "header @%s Cache-Control no-store\n"
+            "header @%s X-Min-Client-Version `%s`\n"
+            "respond @%s `%s` 426\n") % (m, gp, rx, m, m, min_version, m, body)
 
 
 def cmd_minver() -> int:

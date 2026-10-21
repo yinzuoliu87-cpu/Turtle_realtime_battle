@@ -148,6 +148,26 @@
 - 周日兜底：开关开着时真实场次只等裁判；**超过 3 倍本轮时长（24 分钟）仍没结果**才退回原来的 side 0 代判（防整组卡死）。
 - 每局的日志在 `/var/lib/turtle-referee/w<线程号>/godot.log`（只留最近一局）。
 
+## 内测服第二套（2026-10-21 部署 · 方案书 [docs/plans/20261020-内测服.md](../../docs/plans/20261020-内测服.md) §6）
+
+同机两套轮询器，**正式服那套（`turtle-referee.service` / `/etc/turtle-referee/env` / `/opt/turtle/`）一个字不动**。
+
+| 项 | 内测服那套 |
+|---|---|
+| unit | `turtle-referee-beta.service`（不 enable；由高峰停起 timer 起停）· `Nice=15` · `CPUQuota=100%` · `IOSchedulingClass=idle` |
+| env | `/etc/turtle-referee/env-beta`（root:turtle-referee 640）：`SUPABASE_URL` = turtle-beta、`SUPABASE_SERVICE_KEY` = 内测服 secret key（本机副本 `~/.supabase/beta-service-key`）、`VERSIONS_DIR=/opt/turtle-beta`、`WORK_DIR=/var/lib/turtle-referee-beta`、`WORKERS=1`、`STREAM_ROOT=/var/lib/turtle-referee-beta/streams`、`WORKER_NAME=beta` |
+| 代码 | `/opt/turtle-beta/referee/referee_poller.py`（自己一份，root 644；内测服先试新轮询器）· `/opt/turtle-beta/stream/stream_ops.py` |
+| 工程版本 | `/opt/turtle-beta/v<版本>/`（2026-10-21：v0.21.3 = 正式那份的拷贝、v0.21.4 = 拷贝后 checkout tag 再 `--import`；det_cross 37/37、job_roundtrip 65 ALL PASS）|
+| 高峰停起 | `turtle-referee-beta-peak.timer`（每 5 分钟）→ `beta_peak_guard.sh`：周六全天、周日 17:30~24:00 UTC 停，其余起；`/etc/turtle-referee/beta-off` 存在 ⇒ 一直停 |
+| 健康检查 | `turtle-referee-beta-health.timer`（每 5 分钟，只进 journald，不进正式服报警口径）|
+| 直播 | Caddy 同一站点 `/beta/streams/*` → `/var/lib/turtle-referee-beta/streams`；版本闸片段 `/etc/caddy/turtle-min-version-beta.caddy`（`turtle-stream-minver-beta.timer`，匹配器 `@stream_old_beta`）；清理 `turtle-stream-purge-beta.timer`（每小时 :07）|
+| 机器人池 | `python tools/beta_ops.py seed-bots`（ssh 跑内测服那份 `--bot-pool`）|
+
+装新版本（内测服）：`cp -a /opt/turtle-beta/v<旧> /opt/turtle-beta/v<新>` → 以 turtle-referee 身份 `git fetch --depth 1 origin tag v<新> && git checkout -f v<新>` →
+`--import`（`XDG_DATA_HOME=/var/lib/turtle-referee-beta/import-ud`）→ 跑 det_cross / job_roundtrip → 内测服 `referee_versions` 登记 → `systemctl restart turtle-referee-beta`。
+回滚 / 拆除：`systemctl disable --now turtle-referee-beta-peak.timer turtle-referee-beta-health.timer turtle-stream-minver-beta.timer turtle-stream-purge-beta.timer; systemctl stop turtle-referee-beta`；
+Caddy 拷回 `/root/betadeploy/Caddyfile.bak-20261021` → `caddy validate` → `systemctl reload caddy`。部署前正式服文件的 sha256 在 `/root/betadeploy/prod_before.sha256`。
+
 ## 已知风险与未决点
 
 - **R1 真机确定性**：服务器（Linux x86）算的录像要在 iPhone（ARM）上逐步重算。x86↔x86 已逐位一致（金标 + 本门禁），ARM 没验过（方案书 §0，`verify_referee_device_parity` 未做）。不一致时手机播放会在第一个对不上的校验点停下并上报（不会默默播错的），但玩家就看不了那一场。

@@ -323,6 +323,7 @@ scripts/gamedata/minion_codex.gd|lit|铁锁
 scripts/gamedata/minion_codex.gd|lit|铁锤
 scripts/gamedata/minion_codex.gd|lit|长手刃
 scripts/gamedata/phase2_config.gd|lit| · 不联网
+scripts/gamedata/phase2_config.gd|lit|%s · 服务端时间 周%s %02d:%02d UTC
 scripts/gamedata/phase2_config.gd|lit|\n未收到验证码？请检查垃圾邮件，或返回更换邮箱。
 scripts/gamedata/phase2_config.gd|lit|\n未绑定时进度仅保存在本设备。邮箱与昵称可随时修改。
 scripts/gamedata/phase2_config.gd|lit|一
@@ -642,6 +643,7 @@ scripts/net/remote_pool.gd|lit|装备 id `%s` 不在白名单
 scripts/net/remote_pool.gd|lit|龟 id `%s` 不在白名单
 scripts/net/remote_pool.gd|lit|（部署不存在）
 scripts/net/report_net.gd|lit|昵称已被重置为默认昵称
+scripts/net/server_env.gd|lit|内测服
 scripts/net/supabase.gd|lit|不支持该邮箱域名
 scripts/net/supabase.gd|lit|发送失败（%d），请稍后重试
 scripts/net/supabase.gd|lit|操作过于频繁，请稍后再试

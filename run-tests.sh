@@ -811,6 +811,10 @@ run_audit "tools/server_logic_gate.py"    "ALL OK" "server_logic_gate (云函数
 # 裁判机轮询器的「补流」任务(逐帧直播 §5, 2026-10-20): 假 rpc + 假 Godot 子进程, 发布 / 撤流 / 领活顺序是真代码。
 #   ★补流只产出状态流, 一次 referee_complete 都不许有(不写回结果、不改账); 重算胜方 / 指纹对不上 ⇒ 撤流。
 run_audit "tools/referee_poller_selftest.py" "ALL OK" "referee_poller_selftest (补流只录流不记账·对不上撤流·正常任务优先)"
+# 内测服工具链(2026-10-21 · docs/plans/20261020-内测服.md): 不连网(网络换成记账)。beta_ops 见正式服 ref 当场退出 3 /
+#   正式服写要显式放行且拒时一条请求都不发 / 正式服上线只收内测服上过同 sha256 的迁移 / 迁移逐字在 schema.sql /
+#   beta_setup 第一句挡 / 裁判机内测服 unit 不读正式服 env / Caddy 两套 /streams 都在。
+run_audit "tools/beta_server_selftest.py" "ALL OK" "beta_server_selftest (内测服工具链·拒正式服 ref·迁移先内测服同sha·裁判机/Caddy 两套分开)"
 # 龟壳「复制」链路的四方对账(pets.json / _do_skill 分派 / _IMPL / 白名单 / 小将技)。
 #   2026-08-28 首跑报出 17 处: 白名单里 13 个**普攻位技能永远不会被执行**(占名额虚报可抄数)、
 #   1 个幽灵条目、3 个小将技漏掉。★判据落在 `_do_skill` 的 **match 块 case 标签**,

@@ -1,0 +1,33 @@
+# 内测服（turtle-beta）的裁判轮询器（方案书 docs/plans/20261020-内测服.md §6 / D4）。放到 /etc/systemd/system/。
+# ★正式服那份 turtle-referee.service 与 /etc/turtle-referee/env 一个字不动；本份只是同机第二套：
+#   自己的 env（env-beta）、自己的工作目录 / 工程目录 / 直播目录，最多吃一个核、低优先级。
+# ★周六全天、周日 17:30~24:00 UTC（正式服赛程高峰）由 turtle-referee-beta-peak.timer 自动停、过后自动起。
+[Unit]
+Description=Turtle referee poller - BETA server (turtle-beta, low priority, 1 core max)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=turtle-referee
+Group=turtle-referee
+EnvironmentFile=/etc/turtle-referee/env-beta
+ExecStart=/usr/bin/python3 /opt/turtle-beta/referee/referee_poller.py
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=150
+# 不和正式服抢核：nice 15 + 最多一个核 + IO 最低档（方案书 R6：余量是推算，实测见实施回填）
+Nice=15
+CPUQuota=100%
+IOSchedulingClass=idle
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/turtle-referee-beta /opt/turtle-beta
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
