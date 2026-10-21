@@ -226,33 +226,55 @@ func _weekend() -> void:
 
 
 # ⑥
+## v4(2026-10-21): 首启选择框挂在独立的首启流程那一屏上(介绍 → 问 → 起名 → 主菜单), 不压在主菜单上。
 func _choice_box_present() -> void:
-	print("  ── ⑥ 首启选择框在场 ──")
+	print("  ── ⑥ 首启流程(介绍 / 选择框 / 起名)在场 ──")
 	P2C.now_override_ts = _ts_on(2)
 	_fresh(true)
 	OS.set_environment("ONBOARD", "1")
-	## 这一节要「跳过」走真出口 end_tutorial ⇒ 主菜单必须是真的 current_scene(否则出口会换场景把本测试换掉)
+	## 主菜单必须是真的 current_scene: 首启要换场(当子节点挂时不换, 见 _maybe_first_launch_tutorial)
 	var m = load(MENU).instantiate()
 	get_tree().root.add_child(m)
 	get_tree().current_scene = m
-	await _frames(40)
-	_ok("分母: 选择框在", m.get_node_or_null("TutorialChoice") != null)
-	_ok("★选择框在场 ⇒ 不出首次提示", _tip(m) == null)
-	## 在选择框里点「跳过」⇒ 当场补出「开始第一场对战」(不用等下次进主菜单)
+	await _frames(10)
+	OS.set_environment("ONBOARD", "")
+	var fl := get_tree().current_scene
+	_ok("分母: 首启 ⇒ 换到首启流程那一屏", fl != null and str(fl.scene_file_path).ends_with("FirstLaunch.tscn"),
+		str(fl.scene_file_path) if fl != null else "null")
+	if fl == null or not str(fl.scene_file_path).ends_with("FirstLaunch.tscn"):
+		return
+	_ok("★首启流程在场 ⇒ 不出首次提示", _tip(fl) == null)
 	GameState.onboarded = false
+	fl.call("skip_intro")
+	await _frames(2)
 	var other: Button = null
-	for b in m.get_node("TutorialChoice").find_children("*", "Button", true, false):
-		if (b as Button).text == "跳过":
-			other = b
+	var ch := fl.get_node_or_null("TutorialChoice")
+	_ok("分母: 选择框在(首启那一屏上)", ch != null)
+	if ch != null:
+		for b in ch.find_children("*", "Button", true, false):
+			if (b as Button).text == "跳过":
+				other = b
 	_ok("分母: 选择框里有「跳过」", other != null)
-	if other != null:
-		other.emit_signal("pressed")
-		await _frames(3)
-		var t := _tip(m)
-		_ok("★选择框点「跳过」⇒ 当场出「开始第一场对战」", t != null and str(t.text()) == FT.TEXT_START,
-			str(t.text()) if t != null else "无")
+	if other == null:
+		return
+	other.emit_signal("pressed")
+	await _frames(3)
+	_ok("★选择框 / 起名框在场 ⇒ 不出首次提示", _tip(fl) == null)
+	if is_instance_valid(fl) and bool(fl.call("is_naming")):
+		var ed := fl.find_child("NameEdit", true, false) as LineEdit
+		fl.call("confirm_name", ed.text if ed != null else "")
+	var mm: Node = null
+	for _w in range(120):
+		await get_tree().process_frame
+		mm = get_tree().current_scene
+		if mm != null and str(mm.scene_file_path).ends_with("MainMenu.tscn") and _tip(mm) != null:
+			break
+	_ok("★跳过 → 起名 → 主菜单 ⇒ 出「开始第一场对战」", mm != null and _tip(mm) != null and str(_tip(mm).text()) == FT.TEXT_START,
+		str(_tip(mm).text()) if mm != null and _tip(mm) != null else "无")
 	OS.set_environment("ONBOARD", "0")
-	m.queue_free()
+	if mm != null:
+		get_tree().current_scene = null
+		mm.queue_free()
 	await _frames(2)
 
 
@@ -370,7 +392,8 @@ func _merge() -> void:
 			_ok("★★教程中: 商店不出「合成升星」", _tip(sh) == null and not GameState.first_tips_seen.has(FT.FIRST_MERGE))
 		else:
 			var cell: Control = sh.merge_tip_target(eid, 2)
-			_ok("分母: 升星那一件在宝箱里有格子", cell != null and str(cell.name).begins_with("BenchCell"), str(cell.name) if cell != null else "无")
+			## ★2026-10-21: 商店里没有背包那一排了 ⇒ 合成提示指着顶栏「背包」(升星那件在背包页)。
+			_ok("分母: 合成提示指向顶栏「背包」", cell != null and cell is Button and str((cell as Button).text).find("背包") >= 0, str(cell.name) if cell != null else "无")
 			await _check_tip(sh, FT.FIRST_MERGE, cell, "合成")
 		GameState.tutorial_active = false
 		sh.queue_free()

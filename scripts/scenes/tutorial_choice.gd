@@ -3,14 +3,15 @@ class_name TutorialChoice
 ## 新手教程选择框(方案书 docs/plans/20261007-新手教程重做.md §4.3)。
 ##
 ## 用户 2026-10-07:「一般是有跳过和开始教程选项啊」; 文案去口语化(「去口语化你做就好，但是欢迎来到斗龟场还是要留的」)。
-##   · 首启:  标题「欢迎来到斗龟场」/ 副标题「新手教程」/ 按钮「开始教程」「跳过」
+##   · 首启:  标题「新手教程」/ 按钮「开始教程」「跳过」 —— 2026-10-21 v4 起框挂在首启流程那一屏
+##            (scripts/scenes/FirstLaunchScene.gd, 介绍之后), 「欢迎来到斗龟场」挪到介绍第一页的标题;
+##            框照云顶之弈 00:56「Greetings, tactician! Are you new?」✗/✓ 那一问(压在压暗的上一屏上)。
 ##   · 右上「?」: 标题「新手教程」/ 按钮「开始教程」「取消」
 ## 「开始教程」⇒ TutorialDirector.enter();「跳过」⇒ end_tutorial("skipped")(与走完同一个出口);「取消」⇒ 关框。
 ## ★节点名固定 `TutorialChoice` —— 驱动(sim_driver)与门禁按名字找它。
 ## ★皮肤沿用主菜单那块已换好的九宫格面板 + `UISkin.button`(verify_ui_consistency 量这块弹层)。
 
 const NODE_NAME := "TutorialChoice"
-const TXT_WELCOME := "欢迎来到斗龟场"
 const TXT_TITLE := "新手教程"
 const TXT_START := "开始教程"
 const TXT_SKIP := "跳过"
@@ -47,17 +48,10 @@ static func open(host: Node, first_launch: bool) -> Control:
 	box.add_child(vb)
 	var t := Label.new()
 	t.name = "Title"
-	t.text = TXT_WELCOME if first_launch else TXT_TITLE
+	t.text = TXT_TITLE
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	t.add_theme_font_size_override("font_size", 30); t.add_theme_color_override("font_color", Color("#ffd93d"))
 	vb.add_child(t)
-	if first_launch:
-		var d := Label.new()
-		d.name = "Subtitle"
-		d.text = TXT_TITLE
-		d.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		d.add_theme_font_size_override("font_size", 20); d.add_theme_color_override("font_color", Color("#e8d9b0"))
-		vb.add_child(d)
 	var bh := HBoxContainer.new()
 	bh.alignment = BoxContainer.ALIGNMENT_CENTER; bh.add_theme_constant_override("separation", 18)
 	vb.add_child(bh)

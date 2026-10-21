@@ -165,6 +165,9 @@ var _bg_tile: MenuArenaBackdrop   # 背景 = 擂台场景 (resize 时重新铺�
 
 
 func _ready() -> void:
+	## 首启的号这一屏马上要换去首启流程(见 _maybe_first_launch_tutorial): 从第一帧就藏着, 不闪一帧主菜单。
+	if _first_launch_wanted(false):
+		visible = false
 	SimFinalsPilot.attach_menu(self)   # 模拟窗口周日自动驾驶(只在 SIM_AUTOPILOT 开着时; 见 autopilot_finals.gd)
 	if OS.has_environment("PH_DEMO"):   # dev: 模拟大轮开局(未打第一场) → 看商店键灰锁
 		GameState.season_total_battles = 0
@@ -252,6 +255,11 @@ func _ready() -> void:
 			and get_tree() != null and get_tree().current_scene == self:
 		call_deferred("_go", "Settings")
 		return
+	## ★★首次打开 → 独立全屏的首启流程(游戏介绍 → 问要不要新手教程), **不压在主菜单上**
+	##   (用户 2026-10-21「第一次打开你得介绍这个游戏，然后问玩家要不要新手教程吧」; 方案书 20261020-教程重写 §v4)。
+	##   放在登录墙之后、建任何入口之前: 换场前这一屏一个入口都不建、整屏藏着(不闪一帧主菜单)。
+	if _maybe_first_launch_tutorial():
+		return
 	## 本周赛程收进弹层(默认藏着), 右下角模式卡只说今天 —— 两处都吃 paint_ts, 不再自己读钟。
 	_week_popup(paint_ts)
 	_mode_card(paint_ts)
@@ -279,9 +287,7 @@ func _ready() -> void:
 	content_root.move_child(_week_pop, -1)   # 弹层盖在所有入口上面(点开时才看得见)
 	get_viewport().size_changed.connect(_on_menu_resize)
 	# (去掉全屏询问弹窗·用户2026-07-18「去掉这个全屏提示」; _maybe_ask_fullscreen 保留未调用, 需要可在设置里切全屏)
-	# ★首次打开强制新手教学(用户2026-07-23)。判据: 从没走完过教学(onboarded=false)。
-	#   ONBOARD=1/0 可强制开/关, 供开发与门禁 —— 否则本机跑一次就 onboarded=true, 再也测不到。
-	_maybe_first_launch_tutorial()
+	# (首次打开的判定在上面登录墙之后 —— 首启流程是独立的一屏, 见 _maybe_first_launch_tutorial)
 	## 教程走完回到主菜单: 飘一行「教程完成」(方案书 §6.1 完成提示)。导演只留一句话, 由这里说出来。
 	var _tdm = get_node_or_null("/root/TutorialDirector")
 	## ★用 get/set 不直接点属性: 导演是 autoload, 万一跑的是旧版本(没有这个字段)也只是不飘字, 不报错中断 _ready。
@@ -401,17 +407,29 @@ func _place_outlined(text: String, size: int, fill: Color, pos: Vector2, box: Ve
 
 ## 次级键: 铁箍木板(不带金边、不发光)。与主 CTA 的金边木框 + 呼吸光晕是两种材质 ——
 ## 主次靠材质分, 不只靠大小。
-func _plank_button(label: String, cb: Callable, size: Vector2) -> Control:
+## lock_reason 非空 = 锁着(新手逐个点亮, NoviceMenu): 木板与字压灰、左侧像素锁、字下挂短原因 —— 与左列方键锁态同一套。
+func _plank_button(label: String, cb: Callable, size: Vector2, lock_reason: String = "") -> Control:
 	var holder := Control.new()
 	holder.custom_minimum_size = size
 	holder.size = size
 	holder.pivot_offset = size / 2.0
 	var plank := _nine_rect("btn-plank.png", Vector4(40, 14, 40, 14), Rect2(Vector2.ZERO, size))
 	holder.add_child(plank)
-	var lbl := _menu_label(label, 26, Color("#ffe9a8"))
+	var lbl := _menu_label(label, 26, Color("#b9b2a6") if lock_reason != "" else Color("#ffe9a8"))
 	lbl.add_theme_color_override("font_outline_color", Color("#1e0f04"))
 	lbl.add_theme_constant_override("outline_size", 8)
 	holder.add_child(lbl)
+	if lock_reason != "":
+		plank.modulate = Color(0.62, 0.58, 0.55)
+		lbl.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		lbl.position = Vector2(0.0, 4.0)
+		lbl.size = Vector2(size.x, size.y * 0.58)
+		holder.add_child(_pixel_lock(Vector2(30.0, (size.y - 30.0) / 2.0), 2.0))
+		var rs := _place_outlined(lock_reason, 14, Color("#ffe6b8"), Vector2(0.0, size.y * 0.56), Vector2(size.x, 20.0))
+		rs.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		rs.name = LOCK_REASON_NAME
+		rs.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(rs)
 	var btn := Button.new()
 	btn.flat = true
 	btn.focus_mode = Control.FOCUS_NONE
@@ -462,19 +480,24 @@ func _build_page_buttons(now: int = 0) -> void:
 		["图鉴", func(): _go("Codex"), mic + "ic-codex.png", false],
 		["排行榜", func(): _go("Leaderboard"), mic + "ic-trophy.png", false],
 	]
-	## 锁着的那颗右边常驻一行短原因(不点也看得见) —— 只有商店有锁, 所以只给它传。
+	## 锁着的那颗底边常驻一行短原因(不点也看得见) —— 商店有自己的锁; 首启走完教程的号另按场次逐个点亮(NoviceMenu)。
 	var shop_reason := _shop_lock_reason(ts)
 	for i in range(subs.size()):
 		var sN: Array = subs[i]
-		var e := _square_entry(str(sN[0]), sN[1], str(sN[2]), bool(sN[3]),
-			shop_reason if str(sN[0]) == SHOP_LABEL else "")
+		var reason: String = shop_reason if str(sN[0]) == SHOP_LABEL else ""
+		var nv: String = NoviceMenu.lock_reason(str(sN[0]), battle_locked)
+		if reason == "" and nv != "":
+			reason = nv
+			sN[1] = _toast.bind(nv)
+		var e := _square_entry(str(sN[0]), sN[1], str(sN[2]), bool(sN[3]) or nv != "", reason)
 		e.position = Vector2(SQ_X, _sq_y(i))
 		page_box.add_child(e)
 		_slide_in_left(e, i)
 	# ── 训龟大师: 主 CTA 正上方、右沿同轴, 小一档、另一种皮 ──
 	#    它跟「开始战斗」是同一件事的两步(配大师 → 出战), 放一起讲得通。
 	## ★★2026-09-27 文字里不带 emoji(用户:「全是 ai 味和网页味」): 系统彩色 emoji 贴在像素木牌上是两种画法。
-	var tb := _plank_button("训龟大师", func(): _go("TrainerConfig"), TRAINER_SIZE)
+	var tr_nv: String = NoviceMenu.lock_reason("训龟大师", battle_locked)
+	var tb := _plank_button("训龟大师", _toast.bind(tr_nv) if tr_nv != "" else func(): _go("TrainerConfig"), TRAINER_SIZE, tr_nv)
 	## 有计数条的日子(吃命/配额)它让到计数条上面; 周六/周日没有计数条, 照旧贴着开始战斗。
 	tb.position = TRAINER_POS_UP if not today_counter_texts(ts).is_empty() else TRAINER_POS
 	page_box.add_child(tb)
@@ -2656,25 +2679,43 @@ func _on_tutorial() -> void:
 	TutorialChoice.open(self, false)
 
 
-## 首次打开 → 弹选择框「开始教程 / 跳过」(用户 2026-10-07「一般是有跳过和开始教程选项啊」)。
-## 已看过(onboarded) / ONBOARD=0 → 不弹; ONBOARD=1 → 强制弹(门禁用)。
-func _maybe_first_launch_tutorial() -> void:
-	if OS.get_environment("ONBOARD") == "0":
-		return   # 显式关(测试/开发)
-	var force := OS.get_environment("ONBOARD") == "1"
-	# ★只在【真正作为当前主场景】时触发 —— 冒烟/门禁把主菜单当子节点 instantiate() 时不弹。
-	if not force and get_tree().current_scene != self:
-		return
-	if not force and GameState.tutorial_active:
-		return   # 已经在教程里(防重入)
+## 首启流程那一屏(介绍 → 问要不要教程 → 起名; scripts/scenes/FirstLaunchScene.gd)。
+const FIRST_LAUNCH_SCENE := "FirstLaunch"
+
+
+## 首次打开 → 换到独立的首启流程(2026-10-21 v4: 先介绍游戏, 再问「开始教程 / 跳过」; 原来是压在主菜单上的选择框)。
+## 已看过(onboarded) / ONBOARD=0 → 不去; ONBOARD=1 → 强制去(门禁用)。返回 true = 已安排换场(调用方不再建这一屏)。
+func _maybe_first_launch_tutorial() -> bool:
 	## ★老存档迁移(方案书 §4.3): 打过积分赛却没有 onboarded 标记的号(早期 ONBOARD=0 建的 sim 号 / 老玩家)
-	##   ⇒ 静默记成看过, 不弹框。
-	if not force and not GameState.onboarded and (int(GameState.season_total_battles) > 0 or not GameState.match_history.is_empty()):
+	##   ⇒ 静默记成看过, 不进首启流程。
+	if OS.get_environment("ONBOARD") != "1" and get_tree() != null and get_tree().current_scene == self 			and not GameState.onboarded and _is_old_account():
 		GameState.onboarded = true
 		GameState.save()
-	if not force and GameState.onboarded:
-		return
-	TutorialChoice.open(self, true)
+	if not _first_launch_wanted(true):
+		visible = true      # _ready 第一行按「不看场景」的判据先藏过(当子节点挂时不换场 ⇒ 露出来)
+		return false
+	visible = false
+	call_deferred("_go", FIRST_LAUNCH_SCENE)
+	return true
+
+
+## 这一屏该不该换去首启流程。check_scene: 只在【真正作为当前主场景】时才换 —— 冒烟/门禁把主菜单当子节点
+##   instantiate() 时不换场(换场会把宿主的场景树换掉, 同登录墙那条)。_ready 第一行那时 current_scene 还没指过来, 传 false。
+## 已看过(onboarded) / 老号 / ONBOARD=0 → 不去; ONBOARD=1 → 强制去(门禁用); 已经在教程里 → 不去(防重入)。
+func _first_launch_wanted(check_scene: bool) -> bool:
+	if OS.get_environment("ONBOARD") == "0":
+		return false
+	if check_scene and (get_tree() == null or get_tree().current_scene != self):
+		return false
+	if OS.get_environment("ONBOARD") == "1":
+		return true
+	if GameState.tutorial_active or GameState.onboarded:
+		return false
+	return not _is_old_account()
+
+
+func _is_old_account() -> bool:
+	return int(GameState.season_total_battles) > 0 or not GameState.match_history.is_empty()
 
 
 ## ══════════════════════════════════════════════════════════════════════

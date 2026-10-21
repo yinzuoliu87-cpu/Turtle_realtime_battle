@@ -1,110 +1,203 @@
 {
-  "_note": "新手教程步骤(v3: 2026-10-20 重写, 方案书 docs/plans/20261020-教程重写.md §1; 骨架沿用 2026-10-07 那版 docs/plans/20261007-新手教程重做.md)。由 scripts/scenes/TutorialGuide.gd 读取; 教程导演 TutorialDirector.steps_key_for 决定当前阶段用哪套。",
-  "_schema": "每步: text(必填, 一句祈使句, 单行) / highlight(必填: 宿主锚点名, 挖洞高亮) / advanceOn(必填: 玩家做了这个动作才前进, 由产品代码 TutorialDirector.notify 发) / point(可选: 手势指针指的锚点, 缺省=highlight) / hand(可选: tap|drag|none, 缺省 tap) / anchor(可选: top|bottom|right|left, 提示条位置) / auto(可选: 秒。有它 = 不阻塞的提示: 不压暗、不挡点击、不出手势, 显示这么久后自己淡出并前进; 此时 advanceOn 只作记账名, 不需要产品代码发)",
+  "_note": "新手教程步骤 v5(2026-10-21, 分镜 docs/plans/20261021-教程分镜v5.md; 文案 = 同篇「文案(2026-10-21 第二版: 照云顶中文原句写)」逐字)。由 scripts/scenes/TutorialGuide.gd 读取; 教程导演 TutorialDirector.steps_key_for 决定当前阶段用哪套。v4 见 docs/plans/20261020-教程重写.md。",
+  "_schema": "每步: text(必填, 一句; {pet}/{item} 由宿主 tut_text_vars() / 导演按当时状态填) / highlight(必填: 宿主锚点名, 挖洞高亮; 每步变成当前步时宿主若有 tut_step_shown(highlight) 就被调一次) / advanceOn(必填: 玩家做了这个动作才前进, 由产品代码 TutorialDirector.notify 发) / point(可选: 金色箭头指的锚点, 缺省=highlight) / hand(可选: tap|drag|none, 箭头的动法, 缺省 tap) / anchor(可选: top|bottom|right|left|band, 气泡位置; band = 战斗提示带, 见 TutorialGuide._place_panel) / auto(可选: 秒。有它 = 不阻塞的提示: 不压暗、不挡点击、不出箭头, 显示这么久后自己淡出并前进; 此时 advanceOn 只作记账名) / trigger(只在 battle: 这一句挂在哪个战斗事件上, 事件没发生就不出, 不卡流程) / delay(只在 battle: trigger=fight 时开打后再等几秒) / _id(分镜编号, 只作对账)",
   "_anchors": {
-    "team_select": "roster(候选龟) / roster_pet(第一只没上阵的龟) / confirm(出战钮)",
-    "battle": "lane_plate(顶部当前战场计时牌) / foe_egg(顶部 PK 条下敌方的蛋血副条) —— 导演 TutorialDirector._battle_anchor 解析",
+    "team_select": "roster_pet(候选里下一只该选的教学龟·发光那张) / skill_choices(右栏技能格) / skill_pick(箭头指的那一格: 第一个可选且没选上的技能) / confirm(「出战」钮)",
+    "battle": "buff_badge(「教程加成」签) / lane_plate(顶部当前战场计时牌) / cast_unit(第一次放技能那只龟的血条+龟能槽) / trainer(第一次放技能的训龟大师) / foe_egg(顶部 PK 条下敌方的蛋血副条) —— 导演 TutorialDirector._battle_anchor 解析",
     "settle": "settle_shop(结算「前往商店」钮)",
-    "shop": "xp_button(买经验钮) / shelf(货架) / offer_card(第一张买得起的卡) / detail_card(选中后的整张说明卡) / buy_button(说明卡里的「购买」钮) / bag_button(顶栏「背包」)",
-    "inventory": "backpack(装备背包) / first_item(背包第一件) / lanes(上下战场) / first_leader(第一只统领) / formation_button(顶栏「站位」) / formation_field(站位面板·上战场) / formation_token(站位面板·上战场第一只) / formation_done(站位面板「完成」) / finish_button(完成教程钮)"
+    "shop": "level_row(等级行: Lv / 经验 / 可装备 N 件) / xp_button(买经验钮; 教程里 tut_step_shown('xp_button') 之前不显示) / offer_card(教程预配的那件装备卡) / detail_card(选中后的整张说明卡) / buy_button(说明卡里的「购买」钮) / bag_button(顶栏「背包」)",
+    "inventory": "first_item(背包第一件 = 刚买并合成的那件) / lanes(上下战场) / first_leader(第一只统领) / formation_button(顶栏「站位」) / formation_field(站位面板·上战场) / formation_token(站位面板·上战场第一只) / formation_done(站位面板「完成」) / finish_button(完成教程钮)"
   },
+  "_wrong_tap": "先点击发光的位置。",
   "team_select": [
     {
-      "text": "选择 3 只龟上阵",
-      "highlight": "roster",
-      "advanceOn": "team_filled",
-      "point": "roster_pet"
+      "text": "从这里选出 3 只龟组成你的队伍。先选择【{pet}】。",
+      "highlight": "roster_pet",
+      "advanceOn": "pet_picked",
+      "_id": "B1"
     },
     {
-      "text": "点击出战",
+      "text": "每只龟都有 3 个技能，每场带 1 个。点击一个技能装备它。",
+      "highlight": "skill_choices",
+      "point": "skill_pick",
+      "anchor": "left",
+      "advanceOn": "skill_picked",
+      "_id": "B2"
+    },
+    {
+      "text": "再选择【{pet}】。",
+      "highlight": "roster_pet",
+      "advanceOn": "pet_picked",
+      "_id": "B3"
+    },
+    {
+      "text": "最后选择【{pet}】。",
+      "highlight": "roster_pet",
+      "advanceOn": "pet_picked",
+      "_id": "B3"
+    },
+    {
+      "text": "本周第一场开打后，这 3 只龟会锁定到下周一，技能仍可每场更换。",
       "highlight": "confirm",
-      "advanceOn": "team_confirmed"
+      "advanceOn": "team_confirmed",
+      "_id": "B4"
     }
   ],
   "battle": [
     {
-      "text": "赢两个战场获胜，1:1 进入终极战场",
-      "highlight": "lane_plate",
-      "anchor": "left",
-      "advanceOn": "tip_lanes_seen",
+      "text": "教程加成：你的龟造成的伤害提高 50%，受到的伤害降低 30%。",
+      "highlight": "buff_badge",
+      "anchor": "band",
+      "advanceOn": "tip_buff_seen",
       "hand": "none",
-      "auto": 3.5
+      "auto": 4.0,
+      "trigger": "fight",
+      "_id": "C1"
     },
     {
-      "text": "击碎敌方的蛋直接获胜",
+      "text": "龟会自动战斗。先打上路战场，结束后再打下路战场。",
+      "highlight": "lane_plate",
+      "anchor": "band",
+      "advanceOn": "tip_lanes_seen",
+      "hand": "none",
+      "auto": 3.5,
+      "trigger": "fight",
+      "delay": 2.0,
+      "_id": "C2"
+    },
+    {
+      "text": "每只龟都有一个技能。当【{pet}】血条下的龟能槽攒满时，就会释放技能。",
+      "highlight": "cast_unit",
+      "anchor": "band",
+      "advanceOn": "tip_skill_seen",
+      "hand": "none",
+      "auto": 4.5,
+      "trigger": "ally_skill",
+      "_id": "C3"
+    },
+    {
+      "text": "场边的是你的训龟大师。它会在战斗中释放你选择的技能。",
+      "highlight": "trainer",
+      "anchor": "band",
+      "advanceOn": "tip_trainer_seen",
+      "hand": "none",
+      "auto": 4.0,
+      "trigger": "trainer_skill",
+      "_id": "C4"
+    },
+    {
+      "text": "击碎敌方的【龟蛋】，就能赢下这个战场。",
       "highlight": "foe_egg",
+      "anchor": "band",
       "advanceOn": "tip_egg_seen",
       "hand": "none",
-      "auto": 3.5
+      "auto": 3.5,
+      "trigger": "foe_egg_hit",
+      "_id": "C5"
+    },
+    {
+      "text": "两个战场各赢一个，比分 1 : 1，进入【终极战场】决胜。",
+      "highlight": "lane_plate",
+      "anchor": "band",
+      "advanceOn": "tip_final_seen",
+      "hand": "none",
+      "auto": 3.5,
+      "trigger": "final_lane",
+      "_id": "C6"
     }
   ],
   "settle": [
     {
-      "text": "点击前往商店",
+      "text": "每打一场都会获得【深海币】和【经验】。前往商店使用它们。",
       "highlight": "settle_shop",
-      "advanceOn": "settle_continue"
+      "advanceOn": "settle_continue",
+      "_id": "D1"
     }
   ],
   "shop": [
     {
-      "text": "购买经验，升到 2 级",
+      "text": "装备数量由等级决定。1 级时全队还不能装备任何装备。",
+      "highlight": "level_row",
+      "advanceOn": "tip_level_seen",
+      "hand": "none",
+      "auto": 3.0,
+      "_id": "E1"
+    },
+    {
+      "text": "购买【经验】提升到 2 级，全队就能装备 2 件装备。",
       "highlight": "xp_button",
-      "advanceOn": "level_up"
+      "advanceOn": "level_up",
+      "_id": "E2"
     },
     {
-      "text": "点击一件装备",
-      "highlight": "shelf",
+      "text": "点击一件装备，查看它的效果。",
+      "highlight": "offer_card",
       "advanceOn": "offer_selected",
-      "point": "offer_card"
+      "_id": "E3"
     },
     {
-      "text": "点击购买",
+      "text": "点击【购买】，装备会放入背包。",
       "highlight": "detail_card",
+      "point": "buy_button",
       "advanceOn": "item_bought",
-      "point": "buy_button"
+      "_id": "E4"
     },
     {
-      "text": "点击背包",
+      "text": "点击【背包】，把装备装到你的龟身上。",
       "highlight": "bag_button",
-      "advanceOn": "shop_to_bag"
+      "advanceOn": "shop_to_bag",
+      "_id": "E5"
     }
   ],
   "inventory": [
     {
-      "text": "点击一件装备",
-      "highlight": "backpack",
+      "text": "点击刚买的【{item}】。",
+      "highlight": "first_item",
       "anchor": "right",
       "advanceOn": "bench_selected",
-      "point": "first_item"
+      "_id": "F1"
     },
     {
-      "text": "点击一只龟装上",
+      "text": "再点击一只龟，把装备装到它身上。",
       "highlight": "lanes",
+      "point": "first_leader",
       "advanceOn": "item_equipped",
-      "point": "first_leader"
+      "_id": "F2"
     },
     {
-      "text": "点击站位",
+      "text": "集齐 3 件同名同星的装备，会自动合成为一件更强的 2 星装备。",
+      "highlight": "first_leader",
+      "advanceOn": "tip_merge_seen",
+      "hand": "none",
+      "auto": 4.0,
+      "_id": "F3"
+    },
+    {
+      "text": "点击【站位】，调整龟开战时站的位置。",
       "highlight": "formation_button",
-      "advanceOn": "formation_opened"
+      "advanceOn": "formation_opened",
+      "_id": "F4"
     },
     {
-      "text": "拖动龟调整站位",
+      "text": "拖动一只龟到想要的位置。近战龟放在前面会更好一些。",
       "highlight": "formation_field",
-      "advanceOn": "formation_dragged",
       "point": "formation_token",
-      "hand": "drag"
+      "advanceOn": "formation_dragged",
+      "hand": "drag",
+      "_id": "F5"
     },
     {
       "text": "点击完成",
       "highlight": "formation_done",
-      "advanceOn": "formation_closed"
+      "advanceOn": "formation_closed",
+      "_id": "F5b"
     },
     {
-      "text": "点击完成教程",
+      "text": "教程完成。点击【完成教程】，开始你的第一场对战。",
       "highlight": "finish_button",
       "anchor": "right",
-      "advanceOn": "tutorial_finished"
+      "advanceOn": "tutorial_finished",
+      "_id": "F6"
     }
   ]
 }

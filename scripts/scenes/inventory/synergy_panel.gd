@@ -18,10 +18,10 @@ func _team_equips_for_synergy() -> Array:
 ## ★`display_name()` 返回的是「弓箭·神射手」「灵物·召唤」这种带花名的显示名,
 ##   而那些花名游戏里其它任何地方都不出现(战斗/图鉴/装备文案都只说"弓箭""灵物"),
 ##   放在这里等于凭空发明一套词(用户 2026-08-15 点名不要)。⇒ 取 `·` 前那一半。
+## ★2026-10-21: 直接用类型名(剑 / 法器 / 盾)。原来取 display_name 的 `·` 前半, 而「剑」的显示名是「剑系」
+##   (没有 `·`)⇒ 背包写「剑系」、商店 / 出战页写「剑」。三处统一成类型名, 与 Phase2Types.progress_text 同一个名字。
 func _syn_name(t: String) -> String:
-	var full := str(host.Phase2Types.display_name(t))
-	var i := full.find("·")
-	return full.substr(0, i) if i > 0 else full
+	return t
 
 
 ## ── 档位配色(用户 2026-08-15 拍板)────────────────────────────────
@@ -36,11 +36,12 @@ func _syn_name(t: String) -> String:
 ##     `TYPES` 里的 tiers 一改, 那张表就悄悄错了(memory [[fb-hand-rolled-copies-drift]])。
 const TIER_COLORS := ["#c87941", "#c6ced8", "#ffd93d", "#8ef0ff"]   # 铜 / 银 / 金 / 钻石
 const TIER_COLOR_OFF := "#6b7686"                                   # 一档都没到
-const SYN_ROW_H := 62.0        # 一行的高度(手机触摸目标下限 44; 用户「按钮别又矮又扁」→ 62)
+## ★2026-10-21 62 → 81: 一行是一个可点入口(点开看每档效果), 短边要到 44pt(81)。
+const SYN_ROW_H := 81.0        # 一行的高度(手机触摸目标下限 44; 用户「按钮别又矮又扁」→ 62)
 ## 行内【类型图标】的边长(px)。★源图 32×32 硬边像素画、半透明像素 0 个 ⇒
 ##   只有 **16(1:2)** 与 **32(1×)** 每个输出像素恰好取整数个源像素, 别的倍率糊硬边。
 ##   列表行字号 20 ⇒ 取 16(行高 62 放得下); 弹框标题字号 24 距 16/32 等远 ⇒ 取大的 32。
-const ROW_ICON_PX := 16
+const ROW_ICON_PX := 32   # 2026-10-21 手机版 16 → 32(行高 62 放得下; 1x 原图最清楚)
 const TITLE_ICON_PX := 32
 
 ## 【羁绊详情弹框·正文】那个 RichTextLabel 的节点名 —— `verify_synergy_popup` 靠它认正文。
@@ -126,16 +127,6 @@ func _tier_color(typ: String, tier: int) -> Color:
 	return Color(str(TIER_COLORS[idx]))
 
 
-## 进度右半句: 还能升就说【下一档要几件】, 到顶了就说【已满】。
-## ★只说件数, 不说"档" —— 强弱由颜色表示(用户 2026-08-15:「整个不要档一档二」)。
-func _next_tier_text(typ: String, n: int) -> String:
-	var tiers: Array = (host.Phase2Types.TYPES.get(typ, {}) as Dictionary).get("tiers", [])
-	for th in tiers:
-		if n < int(th):
-			return "%d 件升级" % int(th)
-	return "已满"
-
-
 ## 右侧羁绊列: 一行一个**按钮**, 按钮上只有【羁绊名】+【进度】, 点开才看详细效果。
 ##
 ## ★2026-08-15 三处改动(用户):
@@ -157,12 +148,13 @@ func _build_synergy_panel(_leaders: Array) -> void:
 	var team: Array = [{"_p2_equips": _team_equips_for_synergy()}]
 	var active: Array = host.Phase2Types.calc_active(team)
 	## ★2026-10-11 全项目通读 A10: 原来选中装备时无条件插一行「暂无羁绊」, 下面却列着羁绊(自相矛盾)。只在真没有激活羁绊时才说。
-	if host._sel_bench >= 0 and active.is_empty():   # 装备模式上下文提示: 引导玩家凑同类型激活/升档羁绊(用户2026-07-19)
+	## ★2026-10-21 实玩: 队里一件同类都没有时下面还会再写一句「暂无羁绊」⇒ 两行同一句。只在「有件数、没激活」时写这一行。
+	if host._sel_bench >= 0 and active.is_empty() and not _team_equips_for_synergy().is_empty():   # 装备模式上下文提示: 引导玩家凑同类型激活/升档羁绊(用户2026-07-19)
 		## ★不写"→ 开启羁绊 / 升一档"那种箭头式的说明书句 —— 这是给玩家的一句话, 不是流程图。
 		var ctx = Label.new(); ctx.text = "暂无羁绊"
-		ctx.add_theme_font_size_override("font_size", 15); ctx.add_theme_color_override("font_color", Color("#7fe39a"))
-		ctx.position = Vector2(x0, cy); ctx.size = Vector2(w, 20); ctx.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; host.add_child(ctx)
-		cy += 24.0
+		ctx.add_theme_font_size_override("font_size", 20); ctx.add_theme_color_override("font_color", Color("#7fe39a"))
+		ctx.position = Vector2(x0, cy); ctx.size = Vector2(w, 28); ctx.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; host.add_child(ctx)
+		cy += 30.0
 	## ★件数口径必须和 `calc_active` 一致(它按装备 id 去重、且一件多类型都算),
 	##   否则同一行的"4 件"和"档1"会打架。`raw_counts` 是**另一套口径**(不去重·只取首要类型)
 	##   ⇒ 这里自己按 calc_active 的规矩数一遍, 不用 raw_counts。
@@ -190,7 +182,7 @@ func _build_synergy_panel(_leaders: Array) -> void:
 		return int(counts[a]) > int(counts[b]))
 	if keys.is_empty():
 		var e = Label.new(); e.text = "暂无羁绊"
-		e.add_theme_font_size_override("font_size", 17); e.add_theme_color_override("font_color", Color("#6c7d8e"))
+		e.add_theme_font_size_override("font_size", 20); e.add_theme_color_override("font_color", Color("#7f8fa0"))
 		e.position = Vector2(x0, cy); e.size = Vector2(w, 60); e.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; host.add_child(e)
 		return
 	## ★不写"强度 铜→银→金→钻石"这类图例(用户 2026-08-15:「不要用文字写强度铜银什么的去掉啊,
@@ -257,33 +249,25 @@ func _build_synergy_panel(_leaders: Array) -> void:
 		nm.scroll_active = false
 		nm.autowrap_mode = TextServer.AUTOWRAP_OFF
 		nm.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		nm.text = "%s %s" % [host.Phase2Types.icon_bb(typ, ROW_ICON_PX), _syn_name(typ)]
+		## ★★2026-10-21 写法统一: 「名 当前/下一档 ★☆☆」, 与商店左栏 / 出战页同一句(Phase2Types.progress_text)。
+		##   原来这一行是「剑系  3 件  6 件升级」—— 同一件事商店写「剑 3/6 ★☆☆」(实拍 10-20 两份两种写法)。
+		##   名字用类型名本身(剑), 不用「剑系」这种只在这里出现的显示名。档位色(铜/银/金/钻石)照旧上在框和字上。
+		var _tiers: Array = (host.Phase2Types.TYPES.get(typ, {}) as Dictionary).get("tiers", [])
+		var _need := -1
+		for _th in _tiers:
+			if n < int(_th):
+				_need = int(_th) - n
+				break
+		nm.text = "%s%s" % [host.Phase2Types.icon_bb(typ, ROW_ICON_PX),
+			host.Phase2Types.progress_text(typ, n, tier, _need, _tiers.size())]
 		nm.add_theme_font_size_override("normal_font_size", 20)   # ★RTL 的键名不是 font_size
 		nm.add_theme_color_override("default_color", col)         # 名字 = 当前档位色
 		## ★★纵向居中: `Label` 有 `vertical_alignment`, `RichTextLabel` **没有** ——
 		##   照抄那一行会静默不居中(字顶在行首)。改成把控件本身摆到行的垂直中线上,
 		##   高度取实测行高(20px 字 = 30, 与 16 的图标取大者)。
 		const _NM_H := 30.0
-		nm.position = Vector2(14, (SYN_ROW_H - _NM_H) * 0.5); nm.size = Vector2(150, _NM_H)
+		nm.position = Vector2(14, (SYN_ROW_H - _NM_H) * 0.5); nm.size = Vector2(w - 8.0 - 14.0 - 40.0, _NM_H)
 		nm.mouse_filter = Control.MOUSE_FILTER_IGNORE; chip.add_child(nm)
-		## 进度只有两个数: 现在几件 / 下一档要几件(到顶就是"已满")。不写"档"。
-		var cnt = Label.new()
-		cnt.text = "%d 件" % n
-		cnt.add_theme_font_size_override("font_size", 20)
-		## 件数也吃档位色(本体跟着变) —— 未激活才用灰。
-		cnt.add_theme_color_override("font_color", col if on else Color("#8a97a8"))
-		cnt.position = Vector2(w - 8.0 - 34.0 - 200.0, 0); cnt.size = Vector2(80, SYN_ROW_H)
-		cnt.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		cnt.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		cnt.mouse_filter = Control.MOUSE_FILTER_IGNORE; chip.add_child(cnt)
-		var nxt = Label.new()
-		nxt.text = _next_tier_text(typ, n)
-		nxt.add_theme_font_size_override("font_size", 16)
-		nxt.add_theme_color_override("font_color", Color("#8ef0ff") if nxt.text == "已满" else Color("#7f8fa0"))
-		nxt.position = Vector2(w - 8.0 - 34.0 - 116.0, 0); nxt.size = Vector2(116, SYN_ROW_H)
-		nxt.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		nxt.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		nxt.mouse_filter = Control.MOUSE_FILTER_IGNORE; chip.add_child(nxt)
 		## 「点得开」的静态暗示 —— 像素小箭头(见 `_chevron_tex` 的长注释)。
 		## ★2x 整数放大 + NEAREST: 非整数倍会把 1px 的描边插值成灰边, 那就不是像素画了。
 		## ★右沿留 2px: 槽框的 `content_margin_right = 12` 是内容区边界,
@@ -362,18 +346,18 @@ func _show_synergy_popup(type_key: String, cur_tier: int) -> void:
 ") + "[color=%s][b]%d 件[/b][/color][color=%s]%s[/color]\n[color=%s]%s[/color]" % [
 			tcol, th, tcol, mark, col, txt]
 
-	var bw := 620.0
+	var bw := 760.0   # 2026-10-21 正文 15 → 20 号字: 620 → 760
 	# 框高按内容估：每档标题 + 文案行数。估多了下面 minf 会钳住，估少了 RichTextLabel 自己能滚。
 	var body_h: float = 0.0
 	for d in descs:
-		body_h += 26.0 + ceilf(float(str(d).length()) / 38.0) * 20.0
+		body_h += 32.0 + ceilf(float(str(d).length()) / 34.0) * 28.0
 	for il in host.Phase2Types.intro_lines(type_key):   # 机制说明(2026-10-13)也占高度
-		body_h += ceilf(float(str(il).length()) / 38.0) * 20.0
+		body_h += ceilf(float(str(il).length()) / 34.0) * 28.0
 	# ⚠ 上限用设计框高 `host.H`（1280×720 的那个 720），**不是 `host._vh`** ——
 	#   InventoryScene 上【没有 `_vh` 这个字段】（只有 `_vw`），写 `_vh` 会恒为 0
 	#   ⇒ maxf 兜到 280、每个类型的框都一样矮，等于白改。
 	#   本屏是"内容锁 1280×720 居中"的设计框口径（`_rebuild` 注释），所以按 H 算才对得上。
-	var bh: float = clampf(body_h + 130.0, 260.0, host.H - 120.0)
+	var bh: float = clampf(body_h + 170.0, 300.0, host._popup_bottom() - 24.0)
 
 	var box = Panel.new()
 	var sb = StyleBoxFlat.new(); sb.bg_color = Color("#1c2836"); sb.border_color = Color("#ffd93d")
@@ -384,7 +368,7 @@ func _show_synergy_popup(type_key: String, cur_tier: int) -> void:
 	##   (为什么运行时探针没照出来: 弹框只在点开之后才建, 静止态的屏上根本没有它。)
 	##   `StyleBoxFlat` 留着当 fallback: `UISkin.nine` 在贴图缺失时原样返回它, 不许崩也不许空白。
 	box.add_theme_stylebox_override("panel", UISkin.nine("panel-frame.png", 20, sb))
-	box.position = Vector2(host._vw / 2.0 - bw / 2.0, maxf(24.0, host.H / 2.0 - bh / 2.0))
+	box.position = Vector2(host._vw / 2.0 - bw / 2.0, maxf(24.0, minf(host.H / 2.0 - bh / 2.0, host._popup_bottom() - bh)))
 	box.size = Vector2(bw, bh)
 	box.mouse_filter = Control.MOUSE_FILTER_STOP   # 框内不穿透关闭
 	dim.add_child(box)
@@ -417,7 +401,7 @@ func _show_synergy_popup(type_key: String, cur_tier: int) -> void:
 	var sc := ScrollContainer.new()
 	sc.name = BODY_SCROLL_NAME
 	sc.position = Vector2(24, 62)
-	sc.size = Vector2(bw - 48, bh - 62 - 62)
+	sc.size = Vector2(bw - 48, bh - 62 - 100)
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	box.add_child(sc)
 	var rt = RichTextLabel.new()
@@ -427,14 +411,14 @@ func _show_synergy_popup(type_key: String, cur_tier: int) -> void:
 	rt.fit_content = true
 	rt.scroll_active = false
 	rt.mouse_filter = Control.MOUSE_FILTER_PASS   # 拖动交给外面的 ScrollContainer
-	rt.add_theme_font_size_override("normal_font_size", 15)
-	rt.add_theme_font_size_override("bold_font_size", 15)
+	rt.add_theme_font_size_override("normal_font_size", 20)
+	rt.add_theme_font_size_override("bold_font_size", 20)
 	rt.custom_minimum_size = Vector2(bw - 48 - 12, 0)
 	rt.text = bb
 	sc.add_child(rt)
 
-	var ok = Button.new(); ok.text = "知道了"; ok.add_theme_font_size_override("font_size", 18)
-	ok.position = Vector2(bw / 2.0 - 60, bh - 52); ok.size = Vector2(120, 40)
+	var ok = Button.new(); ok.text = "知道了"; ok.add_theme_font_size_override("font_size", 20)
+	ok.position = Vector2(bw / 2.0 - 80, bh - 94); ok.size = Vector2(160, 81)
 	## ★套金属签牌皮。不套就是 Godot 默认皮 = 圆角纯色, `verify_click_targets_alive` 自己
 	##   写着「圆角纯色是最直接的『没游戏味』」—— 它只是因为弹框不在静止态的屏上才没数到。
 	##   ⚠ 必须在 `size` 之后调: `UISkin.button` 按**按钮真实尺寸**挑大框/小签, size 还是 0 会挑错。

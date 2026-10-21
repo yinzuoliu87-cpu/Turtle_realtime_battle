@@ -126,9 +126,15 @@ func _rich_account() -> void:
 func _check_fresh(td, tag: String) -> void:
 	_ok("[%s] ★教程里: 深海币 = 教学币 %d(不是账号的 292)" % [tag, td.TUT_COINS], int(GameState.meta_deepsea_coins) == int(td.TUT_COINS))
 	_ok("[%s] ★教程里: 1 级 0 经验" % tag, int(GameState.season_level) == 1 and int(GameState.season_xp) == 0)
-	_ok("[%s] ★教程里: 背包 / 龟身装备是空的" % tag, GameState.persistent_bench.is_empty() and GameState.persistent_equipped.is_empty())
-	_ok("[%s] ★教程里: 没有账号的统领 / 货架 / 战绩" % tag,
-		(GameState.season_leaders as Array).is_empty() and GameState.meta_shop_offer.is_empty() and GameState.match_history.is_empty())
+	## v5(2026-10-21 分镜 F3): 背包里只有教程开局配置预放的 2 件 1 星(不是账号那件 2 星的), 龟身空。
+	var pre_ok: bool = GameState.persistent_bench.size() == int(td.TUT_MERGE_PRESET) and GameState.persistent_equipped.is_empty()
+	for it in GameState.persistent_bench:
+		if not (it is Dictionary) or str(it.get("id", "")) != str(td.TUT_MERGE_ITEM) or int(it.get("star", 1)) != 1:
+			pre_ok = false
+	_ok("[%s] ★教程里: 背包只有教程预放的 %d 件 1 星 / 龟身装备是空的" % [tag, int(td.TUT_MERGE_PRESET)], pre_ok, str(GameState.persistent_bench))
+	## v5: 进教程先到选龟屏, 统领由玩家在选龟屏点 ⇒ 进来时是空的(不是账号的 candy/ghost/pirate)。
+	_ok("[%s] ★教程里: 统领空着(不是账号的) / 没有账号的货架 / 战绩" % tag,
+		GameState.season_leaders.is_empty() and GameState.meta_shop_offer.is_empty() and GameState.match_history.is_empty(), str(GameState.season_leaders))
 	_ok("[%s] ★教程里: 0 场(新号)" % tag, int(GameState.season_total_battles) == 0)
 	_ok("[%s] 沙盒标记开着" % tag, bool(GameState.tutorial_active) and td.in_sandbox())
 

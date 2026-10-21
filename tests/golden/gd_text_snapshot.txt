@@ -770,6 +770,16 @@ scripts/scenes/CodexScene.gd|lit|香火
 scripts/scenes/CodexScene.gd|lit|龟
 scripts/scenes/CodexScene.gd|text|✓ %d 龟 / %d 装备 / %d 羁绊 / %d 状态
 scripts/scenes/CodexScene.gd|text|❌ DataRegistry 未加载
+scripts/scenes/FirstLaunchScene.gd|lit|击碎敌方的蛋直接获胜
+scripts/scenes/FirstLaunchScene.gd|lit|商店购买装备，装到龟身上
+scripts/scenes/FirstLaunchScene.gd|lit|欢迎来到斗龟场
+scripts/scenes/FirstLaunchScene.gd|lit|每周赛程：积分赛、闯关赛、决赛日
+scripts/scenes/FirstLaunchScene.gd|lit|确认
+scripts/scenes/FirstLaunchScene.gd|lit|组建龟队，自动战斗
+scripts/scenes/FirstLaunchScene.gd|lit|赢两个战场获胜，1 : 1 进入终极战场
+scripts/scenes/FirstLaunchScene.gd|lit|跳过
+scripts/scenes/FirstLaunchScene.gd|lit|输入昵称
+scripts/scenes/FirstLaunchScene.gd|text|%d~%d 个字 · 显示于排行榜
 scripts/scenes/GauntletBoardScene.gd|lit| · 已截止 · 周日 %s %s开打
 scripts/scenes/GauntletBoardScene.gd|lit| · 已结束
 scripts/scenes/GauntletBoardScene.gd|lit| · 正在打 %d 场
@@ -808,28 +818,27 @@ scripts/scenes/InventoryScene.gd|lit|[color=#8fa6bb]无特殊效果[/color]
 scripts/scenes/InventoryScene.gd|lit|[color=#9fb6c9][b]属性[/b][/color]\n%s\n\n[color=#9fb6c9][b]效果[/b][/color]\n[color=#cfe0ef]%s[/color]
 scripts/scenes/InventoryScene.gd|lit|\nLv%d 可装备 %d 件
 scripts/scenes/InventoryScene.gd|lit|\n已达上限
-scripts/scenes/InventoryScene.gd|lit|　　小将 ×%d
 scripts/scenes/InventoryScene.gd|lit|上战场
 scripts/scenes/InventoryScene.gd|lit|下战场
 scripts/scenes/InventoryScene.gd|lit|前往商店
 scripts/scenes/InventoryScene.gd|lit|商店
-scripts/scenes/InventoryScene.gd|lit|小将 ×%d
+scripts/scenes/InventoryScene.gd|lit|囗
+scripts/scenes/InventoryScene.gd|lit|小将站位：前排近战　后排远程
 scripts/scenes/InventoryScene.gd|lit|属性\n%s\n\n效果\n%s
 scripts/scenes/InventoryScene.gd|lit|无属性加成
 scripts/scenes/InventoryScene.gd|lit|本大轮首战后解锁
 scripts/scenes/InventoryScene.gd|lit|盾
 scripts/scenes/InventoryScene.gd|lit|空槽位
 scripts/scenes/InventoryScene.gd|lit|站位
-scripts/scenes/InventoryScene.gd|lit|系
-scripts/scenes/InventoryScene.gd|lit|统领 ×%d
+scripts/scenes/InventoryScene.gd|lit|统领：本大轮出战龟　小将：补位单位
 scripts/scenes/InventoryScene.gd|lit|背包
 scripts/scenes/InventoryScene.gd|lit|设置开战站位
 scripts/scenes/InventoryScene.gd|lit|阵容说明
 scripts/scenes/InventoryScene.gd|lit|（无主动效果）
+scripts/scenes/InventoryScene.gd|text|%d 档
 scripts/scenes/InventoryScene.gd|text|[b][color=#ffffff]%s[/color][/b]   [color=#ffd93d]%s[/color]   [color=#8fa6bb]%d费%s[/color]
-scripts/scenes/InventoryScene.gd|text|· 上路、下路独立作战\n· 依次点击两个单位：交换位置\n· 右上「站位」：拖动单位设置开战站位\n· 小将【前排 / 后排】：切换近战 / 远程\n· 选择背包装备后点击单位：装备\n· 点击单位装备格：卸下\n· 3 件同名同星装备自动合成升星
+scripts/scenes/InventoryScene.gd|text|· 上路、下路独立作战\n· 依次点击两个单位：交换位置\n· 右上「站位」：拖动单位设置开战站位\n· 小将头像下方【前排 / 后排】：切换近战 / 远程\n· 选择背包装备后点击单位：装备\n· 点击单位：底部列出该单位装备，可卸下\n· 3 件同名同星装备自动合成升星
 scripts/scenes/InventoryScene.gd|text|▼ 下面还有
-scripts/scenes/InventoryScene.gd|text|临时等级器
 scripts/scenes/InventoryScene.gd|text|全队装备 %d/%d
 scripts/scenes/InventoryScene.gd|text|前排
 scripts/scenes/InventoryScene.gd|text|卖出 +%d
@@ -844,7 +853,6 @@ scripts/scenes/InventoryScene.gd|text|查看更多（%d 行）
 scripts/scenes/InventoryScene.gd|text|知道了
 scripts/scenes/InventoryScene.gd|text|空槽位
 scripts/scenes/InventoryScene.gd|text|精英小将
-scripts/scenes/InventoryScene.gd|text|糖果罐 %d档
 scripts/scenes/InventoryScene.gd|text|糖果罐 · 第 %d 档\n打碎可获得：%s（每大轮限 1 次）
 scripts/scenes/InventoryScene.gd|text|统领%d
 scripts/scenes/InventoryScene.gd|text|背包为空
@@ -1131,12 +1139,13 @@ scripts/scenes/SettingsScene.gd|text|请输入邮件中的验证码
 scripts/scenes/SettingsScene.gd|text|邮箱绑定成功
 scripts/scenes/SettingsScene.gd|text|重置存档？
 scripts/scenes/SettingsScene.gd|text|验证码已发送至 %s
+scripts/scenes/ShopScene.gd|lit|  ·  Lv%d 可装备 %d 件
 scripts/scenes/ShopScene.gd|lit|  可进化
 scripts/scenes/ShopScene.gd|lit|%d 深海币
 scripts/scenes/ShopScene.gd|lit|[color=#5b7a92]暂无说明[/color]
 scripts/scenes/ShopScene.gd|lit|「%s」已失效 · 请刷新
-scripts/scenes/ShopScene.gd|lit|买经验  %d
-scripts/scenes/ShopScene.gd|lit|刷新  %d
+scripts/scenes/ShopScene.gd|lit|买经验 %d
+scripts/scenes/ShopScene.gd|lit|刷新 %d
 scripts/scenes/ShopScene.gd|lit|已拥有「%s」· 转化为砍伐经验 +%d
 scripts/scenes/ShopScene.gd|lit|已解锁 · 下场战斗后刷新
 scripts/scenes/ShopScene.gd|lit|已达最高等级 Lv%d
@@ -1153,12 +1162,12 @@ scripts/scenes/ShopScene.gd|lit|这件
 scripts/scenes/ShopScene.gd|lit|锁定
 scripts/scenes/ShopScene.gd|lit|🎒 背包
 scripts/scenes/ShopScene.gd|text|%d 费 %d%%
+scripts/scenes/ShopScene.gd|text|可装备 %d 件
 scripts/scenes/ShopScene.gd|text|商品
 scripts/scenes/ShopScene.gd|text|商店未解锁\n\n本大轮首战后解锁
 scripts/scenes/ShopScene.gd|text|已满级
 scripts/scenes/ShopScene.gd|text|经验 %d/%d
 scripts/scenes/ShopScene.gd|text|羁绊
-scripts/scenes/ShopScene.gd|text|装备 %d/%d
 scripts/scenes/ShopScene.gd|text|购买  %d
 scripts/scenes/ShopScene.gd|text|还差 %d 枚深海币
 scripts/scenes/ShopScene.gd|tooltip_text|各费用出货概率
@@ -1766,10 +1775,6 @@ scripts/scenes/inventory/formation_editor.gd|text|站位
 scripts/scenes/inventory/formation_editor.gd|text|蛋
 scripts/scenes/inventory/synergy_panel.gd|lit|   未激活
 scripts/scenes/inventory/synergy_panel.gd|lit|  ◀ 当前
-scripts/scenes/inventory/synergy_panel.gd|lit|%d 件升级
-scripts/scenes/inventory/synergy_panel.gd|lit|已满
-scripts/scenes/inventory/synergy_panel.gd|text|%d 件
-scripts/scenes/inventory/synergy_panel.gd|text|已满
 scripts/scenes/inventory/synergy_panel.gd|text|暂无羁绊
 scripts/scenes/inventory/synergy_panel.gd|text|知道了
 scripts/scenes/inventory/synergy_panel.gd|text|羁绊
@@ -1829,12 +1834,6 @@ scripts/scenes/shop/axe_panel.gd|lit|砍伐经验 %d/%d
 scripts/scenes/shop/axe_panel.gd|text|砍伐经验 %d/%d · 可最终进化
 scripts/scenes/shop/axe_panel.gd|text|累计 %d
 scripts/scenes/shop/axe_panel.gd|text|选择最终造物（本大轮不可更改）
-scripts/scenes/shop/shop_chest.gd|lit|卖出 +%d
-scripts/scenes/shop/shop_chest.gd|lit|已卖出 +%d
-scripts/scenes/shop/shop_chest.gd|lit|羁绊赠送装备不可出售
-scripts/scenes/shop/shop_chest.gd|lit|详情
-scripts/scenes/shop/shop_chest.gd|text|背包 %d 件
-scripts/scenes/shop/shop_chest.gd|text|背包 · 空
 scripts/scenes/social/player_menu.gd|lit|24 小时内已举报过该玩家
 scripts/scenes/social/player_menu.gd|lit|举报 / 拉黑
 scripts/scenes/social/player_menu.gd|lit|举报失败，请检查网络后重试
@@ -1887,7 +1886,6 @@ scripts/scenes/trainer/trainer_page_skin.gd|lit|被动
 scripts/scenes/tutorial_choice.gd|lit|取消
 scripts/scenes/tutorial_choice.gd|lit|开始教程
 scripts/scenes/tutorial_choice.gd|lit|新手教程
-scripts/scenes/tutorial_choice.gd|lit|欢迎来到斗龟场
 scripts/scenes/tutorial_choice.gd|lit|跳过
 scripts/scenes/tutorial_chrome.gd|text|跳过教程
 scripts/scenes/version_wall.gd|lit|前往更新
@@ -1938,6 +1936,13 @@ scripts/systems/onboarding/first_tips.gd|lit|开始第一场对战
 scripts/systems/onboarding/first_tips.gd|lit|本场由服务器判定 · 退出不影响结果
 scripts/systems/onboarding/first_tips.gd|lit|羁绊已激活 · 点击查看详情
 scripts/systems/onboarding/first_tips.gd|lit|训龟大师在战斗中施放所选技能
+scripts/systems/onboarding/novice_menu.gd|lit|%d 场后解锁
+scripts/systems/onboarding/novice_menu.gd|lit|商店
+scripts/systems/onboarding/novice_menu.gd|lit|图鉴
+scripts/systems/onboarding/novice_menu.gd|lit|排行榜
+scripts/systems/onboarding/novice_menu.gd|lit|背包
+scripts/systems/onboarding/novice_menu.gd|lit|训龟大师
+scripts/systems/onboarding/novice_menu.gd|lit|首战后解锁
 scripts/systems/onboarding/tutorial_buff.gd|lit|教程加成
 scripts/systems/onboarding/tutorial_buff.gd|lit|新手教程：增伤 %d%%，减伤 %d%%
 scripts/systems/replay/abandoned_match.gd|lit|上一局判负 · 版本已更新

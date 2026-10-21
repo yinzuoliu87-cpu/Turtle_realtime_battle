@@ -8,7 +8,14 @@ extends Node
 ##   「教程里就不应该有返回键啊，要一直跟着教程走啊」 /「缩」/「打三路」/「是点击啊」(10-07)
 ##   「我想在背包里实现站位修改，这样在对局内将不再有拖动站位环节」(10-19) ⇒ 教程要教「站位」在哪
 ##
-## 走法: 真主菜单 → 选择框「开始教程」→ 选龟 → 战斗(真开场演出 + 两句不阻塞提示) → 结算 → 商店(经验 / 点卡 / 购买 / 背包)
+## v5(2026-10-21 分镜 docs/plans/20261021-教程分镜v5.md): 「开始教程」⇒ **选龟屏**(3 只依次发光, 真点; 第一只后真点一个技能;
+##   「出战」前讲阵容锁定)⇒ 战斗(C1/C2 开场两句不阻塞; 其余 4 句挂在事件上, 由 verify_tutorial_battle_tips 打满一场量)
+##   ⇒ 结算 ⇒ 商店(E1 先讲 1 级不能装备、「买经验」此时还不在; E2 才出现)⇒ 背包(F1 刚买那件 = 预放 2 件 + 买 1 件合成的 2 星)
+##   ⇒ 站位 ⇒ 完成教程。每一句的字从 data/tutorial-steps.json 读({pet}/{item} 按屏上状态填), 门禁不抄文案副本。
+##   新增量: 洞外暗幕点一下 ⇒ 气泡下出说明且不前进(分镜「点错有一句说明」); 金色箭头尖指在发光的那张龟卡上。
+## v4(2026-10-21): 真主菜单 → 首启流程那一屏(介绍, 按「跳过」)→ 选择框「开始教程」→ **直接进战斗**(阵容预配, 不经过选龟屏)
+##   → …… → 「完成教程」→ 起名(首启那一屏) → 主菜单。第一遍改成在战斗里按「跳过教程」→ 起名 → 主菜单。
+## 走法(v3 原文): 真主菜单 → 选择框「开始教程」→ 选龟 → 战斗(真开场演出 + 两句不阻塞提示) → 结算 → 商店(经验 / 点卡 / 购买 / 背包)
 ##       → 背包(点装备 / 点龟 / 真点「站位」/ 真拖一只龟 / 真点「完成」/ 真点「完成教程」) → 主菜单。
 ## 每一屏量:
 ##   · 账号存档文件字节 == 进教程前那份(教程期间一个字节都没写)
@@ -26,10 +33,12 @@ const SAVE := "user://savegame.json"
 const MENU := "res://scenes/MainMenu.tscn"
 const EXIT_WORDS := ["返回", "返回主菜单", "认输", "沿用上次", "商店", "←"]
 const SB := preload("res://scripts/net/supabase.gd")
+const P2C := preload("res://scripts/gamedata/phase2_config.gd")
+const TG := preload("res://scripts/scenes/TutorialGuide.gd")
 
 var _fail := 0
 var _n := 0
-const MIN_ASSERTS := 90
+const MIN_ASSERTS := 120
 var _battles_entered := 0
 var _last_scene_id := 0
 var _a := PackedByteArray()
@@ -106,6 +115,8 @@ func _make_account() -> void:
 	GameState.persistent_bench = [{"id": "p2eq_001", "star": 2}]
 	GameState.persistent_equipped = {"candy": [{"id": "p2eq_005", "star": 1}]}
 	GameState.onboarded = false
+	GameState.nickname = ""          # 新号没起过名 ⇒ 出口后要起名(v4)
+	GameState.novice_menu = false
 	## 已登录的绑定号: 云存档同步的前提全齐(账号 / 邮箱 / 令牌) ⇒ 「教程里不推」靠的是教程闸, 不是没登录
 	GameState.account_id = "gate-acc-tut"
 	GameState.account_email = "gate@turtle.test"
@@ -176,7 +187,8 @@ func _open_menu() -> Node:
 	get_tree().root.add_child(m)
 	get_tree().current_scene = m
 	await _frames(6)
-	return m
+	## v4: 首启的号主菜单会自己换到首启流程那一屏(m 已释放) ⇒ 交回真正的当前场景
+	return m if is_instance_valid(m) else get_tree().current_scene
 
 
 func _wait_scene(suffix: String, max_f: int = 600) -> Node:
@@ -342,38 +354,87 @@ func _send(e: InputEvent) -> void:
 	get_viewport().push_input(e)
 
 
+## 步骤表里某一屏第 i 句(门禁不抄文案副本: 文案换了这里跟着换)。
+func _T(key: String, i: int) -> String:
+	var arr: Array = TG.steps_for(key)
+	return str((arr[i] as Dictionary).get("text", "")) if i < arr.size() else "<无第 %d 句>" % i
+
+
+## 真点一个屏幕矩形的中心。
+func _click_at(p: Vector2) -> void:
+	_motion(p, Vector2.ZERO)
+	await get_tree().process_frame
+	_mouse(p, true)
+	await get_tree().process_frame
+	_mouse(p, false)
+	await _frames(3)
+
+
 # ═══════════════════════════════ 第一遍: 选龟屏按「跳过教程」 ═══════════════════════════════
 
 func _skip_pass() -> void:
-	print("  ── 第一遍: 进教程 → 选龟屏按右上「跳过教程」 ──")
+	print("  ── 第一遍: 进教程 → 战斗里按右上「跳过教程」→ 起名 → 主菜单 ──")
 	_make_account()
 	var m = await _open_menu()
 	## ★基线 = 玩家按「开始教程」那一刻的账号存档(主菜单首次显示会写上 install_uid 等「你是谁」那几项)。
 	GameState.save()
 	_a = _bytes()
-	var ch: Node = m.get_node_or_null("TutorialChoice")
-	_ok("分母: 首启选择框在", ch != null)
+	var ch: Node = await _choice_from(m)
 	if ch == null:
 		return
 	(ch.find_child("StartTutorial", true, false) as Button).emit_signal("pressed")
-	var ts := await _wait_scene("TeamSelect.tscn")
-	_ok("分母: 进了选龟屏", ts != null)
-	if ts == null:
+	var bt := await _wait_scene("TeamSelect.tscn")
+	_ok("分母: 「开始教程」进了选龟屏(v5)", bt != null)
+	if bt == null:
 		return
 	await _frames(4)
-	var sk = _chrome(ts)
+	var sk = _chrome(bt)
 	_ok("分母: 外壳挂上了", sk != null)
 	if sk == null:
 		return
 	(sk.button as Button).emit_signal("pressed")
-	var mm := await _wait_scene("MainMenu.tscn")
-	_ok("★「跳过教程」⇒ 回到主菜单", mm != null)
+	var fl := await _wait_scene("FirstLaunch.tscn")
+	_ok("★「跳过教程」⇒ 先起名(首启那一屏, v4)", fl != null and bool(fl.call("is_naming")))
 	_ok("★「跳过教程」⇒ 出口理由 skipped", str(get_node("/root/TutorialDirector").last_end_reason) == "skipped")
-	_ok("★跳过 ⇒ 不飘「教程完成」", mm != null and not _has_label(mm, "教程完成"))
 	_after_exit("跳过")
 	_after_skip = _diff_lines(_a, _bytes())
+	var mm := await _name_and_menu(fl, "跳过", false)
+	_ok("★跳过 ⇒ 不飘「教程完成」", mm != null and not _has_label(mm, "教程完成"))
 	await _frames(4)
-	_ok("★跳过后主菜单不再弹选择框", mm != null and mm.get_node_or_null("TutorialChoice") == null)
+	_ok("★跳过后主菜单不再弹选择框 / 不再进首启", mm != null and mm.get_node_or_null("TutorialChoice") == null
+		and str(get_tree().current_scene.scene_file_path).ends_with("MainMenu.tscn"))
+
+
+## 主菜单(首启)⇒ 首启流程那一屏 ⇒ 按「跳过」略过介绍 ⇒ 返回选择框。
+func _choice_from(m: Node) -> Node:
+	var fl: Node = m if m != null and is_instance_valid(m) and str(m.scene_file_path).ends_with("FirstLaunch.tscn") else await _wait_scene("FirstLaunch.tscn", 120)
+	_ok("分母: 首启 ⇒ 换到首启流程那一屏(不压在主菜单上)", fl != null)
+	if fl == null:
+		return null
+	_ok("★首启那一屏先放介绍(第 1 页, 还没问)", int(fl.call("page_index")) == 0 and not bool(fl.call("is_asking")))
+	_disk_untouched("首启介绍")
+	await _click(fl.find_child("SkipIntro", true, false) as Control)
+	var ch: Node = fl.get_node_or_null("TutorialChoice")
+	_ok("分母: 介绍之后选择框在", ch != null)
+	return ch
+
+
+## 起名框: 预填的名字直接点「确认」⇒ 主菜单。量: 名字写进账号存档(rename_apply 那一次存档), 走完的号 novice_menu 落盘。
+func _name_and_menu(fl: Node, tag: String, want_novice: bool) -> Node:
+	if fl == null:
+		return null
+	var ed := fl.find_child("NameEdit", true, false) as LineEdit
+	_ok("[%s] 分母: 起名框预填了名字" % tag, ed != null and ed.text.strip_edges() != "", ed.text if ed != null else "")
+	if ed == null:
+		return null
+	var nm: String = ed.text
+	await _click(fl.find_child("NameOk", true, false) as Control)
+	var mm := await _wait_scene("MainMenu.tscn")
+	_ok("★[%s] 起名「确认」⇒ 主菜单" % tag, mm != null)
+	var js = JSON.parse_string(_bytes().get_string_from_utf8())
+	_ok("★★[%s] 名字写进了账号存档(盘上)" % tag, js is Dictionary and str(js.get("nickname", "")) == P2C.nickname_clean(nm), str(js.get("nickname", "")) if js is Dictionary else "?")
+	_ok("★[%s] 主菜单逐个点亮标记(novice_menu) = %s 并落盘" % [tag, str(want_novice)], js is Dictionary and bool(js.get("novice_menu", false)) == want_novice)
+	return mm
 
 
 # ═══════════════════════════════ 第二遍: 整条走完 ═══════════════════════════════
@@ -386,38 +447,28 @@ func _full_pass() -> void:
 	GameState.save()
 	_a = _bytes()
 	_reqs.clear()
-	var ch: Node = m.get_node_or_null("TutorialChoice")
-	_ok("分母: 首启选择框在", ch != null)
+	var ch: Node = await _choice_from(m)
 	if ch == null:
 		return
 	(ch.find_child("StartTutorial", true, false) as Button).emit_signal("pressed")
-
-	# ── 选龟 ──
-	var ts := await _wait_scene("TeamSelect.tscn")
-	_ok("分母: 进了选龟屏", ts != null)
-	if ts == null:
-		return
-	_ok("★选龟屏只给教学 3 只", (ts._grid_flow as Node).get_child_count() == 3, "%d 只" % (ts._grid_flow as Node).get_child_count())
-	var w := await _wait_text("选择 3 只龟上阵")
-	_ok("★提示「选择 3 只龟上阵」", w >= 0, "实测「%s」" % _guide_text())
-	_check_exits(ts, "选龟")
-	_disk_untouched("选龟")
-	await _frames(30)
-	_ok("★不动就不前进(30 帧后仍是第一句)", _guide_text() == "选择 3 只龟上阵")
 	var td = get_node("/root/TutorialDirector")
-	for pid in td.FIXED_TEAM:
-		ts._on_pick_pet(str(pid))
-		await _frames(2)
-	w = await _wait_text("点击出战")
-	_ok("★点满三只 ⇒ 提示「点击出战」", w >= 0, "实测「%s」" % _guide_text())
-	_disk_untouched("选龟·点满")
-	ts._on_start()
+
+	# ── v5 选龟(分镜 B1~B4) ──
+	if not await _team_select_pass(td):
+		return
 
 	# ── 战斗 ──
 	var bt := await _wait_scene("RealtimeBattle3D.tscn", 600)
 	_ok("分母: 进了战斗", bt != null)
 	if bt == null:
 		return
+	var lt_sorted: Array = Array(GameState.left_team).duplicate()
+	lt_sorted.sort()
+	var fx_sorted: Array = Array(td.FIXED_TEAM).duplicate()
+	fx_sorted.sort()
+	_ok("★v5: 上阵的是选龟屏里真点的那 3 只(= 教程固定池)", lt_sorted == fx_sorted, str(GameState.left_team))
+	_disk_untouched("战斗·开场")
+	var w := 0
 	var present_frames := 0
 	var shown_in_present := 0
 	var wait_f := 0
@@ -451,8 +502,8 @@ func _full_pass() -> void:
 		if c is Button:
 			names.append((c as Button).text)
 	_ok("★★结算只有「前往商店」(没有「返回主菜单」)", names == ["前往商店"], str(names))
-	w = await _wait_text("点击前往商店", 300)
-	_ok("★提示「点击前往商店」", w >= 0, "实测「%s」" % _guide_text())
+	w = await _wait_text(_T("settle", 0), 300)
+	_ok("★D1 提示「%s」" % _T("settle", 0), w >= 0, "实测「%s」" % _guide_text())
 	_check_exits(bt, "结算")
 	for c in (bt._hud._settle.btn_row as Node).get_children():
 		if c is Button:
@@ -464,9 +515,17 @@ func _full_pass() -> void:
 	_ok("★结算 ⇒ 商店(不是第二把战斗)", sh != null)
 	if sh == null:
 		return
-	w = await _wait_text("购买经验，升到 2 级")
-	_ok("★提示「购买经验，升到 2 级」", w >= 0, "实测「%s」" % _guide_text())
+	w = await _wait_text(_T("shop", 0), 300)
+	_ok("★E1 先讲「%s」(不阻塞, 自己前进)" % _T("shop", 0), w >= 0, "实测「%s」" % _guide_text())
+	var xb0 = sh.get("_tut_xp_btn")
+	_ok("★★E1 时「买经验」还不在屏上(分镜「按钮教到才出现」)", xb0 == null or not is_instance_valid(xb0) or not (xb0 as Control).is_visible_in_tree())
+	w = await _wait_text(_T("shop", 1), 600)
+	_ok("★E1 到点自己换成 E2「%s」" % _T("shop", 1), w >= 0, "实测「%s」" % _guide_text())
+	var xb1 = sh.get("_tut_xp_btn")
+	_ok("★★E2 时「买经验」出现了", xb1 != null and is_instance_valid(xb1) and (xb1 as Control).is_visible_in_tree())
 	_ok("★教程商店是开着的(账号 0 场也能逛)", sh._offer.size() > 0)
+	_ok("★★F3 开局配置: 货架第 1 格是预放的同一件(%s)" % td.TUT_MERGE_ITEM, sh._offer.size() > 0 and sh._offer[0] != null
+		and str((sh._offer[0] as Dictionary).get("id", "")) == str(td.TUT_MERGE_ITEM))
 	_ok("★顶栏返回键藏了, 「背包」键在", not (sh._top_bar.back_btn as Control).visible
 		and (sh._top_bar.action_btns[0] as Control).is_visible_in_tree())
 	_check_exits(sh, "商店")
@@ -480,16 +539,16 @@ func _full_pass() -> void:
 	_ok("★★ESC 在教程里被吞掉(仍在商店)", get_tree().current_scene == sh)
 	_ok("分母: 教程里的等级是 1(全队装备上限 0)", int(GameState.season_level) == 1 and int(GameState.team_equip_cap()) == 0)
 	(sh._tut_xp_btn as Button).emit_signal("pressed")
-	w = await _wait_text("点击一件装备")
-	_ok("★买经验 ⇒ 2 级 ⇒ 提示「点击一件装备」", w >= 0 and int(GameState.season_level) == 2, "Lv%d「%s」" % [int(GameState.season_level), _guide_text()])
+	w = await _wait_text(_T("shop", 2))
+	_ok("★买经验 ⇒ 2 级 ⇒ E3「%s」" % _T("shop", 2), w >= 0 and int(GameState.season_level) == 2, "Lv%d「%s」" % [int(GameState.season_level), _guide_text()])
 	await _frames(30)
-	_ok("★不点卡就停在「点击一件装备」", _guide_text() == "点击一件装备")
+	_ok("★不点卡就停在 E3", _guide_text() == _T("shop", 2))
 	var pick := -1
 	for i in range((sh._offer as Array).size()):
 		if sh._offer[i] != null and sh._price(sh._deco(sh._offer[i])) <= int(GameState.meta_deepsea_coins):
 			pick = i
 			break
-	_ok("分母: 货架上有买得起的卡", pick >= 0)
+	_ok("分母: 货架上有买得起的卡, 第一张就是预放的那件", pick == 0, "pick=%d" % pick)
 	if pick < 0:
 		return
 	## 手势指针指的就是那张卡(锚点 offer_card), 真点它
@@ -503,20 +562,25 @@ func _full_pass() -> void:
 	await _frames(4)
 	if int(sh._sel) != pick:
 		sh._on_select(pick)    # 卡的点击区若被卡面子控件吃掉, 退回产品自己的点卡入口(仍发同一事件)
-	w = await _wait_text("点击购买")
-	_ok("★★点卡 ⇒ 提示「点击购买」(两步购买的第一下)", w >= 0, "实测「%s」 sel=%d" % [_guide_text(), int(sh._sel)])
+	w = await _wait_text(_T("shop", 3))
+	_ok("★★点卡 ⇒ E4「%s」(两步购买的第一下)" % _T("shop", 3), w >= 0, "实测「%s」 sel=%d" % [_guide_text(), int(sh._sel)])
 	await _frames(30)
-	_ok("★★B2: 不按购买就停在「点击购买」, 背包仍空", _guide_text() == "点击购买" and GameState.persistent_bench.is_empty())
+	_ok("★★B2: 不按购买就停在 E4, 背包仍只有预放的 2 件", _guide_text() == _T("shop", 3) and GameState.persistent_bench.size() == int(td.TUT_MERGE_PRESET),
+		"背包 %d 件" % GameState.persistent_bench.size())
 	var buy: Button = sh._tut_buy_btn
 	_ok("分母: 说明卡里的「购买」钮在", buy != null and is_instance_valid(buy) and buy.is_visible_in_tree())
 	if buy == null or not is_instance_valid(buy):
 		return
+	var coins_b4 := int(GameState.meta_deepsea_coins)
 	await _click(buy)
-	_ok("分母: 真买了一件(真点「购买」穿过了暗幕的洞)", GameState.persistent_bench.size() == 1, "背包 %d 件" % GameState.persistent_bench.size())
-	if GameState.persistent_bench.is_empty():
+	_ok("分母: 真买了一件(真点「购买」穿过了暗幕的洞)", int(GameState.meta_deepsea_coins) < coins_b4, "币 %d → %d" % [coins_b4, int(GameState.meta_deepsea_coins)])
+	if int(GameState.meta_deepsea_coins) == coins_b4:
 		sh._on_buy(pick)
-	w = await _wait_text("点击背包")
-	_ok("★成交 ⇒ 提示「点击背包」", w >= 0, "实测「%s」" % _guide_text())
+	var b0: Dictionary = GameState.persistent_bench[0] if GameState.persistent_bench.size() > 0 else {}
+	_ok("★★F3: 预放 2 件 + 买 1 件 ⇒ 正式规则自动合成 1 件 2 星", GameState.persistent_bench.size() == 1
+		and str(b0.get("id", "")) == str(td.TUT_MERGE_ITEM) and int(b0.get("star", 1)) == 2, str(GameState.persistent_bench))
+	w = await _wait_text(_T("shop", 4))
+	_ok("★成交 ⇒ E5「%s」" % _T("shop", 4), w >= 0, "实测「%s」" % _guide_text())
 	_disk_untouched("商店")
 	(sh._top_bar.action_btns[0] as Button).emit_signal("pressed")
 
@@ -525,25 +589,35 @@ func _full_pass() -> void:
 	_ok("分母: 进了背包", inv != null)
 	if inv == null:
 		return
-	w = await _wait_text("点击一件装备")
-	_ok("★提示「点击一件装备」", w >= 0, "实测「%s」" % _guide_text())
+	var item_nm := str((DataRegistry.phase2_equipment_by_id.get(str(td.TUT_MERGE_ITEM), {}) as Dictionary).get("name", ""))
+	var f1 := _T("inventory", 0).replace("{item}", item_nm)
+	w = await _wait_text(f1)
+	_ok("★F1「%s」({item} = 刚买合成的那件)" % f1, w >= 0 and item_nm != "", "实测「%s」" % _guide_text())
 	_check_exits(inv, "背包")
-	inv._on_bench_click(0)
-	w = await _wait_text("点击一只龟装上")
-	_ok("★点装备 ⇒ 提示「点击一只龟装上」", w >= 0, "实测「%s」" % _guide_text())
+	var fi: Rect2 = inv._tutorial_anchor("first_item")
+	_ok("分母: 发光的那件(first_item)在屏上", fi.size.x > 0.0, str(fi))
+	await _click_at(fi.get_center())
+	if int(inv._sel_bench) != 0:
+		inv._on_bench_click(0)
+	w = await _wait_text(_T("inventory", 1))
+	_ok("★点装备 ⇒ F2「%s」" % _T("inventory", 1), w >= 0, "实测「%s」" % _guide_text())
 	var n0 := int(GameState.team_equipped_count())
 	inv._dl_click("top", 0)
-	w = await _wait_text("点击站位")
+	w = await _wait_text(_T("inventory", 2))
 	_ok("★★X1: 真装上了(全队件数 +1)", int(GameState.team_equipped_count()) == n0 + 1, "%d → %d" % [n0, int(GameState.team_equipped_count())])
-	_ok("★装上 ⇒ 提示「点击站位」", w >= 0, "实测「%s」" % _guide_text())
+	_ok("★装上 ⇒ F3「%s」(不阻塞, 自己前进)" % _T("inventory", 2), w >= 0, "实测「%s」" % _guide_text())
+	var g3 := _guide()
+	_ok("★★F3 不挡点击", g3 != null and g3.is_tip() and not g3.is_blocking())
+	w = await _wait_text(_T("inventory", 3), 600)
+	_ok("★F3 到点自己换成 F4「%s」" % _T("inventory", 3), w >= 0, "实测「%s」" % _guide_text())
 	var fb := inv.find_child("FormationBtn", true, false) as Button
 	_ok("★★v3: 教程里顶栏「站位」在且可见(原来被藏起来)", fb != null and fb.is_visible_in_tree())
 	if fb == null:
 		return
 	_check_exits(inv, "背包·站位钮")
 	await _click(fb)
-	w = await _wait_text("拖动龟调整站位")
-	_ok("★真点「站位」⇒ 面板开 ⇒ 提示「拖动龟调整站位」", w >= 0 and inv._formation.is_open(), "实测「%s」" % _guide_text())
+	w = await _wait_text(_T("inventory", 4))
+	_ok("★真点「站位」⇒ 面板开 ⇒ F5「%s」" % _T("inventory", 4), w >= 0 and inv._formation.is_open(), "实测「%s」" % _guide_text())
 	var tok := inv.find_child("Token_top_0", true, false) as Control
 	_ok("分母: 上战场第一只龟的头像在", tok != null)
 	if tok == null:
@@ -552,21 +626,21 @@ func _full_pass() -> void:
 	## 只点一下(不拖)不算
 	await _click(tok)
 	await _frames(10)
-	_ok("★只点一下龟(不拖)不前进", _guide_text() == "拖动龟调整站位")
+	_ok("★只点一下龟(不拖)不前进", _guide_text() == _T("inventory", 4))
 	await _drag(tok, Vector2(-90, 60), 10)
 	var off1 = (GameState.get_dual_lineup()["top"][0] as Dictionary).get("off", null)
 	print("    [站位] 拖动前 off=%s 拖动后 off=%s" % [str(off0), str(off1)])
 	_ok("★分母: 真拖动改了沙盒里的阵容(上战场第一只的 off 变了)", off1 != null and str(off1) != str(off0), "%s → %s" % [str(off0), str(off1)])
 	_disk_untouched("站位·拖动后")
-	w = await _wait_text("点击完成")
-	_ok("★真拖一下 ⇒ 提示「点击完成」", w >= 0, "实测「%s」" % _guide_text())
+	w = await _wait_text(_T("inventory", 5))
+	_ok("★真拖一下 ⇒ 提示「%s」" % _T("inventory", 5), w >= 0, "实测「%s」" % _guide_text())
 	var done := inv.find_child("FormationDone", true, false) as Control
 	_ok("分母: 「完成」在", done != null)
 	if done == null:
 		return
 	await _click(done)
-	w = await _wait_text("点击完成教程")
-	_ok("★真点「完成」⇒ 面板关 ⇒ 提示「点击完成教程」", w >= 0 and not inv._formation.is_open(), "实测「%s」" % _guide_text())
+	w = await _wait_text(_T("inventory", 6))
+	_ok("★真点「完成」⇒ 面板关 ⇒ F6「%s」" % _T("inventory", 6), w >= 0 and not inv._formation.is_open(), "实测「%s」" % _guide_text())
 	_disk_untouched("背包")
 	_ok("★★★教程期间(到这里)对服务器的写请求 = 0", _writes_in_tutorial().is_empty(), str(_writes_in_tutorial()))
 	## 教程里节拍器到点 / 切后台 ⇒ 产品会调这一个入口推云存档; 教程闸必须挡住
@@ -576,10 +650,9 @@ func _full_pass() -> void:
 	await _click(inv._tut_finish_btn)
 
 	# ── 结束 ──
-	var mm := await _wait_scene("MainMenu.tscn")
-	_ok("★真点「完成教程」⇒ 回主菜单", mm != null)
+	var fl := await _wait_scene("FirstLaunch.tscn")
+	_ok("★真点「完成教程」⇒ 起名(首启那一屏, v4)", fl != null and bool(fl.call("is_naming")))
 	_ok("★出口理由 completed", str(td.last_end_reason) == "completed")
-	_ok("★走完 ⇒ 主菜单飘「教程完成」", mm != null and _has_label(mm, "教程完成"))
 	_ok("★★只打了 1 把战斗", _battles_entered == 1, "%d 把" % _battles_entered)
 	_after_exit("完成")
 	## 两遍的基线各自含 install_uid 等「你是谁」 ⇒ 比的是「出口相对基线改了什么」逐行相同
@@ -592,6 +665,8 @@ func _full_pass() -> void:
 		if bool(r["tut"]):
 			n_tut += 1
 	print("    [网络] 教程期间发出的请求 %d 条(读) · 全程 %d 条" % [n_tut, _reqs.size()])
+	var mm := await _name_and_menu(fl, "完成", true)
+	_ok("★走完 ⇒ 主菜单飘「教程完成」", mm != null and _has_label(mm, "教程完成"))
 	await _frames(4)
 	_ok("★完成后主菜单不再弹选择框", mm != null and mm.get_node_or_null("TutorialChoice") == null)
 	## X3: 之后的选龟屏是全部龟(不再是教学 3 只)
@@ -604,38 +679,101 @@ func _full_pass() -> void:
 	await _frames(2)
 
 
-## 战斗里两句不阻塞提示(v3 第 3、4 步)。
+## 战斗开场两句不阻塞提示(v5 C1 教程加成 / C2 自动战斗、两个战场)。挂在事件上的 C3~C6 由 verify_tutorial_battle_tips 打满一场量。
 func _battle_tips(bt: Node) -> void:
-	var w := await _wait_text("赢两个战场获胜，1:1 进入终极战场", 240)
-	_ok("★v3 开打后出提示「赢两个战场获胜，1:1 进入终极战场」", w >= 0, "实测「%s」" % _guide_text())
+	var c1 := _T("battle", 0)
+	var w := await _wait_text(c1, 300)
+	_ok("★C1 开打后出「%s」" % c1, w >= 0, "实测「%s」" % _guide_text())
 	var g := _guide()
 	_ok("分母: 拿到提示节点", g != null and g.has_method("is_blocking"))
 	if g == null or not g.has_method("is_blocking"):
 		return
 	_ok("★★不阻塞: 本层没有能吃点击的可见控件(无暗幕)", not g.is_blocking())
-	var hand: TextureRect = g.find_child("TutorialHand", true, false)
-	_ok("★不阻塞提示不出手势", hand == null or not hand.visible)
+	var arrow: Control = g.find_child("TutorialArrow", true, false)
+	_ok("★不阻塞提示不出箭头", arrow == null or not arrow.visible)
 	_ok("★战斗没被暂停(提示在屏时 sim 照走)", not get_tree().paused)
 	var t_a: float = float(bt._t)
 	await _frames(20)
 	_ok("★提示在屏时战斗时钟在走", float(bt._t) > t_a, "%.2f → %.2f" % [t_a, float(bt._t)])
-	await _check_tip_overlap(bt, g, "三路")
-	w = await _wait_text("击碎敌方的蛋直接获胜", 600)
-	_ok("★到点自己换成「击碎敌方的蛋直接获胜」(没人点任何东西)", w >= 0, "实测「%s」" % _guide_text())
+	var br: Rect2 = get_node("/root/TutorialDirector")._battle_anchor("buff_badge", bt)
+	_ok("★C1 的环套在「教程加成」签上", br.size.x > 0.0 and get_viewport().get_visible_rect().has_point(br.get_center()), str(br))
+	await _check_tip_overlap(bt, g, "教程加成")
+	var c2 := _T("battle", 1)
+	w = await _wait_text(c2, 600)
+	_ok("★到点自己换成 C2「%s」(没人点任何东西)" % c2, w >= 0, "实测「%s」" % _guide_text())
 	g = _guide()
 	if g != null and g.has_method("is_blocking"):
-		_ok("★★不阻塞(第 2 句)", not g.is_blocking())
-		var er: Rect2 = get_node("/root/TutorialDirector")._battle_anchor("foe_egg", bt)
-		_ok("★环套在敌方蛋上(锚点解析出屏内矩形)", er.size.x > 0.0 and get_viewport().get_visible_rect().has_point(er.get_center()), str(er))
-		await _check_tip_overlap(bt, g, "碎蛋")
-	var gone := -1
-	for i in range(600):
-		if _guide_text() == "":
-			gone = i
-			break
-		await get_tree().process_frame
-	_ok("★两句放完自己收起(之后战斗里无提示)", gone >= 0, "等了 %d 帧" % gone)
+		_ok("★★不阻塞(C2)", not g.is_blocking())
+		await _check_tip_overlap(bt, g, "两个战场")
 	await _buff_badge(bt)
+
+
+## v5 选龟屏(分镜 B1~B4): 只有教程固定池 3 只; 依次发光、真点; 第一只之后真点一个技能; 「出战」前讲锁定。返回是否走到了战斗。
+func _team_select_pass(td: Node) -> bool:
+	var ts := await _wait_scene("TeamSelect.tscn", 600)
+	_ok("分母: 「开始教程」⇒ 选龟屏(v5)", ts != null)
+	if ts == null:
+		return false
+	_disk_untouched("选龟")
+	_ok("★选龟屏只有教程固定池 %d 只" % td.FIXED_TEAM.size(), (ts._grid_flow as Node).get_child_count() == td.FIXED_TEAM.size(),
+		"%d 张" % (ts._grid_flow as Node).get_child_count())
+	_check_exits(ts, "选龟")
+	var seen_names: Array = []
+	for k in range(3):
+		var nxt: String = ts._tut_next_pet()
+		var nm := str((DataRegistry.pet_by_id.get(nxt, {}) as Dictionary).get("name", ""))
+		var want := _T("team_select", 0 if k == 0 else k + 1).replace("{pet}", nm)
+		var w := await _wait_text(want, 300)
+		_ok("★B%s 第 %d 只:「%s」" % ["1" if k == 0 else "3", k + 1, want], w >= 0 and nm != "" and not (nm in seen_names), "实测「%s」" % _guide_text())
+		seen_names.append(nm)
+		var g := _guide()
+		var card_r: Rect2 = ts._tutorial_anchor("roster_pet")
+		_ok("分母: 发光的那张卡在屏上", card_r.size.x > 0.0, str(card_r))
+		if g != null and g.has_method("arrow_tip"):
+			_ok("★金色箭头尖指在发光的那张卡上", card_r.grow(4).has_point(g.arrow_tip()), "箭尖 %s / 卡 %s" % [str(g.arrow_tip()), str(card_r)])
+		if k == 0:
+			## 点错: 洞外点一下(屏幕左上角标题区)⇒ 说明, 不上阵
+			var miss := Vector2(24, 300)
+			_ok("分母: 点错那一下确实在洞外", not card_r.grow(12).has_point(miss))
+			await _click_at(miss)
+			_ok("★★点洞外 ⇒ 气泡下出说明「%s」, 不前进" % TG.wrong_tap_text(), g != null and g.wrong_tap_shown() == TG.wrong_tap_text()
+				and _guide_text() == want, g.wrong_tap_shown() if g != null else "")
+			_ok("★点洞外没有让任何龟上阵", _placed(ts) == 0)
+		var before := _placed(ts)
+		await _click_at(card_r.get_center())
+		_ok("★★真点发光的卡 ⇒ 上阵 +1(穿过了暗幕的洞)", _placed(ts) == before + 1, "%d → %d" % [before, _placed(ts)])
+		if k == 0:
+			var b2 := _T("team_select", 1)
+			w = await _wait_text(b2, 300)
+			_ok("★B2「%s」" % b2, w >= 0, "实测「%s」" % _guide_text())
+			var sr: Rect2 = ts._tutorial_anchor("skill_choices")
+			_ok("分母: 技能格在屏上", sr.size.x > 0.0, str(sr))
+			var picked_pid: String = str(ts.detail_pet_id)
+			var icon: Control = null
+			for gc in (ts._detail_bottom as Node).find_children("*", "GridContainer", true, false):
+				if (gc as Node).get_child_count() >= 3:
+					icon = (gc as Node).get_child(2) as Control
+			_ok("分母: 找到第 2 个可选技能格", icon != null)
+			if icon != null:
+				await _click_at(icon.get_global_rect().get_center())
+			_ok("★★真点一个技能 ⇒ 这只龟带的技能改成它(loadout=2)", int(GameState.loadouts.get(picked_pid, -1)) == 2,
+				"%s → %s" % [picked_pid, str(GameState.loadouts.get(picked_pid, null))])
+			_ok("★教程里点技能不弹全屏说明框(它会吃掉下一步的第一下)", not is_instance_valid(ts._info_popup))
+	var b4 := _T("team_select", 4)
+	var w4 := await _wait_text(b4, 300)
+	_ok("★★B4 按下「出战」前讲锁定「%s」" % b4, w4 >= 0, "实测「%s」" % _guide_text())
+	_ok("分母: 三只齐了「出战」点得动", not (ts._start_btn as Button).disabled)
+	_disk_untouched("选龟·点满")
+	await _click_at((ts._start_btn as Control).get_global_rect().get_center())
+	return true
+
+
+func _placed(ts: Node) -> int:
+	var n := 0
+	for t in ts.team:
+		if t != null:
+			n += 1
+	return n
 
 
 ## 教程加成(用户 10-20): 我方全员带 增伤 / 减伤, 敌方不带; 战斗里看得见(「教程加成」签, 点开出说明句)。

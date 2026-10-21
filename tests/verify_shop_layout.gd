@@ -22,7 +22,6 @@ const SHOP := preload("res://scenes/Shop.tscn")
 ## ★★这两个 preload 是为了【从产品自己身上回读常量】, 不在这里手抄一份副本
 ##   (memory [[fb-hand-rolled-copies-drift]]: 手抄的副本必然落后)。
 const SHOP_GD = preload("res://scripts/scenes/ShopScene.gd")
-const CHEST_GD = preload("res://scripts/scenes/shop/shop_chest.gd")
 const P2CFG = preload("res://scripts/gamedata/phase2_config.gd")
 const SCREEN_W := 1280.0
 const SCREEN_H := 720.0
@@ -35,7 +34,7 @@ var _n := 0
 ## 全绿时的断言条数【地板】。低于它 = 有协程在半路被掐断 / 静默 abort ⇒ 判红
 ## (fb-null-readback-makes-test-silently-abort: 读一个不存在的成员会让协程就地返回,
 ##  后面的断言一条不跑, 而进程 rc=0 还照样打 ALL PASS)。加/删断言时同步改这个数。
-const MIN_ASSERTS := 86
+const MIN_ASSERTS := 79   # 2026-10-21 「已装 N/M」与背包条两组随背包那一排搬去背包页
 
 
 func _ready() -> void:
@@ -229,7 +228,9 @@ func _ready() -> void:
 			bz = c
 		elif str(c.name).begins_with("LineupRow_"):
 			units += 1
-	_chk("⑧ ★分母: 店主和宝箱都在场", keeper != null and bz != null)
+	## ★2026-10-21 用户「商店要这么搞」: 左边只站店主, 背包那一排不在商店里。
+	_chk("⑧ ★分母: 店主在场", keeper != null)
+	_chk("⑧ ★背包那一排不在商店里", bz == null)
 	_chk("⑧ 阵容不在商店里(单位格 %d 个)" % units, units == 0)
 	var kbad: Array = []
 	for c in [keeper, bz]:
@@ -238,7 +239,7 @@ func _ready() -> void:
 		var r := Rect2((c as Control).global_position, (c as Control).size)
 		if r.end.x > SHOP_GD.GRID_X - 4.0 or r.end.y > 720.5 or r.position.x < -0.5:
 			kbad.append("%s %s" % [str(c.name), str(r)])
-	_chk("⑧ ★店主 / 宝箱都在货架以左、不出屏: %s" % ("无" if kbad.is_empty() else str(kbad)), kbad.is_empty())
+	_chk("⑧ ★店主在货架以左、不出屏: %s" % ("无" if kbad.is_empty() else str(kbad)), kbad.is_empty())
 	## ★2026-10-18: 说明改成局内信息面板那张小卡(InspectCard, 高度随内容)。旧的 440×592 大面板只留给小木斧。
 	##   判据: 小卡在、在屏内、贴在货架左边不压货架、不压底下那排按钮、高度 = 内容高(下面没有空一大块)、有「购买」。
 	var card: Control = null
@@ -252,7 +253,9 @@ func _ready() -> void:
 		var row := Rect2(SHOP_GD.ROW_X, SHOP_GD.ROW_BTN_Y, 3.0 * SHOP_GD.ROW_BTN_W + 2.0 * SHOP_GD.LOCK_GAP, SHOP_GD.ROW_BTN_H)
 		print("     ⑧ 小卡 %s  货架 %s" % [str(cr), str(shelf)])
 		_chk("⑧ ★小卡在 1280×720 内", Rect2(0, 0, 1280, 720).encloses(cr))
-		_chk("⑧ ★小卡不压货架", not cr.intersects(shelf))
+		## ★2026-10-21 宽货柜: 货柜左边放不下小卡, 小卡贴着被点的那一格弹(可以盖别的货), 但不许盖住被点的那一件。
+		var sel_r := Rect2(sc._shelf_pos(int(sc._sel)), Vector2(SHOP_GD.SLOT_W, SHOP_GD.SLOT_H))
+		_chk("⑧ ★小卡不压被点的那一件 %s" % str(sel_r), shelf.size.x > 0.0 and not cr.intersects(sel_r))
 		_chk("⑧ ★小卡不压底部那排按钮", not cr.intersects(row))
 		var want_h: float = card.get_combined_minimum_size().y
 		_chk("⑧ ★小卡高度 = 内容高(差 %.0fpx; 下面空一大块就是没收)" % (cr.size.y - want_h), absf(cr.size.y - want_h) <= 4.0)
@@ -270,18 +273,18 @@ func _ready() -> void:
 		var r := Rect2(cc.global_position, cc.size)
 		if r.position.y >= 96.0 or r.size.x <= 0.0 or r.size.y <= 0.0:
 			continue   # 只看头部行
+		## ★2026-10-21 手机版: 货柜顶(含横梁)藏在顶栏后面、币装进一个顶栏高的盒子(CoinGroup) —— 两者都不是「币」这一组的内容
+		if str(cc.name) == "ShopCabinet" or str(cc.name) == "CoinGroup":
+			continue
 		var key := ""
 		## ★2026-08-15 标题删掉后三组铺开到中间空位: 币 340..530 / 等级 661..901 / 买经验 1032..1252。
 		##   区间跟着搬(x 下界 740→300) —— 不搬的话三组一个都收不到, 第⑩条变成"分母为 0"的空检查。
 		## ★区间必须跟着版式走: 现在是 币 320..520 / 等级 560..900 / 购买说明+按钮 940..1252。
 		##   分界线取在组与组【中间的空档】上, 不是拍脑袋取整 —— 取 600 的话等级组起点 560
 		##   会被算进"币", 三组的并集全错而门禁照样有输出(最阴的那种假绿灯)。
-		if r.position.x >= 300.0 and r.position.x < 540.0:
+		## ★2026-10-21: 币挪进右上角木牌(用户「背包深海币？」) ⇒ 币这一组从 COIN_PLAQUE_X 起。
+		if r.position.x >= float(SHOP_GD.COIN_PLAQUE_X) - 10.0:
 			key = "币"
-		elif r.position.x >= 540.0 and r.position.x < 930.0:
-			key = ""
-		elif r.position.x >= 930.0:
-			key = ""
 		if key == "":
 			continue
 		grp[key] = r if ghit[key] == 0 else (grp[key] as Rect2).merge(r)
@@ -312,11 +315,8 @@ func _ready() -> void:
 	for c in all:
 		if str(c.name) == "BenchHeader":
 			bh = c
-	if bh == null:
-		print("  [FAIL] ⑪ ★分母: 找不到背包条标题"); _fail += 1
-	else:
-		print("     ⑪ 背包条标题左沿 %.0f  /  卡区左沿 40" % bh.global_position.x)
-		_chk("⑪ ★背包条与卡区左沿对齐(差 ≤ 2px)", absf(bh.global_position.x - 40.0) <= 2.0)
+	## ★2026-10-21: 背包条不在商店里了(背包页才有) ⇒ 原「背包条与左栏对齐」改成「不在场」。
+	_chk("⑪ ★背包条不在商店里", bh == null)
 
 	# ── ⑤ 分母自检: 至少要有按钮, 否则第②条是空检查 ──
 	var nbtn := 0
@@ -657,8 +657,7 @@ func _done(sc) -> void:
 	##   "看现场版式"的判据【之后】—— 顺序反了会把它们的现场掀掉。
 	_check_sell_nonzero()
 	## NAME_NOT_TRUNCATED 撤掉(2026-10-18): 商店不再画龟名(阵容不在商店)、货架不写装备名 —— 被测对象不在场
-	await _check_equip_cap_same_source(sc)
-	await _check_bag_popup_all(sc)
+	## 「已装 N/M」与背包条都随背包那一排搬去了背包页(2026-10-21), 这两条在商店里不再有被测对象。
 	await _check_maxlevel_xp()      # ★台账 ⑷: 满级不许印哨兵分母 / 死按钮要长得像死的
 	await _check_buy_feedback()     # ★台账 ⑮: 不成交要说为什么, 成交要看得见
 	sc.queue_free()
@@ -798,14 +797,21 @@ func _check_shared_skin(sc) -> void:
 		print("     %-22s %5.0fx%-4.0f %s" % [str((b2 as Button).text).substr(0, 20),
 			(b2 as Button).get_global_rect().size.x, (b2 as Button).get_global_rect().size.y,
 			str(s2.texture.resource_path).get_file()])
-	## 2026-10-18 用户「说了几遍了不要用之前的金木框按钮」: 商店里一颗贴图皮(金木框)按钮都不许有。
-	##   分母: 按钮总数 ≥ 4(刷新 / 锁定 / 买经验 / 购买), 否则下面那条是空检查。
+	## 2026-10-18 用户「说了几遍了不要用之前的金木框按钮」: 金木框(共享层 UISkin 的框)一颗都不许有。
+	## 2026-10-21 用户「那个顶上横幅？背包深海币？底下的经验条，3个按钮？」⇒ 商店按钮改成场景里的像素木牌,
+	##   全屏只许这一张(ShopScene.PLANK_TEX): 不是金木框, 也不许每颗各用各的一次性皮。
+	var plank_path := str(SHOP_GD.PLANK_TEX.resource_path)
+	var not_plank: Array = []
+	for b3 in skinned:
+		var p3 := str(((b3 as Button).get_theme_stylebox("normal") as StyleBoxTexture).texture.resource_path)
+		if p3 != plank_path:
+			not_plank.append("%s ← %s" % [(b3 as Button).text.substr(0, 10), p3.get_file()])
 	_chk("SHARED_SKIN ★分母: 扫到的按钮 ≥ 4 颗(实测 %d)" % btns.size(), btns.size() >= 4)
-	_chk("SHARED_SKIN ★★商店里没有金木框按钮(贴图皮按钮 %d 颗)" % skinned.size(), skinned.is_empty())
-	_chk("SHARED_SKIN ★没有屏幕专用的一次性皮(assets/sprites/shop/ 下的贴图不许当按钮皮): %s"
-		% ("无" if from_shop.is_empty() else str(from_shop)), from_shop.is_empty())
-	_chk("SHARED_SKIN ★★每颗的皮 == UISkin.button() 对同尺寸会挑的那张: %s"
-		% ("全对上" if mismatch.is_empty() else str(mismatch)), mismatch.is_empty())
+	_chk("SHARED_SKIN ★分母: 木牌按钮真的在(刷新 / 锁定 / 买经验 / 背包 ≥ 4 颗, 实测 %d)" % skinned.size(), skinned.size() >= 4)
+	_chk("SHARED_SKIN ★★贴图皮按钮全是同一块木牌(没有金木框、没有一次性皮): %s"
+		% ("全是" if not_plank.is_empty() else str(not_plank)), not_plank.is_empty())
+	_chk("SHARED_SKIN ★金木框(共享层框)一颗都没有: %s" % ("无" if mismatch.is_empty() or not_plank.is_empty() else str(mismatch)),
+		not_plank.is_empty())
 	_chk("SHARED_SKIN ★边带×2 装得进每颗按钮的真实宽高: %s"
 		% ("全装得下" if band_overflow.is_empty() else str(band_overflow)), band_overflow.is_empty())
 
@@ -901,153 +907,6 @@ func _labels_rec(n: Node, out: Array) -> void:
 		_labels_rec(c, out)
 
 
-# ══════════════════════════════════════════════════════════════════════
-#  EQUIP_CAP_SAME_SOURCE —— 商店写的「已装 N/M」必须就是真正拦人的那个上限
-# ══════════════════════════════════════════════════════════════════════
-## ★由来: `_lineup_equip_count()` 原来自己数 `slots += 3` × 6 只 ⇒ 分母**恒等于 18**,
-##   而真上限是 `GameState.team_equip_cap()` = (赛季等级−1)×2。实测 Lv7 时商店写
-##   「已装 12/18」而背包写「12/12」, 玩家照 18 去买了 4 件, 回来点空槽**毫无反应**
-##   (拦人的是 12 那个数)。分子同病: 手数会把羁绊赠品算进去 ⇒ 满编时出现「已装 19/18」。
-##
-## ★★为什么必须扫**多个等级**: 恒等于 18 的写法在 Lv10 上是对的 —— 单档测永远绿。
-##   所以判据里有一条分母专门问「这几档的真上限是不是同一个数」。
-func _check_equip_cap_same_source(sc) -> void:
-	print("")
-	var caps: Dictionary = {}
-	var bad: Array = []
-	var found := 0
-	GameState.persistent_equipped = {"basic": []}
-	for L in [1, 3, 7, 10]:
-		GameState.season_level = L
-		sc._rebuild()
-		for _i in range(4):
-			await get_tree().process_frame
-		var pair := _lineup_pair(sc)
-		var want_cap := int(GameState.team_equip_cap())
-		var want_used := int(GameState.team_equipped_count())
-		caps[want_cap] = true
-		if pair.is_empty():
-			bad.append("Lv%d 找不到「出战阵容」按钮上那个读数" % L)
-			continue
-		found += 1
-		print("     Lv%-2d 屏上「已装 %d/%d」   真上限 team_equip_cap()=%d  真已装 team_equipped_count()=%d"
-			% [L, pair[0], pair[1], want_cap, want_used])
-		if pair[1] != want_cap:
-			bad.append("Lv%d 屏上分母 %d ≠ team_equip_cap()=%d" % [L, pair[1], want_cap])
-		if pair[0] != want_used:
-			bad.append("Lv%d 屏上分子 %d ≠ team_equipped_count()=%d" % [L, pair[0], want_used])
-	_chk("EQUIP_CAP_SAME_SOURCE ★分母: 四档都读到了那个读数(%d/4)" % found, found == 4)
-	_chk("EQUIP_CAP_SAME_SOURCE ★分母: 这四档的真上限有 %d 个不同值(全一样的话「恒等于 18」也能全绿)"
-		% caps.size(), caps.size() >= 3)
-	_chk("EQUIP_CAP_SAME_SOURCE ★★商店那个分母/分子 == GameState 的 team_equip_cap()/team_equipped_count(): %s"
-		% ("四档全对上" if bad.is_empty() else str(bad)), bad.is_empty())
-	## ── 羁绊赠品算不算进「已装」: 与真正拦人的 team_has_equip_room 同口径(= 不算) ──
-	GameState.season_level = 7
-	GameState.persistent_equipped = {"basic": []}
-	sc._rebuild()
-	for _i in range(4):
-		await get_tree().process_frame
-	var p0 := _lineup_pair(sc)
-	GameState.persistent_equipped = {"basic": [{"id": "p2eq_095", "star": 1}]}
-	sc._rebuild()
-	for _i in range(4):
-		await get_tree().process_frame
-	var p1 := _lineup_pair(sc)
-	_chk("EQUIP_CAP_SAME_SOURCE ★分母: p2eq_095 确实被 GameState 认成羁绊赠品",
-		GameState.is_synergy_grant({"id": "p2eq_095", "star": 1}))
-	_chk("EQUIP_CAP_SAME_SOURCE ★分母: 装上去这一步真的改动了身上的装备数组(现在 %d 件)"
-		% (GameState.persistent_equipped.get("basic", []) as Array).size(),
-		(GameState.persistent_equipped.get("basic", []) as Array).size() == 1)
-	_chk("EQUIP_CAP_SAME_SOURCE ★★羁绊赠品不计入「已装」(装上前 %s / 装上后 %s) —— 否则满编时会写出「19/18」"
-		% [str(p0), str(p1)],
-		p0.size() == 2 and p1.size() == 2 and p0[0] == p1[0] and p0[1] == p1[1])
-
-
-## 「🐢 出战阵容  已装 A/B」那颗按钮上的两个数。找不到 ⇒ 空数组(分母不成立)
-func _lineup_pair(sc) -> Array:
-	## ★2026-10-18: 读数从「出战阵容」按钮移到右侧阵容面板标题右边那个 Label(TeamEquipCount)。
-	var btns: Array = []
-	for l in _labels_in(sc):
-		if str(l.name) == "TeamEquipCount":
-			btns.append(l)
-	for b in btns:
-		var t := str((b as Label).text)
-		var i := t.find("装备 ")
-		if i < 0:
-			continue
-		var parts: PackedStringArray = t.substr(i + 3).strip_edges().split("/")
-		if parts.size() < 2:
-			continue
-		var a := str(parts[0]).strip_edges()
-		var c := str(parts[1]).strip_edges()
-		if a.is_valid_int() and c.is_valid_int():
-			return [int(a), int(c)]
-	return []
-
-
-# ══════════════════════════════════════════════════════════════════════
-#  BAG_POPUP_ALL —— 「背包里有 N 件, 点一下看看」点开就得有 N 件
-# ══════════════════════════════════════════════════════════════════════
-## ★由来: 标题写「背包里有 18 件」, 而 `_build_bench_preview` 里写死
-##   `mini(10, bench.size())` ⇒ 点开只画 10 格, 剩下 8 件在界面上一点痕迹都没有,
-##   弹层下半还空着两行。**静默截断**: 玩家只会以为东西丢了。
-##
-## ★两个量级各测一遍, 因为它们要的是两种不同的正确行为:
-##   · 放得下(18 件) ⇒ **一件不少全画出来**
-##   · 真放不下(>PER_ROW×MAX_ROWS) ⇒ 画满 + **屏上写清楚还剩几件**(截断可以, 不说话不行)
-func _check_bag_popup_all(sc) -> void:
-	## ★2026-10-18: 弹层换成底部背包条。一行 BENCH_PER_ROW 格; 放得下就一件不少,
-	##   放不下就画 PER_ROW−1 格 + 一颗「+N」(点了去背包页) —— 截断可以, 不说话不行。
-	print("")
-	var per_row := int(CHEST_GD.BENCH_PER_ROW)
-	print("  [BAG_POPUP_ALL 分母] 背包条一行 %d 格" % per_row)
-	for n in [per_row - 3, per_row + 8]:
-		var bench: Array = []
-		for i in range(n):
-			bench.append({"id": "p2eq_%03d" % (1 + (i % 90)), "star": 1})
-		GameState.persistent_bench = bench
-		sc.set("_sel_bench", -1)
-		sc._rebuild()
-		for _i in range(4):
-			await get_tree().process_frame
-		var cells: Array = []
-		var more: Button = null
-		var lp: Control = sc if sc is Control and is_instance_valid(sc) else null   # 货架矩形按常量 + 画面偏移算
-		var all2: Array = []
-		_collect(sc, all2)
-		for c in all2:
-			if str(c.name).begins_with("BenchCell"):
-				cells.append(c)
-			elif str(c.name) == "BenchMore":
-				more = c
-		var want: int = int(n) if int(n) <= per_row else per_row - 1
-		print("     背包 %d 件 → 背包条画出 %d 格(该画 %d)  「+N」%s" % [n, cells.size(), want, more.text if more != null else "无"])
-		_chk("BAG_POPUP_ALL ★分母: 背包真塞了 %d 件, 货架区在场" % n, GameState.persistent_bench.size() == n and lp != null)
-		_chk("BAG_POPUP_ALL ★★背包 %d 件 → 背包条该画 %d 格(实测 %d)" % [n, want, cells.size()], cells.size() == want)
-		if n > per_row:
-			_chk("BAG_POPUP_ALL ★★放不下时屏上写着「+%d」" % (n - want), more != null and str(more.text) == "+%d" % (n - want))
-		else:
-			_chk("BAG_POPUP_ALL ★放得下时没有「+N」", more == null)
-		var spill: Array = []
-		var items: Array = cells.duplicate()
-		if more != null:
-			items.append(more)
-		for c in items:
-			var r: Rect2 = Rect2((c as Control).global_position, (c as Control).size)
-			## 货架矩形按常量算(背景整张图不是货架)
-			## ★不按节点名找背景: 重建时旧节点还占着名字, 新节点会被引擎改名(⑧ 那条注释记过同一个坑)
-			var shelf := Rect2(sc._frame_off() + Vector2(SHOP_GD.GRID_X, SHOP_GD.GRID_Y),
-				Vector2(5.0 * SHOP_GD.SLOT_W, 2.0 * SHOP_GD.SLOT_H + SHOP_GD.GRID_GAP_Y)) if lp != null else Rect2()
-			if lp != null and r.intersects(shelf):
-				spill.append("格@(%.0f,%.0f) 伸进货架" % [r.position.x, r.position.y])
-		_chk("BAG_POPUP_ALL ★每一格都不伸进右侧货架: %s" % ("无" if spill.is_empty() else str(spill.slice(0, 3))), spill.is_empty())
-	GameState.persistent_bench = []
-	sc._rebuild()
-	await get_tree().process_frame
-
-
-# ══════════════════════════════════════════════════════════════════════
-#  MAXLEVEL_XP —— 满级后屏幕不许把「升不了了」说成「还差好多」
 # ══════════════════════════════════════════════════════════════════════
 ## ★由来(2026-09-29 台账 ⑷, 用户当场点名): `P2.xp_to_next()` 在 level ≥ MAX_LEVEL 时
 ##   返回 **999999**, 它自己的注释写着「极大(不可升)」—— 那是**代码内部表示"升不了了"的约定**。

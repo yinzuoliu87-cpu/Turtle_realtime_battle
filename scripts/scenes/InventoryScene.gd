@@ -42,19 +42,15 @@ const SLOT := 96.0
 ## ★槽框贴图的金属边带**实测 6px 厚**(不是配置边距 12 —— 那是切九宫格的位置, 不是画了多宽)。
 ##   原来装备名摆在 x=2、底边贴着格底 ⇒ 名字压在边带上(判据 13 量到 4px)。
 const SLOT_PAD := 7.0
-## 格内名字两侧再留的呼吸(px)。贴着边带排「放得下」但看着顶边(10-20「迷你水晶球A」末尾 A 贴边)。
-const NAME_BREATH := 3.0
-## 格内名字字号: 默认 12, 放不下逐级缩到 10; 10 号还放不下才允许换行。
-const NAME_FS := 12
-const NAME_FS_MIN := 10
+## ★格子里不再写装备名(2026-10-21 手机版: 12 号字在 iPhone 上 1 毫米出头); 原 NAME_FS / NAME_FS_MIN / NAME_BREATH 已删。
 ## ── 本屏的几条布局基准线(2026-08-15 重排, 用户「利用这个空间可以把右边的排版过来」)──
 ##   原来顶部有一整行「🎒 背包 / 出战配置」的牌子 —— 玩家是自己点进来的, 不需要被告知
 ##   自己在哪一页 ⇒ 删掉, 整屏内容上提, 右侧那条从 y≈180 空到底的死列由羁绊区补上。
-const LANE_TOP := 116.0        # 上战场单位框的 y (带子从 y-24 开始)
+const LANE_TOP := 124.0        # 上战场单位框的 y (带子从 y-24 开始)
 ## ★2026-08-19 从 96 下移 20: 顶栏「返回/商店/帮助」原来只有 y 0..68 可用(实测战场带顶边 68),
 ##   撑不到 44pt(81px)。台面是 ScrollContainer(min_rows 按可视高算) ⇒ **下移由台面吸收, 不丢内容**,
 ##   这是这屏唯一一块"可借"的垂直预算。借完顶栏拿到 81px, 台面少 20px 照样滚。
-const LANE_GAP := 146.0        # 上→下战场的行距
+const LANE_GAP := 158.0        # 上→下战场的行距
 const SYN_X := 828.0           # 右侧羁绊列左沿(原 952 → 左移 124, 顺带吃掉阵容右边那块 138px 空白)
 const SYN_W := 424.0           # 羁绊列宽(原 300)
 ## 顶栏「站位」签占的宽度 + 间距(右上「币 / 全队装备」这一组为它左移这么多)。
@@ -62,21 +58,22 @@ const FORMATION_BTN_ROOM := 112.0
 ## 教程里右上「跳过教程」(132 宽)比它占的「?」(81 宽)多出的那截, 再加两格间距的余量。
 const TUT_SKIP_EXTRA := 80.0
 const SYN_TOP := 94.0          # 羁绊列顶(原 100→74→94), 与上战场带顶齐平(带顶 = LANE_TOP-24)
-const SYN_BOTTOM := 382.0      # 羁绊列底 = 下战场带的底边, 两侧齐平
-const BENCH_HDR_Y := 386.0     # 「装备背包」标题(22 号字实测占 30 高, 给够别压到第一排格子)
-const BENCH_TOP := 418.0       # 跟着 BENCH_HDR_Y 一起下移 20 —— 漏改它会让标题压进格子框边带
+const SYN_BOTTOM := 402.0      # 羁绊列底 = 下战场带的底边, 两侧齐平
+const BENCH_HDR_Y := 404.0     # 「装备背包」标题(22 号字实测占 30 高, 给够别压到第一排格子)
+const BENCH_TOP := 438.0       # 跟着 BENCH_HDR_Y 一起下移 20 —— 漏改它会让标题压进格子框边带
 const BENCH_PITCH := 108.0     # 格子行距(96 格 + 12 间隙): 3 行 = 312 ≤ 316, 刚好铺进去
-const OP_BAR_Y := 632.0        # 底部操作条(原 636·高 66 → 现 632·高 80: 装备文案多一行)
-const OP_BAR_H := 80.0
+const OP_BAR_H := 132.0        # 底部操作条(2026-10-21 手机版: 字 14/16/17 → 20, 键 38 → 81 高, 简述 3 行 ⇒ 80 → 132)
+## ★2026-10-21 手机优先: 最小字号 20(iPhone 上约 11pt); 底边只用到「视口底 - 底部横条」(见 _bottom_limit)。
+const MIN_FONT_PX := 20
 ## ★★选中战场卡片时那条「卸下」操作条【比其它两条高】—— 它里面装的是 81px(44pt) 的键,
 ##   而 `OP_BAR_H = 80` **装不下 81**。原来就是硬塞的: 键从条内 y=12 起 ⇒ 底沿 725,
 ##   不但伸出条子 13px, 还**伸出 720 设计框 5px**(探针实测 10 颗键全中)。
 ##   ⇒ 给它自己的高度 = 81 + 上下各 6 = 93, 并且**向上长**(下沿仍是 712, 与另两条齐平)。
 const UNIT_BAR_H := 93.0
 const UNIT_BAR_PAD := 6.0      # 键在条内的上下留白(93 = 81 + 6×2)
-const OP_BODY_FS := 14         # 底栏效果正文字号
-const OP_BODY_ROWS := 2        # 底栏效果正文显示几【整】行(放不下的部分由"点细看"接住)
-const DETAIL_BODY_FS := 16     # 装备详情框正文字号
+const OP_BODY_FS := 20         # 底栏效果正文字号(14 → 20 手机最小字号)
+const OP_BODY_ROWS := 3        # 底栏效果正文显示几【整】行(20 号字下最长的简述 3 行; 2026-10-21 由 2 改 3)
+const DETAIL_BODY_FS := 20     # 装备详情框正文字号(16 → 20)
 const P2 = preload("res://scripts/gamedata/phase2_config.gd")
 const Phase2Types = preload("res://scripts/gamedata/phase2_types.gd")
 const EquipStats = preload("res://scripts/gamedata/equip_stats.gd")   # 装备逐星属性表(与战斗实装同源; 2026-07-23 从回合制P2RT抽出)
@@ -332,6 +329,9 @@ func _lineup_ids() -> Array:
 	return GameState.lineup_leader_ids()
 
 # ─── 上部: 双路布阵 (上战场/下战场, 3统领+3小将分3+3; 点头像互换分路, 点小将切前/后排) ───
+## 战场带右上的图例(两条名词短句; 用户授权自定 2026-10-21)。门禁 verify_shop_inv_phone 读这两个常量。
+const LANE_LEGEND_TOP := "统领：本大轮出战龟　小将：补位单位"
+const LANE_LEGEND_BOTTOM := "小将站位：前排近战　后排远程"
 const UBOX_W := 244.0   # 阵容单位框(再放大·填左侧空间+适手机点触·用户2026-07-19)
 const UBOX_H := 116.0
 const UBOX_GAP := 16.0
@@ -388,26 +388,24 @@ func _build_lineup(_leaders: Array) -> void:
 		##   ③ 把带顶抬高 14px —— **压住了上面的「← 返回」「🛒 商店」两个按钮**
 		##   ⇒ 正解是**换一张薄边带的框**(slot-frame 实测 6px), 位置一点不用动。
 		##      框不合适就换框, 别拿版式去迁就框。
-		band.position = Vector2(30, by - 28); band.size = Vector2(box_span + 20, UBOX_H + 32)
+		## ★2026-10-21: 带顶 by-28 → by-36 —— 20 号字的行高 30 + 边带 6, 字不压在带子的边上(verify_ui_consistency「文字压边带」)。
+		band.position = Vector2(30, by - 36); band.size = Vector2(box_span + 20, UBOX_H + 40)
 		band.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(band)
 		var ll := Label.new()
 		ll.text = "%s  %s" % ["⬆" if lkey == "top" else "⬇", bf]
-		ll.add_theme_font_size_override("font_size", 16); ll.add_theme_color_override("font_color", lcol)
-		## ★带子从 by-24 起, 而它的金属边带实测 13px 厚 ⇒ 内容区从 by-11 才开始。
-		## 原来这两行字摆在 by-21 / by-20, **整行压在边带上**(门禁量到超出 9~10px)。
-		ll.position = Vector2(46, by - 20); ll.size = Vector2(180, 18); add_child(ll)
-		var minion_n := arr.size() - lead_n
-		var ctext := ""
-		if lead_n > 0:
-			ctext = "统领 ×%d" % lead_n
-		if minion_n > 0:
-			ctext += ("　　小将 ×%d" % minion_n) if ctext != "" else ("小将 ×%d" % minion_n)
-		var cnt := Label.new()
-		cnt.text = ctext
-		cnt.add_theme_font_size_override("font_size", 13)
-		cnt.add_theme_color_override("font_color", Color(lcol.r, lcol.g, lcol.b, 0.72))
-		cnt.position = Vector2(30 + box_span + 20 - 206, by - 19); cnt.size = Vector2(186, 16)
+		ll.add_theme_font_size_override("font_size", MIN_FONT_PX); ll.add_theme_color_override("font_color", lcol)
+		## ★带子从 by-28 起(slot-frame 边带 6px)。2026-10-21 字 16 → 20(行高 28), 摆在 by-28..by。
+		ll.position = Vector2(46, by - 30); ll.size = Vector2(180, 30); add_child(ll)   # 20 号字行高 30, 底沿 = 卡片顶
+		## ★★2026-10-21 原来右边是「统领 ×2 · 小将 ×1」—— 数的是卡片(卡片自己就摆在下面), 而两个词没有一处解释。
+		##   换成两条名词短句的图例(用户授权自定, 方案书「手机优先重排」): 上战场带讲统领 / 小将是什么,
+		##   下战场带讲小将的前排 / 后排。不口语化、不写操作说明书句(操作在「?」里)。
+		var cnt := Label.new(); cnt.name = "LaneLegend_" + lkey
+		cnt.text = LANE_LEGEND_TOP if lkey == "top" else LANE_LEGEND_BOTTOM
+		cnt.add_theme_font_size_override("font_size", MIN_FONT_PX)
+		cnt.add_theme_color_override("font_color", Color(lcol.r, lcol.g, lcol.b, 0.80))
+		cnt.position = Vector2(30 + box_span + 20 - 16 - 520, by - 30); cnt.size = Vector2(520, 30)
+		cnt.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		cnt.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT; add_child(cnt)
 		for i in range(arr.size()):
 			var _ub: Control = _dl_unit_box(lkey, i, arr[i], lead_n, Vector2(40 + i * (UBOX_W + UBOX_GAP), by))
@@ -510,15 +508,15 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 		nm.text = str(pet.get("name", pid))
 	else:
 		nm.text = "精英小将" if is_elite else "小将"
-	nm.add_theme_font_size_override("font_size", 16); nm.add_theme_color_override("font_color", Color("#e8f2ff"))
-	nm.position = Vector2(rx, 14); nm.size = Vector2(UBOX_W - rx - (60.0 if is_reg_minion else 8.0), 22)   # 小将留右上pill空间
+	nm.add_theme_font_size_override("font_size", MIN_FONT_PX); nm.add_theme_color_override("font_color", Color("#e8f2ff"))
+	nm.position = Vector2(rx, 12); nm.size = Vector2(UBOX_W - rx - 8.0, 28)   # 2026-10-21: 前排/后排签挪到头像下沿, 右上不再留位
 	nm.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(nm)
 	if is_ph:
 		var hint := Label.new()
 		hint.text = "空槽位"   # 原文"选龟后填入" —— "填入"是表单的词, 不是游戏里的话
-		hint.add_theme_font_size_override("font_size", 12)
+		hint.add_theme_font_size_override("font_size", MIN_FONT_PX)
 		hint.add_theme_color_override("font_color", Color("#7f8fa0"))
-		hint.position = Vector2(rx, 62); hint.size = Vector2(UBOX_W - rx - 8, 16)
+		hint.position = Vector2(rx, 60); hint.size = Vector2(UBOX_W - rx - 8, 28)
 		hint.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(hint)
 	else:
 		var eqs: Array = _unit_equips(unit)
@@ -534,7 +532,7 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 		var tgl := Button.new()
 		tgl.text = "前排" if front else "后排"
 		tgl.tooltip_text = "切换站位：前排近战 / 后排远程"
-		tgl.add_theme_font_size_override("font_size", 12)
+		tgl.add_theme_font_size_override("font_size", MIN_FONT_PX)
 		var tsb := StyleBoxFlat.new()
 		tsb.bg_color = Color("#5a3410") if front else Color("#0f3646")
 		tsb.border_color = Color("#e0954a") if front else Color("#4ab0d0")
@@ -560,8 +558,17 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 		tgl.add_theme_color_override("font_color", Color("#ffdba8") if front else Color("#b8e8ff"))
 		# ★手机板触控热区(2026-08-01): 50×22 = 手机上 27×12pt, 是这屏最难点的一个 →
 		#   加到 56×44(30×24pt)。宽只加 6 是因为右边就是单位框边缘, 再宽会溢出框。
-		tgl.position = Vector2(UBOX_W - 62.0, 8.0); tgl.size = Vector2(56, 44)
+		## ★★2026-10-21 手机版: 右上 56×44(30×24pt、12 号字)→ 头像下沿一条 96×38 名牌(20 号字),
+		##   热区 = 头像下半截 102×81(子节点 TouchPad: 44pt 达标)。头像本来就不是别的操作的靶子,
+		##   而右列(名字 + 三个装备格)照旧是「选中这只单位」。
+		tgl.position = Vector2(6.0, UBOX_H - 46.0); tgl.size = Vector2(96, 40)
+		tgl.focus_mode = Control.FOCUS_NONE
 		tgl.pressed.connect(func(): _dl_toggle_role(lane, idx))
+		var pad := Control.new(); pad.name = "TouchPad"
+		pad.position = Vector2(-4.0, 40.0 - 81.0 + 4.0); pad.size = Vector2(102, 81)
+		pad.mouse_filter = Control.MOUSE_FILTER_STOP
+		pad.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _dl_toggle_role(lane, idx))
+		tgl.add_child(pad)
 		box.add_child(tgl)
 	box.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _dl_click(lane, idx))
 	return box
@@ -635,11 +642,10 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, lane: St
 		if _sel_bench >= 0:
 			cell.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 装备模式: 透传→点框body装上
 		elif filled:
-			## ★文案也得跟着改 —— 原来写「点一下, 这件就回背包」, 那是**旧行为**的说明;
-			##   而 tooltip 在手机上根本看不见(本仓反复记过: 手机没 hover),
-			##   所以真正告诉玩家下一步的那句话在底部操作条上("点「卸下」把装备收回背包")。
-			## 2026-10-07 去口语化: 原 tooltip「点一下 → 底下出现「卸下」键」是说明书句, 按清单删除。
-			cell.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _select_unit(lane, idx))
+			## ★★2026-10-21 手机版: 格子不再是单独的靶子(40px = 22pt, 低于 44pt), 点它 = 点这张单位卡。
+			##   规则只剩一条, 与「?」里写的一致: 点单位 = 选中(底部列出它的装备、可卸下), 依次点两个单位 = 交换位置。
+			##   (原来格子单独接「只选中不换路」: 一张卡上两种手势、靶子只有 22pt —— 手指偏一点就是另一个动作。)
+			cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		else:
 			cell.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 空格透传
 			cell.tooltip_text = ("全队装备已达上限 %d/%d" % [
@@ -680,36 +686,12 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, lane: St
 		corner.size = Vector2(5, 5)
 		corner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		gcell.add_child(corner)
-		if _sel_bench >= 0:
-			gcell.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		else:
-			## 原文"羁绊赠送(不占装备位) · 盾羁绊掉档时自动收回": 括号注解 + "掉档"这种表述。
-			gcell.tooltip_text = "%s · 盾羁绊赠送 · 不占装备位 · 羁绊失效时移除" % str(gdef.get("name", ""))
-			## ★★这枚徽章只有 30px = **16.3pt**, 比装备格还小一圈, 而它原来同样是
-			##   "点一下就地卸掉" —— 全屏最小的靶子干着破坏性的活。同装备格一起改成
-			##   【只选中这只单位】, 卸下交给底部那颗 81px 的键(它也会列出赠送件)。
-			gcell.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _select_unit(lane, idx))
+		## 原文"羁绊赠送(不占装备位) · 盾羁绊掉档时自动收回": 括号注解 + "掉档"这种表述。
+		gcell.tooltip_text = "%s · 盾羁绊赠送 · 不占装备位 · 羁绊失效时移除" % str(gdef.get("name", ""))
+		## ★2026-10-21: 徽章同装备格, 不单独当靶子(30px = 16pt) —— 点它 = 点这张单位卡。
+		gcell.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		box.add_child(gcell)
 
-
-## 点单位身上的装备格/赠送徽章 ⇒ **只选中这只单位**(底部随即出现 81px 的「卸下」键)。
-##
-## ★为什么不复用 `_dl_click`: 它在"已有选中"时的语义是**互换分路** ——
-##   点第二只龟身上的装备会把两只龟换路, 而玩家想做的只是"看看这只身上有什么、卸一件"。
-## ★幂等: 再点同一只不取消(取消留给点卡片 body), 否则玩家点第二格会把刚出来的卸下条收掉。
-func _select_unit(lane: String, idx: int) -> void:
-	## ★2026-10-06 60 人实操「装备点了没反应、没有提示」(388 次里 8 次): 背包里已选中一件时, 手点在单位卡的
-	##   装备小格上会走到这里 —— 原来直接把背包选中清掉(_sel_bench = -1)、不装、不提示。
-	##   装满 3 件的卡上装备小格占了大半张卡, 很容易点中。⇒ 已选中装备时, 点装备格 = 装到这只身上(与点卡片同一条路)。
-	if _sel_bench >= 0:
-		_dl_click(lane, idx)
-		return
-	if str(_dl_sel.get("lane", "")) == lane and int(_dl_sel.get("idx", -1)) == idx:
-		return
-	_sel_bench = -1        # 与"选中背包里的装备"互斥(底部操作条同时只讲一件事)
-	_sel_jar = false
-	_dl_sel = {"lane": lane, "idx": idx}
-	_rebuild()
 
 ## 卸下统领第 cell_idx 件装备 → 回背包.
 func _dl_first_minion_idx(lane: String) -> int:
@@ -799,13 +781,13 @@ func _show_lineup_help() -> void:
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	dim.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed: dim.queue_free())
 	add_child(dim)
-	var bw := 560.0; var bh := 330.0   # 2026-10-19 多一行「站位」: 306 → 330
+	var bw := 720.0; var bh := 420.0   # 2026-10-19 多一行「站位」: 306 → 330; 2026-10-21 字 15 → 20、键 81 高 ⇒ 720×500
 	var box := Panel.new()
 	var sb := StyleBoxFlat.new(); sb.bg_color = Color("#1c2836"); sb.border_color = Color("#ffd93d")
 	sb.set_border_width_all(3); sb.set_corner_radius_all(12)
 	## ★2026-08-18 弹窗换面板框(同上: 一块区域)。
 	box.add_theme_stylebox_override("panel", UISkin.nine("panel-frame.png", 20, sb))
-	box.position = Vector2(_vw / 2.0 - bw / 2.0, 180.0); box.size = Vector2(bw, bh)
+	box.position = Vector2(_vw / 2.0 - bw / 2.0, maxf(96.0, minf(H / 2.0 - bh / 2.0, _popup_bottom() - bh))); box.size = Vector2(bw, bh)
 	box.mouse_filter = Control.MOUSE_FILTER_STOP
 	dim.add_child(box)
 	var ttl := Label.new(); ttl.text = "阵容说明"
@@ -814,11 +796,11 @@ func _show_lineup_help() -> void:
 	var body := Label.new()
 	## ★原文每条都是「X = Y」的对照表式("点两个单位 = 互换它们的战场 / 位置"),
 	##   那是策划表的写法。改成直接对玩家说"你点了会怎样" —— 同样是六条, 一条不少。
-	body.text = "· 上路、下路独立作战\n· 依次点击两个单位：交换位置\n· 右上「站位」：拖动单位设置开战站位\n· 小将【前排 / 后排】：切换近战 / 远程\n· 选择背包装备后点击单位：装备\n· 点击单位装备格：卸下\n· 3 件同名同星装备自动合成升星"
-	body.add_theme_font_size_override("font_size", 15); body.add_theme_color_override("font_color", Color("#cfe0ef"))
-	body.position = Vector2(24, 58); body.size = Vector2(bw - 48, bh - 120); body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; box.add_child(body)
-	var ok := Button.new(); ok.text = "知道了"; ok.add_theme_font_size_override("font_size", 17)
-	ok.position = Vector2(bw / 2.0 - 60, bh - 52); ok.size = Vector2(120, 40)
+	body.text = "· 上路、下路独立作战\n· 依次点击两个单位：交换位置\n· 右上「站位」：拖动单位设置开战站位\n· 小将头像下方【前排 / 后排】：切换近战 / 远程\n· 选择背包装备后点击单位：装备\n· 点击单位：底部列出该单位装备，可卸下\n· 3 件同名同星装备自动合成升星"
+	body.add_theme_font_size_override("font_size", MIN_FONT_PX); body.add_theme_color_override("font_color", Color("#cfe0ef"))
+	body.position = Vector2(24, 58); body.size = Vector2(bw - 48, bh - 58 - 100); body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; box.add_child(body)
+	var ok := Button.new(); ok.text = "知道了"; ok.add_theme_font_size_override("font_size", MIN_FONT_PX)
+	ok.position = Vector2(bw / 2.0 - 80, bh - 94); ok.size = Vector2(160, 81)
 	UISkin.button(ok, Color("#ffd93d"))
 	ok.pressed.connect(func(): dim.queue_free())
 	box.add_child(ok)
@@ -835,12 +817,38 @@ func _bench_bottom() -> float:
 	##   它比另两条高(UNIT_BAR_H), 所以让的是它自己的顶沿。
 	if _unit_bar_shows():
 		return _unit_bar_y() - 8.0
-	return (OP_BAR_Y - 8.0) if (sel_eq or sel_jar) else (H - 8.0)
+	return (_op_bar_y() - 8.0) if (sel_eq or sel_jar) else (_bottom_limit() - 4.0)
 
 
-## 「卸下」操作条的顶沿 —— 下沿与另两条齐平(OP_BAR_Y + OP_BAR_H), 高度不同所以向上长。
+## ★2026-10-21 手机优先: 本页能用到的最底沿(设计框坐标)。
+##   = 视口底(4:3 时设计框顶对齐, 下面多出 240 归背包网格) - 底部横条(SafeArea 下内缩) - 6。
+##   原来写死 H - 8 = 712: iPhone 上最后一排格子压进底部横条(实拍 10-20)。
+func _bottom_limit() -> float:
+	var vs: Vector2 = Vector2(get_viewport().get_visible_rect().size)
+	var host_h: float = size.y if (size.x >= W and size.y >= 360.0) else vs.y
+	var ins: Vector4 = SafeArea.insets(vs)
+	return maxf(H, host_h) - ins.w - 6.0
+
+
+## 弹框(阵容说明 / 装备详情 / 羁绊详情)的底沿上限: 不过底部横条, 也不出 720 设计框
+##   (4:3 上设计框顶对齐、下面多出来的那段只给背包网格, 弹框仍按设计框居中)。
+func _popup_bottom() -> float:
+	return minf(H - 8.0, _bottom_limit())
+
+
+## 底部操作条顶沿: 贴着 _bottom_limit 往上长。
+func _op_bar_y() -> float:
+	return _bottom_limit() - OP_BAR_H
+
+
+## UIFrame 顶对齐(见 UIFrame._center): 4:3 多出来的高度全给下面的背包网格。
+func ui_frame_top_align() -> bool:
+	return true
+
+
+## 「卸下」操作条的顶沿 —— 下沿与另两条齐平(_op_bar_y() + OP_BAR_H), 高度不同所以向上长。
 func _unit_bar_y() -> float:
-	return OP_BAR_Y + OP_BAR_H - UNIT_BAR_H
+	return _op_bar_y() + OP_BAR_H - UNIT_BAR_H
 
 
 ## 当前选中的战场卡片(统领/小将); 没选中 / 越界 / 被"选中背包装备"抢了 ⇒ 空字典。
@@ -881,9 +889,10 @@ func _build_bench() -> void:
 	##   ★这行**始终为真**: `_build_bench` 的 `min_rows = ceil(scroll_h / pitch)`
 	##     保证格子总是铺过可视区下沿(下面确实还有格子)。
 	swipe.text = "▼ 下面还有"
-	swipe.add_theme_font_size_override("font_size", 15)
+	swipe.name = "BenchMoreHint"
+	swipe.add_theme_font_size_override("font_size", MIN_FONT_PX)
 	swipe.add_theme_color_override("font_color", Color("#5f7285"))
-	swipe.position = Vector2(_vw - 260, BENCH_HDR_Y + 4); swipe.size = Vector2(220, 24)
+	swipe.position = Vector2(_vw - 260, BENCH_HDR_Y + 2); swipe.size = Vector2(220, 28)
 	swipe.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	add_child(swipe)
 	var bench: Array = GameState.persistent_bench if GameState.persistent_bench is Array else []
@@ -919,10 +928,14 @@ func _build_bench() -> void:
 	## ★格间距把剩余宽度【均分】而不是固定 8 —— 固定 8 时 11 列只排到 x=1176,
 	##   右边白留 64px 一条空列(实测), 看着像"最后一格坏了"。
 	var cpitch := (scroll_w - SLOT) / float(maxi(1, per_row - 1)) if per_row > 1 else SLOT
-	var min_rows := int(ceil(scroll_h / pitch))                       # 至少铺满可视区
-	var used_rows := int(ceil(float(maxi(bench.size(), 1)) / float(per_row)))
-	var total_cells := maxi(min_rows, used_rows) * per_row
-	content.custom_minimum_size = Vector2(scroll_w - 4.0, float(int(ceil(float(total_cells) / float(per_row)))) * pitch)
+	## ★★2026-10-21 按【实际件数】排格子, 不再「至少铺满可视区」: 原来 22 件也画满 33 格,
+	##   空背包画 22 个空格 —— 一屏空框读起来像「容量 33」, 而背包本来就没有容量上限。
+	##   现在 = 有几件画几格(空格不画: 背包没有容量上限, 空格只会被读成「容量」), 一件没有就只写「背包为空」。
+	var used_rows := int(ceil(float(bench.size()) / float(per_row)))
+	var total_cells := bench.size()
+	## 「▼ 下面还有」只在真的有下面时出现(原来恒为真, 因为格子总是铺过下沿)
+	swipe.visible = float(used_rows) * pitch - (pitch - SLOT) > scroll_h + 0.5
+	content.custom_minimum_size = Vector2(scroll_w - 4.0, maxf(44.0, float(used_rows) * pitch))
 	## ★★★渲染索引与【数据索引】必须分开 —— 血泪(2026-08-14 自己刚踩):
 	##   糖果罐是插在最前面的**合成条目**, 它不在 `GameState.persistent_bench` 里。
 	##   而 `_equip_cell(it, idx, ...)` 的 idx 会被 `_on_bench_click` 存成 `_sel_bench`,
@@ -951,10 +964,9 @@ func _build_bench() -> void:
 	if bench.is_empty():
 		var hint := Label.new()
 		hint.text = "背包为空"
-		hint.add_theme_font_size_override("font_size", 14); hint.add_theme_color_override("font_color", Color("#5a6675"))
-		## 提示原来摆在 (6,6) —— 那正是第一排格子的位置, 实拍字压在两个空格上。
-		## 挪到格子上方那条空白里(负 y 是相对 content 的顶部留白)。
-		hint.position = Vector2(6, -24); hint.size = Vector2(600, 22); hint.mouse_filter = Control.MOUSE_FILTER_IGNORE; content.add_child(hint)
+		hint.add_theme_font_size_override("font_size", MIN_FONT_PX); hint.add_theme_color_override("font_color", Color("#7f8fa0"))
+		## 2026-10-21: 空背包不再画空格 ⇒ 提示放在格子区第一行的位置。
+		hint.position = Vector2(6, 8); hint.size = Vector2(600, 28); hint.mouse_filter = Control.MOUSE_FILTER_IGNORE; content.add_child(hint)
 
 # ─── 底部选中操作条 (大改: 替代满屏文字说明; 选中装备才显名/效果/卖出/取消) ───
 func _build_op_bar() -> void:
@@ -976,7 +988,7 @@ func _build_op_bar() -> void:
 		return
 	if _sel_bench < 0 or _sel_bench >= GameState.persistent_bench.size():
 		return   # 无选中装备 → 不显底部操作条(原那行"3件同款合成"已收进"?"帮助·用户2026-07-19)
-	var by := OP_BAR_Y
+	var by := _op_bar_y()
 	var bar := Panel.new()
 	var sb := StyleBoxFlat.new(); sb.bg_color = Color("#101c2a"); sb.border_color = Color("#2a3a4e")
 	sb.set_border_width_all(2); sb.set_corner_radius_all(8)
@@ -992,8 +1004,8 @@ func _build_op_bar() -> void:
 			## ★2026-09-28 去掉句首的 🔼 —— 纯装饰(这条提示自己把话说全了),
 			##   而它左边那张卡上就画着临时等级器。
 			var l := Label.new(); l.text = "选择单位 · 本大轮等级 +1"
-			l.add_theme_font_size_override("font_size", 16); l.add_theme_color_override("font_color", Color("#e6d8ff"))
-			l.position = Vector2(16, 24); l.size = Vector2(bw - 320, 28); l.mouse_filter = Control.MOUSE_FILTER_IGNORE; bar.add_child(l)
+			l.add_theme_font_size_override("font_size", MIN_FONT_PX); l.add_theme_color_override("font_color", Color("#e6d8ff"))
+			l.position = Vector2(16, 36); l.size = Vector2(bw - 320, 28); l.mouse_filter = Control.MOUSE_FILTER_IGNORE; bar.add_child(l)
 		else:
 			var sdef: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(sit.get("id", "")), {})
 			# ★装备文案按玩家当前星级高亮(2026-07-22): 三元组 a/b/c 里这一档亮、另两档暗。
@@ -1006,13 +1018,13 @@ func _build_op_bar() -> void:
 			head.bbcode_enabled = true
 			head.fit_content = false
 			head.scroll_active = false
-			head.add_theme_font_size_override("normal_font_size", 17)
-			head.add_theme_font_size_override("bold_font_size", 17)
+			head.add_theme_font_size_override("normal_font_size", MIN_FONT_PX)
+			head.add_theme_font_size_override("bold_font_size", MIN_FONT_PX)
 			var _tname := str(Phase2Types.type_of(str(sit.get("id", ""))))
 			head.text = "[b][color=#ffffff]%s[/color][/b]   [color=#ffd93d]%s[/color]   [color=#8fa6bb]%d费%s[/color]" % [
 				str(sdef.get("name", "")), "★".repeat(maxi(1, _star)), int(sdef.get("cost", 1)),
-				("  ·  " + _tname + "系") if _tname != "" else ""]
-			head.position = Vector2(16, 8); head.size = Vector2(bw - 420, 24)
+				("  ·  " + _tname) if _tname != "" else ""]   # 类型名本身(剑), 不加「系」—— 与羁绊列 / 商店同一个名字
+			head.position = Vector2(16, 8); head.size = Vector2(bw - 420 - 260, 30)   # 右边 260 留给「查看更多」
 			head.mouse_filter = Control.MOUSE_FILTER_IGNORE; bar.add_child(head)
 			## ── 第二段: 效果正文。正文色改成浅蓝灰(#cfe0ef), 只留【数值】是黄的 ——
 			##    这样一眼能扫到数字, 而不是满屏一片黄。
@@ -1038,7 +1050,7 @@ func _build_op_bar() -> void:
 			## 框高 = 【整数】行 —— 用字体自己报的行高算, 不是拍一个 40。
 			##   拍 40 的后果实拍看到了: 第 3 行被从中间切开半条, 比直接不显示还难看。
 			var lh := _op_line_h(l)
-			l.position = Vector2(16, 34); l.size = Vector2(body_w, lh * float(OP_BODY_ROWS))
+			l.position = Vector2(16, 38); l.size = Vector2(body_w, lh * float(OP_BODY_ROWS))
 			l.mouse_filter = Control.MOUSE_FILTER_IGNORE; bar.add_child(l)
 			_op_body = l
 			_op_more = null
@@ -1048,9 +1060,9 @@ func _build_op_bar() -> void:
 				var more := Label.new()
 				## "还有 N 行"是排版口径, 玩家关心的是**还有没说完的事**。
 				more.text = "查看更多（%d 行）" % (total - OP_BODY_ROWS)
-				more.add_theme_font_size_override("font_size", 13)
+				more.add_theme_font_size_override("font_size", MIN_FONT_PX)
 				more.add_theme_color_override("font_color", Color("#7fb0d8"))
-				more.position = Vector2(body_w + 16.0 - 250.0, 10); more.size = Vector2(250, 20)
+				more.position = Vector2(body_w + 16.0 - 250.0, 8); more.size = Vector2(250, 28)
 				more.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 				more.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				bar.add_child(more)
@@ -1068,8 +1080,8 @@ func _build_op_bar() -> void:
 			##     不拿"按钮上写着哪两个字"当尺子(memory [[fb-tests-pin-screen-words]])。
 			var det := Button.new(); det.text = "详情"
 			det.name = DETAIL_BTN_NAME
-			det.add_theme_font_size_override("font_size", 16)
-			det.position = Vector2(bw - 396, 14); det.size = Vector2(96, 38)
+			det.add_theme_font_size_override("font_size", MIN_FONT_PX)
+			det.position = Vector2(bw - 396, (OP_BAR_H - 81.0) * 0.5); det.size = Vector2(96, 81)
 			## ★★底栏这三个键原来全是 Godot 默认皮(圆角纯色) ——
 			##   `verify_click_targets_alive` 自己写着「圆角纯色是最直接的『没游戏味』」,
 			##   它们只是因为底栏得先选中一件装备才建、静止态的屏上不在场, 才一直没被数到。
@@ -1090,13 +1102,13 @@ func _build_op_bar() -> void:
 			sell.add_theme_constant_override("icon_max_width", ICON_PX)
 			sell.icon_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 			sell.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			sell.add_theme_font_size_override("font_size", 16)
-			sell.position = Vector2(bw - 290, 14); sell.size = Vector2(170, 38)
+			sell.add_theme_font_size_override("font_size", MIN_FONT_PX)
+			sell.position = Vector2(bw - 290, (OP_BAR_H - 81.0) * 0.5); sell.size = Vector2(170, 81)
 			UISkin.button(sell, Color("#ffd93d"))
 			sell.pressed.connect(_inv_ops._sell_selected); bar.add_child(sell)
 		var cancel := Button.new(); cancel.text = "取消"
-		cancel.add_theme_font_size_override("font_size", 16)
-		cancel.position = Vector2(bw - 108, 14); cancel.size = Vector2(92, 38)
+		cancel.add_theme_font_size_override("font_size", MIN_FONT_PX)
+		cancel.position = Vector2(bw - 108, (OP_BAR_H - 81.0) * 0.5); cancel.size = Vector2(92, 81)
 		UISkin.button(cancel, Color("#9fb6c9"))
 		cancel.pressed.connect(func(): _sel_bench = -1; _rebuild()); bar.add_child(cancel)
 
@@ -1141,7 +1153,14 @@ func _op_total_lines(l: RichTextLabel, plain: String, width: float) -> int:
 	var fh := float(f.get_height(OP_BODY_FS))
 	if fh <= 0.0:
 		return 0
-	var sz: Vector2 = f.get_multiline_string_size(plain, HORIZONTAL_ALIGNMENT_LEFT, width, OP_BODY_FS)
+	## ★2026-10-21: 传进来的是 bbcode(equip_brief_bb) —— 原来连 `[color=#ffd93d]` 这些标签一起量,
+	##   20 号字下一行的简述被算成 4 行、挂着「查看更多(1 行)」(实拍)。先去标签; 行内图标按一个全角字的宽算。
+	var rx := RegEx.new()
+	rx.compile("\\[img[^\\]]*\\][^\\[]*\\[/img\\]")
+	var shown: String = rx.sub(plain, "囗", true)
+	rx.compile("\\[[^\\]]*\\]")
+	shown = rx.sub(shown, "", true)
+	var sz: Vector2 = f.get_multiline_string_size(shown, HORIZONTAL_ALIGNMENT_LEFT, width, OP_BODY_FS)
 	return int(round(sz.y / fh))
 
 
@@ -1190,14 +1209,14 @@ func _show_equip_detail(item: Dictionary) -> void:
 	var body_plain := "属性\n%s\n\n效果\n%s" % [
 		("无属性加成" if rows.is_empty() else _stat_block(eid, star)),
 		SkillText.equip_full(edef)]
-	var bh: float = clampf(_measured_text_h(body_plain, bw - 48.0, DETAIL_BODY_FS) + 140.0,
-		300.0, H - 96.0)
+	var bh: float = clampf(_measured_text_h(body_plain, bw - 48.0, DETAIL_BODY_FS) + 180.0,
+		300.0, _popup_bottom() - 24.0)
 	var box := Panel.new()
 	var sb := StyleBoxFlat.new(); sb.bg_color = Color("#1c2836"); sb.border_color = Color("#ffd93d")
 	sb.set_border_width_all(3); sb.set_corner_radius_all(12)
 	## ★2026-08-18 弹窗换面板框(同上: 一块区域)。
 	box.add_theme_stylebox_override("panel", UISkin.nine("panel-frame.png", 20, sb))
-	box.position = Vector2(_vw / 2.0 - bw / 2.0, maxf(24.0, H / 2.0 - bh / 2.0))
+	box.position = Vector2(_vw / 2.0 - bw / 2.0, maxf(24.0, minf(H / 2.0 - bh / 2.0, _popup_bottom() - bh)))
 	box.size = Vector2(bw, bh)
 	box.mouse_filter = Control.MOUSE_FILTER_STOP
 	dim.add_child(box)
@@ -1210,7 +1229,7 @@ func _show_equip_detail(item: Dictionary) -> void:
 	ttl.add_theme_font_size_override("bold_font_size", 22)
 	ttl.text = "[b][color=#ffffff]%s[/color][/b]   [color=#ffd93d]%s[/color]   [color=#8fa6bb]%d费%s[/color]" % [
 		str(edef.get("name", eid)), "★".repeat(star), int(edef.get("cost", 1)),
-		("  ·  " + tname + "系") if tname != "" else ""]
+		("  ·  " + tname) if tname != "" else ""]
 	ttl.position = Vector2(24, 18); ttl.size = Vector2(bw - 48, 34); box.add_child(ttl)
 	var rt := RichTextLabel.new()
 	rt.bbcode_enabled = true
@@ -1218,13 +1237,13 @@ func _show_equip_detail(item: Dictionary) -> void:
 	rt.scroll_active = true          # 万一还是放不下 → 能滚, 不静默吃字
 	rt.add_theme_font_size_override("normal_font_size", DETAIL_BODY_FS)
 	rt.add_theme_font_size_override("bold_font_size", DETAIL_BODY_FS)
-	rt.position = Vector2(24, 62); rt.size = Vector2(bw - 48, bh - 62 - 62)
+	rt.position = Vector2(24, 62); rt.size = Vector2(bw - 48, bh - 62 - 100)
 	rt.text = bb
 	rt.name = "EquipDetailBody"
 	box.add_child(rt)
 	## 「关闭」是网页/工具栏的词; 本屏的阵容帮助框一直用的是「知道了」—— 统一到那一个。
-	var ok := Button.new(); ok.text = "知道了"; ok.add_theme_font_size_override("font_size", 18)
-	ok.position = Vector2(bw / 2.0 - 60, bh - 52); ok.size = Vector2(120, 40)
+	var ok := Button.new(); ok.text = "知道了"; ok.add_theme_font_size_override("font_size", MIN_FONT_PX)
+	ok.position = Vector2(bw / 2.0 - 80, bh - 94); ok.size = Vector2(160, 81)
 	UISkin.button(ok, Color("#ffd93d"))
 	ok.pressed.connect(func(): dim.queue_free())
 	box.add_child(ok)
@@ -1233,7 +1252,7 @@ func _show_equip_detail(item: Dictionary) -> void:
 ## ★用户 2026-08-14:「点击装备, 下面把出售和什么按钮换成打碎就好了啊」。
 ##   照做: 不另起弹窗、不另起面板 —— 选中可撤销, 误触点一下再点"取消"即可。
 func _build_jar_op_bar() -> void:
-	var by := OP_BAR_Y
+	var by := _op_bar_y()
 	var bar := Panel.new()
 	var sb := StyleBoxFlat.new(); sb.bg_color = Color("#1c1226"); sb.border_color = Color("#e79bd6")
 	sb.set_border_width_all(2); sb.set_corner_radius_all(8)
@@ -1268,9 +1287,9 @@ func _build_jar_op_bar() -> void:
 	##   而这一格里已经有糖果罐的像素图了。emoji 走 NotoEmoji, 与全屏像素笔触两套画法。
 	l.text = "糖果罐 · 第 %d 档\n打碎可获得：%s（每大轮限 1 次）" % [
 		tier, GameState.candy_jar_tier_preview(tier)]
-	l.add_theme_font_size_override("font_size", 15)
+	l.add_theme_font_size_override("font_size", MIN_FONT_PX)
 	l.add_theme_color_override("font_color", Color("#f0d6ff"))
-	l.position = Vector2(16, 16); l.size = Vector2(bw - 320, 48)
+	l.position = Vector2(16, 16); l.size = Vector2(bw - 320, OP_BAR_H - 32.0)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bar.add_child(l)
@@ -1278,8 +1297,8 @@ func _build_jar_op_bar() -> void:
 	##   ⚠ 这一行的**源码字面**被 `tests/verify_candy_jar.gd` 钉着(它 grep 本文件源码),
 	##     那条断言已同步改成按行为找这枚键。
 	var smash := Button.new(); smash.text = "打碎"
-	smash.add_theme_font_size_override("font_size", 16)
-	smash.position = Vector2(bw - 290, 14); smash.size = Vector2(170, 38)   # ★与"卖出"同一位置同一尺寸
+	smash.add_theme_font_size_override("font_size", MIN_FONT_PX)
+	smash.position = Vector2(bw - 290, (OP_BAR_H - 81.0) * 0.5); smash.size = Vector2(170, 81)   # ★与"卖出"同一位置同一尺寸
 	UISkin.button(smash, Color("#e79bd6"))
 	smash.pressed.connect(func() -> void:
 		_sel_jar = false
@@ -1287,8 +1306,8 @@ func _build_jar_op_bar() -> void:
 			_inv_jar._on_break_jar())
 	bar.add_child(smash)
 	var cancel := Button.new(); cancel.text = "取消"
-	cancel.add_theme_font_size_override("font_size", 16)
-	cancel.position = Vector2(bw - 108, 14); cancel.size = Vector2(92, 38)
+	cancel.add_theme_font_size_override("font_size", MIN_FONT_PX)
+	cancel.position = Vector2(bw - 108, (OP_BAR_H - 81.0) * 0.5); cancel.size = Vector2(92, 81)
 	UISkin.button(cancel, Color("#9fb6c9"))
 	cancel.pressed.connect(func(): _sel_jar = false; _rebuild())
 	bar.add_child(cancel)
@@ -1310,34 +1329,6 @@ func _empty_bench_cell(pos: Vector2) -> Control:
 	box.mouse_filter = Control.MOUSE_FILTER_PASS   # 空格也透传拖动→可滑动
 	return box
 
-## 格内名字排版: 宽度 = 格宽 − 两侧(边带 + 呼吸), 拿 Label 实际字体量真宽,
-## 12 号放不下逐级缩到 10 号, 单行居中; 10 号仍放不下才换行(两行仍在 32px 高里)。
-## ★不用 clip_text / 省略号: 装备名是辨认依据, 截掉一个字就成了另一件(迷你水晶球A/B)。
-## 判据: tests/verify_inventory_name_fit.gd 逐件量全部装备名。
-func _fit_cell_name(nm: Label) -> void:
-	var inset: float = SLOT_PAD + NAME_BREATH
-	var avail: float = SLOT - inset * 2.0
-	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	## ★字体直接从项目主题取: 这一刻 Label 还没进场景树, 不靠它自己的主题查找。
-	var fnt: Font = null
-	var th: Theme = ThemeDB.get_project_theme()
-	if th != null and th.has_default_font():
-		fnt = th.default_font
-	if fnt == null:
-		fnt = nm.get_theme_font("font")
-	var fs: int = NAME_FS
-	if fnt != null:
-		while fs > NAME_FS_MIN and fnt.get_string_size(nm.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > avail:
-			fs -= 1
-	nm.add_theme_font_size_override("font_size", fs)
-	## 一直开换行: 放得下就是一行; 关掉换行的话 Label 会按最小尺寸把自己撑宽、冲出留白。
-	nm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	## ★尺寸最后设: 先设的话 Label 会按【当时】的最小尺寸(没换行、字号还是主题默认 16)把宽度撑大且不再缩回
-	##   (实测「迷你水晶球A」字宽 65px、框被撑到 87px = 65×16/12; 「六分仪浮游炮」撑到 96px, 字墨压进边带)。
-	nm.position = Vector2(inset, SLOT - 36 - 3.0)
-	nm.size = Vector2(avail, 32)
-
-
 func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	if str(it.get("kind", "")) == "candy_jar":  # 糖果罐: 以装备卡的形式排进背包(用户 2026-08-14)
 		return _candy_jar_cell(it, pos)
@@ -1352,21 +1343,19 @@ func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	## ★走 EquipIcon: 无图时退化成 emoji 而不是空白(EquipIcon.make 的 else 分支)
 ##   ⚠"060~095 有 36 件没配图"这句已作废: 实测 95 件装备**全部**有 img 且图都在盘上
 ##     ⇒ emoji 兜底一次都不会触发(留着仍对, 但别当"有 36 件没图"的证据)。
-	var ic2 := EquipIcon.make(edef, Vector2(44, 36))
-	ic2.position = Vector2(SLOT / 2.0 - 22, 18)
+	## ★★2026-10-21 手机版: 格子里只画【图标 + 星级】, 名字不再写在格子里。
+	##   名字原来 12 号字(放不下再缩到 10 号) —— iPhone 上 1 毫米出头, 读不出来; 而 96 格放不下 20 号的 5 字名。
+	##   参考里手机横屏的背包 / 商店格(Halls of Torment / Rogue Legacy / Peglin / Underlords)都是图标格,
+	##   名字在选中后的说明里给 —— 本页选中后底部操作条第一行就是名字(20 号)。
+	var ic2 := EquipIcon.make(edef, Vector2(64, 56))
+	ic2.position = Vector2(SLOT / 2.0 - 32, 32)
 	box.add_child(ic2)
-	var nm := Label.new()
-	nm.text = str(edef.get("name", eid))
-	nm.name = "CellName"
-	nm.add_theme_color_override("font_color", Color("#e8f2ff"))
-	_fit_cell_name(nm)
-	box.add_child(nm)
 	var star := int(it.get("star", 1))
 	var st := Label.new()
 	st.text = "★".repeat(star)
-	st.add_theme_font_size_override("font_size", 13)
+	st.add_theme_font_size_override("font_size", MIN_FONT_PX)
 	st.add_theme_color_override("font_color", Color("#ffd93d"))
-	st.position = Vector2(0, 4); st.size = Vector2(SLOT, 18)
+	st.position = Vector2(0, 4); st.size = Vector2(SLOT, 28)
 	st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(st)
 	for ch in box.get_children():
@@ -1437,16 +1426,11 @@ func _item_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	##   素材铁律是"新内容一律新素材", 所以**不拿语义不符的图顶替**。
 	##   ⇒ 等新图标画好再换; 在那之前台账钉着它, 不许再多一个。
 	ic.text = "🔼"
-	ic.add_theme_font_size_override("font_size", 30)
-	ic.position = Vector2(0, 16); ic.size = Vector2(SLOT, 36)
+	ic.add_theme_font_size_override("font_size", 40)
+	ic.position = Vector2(0, 18); ic.size = Vector2(SLOT, 56)
 	ic.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(ic)
-	var nm := Label.new()
-	nm.text = "临时等级器"
-	nm.name = "CellName"
-	nm.add_theme_color_override("font_color", Color("#e6d8ff"))
-	_fit_cell_name(nm)
-	box.add_child(nm)
+	## 名字不写在格子里(同装备格, 2026-10-21): 选中后底部操作条那一行说它是什么。
 	for ch in box.get_children():
 		ch.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	## 原文"临时等级器 (糖果罐战利品)\n选中它 → 点一只龟统领或小将 → 该单位【本大轮】永久 +1 级 (切大轮重置)":
@@ -1520,6 +1504,17 @@ func _tut_notify(ev: String) -> void:
 	var td = get_node_or_null("/root/TutorialDirector")
 	if td != null:
 		td.notify(ev)
+
+
+## 教程文案占位(TutorialGuide.fill_text): {item} = 背包第一件(= 教程里刚买、合成的那件, 锚点 first_item 指的同一件)的名字。
+func tut_text_vars() -> Dictionary:
+	var nm := ""
+	for it in GameState.persistent_bench:
+		if it is Dictionary and GameState.is_equip_item(it):
+			var d: Dictionary = DataRegistry.phase2_equipment_by_id.get(str((it as Dictionary).get("id", "")), {})
+			nm = str(d.get("name", ""))
+			break
+	return {"item": nm}
 
 
 ## 教程最后一步的「完成教程」钮 —— 站在返回键的位置(教程里返回键是藏起来的, 见 TopBar)。
@@ -1619,17 +1614,21 @@ func _candy_jar_cell(it: Dictionary, pos: Vector2) -> Control:
 	jic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	jic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	jic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	jic.position = Vector2(SLOT / 2.0 - 16, 14); jic.size = Vector2(ICON_PX, ICON_PX)
+	## 2026-10-21: 手机版格子不写名字 ⇒ 图标画原生 1x(64×64), 不再折半。
+	jic.position = Vector2(SLOT / 2.0 - 32, 4); jic.size = Vector2(64, 64)
 	jic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	jbox.add_child(jic)
 	var jnm := Label.new()
 	## ★★"×N" 是**误导**: `break_candy_jar` 设的是 `candy_jar_broken = true` ——
 	##   **一大轮只能碎一次**; `candy_jar_count` 是累积糖数、**决定档位**, 不是"N 个罐子"。
 	##   写成 ×N 会被读成一叠可碎 N 次的消耗品。改成显示【档位】, 糖数放 tooltip。
-	jnm.text = "糖果罐 %d档" % GameState.candy_jar_tier()
+	## 2026-10-21: 格子里只留档位(20 号字), 「糖果罐」三个字在选中后的底部操作条里。
+	jnm.text = "%d 档" % GameState.candy_jar_tier()
 	jnm.name = "CellName"
+	jnm.add_theme_font_size_override("font_size", MIN_FONT_PX)
 	jnm.add_theme_color_override("font_color", Color("#e79bd6"))
-	_fit_cell_name(jnm)
+	jnm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	jnm.position = Vector2(0, SLOT - 34.0); jnm.size = Vector2(SLOT, 28)
 	jnm.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	jbox.add_child(jnm)
 	## ★★★点它 = 【选中】, 和点装备完全一样(用户 2026-08-14:
@@ -1682,11 +1681,11 @@ func _build_unit_equip_bar() -> void:
 	add_child(bar)
 	var ttl := Label.new()
 	ttl.text = "卸下装备"
-	ttl.add_theme_font_size_override("font_size", 15)
+	ttl.add_theme_font_size_override("font_size", MIN_FONT_PX)
 	ttl.add_theme_color_override("font_color", Color("#9fb6c9"))
 	## 标题在条内竖直居中(条子换高度之后写死 16 就偏上了)
-	ttl.position = Vector2(20, (UNIT_BAR_H - 22.0) * 0.5)
-	ttl.size = Vector2(260, 22)
+	ttl.position = Vector2(20, (UNIT_BAR_H - 28.0) * 0.5)
+	ttl.size = Vector2(260, 28)
 	bar.add_child(ttl)
 	## ★★顺序 = 【占装备位的三件】在前、【羁绊白送的】在后, 下标用真实下标。
 	##   原来是 `for ci in range(mini(eqs.size(), 3))`: 3 件装备 + 1 件赠送时
@@ -1713,7 +1712,7 @@ func _build_unit_equip_bar() -> void:
 		var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
 		var b := Button.new()
 		b.text = "卸下 %s" % str(edef.get("name", eid))
-		b.add_theme_font_size_override("font_size", 15)
+		b.add_theme_font_size_override("font_size", MIN_FONT_PX)
 		## ★81 = 44pt 触控下限; 条高 UNIT_BAR_H 就是按它算的(81 + UNIT_BAR_PAD×2),
 		##   所以 y 用 UNIT_BAR_PAD 而不是写死 12 —— 写死 12 时底沿 725, 伸出条子也伸出屏。
 		b.position = Vector2(x, UNIT_BAR_PAD)

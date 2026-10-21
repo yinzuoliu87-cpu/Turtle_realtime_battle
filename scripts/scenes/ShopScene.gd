@@ -32,20 +32,52 @@ const BAR_MARGIN_Y := 6
 ## ★固化版式(方案书 docs/plans/20260729c-商店页重设计.md §7.3) —— 每个数都算过, 总计 716 < 720。
 ##   改这里要同步跑 tests/verify_shop_layout.gd(不超界 + 按钮 ≥44px)。
 ##   为什么不用容器自动布局: 全文件既有风格就是绝对坐标, 混两套更难维护。
-## ★2026-10-18 整页重做: 货架 = 背景图(shop-bg.png)右侧两层木板, 下列数值是量那张图得来的
-##   (原生 384×216 ×3.333: 上层板面 y 74→247, 下层 128→427, 左右 216..373 → 720..1243)。
-const SLOT_W := 104.0        # 一格商品的宽(5 格 = 520 = 板长)
-const SLOT_H := 142.0        # 一格商品的高: 物品立在板上, 价签挂在板沿
-const GRID_X := 722.0        # 货架左沿
-const GRID_Y := 128.0        # 上层商品格的顶(底 270 = 板沿)
+## ★★2026-10-21 手机优先重排(方案书 20261018-商店背包合一.md「手机优先重排」一节)。
+##   iPhone 6.1" 实拍: 宝箱只露半截、货架伸出屏幕、字 1~2 毫米、可点的 10 件挤在右半。
+##   ⇒ 版式只认【安全设计区】: 设计框 1280×720 居中(宽屏两侧 ≥142 设计像素 > 刘海 / 圆角 111),
+##     底边只用到 SAFE_BOTTOM(iPhone 底部横条 21pt ≈ 38 设计像素), 其余是铺满整窗的场景底图。
+##   换算: iPhone 横屏高 402pt = 720 设计像素 ⇒ 1pt ≈ 1.8 设计像素; 44pt 触控 = 81(全项目同一个数);
+##     最小字号 20(≈ 11pt)。门禁 tests/verify_shop_inv_phone.gd 在 19.5:9 / 16:9 / 4:3 三种比例下量。
+const SAFE_BOTTOM := 682.0
+const MIN_FONT_PX := 20
+## 货柜(2026-10-21 用户「右边这个柜子不能在往左边变大一下吗」): 新画的宽货柜 shop-shelf-wide.png,
+##   原生 324×192, 两层板从左立柱通到右立柱。★倍率 = 场景底图同一个(W/384), 像素粗细一致。
+##   量的(原生): 立柱内沿 x28 / x296, 上层板面 y94, 下层板面 y149, 下层板沿底 y166; y171..192 是通长底座(10-21 补)。
+const CAB_TEX = preload("res://assets/sprites/shop/shop-shelf-wide.png")
+const CAB_SCALE := 1280.0 / 384.0
+const CAB_X := 1262.0 - 324.0 * CAB_SCALE   # 182
+## 底沿 = SAFE_BOTTOM; 顶上的横梁 / 绳子藏进顶栏(87)下面, 像从顶梁上挂下来。
+const CAB_Y := SAFE_BOTTOM - 192.0 * CAB_SCALE   # 42
+const BOARD_X := CAB_X + 28.0 * CAB_SCALE  # 板左沿(左立柱内沿) 275
+const SLOT_W := 268.0 * CAB_SCALE / 5.0    # 一格商品的宽 178.7(5 格 = 两根立柱之间)
+const SLOT_H := 120.0                      # 物品(108)立在板面上; 价签也立在板面上(格底 = 板面)
+const BOARD_TOP_Y := CAB_Y + 94.0 * CAB_SCALE    # 上层板面 355
+const BOARD_LOW_Y := CAB_Y + 149.0 * CAB_SCALE   # 下层板面 539
+const BOARD_LOW_BOTTOM := CAB_Y + 166.0 * CAB_SCALE   # 下层板沿底 595(刷新 / 锁定 / 买经验那一排在它下面)
+const GRID_X := BOARD_X                    # 货架左沿
+const GRID_Y := BOARD_TOP_Y - SLOT_H       # 上层商品格的顶 235
 const GRID_GAP_X := 0.0
-const GRID_GAP_Y := 38.0       # 下层格顶 308, 底 450 = 下层板沿
-## 小卡里小木斧进度块的宽度(= 小卡宽 360 - 左右内边距)
-const AXE_IN_CARD_W := 330.0
-## 羁绊总览条(货架与底部按钮之间那条空带)。★进 verify_shop_layout 的越界检查
-const SYN_BAR_Y := 100.0
-const SYN_X := 40.0          # 羁绊条左沿 = 场地左沿
-const SYN_CHIP_W := 176.0
+const GRID_GAP_Y := BOARD_LOW_Y - BOARD_TOP_Y - SLOT_H   # 下层格顶 = 下层板面 - SLOT_H
+const ITEM_W := 116.0                      # 物品图标
+const ITEM_H := 108.0
+const ITEM_X := 4.0                        # 物品在格里偏左, 右脚边立价签
+## 价签(用户 2026-10-21「而且价格标签你在弄啥？」): 原来是深色方块 + 一圈费用色描边的 UI 框, 首尾相接
+##   盖满整条板沿。改成新画的像素立牌(price-tag.png 原生 22×20, 同倍率), 立在物品右脚边的板面上,
+##   大号数字; 费用档只用牌面左上一颗色点(参考背包乱斗的纸牌价签)。
+const TAG_TEX = preload("res://assets/sprites/shop/price-tag.png")
+const TAG_W := 22.0 * CAB_SCALE            # 73
+const TAG_H := 20.0 * CAB_SCALE            # 67
+## 小卡宽 / 小卡里小木斧进度块的宽度(= 小卡宽 - 左右内边距)
+const CARD_W := 400.0
+const AXE_IN_CARD_W := 370.0
+## 左栏(货柜左边): 只站店主。★2026-10-21 用户「商店要这么搞」: 羁绊与背包那一排不在商店里(背包页才有)。
+const LEFT_X := 18.0
+const LEFT_R := CAB_X - 8.0
+## 羁绊总览: 左栏顶部两列。★进 verify_shop_layout 的越界检查
+const SYN_BAR_Y := 98.0
+const SYN_X := LEFT_X
+const SYN_CHIP_W := 214.0
+const SYN_ROWS := 3
 ## 羁绊 chip 的字号 / 行高 / 行内类型图标边长。
 ## ★★2026-09-28 换 `RichTextLabel` + 行内像素图标后**逐项量过**(探针 `f.get_string_size`):
 ##   · 最长的普通 chip「🏺遗物 2/5 ★☆☆☆」= 文字 111 + 图标 16 = **127** ⇒ 176 够, 宽不用动。
@@ -54,12 +86,13 @@ const SYN_CHIP_W := 176.0
 ##     之后就是**底下 2px 被切掉**。⇒ 高度 20 → 22。
 ##   · 斧头那条(带砍伐进度)= 252 ⇒ 仍需双倍宽 352(那条双倍宽原来从没生效, 见下方注释)。
 ## ★图标 16 而不是 14/18: 源图 32×32 硬边像素画, 只有 16(1:2) 与 32(1×) 落在像素网格上。
-const SYN_CHIP_FONT_PX := 14
-const SYN_CHIP_H := 22.0
-const SYN_CHIP_ICON_PX := 16
-const MIN_TOUCH_H := 44.0    # 移动端触摸目标最低高度(用户2026-07-28「买经验按钮很小」: 原36不达标)
+## ★2026-10-21: 14 → 20(手机最小字号); 行高按 20 号字 + 32 图标给 34; 图标 16 → 32(只有 16 / 32 落在像素网格上)。
+const SYN_CHIP_FONT_PX := 20
+const SYN_CHIP_H := 34.0
+const SYN_CHIP_ICON_PX := 32
+const MIN_TOUCH_H := 81.0   # 移动端触摸目标最低高度(用户2026-07-28「买经验按钮很小」: 原36不达标)
 const REFRESH_COST := 2   # 刷新花费。原 phase2_config 那套(SHOP_REFRESH_BASE + shop_refresh_cost())已随死代码清理删除, 现在这里是唯一来源(2026-07-19)
-const SHOP_BG = preload("res://assets/sprites/shop/shop-bg.png")
+## 原背景 shop-bg.png(PixelLab 原生 384×216)不再直接画: 底图 / 货柜两张都是从它离线切出来的(见 _build_backdrop / CAB_TEX)。
 const PRICE_MULT := 1        # 售价 = 装备 cost (费) × 1 = 几费卖几深海币 (用户 2026-07-01; 原 ×3 占位已改)
 const Phase2Equip = preload("res://scripts/gamedata/phase2_equip.gd")
 const P2 = preload("res://scripts/gamedata/phase2_config.gd")
@@ -82,10 +115,12 @@ var _sel_own_star: int = 1
 var _sel_bench: int = -1
 var _inv_ops := InvOps.new(self)
 var _chest := ShopChest.new(self)
+var _amb := ShopAmbience.new(self)   # 灯笼光闪 / 水泡 / 货品轻浮(用户 2026-10-21「商店需要动态」)
 var _toast_node: Label = null   # 一句话提示(见 _toast); 同时只留一条
 var _insp := InspectCard.new(self)   # 说明小卡(与局内信息面板同一张)
 var _ui_layer: Node = null           # InspectCard 往这里挂卡(= 本场景)
 var _show_odds := false         # 点「Lv」切换: 等级行上方显示各费用出货概率
+var _coin_box: Control = null   # 顶栏里的深海币(图标 + 数字)
 
 func _ready() -> void:
 	var _td = get_node_or_null("/root/TutorialDirector")
@@ -106,6 +141,7 @@ func _ready() -> void:
 	if not _restore_offer():
 		_roll()
 	_rebuild()
+	get_viewport().size_changed.connect(_on_vp_resized)
 	if OS.has_environment("SHOP_SHOT"):   # dev: 商店自截图(SHOP_SHOT=秒 SHOT_SEL=选中第几格 SHOT_OUT=路径)·截完自退
 		_shop_selfshot()
 		return
@@ -218,6 +254,7 @@ func _build_locked() -> void:
 	#   末尾那句 UIFrame.attach 【根本走不到】。我第一版就漏了这条路径, 于是量出来
 	#   "商店完全没居中", 实际量的是这一屏。有 early return 的地方就要各自收口。
 	UIFrame.attach(self)
+	_pin_top_bar()
 
 func _shop_level() -> int:
 	return clampi(int(GameState.season_level), 1, 10)   # 大轮等级驱动出货档 (用户 2026-06-27)
@@ -319,6 +356,10 @@ func _unhandled_input(event: InputEvent) -> void:
 ##   `host._toast(...)` 的**下一行**就是 `host._rebuild()`, 而 `_rebuild()` 开头把
 ##   子节点全 `queue_free()` ⇒ 提示生下来那一帧就被销毁。这里的提示只在
 ##   「什么都没变」的分支出现, 本来就不需要重画; 上一条记在 `_toast_node` 里, 下一条来时先收掉。
+const TOAST_W := 640.0
+## 168..224: 让出顶栏下沿那一条(首次提示「合成升星」指着顶栏「背包」时贴在它下面), 也不压上层货品(235 起)。
+const TOAST_Y := 168.0
+
 func _toast(msg: String) -> void:
 	if _toast_node != null and is_instance_valid(_toast_node):
 		_toast_node.queue_free()
@@ -328,7 +369,8 @@ func _toast(msg: String) -> void:
 	t.add_theme_color_override("font_color", Color("#ffe9a8"))
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	t.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	t.size = Vector2(650, 44)
+	t.size = Vector2(TOAST_W, 56)
+	t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	## ★★y 430 → 656(2026-09-30): 430..474 **正好盖住「换一批」按钮的上沿**
 	##   (按钮 y 448..524) —— 而现在最常出现的提示之一就是"深海币不够 · 换一批要 2",
 	##   等于一句话挡住它解释的那颗按钮。656..700 落在底栏两颗按钮(552..648)之下、
@@ -337,7 +379,8 @@ func _toast(msg: String) -> void:
 	## ★★2026-10-18: 底栏换成背包条(552..657), 右侧阵容面板常驻(x 800 起) ⇒
 	##   提示收进卡区宽度 40..780、背包条之下 664..708, 不压背包格也不压面板。
 	## ★2026-10-18 整页重做: 提示在左上(羁绊条下面、店主头顶), 不压店主、宝箱和货架。
-	t.position = Vector2(40.0, 136.0)
+	## ★2026-10-21 宽货柜: 左栏只剩一根店主宽, 放不下一句话 ⇒ 提示挪到货柜上沿正中(顶栏下、上层货品头顶的灯带上)。
+	t.position = Vector2(CAB_X + (1262.0 - CAB_X - TOAST_W) * 0.5, TOAST_Y)
 	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	t.z_index = 30       # 底栏弹层是 20 —— 提示必须压得住它
 	var bgp := Panel.new()
@@ -397,31 +440,9 @@ func _rebuild() -> void:
 		if _sel >= 0 or _sel_own != "" or _sel_bench >= 0:
 			_sel = -1; _sel_own = ""; _sel_bench = -1
 			_rebuild())
-	var bg := TextureRect.new(); bg.name = "ShopBackdrop"
-	bg.texture = SHOP_BG
-	bg.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	bg.stretch_mode = TextureRect.STRETCH_SCALE
-	bg.position = Vector2.ZERO; bg.size = Vector2(W, H)
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(bg)
-	## 宽屏(手机 19.5:9)两侧不留黑边: 背景本体不动(货架/台面坐标是量这张图对齐的),
-	##   两侧多出来的宽度 = 图边上同宽的一段【镜像翻过来】接上(拉伸边缘像素会成一道道花条纹)。
-	var _vs: Vector2 = get_viewport().get_visible_rect().size
-	var _side: float = maxf(0.0, (_vs.x * H / maxf(1.0, _vs.y) - W) * 0.5)
-	## 这段宽度在原图里是几列。★不取整、不多留: 多出来的会伸出视口(verify_ui_layout「不溢出视口」@1560×720 溢出 7px)
-	var _nat: float = _side * float(SHOP_BG.get_width()) / W
-	for _sd in ([0, 1] if _side >= 1.0 else []):   # 16:9 不加(否则伸出 1280 设计框)
-		var at := AtlasTexture.new(); at.atlas = SHOP_BG
-		at.region = Rect2(0.0 if _sd == 0 else SHOP_BG.get_width() - _nat, 0, _nat, SHOP_BG.get_height())
-		var ext := TextureRect.new(); ext.name = "BackdropEdge%d" % _sd
-		ext.flip_h = true
-		ext.texture = at; ext.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		ext.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; ext.stretch_mode = TextureRect.STRETCH_SCALE
-		ext.position = Vector2(-_nat * W / SHOP_BG.get_width() if _sd == 0 else W, 0.0)
-		ext.size = Vector2(_nat * W / SHOP_BG.get_width(), H)
-		ext.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(ext)
+	_build_backdrop()
+	_build_cabinet()
+	_amb.build(self)
 
 	# ── 头部 y 0–96 ──
 	## ★标题「🛒 深海商店」删掉(用户 2026-08-15)。玩家是自己点进来的, 不需要一块牌子告诉他站在哪;
@@ -434,7 +455,8 @@ func _rebuild() -> void:
 		## ★**不给页名** —— 用户 2026-08-15 明确删过「🛒 深海商店」这块牌子
 		##   (「玩家是自己点进来的, 不需要一块牌子告诉他站在哪」, 见本文件上方注释)。
 		##   我换顶栏时把它加回来了, 实拍一看还把右边的金币条压住了 —— 两错并一错。
-		"palette": TopBar.WOOD,   # 2026-10-18 整页重做: 场景是木头货铺, 顶栏跟着木色
+		## 2026-10-21 用户「那个顶上横幅？」: 不画深色底带(压在货柜顶梁上像补丁), 薄片换成像素木牌(与底部三块同一张)
+		"palette": TopBar.WOOD.merged({"no_plate": true, "chip_tex": PLANK_TEX, "chip_margin": PLANK_MARGIN}),
 		"width": W,
 		"safe_left": _sm.x,
 		"safe_right": _sm.z,
@@ -453,18 +475,28 @@ func _rebuild() -> void:
 	const HDR_CY := 48.0
 
 	# 组1: 深海币 —— 图标 40 + 间隙 12 + 数字 30 号。原来图标 756/数字 794 只隔 6px 挤成一坨。
-	_coin_icon(self, Vector2(320, HDR_CY - 26.0), 52.0)
+	## ★装进一个顶栏高的盒子: 4:3(iPad)上顶栏贴视口顶, 币跟着它走(_pin_top_bar), 不留在设计框里。
+	_coin_box = Control.new(); _coin_box.name = "CoinGroup"
+	_coin_box.position = Vector2.ZERO; _coin_box.size = Vector2(W, TopBar.BAR_H)
+	_coin_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_coin_box)
+	## 2026-10-21 用户「背包深海币？」: 原来数字孤零零浮在顶栏中间。⇒ 装进右上角一块木牌(钱袋牌), 贴设计框右沿。
+	##   教程里右上角是「跳过」钮 ⇒ 木牌整块左移让开它(verify_tutorial_flow_v3 B7)。
+	var cpx: float = COIN_PLAQUE_X - (TUT_SKIP_W + 24.0 if (get_node_or_null("/root/TutorialDirector") != null and get_node("/root/TutorialDirector").is_active()) else 0.0)
+	var cplq := _plank(_coin_box, Vector2(cpx, HDR_CY - 40.0), Vector2(1262.0 - COIN_PLAQUE_X, 80.0)); cplq.name = "CoinPlaque"
+	_coin_icon(_coin_box, Vector2(cpx + 22.0, HDR_CY - 24.0), 48.0)
 	var coin := Label.new(); coin.text = "%d" % int(GameState.meta_deepsea_coins)
 	coin.add_theme_font_size_override("font_size", 38); coin.add_theme_color_override("font_color", Color("#5fd0e0"))
+	coin.add_theme_color_override("font_outline_color", Color("#1a0e05")); coin.add_theme_constant_override("outline_size", 6)
 	## ★高度按【字体最小高度】给(30 号字实测 44), 不是我想给多少给多少 ——
 	##   给 38 的话 Label 自己撑到 44, 并集矩形底沿多出 6px, 组中心偏到 50.5 ⇒ 门禁⑩红。
-	coin.position = Vector2(382, HDR_CY - 28.0); coin.size = Vector2(138, 56)
+	coin.position = Vector2(cpx + 80.0, HDR_CY - 28.0); coin.size = Vector2(1262.0 - COIN_PLAQUE_X - 100.0, 56)
 	coin.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	coin.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; add_child(coin)
+	coin.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; _coin_box.add_child(coin)
 	_tut_coin = coin   # 教学高亮"币"锚点
 
 
-	# ── 卡区 5×2  x 40–780 / y 124–420 ──
+	# ── 货架 5×2(货柜两层板上) ──
 	for i in range(_offer.size()):
 		var col := i % 5
 		var row := i / 5
@@ -477,8 +509,8 @@ func _rebuild() -> void:
 	## ★2026-10-18 用户「说了几遍了不要用之前的金木框按钮，重新设计一个更好的」:
 	##   刷新 / 锁定改成【无框图标钮】—— 新画的像素图标在上、描边字在下, 悬停 / 按下靠亮度变化,
 	##   立在货架下沿的沙地上。图标: assets/sprites/shop/icon-refresh / icon-lock-closed / icon-lock-open。
-	var rf := _icon_button("ShopRefreshBtn", REFRESH_ICON, "刷新  %d" % REFRESH_COST,
-		Vector2(ROW_X, ROW_BTN_Y), Vector2(ROW_BTN_W, ROW_BTN_H))
+	var rf := _icon_button("ShopRefreshBtn", REFRESH_ICON, "刷新 %d" % REFRESH_COST,
+		Vector2(ROW_BTN_X, ROW_BTN_Y), Vector2(ROW_BTN_W, ROW_BTN_H))
 	_coin_after_text(rf)
 	## ★★买不起时: disabled + 整颗压暗(价钱那枚币是子节点, 只有 modulate 会往下传)。
 	var _rf_afford: bool = int(GameState.meta_deepsea_coins) >= REFRESH_COST
@@ -488,11 +520,9 @@ func _rebuild() -> void:
 	_build_lock_button(rf.position + Vector2(rf.size.x + LOCK_GAP, 0.0), rf.size.y)
 	_build_level_row(rf.position + Vector2(2.0 * (rf.size.x + LOCK_GAP), 0.0))
 
-	_build_synergy_bar()    # ★羁绊总览: 当前激活了哪些 + 距下一档还差几件(2026-08-12 用户点名)
-	## ★右侧: 常驻【出战阵容】; 选中货架卡 / 已有装备时, 详情盖在它上面(带关闭)。
-	##   底部: 原来两颗只读弹层按钮 → 可点的背包条(点一件 → 点龟 = 装上)。
+	## ★2026-10-21 用户「商店里为什么会显示背包的装备和羁绊？」→「对啊，商店要这么搞」+「商店里就不能卖装备」:
+	##   羁绊总览与背包那一排(含卖出)不在商店里画, 都在背包页。左边只站店主。
 	_chest.build_keeper(self)
-	_chest.build_bench(self)
 	## ★2026-10-18: 说明 = 局内信息面板那张已认可的小卡(InspectCard), 贴着被点的东西弹出、高度随内容。
 	##   小木斧的砍伐进度 / 最终造物四选一也装进这张小卡(原来是 440×592 的旧大面板, 打开时盖住
 	##   底下刷新 / 锁定 / 买经验三颗键 —— verify_ios_ui「按钮被后画的面板盖住」)。
@@ -503,6 +533,93 @@ func _rebuild() -> void:
 	# ★放在 _rebuild 末尾而不是 _ready 末尾 —— 本函数开头会 free 掉【所有】子节点(买一件装备
 	#   就触发一次), 框和框里的内容会被一起清掉。attach 是幂等的, 重复调只重新收编+居中。
 	UIFrame.attach(self)
+	_pin_top_bar()
+
+
+## 场景底图(2026-10-21): 原背景去掉货柜与左下半截宝箱、四边外扩(shop-backdrop.png, 原生 512×296,
+##   场景本体在 (64,40) 起的 384×216, 与原 shop-bg.png 逐像素同一张图)。
+## ★为什么要外扩: 设计框 1280×720 在 19.5:9 上两侧各空 142、在 4:3(iPad)上下各空 120 ——
+##   原来两侧是把原图边缘镜像接上(右边正好是货柜 ⇒ 镜像出半截「第三列」货架), 上下是纯色黑带。
+## ★只画视口里看得见的那一块(AtlasTexture 裁): 整张铺出去会伸出视口(verify_ui_layout「不溢出视口」)。
+const BACKDROP_TEX = preload("res://assets/sprites/shop/shop-backdrop.png")
+const CRATES_TEX = preload("res://assets/sprites/shop/shop-crates.png")
+const BACKDROP_PAD := Vector2(64.0, 40.0)    # 场景本体在外扩图里的原生偏移
+
+func _build_backdrop() -> void:
+	var k: float = W / 384.0                         # 原生 → 设计像素(×3.333, 与原背景同倍率)
+	var full := Rect2(-BACKDROP_PAD * k, Vector2(BACKDROP_TEX.get_size()) * k)
+	## 视口在设计框坐标里的范围(框居中: 偏移 = (可用 - 设计) / 2, 与 UIFrame._center 同一个式子)
+	var vs: Vector2 = Vector2(get_viewport().get_visible_rect().size)
+	var host_sz: Vector2 = size if (size.x >= W and size.y >= 360.0) else vs
+	var off: Vector2 = ((host_sz - Vector2(W, H)) * 0.5).round()
+	var vis := Rect2(-off, host_sz).intersection(full)
+	if vis.size.x < 1.0 or vis.size.y < 1.0:
+		return
+	var at := AtlasTexture.new(); at.atlas = BACKDROP_TEX
+	at.region = Rect2((vis.position - full.position) / k, vis.size / k)
+	var bg := TextureRect.new(); bg.name = "ShopBackdrop"
+	bg.texture = at
+	bg.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.stretch_mode = TextureRect.STRETCH_SCALE
+	## ★它恰好铺满视口 ⇒ UIFrame 当它是满铺层、不收进设计框 ⇒ 坐标按宿主(= 视口)给, 不是按设计框。
+	bg.position = vis.position + off; bg.size = vis.size
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(bg)
+	## 货柜右立柱外侧一堆木箱 / 木桶 / 绳子(用户 2026-10-21「商店为什么不加上最右边的木箱」)。
+	##   ★挂在底图上(满铺层): 它在设计框外(x ≥ 1262), 只在宽屏手机上露出来; 16:9 上本来就看不见。
+	## 海水那一条(底图原生 y 61..190 ⇒ 场景本体 y 21..150)里的上浮水泡 —— 画在底图之上、货柜之下, 横向铺满视口。
+	var wband := Rect2(Vector2(0.0, (61.0 - BACKDROP_PAD.y) * k + off.y) - bg.position, Vector2(host_sz.x, 129.0 * k))
+	_amb.build_water(bg, wband)
+	##   ★与底图同理只画视口里看得见的那一截(verify_ui_layout「不溢出视口」); 露出来不到 24 像素就不画。
+	var cfull := Rect2(Vector2(1256.0, SAFE_BOTTOM + 14.0 - float(CRATES_TEX.get_height()) * k) + off,
+		Vector2(CRATES_TEX.get_size()) * k)
+	var cvis := cfull.intersection(Rect2(Vector2.ZERO, host_sz))
+	if cvis.size.x >= 24.0 and cvis.size.y >= 24.0:
+		var cat := AtlasTexture.new(); cat.atlas = CRATES_TEX
+		cat.region = Rect2((cvis.position - cfull.position) / k, cvis.size / k)
+		var cr := TextureRect.new(); cr.name = "ShopCrates"
+		cr.texture = cat
+		cr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		cr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; cr.stretch_mode = TextureRect.STRETCH_SCALE
+		cr.position = cvis.position - bg.position; cr.size = cvis.size
+		cr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bg.add_child(cr)
+
+
+## 货柜(放大摆在右侧, 底沿 = SAFE_BOTTOM)。商品立在它的两层板上。
+func _build_cabinet() -> void:
+	## 柜子立在地上: 底座下一道阴影(用户 2026-10-21「商店柜子的地下怎么被切了一样」⇒ 底部补了一条通长底座 + 这道影子)
+	var sh := ShopChest.ellipse(1270.0 - (CAB_X - 16.0), 26.0, 64, 5, Color(0.05, 0.03, 0.02, 0.45)); sh.name = "CabinetShadow"
+	sh.position = Vector2(CAB_X - 16.0, SAFE_BOTTOM - 12.0)
+	add_child(sh)
+	var cab := TextureRect.new(); cab.name = "ShopCabinet"
+	cab.texture = CAB_TEX
+	cab.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	cab.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	cab.stretch_mode = TextureRect.STRETCH_SCALE
+	cab.position = Vector2(CAB_X, CAB_Y)
+	cab.size = Vector2(CAB_TEX.get_size()) * CAB_SCALE
+	cab.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(cab)
+
+
+## 设计框在 4:3(iPad)上被上下居中 ⇒ 顶栏跟着下移 120。顶栏要贴视口顶(与 x 方向 `TopBar._fit_to_viewport` 同理)。
+func _pin_top_bar() -> void:
+	if _top_bar == null or _top_bar.bar == null or not is_instance_valid(_top_bar.bar):
+		return
+	var p = _top_bar.bar.get_parent()
+	if p is Control:
+		_top_bar.bar.position.y = -(p as Control).global_position.y + global_position.y
+		if _coin_box != null and is_instance_valid(_coin_box):
+			_coin_box.position.y = _top_bar.bar.position.y
+
+
+## 视口变了(转屏 / 分屏 / 窗口拖动): 底图裁的那一块、顶栏贴顶都要重算 ⇒ 整页重建(本页本来就靠 _rebuild 刷新)。
+func _on_vp_resized() -> void:
+	if is_inside_tree() and not _offer.is_empty():
+		_rebuild.call_deferred()
+
 
 ## ★#2 出货概率行(云顶式): 当前大轮等级下各费用档(1-5)的出货概率%. 每费用色=对应稀有度色, 0%淡显.
 func _build_odds_row() -> void:
@@ -510,7 +627,7 @@ func _build_odds_row() -> void:
 	var cost_cols := ["#9aa0b0", "#4ade80", "#60a5fa", "#c084fc", "#fbbf24"]   # 费1-5: 普通灰/精良绿/稀有蓝/史诗紫/传说金
 	## ★2026-10-18: 不再常驻在货架上(浮在横梁上看不清, 4/5 费几乎看不见); 点「Lv」时弹在等级行上方。
 	var row := HBoxContainer.new(); row.name = "OddsRow"
-	row.position = Vector2(ROW_X, ROW_INFO_Y - 40.0); row.size = Vector2(514, 30)
+	row.position = Vector2(ROW_X, ROW_BTN_Y - 50.0); row.size = Vector2(1262.0 - ROW_X - 6.0, 40)
 	row.add_theme_constant_override("separation", 14)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	var bgp := Panel.new()
@@ -526,7 +643,7 @@ func _build_odds_row() -> void:
 	##   改成摊主挂的牌子「今日货源」+「1费 45%」: 数字一个不少(用户 2026-08-12 点名要数字),
 	##   但把字段名那一半去掉 —— 颜色已经在讲"这是哪一档"(与卡框同一套 5 色)。
 	var lbl := Label.new(); lbl.text = "商品"
-	lbl.add_theme_font_size_override("font_size", 16); lbl.add_theme_color_override("font_color", Color("#e8dcc4"))
+	lbl.add_theme_font_size_override("font_size", MIN_FONT_PX); lbl.add_theme_color_override("font_color", Color("#e8dcc4"))
 	row.add_child(lbl)
 	for c in range(5):
 		var pct: int = int(odds[c]) if c < odds.size() else 0
@@ -534,7 +651,7 @@ func _build_odds_row() -> void:
 		## ★数字与汉字之间要有空格 —— json 侧的文案门禁焊了这条, UI 侧一直没人管,
 		##   于是同一个游戏里「1 费」和「费用1」两种写法并存。跟 json 的口径。
 		chip.text = "%d 费 %d%%" % [c + 1, pct]
-		chip.add_theme_font_size_override("font_size", 16)
+		chip.add_theme_font_size_override("font_size", MIN_FONT_PX)
 		var cc := Color(cost_cols[c])
 		chip.add_theme_color_override("font_color", cc if pct > 0 else Color(0.55, 0.5, 0.45))
 		row.add_child(chip)
@@ -597,19 +714,19 @@ func _card(idx: int, pos: Vector2) -> Control:
 	var afford := int(GameState.meta_deepsea_coins) >= price
 	## 选中: 物品身后一圈金光
 	if sel:
-		var sg := ShopChest.ellipse(SLOT_W - 8.0, 96.0, 26, 22, Color(1.0, 0.86, 0.35, 0.45)); sg.name = "SelGlow"
-		sg.position = Vector2(4, 22); box.add_child(sg)
+		var sg := ShopChest.ellipse(ITEM_W + 8.0, ITEM_H, 26, 22, Color(1.0, 0.86, 0.35, 0.45)); sg.name = "SelGlow"
+		sg.position = Vector2(ITEM_X - 4.0, 0.0); box.add_child(sg)
 	## 已拥有同款: 身后一团呼吸的淡金光(原卡片镀层的同一个意思, 换成不带框的光)
 	var owned := _owned_count(str(edef.get("id", "")))
 	if owned > 0:
 		## 用户 2026-08-14「背包里有的装备在货架栏出现时要有镀层闪光效果」: 身后一团呼吸淡金光 + 一道斜掠高光。
-		var glow := ShopChest.ellipse(SLOT_W - 20.0, 84.0, 24, 20, Color(1.0, 0.84, 0.35, 0.30)); glow.name = "OwnedGlow"
-		glow.position = Vector2(10, 22); box.add_child(glow)
+		var glow := ShopChest.ellipse(ITEM_W + 8.0, ITEM_H, 24, 20, Color(1.0, 0.84, 0.35, 0.30)); glow.name = "OwnedGlow"
+		glow.position = Vector2(ITEM_X - 4.0, 0.0); box.add_child(glow)
 		var bt := TweenKit.loop_bound(self, glow)
 		bt.tween_property(glow, "modulate:a", 0.12, 0.9).set_trans(Tween.TRANS_SINE)
 		bt.tween_property(glow, "modulate:a", 0.30, 0.9).set_trans(Tween.TRANS_SINE)
 		var shine_box := Control.new(); shine_box.name = "OwnedShine"
-		shine_box.position = Vector2(8, 10); shine_box.size = Vector2(SLOT_W - 16, SLOT_H - 36)
+		shine_box.position = Vector2(ITEM_X, 0.0); shine_box.size = Vector2(ITEM_W, ITEM_H)
 		shine_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		box.add_child(shine_box)
 		var shine_clip := _clip_box(shine_box)
@@ -626,38 +743,40 @@ func _card(idx: int, pos: Vector2) -> Control:
 		st2.tween_callback(func() -> void:
 			if is_instance_valid(shine): shine.position.x = -40.0)
 	## 物品本身(大图标, 底沿贴着板面)
-	var ic := EquipIcon.make(edef, Vector2(76, 70))
+	var ic := EquipIcon.make(edef, Vector2(ITEM_W, ITEM_H))
 	ic.name = "Item"
-	ic.position = Vector2((SLOT_W - 76.0) * 0.5, SLOT_H - 22.0 - 70.0 - 4.0)
+	ic.position = Vector2(ITEM_X, SLOT_H - ITEM_H)   # 底沿踩在板面(格底 = 板面), 偏左, 右脚边让给价签
 	box.add_child(ic)
+	_amb.bob_item(ic, idx)
 	## 这一买会合成到几星
 	var will_star := _purchase_merge_star(str(edef.get("id", "")))
 	if will_star >= 2:
 		for k in range(will_star):
-			_glint_star(box, Vector2(SLOT_W - 18.0 - k * 14.0, 8), 13.0, k * 0.3)
-	## 价签: 挂在板沿的小木牌。框 = 费用 5 档那套框(CARD_TEX_TIER, 用户 2026-07-29「框框随费用变化」);
-	##   选中换金框 CARD_TEX_SEL; 买不起换中性框 CARD_TEX_N + 斜纹(三态各有各的形状)。
-	var _c: int = clampi(int(edef.get("cost", 1)), 1, 5)
-	var tag := Panel.new(); tag.name = "PriceTag"
-	var tsb := StyleBoxFlat.new(); tsb.bg_color = Color("#2e1c10"); tsb.set_corner_radius_all(0)
-	tag.add_theme_stylebox_override("panel", tsb)
-	tag.position = Vector2((SLOT_W - 66.0) * 0.5, SLOT_H - 34.0); tag.size = Vector2(66, 34)
+			_glint_star(box, Vector2(ITEM_X + ITEM_W - 20.0 - k * 20.0, 4), 20.0, k * 0.3)
+	## 价签: 立在物品右脚边板面上的像素立牌(TAG_TEX)。大号深色数字; 买不起 = 红字。
+	##   费用档(用户 2026-07-29「框框随费用变化」)只用牌面左上一颗色点, 不再整圈描边。
+	var tag := TextureRect.new(); tag.name = "PriceTag"
+	tag.texture = TAG_TEX
+	tag.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	tag.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; tag.stretch_mode = TextureRect.STRETCH_SCALE
+	tag.position = Vector2(SLOT_W - TAG_W - 6.0, SLOT_H - TAG_H + 4.0); tag.size = Vector2(TAG_W, TAG_H)
 	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(tag)
-	_nine(tag, CARD_TEX_SEL if sel else (CARD_TEX_TIER[_c - 1] if afford else CARD_TEX_N), CARD_MARGIN,
-		Vector2.ZERO, tag.size, 0)
-	var ci := TextureRect.new(); ci.texture = COIN_TEX
-	ci.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; ci.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	ci.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	ci.position = Vector2(11, 9); ci.size = Vector2(16, 16); ci.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tag.add_child(ci)
+	var dot := ColorRect.new(); dot.name = "CostDot"
+	dot.color = _cost_color(int(edef.get("cost", 1)))
+	## 牌面右上角(原生 16,1)一颗色点, 外圈 1 像素深边; 不进数字那块
+	var dot_edge := ColorRect.new(); dot_edge.color = Color("#3a2414")
+	dot_edge.position = Vector2(16.0, 1.0) * CAB_SCALE; dot_edge.size = Vector2(4.0, 4.0) * CAB_SCALE
+	dot_edge.mouse_filter = Control.MOUSE_FILTER_IGNORE; tag.add_child(dot_edge)
+	dot.position = Vector2(1.0, 1.0) * CAB_SCALE; dot.size = Vector2(2.0, 2.0) * CAB_SCALE
+	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE; dot_edge.add_child(dot)
 	var pr := Label.new(); pr.name = "Price"; pr.text = "%d" % price
-	pr.add_theme_font_size_override("font_size", 15)
-	pr.add_theme_color_override("font_color", Color("#ffe9a8") if afford else Color("#ff6b6b"))
+	pr.add_theme_font_size_override("font_size", 34)
+	pr.add_theme_color_override("font_color", Color("#3a2414") if afford else Color("#c0262b"))
 	pr.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; pr.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	pr.position = Vector2(27, 8); pr.size = Vector2(28, 18); pr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	## 牌面内框 = 原生 x7..16 / y5..16(外圈是牌边, 右上角是色点; 字不压边带 —— verify_ui_consistency)
+	pr.position = Vector2(7.0, 5.0) * CAB_SCALE; pr.size = Vector2(9.0, 11.0) * CAB_SCALE
+	pr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tag.add_child(pr)
-	if not afford:
-		_hatch(tag)
 	if not afford:
 		ic.modulate = Color(0.45, 0.48, 0.55)
 	for ch in box.get_children():
@@ -695,25 +814,6 @@ func _clip_box(parent: Control) -> Control:
 	return clip
 
 
-## 买不起时盖在卡上的【斜纹】。三态里唯一一个"内容齐全却不能买"的状态, 要有自己的形状。
-##
-## ★做法: 一个 `clip_contents` 的空 Control 当剪刀, 里头几根旋转过的细长条 ——
-##   出框的部分被剪掉, 于是斜纹严丝合缝地卡在卡片轮廓里(不用为每种卡尺寸画一张贴图)。
-## ★角度 -0.5 rad 与已有的"镀层掠光"(`shine`)同一个倾角 —— 同一张卡上两种斜向元素
-##   不该各斜各的。
-## ★`z_index = 1` 与档位框同层: 压住图标/名字/价签(它们 z=0), 但不盖住 z=2 的合成指示星
-##   —— 那两颗星讲的是"再买一件就合成", 买不起的时候反而最需要看见。
-func _hatch(box: Control) -> void:
-	var clip := _clip_box(box)
-	clip.z_index = 1
-	for i in range(4):
-		var bar := ColorRect.new()
-		bar.color = Color(0.04, 0.07, 0.11, 0.55)
-		bar.size = Vector2(3.0, maxf(box.size.y, 24.0) * 2.2)
-		bar.rotation = -0.5
-		bar.position = Vector2(-26.0 + float(i) * box.size.x * 0.36, -24.0)   # 跟着被盖的那块宽度铺(现在盖的是价签)
-		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		clip.add_child(bar)
 
 
 ## 点卡 → 选中(两步购买第一步)。再点同一张 = 取消选中。
@@ -761,8 +861,8 @@ func _open_detail_card() -> void:
 		"icon_border": col, "frame_col": col,
 		"tag_bb": tag_bb, "tag_col": Color("#e8dcc4"),
 		"stats": stats,
-		"body": _rich_desc(edef, star), "body_px": 16,
-		"width": 360.0,
+		"body": _rich_desc(edef, star), "body_px": MIN_FONT_PX,
+		"width": CARD_W, "min_px": MIN_FONT_PX,
 	})
 	if not lv.has("vbox"):
 		return
@@ -774,21 +874,16 @@ func _open_detail_card() -> void:
 		var ah: float = _axe_panel.build(hold, 0.0, 0.0, AXE_IN_CARD_W)
 		hold.custom_minimum_size = Vector2(AXE_IN_CARD_W, ah)
 	if own:
+		## 宝箱里点的那一件: 卡底一颗「卖出 +N」(与货架卡底的「购买」同一个位置、同一种钮)。
+		##   ★2026-10-21 原来是宝箱那一排末尾两颗「详情 / 卖出」—— 手机版宝箱一排 5 格铺满左栏, 没地方放;
+		##     而且「先点格 → 再点详情 → 才看到说明」比货架多一步。现在两边一致: 点 = 弹说明卡, 卡底是动作。
+		## ★2026-10-21 用户「商店里就不能卖装备」: 已有的那件只看说明, 卖出只在背包页。
 		_refit_card.call_deferred()
 		return
 	var price := _price(edef)
 	var coins := int(GameState.meta_deepsea_coins)
 	var buy := Button.new(); buy.name = "BuyBtn"
-	buy.custom_minimum_size = Vector2(0, 52)
-	buy.add_theme_font_size_override("font_size", 20)
-	for st in [["normal", "#6a3f1c", "#d89a48"], ["hover", "#7d4b22", "#f0b45a"], ["pressed", "#4e2d12", "#d89a48"],
-			["disabled", "#3a2a1e", "#6a5440"], ["focus", "#6a3f1c", "#ffe27a"]]:
-		var sb := StyleBoxFlat.new(); sb.bg_color = Color(st[1]); sb.border_color = Color(st[2])
-		sb.set_border_width_all(3); sb.set_corner_radius_all(0)
-		buy.add_theme_stylebox_override(st[0], sb)
-	buy.add_theme_color_override("font_color", Color("#fff1d6"))
-	buy.add_theme_color_override("font_hover_color", Color("#fff8e8"))
-	buy.add_theme_color_override("font_disabled_color", Color("#c9a98a"))
+	_card_button_skin(buy)
 	if coins >= price:
 		buy.text = "购买  %d" % price
 		buy.pressed.connect(func(): _on_buy(_sel))
@@ -800,25 +895,47 @@ func _open_detail_card() -> void:
 	_refit_card.call_deferred()
 
 
+## 说明卡底的动作钮(购买 / 卖出): 木色直角, 高 81(= 44pt 触控下限), 字 22。
+func _card_button_skin(b: Button) -> void:
+	b.custom_minimum_size = Vector2(0, 81)
+	b.add_theme_font_size_override("font_size", 22)
+	for st in [["normal", "#6a3f1c", "#d89a48"], ["hover", "#7d4b22", "#f0b45a"], ["pressed", "#4e2d12", "#d89a48"],
+			["disabled", "#3a2a1e", "#6a5440"], ["focus", "#6a3f1c", "#ffe27a"]]:
+		var sb := StyleBoxFlat.new(); sb.bg_color = Color(st[1]); sb.border_color = Color(st[2])
+		sb.set_border_width_all(3); sb.set_corner_radius_all(0)
+		b.add_theme_stylebox_override(st[0], sb)
+	b.add_theme_color_override("font_color", Color("#fff1d6"))
+	b.add_theme_color_override("font_hover_color", Color("#fff8e8"))
+	b.add_theme_color_override("font_disabled_color", Color("#c9a98a"))
+
+
 ## 卡里塞了按钮后高度要按内容重算(容器只会长不会缩), 等两帧排完版再收。
-func _refit_card() -> void:
-	for _i in range(2):
-		await get_tree().process_frame
+## ★不用 `await process_frame`: 场景在这两帧里被释放(离开商店 / 门禁拆场)时, await 会在已释放的实例上恢复
+##   (`Resumed function after await, but class instance is gone`)。改成挂在树信号上的一次性回调 ——
+##   实例没了, Godot 自动断开这条连接。
+func _refit_card(frames: int = 2) -> void:
+	if frames > 0:
+		var cb := _refit_card.bind(frames - 1)
+		if is_inside_tree() and not get_tree().process_frame.is_connected(cb):
+			get_tree().process_frame.connect(cb, CONNECT_ONE_SHOT)
+		return
 	var c = _insp.card
 	if c == null or not is_instance_valid(c):
 		return
 	(c as Control).size = Vector2((c as Control).size.x, 0)
 	(c as Control).position = inspect_card_pos(c, (c as Control).get_combined_minimum_size().y)
-	## 购买钮: 币紧跟在数字后面(按钮自带的 icon 只能贴边)
+	## 购买 / 卖出钮: 币紧跟在数字后面(按钮自带的 icon 只能贴边)
 	var b = c.find_child("BuyBtn", true, false)
+	if b == null:
+		b = c.find_child("SellBtn", true, false)
 	if b is Button and not (b as Button).disabled and (b as Button).get_node_or_null("Coin") == null:
 		var f: Font = (b as Button).get_theme_font("font")
-		var tw: float = f.get_string_size((b as Button).text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 20).x if f != null else 60.0
+		var tw: float = f.get_string_size((b as Button).text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 22).x if f != null else 60.0
 		var ci := TextureRect.new(); ci.name = "Coin"; ci.texture = COIN_TEX
 		ci.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; ci.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		ci.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		ci.size = Vector2(26, 26)
-		ci.position = Vector2((b as Button).size.x * 0.5 + tw * 0.5 + 6.0, ((b as Button).size.y - 26.0) * 0.5)
+		ci.size = Vector2(28, 28)
+		ci.position = Vector2((b as Button).size.x * 0.5 + tw * 0.5 + 6.0, ((b as Button).size.y - 28.0) * 0.5)
 		ci.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		(b as Button).add_child(ci)
 
@@ -826,10 +943,14 @@ func _refit_card() -> void:
 ## InspectCard 的定位回调: 货架上的贴在货架左边、与那件同高; 宝箱里的弹在宝箱那一排上方。
 func inspect_card_pos(card: Control, h: float) -> Vector2:
 	var w: float = card.size.x
+	## ★2026-10-21 宽货柜: 货柜左边只剩店主那一根宽, 放不下 400 宽的卡 ⇒ 贴着被点的那一格弹:
+	##   左两列弹在它右边, 其余弹在它左边(盖住别的货, 不盖被点的那件)。底沿不过 SAFE_BOTTOM。
 	if _sel_own != "" or _sel < 0:
-		return Vector2(clampf(40.0, 8.0, W - w - 8.0), clampf(ShopChest.BENCH_Y - h - 12.0, 8.0, H - h - 8.0))
+		return Vector2(BOARD_X, 96.0)   # 小木斧那张(没有选中货架): 货柜左段, 不压右下刷新 / 锁定 / 买经验
 	var sp := _shelf_pos(maxi(0, _sel))
-	return Vector2(GRID_X - w - 14.0, clampf(sp.y - 10.0, 96.0, H - h - 8.0))
+	var x: float = (sp.x + SLOT_W + 8.0) if (_sel % 5) <= 1 else (sp.x - w - 8.0)
+	## 底沿不压刷新 / 锁定 / 买经验那一排(ROW_BTN_Y)
+	return Vector2(x, clampf(sp.y, 96.0, maxf(96.0, ROW_BTN_Y - 6.0 - h)))
 
 
 ## 详情卡要不要盖在阵容上: 选了货架卡 / 点了「详情」看已有那件 / 斧头四选一待选。
@@ -842,16 +963,6 @@ func _detail_wanted() -> bool:
 		int(GameState.axe_exp_bar), int(GameState.axe_stage), str(GameState.axe_final))
 
 
-func _on_select_own(eid: String, star: int) -> void:
-	if _sel_own == eid and _sel_own_star == star:
-		_sel_own = ""                       # 再点一次 = 取消
-	else:
-		_sel_own = eid
-		_sel_own_star = star
-		_sel = -1                           # 与货架格选中互斥
-	_rebuild()
-
-
 ## 羁绊总览条(货架下方): 当前激活的每一系 + 距下一档还差几件。
 ## ★口径与战斗/背包完全一致: 只数【装在身上】的、按 id 去重(GameState.team_p2_equips_for_synergy)。
 ##   ⚠ 不数背包 —— "买到 ≠ 装上"(2026-08-12 圣光护盾白送 bug 的同一条教训)。
@@ -860,86 +971,84 @@ func _build_synergy_bar() -> void:
 	## ★算法住在 GameState.synergy_rows() —— 出战页 chips 用的是同一份(2026-08-12)。
 	##   去重口径 / "差几件" / 排序三样都在那里, 两处显示才不会漂。
 	var rows: Array = GameState.synergy_rows()
-
-	var y: float = SYN_BAR_Y
-	## ★2026-10-18: 没有羁绊时整条不画(原来是一条暗条 + 一句操作说明横在水上);
-	##   有羁绊时只画标签, 描边字直接压在场景上, 不垫暗条。
+	## ★2026-10-18: 没有羁绊时整条不画; 有羁绊时只画标签, 描边字直接压在场景上, 不垫暗条。
 	if rows.is_empty():
 		return
-	var hdr := Label.new()
+	## ★2026-10-21 手机版: 左栏顶部「羁绊」一行 + 两列 × 至多 SYN_ROWS 行(原来是货架上方一条 14 号字横排,
+	##   iPhone 上约 1.5 毫米)。写法走 Phase2Types.progress_text —— 背包羁绊列 / 出战页同一句。
+	var hdr := Label.new(); hdr.name = "SynergyHeader"
 	hdr.text = "羁绊"
-	hdr.add_theme_font_size_override("font_size", 15)
+	hdr.add_theme_font_size_override("font_size", MIN_FONT_PX)
 	hdr.add_theme_color_override("font_color", Color("#ffe3a3"))
-	hdr.add_theme_color_override("font_outline_color", Color("#1a0e05")); hdr.add_theme_constant_override("outline_size", 5)
-	hdr.position = Vector2(SYN_X, y); hdr.size = Vector2(44, 20)
+	hdr.add_theme_color_override("font_outline_color", Color("#1a0e05")); hdr.add_theme_constant_override("outline_size", 6)
+	hdr.position = Vector2(SYN_X, SYN_BAR_Y); hdr.size = Vector2(120, 28)
+	hdr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(hdr)
-	var x: float = SYN_X + 46.0
+	var cells: Array = []          # [row, 文案, 是否双宽, tier]
 	for r in rows:
-		if x > SYN_X + 700.0:
-			break
-		## ★★2026-09-28 类型图标从 emoji 换成 `tags/` 像素图 ⇒ 这一条必须从 `Label`
-		##   换成 `RichTextLabel`: **Label 画不了行内图**。
-		##   写法走 `Phase2Types.icon_bb()`(内部就是 `[img=16x16]`, 与图鉴副标同一份)。
-		## ★`clip_text` 是 Label 的属性, RTL 侧对应的是 `clip_contents` + 关掉滚动/换行:
-		##   三个缺一个, 长条子(斧头那条)就会换行顶破 20px 的行高或长出滚动条。
-		var chip := RichTextLabel.new()
-		chip.bbcode_enabled = true
-		chip.fit_content = false
-		chip.scroll_active = false
-		chip.autowrap_mode = TextServer.AUTOWRAP_OFF
-		chip.clip_contents = true
-		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		chip.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST   # 32→16 不许线性插值糊掉硬边
-		var _wide: bool = false                                   # 斧头那条要双倍宽(见下)
-		var tier: int = int(r["tier"])
-		var need: int = int(r["need"])
-		var n_now: int = int(r["n"])
-		## ★用【数字】表达进度, 不用一句话去说(2026-08-12 用户:「想想怎么以图片或数字的
-		##   形式显示差几件而不是文字这么去说」)。写法取自走棋通行式: 图标 + 当前/下一档阈值,
-		##   再跟满/空星表示已激活到第几档 —— 一眼扫过去就是"我还差几件"。
-		var star_n: int = (Phase2Types.TYPES[str(r["t"])] as Dictionary).get("tiers", []).size()
-		var stars := ""
-		for si in range(star_n):
-			stars += "★" if si < tier else "☆"
-		if need > 0:
-			chip.text = "%s%s %d/%d %s" % [Phase2Types.icon_bb(str(r["t"]), SYN_CHIP_ICON_PX),
-				str(r["t"]), n_now, n_now + need, stars]
-		else:
-			chip.text = "%s%s %d %s" % [Phase2Types.icon_bb(str(r["t"]), SYN_CHIP_ICON_PX),
-				str(r["t"]), n_now, stars]
-		## ★★斧头羁绊的 chip 上【直接带砍伐进度】(用户 2026-09-01:
-		##   「应该是在羁绊里显示最好啊，这是跟着羁绊走的」)。
-		##   砍伐经验确实是跟着这条羁绊走的东西 —— 它不该藏在某件装备的详情面板里,
-		##   要在主页面一眼看到。四选一按钮太大放不进这一行, 仍在详情面板。
-		if str(r["t"]) == "斧头" and AxePanel.should_show(GameState):
+		var t := str(r["t"])
+		var txt: String = Phase2Types.icon_bb(t, SYN_CHIP_ICON_PX) + Phase2Types.progress_text(t,
+			int(r["n"]), int(r["tier"]), int(r["need"]), int(r.get("tiers_n", 0)))
+		var wide := false
+		## ★★斧头羁绊的 chip 上【直接带砍伐进度】(用户 2026-09-01:「应该是在羁绊里显示最好啊，这是跟着羁绊走的」)。
+		##   尾巴不带感叹号(门禁⑫ 焊死"不许有带感叹号的推销话术")。这条占满一行(两列宽)。
+		if t == "斧头" and AxePanel.should_show(GameState):
 			var _d4: Dictionary = AxeEvo.display(int(GameState.axe_stage), str(GameState.axe_final))
 			var _nd: int = AxeEvo.need_for_next(int(GameState.axe_stage))
-			var _rd: bool = AxeEvo.final_ready(int(GameState.axe_exp_bar),
-				int(GameState.axe_stage), str(GameState.axe_final))
-			## ★尾巴那句原来是「  可进化!」—— 去掉感叹号。门禁⑫ 焊死的正是
-			##   "不许有带感叹号的推销话术"那一类; 它说的是事实, 但语气是广告位。
-			chip.text += "  ·  %s %d/%d%s" % [str(_d4["name"]), int(GameState.axe_exp_bar),
-				_nd, "  可进化" if _rd else ""]
-			## ⚠ 2026-09-28 顺手修掉一处**双倍宽从来没生效过**: 原来这里写
-			##   `chip.size = Vector2(SYN_CHIP_W * 2.0, 20)`, 而下面还有一行**无条件**的
-			##   `chip.size = Vector2(SYN_CHIP_W, 20)` —— 后者在后面, 直接把它盖掉,
-			##   于是斧头这条长条子一直被 `clip_text` 截在 176px。改成用标记, 由末尾统一定宽。
-			## ⚠⚠ 同时挪掉原来这里的 `x += SYN_CHIP_W`: 它在 `chip.position` **之前**,
-			##   效果是把斧头这条**整体右推 176px**(前面留一个 176 的洞), 而它自己只有
-			##   176 宽时刚好不撞上下一条。宽度真的变成 352 之后, 那个推法就会让它
-			##   **压住下一条 170px**。改成「原位摆 + 按真实宽度进位」——
-			##   合计步进一个字没变(旧: 176 前推 + 182 后进 = 358 / 新: 352 + 6 = 358)。
-			_wide = true
-		## ★RichTextLabel 的主题键名与 Label **不同**: `normal_font_size` / `default_color`
-		##   (照抄 Label 的 `font_size` / `font_color` 会静默无效 —— 不报错, 只是字号颜色不变)。
-		chip.add_theme_font_size_override("normal_font_size", SYN_CHIP_FONT_PX)
-		chip.add_theme_color_override("default_color",
-			Color("#ffd93d") if tier > 0 else Color("#7a92a8"))
-		chip.position = Vector2(x, y + 1)
-		var _cw: float = SYN_CHIP_W * (2.0 if _wide else 1.0)
-		chip.size = Vector2(_cw, SYN_CHIP_H)
-		add_child(chip)
-		x += _cw + 6.0
+			var _rd: bool = AxeEvo.final_ready(int(GameState.axe_exp_bar), int(GameState.axe_stage), str(GameState.axe_final))
+			txt += "  ·  %s %d/%d%s" % [str(_d4["name"]), int(GameState.axe_exp_bar), _nd, "  可进化" if _rd else ""]
+			wide = true
+		cells.append([txt, wide, int(r["tier"])])
+	## 排位: 两列流式, 双宽的独占一行; 放不下的折成最后一格「+N」。
+	var col := 0
+	var row := 0
+	var shown := 0
+	for k in range(cells.size()):
+		var wide: bool = cells[k][1]
+		if wide and col == 1:
+			col = 0; row += 1
+		var need_slots: int = 2 if wide else 1
+		var free: int = (SYN_ROWS - row) * 2 - col
+		## 放不下 / 放下之后后面还有却没地方写「+N」⇒ 停
+		if free < need_slots or (k < cells.size() - 1 and free - need_slots < 1):
+			break
+		_syn_chip(cells[k][0], cells[k][2], col, row, wide)
+		shown += 1
+		if wide or col == 1:
+			col = 0; row += 1
+		else:
+			col = 1
+	if shown < cells.size():
+		var more := Label.new(); more.name = "SynergyMore"
+		more.text = "+%d" % (cells.size() - shown)
+		more.add_theme_font_size_override("font_size", MIN_FONT_PX)
+		more.add_theme_color_override("font_color", Color("#ffe3a3"))
+		more.add_theme_color_override("font_outline_color", Color("#1a0e05")); more.add_theme_constant_override("outline_size", 6)
+		var mr: int = mini(row, SYN_ROWS - 1)
+		more.position = Vector2(SYN_X + float(col) * (SYN_CHIP_W + 6.0), SYN_BAR_Y + 30.0 + float(mr) * (SYN_CHIP_H + 2.0))
+		more.size = Vector2(60, SYN_CHIP_H)
+		more.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		more.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(more)
+
+
+## 羁绊一格。★RichTextLabel(行内像素图标), 主题键是 normal_font_size / default_color(照抄 Label 的键静默无效)。
+func _syn_chip(bb: String, tier: int, col: int, row: int, wide: bool) -> void:
+	var chip := RichTextLabel.new(); chip.name = "SynergyChip"
+	chip.bbcode_enabled = true
+	chip.fit_content = false
+	chip.scroll_active = false
+	chip.autowrap_mode = TextServer.AUTOWRAP_OFF
+	chip.clip_contents = true
+	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chip.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	chip.add_theme_font_size_override("normal_font_size", SYN_CHIP_FONT_PX)
+	chip.add_theme_color_override("default_color", Color("#ffd93d") if tier > 0 else Color("#c9d6e2"))
+	chip.add_theme_color_override("font_outline_color", Color("#1a0e05")); chip.add_theme_constant_override("outline_size", 6)
+	chip.text = bb
+	chip.position = Vector2(SYN_X + float(col) * (SYN_CHIP_W + 6.0), SYN_BAR_Y + 30.0 + float(row) * (SYN_CHIP_H + 2.0))
+	chip.size = Vector2(SYN_CHIP_W * 2.0 + 6.0 if wide else SYN_CHIP_W, SYN_CHIP_H)
+	add_child(chip)
 
 
 ## 完整描述。★实测: 95 件装备的 effectDesc1 【全是纯文本】—— 无 HTML 标签、无方括号
@@ -1047,20 +1156,21 @@ func merge_tip_target(eid: String, star: int) -> Control:
 const REFRESH_ICON := preload("res://assets/sprites/shop/icon-refresh.png")
 const LOCK_CLOSED_ICON := preload("res://assets/sprites/shop/icon-lock-closed.png")
 const LOCK_OPEN_ICON := preload("res://assets/sprites/shop/icon-lock-open.png")
-const LOCK_GAP := 12.0
-## ★宽 200 不是随手定的: verify_ui_consistency 的「热区不足」判据是 短边 < 81px(44pt) **且** 长边 < 200px。
-##   高度要跟「换一批」(76)对齐一行, 只能靠长边 ≥ 200 过线(「换一批」240×76 也是这么过的)。
-const LOCK_W := 130.0
+const LOCK_GAP := 8.0
+## 三颗钮同宽同高(128×100): 两边都 ≥ 81(44pt), 不再靠「长边 ≥ 200」的例外过线。
+const LOCK_W := ROW_BTN_W
 ## ★2026-10-18 用户「你没发现下面是空的吗」: 货架下面那块沙地空着, 而顶栏挤着等级 / 经验 / 买经验。
 ##   参考云顶: 刷新、买经验、等级都在商店那一排 ⇒ 底部一排 = 刷新 · 锁定 · 买经验, 上面一行是等级 + 经验条 + 装备数。
-const ROW_X := 736.0
-const ROW_BTN_Y := 604.0
-const ROW_BTN_W := 130.0
-const ROW_BTN_H := 96.0
-const ROW_INFO_Y := 556.0
+## ★2026-10-21 手机版: 这一排挪进货柜底座(下层板沿 574 以下、SAFE_BOTTOM 682 以上),
+##   左段 = 等级 · 经验条(点它看出货概率), 右段 = 刷新 · 锁定 · 买经验; 「装备 N/M」挪到宝箱标题那一行。
+## ★2026-10-21 宽货柜: 这一排在下层板沿(595)以下、SAFE_BOTTOM 以上, 高 84(≥ 81 = 44pt)。
+const ROW_X := BOARD_X + 4.0                         # 等级段左沿 279(左立柱内沿)
+const ROW_BTN_W := 180.0                             # 木牌按钮(「买经验 4」+ 币要放得下, 币不压牌边)
+const ROW_BTN_H := 82.0                              # ≥ 81(44pt 触控下限)
+const ROW_BTN_Y := SAFE_BOTTOM - ROW_BTN_H - 2.0     # 598
+const ROW_BTN_X := 1262.0 - 3.0 * ROW_BTN_W - 2.0 * LOCK_GAP   # 870
+const ROW_INFO_Y := ROW_BTN_Y + 8.0                 # 等级那一行(36 高)竖直居中在按钮那一排
 const XP_ICON := preload("res://assets/sprites/shop/icon-xp.png")
-const DETAIL_ICON := preload("res://assets/sprites/shop/icon-detail.png")
-const SELL_ICON := preload("res://assets/sprites/shop/icon-sell.png")
 var _lock_btn: Button = null
 
 func _build_lock_button(pos: Vector2, h: float) -> void:
@@ -1082,45 +1192,55 @@ func _build_level_row(btn_pos: Vector2) -> void:
 	var _have: int = int(GameState.season_xp)
 	## ★★满级不印哨兵分母(xp_to_next 满级返回 999999 = 「升不了」, 印出来读成「还差好多」)
 	var _maxed: bool = int(GameState.season_level) >= P2.MAX_LEVEL
-	var lv := Label.new(); lv.name = "LevelLabel"; lv.text = "Lv%d" % int(GameState.season_level)
-	lv.add_theme_font_size_override("font_size", 26); lv.add_theme_color_override("font_color", Color("#ffd93d"))
-	lv.add_theme_color_override("font_outline_color", Color("#1a0e05")); lv.add_theme_constant_override("outline_size", 6)
-	lv.position = Vector2(ROW_X, ROW_INFO_Y); lv.size = Vector2(62, 34)
-	lv.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; add_child(lv)
 	## 点等级行 = 看各费用出货概率(参考云顶: 概率挂在等级旁, 不常驻在货架上)
+	## ★热区 = 整段(380×100); 等级 / 经验条 / 经验字都是它的子节点 —— 字是这块热区上的字, 不是压在别的靶子上
+	##   (verify_shop_inv_phone ⑤ 2026-10-21: 原来三者是热区的兄弟节点, 量出来就是「字压在热区上」)。
 	var lvhit := Control.new(); lvhit.name = "LevelTap"
-	lvhit.position = Vector2(ROW_X, ROW_INFO_Y - 4.0); lvhit.size = Vector2(300, 42)
+	var o := Vector2(ROW_X - 4.0, ROW_BTN_Y)
+	lvhit.position = o; lvhit.size = Vector2(ROW_BTN_X - ROW_X - 8.0, ROW_BTN_H)
 	lvhit.mouse_filter = Control.MOUSE_FILTER_STOP
 	lvhit.tooltip_text = "各费用出货概率"
 	_wire_tap(lvhit, func():
 		_show_odds = not _show_odds
 		_rebuild())
 	add_child(lvhit)
+	## 2026-10-21 用户「底下的经验条」: 等级 / 经验 / 可装备 装进一块木牌(与三颗按钮同一张), 不再是散在底座上的小字
+	var lvplq := _plank(lvhit, Vector2.ZERO, lvhit.size); lvplq.name = "LevelPlaque"
+	var lv := Label.new(); lv.name = "LevelLabel"; lv.text = "Lv%d" % int(GameState.season_level)
+	lv.add_theme_font_size_override("font_size", 28); lv.add_theme_color_override("font_color", Color("#ffd93d"))
+	lv.add_theme_color_override("font_outline_color", Color("#1a0e05")); lv.add_theme_constant_override("outline_size", 6)
+	lv.position = Vector2(ROW_X + 14.0, ROW_INFO_Y) - o; lv.size = Vector2(70, 36)
+	lv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lv.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; lvhit.add_child(lv)
 	if _show_odds:
 		_build_odds_row()
-	var bar_x := ROW_X + 66.0
-	var bar_w := 170.0
-	_wood_bar(Vector2(bar_x, ROW_INFO_Y + 8.0), Vector2(bar_w, 18), 1.0 if _maxed else (float(_have) / float(_need)))
+	var bar_x := ROW_X + 92.0
+	var bar_w := 180.0
+	_wood_bar(lvhit, Vector2(bar_x, ROW_INFO_Y + 6.0) - o, Vector2(bar_w, 24), 1.0 if _maxed else (float(_have) / float(_need)))
 	var xpn := Label.new(); xpn.name = "XpLabel"
 	xpn.text = "已满级" if _maxed else ("经验 %d/%d" % [_have, _need])
-	xpn.add_theme_font_size_override("font_size", 16); xpn.add_theme_color_override("font_color", Color("#fff4dc"))
-	xpn.add_theme_color_override("font_outline_color", Color("#1a0e05")); xpn.add_theme_constant_override("outline_size", 5)
+	xpn.add_theme_font_size_override("font_size", MIN_FONT_PX); xpn.add_theme_color_override("font_color", Color("#fff4dc"))
+	xpn.add_theme_color_override("font_outline_color", Color("#1a0e05")); xpn.add_theme_constant_override("outline_size", 6)
+	xpn.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	## 字放在条的右边, 不压在槽框的金属边带上(verify_ui_consistency「文字压边带」)
-	xpn.position = Vector2(bar_x + bar_w + 8.0, ROW_INFO_Y + 4.0); xpn.size = Vector2(110, 26)
+	xpn.position = Vector2(bar_x + bar_w + 8.0, ROW_INFO_Y) - o; xpn.size = Vector2(ROW_BTN_X - (bar_x + bar_w + 8.0) - 6.0, 36)
 	xpn.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	xpn.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; add_child(xpn)
-	var used: int = int(GameState.team_equipped_count())
-	var cap: int = int(GameState.team_equip_cap())
-	var cnt := Label.new(); cnt.name = "TeamEquipCount"
-	cnt.text = "装备 %d/%d" % [used, cap]
-	cnt.add_theme_font_size_override("font_size", 18)
-	cnt.add_theme_color_override("font_color", Color("#ffb454") if used >= cap else Color("#ffe3a3"))
-	cnt.add_theme_color_override("font_outline_color", Color("#1a0e05")); cnt.add_theme_constant_override("outline_size", 6)
-	cnt.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	cnt.position = Vector2(bar_x + bar_w + 120.0, ROW_INFO_Y); cnt.size = Vector2(1250.0 - (bar_x + bar_w + 120.0), 34)
-	cnt.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; add_child(cnt)
+	xpn.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; lvhit.add_child(xpn)
+	## 等级的用处写在等级旁边: 全队可装备件数 = (等级 − 1) × 2(P2.team_equip_cap) —— 1 级是 0 件。
+	var capn := Label.new(); capn.name = "EquipCapLabel"
+	var _cap_now: int = int(P2.team_equip_cap(int(GameState.season_level)))
+	capn.text = "可装备 %d 件" % _cap_now
+	if not _maxed:
+		capn.text += "  ·  Lv%d 可装备 %d 件" % [int(GameState.season_level) + 1, int(P2.team_equip_cap(int(GameState.season_level) + 1))]
+	capn.add_theme_font_size_override("font_size", MIN_FONT_PX)
+	capn.add_theme_color_override("font_color", Color("#ffb454") if _cap_now == 0 else Color("#e8dcc4"))
+	capn.add_theme_color_override("font_outline_color", Color("#1a0e05")); capn.add_theme_constant_override("outline_size", 6)
+	capn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	capn.position = Vector2(ROW_X + 14.0, ROW_INFO_Y + 34.0) - o; capn.size = Vector2(ROW_BTN_X - ROW_X - 36.0, 32)
+	capn.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; lvhit.add_child(capn)
+	## 「装备 N/M」(全队已装 / 上限)挪到左栏宝箱标题那一行(ShopChest.build_bench) —— 它说的是装备, 跟宝箱放一起。
 
-	var bxp := _icon_button("ShopBuyXpBtn", XP_ICON, "等级已满" if _maxed else ("买经验  %d" % int(P2.BUY_XP_COST)),
+	var bxp := _icon_button("ShopBuyXpBtn", XP_ICON, "等级已满" if _maxed else ("买经验 %d" % int(P2.BUY_XP_COST)),
 		btn_pos, Vector2(ROW_BTN_W, ROW_BTN_H))
 	if not _maxed:
 		_coin_after_text(bxp)
@@ -1138,28 +1258,55 @@ func _build_level_row(btn_pos: Vector2) -> void:
 			_toast("已达最高等级 Lv%d" % int(P2.MAX_LEVEL))
 		else:
 			_toast("深海币不足（需要 %d）" % int(P2.BUY_XP_COST)))
+	## 教程: 「买经验」教到才出现(云顶教程 04:30 才出 Buy XP; 方案书 20261021-教程分镜v5 E1→E2)。
+	var _td = get_node_or_null("/root/TutorialDirector")
+	if _td != null and _td.is_active() and not _tut_xp_revealed:
+		bxp.visible = false
 	add_child(bxp)
 	_tut_xp_btn = bxp
 
 
+## 教程导引每进一步就告诉宿主当前高亮的是谁(TutorialGuide 调)。到「买经验」那一步才把按钮放出来。
+var _tut_xp_revealed := false
+func tut_step_shown(highlight: String) -> void:
+	if highlight == "xp_button" and not _tut_xp_revealed:
+		_tut_xp_revealed = true
+		if _tut_xp_btn != null and is_instance_valid(_tut_xp_btn):
+			_tut_xp_btn.visible = true
+
+
 ## 经验条: 木槽 + 暖黄填充(不再借战斗 HUD 的蓝边血条槽)。不透明底 = 不是网页盒。
 const XP_BAR_PAD := 3.0
-func _wood_bar(pos: Vector2, sz: Vector2, ratio: float) -> void:
+func _wood_bar(parent: Control, pos: Vector2, sz: Vector2, ratio: float) -> void:
+	## 2026-10-21 像素经验条: 1 像素 = 3 设计像素(与木牌同倍率) —— 黑描边 / 深槽 / 金色填充 + 顶亮行 + 底暗行, 槽里每 1/4 一道刻度。
+	var u := XP_BAR_PAD
 	var slot := Panel.new(); slot.name = "XpBarSlot"
-	var sb := StyleBoxFlat.new(); sb.bg_color = Color("#22130a"); sb.border_color = Color("#8a5a32")
-	sb.set_border_width_all(int(XP_BAR_PAD)); sb.set_corner_radius_all(0)
-	slot.add_theme_stylebox_override("panel", sb)
+	var ssb := StyleBoxFlat.new(); ssb.bg_color = Color("#000000"); ssb.set_corner_radius_all(0)
+	slot.add_theme_stylebox_override("panel", ssb)
 	slot.position = pos; slot.size = sz; slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(slot)
-	var w: float = (sz.x - 2.0 * XP_BAR_PAD) * clampf(ratio, 0.0, 1.0)
-	if w >= 1.0:
-		var fl := ColorRect.new(); fl.color = Color("#f2b44a")
-		fl.position = pos + Vector2(XP_BAR_PAD, XP_BAR_PAD); fl.size = Vector2(w, sz.y - 2.0 * XP_BAR_PAD)
-		fl.mouse_filter = Control.MOUSE_FILTER_IGNORE; add_child(fl)
-		var hl := ColorRect.new(); hl.color = Color("#ffe39a")
-		hl.position = fl.position; hl.size = Vector2(w, 2)
-		hl.mouse_filter = Control.MOUSE_FILTER_IGNORE; add_child(hl)
-
+	parent.add_child(slot)
+	## 槽底与刻度用 Panel(不是 ColorRect): 门禁按 ColorRect 数填充量比例, 槽里的块不能被当成填充
+	var inner := Panel.new()
+	var isb := StyleBoxFlat.new(); isb.bg_color = Color("#232b2e"); isb.set_corner_radius_all(0)
+	inner.add_theme_stylebox_override("panel", isb)
+	inner.position = Vector2(u, u); inner.size = sz - Vector2(2.0 * u, 2.0 * u); inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slot.add_child(inner)
+	var tsb := StyleBoxFlat.new(); tsb.bg_color = Color("#101623"); tsb.set_corner_radius_all(0)
+	for q in [0.25, 0.5, 0.75]:
+		var tick := Panel.new(); tick.add_theme_stylebox_override("panel", tsb)
+		tick.position = Vector2(roundf(inner.size.x * q / u) * u, 0.0); tick.size = Vector2(u, inner.size.y)
+		tick.mouse_filter = Control.MOUSE_FILTER_IGNORE; inner.add_child(tick)
+	var w: float = floorf(inner.size.x * clampf(ratio, 0.0, 1.0) / u) * u
+	if w >= u:
+		var fl := ColorRect.new(); fl.color = Color("#ffb145")
+		fl.position = pos + Vector2(u, u); fl.size = Vector2(w, inner.size.y)
+		fl.mouse_filter = Control.MOUSE_FILTER_IGNORE; parent.add_child(fl)
+		var hl := ColorRect.new(); hl.color = Color("#fdfff2")
+		hl.position = fl.position; hl.size = Vector2(w, u)
+		hl.mouse_filter = Control.MOUSE_FILTER_IGNORE; parent.add_child(hl)
+		var sh := ColorRect.new(); sh.color = Color("#b36f43")
+		sh.position = fl.position + Vector2(0.0, fl.size.y - u); sh.size = Vector2(w, u)
+		sh.mouse_filter = Control.MOUSE_FILTER_IGNORE; parent.add_child(sh)
 
 ## 无框图标钮: 图标在上(像素图 ×2, 最近邻)、描边字在下; 五种状态的底都是空的(不是金木框, 也不是网页盒)。
 func _icon_button(nm: String, tex: Texture2D, label: String, pos: Vector2, sz: Vector2) -> Button:
@@ -1167,11 +1314,13 @@ func _icon_button(nm: String, tex: Texture2D, label: String, pos: Vector2, sz: V
 	b.text = label
 	b.icon = tex
 	b.expand_icon = true
-	b.add_theme_constant_override("icon_max_width", 64)
-	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+	b.add_theme_constant_override("icon_max_width", 40)
+	b.add_theme_constant_override("h_separation", 8)
+	b.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	b.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	b.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	b.add_theme_font_size_override("font_size", 18)
+	b.add_theme_font_size_override("font_size", 22)
 	b.add_theme_color_override("font_color", Color("#e8dcc4"))
 	b.add_theme_color_override("font_hover_color", Color("#fff4dc"))
 	b.add_theme_color_override("font_pressed_color", Color("#ffe27a"))
@@ -1179,10 +1328,31 @@ func _icon_button(nm: String, tex: Texture2D, label: String, pos: Vector2, sz: V
 	b.add_theme_constant_override("outline_size", 6)
 	b.add_theme_color_override("icon_hover_color", Color(1.15, 1.15, 1.15, 1))
 	b.add_theme_color_override("icon_pressed_color", Color(0.85, 0.85, 0.85, 1))
-	for st in ["normal", "hover", "pressed", "disabled", "focus"]:
-		b.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	## 2026-10-21 用户「3个按钮？」: 原来是三颗无底小圆图标 + 下面一行小字, 看不出能按。⇒ 每颗一块像素木牌(PLANK_TEX), 图标在左、字在右。
+	for st in [["normal", 1.0], ["hover", 1.15], ["pressed", 0.8], ["disabled", 1.0], ["focus", 1.0]]:
+		var tb := StyleBoxTexture.new()
+		tb.texture = PLANK_TEX; tb.set_texture_margin_all(PLANK_MARGIN)
+		tb.content_margin_left = 12; tb.content_margin_right = 12
+		tb.modulate_color = Color(float(st[1]), float(st[1]), float(st[1]), 1.0)
+		b.add_theme_stylebox_override(str(st[0]), tb)
 	b.position = pos; b.size = sz
 	return b
+
+
+## 像素木牌底(九宫格, 与按钮同一张 PLANK_TEX)。
+const PLANK_TEX = preload("res://assets/sprites/shop/shop-plank.png")
+const PLANK_MARGIN := 18
+const COIN_PLAQUE_X := 1040.0
+func _plank(parent: Control, pos: Vector2, sz: Vector2) -> NinePatchRect:
+	var np := NinePatchRect.new()
+	np.texture = PLANK_TEX
+	np.patch_margin_left = PLANK_MARGIN; np.patch_margin_right = PLANK_MARGIN
+	np.patch_margin_top = PLANK_MARGIN; np.patch_margin_bottom = PLANK_MARGIN
+	np.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	np.position = pos; np.size = sz
+	np.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(np)
+	return np
 
 
 ## 刷新钮字后面跟一枚深海币(子节点, 跟着按钮一起压暗)。
@@ -1193,7 +1363,8 @@ func _coin_after_text(b: Button) -> void:
 	## 量字宽再放: 「刷新  2」居中, 币紧贴在字的右边(写死偏移会压在数字上 —— 实拍过)
 	var f: Font = b.get_theme_font("font")
 	var tw: float = f.get_string_size(b.text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, b.get_theme_font_size("font_size")).x if f != null else 60.0
-	c.position = Vector2(b.size.x * 0.5 + tw * 0.5 + 2.0, b.size.y - 32.0); c.size = Vector2(24, 24)
+	## 木牌按钮: 图标在左(12 + 40 + 8), 字左对齐 ⇒ 币紧跟字尾、竖直居中
+	c.position = Vector2(12.0 + 40.0 + 8.0 + tw + 4.0, (b.size.y - 26.0) * 0.5); c.size = Vector2(26, 26)
 	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(c)
 
@@ -1280,6 +1451,10 @@ func _tutorial_anchor(anchor: String) -> Rect2:
 			if _insp.card != null and is_instance_valid(_insp.card):
 				u = u.merge(TutorialGuide.vis_rect(_insp.card))
 			return u
+		"level_row":    # 教程 v5 E1「1 级不能装备」: 等级 · 经验 · 可装备 N 件 那一段
+			var lt := find_child("LevelTap", true, false) as Control
+			if lt != null:
+				return TutorialGuide.vis_rect(lt)
 		"bag_button":
 			if _top_bar != null and not _top_bar.action_btns.is_empty():
 				return TutorialGuide.vis_rect(_top_bar.action_btns[0])
@@ -1405,9 +1580,6 @@ func _skin_button(b: Button, primary := false) -> void:
 	b.add_theme_color_override("font_disabled_color", Color("#6b7f8e"))
 
 
-## 九宫格框(卡片/面板用)。★MOUSE_FILTER_IGNORE —— 框是纯装饰, 不能吃掉点击。
-func _nine(parent: Control, tex: Texture2D, margin: int, pos: Vector2, sz: Vector2, z := -1) -> NinePatchRect:
-	return _nine_xy(parent, tex, margin, margin, pos, sz, z)
 
 
 ## 横竖边距不同的九宫格。条框这类**扁贴图**必须分开给: bar-frame 的左右边带 11px、

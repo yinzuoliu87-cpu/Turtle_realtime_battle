@@ -20,11 +20,25 @@ const STEPS_PATH := "res://data/tutorial-steps.json"
 ## ★v3(2026-10-20, 方案书 docs/plans/20261020-教程重写.md D7): 带 `auto` 的步 = **不阻塞的提示**(战斗里那两句)。
 ##   不压暗、不挡点击(本层所有控件 MOUSE_FILTER_IGNORE, 暗幕不显示)、不出手势、不暂停战斗;
 ##   淡入 → 停 `auto` 秒 → 淡出 → 自己前进。门禁量 `is_blocking()` 恒假。
+##
+## ★v5(2026-10-21, 分镜 docs/plans/20261021-教程分镜v5.md「引导形式」):
+##   · 只有气泡 + **金色箭头**(用户「不要引导人物」; 原来的手势指针贴图换成代码画的箭头, 不借素材)。
+##   · 点了暗幕(洞外)⇒ 气泡下多出一行说明(`_wrong_tap`, 分镜「点错有一句说明」), 2.5 秒后收起。
+##   · 每一步变成当前步时, 宿主若有 `tut_step_shown(highlight)` 就调一次(商店据此到 E2 才显示「买经验」:
+##     分镜「按钮教到才出现」)。
+##   · 文案里的 `{pet}` / `{item}` 由宿主 `tut_text_vars()` 按那一刻的状态填(B1/B3 点名下一只龟, F1 点名刚买的装备)。
 
-const HAND_TEX := "res://assets/sprites/ui/tut-hand.png"
-const HAND_SCALE := 3.0
-## 指尖在源图里的像素位置(18×19 的手, 食指尖)。
-const HAND_TIP := Vector2(6.5, 0.0)
+## 金色箭头(指向下方, 箭尖在控件坐标 ARROW_TIP)。代码画, 不用贴图。
+const ARROW_SIZE := Vector2(40, 54)
+const ARROW_TIP := Vector2(20, 54)
+const ARROW_GOLD := Color("#ffd93d")
+const ARROW_EDGE := Color("#3a2205")
+## 点错那一行说明停留的秒数。
+const WRONG_TAP_SEC := 2.5
+## 气泡最宽占视口的比例(文案是一整句, 超了就折行)。
+const PANEL_MAX_FRAC := 0.86
+## 战斗提示带的上沿(视口高度的比例, 见 _place_panel 的 "band")。
+const BAND_Y_FRAC := 0.2
 ## 目标矩形连续这么多帧位置不变才算「布局/入场动画走完了」。
 const STABLE_FRAMES := 4
 ## 首帧解析出空矩形是正常的(容器还没跑布局) ⇒ 撑过这几帧还空才报一条警告。
@@ -38,7 +52,10 @@ var _ready_fn: Callable              # ()->bool 宿主可以引导了吗; 空 = 
 var _layer: CanvasLayer
 var _panel: PanelContainer
 var _text: Label
-var _hand: TextureRect
+var _hint: Label                     # 点错时气泡下那一行说明
+var _hint_t: float = 0.0
+var _hand: Control                   # 金色箭头(名字保留 _hand: 指针的动法仍由步骤的 hand 字段决定)
+var _wrong_text: String = ""
 var _mask: Array = []                # 4 个 ColorRect(上/下/左/右), 洞外压暗 + 挡点击
 var _ring: ColorRect
 var _cur_hl: String = ""
@@ -121,6 +138,8 @@ func _build_ui() -> void:
 	_ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ring.set_script(preload("res://scripts/scenes/tutorial_ring.gd"))
 	_layer.add_child(_ring)
+	for m2 in _mask:
+		(m2 as Control).gui_input.connect(_on_mask_input)
 	_panel = PanelContainer.new()
 	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sb := StyleBoxFlat.new()
@@ -139,26 +158,72 @@ func _build_ui() -> void:
 	_text.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
 	_text.add_theme_constant_override("outline_size", 4)
 	_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_panel.add_child(_text)
-	_hand = TextureRect.new()
-	_hand.name = "TutorialHand"
-	if ResourceLoader.exists(HAND_TEX):
-		_hand.texture = load(HAND_TEX)
-	_hand.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_hand.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_hand.stretch_mode = TextureRect.STRETCH_SCALE
+	var vb := VBoxContainer.new()
+	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_theme_constant_override("separation", 4)
+	_panel.add_child(vb)
+	vb.add_child(_text)
+	_hint = Label.new()
+	_hint.name = "TutorialWrongTap"
+	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_hint.add_theme_font_size_override("font_size", 18)
+	_hint.add_theme_color_override("font_color", Color("#ffb08a"))
+	_hint.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
+	_hint.add_theme_constant_override("outline_size", 4)
+	_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hint.visible = false
+	vb.add_child(_hint)
+	_wrong_text = wrong_tap_text()
+	_hand = Control.new()
+	_hand.name = "TutorialArrow"
 	_hand.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var ts: Vector2 = _hand.texture.get_size() if _hand.texture != null else Vector2(18, 19)
-	_hand.size = ts * HAND_SCALE
+	_hand.size = ARROW_SIZE
+	_hand.pivot_offset = ARROW_TIP
+	_hand.draw.connect(_draw_arrow)
 	_layer.add_child(_hand)
+
+
+## 金色箭头: 竖杆 + 三角箭头, 深色描边(像素风直角, 不抗锯齿)。箭尖在 ARROW_TIP(底边中点)。
+func _draw_arrow() -> void:
+	var pts := PackedVector2Array([
+		Vector2(13, 0), Vector2(27, 0), Vector2(27, 28), Vector2(39, 28),
+		Vector2(20, 54), Vector2(1, 28), Vector2(13, 28)])
+	_hand.draw_colored_polygon(pts, ARROW_GOLD)
+	var outline := pts.duplicate()
+	outline.append(pts[0])
+	_hand.draw_polyline(outline, ARROW_EDGE, 3.0, false)
+	_hand.draw_rect(Rect2(16, 3, 4, 22), Color(1, 1, 1, 0.45))   # 杆上一道高光
+
+
+## 点了洞外的暗幕 ⇒ 气泡下出一行说明(不前进、不放行这次点击)。
+func _on_mask_input(ev: InputEvent) -> void:
+	var press: bool = (ev is InputEventMouseButton and (ev as InputEventMouseButton).pressed) \
+		or (ev is InputEventScreenTouch and (ev as InputEventScreenTouch).pressed)
+	if not press or is_tip() or _wrong_text == "":
+		return
+	_hint.text = _wrong_text
+	_hint.visible = true
+	_hint_t = WRONG_TAP_SEC
+
+
+## 气泡下那一行说明此刻的字(没显示 = 空)。门禁读。
+func wrong_tap_shown() -> String:
+	return _hint.text if _hint != null and _hint.visible else ""
 
 
 func _render() -> void:
 	if _idx >= _steps.size():
 		return
 	var step: Dictionary = _steps[_idx]
-	_text.text = str(step.get("text", ""))
 	_cur_hl = str(step.get("highlight", ""))
+	var host := get_parent()
+	if host != null and host.has_method("tut_step_shown"):
+		host.call("tut_step_shown", _cur_hl)
+	_text.text = fill_text(str(step.get("text", "")), host)
+	_fit_text_width()
+	if _hint != null:
+		_hint.visible = false
+		_hint_t = 0.0
 	_shown = false
 	_stable_n = 0
 	_last_rect = Rect2()
@@ -172,6 +237,10 @@ func _process(dt: float) -> void:
 	if _idx >= _steps.size() or _layer == null:
 		return
 	_t += dt
+	if _hint_t > 0.0:
+		_hint_t -= dt
+		if _hint_t <= 0.0:
+			_hint.visible = false
 	var host_ok: bool = (not _ready_fn.is_valid()) or bool(_ready_fn.call())
 	var rect := _target_rect(_cur_hl)
 	if not host_ok:
@@ -267,8 +336,9 @@ func _place_panel(target: Rect2) -> void:
 	var vp: Vector2 = Vector2(_layer.get_viewport().get_visible_rect().size)
 	var sz: Vector2 = _panel.get_combined_minimum_size()
 	_panel.size = sz
-	const GAP := 20.0
 	const HAND_ROOM := 64.0
+	## 箭头画在目标上方 ⇒ 气泡放在目标上方时要让出箭头的高度(不阻塞提示没有箭头)。
+	var GAP: float = 20.0 if is_tip() else 20.0 + ARROW_SIZE.y + 10.0
 	var y: float
 	var where := str((_steps[_idx] as Dictionary).get("anchor", ""))
 	## "right": 贴在指点处(point, 缺省=目标)右侧、垂直居中 —— 目标上下紧挨着别的内容(背包上方是战场行、完成钮下方是龟卡)时用。
@@ -292,6 +362,11 @@ func _place_panel(target: Rect2) -> void:
 		if lx >= 12.0 and ly >= 8.0:
 			_panel.position = Vector2(round(lx), round(ly))
 			return
+	## "band"(v5 战斗提示): 屏幕水平居中, 放在顶部 HUD(名字条 / PK 条 / 战场计时牌, 到约 0.18 屏)与场上单位头顶条
+	##   (约 0.34 屏起)之间那条空带 —— 文案是一整句, 贴着目标放会压到头像栏 / 单位等级牌(实测 R2 红)。
+	if where == "band":
+		_panel.position = Vector2(round(maxf(12.0, (vp.x - sz.x) * 0.5)), round(vp.y * BAND_Y_FRAC))
+		return
 	if where == "top":
 		y = 22.0
 	elif where == "bottom":
@@ -306,11 +381,8 @@ func _place_panel(target: Rect2) -> void:
 	_panel.position = Vector2(round(x), round(y))
 
 
-## 手势指针: 点按类在目标上「按下 - 抬起」循环; 拖动类从目标拖向右侧循环。
+## 金色箭头: 点按类在目标上方朝下指、上下浮动(目标太靠上就翻到下方朝上指); 拖动类从目标滑向右侧循环。
 func _place_hand(target: Rect2) -> void:
-	if _hand.texture == null:
-		_hand.visible = false
-		return
 	var step: Dictionary = _steps[_idx]
 	if str(step.get("hand", "tap")) == "none":
 		_hand.visible = false
@@ -322,12 +394,9 @@ func _place_hand(target: Rect2) -> void:
 		if r2.size.x > 0.0 and r2.size.y > 0.0:
 			pr = r2
 	var tip: Vector2 = pr.get_center()
-	if pr.size.y > 120.0 or pr.size.x > 320.0:
-		tip = pr.get_center()
-	else:
-		tip.y = pr.position.y + pr.size.y * 0.62
 	var off := Vector2.ZERO
 	var a := 1.0
+	var up := false
 	if str(step.get("hand", "tap")) == "drag":
 		var cyc: float = fmod(_t, 1.6) / 1.6
 		var k: float = clampf(cyc / 0.75, 0.0, 1.0)
@@ -335,10 +404,24 @@ func _place_hand(target: Rect2) -> void:
 		off = Vector2(150.0, -30.0) * k
 		a = 1.0 if cyc < 0.8 else maxf(0.0, 1.0 - (cyc - 0.8) / 0.2)
 	else:
-		off.y = 10.0 + 8.0 * sin(_t * TAU * 1.4)
+		var inset: float = minf(12.0, pr.size.y * 0.25)
+		var bob: float = 6.0 + 6.0 * sin(_t * TAU * 1.4)
+		tip.y = pr.position.y + inset
+		if tip.y - ARROW_SIZE.y - 14.0 < 0.0:   # 上方放不下 ⇒ 从下方朝上指
+			up = true
+			tip.y = pr.end.y - inset
+			off.y = bob
+		else:
+			off.y = -bob
+	_hand.rotation = PI if up else 0.0
 	_hand.modulate.a = a
 	_hand.visible = true
-	_hand.position = (tip + off - HAND_TIP * HAND_SCALE).round()
+	_hand.position = (tip + off - ARROW_TIP).round()
+
+
+## 箭尖此刻在屏幕上的位置(门禁量「箭头指在目标上」; 旋转绕箭尖, 所以朝上时箭尖位置不变)。
+func arrow_tip() -> Vector2:
+	return _hand.position + ARROW_TIP if _hand != null else Vector2.ZERO
 
 
 func _finish() -> void:
@@ -366,6 +449,40 @@ static func vis_rect(c) -> Rect2:
 	return (c as Control).get_global_rect()
 
 
+## 文案里的 `{pet}` / `{item}` 等占位: 宿主 `tut_text_vars()` 给值(按那一刻的状态); 没给的原样留着(门禁扫「{」抓漏填)。
+static func fill_text(t: String, host: Node) -> String:
+	if not t.contains("{") or host == null or not host.has_method("tut_text_vars"):
+		return t
+	var vars = host.call("tut_text_vars")
+	if not (vars is Dictionary):
+		return t
+	for k in (vars as Dictionary).keys():
+		t = t.replace("{%s}" % str(k), str(vars[k]))
+	return t
+
+
+## 一整句太长 ⇒ 限宽折行(手机窄屏); 放得下就单行。
+func _fit_text_width() -> void:
+	if _text == null or _layer == null:
+		return
+	_text.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_text.custom_minimum_size = Vector2.ZERO
+	var vpw: float = float(_layer.get_viewport().get_visible_rect().size.x) if _layer.is_inside_tree() else 1280.0
+	var maxw: float = vpw * PANEL_MAX_FRAC - 52.0
+	var f: Font = _text.get_theme_font("font")
+	var fs: int = _text.get_theme_font_size("font_size")
+	var w: float = f.get_string_size(_text.text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs).x if f != null else 0.0
+	if w > maxw:
+		_text.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+		_text.custom_minimum_size = Vector2(maxw, 0)
+
+
+## 点错那一行说明(data/tutorial-steps.json 顶层 `_wrong_tap`)。
+static func wrong_tap_text() -> String:
+	var parsed = JSON.parse_string(FileAccess.get_file_as_string(STEPS_PATH))
+	return str((parsed as Dictionary).get("_wrong_tap", "")) if parsed is Dictionary else ""
+
+
 ## 从 data/tutorial-steps.json 取某一屏的步骤。取不到返回空数组(不显示引导, 不崩)。
 static func steps_for(key: String) -> Array:
 	var raw := FileAccess.get_file_as_string(STEPS_PATH)
@@ -384,8 +501,13 @@ static func steps_for(key: String) -> Array:
 ## anchor_fn 缺省用 host._tutorial_anchor; ready_fn 缺省 = 只等目标矩形稳定。
 static func attach(host: Node, key: String, on_done: Callable = Callable(),
 		anchor_fn: Callable = Callable(), ready_fn: Callable = Callable()) -> Node:
-	var steps := steps_for(key)
-	if steps.is_empty():
+	return attach_steps(host, steps_for(key), on_done, anchor_fn, ready_fn)
+
+
+## 同 `attach`, 但步骤直接给(导演按战斗事件一句一句挂不阻塞提示时用)。
+static func attach_steps(host: Node, steps: Array, on_done: Callable = Callable(),
+		anchor_fn: Callable = Callable(), ready_fn: Callable = Callable()) -> Node:
+	if steps.is_empty() or host == null:
 		return null
 	var g = load("res://scripts/scenes/TutorialGuide.gd").new()
 	g.name = "TutorialGuide"

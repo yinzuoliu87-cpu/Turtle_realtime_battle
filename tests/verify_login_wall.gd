@@ -1615,97 +1615,52 @@ func _t_open_path() -> void:
 	await _drop_scene()
 	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 	await _wf(6)
-	## ★2026-10-07 首启先弹「开始教程 / 跳过」选择框(用户「一般是有跳过和开始教程选项啊」)。
-	##   新玩家按「开始教程」—— 那是产品自己的按钮, 不是绑定控件。
-	var _menu8b = get_tree().current_scene
-	var _choice = _menu8b.get_node_or_null("TutorialChoice") if _menu8b != null else null
-	_ok("⑧b ★分母: 全新安装进主菜单 ⇒ 弹出教程选择框", _choice != null)
+	## ★2026-10-21 v4: 首启先换到独立的首启流程那一屏(游戏介绍 → 选择框「开始教程 / 跳过」), 不压在主菜单上;
+	##   「开始教程」直接进第一战(阵容预配, 不经过选龟屏)。新玩家按的「跳过」(介绍)与「开始教程」都是产品自己的按钮, 不是绑定控件。
+	var _fl8b: Node = null
+	var _wf8 := 0
+	while _wf8 < 200:
+		_fl8b = get_tree().current_scene
+		if _fl8b != null and str(_fl8b.scene_file_path).ends_with("FirstLaunch.tscn"):
+			break
+		await get_tree().process_frame
+		_wf8 += 1
+	var _is_fl: bool = _fl8b != null and str(_fl8b.scene_file_path).ends_with("FirstLaunch.tscn")
+	_ok("⑧b ★分母: 全新安装 ⇒ 产品自己换到首启流程(游戏介绍)", _is_fl,
+		str(_fl8b.scene_file_path) if _fl8b != null else "<null>")
+	if _is_fl:
+		(_fl8b.find_child("SkipIntro", true, false) as Button).emit_signal("pressed")
+		await _wf(2)
+	var _choice = _fl8b.get_node_or_null("TutorialChoice") if _is_fl else null
+	_ok("⑧b ★分母: 介绍之后 ⇒ 弹出教程选择框", _choice != null)
 	if _choice != null:
 		(_choice.find_child("StartTutorial", true, false) as Button).emit_signal("pressed")
-	var _wb: int = await _wait_scene_named("TeamSelect", 200)
-	var cur2 = get_tree().current_scene
-	print("     全新安装进主菜单后等了 %d 帧" % _wb)
-	_ok("⑧b ★★★WALL_SOFT: 全新安装 —— 产品自己把他送进**第一局的选龟屏**, 一个绑定控件都没碰",
-		cur2 != null and str(cur2.name).begins_with("TeamSelect") and bool(GameState.tutorial_active),
-		"%s / tutorial_active=%s" % [str(cur2.name) if cur2 != null else "<null>",
-			str(GameState.tutorial_active)])
-	if cur2 != null and str(cur2.name).begins_with("TeamSelect"):
-		## 用**产品自己的入口**选满三只(`_on_pick_pet` 就是点卡片跑的那一条),
-		## 不直接写 `team` —— 写字段就绕开了产品的规则。
-		_ok("⑧b ★分母: 阵容没被大轮锁定(锁了 `_on_pick_pet` 直接 return, 下面全是空检查)",
-			not bool(cur2._roster_locked),
-			"_roster_locked=%s · season_leaders=%s (全新安装下它必须是空的)"
-				% [str(cur2._roster_locked), str(GameState.season_leaders)])
-		var ids: Array = []
-		for p in DataRegistry.all_pets:
-			if ids.size() >= 3:
-				break
-			var pid := str((p as Dictionary).get("id", ""))
-			if pid != "":
-				ids.append(pid)
-		for pid in ids:
-			cur2._on_pick_pet(str(pid))
-		await _wf(3)
-		var got := 0
-		for t in cur2.team:
-			if t != null:
-				got += 1
-		_ok("⑧b ★分母: 三只真的进队了(没进 ⇒ `_on_start()` 会静默早退, 下面是空检查)",
-			got >= 3, "队里 %d 只: %s" % [got, str(cur2.team)])
-		## ★封盘闸: `_on_start()` 第一件事就是查它。真实时钟落在封盘窗内的话
-		##   这一步会静默 return ⇒ **一周里有几十分钟这条判据是空检查**。
-		##   ⇒ 用产品自己的缝 `lockout_now_override` 钉一个开着的时刻, 并把它断言出来。
-		var t_ok: int = int(P2C.now_utc())
-		for _k in range(24 * 8):
-			if P2C.can_start_match_utc(t_ok):
-				break
-			t_ok += 3600
-		cur2.lockout_now_override = t_ok
-		_ok("⑧b ★分母: 钉的那个时刻**不在封盘窗内**(否则 `_on_start()` 静默早退)",
-			P2C.can_start_match_utc(t_ok), "ts=%d" % t_ok)
-		cur2._on_start()
-		var w2: int = await _wait_scene_named("RealtimeBattle3D", 400)
-		var bat = get_tree().current_scene
-		print("     `_on_start()` 之后等了 %d 帧 ⇒ %s" % [w2,
-			str(bat.name) if bat != null else "<null>"])
-		_ok("⑧b ★★★WALL_SOFT: 一路走到**战斗场景真的建起来了** —— 全程一个绑定控件都没碰",
-			bat != null and str(bat.name).begins_with("RealtimeBattle3D"),
-			str(bat.name) if bat != null else "<null>")
-		if bat != null and str(bat.name).begins_with("RealtimeBattle3D"):
-			## ★★★「场景建起来了」≠「这一局开了」。量的是双路流程自己那本相位账
-			##   `_dl_state`: 空 = 流程根本没起来(那才是「建起来了但什么也没发生」);
-			##   非空 = 它已经进了开场幕(overview → preview → place → fight)。
-			##
-			## ★★**这里止步, 并且把边界写清楚**(不假装量到了更远):
-			##   从这一刻到「真的在互砍」还要走 **2×5 游戏秒的开场幕 + 摆位**
-			##   (`DL_PRESENT_SEC = 5.0`, 而 `_dl_present_t += dt` 走钳制后的帧 delta ⇒
-			##    无头高帧率下 10 游戏秒要上万帧), 而本门禁的帧预算是 500 帧 ——
-			##   强要等到那一步就会被 `--quit-after` 掐在半路, 表现是「没打 ALL PASS」
-			##   而不是某条断言 FAIL(CLAUDE.md §2 那个坑)。
-			##   ★而「一局能不能打完」本来就不是墙管的事: 它由**冒烟测试**跑满 60 秒
-			##   自然结束 + 结算路径守着(`tests/smoke_scenes.gd` 第 4 节)。
-			##   这一节要证的是「没绑邮箱的人能走到这里」—— 到这里就够了。
-			## ★轮询而不是「等 N 帧」: 开场建世界要多久跟机器快慢有关,
-			##   拿固定帧数当尺子就是本仓那一族(本地绿 / CI 红)。
-			var _wu := 0
-			while _wu < 300 and str(bat._dl_state) == "":
-				await get_tree().process_frame
-				_wu += 1
-			print("        等双路流程起步等了 %d 帧  ·  _dl_state=「%s」  单位 %d 个  _t=%.3f"
-				% [_wu, str(bat._dl_state), (bat._units as Array).size(), float(bat._t)])
-			_ok("⑧b ★★★而且这一局**真的开了**: 双路流程进了开场幕(建起来 ≠ 开了)",
-				str(bat._dl_state) != "", "_dl_state=「%s」" % str(bat._dl_state))
-			_ok("⑧b ★分母: 战斗拿到的就是这一路点出来的三只(拿错阵容 = 上面那条量的是别的局)",
-				(GameState.season_leaders as Array).size() == 3, str(GameState.season_leaders))
-		_ok("⑧b ★★★分母: 走到这一步 `account_email` **仍然是空的** —— 不绑真的能打一局",
-			str(GameState.account_email) == "", str(GameState.account_email))
-		## 清场走 `queue_free`(产品自己那条路), **不用 `free()`** ——
-		## 立刻硬释放会把还挂着的技能 await/tween 打成「Lambda capture was freed」
-		## (冒烟测试里那条已登记的缺口就是这么来的), 而那是致命正则里的一条。
-		if bat != null:
-			get_tree().current_scene = null
-			bat.queue_free()
-			await _wf(4)
+	var w2: int = await _wait_scene_named("RealtimeBattle3D", 400)
+	var bat = get_tree().current_scene
+	print("     「开始教程」之后等了 %d 帧 ⇒ %s" % [w2, str(bat.name) if bat != null else "<null>"])
+	_ok("⑧b ★★★WALL_SOFT: 全新安装 —— 产品自己把他送进**第一局战斗**(阵容预配), 一个绑定控件都没碰",
+		bat != null and str(bat.name).begins_with("RealtimeBattle3D") and bool(GameState.tutorial_active),
+		"%s / tutorial_active=%s" % [str(bat.name) if bat != null else "<null>", str(GameState.tutorial_active)])
+	if bat != null and str(bat.name).begins_with("RealtimeBattle3D"):
+		var _wu := 0
+		while _wu < 300 and str(bat._dl_state) == "":
+			await get_tree().process_frame
+			_wu += 1
+		print("        等双路流程起步等了 %d 帧  ·  _dl_state=「%s」  单位 %d 个  _t=%.3f"
+			% [_wu, str(bat._dl_state), (bat._units as Array).size(), float(bat._t)])
+		_ok("⑧b ★★★而且这一局**真的开了**: 双路流程进了开场幕(建起来 ≠ 开了)",
+			str(bat._dl_state) != "", "_dl_state=「%s」" % str(bat._dl_state))
+		_ok("⑧b ★分母: 战斗拿到的就是教程预配的三只(拿错阵容 = 上面那条量的是别的局)",
+			(GameState.season_leaders as Array).size() == 3, str(GameState.season_leaders))
+	_ok("⑧b ★★★分母: 走到这一步 `account_email` **仍然是空的** —— 不绑真的能打一局",
+		str(GameState.account_email) == "", str(GameState.account_email))
+	## 清场走 `queue_free`(产品自己那条路), **不用 `free()`** ——
+	## 立刻硬释放会把还挂着的技能 await/tween 打成「Lambda capture was freed」
+	## (冒烟测试里那条已登记的缺口就是这么来的), 而那是致命正则里的一条。
+	if bat != null:
+		get_tree().current_scene = null
+		bat.queue_free()
+		await _wf(4)
 
 	## 收尾: 环境与存档字段一律还原(memory `fb-restore-mutations-after-reverse-verify`)。
 	SB._transport_for_test = Callable()

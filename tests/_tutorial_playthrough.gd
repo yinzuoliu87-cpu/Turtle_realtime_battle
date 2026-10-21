@@ -1,5 +1,7 @@
 extends Node
-## 新手教程 v3 实玩录制(调试工具, 不进门禁): 从真主菜单开始, 按屏上那一句提示去**真点 / 真拖**(鼠标事件),
+## 新手教程 v5 实玩录制(v5 2026-10-21: 开始教程 ⇒ 选龟屏 3 只依次真点 + 真点一个技能 + 出战; 战斗 6 句提示挂在事件上;
+##   分镜 docs/plans/20261021-教程分镜v5.md)。
+## v4 原文: 新手教程 v4 实玩录制(调试工具, 不进门禁; v4 2026-10-21 加首启介绍 / 问 / 起名, TUT_PATH=play|skip): 从真主菜单开始, 按屏上那一句提示去**真点 / 真拖**(鼠标事件),
 ##   战斗真打完(不走结算快捷入口), 每一步提示出现时截一张图, 并把每一帧的步骤名记进时间轴。
 ##   方案书 docs/plans/20261020-教程重写.md §5 第 3 条(录屏给用户看)。整条的断言版是 tests/verify_tutorial_flow_v3.gd。
 ##
@@ -27,40 +29,115 @@ func _ready() -> void:
 	_out = OS.get_environment("TUT_OUT") if OS.has_environment("TUT_OUT") else "C:/tmp/tut_shots"
 	DirAccess.make_dir_recursive_absolute(_out)
 	_fps = float(OS.get_environment("TUT_FPS")) if OS.has_environment("TUT_FPS") else 60.0
+	## v4(2026-10-21): TUT_PATH=play(默认, 要教程) | skip(不要教程)。两条路都从真主菜单起: 首启 ⇒ 首启流程那一屏(介绍 → 问) ⇒ …… ⇒ 起名 ⇒ 主菜单。
+	var path := OS.get_environment("TUT_PATH") if OS.has_environment("TUT_PATH") else "play"
+	_tag = "P" if path == "play" else "S"
 	await get_tree().process_frame
-	## 自己挪到根上常驻, 再像玩家一样换到主菜单(主菜单要是真的 current_scene 才弹首启选择框)
+	## 自己挪到根上常驻, 再像玩家一样换到主菜单(主菜单要是真的 current_scene 才进首启流程)
 	var root := get_tree().root
 	get_parent().remove_child(self)
 	root.add_child(self)
 	GameState.test_mode = false     # 从 tests/ 启动会被存档闸置 test_mode(不写盘 ⇒ 欢迎框反复出现等假象)
 	GameState.onboarded = false
 	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
-	await _f(60)
-	var m := get_tree().current_scene
-	var ch: Node = m.get_node_or_null("TutorialChoice")
-	await _shoot("00_选择框")
+	var fl := await _wait_scene("FirstLaunch.tscn", 300)
+	if fl == null:
+		_note("★ 没进首启流程"); _finish(); return
+	_timeline.append([_frame, "首启流程(介绍)"])
+	## 介绍: 不点, 让它自己放完(玩家什么都不做时看到的就是这个); 每页淡入后拍一张。
+	var last := -1
+	var guard := 0
+	while is_instance_valid(fl) and not bool(fl.call("is_asking")) and guard < 2400:
+		var pi: int = int(fl.call("page_index"))
+		if pi != last:
+			last = pi
+			await _f(24)
+			var pg: Dictionary = fl.PAGES[pi]
+			await _shoot("介绍%d_%s" % [pi + 1, _fname(str(pg["text"]))])
+			_timeline.append([_frame, "介绍 %d: %s %s" % [pi + 1, str(pg["title"]), str(pg["text"])]])
+		await _f(1)
+		guard += 1
+	await _f(10)
+	var ch: Node = fl.get_node_or_null("TutorialChoice")
+	await _shoot("问_新手教程")
+	_timeline.append([_frame, "问: 新手教程 · 开始教程 / 跳过"])
 	if ch == null:
 		_note("★ 没弹选择框"); _finish(); return
-	await _click_ctl(ch.find_child("StartTutorial", true, false) as Control)
-	var guard := 0
-	while guard < 60:
-		guard += 1
-		var cs := get_tree().current_scene
-		if cs != null and str(cs.scene_file_path).ends_with("MainMenu.tscn") and not GameState.tutorial_active:
-			break
-		var g := await _wait_guide(9000)   # 战斗真打完: 三路最长 ~140 游戏秒
-		if g == null:
-			cs = get_tree().current_scene
-			if cs != null and str(cs.scene_file_path).ends_with("MainMenu.tscn") and not GameState.tutorial_active:
+	await _f(READ_FRAMES)
+	await _click_ctl(ch.find_child("SkipTutorial" if path == "skip" else "StartTutorial", true, false) as Control)
+	if path != "skip":
+		var g_guard := 0
+		while g_guard < 60:
+			g_guard += 1
+			if _naming_scene() != null:
 				break
-			_note("★ 等不到下一句提示(卡在 %s)" % (str(cs.scene_file_path) if cs != null else "?"))
-			break
-		await _do_step(g)
-	## 回到主菜单: 首次提示
-	await _f(30)
-	await _shoot("16_主菜单_首次提示")
+			var g := await _wait_guide(9000)   # 战斗真打完: 三路最长 ~140 游戏秒
+			if g == null:
+				if _naming_scene() != null:
+					break
+				var cs := get_tree().current_scene
+				_note("★ 等不到下一句提示(卡在 %s)" % (str(cs.scene_file_path) if cs != null else "?"))
+				break
+			await _do_step(g)
+	## 起名
+	var nfl := await _wait_naming(600)
+	if nfl == null:
+		_note("★ 没出起名框"); _finish(); return
+	await _f(10)
+	await _shoot("起名")
+	_timeline.append([_frame, "起名: 输入昵称(预填) · 确认"])
+	await _f(READ_FRAMES)
+	await _click_ctl(nfl.find_child("NameOk", true, false) as Control)
+	var mm := await _wait_scene("MainMenu.tscn", 300)
+	_timeline.append([_frame, "主菜单"])
+	await _f(60)
+	await _shoot("主菜单_首次进入")
+	await _f(90)
+	if mm != null and path != "skip":
+		## 新手逐个点亮: 点一下锁着的「背包」, 录下那一句
+		var sq: Node = mm.find_child("Sq_背包", true, false)
+		if sq != null:
+			await _click((sq as Control).get_global_rect().get_center())
+			await _f(20)
+			await _shoot("主菜单_点锁着的背包")
+			_timeline.append([_frame, "点锁着的背包 ⇒ 首战后解锁"])
 	await _f(60)
 	_finish()
+
+
+var _tag := "P"
+var _seq := 0
+var _steps_seen: Array = []
+
+
+func _fname(t: String) -> String:
+	return t.replace("，", "_").replace("：", "_").replace("、", "_").replace(" ", "").replace(":", "比")
+
+
+func _wait_scene(suffix: String, max_f: int) -> Node:
+	for _i in range(max_f):
+		var cs := get_tree().current_scene
+		if cs != null and str(cs.scene_file_path).ends_with(suffix):
+			await _f(3)
+			return get_tree().current_scene
+		await _f(1)
+	return null
+
+
+func _naming_scene() -> Node:
+	var cs := get_tree().current_scene
+	if cs != null and str(cs.scene_file_path).ends_with("FirstLaunch.tscn") and bool(cs.call("is_naming")):
+		return cs
+	return null
+
+
+func _wait_naming(max_f: int) -> Node:
+	for _i in range(max_f):
+		var n := _naming_scene()
+		if n != null:
+			return n
+		await _f(1)
+	return null
 
 
 ## 等一条正在显示的引导(战斗里那两句不阻塞提示也算)。最多 max_f 帧。
@@ -72,6 +149,8 @@ func _wait_guide(max_f: int) -> Node:
 		var cs := get_tree().current_scene
 		if cs != null and str(cs.scene_file_path).ends_with("MainMenu.tscn") and not GameState.tutorial_active:
 			return null
+		if _naming_scene() != null:
+			return null
 		await _f(1)
 	return null
 
@@ -79,9 +158,9 @@ func _wait_guide(max_f: int) -> Node:
 func _do_step(g: Node) -> void:
 	var idx: int = int(g._idx)
 	var step: Dictionary = g._steps[idx]
-	var txt := str(step.get("text", ""))
-	await _f(8)       # 让提示淡入 / 手势动起来再拍
-	await _shoot("%02d_%s" % [_step_no(txt), txt.replace("，", "_").replace(" ", "").replace(":", "比")])
+	await _f(8)       # 让提示淡入 / 箭头动起来再拍
+	var txt: String = g.current_text() if is_instance_valid(g) else str(step.get("text", ""))   # v5: {pet}/{item} 已填好的那句
+	await _shoot(_fname(txt))
 	_timeline.append([_frame, txt])
 	if not g.is_tip():
 		await _f(READ_FRAMES)   # 像玩家一样先读一眼再点(录屏里每一步看得清)
@@ -89,8 +168,8 @@ func _do_step(g: Node) -> void:
 		## 不阻塞提示: 什么都不点, 等它自己走
 		while is_instance_valid(g) and int(g._idx) == idx and not g.is_queued_for_deletion():
 			await _f(1)
-		## 第二句放完: 点一下我方头像栏上方的「教程加成」签, 录下说明句(用户 10-20 要求看得见)
-		if txt == "击碎敌方的蛋直接获胜":
+		## C1(教程加成那句)放完: 点一下我方头像栏上方的「教程加成」签, 录下说明句(用户 10-20 要求看得见)
+		if str(step.get("_id", "")) == "C1":
 			await _show_buff_badge()
 		return
 	var pt := str(step.get("point", step.get("highlight", "")))
@@ -121,26 +200,10 @@ func _show_buff_badge() -> void:
 		return
 	await _click((bn.badge as Control).get_global_rect().get_center())
 	await _f(READ_FRAMES)
-	await _shoot("04b_教程加成_%s" % str(bn.popup_text()).replace("：", "_").replace("，", "_").replace(" ", "").replace("%", "pct"))
+	await _shoot("教程加成_%s" % _fname(str(bn.popup_text())).replace("%", "pct"))
 	_timeline.append([_frame, "(点开) " + str(bn.popup_text())])
 	await _f(READ_FRAMES)
 	await _click((bn.badge as Control).get_global_rect().get_center())
-
-
-## 方案书 §1 表里的编号(截图文件名用)。
-func _step_no(txt: String) -> int:
-	var order := ["选择 3 只龟上阵", "点击出战", "赢两个战场获胜，1:1 进入终极战场", "击碎敌方的蛋直接获胜", "点击前往商店",
-		"购买经验，升到 2 级", "点击一件装备", "点击购买", "点击背包"]
-	var i := order.find(txt)
-	if i >= 0:
-		## 「点击一件装备」商店和背包各有一句: 背包那句排第 10
-		var cs := get_tree().current_scene
-		if txt == "点击一件装备" and cs != null and str(cs.scene_file_path).ends_with("Inventory.tscn"):
-			return 10
-		return i + 1
-	var inv := ["点击一件装备", "点击一只龟装上", "点击站位", "拖动龟调整站位", "点击完成", "点击完成教程"]
-	var j := inv.find(txt)
-	return 10 + j if j >= 0 else 99
 
 
 # ── 鼠标(真事件, 走 Input 全链) ──
@@ -190,7 +253,7 @@ func _drag(a: Vector2, b: Vector2) -> void:
 		_move(a.lerp(b, k / 20.0), (b - a) / 20.0)
 		await _f(1)
 		if k == 12:
-			await _shoot("13b_拖动中")
+			await _shoot("拖动中")
 	_btn(b, false)
 	await _f(10)
 
@@ -205,9 +268,11 @@ func _shoot(tag: String) -> void:
 	if DisplayServer.get_name() != "headless":
 		await RenderingServer.frame_post_draw
 		var img := get_viewport().get_texture().get_image()
-		var path := "%s/%s.png" % [_out, tag]
+		_seq += 1
+		var path := "%s/%s%02d_%s.png" % [_out, _tag, _seq, tag]
 		img.save_png(path)
 	_note("%s @帧 %d" % [tag, _frame])
+	_steps_seen.append(tag)
 
 
 func _note(s: String) -> void:
@@ -228,5 +293,6 @@ func _finish() -> void:
 		print("    " + str(l))
 	print("  收尾: onboarded=%s(应true) tutorial_active=%s(应false) 共 %d 帧 ≈ %.1f 秒游戏时间" % [
 		GameState.onboarded, GameState.tutorial_active, _frame, float(_frame) / _fps])
+	print("  经过的引导 %d 句" % _steps_seen.size())
 	print("  PLAYTHROUGH DONE")
 	get_tree().quit(0)

@@ -13,7 +13,7 @@ extends Node
 
 var _fail: int = 0
 var _n: int = 0
-const MIN_ASSERTS := 28
+const MIN_ASSERTS := 34
 
 
 func _ok(n: String, c: bool, d: String = "") -> void:
@@ -46,12 +46,22 @@ func _ready() -> void:
 	# ① 进教程 + 站间推进
 	GameState.meta_deepsea_coins = 4321
 	td.enter(null)
-	_ok("★进教程: tutorial_active / stage=match1_pick", td.is_active() and td.stage() == "match1_pick")
+	## v5(2026-10-21 分镜 B): 进教程先到选龟屏(stage=team_select), 还没武装战斗、阵容是空的(由玩家在选龟屏点); 开局配置背包预放 2 件同名。
+	_ok("★进教程: tutorial_active / stage=team_select(先选龟)", td.is_active() and td.stage() == "team_select", td.stage())
+	_ok("★进教程: 阵容还空着(不预配, 选龟屏让玩家点)", GameState.left_team.is_empty() and GameState.season_leaders.is_empty(), str(GameState.left_team))
+	_ok("★进教程: 还没武装教学战斗(选完龟才武装)", (GameState.dual_ghost as Dictionary).is_empty())
 	_ok("★进教程: 教学币 %d" % td.TUT_COINS, int(GameState.meta_deepsea_coins) == int(td.TUT_COINS))
+	var pre := 0
+	for it in GameState.persistent_bench:
+		if it is Dictionary and str(it.get("id", "")) == str(td.TUT_MERGE_ITEM) and int(it.get("star", 1)) == 1:
+			pre += 1
+	_ok("★★F3 开局配置: 沙盒背包预放 %d 件 1 星 %s" % [int(td.TUT_MERGE_PRESET), td.TUT_MERGE_ITEM], pre == int(td.TUT_MERGE_PRESET) and GameState.persistent_bench.size() == pre, "%d 件 / 背包 %d" % [pre, GameState.persistent_bench.size()])
 	var coins_in: int = int(GameState.meta_deepsea_coins)
 	td.enter(null)
 	_ok("★⑤ 连进两次: 币仍是教学币(没把教学币当账号余额存进沙盒)", int(GameState.meta_deepsea_coins) == coins_in)
-	_ok("选龟阶段挂 team_select 那套", td.steps_key_for("team_select") == "team_select")
+	_ok("★⑤ 连进两次: 预放件不翻倍", GameState.persistent_bench.size() == int(td.TUT_MERGE_PRESET), "%d" % GameState.persistent_bench.size())
+	_ok("★v5: 选龟屏挂 team_select 那套引导", td.steps_key_for("team_select") == "team_select")
+	_ok("v5: 选龟阶段战斗 / 商店不挂引导", td.steps_key_for("battle") == "" and td.steps_key_for("shop") == "")
 	var d1: String = td.next_scene_after("team_select")
 	_ok("★选龟确认 → 战斗", d1.ends_with("RealtimeBattle3D.tscn"), d1)
 	_ok("★推进到 match1", td.stage() == "match1")
@@ -66,6 +76,10 @@ func _ready() -> void:
 	var d2: String = td.next_scene_after("battle")
 	_ok("★★战斗打完 → 商店(只有一把, 不再有第二把)", d2.ends_with("Shop.tscn"), d2)
 	_ok("推进到 shop, 挂 shop 那套", td.stage() == "shop" and td.steps_key_for("shop") == "shop")
+	var offer: Array = GameState.meta_shop_offer
+	_ok("★★F3 开局配置: 教程货架第 1 格 = 预放的同一件(买下凑 3 件)", not offer.is_empty() and offer[0] is Dictionary
+		and str(offer[0].get("id", "")) == str(td.TUT_MERGE_ITEM), str(offer.slice(0, 2)))
+	_ok("★教程货架是「本场次的货架」(商店恢复它, 不重新掷)", int(GameState.meta_shop_battles) == int(GameState.season_total_battles) and offer.size() == 10, "%d 格" % offer.size())
 	_ok("商店阶段的战斗场不挂引导(不会第二次进战斗)", td.steps_key_for("battle") == "")
 	var d3: String = td.next_scene_after("shop")
 	_ok("★商店 → 背包", d3.ends_with("Inventory.tscn"), d3)

@@ -40,6 +40,7 @@ const _Roster := preload("res://scripts/systems/sim/sim_roster.gd")
 const _P2 := preload("res://scripts/gamedata/phase2_config.gd")
 
 const S_MENU := "res://scenes/MainMenu.tscn"
+const S_FIRST := "res://scenes/FirstLaunch.tscn"   # 首启流程(介绍 → 选择框 → 起名), v4 2026-10-21
 const S_TEAM := "res://scenes/TeamSelect.tscn"
 const S_MATCH := "res://scenes/Matchmaking.tscn"
 const S_BATTLE := "res://scenes/RealtimeBattle3D.tscn"
@@ -161,6 +162,7 @@ func _run() -> void:
 			continue
 		match p:
 			S_MENU: await _do_menu(sc)
+			S_FIRST: await _do_first_launch(sc)
 			S_TEAM: await _do_team(sc)
 			S_MATCH: await _do_match(sc)
 			S_BATTLE: await _do_battle(sc)
@@ -304,7 +306,30 @@ func _do_menu(m: Node) -> void:
 	m.call("_start_battle_flow")
 
 
-## 主菜单上弹着教程选择框 ⇒ 按 SIM_TUTORIAL 选一颗(默认 play =「开始教程」), 返回 true。
+## 首启流程那一屏(v4): 介绍直接按「跳过」→ 选择框照 SIM_TUTORIAL 选 → 起名框按「确认」(名字照驱动自己的规矩)。
+## ★不设 _acted_id: 同一屏先后有「选择框」「起名框」两件事(点了「跳过」后起名框就开在这一屏上)。
+func _do_first_launch(f: Node) -> void:
+	await _sleep(1.0)
+	if not _alive(f):
+		return
+	if bool(f.call("is_naming")):
+		var ed := f.find_child("NameEdit", true, false) as LineEdit
+		_ensure_en_nick()     # p121 起: 纯英文名(它只在 nickname 为空时写一次)
+		if ed != null and str(GameState.nickname) != "":
+			ed.text = str(GameState.nickname)
+		_shot("first_launch_name")
+		var err: String = str(f.call("confirm_name", ed.text if ed != null else ""))
+		_ev("first_launch_name", {"name": str(GameState.nickname), "err": err})
+		return
+	if not bool(f.call("is_asking")):
+		_shot("first_launch_intro")
+		f.call("skip_intro")
+		await _sleep(0.5)
+	if _alive(f):
+		_press_tutorial_choice(f)
+
+
+## 首启选择框(v4 起挂在首启流程那一屏上; 旧版挂在主菜单上)⇒ 按 SIM_TUTORIAL 选一颗(默认 play =「开始教程」), 返回 true。
 ## ★只在选择框(节点 TutorialChoice)里找按钮 —— 教程外壳上也有一颗同名的「跳过教程」(SkipTutorial),
 ##   驱动绝不能去按那一颗(门禁 verify_tutorial_choice ⑧ 量这条)。
 func _press_tutorial_choice(m: Node) -> bool:

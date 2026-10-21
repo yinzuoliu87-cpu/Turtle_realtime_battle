@@ -257,6 +257,20 @@ static func icon_bb(typ: String, px: int = 16) -> String:
 static func icon_bb_px(typ: String, px: int = 16) -> int:
 	return px if icon_of(typ) != "" else 0
 
+
+## 羁绊进度的【唯一写法】(2026-10-21 统一): 商店左栏 / 背包羁绊列 / 出战页 chip 三处同一句。
+##   「名 当前/下一档 ★☆☆」(星 = 已到第几档); 满档「名 当前 ★★★」。名 = 类型名本身(剑 / 法器 / 盾),
+##   不用 TYPE_NAME 里的「剑系」「灵物·召唤」这种只在一处出现的显示名。
+##   ★原来商店写「灵物 2/5 ★☆☆☆」、背包写「灵物 2 件 · 5 件升级」—— 同一件事两种写法(实拍 10-20)。
+##   用户授权自定(10-21 方案书「手机优先重排」): 取商店 / 出战页已在用的那种(自走棋通行写法, 云顶同式)。
+static func progress_text(typ: String, n: int, tier: int, need: int, tiers_n: int) -> String:
+	var stars := ""
+	for i in range(tiers_n):
+		stars += "★" if i < tier else "☆"
+	if need > 0:
+		return "%s %d/%d %s" % [typ, n, n + need, stars]
+	return "%s %d %s" % [typ, n, stars]
+
 ## 两区式面板·显示名 (类型·别名)。
 static func display_name(typ: String) -> String:
 	return str(TYPE_NAME.get(typ, typ))

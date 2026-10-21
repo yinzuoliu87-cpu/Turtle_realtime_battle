@@ -364,6 +364,8 @@ func _toggle_skill(pid: String, idx: int) -> void:
 		host._flash_status("未解锁")   # 与按钮层 dev_locked 同一句
 		return
 	GameState.loadouts[pid] = idx                       # 3选1: 单选, 点哪个就替换成哪个
+	if host.has_method("_tut_notify"):
+		host._tut_notify("skill_picked")                # 教程 v5 B2: 选了一个技能才前进
 	# ★这三行的调用目标在上帝文件拆分时搬过家: _refresh_slots 去了 roster_slots.gd,
 	#   这里却还写着 host._refresh_slots() → 【运行时才炸】的 "Nonexistent function",
 	#   而且炸在第一行 → 后两行(含重建技能图标的 _refresh_detail)根本不执行。

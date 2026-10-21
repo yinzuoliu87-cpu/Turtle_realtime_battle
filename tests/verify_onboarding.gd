@@ -82,7 +82,12 @@ func _test_menu_wiring() -> void:
 	##   开沙盒的事归导演(tutorial_director.enter)。真点按钮的行为由 verify_tutorial_choice 量。
 	var dsrc := _code_only(FileAccess.get_file_as_string("res://autoload/tutorial_director.gd"))
 	_ok("★启动教学时开沙盒(导演 enter 里 tutorial_active=true)", dsrc.contains("GameState.tutorial_active = true"))
-	_ok("★首启弹选择框(第二个按钮是「跳过」)", src.contains("TutorialChoice.open(self, true)"))
+	## v4(2026-10-21): 首启换到独立的首启流程那一屏(介绍 → 选择框), 选择框挂在那一屏上(不压在主菜单上)。
+	var fsrc := _code_only(FileAccess.get_file_as_string("res://scripts/scenes/FirstLaunchScene.gd"))
+	_ok("★首启换到首启流程那一屏(不压在主菜单上)", src.contains("call_deferred(\"_go\", FIRST_LAUNCH_SCENE)")
+		and src.contains("FIRST_LAUNCH_SCENE := \"FirstLaunch\"") and ResourceLoader.exists("res://scenes/FirstLaunch.tscn"))
+	_ok("★首启那一屏介绍完弹选择框(第二个按钮是「跳过」)", fsrc.contains("TutorialChoice.open(self, true)"))
+	_ok("★主菜单上不再弹首启选择框", not src.contains("TutorialChoice.open(self, true)"))
 	_ok("★❓ 重玩弹同一个框(第二个按钮是「取消」)", src.contains("TutorialChoice.open(self, false)"))
 	_ok("★主菜单里不再有直进教程的旧入口", not src.contains("_begin_tutorial("))
 	# ONBOARD 开发开关(否则本机跑一次 onboarded=true 就再也测不到)

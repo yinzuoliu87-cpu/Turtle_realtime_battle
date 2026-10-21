@@ -62,9 +62,11 @@ func _test_steps_data() -> void:
 	print("  [分母] 引导场景 %d 个, 步骤共 %d 步" % [n_keys, n_steps])
 	_ok("★步骤分母非 0(N=0 是空检查不是通过)", n_keys > 0 and n_steps > 0)
 	# steps_for 取得到
-	for key in ["team_select", "settle", "shop", "inventory"]:   # 2026-10-19 去掉 place(对局里没有摆位了)
+	## 2026-10-19 去掉 place(对局里没有摆位了); 2026-10-21 v4 去掉 team_select(进教程直接进战斗, 阵容预配)
+	for key in ["battle", "settle", "shop", "inventory"]:
 		var steps := TutorialGuide.steps_for(key)
 		_ok("steps_for(\"%s\") 取得到步骤" % key, steps.size() > 0, "%d 步" % steps.size())
+	_ok("★v5: 选龟屏有引导步骤(分镜 B1~B4: 教程又经过选龟屏)", TutorialGuide.steps_for("team_select").size() >= 4)
 	_ok("steps_for 对不存在的 key 返回空而不是崩",
 		TutorialGuide.steps_for("__不存在的场景__").is_empty())
 
@@ -306,9 +308,14 @@ const COUNT_CHECK := {
 	"team_select|3 只": "roster_is_3",
 	"shop|1 件": "one_item_affordable",
 	"shop|2 级": "xp_buy_reaches_2",
+	## v5(分镜 E1/E2/F3, 照云顶原句的完整句): 「1 级时全队还不能装备任何装备」「全队就能装备 2 件装备」「集齐 3 件同名同星」
+	"shop|1 级": "lv1_cap_zero",
+	"shop|2 件": "lv2_cap_two",
+	"inventory|3 件": "merge_takes_3",
 }
 ## 「点击X」里的 X 不是按钮名, 而是「一类东西」—— 由该步 highlight 锚点核实(锚点解析得出 = 屏上真有)。
-const CLICK_OBJECTS := ["一件装备", "一只龟装上"]
+## v5: 文案是完整句, X 取到第一个「，/。」为止, 按前缀认(「一件装备」「一只龟，…」「一个技能装备它」「刚买的【{item}】」)。
+const CLICK_OBJECTS := ["一件装备", "一只龟", "一个技能", "刚买的"]
 ## 方位词既绑不到「按钮名」也绑不到 highlight 锚点时, 在这里指认它说的是屏上哪块。
 const DIR_EXTRA := {
 	"team_select|1|右侧": "detail_column",   # 「点龟头像时, 右侧会显示它的属性和技能」
@@ -367,7 +374,12 @@ func _test_tutorial_claims() -> void:
 			GameState.season_leaders = lt.duplicate()
 			GameState.left_team = lt.duplicate()
 		GameState.dual_lineup = {}
+		## v5 F1「点击刚买的【{item}】」: 进背包那一刻背包里是商店里买下、合成好的那一件(教程开局配置 + 正式合成)
+		var bench_keep: Array = GameState.persistent_bench.duplicate(true)
+		if key == "inventory":
+			GameState.persistent_bench = [{"id": str(get_node("/root/TutorialDirector").TUT_MERGE_ITEM), "star": 2}]
 		screens[key] = await _harvest(str(key))
+		GameState.persistent_bench = bench_keep
 
 	# ── 逐步逐句提取声称并解析 ──
 	for key in (parsed as Dictionary).keys():
@@ -437,7 +449,7 @@ func _harvest(key: String) -> Dictionary:
 	out["vp"] = get_viewport().get_visible_rect().size
 	_walk_texts(inst, out["texts"], "A")
 	if inst.has_method("_tutorial_anchor"):
-		for nm in ["roster", "slots", "confirm", "offer", "shelf", "offer_card", "coins", "xp_button", "bag_button", "lanes", "backpack", "finish_button", "formation_button"]:
+		for nm in ["roster", "roster_pet", "skill_choices", "slots", "confirm", "offer", "shelf", "offer_card", "coins", "xp_button", "bag_button", "lanes", "backpack", "first_item", "first_leader", "finish_button", "formation_button"]:
 			var r: Rect2 = inst.call("_tutorial_anchor", nm)
 			if r.size != Vector2.ZERO:
 				(out["anchors"] as Dictionary)[nm] = r
@@ -568,15 +580,31 @@ func _check_step_claims(key: String, idx: int, text: String, hl: String, screen:
 			terms.append(nm)          # 「站位」这种是**术语引号**, 不是按钮名
 		p = b + 1
 	## 2026-10-07 新文案: 「点击X」不带引号, X 直接就是按钮名(或一类东西, 见 CLICK_OBJECTS)
-	if text.begins_with("点击"):
-		var nm2 := text.substr(2).strip_edges()
-		if nm2 in CLICK_OBJECTS:
+	## v5(照云顶原句): 「点击」可以在句中(「教程完成。点击【完成教程】，…」「再点击一只龟，…」), X 到第一个「，/。」为止;
+	##   X 是「【名字】」⇒ 按钮名; 是一类东西 ⇒ 由 highlight 锚点核实。每一处「点击」都要被接走。
+	var cp := text.find("点击")
+	while cp >= 0:
+		var rest := text.substr(cp + 2)
+		var cut := rest.length()
+		for sep in ["，", "。"]:
+			var k := rest.find(sep)
+			if k >= 0 and k < cut:
+				cut = k
+		var nm2 := rest.substr(0, cut).strip_edges()
+		var obj := false
+		for co in CLICK_OBJECTS:
+			if nm2.begins_with(str(co)):
+				obj = true
+		if obj:
 			_claim_n += 1
 			var ar2: Rect2 = (screen.get("anchors", {}) as Dictionary).get(hl, Rect2())
 			_ok("%s 「点击%s」⇒ 高亮锚点 %s 在屏上解析得出" % [tag, nm2, hl], ar2.size != Vector2.ZERO or CLAIM_SRC.has(key),
 				str(ar2))
+		elif nm2.begins_with("【") and nm2.ends_with("】"):
+			labels.append({"name": nm2.substr(1, nm2.length() - 2), "pos": cp})
 		else:
-			labels.append({"name": nm2, "pos": 0})
+			labels.append({"name": nm2, "pos": cp})
+		cp = text.find("点击", cp + 2)
 	for L in labels:
 		_claim_n += 1
 		var found := _find_label(key, str(L["name"]), screen)
@@ -709,6 +737,32 @@ func _run_counter(tag: String, phrase: String, checker: String, screen: Dictiona
 			for e in DataRegistry.phase2_equipment:
 				cheapest = mini(cheapest, maxi(1, int((e as Dictionary).get("cost", 1))))
 			_ok("%s 「%s」 ⇒ 教学币买完经验还买得起 1 件(剩 %d, 最便宜 %d)" % [tag, phrase, left, cheapest], left >= cheapest)
+		"lv1_cap_zero":
+			var P2e = load("res://scripts/gamedata/phase2_config.gd")
+			_ok("%s 「%s」 ⇒ 1 级全队可装备数真的是 0" % [tag, phrase], int(P2e.team_equip_cap(1)) == 0, "cap(1)=%d" % int(P2e.team_equip_cap(1)))
+		"lv2_cap_two":
+			var P2f = load("res://scripts/gamedata/phase2_config.gd")
+			_ok("%s 「%s」 ⇒ 2 级全队可装备数真的是 2" % [tag, phrase], int(P2f.team_equip_cap(2)) == 2, "cap(2)=%d" % int(P2f.team_equip_cap(2)))
+		"merge_takes_3":
+			## 真跑正式合成函数: 2 件不合、3 件合成 1 件 2 星(用完还原背包)
+			var keep_b: Array = GameState.persistent_bench.duplicate(true)
+			var keep_e = GameState.persistent_equipped.duplicate(true)
+			var keep_d = GameState.dual_lineup.duplicate(true)
+			var td4 = get_node_or_null("/root/TutorialDirector")
+			var mid: String = str(td4.TUT_MERGE_ITEM)
+			GameState.persistent_equipped = {}
+			GameState.dual_lineup = {}
+			GameState.persistent_bench = [{"id": mid, "star": 1}, {"id": mid, "star": 1}]
+			GameState.auto_merge_all()
+			var two_stay: bool = GameState.persistent_bench.size() == 2
+			GameState.persistent_bench.append({"id": mid, "star": 1})
+			GameState.auto_merge_all()
+			var merged: bool = GameState.persistent_bench.size() == 1 and int((GameState.persistent_bench[0] as Dictionary).get("star", 1)) == 2
+			GameState.persistent_bench = keep_b
+			GameState.persistent_equipped = keep_e
+			GameState.dual_lineup = keep_d
+			_ok("%s 「%s」 ⇒ 2 件不合、凑满 3 件同名同星真的合成 1 件 2 星(正式 auto_merge_all)" % [tag, phrase], two_stay and merged,
+				"2 件留 %s / 3 件合 %s" % [str(two_stay), str(merged)])
 		"xp_buy_reaches_2":
 			var td3 = get_node_or_null("/root/TutorialDirector")
 			var P2d = load("res://scripts/gamedata/phase2_config.gd")
@@ -870,11 +924,13 @@ func _check_team_flow(screen: Dictionary) -> void:
 		var arr = (pj as Dictionary)["team_select"]
 		if arr is Array and (arr as Array).size() > 0 and (arr as Array)[0] is Dictionary:
 			adv = str(((arr as Array)[0] as Dictionary).get("advanceOn", ""))
-	_ok("★team_select[0]「三只都点上」挂了完成信号(否则玩家只能自己猜该按哪)",
-		adv == "team_filled", "advanceOn=%s" % adv)
+	## v5(2026-10-21 分镜 B1): 选龟回来了, 第 1 步「先选择【{pet}】」⇒ 每上阵一只就是完成信号(pet_picked)。
+	var has_ts: bool = pj is Dictionary and (pj as Dictionary).has("team_select")
+	_ok("★team_select[0]「先选择【{pet}】」挂了完成信号 pet_picked", has_ts and adv == "pet_picked",
+		"has_team_select=%s advanceOn=%s" % [str(has_ts), adv])
 	var ts_src := _code_only(FileAccess.get_file_as_string("res://scripts/scenes/TeamSelectScene.gd"))
 	_ok("★选龟屏真的发这个信号(不然 advanceOn 永远等不到)",
-		ts_src.contains('notify("team_filled")'))
+		ts_src.contains('_tut_notify("pet_picked")'))
 
 
 ## ① 的另一半: 文案换成触屏说法之后, 触屏那条路真的实现了

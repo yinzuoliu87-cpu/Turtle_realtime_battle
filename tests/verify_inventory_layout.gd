@@ -136,6 +136,14 @@ func _ready() -> void:
 		"背包底 %.0f, 离屏底还有 %.0f px" % [bench_bottom, vp - bench_bottom])
 
 	# ══ C. 背包格子铺满宽度(右边不许留空列) ══════════════════════
+	## ★2026-10-21 手机版: 背包只画真有的件数(不补空格) ⇒ 量「列距铺满」要先放满一整行, 量完放回原样。
+	var _bench_keep: Array = GameState.persistent_bench.duplicate(true)
+	GameState.persistent_bench = []
+	for _k in range(24):
+		GameState.persistent_bench.append({"id": long_id, "star": 1})
+	sc.call("_rebuild")
+	for _i in range(6):
+		await get_tree().process_frame
 	var cells_right := 0.0
 	var scroll_right := 0.0
 	for c in _all(sc):
@@ -147,6 +155,10 @@ func _ready() -> void:
 	_ok("③ 背包格子铺满宽度(右侧空列 ≤ 12px; 原来固定间距留了 64px)",
 		scroll_right > 0.0 and cells_right > 0.0 and scroll_right - cells_right <= 12.0,
 		"格子右沿 %.0f / 滚动区右沿 %.0f, 空了 %.0f px" % [cells_right, scroll_right, scroll_right - cells_right])
+	GameState.persistent_bench = _bench_keep
+	sc.call("_rebuild")
+	for _i in range(6):
+		await get_tree().process_frame
 
 	# ══ D. 深海币用真图标, 不是拿字符凑 ══════════════════════════
 	var coin_tex := false
@@ -354,8 +366,14 @@ func _ready() -> void:
 		var joined := ""
 		for t in _texts(sc2):
 			joined += str(t) + "\n"
-		if joined.find("糖果罐 %d档" % want) < 0:
-			jar_bad.append("count=%d 卡面没写「%d档」" % [int(pair[0]), want])
+		## ★2026-10-21 手机版: 格子里只写档位「N 档」(20 号字), 「糖果罐」三字在选中后的底栏里。
+		##   按产品的节点名(CellName)找卡面那一行, 不在全屏文本里搜(底栏「第 N 档」也含「N 档」)。
+		var card_txt := ""
+		for c in _all(sc2):
+			if c is Label and str(c.name) == "CellName":
+				card_txt = str((c as Label).text)
+		if card_txt != "%d 档" % want:
+			jar_bad.append("count=%d 卡面没写「%d 档」(实为「%s」)" % [int(pair[0]), want, card_txt])
 		if joined.find("第 %d 档" % want) < 0:
 			jar_bad.append("count=%d 底栏没写「第 %d 档」" % [int(pair[0]), want])
 		## 同一行里档位数字与奖励必须同档 —— 奖励取 preview(真实档)
@@ -397,9 +415,8 @@ func _ready() -> void:
 	_ok("㉒ ★分母: 两种档制都在场(3 档 %d 个 / 4 档 %d 个)" % [n3, n4], n3 >= 5 and n4 >= 3)
 	_ok("㉓ ★★档位配色按【档数】算出来(3 档从银起 / 4 档从铜起 / 末档一律钻石)",
 		col_bad.is_empty(), str(col_bad.slice(0, 4)))
-	## J-2 到顶了说"已满", 没到顶说【升级要几件】—— 数字取自 TYPES.tiers。
-	## ★2026-08-15 用户当场否了"档"字:「整个不要档一档二而是以颜色」⇒ 文案从「下一档 N 件」
-	##   改成「N 件升级」, 强弱只靠铜/银/金/钻石四色表示。判据跟着改, 并且【禁止"档"字回来】。
+	## J-2 ★2026-10-21 写法统一: 商店 / 背包 / 出战页同一句「名 当前/下一档 ★☆☆」(Phase2Types.progress_text);
+	##   数字取自 TYPES.tiers, 满档只写件数 + 满星。仍【禁止"档"字】(强弱看颜色 + 星)。
 	var nx_bad: Array = []
 	for t in Phase2Types.TYPES:
 		var typ2 := str(t)
@@ -407,13 +424,15 @@ func _ready() -> void:
 		if tiers2.is_empty():
 			continue
 		var top: int = int(tiers2[tiers2.size() - 1])
-		if str(syn._next_tier_text(typ2, top)) != "已满":
-			nx_bad.append("%s 满档没写「已满」" % typ2)
-		if str(syn._next_tier_text(typ2, 0)) != ("%d 件升级" % int(tiers2[0])):
-			nx_bad.append("%s 0 件时没写「%d 件升级」(实得「%s」)" % [typ2, int(tiers2[0]), str(syn._next_tier_text(typ2, 0))])
-		if str(syn._next_tier_text(typ2, 0)).find("档") >= 0:
+		var full_txt: String = Phase2Types.progress_text(typ2, top, tiers2.size(), -1, tiers2.size())
+		if full_txt != "%s %d %s" % [typ2, top, "★".repeat(tiers2.size())]:
+			nx_bad.append("%s 满档写成「%s」" % [typ2, full_txt])
+		var zero_txt: String = Phase2Types.progress_text(typ2, 0, 0, int(tiers2[0]), tiers2.size())
+		if zero_txt != "%s 0/%d %s" % [typ2, int(tiers2[0]), "☆".repeat(tiers2.size())]:
+			nx_bad.append("%s 0 件写成「%s」" % [typ2, zero_txt])
+		if zero_txt.find("档") >= 0 or full_txt.find("档") >= 0:
 			nx_bad.append("%s 的进度文案里还有「档」字" % typ2)
-	_ok("㉔ ★进度文案只说件数(N 件升级 / 已满)且不含「档」字, 数字取自 TYPES.tiers",
+	_ok("㉔ ★进度文案「名 当前/下一档 ★☆」, 数字取自 TYPES.tiers, 不含「档」字",
 		nx_bad.is_empty(), str(nx_bad.slice(0, 4)))
 	## J-3 花名不许出现
 	var fancy: Array = []
@@ -459,8 +478,13 @@ func _ready() -> void:
 	var joined3 := ""
 	for t in _texts(sc3):
 		joined3 += str(t) + "\n"
+	## ★2026-10-21: 没激活的那行写成「名 N/下一档 ☆☆☆」(一颗实星都没有)
+	var dim_row := false
+	for ln in joined3.split("\n"):
+		if ln.find("/") >= 0 and ln.find("☆") >= 0 and ln.find("★") < 0:
+			dim_row = true
 	_ok("㉙ ★没激活但已有件数的羁绊也列出来(灰行), 玩家才知道离开启还有多远",
-		joined3.find("件升级") >= 0, "一行「N 件升级」都没有")
+		dim_row, "一行「名 N/下一档 ☆☆☆」都没有")
 
 	sc3.queue_free()
 	await get_tree().process_frame
@@ -872,9 +896,10 @@ func _check_equip_slot_pt() -> void:
 	var mini_px: float = 0.0
 	for m in minis:
 		mini_px = maxf(mini_px, (m as Control).size.x)
+	## ★2026-10-21 手机版: 格子不再单独吃点击(点它 = 点这张单位卡) ⇒ 「有装备」按格子里有没有图标认, 不按能不能点认
 	var filled: Array = []
 	for m in minis:
-		if (m as Control).mouse_filter != Control.MOUSE_FILTER_IGNORE:
+		if (m as Control).get_child_count() > 0:
 			filled.append(m)
 	var worn0: int = _worn_total()
 	print("  [EQUIP_SLOT_PT 分母] 迷你格 %d 个 尺寸分布 %s ⇒ %.0fpx = %.1fpt ; 背包格 %.0fpx = %.1fpt ; 可点的 %d 个 / 全队在身装备 %d 件"
@@ -891,6 +916,13 @@ func _check_equip_slot_pt() -> void:
 		filled.size() == worn0, "可点 %d 件 vs 在身 %d 件" % [filled.size(), worn0])
 
 	# ── ② 点每一个格子: 一件都不许被卸掉, 而且必须【选中】了某只单位 ──
+	## ★2026-10-21 手机版: 格子本身不接点击(IGNORE、无回调), 手指落在格子上 = 落在它所在的单位卡上。
+	##   所以「点格子」= 给格子的父卡派一次左键; 判据不变: 非破坏 + 选中。另加一条: 格子真的不单独吃点击。
+	var own_target: Array = []
+	for m in filled:
+		if (m as Control).mouse_filter != Control.MOUSE_FILTER_IGNORE or (m as Control).gui_input.get_connections().size() > 0:
+			own_target.append(str((m as Control).get_global_rect().position))
+	_ok("EQUIP_SLOT_PT ② ★22pt 的格子不单独当靶子(点它 = 点单位卡)", filled.size() > 0 and own_target.is_empty(), str(own_target.slice(0, 3)))
 	var bench_before: int = GameState.persistent_bench.size()
 	var destroyed: Array = []
 	var selected := 0
@@ -912,13 +944,13 @@ func _check_equip_slot_pt() -> void:
 		## _rebuild 换了节点, 按位置重新拿到"同一个格子"
 		var again: Control = null
 		for c in _mini_cells(sc):
-			if (c as Control).mouse_filter != Control.MOUSE_FILTER_IGNORE \
+			if (c as Control).get_child_count() > 0 \
 				and (c as Control).get_global_rect().position.distance_to(sp as Vector2) < 1.0:
 				again = c
 		if again == null:
 			continue
 		tapped += 1
-		_tap(again)
+		_tap(again.get_parent() as Control)   # 格子 IGNORE ⇒ 这一下落在父卡上
 		for _i in range(6):
 			await get_tree().process_frame
 		if _worn_total() != w_before or GameState.persistent_bench.size() != b_before:

@@ -1,6 +1,6 @@
 class_name ShopChest
 extends RefCounted
-## 商店左半【店主 + 宝箱】(2026-10-18 整页重做·第三版)。
+## 商店左半【店主】(2026-10-21 宝箱 / 背包那一排已拿出商店, 卖出只在背包页)。原:【店主 + 宝箱】(2026-10-18 整页重做·第三版)。
 ##
 ## 用户 10-18:「整个页面就应该重做啊，没有任何游戏搞的这种浏览器网页感」→ 商店改成货铺场景;
 ##   接着「我并不觉得左边的阵容可以放在商店里吧」→ 选「店主 + 宝箱」:
@@ -13,15 +13,23 @@ extends RefCounted
 ## ★照 CLAUDE.md §5 拆分模板: RefCounted + 构造注入宿主(ShopScene)。
 
 ## ── 店主 ──
-const KEEPER_TEX = preload("res://assets/sprites/shop/shopkeeper.png")
-const KEEPER_POS := Vector2(150.0, 236.0)
-const KEEPER_SIZE := Vector2(352.0, 352.0)   # 原生 128 × 2.75
-## ── 宝箱(背包) ──
-const BENCH_X := 168.0        # 背景左下角宝箱(屏幕 0..160)右边的沙地上
-const BENCH_Y := 590.0
-const BENCH_CELL := 81.0       # = 44pt 触控下限
-const BENCH_STEP := 89.0
-const BENCH_PER_ROW := 6       # 6 × 89 = 534: 168..702
+## ★2026-10-21 手机版: 原生 128 × 2.75 = 352 → × 2.0 = 256, 站到左栏靠货柜那一侧、地毯后沿上
+##   (原来 352 高占掉左半屏, 可点的 10 件挤在右半 —— 用户 10-20 iPhone 实拍)。
+## ★★2026-10-21 宽货柜: 倍率改成与货柜 / 底图同一个(1280/384, 像素粗细一致), 站在货柜左立柱前面。
+##   原生人形占 x21..98 / y4..124 ⇒ 放大后 x70..327 / y13..413: 右沿 262 不压第一格货(279 起), 左沿 5 在 16:9 也不出屏, 脚踩 SAFE_BOTTOM。
+const KEEPER_SCALE := 1280.0 / 384.0
+## 只画人形那一条(原生 x21..98, 裁掉两侧空白) ⇒ 控件不出 1280 设计框(verify_shop_layout ①)。
+const KEEPER_REGION := Rect2(20.0, 0.0, 80.0, 128.0)
+## 待机动画(用户 2026-10-21「你动态在哪」→「待机等于走路吗」): 8 帧横排序列 shopkeeper-idle.png, 每帧 128×128。
+##   ★由 shopkeeper.png 逐像素做出来, 不用 AI 生成(两版 AI 待机腿都在迈步): 腰(y63)以下每帧不动,
+##   上半身呼吸起伏 1 像素, 提灯(x85..98 / y56..77)左右晃 1 像素, 火苗明暗变。
+const KEEPER_IDLE_TEX = preload("res://assets/sprites/shop/shopkeeper-idle.png")
+const KEEPER_FRAMES := 8
+const KEEPER_FRAME_SEC := 0.16
+## 每帧提灯火苗的位置(原生, 逐帧量的), 提灯光跟着火苗走
+const KEEPER_FLAME := [Vector2(94, 69), Vector2(95, 69), Vector2(95, 68), Vector2(94, 68), Vector2(94, 68), Vector2(93, 68), Vector2(93, 69), Vector2(94, 69)]
+const KEEPER_SIZE := KEEPER_REGION.size * KEEPER_SCALE
+const KEEPER_POS := Vector2(4.0, 682.0 - 124.0 * KEEPER_SCALE)
 
 var host = null
 static var _ell_cache: Dictionary = {}
@@ -68,119 +76,40 @@ static func ellipse(w_px: float, h_px: float, native_w: int, native_h: int, col:
 #  店主
 # ══════════════════════════════════════════════════════════════
 
+## 店主的 x(设计框坐标)。用户 2026-10-21「商店老板的位置要再往左边因为左边这么空」:
+##   宽屏手机上设计框左边还露出 off.x(≈140) 的底图 ⇒ 店主在「屏幕左沿 .. 货柜左沿」那块空地里居中;
+##   16:9 上那块空地比店主窄 ⇒ 不出屏, 退回 KEEPER_POS.x(贴着左立柱站)。
+func keeper_x() -> float:
+	var vs: Vector2 = Vector2(host.get_viewport().get_visible_rect().size)
+	var hs: Vector2 = host.size if (host.size.x >= 1280.0 and host.size.y >= 360.0) else vs
+	var off_x: float = roundf((hs.x - 1280.0) * 0.5)
+	var gap_w: float = float(host.CAB_X) + off_x                 # 屏幕左沿到货柜左沿
+	var want_screen: float = (gap_w - KEEPER_SIZE.x) * 0.5
+	return roundf(clampf(want_screen, KEEPER_POS.x, KEEPER_POS.x + off_x) - off_x)
+
+
 func build_keeper(parent: Control) -> void:
-	var sh := ellipse(150.0, 22.0, 30, 5, Color(0.1, 0.05, 0.02, 0.45)); sh.name = "KeeperShadow"
-	sh.position = KEEPER_POS + Vector2(KEEPER_SIZE.x * 0.5 - 75.0, KEEPER_SIZE.y - 30.0)
+	var kpos := Vector2(keeper_x(), KEEPER_POS.y)
+	var sh := ellipse(180.0, 24.0, 30, 5, Color(0.1, 0.05, 0.02, 0.45)); sh.name = "KeeperShadow"
+	sh.position = kpos + Vector2((59.5 - KEEPER_REGION.position.x) * KEEPER_SCALE - 90.0, 124.0 * KEEPER_SCALE - 14.0)   # 人形中线 x59.5 / 脚底 y124(原生)
 	parent.add_child(sh)
 	var k := TextureRect.new(); k.name = "Shopkeeper"
-	k.texture = KEEPER_TEX
+	var kat := AtlasTexture.new(); kat.atlas = KEEPER_IDLE_TEX; kat.region = KEEPER_REGION
+	k.texture = kat
 	k.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	k.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	k.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	k.position = KEEPER_POS; k.size = KEEPER_SIZE
+	k.position = kpos; k.size = KEEPER_SIZE
 	k.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(k)
-	## 待机: 上下轻晃(呼吸感), 两帧之间整像素跳 —— 像素角色不做亚像素平滑位移
-	var tw := TweenKit.loop_bound(host, k)
-	tw.tween_property(k, "position:y", KEEPER_POS.y - 4.0, UIPalette.T_SET).set_trans(Tween.TRANS_SINE)
-	tw.tween_property(k, "position:y", KEEPER_POS.y, UIPalette.T_SET).set_trans(Tween.TRANS_SINE)
-
-
-# ══════════════════════════════════════════════════════════════
-#  宝箱(背包)
-# ══════════════════════════════════════════════════════════════
-
-func build_bench(parent: Control) -> void:
-	var bench: Array = GameState.persistent_bench
-	var hd := Label.new(); hd.name = "BenchHeader"
-	hd.text = ("背包 %d 件" % bench.size()) if bench.size() > 0 else "背包 · 空"
-	hd.add_theme_font_size_override("font_size", 15); hd.add_theme_color_override("font_color", Color("#ffe3a3"))
-	hd.add_theme_color_override("font_outline_color", Color("#1a0e05")); hd.add_theme_constant_override("outline_size", 5)
-	hd.position = Vector2(40, BENCH_Y - 2); hd.size = Vector2(120, 22); hd.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	parent.add_child(hd)
-	var overflow: bool = bench.size() > BENCH_PER_ROW
-	var shown: int = (BENCH_PER_ROW - 1) if overflow else bench.size()
-	for j in range(shown):
-		var it: Dictionary = bench[j]
-		var ed: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(it.get("id", "")), {})
-		var sel: bool = j == int(host._sel_bench)
-		var cell := Panel.new(); cell.name = "BenchCell%d" % j
-		## 木格: 不透明深木底 + 费用色边(选中 = 金边); 冷青色金属槽框跟暖色货铺不搭
-		var csb := StyleBoxFlat.new(); csb.bg_color = Color("#2a1a0e")
-		csb.border_color = Color("#ffd93d") if sel else host._cost_color(int(ed.get("cost", 1)))
-		csb.set_border_width_all(4 if sel else 3); csb.set_corner_radius_all(0)
-		cell.add_theme_stylebox_override("panel", csb)
-		cell.position = Vector2(BENCH_X + j * BENCH_STEP, BENCH_Y + 22.0); cell.size = Vector2(BENCH_CELL, BENCH_CELL)
-		if sel:
-			cell.position.y -= 8.0       # 拿起来了: 抬高一截, 槽框是金色
-		parent.add_child(cell)
-		var ic := EquipIcon.make(ed, Vector2(44, 38))
-		ic.position = Vector2(18, 13); ic.mouse_filter = Control.MOUSE_FILTER_IGNORE; cell.add_child(ic)
-		var st := Label.new(); st.text = "★".repeat(int(it.get("star", 1)))
-		st.add_theme_font_size_override("font_size", 12); st.add_theme_color_override("font_color", Color("#ffd93d"))
-		st.position = Vector2(16, 51); st.size = Vector2(BENCH_CELL - 32.0, 16); st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		st.mouse_filter = Control.MOUSE_FILTER_IGNORE; cell.add_child(st)
-		cell.tooltip_text = "%s ★%d" % [str(ed.get("name", "?")), int(it.get("star", 1))]
-		cell.mouse_filter = Control.MOUSE_FILTER_STOP
-		var _j := j
-		host._wire_tap(cell, func(): _on_bench(_j))
-	## 选中一件: 「详情 / 卖出」两颗无框图标钮排在宝箱这一排的末尾(浮在上方会压到商人的袍子)
-	var bi: int = int(host._sel_bench)
-	if bi >= 0 and bi < shown:
-		var it2: Dictionary = bench[bi]
-		var acts: Array = [["LineupAct0", host.DETAIL_ICON, "详情", Callable(self, "_detail_bench")]]
-		if not GameState.is_synergy_grant(it2):
-			acts.append(["LineupAct1", host.SELL_ICON, "卖出 +%d" % int(host._inv_ops._sell_value(it2)), Callable(self, "_sell_bench")])
-		var aw := 96.0
-		var x0: float = minf(BENCH_X + shown * BENCH_STEP + 4.0, 704.0 - aw * acts.size())
-		for k in range(acts.size()):
-			var ab: Button = host._icon_button(acts[k][0], acts[k][1], acts[k][2],
-				Vector2(x0 + k * aw, BENCH_Y + 4.0), Vector2(aw, 96))
-			ab.z_index = 3
-			ab.pressed.connect(acts[k][3])
-			parent.add_child(ab)
-	if overflow:
-		var mb := Button.new(); mb.name = "BenchMore"
-		mb.text = "+%d" % (bench.size() - shown)
-		mb.add_theme_font_size_override("font_size", 22)
-		mb.position = Vector2(BENCH_X + shown * BENCH_STEP, BENCH_Y + 22.0); mb.size = Vector2(BENCH_CELL, BENCH_CELL)
-		mb.pressed.connect(func(): host._go_inventory())
-		## 与宝箱格同一种木格(不用金木框按钮)
-		for st in [["normal", "#2a1a0e"], ["hover", "#3a2414"], ["pressed", "#1e1209"], ["focus", "#2a1a0e"]]:
-			var sb := StyleBoxFlat.new(); sb.bg_color = Color(st[1]); sb.border_color = Color("#8a5a32")
-			sb.set_border_width_all(3); sb.set_corner_radius_all(0)
-			mb.add_theme_stylebox_override(st[0], sb)
-		mb.add_theme_color_override("font_color", Color("#ffe3a3"))
-		parent.add_child(mb)
-
-
-func _on_bench(j: int) -> void:
-	host._sel_bench = -1 if int(host._sel_bench) == j else j
-	host._sel = -1
-	host._sel_own = ""
-	host._rebuild()
-
-
-func _detail_bench() -> void:
-	var bench: Array = GameState.persistent_bench
-	var bi: int = int(host._sel_bench)
-	if bi < 0 or bi >= bench.size():
-		return
-	host._on_select_own(str(bench[bi].get("id", "")), int(bench[bi].get("star", 1)))
-
-
-func _sell_bench() -> void:
-	sell_bench_at(int(host._sel_bench))
-
-
-func sell_bench_at(bi: int) -> void:
-	var bench: Array = GameState.persistent_bench
-	if bi < 0 or bi >= bench.size():
-		return
-	if GameState.is_synergy_grant(bench[bi]):
-		host._toast("羁绊赠送装备不可出售")
-		return
-	var sv: int = int(host._inv_ops._sell_value(bench[bi]))
-	host._sel_bench = bi
-	host._inv_ops._sell_selected()
-	host._toast("已卖出 +%d" % sv)
+	var glow: Control = host._amb.keeper_glow(k, KEEPER_SCALE, KEEPER_REGION.position.x, KEEPER_FLAME[0])
+	## 待机: 逐帧换 AtlasTexture 的区域(不做整张图平移 —— 那样看不出在动)
+	var st := {"f": 0}
+	var tm := Timer.new(); tm.name = "KeeperIdle"; tm.wait_time = KEEPER_FRAME_SEC
+	tm.timeout.connect(func() -> void:
+		st["f"] = (int(st["f"]) + 1) % KEEPER_FRAMES
+		kat.region = Rect2(KEEPER_REGION.position + Vector2(128.0 * float(st["f"]), 0.0), KEEPER_REGION.size)
+		if glow != null and is_instance_valid(glow):
+			host._amb.place_keeper_glow(glow, KEEPER_SCALE, KEEPER_REGION.position.x, KEEPER_FLAME[int(st["f"])]))
+	k.add_child(tm)
+	tm.start()

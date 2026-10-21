@@ -18,7 +18,8 @@ const Phase2Minion := preload("res://scripts/gamedata/phase2_minion.gd")
 const TutorialGuide := preload("res://scripts/scenes/TutorialGuide.gd")   # 教程锚点: vis_rect
 
 ## 场地显示比例(世界像素 → 屏幕像素)。半场 798×728 ⇒ 479×437, 两块并排放得进 1280。
-const S := 0.6
+## ★2026-10-21 手机版 0.6 → 0.56: 底下两颗键原来到屏幕 691, 压进 iPhone 底部横条(682 起)。
+const S := 0.56
 ## 小场地底图的原生分辨率: 每格 = 几个世界像素(放大时整像素 NEAREST, 边缘是像素台阶)。
 const CELL := 7.0
 const TOKEN := 64.0              # 龟头像直径(触控 ≥ 44pt 由外扩点击区保证, 见 TOKEN_HIT)
@@ -138,16 +139,16 @@ func open() -> void:
 	_body.add_child(ttl)
 	var sub := Label.new(); sub.name = "FormationHint"
 	sub.text = "拖动单位设置开战站位。实际站位避开当局地形。"
-	sub.add_theme_font_size_override("font_size", 15); sub.add_theme_color_override("font_color", Color("#b9c6d3"))
+	sub.add_theme_font_size_override("font_size", 20); sub.add_theme_color_override("font_color", Color("#b9c6d3"))
 	sub.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	sub.position = Vector2(x0 + 84.0, 8); sub.size = Vector2(w_all - 84.0, 36)
 	_body.add_child(sub)
-	var y0 := 8.0 + 36.0 + 30.0
+	var y0 := 8.0 + 36.0 + 32.0
 	var lanes := [["上战场", "top", Color("#ffd93d")], ["下战场", "bottom", Color("#7fd0ff")]]
 	for k in range(2):
 		_build_field(str(lanes[k][1]), str(lanes[k][0]), lanes[k][2], Vector2(x0 + float(k) * (fs.x + gap), y0))
 	## 底部两颗键: 恢复默认(两路都清) / 完成
-	var by: float = y0 + fs.y + 12.0
+	var by: float = y0 + fs.y + 10.0
 	var reset := _btn("FormationReset", "恢复默认", Vector2(x0, by), Vector2(200, TopBar.TOUCH_MIN), Color("#2a3644"), Color("#7d8a9c"))
 	reset.pressed.connect(_reset_all)
 	_body.add_child(reset)
@@ -216,8 +217,8 @@ func _build_field(lane: String, title: String, col: Color, pos: Vector2) -> void
 	var fs: Vector2 = half_rect().size * S
 	var hd := Label.new(); hd.name = "FieldTitle_" + lane
 	hd.text = title
-	hd.add_theme_font_size_override("font_size", 18); hd.add_theme_color_override("font_color", col)
-	hd.position = pos - Vector2(0, 26); hd.size = Vector2(200, 24)
+	hd.add_theme_font_size_override("font_size", 20); hd.add_theme_color_override("font_color", col)
+	hd.position = pos - Vector2(0, 30); hd.size = Vector2(200, 28)
 	_body.add_child(hd)
 	var field := TextureRect.new(); field.name = "Field_" + lane
 	field.texture = field_tex()
@@ -231,17 +232,17 @@ func _build_field(lane: String, title: String, col: Color, pos: Vector2) -> void
 	mid.position = Vector2(fs.x - 3.0, 0); mid.size = Vector2(3, fs.y); mid.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	field.add_child(mid)
 	var foe := Label.new(); foe.text = "中线"
-	foe.add_theme_font_size_override("font_size", 14); foe.add_theme_color_override("font_color", C_LINE)
+	foe.add_theme_font_size_override("font_size", 20); foe.add_theme_color_override("font_color", C_LINE)
 	foe.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	foe.position = Vector2(fs.x - 70.0, 6); foe.size = Vector2(62, 20); foe.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	foe.position = Vector2(fs.x - 80.0, 6); foe.size = Vector2(72, 28); foe.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	field.add_child(foe)
 	## 龟蛋(左端, 与战场 `ARENA.x + 70` 同一个点)
 	var egg_w := Vector2(RB.ARENA.position.x + 70.0, center().y)
 	var egg := Label.new(); egg.name = "Egg"; egg.text = "蛋"
-	egg.add_theme_font_size_override("font_size", 16); egg.add_theme_color_override("font_color", Color("#fff1d6"))
+	egg.add_theme_font_size_override("font_size", 20); egg.add_theme_color_override("font_color", Color("#fff1d6"))
 	egg.add_theme_color_override("font_outline_color", Color("#0b1018")); egg.add_theme_constant_override("outline_size", 4)
 	egg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	egg.position = _to_field(egg_w) - Vector2(16, 11); egg.size = Vector2(32, 22); egg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	egg.position = _to_field(egg_w) - Vector2(16, 14); egg.size = Vector2(32, 28); egg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	field.add_child(egg)
 	## 单位
 	var arr: Array = GameState.get_dual_lineup().get(lane, [])

@@ -193,14 +193,16 @@ func _ready() -> void:
 	_ok("★★底部【同一条操作栏】把卖出换成打碎(不另起弹窗/面板)",
 		src_inv.find("func _build_jar_op_bar") >= 0
 		and src_inv.find("_inv_jar._on_break_jar()") >= 0)
-	_ok("★打碎按钮与\"卖出\"同一位置同一尺寸(bw-290, 170×38)",
-		src_inv.find("smash.position = Vector2(bw - 290, 14); smash.size = Vector2(170, 38)") >= 0)
+	## ★2026-10-21 手机版: 两颗键都改成 81 高(44pt)、在 132 高的底栏里竖直居中 —— 判据跟着改, 仍要求「同一位置同一尺寸」。
+	_ok("★打碎按钮与\"卖出\"同一位置同一尺寸(bw-290, 170×81)",
+		src_inv.find("smash.position = Vector2(bw - 290, (OP_BAR_H - 81.0) * 0.5); smash.size = Vector2(170, 81)") >= 0
+		and src_inv.find("sell.position = Vector2(bw - 290, (OP_BAR_H - 81.0) * 0.5); sell.size = Vector2(170, 81)") >= 0)
 	_ok("★★选装备与选糖果罐【互斥】(底部只有一条操作栏)",
 		src_inv.find("_sel_jar = false                       # 选装备") >= 0)
 	_ok("★★已删掉过度设计的确认弹窗(_confirm_smash_jar 不再存在)",
 		src_inv.find("func _confirm_smash_jar") < 0)
 	_ok("★卡面显示【档位】而不是 ×N(一大轮只能碎一次, N 是累积糖数)",
-		src_inv.find('jnm.text = "糖果罐 %d档"') >= 0)
+		src_inv.find('jnm.text = "%d 档" % GameState.candy_jar_tier()') >= 0)   # 2026-10-21: 格子只写档位(「糖果罐」在底栏)
 
 	## ★糖果罐不许【同时出现在两个地方】—— 旧的右上角独立面板必须撤掉,
 	##   否则玩家在背包里看到一张卡、右上角还有一块板, 是同一个东西的两份。

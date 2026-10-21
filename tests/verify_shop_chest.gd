@@ -12,14 +12,14 @@ extends Node
 ##   C0  分母: 商店开店、店主在、宝箱落点在、阵容【不】在商店里
 ##   C1  ★买下 → 进背包、还在商店、不自动选中(不再有「待装」)
 ##   C2  ★没有拖拽: 买 = 点货架 → 购买; 卖 = 点宝箱里一件 → 卖出
-##   C3  点宝箱里一件 → 操作区只有「详情 / 卖出」两颗
+##   C3  点宝箱里一件 → 说明小卡, 卡底「卖出 +N」(2026-10-21 手机版)
 ##   C4  ★刷新 / 锁定是无框图标钮(不是金木框): 五态 StyleBox 都是空的, 有图标
 
 const SHOP := preload("res://scenes/Shop.tscn")
 
 var _fail := 0
 var _n := 0
-const MIN_ASSERTS := 15
+const MIN_ASSERTS := 15   # 2026-10-21 商店拿掉背包那一排与卖出: 删 6 条、加 4 条
 const ITEM := "p2eq_001"
 
 var gs
@@ -106,7 +106,9 @@ func _ready() -> void:
 	var sc = await _enter()
 	_ok("C0 分母: 商店开店(货架 10 格)", (sc._offer as Array).size() == 10, "格数 %d" % (sc._offer as Array).size())
 	_ok("C0 店主在", _find(sc, "Shopkeeper") != null)
-	_ok("C0 宝箱(背包)标题在", _find(sc, "BenchHeader") != null)
+	## ★2026-10-21 用户「商店里为什么会显示背包的装备和羁绊？」→「对啊，商店要这么搞」: 背包那一排与羁绊不在商店里。
+	_ok("C0 ★背包那一排不在商店里", _find(sc, "BenchHeader") == null and _count_prefix(sc, "BenchCell") == 0)
+	_ok("C0 ★羁绊总览不在商店里", _find(sc, "SynergyHeader") == null)
 	_ok("C0 ★阵容不在商店里(没有单位格)", _count_prefix(sc, "LineupRow_") == 0, "实测 %d" % _count_prefix(sc, "LineupRow_"))
 
 	# ── C1 买下 ──
@@ -121,29 +123,14 @@ func _ready() -> void:
 	sc._on_buy(1)
 	await get_tree().process_frame
 	_ok("C2 再买一件 → 背包 2 件", gs.persistent_bench.size() == 2, str(gs.persistent_bench))
-	var c0: int = int(gs.meta_deepsea_coins)
-	sc._sel_bench = 0
-	sc._chest._sell_bench()
-	await get_tree().process_frame
-	_ok("C2 ★点宝箱里一件 → 卖出(背包少一件、币变多)", gs.persistent_bench.size() == 1 and int(gs.meta_deepsea_coins) > c0,
-		"背包 %s 币 %d → %d" % [str(gs.persistent_bench), c0, int(gs.meta_deepsea_coins)])
 	var src: String = FileAccess.get_file_as_string("res://scripts/scenes/ShopScene.gd") + FileAccess.get_file_as_string("res://scripts/scenes/shop/shop_chest.gd")
 	_ok("C2 ★商店里没有拖拽(源码零处 set_drag_forwarding)", src.length() > 1000 and src.find("set_drag_forwarding") < 0)
 
-	# ── C3 点宝箱里一件 ──
-	var cell = _find(sc, "BenchCell0")
-	_ok("C3 分母: 宝箱里画出了那一件", cell != null)
-	if cell != null:
-		await _tap(cell)
-	var labels: Array = []
-	for k in range(4):
-		var b = _find(sc, "LineupAct%d" % k)
-		if b != null:
-			labels.append(str((b as Button).text))
-	_ok("C3 操作区: 详情 / 卖出(没有「去背包装上」)", labels.size() == 2 and labels[0] == "详情"
-		and str(labels[1]).begins_with("卖出"), str(labels))
+	# ── C3 商店里没有卖出(用户 2026-10-21「商店里就不能卖装备」: 只在背包页卖) ──
+	_ok("C3 ★商店里没有卖出钮", _find(sc, "SellBtn") == null)
+	_ok("C3 ★商店源码不再接卖出(零处 _sell_bench / sell_bench_at 调用)", FileAccess.get_file_as_string("res://scripts/scenes/ShopScene.gd").find("_sell_bench") < 0 and FileAccess.get_file_as_string("res://scripts/scenes/ShopScene.gd").find("sell_bench_at") < 0)
 
-	# ── C4 刷新 / 锁定: 无框图标钮 ──
+	# ── C4 刷新 / 锁定: 像素木牌钮 ──
 	var bad: Array = []
 	var seen := 0
 	for nm in ["ShopRefreshBtn", "ShopLockBtn"]:
@@ -153,11 +140,14 @@ func _ready() -> void:
 		seen += 1
 		if (b as Button).icon == null:
 			bad.append("%s 没图标" % nm)
+		## 2026-10-21 用户「3个按钮？」⇒ 换成场景里的像素木牌(ShopScene.PLANK_TEX); 仍不许是金木框(btn-frame / 共享层框)
 		for st in ["normal", "hover", "pressed", "disabled"]:
-			if not ((b as Button).get_theme_stylebox(st) is StyleBoxEmpty):
-				bad.append("%s.%s 有底框" % [nm, st])
+			var sb = (b as Button).get_theme_stylebox(st)
+			if not (sb is StyleBoxTexture and (sb as StyleBoxTexture).texture != null
+					and str((sb as StyleBoxTexture).texture.resource_path).ends_with("shop/shop-plank.png")):
+				bad.append("%s.%s 不是木牌底" % [nm, st])
 	_ok("C4 分母: 刷新 / 锁定都在", seen == 2)
-	_ok("C4 ★刷新 / 锁定是无框图标钮(不是金木框)", bad.is_empty(), str(bad))
+	_ok("C4 ★刷新 / 锁定是像素木牌钮(不是金木框)", bad.is_empty(), str(bad))
 	_leave(sc)
 
 	print("")

@@ -12,20 +12,29 @@ extends Node
 ##   ③ 引导条节点里**没有任何 Button**(B2/B3 都是「下一步/知道了」造的)
 ##   ④ 只在动作事件上前进: 不相干的事件不动; 越级事件(做了后面那步的动作)直接跳过去, 不卡死
 ##   ⑤ 导演 steps_key_for 用到的每个 key 在 json 里都有, json 里的 key 也都有人用(不留死步骤集)
-##   ⑥ v3(2026-10-20): 不阻塞提示(`auto`)只在战斗里; 它们**不压暗、不挡点击、不出手势**, 到点自己前进
+##   ⑥ v3(2026-10-20): 不阻塞提示(`auto`)**不压暗、不挡点击、不出手势**, 到点自己前进
+##   ⑦ v5(2026-10-21 分镜 docs/plans/20261021-教程分镜v5.md): 选龟 4 句 + 战斗 6 句(各挂一个战斗事件) + 结算 1 + 商店 5 + 背包 7;
+##      金色箭头(不是手势贴图)指在目标上; 点洞外暗幕 ⇒ 气泡下出一行说明; 每步变成当前步时宿主 tut_step_shown(highlight) 被调;
+##      {pet}/{item} 由宿主填(没有宿主给值的屏不许出现占位)
+##   ★文案体例按 v5「照云顶中文原句写」(用户 10-21): 完整的一句话、可以用「你」、不用「我 / 我们」(无引导人物);
+##     原来的「≤14 字祈使句 + 禁用『你』」是 10-07 那版的规矩, v5 被用户否了(「哪个商业游戏说话是这么说的」)。
 
 const TutorialGuide := preload("res://scripts/scenes/TutorialGuide.gd")
 const STEPS_JSON := "res://data/tutorial-steps.json"
 ## 方案书 §6.1 禁用词 + 第二人称(「你」) —— 口语化/说明书腔的来源。
-const BANNED := ["啦", "吧", "呢", "哦", "咱", "我教你", "试试", "就行", "搞", "热身", "练练", "!", "！", "你", "<b>", "\n"]
-const MAX_CHARS := 14
-## 战斗里的不阻塞提示是一句规则(不是一个动作), 放宽到 18 字; 仍是单行。
-const MAX_TIP_CHARS := 18
+const BANNED := ["啦", "吧", "呢", "哦", "咱", "我", "试试", "就行", "搞", "热身", "练练", "!", "！", "<b>", "\n"]
+## v5: 一整句(照云顶原句), 最长那句 C3 35 字; 上限 40, 超了气泡会折行(TutorialGuide._fit_text_width)。
+const MAX_CHARS := 40
+const MAX_TIP_CHARS := 40
+## 战斗提示的触发事件(导演 _trigger_hit 里每个都要有实现)。
+const TRIGGERS := ["fight", "ally_skill", "trainer_skill", "foe_egg_hit", "final_lane"]
+## 文案占位 → 哪一屏的宿主给值(battle 由导演 _fill_battle_text 填)
+const VARS_BY_KEY := {"team_select": ["pet"], "battle": ["pet"], "inventory": ["item"]}
 
 var _fail := 0
 var _n := 0
 ## ★断言条数地板: 协程半路被 SCRIPT ERROR 掐断时照样会打 ALL PASS(memory fb-null-readback-makes-test-silently-abort)。
-const MIN_ASSERTS := 100  # v3 15 步(2026-10-20 实测 107 条); 原 64
+const MIN_ASSERTS := 200  # v5 24 步; v3 100
 
 
 func _ok(n: String, c: bool, d: String = "") -> void:
@@ -77,11 +86,19 @@ func _check_data(d: Dictionary) -> Array:
 			_ok("%s 有 highlight(高亮目标)" % tag, str(s.get("highlight", "")) != "")
 			var is_tip: bool = float(s.get("auto", 0.0)) > 0.0
 			var cap: int = MAX_TIP_CHARS if is_tip else MAX_CHARS
-			_ok("%s 一句话: ≤%d 字" % [tag, cap], t.length() > 0 and t.length() <= cap, "%d 字" % t.length())
+			## 字数不算空格(2026-10-21: 比分写「1 : 1」—— m6x11 的半角冒号只有 3 像素宽, 「1:1」读成「11」; 空格是版式不是字)
+			var nch: int = t.replace(" ", "").length()
+			_ok("%s 一句话: ≤%d 字" % [tag, cap], nch > 0 and nch <= cap, "%d 字" % nch)
 			_ok("%s hand 取值合法" % tag, str(s.get("hand", "tap")) in ["tap", "drag", "none"], str(s.get("hand", "")))
 			if is_tip:
-				_ok("%s 不阻塞提示只在战斗里" % tag, str(key) == "battle")
 				_ok("%s 不阻塞提示不出手势" % tag, str(s.get("hand", "")) == "none")
+			if str(key) == "battle":
+				_ok("%s 战斗里一律不阻塞(不暂停、不挡点击)" % tag, is_tip)
+				_ok("%s 挂在一个已实现的战斗事件上" % tag, str(s.get("trigger", "")) in TRIGGERS, str(s.get("trigger", "")))
+			var ph := RegEx.new()
+			ph.compile("\\{([a-z_]+)\\}")
+			for m in ph.search_all(t):
+				_ok("%s 占位 {%s} 有宿主填" % [tag, m.get_string(1)], m.get_string(1) in (VARS_BY_KEY.get(str(key), []) as Array))
 			var bad: Array = []
 			for w in BANNED:
 				if t.contains(str(w)):
@@ -91,12 +108,27 @@ func _check_data(d: Dictionary) -> Array:
 			if str(s.get("advanceOn", "")) != "" and not is_tip:
 				events.append(str(s.get("advanceOn", "")))
 	print("  [分母] 步骤 %d 步 / 事件 %d 个" % [n, events.size()])
-	## v3(方案书 20261020-教程重写 §1): 选龟 2 + 战斗不阻塞提示 2 + 结算 1 + 商店 4 + 背包 6(含站位 3) = 15
-	_ok("★分母: 步骤数 = 方案书 v3 表 1~15 步(选择框与主菜单首次提示不算)", n == 15, "n=%d" % n)
+	## v5(分镜 docs/plans/20261021-教程分镜v5.md): 选龟 5(B1 B2 B3×2 B4) + 战斗 6 + 结算 1 + 商店 5 + 背包 7(F1~F6 + 站位面板「完成」)= 24
+	_ok("★分母: 步骤数 = v5 24 步(首启介绍 / 选择框 / 起名 / 主菜单首次提示不算)", n == 24, "n=%d" % n)
 	var raw: Dictionary = d
-	for need in ["offer_selected", "formation_opened", "formation_dragged", "formation_closed"]:
-		_ok("★v3 新事件「%s」在步骤表里" % need, need in events)
-	_ok("★v3 战斗里有 2 句不阻塞提示", (raw.get("battle", []) as Array).size() == 2)
+	_ok("★v5: 选龟那一段回来了(5 句)", (raw.get("team_select", []) as Array).size() == 5)
+	for need in ["pet_picked", "skill_picked", "team_confirmed", "level_up", "offer_selected", "item_bought", "shop_to_bag",
+			"bench_selected", "item_equipped", "formation_opened", "formation_dragged", "formation_closed", "tutorial_finished"]:
+		_ok("★v5 事件「%s」在步骤表里" % need, need in events)
+	_ok("★v5 战斗里 6 句不阻塞提示(C1~C6)", (raw.get("battle", []) as Array).size() == 6)
+	var trig_seen: Array = []
+	for st2 in (raw.get("battle", []) as Array):
+		trig_seen.append(str((st2 as Dictionary).get("trigger", "")))
+	for tg in TRIGGERS:
+		_ok("★战斗事件「%s」有一句挂着" % tg, tg in trig_seen)
+	var dsrc := FileAccess.get_file_as_string("res://autoload/tutorial_director.gd")
+	var tbody := dsrc.substr(dsrc.find("func _trigger_hit"))
+	tbody = tbody.substr(0, tbody.find("\nfunc ", 10))
+	for tg2 in TRIGGERS:
+		_ok("★导演 _trigger_hit 实现了「%s」" % tg2, tbody.contains("\"%s\":" % tg2))
+	var e1: Dictionary = (raw.get("shop", [{}]) as Array)[0]
+	_ok("★v5 E1: 商店第一句挂在等级行上、自己前进(先讲 1 级不能装备)", str(e1.get("highlight", "")) == "level_row" and float(e1.get("auto", 0.0)) > 0.0)
+	_ok("★v5: 点错说明那一行在(_wrong_tap)", str(raw.get("_wrong_tap", "")) != "")
 	return events
 
 
@@ -173,18 +205,69 @@ func _check_guide_behaviour() -> void:
 	g2.notify("ev_b")
 	_ok("★越级到中间: 从第 1 步直接到第 3 步", int(g2._idx) == 2 and g2.current_text() == "丙", "idx=%d" % int(g2._idx))
 	g2.queue_free()
-	## 手势指针在场
+	## 金色箭头在场(v5: 不是手势贴图)
 	var g3 = TutorialGuide.new()
 	add_child(g3)
 	g3.start(steps, func() -> void: pass, func(_n: String) -> Rect2: return Rect2(100, 100, 200, 60))
 	for _i in range(TutorialGuide.STABLE_FRAMES + 4):
 		await get_tree().process_frame
-	var hand: TextureRect = g3.find_child("TutorialHand", true, false)
-	_ok("★手势指针在场且可见(贴图读得到)", hand != null and hand.visible and hand.texture != null)
-	if hand != null:
-		var tip: Vector2 = hand.position + TutorialGuide.HAND_TIP * TutorialGuide.HAND_SCALE
-		_ok("★指尖落在目标矩形里", Rect2(100, 100, 200, 60).grow(24).has_point(tip), str(tip))
+	_ok("★v5: 没有手势贴图节点了(换成金色箭头)", g3.find_child("TutorialHand", true, false) == null)
+	var arrow: Control = g3.find_child("TutorialArrow", true, false)
+	_ok("★金色箭头在场且可见", arrow != null and arrow.visible and arrow.size == TutorialGuide.ARROW_SIZE)
+	if arrow != null:
+		var tip: Vector2 = g3.arrow_tip()
+		_ok("★箭尖落在目标矩形里(上沿往里)", Rect2(100, 100, 200, 60).has_point(tip), str(tip))
+		_ok("★箭身在目标上方(朝下指)", arrow.position.y + TutorialGuide.ARROW_SIZE.y <= 100.0 + 12.0 and is_zero_approx(arrow.rotation), str(arrow.position))
 	g3.queue_free()
+	## 目标贴着屏顶 ⇒ 箭头翻到下方朝上指(箭尖仍在目标里)
+	var g3b = TutorialGuide.new()
+	add_child(g3b)
+	g3b.start(steps, func() -> void: pass, func(_n: String) -> Rect2: return Rect2(100, 4, 200, 50))
+	for _i in range(TutorialGuide.STABLE_FRAMES + 4):
+		await get_tree().process_frame
+	var ar_b: Control = g3b.find_child("TutorialArrow", true, false)
+	_ok("★目标贴屏顶 ⇒ 箭头翻到下方朝上(rotation=PI), 箭尖仍在目标里", ar_b != null and is_equal_approx(ar_b.rotation, PI)
+		and Rect2(100, 4, 200, 50).has_point(g3b.arrow_tip()), str(g3b.arrow_tip()))
+	g3b.queue_free()
+	await _check_wrong_tap_and_host_hooks()
+
+
+## ⑦ 点错说明 + 宿主钩子(tut_step_shown / tut_text_vars)
+func _check_wrong_tap_and_host_hooks() -> void:
+	var host := _FakeHost.new()
+	add_child(host)
+	var steps := [
+		{"text": "选择【{pet}】。", "highlight": "first", "advanceOn": "ev_a"},
+		{"text": "乙", "highlight": "second", "advanceOn": "ev_b"},
+	]
+	var g = TutorialGuide.attach_steps(host, steps, Callable(), func(_n: String) -> Rect2: return Rect2(400, 300, 160, 60))
+	for _i in range(TutorialGuide.STABLE_FRAMES + 4):
+		await get_tree().process_frame
+	_ok("★分母: 宿主挂上的引导显示出来了", g != null and g.is_showing())
+	_ok("★★宿主 tut_text_vars 填了 {pet}", g.current_text() == "选择【测试龟】。", g.current_text())
+	_ok("★★第一步变成当前步 ⇒ 宿主 tut_step_shown(\"first\") 被调", host.shown == ["first"], str(host.shown))
+	_ok("分母: 点错之前没有说明", g.wrong_tap_shown() == "")
+	## 真点洞外(暗幕)一下
+	var ev := InputEventMouseButton.new()
+	ev.button_index = MOUSE_BUTTON_LEFT
+	ev.pressed = true
+	ev.position = Vector2(30, 30)
+	(g._mask[0] as Control).gui_input.emit(ev)
+	await get_tree().process_frame
+	var want: String = TutorialGuide.wrong_tap_text()
+	_ok("★★点洞外暗幕 ⇒ 气泡下出一行说明「%s」" % want, want != "" and g.wrong_tap_shown() == want, g.wrong_tap_shown())
+	_ok("★点错不前进", int(g._idx) == 0)
+	g.notify("ev_a")
+	_ok("★前进到下一步 ⇒ 说明收起、tut_step_shown(\"second\") 被调", g.wrong_tap_shown() == "" and host.shown == ["first", "second"], str(host.shown))
+	host.queue_free()
+
+
+class _FakeHost extends Node:
+	var shown: Array = []
+	func tut_step_shown(h: String) -> void:
+		shown.append(h)
+	func tut_text_vars() -> Dictionary:
+		return {"pet": "测试龟"}
 
 
 ## ⑥ 不阻塞提示: 显示时不压暗、不挡点击、无手势; 到点自己前进; 宿主没就绪时不偷跑计时
@@ -208,8 +291,8 @@ func _check_tip_behaviour() -> void:
 		await get_tree().process_frame
 	_ok("★分母: 就绪后不阻塞提示显示出来了", g.is_showing() and g.current_text() == "甲" and g.is_tip())
 	_ok("★★不阻塞提示: 本层没有任何能吃点击的控件(暗幕不显示)", not g.is_blocking())
-	var hand: TextureRect = g.find_child("TutorialHand", true, false)
-	_ok("★不阻塞提示不出手势", hand == null or not hand.visible)
+	var arrow: Control = g.find_child("TutorialArrow", true, false)
+	_ok("★不阻塞提示不出箭头", arrow == null or not arrow.visible)
 	var t1 := Time.get_ticks_msec()
 	while int(g._idx) == 0 and Time.get_ticks_msec() - t1 < 3000:
 		await get_tree().process_frame

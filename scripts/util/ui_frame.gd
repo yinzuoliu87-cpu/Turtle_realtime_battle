@@ -135,6 +135,10 @@ func _center() -> void:
 	if not is_instance_valid(_frame) or _host == null:
 		return
 	_frame.position = ((_avail() - DESIGN) * 0.5).round()
+	## ★宿主可要求【顶对齐】(2026-10-21 背包手机版): 4:3(iPad)上多出来的 240 不分给上下两条空带,
+	##   而是全留在下面, 由宿主自己把列表往下铺(背包网格多露几行)。宿主不声明 = 照旧上下居中。
+	if _host.has_method("ui_frame_top_align") and bool(_host.call("ui_frame_top_align")):
+		_frame.position.y = 0.0
 
 
 ## 把 host 下【非满铺】的 Control 子节点搬进框里(保持相对顺序与设计坐标)。

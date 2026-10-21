@@ -6,7 +6,7 @@ extends Node
 ##   ① 版式(16:9 与 19.5:9 各一遍): 面板不压顶栏、不出屏; 顶栏「站位」签不与同排别的签重叠;
 ##      触控热区 ≥ 81(站位签 / 每只龟 / 两颗底键); 每路画出的龟数 = 阵容格子数
 ##   ② 拖动: 拖动中龟头像跟手(中心 = 指针 - 按下时的抓取偏移); 松手后 `dual_lineup[路][i].off`
-##      = 按【独立算法】(场地像素 ÷ 0.6 → 世界 → 减队形中心 → 取整) 算出的那一格;
+##      = 按【独立算法】(场地像素 ÷ 0.56 → 世界 → 减队形中心 → 取整) 算出的那一格;
 ##      松手后龟头像停在【存下的那一格】; 拖过中线 ⇒ 被夹在我方半场(off.x = DX_MAX), 拖动中也不越线
 ##   ③ 开一局(真建场, 预览快路径): 我方单位就站在 `clamp_place_side(队形中心 + off)` ——
 ##      与背包里摆的是同一个点(不碰障碍时逐位相等)
@@ -18,7 +18,7 @@ const LP := preload("res://scripts/gamedata/lineup_pos.gd")
 const FE := preload("res://scripts/scenes/inventory/formation_editor.gd")
 
 const LEAD := ["basic", "stone", "bamboo"]
-const SCALE := 0.6                     # 独立写一份: 场地显示比例(世界像素 → 屏幕像素)
+const SCALE := 0.56                     # 独立写一份: 场地显示比例(世界像素 → 屏幕像素)
 const SHOT_DIR := "C:/tmp/play/fe"     # 版式几何(给离线出图用); 写不进就算了, 不影响判定
 
 var _n := 0

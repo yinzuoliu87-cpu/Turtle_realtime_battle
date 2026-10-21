@@ -1,20 +1,20 @@
 extends Node
-## verify_inventory_name_fit.gd — 背包格里【每一件】装备名都放得下, 且不贴边带(2026-10-20)
+## verify_inventory_name_fit.gd — 背包格里【每一件】的字都够大且不贴边带; 名字在选中后的底栏里放得下
 ##
-## 由来: 「迷你水晶球A」在背包格里末尾的 A 顶到槽框边带上。
-##   原来名字框宽 = 格宽 − 2×SLOT_PAD(=82px), 12 号字 6 个半宽 ≈ 79px ⇒ 字墨右缘离边带只剩 1~2px。
-##   改法见 `InventoryScene._fit_cell_name`: 两侧再留 NAME_BREATH, 放不下逐级缩字号, 再不行才换行。
+## 由来: 「迷你水晶球A」在背包格里末尾的 A 顶到槽框边带上(2026-10-20)。
+## ★★2026-10-21 手机版改了契约: 格子里不再写装备名(12 号字在 iPhone 上 1 毫米出头, 而 96 格放不下
+##   20 号的 5 字名)。格子里只剩【图标 + 星级】, 名字在选中后的底部操作条第一行(20 号字)。
+##   ⇒ 本门禁改量: ① 格子里没有装备名 ② 格子里每一行字 ≥ 20 号、字墨离边带 ≥ 2px
+##                 ③ 最长名那件选中后, 底栏第一行写着它的名字、20 号、不被截。
 ##
-## 判据量的是【字墨】不是 Label 框: Label 框一直在边带里(旧判据 13 就量框, 所以一直绿),
-##   贴边的是字。字墨宽 = Label 实际字体 × 实际字号的 get_string_size, 居中排布。
-##
-## ★分母: 全部装备逐件放进背包, 数到的格内名字数必须 == 装备总数, 且最长的那件在场。
+## ★分母: 全部装备逐件放进背包, 数到的格数必须 == 装备总数, 且最长的那件在场。
 ##
 ## 跑法: bash godot-quiet.sh res://tests/verify_inventory_name_fit.tscn --quit-after 1200
 
 const InvScript := preload("res://scripts/scenes/InventoryScene.gd")
-## 槽框贴图 slot-frame.png 实测金属边带厚 6px(第 7 列起是格内), 名字字墨离边带至少留这么多
+## 槽框贴图 slot-frame.png 实测金属边带厚 6px(第 7 列起是格内), 格内字墨离边带至少留这么多
 const MIN_GAP := 2.0
+const MIN_FONT := 20
 
 var _n := 0
 var _fail := 0
@@ -70,54 +70,68 @@ func _ready() -> void:
 	for _i in range(10):
 		await get_tree().process_frame
 
-	var labs: Array = []
-	_find_named(sc, "CellName", labs)
-	var seen: Dictionary = {}
-	var worst_gap := 999.0
-	var worst := ""
-	var bad: Array = []
-	var fs_hist: Dictionary = {}
-	var stretched: Array = []
-	var lb_avail: float = InvScript.SLOT - (InvScript.SLOT_PAD + InvScript.NAME_BREATH) * 2.0
-	for l in labs:
-		var lb := l as Label
-		var txt := lb.text
-		if not names.has(txt):
-			continue
-		seen[txt] = true
-		var box := lb.get_parent() as Control
-		var br: Rect2 = box.get_global_rect()
-		var lr: Rect2 = lb.get_global_rect()
-		var f: Font = lb.get_theme_font("font")
-		var fs: int = lb.get_theme_font_size("font_size")
-		fs_hist[fs] = int(fs_hist.get(fs, 0)) + 1
-		var tw: float = f.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		## 单行: 字墨居中; 换行: 字墨宽不超过框宽
-		var ink_w: float = tw if lb.get_line_count() <= 1 else minf(tw, lr.size.x)
-		var x0: float = lr.position.x + (lr.size.x - ink_w) * 0.5
-		var x1: float = x0 + ink_w
-		var inner0: float = br.position.x + InvScript.SLOT_PAD
-		var inner1: float = br.end.x - InvScript.SLOT_PAD
-		var gap: float = minf(x0 - inner0, inner1 - x1)
-		if gap < worst_gap:
-			worst_gap = gap
-			worst = "%s(字号 %d, 字宽 %.1f, 框宽 %.1f)" % [txt, fs, tw, lr.size.x]
-		var one_line: bool = lb.get_line_count() <= 1
-		if OS.get_environment("NF_DUMP") != "":
-			print("      ", txt, " lr=", lr, " br=", br, " tw=", tw, " min=", lb.get_minimum_size(), " fs=", fs)
-		## ★根因那一维: 名字框被 Label 的最小尺寸撑宽(建格时还没进树、量的是兜底字体),
-		##   框一宽, 居中的字就整体往右挪, 换台设备(兜底字体不同)就顶到边带上。
-		if lr.size.x > lb_avail + 0.5:
-			stretched.append("%s 框宽 %.1f > %.1f" % [txt, lr.size.x, lb_avail])
-		if gap < MIN_GAP or (one_line and tw > lr.size.x + 0.5) or fs < InvScript.NAME_FS_MIN or lr.end.y > br.end.y - InvScript.SLOT_PAD + 0.5:
-			bad.append("%s gap=%.1f fs=%d tw=%.1f box=%.1f 单行=%s" % [txt, gap, fs, tw, lr.size.x, str(one_line)])
-	print("    [探针] 字号分布 %s · 最紧的一件 %s 离边带 %.1fpx" % [str(fs_hist), worst, worst_gap])
-	_ok("★分母: 背包里量到 %d 种装备名(应 = %d)" % [seen.size(), names.size()], seen.size() == names.size(),
-		"缺: %s" % str(names.keys().filter(func(k): return not seen.has(k))))
-	_ok("★分母: 最长的「%s」在场" % longest, seen.has(longest))
-	_ok("★★名字框没被撑宽(都 ≤ %.0fpx)" % lb_avail, stretched.is_empty(), str(stretched))
-	_ok("★★全部装备名字墨离槽框边带 ≥ %.0fpx、单行不溢出、字号 ≥ %d、不压底边" % [MIN_GAP, InvScript.NAME_FS_MIN],
-		bad.is_empty(), str(bad))
+	## 格子 = 背包滚动区里那一层、宽 = SLOT 的控件
+	var cells: Array = []
+	var st: Array = [sc]
+	while not st.is_empty():
+		var n = st.pop_back(); st.append_array(n.get_children())
+		if n is Control and absf((n as Control).size.x - InvScript.SLOT) < 0.5 and absf((n as Control).size.y - InvScript.SLOT) < 0.5:
+			var p = n.get_parent()
+			if p != null and p.get_parent() is ScrollContainer:
+				cells.append(n)
+	_ok("★分母: 背包里量到 %d 格(应 ≥ %d 件)" % [cells.size(), names.size()], cells.size() >= names.size())
+	var name_in_cell: Array = []
+	var small: Array = []
+	var tight: Array = []
+	var n_lbl := 0
+	for c in cells:
+		var br: Rect2 = (c as Control).get_global_rect()
+		for ch in (c as Node).get_children():
+			if not (ch is Label):
+				continue
+			var lb := ch as Label
+			if lb.text.strip_edges() == "" or lb.text == "·":
+				continue
+			n_lbl += 1
+			if names.has(lb.text):
+				name_in_cell.append(lb.text)
+			var fs: int = lb.get_theme_font_size("font_size")
+			if fs < MIN_FONT:
+				small.append("「%s」%d" % [lb.text, fs])
+			var f: Font = lb.get_theme_font("font")
+			var tw: float = f.get_string_size(lb.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			var lr: Rect2 = lb.get_global_rect()
+			var x0: float = lr.position.x + (lr.size.x - tw) * 0.5
+			var gap: float = minf(x0 - (br.position.x + InvScript.SLOT_PAD), (br.end.x - InvScript.SLOT_PAD) - (x0 + tw))
+			if gap < MIN_GAP:
+				tight.append("「%s」离边带 %.1f" % [lb.text, gap])
+	_ok("★分母: 格子里量到 %d 行字(星级)" % n_lbl, n_lbl >= names.size())
+	_ok("★★格子里不再写装备名", name_in_cell.is_empty(), str(name_in_cell.slice(0, 4)))
+	_ok("★★格子里每一行字 ≥ %d 号" % MIN_FONT, small.is_empty(), str(small.slice(0, 4)))
+	_ok("★★格子里的字墨离边带 ≥ %.0fpx" % MIN_GAP, tight.is_empty(), str(tight.slice(0, 4)))
+	## ③ 最长名那件选中 → 底栏第一行是它的名字
+	var li := -1
+	for k in range(GameState.persistent_bench.size()):
+		if str(DataRegistry.phase2_equipment_by_id.get(str(GameState.persistent_bench[k].get("id", "")), {}).get("name", "")) == longest:
+			li = k
+	_ok("★分母: 最长的「%s」在场" % longest, li >= 0)
+	if li >= 0:
+		sc._on_bench_click(li)
+		for _i in range(6):
+			await get_tree().process_frame
+		var head: RichTextLabel = null
+		var st2: Array = [sc]
+		while not st2.is_empty():
+			var n2 = st2.pop_back(); st2.append_array(n2.get_children())
+			if n2 is RichTextLabel and (n2 as Control).is_visible_in_tree() and str((n2 as RichTextLabel).get_parsed_text()).begins_with(longest):
+				head = n2
+		_ok("★★选中后底栏第一行写着它的名字", head != null)
+		if head != null:
+			var hf: Font = head.get_theme_font("normal_font")
+			var hfs: int = head.get_theme_font_size("normal_font_size")
+			var hw: float = hf.get_string_size(str(head.get_parsed_text()), HORIZONTAL_ALIGNMENT_LEFT, -1, hfs).x
+			_ok("★★底栏名字 ≥ %d 号且整行放得下(字宽 %.0f ≤ 框宽 %.0f)" % [MIN_FONT, hw, head.size.x],
+				hfs >= MIN_FONT and hw <= head.size.x + 0.5)
 
 	sc.queue_free()
 	await get_tree().process_frame

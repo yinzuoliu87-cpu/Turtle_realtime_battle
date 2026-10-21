@@ -77,6 +77,9 @@ var _pal: Dictionary = DEEP
 var _width: float = 1280.0
 ## 右侧动作离【栏的右沿】多远 —— 栏宽跟着视口变时, 它们照这个距离贴回右沿。
 var _right_off: Array = []
+## 右侧安全边距(刘海 / 圆角)。★add_right_action 也要用它 —— 原来那里写死 PAD_X,
+##   背包页「站位」「?」在 iPhone 19.5:9 上伸进右侧圆角(verify_shop_inv_phone ② 2026-10-21 抓到)。
+var _safe_r: float = PAD_X
 
 
 ## ══════════════════════════════════════════════════════════════════════
@@ -133,7 +136,9 @@ func _init(host: Node, opts: Dictionary) -> void:
 		(host as Node).add_child(bar)
 
 	## 栏底：一条通栏的薄底。★不是九宫格厚框 —— 见文件头 ①。
+	##   配色里 no_plate = true ⇒ 不画(商店 2026-10-21: 场景本身就是顶栏的底, 一条深色带子压在货柜顶梁上像补丁)。
 	var plate := Panel.new()
+	plate.visible = not bool(_pal.get("no_plate", false))
 	var psb := StyleBoxFlat.new()
 	psb.bg_color = _pal["bar"]
 	psb.border_width_bottom = 2
@@ -147,6 +152,7 @@ func _init(host: Node, opts: Dictionary) -> void:
 	##   调用方把 `SafeArea.margins(...)` 算出来的左/上传进来。
 	var sl: float = maxf(PAD_X, float(opts.get("safe_left", 0.0)))
 	var sr: float = maxf(PAD_X, float(opts.get("safe_right", 0.0)))
+	_safe_r = sr
 
 	## ── 左上：返回薄片 ─────────────────────────────────────
 	var back_text := str(opts.get("back_text", "←"))
@@ -183,6 +189,9 @@ func _init(host: Node, opts: Dictionary) -> void:
 			tw = tf.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 26).x
 		else:
 			tw = title_label.get_minimum_size().x
+		## ★页名框收到字宽(2026-10-21): 原来固定 520 宽, 框盖住了右边紧跟着的「商店」签
+		##   (verify_shop_inv_phone ⑤ 量的是控件矩形; 字本身没压, 但框压着别人的靶子就是隐患)。
+		title_label.size = Vector2(tw + GAP, BAR_H)
 		lx += tw + GAP * 2.0
 	for a2 in opts.get("left_actions", []):
 		var lb := _chip(str((a2 as Array)[0]), (a2 as Array)[1] as Callable)
@@ -253,7 +262,7 @@ func add_right_action(txt: String, cb: Callable, o: Dictionary = {}) -> Button:
 	if str(o.get("tooltip", "")) != "":
 		b.tooltip_text = str(o.get("tooltip", ""))
 	var bw: float = bar.size.x if bar != null else _width
-	b.position = Vector2(bw - PAD_X - b.size.x, (BAR_H - TOUCH_MIN) / 2.0)
+	b.position = Vector2(bw - _safe_r - b.size.x, (BAR_H - TOUCH_MIN) / 2.0)
 	bar.add_child(b)
 	action_btns.append(b)
 	_right_off.append(bw - b.position.x)
@@ -278,6 +287,20 @@ static func apply_chip_skin(b: Button, pal: Dictionary, icon_only: bool = false)
 		var empty := StyleBoxEmpty.new()
 		for st in ["normal", "hover", "pressed", "focus", "disabled"]:
 			b.add_theme_stylebox_override(st, empty)
+		return
+
+	## 配色里带 chip_tex(像素木牌) ⇒ 文字型薄片用这张贴图做九宫格底(商店 2026-10-21: 场景里的实物牌子, 不是网页按钮)。
+	if pal.has("chip_tex"):
+		var tex: Texture2D = pal["chip_tex"]
+		var m: int = int(pal.get("chip_margin", 18))
+		for st2 in [["normal", 1.0], ["hover", 1.15], ["pressed", 0.8], ["focus", 1.0], ["disabled", 1.0]]:
+			var tb := StyleBoxTexture.new()
+			tb.texture = tex
+			tb.set_texture_margin_all(m)
+			tb.content_margin_left = 22; tb.content_margin_right = 22
+			tb.modulate_color = Color(float(st2[1]), float(st2[1]), float(st2[1]), 1.0)
+			b.add_theme_stylebox_override(str(st2[0]), tb)
+		b.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		return
 
 	## ★★**文字型：扫平的矩形底，直接当 Button 自己的 stylebox**。

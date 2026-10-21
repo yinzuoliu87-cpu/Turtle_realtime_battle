@@ -150,6 +150,8 @@ func _ready() -> void:
 						center_bad = "@%dx%d 既没有内容层, 内容也没自居中(包围盒中心偏离视口中心 %.0fpx)" % [w, h, off]
 				else:
 					var want := Vector2(roundf((float(w) - 1280.0) * 0.5), roundf((float(h) - 720.0) * 0.5))
+					if bool(res.get("top_align", false)):
+						want.y = 0.0
 					if (got as Vector2).distance_to(want) > CENTER_TOL:
 						center_bad = "@%dx%d 内容层在 %s, 应在 %s" % [w, h, str(got), str(want)]
 
@@ -369,6 +371,8 @@ func _measure(path: String, w: int, h: int) -> Dictionary:
 	#   "blocker" 键 → 消费侧 res.get("blocker","") 恒为空 → ④ 恒绿。反向验证(两条突变同时加、
 	#   还原真事故)报 0 条红才暴露出来。"写了没人读"这个坑我这天踩了第二次。
 	var blocker: String = _blocker_check(inst, vp)
+	## 宿主声明顶对齐(UIFrame._center 读同一个方法) ⇒ 期望 y = 0, 不是上下居中。★在宿主释放之前问。
+	var top_align: bool = inst.has_method("ui_frame_top_align") and bool(inst.call("ui_frame_top_align"))
 	var after: String = await _after_click_check(inst, w, h)
 	## ★分母: 撮合屏真的是在【最终那一幕】被量的(两张资料卡都在、缝被调过)。
 	var mm_final = null
@@ -386,7 +390,7 @@ func _measure(path: String, w: int, h: int) -> Dictionary:
 	sv.queue_free()
 	await get_tree().process_frame
 	var bbc: float = ((bb.position.x + bb.end.x) * 0.5 - vp.x * 0.5) if have_bb else 9999.0
-	return {"over": over, "n": counted, "tiny": tiny, "worst": over_worst,
+	return {"top_align": top_align, "over": over, "n": counted, "tiny": tiny, "worst": over_worst,
 		"frame": frame_pos, "tab_off": tab_off, "bbc": bbc, "blocker": blocker, "after": after,
 		"stage": stage, "mm_final": mm_final}
 
@@ -545,6 +549,8 @@ const REBUILD_FUNCS := ["_rebuild", "_build_ui"]
 
 func _after_click_check(inst: Node, w: int, h: int) -> String:
 	var want := Vector2(roundf((float(w) - 1280.0) * 0.5), roundf((float(h) - 720.0) * 0.5))
+	if inst.has_method("ui_frame_top_align") and bool(inst.call("ui_frame_top_align")):
+		want.y = 0.0
 	var before = _frame_of(inst)
 	if before == null:
 		return ""                     # 本来就没框(自居中屏) → 这条不适用

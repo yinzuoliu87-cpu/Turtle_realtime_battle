@@ -93,6 +93,14 @@ func _ready() -> void:
 		##   ⇒ 走产品自己的入口把它们造出来(不是直接给锚点函数喂假状态)。
 		if key == "shop":
 			await get_tree().process_frame
+			## v5 分镜 E2「『买经验』此时才出现」: 教程里引导走到 xp_button 那一步(TutorialGuide 调 tut_step_shown)才显示。
+			##   这里没挂引导 ⇒ 先量「没教到时不在」, 再走产品自己的入口把它亮出来。
+			for _w in range(30):
+				await get_tree().process_frame
+			_ok("★[shop] v5: 没教到「买经验」时它不在屏上(锚点空)", (inst.call("_tutorial_anchor", "xp_button") as Rect2).size == Vector2.ZERO)
+			_ok("分母: [shop] 商店实现了 tut_step_shown(引导每步通知它)", inst.has_method("tut_step_shown"))
+			if inst.has_method("tut_step_shown"):
+				inst.call("tut_step_shown", "xp_button")
 			for i in range((inst._offer as Array).size()):
 				if inst._offer[i] != null and inst._price(inst._deco(inst._offer[i])) <= int(GameState.meta_deepsea_coins):
 					inst._on_select(i)

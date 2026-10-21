@@ -112,6 +112,9 @@ func _run(p: PackedStringArray) -> void:
 			GameState.persistent_equipped = {}
 			GameState.save()
 			_log("%s setup leaders=%s coins=%s" % [id, str(GameState.season_leaders), p[5]])
+		"insets":   # 模拟真机安全区(逻辑像素 左 上 右 下): 桌面进程拿不到刘海 / 底部横条, 只能喂
+			SafeArea.override_insets = Vector4(float(p[2]), float(p[3]), float(p[4]), float(p[5]))
+			_log("%s insets %s" % [id, str(SafeArea.override_insets)])
 		"scene":
 			get_tree().change_scene_to_file(p[2])
 			await _frames(30)

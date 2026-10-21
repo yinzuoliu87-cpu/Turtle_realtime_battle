@@ -600,6 +600,9 @@ func _demo_popup() -> void:
 
 ## 直接吃 tooltip_text 文本(首行=名, 其余=描述)转成弹窗, 复用已有全部格式
 func _show_detail_popup_from(text: String, accent: Color, anchor: Rect2) -> void:
+	## ★教程里点技能不弹说明框: 它是全屏点击捕获层, 下一步(点下一只发光的龟)的第一下会被它吃掉去关框。
+	if _tut_on():
+		return
 	var t := text.strip_edges()
 	var nl := t.find("\n")
 	var ttl := t if nl < 0 else t.substr(0, nl)
@@ -738,6 +741,7 @@ func _build_ui() -> void:
 	if _tut_on():
 		back.visible = false
 		_last_btn.visible = false
+		clear.visible = false   # v5 分镜「没教到的按钮不显示」: 教程里只按发光的龟依次上阵, 不教撤下
 
 	# 实时 3v3：去掉回合制「前排/后排」标签 (自由走位下定位无意义)
 
@@ -929,9 +933,6 @@ func _refresh_synergy_chips() -> void:
 		var tier: int = int(r["tier"])
 		var need: int = int(r["need"])
 		var n_now: int = int(r["n"])
-		var stars := ""
-		for si in range(int(r.get("tiers_n", 0))):
-			stars += "★" if si < tier else "☆"
 		## ★★2026-09-28 类型图标 emoji → `tags/` 像素图 ⇒ `Label` 换 `RichTextLabel`
 		##   (Label 画不了行内图)。写法走 `Phase2Types.icon_bb()`, 与商店/图鉴同一份。
 		var chip := RichTextLabel.new()
@@ -941,8 +942,8 @@ func _refresh_synergy_chips() -> void:
 		chip.autowrap_mode = TextServer.AUTOWRAP_OFF
 		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		chip.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST   # 32→16 不许线性插值糊掉硬边
-		var plain: String = ("%s %d/%d %s" % [typ, n_now, n_now + need, stars]) if need > 0 \
-			else ("%s %d %s" % [typ, n_now, stars])
+		## ★写法走唯一出口(2026-10-21): 与商店左栏 / 背包羁绊列同一句。
+		var plain: String = Phase2Types.progress_text(typ, n_now, tier, need, int(r.get("tiers_n", 0)))
 		chip.text = Phase2Types.icon_bb(typ, SYN_CHIP_ICON_PX) + plain
 		## ★`RichTextLabel` 认的键是 `normal_font_size`, **不是** `Label` 的 `font_size`
 		##   (照抄 Label 那一行会静默无效 —— 不报错, 只是字号没变)。
@@ -1231,6 +1232,7 @@ func _on_pick_pet(pid: String) -> void:
 	_save_team()
 	_refresh_after_team()
 	_detail._refresh_detail()
+	_tut_notify("pet_picked")   # 教程 v5 B1/B3: 真上阵了一只才前进
 
 
 ## 点槽: tap-to-swap (1:1 PoC onSlotClick TeamSelectScene.ts:1579) —
@@ -1589,19 +1591,61 @@ func _tut_on() -> bool:
 	return td != null and td.is_active()
 
 
+## 给新手引导发一个动作事件(TutorialGuide 自己比对当前步)。非教程 ⇒ 什么都不做。
+func _tut_notify(ev: String) -> void:
+	if _tut_guide != null and is_instance_valid(_tut_guide):
+		_tut_guide.notify(ev)
+
+
+## 教程 v5 B1/B3: 下一只该选的教学龟 = 候选格里第一张还没上阵的(与锚点 roster_pet 同一条规则)。
+func _tut_next_pet() -> String:
+	if _grid_flow == null or not is_instance_valid(_grid_flow):
+		return ""
+	for c in _grid_flow.get_children():
+		if (c as Node).is_queued_for_deletion() or not (c as Node).has_meta("pet_id"):
+			continue
+		var pid := str((c as Node).get_meta("pet_id"))
+		if pid != "" and not (pid in team):
+			return pid
+	return ""
+
+
+## 教程文案占位(TutorialGuide.fill_text): {pet} = 下一只该选的龟名。
+func tut_text_vars() -> Dictionary:
+	var pid := _tut_next_pet()
+	var pd: Dictionary = DataRegistry.pet_by_id.get(pid, {})
+	return {"pet": str(pd.get("name", pid))}
+
+
 ## 新手引导高亮锚点(用户2026-07-23 D): 把锚点名换成屏幕矩形, TutorialGuide 据此挖洞高亮。
 ## 解析不到(控件还没建)→返回空 Rect2, TutorialGuide 本步不挖洞(见 _apply_highlight)。
 func _tutorial_anchor(anchor: String) -> Rect2:
 	match anchor:
 		"roster":   # 底部 3 龟卡网格(教学只显 3 只)
 			return TutorialGuide.vis_rect(_grid_flow)
-		"roster_pet":   # 手势指针: 第一张还没上阵的龟卡
-			if _grid_flow != null and is_instance_valid(_grid_flow):
+		"roster_pet":   # v5 B1/B3: 发光的那一张 = 第一张还没上阵的龟卡
+			var nxt := _tut_next_pet()
+			if nxt != "":
 				for c in _grid_flow.get_children():
-					var pid := str((c as Node).get_meta("pet_id", "")) if (c as Node).has_meta("pet_id") else ""
-					if pid != "" and pid in team:
+					if not (c as Node).is_queued_for_deletion() and str((c as Node).get_meta("pet_id", "")) == nxt:
+						return TutorialGuide.vis_rect(c)
+		"skill_pick":   # v5 B2 箭头: 指第一个可选、还没选上的技能格(格子之间有缝, 指整块中心会落在缝里)
+			if _detail_bottom != null and is_instance_valid(_detail_bottom):
+				var pid2 := detail_pet_id
+				var pet2: Dictionary = DataRegistry.pet_by_id.get(pid2, {})
+				var cur: int = _skill_picker._chosen_candidate(pid2, pet2) if not pet2.is_empty() else -1
+				for g2 in _detail_bottom.find_children("*", "GridContainer", true, false):
+					if (g2 as Node).is_queued_for_deletion():
 						continue
-					return TutorialGuide.vis_rect(c)
+					var kids: Array = (g2 as Node).get_children()
+					for ki in range(1, kids.size()):
+						if ki != cur:
+							return TutorialGuide.vis_rect(kids[ki])
+		"skill_choices":   # v5 B2: 右栏技能格(固有 + 3 个可选)
+			if _detail_bottom != null and is_instance_valid(_detail_bottom):
+				for g in _detail_bottom.find_children("*", "GridContainer", true, false):
+					if not (g as Node).is_queued_for_deletion() and (g as Node).get_child_count() > 0:
+						return TutorialGuide.vis_rect(g)
 		"slots":    # 顶部出战阵容槽(3 格)
 			return _tut_union_rect(_slot_nodes)
 		"confirm":  # 确认出战钮

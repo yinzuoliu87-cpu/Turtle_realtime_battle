@@ -41,6 +41,8 @@ var key: String = ""
 ## 每帧刷新要改的节点(技能正文 / 装备本局统计 / 属性数值), 由调用方按 key 取。
 var live: Dictionary = {}
 var _w: float = CARD_W
+## 字号下限(商店手机版 2026-10-21 传 20 = 手机上约 11pt)。0 = 不设(局内信息面板照旧)。
+var _min_px: int = 0
 
 
 func _init(b) -> void:
@@ -80,6 +82,7 @@ func open(k: String, anchor: Control, spec: Dictionary) -> Dictionary:
 	if battle._ui_layer == null or (not _custom and (battle._info_panel == null or not is_instance_valid(battle._info_panel))):
 		return {}
 	_w = float(spec.get("width", CARD_W))
+	_min_px = int(spec.get("min_px", 0))
 	key = k
 	card = PanelContainer.new()
 	card.name = "InspectCard"
@@ -164,7 +167,7 @@ func _head(vb: VBoxContainer, spec: Dictionary) -> void:
 			fb.set_corner_radius_all(0); fb.set_content_margin_all(3)
 			bsb = fb
 		box.add_theme_stylebox_override("panel", bsb)
-		box.custom_minimum_size = Vector2(ICON, ICON)
+		box.custom_minimum_size = Vector2(ICON, ICON) if _min_px <= 0 else Vector2(56, 56)
 		box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		hb.add_child(box)
 		var tr := TextureRect.new()
@@ -215,7 +218,7 @@ func _stat_row(vb: VBoxContainer, stats: Array) -> void:
 			tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			tr.custom_minimum_size = Vector2(18, 18)
+			tr.custom_minimum_size = Vector2(18, 18) if _min_px <= 0 else Vector2(24, 24)
 			tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			hb.add_child(tr)
 		var l := _label(hb, str(s[1]), 15, s[2] if s.size() > 2 else C_TITLE)
@@ -239,6 +242,7 @@ func _rtl(vb: Control, bb: String, px: int, col: Color) -> RichTextLabel:
 	t.fit_content = true
 	t.scroll_active = false
 	t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	px = maxi(px, _min_px)
 	t.add_theme_font_size_override("normal_font_size", px)
 	t.add_theme_font_size_override("bold_font_size", px)
 	t.add_theme_font_size_override("italics_font_size", px)
@@ -253,7 +257,7 @@ func _rtl(vb: Control, bb: String, px: int, col: Color) -> RichTextLabel:
 func _label(parent: Control, txt: String, px: int, col: Color) -> Label:
 	var l := Label.new()
 	l.text = txt
-	l.add_theme_font_size_override("font_size", px)
+	l.add_theme_font_size_override("font_size", maxi(px, _min_px))
 	l.add_theme_color_override("font_color", col)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(l)
