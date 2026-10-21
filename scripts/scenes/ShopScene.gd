@@ -708,6 +708,11 @@ func _owned_count(item_id: String, star: int = 1) -> int:
 						if it3 is Dictionary and str(it3.get("id", "")) == item_id and int(it3.get("star", 1)) == star: n += 1
 	return n
 
+## 「背包里有没有这件」: 不分星级(货架上的已拥有提示用)。合成进度仍用上面分星级的 `_owned_count`。
+func _owned_any_star(item_id: String) -> int:
+	return _owned_count(item_id, 1) + _owned_count(item_id, 2) + _owned_count(item_id, 3)
+
+
 ## 1费用灰(用户 2026-07-29「1费不应该是灰色吗」)。#9aa6b4 在卡底 #11202e 上
 ## 对比度 6.68, 落在 3费蓝(6.50)与 2费绿(9.49)之间 —— 是灰的, 又不会在五档里显得没做完。
 ## (原 #8a96a3 对比度 5.49 其实也够读, 我先前说它"像禁用"是主观判断, 不成立。)
@@ -742,7 +747,9 @@ func _card(idx: int, pos: Vector2) -> Control:
 		var sg := ShopChest.ellipse(ITEM_W + 8.0, ITEM_H, 26, 22, Color(1.0, 0.86, 0.35, 0.45)); sg.name = "SelGlow"
 		sg.position = Vector2(ITEM_X - 4.0, 0.0); box.add_child(sg)
 	## 已拥有同款: 身后一团呼吸的淡金光(原卡片镀层的同一个意思, 换成不带框的光)
-	var owned := _owned_count(str(edef.get("id", "")))
+	## ★数【任何星级】(用户 2026-10-22「背包里有二星，不提示吗」): 原来借的是合成进度那个口径 `_owned_count(id)`,
+	##   它默认只数 ★1(07-29 为「合成进度 N/3」改的) ⇒ 背包里只有 ★2 时这里是 0, 一点提示都没有。
+	var owned := _owned_any_star(str(edef.get("id", "")))
 	if owned > 0:
 		## 用户 2026-08-14「背包里有的装备在货架栏出现时要有镀层闪光效果」: 身后一团呼吸淡金光 + 一道斜掠高光。
 		var glow := ShopChest.ellipse(ITEM_W + 8.0, ITEM_H, 24, 20, Color(1.0, 0.84, 0.35, 0.30)); glow.name = "OwnedGlow"

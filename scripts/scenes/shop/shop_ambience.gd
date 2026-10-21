@@ -107,10 +107,12 @@ const FLAME_GLASS := [Color8(0xe0, 0x90, 0x3a), Color8(0xff, 0xb1, 0x45), Color8
 const FLAME_GLOW_A := [0.16, 0.28, 0.40, 0.40, 0.56]
 const FLAME_GLOW_S := [0.90, 1.00, 1.06, 1.06, 1.14]
 ## 抽档权重(原样 / 亮档多, 暗与窜高少 ⇒ 像烛火而不是闪灯)
-const FLAME_WEIGHT := [1.0, 3.0, 2.0, 2.0, 1.0]
+const FLAME_WEIGHT := [1.0, 4.0, 2.0, 2.0, 0.5]
 const FLAME_STEPS := 14
-## 外光跟到新一档的过渡(烛火是跳的, 只抹掉一帧的硬切)
-const FLAME_EASE_SEC := 0.05
+## 每一档停多久(秒)。用户 10-22「频率这么快干啥」: 原来 0.06~0.16 秒一跳(每秒 6~9 次)像在闪,
+##   改成 0.5~1.2 秒一档, 外光在这一档里用正弦缓缓过去(呼吸), 火苗只在档与档之间换形。
+const FLAME_STEP_MIN := 0.5
+const FLAME_STEP_MAX := 1.2
 
 
 ## 一盏灯的 5 帧(原生 10×9, 掩码外透明)。
@@ -193,10 +195,10 @@ func _lantern_glow(c: Vector2, i: int) -> void:
 	for _k in range(FLAME_STEPS):
 		var lv := _pick_level()
 		var tex: Texture2D = frames[lv]
+		var dur := _rng.randf_range(FLAME_STEP_MIN, FLAME_STEP_MAX)
 		tw.tween_callback(func() -> void: fl.texture = tex)
-		tw.tween_property(g, "modulate:a", FLAME_GLOW_A[lv], FLAME_EASE_SEC)
-		tw.parallel().tween_property(g, "scale", Vector2.ONE * FLAME_GLOW_S[lv], FLAME_EASE_SEC)
-		tw.tween_interval(_rng.randf_range(0.06, 0.16))
+		tw.tween_property(g, "modulate:a", FLAME_GLOW_A[lv], dur).set_trans(Tween.TRANS_SINE)
+		tw.parallel().tween_property(g, "scale", Vector2.ONE * FLAME_GLOW_S[lv], dur).set_trans(Tween.TRANS_SINE)
 
 
 ## 店主提灯的光(挂在店主节点下)。flame = 当前帧火苗的原生坐标; 换帧时由 place_keeper_glow 跟过去。

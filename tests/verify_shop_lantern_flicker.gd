@@ -7,7 +7,8 @@ extends Node
 ## 断言:
 ##   L1  掩码 == 底图: 四盏灯的玻璃 #ffb145 / 火苗 #fdfff2 逐像素对 shop-shelf-wide.png(换了底图掩码不跟着改就红)
 ##   L2  五帧两两不同(帧没生成出差别 = 叠了层也看不出动)
-##   L3  ★真开店: 四盏灯各自的火苗层在场、贴在灯的原生坐标上; 一段时间里每盏都换过 ≥ 4 次帧、外光亮度 ≥ 3 种值
+##   L3  ★真开店: 四盏灯各自的火苗层在场、贴在灯的原生坐标上; 8 秒里每盏都换过 ≥ 3 次帧(原来的 bug = 0 次)、外光亮度 ≥ 3 种值
+##   L5  也不能太快(用户 10-22「频率这么快干啥」): 8 秒里每盏换帧 ≤ 16 次(原来 0.06~0.16 秒一跳 ⇒ 8 秒 50+ 次)
 ##   L4  四盏不同步(各抽各的节拍, 不是整排一起闪)
 
 const SHOP := preload("res://scenes/Shop.tscn")
@@ -16,7 +17,7 @@ const PNG := "res://assets/sprites/shop/shop-shelf-wide.png"
 
 var _fail := 0
 var _n := 0
-const MIN_ASSERTS := 16
+const MIN_ASSERTS := 20
 
 
 func _ok(n: String, c: bool, d: String = "") -> void:
@@ -122,7 +123,7 @@ func _ready() -> void:
 		last.append((fls[i] as TextureRect).texture)
 	var seq := ["", "", "", ""]
 	var t0 := Time.get_ticks_msec()
-	while Time.get_ticks_msec() - t0 < 4000:
+	while Time.get_ticks_msec() - t0 < 8000:
 		await get_tree().process_frame
 		for i in range(4):
 			var tx: Texture2D = (fls[i] as TextureRect).texture
@@ -132,8 +133,9 @@ func _ready() -> void:
 				seq[i] += str(tx.get_rid().get_id() % 97) + ","
 			alphas[i][snappedf((gls[i] as Control).modulate.a, 0.01)] = true
 	for i in range(4):
-		_ok("L3 ★灯 %d 四秒内换帧 ≥ 4 次、外光亮度 ≥ 3 种" % i, changes[i] >= 4 and alphas[i].size() >= 3,
+		_ok("L3 ★灯 %d 八秒内换帧 ≥ 3 次、外光亮度 ≥ 3 种" % i, changes[i] >= 3 and alphas[i].size() >= 3,
 			"换帧 %d · 亮度 %d 种" % [changes[i], alphas[i].size()])
+		_ok("L5 灯 %d 八秒内换帧 ≤ 16 次(不闪)" % i, changes[i] <= 16, "换帧 %d" % changes[i])
 	var distinct := {}
 	for i in range(4):
 		distinct[seq[i]] = true
