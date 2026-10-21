@@ -1355,8 +1355,13 @@ func _go_inventory() -> void:
 
 const TUT_SKIP_W := 132.0
 
+## ★竖直跟顶栏(币那一排)走, 不跟设计框: 4:3(iPad)上顶栏贴视口顶(_pin_top_bar), 设计框却下移 120,
+##   按框算会落在货柜顶梁上(2026-10-21 三比例自查)。
 func _tutorial_skip_slot() -> Rect2:
-	return Rect2(Vector2(W - 28.0 - TUT_SKIP_W, 48.0 - 28.0) + _frame_off(), Vector2(TUT_SKIP_W, 56.0))
+	var p := Vector2(W - 28.0 - TUT_SKIP_W, 48.0 - 28.0) + _frame_off()
+	if _coin_box != null and is_instance_valid(_coin_box):
+		p.y = _coin_box.global_position.y + 48.0 - 28.0
+	return Rect2(p, Vector2(TUT_SKIP_W, 56.0))
 
 
 func _tut_notify(ev: String) -> void:

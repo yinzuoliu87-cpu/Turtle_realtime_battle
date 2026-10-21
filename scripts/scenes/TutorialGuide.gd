@@ -347,6 +347,9 @@ func _place_panel(target: Rect2) -> void:
 	var GAP: float = 20.0 if is_tip() else 20.0 + ARROW_SIZE.y + 10.0
 	var y: float
 	var where := str((_steps[_idx] as Dictionary).get("anchor", ""))
+	## 放下方时: 箭头翻到目标下方(目标太靠上)才让出箭头那一截; 平常箭头在目标上方, 下方只留常规间距
+	##   (原来一律让 64 —— 那是「手」还画在目标下沿时的余量; iPad 上商店 E2 气泡因此离「买经验」隔一段空地)。
+	var below: float = HAND_ROOM if _arrow_flips_below(target) else 20.0
 	## "right": 贴在指点处(point, 缺省=目标)右侧、垂直居中 —— 目标上下紧挨着别的内容(背包上方是战场行、完成钮下方是龟卡)时用。
 	##   右侧放不下才退回下面的常规规则。
 	if where == "right":
@@ -377,8 +380,8 @@ func _place_panel(target: Rect2) -> void:
 		y = 22.0
 	elif where == "bottom":
 		y = vp.y - sz.y - 22.0
-	elif target.end.y + HAND_ROOM + sz.y + 8.0 <= vp.y:
-		y = target.end.y + HAND_ROOM      # 下方要让出手势指针的高度(指尖在目标里, 手掌伸出目标下沿)
+	elif target.end.y + below + sz.y + 8.0 <= vp.y:
+		y = target.end.y + below
 	elif target.position.y - GAP - sz.y >= 8.0:
 		y = target.position.y - GAP - sz.y
 	else:
@@ -393,12 +396,7 @@ func _place_hand(target: Rect2) -> void:
 	if str(step.get("hand", "tap")) == "none":
 		_hand.visible = false
 		return
-	var pr := target
-	var pt_name := str(step.get("point", ""))
-	if pt_name != "":
-		var r2 := _target_rect(pt_name)
-		if r2.size.x > 0.0 and r2.size.y > 0.0:
-			pr = r2
+	var pr := _point_rect(target)
 	var tip: Vector2 = pr.get_center()
 	var off := Vector2.ZERO
 	var a := 1.0
@@ -413,7 +411,7 @@ func _place_hand(target: Rect2) -> void:
 		var inset: float = minf(12.0, pr.size.y * 0.25)
 		var bob: float = 6.0 + 6.0 * sin(_t * TAU * 1.4)
 		tip.y = pr.position.y + inset
-		if tip.y - ARROW_SIZE.y - 14.0 < 0.0:   # 上方放不下 ⇒ 从下方朝上指
+		if _arrow_flips_below_rect(pr):   # 上方放不下 ⇒ 从下方朝上指
 			up = true
 			tip.y = pr.end.y - inset
 			off.y = bob
@@ -423,6 +421,28 @@ func _place_hand(target: Rect2) -> void:
 	_hand.modulate.a = a
 	_hand.visible = true
 	_hand.position = (tip + off - ARROW_TIP).round()
+
+
+## 箭头指的那块: 步骤给了 point 就指它, 否则指高亮目标。
+func _point_rect(target: Rect2) -> Rect2:
+	var pt_name := str((_steps[_idx] as Dictionary).get("point", ""))
+	if pt_name != "":
+		var r2 := _target_rect(pt_name)
+		if r2.size.x > 0.0 and r2.size.y > 0.0:
+			return r2
+	return target
+
+
+## 点按箭头会不会翻到目标下方(目标顶到屏幕上沿, 上方放不下箭头)。拖动 / 无箭头的步骤恒为否。
+func _arrow_flips_below(target: Rect2) -> bool:
+	var hand := str((_steps[_idx] as Dictionary).get("hand", "tap"))
+	if hand == "none" or hand == "drag":
+		return false
+	return _arrow_flips_below_rect(_point_rect(target))
+
+
+func _arrow_flips_below_rect(pr: Rect2) -> bool:
+	return pr.position.y + minf(12.0, pr.size.y * 0.25) - ARROW_SIZE.y - 14.0 < 0.0
 
 
 ## 箭尖此刻在屏幕上的位置(门禁量「箭头指在目标上」; 旋转绕箭尖, 所以朝上时箭尖位置不变)。
