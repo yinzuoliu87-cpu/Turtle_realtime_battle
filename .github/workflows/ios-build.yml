@@ -20,10 +20,11 @@ on:
   # ⚠ 代价写在明处: **平时 push 不再自动出 IPA**。要装机包就打 tag ——
   #   本项目本来每升一次版本号就要打 tag(CLAUDE.md §2.5), 所以这两件事天然重合, 不是额外负担。
   #   临时想出一个包又不想升版本: 用 workflow_dispatch 手动跑。
+  #
+  # ★★★2026-10-21 再改: 打 tag 也不出了, 只剩手动 dispatch(用户:「应该不用出ios包了, 之后主要去testflight了」)。
+  #   iOS/iPad 改走 TestFlight(testflight.yml, 现在在 ci/testflight-prep 分支, 等开发者账号 593RDVJ8Y9
+  #   的 API 密钥填进 secrets 再合进 main; 它自己会接管 v* tag)。这条免签 IPA 线留作手动备用, 不删。
   workflow_dispatch:
-  push:
-    tags:
-      - 'v*'
 
 permissions:
   contents: write   # 失败时把构建日志推到ci-logs分支(本地无token读不了Actions日志API·git拉分支即可看)

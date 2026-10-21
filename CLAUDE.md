@@ -358,7 +358,8 @@ while _w < 600 and float(u["hp"]) >= hp0:   # 上限防死循环
 
 | 目标 | 怎么做 | 产物 |
 |---|---|---|
-| **iOS 装机包** | **打 tag**（或手动 dispatch）→ **`.github/workflows/ios-build.yml`** | Actions artifact `turtle-ios-v<版本>` ＋ Release「ios-latest」的 `turtle-v<版本>.ipa`（unsigned，artifact 留 14 天） |
+| **iOS / iPad（主路线）** | **TestFlight**：`testflight.yml`（现在在 `ci/testflight-prep` 分支；开发者账号 593RDVJ8Y9 的 App Store Connect API 密钥填进 secrets 后合进 main，由它接管 `v*` tag）。用户 2026-10-21：「之后主要去testflight了」 | TestFlight 构建 |
+| iOS 免签包（备用） | **只能手动 dispatch** `.github/workflows/ios-build.yml`（2026-10-21 起打 tag 不再自动出） | Actions artifact `turtle-ios-v<版本>` ＋ Release「ios-latest」的 `turtle-v<版本>.ipa`（unsigned，artifact 留 14 天） |
 | 提交门禁 | push 自动跑 `.github/workflows/tests.yml` | 123 项，ubuntu |
 | Web（手机浏览器直接玩） | `SHIP=1 bash build-web.sh` | `build/turtle-realtime-web.zip` |
 | Android APK | 见 [实时版APK打包.md](docs/实时版APK打包.md) | `build/android/*.apk` |
@@ -388,7 +389,8 @@ while _w < 600 and float(u["hp"]) >= hp0:   # 上限防死循环
   手段：**先截图/录屏走一遍现状**、把不方便的点一次圈出来，比事后一条条补高效。子需求没列全就开工＝注定返工。
 - **一条新需求的标准流水**（把各条串起来）：`需求 → 方案书(验收清单 + 已知风险/未决点) → 用户拍板未决点 →
   实现 → 门禁(本地+CI都看) → 版本号+tag+CHANGELOG(玩家可感知才升；调试场这类开发工具不升) →
-  push → CI 自动出包到 Release「ios-latest」→ 测试拿 ios-latest 验 → 反馈进下一轮`。
+  push → CI 出包上 TestFlight → 测试在 TestFlight 装新版验 → 反馈进下一轮`。
+  （2026-10-21 之前这一步是「出免签包到 Release ios-latest」；TestFlight 工作流合进 main 之前，iOS 暂时没有自动出包。）
   测试怎么拿包/装机/报bug（版本号+复现+截图）见 [docs/测试指南-取包与报bug.md](测试指南-取包与报bug.md)。
 - **本地绿 ≠ CI 绿，报绿前用 API 亲自看 CI**（2026-07-24 半天教训）：公开 repo 用
   `curl "https://api.github.com/repos/yinzuoliu87-cpu/Turtle_realtime_battle/actions/runs"`（无 token）看 conclusion，
