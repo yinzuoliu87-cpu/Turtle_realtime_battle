@@ -27,6 +27,7 @@ func _ready() -> void:
 	var steps := int(_env("TH_STEPS", "600"))
 	var every := maxi(1, int(_env("TH_EVERY", "3")))
 	var zoom := float(_env("TH_ZOOM", "2.4"))
+	var from_n := int(_env("TH_FROM", "0"))          # 从第几步起才拍(前面只跑不拍, 省盘)
 	_s = load("res://scenes/RealtimeBattle3D.tscn").instantiate()
 	add_child(_s)
 	for _i in range(4):
@@ -58,7 +59,7 @@ func _ready() -> void:
 			_s._cam_zoom_base = _s._world_pos(f, 1.0) + off
 			_s._cam.position = _s._cam_zoom_base
 			_s._cam.fov = rad_to_deg(2.0 * atan(tan(deg_to_rad(fov0 * 0.5)) / zoom))
-		if n % every != 0:
+		if n % every != 0 or n < from_n:
 			continue
 		if n < 3: print("[th] shot ", n)
 		if not OS.has_environment("TH_NOSHOT"):
@@ -72,6 +73,11 @@ func _ready() -> void:
 			logf.store_line("%d t=%.3f form=%s state=%s clip=%s tex=%s frame=%d hp=%.0f" % [n, t,
 				str(th.get("two_form", "")), str(th.get("state", "")), str(th.get("_tha_clip", "")), tx,
 				int(spr.frame) if is_instance_valid(spr) else -1, float(th.get("hp", 0.0))])
+			if OS.has_environment("TH_DUMP"):
+				for c in _s._world.get_children():
+					if c is Sprite3D and str(c.name).begins_with("quake_") or (c is Sprite3D and (c as Sprite3D).texture != null and str((c as Sprite3D).texture.resource_path).contains("quake")):
+						var sp3 := c as Sprite3D
+						logf.store_line("   %s vis=%s mod=%s ps=%.4f pos=%s sc=%s fr=%d mo=%s tw=%d intree=%s" % [str(c.name), str(sp3.visible), str(sp3.modulate), sp3.pixel_size, str(sp3.position), str(sp3.scale), sp3.frame, str(sp3.material_override != null), sp3.texture.get_width(), str(sp3.is_inside_tree())])
 	if logf != null:
 		logf.close()
 	get_tree().quit()

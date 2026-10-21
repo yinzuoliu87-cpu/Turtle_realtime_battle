@@ -141,7 +141,7 @@ func _hammer_ground() -> Array:
 ## F⑥: 一张帧表每帧的量: 冲击环半径(离帧中心 > 半边 60% 的不透明像素 ≥150 个才算有环, 取到中心距离的中位数;
 ##   ★≥150 是反向验证收紧的: 第一版 ≥40 把冷却期地裂伸出去的几十个像素也算成"环", 素材倒放时没红) / 亮像素数(亮度 > 200) / 不透明 bbox 宽。
 var _sheet_cache := {}
-func _sheet_stats(name: String, fw: int) -> Array:
+func _sheet_stats(name: String, fw: int, fh_in: int = 0, cols: int = 0) -> Array:
 	if _sheet_cache.has(name):
 		return _sheet_cache[name]
 	var im := _img("res://assets/sprites/vfx/" + name + ".png")
@@ -149,42 +149,146 @@ func _sheet_stats(name: String, fw: int) -> Array:
 	if im == null:
 		return out
 	im.convert(Image.FORMAT_RGBA8)
-	var n: int = im.get_width() / fw
-	var fh: int = im.get_height()
+	var fh: int = fh_in if fh_in > 0 else im.get_height()
+	var ncol: int = cols if cols > 0 else im.get_width() / fw
+	var n: int = ncol * (im.get_height() / fh)
 	var cx := fw * 0.5; var cy := fh * 0.5
 	for i in range(n):
 		var ds: Array = []
 		var bright := 0; var x0 := 99999; var x1 := -1; var y0 := 99999; var y1 := -1; var cnt := 0
+		var ox: int = (i % ncol) * fw; var oy: int = (i / ncol) * fh
+		var colc := PackedInt32Array(); colc.resize(fw)
 		for y in range(fh):
 			for x in range(fw):
-				var c := im.get_pixel(i * fw + x, y)
+				var c := im.get_pixel(ox + x, oy + y)
 				if c.a8 == 0:
 					continue
 				x0 = mini(x0, x); x1 = maxi(x1, x); y0 = mini(y0, y); y1 = maxi(y1, y); cnt += 1
+				colc[x] += 1
 				if (c.r8 + c.g8 + c.b8) / 3 > 200:
 					bright += 1
 				var dd := Vector2(x - cx, y - cy).length()
 				if dd > cx * 0.6:
 					ds.append(dd)
 		ds.sort()
-		out.append({"ring": float(ds[ds.size() / 2]) if ds.size() >= 150 else 0.0, "bright": bright, "w": (x1 - x0 + 1) if x1 >= 0 else 0, "n": cnt, "h": (y1 - y0 + 1) if y1 >= 0 else 0})
+		## 主体宽: 每列 ≥6 个不透明像素的列的跨度(去掉稀疏火星 / 碎片)
+		var b0 := -1; var b1 := -1
+		for x in range(fw):
+			if colc[x] >= 6:
+				if b0 < 0: b0 = x
+				b1 = x
+		out.append({"ring": float(ds[ds.size() / 2]) if ds.size() >= 150 else 0.0, "bright": bright, "w": (x1 - x0 + 1) if x1 >= 0 else 0, "n": cnt, "h": (y1 - y0 + 1) if y1 >= 0 else 0, "bw": (b1 - b0 + 1) if b1 >= 0 else 0})
 	_sheet_cache[name] = out
 	return out
 
 
+## F⑥ 图案判据(量素材本身, 不读 TwoHeadVfx 常量): 一帧里某一类颜色的连通块个数(4 邻接, 块 ≥ min_px 像素才算)。
+func _blobs(im: Image, x0: int, w: int, h: int, pred: Callable, min_px: int) -> int:
+	var seen := PackedByteArray(); seen.resize(w * h)
+	var n := 0
+	for y in range(h):
+		for x in range(w):
+			if seen[y * w + x] != 0 or not pred.call(im.get_pixel(x0 + x, y)):
+				continue
+			var stack: Array = [Vector2i(x, y)]
+			seen[y * w + x] = 1
+			var cnt := 0
+			while not stack.is_empty():
+				var p: Vector2i = stack.pop_back()
+				cnt += 1
+				for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					var q: Vector2i = p + d
+					if q.x < 0 or q.y < 0 or q.x >= w or q.y >= h or seen[q.y * w + q.x] != 0:
+						continue
+					if pred.call(im.get_pixel(x0 + q.x, q.y)):
+						seen[q.y * w + q.x] = 1
+						stack.append(q)
+			if cnt >= min_px:
+				n += 1
+	return n
+
+
+func _sheet(name: String) -> Image:
+	var im := _img("res://assets/sprites/vfx/" + name + ".png")
+	if im != null:
+		im.convert(Image.FORMAT_RGBA8)
+	return im
+
+
+## 一帧里不透明像素到帧中心的平均距离(地面印记「从外往里碎」用)。
+func _mean_r(im: Image, x0: int, w: int, h: int) -> float:
+	var s := 0.0; var n := 0
+	for y in range(h):
+		for x in range(w):
+			if im.get_pixel(x0 + x, y).a8 > 0:
+				s += Vector2(x - w * 0.5, y - h * 0.5).length(); n += 1
+	return s / float(n) if n > 0 else 0.0
+
+
+## 程序生成的范围细圈: 量贴图本身 alpha 最亮那一圈的半径(像素, 沿中线往右扫)。
+func _ring_tex_r(tex: Texture2D) -> float:
+	if tex == null:
+		return 0.0
+	var im := tex.get_image()
+	im.convert(Image.FORMAT_RGBA8)
+	var cy: int = im.get_height() / 2
+	var best := -1; var bx := 0
+	for x in range(im.get_width() / 2, im.get_width()):
+		var a: int = im.get_pixel(x, cy).a8
+		if a > best:
+			best = a; bx = x
+	return float(bx) + 0.5 - float(im.get_width()) * 0.5
+
+
 func _slam_checks(r1: Array, hg: Array) -> void:
-	print("── F⑥ 锤击砸地: 冲击环 = 判定半径 / 爆点不被挡 / 向外扩散 / 圈边尘团 ──")
-	var gs: Array = _sheet_stats("twohead-slam-ring", 208)
-	var bs: Array = _sheet_stats("twohead-slam-burst", 168)
-	var xs: Array = _sheet_stats("twohead-slam-boom", 123)
-	var ok_boom := 0; var boom_detail := ""
-	var ring_px := 0.0
-	for e in gs:
-		ring_px = maxf(ring_px, float(e["ring"]))
+	print("── F⑥ 锤击(第六版·照研究文档 E1~E9): 图案 / 尺寸比例 / 范围细圈 = 判定半径 / 时序 / 亮度曲线 ──")
 	var R: float = TwoHeadSystem.STRIKE_MELEE_RADIUS
-	var n_land := 0; var ok_radius := 0; var ok_center := 0; var ok_flash := 0; var ok_expand := 0; var ok_spread := 0
-	var ok_dust := 0; var dust_n := 0
-	var detail := ""; var flash_detail := ""; var exp_detail := ""; var spread_detail := ""; var dust_detail := ""
+	## ── 素材图案(量像素) ──
+	var star := _sheet("twohead-quake-star"); var crys := _sheet("twohead-quake-crystal"); var grd := _sheet("twohead-quake-ground")
+	var arc := _sheet("twohead-quake-arc")
+	var is_green := func(c: Color) -> bool: return c.a8 > 0 and c.g8 > 150 and c.g8 > c.r8 + 50 and c.g8 >= c.b8
+	var is_dark := func(c: Color) -> bool: return c.a8 > 0 and maxi(c.r8, maxi(c.g8, c.b8)) < 110 and c.r8 >= c.g8
+	var is_face := func(c: Color) -> bool: return c.a8 > 0 and c.r8 >= 30 and c.r8 < 150 and c.r8 > c.g8 + 15 and c.b8 > c.g8      # 格面 = 暗暖粉(格边是亮橙细线, 把格面隔开)
+	var is_curl := func(c: Color) -> bool: return c.a8 > 0 and c.r8 > 140 and c.g8 < 110 and c.b8 < 120
+	## 亮斑 = 绿色或绿白色(亮斑中心是近白的 e0fff4, 只数纯绿会把一颗斑的绿边数成两段)
+	var is_spot := func(c: Color) -> bool: return c.a8 > 0 and c.g8 > 150 and c.g8 >= c.r8 + 20
+	var st_green: int = _blobs(star, 0, 136, 136, is_spot, 4) if star != null else 0
+	var st_dark: int = _blobs(star, 0, 136, 136, is_dark, 400) if star != null else 0
+	_ok("★E4 暗星徽记: 第 0 帧是一整块深紫褐星体(≥400 像素的暗色连通块 = 1)且嵌着 3~5 颗符文绿亮斑", st_dark == 1 and st_green >= 3 and st_green <= 6, "暗色块 %d · 绿斑 %d" % [st_dark, st_green])
+	var cr_cells: int = _blobs(crys, 224 * 2, 224, 224, is_face, 30) if crys != null else 0
+	var cr_green: int = _blobs(crys, 224 * 3, 224, 224, is_green, 8) if crys != null else 0
+	var cr_late: int = _blobs(crys, 224 * 9, 224, 224, is_face, 30) if crys != null else 0
+	_ok("★E5 晶格能量泡: 第 2 帧 ≥ 20 块暗暖粉晶面被亮格边隔开(碎玻璃格) · 第 3 帧有符文绿裂纹 · 第 9 帧(波纹环段)晶面已散尽", cr_cells >= 20 and cr_green >= 1 and cr_late == 0, "晶面 %d · 绿裂纹段 %d · 末段晶面 %d" % [cr_cells, cr_green, cr_late])
+	## ★泡是半透明发光的(主会话 10-21 自审:「像一颗橙色陶砖球, 目标龟几乎完全被盖住」): 晶格帧(1~4)里泡内亮像素(最大通道 ≥ 180)
+	##   只许是格边细线 / 裂纹 / 光刃 —— 占泡内面积 ≤ 30%; 而且格边真的在(≥ 5%), 否则是空检查。
+	var bright_frac := 1.0; var bright_min := 1.0
+	if crys != null:
+		bright_frac = 0.0
+		for fi in range(1, 5):
+			var nb := 0; var nd := 0
+			for y in range(224):
+				for x in range(224):
+					if Vector2(x - 112, y - 112).length() > 84.0:
+						continue
+					nd += 1
+					var c := crys.get_pixel(fi * 224 + x, y)
+					if c.a8 > 0 and maxi(c.r8, maxi(c.g8, c.b8)) >= 180:
+						nb += 1
+			bright_frac = maxf(bright_frac, float(nb) / float(nd))
+			bright_min = minf(bright_min, float(nb) / float(nd))
+	_ok("★E5 泡半透明: 晶格帧泡内亮像素(格边 / 裂纹)占 5%~30%, 格面是暗的(加色下只透一层淡暖粉)", bright_frac <= 0.3 and bright_min >= 0.05, "最多 %.0f%% · 最少 %.0f%%" % [bright_frac * 100.0, bright_min * 100.0])
+	var g0: int = _blobs(grd, 0, 200, 200, func(c: Color) -> bool: return c.a8 > 0, 30) if grd != null else 0
+	var gr0: float = _mean_r(grd, 0, 200, 200) if grd != null else 0.0
+	var gr2: float = _mean_r(grd, 400, 200, 200) if grd != null else 99.0
+	_ok("★E8 地面碎晶印记: 第 0 帧 ≥ 20 块碎格 · 格子从外往里碎(第 2 帧剩余像素平均半径 < 第 0 帧的 0.7)", g0 >= 20 and gr2 < gr0 * 0.7, "碎格 %d · 平均半径 %.1f → %.1f" % [g0, gr0, gr2])
+	var ac: int = _blobs(arc, 176, 176, 172, is_curl, 6) if arc != null else 0
+	_ok("★E3 锤迹: 月牙带里有 ≥ 4 个红色涡卷纹(第 1 帧)", ac >= 4, "涡卷 %d" % ac)
+	## ── 运行期 ──
+	var body_h: float = 73.0 * float(r1[r1.size() - 1]["idle_px"])          # 变脸龟立绘可见高(像素 73 = two_head_melee.png 不透明包围盒高)
+	var n_land := 0
+	var ok_cover := 0; var d_cover := ""
+	var ok_at := 0; var ok_over := 0; var ok_size := 0; var ok_ring := 0; var ok_time := 0; var ok_curve := 0; var ok_leap := 0; var ok_arc := 0
+	var d_at := ""; var d_size := ""; var d_ring := ""; var d_time := ""; var d_curve := ""; var d_leap := ""; var d_arc := ""
 	for i in range(1, r1.size()):
 		var a: Dictionary = r1[i - 1]; var b: Dictionary = r1[i]
 		if not (a["slam"] and not b["slam"] and b["form"] == "melee"):
@@ -193,111 +297,131 @@ func _slam_checks(r1: Array, hg: Array) -> void:
 		var fwd: float = 1.0 if bool(b["face_right"]) else -1.0
 		var hx: float = float(b["x"]) + fwd * float(hg[1]) * float(b["idle_px"]) / RB.WS     # 锤头落点(按立绘素材量)
 		var hy: float = float(b["y"])
-		var seen0 := {}
-		for nd in a["slam_nodes"]:
-			seen0[nd["id"]] = true
-		var g = null; var bu = null; var bo = null; var dusts: Array = []
-		for nd in b["slam_nodes"]:
-			if seen0.has(nd["id"]):
-				continue
-			if nd["name"] == "twohead-slam-ring":
-				g = nd
-			elif nd["name"] == "twohead-slam-burst":
-				bu = nd
-			elif nd["name"] == "twohead-slam-edgedust":
-				dusts.append(nd)
-			elif nd["name"] == "twohead-slam-boom":
-				bo = nd
-		if g == null or bu == null:
-			detail = "落地那一步没建贴地层/爆点 g=%s b=%s" % [str(g != null), str(bu != null)]
-			continue
-		## ① 冲击环满径(素材量) × 运行期 pixel_size == 判定半径
-		var r_world: float = ring_px * float(g["px"]) / RB.WS
-		detail = "素材环半径 %.1f 像素 × pixel_size %.4f = %.1f 码 · 判定 %.0f 码" % [ring_px, float(g["px"]), r_world, R]
-		if absf(r_world - R) <= R * 0.05 and bool(g["flat"]):
-			ok_radius += 1
-		## ② 贴地层 / 爆点都在锤头落点(= 结算圆心)
-		if Vector2(float(g["x"]) - hx, float(g["z"]) - hy).length() <= 8.0 and Vector2(float(bu["x"]) - hx, float(bu["z"]) - hy).length() <= 8.0:
-			ok_center += 1
-		else:
-			detail += " · 圆心偏: 地(%.0f,%.0f) 爆(%.0f,%.0f) 应(%.0f,%.0f)" % [float(g["x"]), float(g["z"]), float(bu["x"]), float(bu["z"]), hx, hy]
-		## 往后逐步跟这三类节点显示的帧(按游戏钟算时刻: 顿帧期间钟不走)
 		var t0: float = float(b["t"])
-		var max_bright := 0; var ring_seq: Array = []; var w_after: Array = []
-		var dust_vis_early := 0; var dust_vis_late := 0
-		var boom_n := 0; var boom_h := 0
-		var dust_ids := {}
-		for dd in dusts:
-			dust_ids[dd["id"]] = true
-		for j in range(i, mini(r1.size(), i + 120)):
+		var nodes := {}
+		for nd in b["slam_nodes"]:
+			nodes[str(nd["name"])] = nd
+		## ① 落地那一步整套节点都建好, 全在锤头落点(= 结算圆心)
+		var want := ["quake_star", "quake_flash", "quake_flash_body", "quake_bubble_glow", "quake_bubble_tint", "quake_crystal", "quake_beam", "quake_flare", "quake_ball", "quake_range", "quake_ground", "quake_embers"]
+		var miss: Array = []; var off: Array = []
+		for k in want:
+			if not nodes.has(k):
+				miss.append(k)
+			elif Vector2(float(nodes[k]["x"]) - hx, float(nodes[k]["z"]) - hy).length() > 8.0:
+				off.append(k)
+		d_at = "缺 %s · 偏离落点 %s" % [str(miss), str(off)]
+		if miss.is_empty() and off.is_empty():
+			ok_at += 1
+		else:
+			continue
+		## ② 竖立的发光 / 图案层画在所有单位上面(关深度测试 + 优先级高于立绘)
+		var under: Array = []
+		for k in ["quake_star", "quake_flash", "quake_crystal", "quake_beam", "quake_flare"]:
+			if not bool(nodes[k]["ndt"]) or int(nodes[k]["prio"]) <= int(b["unit_prio_max"]):
+				under.append(k)
+		if under.is_empty():
+			ok_over += 1
+		## ③ 尺寸比例: 能量泡(晶格素材主体宽 × 运行期 pixel_size)≈ 变脸龟身高 2.3~3.2 倍, 且明显小于判定圈(不撑满 200 码)
+		var cs: Array = _sheet_stats("twohead-quake-crystal", 224)
+		var cw := 0
+		for e in cs:
+			cw = maxi(cw, int(e["bw"]))
+		var bub_m: float = float(cw) * float(nodes["quake_crystal"]["px"])
+		d_size = "泡 %d 像素 × %.4f = %.2f 米 · 变脸龟身高 %.2f 米 · %.2f 倍 · 判定圈直径 %.2f 米" % [cw, float(nodes["quake_crystal"]["px"]), bub_m, body_h, bub_m / body_h, 2.0 * R * RB.WS]
+		if bub_m / body_h >= 2.3 and bub_m / body_h <= 3.2 and bub_m < 2.0 * R * RB.WS * 0.75:
+			ok_size += 1
+		## ④ 范围细圈 = 判定半径: 量贴图亮圈半径 × 运行期 pixel_size, 贴地平躺
+		var rn: Dictionary = nodes["quake_range"]
+		var r_world: float = float(rn["ring_px"]) * float(rn["px"]) / RB.WS
+		d_ring = "贴图亮圈半径 %.1f 像素 × %.4f = %.1f 码 · 判定 %.0f 码 · 平躺 %s" % [float(rn["ring_px"]), float(rn["px"]), r_world, R, str(rn["flat"])]
+		if absf(r_world - R) <= R * 0.03 and bool(rn["flat"]):
+			ok_ring += 1
+		## ⑤ 时序(按游戏钟, 顿帧期间钟不走): 各层第一次露面 / 最后一次露面; 光柱最粗那一刻; 亮度峰
+		var first := {}; var last := {}; var amax := {}; var tmax := {}; var beam_w_t := -1.0; var beam_w := 0.0; var bub_a := []; var mix_cover := 0.0
+		for j in range(i, mini(r1.size(), i + 90)):
 			var c: Dictionary = r1[j]
 			var dt: float = float(c["t"]) - t0
 			for nd in c["slam_nodes"]:
-				var f: int = int(nd["frame"])
-				if nd["id"] == bu["id"]:
-					if dt <= 0.1 + 1e-6 and f < bs.size():
-						max_bright = maxi(max_bright, int(bs[f]["bright"]))
-					if f >= 4 and f < bs.size():
-						w_after.append(int(bs[f]["w"]))
-				elif bo != null and nd["id"] == bo["id"]:
-					if dt <= 0.5 + 1e-6 and f < xs.size():
-						boom_n = maxi(boom_n, int(xs[f]["n"])); boom_h = maxi(boom_h, int(xs[f]["h"]))
-				elif nd["id"] == g["id"]:
-					if dt <= 0.3 + 1e-6 and f < gs.size():
-						ring_seq.append(float(gs[f]["ring"]))
-				elif dust_ids.has(nd["id"]):
-					if dt < 0.05 and bool(nd["vis"]):
-						dust_vis_early += 1
-					if dt >= 0.15 and dt <= 0.3 and bool(nd["vis"]):
-						dust_vis_late += 1
-		## ③ 落地起 0.1 秒内爆点白核够亮(≥ 600 亮像素)且画在所有单位上面
-		flash_detail = "0.1 秒内最亮帧亮像素 %d · 关深度测试 %s · 优先级 %d > 立绘 %d" % [max_bright, str(bu["ndt"]), int(bu["prio"]), int(b["unit_prio_max"])]
-		if max_bright >= 600 and bool(bu["ndt"]) and int(bu["prio"]) > int(b["unit_prio_max"]):
-			ok_flash += 1
-		## ④ 冲击环由内向外: 到满径 90% 之前显示过的环半径不缩, 0.3 秒内到过满径 90%
-		var mono := true; var top := 0.0; var prev := -1.0; var first := -1.0
-		for rv in ring_seq:
-			if float(rv) > 0.0:
-				if first < 0.0:
-					first = float(rv)
-				if prev > 0.0 and float(rv) + 0.5 < prev and top < ring_px * 0.9:
-					mono = false
-				prev = float(rv)
-				top = maxf(top, float(rv))
-		exp_detail = "0.3 秒内显示过的环半径 %s · 首次出现 %.1f / 满径 %.1f" % [str(ring_seq.slice(0, 12)), first, ring_px]
-		if mono and top >= ring_px * 0.9 and ring_seq.size() >= 3 and first > 0.0 and first <= ring_px * 0.75:
-			ok_expand += 1
-		## ⑤ 碎石 / 尘团往外散: 闪光过后, 显示过的最宽一帧 ≥ 闪光刚过那帧的 1.8 倍
-		spread_detail = "闪光后显示过的 bbox 宽 %s" % str(w_after.slice(0, 12))
-		if w_after.size() >= 4 and float(w_after.max()) >= 1.8 * float(w_after[0]):
-			ok_spread += 1
-		## ⑦ 落点爆炸(用户「起码要有爆炸的特效吧」): 与冲击环同一步建、在锤头落点、画在所有单位上面,
-		##   0.5 秒内显示过的帧里火球体积够大(不透明 ≥ 5000 像素、高 ≥ 80 像素 ≈ 2 米 = 龟身 1.5 倍以上)
-		if bo == null:
-			boom_detail = "落地那一步没建爆炸"
-		else:
-			boom_detail = "0.5 秒内最大面积 %d 像素 · 最高 %d 像素 · 离落点 %.1f 码 · 关深度 %s · 优先级 %d" % [boom_n, boom_h,
-				Vector2(float(bo["x"]) - hx, float(bo["z"]) - hy).length(), str(bo["ndt"]), int(bo["prio"])]
-			if boom_n >= 5000 and boom_h >= 80 and Vector2(float(bo["x"]) - hx, float(bo["z"]) - hy).length() <= 8.0 and bool(bo["ndt"]) and int(bo["prio"]) > int(b["unit_prio_max"]):
-				ok_boom += 1
-		## ⑥ 圈边尘团: 离锤头落点 = 判定半径 × (0.85~1.0), 冲击环到之前不露、到了之后露
-		var on_ring := 0
-		for dd in dusts:
-			var rr: float = Vector2(float(dd["x"]) - hx, float(dd["z"]) - hy).length()
-			if rr >= R * 0.85 and rr <= R * 1.0:
-				on_ring += 1
-		dust_n += dusts.size()
-		dust_detail = "圈边尘团 %d 个 · 在判定半径 85~100%% 处 %d 个 · 提前露 %d 次 · 环到后露 %d 次" % [dusts.size(), on_ring, dust_vis_early, dust_vis_late]
-		if dusts.size() >= 4 and on_ring == dusts.size() and dust_vis_early == 0 and dust_vis_late >= dusts.size():
-			ok_dust += 1
-	_ok("分母: 锤击落地 ≥ 1 次 · 素材量得到冲击环半径 ≥ 80 像素 · 爆点表 ≥ 8 帧", n_land >= 1 and ring_px >= 80.0 and bs.size() >= 8, "落地 %d · 环 %.1f 像素 · 爆点 %d 帧" % [n_land, ring_px, bs.size()])
-	_ok("★特效即判定: 冲击环满径(素材量 × 运行期 pixel_size) == 锤击判定半径 ±5%, 且贴地平躺", ok_radius == n_land and n_land > 0, detail)
-	_ok("★贴地层与爆点都在锤头落点(= 结算圆心)", ok_center == n_land and n_land > 0, "%d/%d" % [ok_center, n_land])
-	_ok("★落地起 0.1 秒内落点白核够亮(≥600 亮像素)且画在所有单位上面", ok_flash == n_land and n_land > 0, flash_detail)
-	_ok("★冲击环由内向外扩到满径(首次出现 ≤ 满径 75%, 0.3 秒内到 90%, 中途不缩)", ok_expand == n_land and n_land > 0, exp_detail)
-	_ok("★碎石 / 尘团往外散开(闪光后最宽帧 ≥ 1.8 × 起始)", ok_spread == n_land and n_land > 0, spread_detail)
-	_ok("★落点爆炸: 与冲击环同一步起爆、在锤头落点、画在单位上面, 0.5 秒内火球 ≥ 5000 像素且高 ≥ 80 像素", ok_boom == n_land and n_land > 0 and xs.size() >= 10, boom_detail)
-	_ok("★圈边尘团落在判定半径上, 冲击环到之前不露", ok_dust == n_land and n_land > 0 and dust_n >= 4, dust_detail)
+				var k := str(nd["name"])
+				if not bool(nd["vis"]):
+					continue
+				if not first.has(k):
+					first[k] = dt
+				last[k] = dt
+				if float(nd["a"]) > float(amax.get(k, -1.0)):
+					amax[k] = float(nd["a"]); tmax[k] = dt
+				if k == "quake_beam" and float(nd["sx"]) > beam_w:
+					beam_w = float(nd["sx"]); beam_w_t = dt
+				if not bool(nd["add"]) and dt >= 0.15 and dt <= 0.5 and k in ["quake_bubble_tint", "quake_flash_body", "quake_crystal"]:
+					mix_cover = maxf(mix_cover, float(nd["a"]))
+				if k == "quake_bubble_glow":
+					bub_a.append([dt, float(nd["a"])])
+		var fs := func(k: String) -> float: return float(first.get(k, -1.0))
+		d_time = "星 %.3f~%.3f · 爆光 %.3f · 泡晶格 %.3f~%.3f · 光柱最粗 %.3f · 星芒 %.3f · 光球 %.3f · 地印 %.3f · 余火 %.3f · 细圈 %.3f~%.3f" % [
+			fs.call("quake_star"), float(last.get("quake_star", -1.0)), fs.call("quake_flash"), fs.call("quake_crystal"), float(last.get("quake_crystal", -1.0)),
+			beam_w_t, fs.call("quake_flare"), fs.call("quake_ball"), fs.call("quake_ground"), fs.call("quake_embers"), fs.call("quake_range"), float(last.get("quake_range", -1.0))]
+		var tok: bool = fs.call("quake_star") <= 0.001 and float(last.get("quake_star", 9.0)) <= 0.11 \
+			and fs.call("quake_flash") >= 0.0 and fs.call("quake_flash") <= 0.05 \
+			and fs.call("quake_crystal") >= 0.08 and fs.call("quake_crystal") <= 0.13 and float(last.get("quake_crystal", 9.0)) <= 0.52 \
+			and beam_w_t >= 0.2 and beam_w_t <= 0.34 \
+			and fs.call("quake_flare") >= 0.27 and fs.call("quake_ball") >= 0.27 \
+			and fs.call("quake_ground") >= 0.4 and fs.call("quake_embers") >= 0.55 \
+			and absf(fs.call("quake_range") - fs.call("quake_crystal")) <= 0.03 and float(last.get("quake_range", 9.0)) <= 0.52
+		if tok:
+			ok_time += 1
+		## ⑥ 亮度曲线: 白热(爆光加色层)峰在 #75 附近; 泡光峰在 #78 附近, 峰后 0.12 秒已降到峰值 0.65 以下(粉光每 0.06 秒减半)
+		var pk_t: float = float(tmax.get("quake_bubble_glow", -1.0)); var pk_a: float = float(amax.get("quake_bubble_glow", 0.0))
+		var a_late := 1.0
+		for e in bub_a:
+			if absf(float(e[0]) - (pk_t + 0.12)) <= 0.01:
+				a_late = float(e[1])
+		d_curve = "白热峰 +%.3f 秒 · 泡光峰 +%.3f 秒(%.2f) → +0.12 秒后 %.2f" % [float(tmax.get("quake_flash", -1.0)), pk_t, pk_a, a_late]
+		d_cover = "泡段(+0.15~0.5 秒)盖在目标上的普通混合层最大不透明度 %.2f · 泡体染色存在 %s" % [mix_cover, str(amax.has("quake_bubble_tint"))]
+		if mix_cover <= 0.3 and amax.has("quake_bubble_tint"):
+			ok_cover += 1
+		if absf(float(tmax.get("quake_flash", -1.0)) - 0.117) <= 0.02 and absf(pk_t - 0.167) <= 0.02 and pk_a > 0.3 and a_late < pk_a * 0.65:
+			ok_curve += 1
+		## ⑦ 起跳: 尘 + 风痕(≥ 6 团, 都在上升段) + 锤头光; 落地那一步全部收掉
+		var wind_n := 0; var wind_late := 0; var dust := false; var hammer := false; var arc_dt := 99.0
+		for j in range(maxi(1, i - 40), i):
+			var c0: Dictionary = r1[j - 1]; var c1: Dictionary = r1[j]
+			var s0 := {}
+			for nd in c0["slam_nodes"]:
+				s0[nd["id"]] = true
+			for nd in c1["slam_nodes"]:
+				var k := str(nd["name"])
+				if k == "quake_hammer_glow" and bool(nd["vis"]) and float(nd["a"]) > 0.3:
+					hammer = true
+				if s0.has(nd["id"]):
+					continue
+				if k == "quake_wind":
+					wind_n += 1
+					if t0 - float(c1["t"]) < 0.2:
+						wind_late += 1
+				elif k == "quake_dust":
+					dust = true
+				elif k == "quake_arc":
+					arc_dt = t0 - float(c1["t"])
+		var left := 0
+		for nd in b["slam_nodes"]:
+			if str(nd["name"]) in ["quake_wind", "quake_dust", "quake_hammer_glow", "quake_hammer_core"]:
+				left += 1
+		d_leap = "风痕 %d 团(落地前 0.2 秒内 %d) · 起跳尘 %s · 锤头光 %s · 落地后残留 %d" % [wind_n, wind_late, str(dust), str(hammer), left]
+		if wind_n >= 6 and wind_late == 0 and dust and hammer and left == 0:
+			ok_leap += 1
+		d_arc = "锤迹在落地前 %.3f 秒建" % arc_dt
+		if arc_dt >= 0.04 and arc_dt <= 0.12:
+			ok_arc += 1
+	_ok("分母: 锤击落地 ≥ 1 次", n_land >= 1, "%d" % n_land)
+	_ok("★落地那一步整套节点都建好、全在锤头落点(结算圆心)", ok_at == n_land and n_land > 0, d_at)
+	_ok("★暗星 / 爆光 / 晶格 / 光柱 / 星芒画在所有单位上面", ok_over == n_land and n_land > 0, "%d/%d" % [ok_over, n_land])
+	_ok("★能量泡 ≈ 变脸龟身高 2.3~3.2 倍(不撑满判定圈)", ok_size == n_land and n_land > 0, d_size)
+	_ok("★范围细圈半径(量贴图 × 运行期 pixel_size) == 判定半径 ±3%, 贴地", ok_ring == n_land and n_land > 0, d_ring)
+	_ok("★时序照研究文档帧表(星 #68~#74 / 爆光 #70 / 泡 #74~#98 / 光柱 #82~#88 / 星芒光球 #86 起 / 地印 #96 起 / 余火 #104 起 / 细圈随泡)", ok_time == n_land and n_land > 0, d_time)
+	_ok("★泡段目标透得出来: 盖在目标上的普通混合层不透明度 ≤ 0.3(目标 ≥ 70% 可辨)", ok_cover == n_land and n_land > 0, d_cover)
+	_ok("★亮度曲线: 白热峰 #75 · 泡光峰 #78、之后快速衰减", ok_curve == n_land and n_land > 0, d_curve)
+	_ok("★起跳: 起跳尘 + 上升段风痕 ≥ 6 团 + 锤头光, 落地收掉", ok_leap == n_land and n_land > 0, d_leap)
+	_ok("★下砸锤迹在落地前 0.04~0.12 秒出现(参考 #64; 扫下三帧要看得清)", ok_arc == n_land and n_land > 0, d_arc)
 
 
 ## F③: 融合施法红斗篷(战士斗篷两色: 暗红 108,24,22 / 亮红 172,55,49)在脖子以下的像素数, 逐帧。
@@ -462,20 +586,28 @@ func _run(skill: int, steps: int) -> Array:
 		for c in s._world.get_children():
 			if c is Sprite3D and (c as Sprite3D).texture != null and not seen_fx.has(c.get_instance_id()):
 				var fp := str((c as Sprite3D).texture.resource_path)
-				if fp.ends_with("twohead-slam-burst.png") or fp.ends_with("twohead-hammer-swing.png"):
+				if fp.ends_with("twohead-quake-star.png"):
 					seen_fx[c.get_instance_id()] = true
 					fx_props.append({"name": fp.get_file().get_basename(), "ndt": (c as Sprite3D).no_depth_test, "prio": (c as Sprite3D).render_priority,
 						"x": (c as Sprite3D).position.x / s.WS + float(s._arena_center.x)})
-		## F⑥: 锤击砸地三张表的节点(每步都记: 帧号 / 显隐 / 场地坐标 / 像素尺寸 / 绘制属性)
+		## F⑥: 锤击第六版的全部节点(按节点名 quake_* 认: 程序贴图没有 resource_path) —— 每步都记: 帧号 / 显隐 / 场地坐标 / 像素尺寸 / 绘制属性 / 亮度 / 宽度
 		var slam_nodes: Array = []
 		for c in s._world.get_children():
-			if c is Sprite3D and (c as Sprite3D).texture != null:
+			## 节点名 = quake_<名>_<序号>(同名会被引擎改名成 @x@123): 剥掉 @ 与尾部序号再认
+			var nm := str(c.name).lstrip("@")
+			nm = nm.split("@")[0]
+			while nm.length() > 0 and ((nm[nm.length() - 1] >= "0" and nm[nm.length() - 1] <= "9") or nm[nm.length() - 1] == "_"):
+				nm = nm.substr(0, nm.length() - 1)
+			if c is Sprite3D and nm.begins_with("quake_"):
 				var sp3 := c as Sprite3D
-				var fp3 := str(sp3.texture.resource_path)
-				if fp3.contains("/vfx/twohead-slam-"):
-					slam_nodes.append({"id": c.get_instance_id(), "name": fp3.get_file().get_basename(), "frame": sp3.frame, "vis": sp3.visible,
-						"px": sp3.pixel_size, "x": sp3.position.x / s.WS + float(s._arena_center.x), "z": sp3.position.z / s.WS + float(s._arena_center.y),
-						"ndt": sp3.no_depth_test, "prio": sp3.render_priority, "flat": sp3.billboard == BaseMaterial3D.BILLBOARD_DISABLED})
+				var mo = sp3.material_override
+				var ndt: bool = (mo as BaseMaterial3D).no_depth_test if mo is BaseMaterial3D else sp3.no_depth_test
+				var prio: int = (mo as Material).render_priority if mo is Material else sp3.render_priority
+				var nmb := nm
+				slam_nodes.append({"id": c.get_instance_id(), "name": nmb, "frame": sp3.frame, "vis": sp3.visible,
+					"px": sp3.pixel_size, "x": sp3.position.x / s.WS + float(s._arena_center.x), "z": sp3.position.z / s.WS + float(s._arena_center.y),
+					"ndt": ndt, "prio": prio, "flat": sp3.billboard == BaseMaterial3D.BILLBOARD_DISABLED, "h": sp3.position.y,
+					"a": sp3.modulate.a, "sx": sp3.scale.x, "add": mo is BaseMaterial3D and (mo as BaseMaterial3D).blend_mode == BaseMaterial3D.BLEND_MODE_ADD, "ring_px": _ring_tex_r(sp3.texture) if nmb == "quake_range" else 0.0})
 		var unit_prio_max := -999
 		for uu in s._units:
 			var us = uu.get("sprite", null)
@@ -557,7 +689,7 @@ func _ready() -> void:
 				print("    切形态前一步: t=%.3f tex=%s frame=%d" % [a["t"], a["tex"], a["frame"]])
 		if a["slam"] and not b["slam"] and b["form"] == "melee":
 			land += 1
-			if b["tex"] == "melee_strike" and absi(int(b["frame"]) - 6) <= 1 and "twohead-slam-burst" in b["fresh"] and int(b["taken"]) > int(a["taken"]):
+			if b["tex"] == "melee_strike" and absi(int(b["frame"]) - 6) <= 1 and "twohead-quake-star" in b["fresh"] and int(b["taken"]) > int(a["taken"]):
 				land_ok += 1
 			else:
 				print("    落地步: t=%.3f tex=%s frame=%d fresh=%s dmg=%s" % [b["t"], b["tex"], b["frame"], str(b["fresh"]), str(int(b["taken"]) > int(a["taken"]))])
@@ -593,7 +725,8 @@ func _ready() -> void:
 				sh_land += 1
 	_ok("分母: 切近战那一步 / 锤击落地那一步 各给过盾(建过通用护盾罩)", sh_sw >= 1 and sh_land >= 1, "切近战 %d · 落地 %d · 共 %d 个罩" % [sh_sw, sh_land, sh_n])
 	_ok("★变脸龟给自己的护盾罩排在立绘之前画(不洗白变脸 / 砸地 / 挥锤)", sh_bad == 0, "违例 %d/%d" % [sh_bad, sh_n])
-	## F② 锤击落地那一步: 裂地 + 挥锤弧都出, 都关深度测试且优先级高于场上所有单位立绘; 裂地在锤头落点
+	## F② 锤击落地那一步: 命中星核出、关深度测试且优先级高于场上所有单位立绘、在锤头落点
+	##   (2026-10-20 第五版: 落地时复用的普攻挥锤弧删了 —— 用户「不能共用啊，这一个是技能一个是攻击」; 下砸月牙弧由 F⑥ 管)
 	var hg: Array = _hammer_ground()
 	var g_frames: Array = hg[0]
 	var land_fx := 0; var land_fx_ok := 0; var anchor_ok := 0; var hold_steps := 0; var hold_n := 0
@@ -602,20 +735,18 @@ func _ready() -> void:
 		var a: Dictionary = r1[i - 1]; var b: Dictionary = r1[i]
 		if a["slam"] and not b["slam"] and b["form"] == "melee":
 			land_fx += 1
-			var has_slam := false; var has_swing := false; var over := true
+			var has_slam := false; var over := true
 			for fx in b["fx"]:
-				if fx["name"] == "twohead-slam-burst":
+				if fx["name"] == "twohead-quake-star":
 					has_slam = true
 					var fwd: float = 1.0 if bool(b["face_right"]) else -1.0
 					var want: float = float(b["x"]) + fwd * float(hg[1]) * float(b["idle_px"]) / RB.WS
-					anchor_detail = "裂地 x=%.1f · 落点 x=%.1f · 素材锤头应在 x=%.1f(锤头离中线 %.1f 像素)" % [float(fx["x"]), float(b["x"]), want, float(hg[1])]
+					anchor_detail = "星核 x=%.1f · 落点 x=%.1f · 素材锤头应在 x=%.1f(锤头离中线 %.1f 像素)" % [float(fx["x"]), float(b["x"]), want, float(hg[1])]
 					if absf(float(fx["x"]) - want) <= 8.0:
 						anchor_ok += 1
-				elif fx["name"] == "twohead-hammer-swing":
-					has_swing = true
 				if not bool(fx["ndt"]) or int(fx["prio"]) <= int(b["unit_prio_max"]):
 					over = false
-			if has_slam and has_swing and over:
+			if has_slam and over:
 				land_fx_ok += 1
 			## 落地后到切走之前, 锤贴地那几帧(量素材)一共播了多少步
 			for j in range(i, mini(r1.size(), i + 90)):
@@ -626,8 +757,8 @@ func _ready() -> void:
 					hold_steps += 1
 			hold_n += 1
 	_ok("分母: 素材里量得到锤贴地帧 ≥ 3 张、锤击落地 ≥ 1 次", g_frames.size() >= 3 and land_fx >= 1, "贴地帧 %s · 落地 %d" % [str(g_frames), land_fx])
-	_ok("★锤击落地那一步: 裂地 + 挥锤弧同一步出, 都画在所有单位立绘上面(关深度测试 + 优先级更高)", land_fx_ok == land_fx, "%d/%d" % [land_fx_ok, land_fx])
-	_ok("★裂地画在锤头落点(按素材量出的锤头位置), 不在施法者脚下", anchor_ok == land_fx, anchor_detail)
+	_ok("★锤击落地那一步: 命中星核同一步出, 画在所有单位立绘上面(关深度测试 + 优先级更高)", land_fx_ok == land_fx, "%d/%d" % [land_fx_ok, land_fx])
+	_ok("★星核画在锤头落点(按素材量出的锤头位置), 不在施法者脚下", anchor_ok == land_fx, anchor_detail)
 	_ok("★落地后锤贴地帧播满 ≥ 0.15 秒(不被紧跟的普攻前摇吞掉)", hold_n >= 1 and hold_steps >= 9 * hold_n, "%d 步 / %d 次落地" % [hold_steps, hold_n])
 	_slam_checks(r1, hg)
 

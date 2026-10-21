@@ -163,6 +163,7 @@ func _two_head_hammer(u: Dictionary, tgt: Dictionary) -> void:
 func _two_head_hammer_arc(pf: float, u: Dictionary, from2d: Vector2, land2d: Vector2) -> void:
 	u["pos"] = DetMath.vlerp(from2d, land2d, pf)
 	u["_slam_voff"] = Vector3(0.0, DetMath.dsin(pf * PI) * 4.2, 0.0)     # 跳起弧线(render偏移·峰高4.2)
+	vfx.leap_step(u, pf, land2d)                                # 起跳残影 / 锤头光跟弧线 / 下砸月牙弧(纯演出)
 
 ## `dt` = 举锤那一刻 `_resolve_dmg` 定下的伤害类型。锤子在空中飞 ~1.5 秒, 期间全局
 ## `battle._last_dmg_type` 会被场上任何一发伤害覆写 ⇒ 落地时飘字捡别人的颜色
@@ -172,6 +173,7 @@ func _two_head_hammer_land(u: Dictionary, tgt: Dictionary, at2d: Vector2, dmg: i
 	u["_slam"] = false
 	u["pos"] = at2d
 	var hit_at: Vector2 = hammer_point(at2d, bool(u.get("face_right", true)))
+	vfx.leap_end(u)
 	_two_head_slam_impact(at2d, bool(u.get("face_right", true)))   # 砸地: 震屏+顿帧+锤头落点冲击(范围 = STRIKE_MELEE_RADIUS)+挥锤弧
 	if tgt.get("alive", false):
 		if dt != "":
