@@ -11,6 +11,8 @@ const GLOW_COL := Color(1.0, 0.72, 0.32, 1.0)
 const BUBBLE_MAX := 20
 const BUBBLE_EVERY := 0.25      # 秒
 const ITEM_BOB_PX := 5.0
+## 装饰粒子的标记: 水泡一直在飘, 某一拍恰好飘到木牌边上不是版式问题。verify_ui_consistency 认这个标记跳过。
+const AMBIENT_META := "ui_ambient_particle"
 
 var host = null
 var _layer: Control = null
@@ -85,17 +87,116 @@ func _soft_glow(sz: float) -> TextureRect:
 	return g
 
 
-## 一盏灯一团加色暖光, 亮度随机抖(烛火), 每盏错开相位。
+## ── 灯笼本体的烛火(用户 2026-10-21「商店你不是说灯是动态吗」) ──
+## 原来只有柜外一团淡光在抖(alpha 0.14~0.42), 灯笼本身是底图里画死的 ⇒ 手机上看不出在动。
+## 现在每盏灯在【原生像素格】上叠一层: 玻璃(g)跟着火变亮变暗, 火苗(f)忽高忽矮、火尖左右摆; 外面那团光同一节拍变亮变大。
+## 掩码 = shop-shelf-wide.png 里每盏灯玻璃 #ffb145 / 火苗 #fdfff2 的像素(从玻璃顶那一行 y=46 起, 10×9),
+##   门禁 verify_shop_lantern_flicker 逐像素对 PNG(换了底图这里不跟着改就红)。
+const LANTERN_ORIGIN := [Vector2i(51, 46), Vector2i(121, 46), Vector2i(193, 46), Vector2i(264, 46)]
+const LANTERN_MASK := [
+	["....gg....", "gg.gggg.g.", "gg.gggg.g.", "gg.gggg.g.", "gg.gffg.g.", ".g.gffg.gg", ".g.gffg.g.", "gg.fffg.g.", "gg..ff..g."],
+	["....gg....", "gg.gggg.gg", "gg.gggg.gg", "gg.gggg.gg", "gg.gffg.gg", ".g.gffg.gg", ".g.gffg.gg", "gg.gffg.gg", "gg..ff..gg"],
+	["....gg....", "gg.gggg.g.", "gg.gggg.g.", "gg.gggg.g.", "gg.gffg.g.", "gg.gffg.g.", "gg.gffg.gg", "gg.gffg.g.", ".g..ff..g."],
+	["....gg....", "gg.gggg.gg", "gg.gggg.gg", "gg.gggg.gg", "gg.gffg.gg", "gg.gffg.gg", ".g.gffg.gg", ".g.gffg.gg", ".g..ff..g."],
+]
+const FLAME_CORE := Color8(0xfd, 0xff, 0xf2)
+const FLAME_TIP := Color8(0xff, 0xf0, 0xb0)
+const FLAME_HALO := Color8(0xff, 0xe2, 0xa0)
+## 五档: 暗(火矮一格) / 原样 / 亮·火尖偏左 / 亮·火尖偏右 / 窜高(火尖两格 + 火边泛白)
+const FLAME_GLASS := [Color8(0xe0, 0x90, 0x3a), Color8(0xff, 0xb1, 0x45), Color8(0xff, 0xc2, 0x5a), Color8(0xff, 0xc2, 0x5a), Color8(0xff, 0xd4, 0x7c)]
+const FLAME_GLOW_A := [0.16, 0.28, 0.40, 0.40, 0.56]
+const FLAME_GLOW_S := [0.90, 1.00, 1.06, 1.06, 1.14]
+## 抽档权重(原样 / 亮档多, 暗与窜高少 ⇒ 像烛火而不是闪灯)
+const FLAME_WEIGHT := [1.0, 3.0, 2.0, 2.0, 1.0]
+const FLAME_STEPS := 14
+## 外光跟到新一档的过渡(烛火是跳的, 只抹掉一帧的硬切)
+const FLAME_EASE_SEC := 0.05
+
+
+## 一盏灯的 5 帧(原生 10×9, 掩码外透明)。
+static func flame_frames(mask: Array) -> Array:
+	var h: int = mask.size()
+	var w: int = (mask[0] as String).length()
+	var top := h
+	var cols: Array = []
+	for y in range(h):
+		for x in range(w):
+			if (mask[y] as String)[x] == "f":
+				top = mini(top, y)
+	for x in range(w):
+		if top < h and (mask[top] as String)[x] == "f":
+			cols.append(x)
+	var out: Array = []
+	for lv in range(FLAME_GLASS.size()):
+		var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+		img.fill(Color(0, 0, 0, 0))
+		for y in range(h):
+			for x in range(w):
+				var m := (mask[y] as String)[x]
+				if m == "g":
+					img.set_pixel(x, y, FLAME_GLASS[lv])
+				elif m == "f":
+					img.set_pixel(x, y, FLAME_CORE)
+		if not cols.is_empty():
+			if lv == 0:
+				for x in cols:
+					img.set_pixel(x, top, FLAME_GLASS[2])
+			elif lv == 2 and top > 0:
+				img.set_pixel(cols[0], top - 1, FLAME_TIP)
+			elif lv == 3 and top > 0:
+				img.set_pixel(cols[cols.size() - 1], top - 1, FLAME_TIP)
+			elif lv == 4 and top > 1:
+				img.set_pixel(cols[0], top - 1, FLAME_CORE)
+				img.set_pixel(cols[cols.size() - 1], top - 1, FLAME_TIP)
+				img.set_pixel(cols[0], top - 2, FLAME_TIP)
+				for y in range(top, h):
+					for x in [cols[0] - 1, cols[cols.size() - 1] + 1]:
+						if x >= 0 and x < w and (mask[y] as String)[x] == "g":
+							img.set_pixel(x, y, FLAME_HALO)
+		out.append(ImageTexture.create_from_image(img))
+	return out
+
+
+func _pick_level() -> int:
+	var total := 0.0
+	for wt in FLAME_WEIGHT:
+		total += float(wt)
+	var r := _rng.randf() * total
+	for lv in range(FLAME_WEIGHT.size()):
+		r -= float(FLAME_WEIGHT[lv])
+		if r <= 0.0:
+			return lv
+	return 1
+
+
+## 一盏灯: 烛火像素层 + 一团加色暖光, 同一节拍(火高 ⇒ 光亮光大), 每盏各抽各的节拍。
 func _lantern_glow(c: Vector2, i: int) -> void:
+	var frames := flame_frames(LANTERN_MASK[i])
+	var fl := TextureRect.new()
+	fl.name = "LanternFlame%d" % i
+	fl.texture = frames[1]
+	fl.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	fl.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	fl.stretch_mode = TextureRect.STRETCH_SCALE
+	fl.position = Vector2(LANTERN_ORIGIN[i]) * host.CAB_SCALE
+	fl.size = Vector2((LANTERN_MASK[i][0] as String).length(), (LANTERN_MASK[i] as Array).size()) * host.CAB_SCALE
+	fl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_layer.add_child(fl)
 	var g := _soft_glow(180.0)
 	g.name = "LanternGlow%d" % i
 	g.position = c - Vector2(90.0, 90.0)
-	g.modulate.a = 0.28
+	g.pivot_offset = g.size * 0.5
+	g.modulate.a = FLAME_GLOW_A[1]
 	_layer.add_child(g)
 	var tw := TweenKit.loop_bound(host, g)
-	tw.tween_interval(0.07 * float(i))
-	for _k in range(6):
-		tw.tween_property(g, "modulate:a", _rng.randf_range(0.14, 0.42), _rng.randf_range(0.06, 0.18))
+	tw.tween_interval(0.05 * float(i))
+	for _k in range(FLAME_STEPS):
+		var lv := _pick_level()
+		var tex: Texture2D = frames[lv]
+		tw.tween_callback(func() -> void: fl.texture = tex)
+		tw.tween_property(g, "modulate:a", FLAME_GLOW_A[lv], FLAME_EASE_SEC)
+		tw.parallel().tween_property(g, "scale", Vector2.ONE * FLAME_GLOW_S[lv], FLAME_EASE_SEC)
+		tw.tween_interval(_rng.randf_range(0.06, 0.16))
 
 
 ## 店主提灯的光(挂在店主节点下)。flame = 当前帧火苗的原生坐标; 换帧时由 place_keeper_glow 跟过去。
@@ -151,6 +252,7 @@ func _spawn_in(layer: Control, cap: int, alpha: float) -> void:
 	b.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; b.stretch_mode = TextureRect.STRETCH_SCALE
 	b.size = Vector2(px, px); b.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.name = "Bubble%d" % _rng.randi()
+	b.set_meta(AMBIENT_META, true)   # 飘动的装饰粒子: 版式门禁不把它当内容量(verify_ui_consistency)
 	b.modulate.a = alpha
 	var x0 := _rng.randf_range(20.0, layer.size.x - 20.0)
 	var y0 := layer.size.y - _rng.randf_range(10.0, 50.0)

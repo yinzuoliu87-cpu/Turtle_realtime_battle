@@ -27,4 +27,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HEADLESS="--headless"
 [ -n "${WINDOW:-}" ] && [ "${WINDOW}" != "0" ] && HEADLESS=""
 
+## ★默认整层停用后端(2026-10-21: 单跑测试没带 TURTLE_BACKEND / TURTLE_SUPABASE ⇒ 默认连正式服, 一晚上 4 个匿名号进了正式库)。
+##   调用方自己给了值就用调用方的(测试接假服务器等); 真要连服务器看效果: ONLINE=1。
+if [ -z "${ONLINE:-}" ]; then export TURTLE_BACKEND="${TURTLE_BACKEND- }" TURTLE_SUPABASE="${TURTLE_SUPABASE- }"; fi
 exec env QUIET=1 "$GODOT" $HEADLESS --audio-driver Dummy --path "$DIR" "$@"

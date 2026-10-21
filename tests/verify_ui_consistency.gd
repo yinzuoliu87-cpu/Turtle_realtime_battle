@@ -651,6 +651,10 @@ func _audit(root: Node) -> Dictionary:
 				#   不放过的话它们会一直红, 逼我去"修"一个根本不是问题的东西。
 				var is_badge: bool = c.size.x <= 24.0 and c.size.y <= 24.0 \
 					and (c.get_parent() is PanelContainer or c.get_parent() is Panel)
+				## ★飘动的装饰粒子(商店水泡, 2026-10-21)也放过: 它一直在动, 采样那一拍恰好飘到木牌边上是随机的,
+				##   量它 = 量运气(灯笼烛火改了随机数消耗顺序, 水泡落点就变了, 当场红了一条)。只认产品打的标记, 不认名字。
+				if c.has_meta(ShopAmbience.AMBIENT_META):
+					is_badge = true
 				## ★框本身不能再当"被测的图" —— 否则它自己越过自己的边带, 每个框都白报一条
 				##   (实测设置屏 3 条、主菜单 3 条全是这么来的)。
 				if not is_badge and not ((n as TextureRect).texture != null \

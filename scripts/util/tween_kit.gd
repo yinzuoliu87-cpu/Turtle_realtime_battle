@@ -22,7 +22,26 @@ static func loop_bound(host: Node, bind: Node) -> Tween:
 	return t
 
 
+## ★只在「真离开」时停(2026-10-21): UIFrame 收编(remove_child + add_child 搬进设计框)也会发 tree_exiting,
+##   原来一律 kill ⇒ 收编之前建的循环全死 —— 商店四盏灯笼的光从做好那天起一次没闪过(用户「商店你不是说灯是动态吗」)。
+##   ⇒ 离开那一刻先暂停(引擎不再推进它, 上面那条 can_process 报错的根因照样堵住),
+##     这一拍末尾再看: 回到树里了(只是搬家)就接着放, 没回来就 kill。连接不再是一次性的: 搬几次家都管。
+## ★延迟那一下只记节点的 id、不抓节点本身: 换场景时节点可能在延迟调用之前就释放了,
+##   抓着它的 lambda 一调就是引擎报错「Lambda capture ... was freed」(进门禁致命正则, 也会被报错上报收走)。
 static func _stop_on_exit(node: Node, t: Tween) -> void:
+	var nid := node.get_instance_id()
 	node.tree_exiting.connect(func() -> void:
-		if t != null and t.is_valid():
-			t.kill(), CONNECT_ONE_SHOT)
+		if t == null or not t.is_valid():
+			return
+		t.pause()
+		_resume_or_kill.call_deferred(nid, t))
+
+
+static func _resume_or_kill(nid: int, t: Tween) -> void:
+	if t == null or not t.is_valid():
+		return
+	var n := instance_from_id(nid) as Node
+	if n != null and n.is_inside_tree():
+		t.play()
+	else:
+		t.kill()
