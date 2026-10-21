@@ -24,7 +24,12 @@ on:
   # ★★★2026-10-21 再改: 打 tag 也不出了, 只剩手动 dispatch(用户:「应该不用出ios包了, 之后主要去testflight了」)。
   #   iOS/iPad 改走 TestFlight(testflight.yml, 现在在 ci/testflight-prep 分支, 等开发者账号 593RDVJ8Y9
   #   的 API 密钥填进 secrets 再合进 main; 它自己会接管 v* tag)。这条免签 IPA 线留作手动备用, 不删。
+  # ★本机没有 gh / token, 点不了 workflow_dispatch ⇒ 推一个 `ci/ios-*` 分支就出一个包(同 testflight.yml 的 ci/testflight-* 做法)。
+  #   用法: git push origin HEAD:refs/heads/ci/ios-<日期>  → 包挂到 Release「ios-latest」→ bash fetch-ios.sh 下到桌面。用完删分支。
   workflow_dispatch:
+  push:
+    branches:
+      - 'ci/ios-*'
 
 permissions:
   contents: write   # 失败时把构建日志推到ci-logs分支(本地无token读不了Actions日志API·git拉分支即可看)
