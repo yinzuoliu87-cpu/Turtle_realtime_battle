@@ -525,7 +525,7 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 		#   【之后】的一枚小徽章上(金边 + "赠"角标)。
 		#   (2026-08-12 修: 之前写死 3 格却把赠送件排在数组第 4 位 ⇒ 界面上根本看不见它;
 		#    中途改成 3+N 格也不对 —— 队列里有的 3 格有的 4 格, 且第 4 格看着像"能装 4 件"。)
-		_build_equip_cells(box, 60.0, eqs, P2.UNIT_EQUIP_CAP, lane, idx, rx)
+		_build_equip_cells(box, 60.0, eqs, P2.UNIT_EQUIP_CAP, rx)
 	# 小将 前排/后排 pill (右上·精英小将=统领替身不显·用户2026-07-18)
 	if is_reg_minion:
 		var front := str(unit.get("role", "front")) == "front"
@@ -578,7 +578,7 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 ## ★★`is_leader` / `pet_id` 两个参数 2026-09-30 **删掉了**: 它们原来只喂给格子上那句
 ##   就地卸下(`_unequip_at(pet_id, …)`); 卸下改走底部 81px 的键之后这两个就没人读了,
 ##   留着就是下一个"写了没人读"。`lane`/`idx` 仍在用(选中这只单位要它们)。
-func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, lane: String, idx: int, x_start: float = -1.0) -> void:
+func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, x_start: float = -1.0) -> void:
 	## ★28 → 40: 手机触控下限是 44pt(81px), 而卡片右列只有约 134px 宽 ——
 	##   3 格要到 81px 得 243px, **版式里塞不下**(加高卡片又会撞到下面的背包区)。
 	##   所以取版式允许的最大值: 3×40 + 2×4 = 128 ≤ 134。从 15pt 提到 22pt。

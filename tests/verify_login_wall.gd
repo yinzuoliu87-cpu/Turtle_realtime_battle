@@ -1635,11 +1635,12 @@ func _t_open_path() -> void:
 	_ok("⑧b ★分母: 介绍之后 ⇒ 弹出教程选择框", _choice != null)
 	if _choice != null:
 		(_choice.find_child("StartTutorial", true, false) as Button).emit_signal("pressed")
-	var w2: int = await _wait_scene_named("RealtimeBattle3D", 400)
+	## ★2026-10-21 教程 v5(方案书 20261021-教程分镜v5.md): 「开始教程」先进选龟屏(教选龟 / 技能 / 本周锁定), 再进第一局。
+	var w2: int = await _wait_scene_named("TeamSelect", 400)
 	var bat = get_tree().current_scene
 	print("     「开始教程」之后等了 %d 帧 ⇒ %s" % [w2, str(bat.name) if bat != null else "<null>"])
-	_ok("⑧b ★★★WALL_SOFT: 全新安装 —— 产品自己把他送进**第一局战斗**(阵容预配), 一个绑定控件都没碰",
-		bat != null and str(bat.name).begins_with("RealtimeBattle3D") and bool(GameState.tutorial_active),
+	_ok("⑧b ★★★WALL_SOFT: 全新安装 —— 产品自己把他送进**教程第一屏(选龟)**, 一个绑定控件都没碰",
+		bat != null and str(bat.name).begins_with("TeamSelect") and bool(GameState.tutorial_active),
 		"%s / tutorial_active=%s" % [str(bat.name) if bat != null else "<null>", str(GameState.tutorial_active)])
 	if bat != null and str(bat.name).begins_with("RealtimeBattle3D"):
 		var _wu := 0

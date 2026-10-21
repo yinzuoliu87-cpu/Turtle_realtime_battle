@@ -359,14 +359,17 @@ func _t_panel(gs) -> void:
 	var bak_ld = gs.season_leaders.duplicate(true)
 	gs.season_leaders = ["basic"]
 	gs.persistent_equipped = {"basic": [{"id": EID, "star": 1}]}   # 装上 ⇒ 羁绊激活
-	shop._rebuild()
-	for _i in range(3):
+	## ★2026-10-21 羁绊搬出商店(用户「商店里为什么会显示背包的装备和羁绊？」→「商店要这么搞」) ⇒ 在背包页的羁绊列上量
+	var inv: Control = (load("res://scenes/Inventory.tscn") as PackedScene).instantiate()
+	add_child(inv)
+	for _i in range(4):
 		await get_tree().process_frame
-	var t_syn: Array = _texts(shop, [])
-	_ok("★★羁绊那一行上直接带砍伐进度(「斧头 … 小木斧 35/%d」)"
+	var t_syn: Array = _texts(inv, [])
+	_ok("★★羁绊那一行上直接带砍伐进度(背包页「斧头 … 小木斧 35/%d」)"
 		% AE.need_for_next(0),
 		_has(t_syn, "斧头") and _has(t_syn, "小木斧 35/%d" % AE.need_for_next(0)),
 		"分母: 抓到 %d 个文本节点" % t_syn.size())
+	remove_child(inv); inv.free()
 	## ② 什么都没选中时, 攒够 400 也要能选造物(错过就再也做不了最终进化)
 	gs.axe_stage = AE.STAGES.size() - 1
 	gs.axe_exp_bar = AE.FINAL_NEED

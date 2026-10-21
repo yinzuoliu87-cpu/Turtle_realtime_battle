@@ -73,23 +73,6 @@ const AXE_IN_CARD_W := 370.0
 ## 左栏(货柜左边): 只站店主。★2026-10-21 用户「商店要这么搞」: 羁绊与背包那一排不在商店里(背包页才有)。
 const LEFT_X := 18.0
 const LEFT_R := CAB_X - 8.0
-## 羁绊总览: 左栏顶部两列。★进 verify_shop_layout 的越界检查
-const SYN_BAR_Y := 98.0
-const SYN_X := LEFT_X
-const SYN_CHIP_W := 214.0
-const SYN_ROWS := 3
-## 羁绊 chip 的字号 / 行高 / 行内类型图标边长。
-## ★★2026-09-28 换 `RichTextLabel` + 行内像素图标后**逐项量过**(探针 `f.get_string_size`):
-##   · 最长的普通 chip「🏺遗物 2/5 ★☆☆☆」= 文字 111 + 图标 16 = **127** ⇒ 176 够, 宽不用动。
-##   · 但**行高不够**: 14px 字的行高是 **22**, 而原来 chip 高写死 20 ——
-##     `Label` 只横向 `clip_text` 所以看不出来, 换 `RichTextLabel` + `clip_contents`
-##     之后就是**底下 2px 被切掉**。⇒ 高度 20 → 22。
-##   · 斧头那条(带砍伐进度)= 252 ⇒ 仍需双倍宽 352(那条双倍宽原来从没生效, 见下方注释)。
-## ★图标 16 而不是 14/18: 源图 32×32 硬边像素画, 只有 16(1:2) 与 32(1×) 落在像素网格上。
-## ★2026-10-21: 14 → 20(手机最小字号); 行高按 20 号字 + 32 图标给 34; 图标 16 → 32(只有 16 / 32 落在像素网格上)。
-const SYN_CHIP_FONT_PX := 20
-const SYN_CHIP_H := 34.0
-const SYN_CHIP_ICON_PX := 32
 const MIN_TOUCH_H := 81.0   # 移动端触摸目标最低高度(用户2026-07-28「买经验按钮很小」: 原36不达标)
 const REFRESH_COST := 2   # 刷新花费。原 phase2_config 那套(SHOP_REFRESH_BASE + shop_refresh_cost())已随死代码清理删除, 现在这里是唯一来源(2026-07-19)
 ## 原背景 shop-bg.png(PixelLab 原生 384×216)不再直接画: 底图 / 货柜两张都是从它离线切出来的(见 _build_backdrop / CAB_TEX)。
@@ -950,7 +933,11 @@ func inspect_card_pos(card: Control, h: float) -> Vector2:
 	var sp := _shelf_pos(maxi(0, _sel))
 	var x: float = (sp.x + SLOT_W + 8.0) if (_sel % 5) <= 1 else (sp.x - w - 8.0)
 	## 底沿不压刷新 / 锁定 / 买经验那一排(ROW_BTN_Y)
-	return Vector2(x, clampf(sp.y, 96.0, maxf(96.0, ROW_BTN_Y - 6.0 - h)))
+	var y: float = clampf(sp.y, 96.0, maxf(96.0, ROW_BTN_Y - 6.0 - h))
+	## 说明很长、卡高到顶住也会伸进按钮那一排 ⇒ 横向挪到按钮左边(verify_ios_ui「按钮被后画的面板盖住」)
+	if y + h > ROW_BTN_Y - 6.0 and x + w > ROW_BTN_X - 8.0:
+		x = maxf(LEFT_X, ROW_BTN_X - 8.0 - w)
+	return Vector2(x, y)
 
 
 ## 详情卡要不要盖在阵容上: 选了货架卡 / 点了「详情」看已有那件 / 斧头四选一待选。
@@ -963,92 +950,8 @@ func _detail_wanted() -> bool:
 		int(GameState.axe_exp_bar), int(GameState.axe_stage), str(GameState.axe_final))
 
 
-## 羁绊总览条(货架下方): 当前激活的每一系 + 距下一档还差几件。
-## ★口径与战斗/背包完全一致: 只数【装在身上】的、按 id 去重(GameState.team_p2_equips_for_synergy)。
-##   ⚠ 不数背包 —— "买到 ≠ 装上"(2026-08-12 圣光护盾白送 bug 的同一条教训)。
-## 用户 2026-08-12:「商店里应该显示目前背包里激活的羁绊和下一个档位需求数量」。
-func _build_synergy_bar() -> void:
-	## ★算法住在 GameState.synergy_rows() —— 出战页 chips 用的是同一份(2026-08-12)。
-	##   去重口径 / "差几件" / 排序三样都在那里, 两处显示才不会漂。
-	var rows: Array = GameState.synergy_rows()
-	## ★2026-10-18: 没有羁绊时整条不画; 有羁绊时只画标签, 描边字直接压在场景上, 不垫暗条。
-	if rows.is_empty():
-		return
-	## ★2026-10-21 手机版: 左栏顶部「羁绊」一行 + 两列 × 至多 SYN_ROWS 行(原来是货架上方一条 14 号字横排,
-	##   iPhone 上约 1.5 毫米)。写法走 Phase2Types.progress_text —— 背包羁绊列 / 出战页同一句。
-	var hdr := Label.new(); hdr.name = "SynergyHeader"
-	hdr.text = "羁绊"
-	hdr.add_theme_font_size_override("font_size", MIN_FONT_PX)
-	hdr.add_theme_color_override("font_color", Color("#ffe3a3"))
-	hdr.add_theme_color_override("font_outline_color", Color("#1a0e05")); hdr.add_theme_constant_override("outline_size", 6)
-	hdr.position = Vector2(SYN_X, SYN_BAR_Y); hdr.size = Vector2(120, 28)
-	hdr.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(hdr)
-	var cells: Array = []          # [row, 文案, 是否双宽, tier]
-	for r in rows:
-		var t := str(r["t"])
-		var txt: String = Phase2Types.icon_bb(t, SYN_CHIP_ICON_PX) + Phase2Types.progress_text(t,
-			int(r["n"]), int(r["tier"]), int(r["need"]), int(r.get("tiers_n", 0)))
-		var wide := false
-		## ★★斧头羁绊的 chip 上【直接带砍伐进度】(用户 2026-09-01:「应该是在羁绊里显示最好啊，这是跟着羁绊走的」)。
-		##   尾巴不带感叹号(门禁⑫ 焊死"不许有带感叹号的推销话术")。这条占满一行(两列宽)。
-		if t == "斧头" and AxePanel.should_show(GameState):
-			var _d4: Dictionary = AxeEvo.display(int(GameState.axe_stage), str(GameState.axe_final))
-			var _nd: int = AxeEvo.need_for_next(int(GameState.axe_stage))
-			var _rd: bool = AxeEvo.final_ready(int(GameState.axe_exp_bar), int(GameState.axe_stage), str(GameState.axe_final))
-			txt += "  ·  %s %d/%d%s" % [str(_d4["name"]), int(GameState.axe_exp_bar), _nd, "  可进化" if _rd else ""]
-			wide = true
-		cells.append([txt, wide, int(r["tier"])])
-	## 排位: 两列流式, 双宽的独占一行; 放不下的折成最后一格「+N」。
-	var col := 0
-	var row := 0
-	var shown := 0
-	for k in range(cells.size()):
-		var wide: bool = cells[k][1]
-		if wide and col == 1:
-			col = 0; row += 1
-		var need_slots: int = 2 if wide else 1
-		var free: int = (SYN_ROWS - row) * 2 - col
-		## 放不下 / 放下之后后面还有却没地方写「+N」⇒ 停
-		if free < need_slots or (k < cells.size() - 1 and free - need_slots < 1):
-			break
-		_syn_chip(cells[k][0], cells[k][2], col, row, wide)
-		shown += 1
-		if wide or col == 1:
-			col = 0; row += 1
-		else:
-			col = 1
-	if shown < cells.size():
-		var more := Label.new(); more.name = "SynergyMore"
-		more.text = "+%d" % (cells.size() - shown)
-		more.add_theme_font_size_override("font_size", MIN_FONT_PX)
-		more.add_theme_color_override("font_color", Color("#ffe3a3"))
-		more.add_theme_color_override("font_outline_color", Color("#1a0e05")); more.add_theme_constant_override("outline_size", 6)
-		var mr: int = mini(row, SYN_ROWS - 1)
-		more.position = Vector2(SYN_X + float(col) * (SYN_CHIP_W + 6.0), SYN_BAR_Y + 30.0 + float(mr) * (SYN_CHIP_H + 2.0))
-		more.size = Vector2(60, SYN_CHIP_H)
-		more.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		more.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(more)
 
 
-## 羁绊一格。★RichTextLabel(行内像素图标), 主题键是 normal_font_size / default_color(照抄 Label 的键静默无效)。
-func _syn_chip(bb: String, tier: int, col: int, row: int, wide: bool) -> void:
-	var chip := RichTextLabel.new(); chip.name = "SynergyChip"
-	chip.bbcode_enabled = true
-	chip.fit_content = false
-	chip.scroll_active = false
-	chip.autowrap_mode = TextServer.AUTOWRAP_OFF
-	chip.clip_contents = true
-	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	chip.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	chip.add_theme_font_size_override("normal_font_size", SYN_CHIP_FONT_PX)
-	chip.add_theme_color_override("default_color", Color("#ffd93d") if tier > 0 else Color("#c9d6e2"))
-	chip.add_theme_color_override("font_outline_color", Color("#1a0e05")); chip.add_theme_constant_override("outline_size", 6)
-	chip.text = bb
-	chip.position = Vector2(SYN_X + float(col) * (SYN_CHIP_W + 6.0), SYN_BAR_Y + 30.0 + float(row) * (SYN_CHIP_H + 2.0))
-	chip.size = Vector2(SYN_CHIP_W * 2.0 + 6.0 if wide else SYN_CHIP_W, SYN_CHIP_H)
-	add_child(chip)
 
 
 ## 完整描述。★实测: 95 件装备的 effectDesc1 【全是纯文本】—— 无 HTML 标签、无方括号
@@ -1539,12 +1442,6 @@ const CARD_TEX_TIER := [
 ]
 ## 选中态【整张换图】而不是给上面那张染色 —— 实测两框边框色差 135(modulate 版只有 26)。
 const CARD_TEX_SEL = preload("res://assets/sprites/shop/card-frame-s.png")
-## 中性档框(不带费用色)。★库里一直有这张、一直没人引用 —— 2026-09-28 起它管两件事:
-##   ① **空货位**的框(买走之后那一格原来是块裸矩形)
-##   ② **已拥有**那圈金边(原来是 2px 纯色描边 + 圆角 = 网页盒)
-##   两处都是"框的形状要在、但不该讲费用档"的场合, 正好是它。
-##   ⇒ 先搜库再动手: 不为这两件事新生成贴图(assets/sprites/shop/ 已有 9 张框)。
-const CARD_TEX_N = preload("res://assets/sprites/shop/card-frame-n.png")
 const CARD_MARGIN := 8       # 量的: 新框 72×72, 边框 7px
 ## 合成指示星(像素·12 帧闪光循环)。★只在「已有 2 件、再买 1 件就合成」时出现 ——
 ## 装备本身就有 ★1/★2/★3 星级, 画一颗星会被读成"这是 ★1 装备", 而每张货架卡都是 ★1 = 零信息。

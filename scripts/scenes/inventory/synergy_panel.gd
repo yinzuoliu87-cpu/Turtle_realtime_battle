@@ -1,5 +1,7 @@
 class_name InvSynergy
 extends RefCounted
+const _AxeEvo = preload("res://scripts/gamedata/axe_evolution.gd")
+const _AxePanel = preload("res://scripts/scenes/shop/axe_panel.gd")
 ## 背包·类型羁绊面板+详情弹框
 ## 类内名不变;外部名加 battle.
 
@@ -268,6 +270,19 @@ func _build_synergy_panel(_leaders: Array) -> void:
 		const _NM_H := 30.0
 		nm.position = Vector2(14, (SYN_ROW_H - _NM_H) * 0.5); nm.size = Vector2(w - 8.0 - 14.0 - 40.0, _NM_H)
 		nm.mouse_filter = Control.MOUSE_FILTER_IGNORE; chip.add_child(nm)
+		## ★★斧头羁绊这一行直接带砍伐进度(用户 2026-09-01「应该是在羁绊里显示最好啊，这是跟着羁绊走的」)。
+		##   原来挂在商店羁绊条上; 2026-10-21 羁绊搬出商店(用户「商店要这么搞」)后跟着搬到这里, 排成这一行的第二行。
+		if typ == "斧头" and _AxePanel.should_show(GameState):
+			var _d4: Dictionary = _AxeEvo.display(int(GameState.axe_stage), str(GameState.axe_final))
+			var _nd: int = _AxeEvo.need_for_next(int(GameState.axe_stage))
+			var _rd: bool = _AxeEvo.final_ready(int(GameState.axe_exp_bar), int(GameState.axe_stage), str(GameState.axe_final))
+			nm.position.y = 8.0
+			var axl := Label.new(); axl.name = "AxeProgress"
+			axl.text = "%s %d/%d%s" % [str(_d4["name"]), int(GameState.axe_exp_bar), _nd, "  可进化" if _rd else ""]
+			axl.add_theme_font_size_override("font_size", 20)
+			axl.add_theme_color_override("font_color", Color("#e8dcc4"))
+			axl.position = Vector2(14, 42); axl.size = Vector2(w - 8.0 - 14.0 - 40.0, 30)
+			axl.mouse_filter = Control.MOUSE_FILTER_IGNORE; chip.add_child(axl)
 		## 「点得开」的静态暗示 —— 像素小箭头(见 `_chevron_tex` 的长注释)。
 		## ★2x 整数放大 + NEAREST: 非整数倍会把 1px 的描边插值成灰边, 那就不是像素画了。
 		## ★右沿留 2px: 槽框的 `content_margin_right = 12` 是内容区边界,

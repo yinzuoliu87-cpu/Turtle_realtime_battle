@@ -159,6 +159,7 @@ func _spawn_in(layer: Control, cap: int, alpha: float) -> void:
 	var dur := _rng.randf_range(4.0, 7.0)
 	var rise := _rng.randf_range(0.6, 1.0) * layer.size.y
 	var tw: Tween = host.create_tween().bind_node(b)
+	TweenKit._stop_on_exit(b, tw)   # 商店移出树(换场景)时立刻停, 不等释放(verify_loop_tween_exit)
 	tw.set_parallel(true)
 	tw.tween_method(func(t: float) -> void:
 		if is_instance_valid(b):
