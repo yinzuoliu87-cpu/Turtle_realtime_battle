@@ -264,11 +264,18 @@ func _choice_box_present() -> void:
 		var ed := fl.find_child("NameEdit", true, false) as LineEdit
 		fl.call("confirm_name", ed.text if ed != null else "")
 	var mm: Node = null
+	var week_seen := false
 	for _w in range(120):
 		await get_tree().process_frame
 		mm = get_tree().current_scene
+		## 10-21: 教程结束后第一次进主菜单先打开本周赛程页(FirstTips.FIRST_WEEK); 那时不出别的首次提示, 关掉之后才出
+		if not week_seen and mm != null and str(mm.scene_file_path).ends_with("MainMenu.tscn") and mm.get("_week_intro") != null 				and is_instance_valid(mm.get("_week_intro")):
+			week_seen = true
+			_ok("★赛程页开着时不同时出「开始第一场对战」(一次一件事)", _tip(mm) == null)
+			mm.call("_close_week_popup")
 		if mm != null and str(mm.scene_file_path).ends_with("MainMenu.tscn") and _tip(mm) != null:
 			break
+	_ok("★跳过 → 起名 → 主菜单 ⇒ 先打开本周赛程页(赛程放教程最后)", week_seen)
 	_ok("★跳过 → 起名 → 主菜单 ⇒ 出「开始第一场对战」", mm != null and _tip(mm) != null and str(_tip(mm).text()) == FT.TEXT_START,
 		str(_tip(mm).text()) if mm != null and _tip(mm) != null else "无")
 	OS.set_environment("ONBOARD", "0")

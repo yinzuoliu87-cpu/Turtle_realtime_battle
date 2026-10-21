@@ -175,6 +175,7 @@ func _overlays() -> Array:
 ## ③ 真战斗
 func _real_battle(td: Node, dummy: Node) -> void:
 	print("  ── ③ 真战斗(教程第一把, 打到结算) ──")
+	GameState.first_tips_seen = {}     # 账号侧: 教程结束时把教程里真显示过的 C2 / C5 / C6 记成看过(④)
 	td.enter(null)
 	td.preset_team()          # = 选龟屏「出战」那一下写的三项(选龟屏本身由 verify_tutorial_flow_v3 真点)
 	GameState.reset_dual_lane()
@@ -195,6 +196,11 @@ func _real_battle(td: Node, dummy: Node) -> void:
 	var blocking := 0
 	var lanes := {}
 	var fr := 0
+	var c3 := {}               # C3 第一次显示那一刻: 点名的龟 / 圈 / 圈住的是谁
+	var c3_tmpl := ""
+	for st6 in steps:
+		if str((st6 as Dictionary).get("_id", "")) == "C3":
+			c3_tmpl = str((st6 as Dictionary).get("text", ""))
 	while fr < FRAME_CAP and is_instance_valid(bt) and str(bt._dl_state) != "done":
 		await get_tree().process_frame
 		fr += 1
@@ -228,6 +234,8 @@ func _real_battle(td: Node, dummy: Node) -> void:
 			if not shown.has(t):
 				shown[t] = fr
 				print("    [帧 %d] 提示「%s」" % [fr, t])
+			if c3.is_empty() and c3_tmpl != "" and int(g.get("_idx")) == 0 and _c3_name(c3_tmpl, t) != "" and g._ring.visible:
+				c3 = _c3_probe(bt, td, g, _c3_name(c3_tmpl, t))
 			if presenting and g.is_tip():
 				shown_in_present += 1
 			if g.is_tip() and g.is_blocking():
@@ -264,6 +272,14 @@ func _real_battle(td: Node, dummy: Node) -> void:
 			_ok("★★%s 事件「%s」没发生 ⇒ 那一句一帧都没出(不卡流程)" % [id, trig], hit == "", hit)
 	for t3 in shown.keys():
 		_ok("★显示的「%s」占位都填了" % str(t3).left(14), not str(t3).contains("{"))
+	## ★C3 圈的就是点名的那只(10-21 录屏: 文案点名【石头龟】, 圈却像套在旁边小将的血条上)
+	_ok("分母: C3 显示过并量到了", not c3.is_empty(), str(c3))
+	if not c3.is_empty():
+		_ok("★★C3 点名的龟 == 导演圈的那只(同一个单位)", bool(c3.get("same_ctx", false)), str(c3))
+		_ok("★★C3 圈住点名那只的血条 + 龟能槽(整组条)", bool(c3.get("bar_in", false)), str(c3))
+		_ok("★★C3 圈住点名那只的身体(脚底投影点在圈里)", bool(c3.get("feet_in", false)), str(c3))
+		_ok("★C3 圈的中心离点名那只最近(不是别的单位)", str(c3.get("nearest", "")) == "named", str(c3))
+		_ok("★★C3 圈里没有别的单位叠着(看见的就是点名那只)", (c3.get("others_in_ring", ["?"]) as Array).is_empty(), str(c3.get("others_in_ring", [])))
 	_ok("★★演出期间一帧提示都没出", shown_in_present == 0, "%d 帧" % shown_in_present)
 	_ok("★★提示在屏的任何一帧都不挡点击", blocking == 0, "%d 帧" % blocking)
 	_ok("★C6: 教程战斗必赢 2 : 0 ⇒ 没进终极战场(C6 不出是对的)", not lanes.has("final"))
@@ -272,6 +288,19 @@ func _real_battle(td: Node, dummy: Node) -> void:
 	for _i in range(5):
 		await get_tree().process_frame
 	td.end_tutorial("abandoned")
+	## ④ 教程里真显示过的两路 / 龟蛋那两句 ⇒ 账号侧记成看过(跳过教程的玩家才会在首场正式对战再看到); 没显示过的终极战场那句不记
+	var FT = load("res://scripts/systems/onboarding/first_tips.gd")
+	var seen: Dictionary = GameState.first_tips_seen
+	var t2 := ""
+	var t5 := ""
+	for st5 in steps:
+		if str((st5 as Dictionary).get("_id", "")) == "C2":
+			t2 = str((st5 as Dictionary).get("text", ""))
+		if str((st5 as Dictionary).get("_id", "")) == "C5":
+			t5 = str((st5 as Dictionary).get("text", ""))
+	_ok("分母: 教程里 C2 / C5 真显示过", shown.has(t2) and shown.has(t5))
+	_ok("★★教程结束 ⇒ 真显示过的 C2 / C5 记成账号看过(首场正式对战不再出)", bool(seen.get(FT.FIRST_LANES, false)) and bool(seen.get(FT.FIRST_EGG, false)), str(seen))
+	_ok("★★教程里没出的 C6(没进终极战场)不记 ⇒ 第一次真进终极战场时还会讲", not bool(seen.get(FT.FIRST_FINAL, false)), str(seen))
 	OS.set_environment("TURTLE_SEED", "")
 
 
@@ -283,3 +312,58 @@ func _matches(tmpl: String, got: String, casters: Array) -> bool:
 		if got == tmpl.replace("{pet}", str(nm)):
 			return true
 	return false
+
+
+## C3 文案里点名的龟名(模板 {pet} 那一段)。不是 C3 ⇒ ""。
+func _c3_name(tmpl: String, got: String) -> String:
+	var i := tmpl.find("{pet}")
+	if i < 0:
+		return ""
+	var pre := tmpl.substr(0, i)
+	var post := tmpl.substr(i + 5)
+	if not got.begins_with(pre) or not got.ends_with(post) or got.length() <= pre.length() + post.length():
+		return ""
+	return got.substr(pre.length(), got.length() - pre.length() - post.length())
+
+
+## C3 显示那一刻: 点名那只(按名字在我方龟里找, 测试自己找)的条 / 脚底是否在圈里, 圈中心离谁最近。
+func _c3_probe(bt: Node, td: Node, g: Node, nm: String) -> Dictionary:
+	var ring := Rect2(g._ring.position, g._ring.size)
+	var named = null
+	for u in bt._units:
+		if str(u.get("side", "")) == "left" and not bool(u.get("_isMinion", false)) and not bool(u.get("is_trainer", false)) 				and bool(u.get("alive", false)) and str((DataRegistry.pet_by_id.get(str(u.get("id", "")), {}) as Dictionary).get("name", "")) == nm:
+			named = u
+	var out := {"name": nm, "ring": ring}
+	if named == null:
+		return out
+	var cam: Camera3D = bt._cam
+	var feet: Vector2 = cam.unproject_position(bt._world_pos(named["pos"], 0.0))
+	var bar := (named["bar_root"] as Control).get_global_rect()
+	out["same_ctx"] = is_same(td._btips_cur_ctx, named)
+	out["bar_in"] = ring.grow(1.0).encloses(bar)
+	out["feet_in"] = ring.has_point(feet)
+	out["feet"] = feet
+	out["bar"] = bar
+	## 圈中心到各单位(头顶条中心)的距离: 最近的是不是点名那只
+	var best := 1e9
+	var who := ""
+	for u in bt._units:
+		var br = u.get("bar_root", null)
+		if br == null or not is_instance_valid(br) or not bool(u.get("alive", false)) or not (br as Control).is_visible_in_tree():
+			continue
+		var c: Vector2 = cam.unproject_position(bt._world_pos(u["pos"], float(u.get("height", 0.0)) * 0.5))
+		var d := c.distance_to(ring.get_center())
+		if d < best:
+			best = d
+			who = "named" if is_same(u, named) else str(u.get("id", ""))
+	out["nearest"] = who
+	## 圈里有没有别的单位的头顶条(别的单位叠在点名那只身上 ⇒ 圈里看见的是别人)
+	var others: Array = []
+	for u in bt._units:
+		var br2 = u.get("bar_root", null)
+		if is_same(u, named) or br2 == null or not is_instance_valid(br2) or not bool(u.get("alive", false)) or not (br2 as Control).is_visible_in_tree():
+			continue
+		if ring.intersects((br2 as Control).get_global_rect()):
+			others.append(str(u.get("id", "")))
+	out["others_in_ring"] = others
+	return out

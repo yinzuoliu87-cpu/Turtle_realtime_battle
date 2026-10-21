@@ -99,6 +99,12 @@ var _btips_cur_ctx: Dictionary = {}   # 此刻那一句的单位
 var _btips_wait: float = 0.0          # 此刻那一句从挂上到第一次显示等了多久(游戏没给机会显示就丢掉, 不卡后面的)
 var _btips_cur_shown: bool = false
 var _btips_log: Array = []            # 显示过的步骤 _id(门禁 / 录屏读)
+var _btips_cur_step: Dictionary = {}  # 此刻那一句的步骤
+## ★首场正式对战模式(不在沙盒里, FirstTips 的 FIRST_LANES / FIRST_EGG / FIRST_FINAL): 同一套事件队列, 只挂还没看过的那几句,
+##   真显示出来那一刻记成看过。为假 = 教程模式(或什么都没挂)。
+var _btips_first: bool = false
+## 教程战斗里真显示过的步骤 _id(→ true)。教程结束时把其中属于 FirstTips.BATTLE_TIP_KEYS 的记成看过。
+var _btips_tut_shown: Dictionary = {}
 ## 一句挂上后这么久还没机会显示(锚点那只龟死了 / 战场换了)⇒ 丢掉, 让后面的上。
 const TIP_STALE_SEC := 8.0
 
@@ -112,6 +118,7 @@ func _ready() -> void:
 ##   (教程里已经没有返回入口了; 这条是给下一个人新写一条退出路径时兜底的。)
 func _process(_dt: float) -> void:
 	if _sandbox.is_empty():
+		_tick_first_battle(_dt)
 		return
 	var tr := get_tree()
 	var cs: Node = tr.current_scene if tr != null else null
@@ -253,6 +260,12 @@ func end_tutorial(reason: String) -> void:
 	##   「教程结束后存档 = 进教程前那份只差 onboarded」(完成 == 跳过逐字节)是门禁守着的; 它随起名那一次存档落盘。
 	if first_run and reason == "completed":
 		GameState.novice_menu = true
+	## 教程战斗里真显示过的两路 / 龟蛋 / 终极战场那几句 ⇒ 首场正式对战不再出(FirstTips 同一个键)。同上: save() 之后、只改内存。
+	var FT = load("res://scripts/systems/onboarding/first_tips.gd")
+	for sid in _btips_tut_shown.keys():
+		if FT.BATTLE_TIP_KEYS.has(sid):
+			FT.mark_seen(str(FT.BATTLE_TIP_KEYS[sid]))
+	_btips_tut_shown = {}
 	print("[Tutorial] end reason=", reason)
 	var tr := get_tree()
 	var cur: String = str(tr.current_scene.scene_file_path) if tr != null and tr.current_scene != null else ""
@@ -413,14 +426,42 @@ func attach_guide(host: Node, scene_id: String, anchor_fn: Callable = Callable()
 	## 结算引导上来 ⇒ 战斗里还没放完的不阻塞提示一并收掉(不与结算屏叠在一起), 队里没轮到的也不再出。
 	_stop_battle_tips()
 	var TG = load("res://scripts/scenes/TutorialGuide.gd")
-	_guide = TG.attach(host, key, Callable(), anchor_fn, ready_fn)
+	var af := anchor_fn
+	## 商店多一个导演补的锚点 merge_cell(E4b「集齐 3 件……自动合成」挪到买下那一刻讲; 商店场景本身不改)。
+	if not af.is_valid() and key == "shop":
+		af = _shop_anchor.bind(host)
+	_guide = TG.attach(host, key, Callable(), af, ready_fn)
 	return _guide
+
+
+## 商店锚点: merge_cell = 刚合成升星的那一件(ShopScene.merge_tip_target, 首次提示 FIRST_MERGE 圈的同一格; 没摆出来 ⇒ 顶栏「背包」);
+##   其余交给商店自己的 _tutorial_anchor。
+func _shop_anchor(nm: String, host: Node) -> Rect2:
+	var TG = load("res://scripts/scenes/TutorialGuide.gd")
+	if nm == "merge_cell":
+		if host != null and is_instance_valid(host) and host.has_method("merge_tip_target"):
+			return TG.vis_rect(host.call("merge_tip_target", TUT_MERGE_ITEM, 2))
+		return Rect2()
+	if host != null and is_instance_valid(host) and host.has_method("_tutorial_anchor"):
+		return host.call("_tutorial_anchor", nm)
+	return Rect2()
+
+
+## 买下之后没合成出 2 星(本不该发生: 教程开局配置保证凑满 3 件)⇒ 「自动合成」那一句不讲, 直接下一步。
+func _skip_merge_tip_if_none() -> void:
+	for it in GameState.persistent_bench:
+		if it is Dictionary and str((it as Dictionary).get("id", "")) == TUT_MERGE_ITEM and int((it as Dictionary).get("star", 1)) >= 2:
+			return
+	if _guide != null and is_instance_valid(_guide) and not _guide.is_queued_for_deletion():
+		_guide.notify("tip_merge_seen")
 
 
 ## 某个动作发生了 ⇒ 转给当前引导条(它自己比对 advanceOn)。非教程 / 没有引导 ⇒ 什么都不做。
 func notify(event: String) -> void:
 	if _guide != null and is_instance_valid(_guide) and not _guide.is_queued_for_deletion():
 		_guide.notify(event)
+		if event == "item_bought" and is_active():
+			_skip_merge_tip_if_none.call_deferred()
 
 
 ## 当前阶段该挂哪套引导步骤。空 = 这一屏本阶段没有引导。
@@ -459,6 +500,7 @@ func _attach_battle_tips(bt: Node) -> void:
 	_btips_bt = bt
 	_btips_steps = load("res://scripts/scenes/TutorialGuide.gd").steps_for(key)
 	_btips_log = []
+	_btips_tut_shown = {}
 	load("res://scripts/systems/onboarding/tutorial_buff.gd").attach_badge(bt)   # 「教程加成」签(用 load: 那边 preload 了本文件)
 
 
@@ -474,6 +516,8 @@ func _stop_battle_tips() -> void:
 	_btips_cur_ctx = {}
 	_btips_wait = 0.0
 	_btips_cur_shown = false
+	_btips_cur_step = {}
+	_btips_first = false
 
 
 ## 每帧: 看哪个事件第一次发生了 ⇒ 排队; 当前那一句放完 / 过期 ⇒ 挂下一句。
@@ -501,6 +545,8 @@ func _tick_battle_tips(dt: float) -> void:
 			_btips_queue.insert(at, q)
 	if _battle_tips != null and is_instance_valid(_battle_tips) and not _battle_tips.is_queued_for_deletion():
 		if _battle_tips.is_showing():
+			if not _btips_cur_shown:
+				_on_battle_tip_shown(_btips_cur_step)
 			_btips_cur_shown = true
 		elif not _btips_cur_shown and _battle_ready(bt):
 			## ★只在「开打着、本可以显示」时计过期(战场之间的演出不算): 等到下一个战场开打照样能出
@@ -517,12 +563,71 @@ func _tick_battle_tips(dt: float) -> void:
 		if str((_btips_steps[i2] as Dictionary).get("trigger", "")) == "fight" and not _btips_fired.has(i2):
 			return
 	var nx: Dictionary = _btips_queue.pop_front()
+	## C3 点名哪只: 挂上这一刻, 在放过技能的我方龟里挑身上没有别的单位叠着的那只(文案与圈都跟着它; 都挤着就用原来那只)
+	if str(nx.get("trigger", "")) == "ally_skill":
+		var pick = _clear_caster(bt, nx.get("_ctx", {}))
+		if not is_same(pick, nx.get("_ctx", {})):
+			nx["_ctx"] = pick
+			nx["text"] = _fill_battle_text(str((_btips_steps[int(nx.get("_idx", 0))] as Dictionary).get("text", "")), pick)
 	_btips_cur_ctx = nx.get("_ctx", {})
+	_btips_cur_step = nx
 	_btips_wait = 0.0
 	_btips_cur_shown = false
 	_btips_log.append(str(nx.get("_id", nx.get("advanceOn", ""))))
 	var TG = load("res://scripts/scenes/TutorialGuide.gd")
 	_battle_tips = TG.attach_steps(bt, [nx], Callable(), _battle_anchor.bind(bt), _battle_ready.bind(bt))
+
+
+## 一句第一次真显示在屏上: 教程模式记下 _id(结束时记成看过); 首场正式对战模式当场记成看过(FirstTips 账号键)。
+func _on_battle_tip_shown(st: Dictionary) -> void:
+	if _btips_first:
+		var k := str(st.get("_ft_key", ""))
+		if k != "":
+			load("res://scripts/systems/onboarding/first_tips.gd").mark_seen(k)
+	else:
+		_btips_tut_shown[str(st.get("_id", ""))] = true
+
+
+# ═══════════════════════════════ 首场正式对战的三句(跳过教程的玩家) ═══════════════════════════════
+
+## 不在沙盒里时每帧调: 新的战斗场景成了当前场景 ⇒ 看要不要挂首场正式对战那三句。
+##   ★只在自己挂上的时候推队列(`_btips_first`): 门禁手动喂队列(不在沙盒里)时不重复推。
+func _tick_first_battle(dt: float) -> void:
+	var tr := get_tree()
+	var cs: Node = tr.current_scene if tr != null else null
+	if cs != null and str(cs.scene_file_path) == BATTLE and cs.get_instance_id() != _battle_tips_scene_id:
+		_battle_tips_scene_id = cs.get_instance_id()
+		_attach_first_battle_tips(cs)
+	if _btips_first and _btips_bt != null:
+		_tick_battle_tips(dt)
+
+
+## 跳过教程(或教程里没轮到某句)的玩家, 第一场正式对战: 两路 / 龟蛋 / 终极战场各一句(用户 2026-10-21)。
+##   句子 = 教程战斗 C2 / C5 / C6 原句(步骤表同一份), 挂在同一个战斗事件上, 同一种不阻塞提示条。
+##   ★只在自己的正式对局里出(本局在录 = 积分赛 / 闯关 / 决赛自己那一场; 或看自己那一场周六服务器局):
+##     回放 / 观赛别人 / 调试场 / 评审台一律不出。教程中 / 没 onboarded ⇒ FirstTips.can_show 挡住。
+func _attach_first_battle_tips(bt: Node) -> void:
+	_stop_battle_tips()
+	if not is_own_match(bt):
+		return
+	var FT = load("res://scripts/systems/onboarding/first_tips.gd")
+	var steps: Array = FT.battle_tip_steps(true)
+	if steps.is_empty():
+		return
+	_btips_bt = bt
+	_btips_steps = steps
+	_btips_log = []
+	_btips_first = true
+
+
+## 这一场是不是玩家自己的正式对局。
+func is_own_match(bt: Node) -> bool:
+	if bt == null or GameState == null or bool(GameState.get("tutorial_active")):
+		return false
+	var rp = bt.get("_replay")
+	if rp != null and str(rp.get("mode")) == "rec":
+		return true
+	return load("res://scripts/systems/onboarding/first_tips.gd").is_server_match(bt)
 
 
 ## 战斗里显示过 / 挂过的提示(按顺序, 分镜编号)。门禁读。
@@ -613,7 +718,16 @@ func _battle_anchor(nm: String, bt: Node) -> Rect2:
 				return Rect2()
 			return load("res://scripts/scenes/TutorialGuide.gd").vis_rect(bn.get("badge"))
 		"cast_unit":
-			return _unit_bar_rect(_btips_cur_ctx)
+			## ★v5 修(10-21 录屏自评): 原来只圈头顶那组小条(等级牌 + 龟能细条, 82×14), 旁边敌方小将的血条叠在上沿,
+			##   看起来圈的是那只小将。⇒ 圈【{pet} 那一只】的身体 + 它头顶整组条(血条 + 龟能槽), 与文案点名的是同一个单位(_btips_cur_ctx)。
+			var rr := _cast_rect(bt, _btips_cur_ctx)
+			if rr.size.x <= 0.0:
+				return Rect2()
+			## ★别的单位叠在它身上(近战扎堆: 10-21 录屏里一只敌方小将正站在石头龟身上, 圈里看见的是小将)⇒ 先不显示,
+			##   等它们分开; 等了 CAST_CROWD_WAIT 秒还挤着就照常显示(不让这一句卡住队列)。
+			if not _btips_cur_shown and _btips_wait < CAST_CROWD_WAIT and _crowded(bt, _btips_cur_ctx, rr):
+				return Rect2()
+			return rr
 		"trainer":
 			return _unit_body_rect(bt, _btips_cur_ctx)
 		"lane_plate":
@@ -636,6 +750,50 @@ func _battle_anchor(nm: String, bt: Node) -> Rect2:
 	return Rect2()
 
 
+## C3 圈点名那只时, 别的单位挤在圈里最多等这么久(游戏秒, 与过期同一个钟 _btips_wait; 过期是 TIP_STALE_SEC)。
+const CAST_CROWD_WAIT := 6.0
+
+
+## 放过技能的我方龟里, 身上没有别的单位叠着的那只; 都挤着(或只有一只)⇒ 原来那只。
+func _clear_caster(bt: Node, cur):
+	var units = bt.get("_units")
+	if not (units is Array):
+		return cur
+	if cur is Dictionary and not (cur as Dictionary).is_empty() and not _crowded(bt, cur, _cast_rect(bt, cur)):
+		return cur
+	for u in units:
+		if str(u.get("side", "")) == "left" and not bool(u.get("is_trainer", false)) and not bool(u.get("is_summon", false)) 				and not bool(u.get("_isMinion", false)) and not bool(u.get("_isEgg", false)) 				and float(u.get("skill_gcd_until", 0.0)) > 0.0 and bool(u.get("alive", false)):
+			var r := _cast_rect(bt, u)
+			if r.size.x > 0.0 and not _crowded(bt, u, r):
+				return u
+	return cur
+
+
+## 一只龟的「身体 + 头顶整组条」屏幕框(C3 圈的就是它)。
+func _cast_rect(bt: Node, u) -> Rect2:
+	var br := _unit_bar_rect(u)
+	if br.size.x <= 0.0:
+		return Rect2()
+	var bb := _unit_body_rect(bt, u)
+	return br.merge(bb) if bb.size.x > 0.0 else br
+
+
+## 圈 rr(点名那只的身体 + 头顶条)里有没有别的活单位的头顶条(= 有别的单位叠在它身上)。
+func _crowded(bt: Node, u, rr: Rect2) -> bool:
+	var units = bt.get("_units")
+	if not (units is Array):
+		return false
+	for o in units:
+		if is_same(o, u) or not bool(o.get("alive", false)) or bool(o.get("is_trainer", false)):
+			continue
+		var ob = o.get("bar_root", null)
+		if ob == null or not is_instance_valid(ob) or not (ob is Control) or not (ob as Control).is_visible_in_tree():
+			continue
+		if rr.intersects((ob as Control).get_global_rect()):
+			return true
+	return false
+
+
 ## 一只龟头顶那组条(血条 + 龟能槽)的屏幕矩形。龟死了 / 条没显示 ⇒ 空。
 func _unit_bar_rect(u) -> Rect2:
 	if not (u is Dictionary) or not bool((u as Dictionary).get("alive", false)):
@@ -643,8 +801,9 @@ func _unit_bar_rect(u) -> Rect2:
 	var root = (u as Dictionary).get("bar_root", null)
 	if root == null or not is_instance_valid(root) or not (root is Control) or not (root as Control).is_visible_in_tree():
 		return Rect2()
-	var r := Rect2()
-	var first := true
+	## 整组条的底框(血条画在它自己的 _draw 里, 不是子控件) + 各子控件(等级牌 / 龟能槽)
+	var r := (root as Control).get_global_rect()
+	var first := r.size.x <= 0.0
 	for c in (root as Control).find_children("*", "Control", true, false):
 		var cc := c as Control
 		if not cc.is_visible_in_tree():

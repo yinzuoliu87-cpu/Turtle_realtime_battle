@@ -517,6 +517,19 @@ func _full_pass() -> void:
 		return
 	w = await _wait_text(_step_text("shop", 0), 300)
 	_ok("★E1 先讲「%s」(不阻塞, 自己前进)" % _step_text("shop", 0), w >= 0, "实测「%s」" % _guide_text())
+	## v5 修(10-21 录屏自评): E1 气泡原来压住下排货架一半 ⇒ 放到顶上, 金色箭头朝下指等级牌
+	var g1 := _guide()
+	for _k in range(30):
+		if g1 != null and g1.is_showing() and g1._hand.visible:
+			break
+		await _frames(1)
+	var shelf_r: Rect2 = sh._tutorial_anchor("shelf")
+	var lv_r: Rect2 = sh._tutorial_anchor("level_row")
+	_ok("分母: E1 显示着、货架 / 等级牌都解析得出", g1 != null and g1.is_showing() and shelf_r.size.x > 0.0 and lv_r.size.x > 0.0)
+	if g1 != null:
+		_ok("★★E1 气泡不压货架上的装备(5×2 货架整块)", not g1.panel_rect().intersects(shelf_r), "气泡 %s / 货架 %s" % [str(g1.panel_rect()), str(shelf_r)])
+		_ok("★★E1 有金色箭头、箭尖落在等级牌上", g1._hand.visible and lv_r.grow(2.0).has_point(g1.arrow_tip()), "箭尖 %s / 等级牌 %s" % [str(g1.arrow_tip()), str(lv_r)])
+		_ok("★E1 仍不挡点击(不阻塞提示)", g1.is_tip() and not g1.is_blocking())
 	var xb0 = sh.get("_tut_xp_btn")
 	_ok("★★E1 时「买经验」还不在屏上(分镜「按钮教到才出现」)", xb0 == null or not is_instance_valid(xb0) or not (xb0 as Control).is_visible_in_tree())
 	w = await _wait_text(_step_text("shop", 1), 600)
@@ -579,8 +592,23 @@ func _full_pass() -> void:
 	var b0: Dictionary = GameState.persistent_bench[0] if GameState.persistent_bench.size() > 0 else {}
 	_ok("★★F3: 预放 2 件 + 买 1 件 ⇒ 正式规则自动合成 1 件 2 星", GameState.persistent_bench.size() == 1
 		and str(b0.get("id", "")) == str(td.TUT_MERGE_ITEM) and int(b0.get("star", 1)) == 2, str(GameState.persistent_bench))
+	## v5 修(10-21 录屏自评): 合成就发生在买下那一刻 ⇒ 「集齐 3 件……自动合成」挪到商店里买下之后讲(原在背包 F3)
 	w = await _wait_text(_step_text("shop", 4))
-	_ok("★成交 ⇒ E5「%s」" % _step_text("shop", 4), w >= 0, "实测「%s」" % _guide_text())
+	_ok("★★成交且合成了 ⇒ 当场讲 E4b「%s」(不阻塞, 自己前进)" % _step_text("shop", 4), w >= 0, "实测「%s」" % _guide_text())
+	var g4b := _guide()
+	_ok("★E4b 不挡点击、圈得出目标(刚合成那件 / 顶栏背包)", g4b != null and g4b.is_tip() and not g4b.is_blocking()
+		and (g4b._target_rect("merge_cell") as Rect2).size.x > 0.0)
+	if g4b != null:
+		## 买下那一刻商店自己飘一条成交提示(「…合成 ★2」); E4b 的气泡不许压住它, 也不压货架
+		var toast_hit := false
+		for l in sh.find_children("*", "Label", true, false):
+			var lt := (l as Label).text
+			if lt.contains("合成") and (l as Label).is_visible_in_tree() and not g4b.is_ancestor_of(l):
+				if g4b.panel_rect().intersects((l as Label).get_global_rect()):
+					toast_hit = true
+		_ok("★E4b 气泡不压商店的成交提示、不压货架", not toast_hit and not g4b.panel_rect().intersects(sh._tutorial_anchor("shelf")), str(g4b.panel_rect()))
+	w = await _wait_text(_step_text("shop", 5), 600)
+	_ok("★E4b 到点 ⇒ E5「%s」" % _step_text("shop", 5), w >= 0, "实测「%s」" % _guide_text())
 	_disk_untouched("商店")
 	(sh._top_bar.action_btns[0] as Button).emit_signal("pressed")
 
@@ -601,23 +629,34 @@ func _full_pass() -> void:
 		inv._on_bench_click(0)
 	w = await _wait_text(_step_text("inventory", 1))
 	_ok("★点装备 ⇒ F2「%s」" % _step_text("inventory", 1), w >= 0, "实测「%s」" % _guide_text())
+	## v5 修: F2 的箭头指在一只龟的卡上; 「完成教程」到 F6 才出现(之前它在左上, 箭头从它正下方伸出来像在指它)
+	var g2 := _guide()
+	var fl_r: Rect2 = inv._tutorial_anchor("first_leader")
+	_ok("★★F2 箭头尖落在一只龟的卡上(first_leader)", g2 != null and fl_r.size.x > 0.0 and fl_r.grow(2.0).has_point(g2.arrow_tip()),
+		"箭尖 %s / 卡 %s" % [str(g2.arrow_tip()) if g2 != null else "?", str(fl_r)])
+	_ok("★★F2 时「完成教程」还不在屏上(教到 F6 才出现)", inv._tut_finish_btn != null and not inv._tut_finish_btn.is_visible_in_tree())
 	var n0 := int(GameState.team_equipped_count())
 	inv._dl_click("top", 0)
 	w = await _wait_text(_step_text("inventory", 2))
 	_ok("★★X1: 真装上了(全队件数 +1)", int(GameState.team_equipped_count()) == n0 + 1, "%d → %d" % [n0, int(GameState.team_equipped_count())])
-	_ok("★装上 ⇒ F3「%s」(不阻塞, 自己前进)" % _step_text("inventory", 2), w >= 0, "实测「%s」" % _guide_text())
-	var g3 := _guide()
-	_ok("★★F3 不挡点击", g3 != null and g3.is_tip() and not g3.is_blocking())
-	w = await _wait_text(_step_text("inventory", 3), 600)
-	_ok("★F3 到点自己换成 F4「%s」" % _step_text("inventory", 3), w >= 0, "实测「%s」" % _guide_text())
+	_ok("★装上 ⇒ F4「%s」(合成那句已在商店讲过, 背包不再讲)" % _step_text("inventory", 2), w >= 0, "实测「%s」" % _guide_text())
+	var merge_txt := ""
+	for st_m in TG.steps_for("shop"):
+		if str((st_m as Dictionary).get("_id", "")) == "E4b":
+			merge_txt = str((st_m as Dictionary).get("text", ""))
+	var inv_has_merge := false
+	for st_i in TG.steps_for("inventory"):
+		if str((st_i as Dictionary).get("text", "")) == merge_txt:
+			inv_has_merge = true
+	_ok("★背包引导里不再有合成那一句(只在商店讲一次)", merge_txt != "" and not inv_has_merge)
 	var fb := inv.find_child("FormationBtn", true, false) as Button
 	_ok("★★v3: 教程里顶栏「站位」在且可见(原来被藏起来)", fb != null and fb.is_visible_in_tree())
 	if fb == null:
 		return
 	_check_exits(inv, "背包·站位钮")
 	await _click(fb)
-	w = await _wait_text(_step_text("inventory", 4))
-	_ok("★真点「站位」⇒ 面板开 ⇒ F5「%s」" % _step_text("inventory", 4), w >= 0 and inv._formation.is_open(), "实测「%s」" % _guide_text())
+	w = await _wait_text(_step_text("inventory", 3))
+	_ok("★真点「站位」⇒ 面板开 ⇒ F5「%s」" % _step_text("inventory", 3), w >= 0 and inv._formation.is_open(), "实测「%s」" % _guide_text())
 	var tok := inv.find_child("Token_top_0", true, false) as Control
 	_ok("分母: 上战场第一只龟的头像在", tok != null)
 	if tok == null:
@@ -626,27 +665,28 @@ func _full_pass() -> void:
 	## 只点一下(不拖)不算
 	await _click(tok)
 	await _frames(10)
-	_ok("★只点一下龟(不拖)不前进", _guide_text() == _step_text("inventory", 4))
+	_ok("★只点一下龟(不拖)不前进", _guide_text() == _step_text("inventory", 3))
 	await _drag(tok, Vector2(-90, 60), 10)
 	var off1 = (GameState.get_dual_lineup()["top"][0] as Dictionary).get("off", null)
 	print("    [站位] 拖动前 off=%s 拖动后 off=%s" % [str(off0), str(off1)])
 	_ok("★分母: 真拖动改了沙盒里的阵容(上战场第一只的 off 变了)", off1 != null and str(off1) != str(off0), "%s → %s" % [str(off0), str(off1)])
 	_disk_untouched("站位·拖动后")
-	w = await _wait_text(_step_text("inventory", 5))
-	_ok("★真拖一下 ⇒ 提示「%s」" % _step_text("inventory", 5), w >= 0, "实测「%s」" % _guide_text())
+	w = await _wait_text(_step_text("inventory", 4))
+	_ok("★真拖一下 ⇒ 提示「%s」" % _step_text("inventory", 4), w >= 0, "实测「%s」" % _guide_text())
 	var done := inv.find_child("FormationDone", true, false) as Control
 	_ok("分母: 「完成」在", done != null)
 	if done == null:
 		return
 	await _click(done)
-	w = await _wait_text(_step_text("inventory", 6))
-	_ok("★真点「完成」⇒ 面板关 ⇒ F6「%s」" % _step_text("inventory", 6), w >= 0 and not inv._formation.is_open(), "实测「%s」" % _guide_text())
+	w = await _wait_text(_step_text("inventory", 5))
+	_ok("★真点「完成」⇒ 面板关 ⇒ F6「%s」" % _step_text("inventory", 5), w >= 0 and not inv._formation.is_open(), "实测「%s」" % _guide_text())
 	_disk_untouched("背包")
 	_ok("★★★教程期间(到这里)对服务器的写请求 = 0", _writes_in_tutorial().is_empty(), str(_writes_in_tutorial()))
 	## 教程里节拍器到点 / 切后台 ⇒ 产品会调这一个入口推云存档; 教程闸必须挡住
 	SB.maybe_push_save(true)
 	await _frames(3)
 	_ok("★★教程里强推一次云存档 ⇒ 仍是 0 条写请求", _writes_in_tutorial().is_empty(), str(_writes_in_tutorial()))
+	_ok("★★F6 时「完成教程」出现了", inv._tut_finish_btn != null and inv._tut_finish_btn.is_visible_in_tree())
 	await _click(inv._tut_finish_btn)
 
 	# ── 结束 ──
@@ -717,6 +757,12 @@ func _team_select_pass(td: Node) -> bool:
 	_disk_untouched("选龟")
 	_ok("★选龟屏只有教程固定池 %d 只" % td.FIXED_TEAM.size(), (ts._grid_flow as Node).get_child_count() == td.FIXED_TEAM.size(),
 		"%d 张" % (ts._grid_flow as Node).get_child_count())
+	## v5 修(10-21 录屏自评): 页名与引导用同一个词(龟, 不是「统领」); 稀有度筛选那一排在 3 只的固定池里是空签 ⇒ 不显示
+	var ttl: Label = ts.get("_ent_title")
+	_ok("★★教程选龟屏页名 =「%s」(与引导「选出 3 只龟」同一个词, 不出现「统领」)" % ts.TUT_TITLE, ttl != null and ttl.text == ts.TUT_TITLE
+		and not ttl.text.contains("统领") and ttl.text.contains("龟"), ttl.text if ttl != null else "null")
+	var rail: Control = ts.get("_ent_rail")
+	_ok("★★教程选龟屏不显示稀有度筛选(SSS/SS/S/A/B/C)", rail != null and not rail.is_visible_in_tree())
 	_check_exits(ts, "选龟")
 	var seen_names: Array = []
 	for k in range(3):

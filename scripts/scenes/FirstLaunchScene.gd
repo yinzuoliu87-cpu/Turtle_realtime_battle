@@ -19,7 +19,11 @@ extends Control
 ##       (背包乱斗BackpackBrawl/00m18.8s_打完商店才起名.jpg、MarvelSnap/04m37.5s_起名.jpg)。
 ##       写名字走设置页同一个函数 `SettingsScene.rename_apply`(规则 / 存档 / 云存档标脏同一条链, 不另写一份)。
 ##
-## ★文案: 每屏一句短句, 不口语化(memory fb-no-colloquial-copy); 「欢迎来到斗龟场」是用户点名要留的(10-07)。
+## ★2026-10-21 再改(用户「开始的时候这些语气根本不是商业游戏吧而且也没介绍斗龟场是什么」「顺序不对吧，哪些东西是放在新手教程里面的」
+##   「赛程…应该放在教程最后面吧」): 介绍只剩 **1 屏**(标题 + 一句「在这里，你将……」), 然后问教程。
+##   两路 / 龟蛋 / 商店只在教程里用到时教; 每周赛程挪到教程结束后第一次进主菜单(MainMenuScene._first_week);
+##   跳过教程的玩家第一场正式对战再补两路 / 龟蛋 / 终极战场三句(TutorialDirector._attach_first_battle_tips)。
+## ★文案: 不口语化(memory fb-no-colloquial-copy); 「欢迎来到斗龟场」是用户点名要留的(10-07); 那一句是用户 10-21 定稿原句。
 ## ★背景: 本游戏真实画面截图(assets/sprites/intro/, tests/_shot_intro_pages.gd 拍的), 不借别的界面的素材。
 ## ★时间全按 `_process` 的 delta 自己数(不建 tween): 门禁可以一步一步喂, 也不受场景树 tween 在无头下推进不稳的影响。
 
@@ -27,18 +31,20 @@ const MAIN_MENU := "res://scenes/MainMenu.tscn"
 const _P2C := preload("res://scripts/gamedata/phase2_config.gd")
 const _BE := preload("res://scripts/net/backend.gd")
 
-## 介绍页。text = 一句短句; title = 只有第一页有(用户 10-07「欢迎来到斗龟场还是要留的」)。
+## 介绍页(只有 1 屏, 用户 10-21)。title = 「欢迎来到斗龟场」(用户 10-07 要留); text = 用户 10-21 定稿那句去掉开头与标题重复的半句。
 ## dim = 背景压暗系数(字多的界面截图压暗一些, 让那一句先被读到; Snap 01:07 规则条下面的对局整块虚化压暗)。
-## 周赛程三个名字与「本周赛程」弹层上的卡片标题一致(phase2_config.PHASE_LABEL: 积分赛 / 闯关赛 / 决赛日)。
 const PAGES := [
-	{"img": "res://assets/sprites/intro/intro-1-team.jpg", "title": "欢迎来到斗龟场", "text": "组建龟队，自动战斗", "dim": 0.85},
-	{"img": "res://assets/sprites/intro/intro-2-lanes.jpg", "title": "", "text": "赢两个战场获胜，1 : 1 进入终极战场", "dim": 1.0},
-	{"img": "res://assets/sprites/intro/intro-3-egg.jpg", "title": "", "text": "击碎敌方的蛋直接获胜", "dim": 0.9},
-	{"img": "res://assets/sprites/intro/intro-4-shop.jpg", "title": "", "text": "商店购买装备，装到龟身上", "dim": 0.75},
-	{"img": "res://assets/sprites/intro/intro-5-week.jpg", "title": "", "text": "每周赛程：积分赛、闯关赛、决赛日", "dim": 0.7},
+	{"img": "res://assets/sprites/intro/intro-1-team.jpg", "title": "欢迎来到斗龟场",
+		"text": "在这里，你将组建一支由 3 只龟组成的队伍，为它们搭配装备、安排站位，与其他玩家的队伍自动对战。", "dim": 0.85},
 ]
-## 每页停多久(秒)。5 页 × 3.6 = 18 秒 ≤ 20 秒(用户: 「一段 ≤20 秒的可跳过演示」)。
-const PAGE_SEC := 3.6
+## 那一屏停多久(秒)才自己去问。一句约 45 字, 按每秒 8 字读完再留 1 秒。
+const PAGE_SEC := 7.0
+## 那一句最宽多少(视口像素): 折成两行(字号 34 时每行约 25 字)。窄屏再收(左右各留 16 安全区 + 底板内边距)。
+const CAPTION_MAX_W := 880.0
+## 起名那一屏的背景: 固定用赛程那张(不用第 1 张: 那张顶上写着拍摄账号的名字, 正在起名时背后挂着别人的名字
+##   会被看成自己的 —— 实拍自评, 10-21)。只当背景, 不配字。
+const NAME_BG := "res://assets/sprites/intro/intro-5-week.jpg"
+const NAME_BG_DIM := 0.7
 const FADE_SEC := 0.35
 
 const TXT_SKIP := "跳过"
@@ -108,9 +114,8 @@ func _ready() -> void:
 		td.set("first_launch_mode", "")
 		mode = "name"
 	if mode == "name":
-		## 走完教程来起名: 与「跳过」那条路同一个背景(最后一页)。不用第 1 页的对局画面 ——
-		##   那张顶上写着拍摄账号的名字, 正在起名时背后挂着别人的名字会被看成自己的(实拍自评, 10-21)。
-		_show_page(PAGES.size() - 1, true)
+		## 走完教程来起名: 背景 NAME_BG(见常量头注: 不用第 1 张)。
+		_show_name_bg()
 		_caption_visible(false)
 		_skip.visible = false
 		open_naming()
@@ -157,10 +162,14 @@ func _build_caption() -> void:
 	_caption = Label.new()
 	_caption.name = N_CAPTION
 	_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	## 一句约 45 字 ⇒ 限宽折行(两行); 宽度在 _place_plate 里按视口定。
+	_caption.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_caption.add_theme_font_size_override("font_size", 34)
 	_caption.add_theme_color_override("font_color", Color("#fff4d6"))
 	_caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_plate.add_child(_caption)
+	## 折行标签放进容器、拿到真宽度之后最小高度才对 ⇒ 底板最小尺寸一变就重新摆一次(值不变时引擎不再发这个信号, 不会循环)。
+	_plate.minimum_size_changed.connect(func() -> void: if is_inside_tree(): _place_plate.call_deferred())
 
 
 func _build_skip() -> void:
@@ -188,18 +197,32 @@ func _layout() -> void:
 	_shade.size = Vector2(vp.x, vp.y * 0.42)
 	_shade.position = Vector2(0.0, vp.y * 0.58)
 	_title.size = Vector2(vp.x, 90.0)
-	_title.position = Vector2(0.0, vp.y * 0.72 - 45.0)
+	_title.position = Vector2(0.0, vp.y * 0.64 - 45.0)
 	_place_plate()
 
 
 func _place_plate() -> void:
 	var vp: Vector2 = get_viewport_rect().size
+	## 那一句限宽: CAPTION_MAX_W, 窄屏收到「视口 − 两侧安全区 − 底板内边距(36×2) − 边框」。
+	var cw := minf(CAPTION_MAX_W, vp.x - 32.0 - 72.0 - 6.0)
+	## ★折行标签的最小高度引擎按它「此刻」的宽度算(放进容器之前是 0 宽 ⇒ 一字一行、高几千像素):
+	##   这里按限宽自己量好折行后的高度, 直接给成最小尺寸。
+	_caption.custom_minimum_size = Vector2(cw, wrapped_h(_caption, cw))
 	_plate.reset_size()
 	var ps: Vector2 = _plate.get_combined_minimum_size()
 	_plate.size = ps
 	## 下沿那一条(截图下沿是前景 / 次要按钮行); 离底边留安全区。
 	var sm: Vector4 = SafeArea.margins(vp, 16.0)
 	_plate.position = Vector2((vp.x - ps.x) / 2.0, minf(vp.y * 0.88 - ps.y / 2.0, vp.y - sm.w - ps.y - 8.0))
+
+
+## 折行标签在宽 w 下的文字高度(按它自己的字体 / 字号量)。
+static func wrapped_h(l: Label, w: float) -> float:
+	var f: Font = l.get_theme_font("font")
+	var fs: int = l.get_theme_font_size("font_size")
+	if f == null or l.text == "":
+		return 0.0
+	return ceilf(f.get_multiline_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, w, fs, -1, TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE).y)
 
 
 func _caption_visible(on: bool) -> void:
@@ -225,6 +248,17 @@ func _show_page(i: int, instant: bool = false) -> void:
 	_caption_visible(true)
 	if is_inside_tree():
 		_place_plate()
+
+
+## 起名那一屏的背景(NAME_BG), 不带标题 / 那一句。
+func _show_name_bg() -> void:
+	_bg_b.texture = null
+	_bg_a.texture = load(NAME_BG) if ResourceLoader.exists(NAME_BG) else null
+	_bg_a.self_modulate = Color(NAME_BG_DIM, NAME_BG_DIM, NAME_BG_DIM, 1.0)
+	_bg_a.modulate.a = 1.0
+	_fade_t = 1.0
+	_title.text = ""
+	_caption.text = ""
 
 
 func _process(dt: float) -> void:
@@ -286,6 +320,7 @@ func open_naming() -> void:
 		return
 	_naming = true
 	_asking = false
+	_show_name_bg()
 	_skip.visible = false
 	_caption_visible(false)
 	var old := get_node_or_null(TutorialChoice.NODE_NAME)

@@ -770,13 +770,9 @@ scripts/scenes/CodexScene.gd|lit|香火
 scripts/scenes/CodexScene.gd|lit|龟
 scripts/scenes/CodexScene.gd|text|✓ %d 龟 / %d 装备 / %d 羁绊 / %d 状态
 scripts/scenes/CodexScene.gd|text|❌ DataRegistry 未加载
-scripts/scenes/FirstLaunchScene.gd|lit|击碎敌方的蛋直接获胜
-scripts/scenes/FirstLaunchScene.gd|lit|商店购买装备，装到龟身上
+scripts/scenes/FirstLaunchScene.gd|lit|在这里，你将组建一支由 3 只龟组成的队伍，为它们搭配装备、安排站位，与其他玩家的队伍自动对战。
 scripts/scenes/FirstLaunchScene.gd|lit|欢迎来到斗龟场
-scripts/scenes/FirstLaunchScene.gd|lit|每周赛程：积分赛、闯关赛、决赛日
 scripts/scenes/FirstLaunchScene.gd|lit|确认
-scripts/scenes/FirstLaunchScene.gd|lit|组建龟队，自动战斗
-scripts/scenes/FirstLaunchScene.gd|lit|赢两个战场获胜，1 : 1 进入终极战场
 scripts/scenes/FirstLaunchScene.gd|lit|跳过
 scripts/scenes/FirstLaunchScene.gd|lit|输入昵称
 scripts/scenes/FirstLaunchScene.gd|text|%d~%d 个字 · 显示于排行榜
@@ -1140,7 +1136,6 @@ scripts/scenes/SettingsScene.gd|text|邮箱绑定成功
 scripts/scenes/SettingsScene.gd|text|重置存档？
 scripts/scenes/SettingsScene.gd|text|验证码已发送至 %s
 scripts/scenes/ShopScene.gd|lit|  ·  Lv%d 可装备 %d 件
-scripts/scenes/ShopScene.gd|lit|  可进化
 scripts/scenes/ShopScene.gd|lit|%d 深海币
 scripts/scenes/ShopScene.gd|lit|[color=#5b7a92]暂无说明[/color]
 scripts/scenes/ShopScene.gd|lit|「%s」已失效 · 请刷新
@@ -1151,7 +1146,6 @@ scripts/scenes/ShopScene.gd|lit|已解锁 · 下场战斗后刷新
 scripts/scenes/ShopScene.gd|lit|已达最高等级 Lv%d
 scripts/scenes/ShopScene.gd|lit|已锁定
 scripts/scenes/ShopScene.gd|lit|已锁定 · 下场战斗后不刷新
-scripts/scenes/ShopScene.gd|lit|斧头
 scripts/scenes/ShopScene.gd|lit|无属性加成
 scripts/scenes/ShopScene.gd|lit|深海币不足 · 「%s」需要 %d，还差 %d
 scripts/scenes/ShopScene.gd|lit|深海币不足（需要 %d）
@@ -1167,7 +1161,6 @@ scripts/scenes/ShopScene.gd|text|商品
 scripts/scenes/ShopScene.gd|text|商店未解锁\n\n本大轮首战后解锁
 scripts/scenes/ShopScene.gd|text|已满级
 scripts/scenes/ShopScene.gd|text|经验 %d/%d
-scripts/scenes/ShopScene.gd|text|羁绊
 scripts/scenes/ShopScene.gd|text|购买  %d
 scripts/scenes/ShopScene.gd|text|还差 %d 枚深海币
 scripts/scenes/ShopScene.gd|tooltip_text|各费用出货概率
@@ -1182,6 +1175,7 @@ scripts/scenes/TeamSelectScene.gd|lit|本大轮阵容已锁定 · 可更换技�
 scripts/scenes/TeamSelectScene.gd|lit|水晶球位
 scripts/scenes/TeamSelectScene.gd|lit|测试被动·不屈
 scripts/scenes/TeamSelectScene.gd|lit|糖果炸弹位
+scripts/scenes/TeamSelectScene.gd|lit|选择 3 只龟
 scripts/scenes/TeamSelectScene.gd|lit|阵容已满
 scripts/scenes/TeamSelectScene.gd|lit|随从位
 scripts/scenes/TeamSelectScene.gd|text|全部
@@ -1775,6 +1769,8 @@ scripts/scenes/inventory/formation_editor.gd|text|站位
 scripts/scenes/inventory/formation_editor.gd|text|蛋
 scripts/scenes/inventory/synergy_panel.gd|lit|   未激活
 scripts/scenes/inventory/synergy_panel.gd|lit|  ◀ 当前
+scripts/scenes/inventory/synergy_panel.gd|lit|斧头
+scripts/scenes/inventory/synergy_panel.gd|text|  可进化
 scripts/scenes/inventory/synergy_panel.gd|text|暂无羁绊
 scripts/scenes/inventory/synergy_panel.gd|text|知道了
 scripts/scenes/inventory/synergy_panel.gd|text|羁绊
@@ -1933,6 +1929,7 @@ scripts/systems/equip/timestop_system.gd|lit|+%d龟能
 scripts/systems/onboarding/first_tips.gd|lit|%s · 点击查看规则
 scripts/systems/onboarding/first_tips.gd|lit|3 件同名同星装备自动合成升星
 scripts/systems/onboarding/first_tips.gd|lit|开始第一场对战
+scripts/systems/onboarding/first_tips.gd|lit|斗龟场每周是一个赛季：周二到周五是%s，周六是%s，周日是%s，争夺本周冠军。每到周一，所有人从同一起点重新开始。
 scripts/systems/onboarding/first_tips.gd|lit|本场由服务器判定 · 退出不影响结果
 scripts/systems/onboarding/first_tips.gd|lit|羁绊已激活 · 点击查看详情
 scripts/systems/onboarding/first_tips.gd|lit|训龟大师在战斗中施放所选技能

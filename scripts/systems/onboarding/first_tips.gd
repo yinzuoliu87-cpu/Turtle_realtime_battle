@@ -16,6 +16,11 @@ extends RefCounted
 ##   FIRST_MERGE   商店里第一次买到合成升星 ⇒ 左下宝箱里升星的那一格
 ##   SERVER_MATCH  第一次看周六服务器局(自己那一场) ⇒ 顶部路名计时牌
 ##   FIRST_TRAINER 第一次打开训龟大师页 ⇒ 展台上的训龟大师立绘
+##   FIRST_WEEK    教程结束(走完 / 跳过)后第一次进主菜单 ⇒ 打开「本周赛程」页, 页上一句赛季说明(主菜单 `_first_week`)
+##   FIRST_LANES / FIRST_EGG / FIRST_FINAL  第一场正式对战 ⇒ 两路 / 龟蛋 / 终极战场各一句,
+##     句子就是教程战斗那三句(data/tutorial-steps.json battle C2 / C5 / C6, 不另抄一份), 挂在同一个战斗事件上
+##     (导演 `_attach_first_battle_tips`)。教程战斗里真显示过的那几句, 教程结束时记成看过(不再出第二次)。
+##   (用户 2026-10-21: 首启只 1 屏介绍; 赛程放教程最后; 跳过的玩家首进主菜单弹一次赛程, 首场正式对战两路 / 龟蛋 / 终极战场各一次。)
 ## 措辞参考(方案书 §3 / 实施记录): 云顶之弈 PC 教程原文
 ##   「Combine three of the same champion to create a stronger, two-star version of that champion.」
 ##   「Champions have traits and earn bonuses when deployed with other champions that share those traits.」
@@ -28,6 +33,12 @@ const FIRST_SYNERGY := "first_synergy"
 const FIRST_MERGE := "first_merge"
 const SERVER_MATCH := "server_match"
 const FIRST_TRAINER := "first_trainer"
+const FIRST_WEEK := "first_week"
+const FIRST_LANES := "first_lanes"
+const FIRST_EGG := "first_egg"
+const FIRST_FINAL := "first_final"
+## 教程战斗步骤 _id(data/tutorial-steps.json battle) → 首场正式对战那一条的键。文字只在步骤表里有一份。
+const BATTLE_TIP_KEYS := {"C2": FIRST_LANES, "C5": FIRST_EGG, "C6": FIRST_FINAL}
 
 ## 文案 —— 短指令 / 名词(memory fb-no-colloquial-copy)。周末两条的赛制名读 `phase2_config.PHASE_LABEL`, 不手抄。
 const TEXT_START := "开始第一场对战"
@@ -39,6 +50,8 @@ const TEXT_MERGE := "3 件同名同星装备自动合成升星"
 ## 周六服务器局: 结果在播之前已由服务器定好并记账(referee_watch.gd 头注「账在播之前就记完」)。
 const TEXT_SERVER := "本场由服务器判定 · 退出不影响结果"
 const TEXT_TRAINER := "训龟大师在战斗中施放所选技能"
+## 本周赛程页上那一句(用户 2026-10-21 定稿)。赛制名读 PHASE_LABEL(积分赛 / 闯关赛 / 决赛日), 星期与 phase_of_weekday 一致。
+const TEXT_WEEK := "斗龟场每周是一个赛季：周二到周五是%s，周六是%s，周日是%s，争夺本周冠军。每到周一，所有人从同一起点重新开始。"
 
 const HOLD_SEC := 5.0
 const FADE_SEC := 0.3
@@ -100,7 +113,24 @@ static func text_for(key: String) -> String:
 			return TEXT_SERVER
 		FIRST_TRAINER:
 			return TEXT_TRAINER
+		FIRST_WEEK:
+			return TEXT_WEEK % [str(_P2C.PHASE_LABEL.get(_P2C.PHASE_RANKED, "")),
+				str(_P2C.PHASE_LABEL.get(_P2C.PHASE_GAUNTLET, "")), str(_P2C.PHASE_LABEL.get(_P2C.PHASE_FINALS, ""))]
 	return ""
+
+
+## 首场正式对战那三句: 教程战斗步骤表里 BATTLE_TIP_KEYS 那几步(原样, 带 trigger / highlight / auto), 每步多一个 `_ft_key`。
+##   only_unseen = 只要还能出的(can_show)。读不到步骤表 ⇒ 空。
+static func battle_tip_steps(only_unseen: bool) -> Array:
+	var out: Array = []
+	for st in load("res://scripts/scenes/TutorialGuide.gd").steps_for("battle"):
+		var key := str(BATTLE_TIP_KEYS.get(str((st as Dictionary).get("_id", "")), ""))
+		if key == "" or (only_unseen and not can_show(key)):
+			continue
+		var s2: Dictionary = (st as Dictionary).duplicate()
+		s2["_ft_key"] = key
+		out.append(s2)
+	return out
 
 
 ## 出一条: 能出就挂到 host 上并记成看过, 返回那个节点; 不能出 ⇒ null(什么都不做)。

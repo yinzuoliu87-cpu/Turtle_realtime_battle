@@ -92,6 +92,19 @@ func _ready() -> void:
 	_timeline.append([_frame, "主菜单"])
 	await _f(60)
 	await _shoot("主菜单_首次进入")
+	## 10-21: 教程结束后第一次进主菜单 ⇒ 本周赛程页 + 一句赛季说明(FirstTips.FIRST_WEEK)。读一会儿, 点左上返回关掉。
+	if mm != null and is_instance_valid(mm.get("_week_intro")):
+		var wt := mm.find_child("WeekIntroText", true, false) as Label
+		_timeline.append([_frame, "本周赛程: " + (wt.text if wt != null else "")])
+		await _f(READ_FRAMES * 4)
+		await _shoot("本周赛程_首次")
+		var back := mm.find_child("WeekPopupBack", true, false) as Control
+		await _click_ctl(back)
+		await _f(30)
+		_timeline.append([_frame, "关掉赛程页 ⇒ 主菜单"])
+		await _shoot("主菜单_关掉赛程后")
+	else:
+		_note("★ 第一次进主菜单没打开本周赛程页")
 	await _f(90)
 	if mm != null and path != "skip":
 		## 新手逐个点亮: 点一下锁着的「背包」, 录下那一句

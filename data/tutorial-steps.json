@@ -1,11 +1,11 @@
 {
   "_note": "新手教程步骤 v5(2026-10-21, 分镜 docs/plans/20261021-教程分镜v5.md; 文案 = 同篇「文案(2026-10-21 第二版: 照云顶中文原句写)」逐字)。由 scripts/scenes/TutorialGuide.gd 读取; 教程导演 TutorialDirector.steps_key_for 决定当前阶段用哪套。v4 见 docs/plans/20261020-教程重写.md。",
-  "_schema": "每步: text(必填, 一句; {pet}/{item} 由宿主 tut_text_vars() / 导演按当时状态填) / highlight(必填: 宿主锚点名, 挖洞高亮; 每步变成当前步时宿主若有 tut_step_shown(highlight) 就被调一次) / advanceOn(必填: 玩家做了这个动作才前进, 由产品代码 TutorialDirector.notify 发) / point(可选: 金色箭头指的锚点, 缺省=highlight) / hand(可选: tap|drag|none, 箭头的动法, 缺省 tap) / anchor(可选: top|bottom|right|left|band, 气泡位置; band = 战斗提示带, 见 TutorialGuide._place_panel) / auto(可选: 秒。有它 = 不阻塞的提示: 不压暗、不挡点击、不出箭头, 显示这么久后自己淡出并前进; 此时 advanceOn 只作记账名) / trigger(只在 battle: 这一句挂在哪个战斗事件上, 事件没发生就不出, 不卡流程) / delay(只在 battle: trigger=fight 时开打后再等几秒) / _id(分镜编号, 只作对账)",
+  "_schema": "每步: text(必填, 一句; {pet}/{item} 由宿主 tut_text_vars() / 导演按当时状态填) / highlight(必填: 宿主锚点名, 挖洞高亮; 每步变成当前步时宿主若有 tut_step_shown(highlight) 就被调一次) / advanceOn(必填: 玩家做了这个动作才前进, 由产品代码 TutorialDirector.notify 发) / point(可选: 金色箭头指的锚点, 缺省=highlight) / hand(可选: tap|drag|none, 箭头的动法, 缺省 tap) / anchor(可选: top|bottom|right|left|band, 气泡位置; band = 战斗提示带, 见 TutorialGuide._place_panel) / auto(可选: 秒。有它 = 不阻塞的提示: 不压暗、不挡点击、不出箭头(写明 hand: tap 时出箭头指目标), 显示这么久后自己淡出并前进; 此时 advanceOn 只作记账名) / trigger(只在 battle: 这一句挂在哪个战斗事件上, 事件没发生就不出, 不卡流程) / delay(只在 battle: trigger=fight 时开打后再等几秒) / _id(分镜编号, 只作对账)",
   "_anchors": {
     "team_select": "roster_pet(候选里下一只该选的教学龟·发光那张) / skill_choices(右栏技能格) / skill_pick(箭头指的那一格: 第一个可选且没选上的技能) / confirm(「出战」钮)",
     "battle": "buff_badge(「教程加成」签) / lane_plate(顶部当前战场计时牌) / cast_unit(第一次放技能那只龟的血条+龟能槽) / trainer(第一次放技能的训龟大师) / foe_egg(顶部 PK 条下敌方的蛋血副条) —— 导演 TutorialDirector._battle_anchor 解析",
     "settle": "settle_shop(结算「前往商店」钮)",
-    "shop": "level_row(等级行: Lv / 经验 / 可装备 N 件) / xp_button(买经验钮; 教程里 tut_step_shown('xp_button') 之前不显示) / offer_card(教程预配的那件装备卡) / detail_card(选中后的整张说明卡) / buy_button(说明卡里的「购买」钮) / bag_button(顶栏「背包」)",
+    "shop": "level_row(等级行: Lv / 经验 / 可装备 N 件) / xp_button(买经验钮; 教程里 tut_step_shown('xp_button') 之前不显示) / offer_card(教程预配的那件装备卡) / detail_card(选中后的整张说明卡) / buy_button(说明卡里的「购买」钮) / bag_button(顶栏「背包」) / merge_cell(刚合成升星那一件; 导演补的锚点, 读 ShopScene.merge_tip_target; 没合成 ⇒ 这一句由导演跳过)",
     "inventory": "first_item(背包第一件 = 刚买并合成的那件) / lanes(上下战场) / first_leader(第一只统领) / formation_button(顶栏「站位」) / formation_field(站位面板·上战场) / formation_token(站位面板·上战场第一只) / formation_done(站位面板「完成」) / finish_button(完成教程钮)"
   },
   "_wrong_tap": "先点击发光的位置。",
@@ -118,8 +118,9 @@
     {
       "text": "装备数量由等级决定。1 级时全队还不能装备任何装备。",
       "highlight": "level_row",
+      "anchor": "top",
       "advanceOn": "tip_level_seen",
-      "hand": "none",
+      "hand": "tap",
       "auto": 3.0,
       "_id": "E1"
     },
@@ -143,6 +144,15 @@
       "_id": "E4"
     },
     {
+      "text": "集齐 3 件同名同星的装备，会自动合成为一件更强的 2 星装备。",
+      "highlight": "merge_cell",
+      "anchor": "bottom",
+      "advanceOn": "tip_merge_seen",
+      "hand": "none",
+      "auto": 4.0,
+      "_id": "E4b"
+    },
+    {
       "text": "点击【背包】，把装备装到你的龟身上。",
       "highlight": "bag_button",
       "advanceOn": "shop_to_bag",
@@ -163,14 +173,6 @@
       "point": "first_leader",
       "advanceOn": "item_equipped",
       "_id": "F2"
-    },
-    {
-      "text": "集齐 3 件同名同星的装备，会自动合成为一件更强的 2 星装备。",
-      "highlight": "first_leader",
-      "advanceOn": "tip_merge_seen",
-      "hand": "none",
-      "auto": 4.0,
-      "_id": "F3"
     },
     {
       "text": "点击【站位】，调整龟开战时站的位置。",

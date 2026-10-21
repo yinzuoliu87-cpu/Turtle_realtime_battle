@@ -1544,6 +1544,19 @@ func _build_tut_finish() -> void:
 			td.end_tutorial("completed"))
 	add_child(b)
 	_tut_finish_btn = b
+	## ★「完成教程」教到最后一步(F6)才出现(分镜「按钮教到才出现」): 之前它站在左上, F2 的箭头从它正下方伸出来,
+	##   读起来像在指它(10-21 录屏自评); 也不许提前点掉后面的步骤。
+	b.visible = _tut_finish_shown
+
+
+## 引导条每换一步调一次(TutorialGuide._render)。到 F6(finish_button)才亮出「完成教程」。
+var _tut_finish_shown := false
+
+func tut_step_shown(highlight: String) -> void:
+	if highlight == "finish_button":
+		_tut_finish_shown = true
+		if _tut_finish_btn != null and is_instance_valid(_tut_finish_btn):
+			_tut_finish_btn.visible = true
 
 
 ## 右上「跳过教程」的位置: 教程里藏起来的「?」那一格(顶栏右端, 已知空位; 方案书 B7)。

@@ -52,6 +52,13 @@ func _collect_highlights() -> Dictionary:
 	return out
 
 
+## 引导真正用的那个锚点函数: 商店由导演包一层(补 merge_cell, TutorialDirector.attach_guide), 其余是宿主自己的 _tutorial_anchor。
+func _resolve(key: String, inst: Node, nm: String) -> Rect2:
+	if key == "shop":
+		return get_node("/root/TutorialDirector")._shop_anchor(nm, inst)
+	return inst.call("_tutorial_anchor", nm) if inst.has_method("_tutorial_anchor") else Rect2()
+
+
 func _ready() -> void:
 	await get_tree().process_frame
 	# 教学态: 商店要 tutorial_active 才开店; 背包/选龟要 season_leaders 才建阵容
@@ -111,12 +118,19 @@ func _ready() -> void:
 			_ok("★v3 教程里顶栏「站位」在且可见(10-19 起站位只能在这里改)", fb != null and fb.is_visible_in_tree())
 			if fb != null:
 				fb.emit_signal("pressed")
+			## v5 修(10-21): 「完成教程」教到 F6 才出现 ⇒ 没教到时锚点空; 走产品入口(引导换到 F6 时调 tut_step_shown)亮出来
+			for _w2 in range(20):
+				await get_tree().process_frame
+			_ok("★[inventory] 没教到 F6 时「完成教程」不在屏上(锚点空)", (inst.call("_tutorial_anchor", "finish_button") as Rect2).size == Vector2.ZERO)
+			_ok("分母: [inventory] 背包实现了 tut_step_shown", inst.has_method("tut_step_shown"))
+			if inst.has_method("tut_step_shown"):
+				inst.call("tut_step_shown", "finish_button")
 		# ★锚点只认【真看得见】的控件(TutorialGuide.vis_rect: 入场淡入完才算) ⇒ 轮询到解析得出, 上限 90 帧
 		for _i in range(90):
 			await get_tree().process_frame
 			var all_ok := true
 			for nm0 in names:
-				var r0: Rect2 = inst.call("_tutorial_anchor", nm0) if inst.has_method("_tutorial_anchor") else Rect2()
+				var r0: Rect2 = _resolve(key, inst, nm0)
 				if r0.size.x <= 0.0:
 					all_ok = false
 			if all_ok:
@@ -125,7 +139,7 @@ func _ready() -> void:
 		_ok("[%s] 实现了 _tutorial_anchor" % key, has_fn)
 		if has_fn:
 			for nm in names:
-				var r: Rect2 = inst.call("_tutorial_anchor", nm)
+				var r: Rect2 = _resolve(key, inst, nm)
 				var okr: bool = r.size.x > 0.0 and r.size.y > 0.0
 				_ok("★[%s] 锚点 '%s' 解析出非零矩形" % [key, nm], okr, str(r))
 			# 反向: 不存在的锚点名 → 空 Rect2(不能乱返回一个把全屏挡死)

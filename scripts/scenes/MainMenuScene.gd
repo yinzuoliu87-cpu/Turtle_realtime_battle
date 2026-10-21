@@ -298,7 +298,75 @@ func _ready() -> void:
 	if _AM.notice != "":
 		_toast(_AM.notice)
 		_AM.notice = ""
-	_first_tip(paint_ts)
+	if not _first_week():
+		_first_tip(paint_ts)
+
+
+## ══ 教程结束后第一次进主菜单: 打开「本周赛程」页一次, 页顶一句赛季说明(FirstTips.FIRST_WEEK) ══
+## 用户 2026-10-21:「赛程…应该放在教程最后面吧」⇒ 首启不讲赛程; 教程走完 / 跳过之后第一次落到主菜单时, 打开既有的本周赛程页,
+##   顶栏右侧一块与教程提示条同一种样子的说明(深蓝底 + 金边)。每个账号一次(first_tips_seen)。
+## ★不挡路: 就是平常那一页, 左上返回 / 返回键照常关; 关掉之后才出「开始战斗」那条首次提示(一次一件事)。
+## ★只在: 真当前场景(门禁 / 冒烟把主菜单当子节点挂时不弹) / 没关首启(ONBOARD=0 的模拟号不弹) /
+##   FirstTips.can_show(教程沙盒里、没 onboarded 一律不出) / 累计 0 场(老号升级上来不补弹: 那不是「第一次进主菜单」)。
+const WEEK_INTRO_NAME := "WeekIntroCaption"
+const WEEK_INTRO_W := 640.0
+const WEEK_INTRO_MAX_W := 960.0
+var _week_intro: Control = null
+
+func _first_week() -> bool:
+	if OS.get_environment("ONBOARD") == "0" or get_tree() == null or get_tree().current_scene != self:
+		return false
+	if int(GameState.battles_total) > 0 or not FirstTips.can_show(FirstTips.FIRST_WEEK) or not is_instance_valid(_week_pop):
+		return false
+	var _ch := get_node_or_null("TutorialChoice")
+	if _ch != null and not _ch.is_queued_for_deletion():
+		return false
+	FirstTips.mark_seen(FirstTips.FIRST_WEEK)
+	_week_intro = _week_intro_plate(FirstTips.text_for(FirstTips.FIRST_WEEK))
+	_week_pop.add_child(_week_intro)
+	_open_week_popup()
+	return true
+
+
+## 赛程页顶栏右侧那块说明(样式同教程战斗提示条 / FirstTips 提示条)。宽 WEEK_INTRO_W 折两行, 竖向放进顶栏。
+func _week_intro_plate(txt: String) -> Control:
+	var plate := PanelContainer.new()
+	plate.name = WEEK_INTRO_NAME
+	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.071, 0.110, 0.204, 0.94)
+	sb.set_border_width_all(2)
+	sb.border_color = Color("#ffd93d")
+	sb.content_margin_left = 16; sb.content_margin_right = 16
+	sb.content_margin_top = 6; sb.content_margin_bottom = 6
+	plate.add_theme_stylebox_override("panel", sb)
+	var l := Label.new()
+	l.name = "WeekIntroText"
+	l.text = txt
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.add_theme_font_size_override("font_size", 20)
+	l.add_theme_color_override("font_color", Color("#fff3c4"))
+	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
+	l.add_theme_constant_override("outline_size", 4)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	plate.add_child(l)
+	## 宽度 = 第一句(到第一个句号)那么宽 ⇒ 正好在句号处折成两行(赛制一行 / 周一重开一行), 不在词中间断开;
+	##   放不下(> WEEK_INTRO_MAX_W)就按 WEEK_INTRO_W 折。
+	var iw := WEEK_INTRO_W
+	var f: Font = l.get_theme_font("font")
+	var cut := txt.find("。")
+	if f != null and cut > 0:
+		var s1w: float = ceilf(f.get_string_size(txt.substr(0, cut + 1), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 20).x) + 2.0
+		if s1w <= WEEK_INTRO_MAX_W:
+			iw = maxf(WEEK_INTRO_W, s1w)
+	## ★折行标签的最小高度引擎按它「此刻」的宽度算(还没进容器 = 0 宽): 按限宽自己量好(首启那一句同一个函数)。
+	l.custom_minimum_size = Vector2(iw, load("res://scripts/scenes/FirstLaunchScene.gd").wrapped_h(l, iw))
+	var sz := plate.get_combined_minimum_size()
+	plate.size = sz
+	plate.position = Vector2(W - WALL - sz.x, maxf(0.0, (WEEK_BAR_H - 3.0 - sz.y) / 2.0))
+	## 进容器后折行高度才定 ⇒ 尺寸一变就重新竖向居中在顶栏里。
+	plate.resized.connect(func() -> void: plate.position = Vector2(W - WALL - plate.size.x, maxf(0.0, (WEEK_BAR_H - 3.0 - plate.size.y) / 2.0)))
+	return plate
 
 
 ## 「第一次遇到」一行提示(方案书 20261020-教程重写 §3; 判据与文案都在 FirstTips)。一次只出一条:
@@ -1744,6 +1812,12 @@ func _close_week_popup() -> void:
 		_week_bar.visible = false
 		for e in _week_bar.get_children():
 			(e as CanvasItem).visible = false
+	## 首次那一回(带赛季说明)关掉 ⇒ 说明收起, 再出主菜单自己的首次提示(「开始战斗」那条)。
+	if is_instance_valid(_week_intro):
+		_week_intro.queue_free()
+		_week_intro = null
+		if is_inside_tree():
+			_first_tip(_now_ts())
 
 
 ## 系统返回键 / Esc 关掉赛程页(整页盖着主菜单, 不能只有左上角一个出口)。

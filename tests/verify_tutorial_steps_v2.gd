@@ -91,7 +91,8 @@ func _check_data(d: Dictionary) -> Array:
 			_ok("%s 一句话: ≤%d 字" % [tag, cap], nch > 0 and nch <= cap, "%d 字" % nch)
 			_ok("%s hand 取值合法" % tag, str(s.get("hand", "tap")) in ["tap", "drag", "none"], str(s.get("hand", "")))
 			if is_tip:
-				_ok("%s 不阻塞提示不出手势" % tag, str(s.get("hand", "")) == "none")
+				## 不阻塞提示: 不出拖动手势; 只有点按式的金色箭头可以出(10-21 E1: 气泡挪到顶上, 箭头指等级牌)
+				_ok("%s 不阻塞提示不出拖动手势(none / 指向箭头 tap)" % tag, str(s.get("hand", "")) in ["none", "tap"])
 			if str(key) == "battle":
 				_ok("%s 战斗里一律不阻塞(不暂停、不挡点击)" % tag, is_tip)
 				_ok("%s 挂在一个已实现的战斗事件上" % tag, str(s.get("trigger", "")) in TRIGGERS, str(s.get("trigger", "")))

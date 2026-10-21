@@ -274,7 +274,11 @@ func _process(dt: float) -> void:
 	_apply_highlight(rect)
 	_place_panel(rect)
 	if is_tip():
-		_hand.visible = false
+		## 不阻塞提示默认不出箭头; 步骤写明 hand: tap 时出(E1: 气泡挪到顶上, 箭头朝下指等级牌)。
+		if str((_steps[_idx] as Dictionary).get("hand", "none")) == "tap":
+			_place_hand(rect)
+		else:
+			_hand.visible = false
 		_tick_tip(dt)
 		return
 	_place_hand(rect)
@@ -287,6 +291,8 @@ func _tick_tip(dt: float) -> void:
 	var a: float = clampf(minf(_tip_t / TIP_FADE, (dur + TIP_FADE - _tip_t) / TIP_FADE), 0.0, 1.0)
 	_panel.modulate.a = a
 	_ring.modulate.a = a
+	if _hand.visible:
+		_hand.modulate.a = a
 	if _tip_t >= dur + TIP_FADE:
 		_panel.modulate.a = 1.0
 		_ring.modulate.a = 1.0

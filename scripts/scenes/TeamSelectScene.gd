@@ -683,7 +683,8 @@ func _build_ui() -> void:
 	_edge_btns.clear()   # resize 会整份重建 UI → 先清旧登记(里面是已 free 的节点)
 	# 标题 (PoC .ts-title: #ffe6b0 22px, letter-spacing 2px, 阴影)
 	var title := Label.new()
-	title.text = "选择统领"
+	## ★教程(v5 B1「从这里选出 3 只龟组成你的队伍」): 页名与引导用同一个词 ——「统领」在教程里没有任何一句解释过。
+	title.text = TUT_TITLE if _tut_on() else "选择统领"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", _sf(22))
@@ -1009,6 +1010,10 @@ func _build_grid_region() -> void:
 	# 网格 (ScrollContainer + GridContainer) — 起点右移 (rail宽+row_gap), 宽减同量 (PoC pet-grid 接 rail 右)
 	## 过滤条横过来之后, 网格从它【下方】开始(不再右移让位)。
 	var bar_h := 81.0 + row_gap
+	## ★教程: 候选只有教程固定池 3 只, 按稀有度筛的那一排(SSS…C)筛不出东西, 只是一排空签 ⇒ 不显示, 网格顶上去。
+	if _tut_on():
+		rail.visible = false
+		bar_h = 0.0
 	var scroll := ScrollContainer.new()
 	scroll.position = rc.position + Vector2(0.0, bar_h)
 	scroll.size = Vector2(rc.size.x, maxf(120.0, rc.size.y - bar_h))
@@ -1584,6 +1589,8 @@ func _skill_energy(sk: Dictionary) -> int:
 	return int(round(SkillEnergy.cost_of(str(sk.get("type", "")))))
 
 
+## 教程里的页名(与引导条「选出 3 只龟」同一个词)。
+const TUT_TITLE := "选择 3 只龟"
 const TutorialGuide := preload("res://scripts/scenes/TutorialGuide.gd")   # 教程锚点: vis_rect(只认真看得见的控件)
 
 func _tut_on() -> bool:
