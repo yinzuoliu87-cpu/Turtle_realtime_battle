@@ -2,7 +2,7 @@
 """tools/probe_finals_server.py —— 周日决赛日赛程推进的【真服务器】端到端探针。
 
 ★不是门禁: 要真网络、要管理员令牌、会在生产库里留两个匿名测试账号。手动跑:
-      python tools/probe_finals_server.py
+      python tools/probe_finals_server.py [--prod]
 
 ★为什么非跑不可: 表建了、函数建了、pg_cron 装了 —— 这三件都只证明
   「SQL 执行没报错」。**没有一件证明这条路会动**
@@ -42,10 +42,9 @@ import urllib.error
 import urllib.request
 
 sys.stdout.reconfigure(encoding="utf-8")
-PROJ = "cjefldecsfpnclhfwriw"
-URL = "https://cjefldecsfpnclhfwriw.supabase.co"
-KEY = "sb_publishable_tvCm2DPO9SflJHME9K_MGA_u04tG8bi"
-TOKEN_FILE = os.path.join(os.path.expanduser("~"), ".supabase", "access-token")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from sb_common import probe_target, HDR_CLIENT_VERSION, client_version  # noqa: E402
+PROJ, URL, KEY, TOKEN_FILE = probe_target()   # 默认内测服, --prod 才连正式服
 ## ★本机代理会改写 POST body(memory `fb-local-proxy-corrupts-post-body`) ⇒ 一律绕开
 OP = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 WEEK = 2                     # ★假周号: cron 传的是真周一时间戳(~1.79e9), 永远碰不到这里
@@ -109,7 +108,7 @@ atexit.register(_cleanup_users)
 
 def req(method, path, body=None, tok=None):
     h = {"apikey": KEY, "Content-Type": "application/json",
-         "Authorization": "Bearer " + (tok or KEY)}
+         "Authorization": "Bearer " + (tok or KEY), HDR_CLIENT_VERSION: client_version()}
     r = urllib.request.Request(URL + path, method=method,
                               data=None if body is None else json.dumps(body).encode(),
                               headers=h)
@@ -327,7 +326,8 @@ dump_dir = os.path.join(os.environ.get("TEMP", "."), "probe_br")
 p = subprocess.run([GODOT_BIN, "--headless", "--path", REPO,
                     "res://tests/_dump_bracket_rules.tscn", "--quit-after", "120"],
                    capture_output=True, cwd=REPO,
-                   env=dict(os.environ, APPDATA=dump_dir))
+                   env=dict(os.environ, APPDATA=dump_dir, XDG_DATA_HOME=dump_dir,
+                            TURTLE_BACKEND=" ", TURTLE_SUPABASE=" "))   # 只导规格, 不连任何一台
 for line in p.stdout.decode("utf-8", "replace").splitlines():
     if line.startswith("DUMPED "):
         spec = json.load(io.open(line[7:].strip(), encoding="utf-8"))

@@ -1,18 +1,20 @@
 # -*- coding: utf-8 -*-
 """tools/sb_common.py —— 内测服 / 正式服两台 Supabase 的共用底座(2026-10-21 · 方案书 docs/plans/20261020-内测服.md)。
 
-给 tools/beta_ops.py 与 tools/sb_migrate.py 用。只做三件事:
+给 tools/beta_ops.py、tools/sb_migrate.py 与 tools/probe_*.py 用。只做四件事:
   ① 两台的项目 ref / 地址 / 令牌文件(令牌只从本机文件读, 不打印、不进仓库)
   ② 跑 SQL(Management API `POST /v1/projects/{ref}/database/query`, 一律绕开本机代理)
   ③ ★正式服写保护: 只有 `prod_write_ok=True` 显式放行才能对正式服发写语句;
      只读查询走 `query_ro()`, 它在同一个请求里先 `set transaction read only`
      (2026-10-21 实测: `set default_transaction_read_only = on` 对同一请求里的语句**不生效**, 照样建出了表)。
+  ④ 探针选台 `probe_target()`: 默认内测服, `--prod` 才连正式服
 
 ★本机代理会改写 POST body(memory fb-local-proxy-corrupts-post-body) ⇒ ProxyHandler({})。
 """
 import io
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -28,6 +30,41 @@ TOKEN_FILES = {
     BETA_REF: os.path.join(_HOME, ".supabase", "beta-access-token"),
 }
 OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+## 公开 key(设计上就嵌进客户端; 与 project.godot 的 turtle/supabase_anon_key / .beta_server 同值)
+PUBLISHABLE = {
+    PROD_REF: "sb_publishable_tvCm2DPO9SflJHME9K_MGA_u04tG8bi",
+    BETA_REF: "sb_publishable_bLKRe9xrtS5knJhyDRK4jg_Pc7NZJ-f",
+}
+
+## 探针走客户端通道时要带的版本头(服务端最低版本闸: 不带 = 当成 (none) ⇒ PT426 update_required)。
+##   与 scripts/net/supabase.gd 的 HDR_CLIENT_VERSION 同名; 取值 = project.godot 的 config/version(版本号事实源)。
+HDR_CLIENT_VERSION = "X-Client-Version"
+
+
+def client_version():
+    p = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "project.godot")
+    m = re.search(r'^config/version="([^"]+)"', io.open(p, encoding="utf-8").read(), re.M)
+    if not m:
+        raise SystemExit("project.godot 里找不到 config/version")
+    return m.group(1)
+
+
+def probe_target():
+    """探针工具(tools/probe_*.py)选台: 默认内测服, 命令行带 `--prod` 才连正式服(方案书 §6 表「探针工具」那一行)。
+
+    由来: 探针会建匿名测试号、写假周数据 —— 跑在正式服上的那些年, 10-04 清过 585 个垃圾号、10-18 手删 9 号 11 行。
+    `--prod` 从 sys.argv 里拿掉, 各工具自己的参数解析不受影响。开头打一行目标, 输出里看得出量的是哪台。
+    返回 (ref, url, 公开 key, 管理令牌文件)。客户端通道的请求头记得带 {HDR_CLIENT_VERSION: client_version()}。
+    """
+    prod = "--prod" in sys.argv
+    while "--prod" in sys.argv:
+        sys.argv.remove("--prod")
+    ref = PROD_REF if prod else BETA_REF
+    if prod:
+        print("★目标: 正式服 %s(--prod)—— 连的是正式库" % ref)
+    else:
+        print("目标: 内测服 %s(连正式服要加 --prod)" % ref)
+    return ref, URLS[ref], PUBLISHABLE[ref], TOKEN_FILES[ref]
 
 
 class ProdRefused(SystemExit):

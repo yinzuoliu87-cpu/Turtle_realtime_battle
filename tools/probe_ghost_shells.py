@@ -17,7 +17,7 @@
   判据抄两份必然落后 ⇒ 这里的注释写明它镜像的是哪个函数, 改那边要改这边。
 
 用法:
-    python tools/probe_ghost_shells.py              # 服务端 + 本机池子
+    python tools/probe_ghost_shells.py              # 服务端(默认内测服, 加 --prod 连正式服) + 本机池子
     python tools/probe_ghost_shells.py --local      # 只看本机(不要网络/令牌)
     python tools/probe_ghost_shells.py --selftest   # ★先证明它会报: 喂一份空壳
 退出码: 0 = 没有空壳(或只看到老档形状C)  /  1 = 有空壳  /  2 = 查不了(令牌等)
@@ -29,8 +29,9 @@ import sys
 import urllib.request
 
 sys.stdout.reconfigure(encoding="utf-8")
-PROJ = "cjefldecsfpnclhfwriw"
-TOKEN_FILE = os.path.join(os.path.expanduser("~"), ".supabase", "access-token")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from sb_common import probe_target  # noqa: E402
+PROJ, _URL, _KEY, TOKEN_FILE = probe_target()   # 默认内测服, --prod 才连正式服
 ## ★本机代理会改写 POST body(memory `fb-local-proxy-corrupts-post-body`) ⇒ 一律绕开
 OP = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 SIM_ROOT = os.environ.get("SIM_ROOT", r"C:\tmp\turtle-sim10")

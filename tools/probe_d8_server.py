@@ -1,24 +1,26 @@
 # -*- coding: utf-8 -*-
 """tools/probe_d8_server.py —— D-8 存档同步【服务端】真 Supabase 端到端探针。
 
-★不是门禁(要真网络、会建两个一次性匿名号), 手动跑:  python tools/probe_d8_server.py
+★不是门禁(要真网络、会建两个一次性匿名号), 手动跑:  python tools/probe_d8_server.py [--prod]
 ★为什么要有它: 门禁(tests/verify_save_sync.gd)喂的是 schema.sql 里写死的回包形状,
   服务端那一半 —— 比较并交换 / RLS / 只能走函数写 / 不登录不能调 —— 只有打真服务器才验得到。
 ★2026-09-22 首跑 12/12。改了 server/supabase/schema.sql 里 saves / push_save 之后必须重跑。
 """
 import json
+import os
 import sys
 import urllib.request
 
 sys.stdout.reconfigure(encoding="utf-8")
-URL = "https://cjefldecsfpnclhfwriw.supabase.co"
-KEY = "sb_publishable_tvCm2DPO9SflJHME9K_MGA_u04tG8bi"
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from sb_common import probe_target, HDR_CLIENT_VERSION, client_version  # noqa: E402
+_REF, URL, KEY, _TOKEN_FILE = probe_target()   # 默认内测服, --prod 才连正式服
 op = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
 def req(method, path, body=None, token=None, extra=None):
     h = {"apikey": KEY, "Content-Type": "application/json",
-         "Authorization": "Bearer " + (token or KEY)}
+         "Authorization": "Bearer " + (token or KEY), HDR_CLIENT_VERSION: client_version()}
     if extra:
         h.update(extra)
     r = urllib.request.Request(URL + path, method=method, headers=h,

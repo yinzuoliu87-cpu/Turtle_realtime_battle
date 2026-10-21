@@ -18,7 +18,7 @@
 ★每一项都打分母。`N=0` 是空检查不是通过 —— 输出里一律把 N 写出来。
 
 用法:
-    python tools/probe_finals_health.py              # 体检
+    python tools/probe_finals_health.py              # 体检内测服(加 --prod 体检正式服)
     python tools/probe_finals_health.py --selftest   # ★先证明它会报: 造一个卡住的桶
 退出码: 0 = 健康(或「没上线，空是对的」)  /  1 = 有真问题  /  2 = 查不了(令牌等)
 """
@@ -31,8 +31,15 @@ import urllib.error
 import urllib.request
 
 sys.stdout.reconfigure(encoding="utf-8")
-PROJ = "cjefldecsfpnclhfwriw"
-TOKEN_FILE = os.path.join(os.path.expanduser("~"), ".supabase", "access-token")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from sb_common import probe_target  # noqa: E402
+## 直接跑: 默认内测服, --prod 才连正式服。
+## ★被 import 时(tools/beta_daily.py 借 sql() 只读真人数据)不看命令行, 固定正式服 —— 否则日报会悄悄改读内测服。
+if __name__ == "__main__":
+    PROJ, _URL, _KEY, TOKEN_FILE = probe_target()
+else:
+    from sb_common import PROD_REF as PROJ, TOKEN_FILES as _TF  # noqa: E402
+    TOKEN_FILE = _TF[PROJ]
 ## ★本机代理会改写 POST body(memory `fb-local-proxy-corrupts-post-body`) ⇒ 一律绕开
 OP = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -127,7 +134,10 @@ def main():
         print("  ✗ 读不到 cron.job: HTTP %s %s" % (st, str(jobs)[:160]))
         jobs = []
     print("  分母: cron 任务共 %d 个" % len(jobs))
-    adv = [j for j in jobs if "finals_advance" in str(j.get("command", ""))]
+    ## 内测服卸掉了周日三条 cron, 换成每分钟一次的 beta_tick(函数体里按假时间叫 finals_advance, 见 beta/beta_setup.sql) ⇒ 也算推进器
+    from sb_common import BETA_REF  # noqa: E402
+    marks = ("finals_advance", "beta_tick") if PROJ == BETA_REF else ("finals_advance",)
+    adv = [j for j in jobs if any(m in str(j.get("command", "")) for m in marks)]
     print("  其中推进决赛日的: %d 个" % len(adv))
     if not adv:
         BAD.append("★没有任何 cron 任务在叫 finals_advance —— 周日不会自己推进")

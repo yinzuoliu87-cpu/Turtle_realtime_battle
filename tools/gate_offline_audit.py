@@ -27,8 +27,8 @@ for b in bad:
 #   判据: 文件里出现「GODOT 可执行 + .tscn」就必须同时出现 TURTLE_BACKEND 与 TURTLE_SUPABASE 两个关闭。
 import glob as _glob, os as _os
 ## 本来就是去量正式服的只读探针(不进门禁、手动跑) —— 名单必须写理由, 不许拿来放水。
+## (2026-10-21 清空: probe_finals_server.py 起的 Godot 只导切桶规格, 已同时关掉两层后端, 不再需要例外。)
 _PROD_OK = {
-    "probe_finals_server.py": "周日赛程的线上体检探针: 它的用途就是连正式服只读核对 finals_* 函数",
 }
 py_hits = 0
 for _f in sorted(_glob.glob(_os.path.join("tools", "**", "*.py"), recursive=True)):

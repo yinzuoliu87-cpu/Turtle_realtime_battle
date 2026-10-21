@@ -2,7 +2,7 @@
 """tools/probe_gauntlet_server.py —— 周六闯关赛快照池的【真服务器】端到端探针。
 
 ★不是门禁: 要真网络、会在生产库里留两个匿名测试账号与几行快照。手动跑:
-      python tools/probe_gauntlet_server.py
+      python tools/probe_gauntlet_server.py [--prod]
 ★为什么非跑不可: `gauntlet_ghosts` 表是我建的、客户端代码是我写的,
   但在这个探针之前**从来没有任何客户端真的跟那张表说过话**。
   「SQL 执行了没报错」「GDScript 编译过了」都不等于这条路通
@@ -26,8 +26,9 @@ import urllib.error
 import urllib.request
 
 sys.stdout.reconfigure(encoding="utf-8")
-URL = "https://cjefldecsfpnclhfwriw.supabase.co"
-KEY = "sb_publishable_tvCm2DPO9SflJHME9K_MGA_u04tG8bi"
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from sb_common import probe_target, HDR_CLIENT_VERSION, client_version  # noqa: E402
+_REF, URL, KEY, _TOKEN_FILE = probe_target()   # 默认内测服, --prod 才连正式服
 ## ★本机代理会改写 POST body(memory `fb-local-proxy-corrupts-post-body`) ⇒ 一律绕开
 OP = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 WEEK = 1789344000            # 2026-09-14 周一锚点(固定值, 与线上真数据不同周, 互不干扰)
@@ -46,7 +47,7 @@ def chk(name, cond, detail=""):
 
 def req(method, path, body=None, tok=None, extra=None):
     h = {"apikey": KEY, "Content-Type": "application/json",
-         "Authorization": "Bearer " + (tok or KEY)}
+         "Authorization": "Bearer " + (tok or KEY), HDR_CLIENT_VERSION: client_version()}
     if extra:
         h.update(extra)
     r = urllib.request.Request(URL + path, method=method,
@@ -69,7 +70,7 @@ def row(acc, gw, gl, marker):
             "snapshot": {"ghost_id": "probe_%s_%d-%d" % (marker, gw, gl),
                          "name": marker, "avatar": "basic",
                          "gl_w": gw, "gl_l": gl, "gl_ts": int(time.time())},
-            "client_version": "probe"}
+            "client_version": client_version()}   # 行级闸要 >= 最低版本("probe" 会被拒)
 
 
 UPSERT = {"Prefer": "resolution=merge-duplicates,return=minimal"}

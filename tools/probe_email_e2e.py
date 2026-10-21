@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """tools/probe_email_e2e.py —— 绑定邮箱 / 换设备取回 / 存档同步【真邮件】端到端探针。
 
-★不是门禁: 要真网络、要有人去收件箱读验证码、会在生产库里留一个测试账号。手动跑, 分四步:
+★不是门禁: 要真网络、要有人去收件箱读验证码、会在生产库里留一个测试账号。手动跑, 分四步(四步都加 --prod 才连正式服):
   python tools/probe_email_e2e.py bind-send          # 设备1 建匿名号, 发绑定码
   python tools/probe_email_e2e.py bind-verify <码>   # 验码(要求返回同一个号) + 推存档
   python tools/probe_email_e2e.py recover-send       # 设备2 建新匿名号, 发取回码
@@ -17,9 +17,11 @@ import sys
 import urllib.request
 
 sys.stdout.reconfigure(encoding="utf-8")
-URL = "https://cjefldecsfpnclhfwriw.supabase.co"
-KEY = "sb_publishable_tvCm2DPO9SflJHME9K_MGA_u04tG8bi"
-STATE = os.path.join(os.path.expanduser("~"), ".supabase", "probe_email_e2e_state.json")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from sb_common import probe_target, HDR_CLIENT_VERSION, client_version  # noqa: E402
+_REF, URL, KEY, _TOKEN_FILE = probe_target()   # 默认内测服, --prod 才连正式服(四步要用同一台)
+## 状态文件按台分开: 内测服上发的码拿去正式服验, 只会是一串莫名其妙的失败
+STATE = os.path.join(os.path.expanduser("~"), ".supabase", "probe_email_e2e_state.%s.json" % _REF)
 op = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
@@ -27,7 +29,8 @@ def req(method, path, body=None, tok=None):
     r = urllib.request.Request(URL + path, method=method,
                                data=None if body is None else json.dumps(body).encode(),
                                headers={"apikey": KEY, "Content-Type": "application/json",
-                                        "Authorization": "Bearer " + (tok or KEY)})
+                                        "Authorization": "Bearer " + (tok or KEY),
+                                        HDR_CLIENT_VERSION: client_version()})
     try:
         with op.open(r, timeout=40) as resp:
             t = resp.read().decode()
