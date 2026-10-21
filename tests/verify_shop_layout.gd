@@ -392,10 +392,11 @@ func _ready() -> void:
 	GameState.dual_lineup = {}
 	GameState.persistent_bench = [{"id": "p2eq_001", "star": 1}]
 	GameState.persistent_equipped = {"basic": [{"id": "p2eq_002", "star": 1}]}
-	for st in ["bench"]:
-		sc.set("_sel", -1)
+	## ★2026-10-21 商店没有背包那一排了 ⇒「点了才出现」的字 = 点货架一件弹出的说明卡(之前这条靠 10 个价签 Label 凑过线, 价签改像素图后才露出来)
+	for st in ["shelf"]:
+		sc.set("_sel", 0)
 		sc.set("_sel_own", "")
-		sc.set("_sel_bench", 0)
+		sc.set("_sel_bench", -1)
 		sc._rebuild()
 		for _i in range(3):
 			await get_tree().process_frame

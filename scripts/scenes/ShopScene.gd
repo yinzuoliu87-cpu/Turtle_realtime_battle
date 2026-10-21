@@ -65,6 +65,48 @@ const ITEM_X := 4.0                        # 物品在格里偏左, 右脚边立
 ##   盖满整条板沿。改成新画的像素立牌(price-tag.png 原生 22×20, 同倍率), 立在物品右脚边的板面上,
 ##   大号数字; 费用档只用牌面左上一颗色点(参考背包乱斗的纸牌价签)。
 const TAG_TEX = preload("res://assets/sprites/shop/price-tag.png")
+## 5×7 像素数字(价签用, 逐行 5 位, 1 = 画; 画时横向加粗 1 列 ⇒ 6×7)。在价签原生像素格(22×20)上画, 与价签同倍率放大 ⇒ 两者像素一样大。
+const PRICE_DIGITS := {
+	"0": ["01110", "10001", "10011", "10101", "11001", "10001", "01110"],
+	"1": ["00100", "01100", "00100", "00100", "00100", "00100", "01110"],
+	"2": ["01110", "10001", "00001", "00110", "01000", "10000", "11111"],
+	"3": ["11110", "00001", "00001", "01110", "00001", "00001", "11110"],
+	"4": ["00010", "00110", "01010", "10010", "11111", "00010", "00010"],
+	"5": ["11111", "10000", "11110", "00001", "00001", "10001", "01110"],
+	"6": ["00110", "01000", "10000", "11110", "10001", "10001", "01110"],
+	"7": ["11111", "00001", "00010", "00100", "01000", "01000", "01000"],
+	"8": ["01110", "10001", "10001", "01110", "10001", "10001", "01110"],
+	"9": ["01110", "10001", "10001", "01111", "00001", "00010", "01100"],
+}
+## 价签正面牌面(原生): x7..20, y3..16 ⇒ 中心 (13.5, 9.5)
+const PRICE_FACE_CX := 13.5
+const PRICE_FACE_CY := 9.5
+static var _price_tex_cache: Dictionary = {}
+
+static func _price_tex(price: int, col: Color) -> Texture2D:
+	var key := "%d|%s" % [price, col.to_html()]
+	if _price_tex_cache.has(key):
+		return _price_tex_cache[key]
+	var txt := str(price)
+	var img := Image.create(22, 20, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var w: int = txt.length() * 7 - 1      # 每字 5 列 + 加粗 1 列, 字间 1 列
+	var x0: int = int(floor(PRICE_FACE_CX - float(w) * 0.5 + 0.5))
+	var y0: int = int(floor(PRICE_FACE_CY - 3.5 + 0.5))
+	for k in range(txt.length()):
+		var g: Array = PRICE_DIGITS.get(txt[k], [])
+		for row in range(g.size()):
+			var line: String = g[row]
+			for c in range(line.length()):
+				if line[c] == "1":
+					var py: int = y0 + row
+					for dx in [0, 1]:   # 横向加粗 1 像素(1 像素笔画在手机上太细)
+						var px: int = x0 + k * 7 + c + dx
+						if px >= 0 and px < 22 and py >= 0 and py < 20:
+							img.set_pixel(px, py, col)
+	var tex := ImageTexture.create_from_image(img)
+	_price_tex_cache[key] = tex
+	return tex
 const TAG_W := 22.0 * CAB_SCALE            # 73
 const TAG_H := 20.0 * CAB_SCALE            # 67
 ## 小卡宽 / 小卡里小木斧进度块的宽度(= 小卡宽 - 左右内边距)
@@ -752,12 +794,15 @@ func _card(idx: int, pos: Vector2) -> Control:
 	dot_edge.mouse_filter = Control.MOUSE_FILTER_IGNORE; tag.add_child(dot_edge)
 	dot.position = Vector2(1.0, 1.0) * CAB_SCALE; dot.size = Vector2(2.0, 2.0) * CAB_SCALE
 	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE; dot_edge.add_child(dot)
-	var pr := Label.new(); pr.name = "Price"; pr.text = "%d" % price
-	pr.add_theme_font_size_override("font_size", 34)
-	pr.add_theme_color_override("font_color", Color("#3a2414") if afford else Color("#c0262b"))
-	pr.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; pr.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	## 牌面内框 = 原生 x7..16 / y5..16(外圈是牌边, 右上角是色点; 字不压边带 —— verify_ui_consistency)
-	pr.position = Vector2(7.0, 5.0) * CAB_SCALE; pr.size = Vector2(9.0, 11.0) * CAB_SCALE
+	## 价签数字(用户 2026-10-21「价签上的数字换成像素字体」→「这个3你没觉得歪吗」):
+	##   字体渲染的像素格(×3)和价签的像素格(×3.33)对不上, 又偏在牌面左边 ⇒ 改成在价签【原生像素格】上逐点画 5×7 数字,
+	##   与价签同一张贴图倍率放大, 居中在正面牌面(原生 x7..20 / y3..16)。
+	var pr := TextureRect.new(); pr.name = "Price"
+	pr.texture = _price_tex(price, Color("#3a2414") if afford else Color("#c0262b"))
+	pr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	pr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; pr.stretch_mode = TextureRect.STRETCH_SCALE
+	pr.position = Vector2.ZERO; pr.size = tag.size
+	pr.tooltip_text = "%d" % price
 	pr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tag.add_child(pr)
 	if not afford:

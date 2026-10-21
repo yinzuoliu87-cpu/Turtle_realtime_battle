@@ -292,6 +292,12 @@ func _spawn_lane_side(units: Array, side: String, lvl: int, base: Vector2) -> vo
 			made["tamed_side"] = str(u["tamed_side"])
 			made["tame_used"] = bool(u.get("tame_used", true))   # 已用掉复活机会, 别在决胜里再复活一次
 			made["_tame_decay_next"] = -1.0                      # 掉血节拍重新起算(进场后整 1 秒才掉第一次)
+		## 财神龟「招财进宝」进度(见 dual_lane_flow._dl_snapshot_survivors): 接着升原来那件, 不再抽第二件
+		if int(u.get("buyequip_star", 0)) > 0:
+			made["buyequip_id"] = str(u.get("buyequip_id", ""))
+			made["buyequip_star"] = int(u["buyequip_star"])
+			if float(u.get("buyequip_cost", 0.0)) > 0.0 and made.get("energy_cost") is Dictionary:
+				(made["energy_cost"] as Dictionary)["fortuneBuyEquip"] = float(u["buyequip_cost"])
 		battle._units.append(made)
 
 ## 数据驱动龟能表: 该龟各技 type → energyCost。

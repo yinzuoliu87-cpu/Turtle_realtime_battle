@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tests/verify_fortune_final_carry.gd" id="1"]
+
+[node name="VerifyFortuneFinalCarry" type="Node"]
+script = ExtResource("1")

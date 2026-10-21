@@ -921,6 +921,13 @@ func _dl_snapshot_survivors() -> void:
 			if str(u.get("tamed_side", "")) != "":
 				spec["tamed_side"] = str(u["tamed_side"])
 				spec["tame_used"] = true
+			## ★财神龟「招财进宝」的临时装备进度要跟着进终极战场(2026-10-21 查实的 bug):
+			##   临时装备本身随 equips 带过去了, 但「已抽 / 几星 / 当前消耗」没带 ⇒ 终极战场里当成没抽过、
+			##   再抽一件(身上两件临时装备), 原来那件也不再升星。一局内的进度不重置(用户 08-01 第 8/9 条同一原则)。
+			if int(u.get("buyequip_star", 0)) > 0:
+				spec["buyequip_id"] = str(u.get("buyequip_id", ""))
+				spec["buyequip_star"] = int(u["buyequip_star"])
+				spec["buyequip_cost"] = float((u.get("energy_cost", {}) as Dictionary).get("fortuneBuyEquip", 0.0))
 			cur.append(spec)
 		GameState.dual_survivors[side] = cur
 
