@@ -61,6 +61,24 @@ func _req(method: String, path: String, body: String = "", extra: String = "") -
 	return box["res"]
 
 
+## 用裸 HTTPRequest(不走 NetRoute / Supabase 层)把一台假服务器打到回 2xx 为止。
+func _warm(srv: Node) -> bool:
+	srv.mode = "ok"
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 10000:
+		var hr := HTTPRequest.new()
+		add_child(hr)
+		var box := {"code": -1}
+		hr.request_completed.connect(func(_r0, code, _h, _b) -> void: box["code"] = code)
+		if hr.request(srv.base() + STATUS) == OK:
+			await _wait(func() -> bool: return int(box["code"]) >= 0, 3000)
+		hr.queue_free()
+		if int(box["code"]) >= 200 and int(box["code"]) < 300:
+			return true
+		await get_tree().process_frame
+	return false
+
+
 func _fresh(dmode: String, rmode: String, saved: String = "") -> void:
 	NR._reset_for_test()
 	NR.routes_override = PackedStringArray([_d.base(), _r.base()])
@@ -99,6 +117,10 @@ func _ready() -> void:
 	add_child(_d)
 	add_child(_r)
 	_ok("分母: 两个本地入口起来了", _d.start(18931) and _r.start(19031), "%d / %d" % [_d.port, _r.port])
+	## ★热身(2026-10-21 CI 红): 开局第一发竞速在 CI 上 1 毫秒内两条都回 code 0、两台假服务器 0 次收到 ——
+	##   假服务器刚 listen、还没被 _process 推过一拍就被打。本机快所以从没红过。
+	##   ⇒ 先用裸 HTTPRequest 把两台各打通一次(上限 10 秒), 判据本身一字不改; _fresh 会清掉热身留下的计数。
+	_ok("分母: 两个本地入口真能应答(热身)", await _warm(_d) and await _warm(_r))
 	await _part_r()
 	await _part_s()
 	## 收尾: 还原(别的门禁同进程不会再跑, 但照样清干净)
