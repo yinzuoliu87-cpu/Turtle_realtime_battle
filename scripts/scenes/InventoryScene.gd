@@ -1973,18 +1973,7 @@ func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	st.position = Vector2(0, ITEM_CARD_MARGIN); st.size = Vector2(SLOT, 28)   # 从框的边带下沿起(y=4 时星压边带 3px)
 	st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(st)
-	## 合成进度(2026-10-22): 同名同星已有 ≥ 2 件 ⇒ 右下角「2/3」(再来一件就合成)。数的是 GameState.copies_of,
-	##   与商店「再买合成」同一个数、同一个范围(背包 + 统领 + 小将)。满星 / 不升星的件不显示。
-	var _cp: int = int(GameState.copies_of(eid, star))
-	if star < 3 and _cp >= 2 and not EquipPool.NO_STAR.has(eid):
-		var mp := Label.new(); mp.name = "MergeProgress"
-		mp.text = "%d/3" % mini(_cp, 3)
-		mp.add_theme_font_size_override("font_size", MIN_FONT_PX)
-		mp.add_theme_color_override("font_color", Color("#7fe39a"))
-		mp.add_theme_color_override("font_outline_color", Color("#06140a")); mp.add_theme_constant_override("outline_size", 5)
-		mp.position = Vector2(SLOT - 46.0, SLOT - 30.0); mp.size = Vector2(40, 26)
-		mp.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		box.add_child(mp)
+	## ★不画合成进度(「2/3」): 凑够 3 件自动合成, 计数不对应任何操作 —— 用户 2026-10-22「为什么要合成几/几」。
 	for ch in box.get_children():
 		ch.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# tooltip: 名字/★/费用 + 【该星级全部属性加成】 + 效果(用户2026-07-19"背包里我要看到每件装备提供的属性, 必须写完整")
