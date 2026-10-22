@@ -131,9 +131,11 @@ func _ready() -> void:
 	for c in _all(sc):
 		if c is ScrollContainer:
 			bench_bottom = maxf(bench_bottom, (c as Control).get_global_rect().end.y)
-	_ok("② 没选中时背包铺到屏底(底部留白 ≤ 24px, 原来空着 90px)",
-		bench_bottom > 0.0 and vp - bench_bottom <= 24.0,
-		"背包底 %.0f, 离屏底还有 %.0f px" % [bench_bottom, vp - bench_bottom])
+	## ★2026-10-22 背包重做: 背包下面是一条羁绊(SYN_TOP 起) ⇒ 背包铺到它上沿为止, 中间不许空一条。
+	var syn_top: float = float(InvScene.SYN_TOP)
+	_ok("② 没选中时背包铺到羁绊条上沿(中间留白 ≤ 24px)",
+		bench_bottom > 0.0 and syn_top - bench_bottom <= 24.0 and bench_bottom <= syn_top,
+		"背包底 %.0f, 羁绊条顶 %.0f" % [bench_bottom, syn_top])
 
 	# ══ C. 背包格子铺满宽度(右边不许留空列) ══════════════════════
 	## ★2026-10-21 手机版: 背包只画真有的件数(不补空格) ⇒ 量「列距铺满」要先放满一整行, 量完放回原样。
@@ -212,38 +214,34 @@ func _ready() -> void:
 	sc.call("_rebuild")
 	for _i in range(8):
 		await get_tree().process_frame
-	var body: RichTextLabel = sc.get("_op_body")
-	var more: Label = sc.get("_op_more")
-	_ok("⑥ ★分母: 底栏真的画出了效果正文", body != null and is_instance_valid(body))
-	if body != null and is_instance_valid(body):
+	## ★2026-10-22 背包重做(用户「然后问你点击物品应该怎么样」): 点装备不再出底部操作条,
+	##   而是贴着那一格弹说明小卡(与商店同一张 InspectCard)。判据的意思不变 ——
+	##   字要完整放得下、不许冲出框、不许静默截断、全文有去处; 外加: 小卡只在右边背包那一栏, 不压左边的龟卡。
+	var icard: Control = null
+	var ins = sc.get("_insp")
+	if ins != null and ins.card != null and is_instance_valid(ins.card):
+		icard = ins.card
+	var body: RichTextLabel = null
+	if ins != null and ins.live is Dictionary and (ins.live as Dictionary).get("body") is RichTextLabel:
+		body = (ins.live as Dictionary)["body"]
+	_ok("⑥ ★分母: 点了装备 ⇒ 说明小卡弹出来了、而且画了效果正文", icard != null and body != null and is_instance_valid(body))
+	if icard != null and body != null and is_instance_valid(body):
 		var br: Rect2 = body.get_global_rect()
-		var bar: Control = body.get_parent() as Control
-		var barr: Rect2 = bar.get_global_rect() if bar != null else Rect2()
-		_ok("⑦ 正文框完整落在底栏内(不许冲出去)", br.end.y <= barr.end.y + 1.0,
-			"正文底 %.0f > 底栏底 %.0f" % [br.end.y, barr.end.y])
-		_ok("⑧ 底栏完整落在 720 设计框内", barr.end.y <= vp + 1.0,
-			"底栏底 %.0f > %.0f" % [barr.end.y, vp])
-		## ★★正文框高必须是【整行】的整数倍 —— 拍一个 40 的后果实拍见过:
-		##   第三行被从中间切掉半条, 比不显示还难看。
-		var lh: float = float(sc.call("_op_line_h", body))
-		_ok("⑨ ★正文框高 = 整行的整数倍(%.0f / 行高 %.0f), 不会把某一行切成半条"
-			% [br.size.y, lh], lh > 0.0 and absf(fmod(br.size.y, lh)) < 0.5,
-			"框高 %.1f 行高 %.1f 余 %.2f" % [br.size.y, lh, fmod(br.size.y, lh)])
-		## ★2026-08-19 改判据: 底栏现在放的是【一句话简述】(effectBrief), 不再是那段
-		##   中位 129 字、最长 329 字的全文 —— 所以"放不下要明说"这条不再适用于底栏,
-		##   **它现在就该一行不截地放得下**。全文由「细看」那一层承接(下面有断言)。
-		##   判据的意思没变: **不许静默截断**。只是从"截断了要提示"变成"根本不截断"。
-		## ★2026-10-08 改走产品同一个入口: 底栏用的是 equip_brief_bb(带内联属性图标, 图标比字宽),
-		##   这里原来量纯文本 equip_brief ⇒ 算出 1 行, 产品实际 3 行、挂着「查看更多」—— ⑪ 绿 ⑫ 红, 自相矛盾。
-		var eb: String = SkillText.equip_brief_bb(DataRegistry.phase2_equipment_by_id.get(long_id, {}), int(InvScene.OP_BODY_FS))
-		var total: int = int(sc.call("_op_total_lines", body, eb, br.size.x))
-		var rows: int = int(InvScene.OP_BODY_ROWS)
+		var barr: Rect2 = icard.get_global_rect()
+		_ok("⑦ 正文框完整落在小卡内(不许冲出去)", br.end.y <= barr.end.y + 1.0 and br.position.y >= barr.position.y - 1.0,
+			"正文 %s / 小卡 %s" % [str(br), str(barr)])
+		_ok("⑧ 小卡完整落在 720 设计框内", barr.end.y <= vp + 1.0 and barr.position.y >= 0.0,
+			"小卡 %s" % str(barr))
+		var bx: float = float(InvScene.BENCH_X) + (sc.call("_frame_off") as Vector2).x
+		_ok("⑨ ★小卡只在右边背包那一栏(左沿 ≥ 背包左沿), 不压左边的龟卡", barr.position.x >= bx - 1.0,
+			"小卡左沿 %.0f < 背包左沿 %.0f" % [barr.position.x, bx])
+		var eb: String = SkillText.equip_brief_bb(DataRegistry.phase2_equipment_by_id.get(long_id, {}), int(InvScene.MIN_FONT_PX))
 		_ok("⑩ ★分母: 简述确实拿到了(空串 = 下面是空检查)", eb.strip_edges() != "",
 			"%d 字" % eb.length())
-		_ok("⑪ ★★最长那件的简述在底栏也放得下(%d 行 ≤ %d 行), 不需要截断" % [total, rows],
-			total <= rows, "要 %d 行 > 能放 %d 行" % [total, rows])
-		_ok("⑫ ★没截断就不该再挂「还有几行」的提示", more == null or not is_instance_valid(more),
-			"仍挂着: %s" % ("无" if more == null else str(more.text)))
+		var ch: float = float(body.get_content_height())
+		_ok("⑪ ★★最长那件的简述在小卡里一字不截(内容高 %.0f ≤ 框高 %.0f)" % [ch, br.size.y],
+			ch > 0.0 and ch <= br.size.y + 1.0, "内容 %.0f > 框 %.0f" % [ch, br.size.y])
+		_ok("⑫ ★不截断就不该挂「还有几行」的提示", sc.get("_op_more") == null or not is_instance_valid(sc.get("_op_more")))
 	## ══ ⑬ 全文的去处 —— 判据落在【按下去真的开出全文】, 不落在键上写着哪两个字 ══
 	## ★★2026-09-28 重写。原判据是 `Button.text == "详情"`, 而这一刻那颗键的文案
 	##   正从「详情」统一成「细看」(战斗信息框 `battle_hud.gd` 一直写「点开细看」)
@@ -256,7 +254,7 @@ func _ready() -> void:
 	for c in _all(sc):
 		if c is Button and str(c.name) == str(InvScene.DETAIL_BTN_NAME):
 			det_btn = c
-	_ok("⑬ ★分母: 底栏那颗看全文的键在场(按节点名找, 不按按钮上的字)", det_btn != null)
+	_ok("⑬ ★分母: 说明小卡上那颗看全文的键在场(按节点名找, 不按按钮上的字)", det_btn != null)
 	var det_opened := false
 	var det_words := ""
 	if det_btn != null:

@@ -71,51 +71,61 @@ const SLOT_PAD := 7.0
 ## ★2026-10-22 二改(用户「背包你左边应该只放6张卡，携带装备应该是贴在卡上吧」):
 ##   左边 = 6 张卡两排(上路一排、下路一排), 装备三格贴在卡的下沿(不再另放托盘); 卡下面一条羁绊;
 ##   右边整块 = 背包(7 列, 22 件一屏放得下)。
-const CARD_W := 150.0
-const CARD_H := 190.0          # = 框图(原生 75×95 × 2), 装备贴在框的下沿
-const CARD_GAP := 12.0
-const CARDS_X := 28.0
-const LANE_HDR_Y := 86.0       # 上路木牌; 下路木牌 = 它 + ROW_PITCH
-const ROW_PITCH := 236.0       # 一排 = 木牌 32 + 4 + 卡 190 + 10
-const CARDS_Y := LANE_HDR_Y + 36.0
-const CARD_BORDER := 38.0      # 框到内窗的距离(原生 7 饰件余量 + 12 木边 = 19, × 2)
-const PORTRAIT_H := 62.0       # 内窗里立绘那一截(内窗 76×116: 上立绘、中名字、下沿压着装备)
-## ★立绘比内窗大一圈、压出木框(卡牌游戏常见的「破框」画法): 内窗只有 76 宽, 关在里面太小。
-const PORTRAIT_POP := 14.0
-const NAME_Y := 104.0          # 名字那一行(内窗中段)
-const EQ_CELL := 40.0          # 贴在卡上的装备格
-const EQ_GAP := 5.0
-const SLOT_ROW_Y := CARD_H - EQ_CELL - 6.0   # 144: 压在框的下沿上(像嵌在卡上的宝石)
+## ★2026-10-22 三改(用户「卡片大一点啊」): 框图按 3 倍画(原生 75×95 → 225×285, 整数倍不变形), 6 张卡占满左半边;
+##   右边背包 5 列, 羁绊条挪到右下。
+const CARD_W := 225.0
+const CARD_H := 285.0          # = 框图 × 3, 装备贴在框的下沿
+const CARD_GAP := 10.0
+const CARDS_X := 24.0
+const LANE_HDR_Y := 84.0       # 上路木牌; 下路木牌 = 它 + ROW_PITCH
+const LANE_SIGN_H := 28.0
+## 卡顶 = 木牌下沿往上 18: 框图上沿有 6 像素(× 3)的透明余量, 让木牌压在那截空白上, 两排才放得进 720 高
+const CARD_DROP := LANE_SIGN_H - 18.0
+const ROW_PITCH := CARD_DROP + CARD_H + 2.0   # 297
+const CARDS_Y := LANE_HDR_Y + CARD_DROP
+const CARD_BORDER := 57.0      # 框到内窗的距离(原生 7 饰件余量 + 12 木边 = 19, × 3)
+const PORTRAIT_H := 96.0       # 内窗(114×174)上半截立绘
+## ★立绘比内窗大一圈、压出木框(卡牌游戏常见的「破框」画法)
+const PORTRAIT_POP := 20.0
+const NAME_Y := CARD_BORDER + PORTRAIT_H + 8.0     # 161
+const NAME_FS := 24
+const EQ_CELL := 56.0          # 贴在卡上的装备格
+const EQ_GAP := 8.0
+const SLOT_ROW_Y := CARD_H - EQ_CELL - 10.0   # 219: 压在框的下沿上(像嵌在卡上的宝石)
 ## 旧名保留: 教程锚点 / 门禁按它们找「阵容区」
 const LANE_TOP := CARDS_Y
 const LANE_GAP := ROW_PITCH
-const LEFT_W := 3.0 * CARD_W + 2.0 * CARD_GAP   # 左边卡区宽 474
+const LEFT_W := 3.0 * CARD_W + 2.0 * CARD_GAP   # 左边卡区宽 695
 ## 顶栏右侧「币 / 全队装备」这一组的左沿(不跟羁绊列走)。
 const HDR_GROUP_X := 828.0
-## 羁绊: 卡区下面一条, 一行横排(多了横着滑)
-const SYN_X := CARDS_X
-const SYN_W := LEFT_W
-const SYN_TOP := LANE_HDR_Y + 2.0 * ROW_PITCH + 2.0
-const SYN_BOTTOM := 712.0
-const SYN_HORIZONTAL := true
-const SYN_CHIP_W := 192.0      # 两块整的 + 第三块露一截(看得出还能往右滑)
 ## 顶栏「站位」签占的宽度 + 间距(右上「币 / 全队装备」这一组为它左移这么多)。
 const FORMATION_BTN_ROOM := 112.0
 ## 教程里右上「跳过教程」(132 宽)比它占的「?」(81 宽)多出的那截, 再加两格间距的余量。
 const TUT_SKIP_EXTRA := 80.0
-## 背包: 右边整块
-const BENCH_X := CARDS_X + LEFT_W + 26.0     # 528
+## 背包: 右边整块(羁绊条在它下面)
+const BENCH_X := CARDS_X + LEFT_W + 20.0     # 739
 const BENCH_HDR_Y := LANE_HDR_Y
+## 羁绊: 背包下面一条, 一行横排(多了横着滑)
+const SYN_X := BENCH_X
+const SYN_W := 1252.0 - BENCH_X
+const SYN_TOP := 600.0
+const SYN_BOTTOM := 712.0
+const SYN_HORIZONTAL := true
+const SYN_CHIP_W := 192.0      # 两块整的 + 第三块露一截(看得出还能往右滑)
 const BENCH_TOP := BENCH_HDR_Y + 34.0
 const BENCH_PITCH := 108.0     # 格子行距(96 格 + 12 间隙): 3 行 = 312 ≤ 316, 刚好铺进去
-const OP_BAR_H := 132.0        # 底部操作条(2026-10-21 手机版: 字 14/16/17 → 20, 键 38 → 81 高, 简述 3 行 ⇒ 80 → 132)
+## ★2026-10-22 背包三改: 左边是大卡, 操作条横在屏幕底会压住下路那排卡(选中装备时正要去点卡)
+##   ⇒ 三种操作条都住进右栏(背包那一栏)、改成两层: 上面名字 + 效果, 下面一排键。
+const OP_BAR_H := 232.0
+const OPS_X := 739.0          # = BENCH_X(常量顺序在前, 写死同值)
+const OPS_W := 1252.0 - OPS_X
 ## ★2026-10-21 手机优先: 最小字号 20(iPhone 上约 11pt); 底边只用到「视口底 - 底部横条」(见 _bottom_limit)。
 const MIN_FONT_PX := 20
 ## ★★选中战场卡片时那条「卸下」操作条【比其它两条高】—— 它里面装的是 81px(44pt) 的键,
 ##   而 `OP_BAR_H = 80` **装不下 81**。原来就是硬塞的: 键从条内 y=12 起 ⇒ 底沿 725,
 ##   不但伸出条子 13px, 还**伸出 720 设计框 5px**(探针实测 10 颗键全中)。
 ##   ⇒ 给它自己的高度 = 81 + 上下各 6 = 93, 并且**向上长**(下沿仍是 712, 与另两条齐平)。
-const UNIT_BAR_H := 93.0
+const UNIT_BAR_H := OP_BAR_H   # 右栏版: 标题一行 + 卸下键两两一排
 const UNIT_BAR_PAD := 6.0      # 键在条内的上下留白(93 = 81 + 6×2)
 const OP_BODY_FS := 20         # 底栏效果正文字号(14 → 20 手机最小字号)
 const OP_BODY_ROWS := 3        # 底栏效果正文显示几【整】行(20 号字下最长的简述 3 行; 2026-10-21 由 2 改 3)
@@ -141,16 +151,18 @@ var _bench_area: Control = null
 var _rebuild_pending := false
 ## 单位卡按下的位置(松手时位移小才算点一下 —— 按下就算的话, 想拖的那一下会先被当成点、整页重建)
 var _unit_press := Vector2.ZERO
+## ── 点装备弹说明小卡(2026-10-22 用户「然后问你点击物品应该怎么样」→ 我答「旁边弹说明小卡, 卡底是动作」) ──
+##   与商店 / 局内信息面板同一张 InspectCard。背包里的一件 = 卡底「卖出 / 详情」; 卡上的一件 = 「卸下 / 详情」。
+var _insp := InspectCard.new(self)
+var _ui_layer: Node = null           # InspectCard 往这里挂卡(= 本场景)
+var _insp_anchor: Control = null     # 小卡贴着谁弹(被点的那一格 / 那张单位卡)
+## 点了单位卡上的哪一件 {lane, idx, cell(真实下标)}; 空 = 没点
+var _sel_worn: Dictionary = {}
 var _inv_synergy := InvSynergy.new(self)   # 背包·类型羁绊面板+详情弹框(2026-07-25 抽出)
 var _dl_sel: Dictionary = {}   # 双路布阵选中框 {lane, idx} (点两个互换分路)
 var _vw: float = 1280.0   # 实际视口宽(手机expand后可达~1560): 顶栏/背包按真实宽铺开·不再左挤留空(2026-07-18)
 var _press_pos := Vector2.ZERO   # 背包格触屏点选/滑动判定: 松开位移小才算点选(可滑动列表·2026-07-18)
 var _press_ms := 0               # 背包格按下的时刻(按住 ≥ InvDrag.HOLD_MS 再动 = 拿起来拖)
-## 背包显示顺序(2026-10-22): "" 默认 / star 星级 / cost 费用 / type 羁绊。只改显示, 不动存档顺序(存档下标牵涉卸下 / 合成)。
-## static: 同一次游戏里来回切页还记得。
-static var _bench_sort := ""
-const SORT_MODES := ["", "star", "cost", "type"]
-const SORT_NAMES := {"": "默认", "star": "星级", "cost": "费用", "type": "羁绊"}
 var _op_body: RichTextLabel = null   # 底栏效果正文(算"还有几行被裁"要读它自己报的行数)
 var _op_more: Label = null           # 底栏"下面还有 N 行"提示
 
@@ -248,6 +260,7 @@ func _rebuild() -> void:
 	_rebuild_pending = false
 	_unit_boxes = []
 	_bench_area = null
+	_insp_anchor = null
 	# ★2026-08-01 改回设计宽(用户「有些画面都没有居中」「pc端做一板，手机端做一板」):
 	#   原来这里取【真实视口宽】(手机 expand 后 ~1560)让顶栏/背包铺满, 但页面里其余元素
 	#   仍按 1280 设计坐标摆 —— 于是宽屏上"一半跟着屏幕走、一半不动", 审计器实测
@@ -265,6 +278,11 @@ func _rebuild() -> void:
 	bg.color = Color("#0a1622")
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
+	## 点空白处 = 收起说明小卡 / 取消选中(松手才算, 与别处点按同一个口径)
+	bg.mouse_filter = Control.MOUSE_FILTER_STOP
+	bg.gui_input.connect(func(ev):
+		if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT and not ev.pressed:
+			_clear_selection())
 	## ★2026-10-22 背包重做: 场景底图(像素后仓), 与商店的木头货铺是同一条街。满铺(UIFrame 不收编满铺层)。
 	if ResourceLoader.exists(BG_TEX_PATH):
 		var bgi := TextureRect.new(); bgi.name = "InvBackdrop"
@@ -394,12 +412,14 @@ func _rebuild() -> void:
 	var leaders := _lineup_ids()
 	_build_lineup(leaders)
 	## 底部操作条出来时(选中了装备 / 糖果罐 / 有装备的单位), 它正好压在左下的羁绊条上 ⇒ 这时不画羁绊(否则标题只剩半截)
-	if _sel_bench >= 0 or (_sel_jar and GameState.has_candy_jar()) or _unit_bar_shows():
+	if _op_bar_shows():
 		_inv_synergy.first_on_chip = null
 	else:
 		_inv_synergy._build_synergy_panel(leaders)
 	_build_bench()
 	_build_op_bar()
+	_insp.card = null; _insp.key = ""      # 上面整页清过一遍, 旧卡已在释放队列里
+	_open_item_card()
 	# ★★UIFrame 必须在【每次重建之后】重挂(用户 2026-08-01:「背包点一下后整个屏幕左移」)。
 	#   本函数开头把所有子节点 queue_free —— 设计框也在里面。而 attach 原来只在 _ready 调过一次,
 	#   于是点一下之后【一个框都没有】, 内容退回原始设计坐标 → 整体左移(实测宽屏下左移 140px,
@@ -462,15 +482,16 @@ func _build_lineup(_leaders: Array) -> void:
 		for u in arr:
 			if u is Dictionary and str(u.get("kind", "")) == "leader": lead_n += 1
 		var ly: float = LANE_HDR_Y + float(li) * ROW_PITCH
-		var lsign := _lane_sign("上战场" if li == 0 else "下战场", Color("#ffd93d") if li == 0 else Color("#8fdcff"))
-		lsign.name = "LaneSign_" + lkey
-		lsign.position = Vector2(CARDS_X, ly); lsign.size = Vector2(LEFT_W, 32)
-		add_child(lsign)
 		for i in range(arr.size()):
-			var _ub: Control = _dl_unit_box(lkey, i, arr[i], lead_n, Vector2(CARDS_X + float(i) * (CARD_W + CARD_GAP), ly + 36.0))
+			var _ub: Control = _dl_unit_box(lkey, i, arr[i], lead_n, Vector2(CARDS_X + float(i) * (CARD_W + CARD_GAP), ly + CARD_DROP))
 			add_child(_ub)
 			if lkey == "top" and i == 0:
 				_tut_first_leader = _ub  # 教程手势指针「点击一只龟装上」指的就是它(上路第一只)
+		## 木牌后加 = 压在卡的上沿空白上(见 CARD_DROP)
+		var lsign := _lane_sign("上战场" if li == 0 else "下战场", Color("#ffd93d") if li == 0 else Color("#8fdcff"))
+		lsign.name = "LaneSign_" + lkey
+		lsign.position = Vector2(CARDS_X, ly); lsign.size = Vector2(LEFT_W, LANE_SIGN_H)
+		add_child(lsign)
 
 
 ## 一路的木牌标题(商店同一张木牌底)。
@@ -575,9 +596,9 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 		nm.text = str(pet.get("name", pid))
 	else:
 		nm.text = "精英小将" if is_elite else "小将"
-	nm.add_theme_font_size_override("font_size", MIN_FONT_PX); nm.add_theme_color_override("font_color", Color("#f4e8cf"))
+	nm.add_theme_font_size_override("font_size", NAME_FS); nm.add_theme_color_override("font_color", Color("#f4e8cf"))
 	nm.add_theme_color_override("font_outline_color", Color("#1a0e05")); nm.add_theme_constant_override("outline_size", 4)
-	nm.position = Vector2(14.0, NAME_Y); nm.size = Vector2(CARD_W - 28.0, 30)
+	nm.position = Vector2(20.0, NAME_Y); nm.size = Vector2(CARD_W - 40.0, 34)
 	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	nm.clip_text = true
 	nm.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(nm)
@@ -621,7 +642,7 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 			tgl.add_theme_stylebox_override("hover", tsb)
 			tgl.add_theme_stylebox_override("pressed", tsb)
 		tgl.add_theme_color_override("font_color", Color("#ffdba8") if front else Color("#b8e8ff"))
-		tgl.position = Vector2((CARD_W - 96.0) * 0.5, NAME_Y - 4.0); tgl.size = Vector2(96, 36)
+		tgl.position = Vector2((CARD_W - 104.0) * 0.5, NAME_Y - 2.0); tgl.size = Vector2(104, 40)
 		tgl.focus_mode = Control.FOCUS_NONE
 		tgl.pressed.connect(func(): _dl_toggle_role(lane, idx))
 		## 热区 = 立绘窗下半截(44pt 达标); 立绘本来就不是别的操作的靶子
@@ -642,7 +663,14 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 			if ev.pressed:
 				_unit_press = ev.position
 			elif ev.position.distance_to(_unit_press) < 16.0:
+				if _sel_bench < 0:
+					for wc in _worn:
+						if (wc["rect"] as Rect2).has_point(ev.position):
+							_on_worn_click(lane, idx, int(wc["cell"]))
+							return
 				_dl_click(lane, idx))
+	if str(_sel_worn.get("lane", "")) == lane and int(_sel_worn.get("idx", -1)) == idx:
+		_insp_anchor = box
 	_unit_boxes.append({"box": box, "lane": lane, "idx": idx, "unit": unit})
 	_drag.wire_unit(box, lane, idx, unit, _worn)
 	return box
@@ -821,6 +849,7 @@ func _dl_first_minion_idx(lane: String) -> int:
 
 ## 点布阵框: 选了装备+点统领=装备; 否则 无选中→选中, 已选中→与该框互换分路(跨/同路都行), 再点自己=取消.
 func _dl_click(lane: String, idx: int) -> void:
+	_sel_worn = {}
 	var arr: Array = GameState.get_dual_lineup().get(lane, [])
 	var unit: Dictionary = arr[idx] if idx < arr.size() and arr[idx] is Dictionary else {}
 	if _sel_bench >= 0 and str(unit.get("kind", "")) in ["leader", "minion"]:
@@ -873,30 +902,170 @@ func _notification(what: int) -> void:
 			_rebuild()
 
 
-const SORT_BTN_W := 156.0
 
 
-## 背包显示排序: 星级 / 费用 高的在前, 羁绊按类型聚在一起; 同档按原顺序(数据下标)稳定。
-func _bench_less(a: Dictionary, b: Dictionary) -> bool:
-	var ia: Dictionary = a["it"]
-	var ib: Dictionary = b["it"]
-	var ea: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(ia.get("id", "")), {})
-	var eb: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(ib.get("id", "")), {})
-	var sa := int(ia.get("star", 1)); var sb := int(ib.get("star", 1))
-	var ca := int(ea.get("cost", 0)); var cb := int(eb.get("cost", 0))
-	match _bench_sort:
-		"star":
-			if sa != sb: return sa > sb
-			if ca != cb: return ca > cb
-		"cost":
-			if ca != cb: return ca > cb
-			if sa != sb: return sa > sb
-		"type":
-			var ta := str(Phase2Types.type_of(str(ia.get("id", ""))))
-			var tb := str(Phase2Types.type_of(str(ib.get("id", ""))))
-			if ta != tb: return ta < tb
-			if ca != cb: return ca > cb
-	return int(a["bidx"]) < int(b["bidx"])
+## 底部操作条这一刻画不画(临时等级器 / 糖果罐 / 有装备的单位)。
+func _op_bar_shows() -> bool:
+	if _unit_bar_shows():
+		return true
+	if _sel_jar and GameState.has_candy_jar():
+		return true
+	return _sel_bench >= 0 and _sel_bench < GameState.persistent_bench.size() \
+		and str((GameState.persistent_bench[_sel_bench] as Dictionary).get("kind", "")) == "item"
+
+
+## 点单位卡上已装的那一件: 再点同一件 = 收起。
+func _on_worn_click(lane: String, idx: int, cell: int) -> void:
+	if str(_sel_worn.get("lane", "")) == lane and int(_sel_worn.get("idx", -1)) == idx and int(_sel_worn.get("cell", -1)) == cell:
+		_sel_worn = {}
+	else:
+		_sel_worn = {"lane": lane, "idx": idx, "cell": cell}
+	_sel_bench = -1
+	_sel_jar = false
+	_dl_sel = {}
+	_rebuild()
+
+
+## 收掉所有选中(点空白处)。
+func _clear_selection() -> void:
+	if _sel_bench < 0 and _sel_worn.is_empty() and _dl_sel.is_empty() and not _sel_jar:
+		return
+	_sel_bench = -1
+	_sel_worn = {}
+	_dl_sel = {}
+	_sel_jar = false
+	_rebuild()
+
+
+## 说明小卡: 背包里选中的装备 / 单位卡上点的那一件。
+func _open_item_card() -> void:
+	_ui_layer = self
+	var it: Dictionary = {}
+	var worn := false
+	if _sel_bench >= 0 and _sel_bench < GameState.persistent_bench.size():
+		it = GameState.persistent_bench[_sel_bench]
+		if str(it.get("kind", "")) == "item":
+			return                         # 临时等级器走底部操作条
+	elif not _sel_worn.is_empty():
+		var u: Dictionary = {}
+		var arr: Array = GameState.get_dual_lineup().get(str(_sel_worn.get("lane", "")), [])
+		var ui: int = int(_sel_worn.get("idx", -1))
+		if ui >= 0 and ui < arr.size() and arr[ui] is Dictionary:
+			u = arr[ui]
+		var eqs: Array = _unit_equips(u)
+		var ci: int = int(_sel_worn.get("cell", -1))
+		if ci < 0 or ci >= eqs.size():
+			_sel_worn = {}
+			return
+		it = eqs[ci]
+		worn = true
+	else:
+		return
+	if _insp_anchor == null or not is_instance_valid(_insp_anchor):
+		return
+	var eid := str(it.get("id", ""))
+	var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
+	if edef.is_empty():
+		return
+	var star: int = int(it.get("star", 1))
+	var col: Color = _cost_color(int(edef.get("cost", 1)))
+	var stats: Array = []
+	for kv in EquipStats.stat_lines(eid, star):
+		stats.append(InspectCard.eq_stat_row(kv, Color("#f4ead8")))
+	if stats.is_empty():
+		stats.append(["", "无属性加成", Color("#a89c86")])
+	var img := str(edef.get("img", ""))
+	var tp := str(Phase2Types.type_of(eid))
+	var tag_bb := "[color=#ffd93d]%s[/color]  %d费" % ["★".repeat(clampi(star, 1, 3)), int(edef.get("cost", 1))]
+	if tp != "":
+		tag_bb += "  ·  " + Phase2Types.icon_bb(tp, 16) + " " + tp
+	var body := SkillText.highlight_star(SkillText.equip_brief_bb(edef, MIN_FONT_PX), star) \
+		if str(edef.get("effectBrief", "")) != "" else "（无主动效果）"
+	var lv: Dictionary = _insp.open(("worn:" if worn else "bench:") + eid, null, {
+		"icon": ("res://assets/sprites/" + img) if img.ends_with(".png") else "",
+		"title": str(edef.get("name", eid)), "title_col": col,
+		"icon_border": col, "frame_col": col,
+		"tag_bb": tag_bb, "tag_col": Color("#e8dcc4"),
+		"stats": stats,
+		"body": body, "body_px": MIN_FONT_PX,
+		"width": ITEM_CARD_W, "min_px": MIN_FONT_PX,
+	})
+	if not lv.has("vbox"):
+		return
+	(_insp.card as Control).name = "ItemInspectCard"
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	(lv["vbox"] as VBoxContainer).add_child(row)
+	if worn:
+		var un := Button.new(); un.name = "UnequipBtn"; un.text = "卸下"
+		_card_btn(un)
+		var w0: Dictionary = _sel_worn.duplicate()
+		un.pressed.connect(func() -> void:
+			var arr2: Array = GameState.get_dual_lineup().get(str(w0["lane"]), [])
+			var u2: Dictionary = arr2[int(w0["idx"])] if int(w0["idx"]) < arr2.size() else {}
+			_sel_worn = {}
+			if str(u2.get("kind", "")) == "leader":
+				_inv_ops._unequip_at(str(u2.get("id", "")), int(w0["cell"]))
+			else:
+				_inv_ops._unequip_minion_at(str(w0["lane"]), int(w0["idx"]), int(w0["cell"])))
+		row.add_child(un)
+	else:
+		var sell := Button.new(); sell.name = "SellBtn"
+		sell.text = "卖出 +%d" % _inv_ops._sell_value(it)
+		_card_btn(sell)
+		sell.pressed.connect(func() -> void: _inv_ops._sell_selected())
+		row.add_child(sell)
+	var det := Button.new(); det.name = DETAIL_BTN_NAME; det.text = "详情"
+	_card_btn(det)
+	var it0: Dictionary = it
+	det.pressed.connect(func() -> void: _show_equip_detail(it0))
+	row.add_child(det)
+
+
+## 说明小卡卡底的动作钮: 木色直角, 高 81(= 44pt 触控下限)—— 与商店说明卡同一个样子。
+func _card_btn(b: Button) -> void:
+	b.custom_minimum_size = Vector2(0, 81)
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.focus_mode = Control.FOCUS_NONE
+	b.add_theme_font_size_override("font_size", 22)
+	for st in [["normal", "#6a3f1c", "#d89a48"], ["hover", "#7d4b22", "#f0b45a"], ["pressed", "#4e2d12", "#d89a48"],
+			["disabled", "#3a2a1c", "#7a6040"]]:
+		var sb := StyleBoxFlat.new(); sb.bg_color = Color(st[1]); sb.border_color = Color(st[2])
+		sb.set_border_width_all(3); sb.set_corner_radius_all(0)
+		b.add_theme_stylebox_override(st[0], sb)
+	b.add_theme_color_override("font_color", Color("#fff1d6"))
+	b.add_theme_color_override("font_hover_color", Color("#fff8e8"))
+
+
+const ITEM_CARD_W := 340.0
+
+
+## InspectCard 定位回调: 背包里的一件 = 背包那一栏里贴着它(下方放不下就上方); 卡上的一件 = 那张卡右边(放不下就左边)。
+func inspect_card_pos(card: Control, h: float) -> Vector2:
+	var w: float = card.size.x
+	var par := card.get_parent() as CanvasItem
+	var inv: Transform2D = par.get_global_transform().affine_inverse() if par != null else Transform2D.IDENTITY
+	var top := 80.0
+	var bot: float = _bottom_limit() - 6.0
+	if _insp_anchor == null or not is_instance_valid(_insp_anchor):
+		return Vector2(BENCH_X, BENCH_TOP)
+	var r: Rect2 = _insp_anchor.get_global_rect()
+	var p0: Vector2 = inv * r.position
+	var p1: Vector2 = inv * r.end
+	var x: float
+	var y: float
+	if p0.x >= BENCH_X - 4.0:
+		x = clampf((p0.x + p1.x) * 0.5 - w * 0.5, BENCH_X, 1252.0 - w)
+		y = p1.y + 8.0
+		if y + h > bot:
+			y = p0.y - 8.0 - h
+	else:
+		x = p1.x + 8.0
+		if x + w > 1252.0:
+			x = p0.x - 8.0 - w
+		y = p0.y + 20.0
+	y = clampf(y, top, maxf(top, bot - h))
+	return Vector2(x, y)
 
 
 ## 背包区现在要不要滚动(内容比可视区高)—— 不用滚时拖拽不必让着滚动。
@@ -994,14 +1163,17 @@ func _show_lineup_help() -> void:
 ## 背包滚动区的底边: 选中了东西(底部操作条会画出来) → 让到操作条上方; 否则铺到屏底。
 ## ★这是"操作条画不画"的**同一个判据**, 不是各写一份 —— 两边口径不同就会重叠或留缝。
 func _bench_bottom() -> float:
-	var sel_eq: bool = _sel_bench >= 0 and _sel_bench < GameState.persistent_bench.size()
+	## 只有临时等级器还走底部操作条(装备是说明小卡, 不占地方)
+	var sel_eq: bool = _sel_bench >= 0 and _sel_bench < GameState.persistent_bench.size() \
+		and str((GameState.persistent_bench[_sel_bench] as Dictionary).get("kind", "")) == "item"
 	var sel_jar: bool = _sel_jar and GameState.has_candy_jar()
 	## ★★选中战场卡片时那条「卸下」操作条**也要让位** —— 它是 2026-08-19 才加的第三条,
 	##   而本函数当时没跟上 ⇒ 背包照样铺到 712, 操作条后画、直接压在最后一排格子上。
 	##   它比另两条高(UNIT_BAR_H), 所以让的是它自己的顶沿。
 	if _unit_bar_shows():
 		return _unit_bar_y() - 8.0
-	return (_op_bar_y() - 8.0) if (sel_eq or sel_jar) else (_bottom_limit() - 4.0)
+	## 没选中东西时下面是羁绊条(SYN_TOP 起) ⇒ 背包铺到它上面为止
+	return (_op_bar_y() - 8.0) if (sel_eq or sel_jar) else minf(_bottom_limit() - 4.0, SYN_TOP - 8.0)
 
 
 ## ★2026-10-21 手机优先: 本页能用到的最底沿(设计框坐标)。
@@ -1076,27 +1248,9 @@ func _build_bench() -> void:
 	swipe.name = "BenchMoreHint"
 	swipe.add_theme_font_size_override("font_size", MIN_FONT_PX)
 	swipe.add_theme_color_override("font_color", Color("#5f7285"))
-	swipe.position = Vector2(1252.0 - SORT_BTN_W - 12.0 - 220.0, BENCH_HDR_Y + 2); swipe.size = Vector2(220, 28)
+	swipe.position = Vector2(1252.0 - 220.0, BENCH_HDR_Y + 2); swipe.size = Vector2(220, 28)
 	swipe.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	add_child(swipe)
-	if not _tut_on():
-		var sb := Button.new(); sb.name = "BenchSortButton"
-		sb.text = "排序：%s" % str(SORT_NAMES.get(_bench_sort, "默认"))
-		sb.add_theme_font_size_override("font_size", MIN_FONT_PX)
-		sb.add_theme_color_override("font_color", Color("#f4e8cf"))
-		var pst := StyleBoxTexture.new(); pst.texture = PLANK_TEX; pst.set_texture_margin_all(PLANK_MARGIN)
-		pst.content_margin_left = 10; pst.content_margin_right = 10
-		pst.content_margin_top = 2; pst.content_margin_bottom = 2   # 木牌边 18 默认会把键撑到 64 高, 压进第一排格子
-		for stn in ["normal", "hover", "pressed", "focus"]:
-			sb.add_theme_stylebox_override(stn, pst)
-		sb.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		sb.focus_mode = Control.FOCUS_NONE
-		sb.position = Vector2(1252.0 - SORT_BTN_W, BENCH_HDR_Y - 6.0); sb.size = Vector2(SORT_BTN_W, 40)
-		sb.pressed.connect(func() -> void:
-			var k: int = SORT_MODES.find(_bench_sort)
-			_bench_sort = str(SORT_MODES[(k + 1) % SORT_MODES.size()])
-			_rebuild())
-		add_child(sb)
 	var bench: Array = GameState.persistent_bench if GameState.persistent_bench is Array else []
 	## ★★用户 2026-08-14:「还有糖果罐, 在背包里我希望是以一个装备的形式」。
 	##   原来糖果罐是右上角一块 372×44 的独立面板 —— 和背包里的东西不是一套语言,
@@ -1147,7 +1301,7 @@ func _build_bench() -> void:
 	##   ⇒ 若把渲染下标当数据下标传, 每件装备偏 1, **点第 1 件会装备/卖掉第 2 件** —— 坏存档。
 	##   所以: `i` 只管摆位置, `bidx` 才是喂给 `_equip_cell` 的真实背包下标(合成条目不占号)。
 	var i := 0
-	## 先配好每格的【数据下标】(糖果罐 = -1, 不占号), 再按排序方式只调显示顺序 —— 点 / 拖 / 卖都按数据下标走。
+	## 先配好每格的【数据下标】(糖果罐 = -1, 不占号) —— 点 / 拖 / 卖都按数据下标走。
 	var order: Array = []
 	var _bi := 0
 	for it in bench:
@@ -1155,11 +1309,6 @@ func _build_bench() -> void:
 		order.append({"it": it, "bidx": -1 if synth0 else _bi})
 		if not synth0:
 			_bi += 1
-	if _bench_sort != "" and not _tut_on():
-		var head: Array = order.filter(func(e): return int(e["bidx"]) < 0)
-		var rest: Array = order.filter(func(e): return int(e["bidx"]) >= 0)
-		rest.sort_custom(_bench_less)
-		order = head + rest
 	for e in order:
 		var it: Dictionary = e["it"]
 		var bidx: int = int(e["bidx"])
@@ -1203,15 +1352,17 @@ func _build_op_bar() -> void:
 		_build_unit_equip_bar()
 		return
 	if _sel_bench < 0 or _sel_bench >= GameState.persistent_bench.size():
-		return   # 无选中装备 → 不显底部操作条(原那行"3件同款合成"已收进"?"帮助·用户2026-07-19)
+		return   # 无选中装备 → 不显底部操作条
+	if str((GameState.persistent_bench[_sel_bench] as Dictionary).get("kind", "")) != "item":
+		return   # ★2026-10-22 装备改成贴着那一格弹说明小卡(_open_item_card), 不再画底部操作条(原那行"3件同款合成"已收进"?"帮助·用户2026-07-19)
 	var by := _op_bar_y()
 	var bar := Panel.new()
 	var sb := StyleBoxFlat.new(); sb.bg_color = Color("#101c2a"); sb.border_color = Color("#2a3a4e")
 	sb.set_border_width_all(2); sb.set_corner_radius_all(8)
 	## ★2026-08-18 底部操作条换面板框 —— 它是"一块区域"不是格子, 与战斗面板描述浮层同类。
 	bar.add_theme_stylebox_override("panel", UISkin.nine("panel-frame.png", 20, sb))
-	var bw := _vw - 48.0
-	bar.position = Vector2(24, by); bar.size = Vector2(bw, OP_BAR_H); add_child(bar)
+	var bw := OPS_W
+	bar.position = Vector2(OPS_X, by); bar.size = Vector2(bw, OP_BAR_H); add_child(bar)
 	if _sel_bench >= 0 and _sel_bench < GameState.persistent_bench.size():
 		var sit: Dictionary = GameState.persistent_bench[_sel_bench]
 		if str(sit.get("kind", "")) == "item":
@@ -1221,7 +1372,7 @@ func _build_op_bar() -> void:
 			##   而它左边那张卡上就画着临时等级器。
 			var l := Label.new(); l.text = "选择单位 · 本大轮等级 +1"
 			l.add_theme_font_size_override("font_size", MIN_FONT_PX); l.add_theme_color_override("font_color", Color("#e6d8ff"))
-			l.position = Vector2(16, 36); l.size = Vector2(bw - 320, 28); l.mouse_filter = Control.MOUSE_FILTER_IGNORE; bar.add_child(l)
+			l.position = Vector2(16, 36); l.size = Vector2(bw - 32, 28); l.mouse_filter = Control.MOUSE_FILTER_IGNORE; bar.add_child(l)
 		else:
 			var sdef: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(sit.get("id", "")), {})
 			# ★装备文案按玩家当前星级高亮(2026-07-22): 三元组 a/b/c 里这一档亮、另两档暗。
@@ -1240,7 +1391,7 @@ func _build_op_bar() -> void:
 			head.text = "[b][color=#ffffff]%s[/color][/b]   [color=#ffd93d]%s[/color]   [color=#8fa6bb]%d费%s[/color]" % [
 				str(sdef.get("name", "")), "★".repeat(maxi(1, _star)), int(sdef.get("cost", 1)),
 				("  ·  " + _tname) if _tname != "" else ""]   # 类型名本身(剑), 不加「系」—— 与羁绊列 / 商店同一个名字
-			head.position = Vector2(16, 8); head.size = Vector2(bw - 420 - 260, 30)   # 右边 260 留给「查看更多」
+			head.position = Vector2(16, 8); head.size = Vector2(bw - 32 - 200, 30)   # 右边 260 留给「查看更多」
 			head.mouse_filter = Control.MOUSE_FILTER_IGNORE; bar.add_child(head)
 			## ── 第二段: 效果正文。正文色改成浅蓝灰(#cfe0ef), 只留【数值】是黄的 ——
 			##    这样一眼能扫到数字, 而不是满屏一片黄。
@@ -1262,7 +1413,7 @@ func _build_op_bar() -> void:
 			l.text = SkillText.highlight_star(plain, _star)
 			l.add_theme_font_size_override("normal_font_size", OP_BODY_FS)
 			l.add_theme_color_override("default_color", Color("#cfe0ef"))
-			var body_w := bw - 420.0
+			var body_w := bw - 32.0
 			## 框高 = 【整数】行 —— 用字体自己报的行高算, 不是拍一个 40。
 			##   拍 40 的后果实拍看到了: 第 3 行被从中间切开半条, 比直接不显示还难看。
 			var lh := _op_line_h(l)
@@ -1278,7 +1429,7 @@ func _build_op_bar() -> void:
 				more.text = "查看更多（%d 行）" % (total - OP_BODY_ROWS)
 				more.add_theme_font_size_override("font_size", MIN_FONT_PX)
 				more.add_theme_color_override("font_color", Color("#7fb0d8"))
-				more.position = Vector2(body_w + 16.0 - 250.0, 8); more.size = Vector2(250, 28)
+				more.position = Vector2(bw - 16.0 - 200.0, 8); more.size = Vector2(200, 28)
 				more.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 				more.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				bar.add_child(more)
@@ -1297,7 +1448,7 @@ func _build_op_bar() -> void:
 			var det := Button.new(); det.text = "详情"
 			det.name = DETAIL_BTN_NAME
 			det.add_theme_font_size_override("font_size", MIN_FONT_PX)
-			det.position = Vector2(bw - 396, (OP_BAR_H - 81.0) * 0.5); det.size = Vector2(96, 81)
+			det.position = Vector2(16, OP_BAR_H - 91.0); det.size = Vector2(96, 81)
 			## ★★底栏这三个键原来全是 Godot 默认皮(圆角纯色) ——
 			##   `verify_click_targets_alive` 自己写着「圆角纯色是最直接的『没游戏味』」,
 			##   它们只是因为底栏得先选中一件装备才建、静止态的屏上不在场, 才一直没被数到。
@@ -1319,12 +1470,12 @@ func _build_op_bar() -> void:
 			sell.icon_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 			sell.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 			sell.add_theme_font_size_override("font_size", MIN_FONT_PX)
-			sell.position = Vector2(bw - 290, (OP_BAR_H - 81.0) * 0.5); sell.size = Vector2(170, 81)
+			sell.position = Vector2(122, OP_BAR_H - 91.0); sell.size = Vector2(170, 81)
 			UISkin.button(sell, Color("#ffd93d"))
 			sell.pressed.connect(_inv_ops._sell_selected); bar.add_child(sell)
 		var cancel := Button.new(); cancel.text = "取消"
 		cancel.add_theme_font_size_override("font_size", MIN_FONT_PX)
-		cancel.position = Vector2(bw - 108, (OP_BAR_H - 81.0) * 0.5); cancel.size = Vector2(92, 81)
+		cancel.position = Vector2(bw - 108, OP_BAR_H - 91.0); cancel.size = Vector2(92, 81)
 		UISkin.button(cancel, Color("#9fb6c9"))
 		cancel.pressed.connect(func(): _sel_bench = -1; _rebuild()); bar.add_child(cancel)
 
@@ -1484,8 +1635,8 @@ func _build_jar_op_bar() -> void:
 	if jtex is StyleBoxTexture:
 		(jtex as StyleBoxTexture).modulate_color = UISkin.tint_of(sb.border_color)
 	bar.add_theme_stylebox_override("panel", jtex)
-	var bw := _vw - 48.0
-	bar.position = Vector2(24, by); bar.size = Vector2(bw, OP_BAR_H); add_child(bar)
+	var bw := OPS_W
+	bar.position = Vector2(OPS_X, by); bar.size = Vector2(bw, OP_BAR_H); add_child(bar)
 	## ★★2026-08-15 修 off-by-one: `candy_jar_tier()` 返回的**已经是 1~6**
 	##   (`verify_candy_jar` 逐区间焊死, `break_candy_jar` 也按 `[tier-1]` 取奖励)。
 	##   这里原来又 `tier + 1` ⇒ 卡面/底栏写"第 3 档", 而同一行右边给的奖励是
@@ -1505,7 +1656,7 @@ func _build_jar_op_bar() -> void:
 		tier, GameState.candy_jar_tier_preview(tier)]
 	l.add_theme_font_size_override("font_size", MIN_FONT_PX)
 	l.add_theme_color_override("font_color", Color("#f0d6ff"))
-	l.position = Vector2(16, 16); l.size = Vector2(bw - 320, OP_BAR_H - 32.0)
+	l.position = Vector2(16, 12); l.size = Vector2(bw - 32, OP_BAR_H - 81.0 - 30.0)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bar.add_child(l)
@@ -1514,7 +1665,7 @@ func _build_jar_op_bar() -> void:
 	##     那条断言已同步改成按行为找这枚键。
 	var smash := Button.new(); smash.text = "打碎"
 	smash.add_theme_font_size_override("font_size", MIN_FONT_PX)
-	smash.position = Vector2(bw - 290, (OP_BAR_H - 81.0) * 0.5); smash.size = Vector2(170, 81)   # ★与"卖出"同一位置同一尺寸
+	smash.position = Vector2(16, OP_BAR_H - 91.0); smash.size = Vector2(170, 81)   # ★与"卖出"同一位置同一尺寸
 	UISkin.button(smash, Color("#e79bd6"))
 	smash.pressed.connect(func() -> void:
 		_sel_jar = false
@@ -1523,7 +1674,7 @@ func _build_jar_op_bar() -> void:
 	bar.add_child(smash)
 	var cancel := Button.new(); cancel.text = "取消"
 	cancel.add_theme_font_size_override("font_size", MIN_FONT_PX)
-	cancel.position = Vector2(bw - 108, (OP_BAR_H - 81.0) * 0.5); cancel.size = Vector2(92, 81)
+	cancel.position = Vector2(bw - 108, OP_BAR_H - 91.0); cancel.size = Vector2(92, 81)
 	UISkin.button(cancel, Color("#9fb6c9"))
 	cancel.pressed.connect(func(): _sel_jar = false; _rebuild())
 	bar.add_child(cancel)
@@ -1609,6 +1760,8 @@ func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 		_stat_block(eid, star), SkillText.highlight_star(SkillText.equip_brief_bb(edef, 13) if str(edef.get("effectBrief", "")) != "" else "（无主动效果）", star)]
 	_wire_bench_tap(box, idx)
 	_drag.wire_bench_source(box, idx, it)
+	if sel:
+		_insp_anchor = box
 	return box
 
 
@@ -1641,6 +1794,8 @@ func _wire_bench_tap(box: Control, idx: int) -> void:
 
 # ─── 交互: 点背包装备选中 → 点龟装上 (再点已选=取消; 点龟身无选中=卸最后一件回背包) ───
 func _on_bench_click(idx: int) -> void:
+	_sel_worn = {}
+	_dl_sel = {}
 	_sel_jar = false                       # 选装备 ⇒ 取消糖果罐选中(互斥, 底部只有一条操作栏)
 	_sel_bench = -1 if _sel_bench == idx else idx
 	_rebuild()
@@ -1922,16 +2077,16 @@ func _build_unit_equip_bar() -> void:
 	sb.border_color = Color("#2a3a4e")
 	sb.set_border_width_all(2)
 	bar.add_theme_stylebox_override("panel", UISkin.nine("panel-frame.png", 20, sb))
-	bar.position = Vector2(24, _unit_bar_y())
-	bar.size = Vector2(_vw - 48.0, UNIT_BAR_H)
+	bar.position = Vector2(OPS_X, _unit_bar_y())
+	bar.size = Vector2(OPS_W, UNIT_BAR_H)
 	add_child(bar)
 	var ttl := Label.new()
 	ttl.text = "卸下装备"
 	ttl.add_theme_font_size_override("font_size", MIN_FONT_PX)
 	ttl.add_theme_color_override("font_color", Color("#9fb6c9"))
 	## 标题在条内竖直居中(条子换高度之后写死 16 就偏上了)
-	ttl.position = Vector2(20, (UNIT_BAR_H - 28.0) * 0.5)
-	ttl.size = Vector2(260, 28)
+	ttl.position = Vector2(20, 12)
+	ttl.size = Vector2(OPS_W - 40.0, 28)
 	bar.add_child(ttl)
 	## ★★顺序 = 【占装备位的三件】在前、【羁绊白送的】在后, 下标用真实下标。
 	##   原来是 `for ci in range(mini(eqs.size(), 3))`: 3 件装备 + 1 件赠送时
@@ -1945,11 +2100,14 @@ func _build_unit_equip_bar() -> void:
 		order.append(g)
 	## 按钮排在标题右边: 起点 300 / 宽 190 / 步长 200 ⇒ 塞得下几个由**条子自己的宽度**说,
 	## 不写死个数(1280 下 bar 宽 1232 ⇒ 4 个止于 1090, 还有余)。
-	const UB_BTN_W := 190.0
-	const UB_BTN_STEP := 200.0
-	const UB_BTN_X0 := 300.0
-	var _room: int = maxi(1, int((bar.size.x - UB_BTN_X0 - 12.0 + (UB_BTN_STEP - UB_BTN_W)) / UB_BTN_STEP))
+	## 右栏版: 标题一行, 下面卸下键两两一排(两排 = 4 个: 三件装备 + 一枚赠送徽章)
+	const UB_BTN_W := 230.0
+	const UB_BTN_STEP := 240.0
+	const UB_BTN_X0 := 16.0
+	const UB_ROW_H := 85.0
+	var _room: int = 4
 	var x := UB_BTN_X0
+	var _bi := 0
 	var is_leader: bool = str(unit.get("kind", "")) == "leader"
 	var pid := str(unit.get("id", ""))
 	for oi in range(mini(order.size(), _room)):
@@ -1961,9 +2119,11 @@ func _build_unit_equip_bar() -> void:
 		b.add_theme_font_size_override("font_size", MIN_FONT_PX)
 		## ★81 = 44pt 触控下限; 条高 UNIT_BAR_H 就是按它算的(81 + UNIT_BAR_PAD×2),
 		##   所以 y 用 UNIT_BAR_PAD 而不是写死 12 —— 写死 12 时底沿 725, 伸出条子也伸出屏。
-		b.position = Vector2(x, UNIT_BAR_PAD)
-		b.custom_minimum_size = Vector2(UB_BTN_W, UNIT_BAR_H - UNIT_BAR_PAD * 2.0)
-		b.size = Vector2(UB_BTN_W, UNIT_BAR_H - UNIT_BAR_PAD * 2.0)
+		b.position = Vector2(UB_BTN_X0 + float(_bi % 2) * UB_BTN_STEP, 46.0 + float(_bi / 2) * UB_ROW_H)
+		b.custom_minimum_size = Vector2(UB_BTN_W, 81)
+		b.size = Vector2(UB_BTN_W, 81)
+		b.clip_text = true
+		_bi += 1
 		UISkin.button(b, Color("#9fb6c9"))
 		var cci := int(ent["i"])      # ★真实下标(不是"第几个按钮")
 		b.pressed.connect(func() -> void:
