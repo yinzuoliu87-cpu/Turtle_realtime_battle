@@ -176,7 +176,27 @@ func _t_e3_undead_revive() -> void:
 	_s._kill(ax, foe)
 	_ok("★★E3 重生后再被打死是真的死了(守卫没清的话 _kill 第一行就 return, 0 血站着)",
 		not bool(ax.get("alive", true)), "alive=%s" % str(ax.get("alive")))
-	_ok("E3 一场只重生一次: 第二次死不再排重生", not ax.has("_axe_revive_at"))
+	_ok("E3 每条路只重生一次: 同一路里第二次死不再排重生", not ax.has("_axe_revive_at"))
+	## ★「每条路一次」(用户 2026-10-22「每条路重生一次啊」): 换路时 dual_lane_flow 清场重生单位,
+	##   携带者带着 `_axe_pending` 重新登场 ⇒ 召唤出一把【新】斧头, 重生次数跟着新斧头重新算。
+	##   这里走同一个召唤入口(tick_owner → summon), 不手搓斧头。
+	var gs = get_node_or_null("/root/GameState")
+	var bak := [int(gs.axe_stage), str(gs.axe_final), int(gs.axe_exp_total)]
+	gs.axe_stage = 4; gs.axe_final = "undead"; gs.axe_exp_total = 900
+	var carrier2: Dictionary = _s._spawn._make_unit("basic", "left", _c() + Vector2(-80, 40))
+	_s._units.append(carrier2)
+	carrier2["_axe_pending"] = true
+	_s._equip_sys._axe.tick_owner(carrier2, 0.016)
+	var ax2 = carrier2.get("_axe_ref", null)
+	_ok("★分母: 下一路携带者重新登场, 召唤出一把新斧头(不是上一路那把)",
+		ax2 is Dictionary and not is_same(ax2, ax) and str((ax2 as Dictionary).get("_axe_final", "")) == "undead",
+		"ax2=%s" % str(ax2 is Dictionary))
+	if ax2 is Dictionary:
+		ax2["hp"] = 0.0
+		_s._kill(ax2, foe)
+		_ok("★★E3 下一路的斧头死了能再重生一次(每条路一次, 不是一场一次)", (ax2 as Dictionary).has("_axe_revive_at"),
+			"revive_at=%s" % str((ax2 as Dictionary).get("_axe_revive_at", "无")))
+	gs.axe_stage = int(bak[0]); gs.axe_final = str(bak[1]); gs.axe_exp_total = int(bak[2])
 
 
 # ══════════════════════════════════════════════════════════════

@@ -125,9 +125,11 @@ func undead_on_death(ax: Dictionary) -> bool:
 	if _fk(ax) != "undead":
 		return false
 	if bool(ax.get("_axe_revived", false)):
-		## 第二次倒下不再复活: 只崩散、不放倒计时(演出与结算同口径)
+		## 同一路里第二次倒下不再复活: 只崩散、不放倒计时(演出与结算同口径)
+		## ★每条路一次(用户 2026-10-22「每条路重生一次啊」): 标记挂在斧头身上, 换路时携带者重新登场、
+		##   召唤出新斧头, 次数自然重新算 —— 不要把它挪到携带者 / GameState 上, 那会变成一整场一次。
 		vfx_undead.on_death(ax, -1.0)
-		return false                      # 一次战斗只重生一次
+		return false
 	ax["_axe_revive_at"] = float(battle._t) + AF.UNDEAD_REVIVE_DELAY
 	## ★演出同一步: 领域收掉 + 崩散成亡魂 + 倒计时(帧率按上面排好的复活时刻算, 不另写 2.5)
 	vfx_undead.on_death(ax, float(ax["_axe_revive_at"]))
