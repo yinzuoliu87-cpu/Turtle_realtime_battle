@@ -55,15 +55,15 @@ func _show_minion(kind: String) -> void:
 		{"kind": "tag", "text": "每级 ×1.05", "color": "#ffd93d"}])
 	# 属性 7 行 (Lv1 值) —— 与龟页共用 _stat_rows, 不在这里另摆一套表格
 	var rows = [
-		{"key": "hp", "label": "生命", "disp": str(mi["hp"]), "color": "#06d6a0"},
-		{"key": "atk", "label": "攻击", "disp": str(mi["atk"]), "color": "#ff9f43"},
-		{"key": "def", "label": "护甲", "disp": str(mi["def"]), "color": "#ffd93d"},
-		{"key": "mr", "label": "魔抗", "disp": str(mi["mr"]), "color": "#4dabf7"},
+		{"key": "hp", "label": "生命", "disp": str(mi["hp"])},
+		{"key": "atk", "label": "攻击", "disp": str(mi["atk"])},
+		{"key": "def", "label": "护甲", "disp": str(mi["def"])},
+		{"key": "mr", "label": "魔抗", "disp": str(mi["mr"])},
 		## 顺序与龟页同一套(…魔抗 / 移速 / 每秒攻击 / 射程)。
-		{"key": "move", "label": "移速", "disp": str(mi["spd"]), "color": "#8fd4ff"},
+		{"key": "move", "label": "移速", "disp": str(mi["spd"])},
 		## ★与龟页同一个单位(「每秒攻击」= 1 / 攻击间隔), 原来这里单独写「间隔 0.85 秒」(2026-10-07 H)。
-		{"key": "aspd", "label": "每秒攻击", "disp": "%.2f" % (1.0 / maxf(0.01, float(mi["interval"]))), "color": "#ff9ecb"},
-		{"key": "range", "label": "射程", "disp": str(mi["range"]), "color": "#d6e4f0"},
+		{"key": "aspd", "label": "每秒攻击", "disp": "%.2f" % (1.0 / maxf(0.01, float(mi["interval"])))},
+		{"key": "range", "label": "射程", "disp": str(mi["range"])},
 	]
 	_col_divider(_stat_rows(rows))
 	var ctx: Dictionary = {"atk": float(mi["atk"]), "maxHp": float(mi["hp"]), "hp": float(mi["hp"]),
@@ -206,7 +206,10 @@ static func stat_block_count(key: String, disp: String) -> int:
 ## ★名词 13px 暗灰排在数字**右边**: 与原属性牌同一个读法(先看数, 再看是什么)。
 func _stat_row(y: float, st: Dictionary) -> void:
 	var key: String = str(st["key"])
-	var col: Color = Color(str(st["color"]))
+	## ★数字与方块的颜色 = 这个属性的图标色(SkillText.stat_icon_color_of, 全项目一个属性一个色)。
+	##   原来两张表各手写一份十六进制: 攻速粉 / 攻击橙 / 射程灰白 / 移速浅蓝, 与图标对不上;
+	##   2026-10-22 攻速改成绿色时这里又没跟上(用户「记得图鉴里面全部要更新的」)。
+	var col: Color = SkillText.stat_icon_color_of(key)
 	var _iconp: String = "res://assets/sprites/stats/%s-icon.png" % key
 	var vx: float = BLOCK_X0
 	if ResourceLoader.exists(_iconp):   # 缺图只显文字, 不崩
@@ -216,7 +219,7 @@ func _stat_row(y: float, st: Dictionary) -> void:
 			(_ir as TextureRect).modulate = SkillText.stat_icon_color_of(_iconp)   # 纯白模板→按属性固定色
 		vx = BLOCK_X0 + 30.0
 	var disp: String = str(st["disp"])
-	var num: Label = host._add_text(vx, y + 10.0, disp, 20, str(st["color"]), 0.0, 0.5, true)
+	var num: Label = host._add_text(vx, y + 10.0, disp, 20, "#" + col.to_html(false), 0.0, 0.5, true)
 	num.set_meta("stat_num", key)
 	var nw: float = num.get_combined_minimum_size().x
 	host._add_text(vx + nw + 8.0, y + 11.0, str(st["label"]), 13, "#8c9cab", 0.0, 0.5)
@@ -368,13 +371,13 @@ func _show_pet(pet: Dictionary) -> void:
 	## ★「移速」字面量被 verify_codex_stats 用源码 grep 守着, 别改字。
 	##   攻速那一条已改成按 `"key": "aspd"` 找(量结构, 不量文案)。
 	var stats = [
-		{"key": "hp", "label": "生命", "disp": str(int(ctx["maxHp"])), "color": "#06d6a0"},
-		{"key": "atk", "label": "攻击", "disp": str(int(ctx["atk"])), "color": "#ff9f43"},
-		{"key": "def", "label": "护甲", "disp": str(int(ctx["def"])), "color": "#ffd93d"},
-		{"key": "mr", "label": "魔抗", "disp": str(int(ctx["mr"])), "color": "#4dabf7"},
-		{"key": "move", "label": "移速", "disp": str(_mspd), "color": "#8fd4ff"},
-		{"key": "aspd", "label": "每秒攻击", "disp": "%.2f" % _aspd, "color": "#ff9ecb"},
-		{"key": "range", "label": "射程", "disp": str(_rng), "color": "#d6e4f0"},
+		{"key": "hp", "label": "生命", "disp": str(int(ctx["maxHp"]))},
+		{"key": "atk", "label": "攻击", "disp": str(int(ctx["atk"]))},
+		{"key": "def", "label": "护甲", "disp": str(int(ctx["def"]))},
+		{"key": "mr", "label": "魔抗", "disp": str(int(ctx["mr"]))},
+		{"key": "move", "label": "移速", "disp": str(_mspd)},
+		{"key": "aspd", "label": "每秒攻击", "disp": "%.2f" % _aspd},
+		{"key": "range", "label": "射程", "disp": str(_rng)},
 	]
 	var stats_bottom: float = _stat_rows(stats)
 	_col_divider(stats_bottom)
