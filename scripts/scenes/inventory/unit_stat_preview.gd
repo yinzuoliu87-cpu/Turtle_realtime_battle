@@ -7,7 +7,7 @@ extends RefCounted
 ##   统领 = pets 数据(缺省值照搬 battle_spawn._make_unit) × UnitScaling.level_multiplier(开战等级)
 ##   小将 = MinionCodex.base_stats(精英?, 前排?, 等级)  —— _make_unit 也读它
 ##   装备 = EquipStats.STATS 逐星属性, 在等级缩放之后平加 —— 同 equip_stats_apply.apply_stat_dict
-##   宝箱龟的战利品 = loot_sum(大轮常驻, 每局开场都在身上, 所以算进小卡)
+##   宝箱龟的战利品 = loot_sum(大轮常驻, 每局开场都在身上, 所以算进小卡); 选了财宝炮击时的【贪婪】= greed_sum
 ## 不含: 羁绊、被动(如忍术的暴击)、开局触发的效果 —— 那些是战斗里的事。
 const EquipStats := preload("res://scripts/gamedata/equip_stats.gd")
 
@@ -40,7 +40,7 @@ static func minion(elite: bool, front: bool, level: int, equips: Array) -> Dicti
 ##   战斗里在 `ChestSystem._chest_apply_treasure` 加: 攻击 / 护甲 / 魔抗是百分比 buff, 乘在「本体 + 装备」上
 ##   (`_recalc_stats`: base_atk × (1 + 各百分比之和), 装备的平加属性已进 base_atk); 生命 / 暴击 / 暴击伤害直接加。
 ##   这里用同一组常量算; 门禁 verify_inventory_treasure_map ⑧ 拿真单位走 _chest_apply_treasure 逐件对账。
-static func loot_sum(won: Array, base: Dictionary, equip: Dictionary) -> Dictionary:
+static func loot_sum(won: Array, base: Dictionary, equip: Dictionary, greed: Dictionary = {}) -> Dictionary:
 	var out := {}
 	for k in KEYS:
 		out[k] = 0.0
@@ -65,7 +65,21 @@ static func loot_sum(won: Array, base: Dictionary, equip: Dictionary) -> Diction
 				out["crit"] += ChestSystem.CROWN_CRIT
 				out["critDmg"] += ChestSystem.CROWN_CRIT_DMG
 	for k in pct:
-		out[k] = (float(base[k]) + float(equip[k])) * float(pct[k])
+		out[k] = (float(base[k]) + float(greed.get(k, 0.0)) + float(equip[k])) * float(pct[k])
+	return out
+
+
+## 宝箱龟技三「财宝炮击」的打包被动【贪婪】(用户 2026-10-22「有没有吃到贪婪被动啊」)。
+##   照 battle_spawn._apply_spawn_passive_one 的次序: 战利品先回装(宝石铠甲的 +500 先进最大生命值),
+##   再按登场那一刻的本体攻击力 / 最大生命值取每件的量(不复利), 件数 = 身上装备 + 已开战利品; 装备属性在这之后才加。
+##   攻击那份进 base_atk ⇒ 之后还吃战利品的百分比(见 loot_sum 的 greed 参数)。
+static func greed_sum(n_items: int, base: Dictionary, won: Array) -> Dictionary:
+	var out := {}
+	for k in KEYS:
+		out[k] = 0.0
+	var hp0: float = float(base["hp"]) + (ChestSystem.GEM_HP if won.has("gem_armor") else 0.0)
+	out["atk"] = float(base["atk"]) * ChestSystem.GREED_ATK_PER_EQ * float(n_items)
+	out["hp"] = hp0 * ChestSystem.GREED_HP_PER_EQ * float(n_items)
 	return out
 
 

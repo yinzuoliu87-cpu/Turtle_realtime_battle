@@ -35,14 +35,14 @@ scripts/gamedata/bracket_layout.gd|lit|8强
 scripts/gamedata/bracket_layout.gd|lit|决赛
 scripts/gamedata/bracket_layout.gd|lit|半决赛
 scripts/gamedata/bracket_layout.gd|lit|第 1 轮
-scripts/gamedata/chest_loot.gd|lit|【宝箱砸击】的范围扩大 {C:ChestSystem.CHAIN_AOE_UP%}%。
+scripts/gamedata/chest_loot.gd|lit|【宝箱砸击】的范围提高 {C:ChestSystem.CHAIN_AOE_UP%}%。
 scripts/gamedata/chest_loot.gd|lit|【宝箱砸击】额外造成（{C:ChestSystem.STONE_RES_COEF%}% 护甲与魔抗之和）物理伤害。
 scripts/gamedata/chest_loot.gd|lit|凤凰龟雕像
 scripts/gamedata/chest_loot.gd|lit|嗜血之刃
 scripts/gamedata/chest_loot.gd|lit|坚固木盾
 scripts/gamedata/chest_loot.gd|lit|宝石铠甲
 scripts/gamedata/chest_loot.gd|lit|攻击和技能伤害转化为真实伤害。
-scripts/gamedata/chest_loot.gd|lit|攻击和技能命中时，对目标叠加 1 层金色闪电，叠满 {C:ChestSystem.THUNDER_STACKS} 层时引爆，造成 {C:ChestSystem.THUNDER_ATK_COEF%}% 攻击力的真实伤害。
+scripts/gamedata/chest_loot.gd|lit|攻击和技能命中时为目标叠加 1 层金色闪电。在 {C:ChestSystem.THUNDER_STACKS} 层时，金色闪电会引爆，造成 {C:ChestSystem.THUNDER_ATK_COEF%}% 攻击力的真实伤害。
 scripts/gamedata/chest_loot.gd|lit|攻击和技能命中时，对目标施加 {C:ChestSystem.POISON_CUT%}% 治疗削减，持续 {C:ChestSystem.POISON_SEC} 秒。
 scripts/gamedata/chest_loot.gd|lit|攻击和技能命中时，施加（{C:ChestSystem.FLINT_BURN_COEF%}% 攻击力）层灼烧。
 scripts/gamedata/chest_loot.gd|lit|星际龟的星辉
@@ -57,7 +57,7 @@ scripts/gamedata/chest_loot.gd|lit|获得 {C:ChestSystem.BLADE_LS%}% 生命偷�
 scripts/gamedata/chest_loot.gd|lit|获得 {C:ChestSystem.CROWN_ATK%}% 攻击力、{C:ChestSystem.CROWN_CRIT%}% 暴击率、{C:ChestSystem.CROWN_CRIT_DMG%}% 暴击伤害与 {C:ChestSystem.CROWN_LS%}% 生命偷取。
 scripts/gamedata/chest_loot.gd|lit|获得 {C:ChestSystem.DAGGER_ATK%}% 攻击力。
 scripts/gamedata/chest_loot.gd|lit|获得 {C:ChestSystem.DICE_CRIT%}% 暴击率。
-scripts/gamedata/chest_loot.gd|lit|获得 {C:ChestSystem.GEM_HP} 最大生命值与 {C:ChestSystem.GEM_RES%}% 护甲与魔抗。
+scripts/gamedata/chest_loot.gd|lit|获得 {C:ChestSystem.GEM_HP} 最大生命值、{C:ChestSystem.GEM_RES%}% 护甲与魔抗。
 scripts/gamedata/chest_loot.gd|lit|获得 {C:ChestSystem.SWORD_ATK%}% 攻击力。
 scripts/gamedata/chest_loot.gd|lit|获得 {C:ChestSystem.WOOD_RES%}% 护甲与魔抗。
 scripts/gamedata/chest_loot.gd|lit|锁链
@@ -858,14 +858,14 @@ scripts/scenes/InventoryScene.gd|lit|后排
 scripts/scenes/InventoryScene.gd|lit|商店
 scripts/scenes/InventoryScene.gd|lit|小将
 scripts/scenes/InventoryScene.gd|lit|属性\n%s\n\n效果\n%s
-scripts/scenes/InventoryScene.gd|lit|已开满 %d 件
+scripts/scenes/InventoryScene.gd|lit|战利品 %d/%d
 scripts/scenes/InventoryScene.gd|lit|打碎可获得：%s（每大轮限 1 次）
 scripts/scenes/InventoryScene.gd|lit|护甲
 scripts/scenes/InventoryScene.gd|lit|攻击力
 scripts/scenes/InventoryScene.gd|lit|无属性加成
 scripts/scenes/InventoryScene.gd|lit|暴击伤害
 scripts/scenes/InventoryScene.gd|lit|暴击率
-scripts/scenes/InventoryScene.gd|lit|暴击率超过 100% 的部分会折算进暴击伤害。
+scripts/scenes/InventoryScene.gd|lit|暴击率超过 100% 的部分，每 1% 转化为 {C:DamageMath.CRIT_OVERFLOW}% 暴击伤害。
 scripts/scenes/InventoryScene.gd|lit|最大生命值
 scripts/scenes/InventoryScene.gd|lit|本大轮首战后解锁
 scripts/scenes/InventoryScene.gd|lit|盾
@@ -879,8 +879,6 @@ scripts/scenes/InventoryScene.gd|lit|统领%d
 scripts/scenes/InventoryScene.gd|lit|背包
 scripts/scenes/InventoryScene.gd|lit|藏宝图
 scripts/scenes/InventoryScene.gd|lit|设置开战站位
-scripts/scenes/InventoryScene.gd|lit|财宝值 %d / %d
-scripts/scenes/InventoryScene.gd|lit|还没开出战利品
 scripts/scenes/InventoryScene.gd|lit|阵容说明
 scripts/scenes/InventoryScene.gd|lit|魔抗
 scripts/scenes/InventoryScene.gd|lit|（无主动效果）
@@ -2067,7 +2065,6 @@ scripts/systems/skills/candy_system.gd|lit|投喂
 scripts/systems/skills/candy_system.gd|lit|甜蜜掠夺 -
 scripts/systems/skills/candy_system.gd|lit|糖果炸弹
 scripts/systems/skills/chest_system.gd|lit|开箱 
-scripts/systems/skills/chest_system.gd|lit|还没开出战利品。
 scripts/systems/skills/crystal_system.gd|lit|魔抗-%d
 scripts/systems/skills/cyber_system.gd|lit|侵入
 scripts/systems/skills/cyber_system.gd|lit|机甲

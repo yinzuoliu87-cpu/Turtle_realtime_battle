@@ -1294,8 +1294,10 @@ func _open_unit_card() -> void:
 	var base: Dictionary = pv["base"]
 	var add: Dictionary = pv["equip"]
 	## 宝箱龟: 已开战利品也算进数值(用户 2026-10-22「要算」), 拆解里金字 = 战利品(与藏宝图里战利品名字同色)
-	var loot: Dictionary = UnitStatPreview.loot_sum(
-		GameState.chest_treasures_won if (is_chest and GameState.chest_treasures_won is Array) else [], base, add)
+	var won_l: Array = GameState.chest_treasures_won if (is_chest and GameState.chest_treasures_won is Array) else []
+	## 选了财宝炮击 ⇒ 【贪婪】也算(用户「有没有吃到贪婪被动啊」); 并进括号里「本体」那段, 总值与对局面板一致
+	var greed: Dictionary = UnitStatPreview.greed_sum(eqs.size() + won_l.size(), base, won_l) if (is_chest and _chest_greed_on()) else {}
+	var loot: Dictionary = UnitStatPreview.loot_sum(won_l, base, add, greed)
 	## 暴击率与战斗面板同一口径(用户 2026-10-22「要」): 封顶 100%, 超出部分按 DamageMath.crit_multiplier 折进暴击伤害。
 	##   暴击率那一行的括号仍写各来源(加起来 = 封顶前), 暴击伤害那一行多一段折算来的(暴击率图标同色), 下面一行灰字说明。
 	var crit_raw: float = float(base["crit"]) + float(add["crit"]) + float(loot["crit"])
@@ -1306,7 +1308,7 @@ func _open_unit_card() -> void:
 		var mul: float = 100.0 if pct else 1.0
 		## 取整与对局面板一致(info_panel._info_stat_tiles): 生命 / 攻击 / 护甲 / 魔抗舍去小数, 百分比四舍五入
 		##   (实拍同一只龟魔抗 17.5: 面板 17、小卡原来 18)
-		var raw_v: float = (float(base[k]) + float(add[k]) + float(loot[k])) * mul
+		var raw_v: float = (float(base[k]) + float(greed.get(k, 0.0)) + float(add[k]) + float(loot[k])) * mul
 		var tot: int = roundi(raw_v) if pct else int(raw_v)
 		var plus: int = roundi(float(add[k]) * mul)
 		var lplus: int = roundi(float(loot[k]) * mul)
@@ -1364,14 +1366,21 @@ func _open_unit_card() -> void:
 			br.text = "(%s)" % parts
 		grid.add_child(br)
 	if crit_over > 0.0:
-		## 与战斗面板「暴伤」那格的说明同一句话(info_panel._info_stat_tiles)
-		var cn := _stat_lbl("暴击率超过 100% 的部分会折算进暴击伤害。", InspectCard.C_DIM)
+		## 句子 = 骰子龟「命运骰子」详情里的灰字原文(data/pets.json), 系数引用同一个常量 —— 不自己另写一句
+		var cn := _stat_lbl(SkillText.render_consts("暴击率超过 100% 的部分，每 1% 转化为 {C:DamageMath.CRIT_OVERFLOW}% 暴击伤害。"), InspectCard.C_DIM)
 		cn.name = "CritOverNote"
 		cn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		cn.custom_minimum_size = Vector2(1, 0)
 		host.add_child(cn)
 	if side != null:
 		_treasure_map_section(side)
+
+
+## 宝箱龟选的是不是技三「财宝炮击」(它的打包被动【贪婪】): 存档解析走 SkillChoice.loadout_index, 与对局开局同一份。
+func _chest_greed_on() -> bool:
+	var pool: Array = (DataRegistry.pet_by_id.get("chest", {}) as Dictionary).get("skillPool", [])
+	var idx: int = SkillChoice.loadout_index(GameState.loadouts.get("chest"), 1)
+	return idx >= 1 and idx < pool.size() and str((pool[idx] as Dictionary).get("type", "")) == "chestCannon"
 
 
 ## 宝箱龟属性小卡的「藏宝图」一段: 财宝值进度 + 已开战利品(图标 / 名字 / 效果), 5 件全开也放得下。
@@ -1388,30 +1397,35 @@ func _treasure_map_section(vb: VBoxContainer) -> void:
 	var hl := _stat_lbl("藏宝图", Color("#ffd93d"))
 	hl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(hl)
+	## 说法照对局信息面板(用户 2026-10-22「已开满5件，这又是你从哪里学的描述？」—— 那句是我编的):
+	##   入口条写「战利品 x/5」, 财宝条写「当前 / 下一箱阈值」, 开满之后财宝条不画(info_panel ⑦ 财宝)。
+	var cl := _stat_lbl("战利品 %d/%d" % [opened, ChestLoot.THRESH.size()], InspectCard.C_TITLE)
+	cl.name = "TreasureCount"
+	head.add_child(cl)
 	var nxt: float = ChestLoot.next_threshold(opened)
-	var pl := _stat_lbl(("财宝值 %d / %d" % [int(tv), int(nxt)]) if nxt > 0.0 else ("已开满 %d 件" % opened), InspectCard.C_TITLE)
-	pl.name = "TreasureProgress"
-	head.add_child(pl)
-	## 进度条 = 右上角那行字的比(当前 / 下一箱阈值); 已开满整条满
-	var frac: float = 1.0 if nxt <= 0.0 else clampf(tv / nxt, 0.0, 1.0)
-	var bar := ColorRect.new()
-	bar.name = "TreasureBar"
-	bar.color = Color("#0c141c")
-	bar.custom_minimum_size = Vector2(0, 8)
-	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vb.add_child(bar)
-	var fill := ColorRect.new()
-	fill.name = "Fill"
-	fill.color = Color("#ffd93d")
-	fill.anchor_bottom = 1.0
-	fill.anchor_right = frac
-	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bar.add_child(fill)
-	if opened == 0:
-		var none := _stat_lbl("还没开出战利品", InspectCard.C_DIM)
-		none.name = "TreasureNone"
-		vb.add_child(none)
-		return
+	if nxt > 0.0:
+		var pr := HBoxContainer.new()
+		pr.add_theme_constant_override("separation", 8)
+		pr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vb.add_child(pr)
+		var bar := ColorRect.new()
+		bar.name = "TreasureBar"
+		bar.color = Color("#0c141c")
+		bar.custom_minimum_size = Vector2(0, 8)
+		bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pr.add_child(bar)
+		var fill := ColorRect.new()
+		fill.name = "Fill"
+		fill.color = Color("#ffd93d")
+		fill.anchor_bottom = 1.0
+		fill.anchor_right = clampf(tv / nxt, 0.0, 1.0)
+		fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bar.add_child(fill)
+		var pl := _stat_lbl("%d / %d" % [int(tv), int(nxt)], InspectCard.C_BODY)
+		pl.name = "TreasureProgress"
+		pr.add_child(pl)
 	for i in range(opened):
 		var tid := str(won[i])
 		## 一件 = 「图标 + 名字」一行, 说明另起一行占满整栏宽(图标单占一列时说明每行少 2~3 个字,

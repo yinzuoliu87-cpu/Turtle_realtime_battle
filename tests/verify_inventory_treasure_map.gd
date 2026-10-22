@@ -5,9 +5,9 @@ extends Node
 ##   「卡上画战利品？有位置吗，不去信息区？」「藏宝图横着另起一列」「这里的描述也得符合规矩」「就叫星辉？不对啊」
 ##
 ## 判据:
-##   ① 0 件: 进度「财宝值 0 / 3000」+「还没开出战利品」, 一行战利品都没有
+##   ① 0 件: 「战利品 0/5」+ 进度「0 / 3000」, 一行战利品都没有(说法照对局信息面板, 不自编「还没开出」这类话)
 ##   ② 2 件: 进度分母 = 第 3 箱阈值; 两行的名字 / 顺序 = 存档; 说明里 {C:} 全展开、数字对上代码常量
-##   ③ 5 件最长组合(说明最长的五件): 「已开满 5 件」; 卡片在 720 设计框内(16:9 = 本测试的视口, 最窄的那种)
+##   ③ 5 件最长组合(说明最长的五件): 「战利品 5/5」、进度条不画(对局面板开满也不画); 卡片在屏内(16:9, 最窄的那种)
 ##   ④ 藏宝图在【右边另起一列】(用户「藏宝图横着另起一列」): 栏左沿在属性表右沿之右, 栏顶与卡头同高
 ##   ⑤ 别的龟的属性小卡没有藏宝图、宽度不变
 ##   ⑥ 15 件说明: 占位符全部能展开(引用的常量改名 / 删掉 ⇒ 红); 名字是回合制原名
@@ -73,9 +73,10 @@ func _loot_rows(card: Node) -> Array:
 
 
 var _inv_vals := {}
+var _greed_on_battle := false
 
 
-func _check_battle_panel_matches(loot: Array) -> void:
+func _check_battle_panel_matches(loot: Array, tag: String) -> void:
 	var gs = get_node("/root/GameState")
 	RB.DEBUG_EDIT = true
 	var s = RB.new()
@@ -87,22 +88,29 @@ func _check_battle_panel_matches(loot: Array) -> void:
 	var u: Dictionary = s._spawn._make_unit("chest", "left", c)
 	gs.debug_level = 0
 	u["equips"] = [{"id": "p2eq_004", "star": 2}]
+	## 照真实开局的次序(battle_spawn: _apply_spawn_passives 在 _eq_apply_all_stats 之前):
+	##   宝箱账起点 = 存档(左方就是这样起账; 开发工具场默认空账, 这里补上) ⇒ 登场钩子(spawn_loot 回装 + 选了财宝炮击时的贪婪) ⇒ 装备属性
+	var lg: Dictionary = s._chest_sys._ledger_of("left")
+	lg["base_won"] = loot.duplicate()
+	s._units.clear()
+	s._units.append(u)
+	s._spawn._apply_spawn_passive_one(u)
 	for e in u["equips"]:
 		s._equip_sys._stats._eq_apply_one_stats(u, str(e["id"]), int(e["star"]))
-	for t in loot:
-		s._chest_sys._chest_apply_treasure(u, str(t))
 	s._recalc_stats(u)
+	_greed_on_battle = bool(u.get("chest_greed", false))
 	var tiles := {}
 	for row in s._info_sys._info_stat_tiles(u):
 		tiles[str(row[1])] = str(row[2])
 	var want := {"hp": "%d" % int(u["maxHp"]), "atk": tiles.get("攻击", "?"), "def": tiles.get("护甲", "?"),
 		"mr": tiles.get("魔抗", "?"), "crit": tiles.get("暴击", "?"), "critDmg": tiles.get("暴伤", "?")}
-	_ok("⑩ ★分母: 等级 %d、对局单位六格都取到了" % lv, lv >= 1 and not want.values().has("?"), str(want))
+	_ok("%s ★分母: 等级 %d、对局单位六格都取到了、战利品回装了 %d 件" % [tag, lv, (u.get("chest_treasures", {}) as Dictionary).size()],
+		lv >= 1 and not want.values().has("?") and (u.get("chest_treasures", {}) as Dictionary).size() == loot.size(), str(want))
 	var diff: Array = []
 	for k in want:
 		if str(_inv_vals.get(k, "-")) != str(want[k]):
 			diff.append("%s 背包「%s」/ 对局「%s」" % [k, _inv_vals.get(k, "-"), want[k]])
-	_ok("⑩ ★★背包属性小卡六个数 == 对局信息面板(同等级 / 装备 / 战利品)", diff.is_empty(), str(diff))
+	_ok("%s ★★背包属性小卡六个数 == 对局信息面板(同等级 / 装备 / 战利品 / 技能选择)" % tag, diff.is_empty(), str(diff))
 	s._units.clear()
 	s.set_process(false)
 	s.queue_free()
@@ -137,9 +145,10 @@ func _ready() -> void:
 	var card: Control = r[1]
 	_ok("① ★分母: 宝箱龟属性小卡弹出", card != null)
 	if card != null:
-		_ok("① 进度「财宝值 0 / 3000」", _txt(card.find_child("TreasureProgress", true, false)) == "财宝值 0 / %d" % int(ChestLoot.THRESH[0]),
+		_ok("① 「战利品 0/5」(= 对局信息面板入口条的写法)", _txt(card.find_child("TreasureCount", true, false)) == "战利品 0/%d" % ChestLoot.THRESH.size(),
+			_txt(card.find_child("TreasureCount", true, false)))
+		_ok("① 进度「0 / 3000」", _txt(card.find_child("TreasureProgress", true, false)) == "0 / %d" % int(ChestLoot.THRESH[0]),
 			_txt(card.find_child("TreasureProgress", true, false)))
-		_ok("① 「还没开出战利品」", card.find_child("TreasureNone", true, false) != null)
 		_ok("① 没有战利品行", _loot_rows(card).is_empty())
 	await _close(r[0])
 
@@ -148,8 +157,9 @@ func _ready() -> void:
 	card = r[1]
 	_ok("② ★分母: 小卡弹出", card != null)
 	if card != null:
-		_ok("② 进度分母 = 第 3 箱阈值", _txt(card.find_child("TreasureProgress", true, false)) == "财宝值 7200 / %d" % int(ChestLoot.THRESH[2]),
-			_txt(card.find_child("TreasureProgress", true, false)))
+		_ok("② 「战利品 2/5」+ 进度分母 = 第 3 箱阈值", _txt(card.find_child("TreasureCount", true, false)) == "战利品 2/%d" % ChestLoot.THRESH.size()
+			and _txt(card.find_child("TreasureProgress", true, false)) == "7200 / %d" % int(ChestLoot.THRESH[2]),
+			"%s | %s" % [_txt(card.find_child("TreasureCount", true, false)), _txt(card.find_child("TreasureProgress", true, false))])
 		var rows: Array = _loot_rows(card)
 		_ok("② 两行战利品", rows.size() == 2, str(rows.size()))
 		if rows.size() == 2:
@@ -186,8 +196,9 @@ func _ready() -> void:
 	card = r[1]
 	_ok("③ ★分母: 小卡弹出(五件 %s)" % str(worst), card != null)
 	if card != null:
-		_ok("③ 「已开满 5 件」", _txt(card.find_child("TreasureProgress", true, false)) == "已开满 5 件",
-			_txt(card.find_child("TreasureProgress", true, false)))
+		_ok("③ 「战利品 5/5」, 进度条不画(对局面板开满也不画)", _txt(card.find_child("TreasureCount", true, false)) == "战利品 5/5"
+			and card.find_child("TreasureProgress", true, false) == null and card.find_child("TreasureBar", true, false) == null,
+			_txt(card.find_child("TreasureCount", true, false)))
 		_ok("③ 五行战利品", _loot_rows(card).size() == 5, str(_loot_rows(card).size()))
 		var vp: Vector2 = Vector2(get_viewport().get_visible_rect().size)
 		var cr: Rect2 = card.get_global_rect()
@@ -234,14 +245,40 @@ func _ready() -> void:
 	# ── ⑩ 背包小卡 == 对局信息面板(用户 2026-10-22「那对局内的么呢」)──
 	##   同一只龟(等级 / 装备 / 战利品同 ⑨), 对局里走开局同一组函数把装备属性和战利品真加到单位上,
 	##   再取信息面板那六格的字(info_panel._info_stat_tiles), 与背包小卡逐字比。
-	await _check_battle_panel_matches(["blood_dice", "dagger", "flint", "poison", "crown"])
+	await _check_battle_panel_matches(["blood_dice", "dagger", "flint", "poison", "crown"], "⑩")
+	_ok("⑩ 反面: 没选财宝炮击时对局里没有贪婪", not _greed_on_battle)
+	var no_greed := _inv_vals.duplicate()
+
+	# ── ⑪ 选了财宝炮击 ⇒ 打包被动【贪婪】也算(用户 2026-10-22「有没有吃到贪婪被动啊」)──
+	##   件数 = 身上装备 1 + 战利品 5 = 6 ⇒ 攻击 / 生命都该比 ⑩ 大; 与对局面板逐字相同。
+	var gs = get_node("/root/GameState")
+	var pool: Array = (DataRegistry.pet_by_id.get("chest", {}) as Dictionary).get("skillPool", [])
+	var cannon := -1
+	for i in range(pool.size()):
+		if str((pool[i] as Dictionary).get("type", "")) == "chestCannon":
+			cannon = i
+	_ok("⑪ ★分母: 宝箱龟技能池里有财宝炮击", cannon >= 1, str(cannon))
+	gs.loadouts["chest"] = cannon
+	r = await _open_card(31000.0, ["blood_dice", "dagger", "flint", "poison", "crown"])
+	card = r[1]
+	if card != null:
+		for k in ["hp", "atk", "def", "mr", "crit", "critDmg"]:
+			var vl2: Label = card.find_child("Val_" + k, true, false) as Label
+			_inv_vals[k] = vl2.text if vl2 else "-"
+	await _close(r[0])
+	_ok("⑪ ★选了财宝炮击 ⇒ 背包小卡的攻击力与最大生命值都变大(贪婪算进去了)",
+		int(_inv_vals["atk"]) > int(no_greed["atk"]) and int(_inv_vals["hp"]) > int(no_greed["hp"]),
+		"攻击 %s → %s · 生命 %s → %s" % [no_greed["atk"], _inv_vals["atk"], no_greed["hp"], _inv_vals["hp"]])
+	await _check_battle_panel_matches(["blood_dice", "dagger", "flint", "poison", "crown"], "⑪")
+	_ok("⑪ 对局里贪婪确实开了(分母)", _greed_on_battle)
+	gs.loadouts.erase("chest")
 
 	# ── ⑤ 别的龟 ──
 	r = await _open_card(5000.0, ["rum"], "basic")
 	card = r[1]
 	_ok("⑤ ★分母: 小龟的属性小卡弹出", card != null)
 	if card != null:
-		_ok("⑤ 别的龟没有藏宝图", card.find_child("TreasureMap", true, false) == null and card.find_child("TreasureProgress", true, false) == null)
+		_ok("⑤ 别的龟没有藏宝图", card.find_child("TreasureMap", true, false) == null and card.find_child("TreasureCount", true, false) == null)
 		var iw: float = float(load("res://scripts/scenes/InventoryScene.gd").ITEM_CARD_W)
 		_ok("⑤ 宽度仍是 ITEM_CARD_W", absf(card.size.x - iw) < 1.0, "%s vs %s" % [str(card.size.x), str(iw)])
 	await _close(r[0])
@@ -267,7 +304,7 @@ func _ready() -> void:
 	var body: String = cs.loot_detail_text({"rum": true, "crown": true})
 	_ok("⑦ ★每件带图标(2 件 ⇒ 2 个 [img])", body.count("[img=") == 2 and body.contains(ChestLoot.icon_path("rum")), body.left(160))
 	_ok("⑦ 名字在、说明 {C:} 展开", body.contains(str(ChestLoot.NAME["crown"])) and not body.contains("{C:"), body.left(160))
-	_ok("⑦ 空时一句话", cs.loot_detail_text({}) == "还没开出战利品。", cs.loot_detail_text({}))
+	_ok("⑦ 空时正文为空(标题「战利品 0/5」已经说明, 不自编说明句)", cs.loot_detail_text({}) == "", cs.loot_detail_text({}))
 
 	if _n < MIN_ASSERTS:
 		_fail += 1

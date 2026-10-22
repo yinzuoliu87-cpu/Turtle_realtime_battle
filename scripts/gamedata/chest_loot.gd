@@ -28,22 +28,25 @@ const NAME := {
 
 ## 战利品说明 —— 照装备文案的规矩写(用户 2026-10-22「这里的描述也得符合规矩」):
 ##   云顶式不写龟名、「攻击」不写「普攻」、系数写百分比不写「×」、数字一律 `{C:}` 引用代码常量(展开走 `desc_plain` / `desc_bb`)。
+##   句式出处是 LoL 中文原文(C:/tmp/lol/corpus.json), 不拿本仓自己的文案当出处(用户 2026-10-22「满N层时引爆，这是哪来的」):
+##   叠层触发 =「在{{N}}层时，这个炸弹会立刻爆炸」· 范围 =「攻击范围都得到提高」· 获得属性 =「获得{{ totalad }}攻击力」·
+##   「一部分伤害会转化为真实伤害」·「她的攻击和技能会造成额外伤害」。
 ##   体例门禁 `tools/copy_lol_style_lint.py` 扫这个文件。效果的实现在 `ChestSystem._chest_apply_treasure` 与 battle_damage 的命中钩子。
 const DESC := {
 	"dagger": "获得 {C:ChestSystem.DAGGER_ATK%}% 攻击力。",
 	"wood_shield": "获得 {C:ChestSystem.WOOD_RES%}% 护甲与魔抗。",
 	"rum": "每秒回复自身 {C:ChestSystem.RUM_HEAL_PCT%}% 最大生命值。",
 	"blood_dice": "获得 {C:ChestSystem.DICE_CRIT%}% 暴击率。",
-	"chain": "【宝箱砸击】的范围扩大 {C:ChestSystem.CHAIN_AOE_UP%}%。",
+	"chain": "【宝箱砸击】的范围提高 {C:ChestSystem.CHAIN_AOE_UP%}%。",
 	"stone": "【宝箱砸击】额外造成（{C:ChestSystem.STONE_RES_COEF%}% 护甲与魔抗之和）物理伤害。",
 	"long_sword": "获得 {C:ChestSystem.SWORD_ATK%}% 攻击力。",
 	"bloodblade": "获得 {C:ChestSystem.BLADE_LS%}% 生命偷取。",
 	"flint": "攻击和技能命中时，施加（{C:ChestSystem.FLINT_BURN_COEF%}% 攻击力）层灼烧。",
-	"gem_armor": "获得 {C:ChestSystem.GEM_HP} 最大生命值与 {C:ChestSystem.GEM_RES%}% 护甲与魔抗。",
+	"gem_armor": "获得 {C:ChestSystem.GEM_HP} 最大生命值、{C:ChestSystem.GEM_RES%}% 护甲与魔抗。",
 	"poison": "攻击和技能命中时，对目标施加 {C:ChestSystem.POISON_CUT%}% 治疗削减，持续 {C:ChestSystem.POISON_SEC} 秒。",
 	"phoenix_statue": "首次死亡时以自身 {C:AngelSystem.REVIVE_HP_PCT%}% 最大生命值复活一次。",
 	"crown": "获得 {C:ChestSystem.CROWN_ATK%}% 攻击力、{C:ChestSystem.CROWN_CRIT%}% 暴击率、{C:ChestSystem.CROWN_CRIT_DMG%}% 暴击伤害与 {C:ChestSystem.CROWN_LS%}% 生命偷取。",
-	"thunder": "攻击和技能命中时，对目标叠加 1 层金色闪电，叠满 {C:ChestSystem.THUNDER_STACKS} 层时引爆，造成 {C:ChestSystem.THUNDER_ATK_COEF%}% 攻击力的真实伤害。",
+	"thunder": "攻击和技能命中时为目标叠加 1 层金色闪电。在 {C:ChestSystem.THUNDER_STACKS} 层时，金色闪电会引爆，造成 {C:ChestSystem.THUNDER_ATK_COEF%}% 攻击力的真实伤害。",
 	"starlight": "攻击和技能伤害转化为真实伤害。",   # 用户 2026-10-22 原话「攻击和技能伤害转化为真实伤害」
 }
 

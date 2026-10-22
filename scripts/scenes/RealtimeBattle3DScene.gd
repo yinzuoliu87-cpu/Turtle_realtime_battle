@@ -5099,13 +5099,7 @@ func _resolve_chosen_index(id: String, use_loadout: bool) -> int:
 	var pool: Array = d.get("skillPool", [])
 	var idx := 1                                          # 默认 skillPool[1] (各龟签名候选)
 	if use_loadout and GameState.loadouts.has(id):
-		var lo = GameState.loadouts[id]
-		if lo is int or lo is float:
-			idx = int(lo)
-		elif lo is Array and not (lo as Array).is_empty():   # 兼容旧"选3"数组: 取首个非普攻索引
-			for v in lo:
-				if int(v) >= 1:
-					idx = int(v); break
+		idx = SkillChoice.loadout_index(GameState.loadouts[id], idx)   # 解析与背包属性小卡共用(兼容旧"选3"数组: 取首个非普攻索引)
 	elif not use_loadout and GameState.foe_loadouts.has(id):   # 敌侧: ghost快照的技能选择(用户2026-07-15 ghost带技能)
 		var flo = GameState.foe_loadouts[id]
 		if flo is int or flo is float:

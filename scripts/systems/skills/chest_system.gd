@@ -349,7 +349,7 @@ func _chest_greed_apply(u: Dictionary, n: int) -> void:        # 贪婪(技三�
 const LOOT_POPUP_ICON := 28
 func loot_detail_text(owned: Dictionary) -> String:
 	if owned == null or owned.is_empty():
-		return "还没开出战利品。"
+		return ""                      # 标题「战利品 0/5」已经说明了(用户 2026-10-22: 不许自编「还没开出」这类话)
 	var out: PackedStringArray = []
 	for tid in owned.keys():
 		var k := str(tid)

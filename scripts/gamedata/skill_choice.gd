@@ -27,6 +27,18 @@ extends RefCounted
 ##   (`skill_picker.gd:70` 的 `dev_locked` 就是这条判据, 玩家侧显示成「开发中」锁)。
 ##   ⇒ 给机器人随机挑时**必须挑在这个集合里**, 否则 `randi() % 3 + 1` 会给
 ##   diamond / rainbow / chest 挑到它们那个没实装的 idx=1, 结果等于没选。
+## 存档里这只龟选的技能下标(`GameState.loadouts[id]` 的值): 数字 = 下标; 旧「选3」存档是数组 = 第一个非普攻下标; 读不出 ⇒ fallback。
+## 对局开局(`_resolve_chosen_index`)与背包属性小卡(宝箱龟【贪婪】是不是生效)共用这一份解析(2026-10-22)。
+static func loadout_index(lo, fallback: int) -> int:
+	if lo is int or lo is float:
+		return int(lo)
+	if lo is Array:
+		for v in lo:
+			if int(v) >= 1:
+				return int(v)
+	return fallback
+
+
 static func playable_indices(pet: Dictionary) -> Array:
 	var pool: Array = pet.get("skillPool", []) if pet.get("skillPool") is Array else []
 	var out: Array = []
