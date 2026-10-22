@@ -85,7 +85,7 @@ func _ready() -> void:
 	var r: Dictionary = gs.break_candy_jar()
 	_ok("返回非空", not r.is_empty())
 	_ok("档=12", int(r.get("tier", 0)) == 12, "got=%d" % int(r.get("tier", 0)))
-	_ok("深海币 +120", int(gs.meta_deepsea_coins) - coins_before == 120, "delta=%d" % (int(gs.meta_deepsea_coins) - coins_before))
+	_ok("深海币 +45(用户「顶档只提供45深海币」)", int(gs.meta_deepsea_coins) - coins_before == 45, "delta=%d" % (int(gs.meta_deepsea_coins) - coins_before))
 	_ok("第 12 档给临时等级器", int(r.get("levelers", 0)) == 1)
 	var eqs_r: Array = r.get("equips", [])
 	var costs_r: Array = []

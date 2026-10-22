@@ -2466,6 +2466,7 @@ func settle_ranked_close(now_override: int = 0) -> int:
 ## 档位奖励规格: coins=深海币[lo,hi] / equips=装备[{cost=费档, star=星}](1~2 件) / xp=大轮经验 / leveler=临时等级器个数
 ##   ★2026-10-22 用户「改为赢+2，输+3，封顶60，分为12档」「每档制定2-4个奖励」(方案书 docs/plans/20261022-糖果罐12档.md):
 ##   原来 6 档、赢 +1 输 +4 封顶 30、等级器按概率给 ⇒ 现在 12 档、每档 2~4 项确定奖励。
+##   深海币: 用户「顶档只提供45深海币」⇒ 各档按 120 → 45 同比例(×0.375)缩放取整, 档位越高不降。
 ## 临时等级器(糖果罐奖励): 消耗品条目, 用在龟/小将身上→该大轮等级永久+1. kind="item" 使其绕开装备逻辑。
 const TEMP_LEVELER_ID := "temp_leveler"
 const TEMP_LEVELER_ITEM := {"id": "temp_leveler", "star": 0, "kind": "item"}
@@ -2479,18 +2480,18 @@ const CANDY_JAR_LOSS := 3             # 输 +3
 const CANDY_JAR_CAP := 60             # 封顶
 const CANDY_JAR_TIER_SPAN := 5        # 每 5 点一档 ⇒ 0~4 = 第 1 档 … 55~60 = 第 12 档
 const _CANDY_JAR_TIERS := [
-	{"coins": [5, 8],     "equips": [{"cost": [1], "star": 1}],                                 "xp": 0,  "leveler": 0},   # 1  0~4
-	{"coins": [8, 12],    "equips": [{"cost": [1, 2], "star": 1}],                              "xp": 0,  "leveler": 0},   # 2  5~9
-	{"coins": [12, 17],   "equips": [{"cost": [2], "star": 1}],                                 "xp": 4,  "leveler": 0},   # 3  10~14
-	{"coins": [15, 22],   "equips": [{"cost": [2, 3], "star": 1}],                              "xp": 4,  "leveler": 0},   # 4  15~19
-	{"coins": [20, 28],   "equips": [{"cost": [3], "star": 1}],                                 "xp": 8,  "leveler": 0},   # 5  20~24
-	{"coins": [25, 35],   "equips": [{"cost": [3], "star": 2}],                                 "xp": 8,  "leveler": 0},   # 6  25~29
-	{"coins": [35, 45],   "equips": [{"cost": [3, 4], "star": 2}],                              "xp": 12, "leveler": 0},   # 7  30~34
-	{"coins": [45, 55],   "equips": [{"cost": [4], "star": 2}],                                 "xp": 12, "leveler": 1},   # 8  35~39
-	{"coins": [55, 65],   "equips": [{"cost": [4, 5], "star": 2}],                              "xp": 16, "leveler": 1},   # 9  40~44
-	{"coins": [65, 80],   "equips": [{"cost": [5], "star": 2}],                                 "xp": 16, "leveler": 1},   # 10 45~49
-	{"coins": [85, 100],  "equips": [{"cost": [5], "star": 2}, {"cost": [3], "star": 2}],       "xp": 0,  "leveler": 1},   # 11 50~54
-	{"coins": [120, 120], "equips": [{"cost": [5], "star": 2}, {"cost": [4], "star": 2}],       "xp": 0,  "leveler": 1},   # 12 55~60
+	{"coins": [2, 3],     "equips": [{"cost": [1], "star": 1}],                                 "xp": 0,  "leveler": 0},   # 1  0~4
+	{"coins": [3, 5],     "equips": [{"cost": [1, 2], "star": 1}],                              "xp": 0,  "leveler": 0},   # 2  5~9
+	{"coins": [5, 7],     "equips": [{"cost": [2], "star": 1}],                                 "xp": 4,  "leveler": 0},   # 3  10~14
+	{"coins": [6, 8],     "equips": [{"cost": [2, 3], "star": 1}],                              "xp": 4,  "leveler": 0},   # 4  15~19
+	{"coins": [8, 11],    "equips": [{"cost": [3], "star": 1}],                                 "xp": 8,  "leveler": 0},   # 5  20~24
+	{"coins": [9, 13],    "equips": [{"cost": [3], "star": 2}],                                 "xp": 8,  "leveler": 0},   # 6  25~29
+	{"coins": [13, 17],   "equips": [{"cost": [3, 4], "star": 2}],                              "xp": 12, "leveler": 0},   # 7  30~34
+	{"coins": [17, 21],   "equips": [{"cost": [4], "star": 2}],                                 "xp": 12, "leveler": 1},   # 8  35~39
+	{"coins": [21, 25],   "equips": [{"cost": [4, 5], "star": 2}],                              "xp": 16, "leveler": 1},   # 9  40~44
+	{"coins": [25, 30],   "equips": [{"cost": [5], "star": 2}],                                 "xp": 16, "leveler": 1},   # 10 45~49
+	{"coins": [32, 38],   "equips": [{"cost": [5], "star": 2}, {"cost": [3], "star": 2}],       "xp": 0,  "leveler": 1},   # 11 50~54
+	{"coins": [45, 45],   "equips": [{"cost": [5], "star": 2}, {"cost": [4], "star": 2}],       "xp": 0,  "leveler": 1},   # 12 55~60
 ]
 
 ## 有糖果罐? = 本赛季锁定统领含糖果龟 且 未碎 (罐随统领锁定而有; 大轮1颗)
