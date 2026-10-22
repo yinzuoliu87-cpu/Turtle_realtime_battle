@@ -379,9 +379,11 @@ func _ready() -> void:
 		if joined.find("第 %d 档" % want) < 0:
 			jar_bad.append("count=%d 底栏没写「第 %d 档」" % [int(pair[0]), want])
 		## 同一行里档位数字与奖励必须同档 —— 奖励取 preview(真实档)
+		## 每套一行(卡上是列表排版, 解析后的文字每行前面多一个圆点) ⇒ 逐套比
 		var prev: String = str(GameState.candy_jar_tier_preview(want))
-		if prev != "" and joined.find(prev) < 0:
-			jar_bad.append("count=%d 档位数字与奖励对不上(奖励应为「%s」)" % [int(pair[0]), prev])
+		for pl in prev.split("\n", false):
+			if joined.find(pl) < 0:
+				jar_bad.append("count=%d 档位数字与奖励对不上(缺「%s」)" % [int(pair[0]), pl])
 		sc2.queue_free()
 		await get_tree().process_frame
 	_ok("㉑ ★★糖果罐档位显示 = candy_jar_tier() 本身(8 组区间逐个比, 无 off-by-one)",

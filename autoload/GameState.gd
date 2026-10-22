@@ -2467,8 +2467,11 @@ func settle_ranked_close(now_override: int = 0) -> int:
 ##   一套 = 下面几项的任意组合(缺省 = 没有): coins=深海币[lo,hi] / equips=装备[{cost=费档, star=星}] / xp=大轮经验 / leveler=临时等级器个数
 ##   ★2026-10-22 用户「改为赢+2，输+3，封顶60，分为12档」→「每档制定2-4种奖励，之前说错了」→ 选「每档 2~4 套，随机给一套」;
 ##   「顶档只提供45深海币」⇒ 任何一套里深海币都不超过 45(方案书 docs/plans/20261022-糖果罐12档.md)。
-##   「顶档大轮经验给20」⇒ 各档大轮经验按 40 → 20 同比例(×0.5)缩放, 档位越高不降。
-##   套餐内容是我拟的: 同档几套价值相近(1 深海币 ≈ 1 大轮经验 ≈ 装备费用), 逐档递增。
+##   ★用户「你不要按什么哪套去搞啊，混合给」⇒ 每一套都是几样混着给(不再一套只给一类), 表经用户「这样可以」确认。
+##   折算(只用来配平, 不进游戏): n 费 1★ = n 币、2★ ×3、3★ ×9; 1 大轮经验 = 1 币; 临时等级器 = 10 币。
+##   同一档几套折合相等, 逐档递增(3/5/7/9/12/14/18/23/28/33/41/50)。
+##   上限(用户定): 任何一套深海币 ≤ 45、大轮经验 ≤ 20; 装备最高只到 4 费 2★ / 5 费 2★ / 3 费 3★(4、5 费不给 3★)。
+##   门禁 verify_candy_jar ③b 守这几条。
 ## 临时等级器(糖果罐奖励): 消耗品条目, 用在龟/小将身上→该大轮等级永久+1. kind="item" 使其绕开装备逻辑。
 const TEMP_LEVELER_ID := "temp_leveler"
 const TEMP_LEVELER_ITEM := {"id": "temp_leveler", "star": 0, "kind": "item"}
@@ -2482,18 +2485,18 @@ const CANDY_JAR_LOSS := 3             # 输 +3
 const CANDY_JAR_CAP := 60             # 封顶
 const CANDY_JAR_TIER_SPAN := 5        # 每 5 点一档 ⇒ 0~4 = 第 1 档 … 55~60 = 第 12 档
 const _CANDY_JAR_TIERS := [
-	[{"coins": [2, 3]},   {"equips": [{"cost": [1], "star": 1}]}],                                                                   # 1  0~4
-	[{"coins": [3, 5]},   {"equips": [{"cost": [1, 2], "star": 1}]}],                                                                # 2  5~9
-	[{"coins": [5, 7]},   {"equips": [{"cost": [2], "star": 1}], "coins": [2, 2]},    {"xp": 3}],                                    # 3  10~14
-	[{"coins": [6, 8]},   {"equips": [{"cost": [2, 3], "star": 1}], "coins": [3, 3]}, {"xp": 4}],                                    # 4  15~19
-	[{"coins": [8, 11]},  {"equips": [{"cost": [3], "star": 1}], "coins": [4, 4]},    {"xp": 5}],                                   # 5  20~24
-	[{"coins": [9, 13]},  {"equips": [{"cost": [3], "star": 2}]},                     {"xp": 6}],                                   # 6  25~29
-	[{"coins": [13, 17]}, {"equips": [{"cost": [3, 4], "star": 2}]},                  {"xp": 8}, {"leveler": 1, "coins": [5, 5]}],   # 7  30~34
-	[{"coins": [17, 21]}, {"equips": [{"cost": [4], "star": 2}]},                     {"xp": 10}, {"leveler": 1, "coins": [8, 8]}],   # 8  35~39
-	[{"coins": [21, 25]}, {"equips": [{"cost": [4, 5], "star": 2}]},                  {"xp": 12}, {"leveler": 1, "coins": [12, 12]}], # 9  40~44
-	[{"coins": [25, 30]}, {"equips": [{"cost": [5], "star": 2}]},                     {"xp": 14}, {"leveler": 1, "xp": 6}],          # 10 45~49
-	[{"coins": [32, 38]}, {"equips": [{"cost": [5], "star": 2}, {"cost": [3], "star": 2}]}, {"xp": 17}, {"leveler": 2}],            # 11 50~54
-	[{"coins": [45, 45]}, {"equips": [{"cost": [5], "star": 2}, {"cost": [4], "star": 2}]}, {"xp": 20}, {"leveler": 2, "coins": [10, 10]}],   # 12 55~60
+	[{"coins": [2, 2], "equips": [{"cost": [1], "star": 1}]}, {"coins": [1, 1], "equips": [{"cost": [2], "star": 1}]}],   # 1
+	[{"coins": [3, 3], "equips": [{"cost": [2], "star": 1}]}, {"coins": [1, 1], "equips": [{"cost": [4], "star": 1}]}],   # 2
+	[{"coins": [4, 4], "equips": [{"cost": [3], "star": 1}]}, {"coins": [1, 1], "equips": [{"cost": [2], "star": 2}]}, {"coins": [3, 3], "equips": [{"cost": [2], "star": 1}], "xp": 2}],   # 3
+	[{"coins": [5, 5], "equips": [{"cost": [4], "star": 1}]}, {"equips": [{"cost": [3], "star": 1}, {"cost": [3], "star": 1}], "xp": 3}, {"equips": [{"cost": [2], "star": 2}], "xp": 3}],   # 4
+	[{"coins": [7, 7], "equips": [{"cost": [5], "star": 1}]}, {"equips": [{"cost": [3], "star": 2}], "xp": 3}, {"coins": [4, 4], "equips": [{"cost": [4], "star": 1}], "xp": 4}],   # 5
+	[{"coins": [8, 8], "equips": [{"cost": [2], "star": 2}]}, {"coins": [2, 2], "equips": [{"cost": [4], "star": 2}]}, {"equips": [{"cost": [3], "star": 2}], "xp": 5}],   # 6
+	[{"coins": [10, 10], "equips": [{"cost": [4], "star": 1}], "xp": 4}, {"coins": [3, 3], "equips": [{"cost": [5], "star": 2}]}, {"equips": [{"cost": [3], "star": 2}], "xp": 9}, {"coins": [5, 5], "xp": 3, "leveler": 1}],   # 7
+	[{"coins": [14, 14], "equips": [{"cost": [3], "star": 2}]}, {"coins": [5, 5], "equips": [{"cost": [2], "star": 3}]}, {"equips": [{"cost": [4], "star": 2}], "xp": 11}, {"coins": [8, 8], "xp": 5, "leveler": 1}],   # 8
+	[{"coins": [16, 16], "equips": [{"cost": [4], "star": 2}]}, {"equips": [{"cost": [5], "star": 2}, {"cost": [3], "star": 2}], "xp": 4}, {"equips": [{"cost": [2], "star": 3}], "xp": 10}, {"coins": [12, 12], "xp": 6, "leveler": 1}],   # 9
+	[{"coins": [18, 18], "equips": [{"cost": [5], "star": 2}]}, {"coins": [6, 6], "equips": [{"cost": [3], "star": 3}]}, {"equips": [{"cost": [5], "star": 2}, {"cost": [3], "star": 2}], "xp": 9}, {"coins": [15, 15], "xp": 8, "leveler": 1}],   # 10
+	[{"coins": [26, 26], "equips": [{"cost": [5], "star": 2}]}, {"coins": [2, 2], "equips": [{"cost": [3], "star": 3}, {"cost": [4], "star": 2}]}, {"equips": [{"cost": [5], "star": 2}, {"cost": [4], "star": 2}], "xp": 14}, {"coins": [13, 13], "xp": 8, "leveler": 2}],   # 11
+	[{"coins": [45, 45], "xp": 5}, {"coins": [8, 8], "equips": [{"cost": [3], "star": 3}, {"cost": [5], "star": 2}]}, {"coins": [3, 3], "equips": [{"cost": [5], "star": 2}, {"cost": [4], "star": 2}], "xp": 20}, {"coins": [20, 20], "xp": 10, "leveler": 2}],   # 12
 ]
 
 ## 有糖果罐? = 本赛季锁定统领含糖果龟 且 未碎 (罐随统领锁定而有; 大轮1颗)
@@ -2608,11 +2611,19 @@ static func candy_jar_pack_text(sp: Dictionary) -> String:
 	if sp.has("coins"):
 		var c: Array = sp["coins"]
 		parts.append("深海币 %d" % int(c[0]) if int(c[0]) == int(c[1]) else "深海币 %d~%d" % [int(c[0]), int(c[1])])
+	## 同一种装备给两件 ⇒ 写「2 件 X 费 Y★ 装备」(不写 ×2), 其余每件一项
+	var eq_n := {}
+	var eq_order: Array = []
 	for es in sp.get("equips", []):
 		var costs := []
 		for x in (es as Dictionary)["cost"]:
 			costs.append(str(int(x)))
-		parts.append("%s 费 %d★ 装备" % ["/".join(costs), int((es as Dictionary)["star"])])
+		var key := "%s 费 %d★ 装备" % ["/".join(costs), int((es as Dictionary)["star"])]
+		if not eq_n.has(key):
+			eq_order.append(key)
+		eq_n[key] = int(eq_n.get(key, 0)) + 1
+	for key in eq_order:
+		parts.append(key if int(eq_n[key]) == 1 else "%d 件 %s" % [int(eq_n[key]), key])
 	if int(sp.get("xp", 0)) > 0:
 		parts.append("大轮经验 %d" % int(sp["xp"]))
 	if int(sp.get("leveler", 0)) > 0:

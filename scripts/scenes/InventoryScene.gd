@@ -1929,7 +1929,9 @@ func _open_jar_card() -> void:
 		"title": "糖果罐", "title_col": col,
 		"icon_border": col, "frame_col": col,
 		"tag": "第 %d 档" % tier, "tag_col": Color("#e8dcc4"),
-		"body": "打碎后随机获得以下奖励之一（每大轮限 1 次）：\n%s" % GameState.candy_jar_tier_preview(tier),
+		## 每套一个「·」开头、折行缩进(列表排版): 一套长了会折行, 不缩进时折下来的半行像新的一套。
+		##   「·」不用 [ul] 默认的「•」—— 「·」本来就在游戏字体里用着(「糖果罐 · 第 N 档」), 「•」不在。
+		"body": "打碎后随机获得以下奖励之一（每大轮限 1 次）：\n[ul bullet=·]%s[/ul]" % GameState.candy_jar_tier_preview(tier),
 		"body_px": MIN_FONT_PX,
 		"width": ITEM_CARD_W, "min_px": MIN_FONT_PX,
 	})

@@ -6,7 +6,7 @@ const VfxTexRef := preload("res://scripts/util/vfx_textures.gd")
 ## 覆盖 (每条打印 期望 vs 实际):
 ##  1. has_candy_jar 只在"统领含糖果龟且未碎"时为 true
 ##  2. candy_jar_add: 赢+2 / 输+3 / 封顶60(2026-10-22 改)
-##  3. candy_jar_tier: 12 档区间(每 5 点一档) · 3b 每档 2~4 套、深海币不超过 45、档位越高不降
+##  3. candy_jar_tier: 12 档区间(每 5 点一档) · 3b 每档 2~4 套、每套混给、上限、同档等值逐档递增
 ##  4. break_candy_jar: 这一档随机给一套(深海币 / 装备 / 大轮经验 / 临时等级器的组合)
 ##  5. ★奖励进背包后 persistent_bench 全是 Dictionary (曾塞裸 String "temp_leveler" → auto_merge_all/_equip_cell 必崩)
 ##  6. ★auto_merge_all() 在背包含消耗品时不崩, 且不把消耗品当装备合成
@@ -52,42 +52,52 @@ func _ready() -> void:
 		gs.candy_jar_count = int(pair[0])
 		_ok("count=%d → 档%d" % [int(pair[0]), int(pair[1])], gs.candy_jar_tier() == int(pair[1]), "got=%d" % gs.candy_jar_tier())
 
-	## ③b 每档 2~4 套、打碎随机给一套(用户「每档制定2-4种奖励，之前说错了」→ 选「每档 2~4 套，随机给一套」)
-	##   任何一套深海币不超过 45(「顶档只提供45深海币」); 档位越高, 各类奖励的最好那套不降
+	## ③b 每档 2~4 套、打碎随机给一套; 每套混着给(用户「你不要按什么哪套去搞啊，混合给」→「这样可以」)
+	##   上限(用户定): 任何一套深海币 ≤ 45、大轮经验 ≤ 20; 装备最高 4 费 2★ / 5 费 2★ / 3 费 3★(4、5 费不给 3★)
+	##   配平(GameState 头注的折算): n 费 1★ = n、2★ ×3、3★ ×9; 1 经验 = 1; 等级器 = 10 ⇒ 同档几套等值、逐档递增
 	var tiers: Array = gs._CANDY_JAR_TIERS
 	var bad_n: Array = []
-	var bad_mono: Array = []
-	var bad_coin: Array = []
-	var best := func(packs: Array) -> Array:      # [深海币下限最高, 装备最高费, 经验最高, 等级器最多]
-		var b := [0, 0, 0, 0]
-		for pk in packs:
-			var d: Dictionary = pk
-			b[0] = maxi(int(b[0]), int((d.get("coins", [0, 0]) as Array)[0]))
-			for es in d.get("equips", []):
-				for c in (es as Dictionary)["cost"]:
-					b[1] = maxi(int(b[1]), int(c))
-			b[2] = maxi(int(b[2]), int(d.get("xp", 0)))
-			b[3] = maxi(int(b[3]), int(d.get("leveler", 0)))
-		return b
+	var bad_cap: Array = []
+	var bad_val: Array = []
+	var val_of := func(d: Dictionary) -> int:
+		var v: int = int((d.get("coins", [0, 0]) as Array)[1]) + int(d.get("xp", 0)) + 10 * int(d.get("leveler", 0))
+		for es in d.get("equips", []):
+			v += int(((es as Dictionary)["cost"] as Array).max()) * int(pow(3, int((es as Dictionary)["star"]) - 1))
+		return v
+	var prev_v := 0
 	for i in range(tiers.size()):
 		var packs: Array = tiers[i]
 		if packs.size() < 2 or packs.size() > 4:
 			bad_n.append("第 %d 档 %d 套" % [i + 1, packs.size()])
+		var vals := {}
 		for pk in packs:
-			if (pk as Dictionary).is_empty():
+			var d: Dictionary = pk
+			if d.is_empty():
 				bad_n.append("第 %d 档有空套" % [i + 1])
-			if int(((pk as Dictionary).get("coins", [0, 0]) as Array)[1]) > 45:
-				bad_coin.append("第 %d 档 %s" % [i + 1, gs.candy_jar_pack_text(pk)])
-		if i > 0:
-			var cur: Array = best.call(packs)
-			var prev: Array = best.call(tiers[i - 1])
-			for k in range(4):
-				if int(cur[k]) < int(prev[k]):
-					bad_mono.append("第 %d 档第 %d 类比第 %d 档低" % [i + 1, k, i])
+			var kinds := 0
+			for k in ["coins", "equips", "xp", "leveler"]:
+				if d.has(k):
+					kinds += 1
+			if kinds < 2:
+				bad_n.append("第 %d 档有一套只给一类: %s" % [i + 1, gs.candy_jar_pack_text(d)])
+			if int((d.get("coins", [0, 0]) as Array)[1]) > 45 or int(d.get("xp", 0)) > 20:
+				bad_cap.append("第 %d 档 %s" % [i + 1, gs.candy_jar_pack_text(d)])
+			for es in d.get("equips", []):
+				var st: int = int((es as Dictionary)["star"])
+				var mc: int = int(((es as Dictionary)["cost"] as Array).max())
+				if st > 3 or (st == 3 and mc > 3) or (st == 2 and mc > 5):
+					bad_cap.append("第 %d 档 %d 费 %d★" % [i + 1, mc, st])
+			vals[int(val_of.call(d))] = true
+		var v: int = int(vals.keys()[0])
+		if vals.size() != 1:
+			bad_val.append("第 %d 档几套不等值 %s" % [i + 1, str(vals.keys())])
+		elif v <= prev_v:
+			bad_val.append("第 %d 档 %d 不高于上一档 %d" % [i + 1, v, prev_v])
+		prev_v = v
 	_ok("③b ★分母: 12 档", tiers.size() == 12, str(tiers.size()))
-	_ok("③b 每档 2~4 套, 没有空套", bad_n.is_empty(), str(bad_n))
-	_ok("③b 任何一套深海币不超过 45", bad_coin.is_empty(), str(bad_coin))
-	_ok("③b 档位越高, 深海币 / 装备费 / 经验 / 等级器各自的最好那套不降", bad_mono.is_empty(), str(bad_mono))
+	_ok("③b 每档 2~4 套, 每套至少混两类", bad_n.is_empty(), str(bad_n))
+	_ok("③b ★上限: 深海币 ≤ 45、经验 ≤ 20、4/5 费不给 3★", bad_cap.is_empty(), str(bad_cap))
+	_ok("③b 同档几套折合相等、逐档递增", bad_val.is_empty(), str(bad_val))
 
 	print("=== 4/5. 打碎第 12 档 60 次: 每次结果 = 抽中的那一套, 4 套都出现过 ===")
 	var packs12: Array = tiers[11]

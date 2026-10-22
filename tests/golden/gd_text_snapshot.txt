@@ -1,3 +1,4 @@
+autoload/GameState.gd|lit|%d 件 %s
 autoload/GameState.gd|lit|%s 费 %d★ 装备
 autoload/GameState.gd|lit|临时等级器
 autoload/GameState.gd|lit|临时等级器 %d 个
@@ -862,7 +863,7 @@ scripts/scenes/InventoryScene.gd|lit|商店
 scripts/scenes/InventoryScene.gd|lit|小将
 scripts/scenes/InventoryScene.gd|lit|属性\n%s\n\n效果\n%s
 scripts/scenes/InventoryScene.gd|lit|战利品 %d/%d
-scripts/scenes/InventoryScene.gd|lit|打碎后随机获得以下奖励之一（每大轮限 1 次）：\n%s
+scripts/scenes/InventoryScene.gd|lit|打碎后随机获得以下奖励之一（每大轮限 1 次）：\n[ul bullet=·]%s[/ul]
 scripts/scenes/InventoryScene.gd|lit|护甲
 scripts/scenes/InventoryScene.gd|lit|攻击力
 scripts/scenes/InventoryScene.gd|lit|无属性加成
