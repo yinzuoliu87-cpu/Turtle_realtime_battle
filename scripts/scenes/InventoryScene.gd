@@ -1296,13 +1296,27 @@ func _open_unit_card() -> void:
 	## 宝箱龟: 已开战利品也算进数值(用户 2026-10-22「要算」), 拆解里金字 = 战利品(与藏宝图里战利品名字同色)
 	var loot: Dictionary = UnitStatPreview.loot_sum(
 		GameState.chest_treasures_won if (is_chest and GameState.chest_treasures_won is Array) else [], base, add)
+	## 暴击率与战斗面板同一口径(用户 2026-10-22「要」): 封顶 100%, 超出部分按 DamageMath.crit_multiplier 折进暴击伤害。
+	##   暴击率那一行的括号仍写各来源(加起来 = 封顶前), 暴击伤害那一行多一段折算来的(暴击率图标同色), 下面一行灰字说明。
+	var crit_raw: float = float(base["crit"]) + float(add["crit"]) + float(loot["crit"])
+	var crit_over: float = DamageMath.crit_multiplier(crit_raw, 0.0)
 	for row in UNIT_STAT_ROWS:
 		var k := str(row[0])
 		var pct: bool = k == "crit" or k == "critDmg"
 		var mul: float = 100.0 if pct else 1.0
-		var tot: int = roundi((float(base[k]) + float(add[k]) + float(loot[k])) * mul)
+		## 取整与对局面板一致(info_panel._info_stat_tiles): 生命 / 攻击 / 护甲 / 魔抗舍去小数, 百分比四舍五入
+		##   (实拍同一只龟魔抗 17.5: 面板 17、小卡原来 18)
+		var raw_v: float = (float(base[k]) + float(add[k]) + float(loot[k])) * mul
+		var tot: int = roundi(raw_v) if pct else int(raw_v)
 		var plus: int = roundi(float(add[k]) * mul)
 		var lplus: int = roundi(float(loot[k]) * mul)
+		var oplus: int = roundi(crit_over * mul) if k == "critDmg" else 0
+		var src_sum: int = tot                               # 括号里各段加起来的数(暴击率封顶时它 > 总值)
+		if k == "crit":
+			tot = mini(tot, roundi(mul))
+		elif k == "critDmg":
+			tot = roundi(DamageMath.crit_multiplier(crit_raw, float(base[k]) + float(add[k]) + float(loot[k])) * mul)
+			src_sum = tot
 		var nb := HBoxContainer.new()
 		nb.add_theme_constant_override("separation", 6)
 		nb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1339,14 +1353,23 @@ func _open_unit_card() -> void:
 		br.add_theme_color_override("default_color", InspectCard.C_DIM)
 		br.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		br.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		if plus != 0 or lplus != 0:
-			var parts := "%d%s" % [tot - plus - lplus, u_s]
+		if plus != 0 or lplus != 0 or oplus != 0:
+			var parts := "%d%s" % [src_sum - plus - lplus - oplus, u_s]
 			if plus != 0:
 				parts += " [color=#%s]+ %d%s[/color]" % [STAT_EQUIP_COL.to_html(false), plus, u_s]
 			if lplus != 0:
 				parts += " [color=#%s]+ %d%s[/color]" % [STAT_LOOT_COL.to_html(false), lplus, u_s]
+			if oplus != 0:
+				parts += " [color=#%s]+ %d%s[/color]" % [SkillText.stat_icon_color_of("crit").to_html(false), oplus, u_s]
 			br.text = "(%s)" % parts
 		grid.add_child(br)
+	if crit_over > 0.0:
+		## 与战斗面板「暴伤」那格的说明同一句话(info_panel._info_stat_tiles)
+		var cn := _stat_lbl("暴击率超过 100% 的部分会折算进暴击伤害。", InspectCard.C_DIM)
+		cn.name = "CritOverNote"
+		cn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		cn.custom_minimum_size = Vector2(1, 0)
+		host.add_child(cn)
 	if side != null:
 		_treasure_map_section(side)
 

@@ -14,6 +14,7 @@ extends Node
 ##   ⑦ 战斗「战利品」浮层正文: 每件带图标 [img] + 名字, 空时一句话
 
 const MIN_ASSERTS := 22
+const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 var _n := 0
 var _fail := 0
 
@@ -71,6 +72,53 @@ func _loot_rows(card: Node) -> Array:
 	return out
 
 
+var _inv_vals := {}
+
+
+func _check_battle_panel_matches(loot: Array) -> void:
+	var gs = get_node("/root/GameState")
+	RB.DEBUG_EDIT = true
+	var s = RB.new()
+	add_child(s)
+	await _frames(2)
+	var lv: int = int(gs.battle_level_for("chest"))
+	gs.debug_level = lv                                    # 背包小卡用的就是这个等级(battle_level_for)
+	var c: Vector2 = s.ARENA.position + s.ARENA.size * 0.5
+	var u: Dictionary = s._spawn._make_unit("chest", "left", c)
+	gs.debug_level = 0
+	u["equips"] = [{"id": "p2eq_004", "star": 2}]
+	for e in u["equips"]:
+		s._equip_sys._stats._eq_apply_one_stats(u, str(e["id"]), int(e["star"]))
+	for t in loot:
+		s._chest_sys._chest_apply_treasure(u, str(t))
+	s._recalc_stats(u)
+	var tiles := {}
+	for row in s._info_sys._info_stat_tiles(u):
+		tiles[str(row[1])] = str(row[2])
+	var want := {"hp": "%d" % int(u["maxHp"]), "atk": tiles.get("攻击", "?"), "def": tiles.get("护甲", "?"),
+		"mr": tiles.get("魔抗", "?"), "crit": tiles.get("暴击", "?"), "critDmg": tiles.get("暴伤", "?")}
+	_ok("⑩ ★分母: 等级 %d、对局单位六格都取到了" % lv, lv >= 1 and not want.values().has("?"), str(want))
+	var diff: Array = []
+	for k in want:
+		if str(_inv_vals.get(k, "-")) != str(want[k]):
+			diff.append("%s 背包「%s」/ 对局「%s」" % [k, _inv_vals.get(k, "-"), want[k]])
+	_ok("⑩ ★★背包属性小卡六个数 == 对局信息面板(同等级 / 装备 / 战利品)", diff.is_empty(), str(diff))
+	s._units.clear()
+	s.set_process(false)
+	s.queue_free()
+	await _frames(2)
+
+
+## 括号拆解「(25% + 35% + 75%)」⇒ [25, 35, 75]
+func _nums(n: Node) -> Array:
+	var out: Array = []
+	if not (n is RichTextLabel):
+		return out
+	for ps in (n as RichTextLabel).get_parsed_text().replace("(", "").replace(")", "").replace("%", "").split("+", false):
+		out.append(int(ps.strip_edges()))
+	return out
+
+
 func _txt(n: Node) -> String:
 	if n is RichTextLabel:
 		return (n as RichTextLabel).get_parsed_text()
@@ -124,6 +172,7 @@ func _ready() -> void:
 		if nums.size() == 3:
 			_ok("⑧ ★战利品那段 = (本体 + 装备) × 短刃 %d%%" % roundi(ChestSystem.DAGGER_ATK * 100.0),
 				absi(int(nums[2]) - roundi((int(nums[0]) + int(nums[1])) * ChestSystem.DAGGER_ATK)) <= 1, str(nums))
+		_ok("⑨ 反面: 暴击率没溢出时没有折算说明", card.find_child("CritOverNote", true, false) == null)
 	await _close(r[0])
 
 	# ── ③④ 5 件最长组合 ──
@@ -154,6 +203,38 @@ func _ready() -> void:
 			_ok("④ 藏宝图栏从卡顶开始(与卡头同高, 不压在属性表下面)", tm.get_global_rect().position.y < grid.get_global_rect().position.y,
 				"%s vs %s" % [str(tm.get_global_rect().position.y), str(grid.get_global_rect().position.y)])
 	await _close(r[0])
+
+	# ── ⑨ 暴击率溢出: 与战斗面板同一口径(用户 2026-10-22「要」)──
+	##   身上 004(暴击)+ 骰子龟的血筛子 + 王者之冠 ⇒ 暴击率来源合计 > 100%
+	r = await _open_card(31000.0, ["blood_dice", "dagger", "flint", "poison", "crown"])
+	card = r[1]
+	_ok("⑨ ★分母: 小卡弹出", card != null)
+	if card != null:
+		var vc: Label = card.find_child("Val_crit", true, false) as Label
+		var vd: Label = card.find_child("Val_critDmg", true, false) as Label
+		var bc := _nums(card.find_child("Br_crit", true, false))
+		var bd := _nums(card.find_child("Br_critDmg", true, false))
+		var raw_c := 0
+		for x in bc:
+			raw_c += int(x)
+		_ok("⑨ ★分母: 暴击率各来源合计 %d%% > 100%%(否则这一组没测到溢出)" % raw_c, raw_c > 100, str(bc))
+		_ok("⑨ ★暴击率封顶 100%(= 战斗面板)", vc != null and vc.text == "100%", vc.text if vc else "-")
+		var sum_d := 0
+		for x in bd:
+			sum_d += int(x)
+		_ok("⑨ ★暴击伤害括号多一段折算 = (合计 − 100%%) × %.1f, 各段加起来 = 总值" % DamageMath.CRIT_OVERFLOW,
+			vd != null and bd.size() >= 2 and int(bd[bd.size() - 1]) == roundi((raw_c - 100) * DamageMath.CRIT_OVERFLOW)
+			and "%d%%" % sum_d == vd.text, "%s = %s" % [vd.text if vd else "-", str(bd)])
+		_ok("⑨ 溢出时有一行说明", card.find_child("CritOverNote", true, false) != null)
+		for k in ["hp", "atk", "def", "mr", "crit", "critDmg"]:
+			var vl: Label = card.find_child("Val_" + k, true, false) as Label
+			_inv_vals[k] = vl.text if vl else "-"
+	await _close(r[0])
+
+	# ── ⑩ 背包小卡 == 对局信息面板(用户 2026-10-22「那对局内的么呢」)──
+	##   同一只龟(等级 / 装备 / 战利品同 ⑨), 对局里走开局同一组函数把装备属性和战利品真加到单位上,
+	##   再取信息面板那六格的字(info_panel._info_stat_tiles), 与背包小卡逐字比。
+	await _check_battle_panel_matches(["blood_dice", "dagger", "flint", "poison", "crown"])
 
 	# ── ⑤ 别的龟 ──
 	r = await _open_card(5000.0, ["rum"], "basic")

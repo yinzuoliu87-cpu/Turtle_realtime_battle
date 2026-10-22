@@ -32,6 +32,9 @@ func _ready() -> void:
 	var _side := OS.get_environment("SHOT_SIDE")
 	## SHOT_PET=__minion__ (+SHOT_ROLE=back): 小将面板 —— 多一格「前排/后排」(2026-10-06)。
 	var _spec: Dictionary = {"minion": true, "role": OS.get_environment("SHOT_ROLE") if OS.has_environment("SHOT_ROLE") else "front", "level": 3} if pet == "__minion__" else {}
+	## SHOT_LEVEL=6: 强制等级(走 GameState.debug_level, 与调试场同一个口) —— 和背包属性小卡对数时两边要同级。
+	if OS.has_environment("SHOT_LEVEL"):
+		get_node("/root/GameState").debug_level = int(OS.get_environment("SHOT_LEVEL"))
 	var u: Dictionary = s._spawn._make_unit(pet, "right" if _side == "right" else "left", c, _spec)
 
 	## 把这只龟喂饱, 让面板【每一行都有东西可画】——
@@ -107,6 +110,17 @@ func _ready() -> void:
 
 	s._units.clear()
 	s._units.append(u)
+	## SHOT_LOOT=dagger,crown…(2026-10-22): 装备属性 + 宝箱战利品都【真加到单位上】再拍 ——
+	##   走战斗开局同一组函数(EquipStatsApply._eq_apply_one_stats / ChestSystem._chest_apply_treasure),
+	##   用来对照背包属性小卡与对局面板是不是同一个数。不带这个开关时装备只挂在格子上(老行为不变)。
+	if OS.has_environment("SHOT_LOOT") and OS.get_environment("SHOT_DETAIL") != "loot":
+		for _e in (u.get("equips", []) as Array):
+			s._equip_sys._stats._eq_apply_one_stats(u, str((_e as Dictionary)["id"]), int((_e as Dictionary).get("star", 1)))
+		for _tl in OS.get_environment("SHOT_LOOT").split(",", false):
+			s._chest_sys._chest_apply_treasure(u, str(_tl))
+		s._recalc_stats(u)
+		print("[SHOT_LOOT] 攻击 %.1f 护甲 %.1f 魔抗 %.1f 生命 %.1f 暴击 %.3f 暴伤 %.3f" % [float(u["atk"]), float(u["def"]),
+			float(u["mr"]), float(u["maxHp"]), float(u["crit"]), float(u["crit_dmg"])])
 	if OS.has_environment("SHOT_MELEE") and pet == "two_head":   # 变脸龟近战形态(2026-10-07)
 		s._two_head_sys._two_head_after_cast(u, null)
 	s._edit_mode = false

@@ -865,6 +865,7 @@ scripts/scenes/InventoryScene.gd|lit|攻击力
 scripts/scenes/InventoryScene.gd|lit|无属性加成
 scripts/scenes/InventoryScene.gd|lit|暴击伤害
 scripts/scenes/InventoryScene.gd|lit|暴击率
+scripts/scenes/InventoryScene.gd|lit|暴击率超过 100% 的部分会折算进暴击伤害。
 scripts/scenes/InventoryScene.gd|lit|最大生命值
 scripts/scenes/InventoryScene.gd|lit|本大轮首战后解锁
 scripts/scenes/InventoryScene.gd|lit|盾
