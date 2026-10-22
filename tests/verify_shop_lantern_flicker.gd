@@ -124,6 +124,10 @@ func _ready() -> void:
 	var seq := ["", "", "", ""]
 	var t0 := Time.get_ticks_msec()
 	while Time.get_ticks_msec() - t0 < 8000:
+		## ★每帧至少 20 毫秒(2026-10-22): 这段量的是墙钟 8 秒, 无头不限帧率时 8 秒要跑几千帧,
+		##   而本测试走默认预算 500 帧 ⇒ 跑到 L3 就被 --quit-after 掐断、没打 ALL PASS。
+		##   灯笼一档停 0.5~1.2 秒, 20 毫秒一采漏不掉任何一次换帧。
+		OS.delay_msec(20)
 		await get_tree().process_frame
 		for i in range(4):
 			var tx: Texture2D = (fls[i] as TextureRect).texture

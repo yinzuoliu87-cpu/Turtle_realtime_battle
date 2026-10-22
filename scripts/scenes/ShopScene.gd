@@ -146,6 +146,11 @@ var _insp := InspectCard.new(self)   # 说明小卡(与局内信息面板同一�
 var _ui_layer: Node = null           # InspectCard 往这里挂卡(= 本场景)
 var _show_odds := false         # 点「Lv」切换: 等级行上方显示各费用出货概率
 var _coin_box: Control = null   # 顶栏里的深海币(图标 + 数字)
+## 小木斧待选最终造物那张(自动弹的)被点空白收起了 ⇒ 本次进店不再自动弹(见 _dismiss_popups)
+var _axe_card_closed := false
+## 买成之后这个时刻(毫秒)之前, 货架上的真点击不选货 —— 挡「双击购买」的第二下点穿到卡下面那件(见 _card)
+var _shelf_tap_after_ms := 0
+const BUY_TAP_GUARD_MS := 400
 
 func _ready() -> void:
 	var _td = get_node_or_null("/root/TutorialDirector")
@@ -368,7 +373,31 @@ func _price(edef: Dictionary) -> int:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):   # ESC 返回主菜单 (与图鉴一致)
+		## ★说明卡 / 出货概率开着时, ESC 先收起它(与点空白同一个动作), 再按一次才离开商店(2026-10-22 交互排查)。
+		if _dismiss_popups():
+			get_viewport().set_input_as_handled()
+			return
 		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+
+
+## 收起本屏弹出的东西(说明卡 / 出货概率 / 小木斧待选那张)。收了返回 true, 什么都没开着返回 false。
+## ★点空白与 ESC 共用这一个出口(2026-10-22 交互排查): 原来点空白只清选中, 概率牌与小木斧那张都关不掉。
+func _dismiss_popups() -> bool:
+	var any := false
+	if _sel >= 0 or _sel_own != "" or _sel_bench >= 0:
+		_sel = -1; _sel_own = ""; _sel_bench = -1
+		any = true
+	if _show_odds:
+		_show_odds = false
+		any = true
+	if not any and _axe_card_wanted() and not _axe_card_closed:
+		## 小木斧待选那张是自动弹的、盖住货架左边三列 ⇒ 点空白收起, 本次进店不再自动弹
+		##   (四选一仍在每件货的说明卡里, 下次进店也会再弹)。
+		_axe_card_closed = true
+		any = true
+	if any:
+		_rebuild()
+	return any
 
 # ══════════════════════════════════════════════════════════════
 #  §一句话提示 (toast)
@@ -459,12 +488,9 @@ func _rebuild() -> void:
 	##   左边场地站队伍、右边墙上两层货架、左下储物箱。PixelLab 原生 384×216, 最近邻放大。
 	var bgc := ColorRect.new(); bgc.color = Color("#06141c")
 	bgc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); add_child(bgc)
-	## 点空白处 = 收起说明 / 取消选中(没有「×」)
+	## 点空白处 = 收起说明 / 取消选中 / 收起出货概率(没有「×」)
 	bgc.mouse_filter = Control.MOUSE_FILTER_STOP
-	_wire_tap(bgc, func():
-		if _sel >= 0 or _sel_own != "" or _sel_bench >= 0:
-			_sel = -1; _sel_own = ""; _sel_bench = -1
-			_rebuild())
+	_wire_tap(bgc, func(): _dismiss_popups())
 	_build_backdrop()
 	_build_cabinet()
 	_amb.build(self)
@@ -486,7 +512,9 @@ func _rebuild() -> void:
 		"safe_left": _sm.x,
 		"safe_right": _sm.z,
 		"on_back": func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"),
-		"left_actions": [["🎒 背包", _go_inventory, {"tutorial_keep": true}]],
+		## 左上「← | 商店 | 背包」一对页签, 当前页那一签亮着(用户 2026-10-22「左上角返回，商店，背包你到底打算怎么设计啊」;
+		##   与背包页同一对)。「背包」那一签是教程锚点(tutorial_keep / E5「点击背包」) —— 别再按 action_btns[0] 取, 见 _bag_tab()。
+		"left_actions": [["商店", func() -> void: pass, {"active": true}], ["背包", _go_inventory, {"tutorial_keep": true}]],
 	})
 
 	## ── 头部三组重排(用户 2026-08-15「右上角咋做的, 中间给你这么空位你在干啥啊」)──
@@ -542,6 +570,10 @@ func _rebuild() -> void:
 	rf.disabled = not _rf_afford
 	rf.modulate = Color(1, 1, 1, 1) if _rf_afford else Color(1, 1, 1, 0.42)
 	rf.pressed.connect(_on_refresh); add_child(rf)
+	## ★disabled 的按钮不发 pressed ⇒ 买不起时真点下去原来什么都没有(`_on_refresh` 里那句提示只有程序直调才到得了)。
+	##   点到压暗的「刷新」也要说一句为什么(2026-10-22 交互排查)。
+	if not _rf_afford:
+		_wire_tap(rf, _on_refresh)
 	_build_lock_button(rf.position + Vector2(rf.size.x + LOCK_GAP, 0.0), rf.size.y)
 	_build_level_row(rf.position + Vector2(2.0 * (rf.size.x + LOCK_GAP), 0.0))
 
@@ -803,7 +835,12 @@ func _card(idx: int, pos: Vector2) -> Control:
 		if ch is Control:
 			(ch as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.tooltip_text = str(edef.get("name", ""))
-	_wire_tap(box, func(): _on_select(idx))
+	_wire_tap(box, func():
+		## ★买完那一刻的连点不算选货(2026-10-22 交互排查): 说明卡买完就收起, 双击「购买」的第二下
+		##   落到卡下面那件货上 ⇒ 又自动选中了别的一件。只拦真点击, 程序调 _on_select 不受影响。
+		if Time.get_ticks_msec() < _shelf_tap_after_ms:
+			return
+		_on_select(idx))
 	return box
 
 
@@ -843,6 +880,7 @@ func _on_select(idx: int) -> void:
 	_sel = -1 if _sel == idx else idx
 	_sel_own = ""          # 与"已拥有"选中互斥 —— 同一块面板同时只讲一件事
 	_sel_bench = -1        # 看货架就不再选着宝箱里那件
+	_show_odds = false     # 出货概率牌与说明卡同时只开一个(卡底会压住概率牌, 2026-10-22 交互排查)
 	_rebuild()
 	if _sel >= 0:
 		_tut_notify("offer_selected")   # 教程 v3「点击一件装备」(两步购买的第一步; 取消选中不算)
@@ -852,7 +890,9 @@ func _on_select(idx: int) -> void:
 func _open_detail_card() -> void:
 	_ui_layer = self
 	## 什么都没选、但小木斧攒够了待选最终造物 ⇒ 直接弹小木斧自己那张(这一步错过就做不了最终进化)
-	var axe_only: bool = _sel < 0 and _sel_own == ""
+	## ★按「选着的那格真有货」判, 不按 `_sel < 0`: 买走后 `_sel` 若还指着那个空格, 这里原来走货架分支、
+	##   读到 null 直接 return ⇒ 小木斧四选一那张整个消失(2026-10-22 交互排查)。
+	var axe_only: bool = not _shelf_sel_valid() and _sel_own == ""
 	var own: bool = _sel_own != "" or axe_only
 	var own_id: String = AxePanel.EID if axe_only else _sel_own
 	var edef: Dictionary = _deco(DataRegistry.phase2_equipment_by_id.get(own_id, {})) if own else _deco(_offer[_sel])
@@ -942,6 +982,10 @@ func _refit_card(frames: int = 2) -> void:
 	var c = _insp.card
 	if c == null or not is_instance_valid(c):
 		return
+	## 卡比货柜里那块地方高 ⇒ 正文改成可拖动滚的一段, 再等一帧排完版重新定位
+	if _cap_card_height(c as Control):
+		_refit_card(1)
+		return
 	(c as Control).size = Vector2((c as Control).size.x, 0)
 	(c as Control).position = inspect_card_pos(c, (c as Control).get_combined_minimum_size().y)
 	## 购买 / 卖出钮: 币紧跟在数字后面(按钮自带的 icon 只能贴边)
@@ -960,17 +1004,59 @@ func _refit_card(frames: int = 2) -> void:
 		(b as Button).add_child(ci)
 
 
+## 说明卡的顶 / 最大高: 顶栏(87)之下, 底沿不过刷新 / 锁定 / 买经验那一排(ROW_BTN_Y - 6)。
+## ★为什么要封顶(2026-10-22 交互排查, 探针实测 96 件): 原来卡多高画多高 —— 23 件超过这块地方,
+##   最高的 084 卡高 733 > 整个设计框 720, 在 16:9 / 手机上卡底那颗「购买」整个在屏幕外, 买不了;
+##   小木斧攒满待选时那张高 1224, 四选一按钮落在 y 1258, 永远点不到(最终进化做不了)。
+##   超高的卡还会被横挪到按钮排左边, 盖住被点的那件和等级牌。
+## ⇒ 超高时只让【正文】那段变成可拖动滚的(与背包羁绊弹框 / 图鉴详情同一种 ScrollContainer),
+##   标题、属性、小木斧进度与四选一、「购买」钮都留在卡里看得见的地方。
+const CARD_TOP := 96.0
+const CARD_MAX_H := ROW_BTN_Y - 6.0 - CARD_TOP
+const CARD_BODY_MIN_H := 60.0
+const CARD_SCROLL_W := 14.0     # 竖滚动条让出的宽(正文不压在滚动条下)
+
+
+## 卡超高 ⇒ 把正文装进滚动框, 返回 true(调用方等一帧排版后再定位); 不超或已经装过 ⇒ false。
+func _cap_card_height(c: Control) -> bool:
+	var need: float = c.get_combined_minimum_size().y
+	if need <= CARD_MAX_H + 0.5:
+		return false
+	var body = _insp.live.get("body")
+	if not (body is RichTextLabel) or not is_instance_valid(body):
+		return false
+	var rt := body as RichTextLabel
+	var vb := rt.get_parent()
+	if vb == null or vb is ScrollContainer:
+		return false
+	var vis_h: float = maxf(CARD_BODY_MIN_H, rt.get_combined_minimum_size().y - (need - CARD_MAX_H))
+	var sc := ScrollContainer.new()
+	sc.name = "CardBodyScroll"
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	sc.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	sc.follow_focus = false
+	sc.custom_minimum_size = Vector2(rt.custom_minimum_size.x, vis_h)
+	var at := rt.get_index()
+	vb.remove_child(rt)
+	vb.add_child(sc)
+	vb.move_child(sc, at)
+	rt.custom_minimum_size = Vector2(maxf(0.0, rt.custom_minimum_size.x - CARD_SCROLL_W), 0.0)
+	rt.mouse_filter = Control.MOUSE_FILTER_PASS   # 手指拖动交给外面的 ScrollContainer
+	sc.add_child(rt)
+	return true
+
+
 ## InspectCard 的定位回调: 货架上的贴在货架左边、与那件同高; 宝箱里的弹在宝箱那一排上方。
 func inspect_card_pos(card: Control, h: float) -> Vector2:
 	var w: float = card.size.x
 	## ★2026-10-21 宽货柜: 货柜左边只剩店主那一根宽, 放不下 400 宽的卡 ⇒ 贴着被点的那一格弹:
 	##   左两列弹在它右边, 其余弹在它左边(盖住别的货, 不盖被点的那件)。底沿不过 SAFE_BOTTOM。
-	if _sel_own != "" or _sel < 0:
-		return Vector2(BOARD_X, 96.0)   # 小木斧那张(没有选中货架): 货柜左段, 不压右下刷新 / 锁定 / 买经验
+	if _sel_own != "" or not _shelf_sel_valid():
+		return Vector2(BOARD_X, CARD_TOP)   # 小木斧那张(没有选中货架): 货柜左段, 不压右下刷新 / 锁定 / 买经验
 	var sp := _shelf_pos(maxi(0, _sel))
 	var x: float = (sp.x + SLOT_W + 8.0) if (_sel % 5) <= 1 else (sp.x - w - 8.0)
 	## 底沿不压刷新 / 锁定 / 买经验那一排(ROW_BTN_Y)
-	var y: float = clampf(sp.y, 96.0, maxf(96.0, ROW_BTN_Y - 6.0 - h))
+	var y: float = clampf(sp.y, CARD_TOP, maxf(CARD_TOP, ROW_BTN_Y - 6.0 - h))
 	## 说明很长、卡高到顶住也会伸进按钮那一排 ⇒ 横向挪到按钮左边(verify_ios_ui「按钮被后画的面板盖住」)
 	if y + h > ROW_BTN_Y - 6.0 and x + w > ROW_BTN_X - 8.0:
 		x = maxf(LEFT_X, ROW_BTN_X - 8.0 - w)
@@ -979,10 +1065,23 @@ func inspect_card_pos(card: Control, h: float) -> Vector2:
 
 ## 详情卡要不要盖在阵容上: 选了货架卡 / 点了「详情」看已有那件 / 斧头四选一待选。
 func _detail_wanted() -> bool:
-	if _sel >= 0 and _sel < _offer.size() and _offer[_sel] != null:
+	if _shelf_sel_valid():
 		return true
 	if _sel_own != "":
 		return true
+	return _axe_card_wanted() and not _axe_card_closed
+
+
+## 选着的那格货架上真的有货(买走 / 换货之后那格可能是空的, 或换成了别的)。
+func _shelf_sel_valid() -> bool:
+	return _sel >= 0 and _sel < _offer.size() and _offer[_sel] != null
+
+
+## 小木斧攒够、待选最终造物, 且此刻没选着别的 ⇒ 自动弹它自己那张。
+## ★出货概率牌开着时不弹: 两者都在货柜左段、卡底压住概率牌(同一时刻只开一个)。
+func _axe_card_wanted() -> bool:
+	if _show_odds or _sel_own != "" or _shelf_sel_valid():
+		return false
 	return AxePanel.should_show(GameState) and AxeEvo.final_ready(
 		int(GameState.axe_exp_bar), int(GameState.axe_stage), str(GameState.axe_final))
 
@@ -1055,6 +1154,12 @@ func _on_buy(idx: int) -> void:
 		GameState.persistent_bench.append({"id": _eid, "star": 1})
 	GameState.auto_merge_all()   # 买后自动 3 合 1 (背包+龟身一起算)
 	_offer[idx] = null
+	## ★买走的那格不再算「选中」(2026-10-22 用户「买完一个东西，点了刷新后怎么自动选中一个物品？」):
+	##   原来 `_sel` 还指着这个空格, 卡是因为格空了才没画; 一刷新这格长出新货 ⇒ 新货被自动选中、说明卡自己弹出来。
+	##   小木斧待选那张也被这个残留的下标挡掉(_open_detail_card 读到空格就 return)。
+	if _sel == idx:
+		_sel = -1
+	_shelf_tap_after_ms = Time.get_ticks_msec() + BUY_TAP_GUARD_MS
 	_persist_offer()   # 买走的位子要留空, 不能退出重进又长回来
 	GameState.save()
 	_rebuild()
@@ -1083,8 +1188,17 @@ func merge_tip_target(eid: String, star: int) -> Control:
 			var cell := find_child("BenchCell%d" % j, true, false) as Control
 			if cell != null:
 				return cell
-	if _top_bar != null and not _top_bar.action_btns.is_empty():
-		return _top_bar.action_btns[0]
+	return _bag_tab()
+
+
+## 顶栏「背包」那一签(首次提示 / 教程 E5 都指它)。★按字找, 不按下标: 左上现在是「商店 | 背包」一对页签,
+##   action_btns[0] 是亮着的「商店」(教程里还是藏起来的那颗)。
+func _bag_tab() -> Button:
+	if _top_bar == null:
+		return null
+	for b in _top_bar.action_btns:
+		if b is Button and is_instance_valid(b) and str((b as Button).text) == "背包":
+			return b
 	return null
 
 
@@ -1142,6 +1256,9 @@ func _build_level_row(btn_pos: Vector2) -> void:
 	lvhit.tooltip_text = "各费用出货概率"
 	_wire_tap(lvhit, func():
 		_show_odds = not _show_odds
+		## 概率牌与说明卡同时只开一个: 原来选着货时点等级, 概率牌弹在说明卡底下、被卡盖住左半截(2026-10-22 交互排查)
+		if _show_odds:
+			_sel = -1; _sel_own = ""; _sel_bench = -1
 		_rebuild())
 	add_child(lvhit)
 	## 2026-10-21 用户「底下的经验条」: 等级 / 经验 / 可装备 装进一块木牌(与三颗按钮同一张), 不再是散在底座上的小字
@@ -1185,25 +1302,34 @@ func _build_level_row(btn_pos: Vector2) -> void:
 	if not _maxed:
 		_coin_after_text(bxp)
 	## ★满级: 点不动 + 整颗压暗(价钱那枚币是子节点, 只有 modulate 往下传) + 被程序按下也要说一句
-	bxp.disabled = _maxed
-	bxp.modulate = Color(1, 1, 1, 0.42) if _maxed else Color(1, 1, 1, 1)
+	## ★买不起也一样压暗(2026-10-22 交互排查): 原来只有满级才暗, 钱不够时它亮着、旁边的「刷新」却暗着 ——
+	##   同一排两颗按钮对「买不起」两种长相。
+	var _xp_dead: bool = _maxed or int(GameState.meta_deepsea_coins) < int(P2.BUY_XP_COST)
+	bxp.disabled = _xp_dead
+	bxp.modulate = Color(1, 1, 1, 0.42) if _xp_dead else Color(1, 1, 1, 1)
 	bxp.tooltip_text = "经验 +%d" % int(P2.BUY_XP_AMOUNT)
-	bxp.pressed.connect(func():
-		var _lv0: int = int(GameState.season_level)
-		if GameState.buy_season_xp():
-			_rebuild()
-			if int(GameState.season_level) > _lv0:
-				_tut_notify("level_up")   # 教程「购买经验，升到 2 级」
-		elif int(GameState.season_level) >= int(P2.MAX_LEVEL):
-			_toast("已达最高等级 Lv%d" % int(P2.MAX_LEVEL))
-		else:
-			_toast("深海币不足（需要 %d）" % int(P2.BUY_XP_COST)))
+	bxp.pressed.connect(_on_buy_xp)
+	## disabled 的按钮不发 pressed ⇒ 真点到压暗的它, 原来一句话都没有(满级 / 钱不够那两句只有程序直调才到得了)
+	if _xp_dead:
+		_wire_tap(bxp, _on_buy_xp)
 	## 教程: 「买经验」教到才出现(云顶教程 04:30 才出 Buy XP; 方案书 20261021-教程分镜v5 E1→E2)。
 	var _td = get_node_or_null("/root/TutorialDirector")
 	if _td != null and _td.is_active() and not _tut_xp_revealed:
 		bxp.visible = false
 	add_child(bxp)
 	_tut_xp_btn = bxp
+
+
+func _on_buy_xp() -> void:
+	var _lv0: int = int(GameState.season_level)
+	if GameState.buy_season_xp():
+		_rebuild()
+		if int(GameState.season_level) > _lv0:
+			_tut_notify("level_up")   # 教程「购买经验，升到 2 级」
+	elif int(GameState.season_level) >= int(P2.MAX_LEVEL):
+		_toast("已达最高等级 Lv%d" % int(P2.MAX_LEVEL))
+	else:
+		_toast("深海币不足（需要 %d）" % int(P2.BUY_XP_COST))
 
 
 ## 教程导引每进一步就告诉宿主当前高亮的是谁(TutorialGuide 调)。到「买经验」那一步才把按钮放出来。
@@ -1331,6 +1457,8 @@ func _on_refresh() -> void:
 	##   你亲手把这批货换掉了, 锁就没有对象了。方案书 §⑤ 未决点 U5-1 记着, 用户要反过来改这一行。
 	GameState.meta_shop_locked = false
 	_roll()
+	## ★换了一批货, 原来选着的那件已经不在了 ⇒ 不选任何一件(原来下标留着, 新货架同一格的货被自动选中)。
+	_sel = -1
 	GameState.save()
 	_rebuild()
 
@@ -1401,8 +1529,7 @@ func _tutorial_anchor(anchor: String) -> Rect2:
 			if lt != null:
 				return TutorialGuide.vis_rect(lt)
 		"bag_button":
-			if _top_bar != null and not _top_bar.action_btns.is_empty():
-				return TutorialGuide.vis_rect(_top_bar.action_btns[0])
+			return TutorialGuide.vis_rect(_bag_tab())
 	return Rect2()
 
 

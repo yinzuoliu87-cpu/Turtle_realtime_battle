@@ -540,7 +540,8 @@ func _full_pass() -> void:
 	_ok("★★F3 开局配置: 货架第 1 格是预放的同一件(%s)" % td.TUT_MERGE_ITEM, sh._offer.size() > 0 and sh._offer[0] != null
 		and str((sh._offer[0] as Dictionary).get("id", "")) == str(td.TUT_MERGE_ITEM))
 	_ok("★顶栏返回键藏了, 「背包」键在", not (sh._top_bar.back_btn as Control).visible
-		and (sh._top_bar.action_btns[0] as Control).is_visible_in_tree())
+		and sh._bag_tab() != null and sh._bag_tab().is_visible_in_tree()
+		and not (sh._top_bar.action_btns[0] as Control).is_visible_in_tree())   # 2026-10-22 左上「商店 | 背包」页签: [0] 是亮着的「商店」, 教程里藏起
 	_check_exits(sh, "商店")
 	var esc := InputEventKey.new()
 	esc.keycode = KEY_ESCAPE; esc.pressed = true
@@ -610,7 +611,7 @@ func _full_pass() -> void:
 	w = await _wait_text(_step_text("shop", 5), 600)
 	_ok("★E4b 到点 ⇒ E5「%s」" % _step_text("shop", 5), w >= 0, "实测「%s」" % _guide_text())
 	_disk_untouched("商店")
-	(sh._top_bar.action_btns[0] as Button).emit_signal("pressed")
+	sh._bag_tab().emit_signal("pressed")   # 「背包」那一签(左上页签「商店 | 背包」, 按字找)
 
 	# ── 背包 ──
 	var inv := await _wait_scene("Inventory.tscn")
