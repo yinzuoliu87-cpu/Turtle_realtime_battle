@@ -125,6 +125,52 @@ func _equip_minion(lane: String, idx: int, bench_idx: int) -> void:
 	GameState.save()
 	host._rebuild()
 
+## 一件装备从一只单位直接挪到另一只(拖拽「换人」, 2026-10-22)。
+## ★不走「卸下 → 再装上」两步: 卸下会把它放回背包并 `auto_merge_all()`, 若背包里正好有两件同名同星,
+##   它当场被合掉, 第二步再按「背包最后一件」装上的就是别的东西。这里一步挪过去, 不经过背包。
+## ★全队件数不变(只是换人) ⇒ 只查目标单位自己的 3 件上限; 羁绊赠送件不占容量, 照旧放行。
+func _move_worn(src_lane: String, src_idx: int, cell_idx: int, dst_lane: String, dst_idx: int) -> void:
+	if src_lane == dst_lane and src_idx == dst_idx:
+		host._rebuild(); return
+	var a: Dictionary = GameState.get_dual_lineup().duplicate(true)
+	if not a.has(src_lane) or not a.has(dst_lane):
+		host._rebuild(); return
+	var sarr: Array = a[src_lane]
+	var darr: Array = a[dst_lane]
+	if src_idx < 0 or src_idx >= sarr.size() or dst_idx < 0 or dst_idx >= darr.size():
+		host._rebuild(); return
+	var su: Dictionary = sarr[src_idx]
+	var du: Dictionary = darr[dst_idx]
+	if str(du.get("kind", "")) == "leader" and str(du.get("id", "")) == "":
+		host._rebuild(); return                          # 占位统领: 没有真龟
+	var s_eqs: Array = host._unit_equips(su).duplicate()
+	if cell_idx < 0 or cell_idx >= s_eqs.size():
+		host._rebuild(); return
+	var item = s_eqs[cell_idx]
+	var d_eqs: Array = host._unit_equips(du).duplicate()
+	if not GameState.is_synergy_grant(item) and GameState._cap_count(d_eqs) >= host.P2.UNIT_EQUIP_CAP:
+		host._toast("装备栏已满（%d 件）" % host.P2.UNIT_EQUIP_CAP)
+		host._rebuild(); return
+	s_eqs.remove_at(cell_idx)
+	d_eqs.append(item)
+	_write_equips(a, src_lane, src_idx, su, s_eqs)
+	_write_equips(a, dst_lane, dst_idx, du, d_eqs)
+	GameState.dual_lineup = a
+	GameState.auto_merge_all()
+	GameState.sync_synergy_grants()
+	GameState.save()
+	host._rebuild()
+
+
+## 统领的装备住在 persistent_equipped[id], 小将的住在阵容里的 equips(同 `InventoryScene._unit_equips` 的二分)。
+func _write_equips(a: Dictionary, lane: String, idx: int, u: Dictionary, eqs: Array) -> void:
+	if str(u.get("kind", "")) == "leader":
+		GameState.persistent_equipped[str(u.get("id", ""))] = eqs
+	else:
+		u["equips"] = eqs
+		a[lane][idx] = u
+
+
 func _sell_value(item: Dictionary) -> int:
 	var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(item.get("id", "")), {})
 	var cost = maxi(1, int(edef.get("cost", 1)))

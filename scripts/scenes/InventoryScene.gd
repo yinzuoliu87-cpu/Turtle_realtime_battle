@@ -29,6 +29,25 @@ const DETAIL_BTN_NAME := "EquipDetailButton"
 ## 糖果罐在背包格子里的像素图。★这张图一直躺在 `assets/sprites/equip/` 里没人接线
 ##   (全仓 grep 零引用), 而它的文件名就是给糖果罐画的 —— 接上它不是"拿别的图顶替"。
 const CANDY_JAR_ICON := "res://assets/sprites/equip/equip-candy-jar.png"
+## ── 2026-10-22 背包重做的皮 ──
+## 顶栏 / 两路标题木牌: 商店那一张(方案里点名「顶栏直接用商店那一套」, 用户「做」)。
+const PLANK_TEX = preload("res://assets/sprites/shop/shop-plank.png")
+const PLANK_MARGIN := 18
+## 背包格 = 装备卡: 与商店说明卡同一套费用档框(同一件装备在两页长同一张脸); 选中整张换图(乘色提不亮深色框)。
+const ITEM_CARD_TEX := [
+	preload("res://assets/sprites/shop/card-frame-t1.png"),
+	preload("res://assets/sprites/shop/card-frame-t2.png"),
+	preload("res://assets/sprites/shop/card-frame-t3.png"),
+	preload("res://assets/sprites/shop/card-frame-t4.png"),
+	preload("res://assets/sprites/shop/card-frame-t5.png"),
+]
+const ITEM_CARD_SEL = preload("res://assets/sprites/shop/card-frame-s.png")
+const ITEM_CARD_MARGIN := 8
+## 单位卡的框 / 场景底图: 本页新画(PixelLab), 没到位时退回纯色。
+## 统领 = 金饰框, 小将 = 铜饰框(一眼分得出谁是龟、谁是补位)。原生 75×95, 按 2 倍画。
+const UNIT_CARD_TEX_PATH := "res://assets/sprites/inventory/unit-card.png"
+const UNIT_CARD_MINION_TEX_PATH := "res://assets/sprites/inventory/unit-card-minion.png"
+const BG_TEX_PATH := "res://assets/sprites/inventory/inv-backdrop.png"
 
 ## InventoryScene — V2 局外背包 / 出战配置 (阶段2 UI 首版, 设计§十).
 ## 上部: 出战阵容 (上路/下路, 龟统领 + 小将占位); 下部: 装备管理 (背包 bench).
@@ -46,21 +65,39 @@ const SLOT_PAD := 7.0
 ## ── 本屏的几条布局基准线(2026-08-15 重排, 用户「利用这个空间可以把右边的排版过来」)──
 ##   原来顶部有一整行「🎒 背包 / 出战配置」的牌子 —— 玩家是自己点进来的, 不需要被告知
 ##   自己在哪一页 ⇒ 删掉, 整屏内容上提, 右侧那条从 y≈180 空到底的死列由羁绊区补上。
-const LANE_TOP := 124.0        # 上战场单位框的 y (带子从 y-24 开始)
-## ★2026-08-19 从 96 下移 20: 顶栏「返回/商店/帮助」原来只有 y 0..68 可用(实测战场带顶边 68),
-##   撑不到 44pt(81px)。台面是 ScrollContainer(min_rows 按可视高算) ⇒ **下移由台面吸收, 不丢内容**,
-##   这是这屏唯一一块"可借"的垂直预算。借完顶栏拿到 81px, 台面少 20px 照样滚。
-const LANE_GAP := 158.0        # 上→下战场的行距
-const SYN_X := 828.0           # 右侧羁绊列左沿(原 952 → 左移 124, 顺带吃掉阵容右边那块 138px 空白)
-const SYN_W := 424.0           # 羁绊列宽(原 300)
+## ── 2026-10-22 背包重做(用户「把龟做成卡片」「最好要支持卡片式拖动的」· 方案书 20261022-背包重做.md) ──
+##   6 张竖卡一排: 上路三张在左、下路三张在右, 各顶一块木牌标题; 右边羁绊列; 下半屏整片是背包。
+##   原来两条上下叠放的横卡战场带(244×116)与常驻图例删掉 —— 卡上装备格被那个版式卡死在 40px。
+const CARD_W := 150.0
+const CARD_H := 232.0
+const CARD_GAP := 10.0
+const LANE_SPLIT := 30.0       # 上路三张与下路三张之间的空档(中间一道竖分隔)
+const CARDS_X := 28.0
+const CARDS_Y := 128.0         # 卡片顶; 上面那一行是两路的木牌标题
+const LANE_HDR_Y := 90.0
+## 卡 = 上面一张木框卡(立绘 + 名字) + 下面一块木托盘(三格装备)。框图原生 75×95、按 2 倍画 = 150×190(整数倍, 像素不变形)。
+const CARD_FRAME_H := 190.0
+const CARD_BORDER := 38.0      # 框到内窗的距离(原生 7 饰件余量 + 12 木边 = 19, × 2)
+const PORTRAIT_H := 76.0       # 内窗里立绘那一截(内窗 76×116: 上 76 立绘、下 30 名字)
+## ★立绘比内窗大一圈、压出木框(卡牌游戏常见的「破框」画法): 内窗只有 76 宽, 关在里面比原来横卡的 102 还小。
+const PORTRAIT_POP := 14.0
+const SLOT_ROW_Y := 185.0      # 托盘上三格装备的 y(格 44)
+const TRAY_Y := 182.0          # 框图下沿实有像素到原生 90 行(× 2 = 180), 托盘贴着它
+## 旧名保留: 教程锚点 / 门禁按它们找「阵容区」
+const LANE_TOP := CARDS_Y
+const LANE_GAP := 0.0
+## 顶栏右侧「币 / 全队装备」这一组的左沿 —— 原来借 SYN_X; 羁绊列挪了, 这一组不动。
+const HDR_GROUP_X := 828.0
+const SYN_X := CARDS_X + 6.0 * CARD_W + 4.0 * CARD_GAP + LANE_SPLIT + 14.0
+const SYN_W := 1252.0 - SYN_X
 ## 顶栏「站位」签占的宽度 + 间距(右上「币 / 全队装备」这一组为它左移这么多)。
 const FORMATION_BTN_ROOM := 112.0
 ## 教程里右上「跳过教程」(132 宽)比它占的「?」(81 宽)多出的那截, 再加两格间距的余量。
 const TUT_SKIP_EXTRA := 80.0
-const SYN_TOP := 94.0          # 羁绊列顶(原 100→74→94), 与上战场带顶齐平(带顶 = LANE_TOP-24)
-const SYN_BOTTOM := 402.0      # 羁绊列底 = 下战场带的底边, 两侧齐平
-const BENCH_HDR_Y := 404.0     # 「装备背包」标题(22 号字实测占 30 高, 给够别压到第一排格子)
-const BENCH_TOP := 438.0       # 跟着 BENCH_HDR_Y 一起下移 20 —— 漏改它会让标题压进格子框边带
+const SYN_TOP := LANE_HDR_Y
+const SYN_BOTTOM := CARDS_Y + CARD_H
+const BENCH_HDR_Y := CARDS_Y + CARD_H + 8.0
+const BENCH_TOP := BENCH_HDR_Y + 36.0
 const BENCH_PITCH := 108.0     # 格子行距(96 格 + 12 间隙): 3 行 = 312 ≤ 316, 刚好铺进去
 const OP_BAR_H := 132.0        # 底部操作条(2026-10-21 手机版: 字 14/16/17 → 20, 键 38 → 81 高, 简述 3 行 ⇒ 80 → 132)
 ## ★2026-10-21 手机优先: 最小字号 20(iPhone 上约 11pt); 底边只用到「视口底 - 底部横条」(见 _bottom_limit)。
@@ -86,10 +123,20 @@ var _sel_jar: bool = false
 var _inv_ops := InvOps.new(self)   # 背包·装备/卸下/卖出 业务逻辑(2026-07-25 抽出)
 var _inv_jar := InvCandyJar.new(self)   # 背包·糖果罐(打碎领奖)(2026-07-25 抽出)
 var _formation := InvFormation.new(self)   # 背包·站位编辑(2026-10-19)
+var _drag := InvDrag.new(self)   # 背包·卡片式拖动(2026-10-22 用户「最好要支持卡片式拖动的」)
+## 本次重建出来的单位卡 [{box, lane, idx, unit}] —— 拖动时逐张判能不能接(抬亮 / 压暗), 门禁也读它
+var _unit_boxes: Array = []
+## 背包滚动区: 已装的装备拖回这里 = 卸下
+var _bench_area: Control = null
+## 拖动中有人要重建 ⇒ 记下来, 拖完再建(被拖的卡就是重建要销毁的节点)
+var _rebuild_pending := false
+## 单位卡按下的位置(松手时位移小才算点一下 —— 按下就算的话, 想拖的那一下会先被当成点、整页重建)
+var _unit_press := Vector2.ZERO
 var _inv_synergy := InvSynergy.new(self)   # 背包·类型羁绊面板+详情弹框(2026-07-25 抽出)
 var _dl_sel: Dictionary = {}   # 双路布阵选中框 {lane, idx} (点两个互换分路)
 var _vw: float = 1280.0   # 实际视口宽(手机expand后可达~1560): 顶栏/背包按真实宽铺开·不再左挤留空(2026-07-18)
 var _press_pos := Vector2.ZERO   # 背包格触屏点选/滑动判定: 松开位移小才算点选(可滑动列表·2026-07-18)
+var _press_ms := 0               # 背包格按下的时刻(按住 ≥ InvDrag.HOLD_MS 再动 = 拿起来拖)
 var _op_body: RichTextLabel = null   # 底栏效果正文(算"还有几行被裁"要读它自己报的行数)
 var _op_more: Label = null           # 底栏"下面还有 N 行"提示
 
@@ -181,6 +228,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 
 func _rebuild() -> void:
+	if _drag.active():
+		_rebuild_pending = true
+		return
+	_rebuild_pending = false
+	_unit_boxes = []
+	_bench_area = null
 	# ★2026-08-01 改回设计宽(用户「有些画面都没有居中」「pc端做一板，手机端做一板」):
 	#   原来这里取【真实视口宽】(手机 expand 后 ~1560)让顶栏/背包铺满, 但页面里其余元素
 	#   仍按 1280 设计坐标摆 —— 于是宽屏上"一半跟着屏幕走、一半不动", 审计器实测
@@ -198,6 +251,21 @@ func _rebuild() -> void:
 	bg.color = Color("#0a1622")
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
+	## ★2026-10-22 背包重做: 场景底图(像素后仓), 与商店的木头货铺是同一条街。满铺(UIFrame 不收编满铺层)。
+	if ResourceLoader.exists(BG_TEX_PATH):
+		var bgi := TextureRect.new(); bgi.name = "InvBackdrop"
+		bgi.texture = load(BG_TEX_PATH)
+		bgi.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		bgi.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		bgi.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		bgi.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		bgi.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(bgi)
+		var dim := ColorRect.new(); dim.name = "InvBackdropDim"
+		dim.color = Color(0.02, 0.04, 0.06, 0.38)   # 压一层暗: 卡片和格子在前, 底图只当环境
+		dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(dim)
 
 	## ★顶部那行「🎒 背包 / 出战配置」已删(用户 2026-08-15:「玩家是自己点进来的」)。
 	##   它占着 440×46 只为复述玩家刚点过的按钮; 腾出来的整条顶栏给右侧羁绊列上提。
@@ -215,7 +283,8 @@ func _rebuild() -> void:
 		##   146 款参考的枢纽页顶栏一律是「返回箭头 + 裸页名」, 没有一款给页名挂图标;
 		##   而 🧳 的字形来自 NotoEmoji, 与这一屏的像素笔触是两套画法。
 		"title": "背包",
-		"palette": TopBar.DEEP,
+		## 2026-10-22 背包重做: 顶栏换商店那一套(木牌签、不画深色底带)—— 两页来回切是同一条街。
+		"palette": TopBar.WOOD.merged({"no_plate": true, "chip_tex": PLANK_TEX, "chip_margin": PLANK_MARGIN}),
 		"width": W,
 		"safe_left": _sm.x,
 		"safe_right": _sm.z,
@@ -256,13 +325,13 @@ func _rebuild() -> void:
 	## ★2026-10-19 顶栏「?」左边多了「站位」签(非教程时) ⇒ 这一组再左移一格让位(实拍: 原位置被「站位」压住「全队装备」)。
 	## ★教程 v3(2026-10-20): 教程里「站位」也在(教程要教它) ⇒ 让位 = 跳过钮多出的那截 + 「站位」那一格。
 	var _tsh: float = (TUT_SKIP_EXTRA + FORMATION_BTN_ROOM) if _tut_on() else FORMATION_BTN_ROOM
-	ci.position = Vector2(SYN_X - _tsh, 24); ci.size = Vector2(36, 36)
+	ci.position = Vector2(HDR_GROUP_X - _tsh, 24); ci.size = Vector2(36, 36)
 	add_child(ci)
 	var coin := Label.new()
 	coin.text = "%d" % int(GameState.meta_deepsea_coins)
 	coin.add_theme_font_size_override("font_size", 26)
 	coin.add_theme_color_override("font_color", Color("#5fd0e0"))
-	coin.position = Vector2(SYN_X + 42 - _tsh, 22); coin.size = Vector2(130, 40)
+	coin.position = Vector2(HDR_GROUP_X + 42 - _tsh, 22); coin.size = Vector2(130, 40)
 	coin.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	add_child(coin)
 
@@ -280,7 +349,7 @@ func _rebuild() -> void:
 	eqi.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	eqi.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	eqi.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	eqi.position = Vector2(SYN_X + 176 - _tsh, 26); eqi.size = Vector2(ICON_PX, ICON_PX)
+	eqi.position = Vector2(HDR_GROUP_X + 176 - _tsh, 26); eqi.size = Vector2(ICON_PX, ICON_PX)
 	add_child(eqi)
 	var capl := Label.new()
 	## ★★这一族**必须有名字**(`CAP_ROW_NAME`)。由来与 `SettingsScene.ACCT_ROW_PREFIX` 同:
@@ -293,7 +362,7 @@ func _rebuild() -> void:
 	capl.text = "全队装备 %d/%d" % [used, cap]
 	capl.add_theme_font_size_override("font_size", 24)
 	capl.add_theme_color_override("font_color", Color("#ffb454") if used >= cap else Color("#b9cbdc"))
-	capl.position = Vector2(SYN_X + 176 + ICON_PX + 6 - _tsh, 22); capl.size = Vector2(190 - ICON_PX - 6, 40)
+	capl.position = Vector2(HDR_GROUP_X + 176 + ICON_PX + 6 - _tsh, 22); capl.size = Vector2(190 - ICON_PX - 6, 40)
 	capl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	var _nxt := int(GameState.season_level) + 1
 	## ★原文"全队 6 只合计上限随赛季等级提升。当前 Lv3 → 5 件"是规则书的写法("上限""提升"
@@ -332,13 +401,12 @@ func _lineup_ids() -> Array:
 ## 战场带右上的图例(两条名词短句; 用户授权自定 2026-10-21)。门禁 verify_shop_inv_phone 读这两个常量。
 const LANE_LEGEND_TOP := "统领：本大轮出战龟　小将：补位单位"
 const LANE_LEGEND_BOTTOM := "小将站位：前排近战　后排远程"
-const UBOX_W := 244.0   # 阵容单位框(再放大·填左侧空间+适手机点触·用户2026-07-19)
-const UBOX_H := 116.0
-const UBOX_GAP := 16.0
+const UBOX_W := CARD_W   # 阵容单位框(再放大·填左侧空间+适手机点触·用户2026-07-19)
+const UBOX_H := CARD_H
+const UBOX_GAP := CARD_GAP
 
 func _build_lineup(_leaders: Array) -> void:
 	var lineup := GameState.get_dual_lineup()
-	var box_span := 3.0 * UBOX_W + 2.0 * UBOX_GAP
 	## ★「?」搬进顶栏原语(2026-09-19): 原来它是手写的 StyleBoxFlat(深底+1px边+圆角),
 	##   而同屏的返回/商店是金属签牌皮 —— 同一条横线上两套语言。
 	##   现在三枚都走 `TopBar._chip()`, 同款同高同热区。
@@ -367,51 +435,50 @@ func _build_lineup(_leaders: Array) -> void:
 			if _ib >= 0 and _if >= 0 and _if < _top_bar._right_off.size():
 				_top_bar._right_off[_if] = float(_top_bar._right_off[_ib]) + _extra + 8.0 + _fb.size.x
 			_build_tut_finish()
-	# 两条"战场带"(染色圆角底 + 战场名 + 编成计数) → 一眼看出上/下是两个各自开打的战场
-	for lane_info in [["上战场", "top", LANE_TOP, Color("#ffd93d"), Color(0.24, 0.19, 0.06)], ["下战场", "bottom", LANE_TOP + LANE_GAP, Color("#7fd0ff"), Color(0.05, 0.14, 0.24)]]:
-		var bf := str(lane_info[0]); var lkey := str(lane_info[1]); var by := float(lane_info[2])
-		var lcol: Color = lane_info[3]; var bandbg: Color = lane_info[4]
+	## ★2026-10-22 背包重做: 6 张竖卡一排, 上路三张在左、下路三张在右, 各顶一块木牌标题。
+	##   原来两条上下叠放的战场带 + 常驻图例(统领 / 小将 / 前排后排)删掉 —— 规则在「?」里。
+	for li in range(2):
+		var lkey: String = "top" if li == 0 else "bottom"
 		var arr: Array = lineup.get(lkey, [])
 		var lead_n := 0
 		for u in arr:
 			if u is Dictionary and str(u.get("kind", "")) == "leader": lead_n += 1
-		var band := Panel.new()
-		var bsb := StyleBoxFlat.new()
-		bsb.bg_color = Color(bandbg.r, bandbg.g, bandbg.b, 0.5)
-		bsb.border_color = Color(lcol.r, lcol.g, lcol.b, 0.45)
-		bsb.set_border_width_all(2); bsb.set_corner_radius_all(12)
-		## ★2026-08-18 上/下战场的分组带换面板框("一块区域")。
-		band.add_theme_stylebox_override("panel", UISkin.nine("slot-frame.png", 12, bsb))
-		## ★这条带子的标题「⬆ 上战场」两次没放对, 记下来:
-		##   ① 原样 —— panel-frame 边带 13px 厚, 标题写在带顶 24px 里, **整行压在边带上**
-		##   ② 把标题往下挪 —— 被统领卡挡住了(实拍半截藏在卡后面)
-		##   ③ 把带顶抬高 14px —— **压住了上面的「← 返回」「🛒 商店」两个按钮**
-		##   ⇒ 正解是**换一张薄边带的框**(slot-frame 实测 6px), 位置一点不用动。
-		##      框不合适就换框, 别拿版式去迁就框。
-		## ★2026-10-21: 带顶 by-28 → by-36 —— 20 号字的行高 30 + 边带 6, 字不压在带子的边上(verify_ui_consistency「文字压边带」)。
-		band.position = Vector2(30, by - 36); band.size = Vector2(box_span + 20, UBOX_H + 40)
-		band.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(band)
-		var ll := Label.new()
-		ll.text = "%s  %s" % ["⬆" if lkey == "top" else "⬇", bf]
-		ll.add_theme_font_size_override("font_size", MIN_FONT_PX); ll.add_theme_color_override("font_color", lcol)
-		## ★带子从 by-28 起(slot-frame 边带 6px)。2026-10-21 字 16 → 20(行高 28), 摆在 by-28..by。
-		ll.position = Vector2(46, by - 30); ll.size = Vector2(180, 30); add_child(ll)   # 20 号字行高 30, 底沿 = 卡片顶
-		## ★★2026-10-21 原来右边是「统领 ×2 · 小将 ×1」—— 数的是卡片(卡片自己就摆在下面), 而两个词没有一处解释。
-		##   换成两条名词短句的图例(用户授权自定, 方案书「手机优先重排」): 上战场带讲统领 / 小将是什么,
-		##   下战场带讲小将的前排 / 后排。不口语化、不写操作说明书句(操作在「?」里)。
-		var cnt := Label.new(); cnt.name = "LaneLegend_" + lkey
-		cnt.text = LANE_LEGEND_TOP if lkey == "top" else LANE_LEGEND_BOTTOM
-		cnt.add_theme_font_size_override("font_size", MIN_FONT_PX)
-		cnt.add_theme_color_override("font_color", Color(lcol.r, lcol.g, lcol.b, 0.80))
-		cnt.position = Vector2(30 + box_span + 20 - 16 - 520, by - 30); cnt.size = Vector2(520, 30)
-		cnt.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		cnt.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT; add_child(cnt)
+		var lx: float = CARDS_X + float(li) * (3.0 * CARD_W + 2.0 * CARD_GAP + LANE_SPLIT)
+		var lsign := _lane_sign("上战场" if li == 0 else "下战场", Color("#ffd93d") if li == 0 else Color("#8fdcff"))
+		lsign.name = "LaneSign_" + lkey
+		lsign.position = Vector2(lx, LANE_HDR_Y); lsign.size = Vector2(3.0 * CARD_W + 2.0 * CARD_GAP, 34)
+		add_child(lsign)
 		for i in range(arr.size()):
-			var _ub: Control = _dl_unit_box(lkey, i, arr[i], lead_n, Vector2(40 + i * (UBOX_W + UBOX_GAP), by))
+			var _ub: Control = _dl_unit_box(lkey, i, arr[i], lead_n, Vector2(lx + float(i) * (CARD_W + CARD_GAP), CARDS_Y))
 			add_child(_ub)
 			if lkey == "top" and i == 0:
 				_tut_first_leader = _ub  # 教程手势指针「点击一只龟装上」指的就是它(上路第一只)
+	## 两路之间一道竖分隔(木条)
+	var div := ColorRect.new(); div.name = "LaneDivider"
+	div.color = Color("#5a3d22")
+	div.position = Vector2(CARDS_X + 3.0 * CARD_W + 2.0 * CARD_GAP + LANE_SPLIT * 0.5 - 2.0, LANE_HDR_Y + 6.0)
+	div.size = Vector2(4, CARDS_Y + CARD_H - LANE_HDR_Y - 12.0)
+	div.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(div)
+
+
+## 一路的木牌标题(商店同一张木牌底)。
+func _lane_sign(txt: String, col: Color) -> Control:
+	var np := NinePatchRect.new()
+	np.texture = PLANK_TEX
+	np.patch_margin_left = PLANK_MARGIN; np.patch_margin_right = PLANK_MARGIN
+	np.patch_margin_top = PLANK_MARGIN; np.patch_margin_bottom = PLANK_MARGIN
+	np.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	np.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var l := Label.new(); l.text = txt
+	l.add_theme_font_size_override("font_size", MIN_FONT_PX)
+	l.add_theme_color_override("font_color", col)
+	l.add_theme_color_override("font_outline_color", Color("#1a0e05")); l.add_theme_constant_override("outline_size", 5)
+	l.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	np.add_child(l)
+	return np
 
 ## 这一只单位身上的装备清单 —— **全屏唯一一份口径**。
 ##
@@ -450,44 +517,40 @@ func _split_equips(eqs: Array) -> Array:
 	return [wear, grants]
 
 
-## 布阵单位框(大改): 大立绘+名+装备格(点格子=选中这只单位→底部出大号卸下键)+小将前后排角标. 选中装备时整框高亮"装这里". 点框body=装备(选中时)↔互换分路.
+## 一张单位卡(竖卡, 2026-10-22 背包重做): 上 = 立绘, 中 = 名字, 下 = 三格装备(+ 羁绊赠送徽章一行)。
+##   松手算点一下: 无选中 = 选中 / 已选背包装备 = 装上 / 已选单位 = 交换。
+##   按住拖: 拖这张卡去和别的卡换位; 按在装备格上拖 = 拖那一件(换人 / 拖回背包卸下)。
 func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Vector2) -> Control:
 	var kind := str(unit.get("kind", "minion"))
 	var pid := str(unit.get("id", ""))
 	var is_ph := kind == "leader" and pid == ""   # 占位统领(大轮未选统领·id空) → 显示「统领N ?」
 	var sel := str(_dl_sel.get("lane", "")) == lane and int(_dl_sel.get("idx", -1)) == idx
 	var is_elite := kind == "minion" and lead_n == 0 and _dl_first_minion_idx(lane) == idx
-	var can_equip := _sel_bench >= 0 and not is_ph   # 选了装备 → 此框可装(占位统领无真龟·不可装)
-	var bg := Color("#22304a") if is_ph else (Color("#13314a") if kind == "leader" else (Color("#4a3410") if is_elite else Color("#1a2230")))
-	var bd: Color
-	if sel: bd = Color("#ffd93d")
-	elif can_equip: bd = Color("#7fe39a")   # 选中装备时所有单位框高亮"装这里"(含小将→一眼可装)
-	elif is_ph: bd = Color("#8a97a8")   # 占位统领: 灰蓝虚位感
-	else: bd = (Color("#2e5a7e") if kind == "leader" else (Color("#c79a3a") if is_elite else Color("#3a4658")))
+	var can_equip := _sel_bench >= 0 and not is_ph   # 选了装备 → 这张卡可装
 	var box := Panel.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = bg; sb.border_color = bd
-	sb.set_border_width_all(4 if sel else (3 if can_equip else 2)); sb.set_corner_radius_all(8)
-	## ★2026-08-18 战场卡片也换金属框(跨屏统一第 2 刀)。
-	##   ★这里用**面板框**不是槽框: 它是"一块区域"不是"一个格子" ——
-	##     卡片 UBOX_W×UBOX_H 是横长条, 拿 88 方槽的九宫格拉过来铆钉会被拉变形。
-	##     (战斗面板那边同一个判断: 可点行用槽框、描述浮层用面板框。)
-	##   状态色仍走 modulate: 选中=金 / 可装=亮 / 占位=灰蓝。
-	box.add_theme_stylebox_override("panel",
-		UISkin.nine("panel-frame.png", 20, sb))
-	if box.get_theme_stylebox("panel") is StyleBoxTexture:
-		(box.get_theme_stylebox("panel") as StyleBoxTexture).modulate_color = UISkin.tint_of(bd)
-	box.position = pos; box.size = Vector2(UBOX_W, UBOX_H)
-	# ── 横排卡片(用户2026-07-19: 宽框别太空): 左=大立绘/占位?, 右=名+装备格; 小将前后排pill在右上 ──
-	var left_w := 102.0
-	var rx := left_w + 8.0                 # 右列起点 110
+	box.name = "UnitCard_%s_%d" % [lane, idx]
+	box.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	box.position = pos; box.size = Vector2(CARD_W, CARD_H)
+	box.add_child(_unit_card_frame(is_ph, is_elite, kind == "leader"))
+	var tray := NinePatchRect.new(); tray.name = "GearTray"
+	tray.texture = PLANK_TEX
+	tray.patch_margin_left = PLANK_MARGIN; tray.patch_margin_right = PLANK_MARGIN
+	tray.patch_margin_top = PLANK_MARGIN; tray.patch_margin_bottom = PLANK_MARGIN
+	tray.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	tray.position = Vector2(0, TRAY_Y); tray.size = Vector2(CARD_W, CARD_H - TRAY_Y)
+	tray.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(tray)
+	box.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST   # 像素框不插值
 	var is_reg_minion := kind == "minion" and not is_elite
+	var _worn: Array = []   # 卡上已装的装备格 [{rect, cell, it}] —— 按在它上面拖 = 拖这一件
+	## 立绘那一截(框图内窗本身就是深海蓝底, 不再另垫一块)
+	var pw := Rect2(CARD_BORDER, CARD_BORDER, CARD_W - 2.0 * CARD_BORDER, PORTRAIT_H)
 	if is_ph:
 		var q := Label.new()
 		q.text = "?"
 		q.add_theme_font_size_override("font_size", 58)
 		q.add_theme_color_override("font_color", Color("#9fb2c8"))
-		q.position = Vector2(6, 6); q.size = Vector2(left_w - 8, UBOX_H - 12)
+		q.position = pw.position; q.size = pw.size
 		q.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; q.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		q.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(q)
 	else:
@@ -499,7 +562,8 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 		if ResourceLoader.exists(img_path):
 			var a := TextureRect.new(); a.texture = load(img_path)
 			a.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; a.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED; a.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			a.position = Vector2(6, 6); a.size = Vector2(left_w - 8, UBOX_H - 12); a.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(a)
+			a.position = pw.position - Vector2(PORTRAIT_POP, PORTRAIT_POP + 6.0); a.size = pw.size + Vector2(2.0 * PORTRAIT_POP, 2.0 * PORTRAIT_POP)
+			a.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(a)
 	var nm := Label.new()
 	if is_ph:
 		nm.text = "统领%d" % (int(unit.get("slot", idx)) + 1)
@@ -508,25 +572,26 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 		nm.text = str(pet.get("name", pid))
 	else:
 		nm.text = "精英小将" if is_elite else "小将"
-	nm.add_theme_font_size_override("font_size", MIN_FONT_PX); nm.add_theme_color_override("font_color", Color("#e8f2ff"))
-	nm.position = Vector2(rx, 12); nm.size = Vector2(UBOX_W - rx - 8.0, 28)   # 2026-10-21: 前排/后排签挪到头像下沿, 右上不再留位
+	nm.add_theme_font_size_override("font_size", MIN_FONT_PX); nm.add_theme_color_override("font_color", Color("#f4e8cf"))
+	nm.add_theme_color_override("font_outline_color", Color("#1a0e05")); nm.add_theme_constant_override("outline_size", 4)
+	nm.position = Vector2(14.0, CARD_BORDER + PORTRAIT_H + 6.0); nm.size = Vector2(CARD_W - 28.0, 30)
+	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	nm.clip_text = true
 	nm.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(nm)
+	nm.visible = not is_reg_minion   # 普通小将: 名字那一行让给「前排 / 后排」签
 	if is_ph:
 		var hint := Label.new()
-		hint.text = "空槽位"   # 原文"选龟后填入" —— "填入"是表单的词, 不是游戏里的话
+		hint.text = "空槽位"
 		hint.add_theme_font_size_override("font_size", MIN_FONT_PX)
-		hint.add_theme_color_override("font_color", Color("#7f8fa0"))
-		hint.position = Vector2(rx, 60); hint.size = Vector2(UBOX_W - rx - 8, 28)
+		hint.add_theme_color_override("font_color", Color("#9a8a70"))
+		hint.position = Vector2(4, SLOT_ROW_Y + 6); hint.size = Vector2(CARD_W - 8, 30)
+		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		hint.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(hint)
 	else:
 		var eqs: Array = _unit_equips(unit)
-		# ★格数【恒定 = 单只上限 3】: 三格就是"你的装备位", 布局稳定、一眼看出还能装几件。
-		#   羁绊赠送件(圣光护盾)不占装备位 ⇒ 它不进这三格, 由 _build_equip_cells 画在三格
-		#   【之后】的一枚小徽章上(金边 + "赠"角标)。
-		#   (2026-08-12 修: 之前写死 3 格却把赠送件排在数组第 4 位 ⇒ 界面上根本看不见它;
-		#    中途改成 3+N 格也不对 —— 队列里有的 3 格有的 4 格, 且第 4 格看着像"能装 4 件"。)
-		_build_equip_cells(box, 60.0, eqs, P2.UNIT_EQUIP_CAP, rx)
-	# 小将 前排/后排 pill (右上·精英小将=统领替身不显·用户2026-07-18)
+		# ★格数【恒定 = 单只上限 3】: 三格就是"你的装备位"; 羁绊赠送件不进这三格, 另挂在下面一行(见 _build_equip_cells)。
+		_worn = _build_equip_cells(box, SLOT_ROW_Y, eqs, P2.UNIT_EQUIP_CAP)
+	# 小将 前排/后排 签: 立绘窗下沿居中(精英小将 = 统领替身, 不显)
 	if is_reg_minion:
 		var front := str(unit.get("role", "front")) == "front"
 		var tgl := Button.new()
@@ -537,9 +602,6 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 		tsb.bg_color = Color("#5a3410") if front else Color("#0f3646")
 		tsb.border_color = Color("#e0954a") if front else Color("#4ab0d0")
 		tsb.set_border_width_all(1); tsb.set_corner_radius_all(6)
-		## ★2026-08-18 前排/后排改金属签牌。它是 56×44 的小签, chip-frame(48×24) 尺寸相当,
-		##   不会像羁绊那行一样被拉 12 倍。三态靠 modulate 区分(常态/悬停亮/按下暗),
-		##   与战斗面板描述浮层的两个按钮同一套做法。
 		var _tf := UISkin.nine("chip-frame.png", 7, tsb)
 		if _tf is StyleBoxTexture:
 			var _tc: Color = UISkin.tint_of(tsb.border_color)
@@ -556,29 +618,77 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 			tgl.add_theme_stylebox_override("hover", tsb)
 			tgl.add_theme_stylebox_override("pressed", tsb)
 		tgl.add_theme_color_override("font_color", Color("#ffdba8") if front else Color("#b8e8ff"))
-		# ★手机板触控热区(2026-08-01): 50×22 = 手机上 27×12pt, 是这屏最难点的一个 →
-		#   加到 56×44(30×24pt)。宽只加 6 是因为右边就是单位框边缘, 再宽会溢出框。
-		## ★★2026-10-21 手机版: 右上 56×44(30×24pt、12 号字)→ 头像下沿一条 96×38 名牌(20 号字),
-		##   热区 = 头像下半截 102×81(子节点 TouchPad: 44pt 达标)。头像本来就不是别的操作的靶子,
-		##   而右列(名字 + 三个装备格)照旧是「选中这只单位」。
-		tgl.position = Vector2(6.0, UBOX_H - 46.0); tgl.size = Vector2(96, 40)
+		tgl.position = Vector2((CARD_W - 96.0) * 0.5, CARD_BORDER + PORTRAIT_H + 2.0); tgl.size = Vector2(96, 38)
 		tgl.focus_mode = Control.FOCUS_NONE
 		tgl.pressed.connect(func(): _dl_toggle_role(lane, idx))
+		## 热区 = 立绘窗下半截(44pt 达标); 立绘本来就不是别的操作的靶子
 		var pad := Control.new(); pad.name = "TouchPad"
-		pad.position = Vector2(-4.0, 40.0 - 81.0 + 4.0); pad.size = Vector2(102, 81)
+		pad.position = Vector2(-((CARD_W - 2.0 * CARD_BORDER) - 96.0) * 0.5, 38.0 - 81.0 + 2.0); pad.size = Vector2(CARD_W - 2.0 * CARD_BORDER, 81)
 		pad.mouse_filter = Control.MOUSE_FILTER_STOP
 		pad.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _dl_toggle_role(lane, idx))
 		tgl.add_child(pad)
 		box.add_child(tgl)
-	box.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _dl_click(lane, idx))
+	## 状态描边(选中 = 金 / 选了装备时可装 = 绿): 像素直边四条, 不靠给深色木框乘色(乘法提不亮)
+	if sel:
+		_ring(box, Color("#ffd93d"), 4.0)
+	elif can_equip:
+		_ring(box, Color("#7fe39a"), 3.0)
+	## ★松手才算点一下(按下就算会先整页重建, 按住想拖就拖不起来)。
+	box.gui_input.connect(func(ev):
+		if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT:
+			if ev.pressed:
+				_unit_press = ev.position
+			elif ev.position.distance_to(_unit_press) < 16.0:
+				_dl_click(lane, idx))
+	_unit_boxes.append({"box": box, "lane": lane, "idx": idx, "unit": unit})
+	_drag.wire_unit(box, lane, idx, unit, _worn)
 	return box
+
+
+## 单位卡的框(像素木框, 卡的上半截; 素材没到位时退回纯色框)。
+func _unit_card_frame(is_ph: bool, is_elite: bool, is_leader: bool) -> Control:
+	var path: String = UNIT_CARD_TEX_PATH if (is_leader or is_elite) else UNIT_CARD_MINION_TEX_PATH
+	if ResourceLoader.exists(path):
+		var fr := TextureRect.new(); fr.name = "CardFrame"
+		fr.texture = load(path)
+		fr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		fr.stretch_mode = TextureRect.STRETCH_SCALE
+		fr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		fr.size = Vector2(CARD_W, CARD_FRAME_H)
+		fr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if is_ph:
+			fr.modulate = Color(0.62, 0.66, 0.74)
+		elif is_elite:
+			fr.modulate = Color(1.0, 0.9, 0.7)
+		return fr
+	var pnl := Panel.new(); pnl.name = "CardFrame"
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color("#22304a") if is_ph else Color("#16202c")
+	sb.border_color = Color("#c79a3a") if is_elite else Color("#7a5530")
+	sb.set_border_width_all(int(CARD_BORDER / 2.0))
+	pnl.add_theme_stylebox_override("panel", sb)
+	pnl.size = Vector2(CARD_W, CARD_FRAME_H)
+	pnl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return pnl
+
+
+## 卡片外圈一道像素直边(四条, 不用圆角盒)。
+func _ring(box: Control, col: Color, w: float) -> void:
+	for r in [Rect2(-w, -w, box.size.x + 2.0 * w, w), Rect2(-w, box.size.y, box.size.x + 2.0 * w, w),
+			Rect2(-w, 0, w, box.size.y), Rect2(box.size.x, 0, w, box.size.y)]:
+		var e := ColorRect.new(); e.name = "Ring"
+		e.color = col
+		e.position = (r as Rect2).position; e.size = (r as Rect2).size
+		e.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.add_child(e)
 
 ## 单位身上的装备格一行: 填充格显图标·点它=**选中这只单位**(底部随即出现大号「卸下」键);
 ## 选中装备时格子透传→点框body装备.
 ## ★★`is_leader` / `pet_id` 两个参数 2026-09-30 **删掉了**: 它们原来只喂给格子上那句
 ##   就地卸下(`_unequip_at(pet_id, …)`); 卸下改走底部 81px 的键之后这两个就没人读了,
 ##   留着就是下一个"写了没人读"。`lane`/`idx` 仍在用(选中这只单位要它们)。
-func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, x_start: float = -1.0) -> void:
+func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, x_start: float = -1.0) -> Array:
+	var worn: Array = []   # 返回: 已装那几格在卡内的矩形 + 真实下标(拖动源用)
 	## ★28 → 40: 手机触控下限是 44pt(81px), 而卡片右列只有约 134px 宽 ——
 	##   3 格要到 81px 得 243px, **版式里塞不下**(加高卡片又会撞到下面的背包区)。
 	##   所以取版式允许的最大值: 3×40 + 2×4 = 128 ≤ 134。从 15pt 提到 22pt。
@@ -595,8 +705,9 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, x_start:
 	##   ⚠ 不是改成 `MOUSE_FILTER_IGNORE` 透传给框 —— 框 body 的语义是
 	##     "已有选中时 = **互换分路**", 那样点第二只龟身上的装备会把两只龟换路(更坏)。
 	##     所以显式接一个"只选中、不换路"的处理。
-	var cw := 40.0
-	var gap := 4.0
+	## ★2026-10-22 竖卡版式: 卡宽 150 ⇒ 三格 44 + 两道 5 = 142 刚好装下(原横卡右列只有 128 ⇒ 40 封顶)。
+	var cw := 44.0
+	var gap := 5.0
 	var team_full: bool = not GameState.team_has_equip_room()   # 全队预算是否已用尽(空格样式据此区分)
 	## ★三格只放【占装备位】的件; 羁绊赠送件(圣光护盾)另挂徽章 —— 它不是装备位。
 	##   `i` 记录每格对应 eqs 里的真实下标: 卸下要按真实下标走, 不能按格号。
@@ -605,7 +716,7 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, x_start:
 	var wear: Array = _sp[0]    # [{i(真实下标), it}]
 	var grants: Array = _sp[1]  # 同上, 羁绊赠送件
 	var total := float(slots) * cw + maxf(0.0, float(slots - 1)) * gap
-	var x0 := x_start if x_start >= 0.0 else (UBOX_W / 2.0 - total / 2.0)   # x_start≥0=横排卡片右列左对齐, 否则居中
+	var x0 := x_start if x_start >= 0.0 else (CARD_W / 2.0 - total / 2.0)   # x_start≥0=横排卡片右列左对齐, 否则居中
 	for ci in range(slots):
 		var cell := Panel.new()
 		var csb := StyleBoxFlat.new()
@@ -639,6 +750,8 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, x_start:
 			var ic2 := EquipIcon.make(edef2, Vector2(cw - 2, cw - 2), true)
 			ic2.position = Vector2(1, 1)
 			cell.add_child(ic2)
+			worn.append({"rect": Rect2(cell.position, cell.size), "cell": int((wear[ci] as Dictionary)["i"]),
+				"it": (wear[ci] as Dictionary)["it"]})
 		if _sel_bench >= 0:
 			cell.mouse_filter = Control.MOUSE_FILTER_IGNORE   # 装备模式: 透传→点框body装上
 		elif filled:
@@ -670,7 +783,8 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, x_start:
 		## ★放在三格【下面一行】而不是右边: 右边放不下 —— 卡片宽 244, 右列起点 110,
 		##   三格占到 204, 两枚徽章排下去右沿到 258 ⇒ 溢出卡片 14px(实测算过)。
 		##   下一行还有个好处: "这一排是你的装备位, 下面那个是羁绊送的"读起来更清楚。
-		gcell.position = Vector2(x0 + float(gi) * (gw + 4.0), y + cw + 4.0)
+		## ★2026-10-22 竖卡: 托盘只放得下三格 ⇒ 赠送徽章叠在立绘窗右上角, 往左排(它本来就不是装备位)。
+		gcell.position = Vector2(CARD_W - CARD_BORDER - 2.0 - float(gi + 1) * (gw + 4.0) + 4.0, CARD_BORDER + 2.0)
 		gcell.size = Vector2(gw, gw)
 		var gdef: Dictionary = DataRegistry.phase2_equipment_by_id.get(
 			str((g["it"] as Dictionary).get("id", "")), {})
@@ -691,6 +805,7 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, x_start:
 		## ★2026-10-21: 徽章同装备格, 不单独当靶子(30px = 16pt) —— 点它 = 点这张单位卡。
 		gcell.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		box.add_child(gcell)
+	return worn
 
 
 ## 卸下统领第 cell_idx 件装备 → 回背包.
@@ -705,16 +820,8 @@ func _dl_first_minion_idx(lane: String) -> int:
 func _dl_click(lane: String, idx: int) -> void:
 	var arr: Array = GameState.get_dual_lineup().get(lane, [])
 	var unit: Dictionary = arr[idx] if idx < arr.size() and arr[idx] is Dictionary else {}
-	var _n0: int = int(GameState.team_equipped_count())
-	if _sel_bench >= 0 and str(unit.get("kind", "")) == "leader":
-		_inv_ops._equip_to(str(unit.get("id", "")), _sel_bench)
-		if int(GameState.team_equipped_count()) > _n0:
-			_tut_notify("item_equipped")   # 教程「点击一只龟装上」: 真装上了才前进
-		return
-	if _sel_bench >= 0 and str(unit.get("kind", "")) == "minion":
-		_inv_ops._equip_minion(lane, idx, _sel_bench)
-		if int(GameState.team_equipped_count()) > _n0:
-			_tut_notify("item_equipped")
+	if _sel_bench >= 0 and str(unit.get("kind", "")) in ["leader", "minion"]:
+		_equip_bench_to_unit(lane, idx, _sel_bench)
 		return
 	if _dl_sel.is_empty():
 		_dl_sel = {"lane": lane, "idx": idx}
@@ -723,13 +830,61 @@ func _dl_click(lane: String, idx: int) -> void:
 	_dl_sel = {}
 	if sl == lane and si == idx:
 		_rebuild(); return
+	_swap_units(sl, si, lane, idx)
+
+## 两张单位卡互换(跨路 / 同路都行)—— 点两张与拖一张到另一张共用这一个。
+func _swap_units(sl: String, si: int, lane: String, idx: int) -> void:
+	if sl == lane and si == idx:
+		_rebuild(); return
 	var a: Dictionary = GameState.get_dual_lineup().duplicate(true)
+	if not a.has(sl) or not a.has(lane) or si < 0 or si >= (a[sl] as Array).size() or idx < 0 or idx >= (a[lane] as Array).size():
+		_rebuild(); return
 	var tmp = a[sl][si]
 	a[sl][si] = a[lane][idx]
 	a[lane][idx] = tmp
 	GameState.dual_lineup = a
 	GameState.save()
 	_rebuild()
+
+
+## 背包第 bidx 件装到这只单位 —— 点选(点卡 → 点龟)与拖拽落下共用这一个(2026-10-22)。
+func _equip_bench_to_unit(lane: String, idx: int, bidx: int) -> void:
+	var arr: Array = GameState.get_dual_lineup().get(lane, [])
+	var unit: Dictionary = arr[idx] if idx >= 0 and idx < arr.size() and arr[idx] is Dictionary else {}
+	var n0: int = int(GameState.team_equipped_count())
+	if str(unit.get("kind", "")) == "leader":
+		_inv_ops._equip_to(str(unit.get("id", "")), bidx)
+	elif str(unit.get("kind", "")) == "minion":
+		_inv_ops._equip_minion(lane, idx, bidx)
+	else:
+		return
+	if int(GameState.team_equipped_count()) > n0:
+		_tut_notify("item_equipped")   # 教程「点击一只龟装上」: 真装上了才前进
+
+
+## 拖动结束(落下或放弃): 收掉高亮; 拖动中被推迟的重建这时补上。
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_DRAG_END:
+		_drag.on_drag_end()
+		if _rebuild_pending:
+			_rebuild()
+
+
+## 背包区现在要不要滚动(内容比可视区高)—— 不用滚时拖拽不必让着滚动。
+func bench_scrolls() -> bool:
+	if _bench_area == null or not is_instance_valid(_bench_area) or _bench_area.get_child_count() == 0:
+		return false
+	var c: Control = _bench_area.get_child(0) as Control
+	return c != null and c.custom_minimum_size.y > _bench_area.size.y + 1.0
+
+
+## 拖动时跟手那张卡的底 = 背包格同一套(商店说明卡的费用档框)。
+func card_style(cost: int, lifted: bool) -> StyleBox:
+	var st := StyleBoxTexture.new()
+	st.texture = ITEM_CARD_SEL if lifted else ITEM_CARD_TEX[clampi(cost, 1, 5) - 1]
+	st.set_texture_margin_all(ITEM_CARD_MARGIN)
+	return st
+
 
 ## 点小将[前/后]: 切前排(近战挥砍×1.4) ↔ 后排(远程射击×1.5)
 func _dl_toggle_role(lane: String, idx: int) -> void:
@@ -921,6 +1076,8 @@ func _build_bench() -> void:
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER   # 隐滚动条·保留拖动滚动(用户2026-07-19·跟选龟一致)
 	add_child(scroll)
+	_bench_area = scroll
+	_drag.wire_bench_area(scroll)   # 已装的拖回背包区 = 卸下
 	var content := Control.new()
 	content.mouse_filter = Control.MOUSE_FILTER_PASS   # 触屏拖动透传→ScrollContainer 滚动
 	scroll.add_child(content)
@@ -1339,7 +1496,10 @@ func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	var eid := str(it.get("id", ""))
 	var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
 	var rcol := _cost_color(int(edef.get("cost", 1)))
-	var box := _slot_panel(pos, Color("#2a3a1c") if sel else Color("#1c2836"), Color("#ffd93d") if sel else rcol)
+	var box := Panel.new()
+	box.add_theme_stylebox_override("panel", card_style(int(edef.get("cost", 1)), sel))
+	box.position = pos; box.size = Vector2(SLOT, SLOT)
+	box.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	## ★走 EquipIcon: 无图时退化成 emoji 而不是空白(EquipIcon.make 的 else 分支)
 ##   ⚠"060~095 有 36 件没配图"这句已作废: 实测 95 件装备**全部**有 img 且图都在盘上
 ##     ⇒ emoji 兜底一次都不会触发(留着仍对, 但别当"有 36 件没图"的证据)。
@@ -1358,6 +1518,18 @@ func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	st.position = Vector2(0, 4); st.size = Vector2(SLOT, 28)
 	st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(st)
+	## 合成进度(2026-10-22): 同名同星已有 ≥ 2 件 ⇒ 右下角「2/3」(再来一件就合成)。数的是 GameState.copies_of,
+	##   与商店「再买合成」同一个数、同一个范围(背包 + 统领 + 小将)。满星 / 不升星的件不显示。
+	var _cp: int = int(GameState.copies_of(eid, star))
+	if star < 3 and _cp >= 2 and not EquipPool.NO_STAR.has(eid):
+		var mp := Label.new(); mp.name = "MergeProgress"
+		mp.text = "%d/3" % mini(_cp, 3)
+		mp.add_theme_font_size_override("font_size", MIN_FONT_PX)
+		mp.add_theme_color_override("font_color", Color("#7fe39a"))
+		mp.add_theme_color_override("font_outline_color", Color("#06140a")); mp.add_theme_constant_override("outline_size", 5)
+		mp.position = Vector2(SLOT - 46.0, SLOT - 30.0); mp.size = Vector2(40, 26)
+		mp.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		box.add_child(mp)
 	for ch in box.get_children():
 		ch.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# tooltip: 名字/★/费用 + 【该星级全部属性加成】 + 效果(用户2026-07-19"背包里我要看到每件装备提供的属性, 必须写完整")
@@ -1377,6 +1549,7 @@ func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 		str(edef.get("name", eid)), star, int(edef.get("cost", 1)),
 		_stat_block(eid, star), SkillText.highlight_star(SkillText.equip_brief_bb(edef, 13) if str(edef.get("effectBrief", "")) != "" else "（无主动效果）", star)]
 	_wire_bench_tap(box, idx)
+	_drag.wire_bench_source(box, idx, it)
 	return box
 
 
@@ -1403,6 +1576,7 @@ func _wire_bench_tap(box: Control, idx: int) -> void:
 		if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT:
 			if ev.pressed:
 				_press_pos = ev.position
+				_press_ms = Time.get_ticks_msec()
 			elif ev.position.distance_to(_press_pos) < 16.0:
 				_on_bench_click(idx))
 
@@ -1437,6 +1611,7 @@ func _item_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	## 两个括号注解 + 两个箭头 = 说明书腔。改成两句话直说。
 	box.tooltip_text = "临时等级器\n指定单位本大轮等级 +1"
 	_wire_bench_tap(box, idx)
+	_drag.wire_bench_source(box, idx, it)
 	return box
 
 
@@ -1583,8 +1758,7 @@ func _tutorial_anchor(anchor: String) -> Rect2:
 	var r := Rect2()
 	match anchor:
 		"lanes":     # 上/下战场两条带
-			var box_span: float = 3.0 * UBOX_W + 2.0 * UBOX_GAP
-			r = Rect2(30.0, LANE_TOP - 24.0, box_span + 20.0, LANE_GAP + UBOX_H + 28.0)
+			r = Rect2(CARDS_X - 6.0, LANE_HDR_Y, 6.0 * CARD_W + 4.0 * CARD_GAP + LANE_SPLIT + 12.0, CARDS_Y + CARD_H - LANE_HDR_Y + 6.0)
 		"backpack":  # 装备背包区
 			r = Rect2(40.0, BENCH_HDR_Y, _vw - 80.0, _bench_bottom() - BENCH_HDR_Y)
 		"finish_button":

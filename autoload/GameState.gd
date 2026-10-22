@@ -2529,6 +2529,31 @@ func buy_season_xp() -> bool:
 	save()
 	return true
 
+## 同名同星的装备一共有几件(背包 + 统领身上 + 小将身上) —— 与 `auto_merge_all` 的合成池同一个范围。
+## ★全项目唯一一份(2026-10-22 从 `ShopScene._owned_count` 收拢过来): 商店「已有 / 再买合成」与背包「合成进度 2/3」读同一个数,
+##   两边各数一遍的话哪天范围改了就各说各的(memory fb-hand-rolled-copies-drift)。
+func copies_of(item_id: String, star: int = 1) -> int:
+	if item_id == "":
+		return 0
+	var n := 0
+	for it in persistent_bench:
+		if it is Dictionary and str(it.get("id", "")) == item_id and int(it.get("star", 1)) == star:
+			n += 1
+	if persistent_equipped is Dictionary:
+		for pid in persistent_equipped:
+			for it2 in persistent_equipped[pid]:
+				if it2 is Dictionary and str(it2.get("id", "")) == item_id and int(it2.get("star", 1)) == star:
+					n += 1
+	var lineup: Dictionary = get_dual_lineup()
+	for lk in ["top", "bottom"]:
+		for u in lineup.get(lk, []):
+			if u is Dictionary and u.get("equips", null) is Array:
+				for it3 in u["equips"]:
+					if it3 is Dictionary and str(it3.get("id", "")) == item_id and int(it3.get("star", 1)) == star:
+						n += 1
+	return n
+
+
 ## 自动 3 合 1 (背包 + 龟身装备一起算, 用户 2026-07-01): 同 id+star 满 3 → 升 1 星, 反复到无可合 (满3星止). 不自存. 买/装/卸后自动调.
 ## 合出的高星: 若被合的3件里有装在龟身 → 放回那只龟(保持装备; 先移后加故槽位天然安全); 否则回背包. 纯背包合成(优先从背包移)行为与旧版一致.
 func auto_merge_all() -> void:

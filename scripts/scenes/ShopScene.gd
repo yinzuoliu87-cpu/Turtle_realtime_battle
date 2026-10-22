@@ -691,22 +691,7 @@ func _build_odds_row() -> void:
 ##   再买 1 件 ★1 → ★1=2 / ★2=1, 【根本没合成】—— 显示在骗人。
 ## 商店只卖 ★1, 所以进度一律按 ★1 数。
 func _owned_count(item_id: String, star: int = 1) -> int:
-	if item_id == "": return 0
-	var n := 0
-	for it in GameState.persistent_bench:
-		if it is Dictionary and str(it.get("id", "")) == item_id and int(it.get("star", 1)) == star: n += 1
-	if GameState.persistent_equipped is Dictionary:
-		for pid in GameState.persistent_equipped:
-			for it2 in GameState.persistent_equipped[pid]:
-				if it2 is Dictionary and str(it2.get("id", "")) == item_id and int(it2.get("star", 1)) == star: n += 1
-	if GameState.has_method("get_dual_lineup"):
-		var lineup: Dictionary = GameState.get_dual_lineup()
-		for lk in ["top", "bottom"]:
-			for u in lineup.get(lk, []):
-				if u is Dictionary and u.get("equips", null) is Array:
-					for it3 in u["equips"]:
-						if it3 is Dictionary and str(it3.get("id", "")) == item_id and int(it3.get("star", 1)) == star: n += 1
-	return n
+	return int(GameState.copies_of(item_id, star))   # 2026-10-22 收拢到 GameState(背包合成进度同一个数)
 
 ## 「背包里有没有这件」: 不分星级(货架上的已拥有提示用)。合成进度仍用上面分星级的 `_owned_count`。
 func _owned_any_star(item_id: String) -> int:

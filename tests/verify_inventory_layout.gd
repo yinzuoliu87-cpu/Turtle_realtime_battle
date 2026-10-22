@@ -475,14 +475,14 @@ func _ready() -> void:
 	_ok("㉘ ★羁绊按钮不许又矮又扁(每行 ≥44px 触摸目标)", short_rows.is_empty(),
 		"有 %d 行矮于 44: %s" % [short_rows.size(), str(short_rows)])
 	## 未激活但队里有件数的也要列出来 —— 否则"我装了 1 件法器"这件事界面上完全看不见
-	var joined3 := ""
-	for t in _texts(sc3):
-		joined3 += str(t) + "\n"
 	## ★2026-10-21: 没激活的那行写成「名 N/下一档 ☆☆☆」(一颗实星都没有)
+	## ★2026-10-22 背包竖卡版式: 羁绊列变窄, 星档挪到第二行 ⇒ 按「一个羁绊块里的全部字」判, 不按单行字判。
 	var dim_row := false
-	for ln in joined3.split("\n"):
-		if ln.find("/") >= 0 and ln.find("☆") >= 0 and ln.find("★") < 0:
-			dim_row = true
+	for c in _all(sc3):
+		if c is Panel and str((c as Control).tooltip_text).find("查看羁绊详情") >= 0:
+			var chip_txt := " ".join(PackedStringArray(_texts(c)))
+			if chip_txt.find("/") >= 0 and chip_txt.find("☆") >= 0 and chip_txt.find("★") < 0:
+				dim_row = true
 	_ok("㉙ ★没激活但已有件数的羁绊也列出来(灰行), 玩家才知道离开启还有多远",
 		dim_row, "一行「名 N/下一档 ☆☆☆」都没有")
 
@@ -843,12 +843,14 @@ func _unload_buttons(sc: Node) -> Array:
 
 ## 给一个 Control 派一次真的左键按下(走它自己的 `gui_input`) —— 不调内部函数,
 ## 量的是玩家真按下去会发生什么。
+## 一次点按 = 按下 + 松开(2026-10-22 起单位卡松手才算点 —— 按下就算会让「按住拖」先被当成点一下)。
 func _tap(c: Control) -> void:
-	var ev := InputEventMouseButton.new()
-	ev.button_index = MOUSE_BUTTON_LEFT
-	ev.pressed = true
-	ev.position = c.size * 0.5
-	c.gui_input.emit(ev)
+	for down in [true, false]:
+		var ev := InputEventMouseButton.new()
+		ev.button_index = MOUSE_BUTTON_LEFT
+		ev.pressed = down
+		ev.position = c.size * 0.5
+		c.gui_input.emit(ev)
 
 
 ## 全队(统领 + 小将)身上的装备总数 —— 破坏性检查的"账"

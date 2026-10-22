@@ -260,8 +260,21 @@ func _build_synergy_panel(_leaders: Array) -> void:
 			if n < int(_th):
 				_need = int(_th) - n
 				break
-		nm.text = "%s%s" % [host.Phase2Types.icon_bb(typ, ROW_ICON_PX),
-			host.Phase2Types.progress_text(typ, n, tier, _need, _tiers.size())]
+		var _full: String = host.Phase2Types.progress_text(typ, n, tier, _need, _tiers.size())
+		## ★2026-10-22 背包竖卡版式: 这一列只剩约 240 宽, 「法器 3/5 ★☆☆☆」一行放不下(星压在箭头上)
+		##   ⇒ 窄列时星档挪到第二行(同一句话拆两行, 字不变)。斧头那行第二行已是砍伐进度, 星档就不再挤进去。
+		var _narrow: bool = w < 300.0
+		var _cut: int = _full.rfind(" ")
+		nm.text = "%s%s" % [host.Phase2Types.icon_bb(typ, ROW_ICON_PX), _full.substr(0, _cut) if (_narrow and _cut > 0) else _full]
+		var _two_line: bool = _narrow and _cut > 0 and typ != "斧头"
+		if _two_line:
+			var stl := Label.new(); stl.name = "TierStars"
+			stl.text = _full.substr(_cut + 1)
+			stl.add_theme_font_size_override("font_size", 20)
+			stl.add_theme_color_override("font_color", col)
+			stl.position = Vector2(14 + ROW_ICON_PX + 4, 42); stl.size = Vector2(w - 8.0 - 14.0 - 40.0 - ROW_ICON_PX, 30)
+			stl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			chip.add_child(stl)
 		nm.add_theme_font_size_override("normal_font_size", 20)   # ★RTL 的键名不是 font_size
 		nm.add_theme_color_override("default_color", col)         # 名字 = 当前档位色
 		## ★★纵向居中: `Label` 有 `vertical_alignment`, `RichTextLabel` **没有** ——
@@ -269,6 +282,8 @@ func _build_synergy_panel(_leaders: Array) -> void:
 		##   高度取实测行高(20px 字 = 30, 与 16 的图标取大者)。
 		const _NM_H := 30.0
 		nm.position = Vector2(14, (SYN_ROW_H - _NM_H) * 0.5); nm.size = Vector2(w - 8.0 - 14.0 - 40.0, _NM_H)
+		if _two_line:
+			nm.position.y = 8.0   # 两行版: 名字 + 件数在上, 星档在下
 		nm.mouse_filter = Control.MOUSE_FILTER_IGNORE; chip.add_child(nm)
 		## ★★斧头羁绊这一行直接带砍伐进度(用户 2026-09-01「应该是在羁绊里显示最好啊，这是跟着羁绊走的」)。
 		##   原来挂在商店羁绊条上; 2026-10-21 羁绊搬出商店(用户「商店要这么搞」)后跟着搬到这里, 排成这一行的第二行。
