@@ -71,6 +71,7 @@ func close() -> void:
 ##   body: bbcode 正文 · foot: bbcode 灰斜体脚注
 ##   table: [[左, 右], ...] 技能的数值拆解表(两列, bbcode)
 ##   extra_title + extra: 装备的「本局统计」(纯文本, 每行一项)
+##   head_right: 放在卡头最右边的控件(商店的「购买」, 2026-10-22 用户「购买按钮放右上角」)
 ## anchor = 被点的那个控件(小卡顶边对齐它)。返回 live 字典。
 func open(k: String, anchor: Control, spec: Dictionary) -> Dictionary:
 	if is_open(k):
@@ -195,6 +196,10 @@ func _head(vb: VBoxContainer, spec: Dictionary) -> void:
 		tr2.custom_minimum_size = Vector2(0, 0)
 	elif tag != "":
 		_label(col, tag, 12, spec.get("tag_col", C_DIM)).name = "Tag"
+	var hr = spec.get("head_right", null)
+	if hr is Control:
+		(hr as Control).size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		hb.add_child(hr)
 
 
 ## 头部下那一行: 图标 + 数字横排(云顶的 ❤+250 ⚔+25%)。

@@ -576,6 +576,16 @@ func _interp() -> void:
 						if kv.has("height"):
 							u2["height"] = DetMath.flerp(float(tr2[1]), float(kv["height"]), k)
 							u2["_prev_height"] = u2["height"]
+					elif u2 is Dictionary:
+						## ★两个采样点之间新出生的单位(召唤物): 它还没有真值, 代理停在 _unit_new 给的 (0,0) ——
+						##   手机上会在地图左上角闪一下再飞过去(2026-10-22 verify_stream_parity 抓到: 蛋糕礼盒 / 亡魂)。
+						##   没有起点可插 ⇒ 直接放到下一个采样点给的位置。
+						if kv.has("pos") and kv["pos"] is Vector2:
+							u2["pos"] = kv["pos"]
+							u2["_prev_pos"] = u2["pos"]
+						if kv.has("height"):
+							u2["height"] = float(kv["height"])
+							u2["_prev_height"] = u2["height"]
 				F.OP_GLOBAL:
 					var g: Dictionary = op[1]
 					if g.has("t"):

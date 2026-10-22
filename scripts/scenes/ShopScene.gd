@@ -111,8 +111,12 @@ static func _price_tex(price: int, col: Color) -> Texture2D:
 const TAG_W := 22.0 * CAB_SCALE            # 73
 const TAG_H := 20.0 * CAB_SCALE            # 67
 ## 小卡宽 / 小卡里小木斧进度块的宽度(= 小卡宽 - 左右内边距)
-const CARD_W := 400.0
-const AXE_IN_CARD_W := 370.0
+## 说明卡宽(2026-10-22 用户「把卡片宽度加宽」400 → 600): 货架 5 列左沿 275 / 454 / 633 / 811 / 990,
+##   左两列弹在右边、其余弹在左边 ⇒ 最紧的是第 2 列(633 − 8 − 宽 ≥ LEFT_X 18)⇒ 上限 607, 取 600(第 2 列弹卡时离左沿还剩 7)。
+const CARD_W := 600.0
+const AXE_IN_CARD_W := CARD_W - 30.0
+## 卡头右上角「购买」的宽: 放得下最长的那句「还差 12 枚深海币」(22 号字 9 个字 + 内边距)。
+const BUY_W := 240.0
 ## 左栏(货柜左边): 只站店主。★2026-10-21 用户「商店要这么搞」: 羁绊与背包那一排不在商店里(背包页才有)。
 const LEFT_X := 18.0
 const LEFT_R := CAB_X - 8.0
@@ -917,6 +921,23 @@ func _open_detail_card() -> void:
 	var tag_bb := ("[color=#ffd93d]%s[/color]" % "★".repeat(clampi(star, 1, 3))) if own else ("%d 深海币" % _price(edef))
 	if tp != "":
 		tag_bb += "  ·  " + Phase2Types.icon_bb(tp, 16) + " " + tp
+	## 「购买」在卡头右上角(用户 2026-10-22「你不要把购买按钮放地下，去放右上角」):
+	##   原来压在卡底占一整行 81 高 —— 说明卡封顶高度里, 那一行正好是正文最缺的地方。
+	var buy: Button = null
+	if not own:
+		var price := _price(edef)
+		var coins := int(GameState.meta_deepsea_coins)
+		buy = Button.new(); buy.name = "BuyBtn"
+		_card_button_skin(buy)
+		buy.custom_minimum_size = Vector2(BUY_W, MIN_TOUCH_H)
+		buy.size_flags_horizontal = Control.SIZE_SHRINK_END
+		if coins >= price:
+			buy.text = "购买  %d" % price
+			buy.pressed.connect(func(): _on_buy(_sel))
+			_tut_buy_btn = buy
+		else:
+			buy.text = "还差 %d 枚深海币" % (price - coins)
+			buy.disabled = true
 	var lv: Dictionary = _insp.open(("own:" if own else "shop:") + eid, null, {
 		"icon": ("res://assets/sprites/" + img) if img.ends_with(".png") else "",
 		"title": str(edef.get("name", eid)), "title_col": col,
@@ -925,8 +946,11 @@ func _open_detail_card() -> void:
 		"stats": stats,
 		"body": _rich_desc(edef, star), "body_px": MIN_FONT_PX,
 		"width": CARD_W, "min_px": MIN_FONT_PX,
+		"head_right": buy,
 	})
 	if not lv.has("vbox"):
+		if buy != null:
+			buy.queue_free()          # 卡没开出来(再点一次 = 收起): 这颗没挂上树, 别漏掉
 		return
 	## 小木斧: 砍伐进度条 + (攒够时)最终造物四选一, 接在说明下面
 	if AxePanel.should_show(GameState) and (eid == AxePanel.EID or AxeEvo.final_ready(
@@ -943,18 +967,6 @@ func _open_detail_card() -> void:
 		## ★2026-10-21 用户「商店里就不能卖装备」: 已有的那件只看说明, 卖出只在背包页。
 		_refit_card.call_deferred()
 		return
-	var price := _price(edef)
-	var coins := int(GameState.meta_deepsea_coins)
-	var buy := Button.new(); buy.name = "BuyBtn"
-	_card_button_skin(buy)
-	if coins >= price:
-		buy.text = "购买  %d" % price
-		buy.pressed.connect(func(): _on_buy(_sel))
-		_tut_buy_btn = buy
-	else:
-		buy.text = "还差 %d 枚深海币" % (price - coins)
-		buy.disabled = true
-	(lv["vbox"] as VBoxContainer).add_child(buy)
 	_refit_card.call_deferred()
 
 

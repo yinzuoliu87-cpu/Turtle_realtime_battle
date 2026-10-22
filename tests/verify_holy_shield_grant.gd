@@ -190,12 +190,14 @@ func _ready() -> void:
 		bb.size() == 5 and gs._cap_count(bb) == 3, "")
 	## ★UI: 装备格【恒定 3 格】, 圣盾画成三格之后的"赠"徽章(不是第 4/5 个格子)
 	var inv_src := FileAccess.get_file_as_string("res://scripts/scenes/InventoryScene.gd")
+	## ★2026-10-22 竖卡改版: 三格贴卡下沿(行 y = SLOT_ROW_Y), 托盘只放得下三格 ⇒ 赠送徽章改叠在立绘窗右上角、
+	##   从卡片右沿往左排(第 gi 枚的右沿 = 卡宽 − 边框 − gi 份徽章宽), 所以 N 枚都不会溢出卡片右沿。判据意思不变。
 	_ok("⑨ ★UI: 三格恒定(调用处传的是 UNIT_EQUIP_CAP, 不是 cap+N)",
-		inv_src.contains("_build_equip_cells(box, 60.0, eqs, P2.UNIT_EQUIP_CAP,"),
+		inv_src.contains("_build_equip_cells(box, SLOT_ROW_Y, eqs, P2.UNIT_EQUIP_CAP,"),
 		"")
-	_ok("⑨ ★UI: 赠送件另画徽章(金边+金角标)且能画 N 个, 画在三格【下面一行】不溢出卡片",
+	_ok("⑨ ★UI: 赠送件另画徽章(金边+金角标)且能画 N 个, 从卡片右沿往左排、不占三格也不溢出卡片",
 		inv_src.contains("for gi in range(grants.size())") and inv_src.contains("corner.color = Color(\"#ffd93d\")")
-		and inv_src.contains("y + cw + 4.0"), "")
+		and inv_src.contains("gcell.position = Vector2(CARD_W - CARD_BORDER - 2.0 - float(gi + 1) * (gw + 4.0)"), "")
 
 	print("")
 	print("  (共 %d 条断言)" % _n)

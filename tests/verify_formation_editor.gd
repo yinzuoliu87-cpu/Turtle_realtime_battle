@@ -170,6 +170,9 @@ func _layout_pass(w: int, tag: String) -> void:
 		var cr: Rect2 = cc.get_global_rect()
 		if cr.position.y > TopBar.BAR_H or cr.size.x < 2.0:
 			continue
+		## ★满屏底图(2026-10-22 背包的 InvBackdrop)不是顶栏里的图标: 它铺满整屏, 任何签都"压"着它。
+		if cr.size.x >= vp.x * 0.9:
+			continue
 		nshown += 1
 		if cr.intersects(fr.grow(-2.0)):
 			hit.append("%s「%s」" % [cc.name, (cc as Label).text if cc is Label else "图"])

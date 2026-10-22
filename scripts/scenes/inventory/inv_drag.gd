@@ -59,7 +59,7 @@ func wire_unit(box: Control, lane: String, idx: int, unit: Dictionary, worn_cell
 		func(_at: Vector2, data: Variant) -> bool:
 			return _can_take(lane, idx, unit, data),
 		func(_at: Vector2, data: Variant) -> void:
-			_drop_on_unit(lane, idx, unit, data))
+			_drop_on_unit(lane, idx, data))
 
 
 ## 背包区(滚动容器): 已装的拖回来 = 卸下。
@@ -176,7 +176,7 @@ func _can_take(lane: String, idx: int, unit: Dictionary, data: Variant) -> bool:
 	return not (str(d.get("kind", "")) != KIND_BENCH and str(d.get("lane", "")) == lane and int(d.get("idx", -1)) == idx)
 
 
-func _drop_on_unit(lane: String, idx: int, unit: Dictionary, data: Variant) -> void:
+func _drop_on_unit(lane: String, idx: int, data: Variant) -> void:
 	var d: Dictionary = data
 	_finish()
 	_dropped = true

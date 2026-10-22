@@ -37,6 +37,8 @@ const MIN_FONT := 20
 const MIN_ASSERTS := 111
 ## 说明最长的 10 件(2026-10-22 探针实测未封顶卡高: 084=733 072=673 068/069/080=643 034/040/059/087/096=613)。
 ##   ★只用来把「最难放」的卡摆满货架; 全 96 件另有一轮在 16:9 下逐件量。
+## 加宽后说明卡仍要滚动的装备(只有小木斧: 四个形态 + 四个造物); 别的出现滚动条 ⇒ I8 红。
+const SCROLL_OK := ["p2eq_096"]
 const TALL := ["p2eq_084", "p2eq_072", "p2eq_068", "p2eq_069", "p2eq_080", "p2eq_034", "p2eq_040", "p2eq_059", "p2eq_087", "p2eq_096"]
 ## 说明最短的那几件(卡高 253~283): 卡短 ⇒ 卡底「购买」正好落在下层货架上 —— 双击点穿就发生在这里。
 const SHORT := ["p2eq_054", "p2eq_002", "p2eq_018", "p2eq_035", "p2eq_046"]
@@ -636,7 +638,9 @@ func _i8_tall_cards() -> void:
 			await _click(_slot_center(sc, i))   # 收起
 		_ok("★★I8 [%s] 最长的 10 件 × 10 格: 卡不出屏、「购买」在安全区、不盖被点那件、不压按钮排 / 等级牌" % r["n"],
 			bad.is_empty(), str(bad.slice(0, 3)))
-		_ok("I8 [%s] 分母: 这 10 件的正文都改成了可滚动的一段(%d / 10)" % [r["n"], capped], capped == 10)
+		## ★2026-10-22 卡宽 400 → 600、「购买」挪到卡头右上角(用户): 这 10 件里多数已整段放得下, 只有小木斧还超高。
+		##   分母改成「滚动那条路至少走到 1 次」(否则 ③ 那几条量的是空气)。
+		_ok("I8 [%s] 分母: 超高的那件(小木斧)正文改成了可滚动的一段(%d / 10 件走了滚动)" % [r["n"], capped], capped >= 1)
 		await _leave(sc)
 	SafeArea.override_insets = Vector4(-1, -1, -1, -1)
 	## ② 16:9 下全部装备逐件量
@@ -645,6 +649,7 @@ func _i8_tall_cards() -> void:
 		all_ids.append(str((e as Dictionary).get("id", "")))
 	var bad2: Array = []
 	var n2 := 0
+	var scroll_ids: Array = []
 	var r16: Dictionary = ratios[0]
 	var k := 0
 	while k < all_ids.size():
@@ -655,6 +660,8 @@ func _i8_tall_cards() -> void:
 			await _click(_slot_center(sc, i))
 			if _card(sc) != null:
 				n2 += 1
+				if _card(sc).find_child("CardBodyScroll", true, false) != null:
+					scroll_ids.append(str(all_ids[k + i]))
 			var why := _card_bad(sc, i, r16)
 			if why != "":
 				bad2.append(why)
@@ -663,9 +670,14 @@ func _i8_tall_cards() -> void:
 		k += 10
 	_ok("I8 分母: 16:9 下逐件弹出了 %d / %d 张说明卡" % [n2, all_ids.size()], n2 == all_ids.size())
 	_ok("★I8 16:9 全部装备: 说明卡位置一处不坏", bad2.is_empty(), str(bad2.slice(0, 3)))
-	## ③ 封顶后正文真能滚到底(内容比可见区高, 滚动条的量程覆盖得到最后一行)
+	## ★★用户在商店看小木斧时问「为什么有滑动条」→ 2026-10-22「购买按钮放右上角」「把卡片宽度加宽」:
+	##   加宽后只有小木斧(四个形态 + 四个造物)整段放不下。别的哪件说明写长了、又冒出滚动条 ⇒ 这里当场红。
+	var scroll_extra: Array = scroll_ids.filter(func(x): return not SCROLL_OK.has(x))
+	_ok("★★I8 16:9 全部装备: 除小木斧外说明卡都不出滚动条(出了 %d 件: %s)" % [scroll_ids.size(), str(scroll_ids)],
+		scroll_extra.is_empty() and n2 == all_ids.size(), str(scroll_extra))
+	## ③ 封顶后正文真能滚到底(内容比可见区高, 滚动条的量程覆盖得到最后一行)。084 加宽后放得下了 ⇒ 换小木斧量。
 	_seed()
-	_shelf(["p2eq_084"])
+	_shelf(["p2eq_096"])
 	var sc3 := await _enter()
 	await _click(_slot_center(sc3, 0))
 	var scr := _card(sc3).find_child("CardBodyScroll", true, false) as ScrollContainer if _card(sc3) != null else null
@@ -675,15 +687,15 @@ func _i8_tall_cards() -> void:
 			if ch is RichTextLabel:
 				rt = ch
 	var vb := scr.get_v_scroll_bar() if scr != null else null
-	_ok("I8 084 的正文在滚动框里, 内容比可见区高(%.0f > %.0f)" % [rt.size.y if rt != null else -1.0, scr.size.y if scr != null else -1.0],
+	_ok("I8 096 的正文在滚动框里, 内容比可见区高(%.0f > %.0f)" % [rt.size.y if rt != null else -1.0, scr.size.y if scr != null else -1.0],
 		rt != null and rt.size.y > scr.size.y + 10.0)
-	_ok("I8 084 滚动条量程盖得住整段正文(max %.0f ≥ 内容 %.0f)" % [vb.max_value if vb != null else -1.0, rt.size.y if rt != null else -1.0],
+	_ok("I8 096 滚动条量程盖得住整段正文(max %.0f ≥ 内容 %.0f)" % [vb.max_value if vb != null else -1.0, rt.size.y if rt != null else -1.0],
 		vb != null and rt != null and vb.max_value >= rt.size.y - 1.0)
-	_ok("I8 084 正文一个字没丢(滚动框里那段 = 装备说明全文)", rt != null and rt.get_parsed_text().length() > 40)
+	_ok("I8 096 正文一个字没丢(滚动框里那段 = 装备说明全文)", rt != null and rt.get_parsed_text().length() > 40)
 	## 滚动条的皮(2026-10-22): 默认是 Godot 的灰色圆角细条 ⇒ 换木框 / 黄铜。粗细不变(上面两条量程 / 内容照旧)。
-	_ok("I8 084 分母: 竖滚动条真的画出来了(内容比可见区高)", vb != null and vb.is_visible_in_tree())
+	_ok("I8 096 分母: 竖滚动条真的画出来了(内容比可见区高)", vb != null and vb.is_visible_in_tree())
 	var sb_why := SBJ.problem(scr, SHOP_GD.CARD_SCROLL_W)
-	_ok("★★I8 084 滚动条是木框 / 黄铜皮(直角 · 暖色滑块 · 深色槽 · 不宽过正文让出的 %.0f)" % SHOP_GD.CARD_SCROLL_W,
+	_ok("★★I8 096 滚动条是木框 / 黄铜皮(直角 · 暖色滑块 · 深色槽 · 不宽过正文让出的 %.0f)" % SHOP_GD.CARD_SCROLL_W,
 		scr != null and sb_why == "", sb_why)
 	await _leave(sc3)
 

@@ -32,6 +32,7 @@ const TOL_UNIT := 0.01            # 单位字段 float32 往返(位置是像素�
 ##   两局 + det 15 场景中位 0、p99 ≤ 3.6、最大 10.0(det ⑨ 骰子龟冲刺, 两次采样之间走了 ≈ 20 像素的弧线, 线性插值差半段)。
 ##   判据是「≤ 半段位移 + 0.5」(线性插值的形状), 外加一道最大 12 像素的硬顶。
 const TOL_INTERP := 12.0
+const TELEPORT_PX := 40.0           # 2 步(1/30 秒)里走 40 像素 = 1200 像素/秒, 远超任何移速 ⇒ 只可能是闪现 / 冲刺 / 击退
 const TOL_MID := 0.01
 const DET_N := 15
 const TOL_FLOAT_STEP := 2
@@ -154,7 +155,7 @@ func _play_and_compare(tag: String, chunks: Array, meta: Dictionary, nat: Dictio
 	il.sort()
 	var p99: float = float(il[int(il.size() * 0.99)]) if not il.is_empty() else 0.0
 	var p50: float = float(il[int(il.size() * 0.5)]) if not il.is_empty() else 0.0
-	print("  [量] %s 插值剖面(采样中间一步, 单位位置差, 像素): 点 %d 中位 %.3f p99 %.3f 最大 %.3f" % [tag, il.size(), p50, p99, float(st["i_max"])])
+	print("  [量] %s 插值剖面(采样中间一步, 单位位置差, 像素): 点 %d 中位 %.3f p99 %.3f 最大 %.3f · 采样间隔内瞬移(不量) %d" % [tag, il.size(), p50, p99, float(st["i_max"]), int(st.get("i_tp", 0))])
 	var steps := int(meta.get("steps", 0))
 	_ok("分母 · %s 播放端解了全部块、应用了全部步(%d / %d)、播到结尾" % [tag, p.steps_applied, steps],
 		p.chunks_decoded == chunks.size() and p.steps_applied == steps and p.state == "ended", "%s %s" % [p.state, p.err])
@@ -460,6 +461,12 @@ func _cmp_interp(a0: Dictionary, a: Dictionary, a2: Dictionary, b: Dictionary, s
 	var u2: Dictionary = a2.get("units", {})
 	for idx in ua:
 		if not ub.has(idx) or not bool(ua[idx][4]):
+			continue
+		## ★采样间隔(2 步)里位移超过 TELEPORT_PX 的是闪现 / 冲刺 / 击退: 线性插值本来就补不出中间那一步的真位置
+		##   (手机在 1/30 秒里把它补过去, 肉眼看不出), 不拿 12 像素的尺子量, 单独计数打印。
+		##   2026-10-22 抓到: 钻石龟一步之内闪 224 像素, 中间那步离中点 112 —— 以前只是恰好没落在采样中间。
+		if u0.has(idx) and u2.has(idx) and (u0[idx][0] as Vector2).distance_to(u2[idx][0]) > TELEPORT_PX:
+			st["i_tp"] = int(st.get("i_tp", 0)) + 1
 			continue
 		var d: float = (ua[idx][0] as Vector2).distance_to(ub[idx][0])
 		(st["i_list"] as Array).append(d)
