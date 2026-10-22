@@ -291,7 +291,7 @@ const SRC := {
 		{"k": "pet", "id": "shell", "sk": "shellShadow", "at": "systems/skills/shell_system.gd:_shell_basic",
 			"v": "{C:ShellSystem.STEALTH_HEALCUT_PCT%}% · {C:ShellSystem.STEALTH_HEALCUT_SEC} 秒",
 			"lf": MAIN, "link": "\"shellShadow\"[^\\n]*\\n\\s*_shell_sys\\._shell_enter_stealth"},
-		{"k": "pet", "id": "chest", "sk": "chestTreasure", "at": "scenes/battle/battle_damage.gd:_post_hit_hooks", "v": "50% · 5 秒",
+		{"k": "pet", "id": "chest", "sk": "chestTreasure", "at": "scenes/battle/battle_damage.gd:_post_hit_hooks", "v": "{C:ChestSystem.POISON_CUT%}% · {C:ChestSystem.POISON_SEC} 秒",
 			"link": "宝箱藏宝图 on-hit 战利品"},
 		{"k": "minion", "id": "back", "sk": "minionRocket", "at": "systems/skills/hiding_system.gd:_minion_rocket_nuke", "v": "50% · 4 秒"},
 		{"k": "eq", "id": "p2eq_067", "at": "systems/equip/eq_potion_batch.gd:_vial_debuff_on", "v": "{C:EqPotionBatch.VIAL_CUT%}%"},
