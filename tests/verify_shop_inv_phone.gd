@@ -175,7 +175,7 @@ func _run_inv(r: Dictionary, st: String) -> void:
 			var per_row := 0
 			var y0 := INF
 			for ch in grid.get_children():
-				if ch is Control and (ch as Control).size.x >= 80.0 and (ch as Control).size.x <= 120.0:
+				if ch is Control and absf((ch as Control).size.x - float(INV_GD.SLOT)) < 1.0:
 					cells.append(ch)
 					y0 = minf(y0, (ch as Control).position.y)
 			for ch in cells:
@@ -184,16 +184,17 @@ func _run_inv(r: Dictionary, st: String) -> void:
 			var expect: int = n_items
 			_ok(tag + " ⑦ 背包格数 = 件数, 不画空格(%d 件 · 每行 %d)" % [n_items, per_row],
 				per_row > 0 and cells.size() == expect, "实有 %d 格, 应为 %d" % [cells.size(), expect])
-		## ⑨ 统领 / 小将 / 前排 / 后排有图例
-		var leg := ""
-		for c in _all(sc):
-			if c is Label and str(c.name).begins_with("LaneLegend") and (c as Control).is_visible_in_tree():
-				leg += str((c as Label).text) + "|"
+		## ⑨ 统领 / 小将 / 前排 / 后排讲得清
+		##   ★2026-10-22 背包重做: 常驻图例撤了(竖卡版式没地方), 规则进「?」阵容说明的第一条;
+		##   卡上本身也有: 统领卡写龟名、小将卡上就是【前排 / 后排】切换签。⇒ 量「?」里真画出来的字。
+		sc.call("_show_lineup_help")
+		await _frames(3)
+		var leg := _text_of(sc)
 		var miss: Array = []
-		for w in ["统领", "小将", "前排", "后排"]:
+		for w in ["统领：", "小将：", "前排", "后排"]:
 			if leg.find(w) < 0:
 				miss.append(w)
-		_ok(tag + " ⑨ 战场带图例讲清统领 / 小将 / 前排 / 后排", leg != "" and miss.is_empty(), "图例「%s」缺 %s" % [leg, str(miss)])
+		_ok(tag + " ⑨「?」阵容说明讲清统领 / 小将 / 前排 / 后排", miss.is_empty(), "缺 %s" % str(miss))
 		_ok(tag + " ⑨ 旧的「统领 ×N · 小将 ×N」计数不在了", _text_of(sc).find("统领 ×") < 0 and _text_of(sc).find("小将 ×") < 0)
 	await _leave(sc)
 
@@ -230,7 +231,7 @@ func _audit(sc: Control, r: Dictionary, tag: String, min_leaves: int) -> void:
 	for c in _all(sc):
 		if not (c is Control) or not (c as Control).is_visible_in_tree():
 			continue
-		if str(c.name) == "InspectCard":
+		if str(c.name).ends_with("InspectCard"):   # 背包里改名 ItemInspectCard / UnitInspectCard
 			overlay = c
 		elif c is ColorRect and (c as Control).mouse_filter == Control.MOUSE_FILTER_STOP and (c as Control).get_child_count() > 0 \
 				and (c as Control).size.x * (c as Control).size.y >= area * 0.8:
@@ -438,5 +439,10 @@ func _rtl_texts(n: Node) -> String:
 	var s := ""
 	for x in _all(n):
 		if x is RichTextLabel and (x as Control).is_visible_in_tree():
-			s += str((x as RichTextLabel).get_parsed_text()).strip_edges() + "|"
+			var line := str((x as RichTextLabel).get_parsed_text()).strip_edges()
+			## 背包窄列: 同一句拆两行, 星档在同一块里的 TierStars(字不变, 拼回来比)
+			var stars: Node = (x as Node).get_parent().get_node_or_null("TierStars")
+			if stars is Label:
+				line += " " + str((stars as Label).text)
+			s += line + "|"
 	return s

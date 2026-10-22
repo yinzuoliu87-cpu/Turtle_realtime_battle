@@ -308,6 +308,7 @@ scripts/gamedata/minion_codex.gd|lit|人体浪板
 scripts/gamedata/minion_codex.gd|lit|前排 · 近战
 scripts/gamedata/minion_codex.gd|lit|后排 · 远程
 scripts/gamedata/minion_codex.gd|lit|吞噬
+scripts/gamedata/minion_codex.gd|lit|小将
 scripts/gamedata/minion_codex.gd|lit|精英 · 近战
 scripts/gamedata/minion_codex.gd|lit|精英小将
 scripts/gamedata/minion_codex.gd|lit|精英小将在目标生命值低于 15% 时发动吞噬，持续 1.5 秒，期间获得 95% 减伤。吞噬完成后回复相当于目标剩余生命值 2 倍的生命值，并获得 50% 攻击速度，持续 5 秒，并窃取目标的主动技能。攻击、铁锁与铁锤均可触发。
@@ -814,34 +815,42 @@ scripts/scenes/InventoryScene.gd|lit|  无属性加成
 scripts/scenes/InventoryScene.gd|lit|[color=#8fa6bb]无属性加成[/color]
 scripts/scenes/InventoryScene.gd|lit|[color=#8fa6bb]无特殊效果[/color]
 scripts/scenes/InventoryScene.gd|lit|[color=#9fb6c9][b]属性[/b][/color]\n%s\n\n[color=#9fb6c9][b]效果[/b][/color]\n[color=#cfe0ef]%s[/color]
+scripts/scenes/InventoryScene.gd|lit|[color=#ffd93d]%s[/color]  %d费
 scripts/scenes/InventoryScene.gd|lit|\nLv%d 可装备 %d 件
 scripts/scenes/InventoryScene.gd|lit|\n已达上限
 scripts/scenes/InventoryScene.gd|lit|上战场
 scripts/scenes/InventoryScene.gd|lit|下战场
 scripts/scenes/InventoryScene.gd|lit|前往商店
+scripts/scenes/InventoryScene.gd|lit|前排
+scripts/scenes/InventoryScene.gd|lit|后排
 scripts/scenes/InventoryScene.gd|lit|商店
 scripts/scenes/InventoryScene.gd|lit|囗
-scripts/scenes/InventoryScene.gd|lit|小将站位：前排近战　后排远程
+scripts/scenes/InventoryScene.gd|lit|小将
 scripts/scenes/InventoryScene.gd|lit|属性\n%s\n\n效果\n%s
+scripts/scenes/InventoryScene.gd|lit|护甲
+scripts/scenes/InventoryScene.gd|lit|攻击力
 scripts/scenes/InventoryScene.gd|lit|无属性加成
+scripts/scenes/InventoryScene.gd|lit|暴击伤害
+scripts/scenes/InventoryScene.gd|lit|暴击率
+scripts/scenes/InventoryScene.gd|lit|最大生命值
 scripts/scenes/InventoryScene.gd|lit|本大轮首战后解锁
 scripts/scenes/InventoryScene.gd|lit|盾
 scripts/scenes/InventoryScene.gd|lit|空槽位
 scripts/scenes/InventoryScene.gd|lit|站位
-scripts/scenes/InventoryScene.gd|lit|统领：本大轮出战龟　小将：补位单位
+scripts/scenes/InventoryScene.gd|lit|精英
+scripts/scenes/InventoryScene.gd|lit|精英小将
 scripts/scenes/InventoryScene.gd|lit|背包
 scripts/scenes/InventoryScene.gd|lit|设置开战站位
 scripts/scenes/InventoryScene.gd|lit|阵容说明
+scripts/scenes/InventoryScene.gd|lit|魔抗
 scripts/scenes/InventoryScene.gd|lit|（无主动效果）
 scripts/scenes/InventoryScene.gd|text|%d 档
 scripts/scenes/InventoryScene.gd|text|[b][color=#ffffff]%s[/color][/b]   [color=#ffd93d]%s[/color]   [color=#8fa6bb]%d费%s[/color]
-scripts/scenes/InventoryScene.gd|text|· 上路、下路独立作战\n· 依次点击两个单位：交换位置\n· 右上「站位」：拖动单位设置开战站位\n· 小将头像下方【前排 / 后排】：切换近战 / 远程\n· 选择背包装备后点击单位：装备\n· 点击单位：底部列出该单位装备，可卸下\n· 3 件同名同星装备自动合成升星
-scripts/scenes/InventoryScene.gd|text|▼ 下面还有
+scripts/scenes/InventoryScene.gd|text|· 统领：本大轮出战龟　小将：补位单位\n· 上路、下路独立作战\n· 依次点击两个单位，或把一个拖到另一个上：交换位置\n· 小将卡上【前排 / 后排】：切换近战 / 远程\n· 右上「站位」：拖动单位设置开战站位\n· 点击单位：查看属性；点击单位身上的装备：卸下\n· 选择背包装备后点击单位，或拖动装备到单位：装备\n· 3 件同名同星装备自动合成升星
 scripts/scenes/InventoryScene.gd|text|全队装备 %d/%d
 scripts/scenes/InventoryScene.gd|text|前排
 scripts/scenes/InventoryScene.gd|text|卖出 +%d
-scripts/scenes/InventoryScene.gd|text|卸下 %s
-scripts/scenes/InventoryScene.gd|text|卸下装备
+scripts/scenes/InventoryScene.gd|text|卸下
 scripts/scenes/InventoryScene.gd|text|取消
 scripts/scenes/InventoryScene.gd|text|后排
 scripts/scenes/InventoryScene.gd|text|完成教程
@@ -1143,6 +1152,7 @@ scripts/scenes/ShopScene.gd|lit|[color=#5b7a92]暂无说明[/color]
 scripts/scenes/ShopScene.gd|lit|「%s」已失效 · 请刷新
 scripts/scenes/ShopScene.gd|lit|买经验 %d
 scripts/scenes/ShopScene.gd|lit|刷新 %d
+scripts/scenes/ShopScene.gd|lit|商店
 scripts/scenes/ShopScene.gd|lit|已拥有「%s」· 转化为砍伐经验 +%d
 scripts/scenes/ShopScene.gd|lit|已解锁 · 下场战斗后刷新
 scripts/scenes/ShopScene.gd|lit|已达最高等级 Lv%d
@@ -1152,11 +1162,11 @@ scripts/scenes/ShopScene.gd|lit|无属性加成
 scripts/scenes/ShopScene.gd|lit|深海币不足 · 「%s」需要 %d，还差 %d
 scripts/scenes/ShopScene.gd|lit|深海币不足（需要 %d）
 scripts/scenes/ShopScene.gd|lit|等级已满
+scripts/scenes/ShopScene.gd|lit|背包
 scripts/scenes/ShopScene.gd|lit|购买成功 · 「%s」合成 ★%d
 scripts/scenes/ShopScene.gd|lit|购买成功 · 「%s」已放入背包
 scripts/scenes/ShopScene.gd|lit|这件
 scripts/scenes/ShopScene.gd|lit|锁定
-scripts/scenes/ShopScene.gd|lit|🎒 背包
 scripts/scenes/ShopScene.gd|text|%d 费 %d%%
 scripts/scenes/ShopScene.gd|text|可装备 %d 件
 scripts/scenes/ShopScene.gd|text|商品
@@ -1323,10 +1333,8 @@ scripts/scenes/battle/battle_hud.gd|text|🛠 调试场
 scripts/scenes/battle/battle_hud.gd|tooltip_text|%s · %d 档
 scripts/scenes/battle/battle_hud.gd|tooltip_text|%s · 点开细看
 scripts/scenes/battle/battle_spawn.gd|lit|命运之轮 -30%HP
-scripts/scenes/battle/battle_spawn.gd|lit|小将
 scripts/scenes/battle/battle_spawn.gd|lit|水晶球
 scripts/scenes/battle/battle_spawn.gd|lit|海盗船
-scripts/scenes/battle/battle_spawn.gd|lit|精英小将
 scripts/scenes/battle/battle_spawn.gd|lit|糖果炸弹
 scripts/scenes/battle/battle_spawn.gd|lit|编辑模式: 点空地摆兵 · 拖拽挪位 · 右键删
 scripts/scenes/battle/battle_spawn.gd|lit|训龟大师

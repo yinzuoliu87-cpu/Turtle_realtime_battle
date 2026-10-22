@@ -145,8 +145,9 @@ func _build_synergy_panel(_leaders: Array) -> void:
 	var x0: float = host.SYN_X
 	var hdr = Label.new(); hdr.text = "羁绊"
 	hdr.add_theme_font_size_override("font_size", 22); hdr.add_theme_color_override("font_color", Color("#cfe0ef"))
-	hdr.position = Vector2(x0, host.SYN_TOP); hdr.size = Vector2(w, 26); host.add_child(hdr)
-	var cy: float = host.SYN_TOP + 32.0
+	var syn_top: float = host.syn_top()
+	hdr.position = Vector2(x0, syn_top); hdr.size = Vector2(w, 26); host.add_child(hdr)
+	var cy: float = syn_top + 32.0
 	var team: Array = [{"_p2_equips": _team_equips_for_synergy()}]
 	var active: Array = host.Phase2Types.calc_active(team)
 	## ★2026-10-11 全项目通读 A10: 原来选中装备时无条件插一行「暂无羁绊」, 下面却列着羁绊(自相矛盾)。只在真没有激活羁绊时才说。
@@ -191,7 +192,7 @@ func _build_synergy_panel(_leaders: Array) -> void:
 	##   我是说羁绊框和本体的颜色可以去变」)。颜色本身就是信号, 再配一行说明反而是啰嗦。
 	##   ⇒ 档位色**同时上到框(底色+描边)和本体(图标+名字+件数)**上, 一眼分得出强弱。
 	## 列表放进滚动区: 10 个类型全有件数时一屏放不下(要 660px, 这一列只有约 230px)。
-	var list_h: float = host.SYN_BOTTOM - 8.0 - cy
+	var list_h: float = syn_top + (host.SYN_BOTTOM - host.SYN_TOP) - 8.0 - cy
 	## ★2026-10-22 背包二改: 宿主可要横排(羁绊放在卡区下面一条, 一行排开, 多了横着滑)。
 	var horiz: bool = host.SYN_HORIZONTAL
 	var scroll = ScrollContainer.new()

@@ -94,3 +94,21 @@ const ACTION_RANGED := {
 ##   光改查表救不了 ⇒ 直接把 idle/attack/hammer **逐帧镜像**成朝左, 整套回归全局约定。
 ##   表留着(机制还在), 但现在是空的 —— 没有单位需要例外。
 const ART_FACES_RIGHT_KEY: Array = []
+
+
+## 小将开战那一刻的底子(名字 / 稀有度 / 暴击 / 生命 / 攻击 / 双抗) —— `battle_spawn._make_unit` 与背包属性小卡共用这一个。
+##   (2026-10-22 从 _make_unit 原样抽出, 表达式逐字未改 ⇒ 跨平台金标不动。)
+## ★等级复利用连乘, 不用 `pow`(2026-10-05): `pow` 是各平台 libm 自己的近似, Windows(MSVC) 与
+##   Linux(glibc) 末位不同 —— 探针实测同一只小将开局 hp 469946.8475140407 / 469946.8475140425,
+##   第 0 步就分叉(verify_determinism_cross ⑥)。`*` 是 IEEE-754 保证逐位一致的。
+static func base_stats(elite: bool, front: bool, level: int) -> Dictionary:
+	var mm: float = 1.0
+	for _lv_i in range(maxi(0, level - 1)):
+		mm *= 1.05
+	if elite:   # 精英小将定制属性(用户2026-07-18): 1000HP/50ATK/16DEF/20MR (HP/ATK随等级复利·双抗定值)
+		return {"name": "精英小将", "rarity": "C", "crit": 0.0,
+			"hp": 1000.0 * mm, "atk": 50.0 * mm, "def": 16.0, "mr": 20.0}
+	# 普通小将: 750HP·前排1.4/后排1.5系数ATK; 近战(前排)双抗 7→13(用户2026-07-19), 远程保持7
+	return {"name": "小将", "rarity": "C", "crit": 0.0,
+		"hp": 250.0 * mm * 3.0, "atk": 30.0 * mm * (1.4 if front else 1.5),
+		"def": (13.0 if front else 7.0), "mr": (13.0 if front else 7.0)}

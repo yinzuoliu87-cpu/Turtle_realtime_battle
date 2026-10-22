@@ -132,7 +132,7 @@ func _ready() -> void:
 		if c is ScrollContainer:
 			bench_bottom = maxf(bench_bottom, (c as Control).get_global_rect().end.y)
 	## ★2026-10-22 背包重做: 背包下面是一条羁绊(SYN_TOP 起) ⇒ 背包铺到它上沿为止, 中间不许空一条。
-	var syn_top: float = float(InvScene.SYN_TOP)
+	var syn_top: float = float(sc.call("syn_top"))
 	_ok("② 没选中时背包铺到羁绊条上沿(中间留白 ≤ 24px)",
 		bench_bottom > 0.0 and syn_top - bench_bottom <= 24.0 and bench_bottom <= syn_top,
 		"背包底 %.0f, 羁绊条顶 %.0f" % [bench_bottom, syn_top])
@@ -831,14 +831,6 @@ func _mini_cells(sc: Node) -> Array:
 	return out
 
 
-func _unload_buttons(sc: Node) -> Array:
-	var out: Array = []
-	for c in _all(sc):
-		if c is Button and str((c as Button).text).begins_with("卸下"):
-			out.append(c)
-	return out
-
-
 ## 给一个 Control 派一次真的左键按下(走它自己的 `gui_input`) —— 不调内部函数,
 ## 量的是玩家真按下去会发生什么。
 ## 一次点按 = 按下 + 松开(2026-10-22 起单位卡松手才算点 —— 按下就算会让「按住拖」先被当成点一下)。
@@ -969,9 +961,13 @@ func _check_equip_slot_pt() -> void:
 		tapped > 0 and selected == tapped)
 
 	# ── ③④ 统领 / 小将各自都有 81px(44pt) 的卸下路径, 且数量 == 在身件数 ──
+	## ★2026-10-22 背包重做: 选中龟卡改弹属性小卡(用户「点击龟得有龟的属性显示吧」), 右栏那条「卸下」操作条撤了。
+	##   卸下的大靶子现在是: 点卡上那一件(56px 的格子, 非破坏 —— 只弹说明小卡) → 小卡里 81px 高的「卸下」。
+	##   判据的意思不变: 每一件在身装备都有一颗 ≥ 81px 的卸下键, 统领与小将两类都验。
 	var dl: Dictionary = GameState.get_dual_lineup()
 	var kinds_seen := {}
 	var bad: Array = []
+	var cells_tapped := 0
 	for lane in ["top", "bottom"]:
 		var arr: Array = dl.get(lane, [])
 		for i in range(arr.size()):
@@ -982,45 +978,106 @@ func _check_equip_slot_pt() -> void:
 			if want <= 0:
 				continue
 			var kind := str(unit.get("kind", ""))
-			sc.set("_dl_sel", {"lane": lane, "idx": i})
-			sc.call("_rebuild")
-			for _i in range(8):
-				await get_tree().process_frame
-			var btns: Array = _unload_buttons(sc)
 			kinds_seen[kind] = int(kinds_seen.get(kind, 0)) + 1
-			## ★★条子本身: 不许伸出 720 设计框, 也不许压在背包格子上。
-			##   两件都是真踩过的 —— 81px 的键硬塞进 80 高的条 ⇒ 底沿 725(出屏 5px);
-			##   而 `_bench_bottom()` 当年没跟上这条新操作条 ⇒ 背包照样铺到 712, 被它压住。
-			if btns.size() > 0:
-				var bar0: Control = (btns[0] as Node).get_parent() as Control
-				if bar0 != null:
-					var br: Rect2 = Rect2(bar0.position, bar0.size)
-					if br.end.y > 720.5:
-						bad.append("%s/%s#%d: 操作条底沿 %.0f 伸出 720 设计框" % [lane, kind, i, br.end.y])
-					for sco in _all(sc):
-						if sco is ScrollContainer:
-							var sr2: Rect2 = Rect2((sco as Control).position, (sco as Control).size)
-							if sr2.intersects(br):
-								bad.append("%s/%s#%d: 操作条 %s 压在背包滚动区 %s 上"
-									% [lane, kind, i, str(br), str(sr2)])
-			if btns.size() != want:
-				bad.append("%s/%s#%d(%s): 在身 %d 件, 卸下键 %d 个"
-					% [lane, kind, i, str(unit.get("id", "")), want, btns.size()])
-				continue
-			for b in btns:
-				var bs: Vector2 = (b as Control).size
-				if minf(bs.x, bs.y) < TOUCH_MIN_PX:
-					bad.append("%s/%s#%d: 卸下键只有 %.0f×%.0f(短边 %.1fpt)"
-						% [lane, kind, i, bs.x, bs.y, minf(bs.x, bs.y) / PX_PER_PT])
-				var bar: Control = (b as Node).get_parent() as Control
-				if bar != null and not bar.get_global_rect().grow(1.0).encloses((b as Control).get_global_rect()):
-					bad.append("%s/%s#%d: 卸下键伸出操作条 %s / %s"
-						% [lane, kind, i, str((b as Control).get_global_rect()), str(bar.get_global_rect())])
-	print("  [EQUIP_SLOT_PT ③④] 验过的单位类型: %s ; 不合格 %d 条" % [str(kinds_seen), bad.size()])
+			var got := 0
+			for ci in range(want):
+				sc.set("_dl_sel", {})
+				sc.set("_sel_worn", {})
+				sc.call("_rebuild")
+				for _i in range(6):
+					await get_tree().process_frame
+				var box: Control = sc.find_child("UnitCard_%s_%d" % [lane, i], true, false) as Control
+				if box == null:
+					bad.append("%s#%d: 卡不在场" % [lane, i])
+					break
+				var cells: Array = []
+				for c in box.get_children():
+					if c is Panel and absf((c as Control).size.x - (c as Control).size.y) < 0.5 \
+						and (c as Control).size.x >= 40.0 and (c as Control).size.x <= 60.0 and (c as Control).get_child_count() > 0:
+						cells.append(c)
+				cells.sort_custom(func(a, b): return (a as Control).position.x < (b as Control).position.x)
+				if ci >= cells.size():
+					bad.append("%s/%s#%d: 卡上只有 %d 个有装备的格子, 在身 %d 件" % [lane, kind, i, cells.size(), want])
+					break
+				var cell: Control = cells[ci]
+				for down in [true, false]:
+					var ev := InputEventMouseButton.new()
+					ev.button_index = MOUSE_BUTTON_LEFT
+					ev.pressed = down
+					ev.position = cell.position + cell.size * 0.5
+					box.gui_input.emit(ev)
+				for _i in range(6):
+					await get_tree().process_frame
+				cells_tapped += 1
+				var card: Control = sc.find_child("ItemInspectCard", true, false) as Control
+				var un: Control = sc.find_child("UnequipBtn", true, false) as Control
+				if card == null or un == null:
+					bad.append("%s/%s#%d 第 %d 件: 点了没出带「卸下」的小卡" % [lane, kind, i, ci])
+					continue
+				var ur: Rect2 = un.get_global_rect()
+				var cr: Rect2 = card.get_global_rect()
+				if ur.size.y < TOUCH_MIN_PX:
+					bad.append("%s/%s#%d: 卸下键高 %.0f(%.1fpt)" % [lane, kind, i, ur.size.y, ur.size.y / PX_PER_PT])
+				elif not cr.grow(1.0).encloses(ur):
+					bad.append("%s/%s#%d: 卸下键 %s 伸出小卡 %s" % [lane, kind, i, str(ur), str(cr)])
+				elif cr.end.y > 720.5 or cr.position.y < -0.5:
+					bad.append("%s/%s#%d: 小卡 %s 出了 720 设计框" % [lane, kind, i, str(cr)])
+				else:
+					got += 1
+			if got != want:
+				bad.append("%s/%s#%d(%s): 在身 %d 件, 有卸下路径的 %d 件" % [lane, kind, i, str(unit.get("id", "")), want, got])
+	print("  [EQUIP_SLOT_PT ③④] 验过的单位类型: %s ; 逐件点了 %d 下 ; 不合格 %d 条" % [str(kinds_seen), cells_tapped, bad.size()])
 	_ok("EQUIP_SLOT_PT ③ ★分母: 统领与小将【两类】都验到了(%s) —— 原 bug 只坏统领那一半, 少验一类就照样绿"
 		% str(kinds_seen),
 		int(kinds_seen.get("leader", 0)) >= 1 and int(kinds_seen.get("minion", 0)) >= 1)
-	_ok("EQUIP_SLOT_PT ④ 每只带装备的单位: 卸下键数 == 在身件数, 每颗短边 ≥ 81px(44pt), 且不伸出操作条",
-		bad.is_empty(), " / ".join(bad.slice(0, 4)))
+	_ok("EQUIP_SLOT_PT ④ 每一件在身装备: 点它弹的小卡里有「卸下」键, 高 ≥ 81px(44pt)、不伸出小卡、小卡不出屏",
+		bad.is_empty() and cells_tapped > 0, " / ".join(bad.slice(0, 4)))
+
+	# ── ⑤ 点龟卡 ⇒ 属性小卡: 六项都在, 装备加的那部分 == 身上装备的属性和 ──
+	## 用户 2026-10-22「点击龟得有龟的属性显示吧，基本的就好，生命值，攻击力，护甲魔抗，暴击和暴击伤害」「因为是被装备施加了属性的」
+	sc.set("_dl_sel", {})
+	sc.set("_sel_worn", {})
+	sc.call("_rebuild")
+	for _i in range(6):
+		await get_tree().process_frame
+	var lead_lane := ""
+	var lead_i := -1
+	for lane in ["top", "bottom"]:
+		var arr2: Array = dl.get(lane, [])
+		for i in range(arr2.size()):
+			if arr2[i] is Dictionary and str(arr2[i].get("id", "")) == "basic":
+				lead_lane = lane
+				lead_i = i
+	var ubox: Control = sc.find_child("UnitCard_%s_%d" % [lead_lane, lead_i], true, false) as Control
+	_ok("⑤ ★分母: 带 3 件装备的统领 basic 的卡在场", ubox != null)
+	if ubox != null:
+		_tap(ubox)
+		for _i in range(6):
+			await get_tree().process_frame
+		var ucard: Control = sc.find_child("UnitInspectCard", true, false) as Control
+		_ok("⑤ 点龟卡 ⇒ 属性小卡弹出", ucard != null)
+		if ucard != null:
+			var want_eq := {"atk": 5 + 12 + 8, "crit": 10 + 15}   # 001 / 002 / 003 一星: 攻击 5+12+8, 暴击 10%+15%
+			var vals: Array = []
+			for k in ["hp", "atk", "def", "mr", "crit", "critDmg"]:
+				var vl: Label = ucard.find_child("Val_" + k, true, false) as Label
+				if vl != null and vl.text.strip_edges() != "" and vl.text != "0" and vl.text != "0%":
+					vals.append(k)
+			_ok("⑤ 六项(最大生命值 / 攻击力 / 护甲 / 魔抗 / 暴击率 / 暴击伤害)都有数", vals.size() == 6, str(vals))
+			var ea: Label = ucard.find_child("Eq_atk", true, false) as Label
+			var ec: Label = ucard.find_child("Eq_crit", true, false) as Label
+			var eh: Label = ucard.find_child("Eq_hp", true, false) as Label
+			_ok("⑤ ★装备加的那部分单独标出: 攻击 +%d、暴击 +%d%%, 没加的不标" % [want_eq["atk"], want_eq["crit"]],
+				ea != null and ea.text == "+%d" % want_eq["atk"] and ec != null and ec.text == "+%d%%" % want_eq["crit"]
+				and eh != null and eh.text == "",
+				"攻击「%s」暴击「%s」生命「%s」" % [ea.text if ea else "-", ec.text if ec else "-", eh.text if eh else "-"])
+			var ur2: Rect2 = ucard.get_global_rect()
+			var covered: Array = []
+			for c in _all(sc):
+				if c is Control and str((c as Node).name).begins_with("UnitCard_") and c != ubox \
+					and (c as Control).get_global_rect().intersects(ur2):
+					covered.append(str((c as Node).name))
+			_ok("⑤ 属性小卡不盖住别的龟卡(选中之后下一步常是点另一只交换)", covered.is_empty(), str(covered))
+			_ok("⑤ 属性小卡在 720 设计框内", ur2.position.y >= -0.5 and ur2.end.y <= 720.5, str(ur2))
 	sc.queue_free()
 	await get_tree().process_frame
