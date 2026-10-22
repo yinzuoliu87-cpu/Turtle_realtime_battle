@@ -8,57 +8,33 @@ var battle
 func _init(b) -> void:
 	battle = b
 
-# 宝箱·藏宝图(封板L590-594·完整15件专属池): 造成伤害积累财宝值(=dmg_dealt), 过阈值开专属战利品(分档池·不重复)+回血, 一场最多5件
+# 宝箱·藏宝图(封板L590-594·完整15件专属池): 造成伤害积累财宝值, 过阈值开专属战利品(分档池·不重复)+回血, 一大轮最多5件
 func _chest_treasure_tick(u: Dictionary) -> void:
-	# 大轮制(用户2026-07-16): 我方真实对局=财宝值跨场累积(GameState)·阈值3000/6000/10000/18000/30000(用户2026-08-14上调)·开出=一大轮常驻; demo/敌侧=单场旧制
+	# 大轮制(用户2026-07-16): 财宝值跨场累积·阈值3000/6000/10000/18000/30000(用户2026-08-14上调)·开出=一大轮常驻
 	## ★2026-08-15 起【敌我同一套阈值】(用户拍板 A)。
 	##   原来敌侧走的是"单场旧制": 一套比我方低 12~50 倍的阈值,
 	##   于是对面那只宝箱龟在一场里就能开满 5 件传说, 而我方要跨大轮攒 30000。
 	##   根因查清楚了: 敌方 = 真人玩家的 ghost 快照, 带了龟/装备/等级, **唯独宝箱进度一件不带**,
 	##   代码就用这套低阈值去"补偿"——等于凭空编一个假对手。
 	##   现在快照带上真实进度(backend.SCHEMA_VER = 2), 敌方按对手【真的攒到哪】走同一套阈值。
-	var is_real: bool = (not battle._review_demo()) and GameState != null and not u.get("is_summon", false)
-	var is_left: bool = str(u.get("side", "")) == "left"
-	var season_mode: bool = is_real and is_left
-	var opened: int
-	if season_mode:
-		var synced: float = float(u.get("_ttl_synced", 0.0))
-		var cur: float = float(u.get("dmg_dealt", 0.0))
-		if cur > synced:
-			GameState.chest_treasure_value += cur - synced
-			u["_ttl_synced"] = cur
-		opened = (GameState.chest_treasures_won as Array).size()
-		if opened >= CHEST_MAX_OPEN:
-			return
-		if float(GameState.chest_treasure_value) < float(battle._CHEST_THRESH[opened]):
-			return
-	elif is_real and not is_left:
-		## 敌方: 起点 = 快照里对手的累积财宝值, 再加上本场打出的伤害。
-		## 已开出的那几件在登场时就装上了(battle_spawn), 这里只管【还能不能再开】。
-		opened = int(u.get("chest_opened", 0))
-		if opened >= CHEST_MAX_OPEN:
-			return
-		var base: float = float(u.get("_chest_ghost_value", 0.0))
-		if base + float(u.get("dmg_dealt", 0.0)) < float(battle._CHEST_THRESH[opened]):
-			return
-	else:
-		## 评审台 / demo / 召唤物: 没有大轮进度可言, 用本场伤害走同一套阈值。
-		## ★不再有第二套低阈值 —— 一套数就是一套数。
-		opened = int(u.get("chest_opened", 0))
-		if opened >= CHEST_MAX_OPEN:
-			return
-		if float(u.get("dmg_dealt", 0.0)) < float(battle._CHEST_THRESH[opened]):
-			return
-	u["chest_opened"] = opened + 1
+	## ★2026-10-22 起财宝值 / 已开数只从 `treasure_progress` 取(本场宝箱账, 见下方那一节):
+	##   原来这里分三支各算各的 —— 我方读存档并在这里补记、敌方读单位字典上的快照基数 + 本路 dmg_dealt,
+	##   于是敌方换路就丢进度(B)、持续伤害不计(F)、阵亡后的几跳漏记(G)。
+	var tp: Dictionary = treasure_progress(u)
+	var opened: int = int(tp["opened"])
+	if opened >= CHEST_MAX_OPEN:
+		return
+	if float(tp["value"]) < float(battle._CHEST_THRESH[opened]):
+		return
+	if _per_unit(u):
+		u["chest_opened"] = opened + 1
 	var group: String = ["basic", "basic", "adv", "adv", "legend"][opened]   # 第1-2箱基础/3-4进阶/5传说
 	var heal_pct: float = CHEST_HEAL_PCT[opened]
 	var tid: String = _chest_pick_treasure(u, group)
 	if tid != "":
 		_chest_apply_treasure(u, tid)
 		if u.get("chest_greed", false): _chest_greed_apply(u, 1)   # 贪婪: 新开1件→+4%攻+7%最大生命
-		if (not battle._review_demo()) and str(u.get("side", "")) == "left" and GameState != null and not u.get("is_summon", false):
-			GameState.chest_treasures_won.append(tid)              # 大轮常驻装备(用户2026-07-16)+当场落盘防丢
-			GameState.save()
+		_ledger_note_open(u, tid)                                  # 记进本场宝箱账(计分对局的我方同时写存档并当场落盘)
 		battle._vfx._float_text(u["pos"] + Vector2(0, -72), "开箱 " + str(battle._CHEST_TREASURE_NAME.get(tid, tid)), Color("#ffd93d"))
 		var ipath: String = "res://assets/sprites/equip/chest-t-%s.png" % tid   # 头顶弹出战利品图标(用户2026-07-15: 看清开了什么)
 		if ResourceLoader.exists(ipath):
@@ -79,6 +55,122 @@ func _chest_treasure_tick(u: Dictionary) -> void:
 			it.tween_callback(ic.queue_free)
 	battle._damage._heal(u, u["maxHp"] * heal_pct)
 	battle._skill_ring(u["pos"], Color(1.0, 0.85, 0.2, 0.5), 52.0)
+
+
+## ══════════════════════════════════════════════════════════════════════
+##  本场宝箱账(2026-10-22 · 修 B/C/D/E/F/G)
+## ══════════════════════════════════════════════════════════════════════
+## 按【左右两侧】各记一本, 挂在本系统(= 这一场战斗)上, 不挂单位字典 ⇒ 换路重建单位字典也不丢。
+##   base_value / base_won : 起点。左方 = 存档(GameState), 右方 = 对手快照(dual_ghost);
+##                           开发工具场(调试场 / 特效台 / 地图编辑器)= 0 / 空 —— 沙盒, 不读也不写真存档(E)。
+##   gain / won            : 这一场累计的财宝增量 / 这一场开出的战利品(按开出顺序)。
+##   write                 : 这一本要不要同步写存档 —— 只有【计分对局的左方】(`_is_scored_match`, E)。
+## 进账发生在【伤害落地那一刻】(battle_damage 两条伤害路各一处, CLAUDE.md §3.3):
+##   持续伤害也算(F, 用户 2026-10-22「算」); 宝箱龟阵亡后风暴余下几跳照样进账(G, 原来靠存活时的逐帧同步, 死了就漏)。
+##   ★口径与原来的 dmg_dealt 相同(减伤后、护盾前的那个数), 只是多了持续伤害这条路; dmg_dealt 本身不动。
+## 评审台 / 召唤物不进这本账(`_per_unit`): 没有大轮进度可言, 走单位自己身上的 `_chest_gain` / `chest_opened`。
+var _ledger: Dictionary = {}
+
+
+## 评审台的假人 / 召唤物: 各算各的单场进度(单位字典上), 不碰两侧的账。
+func _per_unit(u: Dictionary) -> bool:
+	return battle._review_demo() or bool(u.get("is_summon", false))
+
+
+func _ledger_of(side: String) -> Dictionary:
+	if not _ledger.has(side):
+		_ledger[side] = _ledger_start(side)
+	return _ledger[side]
+
+
+## 一本账的起点。★只读不写 —— `ledger_final` 在这一侧没开过账时也拿它当答案。
+func _ledger_start(side: String) -> Dictionary:
+	var bv := 0.0
+	var bw: Array = []
+	var carries: bool = GameState != null and not battle._world_builder._is_dev_tool_battle()
+	if carries and side == "left":
+		bv = _num(GameState.chest_treasure_value)
+		bw = _str_list(GameState.chest_treasures_won)
+	elif carries and side == "right":
+		var gh = GameState.dual_ghost
+		if gh is Dictionary:
+			bv = _num((gh as Dictionary).get("chest_treasure_value", 0.0))
+			bw = _str_list((gh as Dictionary).get("chest_treasures_won", []))
+	var write: bool = carries and side == "left" and battle._world_builder._is_scored_match()
+	return {"base_value": bv, "base_won": bw, "gain": 0.0, "won": [], "write": write}
+
+
+static func _num(v) -> float:
+	return float(v) if (v is int or v is float) else 0.0
+
+
+static func _str_list(v) -> Array:
+	var out: Array = []
+	if v is Array:
+		for t in v:
+			out.append(str(t))
+	return out
+
+
+## ★取数口(唯一): 这只宝箱龟【此刻】的财宝值与已开箱数 {"value": float, "opened": int}。
+##   开箱判据(`_chest_treasure_tick`)/ 清点财宝治疗加成(`_sk_chest_inventory`)/ 详情面板财宝条(info_panel)三处都读它,
+##   原来三处各取各的(敌方面板读本路 dmg_dealt、清点财宝敌方不读快照基数 —— C / D 就是这么来的)。
+func treasure_progress(u: Dictionary) -> Dictionary:
+	if _per_unit(u):
+		return {"value": _num(u.get("_chest_gain", 0.0)), "opened": int(u.get("chest_opened", 0))}
+	var lg: Dictionary = _ledger_of(str(u.get("side", "")))
+	return {"value": float(lg["base_value"]) + float(lg["gain"]),
+		"opened": (lg["base_won"] as Array).size() + (lg["won"] as Array).size()}
+
+
+## 伤害进账。调用方(battle_damage 两条伤害路)已判过: 来源是宝箱龟、打的不是自己。
+func note_damage(src: Dictionary, dmg: int) -> void:
+	if dmg <= 0:
+		return
+	if _per_unit(src):
+		src["_chest_gain"] = _num(src.get("_chest_gain", 0.0)) + float(dmg)
+		return
+	var lg: Dictionary = _ledger_of(str(src.get("side", "")))
+	lg["gain"] = float(lg["gain"]) + float(dmg)
+	if bool(lg["write"]):
+		GameState.chest_treasure_value = _num(GameState.chest_treasure_value) + float(dmg)
+
+
+## 开出一件: 记进账; 计分对局的左方同时写存档并当场落盘(大轮常驻装备, 用户 2026-07-16 · 防闪退丢件)。
+func _ledger_note_open(u: Dictionary, tid: String) -> void:
+	if _per_unit(u):
+		return
+	var lg: Dictionary = _ledger_of(str(u.get("side", "")))
+	(lg["won"] as Array).append(tid)
+	if bool(lg["write"]):
+		GameState.chest_treasures_won.append(tid)
+		GameState.save()
+
+
+## 登场时要回装的战利品 = 起点那几件 + 这一场前几路已开出的(B: 敌方原来换路就丢)。评审台 / 召唤物没有。
+func spawn_loot(u: Dictionary) -> Array:
+	if _per_unit(u):
+		return []
+	var lg: Dictionary = _ledger_of(str(u.get("side", "")))
+	var out: Array = (lg["base_won"] as Array).duplicate()
+	out.append_array(lg["won"])
+	return out
+
+
+## 调试场每次「▶开始」= 一场新的战斗: 账从头记(否则上一次试打开出的件会被装到下一次)。
+func reset_ledger() -> void:
+	_ledger.clear()
+
+
+## ★给裁判结果单 / 回写存档的取数口(纯读, 不改任何状态): 某一侧【这一局此刻】的累计财宝值 + 已开战利品。
+##   形状与存档 / 快照里那两个字段同名同型: {"chest_treasure_value": float, "chest_treasures_won": Array[String]}。
+##   这一侧这局一只宝箱龟都没出场 ⇒ 原样返回起点(左 = GameState 里的, 右 = 对手快照里的)。
+##   ⚠ 要在战斗场释放之前读; 裁判跑局(RefereeRunner.run)结束时会把 GameState 还原, 那之后起点就不是这一局的了。
+func ledger_final(side: String = "left") -> Dictionary:
+	var lg: Dictionary = _ledger[side] if _ledger.has(side) else _ledger_start(side)
+	var won: Array = (lg["base_won"] as Array).duplicate()
+	won.append_array(lg["won"])
+	return {"chest_treasure_value": float(lg["base_value"]) + float(lg["gain"]), "chest_treasures_won": won}
 
 func _chest_pick_treasure(u: Dictionary, group: String) -> String:   # 该档随机1件(不重复)·档抽光→退回全池任意未拥有
 	var owned: Dictionary = u.get("chest_treasures", {})
@@ -299,7 +391,8 @@ func _chest_loot_row(parent: VBoxContainer, tid: String) -> void:
 ## 文案取自各技能实现函数的头注释(那里就是权威描述), 数值口径见对应 _sk_* 实现。
 
 func _sk_chest_inventory(u: Dictionary) -> void:                 # 宝箱龟·清点财宝(用户2026-07-16改: 每1000财宝→治疗+10%·盾不吃加成; 财宝值=大轮累积)
-	var tv: float = float(GameState.chest_treasure_value) if ((not battle._review_demo()) and str(u.get("side", "")) == "left" and GameState != null) else float(u.get("dmg_dealt", 0.0))
+	## ★财宝值走同一个取数口(D, 2026-10-22): 原来敌方只看本路 dmg_dealt、不读快照基数 ⇒ 财宝值相同时敌方回得少。
+	var tv: float = float(treasure_progress(u)["value"])
 	var bonus: float = 1.0 + COUNT_HEAL_BONUS * floorf(tv / COUNT_PER_TREASURE)
 	battle._damage._heal(u, u["maxHp"] * COUNT_HEAL_PCT * bonus)
 	battle._damage._grant_shield(u, u["atk"] * COUNT_SHIELD_COEF)

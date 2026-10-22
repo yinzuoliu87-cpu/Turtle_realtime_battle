@@ -144,6 +144,7 @@ static func settle(gs, job_id: int, st: Dictionary) -> Dictionary:
 	if gs.is_eliminated():
 		reward = 0                        # 与 `_settle_season` 同一条: 出局那一局不发币(含战斗内铸币)
 	gs.meta_deepsea_coins += reward
+	apply_chest(gs, st.get("chest", {}))   # 服务器那一局里宝箱龟攒的财宝值 / 开出的战利品(2026-10-22b)
 	gs.battles_total += 1
 	if won:
 		gs.battles_won += 1
@@ -166,6 +167,26 @@ static func settle(gs, job_id: int, st: Dictionary) -> Dictionary:
 	BE.upload_gauntlet_ghost(int(gs.gauntlet_wins), int(gs.gauntlet_losses))
 	BE.report_finals_entry()
 	return {"won": won, "reward": reward, "coins": coins, "gw": int(gs.gauntlet_wins), "gl": int(gs.gauntlet_losses)}
+
+
+## 服务器那一局结束时我方宝箱龟的进度 → 存档(2026-10-22b · 方案书 20261022-宝箱龟整条链路修复 A)。
+##   用户「宝箱整个是不是有bug啊」: 原来服务器局里攒的财宝值 / 开出的箱子一概不进存档, 下一场又从旧值起算。
+##   `chest` = RefereeNet.parse_chest 的结果({} = 服务器没给 ⇒ 不动)。裁判机是从我交上去的进度起算的,
+##   所以它那份正常就是「本地 + 这一局」; 仍取 max / 较长那份, 防迟到的回包把本地已经更新的进度倒退回去。
+##   调用方负责「不是这一周的结果不记」(settle / on_finals_coins 都先查周)。返回存档有没有变。
+static func apply_chest(gs, chest: Dictionary) -> bool:
+	if gs == null or chest.is_empty():
+		return false
+	var changed := false
+	var v: float = float(chest.get("value", 0.0))
+	if v > float(gs.chest_treasure_value):
+		gs.chest_treasure_value = v
+		changed = true
+	var won: Array = chest.get("won", [])
+	if won.size() > (gs.chest_treasures_won as Array).size():
+		gs.chest_treasures_won = won.duplicate()
+		changed = true
+	return changed
 
 
 ## 开战时服务端说「第几场」对不上(stale): 以账本为准。上一场的账还挂着 ⇒ 先补记那一场(它带着服务器的战绩与铸币);
@@ -413,6 +434,10 @@ static func on_finals_coins(t: Dictionary, res: Dictionary, done: Callable = Cal
 		n = finals_coins_settle(GameState, t, 0)   # 服务端说这一场与我无关: 销单(一枚不发)
 	elif err == "" and str(res.get("status", "")) == "done":
 		n = finals_coins_settle(GameState, t, int(res.get("coins", 0)))
+		## 宝箱进度跟着这张单子一起记(只记一次: 单子已发过 ⇒ n = -1; 不是这一周的单子不记)
+		if n >= 0 and int(t.get("week", 0)) == P2C.week_anchor_utc(int(P2C.now_utc())) \
+				and apply_chest(GameState, res.get("chest", {})):
+			GameState.save()
 	else:
 		return -1                             # 问不到 / 还没翻面: 留着下次
 	if n > 0 and done.is_valid():

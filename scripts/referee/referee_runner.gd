@@ -80,6 +80,12 @@ static func run(host: Node, job: Dictionary, on_battle: Callable = Callable(), s
 		## 右方(B)那一侧(2026-10-20 · 周日决赛两边都是真人, 各按自己那一侧发): 同一个出口、同一刻读。
 		##   服务端 `referee_complete` 记进 `ledger.coins_b`, B 的客户端经 `referee_finals_coins` 取。
 		res["coins_b"] = EquipTickSystem.match_minted(battle, "right")
+		## 宝箱龟进度(2026-10-22 · 方案书 20261022-宝箱龟整条链路修复 A): 这一局结束时两侧的累计财宝值 + 已开战利品。
+		##   原来结果单不带 ⇒ 服务器局里攒的财宝值 / 开出的箱子一概进不了存档(用户「宝箱整个是不是有bug啊」)。
+		##   服务端存整份结果单, `referee_job_status`(A)/ `referee_finals_coins`(A 取 chest、B 取 chest_b)回给客户端,
+		##   客户端 `RefereeWatch.apply_chest` 写进存档。★必须在下面还原 GameState 之前读: 左方起点就是这一局的存档。
+		res["chest"] = _chest_of(battle, "left")
+		res["chest_b"] = _chest_of(battle, "right")
 	if rr != null and rr.stream != null:
 		res["stream"] = rr.stream.finish({"match_id": str(job.get("match_id", "")), "ok": why == "",
 			"digest": str(res.get("digest", "")), "client_version": ReplayRecorder.client_version()})
@@ -95,3 +101,9 @@ static func run(host: Node, job: Dictionary, on_battle: Callable = Callable(), s
 	if au != null and au.get("mute_sfx") != null:
 		au.mute_sfx = muted0
 	return res
+
+## 一侧的宝箱进度 → 结果单里的形状 {"value": 财宝值, "won": [战利品 id]}(客户端 RefereeNet.parse_chest 认这个形状)。
+##   取数走 ChestSystem.ledger_final(这一局本场宝箱账的终值; 这一侧没有宝箱龟 ⇒ 原样是起点)。
+static func _chest_of(battle, side: String) -> Dictionary:
+	var f: Dictionary = battle._chest_sys.ledger_final(side)
+	return {"value": float(f.get("chest_treasure_value", 0.0)), "won": (f.get("chest_treasures_won", []) as Array).duplicate()}

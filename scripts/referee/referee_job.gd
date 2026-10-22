@@ -221,6 +221,8 @@ static func _state_from_snapshot(a: Dictionary, normalize: Callable) -> Dictiona
 ## ★`coins`(左方 A 的战斗内铸币)由 `RefereeRunner` 在这之后补上(它要读战斗场里的系统对象, 这里是纯函数);
 ##   服务端 `referee_complete` 记进账本 `ledger.coins`, 客户端 `RefereeWatch.settle` 按它发币(客户端不自报)。
 ##   `coins_b`(右方 B 的, 2026-10-20d)同理: 周日记进 `ledger.coins_b`, B 的客户端经 `referee_finals_coins` 取。
+##   `chest` / `chest_b`(2026-10-22b, 同样由 `RefereeRunner` 补): 两侧宝箱龟这一局结束时的进度 {value, won};
+##   服务端存在结果单顶层, `referee_job_status` / `referee_finals_coins` 回给客户端, `RefereeWatch.apply_chest` 写存档。
 static func ok_result(j: Dictionary, rec: Dictionary, lane_results: Dictionary, egg_hp: Dictionary,
 		elapsed_ms: int, frames: int) -> Dictionary:
 	var end: Dictionary = rec.get("end", {})

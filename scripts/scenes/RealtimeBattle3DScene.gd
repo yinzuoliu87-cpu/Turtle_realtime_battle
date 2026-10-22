@@ -8478,9 +8478,8 @@ func _status_signature(u: Dictionary) -> String:
 func _is_chest_turtle(u: Dictionary) -> bool:
 	return str(u.get("id", "")) == "chest"
 
-## 宝箱龟信息区: 财宝值 + 到下一个宝箱的进度 + 已开出的 N 件战利品(图标/名/描述).
-## 财宝值取法必须和 _chest_sys._chest_treasure_tick 一致 —— 我方真实对局走 GameState(跨战场大轮累积),
-## demo/敌侧走本单位 dmg_dealt(单场旧制); 两边取错会显示成完全不同的数。
+## 宝箱龟信息区: 已开出的 N 件战利品(图标/名/描述)。财宝值与下一箱进度在资源条那一行(info_panel `_resource_bars` ⑦),
+## 取数走 `_chest_sys.treasure_progress` —— 与开箱判据同一个口, 敌我同一个口(2026-10-22 起)。
 func _fill_chest_section(sec: VBoxContainer, u: Dictionary) -> void:
 	for c in sec.get_children():
 		if c is Timer:
@@ -8488,15 +8487,12 @@ func _fill_chest_section(sec: VBoxContainer, u: Dictionary) -> void:
 		sec.remove_child(c)
 		c.queue_free()
 	var vb := sec
-	var season_mode: bool = (not _review_demo()) and str(u.get("side", "")) == "left" and GameState != null and not u.get("is_summon", false)
-	var tv: float = float(GameState.chest_treasure_value) if season_mode else float(u.get("dmg_dealt", 0.0))
-	var opened: int = (GameState.chest_treasures_won as Array).size() if season_mode else int(u.get("chest_opened", 0))
 	## ★★这里【不再画财宝条】(2026-08-16)。第二行的资源条里已经有一条「财宝 x / y」,
 	##   分母走的是同一张 _CHEST_THRESH ⇒ 原来同一个数字在同一屏上出现两次,
 	##   还各带一句结论("下一个宝箱 3/5" vs "攒满开箱")。实测这一段白吃 61px,
 	##   而宝箱龟正是唯一撑破面板高度的龟(736px 塞 610px 的视口)。
 	##   删掉重复的那条之后, 这一段只剩【别处没有的信息】: 已经开出了什么。
-	##   (tv/opened 仍要算 —— 战利品行要用, 且 season_mode 决定读存档还是读本场。)
+	##   (原来这里还算了一份 tv/opened 却没人用, 而且算法与开箱判据不同 —— 2026-10-22 删掉。)
 	## ★★战利品做成【一个可点入口】, 不再把 0~5 行清单铺在面板里(2026-08-16)。
 	##   由来: 这是面板里唯一【高度无界】的一段 —— 每开一件就长约 46px,
 	##   开满 5 件相当于凭空多出 230px, 而"不许上下滑动"是硬要求。

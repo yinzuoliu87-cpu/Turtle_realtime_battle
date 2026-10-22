@@ -257,6 +257,9 @@ func _apply_damage(u: Dictionary, dmg: int, _col: Color, src = null, bucket: Str
 	_record_buckets(src, u, dmg, bucket, false)
 	_record_extra_true(src, u, int(round(_cor_true_dot)))   # 腐蚀转的真伤也进账(D3)
 	battle._equip_sys.tally.dot_mode = false
+	## 宝箱龟财宝值: 持续伤害也算(用户 2026-10-22「算」)。另一半在 _apply_damage_from 的 dmg_dealt 那一行旁边(§3.3)。
+	if src is Dictionary and str((src as Dictionary).get("id", "")) == "chest" and not is_self and not is_same(src, u):
+		battle._chest_sys.note_damage(src, dmg)
 	# ★DOT 累积模式(点1): 不跳小飘字, 累加进头顶【按伤害类型桶】的常驻数字(灼烧+中毒同 mag 桶)。
 	if dot_accum:
 		_dot_accumulate(u, bucket, dmg)
@@ -547,6 +550,8 @@ func _apply_damage_from(src: Dictionary, u: Dictionary, dmg: int, _col: Color, e
 	battle._vfx._impact(u, dmg, "auto")
 	# 来源累积 ----
 	src["dmg_dealt"] = float(src.get("dmg_dealt", 0.0)) + float(dmg)   # ★.get 不是 +=: 合成来源(触手ghost等)没这个键, += 缺键=运行时错误⇒本函数当场中止(后面吸血/统计/死亡全不跑)而测试照样 ALL PASS
+	## 宝箱龟财宝值在伤害落地这一刻进账(本场宝箱账, 阵亡后风暴余下几跳照记 —— G)。另一半在 _apply_damage(§3.3)。
+	if str(src.get("id", "")) == "chest" and not is_same(src, u): battle._chest_sys.note_damage(src, dmg)
 	# 吸血 (lifesteal 基础 + buff + 技能 extra) — silent: 高频回血不刷治疗音
 	var ls: float = src.get("lifesteal", 0.0) + src.get("ls_bonus", 0.0) + extra_ls
 	if ls > 0.0 and src["alive"]:

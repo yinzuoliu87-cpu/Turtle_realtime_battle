@@ -739,13 +739,20 @@ func _resource_bars(u: Dictionary) -> Array:
 		})
 
 	# ⑦ 财宝(宝箱) —— 阈值型。分母 = 下一箱阈值; 开满 5 件就没有下一箱了
-	if str(u.get("id", "")) == "chest" and float(u.get("dmg_dealt", 0.0)) > 0.0:
-		var opened: int = int(u.get("chest_opened", 0))
+	#   ★当前值 = 累计财宝值(我方 = 存档那本 + 本场, 敌方 = 对手快照 + 本场), 与开箱判据同一个取数口(C, 2026-10-22)。
+	#     原来读的是本路 dmg_dealt / u.chest_opened(我方从来不设) ⇒ 我方已开过箱时分母永远是第 1 箱,
+	#     而且本路还没出手(0 伤害)就整条不显示 —— 累计值从开局就在, 应当一直看得见。
+	#   ⚠ 逐帧直播的播放端(ReplayRecorder.mode == "stream")一步 sim 都不跑, 这本账是空的、流里也不带财宝值
+	#     ⇒ 那里不画这条(与改之前一样: 原来读的 dmg_dealt 也不在流里), 免得把开局起点当成实时数。
+	var _streaming: bool = battle._replay != null and str(battle._replay.mode) == "stream"
+	if str(u.get("id", "")) == "chest" and not _streaming:
+		var tp: Dictionary = battle._chest_sys.treasure_progress(u)
+		var opened: int = int(tp["opened"])
 		var th: Array = battle._CHEST_THRESH
 		if opened < th.size():
 			out.append({
-				"name": "财宝", "cur": float(u.get("dmg_dealt", 0.0)), "cap": float(th[opened]),
-				"hint": "距第 %d 箱" % (opened + 1), "color": Color("#ffcf6b"),
+				"name": "财宝", "cur": float(tp["value"]), "cap": float(th[opened]),
+				"hint": "已开 %d/%d · 距第 %d 箱" % [opened, th.size(), opened + 1], "color": Color("#ffcf6b"),
 			})
 	return out
 
@@ -1158,7 +1165,7 @@ func _status_sig_own(u: Dictionary) -> String:
 		str(u.get("two_form", "")),
 		1 if bool(u.get("shell_stealth", false)) else 0,
 		int(float(u.get("gold", 0.0))),
-		int(float(u.get("dmg_dealt", 0.0))) if str(u.get("id", "")) == "chest" else 0,
+		int(float(battle._chest_sys.treasure_progress(u)["value"])) if str(u.get("id", "")) == "chest" else 0,   # 财宝条印的那个数(累计财宝值)
 	]
 
 

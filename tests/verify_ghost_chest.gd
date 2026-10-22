@@ -95,19 +95,23 @@ func _ready() -> void:
 	var src := FileAccess.get_file_as_string("res://scripts/systems/skills/chest_system.gd")
 	_ok("★★★④ `[80,130,240,360,590]` 这套低阈值已从代码里删净",
 		src.find("80.0, 130.0, 240.0, 360.0, 590.0") < 0 and src.find("80,130,240,360,590") < 0)
-	_ok("★★④ 敌方走的是与我方【同一张】阈值表 battle._CHEST_THRESH",
-		src.count("battle._CHEST_THRESH[opened]") >= 3,
-		"引用 %d 处(我方/敌方/评审台)" % src.count("battle._CHEST_THRESH[opened]"))
-	## ★关键: 敌方分支必须【读快照的累积值】, 不是只看本场伤害。
+	## ★★改账(2026-10-22 · 本场宝箱账): 原来敌我分三支各算各的(敌方读单位字典上的 `_chest_ghost_value` + 本路 dmg_dealt),
+	##   敌方换路就丢进度。现在敌我同一本账、同一个取数口 `treasure_progress`; 下面四条仍钉同样四件事,
+	##   只是把要找的串换成现状。**行为**(快照基数真的进了判据 / 登场真的装上 / 已开数真的从快照件数起算)
+	##   由 `verify_chest_ledger` ②⑥ 用真战斗场实测, 这里只防有人把那条路整个拆掉。
+	_ok("★★④ 敌我只有【一处】拿阈值表 battle._CHEST_THRESH 比, 且比的是同一个取数口",
+		src.count("battle._CHEST_THRESH[opened]") == 1 and src.find("var tp: Dictionary = treasure_progress(u)") >= 0,
+		"引用 %d 处" % src.count("battle._CHEST_THRESH[opened]"))
+	## ★关键: 敌方起点必须【读快照的累积值】, 不是只看本场伤害。
 	_ok("★★★④ 敌方起点 = 快照累积值 + 本场伤害",
-		src.find('var base: float = float(u.get("_chest_ghost_value", 0.0))') >= 0
-		and src.find('base + float(u.get("dmg_dealt", 0.0))') >= 0)
+		src.find('bv = _num((gh as Dictionary).get("chest_treasure_value", 0.0))') >= 0
+		and src.find('"value": float(lg["base_value"]) + float(lg["gain"])') >= 0)
 	var src_sp := FileAccess.get_file_as_string("res://scripts/scenes/battle/battle_spawn.gd")
 	_ok("★★★④ 敌方登场时把对手【已开出的那几件】装上",
-		src_sp.find('_gh.get("chest_treasures_won", [])') >= 0
-		and src_sp.find('battle._chest_sys._chest_apply_treasure(u, str(_tw1))') >= 0)
-	_ok("★★④ 敌方 chest_opened 从快照件数起算(不是从 0 重开)",
-		src_sp.find('u["chest_opened"] = _gw.size()') >= 0)
+		src.find('bw = _str_list((gh as Dictionary).get("chest_treasures_won", []))') >= 0
+		and src_sp.find("for _tw in battle._chest_sys.spawn_loot(u):") >= 0)
+	_ok("★★④ 敌方已开数从快照件数起算(不是从 0 重开)",
+		src.find('"opened": (lg["base_won"] as Array).size() + (lg["won"] as Array).size()') >= 0)
 
 	# ── ⑥ 玩家手打录入多套阵容: id 要按【阵容】区分, 不是按赛季 ──────────────
 	##   用户 2026-08-15「我手打」。原来 `g_<赛季>` 一个大轮只有一个 id, 而 pool_add 按 id 去重

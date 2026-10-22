@@ -198,6 +198,7 @@ static func start_gauntlet_async(week: int, snapshot: Dictionary, match_no: int,
 
 ## 纯函数: `referee_job_status` 回包 → {"err": "", "status", "match_id", "won"(-1 不知道 / 0 / 1), "gw", "gl", "coins", "error"}。
 ##   `coins` = 服务器算的这一局里我方(左)的战斗内铸币(奇械 / 齿轮); 缺 / 不是非负整数(服务端还没上 20261020c)⇒ 0。
+##   `chest` = 这一局结束时我方宝箱龟的进度(20261022b; 见 parse_chest), 没有 ⇒ {}。
 ##   原因码同上; 服务端 reason(no_job / not_signed_in)原样。
 static func parse_status(ok: bool, code: int, body: String) -> Dictionary:
 	if not ok:
@@ -219,7 +220,27 @@ static func parse_status(ok: bool, code: int, body: String) -> Dictionary:
 		"gw": int(d.get("gw", -1)) if d.get("gw", null) is float or d.get("gw", null) is int else -1,
 		"gl": int(d.get("gl", -1)) if d.get("gl", null) is float or d.get("gl", null) is int else -1,
 		"coins": maxi(0, int(d.get("coins", 0))) if d.get("coins", null) is float or d.get("coins", null) is int else 0,
+		"chest": parse_chest(d.get("chest", null)),
 		"error": str(d.get("error", "")) if d.get("error", null) is String else ""}
+
+
+## 纯函数: 回包里的 `chest`(20261022b 起: 这一局结束时我方宝箱龟的进度)→ {"value": 财宝值, "won": [战利品 id]};
+##   缺 / 形状不对(不是对象 · value 不是非负数 · won 不是字符串列表 · 超过 CHEST_MAX_OPEN 件)⇒ {}(当没有, 不动存档)。
+static func parse_chest(v) -> Dictionary:
+	if not (v is Dictionary):
+		return {}
+	var val = (v as Dictionary).get("value", null)
+	var won = (v as Dictionary).get("won", null)
+	if not (val is float or val is int) or float(val) < 0.0 or not (won is Array):
+		return {}
+	if (won as Array).size() > ChestSystem.CHEST_MAX_OPEN:
+		return {}
+	var ids: Array = []
+	for w in (won as Array):
+		if not (w is String) or str(w) == "":
+			return {}
+		ids.append(str(w))
+	return {"value": float(val), "won": ids}
 
 
 static func job_status_async(job_id: int, done: Callable) -> bool:
@@ -340,7 +361,8 @@ static func parse_finals_coins(ok: bool, code: int, body: String) -> Dictionary:
 	if st != "pending" and st != "done":
 		return {"err": "server", "code": code}
 	var c = d.get("coins", null)
-	return {"err": "", "status": st, "coins": maxi(0, int(c)) if (c is float or c is int) else 0}
+	return {"err": "", "status": st, "coins": maxi(0, int(c)) if (c is float or c is int) else 0,
+		"chest": parse_chest(d.get("chest", null))}
 
 
 static func finals_coins_async(week: int, bucket: int, r: int, m: int, done: Callable) -> bool:

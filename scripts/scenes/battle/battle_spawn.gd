@@ -681,19 +681,12 @@ func _apply_spawn_passive_one(u: Dictionary) -> void:
 					"death_aoe": battle._candy_sys.BOMB_DEATH_AOE,
 				})
 		"chest":
-			if (not battle._review_demo()) and str(u.get("side", "")) == "left" and GameState != null:
-				for _tw0 in GameState.chest_treasures_won:     # 大轮已开战利品→开局回装(常驻整轮·用户2026-07-16)
-					battle._chest_sys._chest_apply_treasure(u, str(_tw0))
-			elif (not battle._review_demo()) and str(u.get("side", "")) == "right" and GameState != null:
-				## ★敌方的宝箱进度从【对手的 ghost 快照】读(用户 2026-08-14 拍板 A)。
-				##   在这之前快照里根本没有这两个字段, 敌方走的是一套低 12~50 倍的"单场旧制"阈值,
-				##   一场就能开满 5 件传说 —— 那是凭空编的对手, 不是真人打出来的进度。
-				var _gh: Dictionary = GameState.dual_ghost if GameState.dual_ghost is Dictionary else {}
-				var _gw: Array = _gh.get("chest_treasures_won", []) if _gh.has("chest_treasures_won") else []
-				for _tw1 in _gw:
-					battle._chest_sys._chest_apply_treasure(u, str(_tw1))
-				u["chest_opened"] = _gw.size()
-				u["_chest_ghost_value"] = float(_gh.get("chest_treasure_value", 0.0))
+			## 大轮已开战利品→开局回装(常驻整轮·用户2026-07-16)。敌我同一个来源: 本场宝箱账(ChestSystem 头注)。
+			##   左方起点 = 存档, 右方起点 = 对手的 ghost 快照(用户 2026-08-14 拍板 A: 不再给敌方编一套低阈值),
+			##   再加上【这一场前几路已开出的】—— 原来敌方每路从快照重来, 第一路开出的那件到下一路就没了(B, 2026-10-22)。
+			##   开发工具场起点为空: 调试场不再把真存档里的战利品装上(E)。
+			for _tw in battle._chest_sys.spawn_loot(u):
+				battle._chest_sys._chest_apply_treasure(u, str(_tw))
 			if "chestCannon" in battle._chosen_skill_types(u["id"], u["side"] == "left"):   # 贪婪(技三打包被动)选中才有
 				u["chest_greed"] = true
 				u["chest_greed_atk_unit"] = u["base_atk"] * ChestSystem.GREED_ATK_PER_EQ

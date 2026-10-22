@@ -1417,6 +1417,7 @@ scripts/scenes/battle/info_panel.gd|lit|增伤
 scripts/scenes/battle/info_panel.gd|lit|射程
 scripts/scenes/battle/info_panel.gd|lit|射程 %d
 scripts/scenes/battle/info_panel.gd|lit|层数 %d
+scripts/scenes/battle/info_panel.gd|lit|已开 %d/%d · 距第 %d 箱
 scripts/scenes/battle/info_panel.gd|lit|怒气
 scripts/scenes/battle/info_panel.gd|lit|恐惧
 scripts/scenes/battle/info_panel.gd|lit|技能
@@ -1479,7 +1480,6 @@ scripts/scenes/battle/info_panel.gd|lit|被动
 scripts/scenes/battle/info_panel.gd|lit|被动 · 
 scripts/scenes/battle/info_panel.gd|lit|被动 · 窃取护盾
 scripts/scenes/battle/info_panel.gd|lit|财宝
-scripts/scenes/battle/info_panel.gd|lit|距第 %d 箱
 scripts/scenes/battle/info_panel.gd|lit|近战形态 · 锤击
 scripts/scenes/battle/info_panel.gd|lit|远程形态 · 灵能弹
 scripts/scenes/battle/info_panel.gd|lit|造成伤害 %d

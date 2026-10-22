@@ -139,6 +139,7 @@ func _edit_start_battle() -> void:
 	# 快照当前摆位 (⏸编辑 用它重新生成一份干净的)
 	_edit_snapshot_setup()
 	_edit_save_setup()   # 存盘: 重开调试场自动恢复上次摆位
+	battle._chest_sys.reset_ledger()   # 宝箱账从头记: 每次「▶开始」是一场新的试打(调试场的账起点恒为空, 不读不写真存档)
 	battle._inject_equipment()
 	battle._spawn._apply_spawn_passives()
 	battle._equip_sys._stats._eq_apply_all_stats()
