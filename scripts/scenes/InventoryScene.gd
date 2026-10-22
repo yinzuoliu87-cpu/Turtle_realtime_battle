@@ -5,6 +5,7 @@ const TutorialGuide = preload("res://scripts/scenes/TutorialGuide.gd")   # 教�
 var _top_bar = null
 
 const RichTooltip = preload("res://scripts/scenes/rich_tooltip.gd")
+const AxeEvoShow = preload("res://scripts/scenes/shop/axe_evo_show.gd")   # 096 进化演出(进背包补放)
 ## 深海币图标 —— 与商店同一张(ShopScene.COIN_TEX)。同一种货币在两屏必须长得一样,
 ## 拿 `◆`/`💠` 之类的字符凑就等于让玩家自己去猜"这两个数是不是同一种钱"。
 const COIN_TEX = preload("res://assets/sprites/menu/ic-deepsea.png")
@@ -154,6 +155,7 @@ var _inv_ops := InvOps.new(self)   # 背包·装备/卸下/卖出 业务逻辑(2
 var _inv_jar := InvCandyJar.new(self)   # 背包·糖果罐(打碎领奖)(2026-07-25 抽出)
 var _formation := InvFormation.new(self)   # 背包·站位编辑(2026-10-19)
 var _drag := InvDrag.new(self)   # 背包·卡片式拖动(2026-10-22 用户「最好要支持卡片式拖动的」)
+var _axe_evo = AxeEvoShow.new(self)   # 小木斧进化演出(结算 / 战斗里攒出来的进化, 进背包补放)
 ## 本次重建出来的单位卡 [{box, lane, idx, unit}] —— 拖动时逐张判能不能接(抬亮 / 压暗), 门禁也读它
 var _unit_boxes: Array = []
 ## 背包滚动区: 已装的装备拖回这里 = 卸下
@@ -192,6 +194,10 @@ func _ready() -> void:
 	#   ★必须放在 _ready 最后 —— UIFrame 收编的是【已经建出来的】子节点。
 	#   (异步晚建的节点由 UIFrame._process 的孤儿收编兜住。)
 	UIFrame.attach(self)
+	## 结算 / 战斗里攒出来的小木斧进化, 进背包补放(用户 2026-10-22「补到进背包时吧」)。取走即清空, 再进不重播。
+	var _evo_steps: Array = GameState.axe_evo_take()
+	if not _evo_steps.is_empty():
+		_axe_evo.play(_evo_steps)
 
 func _inject_demo_inventory() -> void:   # 仅 INV_DEMO 环境: 填装备看满仓布局(不调 save)
 	## ★★演示环境【强制 test_mode】—— 2026-08-12 血泪: 我开着 INV_DEMO 的窗口给用户看,
@@ -279,7 +285,7 @@ func _rebuild() -> void:
 	#   现在统一走 UIFrame 设计框(内容锁 1280×720 居中·背景铺满整窗), 全屏一个口径。
 	_vw = W
 	for c in get_children():
-		if c.is_in_group("tut_overlay") or c.is_in_group(TOAST_GROUP):
+		if c.is_in_group("tut_overlay") or c.is_in_group(TOAST_GROUP) or c.is_in_group(AxeEvoShow.GROUP):
 			## ★教学浮层(引导/下一站按钮)不随重建销毁 —— 装/卸装备会触发 _rebuild。
 			## ★★提示层(toast)同理, 而且它是本函数亲手杀掉过的: 见 `_toast()` 头注。
 			continue

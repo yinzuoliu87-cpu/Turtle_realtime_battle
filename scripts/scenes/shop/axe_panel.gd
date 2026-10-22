@@ -185,3 +185,5 @@ func _pick(key: String) -> void:
 		return
 	if gs.axe_pick_final(key) and host.has_method("_rebuild"):
 		host._rebuild()
+		if host.has_method("play_axe_evo"):
+			host.play_axe_evo([{"final": key}])   # 点下就播最终造物那一段(加长版)

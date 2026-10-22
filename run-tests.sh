@@ -66,6 +66,7 @@ frames_for () {
     verify_ios_ui) echo 4000 ;;
     verify_shop_inv_phone) echo 3000 ;;   # 2026-10-21 商店 / 背包手机版式: 3 种比例 × 7 个状态各建一次场景, 实测见方案书
     verify_shop_interactions) echo 4000 ;;   # 2026-10-22 商店交互漏洞: 真点击走 96 件说明卡 + 三比例 × 10 格 + 斧头三比例, 每一步等排版帧; 实测 2575 帧(防连点那 0.4 秒用 OS.delay_msec, 不吃帧)
+    verify_axe_evo_show) echo 1200 ;;   # 2026-10-22 小木斧进化演出: 商店 ×4 / 背包 ×2 各建一次场景 + 真点击, 实测 400 帧内跑完, 给足余量
     verify_report_block) echo 1500 ;;   # 2026-10-20 举报 / 拉黑: 排行榜 / 赛况板 / 对阵图 / 双路对局各建一次(对局等 40 帧), 实测 <500 帧, 给足 CI
     verify_topbar_states) echo 3000 ;;   # 五次重建场之间各等 0.4 秒真实时间(开打前介绍幕按真实时间淡出) —— 快机器上这段帧数不定, 给足
     verify_debug_equip_pick) echo 1200 ;;   # 鼠标一遍 + 触屏两种比例各一遍(2026-10-05), 实测 ~350 帧

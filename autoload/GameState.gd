@@ -1087,6 +1087,10 @@ var axe_exp_bar: int = 0
 var axe_exp_total: int = 0
 var axe_stage: int = 0                                # 档位下标(0=木斧, 见 AxeEvolution.STAGES)
 var axe_final: String = ""                            # 最终造物 key(空=还没选; 选完本大轮锁定)
+## 进化演出的待播队列(方案书 20261022-小木斧进化演出 · 用户 10-22「补到进背包时吧」)。
+##   结算(+15)/ 战斗击杀(+5)造成的进化当场没法演(战斗里斧头属性登场时已算定、不变身) ⇒ 记在这里, 下次进背包补放。
+##   元素 {"from": 档位下标, "to": 档位下标}。商店里买造成的进化当场播, 不进队列(`axe_add_exp(n, false)`)。
+var axe_evo_pending: Array = []
 ## 本大轮内【斧头羁绊处于激活状态】时打完的局数 → 出货概率的「局数×0.1%」那一项。
 ## ★不是 season_total_battles: 那是本赛季**所有**场次, 而需求说的是"激活羁绊【后】"的局数
 ##   (2026-08-31 用户原话「玩家激活斧头羁绊时在这大轮游戏的局数」)。拿总场次当它 = 白送概率。
@@ -1814,6 +1818,7 @@ func _save_dict() -> Dictionary:
 		"axe_exp_bar": axe_exp_bar, "axe_exp_total": axe_exp_total,
 		"axe_stage": axe_stage, "axe_final": axe_final,
 		"axe_syn_matches": axe_syn_matches,
+		"axe_evo_pending": axe_evo_pending,
 		"persistent_bench": persistent_bench,
 		"persistent_equipped": persistent_equipped,
 		"candy_jar_count": candy_jar_count,
@@ -2001,6 +2006,8 @@ func _apply_save_dict(data: Dictionary) -> void:
 	axe_stage = int(data.get("axe_stage", 0))
 	axe_final = str(data.get("axe_final", ""))
 	axe_syn_matches = int(data.get("axe_syn_matches", 0))
+	var _aep = data.get("axe_evo_pending", [])
+	axe_evo_pending = (_aep as Array).duplicate() if _aep is Array else []
 	season_xp = int(data.get("season_xp", 0))
 	chest_treasure_value = float(data.get("chest_treasure_value", 0.0))
 	chest_treasures_won = data.get("chest_treasures_won", [])
@@ -2046,7 +2053,8 @@ func _apply_save_dict(data: Dictionary) -> void:
 # ════════════════════════════════════════════════════════════════════════
 
 ## 攒 n 点砍伐经验。返回**本次是否发生了进化**(调用方要放演出就看这个返回值)。
-func axe_add_exp(n: int) -> bool:
+## `queue` = 进化了就记进 `axe_evo_pending` 等进背包补放; 当场就能播的调用方(商店里买)传 false。
+func axe_add_exp(n: int, queue: bool = true) -> bool:
 	if n <= 0:
 		return false
 	## ★需求原文:「在到达钻石斧后玩家攒满了400经验值后选择最终造物后**经验值封顶**」。
@@ -2055,11 +2063,24 @@ func axe_add_exp(n: int) -> bool:
 	##   顺着查才发现**封顶压根没实现**(选完还在涨), 是需求缺口不是判据问题。
 	if axe_final != "":
 		return false
+	var from_stage: int = axe_stage
 	var r: Dictionary = _AxeEvo.advance(axe_exp_bar, axe_exp_total, axe_stage, n)
 	axe_exp_bar = int(r["bar"])
 	axe_exp_total = int(r["total"])
 	axe_stage = int(r["stage"])
+	if bool(r["evolved"]) and queue:
+		axe_evo_pending.append({"from": from_stage, "to": axe_stage})
 	return bool(r["evolved"])
+
+
+## 取走待播的进化(进背包时调): 返回队列副本并清空。调用方负责播; 清空后存一次盘, 重开不重播。
+func axe_evo_take() -> Array:
+	if axe_evo_pending.is_empty():
+		return []
+	var out: Array = axe_evo_pending.duplicate(true)
+	axe_evo_pending = []
+	save()
+	return out
 
 
 ## 打完一整场对局的记账(未决点 ②: 不论有没有走到决胜)。**战斗侧只调这一个函数** ——
@@ -2192,6 +2213,7 @@ func reset_save() -> void:
 	axe_stage = 0
 	axe_final = ""
 	axe_syn_matches = 0
+	axe_evo_pending = []
 	candy_jar_count = 0
 	candy_jar_broken = false
 	candy_temp_levels = {}
@@ -2803,6 +2825,7 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	axe_stage = 0
 	axe_final = ""
 	axe_syn_matches = 0
+	axe_evo_pending = []
 	candy_jar_count = 0
 	candy_jar_broken = false
 	candy_temp_levels = {}

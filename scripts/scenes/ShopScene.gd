@@ -15,6 +15,7 @@ const EquipStats = preload("res://scripts/gamedata/equip_stats.gd")
 const Phase2Types = preload("res://scripts/gamedata/phase2_types.gd")
 const AxeEvo = preload("res://scripts/gamedata/axe_evolution.gd")   # 096 小木斧: 形态/售价/出货概率
 const AxePanel = preload("res://scripts/scenes/shop/axe_panel.gd")   # 096: 砍伐进度条 + 最终造物四选一
+const AxeEvoShow = preload("res://scripts/scenes/shop/axe_evo_show.gd")   # 096: 进化演出
 ## 深海币图标 —— 复用主菜单那张(MainMenuScene:564 `mic + "ic-deepsea.png"`)。
 ## ★用户 2026-07-28「深海币可以复用吧」: 商店原先 6 处全在打 emoji 💠(方片), 而主菜单/局内
 ##   是这枚螺旋贝币 —— 同一种货币两套视觉。emoji 还随系统字体变, 换机器就换样。
@@ -366,6 +367,7 @@ func _deco(edef) -> Dictionary:
 
 
 var _axe_panel = AxePanel.new(self)   # 096 砍伐进度 + 四选一(照 dmg_stats_panel 的拆分模板)
+var _axe_evo = AxeEvoShow.new(self)
 
 
 func _price(edef: Dictionary) -> int:
@@ -476,8 +478,8 @@ func _toast(msg: String) -> void:
 
 func _rebuild() -> void:
 	for c in get_children():
-		if c.is_in_group("tut_overlay"):
-			continue   # ★教学浮层(引导/下一站按钮)不能随重建销毁 —— 买装备会触发 _rebuild
+		if c.is_in_group("tut_overlay") or c.is_in_group(AxeEvoShow.GROUP):
+			continue   # ★教学浮层(引导/下一站按钮)与小木斧进化演出不能随重建销毁 —— 买装备会触发 _rebuild
 		## ★`visible = false` 是为了**立刻**从屏上消失(`queue_free` 要等到帧末)。
 		##   ⚠ 必须先问是不是 `CanvasItem`: 非 CanvasItem(Timer/AudioStreamPlayer…)
 		##     没有 `visible`, 直接赋值会 `SCRIPT ERROR`(2026-09-30 被 toast 的计时器踩出来)。
@@ -1166,10 +1168,12 @@ func _on_buy(idx: int) -> void:
 	##   `auto_merge_all()` 跑完之后 ★1 已经被吃掉, 再问"这一买合到几星"永远是 0。
 	var _will_star: int = _purchase_merge_star(_eid)
 	var _axe_dup := false
+	var _axe_from: int = int(GameState.axe_stage)
+	var _axe_evolved := false
 	if _eid == "p2eq_096":
 		var _dup: bool = GameState.axe_owned()
 		_axe_dup = _dup
-		GameState.axe_add_exp(AxeEvo.EXP_ON_BUY)
+		_axe_evolved = GameState.axe_add_exp(AxeEvo.EXP_ON_BUY, false)   # 进化了就在下面当场播, 不进待播队列
 		if not _dup:
 			GameState.persistent_bench.append({"id": _eid, "star": 1})
 	else:
@@ -1200,6 +1204,13 @@ func _on_buy(idx: int) -> void:
 	else:
 		_toast("购买成功 · 「%s」已放入背包" % _nm)
 	_tut_notify("item_bought")   # 教程「购买 1 件装备」: 成交才前进(方案书 B2)
+	if _axe_evolved:
+		## ★还没补放的(结算 / 战斗里攒出来的)排在前面一起播 —— 否则先在这里看到 2→3, 进背包才补 1→2, 顺序反了。
+		play_axe_evo(GameState.axe_evo_take() + [{"from": _axe_from, "to": int(GameState.axe_stage)}])
+
+## 小木斧进化演出(买到当场进化 / 四选一点下)。宿主 _rebuild 不会清掉它(AxeEvoShow.GROUP)。
+func play_axe_evo(steps: Array) -> void:
+	_axe_evo.play(steps)
 
 ## 合成升星那一件在左下宝箱里的格子(首次提示圈它; 门禁 verify_first_tips ⑦b 也读它)。没摆出来 ⇒ 顶栏「背包」。
 func merge_tip_target(eid: String, star: int) -> Control:

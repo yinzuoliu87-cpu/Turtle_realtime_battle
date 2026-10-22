@@ -1834,6 +1834,8 @@ scripts/scenes/settings/time_travel_panel.gd|lit|现在: 真实时间
 scripts/scenes/settings/time_travel_panel.gd|lit|穿越到这一刻
 scripts/scenes/settings/time_travel_panel.gd|text|周%s %02d:%02d UTC
 scripts/scenes/settings/time_travel_panel.gd|text|现在: 
+scripts/scenes/shop/axe_evo_show.gd|text|售价 %d 费
+scripts/scenes/shop/axe_evo_show.gd|text|最终造物
 scripts/scenes/shop/axe_panel.gd|lit|砍伐经验 %d/%d
 scripts/scenes/shop/axe_panel.gd|text|砍伐经验 %d/%d · 可最终进化
 scripts/scenes/shop/axe_panel.gd|text|累计 %d
