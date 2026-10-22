@@ -389,6 +389,7 @@ scripts/gamedata/phase2_config.gd|lit|周四
 scripts/gamedata/phase2_config.gd|lit|周日
 scripts/gamedata/phase2_config.gd|lit|四
 scripts/gamedata/phase2_config.gd|lit|四强
+scripts/gamedata/phase2_config.gd|lit|处理存档冲突 · 云端同步已暂停
 scripts/gamedata/phase2_config.gd|lit|小组赛
 scripts/gamedata/phase2_config.gd|lit|换一个
 scripts/gamedata/phase2_config.gd|lit|日

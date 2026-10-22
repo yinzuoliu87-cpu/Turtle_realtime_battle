@@ -285,6 +285,7 @@ func _ready() -> void:
 	##   放在 `_build_page_buttons` **之后**: 它不进 `page_box`(那一叠的子节点数是
 	##   `verify_mainmenu_layout` 的分母「左栏按钮栈 = 6 个」), 直接挂 `content_root`。
 	_bind_nudge()
+	_conflict_nudge_sync()
 	content_root.move_child(_week_pop, -1)   # 弹层盖在所有入口上面(点开时才看得见)
 	get_viewport().size_changed.connect(_on_menu_resize)
 	# (去掉全屏询问弹窗·用户2026-07-18「去掉这个全屏提示」; _maybe_ask_fullscreen 保留未调用, 需要可在设置里切全屏)
@@ -617,17 +618,23 @@ const NUDGE_FONT := 16
 func _bind_nudge() -> void:
 	if not _P2C.bind_needed(_SB.enabled(), str(GameState.account_email)):
 		return
-	## ★2026-10-06: 从主菜单正中的大木牌改成【设置齿轮正下方的小提示条】
-	##   (照使命召唤手游主大厅: 齿轮下面一个带尖角的黄框小条「LINK TO SOCIAL ACCOUNT」)。
-	##   原来压在擂台画面正中、比训龟大师还大(用户「改」, 60 人实操台账 M1)。
-	var txt := str(_P2C.bind_nudge_text())
+	var b := _nudge_strip(NUDGE_NAME, str(_P2C.bind_nudge_text()), _open_bind_screen)
+	content_root.add_child(b)
+	_slide_in(b, 3)
+
+
+## 齿轮正下方那一条带尖角的提示条。绑定提示与存档冲突提示共用这一份画法(各画一份必然漂)。
+## ★2026-10-06: 从主菜单正中的大木牌改成【设置齿轮正下方的小提示条】
+##   (照使命召唤手游主大厅: 齿轮下面一个带尖角的黄框小条「LINK TO SOCIAL ACCOUNT」)。
+##   原来压在擂台画面正中、比训龟大师还大(用户「改」, 60 人实操台账 M1)。
+func _nudge_strip(node_name: String, txt: String, cb: Callable) -> Control:
 	var tw_n: float = ceilf(_bold_font().get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, NUDGE_FONT).x)
 	var bw: float = tw_n + 28.0
 	var gear_cx: float = RIGHT_EDGE - ICON_TAP / 2.0
 	## 尖角顶 = 齿轮【点击区】底沿再往下 1px(不压 ?/⚙ 的 81px 触摸区; 看得见的空隙 ≈12px)。
 	var top: float = 30.0 + (85.0 - ICON_TAP) / 2.0 + ICON_TAP + 1.0 + 8.0
 	var b := Control.new()
-	b.name = NUDGE_NAME
+	b.name = node_name
 	b.size = Vector2(bw, maxf(NUDGE_H + 8.0, ICON_TAP))   # 整块 = 点击区(81 触摸线); 看得见的条在上面 38px
 	b.position = Vector2(minf(gear_cx - bw / 2.0, RIGHT_EDGE - bw), top - 8.0)
 	var arrow := Polygon2D.new()
@@ -659,10 +666,9 @@ func _bind_nudge() -> void:
 	## 点击区: 看得见的条只有 30 高, 点击区往下补到 81(触摸线), 不往上(上面是齿轮的点击区)。
 	btn.position = Vector2(0.0, 0.0)
 	btn.size = Vector2(bw, maxf(NUDGE_H + 8.0, ICON_TAP))
-	btn.pressed.connect(_open_bind_screen)
+	btn.pressed.connect(cb)
 	b.add_child(btn)
-	content_root.add_child(b)
-	_slide_in(b, 3)
+	return b
 
 
 ## 提示那一块的节点名 —— 门禁按它找得到这一块(不靠数字下标, 也不靠抄一份文案)。
@@ -676,6 +682,36 @@ const NUDGE_NAME := "BindNudge"
 ##   「返回键接的是具名方法」同一个理由)。
 func _open_bind_screen() -> void:
 	_SET.open_bind_on_entry = true
+	_go("Settings")
+
+
+## 【存档冲突】那一句 —— 与绑定提示同一个位置、同一种画法。两者不会同时出现:
+##   冲突只发生在绑了邮箱的号上, 而绑定提示只给没绑的号。
+## ★2026-10-23 加: 原来冲突只在设置页里多一颗「处理存档冲突」, 不进设置就看不到,
+##   而冲突 = 停推 ⇒ LouisT01 的云存档就这样一周没动、没人知道(根因见 `save_own_write.gd`)。
+## ★冲突是推送回包里才知道的(进主菜单之后才可能出现)⇒ 开屏对一次, 之后挂在每秒一次的 `_sb_poll` 上对账。
+const CONFLICT_NUDGE_NAME := "ConflictNudge"
+
+
+func _conflict_nudge_sync() -> void:
+	if content_root == null:
+		return
+	var want: bool = _SB.save_conflict() and content_root.get_node_or_null(NUDGE_NAME) == null
+	var have: Node = content_root.get_node_or_null(CONFLICT_NUDGE_NAME)
+	if want and have == null:
+		var b := _nudge_strip(CONFLICT_NUDGE_NAME, str(_P2C.save_conflict_nudge_text()), _open_conflict_screen)
+		content_root.add_child(b)
+		if _week_pop != null and is_instance_valid(_week_pop):
+			content_root.move_child(_week_pop, -1)   # 弹层仍然盖在所有入口上面
+		_slide_in(b, 3)
+	elif not want and have != null:
+		have.name = CONFLICT_NUDGE_NAME + "Gone"     # 同一帧里别再被当成「还在」
+		have.queue_free()
+
+
+## 点了「处理存档冲突」→ 去设置页, 进门就把二选一框打开(框的代码在 `SettingsScene` 那侧)。
+func _open_conflict_screen() -> void:
+	_SET.open_conflict_on_entry = true
 	_go("Settings")
 
 
@@ -1883,6 +1919,7 @@ var _sb_state_shown: String = ""
 ## D-1: 服务状态变了就重建赛程页(维护态要盖掉倒计时)。
 ## ★判据是**状态变了**而不是"每秒都重建" —— 后者会让主菜单每秒扔一堆节点。
 func _sb_poll() -> void:
+	_conflict_nudge_sync()
 	## (E15 那句「发现新版本」飘字 2026-10-19 撤掉: 低于最低版本现在由 GameState 下的整屏挡墙 VersionWall 接管。)
 	var s: String = _SB.service_state()
 	## ★★2026-10-03 周六实操 S16: 原来**只在服务状态变了才重画** ⇒ 倒计时停在打开主菜单那一刻

@@ -124,6 +124,7 @@ func _ready() -> void:
 	## ★★★ 2026-09-29 拆墙之后它**不再是开机就立**的: 只有玩家从主菜单那句
 	##   非阻塞提示点过来(`open_bind_on_entry`)才立 —— 见 `_maybe_bind_screen`。
 	_maybe_bind_screen()
+	_maybe_conflict_dialog()
 
 
 # ─── D-3 账号行 (2026-09-21) ───────────────────────────────────────
@@ -167,6 +168,8 @@ var acct_override: int = 0
 ## ★**读完就清**(一次性): 不清的话以后每次进设置页都会弹绑定屏 ——
 ##   那就是把刚拆的墙换个地方重建一遍。
 static var open_bind_on_entry: bool = false
+## 主菜单那句「处理存档冲突」点过来时立 —— 进门就把二选一框打开(读完就清, 一次性)。
+static var open_conflict_on_entry: bool = false
 
 
 ## 【账号行的节点名前缀】—— `verify_account` ⑤ 靠它量「这一行到底建没建出来」。
@@ -998,6 +1001,13 @@ func _on_back() -> void:
 ##     ③ `login_wall_on()` —— **恒假**。留着只为一件事: 翻回 `WALL_BLOCKS` 时
 ##        这一条把墙原封不动地恢复(包括不给「关闭」), 门禁那条反向验证才走得通。
 ## ★**关不关得掉**只看 ③: 真上墙时 `dismissible = false`, 其余情况都给「关闭」。
+func _maybe_conflict_dialog() -> void:
+	var asked: bool = open_conflict_on_entry
+	open_conflict_on_entry = false
+	if asked and _SB_ACC.save_conflict():
+		_open_conflict_dialog()
+
+
 func _maybe_bind_screen() -> void:
 	var blocking: bool = _P2C.login_wall_on(_acct_on(), _acct_mail())
 	var asked: bool = open_bind_on_entry or acct_override == 1
