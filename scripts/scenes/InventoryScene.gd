@@ -1196,6 +1196,7 @@ func _open_item_card() -> void:
 ## 龟卡属性小卡的六行: [键, 名字, 图标]。名字与装备属性行同一套叫法(EquipStats.lines_of)。
 const UNIT_STAT_ROWS := [["hp", "最大生命值", "hp"], ["atk", "攻击力", "atk"], ["def", "护甲", "def"],
 	["mr", "魔抗", "mr"], ["crit", "暴击率", "crit"], ["critDmg", "暴击伤害", "crit-dmg"]]
+const STAT_LOOT_COL := Color("#ffd93d")    # 战利品加的那部分(= 藏宝图里战利品名字的金色)
 const STAT_EQUIP_COL := Color("#7fe39a")   # 装备加的那部分(与「选了装备时可装」的绿描边同色)
 
 
@@ -1292,12 +1293,16 @@ func _open_unit_card() -> void:
 	host.add_child(grid)
 	var base: Dictionary = pv["base"]
 	var add: Dictionary = pv["equip"]
+	## 宝箱龟: 已开战利品也算进数值(用户 2026-10-22「要算」), 拆解里金字 = 战利品(与藏宝图里战利品名字同色)
+	var loot: Dictionary = UnitStatPreview.loot_sum(
+		GameState.chest_treasures_won if (is_chest and GameState.chest_treasures_won is Array) else [], base, add)
 	for row in UNIT_STAT_ROWS:
 		var k := str(row[0])
 		var pct: bool = k == "crit" or k == "critDmg"
 		var mul: float = 100.0 if pct else 1.0
-		var tot: int = roundi((float(base[k]) + float(add[k])) * mul)
+		var tot: int = roundi((float(base[k]) + float(add[k]) + float(loot[k])) * mul)
 		var plus: int = roundi(float(add[k]) * mul)
+		var lplus: int = roundi(float(loot[k]) * mul)
 		var nb := HBoxContainer.new()
 		nb.add_theme_constant_override("separation", 6)
 		nb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1319,7 +1324,7 @@ func _open_unit_card() -> void:
 		vl.name = "Val_" + k
 		vl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		grid.add_child(vl)
-		## 有装备加成 ⇒ 总值后面括号拆开「基础 + 装备」, 装备那一半绿字。
+		## 有装备 / 战利品加成 ⇒ 总值后面括号拆开「基础 + 装备 + 战利品」, 装备绿字、战利品金字, 没有的那项不写。
 		##   用户 2026-10-22 看「80 +30」问「这是什么意思攻击力是110？」—— 只写 +30 会被读成还要再加; 确认用「80（50 + 30）」。
 		##   ★一个 RichTextLabel 整行排: 拆成几个 Label 时各自垂直居中, 中文括号(中文字体)与数字(像素字体)基线错开(用户「歪的」)。
 		var u_s := "%" if pct else ""
@@ -1334,8 +1339,13 @@ func _open_unit_card() -> void:
 		br.add_theme_color_override("default_color", InspectCard.C_DIM)
 		br.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		br.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		if plus != 0:
-			br.text = "(%d%s [color=#%s]+ %d%s[/color])" % [tot - plus, u_s, STAT_EQUIP_COL.to_html(false), plus, u_s]
+		if plus != 0 or lplus != 0:
+			var parts := "%d%s" % [tot - plus - lplus, u_s]
+			if plus != 0:
+				parts += " [color=#%s]+ %d%s[/color]" % [STAT_EQUIP_COL.to_html(false), plus, u_s]
+			if lplus != 0:
+				parts += " [color=#%s]+ %d%s[/color]" % [STAT_LOOT_COL.to_html(false), lplus, u_s]
+			br.text = "(%s)" % parts
 		grid.add_child(br)
 	if side != null:
 		_treasure_map_section(side)

@@ -112,6 +112,18 @@ func _ready() -> void:
 			var d1 := _txt(rows[1].find_child("Desc", true, false))
 			_ok("② ★说明里的 {C:} 全展开, 数字对上代码常量(朗姆酒 %s%% / 短刃 %s%%)" % [str(ChestSystem.RUM_HEAL_PCT * 100.0), str(ChestSystem.DAGGER_ATK * 100.0)],
 				not d0.contains("{") and not d1.contains("{") and d0.contains("0.5%") and d1.contains("25%"), "%s | %s" % [d0, d1])
+		## ⑧ 战利品算进属性(用户「要算」): 攻击力 = 本体 + 装备 + 战利品, 战利品那段 = (本体 + 装备) × 短刃 25%
+		var va: Label = card.find_child("Val_atk", true, false) as Label
+		var ba: RichTextLabel = card.find_child("Br_atk", true, false) as RichTextLabel
+		var parts: PackedStringArray = (ba.get_parsed_text() if ba else "").replace("(", "").replace(")", "").split("+")
+		var nums: Array = []
+		for ps in parts:
+			nums.append(int(ps.strip_edges()))
+		_ok("⑧ ★攻击力拆成三段(本体 + 装备 + 战利品)且加起来 = 总值", va != null and nums.size() == 3
+			and int(nums[0]) + int(nums[1]) + int(nums[2]) == int(va.text), "%s = %s" % [va.text if va else "-", str(nums)])
+		if nums.size() == 3:
+			_ok("⑧ ★战利品那段 = (本体 + 装备) × 短刃 %d%%" % roundi(ChestSystem.DAGGER_ATK * 100.0),
+				absi(int(nums[2]) - roundi((int(nums[0]) + int(nums[1])) * ChestSystem.DAGGER_ATK)) <= 1, str(nums))
 	await _close(r[0])
 
 	# ── ③④ 5 件最长组合 ──

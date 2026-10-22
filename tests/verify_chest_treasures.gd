@@ -12,6 +12,7 @@ extends Node
 
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
 const Chest := preload("res://scripts/systems/skills/chest_system.gd")
+const UnitStatPreviewT := preload("res://scripts/scenes/inventory/unit_stat_preview.gd")
 
 ## 池子里全部 15 件 —— 从产品常量取, 不手抄(手抄的副本必然落后)
 var _pool_all: Array = []
@@ -142,6 +143,37 @@ func _ready() -> void:
 	s._damage._apply_damage_from(ut, ef, 100, Color.RED)                      # 普攻/技能
 	_ok("★★普攻/技能命中【会叠】雷刃层", int(battle_stacks(s, ef)) > st0,
 		"层数 %d → %d" % [st0, int(battle_stacks(s, ef))])
+
+	# ── ⑧ 背包属性小卡算的战利品加成 == 战斗里真加上去的(2026-10-22 用户「要算」)────────
+	##   小卡用 UnitStatPreview.loot_sum 按常量算, 战斗走 _chest_apply_treasure + _recalc_stats ——
+	##   两边是两份写法, 这里拿真单位逐件(外加全叠一起)对账, 哪边改了另一边没跟就红。
+	var combos: Array = []
+	for t in _pool_all:
+		combos.append([t])
+	combos.append(["dagger", "long_sword", "crown", "wood_shield", "gem_armor", "blood_dice"])   # 百分比叠加的那几件一起
+	var drift: Array = []
+	var n_moved := 0
+	for combo in combos:
+		var uu: Dictionary = s._spawn._make_unit("chest", "left", c + Vector2(260, 0))
+		s._recalc_stats(uu)
+		var b0 := {"hp": float(uu["maxHp"]), "atk": float(uu["atk"]), "def": float(uu["def"]), "mr": float(uu["mr"]),
+			"crit": float(uu["crit"]), "critDmg": float(uu["crit_dmg"])}
+		for t in combo:
+			cs._chest_apply_treasure(uu, str(t))
+		var real := {"hp": float(uu["maxHp"]), "atk": float(uu["atk"]), "def": float(uu["def"]), "mr": float(uu["mr"]),
+			"crit": float(uu["crit"]), "critDmg": float(uu["crit_dmg"])}
+		var zero := {}
+		for k in b0:
+			zero[k] = 0.0
+		var pv: Dictionary = UnitStatPreviewT.loot_sum(combo, b0, zero)
+		for k in b0:
+			var dr: float = float(real[k]) - float(b0[k])
+			if absf(dr) > 1e-6:
+				n_moved += 1
+			if absf(dr - float(pv[k])) > 1e-6:
+				drift.append("%s.%s 战斗 +%.4f / 小卡 +%.4f" % [str(combo), k, dr, float(pv[k])])
+	_ok("⑧ ★分母: %d 组里属性真的动了 %d 项(≥ 12, 否则比的是两个 0)" % [combos.size(), n_moved], n_moved >= 12, str(n_moved))
+	_ok("⑧ ★★背包属性小卡的战利品加成 == 战斗里真加上去的(逐件 + 全叠)", drift.is_empty(), str(drift))
 
 	s._units.clear()
 	s.set_process(false)

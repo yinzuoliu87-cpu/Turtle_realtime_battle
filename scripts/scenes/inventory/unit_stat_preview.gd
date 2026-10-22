@@ -7,6 +7,7 @@ extends RefCounted
 ##   统领 = pets 数据(缺省值照搬 battle_spawn._make_unit) × UnitScaling.level_multiplier(开战等级)
 ##   小将 = MinionCodex.base_stats(精英?, 前排?, 等级)  —— _make_unit 也读它
 ##   装备 = EquipStats.STATS 逐星属性, 在等级缩放之后平加 —— 同 equip_stats_apply.apply_stat_dict
+##   宝箱龟的战利品 = loot_sum(大轮常驻, 每局开场都在身上, 所以算进小卡)
 ## 不含: 羁绊、被动(如忍术的暴击)、开局触发的效果 —— 那些是战斗里的事。
 const EquipStats := preload("res://scripts/gamedata/equip_stats.gd")
 
@@ -33,6 +34,39 @@ static func minion(elite: bool, front: bool, level: int, equips: Array) -> Dicti
 		"crit": float(d["crit"]), "critDmg": BASE_CRIT_DMG,
 	}
 	return {"base": base, "equip": equip_sum(equips)}
+
+
+## 宝箱龟已开战利品对六项的加成(用户 2026-10-22 问「属性要不要算战利品」→「要算」)。
+##   战斗里在 `ChestSystem._chest_apply_treasure` 加: 攻击 / 护甲 / 魔抗是百分比 buff, 乘在「本体 + 装备」上
+##   (`_recalc_stats`: base_atk × (1 + 各百分比之和), 装备的平加属性已进 base_atk); 生命 / 暴击 / 暴击伤害直接加。
+##   这里用同一组常量算; 门禁 verify_inventory_treasure_map ⑧ 拿真单位走 _chest_apply_treasure 逐件对账。
+static func loot_sum(won: Array, base: Dictionary, equip: Dictionary) -> Dictionary:
+	var out := {}
+	for k in KEYS:
+		out[k] = 0.0
+	var pct := {"atk": 0.0, "def": 0.0, "mr": 0.0}
+	for t in won:
+		match str(t):
+			"dagger":
+				pct["atk"] += ChestSystem.DAGGER_ATK
+			"long_sword":
+				pct["atk"] += ChestSystem.SWORD_ATK
+			"wood_shield":
+				pct["def"] += ChestSystem.WOOD_RES
+				pct["mr"] += ChestSystem.WOOD_RES
+			"gem_armor":
+				pct["def"] += ChestSystem.GEM_RES
+				pct["mr"] += ChestSystem.GEM_RES
+				out["hp"] += ChestSystem.GEM_HP
+			"blood_dice":
+				out["crit"] += ChestSystem.DICE_CRIT
+			"crown":
+				pct["atk"] += ChestSystem.CROWN_ATK
+				out["crit"] += ChestSystem.CROWN_CRIT
+				out["critDmg"] += ChestSystem.CROWN_CRIT_DMG
+	for k in pct:
+		out[k] = (float(base[k]) + float(equip[k])) * float(pct[k])
+	return out
 
 
 ## 身上每件装备按星级把六项加起来(只认这六项; 穿透 / 生命偷取等不在这张小卡上)。
