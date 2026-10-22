@@ -68,36 +68,45 @@ const SLOT_PAD := 7.0
 ## ── 2026-10-22 背包重做(用户「把龟做成卡片」「最好要支持卡片式拖动的」· 方案书 20261022-背包重做.md) ──
 ##   6 张竖卡一排: 上路三张在左、下路三张在右, 各顶一块木牌标题; 右边羁绊列; 下半屏整片是背包。
 ##   原来两条上下叠放的横卡战场带(244×116)与常驻图例删掉 —— 卡上装备格被那个版式卡死在 40px。
+## ★2026-10-22 二改(用户「背包你左边应该只放6张卡，携带装备应该是贴在卡上吧」):
+##   左边 = 6 张卡两排(上路一排、下路一排), 装备三格贴在卡的下沿(不再另放托盘); 卡下面一条羁绊;
+##   右边整块 = 背包(7 列, 22 件一屏放得下)。
 const CARD_W := 150.0
-const CARD_H := 232.0
-const CARD_GAP := 10.0
-const LANE_SPLIT := 30.0       # 上路三张与下路三张之间的空档(中间一道竖分隔)
+const CARD_H := 190.0          # = 框图(原生 75×95 × 2), 装备贴在框的下沿
+const CARD_GAP := 12.0
 const CARDS_X := 28.0
-const CARDS_Y := 128.0         # 卡片顶; 上面那一行是两路的木牌标题
-const LANE_HDR_Y := 90.0
-## 卡 = 上面一张木框卡(立绘 + 名字) + 下面一块木托盘(三格装备)。框图原生 75×95、按 2 倍画 = 150×190(整数倍, 像素不变形)。
-const CARD_FRAME_H := 190.0
+const LANE_HDR_Y := 86.0       # 上路木牌; 下路木牌 = 它 + ROW_PITCH
+const ROW_PITCH := 236.0       # 一排 = 木牌 32 + 4 + 卡 190 + 10
+const CARDS_Y := LANE_HDR_Y + 36.0
 const CARD_BORDER := 38.0      # 框到内窗的距离(原生 7 饰件余量 + 12 木边 = 19, × 2)
-const PORTRAIT_H := 76.0       # 内窗里立绘那一截(内窗 76×116: 上 76 立绘、下 30 名字)
-## ★立绘比内窗大一圈、压出木框(卡牌游戏常见的「破框」画法): 内窗只有 76 宽, 关在里面比原来横卡的 102 还小。
+const PORTRAIT_H := 62.0       # 内窗里立绘那一截(内窗 76×116: 上立绘、中名字、下沿压着装备)
+## ★立绘比内窗大一圈、压出木框(卡牌游戏常见的「破框」画法): 内窗只有 76 宽, 关在里面太小。
 const PORTRAIT_POP := 14.0
-const SLOT_ROW_Y := 185.0      # 托盘上三格装备的 y(格 44)
-const TRAY_Y := 182.0          # 框图下沿实有像素到原生 90 行(× 2 = 180), 托盘贴着它
+const NAME_Y := 104.0          # 名字那一行(内窗中段)
+const EQ_CELL := 40.0          # 贴在卡上的装备格
+const EQ_GAP := 5.0
+const SLOT_ROW_Y := CARD_H - EQ_CELL - 6.0   # 144: 压在框的下沿上(像嵌在卡上的宝石)
 ## 旧名保留: 教程锚点 / 门禁按它们找「阵容区」
 const LANE_TOP := CARDS_Y
-const LANE_GAP := 0.0
-## 顶栏右侧「币 / 全队装备」这一组的左沿 —— 原来借 SYN_X; 羁绊列挪了, 这一组不动。
+const LANE_GAP := ROW_PITCH
+const LEFT_W := 3.0 * CARD_W + 2.0 * CARD_GAP   # 左边卡区宽 474
+## 顶栏右侧「币 / 全队装备」这一组的左沿(不跟羁绊列走)。
 const HDR_GROUP_X := 828.0
-const SYN_X := CARDS_X + 6.0 * CARD_W + 4.0 * CARD_GAP + LANE_SPLIT + 14.0
-const SYN_W := 1252.0 - SYN_X
+## 羁绊: 卡区下面一条, 一行横排(多了横着滑)
+const SYN_X := CARDS_X
+const SYN_W := LEFT_W
+const SYN_TOP := LANE_HDR_Y + 2.0 * ROW_PITCH + 2.0
+const SYN_BOTTOM := 712.0
+const SYN_HORIZONTAL := true
+const SYN_CHIP_W := 192.0      # 两块整的 + 第三块露一截(看得出还能往右滑)
 ## 顶栏「站位」签占的宽度 + 间距(右上「币 / 全队装备」这一组为它左移这么多)。
 const FORMATION_BTN_ROOM := 112.0
 ## 教程里右上「跳过教程」(132 宽)比它占的「?」(81 宽)多出的那截, 再加两格间距的余量。
 const TUT_SKIP_EXTRA := 80.0
-const SYN_TOP := LANE_HDR_Y
-const SYN_BOTTOM := CARDS_Y + CARD_H
-const BENCH_HDR_Y := CARDS_Y + CARD_H + 8.0
-const BENCH_TOP := BENCH_HDR_Y + 36.0
+## 背包: 右边整块
+const BENCH_X := CARDS_X + LEFT_W + 26.0     # 528
+const BENCH_HDR_Y := LANE_HDR_Y
+const BENCH_TOP := BENCH_HDR_Y + 34.0
 const BENCH_PITCH := 108.0     # 格子行距(96 格 + 12 间隙): 3 行 = 312 ≤ 316, 刚好铺进去
 const OP_BAR_H := 132.0        # 底部操作条(2026-10-21 手机版: 字 14/16/17 → 20, 键 38 → 81 高, 简述 3 行 ⇒ 80 → 132)
 ## ★2026-10-21 手机优先: 最小字号 20(iPhone 上约 11pt); 底边只用到「视口底 - 底部横条」(见 _bottom_limit)。
@@ -443,23 +452,16 @@ func _build_lineup(_leaders: Array) -> void:
 		var lead_n := 0
 		for u in arr:
 			if u is Dictionary and str(u.get("kind", "")) == "leader": lead_n += 1
-		var lx: float = CARDS_X + float(li) * (3.0 * CARD_W + 2.0 * CARD_GAP + LANE_SPLIT)
+		var ly: float = LANE_HDR_Y + float(li) * ROW_PITCH
 		var lsign := _lane_sign("上战场" if li == 0 else "下战场", Color("#ffd93d") if li == 0 else Color("#8fdcff"))
 		lsign.name = "LaneSign_" + lkey
-		lsign.position = Vector2(lx, LANE_HDR_Y); lsign.size = Vector2(3.0 * CARD_W + 2.0 * CARD_GAP, 34)
+		lsign.position = Vector2(CARDS_X, ly); lsign.size = Vector2(LEFT_W, 32)
 		add_child(lsign)
 		for i in range(arr.size()):
-			var _ub: Control = _dl_unit_box(lkey, i, arr[i], lead_n, Vector2(lx + float(i) * (CARD_W + CARD_GAP), CARDS_Y))
+			var _ub: Control = _dl_unit_box(lkey, i, arr[i], lead_n, Vector2(CARDS_X + float(i) * (CARD_W + CARD_GAP), ly + 36.0))
 			add_child(_ub)
 			if lkey == "top" and i == 0:
 				_tut_first_leader = _ub  # 教程手势指针「点击一只龟装上」指的就是它(上路第一只)
-	## 两路之间一道竖分隔(木条)
-	var div := ColorRect.new(); div.name = "LaneDivider"
-	div.color = Color("#5a3d22")
-	div.position = Vector2(CARDS_X + 3.0 * CARD_W + 2.0 * CARD_GAP + LANE_SPLIT * 0.5 - 2.0, LANE_HDR_Y + 6.0)
-	div.size = Vector2(4, CARDS_Y + CARD_H - LANE_HDR_Y - 12.0)
-	div.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(div)
 
 
 ## 一路的木牌标题(商店同一张木牌底)。
@@ -532,14 +534,6 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 	box.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	box.position = pos; box.size = Vector2(CARD_W, CARD_H)
 	box.add_child(_unit_card_frame(is_ph, is_elite, kind == "leader"))
-	var tray := NinePatchRect.new(); tray.name = "GearTray"
-	tray.texture = PLANK_TEX
-	tray.patch_margin_left = PLANK_MARGIN; tray.patch_margin_right = PLANK_MARGIN
-	tray.patch_margin_top = PLANK_MARGIN; tray.patch_margin_bottom = PLANK_MARGIN
-	tray.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	tray.position = Vector2(0, TRAY_Y); tray.size = Vector2(CARD_W, CARD_H - TRAY_Y)
-	tray.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_child(tray)
 	box.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST   # 像素框不插值
 	var is_reg_minion := kind == "minion" and not is_elite
 	var _worn: Array = []   # 卡上已装的装备格 [{rect, cell, it}] —— 按在它上面拖 = 拖这一件
@@ -574,7 +568,7 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 		nm.text = "精英小将" if is_elite else "小将"
 	nm.add_theme_font_size_override("font_size", MIN_FONT_PX); nm.add_theme_color_override("font_color", Color("#f4e8cf"))
 	nm.add_theme_color_override("font_outline_color", Color("#1a0e05")); nm.add_theme_constant_override("outline_size", 4)
-	nm.position = Vector2(14.0, CARD_BORDER + PORTRAIT_H + 6.0); nm.size = Vector2(CARD_W - 28.0, 30)
+	nm.position = Vector2(14.0, NAME_Y); nm.size = Vector2(CARD_W - 28.0, 30)
 	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	nm.clip_text = true
 	nm.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(nm)
@@ -584,7 +578,7 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 		hint.text = "空槽位"
 		hint.add_theme_font_size_override("font_size", MIN_FONT_PX)
 		hint.add_theme_color_override("font_color", Color("#9a8a70"))
-		hint.position = Vector2(4, SLOT_ROW_Y + 6); hint.size = Vector2(CARD_W - 8, 30)
+		hint.position = Vector2(4, NAME_Y + 2.0); hint.size = Vector2(CARD_W - 8, 30)
 		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		hint.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(hint)
 	else:
@@ -618,7 +612,7 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 			tgl.add_theme_stylebox_override("hover", tsb)
 			tgl.add_theme_stylebox_override("pressed", tsb)
 		tgl.add_theme_color_override("font_color", Color("#ffdba8") if front else Color("#b8e8ff"))
-		tgl.position = Vector2((CARD_W - 96.0) * 0.5, CARD_BORDER + PORTRAIT_H + 2.0); tgl.size = Vector2(96, 38)
+		tgl.position = Vector2((CARD_W - 96.0) * 0.5, NAME_Y - 4.0); tgl.size = Vector2(96, 36)
 		tgl.focus_mode = Control.FOCUS_NONE
 		tgl.pressed.connect(func(): _dl_toggle_role(lane, idx))
 		## 热区 = 立绘窗下半截(44pt 达标); 立绘本来就不是别的操作的靶子
@@ -654,7 +648,7 @@ func _unit_card_frame(is_ph: bool, is_elite: bool, is_leader: bool) -> Control:
 		fr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		fr.stretch_mode = TextureRect.STRETCH_SCALE
 		fr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		fr.size = Vector2(CARD_W, CARD_FRAME_H)
+		fr.size = Vector2(CARD_W, CARD_H)
 		fr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		if is_ph:
 			fr.modulate = Color(0.62, 0.66, 0.74)
@@ -667,7 +661,7 @@ func _unit_card_frame(is_ph: bool, is_elite: bool, is_leader: bool) -> Control:
 	sb.border_color = Color("#c79a3a") if is_elite else Color("#7a5530")
 	sb.set_border_width_all(int(CARD_BORDER / 2.0))
 	pnl.add_theme_stylebox_override("panel", sb)
-	pnl.size = Vector2(CARD_W, CARD_FRAME_H)
+	pnl.size = Vector2(CARD_W, CARD_H)
 	pnl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return pnl
 
@@ -705,9 +699,9 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, x_start:
 	##   ⚠ 不是改成 `MOUSE_FILTER_IGNORE` 透传给框 —— 框 body 的语义是
 	##     "已有选中时 = **互换分路**", 那样点第二只龟身上的装备会把两只龟换路(更坏)。
 	##     所以显式接一个"只选中、不换路"的处理。
-	## ★2026-10-22 竖卡版式: 卡宽 150 ⇒ 三格 44 + 两道 5 = 142 刚好装下(原横卡右列只有 128 ⇒ 40 封顶)。
-	var cw := 44.0
-	var gap := 5.0
+	## ★2026-10-22 竖卡版式: 三格贴在卡的下沿(EQ_CELL / EQ_GAP), 压在木框上像嵌进去的宝石。
+	var cw := EQ_CELL
+	var gap := EQ_GAP
 	var team_full: bool = not GameState.team_has_equip_room()   # 全队预算是否已用尽(空格样式据此区分)
 	## ★三格只放【占装备位】的件; 羁绊赠送件(圣光护盾)另挂徽章 —— 它不是装备位。
 	##   `i` 记录每格对应 eqs 里的真实下标: 卸下要按真实下标走, 不能按格号。
@@ -1034,7 +1028,7 @@ func _build_bench() -> void:
 	hdr.text = "装备背包"
 	hdr.add_theme_font_size_override("font_size", 22)
 	hdr.add_theme_color_override("font_color", Color("#9fb6c9"))
-	hdr.position = Vector2(40, BENCH_HDR_Y); hdr.size = Vector2(400, 30)
+	hdr.position = Vector2(BENCH_X, BENCH_HDR_Y); hdr.size = Vector2(300, 30)
 	add_child(hdr)
 	var swipe := Label.new()
 	## ★★2026-09-28。「看更多」是网页 Load more 的直译, 「上下滑动」是手势名 ——
@@ -1047,7 +1041,7 @@ func _build_bench() -> void:
 	swipe.name = "BenchMoreHint"
 	swipe.add_theme_font_size_override("font_size", MIN_FONT_PX)
 	swipe.add_theme_color_override("font_color", Color("#5f7285"))
-	swipe.position = Vector2(_vw - 260, BENCH_HDR_Y + 2); swipe.size = Vector2(220, 28)
+	swipe.position = Vector2(1252.0 - 220.0, BENCH_HDR_Y + 2); swipe.size = Vector2(220, 28)
 	swipe.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	add_child(swipe)
 	var bench: Array = GameState.persistent_bench if GameState.persistent_bench is Array else []
@@ -1061,10 +1055,10 @@ func _build_bench() -> void:
 	if GameState.has_candy_jar():
 		bench = ([{"kind": "candy_jar", "id": "candy_jar",
 			"count": int(GameState.candy_jar_count)}] as Array) + bench
-	var gx := 40.0
+	var gx := BENCH_X
 	var top := BENCH_TOP
 	var pitch := BENCH_PITCH
-	var scroll_w := _vw - 2.0 * gx
+	var scroll_w := 1252.0 - gx
 	## ★背包高度跟着底部操作条走(用户 2026-08-15「备战席挤在下面」):
 	##   没选中任何东西时**底下那 90px 是空的** —— 操作条只在选中后才画。
 	##   于是没选中 = 背包铺到 712(能看见 3 行), 选中 = 让位给操作条(2 行 + 第 3 行露头)。
@@ -1081,7 +1075,7 @@ func _build_bench() -> void:
 	var content := Control.new()
 	content.mouse_filter = Control.MOUSE_FILTER_PASS   # 触屏拖动透传→ScrollContainer 滚动
 	scroll.add_child(content)
-	var per_row := maxi(8, int(scroll_w / (SLOT + 8.0)))
+	var per_row := maxi(4, int((scroll_w + 6.0) / (SLOT + 6.0)))   # 格间至少 6: 右边整块 724 宽排 7 列
 	## ★格间距把剩余宽度【均分】而不是固定 8 —— 固定 8 时 11 列只排到 x=1176,
 	##   右边白留 64px 一条空列(实测), 看着像"最后一格坏了"。
 	var cpitch := (scroll_w - SLOT) / float(maxi(1, per_row - 1)) if per_row > 1 else SLOT
@@ -1758,9 +1752,9 @@ func _tutorial_anchor(anchor: String) -> Rect2:
 	var r := Rect2()
 	match anchor:
 		"lanes":     # 上/下战场两条带
-			r = Rect2(CARDS_X - 6.0, LANE_HDR_Y, 6.0 * CARD_W + 4.0 * CARD_GAP + LANE_SPLIT + 12.0, CARDS_Y + CARD_H - LANE_HDR_Y + 6.0)
+			r = Rect2(CARDS_X - 6.0, LANE_HDR_Y, LEFT_W + 12.0, 2.0 * ROW_PITCH)
 		"backpack":  # 装备背包区
-			r = Rect2(40.0, BENCH_HDR_Y, _vw - 80.0, _bench_bottom() - BENCH_HDR_Y)
+			r = Rect2(BENCH_X, BENCH_HDR_Y, 1252.0 - BENCH_X, _bench_bottom() - BENCH_HDR_Y)
 		"finish_button":
 			return TutorialGuide.vis_rect(_tut_finish_btn)
 		"first_item":

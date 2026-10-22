@@ -50,8 +50,10 @@ func _card(lane: String, i: int) -> Control:
 
 
 func _worn_center(card: Control, cell: int) -> Vector2:
-	var x0: float = sc.CARD_W / 2.0 - (3.0 * 44.0 + 2.0 * 5.0) / 2.0
-	return card.get_global_rect().position + Vector2(x0 + float(cell) * 49.0 + 22.0, sc.SLOT_ROW_Y + 22.0)
+	var cw: float = sc.EQ_CELL
+	var gp: float = sc.EQ_GAP
+	var x0: float = sc.CARD_W / 2.0 - (3.0 * cw + 2.0 * gp) / 2.0
+	return card.get_global_rect().position + Vector2(x0 + float(cell) * (cw + gp) + cw * 0.5, sc.SLOT_ROW_Y + cw * 0.5)
 
 
 func _unit(lane: String, i: int) -> Dictionary:

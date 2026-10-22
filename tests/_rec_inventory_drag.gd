@@ -38,7 +38,6 @@ func _drag(from: Vector2, to: Vector2, steps: int = 40) -> void:
 		mm.relative = (to - from) / float(steps)
 		mm.button_mask = MOUSE_BUTTON_MASK_LEFT
 		vp.push_input(mm, true)
-		Input.warp_mouse(p)
 		await get_tree().process_frame
 	await _wait(10)
 	var up := InputEventMouseButton.new()
@@ -69,12 +68,12 @@ func _ready() -> void:
 	await _drag(sc._tut_first_item.get_global_rect().get_center(), _card("top", 1).get_global_rect().get_center())
 	## ② 那一件拖回背包
 	var c1: Control = _card("top", 1)
-	var x0: float = sc.CARD_W / 2.0 - 71.0
-	await _drag(c1.get_global_rect().position + Vector2(x0 + 2.0 * 49.0 + 22.0, sc.SLOT_ROW_Y + 22.0), sc._bench_area.get_global_rect().get_center())
+	var x0: float = sc.CARD_W / 2.0 - (3.0 * sc.EQ_CELL + 2.0 * sc.EQ_GAP) / 2.0
+	await _drag(c1.get_global_rect().position + Vector2(x0 + 2.0 * (sc.EQ_CELL + sc.EQ_GAP) + sc.EQ_CELL * 0.5, sc.SLOT_ROW_Y + sc.EQ_CELL * 0.5), sc._bench_area.get_global_rect().get_center())
 	## ③ 上路第一张卡 ↔ 下路第一张卡
 	await _drag(_card("top", 0).get_global_rect().position + Vector2(sc.CARD_W / 2.0, 70.0), _card("bottom", 0).get_global_rect().get_center(), 50)
 	## ④ 上路第一张卡身上第一件 → 下路第二张(小将)
 	var c0: Control = _card("top", 0)
-	await _drag(c0.get_global_rect().position + Vector2(x0 + 22.0, sc.SLOT_ROW_Y + 22.0), _card("bottom", 1).get_global_rect().get_center())
+	await _drag(c0.get_global_rect().position + Vector2(x0 + sc.EQ_CELL * 0.5, sc.SLOT_ROW_Y + sc.EQ_CELL * 0.5), _card("bottom", 1).get_global_rect().get_center())
 	await _wait(30)
 	get_tree().quit()

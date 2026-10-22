@@ -192,16 +192,23 @@ func _build_synergy_panel(_leaders: Array) -> void:
 	##   ⇒ 档位色**同时上到框(底色+描边)和本体(图标+名字+件数)**上, 一眼分得出强弱。
 	## 列表放进滚动区: 10 个类型全有件数时一屏放不下(要 660px, 这一列只有约 230px)。
 	var list_h: float = host.SYN_BOTTOM - 8.0 - cy
+	## ★2026-10-22 背包二改: 宿主可要横排(羁绊放在卡区下面一条, 一行排开, 多了横着滑)。
+	var horiz: bool = host.SYN_HORIZONTAL
 	var scroll = ScrollContainer.new()
 	scroll.position = Vector2(x0, cy)
 	scroll.custom_minimum_size = Vector2(w, list_h); scroll.size = Vector2(w, list_h)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER if horiz else ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED if horiz else ScrollContainer.SCROLL_MODE_SHOW_NEVER
 	host.add_child(scroll)
 	var inner = Control.new()
 	inner.mouse_filter = Control.MOUSE_FILTER_PASS
-	inner.custom_minimum_size = Vector2(w - 4.0, float(keys.size()) * (SYN_ROW_H + 10.0))
+	if horiz:
+		w = float(host.SYN_CHIP_W) + 8.0      # 每块的宽(下面的字 / 箭头都按 w 排)
+		inner.custom_minimum_size = Vector2(float(keys.size()) * (w + 2.0), SYN_ROW_H)
+	else:
+		inner.custom_minimum_size = Vector2(w - 4.0, float(keys.size()) * (SYN_ROW_H + 10.0))
 	scroll.add_child(inner)
+	var xx := 0.0
 	var y := 0.0
 	for t in keys:
 		var typ := str(t)
@@ -234,7 +241,7 @@ func _build_synergy_panel(_leaders: Array) -> void:
 			(_cst as StyleBoxTexture).content_margin_bottom = 6
 		##   ⚠ 原来这里还有一行 `add_theme_stylebox_override("panel", csb)` —— 它在**后面**,
 		##     会把上面这次覆盖直接盖掉。插新代码时要看清楚原赋值在前还是在后。
-		chip.position = Vector2(0, y); chip.size = Vector2(w - 8.0, SYN_ROW_H)
+		chip.position = Vector2(xx, 0) if horiz else Vector2(0, y); chip.size = Vector2(w - 8.0, SYN_ROW_H)
 		## ⚠「查看羁绊详情」这六个字是 `verify_inventory_layout` ㉖㉗ **认羁绊行用的识别位**
 		##   (产品自己写的 tooltip, 不是为测试加的标记) —— 改后半句可以, 这个前缀别动。
 		chip.tooltip_text = "查看羁绊详情"
@@ -330,6 +337,7 @@ func _build_synergy_panel(_leaders: Array) -> void:
 			arw.position.x = arw_x)
 		chip.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: _show_synergy_popup(typ, tier))
 		y += SYN_ROW_H + 10.0
+		xx += w + 2.0
 
 ## 羁绊详情弹框：**该类型的全部档位**逐条列出，当前档高亮。点暗幕/关闭 关。
 ##
