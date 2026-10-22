@@ -1147,6 +1147,7 @@ static func _apply_verify(ok: bool, code: int, body: String, flow: String) -> bo
 ##   换装备」—— 逐个挂必然漏一个(memory「手抄的副本必然落后」)。
 ## ★内容没变(哈希相同)不推: `save()` 被调得很勤(滑条松手也调), 不能每次都打服务器。
 
+const _OWN := preload("res://scripts/net/save_own_write.gd")
 static var _save_dirty: bool = false
 static var _save_inflight: bool = false
 static var _last_pushed_hash: String = ""
@@ -1180,6 +1181,7 @@ static func _reset_save_sync_for_test() -> void:
 	_save_conflict_rev = -1
 	_saves_pushed = 0
 	_pull_state = ""
+	_OWN.clear()
 
 
 ## 这个号现在该不该同步存档。★四个条件缺一不可, 缺了就**什么都不发**。
@@ -1253,6 +1255,7 @@ static func maybe_push_save(force: bool = false) -> void:
 	var n = _spawn()
 	if n != null:
 		_save_inflight = true
+		_OWN.note(str(gs.account_id), int(gs.cloud_rev), _OWN.wire_hash(p))
 		n.push_save(p, int(gs.cloud_rev), h)
 
 
@@ -1281,10 +1284,14 @@ static func apply_push_response(ok: bool, code: int, body: String, h: String) ->
 			_saves_pushed += 1
 			_last_pushed_hash = h
 			_save_dirty = false
+			_OWN.clear()
 			if gs != null:
 				gs.cloud_rev = int(r["rev"])
 				gs.save()           # 只为把 cloud_rev 落盘; 它不在云存档里, 所以下一拍哈希不变、不会再推
 		"conflict":
+			## ★先查「冲突的另一边是不是自己上一推」(回包丢了的那种), 是就不算冲突(save_own_write.gd)。
+			if _OWN.maybe_check(gs, int(r["rev"])):
+				return "checking"
 			## ★停推, 等玩家二选一。**不自动选** —— 两边都可能是玩家想要的那份进度。
 			_save_conflict_rev = int(r["rev"])
 			print("[SupabaseNet] 存档冲突: 云端是第 %d 版, 本机上次对上的是第 %d 版" % [

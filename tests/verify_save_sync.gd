@@ -27,6 +27,7 @@ extends Node
 ##   见 `tests/_probe_d8.gd`；这里喂的是 schema.sql 里写死的回包形状。
 
 const SB := preload("res://scripts/net/supabase.gd")
+const OWN := preload("res://scripts/net/save_own_write.gd")
 const DEAD_URL := "http://127.0.0.1:9"
 
 var _ok := 0
@@ -78,6 +79,7 @@ func _ready() -> void:
 	await _t_recover_triggers_pull()
 	await _t_save_marks_dirty()
 	await _t_resolve_local()
+	await _t_own_write_heal()
 	SB._transport_for_test = Callable()
 	OS.set_environment("TURTLE_SUPABASE", " ")
 	SB._reset_save_sync_for_test()
@@ -537,3 +539,144 @@ func _t_resolve_local() -> void:
 		str((j as Dictionary).get("p_expected_rev", "?")) if j is Dictionary else "没发")
 	_chk("⑪ 覆盖成功后冲突解除、版本号 9", not SB.save_conflict() and int(GameState.cloud_rev) == 9,
 		str(GameState.cloud_rev))
+
+
+# ─────────────────────────────────────────────────────────────
+# ⑫ ★★回包丢了 ⇒ 不许变成永久冲突(2026-10-23 LouisT01 实测根因)
+# ─────────────────────────────────────────────────────────────
+## 10-17 切后台那一推: 服务端收下了(第 441 版), 回包没回来 ⇒ 本机还记着 440 ⇒
+## 之后每一推都「冲突」, 而冲突的另一边就是它自己。云端停在 10-17 一周没动, 没有任何提示。
+## 这里按真实顺序重演: 推 → 回包丢 → **进程重启**(内存全清, 只剩盘上的) → 接着玩 → 再推。
+var _route := {}
+var _sent_payloads: Array = []
+
+
+func _spy_route(method, url, headers, body, cb) -> void:
+	_reqs.append({"method": str(method), "url": str(url), "headers": headers, "body": str(body)})
+	if str(url).ends_with("/rest/v1/rpc/push_save"):
+		var j = JSON.parse_string(str(body))
+		if j is Dictionary and (j as Dictionary).get("p_payload", null) is Dictionary:
+			_sent_payloads.append((j as Dictionary)["p_payload"])
+		cb.call(_route.get("push", {}))
+	elif str(url).find("/rest/v1/saves?") >= 0:
+		cb.call(_route.get("pull", {}))
+	else:
+		cb.call({})
+
+
+## 服务端存的就是请求里的 p_payload 原样(schema.sql: `set payload = p_payload`)⇒ GET 回包照它造
+func _saves_body(p: Dictionary, rev: int) -> String:
+	return JSON.stringify([{"payload": p, "save_rev": rev}])
+
+
+func _simulate_restart() -> void:
+	## 进程被杀再开: 内存里的同步状态全没了, 只剩盘上的东西
+	SB._save_dirty = false
+	SB._save_inflight = false
+	SB._last_pushed_hash = ""
+	SB._save_conflict_rev = -1
+
+
+func _t_own_write_heal() -> void:
+	print("── ⑫ 回包丢了 ⇒ 认出是自己那一推, 不进冲突 ──")
+	OS.set_environment("TURTLE_SUPABASE", DEAD_URL)
+	SB._transport_for_test = _spy_route
+	SB._reset_save_sync_for_test()
+	_login("me@x.co")
+
+	# A. 推 → 回包丢(进程被挂起 / 连不上)
+	GameState.cloud_rev = 440
+	GameState.meta_deepsea_coins = 100
+	_sent_payloads.clear()
+	_route = {"push": {"ok": false, "code": 0, "body": ""}}
+	SB.note_save_dirty()
+	SB.maybe_push_save(true)
+	await get_tree().process_frame
+	_chk("⑫ ★分母: 第一推真的发出去了(带着期望 440)", _sent_payloads.size() == 1, str(_sent_payloads.size()))
+	_chk("⑫ ★分母: 未确认记录真的落了盘(进程被杀也记得)", FileAccess.file_exists(OWN.UNACKED_PATH))
+	var landed: Dictionary = _sent_payloads[0] if _sent_payloads.size() > 0 else {}
+	_simulate_restart()
+
+	# 接着玩, 内容变了; 再推 ⇒ 服务端: 冲突, 云端第 441 版(就是上面那一推)
+	GameState.meta_deepsea_coins = 101
+	_reqs.clear()
+	_route = {"push": {"ok": true, "code": 200, "body": '{"ok": false, "reason": "conflict", "rev": 441}'},
+		"pull": {"ok": true, "code": 200, "body": _saves_body(landed, 441)}}
+	SB.note_save_dirty()
+	SB.maybe_push_save(true)
+	await get_tree().process_frame
+	var pulled := false
+	for q in _reqs:
+		if str(q["method"]) == "GET" and str(q["url"]).find("/rest/v1/saves?") >= 0:
+			pulled = true
+	_chk("⑫ ★分母: 冲突后真的去拉了云端那份来比", pulled, str(_reqs.map(func(x): return x["url"])))
+	_chk("⑫ ★★云端那份就是本机上一推 ⇒ 【不进冲突】", not SB.save_conflict())
+	_chk("⑫ ★★认下云端版本号 441", int(GameState.cloud_rev) == 441, str(GameState.cloud_rev))
+	_chk("⑫ 认下之后未确认记录清掉", not FileAccess.file_exists(OWN.UNACKED_PATH))
+
+	# 下一拍: 把现在的进度(101)接着推上去, 期望 441
+	_sent_payloads.clear()
+	_reqs.clear()
+	_route = {"push": {"ok": true, "code": 200, "body": '{"ok": true, "rev": 442}'}}
+	SB.maybe_push_save()
+	await get_tree().process_frame
+	var b2 = JSON.parse_string(str(_reqs[0]["body"])) if _reqs.size() == 1 else {}
+	_chk("⑫ ★★下一拍【接着推】(不用玩家动手), 带期望 441",
+		b2 is Dictionary and int((b2 as Dictionary).get("p_expected_rev", -1)) == 441,
+		str((b2 as Dictionary).get("p_expected_rev", "?")) if b2 is Dictionary else "没发(%d)" % _reqs.size())
+	_chk("⑫ 推上去的是现在的进度(101)", _sent_payloads.size() == 1
+		and int((_sent_payloads[0] as Dictionary).get("meta_deepsea_coins", -1)) == 101)
+	_chk("⑫ 成功后版本号 442", int(GameState.cloud_rev) == 442, str(GameState.cloud_rev))
+
+	# B. ★反面: 云端那份是【另一台设备】的 ⇒ 照旧是真冲突, 停推
+	SB._reset_save_sync_for_test()
+	_login("me@x.co")
+	GameState.cloud_rev = 3
+	GameState.meta_deepsea_coins = 200
+	_route = {"push": {"ok": false, "code": 0, "body": ""}}
+	SB.note_save_dirty()
+	SB.maybe_push_save(true)
+	await get_tree().process_frame
+	var other: Dictionary = GameState.cloud_payload()
+	other["meta_deepsea_coins"] = 999
+	_simulate_restart()
+	GameState.meta_deepsea_coins = 201
+	_route = {"push": {"ok": true, "code": 200, "body": '{"ok": false, "reason": "conflict", "rev": 4}'},
+		"pull": {"ok": true, "code": 200, "body": _saves_body(other, 4)}}
+	SB.note_save_dirty()
+	SB.maybe_push_save(true)
+	await get_tree().process_frame
+	_chk("⑫ ★★反面: 云端那份不是本机发的 ⇒ 【真冲突】(不许把别的设备的进度当成自己的)", SB.save_conflict())
+	_chk("⑫ 反面: 真冲突不改本机版本号", int(GameState.cloud_rev) == 3, str(GameState.cloud_rev))
+	_reqs.clear()
+	GameState.meta_deepsea_coins = 202
+	SB.note_save_dirty()
+	SB.maybe_push_save(true)
+	await get_tree().process_frame
+	_chk("⑫ 反面: 真冲突之后照旧停推", _reqs.is_empty(), str(_reqs.size()))
+
+	# C. 冲突版本号不是「期望 + 1」(中间隔了别的设备好几推)⇒ 直接是冲突, 不去拉
+	SB._reset_save_sync_for_test()
+	_login("me@x.co")
+	GameState.cloud_rev = 3
+	_reqs.clear()
+	_route = {"push": {"ok": true, "code": 200, "body": '{"ok": false, "reason": "conflict", "rev": 8}'}}
+	SB.note_save_dirty()
+	SB.maybe_push_save(true)
+	await get_tree().process_frame
+	_chk("⑫ 云端第 8 版 ≠ 期望 3 + 1 ⇒ 直接冲突、没去拉", SB.save_conflict() and _reqs.size() == 1,
+		"冲突=%s 请求 %d 个" % [str(SB.save_conflict()), _reqs.size()])
+
+	# D. 查的时候没拉到 ⇒ 不下结论: 不进冲突、不认版本号
+	SB._reset_save_sync_for_test()
+	_login("me@x.co")
+	GameState.cloud_rev = 10
+	_route = {"push": {"ok": true, "code": 200, "body": '{"ok": false, "reason": "conflict", "rev": 11}'},
+		"pull": {"ok": false, "code": 0, "body": ""}}
+	SB.note_save_dirty()
+	SB.maybe_push_save(true)
+	await get_tree().process_frame
+	_chk("⑫ 查的时候没拉到 ⇒ 不进冲突、版本号不动(下一拍再推再查)",
+		not SB.save_conflict() and int(GameState.cloud_rev) == 10, "rev=%d" % int(GameState.cloud_rev))
+	SB._reset_save_sync_for_test()
+	_chk("⑫ 收尾: 未确认记录不留在盘上", not FileAccess.file_exists(OWN.UNACKED_PATH))

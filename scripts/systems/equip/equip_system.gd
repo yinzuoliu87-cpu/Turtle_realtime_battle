@@ -2958,10 +2958,6 @@ func _eq_ink_sac(u: Dictionary, d: float) -> float:
 ##   eq_potion_batch.gd。**整体删除**而不是留空壳, 理由同上面 067 那段。
 
 
-
-
-
-
 ## 受到【法术伤害】时的两件奇械(085 / 086)。挂在 `_apply_damage_from` 里 `_eq_on_target`
 ## 的旁边, 由 `_b3_gadget` 这个常驻 flag 守门 ⇒ 不带这两件的单位一次调用都不会发生。
 ##
@@ -2984,8 +2980,6 @@ func _eq_on_magic_hurt(u: Dictionary, src, dmg: int, bkt: String) -> void:
 		var _b4m = _b4(str((e as Dictionary).get("id", "")))
 		if _b4m != null:
 			_b4m.on_magic_hurt(u, src, float(dmg), str((e as Dictionary).get("id", "")), si)
-
-
 
 
 ## ★【已作废】这里原是 086「极地反冲装置」的两个常量(`RECOIL_ICD := 4.0` / `RECOIL_SLOW_MULT := 0.7`)
