@@ -118,20 +118,23 @@ func _ready() -> void:
 		_ok("★分母: ③ 两边都召唤出了斧头", false)
 
 	# ── ④ 老快照(没有这三个键) → 按场次回落 ──
-	##   7 场 × 每场 15 = 105 经验; 第 6 场攒到 90 ≥ 80 进化成石斧(进度条清零)⇒ 档位 1。
+	##   9 场 × 每场 10 = 90 经验; 第 8 场攒到 80 ≥ 80 进化成石斧(进度条清零)⇒ 档位 1。
 	##   ★期望值在这里**手算写死**, 不只调回落函数自己(否则函数写错, 期望也跟着错)。
-	_ok("回落函数: 7 场 ⇒ 105 经验 / 石斧 / 无造物(手算)",
-		AE.progress_for_battles(7) == {"total": 105, "stage": 1, "final": ""}, str(AE.progress_for_battles(7)))
+	##   (2026-10-22 每场 15 → 10, 原来这条是「7 场 ⇒ 105 / 石斧」)
+	_ok("回落函数: 9 场 ⇒ 90 经验 / 石斧 / 无造物(手算)",
+		AE.progress_for_battles(9) == {"total": 90, "stage": 1, "final": ""}, str(AE.progress_for_battles(9)))
+	_ok("回落函数: 7 场 ⇒ 70 经验 / 还是木斧(差 10 点, 手算)",
+		AE.progress_for_battles(7) == {"total": 70, "stage": 0, "final": ""}, str(AE.progress_for_battles(7)))
 	_ok("回落函数: 0 场 ⇒ 木斧零经验", AE.progress_for_battles(0) == {"total": 0, "stage": 0, "final": ""},
 		str(AE.progress_for_battles(0)))
 	_s._units.clear()
 	_set_local(gs, 600, 4, "")
-	gs.dual_ghost = {"season_total_battles": 7.0}
+	gs.dual_ghost = {"season_total_battles": 9.0}   # 2026-10-22 每场 15 → 10: 原来 7 场就到石斧, 现在要 9 场
 	var R4 := _summon("right", Vector2(200, 0))
 	if not R4.is_empty():
-		_ok("★★老快照(缺三键)的对手斧头 = 7 场下界(105/石斧), 不是本机的 600/钻石",
-			R4["pv"] == 1 and _near(R4["hp"], AE.minion_hp(105, 1)),
-			"被动 %d 血 %.0f(期望 %.0f)" % [R4["pv"], R4["hp"], AE.minion_hp(105, 1)])
+		_ok("★★老快照(缺三键)的对手斧头 = 按 9 场推算(90/石斧), 不是本机的 600/钻石",
+			R4["pv"] == 1 and _near(R4["hp"], AE.minion_hp(90, 1)),
+			"被动 %d 血 %.0f(期望 %.0f)" % [R4["pv"], R4["hp"], AE.minion_hp(90, 1)])
 	else:
 		_ok("★分母: ④ 召唤出了斧头", false)
 	## 没有对手快照(调试/冷启动兜底 bot) ⇒ 视为 0 场 ⇒ 木斧, 仍不读本机

@@ -89,7 +89,7 @@ func _t_consts() -> void:
 	print("--- ① 分母: 常量 ---")
 	_ok("★分母: 经验来源 买%d / 场%d / 击杀%d · 助攻窗 %.0f 秒"
 		% [AE.EXP_ON_BUY, AE.EXP_ON_MATCH, AE.EXP_ON_KILL, AE.ASSIST_WINDOW],
-		AE.EXP_ON_BUY == 20 and AE.EXP_ON_MATCH == 15 and AE.EXP_ON_KILL == 5
+		AE.EXP_ON_BUY == 22 and AE.EXP_ON_MATCH == 10 and AE.EXP_ON_KILL == 6   # 用户 2026-10-22 调强度
 		and is_equal_approx(AE.ASSIST_WINDOW, 3.0))
 	## STAGE_NEEDS 是给文案占位符用的扁平镜像 —— 逐项焊在 STAGES 上, 改一边忘另一边当场红。
 	var mirror_ok: bool = AE.STAGE_NEEDS.size() == AE.STAGES.size() - 1

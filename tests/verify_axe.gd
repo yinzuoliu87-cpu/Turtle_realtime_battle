@@ -62,9 +62,9 @@ func _ready() -> void:
 	_ok("★分母: 召唤物 %.0f+经验 血 / %.0f+%.2f×经验 攻 / %.0f双抗 / %.1f攻速"
 			% [AE.MINION_HP_BASE, AE.MINION_ATK_BASE, AE.MINION_ATK_PER_EXP, AE.MINION_DEF, AE.MINION_ASPD],
 		AE.MINION_HP_BASE == 500.0 and AE.MINION_ATK_BASE == 30.0
-			and absf(AE.MINION_ATK_PER_EXP - 0.3) < 1e-9 and AE.MINION_DEF == 12.0
+			and absf(AE.MINION_ATK_PER_EXP - 0.2) < 1e-9 and AE.MINION_DEF == 12.0   # 2026-10-22 用户调: 0.3→0.2
 			and AE.MINION_MR == 12.0 and absf(AE.MINION_ASPD - 0.8) < 1e-9
-			and absf(AE.MINION_HP_PER_EXP - 5.0) < 1e-9)
+			and absf(AE.MINION_HP_PER_EXP - 4.0) < 1e-9)   # 2026-10-22 用户调: 5→4
 	_ok("★分母: 进化阈值 80/110/130/160 + 最终 %d" % AE.FINAL_NEED,
 		[int(AE.STAGES[1]["need"]), int(AE.STAGES[2]["need"]),
 		 int(AE.STAGES[3]["need"]), int(AE.STAGES[4]["need"])] == [80, 110, 130, 160]

@@ -38,14 +38,14 @@ extends RefCounted
 ##   memory [[fb-refactor-creates-the-drift-it-removes]]: 60 个常量只为文案而活)。
 const UNDEAD_HP := 1200.0
 const UNDEAD_ATK := 5.0
-const UNDEAD_DEF := 10.0
+const UNDEAD_DEF := 25.0   # 2026-10-22 用户调强度: 10→25 双抗
 const SERAPH_HP := 50.0
 const SERAPH_ATK := 20.0
 const SERAPH_DEF := 3.0
 const SERAPH_RANGE := 300.0
 const HOLO_HP := 400.0
 const HOLO_ATK := 5.0
-const HOLO_DEF := 3.0
+const HOLO_DEF := 13.0   # 2026-10-22 用户调强度: 3→13 双抗
 const HOLO_ENERGY_RATE := 0.50
 const EMBER_HP := 150.0
 const EMBER_ATK := 80.0
@@ -74,8 +74,10 @@ const SERAPH_BURN_ON_HIT := 8       # 每次普攻附带 8 层灼烧
 const SERAPH_BOOMERANGS := 10       # 主动: 4 秒内投 10 把
 const SERAPH_CAST_TIME := 4.0       # 那 4 秒(替换掉猛砸的蓄力)
 const SERAPH_BOOM_R := 300.0        # 「半径大小为300码」—— 回旋镖的作用半宽
-const SERAPH_BOOM_ATK := 1.0        # 1×ATK 魔法伤害
-const SERAPH_BOOM_BURN := 8         # 命中再加 8 层灼烧
+## ★2026-10-22 用户调强度: 回旋镖「命中时造成 30% 攻击力的魔法伤害，并施加 3 层灼烧」(原 1×ATK / 8 层)。
+##   普攻附带的 SERAPH_BURN_ON_HIT 没动。
+const SERAPH_BOOM_ATK := 0.3        # 30% 攻击力魔法伤害
+const SERAPH_BOOM_BURN := 3         # 命中再加 3 层灼烧
 ## ★★下面两个是【演出时序常量, 不是平衡数值】(2026-09-15)。
 ##   用户:「7/9的回旋镖同样是在敷衍我啊，回旋镖是什么？以及特效和实际伤害范围完全不一样啊，也没有命中特效」
 ##   ⇒ 回旋镖改成「飞出去 → 折返 → 飞回斧头」, 伤害在镖真正经过敌人时结算。
