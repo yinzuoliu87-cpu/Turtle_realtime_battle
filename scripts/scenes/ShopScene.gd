@@ -960,14 +960,7 @@ func _open_detail_card() -> void:
 func _card_button_skin(b: Button) -> void:
 	b.custom_minimum_size = Vector2(0, 81)
 	b.add_theme_font_size_override("font_size", 22)
-	for st in [["normal", "#6a3f1c", "#d89a48"], ["hover", "#7d4b22", "#f0b45a"], ["pressed", "#4e2d12", "#d89a48"],
-			["disabled", "#3a2a1e", "#6a5440"], ["focus", "#6a3f1c", "#ffe27a"]]:
-		var sb := StyleBoxFlat.new(); sb.bg_color = Color(st[1]); sb.border_color = Color(st[2])
-		sb.set_border_width_all(3); sb.set_corner_radius_all(0)
-		b.add_theme_stylebox_override(st[0], sb)
-	b.add_theme_color_override("font_color", Color("#fff1d6"))
-	b.add_theme_color_override("font_hover_color", Color("#fff8e8"))
-	b.add_theme_color_override("font_disabled_color", Color("#c9a98a"))
+	UISkin.card_button(b)
 
 
 ## 卡里塞了按钮后高度要按内容重算(容器只会长不会缩), 等两帧排完版再收。
@@ -1620,7 +1613,8 @@ func _pixel_bar(parent: Control, pos: Vector2, sz: Vector2, ratio: float, fill: 
 #      panel-frame 191x246 边框 L23 R22 T24 B24 → 25
 #    九宫格 margin 大于控件一半会把中间压没。
 # ════════════════════════════════════════════════════════════════════════
-## ★★2026-09-29 **按钮皮已全部交给共享层 `UISkin.button`** —— 见下方 `_skin_button`。
+## ★★说明卡里的按钮(购买 / 小木斧四选一)走 `UISkin.card_button`(深棕底 + 黄铜细边、直角)——
+##   用户 2026-10-22「为什么还在用这个木头按钮？我说了无数遍啊」, 原来的木牌皮 `_skin_button` 已删。
 ## ★卡框换新(2026-07-29)。旧的 card-frame.png 是珊瑚/藤壶纹, 两个问题:
 ##   ① 132px 下那些碎装饰就是噪点, 十张并排还形成很强的重复图案
 ##   ② 它同时背着"费用档"和"选中态"两个颜色职责, 而 modulate 是【乘法】——
@@ -1646,35 +1640,6 @@ const CARD_MARGIN := 8       # 量的: 新框 72×72, 边框 7px
 const STAR_TEX = preload("res://assets/sprites/shop/star-glint.png")
 const STAR_FRAMES := 12
 const STAR_FRAME_W := 32
-
-
-## 给按钮上皮 —— **一律走共享层 `UISkin.button`**, 商店不再有自己的一套。
-##
-## ★由来(用户 2026-09-29:「不好看的按钮」)。原来这里自己建 `StyleBoxTexture`,
-##   贴 `assets/sprites/shop/btn-frame.png`(128×64) + `shop/buy-btn.png`, margin 18。
-##   **那张图 64 行里 36 行是边框, 中段只剩 28 行** —— 套到实测 76~96 高的按钮上
-##   中段被拉 2.7~3.4 倍, 金属质感全被拉平, 实拍(改前图)就是**一圈青色细描边的方块**。
-##   这与 2026-08-19 给返回键换框时量到的是**同一条**毛病(`ui_skin.gd:112`:
-##   「小签牌拉 2.5~3.4 倍 ⇒ 看起来就是一块灰板」)。
-## ★★为什么不是"再画一张商店专用的大框": 全项目 10 个屏(背包/图鉴/主菜单/排行榜/
-##   设置/对阵表/战斗面板/羁绊面板/糖罐/选龟)都走 `UISkin.button`, **商店是唯一的例外** ——
-##   例外本身就是用户看到的那个毛病。共享层已经按**控件真实尺寸**挑框
-##   (短边 ≥56 且面积 ≥5000 → `menu/frame-rect.png` margin 27; 否则 `chip-frame.png` margin 7),
-##   判据是「边带×2 装不装得进这个控件」而不是「哪张更华丽」(ui_skin.gd:117 那段是量出来的)。
-##   ⚠ 顺带记下**量过但用不了**的那张: `menu/btn-frame.png`(893×212) 端花左右各 101px、
-##   上下边带实测 85/41 —— 上下加起来 126, 而商店最高的按钮才 96。**装不进去, 不是不想用。**
-## ★主次改用 `tint` 表达, 不再靠第二张贴图: 「买下」是全页最主要的动作 ⇒ 暖金;
-##   其余冷蓝。(原来那张 `buy-btn.png` 金框正是"屏幕专用的一次性皮"。)
-## ⚠ 调用方必须**先设好 `size` 再调** —— `UISkin.button` 按真实尺寸挑框, size 还是 0 会挑错。
-func _skin_button(b: Button, primary := false) -> void:
-	UISkin.button(b, Color("#f0c27a") if primary else Color("#b9c8d8"))
-	## 字色留在商店侧(它是本屏的配色, 不是皮): 主按钮暖白, 其余冷白。
-	b.add_theme_color_override("font_color", Color("#fff1d6") if primary else Color("#dff2ff"))
-	b.add_theme_color_override("font_hover_color", Color("#ffffff"))
-	b.add_theme_color_override("font_pressed_color", Color("#e7c68a") if primary else Color("#9fd8ea"))
-	b.add_theme_color_override("font_disabled_color", Color("#6b7f8e"))
-
-
 
 
 ## 横竖边距不同的九宫格。条框这类**扁贴图**必须分开给: bar-frame 的左右边带 11px、

@@ -463,7 +463,7 @@ func _show_synergy_popup(type_key: String, cur_tier: int) -> void:
 	## ★套金属签牌皮。不套就是 Godot 默认皮 = 圆角纯色, `verify_click_targets_alive` 自己
 	##   写着「圆角纯色是最直接的『没游戏味』」—— 它只是因为弹框不在静止态的屏上才没数到。
 	##   ⚠ 必须在 `size` 之后调: `UISkin.button` 按**按钮真实尺寸**挑大框/小签, size 还是 0 会挑错。
-	UISkin.button(ok, Color("#ffd93d"))
+	UISkin.card_button(ok)
 	ok.pressed.connect(func(): dim.queue_free())
 	box.add_child(ok)
 

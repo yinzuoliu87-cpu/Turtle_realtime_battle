@@ -97,6 +97,25 @@ static func slot(fallback: StyleBox, tint: Color = Color.WHITE, dim: bool = fals
 ##   (战斗面板的「✕」「详细」两个按钮当初也是这样, 而且**逃过了网页盒判据** ——
 ##    那条判据先查 `has_theme_stylebox_override`, 而默认主题不是 override。)
 ## ★三态靠 modulate 区分, 一张中性签牌管三态; `tint` 给按钮的语义色。
+## 卡片 / 弹框 / 操作条里的动作钮: 深棕底 + 黄铜细边、直角(与商店说明卡「购买」同一种)。
+## ★用户 2026-10-22「为什么还在用这个木头按钮？我说了无数遍啊」: 商店 / 背包的弹出层与操作条一律用这一种,
+##   不再用下面 `button()` 那块带铆钉的木牌框(frame-rect)。尺寸与字号由调用方定, 这里只管皮和字色。
+## ★原来商店(`_card_button_skin`)和背包(`_card_btn`)各抄了一份这套颜色, 现在两边都调这里。
+static func card_button(b: Button) -> void:
+	for st in [["normal", "#6a3f1c", "#d89a48"], ["hover", "#7d4b22", "#f0b45a"], ["pressed", "#4e2d12", "#d89a48"],
+			["disabled", "#3a2a1e", "#6a5440"], ["focus", "#6a3f1c", "#ffe27a"]]:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(st[1])
+		sb.border_color = Color(st[2])
+		sb.set_border_width_all(3)
+		sb.set_corner_radius_all(0)
+		b.add_theme_stylebox_override(st[0], sb)
+	b.add_theme_color_override("font_color", Color("#fff1d6"))
+	b.add_theme_color_override("font_hover_color", Color("#fff8e8"))
+	b.add_theme_color_override("font_pressed_color", Color("#e7c68a"))
+	b.add_theme_color_override("font_disabled_color", Color("#c9a98a"))
+
+
 static func button(b: Button, tint: Color = Color.WHITE, margin: int = 7) -> void:
 	## ★★按尺寸挑框(2026-08-19): 原来一律用 `chip-frame`(源图 **48x24**)。
 	##   小签牌上没问题, 但返回键这类 120x81 的大按钮把它拉了 2.5~3.4 倍 ——

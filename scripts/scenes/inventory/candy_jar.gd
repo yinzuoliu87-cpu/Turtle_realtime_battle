@@ -102,7 +102,7 @@ func _show_jar_reward(r: Dictionary) -> void:
 	ok.add_theme_font_size_override("font_size", 20)
 	ok.position = Vector2(200, 234); ok.size = Vector2(120, 44)
 	## ★套金属签牌皮 —— 不套就是 Godot 默认皮(圆角纯色)。必须在 size 之后调, 见 UISkin.button 注释。
-	UISkin.button(ok, Color("#ffd93d"))
+	UISkin.card_button(ok)
 	ok.pressed.connect(func(): dim.queue_free(); host._rebuild())
 	box.add_child(ok)
 

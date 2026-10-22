@@ -1309,13 +1309,7 @@ func _card_btn(b: Button) -> void:
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	b.focus_mode = Control.FOCUS_NONE
 	b.add_theme_font_size_override("font_size", 22)
-	for st in [["normal", "#6a3f1c", "#d89a48"], ["hover", "#7d4b22", "#f0b45a"], ["pressed", "#4e2d12", "#d89a48"],
-			["disabled", "#3a2a1c", "#7a6040"]]:
-		var sb := StyleBoxFlat.new(); sb.bg_color = Color(st[1]); sb.border_color = Color(st[2])
-		sb.set_border_width_all(3); sb.set_corner_radius_all(0)
-		b.add_theme_stylebox_override(st[0], sb)
-	b.add_theme_color_override("font_color", Color("#fff1d6"))
-	b.add_theme_color_override("font_hover_color", Color("#fff8e8"))
+	UISkin.card_button(b)
 
 
 const ITEM_CARD_W := 340.0
@@ -1437,7 +1431,7 @@ func _show_lineup_help() -> void:
 	body.position = Vector2(24, 58); body.size = Vector2(bw - 48, bh - 58 - 100); body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; box.add_child(body)
 	var ok := Button.new(); ok.text = "知道了"; ok.add_theme_font_size_override("font_size", MIN_FONT_PX)
 	ok.position = Vector2(bw / 2.0 - 80, bh - 94); ok.size = Vector2(160, 81)
-	UISkin.button(ok, Color("#ffd93d"))
+	UISkin.card_button(ok)
 	ok.pressed.connect(func(): dim.queue_free())
 	box.add_child(ok)
 
@@ -1698,7 +1692,7 @@ func _build_op_bar() -> void:
 			##   `verify_click_targets_alive` 自己写着「圆角纯色是最直接的『没游戏味』」,
 			##   它们只是因为底栏得先选中一件装备才建、静止态的屏上不在场, 才一直没被数到。
 			##   ⚠ `UISkin.button` 按**按钮真实尺寸**挑大框/小签 ⇒ 必须在 `size` 之后调。
-			UISkin.button(det, Color("#9fb6c9"))
+			UISkin.card_button(det)
 			det.pressed.connect(func(): _show_equip_detail(sit)); bar.add_child(det)
 			var sv := _inv_ops._sell_value(sit)
 			## ★★2026-09-28「💰 卖出 +N💠」两个 emoji 都拆掉:
@@ -1716,12 +1710,12 @@ func _build_op_bar() -> void:
 			sell.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 			sell.add_theme_font_size_override("font_size", MIN_FONT_PX)
 			sell.position = Vector2(122, OP_BAR_H - 91.0); sell.size = Vector2(170, 81)
-			UISkin.button(sell, Color("#ffd93d"))
+			UISkin.card_button(sell)
 			sell.pressed.connect(_inv_ops._sell_selected); bar.add_child(sell)
 		var cancel := Button.new(); cancel.text = "取消"
 		cancel.add_theme_font_size_override("font_size", MIN_FONT_PX)
 		cancel.position = Vector2(bw - 108, OP_BAR_H - 91.0); cancel.size = Vector2(92, 81)
-		UISkin.button(cancel, Color("#9fb6c9"))
+		UISkin.card_button(cancel)
 		cancel.pressed.connect(func(): _sel_bench = -1; _rebuild()); bar.add_child(cancel)
 
 
@@ -1856,7 +1850,7 @@ func _show_equip_detail(item: Dictionary) -> void:
 	## 「关闭」是网页/工具栏的词; 本屏的阵容帮助框一直用的是「知道了」—— 统一到那一个。
 	var ok := Button.new(); ok.text = "知道了"; ok.add_theme_font_size_override("font_size", MIN_FONT_PX)
 	ok.position = Vector2(bw / 2.0 - 80, bh - 94); ok.size = Vector2(160, 81)
-	UISkin.button(ok, Color("#ffd93d"))
+	UISkin.card_button(ok)
 	ok.pressed.connect(func(): dim.queue_free())
 	box.add_child(ok)
 
@@ -1911,7 +1905,7 @@ func _build_jar_op_bar() -> void:
 	var smash := Button.new(); smash.text = "打碎"
 	smash.add_theme_font_size_override("font_size", MIN_FONT_PX)
 	smash.position = Vector2(16, OP_BAR_H - 91.0); smash.size = Vector2(170, 81)   # ★与"卖出"同一位置同一尺寸
-	UISkin.button(smash, Color("#e79bd6"))
+	UISkin.card_button(smash)
 	smash.pressed.connect(func() -> void:
 		_sel_jar = false
 		if _inv_jar != null:
@@ -1920,7 +1914,7 @@ func _build_jar_op_bar() -> void:
 	var cancel := Button.new(); cancel.text = "取消"
 	cancel.add_theme_font_size_override("font_size", MIN_FONT_PX)
 	cancel.position = Vector2(bw - 108, OP_BAR_H - 91.0); cancel.size = Vector2(92, 81)
-	UISkin.button(cancel, Color("#9fb6c9"))
+	UISkin.card_button(cancel)
 	cancel.pressed.connect(func(): _sel_jar = false; _rebuild())
 	bar.add_child(cancel)
 
@@ -2158,7 +2152,7 @@ func _build_tut_finish() -> void:
 	b.position = TUT_FINISH_POS
 	b.add_theme_font_size_override("font_size", 22)
 	b.add_theme_color_override("font_color", Color("#ffe9a8"))
-	UISkin.button(b, Color("#ffd08a"))
+	UISkin.card_button(b)
 	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	b.pressed.connect(func() -> void:
 		var td = get_node_or_null("/root/TutorialDirector")

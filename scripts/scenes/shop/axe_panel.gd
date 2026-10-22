@@ -167,12 +167,9 @@ func build(parent: Node, x: float, y: float, w: float, compact: bool = false) ->
 			b.size = Vector2(bw, btn_h)
 			## ★用 bind 传 key —— 循环变量在 lambda 里会被最后一轮覆盖(经典坑)
 			b.pressed.connect(_pick.bind(str(f["key"])))
-			## ★★这四个按钮一直是 **Godot 默认皮**(圆角纯灰) —— 全屏 UI 一致性门禁
-			##   的「没有还用默认皮的按钮」是全局断言, 但它只在 `final_ready` 时才建,
-			##   门禁跑的是全新档 ⇒ **从来没被量到过**(memory `fb-gate-subject-never-constructed`)。
-			##   走宿主的 `_skin_button` = 与商店其余按钮同一张深海金属签牌。
-			##   ⚠ 必须在 `size` 之后调: `UISkin.button` 按真实尺寸挑框(182×81 ⇒ 大框)。
-			host._skin_button(b)
+			## ★与同一张卡上的「购买」同一种按钮(UISkin.card_button: 深棕底 + 黄铜细边、直角)。
+			##   用户 2026-10-22「为什么还在用这个木头按钮？我说了无数遍啊」—— 原来走商店的木牌皮(带铆钉的 frame-rect)。
+			UISkin.card_button(b)
 			parent.add_child(b)
 		h += btn_h * 2.0 + BTN_GAP
 	return h
