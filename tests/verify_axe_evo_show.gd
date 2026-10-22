@@ -3,7 +3,8 @@ extends Node
 ##
 ## 用户 2026-10-22「小木斧需要设计进化动画吧」「补到进背包时吧」。
 ##   ① 时间轴(纯函数 state_at): 旧形态原色 → 白剪影 → 新旧交替越换越快 → 闪光 → 硬切新形态 → 名字晚出 → 收起
-##   ② a 路: 商店里真点「购买」差 1 点就进化的小木斧 ⇒ 当场播新档名; 点一下跳过; 不进待播队列
+##   ② a 路: 商店里真点「购买」差 1 点就进化的小木斧 ⇒ 当场播新档名; 不进待播队列
+##   ②b 不能跳过(用户 2026-10-22「点一下就跳过？不行」): 点了还在播, 播完自己收起; 播的时候遮罩挡住货架
 ##      还没补放的(结算攒的)排在前面一起播, 顺序是 1→2 再 2→3
 ##   ③ b/c 路: 结算 / 击杀走 axe_add_exp 跨档 ⇒ 入队; 进背包补放一次、队列清空; 再进背包不重播
 ##   ④ d 路: 四选一真点「余烬」⇒ 播最终造物那一段
@@ -16,6 +17,7 @@ extends Node
 const SHOP := preload("res://scenes/Shop.tscn")
 const INV := preload("res://scenes/Inventory.tscn")
 const SHOW := preload("res://scripts/scenes/shop/axe_evo_show.gd")
+const SHOP_GD := preload("res://scripts/scenes/ShopScene.gd")
 const AE := preload("res://scripts/gamedata/axe_evolution.gd")
 
 const MIN_ASSERTS := 40
@@ -151,6 +153,13 @@ func _buy_slot(sc: Node, i: int) -> bool:
 	return true
 
 
+## 把正在播的这一段推到播完: 走它自己那条 tween, 用 custom_step 一次推完(不靠墙钟 —— CLAUDE.md §3.5)。
+func _finish(ev) -> void:
+	if ev._tw != null and ev._tw.is_valid():
+		ev._tw.custom_step(SHOW.total(true) + 1.0)
+	await _frames(2)
+
+
 func _ready() -> void:
 	await get_tree().process_frame
 	gs = get_node_or_null("/root/GameState")
@@ -253,9 +262,22 @@ func _t_shop_buy() -> void:
 	sc._rebuild()
 	await _frames(2)
 	_ok("★演出开着时整页重建, 演出层还在", _layer(sc) != null)
+	## 播的时候点货架另一格: 遮罩挡住。先等过「买完 0.4 秒不接货架点击」那道闸, 免得是那道闸挡住的(假绿)
+	OS.delay_msec(SHOP_GD.BUY_TAP_GUARD_MS + 60)
+	var sel0 := int(sc._sel)
+	var cell1 := _live(sc, "ShelfItem1")
+	if cell1 != null:
+		await _click(cell1.get_global_rect().get_center())
+	_ok("★播的时候点货架: 被遮罩挡住(不选中、不弹说明卡)", cell1 != null and int(sc._sel) == sel0 and _live(sc, "InspectCard") == null,
+		"_sel %d→%d" % [sel0, int(sc._sel)])
 	await _click(Vector2(640, 360))
 	await _frames(2)
-	_ok("★点一下跳过: 演出层收起", _layer(sc) == null)
+	_ok("★点一下【不】跳过(用户 10-22「点一下就跳过？不行」): 演出层还在", _layer(sc) != null)
+	await _finish(sc._axe_evo)
+	_ok("★播完自己收起", _layer(sc) == null)
+	if cell1 != null:
+		await _click(cell1.get_global_rect().get_center())
+	_ok("分母: 演出收起后再点同一格, 能选中(证明上面挡住的是遮罩)", int(sc._sel) == 1, "_sel=%d" % int(sc._sel))
 	_ok("分母: 一共播了 1 段", int(sc._axe_evo.played) == 1, str(sc._axe_evo.played))
 	await _leave(sc)
 
@@ -276,11 +298,12 @@ func _t_shop_buy_order() -> void:
 	_ok("★第一段是还没补放的「%s」" % str(AE.STAGES[1]["name"]), _layer_text(sc, "FormName") == str(AE.STAGES[1]["name"]), _layer_text(sc, "FormName"))
 	await _click(Vector2(640, 360))
 	await _frames(2)
-	_ok("★点掉之后第二段是这一次的「%s」" % str(AE.STAGES[2]["name"]), _layer_text(sc, "FormName") == str(AE.STAGES[2]["name"]), _layer_text(sc, "FormName"))
+	_ok("点一下不跳过: 还是第一段", _layer_text(sc, "FormName") == str(AE.STAGES[1]["name"]), _layer_text(sc, "FormName"))
+	await _finish(sc._axe_evo)
+	_ok("★第一段播完自动接第二段, 是这一次的「%s」" % str(AE.STAGES[2]["name"]), _layer_text(sc, "FormName") == str(AE.STAGES[2]["name"]), _layer_text(sc, "FormName"))
 	_ok("待播队列已取空", (gs.axe_evo_pending as Array).is_empty(), str(gs.axe_evo_pending))
-	await _click(Vector2(640, 360))
-	await _frames(2)
-	_ok("两段都点掉后演出层收起", _layer(sc) == null)
+	await _finish(sc._axe_evo)
+	_ok("两段都播完后演出层收起", _layer(sc) == null)
 	await _leave(sc)
 
 
@@ -322,7 +345,9 @@ func _t_backpack() -> void:
 	_ok("★背包整页重建, 演出层还在", _layer(inv) != null)
 	await _click(Vector2(640, 360))
 	await _frames(2)
-	_ok("点一下跳过", _layer(inv) == null)
+	_ok("点一下不跳过", _layer(inv) != null)
+	await _finish(inv._axe_evo)
+	_ok("播完自己收起", _layer(inv) == null)
 	remove_child(inv); inv.free()
 	await _frames(1)
 	var inv2: Control = INV.instantiate()
@@ -361,5 +386,7 @@ func _t_final_pick() -> void:
 	_ok("画面上的斧头是钻石斧或余烬(%s)" % k, k == "diamond" or k == "ember")
 	await _click(Vector2(640, 360))
 	await _frames(2)
-	_ok("点一下跳过", _layer(sc) == null)
+	_ok("点一下不跳过", _layer(sc) != null)
+	await _finish(sc._axe_evo)
+	_ok("播完自己收起", _layer(sc) == null)
 	await _leave(sc)

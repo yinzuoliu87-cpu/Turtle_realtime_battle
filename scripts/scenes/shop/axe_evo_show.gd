@@ -11,7 +11,7 @@ extends RefCounted
 ##   → 新档位颜色的闪光盖住换图 → 1 帧硬切成新形态原色 + 一圈方块粒子 → 名字晚 0.3 秒出。
 ##   · 换图是硬切, 不做新旧交叉淡化(9 款里 6 款如此); 像素图只平移不缩放不旋转(像素游戏 3/5 款)。
 ##   · 普通进化总长 ≈2.4 秒(样本中位数 1.33 秒到揭晓); 最终造物一大轮只有一次, 拉长到 ≈3.9 秒。
-##   · 点一下跳过当前这一段。
+##   · **不能跳过**(用户 2026-10-22「点一下就跳过？不行」): 播完自己收起, 有多段就一段接一段播。
 ## ★闪光 / 粒子全是程序画的纯色块 —— 不借别的装备的特效图(素材不复用)。
 ##   颜色从九个形态自己的待机帧里量出主色再提亮(见 TINT)。
 ## ★整段时间轴是纯函数 `state_at(t)`, 一条 tween_method 只负责把时间喂给 `_apply(t)` ——
@@ -210,7 +210,7 @@ func _show(step: Dictionary) -> void:
 	host.add_child(_layer)
 	_root = Control.new()
 	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_root.mouse_filter = Control.MOUSE_FILTER_STOP   # 盖住底下的点击; 点一下 = 跳过
+	_root.mouse_filter = Control.MOUSE_FILTER_STOP   # 盖住底下的点击(播的时候不能买、不能点别的); 点了也不跳过
 	_layer.add_child(_root)
 	var dim := ColorRect.new()
 	dim.color = Color(0.02, 0.03, 0.05, 0.9)   # 0.78 实拍时身后货架的辣椒 / 斧头还在抢眼
@@ -269,7 +269,6 @@ func _show(step: Dictionary) -> void:
 	_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_flash)
 
-	_root.gui_input.connect(_on_tap)
 	if _instant():
 		_apply(t_cut(_final) + T_NAME_DELAY + T_NAME_IN)   # 停在揭晓后的画面, 下一帧收起
 		_close.call_deferred()
@@ -320,11 +319,6 @@ func shown_key() -> String:
 
 func shown_white() -> float:
 	return float(_mat.get_shader_parameter("white")) if _mat != null else 0.0
-
-
-func _on_tap(ev: InputEvent) -> void:
-	if ev is InputEventMouseButton and (ev as InputEventMouseButton).pressed:
-		_close()
 
 
 func _close() -> void:
