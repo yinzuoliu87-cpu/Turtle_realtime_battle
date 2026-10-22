@@ -6043,36 +6043,11 @@ func _tick_bulwark(u: Dictionary) -> void:   # 壁垒监视: 盾到期或被打�
 const SPIKE_LINE_RANGE := 700.0   # 壁垒水晶刺直线长度(用户2026-07-16定)
 const SPIKE_WAVE_TIME := 0.6      # 波头跑完700码用时(小菊逐帧z07-z12: ~900码/s推进·破碎消散; 取1170码/s游戏手感)
 const CRYSTAL_BURST_RADIUS := 350.0   # 碎晶爆破范围(用户2026-07-15: 全体→目标周围350码·同墨水炸弹先例)
-const _CHEST_TREASURE_POOL := {
-	"basic":  ["dagger", "wood_shield", "rum", "blood_dice", "chain", "stone"],
-	"adv":    ["long_sword", "bloodblade", "flint", "gem_armor", "poison", "phoenix_statue"],
-	"legend": ["crown", "thunder", "starlight"],
-}
-const _CHEST_TREASURE_NAME := {
-	"dagger": "短刃", "wood_shield": "木盾", "rum": "朗姆酒", "blood_dice": "血筛子", "chain": "锁链", "stone": "石头",
-	"long_sword": "长剑", "bloodblade": "嗜血之刃", "flint": "火石", "gem_armor": "宝石甲", "poison": "毒箭", "phoenix_statue": "凤凰雕像",
-	"crown": "王冠", "thunder": "雷刃", "starlight": "星辉",
-}
-
-## 战利品描述(信息面板用) —— 逐条对着 _chest_sys._chest_apply_treasure 的【实际代码】写, 改效果时这里必须同步.
-const _CHEST_TREASURE_DESC := {
-	"dagger": "攻击力 +25%",
-	"wood_shield": "护甲与魔抗 +20%",
-	"rum": "每秒回复 0.5% 最大生命",
-	"blood_dice": "暴击率 +35%",
-	"chain": "砸击的范围与射程 ×2",
-	"stone": "砸击额外 +100% 护甲与 +100% 魔抗",
-	"long_sword": "攻击力 +45%",
-	"bloodblade": "生命偷取 +25%",
-	"flint": "普攻命中施加灼烧",
-	"gem_armor": "护甲与魔抗 +25%, 最大生命 +500",
-	"poison": "普攻命中使目标受到的治疗 -50%, 持续 5 秒",
-	"phoenix_statue": "首次死亡以 25% 最大生命复活",
-	"crown": "攻击力 +40%, 暴击 +40%, 暴击伤害 +25%, 生命偷取 +15%",
-	"thunder": "命中叠金色闪电, 满 5 层引爆 1.0×ATK 真实伤害",
-	"starlight": "自身造成的所有伤害转为真实伤害",
-}
-const _CHEST_THRESH := [3000.0, 6000.0, 10000.0, 18000.0, 30000.0]   # 大轮制开箱阈值(用户 2026-08-14 上调: 原 1000/2500/4500/7000/12000)
+## 宝箱龟战利品表的真身在 ChestLoot(scripts/gamedata/chest_loot.gd): 背包也要读 ⇒ 这里只留别名。
+const _CHEST_TREASURE_POOL := ChestLoot.POOL
+const _CHEST_TREASURE_NAME := ChestLoot.NAME
+const _CHEST_TREASURE_DESC := ChestLoot.DESC
+const _CHEST_THRESH := ChestLoot.THRESH
 
 func _tick_elite_whip(u: Dictionary) -> void:                    # 被动2·铁锁(Whipfist Longshot·CD5s用户拍板): 索敌 150~350码之间→链射→顿+目标眩晕0.4s→拉体落身后+1A魔法(用户2026-07-18: 触发范围>350改为150~350码之间)
 	if not (u.get("is_elite", false) and u.get("alive", false)): return

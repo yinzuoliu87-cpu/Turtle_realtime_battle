@@ -634,15 +634,15 @@ func _post_hit_hooks(src: Dictionary, u: Dictionary, dmg: int, basic: bool, was_
 			if _cht.has("flint"):    # 火石: 命中→灼烧层(用户2026-08-14: 0.1→0.05, 走 ChestSystem 常量)
 				_apply_dot_stacks(u, "burn", maxi(1, roundi(float(src["atk"]) * ChestSystem.FLINT_BURN_COEF)), src)
 			if _cht.has("poison"):   # 毒箭: 命中→治疗削减-50%·5秒
-				u["heal_reduce_until"] = maxf(float(u.get("heal_reduce_until", 0.0)), battle._t + 5.0)
-				u["heal_reduce_pct"] = maxf(float(u.get("heal_reduce_pct", 0.0)), 0.5)
+				u["heal_reduce_until"] = maxf(float(u.get("heal_reduce_until", 0.0)), battle._t + ChestSystem.POISON_SEC)
+				u["heal_reduce_pct"] = maxf(float(u.get("heal_reduce_pct", 0.0)), ChestSystem.POISON_CUT)
 			## 雷刃: 命中叠金闪电·满5→引爆1.0A真伤(引爆那下 from_equip=true 防循环)
 			## ★用户 2026-08-14 收窄: 只有【普攻与技能】命中才叠层 —— 装备触发的段不再叠。
 			if _cht.has("thunder") and not from_equip:
-				var _tl = battle._add_stack(u, "chest_thunder", 1, 5)
-				if _tl >= 5:
+				var _tl = battle._add_stack(u, "chest_thunder", 1, ChestSystem.THUNDER_STACKS)
+				if _tl >= ChestSystem.THUNDER_STACKS:
 					battle._consume_stacks(u, "chest_thunder")
-					_apply_damage_from(src, u, maxi(1, int(float(src["atk"]))), Color("#ffe94d"), 0.0, true, true)
+					_apply_damage_from(src, u, maxi(1, int(float(src["atk"]) * ChestSystem.THUNDER_ATK_COEF)), Color("#ffe94d"), 0.0, true, true)
 					battle._skill_ring(u["pos"], Color(1.0, 0.92, 0.3, 0.6), 40.0)
 	elif u["alive"]:
 		var _tl2: Array = battle._equip_sys.tally.capture()   # ④ 装备统计: 分发函数里逐件切上下文, 这里还原

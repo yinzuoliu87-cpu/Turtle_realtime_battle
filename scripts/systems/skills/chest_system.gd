@@ -189,6 +189,24 @@ func _chest_pick_treasure(u: Dictionary, group: String) -> String:   # 该档随
 ##   否则就是"手抄的副本必然落后"。
 const RUM_HEAL_PCT := 0.005     # 朗姆酒: 每秒回 0.5% 最大生命(原每 10 秒 8%)
 const GEM_HP := 500.0           # 宝石甲: +500 最大生命(原 +60)
+## 2026-10-22 其余战利品的数也收进来: 原来写在 _chest_apply_treasure / battle_damage 的字面量里,
+##   说明(ChestLoot.DESC)只能手抄 —— 手抄的那份已经漂了(星辉 08-14 收窄成只算攻击和技能, 说明还写「所有伤害」)。
+const DAGGER_ATK := 0.25        # 短刃: 攻击力 +25%
+const WOOD_RES := 0.20          # 木盾: 护甲与魔抗 +20%
+const DICE_CRIT := 0.35         # 血筛子: 暴击率 +35%
+const CHAIN_AOE_UP := 1.0       # 锁链: 宝箱砸击的长度与宽度 +100%
+const STONE_RES_COEF := 1.0     # 石头: 宝箱砸击额外 +(护甲 + 魔抗)×
+const SWORD_ATK := 0.45         # 长剑: 攻击力 +45%
+const BLADE_LS := 0.25          # 嗜血之刃: 生命偷取 +25%
+const GEM_RES := 0.25           # 宝石甲: 护甲与魔抗 +25%
+const POISON_CUT := 0.5         # 毒箭: 治疗削减
+const POISON_SEC := 5.0         # 毒箭: 持续秒
+const CROWN_ATK := 0.40         # 王冠: 攻击力 +40%
+const CROWN_CRIT := 0.40        # 王冠: 暴击率 +40%
+const CROWN_CRIT_DMG := 0.25    # 王冠: 暴击伤害 +25%
+const CROWN_LS := 0.15          # 王冠: 生命偷取 +15%
+const THUNDER_STACKS := 5       # 雷刃: 叠满几层引爆
+const THUNDER_ATK_COEF := 1.0   # 雷刃: 引爆 ×ATK 真实伤害
 ## 【财宝风暴】以目标为心的圆形风暴, 逐跳结算。
 const STORM_RADIUS := 400.0     # 半径(码)
 const STORM_TICKS := 5          # 共几跳
@@ -218,19 +236,19 @@ func _chest_apply_treasure(u: Dictionary, tid: String) -> void:   # 逐件bespok
 	if not u.has("chest_treasures"): u["chest_treasures"] = {}
 	u["chest_treasures"][tid] = true
 	match tid:
-		"dagger":         battle._damage._buff(u, "atk", 0.25, true, 99999.0)                                              # 短刃: +25%攻
-		"wood_shield":    battle._damage._buff(u, "def", 0.20, true, 99999.0); battle._damage._buff(u, "mr", 0.20, true, 99999.0)          # 木盾: +20%双抗
+		"dagger":         battle._damage._buff(u, "atk", DAGGER_ATK, true, 99999.0)                                              # 短刃: +25%攻
+		"wood_shield":    battle._damage._buff(u, "def", WOOD_RES, true, 99999.0); battle._damage._buff(u, "mr", WOOD_RES, true, 99999.0)          # 木盾: +20%双抗
 		"rum":            u["chest_rum_t"] = 0.0                                                             # 朗姆酒: 每秒回 RUM_HEAL_PCT(0.5%) maxHp(周期tick读flag)
-		"blood_dice":     u["crit"] = float(u.get("crit", 0.0)) + 0.35                                       # 血筛子: +35%暴击
-		"chain":          u["chest_aoe_mult"] = 2.0                                                          # 锁链: 砸击AOE距离/射程翻倍(_chest_basic钩子)
-		"stone":          u["chest_rock_bonus"] = float(u.get("chest_rock_bonus", 0.0)) + 1.0                # 石头: 砸击额外+100%护甲+100%魔抗(_chest_basic钩子)
-		"long_sword":     battle._damage._buff(u, "atk", 0.45, true, 99999.0)                                               # 长剑: +45%攻
-		"bloodblade":     u["lifesteal"] = float(u.get("lifesteal", 0.0)) + 0.25                             # 嗜血之刃: +25%吸血
+		"blood_dice":     u["crit"] = float(u.get("crit", 0.0)) + DICE_CRIT                                       # 血筛子: +35%暴击
+		"chain":          u["chest_aoe_mult"] = 1.0 + CHAIN_AOE_UP                                                          # 锁链: 砸击AOE距离/射程翻倍(_chest_basic钩子)
+		"stone":          u["chest_rock_bonus"] = float(u.get("chest_rock_bonus", 0.0)) + STONE_RES_COEF                # 石头: 砸击额外+100%护甲+100%魔抗(_chest_basic钩子)
+		"long_sword":     battle._damage._buff(u, "atk", SWORD_ATK, true, 99999.0)                                               # 长剑: +45%攻
+		"bloodblade":     u["lifesteal"] = float(u.get("lifesteal", 0.0)) + BLADE_LS                             # 嗜血之刃: +25%吸血
 		"flint":          pass                                                                               # 火石: 命中→灼烧(_apply_damage_from钩子·防循环)
-		"gem_armor":      battle._damage._buff(u, "def", 0.25, true, 99999.0); battle._damage._buff(u, "mr", 0.25, true, 99999.0); u["maxHp"] += GEM_HP; u["hp"] += GEM_HP   # 宝石甲: +25%双抗 + GEM_HP(500)血
+		"gem_armor":      battle._damage._buff(u, "def", GEM_RES, true, 99999.0); battle._damage._buff(u, "mr", GEM_RES, true, 99999.0); u["maxHp"] += GEM_HP; u["hp"] += GEM_HP   # 宝石甲: +25%双抗 + GEM_HP(500)血
 		"poison":         pass                                                                               # 毒箭: 命中→治疗削减-50%5秒(_apply_damage_from钩子·防循环)
 		"phoenix_statue": u["_chest_revive"] = true                                                          # 凤凰雕像: 首死25%最大生命复活(_kill钩子)
-		"crown":          battle._damage._buff(u, "atk", 0.40, true, 99999.0); u["crit"] = float(u.get("crit", 0.0)) + 0.40; u["crit_dmg"] = float(u.get("crit_dmg", 1.5)) + 0.25; u["lifesteal"] = float(u.get("lifesteal", 0.0)) + 0.15   # 王冠: +40攻/+40暴/+25爆伤/+15吸血
+		"crown":          battle._damage._buff(u, "atk", CROWN_ATK, true, 99999.0); u["crit"] = float(u.get("crit", 0.0)) + CROWN_CRIT; u["crit_dmg"] = float(u.get("crit_dmg", 1.5)) + CROWN_CRIT_DMG; u["lifesteal"] = float(u.get("lifesteal", 0.0)) + CROWN_LS   # 王冠: +40攻/+40暴/+25爆伤/+15吸血
 		"thunder":        pass                                                                               # 雷刃: 命中叠金闪电满5引爆1.0A真伤(_apply_damage_from钩子·防循环)
 		"starlight":      u["chest_starlight"] = true                                                        # 星辉: 所有伤害转真实(battle._damage._apply_damage_from raw钩子·armor全绕层过局限留F5)
 
@@ -325,64 +343,22 @@ func _chest_greed_apply(u: Dictionary, n: int) -> void:        # 贪婪(技三�
 	u["hp"] = float(u["hp"]) + hb
 	battle._recalc_stats(u)
 
-## 战利品清单的【纯文本形态】—— 供面板的入口条点开后在浮层里显示(2026-08-16)。
-##
-## ★与 _chest_loot_row 同源取名/取描述(_CHEST_TREASURE_NAME / _CHEST_TREASURE_DESC),
-##   不另抄一份表 —— 抄一份就等着它漂。
+## 战利品浮层的正文(BBCode): 每件「图标 + 名字」一行, 下面一行效果 —— 面板的「战利品」入口条点开后显示。
+##   用户 2026-10-22「然后在哪里有显示获得的装备？图标？」: 原来只有名字和效果两行纯文本, 看不到图标。
+##   名字 / 说明 / 图标都取 ChestLoot(与背包宝箱龟卡的「藏宝图」同一份); 说明走装备说明同一条上色管线。
+const LOOT_POPUP_ICON := 28
 func loot_detail_text(owned: Dictionary) -> String:
 	if owned == null or owned.is_empty():
-		return "本场还没开出任何战利品。
-攒够财宝值就会自动开箱, 最多 5 件。"
-	var out: String = ""
+		return "还没开出战利品。"
+	var out: PackedStringArray = []
 	for tid in owned.keys():
 		var k := str(tid)
-		out += str(battle._CHEST_TREASURE_NAME.get(k, k)) + "
-"
-		var d := str(battle._CHEST_TREASURE_DESC.get(k, ""))
-		if d != "":
-			out += d + "
-"
-		out += "
-"
-	return out.strip_edges()
-
-
-func _chest_loot_row(parent: VBoxContainer, tid: String) -> void:
-	var row = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	parent.add_child(row)
-	var icon_box = PanelContainer.new()
-	var isb = StyleBoxFlat.new()
-	isb.bg_color = Color("#0c141c")
-	isb.set_border_width_all(2); isb.border_color = Color("#ffd93d")
-	isb.set_corner_radius_all(5)
-	icon_box.add_theme_stylebox_override("panel", isb)
-	icon_box.custom_minimum_size = Vector2(40, 40)
-	row.add_child(icon_box)
-	var ipath = "res://assets/sprites/equip/chest-t-%s.png" % tid
-	if ResourceLoader.exists(ipath):
-		var ic = TextureRect.new()
-		ic.texture = load(ipath)
-		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		icon_box.add_child(ic)
-	var tcol = VBoxContainer.new()
-	tcol.add_theme_constant_override("separation", 1)
-	tcol.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(tcol)
-	var nl = Label.new()
-	nl.text = str(battle._CHEST_TREASURE_NAME.get(tid, tid))
-	nl.add_theme_font_size_override("font_size", 14)
-	nl.add_theme_color_override("font_color", Color("#ffd93d"))
-	tcol.add_child(nl)
-	var dl = Label.new()
-	dl.text = str(battle._CHEST_TREASURE_DESC.get(tid, ""))
-	dl.add_theme_font_size_override("font_size", 12)
-	dl.add_theme_color_override("font_color", Color("#c9d4de"))
-	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	dl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tcol.add_child(dl)
+		var head := "[color=#ffd93d]%s[/color]" % str(ChestLoot.NAME.get(k, k))
+		var ip := ChestLoot.icon_path(k)
+		if ResourceLoader.exists(ip):
+			head = "[img=%dx%d]%s[/img] %s" % [LOOT_POPUP_ICON, LOOT_POPUP_ICON, ip, head]
+		out.append(head + "\n" + ChestLoot.desc_bb(k, 13))
+	return "\n\n".join(out)
 
 # 技能条目 [{name, desc}]: 取该龟已选的主动技 (走 _chosen_skill_types) + 普攻名 (skillPool[0]).
 ## 小将技能文案表 —— 小将 id 是 "__minion__", pets.json 里【没有】这个条目,

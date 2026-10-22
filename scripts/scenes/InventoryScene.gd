@@ -1239,27 +1239,57 @@ func _open_unit_card() -> void:
 		tag = "Lv %d  ·  %s" % [mlv, "精英" if elite else ("前排" if front else "后排")]
 		icon = "res://assets/sprites/%s" % Phase2Minion.minion_img(elite, not front)
 	_ui_layer = self
+	var is_chest: bool = kind == "leader" and pid == "chest"
 	var live: Dictionary = _insp.open("unit:%s:%d" % [lane, idx], null, {
 		"icon": icon if ResourceLoader.exists(icon) else "",
 		"title": title, "tag": tag, "tag_col": Color("#e8dcc4"),
-		"width": ITEM_CARD_W, "min_px": MIN_FONT_PX,
+		"width": CHEST_CARD_W if is_chest else ITEM_CARD_W, "min_px": MIN_FONT_PX,
 	})
 	if not live.has("vbox"):
 		return
 	(_insp.card as Control).name = "UnitInspectCard"
 	var vb: VBoxContainer = live["vbox"]
+	## 宝箱龟: 左栏属性(与别的龟同一张表) + 右栏「藏宝图」。
+	##   竖着接在属性下面, 5 件全开时卡高 > 屏高(实拍: 第 5 件出屏); 横着放下 16:9 的背包栏(BENCH_X 起 636 宽)。
+	var host: VBoxContainer = vb
+	var side: VBoxContainer = null
+	if is_chest:
+		## 卡头(头像 / 名字 / 等级)也挪进左栏: 右栏从卡顶开始, 5 件全开在 16:9 下也放得下(实拍: 卡头横跨两栏时王者之冠出屏)。
+		var head_nodes: Array = vb.get_children()
+		var cols := HBoxContainer.new()
+		cols.name = "ChestCols"
+		cols.add_theme_constant_override("separation", 12)
+		cols.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vb.add_child(cols)
+		host = VBoxContainer.new()
+		host.add_theme_constant_override("separation", 6)
+		host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cols.add_child(host)
+		for n in head_nodes:
+			vb.remove_child(n)
+			host.add_child(n)
+		var vline := ColorRect.new()
+		vline.color = InspectCard.C_LINE
+		vline.custom_minimum_size = Vector2(2, 0)
+		vline.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cols.add_child(vline)
+		side = VBoxContainer.new()
+		side.name = "TreasureMap"
+		side.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		side.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cols.add_child(side)
 	var rule := ColorRect.new()
 	rule.color = InspectCard.C_LINE
 	rule.custom_minimum_size = Vector2(0, 2)
 	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vb.add_child(rule)
+	host.add_child(rule)
 	var grid := GridContainer.new()
 	grid.name = "UnitStatGrid"
 	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", 12)
 	grid.add_theme_constant_override("v_separation", 4)
 	grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vb.add_child(grid)
+	host.add_child(grid)
 	var base: Dictionary = pv["base"]
 	var add: Dictionary = pv["equip"]
 	for row in UNIT_STAT_ROWS:
@@ -1289,9 +1319,114 @@ func _open_unit_card() -> void:
 		vl.name = "Val_" + k
 		vl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		grid.add_child(vl)
-		var el := _stat_lbl((("+%d%%" % plus) if pct else ("+%d" % plus)) if plus != 0 else "", STAT_EQUIP_COL)
-		el.name = "Eq_" + k
-		grid.add_child(el)
+		## 有装备加成 ⇒ 总值后面括号拆开「基础 + 装备」, 装备那一半绿字。
+		##   用户 2026-10-22 看「80 +30」问「这是什么意思攻击力是110？」—— 只写 +30 会被读成还要再加; 确认用「80（50 + 30）」。
+		##   ★一个 RichTextLabel 整行排: 拆成几个 Label 时各自垂直居中, 中文括号(中文字体)与数字(像素字体)基线错开(用户「歪的」)。
+		var u_s := "%" if pct else ""
+		var br := RichTextLabel.new()
+		br.name = "Br_" + k
+		br.bbcode_enabled = true
+		br.fit_content = true
+		br.autowrap_mode = TextServer.AUTOWRAP_OFF
+		br.scroll_active = false
+		br.add_theme_font_size_override("normal_font_size", MIN_FONT_PX)
+		br.add_theme_color_override("default_color", InspectCard.C_DIM)
+		br.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		br.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if plus != 0:
+			br.text = "(%d%s [color=#%s]+ %d%s[/color])" % [tot - plus, u_s, STAT_EQUIP_COL.to_html(false), plus, u_s]
+		grid.add_child(br)
+	if side != null:
+		_treasure_map_section(side)
+
+
+## 宝箱龟属性小卡的「藏宝图」一段: 财宝值进度 + 已开战利品(图标 / 名字 / 效果), 5 件全开也放得下。
+##   数据 = 存档里的一大轮累计(`GameState.chest_treasure_value / chest_treasures_won`), 表 = ChestLoot(与战斗同一份)。
+const LOOT_ICON := 32.0
+func _treasure_map_section(vb: VBoxContainer) -> void:
+	var won: Array = GameState.chest_treasures_won if GameState.chest_treasures_won is Array else []
+	var opened: int = mini(won.size(), ChestLoot.THRESH.size())
+	var tv: float = float(GameState.chest_treasure_value)
+	var head := HBoxContainer.new()
+	head.name = "TreasureHead"
+	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(head)
+	var hl := _stat_lbl("藏宝图", Color("#ffd93d"))
+	hl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(hl)
+	var nxt: float = ChestLoot.next_threshold(opened)
+	var pl := _stat_lbl(("财宝值 %d / %d" % [int(tv), int(nxt)]) if nxt > 0.0 else ("已开满 %d 件" % opened), InspectCard.C_TITLE)
+	pl.name = "TreasureProgress"
+	head.add_child(pl)
+	## 进度条 = 右上角那行字的比(当前 / 下一箱阈值); 已开满整条满
+	var frac: float = 1.0 if nxt <= 0.0 else clampf(tv / nxt, 0.0, 1.0)
+	var bar := ColorRect.new()
+	bar.name = "TreasureBar"
+	bar.color = Color("#0c141c")
+	bar.custom_minimum_size = Vector2(0, 8)
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(bar)
+	var fill := ColorRect.new()
+	fill.name = "Fill"
+	fill.color = Color("#ffd93d")
+	fill.anchor_bottom = 1.0
+	fill.anchor_right = frac
+	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.add_child(fill)
+	if opened == 0:
+		var none := _stat_lbl("还没开出战利品", InspectCard.C_DIM)
+		none.name = "TreasureNone"
+		vb.add_child(none)
+		return
+	for i in range(opened):
+		var tid := str(won[i])
+		## 一件 = 「图标 + 名字」一行, 说明另起一行占满整栏宽(图标单占一列时说明每行少 2~3 个字,
+		##   5 件全开在 16:9 下出屏 —— 实拍闪电龟的雷刃那条折成 4 行)。
+		var col := VBoxContainer.new()
+		col.name = "Loot_%d" % i
+		col.add_theme_constant_override("separation", 0)
+		col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vb.add_child(col)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		col.add_child(row)
+		var ib := Panel.new()
+		var isb := StyleBoxFlat.new()
+		isb.bg_color = Color("#0c141c")
+		isb.border_color = Color("#ffd93d")
+		isb.set_border_width_all(1)
+		ib.add_theme_stylebox_override("panel", isb)
+		ib.custom_minimum_size = Vector2(LOOT_ICON, LOOT_ICON)
+		ib.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		ib.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(ib)
+		var ip := ChestLoot.icon_path(tid)
+		if ResourceLoader.exists(ip):
+			var ic := TextureRect.new()
+			ic.texture = load(ip)
+			ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			ic.position = Vector2(2, 2); ic.size = Vector2(LOOT_ICON - 4.0, LOOT_ICON - 4.0)
+			ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ib.add_child(ic)
+		var nl := _stat_lbl(str(ChestLoot.NAME.get(tid, tid)), Color("#ffd93d"))
+		nl.name = "Name"
+		row.add_child(nl)
+		var dl := RichTextLabel.new()
+		dl.name = "Desc"
+		dl.bbcode_enabled = true
+		dl.fit_content = true
+		dl.scroll_active = false
+		dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		dl.add_theme_font_size_override("normal_font_size", MIN_FONT_PX)
+		dl.add_theme_color_override("default_color", InspectCard.C_BODY)
+		dl.custom_minimum_size = Vector2(1, 0)
+		dl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		dl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		dl.text = ChestLoot.desc_bb(tid, MIN_FONT_PX)
+		col.add_child(dl)
 
 
 func _stat_lbl(t: String, col: Color) -> Label:
@@ -1314,6 +1449,7 @@ func _card_btn(b: Button) -> void:
 
 
 const ITEM_CARD_W := 340.0
+const CHEST_CARD_W := 624.0   # 宝箱龟属性小卡 = 属性栏 + 藏宝图栏; 16:9 下 BENCH_X(644) + 624 = 1268 < 1280
 
 
 ## InspectCard 定位回调: 背包里的一件 = 背包那一栏里贴着它(下方放不下就上方); 龟卡 / 卡上的一件 = 背包那一栏、与卡顶齐平。

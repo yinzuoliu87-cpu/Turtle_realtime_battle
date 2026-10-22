@@ -35,6 +35,36 @@ scripts/gamedata/bracket_layout.gd|lit|8强
 scripts/gamedata/bracket_layout.gd|lit|决赛
 scripts/gamedata/bracket_layout.gd|lit|半决赛
 scripts/gamedata/bracket_layout.gd|lit|第 1 轮
+scripts/gamedata/chest_loot.gd|lit|【宝箱砸击】的范围扩大 {C:ChestSystem.CHAIN_AOE_UP%}%。
+scripts/gamedata/chest_loot.gd|lit|【宝箱砸击】额外造成（{C:ChestSystem.STONE_RES_COEF%}% 护甲与魔抗之和）物理伤害。
+scripts/gamedata/chest_loot.gd|lit|凤凰龟雕像
+scripts/gamedata/chest_loot.gd|lit|嗜血之刃
+scripts/gamedata/chest_loot.gd|lit|坚固木盾
+scripts/gamedata/chest_loot.gd|lit|宝石铠甲
+scripts/gamedata/chest_loot.gd|lit|攻击和技能伤害转化为真实伤害。
+scripts/gamedata/chest_loot.gd|lit|攻击和技能命中时，对目标叠加 1 层金色闪电，叠满 {C:ChestSystem.THUNDER_STACKS} 层时引爆，造成 {C:ChestSystem.THUNDER_ATK_COEF%}% 攻击力的真实伤害。
+scripts/gamedata/chest_loot.gd|lit|攻击和技能命中时，对目标施加 {C:ChestSystem.POISON_CUT%}% 治疗削减，持续 {C:ChestSystem.POISON_SEC} 秒。
+scripts/gamedata/chest_loot.gd|lit|攻击和技能命中时，施加（{C:ChestSystem.FLINT_BURN_COEF%}% 攻击力）层灼烧。
+scripts/gamedata/chest_loot.gd|lit|星际龟的星辉
+scripts/gamedata/chest_loot.gd|lit|每秒回复自身 {C:ChestSystem.RUM_HEAL_PCT%}% 最大生命值。
+scripts/gamedata/chest_loot.gd|lit|海盗龟的小瓶朗姆酒
+scripts/gamedata/chest_loot.gd|lit|淬毒箭矢
+scripts/gamedata/chest_loot.gd|lit|灼热火石
+scripts/gamedata/chest_loot.gd|lit|王者之冠
+scripts/gamedata/chest_loot.gd|lit|神奇石头
+scripts/gamedata/chest_loot.gd|lit|精钢长剑
+scripts/gamedata/chest_loot.gd|lit|获得 {C:ChestSystem.BLADE_LS%}% 生命偷取。
+scripts/gamedata/chest_loot.gd|lit|获得 {C:ChestSystem.CROWN_ATK%}% 攻击力、{C:ChestSystem.CROWN_CRIT%}% 暴击率、{C:ChestSystem.CROWN_CRIT_DMG%}% 暴击伤害与 {C:ChestSystem.CROWN_LS%}% 生命偷取。
+scripts/gamedata/chest_loot.gd|lit|获得 {C:ChestSystem.DAGGER_ATK%}% 攻击力。
+scripts/gamedata/chest_loot.gd|lit|获得 {C:ChestSystem.DICE_CRIT%}% 暴击率。
+scripts/gamedata/chest_loot.gd|lit|获得 {C:ChestSystem.GEM_HP} 最大生命值与 {C:ChestSystem.GEM_RES%}% 护甲与魔抗。
+scripts/gamedata/chest_loot.gd|lit|获得 {C:ChestSystem.SWORD_ATK%}% 攻击力。
+scripts/gamedata/chest_loot.gd|lit|获得 {C:ChestSystem.WOOD_RES%}% 护甲与魔抗。
+scripts/gamedata/chest_loot.gd|lit|锁链
+scripts/gamedata/chest_loot.gd|lit|锋利短刃
+scripts/gamedata/chest_loot.gd|lit|闪电龟的雷刃
+scripts/gamedata/chest_loot.gd|lit|首次死亡时以自身 {C:AngelSystem.REVIVE_HP_PCT%}% 最大生命值复活一次。
+scripts/gamedata/chest_loot.gd|lit|骰子龟的血筛子
 scripts/gamedata/copy_rules.gd|lit|变形态: cyber_ai_charge=1 6 秒后仍为真(赛博龟的充能形态)
 scripts/gamedata/copy_rules.gd|lit|变形态: hunter_roll_buff=true + state=move(猎人的翻滚形态)
 scripts/gamedata/copy_rules.gd|lit|变形态: shell_stealth=true + untargetable_until 长时间不可选中
@@ -828,6 +858,7 @@ scripts/scenes/InventoryScene.gd|lit|后排
 scripts/scenes/InventoryScene.gd|lit|商店
 scripts/scenes/InventoryScene.gd|lit|小将
 scripts/scenes/InventoryScene.gd|lit|属性\n%s\n\n效果\n%s
+scripts/scenes/InventoryScene.gd|lit|已开满 %d 件
 scripts/scenes/InventoryScene.gd|lit|打碎可获得：%s（每大轮限 1 次）
 scripts/scenes/InventoryScene.gd|lit|护甲
 scripts/scenes/InventoryScene.gd|lit|攻击力
@@ -845,7 +876,10 @@ scripts/scenes/InventoryScene.gd|lit|精英小将
 scripts/scenes/InventoryScene.gd|lit|糖果罐
 scripts/scenes/InventoryScene.gd|lit|统领%d
 scripts/scenes/InventoryScene.gd|lit|背包
+scripts/scenes/InventoryScene.gd|lit|藏宝图
 scripts/scenes/InventoryScene.gd|lit|设置开战站位
+scripts/scenes/InventoryScene.gd|lit|财宝值 %d / %d
+scripts/scenes/InventoryScene.gd|lit|还没开出战利品
 scripts/scenes/InventoryScene.gd|lit|阵容说明
 scripts/scenes/InventoryScene.gd|lit|魔抗
 scripts/scenes/InventoryScene.gd|lit|（无主动效果）
@@ -998,55 +1032,25 @@ scripts/scenes/RealtimeBattle3DScene.gd|lit|_world 子节点=%d (特效没清)
 scripts/scenes/RealtimeBattle3DScene.gd|lit|上路战场
 scripts/scenes/RealtimeBattle3DScene.gd|lit|下路战场
 scripts/scenes/RealtimeBattle3DScene.gd|lit|冰川
-scripts/scenes/RealtimeBattle3DScene.gd|lit|凤凰雕像
 scripts/scenes/RealtimeBattle3DScene.gd|lit|加时：治疗效果 -%d%%，每 %d 秒全场伤害 +%d%%
 scripts/scenes/RealtimeBattle3DScene.gd|lit|口哨
-scripts/scenes/RealtimeBattle3DScene.gd|lit|命中叠金色闪电, 满 5 层引爆 1.0×ATK 真实伤害
 scripts/scenes/RealtimeBattle3DScene.gd|lit|命运生命偷取
-scripts/scenes/RealtimeBattle3DScene.gd|lit|嗜血之刃
 scripts/scenes/RealtimeBattle3DScene.gd|lit|复活
 scripts/scenes/RealtimeBattle3DScene.gd|lit|大熊
 scripts/scenes/RealtimeBattle3DScene.gd|lit|大熊蓄力...
-scripts/scenes/RealtimeBattle3DScene.gd|lit|宝石甲
 scripts/scenes/RealtimeBattle3DScene.gd|lit|实时
 scripts/scenes/RealtimeBattle3DScene.gd|lit|弹道数=%d (可能没回收)
 scripts/scenes/RealtimeBattle3DScene.gd|lit|归队
 scripts/scenes/RealtimeBattle3DScene.gd|lit|怒火药水
 scripts/scenes/RealtimeBattle3DScene.gd|lit|战利品 %d/5
-scripts/scenes/RealtimeBattle3DScene.gd|lit|护甲与魔抗 +20%
-scripts/scenes/RealtimeBattle3DScene.gd|lit|护甲与魔抗 +25%, 最大生命 +500
-scripts/scenes/RealtimeBattle3DScene.gd|lit|攻击力 +25%
-scripts/scenes/RealtimeBattle3DScene.gd|lit|攻击力 +40%, 暴击 +40%, 暴击伤害 +25%, 生命偷取 +15%
-scripts/scenes/RealtimeBattle3DScene.gd|lit|攻击力 +45%
-scripts/scenes/RealtimeBattle3DScene.gd|lit|星辉
-scripts/scenes/RealtimeBattle3DScene.gd|lit|普攻命中使目标受到的治疗 -50%, 持续 5 秒
-scripts/scenes/RealtimeBattle3DScene.gd|lit|普攻命中施加灼烧
-scripts/scenes/RealtimeBattle3DScene.gd|lit|暴击率 +35%
-scripts/scenes/RealtimeBattle3DScene.gd|lit|朗姆酒
-scripts/scenes/RealtimeBattle3DScene.gd|lit|木盾
 scripts/scenes/RealtimeBattle3DScene.gd|lit|未知龟
 scripts/scenes/RealtimeBattle3DScene.gd|lit|枪
-scripts/scenes/RealtimeBattle3DScene.gd|lit|每秒回复 0.5% 最大生命
-scripts/scenes/RealtimeBattle3DScene.gd|lit|毒箭
 scripts/scenes/RealtimeBattle3DScene.gd|lit|海胆盾
 scripts/scenes/RealtimeBattle3DScene.gd|lit|海螺虫
-scripts/scenes/RealtimeBattle3DScene.gd|lit|火石
 scripts/scenes/RealtimeBattle3DScene.gd|lit|猎龟令
-scripts/scenes/RealtimeBattle3DScene.gd|lit|王冠
-scripts/scenes/RealtimeBattle3DScene.gd|lit|生命偷取 +25%
-scripts/scenes/RealtimeBattle3DScene.gd|lit|短刃
-scripts/scenes/RealtimeBattle3DScene.gd|lit|石头
-scripts/scenes/RealtimeBattle3DScene.gd|lit|砸击的范围与射程 ×2
-scripts/scenes/RealtimeBattle3DScene.gd|lit|砸击额外 +100% 护甲与 +100% 魔抗
 scripts/scenes/RealtimeBattle3DScene.gd|lit|终极战场
-scripts/scenes/RealtimeBattle3DScene.gd|lit|自身造成的所有伤害转为真实伤害
-scripts/scenes/RealtimeBattle3DScene.gd|lit|血筛子
 scripts/scenes/RealtimeBattle3DScene.gd|lit|观测:stun_chain
 scripts/scenes/RealtimeBattle3DScene.gd|lit|钩锁
-scripts/scenes/RealtimeBattle3DScene.gd|lit|锁链
-scripts/scenes/RealtimeBattle3DScene.gd|lit|长剑
-scripts/scenes/RealtimeBattle3DScene.gd|lit|雷刃
-scripts/scenes/RealtimeBattle3DScene.gd|lit|首次死亡以 25% 最大生命复活
 scripts/scenes/RealtimeBattle3DScene.gd|lit|驯服
 scripts/scenes/RecordScene.gd|lit|%d 分钟前
 scripts/scenes/RecordScene.gd|lit|%d 天前
@@ -2062,6 +2066,7 @@ scripts/systems/skills/candy_system.gd|lit|投喂
 scripts/systems/skills/candy_system.gd|lit|甜蜜掠夺 -
 scripts/systems/skills/candy_system.gd|lit|糖果炸弹
 scripts/systems/skills/chest_system.gd|lit|开箱 
+scripts/systems/skills/chest_system.gd|lit|还没开出战利品。
 scripts/systems/skills/crystal_system.gd|lit|魔抗-%d
 scripts/systems/skills/cyber_system.gd|lit|侵入
 scripts/systems/skills/cyber_system.gd|lit|机甲

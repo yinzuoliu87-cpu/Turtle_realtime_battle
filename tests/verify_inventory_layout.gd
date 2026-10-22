@@ -1068,13 +1068,20 @@ func _check_equip_slot_pt() -> void:
 				if vl != null and vl.text.strip_edges() != "" and vl.text != "0" and vl.text != "0%":
 					vals.append(k)
 			_ok("⑤ 六项(最大生命值 / 攻击力 / 护甲 / 魔抗 / 暴击率 / 暴击伤害)都有数", vals.size() == 6, str(vals))
-			var ea: Label = ucard.find_child("Eq_atk", true, false) as Label
-			var ec: Label = ucard.find_child("Eq_crit", true, false) as Label
-			var eh: Label = ucard.find_child("Eq_hp", true, false) as Label
-			_ok("⑤ ★装备加的那部分单独标出: 攻击 +%d、暴击 +%d%%, 没加的不标" % [want_eq["atk"], want_eq["crit"]],
-				ea != null and ea.text == "+%d" % want_eq["atk"] and ec != null and ec.text == "+%d%%" % want_eq["crit"]
-				and eh != null and eh.text == "",
-				"攻击「%s」暴击「%s」生命「%s」" % [ea.text if ea else "-", ec.text if ec else "-", eh.text if eh else "-"])
+			## 用户 2026-10-22 看「80 +30」问「这是什么意思攻击力是110？」⇒ 写成「80（50 + 30）」: 总值后面括号拆开「基础 + 装备」
+			var ea: RichTextLabel = ucard.find_child("Br_atk", true, false) as RichTextLabel
+			var ec: RichTextLabel = ucard.find_child("Br_crit", true, false) as RichTextLabel
+			var eh: RichTextLabel = ucard.find_child("Br_hp", true, false) as RichTextLabel
+			var va: Label = ucard.find_child("Val_atk", true, false) as Label
+			var ta: String = ea.get_parsed_text() if ea else "-"
+			var tc: String = ec.get_parsed_text() if ec else "-"
+			var th: String = eh.get_parsed_text() if eh else "-"
+			var want_a := "(%d + %d)" % [int(va.text) - want_eq["atk"] if va else -1, want_eq["atk"]]
+			## ★`as RichTextLabel` 本身就是判据: 「歪的」(用户 2026-10-22) —— 拆成几个 Label 各自居中时,
+			##   中文括号与像素数字基线错开; 退回 Label 写法这里拿到 null ⇒ 红。
+			_ok("⑤ ★装备加的那部分拆开写(一个 RichTextLabel 整行): 攻击「%s」、暴击「(… + %d%%)」, 没加的不写" % [want_a, want_eq["crit"]],
+				ta == want_a and tc.ends_with(" + %d%%)" % want_eq["crit"]) and th == "",
+				"攻击「%s」暴击「%s」生命「%s」" % [ta, tc, th])
 			var ur2: Rect2 = ucard.get_global_rect()
 			var covered: Array = []
 			for c in _all(sc):
