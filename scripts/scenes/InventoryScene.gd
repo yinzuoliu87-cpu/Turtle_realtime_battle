@@ -1843,16 +1843,28 @@ func _show_equip_detail(item: Dictionary) -> void:
 		str(edef.get("name", eid)), "★".repeat(star), int(edef.get("cost", 1)),
 		("  ·  " + tname) if tname != "" else ""]
 	ttl.position = Vector2(24, 18); ttl.size = Vector2(bw - 48, 34); box.add_child(ttl)
+	## ★正文装进滚动框(2026-10-22): 小木斧全文(四个形态 + 四个造物 + 规则)要 1600 多 px, 屏幕放不下是必然的。
+	##   原来是 RichTextLabel 自带滚动 ⇒ 出 Godot 默认的灰色圆角条; 换成与商店说明卡同一套木框 / 黄铜皮。
+	##   放得下时滚动条不出现(SCROLL_MODE_AUTO), 放不下才能滚 —— 不静默吃字。
+	var scr := ScrollContainer.new()
+	scr.name = "EquipDetailScroll"
+	scr.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scr.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scr.follow_focus = false
+	UISkin.scrollbar(scr)
+	scr.position = Vector2(24, 62); scr.size = Vector2(bw - 48, bh - 62 - 100)
+	box.add_child(scr)
 	var rt := RichTextLabel.new()
 	rt.bbcode_enabled = true
-	rt.fit_content = false
-	rt.scroll_active = true          # 万一还是放不下 → 能滚, 不静默吃字
+	rt.fit_content = true
+	rt.scroll_active = false
 	rt.add_theme_font_size_override("normal_font_size", DETAIL_BODY_FS)
 	rt.add_theme_font_size_override("bold_font_size", DETAIL_BODY_FS)
-	rt.position = Vector2(24, 62); rt.size = Vector2(bw - 48, bh - 62 - 100)
+	rt.custom_minimum_size = Vector2(bw - 48 - (UISkin.SCROLL_W + 4.0), 0)
+	rt.mouse_filter = Control.MOUSE_FILTER_PASS   # 手指拖动交给外面的滚动框
 	rt.text = bb
 	rt.name = "EquipDetailBody"
-	box.add_child(rt)
+	scr.add_child(rt)
 	## 「关闭」是网页/工具栏的词; 本屏的阵容帮助框一直用的是「知道了」—— 统一到那一个。
 	var ok := Button.new(); ok.text = "知道了"; ok.add_theme_font_size_override("font_size", MIN_FONT_PX)
 	ok.position = Vector2(bw / 2.0 - 80, bh - 94); ok.size = Vector2(160, 81)

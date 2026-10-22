@@ -23,6 +23,7 @@ const InvScene := preload("res://scripts/scenes/InventoryScene.gd")
 const Phase2Types := preload("res://scripts/gamedata/phase2_types.gd")
 ## ★`equip_stats.gd` 故意没有 class_name(防 F5 未声明崩) ⇒ 必须 preload
 const EquipStats := preload("res://scripts/gamedata/equip_stats.gd")
+const SBJ := preload("res://tests/_scrollbar_skin_judge.gd")
 const INV_SRC := "res://scripts/scenes/InventoryScene.gd"
 const SYN_SRC := "res://scripts/scenes/inventory/synergy_panel.gd"
 
@@ -302,18 +303,30 @@ func _ready() -> void:
 	_ok("⑮ ★分母: 详情框建出来了", det != null)
 	if det != null:
 		var dr: Rect2 = det.get_global_rect()
-		var dbox: Control = det.get_parent() as Control
+		## ★2026-10-22 正文装进了滚动框(小木斧全文 1600 多 px, 屏幕放不下是必然的): 框 = 滚动框的父节点
+		var scr: ScrollContainer = det.get_parent() as ScrollContainer
+		var dbox: Control = (scr.get_parent() if scr != null else det.get_parent()) as Control
 		var dboxr: Rect2 = dbox.get_global_rect() if dbox != null else Rect2()
+		var vis_r: Rect2 = scr.get_global_rect() if scr != null else dr
 		_ok("⑯ 详情框不出 720 设计框", dboxr.position.y >= -1.0 and dboxr.end.y <= vp + 1.0,
 			str(dboxr))
-		_ok("⑰ 详情正文完整落在框内", dr.end.y <= dboxr.end.y + 1.0, "%s vs %s" % [str(dr), str(dboxr)])
+		_ok("⑰ 详情正文的可见区完整落在框内", vis_r.end.y <= dboxr.end.y + 1.0, "%s vs %s" % [str(vis_r), str(dboxr)])
 		## ★"放得下"要量真实排版高度, 不是看它有没有滚动条
 		var need: float = float(sc.call("_measured_text_h", det.get_parsed_text(), dr.size.x,
 			int(InvScene.DETAIL_BODY_FS)))
-		_ok("⑱ ★★最长那件的全文在详情框里【真的放得下】(要 %.0f px, 框给了 %.0f px)"
-			% [need, dr.size.y], need <= dr.size.y + 1.0,
-			"还差 %.0f px ⇒ 又是一次静默截断" % (need - dr.size.y))
-		_ok("⑲ 详情正文仍可滚(万一以后文案再变长, 不静默吃字)", det.scroll_active)
+		var bar: VScrollBar = scr.get_v_scroll_bar() if scr != null else null
+		if need <= vis_r.size.y + 1.0:
+			_ok("⑱ ★★全文放得下(要 %.0f px, 框给了 %.0f px)时不出滚动条" % [need, vis_r.size.y],
+				bar == null or not bar.visible)
+		else:
+			## 放不下 ⇒ 必须能滚到最后一行(不静默吃字), 且滚动条是木框 / 黄铜皮
+			_ok("⑱ ★★全文放不下(要 %.0f px, 框给了 %.0f px) ⇒ 正文整段都排进了滚动框、滚得到底"
+				% [need, vis_r.size.y], dr.size.y >= need - 1.0 and bar != null and bar.max_value >= need - 1.0,
+				"正文高 %.0f · 滚动范围 %.0f" % [dr.size.y, bar.max_value if bar != null else -1.0])
+			_ok("⑱b 滚动条是木框 / 黄铜皮(不是 Godot 默认的灰色圆角条)",
+				SBJ.problem(scr, UISkin.SCROLL_W + 4.0) == "", SBJ.problem(scr, UISkin.SCROLL_W + 4.0))
+		_ok("⑲ 详情正文装在滚动框里(万一以后文案再变长, 不静默吃字)",
+			scr != null and scr.vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED)
 		var dtxt: String = det.get_parsed_text()
 		## ★★2026-09-28 从 `find("带来的属性")` 改成**量内容本身**。
 		##   原判据钉的是段标题那几个字 —— 而这一刻标题正从「带来的属性」统一成「属性」

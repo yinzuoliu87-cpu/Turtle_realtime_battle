@@ -90,6 +90,17 @@ func _occluded_buttons(root: Node, _vp: Vector2) -> Array:
 			bad.append("%s(%s) 被 %s 盖住" % [b.name, (b as Button).text.left(8) if b is Button else "-", blocker])
 	return bad
 
+## 控件真正画得出来、收得到点击的那块: 自己的矩形逐层与开了 clip_contents 的祖先求交。
+func _clipped_rect(c: Control) -> Rect2:
+	var r: Rect2 = c.get_global_rect()
+	var p: Node = c.get_parent()
+	while p != null:
+		if p is Control and (p as Control).clip_contents:
+			r = r.intersection((p as Control).get_global_rect())
+		p = p.get_parent()
+	return r
+
+
 func _find_blocker(root: Node, btn: Control) -> String:
 	var br: Rect2 = btn.get_global_rect()
 	var barea: float = br.size.x * br.size.y
@@ -109,7 +120,9 @@ func _find_blocker(root: Node, btn: Control) -> String:
 			continue                                  # 不吃鼠标的纯装饰层不算遮挡
 		if btn.is_ancestor_of(c) or c.is_ancestor_of(btn):
 			continue                                  # 自己的子孙/祖先(按钮内的图标、包着它的容器)不算
-		var inter: Rect2 = c.get_global_rect().intersection(br)
+		## ★按【被祖先裁剪之后】的可见矩形算(2026-10-22): 滚动框里的长正文自己的矩形有两千多 px 高,
+		##   但框外那一截既不画、也收不到点击(Godot 拣点击时认 clip_contents) —— 拿整块矩形比会误报遮挡。
+		var inter: Rect2 = _clipped_rect(c).intersection(br)
 		if inter.size.x * inter.size.y < barea * 0.25:
 			continue                                  # 只是蹭到边不算; 盖掉四分之一以上才算遮住
 		if not _draws_above(c, btn):
@@ -319,8 +332,10 @@ func _check_scene_buttons(scene_name: String, vp: Vector2) -> void:
 	add_child(inst)
 	await get_tree().create_timer(1.7).timeout   # 等入场动画落定(主菜单右栏磁贴滑入到1.39s才完; 1.1s抓中间帧误报)
 	_post_scene_state(scene_name, inst)
-	await get_tree().process_frame
-	await get_tree().process_frame
+	## ★等商店说明卡排完版(2026-10-22): 卡超高时要先排一帧、再封顶成滚动框、再一帧重新定位 ——
+	##   只等 2 帧会量到还没封顶的那一帧(小木斧全文变长后, 卡底「购买」在那一帧落在 y 2716)。量的是稳定后的样子。
+	for _i in range(8):
+		await get_tree().process_frame
 	var btns: Array = []
 	_visible_buttons(inst, btns)
 	## ★分母下限: 低于这个数说明页面没建全(上锁态/空态), 后面两条就是空检查。

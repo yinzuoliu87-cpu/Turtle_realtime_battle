@@ -164,7 +164,9 @@ func _adopt() -> void:
 			continue                      # 双保险: 绝不把自己的祖先收进自己
 		var c := ch as Control
 		# 满铺层留在 host 上(背景/遮罩要铺满整窗)
-		if c.size.x * c.size.y >= area * FULL_BLEED_RATIO:
+		# ★还得【横向也铺满】才算(2026-10-22): 只看面积时, 一张 400 宽、正文很长的说明卡(小木斧全文那一帧还没封顶)
+		#   面积也会过线 ⇒ 被当成背景不收编 ⇒ 宽屏上不跟着设计框居中, 而且宿主整页重建时与旧卡同名、被引擎改名。
+		if c.size.x * c.size.y >= area * FULL_BLEED_RATIO and c.size.x >= vs.x * FULL_BLEED_RATIO:
 			continue
 		# 锚点铺满的(PRESET_FULL_RECT)也留下: 它就是要跟着视口长
 		if absf(c.anchor_right - 1.0) < 0.001 and absf(c.anchor_bottom - 1.0) < 0.001 \

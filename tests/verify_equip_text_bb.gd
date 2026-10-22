@@ -89,7 +89,9 @@ func _ready() -> void:
 			html_leak.append(nm)
 		# ⑤ 源文案里的方括号会被 BBCode 吃掉
 		for f in ["effectBrief", "effectDesc1", "effectDesc2", "effectDesc3"]:
-			var raw: String = str(ed.get(f, ""))
+			## ★先展开 {C:} 占位符再查: 占位符里的下标 `{C:类.常量[i]}`(2026-10-22 小木斧四个阈值分开写)
+			##   在进 BBCode 之前就展开了, 玩家看不到那对方括号; 要防的是【展开后】还剩的方括号。
+			var raw: String = SkillText.render_consts(str(ed.get(f, "")))
 			if raw.contains("[") or raw.contains("]"):
 				brackets.append("%s.%s" % [nm, f])
 

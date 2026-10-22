@@ -103,9 +103,12 @@ const KEYWORD_RULES := [
 	##   grep key 又会被本表里的转义引号切断正则) —— 是**把全库 420 段文案过一遍
 	##   `render_bbcode`, 收集它真正吐出的图标路径**。问产品自己的账, 不做静态猜。
 	##   下面 5 条 + 上面两条补 key, 覆盖 7 个。
-	## ⚠ 剩下 3 个(`maxenergy` / `shieldamp` / `shieldheal`)**全库文案 0 次出现** ——
+	## ⚠ 剩下 2 个(`shieldamp` / `shieldheal`)**全库文案 0 次出现** ——
 	##   没有文案可挂, 不为了让图标"有人用"去硬造词。登记在这里。
 	["(?<!\">)(?:龟能充能|充能速度)(?!<)", "val-extra", "echarge"],
+	## ★「龟能」本身也带图标(用户 2026-10-22「斧头的龟能…不加符号？」): 生命值、攻击力都有图标, 唯独龟能没有。
+	##   用电池那张 `maxenergy`(原来全库 0 次出现)。`(?!充能)` 让「龟能充能」仍走上面那条闪电图标。
+	["(?<!\">)龟能(?!充能)(?!<)", "val-extra", "maxenergy"],
 	["(?<!\">)(?:治疗效果提升|受到的治疗)(?!<)", "val-heal", "healamp"],
 	["(?<!\">)增伤(?!<)", "val-normal", "dmg-amp"],
 	["(?<!\">)(?:伤害减免|减伤)(?!<)", "val-reflect", "dmg-red"],
@@ -704,26 +707,51 @@ static func equip_full(edef: Dictionary) -> String:
 
 static func equip_full_src(edef: Dictionary) -> String:
 	var base := render_consts(str(edef.get("effectDesc1", "")))
-	var per_stage: String = str(edef.get("effectDesc2", "")).strip_edges()
-	if per_stage == "" or str(edef.get("id", "")) != "p2eq_096":
+	if str(edef.get("id", "")) != "p2eq_096":
 		return base
+	return _axe_full_src(edef, base)
+
+
+## ★★096 小木斧的完整说明(2026-10-22 重写): 四个形态 + 四个最终造物【一律全部列出】,
+##   已进化到的形态 / 选中的造物正常显示, 没到的压暗(用户「上面全亮就好了」)。
+##   原来「按已解锁条数取前 N 行」把后面几档藏起来; LoL 斯莫德 Q 是把 25 / 125 / 225 层的效果全列出来的。
+## ★顺序照 LoL: 正文 → 四个形态(effectDesc2) → 四个造物(effectDesc3) → 灰字规则与「斧头拥有」。
+##   灰字那一截写在 effectDesc1 里(第一个灰字 span 起到结尾), 这里把它挪到最后。
+## ★图鉴不再另拼 effectDesc3(detail_views 对 096 跳过), 否则造物出现两遍。
+const AXE_GREY_OPEN := "<span style=\"color:#8a93a0\">"
+const AXE_DIM := "#7d8ea0"   # 与图鉴星级「非当前档」同一个暗色(CodexDetail.TIER_DIM)
+
+
+static func _axe_full_src(edef: Dictionary, base: String) -> String:
 	var gs = Engine.get_main_loop().root.get_node_or_null("/root/GameState") if Engine.get_main_loop() != null else null
 	var AE = load("res://scripts/gamedata/axe_evolution.gd")
-	if gs == null or AE == null:
-		return base
-	var n: int = int(AE.passives_at(int(gs.get("axe_stage"))))
-	if n <= 0:
-		return base
-	var lines: PackedStringArray = per_stage.split("
-", false)
-	var take: PackedStringArray = []
-	for i in range(mini(n, lines.size())):
-		take.append(str(lines[i]))
-	if take.is_empty():
-		return base
-	return base + "
-" + render_consts("
-".join(take))
+	var pv := 0
+	var fin := ""
+	if gs != null and AE != null:
+		pv = int(AE.passives_at(int(gs.get("axe_stage"))))
+		fin = str(gs.get("axe_final"))
+	var cut := base.find(AXE_GREY_OPEN)
+	var parts: PackedStringArray = [base if cut < 0 else base.substr(0, cut).strip_edges()]
+	## 形态: 第 0 行是「每次进化额外获得…」总述, 永远亮; 第 i 行 = 第 i 档, i 大于已解锁条数 ⇒ 压暗
+	var stage_lines := render_consts(str(edef.get("effectDesc2", ""))).split("\n", false)
+	for i in range(stage_lines.size()):
+		parts.append(_axe_dim(str(stage_lines[i])) if i > pv else str(stage_lines[i]))
+	## 造物: 按行首【造物名】认是哪一个(不按行号, 调了顺序也不会对错行); 没选、或不是选中那个 ⇒ 压暗
+	var fin_name := ""
+	if AE != null:
+		for f in AE.FINALS:
+			if str((f as Dictionary)["key"]) == fin:
+				fin_name = str((f as Dictionary)["name"])
+	for ln in render_consts(str(edef.get("effectDesc3", ""))).split("\n", false):
+		var lit: bool = fin_name != "" and str(ln).begins_with("【%s】" % fin_name)
+		parts.append(str(ln) if lit else _axe_dim(str(ln)))
+	if cut >= 0:
+		parts.append(base.substr(cut))
+	return "\n".join(parts)
+
+
+static func _axe_dim(line: String) -> String:
+	return "<span style=\"color:%s\">%s</span>" % [AXE_DIM, line]
 
 
 ## 装备文案的【BBCode 版】—— 与龟技能走同一条上色 / 内联图标管线 (2026-10-01·两层渲染 P2)。

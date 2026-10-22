@@ -552,10 +552,10 @@ func _t_desc_complete(gs) -> void:
 		"被动4 竖劈(流血)": ["竖劈", "%d 层流血" % AE.CLEAVE_BLEED],
 		"被动5 横扫 + 效率层": ["横扫", "效率"],
 		"被动6 蓄力猛砸(眩晕)": ["蓄力", "眩晕"],
-		"最终造物·亡灵之斧": ["亡灵之斧", "重生"],
+		"最终造物·亡灵之斧": ["亡灵之斧", "复活"],
 		"最终造物·炽天使": ["炽天使", "回旋镖"],
 		"最终造物·全息斧": ["全息斧", "友军"],
-		"最终造物·余烬": ["余烬", "处决线"],
+		"最终造物·余烬": ["余烬", "斩杀线"],
 	}
 	for k in need:
 		var miss: Array = []
@@ -569,30 +569,41 @@ func _t_desc_complete(gs) -> void:
 		not SkillText.equip_full(other).contains("亡灵之斧"),
 		SkillText.equip_full(other).substr(0, 30))
 
-	## ★★★说明【随档位生长】—— 木斧那一屏不该背着钻石斧的说明
-	var lens: Array = []
-	for i in range(AE.STAGES.size()):
-		gs.axe_stage = i
-		lens.append(SkillText.equip_full(eq).length())
-	var mono := true
-	for i in range(1, lens.size()):
-		if int(lens[i]) < int(lens[i - 1]):
-			mono = false
-	_ok("★★说明随档位【只增不减】(五档字数 %s)" % str(lens), mono)
-	_ok("★★木斧那一屏【不】含钻石斧的蓄力说明(否则商店框放不下→静默截断)",
-		int(lens[0]) < int(lens[lens.size() - 1]) and not _stage_text(gs, eq, 0).contains("蓄力"),
-		"木斧 %d 字 vs 钻石斧 %d 字" % [int(lens[0]), int(lens[lens.size() - 1])])
-	_ok("★★钻石斧那一屏【含】四条被动各自的关键词(分母: 逐条查)",
-		_stage_text(gs, eq, 4).contains("击退") and _stage_text(gs, eq, 4).contains("竖劈")
-		and _stage_text(gs, eq, 4).contains("横扫") and _stage_text(gs, eq, 4).contains("蓄力"))
+	## ★★★四个形态 / 四个造物【一律列出】, 没到的压暗(用户 2026-10-22「上面全亮就好了」;
+	##   原来「随档位生长」把后面几档藏起来, 木斧那一屏看不到它会进化成什么)。判据量源文本里的压暗 span。
+	var DIM_OPEN := "<span style=\"color:%s\">" % SkillText.AXE_DIM
+	var bak_fin: String = str(gs.axe_final)
+	gs.axe_final = ""
+	gs.axe_stage = 0
+	var s0: String = SkillText.equip_full_src(eq)
+	var all_names: Array = []
+	for st in AE.STAGES.slice(1):
+		all_names.append(str(st["name"]))
+	for f in AE.FINALS:
+		all_names.append(str(f["name"]))
+	var miss0: Array = []
+	var lit0: Array = []
+	for nm in all_names:
+		if not s0.contains("【%s】" % nm):
+			miss0.append(nm)
+		elif not s0.contains(DIM_OPEN + "【%s】" % nm):
+			lit0.append(nm)
+	_ok("★★木斧那一屏也列出全部四个形态与四个造物(分母 %d 个名字)" % all_names.size(), miss0.is_empty(), str(miss0))
+	_ok("★★木斧时八条全部压暗", lit0.is_empty(), "没压暗: %s" % str(lit0))
+	gs.axe_stage = 2
+	var s2: String = SkillText.equip_full_src(eq)
+	_ok("★★铁斧时: 石斧 / 铁斧 正常亮, 金斧 / 钻石斧 压暗",
+		not s2.contains(DIM_OPEN + "【石斧】") and not s2.contains(DIM_OPEN + "【铁斧】")
+		and s2.contains(DIM_OPEN + "【金斧】") and s2.contains(DIM_OPEN + "【钻石斧】"))
+	gs.axe_stage = AE.STAGES.size() - 1
+	gs.axe_final = "ember"
+	var sf: String = SkillText.equip_full_src(eq)
+	_ok("★★选了余烬: 四个形态全亮, 余烬亮, 其余三个造物压暗",
+		not sf.contains(DIM_OPEN + "【钻石斧】") and not sf.contains(DIM_OPEN + "【余烬】")
+		and sf.contains(DIM_OPEN + "【亡灵之斧】") and sf.contains(DIM_OPEN + "【炽天使】") and sf.contains(DIM_OPEN + "【全息斧】"))
+	_ok("★★灰字规则排在最末尾(在最后一个造物之后)",
+		sf.find("参与击杀：") > sf.find("【余烬】：") and sf.find("【余烬】：") > 0,
+		"规则 @%d 余烬 @%d" % [sf.find("参与击杀："), sf.find("【余烬】：")])
+	_ok("★分母: 每个造物只出现一遍(图鉴不再另拼 effectDesc3)", sf.count("【炽天使】：") == 1, "%d 次" % sf.count("【炽天使】："))
+	gs.axe_final = bak_fin
 	gs.axe_stage = bak_st
-
-
-## 某一档位下, 说明渲染成什么。★换档位要**真的走 GameState**(消费方就是从那儿读的),
-## 不许自己拼字符串 —— 那样测的是我的拼法, 不是玩家会看到的东西。
-func _stage_text(gs, eq: Dictionary, stage_i: int) -> String:
-	var bak: int = int(gs.axe_stage)
-	gs.axe_stage = stage_i
-	var s: String = SkillText.equip_full(eq)
-	gs.axe_stage = bak
-	return s

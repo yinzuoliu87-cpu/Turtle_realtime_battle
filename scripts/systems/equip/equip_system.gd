@@ -1821,8 +1821,8 @@ func laser_fan_range(u: Dictionary, si: int) -> float:
 
 ## 一次全额伤害(扇形斩与竖劈波用的是**同一份**公式 —— 文案「各造成一次全额伤害」)。
 func laser_hit_dmg(u: Dictionary, si: int, o: Dictionary) -> int:
-	## 用户 2026-10-19「激光可以削弱」: 3 星 800% + 200 → 400% + 100(10-18 冠军杯赛 2.5 秒清一路、连碎蛋 4 场)。1 / 2 星不动。
-	return battle._resolve_dmg(u, u["atk"] * [0.6, 1.0, 4.0][si] + [15.0, 32.0, 100.0][si], o, false)
+	## 用户 2026-10-19「激光可以削弱」: 3 星 800% + 200 → 400% + 100(10-18 冠军杯赛 2.5 秒清一路、连碎蛋 4 场); 10-22 再削系数 60/100/400% → 55/100/300%。
+	return battle._resolve_dmg(u, u["atk"] * [0.55, 1.0, 3.0][si] + [15.0, 32.0, 100.0][si], o, false)
 
 
 ## 扇形斩的**同步结算**: 判定 → 伤害 → 按总伤回血。返回被打到的敌人。
@@ -1834,7 +1834,7 @@ func laser_fan_strike(u: Dictionary, si: int, org: Vector2, dir: Vector2, rng: f
 		var dd: int = laser_hit_dmg(u, si, o)
 		battle._damage._apply_damage_from(u, o, dd, Color("#9bf0ff"), 0.0, false, true)
 		tot += dd
-	if tot > 0: battle._damage._heal(u, tot * [0.35, 0.8, 0.6][si])   # 3 星回复 100% → 60%(用户 10-19 削弱)
+	if tot > 0: battle._damage._heal(u, tot * [0.25, 0.4, 0.6][si])   # 3 星回复 100% → 60%(10-19); 1/2 星 35/80% → 25/40%(用户 10-22)
 	return hits
 
 

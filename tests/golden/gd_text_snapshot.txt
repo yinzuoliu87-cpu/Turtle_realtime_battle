@@ -249,7 +249,9 @@ scripts/gamedata/equip_tier_labels.gd|lit|龟能 # 点
 scripts/gamedata/equip_tier_labels.gd|lit|龟能充能 #×
 scripts/gamedata/equip_tier_labels.gd|lit|龟能充能 +#%
 scripts/gamedata/glossary.gd|lit|【涨潮】结束后移除全部加成。此效果不会致死，生命值降至新的上限。
+scripts/gamedata/glossary.gd|lit|余烬攻击命中时叠加在目标身上的层数，每层提高该目标的斩杀线。
 scripts/gamedata/glossary.gd|lit|余烬施加的状态：期间该敌人受到的灼烧伤害全部转为真实伤害（不受魔抗减免）。
+scripts/gamedata/glossary.gd|lit|余烬种子
 scripts/gamedata/glossary.gd|lit|冰霜
 scripts/gamedata/glossary.gd|lit|剑士
 scripts/gamedata/glossary.gd|lit|剑羁绊：连续命中同一个目标时触发追打。
@@ -259,7 +261,7 @@ scripts/gamedata/glossary.gd|lit|古灵精怪枪
 scripts/gamedata/glossary.gd|lit|地毯轰炸
 scripts/gamedata/glossary.gd|lit|奶油护盾
 scripts/gamedata/glossary.gd|lit|寒冰龟在地面留下的减速领域。冰柱层数会同时提升其范围与持续时间。
-scripts/gamedata/glossary.gd|lit|小木斧召唤的近战随从。属性随累计经验成长。
+scripts/gamedata/glossary.gd|lit|小木斧召唤的近战随从。生命值与攻击力随砍伐经验提升。
 scripts/gamedata/glossary.gd|lit|幽灵护盾
 scripts/gamedata/glossary.gd|lit|弓箭系叠加在敌人身上的层数，与弓箭羁绊共用同一份层数。
 scripts/gamedata/glossary.gd|lit|手半剑替换原技能的招式：先横斩并释放一道横波，随后竖斩。
@@ -267,15 +269,13 @@ scripts/gamedata/glossary.gd|lit|扭曲空间
 scripts/gamedata/glossary.gd|lit|护心反伤
 scripts/gamedata/glossary.gd|lit|持续伤害的负面状态：每秒造成基于目标最大生命值百分比的真实伤害，无视护甲与魔抗。不可叠加，重复施加时累加剩余持续时间。
 scripts/gamedata/glossary.gd|lit|攻击对敌人施加的层数。达到最大层数时引爆，造成基于该敌人最大生命值的真实伤害。
+scripts/gamedata/glossary.gd|lit|效率
 scripts/gamedata/glossary.gd|lit|敌人被己方击飞时获得的标记，不会自然消失。飞镖每个周期向所有带有标记的敌人各发射一枚，命中后移除标记。
 scripts/gamedata/glossary.gd|lit|斧头
-scripts/gamedata/glossary.gd|lit|斧头每进化一档额外获得的属性加成，售价也随之提高。
-scripts/gamedata/glossary.gd|lit|斧头进化为钻石斧后，经验值再次充满时可进化成的最终形态。选定后本大轮内锁定。
 scripts/gamedata/glossary.gd|lit|时间停止
 scripts/gamedata/glossary.gd|lit|星波
 scripts/gamedata/glossary.gd|lit|星际龟的技能：以自身为中心释放一圈向外扩散的环形波。
 scripts/gamedata/glossary.gd|lit|星际龟的技能：扭曲一片区域的空间。
-scripts/gamedata/glossary.gd|lit|最终造物
 scripts/gamedata/glossary.gd|lit|枪羁绊：每发射若干发普通子弹后发射一发金弹，金弹继承该发子弹的全部效果并额外造成真实伤害。
 scripts/gamedata/glossary.gd|lit|每个战场开始时为全队提供的护盾，永久不衰减。护盾被击破时对周围的敌人造成伤害。
 scripts/gamedata/glossary.gd|lit|每件法器各自的法力条：每 2.5 秒回复 15 点，携带者用技能造成伤害或受到伤害时也会回复。充满时释放该法器的主动效果，随后重新回复。法器效果自身造成的伤害不回复法力。法器羁绊档位越高，充满所需的法力越少。
@@ -296,13 +296,15 @@ scripts/gamedata/glossary.gd|lit|破损
 scripts/gamedata/glossary.gd|lit|符纸
 scripts/gamedata/glossary.gd|lit|终极护盾
 scripts/gamedata/glossary.gd|lit|腐蚀
+scripts/gamedata/glossary.gd|lit|蓄力猛砸
 scripts/gamedata/glossary.gd|lit|蚀月符纸贴在敌人身上的持续伤害效果，期间每秒降低其魔抗。可叠加，目标死亡时以剩余持续时间转移给最近的敌人。
 scripts/gamedata/glossary.gd|lit|诅咒
-scripts/gamedata/glossary.gd|lit|进化被动
 scripts/gamedata/glossary.gd|lit|迷你水晶
 scripts/gamedata/glossary.gd|lit|迷你水晶球施加在敌人身上的层数。达到最大层数时引爆，造成基于该敌人最大生命值的魔法伤害，并重置层数。
 scripts/gamedata/glossary.gd|lit|退潮
 scripts/gamedata/glossary.gd|lit|金弹
+scripts/gamedata/glossary.gd|lit|金斧攻击命中时叠加的层数，提供攻击速度与移动速度，叠加时刷新持续时间。
+scripts/gamedata/glossary.gd|lit|钻石斧的技能：蓄力后砸下，对前方区域内的敌人造成物理伤害，并将其击飞和眩晕。
 scripts/gamedata/glossary.gd|lit|靶子
 scripts/gamedata/minion_codex.gd|lit|人体浪板
 scripts/gamedata/minion_codex.gd|lit|前排 · 近战
@@ -2136,6 +2138,7 @@ scripts/util/skill_text.gd|lit|(?<!\">)闪避(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)额外伤害(?!<)
 scripts/util/skill_text.gd|lit|(?<!\">)魔抗(?!穿透|<)
 scripts/util/skill_text.gd|lit|(?<!\">)魔法(?!伤害|穿透|波|光线|<)
+scripts/util/skill_text.gd|lit|(?<!\">)龟能(?!充能)(?!<)
 scripts/util/skill_text.gd|lit|(?<=回复)(\\s*)((?:相当于[^，。；\\n]{0,60}?的|
 scripts/util/skill_text.gd|lit|(?<=获得)(\\s*)((?:相当于[^，。；\\n]{0,60}?的|
 scripts/util/skill_text.gd|lit|(其|目标|敌人|该单位|对方)((?:\\s|<[^<>]*>|\\{[^{}]*\\}|[\\d.%]|的)+)(最大生命值?)(?!<)

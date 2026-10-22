@@ -1118,7 +1118,7 @@ func _show_p2eq(eq: Dictionary) -> void:
 	y += 26.0
 	var bb: String = star_text_bb(SkillText.equip_full_src(eq), star, 19)   # 正文走源文本: 灰字(规则补充)照样灰
 	## ★{C:} 要先展开(render_consts)—— 原来裸取 effectDesc3 会把 {C:类.常量} 原样显示给玩家。
-	if d3.strip_edges() != "":
+	if d3.strip_edges() != "" and _eid != "p2eq_096":   # 096 的造物已在 equip_full_src 里(没选的压暗), 不再拼第二遍
 		bb += "\n\n" + star_text_bb(d3, star, 19)
 	var rt = RichTextLabel.new()
 	rt.bbcode_enabled = true; rt.fit_content = true; rt.scroll_active = false

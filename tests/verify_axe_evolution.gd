@@ -483,16 +483,21 @@ func _t_codex() -> void:
 	var txt: String = SkillText.equip_full(e)
 	_ok("★分母: 096 文案取得到且够长(%d 字)" % txt.length(), txt.length() > 200)
 	_ok("★文案讲了【经验怎么攒】: 三个来源的数字都渲染出来了",
-		txt.contains("砍伐经验") and txt.contains("+%d" % AE.EXP_ON_BUY)
-		and txt.contains("+%d" % AE.EXP_ON_MATCH) and txt.contains("+%d" % AE.EXP_ON_KILL),
+		txt.contains("砍伐经验") and txt.contains("获得 %d 点" % AE.EXP_ON_BUY)
+		and txt.contains("获得 %d 点" % AE.EXP_ON_MATCH) and txt.contains("获得 %d 点" % AE.EXP_ON_KILL),
 		"买%d/场%d/杀%d" % [AE.EXP_ON_BUY, AE.EXP_ON_MATCH, AE.EXP_ON_KILL])
-	_ok("★文案讲了【四个进化阈值】", txt.contains("80/110/130/160"), "")
-	_ok("★文案讲了【随大轮重置】", txt.contains("大轮重置"), "")
+	## 2026-10-22 文案改成「获得 80 点…之后再获得 110、130、160 点」, 四个阈值分开写, 逐个查
+	var _need_miss: Array = []
+	for _nd in AE.STAGE_NEEDS + [AE.FINAL_NEED]:
+		if not txt.contains("%d" % int(_nd)):
+			_need_miss.append(_nd)
+	_ok("★文案讲了【四个进化阈值 + 最终造物所需】", _need_miss.is_empty(), "缺: %s" % str(_need_miss))
+	_ok("★文案讲了【随大轮重置】", txt.contains("每个大轮开始时") and txt.contains("重置"), "")
 	## ★2026-10-02: 原来钉的是**整串字面量**「只能拥有一把」。改文案时把「拥有」精简成「有」
 	##   就当场红了 —— 而那是**同一个意思**。钉字面 = 把一种措辞焊死在屏幕上
 	##   (memory `fb-gate-can-pin-the-bug-in-place`; 同一天在 verify_codex 的 chip 上刚踩过)。
 	##   ⇒ 改成钉**语义**: 「只能」+「一把」同时出现。换词不红, 真把这条机制删了才红。
-	_ok("★文案讲了【只能拥有一把】这件事", txt.contains("只能") and txt.contains("一把"),
+	_ok("★文案讲了【只能拥有一把】这件事", txt.contains("只能持有") and txt.contains("把小木斧"),
 		"原文: %s" % txt.substr(maxi(0, txt.find("只能")), 24))
 	## ★占位符名写错时 const_of 会**原样吐回** {C:...} —— 那会直接显示给玩家看
 	_ok("★★渲染后不残留 {C: 占位符(名字写错时会原样显示给玩家)",
