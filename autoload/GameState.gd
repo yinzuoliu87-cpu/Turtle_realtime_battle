@@ -691,7 +691,7 @@ func gauntlet_settle(won: bool) -> int:
 	season_total_battles += 1
 	gauntlet_record(won)
 	add_season_xp(int(_P2.GAUNTLET_XP_PER_MATCH))
-	axe_on_match_end()                   # 096 小木斧: 打完一整场照常给砍伐经验
+	axe_on_match_end()                   # 096 小木斧: 打完一整场给砍伐经验(持有才给, 函数里判)
 	candy_jar_add(1 if won else 4)
 	if won:
 		season_wins += 1
@@ -740,7 +740,7 @@ func finals_settle(won: bool) -> int:
 func finals_settle_sealed() -> int:
 	season_total_battles += 1
 	add_season_xp(int(_P2.FINALS_XP_PER_ROUND))
-	axe_on_match_end()                   # 096 小木斧: 打完一整场照常给砍伐经验
+	axe_on_match_end()                   # 096 小木斧: 打完一整场给砍伐经验(持有才给, 函数里判)
 	return int(_P2.FINALS_COINS_PER_ROUND)
 
 
@@ -2088,7 +2088,10 @@ func axe_evo_take() -> Array:
 ## ★调用点必须在 `_settle_season` 的【有赛季】分支里 —— demo / 新手教程不喂赛季,
 ##   也就不该白送经验(那两条路上面已经 return 了)。
 func axe_on_match_end() -> void:
-	axe_add_exp(_AxeEvo.EXP_ON_MATCH)
+	## ★只有持有小木斧(背包 / 统领 / 小将身上)才给(用户 2026-10-22「没买小木斧也照样加，这是bug」)。
+	##   原来无条件给 ⇒ 没买的玩家进度也在涨, 第一次在商店看到它就已经是石斧、卖 2 费。
+	if axe_owned():
+		axe_add_exp(_AxeEvo.EXP_ON_MATCH)
 	if axe_synergy_active():
 		axe_syn_matches += 1
 
@@ -2140,6 +2143,15 @@ func axe_owned() -> bool:
 			for it2 in persistent_equipped[pid]:
 				if it2 is Dictionary and str((it2 as Dictionary).get("id", "")) == "p2eq_096":
 					return true
+	## ★小将身上的也算(与 auto_merge_all 同口径, 2026-10-22): 原来只查背包 + 统领 ⇒ 装在小将身上时判成「没有」,
+	##   再买一把会进背包变成两把, 对局结束也不给砍伐经验。
+	if dual_lineup is Dictionary:
+		for lane in ["top", "bottom"]:
+			for mu in (dual_lineup.get(lane, []) as Array):
+				if mu is Dictionary and (mu as Dictionary).get("equips") is Array:
+					for meit in ((mu as Dictionary)["equips"] as Array):
+						if meit is Dictionary and str((meit as Dictionary).get("id", "")) == "p2eq_096":
+							return true
 	return false
 
 

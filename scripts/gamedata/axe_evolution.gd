@@ -228,11 +228,11 @@ static func final_ready(bar: int, stage_i: int, final_key: String) -> bool:
 const BATTLES_SANE_CAP := 1000
 
 
-## 「打了 `battles` 场」的玩家**至少**有的砍伐进度。
-## ★★这是一个**下界**, 不是猜测: 每一场结算都**无条件**调 `GameState.axe_on_match_end()`
-##   (+EXP_ON_MATCH, 与 `season_total_battles += 1` 同一处, 不论带没带斧头), 两者又在同一个
-##   `start_new_season` 里一起清零 ⇒ 任何真人的 `axe_exp_total ≥ battles × EXP_ON_MATCH`。
-##   买斧头(+EXP_ON_BUY)与击杀(+EXP_ON_KILL)因人而异、快照里看不出 ⇒ 不猜, 只给下界。
+## 「打了 `battles` 场、从第一场起就持有小木斧」的砍伐进度 —— 一个估算, 不是下界。
+## ★2026-10-22 起对局结束的 +EXP_ON_MATCH **只给持有小木斧的人**(用户「没买小木斧也照样加，这是bug」),
+##   所以它不再是「任何真人都至少有」的下界; 只用在读不到真进度的对手身上(见下面两个用途),
+##   而那时对手**场上确实带着斧头**, 按「一直带着」估算最接近。
+##   买斧头(+EXP_ON_BUY)与击杀(+EXP_ON_KILL)因人而异、快照里看不出 ⇒ 不猜, 不计入。
 ## ★用途两个, 而且**必须是同一个函数**:
 ##   ① 老快照(这三个键出现之前上传的)/ 内置陪练文件 的回落值;
 ##   ② 机器人(`Backend.make_bot`)与陪练(`Backend.seed_as_human`)写进快照的值。

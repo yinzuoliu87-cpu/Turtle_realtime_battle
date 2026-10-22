@@ -223,11 +223,26 @@ func _t_single_writer(gs) -> void:
 	_ok("★★召唤物最大生命随历史累计涨(%.0f > 经验归零时的 %.0f) —— 进化不该让它变弱"
 		% [hp_after, hp_zero], hp_after > hp_zero)
 
-	## 打完一场的记账: +10 经验 + (羁绊在线时)局数 +1
-	gs.axe_exp_bar = 0; gs.axe_exp_total = 0; gs.axe_syn_matches = 0
+	## 打完一场的记账: 持有小木斧才 +EXP_ON_MATCH(用户 2026-10-22「没买小木斧也照样加，这是bug」)
+	var _dl_bak = gs.dual_lineup.duplicate(true) if gs.dual_lineup is Dictionary else {}
+	var _eqd_bak = gs.persistent_equipped.duplicate(true)
+	gs.persistent_bench = []; gs.persistent_equipped = {}; gs.dual_lineup = {}
+	gs.axe_exp_bar = 0; gs.axe_exp_total = 0; gs.axe_stage = 0; gs.axe_final = ""; gs.axe_syn_matches = 0
+	_ok("分母: 背包 / 统领 / 小将都没有小木斧 ⇒ axe_owned() 为假", not gs.axe_owned())
 	gs.axe_on_match_end()
-	_ok("★打完一整场 axe_on_match_end() → +%d 经验" % AE.EXP_ON_MATCH,
+	_ok("★★没持有小木斧: 打完一整场不给砍伐经验", gs.axe_exp_total == 0, "tot=%d" % gs.axe_exp_total)
+	gs.persistent_bench = [{"id": "p2eq_096", "star": 1}]
+	gs.axe_on_match_end()
+	_ok("★小木斧在背包里: 打完一整场 +%d" % AE.EXP_ON_MATCH,
 		gs.axe_exp_total == AE.EXP_ON_MATCH, "tot=%d" % gs.axe_exp_total)
+	## ★装在小将身上(存在 dual_lineup 里)也算持有 —— 原来 axe_owned() 漏了这一处
+	gs.persistent_bench = []
+	gs.dual_lineup = {"top": [{"kind": "minion", "role": "front", "equips": [{"id": "p2eq_096", "star": 1}]}], "bottom": []}
+	_ok("★★小木斧装在小将身上: axe_owned() 为真(重复购买才会转成经验, 不会变成两把)", gs.axe_owned())
+	gs.axe_on_match_end()
+	_ok("★小木斧装在小将身上: 打完一整场同样 +%d" % AE.EXP_ON_MATCH,
+		gs.axe_exp_total == AE.EXP_ON_MATCH * 2, "tot=%d" % gs.axe_exp_total)
+	gs.dual_lineup = _dl_bak; gs.persistent_equipped = _eqd_bak; gs.persistent_bench = []
 
 
 func _all_gd(root: String) -> Array:
