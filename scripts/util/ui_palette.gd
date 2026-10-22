@@ -4,7 +4,7 @@ extends RefCounted
 ## UIPalette — 语义色的单一事实源 (2026-07-22 建)
 ##
 ## 【为什么要有】此前同一个语义色散在【三张互不相干的表】里:
-##   scripts/util/skill_text.gd  VAL_HEX        (21 项, 给技能/装备文案)
+##   scripts/util/skill_text.gd  VAL_HEX        (22 项, 给技能/装备文案)
 ##   scripts/systems/visual_constants.gd FLOAT_STYLE (给战斗飘字)
 ##   scripts/scenes/dmg_stats_panel.gd   COL_*     (给伤害统计面板)
 ## 实测物理红有两个值: 文案 #ff6b6b / 飘字与统计面板 #ff4444。
@@ -31,6 +31,9 @@ const DEF := "#ffd93d"           # 防御/护甲(黄)
 ## 攻击速度(黄绿) —— 2026-10-22 用户「攻击速度换个合适颜色」「绿色好一点」: 原来跟物理红同色,
 ##   面板第一行攻击 / 攻速 / 暴击连着三个红。比闪避的薄荷绿(BUFF)偏黄、比治疗的青绿(HEAL)偏暖, 并排分得开。
 const ASPD := "#a9e34b"
+## 移动速度(米白) —— 2026-10-22 用户「移动速度看看能不能换颜色」, 四选一点了 LoL 原色:
+##   原来跟魔抗同一个蓝(MAGIC)。取 LoL 移速图标 scalems 的主色。
+const MOVE := "#f0e6d2"
 
 ## 专有名词(我们的【X】) —— 2026-10-02 加。
 ## ★由来: 实抓 LoL 16.19.1 的 **860 条技能 / 688 条详细版 tooltip**, 把渲染标签全统计了一遍,

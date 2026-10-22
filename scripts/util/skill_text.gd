@@ -39,7 +39,7 @@ const VAL_HEX := {
 	"val-burn": "#ff6600", "val-lifesteal": "#e85d75", "val-dot": "#9b59b6",
 	"val-stun": "#fbbf24", "val-crit": UIPalette.PHYS, "val-crit-dmg": "#ffaa33",
 	"val-reflect": "#94a3b8", "val-heal-reduce": "#a78bfa", "val-atk": UIPalette.PHYS,
-	"val-aspd": UIPalette.ASPD,
+	"val-aspd": UIPalette.ASPD, "val-move": UIPalette.MOVE,
 	"val-keyword": UIPalette.KEYWORD,
 	## 段标记(「主动：」「被动：」) —— LoL 的 spellActive/spellPassive, 它俩合计 164 次。
 	## ★★**复用专名那一个色, 不新开一种**: 我刚量完战场噪声(我们是参考的 4 倍),
@@ -96,7 +96,7 @@ const KEYWORD_RULES := [
 	["(?<!\">)中毒(?!<)", "val-dot"], ["(?<!\">)流血(?!<)", "val-lifesteal"],
 	["(?<!\">)反伤(?!<)", "val-reflect", "reflect"],
 	["(?<!\">)暴击率(?!<)", "val-crit", "crit"], ["(?<!\">)暴击伤害(?!<)", "val-crit-dmg", "crit-dmg"],
-	["(?<!\">)闪避(?!<)", "val-buff", "dodge"], ["(?<!\">)移动速度(?!<)", "val-magic", "move"],
+	["(?<!\">)闪避(?!<)", "val-buff", "dodge"], ["(?<!\">)移动速度(?!<)", "val-move", "move"],
 	["(?<!\">)攻击速度(?!<)", "val-aspd", "aspd"], ["(?<!\">)射程(?!<)", "val-def", "range"],
 	## ★★2026-10-02 补: 22 张属性图标 10-01 全重做完, 实测**只有 12 种会被内联出来**
 	##   —— 另外 10 张【一次都没被用到】, 玩家一张看不到。
