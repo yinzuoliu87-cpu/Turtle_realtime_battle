@@ -152,7 +152,7 @@ func _ready() -> void:
 		if c is ScrollContainer:
 			scroll_right = maxf(scroll_right, (c as Control).get_global_rect().end.y * 0.0 + (c as Control).get_global_rect().end.x)
 	for c in _all(sc):
-		if c is Panel and (c as Control).size.x == 96.0 and (c as Control).size.y == 96.0:
+		if c is Panel and absf((c as Control).size.x - float(InvScene.SLOT)) < 0.5 and absf((c as Control).size.y - float(InvScene.SLOT)) < 0.5:
 			cells_right = maxf(cells_right, (c as Control).get_global_rect().end.x)
 	_ok("③ 背包格子铺满宽度(右侧空列 ≤ 12px; 原来固定间距留了 64px)",
 		scroll_right > 0.0 and cells_right > 0.0 and scroll_right - cells_right <= 12.0,

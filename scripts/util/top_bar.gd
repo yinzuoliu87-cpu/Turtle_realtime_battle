@@ -202,6 +202,8 @@ func _init(host: Node, opts: Dictionary) -> void:
 				lb.modulate = Color(1, 1, 1, 0.45)
 			if str(lo.get("tooltip", "")) != "":
 				lb.tooltip_text = str(lo.get("tooltip", ""))
+			if bool(lo.get("active", false)):
+				_mark_active(lb)
 		lb.position = Vector2(lx, (BAR_H - TOUCH_MIN) / 2.0)
 		lx += lb.size.x + ACT_GAP
 		bar.add_child(lb)
@@ -346,6 +348,26 @@ static func is_icon_text(txt: String) -> bool:
 
 
 ## 一枚薄片。纯图标 → 正方(≥触控线)；带字 → 按字宽撑开。
+## 当前页的页签(2026-10-22 商店 / 背包做成一对页签): 底亮一档、金字, 点它不做事。
+func _mark_active(b: Button) -> void:
+	for st in ["normal", "hover", "pressed", "focus"]:
+		var sb = b.get_theme_stylebox(st)
+		if sb is StyleBoxTexture:
+			var c := (sb as StyleBoxTexture).duplicate() as StyleBoxTexture
+			c.modulate_color = Color(1.35, 1.25, 1.05, 1.0)
+			b.add_theme_stylebox_override(st, c)
+		elif sb is StyleBoxFlat:
+			var f := (sb as StyleBoxFlat).duplicate() as StyleBoxFlat
+			f.bg_color = f.bg_color.lightened(0.25)
+			b.add_theme_stylebox_override(st, f)
+	b.add_theme_color_override("font_color", Color("#ffd93d"))
+	b.add_theme_color_override("font_hover_color", Color("#ffd93d"))
+	b.add_theme_color_override("font_pressed_color", Color("#ffd93d"))
+	b.mouse_default_cursor_shape = Control.CURSOR_ARROW
+	b.focus_mode = Control.FOCUS_NONE
+	b.set_meta("tab_active", true)
+
+
 func _chip(txt: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = txt

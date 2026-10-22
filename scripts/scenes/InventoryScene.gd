@@ -56,7 +56,7 @@ const BG_TEX_PATH := "res://assets/sprites/inventory/inv-backdrop.png"
 
 const W := 1280.0
 const H := 720.0
-const SLOT := 96.0
+const SLOT := 140.0   # 2026-10-22 用户「装备背包4列不行吗」: 右栏 608 宽排 4 列, 格子放大(原 96)
 ## 格子里的文字离格边的留白。
 ## ★槽框贴图的金属边带**实测 6px 厚**(不是配置边距 12 —— 那是切九宫格的位置, 不是画了多宽)。
 ##   原来装备名摆在 x=2、底边贴着格底 ⇒ 名字压在边带上(判据 13 量到 4px)。
@@ -73,25 +73,28 @@ const SLOT_PAD := 7.0
 ##   右边整块 = 背包(7 列, 22 件一屏放得下)。
 ## ★2026-10-22 三改(用户「卡片大一点啊」): 框图按 3 倍画(原生 75×95 → 225×285, 整数倍不变形), 6 张卡占满左半边;
 ##   右边背包 5 列, 羁绊条挪到右下。
-const CARD_W := 225.0
-const CARD_H := 285.0          # = 框图 × 3, 装备贴在框的下沿
-const CARD_GAP := 10.0
+## ★四改(用户「每个龟的卡片你告诉我是怎么回事」): 框图裁掉四周透明留边(原生 64×84, ×3 = 192×252), 卡与卡等距;
+##   装备不再压在木框下沿上, 而是框底一条木托条、三格嵌在条里(空格画成凹槽)。
+const CARD_W := 192.0
+const CARD_H := 252.0          # = 裁边后的框图 × 3
+const CARD_GAP := 12.0
 const CARDS_X := 24.0
 const LANE_HDR_Y := 84.0       # 上路木牌; 下路木牌 = 它 + ROW_PITCH
 const LANE_SIGN_H := 28.0
-## 卡顶 = 木牌下沿往上 18: 框图上沿有 6 像素(× 3)的透明余量, 让木牌压在那截空白上, 两排才放得进 720 高
-const CARD_DROP := LANE_SIGN_H - 18.0
+## 卡顶 = 木牌下沿 + 4(框图已裁掉透明留边, 不再让木牌压进卡里 —— 那会盖住框顶的贝壳)
+const CARD_DROP := LANE_SIGN_H + 4.0
 const ROW_PITCH := CARD_DROP + CARD_H + 2.0   # 297
 const CARDS_Y := LANE_HDR_Y + CARD_DROP
-const CARD_BORDER := 57.0      # 框到内窗的距离(原生 7 饰件余量 + 12 木边 = 19, × 3)
-const PORTRAIT_H := 96.0       # 内窗(114×174)上半截立绘
+const CARD_BORDER := 39.0      # 框到内窗的距离(裁边后原生 13, × 3)
+const PORTRAIT_H := 90.0       # 内窗(114×174)上半截立绘
 ## ★立绘比内窗大一圈、压出木框(卡牌游戏常见的「破框」画法)
 const PORTRAIT_POP := 20.0
-const NAME_Y := CARD_BORDER + PORTRAIT_H + 8.0     # 161
+const NAME_Y := CARD_BORDER + PORTRAIT_H + 6.0     # 135
 const NAME_FS := 24
-const EQ_CELL := 56.0          # 贴在卡上的装备格
-const EQ_GAP := 8.0
-const SLOT_ROW_Y := CARD_H - EQ_CELL - 10.0   # 219: 压在框的下沿上(像嵌在卡上的宝石)
+const EQ_CELL := 56.0          # 嵌在托条里的装备格
+const EQ_GAP := 6.0
+const GEAR_STRIP := Rect2(6.0, 186.0, 180.0, 62.0)   # 框底木托条(卡内坐标)
+const SLOT_ROW_Y := 189.0      # 三格的 y(托条里)
 ## 旧名保留: 教程锚点 / 门禁按它们找「阵容区」
 const LANE_TOP := CARDS_Y
 const LANE_GAP := ROW_PITCH
@@ -103,7 +106,7 @@ const FORMATION_BTN_ROOM := 112.0
 ## 教程里右上「跳过教程」(132 宽)比它占的「?」(81 宽)多出的那截, 再加两格间距的余量。
 const TUT_SKIP_EXTRA := 80.0
 ## 背包: 右边整块(羁绊条在它下面)
-const BENCH_X := CARDS_X + LEFT_W + 20.0     # 739
+const BENCH_X := CARDS_X + LEFT_W + 20.0     # 644
 const BENCH_HDR_Y := LANE_HDR_Y
 ## 羁绊: 背包下面一条, 一行横排(多了横着滑)
 const SYN_X := BENCH_X
@@ -113,11 +116,11 @@ const SYN_BOTTOM := 712.0
 const SYN_HORIZONTAL := true
 const SYN_CHIP_W := 192.0      # 两块整的 + 第三块露一截(看得出还能往右滑)
 const BENCH_TOP := BENCH_HDR_Y + 34.0
-const BENCH_PITCH := 108.0     # 格子行距(96 格 + 12 间隙): 3 行 = 312 ≤ 316, 刚好铺进去
+const BENCH_PITCH := SLOT + 12.0   # 格子行距(格 + 12 间隙)
 ## ★2026-10-22 背包三改: 左边是大卡, 操作条横在屏幕底会压住下路那排卡(选中装备时正要去点卡)
 ##   ⇒ 三种操作条都住进右栏(背包那一栏)、改成两层: 上面名字 + 效果, 下面一排键。
 const OP_BAR_H := 232.0
-const OPS_X := 739.0          # = BENCH_X(常量顺序在前, 写死同值)
+const OPS_X := 644.0          # = BENCH_X(常量顺序在前, 写死同值)
 const OPS_W := 1252.0 - OPS_X
 ## ★2026-10-21 手机优先: 最小字号 20(iPhone 上约 11pt); 底边只用到「视口底 - 底部横条」(见 _bottom_limit)。
 const MIN_FONT_PX := 20
@@ -314,18 +317,22 @@ func _rebuild() -> void:
 		## ★★2026-09-28 去掉页名前的 🧳(理由与图鉴/设置/战绩同, 见 CodexScene 那条长注释):
 		##   146 款参考的枢纽页顶栏一律是「返回箭头 + 裸页名」, 没有一款给页名挂图标;
 		##   而 🧳 的字形来自 NotoEmoji, 与这一屏的像素笔触是两套画法。
-		"title": "背包",
+		"title": "",
 		## 2026-10-22 背包重做: 顶栏换商店那一套(木牌签、不画深色底带)—— 两页来回切是同一条街。
 		"palette": TopBar.WOOD.merged({"no_plate": true, "chip_tex": PLANK_TEX, "chip_margin": PLANK_MARGIN}),
 		"width": W,
 		"safe_left": _sm.x,
 		"safe_right": _sm.z,
 		"on_back": func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"),
+		## ★2026-10-22 用户「左上角返回，商店，背包你到底打算怎么设计啊」: 两页左上角一模一样 ——
+		##   「← | 商店 | 背包」一对页签, 当前页那一签亮着(active), 点另一签切过去; 不再单写页名。
 		"left_actions": [[
 			"商店",
 			func(): get_tree().change_scene_to_file("res://scenes/Shop.tscn"),
 			{"disabled": shop_locked,
 				"tooltip": "本大轮首战后解锁" if shop_locked else "前往商店"},
+		], [
+			"背包", func() -> void: pass, {"active": true},
 		]],
 	})
 	## ★★2026-09-28「🔒 商店」的锁**不许只是删掉** —— 它是这枚键的【状态】(没开店),
@@ -614,7 +621,15 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 	else:
 		var eqs: Array = _unit_equips(unit)
 		# ★格数【恒定 = 单只上限 3】: 三格就是"你的装备位"; 羁绊赠送件不进这三格, 另挂在下面一行(见 _build_equip_cells)。
-		_worn = _build_equip_cells(box, SLOT_ROW_Y, eqs, P2.UNIT_EQUIP_CAP)
+		var strip := NinePatchRect.new(); strip.name = "GearStrip"
+		strip.texture = PLANK_TEX
+		strip.patch_margin_left = PLANK_MARGIN; strip.patch_margin_right = PLANK_MARGIN
+		strip.patch_margin_top = PLANK_MARGIN; strip.patch_margin_bottom = PLANK_MARGIN
+		strip.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		strip.position = GEAR_STRIP.position; strip.size = GEAR_STRIP.size
+		strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.add_child(strip)
+		_worn = _build_equip_cells(box, SLOT_ROW_Y, eqs, P2.UNIT_EQUIP_CAP, GEAR_STRIP.position.x)
 	# 小将 前排/后排 签: 立绘窗下沿居中(精英小将 = 统领替身, 不显)
 	if is_reg_minion:
 		var front := str(unit.get("role", "front")) == "front"
@@ -760,9 +775,10 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, x_start:
 		elif team_full:
 			# 空格但【全队预算已满】: 压暗 + 冷边框, 与"空着可以装"明确区分 ——
 			# 不区分的话玩家会对着一个看起来能装的空格反复点, 以为界面坏了。
-			csb.bg_color = Color(0, 0, 0, 0.55); csb.border_color = Color("#2a3340")
+			csb.bg_color = Color("#0b0705"); csb.border_color = Color("#2a2018")
 		else:
-			csb.bg_color = Color(0, 0, 0, 0.35); csb.border_color = Color("#3a4452")
+			## 托条上的凹槽: 深色底 + 木色边(2026-10-22, 原来半透明黑块压在木框上像破洞)
+			csb.bg_color = Color("#1a100a"); csb.border_color = Color("#6b4a2a")
 		csb.set_border_width_all(1); csb.set_corner_radius_all(3)
 		## ⚠★2026-08-18 这里**试过换金属槽框, 实拍对比后退回了**, 原因记下免得再试:
 		##   格子只有约 26px, 而槽框原生 57×57 —— 四角铆钉在这个尺寸下**吃掉大半格子**,
@@ -1237,20 +1253,7 @@ func _build_bench() -> void:
 	hdr.add_theme_color_override("font_color", Color("#9fb6c9"))
 	hdr.position = Vector2(BENCH_X, BENCH_HDR_Y); hdr.size = Vector2(300, 30)
 	add_child(hdr)
-	var swipe := Label.new()
-	## ★★2026-09-28。「看更多」是网页 Load more 的直译, 「上下滑动」是手势名 ——
-	##   两样都不是在说屏幕上有什么。商店那条滚动提示(`ShopScene._add_scroll_hint`)
-	##   2026-09-28 已经定稿成「▼ 下面还有」, 理由逐字适用于这里: `▼` 不是装饰性
-	##   chevron, 它是"这里还能滚"的唯一指向; 而话本身只陈述事实。同一件事同一句话。
-	##   ★这行**始终为真**: `_build_bench` 的 `min_rows = ceil(scroll_h / pitch)`
-	##     保证格子总是铺过可视区下沿(下面确实还有格子)。
-	swipe.text = "▼ 下面还有"
-	swipe.name = "BenchMoreHint"
-	swipe.add_theme_font_size_override("font_size", MIN_FONT_PX)
-	swipe.add_theme_color_override("font_color", Color("#5f7285"))
-	swipe.position = Vector2(1252.0 - 220.0, BENCH_HDR_Y + 2); swipe.size = Vector2(220, 28)
-	swipe.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	add_child(swipe)
+	## ★2026-10-22 用户「下面还有是什么鬼」: 原来标题右边一行「▼ 下面还有」—— 最后一排格子露半截本身就说明能往下滑, 去掉。
 	var bench: Array = GameState.persistent_bench if GameState.persistent_bench is Array else []
 	## ★★用户 2026-08-14:「还有糖果罐, 在背包里我希望是以一个装备的形式」。
 	##   原来糖果罐是右上角一块 372×44 的独立面板 —— 和背包里的东西不是一套语言,
@@ -1282,7 +1285,7 @@ func _build_bench() -> void:
 	var content := Control.new()
 	content.mouse_filter = Control.MOUSE_FILTER_PASS   # 触屏拖动透传→ScrollContainer 滚动
 	scroll.add_child(content)
-	var per_row := maxi(4, int((scroll_w + 6.0) / (SLOT + 6.0)))   # 格间至少 6: 右边整块 724 宽排 7 列
+	var per_row := maxi(4, int((scroll_w + 6.0) / (SLOT + 6.0)))   # 格间至少 6: 右栏 513 宽排 4 列
 	## ★格间距把剩余宽度【均分】而不是固定 8 —— 固定 8 时 11 列只排到 x=1176,
 	##   右边白留 64px 一条空列(实测), 看着像"最后一格坏了"。
 	var cpitch := (scroll_w - SLOT) / float(maxi(1, per_row - 1)) if per_row > 1 else SLOT
@@ -1291,8 +1294,6 @@ func _build_bench() -> void:
 	##   现在 = 有几件画几格(空格不画: 背包没有容量上限, 空格只会被读成「容量」), 一件没有就只写「背包为空」。
 	var used_rows := int(ceil(float(bench.size()) / float(per_row)))
 	var total_cells := bench.size()
-	## 「▼ 下面还有」只在真的有下面时出现(原来恒为真, 因为格子总是铺过下沿)
-	swipe.visible = float(used_rows) * pitch - (pitch - SLOT) > scroll_h + 0.5
 	content.custom_minimum_size = Vector2(scroll_w - 4.0, maxf(44.0, float(used_rows) * pitch))
 	## ★★★渲染索引与【数据索引】必须分开 —— 血泪(2026-08-14 自己刚踩):
 	##   糖果罐是插在最前面的**合成条目**, 它不在 `GameState.persistent_bench` 里。
@@ -1717,8 +1718,8 @@ func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	##   名字原来 12 号字(放不下再缩到 10 号) —— iPhone 上 1 毫米出头, 读不出来; 而 96 格放不下 20 号的 5 字名。
 	##   参考里手机横屏的背包 / 商店格(Halls of Torment / Rogue Legacy / Peglin / Underlords)都是图标格,
 	##   名字在选中后的说明里给 —— 本页选中后底部操作条第一行就是名字(20 号)。
-	var ic2 := EquipIcon.make(edef, Vector2(64, 56))
-	ic2.position = Vector2(SLOT / 2.0 - 32, 32)
+	var ic2 := EquipIcon.make(edef, Vector2(100, 88))
+	ic2.position = Vector2(SLOT / 2.0 - 50, 38)
 	box.add_child(ic2)
 	var star := int(it.get("star", 1))
 	var st := Label.new()
@@ -2016,7 +2017,7 @@ func _candy_jar_cell(it: Dictionary, pos: Vector2) -> Control:
 	jic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	jic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	## 2026-10-21: 手机版格子不写名字 ⇒ 图标画原生 1x(64×64), 不再折半。
-	jic.position = Vector2(SLOT / 2.0 - 32, 4); jic.size = Vector2(64, 64)
+	jic.position = Vector2(SLOT / 2.0 - 48, 8); jic.size = Vector2(96, 96)
 	jic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	jbox.add_child(jic)
 	var jnm := Label.new()
