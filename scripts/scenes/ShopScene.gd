@@ -1023,7 +1023,7 @@ func _cap_card_height(c: Control) -> bool:
 	if need <= CARD_MAX_H + 0.5:
 		return false
 	var body = _insp.live.get("body")
-	if not (body is RichTextLabel) or not is_instance_valid(body):
+	if not is_instance_valid(body) or not (body is RichTextLabel):
 		return false
 	var rt := body as RichTextLabel
 	var vb := rt.get_parent()
@@ -1197,7 +1197,7 @@ func _bag_tab() -> Button:
 	if _top_bar == null:
 		return null
 	for b in _top_bar.action_btns:
-		if b is Button and is_instance_valid(b) and str((b as Button).text) == "背包":
+		if is_instance_valid(b) and b is Button and str((b as Button).text) == "背包":
 			return b
 	return null
 

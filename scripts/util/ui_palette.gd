@@ -102,3 +102,10 @@ static func c(hex: String, alpha: float = 1.0) -> Color:
 	var col := Color(hex)
 	col.a = alpha
 	return col
+
+
+## 龟稀有度色(C~SSS)。出战页 / 背包龟卡名字横幅共用这一份(2026-10-22 从 TeamSelectScene 收过来)。
+const RARITY := {
+	"C":   Color("#06d6a0"), "B": Color("#4cc9f0"), "A": Color("#3a9abf"),
+	"S":   Color("#c77dff"), "SS": Color("#ffd93d"), "SSS": Color("#ff6b6b"),
+}

@@ -33,6 +33,7 @@ const CANDY_JAR_ICON := "res://assets/sprites/equip/equip-candy-jar.png"
 ## 顶栏 / 两路标题木牌: 商店那一张(方案里点名「顶栏直接用商店那一套」, 用户「做」)。
 const PLANK_TEX = preload("res://assets/sprites/shop/shop-plank.png")
 const WORN_STAR_TEX = preload("res://assets/sprites/shop/star-glint.png")   # 卡上装备格的星级(第 0 帧)
+const SLOT_LOCK_TEX = preload("res://assets/sprites/shop/icon-lock-closed.png")   # 全队装备已满时空格上的锁(商店锁定钮同一张)
 const PLANK_MARGIN := 18
 ## 背包格 = 装备卡: 与商店说明卡同一套费用档框(同一件装备在两页长同一张脸); 选中整张换图(乘色提不亮深色框)。
 const ITEM_CARD_TEX := [
@@ -80,18 +81,30 @@ const CARD_W := 192.0
 const CARD_H := 252.0          # = 裁边后的框图 × 3
 const CARD_GAP := 12.0
 const CARDS_X := 24.0
-const LANE_HDR_Y := 84.0       # 上路木牌; 下路木牌 = 它 + ROW_PITCH
-const LANE_SIGN_H := 36.0      # = 20 号字 + 描边 5 的最小行高(28 时字撑出木牌、压进卡顶 4px)
-## 卡顶 = 木牌下沿 + 4(框图已裁掉透明留边, 不再让木牌压进卡里 —— 那会盖住框顶的贝壳)
-const CARD_DROP := LANE_SIGN_H + 4.0
-const ROW_PITCH := CARD_DROP + CARD_H + 2.0   # 297
+const LANE_HDR_Y := 84.0       # 上路木牌; 下路木牌 = 它 + ROW_PITCH(再往上会压到顶栏「商店 / 背包」签)
+const LANE_SIGN_MARGIN_V := 9      # = 木牌纹理真实边带(3 倍画: 黑 3 + 高光 3 + 红边 3)
+## 木牌高 46 = 字的行框 30 + 边带 8 × 2(探针 tests/_probe_lane_sign.gd 实测: 汉字走 Noto 回退字体, 20 号字行框 30;
+##   28 / 36 / 40 时字撑出木牌或压进边带 —— verify_ui_consistency 8 压扁 / 11 压边带)
+const LANE_SIGN_H := 46.0
+## 卡顶 = 木牌下沿(框图已裁掉透明留边, 不再让木牌压进卡里 —— 那会盖住框顶的贝壳)
+const CARD_DROP := LANE_SIGN_H
+const ROW_PITCH := CARD_DROP + CARD_H   # 木牌加高到 46 后去掉两排间 2px: 第二排卡底边 680, iPhone 安全区底 682
 const CARDS_Y := LANE_HDR_Y + CARD_DROP
-const CARD_BORDER := 39.0      # 框到内窗的距离(裁边后原生 13, × 3)
-const PORTRAIT_H := 90.0       # 内窗(114×174)上半截立绘
-## ★立绘比内窗大一圈、压出木框(卡牌游戏常见的「破框」画法)
-const PORTRAIT_POP := 20.0
-const NAME_Y := CARD_BORDER + PORTRAIT_H + 6.0     # 135
+## ★五改(2026-10-22 对照 17 款参考: 边框多在卡宽 8% 以内; 用户「卡框图里直接放立绘吧」):
+##   框每侧 13 → 5 原生像素(× 3 = 15, 卡宽 8%), 铜角 / 贝壳 / 侧扣原样叠回; 框图窗口透明 ——
+##   立绘铺满框里的窗口(不再从框上沿探出去), 框的装饰压在立绘上;
+##   名字改成横幅压在立绘下沿(胸像的截断边藏在它后面), 横幅色 = 稀有度(参考: 云顶名字条色 / 杀戮尖塔缎带色)。
+const CARD_BORDER := 15.0      # 框到内窗的距离(原生 5, × 3)
+const WINDOW_BG := Color("#162231")   # 窗口底色(= 原框图内窗那块深海蓝)
+const BANNER_H := 36.0         # 名字横幅高(24 号字 + 描边)
+const BANNER_Y := 146.0        # 横幅上沿(卡内坐标); 底边 182, 离托条 4px
+const BANNER_X := 9.0          # 横幅两端伸出窗口、压在边框上(缎带样)
+const PORTRAIT_ANCHOR_Y := 176.0   # 统领胸像下沿落在这里(藏在横幅后面)
+const MINION_FOOT_Y := 160.0   # 小将(全身小图)脚底落在这里
+const NAME_Y := BANNER_Y       # 名字 / 小将「前排 / 后排」签的 y
 const NAME_FS := 24
+const BANNER_MINION_COL := Color("#c8a46a")   # 精英小将横幅(小将没有稀有度)
+const BANNER_EMPTY_COL := Color("#6c7a8c")    # 占位统领
 const EQ_CELL := 56.0          # 嵌在托条里的装备格
 const EQ_GAP := 6.0
 const GEAR_STRIP := Rect2(6.0, 186.0, 180.0, 62.0)   # 框底木托条(卡内坐标)
@@ -501,7 +514,8 @@ func _lane_sign(txt: String, col: Color) -> Control:
 	var np := NinePatchRect.new()
 	np.texture = PLANK_TEX
 	np.patch_margin_left = PLANK_MARGIN; np.patch_margin_right = PLANK_MARGIN
-	np.patch_margin_top = PLANK_MARGIN; np.patch_margin_bottom = PLANK_MARGIN
+	## 上下边距走真实边带 9: 原来用 PLANK_MARGIN 18, 18 + 18 ≥ 木牌高 ⇒ 中段为 0、九宫格退化(verify_ui_consistency 8 压扁)
+	np.patch_margin_top = LANE_SIGN_MARGIN_V; np.patch_margin_bottom = LANE_SIGN_MARGIN_V
 	np.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	np.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var l := Label.new(); l.text = txt
@@ -565,18 +579,22 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 	box.name = "UnitCard_%s_%d" % [lane, idx]
 	box.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	box.position = pos; box.size = Vector2(CARD_W, CARD_H)
-	box.add_child(_unit_card_frame(is_ph, is_elite, kind == "leader"))
 	box.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST   # 像素框不插值
 	var is_reg_minion := kind == "minion" and not is_elite
 	var _worn: Array = []   # 卡上已装的装备格 [{rect, cell, it}] —— 按在它上面拖 = 拖这一件
-	## 立绘那一截(框图内窗本身就是深海蓝底, 不再另垫一块)
-	var pw := Rect2(CARD_BORDER, CARD_BORDER, CARD_W - 2.0 * CARD_BORDER, PORTRAIT_H)
+	## 叠放顺序: 窗口底色 → 立绘 → 框(铜角 / 贝壳 / 侧扣压在立绘上) → 名字横幅 → 托条与三格
+	var wbg := ColorRect.new(); wbg.name = "WindowBg"
+	wbg.color = WINDOW_BG
+	wbg.position = Vector2(CARD_BORDER, CARD_BORDER); wbg.size = Vector2(CARD_W, CARD_H) - Vector2(2.0, 2.0) * CARD_BORDER
+	wbg.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(wbg)
+	## 立绘区 = 窗口顶到托条上沿
+	var pw := Rect2(CARD_BORDER, CARD_BORDER, CARD_W - 2.0 * CARD_BORDER, GEAR_STRIP.position.y - CARD_BORDER)
 	if is_ph:
 		var q := Label.new()
 		q.text = "?"
 		q.add_theme_font_size_override("font_size", 58)
 		q.add_theme_color_override("font_color", Color("#9fb2c8"))
-		q.position = pw.position; q.size = pw.size
+		q.position = pw.position; q.size = Vector2(pw.size.x, BANNER_Y - pw.position.y)
 		q.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; q.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		q.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(q)
 	else:
@@ -586,31 +604,29 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 		else:
 			img_path = "res://assets/sprites/%s" % Phase2Minion.minion_img(is_elite, str(unit.get("role", "front")) == "back")
 		if ResourceLoader.exists(img_path):
-			var a := TextureRect.new(); a.texture = load(img_path)
-			a.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; a.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED; a.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			a.position = pw.position - Vector2(PORTRAIT_POP, PORTRAIT_POP + 6.0); a.size = pw.size + Vector2(2.0 * PORTRAIT_POP, 2.0 * PORTRAIT_POP)
-			a.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(a)
-	var nm := Label.new()
-	if is_ph:
-		nm.text = "统领%d" % (int(unit.get("slot", idx)) + 1)
-	elif kind == "leader":
-		var pet: Dictionary = DataRegistry.pet_by_id.get(pid, {})
-		nm.text = str(pet.get("name", pid))
-	else:
-		nm.text = "精英小将" if is_elite else "小将"
-	nm.add_theme_font_size_override("font_size", NAME_FS); nm.add_theme_color_override("font_color", Color("#f4e8cf"))
-	nm.add_theme_color_override("font_outline_color", Color("#1a0e05")); nm.add_theme_constant_override("outline_size", 4)
-	nm.position = Vector2(20.0, NAME_Y); nm.size = Vector2(CARD_W - 40.0, 34)
-	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	nm.clip_text = true
-	nm.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(nm)
-	nm.visible = not is_reg_minion   # 普通小将: 名字那一行让给「前排 / 后排」签
+			box.add_child(_card_portrait(load(img_path), pw, kind == "leader"))
+	box.add_child(_unit_card_frame(is_ph, is_elite, kind == "leader"))
+	## 名字横幅(普通小将那一行让给「前排 / 后排」签)
+	if not is_reg_minion:
+		var ntxt: String
+		var ncol: Color
+		if is_ph:
+			ntxt = "统领%d" % (int(unit.get("slot", idx)) + 1)
+			ncol = BANNER_EMPTY_COL
+		elif kind == "leader":
+			var pet: Dictionary = DataRegistry.pet_by_id.get(pid, {})
+			ntxt = str(pet.get("name", pid))
+			ncol = UIPalette.RARITY.get(str(pet.get("rarity", "C")), BANNER_MINION_COL)
+		else:
+			ntxt = "精英小将"
+			ncol = BANNER_MINION_COL
+		box.add_child(_name_banner(ntxt, ncol))
 	if is_ph:
 		var hint := Label.new()
 		hint.text = "空槽位"
 		hint.add_theme_font_size_override("font_size", MIN_FONT_PX)
 		hint.add_theme_color_override("font_color", Color("#9a8a70"))
-		hint.position = Vector2(4, NAME_Y + 2.0); hint.size = Vector2(CARD_W - 8, 30)
+		hint.position = Vector2(4, BANNER_Y - 36.0); hint.size = Vector2(CARD_W - 8, 30)
 		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		hint.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(hint)
 	else:
@@ -686,6 +702,79 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 	return box
 
 
+## 立绘铺进框里的窗口(用户 2026-10-22「卡框图里直接放立绘吧」)。先去掉图上的透明留边:
+##   统领 = 胸像(下沿是截断的) ⇒ 按宽铺满, 下沿落在 PORTRAIT_ANCHOR_Y(藏在名字横幅后面);
+##     很宽的胸像(天使龟 218×150)至少铺到 85% 高, 两侧裁一点; 竖长的整张放进立绘区(见下)。
+##   小将 = 全身小图(80×80 上只占 40~70) ⇒ 整数倍放大(像素不变形), 脚底落在 MINION_FOOT_Y。
+func _card_portrait(tex: Texture2D, pw: Rect2, leader: bool) -> Control:
+	var clip := Control.new(); clip.name = "Portrait"
+	clip.clip_contents = true
+	clip.position = pw.position; clip.size = pw.size
+	clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var used := Rect2(Vector2.ZERO, tex.get_size())
+	var img := tex.get_image()
+	if img != null:
+		used = Rect2(img.get_used_rect())
+	var at := AtlasTexture.new()
+	at.atlas = tex
+	at.region = used
+	var a := TextureRect.new()
+	a.texture = at
+	a.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	a.stretch_mode = TextureRect.STRETCH_SCALE
+	a.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	a.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if leader:
+		## 高度封顶 = 整个立绘区: 竖长的胸像(凤凰 207×239、无头 133×220)按宽铺会高出一截,
+		##   从上往下排时脸正好落到横幅后面(实拍 10-22) ⇒ 宁可两侧露一点底色, 整张放进来。
+		var base: float = PORTRAIT_ANCHOR_Y - pw.position.y
+		var s: float = minf(maxf(pw.size.x / used.size.x, 0.85 * base / used.size.y), pw.size.y / used.size.y)
+		var sz: Vector2 = used.size * s
+		a.size = sz
+		a.position = Vector2((pw.size.x - sz.x) * 0.5, base - sz.y)   # 下沿一律对齐横幅后那条线(竖长的顶上最多裁 10px)
+	else:
+		var foot: float = MINION_FOOT_Y - pw.position.y
+		var k: float = maxf(1.0, floorf(minf((pw.size.x - 10.0) / used.size.x, foot / used.size.y)))
+		var sz2: Vector2 = used.size * k
+		a.size = sz2
+		a.position = Vector2((pw.size.x - sz2.x) * 0.5, foot - sz2.y)
+	clip.add_child(a)
+	return clip
+
+
+## 名字横幅: 压在立绘下沿, 两端伸出窗口压到边框上; 底色 / 边色 = 稀有度色(压暗 / 原色), 外面一圈黑描边(像素样)。
+func _name_banner(txt: String, col: Color) -> Control:
+	var root := Control.new(); root.name = "NameBanner"
+	root.position = Vector2(BANNER_X, BANNER_Y); root.size = Vector2(CARD_W - 2.0 * BANNER_X, BANNER_H)
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var edge := ColorRect.new()
+	edge.color = Color("#0d0805")
+	edge.position = Vector2(-2, -2); edge.size = root.size + Vector2(4, 4)
+	edge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(edge)
+	var p := Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(col.r * 0.36, col.g * 0.36, col.b * 0.36, 1.0)
+	sb.border_color = col
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(0)
+	p.add_theme_stylebox_override("panel", sb)
+	p.size = root.size
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(p)
+	var l := Label.new(); l.name = "Name"
+	l.text = txt
+	l.add_theme_font_size_override("font_size", NAME_FS)
+	l.add_theme_color_override("font_color", Color("#fff4dc"))
+	l.add_theme_color_override("font_outline_color", Color("#1a0e05")); l.add_theme_constant_override("outline_size", 4)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.clip_text = true
+	l.position = Vector2(6, 0); l.size = root.size - Vector2(12, 0)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(l)
+	return root
+
+
 ## 单位卡的框(像素木框, 卡的上半截; 素材没到位时退回纯色框)。
 func _unit_card_frame(is_ph: bool, is_elite: bool, is_leader: bool) -> Control:
 	var path: String = UNIT_CARD_TEX_PATH if (is_leader or is_elite) else UNIT_CARD_MINION_TEX_PATH
@@ -750,6 +839,11 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, x_start:
 	var cw := EQ_CELL
 	var gap := EQ_GAP
 	var team_full: bool = not GameState.team_has_equip_room()   # 全队预算是否已用尽(空格样式据此区分)
+	var bench_gear := false   # 背包里有能装的东西(临时等级器不算) ⇒ 空格画「+」
+	for b in GameState.persistent_bench:
+		if b is Dictionary and str((b as Dictionary).get("kind", "")) != "item":
+			bench_gear = true
+			break
 	## ★三格只放【占装备位】的件; 羁绊赠送件(圣光护盾)另挂徽章 —— 它不是装备位。
 	##   `i` 记录每格对应 eqs 里的真实下标: 卸下要按真实下标走, 不能按格号。
 	##   ★分摊口径走 `_split_equips()`(与底部 44pt 卸下条同一份), 不在这里再写一遍。
@@ -808,6 +902,10 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, x_start:
 				GameState.team_equipped_count(), GameState.team_equip_cap()]) if team_full \
 				else "空槽位"
 		box.add_child(cell)
+		if not filled and team_full:
+			_slot_lock(box, cell)
+		elif not filled and bench_gear:
+			_slot_plus(box, cell, _sel_bench >= 0)
 
 	## ★羁绊赠送件的徽章: 排在三格【之后】, 更小 + 金边 + 右下角"赠"字 ——
 	##   一眼分得出"它不占我的装备位"。点它同样能卸(卸掉也会被 sync 立刻补发回背包)。
@@ -827,7 +925,8 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, x_start:
 		##   三格占到 204, 两枚徽章排下去右沿到 258 ⇒ 溢出卡片 14px(实测算过)。
 		##   下一行还有个好处: "这一排是你的装备位, 下面那个是羁绊送的"读起来更清楚。
 		## ★2026-10-22 竖卡: 托盘只放得下三格 ⇒ 赠送徽章叠在立绘窗右上角, 往左排(它本来就不是装备位)。
-		gcell.position = Vector2(CARD_W - CARD_BORDER - 2.0 - float(gi + 1) * (gw + 4.0) + 4.0, CARD_BORDER + 2.0)
+		## 五改: 框角的铜片压进窗口约 27px ⇒ 徽章排在它下面
+		gcell.position = Vector2(CARD_W - CARD_BORDER - 2.0 - float(gi + 1) * (gw + 4.0) + 4.0, CARD_BORDER + 30.0)
 		gcell.size = Vector2(gw, gw)
 		var gdef: Dictionary = DataRegistry.phase2_equipment_by_id.get(
 			str((g["it"] as Dictionary).get("id", "")), {})
@@ -849,6 +948,33 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, x_start:
 		gcell.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		box.add_child(gcell)
 	return worn
+
+
+## 空格的状态(对照参考: 剑与远征 / Hero Wars —— 能装画「+」, 不能装画锁, 不只靠颜色深浅区分):
+##   背包里有能装的东西 ⇒ 淡「+」(选中了一件装备时变绿 = 这一格能装); 全队装备已满 ⇒ 锁。
+##   挂在卡上、不进格子: 格子有没有子节点是门禁认「这一格有装备」的口径。
+func _slot_plus(box: Control, cell: Control, hot: bool) -> void:
+	var col := Color("#7fe39a") if hot else Color("#8a6a44")
+	var c: Vector2 = cell.position + cell.size * 0.5
+	for r in [Rect2(c.x - 10.0, c.y - 2.0, 20.0, 4.0), Rect2(c.x - 2.0, c.y - 10.0, 4.0, 20.0)]:
+		var e := ColorRect.new(); e.name = "SlotPlus"
+		e.color = col
+		e.position = (r as Rect2).position; e.size = (r as Rect2).size
+		e.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.add_child(e)
+
+
+func _slot_lock(box: Control, cell: Control) -> void:
+	var t := TextureRect.new(); t.name = "SlotLock"
+	t.texture = SLOT_LOCK_TEX
+	t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	t.stretch_mode = TextureRect.STRETCH_SCALE
+	t.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	t.size = Vector2(24, 24)
+	t.position = cell.position + (cell.size - t.size) * 0.5
+	t.modulate = Color(0.72, 0.66, 0.6)
+	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(t)
 
 
 ## 卡上那一格的星级: 左下角 1~3 颗小星(2026-10-22 对照参考: 云顶 / 循环勇者都把等级标在格子角上,
@@ -1831,7 +1957,7 @@ func _equip_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	st.text = "★".repeat(star)
 	st.add_theme_font_size_override("font_size", MIN_FONT_PX)
 	st.add_theme_color_override("font_color", Color("#ffd93d"))
-	st.position = Vector2(0, 4); st.size = Vector2(SLOT, 28)
+	st.position = Vector2(0, ITEM_CARD_MARGIN); st.size = Vector2(SLOT, 28)   # 从框的边带下沿起(y=4 时星压边带 3px)
 	st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(st)
 	## 合成进度(2026-10-22): 同名同星已有 ≥ 2 件 ⇒ 右下角「2/3」(再来一件就合成)。数的是 GameState.copies_of,

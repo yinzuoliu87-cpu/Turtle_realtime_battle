@@ -68,10 +68,7 @@ const Phase2Types := preload("res://scripts/gamedata/phase2_types.gd")   # 羁�
 ##   把 32×32 硬边像素画插值糊掉(源图半透明像素 0 个, 只有 16(1:2)/32(1×) 落在网格上)。
 const SYN_CHIP_ICON_PX := 16
 
-const RARITY_COLOR: Dictionary = {
-	"C":   Color("#06d6a0"), "B": Color("#4cc9f0"), "A": Color("#3a9abf"),
-	"S":   Color("#c77dff"), "SS": Color("#ffd93d"), "SSS": Color("#ff6b6b"),
-}
+const RARITY_COLOR: Dictionary = UIPalette.RARITY   # 单一来源(背包龟卡横幅也读它)
 # PoC main.js:263 RARITY_ORDER 1:1
 const RARITY_ORDER := ["SSS", "SS", "S", "A", "B", "C"]
 const SLOT_KEYS := ["pos-0", "pos-1", "pos-2"]   # 实时 3v3：3 格阵容(去前/后排)
