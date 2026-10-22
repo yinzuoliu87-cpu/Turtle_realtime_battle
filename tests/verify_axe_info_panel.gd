@@ -106,6 +106,12 @@ func _ready() -> void:
 	var t: Array = _texts(s._info_panel)
 	_ok("★标题是「铁斧」", t.has("铁斧"), str(t.slice(0, 6)))
 	_ok("★副标题只写「友军」, 不再有稀有度 / 等级", t.has("友军") and not "".join(t).contains("Lv"), str(t.slice(0, 6)))
+	## ★龟能条(用户 2026-10-22「斧头为什么没有龟能条」): 斧头自己的 energy / maxEnergy, 条上压着「当前 / %d」
+	var has_en := false
+	for tx in t:
+		if str(tx).contains("/ %d" % int(AE.ACTIVE_ENERGY)) and not str(tx).begins_with("生命"):
+			has_en = true
+	_ok("★★斧头面板有龟能条(条上写着「… / %d」)" % int(AE.ACTIVE_ENERGY), has_en, str(t.slice(0, 10)))
 	var row = s._info_panel.find_child("AbilityRow", true, false)
 	_ok("★技能行有 3 格(主动 / 窃取护盾 / 当前形态)", row != null and row.get_child_count() == 3,
 		"%d 格" % (row.get_child_count() if row != null else -1))
@@ -161,6 +167,6 @@ func _ready() -> void:
 	await _close(s)
 
 	gs.axe_stage = int(bak[0]); gs.axe_exp_total = int(bak[1]); gs.axe_exp_bar = int(bak[2]); gs.axe_final = str(bak[3])
-	_ok("分母: 断言条数 %d ≥ 21" % _n, _n >= 21)
+	_ok("分母: 断言条数 %d ≥ 22" % _n, _n >= 22)
 	print("ALL PASS — 局内斧头面板" if _fail == 0 else "FAILED: %d" % _fail)
 	get_tree().quit(0 if _fail == 0 else 1)

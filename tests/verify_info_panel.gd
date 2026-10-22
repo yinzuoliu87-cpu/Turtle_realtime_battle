@@ -59,7 +59,8 @@ func _test_stat_rows(s) -> void:
 	_ok("★属性区含『护盾强度』", txt.contains("护盾强度"))
 	_ok("★属性区含『闪避』", txt.contains("闪避"))
 	# 其余补充项
-	for k in ["生命偷取", "暴伤", "护甲穿透", "魔法穿透", "反伤", "韧性", "减伤", "增伤", "龟能充能"]:
+	## 「韧性」一格 2026-10-22 拿掉(用户「拿掉」: 全游戏没有东西给韧性)
+	for k in ["生命偷取", "暴伤", "护甲穿透", "魔法穿透", "反伤", "减伤", "增伤", "龟能充能"]:
 		_ok("属性区含『%s』" % k, txt.contains(k))
 	# 核心 7 项恒在
 	for k in ["攻击", "护甲", "魔抗", "暴击", "攻速", "射程", "移速"]:
@@ -75,7 +76,7 @@ func _test_stat_rows(s) -> void:
 		txt2 += str((r as Array)[1]) + " | "
 	_ok("★裸单位也把所有属性列全(不因为是0就藏)",
 		txt2.contains("治疗强度") and txt2.contains("护盾强度") and txt2.contains("闪避")
-		and txt2.contains("反伤") and txt2.contains("韧性"),
+		and txt2.contains("反伤") and not txt2.contains("韧性"),
 		txt2)
 	# ★★口径: 治疗/护盾强度是【乘算】(amt *= 1+amp), 基准是 100% 而不是 0
 	#   —— 用户指出「治疗和护盾强度不是100%吗」, 原来显示成 +0% 是口径错误。

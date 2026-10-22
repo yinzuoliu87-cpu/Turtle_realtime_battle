@@ -570,7 +570,8 @@ func _info_stat_rows_minor(u: Dictionary) -> Array:
 		[sic + "armorpen-icon.png",  "护甲穿透 %d" % int(u.get("armor_pen", 0.0)),                 Color("#ffc48a")],
 		[sic + "magicpen-icon.png",  "魔法穿透 %d" % int(u.get("magic_pen", 0.0)),                 Color("#c9a0ff")],
 		[sic + "reflect-icon.png",   "反伤 " + _pct(StoneSystem.reflect_of(u)),                 Color("#ff9d8a")],
-		["", "韧性 " + _pct(float(u.get("tenacity", 0.0))),                        Color("#d6e4f0")],
+		## ★「韧性」这一格拿掉了(用户 2026-10-22「拿掉」): 全游戏没有任何装备 / 龟 / 羁绊给韧性, 这一格永远是 0%。
+		##   控制时长公式(battle._cc_dur)照旧保留, 韧性恒为 0 ⇒ 结果不变。
 	]
 
 ## 全部属性行 = 主要 + 次要, 【顺序必须与建面板时创建 Label 的顺序一致】——
@@ -672,6 +673,15 @@ func _resource_bars(u: Dictionary) -> Array:
 			##   和血条同一种长相 —— 血条本来就是"条上压一行 HP 861/1005"。
 			##   龟能是最常看的一条, 长得和血条一样才不用二次识别。
 			"inline": true,
+		})
+
+	# ①b 斧头(小木斧召唤物)的龟能 —— 它没有技能冷却表, 龟能是自己身上那一条 energy / maxEnergy(axe_system.summon 建的)。
+	#    原来上面只认 active_skills ⇒ 斧头面板上没有龟能条(用户 2026-10-22「斧头为什么没有龟能条」)。
+	if u.get("_eq_axe", false):
+		out.append({
+			"name": "龟能", "cur": float(u.get("energy", 0.0)),
+			"cap": maxf(1.0, float(u.get("maxEnergy", _AxeEvo.ACTIVE_ENERGY))),
+			"hint": "", "color": Color("#ffce4d"), "inline": true,
 		})
 
 	# ② 怒气(熔岩) —— 阈值型。★火山形态下 rage 被 _sim_step 复用成倒计时百分比,
@@ -1798,7 +1808,8 @@ func _info_stat_tiles(u: Dictionary) -> Array:
 		[sic + "shieldamp-icon.png", "护盾强度", _pct_mult(BattleDamage.shield_strength(u, battle._t)), W, "护盾效果的倍率。"],
 		[sic + "echarge-icon.png", "龟能充能", _pct_mult(1.0 + float(u.get("echarge_perm", 0.0))), W, "龟能积攒速度倍率。龟能满时释放技能。"],
 		[sic + "reflect-icon.png", "反伤", _pct(StoneSystem.reflect_of(u)), W if StoneSystem.reflect_of(u) > 0.0005 else dim, "受到伤害时，按比例反弹给攻击者。"],
-		[sic + "tenacity-icon.png", "韧性", _pct(float(u.get("tenacity", 0.0))), W if float(u.get("tenacity", 0.0)) > 0.0005 else dim, "缩短受到眩晕、减速等控制效果的持续时间。"],
+		## ★「韧性」这一格拿掉了(用户 2026-10-22「拿掉」): 全游戏没有任何装备 / 龟 / 羁绊给韧性, 这一格永远是 0%。
+		##   控制时长公式(battle._cc_dur)照旧保留, 韧性恒为 0 ⇒ 结果不变。
 	]
 
 

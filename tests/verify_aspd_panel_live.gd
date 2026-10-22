@@ -145,7 +145,7 @@ func _ready() -> void:
 		["治疗强度", "heal_amp", 0.66], ["护盾强度", "shield_amp", 0.88],
 		["暴伤", "crit_dmg", 2.75], ["龟能充能", "echarge_perm", 0.5],
 		["护甲穿透", "armor_pen", 42.0], ["魔法穿透", "magic_pen", 37.0],
-		["反伤", "reflect", 0.25], ["韧性", "tenacity", 0.35],
+		["反伤", "reflect", 0.25],   # 「韧性」一格 2026-10-22 拿掉
 		["减伤", "damage_reduction", 0.15], ["增伤", "damage_amp", 0.45],
 	]
 	var stuck: Array = []

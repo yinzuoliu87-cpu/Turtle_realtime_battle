@@ -732,14 +732,15 @@ func _test_panel_v2() -> void:
 	##   "全都要显示"(用户 2026-07-21)现在由下面几条守: 常驻 19 个、顺序对、屏上的数 == 取数函数现算的。
 	var uu: Dictionary = _s._units[0] if not _s._units.is_empty() else u
 	var tiles: Array = _s._info_sys._info_stat_tiles(uu)
-	_ok("★★★⑤ 19 项全部常驻(用户 10-06「我们全部要放上去」)", _s._info_stat_labels.size() == 19 and tiles.size() == 19,
+	## 2026-10-22 用户「拿掉」: 「韧性」一格去掉(全游戏没有东西给韧性, 永远 0%) ⇒ 19 → 18
+	_ok("★★★⑤ 18 项全部常驻(用户 10-06「我们全部要放上去」)", _s._info_stat_labels.size() == 18 and tiles.size() == 18,
 		"刷新表 %d 个 / 取数 %d 项" % [_s._info_stat_labels.size(), tiles.size()])
 	var want_names := ["攻击", "攻速", "暴击", "暴伤", "护甲", "魔抗", "减伤", "增伤", "射程", "移速",
-		"生命偷取", "闪避", "护甲穿透", "魔法穿透", "治疗强度", "护盾强度", "龟能充能", "反伤", "韧性"]
+		"生命偷取", "闪避", "护甲穿透", "魔法穿透", "治疗强度", "护盾强度", "龟能充能", "反伤"]
 	var got_names: Array = []
 	for t in tiles:
 		got_names.append(str((t as Array)[1]))
-	_ok("★★★⑤ 19 项一项不少且顺序没乱(末项仍是韧性)", got_names == want_names, str(got_names))
+	_ok("★★★⑤ 18 项一项不少且顺序没乱(末项是反伤, 韧性已拿掉)", got_names == want_names, str(got_names))
 	var mism: Array = []
 	if _s._info_stat_labels.size() == tiles.size():
 		for i in range(tiles.size()):
@@ -771,7 +772,7 @@ func _test_panel_v2() -> void:
 		if not drawn.has("%s-icon.png" % want_ic):
 			missing.append(want_ic)
 	_ok("★★⑤b 面板格子里次要属性带图标: 7 张都画上了(护盾强度/治疗强度/龟能充能…)",
-		grid != null and missing.is_empty() and n_img >= 19,
+		grid != null and missing.is_empty() and n_img >= 18,   # 韧性一格 10-22 拿掉: 19 → 18
 		"缺 %s · 图标 %d 枚" % [str(missing), n_img])
 	_ok("★⑤b 每一枚都染了色(不许白方块)", n_img > 0 and n_dyed == n_img, "%d / %d" % [n_dyed, n_img])
 

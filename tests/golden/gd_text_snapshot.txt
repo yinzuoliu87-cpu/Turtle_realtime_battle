@@ -1475,7 +1475,6 @@ scripts/scenes/battle/info_panel.gd|lit|移动速度，受减速、加速效果�
 scripts/scenes/battle/info_panel.gd|lit|移速
 scripts/scenes/battle/info_panel.gd|lit|移速 %d
 scripts/scenes/battle/info_panel.gd|lit|站位
-scripts/scenes/battle/info_panel.gd|lit|缩短受到眩晕、减速等控制效果的持续时间。
 scripts/scenes/battle/info_panel.gd|lit|被动
 scripts/scenes/battle/info_panel.gd|lit|被动 · 
 scripts/scenes/battle/info_panel.gd|lit|被动 · 窃取护盾
@@ -1495,8 +1494,6 @@ scripts/scenes/battle/info_panel.gd|lit|闪避
 scripts/scenes/battle/info_panel.gd|lit|闪避攻击的几率。
 scripts/scenes/battle/info_panel.gd|lit|降低受到的物理伤害。
 scripts/scenes/battle/info_panel.gd|lit|降低受到的魔法伤害。
-scripts/scenes/battle/info_panel.gd|lit|韧性
-scripts/scenes/battle/info_panel.gd|lit|韧性 
 scripts/scenes/battle/info_panel.gd|lit|魔抗
 scripts/scenes/battle/info_panel.gd|lit|魔抗 %d
 scripts/scenes/battle/info_panel.gd|lit|魔法

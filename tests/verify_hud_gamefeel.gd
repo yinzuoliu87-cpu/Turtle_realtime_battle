@@ -586,14 +586,15 @@ func _test_all_stats_on_panel() -> void:
 						grid_lbls.append(k)
 			if tex_ok and num_ok:
 				good += 1
-	_ok("②★ 19 项属性全铺在面板上(StatGrid 19 格, 每格 图标+数字)", cells == 19 and good == 19,
+	## 2026-10-22 用户「拿掉」: 「韧性」那一格去掉了(全游戏没有东西给韧性, 永远 0%) ⇒ 19 → 18
+	_ok("②★ 18 项属性全铺在面板上(StatGrid 18 格, 每格 图标+数字)", cells == 18 and good == 18,
 		"格 %d / 合格 %d" % [cells, good])
-	var same: bool = grid_lbls.size() == s._info_stat_labels.size() and grid_lbls.size() == 19
+	var same: bool = grid_lbls.size() == s._info_stat_labels.size() and grid_lbls.size() == 18
 	if same:
 		for i in range(grid_lbls.size()):
 			if not is_same(grid_lbls[i], s._info_stat_labels[i]):
 				same = false
-	_ok("②★ 每帧刷新表 _info_stat_labels 就是格子里那 19 个数字节点(对位一致)", same,
+	_ok("②★ 每帧刷新表 _info_stat_labels 就是格子里那 18 个数字节点(对位一致)", same,
 		"格内数字 %d / 刷新表 %d" % [grid_lbls.size(), s._info_stat_labels.size()])
 	s._hud._close_info_panel()
 	s.queue_free()
