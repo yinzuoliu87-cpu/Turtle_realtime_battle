@@ -87,6 +87,8 @@ def show_counts(before, after, keys=None):
 
 def phase(dow, hhmm):
     h = int(hhmm[:2])
+    if dow == 1:
+        return "周一休赛（客户端「今日休赛 · 积分赛周二开启」）"
     if dow == 6:
         return "周六闯关日"
     if dow == 7:

@@ -544,11 +544,16 @@ static func server_offset() -> int:
 static func note_server_time(srv_ts: int, device_ts: int) -> void:
 	if srv_ts <= 0 or device_ts <= 0:
 		return
+	## ★在「偏移没变就返回」之前置位: 没变也是一次核对(见 `clock_confirmed()`)。
+	var first: bool = not server_time_heard
+	server_time_heard = true
 	var off: int = srv_ts - device_ts
 	if absi(off) <= SERVER_OFFSET_DEADBAND:
 		off = 0
 	server_offset()
 	if server_offset_known and off == server_offset_sec:
+		if first:
+			_notify_clock()
 		return
 	server_offset_sec = off
 	server_offset_known = true
@@ -556,6 +561,7 @@ static func note_server_time(srv_ts: int, device_ts: int) -> void:
 	cf.set_value("clock", "offset", off)
 	cf.set_value("clock", "measured_at", srv_ts)
 	cf.save(SERVER_CLOCK_PATH)
+	_notify_clock()
 
 ## ══════════════════════════════════════════════════════════════════════
 ##  【内测服的服务端假时间】(2026-10-21 · 方案书 docs/plans/20261020-内测服.md §2.3)
@@ -575,7 +581,52 @@ static func beta_clock_offset() -> int:
 
 ## 服务状态回包里带回的偏移(`SupabaseNet.apply_status_response` 调)。
 static func note_server_clock_offset(off: int) -> void:
+	var changed: bool = not beta_clock_heard or off != beta_clock_offset_sec
 	beta_clock_offset_sec = off
+	beta_clock_heard = true
+	## 正式包不叠这个偏移(`beta_clock_offset()` 恒 0) ⇒ 对它来说钟没变, 不叫。
+	if changed and _SE.is_beta():
+		_notify_clock()
+
+## ══════════════════════════════════════════════════════════════════════
+##  【本进程里时钟核对过没有】(2026-10-22 · 内测服整周彩排抓到的开机清档)
+## ══════════════════════════════════════════════════════════════════════
+## 开机那一次 `GameState.ensure_season()` 是**同步**跑在 `_ready` 里的, 比任何网络请求都早
+##   (探针 tests/_probe_boot_season_clock.gd: 那一刻 asked=0, 内测服偏移 0; 337ms 后偏移才到)。
+##   于是它只能用「本机钟 + 上次落盘的 Date 头偏移」, 而这两样都可能是旧的:
+##   · 内测服: 假时间偏移**不落盘**, 开机那一刻恒 0 ⇒ 存档在假周(10-26)、本机钟在真周(10-19)
+##     ⇒ 判成「跨周」⇒ 21 个模拟号整周战绩被清(season_id 2→3); 偏移一到再判又是「跨周」, 再清一次。
+##   · 正式服: 手机钟在两次联网之间被往回拨过(落盘的偏移是旧的)⇒ 同一条路径同样清档。
+## ★两个标记只在内存, 每次启动从 false 起: 「上次核对过」不等于「这次的钟是对的」。
+##   置位点就是两条偏移的唯一入口(`note_server_time` / `note_server_clock_offset`)。
+static var server_time_heard: bool = false
+static var beta_clock_heard: bool = false
+
+## 「现在」这个读数在本进程里被服务器核对过没有。
+##   · `now_override_ts` 钉住 ⇒ 算核对过(门禁钉钟 = 调用方说了算, 行为与原来逐字节相同)
+##   · 正式包: 本进程收到过一次带 `Date` 头的回包
+##   · 内测服包: 再加上收到过一次服务状态行(假时间偏移随它来)
+## ★只有「钟比存档早一周以上」(往回滚) 才看它 —— 见 `GameState.is_season_expired()`。往前滚照旧不等。
+static func clock_confirmed() -> bool:
+	if now_override_ts > 0:
+		return true
+	if not server_time_heard:
+		return false
+	return beta_clock_heard or not _SE.is_beta()
+
+## 钟被核对 / 偏移变了的时候叫谁(GameState._ready 注册 `_on_clock_confirmed`; 空 = 谁也不叫)。
+## ★为什么非叫不可: 开机那一次 ensure_season 用旧钟判过之后, 偏移到了**没有任何人再判一次** ——
+##   下一次判要等打完一场。而周六能不能进闯关赛看的是 `promoted`, 它只在 ensure_season 里惰性算
+##   (`settle_ranked_close`): 开机时钟在周四 ⇒ 没算; 偏移一到变成周六 ⇒ 没人算 ⇒ 11 胜的号被挡在门外,
+##   挡住了又打不了那一场 ⇒ 永远等不到「下一次」。
+## ★叫的时机只有两个(其余时候一个字不多): 本进程第一次核对上 / 偏移真的变了。正式服钟准的手机 =
+##   开机后叫一次, 那一次 ensure_season 是幂等的(verify_save_sync ③ 守着)。
+## ★deferred: 偏移是在 HTTP 回调里记的, 不在回调栈里改存档。
+static var clock_listener: Callable = Callable()
+
+static func _notify_clock() -> void:
+	if clock_listener.is_valid():
+		clock_listener.call_deferred()
 
 ## 主菜单「内测服」角标的字。不是内测服 ⇒ ""(角标不建); 服务端在假时间上 ⇒ 带上「服务端时间 周X hh:mm UTC」。
 static func beta_badge_text() -> String:
@@ -593,6 +644,8 @@ static func server_clock_reset() -> void:
 	server_offset_sec = 0
 	server_offset_known = false
 	_server_clock_loaded = true
+	server_time_heard = false
+	beta_clock_heard = false
 	if FileAccess.file_exists(SERVER_CLOCK_PATH):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(SERVER_CLOCK_PATH))
 
@@ -601,6 +654,8 @@ static func server_clock_forget_memory() -> void:
 	server_offset_sec = 0
 	server_offset_known = false
 	_server_clock_loaded = false
+	server_time_heard = false
+	beta_clock_heard = false
 
 const _HTTP_MONTHS := {"jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
 	"jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12}

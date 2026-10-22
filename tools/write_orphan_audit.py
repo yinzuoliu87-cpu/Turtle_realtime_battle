@@ -139,6 +139,9 @@ WHY = {
                          "verify_cursor_mac_os_cursor) 两处同名同义 —— 门禁跑在 Windows/Linux, 只能靠它走 iOS/macOS 那一支",
     "save_path_override": "多入口选路的存盘位置注入(net_route.gd `_path()`; 产品存 user://net_route.cfg, "
                           "verify_net_route_failover 指到自己那一份, 才能造出「第一次启动没存过 / 上次存的是中转」两种开局)",
+    "clock_hook_in_test": "时钟核对钩子的门禁开关(GameState.gd `_on_clock_confirmed`; 产品不走 test_mode, 钩子恒开; "
+                          "门禁一律 test_mode ⇒ 默认关, 免得一条带 Date 头的假回包把别的门禁摆的局面滚掉。"
+                          "verify_boot_season_clock 打开它量「偏移晚到 ⇒ 钩子补判、不清档、晋级算出来」那一支)",
     ## ⚠ 这张表**只写核对过出处的理由** —— 一条实测教训, 留一句免得重犯:
     ##   2026-09-28 我顺手给 `_info_passive_lbl` / `_info_passive_tpl` 编了两条理由,
     ##   一查全错: 它们当时已经被删掉了, 而"tests 在写它"其实是判据把

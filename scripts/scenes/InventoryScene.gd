@@ -271,7 +271,8 @@ func _rebuild() -> void:
 			## ★教学浮层(引导/下一站按钮)不随重建销毁 —— 装/卸装备会触发 _rebuild。
 			## ★★提示层(toast)同理, 而且它是本函数亲手杀掉过的: 见 `_toast()` 头注。
 			continue
-		c.visible = false   # 立即隐藏避免与新节点重叠 (queue_free 延到帧末, 不在信号中即时free防崩)
+		if c is CanvasItem:   # 子节点里有纯 Node(TipNode), 它没有 visible(内测服彩排 p15 报过一次脚本错误)
+			(c as CanvasItem).visible = false   # 立即隐藏避免与新节点重叠 (queue_free 延到帧末, 不在信号中即时free防崩)
 		c.queue_free()
 	var bg := ColorRect.new()
 	bg.color = Color("#0a1622")

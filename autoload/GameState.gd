@@ -1470,6 +1470,7 @@ func _ready() -> void:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)   # 开机恢复全屏(设置持久化)
 	_pc_window_setup()
 	ensure_season()   # V2: 初始化/滚动赛季 (阶段4)
+	_P2.clock_listener = _on_clock_confirmed   # 服务器时刻到了 / 偏移变了 ⇒ 用核对过的钟再判一次(见该函数)
 	_start_net_keepalive()
 	## 强制最低版本(2026-10-19): 整屏挡墙常驻在这里(跨场景), 开机问一次服务状态、回前台再问。
 	VersionWall.install(self)
@@ -2262,13 +2263,45 @@ func ensure_season() -> void:
 	if paid > 0 or promoted != was_promoted or new_titles > 0:
 		save()
 
+## 服务器时刻到了 / 偏移变了(`phase2_config._notify_clock`)⇒ 用核对过的钟把 ensure_season 再走一遍。
+##   开机那一次用的钟可能是旧的(见 `is_season_expired` 头注), 它当时**故意没做**的决定(往回滚)
+##   与**做不了**的决定(收盘后的晋级 `promoted`)都在这一次补上 —— 不等打完一场。
+## ★门禁(test_mode)里默认不动: 门禁各自摆 GameState 字段, 一条带 Date 头的假回包不该把别人的局面滚掉;
+##   要量这条路的门禁自己把 `clock_hook_in_test` 置 true(用完还原)。
+## ★教程沙盒 / 战斗场景里不动: 教程期间内存里不是账号状态; 战斗结算那一次 ensure_season 本来就会判,
+##   半场滚轮会让 `_settle_season` 看到空阵容、这一场结果落不进赛季。
+const _BATTLE_SCENE := "res://scenes/RealtimeBattle3D.tscn"
+var clock_hook_in_test: bool = false
+var clock_hook_runs: int = 0      ## 观测量: 真走进 ensure_season 的次数(门禁分母)
+
+func _on_clock_confirmed() -> void:
+	if (test_mode and not clock_hook_in_test) or tutorial_active:
+		return
+	var sc: Node = get_tree().current_scene if is_inside_tree() else null
+	if sc != null and sc.scene_file_path == _BATTLE_SCENE:
+		return
+	clock_hook_runs += 1
+	ensure_season()
+
 ## 本赛季是否已跨进下一个自然周 (UTC 周一 00:00 换周). 未初始化(锚点=0)算未过期.
 ## ★★判据是**锚点变了没有**, 不是"过了多少秒" —— 后者(旧的 5 天 `SEASON_DURATION_SEC`)
 ##   与 `phase_at_utc()` 的星期几判定永远合不上, 见 `phase2_config.gd` 顶部那段长注释。
+##
+## ★★2026-10-22 往回滚要等时钟核对过(内测服整周彩排: 21 个号开机即被清档)。
+##   「现在」的周 **早于** 存档那一周 ⇒ 这不是换周, 是钟没对上 —— 时间不会倒流。
+##   开机那一次 ensure_season 比任何网络回包都早(探针: asked=0、内测服偏移 0), 用的钟可能是旧的
+##   (内测服假时间偏移不落盘; 正式服手机钟在两次联网之间被往回拨过)。这时滚轮 = 把真实这一周的
+##   命/币/阵容/配额清掉, 偏移一到又判一次换周再清一次(探针实测 season_id 2→3→4)。
+##   ⇒ 往回滚只在本进程**核对过时钟之后**才做(`_P2.clock_confirmed()`); 核对之前什么都不动,
+##     时钟一核对上 `_on_clock_confirmed` 就再判一次。核对过了仍然更早 ⇒ 是存档的锚点错了, 照原样滚。
+##   ★往前滚(周一换轮)一个字没变: 不等网络, 照旧开机即滚。
 func is_season_expired() -> bool:
 	if week_anchor_ts == 0:
 		return false
-	return _P2.week_anchor_utc(int(_P2.now_utc())) != week_anchor_ts
+	var cur: int = _P2.week_anchor_utc(int(_P2.now_utc()))
+	if cur < week_anchor_ts:
+		return _P2.clock_confirmed()
+	return cur != week_anchor_ts
 
 ## 0 命 = 本大轮淘汰出局。
 ##
