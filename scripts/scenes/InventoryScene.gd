@@ -32,6 +32,7 @@ const CANDY_JAR_ICON := "res://assets/sprites/equip/equip-candy-jar.png"
 ## ── 2026-10-22 背包重做的皮 ──
 ## 顶栏 / 两路标题木牌: 商店那一张(方案里点名「顶栏直接用商店那一套」, 用户「做」)。
 const PLANK_TEX = preload("res://assets/sprites/shop/shop-plank.png")
+const WORN_STAR_TEX = preload("res://assets/sprites/shop/star-glint.png")   # 卡上装备格的星级(第 0 帧)
 const PLANK_MARGIN := 18
 ## 背包格 = 装备卡: 与商店说明卡同一套费用档框(同一件装备在两页长同一张脸); 选中整张换图(乘色提不亮深色框)。
 const ITEM_CARD_TEX := [
@@ -790,6 +791,7 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, x_start:
 			var ic2 := EquipIcon.make(edef2, Vector2(cw - 2, cw - 2), true)
 			ic2.position = Vector2(1, 1)
 			cell.add_child(ic2)
+			_worn_stars(cell, int(((wear[ci] as Dictionary)["it"] as Dictionary).get("star", 1)), cw)
 			worn.append({"rect": Rect2(cell.position, cell.size), "cell": int((wear[ci] as Dictionary)["i"]),
 				"it": (wear[ci] as Dictionary)["it"]})
 		if _sel_bench >= 0:
@@ -846,6 +848,27 @@ func _build_equip_cells(box: Control, y: float, eqs: Array, slots: int, x_start:
 		gcell.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		box.add_child(gcell)
 	return worn
+
+
+## 卡上那一格的星级: 左下角 1~3 颗小星(2026-10-22 对照参考: 云顶 / 循环勇者都把等级标在格子角上,
+##   原来卡上只看得出费用色和图标, 看不出是几星)。星 = 商店合成指示星的第 0 帧(同一套 UI 语言), 不压图标中间。
+const WORN_STAR_PX := 16.0
+const WORN_STAR_STEP := 11.0
+func _worn_stars(cell: Control, star: int, cw: float) -> void:
+	var at := AtlasTexture.new()
+	at.atlas = WORN_STAR_TEX
+	at.region = Rect2(0, 0, 32, 32)
+	for k in range(clampi(star, 1, 3)):
+		var s := TextureRect.new()
+		s.name = "WornStar"
+		s.texture = at
+		s.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		s.stretch_mode = TextureRect.STRETCH_SCALE
+		s.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		s.position = Vector2(1.0 + float(k) * WORN_STAR_STEP, cw - WORN_STAR_PX - 1.0)
+		s.size = Vector2(WORN_STAR_PX, WORN_STAR_PX)
+		s.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cell.add_child(s)
 
 
 ## 卸下统领第 cell_idx 件装备 → 回背包.

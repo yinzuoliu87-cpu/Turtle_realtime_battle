@@ -1,0 +1,221 @@
+角色卡参考 · 来源清单（2026-10-22 收集）
+全部为游戏官方商店截图 / 实机截图库 / 官方美术作品，没有自己画或 AI 生成的图。
+裁切 = 只裁剪和缩放，没有任何涂改。
+
+来源说明：
+  Steam 商店官方截图：store.steampowered.com/api/appdetails?appids=<id> 返回的 screenshots[].path_full
+  App Store 官方截图：itunes.apple.com/lookup?id=<id> 返回的 ipadScreenshotUrls / screenshotUrls（取 2048 宽）
+  interfaceingame.com：游戏 UI 实机截图库（每张有独立页面）
+  Game UI Database：gameuidatabase.com（本次直连被 Cloudflare 挡，只用了 2026-10-18 已下载的一张）
+
+[01] 01-云顶之弈手游-检视面板-头像下一排三格装备.jpg
+    游戏：云顶之弈手游 Teamfight Tactics (Mobile)
+    来源：interfaceingame.com（游戏实机截图库）
+    页面：https://interfaceingame.com/screenshots/teamfight-tactics-mobile-sell-champion/
+    图片：https://interfaceingame.com/wp-content/uploads/teamfight-tactics-mobile/teamfight-tactics-mobile-sell-champion.png
+    处理：裁切，输出 484×984
+    抓取日期：2026-10-22
+
+[01a] 01a-云顶之弈手游-检视面板-整屏.jpg
+    游戏：云顶之弈手游 Teamfight Tactics (Mobile)
+    来源：interfaceingame.com（游戏实机截图库）
+    页面：https://interfaceingame.com/screenshots/teamfight-tactics-mobile-sell-champion/
+    图片：https://interfaceingame.com/wp-content/uploads/teamfight-tactics-mobile/teamfight-tactics-mobile-sell-champion.png
+    处理：整图，输出 1920×1080
+    抓取日期：2026-10-22
+
+[02] 02-云顶之弈-Riot检视面板设计稿-星级在顶三格在中-PC面板放大.jpg
+    游戏：云顶之弈 Teamfight Tactics
+    来源：沿用
+    页面：Riot 美术 ArtStation「Champion Inspect Elements」（图内署名 Bailey Kalesti；2026-10-06 收进 ../20261006-云顶装备弹窗/，当时未记原链接）
+    图片：../20261006-云顶装备弹窗/1-riot-检视面板设计稿.jpg
+    处理：裁切，输出 264×811
+    抓取日期：2026-10-06（沿用 ../20261006-云顶装备弹窗/ 里已收的图）
+
+[02a] 02a-云顶之弈-Riot检视面板设计稿-全图.jpg
+    游戏：云顶之弈 Teamfight Tactics
+    来源：沿用
+    页面：Riot 美术 ArtStation「Champion Inspect Elements」（图内署名 Bailey Kalesti；2026-10-06 收进 ../20261006-云顶装备弹窗/，当时未记原链接）
+    图片：../20261006-云顶装备弹窗/1-riot-检视面板设计稿.jpg
+    处理：整图，输出 1920×1298
+    抓取日期：2026-10-06（沿用 ../20261006-云顶装备弹窗/ 里已收的图）
+
+[03] 03-云顶之弈手游-商店英雄卡-名字条颜色即费用.jpg
+    游戏：云顶之弈手游 Teamfight Tactics (Mobile)
+    来源：interfaceingame.com（游戏实机截图库）
+    页面：https://interfaceingame.com/screenshots/teamfight-tactics-mobile-buy-champion/
+    图片：https://interfaceingame.com/wp-content/uploads/teamfight-tactics-mobile/teamfight-tactics-mobile-buy-champion.png
+    处理：裁切，输出 2028×544
+    抓取日期：2026-10-22
+
+[04] 04-皇室战争-卡组-卡底等级字与升级进度条.jpg
+    游戏：皇室战争 Clash Royale
+    来源：interfaceingame.com（游戏实机截图库）
+    页面：https://interfaceingame.com/screenshots/clash-royale-battle-deck/
+    图片：https://interfaceingame.com/wp-content/uploads/clash-royale/clash-royale-battle-deck.png
+    处理：裁切，输出 978×1620
+    抓取日期：2026-10-22
+
+[05] 05-炉石传说-随从卡-费用攻血占三角.jpg
+    游戏：炉石传说 Hearthstone
+    来源：interfaceingame.com（游戏实机截图库）
+    页面：https://interfaceingame.com/screenshots/hearthstone-heroes-of-warcraft-card-hover/
+    图片：https://interfaceingame.com/wp-content/uploads/hearthstone-heroes-of-warcraft/hearthstone-heroes-of-warcraft-card-hover.jpg
+    处理：裁切，输出 967×712
+    抓取日期：2026-10-22
+
+[06] 06-炉石酒馆战棋-场上随从只剩头像与攻血.jpg
+    游戏：炉石传说·酒馆战棋 Hearthstone Battlegrounds
+    来源：App Store 官方截图
+    页面：https://apps.apple.com/us/app/id625257520
+    图片：https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/8b/f9/68/8bf9685c-4aa4-19f9-8df8-32e471b1d073/0a54ddf5-c6c2-42fc-960a-47e67dad659e_HS_AppStore_Updates_Screenshot_7_2732x2048_RN01.jpg/2048x0w.jpg
+    处理：裁切，输出 1305×1094
+    抓取日期：2026-10-22
+
+[07] 07-漫威终极逆转-费用战力在顶部两角.jpg
+    游戏：漫威终极逆转 MARVEL SNAP
+    来源：App Store 官方截图
+    页面：https://apps.apple.com/us/app/id1592081003
+    图片：https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/35/01/50/3501509c-e137-809c-1ec7-933c1906c861/Second_Dinner_Marvel_Snap_iOS_13_US_SS_Mockups_260309_03.png/2048x0w.jpg
+    处理：裁切，输出 819×1075
+    抓取日期：2026-10-22
+
+[08] 08-符文之地传说-收藏-底边宝石形状为稀有度-卡下三点为持有张数.jpg
+    游戏：符文之地传说 Legends of Runeterra (Mobile)
+    来源：interfaceingame.com（游戏实机截图库）
+    页面：https://interfaceingame.com/screenshots/legends-of-runeterra-mobile-collection/
+    图片：https://interfaceingame.com/wp-content/uploads/legends-of-runeterra-mobile/legends-of-runeterra-mobile-collection.png
+    处理：裁切，输出 1383×972
+    抓取日期：2026-10-22
+
+[09] 09-杀戮尖塔-单卡版式.jpg
+    游戏：杀戮尖塔 Slay the Spire
+    来源：interfaceingame.com（游戏实机截图库）
+    页面：https://interfaceingame.com/screenshots/slay-the-spire-view-card/
+    图片：https://interfaceingame.com/wp-content/uploads/slay-the-spire/slay-the-spire-view-card.jpg
+    处理：裁切，输出 960×972
+    抓取日期：2026-10-22
+
+[10] 10-杀戮尖塔-图鉴-稀有度看缎带与画框颜色.jpg
+    游戏：杀戮尖塔 Slay the Spire
+    来源：Steam 商店官方截图
+    页面：https://store.steampowered.com/app/646570/
+    图片：https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/646570/ss_8af73365121b1b1e2d8004fca2cbffb9b9f6d7a5.1920x1080.jpg?t=1774015376
+    处理：裁切，输出 1459×756
+    抓取日期：2026-10-22
+
+[11] 11-怪物火车-卡左侧菱形升级槽.jpg
+    游戏：怪物火车 Monster Train
+    来源：Steam 商店官方截图
+    页面：https://store.steampowered.com/app/1102190/
+    图片：https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1102190/ss_13f43b3b31bff7891d899172799dc0dbf3a2c0c7.1920x1080.jpg?t=1779381275
+    处理：裁切，输出 1344×810
+    抓取日期：2026-10-22
+
+[12] 12-雪居之地-立绘出框-数值挂在框角.jpg
+    游戏：雪居之地 Wildfrost
+    来源：Steam 商店官方截图
+    页面：https://store.steampowered.com/app/1811990/
+    图片：https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1811990/ss_d9f7f1d4fc074ac1db54295677f415010d12bbed.1920x1080.jpg?t=1778084209
+    处理：裁切，输出 1152×1080
+    抓取日期：2026-10-22
+
+[13] 13-雪居之地-单卡详情-词条说明围在卡旁.jpg
+    游戏：雪居之地 Wildfrost
+    来源：Steam 商店官方截图
+    页面：https://store.steampowered.com/app/1811990/
+    图片：https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1811990/ss_0251000ca945c16ebadd7af9abbe2b501b6513ce.1920x1080.jpg?t=1778084209
+    处理：裁切，输出 1152×1026
+    抓取日期：2026-10-22
+
+[14] 14-超级自动宠物-无卡-头顶等级脚下攻血.jpg
+    游戏：Super Auto Pets
+    来源：Steam 商店官方截图
+    页面：https://store.steampowered.com/app/1714040/
+    图片：https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1714040/ss_b349668fe7de40d36b1a8aedb1070d3e6ca74078.1920x1080.jpg?t=1680944541
+    处理：裁切，输出 1920×648
+    抓取日期：2026-10-22
+
+[15] 15-超级自动宠物-点选弹说明小卡.jpg
+    游戏：Super Auto Pets
+    来源：Steam 商店官方截图
+    页面：https://store.steampowered.com/app/1714040/
+    图片：https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1714040/ss_f61be4caff97d77b7df02bcdadee2687232e991f.1920x1080.jpg?t=1680944541
+    处理：裁切，输出 1920×864
+    抓取日期：2026-10-22
+
+[16] 16-HeroWars-立绘旁两列六格装备-加号与锁.jpg
+    游戏：Hero Wars: Alliance
+    来源：App Store 官方截图
+    页面：https://apps.apple.com/us/app/id1158967485
+    图片：https://is1-ssl.mzstatic.com/image/thumb/PurpleSource211/v4/a8/f3/21/a8f32164-0015-633d-b78c-3913b00eecda/hw_ios3a_4_2048x2732.jpg/2048x0w.jpg
+    处理：整图，输出 1024×1366
+    抓取日期：2026-10-22
+
+[17] 17-剑与远征-英雄两侧六格装备-加号与锁.jpg
+    游戏：剑与远征 AFK Arena
+    来源：Game UI Database（沿用 2026-10-18 抓取，C:/tmp/gshop）
+    页面：https://www.gameuidatabase.com/
+    图片：https://www.gameuidatabase.com/uploads/AFK-Arena01032022-014624-80954.jpg
+    处理：整图，输出 499×1080
+    抓取日期：2026-10-18（沿用当时离线抓取，本次未重新下载：gameuidatabase 直连回 403 Cloudflare 验证页）
+
+[18] 18-RumbleHeroes-卡顶数量卡底等级与进度条.jpg
+    游戏：Rumble Heroes : Adventure RPG
+    来源：App Store 官方截图
+    页面：https://apps.apple.com/us/app/id6443603223
+    图片：https://is1-ssl.mzstatic.com/image/thumb/PurpleSource126/v4/04/60/23/0460232d-2f7e-a1b7-e629-ada577bbc510/23341d72-a87d-43cd-b6b5-a067002f1a36_2048x2732_4.png/2048x0w.png
+    处理：裁切，输出 1228×738
+    抓取日期：2026-10-22
+
+[19] 19-骰子地下城-背包格与已装备格-空格为虚线.jpg
+    游戏：骰子地下城 Dicey Dungeons
+    来源：Steam 商店官方截图
+    页面：https://store.steampowered.com/app/861540/
+    图片：https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/861540/ss_c4094539ece3b9730d5aaa7d6d5eb6c47b069705.1920x1080.jpg?t=1761845135
+    处理：整图，输出 1280×720
+    抓取日期：2026-10-22
+
+[20] 20-循环勇者-装备格空位画灰剪影-格内左下角等级.png
+    游戏：循环勇者 Loop Hero
+    来源：Steam 商店官方截图
+    页面：https://store.steampowered.com/app/1282730/
+    图片：https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1282730/ss_535cb6f102a0a421f6b50ccb509e10074067bb89.1920x1080.jpg?t=1751489185
+    处理：裁切，输出 384×1080
+    抓取日期：2026-10-22
+
+[21] 21-SliceDice-像素横条卡-头像名字血点道具格.png
+    游戏：Slice & Dice
+    来源：App Store 官方截图
+    页面：https://apps.apple.com/us/app/id6449848963
+    图片：https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/f6/cc/24/f6cc24ba-3ac7-f76d-fdd0-d533829004ea/f7ecf3b5-09b6-4447-afcb-2bcf79f43b9a_2208x1242_4.png/2048x0w.png
+    处理：裁切，输出 1228×1152
+    抓取日期：2026-10-22
+
+[22] 22-CobaltCore-像素卡-卡色即所属角色色.png
+    游戏：Cobalt Core
+    来源：Steam 商店官方截图
+    页面：https://store.steampowered.com/app/2179850/
+    图片：https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2179850/ss_72195592b11810ac9be63e505096678324717121.1920x1080.jpg?t=1791916880
+    处理：裁切，输出 1382×756
+    抓取日期：2026-10-22
+
+[23] 23-小丑牌-卡面无字-点开弹卡带稀有度胶囊.png
+    游戏：小丑牌 Balatro
+    来源：Steam 商店官方截图
+    页面：https://store.steampowered.com/app/2379780/
+    图片：https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2379780/ss_204350350761316ad3aa8b0184689f3f93e01f7b.1920x1080.jpg?t=1790693638
+    处理：裁切，输出 1920×702
+    抓取日期：2026-10-22
+
+看过但没收的：
+  Inscryption（Steam 1092790）：8 张官方截图都是 3D 暗场景，卡面被裁 / 看不清，像素那一幕没有截图。
+  Dota Underlords（Steam 1046930 / interfaceingame）：单位不做卡（棋子 + 等级星 + 羁绊图标），与本题关系弱。
+  Backpack Battles / Backpack Hero（Steam）：角色不做卡，只有属性面板 + 背包格；已在 ../20261018-商店背包参考/ 收过。
+  剑与远征：启程 / Guardian War 等（App Store）：官方截图是宣传海报，没有拍到角色卡 / 装备界面。
+  云顶之弈 / 金铲铲 App Store 截图：没有一张拍到检视面板，所以 01、03 用 interfaceingame 的实机截图。
+  Super Auto Pets：Steam 7 张 + App Store 6 张都没有拍到「宠物身上挂食物」的状态，分析里不写这一点。
+
+备注：
+  [07] 漫威终极逆转那张是 App Store 官方宣传图（原文件名含 Mockups）：卡面是游戏里的真卡，背景和扇形排布是宣传合成。
+  [06] 酒馆战棋那张是炉石 App Store 官方截图（实机画面 + 少量粒子特效）。
