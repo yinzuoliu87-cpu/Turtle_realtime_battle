@@ -34,15 +34,17 @@ func _walk(n: Node, out: Array) -> void:
 		_walk(c, out)
 
 
-## 单位卡上的装备小格(40×40 Panel), 只要**已占**的(里面有图标子节点)。
+## 单位卡上的装备小格(边长 EQ_CELL 的 Panel, 2026-10-22 竖卡 40 → 56), 只要**已占**的(里面有图标子节点)。
+##   ★边长读产品常量, 不写死: 写死的 40 在竖卡改版后一个格子都数不到(分母 0)。
 func _filled_minis(sc: Node) -> Array:
 	var all: Array = []
 	_walk(sc, all)
 	var out: Array = []
+	var cw: float = float(sc.EQ_CELL)
 	for c in all:
 		var ctl: Control = c
-		if ctl is Panel and ctl.is_visible_in_tree() and absf(ctl.size.x - 40.0) < 0.5 \
-				and absf(ctl.size.y - 40.0) < 0.5 and ctl.get_child_count() > 0:
+		if ctl is Panel and ctl.is_visible_in_tree() and absf(ctl.size.x - cw) < 0.5 \
+				and absf(ctl.size.y - cw) < 0.5 and ctl.get_child_count() > 0:
 			out.append(ctl)
 	return out
 

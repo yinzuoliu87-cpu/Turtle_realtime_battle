@@ -829,6 +829,7 @@ scripts/scenes/InventoryScene.gd|lit|商店
 scripts/scenes/InventoryScene.gd|lit|囗
 scripts/scenes/InventoryScene.gd|lit|小将
 scripts/scenes/InventoryScene.gd|lit|属性\n%s\n\n效果\n%s
+scripts/scenes/InventoryScene.gd|lit|打碎可获得：%s（每大轮限 1 次）
 scripts/scenes/InventoryScene.gd|lit|护甲
 scripts/scenes/InventoryScene.gd|lit|攻击力
 scripts/scenes/InventoryScene.gd|lit|无属性加成
@@ -839,8 +840,10 @@ scripts/scenes/InventoryScene.gd|lit|本大轮首战后解锁
 scripts/scenes/InventoryScene.gd|lit|盾
 scripts/scenes/InventoryScene.gd|lit|空槽位
 scripts/scenes/InventoryScene.gd|lit|站位
+scripts/scenes/InventoryScene.gd|lit|第 %d 档
 scripts/scenes/InventoryScene.gd|lit|精英
 scripts/scenes/InventoryScene.gd|lit|精英小将
+scripts/scenes/InventoryScene.gd|lit|糖果罐
 scripts/scenes/InventoryScene.gd|lit|统领%d
 scripts/scenes/InventoryScene.gd|lit|背包
 scripts/scenes/InventoryScene.gd|lit|设置开战站位
@@ -861,7 +864,6 @@ scripts/scenes/InventoryScene.gd|text|打碎
 scripts/scenes/InventoryScene.gd|text|查看更多（%d 行）
 scripts/scenes/InventoryScene.gd|text|知道了
 scripts/scenes/InventoryScene.gd|text|空槽位
-scripts/scenes/InventoryScene.gd|text|糖果罐 · 第 %d 档\n打碎可获得：%s（每大轮限 1 次）
 scripts/scenes/InventoryScene.gd|text|背包为空
 scripts/scenes/InventoryScene.gd|text|装备背包
 scripts/scenes/InventoryScene.gd|text|详情

@@ -173,9 +173,8 @@ func _ready() -> void:
 	##   **点第 1 件装备会装备/卖掉第 2 件** —— 坏存档。
 	##   判据: 渲染循环里必须有独立的数据下标 `bidx`, 且合成条目不占号。
 	## ── 交互用例(用户 2026-08-14:「点击装备, 下面把出售和什么按钮换成打碎就好了啊」)──
-	##   ★最终形态就是【和装备一模一样】: 点一下 = 选中, 底部同一条操作栏把"卖出"换成"打碎"。
-	##     我先做的自定义 gui_input + 确认弹窗是**过度设计** —— 选中本身可撤销,
-	##     误触点一下再点"取消"就行, 不需要再弹一层。
+	##   ★最终形态就是【和装备一模一样】: 点一下 = 选中, 同一个位置把"卖出"换成"打碎"。
+	##     我先做的自定义 gui_input + 确认弹窗是**过度设计** —— 选中本身可撤销, 不需要再弹一层。
 	_ok("★★★点它 = 选中(不是直接碎) —— 用独立标记 `_sel_jar`",
 		src_inv.find("_sel_jar = not _sel_jar") >= 0)
 	_ok("★★★`_sel_jar` 不占 `_sel_bench`(后者直接索引 persistent_bench, 占了就索引错位)",
@@ -183,26 +182,76 @@ func _ready() -> void:
 		and src_inv.find("_sel_bench = -1                              # 选糖果罐") >= 0)
 	_ok("★★滑列表不误触: 位移 ≥16px 不算点击(与装备卡同一套)",
 		src_inv.find("if ev.position.distance_to(_press_pos) >= 16.0:") >= 0)
-	## ★★2026-09-28 后半句从 `smash.text = "🔨 打碎"` 改成**量接线**。
-	##   原来那一版是**拿文案当尺子**: 同一刻我把 🔨 去掉了(它是纯装饰 ——
-	##   「打碎」两个字已经说完了这枚键干什么; 而 🔨 的字形来自 NotoEmoji,
-	##   与整屏像素笔触是两套画法, 见 `tests/verify_no_emoji_icons.gd`)。
-	##   ⇒ 那条断言会当场红, 而它想守的事(这枚键在同一条操作栏里、不另起弹窗)一点没变。
-	##   现在量的是【这枚键接的是谁】: 它必须直连 `_inv_jar._on_break_jar()` ——
-	##   换文案/换图标都不影响, 而"又去另起一个确认弹窗"会立刻红(下面还有一条专门禁它)。
-	_ok("★★底部【同一条操作栏】把卖出换成打碎(不另起弹窗/面板)",
-		src_inv.find("func _build_jar_op_bar") >= 0
-		and src_inv.find("_inv_jar._on_break_jar()") >= 0)
-	## ★2026-10-21 手机版: 两颗键都改成 81 高(44pt)、在 132 高的底栏里竖直居中 —— 判据跟着改, 仍要求「同一位置同一尺寸」。
-	_ok("★打碎按钮与\"卖出\"同一位置同一尺寸(bw-290, 170×81)",
-		src_inv.find("smash.position = Vector2(bw - 290, (OP_BAR_H - 81.0) * 0.5); smash.size = Vector2(170, 81)") >= 0
-		and src_inv.find("sell.position = Vector2(bw - 290, (OP_BAR_H - 81.0) * 0.5); sell.size = Vector2(170, 81)") >= 0)
-	_ok("★★选装备与选糖果罐【互斥】(底部只有一条操作栏)",
+	_ok("★★选装备与选糖果罐【互斥】",
 		src_inv.find("_sel_jar = false                       # 选装备") >= 0)
 	_ok("★★已删掉过度设计的确认弹窗(_confirm_smash_jar 不再存在)",
 		src_inv.find("func _confirm_smash_jar") < 0)
 	_ok("★卡面显示【档位】而不是 ×N(一大轮只能碎一次, N 是累积糖数)",
-		src_inv.find('jnm.text = "%d 档" % GameState.candy_jar_tier()') >= 0)   # 2026-10-21: 格子只写档位(「糖果罐」在底栏)
+		src_inv.find('jnm.text = "%d 档" % GameState.candy_jar_tier()') >= 0)   # 格子只写档位(「糖果罐」在说明小卡)
+
+	## ★★2026-10-22 装备改成贴着那一格弹说明小卡(InspectCard), 不再画底部操作条 ⇒ 糖果罐跟着改。
+	##   原来这里 grep 两颗键的源码坐标「同一位置同一尺寸」—— 装备那条栏没了, 那两行坐标比的是一段死代码。
+	##   现在【真开两张卡来比】: 走真入口(格子的 gui_input 按下 + 松开), 量卡上那颗键。
+	gs.season_leaders = ["candy", "stone", "ninja"]
+	gs.candy_jar_broken = false
+	gs.candy_jar_count = 12
+	gs.persistent_bench = [{"id": "p2eq_021", "star": 1}, {"id": "p2eq_004", "star": 1}]
+	var name0 := str(DataRegistry.phase2_equipment_by_id.get("p2eq_021", {}).get("name", ""))
+	var inv = load("res://scenes/Inventory.tscn").instantiate()
+	add_child(inv)
+	for _i in range(10):
+		await get_tree().process_frame
+	## 糖果罐格子 = 带 CellName「N 档」的那一格; 它后面那个兄弟 = 背包第一件装备(渲染第 2 格)
+	var jar_cell: Control = _jar_cell(inv, gs.candy_jar_tier())
+	_ok("★分母: 背包里有糖果罐那一格", jar_cell != null)
+	var eq_cell: Control = null
+	if jar_cell != null:
+		var sib: Array = jar_cell.get_parent().get_children()
+		var ji: int = sib.find(jar_cell)
+		if ji >= 0 and ji + 1 < sib.size():
+			eq_cell = sib[ji + 1]
+	_ok("★分母: 糖果罐后面紧挨着一件装备", eq_cell != null)
+	## ① 渲染下标与【数据下标】分开: 糖果罐占渲染第 1 格但不占背包下标 ⇒ 点它后面那格 = 背包第 0 件
+	##   (把渲染下标当数据下标传 ⇒ 选中的是第 1 件, 卖出 / 装上都会动错那一件 —— 坏存档)
+	if eq_cell != null:
+		_tap(eq_cell)
+		for _i in range(4):
+			await get_tree().process_frame
+	var item_card: Node = _named(inv, "ItemInspectCard")
+	var ttl: Node = _named(item_card, "Title") if item_card != null else null
+	_ok("★★★渲染下标与【数据下标】分开: 点糖果罐后面那格 = 背包第 0 件(合成条目不占号)",
+		int(inv._sel_bench) == 0 and ttl != null and str((ttl as Label).text) == name0,
+		"sel=%d 卡标题「%s」应为「%s」" % [int(inv._sel_bench), str((ttl as Label).text) if ttl != null else "", name0])
+	var sell: Button = _named(item_card, "SellBtn") as Button if item_card != null else null
+	_ok("★分母: 装备的说明小卡上有「卖出」", sell != null)
+	## 先记下「卖出」的位置与尺寸: 下一下点击整页重建, 这颗键随旧卡一起释放
+	var sell_at := [sell.get_index(), sell.custom_minimum_size.y, sell.get_theme_font_size("font_size")] if sell != null else []
+	## ② 点糖果罐那一格 ⇒ 和装备同一张小卡, 「打碎」站在「卖出」的位置
+	jar_cell = _jar_cell(inv, gs.candy_jar_tier())    # 上一下点击整页重建过, 旧格子已释放
+	if jar_cell != null:
+		_tap(jar_cell)
+		for _i in range(4):
+			await get_tree().process_frame
+	var jar_card: Node = _named(inv, "JarInspectCard")
+	var smash: Button = _named(jar_card, "SmashBtn") as Button if jar_card != null else null
+	_ok("★★点糖果罐 ⇒ 弹出说明小卡, 卡上有「打碎」", jar_card != null and smash != null)
+	_ok("★★选中糖果罐时不再冒出底部操作条(和装备一样只有那张小卡)", not inv._op_bar_shows())
+	_ok("★★装备小卡已收起(两张小卡不同时在)", _named(inv, "ItemInspectCard") == null)
+	if not sell_at.is_empty() and smash != null:
+		var smash_at := [smash.get_index(), smash.custom_minimum_size.y, smash.get_theme_font_size("font_size")]
+		_ok("★打碎与卖出【同一位置同一尺寸】: 都是各自按钮行的第 1 颗、同高、同字号",
+			smash_at == sell_at and int(smash_at[0]) == 0,
+			"打碎 [序号, 高, 字号] %s / 卖出 %s" % [str(smash_at), str(sell_at)])
+	else:
+		_ok("★打碎与卖出【同一位置同一尺寸】", false, "卖出 %s / 打碎 %s" % [str(not sell_at.is_empty()), str(smash != null)])
+	## ③ 按下「打碎」= 真碎(直连 `_inv_jar._on_break_jar()`, 不另起确认弹窗)
+	if smash != null:
+		smash.pressed.emit()
+		for _i in range(3):
+			await get_tree().process_frame
+	_ok("★★按下「打碎」⇒ 罐子真碎了(不另起确认弹窗)", not gs.has_candy_jar())
+	inv.queue_free()
+	await get_tree().process_frame
 
 	## ★糖果罐不许【同时出现在两个地方】—— 旧的右上角独立面板必须撤掉,
 	##   否则玩家在背包里看到一张卡、右上角还有一块板, 是同一个东西的两份。
@@ -212,10 +261,6 @@ func _ready() -> void:
 		and src_jar.find("func _build_candy_jar") < 0)
 	_ok("★但 InvCandyJar 本身保留(打碎的领奖/存档/弹窗仍由它负责)",
 		src_inv.find("_inv_jar._on_break_jar()") >= 0)
-	_ok("★★★渲染下标与【数据下标】分开(合成条目不占号, 否则点第1件会动到第2件)",
-		src_inv.find("var bidx := 0") >= 0
-		and src_inv.find("if not synth:") >= 0
-		and src_inv.find("-1 if synth else bidx") >= 0)
 
 	print("")
 	if _fail == 0:
@@ -239,3 +284,39 @@ func _first_leader_idx(gs, lane: String) -> int:
 		if arr[i] is Dictionary and str(arr[i].get("kind", "")) == "leader":
 			return i
 	return -1
+
+## 真点一下: 按下 + 松开(背包里的格子与单位卡都是「松手才算点」)。
+func _tap(c: Control) -> void:
+	for down in [true, false]:
+		var ev := InputEventMouseButton.new()
+		ev.button_index = MOUSE_BUTTON_LEFT
+		ev.pressed = down
+		ev.position = c.size * 0.5
+		c.gui_input.emit(ev)
+
+
+func _all(n: Node) -> Array:
+	var out: Array = []
+	var st: Array = [n]
+	while not st.is_empty():
+		var x: Node = st.pop_back()
+		out.append(x)
+		st.append_array(x.get_children())
+	return out
+
+
+func _jar_cell(inv: Node, tier: int) -> Control:
+	for n in _all(inv):
+		if n is Label and str(n.name) == "CellName" and str((n as Label).text) == "%d 档" % tier \
+				and not n.is_queued_for_deletion():
+			return (n as Node).get_parent() as Control
+	return null
+
+
+func _named(root: Node, nm: String) -> Node:
+	if root == null:
+		return null
+	for x in _all(root):
+		if str(x.name) == nm and not x.is_queued_for_deletion():
+			return x
+	return null

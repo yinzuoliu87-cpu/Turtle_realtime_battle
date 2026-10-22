@@ -442,6 +442,7 @@ func _rebuild() -> void:
 	_build_op_bar()
 	_insp.card = null; _insp.key = ""      # 上面整页清过一遍, 旧卡已在释放队列里
 	_open_item_card()
+	_open_jar_card()
 	_open_unit_card()
 	# ★★UIFrame 必须在【每次重建之后】重挂(用户 2026-08-01:「背包点一下后整个屏幕左移」)。
 	#   本函数开头把所有子节点 queue_free —— 设计框也在里面。而 attach 原来只在 _ready 调过一次,
@@ -1084,8 +1085,6 @@ func _notification(what: int) -> void:
 
 ## 底部操作条这一刻画不画(临时等级器 / 糖果罐 / 有装备的单位)。
 func _op_bar_shows() -> bool:
-	if _sel_jar and GameState.has_candy_jar():
-		return true
 	return _sel_bench >= 0 and _sel_bench < GameState.persistent_bench.size() \
 		and str((GameState.persistent_bench[_sel_bench] as Dictionary).get("kind", "")) == "item"
 
@@ -1591,11 +1590,7 @@ func _build_bench() -> void:
 
 # ─── 底部选中操作条 (大改: 替代满屏文字说明; 选中装备才显名/效果/卖出/取消) ───
 func _build_op_bar() -> void:
-	## ★选中糖果罐 ⇒ 同一条操作栏, 把"卖出"换成"打碎"(用户 2026-08-14)。
-	##   走同一个 bar 而不是另起一条 —— 用户要的就是"和装备一样"。
-	if _sel_jar and GameState.has_candy_jar():
-		_build_jar_op_bar()
-		return
+	## 选中糖果罐不走这里: 它和装备一样贴着那一格弹说明小卡(_open_jar_card)。
 	if _sel_bench < 0 or _sel_bench >= GameState.persistent_bench.size():
 		return   # 无选中装备 → 不显底部操作条
 	if str((GameState.persistent_bench[_sel_bench] as Dictionary).get("kind", "")) != "item":
@@ -1872,69 +1867,45 @@ func _show_equip_detail(item: Dictionary) -> void:
 	ok.pressed.connect(func(): dim.queue_free())
 	box.add_child(ok)
 
-## 糖果罐的底部操作栏 —— 与装备那条【同一个位置、同一套尺寸】, 只是把"卖出"换成"打碎"。
+## 糖果罐的说明小卡 —— 与装备那张【同一张卡、同一排按钮】, 只是把「卖出」换成「打碎」。
 ## ★用户 2026-08-14:「点击装备, 下面把出售和什么按钮换成打碎就好了啊」。
-##   照做: 不另起弹窗、不另起面板 —— 选中可撤销, 误触点一下再点"取消"即可。
-func _build_jar_op_bar() -> void:
-	var by := _op_bar_y()
-	var bar := Panel.new()
-	var sb := StyleBoxFlat.new(); sb.bg_color = Color("#1c1226"); sb.border_color = Color("#e79bd6")
-	sb.set_border_width_all(2); sb.set_corner_radius_all(8)
-	## ★★2026-09-28 换九宫格金属框 —— **这是本屏最后一个真·圆角盒**。
-	##   隔壁 `_build_op_bar`(装备那条操作栏, 同一个位置同一套尺寸)2026-08-18 就换过了,
-	##   而它这个双胞胎漏了 ⇒ 选装备时底栏是金属框、选糖果罐时同一块地方变回圆角网页盒。
-	##   ★为什么一直没被门禁数到: 这条栏只在【选中糖果罐】之后才建,
-	##     `verify_ui_consistency` / `_probe_webbox` 量的是静止态的屏, 那时它不在场。
-	##     (memory [[fb-gate-subject-never-constructed]]: 判据没错, 被测对象不在场。)
-	##   ★糖果粉那道描边不丢: 走 `UISkin.tint_of` 把它变成框的 modulate ——
-	##     一张中性金属框 modulate 出"这是糖果罐那条栏", 而不是各做一张图。
-	var jtex := UISkin.nine("panel-frame.png", 20, sb)
-	if jtex is StyleBoxTexture:
-		(jtex as StyleBoxTexture).modulate_color = UISkin.tint_of(sb.border_color)
-	bar.add_theme_stylebox_override("panel", jtex)
-	var bw := OPS_W
-	bar.position = Vector2(OPS_X, by); bar.size = Vector2(bw, OP_BAR_H); add_child(bar)
-	## ★★2026-08-15 修 off-by-one: `candy_jar_tier()` 返回的**已经是 1~6**
-	##   (`verify_candy_jar` 逐区间焊死, `break_candy_jar` 也按 `[tier-1]` 取奖励)。
-	##   这里原来又 `tier + 1` ⇒ 卡面/底栏写"第 3 档", 而同一行右边给的奖励是
-	##   `candy_jar_tier_preview(tier)` = **第 2 档**的 —— 数字和奖励自相矛盾;
-	##   攒满 30 颗时还会显示【第 7 档】, 而总共只有 6 档。
+##   2026-10-22 装备从底部操作条改成贴着那一格弹小卡(_open_item_card), 糖果罐跟着改 ——
+##   否则选装备弹小卡、选糖果罐却从底部冒出一条旧操作栏, 正是用户说的「不一样」。
+##   照旧: 不另起弹窗 —— 选中可撤销, 误触点空白处或再点一下格子就收起。
+func _open_jar_card() -> void:
+	if not _sel_jar or not GameState.has_candy_jar():
+		return
+	if _insp_anchor == null or not is_instance_valid(_insp_anchor):
+		return
+	_ui_layer = self
+	## ★★2026-08-15 修过 off-by-one: `candy_jar_tier()` 返回的**已经是 1~6**
+	##   (`verify_candy_jar` 逐区间焊死, `break_candy_jar` 也按 `[tier-1]` 取奖励), 这里不再 +1。
 	var tier: int = GameState.candy_jar_tier()
-	var l := Label.new()
-	## ★原文「🍬 糖果罐(第 N 档) —— 打碎后本大轮消失。当前档位奖励: X」三样毛病:
-	##   括号计数「(第 N 档)」、"当前档位奖励:" 的 label: value 句式、以及「档位」这个词本身
-	##   ——「档位」正是 `verify_inventory_layout` ㉖ 明令界面上不许出现的字(它只是因为
-	##   这条栏不在静止态的屏上才没被数到)。
-	## ⚠ 但「第 %d 档」和 `candy_jar_tier_preview` 的原文**必须留在这句里**:
-	##   ㉑ 逐区间拿它们对账 off-by-one(7 组 count→tier), 少一个当场红。
-	## ★2026-09-28 去掉句首的 🍬 —— 它是**纯装饰**(「糖果罐」三个字就在后面),
-	##   而这一格里已经有糖果罐的像素图了。emoji 走 NotoEmoji, 与全屏像素笔触两套画法。
-	l.text = "糖果罐 · 第 %d 档\n打碎可获得：%s（每大轮限 1 次）" % [
-		tier, GameState.candy_jar_tier_preview(tier)]
-	l.add_theme_font_size_override("font_size", MIN_FONT_PX)
-	l.add_theme_color_override("font_color", Color("#f0d6ff"))
-	l.position = Vector2(16, 12); l.size = Vector2(bw - 32, OP_BAR_H - 81.0 - 30.0)
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bar.add_child(l)
-	## ★2026-09-28 去掉 🔨 —— 纯装饰, 「打碎」两个字已经说完了这枚键干什么。
-	##   ⚠ 这一行的**源码字面**被 `tests/verify_candy_jar.gd` 钉着(它 grep 本文件源码),
-	##     那条断言已同步改成按行为找这枚键。
-	var smash := Button.new(); smash.text = "打碎"
-	smash.add_theme_font_size_override("font_size", MIN_FONT_PX)
-	smash.position = Vector2(16, OP_BAR_H - 91.0); smash.size = Vector2(170, 81)   # ★与"卖出"同一位置同一尺寸
-	UISkin.card_button(smash)
+	var col := Color("#e79bd6")
+	## ⚠「第 %d 档」和 `candy_jar_tier_preview` 的原文必须留在卡上: verify_inventory_layout ㉑ 逐区间对账 off-by-one。
+	var lv: Dictionary = _insp.open("jar", null, {
+		"icon": CANDY_JAR_ICON,
+		"title": "糖果罐", "title_col": col,
+		"icon_border": col, "frame_col": col,
+		"tag": "第 %d 档" % tier, "tag_col": Color("#e8dcc4"),
+		"body": "打碎可获得：%s（每大轮限 1 次）" % GameState.candy_jar_tier_preview(tier),
+		"body_px": MIN_FONT_PX,
+		"width": ITEM_CARD_W, "min_px": MIN_FONT_PX,
+	})
+	if not lv.has("vbox"):
+		return
+	(_insp.card as Control).name = "JarInspectCard"
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	(lv["vbox"] as VBoxContainer).add_child(row)
+	## 「打碎」站在装备卡「卖出」的位置(按钮行第一颗), 同一个 _card_btn 样式。
+	var smash := Button.new(); smash.name = "SmashBtn"; smash.text = "打碎"
+	_card_btn(smash)
 	smash.pressed.connect(func() -> void:
 		_sel_jar = false
 		if _inv_jar != null:
 			_inv_jar._on_break_jar())
-	bar.add_child(smash)
-	var cancel := Button.new(); cancel.text = "取消"
-	cancel.add_theme_font_size_override("font_size", MIN_FONT_PX)
-	cancel.position = Vector2(bw - 108, OP_BAR_H - 91.0); cancel.size = Vector2(92, 81)
-	UISkin.card_button(cancel)
-	cancel.pressed.connect(func(): _sel_jar = false; _rebuild())
-	bar.add_child(cancel)
+	row.add_child(smash)
 
 
 func _cost_color(cost: int) -> Color:   # 按费用上色(用户2026-07-19: 稀有度字段废弃, 费用才是真档位; 与旧稀有度严格1:1 → 颜色不变)
@@ -2042,7 +2013,7 @@ func _wire_bench_tap(box: Control, idx: int) -> void:
 func _on_bench_click(idx: int) -> void:
 	_sel_worn = {}
 	_dl_sel = {}
-	_sel_jar = false                       # 选装备 ⇒ 取消糖果罐选中(互斥, 底部只有一条操作栏)
+	_sel_jar = false                       # 选装备 ⇒ 取消糖果罐选中(互斥, 说明小卡同时只开一张)
 	_sel_bench = -1 if _sel_bench == idx else idx
 	_rebuild()
 	if _sel_bench >= 0:
@@ -2269,7 +2240,7 @@ func _candy_jar_cell(it: Dictionary, pos: Vector2) -> Control:
 	## ★★"×N" 是**误导**: `break_candy_jar` 设的是 `candy_jar_broken = true` ——
 	##   **一大轮只能碎一次**; `candy_jar_count` 是累积糖数、**决定档位**, 不是"N 个罐子"。
 	##   写成 ×N 会被读成一叠可碎 N 次的消耗品。改成显示【档位】, 糖数放 tooltip。
-	## 2026-10-21: 格子里只留档位(20 号字), 「糖果罐」三个字在选中后的底部操作条里。
+	## 2026-10-21: 格子里只留档位(20 号字), 「糖果罐」三个字在选中后的说明小卡里。
 	jnm.text = "%d 档" % GameState.candy_jar_tier()
 	jnm.name = "CellName"
 	jnm.add_theme_font_size_override("font_size", MIN_FONT_PX)
@@ -2296,4 +2267,6 @@ func _candy_jar_cell(it: Dictionary, pos: Vector2) -> Control:
 		_sel_jar = not _sel_jar
 		_sel_bench = -1                              # 选糖果罐 ⇒ 取消装备选中(互斥)
 		_rebuild())
+	if _sel_jar:
+		_insp_anchor = jbox                          # 说明小卡贴着这一格弹(与装备同一个口径)
 	return jbox

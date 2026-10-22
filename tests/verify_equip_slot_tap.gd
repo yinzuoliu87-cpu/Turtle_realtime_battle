@@ -10,11 +10,13 @@ func _ok(t: String, c: bool, d: String = "") -> void:
 	else:
 		_fail += 1
 		print("  [FAIL] ", t, "  ", d)
+## 点一下 = 按下 + 松开(2026-10-22 起单位卡「松手才算点」, 只发按下什么都不会发生)。
 func _click(c: Control) -> void:
-	var ev := InputEventMouseButton.new()
-	ev.button_index = MOUSE_BUTTON_LEFT
-	ev.pressed = true
-	c.gui_input.emit(ev)
+	for down in [true, false]:
+		var ev := InputEventMouseButton.new()
+		ev.button_index = MOUSE_BUTTON_LEFT
+		ev.pressed = down
+		c.gui_input.emit(ev)
 func _ready() -> void:
 	await get_tree().process_frame
 	print("=== 已选中装备时点装备小格 = 装上去 ===")
@@ -39,21 +41,24 @@ func _ready() -> void:
 			if arr[i] is Dictionary and str(arr[i].get("id", "")) == "basic":
 				lane = ln; idx = i
 	_ok("★分母: basic 在布阵里", idx >= 0, "%s/%d" % [lane, idx])
-	## 找 basic 那张卡: 挂了 gui_input 的 Panel, 子孙里有名字 Label「%s」
+	## 找 basic 那张卡: 产品给的节点名 UnitCard_<路>_<序号>, 挂着点击, 子孙里写着它的名字
+	##   (2026-10-22 竖卡: 名字在 NameBanner 里, 不再是卡的直接子节点)。
 	var pet_name: String = str(DataRegistry.pet_by_id.get("basic", {}).get("name", "basic"))
-	var card: Control = null
-	var st: Array = [inv]
-	while not st.is_empty():
-		var n = st.pop_back(); st.append_array(n.get_children())
-		if n is Panel and (n as Panel).gui_input.get_connections().size() > 0:
-			for ch in (n as Panel).get_children():
-				if ch is Label and str((ch as Label).text) == pet_name:
-					card = n
-	_ok("★分母: 找到 basic 那张单位卡(挂着点击)", card != null)
+	var card: Control = inv.find_child("UnitCard_%s_%d" % [lane, idx], true, false) as Control
+	var shows_name := false
+	if card != null:
+		var st: Array = [card]
+		while not st.is_empty():
+			var n = st.pop_back(); st.append_array(n.get_children())
+			if n is Label and str((n as Label).text) == pet_name:
+				shows_name = true
+	_ok("★分母: 找到 basic 那张单位卡(挂着点击, 写着「%s」)" % pet_name,
+		card != null and card.gui_input.get_connections().size() > 0 and shows_name)
+	## 装备格 = 卡的直接子 Panel、边长 EQ_CELL(羁绊赠送徽章小一圈, 不算)
 	var cells: Array = []
 	if card != null:
 		for ch in card.get_children():
-			if ch is Panel and (ch as Panel).size.x <= 44.0 and (ch as Panel).size.x >= 30.0:
+			if ch is Panel and absf((ch as Panel).size.x - float(inv.EQ_CELL)) < 0.5:
 				cells.append(ch)
 	_ok("★分母: 卡上有 3 个装备小格", cells.size() >= 3, "%d 个" % cells.size())
 	var bad: Array = []

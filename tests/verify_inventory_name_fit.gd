@@ -6,6 +6,7 @@ extends Node
 ##   20 号的 5 字名)。格子里只剩【图标 + 星级】, 名字在选中后的底部操作条第一行(20 号字)。
 ##   ⇒ 本门禁改量: ① 格子里没有装备名 ② 格子里每一行字 ≥ 20 号、字墨离边带 ≥ 2px
 ##                 ③ 最长名那件选中后, 底栏第一行写着它的名字、20 号、不被截。
+## ★2026-10-22 名字从底栏挪到说明小卡(ItemInspectCard)的标题 ⇒ ③ 量小卡标题, 一行放得下。
 ##
 ## ★分母: 全部装备逐件放进背包, 数到的格数必须 == 装备总数, 且最长的那件在场。
 ##
@@ -27,6 +28,15 @@ func _ok(name: String, cond: bool, detail: String = "") -> void:
 	else:
 		_fail += 1
 		print("  [FAIL] ", name, "  ", detail)
+
+
+func _under(n: Node, nm: String) -> bool:
+	var p := n.get_parent()
+	while p != null:
+		if str(p.name) == nm:
+			return true
+		p = p.get_parent()
+	return false
 
 
 func _find_named(n: Node, nm: String, out: Array) -> void:
@@ -119,18 +129,22 @@ func _ready() -> void:
 		sc._on_bench_click(li)
 		for _i in range(6):
 			await get_tree().process_frame
-		var head: RichTextLabel = null
+		## ★2026-10-22 装备改成贴着那一格弹说明小卡(ItemInspectCard), 名字是卡头的 Title(原来在底部操作条第一行)。
+		var head: Label = null
 		var st2: Array = [sc]
 		while not st2.is_empty():
 			var n2 = st2.pop_back(); st2.append_array(n2.get_children())
-			if n2 is RichTextLabel and (n2 as Control).is_visible_in_tree() and str((n2 as RichTextLabel).get_parsed_text()).begins_with(longest):
+			if n2 is Label and str(n2.name) == "Title" and (n2 as Control).is_visible_in_tree() \
+					and n2.get_parent() != null and _under(n2, "ItemInspectCard"):
 				head = n2
-		_ok("★★选中后底栏第一行写着它的名字", head != null)
+		_ok("★★选中后说明小卡的标题写着它的名字", head != null and head.text == longest,
+			"「%s」" % (head.text if head != null else ""))
 		if head != null:
-			var hf: Font = head.get_theme_font("normal_font")
-			var hfs: int = head.get_theme_font_size("normal_font_size")
-			var hw: float = hf.get_string_size(str(head.get_parsed_text()), HORIZONTAL_ALIGNMENT_LEFT, -1, hfs).x
-			_ok("★★底栏名字 ≥ %d 号且整行放得下(字宽 %.0f ≤ 框宽 %.0f)" % [MIN_FONT, hw, head.size.x],
+			var hf: Font = head.get_theme_font("font")
+			var hfs: int = head.get_theme_font_size("font_size")
+			var hw: float = hf.get_string_size(head.text, HORIZONTAL_ALIGNMENT_LEFT, -1, hfs).x
+			## 标题是自动换行的 ⇒「放得下」要量成【一行装得下】, 否则长名会被拆成两行(看着像两件东西)
+			_ok("★★小卡标题 ≥ %d 号且一行放得下(字宽 %.0f ≤ 框宽 %.0f)" % [MIN_FONT, hw, head.size.x],
 				hfs >= MIN_FONT and hw <= head.size.x + 0.5)
 
 	sc.queue_free()
