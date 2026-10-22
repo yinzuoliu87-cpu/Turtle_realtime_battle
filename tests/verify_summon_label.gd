@@ -35,7 +35,8 @@ const MIN_CALL_SITES := 16
 
 ## 允许的**非字面量** label 表达式 —— 每一条都在 ② 段末尾有一条单独的运行期断言
 ## 把它的真实取值验一遍。名单之外的非字面量当场红(否则动态 label 就是一条无人看管的缝)。
-const DYNAMIC_LABELS := ["str(AE.stage(si)[\"name\"])"]
+## 2026-10-22: 斧头名字改取显示名(选了最终造物就叫造物名), 表达式从 AE.stage(si) 换成 AE.display(si, fin)
+const DYNAMIC_LABELS := ["str(AE.display(si, fin)[\"name\"])"]
 
 var _n := 0
 var _fail := 0
@@ -288,12 +289,16 @@ func _seg2_coverage() -> void:
 		dyn.size() == DYNAMIC_LABELS.size(), str(dyn))
 	var stage_bad: Array = []
 	for i in range(AE.STAGES.size()):
-		var nm := str(AE.stage(i).get("name", ""))
+		var nm := str(AE.display(i, "").get("name", ""))
 		if nm == "" or _has_latin(nm):
 			stage_bad.append("%d=%s" % [i, nm])
+	for f in AE.FINALS:   # 选了最终造物时取的是造物名
+		var fn := str(AE.display(AE.STAGES.size() - 1, str((f as Dictionary)["key"])).get("name", ""))
+		if fn == "" or _has_latin(fn):
+			stage_bad.append("%s=%s" % [str((f as Dictionary)["key"]), fn])
 	_ok("② ★分母: 斧头进化共 %d 档(动态 label 的全部取值)" % AE.STAGES.size(),
 		AE.STAGES.size() >= 5, "%d 档" % AE.STAGES.size())
-	_ok("② ★★动态 label `AE.stage(si)[\"name\"]` 的 %d 档取值全无英文" % AE.STAGES.size(),
+	_ok("② ★★动态 label `AE.display(si, fin)[\"name\"]` 的 %d 档 + %d 个造物取值全无英文" % [AE.STAGES.size(), AE.FINALS.size()],
 		stage_bad.is_empty(), str(stage_bad))
 
 

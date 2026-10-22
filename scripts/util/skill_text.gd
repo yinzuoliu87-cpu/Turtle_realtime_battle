@@ -750,6 +750,52 @@ static func _axe_full_src(edef: Dictionary, base: String) -> String:
 	return "\n".join(parts)
 
 
+## 局内点斧头那张面板的三格文字(2026-10-22 用户「可以」): 一律从上面同一份定稿全文里按行取, 不另写。
+##   active = 「主动：」那一句 + 钻石斧那一行(蓄力猛砸是主动触发的)
+##   passive = 「被动：」那一句(窃取护盾)
+##   form = 已解锁的石斧 / 铁斧 / 金斧那几行 + 选中的最终造物那一行(没有就是空串)
+## ★pv / fin 由调用方给(斧头身上钉的那一份), 这里不读存档 —— 对手的斧头要显示对手自己的形态。
+static func axe_panel_lines(edef: Dictionary, pv: int, fin: String) -> Dictionary:
+	var d1 := render_consts(str(edef.get("effectDesc1", "")))
+	var cut := d1.find(AXE_GREY_OPEN)
+	if cut >= 0:
+		d1 = d1.substr(0, cut)
+	var active := ""
+	var passive := ""
+	for ln in d1.split("\n", false):
+		var s := str(ln)
+		if s.begins_with("主动："):
+			active = s.substr(3)
+		elif s.begins_with("被动："):
+			passive = s.substr(3)
+	var stages := render_consts(str(edef.get("effectDesc2", ""))).split("\n", false)
+	var form: PackedStringArray = []
+	var last := mini(pv, stages.size() - 1)
+	for i in range(1, last + 1):
+		if i == stages.size() - 1:
+			active += "\n" + str(stages[i])     # 钻石斧: 蓄力猛砸跟着主动走
+		else:
+			form.append(str(stages[i]))
+	if fin != "":
+		var AE = load("res://scripts/gamedata/axe_evolution.gd")
+		for f in AE.FINALS:
+			if str((f as Dictionary)["key"]) != fin:
+				continue
+			var fnm := str((f as Dictionary)["name"])
+			for ln2 in render_consts(str(edef.get("effectDesc3", ""))).split("\n", false):
+				if not str(ln2).begins_with("【%s】" % fnm):
+					continue
+				## 造物替换了蓄力猛砸(炽天使 / 全息斧 / 余烬)⇒「【蓄力猛砸】替换为…」那一截跟着主动走,
+				##   否则主动那格写着蓄力猛砸、而它其实已经不放了(2026-10-22 实拍余烬那张自查出来的)。
+				var cut2 := str(ln2).find("【蓄力猛砸】替换为")
+				if cut2 > 0:
+					form.append(str(ln2).substr(0, cut2).strip_edges())
+					active += "\n【%s】：%s" % [fnm, str(ln2).substr(cut2)]
+				else:
+					form.append(str(ln2))
+	return {"active": active, "passive": passive, "form": "\n".join(form)}
+
+
 static func _axe_dim(line: String) -> String:
 	return "<span style=\"color:%s\">%s</span>" % [AXE_DIM, line]
 

@@ -72,6 +72,18 @@ func _shoot(tag: String, stage: int, total: int, fin: String) -> void:
 	await _frames(90)   # 面板有滑入动画, 等它落位再拍
 	await _save("axe-" + tag)
 	_dump(s, tag)
+	## 逐格点开说明卡(走槽自己的 gui_input, 同真点击)
+	var row = s._info_panel.find_child("AbilityRow", true, false)
+	if row != null:
+		for i in range(row.get_child_count()):
+			var cell: Control = row.get_child(i)
+			var slot = cell.get_meta("slot") if cell.has_meta("slot") else cell
+			var ev := InputEventMouseButton.new()
+			ev.button_index = MOUSE_BUTTON_LEFT
+			ev.pressed = true
+			(slot as Control).gui_input.emit(ev)
+			await _frames(30)
+			await _save("axe-%s-card%d" % [tag, i])
 	remove_child(s)
 	s.queue_free()
 	await _frames(3)

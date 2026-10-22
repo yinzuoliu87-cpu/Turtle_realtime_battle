@@ -165,8 +165,9 @@ func summon(u: Dictionary) -> Variant:
 	var si: int = int(prog["stage"])
 	var fin: String = str(prog["final"])
 	var pv: int = AE.passives_at(si)
+	## ★名字取显示名(选了最终造物就叫造物名): 原来取档位名, 选了余烬面板上还写着「钻石斧」(2026-10-22 实拍)。
 	var ax = battle._spawn._spawn_summon(u, "axe", AE.minion_hp(et, pv), AE.minion_atk(et, pv),
-		{"label": str(AE.stage(si)["name"]), "spr_id": "axe", "col_size": AE.MINION_COL_SIZE, "hp_w": 28.0,
+		{"label": str(AE.display(si, fin)["name"]), "spr_id": "axe", "col_size": AE.MINION_COL_SIZE, "hp_w": 28.0,
 		 "atk_interval": 1.0 / AE.MINION_ASPD, "melee": true})
 	if ax == null:
 		return null

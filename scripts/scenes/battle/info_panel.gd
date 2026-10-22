@@ -4,6 +4,7 @@ extends RefCounted
 ## 类内名不变;外部名加 battle.
 
 const SkillForms = preload("res://scripts/gamedata/skill_forms.gd")
+const _AxeEvo = preload("res://scripts/gamedata/axe_evolution.gd")
 var battle
 
 ## 装备区那几行【局内读数】的 Label 引用(每帧刷 —— 充能/层数一直在动)。
@@ -834,6 +835,9 @@ func _info_equip_slots(vb: VBoxContainer, u: Dictionary) -> void:
 	##   不登记的话充能/层数永远停在开面板那一刻(签名只认 id+星级, 充能变了签名不变 ⇒ 不重建)。
 	##   这正是"写进去了没人读"的反面: 建了节点却没接上消费者。
 	_info_eq_readouts.clear()
+	## ★召唤物带不了装备(2026-10-22): 原来照龟的样子画三个空装备格, 点斧头看到的就是三个黑框。
+	if u.get("is_summon", false):
+		return
 	var equips: Array = u.get("equips", [])
 	var cap: int = maxi(3, equips.size())
 	var wrap = VBoxContainer.new()
@@ -1185,7 +1189,29 @@ func _info_chest_section(vb: VBoxContainer, u: Dictionary) -> void:
 ##   定的「侧边不遮战场」。
 ##
 ## 返回 [{name, cost, icon, desc, tpl, sk}]，顺序固定: 被动 → 普攻 → 主动。
+## ★斧头(小木斧召唤物)的技能格(2026-10-22 用户「可以」): 原来斧头不在龟资料表里 ⇒ 一格都没有。
+##   主动 / 窃取护盾 / 当前形态 三格, 文字一律取小木斧定稿全文里的那几行(SkillText.axe_panel_lines), 不另写一份。
+##   形态按【斧头身上钉的】_axe_pv / _axe_final 取 —— 对手的斧头显示对手自己的形态, 不读本机存档。
+func _axe_entries(u: Dictionary) -> Array:
+	var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(AxePanel.EID, {})
+	var pv: int = int(u.get("_axe_pv", 0))
+	var fin: String = str(u.get("_axe_final", ""))
+	var lines: Dictionary = battle.SkillText.axe_panel_lines(edef, pv, fin)
+	var icon := "res://assets/sprites/" + _AxeEvo.icon_path(pv, fin)
+	var out: Array = []
+	out.append({"name": "主动", "cost": float(_AxeEvo.ACTIVE_ENERGY), "icon": icon,
+		"desc": battle.SkillText.plain_to_bb(str(lines["active"])), "tpl": "", "sk": {}})
+	out.append({"name": "被动 · 窃取护盾", "cost": -1.0, "icon": icon,
+		"desc": battle.SkillText.plain_to_bb(str(lines["passive"])), "tpl": "", "sk": {}})
+	if str(lines["form"]) != "":
+		out.append({"name": "被动 · " + str(_AxeEvo.display(pv, fin)["name"]), "cost": -1.0, "icon": icon,
+			"desc": battle.SkillText.plain_to_bb(str(lines["form"])), "tpl": "", "sk": {}})
+	return out
+
+
 func _skill_bar_entries(u: Dictionary) -> Array:
+	if u.get("_eq_axe", false):
+		return _axe_entries(u)
 	var out: Array = []
 	var id := str(u.get("id", ""))
 	var pet: Dictionary = DataRegistry.pet_by_id.get(id, {})

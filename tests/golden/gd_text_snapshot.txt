@@ -1398,6 +1398,7 @@ scripts/scenes/battle/info_panel.gd|lit|%s %d 层
 scripts/scenes/battle/info_panel.gd|lit|(普攻)
 scripts/scenes/battle/info_panel.gd|lit|不可选中
 scripts/scenes/battle/info_panel.gd|lit|中毒
+scripts/scenes/battle/info_panel.gd|lit|主动
 scripts/scenes/battle/info_panel.gd|lit|储能
 scripts/scenes/battle/info_panel.gd|lit|充能 %d%%
 scripts/scenes/battle/info_panel.gd|lit|充能 %s / %s
@@ -1477,6 +1478,7 @@ scripts/scenes/battle/info_panel.gd|lit|站位
 scripts/scenes/battle/info_panel.gd|lit|缩短受到眩晕、减速等控制效果的持续时间。
 scripts/scenes/battle/info_panel.gd|lit|被动
 scripts/scenes/battle/info_panel.gd|lit|被动 · 
+scripts/scenes/battle/info_panel.gd|lit|被动 · 窃取护盾
 scripts/scenes/battle/info_panel.gd|lit|财宝
 scripts/scenes/battle/info_panel.gd|lit|距第 %d 箱
 scripts/scenes/battle/info_panel.gd|lit|近战形态 · 锤击
@@ -2146,6 +2148,8 @@ scripts/util/skill_text.gd|lit|(物理伤害|魔法伤害|真实伤害)|[，。�
 scripts/util/skill_text.gd|lit|)\\s*(?:的)?护盾)
 scripts/util/skill_text.gd|lit|[（(]([^（）()]*%[^（）()]*)[）)]\\s*(物理伤害|魔法伤害|真实伤害)?
 scripts/util/skill_text.gd|lit|^(%s)(?:(%%)\\s*(攻击力|护甲|魔抗|最大生命值|目标最大生命值|该敌人最大生命值))?$
+scripts/util/skill_text.gd|lit|【蓄力猛砸】替换为
+scripts/util/skill_text.gd|lit|主动：
 scripts/util/skill_text.gd|lit|已损失生命值
 scripts/util/skill_text.gd|lit|护甲
 scripts/util/skill_text.gd|lit|攻击力
@@ -2154,6 +2158,7 @@ scripts/util/skill_text.gd|lit|最大生命值
 scripts/util/skill_text.gd|lit|物理伤害
 scripts/util/skill_text.gd|lit|生命值
 scripts/util/skill_text.gd|lit|真实伤害
+scripts/util/skill_text.gd|lit|被动：
 scripts/util/skill_text.gd|lit|防御力加成
 scripts/util/skill_text.gd|lit|魔抗
 scripts/util/skill_text.gd|lit|魔法伤害
