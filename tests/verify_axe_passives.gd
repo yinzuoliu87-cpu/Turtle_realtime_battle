@@ -104,12 +104,12 @@ func _t_consts() -> void:
 		% [AE.SWEEP_ARC_DEG, AE.EFF_DUR, AE.EFF_ASPD * 100.0, AE.EFF_MOVE * 100.0],
 		is_equal_approx(AE.SWEEP_ARC_DEG, 180.0) and is_equal_approx(AE.EFF_DUR, 5.0)
 		and is_equal_approx(AE.EFF_ASPD, 0.04) and is_equal_approx(AE.EFF_MOVE, 0.02))
-	_ok("★分母: 被动6 蓄 %.0f 秒 · 每 %.1f 秒 +%.0f 码 · 减伤 %.0f%% · %.0f×ATK · 眩晕 %.0f 秒"
+	_ok("★分母: 被动6 蓄 %.0f 秒 · 每 %.1f 秒 +%.0f 码 · 减伤 %.0f%% · %.1f×ATK · 眩晕 %.1f 秒"
 		% [AE.CHARGE_TIME, AE.CHARGE_STEP, AE.CHARGE_H_PER_STEP, AE.CHARGE_DR * 100.0,
 		   AE.SLAM_ATK, AE.SLAM_STUN],
 		is_equal_approx(AE.CHARGE_TIME, 4.0) and is_equal_approx(AE.CHARGE_STEP, 0.25)
 		and is_equal_approx(AE.CHARGE_H_PER_STEP, 30.0) and is_equal_approx(AE.CHARGE_DR, 0.70)
-		and is_equal_approx(AE.SLAM_ATK, 4.0) and is_equal_approx(AE.SLAM_STUN, 3.0))
+		and is_equal_approx(AE.SLAM_ATK, 2.5) and is_equal_approx(AE.SLAM_STUN, 2.5))   # 2026-10-22 用户调: 4×ATK→2.5×, 3 秒→2.5 秒
 	## ★用户 2026-09-15「现在改为每0.25加30码，并且梯形的宽度减少20%」: 宽度写死数值核对(不拿常量算阈值)
 	_ok("★分母: 被动6 梯形近边 %.0f / 远边 %.0f 码(= 原 300 / 900 × 0.8)"
 		% [AE.TRAPEZOID_NEAR_W, AE.TRAPEZOID_FAR_W],
@@ -320,9 +320,9 @@ func _t_charge() -> void:
 	var n: int = pas.slam_settle(ax)
 	_ok("★砸中了梯形里的敌人(命中 %d 个)" % n, n >= 1)
 	var lost: float = hp0 - float(foe["hp"])
-	_ok("★每个敌人吃 %.0f×ATK = %.0f 物理(实测掉 %.0f)" % [AE.SLAM_ATK, 100.0 * AE.SLAM_ATK, lost],
+	_ok("★每个敌人吃 %.1f×ATK = %.0f 物理(实测掉 %.0f)" % [AE.SLAM_ATK, 100.0 * AE.SLAM_ATK, lost],
 		lost >= 100.0 * AE.SLAM_ATK * 0.5, "0甲0抗的靶子, 掉血应≈满额")
-	_ok("★砸完眩晕 %.0f 秒" % AE.SLAM_STUN,
+	_ok("★砸完眩晕 %.1f 秒" % AE.SLAM_STUN,
 		float(foe.get("stun_until", 0.0)) > _s._t + AE.SLAM_STUN - 0.6,
 		"stun_until=%.2f 现在 %.2f" % [float(foe.get("stun_until", 0.0)), _s._t])
 	_ok("★砸完高高击飞", float(foe.get("height", 0.0)) > 0.0 or float(foe.get("vy", 0.0)) > 0.0)
