@@ -99,8 +99,7 @@ const WINDOW_BG := Color("#162231")   # 窗口底色(= 原框图内窗那块深�
 const BANNER_H := 36.0         # 名字横幅高(24 号字 + 描边)
 const BANNER_Y := 146.0        # 横幅上沿(卡内坐标); 底边 182, 离托条 4px
 const BANNER_X := 9.0          # 横幅两端伸出窗口、压在边框上(缎带样)
-const PORTRAIT_ANCHOR_Y := 176.0   # 统领胸像下沿落在这里(藏在横幅后面)
-const MINION_FOOT_Y := 160.0   # 小将(全身小图)脚底落在这里
+const PORTRAIT_FOOT_Y := BANNER_Y + 8.0   # 立绘脚底落在这里(压进横幅上沿 8px)
 const NAME_Y := BANNER_Y       # 名字 / 小将「前排 / 后排」签的 y
 const NAME_FS := 24
 const BANNER_MINION_COL := Color("#c8a46a")   # 精英小将横幅(小将没有稀有度)
@@ -599,12 +598,23 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 		q.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(q)
 	else:
 		var img_path := ""
+		var region := Rect2()
 		if kind == "leader":
-			img_path = "res://assets/sprites/avatars/%s.png" % pid
+			## 立绘 = 图鉴同一张全身 idle 图(pets.json 的 img, 按 sprite 的 frameW / frameH 取第 0 帧),
+			##   不是 avatars/ 的头像(用户 10-22「立绘等于头像吗」—— 上一版放成了头像)。
+			var pdef: Dictionary = DataRegistry.pet_by_id.get(pid, {})
+			img_path = "res://assets/sprites/%s" % str(pdef.get("img", ""))
+			var sm = pdef.get("sprite", null)
+			if sm is Dictionary and (sm as Dictionary).has("frameW"):
+				var fw: float = float((sm as Dictionary)["frameW"])
+				region = Rect2(0, 0, fw, float((sm as Dictionary).get("frameH", fw)))
+			if str(pdef.get("img", "")) == "" or not ResourceLoader.exists(img_path):
+				img_path = "res://assets/sprites/avatars/%s.png" % pid   # 没有全身图的兜底
+				region = Rect2()
 		else:
 			img_path = "res://assets/sprites/%s" % Phase2Minion.minion_img(is_elite, str(unit.get("role", "front")) == "back")
 		if ResourceLoader.exists(img_path):
-			box.add_child(_card_portrait(load(img_path), pw, kind == "leader"))
+			box.add_child(_card_portrait(load(img_path), region, pw))
 	box.add_child(_unit_card_frame(is_ph, is_elite, kind == "leader"))
 	## 名字横幅(普通小将那一行让给「前排 / 后排」签)
 	if not is_reg_minion:
@@ -702,19 +712,29 @@ func _dl_unit_box(lane: String, idx: int, unit: Dictionary, lead_n: int, pos: Ve
 	return box
 
 
-## 立绘铺进框里的窗口(用户 2026-10-22「卡框图里直接放立绘吧」)。先去掉图上的透明留边:
-##   统领 = 胸像(下沿是截断的) ⇒ 按宽铺满, 下沿落在 PORTRAIT_ANCHOR_Y(藏在名字横幅后面);
-##     很宽的胸像(天使龟 218×150)至少铺到 85% 高, 两侧裁一点; 竖长的整张放进立绘区(见下)。
-##   小将 = 全身小图(80×80 上只占 40~70) ⇒ 整数倍放大(像素不变形), 脚底落在 MINION_FOOT_Y。
-func _card_portrait(tex: Texture2D, pw: Rect2, leader: bool) -> Control:
+## 立绘铺进框里的窗口(用户 2026-10-22「卡框图里直接放立绘吧」「立绘等于头像吗」):
+##   全身 idle 图的第 0 帧(与图鉴同一张), 先去掉透明留边, 整只放进窗口(等比、不裁), 脚站在名字横幅上沿;
+##   小图(≤ 120 高: 64px 动画帧 / 小将 80px)放大 2 倍以上时取整数倍, 像素不糊; 大图(500px 帧)按比例缩小、线性采样。
+## ★留边按「贴图 + 帧」缓存: 4000×1500 的整张表每次重建都 get_image 一遍太贵。
+static var _used_cache: Dictionary = {}
+
+func _card_portrait(tex: Texture2D, region: Rect2, pw: Rect2) -> Control:
 	var clip := Control.new(); clip.name = "Portrait"
 	clip.clip_contents = true
 	clip.position = pw.position; clip.size = pw.size
 	clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var used := Rect2(Vector2.ZERO, tex.get_size())
-	var img := tex.get_image()
-	if img != null:
-		used = Rect2(img.get_used_rect())
+	var reg: Rect2 = region if region.size.x > 0.0 else Rect2(Vector2.ZERO, tex.get_size())
+	var key := "%s|%s" % [tex.resource_path, str(reg)]
+	var used: Rect2 = reg
+	if _used_cache.has(key):
+		used = _used_cache[key]
+	else:
+		var img := tex.get_image()
+		if img != null:
+			var ur: Rect2i = img.get_region(Rect2i(reg)).get_used_rect()
+			if ur.size.x > 0 and ur.size.y > 0:
+				used = Rect2(reg.position + Vector2(ur.position), Vector2(ur.size))
+		_used_cache[key] = used
 	var at := AtlasTexture.new()
 	at.atlas = tex
 	at.region = used
@@ -722,22 +742,15 @@ func _card_portrait(tex: Texture2D, pw: Rect2, leader: bool) -> Control:
 	a.texture = at
 	a.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	a.stretch_mode = TextureRect.STRETCH_SCALE
-	a.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	a.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if leader:
-		## 高度封顶 = 整个立绘区: 竖长的胸像(凤凰 207×239、无头 133×220)按宽铺会高出一截,
-		##   从上往下排时脸正好落到横幅后面(实拍 10-22) ⇒ 宁可两侧露一点底色, 整张放进来。
-		var base: float = PORTRAIT_ANCHOR_Y - pw.position.y
-		var s: float = minf(maxf(pw.size.x / used.size.x, 0.85 * base / used.size.y), pw.size.y / used.size.y)
-		var sz: Vector2 = used.size * s
-		a.size = sz
-		a.position = Vector2((pw.size.x - sz.x) * 0.5, base - sz.y)   # 下沿一律对齐横幅后那条线(竖长的顶上最多裁 10px)
-	else:
-		var foot: float = MINION_FOOT_Y - pw.position.y
-		var k: float = maxf(1.0, floorf(minf((pw.size.x - 10.0) / used.size.x, foot / used.size.y)))
-		var sz2: Vector2 = used.size * k
-		a.size = sz2
-		a.position = Vector2((pw.size.x - sz2.x) * 0.5, foot - sz2.y)
+	var foot: float = PORTRAIT_FOOT_Y - pw.position.y
+	var k: float = minf((pw.size.x - 8.0) / used.size.x, (foot - 4.0) / used.size.y)
+	if used.size.y <= 120.0 and k >= 2.0:   # 放大不到 2 倍时取整会掉成 1 倍(变脸龟 71×75 只剩一半大)
+		k = floorf(k)
+	a.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST if k >= 1.0 else CanvasItem.TEXTURE_FILTER_LINEAR
+	var sz: Vector2 = used.size * k
+	a.size = sz
+	a.position = Vector2((pw.size.x - sz.x) * 0.5, foot - sz.y)
 	clip.add_child(a)
 	return clip
 
