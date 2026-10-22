@@ -1,0 +1,103 @@
+进化动画参考 · 来源清单（2026-10-22 收集）
+全部是 YouTube 公开视频里的实机画面，用 yt-dlp 下载（只取视频轨、≤720p，炉石那段用 --download-sections 只下了 9 秒），
+再用 ffmpeg 按精确时间点抽帧。没有自己画、没有 AI 生成、没有任何涂改，只做了裁切和缩放。
+帧条上每格标的 t= 是【视频里的秒数】，(+ms) 是相对本条第一格的毫秒差；可以直接拿 t= 回视频核对。
+时长不是目测：每段都用逐帧亮度/帧差脚本（在原视频帧率下，30 或 60 fps）定的边界，误差 ±1 帧（±33 ms，TFT ±17 ms）。
+视频里能看到的就是游戏画面本身；主播头像、字幕等叠加层已尽量裁掉。
+音轨没有下载，所以声音提示一律未核实。
+
+[0] 0-总览.jpg
+    下面 9 款各取 4～6 帧拼成，时间点与各自帧条相同。来源见各条。
+
+[01] 01-吸血鬼幸存者-武器进化开宝箱-帧条.jpg
+    游戏：吸血鬼幸存者 Vampire Survivors（斧头 Axe → 死亡螺旋 Death Spiral）
+    视频：https://www.youtube.com/watch?v=tmcUVOtv3T4   「How to Evolve Axe in Vampire Survivors」· allBash Gaming Videos · 上传 2026-09-12
+    片段：56.40 s ～ 75.60 s（https://www.youtube.com/watch?v=tmcUVOtv3T4&t=56）
+    处理：854×480 源，裁 360×480（x=247）只留宝箱弹窗，缩到 300 宽
+    抓取日期：2026-10-22
+    备注：另下过 https://www.youtube.com/watch?v=UITlMjzE304（5 件进化同一个箱子，30 s），画面整体被压暗、细节看不清，没用。
+
+[02] 02-弹壳特攻队-装备合成升阶-帧条.jpg
+    游戏：弹壳特攻队 Survivor.io（史诗 Void Power 合成为传说 Void Power）
+    视频：https://www.youtube.com/watch?v=LVyn77xKLHo   「Survivor.IO How to Merge a Legendary VOID POWER NeoGenesis UNLOCK Step by Step Guide」· quantum IO · 上传 2022-12-15
+    片段：72.00 s ～ 75.50 s（&t=72）
+    处理：720×1198 竖屏源，整高保留，缩到 230 宽
+    抓取日期：2026-10-22
+    备注：2022 年版本的界面，现版本可能已改。
+
+[02b] 02b-弹壳特攻队-局内宝箱抽技能-帧条.jpg
+    游戏：弹壳特攻队 Survivor.io（局内宝箱「Lucky Train」抽技能；本例抽到的是普通技能，不是进化）
+    视频：https://www.youtube.com/watch?v=2doTsfZsFPY   「New Weapon + Evolve and Chapter 5 - Survivor!.io Gameplay Walkthrough |Part 11|」· PocketGameplay · 上传 2022-09-04
+    片段：641.80 s ～ 647.50 s（&t=641）
+    处理：源只有 166×360（录屏本身就这么小），放大到 240 宽，所以糊
+    抓取日期：2026-10-22
+
+[03] 03-宝可梦第3世代-进化-帧条.jpg
+[03b] 03b-宝可梦第3世代-新旧剪影交替-特写.jpg
+    游戏：宝可梦 红宝石/蓝宝石（GBA，第 3 世代，皮卡丘 → 雷丘）
+    视频：https://www.youtube.com/watch?v=bBMg3NCtXOQ   「Evolution of Pokémon Evolution Animations (1996-2019)」· ProsafiaGaming · 上传 2019-12-31
+         （无解说实录合集；本段是视频章节「Pokémon Ruby & Sapphire」01:05～01:31）
+    片段：65.00 s ～ 91.00 s（&t=65）
+    处理：854×480 源（原视频 1080p60，下载的是 480p30），03 整幅缩到 300 宽；03b 裁 200×170（x=327,y=95）只留剪影；两张都用最近邻缩放保住像素边
+    抓取日期：2026-10-22
+    备注：同一视频还有第 1～8 世代所有进化动画，需要别的世代可以直接按章节取。
+
+[04] 04-皇室战争-卡牌升级-帧条.jpg
+    游戏：皇室战争 Clash Royale（超级骑士 Mega Knight 12 → 13 级）
+    视频：https://www.youtube.com/watch?v=pN7_72vKxus   「Upgrading every Legendary card from Level 12 to 13 (Clash Royale)」· ShockViz2 · 上传 2023-05-20
+    片段：98.60 s ～ 106.30 s（&t=98）
+    处理：720×1280 竖屏源，裁 720×1060（y=40），缩到 230 宽
+    抓取日期：2026-10-22
+    备注：同一视频里连续升了 10 张传奇卡，每张流程相同，取的是最后一张（超级骑士）。
+
+[05] 05-BALLxPIT-球进化-帧条.jpg
+    游戏：BALL x PIT（像素，2025）
+    视频：https://www.youtube.com/watch?v=sM2cGQ5pZd0   「Ball X PIT - ALL EVOLUTIONS! (Guide)」· Sham · 上传 2025-10-20
+    片段：0.70 s ～ 7.40 s（视频开头第一次进化）
+    处理：854×480 源整幅，缩到 300 宽
+    抓取日期：2026-10-22
+
+[06] 06-HoloCure-武器Collab合成-帧条.jpg
+    游戏：HoloCure（像素，类幸存者；砧板 Cutting Board + 弹力球 Bounce Ball → 绝对之墙 Absolute Wall）
+    视频：https://www.youtube.com/watch?v=fW106L-9AeM   「Ina Has Found the Most OP Collab Item for Her Character - The "Absolute Wall"」· Vtuber Addict · 上传 2023-08-22
+         （主播直播切片，画面是实机；右下角主播立绘已尽量裁开）
+    片段：42.00 s ～ 46.00 s（&t=42）
+    处理：854×480 源，裁 330×310（x=240,y=60），放大到 300 宽
+    抓取日期：2026-10-22
+    备注：最后一格（46.00 s）是视频作者剪进来的说明条放大特写，不是游戏画面的一部分，帧条标签已注明。
+
+[07] 07-星露谷物语-取回升级工具-帧条.jpg
+[07b] 07b-星露谷物语-举起新工具-特写.jpg
+    游戏：星露谷物语 Stardew Valley（铁匠克林特处取回铱金洒水壶）
+    视频：https://www.youtube.com/watch?v=PnmNFg41HZY   「Stardew Valley: Iridium Watering Can got」· Enricofairme · 上传 2016-03-04
+    片段：8.20 s ～ 13.00 s（&t=8）
+    处理：1280×720 源；07 裁 660×300（x=320,y=420），07b 裁 150×150（x=395,y=455）最近邻放大 2 倍
+    抓取日期：2026-10-22
+    备注：2016 年（1.0 前后）的录像。
+
+[08] 08-云顶之弈-合成三星-帧条.jpg
+    游戏：云顶之弈 Teamfight Tactics（阿利斯塔 2 星 → 3 星，对战阶段合成）
+    视频：https://www.youtube.com/watch?v=FVknIcVDxCs   「K3Soju Hits Alistar 3」· TFT Clips · 上传 2022-03-03
+    片段：7.50 s ～ 10.45 s（&t=7）
+    处理：1280×720 60fps 源，裁 400×330（x=630,y=40）只留该单位，缩到 300 宽
+    抓取日期：2026-10-22
+
+[09] 09-炉石酒馆战棋-三连金色-帧条.jpg
+    游戏：炉石传说·酒馆战棋 Hearthstone Battlegrounds（3 张鱼人斥候 → 金色鱼人斥候）
+    视频：https://www.youtube.com/watch?v=Nil9yCRYrLY   「38 Golden Minions in One Battleground Game | Hearthstone Battlegrounds」· HysteriA · 上传 2020-02-16
+    片段：视频 207.20 s ～ 210.20 s（&t=207；只下了 205～214 s 这一段 1080p。帧条上的 t= 是这段小片里的秒数，
+         视频秒数 = t + 205.00 —— 已拿同视频 360p 全片逐帧帧差对齐，两边帧差峰值逐帧重合）
+    处理：1920×1080 源，裁 1100×700（x=450,y=250），缩到 300 宽
+    抓取日期：2026-10-22
+
+────────────────────────────
+下载了、但最终没选用的（只做过粗扫，没逐帧看，不对它们下结论）：
+  弹壳特攻队  https://www.youtube.com/watch?v=Tmyvv4SQWdw 、A__gdBEllsQ（进化攻略，解说为主）
+  宝可梦      https://www.youtube.com/watch?v=-ULXhgQP9WQ（「torchic evolves」，来路不明，改用上面的无解说合集）
+  皇室战争    https://www.youtube.com/watch?v=8GrEOntPzak 、A1-aEtEh78c（长视频，改用整段都是升级的 pN7_72vKxus）
+  云顶之弈    https://www.youtube.com/watch?v=H7Jce1Yao3w 、lVqAMl5Nee4 、Zpb797YFKFg 、dmH_0G9p21A
+  星露谷      https://www.youtube.com/watch?v=ApNGiHXRvaU 、cougyfM-HfY
+  BALL x PIT  https://www.youtube.com/watch?v=_9cUwy-vo88（官方预告，剪辑太碎）
+  HoloCure    https://www.youtube.com/watch?v=c0dtgKyHo7o（没有合成画面）
+  Brotato     https://www.youtube.com/watch?v=Zgs3mA_aNQQ（商店攻略）：这条逐帧看过 —— 只点开过「Combine / Recycle / Cancel」菜单，
+              186～300 s 武器栏一直是「Weapons (6/6)」，从没真的合成，拿不到合成那一下。Brotato 因此不计入。

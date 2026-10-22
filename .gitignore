@@ -108,3 +108,8 @@ _vfxshots/
 
 # 门禁失败时留下的完整日志(用于追偶发, 不入库)
 .gate-fail-*.log
+
+# 本地运行垃圾(2026-10-22 收尾): 截图连拍输出 / 某次测试的 user:// 落点 / Sideloadly 装机日志
+/_show/
+/Godot/
+sideloadlydaemon.log
