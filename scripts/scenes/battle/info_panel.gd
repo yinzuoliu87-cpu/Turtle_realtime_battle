@@ -1198,14 +1198,20 @@ func _axe_entries(u: Dictionary) -> Array:
 	var fin: String = str(u.get("_axe_final", ""))
 	var lines: Dictionary = battle.SkillText.axe_panel_lines(edef, pv, fin)
 	var icon := "res://assets/sprites/" + _AxeEvo.icon_path(pv, fin)
+	## ★按结果写(用户 10-15「对局内就是按结果的写法」, 与装备卡 _open_equip_card 同一份换算):
+	##   「（50% 攻击力）物理伤害」用斧头自己的攻击力算成「50 物理伤害」, 公式进卡底拆解行。
+	var vars: Dictionary = battle.SkillText.build_vars(u, {})
 	var out: Array = []
+	var a: Dictionary = battle.SkillText.live_formula_bb(str(lines["active"]), vars, 14)
 	out.append({"name": "主动", "cost": float(_AxeEvo.ACTIVE_ENERGY), "icon": icon,
-		"desc": battle.SkillText.plain_to_bb(str(lines["active"])), "tpl": "", "sk": {}})
+		"desc": str(a["body"]), "rows": a["rows"], "tpl": "", "sk": {}})
+	var b: Dictionary = battle.SkillText.live_formula_bb(str(lines["passive"]), vars, 14)
 	out.append({"name": "被动 · 窃取护盾", "cost": -1.0, "icon": icon,
-		"desc": battle.SkillText.plain_to_bb(str(lines["passive"])), "tpl": "", "sk": {}})
+		"desc": str(b["body"]), "rows": b["rows"], "tpl": "", "sk": {}})
 	if str(lines["form"]) != "":
+		var f: Dictionary = battle.SkillText.live_formula_bb(str(lines["form"]), vars, 14)
 		out.append({"name": "被动 · " + str(_AxeEvo.display(pv, fin)["name"]), "cost": -1.0, "icon": icon,
-			"desc": battle.SkillText.plain_to_bb(str(lines["form"])), "tpl": "", "sk": {}})
+			"desc": str(f["body"]), "rows": f["rows"], "tpl": "", "sk": {}})
 	return out
 
 
@@ -1910,7 +1916,7 @@ func _open_skill_card(u: Dictionary, k: String, nm: String, role: String, cost: 
 		"icon": str(ent.get("icon", "")), "title": nm,
 		"tag": tag, "tag_col": _ROLE_COL.get(role, Color("#ffce4d")),
 		"body": body,
-		"table": _skill_breakdown(u, sk, src),
+		"table": ent.get("rows", []) if ent.has("rows") else _skill_breakdown(u, sk, src),   # 斧头那几格自带拆解行
 	})
 	if lv.has("body"):
 		for reg in battle._info_skill_lbls:

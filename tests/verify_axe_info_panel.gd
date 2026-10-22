@@ -116,6 +116,13 @@ func _ready() -> void:
 	_ok("★窃取护盾那格", c1.contains("窃取"), c1.substr(0, 40))
 	var c2: String = await _card_text(s, 2)
 	_ok("★当前形态那格: 有石斧、铁斧, 没有金斧(只列已解锁的)", c2.contains("【石斧】") and c2.contains("【铁斧】") and not c2.contains("【金斧】"), c2.substr(0, 60))
+	## ★局内按结果写(用户 10-15「对局内就是按结果的写法」, 与别的装备卡同一份换算): 用斧头自己的攻击力算出来
+	var ax_i: Dictionary = r[1]
+	var sm: int = roundi(float(ax_i.get("atk", 0.0)) * AE.SMASH_ATK)
+	_ok("★★局内按结果写: 石斧那句是「额外造成 %d 物理伤害」(斧头攻击力 %.0f), 不是「%d%% 攻击力」" % [sm, float(ax_i.get("atk", 0.0)), roundi(AE.SMASH_ATK * 100)],
+		sm > 0 and c2.contains("额外造成 %d 物理伤害" % sm), c2.substr(0, 80))
+	_ok("★卡底有拆解行「物理伤害: %d = %d%% …」(与装备卡同一个样子)" % [sm, roundi(AE.SMASH_ATK * 100)],
+		c2.contains("物理伤害: %d = %d%%" % [sm, roundi(AE.SMASH_ATK * 100)]), c2.substr(maxi(0, c2.find("物理伤害:")), 30))
 	var eqrow = s._info_panel.find_child("EquipRow", true, false)
 	_ok("★召唤物不画装备格", eqrow == null or not (eqrow as Control).is_visible_in_tree() or eqrow.get_child_count() == 0)
 	await _close(s)
@@ -127,6 +134,8 @@ func _ready() -> void:
 	_ok("★★选了余烬, 标题是「余烬」(原来写「钻石斧」)", t.has("余烬") and not t.has("钻石斧"), str(t.slice(0, 6)))
 	c0 = await _card_text(s, 0)
 	_ok("★钻石斧之后主动那格带蓄力猛砸", c0.contains("蓄力猛砸"), c0.substr(0, 60))
+	var sl: int = roundi(float((r[1] as Dictionary).get("atk", 0.0)) * AE.SLAM_ATK)
+	_ok("★★蓄力猛砸按结果写「造成 %d 物理伤害」" % sl, sl > 0 and c0.contains("造成 %d 物理伤害" % sl), c0.substr(maxi(0, c0.find("砸下")), 40))
 	_ok("★★余烬替换了蓄力猛砸 ⇒ 主动那格写着余烬之光", c0.contains("余烬之光"), c0.substr(0, 80))
 	c2 = await _card_text(s, 2)
 	_ok("★当前形态那格有余烬那一行, 没有别的造物", c2.contains("【余烬】") and not c2.contains("【炽天使】"), c2.substr(0, 60))
@@ -152,6 +161,6 @@ func _ready() -> void:
 	await _close(s)
 
 	gs.axe_stage = int(bak[0]); gs.axe_exp_total = int(bak[1]); gs.axe_exp_bar = int(bak[2]); gs.axe_final = str(bak[3])
-	_ok("分母: 断言条数 %d ≥ 18" % _n, _n >= 18)
+	_ok("分母: 断言条数 %d ≥ 21" % _n, _n >= 21)
 	print("ALL PASS — 局内斧头面板" if _fail == 0 else "FAILED: %d" % _fail)
 	get_tree().quit(0 if _fail == 0 else 1)

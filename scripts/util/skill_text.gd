@@ -890,7 +890,13 @@ static func pick_star(t: String, star: int) -> String:
 ##   vars 用 build_vars(穿戴者): ATK / DEF / MR / HP。目标的属性算不出 ⇒ 整个括号照旧写公式、不进拆解行。
 ## 返回 {"body": BBCode 正文, "rows": [[行 BBCode, ""], …]}。
 static func equip_live_bb(edef: Dictionary, star: int, vars: Dictionary, font_px: int = 0) -> Dictionary:
-	var t := pick_star(equip_full_src(edef), star)
+	return live_formula_bb(pick_star(equip_full_src(edef), star), vars, font_px)
+
+
+## 一段已展开占位符的纯文本: 「（A+B% 攻击力）物理伤害」换成用 vars 算出的结果, 公式进拆解行。
+## ★装备卡(equip_live_bb)与局内斧头的技能格(info_panel._axe_entries, 2026-10-22)共用这一份换算 ——
+##   斧头那几格原来直接写「50% 攻击力的物理伤害」, 没按「对局内就是按结果的写法」(用户 10-15)。
+static func live_formula_bb(t: String, vars: Dictionary, font_px: int = 0) -> Dictionary:
 	var ipx := ICON_PX if font_px <= 0 else maxi(12, roundi(float(font_px) * 1.15))
 	var rows: Array = []
 	var out := ""
