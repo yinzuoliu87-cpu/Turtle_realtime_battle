@@ -2463,10 +2463,11 @@ func settle_ranked_close(now_override: int = 0) -> int:
 
 
 # ══════ 糖果罐 局外赛季被动 API (封板L390-403·糖果龟当统领才有·打碎按当前计数领档奖) ══════
-## 档位奖励规格: coins=深海币[lo,hi] / equips=装备[{cost=费档, star=星}](1~2 件) / xp=大轮经验 / leveler=临时等级器个数
-##   ★2026-10-22 用户「改为赢+2，输+3，封顶60，分为12档」「每档制定2-4个奖励」(方案书 docs/plans/20261022-糖果罐12档.md):
-##   原来 6 档、赢 +1 输 +4 封顶 30、等级器按概率给 ⇒ 现在 12 档、每档 2~4 项确定奖励。
-##   深海币: 用户「顶档只提供45深海币」⇒ 各档按 120 → 45 同比例(×0.375)缩放取整, 档位越高不降。
+## 档位奖励: 每档 2~4 套, 打碎时【随机给其中一套】(各套等概率)。
+##   一套 = 下面几项的任意组合(缺省 = 没有): coins=深海币[lo,hi] / equips=装备[{cost=费档, star=星}] / xp=大轮经验 / leveler=临时等级器个数
+##   ★2026-10-22 用户「改为赢+2，输+3，封顶60，分为12档」→「每档制定2-4种奖励，之前说错了」→ 选「每档 2~4 套，随机给一套」;
+##   「顶档只提供45深海币」⇒ 任何一套里深海币都不超过 45(方案书 docs/plans/20261022-糖果罐12档.md)。
+##   套餐内容是我拟的: 同档几套价值相近(1 深海币 ≈ 1 大轮经验 ≈ 装备费用), 逐档递增。
 ## 临时等级器(糖果罐奖励): 消耗品条目, 用在龟/小将身上→该大轮等级永久+1. kind="item" 使其绕开装备逻辑。
 const TEMP_LEVELER_ID := "temp_leveler"
 const TEMP_LEVELER_ITEM := {"id": "temp_leveler", "star": 0, "kind": "item"}
@@ -2480,18 +2481,18 @@ const CANDY_JAR_LOSS := 3             # 输 +3
 const CANDY_JAR_CAP := 60             # 封顶
 const CANDY_JAR_TIER_SPAN := 5        # 每 5 点一档 ⇒ 0~4 = 第 1 档 … 55~60 = 第 12 档
 const _CANDY_JAR_TIERS := [
-	{"coins": [2, 3],     "equips": [{"cost": [1], "star": 1}],                                 "xp": 0,  "leveler": 0},   # 1  0~4
-	{"coins": [3, 5],     "equips": [{"cost": [1, 2], "star": 1}],                              "xp": 0,  "leveler": 0},   # 2  5~9
-	{"coins": [5, 7],     "equips": [{"cost": [2], "star": 1}],                                 "xp": 4,  "leveler": 0},   # 3  10~14
-	{"coins": [6, 8],     "equips": [{"cost": [2, 3], "star": 1}],                              "xp": 4,  "leveler": 0},   # 4  15~19
-	{"coins": [8, 11],    "equips": [{"cost": [3], "star": 1}],                                 "xp": 8,  "leveler": 0},   # 5  20~24
-	{"coins": [9, 13],    "equips": [{"cost": [3], "star": 2}],                                 "xp": 8,  "leveler": 0},   # 6  25~29
-	{"coins": [13, 17],   "equips": [{"cost": [3, 4], "star": 2}],                              "xp": 12, "leveler": 0},   # 7  30~34
-	{"coins": [17, 21],   "equips": [{"cost": [4], "star": 2}],                                 "xp": 12, "leveler": 1},   # 8  35~39
-	{"coins": [21, 25],   "equips": [{"cost": [4, 5], "star": 2}],                              "xp": 16, "leveler": 1},   # 9  40~44
-	{"coins": [25, 30],   "equips": [{"cost": [5], "star": 2}],                                 "xp": 16, "leveler": 1},   # 10 45~49
-	{"coins": [32, 38],   "equips": [{"cost": [5], "star": 2}, {"cost": [3], "star": 2}],       "xp": 0,  "leveler": 1},   # 11 50~54
-	{"coins": [45, 45],   "equips": [{"cost": [5], "star": 2}, {"cost": [4], "star": 2}],       "xp": 0,  "leveler": 1},   # 12 55~60
+	[{"coins": [2, 3]},   {"equips": [{"cost": [1], "star": 1}]}],                                                                   # 1  0~4
+	[{"coins": [3, 5]},   {"equips": [{"cost": [1, 2], "star": 1}]}],                                                                # 2  5~9
+	[{"coins": [5, 7]},   {"equips": [{"cost": [2], "star": 1}], "coins": [2, 2]},    {"xp": 6}],                                    # 3  10~14
+	[{"coins": [6, 8]},   {"equips": [{"cost": [2, 3], "star": 1}], "coins": [3, 3]}, {"xp": 8}],                                    # 4  15~19
+	[{"coins": [8, 11]},  {"equips": [{"cost": [3], "star": 1}], "coins": [4, 4]},    {"xp": 10}],                                   # 5  20~24
+	[{"coins": [9, 13]},  {"equips": [{"cost": [3], "star": 2}]},                     {"xp": 12}],                                   # 6  25~29
+	[{"coins": [13, 17]}, {"equips": [{"cost": [3, 4], "star": 2}]},                  {"xp": 16}, {"leveler": 1, "coins": [5, 5]}],   # 7  30~34
+	[{"coins": [17, 21]}, {"equips": [{"cost": [4], "star": 2}]},                     {"xp": 20}, {"leveler": 1, "coins": [8, 8]}],   # 8  35~39
+	[{"coins": [21, 25]}, {"equips": [{"cost": [4, 5], "star": 2}]},                  {"xp": 24}, {"leveler": 1, "coins": [12, 12]}], # 9  40~44
+	[{"coins": [25, 30]}, {"equips": [{"cost": [5], "star": 2}]},                     {"xp": 28}, {"leveler": 1, "xp": 12}],          # 10 45~49
+	[{"coins": [32, 38]}, {"equips": [{"cost": [5], "star": 2}, {"cost": [3], "star": 2}]}, {"xp": 34}, {"leveler": 2}],            # 11 50~54
+	[{"coins": [45, 45]}, {"equips": [{"cost": [5], "star": 2}, {"cost": [4], "star": 2}]}, {"xp": 40}, {"leveler": 2, "coins": [10, 10]}],   # 12 55~60
 ]
 
 ## 有糖果罐? = 本赛季锁定统领含糖果龟 且 未碎 (罐随统领锁定而有; 大轮1颗)
@@ -2514,25 +2515,28 @@ func break_candy_jar() -> Dictionary:
 	if not has_candy_jar():
 		return {}
 	var tier: int = candy_jar_tier()
-	var spec: Dictionary = _CANDY_JAR_TIERS[tier - 1]
-	var got_coins: int = randi_range(int(spec["coins"][0]), int(spec["coins"][1]))   # 深海币档内随机
+	var packs: Array = _CANDY_JAR_TIERS[tier - 1]
+	var pack_i: int = randi() % packs.size()                  # 这一档里随机给一套(等概率)
+	var spec: Dictionary = packs[pack_i]
+	var cr: Array = spec.get("coins", [0, 0])
+	var got_coins: int = randi_range(int(cr[0]), int(cr[1]))  # 深海币套内随机
 	meta_deepsea_coins += got_coins
 	var got_equips: Array = []   # 每件按它自己的费档抽 1 → 进持久背包(指定星)
-	for es in spec["equips"]:
+	for es in spec.get("equips", []):
 		var eq_id: String = _candy_jar_pick_equip((es as Dictionary)["cost"])
 		if eq_id != "":
 			persistent_bench.append(mk_eq(eq_id, int((es as Dictionary)["star"])))
 			got_equips.append({"id": eq_id, "star": int((es as Dictionary)["star"])})
-	var xp: int = int(spec["xp"])
+	var xp: int = int(spec.get("xp", 0))
 	if xp > 0:
 		add_season_xp(xp)
-	var n_lv: int = int(spec["leveler"])
+	var n_lv: int = int(spec.get("leveler", 0))
 	for _i in range(n_lv):
 		persistent_bench.append(TEMP_LEVELER_ITEM.duplicate())   # 消耗品(非装备): kind="item" → 不参与3合1/不当装备渲染
 	candy_jar_broken = true
 	save()
 	var first: Dictionary = got_equips[0] if not got_equips.is_empty() else {}
-	return {"tier": tier, "coins": got_coins, "equips": got_equips, "xp": xp, "levelers": n_lv,
+	return {"tier": tier, "pack": pack_i, "coins": got_coins, "equips": got_equips, "xp": xp, "levelers": n_lv,
 		"equip": str(first.get("id", "")), "star": int(first.get("star", 1)), "leveler": n_lv > 0}
 
 func _candy_jar_pick_equip(costs: Array) -> String:   # 从 DataRegistry.phase2_equipment 按 cost 抽1
@@ -2588,22 +2592,31 @@ func consume_temp_leveler(bench_idx: int) -> bool:
 	return true
 
 ## 某档的奖励预览文本 (UI 用; 不消耗)
+## 这一档的几套奖励, 每套一行(卡上「打碎后随机获得以下奖励之一」下面列出)。套内多项用「 + 」连。
 func candy_jar_tier_preview(tier: int) -> String:
 	if tier < 1 or tier > _CANDY_JAR_TIERS.size(): return ""
-	var sp: Dictionary = _CANDY_JAR_TIERS[tier - 1]
-	var c: Array = sp["coins"]
-	## 顿号分隔(原来「｜」「×1」不合文案规矩 —— 方案书 docs/plans/20261022-糖果罐12档.md)
-	var parts: Array = ["深海币 %d" % int(c[0]) if int(c[0]) == int(c[1]) else "深海币 %d~%d" % [int(c[0]), int(c[1])]]
-	for es in sp["equips"]:
+	var rows: Array = []
+	for sp in _CANDY_JAR_TIERS[tier - 1]:
+		rows.append(candy_jar_pack_text(sp))
+	return "\n".join(rows)
+
+
+## 一套奖励的文字(顿号 / 竖线 / ×N 都不用 —— 原来「｜」「×1」不合文案规矩)。
+static func candy_jar_pack_text(sp: Dictionary) -> String:
+	var parts: Array = []
+	if sp.has("coins"):
+		var c: Array = sp["coins"]
+		parts.append("深海币 %d" % int(c[0]) if int(c[0]) == int(c[1]) else "深海币 %d~%d" % [int(c[0]), int(c[1])])
+	for es in sp.get("equips", []):
 		var costs := []
 		for x in (es as Dictionary)["cost"]:
 			costs.append(str(int(x)))
 		parts.append("%s 费 %d★ 装备" % ["/".join(costs), int((es as Dictionary)["star"])])
-	if int(sp["xp"]) > 0:
+	if int(sp.get("xp", 0)) > 0:
 		parts.append("大轮经验 %d" % int(sp["xp"]))
-	if int(sp["leveler"]) > 0:
+	if int(sp.get("leveler", 0)) > 0:
 		parts.append("临时等级器" if int(sp["leveler"]) == 1 else "临时等级器 %d 个" % int(sp["leveler"]))
-	return "、".join(parts)
+	return " + ".join(parts)
 
 ## 买经验: 4 深海币 = 4 XP (设计§五). 满级/币不足 → false.
 func buy_season_xp() -> bool:

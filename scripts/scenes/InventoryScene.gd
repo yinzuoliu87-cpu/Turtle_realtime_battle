@@ -1929,7 +1929,7 @@ func _open_jar_card() -> void:
 		"title": "糖果罐", "title_col": col,
 		"icon_border": col, "frame_col": col,
 		"tag": "第 %d 档" % tier, "tag_col": Color("#e8dcc4"),
-		"body": "打碎可获得：%s（每大轮限 1 次）" % GameState.candy_jar_tier_preview(tier),
+		"body": "打碎后随机获得以下奖励之一（每大轮限 1 次）：\n%s" % GameState.candy_jar_tier_preview(tier),
 		"body_px": MIN_FONT_PX,
 		"width": ITEM_CARD_W, "min_px": MIN_FONT_PX,
 	})

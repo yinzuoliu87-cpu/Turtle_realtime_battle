@@ -55,7 +55,8 @@ func _show_jar_reward(r: Dictionary) -> void:
 	## ★「💠」不再拿字符当深海币 —— 这一屏的顶栏 2026-09 就换成了 `ic-deepsea.png`,
 	##   `verify_inventory_layout` ④b 专门守着"界面上没有留下拿字符当币的旧写法"
 	##   (它扫的是静止态的屏, 所以这个弹框里的漏网之鱼它数不到)。图标画在文字前面。
-	var lines: Array = ["深海币 +%d" % int(r.get("coins", 0))]
+	var has_coins: bool = int(r.get("coins", 0)) > 0          # 每档随机给一套, 有的套没有深海币(2026-10-22)
+	var lines: Array = ["深海币 +%d" % int(r.get("coins", 0))] if has_coins else []
 	## 2026-10-22 改 12 档: 一档最多 2 件装备 + 大轮经验 + 临时等级器(每档 2~4 项)
 	for e in r.get("equips", []):
 		var eid := str((e as Dictionary).get("id", ""))
@@ -81,7 +82,7 @@ func _show_jar_reward(r: Dictionary) -> void:
 		## 行高 48 = 18 号字排两行的高度(原来 30 = 一行多一点, 换行就静默吃字)。
 		## 框高 = 80 + 行数×50 + 70 ⇒ 最后一行底 = 框高 − 72, 「领取」键顶 = 框高 − 62, 不压字。
 		## ★第一行让出 32px 给深海币图标; 其余行顶到 40。
-		var lx: float = 72.0 if i == 0 else 40.0
+		var lx: float = 72.0 if (i == 0 and has_coins) else 40.0
 		l.position = Vector2(lx, y); l.size = Vector2(480.0 - lx, 48)
 		## ★★2026-09-28 WORD_SMART → ARBITRARY。中文长句**没有空格可断**, WORD_SMART
 		##   在这一行上等于不换行 ⇒ 「临时等级器 ×1 收进背包 · 点它再点一只龟或小将,」
@@ -99,6 +100,7 @@ func _show_jar_reward(r: Dictionary) -> void:
 	ci.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	ci.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ci.position = Vector2(40, Y0 - 2.0); ci.size = Vector2(26, 26)
+	ci.visible = has_coins
 	box.add_child(ci)
 
 	var ok = Button.new()

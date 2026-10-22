@@ -862,7 +862,7 @@ scripts/scenes/InventoryScene.gd|lit|商店
 scripts/scenes/InventoryScene.gd|lit|小将
 scripts/scenes/InventoryScene.gd|lit|属性\n%s\n\n效果\n%s
 scripts/scenes/InventoryScene.gd|lit|战利品 %d/%d
-scripts/scenes/InventoryScene.gd|lit|打碎可获得：%s（每大轮限 1 次）
+scripts/scenes/InventoryScene.gd|lit|打碎后随机获得以下奖励之一（每大轮限 1 次）：\n%s
 scripts/scenes/InventoryScene.gd|lit|护甲
 scripts/scenes/InventoryScene.gd|lit|攻击力
 scripts/scenes/InventoryScene.gd|lit|无属性加成
