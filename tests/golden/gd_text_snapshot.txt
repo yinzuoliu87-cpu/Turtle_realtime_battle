@@ -1,7 +1,10 @@
-autoload/GameState.gd|lit| ｜ 临时等级器 %d%%
-autoload/GameState.gd|lit|%d费
+autoload/GameState.gd|lit|%s 费 %d★ 装备
+autoload/GameState.gd|lit|临时等级器
+autoload/GameState.gd|lit|临时等级器 %d 个
+autoload/GameState.gd|lit|大轮经验 %d
 autoload/GameState.gd|lit|斧头
-autoload/GameState.gd|lit|深海币 %d~%d ｜ %s装备×1 (%d★)
+autoload/GameState.gd|lit|深海币 %d
+autoload/GameState.gd|lit|深海币 %d~%d
 autoload/GameState.gd|lit|盾
 autoload/shot_diff.gd|lit|咸鱼翻身
 autoload/shot_diff.gd|lit|小龟
@@ -1680,13 +1683,13 @@ scripts/scenes/codex/status_sources.gd|lit|1.7 秒
 scripts/scenes/codex/status_sources.gd|lit|1/1.8/2.5 秒
 scripts/scenes/codex/status_sources.gd|lit|3 秒
 scripts/scenes/codex/status_sources.gd|lit|50% · 4 秒
-scripts/scenes/codex/status_sources.gd|lit|50% · 5 秒
 scripts/scenes/codex/status_sources.gd|lit|func _ninja_dash\\(u: Dictionary, target: Dictionary\\) -> void:    # 被动
 scripts/scenes/codex/status_sources.gd|lit|{C:AxeEvolution.SLAM_STUN} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:BambooSystem.SMACK_STUN} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:BasicConsts.SLAM_STUN_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:BubbleSystem.BIND_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:BubbleSystem.SHIELD_SEC} 秒
+scripts/scenes/codex/status_sources.gd|lit|{C:ChestSystem.POISON_CUT%}% · {C:ChestSystem.POISON_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:CyberSystem.HIJACK_SEC} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:DiamondSystem.ROLL_STUN_MIN}~{C:DiamondSystem.ROLL_STUN_MAX} 秒
 scripts/scenes/codex/status_sources.gd|lit|{C:EqSpiritBatch.GHOST_CURSE_SEC} 秒
@@ -1761,9 +1764,11 @@ scripts/scenes/feedback_panel.gd|lit|问题反馈
 scripts/scenes/feedback_panel.gd|lit|问题描述（必填，500 字以内）
 scripts/scenes/feedback_panel.gd|text|取消
 scripts/scenes/feedback_panel.gd|text|提交
+scripts/scenes/inventory/candy_jar.gd|lit|大轮经验 +%d
 scripts/scenes/inventory/candy_jar.gd|lit|深海币 +%d
 scripts/scenes/inventory/candy_jar.gd|lit|获得 %s %s
-scripts/scenes/inventory/candy_jar.gd|lit|获得 临时等级器 ×1
+scripts/scenes/inventory/candy_jar.gd|lit|获得 临时等级器
+scripts/scenes/inventory/candy_jar.gd|lit|获得 临时等级器 %d 个
 scripts/scenes/inventory/candy_jar.gd|text|糖果罐 · 第 %d 档奖励
 scripts/scenes/inventory/candy_jar.gd|text|领取
 scripts/scenes/inventory/equip_ops.gd|lit|%s 本大轮等级 +1（当前 +%d）

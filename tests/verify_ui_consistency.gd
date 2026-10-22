@@ -982,9 +982,11 @@ func _open_popup(inst, id: String) -> bool:
 		"jar_reward":
 			if inst.get("_inv_jar") == null:
 				return false
-			## 形状照 `GameState.break_candy_jar()` 的返回值(不走真打碎: 那会改存档)
-			inst._inv_jar._show_jar_reward({"tier": 3, "coins": 40,
-				"equip": "p2eq_001", "star": 2, "leveler": true})
+			## 形状照 `GameState.break_candy_jar()` 的返回值(不走真打碎: 那会改存档)。
+			##   ★2026-10-22 改 12 档后取最满的一档(第 12 档: 深海币 + 两件装备 + 等级器 = 4 行), 量最高的那种框;
+			##   原来喂的旧字段 equip / leveler 新代码不认, 等于只量了一行。
+			inst._inv_jar._show_jar_reward({"tier": 12, "coins": 120,
+				"equips": [{"id": "p2eq_001", "star": 2}, {"id": "p2eq_002", "star": 2}], "xp": 0, "levelers": 1})
 			return true
 		"conflict_dialog":
 			if not inst.has_method("_open_conflict_dialog"):

@@ -37,7 +37,6 @@ func _show_jar_reward(r: Dictionary) -> void:
 	##   静止态的运行时探针照不到它们 —— 弹框只在点开之后才建。
 	##   `StyleBoxFlat` 留着当 fallback: 贴图缺失时 `UISkin.nine` 原样返回它。
 	box.add_theme_stylebox_override("panel", UISkin.nine("panel-frame.png", 20, sb))
-	box.position = Vector2(host.W / 2.0 - 260, host.H / 2.0 - 150); box.size = Vector2(520, 300)
 	dim.add_child(box)
 
 	var ttl = Label.new()
@@ -57,15 +56,20 @@ func _show_jar_reward(r: Dictionary) -> void:
 	##   `verify_inventory_layout` ④b 专门守着"界面上没有留下拿字符当币的旧写法"
 	##   (它扫的是静止态的屏, 所以这个弹框里的漏网之鱼它数不到)。图标画在文字前面。
 	var lines: Array = ["深海币 +%d" % int(r.get("coins", 0))]
-	var eid = str(r.get("equip", ""))
-	if eid != "":
+	## 2026-10-22 改 12 档: 一档最多 2 件装备 + 大轮经验 + 临时等级器(每档 2~4 项)
+	for e in r.get("equips", []):
+		var eid := str((e as Dictionary).get("id", ""))
 		var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(eid, {})
-		lines.append("获得 %s %s" % [str(edef.get("name", eid)), "★".repeat(int(r.get("star", 1)))])
-	if bool(r.get("leveler", false)):
+		lines.append("获得 %s %s" % [str(edef.get("name", eid)), "★".repeat(int((e as Dictionary).get("star", 1)))])
+	if int(r.get("xp", 0)) > 0:
+		lines.append("大轮经验 +%d" % int(r.get("xp", 0)))
+	if int(r.get("levelers", 0)) > 0:
 		## ★原文是"🔼 临时等级器 ×1 → 进背包 (点它再点一只龟/小将, 本大轮 +1 级)":
-		##   箭头 + 括号注解 = 说明书腔, 而且 35 字在 440px / 18 号字下要排**两行**,
-		##   却挤在 30px 高的 Label 里 ⇒ 第二行一直被静默吃掉(所以下面把行高改成 48)。
-		lines.append("获得 临时等级器 ×1")
+		##   箭头 + 括号注解 = 说明书腔(之后又删掉「×1」: 文案规矩不写 ×)。
+		lines.append("获得 临时等级器" if int(r.get("levelers", 0)) == 1 else "获得 临时等级器 %d 个" % int(r.get("levelers", 0)))
+	## 框高跟着行数走(原来固定 300 高只排得下 3 行; 第 8~12 档有 4 项)
+	var box_h: float = 80.0 + float(lines.size()) * 50.0 + 70.0
+	box.position = Vector2(host.W / 2.0 - 260, host.H / 2.0 - box_h / 2.0); box.size = Vector2(520, box_h)
 
 	const Y0 := 80.0
 	var y = Y0
@@ -75,7 +79,7 @@ func _show_jar_reward(r: Dictionary) -> void:
 		l.add_theme_font_size_override("font_size", 18)
 		l.add_theme_color_override("font_color", Color("#e8f2ff"))
 		## 行高 48 = 18 号字排两行的高度(原来 30 = 一行多一点, 换行就静默吃字)。
-		## 三行走完 80 + 2×50 + 48 = 228 < 收下键的 234, 仍在 300 高的框里。
+		## 框高 = 80 + 行数×50 + 70 ⇒ 最后一行底 = 框高 − 72, 「领取」键顶 = 框高 − 62, 不压字。
 		## ★第一行让出 32px 给深海币图标; 其余行顶到 40。
 		var lx: float = 72.0 if i == 0 else 40.0
 		l.position = Vector2(lx, y); l.size = Vector2(480.0 - lx, 48)
@@ -100,7 +104,7 @@ func _show_jar_reward(r: Dictionary) -> void:
 	var ok = Button.new()
 	ok.text = "领取"
 	ok.add_theme_font_size_override("font_size", 20)
-	ok.position = Vector2(200, 234); ok.size = Vector2(120, 44)
+	ok.position = Vector2(200, box_h - 62.0); ok.size = Vector2(120, 44)
 	## ★套金属签牌皮 —— 不套就是 Godot 默认皮(圆角纯色)。必须在 size 之后调, 见 UISkin.button 注释。
 	UISkin.card_button(ok)
 	ok.pressed.connect(func(): dim.queue_free(); host._rebuild())

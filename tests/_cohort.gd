@@ -461,7 +461,7 @@ func _settle_mirror(bot: Dictionary, won: bool) -> void:
 	while int(bot["level"]) < P2.MAX_LEVEL and int(bot["xp"]) >= P2.xp_to_next(int(bot["level"])):
 		bot["xp"] = int(bot["xp"]) - P2.xp_to_next(int(bot["level"]))
 		bot["level"] = int(bot["level"]) + 1
-	bot["candy"] = mini(30, int(bot["candy"]) + (1 if won else 4))
+	bot["candy"] = mini(GameState.CANDY_JAR_CAP, int(bot["candy"]) + (GameState.CANDY_JAR_WIN if won else GameState.CANDY_JAR_LOSS))
 	if won:
 		bot["wins"] = int(bot["wins"]) + 1
 
@@ -604,7 +604,7 @@ func _is_equip(item) -> bool:
 func _shop(gs, bot: Dictionary) -> void:
 	# ① 糖果罐: 攒满就砸; 快没命了也砸(用户设计: 输+4→8命输光正好30封顶=逆风补偿)
 	if gs.has_candy_jar() and not bool(gs.candy_jar_broken):
-		if int(gs.candy_jar_count) >= 30 or (int(gs.hearts) <= 1 and int(gs.candy_jar_count) >= 12):
+		if int(gs.candy_jar_count) >= gs.CANDY_JAR_CAP or (int(gs.hearts) <= 1 and int(gs.candy_jar_count) >= 25):
 			gs.break_candy_jar()
 
 	# ② 临时等级器(糖果罐战利品): 给随机一只统领

@@ -692,7 +692,7 @@ func gauntlet_settle(won: bool) -> int:
 	gauntlet_record(won)
 	add_season_xp(int(_P2.GAUNTLET_XP_PER_MATCH))
 	axe_on_match_end()                   # 096 小木斧: 打完一整场给砍伐经验(持有才给, 函数里判)
-	candy_jar_add(1 if won else 4)
+	candy_jar_add(CANDY_JAR_WIN if won else CANDY_JAR_LOSS)
 	if won:
 		season_wins += 1
 		season_eggs_killed += 1
@@ -747,7 +747,7 @@ func finals_settle_sealed() -> int:
 ## 揭晓部分: 吃胜负的那些。★由**对阵图的 feed** 在轮次推进后调, 不由战斗结束调。
 ## ★幂等靠调用方(`finals_pending_reveal` 清掉之后就不会再来第二次)。
 func finals_reveal(won: bool) -> void:
-	candy_jar_add(1 if won else 4)
+	candy_jar_add(CANDY_JAR_WIN if won else CANDY_JAR_LOSS)
 	if won:
 		season_wins += 1
 		season_eggs_killed += 1
@@ -1396,7 +1396,7 @@ func migrate_equip_caps() -> int:
 	return moved
 
 # ─── 糖果龟·糖果罐 局外赛季被动 (封板L390-403: 选糖果龟当统领才有·大轮1颗·赢+1输+4封顶30·打碎按档领奖·碎即消失) ───
-var candy_jar_count: int = 0                          # 糖果罐计数 0-30 (赢+1/输+4·逆风快攒翻盘)
+var candy_jar_count: int = 0                          # 糖果罐计数 0-CANDY_JAR_CAP (赢 +CANDY_JAR_WIN / 输 +CANDY_JAR_LOSS)
 var candy_jar_broken: bool = false                    # 本赛季糖果罐已打碎领奖 (一大轮1颗)
 var candy_temp_levels: Dictionary = {}               # 临时等级器已用 {pet_id: +级数} (本大轮永久·切轮重置)
 var gambler_wheel_stacks: Dictionary = {}            # 赌神·命运之轮抽花色跨场累积 {"spade"/"heart"/"diamond"/"club": 抽中次数} (本大轮永久·切轮重置·方案B·用户2026-07-09)
@@ -2463,7 +2463,9 @@ func settle_ranked_close(now_override: int = 0) -> int:
 
 
 # ══════ 糖果罐 局外赛季被动 API (封板L390-403·糖果龟当统领才有·打碎按当前计数领档奖) ══════
-## 档位奖励规格(封板表): coins=深海币[lo,hi] / cost=装备费档 / star=装备星 / leveler=临时等级器概率
+## 档位奖励规格: coins=深海币[lo,hi] / equips=装备[{cost=费档, star=星}](1~2 件) / xp=大轮经验 / leveler=临时等级器个数
+##   ★2026-10-22 用户「改为赢+2，输+3，封顶60，分为12档」「每档制定2-4个奖励」(方案书 docs/plans/20261022-糖果罐12档.md):
+##   原来 6 档、赢 +1 输 +4 封顶 30、等级器按概率给 ⇒ 现在 12 档、每档 2~4 项确定奖励。
 ## 临时等级器(糖果罐奖励): 消耗品条目, 用在龟/小将身上→该大轮等级永久+1. kind="item" 使其绕开装备逻辑。
 const TEMP_LEVELER_ID := "temp_leveler"
 const TEMP_LEVELER_ITEM := {"id": "temp_leveler", "star": 0, "kind": "item"}
@@ -2472,35 +2474,39 @@ const TEMP_LEVELER_ITEM := {"id": "temp_leveler", "star": 0, "kind": "item"}
 static func is_equip_item(it) -> bool:
 	return it is Dictionary and str(it.get("kind", "equip")) != "item"
 
+const CANDY_JAR_WIN := 2              # 打完一场: 赢 +2
+const CANDY_JAR_LOSS := 3             # 输 +3
+const CANDY_JAR_CAP := 60             # 封顶
+const CANDY_JAR_TIER_SPAN := 5        # 每 5 点一档 ⇒ 0~4 = 第 1 档 … 55~60 = 第 12 档
 const _CANDY_JAR_TIERS := [
-	{"coins": [8, 12],    "cost": [1, 2], "star": 1, "leveler": 0.0},    # 档1 计数0-5
-	{"coins": [15, 22],   "cost": [2, 3], "star": 1, "leveler": 0.0},    # 档2 6-11
-	{"coins": [25, 35],   "cost": [3],    "star": 2, "leveler": 0.0},    # 档3 12-17
-	{"coins": [45, 55],   "cost": [4],    "star": 2, "leveler": 0.25},   # 档4 18-23
-	{"coins": [65, 80],   "cost": [5],    "star": 2, "leveler": 0.50},   # 档5 24-29
-	{"coins": [120, 120], "cost": [5],    "star": 2, "leveler": 1.0},    # 档6封顶 30
+	{"coins": [5, 8],     "equips": [{"cost": [1], "star": 1}],                                 "xp": 0,  "leveler": 0},   # 1  0~4
+	{"coins": [8, 12],    "equips": [{"cost": [1, 2], "star": 1}],                              "xp": 0,  "leveler": 0},   # 2  5~9
+	{"coins": [12, 17],   "equips": [{"cost": [2], "star": 1}],                                 "xp": 4,  "leveler": 0},   # 3  10~14
+	{"coins": [15, 22],   "equips": [{"cost": [2, 3], "star": 1}],                              "xp": 4,  "leveler": 0},   # 4  15~19
+	{"coins": [20, 28],   "equips": [{"cost": [3], "star": 1}],                                 "xp": 8,  "leveler": 0},   # 5  20~24
+	{"coins": [25, 35],   "equips": [{"cost": [3], "star": 2}],                                 "xp": 8,  "leveler": 0},   # 6  25~29
+	{"coins": [35, 45],   "equips": [{"cost": [3, 4], "star": 2}],                              "xp": 12, "leveler": 0},   # 7  30~34
+	{"coins": [45, 55],   "equips": [{"cost": [4], "star": 2}],                                 "xp": 12, "leveler": 1},   # 8  35~39
+	{"coins": [55, 65],   "equips": [{"cost": [4, 5], "star": 2}],                              "xp": 16, "leveler": 1},   # 9  40~44
+	{"coins": [65, 80],   "equips": [{"cost": [5], "star": 2}],                                 "xp": 16, "leveler": 1},   # 10 45~49
+	{"coins": [85, 100],  "equips": [{"cost": [5], "star": 2}, {"cost": [3], "star": 2}],       "xp": 0,  "leveler": 1},   # 11 50~54
+	{"coins": [120, 120], "equips": [{"cost": [5], "star": 2}, {"cost": [4], "star": 2}],       "xp": 0,  "leveler": 1},   # 12 55~60
 ]
 
 ## 有糖果罐? = 本赛季锁定统领含糖果龟 且 未碎 (罐随统领锁定而有; 大轮1颗)
 func has_candy_jar() -> bool:
 	return (season_leaders is Array) and ("candy" in season_leaders) and not candy_jar_broken
 
-## 战斗结算调: 赢+1 / 输+4 (逆风快攒翻盘) · 封顶30 (仅有罐且未碎时计). 自存.
+## 战斗结算调: candy_jar_add(CANDY_JAR_WIN if won else CANDY_JAR_LOSS) · 封顶 CANDY_JAR_CAP (仅有罐且未碎时计). 自存.
 func candy_jar_add(n: int) -> void:
 	if not has_candy_jar():
 		return
-	candy_jar_count = clampi(candy_jar_count + n, 0, 30)
+	candy_jar_count = clampi(candy_jar_count + n, 0, CANDY_JAR_CAP)
 	save()
 
-## 当前计数 → 档位 1-6 (封板计数区间)
+## 当前计数 → 档位 1~12(每 CANDY_JAR_TIER_SPAN 点一档, 封顶那段并进最后一档)
 func candy_jar_tier() -> int:
-	var c := candy_jar_count
-	if c >= 30: return 6
-	if c >= 24: return 5
-	if c >= 18: return 4
-	if c >= 12: return 3
-	if c >= 6:  return 2
-	return 1
+	return clampi(maxi(0, candy_jar_count) / CANDY_JAR_TIER_SPAN + 1, 1, _CANDY_JAR_TIERS.size())
 
 ## 打碎糖果罐: 按当前档领奖(深海币+装备进背包+可能临时等级器)·碎即消失. 返回奖励摘要; 无罐→{}.
 func break_candy_jar() -> Dictionary:
@@ -2510,17 +2516,23 @@ func break_candy_jar() -> Dictionary:
 	var spec: Dictionary = _CANDY_JAR_TIERS[tier - 1]
 	var got_coins: int = randi_range(int(spec["coins"][0]), int(spec["coins"][1]))   # 深海币档内随机
 	meta_deepsea_coins += got_coins
-	var eq_id: String = _candy_jar_pick_equip(spec["cost"])   # 装备按档费抽1 → 进持久背包(指定星)
-	var star: int = int(spec["star"])
-	if eq_id != "":
-		persistent_bench.append(mk_eq(eq_id, star))
-	var got_leveler: bool = false   # 临时等级器按档概率给1个(字符串消耗品进背包)
-	if float(spec["leveler"]) > 0.0 and randf() < float(spec["leveler"]):
+	var got_equips: Array = []   # 每件按它自己的费档抽 1 → 进持久背包(指定星)
+	for es in spec["equips"]:
+		var eq_id: String = _candy_jar_pick_equip((es as Dictionary)["cost"])
+		if eq_id != "":
+			persistent_bench.append(mk_eq(eq_id, int((es as Dictionary)["star"])))
+			got_equips.append({"id": eq_id, "star": int((es as Dictionary)["star"])})
+	var xp: int = int(spec["xp"])
+	if xp > 0:
+		add_season_xp(xp)
+	var n_lv: int = int(spec["leveler"])
+	for _i in range(n_lv):
 		persistent_bench.append(TEMP_LEVELER_ITEM.duplicate())   # 消耗品(非装备): kind="item" → 不参与3合1/不当装备渲染
-		got_leveler = true
 	candy_jar_broken = true
 	save()
-	return {"tier": tier, "coins": got_coins, "equip": eq_id, "star": star, "leveler": got_leveler}
+	var first: Dictionary = got_equips[0] if not got_equips.is_empty() else {}
+	return {"tier": tier, "coins": got_coins, "equips": got_equips, "xp": xp, "levelers": n_lv,
+		"equip": str(first.get("id", "")), "star": int(first.get("star", 1)), "leveler": n_lv > 0}
 
 func _candy_jar_pick_equip(costs: Array) -> String:   # 从 DataRegistry.phase2_equipment 按 cost 抽1
 	var pool: Array = []
@@ -2579,13 +2591,18 @@ func candy_jar_tier_preview(tier: int) -> String:
 	if tier < 1 or tier > _CANDY_JAR_TIERS.size(): return ""
 	var sp: Dictionary = _CANDY_JAR_TIERS[tier - 1]
 	var c: Array = sp["coins"]
-	var cost: Array = sp["cost"]
-	var lv: float = float(sp["leveler"])
-	var costs := []
-	for x in cost: costs.append("%d费" % int(x))
-	var t := "深海币 %d~%d ｜ %s装备×1 (%d★)" % [int(c[0]), int(c[1]), "/".join(costs), int(sp["star"])]
-	if lv > 0.0: t += " ｜ 临时等级器 %d%%" % int(lv * 100.0)
-	return t
+	## 顿号分隔(原来「｜」「×1」不合文案规矩 —— 方案书 docs/plans/20261022-糖果罐12档.md)
+	var parts: Array = ["深海币 %d" % int(c[0]) if int(c[0]) == int(c[1]) else "深海币 %d~%d" % [int(c[0]), int(c[1])]]
+	for es in sp["equips"]:
+		var costs := []
+		for x in (es as Dictionary)["cost"]:
+			costs.append(str(int(x)))
+		parts.append("%s 费 %d★ 装备" % ["/".join(costs), int((es as Dictionary)["star"])])
+	if int(sp["xp"]) > 0:
+		parts.append("大轮经验 %d" % int(sp["xp"]))
+	if int(sp["leveler"]) > 0:
+		parts.append("临时等级器" if int(sp["leveler"]) == 1 else "临时等级器 %d 个" % int(sp["leveler"]))
+	return "、".join(parts)
 
 ## 买经验: 4 深海币 = 4 XP (设计§五). 满级/币不足 → false.
 func buy_season_xp() -> bool:

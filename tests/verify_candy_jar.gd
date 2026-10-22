@@ -5,9 +5,9 @@ const VfxTexRef := preload("res://scripts/util/vfx_textures.gd")
 ##
 ## 覆盖 (每条打印 期望 vs 实际):
 ##  1. has_candy_jar 只在"统领含糖果龟且未碎"时为 true
-##  2. candy_jar_add: 赢+1 / 输+4 / 封顶30
-##  3. candy_jar_tier: 6 档区间
-##  4. break_candy_jar: 发深海币 + 装备进背包 + 按档概率给临时等级器
+##  2. candy_jar_add: 赢+2 / 输+3 / 封顶60(2026-10-22 改)
+##  3. candy_jar_tier: 12 档区间(每 5 点一档) · 3b 每档 2~4 项、档位越高不降
+##  4. break_candy_jar: 发深海币 + 1~2 件装备进背包 + 大轮经验 + 到档必给临时等级器
 ##  5. ★奖励进背包后 persistent_bench 全是 Dictionary (曾塞裸 String "temp_leveler" → auto_merge_all/_equip_cell 必崩)
 ##  6. ★auto_merge_all() 在背包含消耗品时不崩, 且不把消耗品当装备合成
 ##  7. apply_temp_leveler / temp_level_bonus
@@ -39,30 +39,61 @@ func _ready() -> void:
 	_ok("已碎 → 无罐", not gs.has_candy_jar())
 	gs.candy_jar_broken = false
 
-	print("=== 2. 计数: 赢+1 / 输+4 / 封顶30 ===")
+	## 2026-10-22 用户「改为赢+2，输+3，封顶60，分为12档」(方案书 docs/plans/20261022-糖果罐12档.md)
+	print("=== 2. 计数: 赢+2 / 输+3 / 封顶60 ===")
 	gs.candy_jar_count = 0
-	gs.candy_jar_add(1); _ok("赢+1", gs.candy_jar_count == 1, "got=%d" % gs.candy_jar_count)
-	gs.candy_jar_add(4); _ok("输+4", gs.candy_jar_count == 5, "got=%d" % gs.candy_jar_count)
-	gs.candy_jar_count = 28
-	gs.candy_jar_add(4); _ok("封顶30", gs.candy_jar_count == 30, "got=%d" % gs.candy_jar_count)
+	gs.candy_jar_add(gs.CANDY_JAR_WIN); _ok("赢+2", gs.CANDY_JAR_WIN == 2 and gs.candy_jar_count == 2, "got=%d" % gs.candy_jar_count)
+	gs.candy_jar_add(gs.CANDY_JAR_LOSS); _ok("输+3", gs.CANDY_JAR_LOSS == 3 and gs.candy_jar_count == 5, "got=%d" % gs.candy_jar_count)
+	gs.candy_jar_count = 58
+	gs.candy_jar_add(gs.CANDY_JAR_LOSS); _ok("封顶60", gs.candy_jar_count == 60, "got=%d" % gs.candy_jar_count)
 
-	print("=== 3. 档位区间 (0-5=1 / 6-11=2 / 12-17=3 / 18-23=4 / 24-29=5 / 30=6) ===")
-	for pair in [[0, 1], [5, 1], [6, 2], [11, 2], [12, 3], [17, 3], [18, 4], [23, 4], [24, 5], [29, 5], [30, 6]]:
+	print("=== 3. 档位区间 (每 5 点一档: 0-4=1 … 50-54=11 / 55-60=12) ===")
+	for pair in [[0, 1], [4, 1], [5, 2], [9, 2], [10, 3], [24, 5], [25, 6], [34, 7], [35, 8], [49, 10], [50, 11], [54, 11], [55, 12], [60, 12]]:
 		gs.candy_jar_count = int(pair[0])
 		_ok("count=%d → 档%d" % [int(pair[0]), int(pair[1])], gs.candy_jar_tier() == int(pair[1]), "got=%d" % gs.candy_jar_tier())
 
-	print("=== 4/5. 打碎档6 (leveler=100%) → 奖励 + 背包数据形状 ===")
+	## ③b 每档 2~4 项、档位单调(用户「每档制定2-4个奖励」)
+	var tiers: Array = gs._CANDY_JAR_TIERS
+	var bad_n: Array = []
+	var bad_mono: Array = []
+	for i in range(tiers.size()):
+		var sp: Dictionary = tiers[i]
+		var n_items: int = 1 + (sp["equips"] as Array).size() + (1 if int(sp["xp"]) > 0 else 0) + int(sp["leveler"])
+		if n_items < 2 or n_items > 4:
+			bad_n.append("第 %d 档 %d 项" % [i + 1, n_items])
+		if i > 0:
+			var pv: Dictionary = tiers[i - 1]
+			var top := func(s: Dictionary) -> int:
+				var m := 0
+				for es in s["equips"]:
+					for c in (es as Dictionary)["cost"]:
+						m = maxi(m, int(c))
+				return m
+			if int(sp["coins"][0]) < int(pv["coins"][0]) or int(top.call(sp)) < int(top.call(pv)) or int(sp["leveler"]) < int(pv["leveler"]):
+				bad_mono.append("第 %d 档比第 %d 档差" % [i + 1, i])
+	_ok("③b ★分母: 12 档", tiers.size() == 12, str(tiers.size()))
+	_ok("③b 每档 2~4 项奖励", bad_n.is_empty(), str(bad_n))
+	_ok("③b 档位越高奖励不降(深海币下限 / 装备最高费 / 等级器个数)", bad_mono.is_empty(), str(bad_mono))
+
+	print("=== 4/5. 打碎第 12 档(两件装备 + 等级器)→ 奖励 + 背包数据形状 ===")
 	gs.persistent_bench = []
 	gs.persistent_equipped = {}
 	gs.candy_temp_levels = {}
-	gs.candy_jar_count = 30
+	gs.candy_jar_count = 60
 	gs.candy_jar_broken = false
 	var coins_before: int = int(gs.meta_deepsea_coins)
 	var r: Dictionary = gs.break_candy_jar()
 	_ok("返回非空", not r.is_empty())
-	_ok("档=6", int(r.get("tier", 0)) == 6, "got=%d" % int(r.get("tier", 0)))
+	_ok("档=12", int(r.get("tier", 0)) == 12, "got=%d" % int(r.get("tier", 0)))
 	_ok("深海币 +120", int(gs.meta_deepsea_coins) - coins_before == 120, "delta=%d" % (int(gs.meta_deepsea_coins) - coins_before))
-	_ok("档6必给临时等级器", bool(r.get("leveler", false)))
+	_ok("第 12 档给临时等级器", int(r.get("levelers", 0)) == 1)
+	var eqs_r: Array = r.get("equips", [])
+	var costs_r: Array = []
+	for e in eqs_r:
+		costs_r.append(int((DataRegistry.phase2_equipment_by_id.get(str((e as Dictionary)["id"]), {}) as Dictionary).get("cost", 0)))
+	costs_r.sort()
+	_ok("第 12 档两件 2★ 装备: 4 费 + 5 费", eqs_r.size() == 2 and costs_r == [4, 5] and int((eqs_r[0] as Dictionary)["star"]) == 2,
+		str(eqs_r))
 	_ok("打碎后 has_candy_jar=false", not gs.has_candy_jar())
 
 	var all_dict := true
@@ -77,7 +108,7 @@ func _ready() -> void:
 			equips += 1
 	_ok("★背包全是 Dictionary (无裸 String)", all_dict, "bench=%s" % str(gs.persistent_bench))
 	_ok("背包有 1 个临时等级器", levelers == 1, "got=%d" % levelers)
-	_ok("背包有 1 件装备", equips == 1, "got=%d" % equips)
+	_ok("背包有 2 件装备", equips == 2, "got=%d" % equips)
 	_ok("is_equip_item 识别消耗品", not gs.is_equip_item(gs.TEMP_LEVELER_ITEM))
 
 	print("=== 6. ★auto_merge_all 含消耗品不崩, 且不合消耗品 ===")

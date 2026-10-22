@@ -348,14 +348,14 @@ func _ready() -> void:
 	await get_tree().process_frame
 
 	# ══ I. 糖果罐档位: 不许 off-by-one ══════════════════════════
-	##   `candy_jar_tier()` 返回的已经是 1~6(verify_candy_jar 逐区间焊死),
+	##   `candy_jar_tier()` 返回的已经是 1~12(verify_candy_jar 逐区间焊死; 2026-10-22 起 12 档),
 	##   界面上再 +1 会写出【第 7 档】这种不存在的档, 而且同一行右边给的奖励
 	##   走的是 `candy_jar_tier_preview(tier)` = 真实档 ⇒ 数字和奖励自相矛盾。
 	GameState.season_leaders = ["candy", "basic", "stone"]
 	GameState.candy_jar_broken = false
 	GameState.persistent_bench = []
 	var jar_bad: Array = []
-	for pair in [[0, 1], [6, 2], [11, 2], [12, 3], [18, 4], [24, 5], [30, 6]]:
+	for pair in [[0, 1], [5, 2], [9, 2], [10, 3], [35, 8], [54, 11], [55, 12], [60, 12]]:
 		GameState.candy_jar_count = int(pair[0])
 		var want: int = int(pair[1])
 		var sc2 = _mk(-1)
@@ -384,7 +384,7 @@ func _ready() -> void:
 			jar_bad.append("count=%d 档位数字与奖励对不上(奖励应为「%s」)" % [int(pair[0]), prev])
 		sc2.queue_free()
 		await get_tree().process_frame
-	_ok("㉑ ★★糖果罐档位显示 = candy_jar_tier() 本身(7 组区间逐个比, 无 off-by-one)",
+	_ok("㉑ ★★糖果罐档位显示 = candy_jar_tier() 本身(8 组区间逐个比, 无 off-by-one)",
 		jar_bad.is_empty(), str(jar_bad.slice(0, 4)))
 	GameState.candy_jar_count = 0
 

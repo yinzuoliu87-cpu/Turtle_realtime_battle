@@ -7498,7 +7498,7 @@ func _settle_season(won: bool) -> void:
 		gs.consume_ranked_quota()
 		gs.add_season_xp(2)                          # 每场 +2 大轮经验
 		gs.axe_on_match_end()                        # 096 小木斧: 打完一整场 +15 砍伐经验(持有才给) + 羁绊局数
-		gs.candy_jar_add(1 if won else 4)            # 糖果罐(选糖果龟当统领才有): 赢+1输+4封顶30(封板L392·逆风快攒)
+		gs.candy_jar_add(gs.CANDY_JAR_WIN if won else gs.CANDY_JAR_LOSS)   # 糖果罐(选糖果龟当统领才有): 赢 +2 / 输 +3 / 封顶 60(2026-10-22)
 		if won:
 			gs.season_wins += 1
 			gs.season_eggs_killed += 1
