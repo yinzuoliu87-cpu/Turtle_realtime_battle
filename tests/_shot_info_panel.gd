@@ -113,10 +113,15 @@ func _ready() -> void:
 	## SHOT_LOOT=dagger,crown…(2026-10-22): 装备属性 + 宝箱战利品都【真加到单位上】再拍 ——
 	##   走战斗开局同一组函数(EquipStatsApply._eq_apply_one_stats / ChestSystem._chest_apply_treasure),
 	##   用来对照背包属性小卡与对局面板是不是同一个数。不带这个开关时装备只挂在格子上(老行为不变)。
-	if OS.has_environment("SHOT_LOOT") and OS.get_environment("SHOT_DETAIL") != "loot":
+	if OS.has_environment("SHOT_LOOT"):
 		for _e in (u.get("equips", []) as Array):
 			s._equip_sys._stats._eq_apply_one_stats(u, str((_e as Dictionary)["id"]), int((_e as Dictionary).get("star", 1)))
-		for _tl in OS.get_environment("SHOT_LOOT").split(",", false):
+		## 宝箱账起点 = 存档(真实对局左方就是这样起账; 开发工具场默认空账) ⇒ 走登场同一条回装(spawn_loot → _chest_apply_treasure)
+		##   ⇒ 面板上「财宝 已开 x/5」与「战利品 x/5」读的是同一本账
+		var _lg: Dictionary = s._chest_sys._ledger_of(str(u["side"]))
+		_lg["base_won"] = Array(OS.get_environment("SHOT_LOOT").split(",", false))
+		_lg["base_value"] = float(OS.get_environment("SHOT_CHEST_VALUE")) if OS.get_environment("SHOT_CHEST_VALUE").is_valid_float() else 0.0
+		for _tl in s._chest_sys.spawn_loot(u):
 			s._chest_sys._chest_apply_treasure(u, str(_tl))
 		s._recalc_stats(u)
 		print("[SHOT_LOOT] 攻击 %.1f 护甲 %.1f 魔抗 %.1f 生命 %.1f 暴击 %.3f 暴伤 %.3f" % [float(u["atk"]), float(u["def"]),
