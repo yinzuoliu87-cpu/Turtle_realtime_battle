@@ -146,6 +146,11 @@ var _dl_sel: Dictionary = {}   # 双路布阵选中框 {lane, idx} (点两个互
 var _vw: float = 1280.0   # 实际视口宽(手机expand后可达~1560): 顶栏/背包按真实宽铺开·不再左挤留空(2026-07-18)
 var _press_pos := Vector2.ZERO   # 背包格触屏点选/滑动判定: 松开位移小才算点选(可滑动列表·2026-07-18)
 var _press_ms := 0               # 背包格按下的时刻(按住 ≥ InvDrag.HOLD_MS 再动 = 拿起来拖)
+## 背包显示顺序(2026-10-22): "" 默认 / star 星级 / cost 费用 / type 羁绊。只改显示, 不动存档顺序(存档下标牵涉卸下 / 合成)。
+## static: 同一次游戏里来回切页还记得。
+static var _bench_sort := ""
+const SORT_MODES := ["", "star", "cost", "type"]
+const SORT_NAMES := {"": "默认", "star": "星级", "cost": "费用", "type": "羁绊"}
 var _op_body: RichTextLabel = null   # 底栏效果正文(算"还有几行被裁"要读它自己报的行数)
 var _op_more: Label = null           # 底栏"下面还有 N 行"提示
 
@@ -388,7 +393,11 @@ func _rebuild() -> void:
 
 	var leaders := _lineup_ids()
 	_build_lineup(leaders)
-	_inv_synergy._build_synergy_panel(leaders)
+	## 底部操作条出来时(选中了装备 / 糖果罐 / 有装备的单位), 它正好压在左下的羁绊条上 ⇒ 这时不画羁绊(否则标题只剩半截)
+	if _sel_bench >= 0 or (_sel_jar and GameState.has_candy_jar()) or _unit_bar_shows():
+		_inv_synergy.first_on_chip = null
+	else:
+		_inv_synergy._build_synergy_panel(leaders)
 	_build_bench()
 	_build_op_bar()
 	# ★★UIFrame 必须在【每次重建之后】重挂(用户 2026-08-01:「背包点一下后整个屏幕左移」)。
@@ -864,6 +873,32 @@ func _notification(what: int) -> void:
 			_rebuild()
 
 
+const SORT_BTN_W := 156.0
+
+
+## 背包显示排序: 星级 / 费用 高的在前, 羁绊按类型聚在一起; 同档按原顺序(数据下标)稳定。
+func _bench_less(a: Dictionary, b: Dictionary) -> bool:
+	var ia: Dictionary = a["it"]
+	var ib: Dictionary = b["it"]
+	var ea: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(ia.get("id", "")), {})
+	var eb: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(ib.get("id", "")), {})
+	var sa := int(ia.get("star", 1)); var sb := int(ib.get("star", 1))
+	var ca := int(ea.get("cost", 0)); var cb := int(eb.get("cost", 0))
+	match _bench_sort:
+		"star":
+			if sa != sb: return sa > sb
+			if ca != cb: return ca > cb
+		"cost":
+			if ca != cb: return ca > cb
+			if sa != sb: return sa > sb
+		"type":
+			var ta := str(Phase2Types.type_of(str(ia.get("id", ""))))
+			var tb := str(Phase2Types.type_of(str(ib.get("id", ""))))
+			if ta != tb: return ta < tb
+			if ca != cb: return ca > cb
+	return int(a["bidx"]) < int(b["bidx"])
+
+
 ## 背包区现在要不要滚动(内容比可视区高)—— 不用滚时拖拽不必让着滚动。
 func bench_scrolls() -> bool:
 	if _bench_area == null or not is_instance_valid(_bench_area) or _bench_area.get_child_count() == 0:
@@ -1041,9 +1076,27 @@ func _build_bench() -> void:
 	swipe.name = "BenchMoreHint"
 	swipe.add_theme_font_size_override("font_size", MIN_FONT_PX)
 	swipe.add_theme_color_override("font_color", Color("#5f7285"))
-	swipe.position = Vector2(1252.0 - 220.0, BENCH_HDR_Y + 2); swipe.size = Vector2(220, 28)
+	swipe.position = Vector2(1252.0 - SORT_BTN_W - 12.0 - 220.0, BENCH_HDR_Y + 2); swipe.size = Vector2(220, 28)
 	swipe.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	add_child(swipe)
+	if not _tut_on():
+		var sb := Button.new(); sb.name = "BenchSortButton"
+		sb.text = "排序：%s" % str(SORT_NAMES.get(_bench_sort, "默认"))
+		sb.add_theme_font_size_override("font_size", MIN_FONT_PX)
+		sb.add_theme_color_override("font_color", Color("#f4e8cf"))
+		var pst := StyleBoxTexture.new(); pst.texture = PLANK_TEX; pst.set_texture_margin_all(PLANK_MARGIN)
+		pst.content_margin_left = 10; pst.content_margin_right = 10
+		pst.content_margin_top = 2; pst.content_margin_bottom = 2   # 木牌边 18 默认会把键撑到 64 高, 压进第一排格子
+		for stn in ["normal", "hover", "pressed", "focus"]:
+			sb.add_theme_stylebox_override(stn, pst)
+		sb.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		sb.focus_mode = Control.FOCUS_NONE
+		sb.position = Vector2(1252.0 - SORT_BTN_W, BENCH_HDR_Y - 6.0); sb.size = Vector2(SORT_BTN_W, 40)
+		sb.pressed.connect(func() -> void:
+			var k: int = SORT_MODES.find(_bench_sort)
+			_bench_sort = str(SORT_MODES[(k + 1) % SORT_MODES.size()])
+			_rebuild())
+		add_child(sb)
 	var bench: Array = GameState.persistent_bench if GameState.persistent_bench is Array else []
 	## ★★用户 2026-08-14:「还有糖果罐, 在背包里我希望是以一个装备的形式」。
 	##   原来糖果罐是右上角一块 372×44 的独立面板 —— 和背包里的东西不是一套语言,
@@ -1094,18 +1147,30 @@ func _build_bench() -> void:
 	##   ⇒ 若把渲染下标当数据下标传, 每件装备偏 1, **点第 1 件会装备/卖掉第 2 件** —— 坏存档。
 	##   所以: `i` 只管摆位置, `bidx` 才是喂给 `_equip_cell` 的真实背包下标(合成条目不占号)。
 	var i := 0
-	var bidx := 0
+	## 先配好每格的【数据下标】(糖果罐 = -1, 不占号), 再按排序方式只调显示顺序 —— 点 / 拖 / 卖都按数据下标走。
+	var order: Array = []
+	var _bi := 0
 	for it in bench:
+		var synth0: bool = str(it.get("kind", "")) == "candy_jar"
+		order.append({"it": it, "bidx": -1 if synth0 else _bi})
+		if not synth0:
+			_bi += 1
+	if _bench_sort != "" and not _tut_on():
+		var head: Array = order.filter(func(e): return int(e["bidx"]) < 0)
+		var rest: Array = order.filter(func(e): return int(e["bidx"]) >= 0)
+		rest.sort_custom(_bench_less)
+		order = head + rest
+	for e in order:
+		var it: Dictionary = e["it"]
+		var bidx: int = int(e["bidx"])
 		var col := i % per_row
 		var row := i / per_row
-		var synth: bool = str(it.get("kind", "")) == "candy_jar"
-		var _cell: Control = _equip_cell(it, -1 if synth else bidx,
+		var synth: bool = bidx < 0
+		var _cell: Control = _equip_cell(it, bidx,
 			Vector2(float(col) * cpitch, float(row) * pitch))
 		content.add_child(_cell)
-		if not synth and bidx == 0:
-			_tut_first_item = _cell      # 教程手势指针「点击一件装备」指的就是它
-		if not synth:
-			bidx += 1
+		if bidx == 0:
+			_tut_first_item = _cell      # 教程手势指针「点击一件装备」指的就是它(数据下标 0 = 刚买的那件)
 		i += 1
 	while i < total_cells:
 		var col2 := i % per_row
