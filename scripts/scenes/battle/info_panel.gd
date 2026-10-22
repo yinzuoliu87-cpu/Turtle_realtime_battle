@@ -945,6 +945,51 @@ func _info_equip_slots(vb: VBoxContainer, u: Dictionary) -> void:
 				_open_equip_card(u, eid, _star, slot))
 
 
+## 宝箱龟「战利品」一排 5 格(用户 2026-10-22「换」: 原来是一条「战利品 x/5 ▸」入口, 不点开看不到开了哪几件)。
+##   槽框与装备格同一种(insp-slot), 没开的格压暗一档(同装备空槽); 点任意一格已开的 ⇒ 打开原来那个浮层。
+##   ★高度固定(一格边长), 不随开箱件数增长 —— 08-16 把清单改成入口条就是为了不让这一段无界变高。
+##   ★件数上限 = 阈值表长度(ChestLoot.THRESH), 不写死 5。
+const LOOT_SLOT := 54.0                # 5×54 + 4×7 = 298 ≤ 面板内容宽 300; 可点条目下限 32px(verify_info_panel_fits ③)
+const LOOT_SLOT_GAP := 7
+func _info_loot_slots(vb: VBoxContainer, u: Dictionary) -> void:
+	var owned: Dictionary = u.get("chest_treasures", {})
+	var ids: Array = owned.keys()
+	var n: int = ChestLoot.THRESH.size()
+	var row := HBoxContainer.new()
+	row.name = "LootRow"
+	row.add_theme_constant_override("separation", LOOT_SLOT_GAP)
+	vb.add_child(row)
+	for i in range(n):
+		var filled: bool = i < ids.size()
+		var slot := PanelContainer.new()
+		slot.name = "LootSlot_%d" % i
+		var sb := _insp_slot_box()
+		if not filled and sb is StyleBoxTexture:
+			(sb as StyleBoxTexture).modulate_color = Color(0.6, 0.6, 0.6, 1.0)
+		slot.add_theme_stylebox_override("panel", sb)
+		slot.custom_minimum_size = Vector2(LOOT_SLOT, LOOT_SLOT)
+		slot.mouse_filter = Control.MOUSE_FILTER_STOP if filled else Control.MOUSE_FILTER_IGNORE
+		row.add_child(slot)
+		if not filled:
+			continue
+		var tid := str(ids[i])
+		var ip := ChestLoot.icon_path(tid)
+		if ResourceLoader.exists(ip):
+			var ir := TextureRect.new()
+			ir.texture = load(ip)
+			ir.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			ir.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			ir.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			ir.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			slot.add_child(ir)
+		slot.tooltip_text = str(ChestLoot.NAME.get(tid, tid))
+		slot.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		slot.gui_input.connect(func(ev: InputEvent) -> void:
+			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+				_show_detail(battle._info_panel, "chest_loot", "战利品 %d/%d" % [ids.size(), n],
+					battle._chest_sys.loot_detail_text(owned), {}, u))
+
+
 ## 装备本局统计文字(数据源 `u["_st_eq"][eid]`, 由 EquipTally 记账)。口径与结算页同一套词:
 ## 「造成伤害 N」(两种以上伤害类型非零时括号里拆开) /「治疗 N」/「护盾 N」, 每行一项、只列非零;
 ## 全零返回 ""(调用方据此整块隐藏)。
@@ -1335,125 +1380,7 @@ func _apply_forms(u: Dictionary, entries: Array) -> void:
 ##   「没任何游戏味道」「血条龟能条都跟网页一样」。
 ## ★退回分支不是摆设: 贴图没导入时 ResourceLoader.exists 是 false(踩过 —— 新 PNG 没
 ##   .import 文件, 运行时读不到, 框就是没换上, 而且一句报错都没有)。
-## 面板里的【可点入口条】: 一行标题 + 右侧 ›, 点开走同一个详情浮层。
-##
-## ★只此一份。面板里"内容太多、点开看"的地方有三处(更多属性 / 宝箱战利品 / 以后还会有),
-##   原来「更多属性」是就地手写的一段 —— 再写第二段就是 memory
-##   fb-hand-rolled-copies-drift 说的"手抄一次永远落后一次"。
-## ★高度固定(约 32px)与内容多少无关 —— 这正是把它做成入口条的理由:
-##   宝箱战利品原来铺 0~5 行、每行 46px, 是面板里唯一【高度无界】的一段。
-func _info_more_row(parent: VBoxContainer, title: String, body: String,
-		key: String, u: Dictionary, body_fn: Callable = Callable()) -> PanelContainer:
-	var row := PanelContainer.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color("#121b28")
-	sb.set_border_width_all(1); sb.border_color = Color("#22303f"); sb.set_corner_radius_all(0)
-	sb.content_margin_left = 10; sb.content_margin_right = 10
-	sb.content_margin_top = 4; sb.content_margin_bottom = 4
-	## ★九宫格自带的内容边距会盖掉上面 fallback 的 4/4 —— 实拍两条入口都是 46px 高,
-	##   而它们只装一行 14px 的字。九宫格取回来之后【显式压回去】。
-	## ★2026-08-17 从条框换成**槽框**。两个理由, 第二个才是根本的:
-	##   ① 技术: 新条框只有 24px 高, 而这里的边距写的是 12 ⇒ 12+12=24 = 整张图,
-	##      中段一行都不剩, 四角被硬拉 —— 实拍是一条又黑又厚的空条。
-	##   ② 语义: 这一行是**可点的入口**, 和技能/装备槽同类, 本来就该用槽框。
-	##      条框中间那道凹槽的含义是"这里要填一个量" —— 套在可点行上就被读成"没填的进度条"。
-	##      (图换成真凹槽之后这个错配才显形; 旧的圆角胶囊糊在那儿反而看不出来。)
-	var _rsb := _nine_box(HUD_TEX + "slot-frame.png", 12, sb)
-	if _rsb is StyleBoxTexture:
-		var _rt := _rsb as StyleBoxTexture
-		## ★左右 16 不是 10(2026-08-17): 换成槽框后框比原来厚, 10 让左侧那道青内沿
-		##   直接压在「更」字上(实拍 5 倍放大才看见)。边距要大于框自己的厚度。
-		_rt.content_margin_left = 16; _rt.content_margin_right = 16
-		## ★上下 6 不是 2 —— 我为了抠高度压到 2, 结果这条【可点】的入口只有 26px 高 = 14pt,
-		##   而触控目标下限是 44pt(本项目 1pt = 1.846px ⇒ 44pt = 81px)。压到点不准就是本末倒置。
-		##   现在 34px = 18.4pt: 仍低于 44pt, 但这一条是【整幅宽 280px】的长条, 横向很好命中。
-		##   ⚠ 这个差距是【登记在案的已知缺口】, 由 verify_info_panel_fits 的断言看着,
-		##     不是"我没想到"(CLAUDE.md: 缺口显式登记成断言, 不许静默截断)。
-		_rt.content_margin_top = 6; _rt.content_margin_bottom = 6
-	row.add_theme_stylebox_override("panel", _rsb)
-	row.mouse_filter = Control.MOUSE_FILTER_STOP
-	row.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	parent.add_child(row)
-	var hb := HBoxContainer.new()
-	row.add_child(hb)
-	var l := Label.new(); l.text = title
-	l.add_theme_font_size_override("font_size", UIPalette.F_BODY)
-	l.add_theme_color_override("font_color", Color("#9fb6c9"))
-	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hb.add_child(l)
-	## ★行尾的【可点暗示】: 一枚画出来的像素箭头, 不是字体里那个 `›`。见 `_pixel_arrow` 头注。
-	var a := _pixel_arrow()
-	hb.add_child(a)
-	## 第二层暗示(桌面): 悬停时整条亮一档 + 箭头点亮 = 选中态。
-	## ★手机没有悬停 ⇒ 第一层(箭头常驻可见)才是主力, 所以箭头不许做成"悬停才出现"。
-	row.mouse_entered.connect(func() -> void: _arrow_lit(row, a, true))
-	row.mouse_exited.connect(func() -> void: _arrow_lit(row, a, false))
-	## ★★`body` 是【建面板那一刻】的快照 —— 对"更多属性"这种活数值是错的(2026-08-19)。
-	##   用户 2026-07-21 点名要实时的三样是「血条, 移速攻速」: 血条和攻速在主属性 8 项里,
-	##   由 `_refresh_info_panel` 每帧对位改文字 ✅; 而 **移速在次要 11 项里**,
-	##   次要那 11 项被拼成一个字符串塞进这个 lambda ⇒ 面板开着不动、点开也还是开面板那一刻的数。
-	##   实测(verify_panel_stats_onscreen C 组): 开面板时移速 100, 之后减速 50%,
-	##   面板上仍印「移速 100」—— 把本次修改回退掉那两条断言当场变红, 反向验证过。
-	##   ⇒ 给一个【取数用的 Callable】, 点开时现算; 不传就还是老行为(战利品那条本来就是静态的)。
-	row.gui_input.connect(func(ev: InputEvent) -> void:
-		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			_show_detail(battle._info_panel, key, title,
-				(str(body_fn.call()) if body_fn.is_valid() else body), {}, u))
-	return row
-
-
-## 入口条行尾那枚【像素箭头】—— 5 根竖条叠成一个朝右的实心三角, 不是字体字形。
-##
-## ★由来(2026-09-28 用户:「一点也看不出来游戏的味道, 全是 ai 味和网页味」)。
-##   这里原来印一个 `›`(U+203A)。三条毛病, 第三条最要命:
-##     ① 它就是 HTML 折叠控件/面包屑那枚雪佛龙 —— "网页味"里最标志性的一个符号;
-##     ② 它是**字体字形**: 抗锯齿、随回退字体变形。一屏硬边像素框里只有它是软边;
-##     ③ `›` **不在 `tests/verify_fonts.gd` 的 `USED_CODEPOINTS` 白名单里** ——
-##        那条门禁只保证"名单里的字有字形", 名单外的少了它一声不响。打包到
-##        Web/Linux(没系统字体, 只剩 m6x11+NotoSansSC+NotoEmoji 三级回退) 就是豆腐块,
-##        连"这一条能点"这层暗示一起丢。
-## ★不许直接删箭头: 删了这条入口和上面那些**不可点**的属性行长得一模一样,
-##   玩家无从知道它能点(这一整条的存在意义就是"内容太多、点开看")。
-## ★为什么是画出来的而不是新做一张 PNG: `assets/sprites/` 下**没有任何箭头素材** ——
-##   battlehud(5 张全是框) / menu / ui / stats / shop / teamselect / rules 逐个 ls 过,
-##   一张都没有。而 5 个 `draw_rect` 就是一枚 1:1 的硬边像素箭头:
-##   不缩放(⇒ 不会踩 `vfx_discipline` 那条"像素贴图不许连续缩放") / 不抗锯齿 / 颜色跟状态走。
-## ★用 `draw` 信号而不是新开一个 .gd: 这是 UI 层一枚 10×14 的装饰, 不值一个文件;
-##   而 `bind(self 的方法)` 捕获的是 RefCounted(本类), 不是 Node —— 安全的那一侧
-##   (memory: 闭包捕获 Node 不安全、捕获 RefCounted 安全)。
-func _pixel_arrow() -> Control:
-	var c := Control.new()
-	c.custom_minimum_size = Vector2(ARROW_W, 14.0)
-	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	c.set_meta("tint", ARROW_DIM)
-	c.draw.connect(_draw_arrow.bind(c))
-	return c
-
-
-## 真正下笔的那一步: 5 根 2px 宽的竖条, 高 10/8/6/4/2, 各自竖向居中 ⇒ 朝右的实心三角。
-## 颜色取节点上的 `tint` 元数据 —— 悬停时 `_arrow_lit` 改它再 `queue_redraw()`。
-func _draw_arrow(c: Control) -> void:
-	if not is_instance_valid(c):
-		return
-	var t: Color = c.get_meta("tint", ARROW_DIM)
-	for i in range(5):
-		var hh: float = 10.0 - float(i) * 2.0
-		c.draw_rect(Rect2(float(i) * 2.0, (c.size.y - hh) * 0.5, 2.0, hh), t, true)
-
-
-## 悬停/离开时的【选中态】: 整条亮一档 + 箭头点亮。
-## ★`modulate` 可以 >1(过曝一档), 这正是金属签牌被光照到的样子 —— 与 `UISkin.button`
-##   的 hover 档(×1.22) 取同一个系数, 免得同一屏两种"亮一档"。
-func _arrow_lit(row: Control, arrow: Control, on: bool) -> void:
-	if not is_instance_valid(row) or not is_instance_valid(arrow):
-		return
-	row.modulate = Color(1.22, 1.22, 1.22) if on else Color.WHITE
-	arrow.set_meta("tint", ARROW_LIT if on else ARROW_DIM)
-	arrow.queue_redraw()
-
-
-## 次要 11 项属性的整段文字。★单一出处 —— 建入口条、点开、以及浮层开着时每帧刷新
+## 次要 11 项属性的整段文字。★单一出处 —— 点开、以及浮层开着时每帧刷新
 ##   三处都调它, 不许任何一处自己再拼一遍(手抄的副本必然落后)。
 func _more_stats_text(u: Dictionary) -> String:
 	var out := ""
@@ -1478,11 +1405,6 @@ func _nine_box(tex_path: String, margin: int, fallback: StyleBox) -> StyleBox:
 
 const HUD_TEX := "res://assets/sprites/battlehud/"
 
-## 入口条行尾那枚像素箭头(见 `_pixel_arrow`)。宽 = 5 根 × 2px。
-const ARROW_W := 10.0
-## 常态色比原来那个 `›` 的 #5f7186 提一档 —— 原来那枚太暗, "可点"这层暗示本身就偏弱。
-const ARROW_DIM := Color("#7f9ab4")
-const ARROW_LIT := Color("#cfe6ff")
 
 
 ## 在给定容器里铺一层条框(九宫格)。没贴图返回 null, 调用方退回纯色底。

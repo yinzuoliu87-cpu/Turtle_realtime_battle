@@ -1041,7 +1041,6 @@ scripts/scenes/RealtimeBattle3DScene.gd|lit|实时
 scripts/scenes/RealtimeBattle3DScene.gd|lit|弹道数=%d (可能没回收)
 scripts/scenes/RealtimeBattle3DScene.gd|lit|归队
 scripts/scenes/RealtimeBattle3DScene.gd|lit|怒火药水
-scripts/scenes/RealtimeBattle3DScene.gd|lit|战利品 %d/5
 scripts/scenes/RealtimeBattle3DScene.gd|lit|未知龟
 scripts/scenes/RealtimeBattle3DScene.gd|lit|枪
 scripts/scenes/RealtimeBattle3DScene.gd|lit|海胆盾
@@ -1423,6 +1422,7 @@ scripts/scenes/battle/info_panel.gd|lit|层数 %d
 scripts/scenes/battle/info_panel.gd|lit|已开 %d/%d · 距第 %d 箱
 scripts/scenes/battle/info_panel.gd|lit|怒气
 scripts/scenes/battle/info_panel.gd|lit|恐惧
+scripts/scenes/battle/info_panel.gd|lit|战利品 %d/%d
 scripts/scenes/battle/info_panel.gd|lit|技能
 scripts/scenes/battle/info_panel.gd|lit|技能 · %d 龟能
 scripts/scenes/battle/info_panel.gd|lit|护甲

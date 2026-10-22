@@ -111,6 +111,40 @@ func _check_battle_panel_matches(loot: Array, tag: String) -> void:
 		if str(_inv_vals.get(k, "-")) != str(want[k]):
 			diff.append("%s 背包「%s」/ 对局「%s」" % [k, _inv_vals.get(k, "-"), want[k]])
 	_ok("%s ★★背包属性小卡六个数 == 对局信息面板(同等级 / 装备 / 战利品 / 技能选择)" % tag, diff.is_empty(), str(diff))
+	## ⑫ 对局信息面板的战利品格(用户 2026-10-22「换」: 入口条换成一排图标格)—— 同一个单位开真面板
+	if tag == "⑩":
+		s._edit_mode = false
+		s._over = false
+		s.set_process(false)
+		s._hud._show_unit_info_panel(u)
+		s._info_sys._refresh_info_panel()
+		await _frames(4)
+		var lrow: Node = s._info_panel.find_child("LootRow", true, false)
+		_ok("⑫ ★分母: 对局面板里有战利品格那一排", lrow != null)
+		if lrow != null:
+			var lit := 0
+			var tappable := 0
+			var first_lit: Control = null
+			for sl in lrow.get_children():
+				var has_icon: bool = (sl as Node).get_child_count() > 0
+				if has_icon:
+					lit += 1
+					if first_lit == null:
+						first_lit = sl as Control
+				if (sl as Control).mouse_filter == Control.MOUSE_FILTER_STOP and not (sl as Control).gui_input.get_connections().is_empty():
+					tappable += 1
+			_ok("⑫ 格数 = 件数上限 %d、亮格 = 已开 %d 件、只有亮格点得动" % [ChestLoot.THRESH.size(), loot.size()],
+				lrow.get_child_count() == ChestLoot.THRESH.size() and lit == loot.size() and tappable == loot.size(),
+				"格 %d / 亮 %d / 可点 %d" % [lrow.get_child_count(), lit, tappable])
+			if first_lit != null:
+				var ev := InputEventMouseButton.new()
+				ev.button_index = MOUSE_BUTTON_LEFT
+				ev.pressed = true
+				first_lit.gui_input.emit(ev)
+				await _frames(3)
+				var ov: Node = s._info_panel.get_node_or_null("DetailOverlay")
+				_ok("⑫ ★点亮格 ⇒ 打开战利品浮层(key = chest_loot)", ov != null and (ov as CanvasItem).visible
+					and str(ov.get_meta("key", "")) == "chest_loot", str(ov.get_meta("key", "")) if ov else "无浮层")
 	s._units.clear()
 	s.set_process(false)
 	s.queue_free()

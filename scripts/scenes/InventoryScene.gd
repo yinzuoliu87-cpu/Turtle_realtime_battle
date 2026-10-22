@@ -1398,7 +1398,7 @@ func _treasure_map_section(vb: VBoxContainer) -> void:
 	hl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(hl)
 	## 说法照对局信息面板(用户 2026-10-22「已开满5件，这又是你从哪里学的描述？」—— 那句是我编的):
-	##   入口条写「战利品 x/5」, 财宝条写「当前 / 下一箱阈值」, 开满之后财宝条不画(info_panel ⑦ 财宝)。
+	##   战利品浮层标题写「战利品 x/5」, 财宝条写「当前 / 下一箱阈值」, 开满之后财宝条不画(info_panel ⑦ 财宝)。
 	var cl := _stat_lbl("战利品 %d/%d" % [opened, ChestLoot.THRESH.size()], InspectCard.C_TITLE)
 	cl.name = "TreasureCount"
 	head.add_child(cl)
