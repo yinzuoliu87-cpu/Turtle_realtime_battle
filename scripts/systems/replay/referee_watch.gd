@@ -13,7 +13,9 @@ extends RefCounted
 ##             1 倍从头放、没有「回放」小签、没有播放控件; 放完走正常结算屏, 胜负 / 战绩 / 奖励都是服务器那一份
 ##   ★账在播之前就记完: 播到一半杀进程 / 退出, 账也不会丢、不会记两次。
 ##   ★断网 / 超时 / 服务端拒收 ⇒ 屏上一句话, **不出本地成绩**(问题总表 B1)。
-##     交上去之后才断网 ⇒ 待记账单留着, 下次开主菜单 `resume_if_any` 查任务状态补记。
+##     交上去之后才断网 / 等到上限还没算完(ST_LATER)⇒ 待记账单留着, 匹配屏自己回主菜单并飘「稍后自动记入」(`notice`);
+##     主菜单开着时每 MENU_POLL_SEC 秒查一次任务状态补记(`resume_if_any`), 杀进程的话下次开主菜单补记。
+##     (2026-10-22 内测服整周彩排: 裁判机排队 > 180 秒的 7 / 100 局把 8 个号停在匹配屏, 要自己退回主菜单才补记。)
 ##   ★服务端回 `off`(开关刚关)⇒ 记下开关, 退回老路本机打(行为与开关关着一样)。
 ##   ★录像在本机重算对不上(`_diverge`)⇒ 结算屏照样按服务器结果出, 加一行「录像无法在本设备播放」。
 ##   ★★逐帧直播 S5(docs/plans/20261019-服务器逐帧直播.md §4): 开关 `stream_on` 开着时「播放」这一步改成**播服务器的状态流**
@@ -38,7 +40,7 @@ const SW := preload("res://scripts/systems/replay/stream_watch.gd")
 const TXT_SUBMITTING := "正在提交阵容"
 const TXT_SETTLING := "正在结算"
 const TXT_NEED_SERVER := "连接服务器后才能比赛"
-const TXT_LATER := "结算未完成，下次打开时补记"
+const TXT_LATER := "对局结果计算中，稍后自动记入战绩"
 const TXT_FAILED := "结算失败，请重新开战"
 const TXT_UPDATE := SW.TXT_UPDATE   # 与逐帧直播的版本闸同一句话(只存一份)
 const TXT_CLOSED := "闯关赛仅限周六"
@@ -53,11 +55,26 @@ const TXT_RESUMED_LOSE := "上一场闯关：失败"
 const TXT_FINALS_COINS := "战斗内铸币 +%d"
 const MAIN_MENU := "res://scenes/MainMenu.tscn"
 
-## 查任务的间隔(秒)与上限(次): 一局 ≤ 15 秒 + 排队; 3 分钟还没算完 ⇒ 不再干等, 待记账单留着下次补。
+## 查任务的间隔(秒)与上限(次): 合计 180 秒还没算完 ⇒ 不再干等(ST_LATER: 回主菜单, 待记账单留着由主菜单补记)。
+##   实测一局: 内测服裁判机约 29 秒 / 局(10-22 彩排); 正式服 CX33 上满装备三路打满不录约 150 秒(referee_poller.py 头注)。
+##   裁判机那边一局的墙钟上限是 JOB_TIMEOUT_SEC = 600 —— 那是「判这一局超时」的线, 不是玩家该在匹配屏干等的时长。
 const POLL_SEC := 2.0
 const POLL_MAX := 90
+## 【门禁注入点】> 0 时替代 POLL_MAX(门禁不用真等 180 秒)。默认 0 = 不生效 ⇒ 玩家路径一字不动;
+##   static ⇒ 活过场景切换 ⇒ 用完必须还原(样式同 `SupabaseNet.match_fetch_timeout_for_test`)。
+static var poll_max_for_test := 0
+
+
+static func poll_max() -> int:
+	return poll_max_for_test if poll_max_for_test > 0 else POLL_MAX
+
+
 ## 连着几次问不到服务端(交上去之后断网)⇒ 不再干等。
 const OFFLINE_MAX := 3
+## 主菜单开着、待记账单还挂着 ⇒ 多久再查一次任务状态(秒)。单子清掉就不再查。
+const MENU_POLL_SEC := 10.0
+## 主菜单要飘的一行(匹配屏等不到结果、回主菜单时写)。读走即清(样式同 `AbandonedMatch.notice`)。
+static var notice := ""
 ## 周日等开播时对阵图多久拉一次(秒; 平时 30 秒)。
 const FINALS_POLL_SEC := 5.0
 
@@ -68,6 +85,7 @@ const ST_FETCH := "fetch"
 const ST_PLAY := "play"
 const ST_LOCAL := "local"       # 服务端说开关已关 ⇒ 调用方走老路(本机打)
 const ST_ERROR := "error"       # 停在原地, msg 说清原因(没有本地成绩)
+const ST_LATER := "later"       # 交上去了、结果没等到(等到上限 / 问不到): 单子留着 ⇒ 调用方回主菜单, 主菜单补记
 
 
 ## 周六这一场交给服务器吗(调用方已判过「今天是周六且闯关赛上线」, 这里只看开关)。
@@ -189,6 +207,16 @@ static func result_line(view: Dictionary) -> String:
 
 
 # ─────────────────────────────── 主菜单补记 ───────────────────────────────
+## 开主菜单查一次; 单子还挂着 ⇒ 主菜单开着时每 MENU_POLL_SEC 秒再查(`has_pending` 为假就不再查)。
+## 两处同时查到同一个 done 也只记一次: `settle` 只认单子上那个任务号, 记完单子就清了。
+
+## 有没有挂着的待记账单。
+static func has_pending() -> bool:
+	if GameState == null:
+		return false
+	var p = GameState.get("referee_pending")
+	return p is Dictionary and not (p as Dictionary).is_empty()
+
 
 ## 有待记账单 ⇒ 查一次任务状态: 算完了就补记(`done.call(view)`), 失败 / 没这一单就销单, 还在算就留着。
 ## 返回 false = 没发(没有单子 / 没配后端)。

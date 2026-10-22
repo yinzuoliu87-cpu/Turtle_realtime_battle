@@ -1,8 +1,9 @@
 extends Node
 ## 服务器裁判 · 周六一场: 提交 → 等结果 → 记账 → 取录像 → 播(2026-10-19 · 流程说明见 referee_watch.gd 头注)。
 ## 挂在匹配屏上(`MatchmakingScene._server_pick`); 匹配屏离场它就跟着没了 —— 交上去之后的单子在存档里
-##   (`GameState.referee_pending`), 下次开主菜单 `RefereeWatch.resume_if_any` 补记。
-## 状态: submit → wait → fetch → play; 停下 = error(屏上 msg 说清原因, 没有本地成绩) / local(服务端说开关已关 ⇒ 调用方走老路)。
+##   (`GameState.referee_pending`), 主菜单 `RefereeWatch.resume_if_any` 补记。
+## 状态: submit → wait → fetch → play; 停下 = error(屏上 msg 说清原因, 没有本地成绩) / local(服务端说开关已关 ⇒ 调用方走老路) /
+##   later(交上去了、等到上限还没算完或问不到 ⇒ 单子留着, 匹配屏回主菜单, 主菜单补记)。
 ## ★2026-10-20 起对手由服务端挑(`referee_gauntlet_start`): 这里只交「我的阵容 + 第几场」, 对手卡片从回包里来(`opp`),
 ##   匹配屏拿它画 VS 卡。客户端不再有任何途径指定对手或种子。
 
@@ -82,12 +83,19 @@ func _poll() -> void:
 	polls += 1
 	if not RW.RN.job_status_async(job_id, _on_status):
 		_inflight = false
-		_stop(RW.TXT_LATER)
+		_later()
 
 func _stop(m: String) -> void:
 	if _tm != null:
 		_tm.stop()
 	_to(RW.ST_ERROR, m)
+
+
+## 交上去了、这一屏等不到结果: 单子留着(主菜单补记), 匹配屏据此回主菜单。
+func _later() -> void:
+	if _tm != null:
+		_tm.stop()
+	_to(RW.ST_LATER, RW.TXT_LATER)
 
 func _on_status(res: Dictionary) -> void:
 	_inflight = false
@@ -102,7 +110,7 @@ func _on_status(res: Dictionary) -> void:
 	if err != "":
 		offline += 1
 		if offline >= RW.OFFLINE_MAX:
-			_stop(RW.TXT_LATER)          # 交上去了, 但问不到结果: 单子留着, 下次开主菜单补记
+			_later()                     # 交上去了, 但问不到结果: 单子留着, 主菜单补记
 		return
 	offline = 0
 	match str(res.get("status", "")):
@@ -121,8 +129,8 @@ func _on_status(res: Dictionary) -> void:
 			GameState.save()
 			_stop(RW.TXT_FAILED)
 		_:
-			if polls >= RW.POLL_MAX:
-				_stop(RW.TXT_LATER)
+			if polls >= RW.poll_max():
+				_later()                 # 裁判机排队 / 算得慢: 等到上限还没算完 ⇒ 不在这一屏干等
 
 func _fetch() -> void:
 	_to(RW.ST_FETCH, RW.TXT_SETTLING)

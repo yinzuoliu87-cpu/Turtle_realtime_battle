@@ -142,6 +142,8 @@ WHY = {
     "clock_hook_in_test": "时钟核对钩子的门禁开关(GameState.gd `_on_clock_confirmed`; 产品不走 test_mode, 钩子恒开; "
                           "门禁一律 test_mode ⇒ 默认关, 免得一条带 Date 头的假回包把别的门禁摆的局面滚掉。"
                           "verify_boot_season_clock 打开它量「偏移晚到 ⇒ 钩子补判、不清档、晋级算出来」那一支)",
+    "poll_max_for_test": "周六裁判局等待上限(次)注入(referee_watch.gd `poll_max()`; 产品用 POLL_MAX 90 × POLL_SEC 2 = 180 秒, "
+                         "verify_referee_wait_timeout 压到 3 次量「等到上限还没算完 ⇒ 回主菜单、主菜单开着时补记」那一支, 不用真等 3 分钟)",
     ## ⚠ 这张表**只写核对过出处的理由** —— 一条实测教训, 留一句免得重犯:
     ##   2026-09-28 我顺手给 `_info_passive_lbl` / `_info_passive_tpl` 编了两条理由,
     ##   一查全错: 它们当时已经被删掉了, 而"tests 在写它"其实是判据把

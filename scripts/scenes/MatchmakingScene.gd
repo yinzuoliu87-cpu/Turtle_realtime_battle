@@ -53,6 +53,8 @@ const _RUN := preload("res://scripts/systems/replay/referee_run.gd")
 
 ## 撮合结束去哪 —— **单一出处**。下面那条缝把它当入参交给回调, 回调只读不改。
 const BATTLE_SCENE := "res://scenes/RealtimeBattle3D.tscn"
+## 周六服务器局等不到结果(`RefereeWatch.ST_LATER`)⇒ 回主菜单(与「看完那一场」同一个去处 `RefereeWatch.MAIN_MENU`)。
+const MENU_SCENE := _RW.MAIN_MENU
 
 ## 【门禁注入点】有效时由它回答「现在该不该离开这一屏」—— 返回 false = 留在原地不动。
 ##
@@ -72,8 +74,9 @@ const BATTLE_SCENE := "res://scenes/RealtimeBattle3D.tscn"
 ##   是 **static** ⇒ 活过场景切换 ⇒ **用完必须还原**(漏还原会波及同进程后面的用例)。
 ##
 ## ⚠ 这条缝**只管「什么时候走」**, 两条边界都是硬的:
-##   · **去哪不由它说** —— 目标始终是上面那个 `BATTLE_SCENE` 常量。它作为**入参**
-##     交给回调只为一件事: 让门禁能断言「目标没被这条缝改过」。回调改不了它。
+##   · **去哪不由它说** —— 目标是上面那两个常量之一: 正常撮合完 `BATTLE_SCENE`;
+##     周六服务器局等不到结果 `MENU_SCENE`(2026-10-22, 见 `_leave_later`)。它作为**入参**
+##     交给回调只为一件事: 让门禁能断言「走的是哪一个出口、目标没被这条缝改过」。回调改不了它。
 ##   · **撮合逻辑一个字没动** —— 抽对手 / 排除自己 / 写 `dual_ghost` 全在它之前,
 ##     两个计时器的时长也没动。缝只搭在**最后那一步**上。
 ## ⚠ 拦点在**淡出黑幕之前**: 淡出与 `change_scene_to_file` 是「离开这一屏」同一件事的
@@ -241,6 +244,29 @@ func _on_referee_changed() -> void:
 		get_tree().change_scene_to_file(BATTLE_SCENE)
 		return
 	_ref_label()
+	if str(_ref_run.state) == _RW.ST_LATER:
+		_leave_later()
+
+
+## ★周六服务器局交上去了、这一屏等不到结果(裁判机排队超过上限 / 交上去之后断网)⇒ 不停在这一屏:
+##   回主菜单, 主菜单飘「稍后自动记入战绩」(`RefereeWatch.notice`), 并在开着时按待记账单查任务状态补记。
+##   (2026-10-22 内测服整周彩排: 原来停在 VS 卡下面一行「结算未完成」, 8 个号要自己按「←」才回得去。)
+var _leaving := false
+
+func _leave_later() -> void:
+	if _leaving or _cancelled or not is_inside_tree():
+		return
+	_leaving = true
+	## 【门禁注入点】同 `_ready` 末尾那一处(见文件顶部长注释), 出口是 MENU_SCENE。
+	if _may_leave_for_test.is_valid() and not bool(_may_leave_for_test.call(MENU_SCENE)):
+		return
+	_RW.notice = _RW.TXT_LATER
+	await _fade_to_black(0.4)
+	if _cancelled or not is_inside_tree():
+		return
+	_cancelled = true                 # 之后 `_server_pick` / 雷达环那几条协程见到它就收手(同「←」)
+	GameState.mode = "single"         # 与「←」同一句: 离开双路 → 中性态
+	get_tree().change_scene_to_file(MENU_SCENE)
 
 
 # ---------------------------------------------------------------------------
@@ -323,6 +349,9 @@ func _on_cancel() -> void:
 	_cancelled = true
 	if _dots_tween != null and _dots_tween.is_valid():
 		_dots_tween.kill()
+	## 周六服务器局已交上去、还在等结果时按「←」: 那一场照样算、照样记(待记账单) ⇒ 主菜单说一句, 别让人以为这一场没了。
+	if _ref_run != null and str(_ref_run.state) == _RW.ST_WAIT:
+		_RW.notice = _RW.TXT_LATER
 	GameState.mode = "single"   # 离开双路 → 中性态; 下次入口会再 reset_dual_lane
 	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 

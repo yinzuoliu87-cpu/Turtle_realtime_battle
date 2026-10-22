@@ -228,6 +228,7 @@ func _ready() -> void:
 	##   周六交给服务器、还没记账的那一场(杀进程 / 断网)在这里查任务状态补记。判据全在 referee_watch.gd。
 	load("res://scripts/net/referee_net.gd").refresh_flags_async()
 	load("res://scripts/systems/replay/referee_watch.gd").resume_if_any(_on_referee_resumed)
+	_referee_resume_timer()   # 单子还挂着(裁判机还没算完)⇒ 主菜单开着时隔一会儿再查, 算完当场补记(2026-10-22)
 	## 周日服务器局的战斗内铸币: 待取单(杀进程 / 断网时没取到的)在这里补取。判据全在 referee_watch.gd; 没单子不发请求。
 	load("res://scripts/systems/replay/referee_watch.gd").claim_finals_coins()
 	load("res://scripts/net/ghost_uploader.gd").retry()   # E7: 没回读确认的对手快照补传(判据全在 ghost_uploader 里)
@@ -298,6 +299,11 @@ func _ready() -> void:
 	if _AM.notice != "":
 		_toast(_AM.notice)
 		_AM.notice = ""
+	## 周六服务器局在匹配屏等不到结果、回到这里: 飘一行「稍后自动记入」(补记到了换成结果那一行, 见 `_on_referee_resumed`)。
+	var _rwn = load("res://scripts/systems/replay/referee_watch.gd")
+	if str(_rwn.notice) != "":
+		_toast(str(_rwn.notice))
+		_rwn.notice = ""
 	if not _first_week():
 		_first_tip(paint_ts)
 
@@ -2750,8 +2756,44 @@ var _clock_reads: int = 0
 
 ## 上一场周六裁判局补记完了: 说一句结果(不另开弹窗)。
 func _on_referee_resumed(view: Dictionary) -> void:
-	if is_inside_tree():
-		_toast(load("res://scripts/systems/replay/referee_watch.gd").resume_text(view))
+	if not is_inside_tree():
+		return
+	var rw = load("res://scripts/systems/replay/referee_watch.gd")
+	## 「稍后自动记入」那一句此刻已过时: 还没飘的不飘了, 正飘着的撤掉(同一处不叠两行字)。
+	rw.notice = ""
+	for c in get_children():
+		if c is Label and str((c as Label).text) == str(rw.TXT_LATER):
+			c.queue_free()
+	_toast(rw.resume_text(view))
+	## 模式卡第二行是周六的战绩读数, 补记之后重画(与 `rebuild_week_page` 同一句)。
+	if is_instance_valid(_mode_box):
+		_mode_card(_strip_now())
+
+
+## 周六裁判局的待记账单还挂着 ⇒ 挂一个 Timer 子节点(方法引用、不是闭包: 主菜单没了它跟着没),
+##   每 `RefereeWatch.MENU_POLL_SEC` 秒查一次任务状态; 单子清掉(补记完 / 销单)就拆掉。没有单子 ⇒ 不建。
+const REF_RESUME_TIMER := "RefereeResumeTimer"
+
+func _referee_resume_timer() -> void:
+	var rw = load("res://scripts/systems/replay/referee_watch.gd")
+	if not rw.has_pending() or get_node_or_null(REF_RESUME_TIMER) != null:
+		return
+	var t := Timer.new()
+	t.name = REF_RESUME_TIMER
+	t.wait_time = float(rw.MENU_POLL_SEC)
+	t.autostart = true
+	t.timeout.connect(_referee_resume_tick)
+	add_child(t)
+
+
+func _referee_resume_tick() -> void:
+	var rw = load("res://scripts/systems/replay/referee_watch.gd")
+	if not rw.has_pending():
+		var t := get_node_or_null(REF_RESUME_TIMER)
+		if t != null:
+			t.queue_free()
+		return
+	rw.resume_if_any(_on_referee_resumed)
 
 
 func _start_battle_flow() -> void:

@@ -839,6 +839,7 @@ scripts/scenes/InventoryScene.gd|lit|空槽位
 scripts/scenes/InventoryScene.gd|lit|站位
 scripts/scenes/InventoryScene.gd|lit|精英
 scripts/scenes/InventoryScene.gd|lit|精英小将
+scripts/scenes/InventoryScene.gd|lit|统领%d
 scripts/scenes/InventoryScene.gd|lit|背包
 scripts/scenes/InventoryScene.gd|lit|设置开战站位
 scripts/scenes/InventoryScene.gd|lit|阵容说明
@@ -854,14 +855,11 @@ scripts/scenes/InventoryScene.gd|text|卸下
 scripts/scenes/InventoryScene.gd|text|取消
 scripts/scenes/InventoryScene.gd|text|后排
 scripts/scenes/InventoryScene.gd|text|完成教程
-scripts/scenes/InventoryScene.gd|text|小将
 scripts/scenes/InventoryScene.gd|text|打碎
 scripts/scenes/InventoryScene.gd|text|查看更多（%d 行）
 scripts/scenes/InventoryScene.gd|text|知道了
 scripts/scenes/InventoryScene.gd|text|空槽位
-scripts/scenes/InventoryScene.gd|text|精英小将
 scripts/scenes/InventoryScene.gd|text|糖果罐 · 第 %d 档\n打碎可获得：%s（每大轮限 1 次）
-scripts/scenes/InventoryScene.gd|text|统领%d
 scripts/scenes/InventoryScene.gd|text|背包为空
 scripts/scenes/InventoryScene.gd|text|装备背包
 scripts/scenes/InventoryScene.gd|text|详情
@@ -1975,6 +1973,7 @@ scripts/systems/replay/referee_watch.gd|lit|匹配失败，请稍后重试
 scripts/systems/replay/referee_watch.gd|lit|备战阶段 · 结束后开赛
 scripts/systems/replay/referee_watch.gd|lit|失败
 scripts/systems/replay/referee_watch.gd|lit|实时
+scripts/systems/replay/referee_watch.gd|lit|对局结果计算中，稍后自动记入战绩
 scripts/systems/replay/referee_watch.gd|lit|录像无法在本设备播放
 scripts/systems/replay/referee_watch.gd|lit|战斗内铸币 +%d
 scripts/systems/replay/referee_watch.gd|lit|战绩已同步，请重新开战
@@ -1982,7 +1981,6 @@ scripts/systems/replay/referee_watch.gd|lit|本周闯关已结束
 scripts/systems/replay/referee_watch.gd|lit|正在提交阵容
 scripts/systems/replay/referee_watch.gd|lit|正在结算
 scripts/systems/replay/referee_watch.gd|lit|结算失败，请重新开战
-scripts/systems/replay/referee_watch.gd|lit|结算未完成，下次打开时补记
 scripts/systems/replay/referee_watch.gd|lit|胜利
 scripts/systems/replay/referee_watch.gd|lit|连接服务器后才能比赛
 scripts/systems/replay/referee_watch.gd|lit|闯关 %s · %s

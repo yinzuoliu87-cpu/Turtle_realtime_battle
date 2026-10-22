@@ -13,7 +13,8 @@ extends Node
 ##   B ★服务器说输、本地重算说赢 ⇒ 记输、结算屏写「失败」(以服务器为准)
 ##   C 录像在本机对不上(改坏一个校验点)⇒ 停下, 结算屏照样按服务器结果出 + 「录像无法在本设备播放」; 战绩照记
 ##   D 断网点开战 ⇒ 屏上「连接服务器后才能比赛」, 不进战斗场、战绩 / 币 / 场次 / 战绩页一个都不动、没有待记账单
-##   E 交上去之后断网 ⇒「下次打开时补记」、单子留着; 杀进程(匹配屏没了)⇒ 下次开主菜单补记一次, 再来一次不重复记
+##   E 交上去之后断网 ⇒「稍后自动记入战绩」、单子留着、匹配屏走主菜单那个出口(2026-10-22; 等到上限那一支见 verify_referee_wait_timeout);
+##     杀进程(匹配屏没了)⇒ 下次开主菜单补记一次, 再来一次不重复记
 ##   F 开关关 ⇒ 老路: 走到「去战斗场」那一步、一次都不交
 ## 每条判据都做过反向验证(改坏 → 红 → 逐字节还原), 见方案书「验收清单」那一行。
 
@@ -448,9 +449,16 @@ func _t_e() -> void:
 	var subs0 := _hit(START)
 	var m: Node = await _open_mmk()
 	await _wait(func() -> bool: return _hit(START) > subs0)
+	## 匹配屏问不到结果会自己走主菜单那个出口: 缝拦在离开之前(记下出口), 这一段量的是「杀进程之后下次补记」
+	var dests: Array = []
+	MMK._may_leave_for_test = func(dest: String) -> bool:
+		dests.append(dest)
+		return false
 	_offline_status = true
 	await _wait(func() -> bool: return _status_text(m) == RW.TXT_LATER, 20000)
 	_ok("E ★问不到结果 ⇒「%s」" % RW.TXT_LATER, _status_text(m) == RW.TXT_LATER, _status_text(m))
+	_ok("E ★不停在匹配屏: 走主菜单那个出口(一次)", dests == [MMK.MENU_SCENE], str(dests))
+	MMK._may_leave_for_test = Callable()
 	_ok("E 单子留着(这一场)、战绩没动", int((_gs.referee_pending as Dictionary).get("job_id", -1)) == _job
 		and int(_gs.gauntlet_wins) == int(s0["gw"]) and int(_gs.gauntlet_losses) == int(s0["gl"]))
 	## 杀进程: 匹配屏没了(待记账单在存档里)
