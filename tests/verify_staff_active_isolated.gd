@@ -96,6 +96,9 @@ func _ready() -> void:
 	RB.DEBUG_EDIT = true
 	var s = RB.new()
 	add_child(s)
+	## ★每帧恰好推一步(2026-10-22 CI 红: 下面那 180 帧里战斗场自己的 _process 也按真实帧长推 sim ——
+	##   本机帧率高时一帧几乎不推, CI 慢机一帧推 4 步 ⇒ 两组的对比被机器快慢污染; --max-fps 15 本机复现了)。
+	s._deterministic = true
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var c: Vector2 = s.ARENA.position + s.ARENA.size * 0.5
