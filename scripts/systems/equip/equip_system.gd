@@ -1705,8 +1705,8 @@ func _eq_chain_lightning(u: Dictionary, si: int) -> void:
 	var enemies = battle._targeting._pick_enemies_of(u)
 	if enemies.is_empty():
 		return
-	var hops: int = [4, 5, 6][si]
-	var dmg: int = [40, 60, 90][si]
+	var hops: int = CHAIN_HOPS[si]
+	var dmg: int = roundi(float(CHAIN_DMG[si]) + float(u["atk"]) * CHAIN_ATK_COEF)   # 每跳 = 基础 + 10% 攻击力(出手那一刻)
 	# 目标序列: 首个随机, 之后每跳=离当前最近(优先未命中; 无未命中则跳已命中, 排除刚打的→两目标间来回弹)
 	var seq: Array = []
 	var hit: Array = []  # ★2026-07-10 闪退真因: 不能拿【单位字典】当 Dictionary 的 key —— Godot 会对 key 求哈希, 单位字典里有 summons/summon_owner 等互相引用的结构 → recursive_hash 无限递归 → 每次查表刷一条 ERROR: Max recursion reached。改用 Array(.has 走 == 不哈希)。
@@ -1759,6 +1759,10 @@ const LASER_ARC_DEG := 120.0
 const LASER_HALF_DEG := LASER_ARC_DEG / 2.0
 ## 【026 雷电法杖】每段伤害给【法器法力条】充多少(用户 2026-08-12 削弱: 原 25)。
 const THUNDER_MANA_PER_HIT := 15.0
+## 【026 雷电法杖】连锁闪电(用户 2026-10-22「每条伤害改为25/40/70+0.1ATK，共7/10/15跳」; 原 40/60/90 魔法伤害、4/5/6 跳)。
+const CHAIN_HOPS := [7, 10, 15]          # 共命中几次(1/2/3 星)
+const CHAIN_DMG := [25, 40, 70]          # 每跳基础魔法伤害(1/2/3 星)
+const CHAIN_ATK_COEF := 0.1              # 每跳另加 10% 攻击力
 const LASER_MELEE_BONUS := 250.0   # 激光长刃 010: 近战携带者额外 +250 码半径(用户 2026-08-01)
 
 const LASER_SLASH_TEX := "res://assets/sprites/vfx/eq010-slash.png"  # 扇形斩: 16 向 × 5 帧

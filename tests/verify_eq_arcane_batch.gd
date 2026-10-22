@@ -297,7 +297,7 @@ func _t_stats() -> void:
 	var want := {
 		"p2eq_088": [{"magicPen": 5, "_maxEnergy": 12}, {"magicPen": 11, "_maxEnergy": 22}, {"magicPen": 20, "_maxEnergy": 40}],
 		"p2eq_089": [{"_echargePct": 6, "def": 6}, {"_echargePct": 11, "def": 13}, {"_echargePct": 18, "def": 22}],
-		"p2eq_090": [{"magicPen": 18, "hp": 150, "_maxEnergy": 45}, {"magicPen": 42, "hp": 420, "_maxEnergy": 80}, {"magicPen": 110, "hp": 1200, "_maxEnergy": 150}],
+		"p2eq_090": [{"magicPen": 13, "hp": 150, "_maxEnergy": 45}, {"magicPen": 21, "hp": 420, "_maxEnergy": 80}, {"magicPen": 40, "hp": 1200, "_maxEnergy": 150}],
 	}
 	var checked := 0
 	for iid in want:

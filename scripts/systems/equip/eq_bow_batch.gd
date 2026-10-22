@@ -68,12 +68,18 @@ func _init(b) -> void:
 # ══════════════════════════════════════════════════════════════════
 #  §073 藤蔓弓弦 (弓箭·1费)
 #  「携带者身上获得一个藤蔓小球。每次普攻时, 小球向随机目标射出藤蔓箭,
-#    造成 20/30/45% ATK 物理伤害。藤蔓箭可单独暴击; 暴击时转为真实伤害,
-#    同时携带者获得持续 2 秒的 20/25/30% 攻击速度(刷新不叠加)。」
+#    造成 (15/23/30 + 30/40/60% ATK) 物理伤害。藤蔓箭可单独暴击; 暴击时转为真实伤害,
+#    同时携带者获得持续 3 秒的 35/45/60% 攻击速度(刷新不叠加)。」
+#  (用户 2026-10-23 改; 原 20/30/45% ATK · 20/25/30% 攻速持续 2 秒)
 # ══════════════════════════════════════════════════════════════════
 
-## 攻速 buff 的持续秒数(用户原文"持续 2 秒")
-const VINE_ASPD_SEC := 2.0
+## 攻速 buff 的持续秒数(用户 2026-10-23「攻击速度改为在3秒内提供35/45/60%」; 原 2 秒)
+const VINE_ASPD_SEC := 3.0
+## 藤蔓箭伤害 = 基础 + 攻击力 × 系数(1/2/3 星)
+const VINE_FLAT := [15, 23, 30]
+const VINE_ATK := [0.30, 0.40, 0.60]
+## 暴击时给的攻速(1/2/3 星)
+const VINE_ASPD := [0.35, 0.45, 0.60]
 
 
 ## 每次普攻: 小球射一支藤蔓箭。
@@ -91,7 +97,7 @@ func on_basic_073(u: Dictionary, si: int) -> void:
 	if not t.get("alive", false):
 		return
 	var stt: Dictionary = u["eq_state"].get("p2eq_073", {})
-	var base: float = float(u.get("atk", 0.0)) * [0.20, 0.30, 0.45][si]
+	var base: float = float(VINE_FLAT[si]) + float(u.get("atk", 0.0)) * float(VINE_ATK[si])
 	## 藤蔓箭【单独掷一次暴击】, 用的是携带者自己的暴击率(用户拍板)。
 	var crit: bool = battle._battle_rng.randf() < minf(float(u.get("crit", 0.0)), 1.0)
 	_note_owner(u)
@@ -123,7 +129,7 @@ func on_basic_073(u: Dictionary, si: int) -> void:
 ## ★"刷新不叠加"的实现 = **只记一份增量**: 已经挂着就只把到期时刻往后推;
 ##   多带一件更高星的会把增量升到更高的那个(而不是加两份)。
 func _vine_grant_aspd(u: Dictionary, si: int, stt: Dictionary) -> void:
-	var want: float = [0.20, 0.25, 0.30][si]
+	var want: float = float(VINE_ASPD[si])
 	var given: float = float(stt.get("vine_aspd_given", 0.0))
 	if want > given:
 		u["aspd_perm"] = float(u.get("aspd_perm", 1.0)) + (want - given)

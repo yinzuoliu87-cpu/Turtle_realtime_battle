@@ -247,13 +247,15 @@ func _t_stats() -> void:
 
 # ═════════════════════════════════════════════════════════════
 # ① 073 藤蔓弓弦 · 藤蔓箭伤害
-#    「每次普攻时小球向随机目标射藤蔓箭, 20/30/45% ATK 物理;
+#    「每次普攻时小球向随机目标射藤蔓箭, (15/23/30 + 30/40/60% ATK) 物理;
+#      (用户 2026-10-23 改; 原 20/30/45% ATK)
 #      可单独暴击, 暴击转真实伤害」
 # ═════════════════════════════════════════════════════════════
 func _t073_vine_bow() -> void:
 	print("── ① 073 藤蔓弓弦 · 藤蔓箭 ──")
 	for si in range(3):
-		var pct: float = [0.20, 0.30, 0.45][si]
+		var flat: float = [15.0, 23.0, 30.0][si]
+		var pct: float = [0.30, 0.40, 0.60][si]
 		_s._units.clear()
 		var u: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, -300.0)), "p2eq_073", si + 1)
 		u["atk"] = 200.0
@@ -262,15 +264,16 @@ func _t073_vine_bow() -> void:
 		var t: Dictionary = _mk("basic", "right", Vector2(-100.0, -300.0))
 		var h0: float = float(t["hp"])
 		_s._equip_sys._eq_on_basic_attack(u, t)          # ★真入口
-		var want: float = 200.0 * pct
-		_ok("① 073 si=%d 非暴击 → %.0f 物理(ATK 200 × 20/30/45%%, 护甲 0)" % [si, want],
+		var want: float = flat + 200.0 * pct
+		_ok("① 073 si=%d 非暴击 → %.0f 物理(15/23/30 + ATK 200 × 30/40/60%%, 护甲 0)" % [si, want],
 			absf(h0 - float(t["hp"]) - want) < 0.51, "实掉 %.1f" % (h0 - float(t["hp"])))
 		_ok("① 073 si=%d ★分母: eq_state 记到这一发(vine_shots=1)" % si,
 			int((u["eq_state"].get("p2eq_073", {}) as Dictionary).get("vine_shots", 0)) == 1,
 			"shots=%d" % int((u["eq_state"].get("p2eq_073", {}) as Dictionary).get("vine_shots", 0)))
 	## ★暴击段: 暴击率 100% ⇒ 必暴 ⇒ 转【真实伤害】且吃全局暴伤倍率(1.5)
 	for si2 in range(3):
-		var pct2: float = [0.20, 0.30, 0.45][si2]
+		var flat2: float = [15.0, 23.0, 30.0][si2]
+		var pct2: float = [0.30, 0.40, 0.60][si2]
 		_s._units.clear()
 		var c: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, -260.0)), "p2eq_073", si2 + 1)
 		c["atk"] = 200.0
@@ -282,7 +285,7 @@ func _t073_vine_bow() -> void:
 		ct["base_def"] = 200.0
 		var c0: float = float(ct["hp"])
 		_s._equip_sys._eq_on_basic_attack(c, ct)
-		var wc: float = 200.0 * pct2 * 1.5
+		var wc: float = (flat2 + 200.0 * pct2) * 1.5
 		_ok("① 073 si=%d 暴击 → %.0f 真实伤害(转真伤: 目标 200 护甲一点没减)" % [si2, wc],
 			absf(c0 - float(ct["hp"]) - wc) < 0.51,
 			"实掉 %.1f 期望 %.0f" % [c0 - float(ct["hp"]), wc])
@@ -298,20 +301,21 @@ func _t073_vine_bow() -> void:
 	nt["base_def"] = 200.0
 	var n0: float = float(nt["hp"])
 	_s._equip_sys._eq_on_basic_attack(n1, nt)
-	## 减伤曲线 1 − r/(r+40): 200 护甲 ⇒ ×0.16667 ⇒ 90 × 0.16667 = 15
-	_ok("① 073 ★分母: 不暴击时护甲【真的在减】(90 打成 15, 减伤曲线 40/(200+40))",
-		absf(n0 - float(nt["hp"]) - 15.0) < 0.51, "实掉 %.1f 期望 15" % (n0 - float(nt["hp"])))
+	## 减伤曲线 1 − r/(r+40): 200 护甲 ⇒ ×0.16667 ⇒ (30 + 200 × 60% = 150) × 0.16667 = 25
+	_ok("① 073 ★分母: 不暴击时护甲【真的在减】(150 打成 25, 减伤曲线 40/(200+40))",
+		absf(n0 - float(nt["hp"]) - 25.0) < 0.51, "实掉 %.1f 期望 25" % (n0 - float(nt["hp"])))
 	_s._units.clear()
 
 
 # ═════════════════════════════════════════════════════════════
-# ①b 073 的攻速 buff: 2 秒 20/25/30%, **刷新不叠加**
+# ①b 073 的攻速 buff: 3 秒 35/45/60%, **刷新不叠加**(用户 2026-10-23 改; 原 2 秒 20/25/30%)
 # ═════════════════════════════════════════════════════════════
 func _t073_aspd() -> void:
-	print("── ①b 073 · 暴击给 2 秒攻速(刷新不叠加) ──")
+	print("── ①b 073 · 暴击给 3 秒攻速(刷新不叠加) ──")
+	_ok("①b ★持续秒数 = 3(用户定的数)", absf(EqBowBatch.VINE_ASPD_SEC - 3.0) < 1e-9, "%.2f" % EqBowBatch.VINE_ASPD_SEC)
 	var tsave: float = _s._t
 	for si in range(3):
-		var pct: float = [0.20, 0.25, 0.30][si]
+		var pct: float = [0.35, 0.45, 0.60][si]
 		_s._units.clear()
 		var u: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, -180.0)), "p2eq_073", si + 1)
 		u["atk"] = 100.0
@@ -321,7 +325,7 @@ func _t073_aspd() -> void:
 		_ok("①b si=%d ★分母: 起手 aspd_perm = 1.000" % si,
 			absf(float(u.get("aspd_perm", 1.0)) - 1.0) < 0.0001, "%.4f" % float(u.get("aspd_perm", 1.0)))
 		_s._equip_sys._eq_on_basic_attack(u, t)
-		_ok("①b si=%d 一次暴击 → aspd_perm = %.2f(+20/25/30%%)" % [si, 1.0 + pct],
+		_ok("①b si=%d 一次暴击 → aspd_perm = %.2f(+35/45/60%%)" % [si, 1.0 + pct],
 			absf(float(u["aspd_perm"]) - (1.0 + pct)) < 0.0005,
 			"实测 %.4f" % float(u["aspd_perm"]))
 		## ★刷新不叠加: 再暴 5 次, 倍率一动不动, 只有到期时刻往后推
@@ -336,12 +340,12 @@ func _t073_aspd() -> void:
 		var until1: float = float((u["eq_state"]["p2eq_073"] as Dictionary)["vine_aspd_until"])
 		_ok("①b si=%d ★但到期时刻【真的往后推了】1 秒(是刷新不是无视)" % si,
 			absf(until1 - until0 - 1.0) < 0.02, "Δ=%.3f" % (until1 - until0))
-		## ★到期回收: 时钟推过 2 秒后喂一帧 tick, 增量原样还回去
+		## ★到期回收: 时钟推过 3 秒后喂一帧 tick, 增量原样还回去
 		_s._t = until1 + 0.01
 		_s._equip_sys._bow_sys.tick(0.016)
-		_ok("①b si=%d ★2 秒到期 → aspd_perm 回到 1.000(把自己那份收回, 不是设回 1)" % si,
+		_ok("①b si=%d ★3 秒到期 → aspd_perm 回到 1.000(把自己那份收回, 不是设回 1)" % si,
 			absf(float(u["aspd_perm"]) - 1.0) < 0.0005, "实测 %.4f" % float(u["aspd_perm"]))
-	## ★不吞别人的加成: 别的来源先给 +50%, 我上 30% 再到期, 应剩 1.50 不是 1.00
+	## ★不吞别人的加成: 别的来源先给 +50%, 我上 60% 再到期, 应剩 1.50 不是 1.00
 	_s._units.clear()
 	_s._t = tsave
 	var m: Dictionary = _equip(_mk("fortune", "left", Vector2(-300.0, -140.0)), "p2eq_073", 3)
@@ -351,11 +355,11 @@ func _t073_aspd() -> void:
 	m["aspd_perm"] = 1.50                                # 贝母021 / 枪羁绊等别的来源
 	var mt: Dictionary = _mk("basic", "right", Vector2(-100.0, -140.0))
 	_s._equip_sys._eq_on_basic_attack(m, mt)
-	_ok("①b ★共存: 别人给的 1.50 上叠我的 30% = 1.80(加算通道, 不覆盖)",
-		absf(float(m["aspd_perm"]) - 1.80) < 0.0005, "实测 %.4f" % float(m["aspd_perm"]))
+	_ok("①b ★共存: 别人给的 1.50 上叠我的 60% = 2.10(加算通道, 不覆盖)",
+		absf(float(m["aspd_perm"]) - 2.10) < 0.0005, "实测 %.4f" % float(m["aspd_perm"]))
 	_s._t = float((m["eq_state"]["p2eq_073"] as Dictionary)["vine_aspd_until"]) + 0.01
 	_s._equip_sys._bow_sys.tick(0.016)
-	_ok("①b ★到期只收回【自己那 0.30】, 别人的 1.50 原样留着",
+	_ok("①b ★到期只收回【自己那 0.60】, 别人的 1.50 原样留着",
 		absf(float(m["aspd_perm"]) - 1.50) < 0.0005, "实测 %.4f" % float(m["aspd_perm"]))
 	_s._t = tsave
 	_s._units.clear()
@@ -384,7 +388,7 @@ func _t073_random_and_nochain() -> void:
 	var hits: Array = []
 	var tot := 0
 	for k in range(3):
-		var got: int = int(round((hp0[k] - float(es[k]["hp"])) / 45.0))   # 每发 45(100×0.45)
+		var got: int = int(round((hp0[k] - float(es[k]["hp"])) / 90.0))   # 3★ 每发 90(30 + 100×0.60)
 		hits.append(got)
 		tot += got
 	_ok("①c ★分母: %d 发全部落在这三个敌人身上(合计 %d)" % [TRIALS, tot], tot == TRIALS,
@@ -1331,7 +1335,9 @@ func _t_readouts_fixture() -> void:
 	_s._t += 1.0
 	_s._equip_sys._bow_sys.tick(0.016)                   # 镜像每帧衰减(走 _tick_orbs)
 	var halfp: float = float((c["eq_state"]["p2eq_073"] as Dictionary).get("vine_buff_pct", -1.0))
-	_ok("⑦d 1 秒后镜像 ≈ 50(剩 1/2 秒, 实测 %.1f)" % halfp, absf(halfp - 50.0) < 2.0, "pct=%.2f" % halfp)
+	var want_half: float = 100.0 * (1.0 - 1.0 / EqBowBatch.VINE_ASPD_SEC)   # 3 秒的 buff 过了 1 秒 ⇒ 剩 2/3
+	_ok("⑦d 1 秒后镜像 ≈ %.1f(剩 %.0f 秒里的 %.0f 秒, 实测 %.1f)" % [want_half, EqBowBatch.VINE_ASPD_SEC, EqBowBatch.VINE_ASPD_SEC - 1.0, halfp],
+		absf(halfp - want_half) < 2.0, "pct=%.2f" % halfp)
 	_s._t = float((c["eq_state"]["p2eq_073"] as Dictionary)["vine_aspd_until"]) + 0.01
 	_s._equip_sys._bow_sys.tick(0.016)
 	_ok("⑦d 到期后镜像回 0(条不许停在满格骗人)",

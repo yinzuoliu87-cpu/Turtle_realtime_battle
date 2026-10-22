@@ -174,14 +174,15 @@ func _t086_pierce() -> void:
 	var hv: float = float(vic["hp"])
 	var he: float = float(egg["hp"])
 	var ht: float = float(tr["hp"])
+	var per2: float = 500.0 + float(u2.get("atk", 0.0)) * 0.5   # 3★ 每条 = 500 + 50% 攻击力
 	var rays2: int = _g().sext_ultimate(u2, 2)
 	_pump_shots(GVfx.SEXT_FIRE_DELAY + 0.3)
 	var dv: float = hv - float(vic["hp"])
 	var de: float = he - float(egg["hp"])
 	var dt2: float = ht - float(tr["hp"])
 	_ok("086 ★分母: 三门炮放出三条射线", rays2 == 3, "条数 %d" % rays2)
-	_ok("086 ★★倍率: 站在 3 条线上就吃 3 份(3 × 1000 = 3000)",
-		absf(dv - 3000.0) < 5.0, "实测 %.0f 期望 3000" % dv)
+	_ok("086 ★★倍率: 站在 3 条线上就吃 3 份(3 × %.0f = %.0f)" % [per2, per2 * 3.0],
+		per2 > 500.0 and absf(dv - per2 * 3.0) < 5.0, "实测 %.0f 期望 %.0f" % [dv, per2 * 3.0])
 	_ok("086 ★★龟蛋(围栏未破)【一点都不吃】(_enemies_of 直接 continue ⇒ 连 AoE 都不落)",
 		absf(de) < 0.01, "龟蛋掉血 %.1f (应为 0)" % de)
 	## ★U2(2026-10-04 落地): 大师「不可被打、没有血量」⇒ 线扫过去也是 0(原「降为 1」作废)。
@@ -189,7 +190,7 @@ func _t086_pierce() -> void:
 	_ok("086 ★★训龟大师【不会被选作射线目标, 线扫过也不掉血】(U2: 伤害在管线里为 0)",
 		absf(dt2) < 0.0001, "大师掉血 %.1f (应为 0)" % dt2)
 	# ── ★用户 2026-08-08:「不应该锁到龟蛋和训龟大师」——
-	#   上面那一节里 vic 吃满 3000, 说明三条线都瞄的是 vic; 但那只是**间接证据**。
+	#   上面那一节里 vic 吃满 3 条, 说明三条线都瞄的是 vic; 但那只是**间接证据**。
 	#   这一节**只放龟蛋和大师**(没有任何合法目标) ⇒ 如果哪一处选靶漏了闸门,
 	#   它就会锁到它们、放出射线来。断言: **一条射线都不放、两者都一点血不掉。**
 	_s._units.clear()
@@ -592,7 +593,7 @@ func _t086_sextant() -> void:
 		_ok("086 %d★ 单门炮一发 = 携带者 %.1f × ATK(100) = %.0f 物理" % [si + 1, mult, want_shot[si]],
 			hit and absf(d - want_shot[si]) < 0.51, "实测 %.2f 期望 %.1f" % [d, want_shot[si]])
 
-	# ── 终极射线: 每条 200/350/1000 魔法, 条数 = 在场炮数 ──
+	# ── 终极射线: 每条 (130/260/500 + 50% 攻击力) 魔法, 条数 = 在场炮数(用户 2026-10-23 改; 原 200/350/1000) ──
 	for si in range(3):
 		var q: Dictionary = _mk("fortune", "left", Vector2(-380, float(si) * 40.0))
 		q["atk"] = 100.0
@@ -610,6 +611,7 @@ func _t086_sextant() -> void:
 			left == 0, "剩 %d 条" % left)
 		foe["hp"] = 9.0e7
 		var h0: float = float(foe["hp"])
+		var atk_now: float = float(q.get("atk", 0.0))   # 发射那一刻的攻击力
 		var rays: int = _g().sext_ultimate(q, si)
 		# ★★2026-08-08【时序合一】伤害已推迟到**光束真的射出去**那一刻(蓄力 SEXT_CHARGE 秒后),
 		#   照赛博龟阵亡齐射的编排。⇒ 开火当帧一滴血都不该掉, 推完才掉。
@@ -617,8 +619,9 @@ func _t086_sextant() -> void:
 			absf(h0 - float(foe["hp"])) < 0.01, "当帧掉血 %.1f" % (h0 - float(foe["hp"])))
 		_pump_shots(GVfx.SEXT_FIRE_DELAY + 0.15)   # ★只推**延后队列**, 不推装备自己的时钟
 		var d: float = h0 - float(foe["hp"])
-		var per: float = [200.0, 350.0, 1000.0][si]
-		_ok("086 %d★ 终极射线: 6 门炮各一条 = 6 × %.0f = %.0f 魔法" % [si + 1, per, per * 6.0],
+		var per: float = [130.0, 260.0, 500.0][si] + atk_now * 0.5
+		_ok("086 %d★ ★分母: 发射时攻击力 > 0(否则 50%% 攻击力那一半是空检查)" % (si + 1), atk_now > 0.0, "atk=%.1f" % atk_now)
+		_ok("086 %d★ 终极射线: 6 门炮各一条 = 6 × (%.0f + 50%% × 攻击力 %.0f) = %.0f 魔法" % [si + 1, [130.0, 260.0, 500.0][si], atk_now, per * 6.0],
 			rays == 6 and absf(d - per * 6.0) < 3.0,
 			"条数 %d 总伤 %.1f 期望 6 条 / %.1f" % [rays, d, per * 6.0])
 

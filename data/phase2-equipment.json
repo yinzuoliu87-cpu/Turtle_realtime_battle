@@ -306,10 +306,10 @@
     "baseStats1": "+魔穿8/13/20",
     "shopAvailable": 1,
     "emoji": "🌩️",
-    "effectDesc1": "【法力】充满时，朝随机敌人发射连锁闪电，造成 40/60/90 魔法伤害，在敌人之间跳跃，共命中 4/5/6 次，优先跳向未命中的敌人，可重复命中同一目标。\n<span style=\"color:#8a93a0\">攻击命中时回复 {C:EquipSystem.THUNDER_MANA_PER_HIT} 点法力。</span>",
+    "effectDesc1": "【法力】充满时，朝随机敌人发射连锁闪电，造成（25/40/70 + {C:EquipSystem.CHAIN_ATK_COEF%}% 攻击力）魔法伤害，在敌人之间跳跃，共命中 7/10/15 次，优先跳向未命中的敌人，可重复命中同一目标。\n<span style=\"color:#8a93a0\">攻击命中时回复 {C:EquipSystem.THUNDER_MANA_PER_HIT} 点法力。</span>",
     "effectDesc3": "",
     "img": "equip/equip-lightning-staff.png",
-    "effectBrief": "【法力】充满时发射连锁闪电，共命中 4/5/6 次。"
+    "effectBrief": "【法力】充满时发射连锁闪电，共命中 7/10/15 次。"
   },
   {
     "id": "p2eq_027",
@@ -870,7 +870,7 @@
     "baseStats1": "+暴击10/18/30%·+射程50/70/100",
     "shopAvailable": 1,
     "emoji": "🏹",
-    "effectDesc1": "身上悬浮一颗藤蔓小球。\n每次攻击时，小球向随机敌人射出一支藤蔓箭，造成 20/30/45% 攻击力的物理伤害。\n藤蔓箭独立判定暴击，暴击率与自身相同。暴击时藤蔓箭转为真实伤害，并使自身获得 20/25/30% 攻击速度，持续 2 秒。再次暴击仅刷新持续时间，不可叠加。",
+    "effectDesc1": "身上悬浮一颗藤蔓小球。\n每次攻击时，小球向随机敌人射出一支藤蔓箭，造成（15/23/30 + 30/40/60% 攻击力）物理伤害。\n藤蔓箭独立判定暴击，暴击率与自身相同。暴击时藤蔓箭转为真实伤害，并使自身获得 35/45/60% 攻击速度，持续 {C:EqBowBatch.VINE_ASPD_SEC} 秒。再次暴击仅刷新持续时间，不可叠加。",
     "effectDesc3": "",
     "img": "equip/p2eq_073.png",
     "effectBrief": "每次攻击时，藤蔓小球射出一支藤蔓箭。藤蔓箭暴击时转为真实伤害并提升攻击速度。"
@@ -1026,7 +1026,7 @@
     "baseStats1": "+攻30/90/260·+充能12/22/38%",
     "shopAvailable": 1,
     "emoji": "🧭",
-    "effectDesc1": "登场后每 {C:EqGadgetBatch.SEXT_GEN_IV} 秒生成一个环绕自身的浮游炮，最多 {C:EqGadgetBatch.SEXT_CAP} 个。\n浮游炮每 {C:EqGadgetBatch.SEXT_FIRE_IV} 秒攻击一次随机敌人，造成自身 30/40/50% 攻击力的物理伤害。\n每个浮游炮为自身提供 10/15/20 魔抗。\n所有浮游炮累计发射 40/30/20 次攻击后，全部散开至战场随机位置，并向随机目标齐射贯穿的终极射线，每条对直线上的敌人各造成 200/350/1000 魔法伤害。",
+    "effectDesc1": "登场后每 {C:EqGadgetBatch.SEXT_GEN_IV} 秒生成一个环绕自身的浮游炮，最多 {C:EqGadgetBatch.SEXT_CAP} 个。\n浮游炮每 {C:EqGadgetBatch.SEXT_FIRE_IV} 秒攻击一次随机敌人，造成自身 30/40/50% 攻击力的物理伤害。\n每个浮游炮为自身提供 10/15/20 魔抗。\n所有浮游炮累计发射 40/30/20 次攻击后，全部散开至战场随机位置，并向随机目标齐射贯穿的终极射线，每条对直线上的敌人各造成（130/260/500 + {C:EqGadgetBatch.SEXT_RAY_ATK_COEF%}% 攻击力）魔法伤害。",
     "effectDesc3": "",
     "img": "equip/p2eq_086.png",
     "effectBrief": "每 {C:EqGadgetBatch.SEXT_GEN_IV} 秒生成一个浮游炮（最多 {C:EqGadgetBatch.SEXT_CAP} 个），累计攻击次数达到后齐射终极射线。"
@@ -1071,7 +1071,7 @@
     "id": "p2eq_090",
     "name": "镇海杵",
     "cost": 5,
-    "baseStats1": "+法穿18/42/110·+生命150/420/1200·+龟能45/80/150",
+    "baseStats1": "+法穿13/21/40·+生命150/420/1200·+龟能45/80/150",
     "shopAvailable": 1,
     "emoji": "🔱",
     "effectDesc1": "【法力】充满时，跃向空中后猛砸地面，对附近的敌人造成（150/300/4000 + 100% 攻击力）魔法伤害，并使其眩晕 2/3/8 秒、击飞 {C:EqArcaneBatch.PESTLE_KB_SEC} 秒。\n被动：每 {C:EqArcaneBatch.PESTLE_EVERY} 次攻击发射一道浪潮，在友军与敌军之间弹跳，至多 4/5/8 次，每个单位只命中一次。浪潮对敌人造成 40/70/140 魔法伤害，为友军回复 20/40/80 生命值。\n<span style=\"color:#8a93a0\">猛砸造成伤害后才开始回复法力。</span>",

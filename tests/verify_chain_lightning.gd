@@ -5,8 +5,8 @@ extends Node
 ##  ★文案就是规格
 ## ════════════════════════════════════════════════════════════════════════
 ## 「携带者的普攻为该法器法力条充能 EquipSystem.THUNDER_MANA_PER_HIT 点;
-##   法力条集满时朝随机目标发射连锁闪电, 造成 **40/60/90 魔法伤害**,
-##   在不同敌人间跳跃, **最多命中 4/5/6 个目标**。」
+##   法力条集满时朝随机目标发射连锁闪电, 造成 **(25/40/70 + 10% 攻击力) 魔法伤害**,
+##   在不同敌人间跳跃, **共命中 7/10/15 次**。」(用户 2026-10-22 改; 原 40/60/90、4/5/6)
 ##
 ## ★★改之前: 逐跳错峰是 `tween_interval(i * 0.2)` + `tween_callback` ——
 ##   tween 走**未钳制的真实 delta, 无头下推不动**(CLAUDE.md §3.5)
@@ -54,7 +54,7 @@ func _ready() -> void:
 	if gs == null:
 		print("  [FAIL] 缺 autoload"); get_tree().quit(1); return
 	gs.test_mode = true
-	print("=== 026 雷电法杖: 连锁闪电最多命中 4/5/6 个 ===")
+	print("=== 026 雷电法杖: 连锁闪电共命中 7/10/15 次 ===")
 	RB.DEBUG_EDIT = true
 	_s = RB.new()
 	add_child(_s)
@@ -65,10 +65,12 @@ func _ready() -> void:
 	_s._edit_mode = false
 	var ets = _s._equip_tick_sys
 
-	# ── ① ★★跳数吃星级: 4/5/6 ────────────────────────────────────
+	# ── ① ★★跳数吃星级: 7/10/15; 每一跳排进去的伤害 = 基础 + 10% 攻击力 ──────────
 	## 数它**自己排进队列的跳**, 不量世界净血量(025 那轮量净血量把普攻算进去了)
+	_ok("① 常量 = 用户定的数(7/10/15 跳 · 25/40/70 + 10%% 攻击力)",
+		ES.CHAIN_HOPS == [7, 10, 15] and ES.CHAIN_DMG == [25, 40, 70] and absf(ES.CHAIN_ATK_COEF - 0.1) < 1e-9)
 	for star_i in [0, 1, 2]:
-		var want: int = [4, 5, 6][star_i]
+		var want: int = ES.CHAIN_HOPS[star_i]
 		_s._units.clear()
 		ets._bolt_q.clear()
 		var carrier: Dictionary = _mk(500.0, 400.0, "left")
@@ -76,11 +78,21 @@ func _ready() -> void:
 		## 摆 8 个敌人: 比最大跳数(6)多, 才看得出它是「最多 N 个」而不是「有几个打几个」
 		for k in range(8):
 			_s._units.append(_mk(700.0 + 70.0 * k, 400.0 + (30.0 if k % 2 else -30.0), "right"))
+		carrier["atk"] = 300.0
 		_s._equip_sys._eq_chain_lightning(carrier, star_i)
 		var queued: int = ets._bolt_q.size()
 		_ok("① ★★★%d 星排了 %d 跳(应 %d 跳)" % [[1, 2, 3][star_i], queued, want],
 			queued == want,
 			"第 2 跳以后原来挂在 tween 上, 无头下根本不落")
+		## 每一跳绑定的伤害(_chain_segment 的最后一个参数) = 基础 + 300 × 10%
+		var want_dmg: int = int(ES.CHAIN_DMG[star_i]) + 30
+		var bad_dmg: Array = []
+		for it in ets._bolt_q:
+			var args: Array = ((it as Dictionary)["fn"] as Callable).get_bound_arguments()
+			if args.is_empty() or int(args[args.size() - 1]) != want_dmg:
+				bad_dmg.append(args)
+		_ok("① ★★%d 星每一跳伤害 = %d + 10%% × 攻击力 300 = %d" % [[1, 2, 3][star_i], int(ES.CHAIN_DMG[star_i]), want_dmg],
+			queued > 0 and bad_dmg.is_empty(), str(bad_dmg.slice(0, 2)))
 
 	# ── ② ★★每一跳都真的结算掉 ──────────────────────────────────
 	_s._units.clear()
@@ -92,18 +104,19 @@ func _ready() -> void:
 		var o: Dictionary = _mk(700.0 + 70.0 * k, 400.0 + (30.0 if k % 2 else -30.0), "right")
 		foes.append(o)
 		_s._units.append(o)
-	_s._equip_sys._eq_chain_lightning(c2, 2)          # ★3: 6 跳
+	_s._equip_sys._eq_chain_lightning(c2, 2)          # ★3: 15 跳, 8 个敌人 ⇒ 先各打一遍(优先没打过的), 再回头重复打
 	var hp0: float = 0.0
 	for o in foes:
 		hp0 += float(o["hp"])
-	## 推够 6 × 0.2 = 1.2 游戏秒
-	for _k in range(120):
+	var n_hops: int = ES.CHAIN_HOPS[2]
+	## 推够 15 × 0.2 = 3.0 游戏秒(再留 1 秒余量)
+	for _k in range(roundi((float(n_hops) * 0.2 + 1.0) / _s.SIM_DT)):
 		_s._sim_step(_s.SIM_DT, false, false)
 	var hurt := 0
 	for o in foes:
 		if float(o["hp"]) < 90000.0:
 			hurt += 1
-	_ok("② ★★★6 跳全部结算掉了 —— 被打中的敌人 %d 个(应 6 个)" % hurt, hurt == 6,
+	_ok("② ★★★15 跳全部结算掉了 —— 被打中的敌人 %d 个(应 8 个: 跳数比敌人多, 每个都挨到)" % hurt, hurt == mini(n_hops, foes.size()),
 		"若只有 1 个: 第 2 跳以后没落, 就是 tween 那条老病")
 	_ok("② 队列已排空(没有漏结算的项)", ets._bolt_q.is_empty(),
 		"剩 %d 项" % ets._bolt_q.size())
@@ -139,8 +152,8 @@ func _done() -> void:
 	await get_tree().process_frame
 	print("")
 	print("  分母: 共 %d 条断言" % _n)
-	if _n < 7:
-		print("  [FAIL] ★断言只有 %d 条(<7) —— 有用例中途中止了" % _n)
+	if _n < 11:
+		print("  [FAIL] ★断言只有 %d 条(<11) —— 有用例中途中止了" % _n)
 		_fail += 1
 	print("ALL PASS — 026 连锁闪电" if _fail == 0 else "FAIL x%d" % _fail)
 	get_tree().quit(1 if _fail > 0 else 0)

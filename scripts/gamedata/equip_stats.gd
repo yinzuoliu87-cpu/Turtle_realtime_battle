@@ -217,7 +217,7 @@ const STATS := {
 	"p2eq_087": [{"def": 25, "hp": 150}, {"def": 60, "hp": 420}, {"def": 150, "hp": 1200}],   # 奇械 · 5费 · 盗令潜水钟
 	"p2eq_088": [{"magicPen": 5, "_maxEnergy": 12}, {"magicPen": 11, "_maxEnergy": 22}, {"magicPen": 20, "_maxEnergy": 40}],   # 法器 · 1费 · 涨潮碑
 	"p2eq_089": [{"_echargePct": 6, "def": 6}, {"_echargePct": 11, "def": 13}, {"_echargePct": 18, "def": 22}],   # 法器 · 1费 · 蚀月符纸
-	"p2eq_090": [{"magicPen": 18, "hp": 150, "_maxEnergy": 45}, {"magicPen": 42, "hp": 420, "_maxEnergy": 80}, {"magicPen": 110, "hp": 1200, "_maxEnergy": 150}],   # 法器 · 5费 · 镇海杵
+	"p2eq_090": [{"magicPen": 13, "hp": 150, "_maxEnergy": 45}, {"magicPen": 21, "hp": 420, "_maxEnergy": 80}, {"magicPen": 40, "hp": 1200, "_maxEnergy": 150}],   # 法器 · 5费 · 镇海杵(魔法穿透 用户 2026-10-23 改 13/21/40; 原 18/42/110)
 	"p2eq_091": [{"atk": 5, "_rangeAdd": 50, "def": 6}, {"atk": 12, "_rangeAdd": 50, "def": 13}, {"atk": 20, "_rangeAdd": 50, "def": 22}],   # 遗物 · 1费 · 远古龟甲片
 	# 2026-08-05 用户重做: 属性原话「提供 50/70/100 生命值和 10/22/40 魔抗」——
 	# 就这两项, 所以原来的 atk/_lifestealPct 一并换掉(不是加在它们之上)。

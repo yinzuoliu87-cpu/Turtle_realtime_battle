@@ -326,6 +326,9 @@ const SEXT_ORBIT_R := 74.0      ## 环绕半径(码)
 const SEXT_ORBIT_W := 1.05      ## 环绕角速度(弧度/秒)
 ## 终极射线**贯穿**多远(码) —— 赛博龟阵亡齐射是 1300, 同口径
 const SEXT_RAY_LEN := 1300.0
+## 终极射线每条的魔法伤害(用户 2026-10-23「5费浮游炮的终极射线伤害改为130/260/500+0.5ATK」; 原 200/350/1000)
+const SEXT_RAY_DMG := [130, 260, 500]
+const SEXT_RAY_ATK_COEF := 0.5
 ## 判"在不在这条线上"的半宽(码) —— 赛博龟用 40
 const SEXT_RAY_HALF_W := 40.0
 
@@ -410,7 +413,7 @@ func sext_fire_one(u: Dictionary, atk_mult: float, di: int = -1) -> bool:
 ## 返回真的打出了几条。★演出由 `vfx` 播, 结算**不依赖任何 tween 跑完**(CLAUDE.md §3.5)。
 func sext_ultimate(u: Dictionary, si: int) -> int:
 	var st: Dictionary = _stt(u, "p2eq_086")
-	var ray: float = [200.0, 350.0, 1000.0][si]           # 每条终极射线 200/350/1000 魔法伤害
+	var ray: float = float(SEXT_RAY_DMG[si]) + float(u.get("atk", 0.0)) * SEXT_RAY_ATK_COEF   # 每条终极射线 = 基础 + 50% 攻击力(发射那一刻)
 	var drones: Array = st.get("drones", [])
 	var n: int = 0
 	var beams: Array = []
