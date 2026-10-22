@@ -19,6 +19,7 @@ extends Node
 ##   ③ 文案**逐字完整**（不截断）—— 用 `TIER_DESCS` 原文去弹框文本里找
 ##   ④ 弹框不出设计框（1280×720）边界，且正文区高度 > 0
 ##   ⑤ 正文控件必须**能滚动**（外层 ScrollContainer, 2026-10-13 起; 原为 `scroll_active`）—— 内容比框高时不滚就是又一次截断
+##   ⑦ 正文滚动条是木框 / 黄铜皮, 不是 Godot 默认的灰色圆角细条(2026-10-22; 判据与商店说明卡共用 tests/_scrollbar_skin_judge.gd)
 ##
 ## 跑法: <godot> --headless --audio-driver Dummy --path . res://tests/verify_synergy_popup.tscn
 
@@ -26,6 +27,7 @@ const Phase2Types := preload("res://scripts/gamedata/phase2_types.gd")
 const InvScene := preload("res://scripts/scenes/InventoryScene.gd")
 ## ★正文控件的节点名常量**从产品那边读**(不抄一份字符串) —— 见 `_find_body_rt` 的长注释。
 const SynergyPanel := preload("res://scripts/scenes/inventory/synergy_panel.gd")
+const SBJ := preload("res://tests/_scrollbar_skin_judge.gd")
 
 var _n := 0
 var _fail := 0
@@ -54,6 +56,9 @@ func _ready() -> void:
 	var geo_bad: Array = []
 	var box_h: Dictionary = {}     # 类型 → 弹框高度（验"框高真的随内容变"）
 	var no_scroll: Array = []
+	var skin_bad: Array = []       # 滚动条还是默认灰色圆角条(2026-10-22)
+	var n_skin := 0
+	var n_bar_vis := 0
 	var total_tiers := 0
 
 	for t in Phase2Types.TYPES:
@@ -100,6 +105,15 @@ func _ready() -> void:
 		## ★2026-10-13: 正文改由外层 ScrollContainer 滚(手机手指拖动要能滚; RichTextLabel 自带滚动只认滚轮 / 滚动条)
 		if not (rt.get_parent() is ScrollContainer):
 			no_scroll.append(tname)
+		else:
+			## ⑦ 滚动条的皮: 让出的宽 = 滚动框宽 − 正文最小宽(正文不压在滚动条下)
+			var psc := rt.get_parent() as ScrollContainer
+			var why := SBJ.problem(psc, psc.size.x - rt.custom_minimum_size.x)
+			n_skin += 1
+			if psc.get_v_scroll_bar().visible:
+				n_bar_vis += 1
+			if why != "":
+				skin_bad.append("%s %s" % [tname, why])
 		box_h[tname] = box.size.y
 		_clear(host)
 
@@ -112,6 +126,9 @@ func _ready() -> void:
 		truncated.is_empty(), "%d 条: %s" % [truncated.size(), str(truncated.slice(0, 6))])
 	_ok("④ 弹框不出设计框边界, 正文区有高度", geo_bad.is_empty(), str(geo_bad.slice(0, 4)))
 	_ok("⑤ ★正文可滚动(内容比框高时不滚就是又一次截断)", no_scroll.is_empty(), str(no_scroll))
+	## ⑦ (2026-10-22) 正文滚动条换木框 / 黄铜皮 —— 默认是 Godot 的灰色圆角细条, 与金属框弹窗不搭。
+	_ok("⑦ 分母: 量了 %d 个弹框的滚动条(其中 %d 个内容超高、条真的画出来)" % [n_skin, n_bar_vis], n_skin == built and n_skin > 0)
+	_ok("⑦ ★正文滚动条是木框 / 黄铜皮(直角 · 暖色滑块 · 深色槽 · 不宽过正文让出的宽)", skin_bad.is_empty(), str(skin_bad.slice(0, 3)))
 	# ⑥ ★框高真的【随内容变】。变异测出来的缺口: 把 bh 写回固定 320 时上面五条全绿 ——
 	#   因为开了滚动, 固定矮框"能看全, 只是要一直滚"。那不是坏, 但也不是我声称做到的事;
 	#   声称了就要守。判据: 文案最长的类型, 框比最短的类型【明显高】。

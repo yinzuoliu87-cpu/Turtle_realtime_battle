@@ -229,3 +229,53 @@ static func tint_of(border: Color) -> Color:
 		return Color.WHITE          # 深灰边 = 无状态, 不染色
 	var k := 0.55                   # 0=纯白(不染) 1=原色(过饱和)
 	return Color(lerpf(1.0, border.r, k), lerpf(1.0, border.g, k), lerpf(1.0, border.b, k), 1.0)
+
+
+## ══════════════════════════════════════════════════════════════════════
+##  滚动条皮 —— 2026-10-22
+## ══════════════════════════════════════════════════════════════════════
+## 由来: 商店说明卡正文超高改成可滚动的一段(`ShopScene._cap_card_height` 的 CardBodyScroll)、
+##   背包羁绊详情弹框的正文(`InvSynergy` 的 SynergyPopupScroll)—— 右边那根是 Godot 默认的
+##   灰色圆角细条, 木框 / 黄铜边的像素画里只有它是网页味。
+## ★不新画素材: 两段 StyleBoxFlat, 颜色全取说明卡 / 卡底钮已经在用的色:
+##   槽   = 说明卡图标框的底色 #0c0907, 细边 = 「购买」钮禁用态的深木 #3a2a1e
+##   滑块 = 说明卡框的黄铜 #a5751d(`InspectCard._frame` 缺图兜底的边色), 描边深木 #4e2d12
+##   悬停 / 按下 = 「购买」钮的黄铜边 #d89a48 / 悬停边 #f0b45a(同一套明暗关系, 越按越亮)
+## ★直角(圆角 0): 像素画里没有圆角, 默认皮的圆角 10 正是网页味的来源。
+## ★粗细与默认皮相同(10 = 内边距 5 + 5) ⇒ 滚动行为、正文给滚动条让出的宽(调用方各留 12 / 14)都不变。
+## ★横竖两根都套: 调用方关掉的那根本来就不画, 套了不花钱; 以后哪处开了横滚也不会冒出一根灰的。
+const SCROLL_W := 10.0
+const _SCROLL_TRACK := ["#0c0907", "#3a2a1e"]          # 槽: 底色, 细边
+const _SCROLL_GRAB := {                                  # 滑块: 底色, 描边
+	"grabber": ["#a5751d", "#4e2d12"],
+	"grabber_highlight": ["#d89a48", "#4e2d12"],
+	"grabber_pressed": ["#f0b45a", "#6a3f1c"],
+}
+
+
+static func scrollbar(sc: ScrollContainer) -> void:
+	for vert in [true, false]:
+		var bar: ScrollBar = sc.get_v_scroll_bar() if vert else sc.get_h_scroll_bar()
+		if bar == null:
+			continue
+		var track := _scroll_box(_SCROLL_TRACK, vert, 1.0)
+		bar.add_theme_stylebox_override("scroll", track)
+		bar.add_theme_stylebox_override("scroll_focus", track)
+		for st in _SCROLL_GRAB:
+			bar.add_theme_stylebox_override(str(st), _scroll_box(_SCROLL_GRAB[st], vert, SCROLL_W / 2.0))
+
+
+## 一段直角色块。横向那一维的内边距决定粗细(5 + 5 = 10); 顺着滚动方向那一维:
+##   槽给 1(滑块不压住槽的上下细边), 滑块给 5(最短 10, 与默认皮同一个下限)。
+static func _scroll_box(cols: Array, vert: bool, along: float) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(str(cols[0]))
+	sb.border_color = Color(str(cols[1]))
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(0)
+	var across := SCROLL_W / 2.0
+	sb.content_margin_left = across if vert else along
+	sb.content_margin_right = across if vert else along
+	sb.content_margin_top = along if vert else across
+	sb.content_margin_bottom = along if vert else across
+	return sb

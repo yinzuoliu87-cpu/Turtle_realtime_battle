@@ -13,6 +13,8 @@ extends Node
 ##   I8  说明特别长的装备(084 卡高 733)卡底「购买」在屏幕外买不了; 超高卡被横挪后盖住被点的那件
 ##   I9  选着货点等级看概率 ⇒ 概率牌被说明卡盖住左半截; 点空白收不起概率牌
 ##   I10 说明卡开着按 ESC ⇒ 直接退出商店(应先收卡)
+##   (2026-10-22 补) I7 四选一按钮一排四颗 88×44 · 15 号字(低于手机下限 81 / 20)⇒ 2×2 · 81 高 · 20 号字,
+##       三种比例下小木斧自己那张、和卡底带「购买」的货卡里都量; I8 正文滚动条是 Godot 默认灰色圆角条 ⇒ 木框 / 黄铜皮
 ##
 ## ★走真入口: 货架 / 按钮 / 空白全部派真的鼠标按下 + 松开(`Viewport.push_input`, 走引擎自己的命中);
 ##   货架内容走产品自己的恢复路径(写 GameState.meta_shop_offer, 进店时 `_restore_offer` 读回), 不往场景里塞变量。
@@ -25,9 +27,14 @@ const SHOP := preload("res://scenes/Shop.tscn")
 const SHOP_GD := preload("res://scripts/scenes/ShopScene.gd")
 const AE := preload("res://scripts/gamedata/axe_evolution.gd")
 const P2 := preload("res://scripts/gamedata/phase2_config.gd")
+const SBJ := preload("res://tests/_scrollbar_skin_judge.gd")
+## 手机下限(与 verify_shop_inv_phone 同一口径: 可点区短边 81 = 44pt · 字 20 ≈ 11pt)。
+## ★写在门禁这边、不读产品常量: 产品那边把下限改小了, 这里照样红。
+const MIN_TAP := 81.0
+const MIN_FONT := 20
 
-## ★= 实测条数(2026-10-22: 85)。少一条就红 —— 协程半路报错时 _ready 照样往下走、照样打 ALL PASS(本文件第一版就这样漏过一次)。
-const MIN_ASSERTS := 85
+## ★= 实测条数(2026-10-22: 85 → 补四选一下限 / 滚动条皮 / 正文整行之后 111)。少一条就红 —— 协程半路报错时 _ready 照样往下走、照样打 ALL PASS(本文件第一版就这样漏过一次)。
+const MIN_ASSERTS := 111
 ## 说明最长的 10 件(2026-10-22 探针实测未封顶卡高: 084=733 072=673 068/069/080=643 034/040/059/087/096=613)。
 ##   ★只用来把「最难放」的卡摆满货架; 全 96 件另有一轮在 16:9 下逐件量。
 const TALL := ["p2eq_084", "p2eq_072", "p2eq_068", "p2eq_069", "p2eq_080", "p2eq_034", "p2eq_040", "p2eq_059", "p2eq_087", "p2eq_096"]
@@ -457,6 +464,55 @@ func _final_btns(sc: Node) -> Array:
 	return out
 
 
+## 四选一按钮的毛病; 没毛病返回 ""。
+##   ① 短边 ≥ 81 ② 字 ≥ 20 ③ 字放得进按钮 ④ 2×2(两列两行) ⑤ 互不重叠、也不压 `others`(卡底「购买」)
+## ★2026-10-22 由来: 原来一排四颗 88×44 · 15 号字, 而本门禁只量「在不在屏幕里」—— 在屏里的小按钮照样绿。
+func _final_btns_bad(btns: Array, others: Array) -> String:
+	var xs := {}
+	var ys := {}
+	for b in btns:
+		var bt := b as Button
+		var r := bt.get_global_rect()
+		if minf(r.size.x, r.size.y) < MIN_TAP - 0.5:
+			return "「%s」%.0f×%.0f 短边 < %.0f" % [bt.text, r.size.x, r.size.y, MIN_TAP]
+		var fs := bt.get_theme_font_size("font_size")
+		if fs < MIN_FONT:
+			return "「%s」字 %d < %d" % [bt.text, fs, MIN_FONT]
+		var f := bt.get_theme_font("font")
+		var tw: float = f.get_string_size(bt.text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs).x if f != null else 0.0
+		var sbn := bt.get_theme_stylebox("normal")
+		var pad: float = (sbn.get_margin(SIDE_LEFT) + sbn.get_margin(SIDE_RIGHT)) if sbn != null else 0.0
+		if tw + pad > r.size.x + 0.5:
+			return "「%s」字宽 %.0f + 内边距 %.0f 放不进 %.0f 宽的按钮" % [bt.text, tw, pad, r.size.x]
+		xs[roundi(r.position.x)] = true
+		ys[roundi(r.position.y)] = true
+	if xs.size() != 2 or ys.size() != 2:
+		return "不是 2×2(%d 列 × %d 行)" % [xs.size(), ys.size()]
+	var all: Array = btns + others
+	for i in range(all.size()):
+		for j in range(i + 1, all.size()):
+			var x: Rect2 = (all[i] as Control).get_global_rect().intersection((all[j] as Control).get_global_rect())
+			if x.size.x >= 1.0 and x.size.y >= 1.0:
+				return "「%s」压着「%s」(%.0f×%.0f)" % [str(all[i].text), str(all[j].text), x.size.x, x.size.y]
+	return ""
+
+
+## 一块里可见的、带字、字号 < 20 的标签; 第二项 = 量了几行(分母)。
+func _small_text(root: Control) -> Array:
+	var bad: Array = []
+	var n := 0
+	if root == null:
+		return [bad, n]
+	for c in root.find_children("*", "Label", true, false):
+		var l := c as Label
+		if not l.is_visible_in_tree() or str(l.text).strip_edges() == "":
+			continue
+		n += 1
+		if l.get_theme_font_size("font_size") < MIN_FONT:
+			bad.append("「%s」%d" % [str(l.text).left(10), l.get_theme_font_size("font_size")])
+	return [bad, n]
+
+
 ## I6 / I7 —— 小木斧四选一。
 func _i6_i7_axe() -> void:
 	print("\n-- I6/I7 小木斧待选最终造物 --")
@@ -464,6 +520,8 @@ func _i6_i7_axe() -> void:
 			{"n": "19.5:9", "vp": Vector2(1560, 720), "ins": Vector4(111, 0, 111, 38)},
 			{"n": "4:3", "vp": Vector2(1280, 960), "ins": Vector4(0, 0, 0, 25)}]:
 		_axe_ready()
+		## 货架摆说明最长的 10 件: 下面点第 4 格(080)时, 那张货卡是「正文封顶 + 四选一 + 购买」三样挤一张的最难情形
+		_shelf(TALL)
 		SafeArea.override_insets = r["ins"]
 		var sc := await _enter(r["vp"])
 		var vp: Vector2 = r["vp"]
@@ -479,6 +537,45 @@ func _i6_i7_axe() -> void:
 		_ok("I7 [%s] 那张卡底沿不过按钮排(%.0f)" % [r["n"], SHOP_GD.ROW_BTN_Y - 6.0],
 			c != null and c.get_global_rect().end.y - sc._frame_off().y <= SHOP_GD.ROW_BTN_Y - 6.0 + 1.0,
 			str(c.get_global_rect()) if c != null else "无卡")
+		var why := _final_btns_bad(btns, [])
+		_ok("★★I7 [%s] 四选一按钮够大、2×2 排(短边 ≥ %.0f · 字 ≥ %d · 字放得下 · 互不重叠)" % [r["n"], MIN_TAP, MIN_FONT],
+			btns.size() == AE.FINALS.size() and why == "", why)
+		var st: Array = _small_text(_live(c, "AxeProgress") if c != null else null)
+		_ok("I7 [%s] 小木斧那块的字全 ≥ %d(量了 %d 行: 形态 / 累计 / 进度 / 提示)" % [r["n"], MIN_FONT, int(st[1])],
+			int(st[1]) >= 4 and (st[0] as Array).is_empty(), str(st[0]))
+		var sb_why := SBJ.problem(c.find_child("CardBodyScroll", true, false) as ScrollContainer if c != null else null,
+			SHOP_GD.CARD_SCROLL_W)
+		_ok("★I7 [%s] 小木斧那张正文的滚动条是木框 / 黄铜皮(不是默认的灰色圆角条)" % r["n"], sb_why == "", sb_why)
+		## 小木斧那张的正文封顶情况(下面一点货架它就被重建掉了, 先量)
+		var cuts: Array = []
+		if c == null or c.find_child("CardBodyScroll", true, false) == null:
+			cuts.append("小木斧那张: 没封顶 / 没卡")
+		elif _body_cut(c) != "":
+			cuts.append("小木斧那张: " + _body_cut(c))
+		## ── 同一态点货架第 4 格(不在小木斧那张底下): 货卡卡底有「购买」⇒ 四选一走紧凑版 ──
+		await _click(_slot_center(sc, 4))
+		var c4 := _card(sc)
+		var bb4 := _live(c4, "BuyBtn") if c4 != null else null
+		var btns4 := _final_btns(sc)
+		_ok("I7 [%s] 分母: 点第 4 格「%s」→ 那张货卡里有「购买」+ 四选一 %d 个" % [r["n"], _card_title(sc), btns4.size()],
+			_glow_slot(sc) == 4 and bb4 != null and btns4.size() == AE.FINALS.size())
+		var off4: Array = []
+		for b in btns4 + ([bb4] if bb4 != null else []):
+			if not safe.encloses((b as Control).get_global_rect()):
+				off4.append("%s %s" % [(b as Button).text, str((b as Control).get_global_rect())])
+		_ok("★★I7 [%s] 货卡里: 四选一 + 「购买」全在安全区, 卡底沿不过按钮排" % r["n"],
+			c4 != null and off4.is_empty() and c4.get_global_rect().end.y - sc._frame_off().y <= SHOP_GD.ROW_BTN_Y - 6.0 + 1.0,
+			"%s 卡 %s" % [str(off4), str(c4.get_global_rect()) if c4 != null else "无"])
+		var why4 := _final_btns_bad(btns4, [bb4] if bb4 != null else [])
+		_ok("★★I7 [%s] 货卡里的四选一也够大、2×2、不压「购买」" % r["n"], btns4.size() == AE.FINALS.size() and why4 == "", why4)
+		var st4: Array = _small_text(_live(c4, "AxeProgress") if c4 != null else null)
+		_ok("I7 [%s] 货卡里小木斧那块的字全 ≥ %d(量了 %d 行)" % [r["n"], MIN_FONT, int(st4[1])],
+			int(st4[1]) >= 1 and (st4[0] as Array).is_empty(), str(st4[0]))
+		if c4 == null or c4.find_child("CardBodyScroll", true, false) == null:
+			cuts.append("货卡: 没封顶 / 没卡")
+		elif _body_cut(c4) != "":
+			cuts.append("货卡: " + _body_cut(c4))
+		_ok("I7 [%s] 两张卡(小木斧 / 货卡)的正文都封顶成滚动框, 且底边不切在行中间" % r["n"], cuts.is_empty(), str(cuts))
 		await _leave(sc)
 	SafeArea.override_insets = Vector4(-1, -1, -1, -1)
 	## 真点一个造物 → 选定
@@ -583,6 +680,11 @@ func _i8_tall_cards() -> void:
 	_ok("I8 084 滚动条量程盖得住整段正文(max %.0f ≥ 内容 %.0f)" % [vb.max_value if vb != null else -1.0, rt.size.y if rt != null else -1.0],
 		vb != null and rt != null and vb.max_value >= rt.size.y - 1.0)
 	_ok("I8 084 正文一个字没丢(滚动框里那段 = 装备说明全文)", rt != null and rt.get_parsed_text().length() > 40)
+	## 滚动条的皮(2026-10-22): 默认是 Godot 的灰色圆角细条 ⇒ 换木框 / 黄铜。粗细不变(上面两条量程 / 内容照旧)。
+	_ok("I8 084 分母: 竖滚动条真的画出来了(内容比可见区高)", vb != null and vb.is_visible_in_tree())
+	var sb_why := SBJ.problem(scr, SHOP_GD.CARD_SCROLL_W)
+	_ok("★★I8 084 滚动条是木框 / 黄铜皮(直角 · 暖色滑块 · 深色槽 · 不宽过正文让出的 %.0f)" % SHOP_GD.CARD_SCROLL_W,
+		scr != null and sb_why == "", sb_why)
 	await _leave(sc3)
 
 
@@ -607,7 +709,31 @@ func _card_bad(sc: Node, i: int, r: Dictionary) -> String:
 		var b := _live(sc, nm)
 		if b != null and cr.intersects(b.get_global_rect()):
 			return "%s 卡压住 %s %s" % [tag, nm, str(cr)]
+	var cut := _body_cut(c)
+	if cut != "":
+		return "%s %s" % [tag, cut]
 	return ""
+
+
+## 封顶后正文滚动框的底边切在某一行中间(框底露出下一行字的上半截, 像一道脏线); 没切 / 没封顶 ⇒ ""。
+## ★2026-10-22 实拍抓到: 可见高按像素倒推(70 = 2.3 行) ⇒ 小木斧那张卡正文两行下面露着第 3 行的字头。
+func _body_cut(c: Control) -> String:
+	var scr := c.find_child("CardBodyScroll", true, false) as ScrollContainer if c != null else null
+	if scr == null:
+		return ""
+	var rt: RichTextLabel = null
+	for ch in scr.get_children():
+		if ch is RichTextLabel:
+			rt = ch
+	if rt == null:
+		return "滚动框里没有正文"
+	var vis: float = scr.size.y
+	if float(rt.get_content_height()) <= vis + 0.5:
+		return ""
+	for i in range(rt.get_line_count()):
+		if absf(rt.get_line_offset(i) - vis) <= 0.5:
+			return ""
+	return "正文可见高 %.0f 切在行中间(露出下一行的字头)" % vis
 
 
 ## I9 —— 概率牌与说明卡同时只开一个; 点空白也收得起概率牌。

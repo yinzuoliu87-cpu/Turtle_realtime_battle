@@ -442,6 +442,8 @@ func _show_synergy_popup(type_key: String, cur_tier: int) -> void:
 	sc.position = Vector2(24, 62)
 	sc.size = Vector2(bw - 48, bh - 62 - 100)
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	## 滚动条换木框 / 黄铜皮(与商店说明卡同一个出处; 默认是 Godot 的灰色圆角细条, 粗细不变)
+	UISkin.scrollbar(sc)
 	box.add_child(sc)
 	var rt = RichTextLabel.new()
 	## ★★给正文一个**节点名**, 让门禁按名字找它 —— 见 `BODY_RT_NAME` 的长注释。

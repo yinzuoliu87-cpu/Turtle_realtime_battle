@@ -931,7 +931,8 @@ func _open_detail_card() -> void:
 			int(GameState.axe_exp_bar), int(GameState.axe_stage), str(GameState.axe_final))):
 		var hold := Control.new(); hold.name = "AxeProgress"
 		(lv["vbox"] as VBoxContainer).add_child(hold)
-		var ah: float = _axe_panel.build(hold, 0.0, 0.0, AXE_IN_CARD_W)
+		## 卡底还要放「购买」(货架上的那件)⇒ 面板走紧凑版, 四选一按钮才放得进封顶高度(axe_panel.gd 头上的高度账)
+		var ah: float = _axe_panel.build(hold, 0.0, 0.0, AXE_IN_CARD_W, not own)
 		hold.custom_minimum_size = Vector2(AXE_IN_CARD_W, ah)
 	if own:
 		## 宝箱里点的那一件: 卡底一颗「卖出 +N」(与货架卡底的「购买」同一个位置、同一种钮)。
@@ -986,6 +987,7 @@ func _refit_card(frames: int = 2) -> void:
 	if _cap_card_height(c as Control):
 		_refit_card(1)
 		return
+	_snap_card_body()
 	(c as Control).size = Vector2((c as Control).size.x, 0)
 	(c as Control).position = inspect_card_pos(c, (c as Control).get_combined_minimum_size().y)
 	## 购买 / 卖出钮: 币紧跟在数字后面(按钮自带的 icon 只能贴边)
@@ -1014,7 +1016,7 @@ func _refit_card(frames: int = 2) -> void:
 const CARD_TOP := 96.0
 const CARD_MAX_H := ROW_BTN_Y - 6.0 - CARD_TOP
 const CARD_BODY_MIN_H := 60.0
-const CARD_SCROLL_W := 14.0     # 竖滚动条让出的宽(正文不压在滚动条下)
+const CARD_SCROLL_W := UISkin.SCROLL_W + 4.0     # 竖滚动条让出的宽(正文不压在滚动条下; 条宽跟皮走, 再留 4)
 
 
 ## 卡超高 ⇒ 把正文装进滚动框, 返回 true(调用方等一帧排版后再定位); 不超或已经装过 ⇒ false。
@@ -1035,6 +1037,8 @@ func _cap_card_height(c: Control) -> bool:
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	sc.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	sc.follow_focus = false
+	## 滚动条换木框 / 黄铜皮(默认是 Godot 的灰色圆角细条, 与卡的像素木框不搭; 粗细不变)
+	UISkin.scrollbar(sc)
 	sc.custom_minimum_size = Vector2(rt.custom_minimum_size.x, vis_h)
 	var at := rt.get_index()
 	vb.remove_child(rt)
@@ -1044,6 +1048,31 @@ func _cap_card_height(c: Control) -> bool:
 	rt.mouse_filter = Control.MOUSE_FILTER_PASS   # 手指拖动交给外面的 ScrollContainer
 	sc.add_child(rt)
 	return true
+
+
+## 正文滚动框的可见高收到【整行】(2026-10-22)。
+## ★由来: 封顶时可见高是按像素倒推的(卡正好顶到 CARD_MAX_H), 常常切在某一行中间 ⇒
+##   框底露出下一行字的上半截, 像一道脏线(实拍: 小木斧四选一那张卡, 正文两行下面露着第 3 行的字头)。
+## ★在封顶之后的下一帧做(正文已按滚动框里的宽重排完, 行偏移才准); 只收不放 ⇒ 卡不会因此变高。
+func _snap_card_body() -> void:
+	var body = _insp.live.get("body")
+	if not is_instance_valid(body) or not (body is RichTextLabel):
+		return
+	var rt := body as RichTextLabel
+	var sc := rt.get_parent() as ScrollContainer
+	if sc == null:
+		return
+	var vis: float = sc.custom_minimum_size.y
+	if float(rt.get_content_height()) <= vis + 0.5:
+		return                      # 整段都看得见 ⇒ 没有被切的行
+	var keep := 0.0
+	for i in range(1, rt.get_line_count()):
+		var top: float = rt.get_line_offset(i)
+		if top > vis + 0.5:
+			break
+		keep = top                  # 第 i 行的顶还在框里 ⇒ 前 i 行完整
+	if keep > 0.0 and keep < vis - 0.5:
+		sc.custom_minimum_size.y = keep
 
 
 ## InspectCard 的定位回调: 货架上的贴在货架左边、与那件同高; 宝箱里的弹在宝箱那一排上方。
