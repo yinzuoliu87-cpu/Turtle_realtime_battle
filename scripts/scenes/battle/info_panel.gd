@@ -1619,7 +1619,9 @@ func _show_detail(host_panel: Control, key: String, title: String, body: String,
 	hb.add_child(cb)
 	var dt = RichTextLabel.new()
 	dt.bbcode_enabled = true; dt.fit_content = true; dt.scroll_active = false
-	dt.add_theme_font_size_override("normal_font_size", 13)
+	## ★粗体 / 斜体字号也要设(2026-10-22): 【专名】走 [b], 只设 normal 时它回落到默认字号, 比正文大一号
+	for fs in ["normal_font_size", "bold_font_size", "italics_font_size"]:
+		dt.add_theme_font_size_override(fs, 13)
 	dt.add_theme_color_override("default_color", Color("#c3d3e3"))
 	dt.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	dt.text = body

@@ -257,6 +257,13 @@ func _ready() -> void:
 			## ★走产品那一份(`_more_stats_text`, 带行首图标) —— 原来这里手抄了一份只拼字的, 拍不到图标。
 			var mtxt: String = s._info_sys._more_stats_text(u)
 			s._info_sys._show_detail(s._info_panel, "more_stats", "更多属性", mtxt, {}, u)
+		elif which == "loot":
+			## SHOT_LOOT=rum,stone,…: 宝箱龟「战利品」浮层(2026-10-22 改成每件图标 + 名字 + 说明)。走产品同一个取正文口。
+			var owned: Dictionary = {}
+			for _t in OS.get_environment("SHOT_LOOT").split(",", false):
+				owned[str(_t)] = true
+			s._info_sys._show_detail(s._info_panel, "chest_loot", "战利品 %d/5" % owned.size(),
+				s._chest_sys.loot_detail_text(owned), {}, u)
 		for _j in range(8):
 			await get_tree().process_frame
 

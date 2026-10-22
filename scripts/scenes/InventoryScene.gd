@@ -1329,7 +1329,8 @@ func _open_unit_card() -> void:
 		br.fit_content = true
 		br.autowrap_mode = TextServer.AUTOWRAP_OFF
 		br.scroll_active = false
-		br.add_theme_font_size_override("normal_font_size", MIN_FONT_PX)
+		for fs in ["normal_font_size", "bold_font_size", "italics_font_size"]:
+			br.add_theme_font_size_override(fs, MIN_FONT_PX)
 		br.add_theme_color_override("default_color", InspectCard.C_DIM)
 		br.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		br.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1420,7 +1421,9 @@ func _treasure_map_section(vb: VBoxContainer) -> void:
 		dl.fit_content = true
 		dl.scroll_active = false
 		dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		dl.add_theme_font_size_override("normal_font_size", MIN_FONT_PX)
+		## ★粗体 / 斜体也要设: 【专名】走 [b], 只设 normal 时它回落到默认字号, 比正文小一号(实拍【宝箱砸击】)
+		for fs in ["normal_font_size", "bold_font_size", "italics_font_size"]:
+			dl.add_theme_font_size_override(fs, MIN_FONT_PX)
 		dl.add_theme_color_override("default_color", InspectCard.C_BODY)
 		dl.custom_minimum_size = Vector2(1, 0)
 		dl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
