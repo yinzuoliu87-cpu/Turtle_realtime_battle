@@ -138,8 +138,6 @@ const OPS_X := 644.0          # = BENCH_X(常量顺序在前, 写死同值)
 const OPS_W := 1252.0 - OPS_X
 ## ★2026-10-21 手机优先: 最小字号 20(iPhone 上约 11pt); 底边只用到「视口底 - 底部横条」(见 _bottom_limit)。
 const MIN_FONT_PX := 20
-const OP_BODY_FS := 20         # 底栏效果正文字号(14 → 20 手机最小字号)
-const OP_BODY_ROWS := 3        # 底栏效果正文显示几【整】行(20 号字下最长的简述 3 行; 2026-10-21 由 2 改 3)
 const DETAIL_BODY_FS := 20     # 装备详情框正文字号(16 → 20)
 const P2 = preload("res://scripts/gamedata/phase2_config.gd")
 const Phase2Types = preload("res://scripts/gamedata/phase2_types.gd")
@@ -176,8 +174,6 @@ var _dl_sel: Dictionary = {}   # 双路布阵选中框 {lane, idx} (点两个互
 var _vw: float = 1280.0   # 实际视口宽(手机expand后可达~1560): 顶栏/背包按真实宽铺开·不再左挤留空(2026-07-18)
 var _press_pos := Vector2.ZERO   # 背包格触屏点选/滑动判定: 松开位移小才算点选(可滑动列表·2026-07-18)
 var _press_ms := 0               # 背包格按下的时刻(按住 ≥ InvDrag.HOLD_MS 再动 = 拿起来拖)
-var _op_body: RichTextLabel = null   # 底栏效果正文(算"还有几行被裁"要读它自己报的行数)
-var _op_more: Label = null           # 底栏"下面还有 N 行"提示
 
 func _ready() -> void:
 	if OS.has_environment("INV_DEMO"):   # dev截图用: 内存填演示背包(不save·不碰真存档)
@@ -1588,7 +1584,7 @@ func _build_bench() -> void:
 		## 2026-10-21: 空背包不再画空格 ⇒ 提示放在格子区第一行的位置。
 		hint.position = Vector2(6, 8); hint.size = Vector2(600, 28); hint.mouse_filter = Control.MOUSE_FILTER_IGNORE; content.add_child(hint)
 
-# ─── 底部选中操作条 (大改: 替代满屏文字说明; 选中装备才显名/效果/卖出/取消) ───
+# ─── 底部操作条: 只剩临时等级器(「选择单位 · 本大轮等级 +1」+ 取消)。装备 / 糖果罐 2026-10-22 起都贴着那一格弹说明小卡 ───
 func _build_op_bar() -> void:
 	## 选中糖果罐不走这里: 它和装备一样贴着那一格弹说明小卡(_open_jar_card)。
 	if _sel_bench < 0 or _sel_bench >= GameState.persistent_bench.size():
@@ -1603,125 +1599,23 @@ func _build_op_bar() -> void:
 	bar.add_theme_stylebox_override("panel", UISkin.nine("panel-frame.png", 20, sb))
 	var bw := OPS_W
 	bar.position = Vector2(OPS_X, by); bar.size = Vector2(bw, OP_BAR_H); add_child(bar)
-	if _sel_bench >= 0 and _sel_bench < GameState.persistent_bench.size():
-		var sit: Dictionary = GameState.persistent_bench[_sel_bench]
-		if str(sit.get("kind", "")) == "item":
-			## ★原文「🔼 临时等级器已选 → 点一只 龟 / 小将,本大轮永久 +1 级」: "已选"+双箭头
-			##   是状态机说明书的口气。换成直接跟玩家说下一步做什么。
-			## ★2026-09-28 去掉句首的 🔼 —— 纯装饰(这条提示自己把话说全了),
-			##   而它左边那张卡上就画着临时等级器。
-			var l := Label.new(); l.text = "选择单位 · 本大轮等级 +1"
-			l.add_theme_font_size_override("font_size", MIN_FONT_PX); l.add_theme_color_override("font_color", Color("#e6d8ff"))
-			l.position = Vector2(16, 36); l.size = Vector2(bw - 32, 28); l.mouse_filter = Control.MOUSE_FILTER_IGNORE; bar.add_child(l)
-		else:
-			var sdef: Dictionary = DataRegistry.phase2_equipment_by_id.get(str(sit.get("id", "")), {})
-			# ★装备文案按玩家当前星级高亮(2026-07-22): 三元组 a/b/c 里这一档亮、另两档暗。
-			#   只在渲染时变换, 数据格式一个字不动 —— tooltip_number_audit 靠那个正则对账。
-			var _star: int = int(sit.get("star", 1))
-			## ── 第一行: 这件东西【是什么】。名字白、星级金、费用/类型灰蓝 ——
-			##    2026-08-15 之前这里名字/星级/费用/操作提示/效果正文**全是同一个黄色 14 号字**
-			##    连成一条 369 字的长句, 眼睛找不到任何边界。
-			var head := RichTextLabel.new()
-			head.bbcode_enabled = true
-			head.fit_content = false
-			head.scroll_active = false
-			head.add_theme_font_size_override("normal_font_size", MIN_FONT_PX)
-			head.add_theme_font_size_override("bold_font_size", MIN_FONT_PX)
-			var _tname := str(Phase2Types.type_of(str(sit.get("id", ""))))
-			head.text = "[b][color=#ffffff]%s[/color][/b]   [color=#ffd93d]%s[/color]   [color=#8fa6bb]%d费%s[/color]" % [
-				str(sdef.get("name", "")), "★".repeat(maxi(1, _star)), int(sdef.get("cost", 1)),
-				("  ·  " + _tname) if _tname != "" else ""]   # 类型名本身(剑), 不加「系」—— 与羁绊列 / 商店同一个名字
-			head.position = Vector2(16, 8); head.size = Vector2(bw - 32 - 200, 30)   # 右边 260 留给「查看更多」
-			head.mouse_filter = Control.MOUSE_FILTER_IGNORE; bar.add_child(head)
-			## ── 第二段: 效果正文。正文色改成浅蓝灰(#cfe0ef), 只留【数值】是黄的 ——
-			##    这样一眼能扫到数字, 而不是满屏一片黄。
-			var l := RichTextLabel.new()
-			l.bbcode_enabled = true
-			## ★★2026-08-15 第三版。前两版的历史:
-			##   ① `fit_content=true` 固定 48 高 → 文字**静默截断**;
-			##   ② 改成 `scroll_active=true` 让它可滚 —— 但正文 `mouse_filter=IGNORE`,
-			##      滚轮事件根本进不来, 手机上只剩一根 5px 宽的滚动条可拖 ⇒ 等于没解决。
-			##   ③ 现在: 底栏只放**摘要 2 行**, 全文交给【细看】弹框(手机也能看),
-			##      并且**被裁了就明说还有几行** —— 判据是 RichTextLabel 自己的
-			##      `get_line_count()` / `get_visible_line_count()`(产品自己的账),
-			##      不是我按"每行几个字"估的。
-			##   ⚠ 别再改回 `fit_content = true`: 那会让"内容高 ≤ 框高"恒成立, 检查永远不触发。
-			l.fit_content = false
-			l.scroll_active = false
-			## 背包格子里的一行说明 —— 用一句话简述(原文中位 129 字, 这里放不下)。
-			var plain := SkillText.equip_brief_bb(sdef, OP_BODY_FS)   # ★_bb: 上色+内联属性图标(2026-10-01 P2)
-			l.text = SkillText.highlight_star(plain, _star)
-			l.add_theme_font_size_override("normal_font_size", OP_BODY_FS)
-			l.add_theme_color_override("default_color", Color("#cfe0ef"))
-			var body_w := bw - 32.0
-			## 框高 = 【整数】行 —— 用字体自己报的行高算, 不是拍一个 40。
-			##   拍 40 的后果实拍看到了: 第 3 行被从中间切开半条, 比直接不显示还难看。
-			var lh := _op_line_h(l)
-			l.position = Vector2(16, 38); l.size = Vector2(body_w, lh * float(OP_BODY_ROWS))
-			l.mouse_filter = Control.MOUSE_FILTER_IGNORE; bar.add_child(l)
-			_op_body = l
-			_op_more = null
-			## 放不下就明说还有几行 —— 数字**同步算出来**, 见 _op_total_lines 的长注释。
-			var total := _op_total_lines(l, plain, body_w)
-			if total > OP_BODY_ROWS:
-				var more := Label.new()
-				## "还有 N 行"是排版口径, 玩家关心的是**还有没说完的事**。
-				more.text = "查看更多（%d 行）" % (total - OP_BODY_ROWS)
-				more.add_theme_font_size_override("font_size", MIN_FONT_PX)
-				more.add_theme_color_override("font_color", Color("#7fb0d8"))
-				more.position = Vector2(bw - 16.0 - 200.0, 8); more.size = Vector2(200, 28)
-				more.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-				more.mouse_filter = Control.MOUSE_FILTER_IGNORE
-				bar.add_child(more)
-				_op_more = more
-			## ── 【细看】: 属性 + 效果全文。原来这些只在 tooltip 里,
-			##    而手机上没有 hover ⇒ 手机玩家**一辈子看不到装备加了多少属性**。
-			## ★★2026-09-28 两处一起改:
-			##   · 「详情」→「细看」: 「详情」是后台/表单里的栏目名(detail), 而这颗键
-			##     要说的是玩家的动作。战斗信息框那边已经是「点开细看」(battle_hud.gd),
-			##     同一个动作全游戏一个词。
-			##   · tooltip 整条删掉: 原文「看这件的完整属性和效果」是**字段名罗列**,
-			##     而且**手机没有 hover** —— 这条提示在真实玩家那里等于不存在,
-			##     键上「细看」两个字已经把它说完了。
-			##   ★节点名走常量 `DETAIL_BTN_NAME`: 门禁按名字 + 按下去真开框来判,
-			##     不拿"按钮上写着哪两个字"当尺子(memory [[fb-tests-pin-screen-words]])。
-			var det := Button.new(); det.text = "详情"
-			det.name = DETAIL_BTN_NAME
-			det.add_theme_font_size_override("font_size", MIN_FONT_PX)
-			det.position = Vector2(16, OP_BAR_H - 91.0); det.size = Vector2(96, 81)
-			## ★★底栏这三个键原来全是 Godot 默认皮(圆角纯色) ——
-			##   `verify_click_targets_alive` 自己写着「圆角纯色是最直接的『没游戏味』」,
-			##   它们只是因为底栏得先选中一件装备才建、静止态的屏上不在场, 才一直没被数到。
-			##   ⚠ `UISkin.button` 按**按钮真实尺寸**挑大框/小签 ⇒ 必须在 `size` 之后调。
-			UISkin.card_button(det)
-			det.pressed.connect(func(): _show_equip_detail(sit)); bar.add_child(det)
-			var sv := _inv_ops._sell_value(sit)
-			## ★★2026-09-28「💰 卖出 +N💠」两个 emoji 都拆掉:
-			##   · 💰(钱袋)是**装饰** —— 「卖出」两个字已经说完了。直接去掉, 不拿别的图顶替。
-			##   · 💠 是**深海币本身**, 不能只删 —— 删了就只剩一个光秃秃的数字, 玩家看不出
-			##     卖的是哪种钱。换成商店/顶栏用的同一张 `ic-deepsea.png`(这屏顶栏就挂着它),
-			##     靠右放 ⇒ 读作「卖出 +3 ◎」, 与 `ShopScene._coin_button_icon` 同一个摆法。
-			##   ⚠ 币图是 64×64, 按钮只有 38 高 ⇒ 这里是**本轮唯一一处非 1x**(2:1 折半)。
-			##     真正干净的做法是要一张 32×32 的深海币 —— 已登记进缺口表。
-			var sell := Button.new(); sell.text = "卖出 +%d" % sv
-			sell.icon = COIN_TEX
-			sell.expand_icon = true
-			sell.add_theme_constant_override("icon_max_width", ICON_PX)
-			sell.icon_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-			sell.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			sell.add_theme_font_size_override("font_size", MIN_FONT_PX)
-			sell.position = Vector2(122, OP_BAR_H - 91.0); sell.size = Vector2(170, 81)
-			UISkin.card_button(sell)
-			sell.pressed.connect(_inv_ops._sell_selected); bar.add_child(sell)
-		var cancel := Button.new(); cancel.text = "取消"
-		cancel.add_theme_font_size_override("font_size", MIN_FONT_PX)
-		cancel.position = Vector2(bw - 108, OP_BAR_H - 91.0); cancel.size = Vector2(92, 81)
-		UISkin.card_button(cancel)
-		cancel.pressed.connect(func(): _sel_bench = -1; _rebuild()); bar.add_child(cancel)
+	## 走到这里只剩临时等级器(装备 / 糖果罐都弹说明小卡)。
+	## ★原文「🔼 临时等级器已选 → 点一只 龟 / 小将,本大轮永久 +1 级」: "已选"+双箭头
+	##   是状态机说明书的口气。换成直接跟玩家说下一步做什么。
+	## ★2026-09-28 去掉句首的 🔼 —— 纯装饰(这条提示自己把话说全了),
+	##   而它左边那张卡上就画着临时等级器。
+	var l := Label.new(); l.text = "选择单位 · 本大轮等级 +1"
+	l.add_theme_font_size_override("font_size", MIN_FONT_PX); l.add_theme_color_override("font_color", Color("#e6d8ff"))
+	l.position = Vector2(16, 36); l.size = Vector2(bw - 32, 28); l.mouse_filter = Control.MOUSE_FILTER_IGNORE; bar.add_child(l)
+	var cancel := Button.new(); cancel.text = "取消"
+	cancel.add_theme_font_size_override("font_size", MIN_FONT_PX)
+	cancel.position = Vector2(bw - 108, OP_BAR_H - 91.0); cancel.size = Vector2(92, 81)
+	UISkin.card_button(cancel)
+	cancel.pressed.connect(func(): _sel_bench = -1; _rebuild()); bar.add_child(cancel)
 
 
 ## 一段文字在给定宽度/字号下【排出来有多高】。
-## ★同 `_op_total_lines`: 用字体引擎同步量, 不依赖任何帧/绘制状态, 也不是按字数估。
+## ★用字体引擎同步量(Font.get_multiline_string_size), 不依赖任何帧/绘制状态, 也不是按字数估。
 ##   门禁可以拿它的返回值当判据(函数返回值, 不是我插的标记)。
 func _measured_text_h(plain: String, width: float, fs: int) -> float:
 	if plain.strip_edges() == "" or width <= 0.0:
@@ -1730,45 +1624,6 @@ func _measured_text_h(plain: String, width: float, fs: int) -> float:
 	if f == null:
 		f = ThemeDB.fallback_font
 	return f.get_multiline_string_size(plain, HORIZONTAL_ALIGNMENT_LEFT, width, fs).y
-
-
-## 一行占多高(字体高 + 行距) —— 框高按它取整数倍, 才不会把最后一行从中间切开。
-func _op_line_h(l: RichTextLabel) -> float:
-	var f: Font = l.get_theme_font("normal_font")
-	if f == null:
-		f = ThemeDB.fallback_font
-	return float(f.get_height(OP_BODY_FS) + l.get_theme_constant("line_separation"))
-
-
-## 这段文案在给定宽度下【一共要几行】。
-##
-## ★★为什么不用 `RichTextLabel.get_line_count()`(2026-08-15 实测踩过):
-##   它要等控件排完版才有值, 而排版时机跟"这一帧画没画到它"绑在一起 ——
-##   同一份代码, 截图那个进程里读到 3 行, 另一个进程里读到 **0 行**;
-##   而且在节点刚建出来那一帧调它(哪怕 call_deferred), 它是按**还没设好的宽度**排的,
-##   算出来的数**看着挺像样、其实是错的**(实拍显示"还有 3 行", 真实只多 1 行)。
-##   门禁读到 0 就是恒不触发的假检查, 读到错数就是骗玩家。
-## ⇒ 改用 `Font.get_multiline_string_size()`: **同步**, 给什么宽度按什么宽度排,
-##   不依赖任何帧/绘制状态, 两个进程结果一致。它是字体引擎自己的排版结果,
-##   不是我按"每行几个字"估的。
-func _op_total_lines(l: RichTextLabel, plain: String, width: float) -> int:
-	if plain.strip_edges() == "" or width <= 0.0:
-		return 0
-	var f: Font = l.get_theme_font("normal_font")
-	if f == null:
-		f = ThemeDB.fallback_font
-	var fh := float(f.get_height(OP_BODY_FS))
-	if fh <= 0.0:
-		return 0
-	## ★2026-10-21: 传进来的是 bbcode(equip_brief_bb) —— 原来连 `[color=#ffd93d]` 这些标签一起量,
-	##   20 号字下一行的简述被算成 4 行、挂着「查看更多(1 行)」(实拍)。先去标签; 行内图标按一个全角字的宽算。
-	var rx := RegEx.new()
-	rx.compile("\\[img[^\\]]*\\][^\\[]*\\[/img\\]")
-	var shown: String = rx.sub(plain, "囗", true)
-	rx.compile("\\[[^\\]]*\\]")
-	shown = rx.sub(shown, "", true)
-	var sz: Vector2 = f.get_multiline_string_size(shown, HORIZONTAL_ALIGNMENT_LEFT, width, OP_BODY_FS)
-	return int(round(sz.y / fh))
 
 
 ## 装备详情框: 名 / 星 / 费 / 类型 + 【属性加成】 + 【效果全文】。

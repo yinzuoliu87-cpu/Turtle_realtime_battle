@@ -826,7 +826,6 @@ scripts/scenes/InventoryScene.gd|lit|前往商店
 scripts/scenes/InventoryScene.gd|lit|前排
 scripts/scenes/InventoryScene.gd|lit|后排
 scripts/scenes/InventoryScene.gd|lit|商店
-scripts/scenes/InventoryScene.gd|lit|囗
 scripts/scenes/InventoryScene.gd|lit|小将
 scripts/scenes/InventoryScene.gd|lit|属性\n%s\n\n效果\n%s
 scripts/scenes/InventoryScene.gd|lit|打碎可获得：%s（每大轮限 1 次）
@@ -861,7 +860,6 @@ scripts/scenes/InventoryScene.gd|text|取消
 scripts/scenes/InventoryScene.gd|text|后排
 scripts/scenes/InventoryScene.gd|text|完成教程
 scripts/scenes/InventoryScene.gd|text|打碎
-scripts/scenes/InventoryScene.gd|text|查看更多（%d 行）
 scripts/scenes/InventoryScene.gd|text|知道了
 scripts/scenes/InventoryScene.gd|text|空槽位
 scripts/scenes/InventoryScene.gd|text|背包为空

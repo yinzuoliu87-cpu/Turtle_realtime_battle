@@ -207,7 +207,7 @@ func _ready() -> void:
 	sc.queue_free()
 	await get_tree().process_frame
 
-	# ══ F. 底栏: 最长文案 → 两行摘要 + 明确说还有几行 + 【细看】按钮 ══
+	# ══ F. 说明小卡: 最长文案一字不截、不冲出卡、不压龟卡 + 【详情】按下去真开全文 ══
 	sc = _mk(-1)
 	for _i in range(10):
 		await get_tree().process_frame
@@ -242,7 +242,6 @@ func _ready() -> void:
 		var ch: float = float(body.get_content_height())
 		_ok("⑪ ★★最长那件的简述在小卡里一字不截(内容高 %.0f ≤ 框高 %.0f)" % [ch, br.size.y],
 			ch > 0.0 and ch <= br.size.y + 1.0, "内容 %.0f > 框 %.0f" % [ch, br.size.y])
-		_ok("⑫ ★不截断就不该挂「还有几行」的提示", sc.get("_op_more") == null or not is_instance_valid(sc.get("_op_more")))
 	## ══ ⑬ 全文的去处 —— 判据落在【按下去真的开出全文】, 不落在键上写着哪两个字 ══
 	## ★★2026-09-28 重写。原判据是 `Button.text == "详情"`, 而这一刻那颗键的文案
 	##   正从「详情」统一成「细看」(战斗信息框 `battle_hud.gd` 一直写「点开细看」)
@@ -276,16 +275,8 @@ func _ready() -> void:
 	_ok("⑬b ★★按下它【真的开出全文那一层】(手机没有 hover, 全文只有这一个去处)",
 		det_opened, "开出来 %d 字: %s" % [det_words.length(), det_words.substr(0, 30)])
 
-	# ══ G. 短文案不许也挂"还有 N 行" ═════════════════════════════
-	GameState.persistent_bench = [{"id": short_id, "star": 1}]
-	sc.set("_sel_bench", 0)
-	sc.call("_rebuild")
-	for _i in range(8):
-		await get_tree().process_frame
-	var more2 = sc.get("_op_more")
-	_ok("⑭ ★短文案【不】提示被裁(防止'永远显示提示'这种假实现)",
-		more2 == null or not is_instance_valid(more2),
-		"短文案(%s, %d 字)也提示被裁了" % [short_id, int(ex[1])])
+	## ⑫ / ⑭(「还有 N 行」提示: 长文案要挂、短文案不许挂)2026-10-22 删 —— 底栏摘要没了,
+	##   装备说明在小卡里整段放下(⑪ 量一字不截), 那颗提示连同 `_op_more` 一起删了, 两条成了恒真的空检查。
 
 	# ══ H. 详情框: 属性 + 全文, 且真的放得下 ═════════════════════
 	GameState.persistent_bench = [{"id": long_id, "star": 1}]
