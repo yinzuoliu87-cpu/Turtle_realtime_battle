@@ -188,7 +188,7 @@ jobs:
           BID: ${{ steps.ver.outputs.bundle_id }}
         run: |
           python3 tools/ios_artifact_check.py project build/ios --version "$VER" --build "$BUILD" \
-            --bundle-id "$BID" --min-ios "$MIN_IOS" --icon-source assets/branding/app_icon_1024.png \
+            --bundle-id "$BID" --min-ios "$MIN_IOS" --icon-source icon.png \
             | tee build/ios/check-project.log
           grep -q '^ALL OK' build/ios/check-project.log
 
