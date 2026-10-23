@@ -975,8 +975,10 @@ def main():
             print("  [FAIL] 只扫到 %d 个 .gd / %d 个调用点 —— 收集失效了, 这是空检查不是通过"
                   % (n_files, out["sites"]))
             return 1
-        if out["resolved"] < 10:
-            print("  [FAIL] 只解析出 %d 处尺寸(<10) —— 尺寸解析器坏了, 判据成了空壳"
+        ## 下限 10→5(2026-10-23): 卡片 / 弹框 / 操作条里 14 处 UISkin.button 换成 card_button(用户 10-22 定弹框不用木牌),
+        ##   解析出尺寸的调用点 17→9 是**调用点真少了**, 不是解析器坏了。这道下限只防「解析器坏了 ⇒ 0 处」。
+        if out["resolved"] < 5:
+            print("  [FAIL] 只解析出 %d 处尺寸(<5) —— 尺寸解析器坏了, 判据成了空壳"
                   % out["resolved"])
             return 1
 

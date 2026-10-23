@@ -13,7 +13,8 @@ extends Control
 ##
 ## ═══ 只用项目现成的皮(用户:「别搞出ai味」)═══
 ##   · 正文底板 = 战斗信息面板那块九宫格金属框 `battlehud/panel-frame.png`
-##   · 页签 / 分路切换 / 主按钮 = `UISkin.button()` 的木牌(`menu/frame-rect.png`), 与对阵图页签同一套
+##   · 页签 / 分路切换 / 主按钮 = `UISkin.card_button()`(与商店「购买」同一种)。原来是木牌(`menu/frame-rect.png`),
+##     理由是「与对阵图页签同一套」, 而对阵图 10-07 已换成 pixel_tab; 用户 2026-10-22 定卡片 / 弹框里一律不用木牌。
 ##   · 各路胜负 = 槽框 `slot-frame.png`; 表头 / MVP = 签牌 `chip-frame.png`
 ##   · 不新增任何素材; 不用圆角卡片/渐变/阴影/emoji 当图标
 ##
@@ -561,7 +562,7 @@ static func frame_style() -> StyleBox:
 	return sb
 
 
-## 木牌按钮(页签 / 分路切换): 走共享皮层 `UISkin.button()`, 不在这里手写 StyleBox。
+## 页签 / 分路切换按钮: 走共享皮层 `UISkin.card_button()`, 不在这里手写 StyleBox。
 ## 左边那条竖杠 `Mark` 是选中态 —— 选中不能只靠字色(那是网页 tab 的做法)。
 func _plank_btn(text: String, sz: Vector2, fs: int) -> Button:
 	var b := Button.new()
@@ -569,7 +570,7 @@ func _plank_btn(text: String, sz: Vector2, fs: int) -> Button:
 	b.custom_minimum_size = sz
 	b.add_theme_font_size_override("font_size", fs)
 	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	UISkin.button(b)
+	UISkin.card_button(b)
 	var mk := ColorRect.new()
 	mk.name = "Mark"
 	mk.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -580,12 +581,12 @@ func _plank_btn(text: String, sz: Vector2, fs: int) -> Button:
 	return b
 
 
-## 一组木牌里第 sel 个点亮, 其余压暗。
+## 一组按钮里第 sel 个点亮, 其余压暗。
 func _mark(btns: Array, sel: int) -> void:
 	for k in range(btns.size()):
 		var b: Button = btns[k]
 		var on := k == sel
-		UISkin.button(b, Color.WHITE if on else Color(0.58, 0.62, 0.68))
+		b.self_modulate = Color.WHITE if on else Color(0.72, 0.72, 0.72)
 		var fc := Color("#ffe7a0") if on else Color("#9fb3c8")
 		for s in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
 			b.add_theme_color_override(s, fc)
@@ -625,11 +626,11 @@ static func local_bottom(row: Control, content: Control) -> float:
 	return y
 
 
-## 把一个主按钮(`battle._make_result_btn` 建的)换成这一屏的尺寸和木牌皮。
-static func dress_btn(b: Button, tint: Color, fc: Color) -> void:
+## 把一个主按钮(`battle._make_result_btn` 建的)换成这一屏的尺寸和 `card_button` 皮。
+static func dress_btn(b: Button, fc: Color) -> void:
 	b.custom_minimum_size = BTN_SIZE
 	b.add_theme_font_size_override("font_size", F_BTN)
-	UISkin.button(b, tint)
+	UISkin.card_button(b)
 	for s in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
 		b.add_theme_color_override(s, fc)
 

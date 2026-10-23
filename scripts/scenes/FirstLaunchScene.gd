@@ -376,7 +376,7 @@ func open_naming() -> void:
 	rr.custom_minimum_size = Vector2(130, 81)
 	rr.add_theme_font_size_override("font_size", 20)
 	rr.focus_mode = Control.FOCUS_NONE
-	UISkin.button(rr, Color("#9fb6c9"))
+	UISkin.card_button(rr)
 	rr.pressed.connect(func() -> void: ed.text = _P2C.nickname_suggest(ed.text))
 	row.add_child(rr)
 	var st := Label.new()
@@ -392,9 +392,8 @@ func open_naming() -> void:
 	ok.custom_minimum_size = Vector2(220, 81)
 	ok.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	ok.add_theme_font_size_override("font_size", 24)
-	ok.add_theme_color_override("font_color", Color("#ffe9a8"))
 	ok.focus_mode = Control.FOCUS_NONE
-	UISkin.button(ok, Color("#ffd08a"))
+	UISkin.card_button(ok)
 	ok.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	ok.pressed.connect(func() -> void: confirm_name(ed.text))
 	vb.add_child(ok)

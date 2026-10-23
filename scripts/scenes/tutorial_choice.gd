@@ -59,8 +59,7 @@ static func open(host: Node, first_launch: bool) -> Control:
 	start_btn.name = "StartTutorial"
 	start_btn.text = TXT_START; start_btn.custom_minimum_size = BTN_SIZE
 	start_btn.add_theme_font_size_override("font_size", 22)
-	start_btn.add_theme_color_override("font_color", Color("#ffe9a8"))
-	UISkin.button(start_btn, Color("#ffd08a"))
+	UISkin.card_button(start_btn)
 	start_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	bh.add_child(start_btn)
 	var other := Button.new()
@@ -68,8 +67,7 @@ static func open(host: Node, first_launch: bool) -> Control:
 	other.text = TXT_SKIP if first_launch else TXT_CANCEL
 	other.custom_minimum_size = BTN_SIZE
 	other.add_theme_font_size_override("font_size", 22)
-	other.add_theme_color_override("font_color", Color("#c6d2e0"))
-	UISkin.button(other, Color("#9fb6c9"))
+	UISkin.card_button(other)
 	other.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	bh.add_child(other)
 	start_btn.pressed.connect(func() -> void:

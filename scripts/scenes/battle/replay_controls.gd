@@ -22,7 +22,7 @@ extends RefCounted
 ##   ★点路名**不跳转**: ReplayRecorder 只能从第 0 步往前逐步重算(没有存档点, 没有 seek),
 ##     做跳转等于另造一条「快进到第 N 步」的路径, 那是确定性风险(方案书 §已知风险)。
 ## ★只用现成的皮: 底板 = 战斗信息面板那块金属框(`SettleScreen.frame_style()`, 结算屏同一张),
-##   按钮 = `UISkin.button()` 的签牌/木牌。不新增素材、不用圆角卡片/渐变/emoji。
+##   按钮 = `UISkin.card_button()`(与商店「购买」同一种; 原来是木牌, 用户 2026-10-22 定操作条里不用木牌)。不新增素材、不用圆角卡片/渐变/emoji。
 ## ★倍速与暂停不碰 sim: 只改 `ReplayRecorder.time_mult()`(一帧跑几步), 步长不变 ⇒ 校验点照样逐个比。
 ## ★放这里的理由(CLAUDE.md §5): 不在 `_sim_step` 调用链上 ⇒ 不进主文件; battle_hud 已近上限 ⇒ 单独一个文件。
 ##
@@ -140,7 +140,7 @@ func build() -> Control:
 
 # ─────────────────────────────── 底部操作条 ───────────────────────────────
 
-## [暂停][倍速][进度条 + 路名][已播/全场][退出回放]。底板 = 结算屏同一张金属框, 按钮 = 大木牌(短边 72 ≥ 56 ⇒ frame-rect)。
+## [暂停][倍速][进度条 + 路名][已播/全场][退出回放]。底板 = 结算屏同一张金属框, 按钮 = `UISkin.card_button`。
 func _build_strip(vp: Vector2, m: Vector4) -> void:
 	strip = PanelContainer.new()
 	strip.name = "ReplayStrip"
@@ -155,7 +155,7 @@ func _build_strip(vp: Vector2, m: Vector4) -> void:
 	hb.add_theme_constant_override("separation", 14)
 	hb.alignment = BoxContainer.ALIGNMENT_CENTER
 	strip.add_child(hb)
-	pause_btn = _btn("暂停", 112.0, Color.WHITE)
+	pause_btn = _btn("暂停", 112.0)
 	pause_btn.name = N_PAUSE
 	var sc := Shortcut.new()
 	var ev := InputEventKey.new()
@@ -165,7 +165,7 @@ func _build_strip(vp: Vector2, m: Vector4) -> void:
 	pause_btn.shortcut_in_tooltip = false
 	pause_btn.pressed.connect(toggle_pause)
 	hb.add_child(pause_btn)
-	speed_btn = _btn("", 128.0, Color.WHITE)
+	speed_btn = _btn("", 128.0)
 	speed_btn.name = N_SPEED
 	speed_btn.pressed.connect(cycle_speed)
 	hb.add_child(speed_btn)
@@ -185,7 +185,7 @@ func _build_strip(vp: Vector2, m: Vector4) -> void:
 	time_lb.custom_minimum_size = Vector2(118, 0)
 	time_lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hb.add_child(time_lb)
-	exit_btn = _btn("退出回放", 150.0, Color(0.80, 0.84, 0.90))
+	exit_btn = _btn("退出回放", 150.0)
 	exit_btn.name = N_EXIT
 	exit_btn.pressed.connect(battle._hud._replay_exit)
 	hb.add_child(exit_btn)
@@ -260,7 +260,7 @@ func _build_live(vp: Vector2, m: Vector4) -> void:
 	live_shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	live_shade.visible = false
 	root.add_child(live_shade)
-	live_exit = _btn("退出", LIVE_BTN.x, Color(0.80, 0.84, 0.90))
+	live_exit = _btn("退出", LIVE_BTN.x)
 	live_exit.name = N_LIVE_EXIT
 	live_exit.custom_minimum_size = LIVE_BTN
 	live_exit.size = LIVE_BTN
@@ -279,7 +279,7 @@ func _build_live(vp: Vector2, m: Vector4) -> void:
 
 ## 逐帧直播播放端: 只有左下角一颗「退出」(与观赛那颗同位置同样子); 行为与回放「退出回放」相同(`_replay_exit`)。
 func _build_stream_exit(vp: Vector2, m: Vector4) -> void:
-	exit_btn = _btn("退出", LIVE_BTN.x, Color(0.80, 0.84, 0.90))
+	exit_btn = _btn("退出", LIVE_BTN.x)
 	exit_btn.name = N_EXIT
 	exit_btn.custom_minimum_size = LIVE_BTN
 	exit_btn.size = LIVE_BTN
@@ -538,13 +538,13 @@ func _end_card(won: bool, broken: bool) -> void:
 		var ag := Button.new()
 		ag.name = N_AGAIN
 		ag.text = "再看一遍"
-		SettleScreenS.dress_btn(ag, Color("#ffd27a"), Color("#ffe7a0"))
+		SettleScreenS.dress_btn(ag, Color("#ffe7a0"))
 		ag.pressed.connect(func() -> void: ReplayRecorder.play_again(battle.get_tree(), battle._replay.rec))
 		hb.add_child(ag)
 	var bk := Button.new()
 	bk.name = N_BACK
 	bk.text = back_label()
-	SettleScreenS.dress_btn(bk, Color("#c9d3de"), Color("#e8f0f6"))
+	SettleScreenS.dress_btn(bk, Color("#e8f0f6"))
 	bk.pressed.connect(battle._hud._replay_exit)
 	hb.add_child(bk)
 
@@ -572,7 +572,7 @@ func _frame(h: int, v: int) -> StyleBox:
 	return sb
 
 
-func _btn(t: String, w: float, tint: Color) -> Button:
+func _btn(t: String, w: float) -> Button:
 	var b := Button.new()
 	b.text = t
 	b.custom_minimum_size = Vector2(w, BTN_H)
@@ -580,7 +580,7 @@ func _btn(t: String, w: float, tint: Color) -> Button:
 	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	b.process_mode = Node.PROCESS_MODE_ALWAYS
 	b.add_theme_font_size_override("font_size", 22)
-	UISkin.button(b, tint)
+	UISkin.card_button(b)
 	for s in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
 		b.add_theme_color_override(s, COL_TEXT)
 	return b

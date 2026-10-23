@@ -1205,7 +1205,7 @@ func _settle_buttons(btn_row: HBoxContainer) -> void:
 				_td.notify("settle_continue")
 				battle.get_tree().change_scene_to_file(_td.next_scene_after("battle")))
 		tb.name = "TutorialSettleShop"
-		SettleScreenS.dress_btn(tb, shop_tint, shop_fc)
+		SettleScreenS.dress_btn(tb, shop_fc)
 		btn_row.add_child(tb)
 		_td.attach_guide(battle, "settle", func(nm: String) -> Rect2:
 			return TutorialGuide.vis_rect(tb) if nm == "settle_shop" else Rect2())
@@ -1218,11 +1218,11 @@ func _settle_buttons(btn_row: HBoxContainer) -> void:
 	if not _elim:
 		var sb: Button = battle._make_result_btn(SHOP_BTN_TEXT, shop_tint, shop_fc,
 			func() -> void: battle.get_tree().change_scene_to_file(SHOP_SCENE))
-		SettleScreenS.dress_btn(sb, shop_tint, shop_fc)
+		SettleScreenS.dress_btn(sb, shop_fc)
 		btn_row.add_child(sb)
 	var mb: Button = battle._make_result_btn("返回主菜单", menu_tint, menu_fc,
 		func() -> void: battle.get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
-	SettleScreenS.dress_btn(mb, menu_tint, menu_fc)
+	SettleScreenS.dress_btn(mb, menu_fc)
 	btn_row.add_child(mb)
 
 

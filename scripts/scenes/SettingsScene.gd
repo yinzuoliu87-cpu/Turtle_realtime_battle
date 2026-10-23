@@ -676,8 +676,8 @@ func _open_conflict_dialog() -> void:
 		b.text = str(o[0])
 		b.add_theme_font_size_override("font_size", 17)
 		b.position = Vector2(x, 110); b.size = Vector2(230, 50)
-		## ★★原来是裸 `Button.new()` = Godot 默认皮(圆角灰板)。换皮走共享层 `UISkin`。
-		UISkin.button(b)
+		## ★★原来是裸 `Button.new()` = Godot 默认皮(圆角灰板)。弹框里的动作钮 = `UISkin.card_button`(与商店「购买」同一种)。
+		UISkin.card_button(b)
 		var cb: Callable = o[2]
 		b.pressed.connect(func():
 			cb.call()
@@ -699,7 +699,7 @@ func _open_conflict_dialog() -> void:
 	close.add_theme_font_size_override("font_size", 15)
 	## ★160x40 短边 40 < 81 触摸线; 拉成 240x48 的长条(宽的那边过 200, 热区判据也放行)。
 	close.position = Vector2(160, 262); close.size = Vector2(240, 48)
-	UISkin.button(close)
+	UISkin.card_button(close)
 	close.pressed.connect(func(): dim.queue_free(); _confirm_layer = null)
 	box.add_child(close)
 
@@ -899,9 +899,7 @@ func _wall_text(box: Control, txt: String, fs: int, col: String, y: float, h: fl
 	return l
 
 
-## 框里的一个整行按钮。★尺寸要在 `UISkin.button` **之前**给 ——
-##   它按 `b.size` 挑框(短边 ≥56 且面积 ≥5000 才用 `frame-rect`, 否则 `chip-frame`),
-##   而 (0,0) 的按钮会被判成小签牌、拿到一张 48x24 的贴图拉 9 倍。
+## 框里的一个整行按钮。皮 = `UISkin.card_button`(弹框里不用木牌, 用户 2026-10-22)。
 ## ★真正的 y / 宽由 `_email_set_step` 统一给(两步共用同一份网格)。
 func _wall_btn(box: Control, label: String, cb: Callable) -> Button:
 	var b := Button.new()
@@ -909,7 +907,7 @@ func _wall_btn(box: Control, label: String, cb: Callable) -> Button:
 	b.add_theme_font_size_override("font_size", 15)
 	b.size = Vector2(_W_CW, _W_ROW_H)
 	b.pressed.connect(cb)
-	UISkin.button(b)
+	UISkin.card_button(b)
 	box.add_child(b)
 	b.size = Vector2(_W_CW, _W_ROW_H)
 	return b
@@ -1970,7 +1968,7 @@ func _open_rename_dialog() -> void:
 	rr.text = _P2C.NICK_REROLL
 	rr.add_theme_font_size_override("font_size", 16)
 	rr.position = Vector2(_W_SIDE_X, 88); rr.size = Vector2(_W_SIDE_W, _W_ROW_H)
-	UISkin.button(rr)
+	UISkin.card_button(rr)
 	rr.pressed.connect(func() -> void: ed.text = _P2C.nickname_suggest(ed.text))
 	box.add_child(rr)
 
@@ -1986,7 +1984,7 @@ func _open_rename_dialog() -> void:
 	cancel.text = "取消"
 	cancel.add_theme_font_size_override("font_size", 18)
 	cancel.position = Vector2(40, 214); cancel.size = Vector2(210, _W_ROW_H)
-	UISkin.button(cancel)
+	UISkin.card_button(cancel)
 	cancel.pressed.connect(_close_rename_dialog)
 	box.add_child(cancel)
 	var ok := Button.new()
@@ -1994,7 +1992,7 @@ func _open_rename_dialog() -> void:
 	ok.text = "确认"
 	ok.add_theme_font_size_override("font_size", 18)
 	ok.position = Vector2(270, 214); ok.size = Vector2(210, _W_ROW_H)
-	UISkin.button(ok, Color("#9fe0a8"))
+	UISkin.card_button(ok)
 	ok.pressed.connect(func() -> void:
 		var err: String = rename_apply(ed.text)
 		if err != "":
