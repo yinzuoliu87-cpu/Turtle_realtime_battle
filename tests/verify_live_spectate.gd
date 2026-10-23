@@ -496,7 +496,7 @@ func _t_board_and_watch() -> void:
 	_ok("② ★战绩榜上正在打的人(这周第一场还没打完 ⇒ 补的 0-0 那一行)是红色「直播」签", chip_ok, my_tag)
 	_ok("② ★已经上榜的人正在打 ⇒ 他那一行的状态签换成红色「直播」", chip_ranked)
 	_ok("② 没在打的人不标「直播」", not chip_other)
-	_ok("② 顶上一行写「正在打 2 场」", str(bs._status.text).contains("正在打 2 场"), str(bs._status.text))
+	_ok("② 顶上一行写「进行中 2 场」", str(bs._status.text).contains("进行中 2 场"), str(bs._status.text))
 	_ok("② 有「正在打」也有「最近对局」⇒ 中间一条小标题隔开", bs.find_child(GBS.N_SUB_HEAD, true, false) != null)
 	if lb == null:
 		return

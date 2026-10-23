@@ -52,12 +52,12 @@ func _ready() -> void:
 			# ★反面: 文案里不许再留"随等级涨"的说法(否则玩家按旧文案理解)
 			["不许提大轮等级", "!大轮等级"],
 			# ↓2026-07-30 补: 每层攻速原来是 trainer_system 里的裸 0.05, 门禁不查
-			["每层攻速", "+%d%%攻击速度" % int(round(TK["MS_HASTE_PER_STACK"] * 100.0))],
+			["每层攻速", "获得%d%%攻击速度" % int(round(TK["MS_HASTE_PER_STACK"] * 100.0))],
 		],
 		"hook": [
 			["不写射程(LoL 写法·2026-10-15)", "!%d码" % int(K["HOOK_RANGE"])],
 			["眩晕", "%d秒" % int(K["HOOK_STUN"])],
-			["受伤加成", "+%d%%" % int(round((K["HOOK_VULN_MULT"] - 1.0) * 100.0))],
+			["受伤加成", "受到的伤害提高%d%%" % int(round((K["HOOK_VULN_MULT"] - 1.0) * 100.0))],
 			["冷却", "冷却%d秒" % int(SK["hook"]["cd"])],
 		],
 		# ↓2026-07-30 补: 原来这三个技能【只查射程和 CD】, 实质数值一个都不查 ——
@@ -66,9 +66,9 @@ func _ready() -> void:
 			["不写射程(LoL 写法·2026-10-15)", "!%d码" % int(SK["fury_potion"]["range"])],
 			["不写半径", "!%d码" % int(TK["FURY_RADIUS"])],
 			["持续", "%d秒" % int(TK["FURY_SEC"])],
-			["攻速", "+%d%%攻击速度" % int(round((TK["FURY_HASTE"] - 1.0) * 100.0))],
-			["龟能充能", "+%d%%龟能充能" % int(round((TK["FURY_ECHARGE"] - 1.0) * 100.0))],
-			["移速", "+%d%%移动速度" % int(round((TK["FURY_MOVE"] - 1.0) * 100.0))],
+			["攻速", "攻击速度提高%d%%" % int(round((TK["FURY_HASTE"] - 1.0) * 100.0))],
+			["龟能充能", "龟能充能速度提高%d%%" % int(round((TK["FURY_ECHARGE"] - 1.0) * 100.0))],
+			["移速", "移动速度提高%d%%" % int(round((TK["FURY_MOVE"] - 1.0) * 100.0))],
 			["冷却", "冷却%d秒" % int(SK["fury_potion"]["cd"])],
 		],
 		"whistle": [
@@ -83,11 +83,11 @@ func _ready() -> void:
 			["削甲时长", "持续%d秒" % int(TK["WHISTLE_SHRED_SEC"])],
 			# ★反面: 旧的"200物理"说法不许残留(玩家会按旧文案理解)
 			["不许留旧口径", "!200物理"],
-			["狂暴攻击力", "+%d%%攻" % int(round(TK["WHISTLE_BERSERK_ATK"] * 100.0))],
+			["狂暴攻击力", "攻击力提高%d%%" % int(round(TK["WHISTLE_BERSERK_ATK"] * 100.0))],
 			# ★审核 §3-d: 那 4 秒【同时】是 攻/吸血/免死 三项的时长, 原文案只把它挂在"免死"上,
 			#   读起来像"攻和吸血是永久的、只有免死 4 秒"。改成"狂暴4秒(三项)"。
 			["狂暴时长(三项共用)", "狂暴%d秒" % int(TK["WHISTLE_BERSERK_SEC"])],
-			["生命偷取是百分比(原 20 = 2000% 是 bug, 方案书原文 +20%)", "生命偷取 +%d%%" % roundi(float(TK["WHISTLE_BERSERK_LS"]) * 100.0)],
+			["生命偷取是百分比(原 20 = 2000% 是 bug, 方案书原文 +20%)", "获得%d%%生命偷取" % roundi(float(TK["WHISTLE_BERSERK_LS"]) * 100.0)],
 			["不许把4秒只挂免死上", "!免死4秒"],
 			["冷却", "冷却%d秒" % int(SK["whistle"]["cd"])],
 		],
@@ -95,7 +95,7 @@ func _ready() -> void:
 			["不写长度", "!%d码" % int(SK["glacier"]["range"])],
 			["持续", "%d秒" % int(K["GLACIER_SEC"])],
 			["减速", "移动速度降低%d%%" % int(round((1.0 - TK["GLACIER_SLOW_MAG"]) * 100.0))],
-			["受伤加成", "+%d%%" % int(round((K["GLACIER_VULN_MULT"] - 1.0) * 100.0))],
+			["受伤加成", "受到的伤害提高%d%%" % int(round((K["GLACIER_VULN_MULT"] - 1.0) * 100.0))],
 			["冷却", "冷却%d秒" % int(SK["glacier"]["cd"])],
 		],
 		# ★审核 §3-e: 钩锁写了"空放返还"而猎龟令/驯服没写 → 三技口径不一致。已补齐。
@@ -106,7 +106,7 @@ func _ready() -> void:
 			["不许写黑话「返还」", "!返还"],
 			["不写射程", "!%d码" % int(K["HUNT_RANGE"])],
 			["持续", "%d秒" % int(K["HUNT_SEC"])],
-			["受伤加成", "+%d%%" % int(round((K["HUNT_VULN"] - 1.0) * 100.0))],
+			["受伤加成", "受到的伤害提高%d%%" % int(round((K["HUNT_VULN"] - 1.0) * 100.0))],
 			["不写半径", "!%d码" % int(K["HUNT_TAUNT_R"])],
 			["冷却", "冷却%d秒" % int(K["HUNT_CD"])],
 		],
