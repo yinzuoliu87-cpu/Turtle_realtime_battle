@@ -96,7 +96,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #        `_sim_tweens` 之后才扫 `_world`(门禁①守着, 变异两行都删 ⇒ 上千条报错)。
 #      真正的触发条件只有「两条时钟错开」: 顿帧(tween 走、延时/协程不走)与时停(定格的 tween 不走、
 #      携带者的协程/延时照走)。判无害 = 两种错开下捕获物都不会先于回调被释放。
-BASELINE = 28   # 2026-09-25: 94 → 47 · 2026-10-04: 47 → 31(尺子修 14 + 真修 2) · 2026-10-14: 31 → 28(三处 UI 循环 tween 改走 TweenKit, 退出时随节点停)
+BASELINE = 27   # 2026-09-25: 94 → 47 · 2026-10-04: 47 → 31(尺子修 14 + 真修 2) · 2026-10-14: 31 → 28(三处 UI 循环 tween 改走 TweenKit, 退出时随节点停) · 2026-10-23: 28 → 27(精英吞噬不再捕获目标立绘, 改写单位字段 _devour_k)
 
 # ★每一处剩下的风险都要有一句**为什么无害**。键 = (文件, 被捕获的名字逗号串), 值 = (处数, 理由)。
 #   新冒出来一处没登记 → 红; 登记了但代码里没这处了(修掉了/改名了) → 也红, 逼着把台账跟着降。
@@ -120,8 +120,6 @@ HARMLESS = {
     ("scripts/systems/skills/cyber_system.gd", "orb, spr3"):
         (1, "浮游炮齐射: orb 本链释放; spr3(炮)由 2.4s 的延时回调释放 —— 只有顿帧能让两者错开,"
             " 而顿帧只会让本 tween 更早跑完; 时停里施法者已死, 延时与 tween 一起定格"),
-    ("scripts/systems/skills/elite_system.gd", "tsp"):
-        (1, "吞噬: tsp 是目标单位立绘(只在换路释放); 卷须 tends 是数组元素不是捕获"),
     ("scripts/systems/skills/elite_system.gd", "fs2"):
         (1, "空中巨拳: fs2 只由本链回调里新建的链释放"),
     ("scripts/systems/skills/headless_system.gd", "cone, scythe"):
