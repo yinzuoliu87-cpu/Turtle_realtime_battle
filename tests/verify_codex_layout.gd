@@ -112,6 +112,7 @@ func _ready() -> void:
 	var _clip_total := 0
 	var _hint_total := 0
 	var _mismatch: Array = []
+	var _hard: Array = []      # 正文内容高过框 = 有字被硬切藏起来(2026-10-23)
 	## ★不能只扫前 6 只 —— 实测前 6 只一张都没被截断, 那条分母断言当场红(幸好写了分母)。
 	##   改成【逐只扫到找够 3 张为止】: 既保证判据真的走到, 又不用把 28 只全跑完。
 	for _i in range(_inst._items.size()):
@@ -132,9 +133,13 @@ func _ready() -> void:
 				##      技能卡并排三张(宽约 253), 被动条是整条(宽 516) —— **用宽度把两者分开**。
 				##   ③ 2026-10-08 技能卡改竖排(每张占右栏整宽 412)后, 宽度再也分不开卡片与被动条 ⇒
 				##      改认产品给卡片正文挂的 `codex_card_body` 标记(只用来认是谁, 被截与否仍量真实内容高)。
+				## ④ 2026-10-23 起被截的卡截在可见最后一行、以「…」收尾(不再硬切) ⇒ 「被截」= 末尾是产品加的「…」
+				##   或者(回归时)内容仍高过框; 两种都算, 下面 ⑨b 另有一条专管「不许硬切」。
 				if _rt.has_meta("codex_card_body") and _rt.size.y > 16.0 and _rt.size.y < 400.0 \
-					and _rt.get_content_height() > _rt.size.y + 0.5:
+					and (_rt.get_content_height() > _rt.size.y + 0.5 or _rt.get_parsed_text().strip_edges().ends_with("…")):
 					_cl += 1
+				if _rt.has_meta("codex_card_body") and _rt.get_content_height() > _rt.size.y + 0.5:
+					_hard.append("第 %d 只「%s」" % [_i, _rt.get_parsed_text().substr(0, 12)])
 			elif _c is Label and str((_c as Label).text).begins_with("查看全部") and (_c as Label).horizontal_alignment == HORIZONTAL_ALIGNMENT_RIGHT:
 				_hi += 1
 		_clip_total += _cl
@@ -145,6 +150,8 @@ func _ready() -> void:
 		"被截 %d 张" % _clip_total)
 	_ok("★★⑨ 被截断的卡都画出了「点开看全部」(数量一一对上)", _mismatch.is_empty(),
 		"对不上的: %s" % str(_mismatch.slice(0, 4)))
+	_ok("★★⑨b 被截的技能卡截在可见的最后一行、以「…」收尾 —— 没有被框硬切藏起来的字(实拍小龟「施法期间小龟」话说一半)",
+		_hard.is_empty(), str(_hard.slice(0, 4)))
 
 	print("")
 	print("  (共 %d 条断言)" % _n)

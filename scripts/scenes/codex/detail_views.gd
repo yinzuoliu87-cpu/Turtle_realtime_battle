@@ -519,7 +519,7 @@ func _mark_card_clipped(rt: RichTextLabel, cx: float, y: float, card_w: float) -
 	await host.get_tree().process_frame
 	if not is_instance_valid(rt) or not is_instance_valid(host) or host.detail == null:
 		return
-	if rt.get_content_height() <= rt.size.y + 0.5:
+	if rt.get_content_height() <= rt.size.y + 0.5 and not rt.has_meta("codex_card_cut"):
 		return
 	y = float(_card_hint_y.get(rt, y))   # 收缩后各卡底边不同; 没登记就用调用侧给的兜底值
 	var l := Label.new()
@@ -902,7 +902,15 @@ func _fit_skill_cards(parts: Array, top: float, max_h: float) -> void:
 				if _para_start and PreviewText.is_heading_line(_pt.substr(_lr.x, _lr.y - _lr.x)):
 					cut = rt.get_line_offset(first_hidden - 1)
 			if cut > 0.0:
+				var vis_lines: int = first_hidden
+				if cut < rt.get_line_offset(first_hidden) - 0.5:
+					vis_lines = first_hidden - 1      # 上面那条「可见最后一行是小标题」把它也藏了
 				body_h = cut
+				## ★2026-10-23: 截在可见的最后一行, 末尾「…」(原来硬切, 「施法期间小龟」话说一半)。
+				##   「查看全部」照旧挂在名字行(_mark_card_clipped 认 codex_card_cut, 截完之后内容已经装得下)。
+				if PreviewText.fit_lines(rt, rt.text, vis_lines, body_h):
+					rt.set_meta("codex_card_cut", true)
+				body_h = minf(body_h, maxf(rt.get_content_height(), 1.0)) if rt.has_meta("codex_card_cut") else body_h
 				## ★卡高跟着截断收回来(2026-10-08 实拍): 第三行带行内图标(行高 24 > 20)放不下时只剩两行,
 				##   卡却仍按三行的高度画 ⇒ 两行字下面空一截。竖排下这截空白会把下面的卡整体往下推。
 				want = maxf(CARD_MIN_H, CARD_BODY_TOP + body_h + CARD_BODY_GAP + CARD_PAD)

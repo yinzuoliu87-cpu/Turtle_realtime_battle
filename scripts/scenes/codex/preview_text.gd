@@ -7,6 +7,8 @@ extends RefCounted
 ##     海盗龟被动条实拍只有「登场轰击：」四个字。⇒ 预览从标题下面那句真正的效果开始。
 ##  ② 一行条放不下时, 原来是 clip 硬切(小龟「…技能与真实伤」), 读不出被切了。
 ##     ⇒ 按【渲染后真实的第一行】在字边界处截断, 末尾加「…」; BBCode 标签不切开、开着的标签补齐闭合。
+##     技能卡(多行)同一个毛病(2026-10-23 实拍小龟「龟派气波」停在「…生命偷取和 4 护」, 「打击」停在「施法期间小龟」)
+##     ⇒ `fit_lines` 按可见的最后一行截断加「…」。
 
 ## 小标题行的可见字数上限。实测最长的是「主被动·潜影：」(7 字); 12 给一点余量, 又不至于把一句短正文当成标题。
 const HEAD_MAX := 12
@@ -61,7 +63,8 @@ static func skip_lead_headings(src: String) -> String:
 	return tags + "\n".join(lines.slice(k))
 
 ## BBCode 截到前 n 个可见字(一个 [img] 算 1 个), 去掉切口处的软标点, 加「…」, 再把还开着的标签依次闭合。
-static func bb_cut(bb: String, n: int) -> String:
+## `multi_line` = 换行符照抄并算 1 个字(技能卡多行预览); 否则换行就是这一行的尽头。
+static func bb_cut(bb: String, n: int, multi_line: bool = false) -> String:
 	var out := ""
 	var stack: Array = []
 	var cnt := 0
@@ -89,13 +92,13 @@ static func bb_cut(bb: String, n: int) -> String:
 			out += bb.substr(i, rb - i + 1)
 			i = rb + 1
 			continue
-		if c == "\n":
+		if c == "\n" and not multi_line:
 			break   # 一行预览: 换行就是这一行的尽头
 		out += c
 		cnt += 1
 		i += 1
-	## 切口处若紧跟一个可见字之后就是软标点/空白, 去掉它再加省略号(只动可见字, 不动标签)。
-	while out.length() > 0 and SOFT_TAIL.contains(out[out.length() - 1]):
+	## 切口处若紧跟一个可见字之后就是软标点/空白/换行, 去掉它再加省略号(只动可见字, 不动标签)。
+	while out.length() > 0 and (SOFT_TAIL.contains(out[out.length() - 1]) or out[out.length() - 1] == "\n"):
 		out = out.substr(0, out.length() - 1)
 	out += "…"
 	for j in range(stack.size() - 1, -1, -1):
@@ -114,6 +117,21 @@ static func fit_one_line(rt: RichTextLabel, bb: String) -> bool:
 	while n > 0:
 		rt.text = bb_cut(bb, n)
 		if rt.get_line_count() <= 1:
+			return true
+		n -= 1
+	return true
+
+
+## ③ 多行预览(技能卡): 把 bb 塞进 rt, 只留前 `max_lines` 行、且总高不超过 `max_h`; 放不下就截成「…」收尾。返回是否截断了。
+##   与 `fit_one_line` 同一套: 从「第 max_lines 行行尾」那个字数起往回退, 直到排版后行数与高度都装得下。
+static func fit_lines(rt: RichTextLabel, bb: String, max_lines: int, max_h: float) -> bool:
+	rt.text = bb
+	if rt.get_line_count() <= max_lines and rt.get_content_height() <= max_h + 0.5:
+		return false
+	var n: int = rt.get_line_range(maxi(0, max_lines - 1)).y + 1
+	while n > 0:
+		rt.text = bb_cut(bb, n, true)
+		if rt.get_line_count() <= max_lines and rt.get_content_height() <= max_h + 0.5:
 			return true
 		n -= 1
 	return true
