@@ -256,11 +256,11 @@ func end_tutorial(reason: String) -> void:
 		_pending_cloud = []
 		GameState.apply_cloud_payload(pc[0], int(pc[1]))   # 它自己会 save()
 	GameState.save()
-	## 教程战斗里真显示过的两路 / 龟蛋 / 终极战场那几句 ⇒ 首场正式对战不再出(FirstTips 同一个键)。同上: save() 之后、只改内存。
+	## 首场三句记成看过: 走完教程 ⇒ 全记(正式对战一条不出); 中途离开 ⇒ 只记教程里真显示过的(FirstTips.keys_seen_on_tutorial_end)。
+	##   同上: save() 之后、只改内存。
 	var FT = load("res://scripts/systems/onboarding/first_tips.gd")
-	for sid in _btips_tut_shown.keys():
-		if FT.BATTLE_TIP_KEYS.has(sid):
-			FT.mark_seen(str(FT.BATTLE_TIP_KEYS[sid]))
+	for k in FT.keys_seen_on_tutorial_end(reason, _btips_tut_shown):
+		FT.mark_seen(str(k))
 	_btips_tut_shown = {}
 	print("[Tutorial] end reason=", reason)
 	var tr := get_tree()
@@ -598,7 +598,7 @@ func _tick_first_battle(dt: float) -> void:
 		_tick_battle_tips(dt)
 
 
-## 跳过教程(或教程里没轮到某句)的玩家, 第一场正式对战: 两路 / 龟蛋 / 终极战场各一句(用户 2026-10-21)。
+## 跳过(或中途离开)教程的玩家, 第一场正式对战: 两路 / 龟蛋 / 终极战场各一句(我的提议, 用户未明确要过; 走完教程的玩家不出, 2026-10-23)。
 ##   句子 = 教程战斗 C2 / C5 / C6 原句(步骤表同一份), 挂在同一个战斗事件上, 同一种不阻塞提示条。
 ##   ★只在自己的正式对局里出(本局在录 = 积分赛 / 闯关 / 决赛自己那一场; 或看自己那一场周六服务器局):
 ##     回放 / 观赛别人 / 调试场 / 评审台一律不出。教程中 / 没 onboarded ⇒ FirstTips.can_show 挡住。

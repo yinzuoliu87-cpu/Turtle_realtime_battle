@@ -17,10 +17,11 @@ extends RefCounted
 ##   SERVER_MATCH  第一次看周六服务器局(自己那一场) ⇒ 顶部路名计时牌
 ##   FIRST_TRAINER 第一次打开训龟大师页 ⇒ 展台上的训龟大师立绘
 ##   FIRST_WEEK    教程结束(走完 / 跳过)后第一次进主菜单 ⇒ 打开「本周赛程」页, 页上一句赛季说明(主菜单 `_first_week`)
-##   FIRST_LANES / FIRST_EGG / FIRST_FINAL  第一场正式对战 ⇒ 两路 / 龟蛋 / 终极战场各一句,
+##   FIRST_LANES / FIRST_EGG / FIRST_FINAL  跳过教程的玩家第一场正式对战 ⇒ 两路 / 龟蛋 / 终极战场各一句,
 ##     句子就是教程战斗那三句(data/tutorial-steps.json battle C2 / C5 / C6, 不另抄一份), 挂在同一个战斗事件上
-##     (导演 `_attach_first_battle_tips`)。教程战斗里真显示过的那几句, 教程结束时记成看过(不再出第二次)。
-##   (用户 2026-10-21: 首启只 1 屏介绍; 赛程放教程最后; 跳过的玩家首进主菜单弹一次赛程, 首场正式对战两路 / 龟蛋 / 终极战场各一次。)
+##     (导演 `_attach_first_battle_tips`)。教程结束时记哪几句看过见 `keys_seen_on_tutorial_end`。
+##   (用户 2026-10-21 定的是: 首启只 1 屏介绍; 赛程放教程最后。「跳过的玩家首场正式对战补三句」是**我的提议**,
+##    用户没有明确要过 —— 原来这里写成了用户原话, 2026-10-23 订正。)
 ## 措辞参考(方案书 §3 / 实施记录): 云顶之弈 PC 教程原文
 ##   「Combine three of the same champion to create a stronger, two-star version of that champion.」
 ##   「Champions have traits and earn bonuses when deployed with other champions that share those traits.」
@@ -79,6 +80,18 @@ static func can_show(key: String) -> bool:
 ## ★不在这里 `save()`: 第 1 条恰好在教程刚结束那一刻出现, 而「教程结束后存档 = 进教程前那份只差 onboarded」
 ##   是逐字节守着的(verify_tutorial_skip / verify_tutorial_flow_v3)。标记随下一次正常存档落盘;
 ##   万一进程在那之前被杀, 代价只是这句提示再出现一次。
+## 教程结束时该记成「看过」的首场三句(2026-10-23)。
+##   · 走完教程 ⇒ 三句全记: 正式对战里一条都不再出。用户「我问你打完了教程，玩家每周第一把内为什么有提示」——
+##     原来只记教程里真显示过的, 而教程战斗必赢、到不了 1 : 1 ⇒ 终极战场那句每个走完教程的人第一场正式对战都会冒出来。
+##   · 中途离开教程 ⇒ 只记教程里真显示过的那几句, 其余照跳过教程的玩家(首场正式对战补)。
+static func keys_seen_on_tutorial_end(reason: String, shown_ids: Dictionary) -> Array:
+	var out: Array = []
+	for sid in BATTLE_TIP_KEYS:
+		if reason == "completed" or shown_ids.has(sid):
+			out.append(str(BATTLE_TIP_KEYS[sid]))
+	return out
+
+
 static func mark_seen(key: String) -> void:
 	var gs := _gs()
 	if gs == null or bool(gs.get("tutorial_active")):

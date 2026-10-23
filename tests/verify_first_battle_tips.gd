@@ -1,7 +1,8 @@
 extends Node
 
 ## verify_first_battle_tips.gd — 跳过教程的玩家第一场正式对战: 两路 / 龟蛋 / 终极战场各一句首次提示
-##   (用户 2026-10-21; 分镜 docs/plans/20261021-教程分镜v5.md 决策记录「首场正式对战两路 / 龟蛋 / 终极战场各一次首次提示(同教程原句)」)
+##   (我的提议, 用户未明确要过 —— 原来写成「用户 2026-10-21」, 2026-10-23 订正; 只对跳过 / 中途离开教程的玩家;
+##    走完教程的玩家三句全记成看过, 见 FirstTips.keys_seen_on_tutorial_end 与 verify_tutorial_battle_tips ④)
 ##
 ## 量:
 ##   ① 句子就是教程战斗那三句: FirstTips.battle_tip_steps == data/tutorial-steps.json battle C2 / C5 / C6(本测试自己读 json 比, 不读产品的读法)

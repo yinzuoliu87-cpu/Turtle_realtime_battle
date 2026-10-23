@@ -300,7 +300,16 @@ func _real_battle(td: Node, dummy: Node) -> void:
 			t5 = str((st5 as Dictionary).get("text", ""))
 	_ok("分母: 教程里 C2 / C5 真显示过", shown.has(t2) and shown.has(t5))
 	_ok("★★教程结束 ⇒ 真显示过的 C2 / C5 记成账号看过(首场正式对战不再出)", bool(seen.get(FT.FIRST_LANES, false)) and bool(seen.get(FT.FIRST_EGG, false)), str(seen))
-	_ok("★★教程里没出的 C6(没进终极战场)不记 ⇒ 第一次真进终极战场时还会讲", not bool(seen.get(FT.FIRST_FINAL, false)), str(seen))
+	_ok("★★中途离开教程: 教程里没出的 C6 不记 ⇒ 第一次真进终极战场时还会讲(同跳过教程的玩家)", not bool(seen.get(FT.FIRST_FINAL, false)), str(seen))
+	## ★★2026-10-23 走完教程 ⇒ 三句全记(正式对战一条不出)。用户「我问你打完了教程，玩家每周第一把内为什么有提示」
+	var all3: Array = FT.keys_seen_on_tutorial_end("completed", {})
+	_ok("★★走完教程(教程里一句都没显示过也一样) ⇒ 两路 / 龟蛋 / 终极战场三句全记成看过",
+		all3.size() == 3 and all3.has(FT.FIRST_LANES) and all3.has(FT.FIRST_EGG) and all3.has(FT.FIRST_FINAL), str(all3))
+	var part: Array = FT.keys_seen_on_tutorial_end("abandoned", {"C2": true})
+	_ok("★中途离开 ⇒ 只记教程里真显示过的(C2 ⇒ 只有两路)", part == [FT.FIRST_LANES], str(part))
+	var dsrc := FileAccess.get_file_as_string("res://autoload/tutorial_director.gd")
+	_ok("★★教程结束真的走这一个判据(end_tutorial 调 keys_seen_on_tutorial_end(reason, …))",
+		dsrc.find("FT.keys_seen_on_tutorial_end(reason, _btips_tut_shown)") >= 0)
 	OS.set_environment("TURTLE_SEED", "")
 
 
