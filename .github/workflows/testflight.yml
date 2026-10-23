@@ -1,0 +1,405 @@
+# iOS 签名 + 上传 TestFlight（2026-10-20 建 · 方案书 docs/plans/20261020-AppStore上架.md §4.3）
+#
+# 路线: macOS 26 runner → 选 Xcode 26 → Godot 导出 Xcode 工程 → 核对工程 →
+#   【有 ASC 密钥】unsigned archive → xcodebuild -exportArchive(app-store-connect, 自动签名 + API key) 出 IPA
+#                  → 拆 IPA 核对 → xcodebuild -exportArchive(destination=upload) 传 TestFlight
+#   【没密钥】      免签编译 .app 并核对 .app(证明 Xcode 26 编得过) → 上传 Xcode 工程 artifact → 绿灯结束
+#
+# 与 ios-build.yml 的关系: 那条是 unsigned IPA + Sideloadly 侧载线, 保留到 TestFlight 跑通为止(方案书 D5)。
+#   两条都在 v* tag 上跑: 一个出侧载包, 一个出 TestFlight 包, 互不覆盖(这里不碰 Release「ios-latest」)。
+#
+# ── Secrets / Variables(仓库 Settings → Secrets and variables → Actions) ──
+#   ASC_KEY_ID       App Store Connect API key 的 Key ID
+#   ASC_ISSUER_ID    Issuer ID
+#   ASC_KEY_P8       .p8 文件内容的 base64(`base64 -w0 AuthKey_XXXX.p8`); 直接贴 PEM 原文也认
+#   APPLE_TEAM_ID    10 位 Team ID(放 Variables 或 Secrets 都行, 它不是秘密, 签好的包里本来就有)
+#   可选: IOS_DIST_CERT_P12_BASE64 + IOS_DIST_CERT_PASSWORD —— 给了就用这张 Apple Distribution 证书签 archive,
+#         不给就走 Xcode 云端托管证书(cloud signing, 要求 API key 是 Admin 角色)
+#   四个必需项缺任何一个 ⇒ 打印「缺 ASC 密钥，跳过上传」、只出未签名工程、绿灯结束(不红)。
+#
+# ── 构建号(CFBundleVersion) ──
+#   = run_number × 100 + run_attempt ⇒ 单调递增, 重跑(run_attempt+1)也不撞号。
+#   ⚠ 工作流文件改名会让 run_number 从 1 重来 ⇒ 改名时把下面的 BUILD_BASE 调大, 越过已用过的最大号。
+#   短版本号(CFBundleShortVersionString)仍读 project.godot(单一事实源)。
+#
+# ── Bundle ID ──
+#   唯一事实源 = export_presets.cfg 的 iOS 预设 application/bundle_identifier(方案书占位 com.luckyz.turtlearena)。
+#   本工作流从那里读, 不另抄一份 ⇒ 拿到正式 App ID 后只改那一处。
+name: iOS TestFlight
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+    # 新工作流只在默认分支上才能手动 dispatch ⇒ 合进 main 之前, 推 ci/testflight-* 分支来跑它
+    branches:
+      - 'ci/testflight-*'
+
+permissions:
+  contents: write   # 失败时把日志推到 ci-logs 分支(本地无 token 读不了 Actions 日志)
+
+concurrency:
+  group: testflight-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  testflight:
+    runs-on: macos-26   # Apple 2026-04-28 起上传须 Xcode 26 + iOS 26 SDK; macos-26 镜像带 Xcode 26
+    timeout-minutes: 60
+    env:
+      GODOT_VERSION: "4.6.3-stable"
+      BUILD_BASE: "0"
+      MIN_IOS: "13.0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check ASC secrets (只看在不在, 不打印内容)
+        id: keys
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          TEAM_ID: ${{ vars.APPLE_TEAM_ID || secrets.APPLE_TEAM_ID }}
+          P12: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
+        run: |
+          MISSING=""
+          [ -n "$ASC_KEY_ID" ]    || MISSING="$MISSING ASC_KEY_ID"
+          [ -n "$ASC_ISSUER_ID" ] || MISSING="$MISSING ASC_ISSUER_ID"
+          [ -n "$ASC_KEY_P8" ]    || MISSING="$MISSING ASC_KEY_P8"
+          [ -n "$TEAM_ID" ]       || MISSING="$MISSING APPLE_TEAM_ID"
+          if [ -z "$MISSING" ]; then
+            echo "has_asc=true" >> "$GITHUB_OUTPUT"
+            echo "ASC 密钥齐全 ⇒ 本次签名并上传 TestFlight"
+          else
+            echo "has_asc=false" >> "$GITHUB_OUTPUT"
+            echo "缺 ASC 密钥，跳过上传（缺:$MISSING）⇒ 只出未签名工程"
+            echo "::notice title=TestFlight::缺 ASC 密钥，跳过上传（缺:$MISSING）"
+          fi
+          if [ -n "$P12" ]; then echo "has_p12=true" >> "$GITHUB_OUTPUT"; else echo "has_p12=false" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Select Xcode 26
+        id: xcode
+        env:
+          HAS_ASC: ${{ steps.keys.outputs.has_asc }}
+        run: |
+          sw_vers
+          echo "--- 镜像上的 Xcode ---"
+          ls -d /Applications/Xcode*.app
+          PICK=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$PICK" ]; then
+            PICK=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          fi
+          sudo xcode-select -s "$PICK"
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+          MAJOR=$(xcodebuild -version | head -1 | sed -E 's/^Xcode ([0-9]+).*/\1/')
+          SDK=$(xcrun --sdk iphoneos --show-sdk-version | cut -d. -f1)
+          echo "选用 $PICK · Xcode 主版本 $MAJOR · iOS SDK $SDK"
+          echo "::notice title=Xcode::$(xcodebuild -version | paste -sd' ' -) · iOS SDK $(xcrun --sdk iphoneos --show-sdk-version) · $PICK"
+          if [ "$MAJOR" -lt 26 ] || [ "$SDK" -lt 26 ]; then
+            if [ "$HAS_ASC" = "true" ]; then
+              echo "[FAIL] Apple 2026-04-28 起上传须 Xcode 26 + iOS 26 SDK, 这台 runner 只有 Xcode $MAJOR / SDK $SDK"; exit 1
+            fi
+            echo "::warning title=Xcode::runner 上没有 Xcode 26(实际 $MAJOR / SDK $SDK) —— 本次不上传所以不红, 但有密钥时会红"
+          fi
+          echo "--- xcodebuild -help 里关于 exportArchive destination 的说明(上传方式的出处) ---"
+          xcodebuild -help 2>&1 | grep -A3 -i "destination" | head -20 || true
+
+      - name: Download Godot (macOS)
+        run: |
+          curl -fL --retry 3 --retry-all-errors -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_macos.universal.zip"
+          unzip -q godot.zip
+          echo "GODOT=$PWD/Godot.app/Contents/MacOS/Godot" >> "$GITHUB_ENV"
+
+      - name: Install export templates
+        run: |
+          curl -fL --retry 3 --retry-all-errors -o templates.tpz "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_export_templates.tpz"
+          TPL_DIR="$HOME/Library/Application Support/Godot/export_templates/${GODOT_VERSION/-stable/.stable}"
+          mkdir -p "$TPL_DIR"
+          unzip -q templates.tpz -d /tmp/tpl
+          cp -R /tmp/tpl/templates/. "$TPL_DIR/"
+          ls "$TPL_DIR" | grep -c .
+
+      - name: Version / build number / bundle id
+        id: ver
+        run: |
+          V=$(grep -m1 '^config/version=' project.godot | cut -d'"' -f2)
+          case "$V" in
+            [0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "[FAIL] project.godot 的 config/version 形状不对: '$V'"; exit 1 ;;
+          esac
+          B=$(( BUILD_BASE + GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT ))
+          BID=$(python3 - <<'PY'
+          import re
+          s = open("export_presets.cfg", encoding="utf-8").read()
+          i = s.index('platform="iOS"'); j = s.index("[preset.", s.index("options]", i))
+          print(re.search(r'^application/bundle_identifier="([^"]+)"', s[i:j], re.M).group(1))
+          PY
+          )
+          [ -n "$BID" ] || { echo "[FAIL] 读不到 iOS 预设的 bundle_identifier"; exit 1; }
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "build=$B" >> "$GITHUB_OUTPUT"
+          echo "bundle_id=$BID" >> "$GITHUB_OUTPUT"
+          echo "版本 $V · 构建号 $B · Bundle ID $BID"
+
+      - name: Patch iOS preset (构建号 / Team ID, 只改 runner 上这份)
+        env:
+          BUILD: ${{ steps.ver.outputs.build }}
+          VER: ${{ steps.ver.outputs.version }}
+          TEAM_ID: ${{ vars.APPLE_TEAM_ID || secrets.APPLE_TEAM_ID }}
+        run: |
+          python3 - <<'PY'
+          import os, re
+          p = "export_presets.cfg"
+          s = open(p, encoding="utf-8", newline="").read()
+          i = s.index('platform="iOS"'); o = s.index("options]", i); j = s.index("[preset.", o)
+          sec = s[i:j]
+          def put(sec, key, val):
+              pat = re.compile(r'^%s=[^\r\n]*' % re.escape(key), re.M)
+              line = '%s="%s"' % (key, val)
+              if pat.search(sec):
+                  return pat.sub(line, sec, count=1)
+              raise SystemExit("[FAIL] iOS 预设里没有 %s" % key)
+          sec = put(sec, "application/version", os.environ["BUILD"])
+          sec = put(sec, "application/short_version", os.environ["VER"])
+          team = os.environ.get("TEAM_ID", "")
+          if team:
+              sec = put(sec, "application/app_store_team_id", team)
+          s = s[:i] + sec + s[j:]
+          open(p, "w", encoding="utf-8", newline="").write(s)
+          print("iOS 预设: version=%s short_version=%s team=%s" % (os.environ["BUILD"], os.environ["VER"], "已填" if team else "占位"))
+          PY
+
+      - name: Import project resources
+        run: |
+          "$GODOT" --headless --import --path . || true
+
+      - name: Export iOS Xcode project
+        run: |
+          mkdir -p build/ios
+          "$GODOT" --headless --export-release "iOS" "$PWD/build/ios/turtle.ipa" --path . 2>&1 | tee build/ios/godot-export.log | tail -20
+          test -d build/ios/turtle.xcodeproj || { echo "[FAIL] 没导出 turtle.xcodeproj"; exit 1; }
+
+      - name: Check exported project (版本 / 构建号 / 加密键 / 最低系统 / 隐私清单 / 图标)
+        env:
+          VER: ${{ steps.ver.outputs.version }}
+          BUILD: ${{ steps.ver.outputs.build }}
+          BID: ${{ steps.ver.outputs.bundle_id }}
+        run: |
+          python3 tools/ios_artifact_check.py project build/ios --version "$VER" --build "$BUILD" \
+            --bundle-id "$BID" --min-ios "$MIN_IOS" --icon-source assets/branding/app_icon_1024.png \
+            | tee build/ios/check-project.log
+          grep -q '^ALL OK' build/ios/check-project.log
+
+      # ───────────── 无密钥: 免签编译 + 核对 .app + 交工程 ─────────────
+      - name: "[无密钥] Build .app without codesign (证明 Xcode 26 编得过)"
+        if: steps.keys.outputs.has_asc != 'true'
+        run: |
+          set -o pipefail
+          cd build/ios
+          xcodebuild -project turtle.xcodeproj -scheme turtle -configuration Release -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            CONFIGURATION_BUILD_DIR="$PWD/out" build > xcodebuild.log 2>&1 \
+            || { tail -60 xcodebuild.log; exit 1; }
+          tail -5 xcodebuild.log
+          ls out
+
+      - name: "[无密钥] Check built .app"
+        if: steps.keys.outputs.has_asc != 'true'
+        env:
+          VER: ${{ steps.ver.outputs.version }}
+          BUILD: ${{ steps.ver.outputs.build }}
+          BID: ${{ steps.ver.outputs.bundle_id }}
+        run: |
+          APP=$(ls -d build/ios/out/*.app | head -1)
+          python3 tools/ios_artifact_check.py app "$APP" --version "$VER" --build "$BUILD" \
+            --bundle-id "$BID" --min-ios "$MIN_IOS" | tee build/ios/check-app.log
+          grep -q '^ALL OK' build/ios/check-app.log
+
+      - name: "[无密钥] Pack unsigned Xcode project"
+        if: steps.keys.outputs.has_asc != 'true'
+        env:
+          VER: ${{ steps.ver.outputs.version }}
+          BUILD: ${{ steps.ver.outputs.build }}
+        run: |
+          cd build/ios
+          rm -rf out Payload
+          zip -qry "../turtle-xcode-v${VER}-b${BUILD}.zip" . -x '*.log'
+          ls -la "../turtle-xcode-v${VER}-b${BUILD}.zip"
+          echo "缺 ASC 密钥，跳过上传 —— 本次只出未签名 Xcode 工程(artifact turtle-xcode-v${VER}-b${BUILD})"
+
+      - uses: actions/upload-artifact@v4
+        if: steps.keys.outputs.has_asc != 'true'
+        with:
+          name: turtle-xcode-v${{ steps.ver.outputs.version }}-b${{ steps.ver.outputs.build }}
+          path: build/turtle-xcode-v${{ steps.ver.outputs.version }}-b${{ steps.ver.outputs.build }}.zip
+          retention-days: 7
+
+      # ───────────── 有密钥: 签名 / 导出 / 核对 / 上传 ─────────────
+      - name: "[签名] Install ASC API key"
+        if: steps.keys.outputs.has_asc == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          mkdir -p "$HOME/.appstoreconnect/private_keys"
+          KEY="$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+          if printf '%s' "$ASC_KEY_P8" | grep -q 'BEGIN PRIVATE KEY'; then
+            printf '%s\n' "$ASC_KEY_P8" > "$KEY"
+          else
+            printf '%s' "$ASC_KEY_P8" | base64 --decode > "$KEY"
+          fi
+          chmod 600 "$KEY"
+          grep -q 'BEGIN PRIVATE KEY' "$KEY" || { echo "[FAIL] ASC_KEY_P8 解出来不是 .p8 私钥(应是 .p8 文件内容的 base64)"; exit 1; }
+          echo "ASC_KEY_PATH=$KEY" >> "$GITHUB_ENV"
+          echo "API key 已就位(内容不打印)"
+
+      - name: "[签名] Import distribution certificate (可选)"
+        if: steps.keys.outputs.has_asc == 'true' && steps.keys.outputs.has_p12 == 'true'
+        env:
+          P12: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+        run: |
+          KC="$RUNNER_TEMP/signing.keychain-db"
+          KCPW=$(openssl rand -hex 16)
+          printf '%s' "$P12" | base64 --decode > "$RUNNER_TEMP/dist.p12"
+          security create-keychain -p "$KCPW" "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p "$KCPW" "$KC"
+          security import "$RUNNER_TEMP/dist.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KC"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KCPW" "$KC" > /dev/null
+          security list-keychain -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+          rm -f "$RUNNER_TEMP/dist.p12"
+          security find-identity -v -p codesigning "$KC" | sed -E 's/[0-9A-F]{40}/<hash>/'
+
+      - name: "[签名] Archive"
+        if: steps.keys.outputs.has_asc == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          TEAM_ID: ${{ vars.APPLE_TEAM_ID || secrets.APPLE_TEAM_ID }}
+          HAS_P12: ${{ steps.keys.outputs.has_p12 }}
+        run: |
+          set -o pipefail
+          cd build/ios
+          if [ "$HAS_P12" = "true" ]; then
+            # 有证书: archive 时就用 Apple Distribution 签, 描述文件由 Xcode 用 API key 自动建/取
+            SIGN_ARGS=(CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM="$TEAM_ID" -allowProvisioningUpdates
+                       -authenticationKeyPath "$ASC_KEY_PATH" -authenticationKeyID "$ASC_KEY_ID"
+                       -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+          else
+            # 没证书: 免签 archive, 签名全交给下一步 exportArchive 的云端托管证书
+            #   (若每次都在 archive 时让 Xcode 新建证书, 干净的 runner 每跑一次就新建一张, 很快撞上证书数量上限)
+            SIGN_ARGS=(CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" DEVELOPMENT_TEAM="$TEAM_ID")
+          fi
+          xcodebuild -project turtle.xcodeproj -scheme turtle -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$PWD/turtle.xcarchive" \
+            "${SIGN_ARGS[@]}" archive > xcodebuild-archive.log 2>&1 \
+            || { tail -80 xcodebuild-archive.log; exit 1; }
+          tail -5 xcodebuild-archive.log
+
+      - name: "[签名] Export signed IPA (app-store-connect)"
+        if: steps.keys.outputs.has_asc == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          TEAM_ID: ${{ vars.APPLE_TEAM_ID || secrets.APPLE_TEAM_ID }}
+        run: |
+          set -o pipefail
+          cd build/ios
+          for DEST in export upload; do
+            /usr/libexec/PlistBuddy -c "Clear dict" "ExportOptions-$DEST.plist" >/dev/null 2>&1 || true
+            /usr/libexec/PlistBuddy \
+              -c "Add :method string app-store-connect" \
+              -c "Add :destination string $DEST" \
+              -c "Add :teamID string $TEAM_ID" \
+              -c "Add :signingStyle string automatic" \
+              -c "Add :manageAppVersionAndBuildNumber bool false" \
+              -c "Add :uploadSymbols bool true" \
+              "ExportOptions-$DEST.plist"
+          done
+          xcodebuild -exportArchive -archivePath "$PWD/turtle.xcarchive" \
+            -exportOptionsPlist ExportOptions-export.plist -exportPath "$PWD/ipa" \
+            -allowProvisioningUpdates -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            > xcodebuild-export.log 2>&1 || { tail -80 xcodebuild-export.log; exit 1; }
+          ls -la ipa
+
+      - name: "[签名] Check signed IPA (拆 IPA 读 Info.plist + codesign)"
+        if: steps.keys.outputs.has_asc == 'true'
+        env:
+          VER: ${{ steps.ver.outputs.version }}
+          BUILD: ${{ steps.ver.outputs.build }}
+          BID: ${{ steps.ver.outputs.bundle_id }}
+        run: |
+          IPA=$(ls build/ios/ipa/*.ipa | head -1)
+          python3 tools/ios_artifact_check.py ipa "$IPA" --version "$VER" --build "$BUILD" \
+            --bundle-id "$BID" --min-ios "$MIN_IOS" | tee build/ios/check-ipa.log
+          grep -q '^ALL OK' build/ios/check-ipa.log
+          rm -rf /tmp/ipacheck && mkdir /tmp/ipacheck && unzip -q "$IPA" -d /tmp/ipacheck
+          APP=$(ls -d /tmp/ipacheck/Payload/*.app | head -1)
+          codesign -dvv "$APP" 2>&1 | grep -E '^(Authority|TeamIdentifier|Identifier)=' | tee build/ios/codesign.log
+          grep -q '^Authority=Apple Distribution' build/ios/codesign.log \
+            || { echo "[FAIL] IPA 不是 Apple Distribution 签的"; exit 1; }
+          codesign --verify --deep --strict "$APP" && echo "codesign --verify 通过"
+
+      - name: "[签名] Upload to TestFlight"
+        if: steps.keys.outputs.has_asc == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          VER: ${{ steps.ver.outputs.version }}
+          BUILD: ${{ steps.ver.outputs.build }}
+        run: |
+          set -o pipefail
+          cd build/ios
+          # 主路: Xcode 自己的上传(-exportArchive + destination=upload, 出处: `xcodebuild -help` 的 exportOptionsPlist 说明,
+          #       与 Organizer「Distribute App → App Store Connect → Upload」同一条路)
+          if xcodebuild -exportArchive -archivePath "$PWD/turtle.xcarchive" \
+               -exportOptionsPlist ExportOptions-upload.plist -exportPath "$PWD/upload" \
+               -allowProvisioningUpdates -authenticationKeyPath "$ASC_KEY_PATH" \
+               -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+               > xcodebuild-upload.log 2>&1; then
+            tail -5 xcodebuild-upload.log
+          else
+            tail -40 xcodebuild-upload.log
+            # 备路: altool --upload-app(Apple「Upload builds」页列出的工具之一; 读 ~/.appstoreconnect/private_keys/AuthKey_<id>.p8)
+            echo "Xcode 上传失败, 改用 xcrun altool --upload-app 重试"
+            IPA=$(ls ipa/*.ipa | head -1)
+            xcrun altool --upload-app -f "$IPA" -t ios --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID" \
+              > altool-upload.log 2>&1 || { tail -40 altool-upload.log; exit 1; }
+            tail -10 altool-upload.log
+          fi
+          echo "已上传 TestFlight: v${VER} (${BUILD}) —— App Store Connect 处理完(通常 5~30 分钟)后出现在 TestFlight 页"
+          echo "::notice title=TestFlight::已上传 v${VER} (${BUILD})"
+
+      - uses: actions/upload-artifact@v4
+        if: steps.keys.outputs.has_asc == 'true' && success()
+        with:
+          name: turtle-testflight-v${{ steps.ver.outputs.version }}-b${{ steps.ver.outputs.build }}
+          path: build/ios/ipa/*.ipa
+          retention-days: 14
+
+      - name: Clean up signing material
+        if: always()
+        run: |
+          rm -rf "$HOME/.appstoreconnect/private_keys"
+          security delete-keychain "$RUNNER_TEMP/signing.keychain-db" 2>/dev/null || true
+
+      - name: Push logs to ci-logs branch on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          rm -rf /tmp/logrepo && mkdir /tmp/logrepo && cd /tmp/logrepo
+          git init -q -b ci-logs
+          mkdir testflight
+          for f in "$GITHUB_WORKSPACE"/build/ios/*.log; do
+            [ -f "$f" ] && tail -c 200000 "$f" > "testflight/$(basename "$f")"
+          done
+          ls testflight | grep -q . || echo "no logs captured" > testflight/note.txt
+          git add -A
+          git -c user.name=ci -c user.email=ci@ci commit -qm "testflight logs run#${GITHUB_RUN_NUMBER}"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ci-logs
