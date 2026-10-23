@@ -1002,21 +1002,24 @@ func _menu_label(text: String, size: int, col: Color,
 var _bold_font_cache: FontVariation = null
 func _bold_font() -> FontVariation:
 	if _bold_font_cache == null:
-		var cjk := SystemFont.new()
-		cjk.font_names = PackedStringArray(["Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "WenQuanYi Micro Hei", "sans-serif"])
-		cjk.fallbacks = [load("res://assets/fonts/NotoSansSC-Regular.otf")]   # CJK 网页/iOS 兜底 (SystemFont 在 web 取不到系统字体→中文乱码)
-		cjk.font_weight = 700              # 真粗体 (= PoC YaHei Bold), 非 embolden 膨胀
-		cjk.allow_system_fallback = true
-		# 中文平滑抗锯齿 (修"锯齿"): m6x11 像素字 import antialiasing=0, 但中文不能跟着关 AA。
-		#   灰度 AA + 自动亚像素 + 不强制 hinting → 接近浏览器渲染雅黑的平滑度。
-		cjk.antialiasing = TextServer.FONT_ANTIALIASING_GRAY
-		cjk.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_AUTO
-		cjk.hinting = TextServer.HINTING_NONE
+		## ★2026-10-23: iOS 取不到系统字体 ⇒ 连 SystemFont 都不建 —— 建出来、设 font_names / font_weight 那一下就刷
+		##   「FreeType: Error loading font: ''」(正式服 0.21.8 每进一次这一屏 2 条)。原来只在挂回退链时才判, 拦晚了。
+		var cjk: SystemFont = SystemFont.new() if FontKit.system_fonts_ok() else null
+		if cjk != null:
+			cjk.font_names = PackedStringArray(["Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "WenQuanYi Micro Hei", "sans-serif"])
+			cjk.fallbacks = [load("res://assets/fonts/NotoSansSC-Regular.otf")]   # CJK 网页/iOS 兜底 (SystemFont 在 web 取不到系统字体→中文乱码)
+			cjk.font_weight = 700              # 真粗体 (= PoC YaHei Bold), 非 embolden 膨胀
+			cjk.allow_system_fallback = true
+			# 中文平滑抗锯齿 (修"锯齿"): m6x11 像素字 import antialiasing=0, 但中文不能跟着关 AA。
+			#   灰度 AA + 自动亚像素 + 不强制 hinting → 接近浏览器渲染雅黑的平滑度。
+			cjk.antialiasing = TextServer.FONT_ANTIALIASING_GRAY
+			cjk.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_AUTO
+			cjk.hinting = TextServer.HINTING_NONE
 		_bold_font_cache = FontVariation.new()
 		_bold_font_cache.base_font = load("res://assets/fonts/m6x11.ttf") as FontFile   # 英文/数字像素打底
 		# 回退链: 系统雅黑Bold(桌面美观, 顺带给彩色emoji) → 【打包 Noto SC】(web/linux 无系统字体时的中文兜底)
 		#         → 【打包 Noto Emoji】(单色 emoji 兜底, 防豆腐块). 原来只挂 cjk(SystemFont) = 无系统字体时中文/emoji 全掉字形。
-		_bold_font_cache.fallbacks = ([cjk] if FontKit.system_fonts_ok() else []) + [   # iOS 取不到系统字体(只会刷报错) ⇒ 不挂; 见 font_kit.gd
+		_bold_font_cache.fallbacks = ([cjk] if cjk != null else []) + [   # iOS 取不到系统字体(只会刷报错) ⇒ 不挂; 见 font_kit.gd
 			load("res://assets/fonts/NotoSansSC-Regular.otf") as FontFile,
 			load("res://assets/fonts/NotoEmoji-Regular.ttf") as FontFile,
 		]

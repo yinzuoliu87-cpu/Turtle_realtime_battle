@@ -434,11 +434,14 @@ func _font(size: int, color: Color) -> Label:
 
 func _bold_font() -> FontVariation:
 	if _font_cache == null:
-		var cjk := SystemFont.new()
-		cjk.font_names = PackedStringArray(["Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "WenQuanYi Micro Hei", "sans-serif"])
-		cjk.fallbacks = [load("res://assets/fonts/NotoSansSC-Regular.otf")]   # CJK 网页/iOS 兜底 (SystemFont 在 web 取不到系统字体→中文乱码)
-		## ★`allow_system_fallback` 必须是 false —— 见下面 fallbacks 那段的探针记录。
-		cjk.font_weight = 700; cjk.allow_system_fallback = false; cjk.antialiasing = TextServer.FONT_ANTIALIASING_GRAY
+		## ★2026-10-23: iOS 取不到系统字体 ⇒ 连 SystemFont 都不建 —— 建出来、设 font_names / font_weight 那一下就刷
+		##   「FreeType: Error loading font: ''」(正式服 0.21.8 每进一次这一屏 2 条)。原来只在挂回退链时才判, 拦晚了。
+		var cjk: SystemFont = SystemFont.new() if FontKit.system_fonts_ok() else null
+		if cjk != null:
+			cjk.font_names = PackedStringArray(["Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "WenQuanYi Micro Hei", "sans-serif"])
+			cjk.fallbacks = [load("res://assets/fonts/NotoSansSC-Regular.otf")]   # CJK 网页/iOS 兜底 (SystemFont 在 web 取不到系统字体→中文乱码)
+			## ★`allow_system_fallback` 必须是 false —— 见下面 fallbacks 那段的探针记录。
+			cjk.font_weight = 700; cjk.allow_system_fallback = false; cjk.antialiasing = TextServer.FONT_ANTIALIASING_GRAY
 		_font_cache = FontVariation.new()
 		_font_cache.base_font = load("res://assets/fonts/m6x11.ttf") as FontFile
 		## 【2026-08-19 实拍复看修掉的字形串台】——「匹配中」的**「匹」被画成一个黄色笑脸 emoji**。
@@ -462,7 +465,7 @@ func _bold_font() -> FontVariation:
 		## ═══ 关掉之后靠什么兜底 ═══
 		## 雅黑/苹方(桌面, 真 700) → 打包 Noto SC(web/iOS 取不到系统字体时的中文) →
 		## 打包 Noto Emoji(emoji 兜底, 防豆腐块)。实拍确认 🔍 在桌面仍是**彩色**的。
-		_font_cache.fallbacks = ([cjk] if FontKit.system_fonts_ok() else []) + [   # iOS 取不到系统字体(只会刷报错) ⇒ 不挂; 见 font_kit.gd
+		_font_cache.fallbacks = ([cjk] if cjk != null else []) + [   # iOS 取不到系统字体(只会刷报错) ⇒ 不挂; 见 font_kit.gd
 			load("res://assets/fonts/NotoSansSC-Regular.otf") as FontFile,
 			load("res://assets/fonts/NotoEmoji-Regular.ttf") as FontFile,
 		]

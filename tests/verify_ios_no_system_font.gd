@@ -79,7 +79,52 @@ func _ready() -> void:
 	_ok("④ 桌面: 匹配页粗体仍挂 SystemFont(雅黑 / 彩色 emoji 不许一起拿掉)", _count_sys(mf2) >= 1, "n=%d" % _count_sys(mf2))
 	mm2.free()
 	FontKit.platform_override = ""
+	_t_construct_guard()
 	_done()
+
+
+## ⑤ ★2026-10-23 补: 只量「回退链里没有 SystemFont」量的是我加的那道检查, 不是需求 ——
+##   正式服 0.21.8 iOS 照样每进一次主菜单 / 匹配页刷 2 条「FreeType: Error loading font」, 因为报错发生在
+##   **构造** SystemFont(设 font_names / font_weight)那一下, 而检查写在构造之后、挂回退链时。
+##   ⇒ 量需求: 全仓每一处 `SystemFont.new()`, 在同一个函数里、它之前, 都得先判过 `FontKit.system_fonts_ok()`。
+func _t_construct_guard() -> void:
+	var sites := 0
+	var bad: Array = []
+	for f in _gd_files("res://scripts") + _gd_files("res://autoload"):
+		var src := FileAccess.get_file_as_string(f)
+		var from := 0
+		while true:
+			var k := src.find("SystemFont.new()", from)
+			if k < 0:
+				break
+			from = k + 1
+			var fn_start := src.rfind("\nfunc ", k)
+			var fn_start2 := src.rfind("\nstatic func ", k)
+			var head := src.substr(maxi(fn_start, fn_start2), k - maxi(fn_start, fn_start2))
+			## 注释行里提到的不算
+			var line_start := src.rfind("\n", k) + 1
+			if src.substr(line_start, k - line_start).strip_edges().begins_with("#"):
+				continue
+			sites += 1
+			var line_end := src.find("\n", k)
+			var line := src.substr(line_start, line_end - line_start)
+			if head.find("system_fonts_ok()") < 0 and line.find("system_fonts_ok()") < 0:
+				bad.append("%s:%d" % [f, src.substr(0, k).count("\n") + 1])
+	_ok("⑤ 分母: 全仓找到 SystemFont 构造点 %d 处" % sites, sites >= 3, str(sites))
+	_ok("⑤ ★★每一处构造 SystemFont 之前都先判了 FontKit.system_fonts_ok()(iOS 上不建 ⇒ 不刷 FreeType 报错)", bad.is_empty(), str(bad))
+
+
+func _gd_files(dir: String) -> Array:
+	var out: Array = []
+	var d := DirAccess.open(dir)
+	if d == null:
+		return out
+	for f in d.get_files():
+		if f.ends_with(".gd"):
+			out.append(dir.path_join(f))
+	for sub in d.get_directories():
+		out.append_array(_gd_files(dir.path_join(sub)))
+	return out
 
 
 func _done() -> void:
