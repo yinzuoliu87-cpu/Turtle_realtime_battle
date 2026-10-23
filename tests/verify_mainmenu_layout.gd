@@ -336,6 +336,16 @@ func _ready() -> void:
 		elif t_b is Control and _find_frame_square(t_b) != null and tg_b.find("⚙") < 0:
 			icon_taps.append(t_b)
 	_ok("ⓑ ★分母: ? 与 ⚙ 两颗都找到了", icon_taps.size() == 2, "%d 颗" % icon_taps.size())
+	## ★2026-10-23 用户「换上」: 设置键是像素齿轮图, 整个主菜单不许再有看得见的 ⚙ 字。
+	var gear_glyph := 0
+	for n_g in _walk(_menu):
+		if n_g is Label and (n_g as Label).is_visible_in_tree() and str((n_g as Label).text).find("⚙") >= 0:
+			gear_glyph += 1
+	var gear_tex := false
+	for t_g in icon_taps:
+		if _tag(t_g) == "⚙":
+			gear_tex = true
+	_ok("ⓑ ★设置键是像素齿轮图(ic-gear.png), 看得见的 ⚙ 字 0 个", gear_tex and gear_glyph == 0, "⚙字 %d 个" % gear_glyph)
 	if chips.size() == 2 and icon_taps.size() == 2:
 		var c0: Rect2 = chips[0]
 		var c1: Rect2 = chips[1]
@@ -1340,6 +1350,11 @@ func _nested(a: Node, b: Node) -> bool:
 func _tag(c: Node) -> String:
 	if c is Button and str((c as Button).text) != "":
 		return str((c as Button).text).substr(0, 12)
+	## 设置键 2026-10-23 起画像素齿轮(ic-gear.png), 不再有 ⚙ 字 ⇒ 认图; 下面的断言照旧用「⚙」这个名字指它。
+	for n in _walk(c):
+		if n is TextureRect and (n as TextureRect).texture != null \
+				and str((n as TextureRect).texture.resource_path).get_file() == "ic-gear.png":
+			return "⚙"
 	for n in _walk(c):
 		if n is Label and str((n as Label).text).strip_edges() != "":
 			return str((n as Label).text).substr(0, 12)

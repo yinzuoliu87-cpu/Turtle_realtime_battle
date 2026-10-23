@@ -30,6 +30,8 @@ const DETAIL_BTN_NAME := "EquipDetailButton"
 ## 糖果罐在背包格子里的像素图。★这张图一直躺在 `assets/sprites/equip/` 里没人接线
 ##   (全仓 grep 零引用), 而它的文件名就是给糖果罐画的 —— 接上它不是"拿别的图顶替"。
 const CANDY_JAR_ICON := "res://assets/sprites/equip/equip-candy-jar.png"
+## 临时等级器的像素图(2026-10-23 用户「换上」: 原来是 🔼 字符)。PixelLab Pro 出图, 糖果罐这张当风格参考(同一套描边 / 明暗)。
+const LEVEL_TOKEN_ICON := "res://assets/sprites/equip/equip-level-token.png"
 ## ── 2026-10-22 背包重做的皮 ──
 ## 顶栏 / 两路标题木牌: 商店那一张(方案里点名「顶栏直接用商店那一套」, 用户「做」)。
 const PLANK_TEX = preload("res://assets/sprites/shop/shop-plank.png")
@@ -2068,17 +2070,15 @@ func _on_bench_click(idx: int) -> void:
 func _item_cell(it: Dictionary, idx: int, pos: Vector2) -> Control:
 	var sel := idx == _sel_bench
 	var box := _slot_panel(pos, Color("#2a3a1c") if sel else Color("#26203a"), Color("#ffd93d") if sel else Color("#a98bd8"))
-	var ic := Label.new()
-	## ⚠★★2026-09-28 **这一个 emoji 是有意留下的**, 登记在
-	##   `tests/verify_no_emoji_icons.gd` 的存量台账里(带理由), 不是漏改:
-	##   它是【临时等级器】这件东西在背包里的**唯一视觉** —— 删掉就是一张空卡,
-	##   而仓库里没有任何一张"升级/等级"的像素图标(已 grep: level/upgrade/arrow 全无)。
-	##   素材铁律是"新内容一律新素材", 所以**不拿语义不符的图顶替**。
-	##   ⇒ 等新图标画好再换; 在那之前台账钉着它, 不许再多一个。
-	ic.text = "🔼"
-	ic.add_theme_font_size_override("font_size", 40)
-	ic.position = Vector2(0, 18); ic.size = Vector2(SLOT, 56)
-	ic.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	## ★2026-10-23: 原来是 🔼 字符(当时仓库里没有「升级」的像素图, 台账钉着)。用户「换上」⇒ 新画的金徽章 + 绿箭头,
+	##   尺寸与摆位同糖果罐那一格(_candy_jar_cell), 两件糖果罐战利品在背包里长同一种脸。
+	var ic := TextureRect.new()
+	ic.name = "LevelTokenIcon"
+	ic.texture = load(LEVEL_TOKEN_ICON)
+	ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	ic.position = Vector2(SLOT / 2.0 - 48, 8); ic.size = Vector2(96, 96)
 	box.add_child(ic)
 	## 名字不写在格子里(同装备格, 2026-10-21): 选中后底部操作条那一行说它是什么。
 	for ch in box.get_children():

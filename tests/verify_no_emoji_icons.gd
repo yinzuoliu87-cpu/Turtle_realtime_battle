@@ -129,7 +129,7 @@ const SRC_LEDGER: Dictionary = {
 	##   两次事故都是"兜底成别的东西", 看上去像是有意设计。
 	"scripts/scenes/CodexScene.gd": [1,
 		"数据未加载那行的 ❌(平时 visible=false); 🛠 调试面板 ×2 已于 2026-10-07 整块删除"],
-	"scripts/scenes/InventoryScene.gd": [1, "临时等级器 🔼(无素材)"],
+	"scripts/scenes/InventoryScene.gd": [0, "2026-10-23 临时等级器换成像素图 equip-level-token.png(用户「换上」), 钉住"],
 	"scripts/scenes/SettingsScene.gd": [0, "2026-10-07 重排后 0(钉住)"],
 	"scripts/scenes/codex/detail_views.gd": [1,
 		"装备详情头图的 📦 兜底 —— 96 件装备**全部**有 PNG 且图都在盘上(下面有一条断言在守), 这一支永不触发"],
@@ -138,7 +138,7 @@ const SRC_LEDGER: Dictionary = {
 	# ── 地盘之外(本轮由别的路在改)。基线按**当下实测**登记, 只许降。 ──
 	## ⚠ 这几条不是"我认可它们该留着", 是「不属于本轮地盘、但也不许再长」。
 	##   它们的改法与上面一样: 有对得上的像素图就接图, 没有就登记进缺口表。
-	"scripts/scenes/MainMenuScene.gd": [1, "右上设置键的 ⚙(要新画像素齿轮, 待用户定); 2026-10-23 按实测 15→1"],
+	"scripts/scenes/MainMenuScene.gd": [0, "2026-10-23 设置键换成像素齿轮 ic-gear.png(用户「换上」), 钉住"],
 	"scripts/scenes/ShopScene.gd": [13, "商店(另一路在改)"],
 	## ★★2026-09-28 **14 → 5**(实测)。局内羁绊 chips 的类型图标已换成 `tags/` 像素图,
 	##   但 ⚠ **这一格的数字并不是因此降的** —— 类型 emoji 从来不是这个文件里的字面量,

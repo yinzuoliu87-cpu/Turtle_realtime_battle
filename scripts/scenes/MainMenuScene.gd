@@ -144,6 +144,9 @@ const CUR_ICON := 34.0                      # 货币图标
 const CUR_FONT := 24                        # 货币数字
 const CUR_GAP := 8.0                        # 货币条与 ? 键之间
 const ICON_TAP := 81.0                                 # ? / ⚙ 的点击区(触摸线)
+## 设置键的像素齿轮(2026-10-23 用户「换上」; 原来 Label 里画 ⚙ 字符 = 系统字体的细线 emoji, 与旁边像素「?」不是一套)。
+##   生成器 tools/build_gear_icon.py(19x19 像素 ×2)。
+const GEAR_TEX := "res://assets/sprites/menu/hud/ic-gear.png"
 const ICON_VIS := 50.0                                 # ? / ⚙ 看得见的暗槽(82→54→50; 2026-10-05 换像素小图标)
 
 ## ── 本周赛程: 点模式卡打开的整页(结构照荒野乱斗「CHOOSE EVENT」, 见 `_week_popup`) ──
@@ -846,8 +849,20 @@ func _icon_button(glyph: String, glyph_size: int, col: Color, cb: Callable, pos:
 	var slot := _nine_rect("iconbtn.png", Vector4(6, 6, 8, 16), Rect2(Vector2(vo, vo), Vector2(ICON_VIS, ICON_VIS + 4.0)))
 	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(slot)
+	## `glyph` 是图片路径 ⇒ 画像素图(居中在顶面), 不画字。
+	if glyph.begins_with("res://"):
+		var tr := TextureRect.new()
+		tr.name = "IconTex"
+		tr.texture = load(glyph)
+		tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+		tr.position = Vector2(vo, vo)
+		tr.size = Vector2(ICON_VIS, ICON_VIS - 6.0)
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(tr)
 	var ic := Label.new()
-	ic.text = glyph
+	ic.text = "" if glyph.begins_with("res://") else glyph
+	ic.visible = not glyph.begins_with("res://")
 	## 字形对准【顶面】中心(顶面 = 暗槽去掉底边厚 10px), 不是整块按钮的中心。
 	ic.position = Vector2(vo, vo)
 	ic.size = Vector2(ICON_VIS, ICON_VIS - 6.0)
@@ -858,7 +873,7 @@ func _icon_button(glyph: String, glyph_size: int, col: Color, cb: Callable, pos:
 		## m6x11 的「?」字形在行框里偏上偏左(2026-10-06 实测墨迹中心 dx=-1 / dy=-2.5) ⇒ 整体挪回暗槽正中
 		ic.position += Vector2(0.5, 5.0)   # 2026-10-06 实体按钮版再量: 对准顶面中心
 	else:
-		ic.position += Vector2(-1.0, 1.0)  # ⚙ 线稿齿轮同样实量
+		ic.position += Vector2(-1.0, 1.0)
 	ic.add_theme_font_size_override("font_size", glyph_size)
 	ic.add_theme_color_override("font_color", col)
 	ic.add_theme_color_override("font_outline_color", Color("#140a03"))
@@ -1059,7 +1074,7 @@ func _right_column(now: int = 0) -> void:
 	var help_x := set_x - ICON_VIS - CUR_GAP   # 看得见的两个暗槽之间 = CUR_GAP(与货币条到 ? 同宽); 点击区互相叠一截, 不影响
 	var uy := 30.0 + (85.0 - ICON_TAP) / 2.0                   # 与货币牌竖直居中对齐
 	## ★2026-10-05: ⚙(系统表情)/蓝色圆 ? 换成像素小图标 + 暗槽(参考: 荒野乱斗 ≡ / 英雄联盟手游齿轮 —— 角上的小图标, 不跟货币抢)。
-	var set_tile := _icon_button("⚙", 30, Color("#d8d4cc"), func(): _go("Settings"), Vector2(set_x, uy))
+	var set_tile := _icon_button(GEAR_TEX, 30, Color("#d8d4cc"), func(): _go("Settings"), Vector2(set_x, uy))
 	content_root.add_child(set_tile)
 	_slide_in(set_tile, 1)
 	var help_tile := _icon_button("?", 30, Color("#ffd27a"), func(): _on_tutorial(), Vector2(help_x, uy))
