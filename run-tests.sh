@@ -461,6 +461,22 @@ frames_for () {
 ##   真出事(机器蓝屏史见 CLAUDE.md)第一件事就是 `JOBS=4 bash run-tests.sh`。
 JOBS="${JOBS:-16}"
 
+## ★★分片(2026-10-23, 用户「提速」): CI 那台 runner 只有 4 核, 全套 563 个测试一台跑要 40 分钟
+##   (上一轮核秒 37429s; 最慢那根 verify_stream_parity 在 16 路抢 4 核下单条 36 分钟)。
+##   ⇒ CI 拆成 N 台同时跑, 每台 `SHARD=k/N` 只跑自己那一份。**判据一个字没动**, 只是谁跑哪几条。
+##   · 不设 SHARD(本机) = 全套, 与原来逐字相同。
+##   · 分配: 按帧预算从大到小排好(与下面调度同一个序), 第 i 条给第 N-(i mod N) 片 ——
+##     同一档的长杆轮流落到各片。不新增状态文件(同「长杆先跑」那条的理由)。
+##   · 冒烟 / 三方对账 / 审计器只在第 1 片跑(它们不分片, 跑 N 遍是白花)。
+SHARD_K=1; SHARD_N=1
+if [ -n "${SHARD:-}" ]; then
+  SHARD_K="${SHARD%%/*}"; SHARD_N="${SHARD##*/}"
+  if ! [[ "$SHARD_K" =~ ^[0-9]+$ && "$SHARD_N" =~ ^[0-9]+$ ]] || [ "$SHARD_K" -lt 1 ] || [ "$SHARD_K" -gt "$SHARD_N" ]; then
+    echo "★SHARD 写法不对: '$SHARD'(要 k/N, 1 ≤ k ≤ N)"; exit 1
+  fi
+fi
+FIRST_SHARD=0; [ "$SHARD_K" -eq 1 ] && FIRST_SHARD=1
+
 # 只跑, 不判定。输出与退出码各写一个文件(并行下拿不到子进程的 $?)
 run_one () {  # $1 = 测试名
   local t="$1"
@@ -604,9 +620,12 @@ QUIET=1 APPDATA="$GATE_APPDATA" XDG_DATA_HOME="$GATE_APPDATA" "$GODOT" --headles
 # ★★★2026-10-04: 这一行原来**没带** TURTLE_BACKEND/TURTLE_SUPABASE=" " ⇒ 冒烟进主菜单时用全新存档匿名登录**生产库**,
 #   每跑一次门禁就在线上 auth.users 里造一个垃圾账号(本机 + CI 每次都造; 9-27 起每天 25~125 个, 实测零真人)。
 #   测试池那一行早就带了, 冒烟这一行漏了。判据: tools/gate_offline_audit.py。
+SMOKE_PID=""
+if [ "$FIRST_SHARD" -eq 1 ]; then
 ( SHIP=1 TURTLE_BACKEND=" " TURTLE_SUPABASE=" " QUIET=1 APPDATA="$GATE_APPDATA" XDG_DATA_HOME="$GATE_APPDATA" "$GODOT" --headless --audio-driver Dummy --path "$DIR" res://tests/smoke_scenes.tscn \
     --quit-after 90000 > "$RAW/smoke.log" 2>&1; echo $? > "$RAW/smoke.rc" ) &
 SMOKE_PID=$!
+fi
 
 NAMES=()
 for f in "$DIR"/tests/verify_*.gd; do
@@ -614,6 +633,17 @@ for f in "$DIR"/tests/verify_*.gd; do
   NAMES+=("$(basename "$f" .gd)")
 done
 DISCOVERED=${#NAMES[@]}
+if [ "$SHARD_N" -gt 1 ]; then
+  mapfile -t _ALL < <(for _n in "${NAMES[@]}"; do printf '%s %s\n' "$(frames_for "$_n")" "$_n"; done \
+    | sort -k1,1rn -k2,2 | awk '{print $2}')
+  NAMES=()
+  for _i in "${!_ALL[@]}"; do
+    [ $(( SHARD_N - _i % SHARD_N )) -eq "$SHARD_K" ] && NAMES+=("${_ALL[$_i]}")   # 倒着发: 最重那份落在最后一片, 第 1 片还要跑审计器与冒烟
+  done
+  mapfile -t NAMES < <(printf '%s\n' "${NAMES[@]}" | sort)   # 判定段按名字顺序, 与不分片时同一个序
+  echo "  分片 $SHARD_K/$SHARD_N: 全套 $DISCOVERED 个里跑这 ${#NAMES[@]} 个"
+  DISCOVERED=${#NAMES[@]}
+fi
 
 ARAW="$(mktemp -d)"
 
@@ -637,6 +667,7 @@ export ARAW
 mapfile -t AUDIT_SCRIPTS < <(grep -oE '^run_audit +"(tools/[a-zA-Z0-9_]+\.py)"' "$0" \
   | grep -oE 'tools/[a-zA-Z0-9_]+\.py' | sort -u)
 AUDIT_N=${#AUDIT_SCRIPTS[@]}
+[ "$FIRST_SHARD" -eq 1 ] || AUDIT_N=0
 if [ "$AUDIT_N" -gt 0 ]; then
   ( printf '%s\n' "${AUDIT_SCRIPTS[@]}" | xargs -P "$JOBS" -I{} bash -c 'run_audit_one "$@"' _ {} ) &
   AUDIT_PID=$!
@@ -703,6 +734,7 @@ fi
 
 # ── 全流程闪退冒烟 ────────────────────────────────────────────────────────────
 #   必须用 SHIP=1 跑: 否则 _review_demo() 为真 → 假人永不死 → 战斗永不结束 → 结算路径根本没测到。
+if [ "$FIRST_SHARD" -eq 1 ]; then
 echo "=== 全流程闪退冒烟 (SHIP=1 真实对局) ==="
 wait "$SMOKE_PID"        # ★它在自证测试跑的时候就已经在跑了, 通常这里立刻返回
 SMOKE_OUT="$(cat "$RAW/smoke.log" 2>/dev/null)"
@@ -733,9 +765,11 @@ else
   #   而冒烟是间歇性红(1/3), 事后想查根因时日志已经不在了。
   cp "$RAW/smoke.log" ".gate-fail-smoke_scenes.log" 2>/dev/null || true
 fi
+fi   # FIRST_SHARD: 冒烟
 
 
 # ── 三方一致性对账 (pets.json ↔ 活代码 ↔ 权威文档) ──────────────────────────
+if [ "$FIRST_SHARD" -eq 1 ]; then
 echo "=== 三方一致性对账 ==="
 TRI="$(cd "$DIR" && TRI_OUT="$DIR/tri_audit_report.txt" python tools/tri_audit.py 2>&1)"; TRI_RC=$?
 # C 段(icon 索引错位)是已知待用户拍板项, 不算失败; 其余段(A/B/D/E/F)必须 0
@@ -745,6 +779,7 @@ if [ "$TRI_RC" -eq 0 ] && echo "$TRI" | grep -q "selftest OK"; then
 else
   FAIL=$((FAIL+1)); echo "  FAIL  tri_audit"; echo "$TRI" | tail -3 | sed 's/^/        /'
 fi
+fi   # FIRST_SHARD: 三方对账
 
 # ── 只读数据审计器 ──────────────────────────────────────────────────────────
 #   ★这些以前只能【手动跑】, 于是"改了没人拦" —— 装备文案与代码分歧就是这么攒出来的
@@ -762,6 +797,7 @@ fi
 #   串行等就是白花几分钟。冒烟测试早就是这么干的。
 # 判定(串行, 按登记顺序)。★没有预跑结果就【当场跑】—— 兜底, 免得漏登记的静默跳过。
 run_audit () {   # $1=脚本 $2=判定通过的关键字 $3=显示名
+  [ "$FIRST_SHARD" -eq 1 ] || return 0     # 审计器不分片, 只在第 1 片判
   local out key
   key="$(basename "$1" .py)"
   if [ -f "$ARAW/$key.out" ]; then

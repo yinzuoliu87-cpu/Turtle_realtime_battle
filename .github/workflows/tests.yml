@@ -23,11 +23,21 @@ permissions:
                     #   那一步永远显示 success、ci-logs 停在 2026-07-17, 于是 CI 门禁连红我却看不到日志(用户2026-07-24)。
 
 jobs:
-  gate:
+  # ★★2026-10-23 拆成 4 台并行(用户「提速」)。一台 4 核 runner 跑全套 563 个测试要 40 分钟:
+  #   上一轮核秒 37429s, 并行度 16 挤 4 个核, 最慢的 verify_stream_parity 单条 36 分钟。
+  #   ⇒ 每台 `SHARD=k/4` 只跑自己那一份(分配规则见 run-tests.sh「分片」), 并行度按核数给 4。
+  #   冒烟 / 三方对账 / 审计器只在第 1 片跑。判据一个字没动。
+  #   公开仓库免费并发 20 个 job, 不计费。fail-fast 关掉: 一片红了其余照跑完, 一轮看全所有红。
+  shard:
+    name: 门禁分片 ${{ matrix.shard }}/4
     runs-on: ubuntu-latest
     # ★30 → 60(2026-10-21): 10-20 起每轮都在 30 分钟整被掐成 cancelled(最后一次跑完用了 29 分钟),
     #   CI 两天没给出结论而看着只是"取消"。测试在涨, 4 核 runner 上全套已超 30 分钟。公开仓库不计费。
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     env:
       GODOT_VERSION: "4.6.3-stable"
     steps:
@@ -88,16 +98,64 @@ jobs:
           fi
 
       - name: 只读数据审计 (不需要 Godot, 先跑=快速失败)
+        if: matrix.shard == 1
         run: |
           python3 tools/data_integrity.py
           python3 tools/tooltip_number_audit.py
           TRI_OUT="$PWD/tri_audit_report.txt" python3 tools/tri_audit.py
 
       - name: 自证测试 + 冒烟 + 三方对账
+        env:
+          SHARD: ${{ matrix.shard }}/4
+          JOBS: "4"
         run: |
           set -o pipefail
           # ★必须把输出落盘 —— 否则失败时那步只推了个时间戳, 等于什么都没留下
           bash run-tests.sh 2>&1 | tee /tmp/gate.log
+
+      # ★每片把日志交给下面的 report 汇总(同一个 workflow 里传 artifact 不需要用户 token)。
+      #   .gate-fail-*.log 是点开头的隐藏文件, upload-artifact v4 默认不收 ⇒ 必须 include-hidden-files。
+      - name: 交出本片日志
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-${{ matrix.shard }}
+          path: |
+            /tmp/gate.log
+            .gate-fail-*.log
+            tri_audit_report.txt
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 3
+
+  # ★汇总: 四片的日志拼成一份, 注解与推 ci-logs 只在这里做一次(四片各推一次会互相覆盖)。
+  report:
+    name: 门禁汇总
+    needs: shard
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 收四片日志
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/art
+
+      - name: 拼成一份
+        run: |
+          : > /tmp/gate.log
+          for k in 1 2 3 4; do
+            echo "========== 门禁分片 $k/4 ==========" >> /tmp/gate.log
+            cat "/tmp/art/gate-$k/gate.log" >> /tmp/gate.log 2>/dev/null || echo "(分片 $k 没交日志)" >> /tmp/gate.log
+            for f in /tmp/art/gate-$k/.gate-fail-*.log; do
+              [ -e "$f" ] || continue
+              cp -f "$f" .
+            done
+            [ -e "/tmp/art/gate-$k/tri_audit_report.txt" ] && cp -f "/tmp/art/gate-$k/tri_audit_report.txt" .
+          done
+          grep -E "^(ALL PASS|FAIL x)" /tmp/gate.log || true
+          echo "四片结论: ${{ needs.shard.result }}"
 
       # ★把失败原因做成 check-run 注解 —— 这是【唯一不需要 token 就能远程读到】的通道:
       #   · Actions 日志 API 要 admin 权限(403)
@@ -105,7 +163,7 @@ jobs:
       #   · 推 ci-logs 分支要 contents:write, 而仓库的 Actions 默认权限是只读 → 403
       #   2026-07-22 实测三条全堵死, 我完全读不到门禁为什么红。注解 API 是公开可读的。
       - name: 把失败行做成注解(无 token 也能远程读)
-        if: failure()
+        if: needs.shard.result != 'success'
         run: |
           # ★这一段 2026-07-23 修过一次: 原来有一行 `tr '\n' ' | '`, 里面的换行是【真换行】,
           #   续行顶到第 0 列 —— 缩进比块标量小就会终止块, GitHub 于是拿后半行当 YAML 解析
@@ -126,7 +184,7 @@ jobs:
           done < /tmp/gate.tail
 
       - name: 失败时把日志推到 ci-logs 分支
-        if: failure()
+        if: needs.shard.result != 'success'
         continue-on-error: true   # 仓库 Actions 权限若是只读, 这一步必然 403; 别让它盖过真正的失败原因
         run: |
           # 本地读不了 Actions 日志 API(无 token), 推到分支后 git fetch origin ci-logs 就能看
@@ -183,3 +241,13 @@ jobs:
             done < /tmp/push.out
             exit 1
           fi
+
+      # ★汇总这一格也要红: 只看 run 结论时, 四片里任何一片红 ⇒ 这里红。
+      - name: 四片结论
+        if: always()
+        run: |
+          if [ "${{ needs.shard.result }}" != "success" ]; then
+            echo "::error::门禁分片有红(结论 ${{ needs.shard.result }}), 失败行见上方注解 / ci-logs 分支"
+            exit 1
+          fi
+          echo "四片全绿"
