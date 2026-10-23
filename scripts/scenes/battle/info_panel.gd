@@ -1280,7 +1280,9 @@ func _axe_entries(u: Dictionary) -> Array:
 	var b: Dictionary = battle.SkillText.live_formula_bb(psrc, vars, 14)
 	out.append({"name": "被动 · " + (nm if has_form else "窃取护盾"), "cost": -1.0, "icon": icon,
 		"desc": str(b["body"]), "rows": b["rows"], "tpl": "", "sk": {}})
-	var k: Dictionary = battle.SkillText.live_formula_bb("%s攻击当前目标，造成（%d%% 攻击力）物理伤害。" % [
+	## 模板用半角括号: 换算正则(SkillText.equip_formula_re)全角半角都认, 换算后括号整个换成结果数字;
+	##   战斗界面源码字面量不许有全角括号(verify_hud_gamefeel ②)。
+	var k: Dictionary = battle.SkillText.live_formula_bb("%s攻击当前目标，造成 (%d%% 攻击力) 物理伤害。" % [
 		nm, roundi(BasicConsts.DEFAULT_BASIC_COEF * 100.0)], vars, 14)
 	out.append({"name": "攻击 (普攻)", "cost": -1.0, "icon": icon,
 		"desc": str(k["body"]), "rows": k["rows"], "tpl": "", "sk": {}})

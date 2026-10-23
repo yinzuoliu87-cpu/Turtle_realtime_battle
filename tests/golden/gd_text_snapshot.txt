@@ -1405,7 +1405,7 @@ scripts/scenes/battle/info_panel.gd|lit|%.1f 秒后爆炸 · 治疗 %d · 伤害
 scripts/scenes/battle/info_panel.gd|lit|%d层 · %d%%
 scripts/scenes/battle/info_panel.gd|lit|%d层 · %s/%s
 scripts/scenes/battle/info_panel.gd|lit|%s %d 层
-scripts/scenes/battle/info_panel.gd|lit|%s攻击当前目标，造成（%d%% 攻击力）物理伤害。
+scripts/scenes/battle/info_panel.gd|lit|%s攻击当前目标，造成 (%d%% 攻击力) 物理伤害。
 scripts/scenes/battle/info_panel.gd|lit|(普攻)
 scripts/scenes/battle/info_panel.gd|lit|不可选中
 scripts/scenes/battle/info_panel.gd|lit|中毒

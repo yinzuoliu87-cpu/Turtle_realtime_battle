@@ -113,15 +113,36 @@ jobs:
           # ★必须把输出落盘 —— 否则失败时那步只推了个时间戳, 等于什么都没留下
           bash run-tests.sh 2>&1 | tee /tmp/gate.log
 
+      # ★每片**自己**把失败行做成注解(无 token 能读的唯一通道)。不只靠下面的汇总:
+      #   2026-10-23 第一次真红时汇总一行日志都没拿到(见下一步的注释), 失败原因就只剩「exit code 1」。
+      - name: 本片失败行做成注解
+        if: failure()
+        run: |
+          if [ ! -f /tmp/gate.log ]; then
+            echo "::error title=gate-${{ matrix.shard }}::没抓到 /tmp/gate.log"
+            exit 0
+          fi
+          grep -nE "\[FAIL\]|^ *FAIL|FAILED|SCRIPT ERROR|Parse Error|Max recursion" /tmp/gate.log > /tmp/gate.hits || true
+          head -40 /tmp/gate.hits | while IFS= read -r line; do
+            echo "::error title=gate-${{ matrix.shard }}::${line}"
+          done
+
       # ★每片把日志交给下面的 report 汇总(同一个 workflow 里传 artifact 不需要用户 token)。
       #   .gate-fail-*.log 是点开头的隐藏文件, upload-artifact v4 默认不收 ⇒ 必须 include-hidden-files。
+      # ★★日志先拷进工作区再传, 只传相对路径(2026-10-23 修): 原来 /tmp/gate.log 与工作区文件一起传,
+      #   artifact 按它们的公共祖先(根目录)存 ⇒ 下载下来是 gate-k/tmp/gate.log, 汇总按 gate-k/gate.log 找不到,
+      #   四片全报「没交日志」—— 绿的时候用不到日志, 第一次真红才暴露。
+      - name: 日志拷进工作区
+        if: always()
+        run: cp -f /tmp/gate.log gate-shard.log 2>/dev/null || echo "(本片没留下 gate.log)" > gate-shard.log
+
       - name: 交出本片日志
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: gate-${{ matrix.shard }}
           path: |
-            /tmp/gate.log
+            gate-shard.log
             .gate-fail-*.log
             tri_audit_report.txt
           include-hidden-files: true
@@ -147,7 +168,7 @@ jobs:
           : > /tmp/gate.log
           for k in 1 2 3 4; do
             echo "========== 门禁分片 $k/4 ==========" >> /tmp/gate.log
-            cat "/tmp/art/gate-$k/gate.log" >> /tmp/gate.log 2>/dev/null || echo "(分片 $k 没交日志)" >> /tmp/gate.log
+            cat "/tmp/art/gate-$k/gate-shard.log" >> /tmp/gate.log 2>/dev/null || echo "(分片 $k 没交日志)" >> /tmp/gate.log
             for f in /tmp/art/gate-$k/.gate-fail-*.log; do
               [ -e "$f" ] || continue
               cp -f "$f" .
