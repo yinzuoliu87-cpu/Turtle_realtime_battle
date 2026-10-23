@@ -246,7 +246,9 @@ class _Watch extends Node:
 		match what:
 			NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_WM_CLOSE_REQUEST:
 				ErrorReporter._clear_flag()
-				_flush_now()
+				## ★2026-10-23: 引擎下发这几条通知时是从根节点往下逐个传, 根节点此刻「忙」, 同步 add_child 必失败(正式服报错「Parent node is busy setting up children」)⇒ SupabaseNet._spawn 建的请求节点进不了树、请求当场判失败。一律延后到这一帧末尾再做。
+				##   原来切后台那一刻的上传必失败 ⇒ 切后台前攒的报错全丢。
+				call_deferred("_flush_now")
 			NOTIFICATION_APPLICATION_RESUMED:
 				var cs := get_tree().current_scene if is_inside_tree() else null
 				ErrorReporter._write_flag(cs.scene_file_path.get_file() if cs != null else "")

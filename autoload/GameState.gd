@@ -1564,13 +1564,15 @@ func _net_tick() -> void:
 ## 手机切回前台时立刻续一次 —— 在后台放了一小时回来, token 早过期了,
 ## 等下一拍(最多 60 秒)才续的话, 这段时间里的上传全会被拒。
 func _notification(what: int) -> void:
+	## ★2026-10-23: 引擎下发这几条通知时是从根节点往下逐个传, 根节点此刻「忙」, 同步 add_child 必失败(正式服报错「Parent node is busy setting up children」)⇒ SupabaseNet._spawn 建的请求节点进不了树、请求当场判失败。一律延后到这一帧末尾再做。
+	##   原来回前台续登录、切后台推云存档这两下都发不出去。
 	if what == NOTIFICATION_APPLICATION_RESUMED and not test_mode:
-		_SB_NET.ensure_signed_in_async()
+		Callable(_SB_NET, "ensure_signed_in_async").call_deferred()
 	## D-8: 切后台 / 关窗口时立刻推一次 —— 手机上切到后台之后进程随时会被系统杀掉,
 	##   等下一拍(最多 20 秒)可能就没有下一拍了。
 	if (what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST) \
 			and not test_mode and not tutorial_active:
-		_SB_NET.maybe_push_save(true)
+		Callable(_SB_NET, "maybe_push_save").call_deferred(true)
 
 
 ## PC 板窗口行为(用户 2026-08-01:「pc端要随便拉，支持全屏」)。

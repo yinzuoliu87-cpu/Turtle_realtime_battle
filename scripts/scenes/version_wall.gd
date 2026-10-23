@@ -173,7 +173,9 @@ func _input(event: InputEvent) -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_RESUMED or what == NOTIFICATION_APPLICATION_FOCUS_IN:
-		_fetch()
+		## ★2026-10-23: 引擎下发这几条通知时是从根节点往下逐个传, 根节点此刻「忙」, 同步 add_child 必失败(正式服报错「Parent node is busy setting up children」)⇒ SupabaseNet._spawn 建的请求节点进不了树、请求当场判失败。一律延后到这一帧末尾再做。
+		##   原来每次回前台都问不到 ⇒ 状态记成「连不上」⇒ 墙被撤掉、回前台发现新的最低版本从没生效过。
+		call_deferred("_fetch")
 
 
 ## 去问一次服务状态(没配后端 = 什么都不做)。限频: 焦点进出很频繁。
