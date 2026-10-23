@@ -116,7 +116,6 @@ func _make_account() -> void:
 	GameState.persistent_equipped = {"candy": [{"id": "p2eq_005", "star": 1}]}
 	GameState.onboarded = false
 	GameState.nickname = ""          # 新号没起过名 ⇒ 出口后要起名(v4)
-	GameState.novice_menu = false
 	## 已登录的绑定号: 云存档同步的前提全齐(账号 / 邮箱 / 令牌) ⇒ 「教程里不推」靠的是教程闸, 不是没登录
 	GameState.account_id = "gate-acc-tut"
 	GameState.account_email = "gate@turtle.test"
@@ -398,7 +397,7 @@ func _skip_pass() -> void:
 	_ok("★「跳过教程」⇒ 出口理由 skipped", str(get_node("/root/TutorialDirector").last_end_reason) == "skipped")
 	_after_exit("跳过")
 	_after_skip = _diff_lines(_a, _bytes())
-	var mm := await _name_and_menu(fl, "跳过", false)
+	var mm := await _name_and_menu(fl, "跳过")
 	_ok("★跳过 ⇒ 不飘「教程完成」", mm != null and not _has_label(mm, "教程完成"))
 	await _frames(4)
 	_ok("★跳过后主菜单不再弹选择框 / 不再进首启", mm != null and mm.get_node_or_null("TutorialChoice") == null
@@ -419,8 +418,8 @@ func _choice_from(m: Node) -> Node:
 	return ch
 
 
-## 起名框: 预填的名字直接点「确认」⇒ 主菜单。量: 名字写进账号存档(rename_apply 那一次存档), 走完的号 novice_menu 落盘。
-func _name_and_menu(fl: Node, tag: String, want_novice: bool) -> Node:
+## 起名框: 预填的名字直接点「确认」⇒ 主菜单。量: 名字写进账号存档(rename_apply 那一次存档); 主菜单没有新手锁。
+func _name_and_menu(fl: Node, tag: String) -> Node:
 	if fl == null:
 		return null
 	var ed := fl.find_child("NameEdit", true, false) as LineEdit
@@ -433,7 +432,20 @@ func _name_and_menu(fl: Node, tag: String, want_novice: bool) -> Node:
 	_ok("★[%s] 起名「确认」⇒ 主菜单" % tag, mm != null)
 	var js = JSON.parse_string(_bytes().get_string_from_utf8())
 	_ok("★★[%s] 名字写进了账号存档(盘上)" % tag, js is Dictionary and str(js.get("nickname", "")) == P2C.nickname_clean(nm), str(js.get("nickname", "")) if js is Dictionary else "?")
-	_ok("★[%s] 主菜单逐个点亮标记(novice_menu) = %s 并落盘" % [tag, str(want_novice)], js is Dictionary and bool(js.get("novice_menu", false)) == want_novice)
+	_ok("★[%s] 存档里没有「逐个点亮」标记(2026-10-23 拿掉)" % tag, js is Dictionary and not js.has("novice_menu"))
+	if mm != null:
+		for _i in range(40):
+			await get_tree().process_frame
+		var locked: Array = []
+		for l in mm.find_children("LockReason", "Label", true, false):
+			var nm_txt := ""
+			for c2 in (l as Node).get_parent().get_children():
+				if c2 is Label and c2 != l:
+					nm_txt = (c2 as Label).text     # 第一个兄弟 Label = 入口名字(与 verify_first_launch._reasons 同一取法; 后面那个空字的是红点角标)
+					break
+			if nm_txt != "商店":
+				locked.append(nm_txt)
+		_ok("★★[%s] 主菜单除商店外一个锁都没有(背包 / 图鉴 / 排行榜 / 训龟大师都亮)" % tag, locked.is_empty(), str(locked))
 	return mm
 
 
@@ -706,7 +718,7 @@ func _full_pass() -> void:
 		if bool(r["tut"]):
 			n_tut += 1
 	print("    [网络] 教程期间发出的请求 %d 条(读) · 全程 %d 条" % [n_tut, _reqs.size()])
-	var mm := await _name_and_menu(fl, "完成", true)
+	var mm := await _name_and_menu(fl, "完成")
 	_ok("★走完 ⇒ 主菜单飘「教程完成」", mm != null and _has_label(mm, "教程完成"))
 	await _frames(4)
 	_ok("★完成后主菜单不再弹选择框", mm != null and mm.get_node_or_null("TutorialChoice") == null)

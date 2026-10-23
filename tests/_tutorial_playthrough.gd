@@ -106,14 +106,6 @@ func _ready() -> void:
 	else:
 		_note("★ 第一次进主菜单没打开本周赛程页")
 	await _f(90)
-	if mm != null and path != "skip":
-		## 新手逐个点亮: 点一下锁着的「背包」, 录下那一句
-		var sq: Node = mm.find_child("Sq_背包", true, false)
-		if sq != null:
-			await _click((sq as Control).get_global_rect().get_center())
-			await _f(20)
-			await _shoot("主菜单_点锁着的背包")
-			_timeline.append([_frame, "点锁着的背包 ⇒ 首战后解锁"])
 	await _f(60)
 	_finish()
 

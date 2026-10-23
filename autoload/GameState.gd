@@ -153,10 +153,7 @@ var tutorial_active: bool = false
 ## first_tips_seen: 账号侧「第一次遇到」提示看过哪几条({key: true}, 见 scripts/systems/onboarding/first_tips.gd)。
 ##   进存档 / 云存档。★不在教程导演的 PASSTHROUGH 里: 教程期间它随沙盒换成空表、结束换回(教程里也不出这些提示)。
 var first_tips_seen: Dictionary = {}
-## novice_menu: 首启走完新手教程的号, 主菜单按对战场次逐个点亮入口(方案书 20261020-教程重写 §v4 · 皇室战争训练营做法)。
-##   判据与文案全在 scripts/systems/onboarding/novice_menu.gd。进存档 / 云存档; 跳过教程的号恒为 false(照现有解锁规则)。
 ##   ★导演在 end_tutorial **存档之后**才置位(「教程结束后存档只差 onboarded」逐字节守着), 随起名那一次存档落盘。
-var novice_menu: bool = false
 ## (tutorial_mandatory「首次强制无跳过」2026-10-07 删除: 教程随时可跳, 见方案书 20261007-新手教程重做 §4.3)
 
 ## 技能说明看【详细】还是【简明】(用户需求1 两级描述)。存这里而不是战斗场的成员变量,
@@ -1829,7 +1826,6 @@ func _save_dict() -> Dictionary:
 		"dual_lineup": dual_lineup,
 		"onboarded": onboarded,   # 走完首次教学 → 不再触发
 		"first_tips_seen": first_tips_seen,   # 「第一次遇到」提示看过哪几条
-		"novice_menu": novice_menu,   # 首启走完教程 ⇒ 主菜单逐个点亮(novice_menu.gd)
 		"trainer_appearance": trainer_appearance,   # 训龟大师装配(局外持久)
 		"trainer_skill": trainer_skill,
 		"cloud_rev": cloud_rev,          # D-8 云存档版本号(设备本地, 不上云)
@@ -1931,7 +1927,6 @@ func _read_save_file(path: String):
 func _apply_save_dict(data: Dictionary) -> void:
 	onboarded = data.get("onboarded", false)
 	first_tips_seen = data.get("first_tips_seen", {}) if data.get("first_tips_seen", {}) is Dictionary else {}
-	novice_menu = bool(data.get("novice_menu", false))
 	trainer_appearance = str(data.get("trainer_appearance", "default"))   # 训龟大师装配(缺键=旧档默认)
 	# 迁移: 新键 trainer_skill 优先; 旧档只有 trainer_active → 用它(旧的两槽合成一个·取旧主动)。
 	trainer_skill = str(data.get("trainer_skill", data.get("trainer_active", "hook")))
@@ -2234,7 +2229,6 @@ func reset_save() -> void:
 	dual_lineup = {}
 	trainer_appearance = "default"   # 训龟大师装配回默认(形象/钩锁)
 	trainer_skill = "hook"
-	novice_menu = false   # 清档 = 新开一局游戏: 不再按新手节奏锁主菜单入口
 	## ★这一行【必须在 save() 之前】。它原来在文件下方 —— 被两行注释和空行隔开、
 	##   一直"挂"在 `# ─── V2 赛季 ───` 分节线与 `func ensure_season()` 的文档注释中间。
 	##   GDScript 不拿注释和空行断缩进, 所以它**语法上仍属于本函数**、也确实能跑;

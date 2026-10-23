@@ -1956,13 +1956,6 @@ scripts/systems/onboarding/first_tips.gd|lit|斗龟场每周是一个赛季：�
 scripts/systems/onboarding/first_tips.gd|lit|本场由服务器判定 · 退出不影响结果
 scripts/systems/onboarding/first_tips.gd|lit|羁绊已激活 · 点击查看详情
 scripts/systems/onboarding/first_tips.gd|lit|训龟大师在战斗中施放所选技能
-scripts/systems/onboarding/novice_menu.gd|lit|%d 场后解锁
-scripts/systems/onboarding/novice_menu.gd|lit|商店
-scripts/systems/onboarding/novice_menu.gd|lit|图鉴
-scripts/systems/onboarding/novice_menu.gd|lit|排行榜
-scripts/systems/onboarding/novice_menu.gd|lit|背包
-scripts/systems/onboarding/novice_menu.gd|lit|训龟大师
-scripts/systems/onboarding/novice_menu.gd|lit|首战后解锁
 scripts/systems/onboarding/tutorial_buff.gd|lit|教程加成
 scripts/systems/onboarding/tutorial_buff.gd|lit|新手教程：增伤 %d%%，减伤 %d%%
 scripts/systems/replay/abandoned_match.gd|lit|上一局判负 · 版本已更新

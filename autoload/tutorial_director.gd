@@ -256,10 +256,6 @@ func end_tutorial(reason: String) -> void:
 		_pending_cloud = []
 		GameState.apply_cloud_payload(pc[0], int(pc[1]))   # 它自己会 save()
 	GameState.save()
-	## ★走完教程的新号: 主菜单按场次逐个点亮(NoviceMenu)。**存档之后**才置位 ——
-	##   「教程结束后存档 = 进教程前那份只差 onboarded」(完成 == 跳过逐字节)是门禁守着的; 它随起名那一次存档落盘。
-	if first_run and reason == "completed":
-		GameState.novice_menu = true
 	## 教程战斗里真显示过的两路 / 龟蛋 / 终极战场那几句 ⇒ 首场正式对战不再出(FirstTips 同一个键)。同上: save() 之后、只改内存。
 	var FT = load("res://scripts/systems/onboarding/first_tips.gd")
 	for sid in _btips_tut_shown.keys():

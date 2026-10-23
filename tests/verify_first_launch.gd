@@ -14,17 +14,16 @@ extends Node
 ##   ③ 节奏: 不点也会一页一页走完(按游戏秒喂), 走完 ⇒ 问; 点一下 = 下一页; 右上「跳过」⇒ 直接问
 ##   ④ 版面(两种比例): 「跳过」在右上、吃 44pt 触摸线、在屏内; 那一句在屏内、不压「跳过」
 ##   ⑤ 不要教程: 「跳过」⇒ 存档只差 onboarded(起名之前) ⇒ 同一屏出起名框(预填名字); 名字不合规 ⇒ 报错不走;
-##      合规 ⇒ 名字落盘、进主菜单、novice_menu=false(照现有解锁规则)
-##   ⑥ 新手逐个点亮(novice_menu=true): 0 场只亮「开始战斗」(背包 / 商店 / 图鉴 / 排行榜 / 训龟大师都锁, 底边有原因);
-##      点锁着的不换场; 1 场 ⇒ 背包亮; 2 场 ⇒ 全亮; 「开始战斗」被它自己的门拦着时不加新手锁(不许整屏没有能点的)
+##      合规 ⇒ 名字落盘、进主菜单(照现有解锁规则)
+##   ⑥ 没有新手锁(2026-10-23 拿掉「逐个点亮」: 用户「什么时候会把背包，图鉴全锁了，我什么时候说过？」):
+##      走完教程 / 跳过教程的新号 0 场 ⇒ 背包 / 图鉴 / 排行榜 / 训龟大师都亮, 只有商店那条既有的锁(本大轮首战后); 点背包真换场
 ##   ⑦ 起名只问新玩家: 已看过教程(「?」重玩)/ 已有名字 ⇒ 出口直接回主菜单
-##   ⑧ 源码: novice_menu 在 end_tutorial 的 save() 之后才置位(完成 == 跳过逐字节由 verify_tutorial_skip 守)
+##   ⑧ 源码: 「逐个点亮」整个拿掉了(novice_menu.gd 不在、教程结束不再置位、存档没有这一键)
 
 const MENU := "res://scenes/MainMenu.tscn"
 const FL := "res://scenes/FirstLaunch.tscn"
 const FLS := preload("res://scripts/scenes/FirstLaunchScene.gd")
 const P2C := preload("res://scripts/gamedata/phase2_config.gd")
-const NM := preload("res://scripts/systems/onboarding/novice_menu.gd")
 const SAVE := "user://savegame.json"
 ## 口语词(verify_tutorial_choice 同一张) + 文案门禁 copy_lol_style_lint 的禁用词里与这几句相关的几个
 ## ★「你」2026-10-21 移出: 用户定稿原句「在这里，你将组建……」就用「你」(教程战斗 C1「你的龟」同样), 是书面第二人称不是口语。
@@ -67,7 +66,7 @@ func _ready() -> void:
 	await _layout(Vector2i(1280, 720))
 	await _layout(Vector2i(1560, 720))
 	await _skip_path()
-	await _novice_menu()
+	await _no_novice_locks()
 	await _naming_only_for_new()
 	await _week_not_in_tutorial()
 	_source_order()
@@ -77,7 +76,7 @@ func _ready() -> void:
 	if _n < MIN_ASSERTS:
 		_fail += 1
 		print("  [FAIL] ★★断言只跑了 %d 条(至少 %d) —— 有协程被半路掐断" % [_n, MIN_ASSERTS])
-	print("ALL PASS — 首启流程 v4: 介绍 → 问 → (教程) → 起名 → 主菜单逐个点亮" if _fail == 0 else "FAILED: %d" % _fail)
+	print("ALL PASS — 首启流程 v4: 介绍 → 问 → (教程) → 起名 → 主菜单(无新手锁)" if _fail == 0 else "FAILED: %d" % _fail)
 	get_tree().quit(0 if _fail == 0 else 1)
 
 
@@ -91,7 +90,6 @@ func _fresh(onboarded: bool) -> void:
 	GameState.reset_save()
 	GameState.onboarded = onboarded
 	GameState.nickname = ""
-	GameState.novice_menu = false
 	GameState.tutorial_active = false
 	GameState.first_tips_seen = {}         # reset_save 不清它(账号侧首次提示); 每段从「都没看过」起
 	GameState.battles_total = 0
@@ -324,7 +322,6 @@ func _skip_path() -> void:
 	_ok("★★合规名字 ⇒ 进主菜单", err == "" and mm != null and str(mm.scene_file_path) == MENU, err)
 	var js = JSON.parse_string(FileAccess.get_file_as_string(SAVE))
 	_ok("★★名字写进账号存档(盘上)", js is Dictionary and str(js.get("nickname", "")) == P2C.nickname_clean(nm), str(js.get("nickname", "")) if js is Dictionary else "?")
-	_ok("★不要教程 ⇒ novice_menu=false(照现在的解锁规则)", js is Dictionary and not bool(js.get("novice_menu", true)))
 	await _frames(40)
 	if mm != null and is_instance_valid(mm):
 		_ok("★不要教程 ⇒ 主菜单只有商店自己的锁(没有新手锁)", _novice_reasons(mm).is_empty(), str(_novice_reasons(mm)))
@@ -354,61 +351,38 @@ func _novice_reasons(mm: Node) -> Dictionary:
 	return r
 
 
-# ═══════════════════════════════ ⑥ 新手逐个点亮 ═══════════════════════════════
+# ═══════════════════════════════ ⑥ 没有新手锁 ═══════════════════════════════
 
-func _novice_menu() -> void:
-	print("  ── ⑥ 新手逐个点亮(novice_menu) ──")
+## ★2026-10-23 拿掉「新手逐个点亮」: 用户「我测的就是新号，什么时候会把背包，图鉴全锁了，我什么时候说过？」
+##   那条是我参考皇室战争自己加的, 派活说明里却写成了用户原话。现在新号 0 场: 只有商店那条既有的锁。
+func _no_novice_locks() -> void:
+	print("  ── ⑥ 没有新手锁 ──")
 	GameState.test_mode = true
 	_fresh(true)
-	GameState.novice_menu = true
 	var m := await _menu_child()
 	var r := _reasons(m)
 	print("    [0 场] 锁: %s" % str(r))
-	for e in ["背包", "商店", "图鉴", "排行榜", "训龟大师"]:
-		_ok("★★0 场: 「%s」锁着、底边有原因" % e, r.has(e) and str(r[e]) != "", str(r.get(e, "")))
-	_ok("★★0 场: 只亮「开始战斗」", not bool(m.get("_hero_locked")))
-	_ok("0 场: 原因文案 = 首战后解锁 / 2 场后解锁", str(r.get("背包", "")) == NM.reason_text(1) and str(r.get("图鉴", "")) == NM.reason_text(2))
-	## 点锁着的背包: 不换场(飘原因)
-	var cur0 := _cur()
+	_ok("★分母: 锁原因探测器读得到 —— 商店那条既有的锁在(本大轮首战后)", r.has("商店") and str(r["商店"]) != "", str(r))
+	for e in ["背包", "图鉴", "排行榜", "训龟大师"]:
+		_ok("★★新号 0 场: 「%s」不锁" % e, not r.has(e), str(r.get(e, "")))
+	_ok("★★新号 0 场: 除商店外一个锁都没有", _novice_reasons(m).is_empty(), str(_novice_reasons(m)))
+	_ok("「开始战斗」可点", not bool(m.get("_hero_locked")))
+	## 点背包 ⇒ 真进背包(不是飘一句原因)
 	var sq := m.find_child("Sq_背包", true, false)
 	var b: Button = sq.find_children("*", "Button", true, false)[0] if sq != null else null
+	_ok("★分母: 背包那颗键找到了", b != null)
 	if b != null:
 		b.emit_signal("pressed")
-	await _frames(3)
-	_ok("★点锁着的「背包」⇒ 不换场", b != null and is_instance_valid(m) and _cur() == cur0)
-	m.queue_free()
-	await _frames(2)
-	## 1 场: 背包亮(商店照它自己的规矩: 本大轮首战后)
-	GameState.battles_total = 1
-	GameState.season_total_battles = 1
-	m = await _menu_child()
-	r = _reasons(m)
-	print("    [1 场] 锁: %s" % str(r))
-	_ok("★1 场 ⇒ 背包 / 商店亮", not r.has("背包") and not r.has("商店"), str(r))
-	_ok("★1 场 ⇒ 图鉴 / 排行榜 / 训龟大师仍锁(2 场后解锁)", str(r.get("图鉴", "")) == NM.reason_text(2) and r.has("排行榜") and r.has("训龟大师"), str(r))
-	m.queue_free()
-	await _frames(2)
-	GameState.battles_total = 2
-	m = await _menu_child()
-	r = _reasons(m)
-	_ok("★2 场 ⇒ 全亮", r.is_empty(), str(r))
-	m.queue_free()
-	await _frames(2)
-	## 「开始战斗」被它自己的门拦着(出局)⇒ 不加新手锁
-	GameState.battles_total = 0
-	GameState.season_total_battles = 0
-	GameState.hearts = 0
-	m = await _menu_child()
-	r = _novice_reasons(m)
-	_ok("★分母: 出局 ⇒「开始战斗」锁着", bool(m.get("_hero_locked")))
-	_ok("★★「开始战斗」锁着时不加新手锁(不许整屏没有能点的)", r.is_empty(), str(r))
-	m.queue_free()
-	await _frames(2)
-	## 跳过教程的号(novice_menu=false)0 场: 只有商店那条既有的锁
-	_fresh(true)
-	m = await _menu_child()
-	_ok("★novice_menu=false ⇒ 0 场也没有新手锁", _novice_reasons(m).is_empty(), str(_novice_reasons(m)))
-	m.queue_free()
+	var went := false
+	for _i in range(60):
+		await get_tree().process_frame
+		var cs := _cur()
+		if cs != null and str(cs.scene_file_path).ends_with("Inventory.tscn"):
+			went = true
+			break
+	_ok("★★新号 0 场点「背包」⇒ 真进了背包", went, str(_cur().scene_file_path) if _cur() != null else "null")
+	if is_instance_valid(m):
+		m.queue_free()
 	await _frames(2)
 
 
@@ -445,7 +419,6 @@ func _naming_only_for_new() -> void:
 		_ok("★%s ⇒ 完成教程后去 %s" % [c[0], str(c[3]).get_file()], got == str(c[3]), got)
 		if got == FL:
 			_ok("  且直接是起名框", _cur().is_naming())
-			_ok("★走完教程的新号 ⇒ novice_menu=true(内存, 随起名那一次存档落盘)", bool(GameState.novice_menu))
 			var bg := _cur().get("_bg_a") as TextureRect
 			_ok("★走完教程来起名: 背景是赛程那张(NAME_BG)", bg != null and bg.texture != null and bg.texture.resource_path == FLS.NAME_BG,
 				bg.texture.resource_path if bg != null and bg.texture != null else "null")
@@ -544,6 +517,7 @@ func _source_order() -> void:
 	var src := FileAccess.get_file_as_string("res://autoload/tutorial_director.gd")
 	var f := src.substr(src.find("func end_tutorial("))
 	f = f.substr(0, f.find("\nfunc ", 10))
-	var i_save := f.find("GameState.save()")
-	var i_nov := f.find("GameState.novice_menu = true")
-	_ok("★★novice_menu 在 end_tutorial 的 save() 之后才置位(完成 == 跳过逐字节)", i_save > 0 and i_nov > i_save, "save@%d novice@%d" % [i_save, i_nov])
+	_ok("★分母: 读到了 end_tutorial", f.length() > 200, str(f.length()))
+	_ok("★★教程结束不再给主菜单置新手锁(逐个点亮已拿掉)", f.find("novice_menu") < 0)
+	_ok("★★novice_menu.gd 已删、存档里没有这一键", not FileAccess.file_exists("res://scripts/systems/onboarding/novice_menu.gd")
+		and FileAccess.get_file_as_string("res://autoload/GameState.gd").find("novice_menu") < 0)

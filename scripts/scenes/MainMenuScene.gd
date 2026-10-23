@@ -482,29 +482,17 @@ func _place_outlined(text: String, size: int, fill: Color, pos: Vector2, box: Ve
 
 ## 次级键: 铁箍木板(不带金边、不发光)。与主 CTA 的金边木框 + 呼吸光晕是两种材质 ——
 ## 主次靠材质分, 不只靠大小。
-## lock_reason 非空 = 锁着(新手逐个点亮, NoviceMenu): 木板与字压灰、左侧像素锁、字下挂短原因 —— 与左列方键锁态同一套。
-func _plank_button(label: String, cb: Callable, size: Vector2, lock_reason: String = "") -> Control:
+func _plank_button(label: String, cb: Callable, size: Vector2) -> Control:
 	var holder := Control.new()
 	holder.custom_minimum_size = size
 	holder.size = size
 	holder.pivot_offset = size / 2.0
 	var plank := _nine_rect("btn-plank.png", Vector4(40, 14, 40, 14), Rect2(Vector2.ZERO, size))
 	holder.add_child(plank)
-	var lbl := _menu_label(label, 26, Color("#b9b2a6") if lock_reason != "" else Color("#ffe9a8"))
+	var lbl := _menu_label(label, 26, Color("#ffe9a8"))
 	lbl.add_theme_color_override("font_outline_color", Color("#1e0f04"))
 	lbl.add_theme_constant_override("outline_size", 8)
 	holder.add_child(lbl)
-	if lock_reason != "":
-		plank.modulate = Color(0.62, 0.58, 0.55)
-		lbl.set_anchors_preset(Control.PRESET_TOP_LEFT)
-		lbl.position = Vector2(0.0, 4.0)
-		lbl.size = Vector2(size.x, size.y * 0.58)
-		holder.add_child(_pixel_lock(Vector2(30.0, (size.y - 30.0) / 2.0), 2.0))
-		var rs := _place_outlined(lock_reason, 14, Color("#ffe6b8"), Vector2(0.0, size.y * 0.56), Vector2(size.x, 20.0))
-		rs.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		rs.name = LOCK_REASON_NAME
-		rs.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		holder.add_child(rs)
 	var btn := Button.new()
 	btn.flat = true
 	btn.focus_mode = Control.FOCUS_NONE
@@ -555,24 +543,21 @@ func _build_page_buttons(now: int = 0) -> void:
 		["图鉴", func(): _go("Codex"), mic + "ic-codex.png", false],
 		["排行榜", func(): _go("Leaderboard"), mic + "ic-trophy.png", false],
 	]
-	## 锁着的那颗底边常驻一行短原因(不点也看得见) —— 商店有自己的锁; 首启走完教程的号另按场次逐个点亮(NoviceMenu)。
+	## 锁着的那颗底边常驻一行短原因(不点也看得见) —— 只有商店有自己的锁(本大轮首战后开)。
+	## ★2026-10-23 拿掉了「新手逐个点亮」(NoviceMenu: 走完教程的号 1 场后亮背包 / 2 场后亮图鉴等):
+	##   用户从没要过 ——「什么时候会把背包，图鉴全锁了，我什么时候说过？」(它是我参考皇室战争自己加的, 却在派活说明里写成了用户原话)。
 	var shop_reason := _shop_lock_reason(ts)
 	for i in range(subs.size()):
 		var sN: Array = subs[i]
 		var reason: String = shop_reason if str(sN[0]) == SHOP_LABEL else ""
-		var nv: String = NoviceMenu.lock_reason(str(sN[0]), battle_locked)
-		if reason == "" and nv != "":
-			reason = nv
-			sN[1] = _toast.bind(nv)
-		var e := _square_entry(str(sN[0]), sN[1], str(sN[2]), bool(sN[3]) or nv != "", reason)
+		var e := _square_entry(str(sN[0]), sN[1], str(sN[2]), bool(sN[3]), reason)
 		e.position = Vector2(SQ_X, _sq_y(i))
 		page_box.add_child(e)
 		_slide_in_left(e, i)
 	# ── 训龟大师: 主 CTA 正上方、右沿同轴, 小一档、另一种皮 ──
 	#    它跟「开始战斗」是同一件事的两步(配大师 → 出战), 放一起讲得通。
 	## ★★2026-09-27 文字里不带 emoji(用户:「全是 ai 味和网页味」): 系统彩色 emoji 贴在像素木牌上是两种画法。
-	var tr_nv: String = NoviceMenu.lock_reason("训龟大师", battle_locked)
-	var tb := _plank_button("训龟大师", _toast.bind(tr_nv) if tr_nv != "" else func(): _go("TrainerConfig"), TRAINER_SIZE, tr_nv)
+	var tb := _plank_button("训龟大师", func(): _go("TrainerConfig"), TRAINER_SIZE)
 	## 有计数条的日子(吃命/配额)它让到计数条上面; 周六/周日没有计数条, 照旧贴着开始战斗。
 	tb.position = TRAINER_POS_UP if not today_counter_texts(ts).is_empty() else TRAINER_POS
 	page_box.add_child(tb)
