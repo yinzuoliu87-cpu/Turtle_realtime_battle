@@ -123,6 +123,7 @@ class TN extends RefCounted:
 	var unit = null           # S2: 单位外观节点的主人(单位字典); 主人活着时变换 / 颜色 / 朝向由手机渲染步按单位字段算, 不发
 	var ukey := ""            # S2: 它是主人的哪一件(sprite / shadow …); 主人换了这一件之后它就不归渲染步管了
 	var uidx := -1            # S2: 主人的单位 idx; 主人不在 battle._units 里了(被移出场)渲染步也不管它
+	var ren := false          # 上一次采样时它归不归渲染步管(主人活着 / 还是这一件 / 还在场); 由真变假的那一步整份交接, 见 `_samp`
 	var mats := PackedInt32Array()
 	var base: Array = []      # 报警基线: 与类规格逐项对齐的原值(只核白名单外那些项)
 	var base_x := {}          # 报警基线: 规格外的伪属性(MeshInstance3D 的 surface_material_override/i)
@@ -829,6 +830,16 @@ func _samp(t: TN, cont: bool) -> void:
 	if t.unit != null:
 		var ou: Dictionary = t.unit
 		ren = bool(ou.get("alive", false)) and is_same(ou.get(t.ukey), t.n) and _ucur_set.has(t.uidx)
+	## ★交接(2026-10-23): 渲染步放手的那一步(主人死了 / 换了这一件 / 离场), 变换 / 颜色 / 朝向**整份发一次**, 不按缓存比。
+	##   缓存记的是服务器这边的值, 而手机上这个节点停在的是**手机自己最后一次渲染步**写的值, 两者不一定相同:
+	##   · 手机一帧推一步时在两次采样之间也跑渲染步(插值位置): 主人在采样步死掉, 尸体停在插值出来的半路上
+	##     (verify_stream_parity 最重局步 3840 生 / 3842 死的亡魂: 原生 (-3.919532, -1.642122) / 播放 (-3.903715, -1.679577), 正好差半段);
+	##   · 跳转的快进不跑渲染步: 节点停在 keyframe 发的原值上 —— keyframe 落在没跑渲染步的奇数步, sim 里直接改立绘的演出
+	##     (精英怪「吞噬」tween 每步写目标立绘的 scale / modulate, 偶数步被渲染步盖回去)会把中间值带进 keyframe
+	##     (verify_stream_seek 最重局: keyframe 6601 发了亡魂 scale 0.581, 亡魂 6623 死, 跳播一直停在 0.58, 顺播 1.0)。
+	##   缓存只在「之后有没有再变」上可信; 交接这一下必须把服务器的真值整份给手机。
+	var hand := t.ren and not ren
+	t.ren = ren
 	if t.kind != K_OTHER:
 		var v3: Node3D = t.n
 		if v3.visible != t.vis:
@@ -845,21 +856,21 @@ func _samp(t: TN, cont: bool) -> void:
 			if t.kind == K_SPRITE:
 				t.mod = (t.n as Sprite3D).modulate
 				t.fh = (t.n as Sprite3D).flip_h
-		if cont and not ren:
+		if hand or (cont and not ren):
 			var xf := v3.transform
-			if xf.origin != t.org:
+			if hand or xf.origin != t.org:
 				t.org = xf.origin
 				_k(&"position")
 				enc.v3q(F.T_POS, t.org, F.Q_POS)
-			if xf.basis != t.bas:
+			if hand or xf.basis != t.bas:
 				t.bas = xf.basis
 				var rot := v3.rotation
 				var scl := v3.scale
-				if rot != t.rot:
+				if hand or rot != t.rot:
 					t.rot = rot
 					_k(&"rotation")
 					enc.v3q(F.T_ROT, rot, F.Q_ROT)
-				if scl != t.scl:
+				if hand or scl != t.scl:
 					t.scl = scl
 					_k(&"scale")
 					enc.v3q(F.T_SCALE, scl, F.Q_SCALE)
@@ -886,7 +897,7 @@ func _samp(t: TN, cont: bool) -> void:
 				t.reg = sp.region_enabled
 				_k(&"region_enabled")
 				enc.val(t.reg)
-			if sp.flip_h != t.fh and not ren:
+			if hand or (sp.flip_h != t.fh and not ren):
 				t.fh = sp.flip_h
 				_k(&"flip_h")
 				enc.val(t.fh)
@@ -894,11 +905,11 @@ func _samp(t: TN, cont: bool) -> void:
 				t.fv = sp.flip_v
 				_k(&"flip_v")
 				enc.val(t.fv)
+			if hand or (cont and sp.modulate != t.mod and not ren):
+				t.mod = sp.modulate
+				_k(&"modulate")
+				enc.col(t.mod)
 			if cont:
-				if sp.modulate != t.mod and not ren:
-					t.mod = sp.modulate
-					_k(&"modulate")
-					enc.col(t.mod)
 				if sp.region_rect != t.rr:
 					t.rr = sp.region_rect
 					_k(&"region_rect")
