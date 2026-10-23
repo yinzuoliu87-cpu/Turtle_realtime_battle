@@ -246,7 +246,7 @@ func _role(pet: Dictionary, sk: Dictionary) -> String:
 	if host == null:
 		return "技能"
 	match str(host.skill_role_of(pet, sk)):
-		"basic": return "普攻"
+		"basic": return "攻击"
 		"passive": return "被动"
 	return "技能"
 

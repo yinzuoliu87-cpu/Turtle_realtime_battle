@@ -1721,15 +1721,15 @@ func _info_stat_tiles(u: Dictionary) -> Array:
 	var aspd: float = battle.aspd_mult(u) / maxf(0.001, float(u.get("atk_interval", 1.0)))
 	var dim := Color("#7d7264")
 	return [
-		[sic + "atk-icon.png", "攻击", "%d" % int(u.get("atk", 0)), W, "普攻和大多数技能伤害的基础。"],
-		[sic + "aspd-icon.png", "攻速", "%.2f" % aspd, W, "每秒普攻次数。"],
+		[sic + "atk-icon.png", "攻击", "%d" % int(u.get("atk", 0)), W, "攻击和大多数技能伤害的基础。"],
+		[sic + "aspd-icon.png", "攻速", "%.2f" % aspd, W, "每秒攻击次数。"],
 		[sic + "crit-icon.png", "暴击", _pct(minf(float(u.get("crit", 0.0)), 1.0)), W, "攻击打出暴击的几率。"],
 		[sic + "crit-dmg-icon.png", "暴伤", _pct_mult(float(u.get("crit_dmg", 1.5)) + crit_over), W, "暴击时造成的伤害倍率。暴击率超过 100% 的部分会折算进来。"],
 		[sic + "def-icon.png", "护甲", ("%d" % def_now) + ("+%d" % def_gain if def_gain > 0 else ""), W, "降低受到的物理伤害。"],
 		[sic + "mr-icon.png", "魔抗", "%d" % int(u.get("mr", 0)), W, "降低受到的魔法伤害。"],
 		[sic + "dmg-red-icon.png", "减伤", _pct(dr), W if dr > 0.0005 else dim, "受到的所有伤害按比例降低。"],
 		[sic + "dmg-amp-icon.png", "增伤", _pct(amp), W if amp > 0.0005 else dim, "造成的所有伤害按比例提高。"],
-		[sic + "range-icon.png", "射程", "%d" % int(round(battle._eff_range(u))), W, "普攻的攻击距离。"],
+		[sic + "range-icon.png", "射程", "%d" % int(round(battle._eff_range(u))), W, "攻击距离。"],
 		[sic + "move-icon.png", "移速", "%d" % int(round(_eff_move_spd(u))), W, "移动速度，受减速、加速效果影响。"],
 		[sic + "lifesteal-icon.png", "生命偷取", _pct(ls), W if ls > 0.0005 else dim, "造成伤害时，按比例回复自身生命。"],
 		[sic + "dodge-icon.png", "闪避", _pct(float(u.get("dodge_bonus", 0.0))), W if float(u.get("dodge_bonus", 0.0)) > 0.0005 else dim, "闪避攻击的几率。"],

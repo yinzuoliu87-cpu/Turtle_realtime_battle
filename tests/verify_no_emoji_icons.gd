@@ -138,7 +138,7 @@ const SRC_LEDGER: Dictionary = {
 	# ── 地盘之外(本轮由别的路在改)。基线按**当下实测**登记, 只许降。 ──
 	## ⚠ 这几条不是"我认可它们该留着", 是「不属于本轮地盘、但也不许再长」。
 	##   它们的改法与上面一样: 有对得上的像素图就接图, 没有就登记进缺口表。
-	"scripts/scenes/MainMenuScene.gd": [15, "主菜单(另一路在改)"],
+	"scripts/scenes/MainMenuScene.gd": [1, "右上设置键的 ⚙(要新画像素齿轮, 待用户定); 2026-10-23 按实测 15→1"],
 	"scripts/scenes/ShopScene.gd": [13, "商店(另一路在改)"],
 	## ★★2026-09-28 **14 → 5**(实测)。局内羁绊 chips 的类型图标已换成 `tags/` 像素图,
 	##   但 ⚠ **这一格的数字并不是因此降的** —— 类型 emoji 从来不是这个文件里的字面量,
@@ -158,11 +158,11 @@ const SRC_LEDGER: Dictionary = {
 	##   本门禁按定义就不算它们 —— 登 0 是钉住"别再长出真 emoji"。
 	"scripts/scenes/battle/info_panel.gd": [0, "只有 ★(NotoSansSC 的字), 实测已 0"],
 	"scripts/scenes/BracketMapScene.gd": [0, "只有 ✓(NotoSansSC 的字), 实测已 0"],
-	"scripts/scenes/LeaderboardScene.gd": [1, "🏆 页名(另一路在改)"],
+	"scripts/scenes/LeaderboardScene.gd": [0, "2026-10-23 页名去掉 🏆(钉住)"],
 	"scripts/scenes/map_editor.gd": [2, "MAPEDIT 地图编辑器: 开发工具"],
 	"scripts/scenes/battle/review_console.gd": [2, "REVIEW 审阅台: 开发工具"],
 	"scripts/scenes/TutorialGuide.gd": [0, ""],
-	"scripts/scenes/shop/axe_panel.gd": [1, "小木斧面板(另一路在改)"],
+	"scripts/scenes/shop/axe_panel.gd": [0, "2026-10-23 标题行去掉 🪓(钉住)"],
 	"scripts/scenes/battle/dmg_stats_panel.gd": [0, ""],
 	"scripts/scenes/battle/battle_vfx.gd": [0, ""],
 }
@@ -592,8 +592,10 @@ func _ready() -> void:
 			print("    [DUMP] %-52s %3d  (台账 %d)" % [rel, n, cap])
 			for h in (r[1] as Array):
 				print("            %s" % str(h))
-	_ok("★分母: 静态扫描真的找得到 emoji(全仓 ≥ 20 个, 否则扫描器是瞎的)",
-		src_total >= 20, "%d 个" % src_total)
+	## 下限 20→10(2026-10-23): 排行榜 🏆 / 小木斧 🪓 两个真删了, 全仓 21→19 —— 是债真还了, 不是扫描器瞎了。
+	##   这道下限只防「扫描器坏了 ⇒ 0 个」; 台账里开发工具(调试场 / 布局编辑器 / 地图编辑器)那些留着, 够当活样本。
+	_ok("★分母: 静态扫描真的找得到 emoji(全仓 ≥ 10 个, 否则扫描器是瞎的)",
+		src_total >= 10, "%d 个" % src_total)
 	_ok("静态: 没有文件超出台账(只许降不许升)", src_over.is_empty(),
 		"; ".join(src_over.slice(0, 6)))
 	## ★台账里登记了、而实际一个都没扫到的条目 = **陈旧登记**。

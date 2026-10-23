@@ -1049,10 +1049,10 @@ func _sync_spec() -> void:
 		return
 	var lst := _spectate_list()
 	if peekable:
-		## 选手: 在看自己那组 ⇒「我这一组 · 第 N 组」; 翻到别的组 ⇒「观战 · 第 N 组」(只能看)。
+		## 选手: 在看自己那组 ⇒「本组 · 第 N 组」; 翻到别的组 ⇒「观战 · 第 N 组」(只能看)。
 		var sb2: Dictionary = _spectate_bucket() if _peek else _bucket
 		var g2 := int(sb2.get("bucket", 0)) + 1
-		_spec_lb.text = ("观战 · 第 %d 组" % g2) if _peek else ("我这一组 · 第 %d 组" % g2)
+		_spec_lb.text = ("观战 · 第 %d 组" % g2) if _peek else ("本组 · 第 %d 组" % g2)
 	else:
 		var sb: Dictionary = _spectate_bucket()
 		var grp := int(sb.get("bucket", _spec_idx)) + 1

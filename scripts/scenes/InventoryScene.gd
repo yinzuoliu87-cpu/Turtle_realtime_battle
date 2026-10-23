@@ -2260,9 +2260,9 @@ func _candy_jar_cell(it: Dictionary, pos: Vector2) -> Control:
 	var jbox := _slot_panel(pos, Color("#3a2446") if _sel_jar else Color("#2a1c36"),
 		Color("#ffd93d") if _sel_jar else Color("#e79bd6"))   # 选中态: 与装备卡同一套金边
 	## 原文"已攒 N 颗糖(第 M 档)…当前档位奖励: X": 括号计数 + label: value + "档位"这个词。
-	jbox.tooltip_text = "糖果罐里攒了 %d 颗糖, 现在是第 %d 档
-一大轮只能碎一次, 碎完就没了
-现在打碎能开出 %s" % [
+	jbox.tooltip_text = "糖果 %d 颗 · 第 %d 档
+每大轮限打碎 1 次
+打碎奖励：%s" % [
 		int(it.get("count", 0)), tier, GameState.candy_jar_tier_preview(tier)]
 	## ★★2026-09-28「🍬」→ 真像素图 `equip/equip-candy-jar.png`。
 	##   **不是拿别的图顶替**: 这张图的文件名就叫 `equip-candy-jar`, 是给糖果罐画的,

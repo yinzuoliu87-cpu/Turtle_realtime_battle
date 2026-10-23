@@ -166,7 +166,7 @@ func _gambler_apply_wheel_suit(u: Dictionary, suit: int) -> void:   # 命运之�
 	match suit:
 		0:
 			u["base_atk"] = float(u["base_atk"]) + WHEEL_SPADE_ATK; u["maxHp"] += WHEEL_SPADE_HP; u["hp"] += WHEEL_SPADE_HP
-			battle._vfx._float_text(u["pos"] + Vector2(0, -64), "♠ 攻+3 血+10", Color("#ffd93d"))
+			battle._vfx._float_text(u["pos"] + Vector2(0, -64), "♠ 攻击+3 生命+10", Color("#ffd93d"))
 		1:
 			u["base_def"] = float(u["base_def"]) + WHEEL_HEART_RESIST; u["base_mr"] = float(u["base_mr"]) + WHEEL_HEART_RESIST
 			battle._vfx._float_text(u["pos"] + Vector2(0, -64), "♥ 护甲+1 魔抗+1", Color("#ff5b6b"))

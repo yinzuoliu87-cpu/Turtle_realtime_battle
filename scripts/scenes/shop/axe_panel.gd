@@ -84,7 +84,7 @@ func build(parent: Node, x: float, y: float, w: float, compact: bool = false) ->
 	if not (compact and ready):
 		# ── 标题行: 当前形态 + 历史累计 ──
 		var t := Label.new()
-		t.text = "🪓 %s" % str(disp["name"])
+		t.text = "%s" % str(disp["name"])
 		t.add_theme_font_size_override("font_size", fpx + 2)
 		t.add_theme_color_override("font_color", Color("#ffd93d"))
 		t.position = Vector2(x, y)

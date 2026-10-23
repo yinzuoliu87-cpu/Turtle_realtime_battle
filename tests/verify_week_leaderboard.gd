@@ -759,7 +759,7 @@ func _t_days() -> void:
 		"p_week=%s 应为 %d" % [str(_p_week_of(wl[0])) if not wl.is_empty() else "(没发)", WEEK])
 	var fw := _fw_reqs()
 	_ok("⑤一 决赛头衔也问的是上周那一周", fw.size() == 1 and _p_week_of(fw[0]) == WEEK, "%d 条" % fw.size())
-	_ok("⑤一 ★标题 = 🏆 上周终榜", _title_of(mon) == LB.TITLE_ICON + "上周终榜", _title_of(mon))
+	_ok("⑤一 ★标题 = 上周终榜", _title_of(mon) == "上周终榜", _title_of(mon))
 	## ★2026-10-19 用户「周六 / 周日赛况保留到周一」: 周一给两扇门(与主菜单周一那两扇同名同目标)。
 	var meb: Array = mon.get("entry_btns")
 	var mtx: Array = meb.map(func(b): return str((b as Button).text))
@@ -789,7 +789,7 @@ func _t_days() -> void:
 	P2C.now_override_ts = WEEK + DAY + 10 * 3600
 	_reqs.clear()
 	var tue := await _open()
-	_ok("⑤二 ★标题 = 🏆 本周排行", _title_of(tue) == LB.TITLE_ICON + "本周排行", _title_of(tue))
+	_ok("⑤二 ★标题 = 本周排行", _title_of(tue) == "本周排行", _title_of(tue))
 	_ok("⑤二 请求的是本周锚点", _wl_reqs().size() == 1 and _p_week_of(_wl_reqs()[0]) == WEEK)
 	_ok("⑤二 不问决赛", _fw_reqs().is_empty())
 	_ok("⑤二 没有顶栏入口", tue.get("entry_btn") == null)
@@ -804,7 +804,7 @@ func _t_days() -> void:
 	_reqs.clear()
 	var sat := await _open()
 	_ok("⑤六 ★分母: 钟真的在周六", P2C.phase_at_utc(P2C.now_utc()) == P2C.PHASE_GAUNTLET)
-	_ok("⑤六 ★标题 = 🏆 积分赛终榜", _title_of(sat) == LB.TITLE_ICON + "积分赛终榜", _title_of(sat))
+	_ok("⑤六 ★标题 = 积分赛终榜", _title_of(sat) == "积分赛终榜", _title_of(sat))
 	_ok("⑤六 请求的是本周锚点", _wl_reqs().size() == 1 and _p_week_of(_wl_reqs()[0]) == WEEK)
 	var sr := _screen_rows(sat)
 	var smk := _marks(sr)
@@ -835,7 +835,7 @@ func _t_days() -> void:
 	_reqs.clear()
 	var sun0 := await _open()
 	_ok("⑤日 ★分母: 钟真的在周日", P2C.phase_at_utc(P2C.now_utc()) == P2C.PHASE_FINALS)
-	_ok("⑤日 ★标题 = 🏆 积分赛终榜", _title_of(sun0) == LB.TITLE_ICON + "积分赛终榜", _title_of(sun0))
+	_ok("⑤日 ★标题 = 积分赛终榜", _title_of(sun0) == "积分赛终榜", _title_of(sun0))
 	_ok("⑤日 问的是本周的决赛", _fw_reqs().size() == 1 and _p_week_of(_fw_reqs()[0]) == WEEK)
 	var m0 := _marks(_screen_rows(sun0))
 	_ok("⑤日 决赛没打完 ⇒ 不挂冠军/亚军/四强, 也不挂「已晋级」",

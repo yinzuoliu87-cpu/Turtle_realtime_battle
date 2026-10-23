@@ -520,7 +520,7 @@ func _t_other_groups() -> void:
 	await _frames(3)
 	_ok("⑥ 分母: 我在第 1 组(4 人, 0 号)", int(m.cur().get("bucket", -1)) == 0 and int(m.cur().get("me", -1)) == 0)
 	_ok("⑥ ★★选手也看得到换组那一行", bool(m._spec_bar.visible), str(m._spec_lb.text))
-	_ok("⑥ 那一行说清现在看的是我这一组", str(m._spec_lb.text).find("我这一组") >= 0, str(m._spec_lb.text))
+	_ok("⑥ 那一行说清现在看的是本组", str(m._spec_lb.text).find("本组") >= 0, str(m._spec_lb.text))
 	m._spec_step(1)
 	await _frames(2)
 	_ok("⑥ ★★下一组 ⇒ 画的是第 2 组(别人那一组), 我不在里面", int(m.cur().get("bucket", -1)) == 1 and int(m.cur().get("me", 0)) == -1,
@@ -547,7 +547,7 @@ func _t_other_groups() -> void:
 	m._spec_step(1)
 	await _frames(2)
 	_ok("⑥ ★★再翻一下回到我这一组(我又是 0 号)", int(m.cur().get("bucket", -1)) == 0 and int(m.cur().get("me", -1)) == 0
-		and str(m._spec_lb.text).find("我这一组") >= 0, str(m._spec_lb.text))
+		and str(m._spec_lb.text).find("本组") >= 0, str(m._spec_lb.text))
 	m.pick_view(L.VIEW_FINALS)
 	await _frames(1)
 	_ok("⑥ 冠军杯赛页上不出换组那一行", not m._spec_bar.visible)

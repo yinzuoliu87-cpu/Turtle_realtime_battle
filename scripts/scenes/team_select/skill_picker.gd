@@ -288,12 +288,12 @@ func _skill_tooltip(pet: Dictionary, sk: Dictionary, idx: int = -1) -> String:
 		if idx < melee.size():
 			var ms: Dictionary = melee[idx]
 			if str(ms.get("name", "")) != sk_name and ms.get("name", "") != "":
-				body += "\n近战：%s — %s" % [ms.get("name", ""), SkillText.render_bbcode_formula(str(ms.get("brief", "")), fake_f, ms, 14)]
+				body += "\n近战：%s：%s" % [ms.get("name", ""), SkillText.render_bbcode_formula(str(ms.get("brief", "")), fake_f, ms, 14)]
 		var volcano: Array = pet.get("volcanoSkills", [])
 		if idx < volcano.size() and not sk.get("passiveSkill", false):
 			var vs: Dictionary = volcano[idx]
 			if not vs.get("passiveSkill", false) and str(vs.get("name", "")) != sk_name and vs.get("name", "") != "":
-				body += "\n火山：%s — %s" % [vs.get("name", ""), SkillText.render_bbcode_formula(str(vs.get("brief", "")), fake_f, vs, 14)]
+				body += "\n火山：%s：%s" % [vs.get("name", ""), SkillText.render_bbcode_formula(str(vs.get("brief", "")), fake_f, vs, 14)]
 	return "%s\n%s" % [head, body]
 
 
@@ -348,7 +348,7 @@ func _toggle_skill(pid: String, idx: int) -> void:
 	if pet.is_empty():
 		return
 	if idx == 0:
-		host._flash_status("普攻（自动释放）")        # skillPool[0]=普攻
+		host._flash_status("攻击（自动释放）")        # skillPool[0]=普攻
 		return
 	var unlocked: Array = _available_skill_indices(pet)
 	if not (idx in unlocked):

@@ -6361,12 +6361,12 @@ func _urchin_shield_fx(u: Dictionary) -> void:   # 海胆护盾(013满层): 放�
 		tw.chain().tween_property(sp, "modulate:a", 0.0, SPIKE_FADE)
 		tw.chain().tween_callback(sp.queue_free)
 
-func _egg_level_up_vfx(u: Dictionary, total_lvl: int) -> void:   # 温泉蛋升级: 蛋壳裂开 + 温泉热气 + "LV UP LvN"
+func _egg_level_up_vfx(u: Dictionary, total_lvl: int) -> void:   # 温泉蛋升级: 蛋壳裂开 + 温泉热气 + "升级 LvN"
 	## ★★2026-09-13 重做(用户点名"复用素材"): 原来是 `_skill_ring` 圆环 +
 	##   `_make_fire_glow_tex` 光球 + **5 次 `_gold_chunk_erupt`(034 大熊的金块素材)**。
 	##   现在用 036 自己的 `egg-hatch-levelup.png`, 详见 `battle_vfx.egg_hatch_levelup` 头注。
 	_vfx.egg_hatch_levelup(u["pos"])
-	_vfx._float_text(u["pos"] + Vector2(0, -74), "LV UP  Lv%d" % total_lvl, Color("#ffe08a"))
+	_vfx._float_text(u["pos"] + Vector2(0, -74), "升级 Lv%d" % total_lvl, Color("#ffe08a"))
 	_shake(0.05)
 
 # 统领显示等级 = 基础等级 + 温泉蛋036临时孵化等级(egg_levels), 用于等级框实时跳字

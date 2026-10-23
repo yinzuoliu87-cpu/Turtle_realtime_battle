@@ -86,7 +86,7 @@ func _refresh_slots() -> void:
 			##   ⇒ 三样一起换, 每一样都是**形态**:
 			##     ① 框: 已上阵才有卡框(四角包边的厚框), 空位是**没有框的凹槽**(见 `_slot_box`);
 			##     ② 记号: 空位画一个大号的 ＋(全角, 原来的半角 + 在 26px 字号下只有一根小十字);
-			##     ③ 字: 空位写「空位」/ 待填写「放这里」—— 已上阵那格写的是龟名,
+			##     ③ 字: 空位写「空位」/ 待填写「放置」—— 已上阵那格写的是龟名,
 			##        所以"有没有字"分不出, **写什么字**才分得出。
 			var plus = Label.new()
 			plus.text = "＋"
@@ -98,7 +98,7 @@ func _refresh_slots() -> void:
 			plus.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			vb.add_child(plus)
 			var hint = Label.new()
-			hint.text = "放这里" if act else "空位"
+			hint.text = "放置" if act else "空位"
 			hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			hint.add_theme_font_size_override("font_size", host._sf(11))
 			hint.add_theme_color_override("font_color",

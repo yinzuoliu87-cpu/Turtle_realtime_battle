@@ -612,7 +612,7 @@ scripts/gamedata/vfxlab_cases.gd|lit|★觉醒在开局前后, 传送门在中�
 scripts/gamedata/vfxlab_cases.gd|lit|★触发靠**挨打**不靠出手: 硬化层是 `_eq_on_target` 里叠的, 所以 enemy_attacks=true 而 attacker=false。 三个敌人才攻得够快(满 URCHIN_CAP=20 层); carrier_hp 拉满防死在满层之前。 刺是贴地放射的 ⇒ zoom 1.0 实战镜头(拉近看不算, 真实尺寸下才知道会不会把龟埋了)。
 scripts/gamedata/vfxlab_cases.gd|lit|★触手拍击 5 秒一次 ⇒ 拍点压在 5 的整数倍前后(预警区→拍下→余波)。
 scripts/gamedata/vfxlab_cases.gd|lit|★贝壳是 **billboard 罩在龟身上**的, 不是贴地 ⇒ zoom 1.0 实战镜头看它会不会把龟遮死。
-scripts/gamedata/vfxlab_cases.gd|lit|★这一件**没有任何战斗演出** —— 全部可见性就是每 6 秒一次的「+3💠」飘字和装备格里的累计徽章。拍点就压在 t≈6.0 与 t≈12.0 两次到账的前后, 看飘字升起与徽章数字跳。 ★拍点密铺 5.95~7.30 每 0.09 秒: 金币 12 帧/16fps = 0.75 秒转一圈、存活 1.05 秒、三枚还错峰 0.09 秒 —— 用2 帧采样根本看不出它在转。 ★★配 `bars` 而不是 `ui`: 飘字跟着**整层 UI** 走, 而 `ui: true` 只留队伍面板、把飘字连同整层一起关掉 —— 这件的读数就是飘字 + 装备格徽章。
+scripts/gamedata/vfxlab_cases.gd|lit|★这一件**没有任何战斗演出** —— 全部可见性就是每 6 秒一次的「+3 深海币」飘字和装备格里的累计徽章。拍点就压在 t≈6.0 与 t≈12.0 两次到账的前后, 看飘字升起与徽章数字跳。 ★拍点密铺 5.95~7.30 每 0.09 秒: 金币 12 帧/16fps = 0.75 秒转一圈、存活 1.05 秒、三枚还错峰 0.09 秒 —— 用2 帧采样根本看不出它在转。 ★★配 `bars` 而不是 `ui`: 飘字跟着**整层 UI** 走, 而 `ui: true` 只留队伍面板、把飘字连同整层一起关掉 —— 这件的读数就是飘字 + 装备格徽章。
 scripts/gamedata/vfxlab_cases.gd|lit|★金弹专用台。0.2 秒一档密排铺满两个金弹周期(小手枪 0.5 秒一发 × 每 4 发一金) ⇒ 同一批图里既有普通弹也有金弹。
 scripts/gamedata/vfxlab_cases.gd|lit|★龙从携带者位置朝敌方质心拉一条直线飞到最远敌人身后, 线两侧各 DragonSystem.BREATH_HALF_W=88 码内: 敌吃魔伤+灼烧, 友回血。 ★摆 1 个友军正是要验「友军回血」那半条。 ★enemy_attacks 关掉: 这一件看的是龙与火柱, 敌人还手只加噪声。
 scripts/gamedata/vfxlab_cases.gd|lit|【p2eq_023 灼热火珊瑚】原生=它【自己的火法力】(每段命中 +10, 满 100)挥出 60 度扇形火焰波; 法力满=再挥一次。看点: 装备格【两条】条子 —— 上橙=火法力(靠命中涨), 下紫=法器法力。 ★不配 tier = 没有法器羁绊, 正是要验的情形(2026-08-12 拆闸后法力条每件自带, 满值 100)。
@@ -786,8 +786,8 @@ scripts/scenes/BracketMapScene.gd|text|%s · 观战 · 第 %d 组
 scripts/scenes/BracketMapScene.gd|text|上周未晋级
 scripts/scenes/BracketMapScene.gd|text|对战
 scripts/scenes/BracketMapScene.gd|text|我的位置
-scripts/scenes/BracketMapScene.gd|text|我这一组 · 第 %d 组
 scripts/scenes/BracketMapScene.gd|text|本周未晋级
+scripts/scenes/BracketMapScene.gd|text|本组 · 第 %d 组
 scripts/scenes/BracketMapScene.gd|text|观战 · 第 %d 组
 scripts/scenes/BracketMapScene.gd|text|（我）
 scripts/scenes/BracketMapScene.gd|tooltip_text|开始对战
@@ -818,9 +818,9 @@ scripts/scenes/FirstLaunchScene.gd|lit|确认
 scripts/scenes/FirstLaunchScene.gd|lit|跳过
 scripts/scenes/FirstLaunchScene.gd|lit|输入昵称
 scripts/scenes/FirstLaunchScene.gd|text|%d~%d 个字 · 显示于排行榜
-scripts/scenes/GauntletBoardScene.gd|lit| · 已截止 · 周日 %s %s开打
+scripts/scenes/GauntletBoardScene.gd|lit| · 已截止 · 周日 %s %s开赛
 scripts/scenes/GauntletBoardScene.gd|lit| · 已结束
-scripts/scenes/GauntletBoardScene.gd|lit| · 正在打 %d 场
+scripts/scenes/GauntletBoardScene.gd|lit| · 进行中 %d 场
 scripts/scenes/GauntletBoardScene.gd|lit|%d 分钟前
 scripts/scenes/GauntletBoardScene.gd|lit|%d 天前
 scripts/scenes/GauntletBoardScene.gd|lit|%d 小时前
@@ -831,7 +831,7 @@ scripts/scenes/GauntletBoardScene.gd|lit|刚刚
 scripts/scenes/GauntletBoardScene.gd|lit|另一场
 scripts/scenes/GauntletBoardScene.gd|lit|周六赛况
 scripts/scenes/GauntletBoardScene.gd|lit|周六闯关赛对局结束后在此显示
-scripts/scenes/GauntletBoardScene.gd|lit|开打
+scripts/scenes/GauntletBoardScene.gd|lit|开赛
 scripts/scenes/GauntletBoardScene.gd|lit|当前版本不支持在线赛况
 scripts/scenes/GauntletBoardScene.gd|lit|战绩榜
 scripts/scenes/GauntletBoardScene.gd|lit|无录像
@@ -839,7 +839,6 @@ scripts/scenes/GauntletBoardScene.gd|lit|暂无已完成对局
 scripts/scenes/GauntletBoardScene.gd|lit|最近对局
 scripts/scenes/GauntletBoardScene.gd|lit|本周闯关赛
 scripts/scenes/GauntletBoardScene.gd|lit|查看全部
-scripts/scenes/GauntletBoardScene.gd|lit|正在打
 scripts/scenes/GauntletBoardScene.gd|lit|每 %d 秒自动刷新
 scripts/scenes/GauntletBoardScene.gd|lit|第 %d 场
 scripts/scenes/GauntletBoardScene.gd|lit|胜
@@ -848,6 +847,7 @@ scripts/scenes/GauntletBoardScene.gd|lit|读取中
 scripts/scenes/GauntletBoardScene.gd|lit|读取中…
 scripts/scenes/GauntletBoardScene.gd|lit|负
 scripts/scenes/GauntletBoardScene.gd|lit|赛况暂无
+scripts/scenes/GauntletBoardScene.gd|lit|进行中
 scripts/scenes/GauntletBoardScene.gd|lit|（我）
 scripts/scenes/GauntletBoardScene.gd|text|%s 的对局
 scripts/scenes/InventoryScene.gd|lit|  无属性加成
@@ -1039,6 +1039,7 @@ scripts/scenes/RealtimeBattle3DScene.gd|lit|上路战场
 scripts/scenes/RealtimeBattle3DScene.gd|lit|下路战场
 scripts/scenes/RealtimeBattle3DScene.gd|lit|冰川
 scripts/scenes/RealtimeBattle3DScene.gd|lit|加时：治疗效果 -%d%%，每 %d 秒全场伤害 +%d%%
+scripts/scenes/RealtimeBattle3DScene.gd|lit|升级 Lv%d
 scripts/scenes/RealtimeBattle3DScene.gd|lit|口哨
 scripts/scenes/RealtimeBattle3DScene.gd|lit|命运生命偷取
 scripts/scenes/RealtimeBattle3DScene.gd|lit|复活
@@ -1227,13 +1228,13 @@ scripts/scenes/TrainerConfigScene.gd|lit|猎龟令
 scripts/scenes/TrainerConfigScene.gd|lit|被动
 scripts/scenes/TrainerConfigScene.gd|lit|被动与主动只能装配其一
 scripts/scenes/TrainerConfigScene.gd|lit|训龟大师
-scripts/scenes/TrainerConfigScene.gd|lit|训龟大师吹响口哨，随机召唤以下一种。护盾：全体友军获得 700 护盾，5 秒后逐渐消退。灵龟：召出一只灵体小龟，蓄力后打出一道贯穿气波，对命中的敌人造成 100 点 + 15% 目标最大生命值的真实伤害并将其击飞，护甲降低 30%，持续 5 秒。狂暴：全体友军 4 秒内攻击力 +20%、生命偷取 +20%，且不会死亡。冷却 14 秒。
-scripts/scenes/TrainerConfigScene.gd|lit|训龟大师朝最近的敌人射出钩索，命中第一个敌人时将其眩晕 4 秒并拉至身边，期间目标受到的伤害 +25%。冷却 20 秒，未命中时冷却 10 秒。
-scripts/scenes/TrainerConfigScene.gd|lit|训龟大师朝最近的敌人投掷药水。落点附近的友军获得 5 秒狂热：+30% 攻击速度、+25% 移动速度、+25% 龟能充能。冷却 16 秒。
-scripts/scenes/TrainerConfigScene.gd|lit|训龟大师朝最近的敌人生成一条冰川，持续 6 秒。冰面上的敌人移动速度降低 40%，受到的伤害 +20%。冷却 17 秒。
+scripts/scenes/TrainerConfigScene.gd|lit|训龟大师吹响口哨，随机召唤以下一种。护盾：全体友军获得 700 护盾，5 秒后逐渐消退。灵龟：召出一只灵体小龟，蓄力后打出一道贯穿气波，对命中的敌人造成 100 点 + 15% 目标最大生命值的真实伤害并将其击飞，护甲降低 30%，持续 5 秒。狂暴：全体友军 4 秒内攻击力提高 20%，获得 20% 生命偷取，且不会死亡。冷却 14 秒。
+scripts/scenes/TrainerConfigScene.gd|lit|训龟大师朝最近的敌人射出钩索，命中第一个敌人时将其眩晕 4 秒并拉至身边，期间目标受到的伤害提高 25%。冷却 20 秒，未命中时冷却 10 秒。
+scripts/scenes/TrainerConfigScene.gd|lit|训龟大师朝最近的敌人投掷药水。落点附近的友军获得 5 秒狂热：攻击速度提高 30%，移动速度提高 25%，龟能充能速度提高 25%。冷却 16 秒。
+scripts/scenes/TrainerConfigScene.gd|lit|训龟大师朝最近的敌人生成一条冰川，持续 6 秒。冰面上的敌人移动速度降低 40%，受到的伤害提高 20%。冷却 17 秒。
 scripts/scenes/TrainerConfigScene.gd|lit|训龟大师标记最近的敌人。该敌人下次死亡时以 30% 最大生命值复活并加入我方，复活后 2.5 秒无敌，此后每秒损失 2% 最大生命值，持续作战至终极战场。冷却 60 秒，未命中时冷却 30 秒。
-scripts/scenes/TrainerConfigScene.gd|lit|训龟大师的攻击额外造成 2% 目标最大生命值的魔法伤害。每次攻击获得 +3% 攻击速度，可无限叠加。层数达到 10、25、50 时亮起共鸣光效。
-scripts/scenes/TrainerConfigScene.gd|lit|训龟大师锁定最近的敌人，持续 15 秒：目标受到的伤害 +15%，其周围的友军优先攻击该目标（范围随目标移动）。冷却 30 秒，未命中时冷却 15 秒。
+scripts/scenes/TrainerConfigScene.gd|lit|训龟大师的攻击额外造成 2% 目标最大生命值的魔法伤害。每次攻击获得 3% 攻击速度，可无限叠加。层数达到 10、25、50 时亮起共鸣光效。
+scripts/scenes/TrainerConfigScene.gd|lit|训龟大师锁定最近的敌人，持续 15 秒：目标受到的伤害提高 15%，其周围的友军优先攻击该目标（范围随目标移动）。冷却 30 秒，未命中时冷却 15 秒。
 scripts/scenes/TrainerConfigScene.gd|lit|钩锁
 scripts/scenes/TrainerConfigScene.gd|lit|驯服
 scripts/scenes/TrainerConfigScene.gd|lit|魔法师
@@ -1341,7 +1342,7 @@ scripts/scenes/battle/battle_hud.gd|text|阵容已上传
 scripts/scenes/battle/battle_hud.gd|text|🛠 调试场
 scripts/scenes/battle/battle_hud.gd|tooltip_text|%s · %d 档
 scripts/scenes/battle/battle_hud.gd|tooltip_text|%s · 点开细看
-scripts/scenes/battle/battle_spawn.gd|lit|命运之轮 -30%HP
+scripts/scenes/battle/battle_spawn.gd|lit|命运之轮 -30% 生命值
 scripts/scenes/battle/battle_spawn.gd|lit|水晶球
 scripts/scenes/battle/battle_spawn.gd|lit|海盗船
 scripts/scenes/battle/battle_spawn.gd|lit|糖果炸弹
@@ -1443,13 +1444,13 @@ scripts/scenes/battle/info_panel.gd|lit|护盾强度
 scripts/scenes/battle/info_panel.gd|lit|护盾效果的倍率。
 scripts/scenes/battle/info_panel.gd|lit|攻击
 scripts/scenes/battle/info_panel.gd|lit|攻击 %d
+scripts/scenes/battle/info_panel.gd|lit|攻击和大多数技能伤害的基础。
 scripts/scenes/battle/info_panel.gd|lit|攻击打出暴击的几率。
+scripts/scenes/battle/info_panel.gd|lit|攻击距离。
 scripts/scenes/battle/info_panel.gd|lit|攻速
 scripts/scenes/battle/info_panel.gd|lit|攻速 每秒 %s 次
 scripts/scenes/battle/info_panel.gd|lit|星能
 scripts/scenes/battle/info_panel.gd|lit|普攻
-scripts/scenes/battle/info_panel.gd|lit|普攻和大多数技能伤害的基础。
-scripts/scenes/battle/info_panel.gd|lit|普攻的攻击距离。
 scripts/scenes/battle/info_panel.gd|lit|暂无效果
 scripts/scenes/battle/info_panel.gd|lit|暴伤
 scripts/scenes/battle/info_panel.gd|lit|暴伤 
@@ -1459,7 +1460,7 @@ scripts/scenes/battle/info_panel.gd|lit|暴击时造成的伤害倍率。暴击�
 scripts/scenes/battle/info_panel.gd|lit|最大生命值
 scripts/scenes/battle/info_panel.gd|lit|本局
 scripts/scenes/battle/info_panel.gd|lit|每点 +2% 攻击
-scripts/scenes/battle/info_panel.gd|lit|每秒普攻次数。
+scripts/scenes/battle/info_panel.gd|lit|每秒攻击次数。
 scripts/scenes/battle/info_panel.gd|lit|治疗
 scripts/scenes/battle/info_panel.gd|lit|治疗 %d
 scripts/scenes/battle/info_panel.gd|lit|治疗削减
@@ -1669,9 +1670,9 @@ scripts/scenes/codex/status_page.gd|lit|属性
 scripts/scenes/codex/status_page.gd|lit|技能
 scripts/scenes/codex/status_page.gd|lit|持续伤害
 scripts/scenes/codex/status_page.gd|lit|控制
+scripts/scenes/codex/status_page.gd|lit|攻击
 scripts/scenes/codex/status_page.gd|lit|效果
 scripts/scenes/codex/status_page.gd|lit|无
-scripts/scenes/codex/status_page.gd|lit|普攻
 scripts/scenes/codex/status_page.gd|lit|来源
 scripts/scenes/codex/status_page.gd|lit|深海小将
 scripts/scenes/codex/status_page.gd|lit|羁绊
@@ -1868,9 +1869,9 @@ scripts/scenes/social/player_menu.gd|lit|无法举报自己
 scripts/scenes/social/player_menu.gd|lit|移出黑名单
 scripts/scenes/social/player_menu.gd|lit|黑名单已满
 scripts/scenes/social/player_menu.gd|text|玩家 ID %s
+scripts/scenes/team_select/detail_panel.gd|lit|护甲
 scripts/scenes/team_select/detail_panel.gd|lit|攻击力
 scripts/scenes/team_select/detail_panel.gd|lit|生命值
-scripts/scenes/team_select/detail_panel.gd|lit|防御力
 scripts/scenes/team_select/detail_panel.gd|lit|魔抗
 scripts/scenes/team_select/detail_panel.gd|text|被动
 scripts/scenes/team_select/detail_panel.gd|tooltip_text|被动
@@ -1887,15 +1888,15 @@ scripts/scenes/team_select/roster_slots.gd|lit|%s 不能被替换
 scripts/scenes/team_select/roster_slots.gd|lit|水晶球
 scripts/scenes/team_select/roster_slots.gd|lit|糖果炸弹
 scripts/scenes/team_select/roster_slots.gd|lit|随从
-scripts/scenes/team_select/roster_slots.gd|text|放这里
+scripts/scenes/team_select/roster_slots.gd|text|放置
 scripts/scenes/team_select/roster_slots.gd|text|空位
 scripts/scenes/team_select/skill_picker.gd|lit| (龟能%d)
-scripts/scenes/team_select/skill_picker.gd|lit|\n火山：%s — %s
-scripts/scenes/team_select/skill_picker.gd|lit|\n近战：%s — %s
+scripts/scenes/team_select/skill_picker.gd|lit|\n火山：%s：%s
+scripts/scenes/team_select/skill_picker.gd|lit|\n近战：%s：%s
 scripts/scenes/team_select/skill_picker.gd|lit|固有
 scripts/scenes/team_select/skill_picker.gd|lit|固有技能 · 不可更换
 scripts/scenes/team_select/skill_picker.gd|lit|已选
-scripts/scenes/team_select/skill_picker.gd|lit|普攻（自动释放）
+scripts/scenes/team_select/skill_picker.gd|lit|攻击（自动释放）
 scripts/scenes/team_select/skill_picker.gd|lit|未解锁
 scripts/scenes/team_select/skill_picker.gd|text|技能
 scripts/scenes/team_select/skill_picker.gd|text|选择 1 个技能
@@ -1928,6 +1929,7 @@ scripts/systems/equip/equip_system.gd|lit|海螺虫
 scripts/systems/equip/equip_system.gd|lit|涨潮
 scripts/systems/equip/equip_system.gd|lit|炮台
 scripts/systems/equip/equip_system.gd|lit|退潮
+scripts/systems/equip/equip_tick_system.gd|lit|+%d 深海币
 scripts/systems/equip/food_synergy_system.gd|lit|食物
 scripts/systems/equip/gadget_synergy_system.gd|lit|奇械
 scripts/systems/equip/gremlin_gun.gd|lit|古灵精怪枪
@@ -2077,11 +2079,11 @@ scripts/systems/skills/dice_system.gd|lit|稳定骰子 %d刺
 scripts/systems/skills/elite_system.gd|lit|吞噬 +50% 攻击速度
 scripts/systems/skills/fortune_system.gd|lit|招财 
 scripts/systems/skills/fortune_system.gd|lit|招财·升星 %d★
-scripts/systems/skills/fortune_system.gd|lit|招财·满 回血
+scripts/systems/skills/fortune_system.gd|lit|招财·满 回复生命
 scripts/systems/skills/fortune_system.gd|lit|掷骰 +%d金币
 scripts/systems/skills/fortune_system.gd|lit|金盾 +%d
 scripts/systems/skills/fortune_system.gd|lit|龟能 +%d
-scripts/systems/skills/gambler_system.gd|lit|♠ 攻+3 血+10
+scripts/systems/skills/gambler_system.gd|lit|♠ 攻击+3 生命+10
 scripts/systems/skills/gambler_system.gd|lit|♣ 生命偷取+0.5% 攻速+2%
 scripts/systems/skills/gambler_system.gd|lit|♥ 护甲+1 魔抗+1
 scripts/systems/skills/gambler_system.gd|lit|♦ 暴击+2% 护穿+1

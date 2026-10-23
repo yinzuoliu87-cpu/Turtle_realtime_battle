@@ -129,7 +129,6 @@ const COL_KEYS := ["hearts", "wins", "battles"]
 ##   冠军/亚军/四强/进决赛日 = 客户端从 `finals_week_view(那一周)` 现算 —— 座次推导只在 `bracket.gd` 一份,
 ##   与主菜单发头衔(`BracketMapScene.record_progress_from` → `Bracket.my_progress`)同一套。
 ## ★日子只从 `phase2_config.now_utc()` 读**一次**(时间穿越 / 门禁钉钟都走它), 不读系统钟。
-const TITLE_ICON := "🏆 "
 const DAY_TITLE := {
 	"rest": "上周终榜",
 	"ranked": "本周排行",
@@ -336,7 +335,7 @@ static func board_week(now: int) -> int:
 
 ## 顶栏标题。不认识的阶段按积分赛日。
 static func board_title(phase: String) -> String:
-	return TITLE_ICON + str(DAY_TITLE.get(phase, DAY_TITLE[_P2C.PHASE_RANKED]))
+	return str(DAY_TITLE.get(phase, DAY_TITLE[_P2C.PHASE_RANKED]))
 
 
 ## 顶栏右侧入口: 周六 → 全场赛况(GauntletBoard) / 周日 → 查看对阵图(BracketMap) / 其余 → 无。

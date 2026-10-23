@@ -37,7 +37,7 @@
       "_id": "B3"
     },
     {
-      "text": "本周第一场开打后，这 3 只龟会锁定到下周一，技能仍可每场更换。",
+      "text": "本周第一场对战开始后，这 3 只龟会锁定到下周一，技能仍可每场更换。",
       "highlight": "confirm",
       "advanceOn": "team_confirmed",
       "_id": "B4"
@@ -189,7 +189,7 @@
       "_id": "F5"
     },
     {
-      "text": "点击完成",
+      "text": "点击【完成】，保存站位。",
       "highlight": "formation_done",
       "advanceOn": "formation_closed",
       "_id": "F5b"

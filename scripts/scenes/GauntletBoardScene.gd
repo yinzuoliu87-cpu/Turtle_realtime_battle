@@ -58,7 +58,7 @@ const WEEK_PAST := "上周闯关赛"
 ## 点人之后: 他自己打的那几场 + 战绩里有、录像没传上来的那几场(一行一场, 写明无录像)。
 const NO_REPLAY := "无录像"
 const N_MISSING_CARD := "MissingCard"
-const LIVE_HEAD := "正在打"
+const LIVE_HEAD := "进行中"
 const LIVE_REFRESH_SEC := 10.0
 const LIVE_RED := Color("#d8473f")
 const MINE := Color("#ffd93d")
@@ -308,9 +308,9 @@ func _set_status(code: String) -> void:
 					tail = " · 已结束"
 				elif _closed:
 					var seat: int = P2C.weekend_view_week(P2C.now_utc()) + 6 * 86400 + int(P2C.FINALS_SEAT_HOUR_UTC) * 3600
-					tail = " · 已截止 · 周日 %s %s开打" % [P2C.local_hhmm(seat), P2C.STAGE_GROUP]
+					tail = " · 已截止 · 周日 %s %s开赛" % [P2C.local_hhmm(seat), P2C.STAGE_GROUP]
 				t = "%s · %d 人 · %d 场 · 晋级 %d · 出局 %d%s%s" % [WEEK_PAST if past else WEEK_NOW, pn, gn, n_in, n_out,
-					(" · 正在打 %d 场" % ln) if ln > 0 else "", tail]
+					(" · 进行中 %d 场" % ln) if ln > 0 else "", tail]
 			c = Color("#9fb0c4")
 		"unavailable":
 			t = "赛况暂无"
@@ -572,7 +572,7 @@ func _live_card(g: Dictionary, idx: int) -> Control:
 	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pc.add_child(vb)
 	var rt := _rel_time(int(g.get("t", 0)))
-	vb.add_child(MatchCard.banner(Live.TAG_LIVE, (rt + "开打") if rt != "" else "",
+	vb.add_child(MatchCard.banner(Live.TAG_LIVE, (rt + "开赛") if rt != "" else "",
 		LIVE_RED, Color("#4a0f0b"), Color("#ffffff"), Color("#ffe1dc")))
 	var body := HBoxContainer.new()
 	body.add_theme_constant_override("separation", 14)

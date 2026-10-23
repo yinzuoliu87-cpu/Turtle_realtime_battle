@@ -129,7 +129,7 @@ func _refresh_detail() -> void:
 	stats_grid.add_theme_constant_override("v_separation", host._sp(4))
 	stats_grid.add_child(_stat_row("res://assets/sprites/stats/hp-icon.png", "生命值", hp))
 	stats_grid.add_child(_stat_row("res://assets/sprites/stats/atk-icon.png", "攻击力", atk))
-	stats_grid.add_child(_stat_row("res://assets/sprites/stats/def-icon.png", "防御力", def_))
+	stats_grid.add_child(_stat_row("res://assets/sprites/stats/def-icon.png", "护甲", def_))
 	stats_grid.add_child(_stat_row("res://assets/sprites/stats/mr-icon.png", "魔抗", mr))
 	host._dt_stats.add_child(stats_grid)
 
