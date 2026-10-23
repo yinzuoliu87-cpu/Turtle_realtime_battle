@@ -453,6 +453,9 @@ static func make_bot(battles: int, rng: RandomNumberGenerator, gw: int = -1, gl:
 		##   (`battle_spawn` 宝箱分支) ⇒ 补键不改变任何一场机器人战斗。
 		"chest_treasures_won": [],
 		"chest_treasure_value": 0.0,
+		## 093 香火石刻痕 / 充能(2026-10-23): 与真人快照同两键; 0 = 「没养香火石」的真人的值, 也是缺键时战斗侧的回落值
+		"incense_marks": 0,
+		"incense_charge": 0,
 		## 096 砍伐进度(2026-10-10): 与真人快照同三键(不露馅)。值 = 「打了 battles 场的人至少有的」,
 		##   与老快照缺键时的回落**同一个函数** ⇒ 机器人强度只随场次走, 与它的装备预算曲线同一把尺子。
 		"axe_exp_total": int(_axe_prog["total"]),
@@ -1105,6 +1108,8 @@ static func seed_as_human(g: Dictionary, season_id: int) -> Dictionary:
 		"season_sweeps": int(rec["sweeps"]),
 		"chest_treasures_won": (g.get("chest_treasures_won", []) as Array).duplicate(true) if g.get("chest_treasures_won") is Array else [],
 		"chest_treasure_value": float(g.get("chest_treasure_value", 0.0)),
+		"incense_marks": int(g.get("incense_marks", 0)),
+		"incense_charge": int(g.get("incense_charge", 0)),
 		## 096 砍伐进度(2026-10-10): 种子文件没有这三键 ⇒ 与战斗侧缺键回落**同一个函数**
 		##   (`progress_of_snapshot`: 有就原样、没有按场次) ⇒ 原样 vs 转换后斧头强度逐字相同, 再转一次也幂等。
 		"axe_exp_total": int(_axe_prog["total"]),
@@ -1993,6 +1998,12 @@ static func build_ghost_snapshot(ghost_id: String, profile: Dictionary) -> Dicti
 		##   现在带上真实进度, 敌方按对手【真的攒到哪】开箱。
 		"chest_treasures_won": (GameState.chest_treasures_won as Array).duplicate() if GameState.chest_treasures_won is Array else [],
 		"chest_treasure_value": float(GameState.chest_treasure_value),
+		## ★093 香火石的刻痕 / 充能(2026-10-23 · 方案书 20261023-香火石四个问题 3)。
+		##   原来快照不带 ⇒ 对手的香火石刻痕一律按 0(当初的理由「右方是即时生成的 bot」早已不成立: 对手是真人快照),
+		##   裁判机(周末服务器局)上我方也只能按 0。消费侧: `IncenseStoneSystem._ghost_progress`(右方) /
+		##   `RefereeJob._state_from_snapshot`(裁判机左方)。旧快照没有这两键 ⇒ 0(与改之前相同)。
+		"incense_marks": int(GameState.incense_marks),
+		"incense_charge": int(GameState.incense_charge),
 		## ★096 小木斧的砍伐进度(2026-10-10)。消费侧 `AxeSystem._progress_of`: 对手的斧头按**对手**的进度建。
 		##   在这之前快照里没有它 ⇒ 对手的斧头读的是**看的人本机**的进度(我练到钻石斧, 对面的木斧也是钻石斧身板)。
 		##   ★不升 SCHEMA_VER: 升了会把整池旧快照丢光; 缺这三个键的旧快照由

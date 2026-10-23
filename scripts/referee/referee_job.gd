@@ -207,8 +207,10 @@ static func _state_from_snapshot(a: Dictionary, normalize: Callable) -> Dictiona
 		"gambler_wheel_stacks": {},       # 同上(命运之轮跨场累积只给玩家本机那一方)
 		"chest_treasure_value": float(cv) if (cv is int or cv is float) else 0.0,
 		"chest_treasures_won": cw,
-		"incense_marks": 0,               # 右方每场从 0 起(incense_stone_system D3)
-		"incense_charge": 0,
+		## 093 香火石(2026-10-23): 从 A 的快照起算(原来写死 0 ⇒ 周末服务器局里我方刻痕不生效)。
+		##   右方(B)由战斗场读 `dual_ghost` 里同名两键(`IncenseStoneSystem._ghost_progress`)。
+		"incense_marks": clampi(int(a.get("incense_marks", 0)), 0, IncenseStoneSystem.MARK_CAP),
+		"incense_charge": clampi(int(a.get("incense_charge", 0)), 0, IncenseStoneSystem.PER_MARK),
 		"trainer_appearance": "default",
 		"axe_exp_bar": 0,                 # 右方不在局内进化(快照不传进度条) ⇒ 同口径
 		"axe_exp_total": int(axe.get("total", 0)),

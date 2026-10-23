@@ -1930,6 +1930,8 @@ scripts/systems/equip/food_synergy_system.gd|lit|食物
 scripts/systems/equip/gadget_synergy_system.gd|lit|奇械
 scripts/systems/equip/gremlin_gun.gd|lit|古灵精怪枪
 scripts/systems/equip/gun_synergy_system.gd|lit|枪
+scripts/systems/equip/incense_stone_system.gd|lit|刻痕 %d / %d · 充能 %d / %d
+scripts/systems/equip/incense_stone_system.gd|lit|刻痕 %d / %d（已满）
 scripts/systems/equip/potion_synergy_system.gd|lit|猎物
 scripts/systems/equip/potion_synergy_system.gd|lit|药水
 scripts/systems/equip/relic_synergy_system.gd|lit|遗物

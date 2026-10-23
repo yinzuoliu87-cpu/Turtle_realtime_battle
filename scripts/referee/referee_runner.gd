@@ -86,6 +86,10 @@ static func run(host: Node, job: Dictionary, on_battle: Callable = Callable(), s
 		##   客户端 `RefereeWatch.apply_chest` 写进存档。★必须在下面还原 GameState 之前读: 左方起点就是这一局的存档。
 		res["chest"] = _chest_of(battle, "left")
 		res["chest_b"] = _chest_of(battle, "right")
+		## 093 香火石(2026-10-23 · 方案书 20261023-香火石四个问题 3): 这一局结束时两侧的刻痕 + 充能。
+		##   原来结果单不带 ⇒ 服务器局里攒的香火进不了存档。服务端 20261023 回给客户端, `RefereeWatch.apply_incense` 写存档。
+		res["incense"] = _incense_of(battle, "left")
+		res["incense_b"] = _incense_of(battle, "right")
 	if rr != null and rr.stream != null:
 		res["stream"] = rr.stream.finish({"match_id": str(job.get("match_id", "")), "ok": why == "",
 			"digest": str(res.get("digest", "")), "client_version": ReplayRecorder.client_version()})
@@ -104,6 +108,12 @@ static func run(host: Node, job: Dictionary, on_battle: Callable = Callable(), s
 
 ## 一侧的宝箱进度 → 结果单里的形状 {"value": 财宝值, "won": [战利品 id]}(客户端 RefereeNet.parse_chest 认这个形状)。
 ##   取数走 ChestSystem.ledger_final(这一局本场宝箱账的终值; 这一侧没有宝箱龟 ⇒ 原样是起点)。
+static func _incense_of(battle, side: String) -> Dictionary:
+	var inc = battle._equip_sys._incense
+	return {"marks": int(inc.marks_of(side)),
+		"charge": clampi(int((inc._chg as Dictionary).get(side, 0)), 0, IncenseStoneSystem.PER_MARK)}
+
+
 static func _chest_of(battle, side: String) -> Dictionary:
 	var f: Dictionary = battle._chest_sys.ledger_final(side)
 	return {"value": float(f.get("chest_treasure_value", 0.0)), "won": (f.get("chest_treasures_won", []) as Array).duplicate()}

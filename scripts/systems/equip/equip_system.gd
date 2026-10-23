@@ -140,6 +140,7 @@ func _b4_on_damaged_equip(u: Dictionary, src, dmg: int) -> void:
 
 func _eq_on_basic_attack(u: Dictionary, tgt = null) -> void:   # 每普攻(不算多段): 008珊瑚刺计数 / 017不沉之锚普攻消耗充能锚击
 	if u.get("equips", []).is_empty(): return
+	u["_basic_serial"] = int(u.get("_basic_serial", 0)) + 1   # 这一次攻击的序号: 同龟多件同名装备共用一份状态的, 靠它认「同一次」(093)
 	for e in u["equips"]:
 		tally.use([u, str(e["id"])])   # ④ 装备统计: 这一圈是这件装备的普攻钩
 		if str(e["id"]) == "p2eq_017":   # 不沉之锚: 每次普攻消耗1沉锚充能→击飞最前敌+眩晕(用户2026-07-02)
@@ -1532,6 +1533,7 @@ func _eq_bonus_hit(src: Dictionary, tgt: Dictionary, amount: float, col: Color) 
 func _eq_on_hit(src: Dictionary, tgt: Dictionary, dmg: int, basic: bool = false, crit = null) -> void:
 	if src.get("equips", []).is_empty():
 		return
+	src["_hit_serial"] = int(src.get("_hit_serial", 0)) + 1   # 这一次命中的序号(同上, 093)
 	# AoE 判定(启发式): 同一步 sim 内 src 命中≥2个不同目标 → 范围技能(009 充能减半用; 首个目标算单体)。★按 sim 步号不按引擎帧号: 30fps 一帧两步, 帧号会把相邻两步的两次单体命中算成范围
 	var _fr: int = int(battle._sim_step_n)
 	if int(src.get("_onhit_fr", -1)) != _fr:
@@ -2791,30 +2793,6 @@ func _eq_dragon_breath(u: Dictionary, si: int) -> void:
 ##     · 072 旧「开战送血 + 全队回已损」→ 新【变身蛋糕礼盒】
 ##   新的效果本体全在 scripts/systems/equip/eq_food_batch.gd, 走每帧 `_eq_tick` 的
 ##   常驻字段守卫 `_food_eq`(不是周期分发) ⇒ 它们也从 EQ_IV_BATCH1 里摘掉了。
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 ## 触发【某一件装备】的周期效果。

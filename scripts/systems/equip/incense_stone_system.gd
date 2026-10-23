@@ -36,9 +36,10 @@ extends RefCounted
 ##    ⇒ 同龟两件实际上是**共用一条充能条**。要真正各攒需要把 eq_state 改成按槽位存,
 ##    那是全 95 件装备的公共结构改动, 不在本批范围。**不同龟各带一件是各攒各的**(常见情形)。
 ##
-## D3【敌方(right)的刻痕】→ **每场从 0 开始**, 不读也不写存档。
-##    另一侧是给 bot 也造一份赛季存档。选前者: bot 对手是即时生成的(见 `scripts/net/backend.gd`),
-##    没有"这个 bot 上赛季带过这块石头"这回事; 硬给它一个数字只会变成凭空的难度旋钮。
+## D3【敌方(right)的刻痕】→ **从对手快照起算**(2026-10-23 改; 原为「每场从 0 开始」), 不写存档。
+##    原来的理由「bot 对手是即时生成的」早已不成立: 对手是真人快照(宝箱龟 2026-08-14 就改成按对手真实进度)。
+##    快照带 `incense_marks / incense_charge`(`Backend.build_ghost_snapshot`), 机器人与旧快照没有 ⇒ 0。
+##    读法见 `_ghost_progress`; 每场只读一次(`_loaded["right"]`), 局内刻下的新痕不被它覆盖。
 ##
 ## D4【充能写回存档的时机】→ **每刻成一道痕时** + **换路/撤场时**。
 ##    另一侧是每帧写回。选前者: 每帧写回要遍历 persistent_equipped 找那一件, 是热路径上的浪费;
@@ -89,6 +90,15 @@ func _init(b) -> void:
 	battle = b
 
 
+## 局外读数(2026-10-23 · 方案书 20261023-香火石四个问题 4): 背包里香火石说明卡上那一行。
+##   原来刻痕 / 充能只有进了对局、装备格上才看得到; 跨对局养成, 局外却看不出养到哪了。
+static func progress_text(marks: int, charge: int) -> String:
+	var m: int = clampi(marks, 0, MARK_CAP)
+	if m >= MARK_CAP:
+		return "刻痕 %d / %d（已满）" % [m, MARK_CAP]
+	return "刻痕 %d / %d · 充能 %d / %d" % [m, MARK_CAP, clampi(charge, 0, PER_MARK), PER_MARK]
+
+
 func _side_of(u: Dictionary) -> String:
 	var sd := str(u.get("side", ""))
 	return sd if (sd == "left" or sd == "right") else "left"
@@ -114,6 +124,8 @@ func on_spawn(u: Dictionary, eid: String, _si: int) -> void:
 	## 刻痕却还在, 同一条香火线两半各走各的。现在与刻痕同一个池子。
 	if side == "left" and GameState != null:
 		_chg["left"] = clampi(int(GameState.incense_charge), 0, PER_MARK)
+	if side == "right":
+		_load_right()                     # 对手从它的快照起算(D3); 每场只读一次, 后登场的携带者不会把局内进度倒回去
 	stt["chg"] = int(_chg.get(side, 0))   # eq_state 里那份只是**显示镜像**(装备格的充能条读它)
 	# ★伤害计数用现成的 `_st_dealt`(两条伤害路径都在记, battle_damage.gd:52/185/211) 做【增量】基准。
 	#   不另起一套计数: 另起一套就要在两条路各插一次, 那是 §3.3 的十次机会漏一次。
@@ -167,6 +179,7 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 		else:
 			# ★进 tick 时就已经满 300: 不再消耗充能, 条冻结显示满(方案书 R4 的定论)
 			_chg[side] = PER_MARK
+		_save_chg(side)
 	stt["chg"] = int(_chg.get(side, 0))   # ★共享条 → 显示镜像(每块石头的图标条都显示同一个值)
 	# 刻痕数镜像进 eq_state: 头像下装备格的层数徽章(PANEL_COUNT)只会读 eq_state,
 	# 而刻痕本身是【按阵营】存的池子, 单位身上没有。无条件写(不只在刻痕时写),
@@ -193,6 +206,14 @@ func tick_unit(u: Dictionary, delta: float) -> void:
 				battle._incense_vfx.empower_burst(u)
 
 
+## 充能每次变化都写回存档(2026-10-23)。★原来只在刻成一道痕时写(`_persist_chg`), 换路 / 撤场那个写回点
+##   `clear_all()` 又从来没人调 ⇒ 一局结束时最后那段不满一道的充能(最多 3999)丢掉, 下一局从上一道痕时的余额起算。
+##   (探针 `tests/_probe_incense_bugs.gd`: 局内 2300 / 存档 500。)与宝箱龟财宝值、命运之轮一样当场写。
+func _save_chg(side: String) -> void:
+	if side == "left" and GameState != null:
+		GameState.incense_charge = clampi(int(_chg.get("left", 0)), 0, PER_MARK)
+
+
 ## 刻成痕: 重算全队加成、写回存档、放演出。
 ## `gained` = **这一帧一共刻了几道**(见 tick_unit 的批量注释), 演出要拿它决定摆几道凿痕、飘字写 +几。
 func _on_mark_scored(u: Dictionary, side: String, gained: int) -> void:
@@ -213,6 +234,13 @@ func on_basic(u: Dictionary, tgt, eid: String, _si: int) -> void:
 	var stt = u.get("eq_state", {}).get(EID, null)
 	if not (stt is Dictionary) or int(stt.get("emp", 0)) <= 0:
 		return
+	## ★同一只龟带几块香火石, 这个钩子每次攻击被调几次(每件一次), 而几块共用一份 eq_state
+	##   ⇒ 原来一次攻击扣几次强化(2026-10-23 探针: 两块 ⇒ 第 2 次攻击就用完、攻速提前撤)。
+	##   同一次攻击(分发处编的序号)只认一次 —— 全表口径「多件同带不叠」。
+	var serial: int = int(u.get("_basic_serial", 0))
+	if int(stt.get("basic_serial", -1)) == serial:
+		return
+	stt["basic_serial"] = serial
 	stt["emp"] = int(stt["emp"]) - 1
 	if int(stt["emp"]) <= 0:
 		_set_emp_haste(u, false)   # D5: 4 次用完立刻撤, 不设时限
@@ -223,10 +251,16 @@ func on_basic(u: Dictionary, tgt, eid: String, _si: int) -> void:
 
 
 ## 普攻命中: 兑现一次附带伤害 + 生命偷取。多件同带时出手记了 n 次、命中钩子也连调 n 次, 一一对应。
-func _hit093(u: Dictionary, tgt: Dictionary, si: int) -> void:
+func _hit093(u: Dictionary, tgt: Dictionary, _si_of_this_copy: int) -> void:
 	var stt = u.get("eq_state", {}).get(EID, null)
 	if not (stt is Dictionary) or int(stt.get("hit_pending", 0)) <= 0 or not tgt.get("alive", false):
 		return
+	## 同一次命中只兑现一次(同 on_basic: 同龟多块时这里也被调几次), 星级取身上最高的那块
+	var hs: int = int(u.get("_hit_serial", 0))
+	if int(stt.get("hit_serial", -1)) == hs:
+		return
+	stt["hit_serial"] = hs
+	var si: int = _lead_si(u)
 	stt["hit_pending"] = int(stt["hit_pending"]) - 1
 	# 附带 30/50/80 + 目标最大生命 1/1.5/2% 的【物理】伤害(用户 2026-08-06「可以分星」后的定稿)
 	# ★这两行旁边必须有一个 "p2eq_093" 字面量: tooltip_number_audit 靠 id 字面量 ±2500 字符
@@ -293,6 +327,39 @@ func _revoke(side: String = "") -> void:
 				o["damage_amp"] = maxf(0.0, float(o.get("damage_amp", 0.0)) - float(g["amp"]))
 				o["damage_reduction"] = maxf(0.0, float(o.get("damage_reduction", 0.0)) - float(g["dr"]))
 		_given[sd] = []
+
+
+## 身上香火石的最高星(0/1/2)。同龟多块时附带伤害按它算。
+func _lead_si(o: Dictionary) -> int:
+	var best := 0
+	for e in o.get("equips", []):
+		if e is Dictionary and str((e as Dictionary).get("id", "")) == EID:
+			best = maxi(best, clampi(int((e as Dictionary).get("star", 1)), 1, 3) - 1)
+	return best
+
+
+## 对手(右方)的刻痕 / 充能起点: 对手快照(`GameState.dual_ghost`)里那两键(D3 · 2026-10-23)。
+##   与宝箱龟右方起点同一个来源、同一道闸(开发工具局不带)。机器人 / 旧快照没有这两键 ⇒ 0。
+func _ghost_progress() -> Dictionary:
+	var out := {"marks": 0, "charge": 0}
+	if GameState == null or battle._world_builder._is_dev_tool_battle():
+		return out
+	var gh = GameState.dual_ghost
+	if gh is Dictionary:
+		out["marks"] = clampi(int((gh as Dictionary).get("incense_marks", 0)), 0, MARK_CAP)
+		out["charge"] = clampi(int((gh as Dictionary).get("incense_charge", 0)), 0, PER_MARK)
+	return out
+
+
+## 右方每场只从快照读一次(局内刻下的新痕不能被起点覆盖回去)。
+func _load_right() -> void:
+	if bool(_loaded.get("right", false)):
+		return
+	_loaded["right"] = true
+	var gp := _ghost_progress()
+	_marks["right"] = maxi(int(_marks.get("right", 0)), int(gp["marks"]))
+	_chg["right"] = maxi(int(_chg.get("right", 0)), int(gp["charge"]))
+	_roster_n["right"] = -1               # 逼 tick 那段重发一次(全队加成)
 
 
 func _has_stone(o: Dictionary) -> bool:
@@ -370,6 +437,7 @@ func tick(_delta: float) -> void:
 		_marks["left"] = maxi(int(_marks.get("left", 0)), clampi(int(GameState.incense_marks), 0, MARK_CAP))
 		_chg["left"] = maxi(int(_chg.get("left", 0)), clampi(int(GameState.incense_charge), 0, PER_MARK))
 		_roster_n["left"] = -1            # 逼下面那段重发一次
+	_load_right()
 	for side in ["left", "right"]:
 		if int(_marks.get(side, 0)) <= 0:
 			continue

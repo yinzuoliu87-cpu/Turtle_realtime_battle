@@ -127,9 +127,15 @@ func _ready() -> void:
 	_ok("★★局内刻痕【已经回写存档】(从 0 起攒, 不是蒙上一轮的残留)",
 		int(GameState.incense_marks) == live_m and live_m > 0,
 		"存档 %d(局内 %d) · 起始 %d" % [int(GameState.incense_marks), live_m, gs_m0])
-	_ok("★★不满一道的余额也回写(否则每场的零头都丢)",
-		int(GameState.incense_charge) != gs_c0 or int(inc._chg.get("left", 0)) == gs_c0,
-		"存档充能 %d(局内 %d) · 起始 %d" % [int(GameState.incense_charge), int(inc._chg.get("left", 0)), gs_c0])
+	## ★★2026-10-23 换掉原来那条恒真式: 原判据是「存档 != 起点 或 局内 == 起点」, 而上面每次正好打 4000
+	##   ⇒ 余额恒为 0 == 起点 0 ⇒ 永远绿, 从来没量过零头。实际上零头**确实**在丢(只在刻成痕时写回,
+	##   探针 `_probe_incense_bugs`: 局内 2300 / 存档 500)。现在打一个**凑不满一道**的量再比。
+	s._damage._apply_damage_from(u, e, 1234, Color.RED, 0.0, true)
+	s._sim_step(1.0 / 60.0, false, false)
+	var rem: int = int(inc._chg.get("left", 0))
+	_ok("★分母: 局内充能此刻有零头(不是 0, 也没凑满一道)", rem > 0 and rem < Inc.PER_MARK, "局内充能 %d" % rem)
+	_ok("★★不满一道的余额也回写(否则每场的零头都丢)", int(GameState.incense_charge) == rem,
+		"存档充能 %d · 局内 %d" % [int(GameState.incense_charge), rem])
 
 	# ── ⑧ 全队共享: 【没带石头】的队友也要吃到羁绊那一半 ─────────────────────
 	##   ★设计: 每道刻痕 → 携带者 +0.2%/+0.1%(装备) + 全队 +0.1%/+0.05%(羁绊)。
@@ -535,6 +541,63 @@ func _ready() -> void:
 	_ok("★★这份攻速真的进了战斗用的总倍率 `aspd_mult`",
 		absf(s._damage.aspd_mult(eu) - asp1) < 1e-6,
 		"aspd_mult=%.2f · aspd_perm=%.2f" % [s._damage.aspd_mult(eu), asp1])
+
+	# ── ⑪ 同一只龟带两块香火石: 一次攻击只消耗一次强化(2026-10-23) ──────────────
+	##   ★原来每件装备各调一次 on_basic、两块共用一份 eq_state ⇒ 一次攻击扣 2 次,
+	##     4 次强化 2 次攻击就用完、攻速提前撤。附带伤害按身上最高星那块算。
+	var du: Dictionary = s._spawn._make_unit("basic", "left", c + Vector2(-140, 120))
+	du["atk"] = 100.0
+	du["crit"] = 0.0          # 关掉暴击: 附带伤害走 _resolve_dmg 会掷暴击, 量「按哪块星」时不要这份噪声
+	du["equips"] = [{"id": Inc.EID, "star": 1}, {"id": Inc.EID, "star": 3}]
+	du["eq_state"] = {Inc.EID: {}}
+	var dt: Dictionary = s._spawn._make_unit("basic", "right", c + Vector2(140, 120))
+	dt["maxHp"] = 10000.0
+	dt["hp"] = 1.0e7
+	dt["def"] = 0.0
+	s._units.append_array([du, dt])
+	s._equip_sys._stats._eq_apply_all_stats()
+	var dstt: Dictionary = du["eq_state"][Inc.EID]
+	var das0: float = float(du.get("aspd_perm", 1.0))
+	dstt["emp_t"] = Inc.EMP_IV - 0.001
+	inc.tick_unit(du, 0.01)
+	_ok("★分母: 两块石头的龟进了强化窗(%d 次)" % Inc.EMP_SHOTS, int(dstt.get("emp", 0)) == Inc.EMP_SHOTS,
+		"emp=%d" % int(dstt.get("emp", 0)))
+	var left_after: Array = []
+	var asp_after: Array = []
+	var extra: Array = []
+	var fired: Array = []
+	for _k in range(Inc.EMP_SHOTS):
+		s._equip_sys._eq_on_basic_attack(du, dt)
+		left_after.append(int(dstt.get("emp", 0)))
+		asp_after.append(snappedf(float(du.get("aspd_perm", 1.0)) - das0, 0.01))
+		var h0: float = float(dt["hp"])
+		var n0: int = int(du.get("_incense_emp_n", 0))
+		s._equip_sys._eq_on_hit(du, dt, 0, true)     # 普攻命中(兑现附带伤害)
+		extra.append(snappedf(h0 - float(dt["hp"]), 0.1))
+		fired.append(int(du.get("_incense_emp_n", 0)) - n0)
+	_ok("★★两块石头: 每次攻击只扣 1 次强化(剩 3/2/1/0)", left_after == [3, 2, 1, 0], str(left_after))
+	_ok("★★攻速撑满 %d 次攻击, 第 %d 次之后才撤" % [Inc.EMP_SHOTS, Inc.EMP_SHOTS],
+		asp_after == [Inc.EMP_ASPD, Inc.EMP_ASPD, Inc.EMP_ASPD, 0.0], str(asp_after))
+	## 附带伤害的期望值走产品自己的结算(`_resolve_dmg`: 这只龟身上有前面攒下的刻痕增伤与遗物加成, 手算会漏)。
+	##   3★ 底数 = 80 + 目标最大生命 10000 × 2%; 1★ 底数 = 30 + 10000 × 1% —— 两个都算出来, 区分「按哪块」。
+	var want3: float = float(s._resolve_dmg(du, 80.0 + 10000.0 * 0.02, dt, false))
+	var want1: float = float(s._resolve_dmg(du, 30.0 + 10000.0 * 0.01, dt, false))
+	_ok("★分母: 1★ 与 3★ 的附带伤害真的不同(%.0f / %.0f)" % [want1, want3], want3 > want1 + 1.0)
+	## ★「兑现几次」数产品自己的触发证据 `_incense_emp_n`(每兑现一次 +1), 不从掉血反推
+	##   (掉血里还有别的加成, 精确值会被它们带偏)。修之前两块石头 = 每次命中兑现 2 次。
+	_ok("★★每次命中只兑现一次附带伤害(两块石头不翻倍)", fired == [1, 1, 1, 1], str(fired))
+	var near3 := true
+	for x in extra:
+		if absf(float(x) - want3) >= absf(float(x) - want1):
+			near3 = false
+	_ok("★★附带伤害按最高星那块算(实测更接近 3★ 的 %.0f, 不是 1★ 的 %.0f)" % [want3, want1], near3, str(extra))
+	## ★积压: 前面的强化普攻没打中(闪避 / 目标先死)⇒ 待兑现的附带伤害留着, 之后每次命中兑现一次。
+	##   两块石头时这个命中钩子也被调两次 ⇒ 不去重就一次命中兑现两次(与一块石头时不一样)。
+	dstt["hit_pending"] = 2
+	var nq: int = int(du.get("_incense_emp_n", 0))
+	s._equip_sys._eq_on_hit(du, dt, 0, true)
+	_ok("★★有积压时一次命中也只兑现一次(两块石头不连兑两次)", int(du.get("_incense_emp_n", 0)) - nq == 1
+		and int(dstt.get("hit_pending", -1)) == 1, "兑现 %d 次 · 剩 %d" % [int(du.get("_incense_emp_n", 0)) - nq, int(dstt.get("hit_pending", -1))])
 
 	## ★还原真存档 —— 不还原就是拿测试改玩家数据(用户明令: 演示/测试不许写真存档)。
 	GameState.incense_marks = _save_m

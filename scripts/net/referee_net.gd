@@ -221,7 +221,24 @@ static func parse_status(ok: bool, code: int, body: String) -> Dictionary:
 		"gl": int(d.get("gl", -1)) if d.get("gl", null) is float or d.get("gl", null) is int else -1,
 		"coins": maxi(0, int(d.get("coins", 0))) if d.get("coins", null) is float or d.get("coins", null) is int else 0,
 		"chest": parse_chest(d.get("chest", null)),
+		"incense": parse_incense(d.get("incense", null)),
 		"error": str(d.get("error", "")) if d.get("error", null) is String else ""}
+
+
+## 纯函数: 回包里的 `incense`(20261023 起: 这一局结束时我方 093 香火石的刻痕 + 充能)→ {"marks", "charge"};
+##   缺 / 形状不对(不是对象 · 不是非负整数 · 刻痕超上限 · 充能超一道)⇒ {}(当没有, 不动存档)。
+static func parse_incense(v) -> Dictionary:
+	if not (v is Dictionary):
+		return {}
+	var m = (v as Dictionary).get("marks", null)
+	var c = (v as Dictionary).get("charge", null)
+	if not (m is float or m is int) or not (c is float or c is int):
+		return {}
+	if float(m) < 0.0 or float(c) < 0.0 or float(m) != floorf(float(m)) or float(c) != floorf(float(c)):
+		return {}
+	if int(m) > IncenseStoneSystem.MARK_CAP or int(c) > IncenseStoneSystem.PER_MARK:
+		return {}
+	return {"marks": int(m), "charge": int(c)}
 
 
 ## 纯函数: 回包里的 `chest`(20261022b 起: 这一局结束时我方宝箱龟的进度)→ {"value": 财宝值, "won": [战利品 id]};
@@ -362,7 +379,7 @@ static func parse_finals_coins(ok: bool, code: int, body: String) -> Dictionary:
 		return {"err": "server", "code": code}
 	var c = d.get("coins", null)
 	return {"err": "", "status": st, "coins": maxi(0, int(c)) if (c is float or c is int) else 0,
-		"chest": parse_chest(d.get("chest", null))}
+		"chest": parse_chest(d.get("chest", null)), "incense": parse_incense(d.get("incense", null))}
 
 
 static func finals_coins_async(week: int, bucket: int, r: int, m: int, done: Callable) -> bool:

@@ -145,6 +145,7 @@ static func settle(gs, job_id: int, st: Dictionary) -> Dictionary:
 		reward = 0                        # 与 `_settle_season` 同一条: 出局那一局不发币(含战斗内铸币)
 	gs.meta_deepsea_coins += reward
 	apply_chest(gs, st.get("chest", {}))   # 服务器那一局里宝箱龟攒的财宝值 / 开出的战利品(2026-10-22b)
+	apply_incense(gs, st.get("incense", {}))   # 服务器那一局里 093 香火石的刻痕 / 充能(2026-10-23)
 	gs.battles_total += 1
 	if won:
 		gs.battles_won += 1
@@ -187,6 +188,25 @@ static func apply_chest(gs, chest: Dictionary) -> bool:
 		gs.chest_treasures_won = won.duplicate()
 		changed = true
 	return changed
+
+
+## 服务器那一局结束时我方 093 香火石的刻痕 + 充能 → 存档(2026-10-23 · 方案书 20261023-香火石四个问题 3)。
+##   `inc` = RefereeNet.parse_incense 的结果({} = 服务器没给 ⇒ 不动)。裁判机从我交上去的进度起算 ⇒ 它那份正常就是
+##   「本地 + 这一局」; 仍只往前走(刻痕多 ⇒ 两个都换; 刻痕一样 ⇒ 充能取大), 防迟到的回包把本地已经更新的进度倒退回去。
+##   调用方负责「不是这一周的结果不记」(与 apply_chest 同一处调用)。返回存档有没有变。
+static func apply_incense(gs, inc: Dictionary) -> bool:
+	if gs == null or inc.is_empty():
+		return false
+	var m: int = int(inc.get("marks", 0))
+	var c: int = int(inc.get("charge", 0))
+	if m > int(gs.incense_marks):
+		gs.incense_marks = m
+		gs.incense_charge = c
+		return true
+	if m == int(gs.incense_marks) and c > int(gs.incense_charge):
+		gs.incense_charge = c
+		return true
+	return false
 
 
 ## 开战时服务端说「第几场」对不上(stale): 以账本为准。上一场的账还挂着 ⇒ 先补记那一场(它带着服务器的战绩与铸币);
@@ -435,9 +455,11 @@ static func on_finals_coins(t: Dictionary, res: Dictionary, done: Callable = Cal
 	elif err == "" and str(res.get("status", "")) == "done":
 		n = finals_coins_settle(GameState, t, int(res.get("coins", 0)))
 		## 宝箱进度跟着这张单子一起记(只记一次: 单子已发过 ⇒ n = -1; 不是这一周的单子不记)
-		if n >= 0 and int(t.get("week", 0)) == P2C.week_anchor_utc(int(P2C.now_utc())) \
-				and apply_chest(GameState, res.get("chest", {})):
-			GameState.save()
+		if n >= 0 and int(t.get("week", 0)) == P2C.week_anchor_utc(int(P2C.now_utc())):
+			var ch_c: bool = apply_chest(GameState, res.get("chest", {}))
+			var in_c: bool = apply_incense(GameState, res.get("incense", {}))   # 093 香火石(2026-10-23), 同一张单子同一道闸
+			if ch_c or in_c:
+				GameState.save()
 	else:
 		return -1                             # 问不到 / 还没翻面: 留着下次
 	if n > 0 and done.is_valid():

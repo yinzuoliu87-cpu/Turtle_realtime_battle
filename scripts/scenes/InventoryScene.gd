@@ -1152,6 +1152,8 @@ func _open_item_card() -> void:
 		tag_bb += "  ·  " + Phase2Types.icon_bb(tp, 16) + " " + tp
 	var body := SkillText.highlight_star(SkillText.equip_brief_bb(edef, MIN_FONT_PX), star) \
 		if str(edef.get("effectBrief", "")) != "" else "（无主动效果）"
+	if eid == IncenseStoneSystem.EID:   # 093 香火石: 局外也看得到养到哪了(刻痕 / 充能是整个大轮的, 不是这一件的)
+		body += "\n[color=#ffd27a]%s[/color]" % IncenseStoneSystem.progress_text(int(GameState.incense_marks), int(GameState.incense_charge))
 	var lv: Dictionary = _insp.open(("worn:" if worn else "bench:") + eid, null, {
 		"icon": ("res://assets/sprites/" + img) if img.ends_with(".png") else "",
 		"title": str(edef.get("name", eid)), "title_col": col,
