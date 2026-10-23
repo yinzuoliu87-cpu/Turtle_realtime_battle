@@ -127,6 +127,7 @@ var _dt_passive: PanelContainer = null    # 被动块
 var _detail_bottom: VBoxContainer = null
 var _start_btn: Button = null
 var _last_btn: Button = null
+var _clear_btn: Button = null   # 「撤下」: 没有可撤的时候置灰(_refresh_confirm)
 ## 大轮阵容锁定模式 (用户 2026-07-11): season_leaders 已有 3 龟 = 本大轮已锁定 →
 ##   阵容不可改(灰显/点=只看), 仅 3选1 技能可切; 确认出战直接进匹配. 新赛季(过期清 season_leaders)才回到全选模式.
 var _roster_locked: bool = false
@@ -719,6 +720,7 @@ func _build_ui() -> void:
 	_place_clamped(clear, "clear")
 	_grow_to_touch(clear)
 	clear.pressed.connect(_on_clear_all)
+	_clear_btn = clear
 
 	# 上次阵容 (PoC .ts-frame-btn)
 	_last_btn = Button.new()
@@ -1180,6 +1182,8 @@ func _refresh_confirm() -> void:
 		_start_btn.text = "出战"
 		if _last_btn != null:
 			_last_btn.disabled = true          # 锁定态禁"上次阵容"
+		if _clear_btn != null:
+			_clear_btn.disabled = true         # 锁定态也撤不下(左下角那行已经写着「本大轮阵容已锁定」)
 		return
 	var placed := 0
 	for t in team:
@@ -1199,6 +1203,9 @@ func _refresh_confirm() -> void:
 	var last := _read_last_lineup()
 	var can_restore: bool = placed == 0 and last.has("ids") and (last["ids"] as Array).size() == 3
 	_last_btn.disabled = not can_restore
+	## ★2026-10-23 实拍: 一只都没上阵时「撤下」也是亮的, 点了什么都不发生 ⇒ 与「沿用上次」一样, 没东西可撤就置灰。
+	if _clear_btn != null:
+		_clear_btn.disabled = placed == 0
 
 
 func _set_detail_pet(pid: String) -> void:

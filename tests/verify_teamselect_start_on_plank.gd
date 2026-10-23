@@ -10,6 +10,7 @@ extends Node
 ##   ③ 绿牌下沿尽量避开手势条: 不低于「屏底 − 手势条」超过 8px
 ##   ④ 顶上返回键仍在安全边距内(舞台上移不许把它顶出去)
 ##   ⑤ 对照: 桌面(无安全区)1280×720 下同样贴牌
+##   ⑥ (2026-10-23) 「撤下」没东西可撤时置灰: 空队灰 → 上阵一只亮 → 撤下之后又灰(原来空着也亮, 点了没反应)
 
 const TS := "res://scenes/TeamSelect.tscn"
 
@@ -48,8 +49,31 @@ func _measure(tag: String, vp: Vector2i, ins: Vector4) -> void:
 		if is_instance_valid(c) and (c as Control).visible and c != btn:
 			top_ok = top_ok and (c as Control).position.y >= ins.y + 6.0 - 0.5
 	_ok("④ %s 顶上贴边按钮仍在安全边距内" % tag, top_ok)
+	if tag == "桌面":
+		await _check_clear(ts)
 	ts.queue_free()
 	await get_tree().process_frame
+
+
+func _check_clear(ts) -> void:
+	_ok("⑥ 分母: 「撤下」键在、本大轮没锁(新存档)", ts._clear_btn != null and not ts._roster_locked,
+		"locked=%s" % str(ts._roster_locked))
+	if ts._clear_btn == null or ts._roster_locked:
+		return
+	ts.team = [null, null, null]
+	ts._refresh_after_team()
+	_ok("★⑥ 一只都没上阵 ⇒「撤下」置灰", ts._clear_btn.disabled)
+	var pid: String = str(ts.detail_pet_id)
+	ts._on_pick_pet(pid)
+	await get_tree().process_frame
+	var placed := 0
+	for t in ts.team:
+		if t != null:
+			placed += 1
+	_ok("⑥ 分母: 点了一只真的上阵了(%s)" % pid, placed == 1, str(ts.team))
+	_ok("★⑥ 上阵一只 ⇒「撤下」亮起", not ts._clear_btn.disabled)
+	ts._on_clear_all()
+	_ok("★⑥ 撤下之后 ⇒ 又置灰", ts._clear_btn.disabled)
 
 
 func _ready() -> void:
