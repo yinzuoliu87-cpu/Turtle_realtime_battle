@@ -1466,6 +1466,7 @@ func _on_start() -> void:
 	GameState.sync_synergy_grants()
 
 	_write_last_lineup()
+	FriendsNet.put_lineup()   # 好友切磋打的是「最新阵容」: 换了统领就传一次(没变不发)
 	# → 匹配动画 (Matchmaking): 抽对手 ghost 写 dual_ghost → 进 2.5D 战斗.
 	SceneNav.go(get_tree(), "res://scenes/Matchmaking.tscn")
 

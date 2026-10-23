@@ -272,6 +272,8 @@ func _start_referee() -> void:
 static func should_record() -> bool:
 	if GameState == null or not bool(GameState.dual_active) or bool(GameState.get("tutorial_active")):
 		return false
+	if Spar.is_active():
+		return false                      # 好友切磋: 不录像、不直播、不上传(用户 10-23 选「切磋不进战绩」)
 	var sk := current_settle_kind()
 	if sk == Phase2Cfg.SETTLE_FINALS:
 		var fm = GameState.get("finals_match")

@@ -1512,6 +1512,10 @@ func apply_cloud_payload(p: Dictionary, rev: int) -> void:
 	if tutorial_active and _td != null and _td.in_sandbox():
 		_td.defer_cloud_payload(p, rev)
 		return
+	## ★好友切磋期间内存里是「这一局」, 离场会整份还原 ⇒ 云端那份等还原之后再落(否则被还原盖掉)。
+	if Spar.is_active():
+		Spar.defer_cloud_payload(p, rev)
+		return
 	var merged: Dictionary = p.duplicate(true)
 	var here := _save_dict()
 	for k in DEVICE_LOCAL_KEYS:

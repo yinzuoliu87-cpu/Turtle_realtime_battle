@@ -1,5 +1,7 @@
 extends RefCounted
-## player_menu.gd —— 玩家菜单「举报昵称 / 拉黑」(2026-10-20 · App Store 审核指南 1.2)。
+## player_menu.gd —— 玩家菜单「加好友 / 举报昵称 / 拉黑」(2026-10-20 · App Store 审核指南 1.2)。
+## ★2026-10-24 加「加好友」(方案书 docs/plans/20261023-好友切磋.md §4.2: 点别人名字就能加, 不必回好友页输 ID)。
+##   有账号(排行榜行带 account_id)⇒ 直接申请; 只有玩家 ID ⇒ 先按 ID 查人, ID 撞号时按昵称挑(`pick_person`)。
 ##
 ## ★全项目只有这一个菜单: 排行榜 / 周六赛况板 / 周日对阵图 / 对局顶栏点到别人, 弹的都是它(每屏只负责「点哪里打开」)。
 ##   参考: 皇室战争 / 荒野乱斗点排行榜上的人 ⇒ 一张小卡(名字 + 玩家 ID + 几颗操作键)。
@@ -11,6 +13,7 @@ extends RefCounted
 ##   on_change() 在拉黑 / 移出之后调一次 —— 宿主据此重画名字。
 
 const RPT := preload("res://scripts/net/report_net.gd")
+const FN := preload("res://scripts/net/friends_net.gd")
 const BL := preload("res://scripts/util/blocklist.gd")
 const _P2 := preload("res://scripts/gamedata/phase2_config.gd")
 
@@ -20,12 +23,14 @@ const BOX := Vector2(480.0, 284.0)
 const LAYER := "PlayerMenuLayer"
 const TITLE := "PlayerMenuTitle"
 const STATUS := "PlayerMenuStatus"
+const BTN_FRIEND := "PlayerMenuFriend"
 const BTN_REPORT := "PlayerMenuReport"
 const BTN_BLOCK := "PlayerMenuBlock"
 const BTN_CLOSE := "PlayerMenuClose"
 ## 各屏的入口节点名(门禁按它数「入口在不在」)。
 const ENTRY := "PlayerMenuEntry"
 
+const L_FRIEND := "加好友"
 const L_REPORT := "举报昵称"
 const L_BLOCK := "拉黑"
 const L_UNBLOCK := "移出黑名单"
@@ -42,6 +47,9 @@ const MSG := {
 const MSG_BLOCKED := "已拉黑 · 昵称显示为默认昵称"
 const MSG_UNBLOCKED := "已移出黑名单"
 const MSG_FULL := "黑名单已满"
+const MSG_FRIEND_SENT := "已发送好友申请，等待对方同意"
+const MSG_FRIEND_DONE := "已成为好友"
+const MSG_FRIEND_AMBIG := "该玩家 ID 对应多位玩家，请前往好友页添加"
 
 
 ## 这个人能不能打开菜单(合法玩家 ID、不是我自己)。
@@ -117,9 +125,19 @@ static func open(host: Node, info: Dictionary, on_change: Callable = Callable())
 	box.add_child(st)
 	st.position = Vector2(24, 86); st.size = Vector2(BOX.x - 48.0, 24)
 
-	var rep := _btn(box, BTN_REPORT, L_REPORT, UISkin.PX_SLATE, Vector2(40, 122))
-	var blk := _btn(box, BTN_BLOCK, L_UNBLOCK if BL.is_blocked(tag) else L_BLOCK, UISkin.PX_SLATE, Vector2(250, 122))
-	var cl := _btn(box, BTN_CLOSE, L_CLOSE, UISkin.PX_SLATE, Vector2(145, 200))
+	var fr := _btn(box, BTN_FRIEND, L_FRIEND, UISkin.PX_SLATE, Vector2(40, 122))
+	var rep := _btn(box, BTN_REPORT, L_REPORT, UISkin.PX_SLATE, Vector2(250, 122))
+	var blk := _btn(box, BTN_BLOCK, L_UNBLOCK if BL.is_blocked(tag) else L_BLOCK, UISkin.PX_SLATE, Vector2(40, 192))
+	var cl := _btn(box, BTN_CLOSE, L_CLOSE, UISkin.PX_SLATE, Vector2(250, 192))
+	fr.pressed.connect(func() -> void:
+		fr.disabled = true
+		st.text = MSG_SENDING
+		add_friend(tag, name, str(info.get("account", "")), func(text: String, settled: bool) -> void:
+			if not is_instance_valid(st):
+				return
+			st.text = text
+			## 申请成了 / 已经是好友 ⇒ 这颗键不再可点; 其余(网络 / 撞号)可以再试。
+			fr.disabled = settled))
 	## 原名(拉黑后屏幕上显示的是默认名, 举报要的是原名)。
 	rep.pressed.connect(func() -> void:
 		if name == "":
@@ -149,6 +167,38 @@ static func open(host: Node, info: Dictionary, on_change: Callable = Callable())
 			on_change.call())
 	cl.pressed.connect(func() -> void: layer.queue_free())
 	return layer
+
+
+## 加好友。`done(text: String, settled: bool)` 一定调一次; settled = 申请已成立 / 本来就是好友。
+static func add_friend(tag: String, name: String, account: String, done: Callable) -> void:
+	var fin := func(r: Dictionary) -> void:
+		if bool(r["ok"]):
+			done.call(MSG_FRIEND_DONE if str((r["data"] as Dictionary).get("status", "")) == "accepted" else MSG_FRIEND_SENT, true)
+		else:
+			done.call(FN.msg(str(r["reason"])), str(r["reason"]) == "already")
+	if account != "":
+		FN.request(account, fin)
+		return
+	FN.lookup(tag, func(r: Dictionary) -> void:
+		if not bool(r["ok"]):
+			done.call(FN.msg(str(r["reason"])), false)
+			return
+		var pick := pick_person((r["data"] as Dictionary).get("people", []), name)
+		if pick.is_empty():
+			done.call(MSG_FRIEND_AMBIG, false)
+			return
+		FN.request(str(pick.get("account", "")), fin))
+
+
+## 按玩家 ID 查回来的几个人里挑「就是他」的那一个: 只有一个 ⇒ 就是他; 多个 ⇒ 昵称恰好对上的那一个; 认不出 ⇒ {}。
+static func pick_person(people, name: String) -> Dictionary:
+	if not (people is Array) or (people as Array).is_empty():
+		return {}
+	if (people as Array).size() == 1:
+		return people[0] if people[0] is Dictionary else {}
+	var hit: Array = (people as Array).filter(func(p) -> bool:
+		return p is Dictionary and str((p as Dictionary).get("name", "")) == name.strip_edges())
+	return hit[0] if hit.size() == 1 else {}
 
 
 static func _btn(box: Control, nm: String, label: String, accent: String, pos: Vector2) -> Button:

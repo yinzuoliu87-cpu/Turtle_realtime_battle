@@ -1210,6 +1210,19 @@ func _settle_buttons(btn_row: HBoxContainer) -> void:
 		_td.attach_guide(battle, "settle", func(nm: String) -> Rect2:
 			return TutorialGuide.vis_rect(tb) if nm == "settle_shop" else Rect2())
 		return
+	## ★好友切磋: 「再来一局」(同一份对方快照) +「返回好友」。不给商店 —— 切磋不发奖, 也不是「打 → 买」那一环。
+	if Spar.is_active():
+		var ab: Button = battle._make_result_btn("再来一局", shop_tint, shop_fc,
+			func() -> void: Spar.again(battle.get_tree()))
+		ab.name = "SparAgain"
+		SettleScreenS.dress_btn(ab, shop_fc)
+		btn_row.add_child(ab)
+		var fb: Button = battle._make_result_btn("返回好友", menu_tint, menu_fc,
+			func() -> void: SceneNav.go(battle.get_tree(), Spar.FRIENDS_SCENE))
+		fb.name = "SparBack"
+		SettleScreenS.dress_btn(fb, menu_fc)
+		btn_row.add_child(fb)
+		return
 	# ★★2026-08-02 补【前往商店】主按钮: 自走棋的核心节奏是「打 → 买 → 再打」。
 	#   ⚠ 赛季淘汰时【商店是锁的】(GameState.is_eliminated() → 锁匹配+商店,
 	#     见 MainMenuScene.gd, 用户 2026-07-24 拍板"淘汰锁定"), 所以淘汰后不给这个按钮。
@@ -1229,6 +1242,8 @@ func _settle_buttons(btn_row: HBoxContainer) -> void:
 ## 结果标题下面那一句 —— 说【这一场对玩家意味着什么】, 而不是罗列数字。
 ## 旧版把它和奖励数字塞在同一行、还用括号写成 "(练习赛 · 无赛季奖励)" "(失一命)"。
 func _result_subtitle(won: bool, gs) -> String:
+	if Spar.is_active():
+		return Spar.SUBTITLE
 	if not battle._had_season or gs == null:
 		return "练习赛 · 不计入赛季进度"
 	## ★★2026-10-03 周六实操 S3/S17: 周六输了写着「消耗 1 点生命」(周六根本不掉命), 出局那场也不说出局。

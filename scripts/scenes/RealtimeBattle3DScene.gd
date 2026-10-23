@@ -3203,6 +3203,7 @@ func _stress_start() -> void:
 ##   "我刚改的东西把压测跑崩了"，所以补掉。
 func _exit_tree() -> void:
 	if _replay.is_playing() or _replay.player != null: ReplayRecorder.end_play()   # 回放 / 逐帧直播播放端: 不论从哪条路离场, GameState 都还原成播之前那一份(重复调是空转)
+	Spar.end()   # 好友切磋: 不论从哪条路离场, GameState 都还原成切磋之前那一份(不在切磋里是空转)
 	if _wd != null:
 		_stress = false
 		_wd_on = false                       # 让看门狗的 while 自己退出(它每秒醒一次)
@@ -7399,6 +7400,8 @@ func _check_end() -> void:
 # 赛季结算 (1:1 搬自 2D RealtimeBattleScene._settle_season): 闭环把胜负喂回 GameState 养成
 func _settle_season(won: bool) -> void:
 	if _replay.on_settle(won): _had_season = false; return   # 回放: 录制那一局在此落盘; 播放时一切结算副作用跳过(V5)
+	## ★好友切磋(docs/plans/20261023-好友切磋.md): 不在常规赛里 ⇒ 一条结算都不走(在决赛上报之前)。兜底见 Spar 头注。
+	if Spar.is_active(): _had_season = false; return
 	var gs = get_node_or_null("/root/GameState")
 	# ★新手教程沙盒(用户2026-07-23「不获得任何奖励」): 不喂赛季。放最前面 —— 下方 season_total_battles++/coins+= 全在这行之后, 一个都到不了。
 	if (gs != null and bool(gs.get("tutorial_active"))) or _world_builder._is_dev_tool_battle():   # 开发工具场同样不计赛季(见 _is_dev_tool_battle 头注)
@@ -7801,6 +7804,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _world_builder._scored_key_guard(event.keycode):   # 计分对局里 R 不许抹掉这一局(ESC 照常回主菜单 ⇒ 中途退出补打, 见该函数头注)
 			return
 		if event.keycode == KEY_R:
+			if Spar.is_active():
+				Spar.again(get_tree())   # 切磋里 R = 再来一局(直接重载会在离场还原之后变成一局普通对战)
+				return
 			get_tree().reload_current_scene()
 		elif event.keycode == KEY_ESCAPE:
 			if _info_panel != null and is_instance_valid(_info_panel):

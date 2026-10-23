@@ -1588,6 +1588,8 @@ func _is_dev_tool_battle() -> bool:
 func _is_scored_match() -> bool:
 	if battle._replay != null and battle._replay.is_playing():
 		return false
+	if Spar.is_active():
+		return false                      # 好友切磋: 不在常规赛里(宝箱龟不写存档 / 没有待结算单)
 	var gs = battle.get_node_or_null("/root/GameState")
 	if gs == null or bool(gs.get("tutorial_active")) or _is_dev_tool_battle():
 		return false

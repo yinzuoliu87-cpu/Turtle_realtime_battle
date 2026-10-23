@@ -667,6 +667,21 @@ scripts/net/error_reporter.gd|lit|\n最近报错:\n
 scripts/net/error_reporter.gd|lit|上次启动: 
 scripts/net/error_reporter.gd|lit|上次运行没有正常退出(闪退 / 卡死被结束 / 前台被系统杀)
 scripts/net/feedback_net.gd|lit|请填写问题描述
+scripts/net/friends_net.gd|lit|今日好友申请次数已达上限
+scripts/net/friends_net.gd|lit|双方尚未成为好友
+scripts/net/friends_net.gd|lit|好友数量已达上限 %d 人
+scripts/net/friends_net.gd|lit|对方好友数量已达上限
+scripts/net/friends_net.gd|lit|对方尚未配置阵容
+scripts/net/friends_net.gd|lit|对方版本较旧，待对方更新后再切磋
+scripts/net/friends_net.gd|lit|对方阵容读取失败
+scripts/net/friends_net.gd|lit|已是好友
+scripts/net/friends_net.gd|lit|当前版本较旧，请先更新游戏
+scripts/net/friends_net.gd|lit|未找到该玩家
+scripts/net/friends_net.gd|lit|未连接服务器
+scripts/net/friends_net.gd|lit|玩家 ID 格式不正确
+scripts/net/friends_net.gd|lit|网络异常，请稍后再试
+scripts/net/friends_net.gd|lit|账号未登录，请稍后再试
+scripts/net/friends_net.gd|lit|这是你自己的玩家 ID
 scripts/net/remote_pool.gd|lit|%s 带了 %d 件装备(上限 %d)
 scripts/net/remote_pool.gd|lit|%s 的 equipped 不是 Array
 scripts/net/remote_pool.gd|lit|%s 等级 %d 越界(1~%d)
@@ -818,6 +833,39 @@ scripts/scenes/FirstLaunchScene.gd|lit|确认
 scripts/scenes/FirstLaunchScene.gd|lit|跳过
 scripts/scenes/FirstLaunchScene.gd|lit|输入昵称
 scripts/scenes/FirstLaunchScene.gd|text|%d~%d 个字 · 显示于排行榜
+scripts/scenes/FriendsScene.gd|lit|%d 分钟前
+scripts/scenes/FriendsScene.gd|lit|%d 天前
+scripts/scenes/FriendsScene.gd|lit|%d 小时前
+scripts/scenes/FriendsScene.gd|lit|切磋
+scripts/scenes/FriendsScene.gd|lit|刚刚
+scripts/scenes/FriendsScene.gd|lit|删除
+scripts/scenes/FriendsScene.gd|lit|同意
+scripts/scenes/FriendsScene.gd|lit|复制
+scripts/scenes/FriendsScene.gd|lit|好友
+scripts/scenes/FriendsScene.gd|lit|好友申请
+scripts/scenes/FriendsScene.gd|lit|尚未配置阵容
+scripts/scenes/FriendsScene.gd|lit|已发送好友申请，等待对方同意
+scripts/scenes/FriendsScene.gd|lit|已复制玩家 ID
+scripts/scenes/FriendsScene.gd|lit|已成为好友
+scripts/scenes/FriendsScene.gd|lit|已拒绝该申请
+scripts/scenes/FriendsScene.gd|lit|已撤回好友申请
+scripts/scenes/FriendsScene.gd|lit|已解除好友关系
+scripts/scenes/FriendsScene.gd|lit|我的玩家 ID
+scripts/scenes/FriendsScene.gd|lit|找到 %d 位玩家，请核对昵称
+scripts/scenes/FriendsScene.gd|lit|拒绝
+scripts/scenes/FriendsScene.gd|lit|撤回
+scripts/scenes/FriendsScene.gd|lit|暂无好友。可将玩家 ID 发给朋友，或在左侧输入对方的玩家 ID 添加。
+scripts/scenes/FriendsScene.gd|lit|暂无好友申请
+scripts/scenes/FriendsScene.gd|lit|查找
+scripts/scenes/FriendsScene.gd|lit|正在读取…
+scripts/scenes/FriendsScene.gd|lit|正在读取对方阵容…
+scripts/scenes/FriendsScene.gd|lit|添加好友
+scripts/scenes/FriendsScene.gd|lit|玩家
+scripts/scenes/FriendsScene.gd|lit|申请好友
+scripts/scenes/FriendsScene.gd|lit|确认删除
+scripts/scenes/FriendsScene.gd|lit|等待对方同意
+scripts/scenes/FriendsScene.gd|lit|输入对方的玩家 ID
+scripts/scenes/FriendsScene.gd|lit|阵容更新于 
 scripts/scenes/GauntletBoardScene.gd|lit| · 已截止 · 周日 %s %s开赛
 scripts/scenes/GauntletBoardScene.gd|lit| · 已结束
 scripts/scenes/GauntletBoardScene.gd|lit| · 进行中 %d 场
@@ -958,6 +1006,7 @@ scripts/scenes/MainMenuScene.gd|lit|商店
 scripts/scenes/MainMenuScene.gd|lit|图鉴
 scripts/scenes/MainMenuScene.gd|lit|场上限
 scripts/scenes/MainMenuScene.gd|lit|场次已用完
+scripts/scenes/MainMenuScene.gd|lit|好友
 scripts/scenes/MainMenuScene.gd|lit|已出局
 scripts/scenes/MainMenuScene.gd|lit|已截止 · 停止匹配
 scripts/scenes/MainMenuScene.gd|lit|已晋级决赛日（%s）· 周日开赛
@@ -1327,6 +1376,7 @@ scripts/scenes/battle/battle_hud.gd|lit|赛季等级
 scripts/scenes/battle/battle_hud.gd|lit|赛季胜场
 scripts/scenes/battle/battle_hud.gd|lit|赛季胜场 +1
 scripts/scenes/battle/battle_hud.gd|lit|返回主菜单
+scripts/scenes/battle/battle_hud.gd|lit|返回好友
 scripts/scenes/battle/battle_hud.gd|lit|返回菜单
 scripts/scenes/battle/battle_hud.gd|lit|闯关 %s · 不消耗生命
 scripts/scenes/battle/battle_hud.gd|lit|闯关 %s · 晋级决赛日
@@ -1862,13 +1912,17 @@ scripts/scenes/social/player_menu.gd|lit|举报失败，请检查网络后重试
 scripts/scenes/social/player_menu.gd|lit|举报昵称
 scripts/scenes/social/player_menu.gd|lit|今日举报次数已达上限
 scripts/scenes/social/player_menu.gd|lit|关闭
+scripts/scenes/social/player_menu.gd|lit|加好友
 scripts/scenes/social/player_menu.gd|lit|已举报
+scripts/scenes/social/player_menu.gd|lit|已发送好友申请，等待对方同意
+scripts/scenes/social/player_menu.gd|lit|已成为好友
 scripts/scenes/social/player_menu.gd|lit|已拉黑 · 昵称显示为默认昵称
 scripts/scenes/social/player_menu.gd|lit|已移出黑名单
 scripts/scenes/social/player_menu.gd|lit|拉黑
 scripts/scenes/social/player_menu.gd|lit|提交中
 scripts/scenes/social/player_menu.gd|lit|无法举报自己
 scripts/scenes/social/player_menu.gd|lit|移出黑名单
+scripts/scenes/social/player_menu.gd|lit|该玩家 ID 对应多位玩家，请前往好友页添加
 scripts/scenes/social/player_menu.gd|lit|黑名单已满
 scripts/scenes/social/player_menu.gd|text|玩家 ID %s
 scripts/scenes/team_select/detail_panel.gd|lit|护甲
@@ -2096,6 +2150,11 @@ scripts/systems/skills/phoenix_system.gd|lit|涅槃
 scripts/systems/skills/rainbow_system.gd|lit|橙·全体生命偷取
 scripts/systems/skills/shell_system.gd|lit|破隐
 scripts/systems/skills/shell_system.gd|lit|觉醒
+scripts/systems/social/spar.gd|lit|切磋 · 不计入赛季进度
+scripts/systems/social/spar.gd|lit|存档未就绪
+scripts/systems/social/spar.gd|lit|对方阵容读取失败
+scripts/systems/social/spar.gd|lit|教程中无法切磋
+scripts/systems/social/spar.gd|lit|请先在选龟页选定本大轮的三只统领
 scripts/systems/stream/stream_player.gd|lit|画面无法播放
 scripts/systems/stream/stream_source.gd|lit|404 %.0f 秒
 scripts/systems/stream/stream_source.gd|lit|end.json 没有块数

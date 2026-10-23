@@ -1079,6 +1079,12 @@ func _notification(what: int) -> void:
 			_rebuild()
 
 
+## 离开背包: 把最新阵容传给服务端(好友切磋打的是「好友的最新背包阵容」, 方案书 docs/plans/20261023-好友切磋.md §4.2)。
+##   阵容没变 ⇒ 一个请求都不发; 教程沙盒 / 门禁(test_mode)里不传。
+func _exit_tree() -> void:
+	FriendsNet.put_lineup()
+
+
 
 
 ## 底部操作条这一刻画不画(临时等级器 / 糖果罐 / 有装备的单位)。

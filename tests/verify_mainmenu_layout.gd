@@ -109,9 +109,10 @@ func _ready() -> void:
 	for c in page_box.get_children():
 		if c is Control and (c as Control).visible:
 			stack.append(c)
-	print("  page_box 栈 %d 个 (★分母: 应为 6 = 左列 4 颗方键 + 训龟大师 + 开始战斗)" % stack.size())
-	_ok("★分母: page_box 栈 = 6 个", stack.size() == 6, "%d 个" % stack.size())
-	if stack.size() != 6:
+	## ★2026-10-24 左列加第 5 颗「好友」(用户 10-23 选「主菜单加「好友」键」, 方案书 docs/plans/20261023-好友切磋.md)。
+	print("  page_box 栈 %d 个 (★分母: 应为 7 = 左列 5 颗方键 + 训龟大师 + 开始战斗)" % stack.size())
+	_ok("★分母: page_box 栈 = 7 个", stack.size() == 7, "%d 个" % stack.size())
+	if stack.size() != 7:
 		_done(); return
 
 	# ── ① 谁也别超出 1280×720(只量看得见的; 弹层的内容在 ⓕ 打开后单独量) ──
@@ -378,7 +379,7 @@ func _ready() -> void:
 	var sq_names: Array = []
 	for c in squares:
 		sq_names.append(_sq_label(c))
-	_ok("ⓒ ★分母: 左列 4 颗方键 = 背包/商店/图鉴/排行榜(没有战绩: 整张玩家卡就是战绩入口)", sq_names == ["背包", str(MENU_S.SHOP_LABEL), "图鉴", "排行榜"], str(sq_names))
+	_ok("ⓒ ★分母: 左列 5 颗方键 = 背包/商店/图鉴/排行榜/好友(没有战绩: 整张玩家卡就是战绩入口)", sq_names == ["背包", str(MENU_S.SHOP_LABEL), "图鉴", "排行榜", "好友"], str(sq_names))
 	var not_sq: Array = []
 	var lefts: Array = []
 	var gaps_c: Array = []
@@ -409,18 +410,22 @@ func _ready() -> void:
 			var br_c: Rect2 = (bd_c as Control).get_global_rect()
 			if br_c.get_center().x > r_c.get_center().x and br_c.get_center().y < r_c.get_center().y:
 				badge_ok += 1
-	_ok("ⓒ ★四颗都是正方形(宽高差 ≤1)", squares.size() == 4 and not_sq.is_empty(), str(not_sq))
-	_ok("ⓒ ★四颗共用一条左沿(极差 ≤1)、贴左边(≤ 32)", lefts.size() == 4 and lefts.max() - lefts.min() <= 1.0 and lefts.min() <= 32.0, str(lefts))
-	_ok("ⓒ ★竖排等距(间距极差 ≤1, 不重叠)", gaps_c.size() == 3 and gaps_c.max() - gaps_c.min() <= 1.0 and gaps_c.min() >= 0.0, str(gaps_c))
-	_ok("ⓒ ★四颗都是图标在上、字在下", icon_ok == 4, "%d / 4" % icon_ok)
-	_ok("ⓒ ★四颗都用方木块底(sqbtn.png)", skin_ok == 4, "%d / 4" % skin_ok)
-	_ok("ⓒ ★四颗都带红点槽(右上角, 默认藏着)", badge_ok == 4, "%d / 4" % badge_ok)
+	## 左列方键数(2026-10-24 加「好友」: 4 → 5)。
+	var sq_n := 5
+	_ok("ⓒ ★%d 颗都是正方形(宽高差 ≤1)" % sq_n, squares.size() == sq_n and not_sq.is_empty(), str(not_sq))
+	_ok("ⓒ ★%d 颗共用一条左沿(极差 ≤1)、贴左边(≤ 32)" % sq_n, lefts.size() == sq_n and lefts.max() - lefts.min() <= 1.0 and lefts.min() <= 32.0, str(lefts))
+	_ok("ⓒ ★竖排等距(间距极差 ≤1, 不重叠)", gaps_c.size() == sq_n - 1 and gaps_c.max() - gaps_c.min() <= 1.0 and gaps_c.min() >= 0.0, str(gaps_c))
+	_ok("ⓒ ★%d 颗都是图标在上、字在下" % sq_n, icon_ok == sq_n, "%d / %d" % [icon_ok, sq_n])
+	_ok("ⓒ ★%d 颗都用方木块底(sqbtn.png)" % sq_n, skin_ok == sq_n, "%d / %d" % [skin_ok, sq_n])
+	_ok("ⓒ ★%d 颗都带红点槽(右上角, 默认藏着)" % sq_n, badge_ok == sq_n, "%d / %d" % [badge_ok, sq_n])
+	_ok("ⓒ ★最下面那颗底沿在屏内(≤ %.0f)" % (H - 16.0), squares.size() == sq_n and (squares[sq_n - 1] as Control).get_global_rect().end.y <= H - 16.0,
+		str((squares[sq_n - 1] as Control).get_global_rect()) if squares.size() == sq_n else "")
 	var rec_sq: Array = []
 	for t_c in taps:
 		if _tag(t_c).find("战绩") >= 0:
 			rec_sq.append(_tag(t_c))
 	_ok("ⓒ ★主屏上没有单独的「战绩」键", rec_sq.is_empty(), str(rec_sq))
-	if card != null and squares.size() == 4:
+	if card != null and squares.size() == sq_n:
 		_ok("ⓒ 方键列在玩家卡下面(不压卡)", (squares[0] as Control).get_global_rect().position.y >= card.get_global_rect().end.y, "")
 
 	# ── ⓓ ★右下 = 开始战斗: 最大, 而且是全屏唯一的实心亮黄 ──
