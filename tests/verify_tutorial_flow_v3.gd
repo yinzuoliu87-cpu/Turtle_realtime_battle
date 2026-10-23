@@ -873,6 +873,18 @@ func _buff_badge(bt: Node) -> void:
 	_ok("★再点 ⇒ 收起", not bn.popup.visible)
 
 
+## 飘字(伤害 / 护盾 / 治疗数字)不是 HUD: 跟着单位飘、一秒左右就消失, 碰巧飘到提示条下面不算压 HUD。
+##   ★2026-10-23: 原来它们也算进来 ⇒ CI 上偶发红(「+51 盾」飘到提示条底下, 取决于那一刻谁在掉盾 / 机器快慢)。
+##   飘字都进 BattleHud.UI_TRANSIENT_GROUP(battle_vfx._float_text, 全仓只有它进这个组); 暴击那种是 HBox 包 Label ⇒ 往上找祖先。
+func _is_float_text(n: Node) -> bool:
+	var p: Node = n
+	while p != null:
+		if p.is_in_group(BattleHud.UI_TRANSIENT_GROUP):
+			return true
+		p = p.get_parent()
+	return false
+
+
 ## R2: 提示条不压战斗 HUD 上任何可见的按钮 / 文字(10-07 B1 同类: 提示条压在「三路开战」卡上)。
 func _check_tip_overlap(bt: Node, g: Node, tag: String) -> void:
 	await _frames(2)
@@ -884,6 +896,8 @@ func _check_tip_overlap(bt: Node, g: Node, tag: String) -> void:
 		if not ctl.is_visible_in_tree() or _eff_alpha(ctl) < 0.1 or _under_guide(ctl):
 			continue
 		if _chrome(bt) != null and _chrome(bt).is_ancestor_of(ctl):
+			continue
+		if _is_float_text(ctl):
 			continue
 		var t := ""
 		if ctl is Button:
