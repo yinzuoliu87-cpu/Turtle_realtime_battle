@@ -550,13 +550,19 @@ func _update_world_transforms() -> void:
 		spr.position = battle._world_pos(_rpos, _rh + battle.GROUND_LIFT + bob) + u.get("_bear_voff", Vector3.ZERO) + u.get("_atk_voff", Vector3.ZERO) + u.get("_slam_voff", Vector3.ZERO)   # 大熊扑击/砸地 + 近战踏步lunge + 过肩摔起跳(#7)·pos/height 走渲染插值
 		var bs: Vector3 = u.get("spr_base_scale", Vector3.ONE)
 		var gm: float = float(u.get("size_mult", 1.0))   # 体型倍率(石头岩层+2%/层); 从base起算不累积
-		spr.scale = Vector3(bs.x * sq.x * gm, bs.y * sq.y * gm, bs.z)
+		## 精英「吞噬」: 被吸收的目标逐渐缩小、染黑(_devour_k 0→1, elite_system 写)。
+		var dv: float = clampf(float(u.get("_devour_k", 0.0)), 0.0, 1.0)
+		var dvs: float = 1.0 - EliteSystem.DEVOUR_SHRINK * dv
+		spr.scale = Vector3(bs.x * sq.x * gm * dvs, bs.y * sq.y * gm * dvs, bs.z)
 		# 受击闪白: modulate 由【常驻体色】→ 过曝白线性插值 (flash_t/battle.JUICE_FLASH_SEC)。
 		# ★底色从 `_body_tint` 读(默认白): 给"喝药金红体光"这类常驻体色一条通用通道 ——
 		#   原来写死 Color.WHITE, 任何效果直接改 spr.modulate 都会被这行每帧盖掉(066 踩的)。
 		var fl: float = clampf(u.get("flash_t", 0.0) / battle.JUICE_FLASH_SEC, 0.0, 1.0)
 		var _base_tint: Color = u.get("_body_tint", Color.WHITE)
 		_base_tint = _rum_glow(u, _base_tint)
+		if dv > 0.0:
+			var dk: float = 1.0 - EliteSystem.DEVOUR_DARKEN * dv
+			_base_tint = Color(_base_tint.r * dk, _base_tint.g * dk * 0.9, _base_tint.b * dk * 0.9, _base_tint.a)
 		spr.modulate = _base_tint.lerp(u.get("flash_col", battle.JUICE_FLASH_COLOR), fl)
 		if str(u.get("id","")) == "ghost" and battle._t < float(u.get("phase_until", 0.0)):   # 虚化态本体(用户2026-07-11): 半透明+忽隐忽现幽紫 + 残影拖尾
 			spr.modulate = Color(0.78, 0.62, 1.0, 0.34 + 0.14 * sin(battle._t * 9.0))

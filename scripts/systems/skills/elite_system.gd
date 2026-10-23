@@ -2,6 +2,9 @@ class_name EliteSystem
 extends RefCounted
 const CopyRules := preload("res://scripts/gamedata/copy_rules.gd")   # 偷技/抄技共用同一道闸
 const SkillForms = preload("res://scripts/gamedata/skill_forms.gd")
+## 吞噬演出: 目标被吸收时染黑 / 缩小的满程幅度(渲染步按 `_devour_k` ∈ [0,1] 插值, 见 battle_render._update_world_transforms)。
+const DEVOUR_DARKEN := 0.85
+const DEVOUR_SHRINK := 0.45
 ## 精英龟技能系统
 ## 类内名不变;外部名加 battle.
 
@@ -212,13 +215,12 @@ func _elite_try_consume(u: Dictionary, tgt: Dictionary) -> bool:   # 被动1·�
 		td.position = battle._world_pos(tgt["pos"], 0.5)
 		battle._world.add_child(td)
 		tends.append(td)
-	var tsp = tgt.get("sprite", null)
+	## ★2026-10-23: 染黑 / 缩小写进单位字段 `_devour_k`, 由渲染步画(原来直接改立绘的 modulate / scale,
+	##   而渲染步每帧都按单位字段重写立绘 ⇒ 真实客户端里**从来看不见**; 只有录流的奇数步漏出过中间值)。
+	##   用户 2026-10-23「肯定要修啊」。直播流靠 stream_recorder.UKEYS 带上这个字段, 手机端同一个渲染步画。
 	var drv = battle._reg_tween()
 	drv.tween_method(func(q: float) -> void:
-		if is_instance_valid(tsp):
-			var dk: float = 1.0 - 0.85 * q
-			tsp.modulate = Color(dk, dk * 0.9, dk * 0.9, 1.0)     # 染黑
-			tsp.scale = Vector3.ONE * (1.0 - 0.45 * q)            # 缩小(被吸收感)
+		tref["_devour_k"] = q                                     # 染黑 + 缩小(被吸收感), 渲染步读
 		for i2 in range(tends.size()):
 			var td2 = tends[i2]
 			if not is_instance_valid(td2): continue
@@ -232,10 +234,7 @@ func _elite_try_consume(u: Dictionary, tgt: Dictionary) -> bool:   # 被动1·�
 		if not uu.get("alive", false):                            # 精英已亡: 放开目标(保守)
 			if tref.get("alive", false):
 				tref["_consuming"] = false
-				var tsp0 = tref.get("sprite", null)
-				if is_instance_valid(tsp0):
-					tsp0.modulate = Color(1, 1, 1, 1)
-					tsp0.scale = Vector3.ONE
+				tref["_devour_k"] = 0.0
 			return
 		uu["_slam"] = false
 		var tp: Vector2 = tref["pos"]
@@ -258,10 +257,7 @@ func _elite_try_consume(u: Dictionary, tgt: Dictionary) -> bool:   # 被动1·�
 		if tref.get("_consume_demo", false) and tref.get("alive", false):   # 评审demo: 复活18%循环看
 			tref["_consuming"] = false
 			tref["hp"] = float(tref["maxHp"]) * 0.18
-			var tsp1 = tref.get("sprite", null)
-			if is_instance_valid(tsp1):
-				tsp1.modulate = Color(1, 1, 1, 1)
-				tsp1.scale = Vector3.ONE
+			tref["_devour_k"] = 0.0
 		elif tref.get("alive", false):
 			battle._kill(tref, uu)                                        # 正常击杀管线(统计/死亡钩子照走)
 		battle._damage._heal(uu, heal_amt)                                        # 回复=吞噬瞬间目标剩余HP×2(用户2026-07-19)

@@ -65,7 +65,7 @@ const SKIP_PROPS := ["frame_coords", "resource_local_to_scene", "resource_path",
 ## 单位层字段: S0 静态扫 battle_render.gd + hp_bar.gd 读到的键(2026-10-19)。
 ## ★方案要求最终名单由「读记录」量出来(S2 门禁 verify_stream_render_fields), 这里先用这份。
 const UKEYS := ["_active_cd", "_anemoneShield", "_appearance", "_atk_voff", "_auraEnergy", "_auraShieldVal",
-	"_bear_voff", "_body_tint", "_ebb_until", "_ghostShieldVal", "_hhot_owner", "_hidingShellVal", "_hidingShieldVal",
+	"_bear_voff", "_body_tint", "_devour_k", "_ebb_until", "_ghostShieldVal", "_hhot_owner", "_hidingShellVal", "_hidingShieldVal",
 	"_holyShieldVal", "_initDef", "_isEgg", "_lavaRage", "_lavaShieldVal", "_manaShieldVal", "_manual_anim",
 	"_mark_until", "_ms_stacks", "_ninja_dash_until", "_ninja_mark_pulse", "_phase_ai_t", "_slam_voff", "_starEnergy",
 	"_stoneDefGained", "_tr_active", "_tr_face", "_tr_passive", "_tr_speed", "_tr_throw_t0", "_tr_throw_until",
