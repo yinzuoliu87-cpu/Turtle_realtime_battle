@@ -86,7 +86,7 @@ func _srv_rows(n: int) -> Array:
 	var out := []
 	for i in range(n):
 		out.append({"rank": i + 1, "name": NAMES[i], "tag": P2C.player_tag("uid-rd-%d" % i), "account_id": "uid-rd-%d" % i,
-			"wins": 12 - i, "hearts": 6 - (i % 3), "sweeps": 0, "battles": 14 + i, "title": "",
+			"wins": 12 - i, "hearts": int(P2C.HEARTS_MAX) - (i % 3), "sweeps": 0, "battles": 14 + i, "title": "",
 			"is_self": false, "lead": LEADS[i]})
 	return out
 
