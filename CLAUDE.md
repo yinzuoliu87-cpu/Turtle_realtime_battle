@@ -358,7 +358,7 @@ while _w < 600 and float(u["hp"]) >= hp0:   # 上限防死循环
 
 | 目标 | 怎么做 | 产物 |
 |---|---|---|
-| **iOS / iPad（主路线）** | **TestFlight**：`testflight.yml`（现在在 `ci/testflight-prep` 分支；开发者账号 593RDVJ8Y9 的 App Store Connect API 密钥填进 secrets 后合进 main，由它接管 `v*` tag）。用户 2026-10-21：「之后主要去testflight了」 | TestFlight 构建 |
+| **iOS / iPad（主路线）** | **TestFlight**：`testflight.yml`（2026-10-23 已合进 main，四项 Secrets 已填，首传 0.21.8 (301) 成功；推 `v*` tag 自动上传，不升版本只重传就推 `ci/testflight-*` 分支。App Store Connect 里 App「斗龟场」Apple ID 6826108891，内部测试组「内部测试」开了自动分发）。用户 2026-10-21：「之后主要去testflight了」 | TestFlight 构建 |
 | iOS 免签包（备用） | 推 `ci/ios-*` 分支（`git push origin HEAD:refs/heads/ci/ios-<日期>`，本机无 token 点不了 dispatch）或手动 dispatch → `.github/workflows/ios-build.yml`（2026-10-21 起打 tag 不再自动出）；`bash fetch-ios.sh` 下到桌面 | Actions artifact `turtle-ios-v<版本>` ＋ Release「ios-latest」的 `turtle-v<版本>.ipa`（unsigned，artifact 留 14 天） |
 | 提交门禁 | push 自动跑 `.github/workflows/tests.yml` | 123 项，ubuntu |
 | Web（手机浏览器直接玩） | `SHIP=1 bash build-web.sh` | `build/turtle-realtime-web.zip` |
