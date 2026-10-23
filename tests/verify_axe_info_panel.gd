@@ -5,7 +5,9 @@ extends Node
 ##   技能一格都没有、三个空装备格、选了余烬标题还写「钻石斧」、副标题「友军 · C · Lv 1」。
 ##   → 用户「可以」(照我的提议改):
 ##   ① 标题 = 显示名(选了造物就是造物名) ② 副标题只写友军 / 敌方
-##   ③ 技能三格: 主动 / 窃取护盾 / 当前形态, 文字取小木斧定稿全文里的那几行 ④ 召唤物不画装备格
+##   ③ 技能格: 被动(窃取护盾 + 已解锁形态) / 攻击 / 主动, 与龟同为 3 格(面板内容宽只放得下 3 格), 文字取小木斧定稿全文里的那几行
+##   ④ 召唤物不画装备格
+##   ⑤ (2026-10-23 用户「这里为什么没有写攻击」) 攻击格: 按斧头自己的攻击力写「造成 N 物理伤害」, 系数 = 通用普攻常量
 ## ★走真召唤入口(axe_system.summon)造斧头, 走真点击打开每一格的说明卡, 量卡上的字。
 
 const RB := preload("res://scripts/scenes/RealtimeBattle3DScene.gd")
@@ -113,17 +115,28 @@ func _ready() -> void:
 			has_en = true
 	_ok("★★斧头面板有龟能条(条上写着「… / %d」)" % int(AE.ACTIVE_ENERGY), has_en, str(t.slice(0, 10)))
 	var row = s._info_panel.find_child("AbilityRow", true, false)
-	_ok("★技能行有 3 格(主动 / 窃取护盾 / 当前形态)", row != null and row.get_child_count() == 3,
+	_ok("★技能行 3 格(被动 / 攻击 / 主动), 与龟同样多(4 格会撑出屏幕)", row != null and row.get_child_count() == 3,
 		"%d 格" % (row.get_child_count() if row != null else -1))
-	var c0: String = await _card_text(s, 0)
+	## ★面板没被撑宽: 技能行最小宽度 ≤ 面板内容宽(3 格 = SLOT×3 + 间隙×2)。4 格时这一行 406 > 300, 面板被撑出屏幕右边。
+	if row != null:
+		var IP = load("res://scripts/scenes/battle/info_panel.gd")
+		var cap: float = IP.SLOT * 3.0 + IP.SLOT_GAP * 2.0
+		var rw: float = (row as Control).get_combined_minimum_size().x
+		_ok("★★技能行没把面板撑宽(行宽 %.0f ≤ 内容宽 %.0f)" % [rw, cap], rw <= cap + 0.5)
+	var c0: String = await _card_text(s, 2)
 	_ok("★主动那格: 讲回复与护盾、龟能 %d" % int(AE.ACTIVE_ENERGY), c0.contains("回复") and c0.contains("护盾") and c0.contains("%d" % int(AE.ACTIVE_ENERGY)), c0.substr(0, 60))
 	_ok("铁斧时主动那格还没有蓄力猛砸(钻石斧才有)", not c0.contains("蓄力猛砸"))
-	var c1: String = await _card_text(s, 1)
-	_ok("★窃取护盾那格", c1.contains("窃取"), c1.substr(0, 40))
-	var c2: String = await _card_text(s, 2)
+	var c1: String = await _card_text(s, 0)
+	_ok("★被动那格: 第一句是窃取护盾, 下面才是逐档的【石斧】…", c1.contains("窃取") and c1.find("窃取") < c1.find("【石斧】"), c1.substr(0, 40))
+	var c2: String = c1
 	_ok("★当前形态那格: 有石斧、铁斧, 没有金斧(只列已解锁的)", c2.contains("【石斧】") and c2.contains("【铁斧】") and not c2.contains("【金斧】"), c2.substr(0, 60))
 	## ★局内按结果写(用户 10-15「对局内就是按结果的写法」, 与别的装备卡同一份换算): 用斧头自己的攻击力算出来
 	var ax_i: Dictionary = r[1]
+	## ⑤ 攻击格(用户 2026-10-23「这里为什么没有写攻击」): 按斧头攻击力 × 通用普攻系数写结果
+	var ck: String = await _card_text(s, 1)
+	var bk: int = roundi(float(ax_i.get("atk", 0.0)) * BasicConsts.DEFAULT_BASIC_COEF)
+	_ok("★★攻击格: 「铁斧攻击当前目标，造成 %d 物理伤害」(斧头攻击力 %.0f × %.1f)" % [bk, float(ax_i.get("atk", 0.0)), BasicConsts.DEFAULT_BASIC_COEF],
+		bk > 0 and ck.contains("铁斧攻击当前目标") and ck.contains("造成 %d 物理伤害" % bk), ck.substr(0, 60))
 	var sm: int = roundi(float(ax_i.get("atk", 0.0)) * AE.SMASH_ATK)
 	_ok("★★局内按结果写: 石斧那句是「额外造成 %d 物理伤害」(斧头攻击力 %.0f), 不是「%d%% 攻击力」" % [sm, float(ax_i.get("atk", 0.0)), roundi(AE.SMASH_ATK * 100)],
 		sm > 0 and c2.contains("额外造成 %d 物理伤害" % sm), c2.substr(0, 80))
@@ -138,12 +151,12 @@ func _ready() -> void:
 	s = r[0]
 	t = _texts(s._info_panel)
 	_ok("★★选了余烬, 标题是「余烬」(原来写「钻石斧」)", t.has("余烬") and not t.has("钻石斧"), str(t.slice(0, 6)))
-	c0 = await _card_text(s, 0)
+	c0 = await _card_text(s, 2)
 	_ok("★钻石斧之后主动那格带蓄力猛砸", c0.contains("蓄力猛砸"), c0.substr(0, 60))
 	var sl: int = roundi(float((r[1] as Dictionary).get("atk", 0.0)) * AE.SLAM_ATK)
 	_ok("★★蓄力猛砸按结果写「造成 %d 物理伤害」" % sl, sl > 0 and c0.contains("造成 %d 物理伤害" % sl), c0.substr(maxi(0, c0.find("砸下")), 40))
 	_ok("★★余烬替换了蓄力猛砸 ⇒ 主动那格写着余烬之光", c0.contains("余烬之光"), c0.substr(0, 80))
-	c2 = await _card_text(s, 2)
+	c2 = await _card_text(s, 0)
 	_ok("★当前形态那格有余烬那一行, 没有别的造物", c2.contains("【余烬】") and not c2.contains("【炽天使】"), c2.substr(0, 60))
 	_ok("余烬之光只在主动那格出现一次(形态那格不重复)", not c2.contains("余烬之光"), c2.substr(maxi(0, c2.find("余烬之光") - 10), 40))
 	await _close(s)
@@ -151,8 +164,8 @@ func _ready() -> void:
 	## ── 亡灵之斧: 不替换蓄力猛砸 ⇒ 主动那格仍是蓄力猛砸, 亡灵那一行整行在形态那格 ──
 	r = await _open(AE.STAGES.size() - 1, 900, "undead")
 	s = r[0]
-	c0 = await _card_text(s, 0)
-	c2 = await _card_text(s, 2)
+	c0 = await _card_text(s, 2)
+	c2 = await _card_text(s, 0)
 	_ok("亡灵之斧: 主动那格是蓄力猛砸、没有「替换为」", c0.contains("蓄力猛砸") and not c0.contains("替换为"), c0.substr(0, 60))
 	_ok("亡灵之斧: 形态那格有复活那一句", c2.contains("【亡灵之斧】") and c2.contains("复活"), c2.substr(0, 60))
 	await _close(s)
@@ -161,7 +174,11 @@ func _ready() -> void:
 	r = await _open(0, 10, "")
 	s = r[0]
 	row = s._info_panel.find_child("AbilityRow", true, false)
-	_ok("小木斧时只有主动 / 窃取护盾两格", row != null and row.get_child_count() == 2, "%d 格" % (row.get_child_count() if row != null else -1))
+	_ok("小木斧时也是被动 / 攻击 / 主动三格", row != null and row.get_child_count() == 3, "%d 格" % (row.get_child_count() if row != null else -1))
+	var cp0: String = await _card_text(s, 0)
+	_ok("小木斧的被动那格只有窃取护盾(没有形态行)", cp0.contains("窃取") and not cp0.contains("【石斧】"), cp0.substr(0, 40))
+	var ck0: String = await _card_text(s, 1)
+	_ok("★小木斧的攻击格写「小木斧攻击当前目标」", ck0.contains("小木斧攻击当前目标") and ck0.contains("物理伤害"), ck0.substr(0, 60))
 	t = _texts(s._info_panel)
 	_ok("小木斧时标题是「小木斧」", t.has("小木斧"), str(t.slice(0, 6)))
 	await _close(s)

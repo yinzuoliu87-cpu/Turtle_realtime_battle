@@ -1252,7 +1252,15 @@ func _info_chest_section(vb: VBoxContainer, u: Dictionary) -> void:
 ##
 ## 返回 [{name, cost, icon, desc, tpl, sk}]，顺序固定: 被动 → 普攻 → 主动。
 ## ★斧头(小木斧召唤物)的技能格(2026-10-22 用户「可以」): 原来斧头不在龟资料表里 ⇒ 一格都没有。
-##   主动 / 窃取护盾 / 当前形态 三格, 文字一律取小木斧定稿全文里的那几行(SkillText.axe_panel_lines), 不另写一份。
+##   被动 / 攻击 / 技能 三格, 与龟同一个样子。被动与主动的文字取小木斧定稿全文里的那几行
+##   (SkillText.axe_panel_lines), 不另写一份。
+## ★被动只占一格: 窃取护盾 + 已解锁各档的被动合在一格里(进化了就以斧头名字为题, 第一行是窃取护盾那句, 下面「【石斧】：…」逐档)。
+##   (窃取那句不加「【窃取护盾】」小标题: 关键词上色会在「护盾」前插图标, 标题变成「【窃取〇护盾】」。)
+##   面板内容宽 300 = 3 格(SLOT 88 × 3 + 间隙 18 × 2); 补了攻击格之后若窃取护盾 / 形态仍各占一格就是 4 格,
+##   面板被撑出屏幕右边(2026-10-23 实拍铁斧: 第 4 格与最右一列属性被裁掉)。
+## ★2026-10-23 补「攻击」格(用户「这里为什么没有写攻击」): 龟的攻击格取自资料表技能池第 0 条, 斧头没有资料表 ⇒ 漏了。
+##   普攻按用户原话(docs/plans/20260831-用户原话-小木斧.txt 第 8 行「近战，普攻造成1ATK」)= 通用普攻
+##   (RealtimeBattle3DScene.DEFAULT_BASIC, 系数 BasicConsts.DEFAULT_BASIC_COEF), 数从常量取, 不写死。
 ##   形态按【斧头身上钉的】_axe_pv / _axe_final 取 —— 对手的斧头显示对手自己的形态, 不读本机存档。
 func _axe_entries(u: Dictionary) -> Array:
 	var edef: Dictionary = DataRegistry.phase2_equipment_by_id.get(AxePanel.EID, {})
@@ -1264,16 +1272,21 @@ func _axe_entries(u: Dictionary) -> Array:
 	##   「（50% 攻击力）物理伤害」用斧头自己的攻击力算成「50 物理伤害」, 公式进卡底拆解行。
 	var vars: Dictionary = battle.SkillText.build_vars(u, {})
 	var out: Array = []
+	var nm := str(_AxeEvo.display(pv, fin)["name"])
+	var has_form: bool = str(lines["form"]) != ""
+	var psrc: String = str(lines["passive"])
+	if has_form:
+		psrc = psrc + "\n" + str(lines["form"])
+	var b: Dictionary = battle.SkillText.live_formula_bb(psrc, vars, 14)
+	out.append({"name": "被动 · " + (nm if has_form else "窃取护盾"), "cost": -1.0, "icon": icon,
+		"desc": str(b["body"]), "rows": b["rows"], "tpl": "", "sk": {}})
+	var k: Dictionary = battle.SkillText.live_formula_bb("%s攻击当前目标，造成（%d%% 攻击力）物理伤害。" % [
+		nm, roundi(BasicConsts.DEFAULT_BASIC_COEF * 100.0)], vars, 14)
+	out.append({"name": "攻击 (普攻)", "cost": -1.0, "icon": icon,
+		"desc": str(k["body"]), "rows": k["rows"], "tpl": "", "sk": {}})
 	var a: Dictionary = battle.SkillText.live_formula_bb(str(lines["active"]), vars, 14)
 	out.append({"name": "主动", "cost": float(_AxeEvo.ACTIVE_ENERGY), "icon": icon,
 		"desc": str(a["body"]), "rows": a["rows"], "tpl": "", "sk": {}})
-	var b: Dictionary = battle.SkillText.live_formula_bb(str(lines["passive"]), vars, 14)
-	out.append({"name": "被动 · 窃取护盾", "cost": -1.0, "icon": icon,
-		"desc": str(b["body"]), "rows": b["rows"], "tpl": "", "sk": {}})
-	if str(lines["form"]) != "":
-		var f: Dictionary = battle.SkillText.live_formula_bb(str(lines["form"]), vars, 14)
-		out.append({"name": "被动 · " + str(_AxeEvo.display(pv, fin)["name"]), "cost": -1.0, "icon": icon,
-			"desc": str(f["body"]), "rows": f["rows"], "tpl": "", "sk": {}})
 	return out
 
 

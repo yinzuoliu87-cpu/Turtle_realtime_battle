@@ -1405,6 +1405,7 @@ scripts/scenes/battle/info_panel.gd|lit|%.1f 秒后爆炸 · 治疗 %d · 伤害
 scripts/scenes/battle/info_panel.gd|lit|%d层 · %d%%
 scripts/scenes/battle/info_panel.gd|lit|%d层 · %s/%s
 scripts/scenes/battle/info_panel.gd|lit|%s %d 层
+scripts/scenes/battle/info_panel.gd|lit|%s攻击当前目标，造成（%d%% 攻击力）物理伤害。
 scripts/scenes/battle/info_panel.gd|lit|(普攻)
 scripts/scenes/battle/info_panel.gd|lit|不可选中
 scripts/scenes/battle/info_panel.gd|lit|中毒
@@ -1444,6 +1445,7 @@ scripts/scenes/battle/info_panel.gd|lit|护盾强度
 scripts/scenes/battle/info_panel.gd|lit|护盾效果的倍率。
 scripts/scenes/battle/info_panel.gd|lit|攻击
 scripts/scenes/battle/info_panel.gd|lit|攻击 %d
+scripts/scenes/battle/info_panel.gd|lit|攻击 (普攻)
 scripts/scenes/battle/info_panel.gd|lit|攻击和大多数技能伤害的基础。
 scripts/scenes/battle/info_panel.gd|lit|攻击打出暴击的几率。
 scripts/scenes/battle/info_panel.gd|lit|攻击距离。
@@ -1486,10 +1488,10 @@ scripts/scenes/battle/info_panel.gd|lit|眩晕
 scripts/scenes/battle/info_panel.gd|lit|移动速度，受减速、加速效果影响。
 scripts/scenes/battle/info_panel.gd|lit|移速
 scripts/scenes/battle/info_panel.gd|lit|移速 %d
+scripts/scenes/battle/info_panel.gd|lit|窃取护盾
 scripts/scenes/battle/info_panel.gd|lit|站位
 scripts/scenes/battle/info_panel.gd|lit|被动
 scripts/scenes/battle/info_panel.gd|lit|被动 · 
-scripts/scenes/battle/info_panel.gd|lit|被动 · 窃取护盾
 scripts/scenes/battle/info_panel.gd|lit|财宝
 scripts/scenes/battle/info_panel.gd|lit|近战形态 · 锤击
 scripts/scenes/battle/info_panel.gd|lit|远程形态 · 灵能弹
