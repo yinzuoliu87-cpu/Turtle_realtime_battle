@@ -2745,7 +2745,10 @@ static func _week_lb_row(d: Dictionary, my_account: String) -> Dictionary:
 	##   v1 回包没有这两个键 ⇒ battles = -1(屏上画「—」, 不编 0)、title = ""。JSON null 一律当空。
 	var tt = d.get("title", "")
 	var bt = d.get("battles", null)
+	## ★2026-10-24 头像(`lead` = 这个人第一只统领, 20261024b_leaderboard_lead)。没部署的老服务端不回 ⇒ ""(屏上写名字首字)。
+	var ld = d.get("lead", null)
 	return {"rank": int(d.get("rank", 0)), "name": str(d.get("name", "?")),
+		"lead": str(ld) if ld != null else "",
 		"wins": int(d.get("wins", 0)), "hearts": int(d.get("hearts", 0)),
 		"sweeps": int(d.get("sweeps", 0)), "tag": tg, "account_id": acc,
 		"battles": int(bt) if bt != null else -1,

@@ -34,16 +34,40 @@ var _top_bar = null
 ##
 ## 判据同一轮搬家: `tests/verify_leaderboard_header.gd` 原来量表头, 表头没了之后那两条
 ## 分母当场红 —— 产品对了判据还在量旧样子。已改成**在数据行上**量同一件事。
+##
+## ═══ 2026-10-23 重做: 游戏质感(用户「排行榜需要大型重做」, 多选题只选了「看着像网页，没有游戏味」) ═══
+## 方案书 docs/plans/20261023-排行榜重做.md(§5 已拍板: 三列不动 / 不加页签 / 不加个人卡 / 不做历史榜)。
+## 对着改前实拍(docs/plans/img-20261023-排行榜重做/)逐条改:
+##   ① 760 宽的一条居中窄栏, 宽屏两边各空 400 —— 这就是网页「定宽正文栏」的长相。⇒ 面板吃满设计框(1180 宽)。
+##   ② 每行 = 一条细边 + 一行 18 号字, 读起来是表格。⇒ 每个人一张**行卡**(新画的像素九宫格: 粗描边 + 斜面 + 四角铆钉),
+##      卡与卡之间留缝 —— 照荒野乱斗 / 部落冲突的榜: 一行 = 一个游戏里的条目, 不是表格里的一格。
+##   ③ 没有头像。⇒ 名字前一枚头像 = 这个人的第一只统领(服务端每行下发 `lead`; 本机那一路取快照 leaders[0])。
+##      没有 `lead`(老服务端 / 老快照) ⇒ 槽里写名字首字, 不编一只龟(与对阵图没头像数据时同一个做法)。
+##   ④ 成绩数字和名字一样大。⇒ 三个成绩 30 号像素字 + 描边, 摆在行卡右段一块压暗的「成绩槽」里, 右对齐到列名。
+##   ⑤ 人少时整屏「—」占位。⇒ 列表只画真实的人, 一行占位都不画(全新档的榜就是只有自己一张卡)。
+##   ⑥ 前三名 = 金 / 银 / 铜的八角奖牌(新画) + 整张行卡染同色; 自己 = 整张行卡染亮橙金(全屏最亮的一张) + 「你」签。
+## 三列的字(剩余生命 / 胜场 / 总场次)、排序、全部名次、钉住我、我的位置、本机记录、举报拉黑 —— 一样没动。
 
 const W := 1280.0
-const PANEL_W := 760.0
+## ★面板吃满设计框(两边各留 50)。原来 760 宽居中 ⇒ 19.5:9 的手机上内容只占屏宽一半。
+const PANEL_W := 1180.0
 ## 内边距要 > panel-frame 贴图**实测边带 13px**(不是九宫格配置的 20 —— 那是"从哪切开",
 ## 不是"画了多宽的边"; verify_ui_consistency 的 `_band_of` 就是这么量的)。
 const PAD := 22.0
-const ROW_H := 40.0
-const ROW_TOP := 68.0
-## 底部给"提示行"留一行的位置 —— 空数据态/自己 0 蛋时要说人话, 不能只剩一屏 0。
-const FOOT_H := 30.0
+## 一行的步距 = 行卡高 + 卡缝。行卡 52 高: 头像 40 + 上下各 6(行卡贴图边带实测 5px, 头像不压边)。
+const ROW_H := 58.0
+const CARD_GAP := 6.0
+const CARD_H := ROW_H - CARD_GAP
+## 行卡左右沿(相对面板): 比内容区各宽 6, 仍在面板金属边带(13px)以内。
+const CARD_X := PAD - 6.0
+const CARD_W := PANEL_W - CARD_X * 2.0
+## 表头一行(规模数 / 本地记录 / 三个列名)。
+const HEAD_Y := PAD - 4.0
+const HEAD_H := 28.0
+## 行卡与新画的两张素材(都是中灰, 靠 modulate 染色: 普通 / 金 / 银 / 铜 / 自己)。
+const ROW_TEX := "leaderboard/lb-row.png"
+const ROW_TEX_MARGIN := 10
+const MEDAL_TEX := "leaderboard/lb-medal.png"
 
 ## ═══ 全部名次 (2026-10-19 · 用户「排行榜你学一下其他游戏的，开放所有排名」) ═══
 ## 参考(docs/plans/ref/20261019-排行榜参考/, 逐张看过): 荒野乱斗 / 使命召唤手游 / Flash Party 三款同一个结构 ——
@@ -53,22 +77,23 @@ const FOOT_H := 30.0
 ## ⇒ 列表 = ScrollContainer, 一屏 VIS_ROWS 行; 下沿钉一行「我」; 顶栏一枚「我的位置」把列表滚到我附近。
 ## ★只建**看得见的那几行**(按滚动位置现建现拆): 全部名次可能上千行, 一次全建出来是上千个节点。
 ## ★服务端那一路按页取(`SupabaseNet.fetch_week_leaderboard_page_async`, 一页 WEEK_LB_PAGE 名), 滚到哪页取哪页。
-const VIS_ROWS := 10
+## ★2026-10-23 行卡加高(40 → 58, 放得下头像与大号数字) ⇒ 一屏 10 行 → 8 行, 面板高度仍在设计框里。
+const VIS_ROWS := 8
 ## 列表与钉住那一行之间的空隙(中间一条分隔线)。
-const PIN_GAP := 12.0
-## 列表(滚动区)的上沿与高度。行内元素都按「行顶 + ROW_Y」摆, 与原来 `ROW_TOP` 那套坐标逐像素相同。
-const ROW_Y := 5.0
-const LIST_Y := ROW_TOP - ROW_Y
+const PIN_GAP := 14.0
+## 列表(滚动区)的上沿与高度。
+const LIST_Y := HEAD_Y + HEAD_H + 10.0
 const LIST_H := float(VIS_ROWS) * ROW_H
-## 钉住那一行的文字基线(与列表里的行同一套 y 约定: 底签牌画在 y-5)。
-const PIN_Y := ROW_TOP + LIST_H + PIN_GAP
-## ★面板高度是【按内容反算】的: 表头到首行 68 + 10 行×40 + 空隙 12 + 钉住一行 36 + 提示行 30 + 下内边距。
-const PANEL_H := PIN_Y + ROW_H - 4.0 + FOOT_H + PAD
+## 钉住那一行的上沿。
+const PIN_Y := LIST_Y + LIST_H + PIN_GAP
+## ★面板高度是【按内容反算】的: 表头 + 8 行 + 空隙 + 钉住一张行卡 + 下内边距。
+const PANEL_H := PIN_Y + CARD_H + PAD - 4.0
 ## 顶栏那枚「我的位置」(名词, 不口语化)。
 const JUMP_TEXT := "我的位置"
 const PANEL_X := (W - PANEL_W) / 2.0
-const PANEL_Y := 86.0
+const PANEL_Y := 92.0
 const Backend = preload("res://scripts/net/backend.gd")
+const MatchCard := preload("res://scripts/scenes/record/match_card.gd")
 
 ## ═══ 一行的版面 (2026-09-28, 用户「一点也看不出来游戏的味道, 全是 ai 味和网页味」) ═══
 ##
@@ -81,33 +106,44 @@ const Backend = preload("res://scripts/net/backend.gd")
 ##   ③ 成绩三个量各自**一个图标一个数字**, 不再拼成一条串; 该量是 0 就把图标压暗
 ##      ⇒ "还没有"是看出来的。
 ##
-## 全部横坐标按内容区 [PAD, PANEL_W-PAD] = [22, 738] **反算**, 不是拍脑袋:
-##   名次牌 24..58 │ 名字 74..484 │ 成绩三格 500..734
-const RANK_X := PAD + 2.0
-## ★34×28: **两边都 < 40** 是有讲究的 —— `verify_ui_consistency` 把"住在 <40px 小盒子里的字"
-##   当角标放过(那条判据的原话见它的 `_badge`)。牌子再大一格, 牌里的名次数字就会被
-##   当成"文字压边带"报上来, 而实拍它稳稳在牌中间。
-const RANK_W := 34.0
-const RANK_H := 28.0
-const NAME_X := PAD + 52.0
-const NAME_W := 410.0
-## 「你」签牌: 36×24, 同样 < 40(理由同上)。自己那行的名字列要先给它让出 48px,
+## 全部横坐标按行卡 [CARD_X, CARD_X+CARD_W] = [16, 1164] **反算**(2026-10-23 重排), 不是拍脑袋:
+##   名次 38..74 │ 头像 88..128 │ 名字 142..692 │ 成绩槽 696..1154(三列右沿 806 / 974 / 1142)
+const RANK_X := PAD + 16.0
+## ★名次格 = 奖牌 36×36(原图 ×1, 不拉伸像素画)。**两边都 < 40** 是有讲究的 —— `verify_ui_consistency`
+##   把"住在 <40px 小盒子里的字"当角标放过(那条判据的原话见它的 `_badge`)。牌子再大一格,
+##   牌里的名次数字就会被当成"文字压边带"报上来, 而实拍它稳稳在牌中间。
+##   第 4 名起的号码也居中在这 36 宽里(三位数刚好; 四位数两边各溢出几像素, 落在行卡空白里)。
+const RANK_W := 36.0
+const RANK_H := 36.0
+## 头像(第一只统领): 40 方, 竖直居中在行卡里。
+const AV_X := RANK_X + RANK_W + 14.0
+const AV_PX := 40.0
+const NAME_X := AV_X + AV_PX + 14.0
+const NAME_FS := 22
+## 「你」签牌: 36×26, 同样 < 40(理由同上)。自己那行的名字列要先给它让出 48px,
 ## 否则长昵称的字块会和签牌叠在一起(全屏"两段文字压在一起"那条判据是**全局清零**的)。
 const YOU_W := 36.0
-const YOU_H := 24.0
+const YOU_H := 26.0
 const YOU_GAP := 12.0
 ## 玩家 ID(`#XXXXXX`)那一小格。★只在**重名**的行上出现(2026-10-04 · 名字允许重复,
 ##   同名的两个人靠它分开); 不重名的行一个字都不多。字小一号、走名次那个灰。
-const TAG_W := 82.0
-const TAG_FS := 14
+const TAG_W := 96.0
+const TAG_FS := 15
 ## 这一榜里重名的名字(`_P2.names_needing_tag` 算的) —— `_draw_row` 读它决定要不要摆 ID。
 var _dup_names: Dictionary = {}
-## 成绩三列: 每列宽 70, 列距 12 ⇒ 500 / 582 / 664, 末列右沿 734。数字与列名都**右对齐到列右沿**。
-const STAT_X0 := PAD + 478.0
-const STAT_CELL := 82.0
-const COL_W := 70.0
-## 表头左段「本周共 N 人上榜」的宽(16 号字 9 个字位 ≈ 140, 留 20 余量)。
-const CAP_W := 160.0
+## 成绩三列: 每列宽 140, 列距 28 ⇒ 列右沿 806 / 974 / 1142(行卡内沿再留 12)。数字与列名都**右对齐到列右沿**。
+const COL_W := 140.0
+const STAT_CELL := 168.0
+const STAT_X0 := CARD_X + CARD_W - 22.0 - COL_W - 2.0 * STAT_CELL
+## 成绩槽(行卡右段压暗的那一块)从第一列左沿往右 30 起(第一列的数字右对齐在 806, 槽不必空出一大截), 到行卡内沿止。
+## 名字列止于成绩槽左沿。
+const SLOT_X := STAT_X0 + 30.0
+const NAME_W := SLOT_X - 4.0 - NAME_X
+## 成绩数字: 30 号像素字 + 4px 暗描边(与周六赛况板的战绩数字同一种写法)。
+const STAT_FS := 30
+const STAT_OUTLINE := 4
+## 表头左段「本周共 N 人上榜」的宽(17 号字 9 个字位 ≈ 150, 留余量)。
+const CAP_W := 180.0
 
 ## ═══ 三个成绩列 (2026-10-06 · 用户「积分赛写上名字，剩余生命，胜场，总场次啊 ，都给我做」) ═══
 ## 列名就是用户那句话里的词, 一个字不改; 照 使命召唤手游 / 英雄联盟手游 排行榜:
@@ -136,9 +172,9 @@ const DAY_TITLE := {
 	"finals": "积分赛终榜",
 }
 const MARK_PROMOTED := "已晋级"
-const MARK_W := 64.0
-const MARK_FS := 14
-const COL_TITLE := "#f2c766"
+const MARK_W := 96.0
+const MARK_FS := 16
+const COL_TITLE := "#ffd97a"
 const COL_PROMOTED := "#8fd99c"
 const WEEK_SEC := 7 * 86400
 ## 顶栏右侧那个入口: 与主菜单赛程卡上那扇门**同一个目标场景**(常量取自 MainMenuScene, 不另抄)。
@@ -151,28 +187,38 @@ const _PM := preload("res://scripts/scenes/social/player_menu.gd")
 const _BL := preload("res://scripts/util/blocklist.gd")
 const _RPT := preload("res://scripts/net/report_net.gd")
 
-## 金/银/铜。`modulate_color` 是**乘**在 chip-frame 上的(它是一块暗底 + 一圈银边:
-## 实测底 (52,58,69)、边 (158,164,179)) ⇒ 乘出来就是"暗底 + 金/银/铜边框"的签牌,
-## 而不是一块纯色圆角 —— 这正是"用颜色与边框"而不是堆 emoji 的做法。
+## 金/银/铜奖牌。`modulate_color` 是**乘**在 lb-medal.png 上的(中灰八角牌: 实测牌面 (196,196,200)、
+## 外圈亮边 (250,250,250) / 暗边 (120,120,124)) ⇒ 乘出来就是金 / 银 / 铜三块牌, 不是 emoji。
 const MEDAL_PLATE := [
-	Color(1.50, 1.14, 0.44),      # 金
-	Color(1.22, 1.30, 1.44),      # 银
-	Color(1.42, 0.88, 0.52),      # 铜
+	Color(1.16, 0.88, 0.30),      # 金
+	Color(0.88, 0.94, 1.06),      # 银
+	Color(1.04, 0.64, 0.36),      # 铜
 ]
-## 整行的底签牌(比牌位暗一档, 只当"领奖台的台阶", 不许抢自己那行的亮度)。
+## 前三名整张行卡的染色(行卡贴图底色中灰 (118,122,134); 比自己那张暗, 只当"领奖台的台阶")。
 const MEDAL_BAND := [
-	Color(1.00, 0.82, 0.34),
-	Color(0.86, 0.92, 1.04),
-	Color(0.98, 0.64, 0.38),
+	Color(1.02, 0.78, 0.26),
+	Color(0.56, 0.62, 0.76),
+	Color(0.92, 0.56, 0.32),
 ]
-const MEDAL_NUM := ["#ffefb0", "#eef5ff", "#ffd2a4"]
-## 自己那行: 全屏最亮的一条(和 MEDAL_BAND 三条都不一样 —— 门禁就是这么判"你看得出来"的)。
-const SELF_BAND := Color(1.18, 1.02, 0.52)
+## 奖牌里的名次数字: 白字 + 牌色的深描边(亮牌面上白字要靠描边才读得出)。
+const MEDAL_NUM_OUTLINE := ["#5a3a06", "#2e3644", "#4e260e"]
+## 面板(装行卡的槽)的染色: 比原来(0.74/0.94/1.14)压暗一档 —— 槽要比卡暗, 卡才浮得起来。
+const PANEL_TINT := Color(0.58, 0.74, 0.96, 1.0)
+## 普通行卡: 深蓝石板色, 与面板同一个色系(面板芯 (40,41,66) × 面板染色)。
+const ROW_BAND := Color(0.34, 0.40, 0.58)
+## 自己那张: 全屏最亮的一张(亮橙金, 照荒野乱斗自己那行的橙底; 和 MEDAL_BAND 三条都不一样 —— 门禁就是这么判"你看得出来"的)。
+const SELF_BAND := Color(1.42, 0.94, 0.36)
 const SELF_TAG := Color(1.34, 1.14, 0.56)
-const COL_SELF := "#ffe9a8"
-const COL_ROW := "#dfe9f2"
-const COL_DIM := "#5d6e7e"
-const COL_RANK := "#7f93a6"
+const COL_SELF := "#fff3d0"
+const COL_ROW := "#eef4fa"
+const COL_DIM := "#6f8092"
+const COL_RANK := "#9fb2c4"
+## 成绩槽: 行卡右段压暗的那一块(上沿一道暗线 + 下沿一道亮线 = 往里凹的像素斜面)。
+const SLOT_FILL := Color(0.0, 0.0, 0.0, 0.26)
+const SLOT_TOP := Color(0.0, 0.0, 0.0, 0.34)
+const SLOT_LIP := Color(1.0, 1.0, 1.0, 0.08)
+## 字的暗描边(行卡染亮橙金时白字要靠它压住)。
+const COL_INK := Color(0.04, 0.05, 0.08, 0.85)
 
 ## ═══ 底部那一行提示 (2026-09-28: 「连不上」不许说成「你打得少」) ═══
 ##
@@ -288,18 +334,31 @@ func _ready() -> void:
 	if not entry_btns.is_empty():
 		entry_btn = entry_btns[entry_btns.size() - 1]
 
-	# 表面板 —— 金属九宫格(和背包/图鉴/战绩同一张 panel-frame)。冷蓝调走 modulate,
+	# 表面板 —— 金属九宫格(和背包/图鉴/战绩同一张 panel-frame)。冷蓝调走 modulate(`PANEL_TINT`),
 	# ★ modulate 别超 1.3: 过了会把框芯冲亮、金属细节糊平(实拍确认过)。
 	var panel := Panel.new()
 	var psb := StyleBoxFlat.new()
 	psb.bg_color = Color(0.06, 0.12, 0.18, 0.9); psb.border_color = Color("#2e4a5e")
 	psb.set_border_width_all(2); psb.set_corner_radius_all(12)
 	var ptex := UISkin.nine("panel-frame.png", 20, psb)
+	var well: ColorRect = null
 	if ptex is StyleBoxTexture:
-		(ptex as StyleBoxTexture).modulate_color = Color(0.74, 0.94, 1.14, 1.0)
+		(ptex as StyleBoxTexture).modulate_color = PANEL_TINT
+		## ★芯子不画, 改铺一块平色(2026-10-23 实拍): panel-frame 原图芯子里有一粒暗斑 + 几块做旧亮斑,
+		##   原来 760 宽拉 2 倍还看不太出; 面板拉到 1180 宽之后那粒斑被拉成一团污渍, 人少时就摆在空列表正中间。
+		##   边框(九宫格的四边四角)照旧, 只换芯子 —— 颜色 = 原图芯子 (40,41,66) × 面板染色。
+		(ptex as StyleBoxTexture).draw_center = false
+		well = ColorRect.new()
+		well.name = "LbWell"
+		well.color = Color(40.0 / 255.0 * PANEL_TINT.r, 41.0 / 255.0 * PANEL_TINT.g, 66.0 / 255.0 * PANEL_TINT.b, 1.0)
+		well.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		well.position = Vector2(20.0, 20.0)
+		well.size = Vector2(PANEL_W - 40.0, PANEL_H - 40.0)
 	panel.add_theme_stylebox_override("panel", ptex)
 	panel.position = Vector2(PANEL_X, PANEL_Y); panel.size = Vector2(PANEL_W, PANEL_H)
 	add_child(panel)
+	if well != null:
+		panel.add_child(well)
 	_panel = panel
 
 	# 表头 + 一条分隔线(原来表头和第一行只隔 38px 且没有任何分界, 整块读起来是一堵字墙)
@@ -311,8 +370,8 @@ func _ready() -> void:
 	##   游戏的榜靠名次牌与数字本身说话, 不靠一行字段名。
 	##   (数字的含义已经写在每一行里: 图标 + 数字, 不会看不懂。)
 	var sep := ColorRect.new()
-	sep.color = Color(0.35, 0.55, 0.70, 0.55)
-	sep.position = Vector2(PAD, ROW_TOP - 12.0); sep.size = Vector2(PANEL_W - PAD * 2.0, 2)
+	sep.color = Color(0.35, 0.55, 0.70, 0.45)
+	sep.position = Vector2(PAD, LIST_Y - 6.0); sep.size = Vector2(PANEL_W - PAD * 2.0, 2)
 	panel.add_child(sep)
 
 	## ★先问服务端; 连节点都没建(没配后端)⇒ 当场画本机那一路(带「本机记录」)。
@@ -578,6 +637,8 @@ func _local_rows() -> Array:
 	for r in rows:
 		if bool((r as Dictionary).get("is_self", false)):
 			(r as Dictionary)["battles"] = -1 if last_week else int(GameState.season_total_battles)
+			## 头像 = 我现在这支阵容的第一只统领(别人那几行取各自快照的 leaders[0], 见 `Backend.leaderboard`)。
+			(r as Dictionary)["lead"] = my_lead()
 			if last_week:
 				(r as Dictionary)["wins"] = -1
 				(r as Dictionary)["hearts"] = -1
@@ -601,7 +662,14 @@ func _me_of(res: Dictionary) -> Dictionary:
 		"hearts": -1 if last_week else int(GameState.hearts),
 		"sweeps": 0 if last_week else int(GameState.season_sweeps),
 		"battles": -1 if last_week else int(GameState.season_total_battles),
-		"is_self": true, "tag": Backend.my_tag()}
+		"is_self": true, "tag": Backend.my_tag(), "lead": my_lead()}
+
+
+## 我的头像 id = 本周阵容的第一只统领(与上传快照时 `profile.avatar` 同一个来源: `GameState.season_leaders[0]`)。
+## 还没选阵容 ⇒ ""(槽里写名字首字)。
+static func my_lead() -> String:
+	var ls = GameState.season_leaders if GameState != null else []
+	return str((ls as Array)[0]) if ls is Array and not (ls as Array).is_empty() else ""
 
 
 ## 这一行的名次: 服务端那一路带 `rank`(全榜真名次), 本机那一路就是下标 + 1。
@@ -640,16 +708,16 @@ func _render(rows: Array, src: String, total: int, me: Dictionary = {}, n_list: 
 	## 表头拆掉之后分隔线上面空出 46px。**不再摆一行字段名**(那正是要去掉的东西),
 	## 改摆一句说人话的规模数 —— 顺带把"榜上只有我一个"这件事直接说出来。
 	## ★表头这一条从左到右三段, **各占各的横向区间, 互不重叠**:
-	##   规模数 [28, 28+CAP_W) │ 「本机记录」[28+CAP_W, STAT_X0-12) │ 三个列名 [STAT_X0, 734]
+	##   规模数 [28, 28+CAP_W) │ 「本机记录」[28+CAP_W, STAT_X0-12) │ 三个列名 [STAT_X0, 末列右沿]
 	##   (2026-10-06 之前「本机记录」占右半边 [380, 732], 正好压在列名上 ⇒ verify_ui_consistency 报字叠字。)
 	var cap_line := Label.new()
 	cap_line.name = "LbCapLine"
 	cap_line.text = LOADING_TEXT if src == SRC_LOADING else (("上周共 %d 人上榜" if day_phase == _P2C.PHASE_REST
 		else "本周共 %d 人上榜") % n_on_board)
-	cap_line.add_theme_font_size_override("font_size", 16)
-	cap_line.add_theme_color_override("font_color", Color("#8fa6b8"))
-	cap_line.position = Vector2(PAD + 6.0, PAD + 2.0)
-	cap_line.size = Vector2(CAP_W, 26.0)
+	cap_line.add_theme_font_size_override("font_size", 17)
+	cap_line.add_theme_color_override("font_color", Color("#c9b58a"))
+	cap_line.position = Vector2(PAD + 6.0, HEAD_Y)
+	cap_line.size = Vector2(CAP_W, HEAD_H)
 	cap_line.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	panel.add_child(cap_line)
 	## 列名(照 使命召唤手游 / 英雄联盟手游: 表头纯文字, 与下面的数字**右沿对齐**)。
@@ -658,10 +726,10 @@ func _render(rows: Array, src: String, total: int, me: Dictionary = {}, n_list: 
 			var ch := Label.new()
 			ch.name = "LbColHead%d" % ci
 			ch.text = str(COL_HEADS[ci])
-			ch.add_theme_font_size_override("font_size", 15)
-			ch.add_theme_color_override("font_color", Color("#8fa6b8"))
-			ch.position = Vector2(STAT_X0 + float(ci) * STAT_CELL, PAD + 2.0)
-			ch.size = Vector2(COL_W, 26.0)
+			ch.add_theme_font_size_override("font_size", 16)
+			ch.add_theme_color_override("font_color", Color("#9fb2c4"))
+			ch.position = Vector2(STAT_X0 + float(ci) * STAT_CELL, HEAD_Y)
+			ch.size = Vector2(COL_W, HEAD_H)
 			ch.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 			ch.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			panel.add_child(ch)
@@ -672,8 +740,8 @@ func _render(rows: Array, src: String, total: int, me: Dictionary = {}, n_list: 
 		mark.add_theme_font_size_override("font_size", 15)
 		mark.add_theme_color_override("font_color", Color("#d9a95a"))
 		var mx: float = PAD + 6.0 + CAP_W
-		mark.position = Vector2(mx, PAD + 2.0)
-		mark.size = Vector2(STAT_X0 - 12.0 - mx, 26.0)
+		mark.position = Vector2(mx, HEAD_Y)
+		mark.size = Vector2(STAT_X0 - 12.0 - mx, HEAD_H)
 		mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		panel.add_child(mark)
@@ -714,7 +782,8 @@ func _render(rows: Array, src: String, total: int, me: Dictionary = {}, n_list: 
 	_list = Control.new()
 	_list.name = "LbList"
 	_list.mouse_filter = Control.MOUSE_FILTER_PASS
-	_list.custom_minimum_size = Vector2(PANEL_W, float(maxi(list_len, VIS_ROWS)) * ROW_H)
+	## ★2026-10-23 列表只有真实的人那么长(原来不满一屏时按一屏撑、补「—」空席)。
+	_list.custom_minimum_size = Vector2(PANEL_W, float(list_len) * ROW_H)
 	_scroll.add_child(_list)
 	_scroll.get_v_scroll_bar().value_changed.connect(_on_scrolled)
 
@@ -729,23 +798,25 @@ func _render(rows: Array, src: String, total: int, me: Dictionary = {}, n_list: 
 	_pin = Control.new()
 	_pin.name = "LbPin"
 	_pin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_pin.position = Vector2(0.0, PIN_Y - ROW_Y)
-	_pin.size = Vector2(PANEL_W, ROW_H)
+	_pin.position = Vector2(0.0, PIN_Y)
+	_pin.size = Vector2(PANEL_W, CARD_H)
 	panel.add_child(_pin)
 
-	# 底部提示行 —— 三种态各说各的话(原来只有"池子只有我一个"那一种才出提示)。
+	# 提示行 —— 三种态各说各的话(原来只有"池子只有我一个"那一种才出提示)。
 	## ★「上传阵容」是**接口词**(那是 `upload_ghost` 在做的事, 不是玩家在做的事) ——
 	##   用户 2026-09-28 点的就是这个:「文字语言也是」。玩家侧只看得见"打了一场"。
 	## ★服务端那一路: 问到了就是 REACH_OK(「打完一场对手就会上来」此时是真的)。
+	## ★2026-10-23 它只在榜上 ≤1 人时出现 ⇒ 列表那时只有一张卡, 提示就摆在那张卡下面(列表区里), 不再单占面板底部一条。
 	var hint := Label.new()
 	hint.name = "LbHint"
 	hint.text = hint_text(n_on_board,
 		Backend.REACH_OK if src == SRC_SERVER else Backend.pool_reach())
-	hint.add_theme_font_size_override("font_size", 15)
-	hint.add_theme_color_override("font_color", Color("#6b7b8c"))
-	hint.position = Vector2(PAD, PANEL_H - PAD - FOOT_H + 4.0)
-	hint.size = Vector2(PANEL_W - PAD * 2.0, FOOT_H - 6.0)
+	hint.add_theme_font_size_override("font_size", 16)
+	hint.add_theme_color_override("font_color", Color("#8292a4"))
+	hint.position = Vector2(PAD, LIST_Y + float(list_len) * ROW_H + 18.0)
+	hint.size = Vector2(PANEL_W - PAD * 2.0, HEAD_H)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	if hint.text != "":
 		panel.add_child(hint)
 	else:
@@ -771,9 +842,10 @@ func _on_scrolled(_v: float) -> void:
 	_refresh_window()
 
 
-## 滚动区现在露出来的是第几行到第几行(下标, 含两端)。
+## 滚动区现在露出来的是第几行到第几行(下标, 含两端)。列表空着 ⇒ (0, -1), 一行都不建。
+## ★2026-10-23 只数真实的人(原来按 max(人数, 一屏) 数, 不满一屏的那几格画成「—」空席)。
 func _window() -> Vector2i:
-	var n: int = maxi(list_len, VIS_ROWS)
+	var n: int = list_len
 	var s: float = float(_scroll.scroll_vertical) if _scroll != null else 0.0
 	var first: int = clampi(floori(s / ROW_H), 0, maxi(n - 1, 0))
 	var last: int = mini(n, ceili((s + LIST_H) / ROW_H)) - 1
@@ -823,13 +895,13 @@ func _rebuild_rows() -> void:
 		for ch in _pin.get_children():
 			_drop_row(ch)
 		var mrk: int = int(me_row.get("rank", 0))
-		_draw_row(_pin, ROW_Y, maxi(mrk - 1, 0), me_row)
+		_draw_row(_pin, maxi(mrk - 1, 0), me_row)
 		_ignore_mouse(_pin)
 	_refresh_window()
 
 
-## 列表里的一行(名次 rk)。拿到了画整行; 还没拿到只画一个压暗的名次号(不编名字、不编成绩);
-## 名次超出榜上人数 ⇒ 空席(榜不满一屏时)。
+## 列表里的一行(名次 rk ≤ 榜上人数)。拿到了画整张行卡; 还没拿到(那一页在路上 / 没取到)只画一张压暗的空卡 +
+## 名次号(不编名字、不编成绩)。★没有「名次超出人数」那一支了(2026-10-23: 不画空席)。
 func _build_row(rk: int) -> Control:
 	var row := Control.new()
 	row.name = "LbRow_%d" % rk
@@ -837,19 +909,24 @@ func _build_row(rk: int) -> Control:
 	row.position = Vector2(0.0, float(rk - 1) * ROW_H)
 	row.size = Vector2(PANEL_W, ROW_H)
 	_list.add_child(row)
-	if rk > list_len:
-		_draw_vacant(row, ROW_Y, rk)
-	elif _by_rank.has(rk):
-		_draw_row(row, ROW_Y, rk - 1, _by_rank[rk] as Dictionary)
+	if _by_rank.has(rk):
+		_draw_row(row, rk - 1, _by_rank[rk] as Dictionary)
 	else:
-		var n := _cell(row, str(rk), RANK_X, ROW_Y, RANK_W, 16, Color(COL_RANK), HORIZONTAL_ALIGNMENT_CENTER)
+		var band := _row_band(row, ROW_BAND)
+		band.modulate.a = 0.45
+		var n := _cell(row, str(rk), RANK_X, RANK_W, 20, Color(COL_RANK), HORIZONTAL_ALIGNMENT_CENTER)
 		n.modulate.a = 0.42
 	_ignore_mouse(row)
 	return row
 
 
-## 行里的签牌/斑马纹默认会吞掉触摸 ⇒ 手指按在行上拖不动列表。一律放行给滚动区。
+## 行里的签牌/行卡默认会吞掉触摸 ⇒ 手指按在行上拖不动列表。一律放行给滚动区。
+## ★★按钮除外(2026-10-23 查实的老 bug): 点别人名字弹「举报 / 拉黑」的那颗热区(`player_menu.hotspot`, 它自己设好了
+##   MOUSE_FILTER_PASS = 收得到点击、也不挡拖动)原来也被这里一并改成 IGNORE ⇒ **真机上点名字什么都不会发生**,
+##   而门禁 verify_report_block 直接 `pressed.emit()` 绕过了鼠标层, 一直是绿的。
 func _ignore_mouse(n: Node) -> void:
+	if n is BaseButton:
+		return
 	if n is Control:
 		(n as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for ch in n.get_children():
@@ -944,8 +1021,9 @@ static func hint_text(rows_n: int, reach: String) -> String:
 	return HINT_ONLY_YOU_OFF
 
 
-## 一行: 底签牌 + 名次牌 + 名字(+「你」签) + 三个「图标 数字」。
-func _draw_row(parent: Control, y: float, idx: int, r: Dictionary) -> void:
+## 一张行卡: 底卡(九宫格, 按身份染色) + 名次(奖牌 / 号码) + 头像 + 名字(+「你」签 / 玩家 ID / 头衔) + 成绩槽里三个大号数字。
+## ★行里每一格都直接挂在行节点下, x 用本屏自己的列常量(门禁按 `NAME_X` / `RANK_X` / `STAT_X0` 认列, 不另抄坐标)。
+func _draw_row(parent: Control, idx: int, r: Dictionary) -> void:
 	## ★名次读行自己带的(服务端那一路是全榜真名次, 「我」可能是第 20 名接在第 11 行)。
 	var rank: int = _rank_of(r, idx)
 	var is_self: bool = bool(r.get("is_self", false))
@@ -955,21 +1033,18 @@ func _draw_row(parent: Control, y: float, idx: int, r: Dictionary) -> void:
 	##   被画成**金牌第一名**。名次数字本身没说谎(排序下他确实是第 1 行, 因为就他一个),
 	##   说谎的是**金/银/铜那块牌**: 牌位的含义是"这人赢到了这个位置"。
 	##   ⇒ 判据是「这一行有没有战绩」= `wins > 0`, 不是"排第几"。
-	##   0 胜的那行仍然画得见(自己那行的整行金底 + 「你」签一个都没动 ——
+	##   0 胜的那行仍然画得见(自己那张行卡的亮橙金 + 「你」签一个都没动 ——
 	##   「榜上必须找得到自己」是 2026-08-19 钉死的另一条需求), 只是**不上领奖台**。
-	##   ⚠ 空席的暗牌位不在此列: 那是"台阶空着", 本来就已经压到 0.42。
 	var podium: bool = rank >= 1 and rank <= 3 and wins > 0
 	if is_self:
-		_row_band(parent, y, SELF_BAND)
+		_row_band(parent, SELF_BAND)
 	elif podium:
-		_row_band(parent, y, MEDAL_BAND[rank - 1])
-	elif idx % 2 == 1:
-		var zebra := ColorRect.new()   # 斑马纹: 纯色块, 不带边 ⇒ 不是"网页盒"
-		zebra.color = Color(1, 1, 1, 0.035)
-		zebra.position = Vector2(PAD - 6.0, y - 5.0)
-		zebra.size = Vector2(PANEL_W - (PAD - 6.0) * 2.0, ROW_H - 4.0)
-		parent.add_child(zebra)
-	_rank_badge(parent, y, rank, 1.0, podium)
+		_row_band(parent, MEDAL_BAND[rank - 1])
+	else:
+		_row_band(parent, ROW_BAND)
+	_stat_slot(parent)
+	_rank_badge(parent, rank, podium, is_self)
+	_avatar(parent, r)
 	## 自己那行要先给「你」签牌让出位置 —— 名字字块和签牌叠在一起会踩全局的"两段文字压在一起"。
 	var nw: float = (NAME_W - YOU_W - YOU_GAP) if is_self else NAME_W
 	var tag_s := str(r.get("tag", ""))
@@ -981,31 +1056,35 @@ func _draw_row(parent: Control, y: float, idx: int, r: Dictionary) -> void:
 		_fin_titles.get(str(r.get("account_id", "")), {}) as Dictionary)
 	if mark_s != "":
 		nw -= MARK_W
-	var nm := _cell(parent, str(r.get("name", "?")), NAME_X, y, nw, 18,
+	var nm := _cell(parent, str(r.get("name", "?")), NAME_X, nw, NAME_FS,
 		Color(COL_SELF if is_self else COL_ROW), HORIZONTAL_ALIGNMENT_LEFT)
+	_ink(nm, 3)
+	## 点别人的头像或名字 ⇒ 「举报 / 拉黑」(热区盖住头像 + 名字那一段, 整张卡高 —— 手指好点)。
 	if not is_self:
-		_PM.hotspot(parent, Rect2(NAME_X, y, nw, ROW_H - 12.0),
-			{"name": _BL.raw_name(r), "tag": tag_s, "ctx": _RPT.CTX_LEADERBOARD}, _rerender)
-	## ghost 名来自玩家自定义 profile, 长度不受控 —— 截断加省略号, 别让它糊到成绩列上。
+		_PM.hotspot(parent, Rect2(AV_X, 0.0, SLOT_X - 4.0 - AV_X, CARD_H),
+			{"name": _BL.raw_name(r), "tag": tag_s, "ctx": _RPT.CTX_LEADERBOARD,
+				"account": str(r.get("account_id", ""))}, _rerender)   # 账号: 菜单里「加好友」直接申请, 不必按 ID 查人
+	## ghost 名来自玩家自定义 profile, 长度不受控 —— 截断加省略号, 别让它糊到成绩槽上。
 	nm.clip_text = true
 	nm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	if is_self:
-		_you_tag(parent, nm, y)
+		_you_tag(parent, nm)
 	## 紧跟在名字(自己那行是「你」签)后面依次摆: 玩家 ID → 头衔。
-	var tx: float = NAME_X + _text_w(nm) + 8.0 + ((YOU_W + YOU_GAP) if is_self else 0.0)
+	var tx: float = NAME_X + _text_w(nm) + 10.0 + ((YOU_W + YOU_GAP) if is_self else 0.0)
 	if show_tag:
-		var tl := _cell(parent, tag_s, tx, y + 1.0, TAG_W, TAG_FS, Color(COL_RANK),
-			HORIZONTAL_ALIGNMENT_LEFT)
+		var tl := _cell(parent, tag_s, tx, TAG_W, TAG_FS, Color(COL_RANK), HORIZONTAL_ALIGNMENT_LEFT)
 		tl.name = "RowTag"
-		tx += _text_w(tl) + 8.0
+		_ink(tl, 2)
+		tx += _text_w(tl) + 10.0
 	if mark_s != "":
-		var ml := _cell(parent, mark_s, tx, y + 1.0, MARK_W, MARK_FS,
+		var ml := _cell(parent, mark_s, tx, MARK_W, MARK_FS,
 			Color(COL_PROMOTED if mark_s == MARK_PROMOTED else COL_TITLE), HORIZONTAL_ALIGNMENT_LEFT)
-		ml.name = "RowMark_%d" % int(y)   # 带 y: 同一父节点下重名会被引擎改成 @Label@N
+		ml.name = "RowMark_%d" % idx   # 带下标: 同一父节点下重名会被引擎改成 @Label@N
+		_ink(ml, 3)
 	for ci in range(COL_KEYS.size()):
 		var k := str(COL_KEYS[ci])
 		var dv: int = -1 if k == "battles" else 0
-		_stat_cell(parent, y, ci, int(r.get(k, dv)), is_self)
+		_stat_cell(parent, ci, int(r.get(k, dv)), is_self)
 
 
 ## 拉黑 / 移出之后原地重画(同一份行, 名字由 `_BL.mask` 换 / 换回)。
@@ -1018,76 +1097,95 @@ func _rerender() -> void:
 		_render(shown_rows, source, _last_total, _last_me, _last_n_list)
 
 
-## 空席: 名次 + 牌位(压暗) + 破折号。
-## ★**不画成绩数字**(补零就成了"别人 0 胜"的假数据), 三个成绩位画破折号 ——
-##   既守住列的节奏(不然整块榜右半边是空的), 又明说"这里没有人"。
-## ★也**不画图标**: 图标是"这个量有多少"的标记, 空席上没有量。
-func _draw_vacant(parent: Control, y: float, rank: int) -> void:
-	## ★空席照旧给牌位(压到 0.42) —— 空席画的是"台阶空着", 没有"谁赢到了这里"的主张。
-	_rank_badge(parent, y, rank, 0.42, true)
-	var l := _cell(parent, "—", NAME_X, y, NAME_W, 18, Color(COL_DIM), HORIZONTAL_ALIGNMENT_LEFT)
-	l.modulate.a = 0.75
-	for i in range(COL_HEADS.size()):
-		var d := _cell(parent, "—", STAT_X0 + float(i) * STAT_CELL, y,
-			COL_W, 18, Color(COL_DIM), HORIZONTAL_ALIGNMENT_RIGHT)
-		d.modulate.a = 0.6
-
-
-## 整行的底签牌(九宫格金属签, 不是圆角色块)。
-func _row_band(parent: Control, y: float, tint: Color) -> void:
+## 整张行卡的底(新画的像素九宫格 lb-row.png: 粗描边 + 上亮下暗的斜面 + 四角铆钉; 中灰, 按身份染色)。
+## 兜底(贴图缺失时才会用上): **直角 + 不描边** —— 圆角 / 四边细边正是"网页盒"的长相, 全屏一致性门禁对本屏卡的是 0。
+func _row_band(parent: Control, tint: Color) -> Panel:
 	var band := Panel.new()
+	band.name = "RowCard"
 	var fb := StyleBoxFlat.new()
-	## 兜底(贴图缺失时才会用上): **直角 + 不描边** —— 圆角/四边细边正是"网页盒"的长相,
-	## 全屏一致性门禁对本屏卡的是 0。
-	fb.bg_color = Color(0.10, 0.13, 0.17, 0.55)
-	var tex := UISkin.nine("chip-frame.png", 7, fb)
+	fb.bg_color = Color(tint.r * 0.30, tint.g * 0.30, tint.b * 0.30, 1.0)
+	var tex := UISkin.nine(ROW_TEX, ROW_TEX_MARGIN, fb)
 	if tex is StyleBoxTexture:
 		(tex as StyleBoxTexture).modulate_color = Color(tint.r, tint.g, tint.b, 1.0)
 	band.add_theme_stylebox_override("panel", tex)
-	band.position = Vector2(PAD - 6.0, y - 5.0)
-	band.size = Vector2(PANEL_W - (PAD - 6.0) * 2.0, ROW_H - 4.0)
+	band.position = Vector2(CARD_X, 0.0)
+	band.size = Vector2(CARD_W, CARD_H)
 	parent.add_child(band)
+	return band
 
 
-## 名次: 前三名是金/银/铜签牌, 第 4 名起只剩一个暗号码(领奖台与看台的差别)。
-## `k` = 亮度系数, 空席用 0.42 压暗。
+## 成绩槽: 行卡右段压暗的一块, 上沿一道暗线、下沿一道亮线(往里凹的像素斜面)。三个大号数字住在槽里。
+## ★纯色块(ColorRect), 不是 StyleBox —— 不描边不圆角, 不落进"网页盒"。
+func _stat_slot(parent: Control) -> void:
+	var x0: float = SLOT_X
+	var x1: float = CARD_X + CARD_W - 10.0
+	var y0: float = 8.0
+	var y1: float = CARD_H - 8.0
+	for spec in [[SLOT_FILL, y0, y1 - y0], [SLOT_TOP, y0, 2.0], [SLOT_LIP, y1 - 2.0, 2.0]]:
+		var c := ColorRect.new()
+		c.color = spec[0]
+		c.position = Vector2(x0, float(spec[1]))
+		c.size = Vector2(x1 - x0, float(spec[2]))
+		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		parent.add_child(c)
+
+
+## 名次: 前三名是金/银/铜八角奖牌(lb-medal.png 染色), 第 4 名起只剩一个号码(领奖台与看台的差别)。
 ## `podium` = 这一行**配得上牌位**吗(见 `_draw_row` 里 `podium` 那段: 0 胜不上领奖台)。
-##   前三名而不配牌位时走的就是第 4 名起那条路 —— 一个暗号码, 不是"没有名次"。
-func _rank_badge(parent: Control, y: float, rank: int, k: float, podium: bool) -> void:
+##   前三名而不配牌位时走的就是第 4 名起那条路 —— 一个号码, 不是"没有名次"。
+func _rank_badge(parent: Control, rank: int, podium: bool, is_self: bool = false) -> void:
 	if rank > 3 or rank < 1 or not podium:
 		## 名次 < 1 = 服务端榜上还没有我(本周一份都没传过) ⇒ 画「—」, 不编一个名次。
-		var n := _cell(parent, str(rank) if rank >= 1 else "—", RANK_X, y, RANK_W, 16,
-			Color(COL_RANK), HORIZONTAL_ALIGNMENT_CENTER)
-		n.modulate.a = k
+		## 自己那张卡是亮橙金底, 灰蓝号码在上面读不出 ⇒ 用自己那行的字色。
+		var n := _cell(parent, str(rank) if rank >= 1 else "—", RANK_X, RANK_W, 22 if rank < 1000 else 18,
+			Color(COL_SELF if is_self else COL_RANK), HORIZONTAL_ALIGNMENT_CENTER)
+		_ink(n, 3)
 		return
 	var plate := Panel.new()
+	plate.name = "RankMedal"
 	var fb := StyleBoxFlat.new()
 	fb.bg_color = Color(0.10, 0.12, 0.16, 1.0)      # 直角不描边, 理由同 _row_band
-	var tex := UISkin.nine("chip-frame.png", 7, fb)
+	var tex := UISkin.nine(MEDAL_TEX, 0, fb)
 	var c: Color = MEDAL_PLATE[rank - 1]
 	if tex is StyleBoxTexture:
-		(tex as StyleBoxTexture).modulate_color = Color(c.r * k, c.g * k, c.b * k, 1.0)
+		(tex as StyleBoxTexture).modulate_color = Color(c.r, c.g, c.b, 1.0)
 	plate.add_theme_stylebox_override("panel", tex)
-	plate.position = Vector2(RANK_X, y)
+	## ★牌子的 x 就是 `RANK_X`(门禁按它认"这是名次牌"), 大小 = 奖牌原图 ×1(36, 不拉伸像素画); 竖直居中在行卡里。
+	plate.position = Vector2(RANK_X, (CARD_H - RANK_H) * 0.5)
 	plate.size = Vector2(RANK_W, RANK_H)
 	parent.add_child(plate)
-	## ★号码住在**牌子里**(而不是摆在牌子旁边): 牌子 34×28 两边都 <40,
+	## ★号码住在**牌子里**(而不是摆在牌子旁边): 牌子 36×36 两边都 <40,
 	##   一致性门禁按"角标"放过它 —— 见 RANK_W 的注释。
 	var l := Label.new()
 	l.text = str(rank)
-	l.add_theme_font_size_override("font_size", 17)
-	l.add_theme_color_override("font_color", Color(MEDAL_NUM[rank - 1]))
+	l.add_theme_font_size_override("font_size", 22)
+	l.add_theme_color_override("font_color", Color("#ffffff"))
+	l.add_theme_color_override("font_outline_color", Color(MEDAL_NUM_OUTLINE[rank - 1]))
+	l.add_theme_constant_override("outline_size", 5)
 	l.position = Vector2.ZERO
 	l.size = Vector2(RANK_W, RANK_H)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	l.modulate.a = k
 	plate.add_child(l)
 
 
-## 「你」金签牌, 贴在自己名字**后面**。位置按字块真实宽度算 —— 摆死一个 x 会在短名字后
-## 留一大段空, 在长名字上又叠上去。
-## 名字那一格里字真正占了多宽(截断了就是格宽)。
+## 头像 = 这个人的第一只统领(`lead`)。与周六赛况板 / 对阵图同一个头像件(`MatchCard.avatar`)。
+## 没有 `lead`(老服务端没下发 / 老快照没带) ⇒ 槽里写名字首字, 不编一只龟(对阵图同一个做法);
+##   名字首字是数字 / 符号时连字都不写(空槽) —— 一个孤零零的数字会被读成名次。
+func _avatar(parent: Control, r: Dictionary) -> void:
+	var pid := str(r.get("lead", ""))
+	var nm := str(r.get("name", ""))
+	var letter := nm.substr(0, 1).to_upper() if nm != "" else ""
+	if letter != "" and (letter.is_valid_int() or (letter.to_upper() == letter.to_lower() and letter.unicode_at(0) < 0x2E80)):
+		letter = ""
+	var av := MatchCard.avatar(pid, AV_PX, false, false, letter)
+	av.name = "RowAvatar"
+	av.position = Vector2(AV_X, (CARD_H - AV_PX) * 0.5)
+	parent.add_child(av)
+
+
+## 名字那一格里字真正占了多宽(截断了就是格宽)。「你」签 / 玩家 ID / 头衔都按它往后摆 ——
+## 摆死一个 x 会在短名字后留一大段空, 在长名字上又叠上去。
 func _text_w(nm: Label) -> float:
 	var tw: float = nm.size.x
 	var f: Font = nm.get_theme_font("font")
@@ -1097,7 +1195,8 @@ func _text_w(nm: Label) -> float:
 	return tw
 
 
-func _you_tag(parent: Control, nm: Label, y: float) -> void:
+## 「你」金签牌, 贴在自己名字**后面**。
+func _you_tag(parent: Control, nm: Label) -> void:
 	var tw: float = _text_w(nm)
 	var tag := Panel.new()
 	var fb := StyleBoxFlat.new()
@@ -1106,12 +1205,12 @@ func _you_tag(parent: Control, nm: Label, y: float) -> void:
 	if tex is StyleBoxTexture:
 		(tex as StyleBoxTexture).modulate_color = Color(SELF_TAG.r, SELF_TAG.g, SELF_TAG.b, 1.0)
 	tag.add_theme_stylebox_override("panel", tex)
-	tag.position = Vector2(NAME_X + tw + 8.0, y + (ROW_H - 12.0 - YOU_H) / 2.0)
+	tag.position = Vector2(NAME_X + tw + 10.0, (CARD_H - YOU_H) * 0.5)
 	tag.size = Vector2(YOU_W, YOU_H)
 	parent.add_child(tag)
 	var l := Label.new()
 	l.text = "你"
-	l.add_theme_font_size_override("font_size", 15)
+	l.add_theme_font_size_override("font_size", 16)
 	l.add_theme_color_override("font_color", Color(COL_SELF))
 	l.position = Vector2.ZERO
 	l.size = Vector2(YOU_W, YOU_H)
@@ -1120,27 +1219,34 @@ func _you_tag(parent: Control, nm: Label, y: float) -> void:
 	tag.add_child(l)
 
 
-## 成绩一格 = 一个**纯数字**, 右对齐到列右沿(与表头列名同一条右沿)。`i` = COL_HEADS 的下标。
+## 成绩一格 = 一个**纯数字**(30 号像素字 + 暗描边), 右对齐到列右沿(与表头列名同一条右沿)。`i` = COL_HEADS 的下标。
 ## ★2026-10-06 用户「排行榜里的奖杯是？」: 格里不画图标(照 使命召唤手游 / 英雄联盟手游, 列名写在表头)。
 ## `v < 0` = 这一项没有数据(老快照没带总场次 / 周一上周榜上没有我) ⇒ 「—」, 不编 0。
-func _stat_cell(parent: Control, y: float, i: int, v: int, is_self: bool) -> void:
+func _stat_cell(parent: Control, i: int, v: int, is_self: bool) -> void:
 	var cx: float = STAT_X0 + float(i) * STAT_CELL
 	var col: String = COL_DIM if v <= 0 else (COL_SELF if is_self else COL_ROW)
-	var l := _cell(parent, str(v) if v >= 0 else "—", cx, y, COL_W, 18,
+	var l := _cell(parent, str(v) if v >= 0 else "—", cx, COL_W, STAT_FS,
 		Color(col), HORIZONTAL_ALIGNMENT_RIGHT)
-	l.name = "RowStat%d_%d" % [i, int(y)]
+	l.name = "RowStat%d_%d" % [i, int(parent.position.y)]
+	_ink(l, STAT_OUTLINE)
 
 
-## 行内一格文字(统一字号/行高/垂直居中 —— 手写一遍就会漂)。
-func _cell(parent: Control, s: String, x: float, y: float, w: float, fs: int,
+## 行内一格文字(统一行高 = 行卡高、竖直居中 —— 手写一遍就会漂)。
+func _cell(parent: Control, s: String, x: float, w: float, fs: int,
 		col: Color, align: HorizontalAlignment) -> Label:
 	var l := Label.new()
 	l.text = s
 	l.add_theme_font_size_override("font_size", fs)
 	l.add_theme_color_override("font_color", col)
-	l.position = Vector2(x, y)
-	l.size = Vector2(w, ROW_H - 12.0)
+	l.position = Vector2(x, 0.0)
+	l.size = Vector2(w, CARD_H)
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	l.horizontal_alignment = align
 	parent.add_child(l)
 	return l
+
+
+## 字的暗描边(行卡染亮橙金 / 金 / 铜时, 浅色字要靠它才压得住底)。
+func _ink(l: Label, px: int) -> void:
+	l.add_theme_color_override("font_outline_color", COL_INK)
+	l.add_theme_constant_override("outline_size", px)

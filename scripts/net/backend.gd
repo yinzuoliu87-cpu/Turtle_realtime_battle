@@ -678,6 +678,15 @@ static func person_key(g) -> String:
 	return "g:" + gid
 
 
+## 一份快照的头像 id = 第一只统领(`leaders[0]`); 老快照没有 leaders ⇒ 退回 `profile.avatar`(上传时就是同一个值); 都没有 ⇒ ""。
+static func lead_of(gd: Dictionary) -> String:
+	var ldr = gd.get("leaders", null)
+	if ldr is Array and not (ldr as Array).is_empty() and str((ldr as Array)[0]) != "":
+		return str((ldr as Array)[0])
+	var pr = gd.get("profile", null)
+	return str((pr as Dictionary).get("avatar", "")) if pr is Dictionary else ""
+
+
 static func leaderboard(pool: Dictionary, self_name: String, self_wins: int, self_hearts: int,
 		self_sweeps: int, limit: int) -> Array:
 	## ★`tag` = 玩家 ID。界面只在**真的重名**时才把它摆出来(`_P2.names_needing_tag`)。
@@ -740,7 +749,9 @@ static func leaderboard(pool: Dictionary, self_name: String, self_wins: int, sel
 				## 总场次(排行榜「总场次」列, 2026-10-06)。老快照没这个字段 ⇒ -1, 屏上画「—」不编 0。
 				"battles": int(gd.get("season_total_battles", -1)),
 				"is_self": false,
-				"tag": profile_tag(gd.get("profile", {}) if gd.get("profile") is Dictionary else {})}
+				"tag": profile_tag(gd.get("profile", {}) if gd.get("profile") is Dictionary else {}),
+				## 排行榜头像(2026-10-23 重做): 这个人第一只统领。与服务端 `week_leaderboard_page` 每行的 `lead` 同名同义。
+				"lead": lead_of(gd)}
 			var pk := person_key(gd)
 			if by_person.has(pk):
 				if cmp.call(row, by_person[pk]):

@@ -26,7 +26,7 @@ const P2 := preload("res://scripts/gamedata/phase2_config.gd")
 const SUN_AM := 1789862400 + 10 * 3600
 const T_OTHER := "#XHVRJV"
 const T_THIRD := "#VK7GGP"
-const NEED := 58   # 分母: 断言条数一条不能少(少了 = 半路中止)
+const NEED := 59   # 分母: 断言条数一条不能少(少了 = 半路中止)。2026-10-23 +1: C 段「入口真收得到点击」
 
 var _n := 0
 var _fail := 0
@@ -182,6 +182,13 @@ func _t_leaderboard() -> void:
 	if es.is_empty():
 		lb.queue_free()
 		return
+	## ★★2026-10-23 查实的老 bug: 列表行建好之后整行被 `_ignore_mouse` 一律改成 MOUSE_FILTER_IGNORE(为了不挡拖动),
+	##   这颗入口也被一并改掉 ⇒ **真机上点名字什么都不会发生**; 而下面一条直接 `pressed.emit()` 绕过了鼠标层, 一直是绿的。
+	##   ⇒ 量它**收不收得到点击**: 它自己不是 IGNORE(父节点 IGNORE 不挡孩子收点击, 只有它自己那一格算数)。
+	var eb := es[0] as Button
+	_ok("C ★★入口真收得到点击(mouse_filter 不是 IGNORE —— 原来被整行放行那一步改死了)",
+		eb.mouse_filter != Control.MOUSE_FILTER_IGNORE and eb.is_visible_in_tree() and eb.size.x >= 200.0,
+		"mouse_filter=%d 宽 %.0f" % [eb.mouse_filter, eb.size.x])
 	(es[0] as Button).pressed.emit()
 	await _frames(1)
 	var lay = get_tree().current_scene.get_node_or_null(PM.LAYER)

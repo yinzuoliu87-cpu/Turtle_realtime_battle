@@ -175,6 +175,11 @@ func _read_row(row: Control) -> Dictionary:
 	return r
 
 
+## 两个染色差得够不够(与 verify_leaderboard_header 的 `_far` 同一把尺)。
+func _far(a: Color, c: Color) -> bool:
+	return absf(a.r - c.r) + absf(a.g - c.g) + absf(a.b - c.b) > 0.15
+
+
 ## 现在建着的列表行: 名次 → 节点。
 func _built(inst: Node) -> Dictionary:
 	var out := {}
@@ -243,7 +248,12 @@ func _t_server() -> void:
 		str(pr.get("name", "")) == ME_NAME and str(pr.get("rank", "")) == str(ME_RANK) and bool(pr.get("you", false)),
 		str(pr))
 	_ok("① 钉住那一行的成绩 = 服务端的我(剩余生命/胜场/总场次)", _got(pr) == _want(ME_RANK), str(_got(pr)))
-	_ok("① 钉住那一行有整行底签(不是只把字换个颜色)", pr.get("band", null) != null, str(pr.get("band", null)))
+	## ★2026-10-23 排行榜重做: 现在每一行都是一张行卡(都有整行底签) ⇒ 「有底签」不再说明什么,
+	##   要守的是「钉住那张和普通行(第 4 名起)那张颜色不一样」。
+	var b5: Dictionary = _built(inst)
+	var plain = (_read_row(b5[5] as Control) if b5.has(5) else {}).get("band", null)
+	_ok("① 钉住那一行有整行底签, 且颜色不同于普通行卡(不是只把字换个颜色)", pr.get("band", null) != null
+		and plain != null and _far(pr["band"] as Color, plain as Color), "%s / 普通行 %s" % [str(pr.get("band", null)), str(plain)])
 	var all := _all_text(inst)
 	_ok("⑧ 屏上没有「机器人 / 陪练 / bot」字样", all.find("机器人") < 0 and all.find("陪练") < 0
 		and all.to_lower().find("bot") < 0, "")
@@ -332,7 +342,12 @@ func _t_server() -> void:
 		var mr := _read_row(bm[ME_RANK] as Control)
 		_ok("③ ★那一行是我: 名字 + 「你」签 + 成绩 = 服务端的我", str(mr.get("name", "")) == ME_NAME
 			and bool(mr.get("you", false)) and _got(mr) == _want(ME_RANK), str(mr))
-		_ok("③ 那一行有整行底签(列表里也高亮, 照 Golf Clash)", mr.get("band", null) != null, str(mr.get("band", null)))
+		## ★2026-10-23: 每行都有行卡 ⇒ 高亮 = 我那张与上下两名那两张颜色不一样(照 Golf Clash 列表里自己那行高亮)。
+		var nb_up = (_read_row(bm[ME_RANK - 1] as Control) if bm.has(ME_RANK - 1) else {}).get("band", null)
+		var nb_dn = (_read_row(bm[ME_RANK + 1] as Control) if bm.has(ME_RANK + 1) else {}).get("band", null)
+		_ok("③ 那一行有整行底签且与上下两名的行卡颜色不同(列表里也高亮, 照 Golf Clash)", mr.get("band", null) != null
+			and nb_up != null and nb_dn != null and _far(mr["band"] as Color, nb_up as Color)
+			and _far(mr["band"] as Color, nb_dn as Color), "%s / 上 %s / 下 %s" % [str(mr.get("band", null)), str(nb_up), str(nb_dn)])
 		var up: Dictionary = _read_row(bm[ME_RANK - 1] as Control) if bm.has(ME_RANK - 1) else {}
 		var dn: Dictionary = _read_row(bm[ME_RANK + 1] as Control) if bm.has(ME_RANK + 1) else {}
 		_ok("③ 我上下两名也在屏上(看得到「附近」)", _got(up) == _want(ME_RANK - 1) and _got(dn) == _want(ME_RANK + 1),

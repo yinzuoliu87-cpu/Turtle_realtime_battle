@@ -28,6 +28,7 @@ const LB := preload("res://scripts/scenes/LeaderboardScene.gd")
 const P2C := preload("res://scripts/gamedata/phase2_config.gd")
 const MM := preload("res://scripts/scenes/MainMenuScene.gd")
 const BMS := preload("res://scripts/scenes/BracketMapScene.gd")
+const MC := preload("res://scripts/scenes/record/match_card.gd")
 
 const SCHEMA := "res://server/supabase/schema.sql"
 const MIGRATION := "res://server/supabase/migrations/20261006_week_leaderboard.sql"
@@ -427,14 +428,26 @@ func _check_heads(tag: String, inst: Node, rows_n: int) -> void:
 		heads == ["剩余生命", "胜场", "总场次"], str(heads))
 	_ok("%s 表头与数字右沿对齐(≤1px)" % tag, right_bad.is_empty() and rows_n > 0 and seen >= rows_n * 3,
 		"量了 %d 格 %s" % [seen, str(right_bad.slice(0, 3))])
-	var icons := 0
+	## ★2026-10-23 排行榜重做: 每行名字前多了一枚**头像**(第一只统领, 方案书 §5 U3 用户拍板「新增的只有头像」)。
+	##   用户那句「排行榜里的奖杯是？」说的是**成绩格里**的图标 ⇒ 判据收窄到它真正要守的事:
+	##   贴图只许是头像(住在 `MatchCard.avatar` 那个件里), 而且整个落在成绩列左边; 成绩格里一张图都不许有。
+	var icons: Array = []
+	var stat_left: float = (body.get_global_rect().position.x + LB.STAT_X0) if body != null else 0.0
 	var stk: Array = [body] if body != null else []
 	while not stk.is_empty():
 		var nd: Node = stk.pop_back()
-		if nd is TextureRect:
-			icons += 1
+		if nd is TextureRect and (nd as TextureRect).texture != null:
+			var is_av := false
+			var up: Node = nd.get_parent()
+			while up != null and up != body:
+				if up.has_meta(MC.N_PORTRAIT):
+					is_av = true
+				up = up.get_parent()
+			if not is_av or (nd as TextureRect).get_global_rect().end.x > stat_left:
+				icons.append(str(nd.name))
 		stk.append_array(nd.get_children())
-	_ok("%s 格里不画图标(用户「排行榜里的奖杯是？」)" % tag, icons == 0, "%d 个" % icons)
+	_ok("%s 成绩格里不画图标(用户「排行榜里的奖杯是？」; 贴图只有名字前的头像)" % tag, icons.is_empty(),
+		"%d 个 %s" % [icons.size(), str(icons.slice(0, 3))])
 
 
 # ─────────────────────────────────────────────────────────────
@@ -483,13 +496,19 @@ func _t_off() -> void:
 const SRV_NAMES := ["潮头龟王", "铁背大师", "珊瑚之影", "深渊旅者", "碧波统领", "岩壳老将",
 	"浪里白条", "霜甲先生", "赤焰小将", "沙洲隐士", "雷纹守卫"]
 const TOTAL := 57
+const MC_PORTRAIT := "Portrait"   # MatchCard.N_PORTRAIT: 头像件按 meta 认(同名兄弟会被改名)
+
+
+## 每行的头像(`lead`, 2026-10-24 服务端 20261024b 起下发): 12 只两两不同, 串行了一眼看得出。
+const SRV_LEADS := ["lava", "ice", "ninja", "stone", "bamboo", "angel", "phoenix", "crystal", "cyber", "pirate", "hunter", "dice"]
 
 
 ## 三个成绩两两错开(胜 14−i / 命 满命−(i%3) / 场 20+i), 列顺序调乱了逐行对账当场红。
 func _srv_row(i: int) -> Dictionary:
 	var hp: int = P2C.HEARTS_MAX - (i % 3)
 	return {"rank": i + 1, "name": SRV_NAMES[i], "tag": "", "account_id": "uid-srv-%d" % i,
-		"wins": 14 - i, "hearts": hp, "sweeps": i % 2, "battles": 20 + i, "title": null}
+		"wins": 14 - i, "hearts": hp, "sweeps": i % 2, "battles": 20 + i, "title": null,
+		"lead": SRV_LEADS[i % SRV_LEADS.size()]}
 
 
 func _me_row() -> Dictionary:
@@ -556,7 +575,28 @@ func _check_server_screen(label: String, inst: Node, cap_word: String = "本周"
 		var exp := [str(want["rank"]), str(want["name"]), str(want["hearts"]), str(want["wins"]), str(want["battles"])]
 		if got != exp:
 			bad.append("第%d行 屏上 %s ≠ 服务端 %s" % [i + 1, str(got), str(exp)])
-	_ok("%s ★★列表逐行 = 服务端的 名次/名字/剩余生命/胜场/总场次" % label, bad.is_empty() and lr.size() >= 9, str(bad))
+	## ★2026-10-23 排行榜重做: 行卡加高(40 → 58, 放头像与大号数字), 一屏 10 行 → 8 行 ⇒ 分母跟着本屏自己的 VIS_ROWS 走
+	##   (原来写死 9 = 当时一屏 10 行减 1; 写死的数字会在版式一改就把「列表对得上」误判成红)。
+	_ok("%s ★★列表逐行 = 服务端的 名次/名字/剩余生命/胜场/总场次" % label, bad.is_empty() and lr.size() >= LB.VIS_ROWS, str(bad))
+	## ★端到端: 回包里的 `lead` → `_week_lb_row` 放行 → 屏上那一行的头像贴图(2026-10-24 排行榜重做;
+	##   `_week_lb_row` 原来只搬它认识的字段, 不放行就只剩名字首字 —— 重做那一轮用假服务端实测过)。
+	var drawn: Array = []
+	for n in inst.find_children("*", "PanelContainer", true, false):
+		var pid := str((n as Node).get_meta(MC_PORTRAIT, ""))
+		if pid == "":
+			continue
+		var has_tex := false
+		for ch in (n as Node).get_children():
+			if ch is TextureRect and (ch as TextureRect).texture != null:
+				has_tex = true
+		if has_tex:
+			drawn.append(pid)
+	var miss: Array = []
+	for i in range(mini(LB.VIS_ROWS, lr.size())):
+		if not str(_srv_row(i)["lead"]) in drawn:
+			miss.append(str(_srv_row(i)["lead"]))
+	_ok("%s ★★列表每行的头像 = 服务端下发的 lead(画出了贴图)" % label, miss.is_empty() and drawn.size() >= LB.VIS_ROWS,
+		"缺 %s · 画了 %s" % [str(miss), str(drawn)])
 	var last: Dictionary = _pin_row(rows)
 	_ok("%s ★★我钉在列表下沿: 名字是我、带「你」签" % label,
 		str(last.get("name", "")) == ME_NAME and bool(last.get("you", false)), str(last))

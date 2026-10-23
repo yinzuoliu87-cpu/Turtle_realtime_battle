@@ -227,11 +227,6 @@ func _t_screen_says() -> void:
 		var you_y := _you_row_y(board)
 		_ok("③ ★分母: 榜上找得到【你】那一行(2026-08-19 钉死的那条没被我改坏)",
 			you_y >= 0.0, "y=%.0f" % you_y)
-		## ★分母: 这一屏上牌位机器**还活着**(空席 2/3 名有暗牌位)。
-		##   少了这条, 「0 胜那行没牌位」可能只是因为整屏一块牌都没画。
-		var n_plates := _count_plates(board)
-		_ok("③ ★★分母: 这一屏确实画了牌位(否则「没牌位」是空检查)", n_plates >= 2,
-			"%d 块" % n_plates)
 		if you_y >= 0.0:
 			var rank_l := _rank_label_at(board, you_y)
 			_ok("③ ★分母: 取到了你那一行的名次格", rank_l != null,
@@ -240,6 +235,21 @@ func _t_screen_says() -> void:
 				_ok("③ ★★★0 胜的你**不戴金牌**(实拍那张是「#1 …… 0胜」= 一场没赢的人是第一名)",
 					_plate_of(rank_l, board) == null,
 					"名次格「%s」 牌位=%s" % [str(rank_l.text), str(_plate_of(rank_l, board))])
+		## ★分母: 这一屏上牌位机器**还活着** —— 少了这条, 「0 胜那行没牌位」可能只是因为整屏一块牌都没画。
+		## ★★2026-10-23 排行榜重做换了形状: 原来靠「空席 2/3 名有暗牌位」证明机器活着, 而空席整个拿掉了
+		##   (用户「人少时整屏「—」」那条) ⇒ 那时屏上剩下的「牌位」只有「你」签, 数它等于拿签当牌、分母是假的。
+		##   ⇒ 换成**同一屏、同一个我, 只把胜场改成 3 再画一遍**: 名次格这回必须戴上牌位。
+		##   两次只差胜场这一个量 ⇒ 前一次没牌位就是「0 胜不上领奖台」, 不是牌位机器坏了。
+		gs.season_wins = 3
+		inst.call("_render", inst.call("_local_rows"), _LB.SRC_LOCAL, -1)
+		await get_tree().process_frame
+		var board2 := _board(inst)
+		var you2 := _you_row_y(board2) if board2 != null else -1.0
+		var rank2: Label = _rank_label_at(board2, you2) if you2 >= 0.0 else null
+		_ok("③ ★★分母: 同一屏改成 3 胜重画 ⇒ 你那一格戴上了牌位(牌位机器是活的, 上面那条不是空检查)",
+			rank2 != null and str(rank2.text) == "1" and _plate_of(rank2, board2) != null,
+			"名次格「%s」 牌位=%s" % [str(rank2.text) if rank2 != null else "(缺)",
+				str(_plate_of(rank2, board2)) if rank2 != null else "-"])
 	inst.queue_free()
 	gs.season_wins = w0
 	_BE.pool_override = {}
@@ -568,16 +578,6 @@ func _rank_label_at(board: Control, y: float) -> Label:
 
 
 ## 这一屏一共画了几块牌位(空席的暗牌位也算) —— 「没牌位」那条断言的分母。
-func _count_plates(board: Control) -> int:
-	var labels: Array = []
-	_collect_labels(board, labels)
-	var n := 0
-	for l in labels:
-		if _plate_of(l as Label, board) != null:
-			n += 1
-	return n
-
-
 func _done() -> void:
 	_BE.pool_override = {}
 	_P2.now_override_ts = 0

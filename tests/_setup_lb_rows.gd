@@ -30,6 +30,10 @@ static func run() -> void:
 	var pool: Dictionary = {Backend.POOL_KEY: {}}
 	var names := ["阿龟", "小壳", "铁甲", "疾风", "深海", "岩心", "赤焰",
 		"苔痕", "浪吟", "霜背", "雷纹", "沙隐", "潮生", "碧鳞"]
+	## ★2026-10-23 排行榜重做: 每行名字前一枚头像 = 快照 leaders[0]。真快照都带 leaders ⇒ 种子也带,
+	##   否则量的是「全员没头像、只写名字首字」那块屏, 头像压不压边、占不占成绩格一条都量不到。
+	var leads := ["stone", "ninja", "phoenix", "ice", "basic", "lava", "pirate",
+		"angel", "mech", "bamboo", "lightning", "crystal", "ghost", "space"]
 	var bt := int(GameState.season_total_battles)
 	for i in range(N_ROWS):
 		Backend.pool_add(pool, {
@@ -38,6 +42,7 @@ static func run() -> void:
 			"is_bot": false,
 			"origin": Backend.ORIGIN_REMOTE,
 			"profile": {"name": str(names[i % names.size()])},
+			"leaders": [str(leads[i % leads.size()]), "basic", "ice"],
 			"season_wins": 18 - i,
 			"hearts": 3 + (i % 3),
 			"season_sweeps": int((N_ROWS - i) / 3),

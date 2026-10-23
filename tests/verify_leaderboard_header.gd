@@ -29,6 +29,7 @@ const SEED_PATH := "res://tests/_setup_lb_rows.gd"
 ## ★2026-10-12 钉钟: 本屏周一看的是**上周**榜、自己那一行画「—」(通读 B4) ⇒ 不钉的话这条门禁逢周一(UTC)必红。
 ##   这里量的是本周榜的三列对账 ⇒ 钉在周三(2026-10-07 12:00 UTC)。
 const P2C := preload("res://scripts/gamedata/phase2_config.gd")
+const MC := preload("res://scripts/scenes/record/match_card.gd")
 const PIN_WED := 1791158400 - 7 * 86400 + 2 * 86400 + 12 * 3600
 
 ## ★三个数必须两两不同(下面 ① 有一条断言看着它) —— 这是本门禁能不能看见"列乱了"的前提。
@@ -151,13 +152,24 @@ func _wide_bands(board: Control) -> Array:
 	return out
 
 
-func _count_tex(n: Node) -> int:
-	var c := 0
+## 榜里所有画着贴图的 TextureRect(任何尺寸)。★钉住那一行(`LbPin`)不排除 —— 这里量的是"屏上有什么图", 它也在屏上。
+func _textures(n: Node) -> Array:
+	var out: Array = []
 	for ch in n.get_children():
 		if ch is TextureRect and (ch as TextureRect).texture != null and (ch as Control).is_visible_in_tree():
-			c += 1
-		c += _count_tex(ch)
-	return c
+			out.append(ch)
+		out.append_array(_textures(ch))
+	return out
+
+
+## 这张图是不是住在头像件里(`MatchCard.avatar` 给头像件打的 Portrait 标记 —— 认标记不认名字)。
+func _in_portrait(t: Node, board: Control) -> bool:
+	var up: Node = t.get_parent()
+	while up != null and up != board:
+		if up.has_meta(MC.N_PORTRAIT):
+			return true
+		up = up.get_parent()
+	return false
 
 
 func _find_named(n: Node, nm: String) -> Label:
@@ -191,6 +203,8 @@ func _ready() -> void:
 		gs.hearts = SELF_HEARTS
 		gs.season_sweeps = SELF_SWEEPS
 		gs.season_total_battles = SELF_BATTLES
+		## ★2026-10-23 排行榜重做: 自己那行的头像 = 本周阵容第一只统领 ⇒ 给一支阵容, 否则自己那行量的是「没头像」的样子。
+		gs.season_leaders = ["ninja", "ice", "stone"]
 	## ★这一条不是走过场: 三个数只要有两个相等, 下面 ③ 的"列顺序"就成了空检查。
 	_ok("① ★分母: 自己那三个量两两不同(相等的话列顺序乱了也照样绿)",
 		SELF_WINS != SELF_HEARTS and SELF_HEARTS != SELF_BATTLES and SELF_WINS != SELF_BATTLES,
@@ -259,8 +273,25 @@ func _ready() -> void:
 		heads.append(str(h.text) if h != null else "(缺)")
 	_ok("② ★★表头三列 = 「剩余生命」「胜场」「总场次」(用户原词, 顺序不许乱)", heads == COL_WORDS, str(heads))
 	## ★任何尺寸的贴图都算(行内小图标那条过滤只认 8~24px, 一张 32px 的奖杯会从缝里漏过去)。
-	n_icons += _count_tex(board)
-	_ok("② 格里不画图标(用户「排行榜里的奖杯是？」)", n_icons == 0, "%d 个" % n_icons)
+	## ★★2026-10-23 排行榜重做: 每行名字前多了一枚**头像**(第一只统领; 方案书 §5 U3 用户拍板「新增的只有头像」)。
+	##   用户那句「排行榜里的奖杯是？」问的是**成绩格里**的图标 ⇒ 判据收窄到它真正守的事, 不是放宽:
+	##   贴图只许是头像件(`MatchCard.avatar`, 带 Portrait 标记)且整个落在第一列成绩的左边; 别的贴图一张都不许有。
+	##   而且头像得**真画出来了**(分母) —— 否则「没有越界的头像」是因为一张头像都没有。
+	var tex := _textures(board)
+	var stat_left: float = _find_named(board, "LbColHead0").get_global_rect().position.x 		if _find_named(board, "LbColHead0") != null else 0.0
+	var bad_tex: Array = []
+	var n_av := 0
+	for t in tex:
+		var tr := t as TextureRect
+		if not _in_portrait(tr, board):
+			bad_tex.append("非头像贴图 %s" % str(tr.texture.resource_path.get_file()))
+		elif tr.get_global_rect().end.x > stat_left:
+			bad_tex.append("头像伸进了成绩列 x=%.0f" % tr.get_global_rect().end.x)
+		else:
+			n_av += 1
+	_ok("② ★分母: 头像真画出来了(每个数据行一枚, ≥ %d)" % MIN_DATA_ROWS, n_av >= MIN_DATA_ROWS, "%d 枚" % n_av)
+	_ok("② 成绩格里不画图标(用户「排行榜里的奖杯是？」): 小图标 0 个, 贴图只有名字前的头像",
+		n_icons == 0 and bad_tex.is_empty(), "小图标 %d 个 / %s" % [n_icons, str(bad_tex.slice(0, 3))])
 	var bad_shape: Array = []
 	for r in data:
 		if ((r as Dictionary)["ints"] as Array).size() != 4:
@@ -378,6 +409,25 @@ func _ready() -> void:
 			if mc != null and not _far(self_band as Color, mc as Color):
 				clash.append("y=%.0f" % float(my))
 		_ok("⑤ 你那一行的底签颜色和前三名的台阶都不一样", clash.is_empty(), str(clash))
+		## ★2026-10-23 排行榜重做: 现在**每一行**都是一张行卡(都有整行底签) ⇒ 上面「你那一行有底签」不再说明什么,
+		##   要守的是「你那张和普通行(第 4 名起、不是你)那几张不一样」。
+		var plain_y: Array = []
+		for r8 in data:
+			var ii4: Array = (r8 as Dictionary)["ints"]
+			if ii4.is_empty() or absf(float((r8 as Dictionary)["y"]) - self_y) <= 1.0:
+				continue
+			if int(str(((ii4[0] as Dictionary)["n"] as Label).text)) >= 4:
+				plain_y.append(float((r8 as Dictionary)["y"]))
+		var same: Array = []
+		var n_plain := 0
+		for py in plain_y:
+			var pc = _find_band(wides, float(py))
+			if pc != null:
+				n_plain += 1
+				if not _far(self_band as Color, pc as Color):
+					same.append("y=%.0f" % float(py))
+		_ok("⑤ ★你那张行卡和普通行卡颜色不一样(每行都有卡之后, 这才是「你看得出来」)",
+			n_plain >= 3 and same.is_empty(), "普通行 %d 张 / 撞色 %s" % [n_plain, str(same)])
 
 	## ── ⑥ 旧样子不许回来 ──────────────────────────────────────
 	for st2 in STALE_TERMS:
