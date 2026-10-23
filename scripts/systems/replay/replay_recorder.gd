@@ -908,7 +908,7 @@ static func play_again(tree: SceneTree, r: Dictionary) -> void:
 	if r.is_empty() or tree == null:
 		return
 	_again = r
-	tree.change_scene_to_file(BATTLE_SCENE)
+	SceneNav.go(tree, BATTLE_SCENE)
 
 
 ## 播一份记录。返回 "" = 已进战斗场; 否则是不能播的原因(V6: 版本不同就不进战斗场)。
@@ -924,7 +924,7 @@ static func play(tree: SceneTree, r: Dictionary, back: String = "", names: Dicti
 	viewer_name = Uploader.BE.player_display_name()
 	begin_play(r)
 	if tree != null:
-		tree.change_scene_to_file(BATTLE_SCENE)
+		SceneNav.go(tree, BATTLE_SCENE)
 	return ""
 
 

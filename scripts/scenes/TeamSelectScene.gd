@@ -1401,7 +1401,7 @@ func _on_start() -> void:
 		GameState.left_slots = tut_slots
 		GameState.season_leaders = tut_team.duplicate()
 		_tdc.notify("team_confirmed")
-		get_tree().change_scene_to_file(_tdc.next_scene_after("team_select"))
+		SceneNav.go(get_tree(), _tdc.next_scene_after("team_select"))
 		return
 
 	## ★★A4 的第三种拦截原因(封盘) —— 前两种(淘汰 / 配额打满)在 `MainMenuScene._start_battle_flow()`。
@@ -1460,7 +1460,7 @@ func _on_start() -> void:
 
 	_write_last_lineup()
 	# → 匹配动画 (Matchmaking): 抽对手 ghost 写 dual_ghost → 进 2.5D 战斗.
-	get_tree().change_scene_to_file("res://scenes/Matchmaking.tscn")
+	SceneNav.go(get_tree(), "res://scenes/Matchmaking.tscn")
 
 
 ## 封盘提示。★照 `MainMenuScene._toast` 同一形状写(黄字+黑描边+1.4s 后淡出),
@@ -1490,7 +1490,7 @@ func _lockout_toast() -> void:
 func _on_back() -> void:
 	GameState.reset_dungeon()
 	GameState.clear_team()
-	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+	SceneNav.go(get_tree(), "res://scenes/MainMenu.tscn")
 
 
 

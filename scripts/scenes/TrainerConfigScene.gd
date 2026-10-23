@@ -491,4 +491,4 @@ func _write_loadout() -> void:
 ## 顶栏返回: 点选时已存过, 这里再存一次兜底(异常退出前最后一次机会)。
 func _save_and_back() -> void:
 	_write_loadout()
-	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+	SceneNav.go(get_tree(), "res://scenes/MainMenu.tscn")

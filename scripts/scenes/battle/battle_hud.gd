@@ -1203,7 +1203,7 @@ func _settle_buttons(btn_row: HBoxContainer) -> void:
 		var tb: Button = battle._make_result_btn(SHOP_BTN_TEXT, shop_tint, shop_fc,
 			func() -> void:
 				_td.notify("settle_continue")
-				battle.get_tree().change_scene_to_file(_td.next_scene_after("battle")))
+				SceneNav.go(battle.get_tree(), _td.next_scene_after("battle")))
 		tb.name = "TutorialSettleShop"
 		SettleScreenS.dress_btn(tb, shop_fc)
 		btn_row.add_child(tb)
@@ -1217,11 +1217,11 @@ func _settle_buttons(btn_row: HBoxContainer) -> void:
 	var _elim: bool = _gs2 != null and _gs2.is_eliminated()
 	if not _elim:
 		var sb: Button = battle._make_result_btn(SHOP_BTN_TEXT, shop_tint, shop_fc,
-			func() -> void: battle.get_tree().change_scene_to_file(SHOP_SCENE))
+			func() -> void: SceneNav.go(battle.get_tree(), SHOP_SCENE))
 		SettleScreenS.dress_btn(sb, shop_fc)
 		btn_row.add_child(sb)
 	var mb: Button = battle._make_result_btn("返回主菜单", menu_tint, menu_fc,
-		func() -> void: battle.get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
+		func() -> void: SceneNav.go(battle.get_tree(), "res://scenes/MainMenu.tscn"))
 	SettleScreenS.dress_btn(mb, menu_fc)
 	btn_row.add_child(mb)
 
@@ -2383,4 +2383,4 @@ func show_stream_end(won: bool) -> void:
 ## 离场即还原 GameState(主场景 `_exit_tree` 里调 `ReplayRecorder.end_play()`), 这里只管换场景。
 func _replay_exit() -> void:
 	if battle.get_tree() != null:
-		battle.get_tree().change_scene_to_file(ReplayRecorder.exit_scene())
+		SceneNav.go(battle.get_tree(), ReplayRecorder.exit_scene())

@@ -162,7 +162,7 @@ func _ready() -> void:
 
 
 func _back() -> void:
-	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+	SceneNav.go(get_tree(), "res://scenes/MainMenu.tscn")
 
 
 ## 去服务端取一次(进页面 + 每 30 秒)。

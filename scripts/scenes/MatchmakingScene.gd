@@ -171,7 +171,7 @@ func _ready() -> void:
 	await _fade_to_black(0.4)       # 硬切→淡出: 进战斗不再"啪"一下换画面
 	if _cancelled or not is_inside_tree():
 		return
-	get_tree().change_scene_to_file(BATTLE_SCENE)
+	SceneNav.go(get_tree(), BATTLE_SCENE)
 
 
 ## 周六本机挑对手(老路: 开关关着 / 服务端说开关已关)。
@@ -241,7 +241,7 @@ func _on_referee_changed() -> void:
 		await _fade_to_black(0.4)
 		if _cancelled or not is_inside_tree():
 			return
-		get_tree().change_scene_to_file(BATTLE_SCENE)
+		SceneNav.go(get_tree(), BATTLE_SCENE)
 		return
 	_ref_label()
 	if str(_ref_run.state) == _RW.ST_LATER:
@@ -266,7 +266,7 @@ func _leave_later() -> void:
 		return
 	_cancelled = true                 # 之后 `_server_pick` / 雷达环那几条协程见到它就收手(同「←」)
 	GameState.mode = "single"         # 与「←」同一句: 离开双路 → 中性态
-	get_tree().change_scene_to_file(MENU_SCENE)
+	SceneNav.go(get_tree(), MENU_SCENE)
 
 
 # ---------------------------------------------------------------------------
@@ -353,7 +353,7 @@ func _on_cancel() -> void:
 	if _ref_run != null and str(_ref_run.state) == _RW.ST_WAIT:
 		_RW.notice = _RW.TXT_LATER
 	GameState.mode = "single"   # 离开双路 → 中性态; 下次入口会再 reset_dual_lane
-	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+	SceneNav.go(get_tree(), "res://scenes/MainMenu.tscn")
 
 
 ## 对手资料卡 = 抽到的 ghost 快照 profile (头像取其首领 / 名+ID); profile 缺字段时随机兜底 (老 bot 也有 profile).

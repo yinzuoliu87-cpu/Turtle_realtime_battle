@@ -178,13 +178,13 @@ func _add_back_button() -> void:
 		"width": 1280.0,
 		"safe_left": _m.x,
 		"safe_right": _m.z,
-		"on_back": func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"),
+		"on_back": func(): SceneNav.go(get_tree(), "res://scenes/MainMenu.tscn"),
 	})
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):   # ESC 返回主菜单
-		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+		SceneNav.go(get_tree(), "res://scenes/MainMenu.tscn")
 
 
 func _ready() -> void:

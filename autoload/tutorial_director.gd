@@ -188,7 +188,7 @@ func enter(host: Node) -> void:
 	preset_merge_bench()
 	GameState.tutorial_stage = "team_select"
 	if host != null and host.is_inside_tree():
-		host.get_tree().change_scene_to_file(TEAM_SELECT)
+		SceneNav.go(host.get_tree(), TEAM_SELECT)
 
 
 ## 教程开局配置(分镜 F3): 沙盒背包里预放 TUT_MERGE_PRESET 件 TUT_MERGE_ITEM(1 星)。★只在沙盒里(进教程时已换成全新状态)。
@@ -272,10 +272,10 @@ func end_tutorial(reason: String) -> void:
 			tr.current_scene.call("open_naming")
 		else:
 			first_launch_mode = "name"
-			tr.change_scene_to_file(FIRST_LAUNCH)
+			SceneNav.go(tr, FIRST_LAUNCH)
 		return
 	if tr != null and tr.current_scene != null and cur != MAIN_MENU:
-		tr.change_scene_to_file(MAIN_MENU)
+		SceneNav.go(tr, MAIN_MENU)
 
 
 ## 教程期间云端拉回来的存档: 属于账号, 不属于沙盒 ⇒ 结束后再落(见 GameState.apply_cloud_payload)。

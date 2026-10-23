@@ -65,7 +65,7 @@ var pruned_replays: Array = []
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):   # ESC 返回主菜单 (与图鉴一致)
-		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+		SceneNav.go(get_tree(), "res://scenes/MainMenu.tscn")
 
 func _ready() -> void:
 	## 本机回放缓存清理(删「不在战绩里 + 比上周一还旧 + 不在上传队列」的, 规则见 `ReplayFetcher.prune_cache`)。
@@ -77,7 +77,7 @@ func _ready() -> void:
 		"title": "战绩",
 		"palette": TopBar.DEEP,
 		"width": W,
-		"on_back": func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"),
+		"on_back": func(): SceneNav.go(get_tree(), "res://scenes/MainMenu.tscn"),
 	})
 
 	var hist: Array = GameState.match_history

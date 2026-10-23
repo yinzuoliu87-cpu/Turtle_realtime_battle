@@ -206,7 +206,7 @@ static func enter(tree: SceneTree, rec: Dictionary, back: String, names: Diction
 	enters += 1
 	_guard(tree)
 	if tree != null:
-		tree.change_scene_to_file(ReplayRecorder.BATTLE_SCENE)
+		SceneNav.go(tree, ReplayRecorder.BATTLE_SCENE)
 	return ""
 
 
@@ -243,7 +243,7 @@ static func enter_live(tree: SceneTree, g: Dictionary, back: String, names: Dict
 	live_enters += 1
 	_guard(tree)
 	if tree != null:
-		tree.change_scene_to_file(ReplayRecorder.BATTLE_SCENE)
+		SceneNav.go(tree, ReplayRecorder.BATTLE_SCENE)
 	return ""
 
 

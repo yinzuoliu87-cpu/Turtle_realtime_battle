@@ -2482,7 +2482,7 @@ func _go(scene: String) -> void:
 	if not ResourceLoader.exists(path):
 		push_error("[MainMenu] 目标场景不存在: " + path)
 		return
-	get_tree().change_scene_to_file(path)
+	SceneNav.go(get_tree(), path)
 
 
 ## 商店入口: 大轮未打第一场 → 上锁不进(用户2026-07-18); 打完第一场解锁

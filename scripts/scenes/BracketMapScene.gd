@@ -186,7 +186,7 @@ func _ready() -> void:
 		##   于是这一屏的返回键从来没让过刘海。2026-10-04 顶栏宽度那次一起查出来的。
 		"safe_left": sm.x,
 		"safe_right": sm.z,
-		"on_back": func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"),
+		"on_back": func(): SceneNav.go(get_tree(), "res://scenes/MainMenu.tscn"),
 	})
 
 	## ★两个 Tab: 上午看自己那个桶, 晚上看桶冠军的签表。
@@ -2304,7 +2304,7 @@ func _try_start_match() -> bool:
 		"id": "#%d" % int(res.get("seed", -1)),
 	}
 	stamp_finals_match(GameState, int(cur().get("bucket", -1)), r, m, side, _clock())
-	get_tree().change_scene_to_file("res://scenes/RealtimeBattle3D.tscn")
+	SceneNav.go(get_tree(), "res://scenes/RealtimeBattle3D.tscn")
 	return true
 
 

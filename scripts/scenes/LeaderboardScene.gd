@@ -272,7 +272,7 @@ func _ready() -> void:
 		"width": W,
 		"safe_left": _sm.x,
 		"safe_right": _sm.z,
-		"on_back": func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"),
+		"on_back": func(): SceneNav.go(get_tree(), "res://scenes/MainMenu.tscn"),
 		"actions": acts,
 	})
 	if _top_bar.action_btns.size() > 0:
@@ -378,7 +378,7 @@ func _go(scene: String) -> void:
 	if not ResourceLoader.exists(path):
 		push_error("[LB] 目标场景不存在: " + path)
 		return
-	get_tree().change_scene_to_file(path)
+	SceneNav.go(get_tree(), path)
 
 
 ## 名字旁边挂什么(纯函数, 四天全可穷举)。返回显示文字, "" = 不挂。

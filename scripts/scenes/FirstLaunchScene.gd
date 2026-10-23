@@ -410,7 +410,7 @@ func confirm_name(raw: String) -> String:
 			st.text = err
 		return err
 	if is_inside_tree() and get_tree().current_scene == self:
-		get_tree().change_scene_to_file(MAIN_MENU)
+		SceneNav.go(get_tree(), MAIN_MENU)
 	return ""
 
 

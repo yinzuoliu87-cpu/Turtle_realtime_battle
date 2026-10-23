@@ -264,7 +264,7 @@ func _inject_demo_inventory() -> void:   # 仅 INV_DEMO 环境: 填装备看满�
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):   # ESC 返回主菜单 (与图鉴一致)
-		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+		SceneNav.go(get_tree(), "res://scenes/MainMenu.tscn")
 
 func _rebuild() -> void:
 	if _drag.active():
@@ -334,12 +334,12 @@ func _rebuild() -> void:
 		"width": W,
 		"safe_left": _sm.x,
 		"safe_right": _sm.z,
-		"on_back": func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"),
+		"on_back": func(): SceneNav.go(get_tree(), "res://scenes/MainMenu.tscn"),
 		## ★2026-10-22 用户「左上角返回，商店，背包你到底打算怎么设计啊」: 两页左上角一模一样 ——
 		##   「← | 商店 | 背包」一对页签, 当前页那一签亮着(active), 点另一签切过去; 不再单写页名。
 		"left_actions": [[
 			"商店",
-			func(): get_tree().change_scene_to_file("res://scenes/Shop.tscn"),
+			func(): SceneNav.go(get_tree(), "res://scenes/Shop.tscn"),
 			{"disabled": shop_locked,
 				"tooltip": "本大轮首战后解锁" if shop_locked else "前往商店"},
 		], [

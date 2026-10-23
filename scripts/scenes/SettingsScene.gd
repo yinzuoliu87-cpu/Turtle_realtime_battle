@@ -338,7 +338,7 @@ func _after_account_deleted() -> void:
 	if after_delete_hook.is_valid():
 		after_delete_hook.call(AFTER_DELETE_SCENE)
 		return
-	get_tree().change_scene_to_file(AFTER_DELETE_SCENE)
+	SceneNav.go(get_tree(), AFTER_DELETE_SCENE)
 
 
 ## 右框「声音 / 画面」。每项一行: 左名 · 中控件 · 右值(参考 Mirrorverse / Bomberman)。
@@ -987,7 +987,7 @@ func _email_set_step(step: int) -> void:
 func _on_back() -> void:
 	if _P2C.login_wall_on(_acct_on(), _acct_mail()):
 		return
-	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+	SceneNav.go(get_tree(), "res://scenes/MainMenu.tscn")
 
 
 ## 进设置页时该不该把**绑定屏**盖上去。
@@ -1360,7 +1360,7 @@ func _close_email_dialog(dim: Control) -> void:
 	if _top_bar != null and _top_bar.back_btn != null:
 		_top_bar.back_btn.visible = true
 	if was_standalone and get_tree() != null and get_tree().current_scene == self:
-		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+		SceneNav.go(get_tree(), "res://scenes/MainMenu.tscn")
 
 
 ## 弹框的设计框原点(2026-10-12): 与 `_email_relayout` 同一条公式(`UIFrame` 设计框居中于可用区)。
@@ -1517,7 +1517,7 @@ func _email_poll() -> void:
 			var _dest: String = _post_bind_dest()
 			if _dest != "":
 				_email_status.text = msg if msg != "" else "邮箱绑定成功"
-				get_tree().change_scene_to_file(_dest)
+				SceneNav.go(get_tree(), _dest)
 				return
 		_:
 			if msg == "":
@@ -1559,7 +1559,7 @@ func _open_debug_arena() -> void:
 	_RB_DEBUG.DEBUG_EDIT = true    # 调试场=自由摆位编辑器(左键摆龟/拖拽/右键删/装备笔刷/开始暂停·用户2026-07-12恢复)
 	var gs = get_node_or_null("/root/GameState")
 	if gs != null: gs.set("dual_active", false)   # 清双路态
-	get_tree().change_scene_to_file("res://scenes/RealtimeBattle3D.tscn")
+	SceneNav.go(get_tree(), "res://scenes/RealtimeBattle3D.tscn")
 
 
 ## ESC 返回主菜单 (原来只能点左上角箭头)
@@ -1568,7 +1568,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _confirm_layer != null and is_instance_valid(_confirm_layer):
 			_confirm_layer.queue_free()   # 确认框开着 → ESC 先取消
 			return
-		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+		SceneNav.go(get_tree(), "res://scenes/MainMenu.tscn")
 
 
 ## 显示: 窗口 / 全屏(分段钮「显示」那一行调它)。

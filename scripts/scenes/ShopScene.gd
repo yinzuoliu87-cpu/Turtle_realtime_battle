@@ -283,7 +283,7 @@ func _build_locked() -> void:
 	_top_bar = TopBar.new(self, {
 		"palette": TopBar.WOOD,   # 2026-10-18 整页重做: 场景是木头货铺, 顶栏跟着木色
 		"width": W,
-		"on_back": func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"),
+		"on_back": func(): SceneNav.go(get_tree(), "res://scenes/MainMenu.tscn"),
 	})
 	# ★上锁屏也要套设计框 —— _ready 在这条分支上是 `_build_locked(); return`,
 	#   末尾那句 UIFrame.attach 【根本走不到】。我第一版就漏了这条路径, 于是量出来
@@ -383,7 +383,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _dismiss_popups():
 			get_viewport().set_input_as_handled()
 			return
-		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+		SceneNav.go(get_tree(), "res://scenes/MainMenu.tscn")
 
 
 ## 收起本屏弹出的东西(说明卡 / 出货概率 / 小木斧待选那张)。收了返回 true, 什么都没开着返回 false。
@@ -517,7 +517,7 @@ func _rebuild() -> void:
 		"width": W,
 		"safe_left": _sm.x,
 		"safe_right": _sm.z,
-		"on_back": func(): get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"),
+		"on_back": func(): SceneNav.go(get_tree(), "res://scenes/MainMenu.tscn"),
 		## 左上「← | 商店 | 背包」一对页签, 当前页那一签亮着(用户 2026-10-22「左上角返回，商店，背包你到底打算怎么设计啊」;
 		##   与背包页同一对)。「背包」那一签是教程锚点(tutorial_keep / E5「点击背包」) —— 别再按 action_btns[0] 取, 见 _bag_tab()。
 		"left_actions": [["商店", func() -> void: pass, {"active": true}], ["背包", _go_inventory, {"tutorial_keep": true}]],
@@ -1513,9 +1513,9 @@ func _go_inventory() -> void:
 	var td = get_node_or_null("/root/TutorialDirector")
 	if td != null and td.is_active():
 		td.notify("shop_to_bag")
-		get_tree().change_scene_to_file(td.next_scene_after("shop"))
+		SceneNav.go(get_tree(), td.next_scene_after("shop"))
 		return
-	get_tree().change_scene_to_file("res://scenes/Inventory.tscn")
+	SceneNav.go(get_tree(), "res://scenes/Inventory.tscn")
 
 
 const TUT_SKIP_W := 132.0

@@ -708,7 +708,7 @@ func _edit_load_setup() -> void:
 func _edit_exit_to_menu() -> void:
 	Engine.time_scale = 1.0
 	battle.DEBUG_EDIT = false
-	battle.get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+	SceneNav.go(battle.get_tree(), "res://scenes/MainMenu.tscn")
 
 # ============================================================================
 #  DEV 自截图 (SELFSHOT=<秒>): 等战斗跑起来 + frame_post_draw 保证入帧缓冲

@@ -7814,7 +7814,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if OS.has_environment("VFXLAB"):
 				get_tree().quit()
 				return
-			get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+			SceneNav.go(get_tree(), "res://scenes/MainMenu.tscn")
 		return
 	# 普通战斗模式: 点战场单位 (立绘头顶 unproject 命中) → 弹详情面板; 框上的点击由框自己的 gui_input 接.
 	if not DEBUG_EDIT or not _edit_mode:
