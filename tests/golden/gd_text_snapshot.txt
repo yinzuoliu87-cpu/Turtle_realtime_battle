@@ -129,6 +129,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|双穿 +#
 scripts/gamedata/equip_tier_labels.gd|lit|反伤阈值 # 点
 scripts/gamedata/equip_tier_labels.gd|lit|反击伤害 # 点
 scripts/gamedata/equip_tier_labels.gd|lit|召唤所需层数 # 层
+scripts/gamedata/equip_tier_labels.gd|lit|命中次数 #
 scripts/gamedata/equip_tier_labels.gd|lit|回复 #
 scripts/gamedata/equip_tier_labels.gd|lit|回复 # 生命值
 scripts/gamedata/equip_tier_labels.gd|lit|回复 #% 已损失生命值
@@ -152,6 +153,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|奶油护盾 #% 最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|子弹数 # 发
 scripts/gamedata/equip_tier_labels.gd|lit|孵化护盾 # 点
 scripts/gamedata/equip_tier_labels.gd|lit|射线伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|射线基础伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|射线所需攻击 # 次
 scripts/gamedata/equip_tier_labels.gd|lit|小手枪攻击力 #
 scripts/gamedata/equip_tier_labels.gd|lit|小手枪生命值 #
@@ -239,7 +241,6 @@ scripts/gamedata/equip_tier_labels.gd|lit|生命偷取 #%
 scripts/gamedata/equip_tier_labels.gd|lit|生长充能 # 次
 scripts/gamedata/equip_tier_labels.gd|lit|电击伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|电击层数 # 层
-scripts/gamedata/equip_tier_labels.gd|lit|目标数 # 个
 scripts/gamedata/equip_tier_labels.gd|lit|目标数 # 名
 scripts/gamedata/equip_tier_labels.gd|lit|真实伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|真实伤害 # 点
@@ -274,6 +275,7 @@ scripts/gamedata/equip_tier_labels.gd|lit|金弹间隔 # 次
 scripts/gamedata/equip_tier_labels.gd|lit|附带伤害 #
 scripts/gamedata/equip_tier_labels.gd|lit|霰弹伤害加成 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|霰弹基础伤害 #
+scripts/gamedata/equip_tier_labels.gd|lit|额外伤害 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|额外伤害 #% 目标最大生命值
 scripts/gamedata/equip_tier_labels.gd|lit|额外攻击力 #% 攻击力
 scripts/gamedata/equip_tier_labels.gd|lit|骷髅攻击力 #
