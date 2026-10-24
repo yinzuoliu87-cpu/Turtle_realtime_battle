@@ -1,0 +1,3 @@
+140:  FAIL  verify_ui_consistency  (rc=1, 致命报错=0)
+141:          [FAIL] Shop 文字压边带 ≤ 0  实测 10 ["图<Price|73x67>+20", "图<Price|73x67>+20", "图<Price|73x67>+20", "图<Price|73x67>+20"]
+243:FAIL x1  (PASS 209)

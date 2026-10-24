@@ -1,0 +1,231 @@
+Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org
+
+[DataRegistry] Loading PoC data → res://data/*.json
+[DataRegistry] ✓ loaded: 28 pets, 8 equipment, 25 status
+[Audio] QUIET=1 ⇒ 主总线已静音(mute=true, -80 dB)
+=== 全屏 UI 一致性棘轮 ===
+  [PASS] ★分母 MainMenu: 进这一屏时池注入是干净的(上一屏漏清 = 后面全在量假池)  残留 0 桶
+  [PASS] ★分母 MainMenu: 进这一屏时撑合缝是还原的(static, 漏还原会波及后面每一屏)  注入还在 = 撑合屏从此永不跳场
+    [落位] MainMenu: 已静止
+  [PASS] ★分母 MainMenu: 真的建起来了  可见控件 109 (下限 20)
+  [PASS] MainMenu 网页盒 ≤ 0  实测 0
+  [PASS] MainMenu 圆角盒 ≤ 0  实测 0
+  [PASS] MainMenu 热区不足(短边<44pt) ≤ 0  实测 0 []
+  [PASS] MainMenu 文字压边带 ≤ 0  实测 0 []
+  [PASS] ★分母 Inventory: 进这一屏时池注入是干净的(上一屏漏清 = 后面全在量假池)  残留 0 桶
+  [PASS] ★分母 Inventory: 进这一屏时撑合缝是还原的(static, 漏还原会波及后面每一屏)  注入还在 = 撑合屏从此永不跳场
+    [落位] Inventory: 已静止
+  [PASS] ★分母 Inventory: 真的建起来了  可见控件 215 (下限 120)
+  [PASS] Inventory 网页盒 ≤ 10  实测 0
+  [PASS] Inventory 圆角盒 ≤ 19  实测 18
+  [PASS] Inventory 热区不足(短边<44pt) ≤ 11  实测 0 []
+  [PASS] Inventory 文字压边带 ≤ 0  实测 0 []
+  [PASS] ★分母 Codex: 进这一屏时池注入是干净的(上一屏漏清 = 后面全在量假池)  残留 0 桶
+  [PASS] ★分母 Codex: 进这一屏时撑合缝是还原的(static, 漏还原会波及后面每一屏)  注入还在 = 撑合屏从此永不跳场
+    [落位] Codex: 仍有常驻动效(入场已过, 照量)
+  [PASS] ★分母 Codex: 真的建起来了  可见控件 416 (下限 120)
+  [PASS] Codex 网页盒 ≤ 0  实测 0
+  [PASS] Codex 圆角盒 ≤ 0  实测 0
+  [PASS] Codex 热区不足(短边<44pt) ≤ 0  实测 0 []
+  [PASS] Codex 文字压边带 ≤ 0  实测 0 []
+  [PASS] ★分母 TeamSelect: 进这一屏时池注入是干净的(上一屏漏清 = 后面全在量假池)  残留 0 桶
+  [PASS] ★分母 TeamSelect: 进这一屏时撑合缝是还原的(static, 漏还原会波及后面每一屏)  注入还在 = 撑合屏从此永不跳场
+    [落位] TeamSelect: 已静止
+  [PASS] ★分母 TeamSelect: 真的建起来了  可见控件 458 (下限 150)
+  [PASS] TeamSelect 网页盒 ≤ 0  实测 0
+  [PASS] TeamSelect 圆角盒 ≤ 32  实测 28
+  [PASS] TeamSelect 热区不足(短边<44pt) ≤ 1  实测 1 ["179x44 PanelContainer"]
+  [PASS] TeamSelect 文字压边带 ≤ 0  实测 0 []
+  [PASS] ★分母 Shop: 进这一屏时池注入是干净的(上一屏漏清 = 后面全在量假池)  残留 0 桶
+  [PASS] ★分母 Shop: 进这一屏时撑合缝是还原的(static, 漏还原会波及后面每一屏)  注入还在 = 撑合屏从此永不跳场
+    [落位] Shop: 仍有常驻动效(入场已过, 照量)
+  [PASS] ★分母 Shop: 真的建起来了  可见控件 138 (下限 60)
+  [PASS] Shop 网页盒 ≤ 0  实测 0
+  [PASS] Shop 圆角盒 ≤ 0  实测 0
+  [PASS] Shop 热区不足(短边<44pt) ≤ 0  实测 0 []
+  [FAIL] Shop 文字压边带 ≤ 0  实测 10 ["图<Price|73x67>+20", "图<Price|73x67>+20", "图<Price|73x67>+20", "图<Price|73x67>+20"]
+  [PASS] ★分母 Settings: 进这一屏时池注入是干净的(上一屏漏清 = 后面全在量假池)  残留 0 桶
+  [PASS] ★分母 Settings: 进这一屏时撑合缝是还原的(static, 漏还原会波及后面每一屏)  注入还在 = 撑合屏从此永不跳场
+    [落位] Settings: 仍有常驻动效(入场已过, 照量)
+  [PASS] ★分母 Settings: 真的建起来了  可见控件 53 (下限 10)
+  [PASS] Settings 网页盒 ≤ 0  实测 0
+  [PASS] Settings 圆角盒 ≤ 0  实测 0
+  [PASS] Settings 热区不足(短边<44pt) ≤ 0  实测 0 []
+  [PASS] Settings 文字压边带 ≤ 0  实测 0 []
+  [PASS] ★分母 Record: 进这一屏时池注入是干净的(上一屏漏清 = 后面全在量假池)  残留 0 桶
+  [PASS] ★分母 Record: 进这一屏时撑合缝是还原的(static, 漏还原会波及后面每一屏)  注入还在 = 撑合屏从此永不跳场
+    [落位] Record: 仍有常驻动效(入场已过, 照量)
+  [PASS] ★分母 Record: 真的建起来了  可见控件 210 (下限 80)
+  [PASS] ★分母 Record: 「回放」入口真的在屏幕上(1 个)  
+  [PASS] Record 网页盒 ≤ 0  实测 0
+  [PASS] Record 圆角盒 ≤ 0  实测 0
+  [PASS] Record 热区不足(短边<44pt) ≤ 0  实测 0 []
+  [PASS] Record 文字压边带 ≤ 0  实测 0 []
+  [PASS] ★分母 登录墙: 进这一屏时池注入是干净的(上一屏漏清 = 后面全在量假池)  残留 0 桶
+  [PASS] ★分母 登录墙: 进这一屏时撑合缝是还原的(static, 漏还原会波及后面每一屏)  注入还在 = 撑合屏从此永不跳场
+    [落位] 登录墙: 已静止
+  [PASS] ★分母 登录墙: 真的建起来了  可见控件 16 (下限 10)
+  [PASS] ★★分母 登录墙: 墙那句话「绑定邮箱 · 跨设备同步进度」真的在屏幕上  找不到 = 量的是另一块屏(控件数挡不住这一类)
+  [PASS] 登录墙 网页盒 ≤ 0  实测 0
+  [PASS] 登录墙 圆角盒 ≤ 0  实测 0
+  [PASS] 登录墙 热区不足(短边<44pt) ≤ 0  实测 0 []
+  [PASS] 登录墙 文字压边带 ≤ 0  实测 0 []
+  [PASS] ★分母 BracketMap: 进这一屏时池注入是干净的(上一屏漏清 = 后面全在量假池)  残留 0 桶
+  [PASS] ★分母 BracketMap: 进这一屏时撑合缝是还原的(static, 漏还原会波及后面每一屏)  注入还在 = 撑合屏从此永不跳场
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+     at: _set_size (scene/gui/control.cpp:1487)
+     GDScript backtrace (most recent call first):
+         [0] _ready (res://scripts/scenes/BracketMapScene.gd:173)
+         [1] _ready (res://tests/verify_ui_consistency.gd:1551)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+     at: _set_size (scene/gui/control.cpp:1487)
+     GDScript backtrace (most recent call first):
+         [0] _rebuild (res://scripts/scenes/BracketMapScene.gd:750)
+         [1] _ready (res://scripts/scenes/BracketMapScene.gd:304)
+         [2] _ready (res://tests/verify_ui_consistency.gd:1551)
+    [落位] BracketMap: 已静止
+  [PASS] ★分母 BracketMap: 真的建起来了  可见控件 136 (下限 40)
+  [PASS] BracketMap 网页盒 ≤ 0  实测 0
+  [PASS] BracketMap 圆角盒 ≤ 0  实测 0
+  [PASS] BracketMap 热区不足(短边<44pt) ≤ 0  实测 0 []
+  [PASS] BracketMap 文字压边带 ≤ 0  实测 0 []
+  [PASS] ★分母 Leaderboard: 进这一屏时池注入是干净的(上一屏漏清 = 后面全在量假池)  残留 0 桶
+  [PASS] ★分母 Leaderboard: 进这一屏时撑合缝是还原的(static, 漏还原会波及后面每一屏)  注入还在 = 撑合屏从此永不跳场
+  [PASS] ★分母 Leaderboard: 种子脚本 `_setup_lb_rows` 跑得起来(跑不起来 = 量占位屏)  
+[LBSEED] 注入 14 条真人快照(场次 7)
+[LB] src=local rows=15 total=15 list=15 me=15
+    [落位] Leaderboard: 仍有常驻动效(入场已过, 照量)
+  [PASS] ★分母 Leaderboard: 真的建起来了  可见控件 136 (下限 30)
+  [PASS] Leaderboard 网页盒 ≤ 0  实测 0
+  [PASS] Leaderboard 圆角盒 ≤ 0  实测 0
+  [PASS] Leaderboard 热区不足(短边<44pt) ≤ 0  实测 0 []
+  [PASS] Leaderboard 文字压边带 ≤ 0  实测 0 []
+  [PASS] ★分母 Matchmaking: 进这一屏时池注入是干净的(上一屏漏清 = 后面全在量假池)  残留 0 桶
+  [PASS] ★分母 Matchmaking: 进这一屏时撑合缝是还原的(static, 漏还原会波及后面每一屏)  注入还在 = 撑合屏从此永不跳场
+  [PASS] ★★分母 Matchmaking: 对手卡真的建出来了(不等它 = 在量「正在找对手」那块占位屏)  对手名「yq2003」
+    [落位] Matchmaking: 已静止
+  [PASS] ★★★探子 Matchmaking: 四列各塞一个假违规, 判据四条都逮得到  web 0→1  round 0→1  tap 0→1  frame 0→1 (各应 +1) ["探子压边带+11"]
+  [PASS] ★★★探子 Matchmaking: 摸掉之后逐个复原(不复原就把本屏基线污染了)  web 0/0 round 0/0 ctrl 20/20 tap 0/0 frame 0/0
+  [PASS] ★分母 Matchmaking: 真的建起来了  可见控件 20 (下限 18)
+  [PASS] Matchmaking 网页盒 ≤ 0  实测 0
+  [PASS] Matchmaking 圆角盒 ≤ 0  实测 0
+  [PASS] Matchmaking 热区不足(短边<44pt) ≤ 0  实测 0 []
+  [PASS] Matchmaking 文字压边带 ≤ 0  实测 0 []
+  [PASS] ★★分母 Matchmaking: 缝真的被走到了(= 不注入的话此刻正在 change_scene_to_file)  回调 1 次
+  [PASS] ★★分母 Matchmaking: 缝没改「跳去哪」(目标仍是战斗场景)  目标 res://scenes/RealtimeBattle3D.tscn
+  [PASS] ★★分母 Matchmaking: 缝真的拦住了(实例还在树里 + current_scene 还是门禁自己)  in_tree=true current_scene=true
+  [PASS] ★分母 TrainerConfig: 进这一屏时池注入是干净的(上一屏漏清 = 后面全在量假池)  残留 0 桶
+  [PASS] ★分母 TrainerConfig: 进这一屏时撑合缝是还原的(static, 漏还原会波及后面每一屏)  注入还在 = 撑合屏从此永不跳场
+    [落位] TrainerConfig: 仍有常驻动效(入场已过, 照量)
+  [PASS] ★分母 TrainerConfig: 真的建起来了  可见控件 65 (下限 50)
+  [PASS] TrainerConfig 网页盒 ≤ 0  实测 0
+  [PASS] TrainerConfig 圆角盒 ≤ 1  实测 0
+  [PASS] TrainerConfig 热区不足(短边<44pt) ≤ 0  实测 0 []
+  [PASS] TrainerConfig 文字压边带 ≤ 0  实测 0 []
+  ── 判据自检: `_interactive()` 认得哪几类节点 ──
+  [PASS] 自检 ①`Range`(滑条)算交互控件  改判据之前它不算 ⇒ 滑条的热区/死点击从没被量过
+  [PASS] 自检 ②`LineEdit` 算交互控件  
+  [PASS] 自检 ③`TextEdit` 算交互控件  
+  [PASS] 自检 ④`Button` 仍然算(没改坏老口径)  
+  [PASS] 自检 ⑤裸 `Control`+MOUSE_FILTER_STOP **不**算交互控件  它确实能吃点击, 但 Panel/ColorRect 默认就是 STOP ⇒ 收了满屏噪音。规模走 mfstop 分母
+  [PASS] 自检 ⑥MOUSE_FILTER_IGNORE 的 `Label` 不算  
+  [PASS] 自检 ⑦分母: 裸 `RichTextLabel` 进树后 gui_input 上真有引擎接的那条(1 条)  0 条 ⇒ 下面那条是空检查
+  [PASS] 自检 ⑦裸 `RichTextLabel` **不**算交互控件(引擎内部滚动条接的那条不算)  算了的话每个 RTL 文字都会被报「热区不足/死点击」—— 假违规压死真违规
+  [PASS] 自检 ⑧但**外面真接了** gui_input 的 `RichTextLabel` 仍然算(没把整类一刀排掉)  
+  ── 判据自检②: 「压边带」配对认得哪种关系 ──
+  [PASS] 自检⑦ 配对自检的素材在位(panel-frame/btn-frame 都能加载)  贴图缺一张 ⇒ 下面三条全是空检查
+  [PASS] 自检⑦a 框是字的【祖先】时逮得到  实测 ["压边带自检·祖先+13"]
+  [PASS] 自检⑦b 框与字是【同父兄弟】时逮得到  实测 ["压边带自检兄弟关系一二三四五+25"] —— 红了 = 设置屏那三块木牌按钮的压边带从此没人查
+  [PASS] 自检⑦c 【跨层】重叠时不配对(弹框盖在页面上那个形状)  实测 [] —— 绿不了 = 跨层假违规还在(设置屏那三条就是这么来的)
+  ── 第二节【按了才建出来】(静止页扫不到的界面) ──
+  [PASS] ★分母 弹层 主菜单·教程确认弹窗: 产品自己的入口催得出来  催不出来 = 接口改名/前置不成立 ⇒ 这一条从此是空检查
+  [PASS] ★★★探子 弹层 主菜单·教程确认弹窗: 往它里头塞一个假网页盒, 判据逮得到  塞进去 web 0→1 / round 0→1 (挂在 TutorialChoice 上) —— 逮不到 = 判据没作用在这一层, 下面全是恒绿
+  [PASS] ★★分母 弹层 主菜单·教程确认弹窗: 真的建起来了(新增可见控件 ≥ 6)  新增 7 个(开之前 109 → 开之后 116)
+  [PASS] 弹层 主菜单·教程确认弹窗 网页盒 ≤ 0  增量 0 (页面基态 0)
+  [PASS] 弹层 主菜单·教程确认弹窗 圆角盒 ≤ 0  增量 0 (页面基态 0)
+  [PASS] 弹层 主菜单·教程确认弹窗 热区不足(短边<44pt) ≤ 0  增量 0 []
+  [PASS] 弹层 主菜单·教程确认弹窗 文字压边带 ≤ 0  增量 0 []
+  [PASS] 弹层 主菜单·教程确认弹窗 Godot 默认皮按钮 ≤ 0  增量 0 []
+  [PASS] ★分母 弹层 背包·糖果罐操作栏: 产品自己的入口催得出来  催不出来 = 接口改名/前置不成立 ⇒ 这一条从此是空检查
+  [PASS] ★★★探子 弹层 背包·糖果罐操作栏: 往它里头塞一个假网页盒, 判据逮得到  塞进去 web 0→1 / round 18→19 (挂在 @ColorRect@2092 上) —— 逮不到 = 判据没作用在这一层, 下面全是恒绿
+  [PASS] ★★分母 弹层 背包·糖果罐操作栏: 真的建起来了(屏上找得到「打碎」)  找不到 = 它没被建出来, 而下面几条会变成永远绿的空检查
+  [PASS] ★分母 弹层 背包·糖果罐操作栏: 整页真的重建过(控件数变了)  开之前 215 → 开之后 227
+  [PASS] 弹层 背包·糖果罐操作栏 网页盒 ≤ 10  实测 0 (页面基态 0)
+  [PASS] 弹层 背包·糖果罐操作栏 圆角盒 ≤ 18  实测 18 (页面基态 18)
+  [PASS] 弹层 背包·糖果罐操作栏 热区不足(短边<44pt) ≤ 13  实测 0 []
+  [PASS] 弹层 背包·糖果罐操作栏 文字压边带 ≤ 0  实测 0 []
+  [PASS] 弹层 背包·糖果罐操作栏 Godot 默认皮按钮 ≤ 0  实测 0 []
+  [PASS] ★分母 弹层 背包·羁绊详情弹框: 产品自己的入口催得出来  催不出来 = 接口改名/前置不成立 ⇒ 这一条从此是空检查
+  [PASS] ★★★探子 弹层 背包·羁绊详情弹框: 往它里头塞一个假网页盒, 判据逮得到  塞进去 web 0→1 / round 18→19 (挂在 @ColorRect@2429 上) —— 逮不到 = 判据没作用在这一层, 下面全是恒绿
+  [PASS] ★★分母 弹层 背包·羁绊详情弹框: 真的建起来了(新增可见控件 ≥ 5)  新增 6 个(开之前 215 → 开之后 221)
+  [PASS] 弹层 背包·羁绊详情弹框 网页盒 ≤ 0  增量 0 (页面基态 0)
+  [PASS] 弹层 背包·羁绊详情弹框 圆角盒 ≤ 0  增量 0 (页面基态 18)
+  [PASS] 弹层 背包·羁绊详情弹框 热区不足(短边<44pt) ≤ 1  增量 0 []
+  [PASS] 弹层 背包·羁绊详情弹框 文字压边带 ≤ 0  增量 0 []
+  [PASS] 弹层 背包·羁绊详情弹框 Godot 默认皮按钮 ≤ 0  增量 0 []
+  [PASS] ★分母 弹层 背包·糖果罐领奖弹框: 产品自己的入口催得出来  催不出来 = 接口改名/前置不成立 ⇒ 这一条从此是空检查
+  [PASS] ★★★探子 弹层 背包·糖果罐领奖弹框: 往它里头塞一个假网页盒, 判据逮得到  塞进去 web 0→1 / round 18→19 (挂在 @ColorRect@2600 上) —— 逮不到 = 判据没作用在这一层, 下面全是恒绿
+  [PASS] ★★分母 弹层 背包·糖果罐领奖弹框: 真的建起来了(新增可见控件 ≥ 5)  新增 9 个(开之前 215 → 开之后 224)
+  [PASS] 弹层 背包·糖果罐领奖弹框 网页盒 ≤ 0  增量 0 (页面基态 0)
+  [PASS] 弹层 背包·糖果罐领奖弹框 圆角盒 ≤ 0  增量 0 (页面基态 18)
+  [PASS] 弹层 背包·糖果罐领奖弹框 热区不足(短边<44pt) ≤ 1  增量 1 ["120x44 Button"]
+  [PASS] 弹层 背包·糖果罐领奖弹框 文字压边带 ≤ 1  增量 0 []
+  [PASS] 弹层 背包·糖果罐领奖弹框 Godot 默认皮按钮 ≤ 0  增量 0 []
+  [PASS] ★分母 弹层 设置·存档冲突框: 产品自己的入口催得出来  催不出来 = 接口改名/前置不成立 ⇒ 这一条从此是空检查
+  [PASS] ★★★探子 弹层 设置·存档冲突框: 往它里头塞一个假网页盒, 判据逮得到  塞进去 web 0→1 / round 0→1 (挂在 @ColorRect@2655 上) —— 逮不到 = 判据没作用在这一层, 下面全是恒绿
+  [PASS] ★★分母 弹层 设置·存档冲突框: 真的建起来了(新增可见控件 ≥ 6)  新增 9 个(开之前 53 → 开之后 62)
+  [PASS] 弹层 设置·存档冲突框 网页盒 ≤ 0  增量 0 (页面基态 0)
+  [PASS] 弹层 设置·存档冲突框 圆角盒 ≤ 0  增量 0 (页面基态 0)
+  [PASS] 弹层 设置·存档冲突框 热区不足(短边<44pt) ≤ 0  增量 0 []
+  [PASS] 弹层 设置·存档冲突框 文字压边带 ≤ 0  增量 0 []
+  [PASS] 弹层 设置·存档冲突框 Godot 默认皮按钮 ≤ 0  增量 0 []
+  [PASS] ★分母 弹层 设置·重置确认框: 产品自己的入口催得出来  催不出来 = 接口改名/前置不成立 ⇒ 这一条从此是空检查
+  [PASS] ★★★探子 弹层 设置·重置确认框: 往它里头塞一个假网页盒, 判据逮得到  塞进去 web 0→1 / round 0→1 (挂在 @ColorRect@2710 上) —— 逮不到 = 判据没作用在这一层, 下面全是恒绿
+  [PASS] ★★分母 弹层 设置·重置确认框: 真的建起来了(新增可见控件 ≥ 5)  新增 6 个(开之前 53 → 开之后 59)
+  [PASS] 弹层 设置·重置确认框 网页盒 ≤ 0  增量 0 (页面基态 0)
+  [PASS] 弹层 设置·重置确认框 圆角盒 ≤ 0  增量 0 (页面基态 0)
+  [PASS] 弹层 设置·重置确认框 热区不足(短边<44pt) ≤ 0  增量 0 []
+  [PASS] 弹层 设置·重置确认框 文字压边带 ≤ 0  增量 0 []
+  [PASS] 弹层 设置·重置确认框 Godot 默认皮按钮 ≤ 0  增量 0 []
+    [刻意保留·带理由] 3 条(不是欠账, 别去「修」它们):
+       Inventory/26px 迷你装备格 r=3 —— 换槽框会让费用色从整块实心退化成一圈细边, 而那块实心色就是信息(2026-08-18 实拍退回)
+       Inventory/22px 羁绊赠送徽章 r=3 —— 同上(同一批实拍对比)
+       TeamSelect/28 个正圆头像遮罩 —— 正圆不是 border-radius 那味(用户点名的是圆角矩形)
+  ── ★★CURSOR_SCALE: 光标相对 UI 的大小 ──
+  [PASS] ★分母 CURSOR_SCALE: 读得到 CursorTheme.gd  
+  [PASS] ★★CURSOR_SCALE: 无头下 `_ready` 没建爪子(平台早退真的挡住了建树)  _cur=<null> _enabled=false
+  [PASS] ★★CURSOR_SCALE: 手机(Android/iOS)不建自绘光标 ⇒ 这只爪子只存在于桌面  早退没了 = 手机上会残留一只绿龟爪(用户 2026-07-18)
+  [PASS] ★分母 CURSOR_SCALE: 手动建树之后爪子在场(不在场 ⇒ 下面全是空检查)  _cur=@Control@2720:<Control#942409780258> _g=@TextureRect@2719:<TextureRect#942376225802>
+  [PASS] ★★CURSOR_SCALE: 爪子控件框 = ART(24) —— 不是被上调到贴图尺寸的 48  _g.size=(24.0, 24.0) _glow.size=(24.0, 24.0) 贴图=(48.0, 48.0)
+  [PASS] ★★CURSOR_SCALE: 爪尖真的落在鼠标点上(热点偏移 = 0)  偏移 (0.0, 0.0) (控件框胀大时实测 (11,1))
+    [实测] 窗口 2560x1440  cf=2.0000  设计px=24.0 (占触控下限 30%)  物理px=48.0
+    [实测] 窗口 1920x1080  cf=1.5000  设计px=24.0 (占触控下限 30%)  物理px=36.0
+    [实测] 窗口 1280x720  cf=1.0000  设计px=24.0 (占触控下限 30%)  物理px=24.0
+    [实测] 窗口 800x600  cf=0.6250  设计px=24.0 (占触控下限 30%)  物理px=15.0
+    [实测] 窗口 640x360  cf=0.5000  设计px=24.0 (占触控下限 30%)  物理px=12.0
+    [实测] 窗口 624x351  cf=0.4875  设计px=24.0 (占触控下限 30%)  物理px=11.7
+    [分母] 量了 6 个窗口尺寸, cf 区间 0.4875 ~ 2.0000
+  [PASS] ★★分母 CURSOR_SCALE: cf 真的跨了大区间(≤0.55 到 ≥1.5), 否则下面那条恒真  n=6 cf 0.4875~2.0000
+  [PASS] ★★★CURSOR_SCALE: 爪子相对 UI 的大小不随窗口变(设计px 最大/最小 ≤ 1.02)  设计px 24.0 ~ 24.0 ⇒ 1.00 倍(两个 bug 都在时实测 24~96 = 4.00 倍)
+  [PASS] ★★CURSOR_SCALE: 爪子高度 ≤ 触控下限的 40%(=32.4 设计px)  实测最大 24.0 设计px = 触控下限的 30%
+  [PASS] ★★CURSOR_SCALE: 物理像素跟着窗口走(≥3 倍跨度) ⇒ 它和场上别的像素同比例  物理px 11.7 ~ 48.0 ⇒ 4.10 倍
+  [PASS] ★CURSOR_SCALE: `_process` 不再用内容缩放因子给爪子定尺寸(没有 clamp 下界可撒谎)  _process 里还在读 get_screen_transform ⇒ 又把爪子钉回物理像素了
+  ── 全屏合计 ──
+    [盲区分母] 非 BaseButton 却能吃鼠标事件(MOUSE_FILTER_STOP/PASS)的控件: 265 个
+      —— 这个数是「判据只认某类节点」那条失明的**规模**。`_interactive()` 现在收了
+         Range/LineEdit/TextEdit/接了 gui_input 的, 剩下这 265 个里绝大多数是
+         Panel/ColorRect 这类**默认就 STOP** 的容器(不是交互点), 所以只打印不判红。
+  [PASS] ★分母: 盲区分母本身要量得到(>0 说明这条统计真的在跑)  265 个
+  [PASS] ★分母: 扫到的可见控件 ≥ 500  1972 个
+  [PASS] ★分母: 扫到的按钮 ≥ 25  65 个
+  [PASS] ★分母: 扫到的带字标签 ≥ 120  432 个
+  [PASS] 没有【还用 Godot 默认皮】的按钮  []
+  [PASS] 没有【收不到点击】的交互控件  []
+  [PASS] 没有【被 clip_text 截断】的文字  []
+  [PASS] 没有【被挤成 <6px】的文字  []
+  [PASS] 没有【边距和 ≥ 尺寸】的退化九宫格  []
+  [PASS] 没有【行数装不下】的文字  []
+  [PASS] 没有【两段文字压在一起】  []
+  176 passed, 1 failed

@@ -1,0 +1,737 @@
+========== 门禁分片 1/4 ==========
+=== 自证测试 (自动发现 tests/verify_*.gd) ===
+  分片 1/4: 全套 570 个里跑这 142 个
+  PASS  verify_apply_damage_args
+  PASS  verify_arena_themes
+  PASS  verify_armor_compensation
+  PASS  verify_attack_commit
+  PASS  verify_axe_finals
+  PASS  verify_axe_orphan
+  PASS  verify_axe_vs_original
+  PASS  verify_barnacle_line
+  PASS  verify_batch10_misc
+  PASS  verify_battle_determinism
+  PASS  verify_battle_seed
+  PASS  verify_boot_season_clock
+  PASS  verify_bot_snapshot_shape
+  PASS  verify_bracket_layout
+  PASS  verify_brief_dedup
+  PASS  verify_cam_pan
+  PASS  verify_card_buttons
+  PASS  verify_chest_treasures
+  PASS  verify_close_lockout
+  PASS  verify_codex_beta_layout
+  PASS  verify_codex_browse
+  PASS  verify_codex_stat_blocks
+  PASS  verify_codex_text
+  PASS  verify_contact_email
+  PASS  verify_copy_no_lock
+  PASS  verify_crystal_sweep_031
+  PASS  verify_cursor_pause
+  PASS  verify_damage_math
+  PASS  verify_debug_equip_pick
+  PASS  verify_debug_no_season
+  PASS  verify_determinism_cross
+  PASS  verify_determinism_ulp_replay
+  PASS  verify_dmg_paths_agree
+  PASS  verify_dot_mitigation
+  PASS  verify_drain_stream
+  PASS  verify_elite_anim
+  PASS  verify_eq002_chili
+  PASS  verify_eq_arcane_batch
+  PASS  verify_eq_gun_batch
+  PASS  verify_eq_hp_grants
+  PASS  verify_eq_relic_batch
+  PASS  verify_eq_wide_blade
+  PASS  verify_equip_040_045
+  PASS  verify_equip_balance_20260730d
+  PASS  verify_equip_batch_20260801
+  PASS  verify_equip_cap
+  PASS  verify_equip_full_hint
+  PASS  verify_equip_slot_tap
+  PASS  verify_equip_text_bb
+  PASS  verify_equip_vfx_clock
+  PASS  verify_execution_vfx
+  PASS  verify_far_terrain
+  PASS  verify_finals_score
+  PASS  verify_first_battle_tips
+  PASS  verify_first_tips
+  PASS  verify_fish_dir
+  PASS  verify_fortress_harden
+  PASS  verify_gate_isolation
+  PASS  verify_gauntlet_server_pick
+  PASS  verify_ghost_loadouts
+  PASS  verify_glossary
+  PASS  verify_gremlin_atk_survives
+  PASS  verify_headless_rage
+  PASS  verify_heli_approach
+  PASS  verify_holy_shield_vfx
+  PASS  verify_hp_ticks
+  PASS  verify_ice_vial
+  PASS  verify_incense_stone_real
+  PASS  verify_ink_link_identity
+  PASS  verify_interactive_determinism
+  PASS  verify_inventory_treasure_map
+  PASS  verify_item10_numbers
+  PASS  verify_knock_paths_agree
+  PASS  verify_leaderboard_header
+  PASS  verify_leaderboard_sort
+  PASS  verify_line_band_vfx
+  PASS  verify_live_spectate
+  PASS  verify_mainmenu_layout
+  PASS  verify_map_geometry
+  PASS  verify_menu_toast
+  PASS  verify_minion_abort_fall
+  PASS  verify_minion_text_single_source
+  PASS  verify_mvp_trainer_avatar
+  PASS  verify_nickname
+  PASS  verify_ninja_shuriken
+  PASS  verify_onhit_order_independent
+  PASS  verify_panel_stats_onscreen
+  PASS  verify_pirate_hook
+  PASS  verify_pirate_shot_knock_immune
+  PASS  verify_pk_bar_continuity
+  PASS  verify_quiet_mute
+  PASS  verify_record_reltime
+  PASS  verify_referee_wait_timeout
+  PASS  verify_remote_pool
+  PASS  verify_report_block
+  PASS  verify_rock_wave_reach
+  PASS  verify_save_sync
+  PASS  verify_screen_flash_lane_clear
+  PASS  verify_seed_battles_gear
+  PASS  verify_session_refresh
+  PASS  verify_shield_absorb
+  PASS  verify_shop_card_tiers
+  PASS  verify_shop_inv_phone
+  PASS  verify_shop_lock
+  PASS  verify_shrink_dr_additive
+  PASS  verify_skill_dmg_takes_resist
+  PASS  verify_skill_text_color
+  PASS  verify_spirit_dmg_color
+  PASS  verify_star_delta_matches_apply
+  PASS  verify_stone_reflect_stat
+  PASS  verify_stream_coverage_4
+  PASS  verify_stream_hud_parity
+  PASS  verify_stream_referee_paths
+  PASS  verify_stream_size_budget
+  PASS  verify_swordsman
+  PASS  verify_synergy_popup
+  PASS  verify_synergy_vfx_types
+  PASS  verify_talisman_089
+  PASS  verify_target_hp_no_icon
+  PASS  verify_tentacle_relocate
+  PASS  verify_tentacle_vfx
+  PASS  verify_thorn_cut
+  PASS  verify_time_travel
+  PASS  verify_timestop_global_freeze
+  PASS  verify_timezone_pin
+  PASS  verify_trainer
+  PASS  verify_trainer_hunt_tame
+  PASS  verify_trainer_move
+  PASS  verify_trainer_skill_count
+  PASS  verify_true_dmg_shield
+  PASS  verify_turtle_balance_r5
+  PASS  verify_tutorial_anchors
+  PASS  verify_tutorial_battle_short
+  PASS  verify_tutorial_highlight
+  PASS  verify_two_head_anim
+  PASS  verify_two_head_form_art
+  FAIL  verify_ui_consistency  (rc=1, 致命报错=0)
+          [FAIL] Shop 文字压边带 ≤ 0  实测 10 ["图<Price|73x67>+20", "图<Price|73x67>+20", "图<Price|73x67>+20", "图<Price|73x67>+20"]
+        ↳ 完整日志已留在 .gate-fail-verify_ui_consistency.log
+  PASS  verify_unit_scaling
+  PASS  verify_vfxlab_case_config
+  PASS  verify_week_phase_write
+  PASS  verify_week_strip
+  PASS  verify_whistle_wave
+  (发现 142 个测试, 并行度 4)
+  ── 耗时 ──
+  核秒总和 2652s ÷ 并行度 4 ≈ 663s 理论墙钟
+  平均 18677ms/个 · 最慢 12 个:
+    261021ms  verify_tutorial_battle_short
+    227355ms  verify_determinism_ulp_replay
+    182389ms  verify_stream_hud_parity
+    171814ms  verify_stream_coverage_4
+    147032ms  verify_determinism_cross
+    134688ms  verify_stream_size_budget
+    124226ms  verify_stream_referee_paths
+    122047ms  verify_ui_consistency
+     97738ms  verify_seed_battles_gear
+     60526ms  verify_first_battle_tips
+     52538ms  verify_live_spectate
+     45815ms  verify_two_head_anim
+  ── 审计器耗时(并行跑) ──
+  核秒总和 323s · 最慢 5 个:
+     75223ms  zero_caller_audit
+     59168ms  text_claim_audit
+     19365ms  write_orphan_audit
+     19052ms  menu_arena_sync_audit
+     18726ms  asset_orphan_audit
+=== 全流程闪退冒烟 (SHIP=1 真实对局) ===
+  PASS  smoke_scenes (12场景进出×4 + 战斗中途硬释放×3 + 60秒单路战斗 + 90秒双路对局)
+=== 三方一致性对账 ===
+  PASS  tri_audit (差异 0 处)
+=== 只读数据审计 ===
+  PASS  data_integrity (json交叉引用/资源路径/孤儿字段)
+  PASS  copy_lol_style_lint (技能/装备文案体例: 无分号/破折号/口语词/普攻·括号密度≤LoL×1.5)
+  PASS  pixel_art_audit (装备图标必须是真像素画·台账只减不增)
+  PASS  get_meta_null_lint (禁止 get_meta(k, null): 键不存在照样报错·10-13 内测刷进生产报错表)
+  PASS  tooltip_number_audit (装备文案数值 ↔ 代码)
+  PASS  pet_number_audit (龟技能文案数值 ↔ 代码)
+  PASS  brief_detail_audit (龟技能 brief ↔ detail 数值)
+  PASS  passive_number_audit (龟被动文案数值 ↔ 代码)
+  PASS  map_composition_audit (地图构图·战场无void/站位不在水/接战区不亮/与生成器一致)
+  PASS  vfx_ref_match (084 三张特效 ↔ 用户参考图的形态指标 + 像素风)
+  PASS  battle_scene_check (战场实拍 5 条: 中间调/色数/亮部饱和/亮坡比/中带噪声)
+  PASS  workflow_lint (CI 工作流 YAML 语法)
+  PASS  ci_deps_audit (门禁审计器的第三方依赖 ↔ CI 安装清单)
+  PASS  arch_budget (架构预算·不许上帝对象·欠债只减不增)
+  PASS  style_lint (代码风格·全tab/snake_case/PascalCase 焊死)
+  PASS  rng_discipline (裸随机冻结·护确定性不回退)
+  PASS  det_math_lint (sim 路径不许绕过 DetMath 裸调 FMA/libm 数学·跨芯片确定性)
+  PASS  docs_authority_lint (单一事实源纪律·三权威在位/消费链活/README无漂移/无冒名)
+  PASS  server_rule_sync (服务端规则↔客户端事实源·常量/白名单)
+  PASS  server_logic_gate (云函数逻辑·V2往返/V3六类伪造/去重)
+  PASS  referee_poller_selftest (补流只录流不记账·对不上撤流·正常任务优先)
+  PASS  beta_server_selftest (内测服工具链·拒正式服 ref·迁移先内测服同sha·裁判机/Caddy 两套分开)
+  PASS  copy_chain_audit (龟壳复制链路四方一致·可抄数棘轮)
+  PASS  text_formula_audit (文案文字↔它自己的占位符公式)
+  PASS  text_claim_audit (文案声称↔代码实际·触发周期/选靶/作用范围)
+  PASS  plans_lint (方案书生命周期·状态/骨架/实施回填)
+  PASS  plan_stale (方案书 ❌/⏳ 标记过期·做完了就得红)
+  PASS  dead_preload (preload 了却没人用的常量)
+  PASS  zero_caller (写了却没有任何人调的函数)
+  PASS  write_orphan (有读者却没人写真值的字段·battle_seed 那个形状)
+  PASS  const_branch (恒真常量分支 + return 吞掉同函数后续代码)
+  PASS  coroutine_await (门禁里把协程当普通函数调 ⇒ 静默截断断言)
+  PASS  asset_borrow (拿别件的素材顶替 · 铁律「新内容一律新素材」)
+  PASS  asset_orphan (孤儿素材/无消费者json字段·只减不增)
+  PASS  frame_study (逐帧研究的行数/帧号必须对得上声明的帧数)
+  PASS  text_const_orphan_audit (文案指的常量有没有产品代码在读)
+  PASS  const_leftover_audit (抽了常量却还有别处留着裸数字·跨文件判红)
+  PASS  codex_text_lint (图鉴文案: 教学味/自夸/开发备注/别家黑话/数字贴字)
+  PASS  keyword_false_positive (关键词上色不许误伤别的词/专名·如时停止)
+  PASS  copy_style (文案体例: 口语词硬零/「X%生命值」必须写明是谁的/叠满台账只减不增)
+  PASS  ui_tempo (UI 动效节拍·裸时长种类与处数只减不增)
+  PASS  twin_const (同功能的逻辑侧↔演出侧同名常量取值打架)
+  PASS  twin_radius (判定侧↔演出侧【不同名但同值】的范围常量·同一个数存两份)
+  PASS  dup_primitive (共享几何原语被复制到多个文件·按body哈希·棘轮只减不增)
+  PASS  glow_ball (无含义白球 _make_fire_glow_tex 存量台账·只减不增)
+  PASS  nine_downgrade (九宫格静默降级/挑错皮·套了皮但没套上·台账只减不增)
+  PASS  type_tables (装备类型四张平行表键集一致)
+  PASS  number_coverage (玩家文案里没人验的数字·只降不升)
+  PASS  text_golden (玩家文案快照对账·483 段)
+  PASS  text_value_golden (占位符算出来的数·旧值不许消失)
+  PASS  text_const_owner (文案引用的常量必须属于这个主体)
+  PASS  text_prose_guard (文案的文字部分逐字未动)
+  PASS  basestats (装备属性展示串 ↔ EquipStats.STATS·597 个数)
+  PASS  await_guard (协程 await 回来先确认 battle 还活着)
+  PASS  tree_timer (树级计时器不许接闭包·会活过场景释放)
+  PASS  shield_duration (通用护盾=4秒·永久给盾点台账只减不增)
+  PASS  vfx_discipline (像素贴图不许连续缩放 / 不许新增手写生成器 / 新素材要有逐帧研究)
+  PASS  stat_icon (每个属性都有图标 / 色数 / 尺寸 / import)
+  PASS  tween_freeze (战斗世界侧的演出 tween 必须走 _reg_tween·否则时停冻不住)
+  PASS  tween_capture (演出 tween 的 lambda 捕获了可能被释放的节点·台账只减不增)
+  PASS  battle_tween (战斗路径裸 create_tween 不经 _reg_tween·确定性棘轮只减不增·A/B 两套实现对账)
+  PASS  menu_crowd_sync (登录墙群像背景 == 生成器现在的产物·加龟/换立绘忘了重跑就红)
+  PASS  menu_arena_sync (主菜单擂台背景分层 == 生成器现在的产物·改站位/换原件忘了重烘就红·R8 两个钉死值)
+  PASS  nine_bracket (9 档进度档已彻底删除·匹配只认同场次·同名的周日对阵图不许误伤)
+  PASS  freed_is_order (先 is_instance_valid 再 is·对已释放对象 is 会报错并中断函数)
+  PASS  gate_offline (门禁里每个起 Godot 跑场景的命令都必须关掉后端·不许打生产库)
+
+FAIL x1  (PASS 209)
+========== 门禁分片 2/4 ==========
+=== 自证测试 (自动发现 tests/verify_*.gd) ===
+  分片 2/4: 全套 570 个里跑这 142 个
+  PASS  verify_aoe_aim_excludes_trainer
+  PASS  verify_arena_layers_drawn
+  PASS  verify_aspd_real_cooldown
+  PASS  verify_axe_anim_runtime
+  PASS  verify_axe_evo_show
+  PASS  verify_axe_info_panel
+  PASS  verify_axe_vfx
+  PASS  verify_b4_persist_across_lane
+  PASS  verify_b4_wiring
+  PASS  verify_backfill
+  PASS  verify_basic_strike
+  PASS  verify_battle_rng_seed
+  PASS  verify_bolt_line
+  PASS  verify_bot_card_honest
+  PASS  verify_bracket_clock_delta
+  PASS  verify_brew_glow_sheet_swap
+  PASS  verify_cam_mac_gestures
+  PASS  verify_candy_jar
+  PASS  verify_champion_cup
+  PASS  verify_client_error_report
+  PASS  verify_codex_battle_parity
+  PASS  verify_codex_layout
+  PASS  verify_codex_scroll_reset
+  PASS  verify_codex_synergy_card
+  PASS  verify_conch_worm_033
+  PASS  verify_cream_shell_all
+  PASS  verify_cross_slash_seq
+  PASS  verify_cursor_mac_os_cursor
+  PASS  verify_cyber_hijack
+  PASS  verify_debug_arena
+  PASS  verify_determinism_b
+  PASS  verify_device_selfcheck
+  PASS  verify_dice_dash
+  PASS  verify_dot_float
+  PASS  verify_dragon_breath
+  PASS  verify_elim_no_coin
+  PASS  verify_email_bind
+  PASS  verify_eq058_036_045
+  PASS  verify_eq_gadget_batch
+  PASS  verify_eq_laser_blade
+  PASS  verify_eq_potion_batch
+  PASS  verify_eq_vfx_visibility
+  PASS  verify_eq_zero_gate
+  PASS  verify_equip_batch3
+  PASS  verify_equip_batch_20260730d
+  PASS  verify_equip_onhit_batch2
+  PASS  verify_equip_pool
+  PASS  verify_equip_stun_via_entry
+  PASS  verify_exact_match
+  PASS  verify_extra_true_ledger
+  PASS  verify_finals_phase_on_open
+  PASS  verify_finals_premiere
+  PASS  verify_fire_coral_wave
+  PASS  verify_fire_equips_exact
+  PASS  verify_foe_season_level
+  PASS  verify_formation_editor
+  PASS  verify_friends_flow
+  PASS  verify_gauntlet_match
+  PASS  verify_ghost_chest
+  PASS  verify_ghost_upload_retry
+  PASS  verify_gold_shield
+  PASS  verify_gun_synergy
+  PASS  verify_heal_hot_readout
+  PASS  verify_holy_shield_grant
+  PASS  verify_hp_lines
+  PASS  verify_ice_flask_dmg
+  PASS  verify_incense_inventory_card
+  PASS  verify_info_panel_live
+  PASS  verify_info_panel_stats
+  PASS  verify_inventory_stats
+  PASS  verify_inventory_text_fit
+  PASS  verify_ios_ui
+  PASS  verify_island_boundary
+  PASS  verify_knock_dest_on_island
+  PASS  verify_leaderboard_all_ranks
+  PASS  verify_leaderboard_redesign
+  PASS  verify_lightning_buff
+  PASS  verify_map_field
+  PASS  verify_menu
+  PASS  verify_menu_finals_title
+  PASS  verify_min_version_wall
+  PASS  verify_minion_skill_icon
+  PASS  verify_ms_tier_vfx
+  PASS  verify_net_route_failover
+  PASS  verify_ninja_bomb
+  PASS  verify_no_place_stage
+  PASS  verify_no_surrender
+  PASS  verify_offline_no_local_result
+  PASS  verify_onboarding
+  PASS  verify_palette
+  PASS  verify_phoenix_flame_onhit
+  PASS  verify_present_click_anywhere
+  PASS  verify_readouts_d7
+  PASS  verify_referee_incense
+  PASS  verify_referee_job_roundtrip
+  PASS  verify_reset_save_clears
+  PASS  verify_save_guard
+  PASS  verify_scored_match_keys
+  PASS  verify_seaweed_magic_shield
+  PASS  verify_service_status
+  PASS  verify_settle_quota
+  PASS  verify_shield_synergy
+  PASS  verify_shockwave_vfx
+  PASS  verify_shop_layout
+  PASS  verify_shop_persist
+  PASS  verify_skeleton_032
+  PASS  verify_skill_forms
+  PASS  verify_skill_pick
+  PASS  verify_skills_not_dead
+  PASS  verify_special_balance
+  PASS  verify_staff_actives_fire
+  PASS  verify_staff_synergy
+  PASS  verify_steal_gate
+  PASS  verify_stream_coverage_3
+  PASS  verify_stream_end_exit
+  PASS  verify_stream_seek
+  PASS  verify_stream_whitelist_alarm
+  PASS  verify_summon_label
+  PASS  verify_synergy_magnitude
+  PASS  verify_synergy_vfx
+  PASS  verify_tame_defection
+  PASS  verify_tentacle_hit_timing
+  PASS  verify_tentacle_soft
+  PASS  verify_theme_decor_census
+  PASS  verify_tile_texture
+  PASS  verify_timestop_freeze
+  PASS  verify_timestop_since_stamps
+  PASS  verify_touch_scroll
+  PASS  verify_trainer_desc
+  PASS  verify_trainer_place
+  PASS  verify_travel_no_write
+  PASS  verify_turtle_balance_r4
+  PASS  verify_tutorial
+  PASS  verify_tutorial_battle_tips
+  PASS  verify_tutorial_guide_timing
+  PASS  verify_two_head_enhanced
+  PASS  verify_two_level_desc
+  PASS  verify_version
+  PASS  verify_vfx_frames
+  PASS  verify_week_leaderboard
+  PASS  verify_week_season
+  PASS  verify_weekend_visible_monday
+  (发现 142 个测试, 并行度 4)
+  ── 耗时 ──
+  核秒总和 1927s ÷ 并行度 4 ≈ 481s 理论墙钟
+  平均 13575ms/个 · 最慢 12 个:
+    229418ms  verify_determinism_b
+    132554ms  verify_stream_seek
+    114903ms  verify_stream_whitelist_alarm
+    114367ms  verify_device_selfcheck
+    108017ms  verify_stream_coverage_3
+    104035ms  verify_tutorial_battle_tips
+     94134ms  verify_skills_not_dead
+     87716ms  verify_exact_match
+     85883ms  verify_referee_job_roundtrip
+     38031ms  verify_stream_end_exit
+     25154ms  verify_ios_ui
+     16842ms  verify_finals_premiere
+=== 只读数据审计 ===
+
+ALL PASS (142/142)
+========== 门禁分片 3/4 ==========
+=== 自证测试 (自动发现 tests/verify_*.gd) ===
+  分片 3/4: 全套 570 个里跑这 143 个
+  PASS  verify_account_delete
+  PASS  verify_accum_lane_scope
+  PASS  verify_arena_density
+  PASS  verify_arena_theme_pick
+  PASS  verify_aspd_panel_live
+  PASS  verify_axe
+  PASS  verify_axe_ember_laser
+  PASS  verify_axe_passives
+  PASS  verify_axe_undead_holo_vfx
+  PASS  verify_b4_lane_leak
+  PASS  verify_backend_not_silent
+  PASS  verify_basic_slam
+  PASS  verify_battle_hud_r1
+  PASS  verify_beta_server_build
+  PASS  verify_bot_buy_synergy
+  PASS  verify_bracket
+  PASS  verify_bracket_not_seated
+  PASS  verify_cake_box_form
+  PASS  verify_cam_extent
+  PASS  verify_candy_axe_unique
+  PASS  verify_chest_ledger
+  PASS  verify_cjk_wrap_export
+  PASS  verify_click_targets_alive
+  PASS  verify_codex
+  PASS  verify_codex_minion_forms
+  PASS  verify_codex_skill_preview
+  PASS  verify_codex_status_sources
+  PASS  verify_combat_sanity
+  PASS  verify_copy_rules
+  PASS  verify_crystal_line_030
+  PASS  verify_cyber_drone_passive
+  PASS  verify_dead_params
+  PASS  verify_desc_icons
+  PASS  verify_dome_second_wipe
+  PASS  verify_dr_dot_and_taunt
+  PASS  verify_edge_wall
+  PASS  verify_elite_haste
+  PASS  verify_eq055_063
+  PASS  verify_eq_blood_combo
+  PASS  verify_eq_body_sprites
+  PASS  verify_eq_bow_batch
+  PASS  verify_eq_food_batch
+  PASS  verify_eq_readouts
+  PASS  verify_eq_stats_panel
+  PASS  verify_eq_venom_drone
+  PASS  verify_equip_052_061
+  PASS  verify_equip_new_stats
+  PASS  verify_equip_stats_source
+  PASS  verify_equip_tally
+  PASS  verify_equip_types
+  PASS  verify_expr_consts
+  PASS  verify_finals_feed
+  PASS  verify_finals_settle_once
+  PASS  verify_finals_watch_only
+  PASS  verify_fonts
+  PASS  verify_fortune_goldshield
+  PASS  verify_gauntlet_ahead
+  PASS  verify_gauntlet_via_referee
+  PASS  verify_gear_egg_035_036
+  PASS  verify_ghost_upload
+  PASS  verify_glyph_coverage
+  PASS  verify_ground_palette
+  PASS  verify_heal_burst
+  PASS  verify_hitstop_freezes_global
+  PASS  verify_hourglass_values
+  PASS  verify_ice_fissure
+  PASS  verify_icicle_resist_survives_recalc
+  PASS  verify_info_panel
+  PASS  verify_info_panel_fits
+  PASS  verify_inventory_drag
+  PASS  verify_inventory_layout
+  PASS  verify_inventory_name_fit
+  PASS  verify_island_ambient
+  PASS  verify_keyword_false_positive
+  PASS  verify_lane_coroutine_epoch
+  PASS  verify_leaderboard_person
+  PASS  verify_lifecycle_net
+  PASS  verify_login_wall
+  PASS  verify_loop_tween_exit
+  PASS  verify_matchmaking_phase
+  PASS  verify_min_client_version
+  PASS  verify_minion_is_full_turtle
+  PASS  verify_misc_guards
+  PASS  verify_nerf_pistol_anchor
+  PASS  verify_ninja_backstab
+  PASS  verify_no_emoji_icons
+  PASS  verify_offline_dev_build
+  PASS  verify_orientation_lock
+  PASS  verify_pct_glyph
+  PASS  verify_pool_truth
+  PASS  verify_ranked_close
+  PASS  verify_referee_coins
+  PASS  verify_referee_watch_stream
+  PASS  verify_render_writeback
+  PASS  verify_replay_window
+  PASS  verify_rum_numbers
+  PASS  verify_salvo_trainer
+  PASS  verify_save_conflict_nudge
+  PASS  verify_scene_change_on_release
+  PASS  verify_season_flow
+  PASS  verify_server_clock
+  PASS  verify_settle_density
+  PASS  verify_shield_shell_vfx
+  PASS  verify_shop_interactions
+  PASS  verify_shop_lantern_flicker
+  PASS  verify_shop_owned_hint
+  PASS  verify_signature_skill_playable
+  PASS  verify_skill_formula_collapse
+  PASS  verify_skill_ring_curve
+  PASS  verify_snapshot_positions
+  PASS  verify_spirit_slap_range
+  PASS  verify_sprite_sheets
+  PASS  verify_staff_active_isolated
+  PASS  verify_star_space
+  PASS  verify_status_chip_labels
+  PASS  verify_stream_capture_inert
+  PASS  verify_stream_coverage_2
+  PASS  verify_stream_parity
+  PASS  verify_stream_replay_controls
+  PASS  verify_summon_art
+  PASS  verify_synergy_live
+  PASS  verify_synergy_text
+  PASS  verify_teamselect_start_on_plank
+  PASS  verify_text_render
+  PASS  verify_thorn_reflect
+  PASS  verify_tick_equips_exact
+  PASS  verify_timestop_lanes
+  PASS  verify_top_bar
+  PASS  verify_trainer_config
+  PASS  verify_trainer_page_ui
+  PASS  verify_trainer_target
+  PASS  verify_true_fire
+  PASS  verify_turtle_roles
+  PASS  verify_tutorial_director
+  PASS  verify_tutorial_steps_v2
+  PASS  verify_tween_capture_lane
+  PASS  verify_two_head_strike
+  PASS  verify_uncovered_equips
+  PASS  verify_upload_auth
+  PASS  verify_vfx_readability
+  PASS  verify_water_palette
+  PASS  verify_week_roll
+  PASS  verify_windup_cc_cancel
+  (发现 143 个测试, 并行度 4)
+  ── 耗时 ──
+  核秒总和 1804s ÷ 并行度 4 ≈ 451s 理论墙钟
+  平均 12621ms/个 · 最慢 12 个:
+    319306ms  verify_stream_parity
+    147605ms  verify_arena_theme_pick
+    143595ms  verify_stream_capture_inert
+    112044ms  verify_stream_coverage_2
+     76005ms  verify_render_writeback
+     41414ms  verify_gauntlet_via_referee
+     37648ms  verify_referee_watch_stream
+     32306ms  verify_stream_replay_controls
+     29908ms  verify_shop_interactions
+     25019ms  verify_loop_tween_exit
+     24296ms  verify_finals_watch_only
+     21937ms  verify_referee_coins
+=== 只读数据审计 ===
+
+ALL PASS (143/143)
+========== 门禁分片 4/4 ==========
+=== 自证测试 (自动发现 tests/verify_*.gd) ===
+  分片 4/4: 全套 570 个里跑这 143 个
+  PASS  verify_abandoned_match
+  PASS  verify_account
+  PASS  verify_arcane_crystal_mr
+  PASS  verify_arena_variety
+  PASS  verify_autopilot_finals
+  PASS  verify_await_token_fresh
+  PASS  verify_axe_batch10
+  PASS  verify_axe_evolution
+  PASS  verify_axe_owner_progress
+  PASS  verify_axe_shop_codex
+  PASS  verify_b84_melee_star_max
+  PASS  verify_barnacle_solo
+  PASS  verify_baton
+  PASS  verify_battle_ui
+  PASS  verify_bot_archetypes
+  PASS  verify_bow_synergy
+  PASS  verify_bracket_map
+  PASS  verify_bracket_spectate
+  PASS  verify_cake_orbit_cleanup
+  PASS  verify_candle_signal_bamboo
+  PASS  verify_chain_lightning
+  PASS  verify_code_const_token
+  PASS  verify_codex_desc
+  PASS  verify_codex_equip_star
+  PASS  verify_codex_stats
+  PASS  verify_combat_math
+  PASS  verify_copy_perform
+  PASS  verify_crystal_death_sync
+  PASS  verify_cyber_charge
+  PASS  verify_dart_chain_056
+  PASS  verify_decor_grounded
+  PASS  verify_determinism_ulp
+  PASS  verify_dmg_type_sentinel
+  PASS  verify_dodge_cap
+  PASS  verify_doll_bear_034
+  PASS  verify_dot_stacks
+  PASS  verify_dual_egg_decider
+  PASS  verify_elite_devour_visible
+  PASS  verify_eq023_026_basic
+  PASS  verify_eq_blade_batch
+  PASS  verify_eq_maxhp_pct_basis
+  PASS  verify_eq_spirit_batch
+  PASS  verify_equip_046_051
+  PASS  verify_equip_nerf
+  PASS  verify_equip_star_highlight
+  PASS  verify_equip_tier_labels
+  PASS  verify_execution_vfx_all
+  PASS  verify_feedback
+  PASS  verify_finals_coins
+  PASS  verify_finals_settle
+  PASS  verify_first_launch
+  PASS  verify_float_style_uses_palette
+  PASS  verify_fortune_final_carry
+  PASS  verify_gauntlet
+  PASS  verify_gauntlet_stale_upload
+  PASS  verify_ghost_seed
+  PASS  verify_glow_tex_cached
+  PASS  verify_gremlin_gun
+  PASS  verify_head_badges
+  PASS  verify_headless_rage_once
+  PASS  verify_hiding_pool
+  PASS  verify_hook
+  PASS  verify_hud_gamefeel
+  PASS  verify_ice_vs_fire_basic
+  PASS  verify_incense_stone
+  PASS  verify_incense_vfx
+  PASS  verify_interaction_matrix
+  PASS  verify_ios_no_system_font
+  PASS  verify_item8_batch
+  PASS  verify_lane_clear_wired
+  PASS  verify_lava_forms
+  PASS  verify_leaderboard_monday_local
+  PASS  verify_lethal_hook_heal
+  PASS  verify_line_finish_target
+  PASS  verify_mana_beam_steer
+  PASS  verify_match_seed
+  PASS  verify_midground
+  PASS  verify_minion_idle_align
+  PASS  verify_minion_unstoppable
+  PASS  verify_nav_paths
+  PASS  verify_nine_stretch
+  PASS  verify_ninja_dash_cc
+  PASS  verify_notoken_finals
+  PASS  verify_opponent_pull
+  PASS  verify_pct_array_render
+  PASS  verify_player_tag
+  PASS  verify_quota_clock
+  PASS  verify_referee_chest
+  PASS  verify_render_families
+  PASS  verify_replay_controls
+  PASS  verify_replay_roundtrip
+  PASS  verify_replay_upload_retry
+  PASS  verify_replay_watch
+  PASS  verify_result_reachable
+  PASS  verify_rum_glow
+  PASS  verify_scene_calibration
+  PASS  verify_season_elim
+  PASS  verify_self_match
+  PASS  verify_settings
+  PASS  verify_settle_pages
+  PASS  verify_shield_duration
+  PASS  verify_shop_chest
+  PASS  verify_shop_merge_pips
+  PASS  verify_signal_amplifier
+  PASS  verify_sim_step_rate
+  PASS  verify_skill_energy
+  PASS  verify_skill_text_leak
+  PASS  verify_spar_isolation
+  PASS  verify_spirit_synergy_dodge
+  PASS  verify_stat_icon_color
+  PASS  verify_stream_coverage
+  PASS  verify_stream_no_sim
+  PASS  verify_stream_transport
+  PASS  verify_sudden_death
+  PASS  verify_sword_084
+  PASS  verify_sword_storm_chain
+  PASS  verify_synergy_display
+  PASS  verify_synergy_rest5
+  PASS  verify_target_paths_agree
+  PASS  verify_tentacle_continuity
+  PASS  verify_tentacle_rhythm
+  PASS  verify_text_bbcode_hosts
+  PASS  verify_thunder_shell
+  PASS  verify_timestop_carrier_coroutine
+  PASS  verify_titles
+  PASS  verify_topbar_states
+  PASS  verify_trainer_audit
+  PASS  verify_trainer_magicstone
+  PASS  verify_trainer_skills
+  PASS  verify_true_dmg_white
+  PASS  verify_turtle_balance_r6
+  PASS  verify_tutorial_choice
+  PASS  verify_tutorial_flow_v3
+  PASS  verify_tutorial_skip
+  PASS  verify_two_head_fusion
+  PASS  verify_ui_layout
+  PASS  verify_untargetable
+  PASS  verify_upload_flash
+  PASS  verify_wait_sim_detached
+  PASS  verify_week_pool_wipe
+  PASS  verify_weekend_replay
+  PASS  verify_weekend_watch
+  PASS  verify_wormhole_escape
+  (发现 143 个测试, 并行度 4)
+  ── 耗时 ──
+  核秒总和 1411s ÷ 并行度 4 ≈ 352s 理论墙钟
+  平均 9868ms/个 · 最慢 12 个:
+    152769ms  verify_determinism_ulp
+    103194ms  verify_stream_transport
+     89867ms  verify_stream_coverage
+     80383ms  verify_abandoned_match
+     79459ms  verify_replay_roundtrip
+     48625ms  verify_spar_isolation
+     38117ms  verify_tutorial_flow_v3
+     27745ms  verify_replay_controls
+     25138ms  verify_ui_layout
+     23744ms  verify_stream_no_sim
+     20292ms  verify_dmg_type_sentinel
+     18891ms  verify_weekend_replay
+=== 只读数据审计 ===
+
+ALL PASS (143/143)
