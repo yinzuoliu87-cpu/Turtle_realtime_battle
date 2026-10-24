@@ -71,7 +71,25 @@ const CHI_DASH_DIRS := 12        # 智能位移采样几个方向(× 3 档距离
 const CHI_DASH_MIN_FOE := 120.0  # 落点距任一敌人近于此就排除(不贴脸·考虑碰撞体积)
 
 ## ── 过肩摔(主动) ──────────────────────────────────────────
-const SLAM_LAND_BACK := 55.0     # 摔到龟背后多少码
+## ★2026-10-24 重做流程(用户原话见 docs/plans/20261024-过肩摔重做.md §1): 进 400 码 ⇒ 加速冲向目标 ⇒ 抱起 ⇒ 跳高(整体往小龟背后移) ⇒ 落地。
+##   实现: scripts/systems/skills/basic_slam_system.gd。下面除放技距离(用户「400吧」)外都是我的建议, 用户看视频再调。
+const SLAM_CAST_RANGE := 400.0   # 放技距离(码): 敌人进这个圈就放(用户 10-24「400吧」)
+const SLAM_DASH_V0 := 350.0      # 冲刺起速(码/秒)
+const SLAM_DASH_VMAX := 1300.0   # 冲刺满速(码/秒)
+const SLAM_DASH_ACCEL_SEC := 0.25   # 起速 → 满速用时(秒): 「加速冲向」
+const SLAM_DASH_TIMEOUT := 0.9   # 冲这么久还没追上 ⇒ 作废(不伤害、不眩晕)
+const SLAM_GRAB_DIST := 60.0     # 冲到目标这么近就抱住(码)
+const SLAM_GRAB_SEC := 0.14      # 抱起用时(秒)
+const SLAM_HOLD_FWD := 28.0      # 抱住时目标在小龟身前多远(码)
+const SLAM_HOLD_H := 1.0         # 抱起高度(米, 渲染偏移)
+const SLAM_RISE_SEC := 0.42      # 跳高: 上升用时(秒)
+const SLAM_FALL_SEC := 0.22      # 跳高: 下砸用时(秒, 比上升快 = 砸)
+const SLAM_APEX_H := 3.0         # 小龟跳到多高(米)
+const SLAM_TGT_ARC_H := 1.0      # 目标越过小龟头顶时额外的弧高(米) —— 第一版 1.6: 实拍目标飘在头顶两米多, 不像抱着
+const SLAM_DRIFT_BACK := 60.0    # 跳高期间整体往小龟背后移多少码(用户「稍微往小龟背后动一点」)
+const SLAM_LAND_BACK := 50.0     # 目标落在小龟落点再往后多少码(过肩 = 摔到身后)
+const SLAM_HOP_H := 1.8          # 抱不起来(蛋 / 免控 / 免击飞 / 已在别的演出里)时原地单跳的高度(米)
+const SLAM_HOP_SEC := 0.46       # 原地单跳总时长(秒)
 const SLAM_STUN_SEC := 0.5       # 眩晕(秒)
 const SLAM_MAIN_ATK := 1.0       # 主目标 ×ATK
 const SLAM_MAIN_HP_PER_ATK := 0.002   # 主目标 + ATK × 此值 × 目标最大生命

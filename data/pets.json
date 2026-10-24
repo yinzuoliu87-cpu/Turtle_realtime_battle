@@ -83,8 +83,8 @@
         "power": 0,
         "pierce": 0,
         "cd": 0,
-        "brief": "小龟将目标挑起并摔至身后，眩晕 {C:BasicConsts.SLAM_STUN_SEC} 秒，对其造成 {N:BasicConsts.SLAM_MAIN_ATK*ATK} 外加 {E:ATK*BasicConsts.SLAM_MAIN_HP_PER_ATK*100}% 目标最大生命值的物理伤害，并对落点附近的其他敌人造成 {N:BasicConsts.SLAM_SPLASH_ATK*ATK} 外加 {E:ATK*BasicConsts.SLAM_SPLASH_HP_PER_ATK*100}% 主目标最大生命值的物理伤害。\n<span style=\"color:#8a93a0\">龟蛋免疫此控制。</span>",
-        "detail": "小龟将目标挑起并摔至身后，眩晕 {C:BasicConsts.SLAM_STUN_SEC} 秒，对其造成（{C:BasicConsts.SLAM_MAIN_ATK%}%×攻击力({ATK}) = {N:BasicConsts.SLAM_MAIN_ATK*ATK}）外加（{C:BasicConsts.SLAM_MAIN_HP_PER_ATK%}%×攻击力({ATK}) = {E:ATK*BasicConsts.SLAM_MAIN_HP_PER_ATK*100}%）目标最大生命值的物理伤害，并对落点附近的其他敌人造成（{C:BasicConsts.SLAM_SPLASH_ATK%}%×攻击力({ATK}) = {N:BasicConsts.SLAM_SPLASH_ATK*ATK}）外加（{C:BasicConsts.SLAM_SPLASH_HP_PER_ATK%}%×攻击力({ATK}) = {E:ATK*BasicConsts.SLAM_SPLASH_HP_PER_ATK*100}%）主目标最大生命值的物理伤害。\n<span style=\"color:#8a93a0\">龟蛋免疫此控制。</span>",
+        "brief": "小龟冲上前抱起目标摔至身后，眩晕 {C:BasicConsts.SLAM_STUN_SEC} 秒，对其造成 {N:BasicConsts.SLAM_MAIN_ATK*ATK} 外加 {E:ATK*BasicConsts.SLAM_MAIN_HP_PER_ATK*100}% 目标最大生命值的物理伤害，并对落点周围其他敌人造成 {N:BasicConsts.SLAM_SPLASH_ATK*ATK} 外加 {E:ATK*BasicConsts.SLAM_SPLASH_HP_PER_ATK*100}% 主目标最大生命值的物理伤害。\n<span style=\"color:#8a93a0\">龟蛋以及免疫控制或击飞的目标不会被抱起，只在原地受到伤害。龟蛋免疫此控制。</span>",
+        "detail": "小龟冲上前抱起目标摔至身后，眩晕 {C:BasicConsts.SLAM_STUN_SEC} 秒，对其造成（{C:BasicConsts.SLAM_MAIN_ATK%}%×攻击力({ATK}) = {N:BasicConsts.SLAM_MAIN_ATK*ATK}）外加（{C:BasicConsts.SLAM_MAIN_HP_PER_ATK%}%×攻击力({ATK}) = {E:ATK*BasicConsts.SLAM_MAIN_HP_PER_ATK*100}%）目标最大生命值的物理伤害，并对落点周围其他敌人造成（{C:BasicConsts.SLAM_SPLASH_ATK%}%×攻击力({ATK}) = {N:BasicConsts.SLAM_SPLASH_ATK*ATK}）外加（{C:BasicConsts.SLAM_SPLASH_HP_PER_ATK%}%×攻击力({ATK}) = {E:ATK*BasicConsts.SLAM_SPLASH_HP_PER_ATK*100}%）主目标最大生命值的物理伤害。\n<span style=\"color:#8a93a0\">龟蛋以及免疫控制或击飞的目标不会被抱起，只在原地受到伤害。龟蛋免疫此控制。</span>",
         "energyCost": 120
       }
     ],

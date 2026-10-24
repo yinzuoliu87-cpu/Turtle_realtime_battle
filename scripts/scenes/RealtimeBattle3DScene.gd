@@ -155,7 +155,7 @@ const LEFT_DEMO := ["basic", "stone", "lightning"]   # 非评审 demo (_review_d
 ##   缺省(无此键)= REVIEW_DUMMY_COUNT 个横排。★验收账本 docs/design/技能特效验收账本.md 每技记一份。
 const REVIEW_DEMO_CFG := {
 	"basic:2": [ {"dx": 110.0, "dy": 0.0}, {"dx": 430.0, "dy": -240.0, "fixed": true} ],   # 龟派气波: 1贴脸(正前) + 1远处(偏上·不共线·固定不动) → 触发智能冲刺(冲到能同时打俩)再聚气放波
-	"basic:3": [ {"dx": 120.0, "dy": 0.0, "fixed": true}, {"dx": 210.0, "dy": -150.0, "fixed": true}, {"dx": 210.0, "dy": 150.0, "fixed": true} ],   # 过肩摔: 1贴脸(grab目标)+2近flank(固定·看落地250码范围伤)
+	"basic:3": [ {"dx": 330.0, "dy": 0.0, "fixed": true}, {"dx": 380.0, "dy": -130.0, "fixed": true}, {"dx": 380.0, "dy": 130.0, "fixed": true} ],   # 过肩摔(2026-10-24 重做): 主目标在 330 码(看得到冲刺) + 两个在它附近(落点 350 码溅射圈够得着)
 	"stone:2": [ {"dx": 160.0, "dy": -70.0, "fixed": true}, {"dx": 160.0, "dy": 70.0, "fixed": true}, {"dx": 300.0, "dy": 0.0, "fixed": true} ],   # 岩石之躯震击: 前方带状3假人(都在±90带宽内·固定)→看横排扫击命中+击退
 	"stone:3": [ {"dx": 260.0, "dy": -150.0}, {"dx": 260.0, "dy": 150.0}, {"dx": 380.0, "dy": 0.0} ],   # 嘲讽: 3假人都在500码嘲讽+400码砸地范围内(不固定→被嘲讽后转头打石头, 3.5s砸地击飞)
 	"stone:-1": [ {"dx": 120.0, "dy": -70.0}, {"dx": 120.0, "dy": 70.0}, {"dx": 200.0, "dy": 0.0} ],   # 岩石之躯被动审: 3假人围上来持续打石头→石头堆岩层(体型+2%/层·减伤1%/层·上限30)看变大
@@ -737,6 +737,7 @@ var _stone_sys := StoneSystem.new(self)   # 石头龟技能系统(2026-07-25 抽
 var _shell_sys := ShellSystem.new(self)   # 龟壳龟技能系统(2026-07-25 抽出)
 var _ice_sys := IceSystem.new(self)   # 冰龟技能系统(2026-07-25 抽出)
 var _dice_sys := DiceSystem.new(self)   # 骰子龟技能系统(2026-07-25 抽出)
+var _basic_slam_sys := BasicSlamSystem.new(self)   # 小龟·过肩摔(2026-10-24 重做时抽出)
 var _bamboo_sys := BambooSystem.new(self)   # 竹龟技能系统(2026-07-25 抽出)
 var _ghost_sys := GhostSystem.new(self)   # 幽灵龟技能系统(2026-07-25 抽出)
 var _crystal_sys := CrystalSystem.new(self)   # 水晶龟技能系统(2026-07-25 抽出)
@@ -5059,7 +5060,7 @@ const _SELF_CAST_SKILLS := {
 # 远程敌向技的专属放技射程(码): 有这条的技能"够得着就放"·不被近战射程卡着(用户2026-07-11: 手里剑是远程技·改2000)
 const _SKILL_CAST_RANGE := {"ninjaShuriken": 2000.0, "ninjaBomb": 2000.0, "ninjaBackstab": 2000.0, "lineInkBomb": 2000.0, "eliteHammer": 500.0, "minionBodysurf": 2000.0, "minionRocket": 2000.0, "chestStorm": 2000.0,
 	"fortuneAllIn": 2000.0,   # 财神·梭哈(用户 2026-07-31): 原来回落到攻击射程 70 → 得贴脸才撒币
-	"basicSlam": 150.0,       # 小龟·过肩摔(用户 2026-07-31): 擒抱技, 给一点起手余量而不是必须贴到 70
+	"basicSlam": 400.0,       # 小龟·过肩摔(用户 2026-10-24「400吧」): 敌人进 400 码就放, 冲过去抱 —— 与 BasicConsts.SLAM_CAST_RANGE 同值(门禁 verify_basic_slam 对账)
 	# ══ 2026-08-01 一次性补齐(用户:「很多角色的技能为啥一定要贴脸才去放？有很大问题」) ══
 	#   排查发现: 87 个实装技能里【只有 8 个】登记过专属放技射程, 其余全部回落到该龟的攻击射程,
 	#   近战龟就是 70 码 —— 于是"火炮齐射""财宝炮击""龟派气波"这种明摆着的远程技也得贴脸才放。
@@ -5357,7 +5358,7 @@ func _do_skill(u: Dictionary, tgt: Dictionary, stype: String) -> void:
 		# ── 数据驱动伤害技 (系数取自 detail 公式; N=物理 M=魔法 T=真实) ──
 		"basicBarrage":         _sk_basic_strike(u, tgt)
 		"basicChiWave":         _sk_basic_chiwave(u, tgt)
-		"basicSlam":            _sk_basic_slam(u, tgt)
+		"basicSlam":            _basic_slam_sys._sk_basic_slam(u, tgt)   # 2026-10-24 重做: scripts/systems/skills/basic_slam_system.gd
 		"bambooSmack":          _bamboo_sys._sk_bamboo_smack(u, tgt)
 		"bambooSpikes":         _bamboo_sys._sk_bamboo_spikes(u, tgt)
 		"angelEquality":        _angel_sys._sk_angel_equality(u, tgt)
@@ -5584,93 +5585,6 @@ func _sk_basic_chiwave(u: Dictionary, tgt) -> void:            # 小龟·龟派�
 			if is_instance_valid(glow): glow.queue_free()
 			if is_instance_valid(core): core.queue_free())
 		, "src": u})
-
-func _sk_basic_slam(u: Dictionary, tgt) -> void:  # 小龟·过肩摔(#7重做·Sett R式完整编排): 擒抱→跳空→与敌反转180°→坠落→落地范围伤+尘爆; 蛋免控只吃原地伤
-	if tgt == null: tgt = _targeting._nearest_enemy(u)
-	if tgt == null: return
-	var tmax: float = float(tgt["maxHp"])
-	if tgt.get("_eggImmune", false):   # 蛋: 不擒抱/不挑空, 只吃原地范围伤
-		_slam_apply_damage(u, tgt, tmax)
-		_burst_vfx("res://assets/sprites/vfx/dust-impact.png", tgt["pos"], 190.0, 0.35)
-		_burst_vfx("res://assets/sprites/vfx/fx-shock-ring.png", tgt["pos"], 250.0, 0.06)
-		return
-	var dir: Vector2 = tgt["pos"] - u["pos"]
-	if DetMath.vlen(dir) < 1.0: dir = Vector2.RIGHT
-	dir = DetMath.norm(dir)
-	var u_start: Vector2 = u["pos"]
-	var land: Vector2 = u_start - dir * BasicConsts.SLAM_LAND_BACK    # 落点=龟背后~55码(过肩摔到身后)
-	land = ArenaShape.clamp_in(land, ARENA, 20)
-	_basic_slam_run(u, tgt, dir, u_start, land, tmax)   # async 编排(fire-and-forget)
-
-## 过肩摔伤害结算(主目标 1.0A + 0.2%×ATK×目标maxHp / 周围350码 0.3A + 0.13%×ATK×主目标maxHp) — 落地时调.
-func _slam_apply_damage(u: Dictionary, tgt: Dictionary, tmax: float) -> void:
-	if tgt.get("alive", false):
-		_damage._apply_damage_from(u, tgt, _atk_dmg(u, BasicConsts.SLAM_MAIN_ATK, tgt) + int(u["atk"] * BasicConsts.SLAM_MAIN_HP_PER_ATK * tmax), Color("#ff9d5c"))   # 过肩摔主目标(用户2026-07-29 第五轮): 0.7A+23%最大生命 → 1.0A + 0.2%×ATK×最大生命
-	for o in _targeting._enemies_of(u):
-		if is_same(o, tgt) or not o.get("alive", false): continue
-		if DetMath.dist(o["pos"], tgt["pos"]) <= BasicConsts.SLAM_SPLASH_RADIUS:   # 范围 350码(用户2026-07-11: 250→350)
-			_damage._apply_damage_from(u, o, _atk_dmg(u, BasicConsts.SLAM_SPLASH_ATK, o) + int(u["atk"] * BasicConsts.SLAM_SPLASH_HP_PER_ATK * tmax), Color("#ff9d5c"))   # 过肩摔周围(用户2026-07-29 第五轮): 0.2A+18% → 0.3A + 0.13%×ATK×主目标最大生命
-
-## 过肩摔完整编排(#7·用户2026-07-11): 擒抱→双方跳空(_slam_voff)→空中反转180°(flip_v)→坠落→落地范围伤+大尘爆+震屏. 双方 _slam 冻结.
-func _basic_slam_run(u: Dictionary, tgt: Dictionary, dir: Vector2, u_start: Vector2, land: Vector2, tmax: float) -> void:
-	var uspr = u.get("sprite", null)
-	var tspr = tgt.get("sprite", null)
-	u["_slam"] = true
-	tgt["_slam"] = true
-	tgt["no_move"] = true
-	var e_start: Vector2 = tgt["pos"]
-	var T_GRAB := 0.15
-	var T_AIR := 0.5   # 更慢(用户2026-07-11)
-	var T_FALL := 0.32
-	var total := T_GRAB + T_AIR + T_FALL
-	var el := 0.0
-	var flipped := false
-	var p := 0.0
-	while el < total and u.get("alive", false) and tgt.get("alive", false) and is_inside_tree():
-		await _dl_sys.lane_step()
-		if _timestop.holds(u): continue   # 时停: 被定格的单位这一步不推进(携带者照常; 顿帧行为不变)
-		el += _frame_sim_dt
-		if el < T_GRAB:                                     # ① 擒住: 敌拉到龟身前
-			p = el / T_GRAB
-			tgt["pos"] = DetMath.vlerp(e_start, u_start, p)
-		elif el < T_GRAB + T_AIR:                           # ② 跳空 + 抡向落点 + 空中反转
-			p = (el - T_GRAB) / T_AIR
-			var hy := DetMath.dsin(p * PI * 0.5)                     # ease 上升到 apex
-			tgt["_slam_voff"] = Vector3(0.0, 5.4 * hy, 0.0)
-			u["_slam_voff"] = Vector3(0.0, 4.0 * hy, 0.0)
-			tgt["pos"] = DetMath.vlerp(u_start, land, p)              # 敌被抡向落点
-			u["pos"] = u_start - dir * (18.0 * DetMath.dsin(p * PI)) # 龟小后仰再回
-			if p > 0.45 and not flipped:                    # 空中反转180°(billboard→flip_v 上下颠倒)
-				flipped = true
-				if is_instance_valid(uspr): uspr.flip_v = true
-				if is_instance_valid(tspr): tspr.flip_v = true
-		else:                                               # ③ 坠落: 猛砸下
-			p = (el - T_GRAB - T_AIR) / T_FALL
-			var fall := 1.0 - p
-			tgt["_slam_voff"] = Vector3(0.0, 5.4 * fall, 0.0)
-			u["_slam_voff"] = Vector3(0.0, 4.0 * fall, 0.0)
-			tgt["pos"] = land
-			u["pos"] = land + dir * 45.0
-	# ④ 落地结算: 复位翻转/偏移 + 眩晕 + 范围伤 + 大尘爆 + 震屏
-	if is_instance_valid(uspr): uspr.flip_v = false
-	if is_instance_valid(tspr): tspr.flip_v = false
-	u["_slam_voff"] = Vector3.ZERO
-	tgt["_slam_voff"] = Vector3.ZERO
-	u["pos"] = land + dir * 45.0
-	if tgt.get("alive", false):
-		tgt["pos"] = land
-		_damage._stun(tgt, BasicConsts.SLAM_STUN_SEC, "_basic_slam_run")   # 砸地眩晕0.5s
-		_vfx._flash(tgt)
-	_slam_apply_damage(u, tgt, tmax)
-	_shake(JUICE_SHAKE_BIG)                        # 大砸=大震屏(用户2026-07-11: 表现大范围砸击)
-	_hitstop = maxf(_hitstop, 0.1)                 # 顿帧(重量感)
-	_vfx._impact_particles(land, 0.0)                   # 落地碎屑迸发
-	_burst_vfx("res://assets/sprites/vfx/dust-impact.png", land, 520.0, 0.6)      # 落地大尘爆
-	_burst_vfx("res://assets/sprites/vfx/fx-shock-ring.png", land, 680.0, 0.14)   # 范围冲击环(=350码伤害圈)
-	_burst_vfx("res://assets/sprites/vfx/fx-shock-ring.png", land, 940.0, 0.32)   # 二道扩散环(大·慢)→强调大范围砸击
-	u["_slam"] = false
-	tgt["_slam"] = false
-	tgt["no_move"] = false
 
 const DIAMOND_ROLL_MAX_SPD := 280.0   # 钻石滚球满速(封板"移速0起4s加速到满速"·具体值手感留F5)
 

@@ -570,7 +570,9 @@ func _update_world_transforms() -> void:
 				u["_phase_ai_t"] = battle._t
 				battle._vfx.phase_afterimage(spr)
 		# 影/环: 跟 XZ 不跟 Y (贴地), 随高度缩小变淡 (从各自基准 scale 起算, 召唤体影更小)
-		var s: float = 1.0 - clampf(_rh / 3.0, 0.0, 0.7)
+		## ★演出抬高(`_slam_voff`, 过肩摔 / 双头跃起…)也算离地高度(2026-10-24 过肩摔体检 B7: 原来只读 height, 腾空 5 米影子照旧满大)。
+		var _lift_h: float = _rh + maxf(0.0, float((u.get("_slam_voff", Vector3.ZERO) as Vector3).y))
+		var s: float = 1.0 - clampf(_lift_h / 3.0, 0.0, 0.7)
 		if is_instance_valid(shadow):
 			var base_sc: Vector3 = u.get("shadow_base_scale", battle.SHADOW_BASE)
 			shadow.position = battle._world_pos(_rpos, 0.02)
@@ -581,7 +583,7 @@ func _update_world_transforms() -> void:
 		var contact = u.get("contact", null)
 		if is_instance_valid(contact):
 			var cbase: Vector3 = u.get("contact_base_scale", battle.CONTACT_BASE)
-			var cs: float = 1.0 - clampf(_rh / 1.2, 0.0, 1.0)   # 比外影更快随高度收
+			var cs: float = 1.0 - clampf(_lift_h / 1.2, 0.0, 1.0)   # 比外影更快随高度收
 			contact.position = battle._world_pos(_rpos, 0.028)
 			contact.scale = Vector3(cbase.x * cs * sq.x, cbase.y * cs, cbase.z * cs)
 			contact.modulate.a = 0.0   # 隐藏接触核影(用户"只留影子")
@@ -686,7 +688,8 @@ func _update_overlay() -> void:
 						prog = p
 				enf.size.x = battle.BAR_W * prog
 		# 头顶世界坐标 → 屏幕 (bar_head_h 可按单位覆写·大单位如海盗船抬高)
-		var head = battle._world_pos(u["pos"], u["height"] + float(u.get("bar_head_h", 2.4)))
+		## ★血条跟着演出抬高走(`_slam_voff`, 2026-10-24 过肩摔体检 B7: 原来腾空时立绘升到血条上方、血条留在地面)。
+		var head = battle._world_pos(u["pos"], u["height"] + float(u.get("bar_head_h", 2.4))) + (u.get("_slam_voff", Vector3.ZERO) as Vector3)
 		if battle._cam.is_position_behind(head):
 			root.visible = false
 			continue

@@ -30,7 +30,7 @@ const EQS := "systems/equip/equip_system.gd"
 
 const SRC := {
 	"stun": [
-		{"k": "pet", "id": "basic", "sk": "basicSlam", "at": MAIN + ":_basic_slam_run", "v": "{C:BasicConsts.SLAM_STUN_SEC} 秒"},
+		{"k": "pet", "id": "basic", "sk": "basicSlam", "at": "systems/skills/basic_slam_system.gd:stun_target", "v": "{C:BasicConsts.SLAM_STUN_SEC} 秒"},
 		{"k": "pet", "id": "bamboo", "sk": "bambooSmack", "at": "systems/skills/bamboo_system.gd:_sk_bamboo_smack", "v": "{C:BambooSystem.SMACK_STUN} 秒"},
 		{"k": "pet", "id": "bubble", "sk": "bubbleBind", "at": "systems/skills/bubble_system.gd:_sk_bubble_bind", "v": "{C:BubbleSystem.BIND_SEC} 秒"},
 		{"k": "pet", "id": "diamond", "sk": "diamondPowerball", "at": "systems/skills/diamond_system.gd:_diamond_roll_impact", "v": "{C:DiamondSystem.ROLL_STUN_MIN}~{C:DiamondSystem.ROLL_STUN_MAX} 秒",
