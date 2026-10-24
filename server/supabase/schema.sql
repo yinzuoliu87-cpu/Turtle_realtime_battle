@@ -5558,6 +5558,7 @@ end $$;
 --             update public.server_clock set offset_sec = 60;  -- 被 server_clock_prod_zero 拒
 --   回滚：12 个函数换回 git tag v0.21.4 的 schema.sql 版本；新表 / app_now / beta_tick 留着无害（正式服 beta_tick 恒 skipped）。
 -- <<< END beta_server_clock 20261021 <<<
+-- beta_server_clock 20261021 已上生产 2026-10-24（tools/sb_migrate.py prod --rehearse --apply，演练 ALL PASS、回读函数体逐字相同、正式服账本 schema_migrations 有这一行）
 
 -- >>> BEGIN referee_lease_660 20261022 >>>
 -- ─────────────────────────────────────────────────────────────
@@ -5573,6 +5574,7 @@ end $$;
 alter table public.referee_config alter column lease_sec set default 660;
 update public.referee_config set lease_sec = 660, updated_at = now() where id = 1 and lease_sec = 180;
 -- <<< END referee_lease_660 20261022 <<<
+-- referee_lease_660 20261022 已上生产 2026-10-24（tools/sb_migrate.py prod --rehearse --apply，演练 ALL PASS、回读函数体逐字相同、正式服账本 schema_migrations 有这一行）
 -- >>> BEGIN referee_chest 20261022b >>>
 -- ─────────────────────────────────────────────────────────────
 -- 服务器裁判局的宝箱龟进度回写存档（2026-10-22 · 方案书 docs/plans/20261022-宝箱龟整条链路修复.md 的 A）
@@ -5657,6 +5659,7 @@ end $$;
 revoke all on function public.referee_finals_coins(bigint, int, int, int) from public, anon;
 grant execute on function public.referee_finals_coins(bigint, int, int, int) to authenticated;
 -- <<< END referee_chest 20261022b <<<
+-- referee_chest 20261022b 已上生产 2026-10-24（tools/sb_migrate.py prod --rehearse --apply，演练 ALL PASS、回读函数体逐字相同、正式服账本 schema_migrations 有这一行）
 
 -- >>> BEGIN referee_incense 20261023 >>>
 -- ─────────────────────────────────────────────────────────────
@@ -5748,6 +5751,7 @@ end $$;
 revoke all on function public.referee_finals_coins(bigint, int, int, int) from public, anon;
 grant execute on function public.referee_finals_coins(bigint, int, int, int) to authenticated;
 -- <<< END referee_incense 20261023 <<<
+-- referee_incense 20261023 已上生产 2026-10-24（tools/sb_migrate.py prod --rehearse --apply，演练 ALL PASS、回读函数体逐字相同、正式服账本 schema_migrations 有这一行）
 
 -- >>> BEGIN friends 20261024 >>>
 -- ─────────────────────────────────────────────────────────────
@@ -6171,6 +6175,7 @@ grant execute on function public.nickname_report_resolve(text, text) to service_
 --                        'friend_list', 'friend_lineup', 'friend_card', 'snapshot_lead');
 --   期望：anon 全 false；authenticated 前七个 true、friend_card / snapshot_lead false。
 -- <<< END friends 20261024 <<<
+-- friends 20261024 已上生产 2026-10-24（tools/sb_migrate.py prod --rehearse --apply，演练 ALL PASS、回读函数体逐字相同、正式服账本 schema_migrations 有这一行）
 
 -- >>> BEGIN leaderboard_lead 20261024b >>>
 -- ─────────────────────────────────────────────────────────────
@@ -6233,3 +6238,4 @@ revoke all on function public.week_leaderboard_page(bigint, int, int) from publi
 revoke execute on function public.week_leaderboard_page(bigint, int, int) from anon;
 grant execute on function public.week_leaderboard_page(bigint, int, int) to authenticated;
 -- <<< END leaderboard_lead 20261024b <<<
+-- leaderboard_lead 20261024b 已上生产 2026-10-24（tools/sb_migrate.py prod --rehearse --apply，演练 ALL PASS、回读函数体逐字相同、正式服账本 schema_migrations 有这一行）
