@@ -28,10 +28,23 @@ var last_land := Vector2.ZERO
 var last_center := Vector2.ZERO
 
 const COL_DMG := Color("#ff9d5c")
-const COL_DUST := Color(0.93, 0.84, 0.66)
-const COL_RING := Color(1.0, 0.78, 0.48)
-const DUST_TEX := "res://assets/sprites/vfx/dust-impact.png"
-const CRACK_TEX := "res://assets/sprites/vfx/basic-slam-crack.png"
+## ── 特效素材: 全部过肩摔专用的逐帧像素图(tools/build_basic_slam_vfx.py 生成; 2026-10-24 重做) ──
+## 用户 10-24「为什么搞公用？」「全部是不是动画？」⇒ 不再用公用 skill-ring / dust-impact / 程序粒子。
+## 参考 LoL 瑟提 R 落地逐帧(docs/studies/20261024b-过肩摔落地逐帧.md)。
+const FX_SHOCK := "res://assets/sprites/vfx/basic-slam-shock.png"     # 贴地冲击环 8 帧 128²; 末帧外沿半径 SHOCK_LAST_R 像素
+const FX_CRATER := "res://assets/sprites/vfx/basic-slam-crater.png"   # 贴地陷坑 8 帧 64²: 0~3 裂开 / 4 完整 / 5~7 碎散
+const FX_ERUPT := "res://assets/sprites/vfx/basic-slam-erupt.png"     # 立着的土刺爆冠 7 帧 160×72(两侧高、中间低)
+const FX_DUST := "res://assets/sprites/vfx/basic-slam-dust.png"       # 立着的扬尘团 7 帧 56×40
+const FX_ROCKS := "res://assets/sprites/vfx/basic-slam-rocks.png"     # 石块 4 种 12²(一种一格, 不是动画)
+const FX_FLASH := "res://assets/sprites/vfx/basic-slam-flash.png"     # 砸中闪光 4 帧 56²
+const SHOCK_CELL := 128.0
+const SHOCK_LAST_R := 62.0
+## 落地时间线(秒, 落地 = 0)。每段的帧时长都在下面 `_land_fx` 里写死成数组 —— 一眼看得出节奏。
+const LAND_ROCK_N := 8
+const LAND_DUST_N := 8
+const LAND_DUST_R0 := 70.0        # 扬尘团从离落点多远起卷(码)
+const LAND_DUST_R1 := 230.0       # 卷到多远(码)
+const TGT_GETUP_SEC := 0.3        # 目标仰面摔在地上多久再翻过来(眩晕 0.5 秒之内)
 
 
 func _init(b) -> void:
@@ -207,17 +220,18 @@ func _run(u: Dictionary, tgt: Dictionary) -> void:
 	last_phase = "land"
 	u["pos"] = u_land
 	u["_slam_voff"] = Vector3.ZERO
-	if is_instance_valid(tspr):
-		tspr.flip_v = false
+	u["land_t"] = battle.JUICE_LAND_SEC          # 落地压扁回弹(击飞落地同一套, battle_vfx._juice_scale_for)
 	tgt["_slam_voff"] = Vector3.ZERO
 	if tgt.get("alive", false):
 		tgt["pos"] = t_land
+		tgt["land_t"] = battle.JUICE_LAND_SEC
 		stun_target(tgt)
 		if caught_air:
 			battle._equip_sys.on_unit_landed(tgt)
 	last_land = t_land
 	_apply_damage(u, tgt, tmax, t_land)
 	_land_fx(t_land, u_land)
+	_getup_later(tgt, tspr)   # 仰面砸在地上 TGT_GETUP_SEC 秒, 再翻过来(不再一帧翻正)
 	if owns_t:
 		tgt["_slam"] = false
 	_release(u, owns_u)
@@ -256,6 +270,7 @@ func _hop_slam(u: Dictionary, tgt: Dictionary, owns_u: bool) -> void:
 		var s: float = el / tot
 		u["_slam_voff"] = Vector3(0.0, BasicConsts.SLAM_HOP_H * 4.0 * s * (1.0 - s), 0.0)
 	u["_slam_voff"] = Vector3.ZERO
+	u["land_t"] = battle.JUICE_LAND_SEC
 	var c: Vector2 = tgt["pos"]
 	if tgt.get("alive", false) and not (tgt.get("_eggImmune", false) or tgt.get("_isEgg", false)):
 		stun_target(tgt)
@@ -277,6 +292,8 @@ func stun_target(tgt: Dictionary) -> void:
 func _apply_damage(u: Dictionary, tgt: Dictionary, tmax: float, center: Vector2) -> void:
 	last_center = center
 	var atk: float = float(u["atk"])
+	## ★落地不顿帧(用户 10-24「顿啥啊」): 单段 ≥ 60 的通用重击顿帧(battle_vfx._impact)这一下也不触发。
+	battle._hitstop_mute += 1
 	if tgt.get("alive", false):
 		battle._damage._apply_damage_from(u, tgt, battle._atk_dmg(u, BasicConsts.SLAM_MAIN_ATK, tgt)
 			+ battle._phys_after_armor(u, atk * BasicConsts.SLAM_MAIN_HP_PER_ATK * tmax, tgt), COL_DMG)
@@ -286,6 +303,7 @@ func _apply_damage(u: Dictionary, tgt: Dictionary, tmax: float, center: Vector2)
 		if DetMath.dist(o["pos"], center) <= BasicConsts.SLAM_SPLASH_RADIUS:
 			battle._damage._apply_damage_from(u, o, battle._atk_dmg(u, BasicConsts.SLAM_SPLASH_ATK, o)
 				+ battle._phys_after_armor(u, atk * BasicConsts.SLAM_SPLASH_HP_PER_ATK * tmax, o), COL_DMG)
+	battle._hitstop_mute -= 1
 
 
 ## 小龟半空阵亡 / 中断: 目标放回地面(当前水平位置), 复位贴图与偏移, 只解自己加的锁, 不结算(体检 B4)。
@@ -333,28 +351,136 @@ func _afterimage(who: Dictionary, col: Color, life: float) -> void:
 	tw.tween_callback(g.queue_free)
 
 
+## 一段逐帧动画: `durs` = 每帧停多久(秒, 长度 = 帧数)。走 sim 步(`_reg_tween`), 播完自删。
+## `flat` = 躺平贴地(俯视素材); 否则正对镜头、底边贴在 `h` 高度(立着的素材, 不会一半插进地里)。
+func _frames(path: String, at: Vector2, h: float, ps: float, flat: bool, durs: Array, nm: String = "") -> Sprite3D:
+	if battle._world == null or not ResourceLoader.exists(path):
+		return null
+	var tex: Texture2D = load(path)
+	var sp := Sprite3D.new()
+	sp.texture = tex
+	sp.hframes = durs.size()
+	sp.frame = 0
+	sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	sp.shaded = false
+	sp.transparent = true
+	sp.pixel_size = ps
+	if flat:
+		sp.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+		sp.axis = Vector3.AXIS_Y      # ★AXIS_Y 本身就是躺平, 不再转 -90°(memory fb-axis-y-plus-rotation-cancels)
+	else:
+		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		sp.offset = Vector2(0.0, float(tex.get_height()) * 0.5)   # 底边贴在锚点上
+	sp.position = battle._world_pos(at, h)
+	if nm != "":
+		sp.name = nm
+	battle._world.add_child(sp)
+	var tw = battle._reg_tween()
+	tw.bind_node(sp)
+	for k in range(durs.size()):
+		var kk: int = k
+		tw.tween_callback(func() -> void: sp.frame = kk)
+		tw.tween_interval(float(durs[k]))
+	tw.tween_callback(sp.queue_free)
+	return sp
+
+
+## 冲刺 / 起跳脚下的小扬尘(专用尘团, 立着)。
 func _dust_puff(at: Vector2, size_px: float) -> void:
-	battle._burst_vfx(DUST_TEX, at, size_px, 0.12)
+	_frames(FX_DUST, at, 0.02, size_px * battle.WS / 56.0, false, [0.04, 0.05, 0.05, 0.06, 0.06, 0.06, 0.06])
 
 
-## 起跳脚下一圈小尘环(贴地)。
+## 冲击环(贴地): 外沿最后一帧 = `radius` 码。起跳用小的, 落地用伤害半径。
+func _shock(at: Vector2, radius: float, durs: Array, nm: String = "") -> Sprite3D:
+	return _frames(FX_SHOCK, at, 0.05, radius * battle.WS / SHOCK_LAST_R, true, durs, nm)
+
+
+## 目标仰面砸在地上 TGT_GETUP_SEC 秒再翻过来(带一次压扁) —— 原来落地那一帧直接从倒立翻正。
+func _getup_later(tgt: Dictionary, tspr) -> void:
+	if not is_instance_valid(tspr):
+		return
+	var tw = battle._reg_tween()
+	tw.bind_node(tspr)   # 立绘被释放(换路 / 死亡淡完)⇒ tween 自动 kill, 回调不再被调(tools/tween_capture_audit.py 修法①)
+	tw.tween_interval(TGT_GETUP_SEC)
+	tw.tween_callback(func() -> void:
+		if not is_instance_valid(tspr) or tgt.get("_slam", false):
+			return   # 已经被别的演出抓走(它自己管倒立)
+		tspr.flip_v = false
+		if tgt.get("alive", false):
+			tgt["land_t"] = battle.JUICE_LAND_SEC)
+
+
+## 起跳脚下一圈小冲击环(贴地, 专用素材)。
 func _skill_ring_small(at: Vector2) -> void:
-	battle._skill_ring(at, COL_DUST, 90.0)
+	_shock(at, 90.0, [0.03, 0.03, 0.04, 0.04, 0.05, 0.05, 0.05, 0.05])
 
 
-## 落地: 贴地伤害圈(外径 = 溅射半径) + 地面裂纹 + 中等尘爆 + 碎屑 + 大震屏 + 顿帧。
+## 落地(瑟提 R 的层次, 落地 = 0 秒):
+##   0      砸中闪光(立着 4 帧) · 陷坑逐帧裂开(贴地 0~3 帧 0.13 秒) · 冲击环逐帧扩散(贴地 8 帧 0.45 秒, 末帧外沿 = 350 码伤害半径)
+##   0      土刺爆冠(立着 7 帧, 两侧高中间低, 摆在落点后面一点 ⇒ 摔在中间的目标露在前面) · 大震屏
+##   0      石块 8 块(4 种)按抛物线飞出, 0.55 秒落地后淡掉
+##   0.06   扬尘团 8 团(立着 7 帧)沿地面从 70 码卷到 230 码
+##   0.6    陷坑完整停留到 1.1 秒, 再逐帧碎散(5~7 帧)
+##   ★不顿帧(用户 10-24「顿啥啊」)。
 func _land_fx(center: Vector2, u_land: Vector2) -> void:
-	battle._skill_ring(center, COL_RING, BasicConsts.SLAM_SPLASH_RADIUS)
-	battle._skill_ring(u_land, COL_DUST, 120.0)
-	if ResourceLoader.exists(CRACK_TEX):
-		var cr: Sprite3D = battle._px_ground_sprite(load(CRACK_TEX), center, 190.0, Color(1, 1, 1, 0.95), 0.03)
-		cr.name = "BasicSlamCrack"
-		var tw = battle._reg_tween()
-		tw.bind_node(cr)
-		tw.tween_interval(0.7)
-		tw.tween_property(cr, "modulate:a", 0.0, 0.5)
-		tw.tween_callback(cr.queue_free)
-	battle._burst_vfx(DUST_TEX, center, 230.0, 0.3)
-	battle._vfx._impact_particles(center, 0.0)
+	_frames(FX_FLASH, center, 0.5, 150.0 * battle.WS / 56.0, false, [0.03, 0.04, 0.04, 0.03], "BasicSlamFlash")
+	_frames(FX_CRATER, center, 0.03, 230.0 * battle.WS / 64.0, true,
+		[0.03, 0.03, 0.03, 0.04, 0.97, 0.12, 0.12, 0.12], "BasicSlamCrater")
+	_shock(center, BasicConsts.SLAM_SPLASH_RADIUS, [0.04, 0.05, 0.05, 0.06, 0.06, 0.06, 0.06, 0.07], "BasicSlamShock")
+	_frames(FX_ERUPT, center + Vector2(0.0, -14.0), 0.0, 300.0 * battle.WS / 160.0, false,
+		[0.03, 0.04, 0.05, 0.06, 0.06, 0.06, 0.06], "BasicSlamErupt")
+	_shock(u_land, 110.0, [0.03, 0.03, 0.04, 0.04, 0.05, 0.05, 0.05, 0.05])
+	_rocks(center)
+	var tw = battle._reg_tween()
+	tw.tween_interval(0.06)
+	tw.tween_callback(func() -> void: _dust_ring(center))
 	battle._shake(battle.JUICE_SHAKE_BIG)
-	battle._add_hitstop(0.1)
+
+
+## 石块: 8 块绕落点一圈抛出(方向固定错开, 不用随机数), 抛物线 0.55 秒落地, 再淡掉。
+func _rocks(center: Vector2) -> void:
+	if battle._world == null or not ResourceLoader.exists(FX_ROCKS):
+		return
+	var tex: Texture2D = load(FX_ROCKS)
+	for i in range(LAND_ROCK_N):
+		var ang: float = TAU * float(i) / float(LAND_ROCK_N) + 0.35 * float(i % 3)
+		var dirv := Vector2(DetMath.dcos(ang), DetMath.dsin(ang))
+		var dist: float = 110.0 + 25.0 * float((i * 5) % 4)
+		var apex: float = 1.3 + 0.35 * float((i * 3) % 4)
+		var dur: float = 0.5 + 0.05 * float(i % 3)
+		var sp := Sprite3D.new()
+		sp.texture = tex
+		sp.hframes = 4
+		sp.frame = i % 4
+		sp.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		sp.shaded = false
+		sp.transparent = true
+		sp.pixel_size = (22.0 + 4.0 * float(i % 2)) * battle.WS / 12.0
+		sp.flip_h = (i % 2) == 1
+		sp.position = battle._world_pos(center, 0.3)
+		battle._world.add_child(sp)
+		var tw = battle._reg_tween()
+		tw.bind_node(sp)
+		tw.tween_method(func(t: float) -> void:
+			var p2: Vector2 = center + dirv * (dist * t)
+			sp.position = battle._world_pos(p2, 0.3 + apex * 4.0 * t * (1.0 - t)), 0.0, 1.0, dur)
+		tw.tween_property(sp, "modulate:a", 0.0, 0.18)
+		tw.tween_callback(sp.queue_free)
+
+
+## 扬尘团: 8 团绕落点一圈, 沿地面从 LAND_DUST_R0 卷到 LAND_DUST_R1(立着的专用尘团, 7 帧)。
+func _dust_ring(center: Vector2) -> void:
+	for i in range(LAND_DUST_N):
+		var ang: float = TAU * (float(i) + 0.5) / float(LAND_DUST_N)
+		var dirv := Vector2(DetMath.dcos(ang), DetMath.dsin(ang))
+		var sp: Sprite3D = _frames(FX_DUST, center + dirv * LAND_DUST_R0, 0.02, (95.0 + 15.0 * float(i % 2)) * battle.WS / 56.0, false,
+			[0.05, 0.07, 0.08, 0.1, 0.1, 0.1, 0.1])
+		if sp == null:
+			continue
+		sp.flip_h = (i % 2) == 1
+		var tw = battle._reg_tween()
+		tw.bind_node(sp)
+		tw.tween_method(func(t: float) -> void:
+			sp.position = battle._world_pos(center + dirv * (LAND_DUST_R0 + (LAND_DUST_R1 - LAND_DUST_R0) * (1.0 - (1.0 - t) * (1.0 - t))), 0.02),
+			0.0, 1.0, 0.6)

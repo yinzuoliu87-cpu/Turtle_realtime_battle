@@ -668,6 +668,7 @@ var _edit_btn_edit: Button = null
 
 # --- Phase 4 juice 全局态 ---
 var _hitstop := 0.0                       # 剩余顿帧秒 (>0 时 _process 跳过逻辑推进, 每帧自减 → 精确恢复)
+var _hitstop_mute := 0                    # >0 时 _add_hitstop 不生效(过肩摔落地那一下的伤害不触发通用重击顿帧)
 var _skill_ring_sheet: Texture2D = null   # 共享技能环的 10 帧扩散表(懒加载)
 ## 位置固定的帧动画(不跟单位走): [{spr,t0,fps,n}] —— 每帧按游戏时钟算到第几帧, 放完自销。
 ## ★与 `_follow_vfx` 分开是因为那张表的每一条都必须有 `unit`, 而环是打在场地坐标上的。
@@ -7045,6 +7046,8 @@ func _shake(amp: float) -> void:
 
 # 触发顿帧: 取较大值 (短事件不覆盖更长的卡顿)
 func _add_hitstop(sec: float) -> void:
+	if _hitstop_mute > 0:
+		return   # 调用方明确不要顿帧的那几下(过肩摔落地: 用户 10-24「顿啥啊」)
 	if sec > _hitstop:
 		_hitstop = sec
 		if StreamRecorder.cur != null: StreamRecorder.cur.ev("hitstop", [sec])   # 逐帧直播事件层(S1)

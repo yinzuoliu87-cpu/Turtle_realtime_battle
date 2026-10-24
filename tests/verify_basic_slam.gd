@@ -144,22 +144,45 @@ func _ready() -> void:
 	_ok("★D 抱起之后全程无瞬移(小龟每步 ≤ 8 码、目标每步 ≤ 16 码)", jump_u <= 8.0 and jump_t <= 16.0, "小龟 %.1f / 目标 %.1f" % [jump_u, jump_t])
 	_ok("D 落地眩晕 %.1f 秒" % BC.SLAM_STUN_SEC, absf(float(t.get("stun_until", 0.0)) - s._t - BC.SLAM_STUN_SEC) <= 0.12,
 		"剩 %.2f" % (float(t.get("stun_until", 0.0)) - s._t))
-	_ok("★M 结束后两边都解锁、偏移归零、不倒立", not b.get("_slam", false) and not t.get("_slam", false)
-		and (b.get("_slam_voff", Vector3.ZERO) as Vector3) == Vector3.ZERO and (t.get("_slam_voff", Vector3.ZERO) as Vector3) == Vector3.ZERO
-		and not (t["sprite"] as Sprite3D).flip_v)
-	# L 落地特效: 贴地伤害圈外径 = 350
+	_ok("★M 结束后两边都解锁、偏移归零", not b.get("_slam", false) and not t.get("_slam", false)
+		and (b.get("_slam_voff", Vector3.ZERO) as Vector3) == Vector3.ZERO and (t.get("_slam_voff", Vector3.ZERO) as Vector3) == Vector3.ZERO)
+	## 落地 = 目标仰面砸在地上(还倒着), SYS.TGT_GETUP_SEC 秒后翻过来 —— 不再落地那一帧直接翻正(用户 10-24 追问落地)
+	var lying: bool = (t["sprite"] as Sprite3D).flip_v
+	var hs0: float = s._hitstop
+	var squash_t: bool = float(t.get("land_t", 0.0)) > 0.0 and float(b.get("land_t", 0.0)) > 0.0
+	# L 落地特效(全部过肩摔专用素材): 先在落地这一刻收集, 再往后走几步看翻身
 	var land: Vector2 = s._basic_slam_sys.last_land
-	var ring_r := -1.0
-	var flat := false
+	var at: Vector3 = s._world_pos(land, 0.05)
+	var shock: Sprite3D = null
+	var found := {}
+	var shared := []
 	for nd in s._world.get_children():
-		if nd is Sprite3D and (nd as Sprite3D).has_meta("ring_target_ps"):
-			var sp3: Sprite3D = nd
-			var rr: float = float(sp3.get_meta("ring_target_ps")) * s.RING_CELL_PX * (s.RING_LAST_R_PX / (s.RING_CELL_PX * 0.5)) / (2.0 * s.WS)
-			var at: Vector3 = s._world_pos(land, 0.05)
-			if absf(rr - BC.SLAM_SPLASH_RADIUS) < 1.0 and Vector2(sp3.position.x - at.x, sp3.position.z - at.z).length() < 0.05:
-				ring_r = rr
-				flat = sp3.billboard == BaseMaterial3D.BILLBOARD_DISABLED and sp3.axis == Vector3.AXIS_Y
-	_ok("★L 落点有一圈贴地(躺平)的伤害圈, 外径 = %.0f 码" % BC.SLAM_SPLASH_RADIUS, ring_r > 0.0 and flat, "外径 %.1f 躺平 %s" % [ring_r, str(flat)])
+		if not (nd is Sprite3D):
+			continue
+		var sp3: Sprite3D = nd
+		if sp3.texture != null:
+			var rp: String = sp3.texture.resource_path
+			for key in ["basic-slam-shock", "basic-slam-crater", "basic-slam-erupt", "basic-slam-rocks", "basic-slam-flash", "basic-slam-dust"]:
+				if rp.contains(key):
+					found[key] = int(found.get(key, 0)) + 1
+			## 公用素材不许再出现在过肩摔落地上(用户「为什么搞公用？」)
+			if rp.contains("skill-ring-10f") or rp.contains("dust-impact") or rp.contains("fx-shock-ring"):
+				shared.append(rp.get_file())
+		if str(sp3.name) == "BasicSlamShock":
+			shock = sp3
+	for _i in range(int(SYS.TGT_GETUP_SEC * 60.0) + 4):
+		_step()
+	_ok("★M 落地时目标仰面(还倒着)、两只都压扁回弹; %.1f 秒后翻过来" % SYS.TGT_GETUP_SEC,
+		lying and squash_t and not (t["sprite"] as Sprite3D).flip_v, "落地倒着 %s 压扁 %s 之后 %s" % [str(lying), str(squash_t), str((t["sprite"] as Sprite3D).flip_v)])
+	_ok("★L 落地 6 套专用逐帧素材都出现了(冲击环 / 陷坑 / 爆冠 / 石块 / 闪光 / 扬尘)",
+		found.size() == 6 and int(found.get("basic-slam-rocks", 0)) == SYS.LAND_ROCK_N, str(found))
+	_ok("★L 落地不再用公用素材(skill-ring / dust-impact / fx-shock-ring)", shared.is_empty(), str(shared))
+	var shock_r: float = (shock.pixel_size * SYS.SHOCK_LAST_R / s.WS) if shock != null else -1.0
+	_ok("★L 冲击环贴地(躺平)、在落点、末帧外沿 = %.0f 码" % BC.SLAM_SPLASH_RADIUS,
+		shock != null and absf(shock_r - BC.SLAM_SPLASH_RADIUS) < 0.5 and shock.billboard == BaseMaterial3D.BILLBOARD_DISABLED
+			and shock.axis == Vector3.AXIS_Y and Vector2(shock.position.x - at.x, shock.position.z - at.z).length() < 0.05,
+		"外沿 %.1f" % shock_r)
+	_ok("★L 落地不顿帧(用户「顿啥啊」)", hs0 <= 0.0, "落地那一刻 hitstop %.2f" % hs0)
 
 	# ── E 护甲 / 虚化(B1) ──
 	var dmg := {}
