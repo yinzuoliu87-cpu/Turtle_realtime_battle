@@ -19,6 +19,7 @@ CI 里中间步骤自检是绿的，而 IPA 里还是旧值 —— xcodebuild �
   ⑥ 仅 iPhone（UIDeviceFamily == [1] / TARGETED_DEVICE_FAMILY = "1"）
   ⑦ PrivacyInfo.xcprivacy 能解析、不追踪、收集类型 == 方案书附录 A 六类（全部关联身份、不追踪、App Functionality）
   ⑧ 图标：project 档 1024×1024 PNG 且无 alpha 通道；app/ipa 档有 CFBundlePrimaryIcon + Assets.car
+  ⑨ 屏幕方向：iPhone / iPad 都正好是 LandscapeLeft + LandscapeRight（2026-10-24 倒过来不转那次）
 
 用法：
   python tools/ios_artifact_check.py project build/ios --version 0.21.3 --build 101 --bundle-id com.luckyz.turtlearena
@@ -92,6 +93,13 @@ def check_info(info, a, min_os_key):
     mo = info.get(min_os_key)
     check("⑤ 最低系统 >= %s" % a.min_ios, mo is not None and ver_tuple(mo) >= ver_tuple(a.min_ios),
           "%s = %r" % (min_os_key, mo))
+    # ⑨ 2026-10-24 用户真机「手机倒过来画面不转」: project.godot 把方向写成 Godot 3 的字符串 "sensor_landscape",
+    #   Godot 4 读成 0 ⇒ 导出的 plist iPhone 只有 LandscapeLeft、iPad 只有 LandscapeRight。改成整数 4 后两边都是左右两个。
+    want = {"UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"}
+    for key in ("UISupportedInterfaceOrientations", "UISupportedInterfaceOrientations~ipad"):
+        got = info.get(key)
+        check("⑨ %s == 左横 + 右横(倒过来能翻、不许竖屏)" % key,
+              isinstance(got, list) and set(got) == want, "实际 %r" % (got,))
 
 
 def check_privacy(data, where):
