@@ -184,7 +184,62 @@ const BASE: Dictionary = {
 	##   `get_combined_minimum_size()` 夹住根本没生效)把卡加高 14px, 实测已是 0。
 	##   ★基线停在比实测高的数 = 给那个 bug 留了回来的路, 棘轮只许降。
 	"TrainerConfig": {"web": 0, "round": 1, "frame": 0, "tap": 0},
+	## ★★★2026-10-24【周一 / 周六 / 周日】三天单独成行 —— 见下面 `SCREEN_DAY` 的长注释。
+	##   上面的 MainMenu / Leaderboard 两行从此**钉在周三**量; 这几行把另外三种赛期显式补上。
+	##   基线 = 首次量到就如实登记(全 0)。
+	"MainMenu·周一": {"web": 0, "round": 0, "frame": 0, "tap": 0},
+	"MainMenu·周六": {"web": 0, "round": 0, "frame": 0, "tap": 0},
+	"MainMenu·周日": {"web": 0, "round": 0, "frame": 0, "tap": 0},
+	"Leaderboard·周一": {"web": 0, "round": 0, "frame": 0, "tap": 0},
+	"Leaderboard·周六": {"web": 0, "round": 0, "frame": 0, "tap": 0},
+	"Leaderboard·周日": {"web": 0, "round": 0, "frame": 0, "tap": 0},
 }
+
+## ★★★【钉钟】(2026-10-24) 每一屏量的是**星期几**。没列的屏一律周三(积分赛日)。
+##
+## 由来: Shop「文字压边带」周五绿、周六红, 一行代码没改。查实是量尺缓存串格(见 `_tex_key`),
+##   而**谁先占那一格**取决于主菜单当天长什么样 —— 周五「开始战斗」挂呼吸光晕, 周六(新档没闯关资格)不挂。
+##   缓存修好之后, 判据对同一块屏已与日期无关(周三/周六/周日三份钉钟实跑判定逐条相同);
+##   但**屏本身**仍随星期变: 主菜单可见控件 周三 120 / 周六 109(计数条换成赛期状态行、CTA 锁住),
+##   排行榜 135 / 136(顶栏按赛期挂「赛况」「对阵图」入口)。不钉的话, 门禁量的是"CI 跑的那天"那块屏 ——
+##   一个只在周末出现的问题会让门禁**按星期几变色**, 而工作日那块屏在周末又没人量。
+## ⇒ 默认钉周三; 随星期变的两屏再把周一(休赛)/周六(闯关赛)/周日(决赛日)各量一遍(上面 BASE 末尾 6 行)。
+## ★钉的是**本周**那一天(`now_utc()` 的周锚 + 天数 + 12:00), 不是写死某个日期:
+##   GameState 开机按真实时钟定了本周周锚(`week_anchor_ts`), 写死日期过几周就跨周 ⇒ 屏上会量到「换轮」后的状态,
+##   那是另一种随日期漂。同一周里换星期几, 状态与开机时一致。
+## ⚠ 撮合屏周六走闯关赛匹配(`MatchmakingScene._gauntlet_now`), 但那只换**挑谁当对手**, 版式是同一张 VS 卡 —— 没单列。
+const SCREEN_DAY: Dictionary = {
+	"MainMenu·周一": 0, "MainMenu·周六": 5, "MainMenu·周日": 6,
+	"Leaderboard·周一": 0, "Leaderboard·周六": 5, "Leaderboard·周日": 6,
+}
+const PIN_DAY_DEFAULT := 2          # 周三
+const PIN_HOUR_SEC := 12 * 3600     # 当天 12:00 UTC
+const _MAINMENU := preload("res://scripts/scenes/MainMenuScene.gd")
+
+
+## 这一屏**真的是那一天的样子**吗 —— 钉钟的分母(只认产品自己的读数, 不认我设的那个 static)。
+##   排行榜: 它自己读一次钟存下的 `day_phase`。
+##   主菜单: 开始战斗旁那张模式卡 —— 标题(`ModeTitle`) = `mode_card_lines(ts)[0]`(赛制名, 四种赛期各不相同),
+##           第二行 = `[1]`(周六/周日换成当天读数); 计数条(`TODAY_COUNTER_NAME`)只在吃命/配额的日子有。
+##   ★不拿「未晋级」这类读数单独当判据: 周六周日都显示它, 分不出是哪天。
+func _pinned_day_ok(scene_name: String, inst: Node, ts: int) -> Array:
+	var ph: String = _P2CX.phase_at_utc(ts)
+	if scene_name == "Leaderboard":
+		return [str(inst.get("day_phase")) == ph, "屏上 day_phase=%s, 应为 %s" % [str(inst.get("day_phase")), ph]]
+	if scene_name == "MainMenu":
+		var lines: Array = inst.call("mode_card_lines", ts) as Array
+		var tl: Node = inst.find_child("ModeTitle", true, false)
+		var title_ok: bool = tl is Label and (tl as Label).is_visible_in_tree() \
+			and str((tl as Label).text) == str(lines[0])
+		var second_ok: bool = tl != null and _mm_find_label(tl.get_parent(), str(lines[1]))
+		var cnt: Node = inst.find_child(_MAINMENU.TODAY_COUNTER_NAME, true, false)
+		var has_cnt: bool = cnt != null and (cnt as Control).is_visible_in_tree()
+		var want_cnt: bool = str(inst.call("_phase_status_line", ts)) == ""
+		return [title_ok and second_ok and has_cnt == want_cnt,
+			"模式卡标题「%s」(屏上「%s」) 第二行「%s」在=%s · 计数条在=%s 应=%s" % [str(lines[0]),
+				str((tl as Label).text) if tl is Label else "无", str(lines[1]), str(second_ok),
+				str(has_cnt), str(want_cnt)]]
+	return [true, ""]
 
 ## 分母下限: 这一屏至少该扫到这么多可见控件。少于它 = 场景没建起来, 下面的"0 问题"全是假的。
 const MIN_CTRL: Dictionary = {
@@ -206,6 +261,9 @@ const MIN_CTRL: Dictionary = {
 	"Matchmaking": 18,
 	## ★Record 下限从 10 提到 80: 10 是占位屏也能过的数, 等于分母没起作用。
 	"TeamSelect": 150, "Shop": 60, "Settings": 10, "Record": 80,
+	## 钉在别的星期几的同一屏, 下限与本屏相同(那一天长什么样由 `_pinned_day_ok` 另判)。
+	"MainMenu·周一": 20, "MainMenu·周六": 20, "MainMenu·周日": 20,
+	"Leaderboard·周一": 30, "Leaderboard·周六": 30, "Leaderboard·周日": 30,
 }
 
 ## 本屏用的池种子脚本(用完要 `clear()` —— `pool_override` 是 static)。
@@ -234,12 +292,31 @@ func _ok(nm: String, cond: bool, detail: String = "") -> void:
 ##   · 写"内部匀色 + 有边带" ⇒ **背景平铺图也算框**了, 一下多出 35 条假阳(选龟 26 / 主菜单 9)。
 ##   · 光加"不占大半个屏"还不够: 24x24 的小图标带个圈边也算框 ⇒ 还得要求**它大得装得下一行字**
 ##     (面积 ≥4000 且短边 ≥40)。
-## 最后落在: `_band_of` 量得到边带(它本来就分空心/实心两支) + **边带占比像个"边"**(3%~30%)。
+## 最后落在: `_band_of` 量得到边带(它本来就分空心/实心两支) + **边带占比像个"边"**(3%~30%)
+##   + (2026-10-24 补)**边带里有看得见的像素**(α ≥ 0.5, 见 `_band_visible`; 柔光渐变不算边)。
 ## 尺度约束(不占大半个屏)放在调用点 —— 那里才知道控件实际多大。
 var _frame_cache: Dictionary = {}
 
+
+## 量尺缓存(`_frame_cache` / `_band_cache` / `_band_far_cache` / `_bbox_cache`)的键。
+##
+## ★★由来(2026-10-24, 探针 `_probe_shop_price_frame` 实测): 原来四个缓存都拿 `tex.resource_path` 当键,
+##   而**运行时生成的贴图**(`ImageTexture.create_from_image` / 代码里拼的 `AtlasTexture`)路径全是 `""`
+##   ⇒ 全进程所有这类贴图**共用一个格子**, 谁先被量到, 后面所有人都拿它的读数。
+##   这就是商店价签「周五绿、周六红」的全部原因 —— 一行产品代码都没变, 变的是**谁先占了那个格子**:
+##   | 那天 | 先占格子的是谁(主菜单) | 商店 `Price`(22x20 运行时画的数字图)拿到的读数 | 结果 |
+##   |---|---|---|---|
+##   | 周五(积分赛) | 「开始战斗」的呼吸光晕 `HeroGlow`(126x37, 环形) | 「是框, 边带 4」⇒ 被当成**框**, 根本不当图量 | 0 条(空检查) |
+##   | 周六(闯关赛·新档没资格) | 光晕不挂(开打被拦); 换成货币条染色金币图标(24x24, 不透明 4%~96%) | 「不是框」⇒ 当图量, 但**包围盒是金币图标的** ⇒ 量成几乎整块价签 | 10 条「+20」 |
+##   两天都没有量到价签数字本身。**同一个错把被测对象一天藏起来、一天量歪。**
+## ⇒ 有路径用路径(同一张图多处复用照样命中缓存); 没路径的按**对象**分开存。
+func _tex_key(tex: Texture2D) -> String:
+	var p := tex.resource_path
+	return p if p != "" else "@obj%d" % tex.get_instance_id()
+
+
 func _is_frame_tex(tex: Texture2D) -> bool:
-	var key := tex.resource_path
+	var key := _tex_key(tex)
 	if _frame_cache.has(key):
 		return bool(_frame_cache[key])
 	var img := tex.get_image()
@@ -248,17 +325,82 @@ func _is_frame_tex(tex: Texture2D) -> bool:
 		var b := _band_of(tex)
 		## 比例要和**扫描方向的那个维度**比 —— `_band_of` 是横着从中心往外扫的。
 		## (拿高度比会把 893x212 的按钮板判成"边带占 48%"而排掉, 正是它一直没被查的原因之一。)
-		ok = b >= 3.0 and b <= 0.35 * float(img.get_width())
+		var _ratio_ok: bool = b >= 3.0 and b <= 0.35 * float(img.get_width())
+		## ★★2026-10-24 第三条: **边带里得有看得见的像素**(α ≥ 0.5)。
+		##   由来: 缓存键修好(见 `_tex_key`)之后, 选龟屏详情立绘背后那团**柔光**(`detail_panel.gd`
+		##   「底部 radial 金色辉光」, GradientTexture2D 256x256, α 0.12 → 0)第一次被单独量到 ——
+		##   它中心 α≈0.07 走实心那一支, 往外 α 掉到 0.04 以下就被当成"边", 边带 86/256 = 34% 刚好卡进
+		##   35% 以内 ⇒ 被判成**框**, 立绘(本来就叠在光上)报「越边带 +9」。
+		##   以前没红是因为它和别的运行时贴图共用一格缓存(工作日拿到「是框·边带 4」、周末拿到「不是框」)。
+		##   一团最多 12% 不透明的光没有边, 「框」的意思是**看得见的边**。
+		var _solid: bool = _band_visible(img, int(b))
+		ok = _ratio_ok and _solid
+		## 明细: 每张被判过的贴图 + 这一条有没有改变结论(改变的那几张要能逐个说清是什么)
+		if _DUMP and _ratio_ok:
+			print("      [框判定] %s %s %dx%d 边带 %.0f 看得见=%s ⇒ %s%s" % [key, tex.get_class(),
+				img.get_width(), img.get_height(), b, str(_solid), "框" if ok else "不是框",
+				"" if _solid else "  ★因「边带看不见」改判"])
 	_frame_cache[key] = ok
 	return ok
 
+
+## 边带里有没有**看得见**的像素(α ≥ 0.5)—— 沿中线量左边带一段、沿中竖线量上边带一段
+##   (与 `_band_of` 扫的是同一条线)。框的边是画出来给人看的; 柔光/暗角那种半透明渐变不是边。
+func _band_visible(img: Image, band: int) -> bool:
+	var w := img.get_width()
+	var h := img.get_height()
+	var cx := w / 2
+	var cy := h / 2
+	for x in range(0, mini(band + 1, w)):
+		if img.get_pixel(x, cy).a >= 0.5:
+			return true
+	for y in range(0, mini(band + 1, h)):
+		if img.get_pixel(cx, y).a >= 0.5:
+			return true
+	return false
+
 func _band_of(tex: Texture2D) -> float:
-	var key := tex.resource_path
+	var key := _tex_key(tex)
 	if _band_cache.has(key):
 		return float(_band_cache[key])
 	var img := tex.get_image()
 	if img == null:
 		return 0.0
+	var band := _band_img(img)
+	_band_cache[key] = band
+	return band
+
+
+## 【右边那一侧】的边带 —— 给「拉伸成框的 TextureRect」量内框右沿用。
+##
+## ★★由来(2026-10-24): `_band_of` 只从中心往**左**、往**上**扫, 调用方再把这个数**同时当成右边带**。
+##   对称的框(设置屏木牌 `btn-frame.png` 等)没差别; 不对称的就量歪了 —— 商店价签 `price-tag.png`(22x20):
+##   左边是折过来的暗色厚边(中线上 x=7 才到牌面), 右边只有 2 像素描边, 牌面是 x7..20(`ShopScene.PRICE_FACE_*`)。
+##   照"右边也是 7"算, 内框右沿落在 x=15, 而居中画在牌面上的数字到 x=16 ⇒ 报「越边带 +3 / +7」
+##   (缓存键修好后实测 10 条), 实拍 1560x720 / 960x720 放大看数字两侧都离边好几像素。
+## ★口径 = **把贴图左右翻过来, 再走一遍 `_band_of` 那同一段扫描**(`_band_img`, 一个字不改)。
+##   ⇒ 左右对称的贴图翻过来还是它自己, 读数与 `_band_of` **按构造恒等**, 旧行为一字不变;
+##   只有真不对称的贴图, 右边才换成右边自己的读数(右边更厚就更严, 更薄就按真实的薄)。
+var _band_far_cache: Dictionary = {}
+
+func _band_far(tex: Texture2D) -> float:
+	var key := _tex_key(tex)
+	if _band_far_cache.has(key):
+		return float(_band_far_cache[key])
+	var img := tex.get_image()
+	if img == null:
+		return 0.0
+	var flipped: Image = img.duplicate() as Image
+	if flipped.is_compressed():
+		flipped.decompress()
+	flipped.flip_x()
+	var band := _band_img(flipped)
+	_band_far_cache[key] = band
+	return band
+
+
+## `_band_of` 的扫描本体(2026-10-24 原样搬出来, 好让 `_band_far` 对翻过来的图走同一段)。
+func _band_img(img: Image) -> float:
 	var w := img.get_width()
 	var h := img.get_height()
 	var cx := w / 2
@@ -286,9 +428,7 @@ func _band_of(tex: Texture2D) -> float:
 			if c2.a < 0.04 or maxf(maxf(absf(c2.r - ctr.r), absf(c2.g - ctr.g)), absf(c2.b - ctr.b)) > 0.12:
 				bt = y2
 				break
-	var band := float(maxi(bl, bt))
-	_band_cache[key] = band
-	return band
+	return float(maxi(bl, bt))
 
 
 ## 真正画出来的那块字的矩形(不是 Label 控件的矩形)。
@@ -394,7 +534,7 @@ var _bbox_cache: Dictionary = {}
 ##   6 张小将卡的立绘、28 个稀有度角标**全被报成压边带 3~7px** —— 而实拍它们稳稳在框里。
 ##   这是同一个错的第 9、10 次: **量真正画出来的东西, 不是量装它的盒子。**
 func _opaque_bbox(tex: Texture2D) -> Rect2:
-	var key := tex.resource_path
+	var key := _tex_key(tex)
 	if _bbox_cache.has(key):
 		return _bbox_cache[key]
 	var img := tex.get_image()
@@ -680,7 +820,10 @@ func _audit(root: Node) -> Dictionary:
 				##   于是连「全屏」两个字都被判成压边(实测三个按钮全红)。**量到的不等于挡得住的。**
 				##   横向那 101 才是真挡人的东西(两端的花纹柱), 越过去字就骑在花上。
 				var _sx: float = c.size.x / maxf(1.0, float(_ft.get_width()))
-				framed.append([c.get_global_rect(), _band_of(_ft) * _sx, 0.0, n])
+				## ★第 5 项 = 右/下边带(2026-10-24): 右边按右边自己量(`_band_far`), 不再假定与左边一样宽。
+				##   对称贴图两者恒等; 只有商店价签这种左厚右薄的牌子读数会变(见 `_band_far` 头注)。
+				framed.append([c.get_global_rect(), _band_of(_ft) * _sx, 0.0, n,
+					Vector2(_band_far(_ft) * _sx, 0.0)])
 			if n is NinePatchRect and (n as NinePatchRect).texture != null:
 				var np := n as NinePatchRect
 				## ★★2026-10-06 九宫格的边**只可能**画在切口(patch margin)里 —— 切口以内是被拉伸/平铺的芯子。
@@ -847,7 +990,13 @@ func _audit(root: Node) -> Dictionary:
 			continue
 		var mx: float = float(framed[best][1])
 		var my: float = float(framed[best][2])
-		var inner := Rect2(fr2.position + Vector2(mx, my), fr2.size - Vector2(mx, my) * 2.0)
+		## 右/下边带: 收了第 5 项的(拉伸成框的 TextureRect)用量出来的; 其余照旧按左/上对称。
+		var mx2: float = mx
+		var my2: float = my
+		if framed[best].size() > 4 and framed[best][4] is Vector2:
+			mx2 = float((framed[best][4] as Vector2).x)
+			my2 = float((framed[best][4] as Vector2).y)
+		var inner := Rect2(fr2.position + Vector2(mx, my), fr2.size - Vector2(mx + mx2, my + my2))
 		if inner.size.x <= 0.0 or inner.size.y <= 0.0:
 			continue
 		var over := maxf(maxf(inner.position.y - lr.position.y,
@@ -856,6 +1005,20 @@ func _audit(root: Node) -> Dictionary:
 			(lr.position.x + lr.size.x) - (inner.position.x + inner.size.x)))
 		if over > 2.0:
 			(d["frame"] as Array).append("%s+%.0f" % [str(boxed[k][1]).substr(0, 50), over])
+			## ★明细: 越的是**哪个框、哪一边、量到的图/字矩形是多少** —— 只有个数没法判真假。
+			if _DUMP:
+				var _fo: Node = framed[best][3] if framed[best].size() > 3 else null
+				var _bo: Node = boxed[k][3] if boxed[k].size() > 3 else null
+				print("      [压边带] 「%s」 %s ⇢ 框<%s %s> rect=%s 边带 左%.1f 右%.1f 上%.1f 下%.1f ⇒ 内框=%s  被测矩形=%s  越 %.1f" % [
+					str(boxed[k][1]).substr(0, 24), str(_bo.get_path()) if _bo != null else "?",
+					str(_fo.name) if _fo != null else "?", _fo.get_class() if _fo != null else "?",
+					str(fr2), mx, mx2, my, my2, str(inner), str(lr), over])
+				for _pair in [["框", _fo], ["被测", _bo]]:
+					var _pn = _pair[1]
+					if _pn is TextureRect and (_pn as TextureRect).texture != null:
+						var _tx: Texture2D = (_pn as TextureRect).texture
+						print("          %s贴图: %s '%s' %dx%d stretch=%d" % [str(_pair[0]), _tx.get_class(),
+							_tx.resource_path, _tx.get_width(), _tx.get_height(), (_pn as TextureRect).stretch_mode])
 	return d
 
 
@@ -1114,6 +1277,91 @@ func _selftest_frame_pairing() -> void:
 		"实测 %s —— 绿不了 = 跨层假违规还在(设置屏那三条就是这么来的)" % str(_audit(r3)["frame"]))
 	for n in [r1, r2, r3]:
 		n.queue_free()
+	await get_tree().process_frame
+
+
+## 判据自检③: 量尺本身(2026-10-24) —— 缓存不串格 / 柔光不算框 / 不对称框两边各量。
+##
+## ★★为什么必须有这一节: 这三处都是**量尺**的错, 棘轮上的数字看不出来 ——
+##   Shop 周五 0 条、周六 10 条, 而两天量的都不是价签数字本身(见 `_tex_key` 头注那张表)。
+##   ⇒ 现造被测物, 逐条证明量尺量的是它自己。也是这三处修改的**反向验证常驻版**:
+##   `_tex_key` 改回只认 `resource_path` ⇒ ⑧a/⑧b 红; 去掉 `_band_visible` ⇒ ⑧c 红;
+##   `_band_far` 换回 `_band_of`(右边当成与左边一样宽)⇒ ⑨a 红。
+const _SHOP := preload("res://scripts/scenes/ShopScene.gd")   # 价签贴图 / 尺寸 / 数字图走产品自己那一处
+
+func _selftest_ruler() -> void:
+	print("  ── 判据自检③: 量尺缓存不串格 / 柔光不算框 / 不对称框两边各量 ──")
+	## ⑧a 两张【没有资源路径】的运行时贴图: 先量 A(满铺不透明 = 主菜单那枚染色金币的形状), 再量 B(只右侧一小块)
+	var ia := Image.create(24, 24, false, Image.FORMAT_RGBA8)
+	ia.fill(Color(1, 1, 1, 1))
+	var ib := Image.create(22, 20, false, Image.FORMAT_RGBA8)
+	ib.fill(Color(0, 0, 0, 0))
+	ib.fill_rect(Rect2i(16, 8, 4, 4), Color(0, 0, 0, 1))
+	var ta := ImageTexture.create_from_image(ia)
+	var tb := ImageTexture.create_from_image(ib)
+	var bba: Rect2 = _opaque_bbox(ta)
+	var bbb: Rect2 = _opaque_bbox(tb)
+	var want := Rect2(16.0 / 22.0, 8.0 / 20.0, 4.0 / 22.0, 4.0 / 20.0)
+	_ok("自检⑧a 两张无路径贴图的不透明包围盒各量各的(不串格)",
+		ta.resource_path == "" and tb.resource_path == "" and bbb.is_equal_approx(want),
+		"A=%s  B=%s(应为 %s) —— 串格 = B 拿到 A 的读数, 商店价签周六那 10 条就是这么来的" % [str(bba), str(bbb), str(want)])
+	## ⑧b 同理判「是不是框」: 先量一个环形框(是), 再量一张全透明(不是)
+	var ir := Image.create(40, 40, false, Image.FORMAT_RGBA8)
+	ir.fill(Color(0.35, 0.22, 0.12, 1.0))
+	ir.fill_rect(Rect2i(4, 4, 32, 32), Color(0, 0, 0, 0))
+	var ie := Image.create(40, 40, false, Image.FORMAT_RGBA8)
+	ie.fill(Color(0, 0, 0, 0))
+	var f_ring: bool = _is_frame_tex(ImageTexture.create_from_image(ir))
+	var f_empty: bool = _is_frame_tex(ImageTexture.create_from_image(ie))
+	_ok("自检⑧b 无路径贴图「是不是框」各判各的: 环形框是 / 全透明不是",
+		f_ring and not f_empty, "环=%s 空=%s —— 串格 = 全透明拿到环的「是框」(周五商店价签就是这样被当成框而没人量)" % [str(f_ring), str(f_empty)])
+	## ⑧c 柔光不算框: 照 `team_select/detail_panel.gd` 立绘背后那团光原样造(α 0.12 → 0)
+	var grad := Gradient.new()
+	grad.set_color(0, Color(1.0, 216.0 / 255.0, 107.0 / 255.0, 0.12))
+	grad.set_color(1, Color(1.0, 216.0 / 255.0, 107.0 / 255.0, 0.0))
+	var gt := GradientTexture2D.new()
+	gt.gradient = grad
+	gt.fill = GradientTexture2D.FILL_RADIAL
+	gt.fill_from = Vector2(0.5, 0.8)
+	gt.fill_to = Vector2(0.5, 1.5)
+	gt.width = 256
+	gt.height = 256
+	await get_tree().process_frame     # GradientTexture2D 是延迟生成的, 等一帧再取图
+	var g_band: float = _band_of(gt)
+	var g_ratio_ok: bool = g_band >= 3.0 and g_band <= 0.35 * 256.0
+	_ok("自检⑧c 柔光(半透明径向渐变)不算框 —— 且它的边带占比本来能过(否则这条是空检查)",
+		g_ratio_ok and not _is_frame_tex(gt),
+		"边带 %.0f/256 占比够=%s 判成框=%s" % [g_band, str(g_ratio_ok), str(_is_frame_tex(gt))])
+	## ⑨ 不对称框: 产品自己的价签 + 产品自己画的数字图, 照 `ShopScene._card` 的摆法(数字图铺满价签、是它的孩子)
+	var r4 := Control.new()
+	r4.size = Vector2(400, 200)
+	add_child(r4)
+	var tag := TextureRect.new()
+	tag.texture = _SHOP.TAG_TEX
+	tag.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tag.stretch_mode = TextureRect.STRETCH_SCALE
+	tag.position = Vector2(100, 60)
+	tag.size = Vector2(_SHOP.TAG_W, _SHOP.TAG_H)
+	r4.add_child(tag)
+	var pr := TextureRect.new()
+	pr.texture = _SHOP._price_tex(3, Color("#3a2414"))
+	pr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pr.stretch_mode = TextureRect.STRETCH_SCALE
+	pr.size = tag.size
+	tag.add_child(pr)
+	await get_tree().process_frame
+	var f_ok: Array = _audit(r4)["frame"] as Array
+	pr.position = Vector2(20, 0)        # 往右挪进右边那道细边
+	await get_tree().process_frame
+	var f_r: Array = _audit(r4)["frame"] as Array
+	pr.position = Vector2(-20, 0)       # 往左挪进左边那道厚边
+	await get_tree().process_frame
+	var f_l: Array = _audit(r4)["frame"] as Array
+	_ok("自检⑨a 价签数字照产品摆法(居中在牌面)不报压边 —— 右边按右边自己量",
+		f_ok.size() == 0, "实测 %s —— 红了 = 又把右边当成和左边一样厚(左 7 / 右 3 原生像素)" % str(f_ok))
+	_ok("自检⑨b 数字挪进【右边细边】照样逮得到", f_r.size() == 1, "实测 %s" % str(f_r))
+	_ok("自检⑨c 数字挪进【左边厚边】照样逮得到", f_l.size() == 1, "实测 %s" % str(f_l))
+	r4.queue_free()
 	await get_tree().process_frame
 
 
@@ -1457,7 +1705,12 @@ func _ready() -> void:
 	var all_flat9: Array = []
 	var all_spill: Array = []
 	var all_overlap: Array = []
+	## ★★★钉钟(见 `SCREEN_DAY`): 本周周锚取**开跑这一刻**的; 收尾还原成开跑前的值。
+	var _clk0: int = int(_P2CX.now_override_ts)
+	var _wk0: int = int(_P2CX.week_anchor_utc(int(_P2CX.now_utc())))
 	for scn in BASE.keys():
+		var _pin_ts: int = _wk0 + int(SCREEN_DAY.get(scn, PIN_DAY_DEFAULT)) * 86400 + PIN_HOUR_SEC
+		_P2CX.now_override_ts = _pin_ts
 		## ★★★每一屏开头先验「上一屏没把池注入留下来」。
 		##   `Backend.pool_override` 是 **static**, 活过场景切换 —— 漏清一次,
 		##   后面每一屏量的都是那份假池, 而**没有任何判据会发现**。
@@ -1471,8 +1724,9 @@ func _ready() -> void:
 		_ok("★分母 %s: 进这一屏时撑合缝是还原的(static, 漏还原会波及后面每一屏)" % str(scn),
 			not _MM._may_leave_for_test.is_valid(),
 			"注入还在 = 撑合屏从此永不跳场")
-		## ★屏名不一定等于场景名: 「登录墙」量的是 Settings 的**另一个状态**。
-		var scene_name: String = "Settings" if str(scn) == "登录墙" else str(scn)
+		## ★屏名不一定等于场景名: 「登录墙」量的是 Settings 的**另一个状态**;
+		##   「MainMenu·周六」这类是同一场景钉在另一天(见 `SCREEN_DAY`)。
+		var scene_name: String = "Settings" if str(scn) == "登录墙" else str(scn).get_slice("·", 0)
 		var path := "res://scenes/%s.tscn" % scene_name
 		if not ResourceLoader.exists(path):
 			_ok("场景在位: %s" % str(scn), false, "找不到 %s" % path)
@@ -1483,7 +1737,7 @@ func _ready() -> void:
 		##   全新档的榜本来就只有自己 ⇒ 要量真榜就得自己灌。
 		## ★走 `Backend.pool_override` 而不是写盘 —— `save_pool()` 在 test_mode 下
 		##   直接 return(保护真存档), 写盘那条路根本不通(查了才知道)。
-		if str(scn) == "Leaderboard" and ResourceLoader.exists("res://tests/_setup_lb_rows.gd"):
+		if scene_name == "Leaderboard" and ResourceLoader.exists("res://tests/_setup_lb_rows.gd"):
 			_lb_seed = load("res://tests/_setup_lb_rows.gd")
 			## ★★★不许静默跳过: 这个种子脚本第一版有 Parse Error(漏了 `Backend` 的 preload),
 			##   `has_method("run")` 直接为 false ⇒ 一声不响地不执行, 而屏幕照样建得起来
@@ -1565,6 +1819,11 @@ func _ready() -> void:
 				_vs_ok, "对手名「%s」" % _mm_opp_name())
 		var _stable: bool = await _settle(inst)
 		print("    [落位] %s: %s" % [str(scn), "已静止" if _stable else "仍有常驻动效(入场已过, 照量)"])
+		## ★★钉钟的分母: 量的这块屏真的是那一天(随星期变的两屏才有可判的读数)。
+		if scene_name == "MainMenu" or scene_name == "Leaderboard":
+			var _dd: Array = _pinned_day_ok(scene_name, inst, _pin_ts)
+			_ok("★★分母 %s: 量的真是「%s」那天的屏(钉钟生效)" % [str(scn),
+				str(_P2CX.PHASE_LABEL.get(_P2CX.phase_at_utc(_pin_ts), "?"))], bool(_dd[0]), str(_dd[1]))
 		var d := _audit(inst)
 		## ★★★第三层分母: **判据真的作用在这一屏身上吗**。见 `_mm_probe`。
 		if str(scn) == "Matchmaking":
@@ -1629,8 +1888,11 @@ func _ready() -> void:
 			await _mm_after(inst, _me_scene)
 		inst.queue_free()
 		await get_tree().process_frame
+	## 弹层那一节(主菜单/背包/设置)同样钉在周三 —— 循环最后一屏是哪天不该决定它。
+	_P2CX.now_override_ts = _wk0 + PIN_DAY_DEFAULT * 86400 + PIN_HOUR_SEC
 	await _selftest_interactive()
 	await _selftest_frame_pairing()
+	await _selftest_ruler()
 	await _audit_popups()
 	await _test_cursor_scale()
 	print("  ── 全屏合计 ──")
@@ -1649,6 +1911,9 @@ func _ready() -> void:
 	_ok("没有【边距和 ≥ 尺寸】的退化九宫格", all_flat9.is_empty(), str(all_flat9.slice(0, 5)))
 	_ok("没有【行数装不下】的文字", all_spill.is_empty(), str(all_spill.slice(0, 5)))
 	_ok("没有【两段文字压在一起】", all_overlap.is_empty(), str(all_overlap.slice(0, 5)))
+	_P2CX.now_override_ts = _clk0     # ★钉钟收尾还原(static, 不许留给别人)
+	## 帧数只打印: `run-tests.sh` 的 `frames_for` 按帧给预算, 加屏之前先看这个数离预算还有多远。
+	print("    [帧] 本门禁用了 %d 帧(run-tests.sh frames_for 预算 30000)" % Engine.get_process_frames())
 	print("  %d passed, %d failed" % [_pass, _fail])
 	if _fail == 0:
 		print("ALL PASS — 全屏 UI 一致性")
