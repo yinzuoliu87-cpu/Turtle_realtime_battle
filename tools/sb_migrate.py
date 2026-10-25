@@ -19,6 +19,7 @@
   diff                         两边结构指纹对比（函数体 / grants / RLS / 约束 / 触发器 / cron），【对正式服只读】
   status                       仓库迁移清单 × 两边账本
   backfill beta                把仓库现有迁移按 sha256 记进内测服账本（建库时用；那些段已随 schema.sql 执行过）
+  backfill prod --yes-prod     正式服账本回填（2026-10-24）：两边结构指纹除内测服有意不同的几处外一致、且每份内测服账本有同名同 sha256 才写
 
 ★sha256 按「行尾归一成 LF」算（仓库行尾是混的，memory fb-orphan-worktrees-hold-unmerged-work）。
 ★本工具对正式服的写只发生在 `prod --rehearse/--apply/--hotfix` 且带 `--yes-prod` 时；其余一律只读。
@@ -376,13 +377,9 @@ def cmd_diff(a):
                      if n not in led_p and not (not led_p and str(r.get("note", "")).startswith("backfill")))
     explained, unexplained = [], []
     for k, n, vb, vp in d:
-        why = None
-        if k == "cron" and (n in BETA_ONLY_CRON or n in PROD_ONLY_CRON):
-            why = "内测服用 beta_tick 代替周日三条 cron（方案书 §2.5）"
-        elif k == "cons" and n == "server_clock.server_clock_prod_zero":
-            why = "内测服删了「偏移恒 0」约束（beta_setup.sql）"
-        elif k == "funcs" and n == "rls_auto_enable()":
-            why = "Supabase 面板「自动开 RLS」事件触发器（平台功能，不在仓库；内测服 bootstrap 补了同款）"
+        why = beta_only_reason(k, n)
+        if why:
+            pass
         elif pending and vp is None:
             why = "内测服已上、正式服未上的迁移带来的新对象（%s）" % ", ".join(pending)
         elif pending and k == "funcs" and vb is not None and vp is not None:
@@ -416,9 +413,67 @@ def cmd_status(a):
     return 0
 
 
+def beta_only_reason(k, n):
+    """纯函数: 两边结构指纹里【内测服有意与正式服不同】的那几处 → 理由; 不在单子上返回 None。
+    cmd_diff 与正式服回填共用这一张单子。"""
+    if k == "cron" and (n in BETA_ONLY_CRON or n in PROD_ONLY_CRON):
+        return "内测服用 beta_tick 代替周日三条 cron（方案书 §2.5）"
+    if k == "cons" and n == "server_clock.server_clock_prod_zero":
+        return "内测服删了「偏移恒 0」约束（beta_setup.sql）"
+    if k == "funcs" and n == "rls_auto_enable()":
+        return "Supabase 面板「自动开 RLS」事件触发器（平台功能，不在仓库；内测服 bootstrap 补了同款）"
+    return None
+
+
+def known_beta_only(k, n):
+    return beta_only_reason(k, n) is not None
+
+
+def _backfill_prod(a):
+    """正式服账本回填(2026-10-24 用户「补全吧」)。
+
+    那些迁移是建账本之前手工上的生产, 只是没记账。依据不是方案书那句「已上过」, 而是当场量:
+      ① 两边结构指纹除 known_beta_only 那几处外**完全一致** —— 只认固定理由,
+         不认 cmd_diff 的「内测服已上、正式服未上」那条(账本缺行时它会把缺的对象也算成已解释);
+      ② 每一份都过 prod_apply_allowed: 内测服账本里有同名同 sha256。
+    """
+    if not a.yes_prod:
+        raise SystemExit("正式服回填要 --yes-prod")
+    names = sorted(f[:-4] for f in os.listdir(MIG_DIR) if f.endswith(".sql"))
+    led_b = ledger(S.BETA_REF)
+    led_p = ledger(S.PROD_REF)
+    if led_p is None:
+        raise SystemExit("正式服还没有 schema_migrations 表（先上 20261021）")
+    d = S.diff_fingerprints(S.fingerprint(S.BETA_REF), S.fingerprint(S.PROD_REF))
+    left = [(k, n) for k, n, _vb, _vp in d if not known_beta_only(k, n)]
+    print("结构差异 %d 处, 除内测服有意不同之外 %d 处" % (len(d), len(left)))
+    if left:
+        for k, n in left:
+            print("  ✗ %s %s" % (k, n))
+        raise SystemExit("★拒绝: 正式服结构与内测服不一致, 不能凭账本记「已上」")
+    rows = []
+    for n in names:
+        if n in led_p:
+            continue
+        sha = sha256_lf(os.path.join(MIG_DIR, n + ".sql"))
+        ok, why = prod_apply_allowed(n, sha, led_b)
+        if not ok:
+            raise SystemExit("★拒绝 %s: %s" % (n, why))
+        rows.append("('%s', '%s', '%s', 'backfill: 建账本前已手工上生产; 回填时两边结构指纹一致')" % (
+            n, sha, who().replace("'", "")))
+    if rows:
+        S.query(S.PROD_REF, "insert into public.schema_migrations (name, sha256, applied_by, note) values %s "
+                            "on conflict (name) do nothing" % ", ".join(rows), prod_write_ok=True)
+    led1 = ledger(S.PROD_REF) or {}
+    print("正式服账本: %d 行 → %d 行（仓库 %d 份, 本次写 %d 行）" % (len(led_p), len(led1), len(names), len(rows)))
+    return 0
+
+
 def cmd_backfill(a):
+    if a.target == "prod":
+        return _backfill_prod(a)
     if a.target != "beta":
-        raise SystemExit("backfill 只做内测服（正式服账本由正式服首次执行 20261021 迁移后再回填, 要用户点头）")
+        raise SystemExit("backfill 只认 beta / prod")
     names = sorted(f[:-4] for f in os.listdir(MIG_DIR) if f.endswith(".sql"))
     led0 = ledger(S.BETA_REF)
     if led0 is None:
@@ -454,6 +509,7 @@ def main():
     x = sp.add_parser("diff"); x.set_defaults(fn=cmd_diff)
     x = sp.add_parser("status"); x.set_defaults(fn=cmd_status)
     x = sp.add_parser("backfill"); x.add_argument("target"); x.add_argument("--force", action="store_true")
+    x.add_argument("--yes-prod", action="store_true")
     x.set_defaults(fn=cmd_backfill)
     a = ap.parse_args()
     if a.cmd == "prod" and not (a.precheck or a.rehearse or a.apply):
