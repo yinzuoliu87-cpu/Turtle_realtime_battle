@@ -342,6 +342,14 @@ func _read_row(row: Control) -> Dictionary:
 				for i in range(3):
 					if absf(l.position.x - (LB.STAT_X0 + float(i) * LB.STAT_CELL)) < 0.5:
 						r["s%d" % i] = str(l.text)
+		elif str(ch.name).begins_with("RowHearts_"):
+			## ★2026-10-24 剩余生命画成心形: 屏上读法 = **数红心贴图**(不信 `hearts` 元数据), 与服务端那个数比。
+			var lit := 0
+			for hc in ch.get_children():
+				if hc is TextureRect and (hc as TextureRect).texture != null \
+						and (hc as TextureRect).texture.resource_path == LB.HEART_TEX:
+					lit += 1
+			r["s0"] = str(lit)
 		elif ch is Panel and absf((ch as Panel).position.x - LB.RANK_X) < 0.5:
 			for g in ch.get_children():
 				if g is Label:
@@ -365,6 +373,16 @@ func _pin_row(rows: Array) -> Dictionary:
 
 
 ## 屏上所有 Label(递归) —— 行格子住在行节点里, 不再是 `_body` 的直接子节点。
+## 「剩余生命」那一列每行一个的心形容器(LeaderboardScene._hearts_cell 建的 RowHearts_*)。
+func _hearts_boxes(n: Node) -> Array:
+	var out: Array = []
+	for ch in n.get_children():
+		if str(ch.name).begins_with("RowHearts_"):
+			out.append(ch)
+		out.append_array(_hearts_boxes(ch))
+	return out
+
+
 func _labels_under(n: Node) -> Array:
 	var out: Array = []
 	for ch in n.get_children():
@@ -418,12 +436,21 @@ func _check_heads(tag: String, inst: Node, rows_n: int) -> void:
 			continue
 		## ★量**全局**右沿: 行格子住在滚动列表的行节点里, 与表头不在同一个父节点下。
 		var hr: float = h.get_global_rect().end.x
-		for ch in _labels_under(body):
-			if str(ch.name).begins_with("RowStat%d_" % i):
-				seen += 1
-				var cr: float = (ch as Label).get_global_rect().end.x
-				if absf(cr - hr) > 1.0:
-					right_bad.append("列%d %.1f≠%.1f" % [i, cr, hr])
+		## ★2026-10-24 用户「画吧」: 「剩余生命」一列画成一排心形 ⇒ 第 0 列量**最右那颗心**的右沿, 另两列照旧量数字格。
+		var cells: Array = []
+		if i == 0:
+			for hb in _hearts_boxes(body):
+				if hb.get_child_count() > 0:
+					cells.append(hb.get_child(hb.get_child_count() - 1))
+		else:
+			for ch in _labels_under(body):
+				if str(ch.name).begins_with("RowStat%d_" % i):
+					cells.append(ch)
+		for ch in cells:
+			seen += 1
+			var cr: float = (ch as Control).get_global_rect().end.x
+			if absf(cr - hr) > 1.0:
+				right_bad.append("列%d %.1f≠%.1f" % [i, cr, hr])
 	_ok("%s ★★表头三列 = 「剩余生命」「胜场」「总场次」(用户原词, 顺序不许乱)" % tag,
 		heads == ["剩余生命", "胜场", "总场次"], str(heads))
 	_ok("%s 表头与数字右沿对齐(≤1px)" % tag, right_bad.is_empty() and rows_n > 0 and seen >= rows_n * 3,
@@ -431,22 +458,32 @@ func _check_heads(tag: String, inst: Node, rows_n: int) -> void:
 	## ★2026-10-23 排行榜重做: 每行名字前多了一枚**头像**(第一只统领, 方案书 §5 U3 用户拍板「新增的只有头像」)。
 	##   用户那句「排行榜里的奖杯是？」说的是**成绩格里**的图标 ⇒ 判据收窄到它真正要守的事:
 	##   贴图只许是头像(住在 `MatchCard.avatar` 那个件里), 而且整个落在成绩列左边; 成绩格里一张图都不许有。
+	##   ★2026-10-24 用户「画吧」(剩余生命画成心形) ⇒ 唯一的例外: 「剩余生命」那一列里的心形, 且只能在那一列的格子里。
 	var icons: Array = []
 	var stat_left: float = (body.get_global_rect().position.x + LB.STAT_X0) if body != null else 0.0
+	var col0_right: float = stat_left + LB.COL_W
 	var stk: Array = [body] if body != null else []
 	while not stk.is_empty():
 		var nd: Node = stk.pop_back()
 		if nd is TextureRect and (nd as TextureRect).texture != null:
 			var is_av := false
+			var is_heart := false
 			var up: Node = nd.get_parent()
 			while up != null and up != body:
 				if up.has_meta(MC.N_PORTRAIT):
 					is_av = true
+				if str(up.name).begins_with("RowHearts_"):
+					is_heart = true
 				up = up.get_parent()
-			if not is_av or (nd as TextureRect).get_global_rect().end.x > stat_left:
+			var tr: Rect2 = (nd as TextureRect).get_global_rect()
+			var tp: String = (nd as TextureRect).texture.resource_path
+			if is_heart:
+				if not (tp == LB.HEART_TEX or tp == LB.HEART_EMPTY_TEX) or tr.position.x < stat_left - 0.5 or tr.end.x > col0_right + 0.5:
+					icons.append("%s(%s)" % [str(nd.name), tp.get_file()])
+			elif not is_av or tr.end.x > stat_left:
 				icons.append(str(nd.name))
 		stk.append_array(nd.get_children())
-	_ok("%s 成绩格里不画图标(用户「排行榜里的奖杯是？」; 贴图只有名字前的头像)" % tag, icons.is_empty(),
+	_ok("%s 成绩格里不画图标(用户「排行榜里的奖杯是？」; 贴图只有名字前的头像 + 「剩余生命」列里的心形)" % tag, icons.is_empty(),
 		"%d 个 %s" % [icons.size(), str(icons.slice(0, 3))])
 
 

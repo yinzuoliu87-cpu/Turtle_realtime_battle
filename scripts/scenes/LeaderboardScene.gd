@@ -68,6 +68,12 @@ const HEAD_H := 28.0
 const ROW_TEX := "leaderboard/lb-row.png"
 const ROW_TEX_MARGIN := 10
 const MEDAL_TEX := "leaderboard/lb-medal.png"
+## 剩余生命的心形(2026-10-24 用户「画吧」), 见 `_hearts_cell`。
+const HEART_TEX := "res://assets/sprites/leaderboard/lb-heart.png"
+const HEART_EMPTY_TEX := "res://assets/sprites/leaderboard/lb-heart-empty.png"
+const HEART_W := 18.0
+const HEART_H := 16.0
+const HEART_GAP := 4.0
 
 ## ═══ 全部名次 (2026-10-19 · 用户「排行榜你学一下其他游戏的，开放所有排名」) ═══
 ## 参考(docs/plans/ref/20261019-排行榜参考/, 逐张看过): 荒野乱斗 / 使命召唤手游 / Flash Party 三款同一个结构 ——
@@ -135,9 +141,12 @@ var _dup_names: Dictionary = {}
 const COL_W := 140.0
 const STAT_CELL := 168.0
 const STAT_X0 := CARD_X + CARD_W - 22.0 - COL_W - 2.0 * STAT_CELL
-## 成绩槽(行卡右段压暗的那一块)从第一列左沿往右 30 起(第一列的数字右对齐在 806, 槽不必空出一大截), 到行卡内沿止。
+## 成绩槽(行卡右段压暗的那一块)原来从第一列左沿往右 30 起(那时第一列是一个右对齐的数字), 到行卡内沿止。
 ## 名字列止于成绩槽左沿。
-const SLOT_X := STAT_X0 + 30.0
+## ★2026-10-24 剩余生命画成一排心(比一个数字宽得多) ⇒ 槽的左沿改成「整排心左边再留 8」, 心整排落在槽里
+##   (实拍: 原来的 +30 让第一颗心一半露在槽外)。名字列随之窄 26px。
+const HEARTS_ROW_W := HEART_W * _P2C.HEARTS_MAX + HEART_GAP * (_P2C.HEARTS_MAX - 1)
+const SLOT_X := STAT_X0 + COL_W - HEARTS_ROW_W - 8.0
 const NAME_W := SLOT_X - 4.0 - NAME_X
 ## 成绩数字: 30 号像素字 + 4px 暗描边(与周六赛况板的战绩数字同一种写法)。
 const STAT_FS := 30
@@ -148,6 +157,7 @@ const CAP_W := 180.0
 ## ═══ 三个成绩列 (2026-10-06 · 用户「积分赛写上名字，剩余生命，胜场，总场次啊 ，都给我做」) ═══
 ## 列名就是用户那句话里的词, 一个字不改; 照 使命召唤手游 / 英雄联盟手游 排行榜:
 ##   **表头写纯文字列名, 行里只放数字**(格里不画图标 —— 用户「排行榜里的奖杯是？」)。
+##   ★例外(2026-10-24 用户「画吧」): 「剩余生命」一列画成一排心形(`_hearts_cell`), 另外两列仍是数字。
 ## ★顺序 = 用户说的顺序: 剩余生命 | 胜场 | 总场次。
 ## ★排序**不变**: 胜场 → 剩余生命 → 横扫。横扫不上屏, 但同胜同命时仍由它定先后(服务端 SQL 与本机 cmp 同一套)。
 ## ★`battles` < 0 = 这一行的来源没带总场次(v1 服务端 / 老快照) ⇒ 画「—」, 不编 0。
@@ -1221,14 +1231,48 @@ func _you_tag(parent: Control, nm: Label) -> void:
 
 ## 成绩一格 = 一个**纯数字**(30 号像素字 + 暗描边), 右对齐到列右沿(与表头列名同一条右沿)。`i` = COL_HEADS 的下标。
 ## ★2026-10-06 用户「排行榜里的奖杯是？」: 格里不画图标(照 使命召唤手游 / 英雄联盟手游, 列名写在表头)。
+## ★★2026-10-24 用户「画吧」(问的是「剩余生命要不要画成心形」) ⇒ **只有「剩余生命」这一列**改画心形(`_hearts_cell`);
+##   胜场 / 总场次照旧是纯数字, 别的图标照旧不进成绩格。
 ## `v < 0` = 这一项没有数据(老快照没带总场次 / 周一上周榜上没有我) ⇒ 「—」, 不编 0。
 func _stat_cell(parent: Control, i: int, v: int, is_self: bool) -> void:
 	var cx: float = STAT_X0 + float(i) * STAT_CELL
+	if str(COL_KEYS[i]) == "hearts":
+		_hearts_cell(parent, cx, v)
+		return
 	var col: String = COL_DIM if v <= 0 else (COL_SELF if is_self else COL_ROW)
 	var l := _cell(parent, str(v) if v >= 0 else "—", cx, COL_W, STAT_FS,
 		Color(col), HORIZONTAL_ALIGNMENT_RIGHT)
 	l.name = "RowStat%d_%d" % [i, int(parent.position.y)]
 	_ink(l, STAT_OUTLINE)
+
+
+## 剩余生命 = 一排 HEARTS_MAX 颗心: 还在的命是红心(左起), 丢掉的是暗色空槽; 整排右对齐到列右沿(与表头列名同一条右沿)。
+## 心形 18×16 = 9×8 美术像素 ×2(与行卡 / 奖牌同一个口径), `tools/build_lb_heart.py` 生成; 不拉伸、最近邻。
+## ★不收点击: 整行点名字弹玩家菜单, 心不能挡热区。`hearts` 元数据 = 画了几颗红心(门禁读它, 不读贴图名猜)。
+func _hearts_cell(parent: Control, cx: float, v: int) -> void:
+	var n: int = int(_P2C.HEARTS_MAX)
+	var lit: int = clampi(v, 0, n)
+	var w: float = HEARTS_ROW_W
+	var box := Control.new()
+	box.name = "RowHearts_%d" % int(parent.position.y)
+	box.set_meta("hearts", lit)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.position = Vector2(cx + COL_W - w, (CARD_H - HEART_H) * 0.5)
+	box.size = Vector2(w, HEART_H)
+	parent.add_child(box)
+	var full: Texture2D = load(HEART_TEX)
+	var empty: Texture2D = load(HEART_EMPTY_TEX)
+	for k in range(n):
+		var t := TextureRect.new()
+		t.name = "Heart%d" % k
+		t.texture = full if k < lit else empty
+		t.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		t.stretch_mode = TextureRect.STRETCH_SCALE
+		t.position = Vector2(float(k) * (HEART_W + HEART_GAP), 0.0)
+		t.size = Vector2(HEART_W, HEART_H)
+		box.add_child(t)
 
 
 ## 行内一格文字(统一行高 = 行卡高、竖直居中 —— 手写一遍就会漂)。

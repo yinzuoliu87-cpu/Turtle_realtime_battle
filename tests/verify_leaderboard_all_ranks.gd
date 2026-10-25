@@ -158,6 +158,14 @@ func _read_row(row: Control) -> Dictionary:
 				for i in range(3):
 					if absf(l.position.x - (LB.STAT_X0 + float(i) * LB.STAT_CELL)) < 0.5:
 						r["s%d" % i] = str(l.text)
+		elif str(ch.name).begins_with("RowHearts_"):
+			## ★2026-10-24 剩余生命画成心形: 屏上读法 = **数红心贴图**(不信 `hearts` 元数据)。
+			var lit := 0
+			for hc in ch.get_children():
+				if hc is TextureRect and (hc as TextureRect).texture != null \
+						and (hc as TextureRect).texture.resource_path == LB.HEART_TEX:
+					lit += 1
+			r["s0"] = str(lit)
 		elif ch is Panel:
 			var p := ch as Panel
 			if absf(p.position.x - LB.RANK_X) < 0.5:

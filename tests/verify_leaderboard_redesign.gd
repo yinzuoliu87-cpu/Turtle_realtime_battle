@@ -185,11 +185,39 @@ func _t_server_shape() -> void:
 	print("── ④ 三个成绩: 右对齐 / 大号 / 放得下 ──")
 	var nbad: Array = []
 	var seen := 0
+	## ★2026-10-24 用户「画吧」(剩余生命画成心形): 第 0 列不再是数字, 是一排 HEARTS_MAX 颗心 ——
+	##   红心数 = 这一行的剩余生命(数的是**贴图**, 不只信 `hearts` 元数据), 右沿贴列右沿。
+	var hbad: Array = []
+	var hseen := 0
+	for rk in b.keys():
+		var row: Node = b[rk]
+		var want_h: int = int(P2C.HEARTS_MAX) - ((int(rk) - 1) % 3)
+		var hb: Control = null
+		for ch in row.get_children():
+			if str(ch.name).begins_with("RowHearts_"):
+				hb = ch as Control
+		if hb == null:
+			hbad.append("第%d名 没有心形" % int(rk))
+		else:
+			hseen += 1
+			var lit := 0
+			for hc in hb.get_children():
+				if hc is TextureRect and (hc as TextureRect).texture != null \
+						and (hc as TextureRect).texture.resource_path == LB.HEART_TEX:
+					lit += 1
+			if hb.get_child_count() != int(P2C.HEARTS_MAX) or lit != want_h or int(hb.get_meta("hearts", -1)) != want_h:
+				hbad.append("第%d名 %d 颗心 / 红 %d(元数据 %d) 应红 %d" % [int(rk), hb.get_child_count(), lit,
+					int(hb.get_meta("hearts", -1)), want_h])
+			if absf(hb.position.x + hb.size.x - (LB.STAT_X0 + LB.COL_W)) > 0.5:
+				hbad.append("第%d名 心形右沿 %.1f ≠ 列右沿 %.1f" % [int(rk), hb.position.x + hb.size.x, LB.STAT_X0 + LB.COL_W])
+	_ok("④ ★分母: 6 行都画出了「剩余生命」心形", hseen == 6, "%d 行" % hseen)
+	_ok("④ ★★剩余生命 = 一排 %d 颗心, 红心数 = 这一行的剩余生命, 右沿贴列右沿" % int(P2C.HEARTS_MAX), hbad.is_empty(),
+		str(hbad.slice(0, 3)))
 	for rk in b.keys():
 		var row: Node = b[rk]
 		var nm := _label_at_x(row, LB.NAME_X)
 		var name_fs: int = nm.get_theme_font_size("font_size") if nm != null else 99
-		for ci in range(3):
+		for ci in range(1, 3):
 			var l := _label_at_x(row, LB.STAT_X0 + float(ci) * LB.STAT_CELL)
 			if l == null:
 				nbad.append("第%d名 第%d列 没有数字格" % [int(rk), ci])
@@ -204,7 +232,7 @@ func _t_server_shape() -> void:
 				nbad.append("第%d名 第%d列 字号 %d(名字 %d)" % [int(rk), ci, fs, name_fs])
 			if tw > l.size.x or l.clip_text:
 				nbad.append("第%d名 第%d列 「%s」放不下(%.0f > %.0f)" % [int(rk), ci, l.text, tw, l.size.x])
-	_ok("④ ★分母: 量到 6 行 × 3 列 = 18 个数字格", seen == 18, "%d 格" % seen)
+	_ok("④ ★分母: 量到 6 行 × 2 列(胜场 / 总场次) = 12 个数字格", seen == 12, "%d 格" % seen)
 	_ok("④ ★★每个成绩数: 右对齐到列右沿 / 字号 ≥ 26 且大过名字 / 整个放得下", nbad.is_empty(), str(nbad.slice(0, 3)))
 
 	## ── ⑥ 自己最亮 ──

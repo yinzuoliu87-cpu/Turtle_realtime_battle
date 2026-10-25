@@ -30,6 +30,7 @@ const SEED_PATH := "res://tests/_setup_lb_rows.gd"
 ##   这里量的是本周榜的三列对账 ⇒ 钉在周三(2026-10-07 12:00 UTC)。
 const P2C := preload("res://scripts/gamedata/phase2_config.gd")
 const MC := preload("res://scripts/scenes/record/match_card.gd")
+const LB := preload("res://scripts/scenes/LeaderboardScene.gd")
 const PIN_WED := 1791158400 - 7 * 86400 + 2 * 86400 + 12 * 3600
 
 ## ★三个数必须两两不同(下面 ① 有一条断言看着它) —— 这是本门禁能不能看见"列乱了"的前提。
@@ -98,6 +99,15 @@ func _bands(board: Control) -> Array:
 		if n is Control and (n as Control).is_visible_in_tree():
 			var c := n as Control
 			var rc: Rect2 = c.get_global_rect()
+			if str(c.name).begins_with("RowHearts_"):
+				## ★2026-10-24 用户「画吧」: 剩余生命画成一排心 ⇒ 整排当**一个成绩项**, 值 = 红心贴图个数(不信元数据)。
+				var lit := 0
+				for hc in c.get_children():
+					if hc is TextureRect and (hc as TextureRect).texture != null \
+							and (hc as TextureRect).texture.resource_path == LB.HEART_TEX:
+						lit += 1
+				items.append({"k": "H", "n": c, "y": rc.get_center().y, "x": rc.position.x, "v": lit})
+				continue          # 心形里的单颗贴图不进「小图标」那一类(那一类判的是别的图标)
 			if c is Label and str((c as Label).text).strip_edges() != "":
 				items.append({"k": "L", "n": c, "y": rc.get_center().y, "x": rc.position.x})
 			elif c is TextureRect and (c as TextureRect).texture != null \
@@ -115,6 +125,14 @@ func _bands(board: Control) -> Array:
 		else:
 			((out[out.size() - 1] as Dictionary)["items"] as Array).append(it)
 	return out
+
+
+## 一个成绩项的值: 数字格 = 字面整数; 一排心(剩余生命) = 红心贴图个数(`_bands` 数好的)。
+func _iv(d) -> int:
+	var dd: Dictionary = d
+	if str(dd.get("k", "")) == "H":
+		return int(dd["v"])
+	return int(str((dd["n"] as Label).text))
 
 
 ## 这个 Label 是不是住在一块【自己的九宫格签牌】里(名次牌 / 「你」签)?
@@ -240,7 +258,7 @@ func _ready() -> void:
 
 	var bands := _bands(board)
 	var all_text: Array = []
-	var data: Array = []          # 数据行 = 带 4 个整数(名次 + 三成绩)的那些行
+	var data: Array = []          # 数据行 = 带 4 个成绩项(名次 + 一排心 + 胜场 + 总场次)的那些行
 	var n_icons := 0
 	for b in bands:
 		var items: Array = (b as Dictionary)["items"]
@@ -249,6 +267,8 @@ func _ready() -> void:
 			var d: Dictionary = it
 			if str(d["k"]) == "T":
 				n_icons += 1
+			elif str(d["k"]) == "H":
+				ints.append(d)
 			else:
 				var lb := d["n"] as Label
 				all_text.append(str(lb.text))
@@ -281,8 +301,22 @@ func _ready() -> void:
 	var stat_left: float = _find_named(board, "LbColHead0").get_global_rect().position.x 		if _find_named(board, "LbColHead0") != null else 0.0
 	var bad_tex: Array = []
 	var n_av := 0
+	var n_heart := 0
+	var stat_right0: float = _find_named(board, "LbColHead0").get_global_rect().end.x 		if _find_named(board, "LbColHead0") != null else 0.0
 	for t in tex:
 		var tr := t as TextureRect
+		## ★2026-10-24 用户「画吧」: 「剩余生命」那一列的心形是唯一放行的成绩格贴图 ——
+		##   只认心形自己的两张图, 而且整颗落在第一列(剩余生命)的左右沿之内。
+		if str(tr.get_parent().name).begins_with("RowHearts_"):
+			var gr: Rect2 = tr.get_global_rect()
+			var tp: String = tr.texture.resource_path
+			if not (tp == LB.HEART_TEX or tp == LB.HEART_EMPTY_TEX):
+				bad_tex.append("心形格里的非心形贴图 %s" % tp.get_file())
+			elif gr.end.x > stat_right0 + 0.5 or gr.position.x < stat_right0 - LB.COL_W - 0.5:
+				bad_tex.append("心形出了「剩余生命」列 x=%.0f~%.0f" % [gr.position.x, gr.end.x])
+			else:
+				n_heart += 1
+			continue
 		if not _in_portrait(tr, board):
 			bad_tex.append("非头像贴图 %s" % str(tr.texture.resource_path.get_file()))
 		elif tr.get_global_rect().end.x > stat_left:
@@ -290,13 +324,19 @@ func _ready() -> void:
 		else:
 			n_av += 1
 	_ok("② ★分母: 头像真画出来了(每个数据行一枚, ≥ %d)" % MIN_DATA_ROWS, n_av >= MIN_DATA_ROWS, "%d 枚" % n_av)
-	_ok("② 成绩格里不画图标(用户「排行榜里的奖杯是？」): 小图标 0 个, 贴图只有名字前的头像",
+	_ok("② ★分母: 「剩余生命」心形真画出来了(每个数据行 %d 颗)" % int(P2C.HEARTS_MAX),
+		n_heart >= MIN_DATA_ROWS * int(P2C.HEARTS_MAX), "%d 颗" % n_heart)
+	_ok("② 成绩格里不画别的图标(用户「排行榜里的奖杯是？」): 小图标 0 个, 贴图只有名字前的头像 + 剩余生命列里的心形",
 		n_icons == 0 and bad_tex.is_empty(), "小图标 %d 个 / %s" % [n_icons, str(bad_tex.slice(0, 3))])
 	var bad_shape: Array = []
 	for r in data:
-		if ((r as Dictionary)["ints"] as Array).size() != 4:
+		var _nh := 0
+		for _it in ((r as Dictionary)["ints"] as Array):
+			if str((_it as Dictionary)["k"]) == "H":
+				_nh += 1
+		if ((r as Dictionary)["ints"] as Array).size() != 4 or _nh != 1:
 			bad_shape.append("y=%.0f 数字%d" % [float((r as Dictionary)["y"]), ((r as Dictionary)["ints"] as Array).size()])
-	_ok("② 每一行都是【4 个数字(名次 + 三成绩)】", bad_shape.is_empty(),
+	_ok("② 每一行都是【名次 + 一排心(剩余生命) + 胜场 + 总场次】4 项", bad_shape.is_empty(),
 		"%d 行不合形状 %s" % [bad_shape.size(), str(bad_shape.slice(0, 3))])
 	## 列对齐: 每行第 N 个成绩数的**右沿**都 = 表头第 N 列名的右沿(≤1px)。
 	var x_drift: Array = []
@@ -307,7 +347,7 @@ func _ready() -> void:
 			var h2 := _find_named(board, "LbColHead%d" % (j - 1))
 			if h2 == null:
 				continue
-			var cr: Rect2 = (((ii[j] as Dictionary)["n"]) as Label).get_global_rect()
+			var cr: Rect2 = ((ii[j] as Dictionary)["n"] as Control).get_global_rect()
 			measured += 1
 			if absf(cr.end.x - h2.get_global_rect().end.x) > 1.0:
 				x_drift.append("y=%.0f 第%d列 %.1f≠%.1f" % [float((r2 as Dictionary)["y"]), j - 1, cr.end.x,
@@ -332,7 +372,7 @@ func _ready() -> void:
 	if not self_row.is_empty() and (self_row["ints"] as Array).size() == 4:
 		var got: Array = []
 		for j in range(1, 4):
-			got.append(int(str((((self_row["ints"] as Array)[j] as Dictionary)["n"] as Label).text)))
+			got.append(_iv((self_row["ints"] as Array)[j]))
 		var want := [SELF_HEARTS, SELF_WINS, SELF_BATTLES]
 		for j2 in range(3):
 			_ok("③ ★第 %d 列(%s)画的就是真数据的那个量" % [j2, COL_WORDS[j2]],
@@ -349,9 +389,8 @@ func _ready() -> void:
 		var ii2: Array = (r5 as Dictionary)["ints"]
 		if ii2.size() != 4:
 			continue
-		ranks.append(int(str(((ii2[0] as Dictionary)["n"] as Label).text)))
-		var cur: Array = [int(str(((ii2[2] as Dictionary)["n"] as Label).text)),
-			int(str(((ii2[1] as Dictionary)["n"] as Label).text))]
+		ranks.append(_iv(ii2[0]))
+		var cur: Array = [_iv(ii2[2]), _iv(ii2[1])]
 		if not prev.is_empty():
 			if cur[0] > prev[0] or (cur[0] == prev[0] and cur[1] > prev[1]):
 				order_bad.append("%s 高于上一行 %s" % [str(cur), str(prev)])
@@ -401,7 +440,7 @@ func _ready() -> void:
 			var ii3: Array = (r7 as Dictionary)["ints"]
 			if ii3.is_empty():
 				continue
-			if int(str(((ii3[0] as Dictionary)["n"] as Label).text)) <= 3:
+			if _iv(ii3[0]) <= 3:
 				medal_y.append(float((r7 as Dictionary)["y"]))
 		var clash: Array = []
 		for my in medal_y:
@@ -416,7 +455,7 @@ func _ready() -> void:
 			var ii4: Array = (r8 as Dictionary)["ints"]
 			if ii4.is_empty() or absf(float((r8 as Dictionary)["y"]) - self_y) <= 1.0:
 				continue
-			if int(str(((ii4[0] as Dictionary)["n"] as Label).text)) >= 4:
+			if _iv(ii4[0]) >= 4:
 				plain_y.append(float((r8 as Dictionary)["y"]))
 		var same: Array = []
 		var n_plain := 0
