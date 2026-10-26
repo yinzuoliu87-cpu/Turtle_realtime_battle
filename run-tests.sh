@@ -1011,6 +1011,7 @@ run_audit "tools/menu_arena_sync_audit.py" "ALL OK" "menu_arena_sync (主菜单�
 run_audit "tools/nine_bracket_audit.py" "ALL PASS" "nine_bracket (9 档进度档已彻底删除·匹配只认同场次·同名的周日对阵图不许误伤)"
 run_audit "tools/freed_is_order_audit.py" "ALL OK" "freed_is_order (先 is_instance_valid 再 is·对已释放对象 is 会报错并中断函数)"
 run_audit "tools/gate_offline_audit.py" "ALL OK" "gate_offline (门禁里每个起 Godot 跑场景的命令都必须关掉后端·不许打生产库)"
+run_audit "tools/bot_schedule_audit.py" "ALL OK" "bot_schedule (陪练号排班表: 规模公式·每号≤16场·封盘前开打·周二晚同场次覆盖)"
 
 echo ""
 if [ "$FAIL" -eq 0 ]; then
