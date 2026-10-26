@@ -26,6 +26,7 @@ const BADGE_TEX := {
 	"ranked": preload("res://assets/sprites/menu/weekend/badge-ranked.png"),
 	"gauntlet": preload("res://assets/sprites/menu/weekend/badge-gauntlet.png"),
 	"finals": preload("res://assets/sprites/menu/weekend/badge-finals.png"),
+	"rest": preload("res://assets/sprites/menu/weekend/badge-rest.png"),
 }
 const LOCK_TEX := preload("res://assets/sprites/menu/weekend/badge-lock.png")
 const SLOT_TEX := preload("res://assets/sprites/menu/weekend/reward-slot.png")
