@@ -37,7 +37,13 @@ ROOT = os.environ.get('BOT_ROOT', '/var/lib/turtle-bots')
 SCHED = os.environ.get('BOT_SCHEDULE', os.path.join(ROOT, 'schedule.json'))
 MAX_PAR = int(os.environ.get('MAX_PAR', '2'))
 STALE_MIN = int(os.environ.get('STALE_MIN', '30'))
-STATE = os.path.join(ROOT, 'launched.json')       # {会话键: {pid, at}}
+## 一次上线最多跑多久: 每局给 MIN_PER_ROUND 分钟 + 余量。超时 ⇒ 整个进程组杀掉、记 killed。
+##   ★没有这条, 卡住的客户端永远不退、占死并发位(例: 0.22.1 把整个周日当决赛日, 驱动在决赛日不收工)。
+MIN_PER_ROUND = int(os.environ.get('MIN_PER_ROUND', '8'))
+SLACK_MIN = int(os.environ.get('SLACK_MIN', '10'))
+## 陪练客户端让着裁判: 以最低优先级起(正式服裁判 Nice=5)。
+CHILD_NICE = int(os.environ.get('CHILD_NICE', '19'))
+STATE = os.path.join(ROOT, 'launched.json')       # {会话键: {pid, at, rounds}}
 
 
 def now_utc() -> dt.datetime:
@@ -88,10 +94,38 @@ def launch(slot: int, rounds: int) -> int:
         'SIM_SHOT_DIR': os.path.join(d, 'shots'),
     })
     log = open(os.path.join(d, 'last.log'), 'w', encoding='utf-8')
+    kw = {}
+    if os.name == 'posix':
+        kw['preexec_fn'] = lambda: os.nice(CHILD_NICE)
     p = subprocess.Popen([GODOT, '--headless', '--audio-driver', 'Dummy', '--path', GAME,
                           '--', '--sim-slot=%02d' % slot, '--sim-root=turtle-bots'],
-                         env=env, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+                         env=env, stdout=log, stderr=subprocess.STDOUT, start_new_session=True, **kw)
     return p.pid
+
+
+def reap_overdue(state: dict, now: dt.datetime) -> int:
+    """跑超时的上线整组杀掉(start_new_session ⇒ pid 就是进程组号)。返回杀了几个。"""
+    n = 0
+    for k, v in state.items():
+        if not (isinstance(v, dict) and v.get('pid') and not v.get('killed')):
+            continue
+        pid = int(v['pid'])
+        if not alive(pid):
+            continue
+        started = dt.datetime.fromisoformat(v['at'])
+        limit = dt.timedelta(minutes=int(v.get('rounds', 3)) * MIN_PER_ROUND + SLACK_MIN)
+        if now - started > limit:
+            try:
+                if os.name == 'posix':
+                    os.killpg(pid, 9)
+                else:
+                    os.kill(pid, 9)
+            except OSError:
+                pass
+            v['killed'] = now.isoformat()
+            n += 1
+            print('超时杀掉 %s(跑了 %d 分钟)' % (k, int((now - started).total_seconds() // 60)))
+    return n
 
 
 def main() -> None:
@@ -103,7 +137,8 @@ def main() -> None:
         return
     state = load_json(STATE, {})
     now = now_utc()
-    running = [k for k, v in state.items() if isinstance(v, dict) and v.get('pid') and alive(int(v['pid']))]
+    killed = 0 if (dry or status) else reap_overdue(state, now)
+    running = [k for k, v in state.items() if isinstance(v, dict) and v.get('pid') and not v.get('killed') and alive(int(v['pid']))]
     started = skipped = 0
     for t, slot, s in due_sessions(plan, now):
         key = session_key(plan['week'], slot, s['at'])
@@ -124,7 +159,7 @@ def main() -> None:
             print('BOT_GAME_DIR 没设, 不起')
             return
         pid = launch(slot, int(s['rounds']))
-        state[key] = {'pid': pid, 'at': now.isoformat()}
+        state[key] = {'pid': pid, 'at': now.isoformat(), 'rounds': int(s['rounds'])}
         running.append(key)
         started += 1
         print('起 p%02d %s %s 局 pid=%d' % (slot, s['mode'], s['rounds'], pid))
@@ -132,13 +167,14 @@ def main() -> None:
         total = sum(len(b['sessions']) for b in plan.get('plan', []))
         done = sum(1 for v in state.values() if isinstance(v, dict) and v.get('pid'))
         stale = sum(1 for v in state.values() if isinstance(v, dict) and v.get('stale'))
-        print('本周 %s: 共 %d 次上线 · 已起 %d · 作废 %d · 在跑 %d' % (plan.get('week'), total, done, stale, len(running)))
+        n_killed = sum(1 for v in state.values() if isinstance(v, dict) and v.get('killed'))
+        print('本周 %s: 共 %d 次上线 · 已起 %d · 作废 %d · 超时杀掉 %d · 在跑 %d' % (plan.get('week'), total, done, stale, n_killed, len(running)))
         return
     if not dry:
         os.makedirs(ROOT, exist_ok=True)
         with open(STATE, 'w', encoding='utf-8') as f:
             json.dump(state, f, ensure_ascii=False)
-        print('本轮: 起 %d · 作废 %d · 在跑 %d / %d' % (started, skipped, len(running), MAX_PAR))
+        print('本轮: 起 %d · 作废 %d · 超时杀掉 %d · 在跑 %d / %d' % (started, skipped, killed, len(running), MAX_PAR))
 
 
 if __name__ == '__main__':

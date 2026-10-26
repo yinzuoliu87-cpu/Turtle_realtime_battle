@@ -140,9 +140,11 @@ def main() -> None:
     ap.add_argument('--out', help='时间表 JSON 输出路径')
     ap.add_argument('--summary', action='store_true')
     a = ap.parse_args()
-    monday = dt.datetime.fromisoformat(a.week + 'T00:00:00+00:00')
-    if monday.weekday() != 0:
-        sys.exit('--week 必须是周一: %s 是星期%d' % (a.week, monday.weekday() + 1))
+    day = dt.datetime.fromisoformat(a.week + 'T00:00:00+00:00')
+    ## 给的不是周一 ⇒ 归到那一周的周一(周一 00:05 那次没跑上、周二补跑时也能出本周的表; 已过去的上线由 runner 作废)。
+    monday = day - dt.timedelta(days=day.weekday())
+    if monday != day:
+        print('--week %s 是星期%d ⇒ 按本周周一 %s 排' % (a.week, day.weekday() + 1, monday.date().isoformat()))
     n = a.bots if a.bots is not None else bot_count(a.real_last_week)
     plan = build(monday, n, a.seed or monday.toordinal())
     if a.out:

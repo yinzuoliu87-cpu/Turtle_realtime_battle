@@ -183,6 +183,196 @@ Caddy 拷回 `/root/betadeploy/Caddyfile.bak-20261021` → `caddy validate` → 
 ⚠ **同机还有正式服裁判**：`MAX_PAR` 先给 1，量完 CPU（每局陪练客户端占多少核秒、高峰时裁判排不排队）再调；不够就换机器配置（花钱，先问用户）。
 ⚠ 发新版后要重建 `BOT_GAME_DIR`（同裁判「发版时」那一节：拷目录 → checkout 新 tag → `--import`）。
 
+### 常驻陪练号 · 内测服首次部署步骤
+
+> 2026-10-26 照仓库代码写成，**还没在机器上执行过**；执行时有出入以机器上的实际情况为准，回填这里。
+> 只管内测服；正式服那套（`turtle-referee.service` / `/etc/turtle-referee/env` / `/opt/turtle/`）一个字不动。
+> 「`<ver>`」= TestFlight 上玩家手机里那一版（tag 名 `v<ver>`；写这节时是 `0.22.1`）。
+
+0. 前提与拷文件
+   - 内测服第二套已在跑（上一节）；`/opt/godot/godot` 是 4.6.3 **编辑器版**（能 `--import` 的那个）——`TURTLE_SERVER=beta` 只在 debug 构建里认（`scripts/net/server_env.gd:29-30`），换成 release 导出模板会**悄悄连到正式服**。
+   - 陪练号的文件都在 main、不在 v0.22.1 tag 里 ⇒ 从本机仓库拷：
+   ```bash
+   # 本机仓库根目录
+   ssh -i ~/.ssh/turtle_referee root@<裁判机> mkdir -p /root/botdeploy
+   scp -i ~/.ssh/turtle_referee server/referee/bot_runner.py server/referee/bot_schedule.py \
+     server/referee/turtle-bot-*.service server/referee/turtle-bot-*.timer root@<裁判机>:/root/botdeploy/
+   ```
+   ```bash
+   # 裁判机上（仓库文件可能是 CRLF，装时一律 tr -d '\r'）
+   for f in bot_runner.py bot_schedule.py; do
+     tr -d '\r' < /root/botdeploy/$f | sudo tee /opt/turtle-beta/referee/$f >/dev/null
+     sudo chmod 644 /opt/turtle-beta/referee/$f; python3 -m py_compile /opt/turtle-beta/referee/$f
+   done
+   sudo mkdir -p /opt/turtle-bots-beta /var/lib/turtle-bots-beta
+   sudo chown turtle-referee: /opt/turtle-bots-beta /var/lib/turtle-bots-beta
+   ```
+
+1. 陪练号跑的工程 `BOT_GAME_DIR = /opt/turtle-bots-beta/v<ver>`（memory「模拟号必须跑发布版代码」）
+   - ★**不许放在 `/opt/turtle-beta/` 或 `/opt/turtle/` 下面**：`referee_poller.py` 的 `discover_versions` 把那一层每个带 `project.godot` 的子目录都当成裁判版本。
+   - ★不与内测服裁判共用 `/opt/turtle-beta/v<ver>`（本 README 第 2 步：那份工程不拿来做别的）。
+   ```bash
+   VER=0.22.1
+   # A. 内测服裁判已装这一版（ls /opt/turtle-beta/）⇒ 拷一份（已导入，最快）
+   sudo -u turtle-referee cp -a /opt/turtle-beta/v$VER /opt/turtle-bots-beta/v$VER
+   # B. 没装 ⇒ tag 克隆
+   sudo -u turtle-referee git clone --depth 1 --branch v$VER <仓库地址> /opt/turtle-bots-beta/v$VER
+   # A / B 都要：核对是那个 tag、驱动认 bot_runner 给的参数，再导入一次
+   cd /opt/turtle-bots-beta/v$VER
+   sudo -u turtle-referee git describe --tags --exact-match          # 必须打出 v$VER
+   grep -c 'SIM_ROUNDS\|SIM_QUIT_WHEN_DONE' scripts/systems/sim/sim_driver.gd   # > 0
+   sudo -u turtle-referee HOME=/var/lib/turtle-referee XDG_DATA_HOME=/var/lib/turtle-bots-beta/import-ud \
+     /opt/godot/godot --headless --path /opt/turtle-bots-beta/v$VER --import
+   ```
+   - main 的 `scripts/systems/sim/` 比 tag 新时（本机 `git diff --stat v$VER origin/main -- scripts/systems/sim`；v0.22.1 → main 为空）：只把这一个目录覆盖进去、再 `--import` 一次（目录里有 `class_name`）。战斗代码一律保持 tag 原样。
+   - 内测服 `service_status.min_client_version` 必须 ≤ `<ver>`，否则号一进主菜单就被版本墙拦下、立刻退出；周六闯关要内测服裁判也装了 `<ver>`（上一节「装新版本」）。
+   - 发新版：照这一步建 `v<新>` → 改 env 里的 `BOT_GAME_DIR`（runner 每次由 timer 新起、重读 env，不用重启）→ `pgrep -af "turtle-bots-beta/v<旧>"` 为空后删旧目录。
+
+2. env 与启动包装
+   ```bash
+   sudo tee /etc/turtle-referee/env-bots-beta >/dev/null <<'EOF'
+   GODOT_BIN=/opt/turtle-bots-beta/godot-bot.sh
+   BOT_GAME_DIR=/opt/turtle-bots-beta/v0.22.1
+   BOT_ROOT=/var/lib/turtle-bots-beta
+   BOT_SCHEDULE=/var/lib/turtle-bots-beta/schedule.json
+   MAX_PAR=1
+   STALE_MIN=30
+   REAL_LAST_WEEK=0
+   BOT_SESSION_CAP_SEC=3600
+   TURTLE_SERVER=beta
+   TURTLE_SUPABASE=https://<内测服 ref>.supabase.co
+   EOF
+   sudo chown root:turtle-referee /etc/turtle-referee/env-bots-beta && sudo chmod 640 /etc/turtle-referee/env-bots-beta
+   ```
+   - **后端只靠 `TURTLE_SERVER=beta`**：地址、公开 key、直播地址、内测服时钟偏移一起换（`server_env.gd` → `net_route.gd:79-99` / `supabase.gd:79-81`），内测服不走大陆中转。公开 key 已在 `project.godot` 的 `turtle/supabase_anon_key.beta_server`，**env 里不放任何 key**。
+   - `TURTLE_SUPABASE` 填 `project.godot` 里 `turtle/supabase_url.beta_server` 那个地址，是**防连错服的保险**：万一 `TURTLE_SERVER` 没生效，地址仍是内测服、key 却是正式服的 ⇒ 401 什么都写不进去，而不是悄悄在正式库里建 90 个号。
+   - 一律**不写**：`SUPABASE_SERVICE_KEY` / `SUPABASE_URL`（`bot_runner.py:81` 把整份环境原样传给客户端）、`TURTLE_RELAY`、`TURTLE_BACKEND`、`SIM_CLOCK_OFFSET`、`TURTLE_FAKE_NOW`、`TURTLE_SEED`（会切成确定性每帧一步）、`ONBOARD`、`SIM_ACCOUNT_ONLY`、`SIM_TUTORIAL`（默认 play = 像新玩家一样走教程）。
+   - 每个值不含空格、不引用别的变量：同一份文件既给 systemd `EnvironmentFile` 读，也给下面的 `botenv` 用 bash 读。
+   - 启动包装（`GODOT_BIN` 指向它）：单次上线墙钟上限 + 记每次上线的 CPU 秒（U3 要的数）。`bot_runner.py` 自己没有超时，卡住的号会一直占着 `MAX_PAR=1`（见文末「部署前已知阻塞」①）。
+   ```bash
+   sudo tee /opt/turtle-bots-beta/godot-bot.sh >/dev/null <<'EOF'
+   #!/bin/bash
+   t0=$(date +%s)
+   timeout --kill-after=60 "${BOT_SESSION_CAP_SEC:-3600}" /opt/godot/godot ${BOT_MAX_FPS:+--max-fps $BOT_MAX_FPS} "$@"
+   rc=$?
+   echo "$(date -u +%FT%TZ) rc=$rc wall=$(( $(date +%s) - t0 ))s cpu_user_sys=$(times | tail -n 1)" >> "${XDG_DATA_HOME:-/tmp}/sessions.log"
+   exit $rc
+   EOF
+   sudo chmod 755 /opt/turtle-bots-beta/godot-bot.sh
+   # 之后的手动命令都用它：以 turtle-referee 身份、带上 env-bots-beta
+   botenv() { sudo -u turtle-referee bash -c 'set -a; . /etc/turtle-referee/env-bots-beta; set +a; exec "$@"' _ "$@"; }
+   ```
+   `rc=124/137` = 到上限被杀（对局中被杀走产品自己「杀进程不作废、下次补打完」那条路）。
+
+3. 账号
+   - 新槽位第一次上线自己建号：主菜单 `_ready` 的 `ensure_signed_in_async()` 匿名注册 → 首启流程（`sim_driver.gd:311-329`：介绍按「跳过」→ 选择框按 `SIM_TUTORIAL`，默认「开始教程」→ 起名框按「确认」）→ 教程不计入 `SIM_ROUNDS`。
+   - `SIM_DRIVER` 必须**恰好是 `1`**：无头且不是 `1` ⇒ `GameState.gd:1491` 进 test_mode，不写存档、不推云存档。
+   - 预建 N 个号、不打（`SIM_ACCOUNT_ONLY=1` + `ONBOARD=0`，同 `tools/sim60.sh` 的 `ACCOUNT_ONLY`；拿到 `account_id` 写盘就退，`sim_driver.gd:184-195`）。`ONBOARD=0` 只管这一次：号还是 0 场，第一次正式上线照样走首启 + 教程。
+   - ★先只建 p01 验证连的是内测服：本机 `python tools/beta_ops.py status --no-ssh` 前后各跑一次，`auth.users` 要 +1。之后再建其余的。
+   - 所有号同一个出口 IP：Supabase 匿名注册有按 IP 的每小时上限（默认值以 Supabase 后台 Auth → Rate Limits 为准）⇒ 下面每个号间隔 150 秒（≈ 每小时 24 个）。
+   ```bash
+   acct() { sudo python3 -c 'import glob,json,sys; f=glob.glob(sys.argv[1]+"/*/app_userdata/*/savegame.json"); print(json.load(open(f[0])).get("account_id","") if f else "")' "$1"; }
+   N=90
+   for n in $(seq 1 $N); do
+     d=$(printf /var/lib/turtle-bots-beta/p%02d $n)
+     [ -n "$(acct $d)" ] && continue
+     sudo -u turtle-referee mkdir -p $d
+     botenv env XDG_DATA_HOME=$d APPDATA=$d SHIP=1 QUIET=1 SIM_AUTOPILOT=1 SIM_DRIVER=1 \
+       SIM_SLOT=$n SIM_ACCOUNT_ONLY=1 ONBOARD=0 \
+       sh -c 'exec timeout 180 "$GODOT_BIN" --headless --audio-driver Dummy --path "$BOT_GAME_DIR" -- --sim-slot=$SIM_SLOT --sim-root=turtle-bots > "$XDG_DATA_HOME/account.log" 2>&1'
+     printf 'p%02d %s\n' $n "$(acct $d)"
+     sleep 150
+   done
+   ```
+   空账号的号重跑这段即可（已有号的跳过）；原因看 `$d/account.log` 与 `$d/*/app_userdata/*/sim_events.jsonl` 最后一行 `"kind":"account"`。
+
+4. 装 unit、试跑、开定时器
+   ```bash
+   for f in /root/botdeploy/turtle-bot-*.service /root/botdeploy/turtle-bot-*.timer; do
+     tr -d '\r' < $f | sudo tee /etc/systemd/system/$(basename $f) >/dev/null
+   done
+   # 限资源 + 停用开关 + 周末不起（理由见第 5 步）。cgroup v2 下跨服务按 CPUWeight 分核，光 Nice 护不住正式服裁判
+   sudo mkdir -p /etc/systemd/system/turtle-bot-runner-beta.service.d
+   sudo tee /etc/systemd/system/turtle-bot-runner-beta.service.d/limits.conf >/dev/null <<'EOF'
+   [Service]
+   CPUWeight=10
+   CPUQuota=50%
+   Nice=19
+   IOSchedulingClass=idle
+   ExecCondition=/bin/sh -c 'test ! -e /etc/turtle-referee/bots-beta-off && test "$$(date -u +%%u)" -le 5'
+   EOF
+   sudo systemctl daemon-reload
+   systemd-analyze verify /etc/systemd/system/turtle-bot-*.service
+
+   # 本周时间表（定时器每周一 00:05 才跑；第一次手动生成，--week 必须是本周一）
+   MON=$(date -u -d "-$(( $(date -u +%u) - 1 )) days" +%F)
+   botenv python3 /opt/turtle-beta/referee/bot_schedule.py --week $MON --real-last-week 0 --out /var/lib/turtle-bots-beta/schedule.json
+   botenv python3 /opt/turtle-beta/referee/bot_schedule.py --week $MON --real-last-week 0 --summary | head -12
+   botenv python3 /opt/turtle-beta/referee/bot_runner.py --status   # 共 / 已起 / 作废 / 在跑
+   botenv python3 /opt/turtle-beta/referee/bot_runner.py --dry      # 只打印「会起 pNN …」；此刻没到点的不打印
+
+   # 冒烟：手造一份「此刻 p01 打 1 局」的表，真起一个（不经 systemd ⇒ 不受上面的限额，只此一次）
+   NOW=$(date -u +%FT%T+00:00)
+   echo "{\"week\":\"smoke\",\"plan\":[{\"slot\":1,\"sessions\":[{\"at\":\"$NOW\",\"mode\":\"ranked\",\"rounds\":1}]}]}" \
+     | sudo -u turtle-referee tee /var/lib/turtle-bots-beta/smoke.json >/dev/null
+   botenv env BOT_SCHEDULE=/var/lib/turtle-bots-beta/smoke.json python3 /opt/turtle-beta/referee/bot_runner.py
+   while pgrep -u turtle-referee -f 'sim-slot=01 ' >/dev/null; do sleep 15; done
+   sudo tail -n 3 /var/lib/turtle-bots-beta/p01/sessions.log          # rc=0、wall、CPU 秒
+   sudo grep -h '"kind":"\(done\|STUCK\|ANOMALY\|blocked\)"' /var/lib/turtle-bots-beta/p01/*/app_userdata/*/sim_events.jsonl | tail -5
+   sudo grep -c 'SCRIPT ERROR\|^ERROR' /var/lib/turtle-bots-beta/p01/last.log
+   ```
+   期望：周一 = 走完教程后 `blocked`「今日休赛」→ `done` → 退出；周二~周五 = 打 1 局 → `rounds_cap` → 退出。这是 `sim_driver` **第一次在 Linux 上整条跑**（之前只在 Windows 跑过 `HEADLESS=1`），过了再开定时器：
+   ```bash
+   sudo systemctl enable --now turtle-bot-schedule-beta.timer turtle-bot-runner-beta.timer
+   systemctl list-timers 'turtle-bot-*'
+   journalctl -u turtle-bot-runner-beta -f                 # 每 5 分钟一行「本轮: 起 / 作废 / 在跑」
+   journalctl -u turtle-bot-schedule-beta -n 20
+   systemd-cgls -u turtle-bot-runner-beta.service          # 在跑的客户端都挂在这个 cgroup 里
+   cat /sys/fs/cgroup/system.slice/turtle-bot-runner-beta.service/cpu.weight \
+       /sys/fs/cgroup/system.slice/turtle-bot-runner-beta.service/cpu.max   # 有号在跑时应为 10 与 50000 100000
+   sudo tail -f /var/lib/turtle-bots-beta/pNN/last.log     # 某个号这次上线的客户端输出（每次上线覆盖）
+   ```
+   - oneshot runner 退出后客户端留在它的 cgroup 里继续打（`KillMode=process`）；下一轮 journald 里的「left-over process」提示属正常。
+   - `REAL_LAST_WEEK` 还没有自动统计：每周一 00:05 之前手动改 env（内测服没有真人 ⇒ 0 ⇒ 90 个号）。
+
+5. 安全：与正式服裁判抢 CPU
+   - 量：
+   ```bash
+   sudo -u turtle-referee env $(sudo cat /etc/turtle-referee/env | xargs) \
+     python3 /opt/turtle/referee/referee_poller.py --health; echo rc=$?    # oldest_pending_sec、各裁判 seen_sec；rc=1 = 积压 > 120 秒或没心跳
+   journalctl -u turtle-referee-health --since -2h | grep HEALTH
+   uptime; systemd-cgtop -b -n 2 -d 5 | grep -E 'turtle-(referee|bot)'
+   sudo tail -qn 1 /var/lib/turtle-bots-beta/p*/sessions.log | sort | tail -20                      # 每次上线 CPU 秒（U3）
+   sudo grep -h 'rc=12[4-9]\|rc=137' /var/lib/turtle-bots-beta/p*/sessions.log | wc -l             # 到上限被杀的次数
+   botenv python3 /opt/turtle-beta/referee/bot_runner.py --status                                   # 作废数 = MAX_PAR=1 排不过来的
+   ```
+   一个号在菜单里空等时若就占满一核（无头帧率没量过），在 env 里加 `BOT_MAX_FPS=60`（包装脚本转成 `--max-fps 60`）。
+   - 正式服排队时按这个顺序停，每停一步看一次 `--health`：
+     ① `sudo touch /etc/turtle-referee/bots-beta-off`（runner 不再起新的）→
+     ② `sudo pkill -TERM -u turtle-referee -f 'sim-root=turtle-bots'`（在跑的陪练客户端；裁判的 Godot 命令行里没有这个串）→
+     ③ `sudo touch /etc/turtle-referee/beta-off && sudo systemctl stop turtle-referee-beta`（内测服裁判，高峰停起 timer 会一直停着）→
+     ④ 还排 = 正式服自身算力（`WORKERS` / 换机型，花钱先问用户）。恢复时反序删两个 off 文件。
+   - 周末不起（drop-in 里 `date -u +%u ≤ 5`）：内测服裁判周六、周日全天被 `beta_peak_guard.sh` 停着，内测服的闯关局在周末结不了算；周末又是正式服高峰。要在内测服试闯关，先把这一条和 peak guard 一起改。
+   - 彻底停用（号与存档留着，下次接着用）：
+   ```bash
+   sudo systemctl disable --now turtle-bot-runner-beta.timer turtle-bot-schedule-beta.timer
+   sudo pkill -TERM -u turtle-referee -f 'sim-root=turtle-bots'
+   ```
+   拆除再加：删 `/etc/systemd/system/turtle-bot-*` 与 drop-in 目录 → `daemon-reload`；`/var/lib/turtle-bots-beta/pNN` 删了 = 号的登录凭据没了（内测服上那些号就成了孤号）。
+
+6. 时钟
+   - 陪练号用真实时钟：`now_utc()` = 本机时间 + 服务器 `Date` 头偏移 + **内测服假时间偏移**（`phase2_config.gd:553-562`、`:626-631`，只在内测服叠）。排班表按**真实 UTC** 起号 ⇒ 内测服偏移必须是 0，否则号上线时客户端以为是另一天。部署前、之后每周一：本机 `python tools/beta_ops.py status --no-ssh` 看「偏移 = 0」，不是就 `python tools/beta_ops.py clock reset`。陪练号开着时**不要** `beta_ops clock set`（要彩排先 `touch bots-beta-off`）。
+   - `SIM_CLOCK_OFFSET`（`sim_driver.gd:76-77`、`:101-115`）是测试用的，把赛程钟钉在「真实 + 偏移」；`TURTLE_FAKE_NOW` 同理（`SHIP=1` 下本来就失效）。两个都**不许**进 `env-bots-beta`，正式服那份也一样。
+
+**部署前已知阻塞（照代码读出来的，未在机器上实测）**
+
+① **卡住的号永远不退、占死唯一的并发位**：`bot_runner.py` 起完不管（`:78-94`，没有超时）；`sim_driver` 只在被拦 / 到局数时退（`:271-285` → `_finish` `:351-356`），STUCK 只记一行（`:155-158`）。最确定的一条：周日是决赛日阶段时 `_do_menu` 直接 return、不 `_finish`（`:265-270`），而 v0.22.1 整个周日都是决赛日（tag 里 `phase_at_utc` = 按星期几；周日 17:30 前算闯关是 10-26 才改的），`bot_schedule.py:43` 却在周日 0~17 点排了 15% 的闯关上线；新版里 17:30 跨进决赛日的那一局也一样。⇒ 本节用包装脚本 `timeout` + 周末不起兜住；该修的是 runner（超时杀）或驱动（决赛日且 `SIM_QUIT_WHEN_DONE` 时也 `_finish`）。
+② `turtle-bot-runner-beta.service` 没有任何 CPU 限制，客户端默认 nice 0，比正式服裁判（`Nice=5`）还高 ⇒ 本节 drop-in 补上（`CPUWeight` / `CPUQuota` 对 oneshot 退出后留在 cgroup 里的进程是否一直生效，要按第 4 步读 `cpu.weight` / `cpu.max` 确认）。
+③ `MAX_PAR=1` 排不完 90 个号的周二：方案书 §4.2 周二约 520 场；三路打满 10469 步 ÷ 60 步/秒（`RealtimeBattle3DScene.gd:792` `SIM_DT`）≈ 2.9 分钟真实时间一局，加匹配 / 商店，串行一天约排得下 300~400 场（推算）⇒ 周二会有一批作废，这正是内测周要量的数。
+④ 连错服：见第 0、2 步（`TURTLE_SERVER` 只在 debug 构建认；`bot_runner` 把整份环境传给客户端）。
+⑤ `turtle-bot-schedule-beta.service` 用 `--week "$(date -u +%F)"` 配 `Persistent=true`：机器在周一 00:05 宕着、周二以后才补跑时，`bot_schedule.py:144-145` 拒绝非周一 ⇒ 这周没有表，runner 读上周的表、全部作废。补救 = 手动跑第 4 步那两行。
+⑥ 不是阻塞（已查）：无头截图两处都先判 `headless` 跳过（`sim_driver.gd:1611`、`sim_shot.gd:25`）；`scripts/systems/sim/` 里没有 Windows 路径或 Windows 专用 API；Linux 上 user:// = `$XDG_DATA_HOME/godot/app_userdata/斗龟场 实时版/`，`bot_runner` 已按槽位设 `XDG_DATA_HOME`。
+
 ## 已知风险与未决点
 
 - **R1 真机确定性**：服务器（Linux x86）算的录像要在 iPhone（ARM）上逐步重算。x86↔x86 已逐位一致（金标 + 本门禁），ARM 没验过（方案书 §0，`verify_referee_device_parity` 未做）。不一致时手机播放会在第一个对不上的校验点停下并上报（不会默默播错的），但玩家就看不了那一场。

@@ -10,3 +10,7 @@ Group=turtle-referee
 EnvironmentFile=/etc/turtle-referee/env-bots-beta
 ExecStart=/usr/bin/python3 /opt/turtle-beta/referee/bot_runner.py
 KillMode=process
+# 让着裁判(正式服裁判 Nice=5): 陪练客户端留在本服务的 cgroup 里, 按权重 10 分 CPU; 进程本身再 nice 19(bot_runner.py CHILD_NICE)。
+Nice=19
+CPUWeight=10
+IOWeight=10
