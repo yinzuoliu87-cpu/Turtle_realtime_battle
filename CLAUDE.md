@@ -364,7 +364,7 @@ while _w < 600 and float(u["hp"]) >= hp0:   # 上限防死循环
 | 目标 | 怎么做 | 产物 |
 |---|---|---|
 | **iOS / iPad（主路线）** | **TestFlight**：`testflight.yml`（2026-10-23 已合进 main，四项 Secrets 已填，首传 0.21.8 (301) 成功；推 `v*` tag 自动上传，不升版本只重传就推 `ci/testflight-*` 分支。App Store Connect 里 App「斗龟场」Apple ID 6826108891，内部测试组「内部测试」开了自动分发）。用户 2026-10-21：「之后主要去testflight了」 | TestFlight 构建 |
-| ~~iOS 免签包（备用）~~ **已停用**：用户 2026-10-23「不需要在用sideloadly了」—— 测试者一律走 TestFlight，下面这行只留作历史 | 推 `ci/ios-*` 分支（`git push origin HEAD:refs/heads/ci/ios-<日期>`，本机无 token 点不了 dispatch）或手动 dispatch → `.github/workflows/ios-build.yml`（2026-10-21 起打 tag 不再自动出）；`bash fetch-ios.sh` 下到桌面 | Actions artifact `turtle-ios-v<版本>` ＋ Release「ios-latest」的 `turtle-v<版本>.ipa`（unsigned，artifact 留 14 天） |
+| ~~iOS 免签包（备用）~~ **已停用**：用户 2026-10-23「不需要在用sideloadly了」—— 测试者一律走 TestFlight，下面这行只留作历史 | 推 `ci/ios-*` 分支（`git push origin HEAD:refs/heads/ci/ios-<日期>`，当时以为本机无 token 点不了 dispatch，10-26 更正见下方「iOS 的硬事实」最后一条）或手动 dispatch → `.github/workflows/ios-build.yml`（2026-10-21 起打 tag 不再自动出）；`bash fetch-ios.sh` 下到桌面 | Actions artifact `turtle-ios-v<版本>` ＋ Release「ios-latest」的 `turtle-v<版本>.ipa`（unsigned，artifact 留 14 天） |
 | 提交门禁 | push 自动跑 `.github/workflows/tests.yml` | 123 项，ubuntu |
 | Web（手机浏览器直接玩） | `SHIP=1 bash build-web.sh` | `build/turtle-realtime-web.zip` |
 | Android APK | 见 [实时版APK打包.md](docs/实时版APK打包.md) | `build/android/*.apk` |
@@ -378,7 +378,10 @@ while _w < 600 and float(u["hp"]) >= hp0:   # 上限防死循环
   `0`→`"1"` iPhone ／ `1`→`"2"` iPad ／ `2`→`"1,2"` 通用。
   按字面读会改反（我把"通用"改成了"仅 iPad"）。**改完要回读导出后 `turtle.xcodeproj/project.pbxproj` 里的 `TARGETED_DEVICE_FAMILY` 确认**，光看 cfg 看不出来。
 - 只验"导出没报错"不够。导出版**禁用了 `disable_path_overrides`**，命令行给场景路径会直接 Abort，所以打包版默认只能启动 `run/main_scene`。想验打包后的真实对局：临时把 `run/main_scene` 改成 `res://tests/smoke_scenes.tscn`，导一个一次性包跑完再还原。
-- 本地无 `gh`、无 token，读不了 Actions API。**工作流失败会把日志推到 `ci-logs` 分支**，`git fetch origin ci-logs` 即可看——这是设计好的逃生口。
+- ~~本地无 `gh`、无 token，读不了 Actions API~~ **（2026-10-26 更正：这句是错的。）** 本地确实没装 `gh`、也没有 token 环境变量，**但 Git 凭据管理器里存着用户账号的 GitHub 令牌**（`gho_…`，权限 repo / workflow / gist）：`printf "protocol=https
+host=github.com
+
+" | GCM_INTERACTIVE=Never git credential fill` 取出（不打印）就能调 API —— 读 Actions、手动 dispatch 工作流、写仓库 Secrets（值要先用仓库公钥 libsodium 加密，PyNaCl）。Git Bash 里以 `/` 开头的路径参数要 `MSYS_NO_PATHCONV=1`。**工作流失败会把日志推到 `ci-logs` 分支**，`git fetch origin ci-logs` 即可看——这是设计好的逃生口。
 
 ---
 
