@@ -109,6 +109,7 @@ static func play(host: Node, from_key: String, to_key: String, title: String, su
 		holder.add_child(b_to)
 	## 大字是美术的一部分(参考的段位名: 超大、厚描边、落影), 不是一行说明。
 	var t := _lbl(title, 72, Color("#fff1c9"), 14)
+	UISkin.title_label(t, 72)
 	t.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.75))
 	t.add_theme_constant_override("shadow_offset_x", 0)
 	t.add_theme_constant_override("shadow_offset_y", 7)

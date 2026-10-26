@@ -321,11 +321,13 @@ static func _ribbon(txt: String, which: String) -> Control:
 	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lab.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	lab.add_theme_font_size_override("font_size", 32)
+	UISkin.title_label(lab, 36)
 	lab.add_theme_color_override("font_color", Color("#fff6dc"))
 	lab.add_theme_color_override("font_outline_color", Color("#2a1406") if which == RIBBON_GOLD else Color("#0c1220"))
 	lab.add_theme_constant_override("outline_size", 7)
 	var f: Font = lab.get_theme_font("font")
-	var tw: float = f.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 32).x if f != null else 200.0
+	var tf: Font = UISkin.title_font() if UISkin.title_font() != null else f
+	var tw: float = tf.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, lab.get_theme_font_size("font_size")).x if tf != null else 200.0
 	## 原图像素宽: 两端边距 + 标题宽(放大前) + 左右各留 6 像素
 	var w_src: int = 2 * m + int(ceil(tw / float(PX))) + 12
 	var holder := Control.new()

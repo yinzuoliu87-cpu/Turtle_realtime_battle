@@ -298,3 +298,30 @@ static func _scroll_box(cols: Array, vert: bool, along: float) -> StyleBoxFlat:
 	sb.content_margin_top = along if vert else across
 	sb.content_margin_bottom = along if vert else across
 	return sb
+
+
+## 【标题字体】像素中文标题字(方舟像素字体 12px · OFL 开源可商用, 协议原文 assets/fonts/ArkPixel-OFL.txt)。
+##   2026-10-26 用户「你为什么比不上商业的美术？」⇒ 商业游戏的标题是专门的标题字体, 我们一直是正文字体放大。
+##   ★像素字体只按 12 的整数倍字号用(TITLE_PX_SIZES), 并关掉抗锯齿 / 子像素定位, 否则会糊。
+const TITLE_FONT_PATH := "res://assets/fonts/ark-pixel-12px-zh_hans.otf"
+const TITLE_PX := 12
+static var _title_font: FontFile = null
+static func title_font() -> FontFile:
+	if _title_font == null:
+		var f := load(TITLE_FONT_PATH) as FontFile
+		if f == null:
+			return null
+		f.antialiasing = TextServer.FONT_ANTIALIASING_NONE
+		f.hinting = TextServer.HINTING_NONE
+		f.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_DISABLED
+		_title_font = f
+	return _title_font
+
+
+## 给标签套标题字体: 字号取不超过 want 的 12 的整数倍(至少 12)。字体缺失时原样不动。
+static func title_label(l: Label, want: int) -> void:
+	var f := title_font()
+	if f == null:
+		return
+	l.add_theme_font_override("font", f)
+	l.add_theme_font_size_override("font_size", maxi(TITLE_PX, (want / TITLE_PX) * TITLE_PX))
