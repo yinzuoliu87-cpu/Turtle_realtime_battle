@@ -1290,7 +1290,8 @@ func _result_detail(gs) -> String:
 		var t: String = "决赛日%s %s 开始，你的比赛在对阵图中进行。" % [_P2C_HUD.STAGE_GROUP, _P2C_HUD.local_wd_hhmm(seat)]
 		var owed: int = _P2C_HUD.gauntlet_backfill_owed(w, l)
 		if owed > 0:
-			t += "闯关赛还没打的 %d 场会在闯关赛结束后化成深海币 +%d 和经验 +%d。" % [
+			## 两句各占一行(窄屏 960 实拍: 连成一句会在「深海币」中间折断)
+			t += "\n闯关赛还没打的 %d 场会在闯关赛结束后化成深海币 +%d 和经验 +%d。" % [
 				owed, owed * int(_P2C_HUD.GAUNTLET_BACKFILL_COINS), owed * int(_P2C_HUD.GAUNTLET_BACKFILL_XP)]
 		return t
 	if st == _P2C_HUD.GAUNTLET_OUT:

@@ -1340,6 +1340,7 @@ scripts/scenes/battle/battle_debug_arena.gd|text|满龟能:关
 scripts/scenes/battle/battle_debug_arena.gd|text|满龟能:开
 scripts/scenes/battle/battle_debug_arena.gd|text|选中: %s(%s)
 scripts/scenes/battle/battle_hud.gd|lit|%s · 不消耗生命 · 结果于下轮开播时公布
+scripts/scenes/battle/battle_hud.gd|lit|\n闯关赛还没打的 %d 场会在闯关赛结束后化成深海币 +%d 和经验 +%d。
 scripts/scenes/battle/battle_hud.gd|lit|⏸ 编辑
 scripts/scenes/battle/battle_hud.gd|lit|▶ 开始
 scripts/scenes/battle/battle_hud.gd|lit|▼ 折叠
@@ -1381,7 +1382,6 @@ scripts/scenes/battle/battle_hud.gd|lit|返回好友
 scripts/scenes/battle/battle_hud.gd|lit|返回菜单
 scripts/scenes/battle/battle_hud.gd|lit|闯关战绩
 scripts/scenes/battle/battle_hud.gd|lit|闯关赛不消耗生命。
-scripts/scenes/battle/battle_hud.gd|lit|闯关赛还没打的 %d 场会在闯关赛结束后化成深海币 +%d 和经验 +%d。
 scripts/scenes/battle/battle_hud.gd|lit|阵容上传
 scripts/scenes/battle/battle_hud.gd|text|← 手指横滑挑龟(共28只+小将+大师) →   点一格选笔刷 → 点战场连点连摆 · 点已摆的龟→出配置面板
 scripts/scenes/battle/battle_hud.gd|text|友军
