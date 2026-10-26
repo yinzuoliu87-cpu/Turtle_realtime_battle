@@ -1,0 +1,50 @@
+name: 裁判机外部监控
+
+# 2026-10-26 · 方案书 docs/plans/20261026-裁判机外部监控.md
+# 10-25 裁判机整机断网约 79 分钟没人知道(机器上的健康检查跑在同一台机器上, 断网时它自己也报不出来)。
+# 这里从外面每 10 分钟看一次: 直播口 healthz + 正式服 referee_health() 心跳。
+#   不正常 ⇒ 本次运行失败 ⇒ GitHub 给仓库主人发失败邮件; Job Summary 写清哪一项。
+#   确实整机失联(两个信号都失联 + 3 分钟后复查仍是) ⇒ Hetzner 软重启(60 分钟内最多一次)。
+#   仓库 Secrets 没有 HCLOUD_TOKEN ⇒ 只报警不重启。
+# 判据在 tools/referee_watch.py 的 decide(), 自测 tools/referee_watch_selftest.py 进提交门禁。
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+    inputs:
+      no_reboot:
+        description: 只检查不重启
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: referee-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    name: 裁判机探活
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            tools/referee_watch.py
+            project.godot
+          sparse-checkout-cone-mode: false
+
+      - name: 探活(失联则复查, 确实整机失联才软重启)
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          NO_REBOOT: ${{ inputs.no_reboot && '1' || '' }}
+        run: |
+          if [ -n "$NO_REBOOT" ]; then
+            python3 tools/referee_watch.py --no-reboot
+          else
+            python3 tools/referee_watch.py
+          fi

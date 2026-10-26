@@ -861,6 +861,8 @@ run_audit "tools/referee_poller_selftest.py" "ALL OK" "referee_poller_selftest (
 #   正式服写要显式放行且拒时一条请求都不发 / 正式服上线只收内测服上过同 sha256 的迁移 / 迁移逐字在 schema.sql /
 #   beta_setup 第一句挡 / 裁判机内测服 unit 不读正式服 env / Caddy 两套 /streams 都在。
 run_audit "tools/beta_server_selftest.py" "ALL OK" "beta_server_selftest (内测服工具链·拒正式服 ref·迁移先内测服同sha·裁判机/Caddy 两套分开)"
+# 裁判机外部探活的判据(2026-10-26 · docs/plans/20261026-裁判机外部监控.md): decide() 表每一行 + 重启限频, 不联网。
+run_audit "tools/referee_watch_selftest.py" "ALL OK" "referee_watch_selftest (裁判机外部探活判据·整机失联才重启·60 分钟限频)"
 # 龟壳「复制」链路的四方对账(pets.json / _do_skill 分派 / _IMPL / 白名单 / 小将技)。
 #   2026-08-28 首跑报出 17 处: 白名单里 13 个**普攻位技能永远不会被执行**(占名额虚报可抄数)、
 #   1 个幽灵条目、3 个小将技漏掉。★判据落在 `_do_skill` 的 **match 块 case 标签**,
