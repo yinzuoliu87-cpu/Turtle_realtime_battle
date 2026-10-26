@@ -148,7 +148,10 @@ def run(no_reboot):
     v = decide(hz, h)
     print("healthz=%s health=%s ⇒ %s" % (hz, json.dumps(h, ensure_ascii=False), v))
     lines = ["## 裁判机探活", "", "- 直播口 healthz：%s" % ("200" if hz else "打不开"),
-             "- 心跳：%s" % (json.dumps(h, ensure_ascii=False) if h else "读不到"), "- 结论：**%s**" % WORDS[v]]
+             "- 心跳：%s" % (json.dumps(h, ensure_ascii=False) if h else "读不到"), "- 结论：**%s**" % WORDS[v],
+             ## 每次都写(只写有没有, 不写值): 自动重启接没接通, 不用等出事才知道
+             "- 自动重启开关：%s" % ("HCLOUD_TOKEN 已配置" if os.environ.get("HCLOUD_TOKEN", "").strip()
+                                    else "HCLOUD_TOKEN 未配置（只报警）")]
     if v == "machine_down":
         print("  失联 ⇒ %d 秒后复查" % RECHECK_SEC)
         time.sleep(RECHECK_SEC)
