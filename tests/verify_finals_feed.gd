@@ -1174,6 +1174,9 @@ func _t_door() -> void:
 	## ★★真场景一致性: 真开一遍主菜单, 那一格的**实际长相**必须跟纯判定一致。
 	##   (只验纯函数 = 验我自己的判定表; 要证明产品真的按它走, 得看真控件)
 	var sun := _sunday_ts()
+	_ok("⑤ ★分母: 钉的那一刻真是决赛日(周日 19:00 UTC; 不是 = 下面量的是别的赛期那张卡)",
+		P2C.phase_at_utc(sun) == P2C.PHASE_FINALS and P2C.iso_weekday_utc(sun) == 7,
+		"%s → %s" % [Time.get_datetime_string_from_unix_time(sun, true), P2C.phase_at_utc(sun)])
 	var real_kind := await _menu_block_kind(sun)
 	var want: String = MENU.close_block_kind(P2C.phase_at_utc(sun),
 		P2C.phase_mode_live(P2C.PHASE_FINALS), false, P2C.close_left_sec(sun),
@@ -1206,13 +1209,11 @@ func _t_door() -> void:
 
 
 ## 找一个**周日**的 UTC 时刻(决赛日)。★不写死日期 —— 写死的过一周就指到别的阶段。
+## ★★2026-10-26 闯关赛收盘挪到周日 17:30 UTC ⇒ 周日只有 17:30 之后是决赛日。原来这里拿「现在 + i 天」去碰周日,
+##   时刻跟着跑门禁那一刻的钟点走: 上午跑就碰不到决赛日、8 天找空后**静默退回今天**(量的就成了别的赛期, 照样绿)。
+##   ⇒ 改成本周周日 19:00 UTC(收盘后、分组 18:00 之后), 一个固定的决赛日时刻。
 func _sunday_ts() -> int:
-	var t := int(Time.get_unix_time_from_system())
-	for i in range(8):
-		var ts: int = t + i * 86400
-		if P2C.phase_at_utc(ts) == P2C.PHASE_FINALS:
-			return ts
-	return t
+	return P2C.week_anchor_utc(int(Time.get_unix_time_from_system())) + 6 * 86400 + 19 * 3600
 
 
 ## 真开一次主菜单, 问「周日那张赛程卡」上建出来的有没有对阵图那扇门。

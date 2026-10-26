@@ -259,7 +259,7 @@ func _page_result(won: bool, sealed: bool, gs, views: Array) -> Control:
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	## ① 胜负。★封存(周日决赛)时不宣布胜负 —— 两边各打对方快照, 两边都可能算出自己赢;
 	##   由对阵图在下一轮开播时揭晓(判据在 battle_hud._banner_sealed(), 这里只画)。
-	var big := _lbl("结果已封存" if sealed else ("胜利" if won else "失败"), F_RESULT,
+	var big := _lbl(hud._result_headline(won, sealed, gs), F_RESULT,
 		COL_GOLD if won and not sealed else (COL_SUB if sealed else COL_LOSS), HORIZONTAL_ALIGNMENT_CENTER)
 	v.add_child(big)
 	big.modulate.a = 0.0
@@ -276,6 +276,14 @@ func _page_result(won: bool, sealed: bool, gs, views: Array) -> Control:
 	var sub := _lbl(hud._result_subtitle(won, gs), F_SUB, Color("#93a4b8"), HORIZONTAL_ALIGNMENT_CENTER)
 	v.add_child(sub)
 	hud._banner_fade_in(sub, 0.26)
+	## ②a 下一步去哪(闯关赛才有: 晋级 ⇒ 周日几点开打; 到此结束 ⇒ 周日可观战; 还在打 ⇒ 不消耗生命)
+	var det_t: String = hud._result_detail(gs)
+	if det_t != "":
+		var det := _lbl(det_t, F_CAP + 2, COL_SUB, HORIZONTAL_ALIGNMENT_CENTER)
+		det.name = "ResultDetail"
+		det.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		v.add_child(det)
+		hud._banner_fade_in(det, 0.30)
 	## ②b 阵容上传成功的一次性提示(隐藏的 Label, 回执到了才亮)
 	hud._attach_upload_flash(v)
 	var fl: Control = v.get_child(v.get_child_count() - 1)
@@ -299,6 +307,7 @@ func _page_result(won: bool, sealed: bool, gs, views: Array) -> Control:
 		(chips as HBoxContainer).add_theme_constant_override("separation", 44)
 		v.add_child(chips)
 		hud._banner_fade_in(chips, 0.42)
+		_pop_coin_chip(chips, tw, 0.42)
 	## ⑤ 我方 MVP: 头像 + 名字 + 打出(默认那份 = 合计 / 单路时的本场)
 	var mine: Array = (views[0] as Dictionary)["left"] if not views.is_empty() else []
 	var mi: int = hud._st_mvp_index(mine)
@@ -321,6 +330,23 @@ func _page_result(won: bool, sealed: bool, gs, views: Array) -> Control:
 		v.add_child(mv)
 		hud._banner_fade_in(mv, 0.50)
 	return v
+
+
+## 「深海币 +N」那一格从 0 数到 N、同时从 1.35 倍落回原大(2026-10-26 · 方案书 docs/plans/20261026b-周六流程.md §4 F)。
+##   结算屏上没有钱包 ⇒ 币不飞, 只亮出来; 飞进钱包在回主菜单 / 进商店时做(scripts/util/coin_fly.gd)。
+## ★挂在胜负大字那一条 tween 上(并行), 不另开一条: 结算屏的裸 tween 有台账(tools/tween_freeze_audit.py)。
+func _pop_coin_chip(chips: Control, tw: Tween, delay: float) -> void:
+	var v := chips.find_child("RewardCoins", true, false) as Label
+	if v == null:
+		return
+	var n: int = int(v.text.trim_prefix("+"))
+	if n <= 0:
+		return
+	v.text = "+0"
+	tw.tween_method(func(x: float) -> void:
+		v.text = "+%d" % int(round(x))
+		v.pivot_offset = v.size / 2.0
+		v.scale = Vector2.ONE * lerpf(1.35, 1.0, x / float(n)), 0.0, float(n), 0.45).set_delay(delay).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 
 ## 一路的胜负牌: 槽框 + 路名(小字) + 胜/负(大字)。

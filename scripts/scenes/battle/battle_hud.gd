@@ -1248,14 +1248,9 @@ func _result_subtitle(won: bool, gs) -> String:
 		return "练习赛 · 不计入赛季进度"
 	## ★★2026-10-03 周六实操 S3/S17: 周六输了写着「消耗 1 点生命」(周六根本不掉命), 出局那场也不说出局。
 	##   周六这一支必须排在「生命已耗尽」前面: 0 命但已晋级的人周六照常打闯关赛。
+	## ★2026-10-26 改成完整句子: 战绩 + 这一场之后的处境(再胜几场 / 再负几场 / 已晋级 / 到此结束), 句子在 phase2_config 一处。
 	if str(battle._last_settle_kind) == _P2C_HUD.SETTLE_GAUNTLET:
-		var _gl: String = _P2C_HUD.gauntlet_label(int(gs.gauntlet_wins), int(gs.gauntlet_losses))
-		var _st: String = str(gs.gauntlet_state())
-		if _st == _P2C_HUD.GAUNTLET_IN:
-			return "闯关 %s · 晋级决赛日" % _gl
-		if _st == _P2C_HUD.GAUNTLET_OUT:
-			return "闯关 %s · 闯关赛出局" % _gl
-		return "闯关 %s · 不消耗生命" % _gl
+		return _P2C_HUD.gauntlet_settle_line(int(gs.gauntlet_wins), int(gs.gauntlet_losses))
 	## ★★2026-10-04 周日实操连带: v0.19.525 让决赛局真的按决赛日结算之后, 这里没有决赛那一支 ⇒
 	##   落到积分赛那句「赛季胜场 +1 / 消耗 1 点生命」—— 周日不掉命, 胜负也要等揭晓, 两句都是假的。
 	##   (之前一直走的是闯关赛那一支, 所以这个缺口从没露出来过。) 排在「生命已耗尽」前面: 0 命的晋级者周日照常打。
@@ -1269,6 +1264,38 @@ func _result_subtitle(won: bool, gs) -> String:
 	if battle._last_was_exhibition:
 		return "表演赛 · 不消耗生命"
 	return "赛季胜场 +1" if won else "消耗 1 点生命"
+
+
+## 结果大字。★闯关赛第 4 胜那一局换成「已晋级！」(荒野乱斗全球锦标赛挑战结算大字同一个写法, 2026-10-26)。
+##   状态是 IN 而这一局是闯关赛 ⇒ 这一局就是第 4 胜(晋级之后开不了闯关局)。
+func _result_headline(won: bool, sealed: bool, gs) -> String:
+	if sealed:
+		return "结果已封存"
+	if won and gs != null and battle._had_season and str(battle._last_settle_kind) == _P2C_HUD.SETTLE_GAUNTLET 			and str(gs.gauntlet_state()) == _P2C_HUD.GAUNTLET_IN:
+		return "已晋级！"
+	return "胜利" if won else "失败"
+
+
+## 副标题下面那一行小字: 下一步去哪 / 什么时候(只有闯关赛有, 其余返回 "")。
+##   晋级: 周日几点开打(按设备时区, 用户 10-26「根据机子的时间去显示正确时间」)+ 没打的场次之后会化成什么;
+##   到此结束: 周日可以观战、下周二新一轮; 还在打: 闯关赛不消耗生命(周六输了以为掉命, 2026-10-03 实操 S3)。
+func _result_detail(gs) -> String:
+	if gs == null or not battle._had_season or str(battle._last_settle_kind) != _P2C_HUD.SETTLE_GAUNTLET:
+		return ""
+	var w: int = int(gs.gauntlet_wins)
+	var l: int = int(gs.gauntlet_losses)
+	var st: String = str(gs.gauntlet_state())
+	if st == _P2C_HUD.GAUNTLET_IN:
+		var seat: int = _P2C_HUD.finals_seat_ts(_P2C_HUD.week_anchor_utc(int(_P2C_HUD.now_utc())))
+		var t: String = "决赛日%s %s 开始，你的比赛在对阵图中进行。" % [_P2C_HUD.STAGE_GROUP, _P2C_HUD.local_wd_hhmm(seat)]
+		var owed: int = _P2C_HUD.gauntlet_backfill_owed(w, l)
+		if owed > 0:
+			t += "闯关赛还没打的 %d 场会在闯关赛结束后化成深海币 +%d 和经验 +%d。" % [
+				owed, owed * int(_P2C_HUD.GAUNTLET_BACKFILL_COINS), owed * int(_P2C_HUD.GAUNTLET_BACKFILL_XP)]
+		return t
+	if st == _P2C_HUD.GAUNTLET_OUT:
+		return "周日决赛日可以观战，新一轮积分赛下周二开始。"
+	return "闯关赛不消耗生命。"
 
 
 ## 数据块一排: 每块 = 标签(小字灰) + 数值(大字亮)。练习赛没有赛季数据 → 返回 null 不占位。
@@ -1286,6 +1313,11 @@ func _build_reward_chips(gs, cap_fs: int = 13, val_fs: int = 24) -> Control:
 	var _weekend: bool = _sk == _P2C_HUD.SETTLE_GAUNTLET or _sk == _P2C_HUD.SETTLE_FINALS
 	if _sk == _P2C_HUD.SETTLE_GAUNTLET:
 		items.append(["闯关战绩", "%d-%d" % [int(gs.gauntlet_wins), int(gs.gauntlet_losses)], Color("#e8f0f6")])
+	## ★2026-10-26 周末两天这一场给的经验原来不显示(方案书 §2 D)。数从结算那一刻真加的常量取(GameState.gauntlet_settle / finals_settle_sealed)。
+	if _sk == _P2C_HUD.SETTLE_GAUNTLET:
+		items.append(["经验", "+%d" % int(_P2C_HUD.GAUNTLET_XP_PER_MATCH), Color("#8fe0ff")])
+	elif _sk == _P2C_HUD.SETTLE_FINALS:
+		items.append(["经验", "+%d" % int(_P2C_HUD.FINALS_XP_PER_ROUND), Color("#8fe0ff")])
 	elif not battle._last_was_exhibition and not _weekend:
 		items.append(["剩余生命", "%d / %d" % [int(gs.hearts), int(_P2C_HUD.HEARTS_MAX)], Color("#ff8a8a") if int(gs.hearts) <= 2 else Color("#e8f0f6")])
 	if not _weekend:
@@ -1343,6 +1375,8 @@ func _build_reward_chips(gs, cap_fs: int = 13, val_fs: int = 24) -> Control:
 		col.add_child(cap)
 		var val := Label.new()
 		val.text = str(it[1])
+		if str(it[0]) == "深海币":
+			val.name = "RewardCoins"   # 结算屏上那一下「数出来」按名字找(`_pop_coin_chip`)
 		val.add_theme_font_size_override("font_size", val_fs)
 		val.add_theme_color_override("font_color", it[2])
 		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

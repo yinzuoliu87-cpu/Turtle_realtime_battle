@@ -19,11 +19,11 @@
                          结果单(胜方 / 比分码 / 步数 / 终局指纹 / 录像 base64)
    referee_complete ──► 一个事务：matches(录像, 与客户端上传同一格式) + 赛果
                           周日 finals_results(winner_side + loser_lanes 比分码)
-                          周六 gauntlet_records(服务端战绩账本) + gauntlet_ghosts(新战绩标签)
+                          闯关赛 gauntlet_records(服务端战绩账本) + gauntlet_ghosts(新战绩标签) + 第 4 胜登记 finals_pending(20261026b)
 ```
 
 - 一局多快（本机 Windows x86_64 实测，Godot 4.6.3 无头）：三路打满 10469 步 ≈ **10~15 秒**墙钟（含 Godot 启动 ~1 秒）；两路 4300 步 ≈ 5.5 秒；一边倒上路碎蛋 1115 步 ≈ 1 秒。约 0.9~1.3 ms / sim 步。
-- CX33 4 核：`WORKERS=4` ⇒ 每分钟约 16~40 局。周六 140 人 × 6 场 ≈ 840 局 / 天，周日一轮最多几十场，都够。
+- CX33 4 核：`WORKERS=4` ⇒ 每分钟约 16~40 局。闯关赛 140 人 × 6 场 ≈ 840 局（2026-10-26 起摊在周六 00:00 ~ 周日 17:30 UTC 一天半里），周日决赛日一轮最多几十场，都够。
 - **现状（2026-10-26 起）：CPX22 2 核 / 4 GB，正式服 `WORKERS=2`**（核数 = 线程数，多开会抢核、单局变慢）。同一探针录流 149 步/秒 = 2.5 倍实时，与原 CPX32 持平。人多了换回 CPX32 + `WORKERS=4`（关机换型约 36 秒）。
 - 结果只在**同一个客户端版本**里成立：`VERSIONS_DIR` 下一个版本一份工程，轮询器只领本机装了的版本。
 
@@ -123,7 +123,7 @@
    ```sql
    -- 周日: 先定这周用哪个版本算(= 当周锁定的客户端版本, 且已在 referee_versions)
    update public.referee_config set finals_version = '0.19.5xx', finals_on = true, updated_at = now() where id = 1;
-   -- 周六
+   -- 闯关赛(周六 00:00 ~ 周日 17:30 UTC)
    update public.referee_config set gauntlet_on = true, updated_at = now() where id = 1;
    ```
    回滚 = 把开关翻回 false（任务表留着无害；已写的赛果不动）。
@@ -133,10 +133,10 @@
 1. `/opt/turtle/v<新版本>/` 放工程 + `--import` + 第 3 步两个门禁；
 2. `insert into referee_versions …`；轮询器每轮自动重扫目录，**不用重启**；
 3. 周日用的版本改 `referee_config.finals_version`；
-4. **周六机器人池**（20261020c 起；周六对手由服务端挑，挑不到同标签真人就从池里取机器人）：
+4. **闯关赛机器人池**（20261020c 起；闯关赛对手由服务端挑，挑不到同标签真人就从池里取机器人）：
    `referee_poller.py --bot-pool --version <新版本>`（调这个版本的 Godot 生成 2052 份 = `Backend.make_bot` 同一个函数，分批上传，
    同时把 `referee_versions.rules_ver` 登记上）。回读 `select public.referee_backlog()->'bot_pool';` 新版本 `rows` = 2052。
-   ★忘了这一步：那个版本的玩家挑不到机器人 ⇒ 开战回 `no_opponent`（屏上「匹配失败，请稍后重试」）；`--health` 在周六开着时报警。
+   ★忘了这一步：那个版本的玩家挑不到机器人 ⇒ 开战回 `no_opponent`（屏上「匹配失败，请稍后重试」）；`--health` 在闯关赛开着时报警。
 5. 旧版本的任务清空之后（`select client_version, count(*) from referee_jobs where status in ('pending','claimed') group by 1`）再删旧目录、`update referee_versions set enabled = false`。
 
 ## 运维
@@ -159,7 +159,7 @@
 | env | `/etc/turtle-referee/env-beta`（root:turtle-referee 640）：`SUPABASE_URL` = turtle-beta、`SUPABASE_SERVICE_KEY` = 内测服 secret key（本机副本 `~/.supabase/beta-service-key`）、`VERSIONS_DIR=/opt/turtle-beta`、`WORK_DIR=/var/lib/turtle-referee-beta`、`WORKERS=1`、`STREAM_ROOT=/var/lib/turtle-referee-beta/streams`、`WORKER_NAME=beta` |
 | 代码 | `/opt/turtle-beta/referee/referee_poller.py`（自己一份，root 644；内测服先试新轮询器）· `/opt/turtle-beta/stream/stream_ops.py` |
 | 工程版本 | `/opt/turtle-beta/v<版本>/`（2026-10-21：v0.21.3 = 正式那份的拷贝、v0.21.4 = 拷贝后 checkout tag 再 `--import`；det_cross 37/37、job_roundtrip 65 ALL PASS）|
-| 高峰停起 | `turtle-referee-beta-peak.timer`（每 5 分钟）→ `beta_peak_guard.sh`：周六全天、周日 17:30~24:00 UTC 停，其余起；`/etc/turtle-referee/beta-off` 存在 ⇒ 一直停 |
+| 高峰停起 | `turtle-referee-beta-peak.timer`（每 5 分钟）→ `beta_peak_guard.sh`：周六、周日全天 UTC（2026-10-26 起；原为周日 17:30 起） 停，其余起；`/etc/turtle-referee/beta-off` 存在 ⇒ 一直停 |
 | 健康检查 | `turtle-referee-beta-health.timer`（每 5 分钟，只进 journald，不进正式服报警口径）|
 | 直播 | Caddy 同一站点 `/beta/streams/*` → `/var/lib/turtle-referee-beta/streams`；版本闸片段 `/etc/caddy/turtle-min-version-beta.caddy`（`turtle-stream-minver-beta.timer`，匹配器 `@stream_old_beta`）；清理 `turtle-stream-purge-beta.timer`（每小时 :07）|
 | 机器人池 | `python tools/beta_ops.py seed-bots`（ssh 跑内测服那份 `--bot-pool`）|
@@ -179,7 +179,7 @@ Caddy 拷回 `/root/betadeploy/Caddyfile.bak-20261021` → `caddy validate` → 
   只交「我的阵容 + 第几场」，对手（同标签真人 30 分钟内优先 → 隔夜 → 机器人池）与种子都由服务端定；
   机器人快照池离线生成（`scripts/referee/bot_pool.gd`）、`--bot-pool` 上传。旧接口在 `referee_config.gauntlet_server_pick = true` 后一律回 `update_required`。
   上线顺序见迁移文件末尾；行为检查 `server/supabase/tests/20261020c_…_check.sql`（`node tools/sql_sandbox.mjs` 本机 PGlite 59 条全过）。
-- **周六战斗内铸币**（奇械羁绊 / 035 齿轮）：2026-10-20 起裁判结果单带 `coins`（`EquipTickSystem.match_minted`，与本机结算同一个出口），
+- **闯关赛战斗内铸币**（奇械羁绊 / 035 齿轮）：2026-10-20 起裁判结果单带 `coins`（`EquipTickSystem.match_minted`，与本机结算同一个出口），
   `referee_complete` 记进 `ledger.coins`、`referee_job_status` 回给客户端。
 - **周日战斗内铸币**（2026-10-20 · 迁移 `20261020d_finals_coins.sql`，只写文件未上生产）：结果单多 `coins_b`（右方 B，同一个出口
   `EquipTickSystem.match_minted(battle, "right")`），周日任务记进 `ledger.coins_b`；双方客户端翻面后调 `referee_finals_coins`（服务端按账号认侧）取自己那一份。

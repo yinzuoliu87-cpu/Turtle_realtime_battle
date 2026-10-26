@@ -75,10 +75,11 @@ func _fresh(onboarded: bool) -> void:
 
 
 ## 周二 12:00 UTC(积分赛日)/ 周六 / 周日。★取「本周锚点」往后数, 不手写日期。
-func _ts_on(iso_dow: int) -> int:
+## ★2026-10-26 闯关赛收盘挪到周日 17:30 UTC ⇒ 周日 12:00 是闯关赛; 要决赛日就传 hour = 19。
+func _ts_on(iso_dow: int, hour: int = 12) -> int:
 	var now := int(Time.get_unix_time_from_system())
 	var anchor: int = P2C.week_anchor_utc(now)          # 本周一 00:00 UTC
-	return anchor + (iso_dow - 1) * 86400 + 12 * 3600
+	return anchor + (iso_dow - 1) * 86400 + hour * 3600
 
 
 func _open_menu() -> Node:
@@ -204,10 +205,16 @@ func _in_tutorial() -> void:
 # ⑤
 func _weekend() -> void:
 	print("  ── ⑤ 周六 / 周日 ──")
-	for pair in [[6, P2C.PHASE_GAUNTLET, FT.GAUNTLET_DAY], [7, P2C.PHASE_FINALS, FT.FINALS_DAY]]:
-		P2C.now_override_ts = _ts_on(int(pair[0]))
+	## [星期几, 期望阶段, 提示键, UTC 小时]。★2026-10-26 周日要钉 19:00 才是决赛日; 周日 12:00 另跑一遍, 那时出的是闯关赛那条
+	for pair in [[6, P2C.PHASE_GAUNTLET, FT.GAUNTLET_DAY, 12], [7, P2C.PHASE_FINALS, FT.FINALS_DAY, 19],
+			[7, P2C.PHASE_GAUNTLET, FT.GAUNTLET_DAY, 12]]:
+		P2C.now_override_ts = _ts_on(int(pair[0]), int(pair[3]))
 		_ok("分母: 拨到了 %s" % str(pair[1]), P2C.phase_at_utc(P2C.now_override_ts) == str(pair[1]))
 		_fresh(true)
+		## ★2026-10-26 这条「点击查看规则」只给有资格的人(模式卡没锁): 锁着时点卡直达观战, 提示会说错去处(见下面 ⑤b)。
+		GameState.promoted = true
+		GameState.gauntlet_wins = 4 if str(pair[1]) == P2C.PHASE_FINALS else 0
+		GameState.gauntlet_losses = 0
 		var m := await _open_menu()
 		var t := _tip(m)
 		var want := FT.TEXT_RULES % str(P2C.PHASE_LABEL[str(pair[1])])
@@ -223,6 +230,18 @@ func _weekend() -> void:
 		_ok("★★%s: 只出一次" % str(pair[1]), _tip(m2) == null)
 		m2.queue_free()
 		await _frames(2)
+	## ⑤b 没资格(模式卡锁着、点卡直达观战)⇒ 不出「点击查看规则」, 也不记已看(哪天有资格了再出)
+	P2C.now_override_ts = _ts_on(6, 12)
+	_fresh(true)
+	GameState.promoted = false
+	GameState.gauntlet_wins = 0
+	GameState.gauntlet_losses = 0
+	var m3 := await _open_menu()
+	_ok("⑤b 分母: 周六没资格 ⇒ 模式卡确实锁着", bool(m3.mode_card_locked(P2C.now_override_ts)))
+	_ok("⑤b ★没资格 ⇒ 不出「点击查看规则」(那时点卡去的是全场赛况)", _tip(m3) == null)
+	_ok("⑤b ★也不记成已看过(有资格的那一周还要出)", not bool(GameState.first_tips_seen.get(FT.GAUNTLET_DAY, false)))
+	m3.queue_free()
+	await _frames(2)
 
 
 # ⑥

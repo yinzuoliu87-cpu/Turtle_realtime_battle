@@ -2320,9 +2320,11 @@ func _try_start_match() -> bool:
 ##   而对阵图 → 直接开战不经过主菜单那一步 ⇒ 刚打开游戏就进对阵图的人打的是**非双路**对局
 ##   (没有摆位、十几秒就完、不录像、对阵图格子点「回放」永远取不到)。9 个模拟号 6 场小组赛全中。
 ##   ⇒ 与主菜单 `_start_battle_flow` 同一套开局口径在这里补齐。
-static func stamp_finals_match(gs, bucket: int, r: int, m: int, side: int, now_utc: int) -> void:
+static func stamp_finals_match(gs, bucket: int, r: int, m: int, side: int, _now_utc: int) -> void:
 	gs.finals_match = {"bucket": bucket, "round": r, "match": m, "side": side}
-	gs.week_phase = _P2C.phase_at_utc(now_utc)
+	## ★2026-10-26 闯关赛延到周日 17:30 ⇒ 周日不再整天都是决赛日; 对阵图开的局**就是**决赛, 显式戳, 不靠时刻推
+	##   (`_now_utc` 留着不动调用方与门禁的签名, 这里不再读)。
+	gs.week_phase = _P2C.PHASE_FINALS
 	gs.mode = "single"
 	gs.tutorial = false
 	gs.dual_active = true

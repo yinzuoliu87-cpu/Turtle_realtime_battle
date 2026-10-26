@@ -21,6 +21,20 @@ const P2 := preload("res://scripts/gamedata/phase2_config.gd")
 const SUN0 := 1789862400          # 2026-09-20 周日 00:00 UTC
 const WD_LONG := ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
 const PHASES := [P2.PHASE_REST, P2.PHASE_RANKED, P2.PHASE_GAUNTLET, P2.PHASE_FINALS]
+## ★★2026-10-26 用户拍板闯关赛收盘 周六 23:00 → 周日 17:30 UTC(方案书 20261026b-周六流程.md §4 G) ⇒ 周日被一分为二。
+##   钉点 = 周日 19:00(决赛日) + 周一~周六正午 + 周日 12:00(闯关赛收盘前), 共 8 个; 每个钉点自带「这一刻该是哪个阶段」。
+##   ★期望阶段**写死**, 不再问 `phase_of_weekday(星期几)` —— 那张表回答的是「这一天叫什么」, 周日它只能答一个。
+##   [标签, ISO 星期几, 时刻, 期望金边阶段]
+const PINS := [
+	["周日", 7, SUN0 + 19 * 3600, P2.PHASE_FINALS],
+	["周一", 1, SUN0 + 1 * 86400 + 43200, P2.PHASE_REST],
+	["周二", 2, SUN0 + 2 * 86400 + 43200, P2.PHASE_RANKED],
+	["周三", 3, SUN0 + 3 * 86400 + 43200, P2.PHASE_RANKED],
+	["周四", 4, SUN0 + 4 * 86400 + 43200, P2.PHASE_RANKED],
+	["周五", 5, SUN0 + 5 * 86400 + 43200, P2.PHASE_RANKED],
+	["周六", 6, SUN0 + 6 * 86400 + 43200, P2.PHASE_GAUNTLET],
+	["周日上午", 7, SUN0 + 43200, P2.PHASE_GAUNTLET],
+]
 
 var _pass := 0
 var _fail := 0
@@ -95,11 +109,11 @@ func _ready() -> void:
 	_ok("★分母: 四个阶段名都取得到(取不到 = 下面全在比 '?')", not labels.has("?"), str(labels))
 
 	var today_marks: Array = []
-	for d in range(7):
-		var iso: int = 7 if d == 0 else d
-		var tag: String = WD_LONG[iso - 1]
+	for pin in PINS:
+		var iso: int = int(pin[1])
+		var tag: String = str(pin[0])
 		var mm = packed.instantiate()
-		var ts: int = SUN0 + d * 86400 + 12 * 3600
+		var ts: int = int(pin[2])
 		mm.strip_now_override = ts
 		mm.clock_override_ts = ts
 		add_child(mm)
@@ -140,20 +154,29 @@ func _ready() -> void:
 			if st == "future" and not str(info["time"]).ends_with("开始"):
 				bad.append("%s 还没到却写「%s」" % [ph, info["time"]])
 		_ok("%s ★★★恰好一张卡是今天(金边)" % tag, todays.size() == 1, str(todays))
-		var want_today: String = str(P2.phase_of_weekday(iso))
+		var want_today: String = str(pin[3])
 		_ok("%s ★★★金边那张就是今天的阶段「%s」" % [tag, want_today], todays == [want_today], str(todays))
 		_ok("%s ★★★四张卡上的字 == `week_card_info(阶段, 注入时刻)`" % tag, bad.is_empty(), str(bad))
 		today_marks.append(todays[0] if todays.size() == 1 else "")
 		## 今天那张的时间 == 模式卡第三行(同一个 `_mode_countdown`)
+		## ★2026-10-26 周末没资格(模式卡锁着)时第三格不是倒计时, 是去处(「观看全场赛况 »」/「观看对阵图 »」, 点卡直达)
+		##   ⇒ 锁着时量「去处 == `_mode_locked_door` 那一扇」; 没锁时照旧量「== 今天那张的时间」。
 		var tinfo: Dictionary = mm.week_card_info(want_today, ts)
-		_ok("%s ★今天那张的时间 == 模式卡倒计时那一行" % tag,
-			str(tinfo["time"]) == str(mm.mode_card_lines(ts)[2]), "%s / %s" % [tinfo["time"], mm.mode_card_lines(ts)[2]])
+		var l3: String = str(mm.mode_card_lines(ts)[2])
+		if mm.mode_card_locked(ts) and str(mm._mode_locked_door(ts)) != "":
+			var want_door: String = str(mm.MODE_WATCH_BOARD) if str(mm._mode_locked_door(ts)) == str(mm.WEEK_DOOR_BOARD) else str(mm.MODE_WATCH_BRACKET)
+			_ok("%s ★模式卡锁着 ⇒ 第三格是观战去处(与 `_mode_locked_door` 同一扇)" % tag, l3 == want_door, "%s / %s" % [l3, want_door])
+		else:
+			_ok("%s ★今天那张的时间 == 模式卡倒计时那一行" % tag, str(tinfo["time"]) == l3, "%s / %s" % [tinfo["time"], l3])
 		if iso == 6:
 			await _info_taps(mm)
 		## ★★周六已晋级 ⇒ 模式卡第三行说周日几点开打, 不再数闯关赛收盘(2026-10-10 周六实操)。没晋级的照旧(对照组)。
-		if iso == 6:
+		## ★2026-10-26 周日上午也是闯关赛 ⇒ 两个闯关赛钉点都验
+		if want_today == P2.PHASE_GAUNTLET:
 			var gw0 := int(GameState.gauntlet_wins)
 			var gl0 := int(GameState.gauntlet_losses)
+			var pr0 = GameState.promoted
+			GameState.promoted = true          # 量的是有资格的人那张卡(没资格时卡锁着, 第三格是观战去处, 见上一条)
 			GameState.gauntlet_wins = 4
 			GameState.gauntlet_losses = 0
 			var l_in: String = str(mm.mode_card_lines(ts)[2])
@@ -161,16 +184,23 @@ func _ready() -> void:
 			var l_run: String = str(mm.mode_card_lines(ts)[2])
 			GameState.gauntlet_wins = gw0
 			GameState.gauntlet_losses = gl0
+			GameState.promoted = pr0
 			_ok("%s ★★已晋级 ⇒ 倒计时指向周日小组赛开打" % tag, l_in.begins_with("距" + P2.STAGE_GROUP + "开始"), l_in)
 			_ok("%s 对照: 还在打 ⇒ 仍是闯关赛收盘倒计时" % tag, l_run.begins_with("距截止") or l_run.begins_with("已截止") or l_run.begins_with("今日"), l_run)
+			if iso == 7:
+				## ★★周日 12:00 → 当天 18:00 分组 = 6 小时整(原来按「下一阶段那天的 18:00」推, 周日上午会推到周一: 「1 天 6 小时」)
+				_ok("%s ★★已晋级 ⇒ 距小组赛开始 = 6 小时 0 分(指当天 18:00, 不是下周)" % tag,
+					l_in == "距%s开始 6 小时 0 分" % P2.STAGE_GROUP, l_in)
+				_ok("%s ★对照: 还在打 ⇒ 距截止 = 5 小时 30 分(收盘 17:30)" % tag,
+					l_run == "距截止 5 小时 30 分", l_run)
 		mm.queue_free()
 		await get_tree().process_frame
 
 	## ④ 七天的金边不是一直挂在同一张上(全一样 = 注入时钟没生效, 上面全是恒真)
 	var want_marks: Array = []
-	for d in range(7):
-		want_marks.append(str(P2.phase_of_weekday(7 if d == 0 else d)))
-	_ok("★★★七天金边依次 == 日~六 的阶段(全一样 = 注入时钟没生效)", today_marks == want_marks,
+	for pin in PINS:
+		want_marks.append(str(pin[3]))
+	_ok("★★★八个钉点金边依次 == 日(19:00)~六 + 日(12:00) 的阶段(全一样 = 注入时钟没生效)", today_marks == want_marks,
 		"实测 %s" % str(today_marks))
 
 	await _one_clock(packed)
@@ -191,15 +221,15 @@ func _one_clock(packed) -> void:
 	var marks: Array = []
 	var times: Array = []
 	var phase_lines := 0
-	for d in range(7):
-		var iso: int = 7 if d == 0 else d
-		var ts: int = SUN0 + d * 86400 + 12 * 3600
+	for pin in PINS:
+		var iso: int = int(pin[1])
+		var ts: int = int(pin[2])
 		var mm = packed.instantiate()
 		mm.clock_override_ts = ts          ## ★只注这一条
 		add_child(mm)
 		for _i in range(6):
 			await get_tree().process_frame
-		var tag: String = WD_LONG[iso - 1]
+		var tag: String = str(pin[0])
 		## 赛程页默认藏着 ⇒ 量几何前先**真按一下模式卡**(走它自己那颗按钮的 pressed)。
 		var mtap = mm.find_child("ModeTap", true, false)
 		_ok("%s ★分母: 模式卡上有那颗按钮" % tag, mtap is BaseButton)
@@ -215,7 +245,7 @@ func _one_clock(packed) -> void:
 			if card != null and card.get_node_or_null("TodayFrame") != null:
 				mk = str(ph)
 		marks.append(mk)
-		var want_ph: String = str(P2.phase_of_weekday(iso))
+		var want_ph: String = str(pin[3])
 		_ok("%s ★★★a) 金边那张 = 「%s」(只注整屏那条缝)" % [tag, want_ph], mk == want_ph, "实测「%s」" % mk)
 		var card_t := _card(mm, want_ph)
 		_ok("%s ★分母: 今天那张卡在" % tag, card_t != null)
@@ -268,8 +298,9 @@ func _one_clock(packed) -> void:
 				and (rects[2] as Rect2).position.y > (rects[0] as Rect2).end.y
 				and absf((rects[0] as Rect2).position.x - (rects[2] as Rect2).position.x) < 1.0, "")
 		## ⑦e 周六 / 周日的门: 在当天那张卡上, 黄铜门牌, 接了处理函数
-		if iso == 6 or iso == 7:
-			var dn: String = "GauntletBoardDoor" if iso == 6 else "BracketDoor"
+		## ★2026-10-26 门跟着**阶段**走(周日上午是闯关赛 ⇒ 挂「全场赛况」), 不再按星期几
+		if want_ph == P2.PHASE_GAUNTLET or want_ph == P2.PHASE_FINALS:
+			var dn: String = "GauntletBoardDoor" if want_ph == P2.PHASE_GAUNTLET else "BracketDoor"
 			var door = card_t.find_child(dn, true, false)
 			_ok("%s ⑦e ★分母: 门「%s」在今天那张卡上" % [tag, dn], door is Button)
 			if door is Button:
@@ -280,7 +311,7 @@ func _one_clock(packed) -> void:
 				_ok("%s ⑦e 门挂着 `brass.png`(黄铜门牌)" % tag, tex == "brass.png", "实测「%s」" % tex)
 				_ok("%s ⑦e ★★门接了处理函数(有按钮 ≠ 按了有用)" % tag,
 					(door as Button).pressed.get_connections().size() >= 1, "")
-				var want_m: String = "_open_gauntlet_board" if iso == 6 else "_open_bracket_map"
+				var want_m: String = "_open_gauntlet_board" if want_ph == P2.PHASE_GAUNTLET else "_open_bracket_map"
 				var got_m := ""
 				for cn in (door as Button).pressed.get_connections():
 					got_m = (cn["callable"] as Callable).get_method()
@@ -288,15 +319,16 @@ func _one_clock(packed) -> void:
 		mm.queue_free()
 		await get_tree().process_frame
 
-	_ok("★★★七天金边位置 == 日~六 的阶段(全一样 = 赛程页还挂着自己那条时钟)",
-		marks == [P2.PHASE_FINALS, P2.PHASE_REST, P2.PHASE_RANKED, P2.PHASE_RANKED, P2.PHASE_RANKED, P2.PHASE_RANKED, P2.PHASE_GAUNTLET],
-		"七天标在 %s" % str(marks))
+	_ok("★★★八个钉点金边位置 == 日(19:00)~六 + 日(12:00) 的阶段(全一样 = 赛程页还挂着自己那条时钟)",
+		marks == [P2.PHASE_FINALS, P2.PHASE_REST, P2.PHASE_RANKED, P2.PHASE_RANKED, P2.PHASE_RANKED, P2.PHASE_RANKED, P2.PHASE_GAUNTLET,
+			P2.PHASE_GAUNTLET],
+		"八个钉点标在 %s" % str(marks))
 	var ut: Dictionary = {}
 	for t in times:
 		ut[str(t)] = true
 	## ★分母: 今天那张的时间七天至少 5 种(一种 = b) 在比一个恒量, 读哪条钟都能绿)
 	_ok("★分母: 今天那张的时间七天至少有 5 种", ut.size() >= 5, "实测 %d 种: %s" % [ut.size(), str(ut.keys())])
-	_ok("★分母: c) 真正比过的天数 = 2(周六/周日)", phase_lines == 2, "实测 %d 天" % phase_lines)
+	_ok("★分母: c) 真正比过的钉点 = 3(周六 / 周日上午 / 周日晚上)", phase_lines == 3, "实测 %d 个" % phase_lines)
 
 	## ⑥ ★分母: **不注入**时赛程页跟真实时钟走。
 	##   不验这一条的话, 把 `_week_cards` 里的 now 写死成一个常量也能让 ⑤ 全绿。
@@ -336,8 +368,12 @@ func _page_texts(mm) -> Array:
 
 func _ticks(packed) -> void:
 	var sat: int = SUN0 + 6 * 86400               # 周六 00:00 UTC
+	## ★★2026-10-26 闯关赛收盘挪到周日 17:30 UTC ⇒ 原来量「周六 22:30/22:40/22:55/23:05」的那组刻度
+	##   整体搬到周日 17:00/17:10/17:25/17:35(收盘前 30 分 / 20 分 / 封盘窗内 / 收盘后)。量的还是同三件事:
+	##   倒计时跟着走、封盘窗内显示「已截止」、收盘后页上换成下一阶段(不是休赛日)。
+	var sun2: int = SUN0 + 7 * 86400              # 周日 00:00 UTC(与 sat 同一周)
 	var mm = packed.instantiate()
-	mm.strip_now_override = sat + 22 * 3600 + 30 * 60      # 22:30
+	mm.strip_now_override = sun2 + 17 * 3600      # 17:00
 	mm.clock_override_ts = mm.strip_now_override
 	add_child(mm)
 	for _i in range(6):
@@ -347,8 +383,8 @@ func _ticks(packed) -> void:
 	for s in a:
 		if str(s).begins_with("距截止"):
 			has_cd = true
-	_ok("⑥ ★分母: 22:30 显示倒计时", has_cd, str(a))
-	mm.strip_now_override = sat + 22 * 3600 + 40 * 60      # 过了 10 分钟
+	_ok("⑥ ★分母: 周日 17:00 显示倒计时", has_cd, str(a))
+	mm.strip_now_override = sun2 + 17 * 3600 + 10 * 60      # 过了 10 分钟
 	mm._sb_poll()
 	for _i in range(4):
 		await get_tree().process_frame
@@ -358,21 +394,39 @@ func _ticks(packed) -> void:
 		if str(s).begins_with("距截止"):
 			cd_b = str(s)
 	_ok("⑥ ★★过了 10 分钟倒计时跟着变(原 bug: 停在打开那一刻)", cd_b != "" and not a.has(cd_b), "%s → %s" % [str(a), str(b)])
-	mm.strip_now_override = sat + 22 * 3600 + 55 * 60      # 22:55 已过封盘线
+	mm.strip_now_override = sun2 + 17 * 3600 + 25 * 60      # 17:25 已过封盘线(17:20)
 	mm._sb_poll()
 	for _i in range(4):
 		await get_tree().process_frame
-	_ok("⑥ ★★22:50 之后显示「已截止」", str(_page_texts(mm)).find("已截止") >= 0, str(_page_texts(mm)))
-	mm.strip_now_override = sat + 23 * 3600 + 5 * 60       # 23:05 已收盘
+	_ok("⑥ ★★17:20 之后显示「已截止」", str(_page_texts(mm)).find("已截止") >= 0, str(_page_texts(mm)))
+	## ★另一侧: 17:19 还没封(否则「一直显示已截止」也能让上一条绿)
+	mm.strip_now_override = sun2 + 17 * 3600 + 19 * 60
+	mm._sb_poll()
+	for _i in range(4):
+		await get_tree().process_frame
+	_ok("⑥ ★另一侧: 17:19 还在倒计时、没有「已截止」",
+		str(_page_texts(mm)).find("已截止") < 0 and str(_page_texts(mm)).find("距截止") >= 0, str(_page_texts(mm)))
+	mm.strip_now_override = sun2 + 17 * 3600 + 35 * 60      # 17:35 已收盘
 	mm._sb_poll()
 	for _i in range(4):
 		await get_tree().process_frame
 	var c: Array = _page_texts(mm)
-	## ★2026-10-03 实拍: 周六收盘后写着「休赛日 · 周二开赛 · 本日维护」, 而明天是决赛日
-	##   ⇒ 闯关赛那张写「今日已截止」, 决赛日那张写明天几点开始(本地时间)。
-	var sun_start: String = "%s 开始" % mm._local_wd_hhmm(mm._utc_today_at(sat + 86400, int(P2.FINALS_SEAT_HOUR_UTC)))
-	_ok("⑥ ★★周六 23:00 收盘后: 闯关赛「今日已截止」+ 决赛日那张写明天的开始时刻(不是休赛日)",
-		c.has("今日已截止") and c.has(sun_start) and not c.has("休赛日"), "要「%s」· %s" % [sun_start, str(c)])
+	## ★2026-10-03 实拍: 收盘后写着「休赛日 · 周二开赛 · 本日维护」, 而接下来是决赛日。
+	## ★2026-10-26 收盘那一刻阶段就翻成决赛日 ⇒ 闯关赛那张「已结束」、决赛日那张成为今天(金边), 时间行指去对阵图;
+	##   页上不许残留闯关赛的倒计时 / 「已截止」, 也不许写休赛日。
+	var t_after: int = sun2 + 17 * 3600 + 35 * 60
+	var gi: Dictionary = mm.week_card_info(P2.PHASE_GAUNTLET, t_after)
+	var fi: Dictionary = mm.week_card_info(P2.PHASE_FINALS, t_after)
+	var fcard := _card(mm, P2.PHASE_FINALS)
+	var gcard := _card(mm, P2.PHASE_GAUNTLET)
+	_ok("⑥ ★★周日 17:30 收盘后: 闯关赛那张已结束、决赛日那张成为今天(金边)",
+		str(gi["state"]) == "past" and str(fi["state"]) == "now"
+		and fcard != null and fcard.get_node_or_null("TodayFrame") != null
+		and gcard != null and gcard.get_node_or_null("TodayFrame") == null,
+		"闯关=%s 决赛=%s" % [str(gi["state"]), str(fi["state"])])
+	_ok("⑥ ★★收盘后页上换成决赛日那一行(「%s」), 没有残留倒计时 / 已截止 / 休赛日" % str(fi["time"]),
+		str(fi["time"]) != "" and c.has(str(fi["time"])) and c.has(str(mm.CARD_PAST_TEXT))
+		and str(c).find("距截止") < 0 and str(c).find("已截止") < 0 and not c.has("休赛日"), str(c))
 	mm.strip_now_override = SUN0 + 5 * 86400 + 23 * 3600 + 5 * 60   # 周五 23:05
 	mm._sb_poll()
 	for _i in range(4):

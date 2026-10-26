@@ -34,7 +34,12 @@ const P2 := preload("res://scripts/gamedata/phase2_config.gd")
 const MON := 1789344000    # 2026-09-14 周一
 const THU := 1789603200    # 2026-09-17 周四
 const SAT := 1789776000    # 2026-09-19 周六 00:00
-const SUN := 1789862400    # 2026-09-20 周日
+const SUN := 1789862400    # 2026-09-20 周日 00:00
+## ★★2026-10-26 用户拍板闯关赛收盘从「周六 23:00」挪到「周日 17:30 UTC」(方案书 20261026b-周六流程.md §4 G)
+##   ⇒ 周日 17:30 之前仍是闯关赛, 之后才是决赛日。「周日 = 决赛日」的样本一律钉在 19:00(收盘之后、分组 18:00 之后);
+##   周日上午那一半另有自己的断言(⑩), 不让「周日」两个字同时代表两个阶段。
+const SUN_EVE := SUN + 19 * 3600    # 2026-09-20 周日 19:00 —— 决赛日
+const SUN_NOON := SUN + 12 * 3600   # 2026-09-20 周日 12:00 —— 仍是闯关赛
 
 var _n := 0
 var _fail := 0
@@ -72,6 +77,7 @@ func _ready() -> void:
 	_t_backfill()
 	_t_entry_gate()
 	_t_menu_gate()
+	_t_sunday_close()
 
 	for k in _bak:
 		_gs.set(k, _bak[k])
@@ -115,21 +121,24 @@ func _ready() -> void:
 		_g8.gauntlet_wins = 0
 		_g8.gauntlet_losses = 0
 		var _open: Array = []
-		for _d in range(7):
-			var _ts: int = SUN + _d * 86400 + 12 * 3600
+		var _ph_seen := {}
+		for _ts in _week_pins():
 			var _m: String = str(_mm8._battle_block_msg(_ts))
 			var _ph: String = str(P2.phase_at_utc(_ts))
+			_ph_seen[_ph] = true
 			print("     %-9s %s" % [_ph, ("【可打】★" if _m == "" else _m.substr(0, 30))])
 			if _m == "":
 				_open.append(_ph)
+		## ★2026-10-26 周日正午已是闯关赛 ⇒ 七个正午只覆盖三个阶段; 多钉一个周日 19:00, 决赛日那一支才真被执行到
+		_ok("⑧ ★分母: 钉的 %d 个时刻走遍四个阶段(少了决赛日 = 漏的那一天又没人验)" % _week_pins().size(),
+			_ph_seen.size() == 4 and _ph_seen.has(P2.PHASE_FINALS), str(_ph_seen.keys()))
 		_ok("⑧ ★★★配额打满 + 没晋级 ⇒ **七天一天都不许放行**(漏一天就是无限刷)",
 			_open.is_empty(), "放行的: %s" % str(_open))
 
 		## ★分母: 判据不是恒真 —— 同一个人配额没打满时, 工作日必须放行
 		_g8.ranked_used = 0
 		var _weekday_open := 0
-		for _d2 in range(7):
-			var _ts2: int = SUN + _d2 * 86400 + 12 * 3600
+		for _ts2 in _week_pins():
 			if str(_mm8._battle_block_msg(_ts2)) == "":
 				_weekday_open += 1
 		_ok("⑧ ★分母: 配额没打满时**确实有天能打**(恒挡的判据 = 假绿)",
@@ -180,18 +189,21 @@ func _ready() -> void:
 		_g9.test_mode = true
 		var _bad: Array = []
 		var _ranked_exh := 0
-		for _d in range(7):
-			var _ts9: int = SUN + _d * 86400 + 12 * 3600
+		var _sk_seen := {}
+		for _ts9 in _week_pins():
 			var _ph: String = str(P2.phase_at_utc(_ts9))
 			var _sk: String = str(P2.settle_kind(_ph, P2.phase_mode_live(_ph)))
 			## 产品的判据: 表演赛只在积分赛那一档成立
 			## ★读**产品自己的判据**, 不自己重算一遍(第一版就是重算的, 于是变异不红)
 			var _exh: bool = P2.is_exhibition(true, _sk)          # true = 这个人 0 命
+			_sk_seen[_sk] = true
 			if _sk == P2.SETTLE_GAUNTLET or _sk == P2.SETTLE_FINALS:
 				if _exh:
 					_bad.append("%s(%s)" % [_ph, _sk])
 			elif _exh:
 				_ranked_exh += 1
+		_ok("⑨ ★分母: 钉的时刻里闯关赛与决赛日两种结算都真出现过(只有一种 = 另一半没验)",
+			_sk_seen.has(P2.SETTLE_GAUNTLET) and _sk_seen.has(P2.SETTLE_FINALS), str(_sk_seen.keys()))
 		_ok("⑨ ★★★0 命的人在**闯关赛/决赛日**不许被判成表演赛(判成了 = 战绩/封存全不记)",
 			_bad.is_empty(), "被判成表演赛的: %s" % str(_bad))
 		_ok("⑨ ★分母: 而在**积分赛**那几天他确实算表演赛(一律不算 = 那一维白分了)",
@@ -355,9 +367,12 @@ func _t_backfill() -> void:
 	_gs.meta_deepsea_coins = 0
 
 	var close_at: int = int(P2.gauntlet_close_ts(MON))
-	_ok("③ ★分母: 闯关收盘时刻 = 周六 23:00(比积分赛收盘晚一天)",
-		close_at == SAT + 23 * 3600 and close_at == int(P2.ranked_close_ts(MON)) + 86400,
-		"闯关 %d / 积分 %d" % [close_at, int(P2.ranked_close_ts(MON))])
+	## ★2026-10-26 改: 原为「周六 23:00(比积分赛收盘晚一天)」。期望**写死**用户拍板的那一刻, 不引产品常量。
+	_ok("③ ★分母: 闯关收盘时刻 = 周日 17:30(积分赛周五 23:00 收盘之后 42.5 小时)",
+		close_at == SUN + 17 * 3600 + 30 * 60
+			and close_at == int(P2.ranked_close_ts(MON)) + 42 * 3600 + 30 * 60,
+		"闯关 %s / 积分 %s" % [Time.get_datetime_string_from_unix_time(close_at, true),
+			Time.get_datetime_string_from_unix_time(int(P2.ranked_close_ts(MON)), true)])
 
 	## 收盘前: 一分不给
 	var paid0: int = int(_gs.settle_gauntlet_close(close_at - 60))
@@ -410,7 +425,9 @@ func _t_entry_gate() -> void:
 	_ok("④ 周六 + 有资格 + 1-1 → 放行", _gs.gauntlet_can_play(SAT + 3600))
 	_ok("④ ★分母: 同样的状态在周四【不】放行(闸真的看日期)",
 		not _gs.gauntlet_can_play(THU + 3600))
-	_ok("④ ★周日也不放行(决赛日不是闯关赛)", not _gs.gauntlet_can_play(SUN + 3600))
+	## ★2026-10-26: 周日 17:30 前仍是闯关赛 ⇒ 周日正午放行; 收盘后(19:00 决赛日)不放行。两侧各验一次。
+	_ok("④ ★周日 12:00(闯关赛收盘前) → 放行", _gs.gauntlet_can_play(SUN_NOON))
+	_ok("④ ★周日 19:00 不放行(决赛日不是闯关赛)", not _gs.gauntlet_can_play(SUN_EVE))
 
 	_gs.promoted = false
 	_ok("④ ★没资格 → 不放行", not _gs.gauntlet_can_play(SAT + 3600))
@@ -461,12 +478,17 @@ func _t_menu_gate() -> void:
 		str(menu._battle_block_msg(SAT + 3600)) == "", str(menu._battle_block_msg(SAT + 3600)))
 	_ok("⑥ 周四同样放行(积分赛没打满配额)",
 		str(menu._battle_block_msg(THU + 3600)) == "", str(menu._battle_block_msg(THU + 3600)))
+	## ★2026-10-26: 闯关赛打到周日 17:30 ⇒ 周日正午走的是闯关赛那支, 同样放行
+	_ok("⑥ ★周日 12:00(闯关赛收盘前) + 有资格 + 1-1 → 放行",
+		str(menu._battle_block_msg(SUN_NOON)) == "", str(menu._battle_block_msg(SUN_NOON)))
 
 	## ★★ 0 命: 周六放行、周四拦住 —— 同一个玩家同一秒, 只差日期
 	_gs.hearts = 0
 	var sat_msg: String = str(menu._battle_block_msg(SAT + 3600))
 	var thu_msg: String = str(menu._battle_block_msg(THU + 3600))
 	_ok("⑥ ★★0 命但有资格: 周六放行", sat_msg == "", "「%s」" % sat_msg)
+	var sun_noon_msg: String = str(menu._battle_block_msg(SUN_NOON))
+	_ok("⑥ ★★0 命但有资格: 周日 12:00(闯关赛收盘前)同样放行", sun_noon_msg == "", "「%s」" % sun_noon_msg)
 	_ok("⑥ ★★同一个玩家周四被拦(淘汰锁) —— 两套闸真的不同",
 		thu_msg != "", "「%s」" % thu_msg)
 	_gs.hearts = 8
@@ -530,7 +552,8 @@ func _t_menu_gate() -> void:
 	_gs.promoted = true
 	_gs.gauntlet_wins = 2
 	_gs.gauntlet_losses = 1
-	var l_sun: String = str(menu._phase_status_line(SUN + 3600))
+	## ★2026-10-26: 「周日那一半」= 决赛日 = 周日 17:30 之后 ⇒ 钉 19:00(原来钉 01:00, 现在那是闯关赛)
+	var l_sun: String = str(menu._phase_status_line(SUN_EVE))
 	_ok("⑦b ★分母: 周日真有自己的读数(空串 = 回落到积分赛那一行, 缺陷照旧)",
 		l_sun != "", "「%s」" % l_sun)
 	_ok("⑦b ★★★周日的读数里没有积分赛配额那个数(它周日不动, 摆着只会误导)",
@@ -539,6 +562,70 @@ func _t_menu_gate() -> void:
 		l_sun.find("♥") < 0, "「%s」" % l_sun)
 	_ok("⑦b ★周六与周日说的不是同一句话", l_sat != l_sun,
 		"周六「%s」/ 周日「%s」" % [l_sat, l_sun])
+	## ★2026-10-26 另一侧: 周日正午还在闯关赛 ⇒ 读数与周六**是同一句**(同一个战绩), 不许提前说成决赛日
+	var l_sun_noon: String = str(menu._phase_status_line(SUN_NOON))
+	_ok("⑦b ★★周日 12:00 的读数 == 周六那句闯关赛读数(收盘前还是闯关赛)", l_sun_noon == l_sat,
+		"周日正午「%s」/ 周六「%s」" % [l_sun_noon, l_sat])
 	_gs.promoted = false
 
 	menu.queue_free()
+
+
+## 一周的钉点: 周日~周六各天正午 + 周日 19:00。
+## ★2026-10-26 周日正午已是闯关赛 ⇒ 只钉正午的话决赛日那一支一次都不执行(「七天全量」名不副实); 多钉一个 SUN_EVE。
+func _week_pins() -> Array:
+	var out: Array = []
+	for d in range(7):
+		out.append(SUN + d * 86400 + 12 * 3600)
+	out.append(SUN_EVE)
+	return out
+
+
+# ─────────────────────────────────────────────────────────────
+# ⑩ ★★2026-10-26 闯关赛收盘挪到周日 17:30 UTC —— 收盘两侧逐分钟钉住
+#    用户「截止时间不如改到周日桶赛之前呢」→ 选周日 17:30(分组 18:00 前半小时), 方案书 20261026b-周六流程.md §4 G。
+#    ★期望全部**写死**成用户拍板的那几分钟(17:19 / 17:29 / 17:31), 不引 GAUNTLET_CLOSE_MIN_UTC / CLOSE_LOCKOUT_SEC ——
+#      拿被测常量当尺子, 常量改回 23:00 这一节照样绿。
+# ─────────────────────────────────────────────────────────────
+func _t_sunday_close() -> void:
+	print("── ⑩ 周日 17:30 闯关赛收盘 ──")
+	var gc: int = int(P2.gauntlet_close_ts(MON))
+	var gd: Dictionary = Time.get_datetime_dict_from_unix_time(gc)
+	_ok("⑩ ★★gauntlet_close_ts = ISO 周日 17:30:00 UTC(且在同一周)",
+		P2.iso_weekday_utc(gc) == 7 and int(gd.get("hour", -1)) == 17 and int(gd.get("minute", -1)) == 30
+			and int(gd.get("second", -1)) == 0 and P2.week_anchor_utc(gc) == MON,
+		Time.get_datetime_string_from_unix_time(gc, true))
+
+	var t1719: int = SUN + 17 * 3600 + 19 * 60
+	var t1729: int = SUN + 17 * 3600 + 29 * 60
+	var t1731: int = SUN + 17 * 3600 + 31 * 60
+	_ok("⑩ ★周日 17:19 = 闯关赛, 且还能开新局(离收盘 11 分钟, 在封盘窗外)",
+		P2.phase_at_utc(t1719) == P2.PHASE_GAUNTLET and P2.can_start_match_utc(t1719),
+		"%s / can_start=%s" % [P2.phase_at_utc(t1719), str(P2.can_start_match_utc(t1719))])
+	_ok("⑩ ★★周日 17:29 = 闯关赛, 但已封盘(收盘前 10 分钟内不许开新局)",
+		P2.phase_at_utc(t1729) == P2.PHASE_GAUNTLET and not P2.can_start_match_utc(t1729),
+		"%s / can_start=%s" % [P2.phase_at_utc(t1729), str(P2.can_start_match_utc(t1729))])
+	_ok("⑩ ★★周日 17:31 = 决赛日(收盘那一刻阶段就翻过去)",
+		P2.phase_at_utc(t1731) == P2.PHASE_FINALS, P2.phase_at_utc(t1731))
+	_ok("⑩ ★收盘那一秒两侧: 17:29:59 闯关赛 / 17:30:00 决赛日",
+		P2.phase_at_utc(SUN + 17 * 3600 + 30 * 60 - 1) == P2.PHASE_GAUNTLET
+			and P2.phase_at_utc(SUN + 17 * 3600 + 30 * 60) == P2.PHASE_FINALS,
+		"%s → %s" % [P2.phase_at_utc(SUN + 17 * 3600 + 30 * 60 - 1), P2.phase_at_utc(SUN + 17 * 3600 + 30 * 60)])
+	_ok("⑩ 距收盘: 周日 12:00 → 5 小时 30 分", P2.close_left_sec(SUN_NOON) == 5 * 3600 + 30 * 60,
+		"实得 %d 秒" % P2.close_left_sec(SUN_NOON))
+
+	## ★旧规则不许残留: 周六 23:00 之后原来是「已收盘、到午夜都封」, 现在那一刻还在闯关赛中途
+	var sat2330: int = SAT + 23 * 3600 + 30 * 60
+	_ok("⑩ ★★旧规则不残留: 周六 23:30 仍是闯关赛且能开新局(原来这一刻已收盘)",
+		P2.phase_at_utc(sat2330) == P2.PHASE_GAUNTLET and P2.can_start_match_utc(sat2330),
+		"%s / can_start=%s / left=%d" % [P2.phase_at_utc(sat2330), str(P2.can_start_match_utc(sat2330)),
+			P2.close_left_sec(sat2330)])
+
+	## 产品自己的闯关赛开局闸(GameState.gauntlet_can_play)跟着同一条界翻
+	_gs.promoted = true
+	_gs.gauntlet_wins = 1
+	_gs.gauntlet_losses = 1
+	_gs.hearts = 8
+	_ok("⑩ ★gauntlet_can_play: 17:29 放行 / 17:31 不放行(阶段闸跟着收盘那一刻翻)",
+		_gs.gauntlet_can_play(t1729) and not _gs.gauntlet_can_play(t1731),
+		"17:29=%s 17:31=%s" % [str(_gs.gauntlet_can_play(t1729)), str(_gs.gauntlet_can_play(t1731))])

@@ -176,6 +176,7 @@ func _ready() -> void:
 	if not _restore_offer():
 		_roll()
 	_rebuild()
+	_wallet_gain()
 	get_viewport().size_changed.connect(_on_vp_resized)
 	if OS.has_environment("SHOP_SHOT"):   # dev: 商店自截图(SHOP_SHOT=秒 SHOT_SEL=选中第几格 SHOT_OUT=路径)·截完自退
 		_shop_selfshot()
@@ -543,7 +544,7 @@ func _rebuild() -> void:
 	##   教程里右上角是「跳过」钮 ⇒ 木牌整块左移让开它(verify_tutorial_flow_v3 B7)。
 	var cpx: float = COIN_PLAQUE_X - (TUT_SKIP_W + 24.0 if (get_node_or_null("/root/TutorialDirector") != null and get_node("/root/TutorialDirector").is_active()) else 0.0)
 	var cplq := _plank(_coin_box, Vector2(cpx, HDR_CY - 40.0), Vector2(1262.0 - COIN_PLAQUE_X, 80.0)); cplq.name = "CoinPlaque"
-	_coin_icon(_coin_box, Vector2(cpx + 22.0, HDR_CY - 24.0), 48.0)
+	_wallet_icon = _coin_icon(_coin_box, Vector2(cpx + 22.0, HDR_CY - 24.0), 48.0)
 	var coin := Label.new(); coin.text = "%d" % int(GameState.meta_deepsea_coins)
 	coin.add_theme_font_size_override("font_size", 38); coin.add_theme_color_override("font_color", Color("#5fd0e0"))
 	coin.add_theme_color_override("font_outline_color", Color("#1a0e05")); coin.add_theme_constant_override("outline_size", 6)
@@ -1579,6 +1580,31 @@ func _tutorial_anchor(anchor: String) -> Rect2:
 
 
 ## 深海币小图标。★复用 COIN_TEX(主菜单同一张), 不再用 emoji 💠。
+## ══ 深海币入账动画(2026-10-26 · 方案书 docs/plans/20261026b-周六流程.md §4 F) ══
+## 打完一场点结算屏「前往商店」直接来这里(用户 10-26「玩家会尽量去看商店的」)⇒ 这一场的深海币在商店钱包里飞进来:
+##   钱包先显示旧值, 屏幕中央亮出「+N」和币堆, 币飞进右上角钱包、数字一步步跳(scripts/util/coin_fly.gd, 与主菜单同一个)。
+## ★只管显示, 钱早在结算时入账; 动画期间买东西会整页重建(`_rebuild`), 新钱包直接显示真值, 动画随旧节点一起没了。
+var _wallet_icon: TextureRect = null
+const WALLET_DELAY_SEC := 0.35
+
+func _wallet_gain() -> void:
+	var real: int = int(GameState.meta_deepsea_coins)
+	var gain: int = CoinFly.gain_since_seen(real)
+	if gain <= 0 or _tut_coin == null or not is_instance_valid(_tut_coin):
+		return
+	_tut_coin.text = str(maxi(0, real - gain))
+	var t := Timer.new()          # 挂在自己身上(不是树级计时器): 商店先没了它跟着没
+	t.one_shot = true
+	t.wait_time = WALLET_DELAY_SEC
+	add_child(t)
+	t.start()
+	await t.timeout
+	t.queue_free()
+	if _tut_coin == null or not is_instance_valid(_tut_coin) or not _tut_coin.is_inside_tree():
+		return
+	CoinFly.play(self, get_viewport_rect().size / 2.0, _tut_coin, _wallet_icon, maxi(0, real - gain), gain)
+
+
 func _coin_icon(parent: Control, pos: Vector2, sz: float) -> TextureRect:
 	var t := TextureRect.new()
 	t.texture = COIN_TEX

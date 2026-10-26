@@ -278,7 +278,8 @@ func _t_real_settle() -> void:
 	GameState.gauntlet_losses = 2
 	scene._settle_season(false)          # 1-2 → 输 → 1-3 出局
 	var sub2: String = scene._hud._result_subtitle(false, GameState)
-	_ok("③ ★★打到出局那场写「闯关赛出局」", sub2.find("出局") >= 0, sub2)
+	## ★2026-10-26 文案改成完整句子(用户「文案你学习商业游戏的说法」): 结果页不写「出局」, 写「到此结束」(荒野乱斗 / 皇室战争「挑战结束」)。
+	_ok("③ ★★打到出局那场说「本周的闯关赛到此结束」并带战绩", sub2.find("到此结束") >= 0 and sub2.find("1-3") >= 0, sub2)
 	## ★★2026-10-04: 周日结算屏副标题。决赛局按决赛日结算后, 原来会落到积分赛那句「消耗 1 点生命」。
 	GameState.week_phase = P2C.PHASE_FINALS
 	GameState.lane_results = {"top": "lost"}

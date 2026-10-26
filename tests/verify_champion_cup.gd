@@ -10,7 +10,7 @@ extends Node
 ##   ② SQL: 迁移文件 = schema.sql 里同一段(逐字); 保留组号 / 开赛钟点 = 客户端常量;
 ##      座次构造与 `bracket.gd` 同一公式, 并把 `finals_champion_seed` 逐行翻成 GDScript 与 `bracket.champion_seed`
 ##      在 n=1..40 × 随机结果上逐个对; 杯种子与分组同一条排序; 「我那个组」与组列表都排除杯
-##   ③ 开赛前(周日 12:00): 冠军杯赛页 = 倒计时 + 两名组冠军(假传输走真联网路径)
+##   ③ 开赛前(周日 19:00; 2026-10-26 前是 12:00): 冠军杯赛页 = 倒计时 + 两名组冠军(假传输走真联网路径)
 ##   ④ 成表(20:05): 默认切到冠军杯赛; 我的那一场可打 —— 购物窗 / 倒计时跟着杯那一张;
 ##      点格子 ⇒ 弹卡「开始对战」⇒ 问对手带杯的组号
 ##   ⑤ 报结果: 小组赛与冠军杯赛同坐标(1-0)两场都真的发出去(去重带组号), 待揭晓那一单带组号
@@ -419,12 +419,15 @@ func _reset_gs() -> void:
 func _t_flow() -> void:
 	_wk = P2C.week_anchor_utc(int(Time.get_unix_time_from_system()))
 	_reset_gs()
-	var noon := _wk + 6 * 86400 + 12 * 3600
+	## ★2026-10-26 闯关赛收盘挪到周日 17:30 UTC ⇒ 周日 12:00 是闯关赛、对阵图还没开门。
+	##   「冠军杯赛开赛前」改钉 19:00(18:00 分组之后、20:00 冠军杯赛之前), 并先断言那一刻是决赛日。
+	var eve := _wk + 6 * 86400 + 19 * 3600
 	var t1 := _wk + 6 * 86400 + 20 * 3600 + 5 * 60
 
-	print("── ③ 开赛前(周日 12:00 UTC) ──")
-	P2C.now_override_ts = noon
-	_set_bodies(noon, null)
+	print("── ③ 开赛前(周日 19:00 UTC) ──")
+	_ok("③ ★分母: 钉的那一刻是决赛日(周日 19:00 UTC)", P2C.phase_at_utc(eve) == P2C.PHASE_FINALS, P2C.phase_at_utc(eve))
+	P2C.now_override_ts = eve
+	_set_bodies(eve, null)
 	_reqs.clear()
 	var m = BMS.new()
 	add_child(m)
@@ -433,13 +436,13 @@ func _t_flow() -> void:
 	await _frames(2)
 	_ok("③ ★分母: 真的发了 finals_view 与 finals_week_view", _reqs_to("/finals_view").size() >= 1
 		and _reqs_to("/finals_week_view").size() >= 1, "%d 条请求" % _reqs.size())
-	_ok("③ 中午默认看小组赛", str(m._view) == L.VIEW_BUCKET, str(m._view))
+	_ok("③ 19:00(冠军杯赛开赛前)默认看小组赛", str(m._view) == L.VIEW_BUCKET, str(m._view))
 	m.pick_view(L.VIEW_FINALS)
 	await _frames(1)
 	var et := str(m._empty_lb.text)
 	print("    冠军杯赛页: 「%s」" % et.replace("\n", " / "))
 	_ok("③ ★★分类 = 开赛前", str(m._empty_kind()) == BMS.EK_FINALS_SOON, str(m._empty_kind()))
-	_ok("③ ★★倒计时数到 20:00 UTC(8 小时 0 分)", et.begins_with("冠军杯赛 8 小时 0 分后开赛"), et)
+	_ok("③ ★★倒计时数到 20:00 UTC(1 小时 0 分)", et.begins_with("冠军杯赛 1 小时 0 分后开赛"), et)
 	_ok("③ ★★列出两名组冠军(进冠军杯赛的人)", et.find("我龟") >= 0 and et.find("丁龟") >= 0
 		and et.find("乙龟") < 0 and et.find("丙龟") < 0, et)
 	_ok("③ 页签「冠军杯赛 · 未开赛」", str((m._tabs.get_child(1) as Button).text) == "冠军杯赛 · 未开赛",
@@ -662,18 +665,19 @@ func _t_solo() -> void:
 func _t_group_solo() -> void:
 	print("── ⑧b 1 人组 ──")
 	_reset_gs()
-	var noon := _wk + 6 * 86400 + 12 * 3600
-	P2C.now_override_ts = noon
+	## ★2026-10-26 周日 12:00 已是闯关赛 ⇒ 钉 19:00(分组 18:00 之后、冠军杯赛 20:00 之前)
+	var eve := _wk + 6 * 86400 + 19 * 3600
+	P2C.now_override_ts = eve
 	var gs: Array = []
 	var nm := ["我龟", "乙龟", "丙龟"]
 	for i in range(3):
-		gs.append({"bucket": i, "n": 1, "round": 1, "closed": true, "round_at": noon - 3600, "revealed_at": noon - 3600,
+		gs.append({"bucket": i, "n": 1, "round": 1, "closed": true, "round_at": eve - 3600, "revealed_at": eve - 3600,
 			"done": {}, "entrants": [_ent(0, nm[i], ME if i == 0 else "uid-s%d" % i)]})
 	var gm: Dictionary = (gs[0] as Dictionary).duplicate(true)
 	gm["ok"] = true
-	gm["now"] = noon
+	gm["now"] = eve
 	_mine_body = JSON.stringify(gm)
-	_week_body = JSON.stringify({"ok": true, "week": _wk, "now": noon, "buckets": gs, "cup": null})
+	_week_body = JSON.stringify({"ok": true, "week": _wk, "now": eve, "buckets": gs, "cup": null})
 	SB.finals_clear()
 	SB.finals_week_clear()
 	var m = BMS.new()
@@ -702,7 +706,7 @@ func _t_group_solo() -> void:
 	add_child(m2)
 	await _frames(1)
 	m2.set_data({"size": 2, "round": 1, "me": 0, "names": ["我龟", "乙龟"], "done": {}, "bucket": 2,
-		"round_at": noon - 600, "srv_now": noon}, {}, noon)   ## 2026-10-12 周日统一结算: 购物窗内不能开打 ⇒ 这里要量「能开打」的场景, 本轮开始时刻给在购物结束之后
+		"round_at": eve - 600, "srv_now": eve}, {}, eve)   ## 2026-10-12 周日统一结算: 购物窗内不能开打 ⇒ 这里要量「能开打」的场景, 本轮开始时刻给在购物结束之后
 	await _frames(2)
 	var nb2: Button = _find_btn(m2, Vector2i(1, 0))
 	var vpw: float = get_viewport().get_visible_rect().size.x

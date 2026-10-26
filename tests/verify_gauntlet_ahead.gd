@@ -49,7 +49,15 @@ const NOON := 43200
 const THU := 1789603200    # 2026-09-17 周四 00:00
 const SAT := 1789776000    # 2026-09-19 周六 00:00
 const SUN := 1789862400    # 2026-09-20 周日 00:00
+## ★★2026-10-26 闯关赛收盘挪到周日 17:30 UTC(方案书 20261026b-周六流程.md §4 G) ⇒ 周日正午是闯关赛。
+##   「周日 = 决赛日」那几节一律钉 19:00(收盘之后); 七天逐日那几节的周日也钉 19:00, 周日上午另验一条。
+const SUN_EVE_H := 19 * 3600
 const WD := ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+
+
+## 第 d 天(0 = 周一)的钉点: 周一~周六正午, 周日 19:00(决赛日)。
+func _day_ts(d: int) -> int:
+	return MON + d * 86400 + (SUN_EVE_H if d == 6 else NOON)
 
 ## ★2026-10-05 第四轮: 周六/周日的当天读数住进「今天」模式卡第二行(去掉与卡标题重复的赛制名)。
 ##   框宽 = 模式卡第二行的宽(`MODE_SIZE.x - 36`), 字号 = `MODE_RULE_FONT`。★不抄数字, 从产品的常量算。
@@ -272,7 +280,7 @@ func _t_ahead_seven_days() -> void:
 		_gs.hearts = maxi(0, int(P2.HEARTS_MAX) - (int(_gs.ranked_used) - int(_gs.season_wins)))
 		var said: Array = []                          # 周一~周五那五句
 		for d in range(7):
-			var ts: int = MON + d * 86400 + NOON
+			var ts: int = _day_ts(d)
 			mm.clock_override_ts = ts
 			var pre: String = str(mm._battle_block_msg(ts))
 			## ★分母 + 保命: 没被拦住的话 `_start_battle_flow()` 会 change_scene,
@@ -280,18 +288,13 @@ func _t_ahead_seven_days() -> void:
 			if pre == "":
 				_ok("② ★%s/%s: 竟然放行了(0 命 + 配额打满不该有任何一天能打)" % [grp, WD[d]], false)
 				continue
-			var kids0: Array = mm.get_children()
 			mm._start_battle_flow()
-			var toast := ""
-			for ch in mm.get_children():
-				if not kids0.has(ch) and ch is Label:
-					toast = str((ch as Label).text)
-					ch.queue_free()
+			var toast := _block_text(mm)
 			if toast == "":
 				_ok("② ★%s/%s ★分母: 真入口没飘出那行字(演出没走到 = 下面全是空检查)" % [grp, WD[d]], false)
 				continue
 			print("     %-4s %s %-8s 「%s」" % [grp, WD[d], P2.phase_at_utc(ts), toast])
-			## ★2026-10-05 周一休赛不开放对战(用户「周一哪来的比赛」) ⇒ 周一说休赛, 周二~周五四天说晋级/下周一。
+			## ★2026-10-05 周一休赛不开放对战(用户「周一哪来的比赛」) ⇒ 周一说休赛, 周二~周五四天说晋级/下周二。
 			if d == 0:
 				_ok("② ★%s/周一: 拦截说的是「今日休赛」" % grp, toast.find("休赛") >= 0, toast)
 			elif d <= 4:
@@ -300,15 +303,17 @@ func _t_ahead_seven_days() -> void:
 		var ok_ahead := 0
 		var ok_next_week := 0
 		for s in said:
-			if str(s).find("闯关赛") >= 0 and str(s).find("下周一") < 0:
+			if _says_can_play(str(s)) and str(s).find("下周") < 0:
 				ok_ahead += 1
-			if str(s).find("下周一") >= 0 and str(s).find("闯关赛") < 0:
+			if str(s).find("下周") >= 0 and not _says_can_play(str(s)):
 				ok_next_week += 1
+		## ★2026-10-26 判据从「提不提闯关赛」改成「说没说他能参加」: 观战入口已经有了(全场赛况),
+		##   没过线的人被指去「观看闯关赛」是对的; 不许的是告诉他「可以参加 / 继续参赛」。下一次机会 = 下周二(周一休赛)。
 		if grp == "过线":
-			_ok("② ★★★过了晋级线的人, **周二~周五四天**都要被指向周六闯关赛, 一天都不许说「下周一」",
+			_ok("② ★★★过了晋级线的人, **周二~周五四天**都要被告知能参加周六闯关赛, 一天都不许说「下周」",
 				ok_ahead == 4, "4 天里只有 %d 天说对" % ok_ahead)
 		else:
-			_ok("② ★分母: 差一场没过线的人, 四天都必须说「下周一」且**不许**提闯关赛(他周六打不了)",
+			_ok("② ★分母: 差一场没过线的人, 四天都必须说「下周」且**不许**说他能参加(他周六打不了)",
 				ok_next_week == 4, "4 天里只有 %d 天说对" % ok_next_week)
 
 	## ★★另一条真入口: 商店那一把锁走 `_msg_quota_full()`。两个入口共用同一句话,
@@ -321,20 +326,15 @@ func _t_ahead_seven_days() -> void:
 		mm.clock_override_ts = THU + NOON
 		_ok("② ★分母(商店/%s): 这一刻确实配额打满(否则会切到商店场景)" % grp2,
 			_gs.ranked_quota_full(mm.clock_override_ts), "ranked_used=%d" % int(_gs.ranked_used))
-		var kids1: Array = mm.get_children()
 		mm._open_shop()
-		var t2 := ""
-		for ch2 in mm.get_children():
-			if not kids1.has(ch2) and ch2 is Label:
-				t2 = str((ch2 as Label).text)
-				ch2.queue_free()
+		var t2 := _block_text(mm)
 		print("     商店/%-4s 周四 「%s」" % [grp2, t2])
 		if grp2 == "过线":
 			_ok("② ★★商店那一把锁也要指向周六(两个入口共用 `_msg_quota_full()`)",
-				t2.find("闯关赛") >= 0 and t2.find("下周一") < 0, t2)
+				_says_can_play(t2) and t2.find("下周") < 0, t2)
 		else:
-			_ok("② ★分母: 没过线时商店那句必须说「下周一」(恒说闯关赛 = 上一条白分)",
-				t2.find("下周一") >= 0 and t2.find("闯关赛") < 0, t2)
+			_ok("② ★分母: 没过线时商店那句必须说「下周」(恒说能参加 = 上一条白分)",
+				t2.find("下周") >= 0 and not _says_can_play(t2), t2)
 
 	mm.clock_override_ts = 0
 	mm.queue_free()
@@ -367,14 +367,14 @@ func _t_sunday_row() -> void:
 	_gs.promoted = true
 	_gs.gauntlet_wins = 4
 	_gs.gauntlet_losses = 1
-	var s_in: String = str(m._phase_status_line(SUN + NOON))
+	var s_in: String = str(m._phase_status_line(SUN + SUN_EVE_H))
 	_gs.gauntlet_wins = 1
 	_gs.gauntlet_losses = 3
-	var s_try: String = str(m._phase_status_line(SUN + NOON))
+	var s_try: String = str(m._phase_status_line(SUN + SUN_EVE_H))
 	_gs.promoted = false
 	_gs.gauntlet_wins = 0
 	_gs.gauntlet_losses = 0
-	var s_no: String = str(m._phase_status_line(SUN + NOON))
+	var s_no: String = str(m._phase_status_line(SUN + SUN_EVE_H))
 	print("     进了决赛日 「%s」" % s_in)
 	print("     闯关赛止步 「%s」" % s_try)
 	print("     本周没晋级 「%s」" % s_no)
@@ -393,7 +393,7 @@ func _t_sunday_row() -> void:
 	_gs.promoted = true
 	_gs.gauntlet_wins = 4
 	_gs.gauntlet_losses = 1
-	var sun_card: String = " | ".join(PackedStringArray(m.mode_card_lines(SUN + NOON)))
+	var sun_card: String = " | ".join(PackedStringArray(m.mode_card_lines(SUN + SUN_EVE_H)))
 	_gs.promoted = false
 	_gs.gauntlet_wins = 0
 	_gs.gauntlet_losses = 0
@@ -410,7 +410,7 @@ func _t_sunday_row() -> void:
 	_gs.gauntlet_losses = 1
 	var per_day: Array = []
 	for d in range(7):
-		per_day.append(str(m._phase_status_line(MON + d * 86400 + NOON)))
+		per_day.append(str(m._phase_status_line(_day_ts(d))))
 	print("     七天: %s" % str(per_day))
 	var empties := 0
 	for d in range(5):
@@ -420,7 +420,12 @@ func _t_sunday_row() -> void:
 		empties == 5, "%d 天空串" % empties)
 	_ok("③ ★周六那一段是闯关赛(2026-09-22 已有的行为不许被我改掉)",
 		str(per_day[5]).find("闯关赛") >= 0, str(per_day[5]))
-	_ok("③ ★周日那一段是决赛日", str(per_day[6]).find("决赛日") >= 0, str(per_day[6]))
+	_ok("③ ★周日(19:00)那一段是决赛日", str(per_day[6]).find("决赛日") >= 0, str(per_day[6]))
+	## ★2026-10-26 周日上午还是闯关赛 ⇒ 同一个战绩, 读数与周六那一段逐字相同(不许提前说成决赛日)
+	var sun_noon_line: String = str(m._phase_status_line(SUN + NOON))
+	_ok("③ ★★周日 12:00(闯关赛收盘前)那一段 == 周六那一段(还是闯关赛)",
+		sun_noon_line == str(per_day[5]) and sun_noon_line.find("闯关赛") >= 0,
+		"周日正午「%s」/ 周六「%s」" % [sun_noon_line, str(per_day[5])])
 
 	## (d) 字宽 —— ★★2026-09-28 改口径: 状态行拆成两行之后,
 	##     相位段**自己占一整行**(17 号字, 框仍是 `LEFT_W - 8`), 身份段在它上面另一行。
@@ -534,7 +539,7 @@ func _t_real_render() -> void:
 	for d in range(7):
 		var mm = pk.instantiate()
 		## ★注入必须在 add_child **之前** —— `_ready()` 一进树就跑, 之后再设已经晚了。
-		mm.clock_override_ts = MON + d * 86400 + NOON
+		mm.clock_override_ts = _day_ts(d)
 		get_tree().root.add_child(mm)
 		## ★等布局落定: `Control` 的最小尺寸是**延迟**算的, 拍早了量到的是 box 不是 ink。
 		for _i in range(24):
@@ -667,12 +672,29 @@ func _t_locks() -> void:
 	## ★★判据量的是「**有没有指下一步**」这件事, 不是某个字面量:
 	##   同族的每一句都带下一步(「下周一开新的一轮」/「周六闯关赛见」), 只有这两把锁没带。
 	_ok("⑤ ★★没晋级那句: 原来只说「要积分赛拿到资格」, 而它指的积分赛**本周已经过去了** " \
-			+ "⇒ 必须写清是下周一",
-		l_no.find("下周一") >= 0, l_no)
+			+ "⇒ 必须写清下一次在下周(2026-10-26 起说「下周二」: 周一休赛)",
+		l_no.find("下周") >= 0, l_no)
 	_ok("⑤ ★而且把门槛说出来(线在 PROMOTE_WINS, 不许抄数字)",
 		l_no.find("%d 胜" % int(P2.PROMOTE_WINS)) >= 0, l_no)
 	_ok("⑤ ★★★刚晋级那句: 必须告诉他**明天有决赛日**(不说 ⇒ 他周日不来, 座位空着桶还可能卡住)",
 		l_in.find("决赛日") >= 0 and (l_in.find("明天") >= 0 or l_in.find("周日") >= 0), l_in)
 	_ok("⑤ ★已出局那句本来就带下一步(分母: 这一维不是我新加的)",
-		l_out.find("下周一") >= 0, l_out)
+		l_out.find("下周") >= 0, l_out)
 	m.free()
+
+
+## 「开始战斗 / 商店」被拦时屏上那张卡的正文(2026-10-26 起不再是顶部飘字, 是一张卡; 正文在 Body0)。读完把卡摘掉。
+func _block_text(mm: Node) -> String:
+	var c: Node = mm.get_node_or_null(str(MENU.BLOCK_CARD_NAME))
+	if c == null:
+		return ""
+	var b = c.find_child("Body0", true, false)
+	var t: String = str((b as Label).text) if b is Label else ""
+	mm.remove_child(c)
+	c.queue_free()
+	return t
+
+
+## 这句话是不是在告诉他「周六能参加」(不是「可以观看」)。
+func _says_can_play(t: String) -> bool:
+	return t.find("可以参加") >= 0 or t.find("继续参赛") >= 0

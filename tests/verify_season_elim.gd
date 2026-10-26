@@ -15,11 +15,23 @@ func _ok(n: String, c: bool, d: String = "") -> void:
 	if c: print("  [PASS] ", n, ("  " + d) if d != "" else "")
 	else: _fail += 1; print("  [FAIL] ", n, "  ", d)
 
-## 数 scene 直属子里含 needle 的 toast Label 数量(每 guard 应各弹一条独立的)
+## 数「被拦」那张卡里含 needle 的次数(每 guard 应各弹一次)。
+## ★2026-10-26 拦截从顶部飘字改成一张卡(`MainMenuScene.BLOCK_CARD_NAME`, 正文在 Body0)——
+##   同一时刻只留一张(新的顶掉旧的), 所以这里数的是「弹过几次」: 每弹一次记一笔, 读的是屏上那张卡的正文。
+var _seen_cards: Array = []     # [实例 id, 正文] —— 记下弹出那一刻的字(旧卡被新卡顶掉后就没了)
 func _count_toasts(scene: Node, needle: String) -> int:
+	var c: Node = scene.get_node_or_null(str(MENU.BLOCK_CARD_NAME))
+	if c != null:
+		var known := false
+		for e in _seen_cards:
+			if int(e[0]) == c.get_instance_id():
+				known = true
+		if not known:
+			var b = c.find_child("Body0", true, false)
+			_seen_cards.append([c.get_instance_id(), str((b as Label).text) if b is Label else ""])
 	var n := 0
-	for ch in scene.get_children():
-		if ch is Label and needle in String(ch.text):
+	for e in _seen_cards:
+		if needle in str(e[1]):
 			n += 1
 	return n
 
@@ -53,14 +65,17 @@ func _ready() -> void:
 	##   `clock_override_ts`(0 = 真实时铟 ⇒ 玩家路径一字不动)。
 	scene.clock_override_ts = PIN_TS
 	GameState.dual_active = false
-	var t0 := _count_toasts(scene, "出局")
+	## ★needle 取产品自己那一句的开头(2026-10-26 改成完整句子后不再含「出局」二字), 不在这里抄字面量。
+	var out_needle: String = str(scene._msg_eliminated()).substr(0, 8)
+	_ok("出局 needle 非空(分母)", out_needle.strip_edges() != "", "needle=[%s]" % out_needle)
+	var t0 := _count_toasts(scene, out_needle)
 	scene._start_battle_flow()
 	_ok("★淘汰→开始战斗被拦(dual_active 未被置 true·没进选龟)", not GameState.dual_active)
-	_ok("★开始战斗拦截时弹出局 toast", _count_toasts(scene, "出局") == t0 + 1)
+	_ok("★开始战斗拦截时弹出局那张卡", _count_toasts(scene, out_needle) == t0 + 1)
 
-	var t1 := _count_toasts(scene, "出局")
+	var t1 := _count_toasts(scene, out_needle)
 	scene._open_shop()
-	_ok("★淘汰→开店被拦(独立新增出局 toast·没导航去Shop)", _count_toasts(scene, "出局") == t1 + 1)
+	_ok("★淘汰→开店被拦(独立新弹一张出局卡·没导航去Shop)", _count_toasts(scene, out_needle) == t1 + 1)
 
 	# A4(2026-09-17): quota-full is a SECOND lock reason, separate from 0-heart.
 	#   The toast keyword moved from the old one to a new one, so the counter above

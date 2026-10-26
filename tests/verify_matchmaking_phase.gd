@@ -42,6 +42,15 @@ const P2 := preload("res://scripts/gamedata/phase2_config.gd")
 ## 2026-09-14 周一 00:00:00 UTC —— 一个干净的周锚点（`verify_gauntlet_match` 用的同一个）。
 const MON0 := 1789344000
 const NOON := 12 * 3600
+## ★★2026-10-26 闯关赛收盘挪到周日 17:30 UTC(方案书 20261026b-周六流程.md §4 G) ⇒ 周日正午是**闯关赛**。
+##   「七天各钉一个时刻、走遍四个相位」的钉点里, 周日那一个改钉 19:00(收盘之后 = 决赛日);
+##   周日上午那一半另有断言(⑤ / ⑦), 不让一个钉点同时代表两个阶段。
+const SUN_EVE_H := 19 * 3600
+
+
+## 第 d 天(0 = 周一)的钉点: 周一~周六正午, 周日 19:00。
+func _pin(d: int) -> int:
+	return MON0 + d * 86400 + (SUN_EVE_H if d == 6 else NOON)
 
 ## 被测源码。★路径写死是故意的：文件搬走了这条门禁必须红（它量的就是那几个函数体）。
 const SRC_BACKEND := "res://scripts/net/backend.gd"
@@ -134,7 +143,7 @@ func _t_seam() -> void:
 	var exact := 0
 	var differ := 0
 	for d in range(7):
-		var pin: int = MON0 + d * 86400 + NOON
+		var pin: int = _pin(d)
 		P2.now_override_ts = pin
 		if P2.now_utc() == pin:
 			exact += 1
@@ -164,7 +173,7 @@ func _t_week_coverage() -> void:
 	var wds := {}
 	var anchors := {}
 	for d in range(7):
-		P2.now_override_ts = MON0 + d * 86400 + NOON
+		P2.now_override_ts = _pin(d)
 		var n: int = P2.now_utc()
 		var ph: String = P2.phase_at_utc(n)
 		by_phase[ph] = int(by_phase.get(ph, 0)) + 1
@@ -211,7 +220,7 @@ func _t_battles_ruler() -> void:
 	var bot_report := 0
 	var bot_ids := {}
 	for d in range(7):
-		P2.now_override_ts = MON0 + d * 86400 + NOON
+		P2.now_override_ts = _pin(d)
 		var rng := RandomNumberGenerator.new()
 		rng.seed = 424242
 		var g: Dictionary = BE.find_opponent(12, [], rng)
@@ -328,15 +337,25 @@ func _t_dispatch() -> void:
 	## 不在测试里另写一份"== 周六"(那就是同一判据存两份, memory fb-hand-rolled-copies-drift)。
 	var gaunt_days: Array = []
 	for d in range(7):
-		P2.now_override_ts = MON0 + d * 86400 + NOON
+		P2.now_override_ts = _pin(d)
 		var n: int = P2.now_utc()
 		if P2.phase_at_utc(n) == P2.PHASE_GAUNTLET and P2.phase_mode_live(P2.PHASE_GAUNTLET):
 			gaunt_days.append(P2.iso_weekday_utc(n))
 	P2.now_override_ts = 0
-	_chk("⑤ ★七天里恰好 1 天走闯关赛匹配, 其余 6 天走按场次匹配",
+	_chk("⑤ ★七个钉点(周日钉 19:00)里恰好 1 天走闯关赛匹配, 其余 6 天走按场次匹配",
 		gaunt_days.size() == 1, "走闯关赛的星期几: %s" % str(gaunt_days))
 	_chk("⑤ ★分母: 那一天就是 ISO 周六(wd=6)",
 		gaunt_days.size() == 1 and int(gaunt_days[0]) == 6, str(gaunt_days))
+	## ★★2026-10-26 另一半: 闯关赛打到周日 17:30 ⇒ 周日上午也走闯关赛匹配, 收盘后不走。两侧各钉一个。
+	var sun_noon: int = MON0 + 6 * 86400 + NOON
+	var sun_eve: int = MON0 + 6 * 86400 + SUN_EVE_H
+	P2.now_override_ts = sun_noon
+	var g_noon: bool = P2.phase_at_utc(P2.now_utc()) == P2.PHASE_GAUNTLET and P2.phase_mode_live(P2.PHASE_GAUNTLET)
+	P2.now_override_ts = sun_eve
+	var g_eve: bool = P2.phase_at_utc(P2.now_utc()) == P2.PHASE_GAUNTLET and P2.phase_mode_live(P2.PHASE_GAUNTLET)
+	P2.now_override_ts = 0
+	_chk("⑤ ★★周日 12:00(闯关赛收盘前)走闯关赛匹配 / 周日 19:00(决赛日)不走",
+		g_noon and not g_eve, "12:00=%s 19:00=%s" % [str(g_noon), str(g_eve)])
 
 	## 源码那半: 分流的判据必须是共用的相位纯函数, 不许手写星期几或字符串字面量
 	var msrc := _read_src(SRC_MMK)
@@ -395,7 +414,7 @@ func _t_gauntlet_label() -> void:
 	var nulls := 0
 	var draws := 0
 	for d in range(7):
-		P2.now_override_ts = MON0 + d * 86400 + NOON
+		P2.now_override_ts = _pin(d)
 		var rng := RandomNumberGenerator.new()
 		rng.seed = 77
 		for _i in range(20):
@@ -420,7 +439,7 @@ func _t_gauntlet_label() -> void:
 	var excl := ["g_same0", "g_same1", "g_same2", "g_same3"]
 	var leaked: Array = []
 	for d2 in range(7):
-		P2.now_override_ts = MON0 + d2 * 86400 + NOON
+		P2.now_override_ts = _pin(d2)
 		var rng2 := RandomNumberGenerator.new()
 		rng2.seed = 99
 		for _i in range(10):
@@ -433,10 +452,13 @@ func _t_gauntlet_label() -> void:
 
 
 # ═════════════════════════════════════════════════════════════════
-# ⑦ 封盘窗口: 7 天 × 24 小时 × 3 个分钟位全扫
+# ⑦ 封盘窗口: 7 天 × 24 小时 × 5 个分钟位全扫
 # ═════════════════════════════════════════════════════════════════
 ## ★为什么要全扫而不是"挑几个时刻": 封盘是**唯一**一条合法地挂在星期几上的匹配闸
-##   (积分赛周五收盘 / 闯关赛周六收盘)。它的风险正好相反 —— **漏到别的天去**。
+##   (积分赛周五 23:00 收盘 / 闯关赛周日 17:30 收盘 —— 2026-10-26 起, 原为周六 23:00)。
+##   它的风险正好相反 —— **漏到别的天去**。
+## ★2026-10-26 分钟位从 [0,40,50] 加到 [0,20,25,40,50]: 闯关赛收盘在 17:30, 封盘窗是 17:20~17:30,
+##   原来三个分钟位一个都落不进去 ⇒ 扫描里闯关赛那一半是空的(只剩周五一天在作数)。
 ##   真实时钟一周只有两天多落在窗口里, 不钉住"现在"就只能验到七分之一。
 ## ⚠ 这里**不断言"封盘时刻恰好 4 个"** —— 那是把 CLOSE_LOCKOUT_SEC 抄第二份
 ##   (CLAUDE.md §「门禁不要断言常量等于某个数」)。判据是形状: 全部落在两个收盘日、
@@ -447,9 +469,10 @@ func _t_lockout_sweep() -> void:
 	var blocked: Array = []
 	var off_day: Array = []
 	var off_window: Array = []
+	var blocked_wd := {}
 	for d in range(7):
 		for h in range(24):
-			for m in [0, 40, 50]:
+			for m in [0, 20, 25, 40, 50]:
 				var ts: int = MON0 + d * 86400 + h * 3600 + m * 60
 				P2.now_override_ts = ts
 				total += 1
@@ -458,6 +481,7 @@ func _t_lockout_sweep() -> void:
 				var wd: int = P2.iso_weekday_utc(ts)
 				var left: int = P2.close_left_sec(ts)
 				blocked.append("wd%d %02d:%02d(left=%d)" % [wd, h, m, left])
+				blocked_wd[wd] = true
 				if wd != P2.RANKED_CLOSE_WD and wd != P2.GAUNTLET_CLOSE_WD:
 					off_day.append("wd%d %02d:%02d" % [wd, h, m])
 				## ★2026-10-11: 收盘后(left < 0)到当天结束也封 —— 原稿「23:00 收盘」; 只有「收盘前超过封盘窗口」才算越界
@@ -465,12 +489,15 @@ func _t_lockout_sweep() -> void:
 					off_window.append("wd%d %02d:%02d left=%d" % [wd, h, m, left])
 	P2.now_override_ts = 0
 	print("    封住的时刻: %s" % str(blocked))
-	_chk("⑦ ★分母: 扫了 %d 个时刻(7 天 × 24 小时 × 3 个分钟位)" % total, total == 504,
+	_chk("⑦ ★分母: 扫了 %d 个时刻(7 天 × 24 小时 × 5 个分钟位)" % total, total == 840,
 		"total=%d" % total)
 	_chk("⑦ ★分母: 确实封住过 %d 个时刻(0 个 = 空检查)" % blocked.size(),
 		blocked.size() > 0, str(blocked))
 	_chk("⑦ ★★★封盘只出现在两个收盘日, 别的五天一个都没有",
 		off_day.is_empty(), "越界: %s" % str(off_day))
+	## ★两个收盘日**写死**成 周五(5) / 周日(7) —— 上一条读的是产品常量, 常量一起改错它照样绿
+	_chk("⑦ ★★封住的时刻恰好落在 ISO 周五 + 周日两天(两个收盘日都真被扫到)",
+		blocked_wd.size() == 2 and blocked_wd.has(5) and blocked_wd.has(7), str(blocked_wd.keys()))
 	_chk("⑦ ★★★每个封住的时刻都落在各自收盘前 CLOSE_LOCKOUT_SEC 秒之内",
 		off_window.is_empty(), "越界: %s" % str(off_window))
 
@@ -483,12 +510,14 @@ func _t_lockout_sweep() -> void:
 		and P2.week_anchor_utc(rc) == MON0,
 		"wd=%d hour=%s" % [P2.iso_weekday_utc(rc),
 			str(Time.get_datetime_dict_from_unix_time(rc).get("hour"))])
-	_chk("⑦ ★分母: gauntlet_close_ts 落在 ISO 周六 %d 点整" % P2.WEEK_CLOSE_HOUR_UTC,
-		P2.iso_weekday_utc(gc) == P2.GAUNTLET_CLOSE_WD
-		and int(Time.get_datetime_dict_from_unix_time(gc).get("hour", -1)) == P2.WEEK_CLOSE_HOUR_UTC
+	## ★2026-10-26 用户拍板「周日 17:30」—— 期望写死成那一刻, 不引 GAUNTLET_CLOSE_* 常量(拿被测常量当尺子等于没量)
+	var gcd: Dictionary = Time.get_datetime_dict_from_unix_time(gc)
+	_chk("⑦ ★分母: gauntlet_close_ts 落在 ISO 周日 17:30:00",
+		P2.iso_weekday_utc(gc) == 7
+		and int(gcd.get("hour", -1)) == 17 and int(gcd.get("minute", -1)) == 30
+		and int(gcd.get("second", -1)) == 0
 		and P2.week_anchor_utc(gc) == MON0,
-		"wd=%d hour=%s" % [P2.iso_weekday_utc(gc),
-			str(Time.get_datetime_dict_from_unix_time(gc).get("hour"))])
+		"wd=%d %s" % [P2.iso_weekday_utc(gc), Time.get_datetime_string_from_unix_time(gc, true)])
 	_chk("⑦ 收盘前恰好 CLOSE_LOCKOUT_SEC 秒 ⇒ 封住(两个收盘日都验)",
 		not P2.can_start_match_utc(rc - P2.CLOSE_LOCKOUT_SEC)
 		and not P2.can_start_match_utc(gc - P2.CLOSE_LOCKOUT_SEC))
@@ -496,21 +525,35 @@ func _t_lockout_sweep() -> void:
 		P2.can_start_match_utc(rc - P2.CLOSE_LOCKOUT_SEC - 1)
 		and P2.can_start_match_utc(gc - P2.CLOSE_LOCKOUT_SEC - 1))
 
-	## 休赛(周一) / 决赛日(周日): 没有收盘概念 ⇒ 48 小时全扫都不封
+	## 休赛(周一) / 决赛日(周日 17:30 之后): 没有收盘概念 ⇒ 全扫都不封
+	## ★2026-10-26 决赛日从「周日整天」缩成「周日 17:30~24:00」⇒ 周一 24 个整点 + 周日 17:30 起每 10 分钟 39 个点
 	var noclose := 0
 	var noclose_left := 0
-	for d2 in [0, 6]:
-		for h in range(24):
-			var ts2: int = MON0 + d2 * 86400 + h * 3600
-			P2.now_override_ts = ts2
-			if P2.can_start_match_utc(ts2):
-				noclose += 1
-			if P2.close_left_sec(ts2) < 0:
-				noclose_left += 1
+	var noclose_n := 0
+	var spots: Array = []
+	for h in range(24):
+		spots.append(MON0 + h * 3600)
+	for k in range(39):
+		spots.append(MON0 + 6 * 86400 + 17 * 3600 + 30 * 60 + k * 600)
+	for ts2 in spots:
+		P2.now_override_ts = ts2
+		noclose_n += 1
+		if P2.can_start_match_utc(ts2):
+			noclose += 1
+		if P2.close_left_sec(ts2) < 0:
+			noclose_left += 1
 	P2.now_override_ts = 0
-	_chk("⑦ 休赛日 + 决赛日没有收盘概念 ⇒ 48 小时全扫 close_left_sec 恒 < 0 且都能开局",
-		noclose == 48 and noclose_left == 48, "can_start %d/48 / left<0 %d/48"
-		% [noclose, noclose_left])
+	_chk("⑦ ★分母: 休赛日 + 决赛日一共扫了 %d 个时刻(24 + 39)" % noclose_n, noclose_n == 63, "%d" % noclose_n)
+	_chk("⑦ 休赛日 + 决赛日没有收盘概念 ⇒ 全扫 close_left_sec 恒 < 0 且都能开局",
+		noclose == noclose_n and noclose_left == noclose_n, "can_start %d/%d / left<0 %d/%d"
+		% [noclose, noclose_n, noclose_left, noclose_n])
+	## ★另一侧: 周日 17:29:59 还在闯关赛, 有收盘概念(离收盘 1 秒) —— 否则「周日整天没有收盘」也能让上一条绿
+	var sun_last: int = MON0 + 6 * 86400 + 17 * 3600 + 30 * 60 - 1
+	_chk("⑦ ★另一侧: 周日 17:29:59 仍是闯关赛、距收盘恰好 1 秒、已封盘",
+		P2.phase_at_utc(sun_last) == P2.PHASE_GAUNTLET and P2.close_left_sec(sun_last) == 1
+		and not P2.can_start_match_utc(sun_last),
+		"%s left=%d can_start=%s" % [P2.phase_at_utc(sun_last), P2.close_left_sec(sun_last),
+			str(P2.can_start_match_utc(sun_last))])
 
 	## ─── 只报不判: 收盘之后到午夜那一小时又开了 ───────────────────
 	## `close_left_sec()` 收盘后转负, 而 `can_start_match_utc()` 把"负数"当成
@@ -518,7 +561,7 @@ func _t_lockout_sweep() -> void:
 	## ★这里**不写成断言**: 断言"现在的行为"就是把这个形状焊死
 	##   (memory fb-gate-can-pin-the-bug-in-place); 要不要改是产品决定, 不是门禁决定。
 	var after: Array = []
-	for spec in [[4, 23, 30], [5, 23, 30]]:
+	for spec in [[4, 23, 30], [6, 17, 45]]:
 		var ts3: int = MON0 + int(spec[0]) * 86400 + int(spec[1]) * 3600 + int(spec[2]) * 60
 		after.append("wd%d %02d:%02d phase=%s left=%d can_start=%s"
 			% [P2.iso_weekday_utc(ts3), int(spec[1]), int(spec[2]), P2.phase_at_utc(ts3),
@@ -526,11 +569,29 @@ func _t_lockout_sweep() -> void:
 	print("    收盘后到午夜: %s" % str(after))
 	## ★2026-10-11 全项目通读: 原来这里只报不判(当时等产品决定)。原稿 §二/§三 写的是「23:00 收盘/截止」⇒ 改成断言。
 	var reopened := 0
-	for spec2 in [[4, 23, 0, 1], [4, 23, 30, 0], [4, 23, 59, 59], [5, 23, 30, 0], [5, 23, 59, 59]]:
+	for spec2 in [[4, 23, 0, 1], [4, 23, 30, 0], [4, 23, 59, 59]]:
 		var ts4: int = MON0 + int(spec2[0]) * 86400 + int(spec2[1]) * 3600 + int(spec2[2]) * 60 + int(spec2[3])
 		if P2.can_start_match_utc(ts4):
 			reopened += 1
-	_chk("⑦ ★★收盘(周五/周六 23:00)之后到午夜都不能开新局", reopened == 0, "又能开的时刻 %d / 5" % reopened)
+	_chk("⑦ ★★积分赛收盘(周五 23:00)之后到午夜都不能开新局", reopened == 0, "又能开的时刻 %d / 3" % reopened)
+	## ★★2026-10-26 闯关赛那一半换了形状: 收盘(周日 17:30)那一刻阶段就翻成决赛日 ⇒ 「收盘后到午夜」
+	##   不再是"同一阶段里封着", 而是**根本不再是闯关赛** —— 闯关赛开局闸(gauntlet_can_play)与匹配分流都按阶段走,
+	##   选队界面决赛日一律不放(TeamSelectScene._on_start)。判据: 收盘后这几刻一个都不许还是闯关赛。
+	var still_gauntlet := 0
+	for spec3 in [[6, 17, 30, 0], [6, 17, 30, 1], [6, 20, 0, 0], [6, 23, 59, 59]]:
+		var ts5: int = MON0 + int(spec3[0]) * 86400 + int(spec3[1]) * 3600 + int(spec3[2]) * 60 + int(spec3[3])
+		if P2.phase_at_utc(ts5) != P2.PHASE_FINALS:
+			still_gauntlet += 1
+	_chk("⑦ ★★闯关赛收盘(周日 17:30)之后到午夜都已是决赛日(不再有闯关赛可开)", still_gauntlet == 0,
+		"不是决赛日的时刻 %d / 4" % still_gauntlet)
+	## ★另一侧(旧规则不残留): 周六 23:00 之后原来是「已收盘到午夜都封」, 现在闯关赛还要打一整个周日上午
+	var sat_open := 0
+	for spec4 in [[5, 23, 0, 1], [5, 23, 30, 0], [5, 23, 59, 59]]:
+		var ts6: int = MON0 + int(spec4[0]) * 86400 + int(spec4[1]) * 3600 + int(spec4[2]) * 60 + int(spec4[3])
+		if P2.can_start_match_utc(ts6) and P2.phase_at_utc(ts6) == P2.PHASE_GAUNTLET:
+			sat_open += 1
+	_chk("⑦ ★另一侧: 周六 23:00 之后到午夜仍是闯关赛且能开新局(旧的「周六 23:00 收盘」不许残留)",
+		sat_open == 3, "能开的时刻 %d / 3" % sat_open)
 
 
 # ═════════════════════════════════════════════════════════════════

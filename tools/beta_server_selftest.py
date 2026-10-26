@@ -9,7 +9,7 @@
   ⑤ 迁移 20261021_beta_server_clock：逐字在 schema.sql 里（标记唯一）、有检查脚本、sha256 按 LF 归一后稳定
   ⑥ beta_setup.sql 第一句就挡：没看到内测服 ref 的 GUC 就整段报错；且文件里不含正式服 ref
   ⑦ 裁判机内测服 unit：EnvironmentFile = env-beta（不是正式服 env）、Nice=15、CPUQuota=100%、工作 / 工程 / 直播目录都是 -beta；
-     高峰停起脚本：周六全天 + 周日 17:30 起停
+     高峰停起脚本：周六、周日全天停（2026-10-26 起闯关赛打到周日 17:30，原为周六全天 + 周日 17:30 起）
   ⑧ Caddyfile：/beta/streams 两段 + 第二个版本闸片段；正式服 /streams 那两段还在
 进 run-tests.sh 门禁（成功打印 ALL OK）。
 """
@@ -136,8 +136,35 @@ ok("⑦ 内测服 unit: Nice=15、CPUQuota=100%、只写 -beta 目录",
    "Nice=15" in u and "CPUQuota=100%" in u and "ReadWritePaths=/var/lib/turtle-referee-beta /opt/turtle-beta" in u)
 ok("⑦ 分母: 正式服 unit 仍读正式服 env（没被改成 beta）", "EnvironmentFile=/etc/turtle-referee/env\n" in prod_u and "beta" not in prod_u)
 g = read("server/referee/beta_peak_guard.sh")
-ok("⑦ 高峰停起: 周六全天 + 周日 17:30 起", '[ "$dow" = "6" ] && peak=1' in g and '[ "$dow" = "7" ] && [ "$hm" -ge 1730 ] && peak=1' in g
-   and "date -u" in g)
+# ★2026-10-26 闯关赛截止从周六 23:00 挪到周日 17:30 UTC ⇒ 周日整天都是正式服高峰（上午闯关赛、18:00 小组赛、20:00 冠军杯赛）。
+#   判据从「逐字找那两行」换成**把脚本里设 peak 的每一行按它自己的条件求值**，扫 7 天 × 24 小时 × 2 个分钟位：
+#   peak 必须恰好 = 周六 + 周日。认不出的 peak= 行直接判红（换了写法要来这里补解析，不许静默跳过）。
+_peak_lines = [L.strip() for L in g.split("\n") if re.search(r"\bpeak=1\b", L) and not L.strip().startswith("#")]
+_conds = []
+_unknown = []
+for L in _peak_lines:
+    m_dow = re.fullmatch(r'\[ "\$dow" = "(\d)" \] && peak=1', L)
+    m_dow_hm = re.fullmatch(r'\[ "\$dow" = "(\d)" \] && \[ "\$hm" -ge (\d{4}) \] && peak=1', L)
+    if m_dow:
+        _conds.append((int(m_dow.group(1)), 0))
+    elif m_dow_hm:
+        _conds.append((int(m_dow_hm.group(1)), int(m_dow_hm.group(2))))
+    else:
+        _unknown.append(L)
+ok("⑦ 高峰停起 ★分母: 读出了设 peak 的行且每一行都认得出（%d 行）" % len(_peak_lines),
+   len(_peak_lines) >= 1 and not _unknown and "date -u +%u" in g and "date -u +%H%M" in g, "认不出: %s" % _unknown)
+_bad = []
+_on = 0
+for _dow in range(1, 8):
+    for _h in range(24):
+        for _mi in (0, 45):
+            _hm = _h * 100 + _mi
+            _peak = any(_dow == d and _hm >= hm for d, hm in _conds)
+            _on += 1 if _peak else 0
+            if _peak != (_dow in (6, 7)):
+                _bad.append("dow%d %04d peak=%d" % (_dow, _hm, 1 if _peak else 0))
+ok("⑦ 高峰停起: 周六、周日全天停（含周日 00:00~17:30 闯关赛），周一~周五一刻都不停",
+   not _bad and _on == 2 * 24 * 2, "不对的时刻 %d 个: %s" % (len(_bad), _bad[:4]))
 
 # ⑧ Caddyfile
 c = read("server/stream/Caddyfile")

@@ -36,7 +36,7 @@ const RPT := preload("res://scripts/net/report_net.gd")
 
 ## 看完回放回到这一页。
 const SELF_SCENE := "res://scenes/GauntletBoard.tscn"
-const TITLE := "周六赛况"
+const TITLE := "闯关赛况"   # 2026-10-26 闯关赛打到周日 17:30, 不再只是周六
 const W := 1280.0
 const H := 720.0
 const COL_Y := 124.0
@@ -293,7 +293,7 @@ func _set_status(code: String) -> void:
 			var ln: int = live_games.size()
 			if gn == 0 and ln == 0:
 				t = "暂无已完成对局"
-				sub = "周六闯关赛对局结束后在此显示"
+				sub = "闯关赛对局结束后在此显示"
 				icon = "icon-record"
 			else:
 				## ★2026-10-10: 加上晋级 / 出局人数; 截止后再说周日几点开打(打完的人要知道接下来去哪)。

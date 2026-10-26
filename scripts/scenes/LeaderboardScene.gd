@@ -419,7 +419,7 @@ static func day_entry(phase: String) -> Dictionary:
 ##   「周日对阵图」→ BracketMap(看的是上周那一场; 与主菜单周一那两扇门同名同目标)。
 ##   ⚠ 主线已有 `Phase2Config.weekend_view_week(now_utc)`(周一 = 上周周号), 本工作区基于更早的提交没有它,
 ##   这里按「周一 = PHASE_REST」判; 合并时由主会话对接到 weekend_view_week。
-const MON_GAUNTLET_LINE := "周六赛况"
+const MON_GAUNTLET_LINE := "闯关赛况"
 const MON_BRACKET_LINE := "周日对阵图"
 
 static func day_entries(phase: String) -> Array:

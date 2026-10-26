@@ -766,9 +766,19 @@ func backfill_gauntlet_quota() -> int:
 	return pay
 
 
-## 闯关赛收盘(周六 23:00 UTC)之后的惰性补算。返回实际补发场数。
+## 闯关赛「没打的场次化成了多少」—— 与 `backfill_summary()` 同构, 读 `backfill_gauntlet_quota()` 记下的同一份账。
+func gauntlet_backfill_summary() -> Dictionary:
+	var g: int = int(gauntlet_backfill_paid)
+	return {
+		"games": g,
+		"coins": g * int(_P2.GAUNTLET_BACKFILL_COINS),
+		"xp": g * int(_P2.GAUNTLET_BACKFILL_XP),
+	}
+
+
+## 闯关赛收盘(周日 17:30 UTC, 2026-10-26 前是周六 23:00)之后的惰性补算。返回实际补发场数。
 ## ★形态与 `settle_ranked_close()` 完全一样(下次打开游戏时补算) —— 离线版没有"收盘"这个事件。
-## ★★有效窗口 = 周六 23:00 ~ 周日 23:59(**同一个自然周内**)。理由同积分赛那条:
+## ★★有效窗口 = 周日 17:30 ~ 周日 23:59(**同一个自然周内**)。理由同积分赛那条:
 ##   周一换轮会清 `meta_deepsea_coins`, 跨周再补当场作废, 发了等于没发还让账对不上。
 ##   ⇒ 代价写在明处: **周日一次没开游戏 = 拿不到闯关补发。有意的取舍, 不是漏。**
 ## ★`now_override` 只给门禁用(同 `settle_ranked_close`): 真实时钟一周只有一天多落在窗口里,
@@ -1001,6 +1011,10 @@ var season_sweeps: int = 0          # 横扫(2-0)数 —— 终榜排序第三�
 var backfill_paid: int = 0          # 补发【已发】场次 (幂等: 只补差额, 重复调用不再给)
 ## ★闯关赛的补发【另记一笔】—— 与积分赛混在一个字段里, 补过积分赛的人会把闯关额度吃掉(而且静默)。
 var gauntlet_backfill_paid: int = 0 # 闯关补发【已发】场次 (同样幂等)
+## 周末两张收盘卡(积分赛收盘 / 闯关赛收盘)各弹过的那一周(周一锚点)。== week_anchor_ts ⇒ 本周弹过, 不再弹。
+## ★记周锚点而不是 bool: 换周不清也不会误判(下一周锚点不同); 五处照样都走(见 verify_week_season)。
+var close_card_ranked_wk: int = 0
+var close_card_gauntlet_wk: int = 0
 var week_phase: String = ""         # 赛程阶段: "" 未定 / rest / ranked / gauntlet / finals
 var week_anchor_ts: int = 0         # 本自然周的锚点 (UTC 周一 00:00 的 unix 秒) —— ★赛季换不换轮**只看它**
 var gauntlet_wins: int = 0          # 闯关赛战绩: 胜
@@ -1786,6 +1800,8 @@ func _save_dict() -> Dictionary:
 		"season_sweeps": season_sweeps,
 		"backfill_paid": backfill_paid,
 		"gauntlet_backfill_paid": gauntlet_backfill_paid,
+		"close_card_ranked_wk": close_card_ranked_wk,
+		"close_card_gauntlet_wk": close_card_gauntlet_wk,
 		"week_phase": week_phase,
 		"week_anchor_ts": week_anchor_ts,
 		"gauntlet_wins": gauntlet_wins,
@@ -1969,6 +1985,8 @@ func _apply_save_dict(data: Dictionary) -> void:
 	season_sweeps = int(data.get("season_sweeps", 0))
 	backfill_paid = int(data.get("backfill_paid", 0))
 	gauntlet_backfill_paid = int(data.get("gauntlet_backfill_paid", 0))
+	close_card_ranked_wk = int(data.get("close_card_ranked_wk", 0))
+	close_card_gauntlet_wk = int(data.get("close_card_gauntlet_wk", 0))
 	week_anchor_ts = int(data.get("week_anchor_ts", 0))
 	gauntlet_wins = int(data.get("gauntlet_wins", 0))
 	gauntlet_losses = int(data.get("gauntlet_losses", 0))
@@ -2191,6 +2209,8 @@ func reset_save() -> void:
 	season_sweeps = 0
 	backfill_paid = 0
 	gauntlet_backfill_paid = 0
+	close_card_ranked_wk = 0
+	close_card_gauntlet_wk = 0
 	week_phase = ""
 	week_anchor_ts = 0
 	gauntlet_wins = 0
@@ -2839,6 +2859,8 @@ func start_new_season() -> void:   # 不自存; 调用方(ensure_season/调试�
 	season_sweeps = 0
 	backfill_paid = 0
 	gauntlet_backfill_paid = 0
+	close_card_ranked_wk = 0
+	close_card_gauntlet_wk = 0
 	week_phase = ""
 	## ★★不是 0 —— 这个字段就是「本大轮是哪一周」本身。写 0 的话下一次 `ensure_season()`
 	##   会把它当成"老存档待迁移"(见那边分支②)而**再也滚不了轮**: 补个锚点就返回,

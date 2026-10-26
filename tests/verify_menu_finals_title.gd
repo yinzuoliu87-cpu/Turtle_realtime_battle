@@ -143,8 +143,10 @@ func _ready() -> void:
 			cb.call({"ok": false, "code": 0, "body": ""})
 
 	var wk: int = P2C.week_anchor_utc(int(Time.get_unix_time_from_system()))
-	var sun: int = wk + 6 * 86400 + 12 * 3600
+	## ★2026-10-26 闯关赛收盘挪到周日 17:30 UTC ⇒ 周日正午是闯关赛, 决赛日钉 19:00(小组赛 18:00 已开、冠军杯赛 20:00 之前)
+	var sun: int = wk + 6 * 86400 + 19 * 3600
 	var sat: int = wk + 5 * 86400 + 12 * 3600
+	var sun_am: int = wk + 6 * 86400 + 12 * 3600
 	_ok("② ★分母: 钉的那一刻确实是决赛日", P2C.phase_at_utc(sun) == P2C.PHASE_FINALS, P2C.phase_at_utc(sun))
 
 	## 谁是冠军/亚军: 在 done 上**算**出来, 不抄
@@ -216,6 +218,16 @@ func _ready() -> void:
 	_ok("⑥ ★周六打开主菜单 ⇒ 一个 finals_view 请求都不发、不记账", _finals_reqs == 0 and r6 == 0,
 		"请求 %d · 记账 %d" % [_finals_reqs, r6])
 	_ok("⑥ ★周六不发冠军头衔", not P2C.title_has(GameState.titles, P2C.TITLE_CHAMPION, wk))
+
+	## ⑥b ★2026-10-26 周日上午还是闯关赛 ⇒ 同样不拉(决赛还没开始, 问了也是空的)
+	_reset_progress(wk)
+	_body = _mk_body(done, ch_seed)
+	_finals_reqs = 0
+	_ok("⑥b ★分母: 周日 12:00 按新赛程是闯关赛", P2C.phase_at_utc(sun_am) == P2C.PHASE_GAUNTLET, P2C.phase_at_utc(sun_am))
+	var r6b: int = await _open_menu(sun_am, 2500)
+	_ok("⑥b ★周日 12:00(闯关赛收盘前)打开主菜单 ⇒ 一个 finals_view 请求都不发、不记账", _finals_reqs == 0 and r6b == 0,
+		"请求 %d · 记账 %d" % [_finals_reqs, r6b])
+	_ok("⑥b ★周日上午不发冠军头衔", not P2C.title_has(GameState.titles, P2C.TITLE_CHAMPION, wk))
 
 	## 收尾: static 与环境全部还原
 	SB._transport_for_test = Callable()

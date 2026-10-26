@@ -222,7 +222,9 @@ func _ready() -> void:
 	var days := [
 		["周四·积分赛", MON + 3 * D + 43200, "本周"],
 		["周六·闯关赛", MON + 5 * D + 43200, "闯关赛"],
-		["周日·决赛日", MON + 6 * D + 43200, "决赛日"],
+		## ★2026-10-26 闯关赛收盘挪到周日 17:30 UTC ⇒ 周日正午是闯关赛; 决赛日那一屏钉 19:00
+		["周日·决赛日", MON + 6 * D + 19 * 3600, "决赛日"],
+		["周日上午·闯关赛", MON + 6 * D + 43200, "闯关赛"],
 	]
 	for row in days:
 		var tag: String = str(row[0])
@@ -278,7 +280,7 @@ func _ready() -> void:
 		var blk: String = str(scene._battle_block_msg(pin))
 		var want_block: bool = _gs.ranked_quota_full(pin)
 		_ok("② [%s] 「开始战斗」那句话提不提配额, 也跟同一天" % tag,
-			(blk.find("场已用完") >= 0) == want_block,
+			(blk.find("场已经全部打完") >= 0) == want_block,   # 2026-10-26 文案改完整句子:「本周积分赛的 N 场已经全部打完」
 			"拦=「%s」· 打满=%s" % [blk, str(want_block)])
 
 		# ── ④(续) 传了入参之后**一次都不许再读钟**
@@ -315,6 +317,9 @@ func _ready() -> void:
 			["周六 00:00:00", MON + 5 * D],
 			["周六 23:59:59", MON + 6 * D - 1],
 			["周日 00:00:00", MON + 6 * D],
+			## ★2026-10-26 新的相位界: 闯关赛 → 决赛日在周日 17:30(两侧各 1 秒)
+			["周日 17:29:59", MON + 6 * D + 17 * 3600 + 30 * 60 - 1],
+			["周日 17:30:00", MON + 6 * D + 17 * 3600 + 30 * 60],
 			["周日 23:59:59", MON + 7 * D - 1],
 			["下周一 00:00:00", MON + 7 * D],
 		]
@@ -336,13 +341,14 @@ func _ready() -> void:
 			_ok("③ [%s · %s] 画出来的锁 = 入口的判据" % [tag2, _P2.phase_at_utc(t)],
 				painted == says, "画=%s 判=%s" % [str(painted), str(says)])
 		_ok("③ ★分母: 构造了 %d 个边界时刻, 每个都被【画】和【判】各问了一次" % asked,
-			asked == edges.size() and asked == 8, "asked=%d" % asked)
+			asked == edges.size() and asked == 10, "asked=%d" % asked)
 		_ok("③ ★分母: 这组时刻的答案**既有 true 也有 false**(否则整组是空检查)",
 			n_true > 0 and n_false > 0, "true=%d false=%d" % [n_true, n_false])
 		## ★每一对边界两侧必须**真的翻**了 —— 不翻就说明这条界没落在判据上,
 		##   那一对就等于测了两遍同一个点(memory `fb-judge-must-fit-the-shape`)。
-		var pairs := [[2, 3, "周五末→周六初"], [5, 6, "周六末→周日初(同为不吃配额, 不该翻)"],
-			[6, 7, "周日末→下周一初(周界)"]]
+		var pairs := [[2, 3, "周五末→周六初"], [4, 5, "周六末→周日初(同为不吃配额, 不该翻)"],
+			[6, 7, "周日 17:30 闯关赛→决赛日(同为不吃配额, 不该翻)"],
+			[8, 9, "周日末→下周一初(周界)"]]
 		for pr in pairs:
 			var i0: int = int(pr[0])
 			var i1: int = int(pr[1])

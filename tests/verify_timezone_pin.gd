@@ -7,8 +7,7 @@ extends Node
 ## E2 拍板(`phase2_config.gd` 赛程段头注):「**赛程逻辑一律用 UTC, 时区换算只发生在显示层**。
 ##   两边都换算必然有一边忘 —— 那种 bug 一年只在夏令时切换那两天出现, 最难查。」
 ## 全仓读本地时区的只有两处, 都在显示层:
-##   · `phase2_config.gd::local_hhmm`   —— 「本地 HH:MM」唯一换算口(主菜单 / 对阵图共用)
-##   · `MainMenuScene.gd::_local_dict`  —— 「周X HH:MM 收盘」
+##   · `phase2_config.gd::local_dict`   —— 唯一换算口(`local_hhmm` / `local_wd_hhmm` 都走它; 2026-10-26 主菜单那份并进来)
 ## (外加 `battle_watchdog.gd` 一处打日志用的本地时间戳, 不进任何判定。)
 ## **但没有一条断言钉住它** —— 哪天有人在判定层顺手读一次 `get_datetime_dict_from_system()`,
 ## 本机(UTC+8)一切正常, CI(UTC)一切正常, 只有某个时区的玩家在某个钟点被判错。
@@ -27,8 +26,7 @@ const API_RX := "\\b(get_time_zone_from_system|get_datetime_dict_from_system|get
 
 ## "文件::函数" → 允许处数 + 理由。★只减不增; 想加一处必须写清楚它为什么属于显示层。
 const ALLOW := {
-	"res://scripts/gamedata/phase2_config.gd::local_hhmm": [1, "「本地 HH:MM」唯一换算口(E2: 换算只在显示层)"],
-	"res://scripts/scenes/MainMenuScene.gd::_local_dict": [1, "主菜单「周X HH:MM 收盘」(显示层)"],
+	"res://scripts/gamedata/phase2_config.gd::local_dict": [1, "本地时间唯一换算口(E2: 换算只在显示层; 2026-10-26 主菜单那份并进来)"],
 	"res://scripts/scenes/battle/battle_watchdog.gd::_snapshot": [1, "卡死猎手日志的时间戳(只打印, 不进判定)"],
 }
 

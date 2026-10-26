@@ -308,7 +308,9 @@ func _ready() -> void:
 	if str(_rwn.notice) != "":
 		_toast(str(_rwn.notice))
 		_rwn.notice = ""
-	if not _first_week():
+	## 入账动画 + 周末收盘卡(2026-10-26)。有卡时「第一次遇到」那条提示等卡关完再出(一次一件事)。
+	_wk().run()
+	if _wk().queue.is_empty() and not _first_week():
 		_first_tip(paint_ts)
 
 
@@ -390,6 +392,10 @@ func _first_tip(now: int) -> void:
 	if _ch != null and not _ch.is_queued_for_deletion():
 		return
 	var wk: String = FirstTips.weekend_key(_P2C.phase_at_utc(now))
+	## ★模式卡锁着(没资格)时这条「点击查看规则」不出: 那时点卡直达观战(`_on_mode_tap`), 提示会说错去处。
+	##   不记已看 ⇒ 哪天他有资格了再出。
+	if wk != "" and mode_card_locked(now):
+		return
 	if wk != "" and is_instance_valid(_mode_box):
 		FirstTips.show(self, wk, _mode_box)
 		return
@@ -1087,8 +1093,11 @@ func _right_column(now: int = 0) -> void:
 	##   所有货币挤在【同一条】深色长条里(图标 + 数字, 中间一道分隔), 长条右边紧挨着方形小键, 同高、底边对齐。
 	##   原来两块带尖角的木牌是自己画的, 7 张参考里没有一款这么做(用户「金币框哪个游戏这么做的」)。
 	var slot_y: float = uy + (ICON_TAP - ICON_VIS) / 2.0
+	## ★深海币先显示【旧值】: 这次进主菜单之前新进账的那一截(结算 / 收盘卡的奖励)要飞进来, 见 MenuWeekend.plan。
+	_wk().plan(now)
+	var real_c: int = int(GameState.meta_deepsea_coins)
 	var bar := _currency_bar([
-		["res://assets/sprites/menu/ic-deepsea.png", Color(0, 0, 0, -1.0), int(GameState.meta_deepsea_coins)],
+		["res://assets/sprites/menu/ic-deepsea.png", Color(0, 0, 0, -1.0), maxi(0, real_c - _wk().withheld()), real_c],
 		["res://assets/sprites/ui/coin.png", Color(0.122, 0.561, 0.247), int(GameState.coins)],
 	])
 	bar.position = Vector2(help_x + (ICON_TAP - ICON_VIS) / 2.0 - CUR_GAP - bar.size.x, slot_y)
@@ -1175,7 +1184,9 @@ func _beta_badge() -> void:
 
 
 ## 右上货币条: 一条深色长条(xpbar.png 暗槽, 与 ? / ⚙ 同底同高) + 每种货币「图标 + 数字」, 中间一道竖分隔。
-## items = [[图标路径, 染色(a<0 = 不染), 数值], ...] 从左到右。返回未定位的 Control。
+## items = [[图标路径, 染色(a<0 = 不染), 数值(, 量宽用的数值)], ...] 从左到右。返回未定位的 Control。
+## ★第 4 项: 入账动画期间数字从旧值走到新值, 段宽按【终值】量(不然数字变长时顶出斜切段)。
+## ★第 i 种货币的图标 / 数字叫 CurIcon<i> / CurNum<i>(入账动画按名字找)。
 func _currency_bar(items: Array) -> Control:
 	var holder := Control.new()
 	holder.name = CURRENCY_BAR_NAME
@@ -1191,13 +1202,16 @@ func _currency_bar(items: Array) -> Control:
 		var seg_x: float = x
 		x += CUR_PAD
 		var ic := _currency_icon(str(it[0]), it[1])
+		ic.name = "CurIcon%d" % i
 		ic.size = Vector2(CUR_ICON, CUR_ICON)
 		ic.position = Vector2(x, (ICON_VIS - CUR_ICON) / 2.0)
 		parts.append(ic)
 		x += CUR_ICON + 8.0
 		var num := "%d" % int(it[2])
-		var nw: float = ceilf(_bold_font().get_string_size(num, HORIZONTAL_ALIGNMENT_LEFT, -1, CUR_FONT).x) + 6.0
+		var wref := "%d" % int(it[3]) if it.size() > 3 else num
+		var nw: float = ceilf(_bold_font().get_string_size(wref, HORIZONTAL_ALIGNMENT_LEFT, -1, CUR_FONT).x) + 6.0
 		var cl := _menu_label(num, CUR_FONT, Color("#fff4d6"), HORIZONTAL_ALIGNMENT_LEFT)
+		cl.name = "CurNum%d" % i
 		cl.add_theme_color_override("font_outline_color", Color("#140a03"))
 		cl.add_theme_constant_override("outline_size", 6)
 		cl.set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -1212,6 +1226,15 @@ func _currency_bar(items: Array) -> Control:
 	for pp in parts:
 		holder.add_child(pp)
 	return holder
+
+
+## 深海币入账动画 / 周末收盘卡 / 被拦那张卡 / 锁着的模式卡直达观战 —— 调度在 scripts/scenes/menu_weekend.gd(2026-10-26)。
+var _wk_obj: MenuWeekend = null
+
+func _wk() -> MenuWeekend:
+	if _wk_obj == null:
+		_wk_obj = MenuWeekend.new(self)
+	return _wk_obj
 
 
 ## 货币图标: 线稿图标按 tint 染色(tint.a < 0 = 原色)。
@@ -1262,20 +1285,15 @@ func _gauntlet_status_line(now: int = 0) -> String:
 	var l: int = int(GameState.gauntlet_losses)
 	var lab: String = _P2C.gauntlet_label(w, l)
 	var st: String = GameState.gauntlet_state()
-	## ★★「没打的场次化成了多少」—— 晋级者才可能有, 所以挂在这几条后面。
-	##   金额与 `backfill_ranked_quota()` 读同一份账(见 `backfill_summary()` 头注),
-	##   这里一个数都不自己算。`backfill_paid == 0` 时是空串, 不占位。
-	var bf: Dictionary = GameState.backfill_summary()
-	var conv: String = ""
-	if int(bf.get("games", 0)) > 0:
-		conv = " · 未使用 %d 场已折算：深海币 +%d · 经验 +%d" % [
-			int(bf["games"]), int(bf["coins"]), int(bf["xp"])]
+	## ★★2026-10-26 去掉原来挂在后面的「未使用 N 场已折算：深海币 +X · 经验 +Y」:
+	##   模式卡这一行定宽, 那条长尾折行后中间一段被裁掉(实拍两比例都读不全), 而且「折算」是运营词。
+	##   ⇒ 这件事改由积分赛收盘后第一次进主菜单弹的那张卡说(WeekCloseCard.KIND_RANKED_IN), 这一行只留战绩读数。
 	if st == _P2C.GAUNTLET_IN:
-		return "闯关赛 %s · 已晋级决赛日%s" % [lab, conv]
+		return "闯关赛 %s · 已晋级决赛日" % lab
 	if st == _P2C.GAUNTLET_OUT:
-		return "闯关赛 %s · 已出局%s" % [lab, conv]
-	return "闯关赛 %s · 晋级还需 %d 胜 / 剩余 %d 负%s" % [
-		lab, maxi(0, int(_P2C.GAUNTLET_WINS_IN) - w), maxi(0, int(_P2C.GAUNTLET_LOSSES_OUT) - l), conv]
+		return "闯关赛 %s · 已出局" % lab
+	return "闯关赛 %s · 晋级还需 %d 胜 / 剩余 %d 负" % [
+		lab, maxi(0, int(_P2C.GAUNTLET_WINS_IN) - w), maxi(0, int(_P2C.GAUNTLET_LOSSES_OUT) - l)]
 
 
 ## 周日那一行读数。返回**空串 = 今天不是决赛日**。
@@ -1586,9 +1604,12 @@ var _week_dim: ColorRect = null
 const WEEK_DIM_NAME := "WeekPopupDim"
 
 
-## 下一个阶段从哪一刻开始(UTC 零点)。★只问 `phase_at_utc`, 不另写一张星期表。
+## 下一个阶段从哪一刻开始(UTC)。★只问 `phase_at_utc` / `phase_window_utc`, 不另写一张星期表。
+## ★2026-10-26 闯关赛在周日 17:30 收盘(不是零点) ⇒ 闯关赛的「下一个阶段」就是它自己的收盘时刻。
 func _next_phase_start(now: int) -> int:
 	var ph: String = _P2C.phase_at_utc(now)
+	if ph == _P2C.PHASE_GAUNTLET:
+		return _P2C.gauntlet_close_ts(_P2C.week_anchor_utc(now))
 	var t: int = now - (now % 86400) + 86400
 	for _i in range(7):
 		if _P2C.phase_at_utc(t) != ph:
@@ -1602,7 +1623,7 @@ func _mode_countdown(now: int) -> String:
 	## ★★周六已晋级的人: 闯关赛几点收盘与他无关了, 他要知道的是周日几点开打(2026-10-10 周六实操)。
 	##   开打时刻 = 周日分组那一刻(`FINALS_SEAT_HOUR_UTC`), 与赛程页决赛日卡「X 开始」同一个常量。
 	if _P2C.phase_at_utc(now) == _P2C.PHASE_GAUNTLET and str(GameState.gauntlet_state()) == _P2C.GAUNTLET_IN:
-		var seat: int = _utc_today_at(_next_phase_start(now), int(_P2C.FINALS_SEAT_HOUR_UTC))
+		var seat: int = _P2C.finals_seat_ts(_P2C.week_anchor_utc(now))
 		return "距%s开始 %s" % [_P2C.STAGE_GROUP, _left_text(seat - now)]
 	var left: int = _P2C.close_left_sec(now)
 	var kind := _close_kind_at(now)
@@ -1635,7 +1656,26 @@ func mode_card_lines(now: int) -> Array:
 	var st: String = _phase_status_line(now)
 	if st != "":
 		second = _strip_phase_head(st, title)
+	## ★2026-10-26 周末没资格的人: 收盘倒计时与他无关(原来锁着的卡上还写「距截止 11 小时」),
+	##   这一格换成去处 —— 点卡直达观战(`_on_mode_tap`), 不必先开赛程页再找那扇门。
+	var door: String = _mode_locked_door(now)
+	if door == WEEK_DOOR_BOARD:
+		return [title, second, MODE_WATCH_BOARD]
+	if door == WEEK_DOOR_BRACKET:
+		return [title, second, MODE_WATCH_BRACKET]
 	return [title, second, _mode_countdown(now)]
+
+
+const MODE_WATCH_BOARD := MenuWeekend.MODE_WATCH_BOARD
+const MODE_WATCH_BRACKET := MenuWeekend.MODE_WATCH_BRACKET
+
+func _mode_locked_door(now: int) -> String:
+	return _wk().locked_door(now)
+
+
+## ★具名方法(门禁量 pressed 的连接看得到名字)。
+func _on_mode_tap() -> void:
+	_wk().on_mode_tap()
 
 
 ## 「闯关赛 2-1 · 再赢…」→「2-1 · 再赢…」; 「决赛日 · 已晋级」→「已晋级」。
@@ -1732,7 +1772,7 @@ func _mode_card(now: int) -> void:
 	holder.add_child(btn)
 	btn.mouse_entered.connect(func(): plate.modulate = plate_mod * Color(1.2, 1.15, 1.08))
 	btn.mouse_exited.connect(func(): plate.modulate = plate_mod)
-	btn.pressed.connect(_open_week_popup)
+	btn.pressed.connect(_on_mode_tap)
 	content_root.add_child(holder)
 	_mode_box = holder
 	## 弹层要盖在模式卡上面(重建时模式卡会排到最后)
@@ -1911,7 +1951,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 ##   **底部一排横向卡**(King of Meat), 没有一张用竖排日历。⇒ 改成贴底横条。
 ##
 ## ★★E2/E4 的唯一 UI 落点: 赛程判定全程按 UTC(phase2_config 里那几个纯函数),
-##   本地时区**只在 `_local_dict` 里做一次显示层换算**, 换算结果一个字节都不回流到判定。
+##   本地时区**只在 `phase2_config.local_dict` 里做一次显示层换算**, 换算结果一个字节都不回流到判定。
 ##   门禁 verify_week_season ⑥ 焊死了这条: 判定层源码里不许出现本地时间 API。
 ## ★2026-10-04 收进 `phase2_config.WEEKDAY_CN`(时间穿越角标也要用同一份)。
 const _WD_CN := _P2C.WEEKDAY_CN
@@ -2002,6 +2042,7 @@ func _week_cards(paint_now: int = 0) -> void:
 
 
 ## 这个阶段占本周哪几天: [首日, 末日](ISO 1..7)。★只问 `phase_of_weekday`, 不另写一张星期表。
+## ★2026-10-26 闯关赛打到周日 17:30 ⇒ 它的末日是收盘那天(`GAUNTLET_CLOSE_WD`), 卡上写「周六 ~ 周日」。
 static func _phase_days(ph: String) -> Vector2i:
 	var a := 0
 	var b := 0
@@ -2010,6 +2051,8 @@ static func _phase_days(ph: String) -> Vector2i:
 			if a == 0:
 				a = wd
 			b = wd
+	if ph == _P2C.PHASE_GAUNTLET and a > 0:
+		b = maxi(b, int(_P2C.GAUNTLET_CLOSE_WD))
 	return Vector2i(a, b)
 
 
@@ -2044,13 +2087,14 @@ func _close_kind_at(now: int) -> String:
 ##   / `gauntlet_state` / `phase_mode_live` / `is_eliminated`(与开始战斗那扇门同一组)。
 ## ★数字一律读规则常量(HEARTS_MAX / RANKED_QUOTA / PROMOTE_WINS / GAUNTLET_* / FINALS_SHOP_SEC)。
 func week_card_info(ph: String, now: int) -> Dictionary:
-	var today: int = _P2C.iso_weekday_utc(now)
 	var days := _phase_days(ph)
 	var anchor: int = _P2C.week_anchor_utc(now)
+	## ★2026-10-26 按这个阶段的起止时刻判(周日被 17:30 一分为二, 星期几区间判不了)。
+	var win: Vector2i = _P2C.phase_window_utc(ph, anchor)
 	var state := "future"
-	if today >= days.x and today <= days.y:
+	if now >= win.x and now < win.y:
 		state = "now"
-	elif days.y < today:
+	elif now >= win.y:
 		state = "past"
 	var info := {
 		"phase": ph,
@@ -2313,12 +2357,9 @@ func _card_info_badge(info: Dictionary, pos: Vector2) -> Control:
 	return holder
 
 
-## 「周六 07:00」(玩家本地时区)。★时区换算只在 `_local_dict` 一处。
+## 「周六 07:00」(玩家本地时区)。★换算只在 `phase2_config.local_dict` 一处。
 func _local_wd_hhmm(utc_ts: int) -> String:
-	var d := _local_dict(utc_ts)
-	var w: int = int(d.get("weekday", 0))
-	var wi := 7 if w == 0 else w
-	return "周%s %02d:%02d" % [_WD_CN[wi - 1], int(d.get("hour", 0)), int(d.get("minute", 0))]
+	return _P2C.local_wd_hhmm(utc_ts)
 
 
 ## 此刻属于哪一档(倒计时 / 已截止 / 今日已截止 / 门 / 维护 …)。
@@ -2384,7 +2425,7 @@ func _finals_entry() -> Control:
 const GAUNTLET_BOARD_SCENE := "GauntletBoard"
 const GAUNTLET_BOARD_LINE := "全场赛况"
 ## 周一那两扇门上的字(看的是刚结束的那个周末)。
-const PAST_BOARD_LINE := "周六赛况"
+const PAST_BOARD_LINE := "闯关赛况"
 const PAST_BRACKET_LINE := "周日对阵图"
 
 
@@ -2481,14 +2522,6 @@ func _utc_today_at(ts: int, hour: int) -> int:
 	return ts - secs + hour * 3600
 
 
-## ★★全局唯一的时区换算点(E2/E4)。判定层永远是 UTC, 只有【说给玩家听】的时候才翻译。
-##   陷阱: `get_time_zone_from_system().bias` 的单位是**分钟**不是小时。
-##   把偏移加到 UTC 秒上、再用 UTC 版的 from_unix_time 格式化 = 玩家墙上的时间。
-func _local_dict(utc_ts: int) -> Dictionary:
-	var bias: int = int(Time.get_time_zone_from_system().get("bias", 0))   # 分钟
-	return Time.get_datetime_dict_from_unix_time(utc_ts + bias * 60)
-
-
 func _local_stamp(utc_ts: int) -> String:
 	return "%s 截止" % _local_wd_hhmm(utc_ts)
 
@@ -2507,7 +2540,7 @@ func _go(scene: String) -> void:
 func _open_shop() -> void:
 	var block: String = _shop_block_msg(_now_ts())
 	if block != "":
-		_toast(block)
+		_wk().block_card(block, [])   # 与开始战斗被拦同一张卡(2026-10-26): 两处说的是同一组原因
 		return
 	_go("Shop")
 
@@ -2579,95 +2612,17 @@ func _shop_lock_reason(ts: int) -> String:
 	return ""
 
 
-## ★★拦截提示的文案放这两个函数里 —— 商店入口与开打入口原来**各写了一份同样的字符串**,
-##   改一处漏一处就是「同一个状态两个名字」(memory fb-hand-rolled-copies-drift)。
-## ★★2026-09-22: 原文案「等周六闯关赛(开赛观战)」**说的是做不到的事** ——
-##   当时闯关赛玩法一行没写(现在 E-A 已落地), 观赛入口更是 F 阶段的事;
-##   玩家按字面读会周六打开游戏找闯关赛, 然后发现还是原来那个积分赛。
-##   ⇒ 没上线时说**真的会发生的那件事**: 下周一换新的一轮(自然周锚点, UTC 周一 00:00)。
-##   玩法上线后自动换回原文案, 不用再记得改这里。
-## 这一周后面**还有闯关赛可打吗**? 三个条件缺一不可。
-## ★★提示语问的是这个, 不是"开关翻了没有" —— 同样打满配额的两个人,
-##   晋级了的那个周六真有东西打, 没晋级的那个要等下周一。跟开关走就会对其中一个说谎。
-##
-## ★★★2026-09-28 修: 原来第二条问的是 `gauntlet_eligible()`(= `promoted`), 而
-##   `promoted` 全仓**只有 `settle_ranked_close()` 一个写入点**, 那个函数开头就
-##   「周五 23:00 UTC 之前直接 return」⇒ **周一~周五这一支结构上恒假**。
-##   于是 `season_wins=20`(线=5)、配额打满的人, 周一~周五被告知「下周一开新的一轮」——
-##   而他周六铁定有 6 场可打。**这个函数自己的头注(上面那两行)写的就是要防这件事,
-##   而那件事正发生在它自己身上。**(探针 `tests/_probe_promote_ahead.gd`:
-##   「周六闯关赛见」在 `promoted=false` 时七天 0 次出现。)
-## ⇒ 收盘前该问的是「**胜场过没过晋级线**」(`GameState.gauntlet_line_reached()`),
-##   收盘后 `promoted` 已经是事实 ⇒ 两个**取并集**, 缺一不可:
-##     · 只问线 —— 收盘后被清过场次的边角状态会漏(线是 `season_wins`, 不是存档标记);
-##     · 只问 `promoted` —— 就是上面那个 bug。
-func _gauntlet_ahead() -> bool:
-	if not _P2C.phase_mode_live(_P2C.PHASE_GAUNTLET):
-		return false                      # 闯关赛玩法还没上线
-	if not (GameState.gauntlet_eligible() or GameState.gauntlet_line_reached()):
-		return false                      # 收盘算过了没晋级, 而且胜场也没到线
-	return _P2C.gauntlet_can_play(int(GameState.gauntlet_wins), int(GameState.gauntlet_losses))
-
-
-## 「周六还有东西打」这半句话怎么说。空串 = 这一周到此为止。
-## ★★收盘前后**不是同一句话**, 这一条是诚实度的分界:
-##     收盘后 `promoted` 已经算出来了 ⇒ 「你已晋级」是既成事实;
-##     收盘前谁也没算过 ⇒ 只能说**已知的那件事**:「胜场过了晋级线」。
-##   查实(见 `GameState.gauntlet_line_reached()` 头注三条): 晋级判据里只有胜场、
-##   没有名额上限也没有排名截断、`season_wins` 只增不减 ⇒ 过了线就一定会晋级,
-##   所以这里敢接「周六闯关赛见」。**将来加了名额/排名线, 要改的是那个函数的头注与这一句。**
-func _gauntlet_ahead_tail() -> String:
-	if not _gauntlet_ahead():
-		return ""
-	if GameState.gauntlet_eligible():
-		return "已晋级周六闯关赛"
-	return "已过晋级线，可参加周六闯关赛"
-
-
+## 拦截提示的文案(商店与开打两个入口共用) —— 2026-10-26 搬进 scripts/scenes/menu_weekend.gd(由来与头注随代码过去了), 这里转调。
 func _msg_eliminated() -> String:
-	## ⚠ 0 命**不等于**没资格: 5 胜 + 8 负 = 13 场, 完全可能既淘汰又晋级。
-	##   原稿的终榜排序是「胜场 > 余命 > 横扫」, 余命只是第二键, 不是门槛。
-	var tail: String = _gauntlet_ahead_tail()
-	if tail != "":
-		return "本大轮已出局 · %s" % tail
-	return "本大轮已出局 · 下周一重置"
+	return _wk().msg_eliminated()
 
 
 func _msg_quota_full() -> String:
-	var q: int = int(_P2C.RANKED_QUOTA)
-	var tail: String = _gauntlet_ahead_tail()
-	if tail != "":
-		return "本周 %d 场已用完 · %s" % [q, tail]
-	return "本周 %d 场已用完 · 下周一重置" % q
+	return _wk().msg_quota_full()
 
 
-## 周六点「开打」被拦住时说什么。返回空串 = 没拦, 可以开。
-## ★与 `GameState.gauntlet_can_play()` **共用同一组判据**(`phase2_config.gauntlet_state`),
-##   这里只负责把状态翻译成人话 —— 就地再写一遍 `if wins >= 4` 就是同一判据存两份。
-##
-## ★★★2026-09-28: 这两把锁原来**都不指下一步**, 而同族的每一句都带
-##   (「下周一开新的一轮」/「周六闯关赛见」)。周六是这两句唯一的出场日,
-##   玩家当天读完就该知道"接下来去哪"：
-##     · 没晋级那句里的「积分赛」指周二~周五, **本周已经过去了** ⇒ 必须写清是下周一,
-##       而且把门槛写出来(线在 `PROMOTE_WINS`, 不抄数字);
-##     · 刚晋级那句只说了"到此为止", **没告诉他明天有决赛日** ⇒ 他周日不来,
-##       座位空着、桶还可能卡住。
-func _msg_gauntlet_block() -> String:
-	if not GameState.gauntlet_eligible():
-		## ★2026-10-03 周六实操 S13: 14 胜 / 16 胜的人被告知「打够 11 胜就能来」——
-		##   晋级是「胜场过线 **且** 没淘汰」(gauntlet_line_reached), 这句原来不分是哪一条没过。
-		if GameState.is_eliminated() and int(GameState.season_wins) >= int(_P2C.PROMOTE_WINS):
-			return "本周未晋级 · 积分赛生命已耗尽 · 下周一重置"
-		return "本周未晋级 · 下周一重置 · 积分赛 %d 胜可参加" % int(
-			_P2C.PROMOTE_WINS)
-	var st: String = GameState.gauntlet_state()
-	if st == _P2C.GAUNTLET_IN:
-		return "已晋级决赛日（%s）· 周日开赛" % _P2C.gauntlet_label(
-			int(GameState.gauntlet_wins), int(GameState.gauntlet_losses))
-	if st == _P2C.GAUNTLET_OUT:
-		return "闯关赛已出局（%s）· 下周一重置" % _P2C.gauntlet_label(
-			int(GameState.gauntlet_wins), int(GameState.gauntlet_losses))
-	return ""
+func _msg_gauntlet_block(ts: int = 0) -> String:
+	return _wk().msg_gauntlet_block(ts)
 
 
 ## 轻提示: 顶部飘一行金字, 停 2.6s 后淡出。
@@ -2735,10 +2690,10 @@ func _battle_block_msg(now: int = 0) -> String:
 	## ★周一休赛(用户原稿: 周一 = 休赛期·发奖/终榜公示; 2026-10-05「周一哪来的比赛」)。
 	##   原来周一照常能打积分赛且计入本周场次 —— 实现漏洞, 不是设计。
 	if _P2C.phase_at_utc(ts) == _P2C.PHASE_REST:
-		return "今日休赛 · 积分赛周二开启"
+		return "今天休赛，积分赛周二开始。"
 	if _P2C.phase_at_utc(ts) == _P2C.PHASE_GAUNTLET \
 			and _P2C.phase_mode_live(_P2C.PHASE_GAUNTLET):
-		return _msg_gauntlet_block()
+		return _msg_gauntlet_block(ts)
 	## ★★★周日也要有一支(2026-09-27)。原来只有周六, 而周日**不吃积分赛配额**
 	##   (`phase_uses_ranked_quota(FINALS)` = false, 因为玩法已上线) ⇒ 周日是唯一
 	##   「不吃配额 + 没有拦截」的一天 = **可以无限刷积分赛**, 七天实测只有它是【可打】。
@@ -2750,7 +2705,7 @@ func _battle_block_msg(now: int = 0) -> String:
 			and _P2C.phase_mode_live(_P2C.PHASE_FINALS):
 		## ★两个维度分开传: 「进没进决赛日」与「有没有拿到闯关赛资格」不是一回事,
 		##   混成一个 bool 就会说出「你已晋级」和「本周没晋级」这种自相矛盾的话。
-		##   `_gauntlet_ahead()` 是周一~五那句用的同一处判据 —— 口径必须一致。
+		##   `MenuWeekend.gauntlet_ahead()` 是周一~五那句用的同一处判据 —— 口径必须一致。
 		return _P2C.finals_block_msg(
 			GameState.gauntlet_state() == _P2C.GAUNTLET_IN,
 			GameState.gauntlet_eligible())
@@ -2839,10 +2794,14 @@ func _referee_resume_tick() -> void:
 	rw.resume_if_any(_on_referee_resumed)
 
 
+const BLOCK_CARD_NAME := MenuWeekend.BLOCK_CARD_NAME
+
+
 func _start_battle_flow() -> void:
-	var block: String = _battle_block_msg(_now_ts())
+	var ts: int = _now_ts()
+	var block: String = _battle_block_msg(ts)
 	if block != "":
-		_toast(block)
+		_wk().block_card(block, _wk().block_door(ts))
 		return
 	GameState.mode = "single"
 	GameState.tutorial = false

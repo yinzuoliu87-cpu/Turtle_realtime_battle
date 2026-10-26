@@ -314,26 +314,35 @@ func _t_schedule() -> void:
 	_ok("⑥ 周一 = 休赛", _P2.phase_at_utc(MON) == _P2.PHASE_REST, _P2.phase_at_utc(MON))
 	_ok("⑥ 周四 = 积分赛", _P2.phase_at_utc(THU) == _P2.PHASE_RANKED, _P2.phase_at_utc(THU))
 	_ok("⑥ 周六 = 闯关赛", _P2.phase_at_utc(SAT) == _P2.PHASE_GAUNTLET, _P2.phase_at_utc(SAT))
-	_ok("⑥ 周日 = 决赛日", _P2.phase_at_utc(SUN) == _P2.PHASE_FINALS, _P2.phase_at_utc(SUN))
+	## ★★2026-10-26 用户拍板闯关赛收盘 周六 23:00 → **周日 17:30 UTC**(方案书 20261026b-周六流程.md §4 G)
+	##   ⇒ 周日被一分为二: 17:30 之前是闯关赛, 之后才是决赛日。「周日 = 决赛日」的样本改钉 19:00, 上午那一半单独验。
+	var SUN_EVE := SUN + 19 * 3600                 # 周日 19:00 —— 决赛日
+	_ok("⑥ ★周日 00:00 = 仍是闯关赛(收盘在 17:30)", _P2.phase_at_utc(SUN) == _P2.PHASE_GAUNTLET, _P2.phase_at_utc(SUN))
+	_ok("⑥ 周日 19:00 = 决赛日", _P2.phase_at_utc(SUN_EVE) == _P2.PHASE_FINALS, _P2.phase_at_utc(SUN_EVE))
 
-	## 收盘: 积分赛看周五 23:00, 闯关赛看周六 23:00
+	## 收盘: 积分赛看周五 23:00, 闯关赛看周日 17:30
 	var thu_left := _P2.close_left_sec(THU)
 	_ok("⑥ 周四 00:00 → 距周五 23:00 收盘 = 47 小时",
 		thu_left == 47 * 3600, "实得 %d 秒(%.1f 小时)" % [thu_left, float(thu_left) / 3600.0])
 	var sat_left := _P2.close_left_sec(SAT)
-	_ok("⑥ 周六 00:00 → 距周六 23:00 收盘 = 23 小时",
-		sat_left == 23 * 3600, "实得 %d 秒" % sat_left)
+	_ok("⑥ 周六 00:00 → 距周日 17:30 收盘 = 41 小时 30 分",
+		sat_left == 41 * 3600 + 30 * 60, "实得 %d 秒(%.2f 小时)" % [sat_left, float(sat_left) / 3600.0])
+	var sun_left := _P2.close_left_sec(SUN)
+	_ok("⑥ ★周日 00:00 → 距周日 17:30 收盘 = 17 小时 30 分(周日上午也在倒数)",
+		sun_left == 17 * 3600 + 30 * 60, "实得 %d 秒" % sun_left)
 	_ok("⑥ 周一(休赛)没有收盘概念 → -1", _P2.close_left_sec(MON) == -1)
-	_ok("⑥ 周日(决赛日)同样 -1", _P2.close_left_sec(SUN) == -1)
+	_ok("⑥ 周日 19:00(决赛日)同样 -1", _P2.close_left_sec(SUN_EVE) == -1, "实得 %d" % _P2.close_left_sec(SUN_EVE))
 
 	## ★★E3 封盘: 闸在收盘前 10 分钟内合上
 	##   判据写死 600/601/599, **不引 CLOSE_LOCKOUT_SEC** —— 拿被测常量当尺子等于没量。
-	var close_at := SAT + 23 * 3600                 # 周六 23:00 整
+	var close_at := SUN + 17 * 3600 + 30 * 60       # 周日 17:30 整(2026-10-26 前是周六 23:00)
 	_ok("⑥ 收盘前 11 分钟: 还能开", _P2.can_start_match_utc(close_at - 660))
 	_ok("⑥ ★收盘前 9 分钟: 封盘", not _P2.can_start_match_utc(close_at - 540))
 	_ok("⑥ 收盘前 601 秒: 还能开(边界外一秒)", _P2.can_start_match_utc(close_at - 601))
 	_ok("⑥ ★收盘前 599 秒: 封盘(边界内一秒)", not _P2.can_start_match_utc(close_at - 599))
 	_ok("⑥ 休赛日不封盘(没有收盘概念)", _P2.can_start_match_utc(MON))
+	## ★旧规则不残留: 周六 23:00 前后原来是封盘/收盘, 现在那是闯关赛的半程
+	_ok("⑥ ★周六 22:55(旧封盘窗内)现在照常能开", _P2.can_start_match_utc(SAT + 22 * 3600 + 55 * 60))
 
 
 # ─────────────────────────────────────────────────────────────
@@ -656,9 +665,12 @@ func _t_promote_line_derived() -> void:
 #   ① 金额**与账本同源**: 屏上那三个数必须等于 `backfill_summary()`,
 #      而它又与 `backfill_ranked_quota()` 读同一份 `backfill_paid`
 #      ⇒ 不许屏上自己算一遍(手抄的副本必然落后)。
-#   ② 那句话**真的出现在产品自己拼的那一行里** —— 走 `_gauntlet_status_line()`,
+#   ② 那句话**真的出现在产品自己拼的那张卡里** —— 走 `WeekCloseCard.spec()`,
 #      不是我在测试里自己拼一个字符串再断言它等于自己。
-#   ③ 没化成过的人(`backfill_paid == 0`)屏上**不许**出现这句话(否则是恒真式 + 占位噪声)。
+#   ③ 没化成过的人(`backfill_paid == 0`)卡上**不许**出现这句话与奖励行(否则是恒真式 + 占位噪声)。
+# ★★2026-10-26 这句话从模式卡搬到「积分赛已晋级」那张收盘卡(方案书 docs/plans/20261026b-周六流程.md §4 A):
+#   模式卡那一行定宽, 长尾折行后中间一段被裁掉(实拍两比例都读不全), 而且「折算」是运营词。
+#   ⇒ ①②③ 改量卡; 另加一条: 模式卡那一行**不再**带这条长尾(带回去 = 又被裁)。
 # ─────────────────────────────────────────────────────────────
 func _t_backfill_visible() -> void:
 	var pk = load("res://scenes/MainMenu.tscn")
@@ -678,35 +690,43 @@ func _t_backfill_visible() -> void:
 	_ok("⑪ ★分母: 钉的那一刻真的是周六(否则下面量的是另一段)",
 		_P2.phase_at_utc(sat) == _P2.PHASE_GAUNTLET, _P2.phase_at_utc(sat))
 
-	## ── ③ 先验反面: 没化成过的人屏上不许有这句话 ──
+	## ── ③ 先验反面: 没化成过的人卡上不许有这句话 ──
+	var wcc = load("res://scripts/scenes/week_close_card.gd")
 	_gs.promoted = true
 	_gs.gauntlet_wins = 0
 	_gs.gauntlet_losses = 0
 	_gs.backfill_paid = 0
-	var s0: String = str(mm._gauntlet_status_line(sat))
-	_ok("⑪ ★★没化成过的人屏上**不许**出现这句话(否则是恒真式 + 占位噪声)",
-		s0.find("折算") < 0, s0)
+	var d0: Dictionary = wcc.spec(wcc.KIND_RANKED_IN, _gs, sat)
+	var s0: String = "".join(PackedStringArray(d0["body"]))
+	_ok("⑪ ★★没化成过的人卡上**不许**出现这句话与奖励行(否则是恒真式 + 占位噪声)",
+		s0.find("化成") < 0 and int(d0["coins"]) == 0 and int(d0["xp"]) == 0, s0)
 
-	## ── ①② 正题: 化成过 4 场的人, 屏上那三个数必须等于账本 ──
+	## ── ①② 正题: 化成过 4 场的人, 卡上那三个数必须等于账本 ──
 	_gs.backfill_paid = 4
 	var bf: Dictionary = _gs.backfill_summary()
 	_ok("⑪ ★分母: 账本自己算出来的三个数(0 场 = 下面全是空检查)",
 		int(bf["games"]) == 4 and int(bf["coins"]) > 0 and int(bf["xp"]) > 0, str(bf))
-	var s1: String = str(mm._gauntlet_status_line(sat))
-	_ok("⑪ ★★★BACKFILL_VISIBLE: 屏上真有那句话(走产品自己拼的那一行, 不是我拼的)",
-		s1.find("折算") >= 0, s1)
-	_ok("⑪ ★★★金额与账本同源: 场数/币/经验三个数都在屏上且与 `backfill_summary()` 一致",
+	var d1: Dictionary = wcc.spec(wcc.KIND_RANKED_IN, _gs, sat)
+	var s1: String = "".join(PackedStringArray(d1["body"]))
+	_ok("⑪ ★★★BACKFILL_VISIBLE: 卡上真有那句话(走产品自己拼的那张卡, 不是我拼的)",
+		s1.find("化成") >= 0, s1)
+	_ok("⑪ ★★★金额与账本同源: 场数在正文里、币/经验在奖励行且与 `backfill_summary()` 一致",
 		s1.find("%d 场" % int(bf["games"])) >= 0
-			and s1.find("+%d" % int(bf["coins"])) >= 0
-			and s1.find("+%d" % int(bf["xp"])) >= 0,
-		"屏上=%s / 账本=%s" % [s1, str(bf)])
-	## ★反向: 账本一改, 屏上必须跟着改(证明它不是写死的一句话)
+			and int(d1["coins"]) == int(bf["coins"])
+			and int(d1["xp"]) == int(bf["xp"]),
+		"卡=%s 币%d 经验%d / 账本=%s" % [s1, int(d1["coins"]), int(d1["xp"]), str(bf)])
+	## ★反向: 账本一改, 卡上必须跟着改(证明它不是写死的一句话)
 	_gs.backfill_paid = 2
 	var bf2: Dictionary = _gs.backfill_summary()
-	var s2: String = str(mm._gauntlet_status_line(sat))
-	_ok("⑪ ★★账本一改屏上跟着改(4 场 → 2 场), 证明那句话不是写死的",
-		s2.find("%d 场" % int(bf2["games"])) >= 0 and s2 != s1,
-		"2 场时屏上=%s" % s2)
+	var d2: Dictionary = wcc.spec(wcc.KIND_RANKED_IN, _gs, sat)
+	var s2: String = "".join(PackedStringArray(d2["body"]))
+	_ok("⑪ ★★账本一改卡上跟着改(4 场 → 2 场), 证明那句话不是写死的",
+		s2.find("%d 场" % int(bf2["games"])) >= 0 and s2 != s1 and int(d2["coins"]) == int(bf2["coins"]),
+		"2 场时卡上=%s" % s2)
+	## ★模式卡那一行不再带这条长尾(带回去 = 定宽框里又被裁掉一截)
+	var line: String = str(mm._gauntlet_status_line(sat))
+	_ok("⑪ ★模式卡那一行不再挂「化成 / 折算」的长尾(搬到收盘卡了)",
+		line.find("折算") < 0 and line.find("化成") < 0 and line != "", line)
 
 	## ── NO_ADMIN_WORD: 玩家可见文案里不许出现「补发」这种后台词 ──
 	var admin_hits: Array = []

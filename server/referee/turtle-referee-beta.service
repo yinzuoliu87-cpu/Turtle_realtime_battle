@@ -1,7 +1,7 @@
 # 内测服（turtle-beta）的裁判轮询器（方案书 docs/plans/20261020-内测服.md §6 / D4）。放到 /etc/systemd/system/。
 # ★正式服那份 turtle-referee.service 与 /etc/turtle-referee/env 一个字不动；本份只是同机第二套：
 #   自己的 env（env-beta）、自己的工作目录 / 工程目录 / 直播目录，最多吃一个核、低优先级。
-# ★周六全天、周日 17:30~24:00 UTC（正式服赛程高峰）由 turtle-referee-beta-peak.timer 自动停、过后自动起。
+# ★周六、周日全天 UTC（2026-10-26 起；原为周日 17:30 起）（正式服赛程高峰）由 turtle-referee-beta-peak.timer 自动停、过后自动起。
 [Unit]
 Description=Turtle referee poller - BETA server (turtle-beta, low priority, 1 core max)
 After=network-online.target

@@ -279,8 +279,9 @@ func _t_roll_moment_matches_phase() -> void:
 	## 拿真实日历那一周逐天走: 七天的锚点必须**全都一样**, 阶段则按设计逐天变。
 	var anchors: Array = []
 	var phases: Array = []
+	## ★2026-10-26 闯关赛收盘挪到周日 17:30 UTC ⇒ 周日正午是闯关赛; 周日改钉 19:00(收盘后 = 决赛日), 其余天仍是正午
 	for d in range(7):
-		var ts: int = MON + d * 86400 + 43200      # 每天中午, 避开边界
+		var ts: int = MON + d * 86400 + (19 * 3600 if d == 6 else 43200)      # 避开边界
 		anchors.append(_P2.week_anchor_utc(ts))
 		phases.append(_P2.phase_at_utc(ts))
 	var all_same := true
@@ -291,6 +292,11 @@ func _t_roll_moment_matches_phase() -> void:
 	_ok("⑤ ★分母: 这七天的阶段确实是按设计变的(休赛/积分×4/闯关/决赛)",
 		phases == ["rest", "ranked", "ranked", "ranked", "ranked", "gauntlet", "finals"],
 		str(phases))
+	## ★周日上午那一半: 还是闯关赛, 锚点也还是这一周(换周与换阶段无关, 只看周一 00:00)
+	var sun_noon: int = MON + 6 * 86400 + 43200
+	_ok("⑤ ★周日 12:00 = 闯关赛(17:30 才收盘), 锚点仍是本周",
+		_P2.phase_at_utc(sun_noon) == _P2.PHASE_GAUNTLET and _P2.week_anchor_utc(sun_noon) == MON,
+		"阶段 %s / 锚点 %d" % [_P2.phase_at_utc(sun_noon), _P2.week_anchor_utc(sun_noon)])
 
 	## ★★换周的那一秒, 阶段正好从「决赛日」翻到「休赛」—— 两件事是同一件事。
 	var t_before: int = MON2 - 1      # 周日 23:59:59

@@ -47,12 +47,17 @@ const TS := preload("res://scripts/scenes/TeamSelectScene.gd")
 const P2C := preload("res://scripts/gamedata/phase2_config.gd")
 
 ## 真实日历样本（UTC），与 `verify_week_roll` 用的是同一周，那边已把日期核对过。
+## ★★2026-10-26 闯关赛收盘挪到周日 17:30 UTC(方案书 20261026b-周六流程.md §4 G) ⇒ 周日 12:00 **是闯关赛**,
+##   而且这正是这次改动要守的那一格: 原来周日一整天是决赛日, 周日上午开的闯关局会被戳成 finals、走决赛结算。
+##   ⇒ 把「周日 12:00」排在**第一个**, 只要今天不是闯关赛(周六 / 周日 17:30 前), 真入口走的就是这一格。
+##   (决赛日不再出现在这张表里: 选队界面决赛日一律不放行开局(决赛只从对阵图开), 挑到它 = 哨兵不变 = 假红。)
 const NOON := 43200
+const SUN_NOON_TS := 1789862400 + NOON   # 2026-09-20 周日 12:00 UTC
 const DAYS := [
+	[1789862400, "周日 12:00 闯关赛(收盘前)"],    # 2026-09-20
 	[1789344000, "周一 休赛"],      # 2026-09-14
 	[1789603200, "周四 积分赛"],    # 2026-09-17
 	[1789776000, "周六 闯关赛"],    # 2026-09-19
-	[1789862400, "周日 决赛日"],    # 2026-09-20
 ]
 
 const SENTINEL := "__门禁哨兵__"
@@ -103,6 +108,14 @@ func _ready() -> void:
 		return
 	_chk("★分母: 选中日的阶段确实 ≠ 今天的阶段(下面那条才排除得掉「写死」)",
 		pick_phase != ph_now, "选中 %s vs 今天 %s" % [pick_phase, ph_now])
+	## ★2026-10-26 周日 12:00 那一格的阶段写死成 gauntlet(用户拍板的赛程), 不引 phase_at_utc 当尺子
+	_chk("★分母: 周日 12:00 按新赛程是闯关赛(收盘 17:30 之前)",
+		str(P2C.phase_at_utc(SUN_NOON_TS)) == P2C.PHASE_GAUNTLET, str(P2C.phase_at_utc(SUN_NOON_TS)))
+	if pick_ts != SUN_NOON_TS:
+		## 只有「今天本身就是闯关赛」才会走到这里(周日 12:00 与今天同阶段, 排除不掉「写死」)
+		_chk("★分母: 没挑周日 12:00 只因为今天就是闯关赛", ph_now == P2C.PHASE_GAUNTLET,
+			"今天=%s / 选中=%s" % [ph_now, pick_label])
+		print("  (今天是闯关赛 ⇒ 周日 12:00 那一格这次让给「%s」; 换个非闯关赛的日子跑会走到)" % pick_label)
 
 	## ── ⑤ 先跑纯内存那一段: 这个字段到底有没有真消费者 ──
 	##    ★必须放在 `_on_start()` **之前** —— 之后场景树就被拆了。
@@ -191,6 +204,11 @@ func _ready() -> void:
 	_chk("① ★★week_phase ≠ 今天的阶段 —— 排除「写死成一个常量」",
 		str(GameState.week_phase) != ph_now,
 		"实得「%s」/ 今天是「%s」" % [str(GameState.week_phase), ph_now])
+	if pick_ts == SUN_NOON_TS:
+		## ★★2026-10-26 那一格: 周日上午开的局是闯关赛局(原来会被戳成 finals, 走决赛结算 —— 不记战绩/不传快照)
+		_chk("① ★★★周日 12:00 开打 ⇒ week_phase == \"gauntlet\"(不是 finals)",
+			str(GameState.week_phase) == "gauntlet",
+			"实得「%s」" % str(GameState.week_phase))
 
 	## ★收尾分母: 全程没碰存档文件
 	var mtime1: int = FileAccess.get_modified_time(save_p) if FileAccess.file_exists(save_p) else -1

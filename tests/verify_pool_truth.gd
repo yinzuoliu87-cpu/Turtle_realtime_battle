@@ -221,6 +221,11 @@ func _t_screen_says() -> void:
 			not str(hints[0]).contains(PROMISE), "屏上「%s」" % str(hints[0]))
 
 	## ── 0 胜不上领奖台 ──
+	## ★2026-10-26 钉成积分赛日再画一遍: 周一(休赛)看的是上周的榜, 自己那一行一律画「—」(wins = -1, 见 LeaderboardScene._local_rows)
+	##   ⇒ 下面两条在周一一条恒真、一条必红(CI 10-26 整天红在「3 胜戴牌」这条)。钉住之后与跑门禁那天星期几无关。
+	inst.set("day_phase", _P2.PHASE_RANKED)
+	inst.call("_render", inst.call("_local_rows"), _LB.SRC_LOCAL, -1)
+	await get_tree().process_frame
 	var board := _board(inst)
 	_ok("③ ★分母: 找得到榜面板", board != null)
 	if board != null:

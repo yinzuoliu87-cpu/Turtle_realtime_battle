@@ -52,7 +52,7 @@ const TEXT_MERGE := "3 件同名同星装备自动合成升星"
 const TEXT_SERVER := "本场由服务器判定 · 退出不影响结果"
 const TEXT_TRAINER := "训龟大师在战斗中施放所选技能"
 ## 本周赛程页上那一句(用户 2026-10-21 定稿)。赛制名读 PHASE_LABEL(积分赛 / 闯关赛 / 决赛日), 星期与 phase_of_weekday 一致。
-const TEXT_WEEK := "斗龟场每周是一个赛季：周二到周五是%s，周六是%s，周日是%s，争夺冠军。每到周一，所有人从同一起点重新开始。"
+const TEXT_WEEK := "斗龟场每周是一个赛季：周二到周五是%s，周六到周日是%s和%s，争夺冠军。每到周一，所有人从同一起点重新开始。"
 
 const HOLD_SEC := 5.0
 const FADE_SEC := 0.3

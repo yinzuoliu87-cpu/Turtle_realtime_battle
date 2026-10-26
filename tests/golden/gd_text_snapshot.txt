@@ -367,21 +367,28 @@ scripts/gamedata/phase2_config.gd|lit|\n未收到验证码？请检查垃圾邮�
 scripts/gamedata/phase2_config.gd|lit|\n未绑定时进度仅保存在本设备。邮箱与昵称可随时修改。
 scripts/gamedata/phase2_config.gd|lit|一
 scripts/gamedata/phase2_config.gd|lit|三
+scripts/gamedata/phase2_config.gd|lit|下一场决定去留：胜则晋级决赛日，负则出局。
 scripts/gamedata/phase2_config.gd|lit|丶
 scripts/gamedata/phase2_config.gd|lit|乌龟
 scripts/gamedata/phase2_config.gd|lit|二
 scripts/gamedata/phase2_config.gd|lit|五
 scripts/gamedata/phase2_config.gd|lit|亚军
-scripts/gamedata/phase2_config.gd|lit|今日决赛日 · 前往对阵图参赛
-scripts/gamedata/phase2_config.gd|lit|今日决赛日 · 本周未晋级 · 下周一重置
-scripts/gamedata/phase2_config.gd|lit|今日决赛日 · 闯关赛止步 · 下周一重置
+scripts/gamedata/phase2_config.gd|lit|今天是决赛日，你本周未晋级闯关赛，可以观看决赛日的比赛。新一轮积分赛下周二开始。
+scripts/gamedata/phase2_config.gd|lit|今天是决赛日，你本周止步闯关赛，可以观看决赛日的比赛。新一轮积分赛下周二开始。
+scripts/gamedata/phase2_config.gd|lit|今天是决赛日，你的比赛在对阵图中进行。
 scripts/gamedata/phase2_config.gd|lit|休赛
 scripts/gamedata/phase2_config.gd|lit|休赛日 · 不开放对战
+scripts/gamedata/phase2_config.gd|lit|你已晋级周日决赛日。
+scripts/gamedata/phase2_config.gd|lit|你本周的闯关赛到此结束。
 scripts/gamedata/phase2_config.gd|lit|六
+scripts/gamedata/phase2_config.gd|lit|再胜 %d 场晋级决赛日，再负 %d 场出局。
+scripts/gamedata/phase2_config.gd|lit|再胜一场即可晋级决赛日。
+scripts/gamedata/phase2_config.gd|lit|再负一场，本周闯关赛即结束。
 scripts/gamedata/phase2_config.gd|lit|冠军
 scripts/gamedata/phase2_config.gd|lit|冠军杯赛
 scripts/gamedata/phase2_config.gd|lit|决赛日
 scripts/gamedata/phase2_config.gd|lit|双方同时开赛 · 结果于本轮开播时公布\n可在对阵图查看
+scripts/gamedata/phase2_config.gd|lit|周%s %02d:%02d
 scripts/gamedata/phase2_config.gd|lit|周一
 scripts/gamedata/phase2_config.gd|lit|周三
 scripts/gamedata/phase2_config.gd|lit|周二
@@ -410,6 +417,7 @@ scripts/gamedata/phase2_config.gd|lit|路人乙
 scripts/gamedata/phase2_config.gd|lit|路人甲
 scripts/gamedata/phase2_config.gd|lit|进入决赛日
 scripts/gamedata/phase2_config.gd|lit|闯关赛
+scripts/gamedata/phase2_config.gd|lit|闯关赛战绩 %s，
 scripts/gamedata/phase2_config.gd|lit|龟
 scripts/gamedata/phase2_equip.gd|lit|双穿
 scripts/gamedata/phase2_equip.gd|lit|反伤
@@ -877,8 +885,6 @@ scripts/scenes/GauntletBoardScene.gd|lit|%s 获胜
 scripts/scenes/GauntletBoardScene.gd|lit|上周闯关赛
 scripts/scenes/GauntletBoardScene.gd|lit|刚刚
 scripts/scenes/GauntletBoardScene.gd|lit|另一场
-scripts/scenes/GauntletBoardScene.gd|lit|周六赛况
-scripts/scenes/GauntletBoardScene.gd|lit|周六闯关赛对局结束后在此显示
 scripts/scenes/GauntletBoardScene.gd|lit|开赛
 scripts/scenes/GauntletBoardScene.gd|lit|当前版本不支持在线赛况
 scripts/scenes/GauntletBoardScene.gd|lit|战绩榜
@@ -896,6 +902,8 @@ scripts/scenes/GauntletBoardScene.gd|lit|读取中…
 scripts/scenes/GauntletBoardScene.gd|lit|负
 scripts/scenes/GauntletBoardScene.gd|lit|赛况暂无
 scripts/scenes/GauntletBoardScene.gd|lit|进行中
+scripts/scenes/GauntletBoardScene.gd|lit|闯关赛况
+scripts/scenes/GauntletBoardScene.gd|lit|闯关赛对局结束后在此显示
 scripts/scenes/GauntletBoardScene.gd|lit|（我）
 scripts/scenes/GauntletBoardScene.gd|text|%s 的对局
 scripts/scenes/InventoryScene.gd|lit|  无属性加成
@@ -963,7 +971,6 @@ scripts/scenes/InventoryScene.gd|tooltip_text|切换站位：前排近战 / 后�
 scripts/scenes/InventoryScene.gd|tooltip_text|单位装备上限 %d 件\n全队上限由赛季等级决定（当前 Lv%d：%d 件）%s
 scripts/scenes/LeaderboardScene.gd|lit|上周终榜
 scripts/scenes/LeaderboardScene.gd|lit|剩余生命
-scripts/scenes/LeaderboardScene.gd|lit|周六赛况
 scripts/scenes/LeaderboardScene.gd|lit|周日对阵图
 scripts/scenes/LeaderboardScene.gd|lit|已晋级
 scripts/scenes/LeaderboardScene.gd|lit|总场次
@@ -975,13 +982,13 @@ scripts/scenes/LeaderboardScene.gd|lit|查看对阵图
 scripts/scenes/LeaderboardScene.gd|lit|正在读取本周排行…
 scripts/scenes/LeaderboardScene.gd|lit|积分赛终榜
 scripts/scenes/LeaderboardScene.gd|lit|胜场
+scripts/scenes/LeaderboardScene.gd|lit|闯关赛况
 scripts/scenes/LeaderboardScene.gd|lit|（无法连接服务器）
 scripts/scenes/LeaderboardScene.gd|lit|（暂无其他玩家 · 对战后更新）
 scripts/scenes/LeaderboardScene.gd|lit|（暂无其他玩家）
 scripts/scenes/LeaderboardScene.gd|lit|（暂无对手数据）
 scripts/scenes/LeaderboardScene.gd|text|上周共 %d 人上榜
 scripts/scenes/LeaderboardScene.gd|text|你
-scripts/scenes/MainMenuScene.gd|lit| · 未使用 %d 场已折算：深海币 +%d · 经验 +%d
 scripts/scenes/MainMenuScene.gd|lit|%d 分 %02d 秒
 scripts/scenes/MainMenuScene.gd|lit|%d 天 %d 小时
 scripts/scenes/MainMenuScene.gd|lit|%d 小时 %d 分
@@ -989,7 +996,7 @@ scripts/scenes/MainMenuScene.gd|lit|%d 胜获得周六闯关赛资格
 scripts/scenes/MainMenuScene.gd|lit|%s 开始
 scripts/scenes/MainMenuScene.gd|lit|%s 截止
 scripts/scenes/MainMenuScene.gd|lit|不消耗生命
-scripts/scenes/MainMenuScene.gd|lit|今日休赛 · 积分赛周二开启
+scripts/scenes/MainMenuScene.gd|lit|今天休赛，积分赛周二开始。
 scripts/scenes/MainMenuScene.gd|lit|今日已截止
 scripts/scenes/MainMenuScene.gd|lit|全场赛况
 scripts/scenes/MainMenuScene.gd|lit|冠军、亚军、四强、组冠军获得头衔
@@ -998,9 +1005,7 @@ scripts/scenes/MainMenuScene.gd|lit|决赛日 · 未晋级
 scripts/scenes/MainMenuScene.gd|lit|决赛日 · 闯关赛止步 %s
 scripts/scenes/MainMenuScene.gd|lit|分钟备战
 scripts/scenes/MainMenuScene.gd|lit|周%s
-scripts/scenes/MainMenuScene.gd|lit|周%s %02d:%02d
 scripts/scenes/MainMenuScene.gd|lit|周%s ~ 周%s
-scripts/scenes/MainMenuScene.gd|lit|周六赛况
 scripts/scenes/MainMenuScene.gd|lit|周日对阵图
 scripts/scenes/MainMenuScene.gd|lit|商店
 scripts/scenes/MainMenuScene.gd|lit|图鉴
@@ -1009,22 +1014,13 @@ scripts/scenes/MainMenuScene.gd|lit|场次已用完
 scripts/scenes/MainMenuScene.gd|lit|好友
 scripts/scenes/MainMenuScene.gd|lit|已出局
 scripts/scenes/MainMenuScene.gd|lit|已截止 · 停止匹配
-scripts/scenes/MainMenuScene.gd|lit|已晋级决赛日（%s）· 周日开赛
-scripts/scenes/MainMenuScene.gd|lit|已晋级周六闯关赛
 scripts/scenes/MainMenuScene.gd|lit|已结束
-scripts/scenes/MainMenuScene.gd|lit|已过晋级线，可参加周六闯关赛
 scripts/scenes/MainMenuScene.gd|lit|开始战斗
 scripts/scenes/MainMenuScene.gd|lit|排行榜
 scripts/scenes/MainMenuScene.gd|lit|晋级者参加周日决赛日
 scripts/scenes/MainMenuScene.gd|lit|晋级闯关赛
-scripts/scenes/MainMenuScene.gd|lit|本周 %d 场已用完 · %s
-scripts/scenes/MainMenuScene.gd|lit|本周 %d 场已用完 · 下周一重置
 scripts/scenes/MainMenuScene.gd|lit|本周对战 %d/%d
-scripts/scenes/MainMenuScene.gd|lit|本周未晋级 · 下周一重置 · 积分赛 %d 胜可参加
-scripts/scenes/MainMenuScene.gd|lit|本周未晋级 · 积分赛生命已耗尽 · 下周一重置
 scripts/scenes/MainMenuScene.gd|lit|本周赛程
-scripts/scenes/MainMenuScene.gd|lit|本大轮已出局 · %s
-scripts/scenes/MainMenuScene.gd|lit|本大轮已出局 · 下周一重置
 scripts/scenes/MainMenuScene.gd|lit|本大轮首战后解锁
 scripts/scenes/MainMenuScene.gd|lit|条生命
 scripts/scenes/MainMenuScene.gd|lit|查看对阵图
@@ -1048,11 +1044,11 @@ scripts/scenes/MainMenuScene.gd|lit|负淘汰
 scripts/scenes/MainMenuScene.gd|lit|距%s开始 %s
 scripts/scenes/MainMenuScene.gd|lit|距截止 %s
 scripts/scenes/MainMenuScene.gd|lit|闯关赛 %d 胜可参加
-scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 已出局%s
-scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 已晋级决赛日%s
-scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 晋级还需 %d 胜 / 剩余 %d 负%s
+scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 已出局
+scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 已晋级决赛日
+scripts/scenes/MainMenuScene.gd|lit|闯关赛 %s · 晋级还需 %d 胜 / 剩余 %d 负
 scripts/scenes/MainMenuScene.gd|lit|闯关赛 · 未晋级
-scripts/scenes/MainMenuScene.gd|lit|闯关赛已出局（%s）· 下周一重置
+scripts/scenes/MainMenuScene.gd|lit|闯关赛况
 scripts/scenes/MainMenuScene.gd|lit|首战后解锁
 scripts/scenes/MatchmakingScene.gd|lit|一击三连
 scripts/scenes/MatchmakingScene.gd|lit|乌龟跑得快
@@ -1351,11 +1347,14 @@ scripts/scenes/battle/battle_hud.gd|lit|上传失败
 scripts/scenes/battle/battle_hud.gd|lit|倍速
 scripts/scenes/battle/battle_hud.gd|lit|假人HP
 scripts/scenes/battle/battle_hud.gd|lit|再来一局
+scripts/scenes/battle/battle_hud.gd|lit|决赛日%s %s 开始，你的比赛在对阵图中进行。
 scripts/scenes/battle/battle_hud.gd|lit|前往商店
 scripts/scenes/battle/battle_hud.gd|lit|剩余生命
+scripts/scenes/battle/battle_hud.gd|lit|周日决赛日可以观战，新一轮积分赛下周二开始。
 scripts/scenes/battle/battle_hud.gd|lit|大师
 scripts/scenes/battle/battle_hud.gd|lit|失败
 scripts/scenes/battle/battle_hud.gd|lit|左队(友军)
+scripts/scenes/battle/battle_hud.gd|lit|已晋级！
 scripts/scenes/battle/battle_hud.gd|lit|战报
 scripts/scenes/battle/battle_hud.gd|lit|掉血/不死
 scripts/scenes/battle/battle_hud.gd|lit|本周场次
@@ -1369,6 +1368,8 @@ scripts/scenes/battle/battle_hud.gd|lit|生命  %d / %d
 scripts/scenes/battle/battle_hud.gd|lit|生命已耗尽 · 本大轮已出局
 scripts/scenes/battle/battle_hud.gd|lit|精英
 scripts/scenes/battle/battle_hud.gd|lit|练习赛 · 不计入赛季进度
+scripts/scenes/battle/battle_hud.gd|lit|经验
+scripts/scenes/battle/battle_hud.gd|lit|结果已封存
 scripts/scenes/battle/battle_hud.gd|lit|胜利
 scripts/scenes/battle/battle_hud.gd|lit|表演赛 · 不消耗生命
 scripts/scenes/battle/battle_hud.gd|lit|装备星级
@@ -1378,10 +1379,9 @@ scripts/scenes/battle/battle_hud.gd|lit|赛季胜场 +1
 scripts/scenes/battle/battle_hud.gd|lit|返回主菜单
 scripts/scenes/battle/battle_hud.gd|lit|返回好友
 scripts/scenes/battle/battle_hud.gd|lit|返回菜单
-scripts/scenes/battle/battle_hud.gd|lit|闯关 %s · 不消耗生命
-scripts/scenes/battle/battle_hud.gd|lit|闯关 %s · 晋级决赛日
-scripts/scenes/battle/battle_hud.gd|lit|闯关 %s · 闯关赛出局
 scripts/scenes/battle/battle_hud.gd|lit|闯关战绩
+scripts/scenes/battle/battle_hud.gd|lit|闯关赛不消耗生命。
+scripts/scenes/battle/battle_hud.gd|lit|闯关赛还没打的 %d 场会在闯关赛结束后化成深海币 +%d 和经验 +%d。
 scripts/scenes/battle/battle_hud.gd|lit|阵容上传
 scripts/scenes/battle/battle_hud.gd|text|← 手指横滑挑龟(共28只+小将+大师) →   点一格选笔刷 → 点战场连点连摆 · 点已摆的龟→出配置面板
 scripts/scenes/battle/battle_hud.gd|text|友军
@@ -1634,7 +1634,6 @@ scripts/scenes/battle/settle_screen.gd|lit|暂无战报
 scripts/scenes/battle/settle_screen.gd|lit|本场
 scripts/scenes/battle/settle_screen.gd|lit|本场 MVP
 scripts/scenes/battle/settle_screen.gd|lit|治疗
-scripts/scenes/battle/settle_screen.gd|lit|结果已封存
 scripts/scenes/battle/settle_screen.gd|lit|胜
 scripts/scenes/battle/settle_screen.gd|lit|胜利
 scripts/scenes/battle/settle_screen.gd|lit|负
@@ -1856,6 +1855,19 @@ scripts/scenes/map_editor.gd|text|清空
 scripts/scenes/map_editor.gd|text|重载
 scripts/scenes/map_editor.gd|text|💾保存
 scripts/scenes/map_editor.gd|text|🖌 地图编辑器 (左键刷格 · MAPEDIT)
+scripts/scenes/menu_weekend.gd|lit|你以 %s 晋级周日决赛日，闯关赛已经打完。决赛日%s %s 开始。
+scripts/scenes/menu_weekend.gd|lit|你已晋级周六闯关赛，周六可以继续参赛。
+scripts/scenes/menu_weekend.gd|lit|你本周的 %d 条生命已经用完，无法再参加积分赛。周六可以观看闯关赛，%s
+scripts/scenes/menu_weekend.gd|lit|你本周的积分赛生命已经用完，未能晋级闯关赛。可以观看其他玩家的闯关赛，%s
+scripts/scenes/menu_weekend.gd|lit|你本周的闯关赛已经结束（%s）。周日决赛日可以观战，%s
+scripts/scenes/menu_weekend.gd|lit|你的积分赛生命已经用完，但%s
+scripts/scenes/menu_weekend.gd|lit|新一轮积分赛下周二开始。
+scripts/scenes/menu_weekend.gd|lit|本周积分赛的 %d 场已经全部打完。%s
+scripts/scenes/menu_weekend.gd|lit|本周积分赛的 %d 场已经全部打完，未能晋级闯关赛。周六可以观看闯关赛，%s
+scripts/scenes/menu_weekend.gd|lit|胜场已过晋级线，可以参加周六闯关赛。
+scripts/scenes/menu_weekend.gd|lit|观看全场赛况 »
+scripts/scenes/menu_weekend.gd|lit|观看对阵图 »
+scripts/scenes/menu_weekend.gd|lit|闯关赛只对积分赛 %d 胜晋级的玩家开放。你本周未晋级，可以观看其他玩家的闯关赛，%s
 scripts/scenes/record/match_card.gd|lit|版本不同
 scripts/scenes/settings/account_delete_dialog.gd|lit|下一步
 scripts/scenes/settings/account_delete_dialog.gd|lit|删除中
@@ -1968,6 +1980,30 @@ scripts/scenes/version_wall.gd|lit|前往更新
 scripts/scenes/version_wall.gd|lit|当前版本 %s　·　最低版本 %s
 scripts/scenes/version_wall.gd|lit|当前版本已停止服务，请更新到最新版本后继续。
 scripts/scenes/version_wall.gd|lit|需要更新
+scripts/scenes/week_close_card.gd|lit|关闭
+scripts/scenes/week_close_card.gd|lit|决赛日%s %s 开始，你的比赛在对阵图中进行。
+scripts/scenes/week_close_card.gd|lit|决赛日可以观战，新一轮积分赛下周二开始。
+scripts/scenes/week_close_card.gd|lit|决赛日可以观战，看看晋级的玩家怎样搭配阵容。新一轮积分赛下周二开始。
+scripts/scenes/week_close_card.gd|lit|决赛日已经开始，你的比赛在对阵图中进行。
+scripts/scenes/week_close_card.gd|lit|好的
+scripts/scenes/week_close_card.gd|lit|恭喜，你以 %d 胜 %d 负晋级周日决赛日。
+scripts/scenes/week_close_card.gd|lit|恭喜，你在本周积分赛中取得 %d 胜 %d 负，晋级闯关赛。
+scripts/scenes/week_close_card.gd|lit|本周积分赛你取得 %d 胜 %d 负，距晋级线还差 %d 胜，未能晋级闯关赛。
+scripts/scenes/week_close_card.gd|lit|本周积分赛你的 %d 条生命已经用完，最终战绩 %d 胜 %d 负，未能晋级闯关赛。
+scripts/scenes/week_close_card.gd|lit|本周还没打的 %d 场化成了下面的奖励。
+scripts/scenes/week_close_card.gd|lit|查看对阵图
+scripts/scenes/week_close_card.gd|lit|深海币
+scripts/scenes/week_close_card.gd|lit|积分赛已晋级
+scripts/scenes/week_close_card.gd|lit|积分赛已结束
+scripts/scenes/week_close_card.gd|lit|经验
+scripts/scenes/week_close_card.gd|lit|观战
+scripts/scenes/week_close_card.gd|lit|闯关赛 %d 胜晋级决赛日、%d 负出局，%s 截止。
+scripts/scenes/week_close_card.gd|lit|闯关赛和决赛日都可以观战，看看晋级的玩家怎样搭配阵容。新一轮积分赛下周二开始。
+scripts/scenes/week_close_card.gd|lit|闯关赛已在 %s 截止，你的最终战绩 %d 胜 %d 负，未能晋级决赛日。
+scripts/scenes/week_close_card.gd|lit|闯关赛已截止
+scripts/scenes/week_close_card.gd|lit|闯关赛已晋级
+scripts/scenes/week_close_card.gd|lit|闯关赛还没打的 %d 场化成了下面的奖励。
+scripts/scenes/week_close_card.gd|lit|领取
 scripts/systems/equip/bow_synergy_system.gd|lit|弓箭
 scripts/systems/equip/eq_blood_combo.gd|lit|护盾+
 scripts/systems/equip/eq_bow_batch.gd|lit|弓箭
@@ -2012,7 +2048,7 @@ scripts/systems/equip/timestop_system.gd|lit|+%d龟能
 scripts/systems/onboarding/first_tips.gd|lit|%s · 点击查看规则
 scripts/systems/onboarding/first_tips.gd|lit|3 件同名同星装备自动合成升星
 scripts/systems/onboarding/first_tips.gd|lit|开始第一场对战
-scripts/systems/onboarding/first_tips.gd|lit|斗龟场每周是一个赛季：周二到周五是%s，周六是%s，周日是%s，争夺冠军。每到周一，所有人从同一起点重新开始。
+scripts/systems/onboarding/first_tips.gd|lit|斗龟场每周是一个赛季：周二到周五是%s，周六到周日是%s和%s，争夺冠军。每到周一，所有人从同一起点重新开始。
 scripts/systems/onboarding/first_tips.gd|lit|本场由服务器判定 · 退出不影响结果
 scripts/systems/onboarding/first_tips.gd|lit|羁绊已激活 · 点击查看详情
 scripts/systems/onboarding/first_tips.gd|lit|训龟大师在战斗中施放所选技能
@@ -2048,11 +2084,11 @@ scripts/systems/replay/referee_watch.gd|lit|战绩已同步，请重新开战
 scripts/systems/replay/referee_watch.gd|lit|本周闯关已结束
 scripts/systems/replay/referee_watch.gd|lit|正在提交阵容
 scripts/systems/replay/referee_watch.gd|lit|正在结算
+scripts/systems/replay/referee_watch.gd|lit|现在不是闯关赛时间
 scripts/systems/replay/referee_watch.gd|lit|结算失败，请重新开战
 scripts/systems/replay/referee_watch.gd|lit|胜利
 scripts/systems/replay/referee_watch.gd|lit|连接服务器后才能比赛
 scripts/systems/replay/referee_watch.gd|lit|闯关 %s · %s
-scripts/systems/replay/referee_watch.gd|lit|闯关赛仅限周六
 scripts/systems/replay/referee_watch.gd|lit|阵容无效，请检查背包
 scripts/systems/replay/replay_fetcher.gd|lit|分组已失效
 scripts/systems/replay/replay_fetcher.gd|lit|回放不存在（每周二清理上周回放）

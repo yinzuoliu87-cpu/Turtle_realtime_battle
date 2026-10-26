@@ -7,7 +7,7 @@ extends Node
 ## 量的是**真入口**: 环境变量 `TURTLE_FAKE_NOW` 走 `phase2_config.now_utc()` 第一次读时钟那条路;
 ## 主菜单赛程条「今」与角标是真把 MainMenu.tscn 建出来数节点; 设置页按钮/弹层是真建 SettingsScene。
 ##   ① `sat 15:00` ⇒ phase_at_utc(now_utc()) = 闯关赛, 主菜单赛程条「今」落在闯关赛那格, 角标在
-##   ② `sun 08:05` ⇒ 决赛日
+##   ② `sun 19:05` ⇒ 决赛日; `sun 08:05` ⇒ 仍是闯关赛(2026-10-26 起闯关赛打到周日 17:30 UTC)
 ##   ③ 时间随真实流逝往前走(不是冻住)
 ##   ④ 正式包条件(SHIP 环境变量 = 项目现成的「按正式包语义跑」开关)下: 环境变量/已有偏移/设置页入口全无效
 ##   ⑤ 「恢复真实时间」后回到真实, 环境变量不会再冒回来
@@ -132,16 +132,23 @@ func _ready() -> void:
 		str(m1[0]))
 	_ok("① 主菜单角落有「测试时间 周六 15:00 UTC · 不联网」", str(m1[1]) == "测试时间 周六 15:00 UTC · 不联网", "'%s'" % str(m1[1]))
 
-	# ── ② sun 08:05 ──
-	print("── ② TURTLE_FAKE_NOW=sun 08:05 ⇒ 决赛日 ──")
+	# ── ② sun 08:05 / sun 19:05 ──
+	## ★2026-10-26 闯关赛收盘挪到周日 17:30 UTC ⇒ 周日上午是闯关赛, 决赛日要穿到 17:30 之后(钉 19:05)
+	print("── ② TURTLE_FAKE_NOW=sun 08:05 ⇒ 仍是闯关赛 / sun 19:05 ⇒ 决赛日 ──")
 	_boot_with_env("sun 08:05")
+	var n2a: int = P2.now_utc()
+	var d2a: Dictionary = Time.get_datetime_dict_from_unix_time(n2a)
+	_ok("② ★周日 08:05 ⇒ phase_at_utc(now_utc()) = 闯关赛(收盘在 17:30)",
+		P2.phase_at_utc(n2a) == P2.PHASE_GAUNTLET and P2.iso_weekday_utc(n2a) == 7 and int(d2a.hour) == 8,
+		"%s wd=%d %02d:%02d" % [P2.phase_at_utc(n2a), P2.iso_weekday_utc(n2a), int(d2a.hour), int(d2a.minute)])
+	_boot_with_env("sun 19:05")
 	var n2: int = P2.now_utc()
 	var d2: Dictionary = Time.get_datetime_dict_from_unix_time(n2)
 	_ok("② phase_at_utc(now_utc()) = 决赛日", P2.phase_at_utc(n2) == P2.PHASE_FINALS, P2.phase_at_utc(n2))
-	_ok("② 星期日 08:05 UTC", P2.iso_weekday_utc(n2) == 7 and int(d2.hour) == 8 and int(d2.minute) == 5,
+	_ok("② 星期日 19:05 UTC", P2.iso_weekday_utc(n2) == 7 and int(d2.hour) == 19 and int(d2.minute) == 5,
 		"wd=%d %02d:%02d" % [P2.iso_weekday_utc(n2), int(d2.hour), int(d2.minute)])
-	_ok("② 中文简写同义: 周日 08:05 解析成同一刻",
-		P2.parse_fake_now("周日 08:05", _real()) == P2.parse_fake_now("SUN 08:05", _real()))
+	_ok("② 中文简写同义: 周日 19:05 解析成同一刻",
+		P2.parse_fake_now("周日 19:05", _real()) == P2.parse_fake_now("SUN 19:05", _real()))
 
 	# ── ③ 时间往前走 ──
 	print("── ③ 假起点 + 真实流逝 ──")
@@ -158,7 +165,7 @@ func _ready() -> void:
 	print("── ④ 正式包条件(SHIP) 下一律无效 ──")
 	OS.set_environment("SHIP", "1")
 	_ok("④ time_travel_allowed() = false", not P2.time_travel_allowed())
-	## 已有偏移(上一步 sun 08:05 留下的)也不许生效 —— 判据在每次读时钟时都判
+	## 已有偏移(上一步 sun 19:05 留下的)也不许生效 —— 判据在每次读时钟时都判
 	var r4: int = _real()
 	_ok("④ 已有的穿越偏移被无视: now_utc() == 真实时间", abs(P2.now_utc() - r4) <= 1,
 		"now_utc-real=%d (offset 仍是 %d)" % [P2.now_utc() - r4, P2.travel_offset_sec])
@@ -222,15 +229,25 @@ func _ready() -> void:
 		var n5: int = P2.now_utc()
 		_ok("⑤b 选周六 15:00 → 穿越 ⇒ 闯关赛", P2.phase_at_utc(n5) == P2.PHASE_GAUNTLET and P2.travel_active(),
 			P2.travel_label(n5))
+		## ★2026-10-26 周日上午仍是闯关赛, 决赛日从 17:30 起 ⇒ 两侧各穿一次
 		panel.pick_day(7)
 		panel.hour = 8
 		panel.minute = 0
 		panel.nudge(5)
 		panel.apply()
+		var n6a: int = P2.now_utc()
+		var d6a: Dictionary = Time.get_datetime_dict_from_unix_time(n6a)
+		_ok("⑤b 选周日 08:00 再 +5 分 → 仍是闯关赛 08:05",
+			P2.phase_at_utc(n6a) == P2.PHASE_GAUNTLET and int(d6a.hour) == 8 and int(d6a.minute) == 5, P2.travel_label(n6a))
+		panel.pick_day(7)
+		panel.hour = 19
+		panel.minute = 0
+		panel.nudge(5)
+		panel.apply()
 		var n6: int = P2.now_utc()
 		var d6: Dictionary = Time.get_datetime_dict_from_unix_time(n6)
-		_ok("⑤b 选周日 08:00 再 +5 分 → 决赛日 08:05",
-			P2.phase_at_utc(n6) == P2.PHASE_FINALS and int(d6.hour) == 8 and int(d6.minute) == 5, P2.travel_label(n6))
+		_ok("⑤b 选周日 19:00 再 +5 分 → 决赛日 19:05",
+			P2.phase_at_utc(n6) == P2.PHASE_FINALS and int(d6.hour) == 19 and int(d6.minute) == 5, P2.travel_label(n6))
 		panel.reset()
 		_ok("⑤b 弹层「恢复真实时间」⇒ 回到真实", not P2.travel_active() and abs(P2.now_utc() - _real()) <= 1)
 		panel.close()

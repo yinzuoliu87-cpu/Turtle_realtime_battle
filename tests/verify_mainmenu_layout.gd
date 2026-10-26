@@ -503,8 +503,12 @@ func _ready() -> void:
 		## 周六/周日: 喂已知日期给产品函数 —— 计数条不建, 模式卡第二行 == 当天读数(去掉与标题重复的赛制名)
 		var wk_bad: Array = []
 		var wk_n := 0
-		for d_g in [6, 0]:
-			var ts_g: int = 1789862400 + d_g * 86400 + 12 * 3600
+		## ★2026-10-26 闯关赛收盘挪到周日 17:30 UTC ⇒ 周日钉两个点: 12:00(仍是闯关赛) / 19:00(决赛日)
+		var wk_pins: Array = [1789862400 + 6 * 86400 + 12 * 3600, 1789862400 + 12 * 3600, 1789862400 + 19 * 3600]
+		var wk_ph: Dictionary = {}
+		for d_g in range(wk_pins.size()):
+			var ts_g: int = int(wk_pins[d_g])
+			wk_ph[str(_P2A.phase_at_utc(ts_g))] = true
 			var st_g: String = str(_menu._phase_status_line(ts_g))
 			var ln_g: Array = _menu.mode_card_lines(ts_g)
 			if st_g == "":
@@ -514,7 +518,9 @@ func _ready() -> void:
 				wk_bad.append("%d: 周末还建计数条" % d_g)
 			if str(ln_g[1]) == "" or not st_g.ends_with(str(ln_g[1])):
 				wk_bad.append("%d: 卡第二行「%s」不是当天读数「%s」" % [d_g, str(ln_g[1]), st_g])
-		_ok("ⓖ ★分母: 周六周日两天都有当天读数", wk_n == 2, "%d" % wk_n)
+		_ok("ⓖ ★分母: 周六 / 周日上午 / 周日晚上三个钉点都有当天读数", wk_n == 3, "%d" % wk_n)
+		_ok("ⓖ ★分母: 三个钉点覆盖闯关赛与决赛日两个阶段(只有一个 = 另一半没验)",
+			wk_ph.size() == 2 and wk_ph.has(_P2A.PHASE_GAUNTLET) and wk_ph.has(_P2A.PHASE_FINALS), str(wk_ph.keys()))
 		_ok("ⓖ ★周六/周日: 没有计数条、模式卡第二行 == 当天读数", wk_bad.is_empty(), str(wk_bad))
 		_ok("ⓓ ★主 CTA 面积 ≥ 训龟大师 1.8 倍", (hr.size.x * hr.size.y) >= (tr.size.x * tr.size.y) * 1.8,
 			"%.2f 倍" % ((hr.size.x * hr.size.y) / maxf(1.0, tr.size.x * tr.size.y)))
@@ -571,14 +577,22 @@ func _ready() -> void:
 			## 七天每天都说对: 喂七个已知日期, 第一行 == 那天的赛制(查表)
 			var wrong_e: Array = []
 			var cds: Dictionary = {}
-			for d_e in range(7):
+			## ★2026-10-26 闯关赛收盘挪到周日 17:30 UTC ⇒ 周日钉 19:00 才是决赛日(查表那一格);
+			##   另加一个周日 12:00, 期望写死成闯关赛(那张表周日只能答一个, 答不了上午)。
+			for d_e in range(8):
 				var ts_e: int = 1789862400 + d_e * 86400 + 12 * 3600
+				var want_key: String = str(_P2A.phase_of_weekday(7 if d_e == 0 else d_e))
+				if d_e == 0:
+					ts_e = 1789862400 + 19 * 3600
+				elif d_e == 7:
+					ts_e = 1789862400 + 12 * 3600
+					want_key = _P2A.PHASE_GAUNTLET
 				var ln_e: Array = _menu.mode_card_lines(ts_e)
-				var want_ph: String = str(_P2A.PHASE_LABEL.get(_P2A.phase_of_weekday(7 if d_e == 0 else d_e), "?"))
+				var want_ph: String = str(_P2A.PHASE_LABEL.get(want_key, "?"))
 				if str(ln_e[0]) != want_ph:
 					wrong_e.append("%d:%s≠%s" % [d_e, str(ln_e[0]), want_ph])
 				cds[str(ln_e[2])] = true
-			_ok("ⓔ ★七天各喂一次: 卡上的赛制 == 那天的赛制", wrong_e.is_empty(), str(wrong_e))
+			_ok("ⓔ ★七天(周日 19:00)+ 周日 12:00 各喂一次: 卡上的赛制 == 那一刻的赛制", wrong_e.is_empty(), str(wrong_e))
 			_ok("ⓔ ★分母: 七天的倒计时行至少 4 种(一种 = 没跟着时间走)", cds.size() >= 4, str(cds.keys()))
 
 	# ── ⓕ ★点模式卡 ⇒ 打开本周赛程页(2026-10-06: 七格横条 → 整页四张阶段卡, 照荒野乱斗「CHOOSE EVENT」) ──
@@ -772,7 +786,9 @@ func _ready() -> void:
 		"周一休赛": [1789344000, "note"],
 		"周四积分赛": [1789603200, "countdown"],
 		"周六闯关赛": [1789776000, "board_door"],
-		"周日决赛日": [1789862400, "door"],
+		## ★2026-10-26 闯关赛收盘挪到周日 17:30 UTC ⇒ 决赛日那张钉 19:00; 周日上午仍是闯关赛, 挂的是「全场赛况」那扇门
+		"周日决赛日": [1789862400 + 19 * 3600, "door"],
+		"周日上午闯关赛": [1789862400 + 12 * 3600, "board_door"],
 	}
 	for dn in DAYS.keys():
 		var ts_d: int = int((DAYS[dn] as Array)[0])
@@ -824,7 +840,7 @@ func _ready() -> void:
 	#    只在 `strip_finals_live_override` 把决赛日手动按成"没上线"时才上屏 ⇒ 这里把那个局面**真的造出来**再量。
 	var _ov0: int = int(_menu.strip_finals_live_override)
 	_menu.strip_finals_live_override = 0          # 0 = 手动按成「玩法没上线」
-	var sun_ts: int = 1789862400                  # 周日(与 ⑬c 同一个时刻)
+	var sun_ts: int = 1789862400 + 19 * 3600      # 周日 19:00 决赛日(与 ⑬c 同一个时刻; 2026-10-26 前钉 00:00)
 	_ok("⑬e ★分母①: 这个局面真是 BK_PENDING(纯静态函数穷举得到)",
 		MENU_S.close_block_kind(_P2M.PHASE_FINALS, false, false, -1, false) == MENU_S.BK_PENDING,
 		str(MENU_S.close_block_kind(_P2M.PHASE_FINALS, false, false, -1, false)))
@@ -903,41 +919,46 @@ func _ready() -> void:
 				_menu._start_battle_flow()
 			else:
 				_menu._open_shop()
+			## ★2026-10-26 被拦不再是顶部飘字, 是一张卡(`BLOCK_CARD_NAME`, 正文在 Body0)。
 			var toast_txt := ""
 			var new_kids: Array = []
 			for ch_t in _menu.get_children():
 				if not before_kids.has(ch_t):
 					new_kids.append(ch_t)
-					if ch_t is Label:
-						toast_txt = str((ch_t as Label).text)
-			_ok("⑬d ★分母(%s): 真多出了一个子节点且是一行字" % case_name,
+					if str(ch_t.name) == str(MENU_S.BLOCK_CARD_NAME):
+						var b0 = ch_t.find_child("Body0", true, false)
+						toast_txt = str((b0 as Label).text) if b0 is Label else ""
+			_ok("⑬d ★分母(%s): 真多出了一个子节点且是那张拦截卡(正文非空)" % case_name,
 				new_kids.size() == 1 and toast_txt != "",
 				"新增 %d 个子节点, 文字「%s」" % [new_kids.size(), toast_txt])
 			var want_msg: String = _menu._msg_eliminated() if case_name == "出局" \
 				else _menu._msg_quota_full()
 			_ok("⑬d ★%s: 飘的就是 _msg_*() 那一句(两个入口不许各写一份)" % case_name,
 				toast_txt == want_msg, "飘出「%s」· 函数给「%s」" % [toast_txt, want_msg])
-			## ★★没晋级的人**不许**被指向闯关赛(他周六根本打不了), 也不许提「观战」
-			##   (观赛入口是 F 阶段, 一行都没有)。这条判据写死, 不问被测函数。
+			## ★★没晋级的人**不许**被告知「能参加」闯关赛(他周六根本打不了), 而且要说下一次机会在下周。
+			##   2026-10-26 改: 原来连「观战」都不许提(那时观赛入口一行都没有); 现在全场赛况已经有了,
+			##   「周六可以观看闯关赛」是真会发生的事 ⇒ 判据只卡「能参加」这一维。写死, 不问被测函数。
 			##   ⚠ 前提: 上面把 `promoted` 置成了 false, 见那一行的分母断言。
-			_ok("⑬d ★%s: 没晋级 → 不许说「闯关赛」「观战」" % case_name,
-				toast_txt.find("闯关赛") < 0 and toast_txt.find("观战") < 0, toast_txt)
+			_ok("⑬d ★%s: 没晋级 → 不许说能参加闯关赛, 要说下周" % case_name,
+				toast_txt.find("可以参加") < 0 and toast_txt.find("继续参赛") < 0 and toast_txt.find("下周") >= 0, toast_txt)
 			for ch_c in new_kids:
+				_menu.remove_child(ch_c)
 				ch_c.queue_free()
 		## ★★晋级了的人**应该**被指向周六 —— 反过来也验一遍, 否则
 		##   「永远不说闯关赛」也能让上面那条绿(一条判据只卡住一个方向 = 半条判据)。
 		gs_m.promoted = true
 		gs_m.hearts = 0
 		var promo_txt := ""
-		var kids0: Array = _menu.get_children()
 		_menu._start_battle_flow()
-		for ch_p in _menu.get_children():
-			if not kids0.has(ch_p) and ch_p is Label:
-				promo_txt = str((ch_p as Label).text)
-				ch_p.queue_free()
-		_ok("⑬d ★分母: 晋级态下真飘出了提示", promo_txt != "", promo_txt)
-		_ok("⑬d ★★0 命但已晋级 → 要说周六闯关赛(不是「下周一」)",
-			promo_txt.find("闯关赛") >= 0 and promo_txt.find("下周一") < 0, promo_txt)
+		var pc: Node = _menu.get_node_or_null(str(MENU_S.BLOCK_CARD_NAME))
+		if pc != null:
+			var pb = pc.find_child("Body0", true, false)
+			promo_txt = str((pb as Label).text) if pb is Label else ""
+			_menu.remove_child(pc)
+			pc.queue_free()
+		_ok("⑬d ★分母: 晋级态下真弹出了拦截卡", promo_txt != "", promo_txt)
+		_ok("⑬d ★★0 命但已晋级 → 要说周六能继续参加闯关赛(不是「下周」)",
+			promo_txt.find("闯关赛") >= 0 and promo_txt.find("继续参赛") >= 0 and promo_txt.find("下周") < 0, promo_txt)
 
 		gs_m.hearts = kp_h
 		gs_m.ranked_used = kp_u

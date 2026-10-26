@@ -1427,7 +1427,10 @@ func _on_start() -> void:
 	##   memory `fb-second-clock-drops-events`。
 	## ★两个 override 都是 0 时**逐字节等价**于原来那一行(玩家路径一字未动)。
 	var _now: int = lockout_now_override if lockout_now_override > 0 else int(_P2C.now_utc())
-	if not _P2C.can_start_match_utc(_now):
+	## ★2026-10-26 闯关赛收盘(周日 17:30)那一刻阶段直接翻成决赛日, 而决赛日「没有收盘概念」⇒ can_start 恒真。
+	##   17:20 前进了选队、17:30 后才点开打的人会开出一局被戳成 finals 的普通对局(白拿决赛结算)。
+	##   决赛那一场只从对阵图开(`BracketMapScene.stamp_finals_match`), 不经过这里 ⇒ 决赛日这里一律不放。
+	if not _P2C.can_start_match_utc(_now) or _P2C.phase_at_utc(_now) == _P2C.PHASE_FINALS:
 		_lockout_toast()
 		return
 

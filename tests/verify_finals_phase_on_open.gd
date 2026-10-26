@@ -29,8 +29,10 @@ func _ready() -> void:
 	print("=== 周日对阵图开战 ⇒ 按决赛日结算 ===")
 	var keep_phase := str(GameState.week_phase)
 	var keep_match: Dictionary = (GameState.finals_match as Dictionary).duplicate(true)
-	var sun: int = P2.week_anchor_utc(int(Time.get_unix_time_from_system())) + 6 * 86400 + 10 * 3600
-	var sat: int = sun - 86400
+	## ★2026-10-26 闯关赛收盘挪到周日 17:30 UTC ⇒ 「周日 = 决赛日」钉 19:00(原来钉 10:00, 现在那是闯关赛);
+	##   周日 10:00 留作 ② 的对照: 那一刻按时钟是闯关赛, 而对阵图开的局仍必须是决赛。
+	var sun: int = P2.week_anchor_utc(int(Time.get_unix_time_from_system())) + 6 * 86400 + 19 * 3600
+	var sun_am: int = sun - 9 * 3600
 
 	## ① 复现现场: 周六选过队(存档里是 gauntlet), 周日从对阵图直接开战
 	var keep_dual := bool(GameState.dual_active)
@@ -48,10 +50,17 @@ func _ready() -> void:
 	_ok("① finals_match 四个键照旧写上", int(fm.get("bucket", -9)) == 0 and int(fm.get("round", -9)) == 1
 		and int(fm.get("match", -9)) == 3 and int(fm.get("side", -9)) == 1, str(fm))
 
-	## ② 对照: 阶段是从【开局时钟】算的, 不是写死 finals
-	MAP.stamp_finals_match(GameState, 0, 1, 3, 1, sat)
-	_ok("② 对照: 换成周六的时钟 ⇒ 阶段跟着变成闯关赛(证明读的是时钟不是常量)",
-		str(GameState.week_phase) == P2.PHASE_GAUNTLET, str(GameState.week_phase))
+	## ② ★★2026-10-26 判据反过来了: 原来是「阶段从开局时钟算, 换成周六时钟就变闯关赛」。
+	##   闯关赛打到周日 17:30 之后, 周日上午按时钟是**闯关赛** —— 而对阵图上开的那一局**就是决赛**,
+	##   产品改成显式戳 PHASE_FINALS(`BracketMapScene.stamp_finals_match`, 不再读 `now_utc`)。
+	##   ⇒ 量「时钟说闯关赛的那一刻, 对阵图开局照样戳成决赛」, 并先证明那一刻时钟确实说的是闯关赛。
+	_ok("② ★分母: 周日 10:00 按时钟是闯关赛(收盘 17:30 之前) —— 下一条才不是恒真",
+		P2.phase_at_utc(sun_am) == P2.PHASE_GAUNTLET, P2.phase_at_utc(sun_am))
+	GameState.week_phase = P2.PHASE_GAUNTLET
+	MAP.stamp_finals_match(GameState, 0, 1, 3, 1, sun_am)
+	_ok("② ★★周日上午(时钟仍是闯关赛)从对阵图开战 ⇒ week_phase 仍是决赛日(不跟时钟走)",
+		str(GameState.week_phase) == P2.PHASE_FINALS, str(GameState.week_phase))
+	_ok("② ★★结算口径 = SETTLE_FINALS", _kind() == P2.SETTLE_FINALS, _kind())
 
 	## ③ 真入口: _try_start_match 必须经过这一步, 不许再就地只写 finals_match
 	var src := FileAccess.get_file_as_string("res://scripts/scenes/BracketMapScene.gd")

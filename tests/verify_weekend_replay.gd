@@ -657,7 +657,8 @@ func _t_bracket() -> void:
 	_ok("⑤ finals_replay 是读(时间穿越期间不拦)", not SB.is_write_request("POST", "http://x/rest/v1/rpc/finals_replay"))
 	## ★2026-10-19: 钉在本周的周日正午。原来用真实时钟 ⇒ 周一起对阵图看上周、只能看不能打(用户「保留到周一」)
 	##   ⇒ 周一跑「我这一场仍是上场开打」与「问的是本周」必红 —— 判据挂在星期几上。
-	var now := P2C.week_anchor_utc(int(Time.get_unix_time_from_system())) + 6 * 86400 + 12 * 3600
+	## ★2026-10-26 闯关赛收盘挪到周日 17:30 UTC ⇒ 周日正午是闯关赛、小组赛 18:00 才开 ⇒ 钉 19:00(小组赛进行中)
+	var now := P2C.week_anchor_utc(int(Time.get_unix_time_from_system())) + 6 * 86400 + 19 * 3600
 	var wk := P2C.week_anchor_utc(now)
 	## 8 人组, 第 2 轮进行中: 第 1 轮 4 场已翻面, 第 2 轮 2 场当前轮, 第 3 轮未到。
 	var ents: Array = []
@@ -746,15 +747,33 @@ func _t_mainmenu_door() -> void:
 	_ok("⑥ 分母: 那一刻是周六闯关赛", P2C.phase_at_utc(sat) == P2C.PHASE_GAUNTLET)
 	## ★2026-10-06 赛程从七格横条换成整页四张卡: 那扇门挂在**闯关赛那张卡**上。
 	##   建真卡(`_week_card(week_card_info(...))`)再找按钮 —— 量的是画出来的东西, 不只问数据。
-	var close_sat := P2C.gauntlet_close_ts(mon) + 600
-	var blk2: Node = mm._week_card(mm.week_card_info(P2C.PHASE_GAUNTLET, close_sat))
+	## ★★2026-10-26 闯关赛收盘挪到周日 17:30 UTC, 收盘那一刻阶段直接翻成决赛日 ⇒ 原来「周六 23:00 收盘后到午夜,
+	##   闯关赛那张还是今天、写「今日已截止」+ 门」那一小时**不存在了**。同一件事(收尾时段还看得到全场赛况)
+	##   现在落在**封盘窗**里: 17:20~17:30 卡上写「已截止」、门还在、决赛日那张写开始时刻;
+	##   收盘之后闯关赛那张「已结束」、今天换成决赛日那张(门通对阵图)。两侧各验一次。
+	var gclose := P2C.gauntlet_close_ts(mon)
+	var lock_t := gclose - 300                       # 周日 17:25(封盘窗内、收盘前)
+	_ok("⑥ 分母: 周日 17:25 仍是闯关赛且已封盘", P2C.phase_at_utc(lock_t) == P2C.PHASE_GAUNTLET
+		and not P2C.can_start_match_utc(lock_t), P2C.phase_at_utc(lock_t))
+	var blk2: Node = mm._week_card(mm.week_card_info(P2C.PHASE_GAUNTLET, lock_t))
 	var d2: Button = blk2.find_child("GauntletBoardDoor", true, false) as Button
 	var t2 := _labels_text(blk2)
-	var fin2: Dictionary = mm.week_card_info(P2C.PHASE_FINALS, close_sat)
-	_ok("⑥ 周六收盘后也还是门(正是看结果的时候), 卡上写「今日已截止」、决赛日那张写明天的开始时刻",
-		d2 != null and t2.find("今日已截止") >= 0 and t2.find("全场赛况") >= 0 and str(fin2["time"]).ends_with("开始"),
+	var fin2: Dictionary = mm.week_card_info(P2C.PHASE_FINALS, lock_t)
+	_ok("⑥ 封盘窗内(周日 17:25)还是门(正是看结果的时候), 卡上写「已截止」、决赛日那张写开始时刻",
+		d2 != null and t2.find("已截止") >= 0 and t2.find("全场赛况") >= 0 and str(fin2["time"]).ends_with("开始"),
 		"%s · 决赛日那张「%s」" % [t2, str(fin2["time"])])
 	blk2.free()
+	var after_t := gclose + 600                      # 周日 17:40(收盘后)
+	var gi3: Dictionary = mm.week_card_info(P2C.PHASE_GAUNTLET, after_t)
+	var fi3: Dictionary = mm.week_card_info(P2C.PHASE_FINALS, after_t)
+	var blk3: Node = mm._week_card(fi3)
+	var d3: Button = blk3.find_child("BracketDoor", true, false) as Button
+	_ok("⑥ ★收盘后(周日 17:40): 闯关赛那张已结束、今天换成决赛日那张, 门通对阵图",
+		str(gi3["state"]) == "past" and str(gi3["time"]) == str(mm.CARD_PAST_TEXT)
+		and str(fi3["state"]) == "now" and d3 != null and str(d3.text).find("对阵图") >= 0,
+		"闯关=%s「%s」· 决赛=%s 门=%s" % [str(gi3["state"]), str(gi3["time"]), str(fi3["state"]),
+			str(d3.text) if d3 != null else "无"])
+	blk3.free()
 	var nd: Node = mm._week_card(mm.week_card_info(P2C.PHASE_GAUNTLET, wed))
 	_ok("⑥ 平日(周三)不是门", nd.find_child("GauntletBoardDoor", true, false) == null)
 	nd.free()

@@ -1,4 +1,4 @@
-# 内测服轮询器的高峰停起（方案书 docs/plans/20261020-内测服.md §6.2）：周六全天、周日 17:30~24:00 UTC 停，其余时间起。
+# 内测服轮询器的高峰停起（方案书 docs/plans/20261020-内测服.md §6.2）：周六、周日全天 UTC（2026-10-26 起；原为周日 17:30 起） 停，其余时间起。
 # /etc/turtle-referee/beta-off 存在 ⇒ 一直停（运维手动关内测服裁判用）。按【真实】时间判（护的是正式服的核）。
 [Unit]
 Description=Turtle referee BETA: stop during production peak, start otherwise

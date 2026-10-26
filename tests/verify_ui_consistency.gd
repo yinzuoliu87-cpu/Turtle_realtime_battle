@@ -214,6 +214,17 @@ const SCREEN_DAY: Dictionary = {
 }
 const PIN_DAY_DEFAULT := 2          # 周三
 const PIN_HOUR_SEC := 12 * 3600     # 当天 12:00 UTC
+## ★★2026-10-26 闯关赛收盘挪到周日 17:30 UTC(方案书 20261026b-周六流程.md §4 G) ⇒ 周日 12:00 是**闯关赛**。
+##   「·周日」那两行原来钉 12:00, 改赛程后会**静默地**量成第二块闯关赛屏, 决赛日那块屏从此没人量。
+##   ⇒ 周日钉 19:00(收盘后、分组 18:00 之后); 并且每一行都先断言「钉的那一刻真是这一行要量的赛期」(`SCREEN_PHASE`)。
+const SCREEN_HOUR: Dictionary = {
+	"MainMenu·周日": 19 * 3600, "Leaderboard·周日": 19 * 3600,
+}
+## 钉在别的星期几的那几行, 钉的那一刻**应该**是哪个赛期(写死, 不问 phase_at_utc —— 那是拿被测函数当尺子)。
+const SCREEN_PHASE: Dictionary = {
+	"MainMenu·周一": "rest", "MainMenu·周六": "gauntlet", "MainMenu·周日": "finals",
+	"Leaderboard·周一": "rest", "Leaderboard·周六": "gauntlet", "Leaderboard·周日": "finals",
+}
 const _MAINMENU := preload("res://scripts/scenes/MainMenuScene.gd")
 
 
@@ -1709,8 +1720,12 @@ func _ready() -> void:
 	var _clk0: int = int(_P2CX.now_override_ts)
 	var _wk0: int = int(_P2CX.week_anchor_utc(int(_P2CX.now_utc())))
 	for scn in BASE.keys():
-		var _pin_ts: int = _wk0 + int(SCREEN_DAY.get(scn, PIN_DAY_DEFAULT)) * 86400 + PIN_HOUR_SEC
+		var _pin_ts: int = _wk0 + int(SCREEN_DAY.get(scn, PIN_DAY_DEFAULT)) * 86400 + int(SCREEN_HOUR.get(scn, PIN_HOUR_SEC))
 		_P2CX.now_override_ts = _pin_ts
+		if SCREEN_PHASE.has(scn):
+			_ok("★分母 %s: 钉的那一刻真是「%s」赛期(不是 = 这一行在量别的赛期的屏)" % [str(scn), str(SCREEN_PHASE[scn])],
+				str(_P2CX.phase_at_utc(_pin_ts)) == str(SCREEN_PHASE[scn]),
+				"钉 %s → %s" % [Time.get_datetime_string_from_unix_time(_pin_ts, true), _P2CX.phase_at_utc(_pin_ts)])
 		## ★★★每一屏开头先验「上一屏没把池注入留下来」。
 		##   `Backend.pool_override` 是 **static**, 活过场景切换 —— 漏清一次,
 		##   后面每一屏量的都是那份假池, 而**没有任何判据会发现**。
@@ -1792,9 +1807,10 @@ func _ready() -> void:
 		##   ⇒ 走它自己的真入口 `set_data()` 喂一个 8 人桶。
 		if str(scn) == "BracketMap" and inst.has_method("set_data"):
 			## 形状照 `verify_bracket_map.gd:385` 的真实用法, 不是我编的。
+			## ★2026-10-26 时刻从周日 10:00 改到 19:00: 闯关赛打到周日 17:30, 之前那段对阵图还没开门。
 			inst.set_data({"size": 8, "round": 2, "me": 2,
 				"names": ["甲龟", "乙龟", "丙龟", "丁龟", "戊龟", "己龟", "庚龟", "辛龟"],
-				"done": {"1:0": 0, "1:1": 1, "1:2": 0, "1:3": 1}}, {}, 1789862400 + 10 * 3600)
+				"done": {"1:0": 0, "1:1": 1, "1:2": 0, "1:3": 1}}, {}, 1789862400 + 19 * 3600)
 		## ★★★撑合屏要一条【冻住时序的缝】才量得到 —— 详见上面 `_mm_*` 那一节
 		##   与 `MatchmakingScene._may_leave_for_test` 的长注释。
 		##   ★注入必须在 `add_child` **之前**: `_ready` 是 add_child 那一刻起跑的。

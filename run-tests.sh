@@ -315,6 +315,7 @@ frames_for () {
     verify_replay_watch) echo 12000 ;;
     # 周末看回放: 录两局(每帧 1 步 sim, 各约 600 帧) + 赛况板 / 对阵图各进一次回放再退出; 本地实测 1930 帧, 给足 4 倍
     verify_weekend_replay) echo 8000 ;;
+    verify_weekend_close_cards) echo 4000 ;;   # 周末收盘卡(2026-10-26): 等卡弹出 / 币飞完按墙钟等(最长 8+6+5 秒), 本机实测 <3000 帧
     # 周末赛况留到周一(2026-10-19): 赛况板 / 对阵图 / 主菜单各实例化两三次 + 假传输同步回包; 给足 CI
     verify_weekend_visible_monday) echo 3000 ;;
     # 回放体验打磨: 录一局积分赛(每帧 3 步) + 4 倍速播完 + 1/2/4 倍各播一遍(多数帧不 await) + 收尾卡与主菜单入场各等一段墙钟;

@@ -38,7 +38,11 @@ extends RefCounted
 ##   **代价是夏天英国人看到的是 00:00 而不是 23:00** —— 用户认了。
 ## ★倒计时**按玩家本地时区显示**(E4): 常量存 UTC, **换算只发生在显示层**,
 ##   赛程逻辑里一律不做时区换算 —— 两边都换算必然有一边忘。
-const WEEK_CLOSE_HOUR_UTC := 23        # 收盘时刻(UTC 整点): 积分赛周五、闯关赛周六
+const WEEK_CLOSE_HOUR_UTC := 23        # 积分赛收盘时刻(UTC 整点): 周五 23:00
+## ★★2026-10-26 用户「截止时间不如改到周日桶赛之前呢」→ 选「周日 17:30 UTC」(分桶 18:00 前半小时)。
+##   原稿「## 三、闯关赛(周六,23:00 截止 ⚙)」标了 ⚙ 可调, 且原稿顺序是「闯关收盘 → 切桶」—— 顺序不变。
+##   方案书 docs/plans/20261026b-周六流程.md §4 G。闯关赛从周六 00:00 打到周日 17:30。
+const GAUNTLET_CLOSE_MIN_UTC := 17 * 60 + 30   # 闯关赛收盘: 周日(GAUNTLET_CLOSE_WD) 17:30, 以当天 UTC 分钟计
 ## ★★E3 拍板: 收盘前这么久**不让开新局**, 闸设在点「开打」那一刻(**不是**点匹配) ——
 ##   摆位不限时, 闸设在匹配就盖不住。实测依据(9457 场): 纯战斗最长 225 秒 + 固定呈现 35 秒 ≈ 4.3 分钟,
 ##   10 分钟留足余量(用户选的, 不是我按 P99 卡的)。
@@ -256,6 +260,27 @@ const GAUNTLET_OUT := "out"            # 出局(≥3 负, 或打满配额仍未�
 static func gauntlet_label(w: int, l: int) -> String:
 	return "%d-%d" % [maxi(0, w), maxi(0, l)]
 
+## 闯关赛结算屏那一句(2026-10-26 · 用户「文案你学习商业游戏的说法」, 参考 docs/plans/ref/20261026-周末文案参考.md):
+##   先报战绩, 再说这一场之后的处境。关键节点换说法(荒野乱斗「再输一场，您就会被淘汰出局」/ 炉石「再赢得{0}场对战」)。
+##   出局那一句不写「出局 / 失败」, 写「到此结束」(商业游戏结果页的通行写法)。
+static func gauntlet_settle_line(w: int, l: int) -> String:
+	var st: String = gauntlet_state(w, l)
+	var head: String = "闯关赛战绩 %s，" % gauntlet_label(w, l)
+	if st == GAUNTLET_IN:
+		return head + "你已晋级周日决赛日。"
+	if st == GAUNTLET_OUT:
+		return head + "你本周的闯关赛到此结束。"
+	var need_w: int = GAUNTLET_WINS_IN - maxi(0, w)
+	var need_l: int = GAUNTLET_LOSSES_OUT - maxi(0, l)
+	if need_w == 1 and need_l == 1:
+		return head + "下一场决定去留：胜则晋级决赛日，负则出局。"
+	if need_w == 1:
+		return head + "再胜一场即可晋级决赛日。"
+	if need_l == 1:
+		return head + "再负一场，本周闯关赛即结束。"
+	return head + "再胜 %d 场晋级决赛日，再负 %d 场出局。" % [need_w, need_l]
+
+
 ## 这个战绩现在是什么状态。
 ## ★「6 场封顶」不是独立规则, 是**推论**: 胜<4 且 负<3 最多只能是 3-2(5 场),
 ##   第 6 场必定落进 4-2(晋级) 或 3-3(出局)。所以下面那条 `w+l >= QUOTA`
@@ -317,17 +342,35 @@ static func finals_stage_name(bucket: int) -> String:
 	return STAGE_CUP if bucket == FINALS_CUP_BUCKET else STAGE_GROUP
 
 
-## UTC 时刻 → 玩家本地「HH:MM」。★唯一一份: 主菜单与对阵图共用(原来只在主菜单里有一份)。
-static func local_hhmm(utc_ts: int) -> String:
+## ★★全仓唯一的时区换算点(E2/E4): 判定层永远是 UTC, 只有【说给玩家听】的时候才翻译。
+##   陷阱: `get_time_zone_from_system().bias` 的单位是**分钟**不是小时。
+##   把偏移加到 UTC 秒上、再用 UTC 版的 from_unix_time 格式化 = 玩家墙上的时间。
+## ★2026-10-26 主菜单原来手抄了一份(`MainMenuScene._local_dict`), 并到这里(用户「根据机子的时间去显示正确时间」)。
+static func local_dict(utc_ts: int) -> Dictionary:
 	var bias: int = int(Time.get_time_zone_from_system().get("bias", 0))   # 分钟
-	var d: Dictionary = Time.get_datetime_dict_from_unix_time(utc_ts + bias * 60)
+	return Time.get_datetime_dict_from_unix_time(utc_ts + bias * 60)
+
+
+## UTC 时刻 → 玩家本地「HH:MM」。主菜单 / 对阵图 / 结算屏 / 周末收盘卡共用。
+static func local_hhmm(utc_ts: int) -> String:
+	var d: Dictionary = local_dict(utc_ts)
 	return "%02d:%02d" % [int(d.get("hour", 0)), int(d.get("minute", 0))]
+
+
+## UTC 时刻 → 玩家本地「周六 07:00」。★星期也按本地算(UTC 周日 00:00 在东八区是周日 08:00, 在美西是周六 17:00)。
+static func local_wd_hhmm(utc_ts: int) -> String:
+	var d: Dictionary = local_dict(utc_ts)
+	var w: int = int(d.get("weekday", 0))
+	var wi: int = 7 if w == 0 else w
+	return "周%s %02d:%02d" % [WEEKDAY_CN[wi - 1], int(d.get("hour", 0)), int(d.get("minute", 0))]
 
 
 ## 周日分组(finals_seat)第一次跑之前吗? 服务端在这之前对「报了名还没分组」的人回 too_few, 不能照字面念给玩家。
 ## ★多给 15 分钟: cron 是每 10 分钟一次, 开赛那一拍(FINALS_SEAT_HOUR_UTC)之后客户端还要过一个刷新周期才看得到桶。
+## ★2026-10-26 周日 17:30 前仍是闯关赛阶段 ⇒ 判据改成「周日、且在分组那一拍 +15 分钟之前」, 不再问阶段
+##   (问阶段的话周日上午会返回 false, 对阵图就把服务端的 too_few 照字面念出来)。
 static func finals_before_seating(ts: int) -> bool:
-	if phase_at_utc(ts) != PHASE_FINALS:
+	if iso_weekday_utc(ts) != 7:
 		return false
 	var d: Dictionary = Time.get_datetime_dict_from_unix_time(ts)
 	return int(d.get("hour", 0)) * 3600 + int(d.get("minute", 0)) * 60 < FINALS_SEAT_HOUR_UTC * 3600 + 15 * 60
@@ -439,12 +482,12 @@ static func phase_uses_ranked_quota(phase: String) -> bool:
 static func finals_block_msg(entered: bool, eligible: bool) -> String:
 	if entered:
 		## 进了决赛日: 他今天**有比赛**, 只是不在这个按钮后面 —— 要指路, 不是干挡。
-		return "今日决赛日 · 前往对阵图参赛"
+		return "今天是决赛日，你的比赛在对阵图中进行。"
 	if eligible:
 		## 打过闯关赛但没打进 —— **不能说「没晋级」**, 周一~五刚夸过他「你已晋级」。
-		return "今日决赛日 · 闯关赛止步 · 下周一重置"
+		return "今天是决赛日，你本周止步闯关赛，可以观看决赛日的比赛。新一轮积分赛下周二开始。"
 	## 连闯关赛资格都没拿到。说清**下一次机会在哪**, 别让人以为坏了。
-	return "今日决赛日 · 本周未晋级 · 下周一重置"
+	return "今天是决赛日，你本周未晋级闯关赛，可以观看决赛日的比赛。新一轮积分赛下周二开始。"
 
 
 ## 这个阶段要不要在赛程条上挂一句"还没上线"? 返回空串 = 照常, 不用额外说明。
@@ -836,10 +879,15 @@ static func week_anchor_utc(ts: int) -> int:
 	return ts - secs_today - (iso_weekday_utc(ts) - 1) * 86400
 
 ## 这一刻属于哪个阶段(UTC)。
-## ⚠ 只看星期几, **不看收盘时刻** —— 收盘那一刻之后到午夜之间算不算下一阶段,
-##   是 E3「封盘」管的事(见 `can_start_match_utc`), 不在这里混着判。
+## ★★2026-10-26 起**周日按时刻切**: 闯关赛收盘(周日 17:30)之前仍是闯关赛, 之后才是决赛日。
+##   原来只看星期几 ⇒ 周日开的闯关局会被打上 `finals` 戳、走决赛结算(不记战绩 / 不传快照 / 不报名决赛)。
+##   其余日子仍只看星期几 —— 积分赛周五 23:00 收盘后到午夜, 是 E3「封盘」管(`can_start_match_utc`)。
+## ⚠ 「赛程条按天铺字」要的是**这一天叫什么**, 用 `phase_of_weekday()`, 别用这个。
 static func phase_at_utc(ts: int) -> String:
-	return phase_of_weekday(iso_weekday_utc(ts))
+	var wd := iso_weekday_utc(ts)
+	if wd == GAUNTLET_CLOSE_WD and ts < gauntlet_close_ts(week_anchor_utc(ts)):
+		return PHASE_GAUNTLET
+	return phase_of_weekday(wd)
 
 ## 星期几(ISO 1~7) → 阶段。主菜单的「本周赛程条」要按天铺开, 不能只问"现在是哪个阶段";
 ## ★抽成一个函数是为了让**赛程表与实时判定共用同一份映射** —— 两份必然会漂。
@@ -862,7 +910,7 @@ const PHASE_LABEL := {
 ##   `close_left_sec()`(从"现在"往前看还剩几秒) 与 `ranked_close_ts()`(从周锚点算出绝对时刻)。
 ##   就地各写一个 5, 就是"同一个数存两份"(memory `fb-hand-rolled-copies-drift`)。
 const RANKED_CLOSE_WD := 5             # 积分赛: 周五 23:00 收盘
-const GAUNTLET_CLOSE_WD := 6           # 闯关赛: 周六 23:00 收盘
+const GAUNTLET_CLOSE_WD := 7           # 闯关赛: 周日 17:30 收盘(GAUNTLET_CLOSE_MIN_UTC; 2026-10-26 起, 原为周六 23:00)
 
 ## 本周【积分赛收盘】的绝对 unix 时刻(UTC 周五 23:00)。入参是**该周的锚点**(周一 00:00)。
 ## ★为什么要这个而不是复用 `close_left_sec`: 那个问的是"从现在还剩几秒"，
@@ -871,11 +919,30 @@ const GAUNTLET_CLOSE_WD := 6           # 闯关赛: 周六 23:00 收盘
 static func ranked_close_ts(week_anchor: int) -> int:
 	return week_anchor + (RANKED_CLOSE_WD - 1) * 86400 + WEEK_CLOSE_HOUR_UTC * 3600
 
-## 本周【闯关赛收盘】的绝对 unix 时刻(UTC 周六 23:00)。理由同上一个函数。
-## ★两个函数只差一个星期几常量, 但**不能合并成"传星期几进来"** —— 调用点写 `close_ts(6)`
-##   就等于把 `GAUNTLET_CLOSE_WD` 这个名字丢了, 下一个人得自己数星期几。
+## 本周【闯关赛收盘】的绝对 unix 时刻(UTC 周日 17:30; 2026-10-26 前是周六 23:00)。理由同上一个函数。
+## ★两个函数不合并成"传星期几进来" —— 调用点写 `close_ts(7)` 就把 `GAUNTLET_CLOSE_WD` 这个名字丢了。
 static func gauntlet_close_ts(week_anchor: int) -> int:
-	return week_anchor + (GAUNTLET_CLOSE_WD - 1) * 86400 + WEEK_CLOSE_HOUR_UTC * 3600
+	return week_anchor + (GAUNTLET_CLOSE_WD - 1) * 86400 + GAUNTLET_CLOSE_MIN_UTC * 60
+
+## 本周周日【分组开赛】的绝对 unix 时刻(UTC, `FINALS_SEAT_HOUR_UTC`)。
+## ★2026-10-26 闯关赛延到周日 17:30 之后, 「明天/下一阶段那天的 18:00」这种推法会在周日上午推到周一(实测「距小组赛开始 1 天 6 小时」);
+##   分组那一刻是本周固定的一个点, 直接从周锚点算。
+static func finals_seat_ts(week_anchor: int) -> int:
+	return week_anchor + 6 * 86400 + FINALS_SEAT_HOUR_UTC * 3600
+
+## 这个阶段在本周的起止时刻 [开始, 结束)(UTC)。赛程条判「今天 / 已过 / 未来」用它, 不再按星期几区间判 ——
+##   周日一天被闯关赛与决赛日分成两段(17:30 收盘), 星期几回答不了。
+static func phase_window_utc(ph: String, week_anchor: int) -> Vector2i:
+	match ph:
+		PHASE_REST:
+			return Vector2i(week_anchor, week_anchor + 86400)
+		PHASE_RANKED:
+			return Vector2i(week_anchor + 86400, week_anchor + 5 * 86400)
+		PHASE_GAUNTLET:
+			return Vector2i(week_anchor + 5 * 86400, gauntlet_close_ts(week_anchor))
+		PHASE_FINALS:
+			return Vector2i(gauntlet_close_ts(week_anchor), week_anchor + 7 * 86400)
+	return Vector2i(0, 0)
 
 ## 周末那几页(周六赛况板 / 周日对阵图含冠军杯赛 / 它们的回放)在 `ts` 这一刻该展示哪一周(周锚点)。
 ## 用户 2026-10-19:「周六，周日的对战情况能也一直保留到周一」「现在玩家都看不到周六，周日的赛况」。
@@ -893,20 +960,17 @@ static func weekend_view_is_past(ts: int) -> bool:
 	return weekend_view_week(ts) != week_anchor_utc(ts)
 
 ## 距本阶段收盘还有几秒(UTC)。没有收盘概念的阶段返回 -1。
-## 积分赛在**周五** 23:00 收盘、闯关赛在**周六** 23:00 —— 所以要先算"还有几天到收盘日"。
+## 积分赛周五 23:00、闯关赛周日 17:30 —— 直接拿**本周收盘的绝对时刻**减现在(与 `ranked_close_ts` /
+##   `gauntlet_close_ts` 同一个答案), 不再自己按星期几推(两套算法 = 同一判据存两份)。
+## ★积分赛收盘后到周五午夜仍是积分赛阶段 ⇒ 这里是负数 ⇒ `can_start_match_utc` 封盘; 闯关赛收盘那一刻阶段就翻成决赛日。
 static func close_left_sec(ts: int) -> int:
 	var ph := phase_at_utc(ts)
-	var close_wd := 0
+	var a := week_anchor_utc(ts)
 	if ph == PHASE_RANKED:
-		close_wd = RANKED_CLOSE_WD
-	elif ph == PHASE_GAUNTLET:
-		close_wd = GAUNTLET_CLOSE_WD
-	else:
-		return -1           # 周一休赛 / 周日决赛日没有"收盘"
-	var d: Dictionary = Time.get_datetime_dict_from_unix_time(ts)
-	var days: int = close_wd - iso_weekday_utc(ts)
-	var secs_today: int = int(d.get("hour", 0)) * 3600 + int(d.get("minute", 0)) * 60 + int(d.get("second", 0))
-	return days * 86400 + WEEK_CLOSE_HOUR_UTC * 3600 - secs_today
+		return ranked_close_ts(a) - ts
+	if ph == PHASE_GAUNTLET:
+		return gauntlet_close_ts(a) - ts
+	return -1           # 周一休赛 / 决赛日没有"收盘"
 
 ## 现在还能不能开新局? ★★E3: 收盘前 CLOSE_LOCKOUT_SEC 内封盘。
 ## ⚠ 调用点必须是**点「开打」那一刻**, 不是点匹配 —— 摆位不限时, 设在匹配就盖不住。

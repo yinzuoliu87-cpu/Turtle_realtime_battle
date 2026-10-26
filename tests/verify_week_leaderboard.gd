@@ -844,8 +844,8 @@ func _t_days() -> void:
 		for c in (b as Button).pressed.get_connections():
 			return str((c["callable"] as Callable).get_method())
 		return "(未连接)")
-	_ok("⑤一 ★★周一顶栏两扇门: 「周六赛况」→ _open_gauntlet_board / 「周日对阵图」→ _open_bracket_map",
-		mtx == [LB.MON_GAUNTLET_LINE, LB.MON_BRACKET_LINE] and mtx == ["周六赛况", "周日对阵图"]
+	_ok("⑤一 ★★周一顶栏两扇门: 「闯关赛况」→ _open_gauntlet_board / 「周日对阵图」→ _open_bracket_map",
+		mtx == [LB.MON_GAUNTLET_LINE, LB.MON_BRACKET_LINE] and mtx == ["闯关赛况", "周日对阵图"]
 		and mmeth == ["_open_gauntlet_board", "_open_bracket_map"], "%s / %s" % [str(mtx), str(mmeth)])
 	var mvp := Rect2(Vector2.ZERO, Vector2(get_viewport().get_visible_rect().size)).grow(0.5)
 	var mbad: Array = meb.filter(func(b): return (b as Button).size.y < 81.0 or not mvp.encloses((b as Button).get_global_rect()))
