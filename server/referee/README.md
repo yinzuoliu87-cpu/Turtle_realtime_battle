@@ -169,6 +169,20 @@
 回滚 / 拆除：`systemctl disable --now turtle-referee-beta-peak.timer turtle-referee-beta-health.timer turtle-stream-minver-beta.timer turtle-stream-purge-beta.timer; systemctl stop turtle-referee-beta`；
 Caddy 拷回 `/root/betadeploy/Caddyfile.bak-20261021` → `caddy validate` → `systemctl reload caddy`。部署前正式服文件的 sha256 在 `/root/betadeploy/prod_before.sha256`。
 
+## 常驻陪练号（2026-10-26 · 方案书 [docs/plans/20261026d-服务器常驻陪练号.md](../../docs/plans/20261026d-服务器常驻陪练号.md)）
+
+用户 10-26「去服务器安排机器人，每个时段都去分布」「号就跟真人一样」。把内测时本机跑的模拟号（`SIM_DRIVER=1` 真账号）搬到这台机器，按时段排班。
+
+| 件 | 位置 |
+|---|---|
+| 排班 | `bot_schedule.py`：每周一 00:05 UTC 由 `turtle-bot-schedule-beta.timer` 生成本周时间表（陪练号数 = clamp(100 − 上周真人, 30, 90)） |
+| 拉起 | `bot_runner.py`：`turtle-bot-runner-beta.timer` 每 5 分钟起到点的上线（无头客户端，打完自己退），同时最多 `MAX_PAR` 个；晚到超过 `STALE_MIN` 分钟的作废、不补打 |
+| env | `/etc/turtle-referee/env-bots-beta`：`GODOT_BIN` / `BOT_GAME_DIR`（**= 玩家手机上的发布版**）/ `BOT_ROOT=/var/lib/turtle-bots-beta` / `BOT_SCHEDULE=$BOT_ROOT/schedule.json` / `MAX_PAR=1` / `REAL_LAST_WEEK` / 内测服后端配置 |
+| 账号 | 每个号的存档在 `$BOT_ROOT/pNN/`（user:// = `XDG_DATA_HOME`），跨周保留战绩 |
+
+⚠ **同机还有正式服裁判**：`MAX_PAR` 先给 1，量完 CPU（每局陪练客户端占多少核秒、高峰时裁判排不排队）再调；不够就换机器配置（花钱，先问用户）。
+⚠ 发新版后要重建 `BOT_GAME_DIR`（同裁判「发版时」那一节：拷目录 → checkout 新 tag → `--import`）。
+
 ## 已知风险与未决点
 
 - **R1 真机确定性**：服务器（Linux x86）算的录像要在 iPhone（ARM）上逐步重算。x86↔x86 已逐位一致（金标 + 本门禁），ARM 没验过（方案书 §0，`verify_referee_device_parity` 未做）。不一致时手机播放会在第一个对不上的校验点停下并上报（不会默默播错的），但玩家就看不了那一场。

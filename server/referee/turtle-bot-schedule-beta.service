@@ -1,0 +1,10 @@
+# 内测服常驻陪练号: 每周一 00:05 UTC 生成本周排班表(陪练号数按上周真人活跃数缩放, 见 bot_schedule.py 头注)。
+[Unit]
+Description=Turtle BETA bot accounts weekly schedule
+
+[Service]
+Type=oneshot
+User=turtle-referee
+Group=turtle-referee
+EnvironmentFile=/etc/turtle-referee/env-bots-beta
+ExecStart=/bin/sh -c '/usr/bin/python3 /opt/turtle-beta/referee/bot_schedule.py --week "$(date -u +%%F)" --real-last-week "$${REAL_LAST_WEEK:-0}" --out "$${BOT_SCHEDULE}"'

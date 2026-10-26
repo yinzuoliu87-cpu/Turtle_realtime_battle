@@ -1,0 +1,12 @@
+# 内测服常驻陪练号: 按本周排班表到点拉起无头客户端(方案书 docs/plans/20261026d-服务器常驻陪练号.md)。
+# 由 turtle-bot-runner-beta.timer 每 5 分钟拉一次。同机还有正式服裁判 ⇒ MAX_PAR 先给 1, 量完 CPU 再调(U3)。
+[Unit]
+Description=Turtle BETA bot accounts runner (launch scheduled sim sessions)
+
+[Service]
+Type=oneshot
+User=turtle-referee
+Group=turtle-referee
+EnvironmentFile=/etc/turtle-referee/env-bots-beta
+ExecStart=/usr/bin/python3 /opt/turtle-beta/referee/bot_runner.py
+KillMode=process
