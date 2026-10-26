@@ -181,6 +181,11 @@ func build(b, h, won: bool, sealed: bool) -> void:
 	hud._banner_fade_in(foot, 0.5)
 	## ★默认停在「战果」, 不自动翻页(方案书 U2): 玩家先看的是输赢和奖励, 而按钮就在这一页。
 	show_page(0)
+	## ★晋级那一局(积分赛第 11 胜 / 闯关赛第 4 胜): 先整屏演「本站徽章 → 下一站徽章」, 点一下再看战果页
+	##   (方案书 docs/plans/20261026c-周末弹窗美术.md; 照荒野乱斗升段那一局的结算进度屏)。
+	var promo: Array = hud._promotion_moment(won, sealed, gs)
+	if not promo.is_empty():
+		StageCeremony.play(self, str(promo[0]), str(promo[1]), str(promo[2]), str(promo[3]), false, func() -> void: pass)
 
 
 ## 各路战报(与旧版 `_build_stats_panel` 同口径): 已打完的路走 `_st_lane_hist` 快照,

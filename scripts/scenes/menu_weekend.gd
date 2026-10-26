@@ -105,12 +105,24 @@ func next_card() -> void:
 	var d: Dictionary = WeekCloseCard.spec(kind, GameState, now)
 	WeekCloseCard.mark_seen(GameState, kind, now)
 	GameState.save()
+	## 一屏一件事(照荒野乱斗战队联赛周结束后登录那一串): 先整屏「积分赛已结束」+ 本站徽章自己过, 再出战绩卡。
+	var cb: String = str(d.get("ceremony_badge", ""))
+	if cb != "":
+		StageCeremony.play(menu, cb, cb, str(d.get("ceremony_title", "")), "", true, func() -> void: _open_card(d))
+	else:
+		_open_card(d)
+
+
+## 收盘流程第二屏: 战绩卡(领取 ⇒ 币飞进钱包, 飞完再弹下一张)。
+func _open_card(d: Dictionary) -> void:
+	if not menu.is_inside_tree():
+		return
 	var coins: int = int(d.get("coins", 0))
 	WeekCloseCard.open(menu, d, func(door: String, from_pos: Vector2) -> void:
 		fly_cards = maxi(0, fly_cards - coins)
 		if _go_door(door):
 			return
-		## 领取 ⇒ 从卡上那枚币飞进钱包, 飞完再弹下一张; 其它(好的 / 关闭)⇒ 直接下一张。
+		## 领取 ⇒ 从卡上那枚币飞进钱包, 飞完再弹下一张; 其它(确定 / 关闭)⇒ 直接下一张。
 		## ★卡上的钱不领也照样在账上(收盘补算早已入账): 这里只决定数字怎么走到真值。
 		if coins > 0:
 			var cf := fly(from_pos if from_pos.x >= 0.0 else menu.get_viewport_rect().size / 2.0, coins)
@@ -146,16 +158,18 @@ func block_door(ts: int) -> Array:
 
 ## 开始战斗 / 商店被拦住时那张卡: 原来是顶部飘 2.6 秒的金字, 没底板、不给去处 ——
 ##   周末没资格的人读完不知道观战入口在哪(实拍: 藏在「模式卡 → 周赛程页 → 周六格」)。
-##   ⇒ 压暗 + 一张卡(与周末收盘卡同一种样子) + 「好的」, 有去处时再给一颗(观战 / 查看对阵图)。
+##   ⇒ 压暗 + 一张卡(与周末收盘卡同一种样子) + 「确定」; 有去处时换成「观战 / 查看对阵图」+「关闭」(与收盘卡同一对按钮)。
 func block_card(msg: String, door: Array) -> void:
 	var old: Node = menu.get_node_or_null(BLOCK_CARD_NAME)
 	if old != null:
 		menu.remove_child(old)   # 先摘下来: 不然新卡同名会被引擎改名, 门禁 / 驱动按名字找不到
 		old.queue_free()
 	var d := {"node_name": BLOCK_CARD_NAME, "title": "", "body": [msg], "primary": [WeekCloseCard.TXT_OK, WeekCloseCard.DOOR_NONE], "secondary": []}
+	## 2026-10-26 美术重做时定: 被拦是普通提示(商业游戏的「当前无法入场」那种), 不放缎带 / 徽章 ——
+	##   徽章加光是「达成那一刻」的庆祝(结算屏), 不该出现在拒绝里(docs/plans/ref/20261026-周末弹窗商业参考.md)。
 	if not door.is_empty():
 		d["primary"] = door
-		d["secondary"] = [WeekCloseCard.TXT_OK, WeekCloseCard.DOOR_NONE]
+		d["secondary"] = [WeekCloseCard.TXT_CLOSE, WeekCloseCard.DOOR_NONE]
 	WeekCloseCard.open(menu, d, func(dr: String, _from: Vector2) -> void: _go_door(dr))
 
 
@@ -284,3 +298,29 @@ func msg_gauntlet_block(ts: int = 0) -> String:
 		return "本周闯关赛已结束（%s）。决赛日开放观战。%s" % [_P2.gauntlet_label(
 			int(GameState.gauntlet_wins), int(GameState.gauntlet_losses)), MSG_NEXT_WEEK]
 	return ""
+
+
+## 赛程页一张卡抬头右侧的三站徽章(2026-10-26 用户「赛程条这些要动」; 与周末弹窗 / 晋级仪式同一套)。
+##   right_mid = 徽章右沿中点(抬头坐标); 锁着 ⇒ 压灰。没有徽章的阶段(休赛)返回 0、不占位。返回占掉的宽(含间距)。
+const STAGE_BADGE_PX := 2
+func stage_badge(head: Control, ph: String, dim: bool, right_mid: Vector2) -> float:
+	var tex: Texture2D = WeekCloseCard.BADGE_TEX.get(ph, null)
+	if tex == null:
+		return 0.0
+	var r := TextureRect.new()
+	r.name = "StageBadge"
+	r.texture = tex
+	r.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	r.stretch_mode = TextureRect.STRETCH_SCALE
+	r.size = Vector2(tex.get_width(), tex.get_height()) * STAGE_BADGE_PX
+	r.position = (right_mid - Vector2(r.size.x, r.size.y * 0.5)).floor()
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if dim:
+		var sh := Shader.new()
+		sh.code = WeekCloseCard.DIM_SHADER
+		var mat := ShaderMaterial.new()
+		mat.shader = sh
+		r.material = mat
+	head.add_child(r)
+	return r.size.x + 12.0

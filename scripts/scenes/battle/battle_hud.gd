@@ -1263,6 +1263,9 @@ func _result_subtitle(won: bool, gs) -> String:
 		return "生命已耗尽 · 本大轮已出局"   # 2026-10-06 与主菜单「本大轮已出局」同一个词(60 人实操台账)
 	if battle._last_was_exhibition:
 		return "表演赛 · 不消耗生命"
+	## ★2026-10-26 积分赛晋级那一局(第 11 胜): 说清已经晋级(原来只写「赛季胜场 +1」, 晋级这件事一个字没有)。
+	if not _promotion_moment(won, false, gs).is_empty():
+		return "积分赛 %d 胜，已晋级周六闯关赛。" % int(gs.season_wins)
 	return "赛季胜场 +1" if won else "消耗 1 点生命"
 
 
@@ -1271,9 +1274,29 @@ func _result_subtitle(won: bool, gs) -> String:
 func _result_headline(won: bool, sealed: bool, gs) -> String:
 	if sealed:
 		return "结果已封存"
-	if won and gs != null and battle._had_season and str(battle._last_settle_kind) == _P2C_HUD.SETTLE_GAUNTLET 			and str(gs.gauntlet_state()) == _P2C_HUD.GAUNTLET_IN:
+	## ★2026-10-26 积分赛第 11 胜那一局同样写「已晋级！」(两处晋级同一个判据 `_promotion_moment`)。
+	if not _promotion_moment(won, sealed, gs).is_empty():
 		return "已晋级！"
 	return "胜利" if won else "失败"
+
+
+## 这一局是不是「晋级那一局」(2026-10-26 · 方案书 docs/plans/20261026c-周末弹窗美术.md):
+##   返回 [本站, 下一站, 大字, 一行] 或 []。结算屏据此先整屏演一遍徽章变身(StageCeremony)。
+##   积分赛: 赢下这一局后赛季胜场恰好到晋级线 ⇒ 积分赛 → 闯关赛(到线之后再赢不再演);
+##   闯关赛: 赢下这一局后战绩进入 GAUNTLET_IN(第 4 胜; 晋级后不能再打, 所以这一局就是那一局)⇒ 闯关赛 → 决赛日。
+func _promotion_moment(won: bool, sealed: bool, gs) -> Array:
+	if not won or sealed or gs == null or not battle._had_season:
+		return []
+	var sk := str(battle._last_settle_kind)
+	var anchor: int = _P2C_HUD.week_anchor_utc(int(_P2C_HUD.now_utc()))
+	if sk == _P2C_HUD.SETTLE_RANKED and not battle._last_was_exhibition \
+			and int(gs.season_wins) == int(_P2C_HUD.PROMOTE_WINS) and not gs.is_eliminated():
+		return [_P2C_HUD.PHASE_RANKED, _P2C_HUD.PHASE_GAUNTLET, "晋级闯关赛！",
+			"闯关赛：%s 开始" % _P2C_HUD.local_wd_hhmm(_P2C_HUD.phase_window_utc(_P2C_HUD.PHASE_GAUNTLET, anchor).x)]
+	if sk == _P2C_HUD.SETTLE_GAUNTLET and str(gs.gauntlet_state()) == _P2C_HUD.GAUNTLET_IN:
+		return [_P2C_HUD.PHASE_GAUNTLET, _P2C_HUD.PHASE_FINALS, "晋级决赛日！",
+			"决赛日%s：%s 开始" % [_P2C_HUD.STAGE_GROUP, _P2C_HUD.local_wd_hhmm(_P2C_HUD.finals_seat_ts(anchor))]]
+	return []
 
 
 ## 副标题下面那一行小字: 下一步去哪 / 什么时候(只有闯关赛有, 其余返回 "")。

@@ -1348,6 +1348,7 @@ scripts/scenes/battle/battle_hud.gd|lit|上传失败
 scripts/scenes/battle/battle_hud.gd|lit|倍速
 scripts/scenes/battle/battle_hud.gd|lit|假人HP
 scripts/scenes/battle/battle_hud.gd|lit|再来一局
+scripts/scenes/battle/battle_hud.gd|lit|决赛日%s：%s 开始
 scripts/scenes/battle/battle_hud.gd|lit|决赛日%s：%s 开始。
 scripts/scenes/battle/battle_hud.gd|lit|决赛日开放观战。下一轮积分赛：下周二开始。
 scripts/scenes/battle/battle_hud.gd|lit|前往商店
@@ -1358,6 +1359,8 @@ scripts/scenes/battle/battle_hud.gd|lit|左队(友军)
 scripts/scenes/battle/battle_hud.gd|lit|已晋级！
 scripts/scenes/battle/battle_hud.gd|lit|战报
 scripts/scenes/battle/battle_hud.gd|lit|掉血/不死
+scripts/scenes/battle/battle_hud.gd|lit|晋级决赛日！
+scripts/scenes/battle/battle_hud.gd|lit|晋级闯关赛！
 scripts/scenes/battle/battle_hud.gd|lit|本周场次
 scripts/scenes/battle/battle_hud.gd|lit|浪板
 scripts/scenes/battle/battle_hud.gd|lit|消耗 1 点生命
@@ -1367,6 +1370,7 @@ scripts/scenes/battle/battle_hud.gd|lit|满龟能默认:关
 scripts/scenes/battle/battle_hud.gd|lit|火箭
 scripts/scenes/battle/battle_hud.gd|lit|生命  %d / %d
 scripts/scenes/battle/battle_hud.gd|lit|生命已耗尽 · 本大轮已出局
+scripts/scenes/battle/battle_hud.gd|lit|积分赛 %d 胜，已晋级周六闯关赛。
 scripts/scenes/battle/battle_hud.gd|lit|精英
 scripts/scenes/battle/battle_hud.gd|lit|练习赛 · 不计入赛季进度
 scripts/scenes/battle/battle_hud.gd|lit|经验
@@ -1382,6 +1386,7 @@ scripts/scenes/battle/battle_hud.gd|lit|返回好友
 scripts/scenes/battle/battle_hud.gd|lit|返回菜单
 scripts/scenes/battle/battle_hud.gd|lit|闯关战绩
 scripts/scenes/battle/battle_hud.gd|lit|闯关赛不消耗生命。
+scripts/scenes/battle/battle_hud.gd|lit|闯关赛：%s 开始
 scripts/scenes/battle/battle_hud.gd|lit|阵容上传
 scripts/scenes/battle/battle_hud.gd|text|← 手指横滑挑龟(共28只+小将+大师) →   点一格选笔刷 → 点战场连点连摆 · 点已摆的龟→出配置面板
 scripts/scenes/battle/battle_hud.gd|text|友军
@@ -1936,6 +1941,7 @@ scripts/scenes/social/player_menu.gd|lit|移出黑名单
 scripts/scenes/social/player_menu.gd|lit|该玩家 ID 对应多位玩家，请前往好友页添加
 scripts/scenes/social/player_menu.gd|lit|黑名单已满
 scripts/scenes/social/player_menu.gd|text|玩家 ID %s
+scripts/scenes/stage_ceremony.gd|lit|点击任意处继续
 scripts/scenes/team_select/detail_panel.gd|lit|护甲
 scripts/scenes/team_select/detail_panel.gd|lit|攻击力
 scripts/scenes/team_select/detail_panel.gd|lit|生命值
@@ -1984,22 +1990,24 @@ scripts/scenes/week_close_card.gd|lit|关闭
 scripts/scenes/week_close_card.gd|lit|决赛日%s：%s 开始。
 scripts/scenes/week_close_card.gd|lit|决赛日已开始，比赛在对阵图中进行。
 scripts/scenes/week_close_card.gd|lit|决赛日开放观战。
-scripts/scenes/week_close_card.gd|lit|好的
+scripts/scenes/week_close_card.gd|lit|已晋级周六闯关赛
+scripts/scenes/week_close_card.gd|lit|已晋级周日决赛日
 scripts/scenes/week_close_card.gd|lit|未进行场次奖励（积分赛每周 %d 场，未进行的 %d 场按场发放）
-scripts/scenes/week_close_card.gd|lit|本周积分赛战绩 %d 胜 %d 负，晋级周六闯关赛。
-scripts/scenes/week_close_card.gd|lit|本周积分赛战绩 %d 胜 %d 负，生命已耗尽，未晋级闯关赛。
-scripts/scenes/week_close_card.gd|lit|本周积分赛战绩 %d 胜 %d 负，距晋级还差 %d 胜，未晋级闯关赛。
 scripts/scenes/week_close_card.gd|lit|查看对阵图
 scripts/scenes/week_close_card.gd|lit|深海币
-scripts/scenes/week_close_card.gd|lit|积分赛已晋级
+scripts/scenes/week_close_card.gd|lit|生命已耗尽，未晋级闯关赛
+scripts/scenes/week_close_card.gd|lit|确定
 scripts/scenes/week_close_card.gd|lit|积分赛已结束
+scripts/scenes/week_close_card.gd|lit|积分赛战绩
 scripts/scenes/week_close_card.gd|lit|经验
+scripts/scenes/week_close_card.gd|lit|胜
 scripts/scenes/week_close_card.gd|lit|观战
+scripts/scenes/week_close_card.gd|lit|负
+scripts/scenes/week_close_card.gd|lit|距晋级还差 %d 胜，未晋级闯关赛
 scripts/scenes/week_close_card.gd|lit|闯关赛与决赛日开放观战。
-scripts/scenes/week_close_card.gd|lit|闯关赛已于%s 截止，最终战绩 %d 胜 %d 负，未晋级决赛日。
-scripts/scenes/week_close_card.gd|lit|闯关赛已截止
-scripts/scenes/week_close_card.gd|lit|闯关赛已晋级
-scripts/scenes/week_close_card.gd|lit|闯关赛战绩 %d 胜 %d 负，晋级周日决赛日。
+scripts/scenes/week_close_card.gd|lit|闯关赛已于%s 截止，未晋级决赛日
+scripts/scenes/week_close_card.gd|lit|闯关赛已结束
+scripts/scenes/week_close_card.gd|lit|闯关赛战绩
 scripts/scenes/week_close_card.gd|lit|闯关赛：%d 胜晋级决赛日，%d 负淘汰，%s 截止。
 scripts/scenes/week_close_card.gd|lit|领取
 scripts/systems/equip/bow_synergy_system.gd|lit|弓箭

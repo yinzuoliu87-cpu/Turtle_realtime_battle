@@ -2253,14 +2253,16 @@ func _week_card(info: Dictionary) -> Control:
 		var lk := _pixel_lock(Vector2(CARD_PAD, (CARD_HEAD_H - 45.0) / 2.0), 3.0)
 		head.add_child(lk)
 		tx += 36.0 + 14.0
+	## 三站徽章(2026-10-26 用户「赛程条这些要动」: 与周末弹窗 / 晋级仪式同一套正式标识), 抬头右侧、锁着压灰。
+	var bw: float = _wk().stage_badge(head, ph, locked, Vector2(sz.x - CARD_PAD, CARD_HEAD_H * 0.5))
 	var title := _place_outlined(str(info["title"]), 34, Color("#d8d2cc") if locked else Color("#fff4d6"),
-		Vector2(tx, 3.0), Vector2(sz.x - tx - CARD_PAD, 44.0))
+		Vector2(tx, 3.0), Vector2(sz.x - tx - CARD_PAD - bw, 44.0))
 	title.name = "CardTitle"
 	title.add_theme_constant_override("outline_size", 8)
 	head.add_child(title)
 	var sub_txt: String = str(info["lock_text"]) if locked else str(info["days"])
 	var sub := _place_outlined(sub_txt, 19, Color("#ffe08a") if locked else Color("#ffe9c4"),
-		Vector2(tx, 47.0), Vector2(sz.x - tx - CARD_PAD, 26.0))
+		Vector2(tx, 47.0), Vector2(sz.x - tx - CARD_PAD - bw, 26.0))
 	sub.name = "CardSub"
 	head.add_child(sub)
 	## ── 正文 ──

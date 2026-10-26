@@ -17,6 +17,7 @@ extends Node
 ## 跑法: <godot> --headless --path . res://tests/verify_weekend_close_cards.tscn --quit-after 3000
 
 const P2 := preload("res://scripts/gamedata/phase2_config.gd")
+const SC := preload("res://scripts/scenes/stage_ceremony.gd")
 const MENU := preload("res://scripts/scenes/MainMenuScene.gd")
 const HUD := preload("res://scripts/scenes/battle/battle_hud.gd")
 const WCC := preload("res://scripts/scenes/week_close_card.gd")
@@ -65,6 +66,7 @@ func _ready() -> void:
 	await _t_coinfly_play()
 	await _t_block_card()
 	_t_mode_rule_fits()
+	await _t_promotion_ceremony()
 	for f in FIELDS:
 		GameState.set(f, _bak[f])
 	print("ALL PASS — 周末收盘卡 (%d 条)" % _n if _fail == 0 else "FAIL x%d / %d" % [_fail, _n])
@@ -152,17 +154,22 @@ func _t_amounts() -> void:
 	_ok("② ★卡上深海币 == 真进钱包的那一笔", int(d["coins"]) == got and got == 4 * int(P2.RANKED_BACKFILL_COINS), "卡=%d 钱包多了=%d" % [int(d["coins"]), got])
 	_ok("② ★卡上经验 == backfill_summary 的经验", int(d["xp"]) == int(GameState.backfill_summary()["xp"]) and int(d["xp"]) == 4 * int(P2.RANKED_BACKFILL_XP))
 	var body: String = "".join(PackedStringArray(d["body"]))
-	_ok("② 正文报战绩(12 胜 1 负)与场数(4 场)", body.find("12 胜 1 负") >= 0 and body.find("4 场") >= 0, body)
+	## 2026-10-26 美术重做: 战绩单独一行大字(record), 正文只剩规则小字
+	_ok("② 战绩行 12 胜 1 负 + 状态「晋级周六闯关赛」+ 正文报场数(4 场)", (d["record"] as Array) == [12, 1]
+		and str(d["status"]).find("晋级") >= 0 and body.find("4 场") >= 0, "%s / %s / %s" % [str(d["record"]), d["status"], body])
+	## 一屏一件事: 第一屏整屏「积分赛已结束」+ 积分赛徽章; 第二屏战绩卡(金缎带, 不再放徽章、不再庆祝 —— 庆祝在晋级那一局的结算屏)
+	_ok("② 晋级者: 第一屏「积分赛已结束」+ 积分赛徽章, 战绩卡金缎带、卡上无徽章", str(d["ceremony_title"]) == "积分赛已结束"
+		and str(d["ceremony_badge"]) == P2.PHASE_RANKED and str(d["ribbon"]) == WCC.RIBBON_GOLD and str(d["badge"]) == "", str(d))
 	## ★用户 10-26「玩家比如4-0，他是不明白为什么会有未打完的2场的」⇒ 句子里先把上限说出来
 	_ok("② ★正文把上限说出来(每周 %d 场), 再说未进行的几场按场发放" % int(P2.RANKED_QUOTA),
 		body.find("每周 %d 场" % int(P2.RANKED_QUOTA)) >= 0 and body.find("未进行的 4 场按场发放") >= 0, body)
 	_ok("② ★闯关赛截止时刻按设备时区说(local_wd_hhmm)", body.find(P2.local_wd_hhmm(P2.gauntlet_close_ts(MON))) >= 0, body)
 	_ok("② 有奖励 ⇒ 主按钮「领取」", str((d["primary"] as Array)[0]) == WCC.TXT_CLAIM)
-	## 打满 16 场的晋级者: 没有化成的场次 ⇒ 没有奖励行、按钮「好的」
+	## 打满 16 场的晋级者: 没有化成的场次 ⇒ 没有奖励行、按钮「确定」
 	_fresh(false, 16, 13, 4)
 	GameState.settle_ranked_close(fri_post)
 	var d2: Dictionary = WCC.spec(WCC.KIND_RANKED_IN, GameState, fri_post)
-	_ok("② 16 场打满的晋级者: 没有奖励、按钮「好的」、正文不提化成", int(d2["coins"]) == 0 and str((d2["primary"] as Array)[0]) == WCC.TXT_OK
+	_ok("② 16 场打满的晋级者: 没有奖励、按钮「确定」、正文不提化成", int(d2["coins"]) == 0 and str((d2["primary"] as Array)[0]) == WCC.TXT_OK
 		and "".join(PackedStringArray(d2["body"])).find("化成") < 0, str(d2))
 	## 闯关 4-0 ⇒ 省下的 2 场在第 4 胜那一刻就发(2026-10-26), 收盘那条惰性补算不再重复发
 	var sun_post: int = P2.gauntlet_close_ts(MON) + 60
@@ -178,8 +185,8 @@ func _t_amounts() -> void:
 	var g: Dictionary = WCC.spec(WCC.KIND_GAUNTLET_IN, GameState, sun_post)
 	_ok("② ★闯关卡不再发奖励(当场就发过了, 不出「领取」)", int(g["coins"]) == 0 and int(g["xp"]) == 0
 		and str((g["primary"] as Array)[0]) == WCC.TXT_BRACKET, str(g))
-	_ok("② 闯关卡正文: 4 胜 0 负 + 决赛日几点", "".join(PackedStringArray(g["body"])).find("4 胜 0 负") >= 0
-		and "".join(PackedStringArray(g["body"])).find(P2.STAGE_GROUP) >= 0, str(g["body"]))
+	_ok("② 闯关卡: 战绩 4 胜 0 负 + 决赛日几点 + 第一屏闯关赛徽章", (g["record"] as Array) == [4, 0]
+		and "".join(PackedStringArray(g["body"])).find(P2.STAGE_GROUP) >= 0 and str(g["ceremony_badge"]) == P2.PHASE_GAUNTLET, str(g))
 	_ok("② 对照: 没晋级(3-0)时一场都不发", (func() -> bool:
 		GameState.gauntlet_wins = 3
 		GameState.gauntlet_backfill_paid = 0
@@ -187,11 +194,14 @@ func _t_amounts() -> void:
 	_t_referee_bonus(c0)
 	## 没晋级: 胜场不够 / 命用完 两种说法
 	_fresh(false, 16, 9, 1)
-	var o: String = "".join(PackedStringArray(WCC.spec(WCC.KIND_RANKED_OUT, GameState, P2.ranked_close_ts(MON) + 60)["body"]))
-	_ok("② 没晋级(胜场不够): 报战绩 + 还差几胜", o.find("9 胜 5 负") >= 0 and o.find("还差 %d 胜" % (int(P2.PROMOTE_WINS) - 9)) >= 0, o)
+	var od0: Dictionary = WCC.spec(WCC.KIND_RANKED_OUT, GameState, P2.ranked_close_ts(MON) + 60)
+	_ok("② 没晋级(胜场不够): 报战绩 + 还差几胜", (od0["record"] as Array) == [9, 5]
+		and str(od0["status"]).find("还差 %d 胜" % (int(P2.PROMOTE_WINS) - 9)) >= 0, str(od0))
+	_ok("② 没晋级卡: 石板蓝缎带 + 状态字压灰 + 第一屏积分赛徽章", str(od0["ribbon"]) == WCC.RIBBON_SLATE
+		and str(od0["ceremony_badge"]) == P2.PHASE_RANKED and bool(od0["dim"]), str(od0))
 	_fresh(false, 14, 8, 0)
-	var o2: String = "".join(PackedStringArray(WCC.spec(WCC.KIND_RANKED_OUT, GameState, P2.ranked_close_ts(MON) + 60)["body"]))
-	_ok("② 没晋级(命用完): 说生命已耗尽", o2.find("生命已耗尽") >= 0 and o2.find("8 胜 6 负") >= 0, o2)
+	var od2: Dictionary = WCC.spec(WCC.KIND_RANKED_OUT, GameState, P2.ranked_close_ts(MON) + 60)
+	_ok("② 没晋级(命用完): 说生命已耗尽", str(od2["status"]).find("生命已耗尽") >= 0 and (od2["record"] as Array) == [8, 6], str(od2))
 	var od: Dictionary = WCC.spec(WCC.KIND_RANKED_OUT, GameState, P2.ranked_close_ts(MON) + 60)
 	_ok("② 没晋级的卡给「观战」(周六去全场赛况)", (od["primary"] as Array) == [WCC.TXT_WATCH, WCC.DOOR_BOARD], str(od["primary"]))
 
@@ -308,6 +318,9 @@ func _t_copy_rules() -> void:
 		for ts in [fri_post, sun_post]:
 			var d: Dictionary = WCC.spec(str(k), GameState, int(ts))
 			texts.append(str(d["title"]))
+			texts.append(str(d["ceremony_title"]))
+			texts.append(str(d["record_cap"]))
+			texts.append(str(d["status"]))
 			texts.append_array(d["body"])
 	texts.append(P2.finals_block_msg(true, true))
 	texts.append(P2.finals_block_msg(false, true))
@@ -363,12 +376,22 @@ func _t_real_menu_card() -> void:
 	get_tree().root.add_child(mm)
 	get_tree().current_scene = mm                      # ★卡只在玩家真走到的那一屏弹(current_scene == 主菜单)
 	var card: Node = null
+	var cer_seen := false
+	var cer_title := ""
 	var t0 := Time.get_ticks_msec()
 	while Time.get_ticks_msec() - t0 < 8000:
 		await get_tree().process_frame
+		var cer: Node = mm.get_node_or_null(SC.NODE_NAME)
+		if cer != null and card == null:
+			cer_seen = true
+			var tl := cer.find_child("Title", true, false) as Label
+			cer_title = tl.text if tl != null else ""
 		card = mm.get_node_or_null(WCC.NODE_NAME)
 		if card != null:
 			break
+	## 一屏一件事(荒野乱斗战队联赛周结束那一串): 先整屏「积分赛已结束」自己过, 再出战绩卡
+	_ok("③ ★战绩卡之前先出整屏「积分赛已结束」(且它自己过去了)", cer_seen and cer_title == "积分赛已结束"
+		and mm.get_node_or_null(SC.NODE_NAME) == null, "seen=%s 「%s」" % [cer_seen, cer_title])
 	_ok("③ ★分母: 收盘后第一次进主菜单, 卡真弹出来了", card != null)
 	var lab: Label = mm._wk().wallet_nodes()[0] as Label
 	_ok("③ 分母: 找得到钱包数字", lab != null)
@@ -474,15 +497,18 @@ func _t_block_card() -> void:
 	_ok("⑥ ★卡上那句 == _battle_block_msg(同一处; 卡片在句号处换行, 比对时去掉换行)", body != null and body.text.replace("\n", "") == msg, body.text if body != null else "无")
 	var prim := bc.find_child("Primary", true, false) as Button if bc != null else null
 	_ok("⑥ ★周末没资格 ⇒ 主按钮「观战」", prim != null and prim.text == WCC.TXT_WATCH, prim.text if prim != null else "无")
+	## 第二颗与收盘卡同一对(观战 + 关闭); 2026-10-26 前是「好的」, 同一种卡两种关法。
+	var sec := bc.find_child("Secondary", true, false) as Button if bc != null else null
+	_ok("⑥ ★有去处时第二颗是「关闭」(与收盘卡一致)", sec != null and sec.text == WCC.TXT_CLOSE, sec.text if sec != null else "无")
 	_ok("⑥ ★模式卡锁着 ⇒ 第三格是去处「观看全场赛况」, 不是收盘倒计时", str(mm.mode_card_lines(sat)[2]) == str(mm.MODE_WATCH_BOARD), str(mm.mode_card_lines(sat)))
-	## 对照: 晋级了、4-0 ⇒ 卡上只有「好的」, 模式卡照常倒计时 / 指周日
+	## 对照: 晋级了、4-0 ⇒ 卡上只有「确定」, 模式卡照常倒计时 / 指周日
 	GameState.promoted = true
 	GameState.gauntlet_wins = 4
 	var msg2: String = str(mm._battle_block_msg(sat))
 	mm._start_battle_flow()
 	var bc2: Node = mm.get_node_or_null(str(mm.BLOCK_CARD_NAME))
 	var p2 := bc2.find_child("Primary", true, false) as Button if bc2 != null else null
-	_ok("⑥ 对照: 已晋级决赛日 ⇒ 卡上只有「好的」(新卡顶掉旧卡、名字不变)", p2 != null and p2.text == WCC.TXT_OK
+	_ok("⑥ 对照: 已晋级决赛日 ⇒ 卡上只有「确定」(新卡顶掉旧卡、名字不变)", p2 != null and p2.text == WCC.TXT_OK
 		and bc2.find_child("Secondary", true, false) == null, p2.text if p2 != null else "无")
 	_ok("⑥ 对照: 晋级那句说周日几点开打(设备时区)", msg2.find(P2.local_wd_hhmm(P2.finals_seat_ts(MON))) >= 0, msg2)
 	_ok("⑥ 对照: 模式卡没锁 ⇒ 第三格不是观战去处", str(mm.mode_card_lines(sat)[2]) != str(mm.MODE_WATCH_BOARD), str(mm.mode_card_lines(sat)))
@@ -526,3 +552,63 @@ func _all_text(n: Node) -> String:
 	for c in n.get_children():
 		s += _all_text(c)
 	return s
+
+
+# ⑨ ─────────────────────────────────────────────────────────────
+## 晋级那一局的整屏仪式(2026-10-26 · 方案书 docs/plans/20261026c-周末弹窗美术.md):
+##   晋级在哪一刻决定就在哪一刻庆祝 —— 积分赛第 11 胜那一局 / 闯关赛第 4 胜那一局, 别的胜局不演。
+func _t_promotion_ceremony() -> void:
+	print("── ⑨ 晋级那一局的整屏仪式 ──")
+	var fb := FakeBattle.new()
+	var hud = HUD.new(fb)
+	fb._last_settle_kind = P2.SETTLE_RANKED
+	_fresh(false, 11, int(P2.PROMOTE_WINS), 5)
+	var pm: Array = hud._promotion_moment(true, false, GameState)
+	_ok("⑨ ★积分赛赢到第 %d 胜那一局 ⇒ 积分赛 → 闯关赛「晋级闯关赛！」" % int(P2.PROMOTE_WINS),
+		pm.size() == 4 and str(pm[0]) == P2.PHASE_RANKED and str(pm[1]) == P2.PHASE_GAUNTLET and str(pm[2]) == "晋级闯关赛！", str(pm))
+	_ok("⑨ ★那一局大字「已晋级！」、副标题说已晋级(原来只写「赛季胜场 +1」)", str(hud._result_headline(true, false, GameState)) == "已晋级！"
+		and str(hud._result_subtitle(true, GameState)).find("已晋级周六闯关赛") >= 0, str(hud._result_subtitle(true, GameState)))
+	GameState.season_wins = int(P2.PROMOTE_WINS) + 1
+	_ok("⑨ 对照: 过线之后再赢 ⇒ 不再演", hud._promotion_moment(true, false, GameState).is_empty())
+	GameState.season_wins = int(P2.PROMOTE_WINS) - 1
+	_ok("⑨ 对照: 还差一胜 ⇒ 不演、大字照旧「胜利」", hud._promotion_moment(true, false, GameState).is_empty()
+		and str(hud._result_headline(true, false, GameState)) == "胜利")
+	GameState.season_wins = int(P2.PROMOTE_WINS)
+	_ok("⑨ 对照: 输了的那一局 ⇒ 不演", hud._promotion_moment(false, false, GameState).is_empty())
+	fb._last_was_exhibition = true
+	_ok("⑨ 对照: 表演赛 ⇒ 不演", hud._promotion_moment(true, false, GameState).is_empty())
+	fb._last_was_exhibition = false
+	fb._last_settle_kind = P2.SETTLE_GAUNTLET
+	GameState.gauntlet_wins = int(P2.GAUNTLET_WINS_IN)
+	GameState.gauntlet_losses = 1
+	var pg: Array = hud._promotion_moment(true, false, GameState)
+	_ok("⑨ ★闯关赛第 %d 胜那一局 ⇒ 闯关赛 → 决赛日「晋级决赛日！」" % int(P2.GAUNTLET_WINS_IN),
+		pg.size() == 4 and str(pg[0]) == P2.PHASE_GAUNTLET and str(pg[1]) == P2.PHASE_FINALS and str(pg[2]) == "晋级决赛日！", str(pg))
+	GameState.gauntlet_wins = int(P2.GAUNTLET_WINS_IN) - 1
+	_ok("⑨ 对照: 闯关赛还差一胜 ⇒ 不演", hud._promotion_moment(true, false, GameState).is_empty())
+	## 组件本身: 变身 = 两枚徽章都在; 点一下关掉并回调; 自动那种自己关
+	var host := Control.new()
+	add_child(host)
+	var done := [0]
+	var ov: Control = SC.play(host, P2.PHASE_RANKED, P2.PHASE_GAUNTLET, "晋级闯关赛！", "x", false, func() -> void: done[0] += 1)
+	_ok("⑨ ★变身: 本站徽章与下一站徽章都在场、下一站那枚先藏着", ov.find_child("BadgeFrom", true, false) != null
+		and ov.find_child("BadgeTo", true, false) != null and (ov.find_child("BadgeTo", true, false) as CanvasItem).modulate.a == 0.0)
+	var b_to := ov.find_child("BadgeTo", true, false) as TextureRect
+	_ok("⑨ 徽章按整数倍放大(像素画)", b_to != null and is_equal_approx(b_to.size.x / float(b_to.texture.get_width()), float(SC.PX)),
+		"%s" % (str(b_to.size) if b_to != null else "无"))
+	var ev := InputEventMouseButton.new()
+	ev.button_index = MOUSE_BUTTON_LEFT
+	ev.pressed = true
+	ov.gui_input.emit(ev)
+	ov.gui_input.emit(ev)
+	await get_tree().process_frame
+	_ok("⑨ ★点一下 ⇒ 关掉、回调恰好一次", not is_instance_valid(ov) or ov.is_queued_for_deletion(), "")
+	_ok("⑨ 回调恰好一次(连点两下不重复)", done[0] == 1, str(done[0]))
+	var ov2: Control = SC.play(host, P2.PHASE_RANKED, P2.PHASE_RANKED, "积分赛已结束", "", true, func() -> void: done[0] += 10)
+	_ok("⑨ 同一站 ⇒ 只亮一枚、不变身", ov2.find_child("BadgeTo", true, false) == null)
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < int(SC.AUTO_SEC * 1000.0) + 3000 and done[0] < 11:
+		await get_tree().process_frame
+	_ok("⑨ ★自动那种停 %.1f 秒自己关" % SC.AUTO_SEC, done[0] == 11, str(done[0]))
+	host.queue_free()
+
