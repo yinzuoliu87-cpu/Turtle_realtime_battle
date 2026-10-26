@@ -378,10 +378,7 @@ while _w < 600 and float(u["hp"]) >= hp0:   # 上限防死循环
   `0`→`"1"` iPhone ／ `1`→`"2"` iPad ／ `2`→`"1,2"` 通用。
   按字面读会改反（我把"通用"改成了"仅 iPad"）。**改完要回读导出后 `turtle.xcodeproj/project.pbxproj` 里的 `TARGETED_DEVICE_FAMILY` 确认**，光看 cfg 看不出来。
 - 只验"导出没报错"不够。导出版**禁用了 `disable_path_overrides`**，命令行给场景路径会直接 Abort，所以打包版默认只能启动 `run/main_scene`。想验打包后的真实对局：临时把 `run/main_scene` 改成 `res://tests/smoke_scenes.tscn`，导一个一次性包跑完再还原。
-- ~~本地无 `gh`、无 token，读不了 Actions API~~ **（2026-10-26 更正：这句是错的。）** 本地确实没装 `gh`、也没有 token 环境变量，**但 Git 凭据管理器里存着用户账号的 GitHub 令牌**（`gho_…`，权限 repo / workflow / gist）：`printf "protocol=https
-host=github.com
-
-" | GCM_INTERACTIVE=Never git credential fill` 取出（不打印）就能调 API —— 读 Actions、手动 dispatch 工作流、写仓库 Secrets（值要先用仓库公钥 libsodium 加密，PyNaCl）。Git Bash 里以 `/` 开头的路径参数要 `MSYS_NO_PATHCONV=1`。**工作流失败会把日志推到 `ci-logs` 分支**，`git fetch origin ci-logs` 即可看——这是设计好的逃生口。
+- ~~本地无 `gh`、无 token，读不了 Actions API~~ **（2026-10-26 更正：这句是错的。）** 本地确实没装 `gh`、也没有 token 环境变量，**但 Git 凭据管理器里存着用户账号的 GitHub 令牌**（`gho_…`，权限 repo / workflow / gist）：`printf "protocol=https\nhost=github.com\n\n" | GCM_INTERACTIVE=Never git credential fill` 取出（不打印）就能调 API —— 读 Actions、手动 dispatch 工作流、写仓库 Secrets（值要先用仓库公钥 libsodium 加密，PyNaCl）。Git Bash 里以 `/` 开头的路径参数要 `MSYS_NO_PATHCONV=1`。**工作流失败会把日志推到 `ci-logs` 分支**，`git fetch origin ci-logs` 即可看——这是设计好的逃生口。
 
 ---
 
